@@ -122,9 +122,10 @@ pub struct PartHost {
     /// too): over the style's rules for it, where what it only inherits
     /// is under them, as on an HTML element.
     own: BTreeSet<String>,
-    /// A button's own plate ([`plate_prop`]) as its author declared it: its
-    /// plate part takes these over the style's, and the host draws none.
-    plate: Vec<(usize, V)>,
+    /// A button's own plate declarations ([`plate_css`]), from the rules
+    /// that apply to it, as [`super::TreeContext::Host`] rules: its plate
+    /// part cascades them, and the host draws none.
+    plate: Vec<super::StyleRule>,
 }
 
 /// `color` inherits (CSS Color 4 §3.1), on the text channel the other
@@ -172,6 +173,16 @@ fn plate_prop(name: &str) -> bool {
         || name.starts_with("background")
         || name.starts_with("border")
         || name.starts_with("padding")
+}
+
+/// Whether a CSS property is one a button's plate takes from it
+/// ([`plate_prop`]).
+fn plate_css(name: &str) -> bool {
+    name == "box-shadow"
+        || name.starts_with("background")
+        || name.starts_with("border")
+        || name.starts_with("padding")
+        || name.starts_with("corner")
 }
 
 /// Whether `name` shapes an element's corners.
@@ -905,11 +916,17 @@ impl Ui {
             }
         }
         let mut kept = kept;
+        // The rules that apply to it, by address, for its plate.
+        let mut applied: Vec<*const super::StyleRule> = Vec::new();
         r.cascade = match kept.as_deref_mut() {
             // Rules a binding wrote are not the node's: they cascade anew.
             Some(kept) if matches!(rules, std::borrow::Cow::Borrowed(_)) => {
                 let applying: Vec<usize> = (0..rules.len())
                     .filter(|&k| !rules[k].starting && rule_applies(&rules[k]))
+                    .collect();
+                applied = applying
+                    .iter()
+                    .map(|&k| std::ptr::from_ref(&rules[k]))
                     .collect();
                 let inputs = cascade::Inputs {
                     doc: b.doc.clone(),
@@ -926,7 +943,13 @@ impl Ui {
                     cascade::values_with(applying.iter().map(|&k| &rules[k]), &options, |_| true)
                 })
             }
-            _ => cascade::values_with(rules.iter(), &options, &mut rule_applies),
+            _ => cascade::values_with(rules.iter(), &options, |rule| {
+                let applies = rule_applies(rule);
+                if applies {
+                    applied.push(std::ptr::from_ref(rule));
+                }
+                applies
+            }),
         };
         // The root's own `vi` and `vb` follow the writing mode it declares.
         let (basis, options) = if cascade::root_vertical(inherited).is_none()
@@ -984,6 +1007,32 @@ impl Ui {
                 })
                 .cloned()
                 .collect();
+        }
+        // A button's plate cascades its own declarations for it with the
+        // style's and the document's `::part()` rules, each ranked by its
+        // context, layer and importance.
+        let mut plate_rules = Vec::new();
+        if n.kind == NodeKind::Element(Kind::Button) && n.selector_tag.is_some() {
+            let applied = |r: &&super::StyleRule| applied.contains(&std::ptr::from_ref(*r));
+            for rule in rules.iter().filter(applied).filter(|r| !r.starting) {
+                let declarations: Vec<_> = rule
+                    .declarations
+                    .iter()
+                    .filter(|d| plate_css(&d.name))
+                    .cloned()
+                    .collect();
+                if !declarations.is_empty() {
+                    plate_rules.push(super::StyleRule {
+                        context: super::TreeContext::Host,
+                        query: Default::default(),
+                        condition: None,
+                        structure: None,
+                        props: Vec::new(),
+                        declarations,
+                        ..rule.clone()
+                    });
+                }
+            }
         }
         let motion: Vec<(String, String)> = r
             .cascade
@@ -1367,33 +1416,52 @@ impl Ui {
                     .into_iter()
                     .partition(|(spec, _)| plate_prop(PROPS[*spec].name));
                 r.vals = rest;
-                r.vals.extend(
-                    own.iter()
-                        .filter(|(spec, _)| corner_prop(PROPS[*spec].name))
-                        .cloned(),
-                );
-                plate = own;
+                plate = std::mem::take(&mut plate_rules);
                 // Its fill replaces the style's whole background and its
                 // border the style's painted frame, as the `background`
                 // and `border` shorthands reset the image beside them.
-                let has = |plate: &[(usize, V)], name: &str| {
-                    plate.iter().any(|(spec, _)| PROPS[*spec].name == name)
-                };
-                let border = plate.iter().any(|(spec, _)| {
+                let has = |name: &str| own.iter().any(|(spec, _)| PROPS[*spec].name == name);
+                let border = own.iter().any(|(spec, _)| {
                     let name = PROPS[*spec].name;
                     name.starts_with("border") && !name.starts_with("borderImage")
                 });
-                for (written, image) in [
-                    (has(&plate, "background"), "backgroundImage"),
-                    (border, "borderImageSource"),
+                for (written, image, css) in [
+                    (has("background"), "backgroundImage", "background"),
+                    (border, "borderImageSource", "border"),
                 ] {
+                    let Some((rule, important)) = plate.iter_mut().rev().find_map(|r| {
+                        let d = r.declarations.iter().rfind(|d| {
+                            d.name.starts_with(css) && !d.name.starts_with("border-image")
+                        })?;
+                        let important = d.important;
+                        Some((r, important))
+                    }) else {
+                        continue;
+                    };
                     if written
-                        && !has(&plate, image)
-                        && let Some((spec, _)) = schema::prop(image)
+                        && !has(image)
+                        && let Ok(reset) = super::stylesheet::inline(
+                            &b.doc,
+                            n,
+                            &format!(
+                                "{}: none{}",
+                                if css == "background" {
+                                    "background-image"
+                                } else {
+                                    "border-image-source"
+                                },
+                                if important { " !important" } else { "" }
+                            ),
+                            0,
+                        )
                     {
-                        plate.push((spec, V::Str("none".into())));
+                        rule.declarations.extend(reset);
                     }
                 }
+                r.vals.extend(
+                    own.into_iter()
+                        .filter(|(spec, _)| corner_prop(PROPS[*spec].name)),
+                );
             }
             let c = &r.cascade;
             let own = c.values.iter().map(|(name, ..)| name);

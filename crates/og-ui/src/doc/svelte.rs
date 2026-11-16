@@ -159,6 +159,7 @@ pub(crate) fn parse_with_pack(
             }
             p.doc.nodes[i].rules.push(StyleRule {
                 inline: true,
+                context: super::TreeContext::Tree,
                 layer: u32::MAX,
                 starting: false,
                 query: AtQuery::default(),

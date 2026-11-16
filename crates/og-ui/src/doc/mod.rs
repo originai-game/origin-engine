@@ -297,10 +297,32 @@ pub struct PropSet {
     pub source: String,
 }
 
+/// Where a rule stands relative to the element it styles (CSS Cascade 5
+/// §6.1, Context): ranked before the style attribute, layers and
+/// specificity. Normal declarations of a later context win, `!important`
+/// ones of an earlier. The default style's and a pack's sheets are adopted
+/// into every tree, so theirs are the element's own tree's rules and rank
+/// there by layer.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, PartialOrd, Ord)]
+pub enum TreeContext {
+    /// A rule of the element's own tree, or of a sheet adopted into it.
+    #[default]
+    Tree,
+    /// A control's own box declarations, which its plate part takes
+    /// (docs/ui.md §3.2): over the style's `::part()` rules for the plate,
+    /// under its document's own.
+    Host,
+    /// A document's `::part()` rule, reaching into a control's parts from
+    /// the tree its host stands in.
+    Outer,
+}
+
 #[derive(Clone, Debug, PartialEq)]
 pub struct StyleRule {
     /// Inline styles outrank stylesheet declarations at equal importance.
     pub inline: bool,
+    /// Set where the rule is read, never by the list it is appended to.
+    pub context: TreeContext,
     /// Its cascade layer's rank: 0 for the user-agent sheet, the layer's
     /// place in [`at_rules::Sheet::layers`] plus one, `u32::MAX` unlayered.
     /// Normal declarations of a higher rank win; `!important` ones of a

@@ -297,6 +297,7 @@ pub(crate) fn resolve(
         .filter(|rule| rule.matches(span))
         .map(|rule| super::StyleRule {
             inline: false,
+            context: super::TreeContext::Tree,
             layer: u32::MAX,
             starting: false,
             structure: None,

@@ -188,6 +188,7 @@ pub fn part_rules_from(
         }
         out.push(StyleRule {
             inline: false,
+            context: super::TreeContext::Tree,
             layer: rank(&sheet.layers, &rule.layer),
             starting: rule.starting,
             query: rule.query,
@@ -683,6 +684,7 @@ pub fn apply(
                 let (declarations, _) = lower(&rule.body, &known).map_err(|e| (rule.at, e))?;
                 doc.part_rules.push(StyleRule {
                     inline: false,
+                    context: super::TreeContext::Outer,
                     layer: rank(&layers, &rule.layer),
                     starting: rule.starting,
                     query: rule.query.clone(),
@@ -725,6 +727,7 @@ pub fn apply(
                     };
                     doc.nodes[*i].rules.push(StyleRule {
                         inline: false,
+                        context: super::TreeContext::Tree,
                         layer: rank(&layers, &rule.layer),
                         starting: false,
                         query: rule.query.clone(),
@@ -831,6 +834,7 @@ pub fn apply(
                 let props = rule_props(entries, kind).map_err(|e| (rule.at, e))?;
                 doc.nodes[node].rules.push(StyleRule {
                     inline: false,
+                    context: super::TreeContext::Tree,
                     layer: if rule.ua {
                         0
                     } else {

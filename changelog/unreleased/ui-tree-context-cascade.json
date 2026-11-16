@@ -1,0 +1,8 @@
+{
+  "fixed": [
+    {
+      "member": "CSS: cascade order of a <button>'s plate",
+      "summary": "A rule ranks by its tree context before its layer, as CSS Cascade 5 §6.1 says. A button's own box declarations (background, border, padding, corners, box-shadow) are its plate's: above the style's ::part() rules and below its document's own ::part() rule. !important now reverses that order, as in CSS. A style's !important plate declaration beats the button's own declaration, and a button's own !important beats its document's ::part() rule. Before, the button's own plate beat every style rule whatever its importance, and lost to every document ::part() rule. No default style, style pack or built-in component uses !important on these properties, so no frame moves."
+    }
+  ]
+}

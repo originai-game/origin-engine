@@ -448,6 +448,129 @@ fn a_buttons_own_padding_is_above_a_packs_part_rules() {
     assert_eq!(face(Some(&pack)), 196.0, "under a pack");
 }
 
+/// A rule ranks by its tree context before its layer, as CSS Cascade 5
+/// §6.1 ranks a shadow tree's: the default style and a pack are adopted
+/// into every tree and rank there by layer, a button's own box
+/// declarations are its plate's over the style's `::part()` rules, and a
+/// document's own `::part()` rule reaches into the control over them;
+/// `!important` reverses each. Ways it could fail: a rule ranked by the
+/// list it was appended to (26968a77e), the plate laid over every rule
+/// whatever its importance, or a built-in component's own rules taken as
+/// a game's, above the pack.
+#[test]
+fn a_rule_ranks_by_its_tree_context_then_its_layer() {
+    use og_ui::{UiDocument, Viewport, bind::NoEnv, reactive::SourceId};
+    // The face inside a 200px button, so 200 less twice the padding won.
+    let face = |source: &str, css: &str, pack: &str| {
+        let mut ui = Ui::new(UiDesc::default());
+        ui.define_document(
+            UiDocument::parse(
+                source,
+                &format!(
+                    r#"<meta name="component" content="Plate"><div id="Root"><button id="B"><div id="Face"></div></button></div>
+<style>#Root {{ width: 200px; }} #B {{ width: stretch; }} #Face {{ width: stretch; height: 10px; }} {css}</style>"#
+                ),
+            )
+            .unwrap(),
+        );
+        let pack = StylePack::parse(
+            "styles/test",
+            vec![("styles/test/main.css".into(), pack.into())],
+        )
+        .unwrap();
+        ui.set_style_pack(&pack).unwrap();
+        ui.mount_document(
+            SourceId::new("test", "plate"),
+            "Plate",
+            Default::default(),
+            Default::default(),
+            &NoEnv,
+        )
+        .unwrap();
+        ui.begin(Default::default(), Viewport::new(300.0, 300.0));
+        ui.build_retained_documents(&NoEnv).unwrap();
+        ui.end();
+        ui.probe_elements()
+            .into_iter()
+            .find(|e| e.path.ends_with("/Face"))
+            .unwrap()
+            .width
+    };
+    let (game, builtin) = ("ui/plate.svelte", "@ui/plate.svelte");
+    let pack = "button::part(base) { padding: 24px; }";
+    let pack_important = "button::part(base) { padding: 24px !important; }";
+    let pack_face = "button::part(base) { padding: 24px; } #Face { width: 100px; }";
+    let pack_face_important =
+        "button::part(base) { padding: 24px; } #Face { width: 100px !important; }";
+    for (case, source, css, pack, want) in [
+        (
+            "a game's button over the pack",
+            game,
+            "#B { padding: 2px; }",
+            pack,
+            196.0,
+        ),
+        (
+            "a built-in component's button over the pack",
+            builtin,
+            "#B { padding: 2px; }",
+            pack,
+            196.0,
+        ),
+        (
+            "the pack's !important over a button's own",
+            game,
+            "#B { padding: 2px; }",
+            pack_important,
+            152.0,
+        ),
+        (
+            "the pack's !important over a button's own !important",
+            game,
+            "#B { padding: 2px !important; }",
+            pack_important,
+            152.0,
+        ),
+        (
+            "the pack over a built-in component's own rule",
+            builtin,
+            "",
+            pack_face,
+            100.0,
+        ),
+        (
+            "a game's own rule over the pack",
+            game,
+            "",
+            pack_face,
+            152.0,
+        ),
+        (
+            "a built-in component's !important over the pack's",
+            builtin,
+            "#Face { width: stretch !important; }",
+            pack_face_important,
+            152.0,
+        ),
+        (
+            "a document's ::part() over its button's own",
+            game,
+            "#B { padding: 2px; } #B::part(base) { padding: 10px; }",
+            pack,
+            180.0,
+        ),
+        (
+            "a button's own !important over its document's ::part()",
+            game,
+            "#B { padding: 2px !important; } #B::part(base) { padding: 10px !important; }",
+            pack,
+            196.0,
+        ),
+    ] {
+        assert_eq!(face(source, css, pack), want, "{case}");
+    }
+}
+
 /// A role part wears the default dress from the role tokens, a pack restyles
 /// it by setting those tokens alone, and a pack token may read any default
 /// token.

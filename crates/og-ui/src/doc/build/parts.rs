@@ -1020,9 +1020,31 @@ impl Ui {
                 attr: &attr,
                 ..options
             };
-            let mut values = cascade::values_with(index.candidates(rules, &facts), &options, |r| {
-                self.part_matches(r, &facts, host.map(|h| &**h))
-            });
+            // A button's own plate declarations, as `Host` rules (the focus
+            // ring is the same host's part, without the class), their
+            // layers named as the cascade's sheet names them.
+            let plate: Vec<crate::doc::StyleRule> = host
+                .filter(|_| part.class == Some(crate::tokens::ElementClass::Button))
+                .map(|h| {
+                    h.plate
+                        .iter()
+                        .map(|rule| crate::doc::StyleRule {
+                            layer: document.map_or(rule.layer, |d| {
+                                relayer(rule.layer, &d.sheet.layers, &sheet.layers)
+                            }),
+                            ..rule.clone()
+                        })
+                        .collect()
+                })
+                .unwrap_or_default();
+            let mut values = cascade::values_with(
+                index.candidates(rules, &facts).chain(&plate),
+                &options,
+                |r| {
+                    r.context == crate::doc::TreeContext::Host
+                        || self.part_matches(r, &facts, host.map(|h| &**h))
+                },
+            );
             // The host's `font` shorthand is not carried over: its
             // longhands come computed with the host's own (`h2 { font: … }`
             // under `font-size: 2em`), and expanded again here it would
@@ -1101,28 +1123,6 @@ impl Ui {
                     V::Color(color.resolve(&crate::css_color::Context::of(self.theme()))),
                 ));
             }
-            // A button's own plate, above the style's (`Resolved::get`
-            // reads the last) and below what its document writes for the
-            // part itself (`button.buy::part(base):hover`). The focus ring
-            // is the same host's part, without the class.
-            if let Some(host) = host.filter(|h| {
-                part.class == Some(crate::tokens::ElementClass::Button) && !h.plate.is_empty()
-            }) {
-                let own = document.filter(|d| !d.part_rules.is_empty()).map(|d| {
-                    let mut own = cascade::values_with(&d.part_rules, &options, |r| {
-                        self.part_matches(r, &facts, Some(host))
-                    });
-                    cascade::route(&mut own, flow);
-                    own.props
-                });
-                let own = own.unwrap_or_default();
-                vals.extend(
-                    host.plate
-                        .iter()
-                        .filter(|(spec, _)| !own.iter().any(|p| p.spec == *spec))
-                        .cloned(),
-                );
-            }
             Resolved {
                 vals,
                 cascade: values,
@@ -1200,6 +1200,19 @@ impl crate::ui::Tree {
             }
             i = parent;
         }
+    }
+}
+
+/// A layer rank of `from`'s layers as `to` ranks the same name; a layer
+/// `to` lacks goes above all of its own, below unlayered rules.
+fn relayer(rank: u32, from: &[String], to: &[String]) -> u32 {
+    if rank == 0 || rank == u32::MAX {
+        return rank;
+    }
+    let name = &from[(rank - 1) as usize];
+    match to.iter().position(|n| n == name) {
+        Some(at) => at as u32 + 1,
+        None => to.len() as u32 + rank,
     }
 }
 

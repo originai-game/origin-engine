@@ -1,7 +1,7 @@
 //! The cascade operates on one instantiated element. Scheduling and parent
 //! identity belong to the retained builder; CSS never creates a second scope.
 use super::*;
-use crate::doc::{StyleRule, css, variables};
+use crate::doc::{StyleRule, TreeContext, css, variables};
 
 #[derive(Clone, Debug, Default)]
 pub struct Cascade {
@@ -338,10 +338,12 @@ pub(crate) fn values_with<'r>(
     let (inline, inherited, basis, attr) = (o.inline, o.inherited, o.basis, o.attr);
     let mut out = Cascade::default();
     // Every applying declaration of each property: (priority, declaration,
-    // line, layer). Normal declarations of a later layer win; important
-    // ones of an earlier layer (CSS Cascade 5 §6.4).
+    // line, layer). Importance ranks first, then the rule's tree context,
+    // the style attribute, the layer and order (CSS Cascade 5 §6): normal
+    // declarations of a later context or layer win, important ones of an
+    // earlier.
     type Candidate<'a> = (
-        (bool, bool, u32, usize, usize),
+        (bool, u8, bool, u32, usize, usize),
         &'a crate::doc::StyleDeclaration,
         usize,
         u32,
@@ -353,16 +355,26 @@ pub(crate) fn values_with<'r>(
             continue;
         }
         for (position, declaration) in rule.declarations.iter().enumerate() {
-            let layer = if declaration.important {
-                u32::MAX - rule.layer
+            let (context, layer) = if declaration.important {
+                (
+                    TreeContext::Outer as u8 - rule.context as u8,
+                    u32::MAX - rule.layer,
+                )
             } else {
-                rule.layer
+                (rule.context as u8, rule.layer)
             };
             candidates
                 .entry(declaration.name.as_str())
                 .or_default()
                 .push((
-                    (declaration.important, rule.inline, layer, order, position),
+                    (
+                        declaration.important,
+                        context,
+                        rule.inline,
+                        layer,
+                        order,
+                        position,
+                    ),
                     declaration,
                     rule.line,
                     rule.layer,
@@ -378,7 +390,7 @@ pub(crate) fn values_with<'r>(
     fn pick<'a>(
         list: &[Candidate<'a>],
         keyword: &dyn Fn(&crate::doc::StyleDeclaration) -> Option<&'static str>,
-    ) -> ((bool, bool, u32, usize, usize), Winner<'a>, usize) {
+    ) -> ((bool, u8, bool, u32, usize, usize), Winner<'a>, usize) {
         let (mut ua_only, mut below) = (false, None);
         for (priority, declaration, line, layer) in list {
             if (ua_only && *layer != 0) || below.is_some_and(|b| *layer >= b) {
@@ -513,7 +525,7 @@ pub(crate) fn values_with<'r>(
     out.reduced_motion_authored = declarations.iter().any(|(name, (priority, winner, _))| {
         name.starts_with("transition")
             && matches!(winner, Winner::Declared(_))
-            && names_reduced_motion(&rules[priority.3].query.media)
+            && names_reduced_motion(&rules[priority.4].query.media)
     });
     declarations.sort_by_key(|(_, (priority, _, _))| *priority);
     if o.carry {
