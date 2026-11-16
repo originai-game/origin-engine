@@ -368,6 +368,17 @@ frame, rerun only that frame's lane: `--only rust-gpu` for og-tests' gfx
 references, `--only bun-test` for a template's playtest frames,
 `web-reference` for the browser tiers.
 
+## Fuzzing
+
+`crates/og-ui-fuzz` holds og-ui's fuzz targets, run with cargo-fuzz
+(`cargo install cargo-fuzz`), outside the gate: `cargo fuzz run --fuzz-dir
+crates/og-ui-fuzz -s none -a document`, seeded from the engine's
+documents. `document` parses a document's text, as a remote `<iframe>`
+delivers it, then mounts and builds it. A crash it finds is fixed at the
+root and its input, minimised with `cargo fuzz tmin`, goes in
+`crates/og-ui-fuzz/regressions/document/`, which the crate's test
+(`cargo test -p og-ui-fuzz`, in the gate's tests) replays.
+
 ## Uniform host coverage
 
 Every host runs the same named lane, with no host-only subset or test
