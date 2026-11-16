@@ -1718,6 +1718,53 @@ fn calc_size_scales_its_basis_size() {
     assert!(error("width: calc(size * 2);").contains("'size'"));
 }
 
+/// `progress()` (CSS Values 5 §5) is a number from a value's place between
+/// two others, clamped to [0, 1] unless `no-clamp`; `random()` (§9) draws
+/// once per random cache name: its element, property and place by
+/// default, shared by a `--name` key. It is the same each time the element
+/// resolves, and in another UI built from the same document.
+#[test]
+fn progress_and_random_resolve_on_their_element() {
+    let text = r#"<meta name="component" content="t">
+<div id="Root">
+  <div id="Prog"></div><div id="Clamp"></div><div id="NoClamp"></div><div id="Em"></div>
+  <div id="A" class="r"></div><div id="B" class="r"></div>
+  <div id="S1" class="s"></div><div id="S2" class="s"></div><div id="Fixed"></div>
+</div>
+<style>
+#Root div { height: 1px; }
+#Prog { width: calc(progress(50px, 0px, 200px) * 400px); }
+#Clamp { width: calc(progress(300px, 0px, 200px) * 100px); }
+#NoClamp { width: calc(progress(no-clamp 300px, 0px, 200px) * 100px); }
+#Em { font-size: 20px; width: calc(progress(1em, 0px, 40px) * 100px); }
+.r { width: calc(random(0px, 100px) + 0vw); }
+.s { width: random(--k, 10px, 90px, 40px); }
+#Fixed { width: random(fixed 0.25, 100px, 200px); }
+</style>"#;
+    let mut d = Doc::new(text, &[]);
+    for (id, width) in [
+        ("Prog", 100.0),
+        ("Clamp", 100.0),
+        ("NoClamp", 150.0),
+        ("Em", 50.0),
+        ("Fixed", 125.0),
+    ] {
+        assert_eq!(d.get(id).width, width, "{id}");
+    }
+    let (a, b) = (d.get("A").width, d.get("B").width);
+    assert!((0.0..=100.0).contains(&a) && (0.0..=100.0).contains(&b));
+    assert_ne!(a, b, "two elements draw apart");
+    let s = d.get("S1").width;
+    assert!([10.0, 50.0, 90.0].contains(&s), "{s}");
+    assert_eq!(d.get("S2").width, s, "a --k key is shared");
+    // Resolved again (the viewport moved) and in another UI: the same.
+    d.viewport = og_ui::Viewport::new(600.0, 900.0);
+    d.step(Default::default());
+    assert_eq!((d.get("A").width, d.get("B").width), (a, b));
+    let again = Doc::new(text, &[]);
+    assert_eq!((again.get("A").width, again.get("S1").width), (a, s));
+}
+
 /// CSS Values 4 §6.1.2's small, large and dynamic viewports: `sv*` read the
 /// surface with the host's controls shown, `lv*` with them hidden, `dv*`
 /// and the bare units the surface now, each axis and min/max apart.

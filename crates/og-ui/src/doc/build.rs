@@ -870,6 +870,7 @@ impl Ui {
             },
             containers: super::container::unit_basis(&chain, &self.docs.containers.sizes),
             vertical: cascade::root_vertical(inherited).unwrap_or(false),
+            element: crate::id::key_of_path(path),
             ..Default::default()
         };
         // An attribute attr() reads, as its text.

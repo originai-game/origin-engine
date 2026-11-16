@@ -69,9 +69,9 @@ const ABSOLUTE: [&str; 41] = [
     "cqmin", "cqmax",
 ];
 
-const FUNCTIONS: [&str; 21] = [
+const FUNCTIONS: [&str; 23] = [
     "calc", "min", "max", "clamp", "round", "mod", "rem", "abs", "sign", "sin", "cos", "tan",
-    "asin", "acos", "atan2", "atan", "pow", "sqrt", "hypot", "log", "exp",
+    "asin", "acos", "atan2", "atan", "pow", "sqrt", "hypot", "log", "exp", "progress", "random",
 ];
 
 /// Math functions over lengths whose result layout can still evaluate
@@ -130,6 +130,10 @@ pub struct Basis {
     /// The root element's writing mode is vertical: `vi` and `vb` are the
     /// viewport's height and width (CSS Values 4 §6.1.2).
     pub vertical: bool,
+    /// The element's identity, stable while it stays where it is: what
+    /// sets a `random()` apart from the same one on another element
+    /// (CSS Values 5 §9.4).
+    pub element: u64,
 }
 
 impl Basis {
@@ -157,10 +161,14 @@ pub struct Read {
     pub containers: [Option<u64>; 4],
 }
 
-/// Whether `text` has a number in a unit [`absolute`] resolves, or an
-/// `env()`.
+/// Whether `text` has a number in a unit [`absolute`] resolves, an
+/// `env()`, or a `random()` whose key reads its element.
 pub fn has_absolute(text: &str) -> bool {
-    text.contains("env(") || numbers(text).any(|(_, _, unit)| ABSOLUTE.contains(&unit))
+    text.contains("env(")
+        || text
+            .match_indices("random(")
+            .any(|(at, f)| !text[at + f.len()..].trim_start().starts_with("fixed"))
+        || numbers(text).any(|(_, _, unit)| ABSOLUTE.contains(&unit))
 }
 
 /// A property that keeps its `em` terms to the element's resolve (a
@@ -184,6 +192,7 @@ pub fn per_element(name: &str, text: &str) -> bool {
 pub fn absolute(text: &str, basis: Basis, name: &str) -> (String, Read) {
     let mut read = Read::default();
     let text = env(text, basis, &mut read);
+    let text = random_bases(&text, basis.element, name, &mut 0);
     let mut out = String::with_capacity(text.len());
     let mut last = 0;
     let (em, lh) = basis.em();
@@ -281,6 +290,109 @@ pub fn absolute(text: &str, basis: Basis, name: &str) -> (String, Read) {
     }
     out.push_str(&text[last..]);
     (out, read)
+}
+
+/// `text` with each `random()`'s key written as its random base value,
+/// `random(fixed <base>, …)` (CSS Values 5 §9.4). The base is a hash of
+/// the random cache name, so it is the same each time the value resolves
+/// and on every host: `auto` (or no key) is `element-scoped
+/// property-index-scoped`, a `<dashed-ident>` alone is shared by every
+/// element, and `element-scoped`, `property-scoped` and
+/// `property-index-scoped` add the element, the property and the
+/// function's place among the declaration's `random()`s. `index` counts
+/// those places.
+fn random_bases(text: &str, element: u64, property: &str, index: &mut u32) -> String {
+    let mut out = String::with_capacity(text.len());
+    let mut rest = text;
+    while let Some(at) = rest.find("random(") {
+        let boundary = at == 0 || {
+            let p = rest.as_bytes()[at - 1];
+            !(p.is_ascii_alphanumeric() || p == b'-' || p == b'_')
+        };
+        let open = at + "random".len();
+        let Some(close) = closing(rest, open).filter(|_| boundary) else {
+            out.push_str(&rest[..open + 1]);
+            rest = &rest[open + 1..];
+            continue;
+        };
+        *index += 1;
+        let place = *index;
+        let body = &rest[open + 1..close];
+        let (key, args) = match split_top(body) {
+            Some((k, a)) if random_key(k).is_some() => (random_key(k), a),
+            _ => (None, body),
+        };
+        let base = match key.unwrap_or(RandomKey::Name("", true, Scope::Index)) {
+            RandomKey::Fixed(r) => r,
+            RandomKey::Name(ident, scoped, scope) => {
+                let mut h = 0xcbf2_9ce4_8422_2325u64;
+                let mut eat = |bytes: &[u8]| {
+                    for &b in bytes {
+                        h = (h ^ b as u64).wrapping_mul(0x100_0000_01b3);
+                    }
+                    h = (h ^ 0xff).wrapping_mul(0x100_0000_01b3);
+                };
+                eat(ident.as_bytes());
+                if scoped {
+                    eat(&element.to_le_bytes());
+                }
+                if scope != Scope::None {
+                    eat(property.as_bytes());
+                }
+                if scope == Scope::Index {
+                    eat(&place.to_le_bytes());
+                }
+                // SplitMix64's finaliser, then 53 bits: a uniform [0, 1).
+                let mut z = h.wrapping_add(0x9e37_79b9_7f4a_7c15);
+                z = (z ^ (z >> 30)).wrapping_mul(0xbf58_476d_1ce4_e5b9);
+                z = (z ^ (z >> 27)).wrapping_mul(0x94d0_49bb_1331_11eb);
+                z ^= z >> 31;
+                (z >> 11) as f64 / (1u64 << 53) as f64
+            }
+        };
+        let args = random_bases(args, element, property, index);
+        out.push_str(&rest[..at]);
+        out.push_str(&format!("random(fixed {base}, {})", args.trim()));
+        rest = &rest[close + 1..];
+    }
+    out.push_str(rest);
+    out
+}
+
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum Scope {
+    None,
+    Property,
+    Index,
+}
+
+/// A `random()`'s `<random-key>` (CSS Values 5 §9.4): `fixed <number>`,
+/// else its dashed ident (`""`: none), whether it is element-scoped and
+/// how it reads its property. `None`: the argument is not a key.
+enum RandomKey<'a> {
+    Fixed(f64),
+    Name(&'a str, bool, Scope),
+}
+
+fn random_key(text: &str) -> Option<RandomKey<'_>> {
+    let words: Vec<&str> = text.split_whitespace().collect();
+    match words.as_slice() {
+        ["auto"] => return Some(RandomKey::Name("", true, Scope::Index)),
+        ["fixed", n] => return n.parse().ok().map(RandomKey::Fixed),
+        [] => return None,
+        _ => {}
+    }
+    let (mut ident, mut scoped, mut scope) = ("", false, Scope::None);
+    for w in words {
+        match w {
+            "element-scoped" if !scoped => scoped = true,
+            "property-scoped" if scope == Scope::None => scope = Scope::Property,
+            "property-index-scoped" if scope == Scope::None => scope = Scope::Index,
+            w if w.starts_with("--") && w.len() > 2 && ident.is_empty() => ident = w,
+            _ => return None,
+        }
+    }
+    Some(RandomKey::Name(ident, scoped, scope))
 }
 
 /// `text` with each `env(<name>[, <fallback>])` replaced (CSS Environment
@@ -863,6 +975,33 @@ impl Parser<'_> {
                 return Err("round(<strategy>, A, B): a comma follows the strategy".into());
             }
         }
+        // `progress(no-clamp? …)` (CSS Values 5 §5); `random(fixed R, …)`
+        // (§9.1; [`random_bases`] writes any other key as its base value,
+        // once the element is known).
+        if name == "progress" {
+            let at = self.i;
+            if self.word() == Some("no-clamp") {
+                name = "progress-no-clamp";
+            } else {
+                self.i = at;
+            }
+        }
+        let mut base = None;
+        if name == "random" {
+            if self.word() != Some("fixed") {
+                return Err("random() resolves on its element".into());
+            }
+            match self.value()? {
+                Dim::Sum(t) if matches!(t.as_slice(), [("", r)] if (0.0..=1.0).contains(r)) => {
+                    // A base is below 1 (§9.4).
+                    base = Some(t[0].1.min(1.0 - f64::EPSILON));
+                }
+                _ => return Err("random(fixed <number>, …) takes a number from 0 to 1".into()),
+            }
+            if !self.eat(b',') {
+                return Err("random(fixed <number>, A, B): a comma follows the key".into());
+            }
+        }
         let mut args = vec![self.sum()?];
         while self.eat(b',') {
             args.push(self.sum()?);
@@ -880,6 +1019,8 @@ impl Parser<'_> {
             "mod" | "rem" | "atan2" | "pow" => (2..=2, "two values"),
             n if n.starts_with("round") => (1..=2, "a value and its step"),
             "log" => (1..=2, "a value and its base"),
+            n if n.starts_with("progress") => (3..=3, "a value, a start and an end"),
+            "random" => (2..=3, "a minimum, a maximum and an optional step"),
             "min" | "max" | "hypot" => (1..=usize::MAX, "one or more values"),
             _ => (1..=1, "one value"),
         };
@@ -903,6 +1044,9 @@ impl Parser<'_> {
         if name.starts_with("round") && sums.len() == 1 {
             let unit = sums[0][0].0;
             sums.push(vec![(unit, 1.0)]);
+        }
+        if let Some(r) = base {
+            return random(r, sums);
         }
         // One unit throughout: the value now.
         let unit = sums[0][0].0;
@@ -1069,6 +1213,48 @@ impl Parser<'_> {
     }
 }
 
+/// `random()`'s value from its base `r` (CSS Values 5 §9.3): `min + r ×
+/// (max − min)`, a sum in any units of one type; with a step, in one unit,
+/// the `min + N × step` within `max` that `r` picks among them uniformly.
+/// A maximum below the minimum is the minimum (§9.1.1), as is a step of 0
+/// or less.
+fn random(r: f64, sums: Vec<Vec<(&'static str, f64)>>) -> Result<Dim, String> {
+    let unit = sums[0][0].0;
+    let one: Option<Vec<f64>> = sums
+        .iter()
+        .map(|t| (t.len() == 1 && t[0].0 == unit).then_some(t[0].1))
+        .collect();
+    if let Some(v) = one {
+        let (min, max) = (v[0], v[1].max(v[0]));
+        let x = match v.get(2) {
+            Some(&step) if step > 0.0 && ((max - min) / step).is_finite() => {
+                // The epsilon is a thousandth of the step.
+                let n = ((max - min) / step + 0.001).floor();
+                min + (r * (n + 1.0)).floor().min(n) * step
+            }
+            _ => min + r * (max - min),
+        };
+        return Ok(Dim::Sum(vec![(unit, censor(x))]));
+    }
+    if sums.len() == 3 {
+        return Err(format!(
+            "random() with a step of lengths in more than one unit ({}) has no value before layout; give it lengths in one unit",
+            sums.iter()
+                .map(|s| sum_text(s))
+                .collect::<Vec<_>>()
+                .join(", ")
+        ));
+    }
+    let mut sums = sums.into_iter();
+    let (min, max) = (sums.next().unwrap(), sums.next().unwrap());
+    let span = add(max, min.clone(), -1.0)?;
+    Ok(Dim::Sum(add(
+        min,
+        span.into_iter().map(|(u, v)| (u, v * r)).collect(),
+        1.0,
+    )?))
+}
+
 /// A math function of arguments in one `unit`: its unit and its value
 /// (CSS Values 4 §10.3 to §10.7).
 fn evaluate(name: &str, unit: &'static str, v: &[f64]) -> Result<(&'static str, f64), String> {
@@ -1121,6 +1307,17 @@ fn evaluate(name: &str, unit: &'static str, v: &[f64]) -> Result<(&'static str, 
         "exp" => {
             number("a number")?;
             ("", a.exp())
+        }
+        // CSS Values 5 §5: clamped to [0, 1] unless no-clamp; 0 where the
+        // start is the end, and clamped.
+        "progress" | "progress-no-clamp" => {
+            let (start, end) = (v[1], v[2]);
+            let p = (a - start) / (end - start);
+            match name {
+                "progress" if start == end => ("", 0.0),
+                "progress" => ("", p.clamp(0.0, 1.0)),
+                _ => ("", p),
+            }
         }
         "log" => {
             number("numbers")?;
@@ -1447,5 +1644,94 @@ mod tests {
         ] {
             assert!(reduce(bad).is_err(), "{bad}");
         }
+    }
+
+    /// CSS Values 5 §5 and §9.3, the values worked by hand.
+    #[test]
+    fn progress_and_random_evaluate() {
+        for (text, want) in [
+            ("progress(50px, 0px, 200px)", "0.25"),
+            ("progress(1s, 0ms, 4000ms)", "0.25"),
+            ("calc(progress(300px, 0px, 200px) * 100px)", "100px"),
+            ("progress(-50px, 0px, 200px)", "0"),
+            ("progress(no-clamp 300px, 0px, 200px)", "1.5"),
+            ("progress(no-clamp -50px, 0px, 200px)", "-0.25"),
+            ("progress(5, 10, 10)", "0"),
+            ("random(fixed 0.25, 100px, 200px)", "125px"),
+            // Steps of 30px from 100px within 200px: 100, 130, 160, 190.
+            ("random(fixed 0.5, 100px, 200px, 30px)", "160px"),
+            ("random(fixed 0.24, 100px, 200px, 30px)", "100px"),
+            ("random(fixed 1, 0px, 100px, 50px)", "100px"),
+            ("random(fixed 0, 0px, 100px, 50px)", "0px"),
+            ("random(fixed 0.5, 100px, 50px)", "100px"),
+            ("random(fixed 0.5, 0px, 10px, 0px)", "5px"),
+            ("random(fixed 0.5, 0deg, 1turn)", "180deg"),
+            ("random(fixed 0.25, 50px, 100%)", "calc(25% + 37.5px)"),
+        ] {
+            assert_eq!(reduce(text).as_deref(), Ok(want), "{text}");
+        }
+        for bad in [
+            "progress(1px, 0deg, 2px)",
+            "progress(50%, 0px, 100px)",
+            "random(0px, 10px)",
+            "random(fixed 2, 0px, 1px)",
+            "random(fixed 0.5, 0px, 100%, 10px)",
+        ] {
+            assert!(reduce(bad).is_err(), "{bad}");
+        }
+    }
+
+    /// A random() reads its key on its element (CSS Values 5 §9.4): one
+    /// value each time it resolves, shared where the cache names match.
+    #[test]
+    fn random_keys_share_and_separate_values() {
+        let at = |element: u64, property: &str, text: &str| {
+            let basis = Basis {
+                element,
+                ..Basis::default()
+            };
+            reduce(&absolute(text, basis, property).0).unwrap()
+        };
+        let auto = "random(0px, 100px)";
+        assert!(has_absolute(auto) && has_absolute("random(--k, 0px, 1px)"));
+        assert_eq!(at(1, "width", auto), at(1, "width", auto));
+        assert_ne!(at(1, "width", auto), at(2, "width", auto));
+        assert_ne!(at(1, "width", auto), at(1, "height", auto));
+        assert_eq!(
+            at(1, "width", auto),
+            at(1, "width", "random(auto, 0px, 100px)")
+        );
+        // Two in one declaration differ by their index; a name shares.
+        let pair = |el, t: &str| {
+            let v = at(el, "margin", t);
+            let (a, b) = v.split_once(' ').unwrap();
+            (a.to_string(), b.to_string())
+        };
+        let (a, b) = pair(1, "random(0px, 100px) random(0px, 100px)");
+        assert_ne!(a, b);
+        let named = "random(--k, 0px, 100px) random(--k, 0px, 100px)";
+        let (a, b) = pair(1, named);
+        assert_eq!(a, b);
+        assert_eq!(pair(1, named), pair(2, named));
+        let scoped = "random(--k element-scoped, 0px, 100px)";
+        assert_ne!(at(1, "width", scoped), at(2, "width", scoped));
+        let by_property = "random(--k property-scoped, 0px, 100px)";
+        assert_eq!(at(1, "width", by_property), at(2, "width", by_property));
+        assert_ne!(at(1, "width", by_property), at(1, "height", by_property));
+        assert_eq!(at(7, "width", "random(fixed 0.5, 0px, 10px)"), "5px");
+        assert!(!has_absolute("random(fixed 0.5, 0px, 10px)"));
+        // Uniform over elements: each step taken, and a mean near the middle.
+        let mut seen = [0; 3];
+        let mut sum = 0.0;
+        for el in 0..900 {
+            let v = at(el, "width", "random(0px, 100px, 50px)");
+            seen[["0px", "50px", "100px"]
+                .iter()
+                .position(|w| *w == v)
+                .unwrap()] += 1;
+            sum += at(el, "width", "random(0, 1)").parse::<f64>().unwrap();
+        }
+        assert!(seen.iter().all(|&n| (250..350).contains(&n)), "{seen:?}");
+        assert!((sum / 900.0 - 0.5).abs() < 0.03, "{}", sum / 900.0);
     }
 }
