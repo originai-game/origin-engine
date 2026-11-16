@@ -12,4 +12,7 @@ ui {
   screen "resource-states" "style:default;page:resource-states"
   screen "activity" "style:default;page:activity"
   screen "activity-states" "style:default;page:activity-states"
+  screen "prompts" "style:default;page:prompts"
+  screen "outcomes" "style:default;page:outcomes"
+  screen "waiting" "style:default;page:waiting"
 }

@@ -1,17 +1,18 @@
 // Exercise the documents through the native host, as a game consumes them.
-// The game supplies resources, phases, combo outcomes and sampled metrics.
+// In particular, a QTE is an input surface, not a gameplay timer: the game
+// supplies resolution; early release cancels a hold and keyed rows retain ids.
 import { afterAll, beforeAll, expect, test } from "bun:test";
 import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { og } from "@origingame/engine";
+import { defineSystem, og } from "@origingame/engine";
 import { loadNativeHost, native } from "../src/node/index.ts";
 import { createEngine, type Engine, type GameToken } from "../src/runtime.ts";
 import { ogBin } from "./support/og-bin.ts";
 
 const ENGINE = dirname(dirname(fileURLToPath(import.meta.url)));
-const PATHS = ["base/pips", "hud/boss-bar", "hud/combo", "hud/pickup-feed", "hud/perf-readout"];
+const PATHS = ["base/pips", "hud/boss-bar", "hud/combo", "hud/pickup-feed", "hud/perf-readout", "hud/qte-prompt"];
 const members = PATHS.map((path) => {
   const text = readFileSync(join(ENGINE, `src/ui/components/${path}.svelte`), "utf8");
   const name = /name="component" content="([^"]+)"/.exec(text)![1]!;
@@ -20,6 +21,7 @@ const members = PATHS.map((path) => {
 });
 let root = "";
 type El = { path: string; text: string; value: string; role: string; name: string; disabled: boolean; states: string[]; x: number; y: number; width: number; height: number };
+type Intent = { name: string; rowKey: string; path: string };
 beforeAll(() => {
   loadNativeHost();
   root = mkdtempSync(join(tmpdir(), "og-hud-builtins-"));
@@ -30,22 +32,27 @@ beforeAll(() => {
     const props = Object.keys(m.fixtures.default).map((p) => `${p}={$${p === "state" ? "statusValue" : p}}`).join(" ");
     writeFileSync(join(root, `assets/ui/${m.name}.svelte`), `<meta name="screen" content="Host_${m.name}" data-layer="menu" data-input="menu">\n<div id="Page" style="width: stretch; padding: 16px"><${m.name} ${props} /></div>`);
   }
+  writeFileSync(join(root, "assets/ui/keyed.svelte"), '<meta name="screen" content="Keyed" data-layer="menu" data-input="menu">\n<div id="Page">{#each prompts as p (p.id)}<QtePrompt label={p.label} mode={p.mode} holdMs={300} state={p.state} disabled={p.disabled} />{/each}</div>');
   const cooked = Bun.spawnSync([ogBin(), "cook", root], { cwd: root, stdout: "ignore", stderr: "pipe" });
   if (cooked.exitCode) throw new Error(new TextDecoder().decode(cooked.stderr));
 });
 afterAll(() => { if (root) rmSync(root, { recursive: true, force: true }); });
 
-function mount(name: string, stores: Record<string, unknown>, phone = false): Engine {
+function mount(name: string, stores: Record<string, unknown>, phone = false, events: Intent[] = []): Engine {
+  const Collect = defineSystem("HudBuiltinIntents", {}, (_q, _t, w) => {
+    for (const e of og.ui.docEvents(w)) events.push(e as unknown as Intent);
+  });
   const r = createEngine(og.game({
+    systems: [Collect],
     start(w) {
       og.ui.configure(w, { style: null });
-      const d = og.load.document(w, `ui/${name}.svelte`);
+      const d = og.load.document(w, `ui/${name === "Keyed" ? "keyed" : name}.svelte`);
       if (!d.ok) throw new Error(d.reason);
     },
     ui(w) {
       const scope = og.ui.scope(w, "test");
       const inputs = Object.fromEntries(Object.entries(stores).map(([k, v]) => [k === "state" ? "statusValue" : k, Array.isArray(v) ? scope.collection(k, v as { id: string }[], { key: "id" }) : scope.writable(k, v)]));
-      const m = scope.mount("page", `Host_${name}`, inputs);
+      const m = scope.mount("page", name === "Keyed" ? name : `Host_${name}`, inputs);
       if (!m.ok) throw new Error(m.reason);
     },
   }) as unknown as GameToken, { root });
@@ -56,6 +63,11 @@ function mount(name: string, stores: Record<string, unknown>, phone = false): En
 }
 const elements = (e: Engine) => (e.probe.dump({ what: "ui" }) as unknown as { elements: El[] }).elements;
 const words = (e: Engine) => elements(e).filter((x) => x.width > 0).map((x) => x.text);
+const button = (e: Engine, label: string) => elements(e).find((x) => x.role === "button" && x.name === label)!;
+const tap = (e: Engine, el: El, duration = 0.06) => {
+  e.probe.commands(`0:touch_move:${el.x + el.width / 2},${el.y + el.height / 2};0.02:touch_start;${duration}:touch_end`);
+  e.advance(Math.ceil(duration * 60) + 5);
+};
 function check(name: string, fixture: string, fn: (e: Engine) => void, over: Record<string, unknown> = {}) {
   const m = members.find((x) => x.name === name)!;
   const e = mount(name, { ...m.fixtures.default, ...m.fixtures[fixture], ...over });
@@ -114,4 +126,52 @@ test("resource displays distinguish fractional/empty units, phases and game-supp
     expect(words(e)).not.toContain("+12");
     expect(elements(e).filter((x) => x.role === "meter")).toHaveLength(0);
   });
+});
+
+test("QTE press and mash keep stable prompt ids; resolved, waiting and disabled prompts send nothing", () => {
+  const events: Intent[] = [];
+  const prompts = [{ id: "gate-b", label: "Brace gate", mode: "press", state: "active", disabled: false }, { id: "escape-a", label: "Escape", mode: "mash", state: "active", disabled: false }];
+  const e = mount("Keyed", { prompts }, true, events);
+  try {
+    tap(e, button(e, "Brace gate"));
+    tap(e, button(e, "Escape"));
+    tap(e, button(e, "Escape"));
+    expect(events.filter((x) => x.name === "respond").map((x) => x.rowKey)).toEqual(["gate-b", "escape-a", "escape-a"]);
+    const rows = og.ui.scope(e.world, "test").collection("prompts", prompts, { key: "id" });
+    rows.move("escape-a", "gate-b"); e.advance(3);
+    tap(e, button(e, "Brace gate"));
+    expect(events.filter((x) => x.name === "respond").at(-1)!.rowKey).toBe("gate-b");
+    e.probe.commands("0:key_down:Enter;0.05:key_up:Enter"); e.advance(8);
+    e.probe.commands("0:gamepad:a;0.05:gamepad:-"); e.advance(8);
+    expect(events.filter((x) => x.name === "respond").slice(-2).map((x) => x.rowKey)).toEqual(["gate-b", "gate-b"]);
+    for (const state of ["success", "failure", "expired", "waiting", "active"]) {
+      rows.patch("gate-b", { state, disabled: state === "active" }); e.advance(3);
+      const b = button(e, "Brace gate");
+      expect(b.disabled).toBeTrue(); tap(e, b);
+    }
+    expect(events.filter((x) => x.name === "respond")).toHaveLength(6);
+  } finally { e.destroy(); }
+});
+
+test("QTE hold cancels early, fires once at its threshold, and supports keyboard activation", () => {
+  const events: Intent[] = [];
+  const e = mount("Keyed", { prompts: [{ id: "brace", label: "Brace", mode: "hold", state: "active", disabled: false }] }, false, events);
+  try {
+    const b = button(e, "Brace");
+    tap(e, b, 0.2);
+    expect(events.filter((x) => x.name === "respond")).toEqual([]);
+    tap(e, b, 0.8);
+    expect(events.filter((x) => x.name === "respond").map((x) => x.rowKey)).toEqual(["brace"]);
+    e.probe.commands("0:key_down:Space;0.8:key_up:Space"); e.advance(55);
+    expect(events.filter((x) => x.name === "respond").map((x) => x.rowKey)).toEqual(["brace", "brace"]);
+    e.probe.commands(`0:touch_move:${b.x + b.width / 2},${b.y + b.height / 2};0.02:touch_start`); e.advance(10);
+    expect(og.ui.scope(e.world, "test").collection<{ id: string; state: string }>("prompts", [], { key: "id" }).patch("brace", { state: "expired" }).ok).toBeTrue();
+    e.advance(2);
+    expect(button(e, "Brace").disabled).toBeTrue();
+    expect(events.filter((x) => x.name === "respond")).toHaveLength(2);
+    e.advance(43);
+    expect(events.filter((x) => x.name === "respond")).toHaveLength(2);
+    e.probe.commands("0:touch_end;0.05:key_down:Space;0.8:key_up:Space"); e.advance(55);
+    expect(events.filter((x) => x.name === "respond")).toHaveLength(2);
+  } finally { e.destroy(); }
 });

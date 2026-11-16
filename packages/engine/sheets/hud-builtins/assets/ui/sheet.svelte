@@ -9,7 +9,7 @@
 <meta name="prop:longPickup" content="list">
 
 <div id="Page">
-  <h1>Expedition · {page == 'resources' || page == 'resource-states' ? 'Resources' : 'Field report'}</h1>
+  <h1>Expedition · {page == 'resources' || page == 'resource-states' ? 'Resources' : page == 'activity' || page == 'activity-states' ? 'Field report' : 'Gate encounter'}</h1>
   <div class="columns">
     {#if page == 'resources'}
       <section><h2>Reserves</h2><Pips label="Lives" items={lives} /><Pips label="Action points" icon="bolt" items={full} /><Pips label="Ammunition" icon="bolt" items={depleted} /></section>
@@ -32,6 +32,18 @@
       <PerfReadout fps={60} frameMs={16.7} status="offline" />
       <PerfReadout />
       <PerfReadout fps={0} frameMs={0} ping={0} loss={0} status="online" />
+    {:else if page == 'prompts'}
+      <QtePrompt label="Evade the falling gate" keyLabel="Space" remaining={0.72} />
+      <QtePrompt label="Brace the damaged northern observatory mechanism" keyLabel="Right trigger" mode="hold" remaining={0.6} />
+      <QtePrompt label="Break free" keyLabel="Space" mode="mash" remaining={0.35} progress={0.4} />
+    {:else if page == 'outcomes'}
+      <QtePrompt label="Evade the falling gate" state="success" remaining={0.2} />
+      <QtePrompt label="Brace the gate" state="failure" remaining={0.1} />
+      <QtePrompt label="Break free" mode="mash" state="expired" remaining={0} progress={0.4} />
+    {:else}
+      <QtePrompt label="Waiting for the next opening" state="waiting" />
+      <QtePrompt label="Brace the gate" disabled={true} mode="hold" />
+      <BossBar name="Unknown presence" loading={true} />
     {/if}
   </div>
 </div>
