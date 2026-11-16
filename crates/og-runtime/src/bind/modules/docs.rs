@@ -25,6 +25,7 @@ use std::collections::{BTreeMap, BTreeSet};
 pub(crate) struct Loaded {
     id: String,
     hash: u64,
+    name: String,
     rive: Vec<(String, u64)>,
 }
 
@@ -35,6 +36,8 @@ pub(crate) struct Docs {
     roots: BTreeSet<String>,
     /// Those resources as of the last tick's end.
     resources: Map<String, Value>,
+    /// Last mutable access reflected for each resource (not simulation ticks).
+    written: BTreeMap<String, (u64, Option<u64>)>,
     /// Styles' cooked hashes, by load index (a hot reload re-applies an edited one).
     styles: BTreeMap<usize, u64>,
 }
@@ -92,17 +95,43 @@ pub(crate) fn env(engine: u32) -> RtEnv {
 /// Reads the resources the documents name, after a tick (the world is
 /// free here).
 pub(crate) fn snapshot(engine: u32, world: &og_ecs::World) {
-    let roots = with(engine, |d| d.roots.clone());
-    if roots.is_empty() {
-        return;
-    }
-    let mut out = Map::new();
-    for r in roots {
-        if let Some(v) = og_probe::resource_json(world, &r) {
-            out.insert(r, v);
+    with(engine, |d| d.snapshot(world));
+}
+
+impl Docs {
+    fn snapshot(&mut self, world: &og_ecs::World) {
+        for r in &self.roots {
+            let stamp = world
+                .id_by_name(r)
+                .ok()
+                .and_then(|id| world.resource_written(id));
+            // Time's public JSON also reads TimeScale. Keep its presence
+            // as well as its clock: removal restores the default scale.
+            let stamp = stamp.map(|s| {
+                let scale = if r == "og.Time" {
+                    world
+                        .id::<og_core::TimeScale>()
+                        .ok()
+                        .and_then(|id| world.resource_written(id))
+                } else {
+                    None
+                };
+                (s, scale)
+            });
+            let Some(stamp) = stamp else {
+                self.resources.remove(r);
+                self.written.remove(r);
+                continue;
+            };
+            if self.written.get(r) == Some(&stamp) {
+                continue;
+            }
+            if let Some(v) = og_probe::resource_json(world, r) {
+                self.resources.insert(r.clone(), v);
+                self.written.insert(r.clone(), stamp);
+            }
         }
     }
-    with(engine, |d| d.resources = out);
 }
 
 /// The layers code did not build this tick, built with the engine's
@@ -345,25 +374,25 @@ pub(crate) fn load_document(eng: &Engine, path: &str) -> Result<String, String> 
     {
         id = format!("ui/{rest}");
     }
+    let hash = hash_of(eng, &id);
+    if let Some(name) = with(eng.id, |d| {
+        d.loaded
+            .iter()
+            .find(|l| l.id == id && l.hash == hash)
+            .map(|l| l.name.clone())
+    }) {
+        // Retry any dependency that failed after its parent was defined.
+        load_uses(eng, &id)?;
+        return Ok(name);
+    }
     let doc = read_document(eng, &id)?;
     let rive = read_rive(eng, &doc)?;
     let materials = read_materials(eng, &doc)?;
     let textures = read_textures(eng, &doc)?;
     let alphas = read_shape_alphas(eng, &doc, &textures);
     let name = doc.name.clone();
-    let hash = hash_of(eng, &id);
     let hashes: Vec<(String, u64)> = rive.iter().map(|(r, h, _)| (r.clone(), *h)).collect();
-    with(eng.id, |d| {
-        d.roots.extend(roots_of(&doc));
-        match d.loaded.iter_mut().find(|l| l.id == id) {
-            Some(l) => (l.hash, l.rive) = (hash, hashes),
-            None => d.loaded.push(Loaded {
-                id: id.clone(),
-                hash,
-                rive: hashes,
-            }),
-        }
-    });
+    let roots = roots_of(&doc);
     // A <video> or <audio> asks its player through og.MediaIntent.
     if doc.nodes.iter().any(|n| {
         matches!(
@@ -394,6 +423,19 @@ pub(crate) fn load_document(eng: &Engine, path: &str) -> Result<String, String> 
         }
         define(&mut ui, doc, faces);
     }
+    with(eng.id, |d| {
+        d.roots.extend(roots);
+        let loaded = Loaded {
+            id: id.clone(),
+            hash,
+            name: name.clone(),
+            rive: hashes,
+        };
+        match d.loaded.iter_mut().find(|l| l.id == id) {
+            Some(l) => *l = loaded,
+            None => d.loaded.push(loaded),
+        }
+    });
     load_uses(eng, &id)?;
     Ok(name)
 }
@@ -553,6 +595,7 @@ pub(crate) fn refresh(eng: &Engine) -> Vec<String> {
                     d.roots.extend(roots_of(&doc));
                     if let Some(x) = d.loaded.iter_mut().find(|x| x.id == l.id) {
                         (x.hash, x.rive) = (now, hashes);
+                        x.name = doc.name.clone();
                     }
                 });
                 let mut ui = ui.lock();
@@ -1026,5 +1069,161 @@ fn command(engine_id: u32, args: &[String]) -> Result<(), String> {
             Ok(())
         }
         _ => Err(format!("'{verb}' is not a ui command; {USAGE}")),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use og_core::Reflect;
+
+    thread_local! {
+        static READS: Cell<usize> = const { Cell::new(0) };
+    }
+
+    #[derive(Reflect)]
+    #[reflect(name = "Wallet")]
+    struct WalletFields {
+        gold: u32,
+    }
+
+    struct Wallet(WalletFields);
+
+    impl Reflect for Wallet {
+        const NAME: &'static str = WalletFields::NAME;
+        fn schema() -> og_core::reflect::Schema {
+            WalletFields::schema()
+        }
+        fn write_fields(&self, out: &mut dyn FnMut(usize, &[u8])) {
+            READS.set(READS.get() + 1);
+            self.0.write_fields(out);
+        }
+        fn read_fields(input: &mut dyn FnMut(usize, &mut [u8])) -> Self {
+            Self(WalletFields::read_fields(input))
+        }
+    }
+
+    #[test]
+    fn snapshots_reuse_unwritten_resources_and_follow_writes_removal_and_restore() {
+        let mut world = og_ecs::World::new(&og_ecs::WorldDesc::default()).unwrap();
+        world.register::<Wallet>().unwrap();
+        world
+            .insert_resource(Wallet(WalletFields { gold: 17 }))
+            .unwrap();
+        let mut docs = Docs::default();
+        docs.roots.insert("Wallet".into());
+        READS.set(0);
+        docs.snapshot(&world);
+        assert_eq!(docs.resources["Wallet"]["gold"], 17);
+        assert_eq!(READS.get(), 1);
+        docs.snapshot(&world);
+        assert_eq!(
+            READS.get(),
+            1,
+            "an unchanged resource is not reflected again"
+        );
+        world.resource_mut::<og_core::TimeScale>().unwrap().scale = 0.5;
+        docs.snapshot(&world);
+        assert_eq!(
+            READS.get(),
+            1,
+            "another resource's write does not reflect Wallet"
+        );
+        let saved = world.snapshot();
+        world.resource_mut::<Wallet>().unwrap().0.gold = 29;
+        docs.snapshot(&world);
+        assert_eq!(docs.resources["Wallet"]["gold"], 29);
+        world.restore(&saved).unwrap();
+        docs.snapshot(&world);
+        assert_eq!(docs.resources["Wallet"]["gold"], 17);
+        world.remove_resource::<Wallet>().unwrap();
+        docs.snapshot(&world);
+        assert!(!docs.resources.contains_key("Wallet"));
+        world
+            .insert_resource(Wallet(WalletFields { gold: 41 }))
+            .unwrap();
+        docs.snapshot(&world);
+        assert_eq!(docs.resources["Wallet"]["gold"], 41);
+    }
+
+    #[test]
+    fn time_snapshot_includes_time_scale_writes() {
+        let mut world = og_ecs::World::new(&og_ecs::WorldDesc::default()).unwrap();
+        let mut docs = Docs::default();
+        docs.roots.insert("og.Time".into());
+        docs.snapshot(&world);
+        assert_eq!(docs.resources["og.Time"]["scale"], 1.0);
+        world.resource_mut::<og_core::TimeScale>().unwrap().scale = 0.25;
+        docs.snapshot(&world);
+        assert_eq!(docs.resources["og.Time"]["scale"], 0.25);
+        // A newer Time write must not hide the removal of TimeScale.
+        world.resource_mut::<og_core::Time>().unwrap().tick += 1;
+        docs.snapshot(&world);
+        world.remove_resource::<og_core::TimeScale>().unwrap();
+        docs.snapshot(&world);
+        assert_eq!(docs.resources["og.Time"]["scale"], 1.0);
+    }
+
+    #[test]
+    fn loading_a_changed_document_reads_and_replaces_its_definition() {
+        struct Disk;
+        impl crate::Hooks for Disk {
+            fn dispatch(&self, _: &crate::Dispatch) -> Result<String, String> {
+                Ok(String::new())
+            }
+            fn read_asset(&self, path: &str) -> crate::Fetch<Vec<u8>> {
+                match std::fs::read(path) {
+                    Ok(bytes) => crate::Fetch::Ready(bytes),
+                    Err(e) => crate::Fetch::Failed(e.to_string()),
+                }
+            }
+        }
+        let root = std::env::temp_dir().join(format!("og-docload-{}", std::process::id()));
+        std::fs::create_dir_all(root.join("assets")).unwrap();
+        std::fs::write(
+            root.join("project.ogt"),
+            "type project\nversion 1\n---\nname \"doc load\"\nid \"doc-load\"\nentry \"main.ts\"\n",
+        )
+        .unwrap();
+        std::fs::write(root.join("main.ts"), "").unwrap();
+        let cook = |name: &str| {
+            std::fs::write(
+                root.join("assets/screen.svelte"),
+                format!("<meta name=\"screen\" content=\"{name}\" /><div></div>"),
+            )
+            .unwrap();
+            let report = og_cook::cook_project(&root, &og_cook::CookOptions::default()).unwrap();
+            assert!(report.ok(), "{:?}", report.errors());
+        };
+        cook("Before");
+        crate::set_hooks(std::rc::Rc::new(Disk));
+        crate::og_host_begin_bundle();
+        let game = crate::og_game_game(Some(r#"{"seed":1}"#.into()));
+        let created: Value = serde_json::from_str(&crate::og_engine_create(
+            game,
+            json!({ "root": root }).to_string(),
+        ))
+        .unwrap();
+        assert_eq!(created["ok"], true, "{created}");
+        let id = created["value"].as_u64().unwrap() as u32;
+        let eng = engine(id).unwrap();
+        let before = UiDocument::parses();
+        assert_eq!(load_document(&eng, "screen.svelte").unwrap(), "Before");
+        assert_eq!(UiDocument::parses() - before, 1);
+        cook("After");
+        let (_, failed) = crate::world::assets::refresh(&eng);
+        assert!(failed.is_empty(), "{failed:?}");
+        let before = UiDocument::parses();
+        assert_eq!(load_document(&eng, "screen.svelte").unwrap(), "After");
+        assert_eq!(UiDocument::parses() - before, 1);
+        assert!(ui_of(id).unwrap().lock().document("After").is_some());
+        assert_eq!(load_document(&eng, "screen.svelte").unwrap(), "After");
+        assert_eq!(
+            UiDocument::parses() - before,
+            1,
+            "the replacement is cached too"
+        );
+        assert!(crate::og_engine_destroy(id));
+        std::fs::remove_dir_all(root).unwrap();
     }
 }

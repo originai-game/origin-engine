@@ -1,0 +1,9 @@
+{
+  "fixed": [
+    {
+      "member": "og.load.document",
+      "summary": "Loading an unchanged document again reuses its definition instead of reparsing it; changed cooked documents still reload."
+    },
+    "UI resource bindings reuse their last reflected value until the resource is written, while following removal, reinsertion, restores and TimeScale changes."
+  ]
+}

@@ -465,6 +465,13 @@ fn a_document_is_read_once_against_the_configured_style() {
         )));
     }
     assert_eq!(parses() - before, 2, "one reading a document");
+    for path in ["ui/once.svelte", "assets/ui/twice.svelte"] {
+        value(og_runtime::host_impl::answer(og_runtime::og_load_document(
+            e,
+            path.into(),
+        )));
+    }
+    assert_eq!(parses() - before, 2, "unchanged loads read nothing");
     value(og_runtime::host_impl::answer(og_runtime::og_ui_push(
         e,
         "Once".into(),
