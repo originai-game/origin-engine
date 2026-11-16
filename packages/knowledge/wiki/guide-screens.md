@@ -273,6 +273,16 @@ measurements are `og style check-project`.
   viewports are portrait; `em`/`rem` in a condition are the initial 16px.
   Unsupported features, zero-denominator ratios, viewport units and
   `calc()` in a condition fail cooking, as do names such as `@media phone`.
+- Layout is CSS's: block, flex and grid as a browser lays them out. To
+  have a box take the room its siblings leave on a row or column, give it
+  `flex: 1`, with `min-width: 0` (in a row) or `min-height: 0` (in a
+  column) so long content can shrink and cut instead of widening the row.
+  `width: stretch` and `height: stretch` are CSS's stretch-fit size: the
+  whole containing block less the box's margins. That suits a box that
+  fills its parent alone, or fills across a flex line (as `align-self:
+  stretch` does). On a row shared with siblings, a `stretch` box is the
+  row's full width and overflows, and in a block a `stretch` height is
+  the block's height, not what the boxes above leave.
 - Size a component to its slot with container queries: give the slot
   `container-type: inline-size` (or `size` for height conditions),
   optionally `container: card / inline-size`, then write `@container card
