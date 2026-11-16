@@ -939,6 +939,20 @@ pub struct Decoration {
     pub offset: DecorationLength,
     /// `text-underline-position: under`.
     pub under: bool,
+    /// `text-decoration-skip-ink` of the box the lines come from.
+    pub skip_ink: SkipInk,
+}
+
+/// `text-decoration-skip-ink` (CSS Text Decoration 4 §2.10.4): whether
+/// underlines and overlines break where they would cross glyph ink.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub enum SkipInk {
+    /// Broken around the ink of every script but CJK's.
+    #[default]
+    Auto,
+    None,
+    /// Broken around every glyph's ink, CJK's too.
+    All,
 }
 
 /// A decoration length: the engine's choice, the font's own metric, or px.
@@ -964,6 +978,16 @@ impl DecorationLength {
 impl Decoration {
     pub fn any(&self) -> bool {
         self.underline || self.overline || self.through
+    }
+
+    /// How far a line of `style` drawn `th` thick reaches below its top
+    /// ([`crate::rich::decoration_line`]'s geometry).
+    pub fn extent(&self, th: f32) -> f32 {
+        match self.style {
+            DecorationStyle::Double => th * 3.0,
+            DecorationStyle::Wavy => th * 3.4,
+            _ => th,
+        }
     }
 
     /// Its lines' thickness and its underline's top below the baseline,
@@ -1269,7 +1293,14 @@ pub(crate) fn inherit(inp: Inputs<'_>) -> TextCss {
                 length_of(&v, own_size, own_size).map_or("-".into(), |v| v.to_string())
             }
         });
-        lines = format!("{lines}|{l};{style};{color};{thick}");
+        // §2.10.4: the skip-ink of the box the lines come from.
+        reads.insert(key("text-decoration-skip-ink"));
+        let skip = computed
+            .get(&key("text-decoration-skip-ink"))
+            .cloned()
+            .flatten()
+            .unwrap_or_else(|| "auto".into());
+        lines = format!("{lines}|{l};{style};{color};{thick};{skip}");
     }
     if lines != parent_lines.unwrap_or_default() {
         computed.insert(key("decoration"), Some(lines.clone()));
@@ -1440,6 +1471,11 @@ pub(crate) fn inherit(inp: Inputs<'_>) -> TextCss {
         };
         d.color = f.get(2).and_then(|c| crate::style_file::parse_color(c));
         d.thickness = DecorationLength::parse(f.get(3).copied());
+        d.skip_ink = match f.get(4).copied() {
+            Some("none") => SkipInk::None,
+            Some("all") => SkipInk::All,
+            _ => SkipInk::Auto,
+        };
     }
     t.decoration.offset = DecorationLength::parse(get("text-underline-offset").as_deref());
     t.decoration.under = get("text-underline-position").is_some_and(|v| v.contains("under"));

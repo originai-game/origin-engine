@@ -194,6 +194,26 @@ pub fn takes_emphasis(cluster: &str) -> bool {
     !matches!(gc, G::Control | G::Format | G::Unassigned)
 }
 
+/// Whether `c` is CSS Text Decoration 4 §2.10.4's CJK text, which
+/// `text-decoration-skip-ink: auto` does not skip: `Some(true)` for the
+/// Han, Hiragana, Katakana, Bopomofo and Hangul scripts and a Common or
+/// Inherited character whose Script_Extensions name one of them,
+/// `Some(false)` for any other script, `None` for a Common or Inherited
+/// character that takes its script run's (UAX #24 §5.1).
+pub fn cjk_script(c: char) -> Option<bool> {
+    use icu_properties::props::Script as S;
+    use icu_properties::script::ScriptWithExtensions;
+    const CJK: [S; 5] = [S::Han, S::Hiragana, S::Katakana, S::Bopomofo, S::Hangul];
+    let scripts = ScriptWithExtensions::new();
+    match scripts.get_script_val(c) {
+        S::Common | S::Inherited => CJK
+            .iter()
+            .any(|&s| scripts.has_script(c, s))
+            .then_some(true),
+        s => Some(CJK.contains(&s)),
+    }
+}
+
 /// CSS Pseudo-Elements 4 §2.2's `::first-letter` of a text that starts a
 /// line: its character range `[start, end)`. It is the first typographic
 /// letter unit, a grapheme cluster that is a letter, number or symbol,

@@ -808,6 +808,92 @@ fn decoration_lines_sit_where_css_text_decoration_puts_them() {
     );
 }
 
+/// The x extents of the decoration pieces drawn under `id`, left to right.
+fn rule_spans(d: &Doc, id: &str) -> Vec<(f32, f32)> {
+    let mut r: Vec<_> = rules(d, id)
+        .iter()
+        .map(|(q, _)| (q.x, q.x + q.width))
+        .collect();
+    r.sort_by(|a, b| a.0.total_cmp(&b.0));
+    r
+}
+
+fn spans_near(got: &[(f32, f32)], want: &[(f32, f32)]) -> bool {
+    got.len() == want.len()
+        && got
+            .iter()
+            .zip(want)
+            .all(|(g, w)| (g.0 - w.0).abs() <= 0.3 && (g.1 - w.1).abs() <= 0.3)
+}
+
+/// CSS Text Decoration 4 §2.10.4: `text-decoration-skip-ink` breaks an
+/// underline where it would cross glyph ink, and a distance to either
+/// side (here the line's thickness); `none` draws it whole, and a
+/// line-through never breaks. Under `auto` CJK text is not skipped
+/// (§2.10.4's note); `all` skips it too.
+///
+/// The expected gaps are Noto Sans's and Noto Sans SC's own outlines,
+/// read with fontTools and shaped with HarfBuzz, not the engine: at 40px
+/// the auto underline is 0.12 em below the baseline and 0.07 em thick
+/// (4.8 to 7.6 px). In that band g's ink is 0.097–0.511 em from its pen,
+/// y's 0.626–0.874 em and p's 1.210–1.298 em (x has none), so the line
+/// is cut 2.8 px either side: 1.08–23.26 and 22.24–37.75 merge, then
+/// 45.60–54.72. With `text-underline-offset: 0` (0 to 0.07 em) 中's ink
+/// is 0.458–0.537 em and 丁's 1.251–1.569 em.
+///
+/// Ways it could fail: the line drawn whole, cut at the glyph's advance
+/// rather than its ink, cut without the margin, a line-through cut, or
+/// CJK cut under `auto`.
+#[test]
+fn underlines_skip_the_ink_of_glyphs_they_cross() {
+    let d = doc(
+        r#"<p id="U">gyp x</p><p id="N">gyp x</p><p id="T">gyp x</p>"#,
+        "p { font-size: 40px; margin-bottom: 20px; } #U, #N { text-decoration: underline; }
+#N { text-decoration-skip-ink: none; } #T { text-decoration: underline line-through; }",
+    );
+    let end = lines(&d, "U")[0].width;
+    let u = rule_spans(&d, "U");
+    assert!(
+        u.len() == 3
+            && spans_near(&u[..2], &[(0.0, 1.08), (37.75, 45.6)])
+            && (u[2].0 - 54.72).abs() <= 0.3
+            && (u[2].1 - end).abs() <= 1.0,
+        "{u:?}"
+    );
+    let n = rule_spans(&d, "N");
+    assert!(
+        n.len() == 1 && (n[0].1 - n[0].0 - end).abs() <= 1.0,
+        "{n:?}"
+    );
+    // T's line-through, above its baseline, is whole; its underline is cut.
+    let above = lines(&d, "T")[0].baseline;
+    let t: Vec<_> = rules(&d, "T")
+        .into_iter()
+        .filter(|(q, _)| q.y < above)
+        .collect();
+    assert!(t.len() == 1 && (t[0].0.width - end).abs() <= 1.0, "{t:?}");
+    assert_eq!(rule_spans(&d, "T").len(), 4);
+
+    let d = doc_in(
+        "templates/fonts/chinese-simplified/NotoSansSC-Regular.ttf",
+        r#"<p id="A">中丁</p><p id="Z">中丁</p>"#,
+        "p { font-size: 40px; margin-bottom: 20px; text-decoration: underline; text-underline-offset: 0px; }
+#A { text-decoration-skip-ink: all; }",
+    );
+    let a = rule_spans(&d, "A");
+    assert!(
+        a.len() == 3
+            && spans_near(&a[..2], &[(0.0, 15.52), (24.28, 47.24)])
+            && (a[2].0 - 65.55).abs() <= 0.3,
+        "{a:?}"
+    );
+    let z = rule_spans(&d, "Z");
+    assert!(
+        z.len() == 1 && (z[0].1 - z[0].0 - 80.0).abs() <= 1.0,
+        "auto crosses CJK: {z:?}"
+    );
+}
+
 fn near(a: [f32; 4], b: Srgba) -> bool {
     crate::support::near(a, b)
 }

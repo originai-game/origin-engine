@@ -12,6 +12,7 @@
 //! focus, pressed like a button; [`crate::Ui::rich_text`] answers which
 //! was clicked this tick.
 
+use crate::css::text_css::SkipInk;
 use crate::id::child_key;
 
 use crate::layout::{
@@ -1078,6 +1079,18 @@ impl Ui {
             let mixed = font.metrics.is_mixed();
             let m = &font.metrics;
             let tracking = span_tracking(s, &text);
+            // The glyphs an underline or overline breaks around (CSS Text
+            // Decoration 4 §2.10.4), as the piece draws them.
+            let inked = s
+                .decoration
+                .as_ref()
+                .filter(|d| d.skip_ink != SkipInk::None && (d.underline || d.overline))
+                .map(|_| {
+                    piece
+                        .glyphs
+                        .clone()
+                        .unwrap_or_else(|| m.visual(&text, og_i18n::Direction::Ltr, tracking))
+                });
             // Bold: thickened in the shader (as far as the field reaches)
             // and drawn twice, the second copy one device pixel to the
             // right, so small text whose field is thin is bold too: a
@@ -1273,16 +1286,34 @@ impl Ui {
             let d = s.decoration.clone().unwrap_or_default();
             let (th, off) = d.placed(m, size, n.placed.scale, dpr);
             let ink = d.color.unwrap_or(color).fade(alpha).linear();
-            let mut rule =
-                |y: f32| decoration_line(r.x, r.width, y, th, d.style, ink, clip, dpr, cmds);
+            // An underline and an overline break where they would cross a
+            // glyph's ink and a thickness to either side; a line-through
+            // never does.
+            let mut rule = |y: f32, skips: bool| {
+                let from = cmds.len();
+                decoration_line(r.x, r.width, y, th, d.style, ink, clip, dpr, cmds);
+                if let Some(glyphs) = inked.as_ref().filter(|_| skips) {
+                    let gaps = og_text::ink::ink_gaps(
+                        font,
+                        glyphs,
+                        size,
+                        y - baseline,
+                        y - baseline + d.extent(th),
+                        th.max(1.0 / dpr),
+                        d.skip_ink == SkipInk::All,
+                    );
+                    let gaps: Vec<_> = gaps.iter().map(|(a, b)| (r.x + a, r.x + b)).collect();
+                    cut_lines(cmds, from, &gaps);
+                }
+            };
             if link_key.is_some() || s.underline {
-                rule(baseline + off);
+                rule(baseline + off, true);
             }
             if d.overline {
-                rule(baseline - size * 0.95);
+                rule(baseline - size * 0.95, true);
             }
             if s.strike {
-                rule(baseline - size * 0.3);
+                rule(baseline - size * 0.3, false);
             }
         }
     }
@@ -1972,6 +2003,51 @@ pub(crate) fn vertical_decoration_line(
     for c in &mut cmds[from..] {
         if let crate::draw::DrawCmd::Quad { rect, .. } = c {
             *rect = Rect::new(rect.y, rect.x, rect.height, rect.width);
+        }
+    }
+}
+
+/// Cuts the horizontal gaps `gaps` (sorted x ranges) out of the quads
+/// pushed since `from`: a quad across a gap becomes its parts outside it.
+fn cut_lines(cmds: &mut Vec<crate::draw::DrawCmd>, from: usize, gaps: &[(f32, f32)]) {
+    use crate::draw::DrawCmd;
+    if gaps.is_empty() {
+        return;
+    }
+    let drawn = cmds.split_off(from);
+    for c in drawn {
+        let DrawCmd::Quad {
+            rect,
+            radius,
+            color,
+            clip,
+        } = c
+        else {
+            cmds.push(c);
+            continue;
+        };
+        let mut x = rect.x;
+        for &(a, b) in gaps
+            .iter()
+            .filter(|(a, b)| *b > rect.x && *a < rect.right())
+        {
+            if a > x {
+                cmds.push(DrawCmd::Quad {
+                    rect: Rect::new(x, rect.y, a - x, rect.height),
+                    radius,
+                    color,
+                    clip,
+                });
+            }
+            x = x.max(b);
+        }
+        if x < rect.right() {
+            cmds.push(DrawCmd::Quad {
+                rect: Rect::new(x, rect.y, rect.right() - x, rect.height),
+                radius,
+                color,
+                clip,
+            });
         }
     }
 }

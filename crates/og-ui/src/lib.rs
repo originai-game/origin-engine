@@ -87,7 +87,7 @@ pub use style::sound_css;
 pub use text::rich;
 #[doc(hidden)]
 pub mod style;
-pub use og_text::{glyphs, shape};
+pub use og_text::{glyphs, ink, shape};
 pub use paint::svg;
 pub use style::style_file;
 mod text;
