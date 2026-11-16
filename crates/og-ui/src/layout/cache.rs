@@ -350,6 +350,10 @@ pub(crate) struct PaintCache {
     /// verdicts, kept for their buffers.
     pub volatile: std::collections::BTreeSet<usize>,
     pub ringed: std::collections::BTreeSet<usize>,
+    /// The nodes painted while their text's variable instance had no font
+    /// of the host's yet (`Ui::awaits_instance`): painted again until it
+    /// has one.
+    pub awaiting: std::collections::BTreeSet<usize>,
     pub reuse: crate::ui::commands::Reuse,
 }
 

@@ -76,6 +76,11 @@ pub struct TextSpanStyle {
     /// CSS `text-combine-upright` down a vertical line: `all` composes
     /// the span's text in one upright em.
     pub combine: Option<crate::layout::flow::Combine>,
+    /// A variable face's settings (CSS `font-variation-settings`).
+    pub variations: Option<crate::shape::Variations>,
+    /// Whether a variable face's `opsz` follows the size (CSS
+    /// `font-optical-sizing`).
+    pub optical_sizing: Option<bool>,
 }
 
 /// An inline object of a text (a document's `<img>`, `<og-icon>` or `<kbd
@@ -166,6 +171,8 @@ impl Ui {
                 italic: false,
                 weight: step.weight,
                 stretch: None,
+                variations: Default::default(),
+                optical_sizing: true,
                 synth: Default::default(),
                 oblique: None,
                 underline: false,
@@ -271,6 +278,12 @@ impl Ui {
                 }
                 if let Some(stretch) = style.stretch {
                     s.stretch = Some(stretch);
+                }
+                if let Some(v) = style.variations {
+                    s.variations = v;
+                }
+                if let Some(o) = style.optical_sizing {
+                    s.optical_sizing = o;
                 }
                 if let Some(underline) = style.underline {
                     s.underline = underline;

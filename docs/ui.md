@@ -1439,7 +1439,18 @@ companion, the locale's and the game's fonts. A missing weight or slant is
 synthesised: a computed weight of 600 or more whose face is lighter than
 600 is thickened and drawn again one device pixel right, in place of the
 style's `textWeight` (a style that wants its own sets
-`font-synthesis-weight: none`). A `::part` run keeps the same list. A role `UiDesc` gives no
+`font-synthesis-weight: none`). A variable face (one whose file has
+`fvar` and renders at run time) is drawn at an instance (Fonts 4 §7.2):
+`wght` from `font-weight` and `wdth` from `font-stretch`, each clamped to
+the face's declared range (an `@font-face` without the descriptor, or
+with `auto`, declares the font's axis range), `opsz` from the size in
+CSS px under `font-optical-sizing: auto` (the initial value), then
+`font-variation-settings`, which overrides them; an axis the face lacks
+is ignored. A bold is synthesised against the clamped weight. The
+instance is measured and shaped at its location, and the host renders its
+glyphs into pages of its own from the frame after it first appears (that
+first frame draws the text blank, never at the default location). A
+`::part` run keeps the same list. A role `UiDesc` gives no
 font takes the first family with a face that the style's `--font-body`
 (else `--font-sans`), `--font-display`, `--font-mono` or `--font-rounded`
 names, so a pack that brings its faces only through `@font-face` sets the

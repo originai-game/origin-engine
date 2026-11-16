@@ -27,6 +27,7 @@ pub struct GlyphImage {
 
 /// Line segments of a glyph's outline in atlas pixels (y up), curves
 /// flattened into a fixed number of pieces.
+#[derive(Default)]
 struct Flatten {
     scale: f32,
     tx: f32,
@@ -113,21 +114,27 @@ pub fn render_glyph(
     em_px: f32,
     px_range: f32,
 ) -> Option<GlyphImage> {
-    render_glyph_on(ttf, c, em_px, px_range, 0)
+    render_glyph_on(ttf, &[], c, em_px, px_range, 0)
 }
 
 /// [`render_glyph`] for a pixel font (`font { pixel <grid> }`, `grid` > 0):
 /// the glyph as its cells on the grid ([`pixel_cells`]), its advance a
-/// whole number of cells, as the cook renders it.
+/// whole number of cells, as the cook renders it. A variable font's glyph
+/// is rendered at `variations` (an instance's: [`crate::shape::FontFile::variations`];
+/// none: the default location), outline, box and advance.
 pub fn render_glyph_on(
     ttf: &[u8],
+    variations: &[crate::shape::Variation],
     c: impl Into<og_draw::GlyphKey>,
     em_px: f32,
     px_range: f32,
     grid: u32,
 ) -> Option<GlyphImage> {
     let c = c.into();
-    let face = ttf_parser::Face::parse(ttf, 0).ok()?;
+    let mut face = ttf_parser::Face::parse(ttf, 0).ok()?;
+    for (tag, value) in variations {
+        face.set_variation(ttf_parser::Tag::from_bytes(tag), *value);
+    }
     let gid = match c {
         og_draw::GlyphKey::Id(id) if id < face.number_of_glyphs() => ttf_parser::GlyphId(id),
         og_draw::GlyphKey::Id(_) => return None,
@@ -153,7 +160,13 @@ pub fn render_glyph_on(
             Some(b) => b.map(|v| v as f32 * upem / grid as f32),
             None => return Some(blank),
         },
-        None => match face.glyph_bounding_box(gid) {
+        // An instance's box is its varied outline's (`glyf`'s is the
+        // default location's).
+        None => match if variations.is_empty() {
+            face.glyph_bounding_box(gid)
+        } else {
+            face.outline_glyph(gid, &mut Flatten::default())
+        } {
             Some(r) => [r.x_min, r.y_min, r.x_max, r.y_max].map(f32::from),
             None => return Some(blank),
         },

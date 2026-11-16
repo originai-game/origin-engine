@@ -1,0 +1,15 @@
+{
+  "added": [
+    {
+      "member": "ui",
+      "summary": "Variable fonts: a face whose file has fvar and renders at run time is drawn at an instance (CSS Fonts 4 \u00a77.2): wght from font-weight and wdth from font-stretch, each clamped to the face's declared range, opsz from the font size under font-optical-sizing: auto (the initial value), then font-variation-settings, inherited, which overrides them. The instance is measured, shaped and rendered at its location in pages of its own, from the frame after it first appears."
+    }
+  ],
+  "breaking": [
+    {
+      "member": "ui",
+      "change": "@font-face font-weight and font-stretch (font-width) default to auto, as CSS Fonts 4 says: a variable font's wght or wdth range, else 400 and 100 %. og_ui::css::FontFace's weight and stretch are Option (None: auto).",
+      "fix": "Declare font-weight or font-stretch on an @font-face whose variable font should keep one weight or width; read FontFace.weight and .stretch as Option."
+    }
+  ]
+}

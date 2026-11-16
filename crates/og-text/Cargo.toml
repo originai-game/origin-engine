@@ -31,4 +31,4 @@ parley_engine = { version = "=0.12.0", default-features = false, features = ["li
 unicode-bidi = "0.3.18"
 # A cooked font's file (`runtime true`): metrics and outlines of characters
 # outside the atlas, rendered at run time (src/glyphs.rs).
-ttf-parser = { version = "0.25.1", default-features = false, features = ["std"] }
+ttf-parser = { version = "0.25.1", default-features = false, features = ["std", "variable-fonts"] }

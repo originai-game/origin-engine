@@ -44,12 +44,15 @@ pub struct FontFace {
     /// `url()` sources, resolved relative to the document, in order;
     /// `local()` names are kept with a `local:` prefix.
     pub src: Vec<String>,
-    /// `font-weight` as a range (a single weight is both ends).
-    pub weight: (f32, f32),
+    /// `font-weight` as a range (a single weight is both ends); `None`:
+    /// `auto` (the initial value), a variable font's `wght` range, else
+    /// 400.
+    pub weight: Option<(f32, f32)>,
     pub style: String,
     /// `font-stretch` (`font-width`) as a range of percentages of the
-    /// normal width (one width is both ends).
-    pub stretch: (f32, f32),
+    /// normal width (one width is both ends); `None`: `auto`, a variable
+    /// font's `wdth` range, else 100 %.
+    pub stretch: Option<(f32, f32)>,
     /// `unicode-range` as inclusive code point ranges; empty: all.
     pub unicode_range: Vec<(u32, u32)>,
     pub display: String,
@@ -147,8 +150,6 @@ impl Sheet {
     /// `@font-face { … }`.
     pub fn font_face(&mut self, body: &str, base: &str) -> Result<(), String> {
         let mut face = FontFace {
-            weight: (400.0, 400.0),
-            stretch: (100.0, 100.0),
             style: "normal".into(),
             display: "auto".into(),
             ..FontFace::default()
@@ -177,6 +178,7 @@ impl Sheet {
                         }
                     }
                 }
+                "font-weight" | "font-stretch" | "font-width" if v == "auto" => {}
                 "font-weight" => {
                     let w: Vec<f32> = v
                         .split_whitespace()
@@ -189,8 +191,8 @@ impl Sheet {
                         })
                         .collect::<Result<_, _>>()?;
                     face.weight = match w.as_slice() {
-                        [a] => (*a, *a),
-                        [a, b] => (*a, *b),
+                        [a] => Some((*a, *a)),
+                        [a, b] => Some((*a, *b)),
                         _ => return Err("@font-face font-weight takes one or two weights".into()),
                     };
                 }
@@ -207,8 +209,8 @@ impl Sheet {
                         })
                         .collect::<Result<_, _>>()?;
                     face.stretch = match w.as_slice() {
-                        [a] => (*a, *a),
-                        [a, b] => (a.min(*b), a.max(*b)),
+                        [a] => Some((*a, *a)),
+                        [a, b] => Some((a.min(*b), a.max(*b))),
                         _ => return Err(format!("@font-face {} takes one or two widths", d.name)),
                     };
                 }

@@ -15,6 +15,13 @@
 //!   `@font-face` width descriptor dropped, or a text measured in another
 //!   face than it draws in →
 //!   `font_stretch_takes_the_family_face_of_the_nearest_width_in_css_order`
+//! - a variable face drawn at its default location (its atlas) whatever
+//!   the axes ask, an axis setting dropped, overridden in the wrong order
+//!   or not inherited, `opsz` not following the size (or following it
+//!   under `font-optical-sizing: none`), a bold the `wght` axis reaches
+//!   synthesised on top of it, or an instance drawn with the default
+//!   location's font →
+//!   `a_variable_face_is_drawn_at_the_axes_css_sets`
 
 use crate::support::Doc;
 use og_draw::FontHandle;
@@ -23,6 +30,12 @@ use og_ui::*;
 const NOTO: &str = "templates/fonts/latin/NotoSans-Latin.ttf";
 const INTER: &str = "tests/fixtures/ui-text/assets/fonts/Inter-Display.ttf";
 const GARAMOND: &str = "tests/fixtures/ui-text/assets/fonts/EBGaramond-Medium.ttf";
+/// A variable font whose axes each move one glyph's advance (1000 units
+/// to the em; `fixtures/make-axes-font.py`): A by `wght` (100, 400, 900 →
+/// 500, 600, 1000), B by `wdth` (50, 100, 200 → 300, 600, 900), C by
+/// `opsz` (8, 14, 72 → 700, 600, 400), D by `GRAD` (-100, 0, 100 → 500,
+/// 600, 800); E, 500, by none.
+const AXES: &str = "crates/og-ui/tests/fixtures/axes-test.ttf";
 
 /// The font at `path` (from the repository's root), shaped from its file,
 /// drawn under handle `slot`.
@@ -277,9 +290,119 @@ fn font_stretch_takes_the_family_face_of_the_nearest_width_in_css_order() {
     )
     .unwrap_or_else(|e| panic!("{e:?}"))
     .sheet;
-    let widths: Vec<(f32, f32)> = sheet.font_faces.iter().map(|f| f.stretch).collect();
+    let widths: Vec<Option<(f32, f32)>> = sheet.font_faces.iter().map(|f| f.stretch).collect();
     assert_eq!(
         widths,
-        [(75.0, 75.0), (75.0, 125.0), (112.5, 112.5), (100.0, 100.0)]
+        [
+            Some((75.0, 75.0)),
+            Some((75.0, 125.0)),
+            Some((112.5, 112.5)),
+            // `auto`: a variable font's wdth range, else normal.
+            None
+        ]
     );
+}
+
+/// CSS Fonts 4 §7.2: a variable face is drawn at the instance its axes
+/// ask for: `wght` from `font-weight` and `wdth` from `font-stretch`,
+/// each clamped to the face's declared range, `opsz`
+/// the size in CSS px under `font-optical-sizing: auto` (the initial
+/// value) and its default under `none`, then `font-variation-settings`,
+/// inherited, which overrides them. The instance is measured from its
+/// file (the atlas holds the default location's glyphs) and drawn with a
+/// font of its own, which the host makes from the frame it first appears.
+/// A bold its `wght` axis reaches is not synthesised.
+#[test]
+fn a_variable_face_is_drawn_at_the_axes_css_sets() {
+    let axes = face(AXES, 7);
+    let file = axes.metrics.file.clone().expect("its file");
+    let base = axes.handle.unwrap();
+    let mut d = doc(
+        vec![
+            FamilyFace {
+                stretch: (500, 2000),
+                ..family("Axes", (100, 900), axes.clone())
+            },
+            family("Fixed", (400, 400), axes),
+        ],
+        r#"<p id="E">E</p><p id="A400">A</p><p id="A650">A</p><p id="A700">A</p><p id="AFixed">A</p><p id="B75">B</p>
+<p id="C43">C</p><p id="C24">C</p><p id="CNone">C</p><p id="D50">D</p><p id="AOver">A</p>
+<div id="Up"><p id="DInherit">D</p></div><div id="Normal"><p id="DNormal">D</p></div>"#,
+        r#"#Root { font-family: "Axes"; } p { width: max-content; font-size: 50px; }
+#A400 { font-optical-sizing: none; } #A650 { font-weight: 650; }
+#A700 { font-weight: 700; } #AFixed { font-family: "Fixed"; font-weight: 700; }
+#B75 { font-stretch: 75%; } #C43 { font-size: 43px; } #C24 { font-size: 24px; }
+#CNone { font-size: 43px; font-optical-sizing: none; }
+#D50 { font-variation-settings: "GRAD" 50; }
+#AOver { font-weight: 900; font-variation-settings: "wght" 100; }
+#Up { font-variation-settings: "GRAD" 100; }
+#Normal { font-variation-settings: "GRAD" 100; } #DNormal { font-variation-settings: normal; }"#,
+    );
+    // The host makes each instance's font, as og-runtime does between
+    // frames; the next frame draws with it.
+    // Until then an instanced text measures but draws nothing (never the
+    // default location's glyphs).
+    assert!(drawn(&d, "A650").is_empty());
+    let made = file.take_instances();
+    assert!(!made.is_empty(), "instances made");
+    for (i, f) in made.iter().enumerate() {
+        f.set_handle(FontHandle::from_index(100 + i));
+    }
+    d.step(InputFrame::default());
+    // Each text's advance, `want` em, read from its laid-out width (whole
+    // pixels).
+    let near = |id: &str, want: f32| {
+        let size = match id {
+            "C43" | "CNone" => 43.0,
+            "C24" => 24.0,
+            _ => 50.0,
+        };
+        let got = d.get(id).width;
+        assert!(
+            (got - want * size).abs() <= 0.5,
+            "#{id}: {got} px, want {} px",
+            want * size
+        );
+    };
+    near("E", 0.5);
+    near("A400", 0.6);
+    near("A650", 0.8);
+    near("A700", 0.84);
+    // A face declared 400 is drawn at wght 400 whatever the weight.
+    near("AFixed", 0.6);
+    near("B75", 0.45);
+    near("C43", 0.5);
+    near("C24", 0.6 - 0.2 * 10.0 / 58.0);
+    near("CNone", 0.6);
+    near("D50", 0.7);
+    near("AOver", 0.5);
+    near("DInherit", 0.8);
+    near("DNormal", 0.6);
+    // Drawn with the instance's font, never the default location's.
+    for id in ["A650", "A700", "B75", "C43", "D50", "DInherit"] {
+        let t = drawn(&d, id);
+        assert!(!t.is_empty(), "#{id} draws");
+        assert!(
+            t.iter().all(|t| t.font != base && t.font.index() >= 100),
+            "#{id}: {t:?}"
+        );
+    }
+    // The instance renders its own glyphs (its atlas has none): the host
+    // is asked for A's glyph of it.
+    let a650 = drawn(&d, "A650")[0].font;
+    let instance = made
+        .iter()
+        .find(|f| f.handle() == Some(a650))
+        .expect("A650's");
+    let a = ttf_parser::Face::parse(file.bytes(), 0)
+        .ok()
+        .and_then(|f| f.glyph_index('A'))
+        .expect("A");
+    assert_eq!(instance.take_wanted(), [og_draw::GlyphKey::Id(a.0)]);
+    // At the default location (no axis moved): the face itself.
+    assert!(drawn(&d, "A400").iter().all(|t| t.font == base));
+    // A 700 the face's wght range reaches is drawn once; one in a face
+    // declared 400 is synthesised, thickened twice.
+    assert_eq!(drawn(&d, "A700").len(), 1, "no synthesised bold");
+    assert_eq!(drawn(&d, "AFixed").len(), 2, "a synthesised bold");
 }

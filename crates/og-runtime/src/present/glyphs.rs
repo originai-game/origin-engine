@@ -199,7 +199,7 @@ impl RuntimeFont {
                 std::thread::spawn(move || {
                     let images = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
                         want.into_iter()
-                            .filter_map(|k| render_one(file.bytes(), k, em, range, grid, &color))
+                            .filter_map(|k| render_one(&file, k, em, range, grid, &color))
                             .collect()
                     }))
                     .unwrap_or_default();
@@ -229,7 +229,7 @@ impl RuntimeFont {
                 let Some(k) = self.queue.pop_front() else {
                     break;
                 };
-                let r = render_one(file.bytes(), k, em, range, grid, &self.color);
+                let r = render_one(&file, k, em, range, grid, &self.color);
                 spent += match r {
                     Some(Rendered::Colour(_)) => WEB_COLOUR_COST,
                     _ => 1,
@@ -242,9 +242,10 @@ impl RuntimeFont {
 }
 
 /// Glyph `k` of a font file: in colour when the font paints colour glyphs
-/// and `k` has a COLR paint, else its distance field.
+/// and `k` has a COLR paint, else its distance field (an instance's at
+/// its location).
 fn render_one(
-    ttf: &[u8],
+    file: &FontFile,
     k: GlyphKey,
     em: f32,
     range: f32,
@@ -252,11 +253,12 @@ fn render_one(
     color: &Option<og_bundle::runtime::ColorRuntime>,
 ) -> Option<Rendered> {
     if let Some(c) = color
-        && let Some(g) = og_ui::colr::render_runtime(ttf, k, c.em_px, &c.palette)
+        && let Some(g) = og_ui::colr::render_runtime(file.bytes(), k, c.em_px, &c.palette)
     {
         return Some(Rendered::Colour(g));
     }
-    og_ui::glyphs::render_glyph_on(ttf, k, em, range, grid).map(Rendered::Field)
+    og_ui::glyphs::render_glyph_on(file.bytes(), file.variations(), k, em, range, grid)
+        .map(Rendered::Field)
 }
 
 /// Glyphs an engine's run-time fonts were asked for that are still being
@@ -280,9 +282,54 @@ struct Image<'a> {
     field: Option<&'a [u8]>,
 }
 
+/// Gives each instance of a variable run-time font the UI made since the
+/// last frame (`og_ui::shape::FontFile::take_instances`) a font of its
+/// own: a first page with no glyph (the atlas is the default location's)
+/// whose glyphs are rendered from the instance like any run-time font's.
+/// The UI draws it from the frame after.
+fn instances(rs: &mut RenderState) {
+    let renders: Vec<usize> = rs.runtime_fonts.keys().copied().collect();
+    for render in renders {
+        let made = rs.runtime_fonts[&render].file.take_instances();
+        if made.is_empty() {
+            continue;
+        }
+        let Some(first) = rs
+            .fonts
+            .get(render)
+            .and_then(|p| p.pages.first())
+            .and_then(|p| rs.scene.font(*p))
+            .cloned()
+        else {
+            continue;
+        };
+        for file in made {
+            let head = rs.scene.add_font(og_render::MsdfFont {
+                glyphs: Vec::new(),
+                kerning: Vec::new(),
+                ..first.clone()
+            });
+            let rf = &rs.runtime_fonts[&render];
+            let font = RuntimeFont::new(
+                file.clone(),
+                rf.em_px,
+                rf.px_range,
+                rf.pixel,
+                rf.color.clone(),
+            );
+            rs.fonts
+                .push(super::extract::FontPages { pages: vec![head] });
+            rs.runtime_fonts.insert(rs.fonts.len() - 1, font);
+            rs.ui_pages.insert(head, vec![head]);
+            file.set_handle(head);
+        }
+    }
+}
+
 /// Renders what each run-time font was asked for since the last frame.
 /// Returns how many glyphs were rendered.
 pub(crate) fn generate(rs: &mut RenderState) -> usize {
+    instances(rs);
     let mut rendered = 0;
     // A capture draws every glyph asked for (`RenderState::glyphs_settle`).
     let settle = std::mem::take(&mut rs.glyphs_settle);
@@ -726,6 +773,78 @@ pub(crate) fn ui_lacking(rs: &mut RenderState, text: &str) -> Vec<(FontHandle, V
 mod tests {
     use super::*;
     use crate::present::extract::FontPages;
+
+    /// A variable font's instance the UI made gets a font of its own
+    /// before the frame's glyphs render: a first page listing no glyph
+    /// (the cooked atlas is the default location's), drawn by the UI
+    /// (`ui_pages`), whose glyphs are rendered from the instance at its
+    /// location: the test font's A at `wght` 650 is 0.8 em, 0.6 at the
+    /// default, its outline wider by the difference.
+    #[test]
+    fn a_variable_instance_gets_a_font_rendering_at_its_location() {
+        let path = concat!(
+            env!("CARGO_MANIFEST_DIR"),
+            "/../og-ui/tests/fixtures/axes-test.ttf"
+        );
+        let bytes = std::fs::read(path).unwrap();
+        let file = FontFile::new(Arc::new(bytes.clone())).unwrap();
+        let mut rs = RenderState::new(serde_json::Value::Null);
+        let atlas = rs.scene.add_texture(TextureData {
+            width: 4,
+            height: 4,
+            rgba: vec![0; 64],
+            color_space: ColorSpace::Linear,
+            mips: Mips::None,
+        });
+        let base = og_render::MsdfFont {
+            atlas,
+            distance_range: 16.0,
+            foreground: false,
+            silhouette: false,
+            line_height: 1.2,
+            glyphs: Vec::new(),
+            kerning: Vec::new(),
+        };
+        let first = rs.scene.add_font(base);
+        rs.fonts.push(FontPages { pages: vec![first] });
+        rs.runtime_fonts
+            .insert(0, RuntimeFont::new(file.clone(), 48.0, 16.0, 0, None));
+        let instance = file.instance(&[(*b"wght", 650.0)]);
+        assert!(instance.is_instance());
+        assert_eq!(instance.advance('A'), Some(0.8));
+        rs.glyphs_settle = true;
+        assert!(generate(&mut rs) > 0);
+        let head = instance.handle().expect("the host made its font");
+        assert_ne!(head, first);
+        let render = rs
+            .fonts
+            .iter()
+            .position(|p| p.pages[0] == head)
+            .expect("listed");
+        let pages = rs.fonts[render].pages.clone();
+        assert_eq!(
+            rs.ui_pages.get(&head),
+            Some(&pages),
+            "the UI draws its pages"
+        );
+        let drawn: Vec<Glyph> = pages
+            .iter()
+            .flat_map(|&p| rs.scene.font(p).unwrap().glyphs.clone())
+            .filter(|g| g.key == GlyphKey::Char('A') && g.atlas_bounds[2] > 0.0)
+            .collect();
+        let [a] = drawn[..] else {
+            panic!("A drawn once: {drawn:?}")
+        };
+        assert_eq!(a.advance, 0.8);
+        let default = og_ui::glyphs::render_glyph(&bytes, 'A', 48.0, 16.0).unwrap();
+        let width = |p: [f32; 4]| p[2] - p[0];
+        assert!(
+            (width(a.plane_bounds) - width(default.plane) - 0.2).abs() < 0.05,
+            "{:?} against {:?}",
+            a.plane_bounds,
+            default.plane
+        );
+    }
 
     /// One batch that fills more than a page (the kit's ja ability cards:
     /// the katakana of one frame on one page, its kanji on the next): every

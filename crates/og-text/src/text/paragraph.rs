@@ -71,6 +71,22 @@ impl Context {
         format!("og-{index}")
     }
 
+    /// The CSS `font-variation-settings` of `family`'s file: an instance's
+    /// location, empty for any other face.
+    fn variations(&self, family: &str) -> String {
+        let file = family
+            .strip_prefix("og-")
+            .and_then(|i| i.parse::<usize>().ok())
+            .and_then(|i| self.files.get(i));
+        file.map_or_else(String::new, |f| {
+            f.variations()
+                .iter()
+                .map(|(t, v)| format!("\"{}\" {v}", String::from_utf8_lossy(t)))
+                .collect::<Vec<_>>()
+                .join(", ")
+        })
+    }
+
     /// The family of a layout-only face for `chars` in `metrics`, built
     /// and registered once per distinct face.
     fn built(&mut self, metrics: &FontMetrics, chars: &BTreeSet<char>) -> String {
@@ -114,6 +130,8 @@ fn styled<'a>(
     runs: &[(Range<usize>, usize)],
     families: &[String],
 ) -> parley::RangedBuilder<'a, Brush> {
+    // A variable font's instance is laid out at its location.
+    let variations: Vec<String> = families.iter().map(|f| cx.variations(f)).collect();
     let mut builder = cx.layout.ranged_builder(&mut cx.fonts, text, 1.0, false);
     builder.set_line_break_override(Some(&super::keep_katakana));
     builder.set_base_direction(match direction {
@@ -124,11 +142,17 @@ fn styled<'a>(
     builder.push_default(StyleProperty::OverflowWrap(parley::OverflowWrap::Anywhere));
     let settings = features.css();
     builder.push_default(StyleProperty::FontFeatures(settings.as_str().into()));
-    for ((range, k), family) in runs.iter().zip(families) {
+    for (((range, k), family), variations) in runs.iter().zip(families).zip(&variations) {
         builder.push(
             StyleProperty::FontFamily(family.as_str().into()),
             range.clone(),
         );
+        if !variations.is_empty() {
+            builder.push(
+                StyleProperty::FontVariations(variations.as_str().into()),
+                range.clone(),
+            );
+        }
         builder.push(
             StyleProperty::Brush(Brush {
                 font: *k as u8,

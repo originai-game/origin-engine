@@ -453,13 +453,29 @@ pub(super) fn sheet_faces(
         let mut font = super::ui_config::ui_font(eng, crate::world::assets::handle(i) as f64)?;
         font.metrics = font.metrics.with_range(&face.unicode_range);
         let weight = |w: f32| w.round().clamp(1.0, 1000.0) as u16;
+        // `auto`: a variable font's axis range (CSS Fonts 4 §4.5), else
+        // the normal value.
+        let axis = |tag: &[u8; 4], normal: f32| {
+            font.metrics
+                .file
+                .as_ref()
+                .and_then(|f| {
+                    f.axes()
+                        .iter()
+                        .find(|a| a.tag == *tag)
+                        .map(|a| (a.min, a.max))
+                })
+                .unwrap_or((normal, normal))
+        };
+        let (w0, w1) = face.weight.unwrap_or_else(|| axis(b"wght", 400.0));
+        let (s0, s1) = face.stretch.unwrap_or_else(|| axis(b"wdth", 100.0));
         out.push(og_ui::FamilyFace {
             family: face.family.clone(),
             document: owner.to_owned(),
-            weight: (weight(face.weight.0), weight(face.weight.1)),
+            weight: (weight(w0), weight(w1)),
             stretch: (
-                og_ui::FontQuery::width_tenths(face.stretch.0),
-                og_ui::FontQuery::width_tenths(face.stretch.1),
+                og_ui::FontQuery::width_tenths(s0),
+                og_ui::FontQuery::width_tenths(s1),
             ),
             style: match face.style.as_str() {
                 "italic" => og_ui::FaceStyle::Italic,

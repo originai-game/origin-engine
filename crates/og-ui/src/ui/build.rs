@@ -595,6 +595,8 @@ impl crate::ui::Tree {
             vertical: None,
             synthesize_bold: true,
             stretch: None,
+            variations: Default::default(),
+            optical_sizing: true,
         }
     }
 }

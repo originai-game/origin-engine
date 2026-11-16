@@ -109,7 +109,7 @@ fn a_pixel_glyph_is_its_cells_and_nothing_else() {
             }
         }
         // 48 atlas px to the em: 4 texels to a cell.
-        let g = render_glyph_on(&ttf, c, 48.0, 16.0, 12).expect("rendered");
+        let g = render_glyph_on(&ttf, &[], c, 48.0, 16.0, 12).expect("rendered");
         assert!((g.advance * 12.0 - (g.advance * 12.0).round()).abs() < 1e-5);
         let texel = |x: f32, y: f32| {
             // x, y in em from the pen; rows top to bottom.

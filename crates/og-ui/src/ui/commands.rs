@@ -935,8 +935,12 @@ impl Ui {
             let p = &mut self.paint.cache;
             p.volatile.clear();
             p.ringed.clear();
+            p.awaiting.clear();
             for &i in order {
                 r.set(i, false, false, (f32::NAN, f32::NAN));
+                if self.awaits_instance(&self.tree.nodes[i]) {
+                    self.paint.cache.awaiting.insert(i);
+                }
                 let (v, ring) = self.paints_alone(i);
                 if v {
                     self.paint.cache.volatile.insert(i);
@@ -952,12 +956,14 @@ impl Ui {
         // What the frame draws again on its own, kept until it does not.
         p.volatile.retain(|&i| o.pos[i] != u32::MAX);
         p.ringed.retain(|&i| o.pos[i] != u32::MAX);
+        p.awaiting.retain(|&i| o.pos[i] != u32::MAX);
         let mut volatile: std::collections::HashSet<usize> = self
             .tree
             .draws
             .keys()
             .chain(&self.tree.index.restructured)
             .chain(&self.paint.part_changed)
+            .chain(&p.awaiting)
             .copied()
             .collect();
         let keyed = ghosts
@@ -1065,7 +1071,13 @@ impl Ui {
                 (f32::NAN, f32::NAN)
             };
             let (own_volatile, ring) = self.paints_alone(i);
+            let awaits = self.awaits_instance(node);
             let p = &mut self.paint.cache;
+            if awaits {
+                p.awaiting.insert(i);
+            } else {
+                p.awaiting.remove(&i);
+            }
             if own_volatile {
                 p.volatile.insert(i);
             } else {
@@ -1144,6 +1156,19 @@ impl Ui {
             volatile,
             node.marks.ring || node.marks.pad_rings != 0 || outline || field_ring,
         )
+    }
+
+    /// Whether a node's text is in a variable face's instance whose font
+    /// the host has not made yet (`og_text::shape::FontFile::take_instances`):
+    /// it draws nothing until it has, so it is painted again each frame
+    /// ([`PaintCache::awaiting`](crate::layout::PaintCache)).
+    fn awaits_instance(&self, node: &crate::layout::Node) -> bool {
+        let Content::Text(tc) = &*node.content else {
+            return false;
+        };
+        let t = node.used_text(tc);
+        let font = self.env.fonts.for_styled(t.font, t.query(), &t.text).0;
+        font.handle.is_none() && font.metrics.file.as_ref().is_some_and(|f| f.is_instance())
     }
 
     fn scroll_bar_commands(&self, s: usize, cmds: &mut Vec<DrawCmd>) {

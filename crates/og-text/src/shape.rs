@@ -16,7 +16,7 @@
 
 use skrifa::{
     MetadataProvider,
-    instance::{LocationRef, Size},
+    instance::{LocationRef, NormalizedCoord, Size},
 };
 #[cfg(feature = "shaping")]
 use std::collections::HashMap;
@@ -24,6 +24,71 @@ use std::collections::{BTreeMap, BTreeSet};
 use std::sync::{Arc, Mutex};
 
 pub use og_draw::GlyphKey;
+
+/// One variation axis setting: its tag and its value in the axis's own
+/// units (CSS `font-variation-settings`, OpenType `fvar`'s user space).
+pub type Variation = ([u8; 4], f32);
+
+/// A text's variation settings (CSS `font-variation-settings`), interned
+/// so a font query stays a small hashable value: each tag once, a later
+/// setting replacing an earlier one of its tag. A font without an axis
+/// ignores its setting ([`FontFile::instance`]).
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
+pub struct Variations(u32);
+
+/// Every distinct list a [`Variations`] has carried, by its id less one.
+static VARIATIONS: Mutex<Vec<Arc<[Variation]>>> = Mutex::new(Vec::new());
+
+impl Variations {
+    /// No setting: the axes CSS's other properties set, else their defaults.
+    pub const NONE: Variations = Variations(0);
+
+    /// `settings` applied in order.
+    pub fn new(settings: &[Variation]) -> Variations {
+        let mut list: Vec<Variation> = Vec::new();
+        for &(tag, value) in settings {
+            list.retain(|(t, _)| *t != tag);
+            list.push((tag, value));
+        }
+        if list.is_empty() {
+            return Variations::NONE;
+        }
+        list.sort_by_key(|a| a.0);
+        let same = |a: &[Variation]| {
+            a.len() == list.len()
+                && a.iter()
+                    .zip(&list)
+                    .all(|(x, y)| x.0 == y.0 && x.1.to_bits() == y.1.to_bits())
+        };
+        let mut all = VARIATIONS.lock().unwrap_or_else(|e| e.into_inner());
+        let id = match all.iter().position(|s| same(s)) {
+            Some(i) => i,
+            None => {
+                all.push(list.into());
+                all.len() - 1
+            }
+        };
+        Variations(id as u32 + 1)
+    }
+
+    /// Its settings, by tag.
+    pub fn settings(self) -> Arc<[Variation]> {
+        match self.0.checked_sub(1) {
+            Some(i) => VARIATIONS.lock().unwrap_or_else(|e| e.into_inner())[i as usize].clone(),
+            None => Arc::new([]),
+        }
+    }
+}
+
+/// One axis of a variable font: its tag, and its minimum, default and
+/// maximum in user space.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct Axis {
+    pub tag: [u8; 4],
+    pub min: f32,
+    pub default: f32,
+    pub max: f32,
+}
 
 /// The OpenType features a type step turns on (docs/ui.md §6.3.4): small
 /// caps, capitals to small caps, tabular and lining figures, case-sensitive
@@ -208,10 +273,27 @@ impl Shaped {
 /// with the glyphs its atlas has.
 pub type ShapedRun = Option<Arc<Vec<Shaped>>>;
 
-/// A cooked font's file: shaping and run-time glyph metrics.
+/// A cooked font's file: shaping and run-time glyph metrics. A variable
+/// font's file gives instances at a location in its variation space
+/// ([`FontFile::instance`]), each shaped, measured and rendered there.
 pub struct FontFile {
     ttf: Arc<Vec<u8>>,
     runtime: bool,
+    /// Its variation axes (none for a static font).
+    axes: Vec<Axis>,
+    /// The settings an instance was made at, by axis order (empty: the
+    /// default location), and their normalised coordinates.
+    variations: Vec<Variation>,
+    coords: Vec<NormalizedCoord>,
+    #[cfg(feature = "shaping")]
+    instance: Option<harfrust::ShaperInstance>,
+    /// Instances made of it, by their normalised coordinates' bits.
+    instances: Mutex<BTreeMap<Vec<i16>, Arc<FontFile>>>,
+    /// Instances made since the host last took them ([`FontFile::take_instances`]).
+    fresh: Mutex<Vec<Arc<FontFile>>>,
+    /// The font an instance is drawn with, once the host made its pages
+    /// ([`FontFile::set_handle`]).
+    handle: Mutex<Option<og_draw::FontHandle>>,
     /// An emoji face: one whose characters have COLR colour glyphs.
     colour: bool,
     units_per_em: f32,
@@ -246,7 +328,9 @@ impl std::fmt::Debug for FontFile {
 
 impl PartialEq for FontFile {
     fn eq(&self, other: &Self) -> bool {
-        self.runtime == other.runtime && Arc::ptr_eq(&self.ttf, &other.ttf)
+        self.runtime == other.runtime
+            && Arc::ptr_eq(&self.ttf, &other.ttf)
+            && self.coords == other.coords
     }
 }
 
@@ -267,8 +351,17 @@ impl FontFile {
     }
 
     fn read(ttf: Arc<Vec<u8>>, runtime: bool) -> Option<Arc<FontFile>> {
+        Self::read_at(ttf, runtime, Vec::new(), Vec::new())
+    }
+
+    fn read_at(
+        ttf: Arc<Vec<u8>>,
+        runtime: bool,
+        variations: Vec<Variation>,
+        coords: Vec<NormalizedCoord>,
+    ) -> Option<Arc<FontFile>> {
         let face = skrifa::FontRef::new(&ttf).ok()?;
-        let metrics = face.metrics(Size::unscaled(), LocationRef::default());
+        let metrics = face.metrics(Size::unscaled(), LocationRef::new(&coords));
         let units_per_em = f32::from(metrics.units_per_em);
         let x_height = metrics
             .x_height
@@ -288,6 +381,19 @@ impl FontFile {
         });
         #[cfg(feature = "shaping")]
         let shaper = harfrust::ShaperData::new(&face);
+        #[cfg(feature = "shaping")]
+        let instance = (!coords.is_empty())
+            .then(|| harfrust::ShaperInstance::from_coords(&face, coords.iter().copied()));
+        let axes = face
+            .axes()
+            .iter()
+            .map(|a| Axis {
+                tag: a.tag().to_be_bytes(),
+                min: a.min_value(),
+                default: a.default_value(),
+                max: a.max_value(),
+            })
+            .collect();
         let colour = {
             let glyphs = face.color_glyphs();
             face.charmap()
@@ -297,6 +403,14 @@ impl FontFile {
         Some(Arc::new(FontFile {
             ttf,
             runtime,
+            axes,
+            variations,
+            coords,
+            #[cfg(feature = "shaping")]
+            instance,
+            instances: Mutex::new(BTreeMap::new()),
+            fresh: Mutex::new(Vec::new()),
+            handle: Mutex::new(None),
             colour,
             units_per_em,
             x_height,
@@ -311,6 +425,93 @@ impl FontFile {
             extra: Mutex::new(BTreeMap::new()),
             wanted: Mutex::new(BTreeSet::new()),
         }))
+    }
+
+    /// Its variation axes (empty for a static font).
+    pub fn axes(&self) -> &[Axis] {
+        &self.axes
+    }
+
+    /// The settings it was made at (empty: the default location).
+    pub fn variations(&self) -> &[Variation] {
+        &self.variations
+    }
+
+    /// Whether it is an instance away from the default location.
+    pub fn is_instance(&self) -> bool {
+        !self.coords.is_empty()
+    }
+
+    /// The instance at `settings` (each clamped to its axis, an unknown
+    /// axis ignored, an axis not named at its default): itself where that
+    /// is the default location, which a static font always is. An
+    /// instance is made once per location and listed for the host
+    /// ([`FontFile::take_instances`]); it renders its glyphs at run time,
+    /// so only a font that does (`runtime true`) is varied.
+    pub fn instance(self: &Arc<Self>, settings: &[Variation]) -> Arc<FontFile> {
+        if self.axes.is_empty() || !self.runtime || settings.is_empty() {
+            return self.clone();
+        }
+        let Ok(face) = skrifa::FontRef::new(&self.ttf) else {
+            return self.clone();
+        };
+        let location = face
+            .axes()
+            .location(settings.iter().map(|(t, v)| (skrifa::Tag::new(t), *v)));
+        let coords = location.coords().to_vec();
+        if coords.iter().all(|c| c.to_bits() == 0) {
+            return self.clone();
+        }
+        let key: Vec<i16> = coords.iter().map(|c| c.to_bits()).collect();
+        let Ok(mut made) = self.instances.lock() else {
+            return self.clone();
+        };
+        if let Some(f) = made.get(&key) {
+            return f.clone();
+        }
+        // The settings it is at, in axis order and clamped: what Parley
+        // and the glyph renderer are told.
+        let variations: Vec<Variation> = self
+            .axes
+            .iter()
+            .map(|a| {
+                let v = settings
+                    .iter()
+                    .rev()
+                    .find(|(t, _)| *t == a.tag)
+                    .map_or(a.default, |(_, v)| v.clamp(a.min, a.max));
+                (a.tag, v)
+            })
+            .collect();
+        let Some(f) = Self::read_at(self.ttf.clone(), self.runtime, variations, coords) else {
+            return self.clone();
+        };
+        made.insert(key, f.clone());
+        if let Ok(mut fresh) = self.fresh.lock() {
+            fresh.push(f.clone());
+        }
+        f
+    }
+
+    /// The instances made since the last call: the host makes each one's
+    /// pages and gives it its handle ([`FontFile::set_handle`]).
+    pub fn take_instances(&self) -> Vec<Arc<FontFile>> {
+        self.fresh
+            .lock()
+            .map(|mut f| std::mem::take(&mut *f))
+            .unwrap_or_default()
+    }
+
+    /// The font an instance is drawn with (`None` until the host made it).
+    pub fn handle(&self) -> Option<og_draw::FontHandle> {
+        self.handle.lock().ok().and_then(|h| *h)
+    }
+
+    /// Gives an instance the font it is drawn with.
+    pub fn set_handle(&self, handle: og_draw::FontHandle) {
+        if let Ok(mut h) = self.handle.lock() {
+            *h = Some(handle);
+        }
     }
 
     /// Whether it is an emoji face: some character maps to a COLR colour
@@ -419,7 +620,11 @@ impl FontFile {
             .into_iter()
             .map(|(t, v)| harfrust::Feature::new(harfrust::Tag::new(&t), u32::from(v), ..))
             .collect();
-        let shaper = self.shaper.shaper(&face).build();
+        let shaper = self
+            .shaper
+            .shaper(&face)
+            .instance(self.instance.as_ref())
+            .build();
         let out = shaper.shape(buf, harfrust::ShapeOptions::new().features(&on));
         let em = self.units_per_em;
         let mut glyphs = Vec::with_capacity(out.len());
@@ -565,7 +770,7 @@ impl FontFile {
                 GlyphKey::Char(c) => face.charmap().map(c)?,
             };
             Some(
-                face.glyph_metrics(Size::unscaled(), LocationRef::default())
+                face.glyph_metrics(Size::unscaled(), LocationRef::new(&self.coords))
                     .advance_width(g)
                     .unwrap_or(0.0)
                     / self.units_per_em,

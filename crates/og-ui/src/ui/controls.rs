@@ -59,6 +59,8 @@ impl Ui {
             vertical: None,
             synthesize_bold: true,
             stretch: None,
+            variations: Default::default(),
+            optical_sizing: true,
         });
         // The probe and screen readers read the whole text, cut or not.
         n.probe_text = text.to_owned();

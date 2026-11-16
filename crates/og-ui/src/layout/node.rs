@@ -227,6 +227,11 @@ pub struct TextContent {
     /// Its width (CSS `font-stretch`, `font-width`), a percentage of the
     /// normal: what face of its family it takes ([`crate::FontQuery`]).
     pub stretch: Option<f32>,
+    /// A variable face's settings (CSS `font-variation-settings`).
+    pub variations: crate::shape::Variations,
+    /// Whether a variable face's `opsz` axis follows its size (CSS
+    /// `font-optical-sizing: auto`, the initial value).
+    pub optical_sizing: bool,
 }
 
 /// CSS `text-wrap-style` (CSS Text 4 §6.2): `stable` lays out as `auto`.
@@ -346,9 +351,12 @@ impl std::ops::Deref for UsedText<'_> {
 }
 
 impl<'a> UsedText<'a> {
-    /// What it asks of its font family: its step's weight and its width.
+    /// What it asks of its font family: its step's weight, its width and
+    /// a variable face's axes.
     pub fn query(&self) -> crate::FontQuery {
-        crate::FontQuery::new(self.step.weight, false).at_width(self.stretch)
+        crate::FontQuery::new(self.step.weight, false)
+            .at_width(self.stretch)
+            .with_axes(self.variations, self.optical_sizing, self.step.size)
     }
 
     /// The metrics of the face it is drawn in: its role's nearest its

@@ -647,19 +647,25 @@ fn a_font_face_family_takes_its_faces_by_weight_and_range() {
         "an unrendered generic must not double-bold a real heavy face"
     );
     let family = |name| FontRole::Family(Family::new(name, FontRole::Body));
+    // The face drawn, by name: the Arabic face is the only one with a file
+    // (its variable font is drawn at its instance at wght 350).
     let at = |w| {
-        fonts
+        let font = fonts
             .for_styled(family("brand"), FontQuery::new(w, false), "Go")
-            .0
-            .handle
+            .0;
+        match font.metrics.file {
+            Some(_) => "arabic",
+            None if font.handle == f.cjk.handle => "cjk",
+            None => "other",
+        }
     };
     assert_eq!(
         at(400),
-        f.cjk.handle,
+        "cjk",
         "from 400, a heavier face up to 500 before a nearer lighter one"
     );
-    assert_eq!(at(300), f.arabic.handle, "below 400, lighter first");
-    assert_eq!(at(700), f.cjk.handle, "above 500, the heaviest below");
+    assert_eq!(at(300), "arabic", "below 400, lighter first");
+    assert_eq!(at(700), "cjk", "above 500, the heaviest below");
     assert_eq!(
         fonts.for_text(family("Nope"), "Go").handle,
         f.latin.handle,

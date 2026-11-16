@@ -234,6 +234,20 @@ impl FontMetrics {
         self
     }
 
+    /// This font at a variable font's instance (`file`, from
+    /// [`FontFile::instance`]): its atlas and cooked kerning are the
+    /// default location's, so every glyph is measured from the instance
+    /// and rendered from it at run time.
+    pub fn at_instance(&self, file: Arc<FontFile>) -> FontMetrics {
+        FontMetrics {
+            advances: Vec::new(),
+            fixed: None,
+            kerning: Vec::new(),
+            file: Some(file),
+            ..self.clone()
+        }
+    }
+
     /// The font file (an older name for [`FontMetrics::with_file`]).
     pub fn with_shaper(self, file: Option<Arc<FontFile>>) -> FontMetrics {
         self.with_file(file)

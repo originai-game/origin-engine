@@ -298,6 +298,10 @@ pub struct Fonts {
 
 type FamilySelection = (u32, usize, FontQuery);
 
+/// A family list's face for a query, what it synthesises, and the weight
+/// and width it is drawn at.
+type ResolvedFamily = (UiFont, Synth, (u16, u16));
+
 /// One entry in an ordered CSS font-family list. Quoted generic names are named families.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum FontFamily {
@@ -323,8 +327,21 @@ impl FontFamily {
 #[derive(Clone, Default, PartialEq)]
 pub struct FamilyLists {
     names: elsa::FrozenMap<u32, Box<[FontFamily]>>,
-    fonts: elsa::FrozenMap<FamilySelection, Box<(UiFont, Synth)>>,
+    fonts: elsa::FrozenMap<FamilySelection, Box<ResolvedFamily>>,
+    /// Faces at a variable font's instance ([`Fonts::instanced`]).
+    instances: elsa::FrozenMap<InstanceKey, Box<UiFont>>,
 }
+
+/// A face at an instance: the instance's file, the handle it is drawn
+/// with once the host made it, and the face's own handle and other fonts
+/// (by address; the entry holds both, so neither is freed while it is
+/// keyed).
+type InstanceKey = (
+    usize,
+    Option<og_draw::FontHandle>,
+    Option<og_draw::FontHandle>,
+    usize,
+);
 
 impl std::fmt::Debug for FamilyLists {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -459,12 +476,16 @@ pub struct Synth {
 /// What a text asks of its font family besides its characters (CSS Fonts
 /// 4 §5.2): its weight (0: the role's own face), whether it is italic, and
 /// its width (`font-stretch`, `font-width`) in tenths of a percent of the
-/// normal width.
+/// normal width; and of a variable face (§7.2) its variation settings
+/// (`font-variation-settings`) and its optical size in tenths of a CSS
+/// px (`font-optical-sizing: auto`, the text's size; 0: `none`).
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub struct FontQuery {
     pub weight: u16,
     pub italic: bool,
     pub stretch: u16,
+    pub variations: crate::shape::Variations,
+    pub optical: u16,
 }
 
 impl FontQuery {
@@ -477,7 +498,46 @@ impl FontQuery {
             weight,
             italic,
             stretch: Self::NORMAL_WIDTH,
+            variations: crate::shape::Variations::NONE,
+            optical: 0,
         }
+    }
+
+    /// With a variable face's settings, and its optical size at `size`
+    /// CSS px when `optical` (`font-optical-sizing: auto`).
+    pub fn with_axes(
+        self,
+        variations: crate::shape::Variations,
+        optical: bool,
+        size: f32,
+    ) -> FontQuery {
+        FontQuery {
+            variations,
+            optical: if optical {
+                (size * 10.0).round().clamp(1.0, f32::from(u16::MAX)) as u16
+            } else {
+                0
+            },
+            ..self
+        }
+    }
+
+    /// The axis settings a variable face is instanced at (CSS Fonts 4
+    /// §7.2): `wght` from the weight, `wdth` from the width, `opsz` from
+    /// the optical size, then `font-variation-settings`, which overrides.
+    pub fn axes(&self) -> Vec<crate::shape::Variation> {
+        let mut out = Vec::new();
+        if self.weight != 0 {
+            out.push((*b"wght", f32::from(self.weight)));
+        }
+        if self.stretch != Self::NORMAL_WIDTH {
+            out.push((*b"wdth", f32::from(self.stretch) / 10.0));
+        }
+        if self.optical != 0 {
+            out.push((*b"opsz", f32::from(self.optical) / 10.0));
+        }
+        out.extend(self.variations.settings().iter().copied());
+        out
     }
 
     /// At a width, a percentage of the normal (`None`: normal).
@@ -661,7 +721,7 @@ impl Fonts {
                 let FontFamily::Named(name) = name else {
                     return None;
                 };
-                let (set, got, _) = self.family_set(
+                let (set, (got, _), _) = self.family_set(
                     crate::Family::new(name, FontRole::Body),
                     FontQuery::new(weight, false),
                 );
@@ -701,12 +761,18 @@ impl Fonts {
     /// narrower), those of the nearest style (italic, then oblique, then
     /// normal for an italic text; normal, oblique, italic otherwise), those
     /// of the nearest weight range, last declared first; with the weight
-    /// they draw at and whether they slant.
-    fn family_set(&self, family: crate::Family, query: FontQuery) -> (Vec<&FamilyFace>, u16, bool) {
+    /// and width they draw at (the query's, clamped to their ranges) and
+    /// whether they slant.
+    fn family_set(
+        &self,
+        family: crate::Family,
+        query: FontQuery,
+    ) -> (Vec<&FamilyFace>, (u16, u16), bool) {
         let FontQuery {
             weight,
             italic,
             stretch,
+            ..
         } = query;
         let faces: Vec<&FamilyFace> = self.families.iter().filter(|f| f.is(family)).collect();
         let narrow = stretch <= FontQuery::NORMAL_WIDTH;
@@ -720,7 +786,7 @@ impl Fonts {
             }
         };
         let Some(width) = faces.iter().map(|f| f.stretch).min_by_key(width_key) else {
-            return (Vec::new(), 0, false);
+            return (Vec::new(), (0, 0), false);
         };
         let faces: Vec<&FamilyFace> = faces.into_iter().filter(|f| f.stretch == width).collect();
         let order = if italic {
@@ -732,7 +798,7 @@ impl Fonts {
             .into_iter()
             .find(|s| faces.iter().any(|f| f.style == *s))
         else {
-            return (Vec::new(), 0, false);
+            return (Vec::new(), (0, 0), false);
         };
         let w = if weight == 0 { 400 } else { weight };
         // Within the range first; then, from 400 to 500, the heavier ones up
@@ -761,14 +827,15 @@ impl Fonts {
             .map(|f| f.weight)
             .min_by_key(key)
         else {
-            return (Vec::new(), 0, false);
+            return (Vec::new(), (0, 0), false);
         };
         let set = faces
             .into_iter()
             .rev()
             .filter(|f| f.style == style && f.weight == range)
             .collect();
-        (set, w.clamp(range.0, range.1), style != FaceStyle::Normal)
+        let drawn = (w.clamp(range.0, range.1), stretch.clamp(width.0, width.1));
+        (set, drawn, style != FaceStyle::Normal)
     }
 
     /// [`Fonts::for_text`] at a weight (100 to 900; 0: the role's own face)
@@ -777,7 +844,69 @@ impl Fonts {
     /// companion nearest the same weight; and what it could not find a
     /// real face for ([`Synth`]: a weight of 600 or more whose face is
     /// lighter than 600, an italic with no italic face).
+    ///
+    /// A variable face is drawn at its instance at the query's axes
+    /// ([`FontQuery::axes`]) with the weight and width it is drawn at (the
+    /// query's clamped to its declared ranges, CSS Fonts 4 §7.2): a face
+    /// declared 400 draws a 700 at `wght` 400, synthesised bold.
     pub fn for_styled(&self, role: FontRole, query: FontQuery, text: &str) -> (&UiFont, Synth) {
+        let face = FontQuery {
+            variations: crate::shape::Variations::NONE,
+            optical: 0,
+            ..query
+        };
+        let (font, synth, (weight, stretch)) = self.face_styled(role, face, text);
+        let drawn = FontQuery {
+            weight,
+            stretch,
+            ..query
+        };
+        (self.instanced(font, drawn).unwrap_or(font), synth)
+    }
+
+    /// `font` at its instance at `query`'s axes; `None` for a static face
+    /// and one at its default location.
+    fn instanced(&self, font: &UiFont, query: FontQuery) -> Option<&UiFont> {
+        let file = font.metrics.file.as_ref()?;
+        if file.axes().is_empty() {
+            return None;
+        }
+        let instance = file.instance(&query.axes());
+        if !instance.is_instance() {
+            return None;
+        }
+        let runs = font
+            .metrics
+            .runs
+            .as_ref()
+            .map_or(0, |r| r.as_ptr() as usize);
+        let key = (
+            std::sync::Arc::as_ptr(&instance) as usize,
+            instance.handle(),
+            font.handle,
+            runs,
+        );
+        let made = match self.family_lists.instances.get(&key) {
+            Some(f) => f,
+            None => self.family_lists.instances.insert(
+                key,
+                Box::new(UiFont {
+                    handle: instance.handle(),
+                    metrics: font.metrics.at_instance(instance),
+                }),
+            ),
+        };
+        Some(made)
+    }
+
+    /// [`Fonts::for_styled`]'s face, before any variable face is
+    /// instanced, with the weight and width it is drawn at.
+    fn face_styled(
+        &self,
+        role: FontRole,
+        query: FontQuery,
+        text: &str,
+    ) -> (&UiFont, Synth, (u16, u16)) {
         let FontQuery { weight, italic, .. } = query;
         if let FontRole::Family(family) = role {
             if let Some(names) = self.family_lists.names.get(&family.id()) {
@@ -785,9 +914,10 @@ impl Fonts {
                 let resolved = self.family_lists.fonts.get(&key).unwrap_or_else(|| {
                     let mut fonts = Vec::new();
                     let mut synth = Synth::default();
+                    let mut at = (0, FontQuery::NORMAL_WIDTH);
                     let mut rendered = false;
                     for name in names {
-                        let (set, got, slanted) = match name {
+                        let (set, (got, width), slanted) = match name {
                             FontFamily::Named(name) => {
                                 let (faces, got, slanted) = self
                                     .family_set(crate::Family::new(name, family.fallback()), query);
@@ -803,7 +933,7 @@ impl Fonts {
                                     std::iter::once(font)
                                         .chain(self.companion_styled(*role, weight))
                                         .collect(),
-                                    got,
+                                    (got, FontQuery::NORMAL_WIDTH),
                                     slanted,
                                 )
                             }
@@ -814,6 +944,7 @@ impl Fonts {
                                 bold: needs_bold(weight, got),
                                 italic: italic && !slanted,
                             };
+                            at = (got, width);
                         }
                         rendered |= renders;
                         fonts.extend(set.into_iter().map(UiFont::alone));
@@ -834,13 +965,15 @@ impl Fonts {
                     );
                     let mut font = fonts.remove(0);
                     font.metrics.runs = Some(fonts.into());
-                    self.family_lists.fonts.insert(key, Box::new((font, synth)))
+                    self.family_lists
+                        .fonts
+                        .insert(key, Box::new((font, synth, at)))
                 });
-                return (&resolved.0, resolved.1);
+                return (&resolved.0, resolved.1, resolved.2);
             }
-            let (set, got, slanted) = self.family_set(family, query);
+            let (set, (got, width), slanted) = self.family_set(family, query);
             let Some(first) = set.first() else {
-                return self.for_styled(family.fallback(), query, text);
+                return self.face_styled(family.fallback(), query, text);
             };
             let drawn = || text.chars().filter(|c| !c.is_whitespace());
             // The face that sets the text whole, else the first that draws
@@ -859,7 +992,7 @@ impl Fonts {
                 italic: italic && !slanted,
             };
             let companion = self.companion_styled(family.fallback(), weight);
-            return (self.resolve(f, companion, text), synth);
+            return (self.resolve(f, companion, text), synth, (got, width));
         }
         let (f, got, slanted) = self.latin(role, weight, italic);
         let synth = Synth {
@@ -867,7 +1000,7 @@ impl Fonts {
             italic: italic && !slanted,
         };
         let face = self.resolve(f, self.companion_styled(role, weight), text);
-        (face, synth)
+        (face, synth, (got, FontQuery::NORMAL_WIDTH))
     }
 
     /// The weight of the `i`-th face of body, display, mono, fallback, cjk

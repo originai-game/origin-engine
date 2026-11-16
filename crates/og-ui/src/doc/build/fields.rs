@@ -1391,10 +1391,17 @@ impl crate::ui::Tree {
             .filter(|s| !s.is_empty())
             .map(str::to_owned);
         let synthesize_bold = r.text.as_deref().and_then(|t| t.synthesis[0]) != Some(false);
-        let stretch = r.text.as_deref().and_then(|t| t.stretch);
+        let css = r.text.as_deref();
+        let stretch = css.and_then(|t| t.stretch);
+        let variations = css.map_or_else(Default::default, |t| {
+            crate::shape::Variations::new(&t.variations)
+        });
+        let optical_sizing = css.and_then(|t| t.optical_sizing) != Some(false);
         if let crate::layout::Content::Text(t) = self.content_mut(i) {
             t.synthesize_bold = synthesize_bold;
             t.stretch = stretch;
+            t.variations = variations;
+            t.optical_sizing = optical_sizing;
             t.wrap_style = style;
             t.overflow_wrap = overflow_wrap;
             t.align_last = align_last;
@@ -1678,6 +1685,9 @@ impl Resolved {
             weight: t.weight,
             oblique: t.slant,
             stretch: t.stretch,
+            variations: (!t.variations.is_empty())
+                .then(|| crate::shape::Variations::new(&t.variations)),
+            optical_sizing: t.optical_sizing,
             synthesis: (t.synthesis[0].is_some() || t.synthesis[1].is_some()).then(|| {
                 crate::Synth {
                     bold: t.synthesis[0] != Some(false),
