@@ -1,0 +1,15 @@
+{
+  "simulation": "unchanged",
+  "fixed": [
+    {
+      "member": "Cooked images: EXIF orientation",
+      "summary": "A source image with an EXIF orientation (a phone photo saved as JPEG, PNG or WebP) is now cooked turned upright, as every viewer shows it, instead of as its pixels are stored. A rotated photo's texture swaps its width and height accordingly."
+    }
+  ],
+  "added": [
+    {
+      "member": "UI CSS image-orientation",
+      "summary": "`image-orientation: from-image` (CSS Images 3 §5.1), the initial value, is accepted. `none` is refused with the reason: a cooked image keeps no unturned pixels, so save the file unrotated to draw it that way."
+    }
+  ]
+}

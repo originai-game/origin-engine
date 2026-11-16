@@ -264,6 +264,7 @@ pub const STYLE: &[(&str, &str)] = &[
     ("touchAction", "touch-action"),
     ("visibility", "visibility"),
     ("imageRendering", "image-rendering"),
+    ("imageOrientation", "image-orientation"),
     ("contain", "contain"),
     ("contentVisibility", "content-visibility"),
     ("containIntrinsicWidth", "contain-intrinsic-width"),

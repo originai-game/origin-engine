@@ -27,7 +27,7 @@ pub struct Image {
 /// to BC7 and the uncompressed formats; level 0, layer 0), PSD (the
 /// flattened composite the file stores, 8 or 16 bits, RGB, greyscale or
 /// CMYK) and TGA, the one without a signature (tried when nothing else
-/// matches).
+/// matches). An image with an EXIF orientation is turned upright by it.
 pub fn decode(bytes: &[u8]) -> Result<Image, String> {
     if std::str::from_utf8(bytes).is_ok_and(|text| text.contains("<svg")) {
         let tree = resvg::usvg::Tree::from_data(bytes, &resvg::usvg::Options::default())
@@ -70,11 +70,17 @@ pub fn decode(bytes: &[u8]) -> Result<Image, String> {
     if bytes.starts_with(b"8BPS") {
         return super::psd::composite(bytes);
     }
-    let img = match image::guess_format(bytes) {
-        Ok(_) => image::load_from_memory(bytes),
-        Err(_) => image::load_from_memory_with_format(bytes, image::ImageFormat::Tga),
-    }
-    .map_err(|e| format!("image: {e}"))?;
+    use image::ImageDecoder;
+    let mut reader = image::ImageReader::new(std::io::Cursor::new(bytes));
+    reader.set_format(image::guess_format(bytes).unwrap_or(image::ImageFormat::Tga));
+    let e = |e: image::ImageError| format!("image: {e}");
+    let mut decoder = reader.into_decoder().map_err(e)?;
+    // Turned upright by its EXIF orientation (JPEG, PNG, WebP, TIFF), as
+    // it shows anywhere else: CSS `image-orientation: from-image`, its
+    // initial value (CSS Images 3 §5.1).
+    let orientation = decoder.orientation().map_err(e)?;
+    let mut img = image::DynamicImage::from_decoder(decoder).map_err(e)?;
+    img.apply_orientation(orientation);
     let rgba = img.to_rgba8();
     Ok(Image {
         width: rgba.width(),

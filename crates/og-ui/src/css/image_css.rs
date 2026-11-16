@@ -1,8 +1,9 @@
 //! CSS properties of how an image is drawn on document elements (CSS
 //! Images 3 §5): `image-rendering`, which picks the sampling of every
 //! image the element draws (its `<image>`, `<art>`, background, border
-//! image), and `object-position`, which places an `<image>` or `<art>`
-//! inside its box under `object-fit`.
+//! image), `image-orientation`, whose one value every cooked image
+//! already follows, and `object-position`, which places an `<image>` or
+//! `<art>` inside its box under `object-fit`.
 //!
 //! Each is one reflected prop holding its CSS value as written, checked
 //! here when the stylesheet is lowered and read here again when the
@@ -15,6 +16,7 @@ use super::css::{Tok, describe, tokens};
 pub(crate) fn prop_of(css: &str) -> Option<&'static str> {
     Some(match css {
         "image-rendering" => "imageRendering",
+        "image-orientation" => "imageOrientation",
         "object-position" => "objectPosition",
         _ => return None,
     })
@@ -24,6 +26,7 @@ pub(crate) fn prop_of(css: &str) -> Option<&'static str> {
 pub(crate) fn form(prop: &str) -> Option<&'static str> {
     Some(match prop {
         "imageRendering" => "auto | smooth | high-quality | pixelated | crisp-edges",
+        "imageOrientation" => "from-image",
         "objectPosition" => {
             "<position>: one to four of left, center, right, top, bottom, <n>px, <n>%"
         }
@@ -35,6 +38,7 @@ pub(crate) fn form(prop: &str) -> Option<&'static str> {
 pub(crate) fn check(css: &str, value: &str) -> Result<(), String> {
     match css {
         "image-rendering" => image_rendering(value).map(|_| ()),
+        "image-orientation" => image_orientation(value),
         "object-position" => object_position(value).map(|_| ()),
         _ => Ok(()),
     }
@@ -59,6 +63,21 @@ pub(crate) fn image_rendering(value: &str) -> Result<bool, String> {
             describe(t)
         )),
         _ => Err("image-rendering: one keyword".into()),
+    }
+}
+
+/// `image-orientation` (CSS Images 3 §5.1): `from-image`, its initial
+/// value, is what every image already does, since the cook turns a source
+/// image upright by its EXIF orientation. `none` is refused because no
+/// image keeps its unturned pixels once cooked: save the file unrotated
+/// to draw it so.
+pub(crate) fn image_orientation(value: &str) -> Result<(), String> {
+    match tokens(value)?.as_slice() {
+        [Tok::Ident(w)] if w.eq_ignore_ascii_case("from-image") => Ok(()),
+        [Tok::Ident(w)] if w.eq_ignore_ascii_case("none") => Err(
+            "image-orientation: none is not supported: images are turned upright by their EXIF orientation when cooked (save the image unrotated to draw it so)".into(),
+        ),
+        _ => Err("image-orientation: from-image".into()),
     }
 }
 

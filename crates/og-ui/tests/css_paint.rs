@@ -147,6 +147,29 @@ fn image_sets_reselect_on_density_changes() {
     }
 }
 
+/// `image-orientation` (CSS Images 3 §5.1): `from-image`, the initial
+/// value, cooks, since every image is turned upright by its EXIF
+/// orientation when cooked (og-cook `textures::
+/// exif_orientation_turns_a_source_image_upright`); `none` is refused with
+/// the reason, as no unturned image is kept.
+#[test]
+fn image_orientation_takes_from_image_and_refuses_none() {
+    let parse = |value: &str| {
+        UiDocument::parse(
+            "ui/t.svelte",
+            &format!(
+                "<meta name=\"component\" content=\"t\"><div id=\"A\"></div><style>#A {{ image-orientation: {value} }}</style>"
+            ),
+        )
+        .map(|_| ())
+        .map_err(|e| e.join("\n"))
+    };
+    assert_eq!(parse("from-image"), Ok(()));
+    let none = parse("none").unwrap_err();
+    assert!(none.contains("EXIF orientation when cooked"), "{none}");
+    assert!(parse("90deg").is_err());
+}
+
 #[test]
 fn a_css_filter_function_list_filters_an_svg_shape() {
     // The `filter` property a rule sets on an SVG shape is the one its

@@ -644,6 +644,11 @@ pub const CORE_PROPS: &[PropSpec] = &[
         "CSS `image-rendering`, inherited: pixelated or crisp-edges samples every image it draws (its image, art, background and border image) at the nearest texel, so pixel art scaled up stays sharp; auto, smooth and high-quality keep the texture's own sampling."
     ),
     p!(
+        "imageOrientation",
+        Ty::Text,
+        "CSS `image-orientation`: from-image, the only value, since every image is turned upright by its EXIF orientation when it is cooked; none is refused (save the image unrotated to draw it so)."
+    ),
+    p!(
         "visibility",
         Ty::Text,
         "CSS `visibility`, inherited: hidden keeps its place but draws nothing and takes no pointer or focus, while a child saying visible is drawn; collapse also gives up a flex item's main size."

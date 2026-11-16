@@ -214,6 +214,10 @@ not_applicable("namespace",
                "A document's elements are in one namespace (a .svelte document is not XML), so @namespace prefixes "
                "select nothing apart; the rule is accepted and has no effect.")
 
+# colour, paint and effects
+proof("image-orientation", "textures", "exif_orientation_turns_a_source_image_upright",
+      "Decoded pixels of a 2x1 PNG under EXIF orientations 1, 3, 6 and 8 and none, against the turns EXIF defines: every cooked image is drawn as from-image says. css_paint::image_orientation_takes_from_image_and_refuses_none: from-image cooks; none is refused, since no unturned image is kept once cooked.")
+
 MISSING = {
     "default": "documents::boolean_attribute_selectors_follow_svelte_presence proves retained :default follows false/present checked attributes. The immediate builder does not expose :default state; full support is missing.",
     "interpolate-size": "No intrinsic-size interpolation implementation or output proof.",
@@ -260,8 +264,8 @@ part_proof("image-set", "css_paint", "image_sets_render_density_correct_backgrou
 
 
 def proof_source(module, test, kind):
-    """The file of `module` that defines `test`: og-ui's, or the frame tests' (og-tests-ui)."""
-    for crate in ("og-ui", "og-tests-ui"):
+    """The file of `module` that defines `test`: og-ui's, the frame tests' (og-tests-ui), or the cook's (og-cook)."""
+    for crate in ("og-ui", "og-tests-ui", "og-cook"):
         source = f"crates/{crate}/tests/{module}.rs"
         if (ROOT / source).exists() and f"fn {test}(" in (ROOT / source).read_text():
             return source

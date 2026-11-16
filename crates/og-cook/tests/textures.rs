@@ -1,10 +1,13 @@
-//! KTX2 sources with their orientation and swizzle honoured, and streamed
-//! textures cooked as a mip tail and a whole chain.
+//! KTX2 sources with their orientation and swizzle honoured, EXIF
+//! orientations turned upright, and streamed textures cooked as a mip tail
+//! and a whole chain.
 //!
 //! Ways it could fail, and what catches it:
 //! - a `ru` KTX2 cooked as stored (upside down), a swizzle ignored, or an
 //!   identity KTX2 re-encoded instead of taken as it is →
 //!   `ktx2_sources_are_flipped_and_swizzled_to_rd_rgba_or_taken_as_they_are`
+//! - an image's EXIF orientation ignored, or a quarter turn taken the wrong
+//!   way → `exif_orientation_turns_a_source_image_upright`
 //! - a streamed texture's tail and chain from two encodes, a texture inside
 //!   the tail split, or stream accepted where it cannot apply →
 //!   `a_streamed_texture_cooks_its_mip_tail_and_its_whole_chain`
@@ -660,4 +663,64 @@ fn a_cut_off_is_the_texture_byte_through_the_alpha_factor_or_none() {
     let c = encoded_coverage(&b, &half, 179);
     assert_eq!((c.len(), c[0]), (3, 0.25), "4x4 to 1x1: {c:?}");
     assert!(c.iter().all(|&c| c >= 0.25), "{c:?}");
+}
+
+/// A source image is turned upright by its EXIF orientation (CSS
+/// Images 3 §5.1 `image-orientation: from-image`; EXIF 2.32 tag 0x0112):
+/// a 2 × 1 red-then-blue PNG carrying orientation 6 (turn 90°
+/// clockwise to view) decodes 1 × 2, red over blue; 8 (90° counter-
+/// clockwise) blue over red; 3 (180°) blue then red; 1 and none as
+/// stored.
+///
+/// Ways it could fail: the orientation ignored (2 × 1 as stored), or a
+/// quarter turn taken the wrong way (6 and 8 swapped).
+#[test]
+fn exif_orientation_turns_a_source_image_upright() {
+    fn crc(bytes: &[u8]) -> u32 {
+        let mut c = !0u32;
+        for &b in bytes {
+            c ^= u32::from(b);
+            for _ in 0..8 {
+                c = if c & 1 != 0 {
+                    0xedb8_8320 ^ (c >> 1)
+                } else {
+                    c >> 1
+                };
+            }
+        }
+        !c
+    }
+    let png = |orientation: Option<u8>| {
+        let mut out = Vec::new();
+        image::ImageEncoder::write_image(
+            image::codecs::png::PngEncoder::new(&mut out),
+            &[255, 0, 0, 255, 0, 0, 255, 255],
+            2,
+            1,
+            image::ExtendedColorType::Rgba8,
+        )
+        .unwrap();
+        if let Some(o) = orientation {
+            // A big-endian TIFF header and one IFD entry, as eXIf
+            // holds it (PNG 3 §11.3.6), after IHDR (8 + 25 bytes).
+            let exif = [
+                b'M', b'M', 0, 42, 0, 0, 0, 8, 0, 1, 0x01, 0x12, 0, 3, 0, 0, 0, 1, 0, o, 0, 0, 0,
+                0, 0, 0,
+            ];
+            let mut chunk = (exif.len() as u32).to_be_bytes().to_vec();
+            let body = [b"eXIf".as_slice(), &exif].concat();
+            chunk.extend_from_slice(&body);
+            chunk.extend_from_slice(&crc(&body).to_be_bytes());
+            out.splice(33..33, chunk);
+        }
+        og_cook::cook::decode_image(&out).unwrap()
+    };
+    let (red, blue) = ([255, 0, 0, 255], [0, 0, 255, 255]);
+    let pixels = |img: &og_cook::cook::DecodedImage| (img.width, img.height, img.rgba.clone());
+    let laid = |w, h, a: [u8; 4], b: [u8; 4]| (w, h, [a, b].concat());
+    assert_eq!(pixels(&png(None)), laid(2, 1, red, blue));
+    assert_eq!(pixels(&png(Some(1))), laid(2, 1, red, blue));
+    assert_eq!(pixels(&png(Some(6))), laid(1, 2, red, blue));
+    assert_eq!(pixels(&png(Some(8))), laid(1, 2, blue, red));
+    assert_eq!(pixels(&png(Some(3))), laid(2, 1, blue, red));
 }
