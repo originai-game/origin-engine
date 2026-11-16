@@ -1,0 +1,9 @@
+{
+  "simulation": "unchanged",
+  "fixed": [
+    {
+      "member": "ui",
+      "summary": "A document whose CSS rule body holds a character of more than one byte (`--icon: é`) no longer crashes its parse."
+    }
+  ]
+}

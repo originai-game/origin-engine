@@ -1076,7 +1076,10 @@ fn items(text: &str, base: usize) -> Result<Vec<Item<'_>>, Error> {
                 let (mut depth, mut quote) = (1, None);
                 let mut j = open + 1;
                 while j < text.len() && depth > 0 {
-                    let c = text[j..].chars().next().unwrap();
+                    // `c` starts at `at`: a comment opens there, not inside
+                    // a character of more than one byte.
+                    let at = j;
+                    let c = text[at..].chars().next().unwrap();
                     j += c.len_utf8();
                     if let Some(q) = quote {
                         if c == '\\' && j < text.len() {
@@ -1084,7 +1087,7 @@ fn items(text: &str, base: usize) -> Result<Vec<Item<'_>>, Error> {
                         } else if c == q {
                             quote = None;
                         }
-                    } else if text[j - 1..].starts_with("/*") {
+                    } else if text[at..].starts_with("/*") {
                         j = text[j + 1..]
                             .find("*/")
                             .map_or(text.len(), |e| j + 1 + e + 2);
