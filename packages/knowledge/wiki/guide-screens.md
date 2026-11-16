@@ -490,8 +490,10 @@ bars it does not hold, this guide does:
   otherwise; a style sets the treatment through the tag tokens.
 - **`contrast-color()`** is white or black, whichever reads more on its
   ground: at least 4.58:1 on any opaque ground. Use it for ink on a
-  colour the game or the player picks (a team colour, a dye); an accented
-  control (`accent-color`) inks its check mark the same way.
+  colour the game or the player picks (a team colour, a dye). The default
+  style's on-primary is `contrast-color()` of its primary, and an accented
+  control (`accent-color`, taken as the style's `--seed-primary`) inks its
+  check mark the same way.
 - **Colour vision**: colours that mean different things (the teams, the
   states success, warn, danger and info) stay 0.1 or more apart in OKLab
   (ΔEOK) under protanopia, deuteranopia and tritanopia, as

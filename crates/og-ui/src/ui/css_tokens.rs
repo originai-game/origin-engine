@@ -337,6 +337,45 @@ impl Ui {
         self.style.theme_read = Some(Box::new((source, self.env.theme)));
     }
 
+    /// The palette under CSS `accent-color: a` (CSS UI 4 §6.1): the style's
+    /// tokens read with `a` as their `--seed-primary`, so the primary and
+    /// its states are the accent as the style derives a seed (held out of
+    /// the band where neither ink reads, its hover and press a step either
+    /// way) and what a control draws on it is the style's on-primary of it.
+    /// Kept for each accent until the root inputs change.
+    pub(crate) fn accent_palette(&self, a: Srgba) -> Palette {
+        let media = self.media_context();
+        if let Some((_, _, p)) = self
+            .style
+            .accent_palettes
+            .borrow()
+            .iter()
+            .find(|(m, c, _)| *m == media && *c == a)
+        {
+            return *p;
+        }
+        let [r, g, b, _] = a.linear();
+        let seed = [(
+            "--seed-primary".to_owned(),
+            format!("color(srgb-linear {r} {g} {b})"),
+        )];
+        let root = self.compute_root_cascade(&seed).computed;
+        let context = crate::css_color::Context::of(&self.env.theme);
+        let mut p = self.env.theme.palette;
+        for name in ["primary", "primaryHover", "primaryActive", "onPrimary"] {
+            let read = root
+                .get(&format!("--{}", crate::css::values::kebab(name)))
+                .and_then(Option::as_ref)
+                .and_then(|v| crate::css_color::parse_str(v).ok())
+                .map(|c| c.resolve(&context));
+            if let (Some(c), Some(target)) = (read, p.get_mut(name)) {
+                *target = c;
+            }
+        }
+        self.style.accent_palettes.borrow_mut().push((media, a, p));
+        p
+    }
+
     fn read_root_tokens(&mut self) {
         let root = self.css_root_variables();
         let context = crate::css_color::Context::of(&self.env.theme);

@@ -803,7 +803,7 @@
     --seed-warn: #ff8a3d;
     --color-accent: oklch(from var(--color-accent-tone) calc(min(l, 0.39) * clamp(0, calc(calc(0.585 - l) * 1000000), 1) + max(l, 0.74) * calc(1 - clamp(0, calc(calc(0.585 - l) * 1000000), 1))) c h);
     --color-accent-active: oklch(from var(--color-accent) max(calc(l - 0.1), 0) c h);
-    --color-accent-fg: oklch(from var(--color-accent) calc(0.179 + 0.806 * clamp(0, calc(calc(0.585 - l) * 1000000), 1)) min(c, 0.004) h);
+    --color-accent-fg: contrast-color(var(--color-accent));
     --color-accent-hover: oklch(from var(--color-accent) calc(l + 0.07) c h);
     --color-accent-ink: color(from color(from oklch(from var(--seed-accent) calc(l + 0.04) c h) srgb clamp(0, r, 1) clamp(0, g, 1) clamp(0, b, 1)) xyz-d65 calc(x + calc(0.9505 - x) * min(1, calc(max(0, calc(0.42 - y)) / max(calc(1 - y), 0.001)))) calc(y + calc(1 - y) * min(1, calc(max(0, calc(0.42 - y)) / max(calc(1 - y), 0.001)))) calc(z + calc(1.089 - z) * min(1, calc(max(0, calc(0.42 - y)) / max(calc(1 - y), 0.001)))));
     --color-accent-soft: oklch(from var(--color-accent) l c h / 0.12);
@@ -950,7 +950,7 @@
     --seed-warn: #c2410c;
     --color-accent: oklch(from var(--color-accent-tone) calc(min(l, 0.39) * clamp(0, calc(calc(0.585 - l) * 1000000), 1) + max(l, 0.74) * calc(1 - clamp(0, calc(calc(0.585 - l) * 1000000), 1))) c h);
     --color-accent-active: oklch(from var(--color-accent) max(calc(l - 0.1), 0) c h);
-    --color-accent-fg: oklch(from var(--color-accent) calc(0.179 + 0.806 * clamp(0, calc(calc(0.585 - l) * 1000000), 1)) min(c, 0.004) h);
+    --color-accent-fg: contrast-color(var(--color-accent));
     --color-accent-hover: oklch(from var(--color-accent) calc(l + 0.12) c h);
     --color-accent-ink: color(from color(from oklch(from var(--seed-accent) calc(l - 0.02) c h) srgb clamp(0, r, 1) clamp(0, g, 1) clamp(0, b, 1)) xyz-d65 calc(x * min(1, calc(0.125 / y))) calc(y * min(1, calc(0.125 / y))) calc(z * min(1, calc(0.125 / y))));
     --color-accent-soft: oklch(from var(--color-accent) l c h / 0.06);

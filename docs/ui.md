@@ -452,8 +452,11 @@ line, `stable` is `auto`. `hyphens: none` drops soft hyphens.
 `-webkit-text-stroke`, `-webkit-text-fill-color` and `paint-order` outline
 and fill glyphs. Inherited properties pass down as custom properties do,
 re-resolving only their readers. `accent-color` inks checkboxes,
-switches, sliders, radios and progress, and what a control draws on its
-accent (a check mark) is `contrast-color()` of it; `caret-color` a
+switches, sliders, radios and progress as the style's primary with the
+accent as its `--seed-primary` (the style's tokens re-read with that seed:
+the default holds it out of the mid-lightness band and steps its hover and
+press), and what a control draws on its accent (a check mark) is the
+style's on-primary, `contrast-color()` of it; `caret-color` a
 field's caret; `color-scheme` picks `light-dark()`'s side.
 
 Colours take all of CSS Color 4 and 5 (`crates/og-ui/src/style/css_color.rs`).
@@ -1991,7 +1994,7 @@ Regenerate with `python3 scripts/css-coverage.py`; `--check` rejects document dr
 | --- | --- | --- | --- | --- |
 | `abs-sign` | Newly | Supported (scope →) | Pending parts-as-nodes | [`custom_properties::math_functions_and_constants_take_their_mathematical_values`](../crates/og-ui/tests/custom_properties.rs). abs(), sign() (of a negative and of 0), pi, e, infinity (under min()) and NaN (censored to 0, CSS Values 4 §10.9), pow() with a negative exponent, sqrt(), hypot(), log() with and without a base, exp(), sin()/cos()/tan() over deg, rad, grad, turn and a bare number, asin()/acos()/atan() and atan2() in the second quadrant, read through their mathematical values to ±0.5px; 101.6Q is 1in. og-css's own tests cover stepped round() and the other units. |
 | `absolute-positioning` | Widely | Supported (scope →) | Pending parts-as-nodes | [`css_layout::positioning_places_as_css_positioning_does`](../crates/og-ui/tests/css_layout.rs). Both builders assert relative flow reservation, asymmetric absolute insets, viewport-fixed corners, sticky wheel scrolling, anchor()/anchor-size(), position-area and position-try. Anchor animation and visibility are not covered. |
-| `accent-color` | Not Baseline | Supported (scope →) | Pending parts-as-nodes | [`css_paint::accent_color_inks_the_built_in_controls_and_what_they_draw_on_it_reads`](../crates/og-ui/tests/css_paint.rs). A checked box, a switch that is on, a chosen radio, a range's filled track and a progress fill draw the accent set in <style>, in the style attribute or on an ancestor, in both schemes and through a scheme switch (light-dark()); an unaccented sibling keeps the style's primary; the check mark reads at least 4.5:1 on a light and a dark accent. A pack's own ::part art over the accent is not covered. |
+| `accent-color` | Not Baseline | Supported (scope →) | Pending parts-as-nodes | [`css_paint::accent_color_inks_the_built_in_controls_and_what_they_draw_on_it_reads`](../crates/og-ui/tests/css_paint.rs). A checked box, a switch that is on, a chosen radio, a range's filled track and a progress fill draw the accent set in <style>, in the style attribute or on an ancestor, in both schemes and through a scheme switch (light-dark()); an unaccented sibling keeps the style's primary; the check mark reads at least 4.5:1 on a light and a dark accent. [`css_paint::accent_color_is_derived_as_the_styles_primary_seed`](../crates/og-ui/tests/css_paint.rs): the accent is the style's derivation of it as `--seed-primary`. A pack's own ::part art over the accent is not covered. |
 | `active-view-transition` | Newly | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
 | `align-content-block` | Widely | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |
 | `alignment-baseline` | Not Baseline | Missing | Pending parts-as-nodes | Output proof not yet reviewed; implementation status unverified. |

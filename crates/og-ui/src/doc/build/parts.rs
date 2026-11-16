@@ -590,12 +590,13 @@ impl Ui {
         {
             return cascade.clone();
         }
-        let cascade = Arc::new(self.compute_root_cascade());
+        let cascade = Arc::new(self.compute_root_cascade(&[]));
         *self.style.root_cascade.borrow_mut() = Some((context, cascade.clone()));
         cascade
     }
 
-    fn compute_root_cascade(&self) -> cascade::Cascade {
+    /// `extra`: root tokens laid over the style's (an accent's seed).
+    pub(crate) fn compute_root_cascade(&self, extra: &[(String, String)]) -> cascade::Cascade {
         let attributes = BTreeMap::from([(
             "data-scheme".into(),
             Value::String(if self.theme().scheme == crate::Scheme::Light {
@@ -617,6 +618,7 @@ impl Ui {
         let mut inline = self.style.root_tokens.clone();
         inline.extend_from_slice(&self.style.root_type_tokens[self.breakpoint() as usize]);
         inline.extend(self.env.theme.density_tokens(&self.env.viewport));
+        inline.extend_from_slice(extra);
         // The type ramp's tokens are authored at 100 %, and the player's
         // text scale grows them as it grows the ramp widgets draw with
         // (Theme::to_text_scale), so text sized by them (`font:

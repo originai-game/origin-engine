@@ -206,6 +206,12 @@ pub struct Style {
             std::sync::Arc<crate::doc::build::cascade::Cascade>,
         )>,
     >,
+    /// The palettes of the `accent-color`s drawn, each the root tokens
+    /// read with the accent as `--seed-primary` ([`crate::Ui::accent_palette`]),
+    /// for one media context. Derived from the root inputs: dropped with
+    /// the root cascade.
+    pub(crate) accent_palettes:
+        std::cell::RefCell<Vec<(crate::css::media::Context, Srgba, crate::Palette)>>,
     /// The theme the root tokens were last read into
     /// ([`crate::Ui::read_theme_tokens`]) and what it was read from. The
     /// read also depends on the root inputs above and on the fonts: a
@@ -283,6 +289,7 @@ impl Style {
     /// The part rules, their sheet or the root tokens were written.
     pub fn root_inputs_changed(&mut self) {
         *self.root_cascade.get_mut() = None;
+        self.accent_palettes.get_mut().clear();
         self.theme_read = None;
         self.part_styles.get_mut().clear();
     }
@@ -302,14 +309,14 @@ impl Paint {
         }
     }
 
-    /// Readies the environment's theme with `accent` (CSS `accent-color`)
-    /// as its primary ink for the element about to be painted; whether it
-    /// has one ([`PaintCtx::accented`]). Only an accented element copies
-    /// the theme.
-    pub(crate) fn accent(&mut self, env: &Env, accent: Option<Srgba>) -> bool {
-        let Some(a) = accent else { return false };
+    /// Readies the environment's theme with `palette`, an `accent-color`'s
+    /// ([`crate::Ui::accent_palette`]), for the element about to be
+    /// painted; whether it has one ([`PaintCtx::accented`]). Only an
+    /// accented element copies the theme.
+    pub(crate) fn accent(&mut self, env: &Env, palette: Option<crate::Palette>) -> bool {
+        let Some(palette) = palette else { return false };
         *self.accented = env.theme;
-        self.accented.palette = env.theme.palette.with_accent(a);
+        self.accented.palette = palette;
         true
     }
 }

@@ -346,7 +346,7 @@ impl Ui {
 
     fn role(&self, name: &str) -> C {
         if let Some(a) = self.front.accent
-            && let Some(c) = self.env.theme.palette.with_accent(a).get(name)
+            && let Some(c) = self.accent_palette(a).get(name)
             && matches!(
                 name,
                 "primary" | "primaryHover" | "primaryActive" | "onPrimary"

@@ -422,7 +422,7 @@ impl Ui {
                 let theme = match ui.tree.nearest(i, |n| n.accent) {
                     Some(a) => {
                         accented = Theme {
-                            palette: theme.palette.with_accent(a),
+                            palette: ui.accent_palette(a),
                             ..theme
                         };
                         &accented
@@ -466,9 +466,11 @@ impl Ui {
                     kept_now = true;
                 } else if inverse.is_some() {
                     // CSS accent-color: its controls' primary ink.
-                    let accented = self
-                        .paint
-                        .accent(&self.env, self.tree.nearest(i, |n| n.accent));
+                    let palette = self
+                        .tree
+                        .nearest(i, |n| n.accent)
+                        .map(|a| self.accent_palette(a));
+                    let accented = self.paint.accent(&self.env, palette);
                     self.out.stats.painted += 1;
                     // Painted where nothing places it, at full opacity and
                     // unclipped: `place_commands` places them, so they are

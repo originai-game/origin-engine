@@ -1,0 +1,12 @@
+{
+  "fixed": [
+    {
+      "member": "accent-color",
+      "summary": "Moves frames: an accented control's primary, hover, press and on-primary are the style's derivation of the accent as its --seed-primary (its tokens re-read with that seed), not the accent as given with no hover or press step. In the default style an accent in the mid-lightness band where neither ink reads is held out of it, as a seed is (OKLCH 0.6 is drawn at 0.74 with black on it)."
+    },
+    {
+      "member": "Default style on-primary",
+      "summary": "Moves frames: --color-accent-fg (--on-primary, a primary button's label) is contrast-color(var(--color-accent)): exact black or white, at least 4.58:1 on the primary and on its hover and press, instead of #111113 and #fafafd."
+    }
+  ]
+}

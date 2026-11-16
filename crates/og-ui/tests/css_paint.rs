@@ -392,6 +392,40 @@ fn accent_color_inks_the_built_in_controls_and_what_they_draw_on_it_reads() {
     }
 }
 
+/// An `accent-color` is a seed: the control's primary and what it draws on
+/// it are the style's derivation of `--seed-primary` with the accent as the
+/// seed. The default style holds its primary out of the band of lightness
+/// where neither ink reads, so a mid blue (OKLCH 0.6) is drawn at 0.74 with
+/// black on it, in either scheme. Fails when the accent is painted as given.
+#[test]
+fn accent_color_is_derived_as_the_styles_primary_seed() {
+    let want = css_color::parse_str("oklch(0.74 0.12 250)")
+        .unwrap()
+        .literal()
+        .unwrap();
+    for scheme in [Scheme::Dark, Scheme::Light] {
+        let mut d = Doc::new(
+            r#"<meta name="component" content="t">
+<column><input type="checkbox" id="Blue" checked style="accent-color: oklch(0.6 0.12 250)" /></column>"#,
+            &[],
+        );
+        d.ui.set_theme(Theme::new(scheme));
+        for _ in 0..120 {
+            d.step(InputFrame::default());
+        }
+        let paints = paints_in(&d.ui, &d.get("Blue"));
+        assert!(
+            paints.iter().any(|&c| same(c, want)),
+            "{scheme:?}: no {want:?} in {paints:?}"
+        );
+        let tick = tick_in(&d.ui, &d.get("Blue"));
+        assert!(
+            tick.contrast(want) >= 4.5,
+            "{scheme:?}: {tick:?} on {want:?}"
+        );
+    }
+}
+
 /// CSS `caret-color` paints a focused field's caret: its own colour, one it
 /// inherits, `currentColor` as the field's text colour, and `auto` the
 /// style's primary.

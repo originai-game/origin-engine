@@ -126,8 +126,8 @@ Light and dark are peers; dark is `data-theme="dark"` on any element, never
 - **The primary is neutral** (every game brings its own colours, so the
   default chrome carries no hue). `accent`,
   `accent-hover` and `accent-active` are the high-contrast neutral: a
-  near-white fill (#e8e8ed) with dark ink (`accent-fg` #111113) on dark
-  surfaces, a near-black fill with light ink on light ones. It marks the
+  near-white fill (#e8e8ed) with black ink (`accent-fg`, its `contrast-color()`) on dark
+  surfaces, a near-black fill with white ink on light ones. It marks the
   **one** primary action per surface (Start, Create, Publish, Play, the
   composer's send) by fill and weight, never by colour; secondaries stay on
   the translucent `fill`. Emphasised text uses `accent-ink` (the strongest

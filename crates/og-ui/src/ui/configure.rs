@@ -126,6 +126,7 @@ impl Ui {
                 root_tokens: Vec::new(),
                 root_type_tokens: Default::default(),
                 root_cascade: Default::default(),
+                accent_palettes: Default::default(),
                 theme_read: None,
                 scene_text: Default::default(),
                 part_commits: Default::default(),
