@@ -453,6 +453,13 @@ impl Ui {
         if n.content_slot != NONE {
             return;
         }
+        // A keycap (`<kbd>`, a badge) draws its own cap and picked its ink
+        // to read on it: its text is not on the button's plate.
+        if n.part()
+            .is_some_and(|p| p.class == Some(crate::tokens::ElementClass::Badge))
+        {
+            return;
+        }
         if let Some(part) = n
             .part()
             .or_else(|| n.el.frame.map(crate::StylePart::part_ref))

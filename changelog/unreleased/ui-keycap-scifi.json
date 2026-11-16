@@ -1,0 +1,8 @@
+{
+  "fixed": [
+    {
+      "member": "<kbd> inside a button",
+      "summary": "Moves frames: a keycap inside a button keeps the ink it picks to read on its own cap; the button's content ink no longer restamps it. On a primary button the cap's glyph wore the button's on-primary ink on the cap (scifi's draft Confirm X and rhythm results Next Esc, 2.51:1 dark and 1.94:1 light; now 4.62 and 4.60)."
+    }
+  ]
+}

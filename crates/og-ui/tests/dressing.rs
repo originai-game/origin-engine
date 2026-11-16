@@ -2718,6 +2718,43 @@ fn a_keycap_reads_on_a_css_gradient_ground() {
     );
     d.step(InputFrame::default());
     d.step(InputFrame::default());
+    let (ratio, _) = keycap_contrast(&d, face);
+    assert!(ratio >= 4.5, "the cap reads {ratio:.2}:1");
+}
+
+/// A keycap inside a button draws its own cap and keeps the ink it picked
+/// for it: the button's ink is for text on the button's plate. Fails when
+/// the button's content pass restamps the cap's glyph with the button's
+/// ink (scifi's on-primary on its dark cap, 2.51:1; here a pack's pale
+/// primary ink on the dark theme's pale cap on a primary plate).
+#[test]
+fn a_keycap_in_a_button_keeps_its_own_ink() {
+    let mut ui = ui_with_font(test_font());
+    ui.set_theme(Theme::dark());
+    let pack = og_ui::style_pack::StylePack::parse(
+        "styles/test",
+        vec![(
+            "styles/test/main.css".into(),
+            ":root { --button-primary-ink: #dcdce0; }".into(),
+        )],
+    )
+    .unwrap();
+    ui.set_style_pack(&pack).unwrap();
+    let mut d = Doc::with_ui(
+        ui,
+        r#"<meta name="component" content="t">
+<button variant="primary"><kbd>K</kbd><span>Go</span></button>"#,
+    );
+    for _ in 0..30 {
+        d.step(InputFrame::default());
+    }
+    let (ratio, ink) = keycap_contrast(&d, Theme::dark().palette.backdrop);
+    assert!(ratio >= 4.5, "the cap reads {ratio:.2}:1 in {ink:?}");
+}
+
+/// The keycap `K`'s ink and its contrast on what the frame fills under its
+/// centre, over `below`.
+fn keycap_contrast(d: &Doc, below: Srgba) -> (f32, Srgba) {
     let items = &d.ui.frame().items;
     let (k, ink, centre) = items
         .iter()
@@ -2742,7 +2779,7 @@ fn a_keycap_reads_on_a_css_gradient_ground() {
     let over = |top: [f32; 4], below: [f32; 3]| -> [f32; 3] {
         [0, 1, 2].map(|i| top[i] * top[3] + below[i] * (1.0 - top[3]))
     };
-    let l = face.linear();
+    let l = below.linear();
     let mut ground = [l[0], l[1], l[2]];
     for it in &items[..k] {
         if let Some((rect, c)) = it.cmd.filled()
@@ -2755,6 +2792,8 @@ fn a_keycap_reads_on_a_css_gradient_ground() {
         }
     }
     let srgb = |c: [f32; 3]| Srgba::from_linear([c[0], c[1], c[2], 1.0]);
-    let ratio = srgb(over(ink, ground)).contrast(srgb(ground));
-    assert!(ratio >= 4.5, "the cap reads {ratio:.2}:1");
+    (
+        srgb(over(ink, ground)).contrast(srgb(ground)),
+        Srgba::from_linear(ink),
+    )
 }
