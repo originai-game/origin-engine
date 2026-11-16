@@ -935,6 +935,49 @@ fn decorations_skip_the_spaces_skip_spaces_names() {
     assert!(spans_near(&l, &[(28.8, 79.84), (112.64, 160.44)]), "{l:?}");
 }
 
+/// CSS Text Decoration 4 §2.1: `spelling-error` and `grammar-error` are
+/// the UA's own error lines, wavy underlines in the theme's danger and
+/// success colours, which the author's style, colour, thickness, offset
+/// and position do not change (§2.8, §2.10). `blink` may simply not
+/// blink: it draws no line, and beside `underline` only the underline.
+///
+/// Ways it could fail: the values rejected, the author's solid blue line
+/// drawn instead of the UA's wavy one, the error line moved by the
+/// author's offset, or blink drawn as some line.
+#[test]
+fn error_lines_are_the_uas_and_blink_draws_none() {
+    let d = doc(
+        r#"<p id="S">misspelt</p><p id="G">bad grammar</p><p id="P">plain</p><p id="B">blink</p><p id="BU">blink</p>"#,
+        "p { margin-bottom: 16px; text-decoration-color: #0000ff; text-decoration-style: solid; text-underline-offset: 10px; }
+#S { text-decoration-line: spelling-error; } #G { text-decoration: grammar-error; }
+#P { text-decoration-line: underline; } #B { text-decoration-line: blink; } #BU { text-decoration: underline blink #0000ff; }",
+    );
+    let palette = d.ui.theme().palette;
+    let baseline = |id| lines(&d, id)[0].baseline;
+    for (id, ink) in [("S", palette.danger), ("G", palette.success)] {
+        let r = rules(&d, id);
+        // A wave is many short dots, not one rule, all in the UA's colour,
+        // its band starting 0.12 em (1.68px) below the baseline.
+        assert!(
+            r.len() > 5 && r.iter().all(|(_, c)| near(*c, ink)),
+            "{id}: {r:?}"
+        );
+        let top = r.iter().map(|(q, _)| q.y).fold(f32::MAX, f32::min) - baseline(id);
+        assert!(
+            (0.0..4.0).contains(&top),
+            "{id}: not at the author's 10px: {top}"
+        );
+    }
+    let p = rules(&d, "P");
+    assert!(
+        p.len() == 1 && near(p[0].1, Srgba::rgb(0, 0, 255)) && p[0].0.y - baseline("P") == 10.0,
+        "the author's line elsewhere: {p:?}"
+    );
+    assert!(rules(&d, "B").is_empty(), "{:?}", rules(&d, "B"));
+    assert_eq!(drawn(&d, "B"), "blink");
+    assert_eq!(rules(&d, "BU").len(), 1);
+}
+
 fn near(a: [f32; 4], b: Srgba) -> bool {
     crate::support::near(a, b)
 }

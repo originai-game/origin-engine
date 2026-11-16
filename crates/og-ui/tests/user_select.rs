@@ -231,6 +231,7 @@ fn selection_ink_lines_and_shadows_cover_only_the_selected_run() {
     let red = Srgba::rgb(255, 0, 0).linear();
     let near = |a: [f32; 4], b: [f32; 4]| a.iter().zip(b).all(|(x, y)| (x - y).abs() < 0.02);
     let (mut red_clips, mut other_clips, mut lines, mut shadows) = (vec![], vec![], vec![], 0);
+    let mut red_line = (0.0, 0.0);
     for item in &rig.ui.frame().items {
         let (cmd, shadowed) = match &item.cmd {
             DrawCmd::StyledText { text, effects } => (
@@ -247,9 +248,12 @@ fn selection_ink_lines_and_shadows_cover_only_the_selected_run() {
                 color,
                 clip,
                 bounds,
+                baseline,
+                size,
                 ..
             } if bounds.y >= e.y - 1.0 && bounds.y < e.y + e.height => {
                 if near(*color, red) {
+                    red_line = (*baseline, *size);
                     red_clips.push(*clip);
                     shadows += shadowed as usize;
                 } else {
@@ -277,11 +281,19 @@ fn selection_ink_lines_and_shadows_cover_only_the_selected_run() {
         other_clips.iter().any(|c| c.x >= run.right() - 0.5),
         "{other_clips:?}"
     );
-    // One green underline under the word, not the line.
+    // One green underline under the word, not the line: an auto underline
+    // (CSS Text Decoration 4 §2.4, §2.8), its top 0.12 em below the
+    // baseline and 0.07 em thick, each snapped to the pixel grid.
     assert_eq!(lines.len(), 1, "{lines:?}");
     assert!(
         (lines[0].x - run.x).abs() < 1.0 && lines[0].width < e.width * 0.6,
         "{lines:?}"
+    );
+    let (baseline, size) = red_line;
+    assert!(
+        (lines[0].y - baseline - size * 0.12).abs() <= 1.0
+            && (lines[0].height - (size * 0.07).max(1.0)).abs() <= 1.0,
+        "{lines:?} under a {size}px baseline at {baseline}"
     );
 }
 
