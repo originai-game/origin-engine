@@ -66,6 +66,11 @@ and their pending L4 review are recorded explicitly in the world sheet.
 
 | Purpose | Documents |
 |---|---|
+| Item slots (rarity, count, cooldown and selection) | `base/item-slot` |
+| Player portraits (fallback, level and presence) | `base/avatar` |
+| Read-only currency balances, capacity and income | `base/currency` |
+| Crafting recipes, trade stock and loot collection | `panels/crafting`, `panels/trade`, `panels/loot` |
+| Conversation history and replay | `panels/conversation-backlog` |
 | Ability bars, cooldowns and buffs | `ability-bar`, `ability-slot`, `cooldown`, `status-grid` |
 | Meters and resource bars | `stat-bar`, `orb-meter`, `radial-meter` |
 | Progress and loading placeholders | `progress-bar`, `progress-ring`, `skeleton-group`, `spinner` |
@@ -126,6 +131,7 @@ pressed, focus-visible and disabled states (docs/ui.md §3.2).
 | `AbilitySlot` (`ability-slot.svelte`) | `frame` (`.ultimate`), `cell` (a button: `.active` `.cooling` `.full` `.locked` `.off` `.tinted` `:disabled`), `well`, `icon`, `ultimate`, `figure`, `percent`, `badge` (`.short`), `track`, `fill`, `label` |
 | `ActionButton` (`action-button.svelte`) | `disc` (a button: `.primary` `:disabled`), `charge`, `icon`, `text` |
 | `ActionHints` (`action-hints.svelte`) | `frame`, `row` (a button), `cap`, `label` |
+| `Avatar` (`base/avatar.svelte`) | `frame`, `picture`, `clip`, `portrait`, `fallback`, `spinner`, `ring`, `level`, `name`, `status`, `mark`, `loading` |
 | `Breadcrumbs` (`breadcrumbs.svelte`) | `frame`, `crumb` (`.current`), `icon`, `link`, `current` (`[aria-current=page]`), `separator` |
 | `Carousel` (`carousel.svelte`) | `frame`, `cell`, `art`, `picture`, `well`, `title`, `body`, `prev` (a button: `:disabled` with fewer than two pages), `next` (a button: `:disabled` with fewer than two pages), `dot`, `lit` |
 | `Celebration` (`celebration.svelte`) | `ring`, `shell`, `stage`, `rays`, `halo`, `title`, `value` |
@@ -138,6 +144,7 @@ pressed, focus-visible and disabled states (docs/ui.md §3.2).
 | `HoldButton` (`hold-button.svelte`) | `base` (a button: `.primary` `.secondary` `:disabled`), `icon`, `label`, `hint` |
 | `HudTimer` (`hud-timer.svelte`) | `frame` (`.critical` `.paused` `.warn`), `label`, `ring`, `figure` |
 | `InteractionPrompt` (`interaction-prompt.svelte`) | `frame` (`.disabled` `:disabled`), `key`, `verb`, `name`, `reason` (`:disabled`) |
+| `ItemSlot` (`base/item-slot.svelte`) | `frame`, `cell` (a button: `[aria-pressed]` `:disabled`), `icon`, `loading`, `count`, `cooldown`, `remaining`, `key`, `state`, `name` |
 | `LootLabel` (`loot-label.svelte`) | `tag` (a button: `.epic` `.legendary` `.rare` `.uncommon`), `name`, `count` |
 | `Menu` (`menu.svelte`) | `frame`, `row` (a button: `.danger` `[aria-checked]` `:disabled`), `heading`, `separator`, `icon`, `check`, `dot`, `shortcut`, `chevron` |
 | `MinimapView` (`minimap-view.svelte`) | `bezel`, `glass` (a button), `grid`, `marker` (`.ally` `.enemy` `.loot` `.objective` `.ping`), `player` (`.turning`), `north`, `badge` |
