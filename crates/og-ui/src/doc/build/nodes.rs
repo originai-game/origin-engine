@@ -534,16 +534,14 @@ impl Ui {
     ) -> Option<String> {
         let mut resp = crate::ui::Response::default();
         // A dialog's or a disclosure's `open`: the bound store's, else the
-        // literal's until the player toggles it (kept as widget memory).
+        // literal's until the player toggles it (its own open state).
         let open_now = |ui: &mut Ui| -> bool {
             let literal = r.flag("open");
             if bound(n, "open") {
                 literal
             } else {
-                ui.memory(
-                    &format!("{}~doc-open", id.as_str()),
-                    f64::from(u8::from(literal)),
-                ) > 0.0
+                let own = ui.docs.state().memory.open.get(&key).copied();
+                own.unwrap_or(literal)
             }
         };
         let dialog = crate::widgets::DialogDesc {
@@ -796,10 +794,9 @@ impl Ui {
                 self.docs.state_mut().happened.push(When::Close);
             }
             if !bound(n, "open") {
-                self.remember(
-                    &format!("{}~doc-open", id.as_str()),
-                    f64::from(u8::from(open)),
-                );
+                let state = self.docs.state_mut();
+                state.memory.open.insert(key, open);
+                state.edited.insert(key);
             }
             self.docs.write_back(b, n, "open", json!(open));
         }
@@ -1411,7 +1408,13 @@ impl Ui {
         styled: &Resolved,
     ) -> crate::ui::Response {
         let mut resp;
-        let mut s = r.str("input").unwrap_or_default().to_string();
+        // Without `bind:value` the field keeps its own value once the
+        // player edits it, as an HTML input does.
+        let own = !bound(n, "input");
+        let mut s = own
+            .then(|| self.docs.state().memory.values.get(&key).cloned())
+            .flatten()
+            .unwrap_or_else(|| r.str("input").unwrap_or_default().to_string());
         let input_type = r
             .str("type")
             .and_then(crate::InputType::from_name)
@@ -1514,6 +1517,11 @@ impl Ui {
             }
         }
         if resp.changed {
+            if own {
+                let state = self.docs.state_mut();
+                state.memory.values.insert(key, s.clone());
+                state.edited.insert(key);
+            }
             self.docs.write_back(b, n, "input", json!(s));
         }
         // HTML bars disabled and read-only controls from validation.

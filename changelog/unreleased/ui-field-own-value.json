@@ -1,0 +1,8 @@
+{
+  "fixed": [
+    {
+      "member": "<input> without bind:value",
+      "summary": "A text field without `bind:value` keeps what the player types, as an HTML input does. Before, it dropped the text every frame, so the field stayed empty and `:invalid`, `:user-invalid` and `:user-valid` never saw the typed value. The typed value is carried by a UI snapshot."
+    }
+  ]
+}

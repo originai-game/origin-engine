@@ -352,6 +352,8 @@ impl crate::ui::Docs {
             })).collect::<Vec<_>>(),
             "states": m.states.iter().map(|((k, g), s)| json!([k.to_string(), g, s])).collect::<Vec<_>>(),
             "last": m.last.iter().map(|((k, i), v)| json!([k.to_string(), i, v])).collect::<Vec<_>>(),
+            "values": m.values.iter().map(|(k, v)| json!([k.to_string(), v])).collect::<Vec<_>>(),
+            "open": m.open.iter().map(|(k, v)| json!([k.to_string(), v])).collect::<Vec<_>>(),
         })
     }
 }

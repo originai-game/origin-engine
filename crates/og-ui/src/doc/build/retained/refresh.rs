@@ -29,6 +29,13 @@ impl RetainedHost {
                 facts.insert(spec.name, value);
             }
         }
+        let own = &ui.docs.state().memory;
+        if let Some(value) = own.values.get(&identity.key) {
+            facts.insert("input", json!(value));
+        }
+        if let Some(open) = own.open.get(&identity.key) {
+            facts.insert("open", json!(open));
+        }
         let flag = |name| facts.get(name).is_some_and(truthy);
         let num = |name| facts.get(name).and_then(Value::as_f64);
         // A field's text its `type` or its constraints refuse is invalid.
@@ -179,6 +186,18 @@ impl RetainedHost {
         self.restore_instances(ui, env)?;
         self.refresh_collections(ui, env)?;
         self.sync_interaction(ui)?;
+        for key in std::mem::take(&mut ui.docs.state_mut().edited) {
+            let Some(node) = self.by_key.get(&key).cloned() else {
+                continue;
+            };
+            let Some(element) = self.elements.remove(&node) else {
+                continue;
+            };
+            let result = self.sync_facts(ui, &element, env);
+            self.elements.insert(node.clone(), element);
+            result?;
+            self.dirty.insert(node);
+        }
         let presentation_changed =
             std::mem::replace(&mut self.presentation_epoch, ui.tree.invalidation().epoch)
                 != ui.tree.invalidation().epoch;

@@ -472,6 +472,12 @@ fn attr_test(op: AttrSelectorOperator, value: &Atom, case: ParsedCaseSensitivity
     }
 }
 
+/// Whether an element reflects its open state as its `open` attribute, as
+/// HTML's `<details>` and `<dialog>` do whoever opens them.
+pub(crate) fn reflects_open(tag: &str) -> bool {
+    matches!(tag, "details" | "dialog")
+}
+
 /// Whether a component needs the instantiated sibling order or children.
 pub fn structural_component(c: &Component) -> bool {
     match c {
@@ -793,7 +799,20 @@ fn condition(
                 | Component::AttributeInNoNamespace { .. }
                 | Component::AttributeOther(_) => {
                     let (name, test) = attribute(c).expect("an attribute selector");
-                    attribute_test(name, test)?
+                    if name == "open" && reflects_open(tag) {
+                        // HTML reflects a disclosure's or a dialog's open
+                        // state as its `open` attribute (value "").
+                        if test.is_none_or(|t| t.test("")) {
+                            Expr::InteractionAt {
+                                node: index,
+                                state: InteractionState::Open,
+                            }
+                        } else {
+                            Expr::Lit(false.into())
+                        }
+                    } else {
+                        attribute_test(name, test)?
+                    }
                 }
                 Component::NonTSPseudoClass(PseudoClass::AnyLink) => {
                     if matches!(tag.as_str(), "a" | "area") {

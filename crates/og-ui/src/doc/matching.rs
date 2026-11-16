@@ -246,6 +246,13 @@ impl<'a, T: Tree> Element for DocElement<'a, T> {
         if self.foreign() {
             return false;
         }
+        if name.0 == "open" && super::selectors::reflects_open(self.facts.tag) {
+            return self.facts.states.contains(&InteractionState::Open)
+                && match operation {
+                    AttrSelectorOperation::Exists => true,
+                    operation => operation.eval_str(""),
+                };
+        }
         match (self.facts.attributes.get(&name.0), operation) {
             (None | Some(Value::Null), _) => false,
             // A bound boolean attribute is present while true.
@@ -656,6 +663,10 @@ impl Profile {
             | Component::AttributeOther(_) => {
                 if let Some((name, _)) = super::selectors::attribute(c) {
                     self.attributes.insert(name.into());
+                    // `[open]` reads the open state it reflects.
+                    if name == "open" {
+                        self.states.insert(InteractionState::Open);
+                    }
                 }
             }
             Component::NonTSPseudoClass(pc) => match pc {

@@ -289,3 +289,106 @@ fn modal_matches_only_a_modal_dialog() {
         (50.0, 10.0)
     );
 }
+
+/// A field without `bind:value` keeps what the player types as its own
+/// value, as an HTML input does: it shows it, its validity pseudo-classes
+/// read it, and a snapshot carries it.
+///
+/// Ways it could fail: the typed text dropped each frame (the field
+/// re-read its `value` attribute), validity read from the attribute and
+/// not the typed text, the value lost on restore.
+#[test]
+fn an_unbound_field_keeps_its_own_value() {
+    let doc = r##"<meta name="component" content="own">
+<column id="Root">
+  <input id="Mail" type="email" required value="">
+  <div class="probe" id="Invalid"></div><div class="probe" id="Bad"></div><div class="probe" id="Good"></div>
+</column>
+<style>
+.probe { width: 10px; height: 4px; }
+input { width: 160px; height: 30px; }
+#Mail:invalid ~ #Invalid, #Mail:user-invalid ~ #Bad, #Mail:user-valid ~ #Good { width: 50px; }
+</style>"##;
+    let mut d = Doc::new(doc, &[]);
+    let w = |d: &Doc| ["Invalid", "Bad", "Good"].map(|id| d.get(id).width);
+    assert_eq!(w(&d), [50.0, 10.0, 10.0], "empty and required, untouched");
+    d.click("Mail");
+    let typed = |d: &mut Doc, text: &str| {
+        d.step(InputFrame {
+            text: text.into(),
+            ..InputFrame::default()
+        });
+        d.step(InputFrame::default());
+        d.step(InputFrame::default());
+    };
+    typed(&mut d, "x");
+    assert_eq!(d.a11y("Mail").value, "x");
+    assert_eq!(w(&d), [50.0, 50.0, 10.0], "refused text");
+    typed(&mut d, "@y.z");
+    assert_eq!(d.a11y("Mail").value, "x@y.z");
+    assert_eq!(w(&d), [10.0, 10.0, 50.0], "taken text");
+    let saved = d.ui.save_state();
+    typed(&mut d, "!");
+    assert_eq!(w(&d), [50.0, 50.0, 10.0], "refused again");
+    d.ui.restore_state(&saved).unwrap();
+    d.step(InputFrame::default());
+    d.step(InputFrame::default());
+    assert_eq!(d.a11y("Mail").value, "x@y.z", "restored");
+    assert_eq!(w(&d), [10.0, 10.0, 50.0], "restored validity");
+}
+
+/// `[open]` on a `<details>` or `<dialog>` follows its open state however
+/// it changes, as HTML reflects it: the player toggling an unbound one, a
+/// `bind:open` store, and the player closing a literal `open`. Both the
+/// lowered rule (`details[open] { width }`) and the one matched on the
+/// instantiated tree (`details[open] + .probe`) read it.
+///
+/// Ways it could fail: `[open]` read from the written attribute only (a
+/// bound or a toggled element never matching, a closed literal one still
+/// matching), the toggled state lost on restore.
+#[test]
+fn the_open_attribute_reflects_the_open_state() {
+    let doc = r##"<meta name="component" content="open">
+<column id="Root">
+  <details id="Own"><summary>a</summary><p>x</p></details><div class="probe" id="OwnNext"></div>
+  <details id="Bound" bind:open={$b}><summary>b</summary><p>x</p></details><div class="probe" id="BoundNext"></div>
+  <details id="Lit" open><summary>c</summary><p>x</p></details><div class="probe" id="LitNext"></div>
+  <dialog id="Dlg" bind:open={$d}><p>d</p></dialog><div class="probe" id="DlgNext"></div>
+</column>
+<style>
+.probe { width: 10px; height: 4px; }
+details { width: 100px; }
+details[open] { width: 140px; }
+details[open] + .probe, dialog[open] + .probe { width: 50px; }
+</style>"##;
+    let mut d = Doc::new(doc, &[("b", json!(false)), ("d", json!(false))]);
+    let w = |d: &Doc, id: &str| (d.get(id).width, d.get(&format!("{id}Next")).width);
+    assert_eq!(
+        [w(&d, "Own"), w(&d, "Bound"), w(&d, "Lit")],
+        [(100.0, 10.0), (100.0, 10.0), (140.0, 50.0)]
+    );
+    assert_eq!(d.get("DlgNext").width, 10.0);
+    d.click("Own/Summary");
+    assert_eq!(w(&d, "Own"), (140.0, 50.0), "the player opened it");
+    d.click("Bound/Summary");
+    assert_eq!(
+        (d.read("b"), w(&d, "Bound")),
+        (json!(true), (140.0, 50.0)),
+        "bind:open"
+    );
+    d.click("Lit/Summary");
+    assert_eq!(
+        w(&d, "Lit"),
+        (100.0, 10.0),
+        "the player closed a literal open"
+    );
+    d.set("d", json!(true));
+    assert_eq!(d.get("DlgNext").width, 50.0, "a bound dialog");
+    let saved = d.ui.save_state();
+    d.click("Own/Summary");
+    assert_eq!(w(&d, "Own"), (100.0, 10.0), "closed again");
+    d.ui.restore_state(&saved).unwrap();
+    d.step(InputFrame::default());
+    d.step(InputFrame::default());
+    assert_eq!(w(&d, "Own"), (140.0, 50.0), "restored open");
+}

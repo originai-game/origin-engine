@@ -101,6 +101,14 @@ pub struct DocMemory {
     pub last: BTreeMap<(u64, usize), Value>,
     /// The states triggers set (`on click state selection on`), by element key and group.
     pub states: BTreeMap<(u64, String), String>,
+    /// A text field's own value once the player edited it, by element key,
+    /// when no `bind:value` holds it: HTML's dirty value, which the field
+    /// shows and its selectors (`:invalid`, `:user-invalid`) read.
+    pub values: BTreeMap<u64, String>,
+    /// A `<details>` or `<dialog>`'s own open state once the player toggled
+    /// it, by element key, when no `bind:open` holds it: what it shows and
+    /// what `:open` and `[open]` read.
+    pub open: BTreeMap<u64, bool>,
 }
 
 impl DocMemory {
@@ -138,6 +146,22 @@ impl DocMemory {
                             s[2].clone(),
                         )
                     })
+                    .collect()
+            })
+            .unwrap_or_default();
+        self.values = v["values"]
+            .as_array()
+            .map(|a| {
+                a.iter()
+                    .map(|s| (key(&s[0]), s[1].as_str().unwrap_or_default().to_string()))
+                    .collect()
+            })
+            .unwrap_or_default();
+        self.open = v["open"]
+            .as_array()
+            .map(|a| {
+                a.iter()
+                    .map(|s| (key(&s[0]), s[1].as_bool().unwrap_or_default()))
                     .collect()
             })
             .unwrap_or_default();

@@ -33,6 +33,10 @@ pub struct DocState {
     pub popovers: BTreeMap<u64, PopoverLink>,
     /// The id the last `#fragment` link named: CSS `:target`.
     pub target: Option<String>,
+    /// The fields and disclosures whose own value or open state the player
+    /// changed this frame ([`DocMemory::values`], [`DocMemory::open`]):
+    /// their selector facts are read again.
+    pub edited: BTreeSet<u64>,
     /// Events queued for code (screens built at the end of a tick reach
     /// code the next).
     pub queued: Vec<DocEvent>,
@@ -111,5 +115,23 @@ impl DocState {
             .retain(|k, _| built(*k) || retained.keeps_memory(*k));
         self.media_sent
             .retain(|k, _| built(*k) || retained.keeps_memory(*k));
+        let retained = &self.memory.retained;
+        let kept: Vec<u64> = self
+            .memory
+            .values
+            .keys()
+            .copied()
+            .filter(|k| built(*k) || retained.keeps_memory(*k))
+            .collect();
+        self.memory.values.retain(|k, _| kept.contains(k));
+        let retained = &self.memory.retained;
+        let kept: Vec<u64> = self
+            .memory
+            .open
+            .keys()
+            .copied()
+            .filter(|k| built(*k) || retained.keeps_memory(*k))
+            .collect();
+        self.memory.open.retain(|k, _| kept.contains(k));
     }
 }
