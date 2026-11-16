@@ -36,7 +36,7 @@
 
 <style>
 #Play, #Play::part(base) { height: var(--control-lg); }
-#Screen { width: stretch; height: stretch; padding: var(--space-xxl); gap: var(--space-xl); }
+#Screen { width: stretch; height: stretch; padding: var(--space-xxl); gap: var(--space-xl); min-height: 0; }
 @media (width < 600px), (height < 600px) {
 #Screen { padding: var(--space-lg); gap: var(--space-md); }
 }
@@ -45,7 +45,7 @@
 @media (width < 600px), (height < 600px) {
 #Title { font-size: var(--type-xl-size); }
 }
-#Scroll { width: stretch; height: stretch; }
+#Scroll { width: stretch; flex: 1; min-height: 0; }
 #Modes { width: stretch; gap: var(--space-lg); grid-template-columns: 1fr 1fr 1fr; }
 @media (600px <= width < 1024px) and (height >= 600px) {
 #Modes { grid-template-columns: 1fr 1fr; }
