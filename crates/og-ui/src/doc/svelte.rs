@@ -71,6 +71,7 @@ pub(crate) fn parse_with_pack(
             styles: Vec::new(),
             label_fors: Vec::new(),
             datalists: Vec::new(),
+            select_contents: None,
             list_fors: Vec::new(),
             aria_refs: Vec::new(),
             consts: Vec::new(),
@@ -319,11 +320,17 @@ fn select_options(children: &[Node]) -> Result<Vec<SelectOption>, Error> {
                         selected: false,
                     };
                     let mut value = None;
-                    for a in attrs {
+                    // Its other attributes (id, class) are its box's.
+                    for a in attrs.iter().filter(|a| {
+                        matches!(
+                            a.name.as_str(),
+                            "value" | "label" | "i18n" | "disabled" | "selected"
+                        )
+                    }) {
                         if a.bound {
                             return Err((
                                 a.at,
-                                "an <option>'s attributes are literal; bind a list with items={…} values={…} on the <select>".into(),
+                                "an <option>'s value, label and states are literal; bind a list with items={…} values={…} on the <select>".into(),
                             ));
                         }
                         match a.name.as_str() {
@@ -331,16 +338,15 @@ fn select_options(children: &[Node]) -> Result<Vec<SelectOption>, Error> {
                             "label" => o.label = a.value.clone(),
                             "i18n" => o.key = Some(a.value.clone()),
                             "disabled" => o.disabled = true,
-                            "selected" => o.selected = true,
-                            other => {
-                                return Err((
-                                    a.at,
-                                    format!(
-                                        "unknown <option> attribute {other}; it takes value, label, i18n, disabled and selected"
-                                    ),
-                                ));
-                            }
+                            _ => o.selected = true,
                         }
+                    }
+                    if o.label.is_empty()
+                        && children.iter().any(|c| matches!(c, Node::Element { .. }))
+                    {
+                        // A rich option (`appearance: base-select`): its
+                        // label is its literal text.
+                        o.label = literal_text(children)?;
                     }
                     if o.label.is_empty() {
                         match text_value(children, *at)? {
@@ -364,6 +370,10 @@ fn select_options(children: &[Node]) -> Result<Vec<SelectOption>, Error> {
                         "a <select> lists literal <option>s; bind a list with items={…} values={…} instead of {#each}".into(),
                     ));
                 }
+                // A customizable select's trigger and separators
+                // (`appearance: base-select`) list no option.
+                Node::Element { tag, .. }
+                    if group.is_none() && matches!(tag.as_str(), "button" | "hr") => {}
                 Node::Element { at, .. }
                 | Node::Text(_, at)
                 | Node::Expression(_, at)
@@ -435,6 +445,33 @@ fn text_value(children: &[Node], at: usize) -> Result<Option<(PropValue, String)
     Ok((!literal.is_empty()).then_some((PropValue::Lit(Lit::Str(literal)), source)))
 }
 
+/// The literal text inside `nodes`, through their elements, its white
+/// space collapsed: a rich `<option>`'s label.
+fn literal_text(nodes: &[Node]) -> Result<String, Error> {
+    fn walk(nodes: &[Node], out: &mut String) -> Result<(), Error> {
+        for n in nodes {
+            match n {
+                Node::Text(t, _) => {
+                    out.push(' ');
+                    out.push_str(t);
+                }
+                Node::Element { children, .. } => walk(children, out)?,
+                Node::Expression(_, at) => {
+                    return Err((
+                        *at,
+                        "an <option>'s text is literal; bind a list with items={…} values={…} on the <select>".into(),
+                    ));
+                }
+                _ => {}
+            }
+        }
+        Ok(())
+    }
+    let mut out = String::new();
+    walk(nodes, &mut out)?;
+    Ok(out.split_whitespace().collect::<Vec<_>>().join(" "))
+}
+
 /// The value a prop of type `ty` reads when it is left out and declares
 /// no default: none for content, which its user passes as children.
 fn zero(ty: &str) -> Option<serde_json::Value> {
@@ -500,6 +537,9 @@ struct Parser {
     /// `<datalist>`s by id: their options' values and labels, and their
     /// bound `items` (a text input's suggestions from a store).
     datalists: Vec<Datalist>,
+    /// While a `<select>`'s children cook: each option's content, which
+    /// its `<selectedcontent>` copies.
+    select_contents: Option<Vec<Vec<Node>>>,
     /// Inputs' `list`s, joined to their datalists once the tree is read:
     /// (the input's node, the datalist's id, where `list` is written).
     list_fors: Vec<(usize, String, usize)>,

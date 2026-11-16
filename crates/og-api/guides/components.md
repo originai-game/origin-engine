@@ -806,7 +806,7 @@ Its own props, beside every element's:
 | `data-wrap` | `bool` | A number input past its last valid step at or below max goes to min and back (`data-wrap`; needs both bounds). |
 | `data-large-step` | `number` | The larger number-input step for Shift adjustment or a button held past a second (`data-large-step="10"`); 0 is ten steps. |
 | `data-format` | `text` | How an unfocused number input presents its value: an ICU message over `value` in the UI's locale (`data-format="{value, number} m"`, `{value, number, compact}`, `{value, plural, =0 {Off} =1 {Low} other {High}}`). Editing retains the raw string. |
-| `appearance:` | `auto \| none` | none drops the control's own frame: its box, borders and background are the document's. |
+| `appearance:` | `auto \| none \| base-select` | none drops the control's own frame: its box, borders and background are the document's. base-select (a select's) builds the select from its own children (HTML's customizable select): its `<button>` (else the chosen option's label) as the trigger, and its options in the `::picker(select)` popover. |
 | `suggestions` | `names` | A text input's suggestions, from the `<datalist>` its `list` names (its options' values, or its `items={$names}`): a list under the field while it has the focus, those containing the text first by prefix, choosing one writes it to the field. |
 | `<datalist><option label>` | `names` | The labels of the input's datalist options, separate from the values written on selection. |
 | `<datalist><option i18n>` | `names` | Translation keys for datalist option labels; missing translations use the option's literal label. |
@@ -873,6 +873,7 @@ Its own props, beside every element's:
 | `current` | `name` | The selected item's name from `values` (a `<select>`'s `value`); on tabs it takes over from `selected` when `values` is set. Two-way only with an explicit bind: attribute. |
 | `groups` | `names` | An `<option>`'s `<optgroup>` label, one per option (empty: none); options of one group follow each other. |
 | `disabled-items` | `names` | The `<option disabled>`s (and those of an `<optgroup disabled>`), by their zero-based index. |
+| `appearance:` | `auto \| none \| base-select` | none drops the control's own frame: its box, borders and background are the document's. base-select (a select's) builds the select from its own children (HTML's customizable select): its `<button>` (else the chosen option's label) as the trigger, and its options in the `::picker(select)` popover. |
 | `placeholder` | `text` | Shown while it is empty. |
 | `invalid` | `bool` | Its value is wrong (`aria-invalid`): the danger frame. |
 
@@ -887,7 +888,7 @@ Its own props, beside every element's:
 | `<og-spotlight target>` | `name` | The id tracked by <og-spotlight target="Target">. While open it dims the page outside that element and places its content as a callout. |
 | `open` | `bool` | Whether it is open (HTML `open`; closing writes false back). Two-way only with an explicit bind: attribute. |
 | `closedby` | `any \| closerequest \| none` | What closes it (HTML `closedby`): any adds a press outside a modal (light dismiss) to closerequest's Escape or a pad's B; none leaves closing to the document. Default: closerequest for a modal, none in place. |
-| `appearance:` | `auto \| none` | none drops the control's own frame: its box, borders and background are the document's. |
+| `appearance:` | `auto \| none \| base-select` | none drops the control's own frame: its box, borders and background are the document's. base-select (a select's) builds the select from its own children (HTML's customizable select): its `<button>` (else the chosen option's label) as the trigger, and its options in the `::picker(select)` popover. |
 | `modal` | `bool` | Over a backdrop that takes every press, the focus trapped inside (HTML `showModal()`); else a panel in place (`show()`). |
 | `data-detents` | `text` | `<dialog modal data-detents="40% 90%">`: a sheet docked to its `data-edge` (the bottom at full width by default), dragged onto its detents and swiped off its edge to close (writing `open` back). Detents are positive px or percentages of viewport height, or width for a side sheet. It opens at the first; drag and snap state is checkpointed. |
 | `data-edge` | `block-end \| inline-start \| inline-end` | `data-edge="block-end\|inline-start\|inline-end"` beside `data-detents`: the edge the sheet docks to, in CSS's logical names, so the inline ones mirror right to left (`inline-end` is the right left to right, the left in Arabic); a side sheet is full height, its detents widths, and swipes off sideways. |

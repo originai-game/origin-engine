@@ -40,6 +40,19 @@ pub struct DocState {
     /// ([`crate::Ui::set_selector_state`]): `(key, state, on)`, applied
     /// when the documents next refresh.
     pub selector_states: Vec<(u64, crate::bind::InteractionState, bool)>,
+    /// The customizable selects being built, innermost last
+    /// ([`super::base_select`]).
+    pub(crate) selects: Vec<super::base_select::SelectBuild>,
+    /// Their render keys, innermost last.
+    pub(crate) select_keys: Vec<u64>,
+    /// Each option a customizable select built, by its render key: the
+    /// select's render key and the option's place among its options.
+    pub(crate) option_of: BTreeMap<u64, (u64, usize)>,
+    /// Each customizable select's chosen option as it last built, by its
+    /// render key, and each `<selectedcontent>`'s select, by its render
+    /// key: one built again on its own shows its select's choice.
+    pub(crate) select_chosen: BTreeMap<u64, Option<usize>>,
+    pub(crate) shown_by: BTreeMap<u64, u64>,
     /// The scroll controls built for each scroll container and each
     /// `scroll-target-group` element, by its render key, as last built
     /// (CSS Overflow 5 §3).

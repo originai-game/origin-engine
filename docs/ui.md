@@ -1222,6 +1222,21 @@ focus returns to the trigger. The value, never the label, is written.
 `Dropdown.trigger[open][invalid]`, `Dropdown.list`, `Dropdown.group`,
 `Dropdown.option[selected][disabled]`; roles combobox, listbox, option.
 
+`select { appearance: base-select }` is HTML's customizable select: the
+select is built from its own children, not the native dropdown, and the
+document styles every part. Its first `<button>` child is the trigger's
+content (with none, the chosen option's label), and `<selectedcontent>` in
+that button shows a copy of the chosen option's content. A press on the
+select opens `::picker(select)`, an auto popover in the top layer anchored
+to it (CSS anchor positioning, under it by default), holding its other
+children: `<option>`s with any content, `<optgroup>`s and `<hr>`s. A press
+on an enabled option chooses it, writes its value (to the binding, else as
+the select's own), fires `onchange` and closes the picker; a press outside
+or Back closes it unchanged. The chosen option matches `:checked`, a
+disabled one `:disabled`, and the select `:open` while its picker is.
+`::picker-icon` and `::checkmark` come with control documents (their
+`pseudo=` elements); until then a document draws its own.
+
 `<dialog bind:open aria-label>` follows HTML. `modal` (a literal, never
 bound: a modal's content is built in the top layer under `<id>/Panel`) is
 `showModal()`: a scrim taking every press, focus moved in, trapped and

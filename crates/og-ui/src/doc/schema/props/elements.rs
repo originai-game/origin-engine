@@ -1330,9 +1330,9 @@ pub const CORE_PROPS: &[PropSpec] = &[
     ),
     p!(
         "appearance",
-        Ty::Word(&["auto", "none"]),
-        [Dialog, Field],
-        "none drops the control's own frame: its box, borders and background are the document's."
+        Ty::Word(&["auto", "none", "baseSelect"]),
+        [Dialog, Field, Select],
+        "none drops the control's own frame: its box, borders and background are the document's. base-select (a select's) builds the select from its own children (HTML's customizable select): its `<button>` (else the chosen option's label) as the trigger, and its options in the `::picker(select)` popover."
     ),
     p!(
         "display",

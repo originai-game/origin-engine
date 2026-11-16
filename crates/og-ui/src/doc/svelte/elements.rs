@@ -68,8 +68,101 @@ impl Parser {
                     ),
                 ));
             }
-            "option" | "optgroup" => {
+            "option" | "optgroup" if self.select_contents.is_none() => {
                 return Err((at, format!("<{tag}> belongs inside a <select>")));
+            }
+            // A customizable select's option (`appearance: base-select`):
+            // a box of its own content. Its value, label and states are
+            // the select's props; they stay readable to selectors.
+            "option" => {
+                let (own, kept): (Vec<&Attr>, Vec<Attr>) = (
+                    attrs
+                        .iter()
+                        .filter(|a| OPTION_ATTRS.contains(&a.name.as_str()))
+                        .collect(),
+                    attrs
+                        .iter()
+                        .filter(|a| !OPTION_ATTRS.contains(&a.name.as_str()))
+                        .cloned()
+                        .collect(),
+                );
+                let i = self.element_node(tag, &kept, children, at, parent)?;
+                // Pressed, it chooses itself: the select reads its press.
+                if !own.iter().any(|a| a.name == "disabled") {
+                    for name in ["interactive", "focusable"] {
+                        self.prop(
+                            i,
+                            Some(Kind::Box),
+                            name,
+                            PropValue::Lit(Lit::Bool(true)),
+                            at,
+                            "",
+                        )?;
+                    }
+                }
+                for a in own {
+                    let value = super::selectors::attribute_value(a)?;
+                    self.doc.nodes[i]
+                        .selector_attrs
+                        .push((a.name.clone(), value));
+                }
+                return Ok(i);
+            }
+            "optgroup" => {
+                let kept: Vec<Attr> = attrs
+                    .iter()
+                    .filter(|a| !matches!(a.name.as_str(), "label" | "disabled"))
+                    .cloned()
+                    .collect();
+                let i = self.element_node(tag, &kept, children, at, parent)?;
+                for a in attrs
+                    .iter()
+                    .filter(|a| matches!(a.name.as_str(), "label" | "disabled"))
+                {
+                    let value = super::selectors::attribute_value(a)?;
+                    self.doc.nodes[i]
+                        .selector_attrs
+                        .push((a.name.clone(), value));
+                }
+                return Ok(i);
+            }
+            // The chosen option's content, in a customizable select's
+            // `<button>`: a copy of each option's, of which the build shows
+            // the chosen one's.
+            "selectedcontent" => {
+                let Some(contents) = self.select_contents.clone() else {
+                    return Err((
+                        at,
+                        "<selectedcontent> belongs inside a <select>'s <button>".into(),
+                    ));
+                };
+                if !children
+                    .iter()
+                    .all(|c| matches!(c, Node::Text(t, _) if t.trim().is_empty()))
+                {
+                    return Err((
+                        at,
+                        "<selectedcontent> is empty: it shows the chosen option's content".into(),
+                    ));
+                }
+                let copies: Vec<Node> = contents
+                    .into_iter()
+                    .map(|content| Node::Element {
+                        tag: "div".into(),
+                        attrs: vec![Attr {
+                            name: "style".into(),
+                            value: "display: contents".into(),
+                            bound: false,
+                            at,
+                            end: at,
+                        }],
+                        children: without_ids(content),
+                        at,
+                        end: at,
+                        close: at,
+                    })
+                    .collect();
+                return self.element_node(tag, attrs, &copies, at, parent);
             }
             "summary" if self.parent_tag(parent) != Some("details") => {
                 return Err((at, "<summary> is the first child of a <details>".into()));
@@ -115,7 +208,12 @@ impl Parser {
             }
             "select" => {
                 let options = select_options(children)?;
-                let i = self.element_node(tag, attrs, &[], at, parent)?;
+                // Its own children, which a customizable select builds
+                // (`appearance: base-select`) and a native one does not.
+                let outer = self.select_contents.replace(option_contents(children));
+                let i = self.element_node(tag, attrs, children, at, parent);
+                self.select_contents = outer;
+                let i = i?;
                 let strs = |v: Vec<String>| PropValue::Lit(Lit::Strs(v));
                 let items = options.iter().map(|o| o.label.clone()).collect();
                 let values = options.iter().map(|o| o.value.clone()).collect();
@@ -335,6 +433,12 @@ impl Parser {
                 Some(Kind::Label)
             }
             "label" if label_for.is_some() => Some(Kind::Label),
+            // A customizable select's parts: its trigger is the select's
+            // own press, so its `<button>` is a box.
+            "button" if self.parent_tag(parent) == Some("select") => Some(Kind::Box),
+            "option" | "optgroup" | "selectedcontent" if self.select_contents.is_some() => {
+                Some(Kind::Box)
+            }
             "div" | "section" | "header" | "footer" | "nav" | "main" | "aside" | "article"
             | "ul" | "ol" | "li" | "menu" | "summary" | "iframe" => Some(Kind::Box),
             "img" => Some(Kind::Image),
@@ -427,6 +531,8 @@ impl Parser {
             "article" => Some("article"),
             "section" if named => Some("region"),
             "ul" | "ol" => Some("list"),
+            "option" => Some("option"),
+            "optgroup" => Some("group"),
             "li" => Some("listitem"),
             _ => html.and_then(|(_, role)| role),
         };
@@ -1259,4 +1365,48 @@ impl Parser {
         });
         Ok(())
     }
+}
+
+/// An `<option>`'s attributes that are its select's, not its box's.
+const OPTION_ATTRS: [&str; 5] = ["value", "label", "i18n", "disabled", "selected"];
+
+/// Each `<option>`'s content in a select's children, in order, through
+/// its `<optgroup>`s.
+fn option_contents(children: &[Node]) -> Vec<Vec<Node>> {
+    let mut out = Vec::new();
+    for c in children {
+        match c {
+            Node::Element { tag, children, .. } if tag == "option" => out.push(children.clone()),
+            Node::Element { tag, children, .. } if tag == "optgroup" => {
+                out.extend(option_contents(children));
+            }
+            _ => {}
+        }
+    }
+    out
+}
+
+/// `nodes` without their elements' ids (a copy's ids would repeat them).
+fn without_ids(nodes: Vec<Node>) -> Vec<Node> {
+    nodes
+        .into_iter()
+        .map(|n| match n {
+            Node::Element {
+                tag,
+                attrs,
+                children,
+                at,
+                end,
+                close,
+            } => Node::Element {
+                tag,
+                attrs: attrs.into_iter().filter(|a| a.name != "id").collect(),
+                children: without_ids(children),
+                at,
+                end,
+                close,
+            },
+            n => n,
+        })
+        .collect()
 }

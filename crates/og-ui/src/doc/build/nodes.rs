@@ -177,7 +177,8 @@ impl Ui {
         let mut resp = crate::ui::Response::default();
         let mut generated = None;
         // A button with only text is the leaf control; with content it holds it.
-        let container = kind.container() && (kind != Kind::Button || !n.children.is_empty());
+        let container = kind.container() && (kind != Kind::Button || !n.children.is_empty())
+            || super::base_select::is_base_select(kind, r);
         if container {
             self.tree.pending_host = None;
             return self.doc_container(
@@ -617,6 +618,9 @@ impl Ui {
             bare: r.str("appearance") == Some("none"),
         };
         let mut opened: Option<bool> = None;
+        // A customizable select's parts (`appearance: base-select`).
+        let tag = n.selector_tag.as_deref();
+        let mut picker_from = 0;
         // A closed dialog or disclosure builds no content (HTML renders
         // none): opened, its controls are built fresh and take input.
         let mut shows_content = true;
@@ -642,6 +646,10 @@ impl Ui {
             Kind::Button => {
                 resp = self.open_button(id.as_str(), r.button_desc());
                 Shell::Button
+            }
+            Kind::Select => {
+                self.open_base_select(n, id, key, r);
+                Shell::Box
             }
             Kind::Panel => {
                 self.open_panel(
@@ -723,7 +731,6 @@ impl Ui {
             | Kind::Badge
             | Kind::Spacer
             | Kind::Divider
-            | Kind::Select
             | Kind::Meter
             | Kind::Joystick
             | Kind::Dpad
@@ -800,6 +807,10 @@ impl Ui {
             // A disclosure's `<summary>` is in its header.
             if kind == Kind::Details && summary_of(b, n) {
                 build_inner(self, b, Inner::Range(1..usize::MAX));
+            } else if kind == Kind::Select {
+                picker_from = self.base_select_trigger(b, n, r, &mut build_inner);
+            } else if tag == Some("selectedcontent") {
+                self.selected_content(b, key, &mut build_inner);
             } else {
                 build_inner(self, b, Inner::Children(None));
             }
@@ -814,6 +825,22 @@ impl Ui {
             Shell::Details => self.close_details(),
             Shell::Button => self.close_button(),
             Shell::Box => resp = self.close(),
+        }
+        if kind == Kind::Select {
+            self.close_base_select(
+                b,
+                n,
+                key,
+                &path,
+                r,
+                &mut resp,
+                picker_from,
+                &mut build_inner,
+            );
+        } else if tag == Some("option")
+            && let Some(k) = super::base_select::option_index(&b.doc, n)
+        {
+            self.note_option(key, k, resp);
         }
         if self.docs.library.scroll_controls {
             let own = self.tree.last_closed();
@@ -1645,7 +1672,7 @@ impl crate::ui::Docs {
 }
 
 /// Whether `n`'s `prop` reads a store (`bind:` or `{$x}`) rather than a literal.
-pub(super) fn bound(n: &DocNode, prop: &str) -> bool {
+pub(crate) fn bound(n: &DocNode, prop: &str) -> bool {
     n.props
         .iter()
         .rev()

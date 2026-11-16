@@ -1662,6 +1662,7 @@ pub fn slot_json(s: &crate::slot::SlotSpec) -> Value {
 
 mod animate;
 pub(crate) use animate::StyleCommit;
+pub(crate) mod base_select;
 pub mod cascade;
 pub(crate) mod color;
 pub(crate) mod containers;
