@@ -45,7 +45,7 @@
 [part="ItemSlot.count"], [part="ItemSlot.remaining"], [part="ItemSlot.key"] { position: absolute; padding-inline: var(--space-xxs); background: var(--panel); color: var(--ink); border-radius: var(--radius-capsule); font-family: var(--figure-font); }
 [part="ItemSlot.count"] { inset-inline-end: var(--space-xxs); bottom: var(--space-xxs); }
 [part="ItemSlot.key"] { inset-inline-start: var(--space-xxs); top: var(--space-xxs); font: var(--text-caption); }
-[part="ItemSlot.remaining"] { inset-inline-start: 50%; top: 50%; translate: -50% -50%; }
+[part="ItemSlot.remaining"] { inset-inline-start: var(--space-xxs); bottom: var(--space-xxs); }
 [part="ItemSlot.state"] { position: absolute; inset-inline: var(--space-xxs); bottom: var(--space-xxs); padding: var(--space-xxs); background: var(--panel); color: var(--ink); border-radius: var(--radius-control); font: var(--text-caption); text-align: center; }
 [part="ItemSlot.loading"] { position: absolute; inset: 0; display: flex; justify-content: center; align-items: center; }
 [part="ItemSlot.cell"]:disabled { opacity: 1; color: var(--ink); }

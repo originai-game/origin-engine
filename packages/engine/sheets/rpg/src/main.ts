@@ -60,6 +60,7 @@ function show(world: World): void {
     shownGoods: ECONOMY.tradeGoods,
     shownLoot: ECONOMY.lootItems,
     shownHistory: ECONOMY.historyLines,
+    shownReplies: fixtures.talkReplies,
   };
   const stores = Object.fromEntries(Object.entries(data).map(([k, v]) =>
     [k, Array.isArray(v) ? scope.collection(k, v as { id: string }[], { key: "id" }) : scope.writable(k, v)]));
@@ -98,6 +99,7 @@ export default og.game({
         shownGoods: scenario === "empty" ? [] : scenario === "sell" ? ECONOMY.tradeOwned : ECONOMY.tradeGoods,
         shownLoot: scenario === "empty" ? [] : scenario === "overflow" ? ECONOMY.lootOverflow : ECONOMY.lootItems,
         shownHistory: scenario === "empty" ? [] : scenario === "overflow" ? ECONOMY.historyOverflow : ECONOMY.historyLines,
+        shownReplies: scenario === "empty" ? [] : fixtures.talkReplies as { id: string }[],
       };
       for (const [name, rows] of Object.entries(collections)) {
         const collection = scope.collection(name, [] as { id: string }[], { key: "id" });

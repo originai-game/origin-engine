@@ -25,6 +25,7 @@ beforeAll(() => {
     trade: '<RpgTrade goods={$rows} selected={$selected} mode={$mode} busy={$busy} />',
     loot: '<RpgLoot items={$rows} canTakeAll={true} busy={$busy} />',
     backlog: '<RpgConversationBacklog lines={$rows} playing={$playing} loading={$busy} hasOlder={true} />',
+    conversation: '<RpgConversation speaker="Marissa" line="Choose the road." replies={$rows} showControls={$controls} canBacklog={$allowed} canSkip={$allowed} canAuto={$allowed} auto={$auto} />',
   };
   for (const [name, body] of Object.entries(screens)) writeFileSync(join(root, `assets/ui/${name}.svelte`), `<meta name="screen" content="${name}" data-layer="menu" data-input="menu"><div style="width: stretch; height: stretch; padding: 24px">${body}</div>`);
   const cook = Bun.spawnSync([ogBin(), "cook", root], { env: process.env, stdout: "ignore", stderr: "pipe" });
@@ -104,6 +105,27 @@ test("avatar presence is worded, defaults have a name, and loading replaces pres
     expect(elements(engine).some((element) => element.role === "progressbar")).toBe(true);
     expect(words()).not.toContain("Away");
     expect(words()).toContain("Brenna");
+    expect(scope.takeErrors()).toEqual([]);
+  } finally { engine.destroy(); }
+});
+
+for (const phone of [false, true]) test(`dialogue controls request game-owned changes and respect permissions (${phone ? "phone" : "desktop"})`, () => {
+  const { engine, events } = mount("conversation", { rows: [], controls: true, allowed: true, auto: true }, phone);
+  try {
+    const button = (part: string) => elements(engine).find((e) => e.role === "button" && e.part.includes(`.${part}]`))!;
+    expect(button("auto").states).toContain("pressed");
+    for (const part of ["backlog", "skip", "auto"]) tap(engine, button(part));
+    const requests = () => events.filter((e) => e.name);
+    expect(requests().map((e) => e.name)).toEqual(["backlog", "skip", "toggleAuto"]);
+    expect(elements(engine).some((e) => e.text === "Choose the road.")).toBe(true);
+    const scope = og.ui.scope(engine.world, "test");
+    scope.writable("allowed", true).set(false);
+    engine.advance(3);
+    for (const part of ["backlog", "skip", "auto"]) { expect(button(part).disabled).toBe(true); tap(engine, button(part)); }
+    expect(requests()).toHaveLength(3);
+    scope.writable("controls", true).set(false);
+    engine.advance(3);
+    expect(button("backlog")).toBeUndefined();
     expect(scope.takeErrors()).toEqual([]);
   } finally { engine.destroy(); }
 });

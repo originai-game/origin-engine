@@ -45,6 +45,12 @@ Each document lists its parts, defaults and state fixtures in metadata.
 Buttons inherit the default style's hover, press, focus and disabled states;
 selection and replay state are exposed through attributes for style packs.
 
+The `dialogue` page also exercises the optional conversation controls:
+default enables History/Skip/Auto; `playing` marks Auto pressed, `missing`
+disables all three, and `empty` shows narration with Continue. These
+buttons emit requests; the game owns history, skip permission and auto
+advance. The journal's compact conversation retains the default hidden controls.
+
 `bun test packages/engine/sheets/rpg/tests/components.test.ts` mounts these
 components through game documents and exercises keyed actions after row
 reordering, unavailable/pending suppression, history replay, and base slot

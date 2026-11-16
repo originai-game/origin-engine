@@ -1,15 +1,23 @@
 <meta name="component" content="RpgConversation">
 <meta name="strings" content="./conversation.en.ogt">
-<meta name="parts" content="RpgConversation.frame RpgConversation.name RpgConversation.row">
+<meta name="parts" content="RpgConversation.frame RpgConversation.name RpgConversation.row RpgConversation.controls RpgConversation.backlog RpgConversation.skip RpgConversation.auto">
 <meta name="prop:speaker" content="string" data-doc="The speaker's name; empty is narration.">
 <meta name="prop:portrait" content="number" data-doc="The speaker's portrait (og.load.texture); 0 hides it.">
 <meta name="prop:line" content="string" data-doc="What is said now.">
 <meta name="prop:rate" content="number" data-default="0" data-doc="Characters of the line shown per second, starting again with each new line; 0 (and when left out) shows the line at once, and setting 0 finishes a line early.">
 <meta name="prop:replies" content="list" data-doc="The player's replies, keyed rows of { id, number, text, used }: number the figure before it; used greys a reply already chosen. Empty shows a Continue button.">
 <meta name="prop:selected" content="string" data-doc="The reply the focus rests on; empty is none.">
+<meta name="prop:showControls" content="bool" data-default="false" data-doc="Shows optional History, Skip and Auto buttons; hidden in existing compact layouts.">
+<meta name="prop:canBacklog" content="bool" data-default="true" data-doc="The game permits opening conversation history.">
+<meta name="prop:canSkip" content="bool" data-default="false" data-doc="The game permits requesting a skip; the component never advances dialogue itself.">
+<meta name="prop:canAuto" content="bool" data-default="true" data-doc="The game permits requesting an automatic-advance setting change.">
+<meta name="prop:auto" content="bool" data-default="false" data-doc="The game's automatic-advance setting; toggleAuto requests a change without advancing dialogue.">
 <meta name="action:confirm" content="Continue">
 <meta name="fixture:default" content='{"speaker":"Lady Marissa","portrait":0,"line":"The road ahead is dangerous.","rate":0,"replies":[{"id":"r1","number":1,"text":"We have no choice.","used":false},{"id":"r2","number":2,"text":"Perhaps another way.","used":true}],"selected":"r1"}'>
 <meta name="fixture:line" content='{"speaker":"","portrait":0,"line":"The wind dies.","replies":[],"selected":""}'>
+<meta name="fixture:controls" content='{"speaker":"Marissa","line":"There is still time to turn back.","showControls":true,"canSkip":true,"replies":[]}'>
+<meta name="fixture:auto" content='{"speaker":"","line":"The bell rings across the marsh.","showControls":true,"auto":true,"replies":[]}'>
+<meta name="fixture:disabled" content='{"speaker":"","line":"Choose your answer before continuing.","showControls":true,"canBacklog":false,"canSkip":false,"canAuto":false,"replies":[]}'>
 
 <!--
   A conversation across the foot of the screen: the speaker's portrait,
@@ -25,6 +33,11 @@
   <div class="said">
     {#if speaker}<h3 part="RpgConversation.name">{speaker}</h3>{/if}
     <og-typewriter id="Line" class="line" rate={rate} onrevealed={revealed}>{line}</og-typewriter>
+    {#if showControls}<nav part="RpgConversation.controls">
+      <button part="RpgConversation.backlog" disabled={!canBacklog} onclick={backlog}>{t("rpg.talk.backlog")}</button>
+      <button part="RpgConversation.skip" disabled={!canSkip} onclick={skip}>{t("rpg.talk.skip")}</button>
+      <button part="RpgConversation.auto" aria-pressed={auto} disabled={!canAuto} onclick={toggleAuto}>{t("rpg.talk.auto")}</button>
+    </nav>{/if}
   </div>
   {#if replies.length}
     <ol class="replies" role="listbox" aria-label={t("rpg.talk.replies")}>
@@ -38,11 +51,13 @@
 </section>
 
 <style>
-:host { display: flex; inline-size: stretch; block-size: stretch; gap: var(--space-lg); container-type: inline-size; }
+:host { display: flex; flex-wrap: wrap; inline-size: stretch; block-size: stretch; overflow-y: auto; gap: var(--space-lg); container-type: inline-size; }
 .portrait { width: calc(var(--size-xxl) * 1.9); height: stretch; object-fit: cover; object-position: center top; flex: none; }
 .said { display: flex; flex-direction: column; width: 42%; gap: var(--space-sm); padding: var(--space-md) 0; flex: none; }
 [part="RpgConversation.name"], .line { margin: 0; }
 .line { display: block; line-height: var(--font-leading-normal); }
+[part="RpgConversation.controls"] { display: flex; flex-wrap: wrap; gap: var(--space-xs); }
+[part="RpgConversation.controls"] button { min-block-size: var(--size-touch); }
 [part="RpgConversation.name"] { color: var(--primary); font-weight: var(--font-weight-semibold); }
 .replies { display: flex; flex-direction: column; margin: 0; padding: var(--space-md) 0; list-style: none; flex: 1; min-width: 0; gap: var(--space-xxs); }
 .reply-item { width: stretch; }
@@ -56,9 +71,8 @@
 @media (pointer: fine) and (width >= 600px) { [part="RpgConversation.row"] { min-height: calc(var(--size-touch) * 0.8); } .replies { padding: var(--space-sm) 0; } }
 .go { display: flex; flex-direction: column; flex: 1; min-width: 0; align-items: flex-end; justify-content: flex-end; padding: var(--space-md); }
 @container (width < 720px) {
-  [part="RpgConversation.frame"] { flex-wrap: wrap; gap: var(--space-sm); }
   .portrait { width: var(--size-xxl); height: var(--size-xxl); }
   .said { width: stretch; flex: 1; padding: 0; }
-  .replies { padding: 0; flex-basis: 100%; }
+  .replies, .go { padding: 0; flex-basis: 100%; }
 }
 </style>

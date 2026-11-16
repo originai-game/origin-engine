@@ -14,6 +14,15 @@ The backpack, item card, quest log and conversation are in `../panels/`, and
 the combat log and quest tracker in `../hud/`: every genre uses them. They
 keep their names (`RpgBackpack`…) and their contract here.
 
+The shared panels also include `RpgCrafting`, `RpgTrade`, `RpgLoot` and
+`RpgConversationBacklog` (see the RPG sheet README for their game-owned
+data and intent contracts). `RpgConversation` optionally exposes history,
+skip and auto buttons with `showControls` (default false). `canBacklog`
+and `canAuto` default true; `canSkip` and `auto` default false. The
+`backlog`, `skip` and `toggleAuto` intents request game decisions only:
+the component neither opens history nor skips or advances dialogue itself.
+The game feeds its current auto setting back through `auto`.
+
 ## Structure and appearance
 
 Each member is HTML with component CSS in the `og-components` layer.
@@ -53,7 +62,7 @@ on skills; `data-done`, `data-tracked` and `data-fresh` on quests.
 | `RpgQuestTracker` | `name`, `steps` keyed `{ id, text, done }`, `distance` (empty hides it) | none |
 | `RpgWorldMap` | `map` (texture), `markers` keyed `{ id, kind, x, y, label }`, `selected`, `zoom` (1 fits the box), `panX`, `panY` (CSS px), `legend` keyed `{ id, kind, label }`, `here` | `choose` (marker; the player's own is not a target), `zoom` (wheel, `deltaY`), `pinch` (`scale`), `grab`, `pan`, `release` (a press, its moves and its end, `x` and `y` in the map's box); the game keeps the zoom and the pan |
 | `RpgPlaceCard` | `name`, `about`, `picture`, `marked`, `canTravel` | `mark`, `travel` |
-| `RpgConversation` | `speaker`, `portrait`, `line`, `rate` (characters a second; 0 shows the line at once), `replies` keyed `{ id, number, text, used }`, `selected` | `reply` (row key), `next` (Continue when there are no replies), `revealed` (a line shown at a rate is whole) |
+| `RpgConversation` | `speaker`, `portrait`, `line`, `rate` (characters a second; 0 shows the line at once), `replies` keyed `{ id, number, text, used }`, `selected`, `showControls`, `canBacklog`, `canSkip`, `canAuto`, `auto` | `reply` (row key), `next` (Continue when there are no replies), `revealed` (a line shown at a rate is whole), `backlog`, `skip`, `toggleAuto` |
 | `RpgVitals` | `name`, `portrait`, `level`, `health`, `healthMax`, `mana`, `manaMax`, `plate` (large, compact), `down` | none |
 | `RpgParty` | `members` keyed `{ id, name, portrait, level, health, healthMax, mana, manaMax, down }`, `selected` | `choose` |
 | `RpgTurnOrder` | `round`, `turns` keyed `{ id, name, portrait, side, acting, down }` | none |
@@ -72,15 +81,15 @@ pressed, focus-visible and disabled states (docs/ui.md §3.2).
 | --- | --- |
 | `RpgBackpack` (`../panels/backpack.svelte`) | `frame`, `band`, `title`, `tab` (a button: `[aria-selected]`), `cell` (a button: `[aria-selected]` `[data-broken]` `[data-equipped]` `[data-fresh]` `[data-locked]` `[data-rarity]`) |
 | `RpgCharacter` (`character.svelte`) | `frame`, `band`, `title`, `name`, `cell` (a button: `[aria-selected]` `[data-empty]` `[data-rarity]`), `row` |
-| `RpgCombatLog` (`../hud/combat-log.svelte`) | `frame`, `band`, `title`, `row` (`[data-tone]`) |
+| `RpgCombatLog` (`../hud/combat-log.svelte`) | `frame`, `band`, `title`, `row` (`[data-tone]`), `fade` |
 | `RpgCommands` (`commands.svelte`) | `frame`, `band`, `title`, `cell` (a button: `.primary` `[aria-selected]` `:disabled`) |
-| `RpgConversation` (`../panels/conversation.svelte`) | `frame`, `name`, `row` (a button: `[aria-selected]` `[data-used]`) |
+| `RpgConversation` (`../panels/conversation.svelte`) | `frame`, `name`, `row` (a button: `[aria-selected]` `[data-used]`), `controls`, `backlog`, `skip`, `auto` (`[aria-pressed]`) |
 | `RpgEnemyInfo` (`enemy-info.svelte`) | `frame`, `band`, `title`, `name`, `row` (`[data-tone]`) |
 | `RpgItemCard` (`../panels/item-card.svelte`) | `frame` (`[data-rarity]`), `name`, `lead`, `row` |
 | `RpgMenuBar` (`menu-bar.svelte`) | `frame`, `tab` (a button: `[aria-selected]`) |
 | `RpgParty` (`party.svelte`) | `frame`, `cell` (a button: `[aria-selected]` `[data-down]`) |
 | `RpgPlaceCard` (`place-card.svelte`) | `frame`, `name` |
-| `RpgQuestDetail` (`quest-detail.svelte`) | `frame`, `band`, `title`, `row` (`[data-done]` `[data-optional]` `[data-step]`), `reward` |
+| `RpgQuestDetail` (`quest-detail.svelte`) | `frame`, `band`, `title`, `row` (`[data-done]` `[data-optional]` `[data-step]`), `reward`, `scenery` |
 | `RpgQuestLog` (`../panels/quest-log.svelte`) | `frame`, `band`, `title`, `heading`, `row` (a button: `[aria-selected]` `[data-done]` `[data-fresh]` `[data-tracked]`) |
 | `RpgQuestTracker` (`../hud/quest-tracker.svelte`) | `frame`, `title`, `row` (`[data-done]`) |
 | `RpgStats` (`stats.svelte`) | `frame`, `band`, `title`, `row` |
