@@ -1,0 +1,5 @@
+{
+  "added": [
+    { "member": "Profile", "summary": "Player profiles at @ui/components/meta/profile.svelte compose the shared Avatar and Spinner, with identity, presence, rank, game-formatted stats, private/empty/error/loading states and keyed game-owned actions. Phone content scrolls separately from the actions; pending and disabled actions show their state and reason without dispatching." }
+  ]
+}
