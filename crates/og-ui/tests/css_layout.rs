@@ -1982,6 +1982,72 @@ fn custom_functions_return_their_result() {
     }
 }
 
+/// CSS Anchor Positioning 2 §2: `container-type: anchored` makes an
+/// anchor-positioned element answer `@container anchored(fallback: …)` for
+/// its descendants with the `position-try-fallbacks` entry it applied.
+/// Below a 40×20 anchor at (50, 150) in a 300×200 stage a 40px-tall box
+/// overflows, so flip-block, --above and the `top` area apply; above it,
+/// one fits as placed (none). Tactics must match whole (--above
+/// flip-inline does not), an area query leaves its other axis `any` (top)
+/// unless written (bottom any does not), and `(fallback)` is any entry.
+#[test]
+fn anchored_queries_read_the_applied_fallback() {
+    let text = r#"<meta name="component" content="t">
+<div id="Stage">
+  <div id="Anc"></div>
+  <div id="Flip" class="a"><div id="FlipKid" class="k"></div><div id="AnyKid" class="k"></div></div>
+  <div id="Named" class="a"><div id="NamedKid" class="k"></div><div id="WrongKid" class="k"></div></div>
+  <div id="Stay" class="a"><div id="StayKid" class="k"></div><div id="StayAny" class="k"></div></div>
+  <div id="Area" class="a"><div id="AreaKid" class="k"></div><div id="OtherKid" class="k"></div></div>
+</div>
+<style>
+#Stage { position: relative; display: flow-root; width: 300px; height: 200px; }
+#Anc { anchor-name: --a; margin-left: 50px; margin-top: 150px; width: 40px; height: 20px; }
+.a { container-type: anchored; position: absolute; position-anchor: --a; width: 40px; height: 40px; }
+.k { width: 5px; height: 1px; }
+#Flip { position-area: bottom; position-try-fallbacks: flip-block; }
+#Named { top: anchor(bottom); left: anchor(left); position-try-fallbacks: --above; }
+#Stay { position-area: top; position-try-fallbacks: flip-block; }
+#Area { position-area: bottom; position-try-fallbacks: top; }
+@position-try --above { top: auto; bottom: anchor(top); }
+@container anchored(fallback: flip-block) { #FlipKid { width: 30px; } }
+@container anchored(fallback) { #AnyKid, #StayAny { width: 34px; } }
+@container anchored(fallback: --above) { #NamedKid { width: 31px; } }
+@container anchored(fallback: --above flip-inline) { #WrongKid { width: 99px; } }
+@container anchored(fallback: none) { #StayKid { width: 32px; } }
+@container anchored(fallback: top) { #AreaKid { width: 33px; } }
+@container anchored(fallback: bottom any) { #OtherKid { width: 99px; } }
+</style>"#;
+    let mut d = Doc::new(text, &[]);
+    // The applied entry is published from the frame that laid it out.
+    d.step(Default::default());
+    d.step(Default::default());
+    for (id, width) in [
+        ("FlipKid", 30.0),
+        ("AnyKid", 34.0),
+        ("NamedKid", 31.0),
+        ("WrongKid", 5.0),
+        ("StayKid", 32.0),
+        ("StayAny", 5.0),
+        ("AreaKid", 33.0),
+        ("OtherKid", 5.0),
+    ] {
+        assert_eq!(d.get(id).width, width, "{id}");
+    }
+    for bad in [
+        "@container anchored(fallback: sideways) { #A { width: 1px; } }",
+        "@container anchored(position: top) { #A { width: 1px; } }",
+    ] {
+        let text = format!(
+            "<meta name=\"component\" content=\"t\">\n<div id=\"A\"></div>\n<style>{bad}</style>"
+        );
+        assert!(
+            og_ui::UiDocument::parse("ui/t.svelte", &text).is_err(),
+            "{bad}"
+        );
+    }
+}
+
 /// CSS Values 4 §6.1.2's small, large and dynamic viewports: `sv*` read the
 /// surface with the host's controls shown, `lv*` with them hidden, `dv*`
 /// and the bare units the surface now, each axis and min/max apart.

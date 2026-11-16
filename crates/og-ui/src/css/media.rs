@@ -227,6 +227,87 @@ pub enum Feature {
     /// `(--name)`, a custom media query (Media Queries 5 §3), until
     /// [`Query::resolve`] puts its `@custom-media` definition in its place.
     Custom(String),
+    /// A container `anchored(fallback[: <value>])` query (CSS Anchor
+    /// Positioning 2 §2.3.1), against the container's applied
+    /// `position-try-fallbacks` entry.
+    Fallback(Fallback),
+}
+
+/// An `anchored()` `fallback` value: any entry applied (the boolean
+/// form), none, an `@position-try` name and try-tactics in order, or a
+/// `<position-area-query>`'s columns and rows (`None`: `any`).
+#[derive(Clone, Debug, PartialEq)]
+pub enum Fallback {
+    Any,
+    None,
+    Tactics(Option<String>, Vec<crate::anchor::Flip>),
+    Area(Option<(u8, u8)>, Option<(u8, u8)>),
+}
+
+impl Fallback {
+    fn parse(text: &str) -> Result<Self, String> {
+        use crate::anchor::{Try, parse_area, parse_tries};
+        let text = text.trim().to_ascii_lowercase();
+        if text == "none" {
+            return Ok(Self::None);
+        }
+        let words: Vec<&str> = text.split_whitespace().collect();
+        // `any` stands for one axis; one keyword with an axis of its own
+        // leaves the other `any` (§2.3.2).
+        let axis = |w: &str| {
+            parse_area(w).ok().flatten().map(|a| match a {
+                a if a.rows == (0, 2) && a.cols != (0, 2) => (Some(a.cols), None),
+                a if a.cols == (0, 2) && a.rows != (0, 2) => (None, Some(a.rows)),
+                // center, span-all, start, end: both axes, as written.
+                a => (Some(a.cols), Some(a.rows)),
+            })
+        };
+        let area = match words.as_slice() {
+            ["any", "any"] | ["any"] => Some((None, None)),
+            [w] if !w.starts_with("flip-") && !w.starts_with("--") => axis(w),
+            ["any", w] | [w, "any"] => {
+                let first = words[0] != "any";
+                axis(w).map(|(c, r)| match (c, r) {
+                    (Some(c), None) => (Some(c), None),
+                    (None, Some(r)) => (None, Some(r)),
+                    // A generic keyword's axis by its place: block, then
+                    // inline.
+                    (Some(x), Some(_)) if first => (None, Some(x)),
+                    (Some(x), Some(_)) => (Some(x), None),
+                    _ => (None, None),
+                })
+            }
+            _ => None,
+        };
+        if let Some((cols, rows)) = area {
+            return Ok(Self::Area(cols, rows));
+        }
+        match parse_tries(&text)?.as_slice() {
+            [Try::Area(a)] => Ok(Self::Area(Some(a.cols), Some(a.rows))),
+            [Try::Flips(f)] => Ok(Self::Tactics(None, f.clone())),
+            [Try::Named(n, f)] => Ok(Self::Tactics(Some(n.clone()), f.clone())),
+            _ => Err(format!(
+                "anchored(fallback: {text}): write none, a --name with try-tactics, or a position-area"
+            )),
+        }
+    }
+
+    /// Whether `applied` (the container's applied fallback entry; none:
+    /// its own placement) matches: tactics and their order alike, or the
+    /// same physical area where the query does not say `any`.
+    pub fn matches(&self, applied: Option<&crate::anchor::Try>) -> bool {
+        use crate::anchor::Try;
+        match (self, applied) {
+            (Self::Any, applied) => applied.is_some(),
+            (Self::None, applied) => applied.is_none(),
+            (Self::Tactics(None, f), Some(Try::Flips(g))) => f == g,
+            (Self::Tactics(Some(n), f), Some(Try::Named(m, g))) => n == m && f == g,
+            (Self::Area(cols, rows), Some(Try::Area(a))) => {
+                cols.is_none_or(|c| c == a.cols) && rows.is_none_or(|r| r == a.rows)
+            }
+            _ => false,
+        }
+    }
 }
 
 /// The scroll-state flags a container publishes, one bit per edge in the
@@ -263,6 +344,8 @@ enum Scope {
     Style,
     /// Inside `scroll-state()`.
     ScrollState,
+    /// Inside `anchored()`.
+    Anchored,
 }
 
 impl Query {
@@ -457,6 +540,7 @@ impl Context {
                 Feature::Style(..)
                 | Feature::StyleRange(..)
                 | Feature::ScrollState { .. }
+                | Feature::Fallback(_)
                 | Feature::Custom(_) => false,
                 Feature::ColorVision(value) => {
                     reads.color_vision = true;
@@ -539,9 +623,10 @@ fn group(input: &mut Parser<'_>, scope: Scope) -> Result<Query, Error> {
             match name.to_ascii_lowercase().as_str() {
                 "style" => Scope::Style,
                 "scroll-state" => Scope::ScrollState,
+                "anchored" => Scope::Anchored,
                 _ => {
                     return Err(ParseError::custom(format!(
-                        "unsupported container function {name}(); use style() or scroll-state()"
+                        "unsupported container function {name}(); use style(), scroll-state() or anchored()"
                     )));
                 }
             }
@@ -563,6 +648,7 @@ fn group(input: &mut Parser<'_>, scope: Scope) -> Result<Query, Error> {
             _ if nested => condition(input, true, scope),
             Scope::Style => style_feature(input),
             Scope::ScrollState => scroll_feature(input),
+            Scope::Anchored => anchored_feature(input),
             _ => feature(input, scope),
         }
     })
@@ -662,6 +748,25 @@ pub fn normalize(value: &str) -> String {
 /// `scrollable`, `snapped`, `stuck` or `scrolled`, with or without a
 /// value, inside `scroll-state()`. Horizontal-tb, left-to-right writing:
 /// block-start is the top and inline-start the left.
+/// `fallback` or `fallback: <value>` inside `anchored()`.
+fn anchored_feature(input: &mut Parser<'_>) -> Result<Query, Error> {
+    let name = input.expect_ident_cloned()?.to_ascii_lowercase();
+    if name != "fallback" {
+        return Err(ParseError::custom(format!(
+            "unsupported anchored() feature {name}; use fallback"
+        )));
+    }
+    if input.is_exhausted() {
+        return Ok(Query::Feature(Feature::Fallback(Fallback::Any)));
+    }
+    input.expect_colon()?;
+    let start = input.position();
+    while input.next().is_ok() {}
+    Fallback::parse(input.slice_from(start))
+        .map(|f| Query::Feature(Feature::Fallback(f)))
+        .map_err(ParseError::custom)
+}
+
 fn scroll_feature(input: &mut Parser<'_>) -> Result<Query, Error> {
     use scroll::*;
     let name = input.expect_ident_cloned()?.to_ascii_lowercase();

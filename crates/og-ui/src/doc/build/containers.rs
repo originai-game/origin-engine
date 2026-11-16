@@ -22,6 +22,10 @@ pub(crate) struct Containers {
     pub(crate) scroll_states: BTreeMap<u64, (og_core::glam::Vec2, u16)>,
     pub(crate) scroll_read: BTreeSet<u64>,
     pub(crate) scroll_changed: BTreeSet<u64>,
+    /// The `position-try-fallbacks` entry each of those containers applied
+    /// last frame (none: its own placement), for `anchored()`; read and
+    /// restyled through the scroll-state sets above.
+    pub(crate) anchored: BTreeMap<u64, crate::anchor::Try>,
 }
 
 impl Ui {
@@ -180,9 +184,48 @@ impl crate::ui::Docs {
                 self.containers.scroll_changed.insert(key);
             }
             states.insert(key, (offset, flags));
+            let applied = applied_fallback(tree, key);
+            if applied.as_ref() != self.containers.anchored.get(&key) {
+                self.containers.scroll_changed.insert(key);
+            }
+            match applied {
+                Some(t) => self.containers.anchored.insert(key, t),
+                None => self.containers.anchored.remove(&key),
+            };
         }
         self.containers.scroll_states = states;
+        self.containers
+            .anchored
+            .retain(|key, _| self.containers.scroll_states.contains_key(key));
     }
+}
+
+/// The `position-try-fallbacks` entry anchor positioning applied to the
+/// element `key` last frame; none: its own placement, or it is not
+/// anchor-positioned (CSS Anchor Positioning 2 §2.3.1).
+fn applied_fallback(tree: &crate::ui::Tree, key: u64) -> Option<crate::anchor::Try> {
+    let get = |i: usize| {
+        if tree.building {
+            tree.previous_node(i)
+        } else {
+            tree.nodes.get(i)
+        }
+    };
+    let n = tree
+        .index
+        .find(key)
+        .and_then(get)
+        .filter(|n| n.key == key)
+        .or_else(|| {
+            tree.building
+                .then(|| tree.previous_nodes().find(|n| n.key == key))
+                .flatten()
+        })?;
+    let option = n.layout.anchor_placed.option as usize;
+    let spec = n.props.anchor.as_ref()?;
+    option
+        .checked_sub(1)
+        .and_then(|k| spec.tries.get(k).cloned())
 }
 
 impl crate::ui::Tree {

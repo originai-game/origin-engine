@@ -46,15 +46,20 @@ pub struct Container {
     /// A vertical writing mode: its inline axis is its height.
     pub vertical: bool,
     pub scroll_state: bool,
+    /// `container-type: anchored`: it answers `anchored()`.
+    pub anchored: bool,
     pub names: Vec<String>,
 }
 
 /// What a container condition is evaluated against besides the chain: the
-/// settled boxes, a container's scroll-state flags ([`scroll`]) and the
-/// element's inherited computed values (for `style()`).
+/// settled boxes, a container's scroll-state flags ([`scroll`]), the
+/// `position-try-fallbacks` entry an anchored container applies (none:
+/// its own placement) and the element's inherited computed values (for
+/// `style()`).
 pub struct Probe<'a> {
     pub sizes: &'a Sizes,
     pub scroll: &'a dyn Fn(u64) -> u16,
+    pub anchored: &'a dyn Fn(u64) -> Option<crate::anchor::Try>,
     pub inherited: &'a variables::Computed,
 }
 
@@ -144,6 +149,7 @@ struct Needs {
     /// Both axes (`aspect-ratio`, `orientation`, `block-size`).
     both: bool,
     scroll: bool,
+    anchored: bool,
 }
 
 /// One `@container [name] <condition>` prelude.
@@ -287,6 +293,7 @@ pub(crate) fn chain(computed: &variables::Computed) -> Vec<Container> {
                 _ => Kind::Normal,
             };
             let scroll_state = flags.contains('S');
+            let anchored = flags.contains('A');
             let vertical = flags.contains('V');
             let names = parts
                 .next()
@@ -299,6 +306,7 @@ pub(crate) fn chain(computed: &variables::Computed) -> Vec<Container> {
                 kind,
                 vertical,
                 scroll_state,
+                anchored,
                 names,
             })
         })
@@ -322,13 +330,14 @@ pub(crate) fn push(
         .collect();
     computed.extend(custom);
     let entry = format!(
-        "{key}:{}{}{}:{}",
+        "{key}:{}{}{}{}:{}",
         match ty.size {
             Kind::Size => "s",
             Kind::InlineSize => "i",
             Kind::Normal => "n",
         },
         if ty.scroll_state { "S" } else { "" },
+        if ty.anchored { "A" } else { "" },
         if vertical { "V" } else { "" },
         names.join(" ")
     );
@@ -396,6 +405,7 @@ impl Condition {
             Feature::Height(..) => n.height = true,
             Feature::InlineSize(..) => n.inline = true,
             Feature::ScrollState { .. } => n.scroll = true,
+            Feature::Fallback(_) => n.anchored = true,
             Feature::Style(..) | Feature::StyleRange(..) => {}
             _ => n.both = true,
         });
@@ -410,7 +420,7 @@ impl Condition {
         let needs = self.needs();
         let sized = needs.width || needs.height || needs.inline || needs.both;
         let (inline, block, needs_scroll) = (sized, sized, needs.scroll);
-        let parent = self.name.is_none() && !sized && !needs_scroll;
+        let parent = self.name.is_none() && !sized && !needs_scroll && !needs.anchored;
         let container = if parent {
             None
         } else {
@@ -423,6 +433,7 @@ impl Condition {
                 (!block_axis || c.kind == Kind::Size)
                     && (!inline_axis || c.kind != Kind::Normal)
                     && (!needs_scroll || c.scroll_state)
+                    && (!needs.anchored || c.anchored)
                     && self.name.as_ref().is_none_or(|n| c.names.contains(n))
             }) else {
                 return false;
@@ -446,6 +457,15 @@ impl Condition {
             }
             _ => 0,
         };
+        // Its applied fallback, read (and restyled on change) as a scroll
+        // state is.
+        let applied = match container {
+            Some(c) if needs.anchored => {
+                read.scroll.insert(c.key);
+                (probe.anchored)(c.key)
+            }
+            _ => None,
+        };
         let (width, height) = size.unwrap_or_default();
         let context = Context {
             width,
@@ -462,6 +482,7 @@ impl Condition {
             Feature::Style(..) | Feature::StyleRange(..) => {
                 style_holds(feature, &mut |name| property(name, read))
             }
+            Feature::Fallback(f) => f.matches(applied.as_ref()),
             &Feature::ScrollState { group, bits } => {
                 if bits == 0 {
                     flags & group == 0
@@ -492,6 +513,7 @@ mod tests {
         Probe {
             sizes,
             scroll: &|key| if key == 5 { 0b0100 | (1 << 4) } else { 0 },
+            anchored: &|_| None,
             inherited,
         }
     }

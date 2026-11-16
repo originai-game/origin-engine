@@ -806,9 +806,11 @@ impl Ui {
                 .get(&key)
                 .map_or(0, |s| s.1)
         };
+        let anchored = |key: u64| self.docs.containers.anchored.get(&key).cloned();
         let probe = super::container::Probe {
             sizes: &self.docs.containers.sizes,
             scroll: &scroll,
+            anchored: &anchored,
             inherited,
         };
         let mut container_read = super::container::Read::default();
