@@ -71,6 +71,6 @@
 #ControllerStep { width: stretch; gap: var(--space-sm); }
 #ControllerHint { line-clamp: 3; }
 #DeadZone { width: stretch; gap: var(--space-md); align-items: center; }
-#DeadZoneValue { width: stretch; }
+#DeadZoneValue { flex: 1; min-width: 0; }
 #Foot { width: stretch; gap: var(--space-sm); justify-content: end; }
 </style>

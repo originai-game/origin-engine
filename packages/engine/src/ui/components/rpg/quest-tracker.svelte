@@ -29,7 +29,7 @@
 .tracker-steps { display: flex; flex-direction: column; margin: 0; padding: 0; list-style: none; gap: var(--space-xxs); }
 [part="RpgQuestTracker.row"] { display: flex; align-items: center; gap: var(--space-sm); }
 .tracker-mark { width: var(--space-md); height: var(--space-md); flex: none; }
-.tracker-text { width: stretch; }
+.tracker-text { flex: 1; min-width: 0; }
 .tracker-distance { display: flex; align-items: center; justify-content: center; gap: var(--space-xs); }
 .tracker-arrow { width: var(--space-md); height: var(--space-md); }
 </style>

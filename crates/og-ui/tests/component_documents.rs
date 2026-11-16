@@ -603,3 +603,46 @@ fn a_node_graph_centres_its_graph_in_its_well() {
         280.0 * fit
     );
 }
+
+/// Calibration's controller step sets its dead-zone slider beside its
+/// label, and the slider ends inside the row on a phone and a desktop.
+///
+/// Ways it could fail: the slider sized `width: stretch`, CSS's
+/// stretch-fit size, which is the whole row, so it runs past the row's end
+/// by the label and the gap (the controller step is in no fixture, so the
+/// reference frames never lay it out).
+#[test]
+fn the_dead_zone_slider_shares_its_row_with_its_label() {
+    let (docs, messages) = engine_documents(&["src/ui/components", "src/ui/screens"]);
+    let doc = docs
+        .iter()
+        .find(|d| d.path == "src/ui/screens/calibration.svelte")
+        .expect("calibration.svelte");
+    let mut props = doc.props.clone();
+    props["step"] = serde_json::json!("controller");
+    let doc = EngineDocument {
+        path: doc.path.clone(),
+        doc: doc.doc.clone(),
+        props,
+    };
+    for (w, h) in [(390.0, 844.0), (1280.0, 720.0)] {
+        let mut ui = ui_with_font(test_font_metrics());
+        ui.set_icons(icons(og_draw::TextureHandle::from_slot(1)));
+        preview(&mut ui, &docs, &doc, &messages, w, h);
+        let at = |id: &str| {
+            ui.probe_elements()
+                .into_iter()
+                .find(|e| e.id == id)
+                .unwrap_or_else(|| panic!("no {id}"))
+        };
+        let (row, slider) = (at("DeadZone"), at("DeadZoneValue"));
+        assert!(
+            slider.width > 0.0 && slider.x + slider.width <= row.x + row.width + 0.5,
+            "{w}×{h}: the slider [{}, {}] runs past its row [{}, {}]",
+            slider.x,
+            slider.x + slider.width,
+            row.x,
+            row.x + row.width
+        );
+    }
+}

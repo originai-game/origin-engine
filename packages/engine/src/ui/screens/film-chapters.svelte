@@ -44,6 +44,6 @@
 #Screen { padding: var(--space-lg) calc(env(safe-area-inset-right) + var(--space-md)) calc(env(safe-area-inset-bottom) + var(--space-lg)) calc(env(safe-area-inset-left) + var(--space-md)); gap: var(--space-md); }
 #Title { font-size: var(--type-xl-size); }
 #Chapters { gap: var(--space-md); }
-.card { width: stretch; }
+.card { flex: 1 1 var(--size-3xl); width: auto; min-width: 0; }
 }
 </style>

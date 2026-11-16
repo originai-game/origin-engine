@@ -60,7 +60,7 @@
 [part="Achievements.frame"][hidden], [part="Achievements.frame"] [hidden] { display: none; }
 [part="Achievements.frame"] { display: flex; flex-direction: column; width: stretch; height: stretch; gap: var(--space-sm); container-type: inline-size; }
 [part="Achievements.band"] { display: flex; width: stretch; align-items: center; gap: var(--space-md); flex: none; flex-wrap: wrap; }
-[part="Achievements.title"] { margin: 0; flex: 1; min-width: 0; }
+[part="Achievements.title"] { margin: 0; flex: 1 1 auto; min-width: 0; }
 [part="Achievements.summary Achievements.label"] { display: flex; align-items: center; gap: var(--space-sm); width: calc(var(--size-xxl) * 3); max-width: stretch; }
 .total { flex: 1; min-width: 0; }
 .figure { font-variant-numeric: tabular-nums; white-space: nowrap; }
