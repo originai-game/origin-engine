@@ -7,42 +7,42 @@
 <meta name="action:back" content="Back">
 <meta name="fixture:default" content="{&quot;offset&quot;:0,&quot;sections&quot;:[{&quot;id&quot;:&quot;item-0&quot;,&quot;names&quot;:[{&quot;id&quot;:&quot;item-0&quot;,&quot;name&quot;:&quot;Ada Lin&quot;,&quot;role&quot;:&quot;&quot;}],&quot;title&quot;:&quot;Directed by&quot;},{&quot;id&quot;:&quot;item-1&quot;,&quot;names&quot;:[{&quot;id&quot;:&quot;item-0&quot;,&quot;name&quot;:&quot;Tomas Reyes&quot;,&quot;role&quot;:&quot;Lead artist&quot;},{&quot;id&quot;:&quot;item-1&quot;,&quot;name&quot;:&quot;Mira Okafor&quot;,&quot;role&quot;:&quot;Environment&quot;}],&quot;title&quot;:&quot;Art&quot;},{&quot;id&quot;:&quot;item-2&quot;,&quot;names&quot;:[{&quot;id&quot;:&quot;item-0&quot;,&quot;name&quot;:&quot;Jun Sato&quot;,&quot;role&quot;:&quot;Composer&quot;}],&quot;title&quot;:&quot;Music&quot;}]}">
 
-<stack id="Credits" part="credits.frame" class="bare" interactive="true" onclick={faster} onconfirm={faster}>
-  <column id="Roll">
+<div id="Credits" part="credits.frame" class="bare" interactive="true" onclick={faster} onconfirm={faster}>
+  <div id="Roll">
     <art id="Logo" kind="logo"></art>
     {#each sections as s (s.id)}
-      <column id="Section">
-        <text id="Title" part="credits.heading">{s.title}</text>
+      <section id="Section">
+        <h2 id="Title" part="credits.heading">{s.title}</h2>
         {#each s.names as n (n.id)}
-          <column id="Person">
-            <text id="Name" part="credits.name">{n.name}</text>
-            <text id="Role" hidden={!((n.role != ""))}>{n.role}</text>
-          </column>
+          <div id="Person">
+            <p id="Name" part="credits.name">{n.name}</p>
+            {#if n.role != ""}<p id="Role">{n.role}</p>{/if}
+          </div>
         {/each}
-      </column>
+      </section>
     {/each}
-    <column id="End">{@render end?.()}</column>
-    <column id="Licences">{@render licences?.()}</column>
-  </column>
+    <div id="End">{@render end?.()}</div>
+    <div id="Licences">{@render licences?.()}</div>
+  </div>
   <button id="Back" variant="quiet" onclick={back}>{t("screen.common.back")}</button>
-</stack>
+</div>
 
 <style>
-#Credits { width: stretch; height: stretch; background: var(--backdrop); min-height: 0; }
-#Roll { position: absolute; inset-inline-start: 0; inset-inline-end: 0; top: 0; padding: var(--space-3xl); gap: var(--space-3xl); align-items: center; translate: 0 bind("-offset"); }
-@media (width < 600px), (height < 600px) {
-#Roll { padding: var(--space-xl); gap: var(--space-xl); }
-}
-#Logo { width: var(--measure-md); height: var(--size-3xl); }
-@media (width < 600px), (height < 600px) {
-#Logo { width: var(--size-6xl); height: var(--size-xxl); }
-}
-#Section { width: stretch; max-width: var(--measure-xl); gap: var(--space-md); align-items: center; }
-#Title { font: var(--text-caption); letter-spacing: var(--type-caption-tracking); text-align: center; }
-#Person { align-items: center; gap: var(--space-xxs); }
-#Name { font: var(--text-xl); letter-spacing: var(--type-xl-tracking); text-align: center; }
+/* The roll is one centred column the game scrolls up by its offset. */
+:root { position: relative; block-size: stretch; background: var(--backdrop); }
+#Roll { position: absolute; inset-inline: 0; inset-block-start: 0; display: flex; flex-direction: column; align-items: center; gap: var(--space-3xl); padding: var(--space-3xl); translate: 0 bind("-offset"); }
+#Logo { inline-size: var(--measure-md); block-size: var(--size-3xl); }
+#Section, #End, #Licences { inline-size: 100%; max-inline-size: var(--measure-xl); }
+#Section, #Person { display: flex; flex-direction: column; align-items: center; text-align: center; }
+#Section { gap: var(--space-md); }
+#Person { gap: var(--space-xxs); }
+h2, p { margin: 0; }
+[part="credits.heading"] { font: var(--text-caption); letter-spacing: var(--type-caption-tracking); }
+[part="credits.name"] { font: var(--text-xl); letter-spacing: var(--type-xl-tracking); }
 #Role { font: var(--text-caption); letter-spacing: var(--type-caption-tracking); color: var(--ink-muted); }
-#End { width: stretch; max-width: var(--measure-xl); }
-#Licences { width: stretch; max-width: var(--measure-xl); }
-#Back { position: absolute; inset-inline-start: var(--space-lg); top: var(--space-lg); }
+#Back { position: absolute; inset-inline-start: var(--space-lg); inset-block-start: var(--space-lg); }
+@media (width < 600px), (height < 600px) {
+  #Roll { padding: var(--space-xl); gap: var(--space-xl); }
+  #Logo { inline-size: var(--size-6xl); block-size: var(--size-xxl); }
+}
 </style>
