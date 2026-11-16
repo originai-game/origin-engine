@@ -2465,7 +2465,8 @@ closed.** og-ui implements game-UI CSS, not a browser: a row is in scope
 when a component, a style pack or a guide needs it, and work goes to
 proving rows in use before adding rows. A feature outside the pinned
 inventory, or a row marked Not needed, is refused by the parser
-by name, never half-rendered. Moving the pin to a newer web-features
+by name, never half-rendered; a media feature the engine answers with a
+constant, such as `forced-colors: none`, still answers it. Moving the pin to a newer web-features
 version is a decision of its own.
 
 ## 8. Standard CSS output-proof checklist

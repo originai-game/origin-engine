@@ -96,14 +96,13 @@ export const PAGE_PREFERENCES = [
   ["reducedMotion", "(prefers-reduced-motion: reduce)"],
   ["highContrast", "(prefers-contrast: more)"],
   ["reducedTransparency", "(prefers-reduced-transparency: reduce)"],
-  ["forcedColors", "(forced-colors: active)"],
 ] as const;
 
-/** The page's motion, contrast, transparency and forced colours preferences and the platform's editing keys, as the viewport carries them to og-ui. */
-export function pagePreferences(): { reducedMotion: boolean; highContrast: boolean; reducedTransparency: boolean; forcedColors: boolean; macKeys: boolean } {
+/** The page's motion, contrast and transparency preferences and the platform's editing keys, as the viewport carries them to og-ui. */
+export function pagePreferences(): { reducedMotion: boolean; highContrast: boolean; reducedTransparency: boolean; macKeys: boolean } {
   const query = (q: string) => globalThis.matchMedia?.(q).matches ?? false;
-  const [motion, contrast, transparency, forced] = PAGE_PREFERENCES.map(([, q]) => query(q));
-  return { reducedMotion: motion!, highContrast: contrast!, reducedTransparency: transparency!, forcedColors: forced!, macKeys: macKeys() };
+  const [motion, contrast, transparency] = PAGE_PREFERENCES.map(([, q]) => query(q));
+  return { reducedMotion: motion!, highContrast: contrast!, reducedTransparency: transparency!, macKeys: macKeys() };
 }
 
 /** Whether the page runs on an Apple platform, whose text fields take Command and Option (og-ui's `Viewport.macKeys`). */

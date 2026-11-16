@@ -16289,7 +16289,6 @@ pub struct Viewport {
     pub reduced_motion: Option<bool>,
     pub high_contrast: Option<bool>,
     pub reduced_transparency: Option<bool>,
-    pub forced_colors: Option<bool>,
     pub mac_keys: Option<bool>,
     pub covered: Option<UiRect>,
     pub breakpoint: Breakpoint,
@@ -16311,7 +16310,6 @@ impl Default for Viewport {
             reduced_motion: Default::default(),
             high_contrast: Default::default(),
             reduced_transparency: Default::default(),
-            forced_colors: Default::default(),
             mac_keys: Default::default(),
             covered: Default::default(),
             breakpoint: Default::default(),
@@ -16339,7 +16337,6 @@ impl FromJson for Viewport {
             reduced_motion: field(o, "reducedMotion", d.reduced_motion)?,
             high_contrast: field(o, "highContrast", d.high_contrast)?,
             reduced_transparency: field(o, "reducedTransparency", d.reduced_transparency)?,
-            forced_colors: field(o, "forcedColors", d.forced_colors)?,
             mac_keys: field(o, "macKeys", d.mac_keys)?,
             covered: field(o, "covered", d.covered)?,
             breakpoint: field(o, "breakpoint", d.breakpoint)?,
@@ -16376,9 +16373,6 @@ impl ToJson for Viewport {
         }
         if let Some(x) = &self.reduced_transparency {
             o.insert("reducedTransparency".into(), x.to_json());
-        }
-        if let Some(x) = &self.forced_colors {
-            o.insert("forcedColors".into(), x.to_json());
         }
         if let Some(x) = &self.mac_keys {
             o.insert("macKeys".into(), x.to_json());

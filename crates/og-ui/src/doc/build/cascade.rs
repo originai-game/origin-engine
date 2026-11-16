@@ -779,43 +779,7 @@ pub(crate) fn values_with<'r>(
             Arc::make_mut(&mut out.computed).insert(name.clone(), Some(text));
         }
     }
-    // Forced colours mode (CSS Color Adjust 1 §3.1): the author colours of
-    // an element whose `forced-color-adjust` is `auto` are forced to system
-    // colours. What an element declares reads the mode, on or off.
-    let own = |want: &str| {
-        declarations
-            .iter()
-            .find(|(n, _)| *n == want)
-            .and_then(|(_, (_, w, _))| match w {
-                Winner::Declared(d) => d
-                    .value
-                    .substitute(&mut |n| out.computed.get(n).cloned().flatten())
-                    .ok(),
-                Winner::Unset => None,
-            })
-    };
-    let mut forcing = false;
-    if declarations
-        .iter()
-        .any(|(n, _)| crate::css::forced_colors::affected(n))
-    {
-        out.viewport_reads.forced_colors = true;
-        if o.media.is_some_and(|c| c.forced_colors) {
-            let adjust = match own("forced-color-adjust") {
-                Some(v) if crate::doc::stylesheet::wide_keyword(&v).is_none() => v,
-                Some(v) if v.trim() == "initial" => "auto".into(),
-                _ => {
-                    let key = crate::doc::text_css::key("forced-color-adjust");
-                    let adjust = inherited.get(&key).cloned().flatten();
-                    out.inherited_reads.insert(key);
-                    adjust.unwrap_or_default()
-                }
-            };
-            forcing = crate::css::forced_colors::adjusts(&adjust);
-        }
-    }
-    let ink = if forcing { own("color") } else { None };
-    for (name, (priority, winner, line)) in declarations {
+    for (name, (_, winner, line)) in declarations {
         for prop in css::targets(name) {
             if let Some((spec, _)) = schema::prop(prop) {
                 out.unset.insert(spec);
@@ -976,30 +940,6 @@ pub(crate) fn values_with<'r>(
                 Ok(v)
             }
         });
-        // Forcing rewrites an author's colours, not the user agent's.
-        let value = match value {
-            Ok(value)
-                if forcing
-                    && matches!(winner, Winner::Declared(_))
-                    && rules[priority.order].layer != 0 =>
-            {
-                match crate::css::forced_colors::force(name, &value, ink.as_deref()) {
-                    crate::css::forced_colors::Forced::Kept => Ok(value),
-                    crate::css::forced_colors::Forced::Reverted => {
-                        if inherited_property(name) {
-                            out.inherited_reads.insert(name.into());
-                        }
-                        continue;
-                    }
-                    crate::css::forced_colors::Forced::Is(values) => {
-                        out.values
-                            .extend(values.into_iter().map(|(n, v)| (n, v, line)));
-                        continue;
-                    }
-                }
-            }
-            value => value,
-        };
         match value {
             Ok(value) => out.values.push((name.into(), value, line)),
             Err(error) => out

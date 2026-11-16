@@ -16,7 +16,6 @@ pub(crate) mod boxes;
 #[doc(hidden)]
 pub mod contain_css;
 pub mod container;
-pub(crate) mod forced_colors;
 pub mod generated;
 pub(crate) mod image_css;
 pub(crate) mod interact_css;

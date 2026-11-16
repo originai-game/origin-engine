@@ -25153,10 +25153,6 @@ export interface Viewport {
    */
   readonly reducedTransparency?: boolean;
   /**
-   * The page is in forced colours mode (forced-colors: active, from the web shell): documents' colours are forced to the palette's roles, the system colours, wherever forced-color-adjust is auto (CSS Color Adjust 1 §3.1). Omitted is false.
-   */
-  readonly forcedColors?: boolean;
-  /**
    * Text controls take macOS's editing keys: Command with A, C, X and Z, Command+←/→ to the line's ends (↑/↓ the text's), Option+←/→ and Option+Backspace by words, Control+A and E to the line's ends. Off: Control takes the shortcuts and moves by words (Alt too), Home and End go to the line's ends. The web shell sets it from the browser's platform (Apple's); a native host sets it on macOS, so a script that holds Ctrl or Meta edits as a person on that OS would (og.ui.previewViewport pins either). Omitted is false.
    */
   readonly macKeys?: boolean;
