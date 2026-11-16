@@ -496,3 +496,49 @@ fn view_transitions_morph_a_named_element_by_its_groups_timing() {
         assert_eq!(boxes, &[new], "no opt-in: tick {k}");
     }
 }
+
+/// CSS Transitions over two value types the spec makes animatable, each
+/// checked every tick against its own interpolation (60 ticks a second,
+/// 600 ms linear, so t = tick / 36): `grid-template-columns` track by
+/// track (CSS Grid 2 §7.2.5: 100px 200px → 200px 100px), `clip-path`
+/// `inset()` by its offsets (CSS Masking 1 §5.1: 0 → 50px, read through
+/// where the cursor applies). Ways it could fail: tracks swapped or
+/// jumping at 50%, or the clip interpolating its box instead of its insets
+/// (or flipping discretely).
+#[test]
+fn grid_tracks_and_clip_paths_transition_by_their_values() {
+    let text = r#"<meta name="component" content="t">
+<div id="Page" class={$mode}>
+  <div id="Grid"><div id="G1"></div><div id="G2"></div></div>
+  <div id="Clip"></div>
+</div>
+<style>
+#Page { position: relative; width: 800px; height: 600px; cursor: help; }
+#Grid { display: grid; width: 300px; grid-template-columns: 100px 200px; transition: grid-template-columns 600ms linear; }
+#Page.on > #Grid { grid-template-columns: 200px 100px; }
+#G1, #G2 { height: 10px; }
+#Clip { position: absolute; left: 100px; top: 100px; width: 100px; height: 100px; cursor: copy; clip-path: inset(0px); transition: clip-path 600ms linear; }
+#Page.on > #Clip { clip-path: inset(50px); }
+</style>"#;
+    let mut d = Doc::new(text, &[("mode", serde_json::json!("off"))]);
+    d.set("mode", serde_json::json!("on"));
+    // The clip's edge at tick k is 50·t in from each side: a point 20 px in
+    // is inside it until t = 0.4 (tick 14.4). The cursor hit-tests the
+    // frame drawn before the step, as every og-ui hit does.
+    let probe = og_core::glam::Vec2::new(120.0, 150.0);
+    for tick in 1..=40 {
+        let t = (tick as f32 / 36.0).min(1.0);
+        let g1 = d.get("G1").width;
+        assert!(
+            (g1 - (100.0 + 100.0 * t)).abs() <= 0.5 + 1e-3,
+            "track at {tick}: {g1}"
+        );
+        d.step(InputFrame::hover(probe.x, probe.y));
+        let inside = 50.0 * tick as f32 / 36.0 < 20.0;
+        let edge = (50.0 * tick as f32 / 36.0 - 20.0).abs() < 0.5;
+        if !edge {
+            let want = if inside { Cursor::Copy } else { Cursor::Help };
+            assert_eq!(d.ui.frame().cursor, want, "clip at {tick}");
+        }
+    }
+}
