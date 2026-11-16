@@ -45,7 +45,9 @@ impl Doc {
         Doc::mounted(ui, text, stores)
     }
 
-    fn mounted(mut ui: Ui, text: &str, stores: &[(&str, Value)]) -> Doc {
+    /// [`Doc::new`] in `ui`, which may hold other documents (those it
+    /// embeds).
+    pub(crate) fn mounted(mut ui: Ui, text: &str, stores: &[(&str, Value)]) -> Doc {
         let doc = UiDocument::parse("ui/t.svelte", text).unwrap_or_else(|e| panic!("{e:?}"));
         let name = doc.name.clone();
         ui.define_document(doc);

@@ -136,6 +136,9 @@ pub struct RetainedHost {
     pub images: BTreeMap<MountedNode, ImageMount>,
     /// While an element image's root is compiled: how deep it is.
     pub imaging: u32,
+    /// While a frame's document is compiled: the documents of the frames
+    /// around it, so a frame never embeds one it is inside.
+    pub framing: Vec<String>,
     /// `use:` lifecycle events (made, params changed, gone) for the next
     /// build's answer.
     pub uses: Vec<DocEvent>,

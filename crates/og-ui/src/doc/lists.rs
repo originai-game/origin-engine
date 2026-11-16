@@ -42,6 +42,7 @@ h4 { font: var(--text-body); margin-block: 1.33em; }
 h5 { font: var(--text-sm); margin-block: 1.67em; }
 h6 { font: var(--text-xs); margin-block: 2.33em; }
 small { font: var(--text-sm); }
+iframe { overflow: clip; }
 button { text-align: center; --figure-ink: currentColor; }
 menu > button { width: stretch; text-align: start; }
 table { display: table; }

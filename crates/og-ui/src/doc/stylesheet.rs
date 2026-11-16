@@ -2291,6 +2291,7 @@ fn pseudo_node(doc: &mut UiDocument, i: usize, pseudo: &'static str) -> usize {
         custom: Vec::new(),
         uses: Vec::new(),
         pseudo: Vec::new(),
+        frame: None,
         ..doc.nodes[i].clone()
     };
     if matches!(pseudo, "before" | "after") {

@@ -388,8 +388,8 @@ proof("line-clamp", "css_layout", "line_clamp_cuts_a_texts_lines",
       "Computed heights: line-clamp: 2 keeps two lines of a <p> and a <text> without text-overflow, the box those lines high; a text within the limit keeps its lines. A <div> holding text directly refuses line-clamp (it applies to text-bearing elements), and the drawn ellipsis is not asserted.")
 proof("overflow-overlay", "css_contain", "z_index_orders_paint_and_clip_and_contain_cut_it",
       "overflow: overlay and overflow-y: overlay make scroll containers whose view and content heights are auto's.")
-not_applicable("frame-sizing",
-               "Sizes an <iframe> to its embedded document: a game's UI embeds no other documents.")
+proof("frame-sizing", "css_layout", "frame_sizing_follows_an_embedded_documents_content",
+      "Computed boxes of <iframe>s embedding the game's own documents: frame-sizing: content-height with a 200px width makes the frame its opted-in document's height (two 20px rows, a line and 10px of padding), and a keyed insert into the bound list grows it by one row; content-width on a document without <meta name=\"responsive-embedded-sizing\"> keeps HTML's 300 x 150; auto with CSS sizes keeps 120 x 40. The frame is its own cascade: the embedder's 40px font-size does not reach its text, its .row min-height rule matches nothing inside, and the style pack's .row applies while the pack's #Page .row does not see the page around the frame. Remote documents are not asserted (they are not supported yet).")
 not_applicable("page-breaks page-break-aliases page-orientation page-selectors page-setup",
                "Paged media for printing: a game's UI is laid out on a screen, never paginated, so there are no pages to break, select, rotate or set up. Column breaks are multi-column's (column-breaks).")
 

@@ -3416,3 +3416,81 @@ fn gap_rules_in_flex_lines_and_rule_insets() {
         );
     });
 }
+
+/// `<iframe src="news.svelte">` embeds the game's own document
+/// (frame-sizing, docs/ui.md §2.1 Frames): `frame-sizing: content-height`
+/// sizes the frame to its document's content once that document opts in,
+/// following a keyed insert; without the opt-in, and with no CSS size, it is
+/// 300 × 150; CSS sizes win under `auto`. Nothing of the page crosses in:
+/// its rules match nothing inside, and inheritance stops at the frame's
+/// document. Fails when the content size is ignored, applied without the
+/// opt-in, or when the page's rules or inherited values reach the frame.
+#[test]
+fn frame_sizing_follows_an_embedded_documents_content() {
+    let mut ui = crate::support::ui_with_font(crate::support::test_font_metrics());
+    for (path, name, opt_in) in [
+        ("ui/news.svelte", "news", true),
+        ("ui/plain.svelte", "plain", false),
+    ] {
+        let meta = if opt_in {
+            r#"<meta name="responsive-embedded-sizing">"#
+        } else {
+            ""
+        };
+        let text = format!(
+            r#"<meta name="screen" content="{name}">{meta}<meta name="prop:items" content="list">
+<div id="List">{{#each items as item (item.id)}}<div class="row">{{item.name}}</div>{{/each}}<p id="Words">x</p></div>
+<style>#List {{ padding: 5px; }} #Words {{ margin: 0; }}</style>"#
+        );
+        ui.define_document(og_ui::UiDocument::parse(path, &text).unwrap());
+    }
+    // The game's style pack styles the frame's document, but sees nothing
+    // of the page around it.
+    let pack = ".row { height: 20px; } #Page .row { height: 77px; }";
+    let pack = og_ui::style_pack::StylePack::parse(
+        "styles/test",
+        vec![("styles/test/main.css".into(), pack.into())],
+    );
+    ui.set_style_pack(&pack.unwrap()).unwrap();
+    let text = r#"<meta name="component" content="t">
+<div><div id="Page">
+<iframe id="Tall" src="news.svelte" items={$items}></iframe>
+<iframe id="Wide" src="plain.svelte"></iframe>
+<iframe id="Sized" src="news.svelte"></iframe>
+</div><p id="Plain">x</p></div>
+<style>
+#Page { font-size: 40px; }
+#Plain { margin: 0; }
+#Tall { width: 200px; frame-sizing: content-height; }
+#Wide { frame-sizing: content-width; }
+#Sized { width: 120px; height: 40px; }
+.row { min-height: 99px; }
+</style>"#;
+    let items = serde_json::json!([{"id": "a", "name": "a"}, {"id": "b", "name": "b"}]);
+    let mut d = Doc::mounted(ui, text, &[("items", items)]);
+    let words = d.get("Words").height;
+    let line = d.get("Plain").height;
+    let tall = 2.0 * 20.0 + words + 10.0;
+    assert_eq!(
+        wh(&d, "Tall"),
+        (200.0, tall),
+        "two rows, the words, padding"
+    );
+    assert_eq!(words, line, "the frame's text inherits no 40px font-size");
+    assert_eq!(
+        d.get("Tall/List/node2#a").height,
+        20.0,
+        "the pack's rows, and no rule that reads the page"
+    );
+    d.edit(
+        "items",
+        serde_json::json!({"op": "insert", "row": {"id": "c", "name": "c"}}),
+    );
+    assert_eq!(
+        wh(&d, "Tall"),
+        (200.0, tall + 20.0),
+        "a keyed insert grows it"
+    );
+    assert_eq!(wh(&d, "Wide"), (300.0, 150.0), "no opt-in: 300 × 150");
+    assert_eq!(wh(&d, "Sized"), (120.0, 40.0), "auto keeps the CSS sizes");
+}

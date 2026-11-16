@@ -743,8 +743,14 @@ impl super::matching::Tree for Topology {
         }
     }
 
+    /// None past an `<iframe>`'s document: no selector, the style pack's
+    /// included, sees the page around a frame, as one in an iframe's
+    /// document does not.
     fn parent(&self, id: &MountedNode) -> Option<&MountedNode> {
-        Topology::parent(self, id)
+        Topology::parent(self, id).filter(|p| {
+            let frame = &self.entry(self.identities[*p]).instance;
+            frame.document.nodes[frame.document_node].frame.is_none()
+        })
     }
 
     fn transition_types(&self, id: &MountedNode) -> &[String] {

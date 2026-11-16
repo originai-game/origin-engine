@@ -629,7 +629,14 @@ impl RetainedHost {
         }
         let structurally_stale = ui.docs.library.structure.ancestors
             && self.topology.style_is_stale(identity) == Some(true);
+        // A frame's document inherits nothing from the page around it, as
+        // an iframe's document does not.
+        let in_frame = |p: &MountedNode| {
+            let (e, frame) = (&self.elements[identity], &self.elements[p]);
+            e.index == e.document.root && frame.document.nodes[frame.index].frame.is_some()
+        };
         let inherited = match &parent {
+            Some(p) if in_frame(p) => Default::default(),
             Some(p) => self.elements[p]
                 .resolved
                 .as_ref()

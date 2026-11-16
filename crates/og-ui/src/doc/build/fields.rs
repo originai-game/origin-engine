@@ -9,6 +9,8 @@ pub(super) struct BoxSource<'a> {
     pub tag: Option<&'a str>,
     pub root: bool,
     pub line: usize,
+    /// An `<iframe>`'s document ([`DocNode::frame`]).
+    pub frame: Option<&'a str>,
 }
 
 #[derive(Clone, Debug)]
@@ -778,6 +780,7 @@ impl Ui {
                 tag: n.selector_tag.as_deref(),
                 root: n.parent == crate::layout::NONE,
                 line: n.line,
+                frame: n.frame.as_deref(),
             },
         );
         self.apply_document_semantics(n, r, base);
@@ -962,6 +965,45 @@ impl Ui {
                         el.height = Size::grow();
                     } else {
                         el.width = Size::grow();
+                    }
+                }
+                // An `<iframe>` is a replaced box (HTML §4.8.5): on an axis
+                // CSS leaves auto it takes its natural size, 300×150, or
+                // with `frame-sizing: content-…` its document's laid-out
+                // content size, when that document opts in (CSS Sizing 4).
+                if let Some(src) = source.frame {
+                    let opted = self
+                        .docs
+                        .library
+                        .documents
+                        .values()
+                        .any(|d| d.source == src && d.embedded_sizing);
+                    let sizing = r.str("frameSizing").filter(|_| opted);
+                    let content_width = match sizing {
+                        Some("contentWidth") => true,
+                        Some("contentInlineSize") => !vertical,
+                        Some("contentBlockSize") => vertical,
+                        _ => false,
+                    };
+                    let content_height = match sizing {
+                        Some("contentHeight") => true,
+                        Some("contentBlockSize") => !vertical,
+                        Some("contentInlineSize") => vertical,
+                        _ => false,
+                    };
+                    if !r.has("width") {
+                        el.width = if content_width {
+                            Size::fit()
+                        } else {
+                            Size::Fixed(300.0)
+                        };
+                    }
+                    if !r.has("height") {
+                        el.height = if content_height {
+                            Size::fit()
+                        } else {
+                            Size::Fixed(150.0)
+                        };
                     }
                 }
             }

@@ -40,28 +40,7 @@ impl RetainedHost {
             })?;
         unpassed(&doc, index, &instance)?;
         let user = Arc::new(context.clone());
-        let mut lexical = Lexical::default();
-        for (name, value, _) in &node.args {
-            let (expression, model) = match value {
-                PropValue::Lit(lit) => (Expr::Lit(literal(lit)).into(), None),
-                PropValue::Bind(e, format) => (
-                    format
-                        .map_or_else(|| e.clone(), |f| Expr::Format(f, Box::new(e.clone())))
-                        .into(),
-                    None,
-                ),
-                PropValue::Model(path) => (Expr::Path(path.clone()).into(), Some(path.clone())),
-                PropValue::Template(t) => (BindingExpression::Template(t.clone()), None),
-            };
-            lexical.props.insert(
-                name.clone(),
-                PropRef {
-                    expression,
-                    model,
-                    context: user.clone(),
-                },
-            );
-        }
+        let mut lexical = passed(node, &instance, &user);
         // Its style props (`--name={value}`), and those of the instance it
         // is the root of: custom properties its root inherits.
         for (name, expression) in &node.custom {
@@ -80,21 +59,6 @@ impl RetainedHost {
                     .props
                     .entry(name.clone())
                     .or_insert_with(|| prop.clone());
-            }
-        }
-        // A prop its user leaves out reads its default (`data-default`).
-        for prop in &instance.props {
-            if let Some(default) = &prop.default
-                && !lexical.props.contains_key(&prop.name)
-            {
-                lexical.props.insert(
-                    prop.name.clone(),
-                    PropRef {
-                        expression: Expr::Lit(default.clone()).into(),
-                        model: None,
-                        context: user.clone(),
-                    },
-                );
             }
         }
         let mut children = false;
@@ -135,6 +99,62 @@ impl RetainedHost {
         };
         let root = instance.root;
         self.compile(ui, (instance, root), inner, parent, id, env)
+    }
+
+    /// `<iframe src="news.svelte" items={$news}>`: the document `src`
+    /// names, compiled as the frame element `frame`'s one child. Its props
+    /// are the iframe's other attributes, read in the embedding document's
+    /// context; it reads no store of the mount (`$name` finds none): the
+    /// attributes are all the data it is given.
+    pub(crate) fn compile_frame(
+        &mut self,
+        ui: &mut Ui,
+        source: (Arc<UiDocument>, usize),
+        context: BindingContext,
+        frame: &MountedNode,
+        env: &dyn Env,
+    ) -> Result<Child, String> {
+        let (doc, index) = source;
+        let node = &doc.nodes[index];
+        let src = node.frame.as_deref().unwrap_or_default();
+        let instance = ui
+            .docs
+            .library
+            .documents
+            .values()
+            .find(|d| d.source == src)
+            .cloned()
+            .ok_or_else(|| {
+                format!(
+                    "{}:{}: no document '{src}' for the <iframe> (load it)",
+                    doc.source, node.line
+                )
+            })?;
+        if doc.source == src || self.framing.iter().any(|s| s == src) {
+            return Err(format!(
+                "{}:{}: <iframe src=\"{src}\"> embeds a document it is inside",
+                doc.source, node.line
+            ));
+        }
+        unpassed(&doc, index, &instance)?;
+        let user = Arc::new(context.clone());
+        let inner = BindingContext {
+            node: context.node.clone(),
+            inputs: Arc::default(),
+            rows: Arc::default(),
+            row_key: context.row_key.clone(),
+            selector_nodes: Arc::default(),
+            lexical: Arc::new(passed(node, &instance, &user)),
+        };
+        let root = instance.root;
+        let id = match instance.nodes[root].id.as_str() {
+            "" => "document".to_string(),
+            id => id.to_string(),
+        };
+        self.framing.push(doc.source.clone());
+        let child = self.compile(ui, (instance, root), inner, Some(frame), id, env);
+        self.framing.pop();
+        child
     }
 
     /// `{@render name()}`: the content passed under `name`, else the
@@ -231,6 +251,49 @@ pub(crate) fn style_props(context: &BindingContext) -> impl Iterator<Item = (&St
         .props
         .iter()
         .filter(|(name, _)| name.starts_with("--"))
+}
+
+/// The props an instance's user passes (`node`'s arguments, read in the
+/// user's context `user`) and, for each it leaves out, its default
+/// (`data-default`).
+fn passed(node: &DocNode, instance: &UiDocument, user: &Arc<BindingContext>) -> Lexical {
+    let mut lexical = Lexical::default();
+    for (name, value, _) in &node.args {
+        let (expression, model) = match value {
+            PropValue::Lit(lit) => (Expr::Lit(literal(lit)).into(), None),
+            PropValue::Bind(e, format) => (
+                format
+                    .map_or_else(|| e.clone(), |f| Expr::Format(f, Box::new(e.clone())))
+                    .into(),
+                None,
+            ),
+            PropValue::Model(path) => (Expr::Path(path.clone()).into(), Some(path.clone())),
+            PropValue::Template(t) => (BindingExpression::Template(t.clone()), None),
+        };
+        lexical.props.insert(
+            name.clone(),
+            PropRef {
+                expression,
+                model,
+                context: user.clone(),
+            },
+        );
+    }
+    for prop in &instance.props {
+        if let Some(default) = &prop.default
+            && !lexical.props.contains_key(&prop.name)
+        {
+            lexical.props.insert(
+                prop.name.clone(),
+                PropRef {
+                    expression: Expr::Lit(default.clone()).into(),
+                    model: None,
+                    context: user.clone(),
+                },
+            );
+        }
+    }
+    lexical
 }
 
 fn unpassed(doc: &UiDocument, index: usize, instance: &UiDocument) -> Result<(), String> {

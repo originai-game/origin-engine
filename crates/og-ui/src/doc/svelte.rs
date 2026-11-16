@@ -53,6 +53,7 @@ pub(crate) fn parse_with_pack(
                 nodes: Vec::new(),
                 root: NONE,
                 warnings: Vec::new(),
+                embedded_sizing: false,
             },
             ids: BTreeSet::new(),
             selectors: Vec::new(),
@@ -667,31 +668,17 @@ impl Parser {
                     "strings names a relative cooked string table, such as ./screen.en.ogt".into(),
                 ));
             }
-            let base = self
-                .doc
-                .source
-                .rsplit_once('/')
-                .map_or("", |(base, _)| base);
-            let mut parts: Vec<_> = base.split('/').filter(|p| !p.is_empty()).collect();
-            for part in content.split('/') {
-                match part {
-                    "" | "." => {}
-                    ".." => {
-                        if parts.pop().is_none() {
-                            return Err((
-                                at,
-                                "strings must stay within the game's asset directory".into(),
-                            ));
-                        }
-                    }
-                    part => parts.push(part),
-                }
-            }
-            self.doc.strings.push(parts.join("/"));
+            let id = relative_id(&self.doc.source, content).ok_or((
+                at,
+                "strings must stay within the game's asset directory".into(),
+            ))?;
+            self.doc.strings.push(id);
+        } else if name == "responsive-embedded-sizing" {
+            self.doc.embedded_sizing = true;
         } else {
             return Err((
                 at,
-                "unknown meta name; use screen, component, prop:…, action:…, fixture:…, strings or parts"
+                "unknown meta name; use screen, component, prop:…, action:…, fixture:…, strings, parts or responsive-embedded-sizing"
                     .into(),
             ));
         }
@@ -725,6 +712,7 @@ impl Parser {
             custom: Vec::new(),
             uses: Vec::new(),
             pseudo: Vec::new(),
+            frame: None,
         });
         index
     }
@@ -812,3 +800,21 @@ impl UiDocument {
 
 #[cfg(test)]
 mod tests;
+
+/// The asset id `path` names written in document `source`: resolved
+/// against its directory, `.` and `..` followed; `None` when it leaves the
+/// game's asset directory.
+pub(crate) fn relative_id(source: &str, path: &str) -> Option<String> {
+    let base = source.rsplit_once('/').map_or("", |(base, _)| base);
+    let mut parts: Vec<_> = base.split('/').filter(|p| !p.is_empty()).collect();
+    for part in path.split('/') {
+        match part {
+            "" | "." => {}
+            ".." => {
+                parts.pop()?;
+            }
+            part => parts.push(part),
+        }
+    }
+    Some(parts.join("/"))
+}

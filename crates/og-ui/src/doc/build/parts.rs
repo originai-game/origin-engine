@@ -308,6 +308,7 @@ impl Ui {
                 tag: None,
                 root: false,
                 line: 0,
+                frame: None,
             },
         );
         let mut props = Self::box_props(&NodeKind::Element(Kind::Box), &r);
