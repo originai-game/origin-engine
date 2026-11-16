@@ -18,6 +18,8 @@ mod css_interact;
 mod css_layout;
 #[path = "../css_paint.rs"]
 mod css_paint;
+#[path = "../css_selectors.rs"]
+mod css_selectors;
 #[path = "../css_text.rs"]
 mod css_text;
 #[path = "../custom_properties.rs"]
