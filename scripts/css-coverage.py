@@ -84,6 +84,21 @@ not_needed("text-decoration-spelling-grammar",
            "spelling-error and grammar-error draw the lines a UA's spelling and grammar checker puts under text. "
            "The engine has no spell checker, so nothing would ever produce them; a word puzzle marks a wrong word "
            "with an underline style of its own.")
+not_needed("spelling-grammar-error",
+           "::spelling-error and ::grammar-error style the text a UA's spelling and grammar checker marks. The engine "
+           "has no spell checker, so nothing would ever be marked; a word puzzle marks a wrong word with a class and "
+           "an underline style of its own.")
+not_needed("text-fit",
+           "A game's need, shrinking a label until it fits, is met by -og-fit-min, which measures the shaped text "
+           "and steps down the type scale (components guide). CSS text-fit's per-line scaling to fill the line is a "
+           "draft no browser ships.")
+not_needed("initial-letter",
+           "Drop caps sunk by a line count are an editorial print feature. A lore page gets its large first letter "
+           "from ::first-letter (Supported) with font-size and float.")
+not_needed("word-break-auto-phrase",
+           "Breaking at phrase boundaries needs a per-language phrase model. Game text breaks at chosen points with "
+           "<wbr> and word-break/overflow-wrap (Supported), and an unknown language must behave as normal anyway "
+           "(CSS Text 4 §6.1).")
 not_needed("forced-colors",
            "Forced colours mode replaces an author's colours with the OS's high-contrast palette. A game draws its own "
            "surface and offers contrast through its style and prefers-contrast; (forced-colors) answers none, as "
