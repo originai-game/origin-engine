@@ -1,0 +1,8 @@
+{
+  "fixed": [
+    {
+      "member": "data-layout=grid",
+      "summary": "The default style's grid primitive shrinks its tile (--layout-tile) to a container narrower than one instead of overflowing it."
+    }
+  ]
+}

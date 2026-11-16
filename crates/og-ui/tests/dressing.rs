@@ -3001,27 +3001,29 @@ fn layout_primitives_are_the_styles_and_answer_their_container() {
             ui,
             r#"<div id="Root">
   <div id="G" data-layout="grid" data-gap="tight"><div id="G1"></div><div id="G2"></div><div id="G3"></div></div>
+  <div id="T" data-layout="grid" style="width: 100px"><div id="T1"></div></div>
   <div id="W" data-layout="switcher" style="width: 600px"><div id="W1" data-fill></div><div id="W2" data-fill></div></div>
   <div id="N" data-layout="switcher" style="width: 300px"><div id="N1" data-fill></div><div id="N2" data-fill></div></div>
   <div id="S" data-layout="sidebar" style="width: 300px"><div id="Side" data-side></div><div id="Main" data-fill></div></div>
   <div id="Sh" data-layout="shell" style="width: 300px; height: 60px"><div id="Q"></div><div id="Body" data-fill></div></div>
 </div>
-<style>#Root { display: flex; flex-direction: column; width: 600px; } #G > div, #W > div, #N > div, #S > div, #Q { height: 10px; }
+<style>#Root { display: flex; flex-direction: column; width: 600px; } #G > div, #T1, #W > div, #N > div, #S > div, #Q { height: 10px; }
 @container (width < 400px) { #Q { width: 50px; } }</style>"#,
             &[],
             Viewport::new(800.0, 600.0),
         );
         [
-            "G1", "G2", "G3", "W1", "W2", "N1", "N2", "Side", "Main", "Q", "Body",
+            "G1", "G2", "G3", "T1", "W1", "W2", "N1", "N2", "Side", "Main", "Q", "Body",
         ]
         .map(|p| at(&d.ui, p))
     };
     let e = laid(None);
-    let [g1, g2, g3, w1, w2, n1, n2, side, main, q, body] = &e;
+    let [g1, g2, g3, t1, w1, w2, n1, n2, side, main, q, body] = &e;
     assert!(
         g1.y == g2.y && g2.y == g3.y && (g2.x - g1.x - g1.width - 4.0).abs() < 0.5,
         "three 140px tiles fit one 600px row, a tight gap apart: {g1:?} {g2:?}"
     );
+    assert_eq!(t1.width, 100.0, "a grid narrower than a tile shrinks it");
     assert!(w1.y == w2.y && w2.x > w1.x, "a wide switcher is one row");
     assert!(n2.y > n1.y && n1.width == 300.0, "a narrow switcher stacks");
     assert!(main.y > side.y, "a sidebar too narrow for both stacks");

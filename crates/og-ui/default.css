@@ -2006,7 +2006,7 @@
   :where([data-layout=cluster]) { display: flex; flex-wrap: wrap; align-items: center; gap: var(--layout-gap); }
   :where([data-layout=sidebar]) { display: flex; flex-wrap: wrap; gap: var(--layout-gap); }
   :where([data-layout=switcher]) { display: flex; flex-wrap: wrap; gap: var(--layout-gap); }
-  :where([data-layout=grid]) { display: grid; grid-template-columns: repeat(auto-fill, minmax(var(--layout-tile), 1fr)); gap: var(--layout-gap); }
+  :where([data-layout=grid]) { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(var(--layout-tile), 100%), 1fr)); gap: var(--layout-gap); }
   :where([data-layout=cover]) { display: flex; flex-direction: column; align-items: center; justify-content: center; block-size: stretch; gap: var(--layout-gap); }
   :where([data-layout=cover] > [data-principal]) { margin-block: auto; }
   :where([data-layout=center]) { display: flex; flex-direction: column; align-items: center; max-inline-size: var(--layout-measure); margin-inline: auto; gap: var(--layout-gap); }
