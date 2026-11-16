@@ -143,6 +143,9 @@ test("og.load.textureArray and probe.listen reach the host", () => {
   const r = og.load.textureArray(engine.world, "missing.ogt") as { ok: boolean };
   expect(r.ok).toBe(false);
   expect(() => engine.probe.listen(0.5)).not.toThrow();
+  expect(() => og.ui.setHighlight("surface", { ranges: [], priority: 0 })).not.toThrow();
+  expect(() => og.ui.setHighlight("surface", null)).not.toThrow();
+  expect(typeof og.ui.remoteFrames(engine.world)).toBe("boolean");
 });
 
 // ── the other way round ──────────────────────────────────────────────────

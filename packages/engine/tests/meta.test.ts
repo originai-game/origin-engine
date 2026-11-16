@@ -58,7 +58,7 @@ beforeAll(() => {
     MEMBERS[name] = { component, parts, fixtures };
     // A game mounts its own page, which uses the member by name: one host page per member, its props from stores.
     // A two-way prop is bound as Svelte binds one (bind:draft); the rest are read.
-    const props = Object.keys(fixtures.default!).map((k) => k === "draft" ? `bind:draft={$draft}` : `${k}={$${k}}`).join(" ");
+    const props = Object.keys(fixtures.default!).map((k) => k === "draft" ? `bind:draft={$fixture_draft}` : `${k}={$fixture_${k}}`).join(" ");
     writeFileSync(join(root, `assets/ui/host-${name}.svelte`), `<meta name="screen" content="Host_${component}" data-layer="menu" data-input="menu">\n<div style="width: stretch; height: stretch; padding: 16px"><${component} ${props} /></div>\n`);
   }
   const cook = Bun.spawnSync([ogBin(), "cook", root], { cwd: root, env: { ...process.env, OG_STYLES_DIR: STYLES }, stdout: "ignore", stderr: "pipe" });
@@ -96,7 +96,7 @@ function engine(component: string, stores: Record<string, unknown>, o: { events?
     },
     ui(world) {
       const scope = og.ui.scope(world, "t");
-      const inputs = Object.fromEntries(Object.entries(stores).map(([k, v]) => [k, Array.isArray(v) ? scope.collection(k, v as { id: string }[], { key: "id" }) : scope.writable(k, v)]));
+      const inputs = Object.fromEntries(Object.entries(stores).map(([k, v]) => [`fixture_${k}`, Array.isArray(v) ? scope.collection(k, v as { id: string }[], { key: "id" }) : scope.writable(k, v)]));
       const mounted = scope.mount("page", `Host_${component}`, inputs);
       if (!mounted.ok) throw new Error(mounted.reason);
     },
@@ -115,7 +115,7 @@ const tap = (e: Engine, el: El): void => {
 };
 const intents = (events: Event[], names: string[]) => events.filter((e) => names.includes(e.name)).map((e) => `${e.name}:${e.rowKey}`);
 const member = (name: string, fixture = "default", over: Record<string, unknown> = {}, o: Parameters<typeof engine>[2] = {}) =>
-  engine(MEMBERS[name]!.component, { ...MEMBERS[name]!.fixtures[fixture]!, ...over }, o);
+  engine(MEMBERS[name]!.component, { ...MEMBERS[name]!.fixtures.default, ...MEMBERS[name]!.fixtures[fixture]!, ...over }, o);
 const run = (e: Engine, f: (e: Engine) => void) => {
   try {
     e.advance(3);

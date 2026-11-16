@@ -8,6 +8,7 @@ import { mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { gpuUnavailable } from "./support/gpu.ts";
+import { ogBin } from "./support/og-bin.ts";
 
 // The gate's path-aware lane skips this file: it spawns og processes for
 // minutes (docs/ci.md §Lanes). `scripts/check.sh --all`, CI and a plain
@@ -15,7 +16,7 @@ import { gpuUnavailable } from "./support/gpu.ts";
 const SLOW = process.env.OG_GATE === "1" && !process.env.OG_GATE_ALL;
 
 declare const Bun: {
-  spawn(cmd: string[], o: { cwd: string; stdout: "pipe"; stderr: "pipe" }): { pid: number; stdout: ReadableStream<Uint8Array>; exited: Promise<number>; kill(signal?: string): void };
+  spawn(cmd: string[], o: { cwd: string; stdout: "pipe"; stderr: "pipe" }): { pid: number; stdout: ReadableStream<Uint8Array>; stderr: ReadableStream<Uint8Array>; exited: Promise<number>; kill(signal?: string): void };
 };
 
 const pkg = join(dirname(fileURLToPath(import.meta.url)), "..");
@@ -40,18 +41,38 @@ for (const render of [false, true]) {
     mkdirSync(dir, { recursive: true });
     const entry = join(dir, "game.ts");
     writeFileSync(entry, game("a: f32(1)"));
-    const child = Bun.spawn(["bun", "src/node/run.ts", "--entry", entry, "--watch", entry, "--ticks", "240", "--realtime", ...(render ? ["--size", "160x90"] : ["--no-render"]), "--json"], { cwd: pkg, stdout: "pipe", stderr: "pipe" });
-    // The changed bundle is written every half second until the run ends,
-    // not once at a fixed delay: run.ts starts watching only once its engine
-    // (and renderer) are up, which took longer than 1.5 s with a renderer on
-    // CI's two vCPU of Lavapipe, and a write before that is never seen. Its
-    // 240 paced ticks start after the watch, so a write lands in them.
-    // Rewriting the same bundle reloads the same layout again.
-    const writer = setInterval(() => writeFileSync(entry, game("a: f32(1), b: f32(2)")), 500);
-    const out = await new Response(child.stdout).text();
-    clearInterval(writer);
-    expect(await child.exited).toBe(0);
-    rmSync(dir, { recursive: true, force: true });
+    const child = Bun.spawn(["bun", "src/node/run.ts", "--entry", entry, "--watch", entry, "--port", "0", "--realtime", ...(render ? ["--size", "160x90"] : ["--no-render"]), "--json"], { cwd: pkg, stdout: "pipe", stderr: "pipe" });
+    const stderr = new Response(child.stderr).text();
+    const reader = child.stdout.getReader();
+    let out = "";
+    const until = async (marker: string) => {
+      while (!out.includes(marker)) {
+        const { value, done } = await reader.read();
+        if (done) throw new Error(`run ended before ${marker}: ${out}\n${await stderr}`);
+        out += new TextDecoder().decode(value);
+      }
+    };
+    try {
+      await until("probe: ws://");
+      // The watcher is ready. One edit, then wait for its outcome rather
+      // than ending at a fixed tick while its import may still be in flight.
+      writeFileSync(entry, game("a: f32(1), b: f32(2)"));
+      await until('{"event":"reload"');
+      const port = /probe: ws:\/\/127\.0\.0\.1:(\d+)/.exec(out)![1]!;
+      const stop = Bun.spawn([ogBin(), "probe", "commands", '{"script":"0:quit"}', "--port", port], { cwd: pkg, stdout: "pipe", stderr: "pipe" });
+      expect(await stop.exited).toBe(0);
+      for (;;) {
+        const { value, done } = await reader.read();
+        if (done) break;
+        out += new TextDecoder().decode(value);
+      }
+      expect(await child.exited).toBe(0);
+      expect(await stderr).not.toContain("WARN reload:");
+    } finally {
+      child.kill();
+      await child.exited;
+      rmSync(dir, { recursive: true, force: true });
+    }
     const reloads = out.split("\n").filter((l) => l.startsWith('{"event":"reload"')).map((l) => JSON.parse(l));
     expect(reloads.length).toBeGreaterThan(0);
     const last = reloads.at(-1)!;

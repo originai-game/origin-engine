@@ -37,6 +37,8 @@ export const widgets = {
   frameTheme: (): Api.UiTheme => parsedOnce("theme", abi().og_ui_frame_theme()),
   framePointer: (): Api.UiPointer => parse(abi().og_ui_frame_pointer()),
   setFocus: (path: string): void => abi().og_ui_set_focus(path),
+  setHighlight: (name: string, highlight: Api.UiHighlight | null): void =>
+    abi().og_ui_set_highlight(name, JSON.stringify(highlight)),
   frameGlyph: (action: string): Api.UiGlyph | null => parse(abi().og_ui_frame_glyph(action)),
   hasIcon: (name: string): boolean => abi().og_ui_has_icon(name),
   seconds: (): number => abi().og_ui_seconds(),
@@ -99,6 +101,7 @@ export const widgets = {
   screenVm: (world: Api.World, screen: string): unknown => parse(abi().og_ui_screen_vm(worldId(world), screen)),
   docEvents: (world: Api.World): readonly Api.UiDocEvent[] => parse(abi().og_ui_doc_events(worldId(world))),
   frameMessages: (world: Api.World): readonly Api.UiFrameMessage[] => parse(abi().og_ui_frame_messages(worldId(world))),
+  remoteFrames: (world: Api.World): boolean => abi().og_ui_remote_frames(worldId(world)),
   gameInput: (world: Api.World): boolean => abi().og_ui_game_input(worldId(world)),
   paused: (world: Api.World): boolean => abi().og_ui_paused(worldId(world)),
   defineAction: (world: Api.World, desc?: Api.UiActionDesc): Api.Result<void> =>

@@ -32,6 +32,7 @@ type Event = { mount: string; path: string; rowKey: string; kind: string; name: 
 
 const ENGINE = dirname(dirname(fileURLToPath(import.meta.url)));
 const GROUP = join(ENGINE, "src/ui/components/arena");
+const NAMES = readdirSync(GROUP).filter((f) => f.endsWith(".svelte")).map((f) => f.replace(".svelte", ""));
 const STYLES = join(ENGINE, "../../templates/styles");
 // The packs the group is dressed by. Every test runs in the first; each
 // fixture is mounted in the others too, where a pack's own type, rims and
@@ -56,12 +57,11 @@ beforeAll(() => {
   // A look naming a pack is what makes the cook bundle it (@styles/<pack>).
   mkdirSync(join(root, "assets/looks"), { recursive: true });
   for (const pack of PACKS) writeFileSync(join(root, `assets/looks/${pack}.ogt`), `type look\nversion 1\n---\nname "arena kit ${pack}"\nui "${pack}"\n`);
-  for (const f of readdirSync(GROUP).filter((f) => f.endsWith(".svelte"))) {
-    const text = readFileSync(join(GROUP, f), "utf8");
+  for (const name of NAMES) {
+    const text = readFileSync(join(GROUP, `${name}.svelte`), "utf8");
     const component = /<meta name="component" content="([^"]+)">/.exec(text)![1]!;
     const parts = /<meta name="parts" content="([^"]+)">/.exec(text)![1]!.split(" ");
     const fixtures = Object.fromEntries([...text.matchAll(/<meta name="fixture:([^"]+)" content='([^']*)'>/g)].map((m) => [m[1]!, JSON.parse(m[2]!)]));
-    const name = f.replace(".svelte", "");
     MEMBERS[name] = { component, parts, fixtures };
     // A game mounts its own page, which uses the member by name: one host page per member, its props from stores.
     const props = Object.keys(fixtures.default!).map((k) => `${k}={$${k}}`).join(" ");
@@ -150,8 +150,6 @@ const row = (e: Engine, k: string): El => elements(e).find((x) => x.path.endsWit
 const texts = (e: Engine): string[] => elements(e).filter((x) => x.width > 0).map((x) => x.text.toLowerCase());
 const focused = (e: Engine) => elements(e).find((x) => x.states?.includes("focused"))?.path ?? "";
 
-const NAMES = ["roster", "draft", "versus", "scoreboard", "round-hud", "lobby"];
-
 // One test per pack, member and view: each fixture boots its own engine.
 for (const pack of PACKS) for (const [view, viewport] of [["desktop", DESKTOP], ["phone", PHONE]] as const) {
   for (const name of NAMES) {
@@ -211,7 +209,6 @@ test("every member mounts under the default style as well", () => {
 }, 120_000);
 
 test("every member names its frame first and only its own parts", () => {
-  expect(Object.keys(MEMBERS).sort()).toEqual([...NAMES].sort());
   for (const [name, m] of Object.entries(MEMBERS)) {
     expect(`${name} ${m.parts[0]}`).toBe(`${name} ${m.component}.frame`);
     // The markup only: a selector in <style> names a part without any element carrying it.

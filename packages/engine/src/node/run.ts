@@ -470,7 +470,6 @@ export async function run(argv: string[], output: RunOutput = hostProcess, contr
       cleanup.push(() => {
         extras.og_node_probe_close(engine.id);
       });
-      process.stdout.write(`probe: ws://127.0.0.1:${listening}/probe\n`);
     }
 
     function abiRoomInfo(): string {
@@ -568,6 +567,9 @@ export async function run(argv: string[], output: RunOutput = hostProcess, contr
         });
         cleanup.push(() => watcher.close());
       }
+      // Announce readiness only after the watcher is installed: an editor
+      // responding to this line must not lose its first change.
+      if (listening !== undefined) process.stdout.write(`probe: ws://127.0.0.1:${listening}/probe\n`);
       const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
       let last = performance.now();
       // The world's tick and the time its clock holds toward the next one, after the last frame.

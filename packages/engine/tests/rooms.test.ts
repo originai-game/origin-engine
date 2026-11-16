@@ -314,7 +314,7 @@ test("a peer whose connection is cut comes back by itself, takes its seat back f
       const p = Bun.spawn([ogBin(), "run", "tests/fixtures/lockstep-room", "--no-render", "--json", "--room", `ws://127.0.0.1:${port}/mend`, "--ticks", "600", "--setup", bot], { cwd: repo, stdout: "pipe", stderr: "pipe" });
       const [code, out, err] = await Promise.all([p.exited, new Response(p.stdout).text(), new Response(p.stderr).text()]);
       if (code !== 0) throw new Error(`og run exited ${code}: ${err}${out}`);
-      return JSON.parse(out.trim().split("\n").pop()!) as Summary & { lockstep: { seats: { seat: number; peer: number; until: number | null }[] } };
+      return JSON.parse(out.trim().split("\n").pop()!) as Summary & { lockstep: { seats: { seat: number; peer: number; since: number; until: number | null }[] } };
     };
     // The second starts once the first is in the room, so the first is peer 0 however slowly it started.
     const first = run(r.port, "bot:1:tick");
@@ -327,7 +327,10 @@ test("a peer whose connection is cut comes back by itself, takes its seat back f
       expect(s.tick).toBe(600);
       expect(s.lockstep.running).toBe(true);
       expect(s.lockstep.desync).toBeNull();
-      expect(s.lockstep.seats.filter((h) => h.until === null).map((h) => [h.seat, h.peer])).toEqual([[0, 0], [1, 2]]);
+      // Status is pumped after the final frame too: the other process may
+      // already have left. Check ownership at the captured tick, not which
+      // connections are still open when this process prints its summary.
+      expect(s.lockstep.seats.filter((h) => h.since <= s.tick && (h.until === null || h.until >= s.tick)).map((h) => [h.seat, h.peer])).toEqual([[0, 0], [1, 2]]);
       expect(s.facts!.drops).toBe(1);
       expect(s.facts!.rejoins).toBe(1);
     }
