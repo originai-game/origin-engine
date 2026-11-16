@@ -339,6 +339,83 @@ fn preference_and_display_media_features_follow_the_theme_and_surface() {
     }
 }
 
+/// Media Queries 4's deprecated device features read the play surface,
+/// Compatibility's `-webkit-device-pixel-ratio` is `resolution` in dppx and
+/// `-webkit-transform-3d` is 1 (3D transforms draw); no host reports a
+/// fold, so the posture is `continuous` with one segment each way.
+/// `@custom-media` (Media Queries 5 §3) names a query list, `true` or
+/// `false`, usable before it is defined and inside another definition;
+/// the last definition of a name wins.
+#[test]
+fn device_compat_posture_and_custom_media_queries_answer_the_surface() {
+    use crate::support::Doc;
+    // At 800 × 900, 2dppx and a fine pointer; then 500 × 900, 1dppx, coarse.
+    let queries = [
+        ("(device-width: 800px)", [true, false]),
+        ("(min-device-height: 900px)", [true, true]),
+        ("(device-aspect-ratio: 8/9)", [true, false]),
+        ("(max-device-width: 600px)", [false, true]),
+        ("(-webkit-device-pixel-ratio: 2)", [true, false]),
+        ("(-webkit-min-device-pixel-ratio: 1.5)", [true, false]),
+        ("(-webkit-max-device-pixel-ratio: 1.5)", [false, true]),
+        ("(-webkit-transform-3d)", [true, true]),
+        ("(-webkit-transform-3d: 0)", [false, false]),
+        ("(device-posture: continuous)", [true, true]),
+        ("(device-posture: folded)", [false, false]),
+        ("(horizontal-viewport-segments: 1)", [true, true]),
+        ("(vertical-viewport-segments > 1)", [false, false]),
+        ("(--wide)", [true, false]),
+        ("not (--wide)", [false, true]),
+        ("(--wide-touch)", [false, false]),
+        ("(--wide) or (--touch)", [true, true]),
+        ("(--always)", [true, true]),
+        ("(--never)", [false, false]),
+    ];
+    let rows: String = (0..queries.len())
+        .map(|i| format!("<div id=\"Q{i}\"></div>"))
+        .collect();
+    let rules: String = queries
+        .iter()
+        .enumerate()
+        .map(|(i, (q, _))| format!("@media {q} {{ #Q{i} {{ width: 20px; }} }}\n"))
+        .collect();
+    let custom = "@custom-media --wide-touch (--wide) and (--touch);
+@custom-media --wide (width >= 900px);
+@custom-media --wide (width >= 700px);
+@custom-media --touch (pointer: coarse);
+@custom-media --always true;
+@custom-media --never false;";
+    let source = format!(
+        "<meta name=\"component\" content=\"t\">\n<column>{rows}</column>\n<style>\ndiv {{ width: 10px; height: 1px; }}\n{rules}{custom}\n</style>"
+    );
+    let mut doc = Doc::new(&source, &[]);
+    for (k, (width, dpr, coarse)) in [(800.0, 2.0, false), (500.0, 1.0, true)]
+        .into_iter()
+        .enumerate()
+    {
+        doc.viewport.width = width;
+        doc.viewport.dpr = dpr;
+        doc.viewport.coarse_pointer = coarse;
+        doc.step(InputFrame::default());
+        for (i, (query, expected)) in queries.iter().enumerate() {
+            let got = doc.get(&format!("Q{i}")).width;
+            let want = if expected[k] { 20.0 } else { 10.0 };
+            assert_eq!(got, want, "{query} in setting {k}");
+        }
+    }
+    let error = |css: &str| {
+        UiDocument::parse(
+            "ui/t.svelte",
+            &format!("<meta name=\"component\" content=\"t\"><div></div><style>{css}</style>"),
+        )
+        .unwrap_err()
+        .join("\n")
+    };
+    assert!(error("@media (--nope) { div { width: 1px; } }").contains("names no @custom-media"));
+    let cycle = error("@custom-media --a (--a); @media (--a) { div { width: 1px; } }");
+    assert!(cycle.contains("refers to itself"), "{cycle}");
+}
+
 /// CSS Cascade 4 §7.3's keywords: `inherit` takes the parent's computed
 /// value, `initial` the property's initial one (`width: auto`, so an empty
 /// flex item shrinks to 0; `font-size: medium`, the root's size), `unset`

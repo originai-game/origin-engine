@@ -27,6 +27,9 @@ pub struct Sheet {
     /// Definitions in source order: name, enclosing conditions and key.
     /// The last definition whose conditions hold defines the name.
     pub keyframe_rules: Vec<(String, super::AtQuery, String)>,
+    /// `@custom-media` definitions in source order, unresolved: the last
+    /// of a name defines it ([`super::media::Query::resolve`]).
+    pub custom_media: Vec<(String, super::media::Query)>,
 }
 
 /// One `@font-face`: a family the document names in `font-family`, drawn
