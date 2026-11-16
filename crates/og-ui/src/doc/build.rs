@@ -569,6 +569,10 @@ pub struct Build<'a> {
     /// A text's inline elements as they resolved, by document node: their
     /// CSS styles its runs ([`Ui::lower_inline`]).
     pub inline: Vec<(usize, Arc<ResolvedNode>)>,
+    /// The element is a control's host with its control document
+    /// instantiated under it (docs/ui.md §2.4): it builds as the box that
+    /// holds the document, and its kind draws nothing of its own.
+    pub controlled: bool,
 }
 
 impl Build<'_> {
@@ -843,7 +847,7 @@ impl Ui {
         // on the root (a game's seeds among them, as the root's `style`
         // attribute) to win over them there as it does at the root.
         let mut inline = Vec::new();
-        if std::ptr::eq(n, &b.doc.nodes[b.doc.root]) {
+        if std::ptr::eq(n, &b.doc.nodes[b.doc.root]) && b.doc.control.is_none() {
             inline.extend_from_slice(&self.style.root_tokens);
             inline.extend_from_slice(&self.style.root_type_tokens[self.breakpoint() as usize]);
         }
@@ -1216,7 +1220,11 @@ impl Ui {
         }
         self.resolve_element_colors(&mut r, &contextual);
         inherit_color(&mut r, &n.kind);
-        r.part = Self::document_part(&r, n, b);
+        // A control document's part is its host's, styled by the rules
+        // that reach it through the element's own cascade.
+        if b.doc.control.is_none() {
+            r.part = Self::document_part(&r, n, b);
+        }
         if let Some(V::Spans(Ok(spans))) = r.get("spans") {
             let rules: Vec<_> = n
                 .span_rules

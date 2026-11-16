@@ -134,6 +134,7 @@ impl RetainedHost {
             style_dirty: true,
             theme_epoch: self.theme_epoch,
             children: Vec::new(),
+            control: None,
             images: Vec::new(),
             image: parent.map_or(self.imaging, |parent| self.elements[parent].image),
             bindings: Vec::new(),
@@ -182,6 +183,16 @@ impl RetainedHost {
                 env,
             )?;
         }
+        // The states derived for it are its facts too.
+        for (_, expression) in super::content::derived(node) {
+            self.bind(
+                ui,
+                &mut element,
+                Input::Expression(expression.clone()),
+                BindingExpression::Expression(expression),
+                env,
+            )?;
+        }
         // An instance's root inherits the instance's style props.
         if index == doc.root {
             let given: Vec<Expr> = super::content::style_props(&element.context)
@@ -212,6 +223,14 @@ impl RetainedHost {
             .chain(
                 node.span_rules
                     .iter()
+                    .filter_map(|rule| rule.condition.as_ref()),
+            )
+            // A control document's `:host` rules hold by its props and its
+            // host's states: its root reads them for the host.
+            .chain(
+                doc.host_rules
+                    .iter()
+                    .filter(|_| index == doc.root)
                     .filter_map(|rule| rule.condition.as_ref()),
             )
             .chain(node.groups.iter().filter_map(|group| group.bind.as_ref()))
@@ -268,7 +287,28 @@ impl RetainedHost {
                 env,
             )?);
         }
-        for &child in &node.children {
+        // A control's host holds its control document; its own children
+        // are that document's content, rendered where it renders them.
+        let control = ui.docs.library.control_for(&doc, node).cloned();
+        let own = match control {
+            Some(_) => &[][..],
+            None => &node.children[..],
+        };
+        if let Some(control) = control {
+            let child = self.compile_control(
+                ui,
+                (doc.clone(), index),
+                control,
+                context.clone(),
+                &identity,
+                env,
+            )?;
+            if let Child::Element(root) = &child {
+                self.elements.get_mut(&identity).unwrap().control = Some(root.clone());
+            }
+            children.push(child);
+        }
+        for &child in own {
             let n = &doc.nodes[child];
             let id = if n.id.is_empty() {
                 format!("node{child}")

@@ -441,8 +441,12 @@ pub(crate) fn values_with<'r>(
         // The rules rolled back by `revert-rule`, by their order.
         let mut without: Vec<usize> = Vec::new();
         for (priority, declaration, line, layer) in list {
+            // `revert-layer` rolls back the layers of its own encapsulation
+            // context: a rule reaching in from another document reverts
+            // to that document's lower layers, then to what the element's
+            // own document declares.
             if (ua_only && *layer != 0)
-                || below.is_some_and(|b| *layer >= b)
+                || below.is_some_and(|(depth, b)| priority.depth == depth && *layer >= b)
                 || without.contains(&priority.order)
             {
                 continue;
@@ -450,7 +454,7 @@ pub(crate) fn values_with<'r>(
             match keyword(declaration) {
                 Some("revert-rule") => without.push(priority.order),
                 Some("revert") => ua_only = true,
-                Some("revert-layer") if *layer > 0 => below = Some(*layer),
+                Some("revert-layer") if *layer > 0 => below = Some((priority.depth, *layer)),
                 Some("revert-layer") => ua_only = true,
                 _ => return (*priority, Winner::Declared(declaration), *line),
             }

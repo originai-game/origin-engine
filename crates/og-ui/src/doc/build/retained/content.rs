@@ -107,6 +107,98 @@ impl RetainedHost {
         Ok(child)
     }
 
+    /// A control document under its host element (docs/ui.md §2.4): its
+    /// root, compiled as the host's child. Each prop reads the host's
+    /// authored attribute of its name in the host's context (`bind:name`
+    /// a writable one), else its default; the host's children are its
+    /// `children` content; and its selectors read the host as
+    /// [`crate::doc::HOST_NODE`].
+    pub(crate) fn compile_control(
+        &mut self,
+        ui: &mut Ui,
+        source: (Arc<UiDocument>, usize),
+        control: Arc<UiDocument>,
+        context: BindingContext,
+        host: &MountedNode,
+        env: &dyn Env,
+    ) -> Result<Child, String> {
+        let (doc, index) = source;
+        let node = &doc.nodes[index];
+        let user = Arc::new(context.clone());
+        let mut lexical = Lexical::default();
+        let derived = derived(node);
+        for prop in &control.props {
+            let written = node.selector_attrs.iter().find(|(name, _)| {
+                *name == prop.name || name.strip_prefix("bind:") == Some(prop.name.as_str())
+            });
+            let state = derived.iter().find(|(name, _)| *name == prop.name);
+            let (expression, model) = match written {
+                _ if let Some((_, expression)) = state => (expression.clone(), None),
+                Some((name, expression)) => (
+                    // A literal attribute is text; a number prop reads it
+                    // as HTML reads a numeric attribute.
+                    match expression {
+                        Expr::Lit(Value::String(text)) if prop.ty == "number" => {
+                            Expr::Lit(text.trim().parse::<f64>().map_or(Value::Null, |x| json!(x)))
+                        }
+                        Expr::Lit(Value::String(text)) if prop.ty == "bool" => {
+                            Expr::Lit((text != "false").into())
+                        }
+                        expression => expression.clone(),
+                    },
+                    match expression {
+                        Expr::Path(path) if name.starts_with("bind:") => Some(path.clone()),
+                        _ => None,
+                    },
+                ),
+                None => match &prop.default {
+                    Some(default) => (Expr::Lit(default.clone()), None),
+                    None => continue,
+                },
+            };
+            lexical.props.insert(
+                prop.name.clone(),
+                PropRef {
+                    expression: expression.into(),
+                    model,
+                    context: user.clone(),
+                },
+            );
+        }
+        if !node.children.is_empty() {
+            lexical.content.insert(
+                "children".into(),
+                ContentRef::Snippet {
+                    document: doc.clone(),
+                    index,
+                    context: user,
+                },
+            );
+        }
+        let mut selector_nodes = BTreeMap::new();
+        selector_nodes.insert(crate::doc::HOST_NODE, host.clone());
+        let inner = BindingContext {
+            node: context.node.clone(),
+            inputs: context.inputs.clone(),
+            rows: Arc::default(),
+            row_key: context.row_key.clone(),
+            selector_nodes: Arc::new(selector_nodes),
+            lexical: Arc::new(lexical),
+        };
+        let root = control.root;
+        let id = match control.nodes[root].id.as_str() {
+            "" => "Control".to_owned(),
+            id => id.to_owned(),
+        };
+        let child = self.compile(ui, (control, root), inner, Some(host), id, env)?;
+        // The document stands where the host's document put the host: it
+        // is no content passed to that document.
+        if let Child::Element(root) = &child {
+            self.topology.set_user(root, doc);
+        }
+        Ok(child)
+    }
+
     /// `<iframe src="news.svelte" items={$news}>`: the document `src`
     /// names, compiled as the frame element `frame`'s one child. Its props
     /// are the iframe's other attributes, read in the embedding document's
@@ -319,6 +411,72 @@ pub(crate) fn style_props(context: &BindingContext) -> impl Iterator<Item = (&St
 /// The props an instance's user passes (`node`'s arguments, read in the
 /// user's context `user`) and, for each it leaves out, its default
 /// (`data-default`).
+/// The states og-ui derives for a control's host from its attributes
+/// (docs/ui.md §2.4), each by name as an expression in the host's context:
+/// the host's fact of that name for selectors (`meter[region=poor]`) and
+/// its control document's prop. A `<meter>`'s `region` is HTML's:
+/// `optimum`, `suboptimum` or `poor`.
+pub(crate) fn derived(node: &DocNode) -> Vec<(&'static str, Expr)> {
+    use crate::bind::Op;
+    use crate::doc::schema::Kind;
+    if node.kind != NodeKind::Element(Kind::Meter) {
+        return Vec::new();
+    }
+    let number = |x: f64| Expr::Lit(json!(x));
+    // An attribute as a number; `otherwise` where it is not written.
+    let read =
+        |name: &str, otherwise: Expr| match node.selector_attrs.iter().find(|(a, _)| a == name) {
+            Some((_, Expr::Lit(Value::String(text)))) => {
+                text.trim().parse::<f64>().map_or(otherwise, number)
+            }
+            Some((_, expression)) => expression.clone(),
+            None => otherwise,
+        };
+    let bin = |op, a: &Expr, b: &Expr| Expr::Bin(op, Box::new(a.clone()), Box::new(b.clone()));
+    let pick = |c: Expr, a: Expr, b: Expr| Expr::If(Box::new(c), Box::new(a), Box::new(b));
+    let clamp = |x: &Expr, low: &Expr, high: &Expr| {
+        pick(
+            bin(Op::Lt, x, low),
+            low.clone(),
+            pick(bin(Op::Gt, x, high), high.clone(), x.clone()),
+        )
+    };
+    // HTML's rules: every bound clamped into the range, `low` into
+    // min..max and `high` into low..max, the optimum the middle by default.
+    let min = read("min", number(0.0));
+    let max = read("max", number(1.0));
+    let max = pick(bin(Op::Lt, &max, &min), min.clone(), max);
+    let value = clamp(&read("value", min.clone()), &min, &max);
+    let low = clamp(&read("low", min.clone()), &min, &max);
+    let high = clamp(&read("high", max.clone()), &low, &max);
+    let middle = bin(Op::Div, &bin(Op::Add, &min, &max), &number(2.0));
+    let optimum = clamp(&read("optimum", middle), &min, &max);
+    let word = |w: &str| Expr::Lit(json!(w));
+    let ends = |best: Expr, worst: Expr| {
+        pick(
+            best,
+            word("optimum"),
+            pick(worst, word("poor"), word("suboptimum")),
+        )
+    };
+    let (under, over) = (bin(Op::Lt, &value, &low), bin(Op::Gt, &value, &high));
+    let within = bin(
+        Op::And,
+        &bin(Op::Ge, &value, &low),
+        &bin(Op::Le, &value, &high),
+    );
+    let region = pick(
+        bin(Op::Lt, &optimum, &low),
+        ends(under.clone(), over.clone()),
+        pick(
+            bin(Op::Gt, &optimum, &high),
+            ends(over, under),
+            ends(within, Expr::Lit(false.into())),
+        ),
+    );
+    vec![("region", region)]
+}
+
 fn passed(node: &DocNode, instance: &UiDocument, user: &Arc<BindingContext>) -> Lexical {
     let mut lexical = Lexical::default();
     for (name, value, _) in &node.args {

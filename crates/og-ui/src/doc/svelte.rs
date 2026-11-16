@@ -44,6 +44,7 @@ pub(crate) fn parse_with_pack(
             doc: UiDocument {
                 kind: DocKind::Screen,
                 name: String::new(),
+                control: None,
                 source: source.into(),
                 text: text.into(),
                 strings: Vec::new(),
@@ -60,6 +61,7 @@ pub(crate) fn parse_with_pack(
                 },
                 part_rules: Vec::new(),
                 slotted_rules: Vec::new(),
+                host_rules: Vec::new(),
                 style_faces: 0,
                 nodes: Vec::new(),
                 root: NONE,
@@ -128,7 +130,7 @@ pub(crate) fn parse_with_pack(
         if p.doc.name.is_empty() {
             return Err((
                 0,
-                "declare <meta name=\"screen\" content=\"name\"> or name=\"component\"".into(),
+                "declare <meta name=\"screen\" content=\"name\">, name=\"component\" or name=\"control\"".into(),
             ));
         }
         if p.doc.root == NONE {
@@ -669,6 +671,26 @@ impl Parser {
                     }
                 }
             }
+        } else if name == "control" {
+            if !self.doc.name.is_empty() {
+                return Err((at, "declare the screen, component or control once".into()));
+            }
+            if let Some(a) = attrs
+                .iter()
+                .find(|a| !matches!(a.name.as_str(), "name" | "content"))
+            {
+                return Err((
+                    a.at,
+                    format!(
+                        "a control takes no {}: it is no layer, its host element is",
+                        a.name
+                    ),
+                ));
+            }
+            let host = super::ControlHost::parse(content).map_err(|why| (at, why))?;
+            self.doc.kind = DocKind::Component;
+            self.doc.name = host.document_name();
+            self.doc.control = Some(host);
         } else if let Some(name) = name.strip_prefix("prop:") {
             if self.doc.props.iter().any(|p| p.name == name) {
                 return Err((at, format!("duplicate prop {name}; declare it once")));
@@ -732,7 +754,7 @@ impl Parser {
         } else {
             return Err((
                 at,
-                "unknown meta name; use screen, component, prop:…, action:…, fixture:…, strings, parts or responsive-embedded-sizing"
+                "unknown meta name; use screen, component, control, prop:…, action:…, fixture:…, strings, parts or responsive-embedded-sizing"
                     .into(),
             ));
         }

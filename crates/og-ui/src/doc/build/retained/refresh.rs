@@ -16,6 +16,10 @@ impl RetainedHost {
         for (name, value) in crate::doc::build::structure::selector_facts(node, |e| build.eval(e)) {
             self.topology.set_attribute(identity, &name, Some(value))?;
         }
+        for (name, expression) in super::content::derived(node) {
+            self.topology
+                .set_attribute(identity, name, Some(build.eval(&expression)))?;
+        }
         let mut facts = BTreeMap::new();
         for prop in &node.props {
             let spec = &PROPS[prop.spec];
@@ -294,10 +298,12 @@ impl RetainedHost {
                         {
                             changed_uses.push((node.clone(), e.clone(), value.clone()));
                         }
-                        if element.document.nodes[element.index]
+                        let written = &element.document.nodes[element.index];
+                        if written
                             .selector_attrs
                             .iter()
                             .any(|(_, expression)| expression == e)
+                            || super::content::derived(written).iter().any(|(_, d)| d == e)
                         {
                             facts_changed.insert(node.clone());
                         }
@@ -322,6 +328,15 @@ impl RetainedHost {
                     Input::Structure => unreachable!(),
                 }
                 self.dirty.insert(node.clone());
+                // A control document's root reads its `:host` rules'
+                // conditions for its host.
+                let root = &self.elements[node];
+                if root.document.control.is_some()
+                    && root.index == root.document.root
+                    && let Some(host) = self.topology.parent(node)
+                {
+                    self.dirty.insert(host.clone());
+                }
             }
             for (node, params, value) in changed_uses {
                 self.use_events(&node, "update", Some((&params, value)));
@@ -714,6 +729,47 @@ impl RetainedHost {
             let passed = self.topology.writer(identity) != Some(&holder.name);
             (passed && !holder.slotted_rules.is_empty()).then(|| holder.clone())
         });
+        // Rules of another document that reach this element (docs/ui.md
+        // §2.4). A control's host takes its control document's `:host`
+        // rules that hold, under its own document's rules (depth -1). A
+        // part of a control document takes the `::part()` rules written
+        // for its host, over its own document's (depth +1).
+        let mut reaching: Vec<crate::doc::StyleRule> = Vec::new();
+        let own = &self.elements[identity];
+        if let Some(root) = own.control.as_ref().and_then(|r| self.elements.get(r)) {
+            reaching.extend(
+                root.document
+                    .host_rules
+                    .iter()
+                    .filter(|rule| {
+                        rule.condition
+                            .as_ref()
+                            .is_none_or(|c| truthy(&root.cached.expression(c)))
+                    })
+                    .map(|rule| crate::doc::StyleRule {
+                        condition: None,
+                        ..rule.clone()
+                    }),
+            );
+        }
+        if own.document.control.is_some()
+            && let Some(part) = own.document.nodes[own.index].part_name()
+            && let Some(host) = own.context.selector_nodes.get(&crate::doc::HOST_NODE)
+            && let (Some(element), Some(facts)) =
+                (self.elements.get(host), self.topology.node(host))
+        {
+            let tag = element.document.nodes[element.index]
+                .selector_tag
+                .as_deref()
+                .unwrap_or_default();
+            reaching.extend(ui.control_part_rules(
+                &element.document,
+                tag,
+                part,
+                facts.attributes,
+                facts.states,
+            ));
+        }
         let e = self.elements.get_mut(identity).unwrap();
         // An instance's root inherits the instance's style props as if a
         // box around it set them: its own rules and `style:` win. Null (or
@@ -783,9 +839,9 @@ impl RetainedHost {
         // and its component's rules for its root are the inner ones, as
         // a browser ranks `:host` rules under `::slotted()`.
         let instance = topology.writer(identity) != Some(&e.document.name);
-        let passed =
-            slotted.map(|holder| {
-                let mut node = e.document.nodes[e.index].clone();
+        let passed = (slotted.is_some() || !reaching.is_empty()).then(|| {
+            let mut node = e.document.nodes[e.index].clone();
+            if let Some(holder) = &slotted {
                 node.rules
                     .extend(holder.slotted_rules.iter().cloned().map(|rule| {
                         crate::doc::StyleRule {
@@ -793,8 +849,10 @@ impl RetainedHost {
                             ..rule
                         }
                     }));
-                node
-            });
+            }
+            node.rules.append(&mut reaching);
+            node
+        });
         let mut values = ui.resolve(
             &build,
             passed.as_ref().unwrap_or(&e.document.nodes[e.index]),
@@ -958,6 +1016,23 @@ impl RetainedHost {
         self.elements.get_mut(identity).unwrap().theme_epoch = self.theme_epoch;
         self.topology.set_text(identity, text)?;
         self.topology.style_resolved(identity)?;
+        // The parts of its control document match `::part()` rules by
+        // its facts: they are styled again after it.
+        if let Some(root) = self.elements[identity].control.clone() {
+            let control = self.elements[&root].document.clone();
+            let mut pending = vec![root];
+            while let Some(at) = pending.pop() {
+                let Some(element) = self.elements.get(&at) else {
+                    continue;
+                };
+                if Arc::ptr_eq(&element.document, &control)
+                    && element.document.nodes[element.index].part_name().is_some()
+                {
+                    self.dirty.insert(at.clone());
+                }
+                pending.extend(self.topology.children(Some(&at), 0..usize::MAX).cloned());
+            }
+        }
         if structurally_stale {
             // Descendant and child selectors can read this element's position.
             self.topology

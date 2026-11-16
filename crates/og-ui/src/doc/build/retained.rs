@@ -204,11 +204,21 @@ impl RetainedHost {
     pub(crate) fn document_replaced(&mut self, ui: &mut Ui, document: &str) {
         self.profiles.remove(document);
         let framing = self.framed.remove(document).unwrap_or_default();
+        // A control document is the inside of elements in any document:
+        // every mount is compiled again with it.
+        let control = ui
+            .docs
+            .library
+            .documents
+            .get(document)
+            .is_some_and(|d| d.control.is_some());
         let mounts: Vec<_> = self
             .registrations
             .iter()
             .filter(|(mount, registration)| {
-                registration.document == document || framing.contains(*mount)
+                registration.document == document
+                    || framing.contains(*mount)
+                    || (control && !self.pending_mounts.contains(*mount))
             })
             .map(|(mount, _)| mount.clone())
             .collect();
