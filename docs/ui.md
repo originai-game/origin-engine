@@ -1937,6 +1937,14 @@ as the language HarfBuzz shapes in it first
 applies only outside Parley. `@font-face`'s `font-display` changes
 nothing: a document's faces load with it, before its first frame.
 
+`font-variant-emoji` (Fonts 4 §6.12, inherited) picks the face an emoji
+character is drawn in where both a text face and a colour face of the
+text's fonts have it: `emoji` the colour face, `text` the text face, and
+`unicode` (and `normal`) as its Unicode `Emoji_Presentation` says (⌚ as
+emoji, © as text). A variation selector in the text wins: U+FE0F draws
+the character before it as emoji, U+FE0E as text. A keycap base (a digit,
+`#` or `*`) is text except in a keycap sequence.
+
 ## 4. Shipped catalogue
 
 Every component and screen document under `packages/engine/src/ui/` is

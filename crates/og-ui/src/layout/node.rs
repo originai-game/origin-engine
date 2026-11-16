@@ -234,6 +234,8 @@ pub struct TextContent {
     pub optical_sizing: bool,
     /// A colour face's palette (CSS `font-palette`).
     pub palette: crate::shape::Palette,
+    /// How its emoji are presented (CSS `font-variant-emoji`).
+    pub emoji: crate::text::EmojiStyle,
 }
 
 /// CSS `text-wrap-style` (CSS Text 4 §6.2): `stable` lays out as `auto`.
@@ -360,6 +362,7 @@ impl<'a> UsedText<'a> {
             .at_width(self.stretch)
             .with_axes(self.variations, self.optical_sizing, self.step.size)
             .in_palette(self.palette)
+            .with_emoji(self.emoji)
     }
 
     /// The metrics of the face it is drawn in: its role's nearest its

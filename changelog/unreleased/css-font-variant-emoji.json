@@ -1,0 +1,14 @@
+{
+  "added": [
+    {
+      "member": "ui",
+      "summary": "font-variant-emoji (CSS Fonts 4 §6.12) picks the face an emoji character both a text face and a colour face have is drawn in: emoji the colour face, text the text face, unicode and normal by its Emoji_Presentation (⌚ as emoji, © as text). A variation selector in the text wins: U+FE0F draws the character before it as emoji, U+FE0E as text. FontQuery gains emoji (FontQuery::with_emoji) and FontMetrics an emoji presentation (EmojiStyle)."
+    }
+  ],
+  "fixed": [
+    {
+      "member": "ui",
+      "summary": "An Emoji_Presentation character a text face has (⌚, ⭐) now draws in the colour emoji face when the text's fonts have one, and U+FE0F after a character such as © draws it in colour, as browsers do; font-variant-emoji: text keeps it in the text face."
+    }
+  ]
+}

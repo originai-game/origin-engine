@@ -57,6 +57,8 @@ pub struct RichSpan {
     pub optical_sizing: bool,
     /// A colour face's palette (CSS `font-palette`).
     pub palette: crate::shape::Palette,
+    /// How its emoji are presented (CSS `font-variant-emoji`).
+    pub emoji: crate::text::EmojiStyle,
     /// The bold and slant no real face of the style draws, synthesised.
     pub synth: crate::ui::Synth,
     /// A synthesised oblique's angle, degrees (CSS `font-style: oblique
@@ -94,6 +96,7 @@ impl RichSpan {
             .at_width(self.stretch)
             .with_axes(self.variations, self.optical_sizing, self.step.size)
             .in_palette(self.palette)
+            .with_emoji(self.emoji)
     }
 
     /// Its text's setting down a vertical line `v`: under its own

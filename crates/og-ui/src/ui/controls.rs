@@ -62,6 +62,7 @@ impl Ui {
             variations: Default::default(),
             optical_sizing: true,
             palette: Default::default(),
+            emoji: Default::default(),
         });
         // The probe and screen readers read the whole text, cut or not.
         n.probe_text = text.to_owned();

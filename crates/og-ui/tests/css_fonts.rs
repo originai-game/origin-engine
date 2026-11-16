@@ -44,6 +44,10 @@
 //!   `lang`, `font-language-override` ignored or not winning over `lang`,
 //!   or a Parley paragraph shaped without its language →
 //!   `font_language_override_and_lang_pick_the_fonts_local_forms`
+//! - an emoji character drawn in the wrong face for `font-variant-emoji`
+//!   or a variation selector, the selector not winning over the property,
+//!   the property not inherited or not reaching a rich span →
+//!   `font_variant_emoji_picks_a_colour_or_text_face`
 //! - `ui-monospace` or `ui-rounded` drawn in a face standing in for the
 //!   role where the style has none of its own instead of going on down the
 //!   list, `ui-serif` or `math` taken as the body face ahead of a later
@@ -70,6 +74,10 @@ const AXES: &str = "crates/og-ui/tests/fixtures/axes-test.ttf";
 /// 0 red and green, 1 blue and yellow (marked light), 2 white and black
 /// (marked dark).
 const PALETTE: &str = "crates/og-ui/tests/fixtures/palette-test.ttf";
+/// A text font with outline a, b, ⌚ and © (`fixtures/make-emoji-text-font.py`).
+const EMOJI_TEXT: &str = "crates/og-ui/tests/fixtures/emoji-text-test.ttf";
+/// Noto's COLRv1 colour emoji (the shipped emoji pack).
+const EMOJI: &str = "templates/fonts/emoji/Noto-COLRv1.ttf";
 
 /// The sRGB pixel at (`x`, `y`) em from the pen of a colour glyph's image
 /// painted at `em_px`.
@@ -842,4 +850,53 @@ fn font_language_override_and_lang_pick_the_fonts_local_forms() {
     assert_eq!(ids("Tag"), [Some(326), l]);
     assert_eq!(ids("Over"), [s, Some(898)]);
     assert_eq!(ids("Para"), [Some(326), l]);
+}
+
+/// CSS Fonts 4 §6.12: `font-variant-emoji` draws an emoji character that
+/// both a text face and a colour face have in the colour face (`emoji`),
+/// the text face (`text`), or as its Unicode `Emoji_Presentation` says
+/// (`unicode`, and `normal`): ⌚ as emoji, © as text. A variation
+/// selector in the text wins over it (U+FE0F emoji, U+FE0E text).
+#[test]
+fn font_variant_emoji_picks_a_colour_or_text_face() {
+    let fonts = Fonts {
+        body: face(EMOJI_TEXT, 1),
+        fallbacks: vec![face(EMOJI, 2)],
+        ..Fonts::default()
+    };
+    let d = doc_in(
+        fonts,
+        Vec::new(),
+        "<p id=\"Plain\">a©⌚</p><p id=\"Text\">a©⌚</p><p id=\"Emoji\">a©⌚</p><p id=\"Unicode\">a©⌚</p>\
+<p id=\"Vs\">a©\u{FE0F}⌚\u{FE0E}</p><p id=\"Over\">a©\u{FE0F}</p><div id=\"Up\"><p id=\"Inherit\">a©</p></div>\
+<p id=\"Rich\">a©</p>",
+        r#"#Text { font-variant-emoji: text; } #Emoji { font-variant-emoji: emoji; }
+#Unicode { font-variant-emoji: unicode; } #Over { font-variant-emoji: text; }
+#Up { font-variant-emoji: emoji; } #Rich { font-variant-emoji: emoji; text-decoration: underline; }"#,
+    );
+    // Each run of one face, its face and where it starts (a, ©, ⌚ and
+    // b are 14 px wide in the text face).
+    let runs = |id: &str| -> Vec<(FontHandle, f32)> {
+        drawn(&d, id)
+            .iter()
+            .map(|t| (t.font, t.x.round()))
+            .collect()
+    };
+    let (text, colour) = (FontHandle::from_index(1), FontHandle::from_index(2));
+    // a© as text, ⌚ as emoji.
+    let by_unicode = vec![(text, 0.0), (colour, 28.0)];
+    assert_eq!(runs("Plain"), by_unicode);
+    assert_eq!(runs("Unicode"), by_unicode);
+    assert_eq!(runs("Text"), [(text, 0.0)]);
+    let emoji = vec![(text, 0.0), (colour, 14.0)];
+    assert_eq!(runs("Emoji"), emoji);
+    let vs = runs("Vs");
+    assert_eq!(vs[..2], emoji[..], "©\u{FE0F} as emoji: {vs:?}");
+    assert!(
+        vs.len() == 3 && vs[2].0 == text,
+        "⌚\u{FE0E} as text: {vs:?}"
+    );
+    assert_eq!(runs("Over"), emoji);
+    assert_eq!(runs("Inherit"), emoji);
+    assert_eq!(runs("Rich"), emoji);
 }

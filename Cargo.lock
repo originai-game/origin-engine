@@ -3422,6 +3422,7 @@ dependencies = [
  "og-draw",
  "og-i18n",
  "parley",
+ "parley_data",
  "parley_engine",
  "skrifa",
  "ttf-parser",

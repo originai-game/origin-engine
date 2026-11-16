@@ -94,6 +94,8 @@ pub struct TextSpanStyle {
     /// The keys of the inline elements of a document's text it sits in,
     /// outermost first: their fragments are its pieces.
     pub owners: Vec<u64>,
+    /// How its emoji are presented (CSS `font-variant-emoji`).
+    pub emoji: Option<crate::text::EmojiStyle>,
 }
 
 /// An inline object of a text (a document's `<img>`, `<og-icon>` or `<kbd
@@ -188,6 +190,7 @@ impl Ui {
                 variations: Default::default(),
                 optical_sizing: true,
                 palette: Default::default(),
+                emoji: Default::default(),
                 synth: Default::default(),
                 oblique: None,
                 underline: false,
@@ -304,6 +307,9 @@ impl Ui {
                 }
                 if let Some(p) = style.palette {
                     s.palette = p;
+                }
+                if let Some(e) = style.emoji {
+                    s.emoji = e;
                 }
                 if let Some(underline) = style.underline {
                     s.underline = underline;

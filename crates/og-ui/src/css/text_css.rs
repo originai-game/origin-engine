@@ -1249,6 +1249,9 @@ pub struct TextCss {
     /// "ROM"; one no language shapes in first as HarfBuzz's private use
     /// writes it, `x-hbotabcd`), else the element's `lang`.
     pub language: Option<String>,
+    /// `font-variant-emoji` (`None`: `normal`, which presents as
+    /// `unicode` does).
+    pub emoji: Option<crate::text::EmojiStyle>,
     pub synthesis: [Option<bool>; 4],
     pub decoration: Decoration,
     pub stroke: Option<(f32, Option<Srgba>)>,
@@ -1490,6 +1493,12 @@ pub(crate) fn inherit(inp: Inputs<'_>) -> TextCss {
         kerning: get("font-kerning").map(|v| v != "none"),
         optical_sizing: get("font-optical-sizing").map(|v| v != "none"),
         palette: get("font-palette").filter(|v| v != "normal"),
+        emoji: match get("font-variant-emoji").as_deref() {
+            Some("text") => Some(crate::text::EmojiStyle::Text),
+            Some("emoji") => Some(crate::text::EmojiStyle::Emoji),
+            Some("unicode") => Some(crate::text::EmojiStyle::Unicode),
+            _ => None,
+        },
         language: get("font-language-override")
             .and_then(|v| language_tag(&v))
             .map(|tag| {

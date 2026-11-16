@@ -347,7 +347,18 @@ pub struct FamilyLists {
     fonts: elsa::FrozenMap<FamilySelection, Box<ResolvedFamily>>,
     /// Faces at a variable font's instance ([`Fonts::instanced`]).
     instances: elsa::FrozenMap<InstanceKey, Box<UiFont>>,
+    /// Mixed fonts presenting their emoji otherwise than by Unicode
+    /// ([`Fonts::presented`]), by the font's handle, its runs' and file's
+    /// addresses (the entry holds both) and the presentation.
+    presented: elsa::FrozenMap<PresentedKey, Box<UiFont>>,
 }
+
+type PresentedKey = (
+    Option<og_draw::FontHandle>,
+    usize,
+    usize,
+    crate::text::EmojiStyle,
+);
 
 /// A face at an instance: the instance's file, the handle it is drawn
 /// with once the host made it, and the face's own handle and other fonts
@@ -496,7 +507,8 @@ pub struct Synth {
 /// normal width; and of a variable face (§7.2) its variation settings
 /// (`font-variation-settings`) and its optical size in tenths of a CSS
 /// px (`font-optical-sizing: auto`, the text's size; 0: `none`); and of a
-/// colour face its palette (`font-palette`, §9).
+/// colour face its palette (`font-palette`, §9); and how its emoji are
+/// presented (`font-variant-emoji`, §6.12).
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub struct FontQuery {
     pub weight: u16,
@@ -505,6 +517,7 @@ pub struct FontQuery {
     pub variations: crate::shape::Variations,
     pub optical: u16,
     pub palette: crate::shape::Palette,
+    pub emoji: crate::text::EmojiStyle,
 }
 
 impl FontQuery {
@@ -520,7 +533,13 @@ impl FontQuery {
             variations: crate::shape::Variations::NONE,
             optical: 0,
             palette: crate::shape::Palette::NONE,
+            emoji: crate::text::EmojiStyle::Unicode,
         }
+    }
+
+    /// With its emoji presented as `emoji` says.
+    pub fn with_emoji(self, emoji: crate::text::EmojiStyle) -> FontQuery {
+        FontQuery { emoji, ..self }
     }
 
     /// In a colour face's `palette`.
@@ -705,7 +724,12 @@ impl Fonts {
         if let FontRole::Family(_) = role {
             return self.for_styled(role, FontQuery::new(0, false), text).0;
         }
-        self.resolve(self.get(role), self.companion(role), text)
+        self.resolve(
+            self.get(role),
+            self.companion(role),
+            text,
+            crate::text::EmojiStyle::Unicode,
+        )
     }
 
     /// Gives each of body, display, mono and rounded that has no font of
@@ -901,7 +925,34 @@ impl Fonts {
             stretch,
             ..query
         };
-        (self.instanced(font, drawn).unwrap_or(font), synth)
+        let font = self.instanced(font, drawn).unwrap_or(font);
+        (self.presented(font, query.emoji), synth)
+    }
+
+    /// A mixed `font` presenting its emoji as `emoji` says (CSS
+    /// `font-variant-emoji`); itself for `unicode`, which every font
+    /// presents by, and for a font that is not mixed.
+    fn presented<'a>(&'a self, font: &'a UiFont, emoji: crate::text::EmojiStyle) -> &'a UiFont {
+        let Some(runs) = font.metrics.runs.as_ref() else {
+            return font;
+        };
+        if emoji == font.metrics.emoji {
+            return font;
+        }
+        let file = font
+            .metrics
+            .file
+            .as_ref()
+            .map_or(0, |f| std::sync::Arc::as_ptr(f) as usize);
+        let key = (font.handle, runs.as_ptr() as usize, file, emoji);
+        match self.family_lists.presented.get(&key) {
+            Some(f) => f,
+            None => {
+                let mut made = font.clone();
+                made.metrics.emoji = emoji;
+                self.family_lists.presented.insert(key, Box::new(made))
+            }
+        }
     }
 
     /// `font` at its instance at `query`'s axes and palette; `None` for a
@@ -1041,14 +1092,18 @@ impl Fonts {
                 italic: italic && !slanted,
             };
             let companion = self.companion_styled(family.fallback(), weight);
-            return (self.resolve(f, companion, text), synth, (got, width));
+            return (
+                self.resolve(f, companion, text, query.emoji),
+                synth,
+                (got, width),
+            );
         }
         let (f, got, slanted) = self.latin(role, weight, italic);
         let synth = Synth {
             bold: needs_bold(weight, got),
             italic: italic && !slanted,
         };
-        let face = self.resolve(f, self.companion_styled(role, weight), text);
+        let face = self.resolve(f, self.companion_styled(role, weight), text, query.emoji);
         (face, synth, (got, FontQuery::NORMAL_WIDTH))
     }
 
@@ -1106,7 +1161,15 @@ impl Fonts {
         f: &'a UiFont,
         companion: Option<&'a UiFont>,
         text: &str,
+        emoji: crate::text::EmojiStyle,
     ) -> &'a UiFont {
+        // An emoji presented as emoji is drawn by its mixed font's colour
+        // face, though the role's face has a text form of it.
+        if let Some(m) = f.metrics.mixed.as_deref()
+            && f.metrics.wants_colour(text, emoji)
+        {
+            return m;
+        }
         let cooked = |font: &UiFont| {
             text.chars()
                 .all(|c| c.is_whitespace() || font.metrics.in_atlas(c))

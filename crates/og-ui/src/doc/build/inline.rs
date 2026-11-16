@@ -45,7 +45,8 @@ fn overlay(base: &mut TextSpanStyle, top: &TextSpanStyle) {
         optical_sizing,
         ruby_role,
         ruby_position,
-        palette
+        palette,
+        emoji
     );
 }
 
@@ -113,6 +114,7 @@ impl Ui {
                 variations,
                 optical_sizing,
                 palette,
+                emoji,
                 synthesis,
                 color,
                 outline,

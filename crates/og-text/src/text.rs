@@ -22,6 +22,48 @@ use std::sync::Arc;
 mod layout_font;
 pub mod paragraph;
 
+/// How emoji characters are presented (CSS Fonts 4 §6.12
+/// `font-variant-emoji`; `normal` is `unicode`). A variation selector in
+/// the text (U+FE0E text, U+FE0F emoji) wins over it.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
+pub enum EmojiStyle {
+    /// By each character's Unicode `Emoji_Presentation`.
+    #[default]
+    Unicode,
+    /// In a text face.
+    Text,
+    /// In a colour emoji face.
+    Emoji,
+}
+
+impl EmojiStyle {
+    /// Whether the grapheme cluster `cluster` is drawn in a colour face
+    /// (`Some(true)`) or a text face (`Some(false)`); `None` for one that
+    /// is not an emoji character. A keycap's base (a digit, `#` or `*`)
+    /// is text except in a keycap sequence.
+    pub fn colour(self, cluster: &str) -> Option<bool> {
+        let base = cluster.chars().next()?;
+        if cluster.contains('\u{FE0F}') {
+            return Some(true);
+        }
+        if cluster.contains('\u{FE0E}') {
+            return Some(false);
+        }
+        let p = parley_data::Properties::get(base);
+        if !p.is_emoji() {
+            return None;
+        }
+        if base.is_ascii() {
+            return cluster.contains('\u{20E3}').then_some(true);
+        }
+        Some(match self {
+            EmojiStyle::Unicode => p.is_emoji_presentation(),
+            EmojiStyle::Text => false,
+            EmojiStyle::Emoji => true,
+        })
+    }
+}
+
 /// Advances, kerning and vertical extents of a font, in em.
 #[derive(Clone, Debug, PartialEq)]
 pub struct FontMetrics {
@@ -58,6 +100,10 @@ pub struct FontMetrics {
     /// An `@font-face`'s `unicode-range` (inclusive code point ranges):
     /// the face has only the characters in it ([`FontMetrics::with_range`]).
     range: Option<Arc<[(u32, u32)]>>,
+    /// How a mixed text presents its emoji characters (CSS
+    /// `font-variant-emoji`): which of its runs' faces, colour or text,
+    /// draws one that both have.
+    pub emoji: EmojiStyle,
 }
 
 /// One glyph of a line as drawn, left to right.
@@ -159,6 +205,7 @@ impl FontMetrics {
             prefer: 0,
             pixel: 0,
             range: None,
+            emoji: EmojiStyle::Unicode,
         }
     }
 
@@ -177,6 +224,7 @@ impl FontMetrics {
             prefer: 0,
             pixel: 0,
             range: None,
+            emoji: EmojiStyle::Unicode,
         }
     }
 
@@ -356,7 +404,7 @@ impl FontMetrics {
         if let Some(p) = prev
             && sticks(c)
             && m(p).own_has(c)
-            && !m(p).file.as_ref().is_some_and(|f| f.is_colour())
+            && !m(p).is_colour()
         {
             return p;
         }
@@ -388,7 +436,46 @@ impl FontMetrics {
     /// whose atlas or file does; else its base's (a mark no font has is
     /// missing beside its base, not drawn from another face). Joiners and
     /// variation selectors, which no face need draw, are not asked for.
+    ///
+    /// An emoji character ([`EmojiStyle::colour`]) is drawn in a colour
+    /// face when it is presented as emoji, else in a text face, where
+    /// one of the runs has it.
     fn font_of_cluster(&self, cluster: &str, prev: Option<usize>) -> usize {
+        let k = self.any_font_of_cluster(cluster, prev);
+        let (Some(runs), Some(colour)) = (&self.runs, self.emoji.colour(cluster)) else {
+            return k;
+        };
+        let m = |k: usize| self.part(k).expect("a font of the run");
+        if m(k).is_colour() == colour {
+            return k;
+        }
+        let drawn = || cluster.chars().filter(|&c| !invisible(c));
+        (0..=runs.len())
+            .find(|&f| m(f).is_colour() == colour && drawn().all(|c| m(f).own_has(c)))
+            .unwrap_or(k)
+    }
+
+    /// Whether it is a colour emoji face: some character maps to a COLR
+    /// colour glyph ([`FontFile::is_colour`]).
+    pub fn is_colour(&self) -> bool {
+        self.file.as_ref().is_some_and(|f| f.is_colour())
+    }
+
+    /// Whether a text in this font has an emoji character presented as
+    /// emoji ([`EmojiStyle::colour`]) that it is not a colour face for:
+    /// one its mixed font's colour faces draw instead.
+    pub fn wants_colour(&self, text: &str, style: EmojiStyle) -> bool {
+        if self.is_colour() || text.is_ascii() {
+            return false;
+        }
+        let chars: Vec<(usize, char)> = text.char_indices().collect();
+        let at = |i: usize| chars.get(i).map_or(text.len(), |c| c.0);
+        og_i18n::graphemes(text)
+            .into_iter()
+            .any(|(a, b)| style.colour(&text[at(a)..at(b)]) == Some(true))
+    }
+
+    fn any_font_of_cluster(&self, cluster: &str, prev: Option<usize>) -> usize {
         let mut chars = cluster.chars();
         let Some(base) = chars.next() else {
             return prev.unwrap_or(0);

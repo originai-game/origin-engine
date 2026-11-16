@@ -29,6 +29,9 @@ skrifa = { version = "=0.44.0", default-features = false, features = ["libm"] }
 # selection place the caret, with or without `shaping`).
 parley = { version = "=0.12.0", default-features = false, features = ["libm", "complex-scripts"] }
 parley_engine = { version = "=0.12.0", default-features = false, features = ["libm", "complex-scripts"] }
+# Emoji and Emoji_Presentation (CSS `font-variant-emoji`), as Parley reads
+# them.
+parley_data = { version = "=0.12.0", default-features = false, features = ["baked"] }
 # The bidirectional algorithm (UAX #9): a line's runs in visual order.
 unicode-bidi = "0.3.18"
 # A cooked font's file (`runtime true`): metrics and outlines of characters

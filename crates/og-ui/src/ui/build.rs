@@ -619,6 +619,7 @@ impl crate::ui::Tree {
             variations: Default::default(),
             optical_sizing: true,
             palette: Default::default(),
+            emoji: Default::default(),
         }
     }
 }
