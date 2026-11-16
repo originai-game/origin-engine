@@ -46,7 +46,7 @@
 :host { display: flex; inline-size: stretch; padding: var(--space-sm); container-type: inline-size; }
 .tray-scroll { flex: 1; min-inline-size: 0; overflow-x: auto; overflow-y: hidden; }
 .tray { display: flex; width: max-content; min-width: 100%; justify-content: center; gap: var(--space-sm); padding: var(--space-xxs); }
-[part="PuzzleBoosters.booster PuzzleBoosters.cell"] { flex: none; width: max-content; min-width: calc(var(--size-xl) * 1.5); max-width: calc(var(--size-xl) * 2.5); min-height: var(--size-touch); padding: var(--space-xs); }
+[part="PuzzleBoosters.booster PuzzleBoosters.cell"] { flex: none; width: max-content; min-width: calc(var(--size-xl) * 1.5); max-width: calc(var(--size-xl) * 2.5); min-height: var(--size-touch); padding: var(--space-xs); text-shadow: none; }
 [part="PuzzleBoosters.booster PuzzleBoosters.cell"] .face { display: flex; flex-direction: column; align-items: center; gap: var(--space-xs); }
 [part="PuzzleBoosters.booster PuzzleBoosters.cell"][data-armed=true] { background: var(--selection); border-color: var(--focus); box-shadow: inset 0 0 0 var(--stroke-hairline) var(--focus); }
 [part="PuzzleBoosters.booster PuzzleBoosters.cell"]:disabled { opacity: var(--state-disabled-opacity); }

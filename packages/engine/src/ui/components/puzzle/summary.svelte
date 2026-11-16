@@ -32,11 +32,12 @@
     {#if level}<p part="PuzzleSummary.level PuzzleSummary.label">{level}</p>{/if}
   </header>
   <div part="PuzzleSummary.stars" data-result={result}>
-    <StarBar value={score} max={scoreMax} stars={thresholds} label="" valueText="" compact={false} />
+    <StarBar value={score} max={scoreMax} stars={thresholds} label="" valueText="" compact={false} --tag-halo="none" />
     <span part="PuzzleSummary.earned PuzzleSummary.label" class="earned">{t("puzzle.summary.stars", { stars: stars, max: maxStars })}</span>
     {#if record}<span part="PuzzleSummary.record PuzzleSummary.label">{t("puzzle.summary.record")}</span>{/if}
   </div>
-  {#if rows.length}<div part="PuzzleSummary.breakdown" role="table" aria-label={t("puzzle.summary.breakdown")}>
+  {#if rows.length}<div class="breakdown-shell">
+  <div part="PuzzleSummary.breakdown" role="table" aria-label={t("puzzle.summary.breakdown")}>
     {#each rows as r (r.id)}
       <div part="PuzzleSummary.row" role="row">
         <span part="PuzzleSummary.rowLabel" role="rowheader">{r.label}</span>
@@ -47,6 +48,8 @@
       <span class="total-label" role="rowheader">{t("puzzle.summary.total")}</span>
       <span class="total-value" role="cell">{total}</span>
     </div>{/if}
+  </div>
+  <div class="breakdown-fade"></div>
   </div>{/if}
   <div part="PuzzleSummary.actions">
     <button id="Menu" part="PuzzleSummary.menu" aria-label={t("puzzle.summary.menu")} onclick={menu}>{t("puzzle.summary.menu")}</button>
@@ -56,13 +59,15 @@
 </section>
 
 <style>
-:host { display: flex; flex-direction: column; inline-size: stretch; max-block-size: stretch; min-block-size: 0; gap: var(--space-lg); padding: var(--space-lg); background: var(--panel); }
+:host { display: flex; flex-direction: column; inline-size: stretch; max-block-size: stretch; min-block-size: 0; gap: var(--space-lg); padding: var(--space-lg); background: var(--panel); text-shadow: none; }
 [part="PuzzleSummary.band"] { display: flex; flex: none; flex-direction: column; align-items: center; gap: var(--space-xxs); padding: var(--space-sm) var(--space-lg); }
 [part="PuzzleSummary.title"] { margin: 0; text-align: center; }
 [part="PuzzleSummary.level PuzzleSummary.label"] { margin: 0; align-self: stretch; text-align: center; color: var(--ink-muted); line-clamp: 2; }
 [part="PuzzleSummary.stars"] { display: flex; flex: none; flex-direction: column; align-items: center; gap: var(--space-xs); }
 [part="PuzzleSummary.earned PuzzleSummary.label"], [part="PuzzleSummary.record PuzzleSummary.label"] { white-space: nowrap; }
-[part="PuzzleSummary.record PuzzleSummary.label"] { padding: var(--space-xs) var(--space-md); border-radius: var(--radius-capsule); background: var(--selection); color: var(--ink); font-weight: var(--font-weight-semibold); }
+[part="PuzzleSummary.record PuzzleSummary.label"] { padding: var(--space-xs) var(--space-md); border-radius: var(--radius-capsule); background: var(--selection); color: var(--ink); font-weight: var(--font-weight-semibold); text-shadow: none; }
+.breakdown-shell { position: relative; display: flex; flex-direction: column; flex: 1 1 auto; min-block-size: 0; }
+.breakdown-fade { position: absolute; inset-inline: 0; bottom: 0; block-size: var(--space-lg); pointer-events: none; background: linear-gradient(transparent, var(--panel)); }
 [part="PuzzleSummary.breakdown"] { flex: 1 1 auto; min-block-size: 0; overflow-y: auto; }
 [part="PuzzleSummary.row"]:nth-child(odd) { background: var(--well); border-radius: var(--radius-control); }
 [part="PuzzleSummary.total PuzzleSummary.label"] { margin-block-start: var(--space-sm); border-block-start: var(--stroke-hairline) solid var(--line); font-weight: var(--font-weight-semibold); color: var(--ink); }
@@ -70,7 +75,7 @@
 [part="PuzzleSummary.rowLabel"], .total-label { flex: 1; min-width: 0; text-align: start; }
 [part="PuzzleSummary.rowValue"], .total-value { flex: none; text-align: end; white-space: nowrap; font-family: var(--figure-font); font-variant-numeric: tabular-nums; }
 [part="PuzzleSummary.actions"] { display: flex; flex: none; gap: var(--space-sm); justify-content: center; }
-[part="PuzzleSummary.actions"] button { flex: 1; min-width: 0; min-height: var(--size-touch); }
+[part="PuzzleSummary.actions"] button { flex: 1; min-width: 0; min-height: var(--size-touch); text-shadow: none; }
 @media (width < 600px) {
   :host { padding: var(--space-md); gap: var(--space-sm); }
   [part="PuzzleSummary.actions"] { gap: var(--space-xs); }
