@@ -303,6 +303,11 @@ proof("url-referrer-policy", "remote_images", "remote_images_load_under_their_re
 not_applicable("namespace",
                "A document's elements are in one namespace (a .svelte document is not XML), so @namespace prefixes "
                "select nothing apart; the rule is accepted and has no effect.")
+proof("forced-colors", "css_paint", "forced_colors_force_author_colours_to_system_colours",
+      "With Viewport::forced_colors (the web shell's matchMedia), (forced-colors: active) matches; an author's background is the system colour paired with the element's color (Canvas, ButtonFace behind ButtonText) at its own alpha (50 % stays 50 %), "
+      "a border's colour is currentcolor (the inherited ink), box-shadow and a gradient without url() are none, a system colour stands and color reverts to the ink; forced-color-adjust: none opts out an element and, inherited, its child; "
+      "turning the mode off restores every colour on that frame. css::forced_colors' unit test covers the other properties (outline, text-decoration and caret colours, text-shadow, accent-color, scrollbar-color, url() layers). "
+      "A colour computed from currentcolor or a custom role keeps alpha 1 when forced, and preserve-parent-color behaves as none (an inherited color is already the parent's used one).")
 
 # animation and interaction
 proof("transitions transition-behavior starting-style linear-easing steps-easing display-animation animation-composition",

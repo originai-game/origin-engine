@@ -25,7 +25,7 @@ mod resolve;
 use background::*;
 pub(crate) use background::{
     Attach, BACKGROUND_LONGHANDS, BgPos, BgSize, BoxEdge, C4_PROPS, CssImage, CssLayer,
-    ImageSource, MASK_LONGHANDS, background, bg_position, longhands, masks, url,
+    ImageSource, MASK_LONGHANDS, background, bg_position, is_image, longhands, masks, url,
 };
 #[cfg(test)]
 use border::border_shorthand;

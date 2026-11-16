@@ -295,7 +295,7 @@ fn mask_mode(w: &str) -> Option<bool> {
 /// A `background`'s layers, the first on top, and its trailing colour.
 pub(crate) type Background = (Vec<CssLayer>, Option<Tok>);
 
-pub(super) fn is_image(t: &Tok) -> bool {
+pub(crate) fn is_image(t: &Tok) -> bool {
     match t {
         Tok::Func(f, _)
             if matches!(
