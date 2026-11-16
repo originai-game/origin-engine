@@ -983,3 +983,57 @@ fn the_default_style_is_read_once_in_the_process() {
         "only what follows the default text"
     );
 }
+
+/// A style's `:root` tokens are declared once, at the root, and every
+/// document inherits them: a component's root is not the page's `:root`
+/// (CSS Scoping 1, a shadow host inherits), so a token an ancestor sets
+/// reaches inside the component instead of being reset to the pack's.
+/// Fails when each document's root declares the pack's `:root` tokens
+/// again (the child box would be 10px, the pack's value, not 30px).
+#[test]
+fn a_components_root_inherits_tokens_its_ancestors_set_under_a_pack() {
+    use og_ui::{Viewport, bind::NoEnv, reactive::SourceId};
+    let pack = StylePack::parse(
+        "styles/test",
+        vec![(
+            "styles/test/main.css".into(),
+            ":root { --w: 10px; color: #ff0000; }".into(),
+        )],
+    )
+    .unwrap();
+    let mut ui = Ui::new(UiDesc::default());
+    ui.set_style_pack(&pack).unwrap();
+    for (path, text) in [
+        (
+            "ui/child.svelte",
+            r#"<meta name="component" content="Child"><div><div id="Inner"></div></div><style>#Inner { width: var(--w); height: 4px; }</style>"#,
+        ),
+        (
+            "ui/parent.svelte",
+            r#"<meta name="screen" content="parent"><div><div id="Own"></div><div style="--w: 30px"><Child/></div></div><style>#Own { width: var(--w); height: 4px; }</style>"#,
+        ),
+    ] {
+        let doc = ui.parse_document(path, text, Vec::new()).unwrap();
+        ui.define_document(doc);
+    }
+    ui.mount_document(
+        SourceId::new("test", "parent"),
+        "parent",
+        Default::default(),
+        Default::default(),
+        &NoEnv,
+    )
+    .unwrap();
+    ui.begin(Default::default(), Viewport::new(400.0, 400.0));
+    ui.build_retained_documents(&NoEnv).unwrap();
+    ui.end();
+    let width = |id: &str| {
+        ui.elements()
+            .iter()
+            .find(|e| e.path.ends_with(&format!("/{id}")))
+            .unwrap_or_else(|| panic!("no {id}"))
+            .width
+    };
+    assert_eq!(width("Own"), 10.0, "the pack's token at the root");
+    assert_eq!(width("Inner"), 30.0, "the ancestor's token, inherited");
+}

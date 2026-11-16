@@ -646,6 +646,10 @@ struct GlobalRule {
     /// Its body names an animation, which reads differently once a
     /// document defines keyframes of its own.
     animates: bool,
+    /// Its selector is the root alone (`:root`, a scheme's `:root` too):
+    /// its custom properties are the root cascade's, which every document
+    /// inherits, so a document's root does not declare them again.
+    root: bool,
 }
 
 /// A global stylesheet read once for every document it dresses: HTML's
@@ -742,9 +746,15 @@ impl Global {
                 };
                 Some(((declarations, entries), boxed))
             };
+            let root = root_only(&selector, &rule);
+            let lowered = match lowered {
+                Some((own, boxed)) if root => Some((without_custom(own), boxed)),
+                lowered => lowered,
+            };
             out.push(GlobalRule {
                 selector: std::sync::Arc::new(selector),
                 animates: rule.body.contains("animation") || rule.boxed.contains("animation"),
+                root,
                 rule,
                 lowered,
             });
@@ -757,6 +767,38 @@ impl Global {
             rules: out,
         })
     }
+}
+
+/// Whether a global rule selects only the root: one compound of `:root`,
+/// no pseudo-element.
+fn root_only(selector: &Selector, rule: &Rule) -> bool {
+    use super::selectors::Component;
+    let (compounds, _) = selector.compounds();
+    rule.pseudo.is_none()
+        && compounds.len() == 1
+        && compounds[0].iter().any(|c| matches!(c, Component::Root))
+        && compounds[0]
+            .iter()
+            .all(|c| matches!(c, Component::Root | Component::ImplicitScope))
+}
+
+/// A lowered body without its custom properties. A style's `:root`
+/// declares its tokens once, in the root cascade, as a browser's one root
+/// element does; a document's root inherits their computed values (CSS
+/// Scoping 1: a shadow host inherits, it does not re-match the page's
+/// `:root`). Its other declarations (a pack's `font-family`, `color`)
+/// still apply to every document's root.
+fn without_custom((declarations, entries): Lowered) -> Lowered {
+    (
+        declarations
+            .into_iter()
+            .filter(|d| !d.name.starts_with("--"))
+            .collect(),
+        entries
+            .into_iter()
+            .filter(|e| !e.key.starts_with("--"))
+            .collect(),
+    )
 }
 
 /// A rule body lowered and read as props, its entries at `line`.
@@ -1101,6 +1143,7 @@ pub fn apply(
         };
         let line = syntax::location(&doc.text, rule.at).0;
         let fresh;
+        let kept_rule = kept;
         let kept = kept
             .filter(|g| !(more_keyframes && g.animates))
             .and_then(|g| g.lowered.as_ref());
@@ -1108,6 +1151,10 @@ pub fn apply(
             Some(kept) => (&kept.0, kept.1.as_ref()),
             None => {
                 let own = lowered(&rule.body, line, &known).map_err(|e| (rule.at, e))?;
+                let own = match kept_rule {
+                    Some(g) if g.root => without_custom(own),
+                    _ => own,
+                };
                 let boxed = match rule.pseudo {
                     Some(_) if !rule.boxed.is_empty() => {
                         Some(lowered(&rule.boxed, line, &known).map_err(|e| (rule.at, e))?)
