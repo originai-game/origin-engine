@@ -70,7 +70,13 @@ and their pending L4 review are recorded explicitly in the world sheet.
 | Player portraits (fallback, level and presence) | `base/avatar` |
 | Read-only currency balances, capacity and income | `base/currency` |
 | Discrete resource pips | `base/pips` |
+| Empty and error states | `base/empty-state`, `base/error-state` |
+| List rows and step progress | `base/list-item`, `base/steps` |
 | Boss health, combo, pickup activity and performance readouts | `hud/boss-bar`, `hud/combo`, `hud/pickup-feed`, `hud/perf-readout` |
+| Quick-time event prompts | `hud/qte-prompt` |
+| Pass progression and reward reveals | `meta/pass-track`, `meta/reveal` |
+| Inbox and news panels | `meta/inbox`, `meta/news` |
+| Player profiles and game-owned actions | `meta/profile` |
 | Crafting recipes, trade stock and loot collection | `panels/crafting`, `panels/trade`, `panels/loot` |
 | Conversation history and replay | `panels/conversation-backlog` |
 | Ability bars, cooldowns and buffs | `ability-bar`, `ability-slot`, `cooldown`, `status-grid` |
