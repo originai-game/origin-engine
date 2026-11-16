@@ -1,0 +1,5 @@
+{
+  "fixed": [
+    "A frame whose UI is the same as the last one (between two ticks, or on an idle screen) no longer rebuilds, sorts and uploads the UI overlay: the renderer keeps the overlay it built and its tables on the device while the UI frame, its anchored elements' shifts, the target size and the fonts and textures it reads are unchanged. A UI with mass elements, or an overlay that also carries screen text, is built every frame as before."
+  ]
+}

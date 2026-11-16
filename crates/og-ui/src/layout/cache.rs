@@ -358,6 +358,8 @@ pub(crate) struct PaintCache {
     /// has one.
     pub awaiting: std::collections::BTreeSet<usize>,
     pub reuse: crate::ui::commands::Reuse,
+    /// The frame's items' generation ([`crate::UiFrame::generation`]).
+    pub generation: u64,
 }
 
 impl PaintCache {

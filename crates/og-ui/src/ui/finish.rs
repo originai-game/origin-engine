@@ -146,6 +146,7 @@ impl Ui {
             },
             events: std::mem::take(&mut self.out.events),
             grounds: std::mem::take(&mut self.world.placement.grounds),
+            generation: self.paint.cache.generation,
             stats: LayoutStats {
                 laid_out: self.layout.cache.laid_out,
                 ..self.out.stats
@@ -1494,6 +1495,11 @@ impl Ui {
             && self.paint.cache.reused_all
             && tail == self.paint.cache.last_tail
             && self.out.frame.unit == self.env.unit;
+        if !kept_items || self.paint.cache.generation == 0 {
+            static GENERATION: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(1);
+            self.paint.cache.generation =
+                GENERATION.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+        }
         let (items, missing_glyphs) = if kept_items {
             (std::mem::take(&mut self.out.frame.items), Vec::new())
         } else if let Some(relevelled) = view

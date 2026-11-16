@@ -8,6 +8,9 @@ pub(super) struct UploadUiInputs<'a> {
     pub scene: &'a RenderScene,
     pub cam: &'a frame::CameraFrame,
     pub overlay_frame: &'a Option<crate::overlay::OverlayFrame>,
+    /// The overlay was built this frame: its tables are written (else they
+    /// are last frame's, on the device already).
+    pub overlay_fresh: bool,
     pub ui_uniform: Option<[f32; 12]>,
     pub glass_on: bool,
 }
@@ -21,6 +24,7 @@ impl Renderer {
             scene,
             cam,
             overlay_frame,
+            overlay_fresh,
             ui_uniform,
             glass_on,
         }: UploadUiInputs<'_>,
@@ -65,6 +69,7 @@ impl Renderer {
                 &self.overlay.layout,
                 scene,
                 of,
+                overlay_fresh,
                 u,
                 backdrop,
                 |t| textures.get(t.index()).map(|g| g.view.clone()),

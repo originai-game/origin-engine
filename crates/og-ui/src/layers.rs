@@ -629,6 +629,15 @@ mod tests {
         // included: it is written as its focus changes.
         let idle = step(&mut ui, InputFrame::default());
         assert_eq!((idle.bindings, idle.reconciled), (0, 0), "{idle:?}");
+        // Its items are last frame's: the same generation, which a host
+        // keeps what it made from.
+        let kept = ui.frame().generation;
+        step(&mut ui, InputFrame::default());
+        assert_eq!(
+            ui.frame().generation,
+            kept,
+            "an idle frame keeps its generation"
+        );
         ui.docs
             .state_mut()
             .memory
@@ -642,6 +651,7 @@ mod tests {
         let changed = step(&mut ui, InputFrame::default());
         assert_eq!(changed.bindings, 1, "{changed:?}");
         assert!(texts(&ui).contains(&"full".to_string()));
+        assert_ne!(ui.frame().generation, kept, "changed items take a new one");
         // A snapshot carries the mounted layer.
         let saved = ui.save_state();
         // Back pops it: the layer and its mount go, the HUD stays.

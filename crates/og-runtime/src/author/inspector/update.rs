@@ -351,6 +351,8 @@ pub(crate) fn emit(rs: &mut RenderState) {
         .overlay
         .get_or_insert_with(|| og_render::Overlay::new(w.max(1.0), h.max(1.0), 0.0));
     let first = overlay.texts.len();
+    // Not the game's UI alone: nothing names what it is made from.
+    overlay.key = None;
     frame.emit(&og_ui::EmitDesc { layer: LAYER, time }, overlay);
     crate::present::extract::draw_other_pages(overlay, first, &rs.ui_pages);
 }

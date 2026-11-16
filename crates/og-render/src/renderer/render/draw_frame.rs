@@ -289,8 +289,34 @@ impl Renderer {
                 .flatten()
                 .map(|g| g.info.layers)
         };
-        let overlay_frame = match &scene.ui.overlay {
-            Some(o) => Some(overlay::build(
+        // What the overlay is built from: kept as last frame's when its key
+        // and target are (its tables are not uploaded again either).
+        let kept_key = scene.ui.overlay.as_ref().and_then(|o| {
+            Some(overlay::KeptOverlay {
+                key: o.key?,
+                width: self.out_width,
+                height: self.out_height,
+                scale: overlay::OverlayRenderer::scale(self.out_height, o).to_bits(),
+                revisions: scene
+                    .font_revisions()
+                    .iter()
+                    .chain(scene.texture_revisions())
+                    .chain(scene.texture_array_revisions())
+                    .fold(0xcbf2_9ce4_8422_2325, |h, r| {
+                        (h ^ r).wrapping_mul(0x0100_0000_01b3)
+                    }),
+                textures: self.cache.textures.len(),
+                vectors: scene.ui.ui_vectors.len(),
+            })
+        });
+        let kept_frame = match self.overlay.kept.take() {
+            Some((key, frame)) if Some(key) == kept_key => Some(frame),
+            _ => None,
+        };
+        let overlay_fresh = kept_frame.is_none();
+        let overlay_frame = match (&scene.ui.overlay, kept_frame) {
+            (Some(_), Some(frame)) => Some(frame),
+            (Some(o), None) => Some(overlay::build(
                 o,
                 |i| fonts.get(i).map(|f| &f.layout),
                 self.cache.textures.len(),
@@ -305,7 +331,7 @@ impl Renderer {
                 },
                 &mut self.overlay.mass_eases,
             )?),
-            None => None,
+            (None, _) => None,
         };
         let glass_on = self.prepare_frame_overlay(scene, &overlay_frame);
         // The frame goes through the glass source when glass reads it or a
@@ -643,6 +669,7 @@ impl Renderer {
             ribbon_frame: &arenas.ribbon_frame,
             sprite_frame: &arenas.sprite_frame,
             overlay_frame: &overlay_frame,
+            overlay_fresh,
             light_slots: &arenas.light_slots,
         });
         stages.end("skinned and sprite uploads");
@@ -865,6 +892,7 @@ impl Renderer {
             scene,
             cam: &cam,
             overlay_frame: &overlay_frame,
+            overlay_fresh,
             ui_uniform: uploads.ui_uniform,
             glass_on,
         });
@@ -1347,6 +1375,8 @@ impl Renderer {
         });
         // Its tables' memory for the next frame's crowds.
         self.world.crowd_tables = crowd_frame;
+        // The overlay as built, for a next frame that draws the same one.
+        self.overlay.kept = kept_key.zip(overlay_frame);
         stages.end("submit");
         self.stage_ms = stages.done;
         Ok(stats)

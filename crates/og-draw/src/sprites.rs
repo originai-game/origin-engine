@@ -301,6 +301,13 @@ pub struct Overlay {
     /// The UI pass's shapes, clip shapes, layers, text effects and vectors
     /// ([`crate::ui`]), sorted with the sprites and text by layer.
     pub ui: crate::ui::UiList,
+    /// What its contents were made from, when one writer made them all and
+    /// can name it (og-runtime: the UI frame's generation and its
+    /// anchored shifts); anything else that writes into it sets `None`.
+    /// The renderer keeps what it made from an overlay with the same key
+    /// at the same target instead of making and uploading it again; its
+    /// `ui.time`, `ui.tick` and `ui.tick_fraction` are read each frame.
+    pub key: Option<u64>,
 }
 
 /// The UI's layer among screen sprites and screen text (the IDL's
@@ -341,6 +348,7 @@ impl Overlay {
             scale,
             clips: Vec::new(),
             ui: crate::ui::UiList::default(),
+            key: None,
         }
     }
 

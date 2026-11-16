@@ -1639,6 +1639,11 @@ pub struct UiFrame {
     /// onto the screen itself, no render target ([`crate::DrawCmd::EndLayer`]'s
     /// `ground`). A panel behind the camera has none and is not drawn.
     pub grounds: Vec<crate::GroundQuad>,
+    /// Names its `items`, `viewport` and `unit`: a frame whose items are
+    /// last frame's has its generation; any other has a new one, unique in
+    /// the process. A host keeps what it made from a generation (the
+    /// renderer's overlay) until it changes.
+    pub generation: u64,
 }
 
 /// What [`Ui::edit_marks`] draws a text control's marks from.

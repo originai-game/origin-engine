@@ -395,6 +395,8 @@ fn texts(rs: &mut RenderState, fresh: bool, vp: (f32, f32)) {
                     .overlay
                     .get_or_insert_with(|| og_render::Overlay::new(vp.0, vp.1, 0.0));
                 let clip = t.clip.map(|c| o.add_clip(c));
+                // Not the UI's alone: nothing names what it is made from.
+                o.key = None;
                 o.texts.push(og_render::Text {
                     clip,
                     layer: og_render::screen_layer(text.layer),

@@ -21,6 +21,9 @@ pub(crate) fn emit(rs: &mut super::extract::RenderState, shifts: &og_core::IdMap
     if frame.items.is_empty() && world_frame.batches.is_empty() {
         return;
     }
+    // The UI alone writes the overlay it makes: it can name what it made
+    // it from (`Overlay::key`).
+    let alone = rs.scene.ui.overlay.is_none();
     // The frame lays out in og-ui units and emits CSS px (docs/ui.md
     // §15.2): the overlay is the CSS surface, the unit times the frame's.
     let (w, h) = (
@@ -68,5 +71,24 @@ pub(crate) fn emit(rs: &mut super::extract::RenderState, shifts: &og_core::IdMap
             (first_sprite, first_text, first_shape),
             (&icon_textures, &icon_fonts),
         );
+        // Its contents are the UI frame's (by its generation) moved by the
+        // shifts, at this size, with these pages and palette: the renderer
+        // keeps what it made from the same. Mass elements move in the
+        // shader each frame: none is kept.
+        overlay.key = (alone && world_frame.batches.is_empty()).then(|| {
+            use std::hash::{Hash, Hasher};
+            let mut key = std::hash::DefaultHasher::new();
+            frame.generation.hash(&mut key);
+            [w.to_bits(), h.to_bits()].hash(&mut key);
+            let mut moved: Vec<(u64, [u32; 2])> = shifts
+                .iter()
+                .map(|(k, v)| (*k, [v.x.to_bits(), v.y.to_bits()]))
+                .collect();
+            moved.sort_unstable();
+            moved.hash(&mut key);
+            rs.ui_pages.len().hash(&mut key);
+            rs.art.frame.strict.hash(&mut key);
+            key.finish()
+        });
     }
 }

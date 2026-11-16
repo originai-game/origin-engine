@@ -858,6 +858,27 @@ pub(crate) struct OverlayRenderer {
     pub linear_format: Option<wgpu::TextureFormat>,
     pub buffer: wgpu::Buffer,
     pub mass_eases: crate::ui::mass::EaseTables,
+    /// The last frame's overlay as built, and what it was built from: an
+    /// overlay with the same [`Overlay::key`] at the same target is not
+    /// built or uploaded again (`Renderer::draw_frame`).
+    pub kept: Option<(KeptOverlay, OverlayFrame)>,
+}
+
+/// What an [`OverlayFrame`] was made from beyond its overlay's contents:
+/// their key, the target and the font, texture and vector tables it was
+/// made against.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub(crate) struct KeptOverlay {
+    pub key: u64,
+    pub width: u32,
+    pub height: u32,
+    pub scale: u32,
+    /// The fonts', textures' and texture arrays' revisions, hashed: a
+    /// texture that streams in or a target that resizes changes what an
+    /// overlay is built into (its orientation, layers, a panel's size).
+    pub revisions: u64,
+    pub textures: usize,
+    pub vectors: usize,
 }
 
 impl OverlayRenderer {
@@ -977,6 +998,7 @@ impl OverlayRenderer {
             linear_format,
             buffer,
             mass_eases: Default::default(),
+            kept: None,
         }
     }
 

@@ -3,36 +3,8 @@
 use super::*;
 
 impl UiRenderer {
-    /// Writes the frame's tables and uniforms and makes its groups: the
-    /// output's (`uniform`), each layer's, their targets and composite
-    /// groups; `backdrop`: the glass pyramid, the copy of the target and
-    /// the target the overlay draws into when it reads what is under it
-    /// (the glass source), when the frame has them, with `decode`;
-    /// `panel_view` finds a world panel's target by its texture index.
-    #[allow(clippy::too_many_arguments)]
-    pub fn upload(
-        &mut self,
-        device: &wgpu::Device,
-        queue: &wgpu::Queue,
-        overlay_layout: &wgpu::BindGroupLayout,
-        scene: &RenderScene,
-        frame: &OverlayFrame,
-        uniform: [f32; 12],
-        backdrop: Option<(
-            &wgpu::TextureView,
-            &wgpu::TextureView,
-            &wgpu::TextureView,
-            bool,
-        )>,
-        texture_view: impl Fn(crate::TextureHandle) -> Option<wgpu::TextureView>,
-        panel_view: impl Fn(usize) -> Option<wgpu::TextureView>,
-        depth: &wgpu::TextureView,
-        camera: super::super::mass::MassCameraGpu,
-        mips: &crate::mips::MipGenerator,
-    ) {
-        let Some(overlay) = &scene.ui.overlay else {
-            return;
-        };
+    /// Writes the frame's shape instances, gradients, clips and points.
+    fn write_tables(&mut self, device: &wgpu::Device, queue: &wgpu::Queue, frame: &OverlayFrame) {
         write_storage(
             device,
             queue,
@@ -61,6 +33,44 @@ impl UiRenderer {
             "ui points",
             bytemuck::cast_slice(&frame.tables.points),
         );
+    }
+
+    /// Writes the frame's tables and uniforms and makes its groups: the
+    /// output's (`uniform`), each layer's, their targets and composite
+    /// groups; `backdrop`: the glass pyramid, the copy of the target and
+    /// the target the overlay draws into when it reads what is under it
+    /// (the glass source), when the frame has them, with `decode`;
+    /// `panel_view` finds a world panel's target by its texture index.
+    #[allow(clippy::too_many_arguments)]
+    pub fn upload(
+        &mut self,
+        device: &wgpu::Device,
+        queue: &wgpu::Queue,
+        overlay_layout: &wgpu::BindGroupLayout,
+        scene: &RenderScene,
+        frame: &OverlayFrame,
+        fresh: bool,
+        uniform: [f32; 12],
+        backdrop: Option<(
+            &wgpu::TextureView,
+            &wgpu::TextureView,
+            &wgpu::TextureView,
+            bool,
+        )>,
+        texture_view: impl Fn(crate::TextureHandle) -> Option<wgpu::TextureView>,
+        panel_view: impl Fn(usize) -> Option<wgpu::TextureView>,
+        depth: &wgpu::TextureView,
+        camera: super::super::mass::MassCameraGpu,
+        mips: &crate::mips::MipGenerator,
+    ) {
+        let Some(overlay) = &scene.ui.overlay else {
+            return;
+        };
+        // A frame kept from the last (`Renderer::draw_frame`): its tables
+        // are on the device as they were written.
+        if fresh {
+            self.write_tables(device, queue, frame);
+        }
         let need = 1 + frame.layers.len();
         while self.uniforms.len() < need {
             self.uniforms.push(uniform_buffer(device, "ui frame", 48));

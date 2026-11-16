@@ -17,6 +17,9 @@ pub(super) struct UploadFrameInputs<'a> {
     pub ribbon_frame: &'a crate::ribbons::RibbonFrame,
     pub sprite_frame: &'a sprites::SpriteFrame,
     pub overlay_frame: &'a Option<crate::overlay::OverlayFrame>,
+    /// The overlay was built this frame (else its instances are last
+    /// frame's, on the device already).
+    pub overlay_fresh: bool,
     pub light_slots: &'a crate::light2d::LightSlots,
 }
 
@@ -40,6 +43,7 @@ impl Renderer {
             ribbon_frame,
             sprite_frame,
             overlay_frame,
+            overlay_fresh,
             light_slots,
         }: UploadFrameInputs<'_>,
     ) -> UploadFrameOutputs {
@@ -79,13 +83,15 @@ impl Renderer {
         );
         let mut ui_uniform = None;
         if let (Some(of), Some(o)) = (overlay_frame, &scene.ui.overlay) {
-            grow_and_write(
-                &self.device,
-                &self.queue,
-                &mut self.overlay.buffer,
-                "overlay instances",
-                bytemuck::cast_slice(&of.instances),
-            );
+            if overlay_fresh {
+                grow_and_write(
+                    &self.device,
+                    &self.queue,
+                    &mut self.overlay.buffer,
+                    "overlay instances",
+                    bytemuck::cast_slice(&of.instances),
+                );
+            }
             let u = overlay::OverlayRenderer::uniform(
                 self.out_width,
                 self.out_height,
