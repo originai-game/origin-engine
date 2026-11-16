@@ -307,8 +307,54 @@ impl UiBackground {
     /// `image_uv` places it (CSS Backgrounds 3 §3.6–3.9): the fraction of the
     /// image, or `None` where no image is drawn.
     pub fn place(&self, pos: [f32; 2], size: [f32; 2], nat: [f32; 2]) -> Option<[f32; 2]> {
+        let pos = [pos[0] - self.area[0], pos[1] - self.area[1]];
+        let (area, w) = self.tile_size(size, nat);
+        let axis = |k: usize| {
+            let origin = [self.align.x, self.align.y][k] * (area[k] - w[k])
+                + [self.offset.x, self.offset.y][k];
+            background_axis(pos[k], area[k], w[k], origin, self.repeat[k])
+        };
+        Some([axis(0)?, axis(1)?])
+    }
+
+    /// Every tile [`UiBackground::place`] draws in the box `size` (CSS px)
+    /// for an image of natural size `nat`, each `[x, y, width, height]`
+    /// from the box's top left, row by row: those that reach into the box,
+    /// at most `limit`.
+    pub fn tiles(&self, size: [f32; 2], nat: [f32; 2], limit: usize) -> Vec<[f32; 4]> {
+        let (area, w) = self.tile_size(size, nat);
+        // Each axis's tiles: their starts along the positioning area.
+        let axis = |k: usize| -> Vec<f32> {
+            let origin = [self.align.x, self.align.y][k] * (area[k] - w[k])
+                + [self.offset.x, self.offset.y][k];
+            let (o, pitch, tiled) = axis_tiling(area[k], w[k], origin, self.repeat[k]);
+            if !tiled {
+                return vec![o];
+            }
+            // The box, in the positioning area's coordinates.
+            let (lo, hi) = (-self.area[k], size[k] - self.area[k]);
+            let first = ((lo - o - w[k]) / pitch).floor() as i64 + 1;
+            let last = ((hi - o) / pitch).ceil() as i64 - 1;
+            (first..=last.max(first - 1))
+                .take(limit)
+                .map(|n| o + n as f32 * pitch)
+                .collect()
+        };
+        let (xs, ys) = (axis(0), axis(1));
+        ys.iter()
+            .flat_map(|&y| {
+                xs.iter()
+                    .map(move |&x| [x + self.area[0], y + self.area[1], w[0], w[1]])
+            })
+            .filter(|t| t[0] < size[0] && t[1] < size[1] && t[0] + t[2] > 0.0 && t[1] + t[3] > 0.0)
+            .take(limit)
+            .collect()
+    }
+
+    /// The positioning area's size in the box `size`, and one tile's size
+    /// for an image of natural size `nat` (`background-size`, `round`).
+    fn tile_size(&self, size: [f32; 2], nat: [f32; 2]) -> ([f32; 2], [f32; 2]) {
         let b = self;
-        let pos = [pos[0] - b.area[0], pos[1] - b.area[1]];
         let size = [
             size[0] - b.area[0] - b.area[2],
             size[1] - b.area[1] - b.area[3],
@@ -347,11 +393,7 @@ impl UiBackground {
         if rounds[1] && !rounds[0] && auto[0] {
             w[0] = given[0] * w[1] / given[1].max(1e-4);
         }
-        let axis = |k: usize| {
-            let origin = [b.align.x, b.align.y][k] * (size[k] - w[k]) + [b.offset.x, b.offset.y][k];
-            background_axis(pos[k], size[k], w[k], origin, b.repeat[k])
-        };
-        Some([axis(0)?, axis(1)?])
+        (size, w)
     }
 }
 
@@ -360,6 +402,21 @@ impl UiBackground {
 /// there, `None` in a gap or past a lone image (og-render's
 /// `background_axis`).
 fn background_axis(x: f32, len: f32, w: f32, origin: f32, rep: UiRepeat) -> Option<f32> {
+    let iw = w.max(1e-4);
+    let (o, pitch, tiled) = axis_tiling(len, w, origin, rep);
+    let q = x - o;
+    if !tiled {
+        let t = q / iw;
+        return (0.0..=1.0).contains(&t).then_some(t);
+    }
+    let k = q / pitch;
+    let t = (k - k.floor()) * pitch / iw;
+    (t <= 1.0).then_some(t)
+}
+
+/// One axis's tiling of [`background_axis`]: where a tile starts, the
+/// pitch from one to the next, and whether it repeats at all.
+fn axis_tiling(len: f32, w: f32, origin: f32, rep: UiRepeat) -> (f32, f32, bool) {
     let iw = w.max(1e-4);
     let (mut o, mut pitch, mut tiled) = (origin, iw, rep != UiRepeat::NoRepeat);
     if rep == UiRepeat::Space {
@@ -373,14 +430,7 @@ fn background_axis(x: f32, len: f32, w: f32, origin: f32, rep: UiRepeat) -> Opti
             tiled = false;
         }
     }
-    let q = x - o;
-    if !tiled {
-        let t = q / iw;
-        return (0.0..=1.0).contains(&t).then_some(t);
-    }
-    let k = q / pitch;
-    let t = (k - k.floor()) * pitch / iw;
-    (t <= 1.0).then_some(t)
+    (o, pitch, tiled)
 }
 
 /// What [`UiFit`] places, as og-render's `image_uv` reads it: `img` the
