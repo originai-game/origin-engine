@@ -217,7 +217,7 @@ impl RetainedHost {
             .chain(
                 node.inline
                     .iter()
-                    .flat_map(|run| std::iter::once(&run.text).chain(run.ruby.as_ref()))
+                    .map(|run| &run.text)
                     .filter(|text| !matches!(text, Expr::Lit(_))),
             )
             .chain(node.triggers.iter().flat_map(|trigger| {

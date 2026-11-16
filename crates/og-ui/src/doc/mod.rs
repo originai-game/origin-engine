@@ -595,9 +595,20 @@ pub struct InlineRun {
     /// HTML's `<sub>` or `<sup>`: its `vertical-align`, its size the
     /// smaller one.
     pub valign: Option<crate::VerticalAlign>,
-    /// A `<ruby>` base's annotation (its `<rt>`'s words): the run's text
-    /// is the base.
-    pub ruby: Option<Expr>,
+    /// The inline elements it sits in, outermost first, which the builder
+    /// reads ruby structure from (CSS Ruby 1 §2.2).
+    pub path: Vec<InlineEl>,
+}
+
+/// An inline element of a text that runs sit in.
+#[derive(Clone, Debug, PartialEq)]
+pub struct InlineEl {
+    /// Its order among its text's inline elements, telling apart two
+    /// elements of one tag side by side.
+    pub id: u32,
+    pub tag: String,
+    /// Its `part`, whose `::part(name)` rules may set its `display`.
+    pub part: Option<String>,
 }
 
 /// A prop of the document's contract (`props { gold number "…" }`).

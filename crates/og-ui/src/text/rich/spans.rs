@@ -81,6 +81,11 @@ pub struct TextSpanStyle {
     /// Whether a variable face's `opsz` follows the size (CSS
     /// `font-optical-sizing`).
     pub optical_sizing: Option<bool>,
+    /// A ruby `display` of the inline element its `::part` names (CSS
+    /// Ruby 1 §2.1).
+    pub ruby_role: Option<RubyRole>,
+    /// CSS `ruby-position` on that element.
+    pub ruby_position: Option<RubyPosition>,
 }
 
 /// An inline object of a text (a document's `<img>`, `<og-icon>` or `<kbd
@@ -93,8 +98,9 @@ pub enum InlineAtom {
     Icon(String),
     /// An action's glyph on the device used last.
     Action(String),
-    /// A `<ruby>` base's annotation (`<rt>`): the span's text is the base.
-    Ruby(String),
+    /// A ruby segment (`<ruby>`, CSS Ruby 1): the span's text is its base
+    /// text.
+    Ruby(Ruby),
 }
 
 impl Ui {
@@ -225,12 +231,11 @@ impl Ui {
                         s.text.clear();
                     }
                     s.atom = match atom {
-                        InlineAtom::Ruby(text) => Some(crate::rich::Atom::Ruby(Ruby {
-                            text: text.clone(),
-                            under: desc.ruby.under,
-                            align: desc.ruby.align,
-                            overhang: [false; 2],
-                        })),
+                        InlineAtom::Ruby(r) => {
+                            let mut r = r.clone();
+                            r.resolve(desc.ruby);
+                            Some(crate::rich::Atom::Ruby(r))
+                        }
                         InlineAtom::Image(name) => match self.env.images.get(name) {
                             Some(im) => Some(crate::rich::Atom::Image(*im)),
                             None => {

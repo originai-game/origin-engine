@@ -370,12 +370,14 @@ engine differs or limits as follows:
   height. `glyph-orientation-vertical` is read as `text-orientation`;
   `text-combine-upright` combines a whole text or a `::part` run (`all`)
   or each short digit run (`digits`), squeezing it across to one em.
-- **Ruby and emphasis marks.** `<ruby>` is inline markup of a text: each
-  `<rt>` annotates the words before it as one unbreakable box (no `<rtc>`,
-  no nested ruby, no `display: ruby` on other elements). `ruby-position`
-  takes `over` and `under` (`alternate` is `over`, `inter-character` is
-  read as `over`). Emphasis marks are drawn shapes; their side follows
-  the content language through the user-agent rules (under for `zh`, over
+- **Ruby and emphasis marks.** `<ruby>`, `<rb>`, `<rt>`, `<rtc>` and
+  `<rp>` are inline markup of a text, and a text's `::part` spans take
+  `display: ruby`, `ruby-base`, `ruby-text`, `ruby-base-container`,
+  `ruby-text-container` and `none` (and `ruby-position`), since spans are
+  runs, not elements. CSS Ruby 1 §2.2's anonymous boxes and §2.3's pairing
+  make each segment one unbreakable box of its line, with any number of
+  levels and nested rubies; `ruby-merge` is not read (`separate`).
+  Emphasis marks are drawn shapes; their side follows the content language through the user-agent rules (under for `zh`, over
   for `ja` and `ko`), and a ruby's base takes none.
 - **Anchors.** Anchors are this frame's boxes; the winning
   `position-try` option and its side are kept per frame for a popover's

@@ -237,11 +237,11 @@ fn inline(node: &Node) -> bool {
     match node {
         Node::Text(..) | Node::Expression(..) => true,
         Node::Element { tag, attrs, .. } => match tag.as_str() {
-            "b" | "strong" | "i" | "em" | "u" | "s" | "del" | "sub" | "sup" | "br" | "ruby" => {
-                attrs.is_empty()
-            }
-            // A plain span, or one naming its part for `text::part(name)`.
-            "span" => attrs.iter().all(|a| a.name == "part" && !a.bound),
+            "br" => attrs.is_empty(),
+            // Formatting and ruby elements and a plain span, each perhaps
+            // naming its part for `::part(name)`.
+            "b" | "strong" | "i" | "em" | "u" | "s" | "del" | "sub" | "sup" | "span" | "ruby"
+            | "rb" | "rt" | "rtc" | "rp" => attrs.iter().all(|a| a.name == "part" && !a.bound),
             // SVG's run inside a `<text>`: its weight, style, decoration and fill.
             "tspan" => attrs
                 .iter()

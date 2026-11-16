@@ -52,6 +52,11 @@ string "coins" "{n, plural, =0 {コインなし} other {# コイン}}"
   one `<rt>` after each base it annotates (`<rb>` optional, `<rp>` never
   shown). A ruby is one unbreakable box; annotate word by word, not a whole
   sentence, or the line cannot break inside it.
+- A second level goes in `<rtc>`: with `ruby-position: alternate` (the
+  default) it sits under the base, a translation under furigana
+  (`<ruby>東京<rt>とうきょう</rt><rtc>Tokyo</rtc></ruby>`); words directly
+  in an `<rtc>` span all its bases. Zhuyin beside Traditional Chinese is
+  `ruby-position: inter-character`.
 - Leave room for ruby and emphasis marks in `line-height`. An annotation or
   mark fits a line whose leading holds half an em on its side; a tighter
   line grows by what it lacks, so a dialogue box whose height is its

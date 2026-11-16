@@ -211,7 +211,10 @@ pub struct RichTextResponse {
 pub(crate) mod emphasis;
 mod ruby;
 mod spans;
-pub use ruby::{Ruby, RubyAlign, RubyOverhang, RubyStyle};
+pub use ruby::{
+    Ruby, RubyAlign, RubyBase, RubyLeaf, RubyLevel, RubyOut, RubyOverhang, RubyPosition, RubyRole,
+    RubySide, RubyStyle, structure as ruby_structure,
+};
 pub(crate) use ruby::{ruby_box, ruby_extents};
 pub use spans::{InlineAtom, TextSpan, TextSpanStyle, TextSpanValue};
 

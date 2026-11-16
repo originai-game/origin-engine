@@ -1277,12 +1277,92 @@ impl Ui {
                 .and_then(|k| b.env.translate(k))
                 .map(|t| b.env.shown(t))
                 .filter(|_| n.inline.len() == 1);
-            for run in &n.inline {
-                let text = match &run.text {
-                    _ if translated.is_some() => translated.clone().unwrap_or_default(),
-                    crate::bind::Expr::Lit(v) => crate::bind::text(v),
-                    e => crate::bind::text(&b.eval(e)),
+            let rules: Vec<_> = n
+                .span_rules
+                .iter()
+                .filter(|rule| {
+                    applies(&rule.query, &mut media_reads)
+                        && rule.condition.as_ref().is_none_or(|e| truthy(&b.eval(e)))
+                })
+                .collect();
+            // Each inline element naming its part: what its `::part` rules
+            // give it, a ruby `display` and `ruby-position` among them.
+            let mut parted: BTreeMap<u32, crate::TextSpanStyle> = BTreeMap::new();
+            for el in n.inline.iter().flat_map(|run| &run.path) {
+                let Some(name) = el.part.as_ref().filter(|_| !parted.contains_key(&el.id)) else {
+                    continue;
                 };
+                let span = crate::TextSpan {
+                    name: name.clone(),
+                    position: 0,
+                    length: 0,
+                    properties: Default::default(),
+                };
+                let (style, cascade) = super::spans::resolve(
+                    &rules,
+                    &span,
+                    &r.cascade.computed,
+                    self.theme(),
+                    self.fonts(),
+                );
+                r.cascade.reads.extend(cascade.reads);
+                parted.insert(el.id, style);
+            }
+            // Its runs as ruby boxes (CSS Ruby 1 §2.2): each element's role
+            // its `display`, else its tag's.
+            let paths: Vec<Vec<(u32, crate::rich::RubyRole)>> = n
+                .inline
+                .iter()
+                .map(|run| {
+                    run.path
+                        .iter()
+                        .map(|e| {
+                            let role = parted.get(&e.id).and_then(|s| s.ruby_role);
+                            (
+                                e.id,
+                                role.unwrap_or_else(|| crate::rich::RubyRole::of_tag(&e.tag)),
+                            )
+                        })
+                        .collect()
+                })
+                .collect();
+            let leaves: Vec<crate::rich::RubyLeaf> = n
+                .inline
+                .iter()
+                .zip(&paths)
+                .map(|(run, path)| crate::rich::RubyLeaf {
+                    path,
+                    text: match &run.text {
+                        _ if translated.is_some() => translated.clone().unwrap_or_default(),
+                        crate::bind::Expr::Lit(v) => crate::bind::text(v),
+                        e => crate::bind::text(&b.eval(e)),
+                    },
+                })
+                .collect();
+            let boxes = crate::rich::ruby_structure(&leaves, &|ids| {
+                ids.iter()
+                    .rev()
+                    .find_map(|id| parted.get(id).and_then(|s| s.ruby_position))
+            });
+            // The text shown: its bases and words, not its annotations.
+            let shown: String = boxes
+                .iter()
+                .map(|o| match o {
+                    crate::rich::RubyOut::Text { text, .. } => text.clone(),
+                    crate::rich::RubyOut::Ruby { ruby, .. } => ruby.base_text(),
+                })
+                .collect();
+            if r.str("text") != Some(shown.as_str())
+                && let Some((spec, _)) = schema::prop("text")
+            {
+                r.vals.push((spec, V::Str(shown)));
+            }
+            for out in boxes {
+                let (k, text, ruby) = match out {
+                    crate::rich::RubyOut::Text { run, text } => (run, text, None),
+                    crate::rich::RubyOut::Ruby { run, ruby } => (run, ruby.base_text(), Some(ruby)),
+                };
+                let run = &n.inline[k];
                 let length = text.chars().count() as u32;
                 let span = crate::TextSpan {
                     name: run.part.clone().unwrap_or_else(|| "inline".into()),
@@ -1293,14 +1373,6 @@ impl Ui {
                 position += length;
                 // A named span's `::part(name)` rules, under its elements'.
                 let mut style = if run.part.is_some() {
-                    let rules: Vec<_> = n
-                        .span_rules
-                        .iter()
-                        .filter(|rule| {
-                            applies(&rule.query, &mut media_reads)
-                                && rule.condition.as_ref().is_none_or(|e| truthy(&b.eval(e)))
-                        })
-                        .collect();
                     let (style, cascade) = super::spans::resolve(
                         &rules,
                         &span,
@@ -1332,12 +1404,8 @@ impl Ui {
                 }
                 style.link = run.link.map(inline_link).or(style.link);
                 style.atom = run.atom.clone();
-                if let Some(e) = &run.ruby {
-                    let annotation = match e {
-                        crate::bind::Expr::Lit(v) => crate::bind::text(v),
-                        e => crate::bind::text(&b.eval(e)),
-                    };
-                    style.atom = Some(crate::rich::InlineAtom::Ruby(annotation));
+                if let Some(ruby) = ruby {
+                    style.atom = Some(crate::rich::InlineAtom::Ruby(ruby));
                 }
                 r.span_styles.push((span.clone(), style));
                 spans.push(span);

@@ -44,7 +44,9 @@ impl SpanRule {
             line_height,
             tracking_em,
             vertical_align,
-            combine
+            combine,
+            ruby_role,
+            ruby_position
         );
         if let Some(step) = &self.step {
             out.step = crate::style_file::ramp_step(&mut theme.type_ramp.clone(), step).copied();
@@ -115,6 +117,8 @@ pub(super) fn parse(selector: &str, body: &str) -> Result<SpanRule, String> {
                 | "letter-spacing"
                 | "vertical-align"
                 | "text-combine-upright"
+                | "display"
+                | "ruby-position"
                 | "-og-text-motion"
                 | "color"
                 | "font"
@@ -233,6 +237,16 @@ fn apply_body(rule: &mut SpanRule, body: &str, fonts: Option<&crate::Fonts>) -> 
                         .ok_or("text-combine-upright takes none, all or digits <2..4>")?,
                 );
             }
+            "display" => {
+                rule.style.ruby_role = Some(crate::rich::RubyRole::of_display(&value).ok_or(
+                    "display on a text's part takes inline, none, ruby, ruby-base, ruby-text, ruby-base-container or ruby-text-container",
+                )?);
+            }
+            "ruby-position" => {
+                rule.style.ruby_position = Some(crate::rich::RubyPosition::parse(&value).ok_or(
+                    "ruby-position takes [alternate || [over | under]] or inter-character",
+                )?);
+            }
             "-og-text-motion" => {
                 rule.style.motion = Some(match value.as_str() {
                     "none" => crate::markup::SpanFx::None,
@@ -267,7 +281,7 @@ fn apply_body(rule: &mut SpanRule, body: &str, fonts: Option<&crate::Fonts>) -> 
             }
             _ => {
                 return Err(format!(
-                    "{name} does not style a text span; use color, font, font-family, font-size, line-height, letter-spacing, font-weight, font-style, text-decoration-line, vertical-align, text-combine-upright or -og-text-motion"
+                    "{name} does not style a text span; use color, font, font-family, font-size, line-height, letter-spacing, font-weight, font-style, text-decoration-line, vertical-align, text-combine-upright, display, ruby-position or -og-text-motion"
                 ));
             }
         }

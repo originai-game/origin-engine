@@ -154,9 +154,16 @@ fn ruby_lays_out_as_css_ruby_does() {
 <p id="Under">あ<ruby>漢<rt>かんじ</rt></ruby>い</p>
 <p id="None">あ<ruby>漢<rt>かんじ</rt></ruby>い</p>
 <p id="Start">あ<ruby>日本<rt>に</rt></ruby>い</p>
-<p id="Down">あ<ruby>日本<rt>にほん</rt></ruby>い</p>"#,
+<p id="Down">あ<ruby>日本<rt>にほん</rt></ruby>い</p>
+<p id="Two">あ<ruby>東京<rt>とう</rt><rtc>ひが</rtc></ruby>い</p>
+<p id="Cols">あ<ruby><rb>東</rb><rb>京</rb><rt>とう</rt><rt>きょう</rt></ruby>い</p>
+<p id="Inter">あ<ruby>中<rt>かん</rt></ruby>い</p>
+<p id="Nest">あ<ruby><ruby>東<rt>とう</rt></ruby><rt>ひがし</rt></ruby>い</p>
+<p id="Css">あ<span part="r">日<span part="t">にち</span><span part="p">(</span></span>い</p>
+<p id="Down2">あ<ruby>東<rt>とう</rt><rtc>ひが</rtc></ruby>い</p>"#,
         "#Under { ruby-position: under; } #None { ruby-overhang: none; } #Start { ruby-align: start; }
-#Down { writing-mode: vertical-rl; height: 200px; }",
+#Down, #Down2 { writing-mode: vertical-rl; height: 200px; } #Inter { ruby-position: inter-character; }
+#Css::part(r) { display: ruby; } #Css::part(t) { display: ruby-text; } #Css::part(p) { display: none; }",
     );
     // Over the base at half its size, inside the line, which grew for it.
     let base = one(&d, "Around", "日");
@@ -219,6 +226,69 @@ fn ruby_lays_out_as_css_ruby_does() {
     assert!(
         a.baseline > top + 20.0 && a.baseline < top + 20.0 + 10.0 + share,
         "{a:?}"
+    );
+    // Two levels, alternate (the initial value): the <rt> over, the
+    // <rtc> after it under (§4.1); the <rtc>'s words span the base.
+    let (to, tou, hi) = (
+        one(&d, "Two", "東"),
+        one(&d, "Two", "と"),
+        one(&d, "Two", "ひ"),
+    );
+    // An annotation's em box middle, half its em past the base's edge.
+    let em_mid = |g: &Glyphs| g.baseline - (ASCENT - DESCENT) / 2.0 * g.size;
+    let over_edge =
+        |a: &Glyphs, b: &Glyphs| (em_mid(a) - (b.baseline - ASCENT * 20.0 - 5.0)).abs() <= 1.0;
+    assert!(
+        over_edge(&tou, &to) && (em_mid(&hi) - (to.baseline + DESCENT * 20.0 + 5.0)).abs() <= 1.0,
+        "{tou:?} {to:?} {hi:?}"
+    );
+    // <rb> columns paired one by one with the <rt>s (§2.3.2): きょう (30
+    // px) widens 京's column, centred over it, hanging 5 px after it.
+    let (kyo, ki) = (one(&d, "Cols", "京"), one(&d, "Cols", "き"));
+    assert!(
+        close(one(&d, "Cols", "と").x, 20.0) && close(kyo.x, 45.0) && close(ki.x, 40.0),
+        "{kyo:?} {ki:?}"
+    );
+    assert!(close(one(&d, "Cols", "い").x, 65.0));
+    // inter-character: upright right of the base in a column of its own,
+    // half an em wide, its characters stacked about the base's middle.
+    let (chu, ka, n) = (
+        one(&d, "Inter", "中"),
+        one(&d, "Inter", "か"),
+        one(&d, "Inter", "ん"),
+    );
+    assert!(
+        close(ka.x, 40.0)
+            && ka.size == 10.0
+            && ka.transform == STRAIGHT
+            && (n.baseline - ka.baseline - 10.0).abs() <= 1.0
+            && ((ka.baseline + n.baseline) / 2.0 - chu.baseline).abs() < 20.0,
+        "{chu:?} {ka:?} {n:?}"
+    );
+    assert!(close(one(&d, "Inter", "い").x, 50.0));
+    // Nested ruby: the outer annotation over the inner one (§3.1.2).
+    let (inner, outer) = (one(&d, "Nest", "と"), one(&d, "Nest", "ひ"));
+    let nest = one(&d, "Nest", "東");
+    assert!(
+        over_edge(&inner, &nest) && (inner.baseline - outer.baseline - 10.0).abs() <= 1.0,
+        "{inner:?} {outer:?}"
+    );
+    // display: ruby and ruby-text on a text's ::part spans, none hiding one.
+    let (nichi, ni) = (one(&d, "Css", "日"), one(&d, "Css", "に"));
+    assert!(
+        ni.size == 10.0 && over_edge(&ni, &nichi),
+        "{nichi:?} {ni:?}"
+    );
+    assert!(glyphs(&d, "Css").iter().all(|g| !g.text.contains('(')));
+    // Down a column, the second level on its left (line-under).
+    let (b, over, under) = (
+        one(&d, "Down2", "東"),
+        one(&d, "Down2", "と"),
+        one(&d, "Down2", "ひ"),
+    );
+    assert!(
+        close(mid(&over) - mid(&b), 15.0) && close(mid(&b) - mid(&under), 15.0),
+        "{b:?} {over:?} {under:?}"
     );
 }
 

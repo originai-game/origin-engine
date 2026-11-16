@@ -288,7 +288,7 @@ impl Parser {
             part: None,
             atom: None,
             valign: None,
-            ruby: None,
+            path: Vec::new(),
         };
         self.runs(nodes, &base, &mut runs, &mut links, translated)?;
         // No space at either end, as a CSS block trims its line (an SVG
@@ -312,9 +312,21 @@ impl Parser {
         {
             t.truncate(t.trim_end_matches(ends).len());
         }
-        runs.retain(|r| r.text != Expr::Lit("".into()));
+        // An empty element keeps its run: an empty `<rt>` pairs with a base.
+        runs.retain(|r| r.text != Expr::Lit("".into()) || !r.path.is_empty());
         let bound = runs.iter().any(|r| !matches!(r.text, Expr::Lit(_)));
-        let plain = runs.iter().fold(Expr::Lit("".into()), |acc, r| {
+        // The text as HTML's sheet shows it: annotations (`<rt>`, `<rtc>`)
+        // and `<rp>` are not base text. The builder recomputes it where
+        // `::part` rules give elements other ruby roles.
+        let shown: Vec<&InlineRun> = runs
+            .iter()
+            .filter(|r| {
+                !r.path
+                    .iter()
+                    .any(|e| matches!(e.tag.as_str(), "rt" | "rtc" | "rp"))
+            })
+            .collect();
+        let plain = shown.iter().fold(Expr::Lit("".into()), |acc, r| {
             Expr::Bin(
                 crate::bind::Op::Add,
                 Box::new(acc),
@@ -324,7 +336,7 @@ impl Parser {
         let value = if bound {
             PropValue::Bind(plain, None)
         } else {
-            let text: String = runs
+            let text: String = shown
                 .iter()
                 .map(|r| match &r.text {
                     Expr::Lit(v) => crate::bind::text(v),
@@ -359,99 +371,14 @@ impl Parser {
                 || r.part.is_some()
                 || r.atom.is_some()
                 || r.valign.is_some()
-                || r.ruby.is_some()
+                || r.path.iter().any(|e| {
+                    e.part.is_some()
+                        || matches!(e.tag.as_str(), "ruby" | "rb" | "rt" | "rtc" | "rp")
+                })
         }) {
             self.doc.nodes[i].inline = runs;
             self.doc.nodes[i].links = links;
         }
-        Ok(())
-    }
-
-    /// A `<ruby>`'s runs (CSS Ruby 1 §2.3, HTML's pairing): the words
-    /// before each `<rt>` (in `<rb>`s or bare) its base, one run whose
-    /// annotation is the `<rt>`'s words; `<rp>`, a fallback for readers
-    /// without ruby, is not shown; words after the last `<rt>` are text.
-    /// Base and annotation each trim their white space at both ends.
-    fn ruby(
-        &mut self,
-        children: &[Node],
-        style: &InlineRun,
-        out: &mut Vec<InlineRun>,
-        links: &mut Vec<String>,
-        translated: bool,
-    ) -> Result<(), Error> {
-        // The runs' words as one expression: a trimmed literal when none is bound.
-        let joined = |runs: &[InlineRun]| {
-            if runs.iter().all(|r| matches!(r.text, Expr::Lit(_))) {
-                let text: String = runs
-                    .iter()
-                    .map(|r| match &r.text {
-                        Expr::Lit(v) => crate::bind::text(v),
-                        _ => String::new(),
-                    })
-                    .collect();
-                return Expr::Lit(text.trim().into());
-            }
-            runs.iter().fold(Expr::Lit("".into()), |acc, r| {
-                Expr::Bin(
-                    crate::bind::Op::Add,
-                    Box::new(acc),
-                    Box::new(r.text.clone()),
-                )
-            })
-        };
-        let mut base: Vec<InlineRun> = Vec::new();
-        for child in children {
-            match child {
-                Node::Element {
-                    tag,
-                    children: inner,
-                    at: rt,
-                    ..
-                } if tag == "rt" => {
-                    let mut words = Vec::new();
-                    self.runs(inner, style, &mut words, links, translated)?;
-                    let text = joined(&base);
-                    if text == Expr::Lit("".into()) {
-                        return Err((
-                            *rt,
-                            "an <rt> annotates the words before it in its <ruby>: give it a base"
-                                .into(),
-                        ));
-                    }
-                    out.push(InlineRun {
-                        text,
-                        ruby: Some(joined(&words)),
-                        ..style.clone()
-                    });
-                    base.clear();
-                }
-                Node::Element { tag, .. } if tag == "rp" => {}
-                Node::Element {
-                    tag,
-                    children: inner,
-                    ..
-                } if tag == "rb" => {
-                    self.runs(inner, style, &mut base, links, translated)?;
-                }
-                Node::Element { tag, at, .. } if matches!(tag.as_str(), "rtc" | "ruby") => {
-                    return Err((
-                        *at,
-                        format!(
-                            "<{tag}> inside a <ruby> is not supported: one level of <rt>, one ruby at a time"
-                        ),
-                    ));
-                }
-                child => self.runs(
-                    std::slice::from_ref(child),
-                    style,
-                    &mut base,
-                    links,
-                    translated,
-                )?,
-            }
-        }
-        out.extend(base);
         Ok(())
     }
 
@@ -495,9 +422,6 @@ impl Parser {
                     }
                 }
                 Node::Expression(value, at) => out.push(run(expression(value, *at)?)),
-                Node::Element { tag, children, .. } if tag == "ruby" && inline(node) => {
-                    self.ruby(children, style, out, links, translated)?;
-                }
                 Node::Element {
                     tag,
                     attrs,
@@ -506,6 +430,22 @@ impl Parser {
                     ..
                 } if inline(node) => {
                     let mut inner = style.clone();
+                    if tag != "br" {
+                        if let Some(a) = attrs.iter().find(|a| a.name == "part") {
+                            if !super::syntax::identifier(&a.value) {
+                                return Err((a.at, "part names a span: an identifier".into()));
+                            }
+                            inner.part = Some(a.value.clone());
+                        }
+                        inner.path.push(crate::doc::InlineEl {
+                            id: *at as u32,
+                            tag: tag.clone(),
+                            part: attrs
+                                .iter()
+                                .find(|a| a.name == "part")
+                                .map(|a| a.value.clone()),
+                        });
+                    }
                     match tag.as_str() {
                         "b" | "strong" => inner.bold = true,
                         "i" | "em" => inner.italic = true,
@@ -513,14 +453,6 @@ impl Parser {
                         "s" | "del" => inner.strike = true,
                         "sub" => inner.valign = Some(crate::VerticalAlign::Sub),
                         "sup" => inner.valign = Some(crate::VerticalAlign::Super),
-                        "span" => {
-                            if let Some(a) = attrs.iter().find(|a| a.name == "part") {
-                                if !super::syntax::identifier(&a.value) {
-                                    return Err((a.at, "part names a span: an identifier".into()));
-                                }
-                                inner.part = Some(a.value.clone());
-                            }
-                        }
                         "br" => {
                             if !children.is_empty() {
                                 return Err((*at, "<br> is empty".into()));
@@ -546,7 +478,15 @@ impl Parser {
                         }
                         _ => {}
                     }
+                    let before = out.len();
                     self.runs(children, &inner, out, links, translated)?;
+                    // An empty element is still there: an empty `<rt>`.
+                    if out.len() == before {
+                        out.push(InlineRun {
+                            text: Expr::Lit("".into()),
+                            ..inner
+                        });
+                    }
                 }
                 // An inline object among the words: a picture, an icon, an
                 // action's glyph, one placeholder character in the text.
@@ -621,7 +561,7 @@ impl Parser {
                     return Err((
                         *at,
                         format!(
-                            "<{tag}> cannot sit inside text: text holds words, {{expressions}} and the inline elements b, strong, i, em, u, s, del, sub, sup, br, ruby, a plain <span> and <a href>; put <{tag}> beside the text in a <div>"
+                            "<{tag}> cannot sit inside text: text holds words, {{expressions}} and the inline elements b, strong, i, em, u, s, del, sub, sup, br, ruby, rb, rt, rtc, rp, a plain <span> (each perhaps with a part) and <a href>; put <{tag}> beside the text in a <div>"
                         ),
                     ));
                 }
