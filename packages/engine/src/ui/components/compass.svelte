@@ -1,6 +1,6 @@
 <meta name="component" content="Compass">
 <meta name="strings" content="./compass.en.ogt">
-<meta name="parts" content="Compass.frame Compass.window Compass.poi Compass.distance Compass.notch Compass.badge">
+<meta name="parts" content="Compass.frame Compass.window Compass.poi Compass.distance Compass.notch Compass.badge Compass.readout">
 <meta name="prop:heading" content="number" data-doc="The player's heading in radians clockwise from north, 0 to 2π.">
 <meta name="prop:pois" content="list" data-doc="Its points: each { id, bearing, distance, kind, icon, label }, bearing in radians clockwise from north (0 to 2π), distance in m (negative: none), kind objective, ping, enemy, ally, loot or poi.">
 <meta name="prop:units" content="string" data-doc="The distance's unit (m).">
@@ -53,13 +53,15 @@
     <div id="FadeStart"></div>
     <div id="FadeEnd"></div>
   </div>
-  <div id="Notch" part="Compass.notch"></div>
-  <span id="Bearing" part="Compass.badge">{formatNumber(heading * 57.29578)}</span>
+  <div class="heading" part="Compass.readout">
+    <div id="Notch" part="Compass.notch"></div>
+    <span id="Bearing" part="Compass.badge">{formatNumber(heading * 57.29578) + "°"}</span>
+  </div>
 </div>
 
 <style>
-:host { display: flex; flex-direction: column; align-items: center; gap: 0; max-width: 100%; text-shadow: var(--tag-halo); }
-#Window { position: relative; width: var(--measure-xl); max-width: 100%; height: var(--size-xl); overflow: hidden; border-radius: var(--radius-control); background: linear-gradient(90deg, transparent, var(--hud) 18%, var(--hud) 82%, transparent); }
+:host { display: flex; flex-direction: column; align-items: center; gap: var(--space-xs); max-width: 100%; text-shadow: var(--tag-halo); }
+#Window { position: relative; width: var(--measure-xl); max-width: 100%; height: var(--size-xl); overflow: hidden; border-radius: var(--radius-control); background: var(--hud); mask-image: linear-gradient(90deg, transparent var(--space-sm), var(--ink) var(--size-xl), var(--ink) calc(100% - var(--size-xl)), transparent calc(100% - var(--space-sm))); }
 #Strip { position: absolute; top: 0; bottom: 0; inset-inline-start: 50%; width: calc(var(--measure-xl) * 6); translate: calc(var(--h) * var(--measure-xl) * -0.3183099 - var(--measure-xl) * 2) 0; }
 #Laps { position: absolute; top: 0; inset-inline: 0; width: 100%; height: calc(var(--measure-xl) / 10.77); }
 .north { fill: var(--danger); }
@@ -77,8 +79,8 @@
 .mark { width: var(--size-xs); height: var(--size-xs); color: var(--ink-mark); }
 .diamond { fill: var(--ink-mark); stroke: var(--shadow-45); stroke-width: 1; }
 .distance { font: var(--text-caption); color: var(--ink); white-space: nowrap; text-shadow: 0 var(--stroke-hairline) var(--stroke-regular) var(--scene-shadow); }
-#FadeStart { position: absolute; top: 0; bottom: 0; inset-inline-start: 0; width: var(--size-xl); background: linear-gradient(90deg, var(--scrim), transparent); }
-#FadeEnd { position: absolute; top: 0; bottom: 0; inset-inline-end: 0; width: var(--size-xl); background: linear-gradient(90deg, transparent, var(--scrim)); }
-#Notch { width: var(--stroke-regular); height: var(--space-sm); background: var(--ink); margin-top: calc(var(--space-xs) * -1); }
+#FadeStart, #FadeEnd { display: none; }
+[part="Compass.readout"] { display: flex; flex-direction: column; align-items: center; gap: var(--space-xxs); }
+#Notch { width: var(--stroke-regular); height: var(--space-sm); background: var(--ink); }
 #Bearing { font-size: var(--font-step-sm); padding: 0 var(--space-xs); }
 </style>

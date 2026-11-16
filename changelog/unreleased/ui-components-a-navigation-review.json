@@ -1,0 +1,6 @@
+{
+  "fixed": [{
+    "member": "Compass, Minimap",
+    "summary": "Compass edges fade as a sliding window, with the heading in a separately spaced readout below. A minimap without a texture shows a visible grid rather than an apparently blank surface. New Compass.readout and Minimap.grid parts let style packs restyle these pieces."
+  }]
+}
