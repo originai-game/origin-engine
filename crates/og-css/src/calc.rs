@@ -491,8 +491,8 @@ pub fn reduce(text: &str) -> Result<String, String> {
 /// The first relative colour in `s` (`oklch(from …)`): where its name
 /// starts, and its `)`.
 fn relative_colour(s: &str) -> Option<(usize, usize)> {
-    const COLOURS: [&str; 10] = [
-        "rgb", "rgba", "hsl", "hsla", "hwb", "lab", "lch", "oklab", "oklch", "color",
+    const COLOURS: [&str; 11] = [
+        "rgb", "rgba", "hsl", "hsla", "hwb", "lab", "lch", "oklab", "oklch", "color", "alpha",
     ];
     let mut from = 0;
     while let Some(open) = s[from..].find('(').map(|i| from + i) {

@@ -1,0 +1,8 @@
+{
+  "added": [
+    {
+      "member": "UI: CSS alpha() and system colours",
+      "summary": "alpha(from <colour> [/ <alpha>]) keeps a colour's channels in its own space and sets its alpha, `alpha` the origin's (alpha(from var(--panel) / calc(alpha / 2))). The CSS system colours are the style's palette roles: Canvas the backdrop, CanvasText, ButtonText, FieldText and MarkText the ink, AccentColor and AccentColorText the primary and its ink, ButtonFace and Field the control fill, ButtonBorder the strong line, GrayText the faint ink, Highlight and SelectedItem the selection, LinkText, VisitedText and ActiveText the highlight, and Mark the soft primary."
+    }
+  ]
+}

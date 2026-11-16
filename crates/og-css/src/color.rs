@@ -60,6 +60,12 @@ pub enum Color {
         c: [Expr; 3],
         alpha: Option<Expr>,
     },
+    /// `alpha(from <colour> / <alpha>)`: the origin in its own space with
+    /// a new alpha (CSS Color 5 §4.3); `None` keeps the origin's.
+    Alpha {
+        from: Box<Color>,
+        alpha: Option<Expr>,
+    },
 }
 
 /// The palette roles a colour's `var(--role)` names, and the style's own
@@ -160,7 +166,7 @@ impl Color {
             Color::Token(_) | Color::Current | Color::LightDark(..) => false,
             Color::Contrast(c) => c.fixed(),
             Color::Mix { items, .. } => items.iter().all(|(c, _)| c.fixed()),
-            Color::Relative { from, .. } => from.fixed(),
+            Color::Relative { from, .. } | Color::Alpha { from, .. } => from.fixed(),
         }
     }
 
@@ -171,7 +177,21 @@ impl Color {
             Color::Abs(_) | Color::Token(_) => false,
             Color::LightDark(a, b) => a.uses_current() || b.uses_current(),
             Color::Mix { items, .. } => items.iter().any(|(c, _)| c.uses_current()),
-            Color::Contrast(from) | Color::Relative { from, .. } => from.uses_current(),
+            Color::Contrast(from) | Color::Relative { from, .. } | Color::Alpha { from, .. } => {
+                from.uses_current()
+            }
+        }
+    }
+
+    /// Whether it reads the colour scheme (`light-dark()`).
+    pub fn uses_scheme(&self) -> bool {
+        match self {
+            Color::LightDark(..) => true,
+            Color::Abs(_) | Color::Token(_) | Color::Current => false,
+            Color::Mix { items, .. } => items.iter().any(|(c, _)| c.uses_scheme()),
+            Color::Contrast(from) | Color::Relative { from, .. } | Color::Alpha { from, .. } => {
+                from.uses_scheme()
+            }
         }
     }
 
@@ -185,7 +205,9 @@ impl Color {
                 b.tokens(out);
             }
             Color::Mix { items, .. } => items.iter().for_each(|(c, _)| c.tokens(out)),
-            Color::Contrast(from) | Color::Relative { from, .. } => from.tokens(out),
+            Color::Contrast(from) | Color::Relative { from, .. } | Color::Alpha { from, .. } => {
+                from.tokens(out)
+            }
         }
     }
 
@@ -242,6 +264,21 @@ impl Color {
                 *hue,
                 items.iter().map(|(c, p)| (c.eval(cx), *p)).collect(),
             ),
+            Color::Alpha { from, alpha } => {
+                let mut c = from.eval(cx);
+                let a = c.components[3];
+                match alpha.as_ref().map(|e| e.eval(&[0.0, 0.0, 0.0, a])) {
+                    None => {}
+                    Some(Some(v)) => c.components[3] = v.clamp(0.0, 1.0),
+                    Some(None) => {
+                        let mut missing = c.flags.missing();
+                        missing.insert(3);
+                        c.flags.set_missing(missing);
+                        c.components[3] = 0.0;
+                    }
+                }
+                c
+            }
             Color::Relative {
                 space,
                 rgb255,
@@ -402,6 +439,7 @@ pub fn parse(t: &Tok) -> Result<Color, String> {
                 _ => Err("light-dark(<light>, <dark>)".into()),
             },
             "color-mix" => color_mix(args),
+            "alpha" => alpha(args),
             "contrast-color" => match args.as_slice() {
                 [a] => Ok(Color::Contrast(Box::new(one(a)?))),
                 _ => Err("contrast-color(<colour>)".into()),
@@ -415,6 +453,7 @@ pub fn parse(t: &Tok) -> Result<Color, String> {
             },
             f => Err(format!("{f}() is not a colour")),
         },
+        Tok::Ident(w) if let Some(role) = system_role(w) => Ok(Color::Token(role.into())),
         Tok::Ident(_) | Tok::Hash(_) => absolute(t),
         t => Err(format!("'{}' is not a colour", describe(t))),
     }
@@ -521,6 +560,42 @@ fn relative(f: &str, toks: &[Tok]) -> Result<Color, String> {
         from,
         c: [ch(0, a)?, ch(1, b)?, ch(2, c)?],
         alpha,
+    })
+}
+
+/// `alpha(from <colour> [/ <alpha>])`: only `alpha` is a channel keyword.
+fn alpha(args: &[Vec<Tok>]) -> Result<Color, String> {
+    const HOW: &str = "alpha(from <colour> [/ <alpha>])";
+    let [body] = args else { return Err(HOW.into()) };
+    let (from, alpha) = match body.as_slice() {
+        [Tok::Ident(w), c] if w == "from" => (c, None),
+        [Tok::Ident(w), c, Tok::Slash, a] if w == "from" => (c, Some(a)),
+        _ => return Err(HOW.into()),
+    };
+    Ok(Color::Alpha {
+        from: Box::new(parse(from)?),
+        alpha: alpha
+            .map(|t| expr_one(t, &["", "", "", "alpha"], 1.0, false))
+            .transpose()?,
+    })
+}
+
+/// The palette role a CSS Color 4 §6.2 system colour is: the style's
+/// colours are the "system" a game's UI runs in.
+fn system_role(name: &str) -> Option<&'static str> {
+    Some(match name.to_ascii_lowercase().as_str() {
+        "canvas" => "backdrop",
+        "canvastext" | "buttontext" | "fieldtext" | "marktext" => "ink",
+        "accentcolor" => "primary",
+        "accentcolortext" => "onPrimary",
+        "buttonface" | "field" => "control",
+        "buttonborder" => "lineStrong",
+        "graytext" => "inkFaint",
+        "highlight" | "selecteditem" => "selection",
+        "highlighttext" | "selecteditemtext" => "onSelection",
+        "linktext" | "visitedtext" | "activetext" => "highlight",
+        "mark" => "primarySoft",
+        _ => return None,
     })
 }
 
@@ -778,7 +853,9 @@ fn gamut_map(c: DynamicColor, gamut: Gamut) -> [f32; 3] {
 /// `currentcolor`).
 pub fn is_named(name: &str) -> bool {
     name.bytes().all(|b| b.is_ascii_alphabetic())
-        && (name.eq_ignore_ascii_case("currentcolor") || color::parse_color(name).is_ok())
+        && (name.eq_ignore_ascii_case("currentcolor")
+            || system_role(name).is_some()
+            || color::parse_color(name).is_ok())
 }
 
 #[cfg(test)]
