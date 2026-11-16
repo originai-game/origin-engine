@@ -383,6 +383,298 @@ fn background_axis(x: f32, len: f32, w: f32, origin: f32, rep: UiRepeat) -> Opti
     (t <= 1.0).then_some(t)
 }
 
+/// What [`UiFit`] places, as og-render's `image_uv` reads it: `img` the
+/// image's size under the object fits and a nine-slice (its paint's size,
+/// else its region's texels, over its density), `texels` its region's
+/// texels (a gradient's own size), `density` its image px per CSS px, and
+/// where cover, contain and none put it.
+struct FitSource {
+    img: [f32; 2],
+    texels: [f32; 2],
+    density: f32,
+    focal: Vec2,
+    offset: Vec2,
+}
+
+impl UiImage {
+    /// Where `pos` (CSS px from its shape's box's top left, the box `size`)
+    /// falls in it, as og-render draws it: the fraction of its region to
+    /// sample, or `None` where it draws nothing (past a contained or lone
+    /// image, in a gap between tiles, a nine-slice's or border image's
+    /// empty middle). `texels`: its texture's size. A pattern is read at
+    /// the UI clock's start.
+    pub fn place(&self, pos: [f32; 2], size: [f32; 2], texels: [f32; 2]) -> Option<[f32; 2]> {
+        let region = [
+            ((self.uv[2] - self.uv[0]).abs() * texels[0]).max(1.0),
+            ((self.uv[3] - self.uv[1]).abs() * texels[1]).max(1.0),
+        ];
+        let density = self.density.max(1e-3);
+        let given = if self.size.x <= 0.0 || self.size.y <= 0.0 {
+            region
+        } else {
+            [self.size.x.max(1.0), self.size.y.max(1.0)]
+        };
+        let source = FitSource {
+            img: given.map(|v| v / density),
+            texels: region,
+            density,
+            focal: self.focal,
+            offset: self.offset,
+        };
+        place_fit(&self.fit, pos, size, &source)
+    }
+}
+
+impl UiGradientImage {
+    /// As [`UiImage::place`]: the fraction of the gradient's own box
+    /// (`size` CSS px) under `pos`, or `None` where it draws nothing.
+    pub fn place(&self, pos: [f32; 2], size: [f32; 2]) -> Option<[f32; 2]> {
+        let own = [self.size.x.max(1e-3), self.size.y.max(1e-3)];
+        let source = FitSource {
+            img: own.map(|v| v.max(1.0)),
+            texels: own,
+            density: 1.0,
+            focal: Vec2::splat(0.5),
+            offset: Vec2::ZERO,
+        };
+        place_fit(&self.fit, pos, size, &source)
+    }
+}
+
+/// ui.wgsl's `image_uv`, line for line.
+fn place_fit(fit: &UiFit, pos: [f32; 2], size: [f32; 2], s: &FitSource) -> Option<[f32; 2]> {
+    let img = s.img;
+    let inside = |f: [f32; 2]| f.iter().all(|v| (0.0..=1.0).contains(v));
+    let clamp = |f: [f32; 2]| f.map(|v| v.clamp(0.0, 1.0));
+    match *fit {
+        UiFit::Fill => Some(clamp([
+            pos[0] / size[0].max(1e-4),
+            pos[1] / size[1].max(1e-4),
+        ])),
+        UiFit::Cover | UiFit::Contain | UiFit::ScaleDown => {
+            let (kx, ky) = (size[0] / img[0], size[1] / img[1]);
+            let mut k = if matches!(fit, UiFit::Cover) {
+                kx.max(ky)
+            } else {
+                kx.min(ky)
+            };
+            if matches!(fit, UiFit::ScaleDown) {
+                k = k.min(1.0);
+            }
+            let drawn = img.map(|v| v * k);
+            let f = [0, 1].map(|a| {
+                let origin = (size[a] - drawn[a]) * s.focal[a] + s.offset[a];
+                (pos[a] - origin) / drawn[a]
+            });
+            (matches!(fit, UiFit::Cover) || inside(f)).then(|| clamp(f))
+        }
+        UiFit::None => {
+            let f = [0, 1].map(|a| {
+                let origin = (size[a] - img[a]) * s.focal[a] + s.offset[a];
+                (pos[a] - origin) / img[a]
+            });
+            inside(f).then_some(f)
+        }
+        UiFit::NineSlice {
+            source,
+            dest,
+            edges,
+            center,
+        } => {
+            let src = [0, 1, 2, 3].map(|k| source[k].max(0.0) / img[k % 2]);
+            let dest = dest.map(|v| v.max(0.0));
+            let ax = nine_axis(
+                pos[0], size[0], dest[0], dest[2], src[0], src[2], edges, img[0],
+            );
+            let ay = nine_axis(
+                pos[1], size[1], dest[1], dest[3], src[1], src[3], edges, img[1],
+            );
+            let empty = !center && ax.1 && ay.1;
+            (ax.2 && ay.2 && !empty).then_some([ax.0, ay.0])
+        }
+        UiFit::Pattern {
+            tile,
+            rotation,
+            offset,
+            ..
+        } => {
+            let tile = tile.max(Vec2::splat(1e-3));
+            let moved = Vec2::new(pos[0], pos[1]) - offset;
+            let (sin, cos) = og_core::math::sin_cos(-rotation);
+            let r = Vec2::new(moved.x * cos - moved.y * sin, moved.x * sin + moved.y * cos);
+            let k = r / tile;
+            Some([k.x - k.x.floor(), k.y - k.y.floor()])
+        }
+        UiFit::Background(b) => b.place(pos, size, s.texels.map(|v| v / s.density)),
+        UiFit::BorderImage(b) => {
+            let nat = s.texels;
+            let natv = [nat[0], nat[1], nat[0], nat[1]];
+            let sl: [f32; 4] = std::array::from_fn(|k| {
+                let v = b.slice[k];
+                (if v < 0.0 { -v * natv[k] } else { v }).min(natv[k])
+            });
+            let mut wd: [f32; 4] = std::array::from_fn(|k| {
+                if b.width[k] < 0.0 {
+                    sl[k] / s.density
+                } else {
+                    b.width[k]
+                }
+            });
+            let fit = (size[0] / (wd[0] + wd[2]).max(1e-4))
+                .min(size[1] / (wd[1] + wd[3]).max(1e-4))
+                .min(1.0);
+            wd = wd.map(|v| v * fit);
+            let scale = |k: usize| {
+                if wd[k] > 0.0 && sl[k] > 0.0 {
+                    wd[k] / sl[k].max(1e-6)
+                } else {
+                    0.0
+                }
+            };
+            // The middle of a row tiles at its own edge's scale, the middle
+            // row at the top's (else the bottom's); columns likewise.
+            let either = |near: f32, far: f32| if near > 0.0 { near } else { far };
+            let (top, bottom, left, right) = (scale(1), scale(3), scale(0), scale(2));
+            let fx = if pos[1] > size[1] - wd[3] {
+                either(bottom, top)
+            } else {
+                either(top, bottom)
+            };
+            let fy = if pos[0] > size[0] - wd[2] {
+                either(right, left)
+            } else {
+                either(left, right)
+            };
+            let one = |f: f32| if f > 0.0 { f } else { 1.0 };
+            let ax = border_axis(
+                pos[0],
+                size[0],
+                wd[0],
+                wd[2],
+                sl[0],
+                sl[2],
+                nat[0],
+                one(fx),
+                b.repeat[0],
+            );
+            let ay = border_axis(
+                pos[1],
+                size[1],
+                wd[1],
+                wd[3],
+                sl[1],
+                sl[3],
+                nat[1],
+                one(fy),
+                b.repeat[1],
+            );
+            let empty = !b.fill && ax.2 && ay.2;
+            (ax.1 && ay.1 && !empty).then_some([ax.0, ay.0])
+        }
+    }
+}
+
+/// ui.wgsl's `tile_mid`: `q` CSS px into a middle `mid` long tiled by
+/// `tile`, filled by `rep`: the fraction of the tile, and whether a tile
+/// is drawn there (not in a space's gap).
+fn tile_mid(q: f32, mid: f32, tile: f32, rep: UiEdge, centered: bool) -> (f32, bool) {
+    let mut w = tile.max(1e-4);
+    let (mut o, mut pitch, mut n) = (0.0, w, f32::INFINITY);
+    match rep {
+        UiEdge::Round => {
+            w = mid / (mid / w).round().max(1.0);
+            pitch = w;
+        }
+        UiEdge::Space => {
+            n = (mid / w).floor();
+            let gap = (mid - n * w) / (n + 1.0);
+            pitch = w + gap;
+            o = gap;
+        }
+        _ if centered => o = (mid - w) * 0.5,
+        _ => {}
+    }
+    let k = (q - o) / pitch;
+    let t = (k - k.floor()) * pitch / w;
+    let drawn = t <= 1.0 && !(rep == UiEdge::Space && (k < 0.0 || k >= n));
+    (t.min(1.0), drawn)
+}
+
+/// ui.wgsl's `nine_axis`: the fraction of the region at `x`, whether it
+/// is in the middle, and whether it draws.
+#[allow(clippy::too_many_arguments)]
+fn nine_axis(
+    x: f32,
+    len: f32,
+    a: f32,
+    b: f32,
+    sa: f32,
+    sb: f32,
+    edges: UiEdge,
+    src_len: f32,
+) -> (f32, bool, bool) {
+    if x < a {
+        return (x / a.max(1e-4) * sa, false, true);
+    }
+    if x > len - b {
+        let t = (x - (len - b)) / b.max(1e-4);
+        return (1.0 - sb + t * sb, false, true);
+    }
+    let mid = (len - a - b).max(1e-4);
+    let src_mid = (1.0 - sa - sb).max(1e-4);
+    if edges == UiEdge::Stretch {
+        return (sa + (x - a) / mid * src_mid, true, true);
+    }
+    // A tile is the source's middle at the border's scale.
+    let scale = if a <= 0.0 {
+        sb * src_len / b.max(1e-4)
+    } else {
+        sa * src_len / a.max(1e-4)
+    };
+    let (t, drawn) = tile_mid(
+        x - a,
+        mid,
+        src_mid * src_len / scale.max(1e-4),
+        edges,
+        false,
+    );
+    (sa + t * src_mid, true, drawn)
+}
+
+/// ui.wgsl's `border_axis`: the fraction of the image at `x`, whether it
+/// draws, and whether it is in the middle.
+#[allow(clippy::too_many_arguments)]
+fn border_axis(
+    x: f32,
+    len: f32,
+    a: f32,
+    b: f32,
+    sa: f32,
+    sb: f32,
+    src: f32,
+    scale: f32,
+    rep: UiEdge,
+) -> (f32, bool, bool) {
+    let n = src.max(1e-4);
+    if x < a {
+        return (x / a.max(1e-4) * sa / n, true, false);
+    }
+    if x > len - b {
+        return (
+            (src - sb + (x - (len - b)) / b.max(1e-4) * sb) / n,
+            true,
+            false,
+        );
+    }
+    let mid = (len - a - b).max(1e-4);
+    let smid = (src - sa - sb).max(1e-4);
+    if rep == UiEdge::Stretch {
+        return ((sa + (x - a) / mid * smid) / n, true, true);
+    }
+    let (t, drawn) = tile_mid(x - a, mid, smid * scale, rep, true);
+    ((sa + t * smid) / n, drawn, true)
+}
+
 impl Default for UiBackgroundSize {
     fn default() -> UiBackgroundSize {
         UiBackgroundSize::Given([None; 2])

@@ -463,10 +463,9 @@ bars it does not hold, this guide does:
   more fairly: body text at |Lc| 75 or more (60 for text over 24 px or
   bold over 18 px, 45 for a large heading, 30 for a disabled control's
   text and placeholders, which WCAG exempts). Hold both bars; a pair that
-  meets one only is an ink to move. A pair `og style check` calls
-  `unchecked` sits on an image it does not sample (nine-slice, border
-  image, pattern, cover or contain): its ratio leaves that layer out, so
-  read it on a frame.
+  meets one only is an ink to move. An image under the text (a
+  nine-slice, a border image, a pattern, a fitted picture) is read where
+  it is drawn under the glyphs, as the renderer places it.
 - **Text over the scene**: `og style check` reads a ground the UI covers
   only partly (a translucent plate, a HUD label on nothing) over black and
   over white, keeps the worse and calls it `scene`. Such text holds 4.5:1

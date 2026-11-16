@@ -15,8 +15,8 @@
 //! tritanopia (og-draw's simulation, full strength).
 
 use og_draw::{
-    ColorFilter, ColorVision, ColorVisionFilter, TextureHandle, UiBlend, UiFit, UiGeometry,
-    UiGradient, UiGradientKind, UiMode, UiPaint, UiSpread,
+    ColorFilter, ColorVision, ColorVisionFilter, TextureHandle, UiBlend, UiGeometry, UiGradient,
+    UiGradientKind, UiMode, UiPaint, UiSpread,
 };
 use og_ui::{DrawCmd, DrawItem, Srgba};
 use serde_json::{Value, json};
@@ -39,10 +39,8 @@ pub struct Pair {
     pub ink: Srgba,
     pub ground: Srgba,
     /// What the ground is made of: `solid`, `gradient`, `image`, `glass`,
-    /// `scene` (the UI covers it only partly, read over black and white),
-    /// `unchecked` (a layer under it is an image fitted in a way the check
-    /// does not sample: nine-slice, border image, pattern, cover, contain;
-    /// its ratio leaves that layer out).
+    /// `scene` (the UI covers it only partly, read over black and white).
+    /// Every image fit is sampled where og-render draws it.
     pub over: &'static str,
     pub disabled: bool,
     /// The worst WCAG 2 ratio of the ink on its halo (text-shadow and
@@ -592,9 +590,8 @@ fn paint_at(
             ];
             let (pos, size) = ([x + shape.half.x, y + shape.half.y], [w, h]);
             // Where in a fitted image the point falls, as og-render places
-            // it: `None` past it (a gap, past a lone tile), and the pair
-            // unchecked for a fit this does not sample.
-            let unchecked = Some(([0.0; 4], "unchecked"));
+            // it (og-draw's `place`, ui.wgsl's `image_uv`): `None` where it
+            // draws nothing (a gap, past a lone tile, an empty middle).
             let (mut color, what) = match &shape.paint {
                 UiPaint::Solid(c) => (*c, "solid"),
                 UiPaint::Gradient(g) => (gradient(g, f, (w, h)), "gradient"),
@@ -604,29 +601,11 @@ fn paint_at(
                     } else {
                         size
                     };
-                    let f = match &g.fit {
-                        UiFit::Fill => f,
-                        UiFit::Background(b) => b.place(pos, size, tile)?,
-                        _ => return unchecked,
-                    };
+                    let f = g.place(pos, size)?;
                     (gradient(&g.gradient, f, (tile[0], tile[1])), "gradient")
                 }
                 UiPaint::Image(i) => {
-                    let f = match &i.fit {
-                        UiFit::Fill => f,
-                        UiFit::Background(b) => {
-                            // Its natural size: its region's texels, one a
-                            // CSS px at its density.
-                            let t = textures.size(i.texture)?;
-                            let density = i.density.max(1e-3);
-                            let nat = [
-                                ((i.uv[2] - i.uv[0]).abs() * t[0] / density).max(1.0),
-                                ((i.uv[3] - i.uv[1]).abs() * t[1] / density).max(1.0),
-                            ];
-                            b.place(pos, size, nat)?
-                        }
-                        _ => return unchecked,
-                    };
+                    let f = i.place(pos, size, textures.size(i.texture)?)?;
                     let at = [
                         i.uv[0] + f[0] * (i.uv[2] - i.uv[0]),
                         i.uv[1] + f[1] * (i.uv[3] - i.uv[1]),
@@ -826,7 +805,6 @@ fn read(
         let effects = effects.filter(|e| e.outline.is_some() || !e.shadows.is_empty());
         let mut halo: Option<f32> = None;
         let mut worst: Option<(f32, Rgb, Rgb, &'static str)> = None;
-        let mut unchecked = false;
         for (u, v) in [
             (1.0, 1.0),
             (3.0, 1.0),
@@ -860,7 +838,6 @@ fn read(
                     continue;
                 }
                 if let Some((mut c, kind)) = paint_at(under, p, textures) {
-                    unchecked |= kind == "unchecked";
                     c[3] = (c[3] * opacity[j]).clamp(0.0, 1.0);
                     if c[3] > 0.02 {
                         if kind != "solid" {
@@ -907,7 +884,6 @@ fn read(
         let Some((wcag, ink, ground, over)) = worst else {
             continue;
         };
-        let over = if unchecked { "unchecked" } else { over };
         let centre = (shown.x + shown.width / 2.0, shown.y + shown.height / 2.0);
         // The innermost element there that shows the text, else the
         // innermost there.
@@ -1080,6 +1056,7 @@ mod tests {
   <div id="White"><p id="Clipped">Clipped</p></div>
   <div id="Corner"><p id="InCorner">Corner</p></div>
   <div id="Framed"><p id="InFrame">Framed</p></div>
+  <div id="Filled"><p id="InFill">Filled</p></div>
   <div id="Glass"><p id="OnGlass">Glass</p></div>
 </div>
 <style>
@@ -1095,6 +1072,8 @@ p { color: #ffffff; margin: 0; }
 #InCorner { color: #000000; }
 #Framed { width: 200px; padding: 20px; border: 10px solid transparent; border-image: linear-gradient(#000, #000) 10; background: #ffffff; }
 #InFrame { color: #000000; }
+#Filled { width: 200px; padding: 20px; border: 10px solid transparent; border-image: linear-gradient(#000, #000) 10 fill; background: #ffffff; }
+#InFill { color: #000000; }
 #Glass { width: 200px; backdrop-filter: blur(8px); -og-material: glass thick lift; }
 </style>"#,
         );
@@ -1132,8 +1111,23 @@ p { color: #ffffff; margin: 0; }
             hex(corner.ink),
             hex(corner.ground)
         );
-        // A border image is not sampled: the pair says so.
-        assert_eq!(of(&pairs, "Framed").over, "unchecked");
+        // A border image is read where og-render draws it: its ring
+        // leaves the text on the white middle, and `fill` lays its
+        // middle under the text.
+        let framed = of(&pairs, "Framed");
+        assert!(
+            framed.wcag > 20.0,
+            "{} on {}",
+            hex(framed.ink),
+            hex(framed.ground)
+        );
+        let filled = of(&pairs, "Filled");
+        assert!(
+            filled.wcag < 1.1,
+            "{} on {}",
+            hex(filled.ink),
+            hex(filled.ground)
+        );
         // Glass is read as what it makes of the scene under it: white
         // text on the dark theme's thick glass holds over a white scene,
         // where on the bare scene it reads 1:1.
