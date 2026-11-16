@@ -69,6 +69,8 @@ and their pending L4 review are recorded explicitly in the world sheet.
 | Item slots (rarity, count, cooldown and selection) | `base/item-slot` |
 | Player portraits (fallback, level and presence) | `base/avatar` |
 | Read-only currency balances, capacity and income | `base/currency` |
+| Discrete resource pips | `base/pips` |
+| Boss health, combo, pickup activity and performance readouts | `hud/boss-bar`, `hud/combo`, `hud/pickup-feed`, `hud/perf-readout` |
 | Crafting recipes, trade stock and loot collection | `panels/crafting`, `panels/trade`, `panels/loot` |
 | Conversation history and replay | `panels/conversation-backlog` |
 | Ability bars, cooldowns and buffs | `ability-bar`, `ability-slot`, `cooldown`, `status-grid` |
