@@ -143,6 +143,21 @@ pub(crate) fn interpolate(property: &str, a: &str, b: &str, p: f32) -> Option<St
             let (x, y) = filter_pair(a, b)?;
             return Some(write(&lerp_list(property, &x, &y, p)?));
         }
+        "top" | "right" | "bottom" | "left" | "inset-block-start" | "inset-block-end"
+        | "inset-inline-start" | "inset-inline-end"
+            if (a.contains("anchor(") || b.contains("anchor(")) && a != "auto" && b != "auto" =>
+        {
+            // anchor() interpolates by its resolved length (CSS Anchor
+            // Positioning 1 §2.4): a weighted sum layout resolves.
+            return Some(format!("calc({} * {a} + {} * {b})", num(1.0 - p), num(p)));
+        }
+        "width" | "height" | "inline-size" | "block-size"
+            if a.contains("anchor-size(") && b.contains("anchor-size(") =>
+        {
+            // So does anchor-size(): only between two of them, as layout
+            // takes a size of anchor-size() terms alone.
+            return Some(format!("calc({} * {a} + {} * {b})", num(1.0 - p), num(p)));
+        }
         _ => {}
     }
     let (mut x, mut y) = (tokens(a)?, tokens(b)?);

@@ -542,3 +542,78 @@ fn grid_tracks_and_clip_paths_transition_by_their_values() {
         }
     }
 }
+
+/// CSS Anchor Positioning 1 §2.4: `anchor()` interpolates by the length it
+/// resolves to. A tag transitioning (600 ms linear) from `left:
+/// anchor(--a right)` (x 140) to `anchor(--b right)` (x 440) is at
+/// 140 + 300t every tick, not at one anchor then the other; on the
+/// right edge (`right: anchor(--a left)` to `anchor(--b left)`) it moves
+/// the same way from the far side; `anchor-size()` does the same for a
+/// width (40 → 100 px); and it keeps following an anchor that moves
+/// mid-way. Ways it could fail: the pair flipping at 50% (or at
+/// once), the weights swapped, the far side's distance not mirrored, or
+/// the mix frozen at the anchors' first boxes.
+#[test]
+fn anchor_insets_transition_by_their_resolved_lengths() {
+    let text = r#"<meta name="component" content="t">
+<div id="Page" class={$mode}>
+  <div id="A" class={$moved}></div><div id="B"></div><div id="C"></div><div id="Tag"></div><div id="Far"></div><div id="Wide"></div>
+</div>
+<style>
+#Page { position: relative; width: 800px; height: 600px; }
+#A, #B { position: absolute; top: 300px; width: 40px; height: 20px; }
+#A { left: 100px; anchor-name: --a; }
+#A.yes { left: 160px; }
+#B { left: 400px; anchor-name: --b; }
+#C { position: absolute; top: 350px; left: 600px; width: 100px; height: 20px; anchor-name: --c; }
+#Wide { position: absolute; top: 500px; left: 0; height: 10px; width: anchor-size(--a width); transition: width 600ms linear; }
+#Page.on > #Wide { width: anchor-size(--c width); }
+#Tag, #Far { position: absolute; width: 10px; height: 10px; transition: left 600ms linear, right 600ms linear; }
+#Tag { top: 400px; left: anchor(--a right); }
+#Far { top: 450px; right: anchor(--a left); }
+#Page.on > #Tag { left: anchor(--b right); }
+#Page.on > #Far { right: anchor(--b left); }
+</style>"#;
+    let mut d = Doc::new(
+        text,
+        &[
+            ("mode", serde_json::json!("off")),
+            ("moved", serde_json::json!("no")),
+        ],
+    );
+    assert_eq!(d.get("Tag").x, 140.0);
+    // `right: anchor(--a left)` puts its right edge on x 100.
+    assert_eq!(d.get("Far").x + 10.0, 100.0);
+    d.set("mode", serde_json::json!("on"));
+    for tick in 1..=18 {
+        let t = tick as f32 / 36.0;
+        let (tag, far) = (d.get("Tag").x, d.get("Far").x + 10.0);
+        let wide = d.get("Wide").width;
+        assert!(
+            (wide - (40.0 + 60.0 * t)).abs() <= 0.5 + 1e-3,
+            "anchor-size at {tick}: {wide}"
+        );
+        assert!(
+            (tag - (140.0 + 300.0 * t)).abs() <= 0.5 + 1e-3,
+            "left at {tick}: {tag}"
+        );
+        assert!(
+            (far - (100.0 + 300.0 * t)).abs() <= 0.5 + 1e-3,
+            "right at {tick}: {far}"
+        );
+        d.step(InputFrame::default());
+    }
+    // Half-way, --a moves 60 px right: the mix follows its new edge
+    // (weight 1 − t on it), as the resolved length does.
+    d.set("moved", serde_json::json!("yes"));
+    for tick in 21..=40 {
+        let t = (tick as f32 / 36.0).min(1.0);
+        let tag = d.get("Tag").x;
+        let want = (1.0 - t) * 200.0 + t * 440.0;
+        assert!(
+            (tag - want).abs() <= 0.5 + 1e-3,
+            "moved anchor at {tick}: {tag} vs {want}"
+        );
+        d.step(InputFrame::default());
+    }
+}

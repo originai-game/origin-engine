@@ -240,6 +240,8 @@ proof("video-dynamic-range", "css_interact", "video_dynamic_range_follows_the_su
       "(video-dynamic-range: standard) matches on standard and extended-range surfaces, (… high) only on one with Viewport::high_range, and a change of surface restyles on the next frame.")
 proof("placeholder", "css_interact", "placeholder_takes_its_pseudo_elements_color",
       "An empty input's and an empty textarea's placeholder text draws in ::placeholder's color while the field sets its own color, which the typed value of a filled input draws in. ::placeholder takes color only; other properties are refused.")
+proof("anchor-positioning-animations", "motion", "anchor_insets_transition_by_their_resolved_lengths",
+      "Every tick of a 600ms linear transition, left: anchor(--a right) → anchor(--b right) lays the box at the lerp of the two resolved lengths, right: anchor() mirrors it from the far side, width: anchor-size(--a width) → anchor-size(--c width) moves 40 → 100 px the same way, and an anchor moved mid-way is followed by its weight. A position-area change is not interpolated (it is discrete).")
 not_applicable("webxr-dom-overlays", "Styles the DOM overlay of a WebXR session; the engine renders its own UI in its world and has no WebXR DOM layer.")
 not_applicable("window-controls-overlay window-drag", "Installed web-app title-bar integration (the OS window's caption buttons and drag regions); a game's UI is drawn inside its own surface, and the host owns its window.")
 not_applicable("picture-in-picture", "Styles a video in the browser's floating picture-in-picture window, which is browser chrome outside the game's surface.")
@@ -295,7 +297,6 @@ not_applicable("svg-discouraged",
 MISSING = {
     "will-change": "will-change on a stacking property draws a group layer, but neither half of its contract is observable yet: a transform does not make a containing block for fixed descendants, and z-index never lifts a child above its parent's later siblings (both routed to their streams).",
     "file-selector-button": "Accepted and styles nothing: a file input's button is not a stylable box.",
-    "anchor-positioning-animations": "A transition between anchor() values jumps: interpolation treats two anchor() calls as discrete, and calc() takes anchor() only as anchor(…) + px.",
     "motion-path": "No offset-path, offset-distance, offset-rotate, offset-anchor or offset-position: the properties are refused.",
     "popover": ":popover-open restyles an open popover (control_props::titles_and_popovers_show_against_their_controls covers the popover attribute), but a popover draws no ::backdrop and its open/close ignores @starting-style and display/overlay allow-discrete transitions.",
     "overlay": "The overlay value holds its shown side in a discrete transition, but nothing keeps a closing popover or dialog in the top layer while its transition runs.",

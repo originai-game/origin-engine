@@ -53,6 +53,11 @@ pub enum Inset {
         plus: f32,
         fallback: Option<f32>,
     },
+    /// A weighted sum of insets, `calc(0.6 * anchor(--a right) + 0.4 *
+    /// anchor(--b right))`: what a transition between two of them is at a
+    /// point (anchor() interpolates by its resolved length, CSS Anchor
+    /// Positioning 1 §2.4). Auto when any term is.
+    Mix(Vec<(f32, Inset)>),
 }
 
 /// `anchor()`'s side (CSS Anchor §4.2).
@@ -73,7 +78,10 @@ pub enum Side {
     Percent(f32),
 }
 
-/// `anchor-size(<name>? <dimension>)` times `scale`, plus px.
+/// `anchor-size(<name>? <dimension>)` times `scale`, plus px, plus the
+/// sizes in `mix`: a weighted sum, `calc(0.6 * anchor-size(--a width) +
+/// 0.4 * anchor-size(--b width))`, is what a transition between two is at
+/// a point (anchor-size() interpolates by its resolved length).
 #[derive(Clone, Debug, PartialEq)]
 pub struct AnchorSize {
     pub name: String,
@@ -81,6 +89,7 @@ pub struct AnchorSize {
     pub axis: usize,
     pub scale: f32,
     pub plus: f32,
+    pub mix: Vec<AnchorSize>,
 }
 
 /// A `position-area`: the columns and rows (0, 1, 2: start, the anchor's
@@ -246,8 +255,28 @@ fn tail(t: &str) -> Result<f32, String> {
         .ok_or_else(|| format!("'{}' is no px length", rest.trim()))
 }
 
-/// An inset's value: `<n>px`, `<n>%`, `anchor(…)`, or `calc()` of one of
-/// those plus or minus px.
+/// A `calc()` body that sums weighted insets, `<n> * <inset> + …`: each
+/// term's weight and its inset's text (`None`: not such a sum).
+fn mix_terms(body: &str) -> Option<Vec<(f32, &str)>> {
+    let mut terms = Vec::new();
+    let (mut depth, mut start) = (0, 0);
+    for (k, c) in body.char_indices().chain([(body.len(), '+')]) {
+        match c {
+            '(' => depth += 1,
+            ')' => depth -= 1,
+            '+' if depth == 0 => {
+                let (w, t) = body[start..k].split_once('*')?;
+                terms.push((w.trim().parse::<f32>().ok()?, t.trim()));
+                start = k + 1;
+            }
+            _ => {}
+        }
+    }
+    (terms.len() >= 2).then_some(terms)
+}
+
+/// An inset's value: `<n>px`, `<n>%`, `anchor(…)`, `calc()` of one of
+/// those plus or minus px, or `calc()` of weighted insets added.
 pub fn parse_inset(v: &str) -> Result<Inset, String> {
     let v = v.trim();
     let inner = call(v, "calc")
@@ -273,6 +302,13 @@ pub fn parse_inset(v: &str) -> Result<Inset, String> {
     if let Some(p) = head.strip_suffix('%').and_then(|p| p.parse::<f32>().ok()) {
         return Ok(Inset::Percent(p / 100.0, tail(rest)?));
     }
+    if let Some(terms) = inner.and_then(mix_terms) {
+        return terms
+            .into_iter()
+            .map(|(w, t)| Ok((w, parse_inset(t)?)))
+            .collect::<Result<_, String>>()
+            .map(Inset::Mix);
+    }
     Err(format!(
         "'{v}' is no inset: <n>px, <n>%, anchor([--name] <side>[, <fallback>]) or calc() of one plus px"
     ))
@@ -285,6 +321,21 @@ pub fn parse_size(v: &str) -> Result<AnchorSize, String> {
     let inner = call(v, "calc")
         .filter(|(_, r)| r.trim().is_empty())
         .map(|(b, _)| b.trim());
+    if let Some(terms) = inner.and_then(mix_terms) {
+        // Each term's sizes, weighted, flattened into one sum.
+        let mut flat = Vec::new();
+        for (w, t) in terms {
+            let mut s = parse_size(t)?;
+            let mix = std::mem::take(&mut s.mix);
+            for mut one in std::iter::once(s).chain(mix) {
+                (one.scale, one.plus) = (one.scale * w, one.plus * w);
+                flat.push(one);
+            }
+        }
+        let mut first = flat.remove(0);
+        first.mix = flat;
+        return Ok(first);
+    }
     let body = inner.unwrap_or(v);
     let (scale, body) = match body.split_once('*') {
         Some((a, b)) if a.trim().parse::<f32>().is_ok() => (a.trim().parse().unwrap(), b.trim()),
@@ -318,6 +369,7 @@ pub fn parse_size(v: &str) -> Result<AnchorSize, String> {
         axis: axis.unwrap_or(usize::MAX),
         scale,
         plus,
+        mix: Vec::new(),
     })
 }
 
@@ -476,8 +528,8 @@ impl Placement {
             (Flip::Block | Flip::Inline, Side::Percent(p)) => Side::Percent(1.0 - p),
             (_, s) => s,
         };
-        let inset = |i: &Option<Inset>| {
-            i.clone().map(|i| match i {
+        fn flip_inset(i: Inset, side: &dyn Fn(Side) -> Side) -> Inset {
+            match i {
                 Inset::Anchor {
                     name,
                     side: s,
@@ -485,13 +537,20 @@ impl Placement {
                     fallback,
                 } => Inset::Anchor {
                     name,
-                    side: side(s, flip),
+                    side: side(s),
                     plus,
                     fallback,
                 },
+                Inset::Mix(terms) => Inset::Mix(
+                    terms
+                        .into_iter()
+                        .map(|(w, t)| (w, flip_inset(t, side)))
+                        .collect(),
+                ),
                 i => i,
-            })
-        };
+            }
+        }
+        let inset = |i: &Option<Inset>| i.clone().map(|i| flip_inset(i, &|s| side(s, flip)));
         let [t, r, b, l] = &self.insets;
         let mirror = |(a, b): (u8, u8)| (2 - b, 2 - a);
         match flip {
@@ -541,12 +600,15 @@ fn place(p: &Placement, f: &Frame<'_>) -> (Rect, Rect) {
     let start = [cb.x, cb.y];
     let len = [cb.width, cb.height];
     // An inset in px from its containing block edge (`None`: auto).
-    let resolve = |k: usize| -> Option<f32> {
+    fn length(i: &Inset, k: usize, f: &Frame<'_>, start: [f32; 2], len: [f32; 2]) -> Option<f32> {
         let axis = usize::from(k % 2 == 0);
         let far = k == 1 || k == 2;
-        let i = p.insets[k].as_ref()?;
         Some(match i {
             Inset::Auto => return None,
+            Inset::Mix(terms) => terms
+                .iter()
+                .map(|(w, t)| Some(w * length(t, k, f, start, len)?))
+                .sum::<Option<f32>>()?,
             Inset::Px(v) => *v,
             Inset::Percent(q, plus) => q * len[axis] + plus,
             Inset::Anchor {
@@ -581,7 +643,8 @@ fn place(p: &Placement, f: &Frame<'_>) -> (Rect, Rect) {
                 }) + plus
             }
         })
-    };
+    }
+    let resolve = |k: usize| length(p.insets[k].as_ref()?, k, f, start, len);
     let insets = [resolve(0), resolve(1), resolve(2), resolve(3)];
     let anchor = (f.anchor)("");
     // The area's box: the 3×3 grid of the anchor's and the block's edges.
@@ -630,9 +693,14 @@ fn place(p: &Placement, f: &Frame<'_>) -> (Rect, Rect) {
         imcb[axis + 2] = room;
         let (pref, least) = f.content[axis];
         let anchor_size = p.sizes[axis].as_ref().and_then(|s| {
-            let a = (f.anchor)(&s.name)?;
-            let dim = if s.axis == usize::MAX { axis } else { s.axis };
-            Some((if dim == 0 { a.width } else { a.height }) * s.scale + s.plus)
+            std::iter::once(s)
+                .chain(&s.mix)
+                .map(|s| {
+                    let a = (f.anchor)(&s.name)?;
+                    let dim = if s.axis == usize::MAX { axis } else { s.axis };
+                    Some((if dim == 0 { a.width } else { a.height }) * s.scale + s.plus)
+                })
+                .sum::<Option<f32>>()
         });
         let both = insets[lo_k].is_some() && insets[hi_k].is_some() && area.is_none();
         let (lo_b, hi_b) = match f.size[axis] {
