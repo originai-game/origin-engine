@@ -331,6 +331,25 @@ fn the_box_model_sizes_as_css_does() {
     });
 }
 
+/// `min-width: 0` lifts a flex item's automatic minimum (CSS Flexbox 1
+/// §4.5): a sharing item shrinks below its content, which without it
+/// floors the item.
+#[test]
+fn a_zero_min_width_lets_a_flex_item_shrink_below_its_content() {
+    let text = r#"<meta name="component" content="t">
+<div><div id="Lifted"><span id="L">abcdefghijklmnopqrstuvwxyz</span></div><div id="Floored"><span id="F">abcdefghijklmnopqrstuvwxyz</span></div></div>
+<style>
+#Lifted, #Floored { display: flex; width: 100px; }
+span { flex: 1; white-space: nowrap; overflow: hidden; }
+#L { min-width: 0; }
+</style>"#;
+    with_doc(text, &[], |d| {
+        let floor = d.get("F").width;
+        assert!(floor > 100.0, "its content floors it: {floor}");
+        assert_eq!(d.get("L").width, 100.0);
+    });
+}
+
 /// `stretch` is the room the parent leaves (docs/ui.md, Sizes): along a
 /// block's flow, a `height: stretch` box takes the height its siblings
 /// leave, as a column's `flex: 1` would, not its content's (none here).
