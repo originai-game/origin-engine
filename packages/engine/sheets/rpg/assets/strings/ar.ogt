@@ -173,6 +173,8 @@ string "sheet.talkLine" "الماء يتذكر كل جرس ابتلعه. أوا�
 string "sheet.talkReplies.r1.text" "نعم. يجب أن يرنّ الجرس من جديد."
 string "sheet.talkReplies.r2.text" "أخبريني أولًا ممّ يخاف الرهبان."
 string "sheet.talkReplies.r3.text" "ليس بعد. عليّ جمع المؤن."
+string "sheet.compassPois.q.label" "مهمة"
+string "sheet.compassPois.camp.label" "معسكر"
 string "sheet.partyMembers.brenna.name" "برينا"
 string "sheet.partyMembers.idris.name" "إدريس"
 string "sheet.partyMembers.maren.name" "مارين"

@@ -121,6 +121,8 @@ string "sheet.talkLine" "The water remembers every bell it swallowed. Are you ce
 string "sheet.talkReplies.r1.text" "Yes. The bell must ring again."
 string "sheet.talkReplies.r2.text" "Tell me first what the brothers fear."
 string "sheet.talkReplies.r3.text" "Not yet. I need to gather supplies."
+string "sheet.compassPois.q.label" "Quest"
+string "sheet.compassPois.camp.label" "Camp"
 string "sheet.partyMembers.brenna.name" "Brenna"
 string "sheet.partyMembers.idris.name" "Idris"
 string "sheet.partyMembers.maren.name" "Maren"

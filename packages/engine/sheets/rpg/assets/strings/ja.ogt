@@ -173,6 +173,8 @@ string "sheet.talkLine" "水は飲み込んだ鐘をすべて覚えている。�
 string "sheet.talkReplies.r1.text" "ああ。鐘はもう一度鳴らねばならない。"
 string "sheet.talkReplies.r2.text" "まず修道士たちが何を恐れているか教えてくれ。"
 string "sheet.talkReplies.r3.text" "まだだ。物資を集めなければ。"
+string "sheet.compassPois.q.label" "クエスト"
+string "sheet.compassPois.camp.label" "野営地"
 string "sheet.partyMembers.brenna.name" "ブレナ"
 string "sheet.partyMembers.idris.name" "イドリス"
 string "sheet.partyMembers.maren.name" "マレン"

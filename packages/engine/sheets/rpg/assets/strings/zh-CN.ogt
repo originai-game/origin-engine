@@ -173,6 +173,8 @@ string "sheet.talkLine" "湖水记得它吞下的每一口钟。你确定还想�
 string "sheet.talkReplies.r1.text" "是的。那口钟必须再次响起。"
 string "sheet.talkReplies.r2.text" "先告诉我修士们在害怕什么。"
 string "sheet.talkReplies.r3.text" "还不行。我得先准备补给。"
+string "sheet.compassPois.q.label" "任务"
+string "sheet.compassPois.camp.label" "营地"
 string "sheet.partyMembers.brenna.name" "布伦娜"
 string "sheet.partyMembers.idris.name" "伊德里斯"
 string "sheet.partyMembers.maren.name" "玛伦"
