@@ -3784,13 +3784,19 @@ fn column_pseudo_elements_are_snap_areas() {
 /// CSS Multicol 2 §4.8: a multi-column scroll container's
 /// `::column::scroll-marker` gives each column a marker in its
 /// `::scroll-marker-group`, in column order, and pressing one scrolls
-/// that column to the view's start. Four 50px-tall children in one
-/// 200px column at a time make four columns at 0, 220, 440 and 660.
+/// that column to the view's start. Each marker is a pseudo-element of
+/// its own (CSS Overflow 5 §3.1.8): `:target-before`, `:target-current`
+/// and `:target-after` follow its own column, and `:hover` only it. Four
+/// 50px-tall children in one 200px column at a time make four columns at
+/// 0, 220, 440 and 660.
 ///
 /// Ways it could fail: no markers (the rule refused or read as an
 /// element's `::scroll-marker`), one marker for the container instead of
 /// one per column, a marker scrolling to the container instead of its
-/// column (offset 0), or to the wrong column (220 or 660).
+/// column (offset 0) or to the wrong column (220 or 660), every marker
+/// sharing one state (all current, or none), a state change that does
+/// not restyle the markers until something else does, or hover lighting
+/// every marker.
 #[test]
 fn column_scroll_markers_scroll_to_their_columns() {
     let text = r#"<meta name="component" content="t">
@@ -3800,28 +3806,45 @@ fn column_scroll_markers_scroll_to_their_columns() {
 <style>
 #S { width: 200px; height: 50px; columns: 1; column-gap: 20px; overflow-x: auto; overflow-y: hidden; scrollbar-width: none; scroll-marker-group: before; }
 #S div { height: 50px; }
-#S::column::scroll-marker { content: ""; width: 10px; height: 10px; background: #0000ff; }
+#S::column::scroll-marker { content: ""; width: 10px; height: 10px; background: #808080; }
+#S::column::scroll-marker:target-before { background: #0000ff; }
+#S::column::scroll-marker:target-current { background: #00ff00; }
+#S::column::scroll-marker:target-after { background: #ff0000; }
+#S::column::scroll-marker:target-after:hover { background: #ffff00; }
 </style>"#;
     let mut d = Doc::new(text, &[]);
     for _ in 0..3 {
         d.step(InputFrame::default());
     }
-    let markers = |d: &Doc| -> Vec<f32> {
-        let mut x: Vec<f32> =
+    // Each marker's state by its colour, left to right.
+    let markers = |d: &Doc| -> Vec<(f32, char)> {
+        let mut x: Vec<(f32, char)> =
             d.ui.frame()
                 .items
                 .iter()
                 .filter_map(|i| i.cmd.filled())
-                .filter(|(r, c)| r.width == 10.0 && r.height == 10.0 && c[2] == 1.0)
-                .map(|(r, _)| r.x)
+                .filter(|(r, _)| r.width == 10.0 && r.height == 10.0)
+                .map(|(r, c)| {
+                    let state = match [c[0], c[1], c[2]] {
+                        [0.0, 0.0, 1.0] => 'b',
+                        [0.0, 1.0, 0.0] => 'c',
+                        [1.0, 0.0, 0.0] => 'a',
+                        [1.0, 1.0, 0.0] => 'h',
+                        _ => '-',
+                    };
+                    (r.x, state)
+                })
                 .collect();
-        x.sort_by(f32::total_cmp);
+        x.sort_by(|a, b| a.0.total_cmp(&b.0));
         x
     };
+    let at = |d: &Doc| markers(d).iter().map(|m| m.0).collect::<Vec<_>>();
+    let states = |d: &Doc| markers(d).iter().map(|m| m.1).collect::<String>();
+    assert_eq!(at(&d), [0.0, 10.0, 20.0, 30.0], "one marker per column");
     assert_eq!(
-        markers(&d),
-        [0.0, 10.0, 20.0, 30.0],
-        "one marker per column"
+        states(&d),
+        "caaa",
+        "the first column is current, the rest after"
     );
     let path = d.get("S").path;
     d.click_at(Vec2::new(25.0, 5.0));
@@ -3833,6 +3856,7 @@ fn column_scroll_markers_scroll_to_their_columns() {
         440.0,
         "the third marker scrolls the third column to the start"
     );
+    assert_eq!(states(&d), "bbca", "each marker its own state");
     d.click_at(Vec2::new(5.0, 5.0));
     for _ in 0..3 {
         d.step(InputFrame::default());
@@ -3842,4 +3866,5 @@ fn column_scroll_markers_scroll_to_their_columns() {
         0.0,
         "and the first back"
     );
+    assert_eq!(states(&d), "caaa", "and the states with it");
 }

@@ -414,7 +414,9 @@ impl RetainedHost {
         };
         // The boxes styled as pseudo-elements since the last refresh.
         for (styled, pseudo) in std::mem::take(&mut ui.docs.state_mut().pseudo_boxes) {
-            if self.pseudo_nodes.contains_key(&pseudo) {
+            if self.pseudo_nodes.contains_key(&pseudo)
+                || ui.docs.state().instances.contains_key(&pseudo)
+            {
                 self.pseudo_boxes.insert(styled, pseudo);
             }
         }
@@ -804,6 +806,7 @@ impl RetainedHost {
                 Some(_) => None,
                 None => kept.as_mut().map(Arc::make_mut),
             },
+            None,
         );
         e.cascades = kept;
         values.ordinal = ui.docs.ordinal_of(

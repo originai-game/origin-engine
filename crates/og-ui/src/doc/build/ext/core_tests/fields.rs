@@ -95,6 +95,7 @@ fn settled_document_fields_match_fresh_styles_without_rebuilding_controls() {
                     &build.inherited,
                     &mut |_| false,
                     None,
+                    None,
                 );
                 (
                     node.node,

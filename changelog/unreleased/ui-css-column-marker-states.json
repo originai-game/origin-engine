@@ -1,0 +1,8 @@
+{
+  "added": [
+    {
+      "member": "CSS ::column::scroll-marker states",
+      "summary": "Each column's ::column::scroll-marker is now a pseudo-element of its own: :target-current, :target-before and :target-after follow its own column, and :hover only the marker under the pointer, so a scroll-marker group can highlight the current column. Before, a column marker took none of these states. A state-dependent `content` on a column marker is not applied."
+    }
+  ]
+}

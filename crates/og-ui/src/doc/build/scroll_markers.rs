@@ -28,9 +28,13 @@ pub struct Marker {
     styled: Option<(Arc<UiDocument>, usize, ResolvedNode, Props)>,
 }
 
-/// A `::column` marker's target key ([`column_target`]) with its
-/// element's key and the column's index.
-type ColumnTarget = (u64, (u64, usize));
+/// A `::column` marker's target key ([`column_target`]), its element's
+/// key and the column's index, and the marker's instance key.
+type ColumnTarget = (u64, (u64, usize), u64);
+
+/// An instanced marker's styles by the states an instance holds, the base
+/// (no state) first.
+pub type Variants = Vec<(BTreeSet<InteractionState>, Arc<Marker>)>;
 
 impl std::fmt::Debug for Marker {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -74,6 +78,19 @@ const PAGE: f32 = 0.85;
 const SAME: f32 = 0.5;
 
 impl Ui {
+    /// The sets of states the instances of element `owner`'s instanced
+    /// pseudo-element hold, each once, the empty set left out (its base
+    /// cascade is that): its cascade resolves once for each.
+    pub(crate) fn instance_states_of(&self, owner: u64) -> Vec<BTreeSet<InteractionState>> {
+        let mut sets: Vec<BTreeSet<InteractionState>> = Vec::new();
+        for (o, states) in self.docs.state().instances.values() {
+            if *o == owner && !states.is_empty() && !sets.contains(states) {
+                sets.push(states.clone());
+            }
+        }
+        sets
+    }
+
     /// Notes what element `key` (`r`, at `path`) gives the scroll controls
     /// as it is built: its `::scroll-marker`, the `#id` its `href` names,
     /// and whether it is a `scroll-target-group`.
@@ -86,12 +103,28 @@ impl Ui {
         key: u64,
     ) {
         let g = r.generated.as_ref();
-        let column = g
-            .and_then(|g| g.column_marker.clone())
-            .and_then(|m| self.marker(b, n, r, path, "column-scroll-marker", m));
+        // A column's marker as each set of states its instances hold styles
+        // it, the base (none) first.
+        let column = g.and_then(|g| g.column_marker.clone()).and_then(|m| {
+            let base = self.marker(b, n, r, path, "column-scroll-marker", m.clone(), None)?;
+            let mut variants = vec![(BTreeSet::new(), base)];
+            for (states, values) in &r.instances {
+                let v = self.marker(
+                    b,
+                    n,
+                    r,
+                    path,
+                    "column-scroll-marker",
+                    m.clone(),
+                    Some(values),
+                );
+                variants.extend(v.map(|v| (states.clone(), v)));
+            }
+            Some(variants)
+        });
         let marker = g
             .and_then(|g| g.scroll_marker.clone())
-            .and_then(|m| self.marker(b, n, r, path, "scroll-marker", m));
+            .and_then(|m| self.marker(b, n, r, path, "scroll-marker", m, None));
         let href = r
             .str("href")
             .and_then(|h| h.strip_prefix('#'))
@@ -121,7 +154,9 @@ impl Ui {
     }
 
     /// Element `r`'s (`n`, at `path`) marker pseudo-element `which` with
-    /// content `m`: its label where the element stands, its box's style.
+    /// content `m`: its label where the element stands, its box's style
+    /// (`instance`: an instance's values, [`Resolved::instances`]).
+    #[allow(clippy::too_many_arguments)]
     fn marker(
         &mut self,
         b: &Build<'_>,
@@ -130,10 +165,19 @@ impl Ui {
         path: &str,
         which: &str,
         m: crate::doc::generated::PseudoBox,
+        instance: Option<&Arc<Resolved>>,
     ) -> Option<Arc<Marker>> {
         {
             let text = self.docs.pseudo_text(b, n, r, &m)?;
-            let styled = self.style.pseudo_node(b, r, path, which);
+            let styled = self
+                .style
+                .pseudo_node(b, r, path, which)
+                .map(|(at, mut node)| {
+                    if let Some(values) = instance {
+                        node.values = (**values).clone();
+                    }
+                    (at, node)
+                });
             let values = styled.as_ref().map_or(r, |(_, s)| &s.values);
             let desc = values.label_desc(self.env.theme(), self.fonts(), values.own_flow().rtl);
             let key = styled.as_ref().map_or_else(
@@ -221,7 +265,13 @@ impl Ui {
         }
         if let Some(before) = place {
             let (markers, columns) = self.markers_in(own);
-            self.docs.state_mut().column_targets.extend(columns);
+            let s = self.docs.state_mut();
+            for (target, (owner, k), instance) in columns {
+                s.column_targets.insert(target, (owner, k));
+                s.instances
+                    .entry(instance)
+                    .or_insert_with(|| (owner, BTreeSet::new()));
+            }
             self.open(format!("::scroll-marker-group~{key:x}"), Element::default());
             let at = self.tree.parent();
             if let Some(s) = self.style.pseudo_node(b, r, path, "scroll-marker-group") {
@@ -273,22 +323,35 @@ impl Ui {
         let mut targets = Vec::new();
         let mut columns = |i: usize, out: &mut Vec<(u64, Arc<Marker>)>| {
             let key = nodes[i].key;
-            let Some(m) = state.column_markers.get(&key) else {
+            let Some(variants) = state.column_markers.get(&key) else {
                 return;
             };
+            let base = &variants[0].1;
             // The node is being built: its columns are the last frame's.
             let laid = self.tree.previous_node(i).filter(|p| p.key == key);
             for k in 0..laid.map_or(0, |p| p.layout.columns.len()) {
                 let target = column_target(key, k);
-                let state = crate::id::key_of_path(&format!("{:x}/::column({k})", m.key));
+                // Each column's marker is an instance of its own: its key,
+                // and the values for the states it holds.
+                let instance = crate::id::key_of_path(&format!("{:x}/::column({k})", base.key));
+                let held = state.instances.get(&instance).map(|(_, s)| s);
+                let m = variants
+                    .iter()
+                    .find(|(s, _)| held.is_some_and(|h| h == s))
+                    .map_or(base, |(_, m)| m);
+                let mut styled = m.styled.clone();
+                if let Some((_, _, node, _)) = &mut styled {
+                    node.key = instance;
+                }
                 out.push((
                     target,
                     Arc::new(Marker {
-                        key: state,
+                        key: instance,
+                        styled,
                         ..(**m).clone()
                     }),
                 ));
-                targets.push((target, (key, k)));
+                targets.push((target, (key, k), instance));
             }
         };
         columns(own, &mut out);

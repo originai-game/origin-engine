@@ -906,6 +906,7 @@ impl Profile {
                 if let Some(condition) = &rule.condition {
                     states(condition, &mut profile.reads);
                 }
+                profile.reads.extend(rule.instance_states.iter().copied());
             }
             for rule in &node.span_rules {
                 if let Some(condition) = &rule.condition {

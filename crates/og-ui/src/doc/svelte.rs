@@ -179,6 +179,7 @@ pub(crate) fn parse_with_pack(
                 query: AtQuery::default(),
                 condition: None,
                 structure: None,
+                instance_states: Vec::new(),
                 props: Vec::new(),
                 declarations,
                 line,

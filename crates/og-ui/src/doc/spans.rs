@@ -324,6 +324,7 @@ pub(crate) fn resolve(
             layer: u32::MAX,
             starting: false,
             structure: None,
+            instance_states: Vec::new(),
             query: AtQuery::default(),
             condition: None,
             props: Vec::new(),

@@ -345,6 +345,12 @@ pub struct StyleRule {
     /// A sibling or structural selector, matched on the instantiated tree
     /// ([`matching`]) instead of through `condition`.
     pub structure: Option<std::sync::Arc<selectors::Selector>>,
+    /// A pseudo-element that has an instance per fragment of its element
+    /// (`::column::scroll-marker`, one per column): the states written
+    /// after it, which each instance matches on its own instead of through
+    /// `condition` ([`Ui::resolve`]'s `instance`). Empty for every other
+    /// rule.
+    pub instance_states: Vec<crate::bind::InteractionState>,
     /// Cook-time reflected values available without custom-property substitution.
     pub props: Vec<PropSet>,
     pub declarations: Vec<StyleDeclaration>,

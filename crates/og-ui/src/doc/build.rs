@@ -82,6 +82,11 @@ pub struct Resolved {
     /// Its box pseudo-elements ([`DocNode::pseudo`]), each resolved under
     /// it: the name, its node and its values.
     pub pseudo: Vec<(&'static str, usize, Arc<Resolved>)>,
+    /// Its instanced pseudo-element's values ([`super::stylesheet::INSTANCED`],
+    /// one `::column::scroll-marker` per column) by the states an instance
+    /// holds: one for each set its instances held when it resolved, and
+    /// the empty set ([`Ui::instance_states_of`]).
+    pub instances: Vec<(BTreeSet<crate::bind::InteractionState>, Arc<Resolved>)>,
     /// Its direction and bidi ([`cascade::flow`]).
     flow: crate::layout::Flow,
     /// `dir="auto"`: its direction is its text's.
@@ -779,7 +784,9 @@ impl Ui {
 
     /// Resolves a node's props: its lines, its matching `at` blocks, then
     /// the probe's edits of `path`. `kept` are the element's last cascades
-    /// ([`cascade::Kept`]), when it keeps them.
+    /// ([`cascade::Kept`]), when it keeps them. `instance`: the states of
+    /// the instanced pseudo-element instance it resolves (a rule's
+    /// `instance_states` apply only within them; none apply without one).
     #[allow(clippy::too_many_arguments)]
     pub(crate) fn resolve(
         &self,
@@ -790,6 +797,7 @@ impl Ui {
         inherited: &super::variables::Computed,
         structure: &mut dyn FnMut(&super::selectors::Selector) -> bool,
         kept: Option<&mut cascade::Kept>,
+        instance: Option<&BTreeSet<crate::bind::InteractionState>>,
     ) -> Resolved {
         let root_variables;
         let inherited = if inherited.is_empty() {
@@ -909,6 +917,8 @@ impl Ui {
             applies(&rule.query, &mut media_reads)
                 && rule.condition.as_ref().is_none_or(|e| truthy(&b.eval(e)))
                 && rule.structure.as_ref().is_none_or(|s| structure(s))
+                && (rule.instance_states.is_empty()
+                    || instance.is_some_and(|i| rule.instance_states.iter().all(|s| i.contains(s))))
         };
         let mut rules = std::borrow::Cow::Borrowed(&n.rules);
         let mut inline_errors = Vec::new();
@@ -1063,6 +1073,7 @@ impl Ui {
                         query: Default::default(),
                         condition: None,
                         structure: None,
+                        instance_states: Vec::new(),
                         props: Vec::new(),
                         declarations,
                         ..rule.clone()
@@ -1501,14 +1512,33 @@ impl Ui {
         // beyond it is read through it.
         for &(which, at) in &n.pseudo {
             let inherited = r.cascade.computed.clone();
+            let instanced = super::stylesheet::INSTANCED.contains(&which);
+            let pseudo_path = format!("{path}/::{which}");
+            if instanced {
+                // One cascade for each set of states its instances hold.
+                for states in self.instance_states_of(crate::id::key_of_path(path)) {
+                    let p = self.resolve(
+                        b,
+                        &b.doc.nodes[at],
+                        &pseudo_path,
+                        &mut Built::default(),
+                        &inherited,
+                        structure,
+                        None,
+                        Some(&states),
+                    );
+                    r.instances.push((states, Arc::new(p)));
+                }
+            }
             let p = self.resolve(
                 b,
                 &b.doc.nodes[at],
-                &format!("{path}/::{which}"),
+                &pseudo_path,
                 &mut Built::default(),
                 &inherited,
                 structure,
                 None,
+                instanced.then(BTreeSet::new).as_ref(),
             );
             let c = &mut r.cascade;
             c.inherited_reads.extend(

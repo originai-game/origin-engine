@@ -230,6 +230,7 @@ pub fn part_rules_from(
             query: rule.query,
             condition: None,
             structure: Some(std::sync::Arc::new(selector)),
+            instance_states: Vec::new(),
             props: Vec::new(),
             declarations,
             line: syntax::location(css, rule.at).0,
@@ -713,6 +714,7 @@ pub fn apply(
                 query: rule.query.clone(),
                 condition: None,
                 structure: Some(parsed.clone()),
+                instance_states: Vec::new(),
                 props: Vec::new(),
                 declarations,
                 line: syntax::location(&doc.text, rule.at).0,
@@ -780,6 +782,7 @@ pub fn apply(
                     query: rule.query.clone(),
                     condition: None,
                     structure: Some(parsed.clone()),
+                    instance_states: Vec::new(),
                     props: Vec::new(),
                     declarations,
                     line: syntax::location(&doc.text, rule.at).0,
@@ -824,6 +827,7 @@ pub fn apply(
                         query: rule.query.clone(),
                         condition,
                         structure: host_structure.clone(),
+                        instance_states: Vec::new(),
                         props: Vec::new(),
                         declarations: declarations.clone(),
                         line: syntax::location(&doc.text, rule.at).0,
@@ -935,8 +939,16 @@ pub fn apply(
                 _ => None,
             };
             // The pseudo-element's own states are read on its node: without
-            // one the rule has nothing to match.
+            // one the rule has nothing to match. One with an instance per
+            // fragment matches them on each instance ([`INSTANCED`]).
+            let instanced = rule.pseudo.is_some_and(|p| INSTANCED.contains(&p));
+            let instance = if instanced {
+                rule.pseudo_states.clone()
+            } else {
+                Vec::new()
+            };
             let condition = match target {
+                Some(_) if instanced => condition,
                 Some(node) if stateful => {
                     let own = rule.pseudo_states.iter().fold(
                         condition.unwrap_or(Expr::Lit(true.into())),
@@ -975,6 +987,7 @@ pub fn apply(
                     query: rule.query.clone(),
                     condition: condition.clone(),
                     structure: structure.clone(),
+                    instance_states: instance.clone(),
                     props,
                     declarations: declarations.clone(),
                     line,
@@ -2643,6 +2656,12 @@ const BOXES: [(&str, &str); 18] = [
     ("::scroll-button(right)", "scroll-button-right"),
     ("::scroll-button(inline-end)", "scroll-button-right"),
 ];
+
+/// The box pseudo-elements an element has one instance of per fragment
+/// (CSS Multicol 2 §4.8: a `::column::scroll-marker` per column), each
+/// with states of its own: their rules match those states per instance
+/// (`StyleRule::instance_states`), not on one node.
+pub(crate) const INSTANCED: [&str; 1] = ["column-scroll-marker"];
 
 /// `::scroll-button(*)`, which selects all four of a container's buttons.
 const ANY_BUTTON: &str = "::scroll-button(*)";

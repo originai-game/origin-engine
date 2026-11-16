@@ -69,6 +69,19 @@ impl RetainedHost {
                 graph.interaction_changed(node, state);
             }
         }
+        // An instanced pseudo-element's instance: its element resolves its
+        // instances again (`Ui::resolve`'s instance cascades read the
+        // states; no binding does).
+        if let Some((owner, states)) = ui.docs.state_mut().instances.get_mut(&pseudo) {
+            let changed = if enabled {
+                states.insert(state)
+            } else {
+                states.remove(&state)
+            };
+            if changed && let Some(node) = self.by_key.get(owner) {
+                self.dirty.insert(node.clone());
+            }
+        }
         Ok(())
     }
 
