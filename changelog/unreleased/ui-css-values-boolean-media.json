@@ -1,0 +1,6 @@
+{
+  "simulation": "unchanged",
+  "fixed": [
+    {"member":"ui","summary":"Boolean media features follow Media Queries 4 §2.4.4: a feature matches unless its value is 0, `none` or a value it names false. `@media (prefers-color-scheme)` now matches in both schemes, where it used to match in neither. `@media (hover)` and `(any-hover)` no longer match on a coarse pointer, whose `hover` is `none`."}
+  ]
+}

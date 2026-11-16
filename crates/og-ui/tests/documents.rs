@@ -240,6 +240,105 @@ div { width: 10px; height: 10px; }
     );
 }
 
+/// Each preference and display feature answers the theme or the surface,
+/// each value from its own setting, and its boolean form follows Media
+/// Queries 4 §2.4.4 (true unless the value is 0, `none` or one it names
+/// false). The host reports no forced or inverted colours, no data saving,
+/// scripts, a surface that updates every frame and fills the display
+/// area, so those answer one value only.
+#[test]
+fn preference_and_display_media_features_follow_the_theme_and_surface() {
+    use crate::support::Doc;
+    // Each query widens its own row to 20px.
+    let queries = [
+        ("prefers-color-scheme: dark", [false, true]),
+        ("prefers-color-scheme: light", [true, false]),
+        ("prefers-color-scheme", [true, true]),
+        ("prefers-contrast: more", [false, true]),
+        ("prefers-contrast: no-preference", [true, false]),
+        ("prefers-contrast: less", [false, false]),
+        ("prefers-contrast", [false, true]),
+        ("prefers-reduced-transparency: reduce", [false, true]),
+        ("prefers-reduced-transparency", [false, true]),
+        ("resolution: 2dppx", [false, true]),
+        ("min-resolution: 192dpi", [false, true]),
+        ("resolution >= 75dpcm", [false, true]),
+        ("resolution: 1x", [true, false]),
+        ("color-gamut: srgb", [true, true]),
+        ("color-gamut: p3", [false, true]),
+        ("color-gamut: rec2020", [false, false]),
+        ("dynamic-range: high", [false, true]),
+        ("dynamic-range: standard", [true, true]),
+        ("dynamic-range", [true, true]),
+        ("hover: hover", [true, false]),
+        ("any-hover: none", [false, true]),
+        ("hover", [true, false]),
+        ("pointer: fine", [true, false]),
+        ("any-pointer: coarse", [false, true]),
+        ("pointer", [true, true]),
+        ("inverted-colors: none", [true, true]),
+        ("inverted-colors", [false, false]),
+        ("scripting: enabled", [true, true]),
+        ("scripting: initial-only", [false, false]),
+        ("scripting", [true, true]),
+        ("update: fast", [true, true]),
+        ("update: slow", [false, false]),
+        ("update", [true, true]),
+        ("display-mode: fullscreen", [true, true]),
+        ("display-mode: browser", [false, false]),
+        ("prefers-reduced-data: no-preference", [true, true]),
+        ("prefers-reduced-data: reduce", [false, false]),
+        ("prefers-reduced-data", [false, false]),
+    ];
+    let rows: String = (0..queries.len())
+        .map(|i| format!("<div id=\"Q{i}\"></div>"))
+        .collect();
+    let rules: String = queries
+        .iter()
+        .enumerate()
+        .map(|(i, (q, _))| format!("@media ({q}) {{ #Q{i} {{ width: 20px; }} }}\n"))
+        .collect();
+    let source = format!(
+        "<meta name=\"component\" content=\"t\">\n<column>{rows}</column>\n<style>\ndiv {{ width: 10px; height: 1px; }}\n{rules}</style>"
+    );
+    let mut doc = Doc::new(&source, &[]);
+    for (k, [scheme, contrast, transparency, dpr, wide, high, coarse]) in [
+        [0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0],
+        [1.0, 1.0, 1.0, 2.0, 1.0, 1.0, 1.0],
+    ]
+    .into_iter()
+    .enumerate()
+    {
+        let mut theme = *doc.ui.theme();
+        theme.scheme = if scheme > 0.0 {
+            Scheme::Dark
+        } else {
+            Scheme::Light
+        };
+        theme.contrast = if contrast > 0.0 {
+            Contrast::High
+        } else {
+            Contrast::Standard
+        };
+        theme.reduced_transparency = transparency > 0.0;
+        theme.density = DensityMode::Auto;
+        doc.ui.set_theme(theme);
+        doc.viewport.dpr = dpr;
+        doc.viewport.wide_gamut = wide > 0.0;
+        doc.viewport.high_range = high > 0.0;
+        doc.viewport.coarse_pointer = coarse > 0.0;
+        doc.step(InputFrame::default());
+        for (i, (query, expected)) in queries.iter().enumerate() {
+            let width = doc.get(&format!("Q{i}")).width;
+            assert_eq!(
+                width,
+                if expected[k] { 20.0 } else { 10.0 },
+                "({query}) in setting {k}"
+            );
+        }
+    }
+}
+
 #[test]
 fn core_screen_readouts_preserve_units_and_unbroken_ranks() {
     struct Messages(std::collections::BTreeMap<String, String>, Value);
