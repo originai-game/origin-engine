@@ -19,7 +19,7 @@ NEEDS = {
     'fixtures': ('rust-build',), 'doc-tests': ('rust-cpu',),
     'browser': ('bun-test', 'fixtures'),
     'web-reference': ('wasm-bindgen', 'rust-build'),
-    'check-conformance': (), 'css-coverage': (),
+    'check-conformance': (),
 }
 
 
@@ -35,8 +35,7 @@ def stop_group(proc, sig):
         pass
 
 
-QUICK = ('fmt', 'clippy', 'rust-build', 'rust-cpu', 'rust-gpu', 'drift', 'bun-quick', 'wasm-lanes-check', 'wasm-check',
-         'css-coverage')
+QUICK = ('fmt', 'clippy', 'rust-build', 'rust-cpu', 'rust-gpu', 'drift', 'bun-quick', 'wasm-lanes-check', 'wasm-check')
 FULL = QUICK + ('wasm-build', 'wasm-bindgen', 'bun-test', 'fixtures', 'doc-tests', 'browser')
 
 

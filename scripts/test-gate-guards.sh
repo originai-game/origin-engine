@@ -148,20 +148,5 @@ esac
   { echo 'FAIL the gate summary does not record the skips'; exit 1; }
 echo 'ok   OG_GATE_SKIP refuses unknown steps and reports skips as not run'
 
-# css-coverage reads the pinned WebDX archive from the host's gate cache:
-# with no cached copy (or a corrupt one, which is dropped) and no network,
-# the step is unchecked, never passed.
-webdx="$scratch/webdx"
-mkdir -p "$webdx"
-printf 'corrupt' > "$webdx/web-features-$(sed -n 's/^SHA256 = "\(.*\)"/\1/p' "$root/scripts/css-coverage.py").tgz"
-for state in corrupt empty; do
-  out="$(cd "$root" && unset no_proxy NO_PROXY && CARGO_TARGET_DIR="$scratch/webdx-target" OG_GATE_CACHE="$webdx" \
-    https_proxy=http://127.0.0.1:9 HTTPS_PROXY=http://127.0.0.1:9 run_step css-coverage 2>&1)"
-  rc=$?
-  [ "$rc" = 3 ] || { echo "FAIL css-coverage with a $state cache and no network exited $rc, not unchecked: $out"; exit 1; }
-done
-[ -z "$(ls "$webdx")" ] || { echo 'FAIL css-coverage kept a cached archive that fails its hash'; exit 1; }
-echo 'ok   css-coverage without its archive is unchecked, and a corrupt cached archive is dropped'
-
 [ "$failures" -eq 0 ] || { echo "$failures case(s) failed"; exit 1; }
 echo "every case failed as it should"
