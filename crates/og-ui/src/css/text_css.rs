@@ -65,6 +65,7 @@ pub(crate) const INHERITED: &[&str] = &[
     "text-underline-position",
     "text-underline-offset",
     "text-decoration-skip-ink",
+    "text-decoration-skip-spaces",
     "-webkit-text-stroke-width",
     "-webkit-text-stroke-color",
     "-webkit-text-fill-color",
@@ -798,6 +799,7 @@ fn check(name: &str, v: &str) -> Result<(), String> {
             return words_in(name, v, &["auto", "from-font", "under", "left", "right"]);
         }
         "text-decoration-skip-ink" => matches!(v, "auto" | "none" | "all"),
+        "text-decoration-skip-spaces" => SkipSpaces::parse(v).is_some(),
         "text-emphasis-style" => v == "none" || Emphasis::parse(v, "over", None).is_some(),
         "text-emphasis-position" => {
             let w: Vec<&str> = v.split_whitespace().collect();
@@ -957,6 +959,63 @@ pub struct Decoration {
     pub under: bool,
     /// `text-decoration-skip-ink` of the box the lines come from.
     pub skip_ink: SkipInk,
+    /// The text's own `text-decoration-skip-spaces`.
+    pub skip_spaces: SkipSpaces,
+}
+
+/// `text-decoration-skip-spaces` (CSS Text Decoration 4 §2.10.3): which
+/// spacers every decoration line skips, with the letter and word
+/// spacing next to them.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct SkipSpaces {
+    /// Spacers at the start of a line.
+    pub start: bool,
+    /// Spacers at the end of a line.
+    pub end: bool,
+    /// Every spacer and word separator.
+    pub all: bool,
+}
+
+impl Default for SkipSpaces {
+    /// The initial `start end`.
+    fn default() -> SkipSpaces {
+        SkipSpaces {
+            start: true,
+            end: true,
+            all: false,
+        }
+    }
+}
+
+impl SkipSpaces {
+    /// `none | all | [ start || end ]`.
+    pub fn parse(v: &str) -> Option<SkipSpaces> {
+        let none = SkipSpaces {
+            start: false,
+            end: false,
+            all: false,
+        };
+        match v.trim() {
+            "none" => return Some(none),
+            "all" => {
+                return Some(SkipSpaces {
+                    start: true,
+                    end: true,
+                    all: true,
+                });
+            }
+            _ => {}
+        }
+        let mut out = none;
+        for w in v.split_whitespace() {
+            match w {
+                "start" if !out.start => out.start = true,
+                "end" if !out.end => out.end = true,
+                _ => return None,
+            }
+        }
+        (out.start || out.end).then_some(out)
+    }
 }
 
 /// `text-decoration-skip-ink` (CSS Text Decoration 4 §2.10.4): whether
@@ -1493,6 +1552,9 @@ pub(crate) fn inherit(inp: Inputs<'_>) -> TextCss {
             _ => SkipInk::Auto,
         };
     }
+    t.decoration.skip_spaces = get("text-decoration-skip-spaces")
+        .and_then(|v| SkipSpaces::parse(&v))
+        .unwrap_or_default();
     t.decoration.offset = DecorationLength::parse(get("text-underline-offset").as_deref());
     t.decoration.under = get("text-underline-position").is_some_and(|v| v.contains("under"));
     if let Some(w) = num(get("-webkit-text-stroke-width")).filter(|w| *w > 0.0) {

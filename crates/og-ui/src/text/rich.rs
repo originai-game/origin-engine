@@ -927,7 +927,9 @@ impl Ui {
             self.vertical_rich_commands(i, rc, v, cmds);
             return;
         }
-        for piece in self.rich_pieces(i) {
+        let pieces = self.rich_pieces(i);
+        let edges = line_edges(&pieces);
+        for (piece, (line_start, line_end)) in pieces.into_iter().zip(edges) {
             let (k, text, r, baseline) = (piece.span, piece.text, piece.rect, piece.baseline);
             let s = &rc.spans[k];
             let size = s.step.size * n.placed.scale;
@@ -1079,18 +1081,18 @@ impl Ui {
             let mixed = font.metrics.is_mixed();
             let m = &font.metrics;
             let tracking = span_tracking(s, &text);
-            // The glyphs an underline or overline breaks around (CSS Text
-            // Decoration 4 §2.10.4), as the piece draws them.
-            let inked = s
-                .decoration
-                .as_ref()
-                .filter(|d| d.skip_ink != SkipInk::None && (d.underline || d.overline))
-                .map(|_| {
-                    piece
-                        .glyphs
-                        .clone()
-                        .unwrap_or_else(|| m.visual(&text, og_i18n::Direction::Ltr, tracking))
-                });
+            // The glyphs its decoration lines break around (CSS Text
+            // Decoration 4 §2.10.3, §2.10.4), as the piece draws them.
+            let ruled = link_key.is_some()
+                || s.underline
+                || s.strike
+                || s.decoration.as_ref().is_some_and(|d| d.overline);
+            let line_glyphs = ruled.then(|| {
+                piece
+                    .glyphs
+                    .clone()
+                    .unwrap_or_else(|| m.visual(&text, og_i18n::Direction::Ltr, tracking))
+            });
             // Bold: thickened in the shader (as far as the field reaches)
             // and drawn twice, the second copy one device pixel to the
             // right, so small text whose field is thin is bold too: a
@@ -1286,14 +1288,21 @@ impl Ui {
             let d = s.decoration.clone().unwrap_or_default();
             let (th, off) = d.placed(m, size, n.placed.scale, dpr);
             let ink = d.color.unwrap_or(color).fade(alpha).linear();
-            // An underline and an overline break where they would cross a
-            // glyph's ink and a thickness to either side; a line-through
-            // never does.
-            let mut rule = |y: f32, skips: bool| {
+            // Every line skips the spacers `text-decoration-skip-spaces`
+            // names; an underline and an overline also break where they
+            // would cross a glyph's ink and a thickness to either side.
+            let spaces = line_glyphs.as_ref().map_or_else(Vec::new, |g| {
+                space_gaps(g, size, tracking, d.skip_spaces, line_start, line_end)
+            });
+            let mut rule = |y: f32, skips_ink: bool| {
                 let from = cmds.len();
                 decoration_line(r.x, r.width, y, th, d.style, ink, clip, dpr, cmds);
-                if let Some(glyphs) = inked.as_ref().filter(|_| skips) {
-                    let gaps = og_text::ink::ink_gaps(
+                let mut gaps = spaces.clone();
+                if let Some(glyphs) = line_glyphs
+                    .as_ref()
+                    .filter(|_| skips_ink && d.skip_ink != SkipInk::None)
+                {
+                    gaps.extend(og_text::ink::ink_gaps(
                         font,
                         glyphs,
                         size,
@@ -1301,10 +1310,11 @@ impl Ui {
                         y - baseline + d.extent(th),
                         th.max(1.0 / dpr),
                         d.skip_ink == SkipInk::All,
-                    );
-                    let gaps: Vec<_> = gaps.iter().map(|(a, b)| (r.x + a, r.x + b)).collect();
-                    cut_lines(cmds, from, &gaps);
+                    ));
                 }
+                gaps.sort_by(|a, b| a.0.total_cmp(&b.0));
+                let gaps: Vec<_> = gaps.iter().map(|(a, b)| (r.x + a, r.x + b)).collect();
+                cut_lines(cmds, from, &gaps);
             };
             if link_key.is_some() || s.underline {
                 rule(baseline + off, true);
@@ -2005,6 +2015,68 @@ pub(crate) fn vertical_decoration_line(
             *rect = Rect::new(rect.y, rect.x, rect.height, rect.width);
         }
     }
+}
+
+/// Whether each of a horizontal line's `pieces` (in line order) starts
+/// its line and ends it: only spacers before it on its line, and after it.
+fn line_edges(pieces: &[DrawnPiece]) -> Vec<(bool, bool)> {
+    let blank = |p: &DrawnPiece| p.text.chars().all(og_i18n::text::spacer);
+    let mut out = vec![(false, false); pieces.len()];
+    let mut from = 0;
+    for line in pieces.chunk_by(|a, b| a.rect.y == b.rect.y) {
+        let mut start = true;
+        for (k, p) in line.iter().enumerate() {
+            out[from + k].0 = start;
+            start &= blank(p);
+        }
+        let mut end = true;
+        for (k, p) in line.iter().enumerate().rev() {
+            out[from + k].1 = end;
+            end &= blank(p);
+        }
+        from += line.len();
+    }
+    out
+}
+
+/// The x ranges (px from a piece's start) of the spacers its decoration
+/// lines skip (CSS Text Decoration 4 §2.10.3): those `skip` names at
+/// the line's start or end (when the piece is there) or all of them and
+/// every word separator, each with the letter spacing (`tracking` em
+/// after each glyph) before it.
+fn space_gaps(
+    glyphs: &[crate::text::VisualGlyph],
+    size: f32,
+    tracking: f32,
+    skip: crate::css::text_css::SkipSpaces,
+    line_start: bool,
+    line_end: bool,
+) -> Vec<(f32, f32)> {
+    use og_i18n::text::{spacer, word_separator};
+    let first = glyphs.iter().position(|g| !spacer(g.ch));
+    let last = glyphs.iter().rposition(|g| !spacer(g.ch));
+    let mut out: Vec<(f32, f32)> = Vec::new();
+    let mut pen = 0.0f32;
+    for (k, g) in glyphs.iter().enumerate() {
+        let x0 = pen;
+        pen += g.advance * size;
+        let leading = line_start && skip.start && first.is_none_or(|f| k < f);
+        let trailing = line_end && skip.end && last.is_none_or(|l| k > l);
+        let skipped = (spacer(g.ch) && (skip.all || leading || trailing))
+            || (skip.all && word_separator(g.ch));
+        if !skipped {
+            continue;
+        }
+        match out.last_mut() {
+            Some(gap) if gap.1 == x0 => gap.1 = pen,
+            _ => {
+                // The letter spacing after the glyph before it.
+                let spacing = if k > 0 { tracking * size } else { 0.0 };
+                out.push((x0 - spacing, pen));
+            }
+        }
+    }
+    out
 }
 
 /// Cuts the horizontal gaps `gaps` (sorted x ranges) out of the quads

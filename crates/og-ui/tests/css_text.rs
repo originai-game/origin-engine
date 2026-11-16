@@ -894,6 +894,47 @@ fn underlines_skip_the_ink_of_glyphs_they_cross() {
     );
 }
 
+/// CSS Text Decoration 4 §2.10.3: `text-decoration-skip-spaces` (initial
+/// `start end`) leaves the spacers (Zs but U+202F) at a line's start and
+/// end undecorated; `all` skips every spacer and word separator, on
+/// every line (a line-through too), with the letter spacing next to it;
+/// `none` decorates them all.
+///
+/// Noto Sans's advances, from HarfBuzz rather than the engine: a space
+/// 0.26 em, a 0.561, b 0.615, c 0.48, d 0.615, so at 40px "␣␣ab␣␣cd␣␣"
+/// puts a at 20.8, b's end at 67.84, c at 88.64 and d's end at 132.44.
+/// With 4px of letter spacing after each glyph they are 28.8, 83.84,
+/// 112.64 and 164.44, and the gap after b and after d starts at their
+/// letter spacing (79.84, 160.44).
+///
+/// Ways it could fail: the initial value drawing under the end spaces,
+/// `all` leaving the inner spaces or the line-through, the letter
+/// spacing beside a space left decorated, or `none` still skipping.
+#[test]
+fn decorations_skip_the_spaces_skip_spaces_names() {
+    let d = doc(
+        r#"<p id="P">  ab  cd  </p><p id="A">  ab  cd  </p><p id="N">  ab  cd  </p><p id="L">  ab  cd  </p>"#,
+        "p { font-size: 40px; white-space: pre; text-decoration: underline; margin-bottom: 20px; }
+#A { text-decoration: underline line-through; text-decoration-skip-spaces: all; }
+#N { text-decoration-skip-spaces: none; } #L { letter-spacing: 4px; text-decoration-skip-spaces: all; }",
+    );
+    let p = rule_spans(&d, "P");
+    assert!(spans_near(&p, &[(20.8, 132.44)]), "{p:?}");
+    let words = [(20.8, 67.84), (88.64, 132.44)];
+    let a = rule_spans(&d, "A");
+    assert!(
+        a.len() == 4 && spans_near(&[a[0], a[2]], &words) && spans_near(&[a[1], a[3]], &words),
+        "both lines: {a:?}"
+    );
+    let n = rule_spans(&d, "N");
+    assert!(
+        n.len() == 1 && n[0].0 <= 0.3 && (n[0].1 - lines(&d, "N")[0].width).abs() <= 1.0,
+        "{n:?}"
+    );
+    let l = rule_spans(&d, "L");
+    assert!(spans_near(&l, &[(28.8, 79.84), (112.64, 160.44)]), "{l:?}");
+}
+
 fn near(a: [f32; 4], b: Srgba) -> bool {
     crate::support::near(a, b)
 }

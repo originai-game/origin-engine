@@ -214,6 +214,23 @@ pub fn cjk_script(c: char) -> Option<bool> {
     }
 }
 
+/// CSS Text Decoration 4 §2.10.3's spacer: a character of General
+/// Category Zs other than U+202F NARROW NO-BREAK SPACE.
+pub fn spacer(c: char) -> bool {
+    use icu_properties::CodePointMapData;
+    use icu_properties::props::GeneralCategory;
+    c != '\u{202f}'
+        && CodePointMapData::<GeneralCategory>::new().get(c) == GeneralCategory::SpaceSeparator
+}
+
+/// CSS Text 3 §4.1.1's word separators.
+pub fn word_separator(c: char) -> bool {
+    matches!(
+        c,
+        ' ' | '\u{a0}' | '\u{1361}' | '\u{10100}' | '\u{10101}' | '\u{1039f}' | '\u{1091f}'
+    )
+}
+
 /// CSS Pseudo-Elements 4 §2.2's `::first-letter` of a text that starts a
 /// line: its character range `[start, end)`. It is the first typographic
 /// letter unit, a grapheme cluster that is a letter, number or symbol,

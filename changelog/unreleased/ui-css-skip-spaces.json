@@ -1,0 +1,8 @@
+{
+  "added": [
+    {
+      "member": "CSS text-decoration-skip-spaces",
+      "summary": "Decoration lines skip spaces as CSS Text Decoration 4 §2.10.3 asks: by default (start end) a line's leading and trailing spaces are not underlined or struck through, all skips every space and word separator with the letter spacing beside it, none decorates them all. Before, an underline ran under a preserved line's end spaces."
+    }
+  ]
+}
