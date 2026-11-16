@@ -268,12 +268,14 @@ impl RetainedHost {
         element.bindings.push(id);
         let value = self.bindings.value(id).map_err(Clone::clone)?.clone();
         match &input {
-            Input::Expression(e) => element.cached.expressions.push((e.clone(), value)),
+            Input::Expression(e) => Arc::make_mut(&mut element.cached)
+                .expressions
+                .push((e.clone(), value)),
             Input::Property(p, ty) => {
-                element
-                    .cached
+                let value = coerce(ui, *ty, &value);
+                Arc::make_mut(&mut element.cached)
                     .properties
-                    .push((p.clone(), *ty, coerce(ui, *ty, &value)))
+                    .push((p.clone(), *ty, value))
             }
             Input::Structure => unreachable!("structural bindings are owned by blocks"),
         }

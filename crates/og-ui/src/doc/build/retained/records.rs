@@ -9,7 +9,7 @@ impl RetainedHost {
         }
         order
             .into_iter()
-            .map(|identity| &self.elements[identity].record)
+            .map(|identity| &*self.elements[identity].record)
     }
 
     /// Element `identity` and what is built in it: its element images,
@@ -23,7 +23,7 @@ impl RetainedHost {
         for image in &element.images {
             self.collect_element(image, out);
         }
-        for child in &element.children {
+        for child in element.children.iter() {
             self.collect_rendered(child, out);
         }
     }

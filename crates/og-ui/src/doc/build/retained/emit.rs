@@ -274,7 +274,7 @@ impl RetainedHost {
         element.parent_slot = slot.map_or(parent_slot, |i| ui.tree.nodes()[i].parent);
         element.owned = owned.slots;
         element.keys = keys;
-        element.record = record;
+        element.record = Arc::new(record);
         element.memories = owned.memories;
         element.volatile = volatile;
         element.materialization = materialization;
@@ -588,8 +588,8 @@ impl RetainedHost {
                 for image in self.elements[identity].images.clone() {
                     self.release(ui, &Child::Element(image));
                 }
-                for child in self.elements[identity].children.clone() {
-                    self.release(ui, &child);
+                for child in self.elements[identity].children.clone().iter() {
+                    self.release(ui, child);
                 }
             }
             Child::Branch(identity) => {

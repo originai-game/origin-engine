@@ -113,7 +113,24 @@ pub const MEDIA_FEATURES: &[(&str, &str, &str)] = &[(
 
 /// The prop named `name`.
 pub fn prop(name: &str) -> Option<(usize, &'static PropSpec)> {
-    PROPS.iter().enumerate().find(|(_, p)| p.name == name)
+    let (first, _) = specs_named(name)?;
+    Some((first, &PROPS[first]))
+}
+
+/// The places in [`PROPS`] of the props named `name`: the first and the
+/// last (the same but for a name two kinds declare, such as `role`).
+pub fn specs_named(name: &str) -> Option<(usize, usize)> {
+    static BY_NAME: std::sync::LazyLock<std::collections::HashMap<&'static str, (usize, usize)>> =
+        std::sync::LazyLock::new(|| {
+            let mut by = std::collections::HashMap::with_capacity(PROPS.len());
+            for (i, p) in PROPS.iter().enumerate() {
+                by.entry(p.name)
+                    .and_modify(|e: &mut (usize, usize)| e.1 = i)
+                    .or_insert((i, i));
+            }
+            by
+        });
+    BY_NAME.get(name).copied()
 }
 
 /// The schema as JSON (`dump_ui`'s `schema`, og.ui.documentSchema).

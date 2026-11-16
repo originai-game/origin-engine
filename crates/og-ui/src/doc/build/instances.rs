@@ -54,7 +54,8 @@ pub struct ElementInstance {
     /// its path has between its parent's and its id, for an element a
     /// snippet renders.
     pub scope: Option<String>,
-    pub cached: CachedInputs,
+    /// Shared: an emit's copy of the element reads them without a copy.
+    pub cached: Arc<CachedInputs>,
     /// Its resolution, shared: a build reads it without copying it.
     pub resolved: Option<Arc<ResolvedNode>>,
     /// Its last cascades ([`super::cascade::Kept`]), from its second
@@ -62,7 +63,8 @@ pub struct ElementInstance {
     pub(crate) cascades: Option<Arc<super::cascade::Kept>>,
     pub style_dirty: bool,
     pub theme_epoch: u64,
-    pub children: Vec<Child>,
+    /// Shared with an emit's copy of the element.
+    pub children: Arc<Vec<Child>>,
     /// For a control's host: the root of the control document
     /// instantiated under it, which holds the host's own children as its
     /// content.
@@ -82,8 +84,9 @@ pub struct ElementInstance {
     pub owned: Vec<usize>,
     /// The render keys of those nodes and of its links, for input routing.
     pub keys: Vec<u64>,
-    /// Its probe record, render fields and art slots.
-    pub record: super::host::DocRecord,
+    /// Its probe record, render fields and art slots; shared with an
+    /// emit's copy of the element.
+    pub record: Arc<super::host::DocRecord>,
     pub memories: Vec<u64>,
     /// Built again every frame: it plays Rive, hosts a code slot, answers
     /// named actions, or its widget memories are in motion.
@@ -426,7 +429,7 @@ impl RetainedHost {
 impl RetainedHost {
     pub fn record_mut(&mut self, key: u64) -> Option<&mut super::host::DocRecord> {
         let identity = self.by_key.get(&key)?;
-        Some(&mut self.elements.get_mut(identity)?.record)
+        Some(Arc::make_mut(&mut self.elements.get_mut(identity)?.record))
     }
 }
 

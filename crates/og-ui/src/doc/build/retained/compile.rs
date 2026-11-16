@@ -132,12 +132,12 @@ impl RetainedHost {
             path,
             id: id.rsplit('/').next().unwrap().to_owned(),
             scope,
-            cached: CachedInputs::default(),
+            cached: Default::default(),
             resolved: None,
             cascades: Default::default(),
             style_dirty: true,
             theme_epoch: self.theme_epoch,
-            children: Vec::new(),
+            children: Default::default(),
             control: None,
             images: Vec::new(),
             image: parent.map_or(self.imaging, |parent| self.elements[parent].image),
@@ -328,7 +328,7 @@ impl RetainedHost {
                 env,
             )?);
         }
-        self.elements.get_mut(&identity).unwrap().children = children;
+        self.elements.get_mut(&identity).unwrap().children = Arc::new(children);
         self.dirty.insert(identity.clone());
         if self.elements[&identity].volatile {
             self.volatile.insert(identity.clone());

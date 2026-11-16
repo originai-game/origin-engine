@@ -522,7 +522,7 @@ impl RetainedHost {
                     self.images.remove(&image);
                     self.remove_child(ui, Child::Element(image));
                 }
-                for child in element.children {
+                for child in element.children.iter().cloned() {
                     self.remove_child(ui, child);
                 }
                 for binding in element.bindings {

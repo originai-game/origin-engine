@@ -97,6 +97,8 @@ pub struct Resolved {
     part_host: Option<Arc<PartHost>>,
     /// Its text style for a part's type steps ([`Resolved::kept_part_text`]).
     text_kept: TextKept,
+    /// Its last box decorations ([`Ui::box_decor`]).
+    pub(super) decor_kept: DecorKept,
     /// What its CSS colours resolve against: `currentColor` (its `color`,
     /// declared or inherited) and whether its used colour scheme is dark
     /// ([`Ui::resolve_element_colors`]).
@@ -114,6 +116,35 @@ pub(crate) struct TextKept(
 );
 
 impl Clone for TextKept {
+    fn clone(&self) -> Self {
+        Self::default()
+    }
+}
+
+/// An element's box decorations as [`Ui::box_decor`] last answered them
+/// from its values: the box it took and the frame it was asked in (its
+/// kind, document, theme, style epoch and pixel ratio, which every asset
+/// and material it reads follows), and what it gave. An element built
+/// again with the same values asks again; a copy starts empty.
+#[derive(Default)]
+pub(super) struct DecorKept(std::sync::Mutex<Option<(DecorKey, DecorAnswer)>>);
+
+pub(super) type DecorKey = (Element, Option<Kind>, usize, usize, u64, u32);
+pub(super) type DecorAnswer = (Element, Option<crate::decor::BoxDecor>, Vec<String>);
+
+impl DecorKept {
+    pub(super) fn get(&self, key: &DecorKey) -> Option<DecorAnswer> {
+        let kept = self.0.lock().expect("decor memo");
+        kept.as_ref()
+            .filter(|(k, _)| k == key)
+            .map(|(_, a)| a.clone())
+    }
+    pub(super) fn keep(&self, key: DecorKey, answer: DecorAnswer) {
+        *self.0.lock().expect("decor memo") = Some((key, answer));
+    }
+}
+
+impl Clone for DecorKept {
     fn clone(&self) -> Self {
         Self::default()
     }
@@ -224,12 +255,12 @@ impl Resolved {
     }
 
     pub fn get(&self, name: &str) -> Option<&V> {
-        // The catalogue once, not a lazy read for each value.
-        let props = PROPS.as_slice();
+        // The name's place in the catalogue once, then places compared.
+        let (first, last) = schema::specs_named(name)?;
         self.vals
             .iter()
             .rev()
-            .find(|(s, _)| props[*s].name == name)
+            .find(|(s, _)| *s == first || *s == last)
             .map(|(_, v)| v)
     }
     pub fn has(&self, name: &str) -> bool {

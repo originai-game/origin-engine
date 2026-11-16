@@ -306,8 +306,7 @@ impl RetainedHost {
                         {
                             facts_changed.insert(node.clone());
                         }
-                        element
-                            .cached
+                        Arc::make_mut(&mut element.cached)
                             .expressions
                             .iter_mut()
                             .find(|(old, _)| old == e)
@@ -316,8 +315,7 @@ impl RetainedHost {
                     }
                     Input::Property(p, ty) => {
                         facts_changed.insert(node.clone());
-                        element
-                            .cached
+                        Arc::make_mut(&mut element.cached)
                             .properties
                             .iter_mut()
                             .find(|(old, t, _)| old == p && t == ty)
@@ -803,7 +801,7 @@ impl RetainedHost {
         }
         for id in &e.bindings {
             if let Some((_, Input::Property(property, Ty::Paint))) = self.inputs.get(id) {
-                e.cached
+                Arc::make_mut(&mut e.cached)
                     .properties
                     .iter_mut()
                     .find(|(p, ty, _)| p == property && *ty == Ty::Paint)

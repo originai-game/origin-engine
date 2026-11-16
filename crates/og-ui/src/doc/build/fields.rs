@@ -131,6 +131,36 @@ impl Ui {
         kind: Option<Kind>,
         warn: &mut Vec<String>,
     ) -> Option<crate::decor::BoxDecor> {
+        // A pure function of these and the values: an element built again
+        // without a restyle (a hover, a row patched beside it) asks again.
+        let key = (
+            *el,
+            kind,
+            doc.map_or(0, |d| d as *const _ as usize),
+            self.theme() as *const _ as usize,
+            self.tree.invalidation.epoch,
+            self.env.viewport.dpr().to_bits(),
+        );
+        if let Some((out, decor, said)) = r.decor_kept.get(&key) {
+            *el = out;
+            warn.extend(said);
+            return decor;
+        }
+        let mut said = Vec::new();
+        let decor = self.box_decor_afresh(doc, r, el, kind, &mut said);
+        r.decor_kept.keep(key, (*el, decor.clone(), said.clone()));
+        warn.extend(said);
+        decor
+    }
+
+    fn box_decor_afresh(
+        &self,
+        doc: Option<&crate::doc::UiDocument>,
+        r: &Resolved,
+        el: &mut Element,
+        kind: Option<Kind>,
+        warn: &mut Vec<String>,
+    ) -> Option<crate::decor::BoxDecor> {
         use crate::decor::{BoxDecor, Line, LineStyle, Shadow};
         let theme = self.theme();
         let current = r.current(theme);
