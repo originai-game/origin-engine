@@ -227,6 +227,8 @@ proof("supports-at-rule supports-named-feature", "documents", "supports_charset_
       "at-rule() is true for @container and @custom-media and false for @charset and @page, also under @import supports(); named-feature() is true for gamut-mapping only (anchors do not follow transforms; single-axis scroll containers are not established), false for an unknown name; env() is true for the safe-area and HUD insets, not viewport segments.")
 proof("container-name-queries style-query-range-syntax", "documents", "container_style_and_scroll_state_queries_follow_their_container",
       "@container <name> with no condition applies under the named container and not without one; style() ranges compare a property with a literal, two properties, a two-sided range and a length against calc(0.125in), and a length against a number is false. if(style()) ranges are not covered.")
+proof("calc-size", "css_layout", "calc_size_scales_its_basis_size",
+      "width and height: max-content, min-content, fit-content, stretch and a block's auto width, an auto height in an auto-height parent, a percentage basis, a nested calc-size(), max-width after, content-box padding, and a flex row item's width, each the basis size through a calculation linear in size; non-linear calculations, size outside calc-size() and calc-size() in min-/max- bounds fail to cook. Not covered: flex-basis and bounds (refused), a flex item's cross axis (it aligns flex-start, CSS Flexbox 1 §8.3, not asserted), and animating to it (interpolate-size).")
 not_applicable("url-cross-origin url-integrity url-referrer-policy",
                "Request modifiers for a network fetch: a game's url() names a file of its own cooked package, "
                "which is never fetched across origins, so CORS, subresource integrity and referrers do not arise.")
@@ -366,7 +368,6 @@ MISSING = {
     # layout
     "scrollbar-gutter": "Gap: a box with overflow-y: auto or scroll and overflow-x left visible (which computes to auto) reserves no gutter, because a box that may scroll both ways draws its bars over its content.",
     "interpolate-size": "No intrinsic-size interpolation implementation or output proof.",
-    "calc-size": "No calc-size evaluation or animated output proof.",
     "table": "Table spans/captions have computed output tests, but border-spacing and border-collapse have no implementation/output proof.",
     "backdrop-filter": "Ordinary staged backdrop chains have fixtures; native glass rejects chains requiring intermediate clamps, drop-shadow and SVG url filters.",
     "background-clip-text": "background-clip: text clips to the element's own glyphs only; CSS also clips to its descendants' text, which needs the subtree's text grouped where og-ui draws it (ui/commands.rs).",
