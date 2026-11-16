@@ -377,6 +377,15 @@ impl Ui {
             }
             _ => None,
         };
+        // A field showing its placeholder keeps the placeholder's ink
+        // (`::placeholder`, else the style's), which the field's own
+        // colour does not reach (HTML's UA sheet gives ::placeholder its
+        // own colour).
+        let shows_placeholder = match &self.tree.nodes[i].widget {
+            crate::layout::Widget::Field(edit) => edit.placeholder,
+            crate::layout::Widget::TextArea { edit, .. } => edit.placeholder,
+            _ => false,
+        };
         if let crate::layout::Content::Text(text) = self.tree.content_mut(i) {
             let style = text_style.unwrap();
             text.step = style.step(text.step);
@@ -385,7 +394,9 @@ impl Ui {
                 .family
                 .as_deref()
                 .map_or(role, |names| self.env.fonts.family_list(names, role));
-            if let Some(ink) = r.color("color") {
+            if let Some(ink) = r.color("color")
+                && !shows_placeholder
+            {
                 text.color = ink;
             }
         }

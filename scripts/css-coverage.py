@@ -238,6 +238,8 @@ proof("smooth", "css_interact", "images_take_object_fit_position_and_inherited_i
       "image-rendering: smooth on an image under a pixelated parent emits a linearly sampled image paint, where the parent's value makes its sibling's nearest.")
 proof("video-dynamic-range", "css_interact", "video_dynamic_range_follows_the_surface",
       "(video-dynamic-range: standard) matches on standard and extended-range surfaces, (… high) only on one with Viewport::high_range, and a change of surface restyles on the next frame.")
+proof("placeholder", "css_interact", "placeholder_takes_its_pseudo_elements_color",
+      "An empty input's and an empty textarea's placeholder text draws in ::placeholder's color while the field sets its own color, which the typed value of a filled input draws in. ::placeholder takes color only; other properties are refused.")
 not_applicable("webxr-dom-overlays", "Styles the DOM overlay of a WebXR session; the engine renders its own UI in its world and has no WebXR DOM layer.")
 not_applicable("window-controls-overlay window-drag", "Installed web-app title-bar integration (the OS window's caption buttons and drag regions); a game's UI is drawn inside its own surface, and the host owns its window.")
 not_applicable("picture-in-picture", "Styles a video in the browser's floating picture-in-picture window, which is browser chrome outside the game's surface.")

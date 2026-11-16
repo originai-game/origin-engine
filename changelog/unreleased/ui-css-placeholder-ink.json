@@ -1,0 +1,6 @@
+{
+  "simulation": "unchanged",
+  "fixed": [
+    {"member":"ui","summary":"An empty field's placeholder keeps its `::placeholder` colour (else the style's placeholder ink) when the field sets its own `color`; the field's colour inked the placeholder before."}
+  ]
+}

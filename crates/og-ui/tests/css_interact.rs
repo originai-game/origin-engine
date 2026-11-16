@@ -710,3 +710,50 @@ fn video_dynamic_range_follows_the_surface() {
     d.step(InputFrame::default());
     assert_eq!(widths(&d), (20.0, 10.0), "back to standard");
 }
+
+/// `::placeholder { color }` inks an empty field's placeholder text and
+/// not its value, whatever colour the field itself sets (the placeholder
+/// takes its pseudo-element's colour, not the field's). Ways it could
+/// fail: the field's `color` repainting the placeholder (the bug this
+/// fixes), the typed value drawn in the placeholder's colour, or a text
+/// area treated otherwise.
+#[test]
+fn placeholder_takes_its_pseudo_elements_color() {
+    let text = r#"<meta name="component" content="t">
+<div id="Root">
+  <input id="Empty" placeholder="Name" />
+  <input id="Full" value="Ada" placeholder="Name" />
+  <textarea id="Area" placeholder="Notes"></textarea>
+</div>
+<style>
+input, textarea { width: 200px; color: #0000ff; }
+input::placeholder, textarea::placeholder { color: #ff0000; }
+</style>"#;
+    let d = crate::support::Doc::with_font(text, &[], test_font());
+    let ink = |id: &str| {
+        let e = d.get(id);
+        d.ui.frame()
+            .items
+            .iter()
+            .map(|i| match &i.cmd {
+                DrawCmd::StyledText { text, .. } => text.as_ref(),
+                cmd => cmd,
+            })
+            .filter_map(|cmd| match cmd {
+                DrawCmd::Text { color, bounds, .. }
+                    if bounds.y >= e.y - 1.0 && bounds.y < e.y + e.height =>
+                {
+                    Some(*color)
+                }
+                _ => None,
+            })
+            .collect::<Vec<_>>()
+    };
+    let (red, blue) = (
+        Srgba::rgb(255, 0, 0).linear(),
+        Srgba::rgb(0, 0, 255).linear(),
+    );
+    assert_eq!(ink("Empty"), [red], "the placeholder");
+    assert_eq!(ink("Full"), [blue], "the value");
+    assert_eq!(ink("Area"), [red], "a text area's placeholder");
+}
