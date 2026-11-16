@@ -547,6 +547,7 @@ impl crate::ui::Tree {
             };
             if i == 0
                 || n.placed.inert
+                || self.backface_hidden(i)
                 || pointer == PointerEvents::None
                 || self.orders.skip_of[i] != 0
                 || (self.orders.hidden_of[i] && !svg.is_some_and(|s| s & SvgPointer::VISIBLE == 0))

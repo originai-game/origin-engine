@@ -460,6 +460,9 @@ impl Ui {
                 break 'node;
             }
             let n = &self.tree.nodes[i];
+            if self.tree.backface_hidden(i) {
+                break 'node;
+            }
             // CSS `pointer-events` and `visibility` (an SVG value without
             // `visible` in it takes the pointer while hidden too).
             let (pass, shape) = match o.pointer_of[i] {
@@ -686,6 +689,22 @@ impl Ui {
 }
 
 impl crate::ui::Tree {
+    /// A layer culled for its backface cannot take the pointer, including
+    /// children composited into it. Follow layers, not ancestry:
+    /// preserve-3d planes draw separately.
+    pub(crate) fn backface_hidden(&self, mut i: usize) -> bool {
+        while let Some(plane) = self.nodes[i].placed.plane.as_deref() {
+            if plane.hidden {
+                return true;
+            }
+            if plane.into == NONE {
+                break;
+            }
+            i = plane.into;
+        }
+        false
+    }
+
     /// What this frame may change, before its passes: the nodes written,
     /// laid out or put back, those that entered a tree or whose parent's
     /// children changed, those the frame's own passes wrote last frame,

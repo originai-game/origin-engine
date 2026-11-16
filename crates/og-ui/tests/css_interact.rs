@@ -433,6 +433,49 @@ button { width: 80px; height: 40px; }
     assert_eq!(widths(&d), [180.0, 160.0, 120.0]);
 }
 
+/// A hidden backface and the children composited into its layer take no
+/// pointer; a visible backface and a front-facing hidden-backface box do.
+#[test]
+fn hidden_backfaces_pass_the_pointer_through_their_layer() {
+    let mut ui = mounted(
+        "ui/ix.svelte",
+        r#"<meta name="component" content="ix">
+<div id="Root">
+  <div class="plane hidden"><button id="Hidden">Hidden child</button></div>
+  <div class="plane visible"><button id="Visible">Visible back</button></div>
+  <div class="plane front"><button id="Front">Front</button></div>
+</div>
+<style>
+#Root { width: 600px; height: 300px; cursor: help; }
+.plane { position: absolute; width: 100px; height: 100px; top: 20px; transform: rotateY(180deg); }
+.hidden { left: 20px; backface-visibility: hidden; cursor: wait; }
+.visible { left: 160px; backface-visibility: visible; }
+.front { left: 300px; backface-visibility: hidden; transform: rotateY(0deg); }
+button { width: 100px; height: 100px; cursor: copy; }
+button:hover { height: 80px; }
+</style>"#,
+    );
+    for (id, x, cursor, height) in [
+        ("Hidden", 70.0, Cursor::Help, 100.0),
+        ("Visible", 210.0, Cursor::Copy, 80.0),
+        ("Front", 350.0, Cursor::Copy, 80.0),
+        ("Hidden", 70.0, Cursor::Help, 100.0),
+    ] {
+        for _ in 0..2 {
+            assert_eq!(frame(&mut ui, Vec2::new(x, 70.0)), cursor);
+        }
+        assert_eq!(
+            ui.probe_elements()
+                .iter()
+                .find(|e| e.id == id)
+                .unwrap()
+                .height,
+            height,
+            "{id} hover follows hit testing"
+        );
+    }
+}
+
 /// CSS Transforms 1 and 2 place the box and its hit test by the
 /// matrix the spec composes: `transform-origin` (default the centre, here a
 /// corner), `matrix()`, `skewX()`, `transform-box: content-box` moving the
