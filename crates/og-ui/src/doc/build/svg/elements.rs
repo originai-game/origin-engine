@@ -241,14 +241,15 @@ impl Ui {
         );
         let text = r.str("text").unwrap_or_default().to_string();
         let font = r.label_desc(self.env.theme(), self.env.fonts(), false).font;
-        let (ascender, descender) = {
+        let (ascender, descender, table) = {
             let m = &self
                 .env
                 .fonts()
                 .for_styled(font, crate::FontQuery::new(weight, italic), &text)
                 .0
                 .metrics;
-            m.extents(&text)
+            let (a, d) = m.extents(&text);
+            (a, d, crate::layout::baselines_of(m))
         };
         let anchor_x = match value("text-anchor").as_deref().map(str::trim) {
             None | Some("start") => 0.0,
@@ -260,10 +261,11 @@ impl Ui {
             }
         };
         let base = value("dominant-baseline").unwrap_or_default();
-        let anchor_y = baseline_shift(base.trim(), ascender, descender, size).unwrap_or_else(|e| {
-            warnings.push(e);
-            ascender * size
-        });
+        let anchor_y = baseline_shift(base.trim(), ascender, descender, size, &table)
+            .unwrap_or_else(|e| {
+                warnings.push(e);
+                ascender * size
+            });
         let mut step = self.env.theme().type_ramp.body;
         step.size = size;
         // One line exactly the font's extents tall: the baseline sits at

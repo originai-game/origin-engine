@@ -362,11 +362,18 @@ impl crate::ui::Layout {
                 let bs: Vec<Option<f32>> = kids[s..e]
                     .iter()
                     .map(|&c| {
+                        // An inline box aligned by its last baseline set
+                        // (CSS Inline 3 §4.2.1) shares its line's baseline
+                        // with its last.
+                        let used = &tree.nodes[c].layout.used;
+                        let by_last = last
+                            || used.inline
+                                && used.valign.source == crate::layout::BaselineSource::Last;
                         if tree.nodes[c].el.align_self.unwrap_or(parent) != want {
                             None
                         } else if let Some(dir) = across {
-                            tree.central_baseline(c, last).map(|x| dir * x)
-                        } else if last {
+                            tree.central_baseline(c, by_last).map(|x| dir * x)
+                        } else if by_last {
                             self.last_baseline(c, env, tree)
                         } else {
                             self.first_baseline(c, env, tree)

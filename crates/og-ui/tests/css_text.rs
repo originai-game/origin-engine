@@ -1512,3 +1512,97 @@ fn generated_content_alternative_text_names_it() {
         "{tree:?}"
     );
 }
+
+/// CSS Inline 3 §4: a span's alignment baseline meets the same baseline of
+/// its paragraph's root text, then shifts. Noto Sans has no BASE table,
+/// so per Appendix A.2 (fontTools: ascent 1069, descent 293, x-height 536
+/// per 1000, no minus sign) its central baseline is 0.388em, ideographic
+/// -0.293em, mathematical (the x-middle) 0.268em and hanging 0.6em. A
+/// 50px span in 100px text is raised by the root's baseline less its own:
+/// central 19.4px, hanging 30px, mathematical 13.4px, ideographic
+/// -14.65px; `dominant-baseline: central` on the paragraph aligns a plain
+/// span the same way; `baseline-shift` adds 3px, 50% of its 50px line or
+/// the parent's fifth (`sub`, -20px), and the shorthand `central super`
+/// both (19.4 + 100/3). Drawn baselines snap to whole pixels (±1). A
+/// wrong build ignores the longhands, aligns both alphabetic baselines
+/// (0), or scales the root's table by the span's size.
+#[test]
+fn alignment_baselines_meet_the_roots_and_shift() {
+    let d = doc(
+        r#"<p id="C">Root<span>xy</span></p><p id="H">Root<span>xy</span></p><p id="M">Root<span>xy</span></p><p id="I">Root<span>xy</span></p><p id="D">Root<span>xy</span></p><p id="L">Root<span>xy</span></p><p id="P">Root<span>xy</span></p><p id="Sub">Root<span>xy</span></p><p id="CS">Root<span>xy</span></p>"#,
+        "#Root { width: 800px; } p { font-size: 100px; line-height: 90px; } span { font-size: 50px; line-height: 50px; }
+#C span { alignment-baseline: central; }
+#H span { alignment-baseline: hanging; }
+#M span { alignment-baseline: mathematical; }
+#I span { alignment-baseline: ideographic; }
+#D { dominant-baseline: central; }
+#L span { baseline-shift: 3px; }
+#P span { baseline-shift: 50%; }
+#Sub span { baseline-shift: sub; }
+#CS span { vertical-align: central super; }",
+    );
+    let raise = |id: &str| {
+        let l = lines(&d, id);
+        let root = l
+            .iter()
+            .find(|l| l.text == "Root")
+            .unwrap_or_else(|| panic!("{id}: {l:?}"));
+        let span = l
+            .iter()
+            .find(|l| l.text == "xy")
+            .unwrap_or_else(|| panic!("{id}: {l:?}"));
+        root.baseline - span.baseline
+    };
+    for (id, want) in [
+        ("C", 19.4),
+        ("H", 30.0),
+        ("M", 13.4),
+        ("I", -14.65),
+        ("D", 19.4),
+        ("L", 3.0),
+        ("P", 25.0),
+        ("Sub", -20.0),
+        ("CS", 19.4 + 100.0 / 3.0),
+    ] {
+        let got = raise(id);
+        assert!((got - want).abs() <= 1.0, "{id}: raised {got}, want {want}");
+    }
+}
+
+/// CSS Inline 3 §4.2.1: an inline block aligns by its last baseline
+/// (`baseline-source: auto`), so a two-line one beside a one-line one
+/// rises a whole line (30px) above it; `first` aligns their first lines,
+/// tops level. §4.2.3: `baseline-shift: center` (`vertical-align: center`)
+/// centres a box on its line box. A wrong build aligns first baselines
+/// under `auto`, or takes `center` for the baseline.
+#[test]
+fn inline_blocks_align_by_their_baseline_source() {
+    let d = doc(
+        r#"<div id="Auto"><div id="A1" class="ib">aa</div><div id="B1" class="ib">bb cc</div></div><div id="First"><div id="A2" class="ib">aa</div><div id="B2" class="ib">bb cc</div></div><div id="Line"><div id="Tall"></div><div id="Mid"></div></div>"#,
+        ".ib { display: inline-block; font-size: 20px; line-height: 30px; width: 34px; }
+#B2 { baseline-source: first; }
+#Tall { display: inline-block; width: 10px; height: 60px; }
+#Mid { display: inline-block; width: 10px; height: 10px; vertical-align: center; }",
+    );
+    let y = |id: &str| d.get(id).y;
+    assert_eq!(d.get("B1").height, 60.0, "two lines");
+    assert!(
+        (y("A1") - y("B1") - 30.0).abs() < 0.01,
+        "auto: {} {}",
+        y("A1"),
+        y("B1")
+    );
+    assert!(
+        (y("A2") - y("B2")).abs() < 0.01,
+        "first: {} {}",
+        y("A2"),
+        y("B2")
+    );
+    let line = d.get("Line");
+    let mid = d.get("Mid");
+    // Placed boxes snap to whole pixels.
+    assert!(
+        (mid.y + 5.0 - (line.y + line.height / 2.0)).abs() <= 0.5,
+        "center: {mid:?} in {line:?}"
+    );
+}

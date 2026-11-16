@@ -107,10 +107,12 @@ fn rich_wraps(n: &Node) -> bool {
         && n.widget == Widget::None
 }
 
-/// A box whose `vertical-align` moves it in its line.
-fn shifted(n: &Node) -> bool {
-    use crate::VerticalAlign as V;
-    !matches!(n.layout.used.valign, V::Baseline | V::Top | V::Bottom)
+/// A box whose `vertical-align` moves it in its line against a parent of
+/// dominant baseline `dominant`: `top` and `bottom` take `align_self`.
+fn shifted(n: &Node, dominant: crate::layout::Baseline) -> bool {
+    use crate::layout::BaselineShift as S;
+    let v = n.layout.used.valign;
+    !matches!(v.shift, S::Top | S::Bottom) && !v.is_baseline(dominant)
 }
 
 fn margins(nodes: &[Node], c: usize, basis: f32) -> tf::Rect<f32> {
@@ -368,7 +370,10 @@ impl Tree<'_, '_> {
         if n.floats.is_empty()
             && !near
             && !shaped
-            && !n.children.iter().any(|&c| shifted(&self.nodes[c]))
+            && !n
+                .children
+                .iter()
+                .any(|&c| shifted(&self.nodes[c], n.layout.used.dominant))
         {
             return None;
         }
@@ -464,7 +469,7 @@ impl Tree<'_, '_> {
         let mut placed = Vec::new();
         let (mut rows, mut held) = (Vec::new(), Vec::new());
         let (mut s, mut y, mut narrowed) = (0, 0.0f32, false);
-        let mut first_baseline = None;
+        let (mut first_baseline, mut last_baseline) = (None, None);
         let mut later: Vec<usize> = Vec::new();
         while s < kids.len() {
             for f in std::mem::take(&mut later) {
@@ -497,6 +502,8 @@ impl Tree<'_, '_> {
                 if s == 0 {
                     first_baseline = b.map(|b| b + pad.top + y);
                 }
+                // A block's last baseline is not known here.
+                last_baseline = None;
                 y = h - pad.top;
                 rows.push((s, s + 1));
                 held.push(None);
@@ -563,6 +570,7 @@ impl Tree<'_, '_> {
             if rows.is_empty() {
                 first_baseline = base.map(|b| b + pad.top + y);
             }
+            last_baseline = base.map(|b| b + pad.top + y);
             rows.push((s, e));
             held.push(line_held.then_some(lh));
             y += lh + line_gap;
@@ -603,6 +611,7 @@ impl Tree<'_, '_> {
         }
         let mut out = tf::LayoutOutput::from_outer_size(tf::Size { width: w, height });
         out.baselines.first = first_baseline;
+        out.baselines.last = last_baseline;
         out
     }
 
@@ -926,7 +935,8 @@ impl Tree<'_, '_> {
                 l.y += y;
             }
         }
-        if !kids.iter().any(|&c| shifted(&self.nodes[c])) {
+        let dominant = self.nodes[i].layout.used.dominant;
+        if !kids.iter().any(|&c| shifted(&self.nodes[c], dominant)) {
             return (out.size.height, out.baselines.first, false);
         }
         let (height, base) = self.line_box(i, &kids, y, avail, perform);
@@ -945,7 +955,7 @@ impl Tree<'_, '_> {
         avail: f32,
         perform: bool,
     ) -> (f32, f32) {
-        use crate::VerticalAlign as V;
+        use crate::layout::BaselineShift as S;
         let fonts = self.measure.fonts;
         let n = &self.nodes[i];
         // The parent's text: the block's first text (an anonymous inline
@@ -960,12 +970,7 @@ impl Tree<'_, '_> {
             })
             .unwrap_or((self.measure.body, FontRole::Body));
         let m = fonts.metrics_styled(font, crate::FontQuery::new(step.weight, false), "");
-        let strut = crate::layout::Strut {
-            size: step.size,
-            ascent: m.ascender * step.size,
-            descent: -m.descender * step.size,
-            x_height: m.x_height() * step.size,
-        };
+        let strut = crate::layout::Strut::of(m, step.size, n.layout.used.dominant);
         let half = (step.line_height - strut.ascent - strut.descent) / 2.0;
         let mut base = (half + strut.ascent, step.line_height - half - strut.ascent);
         let mut items = Vec::with_capacity(kids.len());
@@ -990,7 +995,7 @@ impl Tree<'_, '_> {
                     tf::Line::FALSE,
                 )
             };
-            let b = self
+            let baselines = self
                 .compute_child_layout(
                     id(c),
                     tf::LayoutInput {
@@ -1015,15 +1020,24 @@ impl Tree<'_, '_> {
                         vertical_margins_are_collapsible: tf::Line::FALSE,
                     },
                 )
-                .baselines
-                .first
-                .unwrap_or(size.height);
+                .baselines;
+            let va = self.nodes[c].layout.used.valign;
+            // Its baseline (the last for `baseline-source: last`, as
+            // `lay_in` answers it); a box with none aligns its bottom
+            // margin edge (CSS Inline 3 A.3).
+            let b = baselines.first.unwrap_or(size.height);
             let (above, below) = (mg.top + b, size.height - b + mg.bottom);
-            let k = &self.nodes[c];
-            let place = match k.layout.used.valign {
-                V::Top => crate::layout::InlinePlace::Top,
-                V::Bottom => crate::layout::InlinePlace::Bottom,
-                va => va.place(&strut, step.size, step.line_height, above, below),
+            let place = match va.shift {
+                S::Top => crate::layout::InlinePlace::Top,
+                S::Bottom => crate::layout::InlinePlace::Bottom,
+                _ => va.place(
+                    &strut,
+                    &og_text::baselines::Baselines::of_box(above, -below),
+                    step.size,
+                    step.line_height,
+                    above,
+                    below,
+                ),
             };
             if place == crate::layout::InlinePlace::Raised(0.0) {
                 base = (base.0.max(above), base.1.max(below));

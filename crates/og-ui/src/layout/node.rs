@@ -911,6 +911,9 @@ pub struct LayoutBox {
     pub inline_rows: Vec<Option<f32>>,
     /// Its border box's top below its line's top, in such a line.
     pub inline_y: f32,
+    /// Its last baseline below its border box's top when it was last laid
+    /// out in full (a block container takes its last in-flow child's).
+    pub last_baseline: Option<f32>,
     /// What Taffy keeps of it ([`crate::layout::css`]): the sizes it
     /// measured it at, its box in its layout parent's, the input it was
     /// last laid out at, and a grid's tracks, track edges and items' areas.
@@ -979,6 +982,7 @@ impl Default for LayoutBox {
             beside: false,
             inline_rows: Vec::new(),
             inline_y: 0.0,
+            last_baseline: None,
             css_cache: taffy::Cache::new(),
             css: taffy::Layout::new(),
             css_input: None,

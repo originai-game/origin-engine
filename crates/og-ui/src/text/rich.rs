@@ -249,6 +249,9 @@ pub struct RichContent {
     pub line_break: LineBreak,
     /// Its text's emphasis marks (CSS `text-emphasis`).
     pub emphasis: Option<crate::css::text_css::Emphasis>,
+    /// CSS `dominant-baseline`: the baseline of its root text a span
+    /// aligned at `baseline` meets its own at (CSS Inline 3 §4.1).
+    pub dominant: crate::layout::Baseline,
 }
 
 /// CSS `text-indent` (CSS Text 3 §8.1): the room its lines leave at
@@ -315,6 +318,8 @@ pub struct RichTextDesc {
     pub line_break: LineBreak,
     /// CSS `text-emphasis`.
     pub emphasis: Option<crate::css::text_css::Emphasis>,
+    /// CSS `dominant-baseline`.
+    pub dominant: crate::layout::Baseline,
     /// CSS `ruby-position`, `ruby-align` and `ruby-overhang`: how its
     /// inline `<ruby>` is set.
     pub ruby: RubyStyle,
@@ -729,7 +734,7 @@ pub(crate) fn place_line(
     let (mut h, mut a, mut d) = (0.0f32, 0.0f32, 0.0f32);
     for p in pieces.iter() {
         let s = &rc.spans[p.span];
-        if s.valign != VerticalAlign::Baseline {
+        if !s.valign.is_baseline(rc.dominant) {
             continue;
         }
         let (lh, asc, desc) = span_metrics(s, fonts);
@@ -745,19 +750,14 @@ pub(crate) fn place_line(
     let baseline = (h - (a - d)) / 2.0 + a;
     let (step, font) = rc.base;
     let m = fonts.metrics_styled(font, crate::FontQuery::new(step.weight, false), "");
-    let strut = Strut {
-        size: step.size,
-        ascent: m.ascender * step.size,
-        descent: -m.descender * step.size,
-        x_height: m.x_height() * step.size,
-    };
+    let strut = Strut::of(m, step.size, rc.dominant);
     let lead = (step.line_height - strut.ascent - strut.descent) / 2.0;
     let base = (
         baseline.max(strut.ascent + lead),
         (h - baseline).max(strut.descent + lead),
     );
     let moving: Vec<usize> = (0..pieces.len())
-        .filter(|&k| rc.spans[pieces[k].span].valign != VerticalAlign::Baseline)
+        .filter(|&k| !rc.spans[pieces[k].span].valign.is_baseline(rc.dominant))
         .collect();
     let items: Vec<(InlinePlace, f32, f32)> = moving
         .iter()
@@ -767,7 +767,15 @@ pub(crate) fn place_line(
             let lead = (lh - (asc - desc)) / 2.0;
             let (above, below) = (asc + lead, lead - desc);
             (
-                s.valign.place(&strut, s.step.size, lh, above, below),
+                s.valign.place(
+                    &strut,
+                    &crate::layout::baselines_of(fonts.metrics_styled(s.font, s.query(), &s.text))
+                        .scaled(s.step.size),
+                    s.step.size,
+                    lh,
+                    above,
+                    below,
+                ),
                 above,
                 below,
             )

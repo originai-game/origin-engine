@@ -919,12 +919,23 @@ impl Ui {
                 }
                 // A table cell's content sits in the middle of its row
                 // unless `vertical-align` says otherwise (HTML's UA sheet).
+                // CSS Inline 3 §4.2: `top` (and `text-top`) is the start,
+                // `bottom` (and `text-bottom`) the end, `middle` the centre;
+                // a baseline sits at the start.
                 if el.table == crate::TablePart::Cell && !r.has("align") {
-                    el.align = match r.str("verticalAlign") {
-                        Some("top" | "textTop") => crate::Align::Start,
-                        Some("bottom" | "textBottom") => crate::Align::End,
-                        Some("baseline" | "sub" | "super") => crate::Align::Start,
-                        _ => crate::Align::Center,
+                    use crate::layout::{Baseline as B, BaselineShift as S};
+                    let v =
+                        r.text.as_ref().and_then(|t| t.vertical_align).or_else(|| {
+                            r.str("verticalAlign").and_then(crate::VerticalAlign::parse)
+                        });
+                    el.align = match v {
+                        None => crate::Align::Center,
+                        Some(v) => match (v.shift, v.baseline) {
+                            (S::Top, _) | (_, Some(B::TextTop)) => crate::Align::Start,
+                            (S::Bottom, _) | (_, Some(B::TextBottom)) => crate::Align::End,
+                            (S::Center, _) | (_, Some(B::Middle)) => crate::Align::Center,
+                            _ => crate::Align::Start,
+                        },
                     };
                 }
                 // Its lines' `text-align` (they lie in lines when one of
@@ -1182,20 +1193,35 @@ impl Ui {
                 }
             }
         }
+        el.dominant = r.text.as_ref().map(|t| t.dominant).unwrap_or_default();
         if el.inline {
             // `top` and `bottom` against the line box; the others against
             // the line's baseline (`Ui::align_baselines`).
-            el.valign = r
+            use crate::layout::{BaselineShift as S, BaselineSource};
+            let mut v = r
                 .text
                 .as_ref()
-                .and_then(|t| t.vertical_align.as_deref())
-                .or(r.str("verticalAlign"))
-                .and_then(crate::VerticalAlign::parse)
+                .and_then(|t| t.vertical_align)
+                .or_else(|| r.str("verticalAlign").and_then(crate::VerticalAlign::parse))
                 .unwrap_or_default();
-            el.align_self = match el.valign {
-                crate::VerticalAlign::Top => Some(crate::Cross::Start),
-                crate::VerticalAlign::Bottom => Some(crate::Cross::End),
-                crate::VerticalAlign::Baseline => el.align_self,
+            // CSS Inline 3 §4.2.1: `auto` is an inline block's last
+            // baseline, any other box's first.
+            if v.source == BaselineSource::Auto {
+                v.source = if r.str("display") == Some("inlineBlock") {
+                    BaselineSource::Last
+                } else {
+                    BaselineSource::First
+                };
+            }
+            el.valign = v;
+            let plain = crate::VerticalAlign {
+                source: v.source,
+                ..Default::default()
+            };
+            el.align_self = match v.shift {
+                S::Top => Some(crate::Cross::Start),
+                S::Bottom => Some(crate::Cross::End),
+                _ if v == plain => el.align_self,
                 _ => Some(crate::Cross::Baseline),
             };
         }
@@ -1734,6 +1760,7 @@ impl Resolved {
             indent,
             line_break,
             emphasis: css.and_then(|t| t.emphasis),
+            dominant: css.map(|t| t.dominant).unwrap_or_default(),
             ruby: css.map(|t| t.ruby).unwrap_or_default(),
         }
     }

@@ -249,7 +249,20 @@ which takes `color`, `font`, `font-family`, `font-weight`,
 `font-style`, `text-decoration-line`, `-og-text-motion`, `vertical-align`,
 `text-combine-upright` (down a vertical line, `all` sets the run in one
 upright em, one unit of the line), and `font-size`, `line-height` and `letter-spacing` in px or em. A run's
-`vertical-align` follows CSS 2.1 §10.8 and CSS Inline 3. A translated
+`vertical-align` follows CSS 2.1 §10.8 and CSS Inline 3 §4: the
+shorthand sets `alignment-baseline`, `baseline-shift` and
+`baseline-source`, and a box's alignment baseline (its parent's
+`dominant-baseline` for `baseline`) meets the same baseline of the
+paragraph's root text. A font's baselines are its `BASE` table's, the rest
+synthesized as Appendix A.2 suggests (ideographic over and under from the
+ascent and descent, mathematical at the minus sign's centre, else the
+x-middle, hanging at 0.6em); `middle`, `text-top` and `text-bottom` place
+a box as CSS 2.1 does. `baseline-shift: center` centres a box on its line
+box; on a run of text itself it keeps its baseline place (Parley has no
+line-relative centre). An inline block aligns by its last baseline
+(`baseline-source: auto`): a text's last line, or its last in-flow
+child's. Runs align against the paragraph's root text, not an enclosing
+run's. A translated
 string styles runs with MessageFormat 2 markup: `{#b}…{/b}`, `{#i}`,
 `{#u}`, `{#s}`, `{#br/}`; `\{` escapes a brace.
 
@@ -385,8 +398,9 @@ engine differs or limits as follows:
 - **Tables.** `border-spacing` and `border-collapse` are not supported:
   cells are separate and `gap` spaces them. A table part outside a table
   lays out as a block; a `table-column` px `width` is a least width. A
-  cell centres its content unless `vertical-align` is `top`, `bottom` or
-  `baseline`.
+  cell centres its content unless `vertical-align` is `top` or
+  `text-top` (the start), `bottom` or `text-bottom` (the end), or a
+  baseline (the start).
 - **Position.** A fixed box is placed in the whole surface and keeps its
   static position on an axis with no inset; an absolute one with no inset
   on an axis stands at its parent's start there.
@@ -940,7 +954,8 @@ The parser is the cook's (`og_ui::svg`, shared with `type vector`).
   tiles a shape. `<title>` names its parent (bindable; a named `<svg>` is
   an image); `<desc>` is dropped.
 - `<text>` is a line of og-ui text laid out at its view-box size, anchored
-  on `(x, y)` by `text-anchor` and `dominant-baseline` and scaled by the
+  on `(x, y)` by `text-anchor` and `dominant-baseline` (the font's
+  baselines, as HTML text takes them) and scaled by the
   fit; `<tspan>` takes weight, style, decoration and fill, and with `x`
   starts a new line. `white-space` (or `xml:space="preserve"`) keeps
   spaces and breaks. A group's transform moves and scales text but does
