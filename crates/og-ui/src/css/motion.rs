@@ -11,7 +11,9 @@ use crate::motion::css::{
     StyleKey, StyleTrack,
 };
 use crate::motion::interpolate::{self, Composite};
-use crate::motion::scroll::{AnimationTimeline, Axis, Inset, NamedTimeline, RangeEdge};
+use crate::motion::scroll::{
+    AnimationTimeline, Axis, Inset, NamedTimeline, RangeEdge, TimelineTrigger,
+};
 use crate::motion::{Ease, SpringSpec, Transition};
 
 pub(crate) const TRANSITION: [&str; 5] = [
@@ -34,11 +36,24 @@ pub(crate) const ANIMATION: [&str; 8] = [
 
 /// Animation longhands the `animation` shorthand does not set; it resets
 /// the timeline and range ones (CSS Scroll-driven Animations 1 §4.1).
-pub(crate) const ANIMATION_EXTRA: [&str; 4] = [
+pub(crate) const ANIMATION_EXTRA: [&str; 5] = [
     "animation-composition",
     "animation-timeline",
     "animation-range-start",
     "animation-range-end",
+    "animation-trigger",
+];
+
+/// The declarations of timeline triggers and their scope (CSS Animation
+/// Triggers 1 §2.3, §3).
+pub(crate) const TRIGGERS: [&str; 7] = [
+    "timeline-trigger-name",
+    "timeline-trigger-source",
+    "timeline-trigger-activation-range-start",
+    "timeline-trigger-activation-range-end",
+    "timeline-trigger-active-range-start",
+    "timeline-trigger-active-range-end",
+    "trigger-scope",
 ];
 
 /// The declarations of named scroll and view timelines (CSS Scroll-driven
@@ -60,6 +75,7 @@ pub(crate) fn longhand(name: &str) -> bool {
         || ANIMATION.contains(&name)
         || ANIMATION_EXTRA.contains(&name)
         || TIMELINES.contains(&name)
+        || TRIGGERS.contains(&name)
 }
 
 /// The channels of a property the element's channels hold; any other
@@ -174,6 +190,10 @@ pub(crate) fn expand(
         "animation-range" | "scroll-timeline" | "view-timeline" => {
             return timeline_shorthand(&d);
         }
+        "timeline-trigger"
+        | "timeline-trigger-range"
+        | "timeline-trigger-activation-range"
+        | "timeline-trigger-active-range" => return trigger_shorthand(&d),
         name if longhand(name) => {
             if !d.value.has_variables() && !super::calc::has_absolute(&d.source) {
                 validate(name, &d.source, keyframes)?;
@@ -199,11 +219,7 @@ pub(crate) fn expand(
             })
             .collect();
         if pending == "animation" {
-            for (name, value) in [
-                ("animation-timeline", "auto"),
-                ("animation-range-start", "normal"),
-                ("animation-range-end", "normal"),
-            ] {
+            for (name, value) in RESET_ONLY {
                 out.push(declaration(name, value.into(), d.important)?);
             }
         }
@@ -235,17 +251,21 @@ fn expand_shorthand(
         out.push(declaration(name, value, d.important)?);
     }
     if d.name == "animation" {
-        // Reset-only longhands.
-        for (name, value) in [
-            ("animation-timeline", "auto"),
-            ("animation-range-start", "normal"),
-            ("animation-range-end", "normal"),
-        ] {
+        for (name, value) in RESET_ONLY {
             out.push(declaration(name, value.into(), d.important)?);
         }
     }
     Ok(out)
 }
+
+/// The longhands the `animation` shorthand only resets (CSS Scroll-driven
+/// Animations 1 §4.1, CSS Animation Triggers 1 §5.1).
+const RESET_ONLY: [(&str, &str); 4] = [
+    ("animation-timeline", "auto"),
+    ("animation-range-start", "normal"),
+    ("animation-range-end", "normal"),
+    ("animation-trigger", "none"),
+];
 
 /// Extract one cascade-winning longhand after its shorthand substitutes.
 pub(crate) fn substituted(shorthand: &str, name: &str, source: String) -> Result<String, String> {
@@ -344,6 +364,117 @@ fn timeline_shorthand(d: &StyleDeclaration) -> Result<Vec<StyleDeclaration>, Str
         "scroll-timeline" => ["scroll-timeline-name", "scroll-timeline-axis"],
         _ => ["view-timeline-name", "view-timeline-axis"],
     };
+    let mut out = Vec::new();
+    for (name, list) in names.iter().zip(lists) {
+        let value = list.join(", ");
+        validate(name, &value, &|_| true)?;
+        out.push(declaration(name, value, d.important)?);
+    }
+    Ok(out)
+}
+
+/// A range's start and end (`animation-range`'s syntax): the start is a
+/// range name with a length-percentage, or one word; an omitted end is the
+/// start's range name at 100%, else `missing`.
+fn range_pair(words: &[&str], missing: &str) -> [String; 2] {
+    let named = |w: &str| crate::motion::scroll::RangeName::from_css(w).is_some();
+    let split = if words.len() >= 2 && named(words[0]) && !named(words[1]) {
+        2
+    } else {
+        1
+    };
+    let (start, end) = words.split_at(split.min(words.len()));
+    let end = match (end.is_empty(), start.first()) {
+        (true, Some(w)) if named(w) => format!("{w} 100%"),
+        (true, Some(&"auto")) => "auto".into(),
+        (true, _) => missing.into(),
+        (false, _) => end.join(" "),
+    };
+    [start.join(" "), end]
+}
+
+/// `timeline-trigger` (`none | <name> <source> [<activation> [/ <active>]]?`),
+/// `timeline-trigger-range` (`<activation> [/ <active>]?`) and the two
+/// range shorthands into their longhands (CSS Animation Triggers 1 §3.4–3.7).
+fn trigger_shorthand(d: &StyleDeclaration) -> Result<Vec<StyleDeclaration>, String> {
+    if d.source.contains("var(") {
+        return Err(format!(
+            "{}: write var() in a longhand, not in the shorthand",
+            d.name
+        ));
+    }
+    let names: &[&str] = match d.name.as_str() {
+        "timeline-trigger" => &[
+            "timeline-trigger-name",
+            "timeline-trigger-source",
+            "timeline-trigger-activation-range-start",
+            "timeline-trigger-activation-range-end",
+            "timeline-trigger-active-range-start",
+            "timeline-trigger-active-range-end",
+        ],
+        "timeline-trigger-range" => &[
+            "timeline-trigger-activation-range-start",
+            "timeline-trigger-activation-range-end",
+            "timeline-trigger-active-range-start",
+            "timeline-trigger-active-range-end",
+        ],
+        "timeline-trigger-activation-range" => &[
+            "timeline-trigger-activation-range-start",
+            "timeline-trigger-activation-range-end",
+        ],
+        _ => &[
+            "timeline-trigger-active-range-start",
+            "timeline-trigger-active-range-end",
+        ],
+    };
+    let mut lists: Vec<Vec<String>> = vec![Vec::new(); names.len()];
+    for item in items(&d.source.replace('/', " / ")) {
+        let words: Vec<&str> = item.iter().map(String::as_str).collect();
+        let mut parts: Vec<String> = Vec::new();
+        let ranges: &[&str] = match d.name.as_str() {
+            "timeline-trigger" if words == ["none"] => {
+                parts.extend(["none".into(), "none".into()]);
+                &[]
+            }
+            "timeline-trigger" => match words[..] {
+                [name, source, ref rest @ ..] => {
+                    parts.extend([name.to_string(), source.to_string()]);
+                    rest
+                }
+                _ => {
+                    return Err(
+                        "timeline-trigger: write <name> <source> [<activation-range> [/ <active-range>]]"
+                            .into(),
+                    );
+                }
+            },
+            _ => &words[..],
+        };
+        match d.name.as_str() {
+            "timeline-trigger" | "timeline-trigger-range" => {
+                let mut halves = ranges.split(|w| *w == "/");
+                let activation = halves.next().unwrap_or_default();
+                let active = halves.next();
+                if halves.next().is_some() {
+                    return Err(format!("{}: one / between the two ranges", d.name));
+                }
+                parts.extend(if activation.is_empty() {
+                    ["normal".to_string(), "normal".to_string()]
+                } else {
+                    range_pair(activation, "normal")
+                });
+                parts.extend(match active {
+                    Some(a) => range_pair(a, "normal"),
+                    None => ["auto".to_string(), "auto".to_string()],
+                });
+            }
+            "timeline-trigger-activation-range" => parts.extend(range_pair(ranges, "normal")),
+            _ => parts.extend(range_pair(ranges, "normal")),
+        }
+        for (list, part) in lists.iter_mut().zip(parts) {
+            list.push(part);
+        }
+    }
     let mut out = Vec::new();
     for (name, list) in names.iter().zip(lists) {
         let value = list.join(", ");
@@ -473,10 +604,21 @@ fn validate(name: &str, value: &str, keyframes: &dyn Fn(&str) -> bool) -> Result
                 crate::motion::scroll::Axis::from_css(word).is_some()
             }
             "view-timeline-inset" => crate::motion::scroll::Inset::pair_valid(word),
-            "timeline-scope" => {
+            "timeline-scope" | "trigger-scope" => {
                 (matches!(word.as_str(), "none" | "all") && list.len() == 1)
                     || crate::motion::scroll::dashed(word)
             }
+            "timeline-trigger-name" => {
+                (word == "none" && list.len() == 1) || crate::motion::scroll::dashed(word)
+            }
+            "timeline-trigger-source" => crate::motion::scroll::timeline_valid(word),
+            "timeline-trigger-activation-range-start" | "timeline-trigger-activation-range-end" => {
+                crate::motion::scroll::RangeEdge::valid(word)
+            }
+            "timeline-trigger-active-range-start" | "timeline-trigger-active-range-end" => {
+                word == "auto" || crate::motion::scroll::RangeEdge::valid(word)
+            }
+            "animation-trigger" => crate::motion::trigger::parse_item(word).is_some(),
             _ => true,
         };
         if !ok {
@@ -515,7 +657,20 @@ fn hint(name: &str) -> &'static str {
         "scroll-timeline-name" | "view-timeline-name" => "write none or a --name",
         "scroll-timeline-axis" | "view-timeline-axis" => "write block, inline, x or y",
         "view-timeline-inset" => "write one or two of auto and length-percentages",
-        "timeline-scope" => "write none, all or --names",
+        "timeline-scope" | "trigger-scope" => "write none, all or --names",
+        "timeline-trigger-name" => "write none or --names",
+        "timeline-trigger-source" => {
+            "write auto, none, a --timeline name, scroll(…) or view(…), as animation-timeline takes"
+        }
+        "timeline-trigger-activation-range-start" | "timeline-trigger-activation-range-end" => {
+            "write normal, a length-percentage, or a range name (cover, contain, entry, exit, entry-crossing, exit-crossing) with an optional length-percentage"
+        }
+        "timeline-trigger-active-range-start" | "timeline-trigger-active-range-end" => {
+            "write auto (the activation range's edge), normal, a length-percentage or a range name with an optional one"
+        }
+        "animation-trigger" => {
+            "write none or --trigger names each followed by one or two of none, play, play-once, play-forwards, play-backwards, pause, reset and replay"
+        }
         _ => "see the document CSS reference",
     }
 }
@@ -624,6 +779,7 @@ fn resolve_winners(
         get("animation-timeline", "auto"),
         get("animation-range-start", "normal"),
         get("animation-range-end", "normal"),
+        get("animation-trigger", "none"),
     ];
     for (i, name) in names.iter().enumerate() {
         if name == "none" {
@@ -669,6 +825,7 @@ fn resolve_winners(
             }),
             range_start: RangeEdge::parse(&at(9), false).flatten(),
             range_end: RangeEdge::parse(&at(10), true).flatten(),
+            trigger: crate::motion::trigger::parse_item(&at(11)).unwrap_or_default(),
         });
     }
     (transitions, animations)
@@ -711,6 +868,55 @@ pub(crate) fn timelines(winners: &[(String, String)]) -> (Vec<NamedTimeline>, Ve
         }
     }
     let scope = get("timeline-scope", "none")
+        .into_iter()
+        .filter(|w| w != "none")
+        .collect();
+    (out, scope)
+}
+
+/// The timeline triggers an element defines and its `trigger-scope`, from
+/// its winning longhands (lengths already px): the name list is the
+/// coordinating list, the others repeat, and a name given twice defines
+/// only its last trigger.
+pub(crate) fn triggers(winners: &[(String, String)]) -> (Vec<TimelineTrigger>, Vec<String>) {
+    let get = |name: &str, default: &str| -> Vec<String> {
+        let value = winners
+            .iter()
+            .rev()
+            .find(|(n, _)| n == name)
+            .map_or(default, |(_, v)| v.as_str());
+        items(value).into_iter().map(|w| w.join(" ")).collect()
+    };
+    let pick = |list: &[String], i: usize| list[i % list.len().max(1)].clone();
+    let lists = [
+        get("timeline-trigger-source", "auto"),
+        get("timeline-trigger-activation-range-start", "normal"),
+        get("timeline-trigger-activation-range-end", "normal"),
+        get("timeline-trigger-active-range-start", "auto"),
+        get("timeline-trigger-active-range-end", "auto"),
+    ];
+    let mut out: Vec<TimelineTrigger> = Vec::new();
+    for (i, name) in get("timeline-trigger-name", "none").iter().enumerate() {
+        if !crate::motion::scroll::dashed(name) {
+            continue;
+        }
+        let at = |k: usize| pick(&lists[k], i);
+        let active = |k: usize| {
+            let v = at(k);
+            (v != "auto").then(|| RangeEdge::parse(&v, k == 4).flatten())
+        };
+        out.retain(|t| t.name != *name);
+        out.push(TimelineTrigger {
+            name: name.clone(),
+            timeline: AnimationTimeline::parse(&at(0)).unwrap_or(AnimationTimeline::None),
+            activation: [
+                RangeEdge::parse(&at(1), false).flatten(),
+                RangeEdge::parse(&at(2), true).flatten(),
+            ],
+            active: [active(3), active(4)],
+        });
+    }
+    let scope = get("trigger-scope", "none")
         .into_iter()
         .filter(|w| w != "none")
         .collect();

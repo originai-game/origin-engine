@@ -1592,6 +1592,18 @@ states; it is not a second styling language. Engine rules:
   progress moved; on a progress timeline durations and delays are
   proportions, play state is ignored and keyframe events do not fire. An
   inactive timeline has no effect.
+- `timeline-trigger: <name> <source> <activation> [/ <active>]` (Animation
+  Triggers 1) defines a trigger on an element: it activates when its
+  timeline (`scroll()`, `view()` or a named one) enters the activation
+  range and deactivates when it leaves the active range (`auto`: the
+  activation range). `animation-trigger: <name> <entry> [<exit>]` makes an
+  animation wait at time 0 for it, then play, pause, reset or replay it
+  (`play`, `play-once`, `play-forwards`, `play-backwards`, `pause`,
+  `reset`, `replay`); an action takes effect from the next tick. Names
+  are global; `trigger-scope` keeps them to a subtree, and every element
+  defining a name in one scope is one trigger. One timeline per trigger;
+  event triggers are not built. The trigger states and each run's playback
+  are saved UI state.
 - CPU motion, GPU mass elements and camera timing share `Ease`: GSAP names
   (`none`, `power1.out`, `back.out`), `cubic-bezier()` and `steps()`;
   style tokens keep `EaseRole` indirection; the transition timing slot

@@ -253,10 +253,16 @@ impl Ui {
                 } else {
                     &self.interaction.state.motion.css
                 };
-                let ticks = runs
+                let run = runs
                     .iter()
-                    .find(|r| r.element == key && r.name == a.name && r.index == nth)
-                    .map_or(0, |r| r.ticks + u64::from(r.stepped != now && !a.paused));
+                    .find(|r| r.element == key && r.name == a.name && r.index == nth);
+                let ticks = run.map_or(0, |r| {
+                    if r.stepped == now {
+                        r.ticks
+                    } else {
+                        r.next_ticks(a, tps, reduced)
+                    }
+                });
                 if part {
                     animation_runs.push(crate::motion::css::CssRun {
                         element: key,
@@ -265,9 +271,15 @@ impl Ui {
                         ticks,
                         stepped: now,
                         last_ms: a.active_ms(ticks, tps),
+                        playback: None,
                     });
                 }
-                running |= !a.settled(ticks, tps, reduced);
+                // A triggered one moves only while its playback plays.
+                running |= match run.and_then(|r| r.playback.as_ref()) {
+                    Some(p) => p.running(ticks, crate::motion::trigger::end_ticks(a, tps)),
+                    None if !a.trigger.is_empty() && !part => false,
+                    None => !a.settled(ticks, tps, reduced),
+                };
                 a.sample_styles(
                     frames,
                     a.active_ms(ticks, tps),

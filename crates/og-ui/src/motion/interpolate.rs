@@ -41,10 +41,12 @@ pub(crate) fn animatable(property: &str) -> bool {
         || property.starts_with("transition")
         || property.starts_with("scroll-timeline")
         || property.starts_with("view-timeline")
+        || property.starts_with("timeline-trigger")
         || property.starts_with("container")
         || matches!(
             property,
             "timeline-scope"
+                | "trigger-scope"
                 | "direction"
                 | "unicode-bidi"
                 | "will-change"

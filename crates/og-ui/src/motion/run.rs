@@ -132,6 +132,12 @@ impl Ui {
         let mut touched =
             crate::id::KeySet::with_capacity_and_hasher(m.channels.len(), Default::default());
 
+        // Timeline triggers, at the geometry just laid out.
+        if self.docs.library.triggers {
+            super::trigger::step_triggers(&mut m.triggers, &self.interaction, &self.tree);
+        } else {
+            m.triggers.clear();
+        }
         let (overrides, mut events) = self.step_plays(&mut m, now, tps, reduced);
         self.style.step_gestures(
             &mut m,
@@ -1167,16 +1173,25 @@ impl crate::ui::Style {
                         ticks: 0,
                         stepped: now,
                         last_ms: -a.delay_ms - 1e-3,
+                        playback: None,
                     });
                     m.css.len() - 1
                 }
             };
             let run = &mut m.css[at];
+            // A triggered animation holds at time 0 until an action plays
+            // it; given or losing `animation-trigger` keeps its time.
+            match (&mut run.playback, a.trigger.is_empty()) {
+                (Some(_), true) => run.playback = None,
+                (None, false) => run.playback = Some(Default::default()),
+                _ => {}
+            }
+            if let Some(p) = &mut run.playback {
+                p.seen.resize(a.trigger.len(), Default::default());
+            }
             if run.stepped != now {
                 run.stepped = now;
-                if !a.paused {
-                    run.ticks += 1;
-                }
+                run.ticks = run.next_ticks(a, tps, reduced);
             }
             let sample = a.sample(&frames, run.ticks, tps, row, reduced);
             for (c, v) in sample.values {
@@ -1232,6 +1247,42 @@ impl crate::ui::Style {
                 }
             }
             run.last_ms = sample.active_ms;
+            // Its triggers' state changes since it last looked act from
+            // the next tick (CSS Animation Triggers 1 §5.1): the entry
+            // action on activation, the exit action on deactivation.
+            if let Some(p) = &mut run.playback {
+                let end = super::trigger::end_ticks(a, tps);
+                let mut acted = false;
+                for (k, t) in a.trigger.iter().enumerate() {
+                    use super::trigger::TriggerState::{Active, Inactive};
+                    let scope = super::trigger::scope_of(tree, i, &t.name);
+                    let state = m
+                        .triggers
+                        .get(&(scope, t.name.clone()))
+                        .copied()
+                        .unwrap_or_default();
+                    if p.seen[k] == state {
+                        continue;
+                    }
+                    p.seen[k] = state;
+                    let action = match (state, t.actions.len()) {
+                        (Active, 1 | 2) => t.actions[0],
+                        (Inactive, 2) => t.actions[1],
+                        _ => continue,
+                    };
+                    let before = run.ticks;
+                    if p.apply(action, &mut run.ticks, end) {
+                        // Back at its start: its events fire again.
+                        run.last_ms = a.active_ms(run.ticks, tps) - 1e-3;
+                    } else if run.ticks != before {
+                        run.last_ms = a.active_ms(run.ticks, tps);
+                    }
+                    acted = true;
+                }
+                if acted && !frames.styles.is_empty() {
+                    self.motion.timeline_restyle.push(key);
+                }
+            }
         }
         if scrolled {
             let old = self.motion.timelines.insert(key, progress.clone());

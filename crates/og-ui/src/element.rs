@@ -360,6 +360,11 @@ pub struct Props {
     /// `timeline-scope`: names its subtree's declarations are seen by
     /// (`all` for every one).
     pub timeline_scope: Vec<String>,
+    /// Timeline triggers it defines (`timeline-trigger`).
+    pub timeline_triggers: Vec<crate::motion::scroll::TimelineTrigger>,
+    /// `trigger-scope`: trigger names kept to its subtree (`all` for every
+    /// one).
+    pub trigger_scope: Vec<String>,
     /// Kept, inert and out of hit tests and the accessibility tree, while
     /// it plays after the element leaves the tree.
     pub exit: Option<PresenceSpec>,
@@ -428,6 +433,8 @@ impl Default for Props {
             starting: Vec::new(),
             timelines: Vec::new(),
             timeline_scope: Vec::new(),
+            timeline_triggers: Vec::new(),
+            trigger_scope: Vec::new(),
             exit: None,
             states: Vec::new(),
             state: Vec::new(),

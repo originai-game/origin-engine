@@ -54,6 +54,9 @@ pub struct Resolved {
     /// Scroll and view timelines it declares, and its `timeline-scope`.
     timelines: Vec<crate::motion::scroll::NamedTimeline>,
     timeline_scope: Vec<String>,
+    /// Timeline triggers it defines, and its `trigger-scope`.
+    timeline_triggers: Vec<crate::motion::scroll::TimelineTrigger>,
+    trigger_scope: Vec<String>,
     /// The layout key this element publishes as a query container.
     pub container: Option<u64>,
     /// A numbered `<li>`'s number ([`super::lists::ordinal`]).
@@ -1069,6 +1072,7 @@ impl Ui {
             .map(|(name, value, _)| {
                 // Timeline insets and ranges in the element's units, as px.
                 let value = if (name.starts_with("animation-range")
+                    || name.starts_with("timeline-trigger-")
                     || name == "animation-timeline"
                     || name == "view-timeline-inset")
                     && super::calc::per_element(name, value)
@@ -1081,6 +1085,7 @@ impl Ui {
             })
             .collect();
         (r.timelines, r.timeline_scope) = super::motion::timelines(&motion);
+        (r.timeline_triggers, r.trigger_scope) = super::motion::triggers(&motion);
 
         (r.transitions, r.animations) =
             super::motion::resolve(&motion, &b.doc.name, &mut r.cascade.diagnostics);

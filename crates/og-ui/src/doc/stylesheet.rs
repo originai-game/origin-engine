@@ -2333,6 +2333,7 @@ fn all_longhands() -> impl Iterator<Item = &'static str> {
         .chain(super::motion::ANIMATION)
         .chain(super::motion::ANIMATION_EXTRA)
         .chain(super::motion::TIMELINES)
+        .chain(super::motion::TRIGGERS)
         .chain(super::container::LONGHANDS)
         .chain(crate::transform3d::LONGHANDS)
         .chain(super::text_css::INHERITED.iter().copied())

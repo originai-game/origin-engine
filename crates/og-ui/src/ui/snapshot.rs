@@ -312,6 +312,15 @@ impl Ui {
         if !s.motion.css.is_empty() {
             docs["cssAnimations"] = serde_json::to_value(&s.motion.css).expect("finite CSS runs");
         }
+        if !s.motion.triggers.is_empty() {
+            let list: Vec<_> = s
+                .motion
+                .triggers
+                .iter()
+                .map(|((scope, name), state)| serde_json::json!([scope.to_string(), name, state]))
+                .collect();
+            docs["timelineTriggers"] = serde_json::json!(list);
+        }
         if !s.motion.styles.is_empty() {
             docs["cssTransitions"] =
                 serde_json::to_value(&s.motion.styles).expect("finite CSS transitions");
@@ -373,6 +382,17 @@ impl Ui {
         if let Some(runs) = docs.get("cssAnimations") {
             s.motion.css = serde_json::from_value(runs.clone())
                 .map_err(|_| bad("malformed CSS animations".into()))?;
+        }
+        if let Some(list) = docs.get("timelineTriggers") {
+            let entries: Vec<(String, String, crate::motion::trigger::TriggerState)> =
+                serde_json::from_value(list.clone())
+                    .map_err(|_| bad("malformed timeline triggers".into()))?;
+            for (scope, name, state) in entries {
+                let scope = scope
+                    .parse::<u64>()
+                    .map_err(|_| bad("malformed timeline triggers".into()))?;
+                s.motion.triggers.insert((scope, name), state);
+            }
         }
         if let Some(runs) = docs.get("cssTransitions") {
             s.motion.styles = serde_json::from_value(runs.clone())

@@ -81,6 +81,9 @@ pub struct CssAnimation {
     /// `animation-range-start` and `-end` (`None`: `normal`).
     pub range_start: Option<super::scroll::RangeEdge>,
     pub range_end: Option<super::scroll::RangeEdge>,
+    /// `animation-trigger` (CSS Animation Triggers 1 §5.1): the triggers
+    /// it responds to (empty: it is not triggered and plays at once).
+    pub trigger: Vec<super::trigger::AnimationTrigger>,
 }
 
 impl Default for CssAnimation {
@@ -99,6 +102,7 @@ impl Default for CssAnimation {
             timeline: super::scroll::AnimationTimeline::Document,
             range_start: None,
             range_end: None,
+            trigger: Vec::new(),
         }
     }
 }
@@ -166,6 +170,25 @@ pub struct CssRun {
     pub stepped: u64,
     /// The active time events were fired up to, ms (negative: in its delay).
     pub last_ms: f32,
+    /// A triggered animation's playback (`None`: it is not triggered).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub playback: Option<super::trigger::Playback>,
+}
+
+impl CssRun {
+    /// Its ticks after the next tick of `a`: one more unless paused, or
+    /// as its playback moves a triggered one.
+    pub(crate) fn next_ticks(&self, a: &CssAnimation, tps: u32, reduced: bool) -> u64 {
+        match &self.playback {
+            Some(p) => p.advance(
+                self.ticks,
+                super::trigger::end_ticks(a, tps),
+                a.paused,
+                reduced,
+            ),
+            None => self.ticks + u64::from(!a.paused),
+        }
+    }
 }
 
 /// Where an animation is at `ticks`: per channel, its value; and the

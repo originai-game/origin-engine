@@ -342,6 +342,24 @@ pub struct NamedTimeline {
     pub inset: [Inset; 2],
 }
 
+/// A timeline trigger an element defines (CSS Animation Triggers 1 §3):
+/// it activates when its timeline enters its activation range and
+/// deactivates when it leaves its active range.
+#[derive(Clone, Debug, PartialEq)]
+pub struct TimelineTrigger {
+    /// `timeline-trigger-name`.
+    pub name: String,
+    /// `timeline-trigger-source`, read as `animation-timeline` is; `auto`
+    /// and `none` never activate (presentation ticks have no range).
+    pub timeline: AnimationTimeline,
+    /// `timeline-trigger-activation-range-start` and `-end` (`None`:
+    /// `normal`).
+    pub activation: [Option<RangeEdge>; 2],
+    /// `timeline-trigger-active-range-start` and `-end`: `None` for
+    /// `auto` (the activation range's edge), else as `activation`.
+    pub active: [Option<Option<RangeEdge>>; 2],
+}
+
 /// A scroll container and a subject in it, on one axis: the scroll offset
 /// and its range, the scrollport's length, and the subject's start (in the
 /// content, at offset 0) and length.
@@ -450,86 +468,104 @@ impl crate::ui::Style {
         interaction: &crate::ui::Interaction,
         tree: &crate::ui::Tree,
     ) -> Option<f32> {
-        let none = [Inset::default(); 2];
-        let (scroller, subject, axis, inset) = match &a.timeline {
-            AnimationTimeline::Document | AnimationTimeline::None => return None,
-            AnimationTimeline::Scroll { source, axis } => {
-                let s = match source {
-                    ScrollSource::Own => Some(i).filter(|&i| tree.nodes[i].scrolls()),
-                    ScrollSource::Nearest => tree.scroll_ancestor(i),
-                    ScrollSource::Root => {
-                        let mut out = None;
-                        let mut at = i;
-                        while let Some(s) = tree.scroll_ancestor(at) {
-                            out = Some(s);
-                            at = s;
-                        }
-                        out
-                    }
-                };
-                (s?, None, *axis, none)
-            }
-            AnimationTimeline::View { axis, inset } => {
-                (tree.scroll_ancestor(i)?, Some(i), *axis, *inset)
-            }
-            AnimationTimeline::Named(name) => {
-                let (d, t) = tree.named_timeline(i, name)?;
-                if t.view {
-                    (tree.scroll_ancestor(d)?, Some(d), t.axis, t.inset)
-                } else {
-                    (
-                        Some(d).filter(|&d| tree.nodes[d].scrolls())?,
-                        None,
-                        t.axis,
-                        none,
-                    )
-                }
-            }
-        };
-        let s = &tree.nodes[scroller];
-        let pad = s.layout.used.padding;
-        let (offset, max, start, port) = if axis.horizontal() {
-            let max = s.max_scroll_x();
-            let at = interaction
-                .state
-                .scroll_x
-                .get(&s.key)
-                .copied()
-                .unwrap_or(0.0);
-            (
-                at.clamp(0.0, max),
-                max,
-                s.placed.rect.x + pad.left,
-                s.placed.rect.width - pad.horizontal(),
-            )
-        } else {
-            let max = s.max_scroll();
-            let at = interaction.state.scroll.get(&s.key).copied().unwrap_or(0.0);
-            (
-                at.clamp(0.0, max),
-                max,
-                s.placed.rect.y + pad.top,
-                s.placed.rect.height - pad.vertical(),
-            )
-        };
-        // Laid out at this offset: its place in the content is where it is
-        // plus the offset.
-        let subject = subject.map(|j| {
-            let r = tree.nodes[j].placed.rect;
-            if axis.horizontal() {
-                (r.x - start + offset, r.width)
-            } else {
-                (r.y - start + offset, r.height)
-            }
-        });
-        let g = ScrollGeometry {
-            offset,
-            max,
-            port: port.max(0.0),
-            subject,
-        };
-        g.progress(subject.map(|_| inset), a.range_start, a.range_end)
+        progress_on(
+            i,
+            &a.timeline,
+            [a.range_start, a.range_end],
+            interaction,
+            tree,
+        )
     }
+}
+
+/// Node `i`'s `timeline`'s progress through `range` (its start and end
+/// edges) of it (`None`: the timeline is inactive or `none`).
+pub(crate) fn progress_on(
+    i: usize,
+    timeline: &AnimationTimeline,
+    range: [Option<RangeEdge>; 2],
+    interaction: &crate::ui::Interaction,
+    tree: &crate::ui::Tree,
+) -> Option<f32> {
+    let none = [Inset::default(); 2];
+    let (scroller, subject, axis, inset) = match timeline {
+        AnimationTimeline::Document | AnimationTimeline::None => return None,
+        AnimationTimeline::Scroll { source, axis } => {
+            let s = match source {
+                ScrollSource::Own => Some(i).filter(|&i| tree.nodes[i].scrolls()),
+                ScrollSource::Nearest => tree.scroll_ancestor(i),
+                ScrollSource::Root => {
+                    let mut out = None;
+                    let mut at = i;
+                    while let Some(s) = tree.scroll_ancestor(at) {
+                        out = Some(s);
+                        at = s;
+                    }
+                    out
+                }
+            };
+            (s?, None, *axis, none)
+        }
+        AnimationTimeline::View { axis, inset } => {
+            (tree.scroll_ancestor(i)?, Some(i), *axis, *inset)
+        }
+        AnimationTimeline::Named(name) => {
+            let (d, t) = tree.named_timeline(i, name)?;
+            if t.view {
+                (tree.scroll_ancestor(d)?, Some(d), t.axis, t.inset)
+            } else {
+                (
+                    Some(d).filter(|&d| tree.nodes[d].scrolls())?,
+                    None,
+                    t.axis,
+                    none,
+                )
+            }
+        }
+    };
+    let s = &tree.nodes[scroller];
+    let pad = s.layout.used.padding;
+    let (offset, max, start, port) = if axis.horizontal() {
+        let max = s.max_scroll_x();
+        let at = interaction
+            .state
+            .scroll_x
+            .get(&s.key)
+            .copied()
+            .unwrap_or(0.0);
+        (
+            at.clamp(0.0, max),
+            max,
+            s.placed.rect.x + pad.left,
+            s.placed.rect.width - pad.horizontal(),
+        )
+    } else {
+        let max = s.max_scroll();
+        let at = interaction.state.scroll.get(&s.key).copied().unwrap_or(0.0);
+        (
+            at.clamp(0.0, max),
+            max,
+            s.placed.rect.y + pad.top,
+            s.placed.rect.height - pad.vertical(),
+        )
+    };
+    // Laid out at this offset: its place in the content is where it is
+    // plus the offset.
+    let subject = subject.map(|j| {
+        let r = tree.nodes[j].placed.rect;
+        if axis.horizontal() {
+            (r.x - start + offset, r.width)
+        } else {
+            (r.y - start + offset, r.height)
+        }
+    });
+    let g = ScrollGeometry {
+        offset,
+        max,
+        port: port.max(0.0),
+        subject,
+    };
+    g.progress(subject.map(|_| inset), range[0], range[1])
 }
 
 impl crate::ui::Tree {

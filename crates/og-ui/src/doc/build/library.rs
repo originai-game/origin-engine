@@ -29,6 +29,9 @@ pub(crate) struct Library {
     /// `scroll-target-group` or a `::scroll-button()`, so builds look for
     /// the scroll controls a container stands among (CSS Overflow 5 §3).
     pub(crate) scroll_controls: bool,
+    /// Some defined document declares a `timeline-trigger`, so the motion
+    /// step reads the triggers' ranges (CSS Animation Triggers 1 §3).
+    pub(crate) triggers: bool,
     /// The textures documents name by asset path (a view transition's
     /// cover image), by path.
     pub(crate) textures: BTreeMap<String, og_draw::TextureHandle>,
@@ -65,6 +68,7 @@ impl Library {
                 || d.name == "display" && d.source.contains("list-item")
         });
         self.uses_siblings |= crate::doc::matching::counts_siblings(&doc);
+        self.triggers |= declarations().any(|d| d.name.starts_with("timeline-trigger"));
         self.scroll_controls |= declarations().any(|d| {
             matches!(
                 d.name.as_str(),

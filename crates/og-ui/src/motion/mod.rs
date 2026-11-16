@@ -17,6 +17,7 @@ pub mod scroll;
 pub mod spring;
 pub(crate) mod state;
 pub mod timeline;
+pub mod trigger;
 pub(crate) mod view_transition;
 
 pub use gesture::GestureInfo;

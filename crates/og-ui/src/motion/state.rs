@@ -180,6 +180,10 @@ pub struct MotionState {
     pub bursts: Vec<BurstRun>,
     /// Running CSS animations (saved beside the layer stack).
     pub css: Vec<super::css::CssRun>,
+    /// Each timeline trigger's state, by its scope (the render key of the
+    /// element whose `trigger-scope` holds it, 0: global) and name (saved
+    /// beside the layer stack).
+    pub triggers: std::collections::BTreeMap<(u64, String), super::trigger::TriggerState>,
     /// Transitions of computed values, by element (saved beside the layer
     /// stack).
     pub styles: std::collections::BTreeMap<u64, super::css::StyleState>,

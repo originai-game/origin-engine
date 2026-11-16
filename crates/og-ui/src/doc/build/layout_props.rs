@@ -657,6 +657,8 @@ impl Ui {
         p.animations = r.animations.clone();
         p.timelines = r.timelines.clone();
         p.timeline_scope = r.timeline_scope.clone();
+        p.timeline_triggers = r.timeline_triggers.clone();
+        p.trigger_scope = r.trigger_scope.clone();
         if let Some(V::Transition(t)) = r.get("layoutMotion") {
             p.layout_motion = Some(*t);
         }
