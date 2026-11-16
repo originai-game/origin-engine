@@ -34,7 +34,7 @@
 #Crumbs, #Progress, #Overlays { display: flex; width: stretch; }
 #Row, #Row2, #Row3 { display: flex; align-items: flex-start; gap: var(--space-xl); width: stretch; }
 #Grid { flex: 3 1 0; min-width: 0; max-height: calc(var(--size-xxl) * 9); display: flex; }
-#Side { flex: 2 1 0; min-width: 0; display: flex; flex-direction: column; gap: var(--space-lg); }
+#Side { flex: 2 1 0; display: flex; flex-direction: column; gap: var(--space-lg); }
 #MenuBox { position: relative; display: flex; }
 .half { flex: 1 1 0; min-width: 0; display: flex; }
 #Radial { flex: 1 1 0; min-width: 0; position: relative; height: calc(var(--size-xxl) * 5); }

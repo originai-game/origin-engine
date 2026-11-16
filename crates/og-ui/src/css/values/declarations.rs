@@ -147,10 +147,16 @@ impl Frame {
             // range (as `width fit <min> <max>` writes it); any other bound
             // is its own prop, applied to whatever size the element takes.
             let px = |b: &Option<Vec<Value>>| matches!(b.as_deref(), Some([Value::Number(_)]));
+            // A zero minimum is its own bound (`min-width: 0` lifts a flex
+            // item's content floor), never the range's no-minimum 0.
+            let zero = |b: &Option<Vec<Value>>| {
+                matches!(b.as_deref(), Some([Value::Number(n)]) if n.as_f32() == 0.0)
+            };
             if let Some((at, mut v)) = kind {
                 let ranged = matches!(v.as_slice(), [Value::Word(w)] if w == "fit" || w == "grow");
                 if ranged
                     && (px(&min) || px(&max))
+                    && !zero(&min)
                     && (min.is_none() || px(&min))
                     && (max.is_none() || px(&max))
                 {

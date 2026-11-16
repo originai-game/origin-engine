@@ -253,7 +253,12 @@ impl Ui {
         el.bounds = bounds;
         for (axis, size) in [&mut el.width, &mut el.height].into_iter().enumerate() {
             if let Size::Fit { min, max } | Size::Grow { min, max } = size {
-                if let Some(Size::Fixed(v)) = el.bounds[axis][0] {
+                // A zero minimum stays a bound of its own: the range's 0
+                // is no minimum (`auto`, a flex item's content), and
+                // `min-width: 0` is CSS's way to lift that floor.
+                if let Some(Size::Fixed(v)) = el.bounds[axis][0]
+                    && v > 0.0
+                {
                     *min = v;
                     el.bounds[axis][0] = None;
                 }
