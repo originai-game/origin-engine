@@ -973,3 +973,106 @@ fn font_size_adjust_sizes_each_face_by_its_metric() {
     expect("Off", 20.0, 20.0);
     expect("Rich", 20.0 * 0.5 / gx, 20.0 * 0.5 / cx);
 }
+
+/// CSS Fonts 5 §11.3 and §11.4: an `@font-face`'s `size-adjust` draws its
+/// face that much larger, advances and extents with it (and
+/// `font-size-adjust` sizes the face by its adjusted metric, so cancels
+/// it); `ascent-override` and `descent-override` replace the face's
+/// extents, which place its baseline in the line box, and with
+/// `line-gap-override` they set `line-height: normal`, the font's own
+/// ascent and descent standing in for those not given.
+#[test]
+fn font_face_metric_overrides_set_the_faces_size_and_line_metrics() {
+    let declared = |family: &str, descriptors: &str| {
+        let mut sheet = og_ui::doc::at_rules::Sheet::default();
+        sheet
+            .font_face(
+                &format!("font-family: {family}; src: url(f.ttf); {descriptors}"),
+                "",
+            )
+            .unwrap();
+        let rule = &sheet.font_faces[0];
+        let mut font = face(NOTO, 2);
+        font.metrics = rule.metrics(font.metrics);
+        family_face(family, font)
+    };
+    fn family_face(name: &str, font: UiFont) -> FamilyFace {
+        family(name, (400, 400), font)
+    }
+    let d = doc(
+        vec![
+            declared(
+                "Over",
+                "ascent-override: 90%; descent-override: 30%; line-gap-override: 20%;",
+            ),
+            declared("Gap", "line-gap-override: 10%;"),
+            declared("Big", "size-adjust: 150%;"),
+            declared(
+                "Double",
+                "size-adjust: 200%; ascent-override: 50%; descent-override: 0%; line-gap-override: 0%;",
+            ),
+        ],
+        "<p id=\"Plain\">xx</p><p id=\"Over\">xx</p><p id=\"Gap\">xx</p><p id=\"Big\">xx</p>\
+<p id=\"Adjusted\">xx</p><p id=\"Double\">xx</p>",
+        r#"p { font-size: 20px; line-height: normal; width: fit-content; }
+#Over { font-family: Over; } #Gap { font-family: Gap; } #Big { font-family: Big; }
+#Adjusted { font-family: Big; font-size-adjust: 0.5; } #Double { font-family: Double; }"#,
+    );
+    // Each text command's size and its baseline below the element's top.
+    let texts = |id: &str| -> Vec<(f32, f32)> {
+        let r = d.get(id);
+        d.ui.frame()
+            .items
+            .iter()
+            .filter_map(|it| match it.cmd.unstyled() {
+                DrawCmd::Text {
+                    size,
+                    baseline,
+                    bounds,
+                    ..
+                } if (r.y..r.y + r.height).contains(&(bounds.y + bounds.height / 2.0)) => {
+                    Some((*size, baseline - r.y))
+                }
+                _ => None,
+            })
+            .collect()
+    };
+    let near = |a: f32, b: f32| (a - b).abs() < 0.6;
+    // From Noto Sans's tables (fontTools): hhea ascent 1069 and descent
+    // 293, "x" 529 and OS/2 sxHeight 536 of 1000.
+    let (asc, desc, x_adv, x_height) = (1.069, 0.293, 0.529, 0.536);
+    // line-height: normal is the UI's 1.2 in a face without overrides.
+    assert!(near(d.get("Plain").height, 24.0), "{:?}", d.get("Plain"));
+    // 90 % + 30 % + 20 % of 20 px; the baseline 2 px of half-leading and
+    // 18 px of ascent down.
+    let over = d.get("Over");
+    assert!(near(over.height, 28.0), "{over:?}");
+    let t = texts("Over");
+    assert!(
+        t.len() == 1 && near(t[0].1, 20.0) && near(t[0].0, 20.0),
+        "{t:?}"
+    );
+    // The font's own ascent and descent and a 10 % gap.
+    let gap = d.get("Gap");
+    assert!(near(gap.height, 20.0 * (asc + desc + 0.1)), "{gap:?}");
+    // 150 %: drawn at 30 px, two x advances wide at it.
+    let t = texts("Big");
+    assert!(t.len() == 1 && near(t[0].0, 30.0), "{t:?}");
+    let big = d.get("Big");
+    assert!(near(big.width, 2.0 * x_adv * 30.0), "{big:?}");
+    // size-adjust scales the overrides: an ascent of 50 % of 40 px, no
+    // descent or gap, a line 20 px tall with the baseline at its foot.
+    let double = d.get("Double");
+    assert!(near(double.height, 20.0), "{double:?}");
+    let t = texts("Double");
+    assert!(
+        t.len() == 1 && near(t[0].0, 40.0) && near(t[0].1, 20.0),
+        "{t:?}"
+    );
+    // font-size-adjust 0.5 against the adjusted x-height: 20 × 0.5 / 0.536.
+    let t = texts("Adjusted");
+    assert!(
+        t.len() == 1 && (t[0].0 - 20.0 * 0.5 / x_height).abs() < 0.01,
+        "{t:?}"
+    );
+}

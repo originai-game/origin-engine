@@ -444,7 +444,7 @@ pub(super) fn sheet_faces(
         let i = crate::world::assets::load_font(eng, src)
             .map_err(|e| format!("{source}: @font-face {}: {src}: {e}", face.family))?;
         let mut font = super::ui_config::ui_font(eng, crate::world::assets::handle(i) as f64)?;
-        font.metrics = font.metrics.with_range(&face.unicode_range);
+        font.metrics = face.metrics(font.metrics);
         let weight = |w: f32| w.round().clamp(1.0, 1000.0) as u16;
         // `auto`: a variable font's axis range (CSS Fonts 4 §4.5), else
         // the normal value.

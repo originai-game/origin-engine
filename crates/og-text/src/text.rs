@@ -149,10 +149,16 @@ pub struct FontMetrics {
     /// draws one that both have.
     pub emoji: EmojiStyle,
     /// Its used size over the text's (CSS `font-size-adjust`, which sizes
-    /// each face of a text so their x-heights, or another metric, match):
-    /// its advances are scaled by it and its runs drawn at it
-    /// ([`Piece::scale`]). 1 for a font as it is.
+    /// each face of a text so their x-heights, or another metric, match,
+    /// and `@font-face`'s `size-adjust`): its advances, x- and cap height
+    /// are scaled by it and its runs drawn at it ([`Piece::scale`]); its
+    /// extents are set scaled ([`FontMetrics::scaled`]). 1 for a font as
+    /// it is.
     pub scale: f32,
+    /// `line-height: normal` in it, em of the text's size, when its
+    /// `@font-face` overrides its line metrics (`ascent-override`,
+    /// `descent-override`, `line-gap-override`); `None`: the UI's 1.2.
+    pub normal_line: Option<f32>,
 }
 
 /// One glyph of a line as drawn, left to right.
@@ -256,6 +262,7 @@ impl FontMetrics {
             range: None,
             emoji: EmojiStyle::Unicode,
             scale: 1.0,
+            normal_line: None,
         }
     }
 
@@ -276,6 +283,7 @@ impl FontMetrics {
             range: None,
             emoji: EmojiStyle::Unicode,
             scale: 1.0,
+            normal_line: None,
         }
     }
 
@@ -603,10 +611,54 @@ impl FontMetrics {
     /// The height of its lowercase letters, em (half an em for a font
     /// without its file).
     pub fn x_height(&self) -> f32 {
-        self.file.as_ref().map_or(0.5, |f| f.x_height())
+        self.file.as_ref().map_or(0.5, |f| f.x_height()) * self.scale
     }
 
-    /// Its `metric`, em of its size (CSS Fonts 5 §2.5): a font without
+    /// This font drawn `k` times its size ([`FontMetrics::scale`]): its
+    /// extents and normal line height with it.
+    pub fn scaled(mut self, k: f32) -> FontMetrics {
+        self.scale *= k;
+        self.ascender *= k;
+        self.descender *= k;
+        self.normal_line = self.normal_line.map(|n| n * k);
+        self
+    }
+
+    /// With its `@font-face`'s metric overrides (CSS Fonts 5 §11.4):
+    /// `ascent` and `descent` (em, positive below the baseline) replace
+    /// its extents, and with `line_gap` set `line-height: normal`, the
+    /// font's own ascent and descent standing in for one not given and
+    /// no gap for a gap not given.
+    pub fn with_overrides(
+        mut self,
+        ascent: Option<f32>,
+        descent: Option<f32>,
+        line_gap: Option<f32>,
+    ) -> FontMetrics {
+        if ascent.is_none() && descent.is_none() && line_gap.is_none() {
+            return self;
+        }
+        let file = |f: fn(&crate::shape::FontFile) -> f32| {
+            self.file.as_ref().map(|file| f(file)).filter(|v| *v > 0.0)
+        };
+        let a = ascent
+            .or_else(|| file(crate::shape::FontFile::ascent))
+            .unwrap_or(self.ascender);
+        let d = descent
+            .or_else(|| file(crate::shape::FontFile::descent))
+            .unwrap_or(-self.descender);
+        if ascent.is_some() {
+            self.ascender = a;
+        }
+        if descent.is_some() {
+            self.descender = -d;
+        }
+        self.normal_line = Some(a + d + line_gap.unwrap_or(0.0));
+        self
+    }
+
+    /// Its `metric`, em of the text's size at its scale (CSS Fonts 5 §2.5,
+    /// after `@font-face`'s `size-adjust`): a font without
     /// the glyph measured takes the CSS Values 4 §6.1.1 fallbacks (half an
     /// em for `ch`, an em for `ic`).
     pub fn aspect(&self, metric: AspectMetric) -> f32 {
@@ -618,13 +670,15 @@ impl FontMetrics {
         match metric {
             AspectMetric::ExHeight => self.x_height(),
             AspectMetric::CapHeight => self.cap_height(),
-            AspectMetric::ChWidth => own('0').unwrap_or(0.5),
-            AspectMetric::IcWidth => own('\u{6C34}').unwrap_or(1.0),
-            AspectMetric::IcHeight => self
-                .file
-                .as_ref()
-                .and_then(|f| f.vertical_advance('\u{6C34}'))
-                .unwrap_or(1.0),
+            AspectMetric::ChWidth => own('0').unwrap_or(0.5) * self.scale,
+            AspectMetric::IcWidth => own('\u{6C34}').unwrap_or(1.0) * self.scale,
+            AspectMetric::IcHeight => {
+                self.file
+                    .as_ref()
+                    .and_then(|f| f.vertical_advance('\u{6C34}'))
+                    .unwrap_or(1.0)
+                    * self.scale
+            }
         }
     }
 
@@ -633,7 +687,7 @@ impl FontMetrics {
     pub fn cap_height(&self) -> f32 {
         self.file
             .as_ref()
-            .map(|f| f.cap_height())
+            .map(|f| f.cap_height() * self.scale)
             .filter(|c| *c > 0.0)
             .unwrap_or(self.ascender)
     }

@@ -977,14 +977,13 @@ impl Fonts {
         let parts = 1 + runs.map_or(0, |r| r.len());
         let scales = adjust.scales(&font.metrics, parts);
         let mut made = font.clone();
-        made.metrics.scale = scales[0];
+        made.metrics = made.metrics.scaled(scales[0]);
         made.metrics.runs = runs.map(|r| {
             r.iter()
                 .zip(&scales[1..])
-                .map(|(f, &scale)| {
-                    let mut f = f.clone();
-                    f.metrics.scale = scale;
-                    f
+                .map(|(f, &scale)| UiFont {
+                    metrics: f.metrics.clone().scaled(scale),
+                    ..f.clone()
                 })
                 .collect()
         });

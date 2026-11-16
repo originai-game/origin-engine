@@ -1678,8 +1678,26 @@ impl Resolved {
             .str("step")
             .and_then(|s| crate::style_file::ramp_step(&mut theme.type_ramp.clone(), s).copied());
         let css = self.text.as_deref();
+        let font = {
+            let role = self
+                .str("font")
+                .and_then(FontRole::from_name)
+                .or_else(|| css.and_then(|t| t.font_role))
+                .unwrap_or_default();
+            // A named family a document declares, the role after it.
+            match css.and_then(|t| t.family.as_deref()) {
+                Some(names) => fonts.family_list(names, role),
+                None => role,
+            }
+        };
         let step = match css {
-            Some(t) => Some(t.step(step.unwrap_or(theme.type_ramp.body))),
+            Some(t) => {
+                // `line-height: normal` in a face whose @font-face sets its
+                // line metrics is theirs.
+                let query = crate::FontQuery::new(t.weight.unwrap_or(0), t.italic == Some(true));
+                let normal = fonts.for_styled(font, query, "").0.metrics.normal_line;
+                Some(t.step_in(step.unwrap_or(theme.type_ramp.body), normal))
+            }
             None => step,
         };
         let align = self.text_align(rtl).unwrap_or_default();
@@ -1691,18 +1709,7 @@ impl Resolved {
             align,
             nowrap: css.and_then(|t| t.nowrap).unwrap_or(self.flag("nowrap")),
             width: self.size("width").unwrap_or_default(),
-            font: {
-                let role = self
-                    .str("font")
-                    .and_then(FontRole::from_name)
-                    .or_else(|| css.and_then(|t| t.font_role))
-                    .unwrap_or_default();
-                // A named family a document declares, the role after it.
-                match css.and_then(|t| t.family.as_deref()) {
-                    Some(names) => fonts.family_list(names, role),
-                    None => role,
-                }
-            },
+            font,
             heading: self.flag("heading"),
             ellipsis: self.flag("ellipsis"),
             max_lines: self.num("maxLines").unwrap_or(0.0) as u32,

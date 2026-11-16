@@ -1789,8 +1789,6 @@ fn variant_features(w: &str) -> Vec<(&'static [u8; 4], u16)> {
     }
 }
 
-/// `font-language-override`'s OpenType language system tag: a quoted one
-/// to four letters (CSS Fonts 4 §6.13), trailing spaces dropped.
 /// A `font-size-adjust` value (CSS Fonts 5 §2.5): `Some(None)` for
 /// `none`, else its metric and its number or `from-font`.
 fn size_adjust(v: &str) -> Option<Option<crate::text::SizeAdjust>> {
@@ -1826,6 +1824,8 @@ fn size_adjust(v: &str) -> Option<Option<crate::text::SizeAdjust>> {
     Some(Some(crate::text::SizeAdjust { metric, value }))
 }
 
+/// `font-language-override`'s OpenType language system tag: a quoted one
+/// to four letters (CSS Fonts 4 §6.13), trailing spaces dropped.
 fn language_tag(v: &str) -> Option<String> {
     let inner = v
         .strip_prefix('"')
@@ -1977,7 +1977,13 @@ fn compute(
 
 impl TextCss {
     /// The type step with its size, weight, line height and tracking.
-    pub fn step(&self, mut step: TypeStep) -> TypeStep {
+    pub fn step(&self, step: TypeStep) -> TypeStep {
+        self.step_in(step, None)
+    }
+
+    /// [`TextCss::step`] in a face whose `line-height: normal` is `normal`
+    /// em ([`crate::text::FontMetrics::normal_line`]; `None`: 1.2).
+    pub fn step_in(&self, mut step: TypeStep, normal: Option<f32>) -> TypeStep {
         let ratio = step.line_height / step.size.max(1e-3);
         if let Some(s) = self.size {
             // A size keeps the step's leading ratio unless a line height says.
@@ -1988,7 +1994,7 @@ impl TextCss {
         match self.line_height {
             Some(LineHeight::Factor(f)) => step.line_height = step.size * f,
             Some(LineHeight::Px(p)) => step.line_height = p,
-            Some(LineHeight::Normal) => step.line_height = step.size * 1.2,
+            Some(LineHeight::Normal) => step.line_height = step.size * normal.unwrap_or(1.2),
             None => {}
         }
         if let Some(LineHeight::Factor(_) | LineHeight::Px(_)) = self.line_height {

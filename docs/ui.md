@@ -1981,8 +1981,19 @@ x-height by default, or `cap-height`, `ch-width` (the advance of "0"),
 own value, so a fallback face (CJK beside a Latin face, say) is drawn to
 match it. A face is scaled with its advances, in plain and rich text; a
 face without the glyph measured takes CSS Values 4's fallback (half an em
-for `ch`, an em for `ic`). Line boxes keep the text's size, and vertical
-text draws its faces unadjusted.
+for `ch`, an em for `ic`). A face's extents scale with it, which places
+its baseline; the line height stays the text's, and vertical text draws
+its faces unadjusted.
+
+An `@font-face`'s `size-adjust` (Fonts 5 §11.3) draws its face that much
+larger, its advances, extents and x-height with it, so `font-size-adjust`
+matches the adjusted face. `ascent-override` and `descent-override`
+(§11.4) replace the face's extents, which place its baseline in the line
+box. With `line-gap-override`, any of the three sets `line-height:
+normal` in the face to their sum, the font's own ascent and descent
+(`hhea`) standing in for one not given and no gap for a gap not given; a
+face without them keeps the UI's 1.2. `size-adjust` scales the overrides
+too.
 
 ## 4. Shipped catalogue
 

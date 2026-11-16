@@ -1,0 +1,14 @@
+{
+  "added": [
+    {
+      "member": "ui",
+      "summary": "@font-face size-adjust, ascent-override, descent-override and line-gap-override (CSS Fonts 5 §11.3, §11.4) apply to the face: size-adjust draws it that much larger with its advances, extents and x-height, ascent and descent overrides replace its extents (where its baseline sits), and any override sets line-height: normal in it to ascent + descent + line gap (1.2 otherwise). FontMetrics gains normal_line, scaled() and with_overrides(), at_rules::FontFace the four descriptors and metrics(), TextCss step_in()."
+    }
+  ],
+  "fixed": [
+    {
+      "member": "ui",
+      "summary": "font-size-adjust scales a face's extents with its size, so its baseline sits where the adjusted face's does, and x_height() and cap_height() report a scaled face's own."
+    }
+  ]
+}

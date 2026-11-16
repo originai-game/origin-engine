@@ -82,6 +82,30 @@ pub struct FontFace {
     /// `unicode-range` as inclusive code point ranges; empty: all.
     pub unicode_range: Vec<(u32, u32)>,
     pub display: String,
+    /// `size-adjust` as a factor; `None`: 100 %, the initial value.
+    pub size_adjust: Option<f32>,
+    /// `ascent-override`, `descent-override` and `line-gap-override` as
+    /// fractions of the em; `None`: `normal`, the font's own.
+    pub ascent: Option<f32>,
+    pub descent: Option<f32>,
+    pub line_gap: Option<f32>,
+}
+
+impl FontFace {
+    /// Its font's metrics as its descriptors set them (CSS Fonts 4 §4.7
+    /// `unicode-range`, Fonts 5 §11.3 `size-adjust` and §11.4 the metric
+    /// overrides, which `size-adjust` scales too).
+    pub fn metrics(&self, metrics: crate::text::FontMetrics) -> crate::text::FontMetrics {
+        let m = metrics.with_range(&self.unicode_range).with_overrides(
+            self.ascent,
+            self.descent,
+            self.line_gap,
+        );
+        match self.size_adjust {
+            Some(k) => m.scaled(k),
+            None => m,
+        }
+    }
 }
 
 /// One `@font-palette-values` (CSS Fonts 4 §9.1): a palette `font-palette`
@@ -236,6 +260,20 @@ impl Sheet {
             display: "auto".into(),
             ..FontFace::default()
         };
+        // A non-negative percentage, as a fraction.
+        let percent = |name: &str, v: &str| {
+            v.strip_suffix('%')
+                .and_then(|n| n.trim().parse::<f32>().ok())
+                .filter(|n| n.is_finite() && *n >= 0.0)
+                .map(|n| n / 100.0)
+                .ok_or_else(|| {
+                    format!("@font-face {name} takes a percentage of 0 or more, not {v}")
+                })
+        };
+        let metric = |name: &str, v: &str| match v {
+            "normal" => Ok(None),
+            v => percent(name, v).map(Some),
+        };
         for d in super::variables::declarations(body)? {
             let v = d.source.trim();
             match d.name.as_str() {
@@ -298,6 +336,10 @@ impl Sheet {
                 }
                 "font-style" => face.style = v.split_whitespace().next().unwrap_or("normal").into(),
                 "font-display" => face.display = v.into(),
+                "size-adjust" => face.size_adjust = Some(percent(&d.name, v)?),
+                "ascent-override" => face.ascent = metric(&d.name, v)?,
+                "descent-override" => face.descent = metric(&d.name, v)?,
+                "line-gap-override" => face.line_gap = metric(&d.name, v)?,
                 "unicode-range" => {
                     for range in v.split(',') {
                         let r = range
@@ -319,13 +361,9 @@ impl Sheet {
                     }
                 }
                 // Descriptors that tune what the engine's font path already
-                // decides (metrics overrides, features): accepted, unused.
+                // decides (features): accepted, unused.
                 "font-feature-settings"
                 | "font-variation-settings"
-                | "ascent-override"
-                | "descent-override"
-                | "line-gap-override"
-                | "size-adjust"
                 | "font-named-instance"
                 | "font-variant" => {}
                 other => return Err(format!("@font-face has no descriptor {other}")),
