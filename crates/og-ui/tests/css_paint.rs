@@ -2387,3 +2387,119 @@ fn border_shape_strokes_one_shape_and_fills_between_two() {
     assert_eq!(width(Srgba::rgb(255, 255, 0)), [4.0], "left to right: left");
     assert_eq!(width(Srgba::rgb(0, 255, 0)), [6.0], "right to left: right");
 }
+
+#[test]
+fn glass_takes_any_backdrop_filter_chain() {
+    // CSS Filter Effects 2 §3: backdrop-filter's functions run in order
+    // over what is under the box. Glass folds blurs then colour into its
+    // own backdrop; any other chain (here a colour function before a
+    // blur and a drop-shadow) runs as the staged backdrop filter, in
+    // order, and the glass draws over what it leaves without filtering
+    // again. Ways it could fail: the chain refused with a warning and no
+    // filter drawn, its functions reordered, or the glass blurring twice.
+    let text = r#"<meta name="component" content="t">
+<div><div id="Root">
+  <div id="Fold"></div>
+  <div id="Chain"></div>
+</div></div>
+<style>
+#Root { width: 400px; }
+#Fold, #Chain { width: 100px; height: 60px; -og-material: glass regular lift; }
+#Fold { backdrop-filter: blur(4px) saturate(0); }
+#Chain { margin-top: 10px; backdrop-filter: saturate(0) blur(4px) drop-shadow(2px 3px 4px #000000); }
+</style>"#;
+    let d = Doc::with_font(text, &[], test_font_metrics());
+    assert!(
+        d.ui.frame().warnings.is_empty(),
+        "{:?}",
+        d.ui.frame().warnings
+    );
+    let rect = |id: &str| {
+        let e = d.get(id);
+        Rect::new(e.x, e.y, e.width, e.height)
+    };
+    let (fold, chain) = (rect("Fold"), rect("Chain"));
+    let within = |y: f32, r: &Rect| y >= r.y && y <= r.y + r.height;
+    // Each box's backdrop layers' filters and glass backdrops, in order.
+    #[derive(Debug)]
+    enum Drawn {
+        Staged(Vec<og_draw::UiFilterOp>),
+        Glass(f32, f32, bool),
+    }
+    let drawn = |r: &Rect| -> Vec<Drawn> {
+        let mut out = Vec::new();
+        for it in &d.ui.frame().items {
+            match &it.cmd {
+                DrawCmd::BeginLayer {
+                    role: LayerRole::Backdrop,
+                    filter: Some(f),
+                    ..
+                } if within(f.0.y + f.0.height / 2.0, r) => out.push(Drawn::Staged(
+                    f.1.primitives.iter().map(|p| p.op.clone()).collect(),
+                )),
+                DrawCmd::Shape { shape, .. } if within(shape.center.y, r) => {
+                    if let og_draw::UiMode::Backdrop {
+                        blur,
+                        saturation,
+                        glass,
+                        ..
+                    } = shape.mode
+                    {
+                        out.push(Drawn::Glass(blur, saturation, glass.matrix.is_some()));
+                    }
+                }
+                _ => {}
+            }
+        }
+        out
+    };
+    // Folded: one glass backdrop, the CSS blur at the glass scale, the
+    // grey matrix in it and no staged layer.
+    let f = drawn(&fold);
+    assert!(
+        matches!(f.as_slice(), [Drawn::Glass(b, 1.0, true)] if *b == 4.0 * og_draw::ui::GLASS_BLUR_SCALE),
+        "{f:?}"
+    );
+    // Staged: saturate(0) is Filter Effects 1's matrix at s = 0 (each
+    // row 0.213 0.715 0.072), then the 4px blur, then the shadow: its
+    // 4px blur is a deviation of 2, moved 2 3, black, in under the image.
+    let c = drawn(&chain);
+    let [Drawn::Staged(ops), Drawn::Glass(0.0, 1.0, false)] = c.as_slice() else {
+        panic!("a staged filter, then glass with no filter of its own: {c:?}");
+    };
+    use og_draw::UiFilterOp as Op;
+    let Op::ColorMatrix(m) = &ops[0] else {
+        panic!("{ops:?}")
+    };
+    for row in 0..3 {
+        assert_eq!(m[row * 5..row * 5 + 3], [0.213, 0.715, 0.072], "{m:?}");
+    }
+    assert!(
+        matches!(
+            ops[1],
+            Op::Blur {
+                std_dev: [4.0, 4.0]
+            }
+        ),
+        "{ops:?}"
+    );
+    assert!(
+        matches!(
+            ops[2],
+            Op::Blur {
+                std_dev: [2.0, 2.0]
+            }
+        ),
+        "{ops:?}"
+    );
+    assert!(matches!(ops[3], Op::Offset { d: [2.0, 3.0] }), "{ops:?}");
+    assert!(
+        matches!(ops[4], Op::Flood { color } if color == [0.0, 0.0, 0.0, 1.0]),
+        "{ops:?}"
+    );
+    assert!(
+        matches!(ops[5], Op::Composite { .. }) && matches!(ops[6], Op::Merge),
+        "{ops:?}"
+    );
+    assert_eq!(ops.len(), 7);
+}

@@ -304,12 +304,15 @@ pub(crate) fn glass_material(text: &str) -> Result<Option<crate::paint::GlassPar
     }))
 }
 
-/// A glass surface's filter in the native backdrop shader. A filter chain
-/// that needs intermediate clamping cannot be folded into this shader.
+/// A glass surface's filter folded into the native backdrop shader: blurs
+/// first, then colour functions that keep colour in 0..1. `None` for a
+/// chain it cannot fold (a blur after a colour function, a colour run
+/// that needs clamping between its functions, a `drop-shadow()` or a
+/// `url()`), which runs as the staged backdrop filter instead.
 pub(crate) fn glass_effect(
     mut glass: crate::paint::GlassParts,
     fns: &[FilterFn],
-) -> Result<Effect, String> {
+) -> Option<Effect> {
     let mut blur = 0.0;
     for f in fns {
         match f {
@@ -320,17 +323,13 @@ pub(crate) fn glass_effect(
                 glass.matrix = Some(match glass.matrix {
                     None => *m,
                     Some(previous) if contained(&previous) => then(&previous, m),
-                    _ => {
-                        return Err(
-                            "glass backdrop-filter needs an intermediate colour clamp".into()
-                        );
-                    }
+                    _ => return None,
                 });
             }
-            _ => return Err("glass backdrop-filter requires blur before colour functions".into()),
+            _ => return None,
         }
     }
-    Ok(Effect::Backdrop {
+    Some(Effect::Backdrop {
         blur: blur * og_draw::ui::GLASS_BLUR_SCALE,
         saturation: 1.0,
         brightness: 1.0,

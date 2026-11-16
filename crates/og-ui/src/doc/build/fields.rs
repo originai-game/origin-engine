@@ -492,14 +492,17 @@ impl Ui {
             .and_then(|s| p::glass_material(s).ok())
             .flatten();
         let fns = p::filter_fns(r.str("backdropFilter").unwrap_or("none"), "backdrop-filter");
-        if let Some(glass) = glass {
-            match fns.and_then(|fns| p::glass_effect(glass, &fns)) {
-                Ok(effect) => c.effects.push(effect),
-                Err(error) => fails.push(error),
-            }
-        } else if let Ok(fns) = fns
+        // Glass folds the filter into its own backdrop when it can; any
+        // other chain runs as staged filters, and glass draws over what
+        // they leave (its own blur and colour unset).
+        let folded = match (&glass, &fns) {
+            (Some(glass), Ok(fns)) => p::glass_effect(glass.clone(), fns),
+            _ => None,
+        };
+        if folded.is_none()
+            && let Ok(fns) = &fns
             && let Some(stages) =
-                p::backdrop_stages(&fns, crate::paint::ColorRef::Literal(current), |u| {
+                p::backdrop_stages(fns, crate::paint::ColorRef::Literal(current), |u| {
                     url(&mut fails, "backdrop-filter", u)
                 })
         {
@@ -507,6 +510,10 @@ impl Ui {
                 .push(crate::paint::Effect::BackdropFilter(std::sync::Arc::new(
                     stages,
                 )));
+        }
+        if let Some(glass) = glass {
+            c.effects
+                .extend(folded.or_else(|| p::glass_effect(glass, &[])));
         }
         if let Some(Ok(fns)) = r.str("filter").map(|v| p::filter_fns(v, "filter")) {
             let theme = self.theme();
