@@ -1409,15 +1409,24 @@ impl Resolved {
             italic: t.italic,
             weight: t.weight,
             color: t.fill.map(crate::paint::ColorRef::Literal),
+            // A stroke centred on the glyphs' edge, over the fill (Compat
+            // §5.4); `paint-order: stroke` paints it under, so only its
+            // outer half shows. Its colour defaults to `color`.
             outline: t.stroke.map(|(w, c)| {
-                (
-                    w,
-                    crate::paint::ColorRef::Literal(
-                        c.or(t.fill)
-                            .or(self.color("color"))
-                            .unwrap_or(crate::Srgba::rgb(0, 0, 0)),
-                    ),
-                )
+                let stroke_first = t.paint_order.as_deref().is_some_and(|o| {
+                    o.split_whitespace()
+                        .find(|w| *w == "fill" || *w == "stroke")
+                        == Some("stroke")
+                });
+                let color = crate::paint::ColorRef::Literal(
+                    c.or(self.color("color"))
+                        .unwrap_or(crate::Srgba::rgb(0, 0, 0)),
+                );
+                if stroke_first {
+                    (w / 2.0, color, og_draw::UiAlign::Outside)
+                } else {
+                    (w, color, og_draw::UiAlign::Center)
+                }
             }),
             decoration: t.decoration.any().then(|| t.decoration.clone()),
             ..Default::default()

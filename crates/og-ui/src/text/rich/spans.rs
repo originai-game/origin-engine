@@ -36,7 +36,9 @@ pub struct TextSpanStyle {
     pub italic: Option<bool>,
     pub underline: Option<bool>,
     pub strike: Option<bool>,
-    pub outline: Option<(f32, ColorRef)>,
+    /// An outline's width (CSS px), colour and where it runs against the
+    /// glyphs' edge.
+    pub outline: Option<(f32, ColorRef, og_draw::UiAlign)>,
     pub motion: Option<SpanFx>,
     /// A link's id (a document's inline `<a href>`): accent ink and an
     /// underline unless declared, focusable, its click answered by
@@ -235,8 +237,8 @@ impl Ui {
                 if let Some(strike) = style.strike {
                     s.strike = strike;
                 }
-                if let Some((width, color)) = &style.outline {
-                    s.outline = Some((*width, resolve_color(color, &t)));
+                if let Some((width, color, align)) = &style.outline {
+                    s.outline = Some((*width, resolve_color(color, &t), *align));
                 }
                 if let Some(motion) = style.motion {
                     s.fx = motion;
@@ -351,7 +353,8 @@ mod tests {
             &attributes,
             RichTextDesc::default(),
             |a| TextSpanStyle {
-                outline: (a.name == "outline").then(|| (2.0, ColorRef::token("danger"))),
+                outline: (a.name == "outline")
+                    .then(|| (2.0, ColorRef::token("danger"), og_draw::UiAlign::Outside)),
                 ..Default::default()
             },
         );

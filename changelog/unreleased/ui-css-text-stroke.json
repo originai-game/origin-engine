@@ -1,0 +1,8 @@
+{
+  "fixed": [
+    {
+      "member": "-webkit-text-stroke",
+      "summary": "Moves frames: a CSS text stroke is centred on the glyphs' edge over the fill at its width, as browsers draw it (it ran wholly outside the edge), takes color rather than -webkit-text-fill-color when it names no colour, and paint-order: stroke paints it under the fill so only its outer half shows."
+    }
+  ]
+}

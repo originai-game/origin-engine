@@ -48,8 +48,9 @@ pub struct RichSpan {
     pub synth: crate::ui::Synth,
     pub underline: bool,
     pub strike: bool,
-    /// An outline's width (CSS px) and colour.
-    pub outline: Option<(f32, Srgba)>,
+    /// An outline's width (CSS px), colour and where it runs against the
+    /// glyphs' edge.
+    pub outline: Option<(f32, Srgba, og_draw::UiAlign)>,
     pub atom: Option<Atom>,
     pub link: Option<String>,
     pub fx: SpanFx,
@@ -1091,10 +1092,10 @@ impl Ui {
                         continue;
                     };
                     let fx = og_draw::UiTextEffects {
-                        outline: s.outline.map(|(w, oc)| og_draw::UiTextOutline {
+                        outline: s.outline.map(|(w, oc, align)| og_draw::UiTextOutline {
                             width: w * n.placed.scale,
                             color: oc.fade(alpha).linear(),
-                            align: og_draw::UiAlign::Outside,
+                            align,
                         }),
                         fill_box: [bounds.x, bounds.y, bounds.width, bounds.height],
                         transform: if s.synth.italic {
@@ -1562,11 +1563,11 @@ impl Ui {
                 );
             }
             // An outline from the distance field, as across.
-            if let Some((w, oc)) = s.outline {
+            if let Some((w, oc, align)) = s.outline {
                 let outline = Some(og_draw::UiTextOutline {
                     width: w * n.placed.scale,
                     color: oc.fade(alpha).linear(),
-                    align: og_draw::UiAlign::Outside,
+                    align,
                 });
                 for c in &mut cmds[first..] {
                     match c {
