@@ -86,6 +86,8 @@ pub struct DocState {
     /// Events queued for code (screens built at the end of a tick reach
     /// code the next).
     pub queued: Vec<DocEvent>,
+    /// What remote frames' documents sent, queued as `queued` is.
+    pub frame_messages: Vec<crate::doc::frames::FrameMessage>,
     /// Layer operations triggers asked for this tick, done after the build.
     pub ops: Vec<crate::layer_stack::LayerOp>,
     /// Plays a document or the probe started: `(path, timeline)` → play.

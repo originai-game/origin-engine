@@ -160,15 +160,9 @@ pub(crate) fn parse_with_pack(
         for (i, declarations) in std::mem::take(&mut p.inline_styles) {
             let line = p.doc.nodes[i].line;
             for declaration in &declarations {
-                p.doc.sheet.assets.extend(
-                    at_rules::urls(&declaration.source)
-                        .iter()
-                        .map(|url| at_rules::resolve(source, url)),
-                );
-                p.doc
-                    .sheet
-                    .remote
-                    .extend(at_rules::remote_urls(&declaration.source));
+                let (assets, remote) = at_rules::sheet_urls(source, &declaration.source);
+                p.doc.sheet.assets.extend(assets);
+                p.doc.sheet.remote.extend(remote);
             }
             p.doc.nodes[i].rules.push(StyleRule {
                 inline: true,

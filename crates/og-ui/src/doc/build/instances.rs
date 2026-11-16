@@ -139,6 +139,15 @@ pub struct RetainedHost {
     /// While a frame's document is compiled: the documents of the frames
     /// around it, so a frame never embeds one it is inside.
     pub framing: Vec<String>,
+    /// The mounts that embed each document in a frame, or wait for it (a
+    /// remote one not fetched yet), by its name: they are built again when
+    /// it is defined.
+    pub framed: BTreeMap<String, BTreeSet<SourceId>>,
+    /// Each remote frame shown: its path and its document's request key.
+    /// Events from inside it leave as frame messages.
+    pub remote_frames: BTreeMap<MountedNode, (String, String)>,
+    /// Why a frame shows nothing (a remote document refused), by frame.
+    pub frame_warnings: BTreeMap<MountedNode, String>,
     /// `use:` lifecycle events (made, params changed, gone) for the next
     /// build's answer.
     pub uses: Vec<DocEvent>,

@@ -178,6 +178,7 @@ module ui {
 | [`UiScope`](ui/type-UiScope.md) | interface |  | Named presentation stores for one world, following the svelte/store contract. |
 | [`og.ui.scope`](ui/fn-scope.md) | function | `(world: World, id: string): UiScope` | The entry to named svelte/store-compatible presentation data and retained document mounts. |
 | [`UiDocEvent`](ui/type-UiDocEvent.md) | struct |  | Something a document did (docs/ui.md §2.1): a click, a changed control, a list row selected, a named event (`emit`, a timeline's callback), an action, a two-way write, or Back on a layer whose Back i… |
+| [`UiFrameMessage`](ui/type-UiFrameMessage.md) | struct |  | Something the document of a remote `<iframe>` did (docs/ui.md §2.1 Frames, HTML's `postMessage` as a frame's events): it never reaches docEvents, so the game reads it here and decides what it does. |
 | [`UiLayer`](ui/type-UiLayer.md) | struct |  | A layer of the stack (docs/ui.md §2.1), as its screen declares it. |
 | [`UiActionTrigger`](ui/type-UiActionTrigger.md) | enum |  | When a UI action fires. |
 | [`UiActionDesc`](ui/type-UiActionDesc.md) | desc struct |  | A named UI action (docs/ui.md §2.1) bound to og-input's controls: a component asks for an action, not a key. |
@@ -191,6 +192,7 @@ module ui {
 | [`og.ui.layers`](ui/fn-layers.md) | function | `(world: World): readonly UiLayer[]` | The layer stack, bottom first. |
 | [`og.ui.screenVm`](ui/fn-screenVm.md) | function | `<S extends ScreenName>(world: World, screen: S): ScreenValues<S> \| null` | A layer's viewmodel as its two-way bindings left it (the top layer of that screen); null when it is not on the stack. |
 | [`og.ui.docEvents`](ui/fn-docEvents.md) | function | `(world: World): readonly UiDocEvent[]` | Take the events of the documents built this frame: pushed layers and store-driven mounts. |
+| [`og.ui.frameMessages`](ui/fn-frameMessages.md) | function | `(world: World): readonly UiFrameMessage[]` | Take what the documents of remote `<iframe>`s sent this frame: their clicks, changed controls and named events, each with the origin it came from. |
 | [`og.ui.gameInput`](ui/fn-gameInput.md) | function | `(world: World): boolean` | Gameplay takes input this tick: no layer whose input is `menu` is on the stack. |
 | [`og.ui.paused`](ui/fn-paused.md) | function | `(world: World): boolean` | A layer that pauses the game (`pause`) is on the stack: the engine holds the time scale at 0 while one is, and gives back the one it had. |
 | [`og.ui.defineAction`](ui/fn-defineAction.md) | function | `(world: World, desc?: UiActionDesc): Result<void>` | Define (or redefine) a UI action. |

@@ -809,8 +809,7 @@ is itself an instance.
 `<iframe src="news.svelte" items={$news}>` embeds another document of the
 game (the [frames guide](../crates/og-api/guides/frames.md)). `src` is a
 literal path relative to the embedder, which the cook bundles as it does a
-component and refuses when missing; a URL or a bound `src` is refused until
-remote frames land. The other attributes are the embedded document's
+component and refuses when missing; a bound `src` is refused. The other attributes are the embedded document's
 props, read in the embedder's context; it reads no store of the mount, and
 its events reach the game as a component's do. The frame is a separate
 cascade: the embedder's rules never match inside, the topology's parent
@@ -821,6 +820,22 @@ pack and colour scheme still apply. The `<iframe>` is a replaced box,
 content-…` (CSS Sizing 4) makes that axis the document's laid-out size
 when the document declares `<meta name="responsive-embedded-sizing">`. A
 document never embeds one it is inside.
+
+A remote frame's `src` is an `https://` URL (`http://` on localhost) from
+an origin project.ogt's `frames` lists (og_ui::doc::frames; refused at cook
+and, for a frame a remote document names, at run time), with HTML's
+`crossorigin`, `integrity` and `referrerpolicy` as url()'s request
+modifiers; its request key names it. The host fetches the run-time
+`.svelte` source as it fetches a remote image (og-runtime's
+world/remote.rs; an executor waits for the chain) and defines it under that
+key (`Ui::define_frame_document`), its relative urls and `<iframe>`s beside
+its URL. Until then, and when `frames::refusal` refuses it (a `$store`
+other than `$ui`, a component that is not a loaded `@ui/` one, past 256
+KiB, 4,096 nodes, 64 images or 3 frames deep), the frame builds no child
+and warns. `bind:` on it is refused. Events from inside it leave the
+document events as `og.ui.frameMessages` (`FrameMessage`: frame path,
+origin, kind, name, inner path, value). `crates/og-ui-fuzz` fuzzes the
+parse and build of a document's text (docs/ci.md §Fuzzing).
 
 A screen opts into CSS View Transitions 1 and 2 with `@view-transition {
 navigation: auto; }`. The engine's mapping:

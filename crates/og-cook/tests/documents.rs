@@ -273,6 +273,28 @@ fn an_iframes_document_loads_with_its_embedder() {
         "{:?}",
         report.errors()
     );
+    // A remote one cooks only from an origin project.ogt's `frames` lists.
+    let remote = r#"<meta name="screen" content="page">
+<div><iframe src="https://events.example.com/og/a.svelte"></iframe></div>
+"#;
+    let root = project("iframe-remote", &[("ui/page.svelte", remote)]);
+    let report = cook_project(&root, &CookOptions::default()).unwrap();
+    assert!(
+        report.errors().iter().any(|e| e.contains("`frames`")),
+        "{:?}",
+        report.errors()
+    );
+    std::fs::write(
+        root.join("project.ogt"),
+        "type project\nversion 1\n---\nname \"p\"\nframes \"https://events.example.com\"\n",
+    )
+    .unwrap();
+    let report = cook_project(&root, &CookOptions::default()).unwrap();
+    assert!(report.ok(), "{}", report.errors().join("\n"));
+    assert!(
+        uses(&root, "ui/page.svelte").is_empty(),
+        "a remote one is fetched, not bundled"
+    );
 }
 
 /// A document's `@import` is read from beside it (with the imports of the

@@ -12190,6 +12190,7 @@
         "MassInstance",
         "UiCollectionDesc",
         "UiDocEvent",
+        "UiFrameMessage",
         "UiLayer",
         "UiActionTrigger",
         "UiActionDesc",
@@ -13219,6 +13220,20 @@
             }
           ],
           "returns": "List<UiDocEvent>",
+          "publish": true
+        },
+        {
+          "name": "frameMessages",
+          "doc": "Take what the documents of remote `<iframe>`s sent this frame: their clicks, changed controls and named events, each with the origin it came from.",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world."
+            }
+          ],
+          "returns": "List<UiFrameMessage>",
           "publish": true
         },
         {
@@ -49095,6 +49110,51 @@
         "rowKey",
         "kind",
         "name",
+        "value"
+      ],
+      "additionalProperties": false
+    },
+    "UiFrameMessage": {
+      "x-og-kind": "struct",
+      "x-og-module": "ui",
+      "description": "Something the document of a remote `<iframe>` did (docs/ui.md §2.1 Frames, HTML's `postMessage` as a frame's events): it never reaches docEvents, so the game reads it here and decides what it does. A gameplay effect then goes through og.input.intent, so replays carry it.",
+      "type": "object",
+      "properties": {
+        "mount": {
+          "type": "string",
+          "description": "The embedding document's mount."
+        },
+        "frame": {
+          "type": "string",
+          "description": "The `<iframe>`'s path."
+        },
+        "origin": {
+          "type": "string",
+          "description": "The origin its document was loaded from, such as `https://events.example.com`: check it before acting."
+        },
+        "kind": {
+          "type": "string",
+          "description": "click, changed, select, emit, action or set, as a document event's kind."
+        },
+        "name": {
+          "type": "string",
+          "description": "The element's id (click), the prop (changed), the event or action's name."
+        },
+        "path": {
+          "type": "string",
+          "description": "The element's path inside the frame, after the iframe's."
+        },
+        "value": {
+          "description": "The new value (changed, set), the row's index (select); null otherwise."
+        }
+      },
+      "required": [
+        "mount",
+        "frame",
+        "origin",
+        "kind",
+        "name",
+        "path",
         "value"
       ],
       "additionalProperties": false

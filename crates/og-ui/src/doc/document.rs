@@ -190,7 +190,7 @@ impl UiDocument {
     }
 
     /// The `for` variables in scope at node `i`.
-    fn locals(&self, mut i: usize) -> Vec<String> {
+    pub(crate) fn locals(&self, mut i: usize) -> Vec<String> {
         let mut out = Vec::new();
         while i != NONE {
             if let NodeKind::For { var, index, .. } = &self.nodes[i].kind {
@@ -230,6 +230,17 @@ impl UiDocument {
         };
         self.node_paths(&bare, &mut rest);
         out.extend(rest.into_iter().map(|p| (p, n.line)));
+        out
+    }
+
+    /// The remote `<iframe>`s it embeds, by request key, in tree order.
+    pub fn remote_frames(&self) -> Vec<String> {
+        let mut out: Vec<String> = Vec::new();
+        for key in self.nodes.iter().filter_map(|n| n.frame.as_ref()) {
+            if crate::css::request::is_remote(key) && !out.contains(key) {
+                out.push(key.clone());
+            }
+        }
         out
     }
 

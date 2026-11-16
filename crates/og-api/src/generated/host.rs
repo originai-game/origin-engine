@@ -1183,6 +1183,8 @@ pub trait UiApi: Wire {
     fn og_ui_screen_vm(&self, world: u32, screen: String) -> String;
     /// `og.ui.docEvents`
     fn og_ui_doc_events(&self, world: u32) -> String;
+    /// `og.ui.frameMessages`
+    fn og_ui_frame_messages(&self, world: u32) -> String;
     /// `og.ui.gameInput`
     fn og_ui_game_input(&self, world: u32) -> bool;
     /// `og.ui.paused`
@@ -2047,6 +2049,7 @@ pub const SYMBOLS: &[&str] = &[
     "og_ui_layers",
     "og_ui_screen_vm",
     "og_ui_doc_events",
+    "og_ui_frame_messages",
     "og_ui_game_input",
     "og_ui_paused",
     "og_ui_define_action",

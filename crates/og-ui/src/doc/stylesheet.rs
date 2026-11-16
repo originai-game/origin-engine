@@ -1227,14 +1227,9 @@ impl<'a> Reader<'a> {
                     at,
                     block_at,
                 } => {
-                    self.sheet.assets.extend(
-                        super::at_rules::urls(block)
-                            .iter()
-                            .map(|url| super::at_rules::resolve(&self.base, url)),
-                    );
-                    self.sheet
-                        .remote
-                        .extend(super::at_rules::remote_urls(block));
+                    let (assets, remote) = super::at_rules::sheet_urls(&self.base, block);
+                    self.sheet.assets.extend(assets);
+                    self.sheet.remote.extend(remote);
                     if prelude.starts_with('@') {
                         self.group(prelude, block, at, block_at, context, out, false)?;
                     } else {

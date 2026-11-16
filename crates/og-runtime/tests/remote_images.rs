@@ -34,6 +34,11 @@ type Files = BTreeMap<String, (Vec<u8>, Vec<(String, String)>)>;
 /// An HTTP server on its own port (another origin than the game's): each
 /// path's bytes and response headers.
 fn serve(files: Files) -> (u16, Seen) {
+    serve_shared(Arc::new(Mutex::new(files)))
+}
+
+/// [`serve`] from a table the test may fill once it knows the port.
+fn serve_shared(files: Arc<Mutex<Files>>) -> (u16, Seen) {
     let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
     let port = listener.local_addr().unwrap().port();
     let seen: Seen = Arc::default();
@@ -60,7 +65,7 @@ fn serve(files: Files) -> (u16, Seen) {
                 headers.get("origin").cloned(),
                 headers.get("referer").cloned(),
             ));
-            let response = match files.get(&path) {
+            let response = match files.lock().unwrap().get(&path) {
                 Some((body, extra)) => {
                     let mut head = format!(
                         "HTTP/1.1 200 OK\r\nContent-Length: {}\r\nConnection: close\r\n",
@@ -549,6 +554,163 @@ fn an_image_still_fetched_draws_the_fallback_until_it_lands() {
         turn(e, &["Coin"], "Coin"),
         Some(og_render::UiOrientation::from_exif(6).bits()),
         "the host's orientation reaches the texture"
+    );
+    assert!(og_runtime::og_engine_destroy(e));
+}
+
+/// A remote `<iframe>` (docs/ui.md §2.1 Frames) on the native host, an
+/// executor: the frame's document is fetched from an origin project.ogt's
+/// `frames` lists, with the iframe's request attributes, and the first frame
+/// after the screen is pushed already shows it, the image it names beside
+/// itself, and the frame it embeds beside itself. A frame it embeds from an
+/// origin the project does not list is never fetched and warns.
+///
+/// Ways this could fail: the document fetched from any origin; the
+/// integrity attribute dropped on the way to the request; a relative url()
+/// in the remote document read as a package file; the first frame drawn
+/// before the chain lands; a nested frame left unfetched.
+#[cfg(feature = "fetch")]
+#[test]
+fn a_remote_frame_loads_its_document_chain_from_allowed_origins() {
+    let cors = || vec![("Access-Control-Allow-Origin".to_string(), "*".to_string())];
+    let event = |port: u16| {
+        format!(
+            r#"<meta name="screen" content="event">
+<meta name="prop:heading" content="string">
+<div id="Card"><p id="Heading">{{heading}}</p><div id="Star"></div>
+<iframe id="Inner" src="inner.svelte"></iframe>
+<iframe id="Elsewhere" src="http://localhost:{port}/og/inner.svelte"></iframe></div>
+<style>
+#Card {{ display: flex; }}
+#Heading {{ margin: 0; width: 60px; }}
+#Star {{ width: 30px; height: 30px; background-image: url("art/star.png"); }}
+iframe {{ width: 120px; height: 60px; }}
+</style>"#
+        )
+    };
+    let inner = r#"<meta name="screen" content="inner"><p id="InnerText">inside</p>"#;
+    // Serve first on a free port, then write the documents naming it: the
+    // server answers from a table filled once the port is known.
+    let table: Arc<Mutex<Files>> = Arc::default();
+    let (port, seen) = serve_shared(table.clone());
+    {
+        let mut t = table.lock().unwrap();
+        t.insert(
+            "/og/event.svelte".into(),
+            (event(port).into_bytes(), cors()),
+        );
+        t.insert(
+            "/og/inner.svelte".into(),
+            (inner.as_bytes().to_vec(), cors()),
+        );
+        t.insert("/og/art/star.png".into(), (png(3, 5), cors()));
+    }
+    let doc = table.lock().unwrap()["/og/event.svelte"].0.clone();
+    let origin = format!("http://127.0.0.1:{port}");
+    let page = format!(
+        r#"<meta name="screen" content="Remote" />
+<div id="Row"><iframe id="Event" src="{origin}/og/event.svelte" integrity="{}" heading="Night"></iframe>
+<iframe id="Wrong" src="{origin}/og/inner.svelte" integrity="{}"></iframe></div>
+<style>#Row {{ display: flex; }} iframe {{ width: 390px; height: 90px; }}</style>"#,
+        sri(&doc),
+        sri(b"other")
+    );
+    let dir = PathBuf::from(env!("CARGO_TARGET_TMPDIR"))
+        .join(format!("og-runtime-remote-frames-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&dir);
+    std::fs::create_dir_all(dir.join("assets/ui")).unwrap();
+    std::fs::write(dir.join("assets/ui/remote.svelte"), page).unwrap();
+    let project = format!(
+        "type project\nversion 1\n---\nname \"remote frames\"\nid \"remote-frames\"\nentry \"main.ts\"\nframes \"{origin}\"\n"
+    );
+    std::fs::write(dir.join("project.ogt"), &project).unwrap();
+    std::fs::write(dir.join("main.ts"), "").unwrap();
+    let report = og_cook::cook_project(&dir, &og_cook::CookOptions::default()).unwrap();
+    assert!(report.ok(), "{:?}", report.errors());
+    set_hooks(Rc::new(Served { dir, host: None }));
+    og_runtime::og_host_begin_bundle();
+    let game = og_game_game(Some(r#"{"seed":1}"#.into()));
+    let options = json!({ "root": GAME, "project": project }).to_string();
+    let e = value(og_engine_create(game, options)).as_u64().unwrap() as u32;
+    let sizes = Sizes::default();
+    og_runtime::set_render_backend(e, Some(Box::new(Backend(sizes.clone())))).unwrap();
+    value(og_runtime::host_impl::answer(og_runtime::og_load_document(
+        e,
+        "ui/remote.svelte".into(),
+    )));
+    value(og_runtime::host_impl::answer(og_runtime::og_ui_push(
+        e,
+        "Remote".into(),
+        None,
+    )));
+    og_runtime::og_engine_frame(e, 1000.0 / 60.0);
+    let (texts, star) = {
+        let ui = og_runtime::shared_ui(e).unwrap();
+        let ui = ui.lock();
+        let texts: BTreeMap<String, String> = ui
+            .probe_elements()
+            .into_iter()
+            .map(|el| (el.path.clone(), el.text.clone()))
+            .collect();
+        let star = ui.frame().items.iter().find_map(|item| match &item.cmd {
+            og_ui::DrawCmd::Shape { shape, .. } => match &shape.paint {
+                og_render::UiPaint::Image(image) => {
+                    sizes.lock().unwrap().get(&image.texture.to_bits()).copied()
+                }
+                _ => None,
+            },
+            _ => None,
+        });
+        (texts, star)
+    };
+    let text = |end: &str| {
+        texts
+            .iter()
+            .find(|(p, _)| p.ends_with(end))
+            .map(|(_, t)| t.clone())
+    };
+    assert_eq!(
+        text("/Event/Card/Heading").as_deref(),
+        Some("Night"),
+        "{texts:#?}"
+    );
+    assert_eq!(
+        text("/Event/Card/Inner/InnerText").as_deref(),
+        Some("inside"),
+        "the frame it embeds, beside it: {texts:#?}"
+    );
+    // Both frames are on screen, and empty.
+    assert!(text("/Event/Card/Elsewhere").is_some(), "{texts:#?}");
+    assert!(text("/Row/Wrong").is_some(), "{texts:#?}");
+    assert!(text("/Elsewhere/InnerText").is_none(), "{texts:#?}");
+    assert!(text("/Wrong/InnerText").is_none(), "{texts:#?}");
+    assert_eq!(star, Some((3, 5)), "its relative url() is beside it");
+    let warned = warnings(e);
+    assert!(
+        warned.iter().any(
+            |w| w.contains(&format!("http://localhost:{port}/og/inner.svelte"))
+                && w.contains("frames")
+        ),
+        "{warned:#?}"
+    );
+    assert!(
+        warned
+            .iter()
+            .any(|w| w.contains("/og/inner.svelte") && w.contains("integrity")),
+        "{warned:#?}"
+    );
+    let seen = seen.lock().unwrap().clone();
+    let paths: Vec<&str> = seen.iter().map(|(p, ..)| p.as_str()).collect();
+    assert_eq!(
+        paths.iter().filter(|p| **p == "/og/event.svelte").count(),
+        1,
+        "{paths:?}"
+    );
+    assert!(paths.contains(&"/og/art/star.png"), "{paths:?}");
+    assert!(
+        seen.iter()
+            .all(|(_, o, _)| o.as_deref() == Some("http://127.0.0.1:9")),
+        "every request carries the game's origin: {seen:#?}"
     );
     assert!(og_runtime::og_engine_destroy(e));
 }

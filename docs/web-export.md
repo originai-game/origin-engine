@@ -57,6 +57,7 @@ dates, no absolute paths, files in sorted order
              "members": ["hello", "tick", "state", "pick", "entity", "input", "capture"] },
   "crossOriginIsolation": "preferred",
   "assets": null,
+  "frames": [],
   "display": { "fit": "fill", "aspect": null, "aspectMin": null, "aspectMax": null,
                "orientation": "any", "dprCap": 2,
                "fullscreen": "off", "gate": "tap", "madeWith": true, "loading": "engine" },
@@ -82,6 +83,8 @@ dates, no absolute paths, files in sorted order
 - `variant` is `3d`, `2d`, or `full` for a dev build (§Variants).
 - `assets` is `null`, or `{ "base", "origin" }` for a build whose package
   is served from an asset base (§Asset base).
+- `frames` lists the origins the game's remote `<iframe>`s load documents
+  from (project.ogt's `frames`, §Frames); empty when it embeds none.
 - `crossOriginIsolation`: `required`, `preferred` (the default) or `off`;
   without isolation a page still starts, single-threaded.
 - `files` lists every file beside it (not itself) with bytes and sha256;
@@ -170,6 +173,23 @@ fragment (`crates/og-cli/src/publish.rs` `asset_base`).
 
 `tests/web/asset-base.ts` boots a fixture's package from another origin in
 Chrome, intact, with one byte changed and with its manifest changed.
+
+### Frames
+
+A remote `<iframe>` (docs/ui.md §2.1 Frames) shows a document another
+origin serves, such as an event page on the game's CDN. project.ogt lists
+the origins it may come from, `frames "https://events.example.com"` (each
+an `https://` origin with no path; `http://` only on localhost), none by
+default. The cook refuses an `<iframe src>` from any other origin, the
+runtime refuses one a remote document names, and og-build.json's `frames`
+carries the list.
+
+- **The platform** lets the page's Content-Security-Policy reach each
+  origin with `connect-src`: the engine Worker `fetch()`es the document and
+  its images in CORS mode. No browsing context is navigated, so
+  `frame-src` is not needed.
+- **The origin** answers CORS reads from the page's origin, as an asset
+  base does. A document's `integrity` attribute pins its bytes.
 
 ### Content-hashed names
 

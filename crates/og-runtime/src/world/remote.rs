@@ -23,6 +23,14 @@
 //! - **Failures are warnings**, one per key, naming the URL and what
 //!   refused it (CORS, integrity, an HTTP status, the decoder); the layer
 //!   keeps drawing nothing.
+//! - **Frames' documents.** A remote `<iframe>` (og_ui::doc::frames)
+//!   names its document by request key as an image is named; it is fetched
+//!   the same way (the bytes only: the Worker's `fetch()`, natively og-net),
+//!   only from an origin project.ogt's `frames` lists, at most
+//!   `MAX_SOURCE` bytes, and defined in the UI under its key
+//!   (`Ui::define_frame_document`). The images and frames it names are
+//!   fetched in turn, frames at most `MAX_DEPTH` deep; an executor waits
+//!   for the whole chain.
 //! - **The game's own URL.** The origin a request is made from and the
 //!   referrer it is taken from are the engine's root when it is an http(s)
 //!   URL (a package served from an asset base, docs/web-export.md §Asset
@@ -40,6 +48,15 @@ use std::collections::BTreeMap;
 #[derive(Default)]
 pub(crate) struct Remote {
     images: BTreeMap<String, Image>,
+    /// Remote frames' documents, by request key, with how deep each is.
+    documents: BTreeMap<String, (Text, usize)>,
+}
+
+enum Text {
+    Host(u64),
+    #[cfg(not(target_arch = "wasm32"))]
+    Thread(std::sync::mpsc::Receiver<Result<Vec<u8>, String>>),
+    Done,
 }
 
 enum Image {
@@ -81,6 +98,154 @@ pub(crate) fn request<'a>(eng: &Engine, keys: impl IntoIterator<Item = &'a Strin
     }
 }
 
+/// Starts fetching each remote frame's document of `keys` not asked for
+/// yet, `depth` frames deep (1: in a document of the game). One from an
+/// origin the project does not list, or nested too deep, warns and is
+/// never fetched: its frame stays empty.
+pub(crate) fn request_frames(eng: &Engine, keys: &[String], depth: usize) {
+    let allowed = eng
+        .state
+        .borrow()
+        .project
+        .as_ref()
+        .map(|p| p.frames.clone())
+        .unwrap_or_default();
+    let root = eng.assets.borrow().root.clone();
+    for key in keys {
+        if eng.assets.borrow().remote.documents.contains_key(key) {
+            continue;
+        }
+        let started = if !og_ui::doc::frames::allowed(key, &allowed) {
+            Err("its origin is not in project.ogt's `frames`".to_string())
+        } else if depth > og_ui::doc::frames::MAX_DEPTH {
+            Err(format!(
+                "frames nest at most {} deep",
+                og_ui::doc::frames::MAX_DEPTH
+            ))
+        } else {
+            UrlRequest::from_key(key).and_then(|r| start_text(&root, &r))
+        };
+        let text = started.unwrap_or_else(|e| {
+            frame_warning(eng, key, &e);
+            Text::Done
+        });
+        eng.assets
+            .borrow_mut()
+            .remote
+            .documents
+            .insert(key.clone(), (text, depth));
+    }
+}
+
+fn start_text(root: &str, request: &UrlRequest) -> Result<Text, String> {
+    let key = next_key();
+    if let Some(h) = hooks()
+        && h.remote_text_start(key, request)
+    {
+        return Ok(Text::Host(key));
+    }
+    let _ = root;
+    #[cfg(all(feature = "fetch", not(target_arch = "wasm32")))]
+    {
+        let (send, recv) = std::sync::mpsc::channel();
+        let request = request.clone();
+        let root = root.to_owned();
+        std::thread::spawn(move || {
+            let _ = send.send(native::fetch(&root, &request));
+        });
+        Ok(Text::Thread(recv))
+    }
+    #[cfg(not(all(feature = "fetch", not(target_arch = "wasm32"))))]
+    Err("this build fetches no remote documents (og-runtime's `fetch` feature)".into())
+}
+
+/// Defines every frame document that has landed (natively, every one
+/// started, and those they name in turn) and starts what each names.
+fn settle_documents(eng: &Engine, wait: bool) {
+    loop {
+        let waiting: Vec<String> = eng
+            .assets
+            .borrow()
+            .remote
+            .documents
+            .iter()
+            .filter(|(_, (t, _))| !matches!(t, Text::Done))
+            .map(|(k, _)| k.clone())
+            .collect();
+        if waiting.is_empty() {
+            return;
+        }
+        let h = hooks();
+        let mut landed = Vec::new();
+        {
+            let mut a = eng.assets.borrow_mut();
+            for key in waiting {
+                let Some((text, depth)) = a.remote.documents.get_mut(&key) else {
+                    continue;
+                };
+                let got = match text {
+                    Text::Host(k) => match h.as_deref().map(|h| h.fetch_take(*k)) {
+                        Some(Fetch::Ready(b)) => Some(Ok(b)),
+                        Some(Fetch::Failed(e)) => Some(Err(e)),
+                        Some(Fetch::Pending) => None,
+                        None => Some(Err("no host is installed to fetch it".into())),
+                    },
+                    #[cfg(not(target_arch = "wasm32"))]
+                    Text::Thread(recv) => match if wait {
+                        recv.recv().ok()
+                    } else {
+                        recv.try_recv().ok()
+                    } {
+                        Some(r) => Some(r),
+                        None if wait => Some(Err("the fetching thread stopped".into())),
+                        None => None,
+                    },
+                    Text::Done => None,
+                };
+                if let Some(got) = got {
+                    *text = Text::Done;
+                    landed.push((key, *depth, got));
+                }
+            }
+        }
+        if landed.is_empty() {
+            return;
+        }
+        for (key, depth, got) in landed {
+            let defined = got.and_then(|bytes| {
+                if bytes.len() > og_ui::doc::frames::MAX_SOURCE {
+                    return Err(format!(
+                        "its source is past {} KiB",
+                        og_ui::doc::frames::MAX_SOURCE / 1024
+                    ));
+                }
+                let text =
+                    String::from_utf8(bytes).map_err(|_| "it is not UTF-8 text".to_string())?;
+                let ui = eng.state.borrow().ui.clone().ok_or("the world has no UI")?;
+                ui.lock().define_frame_document(&key, &text)
+            });
+            match defined {
+                Ok((images, frames)) => {
+                    request(eng, &images);
+                    request_frames(eng, &frames, depth + 1);
+                }
+                Err(e) => frame_warning(eng, &key, &e),
+            }
+        }
+        let _ = wait;
+    }
+}
+
+fn frame_warning(eng: &Engine, key: &str, why: &str) {
+    let url = key.split(' ').next().unwrap_or(key);
+    let tick = eng.world().map(|w| w.time().tick).unwrap_or(0);
+    eng.state.borrow_mut().log.push(serde_json::json!({
+        "tick": tick,
+        "warning": true,
+        "text": format!("og.ui: <iframe src=\"{url}\"> did not load: {why}; it shows nothing"),
+    }));
+}
+
 fn start(root: &str, request: &UrlRequest) -> Result<Image, String> {
     let key = next_key();
     if let Some(h) = hooks()
@@ -108,6 +273,9 @@ fn start(root: &str, request: &UrlRequest) -> Result<Image, String> {
 /// failed.
 pub(crate) fn settle(eng: &Engine) {
     let wait = cfg!(not(target_arch = "wasm32"));
+    // A frame's document first: the images it names are then started and
+    // (natively) waited for below.
+    settle_documents(eng, wait);
     let waiting: Vec<String> = eng
         .assets
         .borrow()
@@ -188,14 +356,18 @@ pub(crate) fn settle(eng: &Engine) {
     }
 }
 
-/// Whether any image is still being fetched (og.loading.idle is false).
+/// Whether any image or frame's document is still being fetched
+/// (og.loading.idle is false).
 pub(crate) fn pending(eng: &Engine) -> bool {
-    eng.assets
-        .borrow()
-        .remote
+    let a = eng.assets.borrow();
+    a.remote
         .images
         .values()
         .any(|i| !matches!(i, Image::Bound | Image::Failed))
+        || a.remote
+            .documents
+            .values()
+            .any(|(t, _)| !matches!(t, Text::Done))
 }
 
 fn drop_warning(eng: &Engine, key: &str, why: &str) {

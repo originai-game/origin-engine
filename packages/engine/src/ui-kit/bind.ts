@@ -98,6 +98,7 @@ export const widgets = {
   layers: (world: Api.World): readonly Api.UiLayer[] => parse(abi().og_ui_layers(worldId(world))),
   screenVm: (world: Api.World, screen: string): unknown => parse(abi().og_ui_screen_vm(worldId(world), screen)),
   docEvents: (world: Api.World): readonly Api.UiDocEvent[] => parse(abi().og_ui_doc_events(worldId(world))),
+  frameMessages: (world: Api.World): readonly Api.UiFrameMessage[] => parse(abi().og_ui_frame_messages(worldId(world))),
   gameInput: (world: Api.World): boolean => abi().og_ui_game_input(worldId(world)),
   paused: (world: Api.World): boolean => abi().og_ui_paused(worldId(world)),
   defineAction: (world: Api.World, desc?: Api.UiActionDesc): Api.Result<void> =>

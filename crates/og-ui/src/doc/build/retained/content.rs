@@ -112,6 +112,13 @@ impl RetainedHost {
     /// are the iframe's other attributes, read in the embedding document's
     /// context; it reads no store of the mount (`$name` finds none): the
     /// attributes are all the data it is given.
+    ///
+    /// A remote src (`https://…`) names the document the host defined
+    /// under its request key. Until it is defined the frame shows nothing
+    /// (its own box); one [`crate::doc::frames::refusal`] refuses, or one
+    /// nested past [`crate::doc::frames::MAX_DEPTH`], shows nothing and
+    /// warns, so an untrusted document never stops the page's build. Its
+    /// events reach the game as frame messages.
     pub(crate) fn compile_frame(
         &mut self,
         ui: &mut Ui,
@@ -119,28 +126,72 @@ impl RetainedHost {
         context: BindingContext,
         frame: &MountedNode,
         env: &dyn Env,
-    ) -> Result<Child, String> {
+    ) -> Result<Option<Child>, String> {
         let (doc, index) = source;
         let node = &doc.nodes[index];
         let src = node.frame.as_deref().unwrap_or_default();
-        let instance = ui
-            .docs
-            .library
-            .documents
-            .values()
-            .find(|d| d.source == src)
-            .cloned()
-            .ok_or_else(|| {
-                format!(
+        let remote = crate::css::request::is_remote(src);
+        let library = &ui.docs.library.documents;
+        let found = if remote {
+            library.get(src)
+        } else {
+            library.values().find(|d| d.source == src)
+        };
+        // Rebuilt when its document is (re)defined (`document_replaced`).
+        let name = found.map_or_else(|| src.to_string(), |d| d.name.clone());
+        self.framed
+            .entry(name)
+            .or_default()
+            .insert(frame.mount.clone());
+        let instance = match found.cloned() {
+            Some(instance) => instance,
+            None if remote => return Ok(None),
+            None => {
+                return Err(format!(
                     "{}:{}: no document '{src}' for the <iframe> (load it)",
                     doc.source, node.line
-                )
-            })?;
-        if doc.source == src || self.framing.iter().any(|s| s == src) {
+                ));
+            }
+        };
+        if doc.name == instance.name || self.framing.contains(&instance.name) {
             return Err(format!(
                 "{}:{}: <iframe src=\"{src}\"> embeds a document it is inside",
                 doc.source, node.line
             ));
+        }
+        let path = self.content_path(frame);
+        if remote
+            || self
+                .remote_frames
+                .values()
+                .any(|(p, _)| path.starts_with(&format!("{p}/")))
+        {
+            let library = &ui.docs.library.documents;
+            let refused = if self.framing.len() >= crate::doc::frames::MAX_DEPTH {
+                Some(format!(
+                    "frames nest at most {} deep",
+                    crate::doc::frames::MAX_DEPTH
+                ))
+            } else {
+                crate::doc::frames::refusal(&instance, &|name| library.get(name).map(|d| &**d))
+                    .or_else(|| unpassed(&doc, index, &instance).err())
+            };
+            if let Some(why) = refused {
+                self.frame_warnings.insert(
+                    frame.clone(),
+                    format!(
+                        "{}:{}: <iframe src=\"{}\"> shows nothing: {why}",
+                        doc.source,
+                        node.line,
+                        src.split(' ').next().unwrap_or(src)
+                    ),
+                );
+                return Ok(None);
+            }
+            if remote {
+                self.remote_frames
+                    .insert(frame.clone(), (path, src.to_string()));
+            }
         }
         unpassed(&doc, index, &instance)?;
         let user = Arc::new(context.clone());
@@ -157,10 +208,10 @@ impl RetainedHost {
             "" => "document".to_string(),
             id => id.to_string(),
         };
-        self.framing.push(doc.source.clone());
+        self.framing.push(doc.name.clone());
         let child = self.compile(ui, (instance, root), inner, Some(frame), id, env);
         self.framing.pop();
-        child
+        child.map(Some)
     }
 
     /// `{@render name()}`: the content passed under `name`, else the
@@ -302,7 +353,11 @@ fn passed(node: &DocNode, instance: &UiDocument, user: &Arc<BindingContext>) -> 
     lexical
 }
 
-fn unpassed(doc: &UiDocument, index: usize, instance: &UiDocument) -> Result<(), String> {
+pub(crate) fn unpassed(
+    doc: &UiDocument,
+    index: usize,
+    instance: &UiDocument,
+) -> Result<(), String> {
     let node = &doc.nodes[index];
     let missing = instance.props.iter().find(|p| {
         p.default.is_none()

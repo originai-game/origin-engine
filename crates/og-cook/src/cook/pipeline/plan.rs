@@ -27,6 +27,8 @@ pub(crate) struct Cx<'a> {
     /// Each component name by the id of the document defining it: the
     /// game's own, else a built-in `@ui/` one (the scan's).
     pub(crate) components: &'a BTreeMap<String, String>,
+    /// project.ogt's `frames`: the origins remote `<iframe>`s may load from.
+    pub(crate) frames: &'a [String],
 }
 
 /// What planning writes as it goes: the errors it finds, the references it

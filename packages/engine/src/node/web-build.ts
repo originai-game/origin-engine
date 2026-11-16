@@ -159,6 +159,8 @@ export interface ProjectSettings {
   /** The engine version project.ogt pins. */
   readonly engine: string;
   readonly profile: "2d" | "3d";
+  /** project.ogt's `frames`: the origins remote `<iframe>`s load from. */
+  readonly frames?: readonly string[];
   readonly publish: PublishSettings;
 }
 
@@ -267,6 +269,14 @@ export interface BuildManifest {
    * package is next to the page.
    */
   readonly assets: { readonly base: string; readonly origin: string } | null;
+  /**
+   * The origins the game's remote `<iframe>`s load documents from
+   * (project.ogt's `frames`, docs/web-export.md §Frames): what the page's
+   * Content-Security-Policy must allow (`connect-src`; the engine fetches
+   * a frame's document and images, it never navigates a browsing context).
+   * Empty: the game embeds no remote document.
+   */
+  readonly frames: readonly string[];
   readonly display: {
     readonly fit: "letterbox" | "fill";
     readonly aspect: string | null;
@@ -1083,6 +1093,7 @@ export async function webBuild(project: string, entry: string, out: string, publ
     probe: { protocol: 5, wire: 1, build: probe?.build ?? (publish ? "publish" : "release"), members: probe?.members ?? [] },
     crossOriginIsolation: p.isolation,
     assets: p.assets ? { base: p.assets, origin: new URL(p.assets).origin } : null,
+    frames: settings.frames ?? [],
     display: { fit: p.fit, aspect: p.aspect, orientation: p.orientation, dprCap: p.dprCap, fullscreen: p.fullscreen, gate: p.gate, madeWith: p.madeWith },
     icons,
     pwa: publish ? { manifest: "manifest.webmanifest", serviceWorker: "sw.js" } : null,

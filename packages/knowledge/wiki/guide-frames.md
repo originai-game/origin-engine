@@ -2,9 +2,9 @@
 
 # The `frames` guide: Frames: one document inside another
 
-How to show one of the game's documents inside a box of another with `<iframe>`, what crosses into it and what does not, and how to size the box to what the document shows. Read before building a news panel, an event page or a help pane that several screens share.
+How to show a document inside a box of another with `<iframe>`: one of the game's own, or one another origin serves (an event page on the game's CDN), what crosses into it and what does not, and how to size the box to what the document shows. Read before building a news panel, an event page or a help pane that several screens share.
 
-The API: `og api show ui`. Documents themselves are in `screens`.
+The API: `og api show ui` (`og.ui.frameMessages`). Documents themselves are in `screens`.
 
 <a id="guide-frames-1"></a>
 ### `frames §1` Embedding a document
@@ -17,8 +17,9 @@ The API: `og api show ui`. Documents themselves are in `screens`.
 document (`news.svelte` beside `ui/hud.svelte` is `ui/news.svelte`). The
 cook bundles it with its embedder, as it does a component, and refuses a
 `src` that names no document of the project. `src` is a literal: a bound
-`src={…}` is refused, and so is a URL (`https://…`). An `<iframe>` holds no
-content between its tags, and a document never embeds one it is inside.
+`src={…}` is refused. An `<iframe>` holds no content between its tags, and
+a document never embeds one it is inside. A URL `src` is a remote frame
+(§4).
 
 The frame's document is a screen or component like any other, with its own
 `<meta name="prop:…">` declarations. Its data comes in only through the
@@ -70,3 +71,54 @@ grows the frame in the same build), with no tick of delay.
 
 A frame clips what overflows it (`overflow: clip`); give it `overflow:
 auto` to scroll a document taller than a fixed height.
+
+<a id="guide-frames-4"></a>
+### `frames §4` Remote frames
+
+```svelte
+<iframe src="https://events.example.com/og/halloween.svelte" title="Event"
+        integrity="sha384-…" heading={$eventName} />
+```
+
+A `src` that is an `https://` URL (`http://` only on localhost) shows a
+`.svelte` document that origin serves. List the origin in project.ogt; the
+cook refuses any other:
+
+```text
+frames "https://events.example.com"
+```
+
+`og build` writes the list into og-build.json, so the platform's page can
+reach those origins. The server answers CORS reads from the game's origin
+(`Access-Control-Allow-Origin`). `crossorigin`, `integrity` and
+`referrerpolicy` work as on HTML's iframe and as url()'s request
+modifiers: `integrity` pins the document's bytes, so a changed document is
+refused.
+
+The engine fetches the document when the embedding one loads, and the
+frame shows only its own box until it arrives; an executor (`og test`,
+`og render`, captures) waits for it, so frames do not depend on the
+network. Inside the document, relative paths are beside its URL: a
+`url("art/banner.png")` is fetched from the same directory, and an
+`<iframe src="more.svelte">` is another remote frame from there (frames
+nest at most 3 deep).
+
+A remote document runs no code of the game and reaches no state of it:
+
+- It reads only its props (the iframe's attributes) and `$ui`; one that
+  reads any other `$store` is refused.
+- It may use the engine's built-in components the game loaded, not the
+  game's own, and no cooked asset of the game.
+- Its events never reach `og.ui.docEvents`. Each click, changed control,
+  `emit` or action arrives in `og.ui.frameMessages(world)` with the frame's
+  path and the origin it came from. Check `origin`, then act: a gameplay
+  effect goes through `og.input.intent`, so replays carry it. A text field's
+  value leaves only this way.
+- `bind:` on a remote frame is refused: pass values in, read messages out.
+- Budgets: 256 KiB of source, 4,096 nodes, 64 images. A document past them
+  shows nothing.
+
+A refused or failed document is one warning naming its URL and why (an
+origin not in `frames`, CORS, integrity, an HTTP status, a store it
+reads), and the frame shows nothing; the page around it builds as usual.
+`og.loading.idle` stays false while a frame's document is being fetched.

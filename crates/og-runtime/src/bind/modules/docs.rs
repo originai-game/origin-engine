@@ -374,6 +374,7 @@ pub(crate) fn load_document(eng: &Engine, path: &str) -> Result<String, String> 
     }
     let faces = family_faces(eng, &doc)?;
     crate::world::remote::request(eng, &doc.sheet.remote);
+    crate::world::remote::request_frames(eng, &doc.remote_frames(), 1);
     {
         let ui = eng.state.borrow().ui.clone().ok_or("the world has no UI")?;
         let mut ui = ui.lock();
@@ -542,6 +543,7 @@ pub(crate) fn refresh(eng: &Engine) -> Vec<String> {
             Ok((rive, materials, textures, faces, doc)) => {
                 let alphas = read_shape_alphas(eng, &doc, &textures);
                 crate::world::remote::request(eng, &doc.sheet.remote);
+                crate::world::remote::request_frames(eng, &doc.remote_frames(), 1);
                 let hashes: Vec<(String, u64)> =
                     rive.iter().map(|(r, h, _)| (r.clone(), *h)).collect();
                 with(eng.id, |d| {
@@ -727,6 +729,24 @@ pub fn og_ui_doc_events(world: u32) -> Vec<wire::UiDocEvent> {
                 kind: e.kind,
                 name: e.name,
                 value: e.value,
+            })
+            .collect()
+    })
+    .unwrap_or_default()
+}
+
+pub fn og_ui_frame_messages(world: u32) -> Vec<wire::UiFrameMessage> {
+    on_ui(world, |ui| {
+        ui.take_frame_messages()
+            .into_iter()
+            .map(|m| wire::UiFrameMessage {
+                mount: m.mount,
+                frame: m.frame,
+                origin: m.origin,
+                kind: m.kind,
+                name: m.name,
+                path: m.path,
+                value: m.value,
             })
             .collect()
     })

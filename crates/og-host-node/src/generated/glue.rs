@@ -3189,6 +3189,12 @@ pub fn og_ui_doc_events(env: Env, world: u32) -> String {
     <Host as UiApi>::og_ui_doc_events(&Host, world)
 }
 
+#[napi(js_name = "og_ui_frame_messages")]
+pub fn og_ui_frame_messages(env: Env, world: u32) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as UiApi>::og_ui_frame_messages(&Host, world)
+}
+
 #[napi(js_name = "og_ui_game_input")]
 pub fn og_ui_game_input(env: Env, world: u32) -> bool {
     let _env = crate::EnvScope::enter(&env);

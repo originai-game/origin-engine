@@ -1068,6 +1068,8 @@ export interface HostAbi<A, V> {
   og_ui_screen_vm(world: number, screen: string): string;
   /** `og.ui.docEvents` */
   og_ui_doc_events(world: number): string;
+  /** `og.ui.frameMessages` */
+  og_ui_frame_messages(world: number): string;
   /** `og.ui.gameInput` */
   og_ui_game_input(world: number): boolean;
   /** `og.ui.paused` */
@@ -1859,6 +1861,7 @@ export const SYMBOLS: readonly string[] = [
   "og_ui_layers",
   "og_ui_screen_vm",
   "og_ui_doc_events",
+  "og_ui_frame_messages",
   "og_ui_game_input",
   "og_ui_paused",
   "og_ui_define_action",

@@ -9,6 +9,22 @@ use crate::{
 use og_runtime::{Dispatch, Fetch, Hooks};
 use wasm_bindgen::prelude::*;
 
+/// A remote request's arguments for the Worker: `(key, url, credentials,
+/// integrity, referrerPolicy)`, empty strings for none.
+fn request_args(key: u64, request: &og_runtime::UrlRequest) -> js_sys::Array {
+    let args = js_sys::Array::new();
+    for v in [
+        JsValue::from_f64(key as f64),
+        JsValue::from_str(&request.url),
+        JsValue::from_bool(request.cross_origin == og_runtime::CrossOrigin::UseCredentials),
+        JsValue::from_str(request.integrity.as_deref().unwrap_or("")),
+        JsValue::from_str(request.referrer_policy.as_deref().unwrap_or("")),
+    ] {
+        args.push(&v);
+    }
+    args
+}
+
 /// Calls the installed JavaScript dispatcher.
 pub(crate) struct WebHooks {
     pub dispatcher: js_sys::Function,
@@ -188,23 +204,28 @@ impl Hooks for WebHooks {
 
     fn remote_image_start(&self, key: u64, request: &og_runtime::UrlRequest) -> bool {
         crate::REMOTE_FETCHER.with(|f| match &*f.borrow() {
-            Some(fetch) => {
-                let args = js_sys::Array::new();
-                for v in [
-                    JsValue::from_f64(key as f64),
-                    JsValue::from_str(&request.url),
-                    JsValue::from_bool(
-                        request.cross_origin == og_runtime::CrossOrigin::UseCredentials,
-                    ),
-                    JsValue::from_str(request.integrity.as_deref().unwrap_or("")),
-                    JsValue::from_str(request.referrer_policy.as_deref().unwrap_or("")),
-                ] {
-                    args.push(&v);
-                }
-                fetch.apply(&JsValue::NULL, &args).is_ok()
-            }
+            Some(fetch) => fetch
+                .apply(&JsValue::NULL, &request_args(key, request))
+                .is_ok(),
             None => false,
         })
+    }
+
+    fn remote_text_start(&self, key: u64, request: &og_runtime::UrlRequest) -> bool {
+        crate::REMOTE_TEXT_FETCHER.with(|f| match &*f.borrow() {
+            Some(fetch) => fetch
+                .apply(&JsValue::NULL, &request_args(key, request))
+                .is_ok(),
+            None => false,
+        })
+    }
+
+    fn fetch_take(&self, key: u64) -> Fetch<Vec<u8>> {
+        match crate::FETCHED_TEXTS.with(|m| m.borrow_mut().remove(&key)) {
+            Some(Ok(bytes)) => Fetch::Ready(bytes),
+            Some(Err(e)) => Fetch::Failed(e),
+            None => Fetch::Pending,
+        }
     }
 
     fn image_decode_take(&self, key: u64) -> Fetch<og_runtime::Decoded> {
