@@ -179,6 +179,14 @@ proof("transforms2d transform-box", "css_interact", "transforms_place_and_hit_by
       "Probe bounds match spec-derived matrices for rotate() about the default centre and a written corner origin, matrix(a..f), skewX(), and transform-box content-box versus border-box; the cursor follows the rotated box, not the laid-out one. fill-box/stroke-box/view-box (SVG boxes) are not asserted.")
 proof("transforms3d", "css_interact", "transforms_place_and_hit_by_the_specs_matrices",
       "perspective with perspective-origin, translateZ() and rotateY() project bounds as d/(d−z) about the origin, and the pointer hits the projected quad (inverse of the homography), not the laid-out box. backface-visibility and preserve-3d sorting are not asserted.")
+proof("view-transitions view-transition-class cross-document-view-transitions", "motion", "view_transitions_morph_a_named_element_by_its_groups_timing",
+      "A layer replacing another is the navigation @view-transition { navigation: auto } opts into (without it nothing transitions): a view-transition-name group draws both images on lerp(old box, new box, easing) every tick, 400ms linear from ::view-transition-group(*.card) when view-transition-class is card and the UA's 0.25s ease when it is none. Cross-document means the engine's layer navigations, not page loads; the default root cross-fade and covers are tested in og-ui's layers unit tests, not here.")
+not_applicable("webxr-dom-overlays", "Styles the DOM overlay of a WebXR session; the engine renders its own UI in its world and has no WebXR DOM layer.")
+not_applicable("window-controls-overlay window-drag", "Installed web-app title-bar integration (the OS window's caption buttons and drag regions); a game's UI is drawn inside its own surface, and the host owns its window.")
+not_applicable("picture-in-picture", "Styles a video in the browser's floating picture-in-picture window, which is browser chrome outside the game's surface.")
+not_applicable("fullscreen", "The Fullscreen API's :fullscreen and its ::backdrop style one element taken full screen by the browser; the game's surface is the screen, and the host decides whether its window is full screen.")
+not_applicable("resizable", "@media (resizable) asks whether script may resize the browser window; the host, not a document, owns the game's window.")
+not_applicable("ime-mode", "Obsolete, non-standard IME switch that browsers ignore in favour of inputmode; og-ui fields take inputmode and the platform's text input.")
 
 MISSING = {
     "default": "documents::boolean_attribute_selectors_follow_svelte_presence proves retained :default follows false/present checked attributes. The immediate builder does not expose :default state; full support is missing.",

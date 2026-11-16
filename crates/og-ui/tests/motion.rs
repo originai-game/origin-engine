@@ -412,3 +412,87 @@ fn transitions_and_easings_sample_the_specs_curves_by_the_tick() {
         d.step(InputFrame::default());
     }
 }
+
+/// CSS View Transitions 1 and 2 across a navigation (a layer replacing
+/// another): a named element's group moves from its old border box to its
+/// new one, every tick on the box the spec's interpolation gives
+/// (`lerp(old, new, easing(t / duration))`), both images drawn there
+/// until it ends. `view-transition-class: card` picks up
+/// `::view-transition-group(*.card)`'s 400 ms linear timing; without the
+/// class the group takes the UA's 0.25s `ease`; without the
+/// `@view-transition { navigation: auto }` opt-in nothing transitions.
+/// Ways it could fail: the group starting on the new box, a class rule
+/// applied to an unclassed group (or not to a classed one), the default
+/// timing not the UA's, a transition without the opt-in, or one image left
+/// behind after it ends.
+#[test]
+fn view_transitions_morph_a_named_element_by_its_groups_timing() {
+    let red = |ui: &Ui| -> Vec<[f32; 4]> {
+        ui.frame()
+            .items
+            .iter()
+            .filter_map(|it| match &it.cmd {
+                DrawCmd::Quad { rect, color, .. } if color[0] > 0.9 && color[1] < 0.05 => {
+                    Some([rect.x, rect.y, rect.width, rect.height])
+                }
+                _ => None,
+            })
+            .collect()
+    };
+    let (old, new) = ([40.0, 40.0, 100.0, 50.0], [300.0, 200.0, 200.0, 100.0]);
+    let run = |opt_in: bool, class: &str| {
+        let at = if opt_in {
+            "@view-transition { navigation: auto; }"
+        } else {
+            ""
+        };
+        let list = format!(
+            r#"<meta name="screen" content="list"><column id="Page"><column id="Card"></column></column>
+<style>{at} #Page {{ padding: 40px; }}
+#Card {{ width: 100px; height: 50px; background: #ff0000; view-transition-name: hero; }}</style>"#
+        );
+        let detail = format!(
+            r#"<meta name="screen" content="detail"><column id="Page"><column id="Card"></column></column>
+<style>{at} #Page {{ padding: 200px 0 0 300px; }}
+#Card {{ width: 200px; height: 100px; background: #ff0000; view-transition-name: hero; view-transition-class: {class}; }}
+::view-transition-group(*.card) {{ animation-duration: 400ms; animation-timing-function: linear; }}</style>"#
+        );
+        let mut ui = Ui::new(UiDesc::default());
+        ui.define_document(UiDocument::parse("list.svelte", &list).unwrap());
+        ui.define_document(UiDocument::parse("detail.svelte", &detail).unwrap());
+        let step = |ui: &mut Ui| {
+            ui.begin(InputFrame::default(), Viewport::new(640.0, 480.0));
+            ui.end();
+        };
+        ui.push_screen("list", serde_json::Value::Null).unwrap();
+        for _ in 0..30 {
+            step(&mut ui);
+        }
+        ui.replace_screen("detail", serde_json::Value::Null)
+            .unwrap();
+        (0..30)
+            .map(|_| {
+                step(&mut ui);
+                red(&ui)
+            })
+            .collect::<Vec<_>>()
+    };
+    let check = |seen: &[Vec<[f32; 4]>], ms: f64, ease: fn(f64) -> f64| {
+        for (k, boxes) in seen.iter().enumerate() {
+            let t = (k as f64 * 1000.0 / 60.0 / ms).min(1.0);
+            let p = ease(t) as f32;
+            let want: [f32; 4] = std::array::from_fn(|i| old[i] + (new[i] - old[i]) * p);
+            let images = if t > 0.0 && t < 1.0 { 2 } else { 1 };
+            assert_eq!(boxes.len(), images, "tick {k}: {boxes:?}");
+            for b in boxes {
+                let close = b.iter().zip(want).all(|(a, w)| (a - w).abs() < 1e-3);
+                assert!(close, "tick {k}: {b:?} vs {want:?}");
+            }
+        }
+    };
+    check(&run(true, "card"), 400.0, |t| t);
+    check(&run(true, "none"), 250.0, css_ease);
+    for (k, boxes) in run(false, "card").iter().enumerate() {
+        assert_eq!(boxes, &[new], "no opt-in: tick {k}");
+    }
+}
