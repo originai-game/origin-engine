@@ -729,15 +729,18 @@ impl RetainedHost {
         // and its component's rules for its root are the inner ones, as
         // a browser ranks `:host` rules under `::slotted()`.
         let instance = topology.writer(identity) != Some(&e.document.name);
-        let passed = slotted.map(|holder| {
-            let mut node = e.document.nodes[e.index].clone();
-            node.rules
-                .extend(holder.slotted_rules.iter().cloned().map(|rule| crate::doc::StyleRule {
-                    depth: if instance { 1 } else { rule.depth },
-                    ..rule
-                }));
-            node
-        });
+        let passed =
+            slotted.map(|holder| {
+                let mut node = e.document.nodes[e.index].clone();
+                node.rules
+                    .extend(holder.slotted_rules.iter().cloned().map(|rule| {
+                        crate::doc::StyleRule {
+                            depth: if instance { 1 } else { rule.depth },
+                            ..rule
+                        }
+                    }));
+                node
+            });
         let mut values = ui.resolve(
             &build,
             passed.as_ref().unwrap_or(&e.document.nodes[e.index]),
