@@ -11,54 +11,53 @@
 <meta name="action:confirm" content="Retry">
 <meta name="fixture:default" content="{&quot;best&quot;:24100,&quot;checkpoint&quot;:true,&quot;left&quot;:5,&quot;offer&quot;:true,&quot;price&quot;:&quot;50 gems&quot;,&quot;score&quot;:18420,&quot;title&quot;:&quot;You died&quot;}">
 
-<column id="GameOver">
-  <column id="Panel" part="game-over.frame" class="bare">
-    <text id="Title" part="game-over.title" heading="true">{title}</text>
-    <row id="Score">
-      <text id="Value" part="game-over.figure">{t("screen.game-over.Value", { value: score })}</text>
-      <text id="Best" part="game-over.label">{t("screen.game-over.Best", { best: best })}</text>
-    </row>
-    <column id="Stats">{@render stats?.()}</column>
-    <column id="Offer" part="game-over.offer" hidden={!(offer)}>
-      <text id="Line">{t("screen.game-over.revive")}</text>
-      <text id="Left">{t("screen.game-over.Left", { value: formatCountdown(left) })}</text>
-      <column id="OfferArt">{@render offerArt?.()}</column>
-      <button id="Revive" variant="primary" onclick={revive}>{t("screen.game-over.Revive", { price: price })}</button>
-      <button id="Decline" variant="quiet" onclick={decline}>{t("screen.game-over.decline")}</button>
-    </column>
-    <column id="Actions" hidden={!(!(offer))}>
-      <button id="Retry" variant="primary" onclick={retry}>{t("screen.game-over.retry")}</button>
-      <button id="Checkpoint" hidden={!(checkpoint)} onclick={checkpoint}>{t("screen.game-over.checkpoint")}</button>
-      <button id="Quit" variant="quiet" onclick={quit}>{t("screen.game-over.quit")}</button>
-    </column>
-  </column>
-</column>
+<div id="GameOver">
+  <section id="Panel" part="game-over.frame" class="bare">
+    <h1 id="Title" part="game-over.title">{title}</h1>
+    <div id="Score">
+      <p id="Value" part="game-over.figure">{t("screen.game-over.Value", { value: score })}</p>
+      <p id="Best" part="game-over.label">{t("screen.game-over.Best", { best: best })}</p>
+    </div>
+    <div id="Stats">{@render stats?.()}</div>
+    {#if offer}
+      <div id="Offer" part="game-over.offer">
+        <p id="Line">{t("screen.game-over.revive")}</p>
+        <p id="Left">{t("screen.game-over.Left", { value: formatCountdown(left) })}</p>
+        <div id="OfferArt">{@render offerArt?.()}</div>
+        <button id="Revive" variant="primary" class="large" onclick={revive}>{t("screen.game-over.Revive", { price: price })}</button>
+        <button id="Decline" variant="quiet" onclick={decline}>{t("screen.game-over.decline")}</button>
+      </div>
+    {:else}
+      <div id="Actions">
+        <button id="Retry" variant="primary" class="large" onclick={retry}>{t("screen.game-over.retry")}</button>
+        {#if checkpoint}<button id="Checkpoint" onclick={checkpoint}>{t("screen.game-over.checkpoint")}</button>{/if}
+        <button id="Quit" variant="quiet" onclick={quit}>{t("screen.game-over.quit")}</button>
+      </div>
+    {/if}
+  </section>
+</div>
 
 <style>
-#Revive, #Retry, #Revive::part(base), #Retry::part(base) { height: var(--control-lg); }
-#GameOver { width: stretch; height: stretch; padding: var(--space-xxl); justify-content: center; align-items: center; min-height: 0; }
-@media (width < 600px), (height < 600px) {
-#GameOver { padding: var(--space-lg); }
-}
-#Panel { width: stretch; max-width: var(--measure-lg); gap: var(--space-lg); align-items: center; }
-#Title { font-size: var(--type-xl5-size); text-align: center; color: var(--danger); animation: land var(--motion-named-ui-duration) var(--motion-easing-out) forwards; }
+:root { display: flex; align-items: center; justify-content: center; block-size: stretch; padding: var(--space-xxl); }
+p { margin: 0; }
+[part="game-over.frame"] { display: flex; flex-direction: column; align-items: center; gap: var(--space-lg); inline-size: 100%; max-inline-size: var(--measure-lg); }
+[part="game-over.title"] { margin: 0; font-size: var(--type-xl5-size); text-align: center; color: var(--danger); animation: land var(--motion-named-ui-duration) var(--motion-easing-out) forwards; }
 @keyframes land {
   from { scale: 1.3; -og-sound: error; }
   to { scale: 1; }
 }
-@media (width < 600px), (height < 600px) {
-#Title { font-size: var(--type-xl3-size); }
-}
-#Score { gap: var(--space-lg); }
-#Value { font: var(--text-xl); letter-spacing: var(--type-xl-tracking); }
-#Stats { width: stretch; }
-#Offer { width: stretch; padding: var(--space-lg); gap: var(--space-sm); align-items: center; background: var(--panel-raised); border-radius: var(--radius-card); outline: var(--stroke-hairline) solid var(--line); outline-offset: calc(var(--stroke-hairline) * -1); }
+#Score { display: flex; gap: var(--space-lg); align-items: baseline; }
+[part="game-over.figure"] { font: var(--text-xl); letter-spacing: var(--type-xl-tracking); }
+#Stats, #OfferArt { align-self: stretch; }
+/* The offer and the actions: a column of full-width buttons. */
+#Offer, #Actions { display: grid; gap: var(--space-sm); justify-items: stretch; align-self: stretch; }
+[part="game-over.offer"] { text-align: center; padding: var(--space-lg); background: var(--panel-raised); border-radius: var(--radius-card); outline: var(--stroke-hairline) solid var(--line); outline-offset: calc(var(--stroke-hairline) * -1); }
+[part="game-over.offer"] button { justify-self: stretch; }
 #Line { font: var(--text-lg); letter-spacing: var(--type-lg-tracking); }
 #Left { font: var(--text-xl2); letter-spacing: var(--type-xl2-tracking); }
-#OfferArt { width: stretch; }
-#Revive { width: stretch; }
-#Actions { width: stretch; gap: var(--space-sm); }
-#Retry { width: stretch; }
-#Checkpoint { width: stretch; }
-#Quit { width: stretch; }
+.large, .large::part(base) { block-size: var(--control-lg); }
+@media (width < 600px), (height < 600px) {
+  :root { padding: var(--space-lg); }
+  [part="game-over.title"] { font-size: var(--type-xl3-size); }
+}
 </style>

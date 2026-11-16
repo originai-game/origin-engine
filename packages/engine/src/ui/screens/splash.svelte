@@ -8,36 +8,38 @@
 <meta name="action:confirm" content="Skip">
 <meta name="fixture:default" content="{&quot;mark&quot;:&quot;item-0&quot;,&quot;marks&quot;:[{&quot;id&quot;:&quot;item-0&quot;,&quot;name&quot;:&quot;Studio&quot;,&quot;texture&quot;:0},{&quot;id&quot;:&quot;item-1&quot;,&quot;name&quot;:&quot;Engine&quot;,&quot;texture&quot;:0}],&quot;progress&quot;:0.4,&quot;status&quot;:&quot;Loading shaders&quot;}">
 
-<column id="Splash" part="splash.frame" class="bare" interactive="true" onclick={skip} onconfirm={skip}>
-  <spacer id="Node1"></spacer>
+<div id="Splash" part="splash.frame" class="bare" interactive="true" onclick={skip} onconfirm={skip}>
   {#each marks as m (m.id)}
-    <column id="Mark" part="splash.mark" hidden={!((m.id == mark))}>
+    <div id="Mark" part="splash.mark" hidden={m.id != mark}>
       <art id="Art" kind="logo" src={m.texture}></art>
-      <text id="Name">{m.name}</text>
-    </column>
+      <p id="Name">{m.name}</p>
+    </div>
   {/each}
-  <column id="Custom">{@render custom?.()}</column>
-  <spacer id="Node7"></spacer>
-  <column id="Boot" hidden={!((progress >= 0.0))}>
-    <progress id="Bar" bind:value={progress}></progress>
-    <text id="Status">{status}</text>
-  </column>
-</column>
+  <div id="Custom">{@render custom?.()}</div>
+  {#if progress >= 0}
+    <div id="Boot">
+      <progress id="Bar" bind:value={progress}></progress>
+      <p id="Status">{status}</p>
+    </div>
+  {/if}
+</div>
 
 <style>
-#Splash { width: stretch; height: stretch; padding: var(--space-3xl); gap: var(--space-xl); justify-content: center; align-items: center; background: var(--backdrop); min-height: 0; }
+/* The marks centred above the boot line, which sits at the foot. */
+:root { display: flex; flex-direction: column; align-items: center; gap: var(--space-xl); block-size: stretch; padding: var(--space-3xl); background: var(--backdrop); }
+p { margin: 0; }
+:root > :first-child { margin-block-start: auto; }
+#Custom { margin-block-end: auto; }
+/* A mark fades in and out as the splash moves to the next. */
+[part="splash.mark"] { display: flex; flex-direction: column; align-items: center; gap: var(--space-md); transition: opacity var(--motion-enter), display var(--motion-enter) allow-discrete; }
+[part="splash.mark"][hidden] { display: none; opacity: 0; transition: opacity var(--motion-exit), display var(--motion-exit) allow-discrete; }
+@starting-style { [part="splash.mark"] { opacity: 0; } }
+#Art { inline-size: var(--measure-md); block-size: var(--size-4xl); }
+#Name, #Status { font: var(--text-caption); letter-spacing: var(--type-caption-tracking); color: var(--ink-muted); }
+#Boot { display: flex; flex-direction: column; align-items: center; gap: var(--space-sm); inline-size: 100%; max-inline-size: var(--measure-md); }
+#Status { line-clamp: 1; text-overflow: ellipsis; }
 @media (width < 600px), (height < 600px) {
-#Splash { padding: var(--space-xl); }
+  :root { padding: var(--space-xl); }
+  #Art { inline-size: var(--size-7xl); block-size: var(--size-3xl); }
 }
-#Mark { display: block; gap: var(--space-md); align-items: center; opacity: 1; transition: opacity var(--motion-enter), display var(--motion-enter) allow-discrete; }
-#Mark[hidden] { display: none; opacity: 0; transition: opacity var(--motion-exit), display var(--motion-exit) allow-discrete; }
-@starting-style { #Mark { opacity: 0; } }
-#Art { width: var(--measure-md); height: var(--size-4xl); }
-@media (width < 600px), (height < 600px) {
-#Art { width: var(--size-7xl); height: var(--size-3xl); }
-}
-#Name { font: var(--text-caption); letter-spacing: var(--type-caption-tracking); color: var(--ink-muted); }
-#Boot { width: stretch; max-width: var(--measure-md); gap: var(--space-sm); align-items: center; }
-#Bar { width: stretch; }
-#Status { font: var(--text-caption); letter-spacing: var(--type-caption-tracking); color: var(--ink-muted); line-clamp: 1; text-overflow: ellipsis; }
 </style>

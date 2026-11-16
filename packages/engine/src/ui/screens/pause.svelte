@@ -25,7 +25,7 @@
       <button id="Quit" variant="danger" onclick={quit}>{t("screen.pause.quit")}</button>
     </div>
   </section>
-  <aside class="side">{@render side?.()}</aside>
+  <aside id="Side" class="side">{@render side?.()}</aside>
 </div>
 
 <style>
