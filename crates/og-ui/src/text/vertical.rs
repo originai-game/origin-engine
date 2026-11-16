@@ -7,7 +7,8 @@
 //! every one down. An upright character advances by the font's vertical
 //! metrics (`vmtx`), else one em; one lying down by its horizontal
 //! advance, shaped as a horizontal run. `text-combine-upright` sets a
-//! whole text side by side in one upright em.
+//! whole text, or each short run of digits, side by side in one upright
+//! em.
 
 use super::{FontMetrics, Line, greedy_lines, tokens};
 use crate::layout::flow::{TextOrientation, VerticalText};
@@ -76,39 +77,77 @@ pub(crate) fn fallback(c: char) -> Fallback {
     }
 }
 
-/// A vertical line's runs in logical order: byte ranges and whether each
-/// stands upright (one upright run for a combined text).
-pub(crate) fn runs(line: &str, v: VerticalText) -> Vec<(Range<usize>, bool)> {
+/// How a run of a vertical line is set (CSS Writing Modes 4 §5.1, §9.1).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(crate) enum Set {
+    /// Each cluster stands upright, one under the other.
+    Upright,
+    /// Shaped as a horizontal run, turned a quarter.
+    Sideways,
+    /// Composed side by side in one upright em (`text-combine-upright`).
+    Combined,
+}
+
+/// A vertical line's runs in logical order: byte ranges and how each is
+/// set. A combined text is one combined run; under `digits` each maximal
+/// run of ASCII digits no longer than its count is one (§9.1: in
+/// `10,000` the `10` combines and the `000` does not).
+pub(crate) fn runs(line: &str, v: VerticalText) -> Vec<(Range<usize>, Set)> {
     if line.is_empty() {
         return Vec::new();
     }
     if v.combine {
-        return vec![(0..line.len(), true)];
-    }
-    let all = |up| vec![(0..line.len(), up)];
-    if v.sideways() {
-        return all(false);
-    }
-    if v.orient == TextOrientation::Upright {
-        return all(true);
+        return vec![(0..line.len(), Set::Combined)];
     }
     let bytes: Vec<usize> = line
         .char_indices()
         .map(|(b, _)| b)
         .chain([line.len()])
         .collect();
-    let mut out: Vec<(Range<usize>, bool)> = Vec::new();
+    // The digit runs short enough to combine, as byte ranges.
+    let mut short: Vec<Range<usize>> = Vec::new();
+    if v.digits > 0 {
+        let b = line.as_bytes();
+        let mut k = 0;
+        while k < b.len() {
+            if !b[k].is_ascii_digit() {
+                k += 1;
+                continue;
+            }
+            let start = k;
+            while k < b.len() && b[k].is_ascii_digit() {
+                k += 1;
+            }
+            if k - start <= usize::from(v.digits) {
+                short.push(start..k);
+            }
+        }
+    }
+    let oriented = |c: char| {
+        if v.sideways() {
+            Set::Sideways
+        } else if v.orient == TextOrientation::Upright || upright_char(c) {
+            Set::Upright
+        } else {
+            Set::Sideways
+        }
+    };
+    let mut out: Vec<(Range<usize>, Set)> = Vec::new();
     for (a, b) in og_i18n::graphemes(line) {
         let range = bytes[a]..bytes[b];
         let base = line[range.clone()].chars().next().unwrap_or(' ');
-        // Spaces join the run before them.
-        let up = match out.last() {
-            Some(&(_, up)) if base.is_whitespace() => up,
-            _ => upright_char(base),
+        let set = if short.iter().any(|d| d.contains(&range.start)) {
+            Set::Combined
+        } else {
+            // Spaces join the run before them (not a combined one).
+            match out.last() {
+                Some(&(_, set)) if base.is_whitespace() && set != Set::Combined => set,
+                _ => oriented(base),
+            }
         };
         match out.last_mut() {
-            Some((r, u)) if *u == up => r.end = range.end,
-            _ => out.push((range, up)),
+            Some((r, s)) if *s == set => r.end = range.end,
+            _ => out.push((range, set)),
         }
     }
     out
@@ -138,12 +177,12 @@ pub(crate) fn measure(
     }
     runs(text, v)
         .into_iter()
-        .map(|(r, up)| {
+        .map(|(r, set)| {
             let run = &text[r];
-            if up {
-                upright_length(m, run, size, tracking)
-            } else {
-                m.measure_with(run, size, tracking, features)
+            match set {
+                Set::Upright => upright_length(m, run, size, tracking),
+                Set::Sideways => m.measure_with(run, size, tracking, features),
+                Set::Combined => size,
             }
         })
         .sum()
@@ -239,23 +278,50 @@ mod tests {
             mode: WritingMode::VerticalRl,
             orient,
             combine: false,
+            digits: 0,
         }
     }
 
     #[test]
     fn mixed_lines_stand_cjk_up_and_lay_latin_down() {
         let line = "縦書きでCSS 3を";
-        let got: Vec<(&str, bool)> = runs(line, v(TextOrientation::Mixed))
+        let got: Vec<(&str, Set)> = runs(line, v(TextOrientation::Mixed))
             .into_iter()
-            .map(|(r, up)| (&line[r], up))
+            .map(|(r, set)| (&line[r], set))
             .collect();
-        assert_eq!(got, [("縦書きで", true), ("CSS 3", false), ("を", true)]);
+        assert_eq!(
+            got,
+            [
+                ("縦書きで", Set::Upright),
+                ("CSS 3", Set::Sideways),
+                ("を", Set::Upright)
+            ]
+        );
         assert_eq!(runs(line, v(TextOrientation::Upright)).len(), 1);
         let sideways = VerticalText {
             mode: WritingMode::SidewaysRl,
             ..v(TextOrientation::Mixed)
         };
-        assert_eq!(runs(line, sideways), [(0..line.len(), false)]);
+        assert_eq!(runs(line, sideways), [(0..line.len(), Set::Sideways)]);
+        // §9.1's example: under `digits` (2) only the `10` combines.
+        let price = "あれは10,000円";
+        let digits = VerticalText {
+            digits: 2,
+            ..v(TextOrientation::Mixed)
+        };
+        let got: Vec<(&str, Set)> = runs(price, digits)
+            .into_iter()
+            .map(|(r, set)| (&price[r], set))
+            .collect();
+        assert_eq!(
+            got,
+            [
+                ("あれは", Set::Upright),
+                ("10", Set::Combined),
+                (",000", Set::Sideways),
+                ("円", Set::Upright)
+            ]
+        );
         assert_eq!(fallback('「'), Fallback::Turn);
         assert_eq!(fallback('。'), Fallback::Corner);
         assert!(!upright_char('ｱ'), "halfwidth katakana lie down");

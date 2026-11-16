@@ -366,7 +366,15 @@ engine differs or limits as follows:
   the em's upper right. Selection, `::selection`, shadows, glow and rich
   text work in vertical lines. Text on a path keeps its physical box. A
   container variant (`Query::container`) reads a vertical element's
-  height.
+  height. `glyph-orientation-vertical` is read as `text-orientation`;
+  `text-combine-upright` combines a whole plain text (`all`) or each short
+  digit run (`digits`), squeezing it across to one em.
+- **Ruby and emphasis marks.** `<ruby>` is inline markup of a text: each
+  `<rt>` annotates the words before it as one unbreakable box (no `<rtc>`,
+  no nested ruby, no `display: ruby` on other elements). `ruby-position`
+  takes `over` and `under` (`alternate` is `over`, `inter-character` is
+  read as `over`). Emphasis marks are drawn shapes; the engine does not
+  choose their side by language, and a ruby's base takes none.
 - **Anchors.** Anchors are this frame's boxes; the winning
   `position-try` option and its side are kept per frame for a popover's
   arrow.

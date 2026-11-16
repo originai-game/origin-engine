@@ -288,7 +288,7 @@ fn rich_line(
         });
         x += segment.width;
     }
-    RichLine {
+    let mut line = RichLine {
         pieces,
         // Its indent is room at its start (CSS Text 3 §8.1), part of
         // the width its line box takes.
@@ -297,7 +297,9 @@ fn rich_line(
         height: m.line_height,
         baseline: m.baseline - m.block_min_coord,
         shaped: Some(segments),
-    }
+    };
+    crate::rich::emphasis::make_room(content, fonts, &mut line);
+    line
 }
 
 /// Parley's `vertical-align` for a span of font `size` and line height
@@ -347,13 +349,22 @@ fn shaped<R>(
     for (span, s) in content.spans.iter().enumerate() {
         let start = text.len();
         if s.atom.is_some() {
+            // A ruby's box holds its base and, beyond the leading, its
+            // annotation (CSS Ruby 1 §3.6).
+            let (height, baseline) = match &s.atom {
+                Some(crate::rich::Atom::Ruby(r)) => {
+                    let (above, below) = crate::rich::ruby_extents(s, r, fonts);
+                    (above + below, above)
+                }
+                _ => (s.step.size * 1.1, s.step.size * 0.85),
+            };
             boxes.push(parley::InlineBox {
                 id: span as u64,
                 index: start,
                 kind: parley::InlineBoxKind::InFlow,
                 width: span_width(s, "", fonts),
-                height: s.step.size * 1.1,
-                baseline: Some(s.step.size * 0.85),
+                height,
+                baseline: Some(baseline),
                 vertical_align: valign(s.valign, s.step.size, s.step.line_height),
             });
         } else {

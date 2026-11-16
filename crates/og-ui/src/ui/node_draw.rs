@@ -1170,7 +1170,8 @@ impl Ui {
                 draw,
             };
             // Each cluster's bytes, whether it stands, and its stretch.
-            let mut clusters: Vec<(std::ops::Range<usize>, bool, f32, f32)> = Vec::new();
+            let mut clusters: Vec<(std::ops::Range<usize>, crate::text::vertical::Set, f32, f32)> =
+                Vec::new();
             let mut length = 0.0;
             for (range, up) in crate::text::vertical::runs(&line, v) {
                 let text = &line[range.clone()];
@@ -1351,7 +1352,7 @@ impl Ui {
         mut cmds: Option<&mut Vec<Vec<DrawCmd>>>,
     ) -> Vec<VerticalLine> {
         use crate::layout::flow::WritingMode;
-        use crate::text::vertical::runs;
+        use crate::text::vertical::{Set, runs};
         let n = &self.tree.nodes[i];
         let (font, synth) = self.env.fonts.for_styled(tc.font, tc.query(), &tc.text);
         let m = &font.metrics;
@@ -1469,12 +1470,18 @@ impl Ui {
                 && free > 0.0
                 && !tc.text.contains(&format!("{}\n", line.text));
             let uprights = if justify && spaces == 0 {
+                // A combined run is one upright cluster.
                 let all: usize = line_runs
                     .iter()
-                    .filter(|(_, up)| *up)
-                    .map(|(r, _)| og_i18n::graphemes(&line.text[r.clone()]).len())
+                    .map(|(r, set)| match set {
+                        Set::Upright => og_i18n::graphemes(&line.text[r.clone()]).len(),
+                        Set::Combined => 1,
+                        Set::Sideways => 0,
+                    })
                     .sum();
-                let last_up = line_runs.last().is_some_and(|(_, up)| *up);
+                let last_up = line_runs
+                    .last()
+                    .is_some_and(|(_, set)| *set != Set::Sideways);
                 all.saturating_sub(usize::from(last_up))
             } else {
                 0
@@ -1485,38 +1492,6 @@ impl Ui {
             } else {
                 0.0
             };
-            if v.combine {
-                // One upright em: the text side by side, squeezed to fit.
-                let y0 = top(0.0, size);
-                glyphs.push((0..line.text.chars().count(), y0, y0 + size));
-                if drawn && cmds.is_some() {
-                    let w = m.measure_with(&line.text, size, tracking, features);
-                    let squeeze = if w > size { size / w } else { 1.0 };
-                    for pc in crate::text::pieces_with(font, &line.text, para, tracking, features) {
-                        let x = mid - w * squeeze / 2.0 + pc.dx * size * squeeze;
-                        let baseline = y0 + size / 2.0 + centre;
-                        emit(
-                            x,
-                            baseline,
-                            pc.text,
-                            pc.font,
-                            pc.placements,
-                            [squeeze, 0.0, 0.0, 1.0],
-                            Rect::new(col, y0, lh, size),
-                            &mut line_cmds,
-                        );
-                    }
-                }
-                out.push(VerticalLine {
-                    col,
-                    width: lh,
-                    glyphs,
-                });
-                if let Some(c) = cmds.as_deref_mut() {
-                    c.push(line_cmds);
-                }
-                continue;
-            }
             let mut at = 0.0f32;
             let mut upright_left = uprights;
             let mut gap = || {
@@ -1529,7 +1504,7 @@ impl Ui {
             };
             let space_extra = if spaces > 0 { extra } else { 0.0 };
             let draw = drawn && cmds.is_some();
-            for (range, upright) in line_runs {
+            for (range, set) in line_runs {
                 let base = chars_before(range.start);
                 let run = &line.text[range];
                 at = vertical_run(
@@ -1549,7 +1524,7 @@ impl Ui {
                         draw,
                     },
                     run,
-                    upright,
+                    set,
                     at,
                     &top,
                     &mut gap,
@@ -1887,7 +1862,9 @@ pub(crate) type GlyphEmit<'a> = dyn FnMut(
 /// physical top of a stretch): an upright run cluster by cluster at its
 /// vertical advance, in its vertical form where the font has one, else
 /// turned or moved to the em's corner; a sideways run shaped as a
-/// horizontal one turned. `gap` is what follows each upright cluster;
+/// horizontal one turned; a combined run one upright em, its glyphs side
+/// by side without letter-spacing and squeezed across to fit (CSS Writing
+/// Modes 4 §9.1.2), one cluster. `gap` is what follows each upright cluster;
 /// `glyph` takes each cluster's characters (in the run) and stretch,
 /// `emit` each glyph command (pen, baseline, text, font, placements,
 /// transform, bounds). Returns where the line goes on.
@@ -1895,7 +1872,7 @@ pub(crate) type GlyphEmit<'a> = dyn FnMut(
 pub(crate) fn vertical_run(
     r: &VerticalRun<'_>,
     run: &str,
-    upright: bool,
+    set: crate::text::vertical::Set,
     mut at: f32,
     top: &dyn Fn(f32, f32) -> f32,
     gap: &mut dyn FnMut() -> f32,
@@ -1911,7 +1888,29 @@ pub(crate) fn vertical_run(
     let m = &font.metrics;
     let (mid, centre, col, lh) = (r.mid, r.centre, r.col, r.lh);
     let chars: Vec<char> = run.chars().collect();
-    if !upright {
+    if set == crate::text::vertical::Set::Combined {
+        let y0 = top(at, size);
+        glyph(0..chars.len(), y0, y0 + size);
+        if r.draw {
+            let w = m.measure_with(run, size, 0.0, features);
+            let squeeze = if w > size { size / w } else { 1.0 };
+            // Placed glyph by glyph: placements carry no letter-spacing.
+            let glyphs = m.visual_at_with(run, og_i18n::Direction::Ltr, 0.0, features);
+            for pc in crate::text::split(font, &glyphs) {
+                emit(
+                    mid - w * squeeze / 2.0 + pc.dx * size * squeeze,
+                    y0 + size / 2.0 + centre,
+                    pc.text,
+                    pc.font,
+                    pc.placements,
+                    [squeeze, 0.0, 0.0, 1.0],
+                    Rect::new(col, y0, lh, size),
+                );
+            }
+        }
+        return at + size + gap();
+    }
+    if set == crate::text::vertical::Set::Sideways {
         let e = r.space_extra;
         let spaced = chars.iter().filter(|c| **c == ' ').count() as f32;
         let len = m.measure_with(run, size, tracking, features) + e * spaced;

@@ -475,6 +475,17 @@ impl FontMetrics {
             .unwrap_or(-self.descender)
     }
 
+    /// How far above the baseline its text's over edge is, em: its
+    /// file's ascent (the edge of its content area, where ruby and
+    /// emphasis marks sit), else its tallest glyph's top.
+    pub fn over_edge(&self) -> f32 {
+        self.file
+            .as_ref()
+            .map(|f| f.ascent())
+            .filter(|a| *a > 0.0)
+            .unwrap_or(self.ascender)
+    }
+
     /// The underline its file suggests (`post`): its top's distance below
     /// the baseline and its thickness, em (CSS's `from-font`).
     pub fn underline(&self) -> Option<(f32, f32)> {

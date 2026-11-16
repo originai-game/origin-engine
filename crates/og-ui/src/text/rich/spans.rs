@@ -85,6 +85,8 @@ pub enum InlineAtom {
     Icon(String),
     /// An action's glyph on the device used last.
     Action(String),
+    /// A `<ruby>` base's annotation (`<rt>`): the span's text is the base.
+    Ruby(String),
 }
 
 impl Ui {
@@ -204,8 +206,17 @@ impl Ui {
                     s.valign = v;
                 }
                 if let Some(atom) = &style.atom {
-                    s.text.clear();
+                    // A ruby's text is its base; another atom has none.
+                    if !matches!(atom, InlineAtom::Ruby(_)) {
+                        s.text.clear();
+                    }
                     s.atom = match atom {
+                        InlineAtom::Ruby(text) => Some(crate::rich::Atom::Ruby(Ruby {
+                            text: text.clone(),
+                            under: desc.ruby.under,
+                            align: desc.ruby.align,
+                            overhang: [false; 2],
+                        })),
                         InlineAtom::Image(name) => match self.env.images.get(name) {
                             Some(im) => Some(crate::rich::Atom::Image(*im)),
                             None => {
@@ -302,6 +313,35 @@ impl Ui {
             }
             runs.push(s);
         }
+        // Each ruby hangs over what is beside it as `ruby-overhang` lets
+        // it: any text but another ruby, or under `spaces` a space only.
+        for k in 0..runs.len() {
+            if !matches!(runs[k].atom, Some(crate::rich::Atom::Ruby(_))) {
+                continue;
+            }
+            let may = |n: Option<&RichSpan>, end: bool| {
+                n.is_some_and(|n| {
+                    let edge = if end {
+                        n.text.chars().next_back()
+                    } else {
+                        n.text.chars().next()
+                    };
+                    n.atom.is_none()
+                        && match desc.ruby.overhang {
+                            RubyOverhang::Auto => edge.is_some(),
+                            RubyOverhang::Spaces => edge.is_some_and(char::is_whitespace),
+                            RubyOverhang::None => false,
+                        }
+                })
+            };
+            let hangs = [
+                may(k.checked_sub(1).map(|j| &runs[j]), true),
+                may(runs.get(k + 1), false),
+            ];
+            if let Some(crate::rich::Atom::Ruby(r)) = &mut runs[k].atom {
+                r.overhang = hangs;
+            }
+        }
         self.tree.el_mut(i).width = desc.width;
         let build = self.tree.build();
         let node = &mut self.tree.nodes[i];
@@ -313,6 +353,7 @@ impl Ui {
             wrap: !desc.nowrap,
             indent: desc.indent,
             line_break: desc.line_break,
+            emphasis: desc.emphasis,
         });
         node.layout.links.clear();
         for r in &node_runs_links(&node.content) {

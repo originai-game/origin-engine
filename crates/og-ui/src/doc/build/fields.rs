@@ -1624,6 +1624,7 @@ impl Resolved {
             .as_deref()
             .map(|t| t.paragraph())
             .unwrap_or_default();
+        let css = self.text.as_deref();
         crate::RichTextDesc {
             step: desc.step,
             color: desc.color,
@@ -1633,6 +1634,8 @@ impl Resolved {
             font: desc.font,
             indent,
             line_break,
+            emphasis: css.and_then(|t| t.emphasis),
+            ruby: css.map(|t| t.ruby).unwrap_or_default(),
         }
     }
 

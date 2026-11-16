@@ -595,6 +595,9 @@ pub struct InlineRun {
     /// HTML's `<sub>` or `<sup>`: its `vertical-align`, its size the
     /// smaller one.
     pub valign: Option<crate::VerticalAlign>,
+    /// A `<ruby>` base's annotation (its `<rt>`'s words): the run's text
+    /// is the base.
+    pub ruby: Option<Expr>,
 }
 
 /// A prop of the document's contract (`props { gold number "…" }`).

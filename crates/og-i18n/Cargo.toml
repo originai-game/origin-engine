@@ -18,6 +18,9 @@ icu_segmenter = { version = "2.4", default-features = false, features = ["compil
 # Unicode full case mappings, including locale-sensitive Greek, Turkic
 # and Lithuanian context rules; the same compiled data on both hosts.
 icu_casemap = "2.3"
+# General categories (emphasis marks skip separators and punctuation, CSS
+# Text Decoration 4 §3.1); the version Parley's own data is built from.
+icu_properties = { version = "2.4", default-features = false, features = ["compiled_data"] }
 icu_locale_core = "2.3"
 icu_plurals = "2.3"
 fixed_decimal = "0.7"

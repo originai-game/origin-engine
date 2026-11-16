@@ -1783,6 +1783,7 @@ pub(super) fn lower(
                     "list-style-position".into(),
                 ],
                 "all" => all_longhands().map(String::from).collect(),
+                "glyph-orientation-vertical" => vec!["text-orientation".into()],
                 name => vec![name.to_string()],
             };
             for name in longhands {

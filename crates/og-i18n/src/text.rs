@@ -147,6 +147,53 @@ pub fn word_per_character(c: char) -> bool {
         | 0x3400..=0x4dbf | 0x4e00..=0x9fff | 0xf900..=0xfaff | 0x20000..=0x3ffff)
 }
 
+/// Whether CSS Text Decoration 4 §3.1 draws an emphasis mark on a
+/// typographic character unit (`cluster`, its characters): not on a word
+/// separator or other Z* character (but on a space a combining mark
+/// joins), not on punctuation (P*) unless it decomposes (NFKD) to one of
+/// the symbols §3.1 lists, not on a control, format or unassigned
+/// character (Cc, Cf, Cn).
+pub fn takes_emphasis(cluster: &str) -> bool {
+    use icu_properties::CodePointMapData;
+    use icu_properties::props::{GeneralCategory as G, GeneralCategoryGroup as Group};
+    let Some(c) = cluster.chars().next() else {
+        return false;
+    };
+    let gc = CodePointMapData::<G>::new().get(c);
+    if Group::Separator.contains(gc) {
+        return cluster.chars().count() > 1;
+    }
+    if Group::Punctuation.contains(gc) {
+        // §3.1's symbols and their compatibility forms (full-width, small).
+        return matches!(
+            c as u32,
+            0x23 | 0x25
+                | 0x26
+                | 0x40
+                | 0xa7
+                | 0xb6
+                | 0x609
+                | 0x60a
+                | 0x66a
+                | 0x2030
+                | 0x2031
+                | 0x204a
+                | 0x204b
+                | 0x2053
+                | 0x303d
+                | 0xfe5f
+                | 0xfe60
+                | 0xfe6a
+                | 0xfe6b
+                | 0xff03
+                | 0xff05
+                | 0xff06
+                | 0xff20
+        );
+    }
+    !matches!(gc, G::Control | G::Format | G::Unassigned)
+}
+
 /// A text's grapheme clusters (UAX #29, extended, `icu_segmenter`):
 /// character ranges `[start, end)`, a base with its combining marks, an
 /// emoji with its modifiers and joiners, a Hangul syllable of jamo, an

@@ -10,6 +10,8 @@ mod color_vision;
 mod component_documents;
 #[path = "../control_props.rs"]
 mod control_props;
+#[path = "../css_cjk.rs"]
+mod css_cjk;
 #[path = "../css_contain.rs"]
 mod css_contain;
 #[path = "../css_fonts.rs"]

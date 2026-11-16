@@ -72,6 +72,14 @@ pub(crate) const INHERITED: &[&str] = &[
     "caret-shape",
     "accent-color",
     "color-scheme",
+    // CSS Text Decoration 4 §3: emphasis marks.
+    "text-emphasis-style",
+    "text-emphasis-color",
+    "text-emphasis-position",
+    // CSS Ruby 1 §4, §5: how a text's ruby is set.
+    "ruby-position",
+    "ruby-align",
+    "ruby-overhang",
     // The named families of `font-family` (its generic family is the
     // `font` role): a quoted, comma-separated list or `none`.
     "-og-font-name",
@@ -112,6 +120,15 @@ fn declaration(name: &str, value: &str, important: bool) -> Result<StyleDeclarat
 /// checks a longhand written without `var()`; other declarations pass.
 /// Font shorthands with variables expand after substitution in the cascade.
 pub(crate) fn expand(d: StyleDeclaration) -> Result<Vec<StyleDeclaration>, String> {
+    if d.name == "glyph-orientation-vertical" {
+        // SVG 1.1's name: an alias of `text-orientation` (CSS Writing
+        // Modes 4 §5.1.3), mapped as it is read.
+        let v = d.source.trim();
+        let mapped = crate::layout::flow::glyph_orientation(v).ok_or_else(|| {
+            format!("glyph-orientation-vertical takes auto, 0deg or 90deg, not {v}")
+        })?;
+        return Ok(vec![declaration("text-orientation", mapped, d.important)?]);
+    }
     let name = match d.name.as_str() {
         "word-wrap" => "overflow-wrap",
         "font-width" => "font-stretch",
@@ -125,6 +142,7 @@ pub(crate) fn expand(d: StyleDeclaration) -> Result<Vec<StyleDeclaration>, Strin
             | "white-space"
             | "text-wrap"
             | "text-decoration"
+            | "text-emphasis"
             | "-webkit-text-stroke"
     );
     if name == "font" && d.value.has_variables() {
@@ -314,6 +332,32 @@ fn shorthand_parts(name: &str, v: &str) -> Result<Vec<(String, String)>, String>
                 .collect()
         }
         "font" => font(v)?,
+        "text-emphasis" => {
+            // CSS Text Decoration 4 §3.3: a style and a colour, each its
+            // initial value when omitted.
+            let (mut style, mut color) = (Vec::new(), "currentcolor".to_string());
+            for item in split_top(v) {
+                if item == "none"
+                    || item.starts_with(['"', '\''])
+                    || EMPHASIS.contains(&item.as_str())
+                {
+                    style.push(item);
+                } else {
+                    crate::css_color::parse_str(&item)
+                        .map_err(|_| format!("text-emphasis: '{item}' is not a value"))?;
+                    color = item;
+                }
+            }
+            let style = if style.is_empty() {
+                "none".to_string()
+            } else {
+                style.join(" ")
+            };
+            all(&[
+                ("text-emphasis-style", style.as_str()),
+                ("text-emphasis-color", color.as_str()),
+            ])
+        }
         _ => unreachable!(),
     })
 }
@@ -622,6 +666,17 @@ fn words_in(name: &str, v: &str, allowed: &[&str]) -> Result<(), String> {
     Ok(())
 }
 
+/// `text-emphasis-style`'s keywords (CSS Text Decoration 4 §3.1).
+const EMPHASIS: &[&str] = &[
+    "filled",
+    "open",
+    "dot",
+    "circle",
+    "double-circle",
+    "triangle",
+    "sesame",
+];
+
 /// Checks a longhand's value as written (no `var()`).
 fn check(name: &str, v: &str) -> Result<(), String> {
     let v = v.trim();
@@ -725,6 +780,25 @@ fn check(name: &str, v: &str) -> Result<(), String> {
             return words_in(name, v, &["auto", "from-font", "under", "left", "right"]);
         }
         "text-decoration-skip-ink" => matches!(v, "auto" | "none" | "all"),
+        "text-emphasis-style" => v == "none" || Emphasis::parse(v, "over", None).is_some(),
+        "text-emphasis-position" => {
+            let w: Vec<&str> = v.split_whitespace().collect();
+            let sides = w.iter().filter(|w| matches!(**w, "over" | "under")).count();
+            let ends = w.iter().filter(|w| matches!(**w, "right" | "left")).count();
+            sides == 1 && ends <= 1 && w.len() == sides + ends
+        }
+        "ruby-position" => {
+            let w: Vec<&str> = v.split_whitespace().collect();
+            v == "inter-character"
+                || (!w.is_empty()
+                    && w.len() <= 2
+                    && w.iter()
+                        .all(|w| matches!(*w, "alternate" | "over" | "under"))
+                    && w.iter().filter(|w| **w != "alternate").count() <= 1
+                    && w.iter().filter(|w| **w == "alternate").count() <= 1)
+        }
+        "ruby-align" => matches!(v, "start" | "center" | "space-between" | "space-around"),
+        "ruby-overhang" => matches!(v, "auto" | "none" | "spaces"),
         "text-decoration-line" => {
             return words_in(
                 name,
@@ -763,6 +837,7 @@ fn check(name: &str, v: &str) -> Result<(), String> {
         "caret-shape" => matches!(v, "auto" | "bar" | "block" | "underscore"),
         "caret-color" | "accent-color" if v == "auto" => true,
         "text-decoration-color"
+        | "text-emphasis-color"
         | "-webkit-text-stroke-color"
         | "-webkit-text-fill-color"
         | "caret-color"
@@ -918,6 +993,83 @@ impl Decoration {
     }
 }
 
+/// CSS `text-emphasis` (CSS Text Decoration 4 §3): the mark drawn once
+/// for each typographic character unit, its colour and its side.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct Emphasis {
+    pub mark: EmphasisMark,
+    /// `text-emphasis-color`; `None`: the text's colour (`currentcolor`).
+    pub color: Option<Srgba>,
+    /// `text-emphasis-position: under` (else over), across a line.
+    pub under: bool,
+    /// `text-emphasis-position: … left` (else right), down a line.
+    pub left: bool,
+}
+
+/// `text-emphasis-style`'s mark.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum EmphasisMark {
+    /// A shape, filled or open. `None`: `filled` or `open` alone, a circle
+    /// across a line and a sesame down one (§3.1).
+    Shape(Option<EmphasisShape>, bool),
+    /// A `<string>`: its first character, drawn as text.
+    Char(char),
+}
+
+/// The shapes of §3.1: U+2022/25E6, U+25CF/25CB, U+25C9/25CE, U+25B2/25B3
+/// and U+FE45/FE46, which the engine draws as shapes in any font.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum EmphasisShape {
+    Dot,
+    Circle,
+    DoubleCircle,
+    Triangle,
+    Sesame,
+}
+
+impl Emphasis {
+    /// The emphasis a computed `text-emphasis-style` and
+    /// `text-emphasis-position` give (`None` for `none` or a value that
+    /// is not one).
+    pub(crate) fn parse(style: &str, position: &str, color: Option<Srgba>) -> Option<Emphasis> {
+        let style = style.trim();
+        let mark = if let Some(q) = style.chars().next().filter(|c| matches!(c, '"' | '\'')) {
+            let inner = style.strip_prefix(q)?.strip_suffix(q)?;
+            EmphasisMark::Char(inner.chars().next()?)
+        } else {
+            let (mut shape, mut fill) = (None, None);
+            for w in style.split_whitespace() {
+                match w {
+                    "filled" | "open" if fill.is_none() => fill = Some(w == "filled"),
+                    "dot" | "circle" | "double-circle" | "triangle" | "sesame"
+                        if shape.is_none() =>
+                    {
+                        shape = Some(match w {
+                            "dot" => EmphasisShape::Dot,
+                            "circle" => EmphasisShape::Circle,
+                            "double-circle" => EmphasisShape::DoubleCircle,
+                            "triangle" => EmphasisShape::Triangle,
+                            _ => EmphasisShape::Sesame,
+                        })
+                    }
+                    _ => return None,
+                }
+            }
+            if shape.is_none() && fill.is_none() {
+                return None;
+            }
+            EmphasisMark::Shape(shape, fill.unwrap_or(true))
+        };
+        let has = |w: &str| position.split_whitespace().any(|p| p == w);
+        Some(Emphasis {
+            mark,
+            color,
+            under: has("under"),
+            left: has("left"),
+        })
+    }
+}
+
 /// How white space is handled.
 #[allow(clippy::enum_variant_names)]
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
@@ -978,6 +1130,10 @@ pub struct TextCss {
     /// Named and generic families in authored order, skipping unavailable names.
     pub family: Option<Vec<crate::FontFamily>>,
     pub font_role: Option<crate::FontRole>,
+    /// `text-emphasis` (CSS Text Decoration 4 §3).
+    pub emphasis: Option<Emphasis>,
+    /// `ruby-position`, `ruby-align` and `ruby-overhang` (CSS Ruby 1).
+    pub ruby: crate::rich::RubyStyle,
 }
 
 /// CSS UI 4 `caret-shape`: how a focused field draws its caret (`auto`
@@ -1288,6 +1444,17 @@ pub(crate) fn inherit(inp: Inputs<'_>) -> TextCss {
         .map(|v| scheme_dark(&v, theme_dark))
         .filter(|d| *d != theme_dark);
     t.vertical_align = own("vertical-align");
+    let mark_color = get("text-emphasis-color")
+        .filter(|c| !c.eq_ignore_ascii_case("currentcolor"))
+        .and_then(|c| color(Some(c)));
+    let position = get("text-emphasis-position").unwrap_or_default();
+    t.emphasis =
+        get("text-emphasis-style").and_then(|style| Emphasis::parse(&style, &position, mark_color));
+    t.ruby = crate::rich::RubyStyle::parse(
+        get("ruby-position").as_deref(),
+        get("ruby-align").as_deref(),
+        get("ruby-overhang").as_deref(),
+    );
     t
 }
 
@@ -1506,6 +1673,7 @@ impl TextCss {
             || self.word_spacing.is_some_and(|w| w != 0.0)
             || self.decoration.any()
             || self.stroke.is_some()
+            || self.emphasis.is_some()
             || p.0 != Default::default()
             || p.1 != Default::default()
     }
