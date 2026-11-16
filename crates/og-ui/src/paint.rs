@@ -392,6 +392,47 @@ impl BoxLayer {
         }
         p
     }
+
+    /// Whether it paints at `p` (CSS px) on the box `b`, placed as
+    /// og-render places it ([`og_draw::UiBackground::place`]): not past
+    /// its painting area, in a gap between its tiles or past a lone image,
+    /// so a filigree corner leaves the middle of its box to the layers
+    /// under it. An image sized from its texture (`auto`, `cover`,
+    /// `contain`), whose size the UI does not know, covers its area.
+    pub(crate) fn covers(&self, theme: &Theme, b: Rect, p: (f32, f32)) -> bool {
+        let inset = match self.clip {
+            LayerClip::Box(i) | LayerClip::Rect(i) => i,
+            LayerClip::Text => [0.0; 4],
+        };
+        let r = inset_rect(b, inset);
+        if !r.contains(p.0, p.1) {
+            return false;
+        }
+        let (pos, size) = ([p.0 - r.x, p.1 - r.y], [r.width, r.height]);
+        match self.resolve(theme, b, r) {
+            og_draw::UiPaint::Image(og_draw::UiImage {
+                fit: og_draw::UiFit::Background(bg),
+                ..
+            }) => match bg.size {
+                og_draw::UiBackgroundSize::Given([Some(w), Some(h)]) => {
+                    bg.place(pos, size, [w, h]).is_some()
+                }
+                _ => true,
+            },
+            og_draw::UiPaint::GradientImage(g) => match g.fit {
+                og_draw::UiFit::Background(bg) => {
+                    let tile = if g.size.x > 0.0 && g.size.y > 0.0 {
+                        [g.size.x, g.size.y]
+                    } else {
+                        size
+                    };
+                    bg.place(pos, size, tile).is_some()
+                }
+                _ => true,
+            },
+            _ => true,
+        }
+    }
 }
 
 /// `geometry` inset by `inset` (left, top, right, bottom): a rectangle's

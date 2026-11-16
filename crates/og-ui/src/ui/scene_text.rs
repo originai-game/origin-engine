@@ -1,6 +1,7 @@
 //! Text drawn straight over the scene. A text whose ancestors draw no
-//! ground that holds it (an image or glass, or fills that keep it 4.5:1
-//! over a black and a white scene) and whose own effects do not hold it
+//! ground that holds it (an image or glass under it, or fills that keep it
+//! 4.5:1 over a black and a white scene; an image layer that paints
+//! elsewhere in its box, such as a filigree corner, is not under it) and whose own effects do not hold it
 //! either takes the tag role's treatment from the style's `:root`:
 //! `--tag-halo` round its glyphs, under any effects of its own, and, where
 //! the style sets one, a `--tag-fill` plate behind it, padded by
@@ -88,7 +89,8 @@ pub fn halo_contrast(e: &og_draw::UiTextEffects, ink: [f32; 3], g: [f32; 3]) -> 
 impl Ui {
     /// What `i` and its ancestors lay under its text over a black and a
     /// white scene (linear), or `None` where one of them draws a ground
-    /// its author made for what is on it (an image, a vector, glass).
+    /// its author made for what is on it (an image or a vector that paints
+    /// under it, glass).
     fn scene_grounds(&self, i: usize, theme: &Theme) -> Option<[Rgb; 2]> {
         // Their solid fills, the innermost first. An ancestor lays its
         // ground only inside its box: a hotkey placed under its slot is
@@ -114,11 +116,14 @@ impl Ui {
                 }) {
                     return None;
                 }
-                let layers = d.fills.iter().chain(
-                    d.boxes
+                // A background layer counts where it paints: an image in a
+                // corner of a plate leaves its text on the plate's fill.
+                let layers = d.fills.iter().chain(d.boxes.iter().flat_map(|b| {
+                    b.backgrounds
                         .iter()
-                        .flat_map(|b| b.backgrounds.iter().map(|l| &l.paint)),
-                );
+                        .filter(|l| l.covers(theme, n.placed.rect, (x, y)))
+                        .map(|l| &l.paint)
+                }));
                 for p in layers {
                     let mut c = match p {
                         Paint::Solid(c) => c.resolve(theme),

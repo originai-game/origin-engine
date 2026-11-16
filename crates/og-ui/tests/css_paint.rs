@@ -605,4 +605,27 @@ fn text_over_the_scene_takes_the_tag_treatment() {
         rect.x < bare.x && rect.width > bare.width,
         "{rect:?} {bare:?}"
     );
+
+    // An image only in a plate's corner (a filigree) leaves its text on
+    // the thin fill, over the scene: it takes the halo. The same image
+    // tiled under the text is a ground its author drew, and stays bare.
+    let mut ui = ui_with_font(test_font());
+    ui.define_texture("ui/corner.png", Handles::default().texture());
+    let d = Doc::with_ui(
+        ui,
+        r#"<meta name="component" content="t">
+<column>
+  <div style="padding: 16px; background: url(corner.png) left top / 8px 8px no-repeat, rgb(0 0 0 / 30%)"><p>Cornered</p></div>
+  <div style="padding: 16px; background: url(corner.png) left top / 8px 8px repeat, rgb(0 0 0 / 30%)"><p>Tiled</p></div>
+</column>"#,
+    );
+    let fx = text_effects(&d.ui, "Cornered")
+        .1
+        .unwrap_or_else(|| panic!("Cornered is drawn bare"));
+    assert_eq!(fx.shadows.len(), 8, "{:?}", fx.shadows);
+    assert!(
+        text_effects(&d.ui, "Tiled")
+            .1
+            .is_none_or(|fx| fx.shadows.is_empty())
+    );
 }

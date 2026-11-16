@@ -15,8 +15,8 @@
 //! tritanopia (og-draw's simulation, full strength).
 
 use og_draw::{
-    ColorFilter, ColorVision, ColorVisionFilter, TextureHandle, UiBackground, UiBackgroundSize,
-    UiBlend, UiFit, UiGeometry, UiGradient, UiGradientKind, UiMode, UiPaint, UiRepeat, UiSpread,
+    ColorFilter, ColorVision, ColorVisionFilter, TextureHandle, UiBlend, UiFit, UiGeometry,
+    UiGradient, UiGradientKind, UiMode, UiPaint, UiSpread,
 };
 use og_ui::{DrawCmd, DrawItem, Srgba};
 use serde_json::{Value, json};
@@ -606,7 +606,7 @@ fn paint_at(
                     };
                     let f = match &g.fit {
                         UiFit::Fill => f,
-                        UiFit::Background(b) => background(b, pos, size, tile)?,
+                        UiFit::Background(b) => b.place(pos, size, tile)?,
                         _ => return unchecked,
                     };
                     (gradient(&g.gradient, f, (tile[0], tile[1])), "gradient")
@@ -623,7 +623,7 @@ fn paint_at(
                                 ((i.uv[2] - i.uv[0]).abs() * t[0] / density).max(1.0),
                                 ((i.uv[3] - i.uv[1]).abs() * t[1] / density).max(1.0),
                             ];
-                            background(b, pos, size, nat)?
+                            b.place(pos, size, nat)?
                         }
                         _ => return unchecked,
                     };
@@ -640,85 +640,6 @@ fn paint_at(
         }
         _ => None,
     }
-}
-
-/// Where `pos` (CSS px from the box's top left, the box `size`) falls in
-/// a CSS background layer's image of natural size `nat`, as og-render's
-/// `image_uv` places it (CSS Backgrounds 3 §3.6–3.9): the fraction of the
-/// image, or `None` where no image is drawn.
-fn background(b: &UiBackground, pos: [f32; 2], size: [f32; 2], nat: [f32; 2]) -> Option<[f32; 2]> {
-    let pos = [pos[0] - b.area[0], pos[1] - b.area[1]];
-    let size = [
-        size[0] - b.area[0] - b.area[2],
-        size[1] - b.area[1] - b.area[3],
-    ];
-    let (auto, mut w) = match b.size {
-        UiBackgroundSize::Cover => {
-            let k = (size[0] / nat[0]).max(size[1] / nat[1]);
-            ([false; 2], [nat[0] * k, nat[1] * k])
-        }
-        UiBackgroundSize::Contain => {
-            let k = (size[0] / nat[0]).min(size[1] / nat[1]);
-            ([false; 2], [nat[0] * k, nat[1] * k])
-        }
-        UiBackgroundSize::Given(g) => {
-            let w = match (g[0].map(|v| v.max(0.0)), g[1].map(|v| v.max(0.0))) {
-                (Some(x), Some(y)) => [x, y],
-                (Some(x), None) => [x, x * nat[1] / nat[0]],
-                (None, Some(y)) => [y * nat[0] / nat[1], y],
-                (None, None) => nat,
-            };
-            ([g[0].is_none(), g[1].is_none()], w)
-        }
-    };
-    let given = w;
-    let round = |len: f32, w: f32| len / (len / w.max(1e-4)).round().max(1.0);
-    for k in 0..2 {
-        if b.repeat[k] == UiRepeat::Round {
-            w[k] = round(size[k], given[k]);
-        }
-    }
-    // Round on one axis keeps the ratio on the other when its size is auto.
-    let rounds = b.repeat.map(|r| r == UiRepeat::Round);
-    if rounds[0] && !rounds[1] && auto[1] {
-        w[1] = given[1] * w[0] / given[0].max(1e-4);
-    }
-    if rounds[1] && !rounds[0] && auto[0] {
-        w[0] = given[0] * w[1] / given[1].max(1e-4);
-    }
-    let axis = |k: usize| {
-        let origin = [b.align.x, b.align.y][k] * (size[k] - w[k]) + [b.offset.x, b.offset.y][k];
-        background_axis(pos[k], size[k], w[k], origin, b.repeat[k])
-    };
-    Some([axis(0)?, axis(1)?])
-}
-
-/// One axis of [`background`]: `x` CSS px along `len`, the image `w` long
-/// placed at `origin` and repeated by `rep`: the fraction of the image
-/// there, `None` in a gap or past a lone image (og-render's
-/// `background_axis`).
-fn background_axis(x: f32, len: f32, w: f32, origin: f32, rep: UiRepeat) -> Option<f32> {
-    let iw = w.max(1e-4);
-    let (mut o, mut pitch, mut tiled) = (origin, iw, rep != UiRepeat::NoRepeat);
-    if rep == UiRepeat::Space {
-        // Whole images from edge to edge, the room left between them;
-        // fewer than two fit, one placed by its position.
-        let n = (len / iw).floor();
-        if n >= 2.0 {
-            pitch = iw + (len - n * iw) / (n - 1.0);
-            o = 0.0;
-        } else {
-            tiled = false;
-        }
-    }
-    let q = x - o;
-    if !tiled {
-        let t = q / iw;
-        return (0.0..=1.0).contains(&t).then_some(t);
-    }
-    let k = q / pitch;
-    let t = (k - k.floor()) * pitch / iw;
-    (t <= 1.0).then_some(t)
 }
 
 fn mul(a: [f32; 4], b: [f32; 4]) -> [f32; 4] {
