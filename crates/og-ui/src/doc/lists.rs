@@ -17,7 +17,9 @@ use serde_json::Value;
 /// headings' type steps), cascaded before every author rule: list
 /// indents and markers, and the block margins (`margin: 0` resets them).
 /// A `<button>` centres its label, as HTML's sheet has it, so it does not
-/// inherit its parent's `text-align`. A `<menu>` is a menu (its buttons
+/// inherit its parent's `text-align`, and a figure on it (a cost) takes the
+/// plate's ink: `--figure-ink` is the button's colour inside it, under any
+/// style's own rule for a button. A `<menu>` is a menu (its buttons
 /// are menu items): each item spans the menu, so its items are as wide as
 /// each other, with their labels at the start, as a desktop's and a game's
 /// menus are.
@@ -36,7 +38,7 @@ h4 { font: var(--text-body); margin-block: 1.33em; }
 h5 { font: var(--text-sm); margin-block: 1.67em; }
 h6 { font: var(--text-xs); margin-block: 2.33em; }
 small { font: var(--text-sm); }
-button { text-align: center; }
+button { text-align: center; --figure-ink: currentColor; }
 menu > button { width: stretch; text-align: start; }
 table { display: table; }
 caption { display: table-caption; text-align: center; }

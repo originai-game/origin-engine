@@ -1,0 +1,8 @@
+{
+  "fixed": [
+    {
+      "member": "ui styles",
+      "summary": "A figure role part inside a button (IdlePurchases' cost in Buy) takes the button's ink from the first frame, with no pack and with a pack set before the document mounts, as it already did after a restyle. `--figure-ink: currentColor` on a button is now one of og's user-agent declarations (beside HTML's `button { text-align: center }`), so every document has it, whether or not a pack is loaded, and a style's own rule for a button still wins over it. Before, a game that set its pack before mounting, and the default style, drew the cost in the frame's figure ink on the primary plate (1.12:1 by default, 2.04:1 under scifi)."
+    }
+  ]
+}

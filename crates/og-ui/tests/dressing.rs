@@ -1724,13 +1724,6 @@ fn a_buttons_content_follows_its_ink() {
 /// figure took the button ink.
 #[test]
 fn a_figure_inside_a_button_takes_the_plates_ink() {
-    let mut d = mounted(
-        ui_with_font(test_font()),
-        r##"<meta name="parts" content="t.cost t.figure">
-<column id="Root"><button variant="primary"><div part="t.cost t.figure"><span>Cost</span></div></button><button><span part="t.figure">Plain</span></button><span part="t.figure">Free</span></column>"##,
-        &[],
-        Viewport::new(400.0, 300.0),
-    );
     let pack = og_ui::style_pack::StylePack::parse(
         "styles/test",
         vec![(
@@ -1739,18 +1732,49 @@ fn a_figure_inside_a_button_takes_the_plates_ink() {
         )],
     )
     .unwrap();
-    d.ui.set_style_pack(&pack).unwrap();
-    for _ in 0..30 {
-        d.step(InputFrame::default());
-    }
     let colour = |hex: &str| og_ui::style_file::parse_color(hex).unwrap();
-    for (label, hex) in [
-        ("Cost", "#00ff00"),
-        ("Plain", "#ff0000"),
-        ("Free", "#0000ff"),
-    ] {
-        let got = text_ink(&d, label).unwrap_or_else(|| panic!("{label} drawn"));
-        assert!(near(got, colour(hex)), "{label}: {got:?}, want {hex}");
+    // No pack, a pack in place when the document is first built (how a
+    // game starts), and one set on a mounted document.
+    for (with_pack, before) in [(false, false), (true, true), (true, false)] {
+        let mut ui = ui_with_font(test_font());
+        if with_pack && before {
+            ui.set_style_pack(&pack).unwrap();
+        }
+        let mut d = mounted(
+            ui,
+            r##"<meta name="parts" content="t.cost t.figure">
+<column id="Root"><button variant="primary"><span>Bare</span><div part="t.cost t.figure"><span>Cost</span></div></button><button><span part="t.figure">Plain</span></button><span part="t.figure">Free</span></column>"##,
+            &[],
+            Viewport::new(400.0, 300.0),
+        );
+        if with_pack && !before {
+            d.ui.set_style_pack(&pack).unwrap();
+        }
+        for _ in 0..30 {
+            d.step(InputFrame::default());
+        }
+        let ink = |label: &str| text_ink(&d, label).unwrap_or_else(|| panic!("{label} drawn"));
+        let case = format!("pack {with_pack}, before mount {before}");
+        let same = |a: [f32; 4], b: [f32; 4]| a.iter().zip(b).all(|(a, b)| (a - b).abs() < 0.01);
+        assert!(
+            same(ink("Cost"), ink("Bare")),
+            "{case}: Cost {:?}, the plate's ink {:?}",
+            ink("Cost"),
+            ink("Bare")
+        );
+        if with_pack {
+            for (label, hex) in [
+                ("Cost", "#00ff00"),
+                ("Plain", "#ff0000"),
+                ("Free", "#0000ff"),
+            ] {
+                let got = ink(label);
+                assert!(
+                    near(got, colour(hex)),
+                    "{case}: {label}: {got:?}, want {hex}"
+                );
+            }
+        }
     }
 }
 

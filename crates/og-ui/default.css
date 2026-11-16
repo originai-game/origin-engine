@@ -1141,9 +1141,6 @@
      until a pack sets it. A rim a control does not draw today takes a
      `-rim-width` beside its colour, as the role tokens do. */
   button { color: var(--button-ink); }
-  /* A figure (a cost, a count) inside a button is text on its plate: it
-     takes the plate's ink, as the token inherits from here. */
-  button { --figure-ink: currentColor; }
   button.primary { color: var(--button-primary-ink); }
   button.danger { color: var(--button-danger-ink); }
   button.ghost { color: var(--button-ghost-ink); }
