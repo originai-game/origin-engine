@@ -746,9 +746,10 @@ fn feature(input: &mut Parser<'_>, scope: Scope) -> Result<Query, Error> {
                 "orientation" => Ok(Query::All),
                 "prefers-reduced-motion" => Ok(Query::Feature(Feature::ReducedMotion(true))),
                 "-og-color-vision" => Ok(Query::Feature(Feature::ColorVision(None))),
-                "pointer" | "any-pointer" | "hover" | "any-hover" => {
-                    Ok(Query::Feature(Feature::Coarse(None)))
-                }
+                // Every surface has a pointer, fine or coarse; it hovers
+                // only when fine (`hover: none` on a touch screen).
+                "pointer" | "any-pointer" => Ok(Query::Feature(Feature::Coarse(None))),
+                "hover" | "any-hover" => Ok(Query::Feature(Feature::Coarse(Some(false)))),
                 "prefers-contrast" => Ok(Query::Feature(Feature::Contrast(None))),
                 "prefers-reduced-transparency" => {
                     Ok(Query::Feature(Feature::ReducedTransparency(true)))
@@ -757,21 +758,22 @@ fn feature(input: &mut Parser<'_>, scope: Scope) -> Result<Query, Error> {
                     Comparison::Greater,
                     0.0,
                 ))),
-                "color" | "color-gamut" | "update" | "scripting" | "display-mode" => {
-                    Ok(Query::Feature(Feature::Fixed(true)))
-                }
-                "prefers-color-scheme"
-                | "forced-colors"
+                // True for any value but 0, `none` and a value the feature
+                // names false (Media Queries 4 §2.4.4): every surface has a
+                // scheme, a colour depth, a gamut, a range and updates.
+                "color"
+                | "color-gamut"
+                | "update"
+                | "scripting"
+                | "display-mode"
+                | "prefers-color-scheme"
+                | "dynamic-range" => Ok(Query::Feature(Feature::Fixed(true))),
+                "forced-colors"
                 | "monochrome"
                 | "color-index"
                 | "grid"
-                | "dynamic-range"
                 | "inverted-colors"
-                | "prefers-reduced-data" => {
-                    // `dynamic-range` always matches `standard`, but the
-                    // boolean form of the others is their `none`/0: false.
-                    Ok(Query::Feature(Feature::Fixed(name == "dynamic-range")))
-                }
+                | "prefers-reduced-data" => Ok(Query::Feature(Feature::Fixed(false))),
                 _ => Err(ParseError::custom(format!(
                     "unsupported boolean media feature {name}"
                 ))),
@@ -1022,7 +1024,10 @@ mod tests {
             (true, "(pointer: coarse)", true),
             (true, "(any-pointer: fine)", false),
             (true, "(hover: none)", true),
-            (true, "(hover)", true),
+            // Boolean `hover` is false when its value is `none` (§7.2).
+            (true, "(hover)", false),
+            (false, "(hover)", true),
+            (true, "(pointer)", true),
             (false, "(pointer: coarse)", false),
             (false, "(pointer: fine) and (hover: hover)", true),
             (false, "not (any-hover: none)", true),
