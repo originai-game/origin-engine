@@ -679,6 +679,9 @@ impl Ui {
     pub fn inherit_part_css(&mut self, source: &Ui) {
         self.style.part_rules.clone_from(&source.style.part_rules);
         self.style.part_sheet.clone_from(&source.style.part_sheet);
+        // Its documents are styled against the same pack: defined here,
+        // they are taken as they are.
+        self.docs.library.pack.clone_from(&source.docs.library.pack);
         self.style.css_sounds.clone_from(&source.style.css_sounds);
         self.style.root_tokens.clone_from(&source.style.root_tokens);
         self.style

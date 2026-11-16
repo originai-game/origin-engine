@@ -653,6 +653,9 @@ pub struct UiDocument {
     pub root: usize,
     /// Author diagnostics that publish promotes to errors.
     pub warnings: Vec<String>,
+    /// The global sheet whose rules its elements carry, by its id: the
+    /// default style's, or the pack's it was parsed against.
+    pub(crate) styled: u64,
 }
 
 pub const NONE: usize = usize::MAX;

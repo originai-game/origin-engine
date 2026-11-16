@@ -7,6 +7,9 @@ use super::*;
 pub(crate) struct Library {
     /// By name.
     pub(crate) documents: BTreeMap<String, Arc<UiDocument>>,
+    /// The style pack its documents are styled against
+    /// ([`Ui::style_documents`]); none is the default style.
+    pub(crate) pack: Option<Arc<crate::style_pack::StylePack>>,
     /// CSS `@keyframes` of every defined document, as `<doc>/<name>`.
     pub(crate) keyframes: BTreeMap<String, Arc<crate::motion::css::Keyframes>>,
     /// What structural selectors of every defined document read.

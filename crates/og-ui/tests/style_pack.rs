@@ -812,3 +812,62 @@ fn pack_seeds_reach_the_derived_palette() {
         }
     }
 }
+
+/// A document takes the active pack's element rules whenever it is
+/// defined: before the pack is set, after it, or after the pack is
+/// cleared again. A document bundled on use is defined after the pack.
+///
+/// Ways it could fail: a document defined after `set_style_pack` keeping
+/// only the default style's rules, one defined after the pack is cleared
+/// keeping the pack's, or a document already styled against the active
+/// pack being styled twice (its rules doubled).
+#[test]
+fn a_document_takes_the_active_packs_rules_whenever_it_is_defined() {
+    use og_ui::{UiDocument, Viewport, bind::NoEnv, reactive::SourceId};
+    let pack = StylePack::parse(
+        "styles/test",
+        vec![(
+            "styles/test/main.css".into(),
+            "div.box { width: 73px; }".into(),
+        )],
+    )
+    .unwrap();
+    let text = |name: &str| {
+        format!(
+            "<meta name=\"component\" content=\"{name}\"><div id=\"Box\" class=\"box\"></div><style>#Box {{ height: 20px; }}</style>"
+        )
+    };
+    let parse = |name: &str| UiDocument::parse(&format!("ui/{name}.svelte"), &text(name)).unwrap();
+    let width = |ui: &mut Ui, name: &str| {
+        let mount = SourceId::new("test", name);
+        // Mounted once; a later reading builds the same mount again.
+        let _ = ui.mount_document(mount, name, Default::default(), Default::default(), &NoEnv);
+        ui.begin(Default::default(), Viewport::new(300.0, 300.0));
+        ui.build_retained_documents(&NoEnv).unwrap();
+        ui.end();
+        let found = ui
+            .probe_elements()
+            .into_iter()
+            .find(|e| e.path == format!("test:{name}"))
+            .unwrap();
+        found.width
+    };
+    let mut ui = Ui::new(UiDesc::default());
+    ui.define_document(parse("Early"));
+    ui.set_style_pack(&pack).unwrap();
+    ui.define_document(parse("Late"));
+    assert_eq!(width(&mut ui, "Early"), 73.0, "defined before the pack");
+    assert_eq!(width(&mut ui, "Late"), 73.0, "defined after the pack");
+    // Styled against the pack beforehand: defined as it is.
+    let styled = pack.apply_document(&parse("Styled")).unwrap();
+    let rules = styled.nodes[styled.root].rules.len();
+    ui.define_document(styled);
+    assert_eq!(ui.document("Styled").unwrap().nodes[0].rules.len(), rules);
+    assert_eq!(width(&mut ui, "Styled"), 73.0);
+    // The pack cleared: a document that carries its rules sheds them.
+    ui.style_documents(None).unwrap();
+    ui.define_document(pack.apply_document(&parse("After")).unwrap());
+    let plain = width(&mut ui, "After");
+    assert_ne!(plain, 73.0, "defined after the pack was cleared");
+    assert_eq!(width(&mut ui, "Late"), plain);
+}

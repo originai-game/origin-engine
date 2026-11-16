@@ -439,6 +439,9 @@ pub struct Global {
     anonymous: usize,
     /// How many rules it read: a document's rules are ordered after them.
     count: usize,
+    /// Which reading of a sheet this is: a document carries the id of the
+    /// one whose rules it took ([`UiDocument::styled`]).
+    id: u64,
     transitions: Vec<Rule>,
     rules: Vec<GlobalRule>,
 }
@@ -457,6 +460,10 @@ pub(crate) static DEFAULT_GLOBAL: std::sync::LazyLock<Global> = std::sync::LazyL
 });
 
 impl Global {
+    pub(crate) fn id(&self) -> u64 {
+        self.id
+    }
+
     /// Reads `css` (written beside `source`) with the stylesheets it
     /// `@import`s.
     pub fn read(source: &str, css: &str, imports: Vec<(String, String)>) -> Result<Self, String> {
@@ -507,11 +514,13 @@ impl Global {
                 lowered,
             });
         }
+        static READ: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(1);
         Ok(Self {
             sheet,
             layers,
             anonymous,
             count,
+            id: READ.fetch_add(1, std::sync::atomic::Ordering::Relaxed),
             transitions,
             rules: out,
         })

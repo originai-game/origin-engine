@@ -53,6 +53,7 @@ pub(crate) fn parse_with_pack(
                 nodes: Vec::new(),
                 root: NONE,
                 warnings: Vec::new(),
+                styled: 0,
             },
             ids: BTreeSet::new(),
             selectors: Vec::new(),
@@ -139,13 +140,10 @@ pub(crate) fn parse_with_pack(
         p.join_lists()?;
         p.join_aria()?;
         super::extern_element::finish(&mut p.doc, &mut p.selectors).map_err(|e| (0, e))?;
-        super::stylesheet::apply(
-            &mut p.doc,
-            &p.selectors,
-            &p.styles,
-            // Without a pack the default style still dresses the role parts.
-            pack.map_or(&*super::stylesheet::DEFAULT_GLOBAL, |p| &*p.global),
-        )?;
+        // Without a pack the default style still dresses the role parts.
+        let global = pack.map_or(&*super::stylesheet::DEFAULT_GLOBAL, |p| &*p.global);
+        super::stylesheet::apply(&mut p.doc, &p.selectors, &p.styles, global)?;
+        p.doc.styled = global.id();
         // Inline declarations come last: they win over every rule but an
         // `!important` one, which an `|important` one wins over in turn.
         for (i, declarations) in std::mem::take(&mut p.inline_styles) {

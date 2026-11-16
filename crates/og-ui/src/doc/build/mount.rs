@@ -4,8 +4,29 @@ use crate::reactive::{SourceId, session};
 
 impl Ui {
     /// Registers a document (its timelines as `<name>/<timeline>`); one of
-    /// the same name is replaced, the UI's state kept (a hot reload).
-    pub fn define_document(&mut self, doc: UiDocument) {
+    /// the same name is replaced, the UI's state kept (a hot reload). It
+    /// takes the active style pack's rules whenever it is defined: one
+    /// parsed against another sheet is read again against the active one.
+    pub fn define_document(&mut self, mut doc: UiDocument) {
+        let pack = self.docs.library.pack.clone();
+        let active = pack.as_ref().map_or_else(
+            || crate::doc::stylesheet::DEFAULT_GLOBAL.id(),
+            |pack| pack.global.id(),
+        );
+        if doc.styled != active {
+            let imports = doc.sheet.imports.clone();
+            match crate::doc::svelte::parse_with_pack(
+                &doc.source,
+                &doc.text,
+                imports,
+                pack.as_deref(),
+            ) {
+                Ok(styled) => doc = styled,
+                // The pack's rules do not fit it: it keeps the rules it
+                // came with, and says why.
+                Err(errors) => doc.warnings.extend(errors),
+            }
+        }
         for (n, t) in &doc.timelines {
             self.define_timeline(&format!("{}/{n}", doc.name), t.clone());
         }

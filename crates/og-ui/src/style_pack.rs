@@ -138,6 +138,8 @@ impl crate::Ui {
                 .map_err(|e| e.join("\n"))
             })
             .collect::<Result<Vec<_>, _>>()?;
+        // A document defined from now on is styled against it too.
+        self.docs.library.pack = pack.cloned().map(std::sync::Arc::new);
         for doc in docs {
             self.define_document(doc);
         }
