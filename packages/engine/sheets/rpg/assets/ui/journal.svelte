@@ -5,7 +5,7 @@
      the foot. A phone: the party, the turn order, the map, the place and the
      quest log, fading out at the fold. -->
 <div id="Page" class="rpg-ground">
-  <div id="Compass"><RpgCompass heading={$compassHeading} marks={$compassMarks} /></div>
+  <div id="Compass"><Compass heading={$compassHeading} pois={$compassPois} units="m" /></div>
   <div id="Party"><RpgParty members={$partyMembers} selected={$partySelected} /></div>
   <div id="Turns"><RpgTurnOrder round={$turnRound} turns={$turns} /></div>
   <div id="Middle">

@@ -191,18 +191,11 @@ export const JOURNAL = (p: Pictures) => ({
   ],
   talkSelected: "r1",
 
-  compassHeading: "N",
-  compassMarks: [
-    { id: "w", kind: "cardinal", label: "W", at: 0.04 },
-    { id: "t1", kind: "tick", label: "", at: 0.15 },
-    { id: "t2", kind: "tick", label: "", at: 0.27 },
-    { id: "t3", kind: "tick", label: "", at: 0.38 },
-    { id: "n", kind: "cardinal", label: "N", at: 0.44 },
-    { id: "t4", kind: "tick", label: "", at: 0.62 },
-    { id: "t5", kind: "tick", label: "", at: 0.73 },
-    { id: "e", kind: "cardinal", label: "E", at: 0.85 },
-    { id: "t6", kind: "tick", label: "", at: 0.94 },
-    { id: "q", kind: "quest", label: "", at: 0.6 },
+  // Compass: heading and bearings in radians clockwise from north.
+  compassHeading: 0,
+  compassPois: [
+    { id: "q", bearing: 0.5, distance: 240, kind: "objective", icon: "star", label: "Quest" },
+    { id: "camp", bearing: 5.6, distance: 85, kind: "poi", icon: "flag", label: "Camp" },
   ],
 
   partyMembers: [
@@ -238,17 +231,17 @@ export const JOURNAL = (p: Pictures) => ({
   playerMana: 128,
   playerManaMax: 180,
   skills: [
-    { id: "k1", icon: "skill-fire", key: "1", name: "Ember Slash", cooldown: 0, ready: true },
-    { id: "k2", icon: "skill-shield", key: "2", name: "Sun Ward", cooldown: 0, ready: true },
-    { id: "k3", icon: "skill-arcane", key: "3", name: "Arcane Burst", cooldown: 0.6, ready: false },
-    { id: "k4", icon: "skill-nature", key: "4", name: "Thornbind", cooldown: 0, ready: true },
-    { id: "k5", icon: "skill-blood", key: "5", name: "Blood Strike", cooldown: 0, ready: true },
-    { id: "k6", icon: "skill-dash", key: "6", name: "Dash", cooldown: 0, ready: true },
+    { id: "k1", icon: "skill-fire", name: "Ember Slash", action: "", hotkey: "1", cooldown: 0, cooldownMax: 10, cost: "", unaffordable: false, locked: false, active: false, count: 0 },
+    { id: "k2", icon: "skill-shield", name: "Sun Ward", action: "", hotkey: "2", cooldown: 0, cooldownMax: 10, cost: "", unaffordable: false, locked: false, active: false, count: 0 },
+    { id: "k3", icon: "skill-arcane", name: "Arcane Burst", action: "", hotkey: "3", cooldown: 6, cooldownMax: 10, cost: "", unaffordable: false, locked: false, active: false, count: 0 },
+    { id: "k4", icon: "skill-nature", name: "Thornbind", action: "", hotkey: "4", cooldown: 0, cooldownMax: 10, cost: "", unaffordable: false, locked: false, active: false, count: 0 },
+    { id: "k5", icon: "skill-blood", name: "Blood Strike", action: "", hotkey: "5", cooldown: 0, cooldownMax: 10, cost: "", unaffordable: false, locked: false, active: false, count: 0 },
+    { id: "k6", icon: "skill-dash", name: "Dash", action: "", hotkey: "6", cooldown: 0, cooldownMax: 10, cost: "", unaffordable: false, locked: false, active: false, count: 0 },
   ],
   quickItems: [
-    { id: "q1", icon: "cmd-health", key: "Q", name: "Healing Draught", count: 9 },
-    { id: "q2", icon: "cmd-mana", key: "E", name: "Moonwater Vial", count: 7 },
-    { id: "q3", icon: "item-scroll", key: "R", name: "Scroll of Return", count: 3 },
+    { id: "q1", icon: "cmd-health", name: "Healing Draught", action: "", hotkey: "Q", cooldown: 0, cooldownMax: 10, cost: "", unaffordable: false, locked: false, active: false, count: 9 },
+    { id: "q2", icon: "cmd-mana", name: "Moonwater Vial", action: "", hotkey: "E", cooldown: 0, cooldownMax: 10, cost: "", unaffordable: false, locked: false, active: false, count: 7 },
+    { id: "q3", icon: "item-scroll", name: "Scroll of Return", action: "", hotkey: "R", cooldown: 0, cooldownMax: 10, cost: "", unaffordable: false, locked: false, active: false, count: 3 },
   ],
   minimapMarkers: [
     { id: "me", x: 0.5, y: 0.5, tone: "neutral", player: true },

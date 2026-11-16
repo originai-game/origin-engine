@@ -210,22 +210,6 @@ test("RpgCommands: a tap chooses by key, the disabled command sends nothing, and
   });
 });
 
-test("RpgActionBar: a ready skill and a quick item report use by key; a skill cooling down is disabled and silent", () => {
-  const events: Event[] = [];
-  const skills = [
-    { id: "cut", icon: "sword", key: "1", name: "Cut", cooldown: 0, ready: true },
-    { id: "burst", icon: "star", key: "2", name: "Burst", cooldown: 0.5, ready: false },
-  ];
-  run(member("action-bar", { skills, items: [{ id: "draught", icon: "potion", key: "Q", name: "Draught", count: 9 }] }, { events }), (e) => {
-    expect(row(e, "burst").disabled).toBeTrue();
-    tap(e, row(e, "burst"));
-    tap(e, row(e, "cut"));
-    tap(e, row(e, "draught"));
-    expect(intents(events, ["use"])).toEqual(["use:cut", "use:draught"]);
-    expect(elements(e).some((x) => x.text === "9")).toBeTrue();
-  });
-});
-
 test("RpgBackpack: cells and tabs report by key, the bumpers page the tabs, and the selection follows its key through a reorder", () => {
   const events: Event[] = [];
   run(member("backpack", {}, { events }), (e) => {

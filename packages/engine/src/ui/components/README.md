@@ -101,8 +101,8 @@ and their pending L4 review are recorded explicitly in the world sheet.
 | Ground marks (selection, telegraphs, paths, placement) | `world/selection-ring`, `world/telegraph`, `world/path-line`, `world/placement-ghost` |
 | Mass world elements (overhead bars, damage numbers) | `world/overhead-bars`, `hud/damage-numbers` |
 | RPG inventory, character and equipment (`rpg/README.md`) | `panels/backpack`, `panels/item-card`, `rpg/character`, `rpg/stats`, `rpg/menu-bar` |
-| RPG quests, world map and conversation | `panels/quest-log`, `rpg/quest-detail`, `hud/quest-tracker`, `rpg/world-map`, `rpg/place-card`, `panels/conversation`, `rpg/compass` |
-| RPG party, turn order and combat HUD | `rpg/vitals`, `rpg/party`, `rpg/turn-order`, `rpg/action-bar`, `hud/combat-log`, `rpg/enemy-info`, `rpg/commands` |
+| RPG quests, world map and conversation | `panels/quest-log`, `rpg/quest-detail`, `hud/quest-tracker`, `rpg/world-map`, `rpg/place-card`, `panels/conversation` |
+| RPG party, turn order and combat HUD | `rpg/vitals`, `rpg/party`, `rpg/turn-order`, `hud/combat-log`, `rpg/enemy-info`, `rpg/commands` |
 | Shooter HUD: aim, ammunition, damage direction, killfeed (`shooter/README.md`) | `hud/crosshair`, `hud/ammo-counter`, `hud/damage-direction`, `hud/killfeed`, `shooter/combat-hud` |
 | Shooter loadout | `shooter/loadout` |
 | Strategy selection, commands, production queue, waves, tower upgrades (`strategy/README.md`) | `strategy/selection`, `strategy/queue`, `strategy/wave`, `strategy/tower` |

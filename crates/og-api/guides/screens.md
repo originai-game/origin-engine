@@ -43,7 +43,7 @@ Nothing is installed or copied to use them.
   The cook bundles each built-in screen whose id the code names as a
   string literal; `og ui types` types its viewmodel.
 - To change one, run `og ui eject <name>` (`og ui eject pause`,
-  `og ui eject rpg/backpack`). It copies the document and its strings into
+  `og ui eject panels/backpack`). It copies the document and its strings into
   `assets/ui/`, where the game owns it. The game's document of the same
   name then wins everywhere: screens using the component get the copy,
   and loading the `@ui/` id loads `ui/<file>`. Keep the component's
@@ -632,21 +632,26 @@ and a `fixture:default`, so `og ui preview` shows it at once.
   `selection-ring`, `telegraph`, `path-line` and `placement-ghost` are
   `<ground>` marks; `overhead-bars` and `damage-numbers` are
   `<anchor mass>` rows drawn on the GPU by the thousand.
-- Genre groups, named by their path: `rpg/` (`RpgBackpack`,
-  `RpgItemCard`, `RpgCharacter`, `RpgQuestLog`, `RpgWorldMap`,
-  `RpgConversation`, `RpgParty`, `RpgTurnOrder`, `RpgActionBar` and the
-  rest: inventory, equipment, quests, map, dialogue and the combat HUD)
-  `shooter/` (crosshair, ammunition, damage direction, killfeed,
-  combat HUD, loadout), `strategy/` (selection, queue, wave, tower),
+- Filed by function, named by their path: `base/` (item slot, avatar,
+  currency, spinner, skeleton, ribbon), `hud/` (bars, meters, buttons,
+  timers, ability bar, crosshair, ammunition, damage direction, killfeed,
+  combat log, quest tracker), `world/` (tags, ground marks, minimap,
+  compass), `panels/` (data grid, chart, node graph, menu, tooltip card,
+  `RpgBackpack`, `RpgItemCard`, `RpgQuestLog`, `RpgConversation`,
+  crafting, trade, loot) and `meta/` (`Shop`, `ShopConfirm`,
+  `Achievements`, `DailyQuests`, `DailyRewards`, `Chat`, `Friends`). A piece
+  any genre uses is filed by function, whatever its name.
+- Genre kits, a genre's own screens: `rpg/` (`RpgCharacter`,
+  `RpgWorldMap`, `RpgParty`, `RpgTurnOrder` and the rest), `shooter/`
+  (combat HUD, loadout), `strategy/` (selection, queue, wave, tower),
   `racing/` (telemetry, lap HUD, standings, banner, garage, results),
   `card/` (hand, piles, collection, deck list, reward, run map),
   `puzzle/` (goals, boosters, level path, summary), `idle/` (resources,
   generators, purchases, prestige, offline summary), `rhythm/` (song
-  select, difficulty, score HUD, judgement, results), `arena/` (roster,
-  draft, versus, lobby, round HUD, scoreboard) and `general/` (`Shop`,
-  `ShopConfirm`, `Achievements`, `DailyQuests`, `DailyRewards`, `Chat`,
-  `Friends`). Each group's README lists its members with their
-  props, intents and parts; eject one as `og ui eject rpg/backpack`.
+  select, difficulty, score HUD, judgement, results) and `arena/` (roster,
+  draft, versus, lobby, round HUD, scoreboard). Each folder's README lists
+  its members with their props, intents and parts; eject one by its path,
+  as `og ui eject panels/backpack`.
 
 Expressions compute no geometry: the game passes a chart's line and a path
 line's route as SVG path data, a radial menu's slice positions and a split

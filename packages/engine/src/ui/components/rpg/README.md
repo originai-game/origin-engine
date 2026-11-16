@@ -36,7 +36,7 @@ mythic) on backpack and equipment cells and on the item card;
 `data-tone` on combat log lines (damage, heal, status, crit, plain) and on
 enemy effects (harm, boon, weak, strong); `data-plate` (large, compact) and
 `data-down` on vitals; `data-side`, `data-acting` and `data-down` on turns;
-`data-kind` on map markers, legend entries and compass marks; `data-ready`
+`data-kind` on map markers, legend entries; `data-ready`
 on skills; `data-done`, `data-tracked` and `data-fresh` on quests.
 
 ## Members
@@ -54,11 +54,9 @@ on skills; `data-done`, `data-tracked` and `data-fresh` on quests.
 | `RpgWorldMap` | `map` (texture), `markers` keyed `{ id, kind, x, y, label }`, `selected`, `zoom` (1 fits the box), `panX`, `panY` (CSS px), `legend` keyed `{ id, kind, label }`, `here` | `choose` (marker; the player's own is not a target), `zoom` (wheel, `deltaY`), `pinch` (`scale`), `grab`, `pan`, `release` (a press, its moves and its end, `x` and `y` in the map's box); the game keeps the zoom and the pan |
 | `RpgPlaceCard` | `name`, `about`, `picture`, `marked`, `canTravel` | `mark`, `travel` |
 | `RpgConversation` | `speaker`, `portrait`, `line`, `rate` (characters a second; 0 shows the line at once), `replies` keyed `{ id, number, text, used }`, `selected` | `reply` (row key), `next` (Continue when there are no replies), `revealed` (a line shown at a rate is whole) |
-| `RpgCompass` | `heading`, `marks` keyed `{ id, kind, label, at }` | none |
 | `RpgVitals` | `name`, `portrait`, `level`, `health`, `healthMax`, `mana`, `manaMax`, `plate` (large, compact), `down` | none |
 | `RpgParty` | `members` keyed `{ id, name, portrait, level, health, healthMax, mana, manaMax, down }`, `selected` | `choose` |
 | `RpgTurnOrder` | `round`, `turns` keyed `{ id, name, portrait, side, acting, down }` | none |
-| `RpgActionBar` | `skills` keyed `{ id, icon, key, name, cooldown 0–1, ready }`, `items` keyed `{ id, icon, key, name, count }` | `use` (row key; a skill that is not ready is disabled) |
 | `RpgCombatLog` | `lines` keyed `{ id, text, tone, detail }`, oldest first | none |
 | `RpgEnemyInfo` | `name`, `portrait`, `level`, `health`, `healthMax`, `effects` keyed `{ id, icon, label, tone }` | none |
 | `RpgCommands` | `commands` keyed `{ id, label, icon, enabled }`, `selected` | `choose` (row key; a disabled command sends nothing) |
@@ -72,12 +70,10 @@ pressed, focus-visible and disabled states (docs/ui.md §3.2).
 
 | Component (document) | Parts |
 | --- | --- |
-| `RpgActionBar` (`action-bar.svelte`) | `frame`, `skill` (a button: `[data-ready]` `:disabled`), `item` (a button) |
 | `RpgBackpack` (`../panels/backpack.svelte`) | `frame`, `band`, `title`, `tab` (a button: `[aria-selected]`), `cell` (a button: `[aria-selected]` `[data-broken]` `[data-equipped]` `[data-fresh]` `[data-locked]` `[data-rarity]`) |
 | `RpgCharacter` (`character.svelte`) | `frame`, `band`, `title`, `name`, `cell` (a button: `[aria-selected]` `[data-empty]` `[data-rarity]`), `row` |
 | `RpgCombatLog` (`../hud/combat-log.svelte`) | `frame`, `band`, `title`, `row` (`[data-tone]`) |
 | `RpgCommands` (`commands.svelte`) | `frame`, `band`, `title`, `cell` (a button: `.primary` `[aria-selected]` `:disabled`) |
-| `RpgCompass` (`compass.svelte`) | `frame` |
 | `RpgConversation` (`../panels/conversation.svelte`) | `frame`, `name`, `row` (a button: `[aria-selected]` `[data-used]`) |
 | `RpgEnemyInfo` (`enemy-info.svelte`) | `frame`, `band`, `title`, `name`, `row` (`[data-tone]`) |
 | `RpgItemCard` (`../panels/item-card.svelte`) | `frame` (`[data-rarity]`), `name`, `lead`, `row` |

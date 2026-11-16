@@ -1,10 +1,10 @@
 <meta name="component" content="AbilityBar">
 <meta name="strings" content="./ability-bar.en.ogt">
 <meta name="parts" content="AbilityBar.frame AbilityBar.cell AbilityBar.well AbilityBar.icon AbilityBar.figure AbilityBar.badge AbilityBar.label">
-<meta name="prop:slots" content="list" data-doc="The slots, in order: each { id, icon, name, action, hotkey, cooldown, cooldownMax, cost, unaffordable, locked, active }, cooldown in seconds (0: ready). A slot's full set of states is the AbilitySlot component.">
+<meta name="prop:slots" content="list" data-doc="The slots, in order: each { id, icon, name, action, hotkey, cooldown, cooldownMax, cost, unaffordable, locked, active, count }, cooldown in seconds (0: ready); count above 0 shows how many are left (a quick item: potions, scrolls). A slot's full set of states is the AbilitySlot component.">
 <meta name="prop:column" content="bool" data-doc="The slots run top to bottom; false is a row.">
 <meta name="action:use" content="Use">
-<meta name="fixture:default" content='{"column":false,"slots":[{"id":"q","icon":"sword","name":"Cleave","action":"","hotkey":"Q","cooldown":0,"cooldownMax":6,"cost":"","unaffordable":false,"locked":false,"active":false},{"id":"w","icon":"shield","name":"Guard","action":"","hotkey":"W","cooldown":3.4,"cooldownMax":10,"cost":"30","unaffordable":false,"locked":false,"active":false},{"id":"e","icon":"bolt","name":"Dash","action":"","hotkey":"E","cooldown":0,"cooldownMax":5,"cost":"60","unaffordable":true,"locked":false,"active":false},{"id":"r","icon":"fire","name":"Inferno","action":"","hotkey":"R","cooldown":0,"cooldownMax":60,"cost":"","unaffordable":false,"locked":true,"active":false},{"id":"t","icon":"potion","name":"Elixir","action":"","hotkey":"1","cooldown":0,"cooldownMax":0,"cost":"","unaffordable":false,"locked":false,"active":true}]}'>
+<meta name="fixture:default" content='{"column":false,"slots":[{"id":"q","icon":"sword","name":"Cleave","action":"","hotkey":"Q","cooldown":0,"cooldownMax":6,"cost":"","unaffordable":false,"locked":false,"active":false},{"id":"w","icon":"shield","name":"Guard","action":"","hotkey":"W","cooldown":3.4,"cooldownMax":10,"cost":"30","unaffordable":false,"locked":false,"active":false},{"id":"e","icon":"bolt","name":"Dash","action":"","hotkey":"E","cooldown":0,"cooldownMax":5,"cost":"60","unaffordable":true,"locked":false,"active":false},{"id":"r","icon":"fire","name":"Inferno","action":"","hotkey":"R","cooldown":0,"cooldownMax":60,"cost":"","unaffordable":false,"locked":true,"active":false},{"id":"t","icon":"potion","name":"Elixir","action":"","hotkey":"1","cooldown":0,"cooldownMax":0,"cost":"","unaffordable":false,"locked":false,"active":true,"count":9}]}'>
 
 <ul id="AbilityBar" part="AbilityBar.frame" class="bare" role="toolbar" aria-label={t("component.ability-bar.name")} class:column={column}>
   {#each slots as s (s.id)}
@@ -17,6 +17,7 @@
             <span part="AbilityBar.figure" class="time">{s.cooldown < 10 ? formatNumber(s.cooldown) : formatCountdown(s.cooldown)}</span>
           {/if}
           {#if s.locked}<og-icon class="lock" icon="lock"></og-icon>{/if}
+          {#if s.count > 0}<span part="AbilityBar.figure" class="count">{formatNumber(s.count)}</span>{/if}
           {#if s.cost && s.cooldown <= 0 && !s.locked}<span part="AbilityBar.badge" class="cost" class:short={s.unaffordable}>{s.cost}</span>{/if}
         </div>
       </button>
@@ -45,6 +46,7 @@
 .lock { position: absolute; top: calc(12 * var(--text-px)); inset-inline-start: calc(12 * var(--text-px)); width: calc(24 * var(--text-px)); height: calc(24 * var(--text-px)); color: var(--ink); }
 .cost { position: absolute; bottom: var(--space-xxs); inset-inline-start: var(--space-xxs); padding: 0 var(--space-xs); font-size: var(--font-step-sm); color: var(--mana); }
 .cost.short { color: var(--danger); }
+.count { position: absolute; bottom: var(--space-xxs); inset-inline-end: var(--space-xxs); font-size: var(--font-step-sm); font-family: var(--figure-font); color: var(--scene-ink); text-shadow: var(--tag-halo); }
 .hotkey { font-size: var(--font-step-sm); }
 /* The cap sits under the slot, over the scene: it is the scene's plate in
    the scene's ink, the pair a pack sets for text over the scene, so it reads

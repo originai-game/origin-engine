@@ -12,10 +12,10 @@
           <RpgVitals name={m.name} portrait={m.portrait} level={m.level} health={m.health} healthMax={m.healthMax} mana={m.mana} manaMax={m.manaMax} plate="compact" down={m.down} />
         {/each}
       </div>
-      <div id="Compass"><RpgCompass heading={$compassHeading} marks={$compassMarks} /></div>
+      <div id="Compass"><Compass heading={$compassHeading} pois={$compassPois} units="m" /></div>
       <div id="Tracker"><RpgQuestTracker name={$trackName} steps={$trackSteps} distance={$trackDistance} /></div>
       <div id="Player"><RpgVitals name={$playerName} portrait={$playerPortrait} level={$playerLevel} health={$playerHealth} healthMax={$playerHealthMax} mana={$playerMana} manaMax={$playerManaMax} plate="large" down={false} /></div>
-      <div id="Bar"><RpgActionBar skills={$skills} items={$quickItems} /></div>
+      <div id="Bar"><AbilityBar slots={$skills} /><div id="Items"><AbilityBar slots={$quickItems} /></div></div>
       <div id="Map" class="rpg-minimap"><Minimap texture={$mapTexture} u0={0.25} v0={0.15} u1={0.6} v1={0.65} size={170} markers={$minimapMarkers} label="" /></div>
   </div>
 </div>
@@ -28,8 +28,10 @@
 #Compass { grid-area: compass; width: stretch; padding: 0 var(--space-lg); }
 #Tracker { grid-area: tracker; }
 #Player { grid-area: player; align-self: end; }
-#Bar { grid-area: bar; align-self: end; justify-self: center; padding-bottom: var(--space-lg); }
+#Bar { grid-area: bar; align-self: end; justify-self: center; display: flex; align-items: flex-end; gap: var(--space-lg); padding-bottom: var(--space-lg); }
 #Map { grid-area: map; align-self: end; justify-self: end; }
+/* A phone or a short screen shows the skills alone. */
+@media (width < 600px), (height < 500px) { #Items { display: none; } }
 @media (width < 600px) {
   #Hud { grid-template-columns: minmax(0, 1fr) auto; grid-template-rows: auto auto auto 1fr auto auto; grid-template-areas: "compass compass" "tracker tracker" "party map" "party ." "bar bar" "player player"; gap: var(--space-sm); padding: var(--space-sm); }
   #Compass { width: stretch; }
