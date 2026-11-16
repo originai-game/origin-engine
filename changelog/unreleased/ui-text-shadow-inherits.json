@@ -1,0 +1,8 @@
+{
+  "fixed": [
+    {
+      "member": "text-shadow",
+      "summary": "`text-shadow` inherits, as CSS Text Decoration 3 defines it: a shadow written on a box reaches every text inside it, its `currentColor` read as each text's own ink, so `text-shadow: var(--tag-halo)` on a HUD's root outlines all its texts. Before, it reached only the element it was written on. A title or a figure takes its style's `--title-shadow` or `--figure-shadow` when the style sets one and inherits otherwise; the default style sets neither."
+    }
+  ]
+}

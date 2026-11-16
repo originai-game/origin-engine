@@ -181,7 +181,7 @@ const ROLE_RULES: &str = r#"  /* Roles: frame, plate, band, title, row, cell, ba
     letter-spacing: var(--title-tracking);
     text-transform: var(--title-transform);
     color: var(--title-ink);
-    text-shadow: var(--title-shadow);
+    text-shadow: var(--title-shadow, revert-layer);
   }
   /* A band sizes its title through the inherited token, not a descendant
      selector: a rule with a combinator makes every class change restyle the
@@ -227,7 +227,7 @@ const ROLE_RULES: &str = r#"  /* Roles: frame, plate, band, title, row, cell, ba
     font-family: var(--figure-font);
   }
   :where([part$=".well"]) { border-radius: var(--well-radius); corner-shape: var(--well-corner-shape); background: var(--well-fill); box-shadow: var(--well-shadow); }
-  :where([part$=".figure"]) { font-family: var(--figure-font); color: var(--figure-ink); text-shadow: var(--figure-shadow); }
+  :where([part$=".figure"]) { font-family: var(--figure-font); color: var(--figure-ink); text-shadow: var(--figure-shadow, revert-layer); }
   :where([part$=".label"], [part$=".heading"]) {
     font-family: var(--label-font);
     letter-spacing: var(--label-tracking);

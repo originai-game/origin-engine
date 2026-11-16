@@ -437,7 +437,6 @@
     --epic: var(--xp);
     --figure-font: var(--type-numeric-font);
     --figure-ink: var(--ink);
-    --figure-shadow: none;
     --frame-corner-image: none;
     --frame-corner-shape: round;
     --frame-corner-size: var(--size-lg);
@@ -501,7 +500,6 @@
     --title-font: var(--type-title-font);
     --title-ink: var(--ink);
     --title-lead-size: var(--font-step-xl);
-    --title-shadow: none;
     --title-size: var(--font-step-2xl);
     --title-small-size: var(--font-step-md);
     --title-tracking: 0em;
@@ -1760,7 +1758,7 @@
     letter-spacing: var(--title-tracking);
     text-transform: var(--title-transform);
     color: var(--title-ink);
-    text-shadow: var(--title-shadow);
+    text-shadow: var(--title-shadow, revert-layer);
   }
   /* A band sizes its title through the inherited token, not a descendant
      selector: a rule with a combinator makes every class change restyle the
@@ -1806,7 +1804,7 @@
     font-family: var(--figure-font);
   }
   :where([part$=".well"]) { border-radius: var(--well-radius); corner-shape: var(--well-corner-shape); background: var(--well-fill); box-shadow: var(--well-shadow); }
-  :where([part$=".figure"]) { font-family: var(--figure-font); color: var(--figure-ink); text-shadow: var(--figure-shadow); }
+  :where([part$=".figure"]) { font-family: var(--figure-font); color: var(--figure-ink); text-shadow: var(--figure-shadow, revert-layer); }
   :where([part$=".label"], [part$=".heading"]) {
     font-family: var(--label-font);
     letter-spacing: var(--label-tracking);

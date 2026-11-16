@@ -266,10 +266,13 @@ pub(crate) fn inherited_property(name: &str) -> bool {
 /// `scrollbar-color` inherits; CSS Images 3 §5.3 and §5.1:
 /// `image-rendering`, `image-orientation`; CSS Fragmentation 3 §4.4:
 /// `orphans` and `widows`; CSS 2 §17.6: `border-spacing` and
-/// `border-collapse`; CSS Values 5 §8.2: `interpolate-size`). A document
-/// declaring one carries its values, as one writing `inherit` does.
+/// `border-collapse`; CSS Values 5 §8.2: `interpolate-size`; CSS Text
+/// Decoration 3 §4: `text-shadow`, so a halo on a HUD's root reaches each
+/// of its texts in the text's own `currentColor`). A document declaring
+/// one carries its values, as one writing `inherit` does.
 pub const CARRIED_BY_DEFAULT: &[&str] = &[
     "scrollbar-color",
+    "text-shadow",
     "interpolate-size",
     "image-rendering",
     "image-orientation",

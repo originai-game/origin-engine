@@ -47,7 +47,6 @@
   --role-title-weight: var(--font-weight-semibold);
   --role-title-tracking: 0em;
   --role-title-transform: none;
-  --role-title-shadow: none;
 
   /* Row: one line of a list a player picks from. */
   --role-row-fill: none;
@@ -104,7 +103,6 @@
   --role-well-shadow: var(--shadow-well);
   --role-figure-ink: var(--ink);
   --role-figure-font: var(--type-numeric-font);
-  --role-figure-shadow: none;
 
   /* Tag: a name, label or figure drawn straight over the scene (a
      nameplate's name, a waypoint's label and distance, a status grid's
