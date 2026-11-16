@@ -339,6 +339,195 @@ fn preference_and_display_media_features_follow_the_theme_and_surface() {
     }
 }
 
+/// CSS Cascade 4 §7.3's keywords: `inherit` takes the parent's computed
+/// value, `initial` the property's initial one (`width: auto`, so an empty
+/// flex item shrinks to 0; `font-size: medium`, the root's size), `unset`
+/// inherits an inherited property and is `initial` otherwise, and `revert`
+/// rolls an author rule back to the user agent's (a `p`'s 1em margins).
+#[test]
+fn css_wide_keywords_inherit_reset_and_revert() {
+    use crate::support::Doc;
+    let text = r#"<meta name="component" content="t">
+<div id="Root"><div id="Row">
+  <div id="Inherit" class="c"></div><div id="Initial" class="c"></div><div id="Unset" class="c"></div>
+  <div id="SizeUnset" class="c"></div><div id="SizeInitial" class="c"></div><div id="SizeInherit" class="c"></div>
+</div><p id="Zero">x</p><p id="Revert">x</p><div id="After"></div></div>
+<style>
+#Row { display: flex; width: 300px; font-size: 20px; }
+.c { width: 30px; height: 1px; font-size: 10px; }
+#Inherit { width: inherit; }
+#Initial { width: initial; }
+#Unset { width: unset; }
+#SizeUnset { font-size: unset; width: 2em; }
+#SizeInitial { font-size: initial; width: 2em; }
+#SizeInherit { font-size: inherit; width: 2em; }
+p { margin: 0; font-size: 15px; line-height: 20px; }
+#Revert { margin: revert; }
+#After { height: 1px; }
+</style>"#;
+    let d = Doc::new(text, &[]);
+    let root = d.ui.theme().type_ramp.body.size;
+    for (id, width) in [
+        ("Inherit", 300.0),
+        ("Initial", 0.0),
+        ("Unset", 0.0),
+        ("SizeUnset", 40.0),
+        ("SizeInitial", 2.0 * root),
+        ("SizeInherit", 40.0),
+    ] {
+        assert_eq!(d.get(id).width, width, "{id}");
+    }
+    // `revert`: 15px above and below #Revert, none at #Zero.
+    let (zero, revert, after) = (d.get("Zero"), d.get("Revert"), d.get("After"));
+    assert_eq!(revert.y - (zero.y + zero.height), 15.0);
+    assert_eq!(after.y - (revert.y + revert.height), 15.0);
+}
+
+/// `@container style()` (CSS Conditional 5 §6.2) reads the nearest
+/// ancestor's computed custom property, a bound one re-read when its store
+/// changes, an unset one never matching; `scroll-state()` (§6.3) reads the
+/// nearest scroll-state container's edges and last scroll direction, and
+/// follows a wheel.
+#[test]
+fn container_style_and_scroll_state_queries_follow_their_container() {
+    use crate::support::Doc;
+    let text = r#"<meta name="component" content="t">
+<div id="Root">
+  <div id="Box" style:--t={$t}><div id="Styled"></div><div id="Missing"></div>
+    <div id="Inner"><div id="Shadowed"></div></div></div>
+  <div id="Scroller"><div id="Fill"></div></div>
+</div>
+<style>
+div div { height: 1px; width: 10px; }
+#Inner { --t: light; }
+@container style(--t: dark) { #Styled, #Shadowed { width: 31px; } }
+@container style(--missing) { #Missing { width: 32px; } }
+#Scroller { container-type: scroll-state; overflow-y: auto; scrollbar-width: none; height: 50px; width: 100px; }
+#Fill { height: 200px; }
+@container scroll-state(scrollable: bottom) { #Fill { width: 41px; } }
+@container scroll-state(scrollable: top) { #Fill { width: 42px; } }
+@container scroll-state(scrolled: bottom) { #Fill { margin-left: 3px; } }
+</style>"#;
+    let mut d = Doc::new(text, &[("t", json!("dark"))]);
+    // The fill's width, and its inset from the scroller's left.
+    let fill = |d: &Doc| (d.get("Fill").width, d.get("Fill").x - d.get("Scroller").x);
+    assert_eq!(d.get("Styled").width, 31.0);
+    assert_eq!(
+        d.get("Shadowed").width,
+        10.0,
+        "the nearest container's --t is light"
+    );
+    assert_eq!(d.get("Missing").width, 10.0);
+    d.set("t", json!("light"));
+    assert_eq!(d.get("Styled").width, 10.0);
+    d.set("t", json!("dark"));
+    assert_eq!(d.get("Styled").width, 31.0);
+    // At the top: it can scroll down only, and has not scrolled.
+    assert_eq!(fill(&d), (41.0, 0.0));
+    let s = d.get("Scroller");
+    d.step(InputFrame {
+        wheel: og_core::glam::Vec2::new(0.0, 1000.0),
+        ..InputFrame::hover(s.x + 10.0, s.y + 10.0)
+    });
+    for _ in 0..4 {
+        d.step(InputFrame::hover(s.x + 10.0, s.y + 10.0));
+    }
+    // At the bottom, scrolled down: it can scroll up only.
+    assert_eq!(fill(&d), (42.0, 3.0));
+}
+
+/// `@supports` (CSS Conditional 3 §2, 4 §2): a declaration the cascade takes
+/// holds, one it refuses does not; `selector()`, `font-format()`,
+/// `font-tech()`, `not`, `and` and `or` combine as written. `@charset` is
+/// the stylesheet's encoding marker only, and the rules after it apply.
+/// `@import` (CSS Cascade 5 §2) brings a sheet into the cascade under its
+/// `layer()`, `supports()` and media conditions.
+#[test]
+fn supports_charset_and_import_conditions_gate_their_rules() {
+    let css = r#"@charset "utf-8";
+@layer defaults, base;
+@import "base.css" layer(base);
+@import "wide.css" (width > 500px);
+@import "narrow.css" (width < 500px);
+@import "grid.css" supports(display: grid);
+@import "none.css" supports(display: blorp);
+#Base { width: 12px; }
+@layer base { #Layered { width: 13px; } }
+@supports (display: grid) { #Decl { width: 21px; } }
+@supports (display: blorp) { #Bad { width: 22px; } }
+@supports not (display: blorp) { #Not { width: 23px; } }
+@supports (display: grid) and (gap: 4px) { #And { width: 24px; } }
+@supports (display: blorp) or (color: red) { #Or { width: 25px; } }
+@supports selector(:has(+ a)) { #Selector { width: 26px; } }
+@supports font-format(woff2) and font-tech(variations) { #Font { width: 27px; } }
+@supports font-format(eot) { #Eot { width: 28px; } }
+@layer defaults { div div { height: 1px; width: 10px; } }"#;
+    let ids = [
+        "Base", "Layered", "Wide", "Narrow", "Grid", "None", "Decl", "Bad", "Not", "And", "Or",
+        "Selector", "Font", "Eot",
+    ];
+    let body: String = ids
+        .iter()
+        .map(|id| format!("<div id=\"{id}\"></div>"))
+        .collect();
+    let text = format!(
+        "<meta name=\"component\" content=\"t\">\n<div id=\"Root\">{body}</div>\n<style>\n{css}\n</style>"
+    );
+    let imports = vec![
+        (
+            "ui/base.css".to_string(),
+            "#Base { width: 99px; } #Layered { width: 98px; }".to_string(),
+        ),
+        (
+            "ui/wide.css".to_string(),
+            "#Wide { width: 31px; }".to_string(),
+        ),
+        (
+            "ui/narrow.css".to_string(),
+            "#Narrow { width: 32px; }".to_string(),
+        ),
+        (
+            "ui/grid.css".to_string(),
+            "#Grid { width: 33px; }".to_string(),
+        ),
+        (
+            "ui/none.css".to_string(),
+            "#None { width: 34px; }".to_string(),
+        ),
+    ];
+    let doc = UiDocument::parse_with_imports("ui/t.svelte", &text, imports)
+        .unwrap_or_else(|e| panic!("{e:?}"));
+    let mut ui = ui_with_font(test_font_metrics());
+    let name = doc.name.clone();
+    ui.define_document(doc);
+    mount_stores(&mut ui, SourceId::new("test", "t"), &name, &[]);
+    ui.begin(InputFrame::default(), Viewport::new(800.0, 600.0));
+    ui.build_retained_documents(&bind::NoEnv).unwrap();
+    ui.end();
+    let els = ui.probe_elements();
+    let width = |id: &str| els.iter().find(|e| e.id == id).unwrap().width;
+    for (id, expected) in [
+        // An unlayered rule beats the imported layer; the later `@layer
+        // base` rule beats the imported one inside it.
+        ("Base", 12.0),
+        ("Layered", 13.0),
+        ("Wide", 31.0),
+        ("Narrow", 10.0),
+        ("Grid", 33.0),
+        ("None", 10.0),
+        ("Decl", 21.0),
+        ("Bad", 10.0),
+        ("Not", 23.0),
+        ("And", 24.0),
+        ("Or", 25.0),
+        ("Selector", 26.0),
+        ("Font", 27.0),
+        ("Eot", 10.0),
+    ] {
+        assert_eq!(width(id), expected, "{id}");
+    }
+}
+
 #[test]
 fn core_screen_readouts_preserve_units_and_unbroken_ranks() {
     struct Messages(std::collections::BTreeMap<String, String>, Value);
