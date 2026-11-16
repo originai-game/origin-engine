@@ -25,7 +25,7 @@ pub(crate) fn font(file: &str) -> UiFont {
 }
 
 /// [`font`] for a font at `path` from the repository's root.
-fn font_at(path: &str) -> UiFont {
+pub(crate) fn font_at(path: &str) -> UiFont {
     let path = format!("{}/../../{path}", env!("CARGO_MANIFEST_DIR"));
     let bytes = std::fs::read(&path).expect("a kit font");
     let face = ttf_parser::Face::parse(&bytes, 0).expect("a font ttf-parser reads");

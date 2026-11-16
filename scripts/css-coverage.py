@@ -166,6 +166,24 @@ proof("caret-color", "css_paint", "caret_color_paints_a_focused_fields_caret",
 proof("color-mix-variadic contrast-color", "css_paint", "contrast_color_and_variadic_color_mix_reach_the_frame",
       "A three-colour color-mix() draws the three's average (CSS Color 5 §3.3) and a mix with no space is OKLab's; contrast-color(var(--panel)) draws white text on the dark panel and black once the scheme turns light. og-css's color_mix_takes_any_number_of_colours covers omitted and under-100% percentages, one colour and all-0% (transparent); contrast_color_picks_the_ink_that_reads_most holds the pick at √21:1 or more over a grid of grounds.")
 
+# text and fonts
+proof("before-after content attr-contents counters counter-set quotes", "css_text", "generated_content_counts_quotes_and_reads_attributes",
+      "Drawn ::before/::after text proves reset/increment/set order with an upper-roman counter, nested counters() including a reset's following-sibling scope, depth-paired quotes, attr() and a later content: none. Element content replacement, url() images and ::before inside a box whose first content is text (drawn on a line of its own) are not covered.")
+proof("text-transform", "css_text", "text_transform_rewrites_the_drawn_text",
+      "Drawn text of uppercase (ß to SS), lowercase, capitalize after a hyphen, full-width (space to U+3000), full-size-kana and none. The language-sensitive (Turkic, Greek, Dutch IJ) cases are unit-tested in text_css, not here.")
+proof("line-height letter-spacing", "css_text", "line_height_and_letter_spacing_compute_as_css_does",
+      "Line box heights for an inherited number, an inherited percentage and an em length declared after the font size; letter-spacing's em computed once and inherited as px, added after each of three characters.")
+proof("word-break", "css_text", "word_break_all_breaks_inside_words",
+      "break-all fills 50px lines inside a word that normal keeps whole. keep-all on CJK text is not asserted.")
+proof("text-decoration text-underline-offset", "css_text", "decoration_lines_sit_where_css_text_decoration_puts_them",
+      "Drawn lines: a 5px offset below the baseline at an explicit 4px thickness and colour, overline above the cap height, line-through under the x-height, double two lines a thickness apart, and propagation through a child's none. Auto offset and thickness are the engine's fractions of the em, not the font's post/OS-2 metrics.")
+proof("text-stroke-fill", "css_text", "text_stroke_and_fill_paint_as_the_compat_standard_does",
+      "Emitted text ink and outline effect: the fill colour over color, a stroke centred on the edge at its width and colour, currentcolor by default, and paint-order: stroke drawing only its outer half under the fill.")
+proof("custom-ellipses", "html_text", "text_wrap_styles_and_overflow_strings_lay_out_as_css_does",
+      "A one-line clipped text draws its text-overflow string in place of the ellipsis. Two-value (start and end) strings are not covered.")
+proof("font-face", "runs", "a_font_face_family_takes_its_faces_by_weight_and_range",
+      "Glyph faces per character for @font-face weight ranges matched in CSS Fonts 4 §5.2's order, unicode-range and a declared family in a document's font-family list. src resolution is runtime ui_configure's; font-style, font-stretch, format() and tech() descriptors are not covered.")
+
 # values, units, media and at-rules
 not_applicable("url-cross-origin url-integrity url-referrer-policy",
                "Request modifiers for a network fetch: a game's url() names a file of its own cooked package, "
