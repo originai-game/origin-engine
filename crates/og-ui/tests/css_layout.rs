@@ -2904,3 +2904,54 @@ fn position_visibility_hides_by_each_keyword() {
         assert!(shows([0.0, 1.0, 1.0]), "V6: always");
     });
 }
+
+/// CSS Anchor Positioning 1 §2.4.1: an anchored box is placed against its
+/// anchor's box as transformed, not its layout box. The transforms are
+/// composed after layout, so a box follows a change of its anchor's
+/// transform one frame late: on the frame the anchor moves it is where the
+/// anchor was, on the next where the anchor is.
+///
+/// Ways it could fail: the transform ignored (B stays at 20 after the
+/// anchor moved by 100), read from a frame older than the last, or a
+/// still frame laid out again because the anchor is transformed.
+#[test]
+fn an_anchored_box_follows_its_anchors_transform() {
+    let text = r#"<meta name="component" content="t">
+<div><div id="Root">
+  <div id="A" class:moved={$moved}></div>
+  <div id="B"></div>
+</div></div>
+<style>
+#Root { position: relative; width: 400px; height: 200px; }
+#A { anchor-name: --a; width: 20px; height: 20px; }
+#A.moved { translate: 100px 30px; }
+#B { position: absolute; position-anchor: --a; left: anchor(right); top: anchor(top); width: 10px; height: 10px; }
+</style>"#;
+    let mut d = Doc::new(text, &[("moved", serde_json::json!(false))]);
+    d.step(InputFrame::default());
+    let at = |d: &Doc| {
+        let (a, b) = (d.get("A"), d.get("B"));
+        (b.x - a.x - a.width, b.y - a.y)
+    };
+    assert_eq!(at(&d), (0.0, 0.0), "at rest");
+    let root = d.get("Root");
+    d.put("moved", serde_json::json!(true));
+    d.step(InputFrame::default());
+    let b = d.get("B");
+    assert_eq!(
+        (b.x - root.x, b.y - root.y),
+        (20.0, 0.0),
+        "the frame the anchor moves: where it was"
+    );
+    d.step(InputFrame::default());
+    assert_eq!(at(&d), (0.0, 0.0), "the next frame: where it is");
+    let b = d.get("B");
+    assert_eq!((b.x - root.x, b.y - root.y), (120.0, 30.0));
+    d.step(InputFrame::default());
+    assert_eq!(
+        d.ui.frame().stats.laid_out,
+        0,
+        "a frame where nothing moves lays nothing out again"
+    );
+    assert_eq!(at(&d), (0.0, 0.0));
+}

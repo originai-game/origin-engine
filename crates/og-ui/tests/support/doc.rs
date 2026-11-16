@@ -108,9 +108,14 @@ impl Doc {
 
     /// A new value for scalar store `name`, then two steps.
     pub(crate) fn set(&mut self, name: &str, value: Value) {
+        self.put(name, value);
+        self.step(InputFrame::default());
+        self.step(InputFrame::default());
+    }
+
+    /// A new value for scalar store `name`, read from the next step on.
+    pub(crate) fn put(&mut self, name: &str, value: Value) {
         self.apply(json!({"op": "set", "source": SourceId::new("test", name), "value": value}));
-        self.step(InputFrame::default());
-        self.step(InputFrame::default());
     }
 
     /// A keyed edit `op` (`insert`, `remove`, `move`, `patch`) of list

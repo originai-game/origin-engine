@@ -773,11 +773,31 @@ impl Ui {
                     } else {
                         by_name(&spec.anchor)
                     };
+                    // An anchor's box as drawn, in the space this element
+                    // is drawn in (CSS Anchor Positioning 1 §2.4.1: anchor
+                    // transforms count): its transforms and its ancestors'
+                    // that this element's parent does not share. Those are
+                    // last frame's, as the transforms are composed after
+                    // layout, so a moving transform is followed a frame late.
+                    let up = self.tree.nodes[i].parent;
+                    let onto = if up == NONE {
+                        crate::element::Affine::IDENTITY
+                    } else {
+                        self.tree.nodes[up].placed.world
+                    };
+                    let drawn = |j: usize| {
+                        let r = box_of(j);
+                        let w = self.tree.nodes[j].placed.world;
+                        if w == onto {
+                            return r;
+                        }
+                        onto.invert().map_or(r, |inv| inv.mul(&w).map_rect(&r))
+                    };
                     let anchor = |name: &str| {
                         if name.is_empty() {
-                            point.or(default.map(box_of))
+                            point.or(default.map(drawn))
                         } else {
-                            by_name(name).map(box_of)
+                            by_name(name).map(drawn)
                         }
                     };
                     let n = &self.tree.nodes[i];
