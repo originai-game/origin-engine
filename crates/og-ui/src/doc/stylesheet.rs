@@ -650,7 +650,9 @@ pub fn apply(
                 span.condition = Some(condition);
                 doc.nodes[*i].span_rules.push(span);
             }
-            if !text_span {
+            // A global part rule is the style's (`Style::part_rules`), not
+            // the document's own: a button's plate is above it.
+            if !text_span && kept.is_none() {
                 part_selector(parsed).map_err(|e| (rule.at, e))?;
                 let (declarations, _) = lower(&rule.body, &known).map_err(|e| (rule.at, e))?;
                 doc.part_rules.push(StyleRule {

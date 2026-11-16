@@ -398,6 +398,56 @@ fn documents_share_a_pack_s_rules_and_keep_their_own() {
     assert_eq!(size("Second"), (30.0, 10.0));
 }
 
+/// A `<button>` is its plate (docs/ui.md §3.2): its own padding is above
+/// the style's `button::part(base)` padding, under a pack as without one.
+/// Ways it could fail: the pack's part rules read as the document's own,
+/// so the pack's inline padding (`--button-pad-inline`) beats the button's.
+#[test]
+fn a_buttons_own_padding_is_above_a_packs_part_rules() {
+    use og_ui::{UiDocument, Viewport, bind::NoEnv, reactive::SourceId};
+    let face = |pack: Option<&StylePack>| {
+        let mut ui = Ui::new(UiDesc::default());
+        ui.define_document(
+            UiDocument::parse(
+                "ui/plate.svelte",
+                r#"<meta name="component" content="Plate"><div id="Root"><button id="B"><div id="Face"></div></button></div>
+<style>#Root { width: 200px; } #B { width: stretch; padding: 2px; } #Face { width: stretch; height: 10px; }</style>"#,
+            )
+            .unwrap(),
+        );
+        if let Some(pack) = pack {
+            ui.set_style_pack(pack).unwrap();
+        }
+        ui.mount_document(
+            SourceId::new("test", "plate"),
+            "Plate",
+            Default::default(),
+            Default::default(),
+            &NoEnv,
+        )
+        .unwrap();
+        ui.begin(Default::default(), Viewport::new(300.0, 300.0));
+        ui.build_retained_documents(&NoEnv).unwrap();
+        ui.end();
+        let face = ui
+            .probe_elements()
+            .into_iter()
+            .find(|e| e.path.ends_with("/Face"))
+            .unwrap();
+        face.width
+    };
+    let pack = StylePack::parse(
+        "styles/test",
+        vec![(
+            "styles/test/main.css".into(),
+            ":root { --button-pad-inline: 24px; }".into(),
+        )],
+    )
+    .unwrap();
+    assert_eq!(face(None), 196.0, "the default style");
+    assert_eq!(face(Some(&pack)), 196.0, "under a pack");
+}
+
 /// A role part wears the default dress from the role tokens, a pack restyles
 /// it by setting those tokens alone, and a pack token may read any default
 /// token.
