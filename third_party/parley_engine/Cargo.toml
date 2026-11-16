@@ -96,6 +96,11 @@ version = "2.3.0"
 features = ["compiled_data"]
 default-features = false
 
+[dependencies.once_cell]
+version = "1.21"
+features = ["race"]
+default-features = false
+
 [dependencies.linebender_resource_handle]
 version = "0.1.1"
 default-features = false

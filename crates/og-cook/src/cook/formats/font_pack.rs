@@ -5,7 +5,10 @@
 //! index adds nothing to them, so a pack never changes another font's
 //! cooked output. The index carries the pack's hyphenation dictionaries
 //! for the game's locales (`hyphenation:<language>`), only when its
-//! documents or style sheets declare `hyphens: auto`.
+//! documents or style sheets declare `hyphens: auto`, and ICU's word
+//! dictionary for a shipped locale of its languages that needs one
+//! (`segmentation:<dictionary>`, og-i18n's `segmenter`): Chinese and
+//! Japanese, Thai, Lao, Khmer and Burmese, once per game.
 
 use super::*;
 use super::{CookError, Cx, Exec, Job, KindDef, Out, PlanState, Planned, Source, stamp};
@@ -108,6 +111,66 @@ pub(crate) fn check_hyphenation(sources: &[Source]) -> Vec<(String, String)> {
     out
 }
 
+/// Whether pack manifest `m` names a language of dictionary `attr`.
+fn names_dictionary(m: &Manifest, attr: &str) -> bool {
+    m.languages
+        .iter()
+        .any(|l| og_i18n::segmenter::dictionary_for(l) == Some(attr))
+}
+
+/// The ICU word dictionaries pack `s` carries for the game of `sources`:
+/// each one a shipped locale needs whose language the pack names, unless
+/// a pack before it (by path) carries it already.
+fn segmentation(s: &Source, sources: &[Source]) -> Vec<&'static str> {
+    let Ok(m) = manifest(s) else {
+        return Vec::new();
+    };
+    let wanted: std::collections::BTreeSet<&'static str> = shipped_languages(sources)
+        .iter()
+        .filter_map(|l| og_i18n::segmenter::dictionary_for(l))
+        .collect();
+    wanted
+        .into_iter()
+        .filter(|attr| names_dictionary(&m, attr))
+        .filter(|attr| {
+            !sources.iter().any(|o| {
+                o.kind == &FONT_PACK
+                    && o.rel < s.rel
+                    && manifest(o).is_ok_and(|om| names_dictionary(&om, attr))
+            })
+        })
+        .collect()
+}
+
+/// The cook's warnings about word segmentation: a shipped locale whose
+/// script is written without spaces (Chinese, Japanese, Thai, Lao, Khmer,
+/// Burmese) and that no font pack names, so no pack carries ICU's
+/// dictionary for it and its words and lines break by the rules alone.
+pub(crate) fn check_segmentation(sources: &[Source]) -> Vec<(String, String)> {
+    let packs: Vec<Manifest> = sources
+        .iter()
+        .filter(|s| s.kind == &FONT_PACK)
+        .filter_map(|s| manifest(s).ok())
+        .collect();
+    sources
+        .iter()
+        .filter(|s| s.kind == &crate::cook::systems::strings::STRINGS)
+        .filter_map(|s| {
+            let t = og_i18n::StringTable::parse(std::str::from_utf8(&s.bytes).ok()?).ok()?;
+            let attr = og_i18n::segmenter::dictionary_for(&t.locale)?;
+            (!packs.iter().any(|m| names_dictionary(m, attr))).then(|| {
+                (
+                    s.rel.clone(),
+                    format!(
+                        "warning: locale '{}': no font pack names its language, so none carries ICU's '{attr}' dictionary and its words and lines break by the rules alone",
+                        t.locale
+                    ),
+                )
+            })
+        })
+        .collect()
+}
+
 /// Whether a file is a font pack's manifest: an `extension.json` of kind `font`.
 pub(crate) fn is_pack(rel: &str, bytes: &[u8]) -> bool {
     rel.rsplit('/').next() == Some("extension.json")
@@ -156,6 +219,7 @@ pub(crate) fn dependencies(s: &Source) -> String {
 pub(crate) fn cook(
     s: &Source,
     dictionaries: &[(String, String)],
+    segmentation: &[&str],
     stamp: u64,
 ) -> Result<(Vec<u8>, Vec<String>), CookError> {
     let m = manifest(s)?;
@@ -211,16 +275,27 @@ pub(crate) fn cook(
             .map_err(|e| CookError(format!("font pack '{}': {file}: {e}", m.name)))?;
         w.raw(&format!("hyphenation:{language}"), bytes, 16);
     }
-    let hyphenation = if dictionaries.is_empty() {
-        String::new()
-    } else {
+    for attr in segmentation {
+        let bytes = og_i18n::segmenter::compiled(attr).ok_or_else(|| {
+            CookError(format!(
+                "font pack '{}': no ICU dictionary '{attr}'",
+                m.name
+            ))
+        })?;
+        w.raw(&format!("segmentation:{attr}"), bytes, 16);
+    }
+    let mut extra = String::new();
+    if !dictionaries.is_empty() {
         let names: Vec<&str> = dictionaries.iter().map(|(l, _)| l.as_str()).collect();
-        format!(", hyphenation {}", names.join(" "))
-    };
+        extra += &format!(", hyphenation {}", names.join(" "));
+    }
+    if !segmentation.is_empty() {
+        extra += &format!(", segmentation {}", segmentation.join(" "));
+    }
     Ok((
         w.finish(),
         vec![format!(
-            "font pack '{}': {} face(s), {chars} characters, for {}{hyphenation}",
+            "font pack '{}': {} face(s), {chars} characters, for {}{extra}",
             pack.name,
             pack.faces.len(),
             pack.languages.join(" ")
@@ -248,7 +323,8 @@ fn plan_font_pack<'a>(
     outs: &mut Vec<Out<'a>>,
 ) {
     // The stamp covers its faces' bytes (their cmaps are the coverage) and
-    // the dictionaries it ships, by their bytes.
+    // the dictionaries it ships, by their bytes (ICU's, as this engine
+    // links them).
     let deps = dependencies(s);
     let dictionaries = manifest(s)
         .map(|m| shipped(&m, cx.sources))
@@ -263,20 +339,37 @@ fn plan_font_pack<'a>(
             format!("{l}={h:016x}\n")
         })
         .collect();
-    let st = stamp(&[b"font-pack 2", &hash, deps.as_bytes(), shipped.as_bytes()]);
+    let segmentation = segmentation(s, cx.sources);
+    let words: String = segmentation
+        .iter()
+        .map(|a| {
+            let h = og_i18n::segmenter::compiled(a)
+                .map(|b| super::hash_bytes(&b))
+                .unwrap_or(0);
+            format!("{a}={h:016x}\n")
+        })
+        .collect();
+    let st = stamp(&[
+        b"font-pack 3",
+        &hash,
+        deps.as_bytes(),
+        shipped.as_bytes(),
+        words.as_bytes(),
+    ]);
     outs.push((
         s.rel.clone(),
         format::FontPack::NAME,
         st,
-        Box::new(FontPackJob(s, dictionaries)),
+        Box::new(FontPackJob(s, dictionaries, segmentation)),
     ));
 }
 
-/// A font pack's one output, with the dictionaries it ships.
-struct FontPackJob<'a>(&'a Source, Vec<(String, String)>);
+/// A font pack's one output, with the hyphenation and word dictionaries
+/// it ships.
+struct FontPackJob<'a>(&'a Source, Vec<(String, String)>, Vec<&'static str>);
 
 impl Job for FontPackJob<'_> {
     fn cook(&self, p: &Planned, _: &Exec) -> Result<(Vec<u8>, Vec<String>), CookError> {
-        cook(self.0, &self.1, p.stamp)
+        cook(self.0, &self.1, &self.2, p.stamp)
     }
 }

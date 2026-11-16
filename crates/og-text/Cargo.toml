@@ -27,8 +27,8 @@ harfrust = { version = "=0.12.0", optional = true, default-features = false, fea
 skrifa = { version = "=0.44.0", default-features = false, features = ["libm"] }
 # Parley lays out shaped paragraphs and every edited text (its cursor and
 # selection place the caret, with or without `shaping`).
-parley = { version = "=0.12.0", default-features = false, features = ["libm", "complex-scripts"] }
-parley_engine = { version = "=0.12.0", default-features = false, features = ["libm", "complex-scripts"] }
+parley = { version = "=0.12.0", default-features = false, features = ["libm"] }
+parley_engine = { version = "=0.12.0", default-features = false, features = ["libm"] }
 # Emoji and Emoji_Presentation (CSS `font-variant-emoji`), as Parley reads
 # them.
 parley_data = { version = "=0.12.0", default-features = false, features = ["baked"] }

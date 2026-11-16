@@ -113,7 +113,12 @@ impl AnalysisDataSources {
         }
         #[cfg(not(feature = "complex-scripts"))]
         {
-            const { WordSegmenter::new_for_non_complex_scripts(WordBreakInvariantOptions::default()) }
+            match crate::segmenters::get() {
+                Some(s) => (s.word)(),
+                None => const {
+                    WordSegmenter::new_for_non_complex_scripts(WordBreakInvariantOptions::default())
+                },
+            }
         }
     }
 
@@ -159,7 +164,10 @@ fn line_segmenter_impl(opt: LineBreakOptions<'_>) -> LineSegmenterBorrowed<'stat
 #[cfg(not(feature = "complex-scripts"))]
 #[inline(always)]
 fn line_segmenter_impl(opt: LineBreakOptions<'_>) -> LineSegmenterBorrowed<'static> {
-    LineSegmenter::new_for_non_complex_scripts(opt)
+    match crate::segmenters::get() {
+        Some(s) => (s.line)(opt),
+        None => LineSegmenter::new_for_non_complex_scripts(opt),
+    }
 }
 
 /// The line segmenter configuration for a [`LineBreakConfig`].
@@ -852,6 +860,10 @@ pub(crate) fn contributes_to_shaping(general_category: GeneralCategory, script: 
 /// be removed).
 #[inline(always)]
 fn has_word_dictionary(script: Script) -> bool {
+    #[cfg(not(feature = "complex-scripts"))]
+    if let Some(s) = crate::segmenters::get() {
+        return (s.has_word_dictionary)(script);
+    }
     cfg!(feature = "complex-scripts")
         && matches!(
             script,

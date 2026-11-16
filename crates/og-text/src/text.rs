@@ -1437,8 +1437,26 @@ pub fn is_cjk(c: char) -> bool {
         | 0xf900..=0xfaff | 0xff00..=0xffef | 0x20000..=0x2fa1f)
 }
 
+/// Installs ICU dictionary `attribute` (`cjdict`, `thaidict`, `laodict`,
+/// `khmerdict` or `burmesedict`) from the bytes a font pack ships
+/// (`og_i18n::segmenter`), and has Parley cut words and lines with the
+/// installed dictionaries from then on. Text laid out before keeps its
+/// lines until it is laid out again.
+pub fn add_segmentation(attribute: &str, bytes: &[u8]) -> Result<(), String> {
+    static SEGMENTERS: parley_engine::segmenters::Segmenters =
+        parley_engine::segmenters::Segmenters {
+            word: og_i18n::segmenter::word,
+            line: og_i18n::segmenter::line,
+            has_word_dictionary: og_i18n::segmenter::has_word_dictionary,
+        };
+    og_i18n::segmenter::install(attribute, bytes)?;
+    parley_engine::segmenters::set(&SEGMENTERS);
+    Ok(())
+}
+
 /// UAX #14 opportunities, including dictionary segmentation of complex
-/// scripts. Breakable trailing whitespace is separate so it can hang at
+/// scripts (with the dictionaries installed, [`add_segmentation`]).
+/// Breakable trailing whitespace is separate so it can hang at
 /// the end of a line; NBSP remains part of its unbreakable unit.
 pub fn tokens(paragraph: &str) -> Vec<(&str, bool)> {
     let mut analysis = parley_engine::Analysis::new();

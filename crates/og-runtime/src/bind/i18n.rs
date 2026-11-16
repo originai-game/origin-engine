@@ -223,34 +223,47 @@ pub(crate) fn ensure_packs(eng: &Engine) {
         };
         let mut packs = Vec::new();
         let mut dictionaries = Vec::new();
+        let mut segmentation = Vec::new();
         for id in ids {
             let read = assets.blob(&id).and_then(|(bytes, bundle)| {
                 let text = bundle
                     .font_pack_text(&id, bytes.bytes())
                     .map_err(|e| e.to_string())?;
-                let hyph = bundle
-                    .font_pack_hyphenation(&id, bytes.bytes())
-                    .map_err(|e| e.to_string())?;
-                Ok((text, hyph))
+                let pack = |kind| {
+                    bundle
+                        .font_pack_dictionaries(&id, bytes.bytes(), kind)
+                        .map_err(|e| e.to_string())
+                };
+                Ok((text, pack("hyphenation")?, pack("segmentation")?))
             });
-            match read.and_then(|(t, h)| Ok((og_i18n::FontPack::parse(&t)?, h))) {
-                Ok((p, h)) => {
+            match read.and_then(|(t, h, w)| Ok((og_i18n::FontPack::parse(&t)?, h, w))) {
+                Ok((p, h, w)) => {
                     packs.push(p);
                     dictionaries.extend(h);
+                    segmentation.extend(w);
                 }
                 Err(e) => note(eng.id, format!("font pack {id}: {e}")),
             }
         }
-        (packs, dictionaries)
+        (packs, dictionaries, segmentation)
     };
-    let (packs, dictionaries) = packs;
-    // The hyphenation dictionaries the cook shipped for the game's locales:
-    // a UI made later finds them installed.
+    let (packs, dictionaries, segmentation) = packs;
+    // The hyphenation and word dictionaries the cook shipped for the
+    // game's locales: a UI made later finds them installed.
     let ui = eng.state.borrow().ui.clone();
     for (language, bytes) in dictionaries {
         match &ui {
             Some(ui) => ui.lock().add_hyphenation(&language, bytes.into()),
             None => og_i18n::hyphenation::install(&language, bytes.into()),
+        }
+    }
+    for (attribute, bytes) in segmentation {
+        let added = match &ui {
+            Some(ui) => ui.lock().add_segmentation(&attribute, &bytes),
+            None => og_ui::add_segmentation(&attribute, &bytes),
+        };
+        if let Err(e) = added {
+            note(eng.id, format!("font packs: {e}"));
         }
     }
     let any = !packs.is_empty();

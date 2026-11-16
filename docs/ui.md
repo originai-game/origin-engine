@@ -2043,6 +2043,20 @@ for it is warned of at cook; its text breaks only at soft hyphens.
 og.i18n installs a pack's dictionaries when it loads the pack, and the
 next layout hyphenates with them.
 
+ICU's word dictionaries for the scripts written without spaces ship the
+same way, so the engine links none of them (about 3 MB of wasm): `cjdict`
+(Chinese and Japanese), `thaidict`, `laodict`, `khmerdict` and
+`burmesedict`. The cook copies one out of ICU's compiled data
+(og-i18n's `segmenter::compiled`) into the index of the first pack (by
+path) that names a language needing it, as `segmentation:<dictionary>`,
+when one of the game's string tables' locales takes that language. A
+shipped locale that needs a dictionary no pack names is warned of at
+cook. og.i18n installs them with the pack (`Ui::add_segmentation`);
+Parley's line breaks (through a hook patched into parley_engine,
+`third_party/parley_engine/PATCHED.md`) and `og_i18n::word_segments` then
+cut by them, and without them those scripts break by UAX #14 and #29's
+rules alone.
+
 og.i18n chains the active table's fonts, the locale's pack, the packs a
 frame needed, then the other tables' fonts. A character only an unchained
 pack covers loads that pack (a Chinese locale's own script first) and
