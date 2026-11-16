@@ -347,8 +347,13 @@ impl Ui {
                         shift(&mut c.0, dx, dy);
                         c
                     }));
-                    self.paint
-                        .moved_subtree(&order[k..ends[k]], dx, dy, &self.tree);
+                    self.paint.moved_subtree(
+                        &order[k..ends[k]],
+                        dx,
+                        dy,
+                        &self.tree,
+                        &self.interaction,
+                    );
                     self.paint.cache.shifted_out = true;
                 } else if cmds.is_empty() && from == 0 && len == last.len() {
                     // Last frame's whole list, as it was: taken, not copied.
@@ -487,7 +492,7 @@ impl Ui {
 
                 out.into_iter().map(|c| (c, world)).collect()
             };
-            let sig = crate::layout::DrawSig::of(n);
+            let sig = crate::layout::DrawSig::of_slot(&self.tree, &self.interaction, i);
             // CSS `visibility: hidden`: nothing of its own is drawn; its
             // children that say `visible` are.
             let hidden = self.tree.orders.hidden_of.get(i) == Some(&true)
@@ -987,9 +992,9 @@ impl Ui {
         p.awaiting.retain(|&i| o.pos[i] != u32::MAX);
         let mut volatile: std::collections::HashSet<usize> = self
             .tree
-            .draws
-            .keys()
-            .chain(&self.tree.index.restructured)
+            .index
+            .restructured
+            .iter()
             .chain(&self.paint.part_changed)
             .chain(&p.awaiting)
             .copied()
@@ -1011,6 +1016,19 @@ impl Ui {
                 volatile.insert(i);
             }
         }
+        // A draw replaced without its node written (a Rive frame).
+        let redrawn: Vec<usize> = self
+            .tree
+            .draws
+            .iter()
+            .filter(|(i, d)| {
+                self.paint
+                    .prev_draws
+                    .get(i)
+                    .is_none_or(|p| !std::sync::Arc::ptr_eq(p, d))
+            })
+            .map(|(&i, _)| i)
+            .collect();
         // The nodes to judge, in drawing order: those that may have
         // changed, those drawn again on their own, and below any that
         // does not paint as last frame.
@@ -1018,10 +1036,13 @@ impl Ui {
             .unwrap_or(order)
             .iter()
             .chain(&self.tree.emitted)
+            .chain(&redrawn)
+            // A scroller's bars and fades follow its offsets (its
+            // signature).
+            .chain(o.with(visit::feat::SCROLLS))
             .chain(&volatile)
             .chain(&p.volatile)
             .chain(&p.ringed)
-            .chain(o.with(visit::feat::RICH))
             // Lifted out of its parent's run by a stacking context: no
             // cover below a changed parent reaches it.
             .chain(&o.lifted)
@@ -1060,18 +1081,20 @@ impl Ui {
             // Erase a frame-owned effect on the tick it disappears,
             // including when its subtree could otherwise be copied whole.
             let ended = self.paint.cache.volatile.contains(&i) && !own_volatile;
-            let kept = !early
-                && !volatile.contains(&i)
-                && !ended
-                && !self.tree.draws.contains_key(&i)
-                && !matches!(*node.content, Content::Rich(_));
+            let kept = !early && !volatile.contains(&i) && !ended && !self.rich_moves(node);
             let (painted, own) = if !kept {
                 (false, false)
             } else if written(i) {
                 // A node written again: as it was drawn last frame.
                 self.tree.replaced.get(&i).map_or((false, false), |b| {
                     let kind = Some(&self.tree.kinds[i]) == prev_kinds.get(&i);
-                    let painted = kind && crate::layout::painted_eq(node, b);
+                    // Its draw, set again as it was written: as last frame's.
+                    let draw = match (self.tree.draws.get(&i), self.paint.prev_draws.get(&i)) {
+                        (None, None) => true,
+                        (Some(a), Some(b)) => std::sync::Arc::ptr_eq(a, b) || a == b,
+                        _ => false,
+                    };
+                    let painted = kind && draw && crate::layout::painted_eq(node, b);
                     (painted, painted && crate::layout::draw_eq(node, b))
                 })
             } else {
@@ -1079,7 +1102,7 @@ impl Ui {
                 // they were; what the frame moves is in its signature.
                 match self.paint.cache.sigs.get(i) {
                     Some(&Some((k, sig))) if k == node.key => {
-                        let now = crate::layout::DrawSig::of(node);
+                        let now = crate::layout::DrawSig::of_slot(&self.tree, &self.interaction, i);
                         (sig.painted() == now.painted(), sig == now)
                     }
                     _ => (false, false),
@@ -1092,11 +1115,10 @@ impl Ui {
                 (0.0, 0.0)
             } else if !early
                 && !written(i)
-                && !self.tree.draws.contains_key(&i)
-                && !matches!(*node.content, Content::Rich(_))
                 && let Some(Some((k, old))) = self.paint.cache.sigs.get(i)
                 && *k == node.key
-                && let Some(d) = crate::layout::DrawSig::of(node).moved_from(old)
+                && let Some(d) = crate::layout::DrawSig::of_slot(&self.tree, &self.interaction, i)
+                    .moved_from(old)
                 && parent.is_none_or(|p| p == (0.0, 0.0) || p == d)
             {
                 d
@@ -1166,7 +1188,8 @@ impl Ui {
     }
 
     /// Whether node `i` draws again on its own every frame (an exit, a
-    /// match key, links, a glitch, a scroll's fade and bars), and whether
+    /// match key, links, a glitch, moving rich text; a scroll's fade and
+    /// bars follow its signature), and whether
     /// a focus ring or outline is drawn over it.
     fn paints_alone(&self, i: usize) -> (bool, bool) {
         let node = &self.tree.nodes[i];
@@ -1182,8 +1205,8 @@ impl Ui {
                 .decor
                 .as_ref()
                 .is_some_and(|d| d.fixed() || d.element_images())
-            || (node.scrolls() && (node.el.fade > 0.0 || !node.el.hide_bars))
-            || node.el.resize != 0;
+            || node.el.resize != 0
+            || self.rich_moves(node);
         let (framed, field_ring) = self.field_rings(i);
         let outline = self.env.theme.outline && (node.nav || node.focusable) && framed;
         (
@@ -1192,21 +1215,37 @@ impl Ui {
         )
     }
 
+    /// Whether node's rich text has spans that move by the tick (a wave, a
+    /// shake): it is painted afresh each tick.
+    fn rich_moves(&self, node: &crate::layout::Node) -> bool {
+        matches!(&*node.content, Content::Rich(rc)
+            if !self.env.theme.reduced_motion
+                && rc.spans.iter().any(|s| s.fx != crate::markup::SpanFx::None))
+    }
+
     /// Whether a node's text is in an instance (a variable face's location
     /// or a colour face's palette) whose font the host has not made yet
     /// (`og_text::shape::FontFile::take_instances`): it draws with a
     /// stand-in's font or nothing until it has, so it is painted again
     /// each frame ([`PaintCache::awaiting`](crate::layout::PaintCache)).
     fn awaits_instance(&self, node: &crate::layout::Node) -> bool {
-        let Content::Text(tc) = &*node.content else {
-            return false;
+        let waits = |font: &crate::UiFont| {
+            font.metrics
+                .file
+                .as_ref()
+                .is_some_and(|f| f.is_instance() && f.handle().is_none())
         };
-        let t = node.used_text(tc);
-        let font = self.env.fonts.for_styled(t.font, t.query(), &t.text).0;
-        font.metrics
-            .file
-            .as_ref()
-            .is_some_and(|f| f.is_instance() && f.handle().is_none())
+        match &*node.content {
+            Content::Text(tc) => {
+                let t = node.used_text(tc);
+                waits(self.env.fonts.for_styled(t.font, t.query(), &t.text).0)
+            }
+            Content::Rich(rc) => rc
+                .spans
+                .iter()
+                .any(|s| waits(self.env.fonts.for_styled(s.font, s.query(), &s.text).0)),
+            _ => false,
+        }
     }
 
     fn scroll_bar_commands(&self, s: usize, cmds: &mut Vec<DrawCmd>) {
@@ -1373,17 +1412,24 @@ impl crate::ui::Paint {
 
     /// The nodes of a subtree copied moved by `(dx, dy)`: their signatures
     /// and kept commands are where they are drawn now.
-    fn moved_subtree(&mut self, nodes: &[usize], dx: f32, dy: f32, tree: &crate::ui::Tree) {
+    fn moved_subtree(
+        &mut self,
+        nodes: &[usize],
+        dx: f32,
+        dy: f32,
+        tree: &crate::ui::Tree,
+        interaction: &crate::ui::Interaction,
+    ) {
         for &j in nodes {
             let key = tree.nodes[j].key;
-            self.cache
-                .sigs_set(j, key, crate::layout::DrawSig::of(&tree.nodes[j]));
+            let now = crate::layout::DrawSig::of_slot(tree, interaction, j);
+            self.cache.sigs_set(j, key, now);
             if let Some((_, local, sig)) = self.cache.cmds.get_mut(&key) {
                 if local.iter().all(shiftable) {
                     for c in local.iter_mut() {
                         shift(c, dx, dy);
                     }
-                    *sig = crate::layout::DrawSig::of(&tree.nodes[j]);
+                    *sig = now;
                 } else {
                     self.cache.cmds.remove(&key);
                 }

@@ -292,8 +292,7 @@ fn a_document_world_panel_takes_a_press_while_it_is_not_rebuilt() {
     let pa = center(&ui, ping);
     let events = click(&mut ui, pa);
     assert!(events.iter().any(|e| e.name == "ping"), "{events:?}");
-    // A press on nothing takes the focus away: a focused control is
-    // built every tick, wherever it stands.
+    // A press on nothing takes the focus away; idle, nothing is built.
     click(&mut ui, Vec2::new(4.0, H - 4.0));
     for _ in 0..30 {
         tick(&mut ui, InputFrame::default());

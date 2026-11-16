@@ -212,7 +212,7 @@ impl Ui {
                      so call it right after the element's open or control, before its children"
                 ));
             }
-            self.tree.draws.insert(last, draw);
+            self.tree.draws.insert(last, std::sync::Arc::new(draw));
             self.tree.dressable.remove(&last);
         }
     }
@@ -225,7 +225,7 @@ impl Ui {
     /// or a segment keeps its geometry in every style (docs/ui.md §3.2).
     pub(crate) fn set_draw_dressable(&mut self, draw: crate::paint::ElementDraw) {
         if let Some(&last) = self.tree.emitted.last() {
-            self.tree.draws.insert(last, draw);
+            self.tree.draws.insert(last, std::sync::Arc::new(draw));
             self.tree.dressable.insert(last);
         }
     }
@@ -662,9 +662,14 @@ impl Ui {
         }
         let delay = (self.env.theme.durations_ms.slow * self.env.ticks_per_second as f32 / 1000.0)
             .ceil() as u32;
-        if self.interaction.state.hot != self.tree.nodes[anchor].key
-            || self.interaction.state.hover_ticks < delay
-        {
+        if self.interaction.state.hot != self.tree.nodes[anchor].key {
+            return;
+        }
+        if self.interaction.state.hover_ticks < delay {
+            // Counting the hover: its element builds again next frame.
+            if let Some(owned) = self.tree.owning.last_mut() {
+                owned.moved = true;
+            }
             return;
         }
         let t = self.env.theme;

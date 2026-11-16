@@ -248,17 +248,13 @@ impl Ui {
         }
         // `::first-line`: the characters of the first line as the last
         // layout broke it (the whole text before the first). The line moves
-        // with layout, so the element builds again each frame.
+        // with layout: the element builds again when it breaks elsewhere
+        // (`RetainedHost::mark_frame`).
         if let Some(style) = &g.first_line {
             let total = full.chars().count();
-            let first = self
-                .style
-                .first_line_chars(key, &self.tree)
-                .unwrap_or(total)
-                .min(total);
-            if let Some(owned) = self.tree.owning_mut().last_mut() {
-                owned.moved = true;
-            }
+            let broke = self.style.first_line_chars(key, &self.tree);
+            self.docs.state_mut().first_lines.insert(key, broke);
+            let first = broke.unwrap_or(total).min(total);
             if first > 0 {
                 let style = self.pseudo_style(style, r);
                 spans.insert(

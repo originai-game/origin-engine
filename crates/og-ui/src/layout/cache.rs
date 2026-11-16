@@ -385,6 +385,11 @@ pub(crate) struct DrawSig {
     selected: Option<(u32, u32)>,
     /// Its custom-highlight marks, hashed (they are lists).
     highlights: u64,
+    /// Its draw (`Tree::draws`) by identity: a draw is replaced, never
+    /// changed in place, and last frame's are held while this one paints.
+    draw: usize,
+    /// A scroller's offsets and how far it scrolls: its bars and fades.
+    scroll: [f32; 4],
 }
 
 impl DrawSig {
@@ -421,8 +426,38 @@ impl DrawSig {
         same.then_some((self.rect.x - old.rect.x, self.rect.y - old.rect.y))
     }
 
-    pub(crate) fn of(n: &Node) -> Self {
+    /// Node `i`'s signature in `tree`: its own, its draw's identity and,
+    /// for a scroller, where it is scrolled.
+    pub(crate) fn of_slot(
+        tree: &crate::ui::Tree,
+        interaction: &crate::ui::Interaction,
+        i: usize,
+    ) -> Self {
+        let n = &tree.nodes[i];
+        let offset = |m: &og_core::IdMap<u64, f32>| m.get(&n.key).copied().unwrap_or(0.0);
         Self {
+            draw: tree
+                .draws
+                .get(&i)
+                .map_or(0, |d| std::sync::Arc::as_ptr(d) as usize),
+            scroll: if n.scrolls() {
+                [
+                    offset(&interaction.state.scroll_x),
+                    offset(&interaction.state.scroll),
+                    n.max_scroll_x(),
+                    n.max_scroll(),
+                ]
+            } else {
+                [0.0; 4]
+            },
+            ..Self::of(n)
+        }
+    }
+
+    fn of(n: &Node) -> Self {
+        Self {
+            draw: 0,
+            scroll: [0.0; 4],
             rect: n.placed.rect,
             clip: n.placed.clip,
             alpha: n.placed.alpha,

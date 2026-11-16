@@ -475,7 +475,9 @@ fn perf_scaling_inventory_table_and_raid_hud() {
 
 /// A large surface (20 columns of 50 labels) and a 1,000-row list as
 /// Svelte documents over named stores, mounted once and driven only by store
-/// writes and input, with the tick's executed work. Idle writes nothing; one
+/// writes and input, with the tick's executed work. Idle writes nothing (and
+/// `idle-focused` holds the focus on a control beside an icon and a
+/// scrollbar, which are kept as they are too); one
 /// label patches one row's field each tick; the list scrolls by the wheel.
 /// `fling-1000` scrolls that list by a trackpad's momentum, fractional
 /// steps that decay, at a 1.5 device pixel ratio. `row-999` scrolls a
@@ -501,6 +503,7 @@ fn perf_ui_retained_change_budgets() {
         "scroll-1000",
         "fling-1000",
         "row-999",
+        "idle-focused",
     ] {
         let mut ui = ui_with_font(test_font());
         let mut inputs = BTreeMap::new();
@@ -530,6 +533,15 @@ fn perf_ui_retained_change_budgets() {
         } else {
             let mut doc =
                 String::from("<meta name=\"component\" content=\"perf\">\n<row id=\"Screen\">\n");
+            // A screen as a player leaves it: a control focused, an icon
+            // and a scroller showing its bar.
+            if scenario == "idle-focused" {
+                doc.push_str(
+                    r#"<column id="Side" width="160" height="1440"><button id="Focus">Play</button>
+<svg id="Icon" width="24" height="24" viewBox="0 0 24 24"><path d="M2 2 L22 12 L2 22 Z" fill="gold"/></svg>
+<div id="Scroll" style="height: 200px; overflow-y: auto;"><div style="height: 800px;"></div></div></column>"#,
+                );
+            }
             for column in 0..20 {
                 let rows: Vec<_> = (0..50)
                     .map(|row| json!({"id": format!("Label{row}"), "text": format!("Cell {column}:{row}")}))
@@ -604,6 +616,15 @@ fn perf_ui_retained_change_budgets() {
             );
             ui.build_retained_documents(&bind::NoEnv).unwrap();
             let built = start.elapsed().as_secs_f64() * 1000.0;
+            if scenario == "idle-focused" && tick == 1 {
+                let path = ui
+                    .probe_elements()
+                    .iter()
+                    .map(|e| e.path.clone())
+                    .find(|p| p.ends_with("/Focus"))
+                    .expect("the focused control");
+                ui.set_focus(&path);
+            }
             // The last frame showed row 999: hold the focus on it by key.
             if scenario == "row-999" && ui.element_bounds(&far).is_some() {
                 ui.set_focus(&far);
@@ -635,23 +656,6 @@ fn perf_ui_retained_change_budgets() {
                 work.push(ui.frame().stats);
             }
         }
-        assert!(commands > 0);
-        match scenario {
-            "scroll-1000" | "fling-1000" => {
-                assert!(max_first > 100, "the measured list must actually scroll")
-            }
-            "row-999" => {
-                assert!(max_first >= 999, "reached row {max_first}");
-                assert_eq!(ui.focus_path(0), far, "focus held on row 999 by key");
-            }
-            "idle" | "idle-animated" => {
-                let busy = work.iter().find(|s| {
-                    (s.bindings, s.reconciled, s.laid_out, s.painted, s.animated) != (0, 0, 0, 0, 0)
-                });
-                assert!(busy.is_none(), "an idle tick worked: {busy:?}");
-            }
-            _ => {}
-        }
         samples.sort_by(f64::total_cmp);
         for p in &mut parts {
             p.sort_by(f64::total_cmp);
@@ -669,6 +673,23 @@ fn perf_ui_retained_change_budgets() {
             max(|s| s.laid_out),
             max(|s| s.rebuilt),
         );
+        assert!(commands > 0);
+        match scenario {
+            "scroll-1000" | "fling-1000" => {
+                assert!(max_first > 100, "the measured list must actually scroll")
+            }
+            "row-999" => {
+                assert!(max_first >= 999, "reached row {max_first}");
+                assert_eq!(ui.focus_path(0), far, "focus held on row 999 by key");
+            }
+            "idle" | "idle-animated" | "idle-focused" => {
+                let busy = work.iter().find(|s| {
+                    (s.bindings, s.reconciled, s.laid_out, s.painted, s.animated) != (0, 0, 0, 0, 0)
+                });
+                assert!(busy.is_none(), "an idle tick worked: {busy:?}");
+            }
+            _ => {}
+        }
     }
 }
 

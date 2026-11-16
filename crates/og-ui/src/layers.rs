@@ -625,11 +625,10 @@ mod tests {
             "{events:?}"
         );
         assert!(texts(&ui).contains(&"half".to_string()));
-        // An idle frame evaluates and writes nothing.
-        // An idle frame evaluates nothing and writes only the focused
-        // control (it reads the focus every frame).
+        // An idle frame evaluates and writes nothing, the focused control
+        // included: it is written as its focus changes.
         let idle = step(&mut ui, InputFrame::default());
-        assert_eq!((idle.bindings, idle.reconciled), (0, 1), "{idle:?}");
+        assert_eq!((idle.bindings, idle.reconciled), (0, 0), "{idle:?}");
         ui.docs
             .state_mut()
             .memory

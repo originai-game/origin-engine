@@ -235,9 +235,21 @@ pub struct RetainedHost {
     /// The widget memories mounted elements keep while they are not built.
     pub memories: std::collections::HashMap<u64, u32>,
     /// This frame's and last frame's interaction keys (hover, press,
-    /// focus, activation).
+    /// focus, activation), sorted: an element whose keys are in one and
+    /// not the other is written again.
     pub input: Vec<u64>,
     pub last_input: Vec<u64>,
+    /// This frame's and last frame's keys held by a press (the pressed
+    /// control, touch owners, the zones while a pointer is down): their
+    /// elements read the pointer, so they are written every frame they
+    /// are held and the frame they are let go.
+    pub held: Vec<u64>,
+    pub last_held: Vec<u64>,
+    /// Where the pointer was last frame.
+    pub last_pointer: [f32; 2],
+    /// The focused text control and whether its caret showed, as last
+    /// built: it is written again as the caret blinks.
+    pub caret: (u64, bool),
     /// The frame-wide inputs changed this frame: every node is written.
     pub restyled: bool,
     /// What every element's nodes depend on beyond its own inputs.

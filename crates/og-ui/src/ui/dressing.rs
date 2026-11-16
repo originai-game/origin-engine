@@ -56,9 +56,13 @@ impl Ui {
         cmds.extend(draw.leave(self.paint_theme(), &at));
     }
 
+    /// The draws of the parts a style dresses: each kept from last frame
+    /// while what it is made from is the same ([`PartInput`]).
     pub(super) fn build_part_draws(&mut self, order: &[usize]) {
-        let previous = std::mem::take(&mut self.paint.part_draws);
+        let mut previous = std::mem::take(&mut self.paint.part_draws);
+        let mut inputs = std::mem::take(&mut self.paint.part_inputs);
         self.paint.part_changed.clear();
+        let viewport = *self.env.viewport();
         for &i in order {
             if self.tree.draws.contains_key(&i) && !self.tree.dressable.contains(&i) {
                 continue;
@@ -72,26 +76,39 @@ impl Ui {
                 (None, Some(f)) if n.style.sampled.background.is_some() => f.part_ref(),
                 _ => continue,
             };
-            let values = self.part_values(&part, Some(n.key));
+            let input = PartInput {
+                key: n.key,
+                values: self.part_values(&part, Some(n.key)),
+                size: [n.placed.rect.width, n.placed.rect.height],
+                ground: n.style.sampled.background,
+                base: self.tree.draws.get(&i).cloned(),
+                viewport,
+            };
+            if inputs.remove(&i).is_some_and(|kept| kept.same(&input))
+                && let Some(draw) = previous.remove(&i)
+            {
+                self.paint.part_draws.insert(i, draw);
+                self.paint.part_inputs.insert(i, input);
+                continue;
+            }
             match self.part_draw_values(
-                &values,
-                [n.placed.rect.width, n.placed.rect.height],
-                n.style.sampled.background,
-                self.tree.draws.get(&i),
+                &input.values,
+                input.size,
+                input.ground,
+                input.base.as_deref(),
             ) {
                 Ok(draw) => {
+                    if previous.remove(&i).as_ref() != Some(&draw) {
+                        self.paint.part_changed.insert(i);
+                    }
                     self.paint.part_draws.insert(i, draw);
+                    self.paint.part_inputs.insert(i, input);
                 }
                 Err(errors) => self.out.warnings.extend(errors),
             }
         }
-        self.paint.part_changed.extend(
-            previous
-                .keys()
-                .chain(self.paint.part_draws.keys())
-                .copied()
-                .filter(|i| previous.get(i) != self.paint.part_draws.get(i)),
-        );
+        // Parts that draw no more.
+        self.paint.part_changed.extend(previous.into_keys());
     }
 
     pub(crate) fn behind(&self, i: usize) -> Srgba {
@@ -205,6 +222,6 @@ impl crate::ui::Paint {
         self.decor_draws
             .get(&i)
             .or_else(|| self.part_draws.get(&i))
-            .or_else(|| tree.draws.get(&i))
+            .or_else(|| tree.draws.get(&i).map(|d| &**d))
     }
 }

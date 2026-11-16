@@ -43,6 +43,7 @@ impl Ui {
                 gesture: false,
                 resize_moved: None,
                 text_target: None,
+                text_target_key: 0,
                 selected: Vec::new(),
                 highlights: Vec::new(),
                 highlight_marked: Vec::new(),
@@ -102,6 +103,7 @@ impl Ui {
                 text_clips: Vec::new(),
                 element_images: false,
                 part_draws: Default::default(),
+                part_inputs: Default::default(),
                 part_changed: Default::default(),
                 decor_draws: Default::default(),
                 ctx: None,
@@ -697,7 +699,6 @@ impl Ui {
             input.text.clear();
         }
         self.interaction.input = input;
-        self.interaction.text_target = None;
 
         let mut el = root;
         el.width = Size::Fixed(viewport.width);

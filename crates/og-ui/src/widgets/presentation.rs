@@ -277,7 +277,7 @@ impl Ui {
                 Treatment::Duotone => {}
             }
         }
-        self.tree.draws.insert(i, d);
+        self.tree.draws.insert(i, std::sync::Arc::new(d));
         if desc.texture.is_none() {
             // The kind's silhouette, a third of the shorter side, centred
             // (a little high when the slot's name sits under it).

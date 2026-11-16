@@ -73,7 +73,7 @@ impl Ui {
             use crate::paint::{ColorRef, ElementDraw, TextEffects, TextShadow};
             self.tree.draws.insert(
                 i,
-                ElementDraw {
+                std::sync::Arc::new(ElementDraw {
                     text: Some(TextEffects {
                         shadows: vec![TextShadow {
                             offset: [0.0, (step.size * 0.04).max(1.0)],
@@ -83,7 +83,7 @@ impl Ui {
                         ..TextEffects::default()
                     }),
                     ..ElementDraw::default()
-                },
+                }),
             );
         }
         // Room across for the style's drop inside a scroll view, whose edge

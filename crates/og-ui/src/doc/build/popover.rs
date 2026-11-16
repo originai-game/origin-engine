@@ -15,6 +15,7 @@
 //! anchor.
 
 pub(crate) use super::host::Mode;
+use super::host::PopoverLink;
 use super::nodes::Inner;
 use super::*;
 
@@ -36,6 +37,7 @@ impl Ui {
         if self.popover_open(pk) == open {
             return;
         }
+        self.docs.state_mut().touched_popovers.insert(pk);
         // HTML: showing an auto popover closes the other auto ones, and a
         // hint the other hints.
         if open && let Some(mode) = self.docs.state().popovers.get(&pk).map(|l| l.mode) {
@@ -48,6 +50,7 @@ impl Ui {
                 .map(|(k, _)| *k)
                 .collect();
             for k in others {
+                self.docs.state_mut().touched_popovers.insert(k);
                 if self.has_anim(k) {
                     let a = self.anim(k);
                     self.set_anim(k, crate::ui::Anim { h: 0, t: 0, ..a });
@@ -78,6 +81,35 @@ impl Ui {
         if at == NONE || at >= self.tree.nodes().len() || self.tree.nodes()[at].key != key {
             return;
         }
+        // The popovers it names: one whose link it changes is built again.
+        let named: Vec<(u64, Option<PopoverLink>)> =
+            ["popovertarget", "contextmenu", "interestfor"]
+                .into_iter()
+                .filter_map(|a| r.str(a))
+                .map(|target| {
+                    let pk = popover_key(&b.mount, target);
+                    (pk, self.docs.state().popovers.get(&pk).copied())
+                })
+                .collect();
+        self.invoke_popovers(b, r, key, at, resp);
+        let state = self.docs.state_mut();
+        for (pk, before) in named {
+            if state.popovers.get(&pk).copied() != before {
+                state.touched_popovers.insert(pk);
+            }
+        }
+    }
+
+    /// What element `key`, built as node `at`, does to the popovers it
+    /// names, and its `title` tooltip.
+    fn invoke_popovers(
+        &mut self,
+        b: &Build<'_>,
+        r: &Resolved,
+        key: u64,
+        at: usize,
+        resp: crate::ui::Response,
+    ) {
         if let Some(title) = r.str("title").filter(|t| !t.is_empty()) {
             if self.tree.nodes()[at].a11y.description.is_none() {
                 self.tree.semantics_mut(at).description = Some(title.to_string());
@@ -141,7 +173,13 @@ impl Ui {
             let s = &self.interaction.state();
             let wants =
                 (s.hot == key && s.hover_ticks >= start) || (s.focus == key && s.focus_visible);
+            // Counting the hover towards interest: it builds again next
+            // frame.
+            let counting = s.hot == key && s.hover_ticks < start && !wants;
             let now = s.tick;
+            if counting && let Some(owned) = self.tree.owning_mut().last_mut() {
+                owned.moved = true;
+            }
             // The tick interest was lost, plus one: widget memory, so a
             // restore lands mid-delay too.
             let mk = crate::id::child_key(pk, "~interest");
@@ -196,9 +234,6 @@ impl Ui {
         built: Built,
         mut build_inner: impl FnMut(&mut Ui, &mut Build<'_>, Inner<'_>),
     ) -> Option<String> {
-        if let Some(owned) = self.tree.owning_mut().last_mut() {
-            owned.moved = true;
-        }
         let mode = match r.str("popover") {
             Some("manual") => Mode::Manual,
             Some("hint") => Mode::Hint,
@@ -390,6 +425,17 @@ impl Ui {
         if next != now_memory {
             self.set_anim(pk, next);
         }
+        // Built again while it changes: opening (its layer waits a frame
+        // for `:popover-open`), held up while it closes, or an open hint
+        // under the pointer; else when what names it changes it
+        // (`touched_popovers`).
+        let hint_over = mode == Mode::Hint && open;
+        if (next != memory || held || hint_over)
+            && let Some(owned) = self.tree.owning_mut().last_mut()
+        {
+            owned.moved = true;
+        }
+        self.docs.state_mut().touched_popovers.remove(&pk);
         let resp = crate::ui::Response::default();
         self.fire(b, n, key, &path, resp);
         Some(path)

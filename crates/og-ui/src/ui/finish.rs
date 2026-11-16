@@ -136,7 +136,14 @@ impl Ui {
             warnings: std::mem::take(&mut self.out.warnings),
             missing_glyphs,
             focus_paths,
-            text_input: self.interaction.text_target.take(),
+            text_input: {
+                // Its text control, while it holds the focus.
+                let i = &mut self.interaction;
+                if i.state.focus != i.text_target_key {
+                    i.text_target = None;
+                }
+                i.text_target.clone()
+            },
             events: std::mem::take(&mut self.out.events),
             grounds: std::mem::take(&mut self.world.placement.grounds),
             stats: LayoutStats {
@@ -1419,6 +1426,7 @@ impl Ui {
                     self.tree
                         .draws
                         .get(&i)
+                        .map(|d| &**d)
                         .or_else(|| self.paint.part_draws.get(&i)),
                     crate::css::paint_css::LayerFrame {
                         size: [r.width, r.height],
@@ -1449,7 +1457,10 @@ impl Ui {
                 let n = &self.tree.nodes[i];
                 assert_eq!(
                     self.paint.cache.sigs.get(i).copied().flatten(),
-                    Some((n.key, crate::layout::DrawSig::of(n))),
+                    Some((
+                        n.key,
+                        crate::layout::DrawSig::of_slot(&self.tree, &self.interaction, i)
+                    )),
                     "'{}' paints with another signature than it was kept by",
                     self.tree.path_of(i)
                 );

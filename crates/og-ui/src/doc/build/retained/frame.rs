@@ -21,13 +21,57 @@ impl RetainedHost {
         }
         let s = &ui.interaction.state();
         let n = &ui.interaction.nav();
+        // What a press holds reads the pointer each frame: written while
+        // held and the frame it is let go.
+        let mut held = Vec::new();
+        if ui.interaction.input().down {
+            held.push(s.active);
+        }
+        // On-screen controls follow their further touches (og.Pointers):
+        // those a touch holds, and every one when a touch goes down.
+        held.extend(s.touch_owners.keys());
+        if ui.interaction.input().pointers.pressed != 0 {
+            held.extend(ui.docs.state().zones.keys());
+        }
+        // Keys, typing and pads reach the focused controls as they build
+        // (a field's edits, a list's arrows, a range's steps).
+        let i = ui.interaction.input();
+        let idle_pad = crate::interaction::input::GamepadFrame::default();
+        if !i.keys.is_empty()
+            || !i.text.is_empty()
+            || i.composition.is_some()
+            || !i.keys_held.is_empty()
+            || !i.keys_pressed.is_empty()
+            || !i.actions.is_empty()
+            || i.gamepad != idle_pad
+            || i.extra_pads.iter().any(|p| *p != idle_pad)
+        {
+            held.push(s.focus);
+            held.extend(s.pad_focus);
+        }
+        // A shown popover closes on a press outside it or a key (light
+        // dismiss, Escape): it builds on every tick that has one.
+        if i.pressed
+            || i.secondary_pressed
+            || i.pointers.pressed != 0
+            || !i.keys.is_empty()
+            || n.back
+        {
+            for (pk, node) in &self.popover_nodes {
+                if ui.docs.state().popovers.get(pk).is_some_and(|l| l.shown) {
+                    self.emit.insert(node.clone());
+                }
+            }
+        }
+        // A pointer moving or wheeling over the hovered control reaches
+        // it as it builds (a range's nearer knob, a picker's option).
+        let pointer = [i.pointer.x, i.pointer.y];
+        if pointer != self.last_pointer || i.wheel != og_core::glam::Vec2::ZERO {
+            held.push(s.hot);
+            self.last_pointer = pointer;
+        }
         let mut input = vec![
             s.hot,
-            if ui.interaction.input().down {
-                s.active
-            } else {
-                0
-            },
             s.focus,
             n.activate,
             n.tapped,
@@ -37,12 +81,6 @@ impl RetainedHost {
         ];
         input.extend(s.pad_focus);
         input.extend(n.pad_activate);
-        // On-screen controls follow their further touches (og.Pointers):
-        // those a touch holds, and every one when a touch goes down.
-        input.extend(s.touch_owners.keys());
-        if ui.interaction.input().pointers.pressed != 0 {
-            input.extend(ui.docs.state().zones.keys());
-        }
         if n.back {
             // Back belongs to the topmost scope (a modal, an open list),
             // else to what holds the focus (a dialog in place).
@@ -58,13 +96,35 @@ impl RetainedHost {
         }
         // A forced state is drawn by its element's widget: it builds again.
         input.extend(self.forced_keys(ui));
-        input.retain(|&key| key != 0);
-        for key in input.iter().chain(&self.input) {
+        for keys in [&mut input, &mut held] {
+            keys.retain(|&key| key != 0);
+            keys.sort_unstable();
+            keys.dedup();
+        }
+        // An element is written again as its interaction changes, not
+        // while it lasts: a focused or hovered element that stays so is
+        // kept. One that counts while it lasts (a tooltip's delay, an
+        // interest delay) asks to be built again itself (`Owned::moved`).
+        let mut changed: Vec<u64> = held.iter().chain(&self.held).copied().collect();
+        changed.extend(sorted_difference(&input, &self.input));
+        changed.extend(sorted_difference(&self.input, &input));
+        // The focused text control's caret blinks.
+        let caret = if s.edit_key != 0 && s.edit_key == s.focus {
+            (s.focus, ui.interaction.caret_shown(&ui.env))
+        } else {
+            (0, false)
+        };
+        if caret != self.caret {
+            changed.extend([caret.0, self.caret.0]);
+            self.caret = caret;
+        }
+        for key in &changed {
             if let Some(owner) = self.owner_of.get(key) {
                 self.emit.insert(owner.clone());
             }
         }
         self.last_input = std::mem::replace(&mut self.input, input);
+        self.last_held = std::mem::replace(&mut self.held, held);
         for (identity, offset) in &self.scrollers {
             if ui
                 .interaction
@@ -82,6 +142,21 @@ impl RetainedHost {
         // geometry (a narrow button, a list measuring its rows).
         for slot in std::mem::take(&mut ui.layout.cache_mut().resized) {
             if let Some(owner) = self.owner_of.get(&ui.tree.nodes()[slot].key) {
+                self.emit.insert(owner.clone());
+            }
+        }
+        // A scroll container whose markers changed or moved.
+        let worked = self.reconciled > 0 || ui.frame().stats.laid_out > 0;
+        for key in ui.scroll_groups_moved(worked) {
+            if let Some(owner) = self.owner_of.get(&key) {
+                self.emit.insert(owner.clone());
+            }
+        }
+        // A text whose `::first-line` the last layout broke elsewhere.
+        for (&key, &built) in &ui.docs.state().first_lines {
+            if ui.style.first_line_chars(key, &ui.tree) != built
+                && let Some(owner) = self.owner_of.get(&key)
+            {
                 self.emit.insert(owner.clone());
             }
         }
@@ -180,4 +255,11 @@ impl RetainedHost {
         }
         Ok(())
     }
+}
+
+/// The keys of sorted `a` that sorted `b` lacks.
+fn sorted_difference<'a>(a: &'a [u64], b: &'a [u64]) -> impl Iterator<Item = u64> + 'a {
+    a.iter()
+        .copied()
+        .filter(move |key| b.binary_search(key).is_err())
 }

@@ -360,13 +360,13 @@ mod tests {
             (wheel[0].0.as_str(), &wheel[0].2["deltaY"]),
             ("zoom", &json!(-3.0))
         );
-        // Hovered, the board is the element under the pointer: written
-        // again each tick, as any hovered control is, and nothing else.
+        // Hovered and still, the board is kept: its pointer events come
+        // from the input, not from writing it again.
         for _ in 0..60 {
             assert!(frame(&mut ui, over, false, false, 0.0).is_empty());
         }
         let stats = ui.frame().stats;
-        assert_eq!((stats.bindings, stats.reconciled), (0, 1), "{stats:?}");
+        assert_eq!((stats.bindings, stats.reconciled), (0, 0), "{stats:?}");
         // Away from it, once the dragged item is home: nothing at all.
         let away = Vec2::new(-20.0, -20.0);
         for _ in 0..3 {

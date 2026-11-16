@@ -132,8 +132,8 @@ impl RetainedHost {
             let list_key = ui.tree.nodes()[list_slot].key;
             for (index, materialization) in (first..end).zip(shown) {
                 let index = index as u32;
-                // A row whose own node would be written as it stands (no
-                // input on it now or last frame, the same frame-wide
+                // A row whose own node would be written as it stands (its
+                // input as last frame, none held, the same frame-wide
                 // inputs) is put back with its subtree: a scroll writes
                 // only the rows it brings in. What changed inside it is
                 // written in place (`emit_in_place`).
@@ -142,8 +142,10 @@ impl RetainedHost {
                 let row_key =
                     crate::id::child_key(list_key, &crate::virtualize::item_id(key, grid));
                 let still = !self.restyled
-                    && !self.input.contains(&row_key)
-                    && !self.last_input.contains(&row_key)
+                    && self.input.binary_search(&row_key).is_ok()
+                        == self.last_input.binary_search(&row_key).is_ok()
+                    && self.held.binary_search(&row_key).is_err()
+                    && self.last_held.binary_search(&row_key).is_err()
                     && each.rows[key].iter().all(|child| match child {
                         Child::Element(id) => self
                             .topology

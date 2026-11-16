@@ -393,6 +393,9 @@ pub struct Paint {
     /// What each part of this frame draws through the UI pass, by node
     /// (made at `end` from its dressing, or the tokens).
     pub(crate) part_draws: std::collections::HashMap<usize, crate::paint::ElementDraw>,
+    /// What each part draw was made from ([`PartInput`]): kept while that
+    /// is the same.
+    pub(crate) part_inputs: std::collections::HashMap<usize, PartInput>,
     /// Parts whose computed paint changed since the preceding frame.
     pub(crate) part_changed: std::collections::HashSet<usize>,
     /// This frame's draws of elements with CSS box decorations: their
@@ -404,7 +407,8 @@ pub struct Paint {
     /// The environment's theme with the painted element's accent
     /// ([`Paint::accent`]).
     pub(crate) accented: Box<Theme>,
-    pub(crate) prev_draws: std::collections::HashMap<usize, crate::paint::ElementDraw>,
+    pub(crate) prev_draws:
+        std::collections::HashMap<usize, std::sync::Arc<crate::paint::ElementDraw>>,
     /// The last frame's inspection, made when asked for (`inspect`).
     pub(crate) inspection: inspect::Inspection,
     /// Last frame's paint, for reuse.
@@ -459,8 +463,11 @@ pub struct Interaction {
     pub(crate) gesture: bool,
     /// The element a resize drag moved this tick (written again).
     pub(crate) resize_moved: Option<u64>,
-    /// The focused text control this frame (into [`UiFrame::text_input`]).
+    /// The focused text control (into [`UiFrame::text_input`]), as it was
+    /// last built: kept while it holds the focus and is not built again.
     pub(crate) text_target: Option<TextTarget>,
+    /// The key of the text control `text_target` is.
+    pub(crate) text_target_key: u64,
     /// The keys of the text elements last painted with a selection.
     pub(crate) selected: Vec<u64>,
     /// The custom highlights registered, in order
@@ -567,7 +574,9 @@ pub struct Tree {
     /// Open focus scopes this frame, in build order.
     pub(crate) scopes: Vec<usize>,
     /// What elements of this frame draw with ([`Ui::set_draw`]), by node.
-    pub(crate) draws: std::collections::HashMap<usize, crate::paint::ElementDraw>,
+    /// Shared, so a retained slot keeps its draw without copying it and
+    /// paint knows it unchanged by its pointer (`DrawSig`).
+    pub(crate) draws: std::collections::HashMap<usize, std::sync::Arc<crate::paint::ElementDraw>>,
     /// The draws of [`Ui::set_draw_dressable`]: a component's own look for
     /// a part, which a style that dresses the part restyles.
     pub(crate) dressable: std::collections::HashSet<usize>,
@@ -664,5 +673,42 @@ impl Front {
     }
     pub fn cover(&self) -> &Option<crate::juice::Cover> {
         &self.cover
+    }
+}
+
+/// What a part's draw is made from (`Ui::build_part_draws`): its node, its
+/// values, its size and ground, the game draw it restyles and the
+/// viewport. The values and draw are held, so their pointers name them.
+#[derive(Clone)]
+pub(crate) struct PartInput {
+    pub(crate) key: u64,
+    pub(crate) values: std::sync::Arc<crate::doc::build::Resolved>,
+    pub(crate) size: [f32; 2],
+    pub(crate) ground: Option<og_css::Srgba>,
+    pub(crate) base: Option<std::sync::Arc<crate::paint::ElementDraw>>,
+    pub(crate) viewport: Viewport,
+}
+
+impl PartInput {
+    pub(crate) fn same(&self, other: &PartInput) -> bool {
+        self.key == other.key
+            && std::sync::Arc::ptr_eq(&self.values, &other.values)
+            && self.size == other.size
+            && self.ground == other.ground
+            && match (&self.base, &other.base) {
+                (None, None) => true,
+                (Some(a), Some(b)) => std::sync::Arc::ptr_eq(a, b),
+                _ => false,
+            }
+            && self.viewport == other.viewport
+    }
+}
+
+impl std::fmt::Debug for PartInput {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("PartInput")
+            .field("key", &self.key)
+            .field("size", &self.size)
+            .finish_non_exhaustive()
     }
 }

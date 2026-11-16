@@ -50,6 +50,8 @@ pub struct Group {
     pub markers: Vec<(u64, u64)>,
     /// The keys of its buttons up, down, left and right (0: not generated).
     pub buttons: [u64; 4],
+    /// The markers' epoch it was built at ([`super::state::DocState::markers_epoch`]).
+    pub epoch: u64,
 }
 
 /// A scroll control pressed while the frame was built.
@@ -134,6 +136,15 @@ impl Ui {
             .str("scrollTargetGroup")
             .is_some_and(|v| v.eq_ignore_ascii_case("auto"));
         let s = self.docs.state_mut();
+        // A marker written or removed: its scroll container's group builds
+        // again.
+        if marker.is_some()
+            || column.is_some()
+            || s.scroll_markers.contains_key(&key)
+            || s.column_markers.contains_key(&key)
+        {
+            s.markers_epoch += 1;
+        }
         match marker {
             Some(m) => s.scroll_markers.insert(key, m),
             None => s.scroll_markers.remove(&key),
@@ -201,8 +212,9 @@ impl Ui {
     /// After element `r` (`n`, at `path`), built as node `own`, closed: if
     /// it is a scroll container, its `::scroll-button()`s and its
     /// `::scroll-marker-group`, built as its siblings in §3's order (the
-    /// group before or after it, the buttons just before it). They are
-    /// built again every frame: the markers are other elements'.
+    /// group before or after it, the buttons just before it). The markers
+    /// are other elements': they are built again when one of those changes
+    /// or moves ([`Ui::scroll_groups_moved`]).
     pub(crate) fn build_scroll_controls(
         &mut self,
         b: &Build<'_>,
@@ -229,11 +241,11 @@ impl Ui {
             self.docs.state_mut().scroll_groups.remove(&key);
             return;
         }
-        if let Some(owned) = self.tree.owning_mut().last_mut() {
-            owned.moved = true;
-        }
         let (theme, rtl) = (*self.env.theme(), r.own_flow().rtl);
-        let mut group = Group::default();
+        let mut group = Group {
+            epoch: self.docs.state().markers_epoch,
+            ..Group::default()
+        };
         let mut pressed = Vec::new();
         // block-start, inline-start, inline-end, block-end.
         for k in [0, 2, 3, 1] {
@@ -316,6 +328,36 @@ impl Ui {
     /// children (CSS Multicol 2 §4.8): their markers follow its own, one
     /// for each column it was last laid out with, each with its target's
     /// column ([`column_target`]).
+    /// The scroll containers whose groups no longer show their markers as
+    /// built: a marker was written since, or one moved, came or went in
+    /// the last frame's tree. `worked`: the last frame built or laid out
+    /// anything (else only the epoch is asked).
+    pub(crate) fn scroll_groups_moved(&self, worked: bool) -> Vec<u64> {
+        let state = self.docs.state();
+        state
+            .scroll_groups
+            .iter()
+            .filter(|(key, group)| {
+                if group.epoch != state.markers_epoch {
+                    return true;
+                }
+                if !worked || group.markers.is_empty() {
+                    return false;
+                }
+                let Some(own) = self.tree.index().find(**key) else {
+                    return false;
+                };
+                let (markers, _) = self.markers_in(own);
+                markers.len() != group.markers.len()
+                    || markers
+                        .iter()
+                        .zip(&group.markers)
+                        .any(|((target, m), &(k, t))| *target != t || m.key != k)
+            })
+            .map(|(key, _)| *key)
+            .collect()
+    }
+
     fn markers_in(&self, own: usize) -> (Vec<(u64, Arc<Marker>)>, Vec<ColumnTarget>) {
         let state = self.docs.state();
         let (nodes, kept) = (self.tree.nodes(), &state.scroll_markers);

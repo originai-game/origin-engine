@@ -83,7 +83,9 @@ impl Ui {
                         self.tree.el_mut(index).width = Size::px(width);
                         self.tree.el_mut(index).height = Size::px(height);
                     }
-                    let draw = self.tree.draws.get_mut(&tick).expect("switch tick draw");
+                    let draw = std::sync::Arc::make_mut(
+                        self.tree.draws.get_mut(&tick).expect("switch tick draw"),
+                    );
                     if let crate::paint::ShapeKind::Path { points, width, .. } = &mut draw.shape {
                         *points = [[0.2, 0.53], [0.42, 0.74], [0.8, 0.28]]
                             .map(|p| [p[0] * tick_size, p[1] * tick_size])

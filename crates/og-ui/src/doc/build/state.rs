@@ -31,6 +31,16 @@ pub struct DocState {
     pub happened: Vec<crate::doc::When>,
     /// The popovers documents name, by their key in their mount.
     pub popovers: BTreeMap<u64, PopoverLink>,
+    /// The popovers whose link or open state something else changed since
+    /// they were built: they are built again (a popover is not built every
+    /// frame).
+    pub touched_popovers: BTreeSet<u64>,
+    /// The texts styled by a `::first-line`, by key, with the first line's
+    /// characters as they were built ([`crate::ui::Style::first_line_chars`]).
+    pub first_lines: BTreeMap<u64, Option<usize>>,
+    /// Counts the scroll markers written and removed: a group built at
+    /// another count shows markers that changed.
+    pub markers_epoch: u64,
     /// The id the last `#fragment` link named: CSS `:target`.
     pub target: Option<String>,
     /// A `#fragment` link was followed this tick: the layout scrolls its
@@ -176,6 +186,7 @@ impl DocState {
     /// their mounts, and forgets the rest.
     pub(crate) fn retain_element_memory(&mut self, built: impl Fn(u64) -> bool) {
         self.scroll_groups.retain(|k, _| built(*k));
+        self.first_lines.retain(|k, _| built(*k));
         self.scroll_markers.retain(|k, _| built(*k));
         self.column_markers.retain(|k, _| built(*k));
         self.column_targets.retain(|_, (owner, _)| built(*owner));

@@ -1051,6 +1051,7 @@ impl Ui {
                 composing: n > 0,
                 ..TextTarget::default()
             });
+            self.interaction.text_target_key = key;
         }
         crate::layout::EditView {
             focused: true,

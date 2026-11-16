@@ -441,6 +441,13 @@ impl RetainedHost {
         events: &mut Vec<DocEvent>,
         writes: &mut Vec<(BindingContext, String, Value)>,
     ) -> Result<(), String> {
+        // The popovers something changed after they were built (a control
+        // opened one, or moved its anchor) are built again where they are.
+        for pk in std::mem::take(&mut ui.docs.state_mut().touched_popovers) {
+            if let Some(node) = self.popover_nodes.get(&pk) {
+                self.emit.insert(node.clone());
+            }
+        }
         // An element without the slot it was built in (offscreen in a
         // virtual list, in a branch not shown, retired) is written whole
         // when it is built again: marking it does nothing, so the mark goes.

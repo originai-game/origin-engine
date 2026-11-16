@@ -40,7 +40,7 @@ pub(crate) mod feat {
     pub const PART: u32 = 1 << 14;
     /// Laid out in the world (`Float::World`): placed every frame.
     pub const WORLD: u32 = 1 << 15;
-    /// Rich text: painted afresh every frame.
+    /// Rich text.
     pub const RICH: u32 = 1 << 16;
     /// CSS box decorations (`Ui::build_part_draws` merges them).
     pub const DECOR: u32 = 1 << 17;

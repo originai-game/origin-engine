@@ -195,7 +195,7 @@ impl DocMemory {
 
 /// What the controls naming a popover last did to it, by its key
 /// ([`popover_key`]): presentation, rebuilt from the controls as they build.
-#[derive(Clone, Copy, Debug, Default)]
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
 pub struct PopoverLink {
     /// The control it is placed against (its node index and key).
     pub invoker: (usize, u64),
@@ -356,10 +356,10 @@ impl crate::ui::Docs {
         };
         tree.draws.insert(
             node,
-            crate::paint::ElementDraw {
+            Arc::new(crate::paint::ElementDraw {
                 rive: Some(crate::paint::RiveDraw(player.clone())),
                 ..crate::paint::ElementDraw::default()
-            },
+            }),
         );
         tree.dressable.remove(&node);
         interaction.state.rive.insert(

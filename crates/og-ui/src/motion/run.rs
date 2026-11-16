@@ -1756,7 +1756,14 @@ impl Ui {
         if ch.target != target || ch.kind != kind {
             ch.retarget(target, kind, mode, now);
         }
-        ch.step(now, tps, false)
+        let value = ch.step(now, tps, false);
+        // Moving: the element it is read for builds again next tick.
+        if !ch.settled()
+            && let Some(owned) = self.tree.owning.last_mut()
+        {
+            owned.moved = true;
+        }
+        value
     }
 
     /// This frame's motion events (last tick's, while building).
