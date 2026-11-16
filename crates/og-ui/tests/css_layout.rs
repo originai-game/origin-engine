@@ -2661,3 +2661,63 @@ fn scrollbar_gutter_and_width_reserve_the_bars_room() {
         assert_eq!(room("A", "Ak"), (0.0, 0.0), "auto with nothing to scroll");
     });
 }
+
+/// CSS Grid 3 §2.3, §4.2, §4.4: `display: grid-lanes` with column tracks
+/// packs each item into the lane that is filled least, where lanes within
+/// `fit-tolerance` (`normal`: 1em) of the least tie, and a tie goes to the
+/// first lane at or after the line where the last item ended, else the
+/// first.
+///
+/// Ways it could fail: grid-lanes laid out as a plain grid (rows of
+/// three), ties broken by the shortest lane only (A4 at 50, 10 under
+/// `normal`), the tolerance ignored by `0` (A0's fourth at 0, 20), or the
+/// cursor ignored (B∞'s sixth at 0, 20 instead of 100, 40).
+#[test]
+fn grid_lanes_pack_items_within_their_fit_tolerance() {
+    let lanes = |id: &str, n: usize| {
+        let kids: String = (1..=n)
+            .map(|k| format!("<div id=\"{id}{k}\"></div>"))
+            .collect();
+        format!("<div id=\"{id}\" class=\"gl\">{kids}</div>")
+    };
+    let text = format!(
+        r#"<meta name="component" content="t">
+<div><div id="Root">{}{}{}{}</div></div>
+<style>
+#Root {{ width: 400px; }}
+.gl {{ display: grid-lanes; grid-template-columns: 50px 50px 50px; width: 150px; gap: 0; font-size: 16px; }}
+.gl > div {{ height: 10px; }}
+#A1, #Z1 {{ height: 20px; }}
+#A3, #Z3, #B3, #I3 {{ height: 40px; }}
+#Z {{ fit-tolerance: 0; }}
+#I {{ fit-tolerance: infinite; }}
+</style>"#,
+        lanes("A", 4),
+        lanes("Z", 4),
+        lanes("B", 6),
+        lanes("I", 6),
+    );
+    with_doc(&text, &[], |d| {
+        let at = |id: &str, of: &str| {
+            let (e, p) = (d.get(id), d.get(of));
+            (e.x - p.x, e.y - p.y)
+        };
+        // Lanes at 20, 10, 40 after three: 20 is within 1em of 10, and
+        // the cursor is past the last lane, so the first tied lane.
+        assert_eq!(at("A4", "A"), (0.0, 20.0), "normal ties 20 with 10");
+        assert_eq!(d.get("A").height, 40.0);
+        assert_eq!(at("Z4", "Z"), (50.0, 10.0), "0 ties nothing");
+        // Lanes at 10, 10, 40: the fourth and fifth fill the first two;
+        // the sixth sees 20, 20, 40 with the cursor at the third lane.
+        assert_eq!(
+            [at("B4", "B"), at("B5", "B"), at("B6", "B")],
+            [(0.0, 10.0), (50.0, 10.0), (0.0, 20.0)],
+            "normal: 40 is no tie, so back to the first lane"
+        );
+        assert_eq!(
+            at("I6", "I"),
+            (100.0, 40.0),
+            "infinite takes the cursor's lane"
+        );
+    });
+}

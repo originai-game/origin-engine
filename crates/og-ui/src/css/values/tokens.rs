@@ -325,6 +325,8 @@ pub(super) fn display_word(v: &str) -> Result<&'static str, String> {
         "inline-flex" => Some("inlineFlex"),
         "grid" => Some("grid"),
         "inline-grid" => Some("inlineGrid"),
+        "grid-lanes" => Some("gridLanes"),
+        "inline-grid-lanes" => Some("inlineGridLanes"),
         "table" => Some("table"),
         "inline-table" => Some("inlineTable"),
         "contents" => Some("contents"),

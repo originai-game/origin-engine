@@ -346,6 +346,21 @@ pub(crate) fn lower(name: &str, value: &str) -> Option<Result<Vec<Lowered>, Stri
     Some(match name {
         "grid-template-columns" => checked(v).map(|v| vec![("columns", v)]),
         "grid-template-rows" => checked(v).map(|v| vec![("rows", v)]),
+        // CSS Grid 3 §4.2: `normal | <length [0,∞]> | infinite`.
+        "fit-tolerance" => match v {
+            "normal" | "infinite" => Ok(vec![("fitTolerance", text(v))]),
+            v if ["px", "em"].iter().any(|u| {
+                v.strip_suffix(u)
+                    .and_then(|n| n.parse::<f32>().ok())
+                    .is_some_and(|n| n >= 0.0)
+            }) || v == "0" =>
+            {
+                Ok(vec![("fitTolerance", text(v))])
+            }
+            v => Err(format!(
+                "'{v}' is no fit-tolerance: normal, infinite or a px or em length"
+            )),
+        },
         "grid-auto-columns" | "grid-auto-rows" => (|| {
             let l = parse(v)?;
             if l.lines.kind != Template::Tracks || l.lines.repeat.is_some() || l.tracks.is_empty() {

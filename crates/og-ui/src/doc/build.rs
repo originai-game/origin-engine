@@ -14,7 +14,9 @@ use super::{css, motion};
 use crate::Rect;
 use crate::bind::{Env, Scope, number, text, truthy};
 use crate::doc::schema::Kind;
-use crate::element::{Edges, GridFlow, GridPlace, GridSpec, LayoutMode, Position, Prop, Props};
+use crate::element::{
+    Edges, GridFlow, GridPlace, GridSpec, LayoutMode, Position, Prop, Props, Template,
+};
 use crate::layout::{Align, Cross, Direction, Element, FontRole, Insets, NONE, Size, TextAlign};
 use crate::motion::{StateGroup, VisualState};
 use crate::style::Srgba;
@@ -405,7 +407,7 @@ pub fn insets_of(n: &[f32]) -> Insets {
 pub(super) fn inner_display(d: Option<&str>) -> &'static str {
     match d {
         Some("flex" | "inlineFlex") => "flex",
-        Some("grid" | "inlineGrid") => "grid",
+        Some("grid" | "inlineGrid" | "gridLanes" | "inlineGridLanes") => "grid",
         Some("table" | "inlineTable") => "table",
         _ => "flow",
     }
@@ -415,7 +417,14 @@ pub(super) fn inner_display(d: Option<&str>) -> &'static str {
 pub(super) fn outer_inline(d: Option<&str>) -> bool {
     matches!(
         d,
-        Some("inline" | "inlineBlock" | "inlineFlex" | "inlineGrid" | "inlineTable")
+        Some(
+            "inline"
+                | "inlineBlock"
+                | "inlineFlex"
+                | "inlineGrid"
+                | "inlineGridLanes"
+                | "inlineTable"
+        )
     )
 }
 
@@ -486,7 +495,15 @@ fn grid_of(r: &Resolved) -> GridSpec {
         Some(V::Tracks(t)) => t.clone(),
         _ => super::tracks::TrackList::default(),
     };
-    let (columns, rows) = (tracks("columns"), tracks("rows"));
+    let (columns, mut rows) = (tracks("columns"), tracks("rows"));
+    // `display: grid-lanes` lays its items in column lanes, packed down
+    // them (CSS Grid 3 §2.3). Row lanes, where only the rows are given,
+    // are not built: such a container lays out as a grid.
+    if matches!(r.str("display"), Some("gridLanes" | "inlineGridLanes"))
+        && !(columns.tracks.is_empty() && !rows.tracks.is_empty())
+    {
+        rows.lines.kind = Template::Masonry;
+    }
     let auto = |name: &str| tracks(name).tracks;
     // `normal` (and a stretch) leaves the tracks to fill the grid.
     let content = |name: &str| {

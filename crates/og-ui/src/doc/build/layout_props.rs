@@ -400,6 +400,19 @@ impl Ui {
         p.enter = n.enter.clone();
         p.exit = n.exit.clone();
         props(n, r, &mut p);
+        // `fit-tolerance`: `normal` is 1em in grid-lanes layout.
+        if p.grid.lines[1].kind == crate::element::Template::Masonry {
+            let em = self.style.em_of(r, &self.env);
+            p.grid.tolerance = match r.str("fitTolerance") {
+                Some("infinite") => f32::INFINITY,
+                Some(v) => match (v.strip_suffix("px"), v.strip_suffix("em")) {
+                    (Some(px), _) => px.parse().unwrap_or(em),
+                    (_, Some(e)) => e.parse::<f32>().map_or(em, |e| e * em),
+                    _ => v.parse().unwrap_or(em),
+                },
+                None => em,
+            };
+        }
         p.keyframe_bursts = self.keyframe_bursts(r).filter_map(Result::ok).collect();
         p
     }

@@ -303,8 +303,11 @@ impl Tree<'_, '_> {
         let el = n.layout.used;
         let gap = n.grid().row_gap.or(el.gaps[1]).unwrap_or(el.gap);
         let ncols = n.layout.grid_tracks[0].len().max(1);
+        let tolerance = n.grid().tolerance;
         let kids = n.children.clone();
         let mut bottom = vec![0.0f32; ncols];
+        // The auto-placement cursor: the line after the last item placed.
+        let mut cursor = 0;
         for (k, &c) in kids.iter().enumerate() {
             let Some(a) = self.nodes[i].layout.grid_items.get(k).copied() else {
                 continue;
@@ -312,13 +315,19 @@ impl Tree<'_, '_> {
             let mut s = (a[0] as usize).saturating_sub(1).min(ncols - 1);
             let span = (a[1] as usize).saturating_sub(1).clamp(s + 1, ncols) - s;
             let reach = |s: usize| bottom[s..s + span].iter().copied().fold(0.0, f32::max);
-            // An auto-placed item goes to the tracks that end highest, the
-            // first of them (CSS Grid 3 §2.4); a placed one keeps its own.
+            // An auto-placed item goes to the tracks that end highest or
+            // within `fit-tolerance` of them, the first at or after the
+            // cursor, else the first (CSS Grid 3 §4.4); a placed one keeps
+            // its own.
             let from = s;
             if super::grid::placement(self.nodes, c, 0).start == tf::GridPlacement::Auto {
-                s = (0..=ncols - span)
-                    .min_by(|&a, &b| reach(a).total_cmp(&reach(b)))
+                let low = (0..=ncols - span).map(reach).fold(f32::INFINITY, f32::min);
+                let tied = |a: &usize| reach(*a) <= low + tolerance;
+                s = (cursor..=ncols - span)
+                    .find(tied)
+                    .or_else(|| (0..=ncols - span).find(tied))
                     .unwrap_or(s);
+                cursor = s + span;
             }
             let top = reach(s);
             let tracks = &self.nodes[i].layout.grid_tracks[0];

@@ -249,6 +249,7 @@ pub const STYLE: &[(&str, &str)] = &[
     ("clear", "clear"),
     ("anchorHeight", "height"),
     ("columns", "grid-template-columns"),
+    ("fitTolerance", "fit-tolerance"),
     ("rows", "grid-template-rows"),
     ("areas", "grid-template-areas"),
     ("flow", "grid-auto-flow"),
@@ -448,7 +449,7 @@ fn conv(prop: &str) -> Conv {
         | "positionVisibility" | "anchorWidth" | "anchorHeight" => Conv::Raw,
         "columnCount" | "columnWidth" | "columnSpan" | "columnFill" | "columnRuleWidth"
         | "columnRuleStyle" | "columnRuleColor" | "breakBefore" | "breakAfter" | "breakInside"
-        | "orphans" | "widows" | "float" | "clear" => Conv::Raw,
+        | "orphans" | "widows" | "float" | "clear" | "fitTolerance" => Conv::Raw,
         "viewTransitionName" | "viewTransitionClass" | "viewTransitionGroup" => Conv::Raw,
         "backgroundImage"
         | "backgroundSize"

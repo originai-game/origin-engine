@@ -207,6 +207,12 @@ pub struct GridSpec {
     pub content: [Option<crate::layout::Align>; 2],
     /// CSS `align-items` (`None`: `normal`, items stretch down their area).
     pub align_items: Option<crate::layout::Cross>,
+    /// CSS `fit-tolerance` of a masonry (grid-lanes) grid in px: lanes
+    /// whose running position is within it of the shortest's tie, and an
+    /// auto-placed item takes the first of them from where the last one
+    /// ended (CSS Grid 3 §4.2, §4.4). A document's `normal` is 1em,
+    /// `infinite` is [`f32::INFINITY`].
+    pub tolerance: f32,
 }
 
 /// One end of a grid item's placement on an axis (CSS Grid §8.3).

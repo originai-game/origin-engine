@@ -1323,6 +1323,8 @@ pub const CORE_PROPS: &[PropSpec] = &[
             "inlineFlex",
             "grid",
             "inlineGrid",
+            "gridLanes",
+            "inlineGridLanes",
             "table",
             "inlineTable",
             "contents",

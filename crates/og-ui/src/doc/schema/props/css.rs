@@ -614,6 +614,13 @@ pub const PROPS: &[PropSpec] = &[
         doc: "CSS `break-inside` (and `page-break-inside`): `avoid` keeps a text's lines in one column.",
     },
     PropSpec {
+        name: "fitTolerance",
+        ty: Ty::Text,
+        on: On::All,
+        two_way: false,
+        doc: "CSS `fit-tolerance` of a grid-lanes box (its `display` is `grid-lanes`): lanes whose filled length is within it of the shortest count as tied, and an item takes the first tied lane after the last item's (`normal`: 1em; `infinite`: strictly in order; a px or em length).",
+    },
+    PropSpec {
         name: "orphans",
         ty: Ty::Text,
         on: On::All,
