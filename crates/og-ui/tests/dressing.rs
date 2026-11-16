@@ -2999,13 +2999,15 @@ fn layout_primitives_are_the_styles_and_answer_their_container() {
         }
         let d = mounted(
             ui,
-            r#"<div id="Root">
+            r#"<meta name="parts" content="t.fade">
+<div id="Root">
   <div id="G" data-layout="grid" data-gap="tight"><div id="G1"></div><div id="G2"></div><div id="G3"></div></div>
   <div id="T" data-layout="grid" style="width: 100px"><div id="T1"></div></div>
   <div id="W" data-layout="switcher" style="width: 600px"><div id="W1" data-fill></div><div id="W2" data-fill></div></div>
   <div id="N" data-layout="switcher" style="width: 300px"><div id="N1" data-fill></div><div id="N2" data-fill></div></div>
   <div id="S" data-layout="sidebar" style="width: 300px"><div id="Side" data-side></div><div id="Main" data-fill></div></div>
   <div id="Sh" data-layout="shell" style="width: 300px; height: 60px"><div id="Q"></div><div id="Body" data-fill></div></div>
+  <div id="O" data-layout="overlay" style="height: 80px"><div id="Fade" part="t.fade" data-anchor="bottom-edge"></div></div>
 </div>
 <style>#Root { display: flex; flex-direction: column; width: 600px; } #G > div, #T1, #W > div, #N > div, #S > div, #Q { height: 10px; }
 @container (width < 400px) { #Q { width: 50px; } }</style>"#,
@@ -3013,12 +3015,12 @@ fn layout_primitives_are_the_styles_and_answer_their_container() {
             Viewport::new(800.0, 600.0),
         );
         [
-            "G1", "G2", "G3", "T1", "W1", "W2", "N1", "N2", "Side", "Main", "Q", "Body",
+            "G1", "G2", "G3", "T1", "W1", "W2", "N1", "N2", "Side", "Main", "Q", "Body", "O", "Fade",
         ]
         .map(|p| at(&d.ui, p))
     };
     let e = laid(None);
-    let [g1, g2, g3, t1, w1, w2, n1, n2, side, main, q, body] = &e;
+    let [g1, g2, g3, t1, w1, w2, n1, n2, side, main, q, body, o, fade] = &e;
     assert!(
         g1.y == g2.y && g2.y == g3.y && (g2.x - g1.x - g1.width - 4.0).abs() < 0.5,
         "three 140px tiles fit one 600px row, a tight gap apart: {g1:?} {g2:?}"
@@ -3035,6 +3037,10 @@ fn layout_primitives_are_the_styles_and_answer_their_container() {
         (body.height - (60.0 - 10.0 - 8.0)).abs() < 0.5,
         "the fill child takes the rest: {body:?}"
     );
+    assert!(
+        fade.width == o.width && fade.height == 16.0 && fade.y + fade.height == o.y + o.height,
+        "a fade lies flush along its overlay's bottom, --fade-size tall: {fade:?} in {o:?}"
+    );
     let e = laid(Some(
         ":root { --layout-tile: 250px; --layout-gap-tight: 20px; }",
     ));
@@ -3043,4 +3049,77 @@ fn layout_primitives_are_the_styles_and_answer_their_container() {
         g1.y == g2.y && g3.y > g1.y && (g2.x - g1.x - g1.width - 20.0).abs() < 0.5,
         "the pack's tile and gap: two to a row, 20px apart: {g1:?} {g2:?} {g3:?}"
     );
+}
+
+/// Roles reach what a component draws beyond boxes (docs/ui.md §3.1): a
+/// zone washes and hatches in its own tone, and an SVG shape named for a
+/// meter's track strokes its ring instead of filling a box. Wrong: a
+/// tone mixed where the tokens are declared (`:root`, where the zone's
+/// colour is unknown, so no wash at all), or a track's box background
+/// on a vector part.
+#[test]
+fn roles_dress_zones_and_vector_parts() {
+    let d = mounted(
+        ui_with_font(test_font()),
+        r#"<meta name="parts" content="t.zone t.track">
+<div id="Root" data-layout="stack">
+  <div id="Zone" part="t.zone" data-tone="danger" style="width: 60px; height: 60px"></div>
+  <svg viewBox="0 0 22 22" style="width: 44px; height: 44px"><circle part="t.track" cx="11" cy="11" r="9" fill="none"></circle></svg>
+</div>"#,
+        &[],
+        Viewport::new(400.0, 300.0),
+    );
+    let shapes: Vec<_> =
+        d.ui.frame()
+            .items
+            .iter()
+            .filter_map(|i| match &i.cmd {
+                DrawCmd::Shape { shape, .. } => Some(shape.clone()),
+                _ => None,
+            })
+            .collect();
+    let zone: Vec<_> = shapes.iter().filter(|s| s.center.y < 60.0).collect();
+    let washed = zone.iter().any(|s| match &s.paint {
+        og_draw::UiPaint::Solid(c) => c[0] > 0.9 && (c[3] - 0.2).abs() < 0.02,
+        _ => false,
+    });
+    let hatched = zone
+        .iter()
+        .any(|s| matches!(s.paint, og_draw::UiPaint::GradientImage(_)));
+    assert!(
+        washed && hatched,
+        "a danger zone's wash and hatch: {zone:#?}"
+    );
+    let ring: Vec<_> = shapes.iter().filter(|s| s.center.y > 60.0).collect();
+    assert!(
+        !ring.is_empty()
+            && ring
+                .iter()
+                .all(|s| matches!(s.mode, og_draw::UiMode::Stroke(_))),
+        "a vector track strokes its ring, and paints no box: {ring:#?}"
+    );
+}
+
+/// A shared motion given only its start (`og-stamp-in` from a larger
+/// scale) runs to the part's own state, which for a part with no `scale`
+/// is none: no scaling, 1. Wrong: the missing end read as the keyword
+/// `none`, which a number property refuses, so the stamp warns and never
+/// plays.
+#[test]
+fn a_from_only_scale_ends_at_no_scaling() {
+    let mut d = mounted(
+        ui_with_font(test_font()),
+        r#"<column id="Root"><div id="B" data-motion="stamp"></div></column>
+<style>#B { width: 40px; height: 40px; background: #ff0000; }</style>"#,
+        &[],
+        Viewport::new(400.0, 300.0),
+    );
+    let mut warnings = Vec::new();
+    for _ in 0..60 {
+        d.step(InputFrame::default());
+        warnings.extend(d.ui.frame().warnings.iter().cloned());
+    }
+    assert!(warnings.is_empty(), "{warnings:?}");
+    let b = at(&d.ui, "B");
+    assert_eq!((b.width, b.height), (40.0, 40.0));
 }

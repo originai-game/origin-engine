@@ -200,7 +200,7 @@
      from motion.css; a pack retunes one here, or redefines the keyframes
      of its name. `change` is the transition every interactive role part
      (row, cell, card, tab, badge) takes on hover, press and selection. */
-  --role-change-motion: background-color var(--motion-ui-duration) var(--motion-ui-easing), border-color var(--motion-ui-duration) var(--motion-ui-easing), box-shadow var(--motion-ui-duration) var(--motion-ui-easing), color var(--motion-ui-duration) var(--motion-ui-easing), scale var(--motion-duration-instant) var(--motion-easing-out);
+  --role-change-motion: opacity var(--motion-ui-duration) var(--motion-ui-easing), background-color var(--motion-ui-duration) var(--motion-ui-easing), border-color var(--motion-ui-duration) var(--motion-ui-easing), box-shadow var(--motion-ui-duration) var(--motion-ui-easing), color var(--motion-ui-duration) var(--motion-ui-easing), scale var(--motion-duration-instant) var(--motion-easing-out), translate var(--motion-ui-duration) var(--motion-ui-easing), rotate var(--motion-ui-duration) var(--motion-ui-easing);
   --role-cell-pressed-scale: var(--motion-scale-press);
   --role-enter-motion: og-rise-in var(--motion-named-enter-duration) var(--motion-named-enter-easing) both;
   --role-exit-motion: og-fade-out var(--motion-named-exit-duration) var(--motion-named-exit-easing) both;
@@ -213,6 +213,81 @@
   --role-spin-motion: og-spin var(--motion-duration-turn) linear infinite;
   --role-ping-motion: og-ping var(--motion-duration-ping) var(--motion-easing-out) infinite;
   --role-shimmer-motion: og-shimmer var(--motion-duration-sweep) var(--motion-easing-in-out) infinite;
+  /* A figure that flies up off its anchor and fades (a damage number);
+     under reduced motion it fades where it stands. */
+  --role-float-motion: og-float-out var(--motion-duration-turn) var(--motion-easing-out) both;
+  /* A meter's ghost fill: its colour, and how it follows the fill down. */
+  --role-fill-ghost-color: var(--tone-damage);
+  --role-ghost-motion: inline-size var(--motion-duration-slow) var(--motion-easing-out) var(--motion-duration-slow), block-size var(--motion-duration-slow) var(--motion-easing-out) var(--motion-duration-slow);
+  --role-float-still-motion: og-fade-out var(--motion-duration-turn) var(--motion-easing-out) both;
+
+  /* Fade: a scroller's cue that it holds more, from clear to `fill` over
+     `size`; a scroller pads its end by `size` so its last item clears it. */
+  --role-fade-fill: var(--panel);
+  --role-fade-size: var(--space-lg);
+
+  /* What a disabled row, cell or card shows dims to this. */
+  --role-disabled-content-opacity: var(--opacity-dim);
+  /* A down row, cell, card or frame (`data-down`) dims to this. */
+  --role-down-opacity: var(--opacity-dim);
+  /* A cell's done and active (in progress) rims. */
+  --role-cell-done-rim: var(--success);
+  --role-cell-active-rim: var(--primary);
+  --role-cell-active-shadow: 0 0 var(--space-md) var(--primary);
+  /* A former value: its ink (struck through). */
+  --role-former-ink: var(--ink-muted);
+  /* Ribbon: a strip of strong colour with its own ink. */
+  --role-ribbon-fill: var(--primary);
+  --role-ribbon-pad: var(--space-xxs) var(--space-sm);
+  --role-ribbon-radius: 0px;
+  --role-ribbon-text: var(--text-caption);
+  /* Skeleton: a stand-in while loading, and the sheen that sweeps it. */
+  --role-skeleton-fill: var(--well);
+  --role-skeleton-radius: var(--radius-control);
+  --role-sheen-fill: var(--line);
+  --role-sheen-width: 40%;
+  /* Divider: a bar a player drags, and its grip. */
+  --role-divider-fill: var(--line);
+  --role-divider-hover-fill: var(--primary);
+  --role-grip-fill: var(--ink-muted);
+  /* Notch: a hairline mark across a meter (a segment's end). */
+  --role-notch-ink: var(--line-strong);
+  /* Zone: an area marked on the world or a board, in its tone (`ink`
+     with none): a rim, a wash of `wash` of the tone and, for danger,
+     stripes of `hatch` of it, `hatch-width` wide every `hatch-step`. */
+  --role-zone-ink: var(--line-strong);
+  --role-zone-rim-width: var(--stroke-thick);
+  --role-zone-wash: 20%;
+  --role-zone-hatch: 45%;
+  --role-zone-hatch-width: var(--stroke-thick);
+  --role-zone-hatch-step: var(--space-sm);
+  /* Vector parts: a ring's track and a cooldown's sweep (a fill takes
+     --fill-color), a chart's series, area and grid lines, a graph's
+     links. */
+  --role-track-stroke: var(--well);
+  --role-sweep-ink: var(--scrim);
+  --role-series-color: var(--gold);
+  --role-series-width: 2px;
+  --role-series-area-opacity: var(--opacity-wash);
+  --role-gridline-ink: var(--line);
+  --role-gridline-dash: none;
+  /* A tail is its frame's ground and rim; a component whose frame wears
+     another (a shout) sets these on the tail. */
+  --role-tail-fill: var(--frame-fill);
+  --role-tail-rim: var(--frame-rim);
+  --role-tail-rim-width: 0px;
+  /* A glyph's stroke width (in its view box's units). */
+  --role-glyph-width: 2px;
+  /* A muted picture's opacity. */
+  --role-picture-muted-opacity: var(--opacity-dim);
+  --role-link-stroke: var(--line-strong);
+  --role-link-width: 3px;
+  --role-link-dash: 6 6;
+  --role-link-done-stroke: var(--success);
+  --role-link-active-stroke: var(--primary);
+
+  /* Edge mask: how far a window (`data-edge`) fades to clear at its ends. */
+  --role-edge-fade: var(--size-xl);
 
   /* Layout: the primitives' (`data-layout`) sizes. The gap scale runs
      hair < tight < gap < loose < wide; a denser HUD is these steps set

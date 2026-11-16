@@ -62,7 +62,11 @@ pub(crate) fn initial(property: &str) -> Option<&'static str> {
     Some(match property {
         "box-shadow" | "text-shadow" | "filter" | "backdrop-filter" | "transform" | "clip-path"
         | "mask-image" | "mask" | "background-image" | "max-width" | "max-height"
-        | "perspective" | "translate" | "rotate" | "scale" => "none",
+        | "perspective" | "translate" | "rotate" => "none",
+        // `none` is no scaling, which interpolates as 1 (CSS Transforms 2
+        // §5.3); og-ui's `scale` is a number, so a keyframe's missing end
+        // is that number.
+        "scale" => "1",
         "background-color" => "transparent",
         "outline-color"
         | "text-decoration-color"

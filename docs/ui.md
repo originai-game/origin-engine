@@ -1578,7 +1578,7 @@ holds the built-ins to it). Motion is the roles' too. An interactive role
 part (row, cell, card, tab, badge) eases between its states by
 `--change-motion`, and a cell gives under a press. A part asks for a shared
 motion by meaning with `data-motion` (`enter`, `exit`, `pop`, `stamp`,
-`beat`, `pulse`, `spin`, `ping`, `shimmer`), which plays `--<name>-motion`:
+`beat`, `pulse`, `spin`, `ping`, `shimmer`, `float`), which plays `--<name>-motion`:
 an `animation` over one of the default style's shared keyframes
 (`og-fade-in`, `og-fade-out`, `og-rise-in`, `og-drop-in`, `og-pop-in`,
 `og-stamp-in`, `og-beat`, `og-pulse`, `og-spin`, `og-ping`, `og-shimmer`),
@@ -1586,7 +1586,7 @@ timed from motion.css. A pack retunes a motion by its token or redefines
 its keyframes: a keyframes name is its highest layer's definition, so a
 pack's (`og-pack`) replaces the default style's (`og-default`), and a
 document's own keyframes of a name replace both. Under reduced motion
-every `data-motion` but `spin` stops. A built-in component defines no
+every `data-motion` but `spin` stops, and a `float` (a damage number flying off its anchor) fades where it stands. `data-motion=change` gives a part that is no interactive role `--change-motion`, which eases opacity, colours, shadows, scale, translate and rotate. A built-in component defines no
 `@keyframes` of its own and names no keyframes in an `animation`. The role rules sit in `:where()`, so any pack or document rule wins.
 Layout is the style's as well. An element asks for a shape by meaning with
 `data-layout`, the primitives of Every Layout: `stack` (a column),
@@ -1605,7 +1605,13 @@ covers), `shell` (header, body, footer filling its container, which is an
 `fill`, `--layout-anchor-inset` in). A `data-fill` child of a primitive (and
 a `scroll`) takes the room the others leave. A child is placed by its own
 mark, never by its position, so a primitive's rules are candidates only for
-the elements that carry one. Children are spaced by a step
+the elements that carry one. A primitive goes on an HTML box, never on a `<button>` (a
+control's box is its own): a button's face is a `div` inside it. A
+`scroll` with `data-from=end` is a log that starts at its foot, and a
+`cluster` with it starts at its end corner, later rows above. A
+component's own `@container` rules may still change its layout (a row
+that becomes a grid, a direction reversed, a snapping row on a phone):
+they are layout. Children are spaced by a step
 of the layout scale, `data-gap` `none`, `hair`, `tight`, `loose` or
 `wide` (none given: `--layout-gap`, between tight and loose), never by a
 size, so a pack (or one
@@ -1645,8 +1651,24 @@ it shows (`RacingLapHud.readout`, `RacingStandings.place`,
 | `name` | `--name-font/size/tracking/transform/ink/shadow`, `--name-selected-ink` (all unset by default: the component's own type stands) | selected |
 | `picture` | `--picture-fill/rim/rim-width/radius/shadow` (unset by default) | |
 | `tab` | the core tabs' `--tabs-tab-fill/hover-fill/selected-fill/ink/selected-ink`, `--tabs-font/tracking/transform` | hover, selected |
-| any part | `--trend-up/down`, `--tone-damage/heal/crit/success/danger/warn/info` | `data-trend`, `data-tone` |
+| any part | `--trend-up/down`, `--tone-damage/heal/crit/success/danger/warn/info`, `--primary` | `data-trend`, `data-tone` (also `primary`) |
 | any part, motion | `--change-motion`, `--cell-pressed-scale`, `--enter/exit/pop/stamp/beat/pulse/spin/ping/shimmer-motion`, `--pulse-opacity` | hover, pressed, selected (row, cell, card, tab, badge); `data-motion` |
+| `tag` (text over the scene) | `--tag-halo/fill/pad/radius` | |
+| `fade` (a scroller's cue that it holds more) | `--fade-fill/size` | at `data-anchor=bottom-edge` (or `top-edge`, reversed) in an overlay; takes no pointer |
+| `former` (a price before its discount) | `--former-ink` | struck through |
+| `ribbon` | `--ribbon-fill/pad/radius/text`; its ink is `contrast-color()` of its fill | `data-tone` |
+| `skeleton`, `sheen` | `--skeleton-fill/radius`, `--sheen-fill/width` | a sheen with `data-motion=shimmer` sweeps inside its skeleton's box |
+| `divider`, `grip`, `notch` | `--divider-fill/hover-fill`, `--grip-fill`, `--notch-ink` | hover |
+| `zone` | `--zone-ink/rim-width`, `--zone-wash/hatch` (percentages of its tone), `--zone-hatch-width/hatch-step` | `data-tone`; danger hatches |
+| `sweep` (a cooldown's veil) | `--sweep-ink` | takes no pointer |
+| vector parts: an SVG shape named `track`, `fill`, `sweep`, `series`, `area`, `gridline`, `link`, `tail` | `--track-stroke`, `--fill-color`, `--sweep-ink`, `--series-color/width/area-opacity`, `--gridline-ink/dash`, `--link-stroke/width/dash/done-stroke/active-stroke`, `--tail-fill/rim/rim-width` | stroke and fill instead of a box; `data-tone` on a series or area, `data-done` and `data-active` on a link |
+| `glyph` (a stroked SVG mark: check, chevron) | `--glyph-width` | in its text's colour |
+| `picture` set back | `--picture-muted-opacity` | `data-muted` |
+| `figure`, `badge` numerals | `--figure-size/weight` (unset by default) | tabular numerals |
+| a window onto more (`data-edge` `x` or `y`) | `--edge-fade` | its ends fade to clear (a mask) |
+| `cell`, `dot` shape | `--cell-done-rim`, `--cell-active-rim/shadow` | `data-shape` round, square, hex (and diamond for a dot); `data-done`, `data-active` on a cell |
+| any row, cell, card or frame | `--disabled-content-opacity`, `--down-opacity` | disabled: its picture, icon and figure dim (a frame's words too); `data-down`: all of it dims |
+| a meter's `fill` | `--fill-ghost-color`, `--ghost-motion` | `data-ghost` (the loss left behind, shrinking after) |
 | `data-layout`, `data-gap` | `--layout-gap`, `--layout-gap-hair/tight/loose/wide`, `--layout-sidebar-width/sidebar-content-min/switch-at/tile/measure/ratio/anchor-inset` | `data-side`, `data-principal`, `data-fill`, `data-anchor` on a child |
 | any role part | `--team1`, `--team2` | `data-team=a` and `data-team=b`: the team's colour as its ink and rim |
 

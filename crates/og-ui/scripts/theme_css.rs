@@ -191,7 +191,7 @@ const ROLE_RULES: &str = r#"  /* Roles: frame, plate, band, title, row, cell, ca
   :where([part$=".row"]) { border-radius: var(--row-radius); corner-shape: var(--row-corner-shape); background: var(--row-fill); color: var(--ink); }
   :where([part$=".row"]:hover) { background: var(--row-hover-fill); }
   :where([part$=".row"]:active) { background: var(--row-pressed-fill); }
-  :where([part$=".row"]:where([aria-selected=true], [aria-current]:not([aria-current=false]), [data-selected=true])) {
+  :where([part$=".row"]:where([aria-selected=true], [aria-current]:not([aria-current=false]), [data-selected=true], [aria-pressed=true])) {
     background: var(--row-selected-fill);
     box-shadow: var(--row-selected-edge);
     color: var(--ink-selected);
@@ -208,7 +208,7 @@ const ROLE_RULES: &str = r#"  /* Roles: frame, plate, band, title, row, cell, ca
   }
   :where([part$=".cell"]:hover) { box-shadow: var(--cell-hover-shadow); }
   :where([part$=".cell"]:active) { background: var(--cell-pressed-fill); }
-  :where([part$=".cell"]:where([aria-selected=true], [aria-current]:not([aria-current=false]), [data-selected=true])) { border-color: var(--cell-selected-rim); }
+  :where([part$=".cell"]:where([aria-selected=true], [aria-current]:not([aria-current=false]), [data-selected=true], [aria-pressed=true])) { border-color: var(--cell-selected-rim); }
   :where([part$=".cell"]:where([data-rarity=common])) { background: var(--cell-common-fill); box-shadow: var(--cell-common-shadow); }
   :where([part$=".cell"]:where([data-rarity=uncommon])) { background: var(--cell-uncommon-fill); box-shadow: var(--cell-uncommon-shadow); }
   :where([part$=".cell"]:where([data-rarity=rare])) { background: var(--cell-rare-fill); box-shadow: var(--cell-rare-shadow); }
@@ -230,7 +230,7 @@ const ROLE_RULES: &str = r#"  /* Roles: frame, plate, band, title, row, cell, ca
   /* A card sizes its headline through the inherited token, as a band its
      title: the card's title is one step up from a row's name. */
   :where([part$=".card"]) { --headline-text: var(--headline-card-text); }
-  :where([part$=".card"]:where([aria-selected=true], [aria-current]:not([aria-current=false]), [data-selected=true])) { border-color: var(--card-selected-rim); }
+  :where([part$=".card"]:where([aria-selected=true], [aria-current]:not([aria-current=false]), [data-selected=true], [aria-pressed=true])) { border-color: var(--card-selected-rim); }
   :where([part$=".badge"]) {
     padding: var(--badge-pad);
     font: var(--badge-text);
@@ -246,7 +246,10 @@ const ROLE_RULES: &str = r#"  /* Roles: frame, plate, band, title, row, cell, ca
      stops at it. A bare frame has no fill and passes it on. */
   :where([part$=".frame"]:not(.bare), [part$=".band"], [part$=".row"], [part$=".cell"], [part$=".card"],
          [part$=".badge"], [part$=".well"], [part$=".tab"], button, badge) { text-shadow: none; }
-  :where([part$=".figure"]) { font-family: var(--figure-font); color: var(--figure-ink); text-shadow: var(--figure-shadow, revert-layer); }
+  :where([part$=".figure"], [part$=".badge"]) { font-variant-numeric: tabular-nums; }
+  /* A figure's size and weight are unset by default; a component sets
+     --figure-size and --figure-weight on a figure that stands above the rest. */
+  :where([part$=".figure"]) { font-size: var(--figure-size, revert-layer); font-weight: var(--figure-weight, revert-layer); font-family: var(--figure-font); color: var(--figure-ink); text-shadow: var(--figure-shadow, revert-layer); }
   :where([part$=".headline"]) { font: var(--headline-text); font-weight: var(--headline-weight); color: var(--headline-ink); }
   :where([part$=".caption"]) { font: var(--caption-text); color: var(--caption-ink); }
   :where([part$=".dot"]) {
@@ -257,7 +260,9 @@ const ROLE_RULES: &str = r#"  /* Roles: frame, plate, band, title, row, cell, ca
     color: var(--dot-ink);
   }
   :where([part$=".track"]) { border-radius: var(--track-radius); background: var(--track-fill); box-shadow: var(--track-shadow); }
-  :where([part$=".fill"]) { background: var(--fill-gloss), var(--fill-color); }
+  :where([part$=".fill"]:not(anchor)) { background: var(--fill-gloss), var(--fill-color); }
+  /* A mass of bars (`<anchor mass>`) draws in its colour. */
+  :where(anchor[part$=".fill"]) { color: var(--fill-color); }
   :where([part$=".label"], [part$=".heading"]) {
     font-family: var(--label-font);
     letter-spacing: var(--label-tracking);
@@ -274,7 +279,7 @@ const ROLE_RULES: &str = r#"  /* Roles: frame, plate, band, title, row, cell, ca
     color: var(--name-ink, revert-layer);
     text-shadow: var(--name-shadow, revert-layer);
   }
-  :where([part$=".name"]:where([aria-selected=true], [aria-current]:not([aria-current=false]), [data-selected=true])) {
+  :where([part$=".name"]:where([aria-selected=true], [aria-current]:not([aria-current=false]), [data-selected=true], [aria-pressed=true])) {
     color: var(--name-selected-ink, var(--name-ink, revert-layer));
   }
   /* A picture (a portrait, an avatar, a jacket, art), unset by default. */
@@ -293,7 +298,7 @@ const ROLE_RULES: &str = r#"  /* Roles: frame, plate, band, title, row, cell, ca
     text-transform: var(--tabs-transform, revert-layer);
   }
   :where([part$=".tab"]:hover) { background: var(--tabs-tab-hover-fill, var(--tabs-tab-fill, revert-layer)); }
-  :where([part$=".tab"]:where([aria-selected=true], [aria-current]:not([aria-current=false]), [data-selected=true])) {
+  :where([part$=".tab"]:where([aria-selected=true], [aria-current]:not([aria-current=false]), [data-selected=true], [aria-pressed=true])) {
     background: var(--tabs-tab-selected-fill, revert-layer);
     color: var(--tabs-tab-selected-ink, revert-layer);
   }
@@ -311,7 +316,7 @@ const ROLE_RULES: &str = r#"  /* Roles: frame, plate, band, title, row, cell, ca
   }
   /* A selected row's ground is the selection, too light for a team's ink
      in the dark scheme: it keeps the selected ink, its team in its rim. */
-  :where([part$=".row"][data-team]:where([aria-selected=true], [aria-current]:not([aria-current=false]), [data-selected=true])) {
+  :where([part$=".row"][data-team]:where([aria-selected=true], [aria-current]:not([aria-current=false]), [data-selected=true], [aria-pressed=true])) {
     color: var(--ink-selected);
   }
   :where([data-trend=up]) { color: var(--trend-up); }
@@ -323,11 +328,92 @@ const ROLE_RULES: &str = r#"  /* Roles: frame, plate, band, title, row, cell, ca
   :where([data-tone=danger]) { color: var(--tone-danger); }
   :where([data-tone=warn]) { color: var(--tone-warn); }
   :where([data-tone=info]) { color: var(--tone-info); }
+  :where([data-tone=primary]) { color: var(--primary); }
   /* A meter's fill in a tone takes its colour. */
   :where([part$=".fill"][data-tone=success]) { --fill-color: var(--tone-success); }
   :where([part$=".fill"][data-tone=danger]) { --fill-color: var(--tone-danger); }
   :where([part$=".fill"][data-tone=warn]) { --fill-color: var(--tone-warn); }
   :where([part$=".fill"][data-tone=info]) { --fill-color: var(--tone-info); }
+  /* Text over the scene: its halo, and a ground of its own where a pack
+     gives one. */
+  :where([part$=".tag"]) { text-shadow: var(--tag-halo); background: var(--tag-fill); padding: var(--tag-pad); border-radius: var(--tag-radius); }
+  /* What a disabled row, cell or card shows (its picture, icon, figure)
+     dims with its words; a disabled frame's words take the disabled ink. */
+  :where([part$=".frame"]:is(:disabled, [aria-disabled=true])) { color: var(--ink-disabled); }
+  :where(:is([part$=".row"], [part$=".cell"], [part$=".card"], [part$=".frame"]):is(:disabled, [aria-disabled=true]) :is([part$=".picture"], [part$=".icon"], [part$=".figure"], og-icon, img)) { opacity: var(--disabled-content-opacity); }
+  /* A cell's own states beyond selection: done, active (in progress), and
+     a shape (`data-shape` round, square, hex) a node or token takes. */
+  :where([part$=".cell"]:where([data-done=true])) { border-color: var(--cell-done-rim); }
+  :where([part$=".cell"]:where([data-active=true])) { border-color: var(--cell-active-rim); box-shadow: var(--cell-active-shadow); }
+  :where(:is([part$=".cell"], [part$=".dot"])[data-shape=round]) { border-radius: var(--radius-capsule); }
+  :where([part$=".cell"][data-shape=square]) { border-radius: var(--cell-radius); }
+  :where([part$=".dot"][data-shape=square]) { border-radius: 0; }
+  :where(:is([part$=".cell"], [part$=".dot"])[data-shape=hex]) { corner-shape: bevel; border-radius: 25% / 50%; }
+  :where([part$=".dot"][data-shape=diamond]) { border-radius: 0; rotate: 45deg; }
+  /* Down (a fallen ally, a spent turn): a whole row, cell, card or frame
+     dims, its actions aside. */
+  :where(:is([part$=".row"], [part$=".cell"], [part$=".card"], [part$=".frame"])[data-down=true]) { opacity: var(--down-opacity); }
+  /* A former value (a price before its discount): struck and quieter. */
+  :where([part$=".former"]) { text-decoration: line-through; color: var(--former-ink); }
+  /* A ribbon: a strip of strong colour (a sale, a new item, a rank) whose
+     ink is the readable contrast of its fill; `data-tone` colours it. */
+  :where([part$=".ribbon"]) { padding: var(--ribbon-pad); border-radius: var(--ribbon-radius); background: var(--ribbon-fill); color: contrast-color(var(--ribbon-fill)); font: var(--ribbon-text); }
+  :where([part$=".ribbon"][data-tone=success]) { --ribbon-fill: var(--tone-success); }
+  :where([part$=".ribbon"][data-tone=danger]) { --ribbon-fill: var(--tone-danger); }
+  :where([part$=".ribbon"][data-tone=warn]) { --ribbon-fill: var(--tone-warn); }
+  :where([part$=".ribbon"][data-tone=info]) { --ribbon-fill: var(--tone-info); }
+  /* A skeleton stands in for content still loading; its `sheen` part
+     (with `data-motion=shimmer`) sweeps across it, cut to its box. */
+  :where([part$=".skeleton"]) { position: relative; overflow: hidden; border-radius: var(--skeleton-radius); background: var(--skeleton-fill); }
+  :where([part$=".sheen"]) { position: absolute; top: 0; bottom: 0; left: 0; inline-size: var(--sheen-width); pointer-events: none; background: linear-gradient(90deg, transparent, var(--sheen-fill), transparent); }
+  /* A divider a player drags (a split view's) and its grip. */
+  :where([part$=".divider"]) { background: var(--divider-fill); }
+  :where([part$=".divider"]:hover) { background: var(--divider-hover-fill); }
+  :where([part$=".grip"]) { border-radius: var(--radius-capsule); background: var(--grip-fill); }
+  /* A notch: a hairline mark across a meter (a segment's end, a rank). */
+  :where([part$=".notch"]) { pointer-events: none; background: var(--notch-ink); }
+  /* A zone marked on the world or a board (a placement's footprint): a
+     rim and a wash of its tone; a danger zone is hatched. */
+  :where([part$=".zone"]) { --zone-color: var(--zone-ink); border: var(--zone-rim-width) solid var(--zone-color); background: color-mix(in srgb, var(--zone-color) var(--zone-wash), transparent); }
+  :where([part$=".zone"][data-tone=success]) { --zone-color: var(--tone-success); }
+  :where([part$=".zone"][data-tone=warn]) { --zone-color: var(--tone-warn); }
+  :where([part$=".zone"][data-tone=info]) { --zone-color: var(--tone-info); }
+  :where([part$=".zone"][data-tone=danger]) {
+    --zone-color: var(--tone-danger);
+    background: repeating-linear-gradient(45deg, color-mix(in srgb, var(--zone-color) var(--zone-hatch), transparent) 0 var(--zone-hatch-width), transparent 0 var(--zone-hatch-step)), color-mix(in srgb, var(--zone-color) var(--zone-wash), transparent);
+  }
+  /* Vector parts (an SVG shape named for a role) paint with stroke and
+     fill: a ring's track and fill and a cooldown's sweep, a chart's
+     series, its area and grid lines, a graph's links (each an SVG shape,
+     so a text part of the same name is not dressed). */
+  :where(:is(circle, ellipse, path, line, polyline, polygon, rect)[part$=".track"]) { background: none; stroke: var(--track-stroke); }
+  :where(:is(circle, ellipse, path, line, polyline, polygon, rect)[part$=".fill"]) { background: none; stroke: var(--fill-color); }
+  :where([part$=".sweep"]) { pointer-events: none; background: var(--sweep-ink); }
+  :where(:is(circle, ellipse, path, line, polyline, polygon, rect)[part$=".sweep"]) { background: none; stroke: var(--sweep-ink); }
+  :where(:is(circle, ellipse, path, line, polyline, polygon, rect)[part$=".series"]) { fill: none; stroke: var(--series-color); stroke-width: var(--series-width); stroke-linejoin: round; stroke-linecap: round; }
+  :where(:is(circle, ellipse, path, line, polyline, polygon, rect)[part$=".area"]) { fill: var(--series-color); fill-opacity: var(--series-area-opacity); stroke: none; }
+  :where(:is([part$=".series"], [part$=".area"])[data-tone=success]) { --series-color: var(--tone-success); }
+  :where(:is([part$=".series"], [part$=".area"])[data-tone=danger]) { --series-color: var(--tone-danger); }
+  :where(:is([part$=".series"], [part$=".area"])[data-tone=warn]) { --series-color: var(--tone-warn); }
+  :where(:is([part$=".series"], [part$=".area"])[data-tone=info]) { --series-color: var(--tone-info); }
+  :where([part$=".gridline"]) { background: var(--gridline-ink); }
+  :where(:is(line, path, polyline)[part$=".gridline"]) { background: none; stroke: var(--gridline-ink); stroke-width: var(--stroke-hairline); stroke-dasharray: var(--gridline-dash); }
+  /* A glyph: a small stroked SVG mark (a check, a chevron) in its text's
+     colour. */
+  :where(:is(circle, ellipse, path, line, polyline, polygon, rect)[part$=".glyph"]) { fill: none; stroke: currentColor; stroke-width: var(--glyph-width); stroke-linecap: round; stroke-linejoin: round; }
+  /* A picture set back (scenery behind what matters, not disabled). */
+  :where([part$=".picture"][data-muted=true]) { opacity: var(--picture-muted-opacity); }
+  /* A tail (a speech bubble's) wears its frame's ground and rim. */
+  :where([part$=".tail"]) { fill: var(--tail-fill); stroke: var(--tail-rim); stroke-width: var(--tail-rim-width); }
+  :where(:is(circle, ellipse, path, line, polyline, polygon, rect)[part$=".link"]) { fill: none; stroke: var(--link-stroke); stroke-width: var(--link-width); stroke-dasharray: var(--link-dash); }
+  :where(:is(circle, ellipse, path, line, polyline, polygon, rect)[part$=".link"][data-done=true]) { stroke: var(--link-done-stroke); stroke-dasharray: none; }
+  :where(:is(circle, ellipse, path, line, polyline, polygon, rect)[part$=".link"][data-active=true]) { stroke: var(--link-active-stroke); stroke-dasharray: none; }
+  /* A fade: the cue that a scroller holds more, a band from clear to the
+     surface it sits on, which takes no pointer. It points into the
+     scroller from its edge: at the top (`data-anchor=top-edge`) it runs
+     the other way. */
+  :where([part$=".fade"]) { block-size: var(--fade-size); pointer-events: none; background: linear-gradient(transparent, var(--fade-fill)); }
+  :where([part$=".fade"][data-anchor=top-edge]) { background: linear-gradient(var(--fade-fill), transparent); }
   /* Motion. An interactive role part eases between its states; a cell
      gives under a press. */
   :where([part$=".row"], [part$=".cell"], [part$=".card"], [part$=".tab"], [part$=".badge"]) { transition: var(--change-motion); }
@@ -343,8 +429,15 @@ const ROLE_RULES: &str = r#"  /* Roles: frame, plate, band, title, row, cell, ca
   :where([data-motion=spin]) { animation: var(--spin-motion); }
   :where([data-motion=ping]) { animation: var(--ping-motion); }
   :where([data-motion=shimmer]) { animation: var(--shimmer-motion); }
+  :where([data-motion=float]) { animation: var(--float-motion); }
+  /* A part that only eases between its states (a fanned card lifting). */
+  :where([data-motion=change]) { transition: var(--change-motion); }
+  /* A meter's ghost: the fill a loss leaves behind, shrinking after it. */
+  :where([part$=".fill"][data-ghost=true]) { --fill-color: var(--fill-ghost-color); transition: var(--ghost-motion); }
   @media (prefers-reduced-motion: reduce) {
-    :where([data-motion]:not([data-motion=spin])) { animation: none; }
+    :where([data-motion]:not([data-motion=spin], [data-motion=float])) { animation: none; }
+    /* A floating figure still leaves: it fades where it stands. */
+    :where([data-motion=float]) { animation: var(--float-still-motion); }
     :where([part$=".cell"]:active) { scale: 1; }
   }
   /* The shared motions, each from (or to) the part's own state, so one
@@ -359,6 +452,7 @@ const ROLE_RULES: &str = r#"  /* Roles: frame, plate, band, title, row, cell, ca
   @keyframes og-pulse { to { opacity: var(--pulse-opacity); } }
   @keyframes og-spin { from { rotate: 0deg; } to { rotate: 360deg; } }
   @keyframes og-ping { from { opacity: 1; scale: var(--motion-scale-shrink); } to { opacity: 0; scale: 2; } }
+  @keyframes og-float-out { from { scale: var(--motion-scale-pop); } 20% { scale: 1; opacity: 1; } to { translate: 0 calc(var(--space-3xl) * -1); opacity: 0; } }
   @keyframes og-shimmer { from { translate: -100% 0; } to { translate: 420% 0; } }
   /* Layout primitives (Every Layout's): an element asks for a shape by
      meaning (`data-layout`), never by its flex or grid lines, and spaces
@@ -383,6 +477,15 @@ const ROLE_RULES: &str = r#"  /* Roles: frame, plate, band, title, row, cell, ca
      a component's own `@container` rules read it with no declaration. */
   :where([data-layout=shell]) { display: flex; flex-direction: column; inline-size: stretch; block-size: stretch; gap: var(--layout-gap); container-type: inline-size; }
   :where([data-layout=scroll]) { display: flex; flex-direction: column; gap: var(--layout-gap); overflow-y: auto; overscroll-behavior: contain; min-block-size: 0; }
+  /* A log that starts at its foot (chat, a combat log): newest last, shown
+     first. */
+  :where([data-layout=scroll][data-from=end]) { flex-direction: column-reverse; }
+  /* A cluster from its end: the first child nearest the end corner (touch
+     buttons under a thumb), later rows above. */
+  :where([data-layout=cluster][data-from=end]) { flex-direction: row-reverse; flex-wrap: wrap-reverse; }
+  /* A window onto more (a compass strip, a reel) fades to clear at its ends. */
+  :where([data-edge=x]) { mask-image: linear-gradient(90deg, transparent, #000 var(--edge-fade), #000 calc(100% - var(--edge-fade)), transparent); }
+  :where([data-edge=y]) { mask-image: linear-gradient(transparent, #000 var(--edge-fade), #000 calc(100% - var(--edge-fade)), transparent); }
   /* Children are placed by their own mark, never by position, so no rule
      here is a candidate for an element that carries none. */
   :where([data-layout] > [data-fill], [data-layout] > [data-layout=scroll]) { flex: 1 1 0; min-block-size: 0; min-inline-size: 0; }
@@ -403,6 +506,9 @@ const ROLE_RULES: &str = r#"  /* Roles: frame, plate, band, title, row, cell, ca
   :where([data-anchor=top]) { top: var(--layout-anchor-inset); left: 0; right: 0; display: flex; justify-content: center; }
   :where([data-anchor=bottom]) { bottom: var(--layout-anchor-inset); left: 0; right: 0; display: flex; justify-content: center; }
   :where([data-anchor=center]) { inset: 0; display: flex; align-items: center; justify-content: center; }
+  /* Flush along a whole edge (a scroller's fade). */
+  :where([data-anchor=top-edge]) { top: 0; left: 0; right: 0; }
+  :where([data-anchor=bottom-edge]) { bottom: 0; left: 0; right: 0; }
   /* The gap scale, densest first; a pack (or a subtree's own value)
      tightens a whole HUD by setting its steps. */
   :where([data-layout][data-gap=none]) { gap: 0; }

@@ -85,7 +85,8 @@ fn default_css_is_generated_from_the_design_tokens() {
     let rules = regex_lite::Regex::new(r"([^{}]+)\{").unwrap();
     for rule in rules.captures_iter(&sheet) {
         let header = rule[1].trim();
-        if header.starts_with('@') || header.starts_with(":root") {
+        // At-rules, tokens and a keyframe's percentage steps are no selectors.
+        if header.starts_with('@') || header.starts_with(":root") || header.ends_with('%') {
             continue;
         }
         for selector in CssSelector::parse_list(header).expect("valid CSS selector") {

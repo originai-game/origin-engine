@@ -151,7 +151,7 @@ itself (`--fill-color: var(--mana)`), never as a look property. A
 genre-wide or per-state colour is a `data-tone` (`success`, `danger`,
 `warn`, `info`) on the part. A part that moves asks for a shared motion
 with `data-motion` (`enter`, `exit`, `pop`, `stamp`, `beat`, `pulse`,
-`spin`, `ping`, `shimmer`; `<svg part="Spinner.ring" data-motion="spin">`)
+`spin`, `ping`, `shimmer`, `float`, `change`; `<svg part="Spinner.ring" data-motion="spin">`)
 and defines no `@keyframes` of its own: the keyframes and their timing are
 the style's. A look or motion property in a component's `<style>`
 may read only a role token or reset (`none`, `0`, `inherit`); og-ui's
@@ -172,7 +172,9 @@ corner, edge, centre or `fill`). The primitives wrap by their container's
 width, so a component works in a sidebar and full width; a `shell` root is
 the container its own `@container` rules read. What stays in the
 component's `<style>` is only its own: a grid template, positions, sizes
-in tokens.
+in tokens. Its own `@container` rules that change only layout (a direction, a
+template, wrapping) stay. A primitive goes on an HTML box, not on a
+`<button>`: put it on the button's face `div`.
 
 Adding, renaming or removing a component file, or changing what one
 includes (its strings tables, shared pieces), changes the generated
