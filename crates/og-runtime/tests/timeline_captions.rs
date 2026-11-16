@@ -125,7 +125,7 @@ fn said(engine: u32) -> Vec<String> {
     let mut lines: Vec<_> = ui
         .probe_elements()
         .into_iter()
-        .filter(|e| e.kind == "label" && e.path.contains("Subtitles") && !e.text.is_empty())
+        .filter(|e| e.role == "text" && e.path.contains("Subtitles") && !e.text.is_empty())
         .collect();
     lines.sort_by(|a, b| a.y.total_cmp(&b.y));
     lines.into_iter().map(|e| e.text).collect()
