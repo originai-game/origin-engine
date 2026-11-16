@@ -413,16 +413,16 @@ fn each_control_is_dressed_by_its_named_parts() {
 /// expandable content is one box its rules style. Its padding (20px left,
 /// 30px top) places the content inside it over the disclosure's own, its
 /// background fills it from the details' left edge across its width, and
-/// a rule under the originating element's `[open]` (set by `open={$open}`)
-/// wins while it is open; closed, the content and its box draw nothing. Ways it could
-/// fail: the rules dropped (the content at the disclosure's own inset),
-/// the box styled as the whole details rather than its content, or the
-/// `[open]` condition not read.
+/// a rule under the originating element's `[open]` wins while it is open
+/// (`bind:open`, both ways); closed, the content and its box draw nothing.
+/// Ways it could fail: the rules dropped (the content at the disclosure's
+/// own inset), the box styled as the whole details rather than its
+/// content, or `[open]` not following the element's open state.
 #[test]
 fn details_content_styles_the_disclosures_content_box() {
     let text = r#"<meta name="component" content="t">
 <column>
-  <details id="D" summary="More" open={$open}><text id="Body">x</text></details>
+  <details id="D" summary="More" bind:open={$open}><text id="Body">x</text></details>
 </column>
 <style>
 #D { width: 300px; }
@@ -458,6 +458,12 @@ fn details_content_styles_the_disclosures_content_box() {
         (body.x - r.x, body.y - r.y),
         (20.0, 30.0),
         "its padding places the content"
+    );
+    d.set("open", json!(false));
+    assert!(d.el("Body").is_none(), "closed again: no content");
+    assert!(
+        fill(&d, red).is_none() && fill(&d, green).is_none(),
+        "closed again: no box, and [open] no longer matches"
     );
 }
 
