@@ -383,6 +383,13 @@ pub const PROPS: &[PropSpec] = &[
         doc: "CSS `scroll-padding-left` (`scroll-padding`, `-inline`, `-inline-start`).",
     },
     PropSpec {
+        name: "scrollAxisLock",
+        ty: Ty::Text,
+        on: On::All,
+        two_way: false,
+        doc: "CSS `scroll-axis-lock: auto | none` on a scroll container: a drag on one that scrolls both ways keeps to the axis it starts along (within a 2:1 slope of it) until released; `none` lets it move freely.",
+    },
+    PropSpec {
         name: "scrollInitialTarget",
         ty: Ty::Text,
         on: On::All,

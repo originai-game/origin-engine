@@ -571,7 +571,10 @@ fling; reduced motion jumps. `scroll-initial-target: nearest` (Scroll
 Snap 2) starts a scroll container that appears scrolled to the first such
 element in it, at its view's start, from its first frame (its layout runs
 again once); a target added to a container already shown does not move
-it, and floating layers' containers are not covered. A modal
+it, and floating layers' containers are not covered. A drag on a
+container that scrolls both ways keeps to the axis its first move runs
+along, within a 2:1 slope of it, until released (saved UI state);
+`scroll-axis-lock: none` (Overflow 5) lets it move freely. A modal
 `<dialog data-detents="40% 90%">` is a
 bottom sheet (full width, opened at its first detent, dragged between
 detents, swiped down to close, writing `open` back); `data-edge=

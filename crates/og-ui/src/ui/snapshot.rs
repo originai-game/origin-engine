@@ -295,6 +295,8 @@ impl Ui {
         w.u8(u8::from(p.long));
         // The element a touch press landed on (version 24).
         w.u64(s.touch_key);
+        // The axis a drag is locked to (version 25).
+        w.u8(s.drag_axis);
         // The layer stack, its viewmodels and the documents' states.
         let mut docs = self.docs.docs_state();
         if !s.clocks.is_empty() {
@@ -444,7 +446,8 @@ impl Ui {
     /// glyph ids, the state of version 19 with no text selected, and the
     /// states of versions 20 and 21, whose maps have no projective row, and
     /// the state of version 22 with each burst at its default duration,
-    /// and the state of version 23 with no touch press in progress.
+    /// the state of version 23 with no touch press in progress, and the
+    /// state of version 24 with no drag axis decided.
     /// Refused for another version, or bytes that do not read as theirs.
     pub fn upgrade_state(bytes: &[u8]) -> og_core::Result<Vec<u8>> {
         let bad = |why: String| {
@@ -467,7 +470,7 @@ impl Ui {
                 ui.interaction.state = s;
                 Ok(ui.save_state())
             }
-            11..=23 => {
+            11..=24 => {
                 let s = r.state(version).ok_or_else(|| {
                     bad(format!("truncated or malformed version {version} state"))
                 })?;
@@ -490,7 +493,7 @@ impl Ui {
                 Ok(ui.save_state())
             }
             v => Err(bad(format!(
-                "version {v}: this engine reads version {STATE_VERSION} and upgrades versions 9 and 11 to 23"
+                "version {v}: this engine reads version {STATE_VERSION} and upgrades versions 9 and 11 to 24"
             ))),
         }
     }
@@ -940,6 +943,10 @@ impl Reader<'_> {
             return Some(s);
         }
         s.touch_key = self.u64()?;
+        if version < 25 {
+            return Some(s);
+        }
+        s.drag_axis = self.u8()?;
         Some(s)
     }
 }
@@ -968,6 +975,9 @@ mod tests {
     /// The version 24 block: the element a touch press landed on.
     const V24: usize = 8;
 
+    /// The version 25 block: the axis a drag is locked to.
+    const V25: usize = 1;
+
     /// `b` without the `tail` bytes just before its layer stack.
     fn cut_before_docs(b: &[u8], tail: usize) -> Vec<u8> {
         let n = b.len();
@@ -991,7 +1001,7 @@ mod tests {
     fn without_v14_tail(b: &[u8]) -> Vec<u8> {
         cut_before_docs(
             b,
-            3 * 4 + 4 + 8 + 8 + 4 + 1 + 8 + 8 + 8 + V15 + V16 + V17 + V18 + V20 + V24,
+            3 * 4 + 4 + 8 + 8 + 4 + 1 + 8 + 8 + 8 + V15 + V16 + V17 + V18 + V20 + V24 + V25,
         )
     }
 
@@ -1122,7 +1132,7 @@ mod tests {
         ui.interaction.state.focus = 5;
         ui.interaction.state.tick = 31;
         let saved = ui.save_state();
-        let mut v14 = cut_before_docs(&saved, V15 + V16 + V17 + V18 + V20 + V24);
+        let mut v14 = cut_before_docs(&saved, V15 + V16 + V17 + V18 + V20 + V24 + V25);
         v14[..4].copy_from_slice(&14u32.to_le_bytes());
         let mut fresh = Ui::default();
         assert!(
@@ -1147,7 +1157,7 @@ mod tests {
         let mut ui = Ui::default();
         ui.interaction.state.tick = 12;
         let saved = ui.save_state();
-        let mut v15 = cut_before_docs(&saved, V16 + V17 + V18 + V20 + V24);
+        let mut v15 = cut_before_docs(&saved, V16 + V17 + V18 + V20 + V24 + V25);
         v15[..4].copy_from_slice(&15u32.to_le_bytes());
         assert!(Ui::default().restore_state(&v15).is_err());
         assert_eq!(Ui::upgrade_state(&v15).expect("version 15 upgrades"), saved);
@@ -1156,7 +1166,7 @@ mod tests {
         fresh.restore_state(&ui.save_state()).expect("restores");
         assert_eq!(fresh.interaction.state.touch_owners.get(&0xabcd), Some(&3));
         // Version 16 (no typeahead) upgrades too; a typeahead in progress round-trips.
-        let mut v16 = cut_before_docs(&saved, V17 + V18 + V20 + V24);
+        let mut v16 = cut_before_docs(&saved, V17 + V18 + V20 + V24 + V25);
         v16[..4].copy_from_slice(&16u32.to_le_bytes());
         assert_eq!(Ui::upgrade_state(&v16).expect("version 16 upgrades"), saved);
         ui.interaction.state.typeahead = ("ré".into(), 41);
@@ -1164,22 +1174,27 @@ mod tests {
         fresh.restore_state(&ui.save_state()).expect("restores");
         assert_eq!(fresh.interaction.state.typeahead, ("ré".into(), 41));
         // Version 17 (no Rive players) upgrades too.
-        let mut v17 = cut_before_docs(&saved, V18 + V20 + V24);
+        let mut v17 = cut_before_docs(&saved, V18 + V20 + V24 + V25);
         v17[..4].copy_from_slice(&17u32.to_le_bytes());
         assert_eq!(Ui::upgrade_state(&v17).expect("version 17 upgrades"), saved);
         // Versions 18 (no frozen text here: 19's bytes) and 19 (nothing
         // selected) upgrade too.
         for v in [18u32, 19] {
-            let mut old = cut_before_docs(&saved, V20 + V24);
+            let mut old = cut_before_docs(&saved, V20 + V24 + V25);
             old[..4].copy_from_slice(&v.to_le_bytes());
             assert!(Ui::default().restore_state(&old).is_err());
             assert_eq!(Ui::upgrade_state(&old).expect("upgrades"), saved, "{v}");
         }
         // Version 23 (no touch press) upgrades too.
-        let mut v23 = cut_before_docs(&saved, V24);
+        let mut v23 = cut_before_docs(&saved, V24 + V25);
         v23[..4].copy_from_slice(&23u32.to_le_bytes());
         assert!(Ui::default().restore_state(&v23).is_err());
         assert_eq!(Ui::upgrade_state(&v23).expect("version 23 upgrades"), saved);
+        // Version 24 (no drag axis) upgrades too.
+        let mut v24 = cut_before_docs(&saved, V25);
+        v24[..4].copy_from_slice(&24u32.to_le_bytes());
+        assert!(Ui::default().restore_state(&v24).is_err());
+        assert_eq!(Ui::upgrade_state(&v24).expect("version 24 upgrades"), saved);
     }
 
     /// The virtual cursor and every player's HUD layout, the edit mode, a

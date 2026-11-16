@@ -1,0 +1,6 @@
+{
+  "simulation": "unchanged",
+  "added": [
+    {"member":"ui","summary":"Scroll axis locking (CSS Overflow 5 §4): a drag on a scroll container that scrolls both ways keeps to the axis its first move runs along (within a 2:1 slope of it) until released, so a mostly-vertical swipe through a list no longer drifts sideways; `scroll-axis-lock: none` on a map or a zoomed image lets every drag move freely. UI state version 25 saves the locked axis; version 24 upgrades with none decided."}
+  ]
+}

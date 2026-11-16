@@ -554,6 +554,115 @@ fn transforms_place_and_hit_by_the_specs_matrices() {
     }
 }
 
+/// CSS Overflow 5 §4 `scroll-axis-lock`: a drag on a scroller with room
+/// both ways keeps to the axis its first move runs along when that move is
+/// within a 2:1 slope of it, the other axis's delta dropped for the whole
+/// press, even once the drag turns; a steeper diagonal stays free, as does
+/// every drag under `scroll-axis-lock: none`. Ways it could fail: no lock, the lock decided
+/// again each tick (so the turn moves the other axis), the slope test
+/// inverted, `none` ignored, or the lock kept into the next press.
+#[test]
+fn scroll_axis_lock_keeps_a_drag_to_the_axis_it_starts_along() {
+    let text = r#"<meta name="component" content="t">
+<div id="Root">
+  <div id="Lock" class="s"><div class="big"></div></div>
+  <div id="Free" class="s" style="scroll-axis-lock: none"><div class="big"></div></div>
+</div>
+<style>
+#Root { width: 800px; display: flex; flex-direction: row; align-items: start; gap: 10px; }
+.s { width: 200px; height: 200px; overflow: auto; scrollbar-width: none; }
+.big { width: 1000px; height: 1000px; }
+</style>"#;
+    // The scroller's offset after a pressed pointer follows `path` (each
+    // point relative to the press, one per tick), read while still held.
+    let drag = |d: &mut crate::support::Doc, id: &str, path: &[Vec2]| {
+        let e = d.get(id);
+        let from = Vec2::new(e.x + 100.0, e.y + 100.0);
+        let at = |d: &mut crate::support::Doc, p: Vec2, down, pressed, released| {
+            d.step(InputFrame {
+                pointer: p,
+                pointer_inside: true,
+                down,
+                pressed,
+                released,
+                ..InputFrame::default()
+            });
+        };
+        let path_of = d.get(id).path;
+        let before = d.ui.scroll_state(&path_of).unwrap();
+        at(d, from, true, true, false);
+        for &p in path {
+            at(d, from + p, true, false, false);
+        }
+        let s = d.ui.scroll_state(&path_of).unwrap();
+        at(d, from + *path.last().unwrap(), false, false, true);
+        // Let any fling settle out of the next drag's way.
+        for _ in 0..120 {
+            d.step(InputFrame::default());
+        }
+        (s.offset_x - before.offset_x, s.offset_y - before.offset_y)
+    };
+    let line = |to: Vec2| (1..=8).map(|k| to * (k as f32 / 8.0)).collect::<Vec<_>>();
+    let fresh = || {
+        let mut d = crate::support::Doc::new(text, &[]);
+        d.step(InputFrame::default());
+        d
+    };
+    // A pointer moving up and left: the content's offset grows.
+    // 40 across, 19 down: a slope under 1:2, so it keeps to x.
+    let mut d = fresh();
+    assert_eq!(
+        drag(&mut d, "Lock", &line(Vec2::new(-40.0, -19.0))),
+        (40.0, 0.0),
+        "mostly across"
+    );
+    let mut d = fresh();
+    assert_eq!(
+        drag(&mut d, "Lock", &line(Vec2::new(-19.0, -40.0))),
+        (0.0, 40.0),
+        "mostly down"
+    );
+    // 40 by 21: past 2:1, so free.
+    let mut d = fresh();
+    assert_eq!(
+        drag(&mut d, "Lock", &line(Vec2::new(-40.0, -21.0))),
+        (40.0, 21.0),
+        "diagonal"
+    );
+    // Locked to x by its first move, then turning straight down: y never moves.
+    let mut d = fresh();
+    let turn = [
+        Vec2::new(-10.0, 0.0),
+        Vec2::new(-20.0, 0.0),
+        Vec2::new(-20.0, -20.0),
+        Vec2::new(-20.0, -50.0),
+    ];
+    assert_eq!(
+        drag(&mut d, "Lock", &turn),
+        (20.0, 0.0),
+        "the lock holds through a turn"
+    );
+    // The next press decides afresh: the same document, now down first.
+    assert_eq!(
+        drag(&mut d, "Lock", &line(Vec2::new(0.0, -30.0))),
+        (0.0, 30.0),
+        "a new press is not kept to the last one's axis"
+    );
+    // scroll-axis-lock: none never locks.
+    let mut d = fresh();
+    assert_eq!(
+        drag(&mut d, "Free", &line(Vec2::new(-40.0, -10.0))),
+        (40.0, 10.0),
+        "none"
+    );
+    let mut d = fresh();
+    assert_eq!(
+        drag(&mut d, "Free", &turn),
+        (20.0, 50.0),
+        "none follows the turn"
+    );
+}
+
 /// Pointer Events 3 §9 `touch-action` and CSSOM View's `scroll-behavior`.
 /// A diagonal touch drag over a two-axis scroller pans only what the
 /// element it started on allows: `pan-y` drops the x move, `pan-left`
