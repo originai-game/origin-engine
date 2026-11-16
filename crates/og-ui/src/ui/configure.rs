@@ -104,6 +104,7 @@ impl Ui {
             },
             paint: Paint {
                 kept_spans: Vec::new(),
+                text_clips: Vec::new(),
                 part_draws: Default::default(),
                 part_changed: Default::default(),
                 decor_draws: Default::default(),

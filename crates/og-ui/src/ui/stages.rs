@@ -358,6 +358,11 @@ pub struct PaintCtx {
 pub struct Paint {
     /// This frame's command ranges kept from last frame's paint, in order.
     pub(crate) kept_spans: Vec<std::ops::Range<usize>>,
+    /// Elements open in this frame's command pass whose backgrounds are
+    /// cut to text (`background-clip: text`), innermost last: each node
+    /// and where its background ends, where the group cut to its
+    /// subtree's text goes when the subtree closes.
+    pub(crate) text_clips: Vec<(usize, usize)>,
     /// What each part of this frame draws through the UI pass, by node
     /// (made at `end` from its dressing, or the tokens).
     pub(crate) part_draws: std::collections::HashMap<usize, crate::paint::ElementDraw>,

@@ -161,46 +161,52 @@ impl ElementDraw {
         })
     }
 
-    /// Its backgrounds cut to its text (`background-clip: text`) around
-    /// `text`, the commands that draw it: the glyphs' coverage drawn
-    /// opaque in a layer of their own, the layers kept only there, then
-    /// the text as it is drawn (CSS Backgrounds 4 §2.1). `text` unchanged
-    /// when it has none.
-    pub(crate) fn clip_to_text(
+    /// Whether a background layer of it is cut to text
+    /// (`background-clip: text`, [`ElementDraw::text_clip_group`]).
+    pub(crate) fn clips_to_text(&self) -> bool {
+        self.boxes
+            .as_ref()
+            .is_some_and(|b| b.backgrounds.iter().any(|l| l.clip == LayerClip::Text))
+    }
+
+    /// Its backgrounds cut to text (`background-clip: text`, CSS
+    /// Backgrounds 4 §2.1): the text commands among `drawn` (its own text
+    /// and its descendants', each with its own map) drawn opaque in a
+    /// layer of their own, the layers kept only there, the group under
+    /// `world`, its map. Drawn where its background is, under that text,
+    /// which then draws as it is. Nothing when it has no such layer or
+    /// `drawn` no text.
+    pub(crate) fn text_clip_group(
         &self,
         theme: &Theme,
         at: &Placed,
-        text: Vec<DrawCmd>,
-    ) -> Vec<DrawCmd> {
-        let Some(b) = self
-            .boxes
-            .as_ref()
-            .filter(|b| b.backgrounds.iter().any(|l| l.clip == LayerClip::Text))
-        else {
-            return text;
+        drawn: &[(DrawCmd, crate::element::Affine)],
+        world: crate::element::Affine,
+    ) -> Vec<(DrawCmd, crate::element::Affine)> {
+        let Some(b) = self.boxes.as_ref().filter(|_| self.clips_to_text()) else {
+            return Vec::new();
         };
-        let mut out = vec![plain_layer(None)];
-        let opaque = |c: &mut DrawCmd| {
-            if let DrawCmd::StyledText { text, .. } = c {
-                *c = (**text).clone();
-            }
-            if let DrawCmd::Text { color, glow, .. } = c {
-                *color = [1.0; 4];
-                *glow = None;
-            }
-        };
-        let mut glyphs = 0;
-        for c in &text {
-            if matches!(c, DrawCmd::Text { .. } | DrawCmd::StyledText { .. }) {
-                let mut c = c.clone();
-                opaque(&mut c);
-                out.push(c);
-                glyphs += 1;
-            }
+        // The glyphs' coverage: each text opaque, unstyled, unglowing.
+        let glyphs: Vec<(DrawCmd, crate::element::Affine)> = drawn
+            .iter()
+            .filter(|(c, _)| matches!(c, DrawCmd::Text { .. } | DrawCmd::StyledText { .. }))
+            .map(|(c, m)| {
+                let mut c = match c {
+                    DrawCmd::StyledText { text, .. } => (**text).clone(),
+                    c => c.clone(),
+                };
+                if let DrawCmd::Text { color, glow, .. } = &mut c {
+                    *color = [1.0; 4];
+                    *glow = None;
+                }
+                (c, *m)
+            })
+            .collect();
+        if glyphs.is_empty() {
+            return Vec::new();
         }
-        if glyphs == 0 {
-            return text;
-        }
+        let mut out = vec![(plain_layer(None), world)];
+        out.extend(glyphs.iter().cloned());
         let on_text: Vec<BoxLayer> = b
             .backgrounds
             .iter()
@@ -220,24 +226,17 @@ impl ElementDraw {
             {
                 shape.blend = Blend::SourceIn;
             }
-            out.push(cmd);
+            out.push((cmd, world));
         }
         if on_text.len() > 1 {
             // Later layers drew over the glyphs' edges too: the glyphs cut
             // them again.
-            out.push(plain_layer(None));
-            for c in &text {
-                if matches!(c, DrawCmd::Text { .. } | DrawCmd::StyledText { .. }) {
-                    let mut c = c.clone();
-                    opaque(&mut c);
-                    out.push(c);
-                }
-            }
-            out.push(end_layer(None, at, 1.0, Blend::DestinationIn));
+            out.push((plain_layer(None), world));
+            out.extend(glyphs);
+            out.push((end_layer(None, at, 1.0, Blend::DestinationIn), world));
         }
         let o = if self.composited() { 1.0 } else { self.opacity };
-        out.push(end_layer(None, at, o, Blend::Normal));
-        out.extend(text);
+        out.push((end_layer(None, at, o, Blend::Normal), world));
         out
     }
 

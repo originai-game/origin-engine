@@ -1840,3 +1840,116 @@ fn filter_images_run_their_functions_in_order_on_the_image() {
     assert!(parse("filter(none, blur(1px))").is_err());
     assert!(parse("filter(url(a.png))").is_err());
 }
+
+/// `background-clip: text` (CSS Backgrounds 4 §2.1) cuts the background
+/// to the text of the element and of its descendants: a box whose text is
+/// all in two child paragraphs draws its gradient in a group whose
+/// coverage is both paragraphs' glyphs, opaque (the bottom layer kept on
+/// them by source-in), drawn where its background is: before either
+/// paragraph's own text, which then draws over it as it is.
+///
+/// The group goes in when the subtree closes, which moves the commands
+/// after it, so a frame that keeps the box's subtree from the last one (a
+/// sibling's text changes) must match the same state built whole. Run
+/// with `OG_UI_CHECK_BOUNDED=1` too, which compares every frame with its
+/// whole twin.
+///
+/// Ways it could fail: only the element's own (here empty) text clipping
+/// it, so nothing draws; the descendants' glyphs drawn in their own
+/// colour in the coverage; the group drawn over the text; or a reused
+/// frame holding the group twice, none, or in the wrong place.
+#[test]
+fn background_clip_text_cuts_to_the_descendants_text() {
+    let text = r#"<meta name="component" content="t">
+<meta name="prop:label" content="string">
+<column>
+  <div id="Clip"><p>alpha</p><p>beta</p></div>
+  <p id="Other">{label}</p>
+</column>
+<style>
+#Clip { width: 120px; background: linear-gradient(90deg, #ff0000, #0000ff); background-clip: text; color: rgb(0 0 0 / 0); }
+</style>"#;
+    let mut d = Doc::with_font(text, &[("label", serde_json::json!("one"))], test_font());
+    assert!(
+        d.ui.frame().warnings.is_empty(),
+        "{:?}",
+        d.ui.frame().warnings
+    );
+    let script = |d: &Doc| {
+        let items = &d.ui.frame().items;
+        let text_at = |k: usize, s: &str| {
+            matches!(&items[k].cmd, DrawCmd::Text { text, .. } if text == s)
+                || matches!(&items[k].cmd, DrawCmd::StyledText { text, .. }
+                    if matches!(&**text, DrawCmd::Text { text, .. } if text == s))
+        };
+        let gradient = items
+            .iter()
+            .position(|it| {
+                matches!(&it.cmd, DrawCmd::Shape { shape, .. }
+                    if matches!(shape.paint, og_draw::UiPaint::GradientImage(_)))
+            })
+            .expect("the clipped gradient");
+        // Its group: the layer open around it, closed at the same depth.
+        let begin = (0..gradient)
+            .rev()
+            .find(|&k| matches!(items[k].cmd, DrawCmd::BeginLayer { .. }))
+            .expect("its group");
+        let mut depth = 0;
+        let close = (begin..items.len())
+            .find(|&k| {
+                match items[k].cmd {
+                    DrawCmd::BeginLayer { .. } => depth += 1,
+                    DrawCmd::EndLayer { .. } => depth -= 1,
+                    _ => {}
+                }
+                depth == 0
+            })
+            .expect("its group closes");
+        // The bottom layer (the shorthand's transparent colour) is kept on
+        // the glyphs by source-in; the gradient then blends over it there.
+        let bottom = (begin..gradient)
+            .find(|&k| matches!(items[k].cmd, DrawCmd::Shape { .. }))
+            .expect("its bottom layer");
+        let DrawCmd::Shape { shape, .. } = &items[bottom].cmd else {
+            unreachable!()
+        };
+        assert_eq!(
+            shape.blend,
+            og_draw::UiBlend::SourceIn,
+            "kept on the glyphs"
+        );
+        // The coverage before it: both paragraphs, opaque white.
+        let coverage: Vec<(String, [f32; 4])> = items[begin + 1..bottom]
+            .iter()
+            .filter_map(|it| match &it.cmd {
+                DrawCmd::Text { text, color, .. } => Some((text.clone(), *color)),
+                _ => None,
+            })
+            .collect();
+        assert_eq!(
+            coverage,
+            [
+                ("alpha".to_string(), [1.0; 4]),
+                ("beta".to_string(), [1.0; 4])
+            ]
+        );
+        // The paragraphs' own text, after the group closes, once each.
+        let own: Vec<usize> = (close + 1..items.len())
+            .filter(|&k| text_at(k, "alpha") || text_at(k, "beta"))
+            .collect();
+        assert_eq!(own.len(), 2, "each paragraph's own text, over the group");
+    };
+    script(&d);
+    d.set("label", serde_json::json!("two"));
+    assert!(
+        d.ui.frame().stats.kept_commands > 0,
+        "the box's paint is kept"
+    );
+    script(&d);
+    let whole = Doc::with_font(text, &[("label", serde_json::json!("two"))], test_font());
+    assert_eq!(
+        d.ui.frame().items,
+        whole.ui.frame().items,
+        "a reused frame is the whole one"
+    );
+}

@@ -284,6 +284,7 @@ impl Ui {
         let mut rings: Vec<(usize, Vec<(DrawCmd, Affine)>)> = Vec::new();
         let prev_kinds = std::mem::take(&mut self.tree.prev_kinds);
         self.paint.kept_spans.clear();
+        self.paint.text_clips.clear();
         let reuse = self.paint_reuse(order, &ends, changed, &ghosts, &prev_kinds);
         // The frame has compared every written node with the one it
         // replaced: the last frame's nodes are let go.
@@ -530,13 +531,12 @@ impl Ui {
                 let behind = cmds.len();
                 cmds.extend(over_background(self));
                 let over = cmds.len();
-                // Its text, with the backgrounds cut to it when it has them.
-                let text: Vec<DrawCmd> = local.map(|(c, _)| c).collect();
-                let text = match &draw {
-                    Some(d) => d.clip_to_text(&theme, &placed(&self.tree.nodes[i]), text),
-                    None => text,
-                };
-                cmds.extend(text.into_iter().map(|c| (c, world)));
+                // Its text. Backgrounds cut to text go under it and its
+                // descendants' text when its subtree closes.
+                if draw.as_ref().is_some_and(|d| d.clips_to_text()) {
+                    self.paint.text_clips.push((i, over));
+                }
+                cmds.extend(local);
                 // Kept commands were read for missing glyphs when painted.
                 if kept_at.is_some() {
                     self.paint.kept_spans.push(from..behind);
@@ -686,6 +686,27 @@ impl Ui {
                     cmds.extend(grip.into_iter().map(|c| (c, w)));
                 }
                 let w = self.tree.nodes[j].placed.world;
+                // `background-clip: text`: its backgrounds cut to the text
+                // its subtree drew, under that text (CSS Backgrounds 4
+                // §2.1).
+                if let Some(&(_, over)) = self.paint.text_clips.last().filter(|c| c.0 == j) {
+                    self.paint.text_clips.pop();
+                    let group = self.paint.draw_of(j, &self.tree).map_or(Vec::new(), |d| {
+                        d.text_clip_group(
+                            &self.env.theme,
+                            &placed(&self.tree.nodes[j]),
+                            &cmds[over..],
+                            w,
+                        )
+                    });
+                    if !group.is_empty() {
+                        // Every later command moves: no span after it is kept.
+                        self.paint.kept_spans.retain(|r| r.end <= over);
+                        self.paint.cache.aligned.retain(|r| r.end <= over);
+                        shift_named(&mut self.paint.cache.named, over, group.len());
+                        cmds.splice(over..over, group);
+                    }
+                }
                 if let Some(d) = self.paint.draw_of(j, &self.tree) {
                     let at = placed(&self.tree.nodes[j]);
                     let hidden = self.tree.orders.hidden_of.get(j) == Some(&true)
@@ -773,7 +794,7 @@ impl Ui {
                     // Every later command moves one place: no span is kept.
                     self.paint.kept_spans.retain(|r| r.end <= first);
                     self.paint.cache.aligned.retain(|r| r.end <= first);
-                    shift_named(&mut self.paint.cache.named, first);
+                    shift_named(&mut self.paint.cache.named, first, 1);
                     cmds.insert(first, (begin, nj.placed.world));
                     cmds.push((end, nj.placed.world));
                 }
@@ -785,7 +806,7 @@ impl Ui {
                         blur_layer(nj.style.sampled.blur, nj.placed.rect, nj.placed.clip);
                     self.paint.kept_spans.retain(|r| r.end <= first);
                     self.paint.cache.aligned.retain(|r| r.end <= first);
-                    shift_named(&mut self.paint.cache.named, first);
+                    shift_named(&mut self.paint.cache.named, first, 1);
                     cmds.insert(first, (begin, nj.placed.world));
                     cmds.push((end, nj.placed.world));
                 }
@@ -1982,9 +2003,9 @@ fn reference_box(n: &crate::layout::Node, b: crate::transform3d::TransformBox) -
 }
 
 /// The shared elements' ranges after a command was inserted at `at`.
-fn shift_named(named: &mut [crate::view_transition::Named], at: usize) {
+fn shift_named(named: &mut [crate::view_transition::Named], at: usize, by: usize) {
     for n in named.iter_mut().filter(|n| n.range.start >= at) {
-        n.range = n.range.start + 1..n.range.end + 1;
+        n.range = n.range.start + by..n.range.end + by;
     }
 }
 
