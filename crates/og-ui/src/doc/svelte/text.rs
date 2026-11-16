@@ -283,10 +283,15 @@ impl Parser {
             atom: None,
             path: Vec::new(),
         };
+        self.svg_text = self.doc.nodes[i].kind == NodeKind::Element(Kind::SvgText);
         self.runs(nodes, i, &base, &mut runs, &mut links, translated)?;
-        // No space at either end, as a CSS block trims its line (an SVG
-        // text keeping its white space trims its line breaks there too).
-        let ends: &[char] = if self.white_space.is_some() {
+        // An SVG text has no space at either end, as a CSS block trims its
+        // line (one keeping its white space trims its line breaks there
+        // too). An HTML text keeps its source: its computed white-space
+        // processes it when it is built.
+        let ends: &[char] = if !self.svg_text {
+            &[]
+        } else if self.white_space.is_some() {
             &[' ', '\n']
         } else {
             &[' ']
@@ -340,21 +345,6 @@ impl Parser {
                 .collect();
             PropValue::Lit(Lit::Str(text))
         };
-        // Plain literal text keeps its source for a white-space that
-        // preserves (an SVG text's own white-space has processed it).
-        if self.white_space.is_none()
-            && let PropValue::Lit(Lit::Str(text)) = &value
-            && let Some(source) = nodes
-                .iter()
-                .map(|n| match n {
-                    Node::Text(t, _) => Some(t.as_str()),
-                    _ => None,
-                })
-                .collect::<Option<String>>()
-            && source != *text
-        {
-            self.doc.nodes[i].source_text = Some(source);
-        }
         self.prop(i, Some(Kind::Label), "text", value, at, "")?;
         if runs
             .iter()
@@ -386,6 +376,12 @@ impl Parser {
                 Node::Text(value, at) => {
                     if !translated && !value.trim().is_empty() {
                         self.warn(*at);
+                    }
+                    if !self.svg_text {
+                        if !value.is_empty() {
+                            out.push(run(Expr::Lit(value.as_str().into())));
+                        }
+                        continue;
                     }
                     let (spaces, breaks) = self.white_space.unwrap_or((false, false));
                     let mut collapsed = String::new();
@@ -421,7 +417,12 @@ impl Parser {
                         if !children.is_empty() {
                             return Err((*at, "<br> is empty".into()));
                         }
-                        out.push(run(Expr::Lit("\n".into())));
+                        let br = if self.svg_text {
+                            '\n'
+                        } else {
+                            crate::css::text_css::LINE_BREAK
+                        };
+                        out.push(run(Expr::Lit(br.to_string().into())));
                         continue;
                     }
                     if let Some(a) = attrs.iter().find(|a| a.name == "part")

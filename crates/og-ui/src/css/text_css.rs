@@ -1241,6 +1241,90 @@ pub enum Collapse {
     BreakSpaces,
 }
 
+/// A `<br>` in a text's source: a forced line break that white-space
+/// collapsing keeps, shown as a newline.
+pub const LINE_BREAK: char = '\u{2028}';
+
+/// `text` as an element with text CSS `css` (none: every initial value)
+/// shows it.
+pub fn shown(css: Option<&TextCss>, text: &str, locale: &str) -> String {
+    match css {
+        Some(t) => t.shown(text, locale),
+        None => {
+            let mut out = String::with_capacity(text.len());
+            Collapser::new(Collapse::Collapse).push(text, &mut out);
+            out.replace(LINE_BREAK, "\n")
+        }
+    }
+}
+
+/// CSS Text 3 §4.1.1's collapsing of white space for `collapse`,
+/// `discard` and `preserve-breaks`, over one text's source fed in pieces
+/// (its runs): a run of white space is one space (none for `discard`),
+/// none at a line's start or end, and a newline under `preserve-breaks`
+/// or a [`LINE_BREAK`] ends the line. The other modes pass it unchanged.
+#[derive(Clone, Copy, Debug)]
+pub struct Collapser {
+    mode: Collapse,
+    space: bool,
+    start: bool,
+}
+
+impl Collapser {
+    pub fn new(mode: Collapse) -> Collapser {
+        Collapser {
+            mode,
+            space: false,
+            start: true,
+        }
+    }
+
+    /// Appends `text`, the next piece of the source, to `out` as shown.
+    /// True when a space collapsed from white space at the end of an
+    /// earlier piece is shown before this one's first character: it
+    /// belongs at that piece's end, where the white space began.
+    pub fn push(&mut self, text: &str, out: &mut String) -> bool {
+        if !matches!(
+            self.mode,
+            Collapse::Collapse | Collapse::Discard | Collapse::PreserveBreaks
+        ) {
+            out.push_str(text);
+            return false;
+        }
+        let mut owed = self.space;
+        let mut carried = false;
+        for c in text.chars() {
+            match c {
+                LINE_BREAK => {
+                    out.push(c);
+                    (self.space, self.start, owed) = (false, true, false);
+                }
+                '\n' if self.mode == Collapse::PreserveBreaks => {
+                    out.push(c);
+                    (self.space, self.start, owed) = (false, true, false);
+                }
+                ' ' | '\t' | '\n' | '\r' => {
+                    if !self.space {
+                        self.space = self.mode != Collapse::Discard && !self.start;
+                    }
+                }
+                c => {
+                    if self.space {
+                        if owed {
+                            carried = true;
+                        } else {
+                            out.push(' ');
+                        }
+                    }
+                    (self.space, self.start, owed) = (false, false, false);
+                    out.push(c);
+                }
+            }
+        }
+        carried
+    }
+}
+
 /// One element's effective text style: what it declares over what it
 /// inherits. Every field is `None` (or default) where neither sets it.
 #[derive(Clone, Debug, Default, PartialEq)]
@@ -2149,47 +2233,20 @@ impl TextCss {
         (indent, line_break)
     }
 
-    /// Whether its white space keeps spaces or line breaks the document's
-    /// HTML collapsing removed.
-    pub fn preserves(&self) -> bool {
-        self.collapse
-            .is_some_and(|c| !matches!(c, Collapse::Collapse | Collapse::Discard))
-    }
-
     /// `text` as shown: transformed (CSS Text 3 §2.1) and its white space
-    /// processed (§4.1). `locale` cases it. Shown text shown again is
-    /// unchanged, so settlement can restyle a built text.
+    /// processed (§4.1) from its source, `normal` where none is declared.
+    /// `locale` cases it.
     pub fn shown(&self, text: &str, locale: &str) -> String {
-        // The document's text is already HTML-collapsed: only a declared
-        // white-space changes it.
-        let Some(collapse) = self.collapse else {
-            return self.finish(text.to_string(), locale);
-        };
+        let collapse = self.collapse.unwrap_or_default();
         let s = match collapse {
-            Collapse::Collapse | Collapse::Discard => {
+            Collapse::Collapse | Collapse::Discard | Collapse::PreserveBreaks => {
                 let mut out = String::with_capacity(text.len());
-                let mut space = false;
-                for c in text.chars() {
-                    if matches!(c, ' ' | '\t' | '\n' | '\r') {
-                        space = collapse == Collapse::Collapse;
-                    } else {
-                        if space && !out.is_empty() {
-                            out.push(' ');
-                        }
-                        space = false;
-                        out.push(c);
-                    }
-                }
-                out
+                Collapser::new(collapse).push(text, &mut out);
+                out.replace(LINE_BREAK, "\n")
             }
-            Collapse::PreserveBreaks => {
-                // Spaces and tabs collapse; a newline stays a forced break.
-                text.split('\n')
-                    .map(|l| l.split_whitespace().collect::<Vec<_>>().join(" "))
-                    .collect::<Vec<_>>()
-                    .join("\n")
-            }
-            Collapse::PreserveSpaces => text.replace(['\n', '\t', '\r'], " "),
+            Collapse::PreserveSpaces => text
+                .replace(['\n', '\t', '\r'], " ")
+                .replace(LINE_BREAK, "\n"),
             Collapse::Preserve | Collapse::BreakSpaces => {
                 // Tabs to the next tab stop (tab-size spaces).
                 let n = self.tab_size.unwrap_or(8.0).round().max(0.0) as usize;
@@ -2204,7 +2261,7 @@ impl TextCss {
                             out.extend(std::iter::repeat_n('\u{a0}', k));
                             col += k;
                         }
-                        '\n' => {
+                        '\n' | LINE_BREAK => {
                             out.push('\n');
                             col = 0;
                         }

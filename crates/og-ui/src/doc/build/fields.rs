@@ -619,16 +619,21 @@ impl Ui {
         match base.kind {
             Some(Kind::Label) => {
                 let desc = r.label_desc(self.theme(), self.fonts(), r.own_flow().rtl);
+                // Its source, which the build keeps for a text that is not
+                // generated or counted, shown in its new style.
                 let shown;
-                let base = match r.text.as_deref() {
-                    Some(t) => {
-                        shown = RenderFields {
-                            text: t.shown(&base.text, &self.env.locale),
-                            ..base.clone()
-                        };
-                        &shown
-                    }
-                    None => base,
+                let base = if base.generated.is_none() && !r.has("count") {
+                    shown = RenderFields {
+                        text: crate::css::text_css::shown(
+                            r.text.as_deref(),
+                            &base.text,
+                            &self.env.locale,
+                        ),
+                        ..base.clone()
+                    };
+                    &shown
+                } else {
+                    base
                 };
                 if let Some(g) = &base.generated {
                     let (text, runs) = &**g;

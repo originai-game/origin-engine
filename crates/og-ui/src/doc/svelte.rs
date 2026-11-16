@@ -87,6 +87,7 @@ pub(crate) fn parse_with_pack(
             novalidate: Vec::new(),
             aria_refs_for: Vec::new(),
             white_space: None,
+            svg_text: false,
             inline_element: false,
             exportparts: None,
         };
@@ -580,6 +581,9 @@ struct Parser {
     /// An SVG `<text>`'s `white-space` while its runs are read: whether
     /// spaces and line breaks are kept (`None`: both collapse).
     white_space: Option<(bool, bool)>,
+    /// The runs read are an SVG `<text>`'s, whose white space is processed
+    /// here; an HTML text keeps its source for its computed white-space.
+    svg_text: bool,
     /// The next element `element_node` reads is an inline element of a
     /// text ([`Kind::Inline`]).
     inline_element: bool,
@@ -825,7 +829,6 @@ impl Parser {
             level: 0,
             inline: Vec::new(),
             links: Vec::new(),
-            source_text: None,
             custom: Vec::new(),
             uses: Vec::new(),
             pseudo: Vec::new(),

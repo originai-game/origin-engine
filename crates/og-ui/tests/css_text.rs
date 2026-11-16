@@ -1186,6 +1186,7 @@ fn reads(l: &Line) -> String {
 /// `preserve-spaces` longhand turns line breaks into kept spaces. A tab
 /// advances to the next multiple of `tab-size` columns (§4.2).
 /// `text-wrap: nowrap` keeps a line wider than its box whole (§5.1).
+/// Bound text is processed from its value as literal text is.
 #[test]
 fn white_space_and_tab_size_process_the_source_as_css_text_does() {
     let src = "a   b\n  c";
@@ -1230,6 +1231,34 @@ c</p><p id="Tab4">a	b</p><p id="Tab8">a	b</p>
     let nowrap = lines(&d, "NoWrap");
     assert!(nowrap.len() == 1 && nowrap[0].width > 70.0, "{nowrap:?}");
     assert_eq!(lines(&d, "Wraps").len(), 2);
+    // Bound text is processed the same way, alone, beside literal text
+    // and across inline elements; a <br> stays a break under normal.
+    let text = "<meta name=\"component\" content=\"t\">\n<div><div id=\"Root\">\
+<p id=\"Normal\">{$s}</p><p id=\"Pre\">{$s}</p><p id=\"Tab\">{$t}</p><p id=\"MixPre\">a   b {$x}</p>\
+<p id=\"MixLine\">a\n b {$x}</p><p id=\"Rich\">a   <b>b</b>   {$x}</p><p id=\"Br\"> {$x} <br/> {$x} </p>\
+<p id=\"NoWrap\">{$w}</p></div></div>\n<style>#Root { width: 400px; } p { margin: 0; }\
+#Pre, #Tab, #MixPre, #Rich { white-space: pre; } #Tab { tab-size: 4; } #MixLine { white-space: pre-line; }\
+#NoWrap { width: 70px; text-wrap: nowrap; }</style>";
+    let d = Doc::with_font(
+        text,
+        &[
+            ("s", serde_json::json!("a   b\n  c")),
+            ("t", serde_json::json!("a\tb")),
+            ("x", serde_json::json!("x")),
+            ("w", serde_json::json!("alpha beta gamma")),
+        ],
+        face(NOTO),
+    );
+    let read = |id| lines(&d, id).iter().map(reads).collect::<Vec<_>>();
+    assert_eq!(read("Normal"), ["a b c"]);
+    assert_eq!(read("Pre"), ["a   b", "  c"]);
+    assert_eq!(read("Tab"), ["a   b"], "to column 4");
+    assert_eq!(read("MixPre"), ["a   b x"]);
+    assert_eq!(read("MixLine"), ["a", "b x"]);
+    assert_eq!(read("Rich").concat(), "a   b   x");
+    assert_eq!(read("Br"), ["x", "x"]);
+    let nowrap = lines(&d, "NoWrap");
+    assert!(nowrap.len() == 1 && nowrap[0].width > 70.0, "{nowrap:?}");
 }
 
 /// CSS Text 3 §5.5: under `overflow-wrap: anywhere` and `break-word` a

@@ -155,19 +155,29 @@ impl Ui {
             .iter()
             .map(|run| run.path.iter().map(|&e| (e as u32, role(e))).collect())
             .collect();
-        let leaves: Vec<RubyLeaf> = n
-            .inline
-            .iter()
-            .zip(&paths)
-            .map(|(run, path)| RubyLeaf {
-                path,
-                text: match &run.text {
-                    _ if translated.is_some() => translated.clone().unwrap_or_default(),
-                    crate::bind::Expr::Lit(v) => crate::bind::text(v),
-                    e => crate::bind::text(&b.eval(e)),
-                },
-            })
-            .collect();
+        // The runs' source collapsed as one text by its white-space, so
+        // the spans' offsets are the shown text's.
+        let mut collapse = crate::css::text_css::Collapser::new(
+            r.text
+                .as_deref()
+                .and_then(|t| t.collapse)
+                .unwrap_or_default(),
+        );
+        let mut leaves: Vec<RubyLeaf> = Vec::with_capacity(n.inline.len());
+        for (run, path) in n.inline.iter().zip(&paths) {
+            let source = match &run.text {
+                _ if translated.is_some() => translated.clone().unwrap_or_default(),
+                crate::bind::Expr::Lit(v) => crate::bind::text(v),
+                e => crate::bind::text(&b.eval(e)),
+            };
+            let mut text = String::with_capacity(source.len());
+            if collapse.push(&source, &mut text)
+                && let Some(before) = leaves.last_mut()
+            {
+                before.text.push(' ');
+            }
+            leaves.push(RubyLeaf { path, text });
+        }
         // An annotation container's `ruby-position`: its part's, else its
         // computed one (which its annotations inherit).
         let boxes = ruby_structure(&leaves, &|ids| {

@@ -1255,7 +1255,7 @@ impl Parser {
         let mut bound_text = false;
         let text_bearing =
             schema::prop("text").is_some_and(|(_, p)| internal.is_some_and(|kind| p.applies(kind)));
-        for (index, child) in children.iter().enumerate() {
+        for child in children {
             let value = match child {
                 Node::Text(value, at) => {
                     if value.trim().is_empty() && !text_bearing {
@@ -1264,23 +1264,8 @@ impl Parser {
                     if !translated && !value.trim().is_empty() {
                         self.warn(*at);
                     }
-                    let mut value = value.chars().fold(String::new(), |mut out, c| {
-                        if c.is_ascii_whitespace() {
-                            if !out.ends_with(' ') {
-                                out.push(' ');
-                            }
-                        } else {
-                            out.push(c);
-                        }
-                        out
-                    });
-                    if index == 0 {
-                        value = value.trim_start_matches(' ').into();
-                    }
-                    if index + 1 == children.len() {
-                        value.truncate(value.trim_end_matches(' ').len());
-                    }
-                    Some(Expr::Lit(value.into()))
+                    // Its source: its computed white-space processes it.
+                    Some(Expr::Lit(value.as_str().into()))
                 }
                 Node::Expression(value, at) => {
                     bound_text = true;
@@ -1316,14 +1301,6 @@ impl Parser {
                     _ => None,
                 })
                 .collect::<String>();
-            // Plain literal text keeps its source for a CSS white-space
-            // that preserves spaces or line breaks.
-            if let PropValue::Lit(Lit::Str(text)) = &value
-                && children.iter().all(|c| matches!(c, Node::Text(..)))
-                && source != *text
-            {
-                self.doc.nodes[i].source_text = Some(source.clone());
-            }
             self.prop(i, internal, "text", value, at, &source)?;
         }
         Ok(i)

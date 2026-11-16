@@ -573,10 +573,6 @@ pub struct DocNode {
     pub inline: Vec<InlineRun>,
     /// The literal `href`s of its inline `<a>`s, by [`InlineRun::link`].
     pub links: Vec<String>,
-    /// A plain literal text element's text as written, its white space
-    /// unprocessed, where it differs from the collapsed `text` prop: what
-    /// a CSS `white-space` that keeps spaces or line breaks shows.
-    pub source_text: Option<String>,
     /// Its `style:--name={value}` custom properties, in order: inline
     /// declarations that win over every rule but an `!important` one and
     /// inherit like any custom property. On a component instance, its

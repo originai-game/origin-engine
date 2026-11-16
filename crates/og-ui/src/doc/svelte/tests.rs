@@ -81,7 +81,14 @@ fn interpolation_keeps_word_boundaries_and_literal_rune_names() {
         locals: Vec::new(),
         env: &crate::bind::NoEnv,
     };
-    assert_eq!(expr.eval(&scope), serde_json::json!("Hello world & $state"));
+    // The source's white space is kept for the text's computed white-space;
+    // as `normal` shows it, the words keep one space between them.
+    let source = crate::bind::text(&expr.eval(&scope));
+    assert_eq!(source, " Hello   world & $state ");
+    assert_eq!(
+        crate::css::text_css::shown(None, &source, "en"),
+        "Hello world & $state"
+    );
     assert!(
         UiDocument::parse(
             "source.svelte",

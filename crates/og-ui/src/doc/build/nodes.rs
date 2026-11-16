@@ -21,11 +21,8 @@ enum Shell {
 }
 
 /// CSS's text-transform and white-space processing over a text's source.
-fn css_text<'a>(r: &Resolved, language: &str, raw: &'a str) -> std::borrow::Cow<'a, str> {
-    match r.text.as_deref() {
-        Some(t) => t.shown(raw, language).into(),
-        None => raw.into(),
-    }
+fn css_text(r: &Resolved, language: &str, raw: &str) -> String {
+    crate::css::text_css::shown(r.text.as_deref(), raw, language)
 }
 
 /// What an element's build asks its host to build inside it, under the
@@ -156,23 +153,13 @@ impl Ui {
                 } else {
                     s
                 }
-            } else if let Some(source) = n
-                .source_text
-                .as_ref()
-                .filter(|_| r.text.as_deref().is_some_and(|t| t.preserves()))
-            {
-                source.clone()
             } else {
                 r.str("text").unwrap_or_default().to_string()
             }
         };
         // CSS's text-transform and white-space processing over its source.
         let text_of = |r: &Resolved, b: &Build<'_>| -> String {
-            let raw = raw_of(r, b);
-            match r.text.as_deref() {
-                Some(t) => t.shown(&raw, b.env.language()),
-                None => raw,
-            }
+            css_text(r, b.env.language(), &raw_of(r, b))
         };
         let mut resp = crate::ui::Response::default();
         let mut generated = None;
@@ -326,11 +313,7 @@ impl Ui {
             // A text keeps its source: settlement shows it in its new style.
             // A typewriter's is the part it shows; a counter has none, and
             // keeps the number it wrote.
-            if kind == Kind::Label
-                && styled.text.is_some()
-                && styled.generated.is_none()
-                && !styled.has("count")
-            {
+            if kind == Kind::Label && styled.generated.is_none() && !styled.has("count") {
                 fields.text = self.revealed(key, raw_of(styled, b));
             }
             // Its inline elements' runs: settlement styles them again.
@@ -1128,7 +1111,7 @@ impl Ui {
                     self.apply_label(i, &css_text(r, b.env.language(), part), desc);
                     // A screen reader hears the line once and whole, not
                     // each tick's part of it.
-                    self.tree.semantics_mut(i).name = Some(text.into_owned());
+                    self.tree.semantics_mut(i).name = Some(text);
                 } else {
                     self.apply_label(i, &text, desc);
                 }
