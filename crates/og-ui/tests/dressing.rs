@@ -2881,3 +2881,39 @@ fn keycap_contrast(d: &Doc, below: Srgba) -> (f32, Srgba) {
         Srgba::from_linear(ink),
     )
 }
+
+/// An icon is drawn in its colour, as an SVG icon in a page takes
+/// `currentColor`: one that declares none takes its parent's (a step's
+/// mark in its tone), and one that declares its own keeps it. Wrong: the
+/// default ink on every icon whose parent sets a colour.
+#[test]
+fn an_icon_takes_its_parents_colour() {
+    let mut ui = ui_with_font(test_font());
+    ui.set_icons(icons(og_draw::TextureHandle::from_slot(1)));
+    let d = mounted(
+        ui,
+        r#"<column id="Root" style="color: #ff0000">
+  <og-icon icon="check"></og-icon>
+  <div style="color: #00ff00"><og-icon icon="close" style="color: #0000ff"></og-icon></div>
+</column>"#,
+        &[],
+        Viewport::new(400.0, 300.0),
+    );
+    let tints: Vec<[f32; 4]> =
+        d.ui.frame()
+            .items
+            .iter()
+            .filter_map(|i| match &i.cmd {
+                DrawCmd::Image { color, .. } => Some(*color),
+                _ => None,
+            })
+            .collect();
+    let colour = |hex: &str| og_ui::style_file::parse_color(hex).unwrap();
+    assert_eq!(tints.len(), 2, "{tints:?}");
+    assert!(
+        near(tints[0], colour("#ff0000")),
+        "inherited: {:?}",
+        tints[0]
+    );
+    assert!(near(tints[1], colour("#0000ff")), "its own: {:?}", tints[1]);
+}

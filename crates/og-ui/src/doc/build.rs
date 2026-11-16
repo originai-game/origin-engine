@@ -172,7 +172,8 @@ pub struct PartHost {
 /// `color` inherits (CSS Color 4 §3.1), on the text channel the other
 /// inherited text properties ride (`text_css`): an element that declares
 /// it hands its colour down, and text that declares none takes its
-/// parent's, recording the read so a change there restyles it. A button's
+/// parent's, recording the read so a change there restyles it; so does an
+/// icon, which is drawn in its colour. A button's
 /// content takes the ink of its plate instead (`Ui::content_ink`), as
 /// slotted content inherits from its slot.
 fn inherit_color(r: &mut Resolved, kind: &NodeKind) {
@@ -191,7 +192,9 @@ fn inherit_color(r: &mut Resolved, kind: &NodeKind) {
                 Some(format!("#{red:02x}{green:02x}{blue:02x}{alpha:02x}")),
             );
         }
-        (None, NodeKind::Element(Kind::Label | Kind::Inline)) => {
+        // An icon is drawn in its colour (`currentColor`, as an SVG icon
+        // in a page is): one that declares none takes its parent's.
+        (None, NodeKind::Element(Kind::Label | Kind::Inline | Kind::Icon)) => {
             let inherited = computed
                 .get(&key)
                 .cloned()
