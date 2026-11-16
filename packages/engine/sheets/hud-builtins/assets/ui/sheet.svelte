@@ -28,9 +28,10 @@
       <PerfReadout fps={24} frameMs={41.7} ping={240} loss={0.12} status="degraded" />
     {:else if page == 'activity-states'}
       <PickupFeed items={empty} /><PickupFeed loading={true} />
-      <PerfReadout fps={0} frameMs={0} status="connecting" />
+      <PerfReadout status="connecting" />
       <PerfReadout fps={60} frameMs={16.7} status="offline" />
       <PerfReadout />
+      <PerfReadout fps={0} frameMs={0} ping={0} loss={0} status="online" />
     {/if}
   </div>
 </div>

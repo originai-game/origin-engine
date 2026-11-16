@@ -1,6 +1,6 @@
 <meta name="component" content="Pips">
 <meta name="strings" content="./pips.en.ogt">
-<meta name="parts" content="Pips.frame Pips.label Pips.units Pips.unit Pips.empty Pips.fill Pips.state">
+<meta name="parts" content="Pips.frame Pips.label Pips.units Pips.unit Pips.empty Pips.fill Pips.state Pips.loading">
 <meta name="prop:label" content="string" data-default="" data-doc="The resource's name; empty uses Resource.">
 <meta name="prop:icon" content="string" data-default="heart" data-doc="The atlas icon for a unit: heart, bullet, bolt or a game's own icon.">
 <meta name="prop:items" content="list" data-doc="Keyed units { id, value, label }: value is the filled fraction, 0 to 1; label names the unit for accessibility. The game supplies capacity, ordering and fractional units, with no fixed maximum.">
@@ -15,7 +15,7 @@
 
 <div id="Pips" part="Pips.frame" class="bare" class:unavailable={disabled} role="group" aria-label={label || t("base.pips.resource")} aria-busy={loading} aria-disabled={disabled}>
   <div part="Pips.label">{label || t("base.pips.resource")}</div>
-  {#if loading}<div part="Pips.state" role="status">{t("base.pips.loading")}</div>
+  {#if loading}<div part="Pips.loading"><Spinner name={t("base.pips.loading")} /><div part="Pips.state" role="status">{t("base.pips.loading")}</div></div>
   {:else}
     <div part="Pips.units">
       {#each items as item (item.id)}
@@ -33,6 +33,7 @@
 <style>
 :host { display: flex; flex-direction: column; gap: var(--space-xs); max-inline-size: 100%; }
 [part="Pips.label"] { font: var(--text-caption); }
+[part="Pips.loading"] { display: flex; align-items: center; gap: var(--space-sm); }
 [part="Pips.units"] { display: flex; flex-wrap: wrap; gap: var(--space-xs); }
 .unit { position: relative; inline-size: var(--pip-size, var(--size-sm)); block-size: var(--pip-size, var(--size-sm)); }
 [part="Pips.empty"], [part="Pips.fill"] { position: absolute; inset: 0; inline-size: 100%; block-size: 100%; }

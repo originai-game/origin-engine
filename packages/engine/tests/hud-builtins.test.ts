@@ -98,9 +98,20 @@ test("resource displays distinguish fractional/empty units, phases and game-supp
     expect(words(e)).toContain("-40");
   });
   check("PerfReadout", "connecting", (e) => {
+    expect(words(e).filter((x) => x === "Unavailable")).toHaveLength(4);
+    expect(words(e)).not.toContain("0");
+    expect(words(e)).not.toContain("0 ms");
+  });
+  check("PerfReadout", "zero", (e) => {
     expect(words(e)).toContain("0");
     expect(words(e)).toContain("0 ms");
-    expect(words(e)).toContain("Unavailable");
+    expect(words(e)).not.toContain("Unavailable");
   });
   check("PerfReadout", "default", (e) => expect(words(e)).toContain("16.7 ms"));
+  for (const name of ["Pips", "PickupFeed"]) check(name, "loading", (e) => {
+    expect(elements(e).some((x) => x.role === "progressbar" && x.name === "Loading")).toBeTrue();
+    expect(words(e)).toContain("Loading");
+    expect(words(e)).not.toContain("+12");
+    expect(elements(e).filter((x) => x.role === "meter")).toHaveLength(0);
+  });
 });

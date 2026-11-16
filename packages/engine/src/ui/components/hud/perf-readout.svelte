@@ -9,7 +9,8 @@
 <meta name="fixture:default" content='{"fps":60,"frameMs":16.7,"ping":42,"loss":0,"status":"online"}'>
 <meta name="fixture:degraded" content='{"fps":24,"frameMs":41.7,"ping":240,"loss":0.12,"status":"degraded"}'>
 <meta name="fixture:offline" content='{"fps":60,"frameMs":16.7,"ping":-1,"loss":-1,"status":"offline"}'>
-<meta name="fixture:connecting" content='{"fps":0,"frameMs":0,"ping":-1,"loss":-1,"status":"connecting"}'>
+<meta name="fixture:connecting" content='{"fps":-1,"frameMs":-1,"ping":-1,"loss":-1,"status":"connecting"}'>
+<meta name="fixture:zero" content='{"fps":0,"frameMs":0,"ping":0,"loss":0,"status":"online"}'>
 <meta name="fixture:unknown" content='{"fps":-1,"frameMs":-1,"ping":-1,"loss":-1,"status":"offline"}'>
 
 <div id="PerfReadout" part="PerfReadout.frame" class="hud" role="group" aria-label={t("hud.perf-readout.name")} data-status={status}>
