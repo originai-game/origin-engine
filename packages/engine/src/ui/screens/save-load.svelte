@@ -9,80 +9,83 @@
 <meta name="action:details" content="Delete">
 <meta name="fixture:default" content="{&quot;mode&quot;:&quot;load&quot;,&quot;selected&quot;:&quot;item-0&quot;,&quot;slots&quot;:[{&quot;auto&quot;:true,&quot;date&quot;:&quot;Today 18:42&quot;,&quot;empty&quot;:false,&quot;id&quot;:&quot;item-0&quot;,&quot;place&quot;:&quot;Old mill&quot;,&quot;played&quot;:15120,&quot;thumb&quot;:0,&quot;title&quot;:&quot;Chapter 3&quot;},{&quot;auto&quot;:false,&quot;date&quot;:&quot;Yesterday&quot;,&quot;empty&quot;:false,&quot;id&quot;:&quot;item-1&quot;,&quot;place&quot;:&quot;Harbour&quot;,&quot;played&quot;:9800,&quot;thumb&quot;:0,&quot;title&quot;:&quot;Chapter 2&quot;},{&quot;auto&quot;:false,&quot;date&quot;:&quot;&quot;,&quot;empty&quot;:true,&quot;id&quot;:&quot;item-2&quot;,&quot;place&quot;:&quot;&quot;,&quot;played&quot;:0,&quot;thumb&quot;:0,&quot;title&quot;:&quot;&quot;}]}">
 
-<column id="Screen" part="save-load.frame" class="bare">
-  <row id="Header" part="save-load.band">
+<div id="Screen" part="save-load.frame" class="bare">
+  <header id="Header" part="save-load.band">
     <button id="Back" variant="quiet" onclick={back}>{t("screen.common.back")}</button>
-    <text id="SaveTitle" part="save-load.title" heading="true" hidden={!((mode == "save"))}>{t("screen.save-load.saveTitle")}</text>
-    <text id="LoadTitle" part="save-load.title" heading="true" hidden={!((mode != "save"))}>{t("screen.save-load.loadTitle")}</text>
-  </row>
-  <grid id="Body">
-    <scroll id="Slots">
-      <column id="List" focus-group="stop">
+    {#if mode == "save"}
+      <h1 id="SaveTitle" part="save-load.title">{t("screen.save-load.saveTitle")}</h1>
+    {:else}
+      <h1 id="LoadTitle" part="save-load.title">{t("screen.save-load.loadTitle")}</h1>
+    {/if}
+  </header>
+  <div id="Body">
+    <div id="Slots">
+      <div id="List" focus-group="stop">
         {#each slots as s (s.id)}
-          <row id="Slot" part="save-load.row" interactive="true" focusable="true" onclick={select} class:selection-off={!((s.id == selected))} class:selection-on={(s.id == selected)}>
+          <div id="Slot" part="save-load.row" interactive="true" focusable="true" onclick={select} class:selection-off={s.id != selected} class:selection-on={s.id == selected}>
             <art id="Thumb" part="save-load.thumb" kind="saveThumb" src={s.thumb}></art>
-            <column id="Text">
-              <text id="Empty" hidden={!(s.empty)}>{t("screen.save-load.empty")}</text>
-              <text id="Name" part="save-load.name" hidden={!(!(s.empty))}>{s.title}</text>
-              <text id="Place" hidden={!(!(s.empty))}>{s.place}</text>
-              <row id="Meta" hidden={!(!(s.empty))}>
-                <text id="Played">{t("screen.save-load.Played", { s_played: formatDuration(s.played) })}</text>
-                <text id="Date">{s.date}</text>
-              </row>
-            </column>
-            <badge id="Auto" tone="info" hidden={!(s.auto)}>{t("screen.save-load.auto")}</badge>
-          </row>
+            <div id="Text">
+              {#if s.empty}
+                <p id="Empty">{t("screen.save-load.empty")}</p>
+              {:else}
+                <p id="Name" part="save-load.name">{s.title}</p>
+                <p id="Place">{s.place}</p>
+                <div id="Meta">
+                  <p id="Played">{t("screen.save-load.Played", { s_played: formatDuration(s.played) })}</p>
+                  <p id="Date">{s.date}</p>
+                </div>
+              {/if}
+            </div>
+            {#if s.auto}<badge id="Auto" tone="info">{t("screen.save-load.auto")}</badge>{/if}
+          </div>
         {/each}
-      </column>
-    </scroll>
-    <column id="Side">
-      <column id="Preview">{@render preview?.()}</column>
-      <row id="Actions">
+      </div>
+    </div>
+    <aside id="Side">
+      <div id="Preview">{@render preview?.()}</div>
+      <div id="Actions">
         <button id="Delete" variant="danger" onclick={delete} ondetails={delete}>{t("screen.save-load.delete")}</button>
-        <button id="New" hidden={!((mode == "save"))} onclick={newSlot}>{t("screen.save-load.new")}</button>
-        <button id="Save" variant="primary" hidden={!((mode == "save"))} onclick={save}>{t("screen.save-load.save")}</button>
-        <button id="Load" variant="primary" hidden={!(((mode != "save") && (slots.length > 0.0)))} onclick={load}>{t("screen.save-load.load")}</button>
-      </row>
-    </column>
-  </grid>
-</column>
+        {#if mode == "save"}
+          <button id="New" onclick={newSlot}>{t("screen.save-load.new")}</button>
+          <button id="Save" variant="primary" onclick={save}>{t("screen.save-load.save")}</button>
+        {:else if slots.length > 0}
+          <button id="Load" variant="primary" onclick={load}>{t("screen.save-load.load")}</button>
+        {/if}
+      </div>
+    </aside>
+  </div>
+</div>
 
 <style>
-#Screen { width: stretch; height: stretch; padding: var(--space-xxl); gap: var(--space-lg); min-height: 0; }
-@media (width < 600px), (height < 600px) {
-#Screen { padding: var(--space-lg); gap: var(--space-md); }
-}
-#Header { width: stretch; gap: var(--space-md); align-items: center; }
-#SaveTitle, #LoadTitle { font-size: var(--type-xl2-size); }
-@media (width < 600px), (height < 600px) {
-#SaveTitle, #LoadTitle { font-size: var(--type-xl-size); }
-}
-#Body { width: stretch; flex: 1; min-height: 0; gap: var(--space-xl); grid-template-columns: 3fr 2fr; grid-template-rows: 1fr; }
-@media (width < 600px) and (orientation: portrait) {
-#Body { grid-template-columns: 1fr; grid-template-rows: 1fr auto; gap: var(--space-md); }
-}
-#Slots { width: stretch; height: stretch; }
-#List { width: stretch; gap: var(--space-sm); }
-#Slot { width: stretch; padding: var(--space-md); gap: var(--space-md); align-items: center; }
+:root { display: flex; flex-direction: column; gap: var(--space-lg); block-size: stretch; padding: var(--space-xxl); }
+h1, p { margin: 0; }
+[part="save-load.band"] { display: flex; align-items: center; gap: var(--space-md); }
+[part="save-load.title"] { font-size: var(--type-xl2-size); letter-spacing: var(--type-xl2-tracking); }
+/* The slots beside the preview; stacked on a portrait phone. */
+#Body { flex: 1; min-block-size: 0; display: grid; grid-template-columns: 3fr 2fr; grid-template-rows: 1fr; gap: var(--space-xl); }
+#Slots { overflow-y: auto; }
+#List { display: flex; flex-direction: column; gap: var(--space-sm); }
+[part="save-load.row"] { display: flex; align-items: center; gap: var(--space-md); padding: var(--space-md); }
+[part="save-load.row"]:hover, [part="save-load.row"]:focus-visible { scale: 1.01; }
+[part="save-load.row"]:active { scale: 0.99; }
 /* An unselected slot dims its picture; its words keep their ink. */
-#Slot.selection-off #Thumb { opacity: 0.8; }
-#Slot.selection-on { background: var(--row-selected-fill); }
-#Slot { scale: 1; }
-#Slot:hover { scale: 1.01; }
-#Slot:active { scale: 0.99; }
-#Slot:focus-visible { scale: 1.01; }
-#Thumb { width: var(--size-4xl); aspect-ratio: 1.78; }
+.selection-off [part="save-load.thumb"] { opacity: 0.8; }
+.selection-on { background: var(--row-selected-fill); }
+[part="save-load.thumb"] { inline-size: var(--size-4xl); aspect-ratio: 1.78; }
+#Text { flex: 1; min-inline-size: 0; display: flex; flex-direction: column; gap: var(--space-xxs); }
+#Empty, [part="save-load.name"] { font: var(--text-lg); letter-spacing: var(--type-lg-tracking); }
+[part="save-load.name"], #Place { line-clamp: 1; text-overflow: ellipsis; }
+#Place { color: var(--ink-muted); }
+#Meta { display: flex; gap: var(--space-sm); }
+#Meta p { font: var(--text-caption); letter-spacing: var(--type-caption-tracking); color: var(--ink-muted); }
+#Side { display: flex; flex-direction: column; gap: var(--space-md); }
+#Actions { display: flex; justify-content: end; gap: var(--space-sm); }
 @media (width < 600px), (height < 600px) {
-#Thumb { width: var(--size-xxl); }
+  :root { padding: var(--space-lg); gap: var(--space-md); }
+  [part="save-load.title"] { font-size: var(--type-xl-size); letter-spacing: var(--type-xl-tracking); }
+  [part="save-load.thumb"] { inline-size: var(--size-xxl); }
 }
-#Text { flex: 1; min-width: 0; gap: var(--space-xxs); }
-#Empty { font: var(--text-lg); letter-spacing: var(--type-lg-tracking); }
-#Name { font: var(--text-lg); letter-spacing: var(--type-lg-tracking); line-clamp: 1; text-overflow: ellipsis; }
-#Place { color: var(--ink-muted); line-clamp: 1; text-overflow: ellipsis; }
-#Meta { gap: var(--space-sm); }
-#Played { font: var(--text-caption); letter-spacing: var(--type-caption-tracking); color: var(--ink-muted); }
-#Date { font: var(--text-caption); letter-spacing: var(--type-caption-tracking); color: var(--ink-muted); }
-#Side { width: stretch; gap: var(--space-md); }
-#Preview { width: stretch; }
-#Actions { width: stretch; gap: var(--space-sm); justify-content: end; }
+@media (width < 600px) and (orientation: portrait) {
+  #Body { grid-template-columns: 1fr; grid-template-rows: 1fr auto; gap: var(--space-md); }
+}
 </style>
