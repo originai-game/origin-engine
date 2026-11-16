@@ -539,6 +539,7 @@ fn text_over_the_scene_takes_the_tag_treatment() {
   <p style="text-shadow: 0 1px 2px #000000">Soft</p>
   <p style="color: #ffd60a">Gold</p>
   <p style="color: #1a237e">Navy</p>
+  <div style="background: #1c1c1e; width: 40px; height: 40px"><p style="position: absolute; top: 48px">Under</p></div>
 </column>"#;
     let d = Doc::with_font(text, &[], test_font());
     let black = [0.0, 0.0, 0.0, 1.0];
@@ -548,6 +549,8 @@ fn text_over_the_scene_takes_the_tag_treatment() {
         ("Thin", black),
         ("Gold", black),
         ("Navy", white),
+        // Placed below its dark box: over the scene, not over the box.
+        ("Under", black),
     ] {
         let fx = text_effects(&d.ui, t)
             .1

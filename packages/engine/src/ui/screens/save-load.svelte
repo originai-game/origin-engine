@@ -64,8 +64,9 @@
 #Slots { width: stretch; height: stretch; }
 #List { width: stretch; gap: var(--space-sm); }
 #Slot { width: stretch; padding: var(--space-md); gap: var(--space-md); align-items: center; }
-#Slot.selection-off { opacity: 0.8; }
-#Slot.selection-on { opacity: 1; background: var(--row-selected-fill); }
+/* An unselected slot dims its picture; its words keep their ink. */
+#Slot.selection-off #Thumb { opacity: 0.8; }
+#Slot.selection-on { background: var(--row-selected-fill); }
 #Slot { scale: 1; }
 #Slot:hover { scale: 1.01; }
 #Slot:active { scale: 0.99; }

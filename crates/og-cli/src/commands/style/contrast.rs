@@ -446,6 +446,83 @@ fn srgb(c: Rgb) -> Srgba {
     Srgba::from_linear([c[0], c[1], c[2], 1.0])
 }
 
+/// A backdrop (glass) shape's light at a screen point as a function of
+/// the flat ground under it (linear), as og-render's `fs_backdrop` makes
+/// it: saturation and brightness, the bright limit, then the tint, in
+/// sRGB-encoded values where the glass mixes so; a colour matrix in
+/// encoded values first. `None` when the point is outside it.
+fn backdrop_at(item: &DrawItem, p: (f32, f32)) -> Option<impl Fn(Rgb) -> Rgb> {
+    let DrawCmd::Shape { shape, .. } = &item.cmd else {
+        return None;
+    };
+    let UiMode::Backdrop {
+        saturation,
+        brightness,
+        glass,
+        ..
+    } = shape.mode
+    else {
+        return None;
+    };
+    let local = match item.transform.invert() {
+        Some(m) if !item.transform.is_identity() => m.apply(p.0, p.1),
+        _ => p,
+    };
+    let [a, b, c, d] = shape.transform;
+    let (dx, dy) = (local.0 - shape.center.x, local.1 - shape.center.y);
+    let det = a * d - b * c;
+    if det.abs() < 1e-9 {
+        return None;
+    }
+    let (x, y) = ((d * dx - c * dy) / det, (-b * dx + a * dy) / det);
+    if x.abs() > shape.half.x || y.abs() > shape.half.y {
+        return None;
+    }
+    let tint = match shape.paint {
+        UiPaint::Solid(t) => t,
+        _ => [0.0; 4],
+    };
+    let enc = |v: f32| og_core::color::linear_to_srgb(v.max(0.0));
+    let dec = |v: f32| og_core::color::srgb_to_linear(v.clamp(0.0, 1.0));
+    let luma = |c: Rgb| 0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2];
+    let max = glass.backdrop_max;
+    let limit = move |c: Rgb| -> Rgb {
+        let l = luma(c);
+        if max <= 0.0 || l <= max {
+            return c;
+        }
+        let k = max / l;
+        [0, 1, 2].map(|i| (l + (c[i] - l) * k * k) * k)
+    };
+    let adjust = move |c: Rgb| -> Rgb {
+        let l = luma(c);
+        [0, 1, 2].map(|i| ((l + (c[i] - l) * saturation) * brightness).max(0.0))
+    };
+    Some(move |g: Rgb| -> Rgb {
+        if glass.solid {
+            return [tint[0], tint[1], tint[2]];
+        }
+        let mut rgb = g;
+        if let Some(m) = glass.matrix {
+            let e = rgb.map(enc);
+            let o: Rgb = [0, 1, 2].map(|i| {
+                let r = m.rows[i];
+                (r[0] * e[0] + r[1] * e[1] + r[2] * e[2] + r[3]).clamp(0.0, 1.0)
+            });
+            let k = m.opacity.clamp(0.0, 1.0);
+            rgb = [0, 1, 2].map(|i| rgb[i] + (dec(o[i]) - rgb[i]) * k);
+        }
+        if glass.srgb_mix {
+            let e = limit(adjust(rgb.map(enc)));
+            let t = [tint[0], tint[1], tint[2]].map(enc);
+            [0, 1, 2].map(|i| dec(e[i].min(1.0) + (t[i] - e[i].min(1.0)) * tint[3]))
+        } else {
+            let e = limit(adjust(rgb));
+            [0, 1, 2].map(|i| e[i] + (tint[i] - e[i]) * tint[3])
+        }
+    })
+}
+
 /// What one draw command lays at a screen point: its linear colour
 /// (straight alpha) and what it is.
 fn paint_at(
@@ -850,6 +927,17 @@ fn read(
                 {
                     continue;
                 }
+                if let Some(glass) = backdrop_at(under, p) {
+                    // Glass takes what is under it: blurred (a flat ground
+                    // stays as it is), scaled, limited, tinted.
+                    what = "glass";
+                    grounds = grounds.map(|g| {
+                        let out = glass(g);
+                        let a = opacity[j].clamp(0.0, 1.0);
+                        [0, 1, 2].map(|i| out[i] * a + g[i] * (1.0 - a))
+                    });
+                    continue;
+                }
                 if let Some((mut c, kind)) = paint_at(under, p, textures) {
                     unchecked |= kind == "unchecked";
                     c[3] = (c[3] * opacity[j]).clamp(0.0, 1.0);
@@ -1070,6 +1158,7 @@ mod tests {
   <div id="White"><p id="Clipped">Clipped</p></div>
   <div id="Corner"><p id="InCorner">Corner</p></div>
   <div id="Framed"><p id="InFrame">Framed</p></div>
+  <div id="Glass"><p id="OnGlass">Glass</p></div>
 </div>
 <style>
 #Page { display: flex; flex-direction: column; gap: 8px; }
@@ -1084,6 +1173,7 @@ p { color: #ffffff; margin: 0; }
 #InCorner { color: #000000; }
 #Framed { width: 200px; padding: 20px; border: 10px solid transparent; border-image: linear-gradient(#000, #000) 10; background: #ffffff; }
 #InFrame { color: #000000; }
+#Glass { width: 200px; backdrop-filter: blur(8px); -og-material: glass thick lift; }
 </style>"#,
         );
         let plate = of(&pairs, "Plate");
@@ -1122,5 +1212,15 @@ p { color: #ffffff; margin: 0; }
         );
         // A border image is not sampled: the pair says so.
         assert_eq!(of(&pairs, "Framed").over, "unchecked");
+        // Glass is read as what it makes of the scene under it: white
+        // text on the dark theme's thick glass holds over a white scene,
+        // where on the bare scene it reads 1:1.
+        let glass = of(&pairs, "Glass");
+        assert!(
+            glass.wcag > 4.5,
+            "{} on {}",
+            hex(glass.ink),
+            hex(glass.ground)
+        );
     }
 }

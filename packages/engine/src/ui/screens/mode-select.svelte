@@ -54,10 +54,10 @@
 #Modes { grid-template-columns: 1fr; gap: var(--space-md); }
 }
 #Mode { width: stretch; padding: var(--space-md); gap: var(--space-sm); }
-#Mode.selection-off { opacity: var(--opacity-soft); }
-#Mode.selection-on { opacity: 1; }
+/* An unselected or locked card dims its art; its words keep their ink. */
+#Mode.selection-off #Art { opacity: var(--opacity-soft); }
 #Mode.lock-open { scale: 1; }
-#Mode.lock-locked { opacity: var(--opacity-dim); }
+#Mode.lock-locked #Art { opacity: var(--opacity-dim); filter: grayscale(1); }
 #Mode { translate: 0 0; }
 #Mode:hover { translate: 0 var(--state-lift); }
 #Mode:active { translate: 0 0; }

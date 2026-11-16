@@ -90,11 +90,19 @@ impl Ui {
     /// white scene (linear), or `None` where one of them draws a ground
     /// its author made for what is on it (an image, a vector, glass).
     fn scene_grounds(&self, i: usize, theme: &Theme) -> Option<[Rgb; 2]> {
-        // Their solid fills, the innermost first.
+        // Their solid fills, the innermost first. An ancestor lays its
+        // ground only inside its box: a hotkey placed under its slot is
+        // over the scene, not over the slot.
+        let r = self.tree.nodes[i].placed.rect;
+        let (x, y) = (r.x + r.width / 2.0, r.y + r.height / 2.0);
         let mut fills: Vec<[f32; 4]> = Vec::new();
         let mut a = i;
         while a != NONE {
             let n = &self.tree.nodes[a];
+            if !n.placed.rect.contains(x, y) {
+                a = n.parent;
+                continue;
+            }
             let mut own = Vec::new();
             if let Some(d) = self.paint.draw_of(a, &self.tree) {
                 if d.effects.iter().any(|e| {

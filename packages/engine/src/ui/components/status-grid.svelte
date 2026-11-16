@@ -55,7 +55,8 @@ ul, ol { list-style-type: none; }
 [part="StatusGrid.badge"] { position: absolute; bottom: 0; inset-inline-end: 0; padding: 0 var(--space-xxs); font: var(--text-caption); font-family: var(--figure-font); }
 /* Over the scene under its cell: the figure role's ink and font, and the tag tokens outline it and give it a ground where a pack sets one. */
 [part="StatusGrid.figure"] { font: var(--text-caption); font-family: var(--figure-font); white-space: nowrap; text-shadow: var(--tag-halo); background: var(--tag-fill); padding: var(--tag-pad); border-radius: var(--tag-radius); }
-.expiring [part="StatusGrid.cell"] { animation-name: blink; animation-duration: var(--motion-duration-spring); animation-timing-function: var(--motion-easing-in-out); animation-iteration-count: infinite; animation-direction: alternate; }
+/* An expiring buff blinks its icon; its stack count keeps its ink. */
+.expiring .icon { animation-name: blink; animation-duration: var(--motion-duration-spring); animation-timing-function: var(--motion-easing-in-out); animation-iteration-count: infinite; animation-direction: alternate; }
 /* The +n tile's count: over the scene through the cell's translucent fill, so it wears the figures' ink and tag halo (muted ink, bare, read 1.5:1 over a bright sky). */
 #Count { font: var(--text-sm); color: var(--figure-ink); text-shadow: var(--tag-halo); }
 @keyframes blink { from { opacity: 1; } to { opacity: 0.35; } }

@@ -212,7 +212,9 @@ const ROLE_RULES: &str = r#"  /* Roles: frame, plate, band, title, row, cell, ba
   :where([part$=".cell"]:where([data-rarity=legendary])) { background: var(--cell-legendary-fill); box-shadow: var(--cell-legendary-shadow); }
   :where([part$=".cell"]:where([data-rarity=mythic])) { background: var(--cell-mythic-fill); box-shadow: var(--cell-mythic-shadow); }
   :where([part$=".cell"]:where([data-empty=true])) { box-shadow: var(--cell-empty-shadow); }
-  :where([part$=".cell"]:where(:disabled, [aria-disabled=true], [data-locked=true])) { box-shadow: var(--cell-empty-shadow); color: var(--ink-disabled); }
+  :where([part$=".cell"]:where(:disabled, [aria-disabled=true], [data-locked=true])) { box-shadow: var(--cell-empty-shadow); }
+  /* A locked cell is still read (what it would do, why it is locked): only a disabled one fades its words. */
+  :where([part$=".cell"]:where(:disabled, [aria-disabled=true])) { color: var(--ink-disabled); }
   :where([part$=".badge"]) {
     border-radius: var(--badge-radius); corner-shape: var(--badge-corner-shape);
     background: var(--badge-fill);
