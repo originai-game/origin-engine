@@ -174,6 +174,7 @@ pub(super) fn lower_decl(name: &str, value: &str, state: bool) -> Result<Vec<Par
         | "text-shadow"
         | "clip-path"
         | "clip"
+        | "border-shape"
         | "shape-outside"
         | "shape-margin"
         | "shape-image-threshold"
@@ -511,6 +512,7 @@ fn lower_effects(name: &str, value: &str) -> Result<Vec<Part>, String> {
         )
         .map(|_| "textShadow"),
         "clip-path" => p::clip(value).map(|_| "clipPath"),
+        "border-shape" => p::border_shape(value).map(|_| "borderShape"),
         "clip" => p::legacy_clip(value).map(|_| "clipRect"),
         "shape-outside" => p::outside(value).map(|_| "shapeOutside"),
         "shape-margin" => p::shape_margin(value).map(|_| "shapeMargin"),

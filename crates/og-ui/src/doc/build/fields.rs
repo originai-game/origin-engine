@@ -204,9 +204,11 @@ impl Ui {
         d.corners = corners(r, el.radius);
         let css = self.css_paint(doc, r, &cx, warn);
         // A clip, mask, blend, filter or material cuts or composites the
-        // background too: it is drawn with them.
+        // background too, and a border shape shapes it: it is drawn with
+        // them.
         if (css.as_ref().is_some_and(|c| {
             c.clip.is_some()
+                || c.border_shape.is_some()
                 || !c.masks.is_empty()
                 || c.mask_border.is_some()
                 || c.color_clip != crate::doc::paint_css::BoxEdge::Border
@@ -569,6 +571,12 @@ impl Ui {
                 },
                 clip => clip,
             });
+        }
+        if let Some(Ok(Some(shapes))) = r.str("borderShape").map(p::border_shape) {
+            c.border_shape = Some(Box::new(p::BorderShape {
+                shapes: shapes.into_iter().map(|(s, b)| (s, b, [0.0; 4])).collect(),
+                side: 0,
+            }));
         }
         if let Some(Ok(Some(m))) = r.str("material").map(p::material) {
             match self.docs.css_material(m) {
@@ -1222,6 +1230,34 @@ impl Ui {
         }
         let surface_rtl = self.env.direction == og_i18n::Direction::Rtl;
         let flow = r.own_flow();
+        // A border shape's reference boxes, and the side it takes its
+        // width and colour from (CSS Borders 4 §7.3, §7.6).
+        if let Some(d) = decor.as_mut()
+            && let Some(bs) = d.css.as_mut().and_then(|c| c.border_shape.as_mut())
+        {
+            use crate::doc::paint_css::GeoBox;
+            let borders = d.borders.map(|b| b.map_or(0.0, |b| b.width));
+            let p = el.padding;
+            let m = el.margin.map(|m| m.intrinsic());
+            for (_, geo, insets) in &mut bs.shapes {
+                *insets = match geo {
+                    None => borders.map(|b| b / 2.0),
+                    Some(GeoBox::Border) => [0.0; 4],
+                    Some(GeoBox::Padding) => borders,
+                    Some(GeoBox::Content) => [p.top, p.right, p.bottom, p.left],
+                    Some(GeoBox::Margin) => m.map(|v| -v),
+                };
+            }
+            // Its frame's sides: block-start, inline-end, block-end,
+            // inline-start; right to left, the inline ones swap.
+            let s = flow.mode.sides().map(usize::from);
+            let (start, end) = if flow.rtl { (s[1], s[3]) } else { (s[3], s[1]) };
+            let order = [s[0], start, s[2], end];
+            bs.side = order
+                .into_iter()
+                .find(|&k| d.borders[k].is_some())
+                .unwrap_or(order[0]);
+        }
         // A vertical element's inline axis runs down: the surface's mirror
         // turns its block axis round instead (`vertical-rl` lays out as
         // `vertical-lr` before the mirror).

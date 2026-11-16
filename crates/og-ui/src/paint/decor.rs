@@ -316,6 +316,13 @@ impl BoxDecor {
             *radii = Some(h);
             *corner = og_draw::UiCorner::Css(css);
         }
+        // A border shape is its shape: its background, shadows and
+        // overflow cut follow the outer one, and its corner radii are
+        // ignored (CSS Borders 4 §7.5). Its border, drawn over its
+        // children, covers what overflows the inner one.
+        if let Some(bs) = self.css.as_ref().and_then(|c| c.border_shape.as_deref()) {
+            d.shape = bs.paths(size[0], size[1]).0;
+        }
         if self.clip && d.clip == crate::paint::Clip::None {
             d.clip = crate::paint::Clip::Shape;
             if let Some((edge, m)) = self.clip_margin {
@@ -338,6 +345,12 @@ impl BoxDecor {
     pub(crate) fn lines(&self, at: &Placed) -> Vec<DrawCmd> {
         let mut out = Vec::new();
         let r = at.rect;
+        let shaped = self.css.as_ref().and_then(|c| c.border_shape.as_deref());
+        if let Some(bs) = shaped
+            && let Some(line) = self.borders[bs.side]
+        {
+            out.push(shaped_border(bs, at, line));
+        }
         let corners = self
             .corners
             .map(|c| c.resolve(r.width, r.height))
@@ -347,7 +360,7 @@ impl BoxDecor {
         // Backgrounds 3 §6), with the background.
         let imaged = self.css.as_ref().is_some_and(|c| c.border_image.is_some());
         match self.borders[0] {
-            _ if imaged => {}
+            _ if imaged || shaped.is_some() => {}
             Some(b) if uniform && !b.style.shaded() => {
                 ring(&mut out, at, r, corners, b, Inside);
             }
@@ -446,6 +459,83 @@ fn round() -> og_draw::UiCssCorners {
     og_draw::UiCssCorners {
         vertical: [0.0; 4],
         shape: [1.0; 4],
+    }
+}
+
+/// A border shape's border in `line`'s width and colour (CSS Borders 4
+/// §7.2): one shape stroked along its path, its line centred on it, or
+/// the area between two shapes filled (even-odd: the inner one is a
+/// hole wherever the two cross).
+fn shaped_border(bs: &crate::css::paint_css::BorderShape, at: &Placed, line: Line) -> DrawCmd {
+    use crate::paint::ShapeKind;
+    let r = at.rect;
+    let size = [r.width, r.height];
+    let (outer, inner) = bs.paths(r.width, r.height);
+    let points = |k: ShapeKind| match k {
+        ShapeKind::Path { points, .. } => points,
+        _ => Vec::new(),
+    };
+    let w = line.width;
+    let (kind, mode) = match inner {
+        Some(inner) => {
+            let (a, b) = (points(outer), points(inner));
+            (
+                ShapeKind::Path {
+                    contours: vec![a.len() as u32, b.len() as u32],
+                    points: [a, b].concat(),
+                    closed: true,
+                    filled: true,
+                    curves: true,
+                    fill_rule: crate::paint::FillRule::EvenOdd,
+                    width: 0.0,
+                    cap: Default::default(),
+                    join: Default::default(),
+                },
+                og_draw::UiMode::Fill,
+            )
+        }
+        None => {
+            let (dash, cap) = match line.style {
+                LineStyle::Dashed => ([3.0 * w, 3.0 * w], og_draw::UiCap::Butt),
+                LineStyle::Dotted => ([w, w], og_draw::UiCap::Round),
+                _ => ([0.0; 2], og_draw::UiCap::Butt),
+            };
+            (
+                ShapeKind::Path {
+                    points: points(outer),
+                    closed: true,
+                    filled: false,
+                    curves: true,
+                    fill_rule: Default::default(),
+                    contours: Vec::new(),
+                    width: w,
+                    cap: Default::default(),
+                    join: Default::default(),
+                },
+                og_draw::UiMode::Stroke(og_draw::UiStroke {
+                    width: w,
+                    align: og_draw::UiAlign::Center,
+                    dash,
+                    dash_offset: 0.0,
+                    dash_cap: cap,
+                }),
+            )
+        }
+    };
+    DrawCmd::Shape {
+        shape: Box::new(og_draw::UiShape {
+            geometry: kind.geometry(0.0, size),
+            center: Vec2::new(r.x + r.width / 2.0, r.y + r.height / 2.0),
+            half: Vec2::new(r.width / 2.0, r.height / 2.0),
+            transform: [1.0, 0.0, 0.0, 1.0],
+            paint: og_draw::UiPaint::Solid(line.color.linear()),
+            mode,
+            opacity: at.alpha,
+            blend: og_draw::UiBlend::Normal,
+            layer: 0,
+            clip: None,
+        }),
+        clip: at.clip,
     }
 }
 
