@@ -316,6 +316,55 @@ fn widths_near(d: &Doc, expected: &[(&str, f64)]) {
     }
 }
 
+/// CSS Values 4 §10's math functions and constants, §6.2's `Q`. The
+/// expected values are the functions' own (sin 30° = ½, atan2 in the
+/// second quadrant, NaN censored to 0 at the top level: §10.9).
+#[test]
+fn math_functions_and_constants_take_their_mathematical_values() {
+    let rows = [
+        ("Abs", "abs(-30px)", 30.0),
+        ("SignNeg", "calc(sign(-5px) * -10px)", 10.0),
+        ("SignZero", "calc(sign(0px) * 50px + 7px)", 7.0),
+        ("Pi", "calc(pi * 100px)", std::f64::consts::PI * 100.0),
+        ("E", "calc(e * 100px)", std::f64::consts::E * 100.0),
+        ("Infinity", "min(calc(infinity * 1px), 50px)", 50.0),
+        ("NaN", "calc(NaN * 1px)", 0.0),
+        ("Pow", "calc(pow(2, 3) * 10px)", 80.0),
+        ("PowNeg", "calc(pow(2, -1) * 100px)", 50.0),
+        ("Sqrt", "calc(sqrt(2) * 100px)", 2f64.sqrt() * 100.0),
+        ("Hypot", "hypot(30px, 40px)", 50.0),
+        ("Log", "calc(log(1000, 10) * 10px)", 30.0),
+        ("Ln", "calc(log(e) * 70px)", 70.0),
+        ("Exp", "calc(exp(1) * 100px)", std::f64::consts::E * 100.0),
+        ("Sin", "calc(sin(30deg) * 100px)", 50.0),
+        ("SinRad", "calc(sin(calc(pi / 6)) * 100px)", 50.0),
+        ("Cos", "calc(cos(1rad) * 100px)", 1f64.cos() * 100.0),
+        ("Tan", "calc(tan(50grad) * 100px)", 100.0),
+        ("Turn", "calc(sin(0.5turn) * 100px + 10px)", 10.0),
+        ("Asin", "calc(cos(asin(0.6)) * 100px)", 80.0),
+        ("Acos", "calc(tan(acos(0.6)) * 30px)", 40.0),
+        ("Atan", "calc(sin(atan(0.75)) * 100px)", 60.0),
+        ("Atan2", "calc(cos(atan2(3px, -4px)) * -100px)", 80.0),
+        ("Q", "101.6Q", 96.0),
+        ("QSmall", "40Q", 40.0 * 96.0 / 101.6),
+    ];
+    let body: String = rows
+        .iter()
+        .map(|(id, _, _)| format!("<div id=\"{id}\"></div>"))
+        .collect();
+    let css: String = rows
+        .iter()
+        .map(|(id, v, _)| format!("#{id} {{ width: {v}; }}\n"))
+        .collect();
+    let text = format!(
+        "<meta name=\"component\" content=\"t\">\n<div><div id=\"Root\">{body}</div></div>\n<style>\n#Root {{ width: 400px; }}\n#Root div {{ height: 1px; }}\n{css}</style>"
+    );
+    with_doc(&text, &[], |d| {
+        let expected: Vec<_> = rows.iter().map(|(id, _, v)| (*id, *v)).collect();
+        widths_near(d, &expected);
+    });
+}
+
 /// CSS Values 4 §6.1.1's font-relative units read the element's face:
 /// Inter Display's OS/2 x-height (1056/2048 em), cap height (1490/2048),
 /// its `0` advance (1306/2048) and, as it has no 水, 1em for `ic`; the

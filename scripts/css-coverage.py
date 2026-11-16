@@ -167,9 +167,29 @@ proof("color-mix-variadic contrast-color", "css_paint", "contrast_color_and_vari
       "A three-colour color-mix() draws the three's average (CSS Color 5 §3.3) and a mix with no space is OKLab's; contrast-color(var(--panel)) draws white text on the dark panel and black once the scheme turns light. og-css's color_mix_takes_any_number_of_colours covers omitted and under-100% percentages, one colour and all-0% (transparent); contrast_color_picks_the_ink_that_reads_most holds the pick at √21:1 or more over a grid of grounds.")
 
 # values, units, media and at-rules
+proof("abs-sign calc-constants exp-functions trig-functions q-unit", "custom_properties", "math_functions_and_constants_take_their_mathematical_values",
+      "abs(), sign() (of a negative and of 0), pi, e, infinity (under min()) and NaN (censored to 0, CSS Values 4 §10.9), pow() with a negative exponent, sqrt(), hypot(), log() with and without a base, exp(), sin()/cos()/tan() over deg, rad, grad, turn and a bare number, asin()/acos()/atan() and atan2() in the second quadrant, read through their mathematical values to ±0.5px; 101.6Q is 1in. og-css's own tests cover stepped round() and the other units.")
+proof("cap ch ex ic rcap rch rex ric rlh", "custom_properties", "font_relative_units_read_the_faces_own_metrics",
+      "With Inter Display as the body face, 1ch, 1ex and 1cap at 100px are its OS/2 `0` advance, x-height and cap height, 1ic is 1em (it has no 水: CSS Values 4 §6.1.1's fallback); the r- forms and rlh read the root's size and line height (the body type step). The ratios are the body face's: an element whose font-family names another face still reads the body face's.")
+proof("viewport-unit-variants", "css_layout", "small_large_and_dynamic_viewport_units_read_their_own_viewport",
+      "sv*, lv* and dv* (w, h, i, b, min, max) read the small, large and dynamic viewports the host reports, distinct from each other, and bare v* the dynamic one. vi and vb following the root's writing mode: css_layout::vi_and_vb_follow_the_roots_writing_mode.")
+proof("inherit-value initial-value unset-value revert-value", "documents", "css_wide_keywords_inherit_reset_and_revert",
+      "inherit takes the parent's width and font size; initial gives width auto and font-size medium (the root's size); unset inherits font-size and resets width; revert rolls a p's margin back to the user agent's 1em. revert-layer: custom_properties::a_var_that_resolves_to_revert_layer_rolls_the_cascade_back.")
+proof("registered-custom-properties", "custom_properties", "registered_custom_properties_take_their_syntax_initial_value_and_computed_length",
+      "@property: inherits false starts from the initial value under a parent that sets it, a value not matching <length> or <number> takes the initial value, a registered length computes to px where it is set (its child of another font size inherits the px), a \"*\" property with no initial value leaves var()'s fallback. CSS.registerProperty() is a script API a document has no scripts for.")
+proof("container-style-queries container-scroll-state-queries", "documents", "container_style_and_scroll_state_queries_follow_their_container",
+      "style(--t: dark) reads the nearest ancestor's computed value, a bound one re-read when its store changes, an unset property never matching; scroll-state(scrollable: bottom/top) and (scrolled: bottom) follow a wheel to the scroller's end. snapped and stuck are evaluated in og-ui's container unit tests, not asserted on output.")
+proof("supports charset import", "documents", "supports_charset_and_import_conditions_gate_their_rules",
+      "@supports declarations taken and refused, not/and/or, selector(), font-format() and font-tech(); rules after @charset apply; @import with layer() (an unlayered rule and a later rule in the layer win over it), a media condition and supports() true and false.")
+proof("prefers-color-scheme prefers-contrast prefers-reduced-data prefers-reduced-transparency inverted-colors scripting resolution display-mode dynamic-range color-gamut update interaction",
+      "documents", "preference_and_display_media_features_follow_the_theme_and_surface",
+      "Under two settings (light, standard contrast, opaque, 1dppx, sRGB, SDR, mouse; and dark, high contrast, reduced transparency, 2dppx, P3, HDR, touch), each value and the boolean form of prefers-color-scheme, prefers-contrast (less never), prefers-reduced-transparency, resolution in dppx/x/dpi/dpcm, color-gamut, dynamic-range, hover/any-hover and pointer/any-pointer match the theme and surface. inverted-colors, scripting, update, display-mode and prefers-reduced-data take the one answer the host gives (none, enabled, fast, fullscreen, no-preference).")
 not_applicable("url-cross-origin url-integrity url-referrer-policy",
                "Request modifiers for a network fetch: a game's url() names a file of its own cooked package, "
                "which is never fetched across origins, so CORS, subresource integrity and referrers do not arise.")
+not_applicable("namespace",
+               "A document's elements are in one namespace (a .svelte document is not XML), so @namespace prefixes "
+               "select nothing apart; the rule is accepted and has no effect.")
 
 MISSING = {
     "default": "documents::boolean_attribute_selectors_follow_svelte_presence proves retained :default follows false/present checked attributes. The immediate builder does not expose :default state; full support is missing.",

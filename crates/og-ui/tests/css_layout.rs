@@ -1631,6 +1631,45 @@ fn vi_and_vb_follow_the_roots_writing_mode() {
     });
 }
 
+/// CSS Values 4 §6.1.2's small, large and dynamic viewports: `sv*` read the
+/// surface with the host's controls shown, `lv*` with them hidden, `dv*`
+/// and the bare units the surface now, each axis and min/max apart.
+#[test]
+fn small_large_and_dynamic_viewport_units_read_their_own_viewport() {
+    let text = r#"<meta name="component" content="t">
+<div id="Root"><div id="Svh"></div><div id="Lvh"></div><div id="Dvh"></div><div id="Vh"></div><div id="Svw"></div><div id="Lvw"></div><div id="Svmin"></div><div id="Lvmax"></div><div id="Dvmin"></div><div id="Svi"></div><div id="Lvb"></div></div>
+<style>
+#Root div { height: 1px; }
+#Svh { width: 10svh; } #Lvh { width: 10lvh; } #Dvh { width: 10dvh; } #Vh { width: 10vh; }
+#Svw { width: 10svw; } #Lvw { width: 10lvw; }
+#Svmin { width: 10svmin; } #Lvmax { width: 10lvmax; } #Dvmin { width: 10dvmin; }
+#Svi { width: 10svi; } #Lvb { width: 10lvb; }
+</style>"#;
+    let mut d = Doc::new(text, &[]);
+    // A phone page: 600 × 700 now, 580 × 650 with the toolbars shown and
+    // 620 × 760 with them hidden.
+    d.viewport.width = 600.0;
+    d.viewport.height = 700.0;
+    d.viewport.small = [580.0, 650.0];
+    d.viewport.large = [620.0, 760.0];
+    d.step(InputFrame::default());
+    for (id, width) in [
+        ("Svh", 65.0),
+        ("Lvh", 76.0),
+        ("Dvh", 70.0),
+        ("Vh", 70.0),
+        ("Svw", 58.0),
+        ("Lvw", 62.0),
+        ("Svmin", 58.0),
+        ("Lvmax", 76.0),
+        ("Dvmin", 60.0),
+        ("Svi", 58.0),
+        ("Lvb", 76.0),
+    ] {
+        assert_eq!(d.get(id).width, width, "{id}");
+    }
+}
+
 /// A shaped rich paragraph beside a float breaks at each line's own room
 /// from one shaping: a soft hyphen there shows its hyphen, and below the
 /// float the lines take the whole width.
