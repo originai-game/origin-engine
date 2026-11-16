@@ -254,3 +254,161 @@ fn a_badge_scrolled_out_of_its_list_overlaps_nothing_outside_it() {
         "{shown:?}"
     );
 }
+
+/// CSS Easing 2's `ease` (`cubic-bezier(0.25, 0.1, 0.25, 1)`) at `x`,
+/// solved by bisection on the curve's x: independent of og-tween's solver.
+fn css_ease(x: f64) -> f64 {
+    let (x1, y1, x2, y2) = (0.25, 0.1, 0.25, 1.0);
+    let bez = |a: f64, b: f64, u: f64| {
+        3.0 * a * u * (1.0 - u).powi(2) + 3.0 * b * u * u * (1.0 - u) + u.powi(3)
+    };
+    let (mut lo, mut hi) = (0.0, 1.0);
+    for _ in 0..60 {
+        let mid = (lo + hi) / 2.0;
+        if bez(x1, x2, mid) < x {
+            lo = mid
+        } else {
+            hi = mid
+        }
+    }
+    bez(y1, y2, (lo + hi) / 2.0)
+}
+
+/// CSS Transitions 1 and 2 and CSS Easing 1 and 2, sampled tick by tick
+/// (60 a second) against the spec's curves worked out here: `linear`,
+/// `ease` (solved above, not by og-tween), `steps(4, jump-start)`,
+/// `steps(2, jump-both)` (three levels), `linear()` with a placed point,
+/// a delay; `transition-behavior: allow-discrete` holding `display` and
+/// `content-visibility` shown to the end where `normal` flips at once;
+/// `@starting-style` as an entrance's before-change style; and
+/// `animation-composition` combining a keyframe `scale(3)` with the
+/// underlying `scale(2)` (Web Animations 1 §5.4, CSS Transforms 2 §16:
+/// replace 3, add 2·3, accumulate 2 + 3 − 1). A checkpoint taken mid-way
+/// replays exactly. Widths are laid out on whole pixels, hence ±0.5.
+/// Ways it could fail: a curve's ends swapped or its control points read
+/// in another order, a jump at the wrong edge of a step, a `linear()`
+/// point's input ignored, the delay counted into the duration, a discrete
+/// property flipping half-way (or holding without allow-discrete), the
+/// entrance starting from the final style, composite modes conflated, or
+/// motion that reads a clock.
+#[test]
+fn transitions_and_easings_sample_the_specs_curves_by_the_tick() {
+    let text = r#"<meta name="component" content="t">
+<div id="Page" class={$mode}>
+  <div id="Lin"></div><div id="Ease"></div><div id="Steps"></div><div id="Both"></div><div id="Points"></div><div id="Late"></div>
+  <div id="Gone"><div id="GoneKid"></div></div><div id="Snap"><div id="SnapKid"></div></div>
+  <div id="Fold"><button id="FoldKid">Kid</button></div>
+  <div id="Rep" class="grow"></div><div id="Add" class="grow"></div><div id="Acc" class="grow"></div>
+  {#if $shown}<div id="In"></div>{/if}
+</div>
+<style>
+#Page { display: flex; flex-direction: column; align-items: start; }
+#Page > div { height: 10px; width: 0px; }
+#Lin { transition: width 1000ms linear; }
+#Ease { transition: width 1000ms; }
+#Steps { transition: width 400ms steps(4, jump-start); }
+#Both { transition: width 600ms steps(2, jump-both); }
+#Points { transition: width 1000ms linear(0, 0.25 75%, 1); }
+#Late { transition: width 500ms linear 100ms; }
+#Page.on > div { width: 600px; }
+#Page > #Gone, #Page > #Snap { display: block; }
+#Gone { transition: display 200ms allow-discrete; }
+#Snap { transition: display 200ms; }
+#Page.on > #Gone, #Page.on > #Snap { display: none; }
+#Page > #Fold { content-visibility: visible; transition: content-visibility 200ms allow-discrete; }
+#Page.on > #Fold { content-visibility: hidden; }
+#GoneKid, #SnapKid, #FoldKid { width: 10px; height: 10px; }
+#Page > .grow, #Page.on > .grow { margin: 20px 100px; width: 10px; transform: scale(2); animation: grow 1s linear infinite; }
+#Page > #Add { animation-composition: add; }
+#Page > #Acc { animation-composition: accumulate; }
+@keyframes grow { from, to { transform: scale(3); } }
+#Page > #In { width: 100px; transition: width 1000ms linear; }
+@starting-style { #Page > #In { width: 0px; } }
+</style>"#;
+    let mut d = Doc::new(
+        text,
+        &[
+            ("mode", serde_json::json!("off")),
+            ("shown", serde_json::json!(false)),
+        ],
+    );
+    type Curve = (&'static str, fn(f64) -> f64);
+    let curves: [Curve; 6] = [
+        ("Lin", |t| (t / 1000.0).min(1.0)),
+        ("Ease", |t| css_ease((t / 1000.0).min(1.0))),
+        // jump-start: floor(4p) + 1 levels of 4 from the first instant.
+        ("Steps", |t| {
+            ((4.0 * (t / 400.0)).floor() + 1.0).min(4.0) / 4.0
+        }),
+        // jump-both: floor(2p) + 1 of 3 levels, 1 at the end.
+        ("Both", |t| {
+            if t >= 600.0 {
+                1.0
+            } else {
+                ((2.0 * t / 600.0).floor() + 1.0) / 3.0
+            }
+        }),
+        ("Points", |t| {
+            let p = (t / 1000.0).min(1.0);
+            if p < 0.75 {
+                p / 3.0
+            } else {
+                0.25 + (p - 0.75) / 0.25 * 0.75
+            }
+        }),
+        ("Late", |t| ((t - 100.0) / 500.0).clamp(0.0, 1.0)),
+    ];
+    // `set` steps twice: the change is seen on the first (progress 0),
+    // so the next read is one tick in.
+    d.set("mode", serde_json::json!("on"));
+    for (id, scaled) in [("Rep", 30.0), ("Add", 60.0), ("Acc", 40.0)] {
+        assert_eq!(d.get(id).width, scaled, "{id}'s composite");
+    }
+    let mut saved = None;
+    let mut sampled = Vec::new();
+    for tick in 1..=64 {
+        let ms = tick as f64 * 1000.0 / 60.0;
+        for (id, curve) in curves {
+            let (w, want) = (d.get(id).width as f64, 600.0 * curve(ms));
+            assert!(
+                (w - want).abs() <= 0.5 + 1e-3,
+                "{id} at tick {tick}: {w} vs {want}"
+            );
+        }
+        // 200 ms is 12 ticks: allow-discrete keeps the shown value until
+        // the end; `normal` flipped on the change.
+        let shown = tick < 12;
+        assert_eq!(d.el("GoneKid").is_some(), shown, "display at tick {tick}");
+        let folded = !d
+            .ui
+            .a11y()
+            .nodes
+            .iter()
+            .any(|n| n.path.ends_with("/FoldKid"));
+        assert_eq!(folded, !shown, "content-visibility at tick {tick}");
+        assert!(d.el("SnapKid").is_none(), "normal display flips at once");
+        if tick == 20 {
+            saved = Some(d.ui.save_state());
+        }
+        if tick > 20 {
+            sampled.push(d.ui.frame().items.clone());
+        }
+        d.step(InputFrame::default());
+    }
+    d.ui.restore_state(&saved.unwrap()).unwrap();
+    for (k, expected) in sampled.iter().enumerate() {
+        d.step(InputFrame::default());
+        assert_eq!(&d.ui.frame().items, expected, "replay {k}");
+    }
+    // An entrance starts from its @starting-style.
+    d.set("shown", serde_json::json!(true));
+    for tick in 1..=6 {
+        let want = 100.0 * tick as f32 / 60.0;
+        let w = d.get("In").width;
+        assert!(
+            (w - want).abs() <= 0.5 + 1e-3,
+            "entrance at tick {tick}: {w} vs {want}"
+        );
+        d.step(InputFrame::default());
+    }
+}
