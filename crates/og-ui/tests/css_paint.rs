@@ -1856,8 +1856,10 @@ fn filter_images_run_their_functions_in_order_on_the_image() {
 ///
 /// Ways it could fail: only the element's own (here empty) text clipping
 /// it, so nothing draws; the descendants' glyphs drawn in their own
-/// colour in the coverage; the group drawn over the text; or a reused
-/// frame holding the group twice, none, or in the wrong place.
+/// colour in the coverage; the group drawn over the text; a reused frame
+/// holding the group twice, none, or in the wrong place; or a paragraph
+/// kept while its sibling changes copied from where it stood before last
+/// frame's group went in.
 #[test]
 fn background_clip_text_cuts_to_the_descendants_text() {
     let text = r#"<meta name="component" content="t">
@@ -1952,4 +1954,21 @@ fn background_clip_text_cuts_to_the_descendants_text() {
         whole.ui.frame().items,
         "a reused frame is the whole one"
     );
+    // One paragraph inside the box changes and the others are kept: they
+    // are copied from where they stood after last frame's group.
+    let inner = text.replace("<p>beta</p>", "<p>beta</p><p>{label}</p>");
+    let mut d = Doc::with_font(&inner, &[("label", serde_json::json!("one"))], test_font());
+    for label in ["two", "three"] {
+        d.set("label", serde_json::json!(label));
+        assert!(
+            d.ui.frame().stats.kept_commands > 0,
+            "the unchanged paragraphs are kept"
+        );
+        let whole = Doc::with_font(&inner, &[("label", serde_json::json!(label))], test_font());
+        assert_eq!(
+            d.ui.frame().items,
+            whole.ui.frame().items,
+            "a frame keeping the box's other paragraphs is the whole one"
+        );
+    }
 }

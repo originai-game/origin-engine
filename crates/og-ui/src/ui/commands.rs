@@ -381,6 +381,8 @@ impl Ui {
                     .cache
                     .ranges
                     .insert(self.tree.nodes[i].key, (start - base, len, count));
+                self.paint
+                    .clip_child(open.last().map(|o| o.0), self.tree.nodes[i].key);
                 k = ends[k];
                 self.close_subtrees(
                     &mut open,
@@ -534,7 +536,7 @@ impl Ui {
                 // Its text. Backgrounds cut to text go under it and its
                 // descendants' text when its subtree closes.
                 if draw.as_ref().is_some_and(|d| d.clips_to_text()) {
-                    self.paint.text_clips.push((i, over));
+                    self.paint.text_clips.push((i, over, Vec::new()));
                 }
                 cmds.extend(local);
                 // Kept commands were read for missing glyphs when painted.
@@ -689,8 +691,9 @@ impl Ui {
                 // `background-clip: text`: its backgrounds cut to the text
                 // its subtree drew, under that text (CSS Backgrounds 4
                 // §2.1).
-                if let Some(&(_, over)) = self.paint.text_clips.last().filter(|c| c.0 == j) {
-                    self.paint.text_clips.pop();
+                if self.paint.text_clips.last().is_some_and(|c| c.0 == j)
+                    && let Some((_, over, children)) = self.paint.text_clips.pop()
+                {
                     let group = self.paint.draw_of(j, &self.tree).map_or(Vec::new(), |d| {
                         d.text_clip_group(
                             &self.env.theme,
@@ -700,10 +703,21 @@ impl Ui {
                         )
                     });
                     if !group.is_empty() {
-                        // Every later command moves: no span after it is kept.
+                        // Every later command moves: no span after it is
+                        // kept in place, the ranges copied after it and
+                        // its children's ranges from its start move too.
+                        let by = group.len();
                         self.paint.kept_spans.retain(|r| r.end <= over);
                         self.paint.cache.aligned.retain(|r| r.end <= over);
-                        shift_named(&mut self.paint.cache.named, over, group.len());
+                        for c in self.paint.cache.copied.iter_mut().filter(|c| c.0 >= over) {
+                            c.0 += by;
+                        }
+                        for key in children {
+                            if let Some(r) = self.paint.cache.ranges.get_mut(&key) {
+                                r.0 += by;
+                            }
+                        }
+                        shift_named(&mut self.paint.cache.named, over, by);
                         cmds.splice(over..over, group);
                     }
                 }
@@ -842,6 +856,8 @@ impl Ui {
                     self.tree.nodes[j].key,
                     (first - base, cmds.len() - first, count),
                 );
+                self.paint
+                    .clip_child(open.last().map(|o| o.0), self.tree.nodes[j].key);
             }
         }
     }
@@ -1174,6 +1190,18 @@ impl Ui {
 }
 
 impl crate::ui::Paint {
+    /// The node of `key` recorded its next-frame range from the start of
+    /// `parent`, the subtree open around it: when that is the innermost
+    /// element cut to text, its group (inserted after that start when it
+    /// closes) moves the range ([`crate::ui::Paint::text_clips`]).
+    fn clip_child(&mut self, parent: Option<usize>, key: u64) {
+        if let Some(c) = self.text_clips.last_mut()
+            && Some(c.0) == parent
+        {
+            c.2.push(key);
+        }
+    }
+
     /// Staggered entrances: under a node with a stagger, the k-th drawn
     /// leaf (a label, a control, an icon) enters `k` steps after the first;
     /// a long list shortens the step so the cascade ends within one more
