@@ -1817,6 +1817,7 @@ impl Resolved {
                 }
             }),
             decoration: t.decoration.any().then(|| t.decoration.clone()),
+            hyphen: t.hyphen.as_deref().map(Into::into),
             word_spacing: t.word_spacing.filter(|w| *w != 0.0),
             ..Default::default()
         };

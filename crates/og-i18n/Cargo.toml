@@ -25,6 +25,10 @@ icu_properties = { version = "2.4", default-features = false, features = ["compi
 # Canonical decomposition (NFD) for accent-insensitive search
 # ([`text::search_fold`]); Parley already links it with the same data.
 icu_normalizer = { version = "2.4", default-features = false, features = ["compiled_data"] }
+# Hyphenation dictionaries for CSS `hyphens: auto` (CSS Text 3 §6.1):
+# hyph-utf8's TeX patterns under permissive licences (LPPL, MPL, MIT,
+# BSD-3), as compact automata, 48 languages.
+hypher = "0.1.8"
 icu_locale_core = "2.3"
 icu_plurals = "2.3"
 fixed_decimal = "0.7"

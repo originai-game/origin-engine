@@ -72,6 +72,9 @@ pub struct RichSpan {
     pub fx: SpanFx,
     /// Its CSS decoration's style, colour, thickness, offset and overline.
     pub decoration: Option<crate::css::text_css::Decoration>,
+    /// What a line broken at its soft hyphen ends in (CSS
+    /// `hyphenate-character`); `None`: a hyphen-minus.
+    pub hyphen: Option<std::sync::Arc<str>>,
     /// Where it sits in its line against the paragraph's text.
     pub valign: VerticalAlign,
     /// CSS `word-spacing`, px: added after each word separator.

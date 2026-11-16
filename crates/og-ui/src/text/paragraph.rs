@@ -526,7 +526,7 @@ fn planned_line(
         span.text = text[a..b].to_owned();
         if k == shy && b == end {
             span.text.pop();
-            span.text.push('-');
+            span.text.push_str(s.hyphen.as_deref().unwrap_or("-"));
         }
         out.spans.push(span);
         spans.push(k);
@@ -556,11 +556,12 @@ fn reshape((line, spans, base): Planned, fonts: &dyn crate::layout::Metrics) -> 
     Some(line)
 }
 
-/// Each span's hyphen width, which a taken SHY reserves.
+/// Each span's hyphen width (its `hyphenate-character`), which a taken
+/// SHY reserves.
 fn hyphens(content: &RichContent, fonts: &dyn crate::layout::Metrics) -> Vec<f32> {
     content
         .spans
         .iter()
-        .map(|s| crate::rich::span_width(s, "-", fonts))
+        .map(|s| crate::rich::span_width(s, s.hyphen.as_deref().unwrap_or("-"), fonts))
         .collect()
 }

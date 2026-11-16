@@ -978,6 +978,47 @@ fn error_lines_are_the_uas_and_blink_draws_none() {
     assert_eq!(rules(&d, "BU").len(), 1);
 }
 
+/// CSS Text 4 §6.1: `hyphens: auto` breaks a word at its language's
+/// hyphenation points, showing `hyphenate-character` (§6.2; `auto`, a
+/// hyphen) at the break; `manual`, the initial value, breaks only at a
+/// soft hyphen; both inherit. §6.3: `hyphenate-limit-chars` is the fewest characters
+/// of a word that hyphenates and of its parts before and after a break.
+/// The content language must be known: with none it does not hyphenate.
+///
+/// TeX's US English patterns (pyphen, LibreOffice's dictionary, agrees)
+/// hyphenate "hy-phen-ation" with at least 2 characters before and 3
+/// after. Noto Sans at 20px, from HarfBuzz: "hyphen-" 77.3px,
+/// "hyphen=" 82.3px, "hyphenation" 118.9px, so in 90px the last break
+/// that fits is after "hyphen". With `auto 2 6` "ation" (5) is too short
+/// to stand after a break, so only "hy-" is left; with a word minimum of
+/// 12 the 11-letter word does not hyphenate.
+///
+/// Ways it could fail: no dictionary break, a break that does not hold
+/// room for its hyphen, the custom character not shown, the limits
+/// ignored, or a guess at the language when none is set.
+#[test]
+fn hyphens_auto_breaks_words_at_the_languages_hyphenation_points() {
+    let body = r#"<p id="M">hyphenation</p><p class="a" id="A">hyphenation</p><div id="Hc"><p class="a" id="C">hyphenation</p></div>
+<p class="a" id="L">hyphenation</p><p class="a" id="W">hyphenation</p>"#;
+    let css = "p { font-size: 20px; width: 90px; margin-bottom: 10px; } .a { hyphens: auto; }
+#Hc { hyphenate-character: \"=\"; } #L { hyphenate-limit-chars: auto 2 6; } #W { hyphenate-limit-chars: 12; }";
+    let mut d = doc(body, css);
+    assert_eq!(drawn(&d, "A"), "hyphenation", "no language, no dictionary");
+    d.ui.set_locale("en-US");
+    d.step(InputFrame::default());
+    for (id, want) in [
+        ("M", "hyphenation"),
+        ("A", "hyphen-|ation"),
+        ("C", "hyphen=|ation"),
+        ("L", "hy-|phenation"),
+        ("W", "hyphenation"),
+    ] {
+        assert_eq!(drawn(&d, id).replace('\u{ad}', ""), want, "#{id}");
+    }
+    let a = lines(&d, "A");
+    assert!((a[0].width - 77.3).abs() <= 0.5, "{a:?}");
+}
+
 fn near(a: [f32; 4], b: Srgba) -> bool {
     crate::support::near(a, b)
 }

@@ -56,6 +56,9 @@ pub struct TextSpanStyle {
     /// lines, style, colour, thickness and offset (the lines it sets win
     /// over `underline` and `strike`).
     pub decoration: Option<crate::css::text_css::Decoration>,
+    /// CSS `hyphenate-character`: the string a line broken at its soft
+    /// hyphen ends in.
+    pub hyphen: Option<std::sync::Arc<str>>,
     /// CSS `vertical-align`: where it sits in its line against the
     /// paragraph's text (`Baseline` when unset).
     pub vertical_align: Option<crate::VerticalAlign>,
@@ -191,6 +194,7 @@ impl Ui {
                 link: None,
                 fx: SpanFx::None,
                 decoration: None,
+                hyphen: None,
                 valign: crate::VerticalAlign::Baseline,
                 word_spacing: 0.0,
                 combine: None,
@@ -313,6 +317,9 @@ impl Ui {
                     s.underline = d.underline;
                     s.strike = d.through;
                     s.decoration = Some(d.clone());
+                }
+                if let Some(h) = &style.hyphen {
+                    s.hyphen = Some(h.clone());
                 }
                 if let Some(link) = &style.link {
                     s.link = Some(link.clone());

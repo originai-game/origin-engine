@@ -231,6 +231,8 @@ pub(crate) fn inherited_property(name: &str) -> bool {
                 | "word-break"
                 | "overflow-wrap"
                 | "hyphens"
+                | "hyphenate-character"
+                | "hyphenate-limit-chars"
                 | "tab-size"
                 | "caret-color"
                 | "caret-shape"

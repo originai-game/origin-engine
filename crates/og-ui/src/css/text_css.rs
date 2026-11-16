@@ -40,6 +40,8 @@ pub(crate) const INHERITED: &[&str] = &[
     "text-indent",
     "tab-size",
     "hyphens",
+    "hyphenate-character",
+    "hyphenate-limit-chars",
     "word-break",
     "line-break",
     "overflow-wrap",
@@ -770,6 +772,8 @@ fn check(name: &str, v: &str) -> Result<(), String> {
             "auto" | "start" | "end" | "left" | "right" | "center" | "justify" | "match-parent"
         ),
         "hyphens" => matches!(v, "none" | "manual" | "auto"),
+        "hyphenate-character" => v == "auto" || hyphen_string(v).is_some(),
+        "hyphenate-limit-chars" => HyphenLimits::parse(v).is_some(),
         "word-break" => matches!(
             v,
             "normal" | "break-all" | "keep-all" | "break-word" | "auto-phrase"
@@ -1212,6 +1216,11 @@ pub struct TextCss {
     pub indent: Option<(f32, bool, bool)>,
     pub tab_size: Option<f32>,
     pub hyphens: Option<String>,
+    /// `hyphenate-character`: the string shown at a hyphenated break
+    /// (`None`: `auto`, a hyphen-minus).
+    pub hyphen: Option<String>,
+    /// `hyphenate-limit-chars`.
+    pub hyphen_limits: HyphenLimits,
     pub word_break: Option<String>,
     pub line_break: Option<String>,
     pub overflow_wrap: Option<String>,
@@ -1451,6 +1460,10 @@ pub(crate) fn inherit(inp: Inputs<'_>) -> TextCss {
         }),
         tab_size: num(get("tab-size")),
         hyphens: get("hyphens"),
+        hyphen: get("hyphenate-character").and_then(|v| hyphen_string(&v)),
+        hyphen_limits: get("hyphenate-limit-chars")
+            .and_then(|v| HyphenLimits::parse(&v))
+            .unwrap_or_default(),
         word_break: get("word-break"),
         line_break: get("line-break"),
         overflow_wrap: get("overflow-wrap"),
@@ -1814,6 +1827,7 @@ impl TextCss {
             || self.decoration.any()
             || self.stroke.is_some()
             || self.emphasis.is_some()
+            || self.hyphen.is_some()
             || p.0 != Default::default()
             || p.1 != Default::default()
     }
@@ -1964,8 +1978,62 @@ impl TextCss {
                 s = transform(w, &s, locale);
             }
         }
+        // hyphens: auto (CSS Text 4 §6.1): soft hyphens at the language's
+        // hyphenation points, which the line breakers take as a manual one.
+        if self.hyphens.as_deref() == Some("auto") {
+            let l = self.hyphen_limits;
+            s = og_i18n::text::hyphenate(&s, locale, l.word.unwrap_or(5), l.before, l.after);
+        }
         s
     }
+}
+
+/// `hyphenate-limit-chars` (CSS Text 4 §6.3): the fewest characters of
+/// a word that hyphenates and of its parts before and after a break
+/// (`None`: `auto`, five for a word and the language's own minimums).
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub struct HyphenLimits {
+    pub word: Option<usize>,
+    pub before: Option<usize>,
+    pub after: Option<usize>,
+}
+
+impl HyphenLimits {
+    /// `[ auto | <integer> ]{1,3}`: an omitted after is the before, an
+    /// omitted before `auto`.
+    pub fn parse(v: &str) -> Option<HyphenLimits> {
+        let values: Vec<Option<usize>> = v
+            .split_whitespace()
+            .map(|w| match w {
+                "auto" => Some(None),
+                n => n.parse::<usize>().ok().map(Some),
+            })
+            .collect::<Option<_>>()?;
+        match values[..] {
+            [word] => Some(HyphenLimits {
+                word,
+                ..Default::default()
+            }),
+            [word, before] => Some(HyphenLimits {
+                word,
+                before,
+                after: before,
+            }),
+            [word, before, after] => Some(HyphenLimits {
+                word,
+                before,
+                after,
+            }),
+            _ => None,
+        }
+    }
+}
+
+/// `hyphenate-character`'s `<string>`.
+fn hyphen_string(v: &str) -> Option<String> {
+    let mut p = cssparser::Parser::new(v);
+    let s = p.expect_string().ok()?.to_string();
+    p.is_exhausted().then_some(s)
 }
 
 /// CSS Text 3 §2.1's transforms.
