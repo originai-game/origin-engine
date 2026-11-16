@@ -745,7 +745,7 @@ fn parse_ease(e: &str) -> Result<Ease, String> {
 }
 
 fn parse_size(vals: &[Value]) -> Result<Size, String> {
-    const HOW: &str = "a size: fit [min max], stretch [min max], fixed <px> (or a number), percent <0–1>, minContent, maxContent";
+    const HOW: &str = "a size: fit [min max], stretch [min max], fixed <px> (or a number), percent <0–1>, minContent, maxContent, calcSize <basis> <scale> <percent> <px>";
     if let [Value::Number(n)] = vals {
         return Ok(Size::Fixed(n.as_f32()));
     }
@@ -763,6 +763,21 @@ fn parse_size(vals: &[Value]) -> Result<Size, String> {
         }
         "minContent" => Size::MinContent,
         "maxContent" => Size::MaxContent,
+        "calcSize" => Size::CalcSize {
+            basis: match vals.get(1).and_then(Value::as_word) {
+                Some("auto") => crate::SizeBasis::Auto,
+                Some("min-content") => crate::SizeBasis::MinContent,
+                Some("max-content") => crate::SizeBasis::MaxContent,
+                Some("fit-content") => crate::SizeBasis::FitContent,
+                Some("stretch") => crate::SizeBasis::Stretch,
+                _ => return Err(HOW.into()),
+            },
+            scale: n(2).ok_or(HOW)?,
+            add: crate::Length {
+                pct: n(3).ok_or(HOW)?,
+                px: n(4).ok_or(HOW)?,
+            },
+        },
         "fixed" => Size::Fixed(n(1).ok_or(HOW)?),
         "percent" => Size::Percent(n(1).ok_or(HOW)?),
         "calc" => {

@@ -41,6 +41,9 @@ pub(super) struct Tree<'a, 'm> {
     /// The flex container being measured for its intrinsic main size, if
     /// any (`View::measured`).
     intrinsic: usize,
+    /// The box whose `calc-size()` basis is being measured, if any
+    /// ([`Tree::calc_size`]).
+    calc_sizing: usize,
     /// The block formatting contexts being laid out, innermost last.
     bfcs: Vec<inline::Bfc>,
     /// Per context root holding a float whose contour narrows lines: its
@@ -104,6 +107,7 @@ impl<'a, 'm> Tree<'a, 'm> {
             empty,
             measuring: NONE,
             intrinsic: NONE,
+            calc_sizing: NONE,
             bfcs: Vec::new(),
             shaped: Default::default(),
             line: None,
@@ -204,6 +208,7 @@ impl<'a, 'm> Tree<'a, 'm> {
         let i = usize::from(node);
         let input = self.contained(i, input);
         let input = self.through_ratio(i, input);
+        let input = self.calc_size(i, input);
         let input = self.fit_content(i, input);
         let input = self.block_size_from_content(i, input);
         // A text among floats breaks its lines around them, where they
@@ -323,6 +328,64 @@ impl<'a, 'm> Tree<'a, 'm> {
             tf::FlexDirection::Column | tf::FlexDirection::ColumnReverse
         ) {
             input.available_space.height = tf::AvailableSpace::MaxContent;
+        }
+        input
+    }
+
+    /// CSS Values 5 §8.1: a box sized by `calc-size()` along an axis its
+    /// parent has not decided lays out at its basis's size (its style
+    /// answers the basis, `View::dim`) and takes the calculation of that,
+    /// held to its min and max: width first, so its height's basis is its
+    /// content's at that width.
+    fn calc_size(&mut self, i: usize, mut input: tf::LayoutInput) -> tf::LayoutInput {
+        use tf::{CoreStyle, MaybeMath, MaybeResolve};
+        if self.calc_sizing == i {
+            return input;
+        }
+        for axis in 0..2 {
+            let v = View::new(self.nodes, i);
+            let Size::CalcSize { scale, add, .. } = v.sized(axis) else {
+                continue;
+            };
+            if v.calc_size_fills(axis) {
+                continue;
+            }
+            let known = [input.known_dimensions.width, input.known_dimensions.height];
+            if known[axis].is_some() {
+                continue;
+            }
+            let parent = input.parent_size;
+            let calc = |p, b| self.resolve_calc_value(p, b);
+            let (min, max) = (
+                v.min_size().maybe_resolve(parent, calc),
+                v.max_size().maybe_resolve(parent, calc),
+            );
+            let (min, max, basis) = if axis == 0 {
+                (min.width, max.width, parent.width)
+            } else {
+                (min.height, max.height, parent.height)
+            };
+            let probe = tf::LayoutInput {
+                run_mode: tf::RunMode::ComputeSize,
+                axis: if axis == 0 {
+                    tf::RequestedAxis::Horizontal
+                } else {
+                    tf::RequestedAxis::Vertical
+                },
+                ..input
+            };
+            let outer = std::mem::replace(&mut self.calc_sizing, i);
+            let got = self.lay_turned(id(i), probe, None).size;
+            self.calc_sizing = outer;
+            let size = if axis == 0 { got.width } else { got.height };
+            let size = (scale * size + add.of(basis.unwrap_or(0.0)))
+                .maybe_clamp(min, max)
+                .max(0.0);
+            if axis == 0 {
+                input.known_dimensions.width = Some(size);
+            } else {
+                input.known_dimensions.height = Some(size);
+            }
         }
         input
     }

@@ -195,6 +195,26 @@ fn value_css(prop: &str, c: Conv, vals: &[Value]) -> Result<String, String> {
                 "stretch" => Ok("stretch".into()),
                 "minContent" => Ok("min-content".into()),
                 "maxContent" => Ok("max-content".into()),
+                "calcSize" => {
+                    let n = |k: usize| {
+                        vals.get(k)
+                            .and_then(|v| v.as_number())
+                            .map_or(0.0, |n| n.as_f32() as f64)
+                    };
+                    let add = super::calc::sum_text(
+                        &[("%", n(3) * 100.0), ("px", n(4))]
+                            .into_iter()
+                            .filter(|(_, v)| *v != 0.0)
+                            .collect::<Vec<_>>(),
+                    );
+                    let basis = vals.get(1).map(text_of).unwrap_or_default();
+                    let size = format!("size * {}", super::calc::number(n(2)));
+                    Ok(if add.is_empty() || add == "0" {
+                        format!("calc-size({basis}, {size})")
+                    } else {
+                        format!("calc-size({basis}, {size} + {add})")
+                    })
+                }
                 "percent" => Ok(format!(
                     "{}%",
                     shift(&vals.get(1).map(text_of).ok_or("percent <0–1>")?, 2)

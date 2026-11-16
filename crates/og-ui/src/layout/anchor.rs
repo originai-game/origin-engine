@@ -716,6 +716,9 @@ fn place(p: &Placement, f: &Frame<'_>) -> (Rect, Rect) {
             (None, Size::Calc(c)) => c.of(len[axis]),
             (None, Size::MinContent) => least,
             (None, Size::MaxContent) => pref,
+            (None, Size::CalcSize { basis, scale, add }) => {
+                (scale * basis.of(pref, least, room, both) + add.of(len[axis])).clamp(lo_b, hi_b)
+            }
             (None, Size::Grow { .. } | Size::Stretch { .. }) => room.clamp(lo_b, hi_b),
             // Auto between two insets fills them (CSS Position 3 §5.1),
             // else it shrinks to fit its room.

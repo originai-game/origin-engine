@@ -303,6 +303,16 @@ impl Ui {
                 },
                 // A content size already holds its padding.
                 s @ (Size::MinContent | Size::MaxContent) => s,
+                // Its basis is a border box: in content-box sizing only
+                // `scale` of its padding is the basis's, so the rest adds.
+                Size::CalcSize { basis, scale, add } => Size::CalcSize {
+                    basis,
+                    scale,
+                    add: crate::Length {
+                        px: add.px + (1.0 - scale) * p,
+                        ..add
+                    },
+                },
             };
             el.width = grow(el.width, pad[0]);
             el.height = grow(el.height, pad[1]);

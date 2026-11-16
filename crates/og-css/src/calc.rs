@@ -91,7 +91,7 @@ const LAYOUT_FUNCTIONS: [&str; 11] = [
 ];
 
 fn is_length(unit: &str) -> bool {
-    matches!(unit, "%" | "px" | "em")
+    matches!(unit, "%" | "px" | "em" | "size")
 }
 
 /// What the units [`absolute`] resolves are worth for one element.
@@ -456,6 +456,16 @@ pub fn reduce(text: &str) -> Result<String, String> {
     let mut out = String::with_capacity(text.len());
     let mut rest = text;
     while let Some((at, name)) = next_function(rest) {
+        // A `calc-size()` keeps its calculation, which reads `size`, for
+        // layout ([`calc_size`]).
+        if let Some(start) = rest[..at].rfind("calc-size(")
+            && let Some(close) = closing(rest, start + 9)
+            && close > at
+        {
+            out.push_str(&rest[..=close]);
+            rest = &rest[close + 1..];
+            continue;
+        }
         // A relative colour's channels read its origin's (`calc(h + 180)`
         // in `oklch(from var(--accent) …)`): the colour reduces them.
         if let Some((start, close)) = relative_colour(rest)
@@ -479,6 +489,7 @@ pub fn reduce(text: &str) -> Result<String, String> {
         let mut p = Parser {
             s: body.as_bytes(),
             i: 0,
+            size: false,
         };
         let value = p.function(name)?;
         out.push_str(&format(&value));
@@ -513,6 +524,113 @@ fn relative_colour(s: &str) -> Option<(usize, usize)> {
         from = open + 1;
     }
     None
+}
+
+/// A `calc-size()` (CSS Values 5 §8.1) as layout evaluates it:
+/// `scale × size + pct × the percentage basis + px`, where `size` is the
+/// box's size for `basis`, an intrinsic size keyword. A length basis (or
+/// none, `scale` 0) and a nested `calc-size()` fold into the sum.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct CalcSize {
+    /// `auto`, `min-content`, `max-content`, `fit-content` or `stretch`;
+    /// `None` when the basis was a length.
+    pub basis: Option<&'static str>,
+    pub scale: f64,
+    /// A fraction (0–1) of the percentage basis.
+    pub pct: f64,
+    pub px: f64,
+}
+
+/// `text`, a whole `calc-size(<basis>, <calculation>)` with its font and
+/// viewport units already px, as a [`CalcSize`]. The calculation must be
+/// linear in `size` (a sum of `size` times a number and lengths), which is
+/// what interpolating between sizes produces.
+pub fn calc_size(text: &str) -> Result<CalcSize, String> {
+    const HOW: &str = "calc-size(<basis>, <calculation>): an intrinsic size keyword (auto, min-content, max-content, fit-content, stretch), a length or a calc-size(), then a calculation over size, such as calc-size(auto, size * 0.5)";
+    let text = text.trim();
+    let open = "calc-size".len();
+    if !text.starts_with("calc-size(") || closing(text, open) != Some(text.len() - 1) {
+        return Err(HOW.into());
+    }
+    let (basis, calculation) = split_top(&text[open + 1..text.len() - 1]).ok_or(HOW)?;
+    let basis = basis.trim();
+    let lengths = |terms: Vec<(&'static str, f64)>, out: &mut CalcSize| -> Result<(), String> {
+        for (unit, v) in terms {
+            match unit {
+                "size" => out.scale += v,
+                "%" => out.pct += v / 100.0,
+                "px" => out.px += v,
+                "" if v == 0.0 => {}
+                u => return Err(format!("calc-size(): a {u} is not a length here; {HOW}")),
+            }
+        }
+        Ok(())
+    };
+    let inner = match basis {
+        "auto" | "min-content" | "max-content" | "fit-content" | "stretch" => CalcSize {
+            basis: [
+                "auto",
+                "min-content",
+                "max-content",
+                "fit-content",
+                "stretch",
+            ]
+            .into_iter()
+            .find(|k| *k == basis),
+            scale: 1.0,
+            pct: 0.0,
+            px: 0.0,
+        },
+        b if b.starts_with("calc-size(") => calc_size(b)?,
+        b => {
+            let mut p = Parser {
+                s: b.as_bytes(),
+                i: 0,
+                size: false,
+            };
+            let mut out = CalcSize {
+                basis: None,
+                scale: 0.0,
+                pct: 0.0,
+                px: 0.0,
+            };
+            lengths(terms(p.sum()?).map_err(|_| HOW.to_string())?, &mut out)?;
+            p.space();
+            if p.i < p.s.len() {
+                return Err(HOW.into());
+            }
+            out
+        }
+    };
+    let mut p = Parser {
+        s: calculation.as_bytes(),
+        i: 0,
+        size: true,
+    };
+    let linear =
+        "calc-size(): its calculation is linear in size (size times a number, plus lengths)";
+    let sum = terms(p.sum()?).map_err(|_| linear.to_string())?;
+    p.space();
+    if p.i < p.s.len() {
+        return Err(format!(
+            "'{}' is not part of calc-size()'s calculation",
+            String::from_utf8_lossy(&p.s[p.i..])
+        ));
+    }
+    let mut outer = CalcSize {
+        basis: None,
+        scale: 0.0,
+        pct: 0.0,
+        px: 0.0,
+    };
+    lengths(sum, &mut outer)?;
+    // `outer` reads `size`, the inner one's result.
+    Ok(CalcSize {
+        basis: inner.basis,
+        scale: outer.scale * inner.scale,
+        pct: outer.scale * inner.pct + outer.pct,
+        px: outer.scale * inner.px + outer.px,
+    })
 }
 
 /// Whether `text` holds a math function.
@@ -688,6 +806,9 @@ fn add(
 struct Parser<'a> {
     s: &'a [u8],
     i: usize,
+    /// It reads a `calc-size()` calculation, where `size` is the basis's
+    /// size (CSS Values 5 §8.1).
+    size: bool,
 }
 
 impl Parser<'_> {
@@ -886,6 +1007,7 @@ impl Parser<'_> {
             let mut inner = Parser {
                 s: &self.s[open + 1..close],
                 i: 0,
+                size: self.size,
             };
             self.i = close + 1;
             return inner.function(name);
@@ -895,9 +1017,13 @@ impl Parser<'_> {
         if negative {
             self.i += 1;
         }
+        let reads_size = self.size;
         if let Some(w) = self.word() {
             // CSS Values 4 §10.7.1's constants.
             let v = match w.to_ascii_lowercase().as_str() {
+                "size" if reads_size => {
+                    return Ok(Dim::Sum(vec![("size", if negative { -1.0 } else { 1.0 })]));
+                }
                 "e" => std::f64::consts::E,
                 "pi" => std::f64::consts::PI,
                 "infinity" => f64::INFINITY,
