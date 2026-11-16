@@ -9,6 +9,7 @@ pub struct Cascade {
     pub reads: BTreeSet<String>,
     pub local_names: BTreeSet<String>,
     pub viewport_reads: crate::doc::media::Reads,
+    pub(crate) media: crate::css::media::Dependencies,
     /// Only evaluated lookups outside local declarations, including missing
     /// values and evaluated fallbacks. Inherited values are never re-expanded.
     pub inherited_reads: BTreeSet<String>,
@@ -555,8 +556,10 @@ pub(crate) fn values_with<'r>(
     let mut media_reads = crate::doc::media::Reads::default();
     let mut resolved = BTreeMap::new();
     for name in specified.keys() {
-        let mut media =
-            |q: &crate::doc::media::Query| o.media.is_some_and(|c| q.matches(c, &mut media_reads));
+        let mut media = |q: &crate::doc::media::Query| {
+            o.media
+                .is_some_and(|c| out.media.test(q, c, &mut media_reads))
+        };
         if let Err(error) = custom_if(
             name,
             &computed,
@@ -591,7 +594,10 @@ pub(crate) fn values_with<'r>(
                     style_reads.insert(n.to_string());
                     computed.get(n).cloned().flatten()
                 },
-                &mut |q| o.media.is_some_and(|c| q.matches(c, &mut media_reads)),
+                &mut |q| {
+                    o.media
+                        .is_some_and(|c| out.media.test(q, c, &mut media_reads))
+                },
                 &mut Vec::new(),
             );
             match v {
@@ -777,6 +783,9 @@ pub(crate) fn values_with<'r>(
             };
             out.viewport_reads.width |= read.width;
             out.viewport_reads.height |= read.height;
+            if let Some(c) = o.media {
+                out.media.size(read.width, read.height, c);
+            }
             out.container_reads
                 .extend(read.containers.into_iter().flatten());
             Arc::make_mut(&mut out.computed).insert(name.clone(), Some(text));
@@ -834,7 +843,10 @@ pub(crate) fn values_with<'r>(
             let v = crate::doc::stylesheet::replace_ifs(
                 &v,
                 &mut crate::doc::stylesheet::IfTests {
-                    media: &mut |q| o.media.is_some_and(|c| q.matches(c, &mut media_reads)),
+                    media: &mut |q| {
+                        o.media
+                            .is_some_and(|c| out.media.test(q, c, &mut media_reads))
+                    },
                     style: &mut |n| {
                         style_reads.push(n.to_string());
                         computed.get(n).cloned().flatten()
@@ -866,7 +878,10 @@ pub(crate) fn values_with<'r>(
                     style_reads.push(n.to_string());
                     computed.get(n).cloned().flatten()
                 },
-                &mut |q| o.media.is_some_and(|c| q.matches(c, &mut media_reads)),
+                &mut |q| {
+                    o.media
+                        .is_some_and(|c| out.media.test(q, c, &mut media_reads))
+                },
                 &mut Vec::new(),
             );
             out.viewport_reads.extend(media_reads);
@@ -902,6 +917,9 @@ pub(crate) fn values_with<'r>(
                             let (v, read) = crate::doc::calc::absolute(&v, b, shorthand);
                             out.viewport_reads.width |= read.width;
                             out.viewport_reads.height |= read.height;
+                            if let Some(c) = o.media {
+                                out.media.size(read.width, read.height, c);
+                            }
                             out.container_reads
                                 .extend(read.containers.into_iter().flatten());
                             v
@@ -931,6 +949,9 @@ pub(crate) fn values_with<'r>(
                     let (v, read) = crate::doc::calc::absolute(&v, basis, name);
                     out.viewport_reads.width |= read.width;
                     out.viewport_reads.height |= read.height;
+                    if let Some(c) = o.media {
+                        out.media.size(read.width, read.height, c);
+                    }
                     out.container_reads
                         .extend(read.containers.into_iter().flatten());
                     v

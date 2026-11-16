@@ -55,6 +55,49 @@ impl Default for Context {
 /// How many independent inputs a media query reads ([`Reads::axes`]).
 pub const AXES: usize = 11;
 
+/// The media answers a cached cascade read, not the viewport that gave
+/// them. Lengths using viewport units still depend on exact dimensions.
+#[derive(Clone, Debug, Default)]
+pub(crate) struct Dependencies {
+    tests: Vec<(Query, bool)>,
+    width: Option<f32>,
+    height: Option<f32>,
+}
+
+impl Dependencies {
+    pub(crate) fn test(&mut self, q: &Query, c: Context, reads: &mut Reads) -> bool {
+        let answer = q.matches(c, reads);
+        if !matches!(q, Query::All) && !self.tests.iter().any(|(kept, _)| kept == q) {
+            self.tests.push((q.clone(), answer));
+        }
+        answer
+    }
+
+    pub(crate) fn size(&mut self, width: bool, height: bool, c: Context) {
+        if width {
+            self.width = Some(c.width);
+        }
+        if height {
+            self.height = Some(c.height);
+        }
+    }
+
+    pub(crate) fn matches(&self, c: Context) -> bool {
+        self.width.is_none_or(|w| w == c.width)
+            && self.height.is_none_or(|h| h == c.height)
+            && self
+                .tests
+                .iter()
+                .all(|(q, answer)| q.matches(c, &mut Reads::default()) == *answer)
+    }
+
+    pub(crate) fn extend(&mut self, other: &Self) {
+        self.tests.extend(other.tests.iter().cloned());
+        self.width = self.width.or(other.width);
+        self.height = self.height.or(other.height);
+    }
+}
+
 impl Context {
     /// Which inputs differ from `old`, in [`Reads::axes`] order.
     pub fn changes(&self, old: &Self) -> [bool; AXES] {

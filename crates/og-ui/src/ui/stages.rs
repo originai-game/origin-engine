@@ -224,11 +224,11 @@ pub struct Style {
     pub(crate) part_sheet: std::sync::Arc<crate::css::at_rules::Sheet>,
     pub(crate) root_tokens: Vec<(String, String)>,
     pub(crate) root_type_tokens: [Vec<(String, String)>; 4],
-    /// The root cascade of the four inputs above for one media context.
+    /// The root cascade of the four inputs above for one set of media answers.
     /// Derived from them alone: a write of any calls `root_inputs_changed`.
     pub(crate) root_cascade: std::cell::RefCell<
         Option<(
-            crate::css::media::Context,
+            crate::doc::build::RootContext,
             std::sync::Arc<crate::doc::build::cascade::Cascade>,
         )>,
     >,
@@ -302,9 +302,8 @@ pub struct ThemeSource {
     /// The theme the tokens are read into.
     pub(crate) theme: Theme,
     pub(crate) configured: Theme,
-    /// The viewport and preferences the root rules matched under; the
-    /// breakpoint follows from its size.
-    pub(crate) media: crate::css::media::Context,
+    /// The shared root answer, reused while its media answers hold.
+    pub(crate) root: crate::doc::build::RootIdentity,
 }
 
 impl Style {

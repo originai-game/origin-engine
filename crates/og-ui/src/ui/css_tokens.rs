@@ -325,7 +325,7 @@ impl Ui {
         let source = ThemeSource {
             theme: self.env.theme,
             configured: self.env.configured,
-            media: self.media_context(),
+            root: crate::doc::build::RootIdentity(self.css_root_cascade()),
         };
         if let Some(kept) = &self.style.theme_read
             && kept.0 == source

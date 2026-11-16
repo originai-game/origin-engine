@@ -180,9 +180,29 @@ impl std::fmt::Debug for PartStyles {
 #[derive(Clone, PartialEq)]
 struct PartContext {
     epoch: u64,
-    media: crate::doc::media::Context,
+    root: RootIdentity,
     direction: og_i18n::Direction,
     theme: crate::Theme,
+}
+
+/// Identity of the shared root answer: all root readers change together.
+#[derive(Clone, Debug)]
+pub(crate) struct RootIdentity(pub(crate) Arc<cascade::Cascade>);
+
+impl PartialEq for RootIdentity {
+    fn eq(&self, other: &Self) -> bool {
+        Arc::ptr_eq(&self.0, &other.0)
+    }
+}
+
+/// Root inputs selected outside CSS media queries. The rest are tracked
+/// by the cascade's media answers, including inline `if(media())`.
+#[derive(Clone, Debug, PartialEq)]
+pub(crate) struct RootContext {
+    breakpoint: crate::Breakpoint,
+    density: &'static str,
+    dark: bool,
+    text_scale: f32,
 }
 
 /// One part's style and what it was resolved from: its reference, its
@@ -590,17 +610,23 @@ impl Ui {
         self.css_root_cascade().computed.clone()
     }
 
-    /// The cascade of the `:root` rules and theme tokens. It depends only on
-    /// the style inputs and the media context, so it is computed once for
-    /// each and kept until `Style::root_inputs_changed`.
+    /// The cascade of the `:root` rules and theme tokens, kept while its
+    /// media answers and built-in breakpoint/density selections hold.
+    /// Writing its inputs drops it through `Style::root_inputs_changed`.
     pub(crate) fn css_root_cascade(&self) -> Arc<cascade::Cascade> {
-        let context = self.media_context();
+        let media = self.media_context();
+        let context = RootContext {
+            breakpoint: self.breakpoint(),
+            density: self.env.theme.active_density(&self.viewport()).0,
+            dark: media.dark,
+            text_scale: self.css_text_scale(),
+        };
         if let Some((_, cascade)) = self
             .style
             .root_cascade
             .borrow()
             .as_ref()
-            .filter(|(of, _)| *of == context)
+            .filter(|(of, cascade)| *of == context && cascade.media.matches(media))
         {
             return cascade.clone();
         }
@@ -637,7 +663,8 @@ impl Ui {
         // text scale grows them as it grows the ramp widgets draw with
         // (Theme::to_text_scale), so text sized by them (`font:
         // var(--text-sm)`) follows it as text sized in em does.
-        cascade::values_with(
+        let mut media = crate::css::media::Dependencies::default();
+        let mut cascade = cascade::values_with(
             self.style.part_rules.iter(),
             &cascade::Options {
                 inline: &inline,
@@ -650,8 +677,17 @@ impl Ui {
                 text_scale: self.css_text_scale(),
                 media: Some(self.media_context()),
             },
-            |rule| self.part_matches(rule, &facts, None),
-        )
+            |rule| {
+                Self::part_selector_matches(rule, &facts, None)
+                    && media.test(
+                        &rule.query.media,
+                        self.media_context(),
+                        &mut Default::default(),
+                    )
+            },
+        );
+        cascade.media.extend(&media);
+        cascade
     }
 
     /// The text scale the root's type tokens are grown by: the configured
@@ -730,7 +766,15 @@ impl Ui {
         rule.query
             .media
             .matches(self.media_context(), &mut Default::default())
-            && rule.query.container.is_empty()
+            && Self::part_selector_matches(rule, facts, host)
+    }
+
+    fn part_selector_matches(
+        rule: &crate::doc::StyleRule,
+        facts: &Facts<'_>,
+        host: Option<&PartHost>,
+    ) -> bool {
+        rule.query.container.is_empty()
             && rule.structure.as_ref().is_some_and(|s| {
                 s.inner.is_part() == facts.part.is_some()
                     && match &s.local {
@@ -893,6 +937,7 @@ impl Ui {
         let slot = (key, part.part);
         let same = |kept: &PartStyle| {
             kept.part == *part
+                && kept.values.cascade.media.matches(self.media_context())
                 && same_host(&kept.host, host)
                 && same_arc(&kept.document, document)
                 && kept.ink == ink
@@ -906,7 +951,7 @@ impl Ui {
                 (self.tree.invalidation.epoch, self.env.direction),
                 || PartContext {
                     epoch: self.tree.invalidation.epoch,
-                    media: self.media_context(),
+                    root: RootIdentity(self.css_root_cascade()),
                     direction: self.env.direction,
                     theme: self.env.theme,
                 },
@@ -1019,6 +1064,7 @@ impl Ui {
                 own_part: None,
                 ..facts
             };
+            let mut media = crate::css::media::Dependencies::default();
             let mut global = cascade::values_with(
                 index.candidates(rules, &host_facts),
                 &cascade::Options {
@@ -1027,7 +1073,7 @@ impl Ui {
                     ..options
                 },
                 |rule| {
-                    self.part_matches(
+                    Self::part_selector_matches(
                         rule,
                         &Facts {
                             part: None,
@@ -1035,6 +1081,10 @@ impl Ui {
                             ..facts
                         },
                         host.map(|h| &**h),
+                    ) && media.test(
+                        &rule.query.media,
+                        self.media_context(),
+                        &mut Default::default(),
                     )
                 },
             );
@@ -1122,9 +1172,15 @@ impl Ui {
                 &options,
                 |r| {
                     r.context == crate::doc::TreeContext::Host
-                        || self.part_matches(r, &facts, host.map(|h| &**h))
+                        || (Self::part_selector_matches(r, &facts, host.map(|h| &**h))
+                            && media.test(
+                                &r.query.media,
+                                self.media_context(),
+                                &mut Default::default(),
+                            ))
                 },
             );
+            values.media.extend(&global.media);
             // The host's `font` shorthand is not carried over: its
             // longhands come computed with the host's own (`h2 { font: … }`
             // under `font-size: 2em`), and expanded again here it would
@@ -1151,15 +1207,18 @@ impl Ui {
                 if let Some((_, _, key)) =
                     sheet.keyframe_rules.iter().rev().find(|(n, query, _)| {
                         n == name
-                            && query
-                                .media
-                                .matches(self.media_context(), &mut Default::default())
+                            && media.test(
+                                &query.media,
+                                self.media_context(),
+                                &mut Default::default(),
+                            )
                             && query.container.is_empty()
                     })
                 {
                     animation.name = key.clone();
                 }
             }
+            values.media.extend(&media);
             let style = key.and_then(|key| {
                 self.animate_values(
                     animate::StyleTarget::Part(key, part.part),
@@ -1383,6 +1442,133 @@ impl Carried {
             word_spacing: style.word_spacing.filter(|_| self.word_spacing),
             transform: style.transform.clone().filter(|_| self.transform),
             ..Default::default()
+        }
+    }
+}
+
+#[cfg(test)]
+mod media_cache_tests {
+    use super::*;
+
+    fn begin(ui: &mut Ui, width: f32, height: f32) {
+        ui.begin(Default::default(), crate::Viewport::new(width, height));
+    }
+
+    #[test]
+    fn root_and_parts_reuse_styles_until_a_media_answer_flips() {
+        let mut ui = Ui::new(Default::default());
+        ui.set_part_css(
+            ":root { --w: 17px; } button::part(base) { width: var(--w); }
+            @media (width >= 950px) { :root { --w: 29px; } }
+            @media (height > 650px) { button::part(base) { width: 41px; } }",
+        )
+        .unwrap();
+        let part = crate::dress::PartRef::parse("button::part(base)", None).unwrap();
+        begin(&mut ui, 900.0, 600.0);
+        let root = ui.css_root_variables();
+        let source = ui.style.theme_read.as_ref().unwrap().0.clone();
+        let base = ui.part_values(&part, None);
+        assert_eq!(base.size("width"), Some(Size::Fixed(17.0)));
+        ui.end();
+        begin(&mut ui, 901.0, 601.0);
+        assert!(
+            ui.style.theme_read.as_ref().unwrap().0 == source,
+            "same theme inputs"
+        );
+        assert!(
+            Arc::ptr_eq(&root, &ui.css_root_variables()),
+            "no root media flip"
+        );
+        assert!(
+            Arc::ptr_eq(&base, &ui.part_values(&part, None)),
+            "no part media flip"
+        );
+        ui.end();
+        begin(&mut ui, 950.0, 601.0);
+        assert_eq!(
+            ui.part_values(&part, None).size("width"),
+            Some(Size::Fixed(29.0))
+        );
+        ui.end();
+        begin(&mut ui, 951.0, 651.0);
+        assert_eq!(
+            ui.part_values(&part, None).size("width"),
+            Some(Size::Fixed(41.0))
+        );
+        ui.end();
+    }
+
+    #[test]
+    fn inline_media_and_viewport_lengths_remain_live_in_cached_parts() {
+        let mut ui = Ui::new(Default::default());
+        ui.set_part_css(
+            ":root { --w: if(media(width >= 950px): 23px; else: 13px); }
+            @function --measure() { result: 19px; @media (height > 650px) { result: 31px; } }
+            button::part(base) { width: var(--w); height: 10vh; }
+            button::part(label) { width: --measure(); height: if(media(height > 650px): 7px; else: 3px); }",
+        )
+        .unwrap();
+        let base = crate::dress::PartRef::parse("button::part(base)", None).unwrap();
+        let label = crate::dress::PartRef::parse("button::part(label)", None).unwrap();
+        for (w, h, width, height, label_width) in [
+            (900.0, 600.0, 13.0, 60.0, 19.0),
+            (901.0, 610.0, 13.0, 61.0, 19.0),
+            (950.0, 651.0, 23.0, 65.1, 31.0),
+            (949.0, 650.0, 13.0, 65.0, 19.0),
+        ] {
+            begin(&mut ui, w, h);
+            let r = ui.part_values(&base, None);
+            assert_eq!(r.size("width"), Some(Size::Fixed(width)));
+            let Some(Size::Fixed(got)) = r.size("height") else {
+                panic!("fixed height");
+            };
+            assert!((got - height).abs() < 0.001);
+            assert_eq!(
+                ui.part_values(&label, None).size("width"),
+                Some(Size::Fixed(label_width))
+            );
+            assert_eq!(
+                ui.part_values(&label, None).size("height"),
+                Some(Size::Fixed(if h > 650.0 { 7.0 } else { 3.0 }))
+            );
+            ui.end();
+        }
+    }
+
+    #[test]
+    fn root_selection_keeps_density_type_and_resolution_boundaries() {
+        let mut ui = Ui::new(Default::default());
+        ui.set_part_css(":root { --density-touch-control-sm: 43px; --density-compact-control-sm: 27px; --pixel: 1px; }
+            @media (resolution >= 2dppx) { :root { --pixel: 2px; } }").unwrap();
+        ui.style.root_type_tokens =
+            crate::Breakpoint::ALL.map(|bp| vec![("--bp".into(), format!("{}", bp as usize))]);
+        ui.style.root_inputs_changed();
+        for (width, dpr, density, bp, pixel) in [
+            (767.0, 1.0, "43px", "2", "1px"),
+            (768.0, 1.0, "27px", "2", "1px"),
+            (1024.0, 1.0, "27px", "3", "1px"),
+            (1024.0, 2.0, "27px", "3", "2px"),
+        ] {
+            ui.begin(
+                Default::default(),
+                crate::Viewport {
+                    dpr,
+                    ..crate::Viewport::new(width, 600.0)
+                },
+            );
+            let root = ui.css_root_variables();
+            for (name, value) in [
+                ("--density-active-control-sm", density),
+                ("--bp", bp),
+                ("--pixel", pixel),
+            ] {
+                assert_eq!(
+                    root.get(name).and_then(|v| v.as_deref()).map(str::trim),
+                    Some(value),
+                    "{name} at {width}/{dpr}"
+                );
+            }
+            ui.end();
         }
     }
 }

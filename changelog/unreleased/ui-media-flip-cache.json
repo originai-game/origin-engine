@@ -1,0 +1,8 @@
+{
+  "fixed": [
+    {
+      "member": "UI CSS resize caching",
+      "summary": "Root tokens, theme reads and widget-part styles now survive viewport resizes while their media-query answers stay unchanged. Breakpoint and density changes, inline media conditions, conditional CSS functions and viewport-unit lengths still refresh their dependent styles. Document roots inherit the computed theme tokens without re-inlining them."
+    }
+  ]
+}
