@@ -107,6 +107,16 @@ case "\$PWD/" in
 esac
 EOF
 fi
+# Some custom providers have neither agent-browser nor its Chrome install.
+# Reuse a caller's browser or the orb's install; otherwise provision both.
+# shellcheck disable=SC1091
+source .agents/environment
+if [[ -z ${CHROME:-} ]]; then
+  if ! command -v agent-browser >/dev/null; then
+    step npm install --global --prefix "$HOME/.local" agent-browser
+  fi
+  step agent-browser install --with-deps
+fi
 # Chrome's sandbox needs unprivileged user namespaces, which Ubuntu's
 # AppArmor restricts by default ("No usable sandbox"). sysctl.d keeps the
 # setting across a reboot; .agents/resume applies it again on a resumed VM.

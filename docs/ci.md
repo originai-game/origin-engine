@@ -129,6 +129,38 @@ and runs the GPU steps for the heads queued to it, in order (AGENTS.md
 §Streams and landing). The compatibility hosts are listed in AGENTS.md
 §Building and testing.
 
+### L4 milestone runner
+
+`scripts/gpu-env.sh` holds the Vulkan/NVIDIA pins formerly kept only in
+`/home/user/gpu/env.sh`. It sets no gate overrides, so it can also be sourced
+for landing. The end-of-round `batch3.sh` is now
+`scripts/gpu-milestone.sh`; neither setup nor landing starts it. Start it
+only when the coordinator authorizes the milestone:
+
+```sh
+amp orb service start gpu-milestone --command 'bash scripts/gpu-milestone.sh'
+```
+
+The runner fetches and pins one full `origin/main` SHA, creates clean sibling
+worktrees `l4-gate` and `l4-perf` if absent, and refuses to overwrite local
+changes. It leaves old integrator worktrees and `/home/user/gpu` untouched.
+In order: clean targets; full gate with `OG_WASM_VARIANTS=all` (rust-gpu
+included); release `og`, screens and style checks for default, fantasy,
+scifi and cartoon; ignored og-ui perf against `2fb1c4819`; release native
+town bench twice against `6cc20b167`. GPU work uses `scripts/lock.sh`.
+The dense-menu budget is 0.85 ms. Reference movements are reported for
+quality review, not used as a pixel-difference landing gate.
+
+Logs and command exit statuses live in `.og/gpu-milestone/<run>/`; review
+screens and town profiles in `.amp/in/artifacts/review/<run>/`. Each run
+gets its own directory. Failed stages are logged; a failed build never
+runs a stale binary. Completion still needs the integrator's frame review
+(no black, broken or clipped frames; never record one) and Chinese report
+to the coordinator. On an idle host also check
+`bold_rich_text_is_heavier_ink_never_a_box` and `scripts/test-landing.py`'s
+30-second timeouts. Performance fixes follow the milestone measurement.
+The supervised service stays alive after `batch-done` for log inspection.
+
 ## Reference frames
 
 One reference set serves every real GPU backend. New frames are recorded
@@ -299,10 +331,13 @@ evidence of a pass.
 ## Amp orbs
 
 `.agents/setup` installs the prerequisites and pinned tools and fetches the
-dependencies; it does not compile the engine or run the gate.
+dependencies, then attempts the existing bounded build prewarm; it does not
+run tests or the gate.
 `.agents/environment` points `CHROME` at the orb's agent-browser Chrome,
 which is not claimed pixel-equivalent to the reference Chrome. Setup
-installs its libraries and lifts AppArmor's user-namespace restriction for
+reuses an existing browser; if none is present (including a fresh gcp-l4
+orb), it installs agent-browser and Chrome with its Linux dependencies.
+It lifts AppArmor's user-namespace restriction for
 its sandbox; `.agents/resume` lifts it again on a resumed VM. Validate
 changes with `shellcheck -s bash .agents/{setup,resume,environment}`,
 `time .agents/setup` twice, and the tools from a new `bash -lc` shell.
