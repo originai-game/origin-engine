@@ -41,7 +41,18 @@ impl RetainedHost {
             .collect();
         self.dirty.extend(readers);
         let mut restyled = Vec::new();
-        while let Some(node) = self.dirty.pop_first() {
+        while let Some(mut node) = self.dirty.pop_first() {
+            // A dirty ancestor first: resolving this element would resolve
+            // it too, and leave its fields as the build replaced them.
+            while let Some(parent) = self
+                .topology
+                .parent(&node)
+                .filter(|p| self.dirty.contains(*p))
+                .cloned()
+            {
+                self.dirty.remove(&parent);
+                self.dirty.insert(std::mem::replace(&mut node, parent));
+            }
             self.elements.get_mut(&node).unwrap().style_dirty = true;
             if self.topology.node(&node).unwrap().materialization == Materialization::Deferred {
                 continue;

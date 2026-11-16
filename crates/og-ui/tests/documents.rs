@@ -1862,6 +1862,56 @@ fn queried_controls_follow_their_new_box_in_the_frame_it_changes() {
     assert_eq!(frame(&mut resized, 700.0), frame(&mut fresh, 700.0));
 }
 
+/// The first frame settles every element that reads its container's
+/// box, a reader whose child reads it too among them: each slot (and the
+/// stack in it) has its container-unit size in that frame.
+///
+/// Ways it could fail: a reader resolved only as the parent of another
+/// reader keeps the fields of the build before its container was
+/// measured (0 × 0 until the next frame).
+#[test]
+fn a_container_reader_and_its_reading_child_settle_in_the_first_frame() {
+    let mut text = String::from("<meta name=\"component\" content=\"hand\">\n<row id=\"Frame\">\n");
+    for i in 0..6 {
+        text.push_str(&format!(
+            "<panel id=\"S{i}\"><panel id=\"T{i}\"/></panel>\n"
+        ));
+    }
+    text.push_str(
+        "</row>\n<style>\n\
+         #Frame { width: 400px; height: 200px; padding: 0px; gap: 0px; container-type: size; }\n\
+         panel { padding: 0px; }\n\
+         #Frame > panel { flex: none; width: 10cqw; height: 50cqh; }\n\
+         #Frame > panel > panel { width: 5cqw; height: 10px; }\n\
+         </style>",
+    );
+    let mut ui = Ui::new(UiDesc::default());
+    ui.define_document(doc::UiDocument::parse("hand.svelte", &text).unwrap());
+    ui.mount_document(
+        reactive::SourceId::new("test", "hand"),
+        "hand",
+        Default::default(),
+        Default::default(),
+        &bind::NoEnv,
+    )
+    .unwrap();
+    ui.begin(InputFrame::default(), Viewport::new(500.0, 300.0));
+    ui.build_retained_documents(&bind::NoEnv).unwrap();
+    ui.end();
+    let elements = ui.probe_elements();
+    let size = |id: &str| {
+        let e = elements
+            .iter()
+            .find(|e| e.path.ends_with(&format!("/{id}")))
+            .unwrap();
+        (e.width, e.height)
+    };
+    for i in 0..6 {
+        assert_eq!(size(&format!("S{i}")), (40.0, 100.0), "slot S{i}");
+        assert_eq!(size(&format!("T{i}")), (20.0, 10.0), "stack T{i}");
+    }
+}
+
 /// A Rive frame plays on without building its element, and an element
 /// hidden by a store is kept while hidden and shown again by changing its
 /// fields; one hidden from the start is built when first shown.
