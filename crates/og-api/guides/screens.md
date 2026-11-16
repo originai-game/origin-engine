@@ -651,3 +651,25 @@ and a `fixture:default`, so `og ui preview` shows it at once.
 Expressions compute no geometry: the game passes a chart's line and a path
 line's route as SVG path data, a radial menu's slice positions and a split
 view's ratio.
+
+## 8. Element-scoped view transitions
+
+Call `og.ui.startViewTransition("<element path>")` and change the state
+shown there in the same tick. The subtree's last rendered shared elements
+(`view-transition-name`) form the old view; its new state forms the new
+view. Use this for a reordered inventory or a card opening its detail.
+
+Each name morphs in a `::view-transition-group(name)` drawn just after the
+host element, over its children and outside its clip. The host document's
+`::view-transition-*` rules style it; without them, the default is a
+0.25-second cross-fade and move. Screen transitions use the same styling
+described in §4.
+
+Different elements can transition concurrently, alongside a screen's
+transition. Starting another on the same element replaces its transition.
+A descendant with `view-transition-scope: all` keeps its names for its own
+transitions; an ancestor's transition leaves those names out.
+
+Under reduced motion, or when the last frame drew nothing at the path,
+the call returns false and starts no transition. Apply the state change
+regardless, so the new view does not depend on animation being enabled.

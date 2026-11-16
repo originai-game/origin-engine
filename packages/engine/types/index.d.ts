@@ -37539,7 +37539,8 @@ export declare namespace og {
      */
     function scrollIntoView(path: string, center: boolean): void;
     /**
-     * Start a view transition scoped to the element at a full path, like CSS's element.startViewTransition(): the shared elements (`view-transition-name`) in its subtree as the last frame drew them are the old view, and what the subtree draws from this tick on is the new one, so change the state it shows in the same tick. Each name morphs as a `::view-transition-group(name)` drawn just after the element, over its children and outside its clip, styled by the `::view-transition-*` rules of the element's document (the user agent's 0.25s cross-fade and move without any). Transitions on different elements run at once, beside a screen's; one already running on this element is replaced. Names under a `view-transition-scope: all` element below it are left to that element's transitions. Returns false, starting none, when the last frame drew nothing at the path or under reduced motion.
+     * Start an element-scoped view transition from its last rendered subtree to its state from this tick onward; change that state in the same tick. Replaces a transition already running on this element. Returns false without starting when the last frame drew nothing at the path or reduced motion is enabled.
+     * See `screens §8`.
      *
      * @param path The element's full path (og.ui.focus, the probe's dump).
      */
