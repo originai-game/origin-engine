@@ -545,6 +545,7 @@ export async function run(argv: string[], output: RunOutput = hostProcess, contr
       // beginBundle clears the declarations the first one made).
       let importing = 0;
       if (watchFile) {
+        let seenMtime = statSync(watchFile).mtimeMs;
         let busy = false;
         const watcher = watch(watchFile, () => {
           if (busy) return;
@@ -552,6 +553,11 @@ export async function run(argv: string[], output: RunOutput = hostProcess, contr
           setTimeout(async () => {
             busy = false;
             const mtimeMs = statSync(watchFile!).mtimeMs;
+            // Watch notifications include metadata changes and duplicates,
+            // not just writes. Asset-only rebuilds still rewrite the bundle
+            // with a new mtime even when its JavaScript is unchanged.
+            if (mtimeMs === seenMtime) return;
+            seenMtime = mtimeMs;
             importing++;
             try {
               const started = performance.now();

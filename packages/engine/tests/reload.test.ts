@@ -4,11 +4,15 @@
 // that answered the module already evaluated would declare nothing and the
 // reload would be refused ("never declared").
 import { expect, test } from "bun:test";
-import { mkdirSync, rmSync, writeFileSync } from "node:fs";
+import { chmodSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { gpuUnavailable } from "./support/gpu.ts";
 import { ogBin } from "./support/og-bin.ts";
+
+declare module "node:fs" {
+  export function chmodSync(path: string, mode: number): void;
+}
 
 // The gate's path-aware lane skips this file: it spawns og processes for
 // minutes (docs/ci.md §Lanes). `scripts/check.sh --all`, CI and a plain
@@ -34,6 +38,38 @@ export default og.game({ resources: [Score], systems: [Count], start(world) {
   if (e.ok) world.insert(e.value, Tag);
 } });
 `;
+
+test.skipIf(SLOW)("a watched bundle's metadata change is not a reload", async () => {
+  const dir = join(pkg, "tests", `.reload-metadata-${process.pid}`);
+  mkdirSync(dir, { recursive: true });
+  const entry = join(dir, "game.ts");
+  writeFileSync(entry, game("a: f32(1)"));
+  const child = Bun.spawn(["bun", "src/node/run.ts", "--entry", entry, "--watch", entry, "--port", "0", "--no-render", "--ticks", "30", "--realtime", "--json"], { cwd: pkg, stdout: "pipe", stderr: "pipe" });
+  const stderr = new Response(child.stderr).text();
+  const reader = child.stdout.getReader();
+  let out = "";
+  try {
+    while (!out.includes("probe: ws://")) {
+      const { value, done } = await reader.read();
+      if (done) throw new Error(`run ended before readiness: ${out}\n${await stderr}`);
+      out += new TextDecoder().decode(value);
+    }
+    // fs.watch reports chmod even though the bundle has not been written.
+    chmodSync(entry, 0o600);
+    for (;;) {
+      const { value, done } = await reader.read();
+      if (done) break;
+      out += new TextDecoder().decode(value);
+    }
+    expect(await child.exited).toBe(0);
+    expect(await stderr).not.toContain("WARN reload:");
+    expect(out.split("\n").filter((l) => l.startsWith('{"event":"reload"'))).toEqual([]);
+  } finally {
+    child.kill();
+    await child.exited;
+    rmSync(dir, { recursive: true, force: true });
+  }
+}, 60_000);
 
 for (const render of [false, true]) {
   test.skipIf(SLOW || (render && gpuUnavailable))(`a watched bundle reloads and migrates a changed layout (render=${render})`, async () => {
