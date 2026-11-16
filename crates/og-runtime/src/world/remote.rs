@@ -47,7 +47,7 @@ enum Image {
     Host(u64),
     /// On a worker thread of this process.
     #[cfg(not(target_arch = "wasm32"))]
-    Thread(std::sync::mpsc::Receiver<Result<Decoded, String>>),
+    Thread(std::sync::mpsc::Receiver<Result<(Decoded, u32), String>>),
     /// Bound in the UI under its key.
     Bound,
     Failed,
@@ -130,7 +130,9 @@ pub(crate) fn settle(eng: &Engine) {
             };
             let got = match image {
                 Image::Host(k) => match h.as_deref().map(|h| h.image_decode_take(*k)) {
-                    Some(Fetch::Ready(d)) => Some(Ok(d)),
+                    // The browser's decoder has turned it by its EXIF
+                    // already (createImageBitmap's `from-image`).
+                    Some(Fetch::Ready(d)) => Some(Ok((d, 1))),
                     Some(Fetch::Failed(e)) => Some(Err(e)),
                     Some(Fetch::Pending) => None,
                     None => Some(Err("no host is installed to fetch it".into())),
@@ -159,18 +161,19 @@ pub(crate) fn settle(eng: &Engine) {
     let _ = wait;
     for (key, got) in landed {
         match got {
-            Ok(d) => {
-                let handle = eng
-                    .render
-                    .borrow_mut()
-                    .scene
-                    .add_texture(og_render::TextureData {
-                        width: d.width,
-                        height: d.height,
-                        rgba: d.rgba,
-                        color_space: og_render::ColorSpace::Srgb,
-                        mips: og_render::Mips::Generate,
-                    });
+            Ok((d, exif)) => {
+                let mut rs = eng.render.borrow_mut();
+                let handle = rs.scene.add_texture(og_render::TextureData {
+                    width: d.width,
+                    height: d.height,
+                    rgba: d.rgba,
+                    color_space: og_render::ColorSpace::Srgb,
+                    mips: og_render::Mips::Generate,
+                });
+                // Stored as sent; CSS image-orientation turns it at draw time.
+                rs.scene
+                    .set_texture_orientation(handle, og_render::UiOrientation::from_exif(exif));
+                drop(rs);
                 if let Some(ui) = eng.state.borrow().ui.clone() {
                     ui.lock().define_texture(&key, handle);
                 }
@@ -227,8 +230,9 @@ mod native {
         })
     }
 
-    /// PNG, JPEG and WebP by their signature, SVG by its markup.
-    pub(super) fn decode(bytes: &[u8]) -> Result<Decoded, String> {
+    /// PNG, JPEG and WebP by their signature, SVG by its markup, with the
+    /// EXIF orientation their metadata names (1, upright, for SVG).
+    pub(super) fn decode(bytes: &[u8]) -> Result<(Decoded, u32), String> {
         let format = if bytes.starts_with(b"\x89PNG") {
             image::ImageFormat::Png
         } else if bytes.starts_with(&[0xff, 0xd8, 0xff]) {
@@ -236,18 +240,27 @@ mod native {
         } else if bytes.len() >= 12 && &bytes[..4] == b"RIFF" && &bytes[8..12] == b"WEBP" {
             image::ImageFormat::WebP
         } else if is_svg(bytes) {
-            return svg(bytes);
+            return svg(bytes).map(|d| (d, 1));
         } else {
             return Err("not a PNG, JPEG, WebP or SVG image".into());
         };
-        let img = image::load_from_memory_with_format(bytes, format)
-            .map_err(|e| format!("the image does not decode ({e})"))?
+        use image::ImageDecoder;
+        let bad = |e: image::ImageError| format!("the image does not decode ({e})");
+        let mut decoder = image::ImageReader::with_format(std::io::Cursor::new(bytes), format)
+            .into_decoder()
+            .map_err(bad)?;
+        let exif = decoder.orientation().map_or(1, |o| u32::from(o.to_exif()));
+        let img = image::DynamicImage::from_decoder(decoder)
+            .map_err(bad)?
             .into_rgba8();
-        Ok(Decoded {
-            width: img.width(),
-            height: img.height(),
-            rgba: img.into_raw(),
-        })
+        Ok((
+            Decoded {
+                width: img.width(),
+                height: img.height(),
+                rgba: img.into_raw(),
+            },
+            exif,
+        ))
     }
 
     /// The cook's test: UTF-8 text holding an `<svg` element.

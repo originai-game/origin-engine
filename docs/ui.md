@@ -1646,6 +1646,13 @@ mounted); a layer naming an unbound key draws nothing and warns nothing.
   per key naming the URL and the reason.
 - A build without og-runtime's `fetch` feature fetches nothing natively
   and warns per key.
+- **Orientation.** Natively the decoder reads the image's EXIF
+  orientation from its metadata (`ImageDecoder::orientation`) and sets it
+  on the texture (`RenderScene::set_texture_orientation`); the texels stay
+  as sent and `image-orientation` turns them at draw time, as for a
+  cooked image. The web's `createImageBitmap` has turned a JPEG already
+  (its `from-image`, which no option undoes), so there a remote image
+  draws upright under `image-orientation: none` too.
 
 ### 3.4 Font packs
 

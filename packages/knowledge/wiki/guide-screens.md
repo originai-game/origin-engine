@@ -217,6 +217,10 @@ go after the quoted URL:
 - `referrer-policy(…)`: what `Referer` the request sends. The default is
   `strict-origin-when-cross-origin` (the game's origin only).
 
+A photo turned by its EXIF orientation draws upright, as a package image
+does; `image-orientation: none` draws it as stored natively, but a web
+browser has already turned it.
+
 A refused or failed image is one warning in the log naming the URL and
 the reason (CORS, integrity, HTTP status, decoding); the element keeps
 its other layers. A package file takes no modifiers. `og.loading.idle`

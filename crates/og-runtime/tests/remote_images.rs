@@ -100,6 +100,15 @@ fn encoded(width: u32, height: u32, format: image::ImageFormat) -> Vec<u8> {
     out
 }
 
+/// `jpeg` with an EXIF APP1 segment naming `orientation` (tag 0x0112).
+fn with_exif(jpeg: &[u8], orientation: u8) -> Vec<u8> {
+    let mut app1 = vec![0xff, 0xe1, 0x00, 0x22];
+    app1.extend_from_slice(b"Exif\0\0II\x2a\x00\x08\x00\x00\x00\x01\x00");
+    app1.extend_from_slice(&[0x12, 0x01, 0x03, 0x00, 0x01, 0x00, 0x00, 0x00]);
+    app1.extend_from_slice(&[orientation, 0, 0, 0, 0, 0, 0, 0]);
+    [&jpeg[..2], &app1[..], &jpeg[2..]].concat()
+}
+
 fn sri(bytes: &[u8]) -> String {
     let digest = ring::digest::digest(&ring::digest::SHA384, bytes);
     format!("sha384-{}", og_core::base64::encode(digest.as_ref()))
@@ -156,6 +165,11 @@ impl Hooks for Served {
 /// Each texture's size as the last frame's scene holds it, by handle.
 type Sizes = Arc<Mutex<BTreeMap<u32, (u32, u32)>>>;
 
+thread_local! {
+    /// Each texture's orientation bits as the last frame's scene holds them.
+    static TURNS: std::cell::RefCell<BTreeMap<u32, u8>> = Default::default();
+}
+
 struct Backend(Sizes);
 impl og_runtime::RenderBackend for Backend {
     fn tier(&self) -> String {
@@ -170,6 +184,10 @@ impl og_runtime::RenderBackend for Backend {
             let h = og_render::TextureHandle::from_index(i);
             if let Some(t) = scene.texture(h) {
                 sizes.insert(h.to_bits(), (t.width, t.height));
+                TURNS.with(|o| {
+                    o.borrow_mut()
+                        .insert(h.to_bits(), scene.texture_orientation(h).bits())
+                });
             }
         }
         Ok(())
@@ -288,6 +306,13 @@ fn remote_images_load_under_their_request_modifiers() {
             (encoded(4, 7, image::ImageFormat::WebP), cors("*")),
         ),
         ("/badge.svg", (svg.to_vec(), cors("*"))),
+        (
+            "/turned.jpg",
+            (
+                with_exif(&encoded(6, 2, image::ImageFormat::Jpeg), 6),
+                cors("*"),
+            ),
+        ),
         ("/nocors.png", (star.clone(), vec![])),
         (
             "/creds.png",
@@ -313,6 +338,7 @@ fn remote_images_load_under_their_request_modifiers() {
         ("Jpeg", format!("url(\"{}\")", at("/photo.jpg"))),
         ("Webp", format!("url(\"{}\")", at("/leaf.webp"))),
         ("Svg", format!("url(\"{}\")", at("/badge.svg"))),
+        ("Turned", format!("url(\"{}\")", at("/turned.jpg"))),
         (
             "Good",
             format!("url(\"{}\" integrity(\"{}\"))", at("/star.png"), sri(&star)),
@@ -367,6 +393,7 @@ fn remote_images_load_under_their_request_modifiers() {
         ("Jpeg", (6, 2)),
         ("Webp", (4, 7)),
         ("Svg", (9, 3)),
+        ("Turned", (6, 2)),
         ("Good", (3, 5)),
         ("Strongest", (3, 5)),
         ("Anonymous", (3, 5)),
@@ -383,6 +410,33 @@ fn remote_images_load_under_their_request_modifiers() {
         drawn, expect,
         "the first frame draws every image that loads, at its own size, and none refused"
     );
+    // The texels stay as sent; the EXIF orientation is the texture's, for
+    // CSS image-orientation to turn at draw time (6: a quarter turn).
+    let turn = |id: &str| {
+        let ui = og_runtime::shared_ui(e).unwrap();
+        let ui = ui.lock();
+        let cell = ids.iter().position(|c| *c == id).unwrap();
+        ui.frame()
+            .items
+            .iter()
+            .find_map(|item| match &item.cmd {
+                og_ui::DrawCmd::Shape { shape, .. }
+                    if (shape.center.x / 40.0).floor() as usize == cell =>
+                {
+                    match &shape.paint {
+                        og_render::UiPaint::Image(image) => Some(image.texture.to_bits()),
+                        _ => None,
+                    }
+                }
+                _ => None,
+            })
+            .and_then(|t| TURNS.with(|o| o.borrow().get(&t).copied()))
+    };
+    assert_eq!(
+        turn("Turned"),
+        Some(og_render::UiOrientation::from_exif(6).bits())
+    );
+    assert_eq!(turn("Jpeg"), Some(0), "a JPEG without EXIF is upright");
     let warned = warnings(e);
     let one = |needle: &str, url: &str| {
         assert!(
