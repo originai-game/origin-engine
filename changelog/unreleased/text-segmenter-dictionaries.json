@@ -1,0 +1,12 @@
+{
+  "breaking": [
+    {
+      "member": "Word and line breaking in Chinese, Japanese, Thai, Lao, Khmer and Burmese",
+      "change": "ICU's word dictionaries for these scripts left the engine (about 3 MB of wasm) and ship in the font packs: the cook packs one only when a string table's locale takes that language and an installed font pack names it, and og.i18n installs it with the pack. A game with such a locale but no pack for it now breaks that text by the Unicode rules alone (a run of these scripts is one word) and is warned of at cook.",
+      "fix": "Install the locale's font pack: og font add japanese, chinese-simplified, chinese-traditional or thai (og create --lang does it).",
+      "find": [
+        "locale"
+      ]
+    }
+  ]
+}

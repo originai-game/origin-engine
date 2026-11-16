@@ -378,3 +378,5 @@ codegen-units = 16
 [patch.crates-io]
 basis-universal-sys = { path = "third_party/basis-universal-sys" }
 glamx = { path = "third_party/glamx" }
+# Segmenters from the host, so ICU's dictionaries load with a locale (third_party/parley_engine/PATCHED.md).
+parley_engine = { path = "third_party/parley_engine" }

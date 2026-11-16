@@ -67,6 +67,8 @@ fn tables_are_validated_and_every_locale_is_checked_against_the_base() {
     assert_eq!(
         report.warnings,
         vec![
+            // No font pack names Japanese, so none carries its dictionary.
+            "assets/strings/ja.ogt: warning: locale 'ja': no font pack names its language, so none carries ICU's 'cjdict' dictionary and its words and lines break by the rules alone".to_string(),
             "assets/strings/ja.ogt: missing key 'b' (en has it)".to_string(),
             "assets/strings/ja.ogt: key 'c' takes other arguments (ja takes {who}, en {name})"
                 .to_string(),
@@ -347,7 +349,7 @@ fn a_font_pack_ships_hyphenation_dictionaries_only_for_the_games_locales() {
         let bundle = Bundle::open(&root.join("cooked")).unwrap();
         let id = "fonts/latin/extension.json";
         let shipped = bundle
-            .font_pack_hyphenation(id, &bundle.read(id).unwrap())
+            .font_pack_dictionaries(id, &bundle.read(id).unwrap(), "hyphenation")
             .unwrap();
         (shipped, report.warnings)
     };
@@ -373,6 +375,73 @@ fn a_font_pack_ships_hyphenation_dictionaries_only_for_the_games_locales() {
     assert!(shipped.is_empty());
     assert!(
         !warnings.iter().any(|w| w.contains("hyphens")),
+        "{warnings:?}"
+    );
+}
+
+/// docs/ui.md §3.4: ICU's word dictionary for a script written without
+/// spaces ships in the font pack of a shipped locale's language, and only
+/// then: a Thai game's `thai` pack carries `thaidict` (ICU's bytes as the
+/// engine reads them), an English game's carries nothing, and a Japanese
+/// locale no pack names is warned of.
+///
+/// Ways it could fail: a dictionary shipped for a locale the game lacks
+/// (every game paying for Thai), none shipped where needed (Thai lines
+/// breaking only at spaces), or bytes the runtime cannot read.
+#[test]
+fn a_font_pack_ships_word_dictionaries_only_for_the_games_locales() {
+    let repo = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../..");
+    let pack = repo.join("templates/fonts/thai");
+    let files: Vec<(String, Vec<u8>)> = std::fs::read_dir(&pack)
+        .unwrap()
+        .map(|e| e.unwrap().file_name().into_string().unwrap())
+        .map(|n| {
+            (
+                format!("fonts/thai/{n}"),
+                std::fs::read(pack.join(&n)).unwrap(),
+            )
+        })
+        .collect();
+    let shipped = |name: &str, locales: &[&str]| {
+        let mut all = files.clone();
+        for l in locales {
+            all.push((format!("strings/{l}.ogt"), table(l, &[])));
+        }
+        let all: Vec<(&str, Vec<u8>)> = all.iter().map(|(p, b)| (p.as_str(), b.clone())).collect();
+        let root = project(name, &all);
+        let report = cook_project(&root, &CookOptions::default()).unwrap();
+        assert!(report.ok(), "{:?}", report.errors());
+        let bundle = Bundle::open(&root.join("cooked")).unwrap();
+        let id = "fonts/thai/extension.json";
+        let words = bundle
+            .font_pack_dictionaries(id, &bundle.read(id).unwrap(), "segmentation")
+            .unwrap();
+        (words, report.warnings)
+    };
+
+    let (words, warnings) = shipped("words-thai", &["en", "th", "ja"]);
+    let names: Vec<&str> = words.iter().map(|(a, _)| a.as_str()).collect();
+    assert_eq!(names, ["thaidict"]);
+    og_i18n::segmenter::install("thaidict", &words[0].1).unwrap();
+    assert!(og_i18n::segmenter::installed("thaidict"));
+    let chars: Vec<char> = "ภาษาไทยง่าย".chars().collect();
+    assert_eq!(
+        og_i18n::word_segments(&chars).len(),
+        3,
+        "cut by the shipped dictionary"
+    );
+    assert!(
+        warnings.iter().any(
+            |w| w.starts_with("assets/strings/ja.ogt: warning: locale 'ja':")
+                && w.contains("'cjdict'")
+        ),
+        "{warnings:?}"
+    );
+
+    let (words, warnings) = shipped("words-english", &["en"]);
+    assert!(words.is_empty());
+    assert!(
+        !warnings.iter().any(|w| w.contains("dictionary")),
         "{warnings:?}"
     );
 }

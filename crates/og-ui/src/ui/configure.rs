@@ -551,6 +551,17 @@ impl Ui {
         self.layout.texts.clear();
     }
 
+    /// Installs ICU's word-segmentation dictionary `attribute` a font pack
+    /// ships for the game's locales (`cjdict`, `thaidict`, `laodict`,
+    /// `khmerdict`, `burmesedict`; docs/ui.md §3.4) and lays the documents'
+    /// text out again with it.
+    pub fn add_segmentation(&mut self, attribute: &str, bytes: &[u8]) -> Result<(), String> {
+        og_text::text::add_segmentation(attribute, bytes)?;
+        self.tree.invalidation.epoch += 1;
+        self.layout.texts.clear();
+        Ok(())
+    }
+
     /// The control sizes in effect for the current viewport.
     pub fn sizes(&self) -> Density {
         self.env.theme.sizes(&self.env.viewport)

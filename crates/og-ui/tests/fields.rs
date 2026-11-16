@@ -346,12 +346,17 @@ fn mac_keys_keep_an_emacs_kill_buffer() {
     assert_eq!(rig.caret_marked(), "badc|");
 }
 
-/// Word moves stop at dictionary words in Thai and Chinese, and the arrows
-/// move on screen: on in the text in a right-to-left paragraph, and into a
+/// Word moves stop at dictionary words in Thai and Chinese (the
+/// dictionaries the cook ships for those locales), and the arrows move on
+/// screen: on in the text in a right-to-left paragraph, and into a
 /// right-to-left run from the side the caret enters it. A fixed-advance
 /// face has every character, so each script is laid out.
 #[test]
 fn words_and_arrows_follow_the_layout() {
+    for attr in ["thaidict", "cjdict"] {
+        let bytes = og_i18n::segmenter::compiled(attr).expect(attr);
+        og_text::text::add_segmentation(attr, &bytes).expect(attr);
+    }
     let rig = |value: &str| {
         let mut d = Doc::with_font(
             FORM,

@@ -584,8 +584,12 @@ pub(crate) fn diagnose(
             }
         }
     }
-    // `hyphens: auto` in a locale its pack has no dictionary for.
-    for (rel, what) in font_pack::check_hyphenation(sources) {
+    // `hyphens: auto` in a locale its pack has no dictionary for, and a
+    // locale written without spaces that no pack carries a dictionary for.
+    for (rel, what) in font_pack::check_hyphenation(sources)
+        .into_iter()
+        .chain(font_pack::check_segmentation(sources))
+    {
         warnings.push(format!("assets/{rel}: {what}"));
         if let Some(r) = reports.iter_mut().find(|r| r.source == rel) {
             r.notes.push(what);

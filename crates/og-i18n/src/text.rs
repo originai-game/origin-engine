@@ -1,11 +1,11 @@
 //! Character classes for layout: right-to-left characters, the scripts
 //! whose glyphs depend on their neighbours (shaped), a paragraph's
 //! direction by its first strong character, and segmentation by ICU4X's
-//! `icu_segmenter` (UAX #29 with dictionaries): words ([`word_segments`])
+//! `icu_segmenter` (UAX #29 with the installed dictionaries): words ([`word_segments`])
 //! and grapheme clusters ([`graphemes`]).
 
 use crate::locale::Direction;
-use icu_segmenter::{GraphemeClusterSegmenter, WordSegmenter, options::WordBreakInvariantOptions};
+use icu_segmenter::GraphemeClusterSegmenter;
 
 /// Full Unicode uppercase for display text in a BCP-47 locale. Contextual
 /// mappings (including Greek accents and Lithuanian dots) come from ICU;
@@ -96,20 +96,20 @@ pub struct WordSegment {
     pub kind: WordKind,
 }
 
-/// A text cut at its word boundaries (UAX #29 with ICU4X's dictionaries,
-/// `icu_segmenter`, as Parley breaks the text it lays out), for double-click
+/// A text cut at its word boundaries (UAX #29 with the installed ICU4X
+/// dictionaries, [`crate::segmenter`], as Parley breaks the text it lays
+/// out), for double-click
 /// selection of static text and undo grouping. Latin, Greek, Cyrillic,
 /// Hebrew, Arabic and Devanagari words are their letters, digits and marks
 /// (an apostrophe or a point between letters or digits stays inside); a
 /// Katakana run is one word (WB13), Hangul words run to the spaces; Chinese,
 /// Japanese, Thai, Lao, Khmer and Myanmar, written without spaces, are cut
-/// into the words of ICU's dictionaries. Spaces run together, and so does
+/// into the words of ICU's dictionaries when the game ships them (else by
+/// the rules alone). Spaces run together, and so does
 /// a run of punctuation (one segment where UAX #29 has one per character).
 pub fn word_segments(chars: &[char]) -> Vec<WordSegment> {
     let text: String = chars.iter().collect();
-    let breaks: Vec<usize> = WordSegmenter::new_dictionary(WordBreakInvariantOptions::default())
-        .segment_str(&text)
-        .collect();
+    let breaks: Vec<usize> = crate::segmenter::word().segment_str(&text).collect();
     let mut out: Vec<WordSegment> = Vec::new();
     let mut at = 0;
     for w in breaks.windows(2) {

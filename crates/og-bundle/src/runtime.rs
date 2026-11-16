@@ -1610,20 +1610,23 @@ impl Bundle {
             .ok_or_else(|| invalid(&blob, "the font pack index is cut short or not UTF-8"))
     }
 
-    /// The hyphenation dictionaries a font pack blob (`og.FontPack`) ships,
-    /// by language: the cook adds them only for the game's locales, when
-    /// it declares `hyphens: auto`.
-    pub fn font_pack_hyphenation(
+    /// The dictionaries a font pack blob (`og.FontPack`) ships for the
+    /// game's locales, by name, of one `kind`: `hyphenation` (by language,
+    /// when the game declares `hyphens: auto`) or `segmentation` (ICU's
+    /// word dictionaries, by marker attribute such as `cjdict`).
+    pub fn font_pack_dictionaries(
         &self,
         id: &str,
         bytes: &[u8],
+        kind: &str,
     ) -> Result<Vec<(String, Vec<u8>)>, LoadError> {
         let blob = self.blob::<format::FontPack>(id, bytes)?;
+        let prefix = format!("{kind}:");
         Ok(blob
             .sections()
             .iter()
             .filter_map(|s| {
-                let language = s.name.strip_prefix("hyphenation:")?;
+                let language = s.name.strip_prefix(prefix.as_str())?;
                 let bytes = blob.raw(s.name).ok()?;
                 Some((language.to_string(), bytes.to_vec()))
             })

@@ -29,6 +29,7 @@ pub mod hyphenation;
 pub mod locale;
 pub mod message;
 pub mod plural;
+pub mod segmenter;
 pub mod table;
 pub mod text;
 
@@ -341,13 +342,13 @@ mod i18n_contracts {
         assert_eq!(forced.direction, Direction::Ltr);
     }
 
-    /// UAX #29 words with ICU's dictionaries: punctuation runs merged,
-    /// Chinese, Japanese and Thai cut into dictionary words (not a word per
-    /// character or per cluster), marks with their base; grapheme clusters
-    /// keep a base and its marks.
+    /// UAX #29 words with ICU's dictionaries, installed from the bytes the
+    /// cook ships: punctuation runs merged, Chinese, Japanese and Thai cut
+    /// into dictionary words (not a word per character or per cluster),
+    /// marks with their base; grapheme clusters keep a base and its marks.
     #[test]
     fn words_and_graphemes_follow_uax_29() {
-        use crate::{WordKind, graphemes, word_segments};
+        use crate::{WordKind, graphemes, segmenter, word_segments};
         let cut = |t: &str| -> Vec<String> {
             let chars: Vec<char> = t.chars().collect();
             word_segments(&chars)
@@ -355,6 +356,14 @@ mod i18n_contracts {
                 .map(|s| chars[s.start..s.end].iter().collect())
                 .collect()
         };
+        // Without dictionaries (this binary's only test that installs
+        // them), a run of these scripts is one word.
+        assert_eq!(cut("我们喜欢学习中文"), ["我们喜欢学习中文"]);
+        assert_eq!(cut("ภาษาไทยง่าย"), ["ภาษาไทยง่าย"]);
+        for (attr, _) in segmenter::DICTIONARIES {
+            let bytes = segmenter::compiled(attr).expect(attr);
+            segmenter::install(attr, &bytes).expect(attr);
+        }
         assert_eq!(
             cut("can't stop_now 3.14...?!"),
             ["can't", " ", "stop_now", " ", "3.14", "...?!"]
