@@ -23,6 +23,7 @@ LICENSES.md rows).
 """
 import argparse
 import json
+import tarfile
 import urllib.parse
 import urllib.request
 from pathlib import Path
@@ -216,6 +217,33 @@ font {{
 """
 
 
+# Hyphenation dictionaries (CSS `hyphens: auto`): hypher's compiled
+# hyph-utf8 patterns, one per pack language that hyphenates with a visible
+# hyphen (hypher leaves the Indic scripts' visual hyphen out).
+HYPHER = "https://static.crates.io/crates/hypher/hypher-0.1.8.crate"
+NO_VISIBLE_HYPHEN = {"as", "bn", "gu", "hi", "kn", "ml", "mr", "or", "pa", "sa", "ta", "te"}
+
+
+def dictionaries(cache: Path, out: Path, languages: list[str]) -> list[str]:
+    """Copies the pack's languages' dictionaries as `<language>.hyph`
+    (Bokmål and Nynorsk read Norwegian's) and hypher's licence beside them."""
+    crate = cache / "hypher-0.1.8.crate"
+    if not crate.exists():
+        cache.mkdir(parents=True, exist_ok=True)
+        urllib.request.urlretrieve(HYPHER, crate)
+    with tarfile.open(crate) as tar:
+        tries = {Path(m.name).stem: m for m in tar.getmembers() if m.name.startswith("hypher-0.1.8/tries/")}
+        files = []
+        for language in languages:
+            code = {"nb": "no", "nn": "no"}.get(language, language)
+            if code in tries and code not in NO_VISIBLE_HYPHEN and f"{code}.hyph" not in files:
+                (out / f"{code}.hyph").write_bytes(tar.extractfile(tries[code]).read())
+                files.append(f"{code}.hyph")
+        if files:
+            (out / "LICENSE-hypher.txt").write_bytes(tar.extractfile("hypher-0.1.8/LICENSE-MIT").read())
+    return files
+
+
 def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--cache", type=Path, default=Path(".amp/in/fonts-src"))
@@ -260,6 +288,7 @@ def main() -> None:
             origin = f"googlefonts/noto-emoji `{source.split(':', 1)[1]}`" if source.startswith("noto-emoji:") else f"google/fonts `ofl/{source}`"
             rows.append(f"| `{name}/{file}` | {', '.join(languages) or 'any (emoji)'} | {count:,} characters, {size:,} bytes | SIL OFL 1.1 (`{ofl}`) | {origin} |")
             print(f"{name}/{file}: {size} bytes, {count} characters")
+        hyphenation = dictionaries(args.cache, out, languages)
         manifest = {
             "format": 1,
             "kind": "font",
@@ -270,6 +299,8 @@ def main() -> None:
             "languages": languages,
             "faces": files,
         }
+        if hyphenation:
+            manifest["hyphenation"] = hyphenation
         (out / "extension.json").write_text(json.dumps(manifest, indent=2, ensure_ascii=False) + "\n")
     table = "\n".join(rows)
     (HERE / "LICENSES.md").write_text(f"""# Font packs: licences
@@ -280,6 +311,13 @@ Project Authors; the CJK faces Copyright 2014-2021 Adobe, with Reserved Font
 Name 'Source'. The emoji face is Noto Color Emoji's COLRv1 build from
 googlefonts/noto-emoji, Copyright 2013 Google LLC. Each pack carries its licence file, which `og font add` and
 `og create --lang` install with it.
+
+A pack's `<language>.hyph` files are hyphenation dictionaries for CSS
+`hyphens: auto`: hyph-utf8's TeX patterns as compiled by hypher 0.1.8
+(crates.io `hypher`, MIT or Apache-2.0, `LICENSE-hypher.txt`; the patterns
+are under their own permissive licences, LPPL, MPL, MIT or BSD-3, listed in
+hypher's `patterns/`). The cook ships one only for a locale the game has
+and only when its documents declare `hyphens: auto`.
 
 | File | Languages | Holds | Licence | Source |
 |---|---|---|---|---|

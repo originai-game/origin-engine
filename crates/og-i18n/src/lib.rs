@@ -25,6 +25,7 @@
 mod cldr;
 pub mod font_pack;
 pub mod format;
+pub mod hyphenation;
 pub mod locale;
 pub mod message;
 pub mod plural;

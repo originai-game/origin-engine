@@ -35,6 +35,10 @@ pub struct Manifest {
     pub languages: Option<Vec<String>>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub faces: Option<Vec<String>>,
+    /// A font pack's hyphenation dictionaries (`<language>.hyph`), which
+    /// the cook ships for a game's locales when it uses `hyphens: auto`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub hyphenation: Option<Vec<String>>,
 }
 
 /// A vfx pack's tags: its style and dimension, and the union of its
@@ -183,6 +187,7 @@ pub fn read(directory: &Path, installed: bool) -> Result<Extension, String> {
             .as_ref()
             .is_some_and(|k| !k.iter().all(|w| lower_word(w)))
         || (m.kind == "font") != (m.scripts.is_some() || m.languages.is_some() || m.faces.is_some())
+        || (m.kind != "font" && m.hyphenation.is_some())
         || (m.kind == "font"
             && (m.languages.is_none()
                 || [&m.scripts, &m.faces]
@@ -207,6 +212,7 @@ pub fn read(directory: &Path, installed: bool) -> Result<Extension, String> {
         .as_deref()
         .into_iter()
         .chain(m.faces.iter().flatten().map(String::as_str))
+        .chain(m.hyphenation.iter().flatten().map(String::as_str))
     {
         if !relative(file) || !all.iter().any(|p| p == Path::new(file)) {
             return Err(format!(

@@ -983,7 +983,9 @@ fn error_lines_are_the_uas_and_blink_draws_none() {
 /// hyphen) at the break; `manual`, the initial value, breaks only at a
 /// soft hyphen; both inherit. §6.3: `hyphenate-limit-chars` is the fewest characters
 /// of a word that hyphenates and of its parts before and after a break.
-/// The content language must be known: with none it does not hyphenate.
+/// The content language must be known and its dictionary (from its
+/// font pack, `templates/fonts/latin/en.hyph`) installed: without either
+/// it does not hyphenate.
 ///
 /// TeX's US English patterns (pyphen, LibreOffice's dictionary, agrees)
 /// hyphenate "hy-phen-ation" with at least 2 characters before and 3
@@ -995,7 +997,7 @@ fn error_lines_are_the_uas_and_blink_draws_none() {
 ///
 /// Ways it could fail: no dictionary break, a break that does not hold
 /// room for its hyphen, the custom character not shown, the limits
-/// ignored, or a guess at the language when none is set.
+/// ignored, or a guess at the language or its dictionary.
 #[test]
 fn hyphens_auto_breaks_words_at_the_languages_hyphenation_points() {
     let body = r#"<p id="M">hyphenation</p><p class="a" id="A">hyphenation</p><div id="Hc"><p class="a" id="C">hyphenation</p></div>
@@ -1005,6 +1007,14 @@ fn hyphens_auto_breaks_words_at_the_languages_hyphenation_points() {
     let mut d = doc(body, css);
     assert_eq!(drawn(&d, "A"), "hyphenation", "no language, no dictionary");
     d.ui.set_locale("en-US");
+    d.step(InputFrame::default());
+    assert_eq!(drawn(&d, "A"), "hyphenation", "no dictionary installed");
+    let en = std::fs::read(format!(
+        "{}/../../templates/fonts/latin/en.hyph",
+        env!("CARGO_MANIFEST_DIR")
+    ))
+    .unwrap();
+    d.ui.add_hyphenation("en", en.into());
     d.step(InputFrame::default());
     for (id, want) in [
         ("M", "hyphenation"),

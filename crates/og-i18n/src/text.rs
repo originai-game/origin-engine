@@ -231,61 +231,8 @@ pub fn word_separator(c: char) -> bool {
     )
 }
 
-/// `text` with a soft hyphen (U+00AD) at each of its words' hyphenation
-/// points in `language` (a BCP 47 tag; its two-letter primary subtag picks
-/// the dictionary, hyph-utf8's TeX patterns), as CSS Text 4 §6.1's
-/// `hyphens: auto` and §6.3's `hyphenate-limit-chars` ask: a word is a
-/// run of letters and marks of at least `word` characters, broken no
-/// nearer its start than `before` characters and its end than `after`
-/// (`None`: the language's own typographic minimums). A word that
-/// already holds a soft hyphen keeps only its own (§6.1). A language
-/// without a dictionary leaves the text as it is.
-pub fn hyphenate(
-    text: &str,
-    language: &str,
-    word: usize,
-    before: Option<usize>,
-    after: Option<usize>,
-) -> String {
-    let code = language.as_bytes();
-    let Some(lang) = (code.len() == 2 || code.get(2) == Some(&b'-') || code.get(2) == Some(&b'_'))
-        .then(|| [code[0].to_ascii_lowercase(), code[1].to_ascii_lowercase()])
-        .and_then(hypher::Lang::from_iso)
-    else {
-        return text.to_owned();
-    };
-    let (own_before, own_after) = lang.bounds();
-    let (before, after) = (before.unwrap_or(own_before), after.unwrap_or(own_after));
-    let letter = |c: char| c.is_alphabetic() || is_mark(c);
-    let mut out = String::with_capacity(text.len());
-    let mut rest = text;
-    while let Some(start) = rest.find(letter) {
-        out.push_str(&rest[..start]);
-        rest = &rest[start..];
-        let end = rest
-            .find(|c: char| !letter(c) && c != '\u{ad}')
-            .unwrap_or(rest.len());
-        let w = &rest[..end];
-        if w.contains('\u{ad}') || w.chars().count() < word.max(1) {
-            out.push_str(w);
-        } else {
-            let mut first = true;
-            for syllable in hypher::hyphenate_bounded(w, lang, before.max(1), after.max(1)) {
-                if !first {
-                    out.push('\u{ad}');
-                }
-                out.push_str(syllable);
-                first = false;
-            }
-        }
-        rest = &rest[end..];
-    }
-    out.push_str(rest);
-    out
-}
-
 /// A combining mark (General Category M): part of the word it follows.
-fn is_mark(c: char) -> bool {
+pub(crate) fn is_mark(c: char) -> bool {
     use icu_properties::CodePointMapData;
     use icu_properties::props::{GeneralCategory, GeneralCategoryGroup as G};
     G::Mark.contains(CodePointMapData::<GeneralCategory>::new().get(c))

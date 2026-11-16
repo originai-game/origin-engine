@@ -61,5 +61,34 @@
   ],
   "faces": [
     "NotoSans-Latin.ttf"
+  ],
+  "hyphenation": [
+    "en.hyph",
+    "es.hyph",
+    "fr.hyph",
+    "de.hyph",
+    "it.hyph",
+    "pt.hyph",
+    "nl.hyph",
+    "sv.hyph",
+    "da.hyph",
+    "no.hyph",
+    "fi.hyph",
+    "is.hyph",
+    "pl.hyph",
+    "cs.hyph",
+    "sk.hyph",
+    "sl.hyph",
+    "hr.hyph",
+    "hu.hyph",
+    "tr.hyph",
+    "et.hyph",
+    "lt.hyph",
+    "sq.hyph",
+    "ca.hyph",
+    "gl.hyph",
+    "af.hyph",
+    "tk.hyph",
+    "la.hyph"
   ]
 }

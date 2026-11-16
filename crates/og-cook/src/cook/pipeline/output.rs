@@ -584,6 +584,13 @@ pub(crate) fn diagnose(
             }
         }
     }
+    // `hyphens: auto` in a locale its pack has no dictionary for.
+    for (rel, what) in font_pack::check_hyphenation(sources) {
+        warnings.push(format!("assets/{rel}: {what}"));
+        if let Some(r) = reports.iter_mut().find(|r| r.source == rel) {
+            r.notes.push(what);
+        }
+    }
     for (rel, what) in strings::check_strings(&tables) {
         warnings.push(format!("assets/{rel}: {what}"));
         if let Some(r) = reports.iter_mut().find(|r| r.source == rel) {

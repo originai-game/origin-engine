@@ -2131,11 +2131,12 @@ impl TextCss {
                 s = transform(w, &s, locale);
             }
         }
-        // hyphens: auto (CSS Text 4 §6.1): soft hyphens at the language's
-        // hyphenation points, which the line breakers take as a manual one.
+        // hyphens: auto (CSS Text 4 §6.1): soft hyphens at the hyphenation
+        // points of the language's dictionary (shipped in its font pack),
+        // which the line breakers take as manual ones.
         if self.hyphens.as_deref() == Some("auto") {
             let l = self.hyphen_limits;
-            s = og_i18n::text::hyphenate(&s, locale, l.word.unwrap_or(5), l.before, l.after);
+            s = og_i18n::hyphenation::hyphenate(&s, locale, l.word.unwrap_or(5), l.before, l.after);
         }
         s
     }

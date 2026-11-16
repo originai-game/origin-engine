@@ -541,6 +541,16 @@ impl Ui {
         }
     }
 
+    /// Installs the hyphenation dictionary a font pack ships for
+    /// `language` (CSS `hyphens: auto`, docs/ui.md §3.4) and shapes the
+    /// documents' text again with it.
+    pub fn add_hyphenation(&mut self, language: &str, dictionary: std::sync::Arc<[u8]>) {
+        og_i18n::hyphenation::install(language, dictionary);
+        // Every document's text is shown again, as a new font chain is.
+        self.tree.invalidation.epoch += 1;
+        self.layout.texts.clear();
+    }
+
     /// The control sizes in effect for the current viewport.
     pub fn sizes(&self) -> Density {
         self.env.theme.sizes(&self.env.viewport)

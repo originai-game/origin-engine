@@ -1866,6 +1866,18 @@ covered code points) beside its faces, cooked by their own settings to
 files' size. A pack changes no other font's cooked bytes, charset or
 run-time mode.
 
+A pack also carries the hyphenation dictionaries of its languages
+(`<lang>.hyph`, listed under `hyphenation` in its `extension.json`):
+`latin` 27 and `cyrillic-greek` 7 of hypher's hyph-utf8 tries (MIT, from
+TeX's patterns; `make-packs.py` fetches them). The cook puts a dictionary
+in the pack's index (`hyphenation:<lang>`) only when the game's documents
+or style sheets declare `hyphens: auto` and one of its string tables'
+locales (else `en`) takes that language, so a game without automatic
+hyphenation ships none. A shipped locale whose pack has no dictionary
+for it is warned of at cook; its text breaks only at soft hyphens.
+og.i18n installs a pack's dictionaries when it loads the pack, and the
+next layout hyphenates with them.
+
 og.i18n chains the active table's fonts, the locale's pack, the packs a
 frame needed, then the other tables' fonts. A character only an unchained
 pack covers loads that pack (a Chinese locale's own script first) and

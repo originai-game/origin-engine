@@ -7,6 +7,13 @@ Name 'Source'. The emoji face is Noto Color Emoji's COLRv1 build from
 googlefonts/noto-emoji, Copyright 2013 Google LLC. Each pack carries its licence file, which `og font add` and
 `og create --lang` install with it.
 
+A pack's `<language>.hyph` files are hyphenation dictionaries for CSS
+`hyphens: auto`: hyph-utf8's TeX patterns as compiled by hypher 0.1.8
+(crates.io `hypher`, MIT or Apache-2.0, `LICENSE-hypher.txt`; the patterns
+are under their own permissive licences, LPPL, MPL, MIT or BSD-3, listed in
+hypher's `patterns/`). The cook ships one only for a locale the game has
+and only when its documents declare `hyphens: auto`.
+
 | File | Languages | Holds | Licence | Source |
 |---|---|---|---|---|
 | `latin/NotoSans-Latin.ttf` | en, es, fr, de, it, pt, nl, sv, da, no, nb, nn, fi, is, pl, cs, sk, sl, hr, bs, ro, hu, tr, az, vi, id, ms, tl, fil, sw, et, lv, lt, sq, mt, ga, cy, eu, ca, gl, af, ha, yo, ig, zu, xh, uz, tk, la, eo | 1,040 characters, 125,928 bytes | SIL OFL 1.1 (`OFL-notosans.txt`) | google/fonts `ofl/notosans/NotoSans[wdth,wght].ttf` |

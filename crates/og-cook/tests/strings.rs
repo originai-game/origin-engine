@@ -305,3 +305,74 @@ fn a_font_pack_indexes_its_faces_and_leaves_other_fonts_alone() {
     );
     assert!(out.bytes <= 2 * 1024, "index {} bytes", out.bytes);
 }
+
+/// docs/ui.md §3.4: a font pack's hyphenation dictionaries (CSS
+/// `hyphens: auto`) ship in its cooked index only when the game's
+/// documents declare `hyphens: auto`, and only for the locales its string
+/// tables name; a shipped locale whose pack has no dictionary for it is
+/// warned of, and still cooks.
+///
+/// Ways it could fail: every pack language's dictionary shipped (a
+/// German or Hungarian one in an English game), a game without `hyphens:
+/// auto` paying for them, a dictionary's bytes changed on the way, or a
+/// locale left without hyphenation silently.
+#[test]
+fn a_font_pack_ships_hyphenation_dictionaries_only_for_the_games_locales() {
+    let repo = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../..");
+    let pack = repo.join("templates/fonts/latin");
+    let mut files: Vec<(String, Vec<u8>)> = std::fs::read_dir(&pack)
+        .unwrap()
+        .map(|e| e.unwrap().file_name().into_string().unwrap())
+        .map(|n| {
+            (
+                format!("fonts/latin/{n}"),
+                std::fs::read(pack.join(&n)).unwrap(),
+            )
+        })
+        .collect();
+    for l in ["en", "de", "vi"] {
+        files.push((format!("strings/{l}.ogt"), table(l, &[])));
+    }
+    let document = |css: &str| {
+        format!("<meta name=\"component\" content=\"t\">\n<p>Silbentrennung</p>\n<style>p {{ {css} }}</style>\n")
+            .into_bytes()
+    };
+    let dictionaries = |name: &str, css: &str| {
+        let mut all = files.clone();
+        all.push(("ui/t.svelte".into(), document(css)));
+        let all: Vec<(&str, Vec<u8>)> = all.iter().map(|(p, b)| (p.as_str(), b.clone())).collect();
+        let root = project(name, &all);
+        let report = cook_project(&root, &CookOptions::default()).unwrap();
+        assert!(report.ok(), "{:?}", report.errors());
+        let bundle = Bundle::open(&root.join("cooked")).unwrap();
+        let id = "fonts/latin/extension.json";
+        let shipped = bundle
+            .font_pack_hyphenation(id, &bundle.read(id).unwrap())
+            .unwrap();
+        (shipped, report.warnings)
+    };
+
+    let (shipped, warnings) = dictionaries("hyphens-auto", "hyphens: auto;");
+    let languages: Vec<&str> = shipped.iter().map(|(l, _)| l.as_str()).collect();
+    assert_eq!(languages, ["en", "de"]);
+    for (l, bytes) in &shipped {
+        assert_eq!(
+            bytes,
+            &std::fs::read(pack.join(format!("{l}.hyph"))).unwrap(),
+            "{l}"
+        );
+    }
+    assert!(
+        warnings.iter().any(|w| w
+            .starts_with("assets/fonts/latin/extension.json: warning: hyphens: auto:")
+            && w.contains("'vi'")),
+        "{warnings:?}"
+    );
+
+    let (shipped, warnings) = dictionaries("hyphens-manual", "hyphens: manual;");
+    assert!(shipped.is_empty());
+    assert!(
+        !warnings.iter().any(|w| w.contains("hyphens")),
+        "{warnings:?}"
+    );
+}

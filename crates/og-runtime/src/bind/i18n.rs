@@ -222,19 +222,37 @@ pub(crate) fn ensure_packs(eng: &Engine) {
             _ => Vec::new(),
         };
         let mut packs = Vec::new();
+        let mut dictionaries = Vec::new();
         for id in ids {
             let read = assets.blob(&id).and_then(|(bytes, bundle)| {
-                bundle
+                let text = bundle
                     .font_pack_text(&id, bytes.bytes())
-                    .map_err(|e| e.to_string())
+                    .map_err(|e| e.to_string())?;
+                let hyph = bundle
+                    .font_pack_hyphenation(&id, bytes.bytes())
+                    .map_err(|e| e.to_string())?;
+                Ok((text, hyph))
             });
-            match read.and_then(|t| og_i18n::FontPack::parse(&t)) {
-                Ok(p) => packs.push(p),
+            match read.and_then(|(t, h)| Ok((og_i18n::FontPack::parse(&t)?, h))) {
+                Ok((p, h)) => {
+                    packs.push(p);
+                    dictionaries.extend(h);
+                }
                 Err(e) => note(eng.id, format!("font pack {id}: {e}")),
             }
         }
-        packs
+        (packs, dictionaries)
     };
+    let (packs, dictionaries) = packs;
+    // The hyphenation dictionaries the cook shipped for the game's locales:
+    // a UI made later finds them installed.
+    let ui = eng.state.borrow().ui.clone();
+    for (language, bytes) in dictionaries {
+        match &ui {
+            Some(ui) => ui.lock().add_hyphenation(&language, bytes.into()),
+            None => og_i18n::hyphenation::install(&language, bytes.into()),
+        }
+    }
     let any = !packs.is_empty();
     with(eng.id, |s| s.packs = Some(packs));
     if any && let Err(e) = apply(eng) {
