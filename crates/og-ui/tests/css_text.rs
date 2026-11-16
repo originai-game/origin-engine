@@ -155,6 +155,50 @@ h3::before { content: counter(sec, upper-roman) ". "; }
     }
 }
 
+/// CSS Lists 3 §4.4.2: `reversed(c)` with no value starts at the sum of
+/// the negated increments in its scope, up to the first element that
+/// sets it (whose value is added instead), plus the last non-zero
+/// negated increment once more. With -1 per item, three items count
+/// 3, 2, 1. With a set of 10 on the third of four, the start is
+/// 1 + 1 + 10 + 1 = 13, so they read 12, 11, 10 (the set), 9. An inner
+/// reset's counter takes its element's following siblings too (§4.4.1),
+/// so their increments count on it, not on the outer one.
+/// An explicit `reversed(c) 5` starts at 5. The start is found as the
+/// run passes the scope, so the readers take it from the next tick.
+#[test]
+fn reversed_counters_start_where_their_increments_end() {
+    let mut d = doc(
+        r#"<div id="R"><p id="R1">a</p><p id="R2">b</p><p id="R3">c</p></div>
+<div id="S"><p id="S1">a</p><p id="S2">b</p><p id="S3">c</p><p id="S4">d</p></div>
+<div id="N"><p id="N1">a</p><div id="In"><p id="N2">x</p><p id="N3">y</p></div><p id="N4">b</p></div>
+<div id="E"><p id="E1">a</p><p id="E2">b</p></div>"#,
+        "#R, #S, #N, #In { counter-reset: reversed(c); } #E { counter-reset: reversed(c) 5; }
+p { counter-increment: c -1; } p::before { content: counter(c) \". \"; }
+#S3 { counter-set: c 10; }",
+    );
+    d.step(InputFrame::default());
+    for (id, text) in [
+        ("R1", "3. a"),
+        ("R2", "2. b"),
+        ("R3", "1. c"),
+        ("S1", "12. a"),
+        ("S2", "11. b"),
+        ("S3", "10. c"),
+        ("S4", "9. d"),
+        // The outer counts N1 alone; the inner N2, N3 and N4 after it.
+        ("N1", "1. a"),
+        ("N2", "3. x"),
+        ("N3", "2. y"),
+        ("N4", "1. b"),
+        ("E1", "4. a"),
+        ("E2", "3. b"),
+    ] {
+        assert_eq!(drawn(&d, id), text, "#{id}");
+    }
+    d.step(InputFrame::default());
+    assert_eq!(drawn(&d, "R1"), "3. a", "a settled count stays");
+}
+
 /// CSS Containment 2 §3.3: under `contain: style` a `counter-increment`
 /// makes a counter of the subtree's own, nested in the one outside, and
 /// leaves the outside one as it was; quotes opened inside are closed again

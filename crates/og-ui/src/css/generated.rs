@@ -225,7 +225,10 @@ impl Generated {
                             None => &mut ops,
                         };
                         match property {
-                            "counter-reset" => target.reset = list,
+                            "counter-reset" => {
+                                target.reset = list;
+                                target.reversed = reversed_without_value(value);
+                            }
                             "counter-increment" => target.increment = list,
                             _ => target.set = list,
                         }
@@ -399,6 +402,10 @@ pub fn parse_content(value: &str) -> Result<Content, String> {
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct Ops {
     pub reset: Vec<(String, i64)>,
+    /// The counters `reset` instantiates as `reversed()` with no value:
+    /// their start is computed from the increments in their scope (CSS
+    /// Lists 3 §4.4.2).
+    pub reversed: Vec<String>,
     pub increment: Vec<(String, i64)>,
     pub set: Vec<(String, i64)>,
 }
@@ -411,8 +418,8 @@ impl Ops {
 
 /// Parses `counter-reset`, `counter-increment` or `counter-set`: `none |
 /// [<name> <integer>?]+`, the integer defaulting to 1 for an increment and
-/// 0 otherwise. `reversed(name)` resets to 0 here (a reversed list counts
-/// down from its item count, which documents give with `ol reversed`).
+/// 0 otherwise. `reversed(name)` with no integer is listed at 0 here; its
+/// start is [`Ops::reversed`]'s.
 pub fn parse_ops(property: &str, value: &str) -> Result<Vec<(String, i64)>, String> {
     let default = i64::from(property == "counter-increment");
     if value.trim().eq_ignore_ascii_case("none") {
@@ -443,6 +450,28 @@ pub fn parse_ops(property: &str, value: &str) -> Result<Vec<(String, i64)>, Stri
         out.push((name, n));
     }
     Ok(out)
+}
+
+/// The counters a `counter-reset` value instantiates as `reversed(name)`
+/// with no integer after it.
+fn reversed_without_value(value: &str) -> Vec<String> {
+    let mut p = Parser::new(value);
+    let mut out = Vec::new();
+    while !p.is_exhausted() {
+        let Ok(token) = p.next().cloned() else { break };
+        if let Token::Function(f) = token
+            && f.eq_ignore_ascii_case("reversed")
+        {
+            let name: Result<String, cssparser::ParseError<()>> =
+                p.parse_nested_block(|p| Ok(p.expect_ident_cloned()?.to_string()));
+            if let Ok(name) = name
+                && p.try_parse(|p| p.expect_integer()).is_err()
+            {
+                out.push(name);
+            }
+        }
+    }
+    out
 }
 
 /// A computed `quotes` value: pairs by nesting level.
@@ -512,16 +541,49 @@ pub enum Event {
 #[derive(Clone, Debug, Default, PartialEq)]
 struct Contained {
     level: u32,
-    counters: BTreeMap<String, Vec<(i64, u32)>>,
+    counters: BTreeMap<String, Vec<Instance>>,
     quote_depth: u32,
+}
+
+/// One instance of a counter: its value, the nesting level of the element
+/// whose siblings it is scoped to, and the tally of a reversed one with
+/// no start.
+#[derive(Clone, Copy, Debug, PartialEq)]
+struct Instance {
+    value: i64,
+    level: u32,
+    tally: Option<usize>,
+}
+
+/// CSS Lists 3 §4.4.2's start of a reversed counter instantiated without
+/// one: the negated increments of its scope up to the first element that
+/// sets it (that value added instead), then the last non-zero negated
+/// increment once more.
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
+struct Tally {
+    num: i64,
+    last: i64,
+    set: bool,
+}
+
+impl Tally {
+    fn start(&self) -> i64 {
+        self.num + self.last
+    }
 }
 
 /// Counters in scope and the quote depth, in document order.
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct Run {
-    /// Each counter's instances, outermost first: (value, the nesting
-    /// level of the element whose siblings it is scoped to).
-    counters: BTreeMap<String, Vec<(i64, u32)>>,
+    /// Each counter's instances, outermost first.
+    counters: BTreeMap<String, Vec<Instance>>,
+    /// This tick's reversed counters with no start, in document order:
+    /// what their scope increments and sets.
+    tallies: Vec<Tally>,
+    /// The starts the last tick's tallies came to, by the same order: a
+    /// reversed counter starts at its own, and a change builds its
+    /// readers again (they compare the run they entered).
+    starts: Vec<i64>,
     quote_depth: u32,
     level: u32,
     /// The style-contained elements entered (CSS Containment 2 §3.3), each
@@ -547,6 +609,7 @@ impl Run {
 
     pub fn same_state(&self, other: &Run) -> bool {
         self.counters == other.counters
+            && self.starts == other.starts
             && self.quote_depth == other.quote_depth
             && self.level == other.level
             && self.contained == other.contained
@@ -561,8 +624,18 @@ impl Run {
         Arc::new(self.log[mark..].to_vec())
     }
 
+    /// Starts a tick's run; the reversed counters' tallies become the
+    /// starts it takes (kept when nothing was counted this tick).
     pub fn clear(&mut self) {
-        *self = Self::default();
+        let starts = if self.tallies.is_empty() {
+            std::mem::take(&mut self.starts)
+        } else {
+            self.tallies.iter().map(Tally::start).collect()
+        };
+        *self = Self {
+            starts,
+            ..Self::default()
+        };
     }
 
     pub fn enter(&mut self) {
@@ -594,7 +667,7 @@ impl Run {
         }
         let inner = self.level + 1;
         self.counters.retain(|_, stack| {
-            stack.retain(|&(_, level)| level < inner);
+            stack.retain(|i| i.level < inner);
             !stack.is_empty()
         });
         self.level = self.level.saturating_sub(1);
@@ -611,19 +684,50 @@ impl Run {
         let level = self.level;
         for (name, n) in &ops.reset {
             let outside = self.outside(name);
+            let (value, tally) = if ops.reversed.contains(name) {
+                let k = self.tallies.len();
+                self.tallies.push(Tally::default());
+                (self.starts.get(k).copied().unwrap_or(0), Some(k))
+            } else {
+                (*n, None)
+            };
             let stack = self.counters.entry(name.clone()).or_default();
             // A sibling's instance is replaced, not nested (one outside a
             // style-contained element is kept).
-            if stack.len() > outside && stack.last().is_some_and(|&(_, l)| l == level) {
+            if stack.len() > outside && stack.last().is_some_and(|i| i.level == level) {
                 stack.pop();
             }
-            stack.push((*n, level));
+            stack.push(Instance {
+                value,
+                level,
+                tally,
+            });
         }
         for (name, n) in &ops.increment {
-            self.instance(name).0 += n;
+            let i = self.instance(name);
+            i.value += n;
+            let (tally, sets) = (i.tally, ops.set.iter().any(|(s, _)| s == name));
+            if let Some(t) = tally.and_then(|k| self.tallies.get_mut(k))
+                && !t.set
+            {
+                if *n != 0 {
+                    t.last = -n;
+                }
+                // An element that also sets it adds the set value instead.
+                if !sets {
+                    t.num -= n;
+                }
+            }
         }
         for (name, n) in &ops.set {
-            self.instance(name).0 = *n;
+            let i = self.instance(name);
+            i.value = *n;
+            if let Some(t) = i.tally.and_then(|k| self.tallies.get_mut(k))
+                && !t.set
+            {
+                t.num += n;
+                t.set = true;
+            }
         }
         self.log.push(Event::Ops(ops.clone()));
     }
@@ -637,12 +741,16 @@ impl Run {
             .map_or(0, Vec::len)
     }
 
-    fn instance(&mut self, name: &str) -> &mut (i64, u32) {
+    fn instance(&mut self, name: &str) -> &mut Instance {
         let level = self.level;
         let outside = self.outside(name);
         let stack = self.counters.entry(name.to_string()).or_default();
         if stack.len() <= outside {
-            stack.push((0, level));
+            stack.push(Instance {
+                value: 0,
+                level,
+                tally: None,
+            });
         }
         stack.last_mut().unwrap()
     }
@@ -685,7 +793,7 @@ impl Run {
                 Piece::Image(_) => {}
                 Piece::Counter(name, style) => {
                     let n = match (self.counters.get(name), list_item) {
-                        (Some(stack), _) => stack.last().map_or(0, |c| c.0),
+                        (Some(stack), _) => stack.last().map_or(0, |c| c.value),
                         (None, Some(n)) if name == "list-item" => n,
                         _ => 0,
                     };
@@ -693,7 +801,7 @@ impl Run {
                 }
                 Piece::Counters(name, sep, style) => {
                     let values: Vec<i64> = match (self.counters.get(name), list_item) {
-                        (Some(stack), _) => stack.iter().map(|c| c.0).collect(),
+                        (Some(stack), _) => stack.iter().map(|c| c.value).collect(),
                         (None, Some(n)) if name == "list-item" => vec![n],
                         _ => vec![0],
                     };
@@ -1016,6 +1124,7 @@ mod tests {
         let ops = |reset: &[&str], inc: &[&str]| {
             Arc::new(Ops {
                 reset: reset.iter().map(|n| (n.to_string(), 0)).collect(),
+                reversed: Vec::new(),
                 increment: inc.iter().map(|n| (n.to_string(), 1)).collect(),
                 set: Vec::new(),
             })

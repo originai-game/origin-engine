@@ -1,0 +1,8 @@
+{
+  "fixed": [
+    {
+      "member": "CSS counter-reset: reversed()",
+      "summary": "counter-reset: reversed(name) with no value starts where CSS Lists 3 says, from the increments and the first counter-set in its scope, so items that count down by one end at 1; it started at 0 and counted below it. Its readers take the start from the tick after the scope is counted."
+    }
+  ]
+}
