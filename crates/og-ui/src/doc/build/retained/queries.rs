@@ -221,6 +221,8 @@ panel { width: 10px; height: 10px; padding: 0px; }
 #Gap { height: 40px; }
 panel { width: 10px; height: 10px; padding: 0px; }
 #Tall { height: 300px; }
+/* A scrolled column's items keep their heights, as in CSS. */
+#List > * { flex-shrink: 0; }
 @container scroll-state(scrollable: top) { #Up { width: 44px; } }
 @container scroll-state(scrolled: bottom) { #Down { width: 33px; } }
 #Head { position: sticky; top: 0px; container-type: scroll-state; }
