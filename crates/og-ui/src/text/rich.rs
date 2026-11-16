@@ -257,6 +257,8 @@ pub struct RichContent {
     pub spacing: crate::text::spacing::CjkSpacing,
     /// CSS `hanging-punctuation` (CSS Text 4 §9.2.1).
     pub hanging: crate::text::hanging::HangingPunctuation,
+    /// CSS `text-box-trim` and `text-box-edge` (CSS Inline 3 §6).
+    pub text_box: crate::text::text_box::TextBox,
 }
 
 /// CSS `text-indent` (CSS Text 3 §8.1): the room its lines leave at
@@ -332,6 +334,8 @@ pub struct RichTextDesc {
     pub spacing: crate::text::spacing::CjkSpacing,
     /// CSS `hanging-punctuation`.
     pub hanging: crate::text::hanging::HangingPunctuation,
+    /// CSS `text-box-trim` and `text-box-edge`.
+    pub text_box: crate::text::text_box::TextBox,
 }
 
 /// What a paragraph's links did this tick.
@@ -687,6 +691,9 @@ pub(crate) fn rich_lines(
         if !line.is_empty() || !any {
             finish(&mut line, &mut lines, start, (0, 0.0));
         }
+    }
+    if v.is_none() {
+        crate::text::text_box::apply(rc, fonts, &mut lines);
     }
     lines
 }

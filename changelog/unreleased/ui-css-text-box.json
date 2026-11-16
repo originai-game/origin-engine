@@ -1,0 +1,8 @@
+{
+  "added": [
+    {
+      "member": "CSS text-box",
+      "summary": "Horizontal paragraph and label roots support text-box-trim, text-box-edge and the text-box shorthand. Trim the first and last lines to cap height, x-height, text or ideographic font edges without changing inter-line spacing; cap alphabetic lets buttons and badges centre their labels optically."
+    }
+  ]
+}

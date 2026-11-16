@@ -1764,6 +1764,7 @@ impl Resolved {
             ruby: css.map(|t| t.ruby).unwrap_or_default(),
             spacing: css.map(|t| t.spacing).unwrap_or_default(),
             hanging: css.map(|t| t.hanging).unwrap_or_default(),
+            text_box: css.map(|t| t.text_box).unwrap_or_default(),
         }
     }
 

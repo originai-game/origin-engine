@@ -349,7 +349,11 @@ pub(crate) fn rich_lines_around(
     {
         return b;
     }
-    span_lines(rc, fonts, 0.0, lowest, room_at, v)
+    let mut broken = span_lines(rc, fonts, 0.0, lowest, room_at, v);
+    if v.is_none() {
+        crate::text::text_box::apply(rc, fonts, &mut broken.0);
+    }
+    broken
 }
 
 /// A rich text's lines beside floats from its top `y` (`room_at`: a
@@ -371,6 +375,11 @@ fn span_lines(
     let break_at = |rest: &[(usize, RichSpan)], w: f32| {
         let part = RichContent {
             spans: rest.iter().map(|s| s.1.clone()).collect(),
+            // Trim the whole block once, not every candidate line.
+            text_box: crate::text::text_box::TextBox {
+                trim: crate::text::text_box::Trim::None,
+                ..rc.text_box
+            },
             ..rc.clone()
         };
         crate::rich::rich_lines(&part, fonts, Some(w + 0.5), v)

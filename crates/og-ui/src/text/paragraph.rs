@@ -29,7 +29,8 @@ pub(crate) fn rich(
     width: Option<f32>,
 ) -> Option<(Vec<RichLine>, (f32, f32))> {
     let w = width.unwrap_or(f32::MAX);
-    let (broken, widths) = laid_out(content, fonts, None, &|_, _| (0.0, w, None))?;
+    let (mut broken, widths) = laid_out(content, fonts, None, &|_, _| (0.0, w, None))?;
+    crate::text::text_box::apply(content, fonts, &mut broken.0);
     Some((broken.0, widths))
 }
 
@@ -41,7 +42,9 @@ pub(crate) fn lines_beside(
     fonts: &dyn crate::layout::Metrics,
     room: Room<'_>,
 ) -> Option<Broken> {
-    Some(laid_out(content, fonts, None, room)?.0)
+    let mut broken = laid_out(content, fonts, None, room)?.0;
+    crate::text::text_box::apply(content, fonts, &mut broken.0);
+    Some(broken)
 }
 
 /// Where a line broke: its byte range, its left, drop and width beside

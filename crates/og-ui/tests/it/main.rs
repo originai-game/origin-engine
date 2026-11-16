@@ -28,6 +28,8 @@ mod css_paint;
 mod css_selectors;
 #[path = "../css_text.rs"]
 mod css_text;
+#[path = "../css_text_box.rs"]
+mod css_text_box;
 #[path = "../custom_properties.rs"]
 mod custom_properties;
 #[path = "../documents.rs"]

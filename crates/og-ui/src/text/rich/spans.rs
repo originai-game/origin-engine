@@ -425,6 +425,7 @@ impl Ui {
             dominant: desc.dominant,
             spacing: desc.spacing,
             hanging: desc.hanging,
+            text_box: desc.text_box,
         });
         node.layout.links.clear();
         for r in &node_runs_links(&node.content) {

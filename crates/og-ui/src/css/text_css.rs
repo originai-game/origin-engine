@@ -74,6 +74,8 @@ pub(crate) const INHERITED: &[&str] = &[
     "hanging-punctuation",
     // CSS Inline 3 §4.1.
     "dominant-baseline",
+    // CSS Inline 3 §6.3.
+    "text-box-edge",
     "text-underline-position",
     "text-underline-offset",
     "text-decoration-skip-ink",
@@ -116,6 +118,7 @@ pub(crate) const LOCAL: &[&str] = &[
     "alignment-baseline",
     "baseline-shift",
     "baseline-source",
+    "text-box-trim",
 ];
 
 /// Whether this module owns `name` (after shorthands expand).
@@ -168,6 +171,7 @@ pub(crate) fn expand(d: StyleDeclaration) -> Result<Vec<StyleDeclaration>, Strin
             | "text-emphasis"
             | "-webkit-text-stroke"
             | "vertical-align"
+            | "text-box"
     );
     if name == "font" && d.value.has_variables() {
         return Ok(vec![d]);
@@ -215,6 +219,15 @@ fn shorthand_parts(name: &str, v: &str) -> Result<Vec<(String, String)>, String>
             .collect()
     };
     Ok(match name {
+        "text-box" => {
+            let (trim, edge) = if wide(v) {
+                (v.to_owned(), v.to_owned())
+            } else {
+                crate::text::text_box::shorthand(v)
+                    .ok_or_else(|| format!("text-box: invalid trim or edge '{v}'"))?
+            };
+            all(&[("text-box-trim", &trim), ("text-box-edge", &edge)])
+        }
         "white-space" => {
             // CSS Text 4 §3.3: the legacy keywords.
             let (collapse, mode) = match v {
@@ -846,6 +859,8 @@ fn check(name: &str, v: &str) -> Result<(), String> {
         "text-autospace" => crate::text::spacing::Autospace::parse(v).is_some(),
         "text-spacing-trim" => crate::text::spacing::SpacingTrim::parse(v).is_some(),
         "hanging-punctuation" => crate::text::hanging::HangingPunctuation::parse(v).is_some(),
+        "text-box-trim" => crate::text::text_box::Trim::parse(v).is_some(),
+        "text-box-edge" => crate::text::text_box::Edges::parse(v).is_some(),
         "text-size-adjust" => {
             matches!(v, "auto" | "none")
                 || v.strip_suffix('%')
@@ -1296,6 +1311,8 @@ pub struct TextCss {
     pub spacing: crate::text::spacing::CjkSpacing,
     /// CSS `hanging-punctuation`.
     pub hanging: crate::text::hanging::HangingPunctuation,
+    /// CSS `text-box-trim` and `text-box-edge`.
+    pub text_box: crate::text::text_box::TextBox,
     /// Named and generic families in authored order, skipping unavailable names.
     pub family: Option<Vec<crate::FontFamily>>,
     pub font_role: Option<crate::FontRole>,
@@ -1716,6 +1733,15 @@ pub(crate) fn inherit(inp: Inputs<'_>) -> TextCss {
     t.hanging = get("hanging-punctuation")
         .and_then(|v| crate::text::hanging::HangingPunctuation::parse(v.trim()))
         .unwrap_or_default();
+    t.text_box = crate::text::text_box::TextBox {
+        trim: own("text-box-trim")
+            .and_then(|_| get("text-box-trim"))
+            .and_then(|v| crate::text::text_box::Trim::parse(v.trim()))
+            .unwrap_or_default(),
+        edge: get("text-box-edge")
+            .and_then(|v| crate::text::text_box::Edges::parse(v.trim()))
+            .unwrap_or_default(),
+    };
     let mark_color = get("text-emphasis-color")
         .filter(|c| !c.eq_ignore_ascii_case("currentcolor"))
         .and_then(|c| color(Some(c)));
@@ -2096,6 +2122,7 @@ impl TextCss {
             || self.stroke.is_some()
             || self.emphasis.is_some()
             || self.hyphen.is_some()
+            || self.text_box.trim != crate::text::text_box::Trim::None
             || p.0 != Default::default()
             || p.1 != Default::default()
     }

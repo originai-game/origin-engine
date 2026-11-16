@@ -16,5 +16,6 @@ pub mod paragraph;
 #[doc(hidden)]
 pub mod rich;
 pub mod spacing;
+pub mod text_box;
 pub mod text_path;
 pub mod vertical;
