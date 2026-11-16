@@ -1591,7 +1591,7 @@ it shows (`RacingLapHud.readout`, `RacingStandings.place`,
 | `cell` | `--cell-fill/rim/rim-width/selected-rim/radius/shadow/hover-shadow/pressed-fill/empty-shadow`, `--cell-<rarity>-fill/shadow` | hover, pressed, selected, `data-rarity`, `data-empty`, disabled or `data-locked` |
 | `card` | `--card-fill/rim/rim-width/selected-rim/radius/shadow/pad` | selected or current (a step) |
 | `badge`, `well`, `figure` | `--badge-fill/ink/radius/shadow/pad/text`, `--well-fill/radius/shadow`, `--figure-ink/font/shadow` | |
-| `headline`, `caption` | `--headline-text/weight/ink`, `--caption-text/ink` | |
+| `headline`, `caption` | `--headline-text/weight/ink`, `--headline-card-text` (a headline in a card, its title), `--caption-text/ink` | |
 | `dot` | `--dot-fill/ink/rim/rim-width/radius` | |
 | `track`, `fill` | `--track-fill/radius/shadow`, `--fill-color/gloss`; a meter sets `--fill-color` for what it measures | `data-tone` on a fill |
 | text over the scene (StatusGrid's time left, Nameplate's name and subtitle, Waypoint's label and distance) | `--tag-halo` its outline, `--tag-fill/pad/radius` a ground of its own (none in the default style) | |

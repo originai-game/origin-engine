@@ -141,6 +141,8 @@
   /* Headline: the name a card or row leads with (an article's title, a
      step's name), under a frame's title and over its captions. */
   --role-headline-text: var(--text-base);
+  /* A headline in a card is the card's title: one step up. */
+  --role-headline-card-text: var(--text-lg);
   --role-headline-weight: var(--font-weight-semibold);
   --role-headline-ink: var(--ink);
 

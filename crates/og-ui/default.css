@@ -465,6 +465,7 @@
     --frame-rim: var(--line);
     --frame-rim-width: var(--stroke-hairline);
     --frame-shadow: var(--shadow-float);
+    --headline-card-text: var(--text-lg);
     --headline-ink: var(--ink);
     --headline-text: var(--text-base);
     --headline-weight: var(--font-weight-semibold);
@@ -1836,6 +1837,9 @@
     background: var(--card-fill);
     box-shadow: var(--card-shadow);
   }
+  /* A card sizes its headline through the inherited token, as a band its
+     title: the card's title is one step up from a row's name. */
+  :where([part$=".card"]) { --headline-text: var(--headline-card-text); }
   :where([part$=".card"]:where([aria-selected=true], [aria-current]:not([aria-current=false]), [data-selected=true])) { border-color: var(--card-selected-rim); }
   :where([part$=".badge"]) {
     padding: var(--badge-pad);

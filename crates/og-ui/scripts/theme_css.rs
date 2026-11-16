@@ -227,6 +227,9 @@ const ROLE_RULES: &str = r#"  /* Roles: frame, plate, band, title, row, cell, ca
     background: var(--card-fill);
     box-shadow: var(--card-shadow);
   }
+  /* A card sizes its headline through the inherited token, as a band its
+     title: the card's title is one step up from a row's name. */
+  :where([part$=".card"]) { --headline-text: var(--headline-card-text); }
   :where([part$=".card"]:where([aria-selected=true], [aria-current]:not([aria-current=false]), [data-selected=true])) { border-color: var(--card-selected-rim); }
   :where([part$=".badge"]) {
     padding: var(--badge-pad);
