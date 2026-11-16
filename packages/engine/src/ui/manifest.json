@@ -1547,6 +1547,7 @@
     "control": null,
     "uses": [],
     "files": [
+      "@ui/components/panels/tooltip-card.en.ogt",
       "@ui/components/panels/tooltip-card.svelte"
     ],
     "imports": []
