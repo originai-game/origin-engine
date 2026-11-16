@@ -778,7 +778,6 @@ impl Ui {
                 wide_gamut: vp.wide_gamut,
                 high_range: vp.high_range,
             },
-            forced_colors: vp.forced_colors,
         }
     }
 

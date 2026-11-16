@@ -170,7 +170,6 @@ fn viewport_wire(v: &Viewport, hud_max_aspect: f32) -> crate::host::wire::Viewpo
         reduced_motion: Some(v.reduced_motion),
         high_contrast: Some(v.high_contrast),
         reduced_transparency: Some(v.reduced_transparency),
-        forced_colors: Some(v.forced_colors),
         mac_keys: Some(v.mac_keys),
         covered: Some(rect_wire(&v.covered)),
         breakpoint: match v.breakpoint() {

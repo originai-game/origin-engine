@@ -132,9 +132,9 @@ thread_local! {
 
 /// The play surface the UI lays out in: `{ width, height, dpr, safeArea?,
 /// smallWidth?, smallHeight?, largeWidth?, largeHeight?, coarsePointer?, reducedMotion?, highContrast?, reducedTransparency?,
-/// forcedColors?, macKeys? }` in CSS pixels (reducedMotion, highContrast,
-/// reducedTransparency and forcedColors the page's `prefers-reduced-motion`,
-/// `prefers-contrast`, `prefers-reduced-transparency` and `forced-colors`; macKeys an Apple
+/// macKeys? }` in CSS pixels (reducedMotion, highContrast and
+/// reducedTransparency the page's `prefers-reduced-motion`,
+/// `prefers-contrast` and `prefers-reduced-transparency`; macKeys an Apple
 /// platform's editing keys in text controls).
 /// Answers wire JSON.
 #[wasm_bindgen]

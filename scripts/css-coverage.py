@@ -83,6 +83,10 @@ not_needed("text-decoration-spelling-grammar",
            "spelling-error and grammar-error draw the lines a UA's spelling and grammar checker puts under text. "
            "The engine has no spell checker, so nothing would ever produce them; a word puzzle marks a wrong word "
            "with an underline style of its own.")
+not_needed("forced-colors",
+           "Forced colours mode replaces an author's colours with the OS's high-contrast palette. A game draws its own "
+           "surface and offers contrast through its style and prefers-contrast; (forced-colors) answers none, as "
+           "the engine is never in that mode, and forced-color-adjust is refused.")
 not_needed("link-parameters",
            "Passes param() values through an image URL into an external SVG's var(). A game's SVG is inline markup "
            "or a cooked image, styled by its document, and no component or style pack parameterises one by URL.")
@@ -350,11 +354,6 @@ proof("dynamic-range-limit", "css_paint", "dynamic_range_limit_sets_the_frames_p
       "A document root's dynamic-range-limit is the frame's (Ui::range_limit, the most limiting of several roots); on an 8x display standard ends it at 1x, constrained at 2x (one stop), no-limit and none declared at 8x, "
       "an even mix at 2^1.5 and the spec's nested dynamic-range-limit-mix() at 2^1.9 (normalized weights mixed in stops); a mix without a percentage or over 100 % is refused. og-render's display unit test checks the transfer's clamp and the tone curves end at that peak per keyword. "
       "A child element's own limit does not cap its content apart from the rest of the frame, and the frames on an HDR surface await the milestone's GPU look.")
-proof("forced-colors", "css_paint", "forced_colors_force_author_colours_to_system_colours",
-      "With Viewport::forced_colors (the web shell's matchMedia), (forced-colors: active) matches; an author's background is the system colour paired with the element's color (Canvas, ButtonFace behind ButtonText) at its own alpha (50 % stays 50 %), "
-      "a border's colour is currentcolor (the inherited ink), box-shadow and a gradient without url() are none, a system colour stands and color reverts to the ink; forced-color-adjust: none opts out an element and, inherited, its child; "
-      "turning the mode off restores every colour on that frame. css::forced_colors' unit test covers the other properties (outline, text-decoration and caret colours, text-shadow, accent-color, scrollbar-color, url() layers). "
-      "A colour computed from currentcolor or a custom role keeps alpha 1 when forced, and preserve-parent-color behaves as none (an inherited color is already the parent's used one).")
 
 # animation and interaction
 proof("transitions transition-behavior starting-style linear-easing steps-easing display-animation animation-composition",
