@@ -124,7 +124,8 @@ impl Ui {
     ) -> Option<crate::decor::BoxDecor> {
         use crate::decor::{BoxDecor, Line, LineStyle, Shadow};
         let theme = self.theme();
-        let current = r.color("color").unwrap_or(theme.palette.ink);
+        let current = r.current(theme);
+        let cx = r.color_context(theme);
         let mut d = BoxDecor::default();
         for (k, side) in crate::doc::boxes::SIDES.iter().enumerate() {
             let style = r
@@ -169,7 +170,7 @@ impl Ui {
                     None => Some(current),
                     Some([og_core::ogt::Value::String(text)]) => crate::css_color::parse_str(text)
                         .ok()
-                        .map(|c| c.resolve(&crate::css_color::Context::of(theme))),
+                        .map(|c| c.resolve(&cx)),
                     Some([_, og_core::ogt::Value::Word(token)]) => theme.color(token),
                     Some(_) => None,
                 };
@@ -192,7 +193,7 @@ impl Ui {
             }
         }
         d.corners = corners(r, el.radius);
-        let css = self.css_paint(doc, r, current, warn);
+        let css = self.css_paint(doc, r, &cx, warn);
         // A clip, mask, blend, filter or material cuts or composites the
         // background too: it is drawn with them.
         if (css.as_ref().is_some_and(|c| {
@@ -282,10 +283,11 @@ impl Ui {
         &self,
         doc: Option<&crate::doc::UiDocument>,
         r: &Resolved,
-        current: Srgba,
+        cx: &crate::css_color::Context,
         warn: &mut Vec<String>,
     ) -> Option<crate::doc::paint_css::CssPaint> {
         use crate::doc::paint_css as p;
+        let current = cx.current;
         let mut c = p::CssPaint::default();
         let nearest = r.object_css().1;
         // Asset paths were resolved beside their stylesheet before the cascade.
@@ -295,7 +297,7 @@ impl Ui {
                     .then_some(p::BgImage::Transparent);
             };
             Some(match source {
-                p::ImageSource::Gradient(g) => p::BgImage::Gradient(g.clone()),
+                p::ImageSource::Gradient(g) => p::BgImage::Gradient(g.bound(cx)),
                 p::ImageSource::Url(u)
                     if self
                         .docs
@@ -1305,7 +1307,98 @@ impl crate::ui::Tree {
     }
 }
 
+impl Ui {
+    /// Resolves the colours in `contextual` (their places in `r.vals`)
+    /// in the element: `currentColor` is its `color`, declared or
+    /// inherited (CSS Color 4 §6.4), and `light-dark()` takes its used
+    /// colour scheme (CSS Color 5 §2, its `color-scheme` or the one it
+    /// inherits). `color` itself goes first: its `currentColor` is the
+    /// inherited colour, and the others' is it.
+    pub(super) fn resolve_element_colors(
+        &self,
+        r: &mut Resolved,
+        contextual: &[(usize, Arc<crate::css_color::Color>)],
+    ) {
+        use crate::doc::text_css;
+        let theme = self.theme();
+        let key = text_css::key("color");
+        let inherited = r
+            .cascade
+            .computed
+            .get(&key)
+            .cloned()
+            .flatten()
+            .and_then(|v| crate::style_file::parse_color(&v));
+        let scheme = r
+            .cascade
+            .text
+            .iter()
+            .rev()
+            .find(|(n, _)| n == "color-scheme")
+            .map(|(_, v)| v.clone())
+            .or_else(|| {
+                r.cascade
+                    .computed
+                    .get(&text_css::key("color-scheme"))
+                    .cloned()
+                    .flatten()
+            });
+        let style_dark = theme.scheme == crate::Scheme::Dark;
+        let dark = scheme.map_or(style_dark, |v| text_css::scheme_dark(&v, style_dark));
+        let mut cx = crate::css_color::Context {
+            current: inherited.unwrap_or(theme.palette.ink),
+            dark,
+            ..crate::css_color::Context::of(theme)
+        };
+        let color = schema::prop("color").map(|(spec, _)| spec);
+        let resolve = |r: &mut Resolved, cx: &crate::css_color::Context, of_color: bool| {
+            for (i, c) in contextual {
+                if (Some(r.vals[*i].0) == color) == of_color {
+                    r.vals[*i].1 = V::Color(c.resolve(cx));
+                }
+            }
+        };
+        resolve(r, &cx, true);
+        let own = r.color("color");
+        cx.current = own.or(inherited).unwrap_or(theme.palette.ink);
+        resolve(r, &cx, false);
+        // What it draws in an inherited colour follows the parent's.
+        if own.is_none() && inherited.is_some() {
+            r.cascade.inherited_reads.insert(key);
+        }
+        if contextual.iter().any(|(_, c)| c.uses_scheme()) {
+            r.cascade
+                .inherited_reads
+                .insert(text_css::key("color-scheme"));
+        }
+        r.used_color = Some((cx.current, dark));
+    }
+}
+
 impl Resolved {
+    /// Its `currentColor`: its `color`, or the one it inherits, or the
+    /// style's ink.
+    pub(crate) fn current(&self, theme: &crate::Theme) -> Srgba {
+        self.color("color")
+            .or(self.used_color.map(|(c, _)| c))
+            .unwrap_or(theme.palette.ink)
+    }
+
+    /// The context its CSS colours resolve in ([`Self::current`], its used
+    /// colour scheme).
+    pub(crate) fn color_context<'a>(
+        &self,
+        theme: &'a crate::Theme,
+    ) -> crate::css_color::Context<'a> {
+        crate::css_color::Context {
+            current: self.current(theme),
+            dark: self
+                .used_color
+                .map_or(theme.scheme == crate::Scheme::Dark, |(_, d)| d),
+            ..crate::css_color::Context::of(theme)
+        }
+    }
+
     pub fn intrinsic(&self) -> Self {
         Self {
             vals: self
