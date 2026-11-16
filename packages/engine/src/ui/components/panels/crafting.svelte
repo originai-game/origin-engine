@@ -46,7 +46,7 @@
 :host { display: flex; flex-direction: column; inline-size: stretch; max-block-size: stretch; overflow-y: auto; gap: var(--space-md); }
 h2, h3, p { margin: 0; }
 [part="RpgCrafting.recipes"] { display: flex; flex-direction: column; gap: var(--space-xs); }
-[part="RpgCrafting.row"] { min-block-size: var(--size-touch); padding: var(--space-sm); }
+[part="RpgCrafting.row"] { min-block-size: var(--size-touch); padding: var(--space-sm); --row-fill: var(--well); }
 [part="RpgCrafting.face"] { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-sm); }
 [part="RpgCrafting.icon"] { inline-size: var(--size-sm); block-size: var(--size-sm); flex: none; }
 [part="RpgCrafting.name"] { flex: 1; text-align: start; }

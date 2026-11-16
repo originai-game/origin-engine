@@ -39,7 +39,7 @@
 h2, p { margin: 0; }
 [part="RpgTrade.wallet"], [part="RpgTrade.price"] { font-family: var(--figure-font); font-variant-numeric: tabular-nums; }
 [part="RpgTrade.goods"] { display: flex; flex-direction: column; gap: var(--space-xs); }
-[part="RpgTrade.row"] { min-block-size: var(--size-touch); padding: var(--space-sm); }
+[part="RpgTrade.row"] { min-block-size: var(--size-touch); padding: var(--space-sm); --row-fill: var(--well); }
 [part="RpgTrade.face"] { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-sm); }
 [part="RpgTrade.icon"] { inline-size: var(--size-sm); block-size: var(--size-sm); flex: none; }
 [part="RpgTrade.name"] { flex: 1; text-align: start; }

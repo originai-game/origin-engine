@@ -1,0 +1,8 @@
+{
+  "fixed": [
+    {
+      "member": "ui.RpgCrafting, ui.RpgTrade",
+      "summary": "Gives unselected recipe and stock options a quiet default row surface while preserving the shared hover, pressed, selected and disabled treatments. Documents the loot review fixture's all-or-nothing Take all policy and how games can instead offer partial collection."
+    }
+  ]
+}

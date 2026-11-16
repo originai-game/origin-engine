@@ -32,6 +32,11 @@ only render the data and return requests with stable row keys.
 - `RpgLoot`: keyed `items`, `canTakeAll`, `loading`/`busy`/`error`. `take`
   carries the item key; `takeAll` and `close` are panel intents. The game
   removes collected rows and decides capacity. Close also responds to Back.
+  The default chest demonstrates an all-or-nothing batch: the blocked relic
+  disables Take all, but Gold can still be taken individually. For a
+  take-what-you-can policy, the game sets `canTakeAll` when at least one row
+  is available and collects only permitted rows in response to `takeAll`.
+  The component does not infer either policy from the item list.
 - `RpgConversationBacklog`: chronological keyed `lines`, `playing`,
   `hasOlder`, `loading`. `replay` and `stop` carry a line key; `older` and
   `close` are panel intents. Audio playback and pagination remain game-owned.
