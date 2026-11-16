@@ -1896,6 +1896,16 @@ transitions and animates through such a mix in OKLab, so each frame of
 the move is a palette of its own. Instances are shared by their 8-bit
 colours.
 
+Text is shaped in its language (CSS Fonts 4 §6.13): the element's `lang`
+attribute, inherited (an empty one is unknown), or the OpenType language
+system `font-language-override` names (`"ROM"`), so a face's `locl` forms
+for it apply (Romanian Ș for Ş in Noto Sans). Parley, which lays out
+paragraphs and edited text, takes a BCP 47 language only: a tag is given
+as the language HarfBuzz shapes in it first
+(`scripts/gen-ot-languages.py`), and one no language shapes in first
+applies only outside Parley. `@font-face`'s `font-display` changes
+nothing: a document's faces load with it, before its first frame.
+
 ## 4. Shipped catalogue
 
 Every component and screen document under `packages/engine/src/ui/` is

@@ -93,6 +93,9 @@ pub(crate) const INHERITED: &[&str] = &[
     // The named families of `font-family` (its generic family is the
     // `font` role): a quoted, comma-separated list or `none`.
     "-og-font-name",
+    // The element's `lang` attribute (empty: unknown), which an element
+    // without one inherits.
+    "-og-lang",
 ];
 
 /// The text properties that do not inherit (CSS Text Decoration 3:
@@ -802,7 +805,7 @@ fn check(name: &str, v: &str) -> Result<(), String> {
                     .last()
                     .is_some_and(|n| n.parse::<f32>().is_ok() || n == "from-font")
         }
-        "font-language-override" => v == "normal" || v.starts_with('"'),
+        "font-language-override" => v == "normal" || language_tag(v).is_some(),
         "font-feature-settings" => v == "normal" || feature_settings(v).is_ok(),
         "font-variation-settings" => v == "normal" || variation_settings(v).is_ok(),
         "font-palette" => {
@@ -1241,6 +1244,11 @@ pub struct TextCss {
     /// (`None`: `normal`), resolved against the document's sheet
     /// ([`super::at_rules::Sheet::palette`]).
     pub palette: Option<String>,
+    /// The language its runs are shaped in (BCP 47): the one that shapes
+    /// in `font-language-override`'s OpenType language system (`ro` for
+    /// "ROM"; one no language shapes in first as HarfBuzz's private use
+    /// writes it, `x-hbotabcd`), else the element's `lang`.
+    pub language: Option<String>,
     pub synthesis: [Option<bool>; 4],
     pub decoration: Decoration,
     pub stroke: Option<(f32, Option<Srgba>)>,
@@ -1482,6 +1490,15 @@ pub(crate) fn inherit(inp: Inputs<'_>) -> TextCss {
         kerning: get("font-kerning").map(|v| v != "none"),
         optical_sizing: get("font-optical-sizing").map(|v| v != "none"),
         palette: get("font-palette").filter(|v| v != "normal"),
+        language: get("font-language-override")
+            .and_then(|v| language_tag(&v))
+            .map(|tag| {
+                crate::shape::language_of_tag(&tag).map_or_else(
+                    || format!("x-hbot{}", tag.to_ascii_lowercase()),
+                    str::to_string,
+                )
+            })
+            .or_else(|| get("-og-lang").map(|l| l.trim().trim_matches('"').to_string())),
         caret: color(get("caret-color")),
         caret_shape: get("caret-shape").map(|v| match v.as_str() {
             "bar" => CaretShape::Bar,
@@ -1765,6 +1782,18 @@ fn variant_features(w: &str) -> Vec<(&'static [u8; 4], u16)> {
     }
 }
 
+/// `font-language-override`'s OpenType language system tag: a quoted one
+/// to four letters (CSS Fonts 4 §6.13), trailing spaces dropped.
+fn language_tag(v: &str) -> Option<String> {
+    let inner = v
+        .strip_prefix('"')
+        .and_then(|v| v.strip_suffix('"'))
+        .or_else(|| v.strip_prefix('\'').and_then(|v| v.strip_suffix('\'')))?;
+    let tag = inner.trim_end();
+    (!tag.is_empty() && inner.len() <= 4 && tag.bytes().all(|b| b.is_ascii_alphanumeric()))
+        .then(|| tag.to_string())
+}
+
 /// The OpenType features an alternates function sets from a name's
 /// values (CSS Fonts 4 §6.8): `salt`, `ssNN` for each value, `cvNN` set to
 /// its second value (else 1), `swsh` and `cswh`, `ornm` and `nalt`. A
@@ -1934,6 +1963,9 @@ impl TextCss {
             step.uppercase = t.split_whitespace().any(|w| w == "uppercase");
         }
         step.features = step.features.with_settings(&self.features);
+        if self.language.is_some() {
+            step.features = step.features.with_language(self.language.as_deref());
+        }
         step
     }
 

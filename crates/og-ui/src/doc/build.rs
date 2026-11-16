@@ -1380,6 +1380,17 @@ impl Ui {
                     | Kind::Color
             )
         );
+        // Its `lang`, which the text inside is shaped in (quoted, so an
+        // empty one still replaces an ancestor's).
+        if let Some((_, e)) = n.selector_attrs.iter().find(|(a, _)| a == "lang") {
+            let lang = match b.eval(e) {
+                Value::String(s) => s,
+                _ => String::new(),
+            };
+            r.cascade
+                .text
+                .push(("-og-lang".to_string(), format!("\"{}\"", lang.trim())));
+        }
         if shows_text || !r.cascade.text.is_empty() {
             let mut ramp = self.env.theme.type_ramp;
             let step = r

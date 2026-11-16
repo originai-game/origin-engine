@@ -142,6 +142,10 @@ fn styled<'a>(
     builder.push_default(StyleProperty::OverflowWrap(parley::OverflowWrap::Anywhere));
     let settings = features.css();
     builder.push_default(StyleProperty::FontFeatures(settings.as_str().into()));
+    // Shaped in its language, so a face's `locl` forms for it apply.
+    if let Some(l) = features.language().and_then(|l| l.parse().ok()) {
+        builder.push_default(StyleProperty::Locale(Some(l)));
+    }
     for (((range, k), family), variations) in runs.iter().zip(families).zip(&variations) {
         builder.push(
             StyleProperty::FontFamily(family.as_str().into()),

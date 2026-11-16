@@ -182,9 +182,34 @@ pub struct Features(u32);
 /// One OpenType feature setting: its tag and value.
 pub type Setting = ([u8; 4], u16);
 
-/// Every distinct list of settings a [`Features`] has carried, by its id
-/// less one: a few per game (one per CSS feature combination).
-static SETTINGS: Mutex<Vec<Arc<[Setting]>>> = Mutex::new(Vec::new());
+/// The BCP 47 language that shapes in OpenType language system `tag`
+/// (one to four letters, CSS `font-language-override`), by HarfBuzz's
+/// table: what a layout that takes only a BCP 47 language (Parley) is
+/// given for it. `None`: no language shapes in it first.
+pub fn language_of_tag(tag: &str) -> Option<&'static str> {
+    let mut key = [b' '; 4];
+    for (k, b) in key.iter_mut().zip(tag.trim_end().bytes()) {
+        *k = b.to_ascii_uppercase();
+    }
+    let all = crate::ot_languages::OT_LANGUAGES;
+    all.binary_search_by(|(t, _)| t.cmp(&key))
+        .ok()
+        .map(|i| all[i].1)
+}
+
+/// What a [`Features`]' id carries beyond its named features: its
+/// settings and the language its runs are shaped in.
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+struct Interned {
+    settings: Arc<[Setting]>,
+    /// A BCP 47 tag (`ro`, `sr-Latn`), or an OpenType language system
+    /// as HarfBuzz's private use writes it (`x-hbotrom`).
+    language: Option<Arc<str>>,
+}
+
+/// Every distinct [`Interned`] a [`Features`] has carried, by its id less
+/// one: a few per game (one per CSS feature combination and language).
+static SETTINGS: Mutex<Vec<Interned>> = Mutex::new(Vec::new());
 
 impl Features {
     /// No feature: the font's defaults.
@@ -245,26 +270,58 @@ impl Features {
             }
         }
         list.sort();
-        if list.is_empty() {
+        Self::interned(
+            bits,
+            Interned {
+                settings: list.into(),
+                language: self.language(),
+            },
+        )
+    }
+
+    /// These features with runs shaped in `language` (CSS `lang` or
+    /// `font-language-override`, as [`Interned::language`] writes it), so
+    /// a face's `locl` forms for it apply; `None` shapes in none.
+    pub fn with_language(self, language: Option<&str>) -> Features {
+        Self::interned(
+            self.0 & Self::NAMED,
+            Interned {
+                settings: self.settings(),
+                language: language.filter(|l| !l.is_empty()).map(Arc::from),
+            },
+        )
+    }
+
+    fn interned(bits: u32, i: Interned) -> Features {
+        if i == Interned::default() {
             return Features(bits);
         }
         let mut all = SETTINGS.lock().unwrap_or_else(|e| e.into_inner());
-        let id = match all.iter().position(|s| **s == *list) {
-            Some(i) => i,
+        let id = match all.iter().position(|s| *s == i) {
+            Some(at) => at,
             None => {
-                all.push(list.into());
+                all.push(i);
                 all.len() - 1
             }
         };
         Features(bits | ((id as u32 + 1) << Self::TAGS.len()))
     }
 
-    /// Its settings beyond the named features, by tag.
-    pub fn settings(self) -> Arc<[Setting]> {
+    fn carried(self) -> Interned {
         match (self.0 >> Self::TAGS.len()).checked_sub(1) {
             Some(i) => SETTINGS.lock().unwrap_or_else(|e| e.into_inner())[i as usize].clone(),
-            None => Arc::new([]),
+            None => Interned::default(),
         }
+    }
+
+    /// Its settings beyond the named features, by tag.
+    pub fn settings(self) -> Arc<[Setting]> {
+        self.carried().settings
+    }
+
+    /// The language its runs are shaped in (`None`: none).
+    pub fn language(self) -> Option<Arc<str>> {
+        self.carried().language
     }
 
     /// Every feature it sets, a tag and its value: the named ones on, then
@@ -830,6 +887,9 @@ impl FontFile {
         let face = skrifa::FontRef::new(&self.ttf).ok()?;
         let mut buf = harfrust::UnicodeBuffer::new();
         buf.push_str(run);
+        if let Some(l) = features.language().and_then(|l| l.parse().ok()) {
+            buf.set_language(l);
+        }
         buf.guess_segment_properties();
         buf.set_direction(if rtl {
             harfrust::Direction::RightToLeft

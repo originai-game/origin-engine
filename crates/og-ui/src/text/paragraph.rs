@@ -462,6 +462,13 @@ fn shaped<R>(
                 StyleProperty::FontFeatures(features.as_str().into()),
                 range.clone(),
             );
+            // Parley takes a BCP 47 language only: an OpenType language
+            // system (`font-language-override`) does not parse.
+            let language = s.step.features.language();
+            builder.push(
+                StyleProperty::Locale(language.and_then(|l| l.parse().ok())),
+                range.clone(),
+            );
         }
         for atom in boxes {
             builder.push_inline_box(atom);

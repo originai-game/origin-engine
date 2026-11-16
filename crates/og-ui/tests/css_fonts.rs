@@ -40,6 +40,10 @@
 //!   styleset of two values setting one, a name nobody defines not
 //!   ignored, the shorthand dropping it, or `font-feature-settings` not
 //!   applying after it → `font_variant_alternates_take_the_feature_values_named`
+//! - `lang` not reaching shaping, not inherited or not cleared by an empty
+//!   `lang`, `font-language-override` ignored or not winning over `lang`,
+//!   or a Parley paragraph shaped without its language →
+//!   `font_language_override_and_lang_pick_the_fonts_local_forms`
 //! - `ui-monospace` or `ui-rounded` drawn in a face standing in for the
 //!   role where the style has none of its own instead of going on down the
 //!   list, `ui-serif` or `math` taken as the body face ahead of a later
@@ -810,4 +814,32 @@ fn font_variant_alternates_take_the_feature_values_named() {
     assert_eq!(ids("Inherit"), [plain, florin]);
     assert_eq!(ids("Short")[0], alt);
     assert_eq!(ids("Off"), [plain, Some(319)]);
+}
+
+/// CSS Fonts 4 §6.13: text is shaped in its content language (`lang`,
+/// inherited; empty is unknown), so a face's `locl` forms for it apply,
+/// and `font-language-override` names the OpenType language system
+/// instead. Noto Sans's own GSUB (fontTools): Romanian (ROM) draws Ş
+/// (285) as Ș (326), Marshallese (MAH) Ļ (250) as 898.
+#[test]
+fn font_language_override_and_lang_pick_the_fonts_local_forms() {
+    let d = doc(
+        vec![family("Noto", (400, 400), face(NOTO, 9))],
+        r#"<p id="Plain">ŞĻ</p><p id="Ro" lang="ro">ŞĻ</p><div lang="ro-RO"><p id="Inherit">ŞĻ</p>
+<p id="Unknown" lang="">ŞĻ</p></div><p id="Tag">ŞĻ</p><p id="Over" lang="ro">ŞĻ</p>
+<p id="Para" lang="ro">ŞĻ</p>"#,
+        r#"#Root { font-family: Noto; }
+#Tag { font-language-override: "ROM"; }
+#Over { font-language-override: "MAH"; }
+#Para { text-indent: 4px; }"#,
+    );
+    let ids = |id: &str| glyph_ids(&d, id);
+    let (s, l) = (Some(285), Some(250));
+    assert_eq!(ids("Plain"), [s, l]);
+    assert_eq!(ids("Ro"), [Some(326), l]);
+    assert_eq!(ids("Inherit"), [Some(326), l]);
+    assert_eq!(ids("Unknown"), [s, l]);
+    assert_eq!(ids("Tag"), [Some(326), l]);
+    assert_eq!(ids("Over"), [s, Some(898)]);
+    assert_eq!(ids("Para"), [Some(326), l]);
 }
