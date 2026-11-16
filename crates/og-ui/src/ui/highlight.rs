@@ -121,21 +121,51 @@ impl Ui {
         changed
     }
 
-    /// `::highlight(name)`'s style for node `i`'s text: each property from
-    /// the nearest of its element and their ancestors that declares it;
-    /// `None` when none does.
+    /// `::highlight(name)`'s style for node `i`'s text
+    /// ([`Self::inherited_highlight`]).
     fn highlight_style(&self, i: usize, name: &str) -> Option<Selection> {
+        let styles = &self.docs.state.highlights;
+        if styles.is_empty() {
+            return None;
+        }
+        self.inherited_highlight(i, |key| styles.get(&key).and_then(|m| m.get(name)))
+    }
+
+    /// `::selection`'s style for node `i`'s text
+    /// ([`Self::inherited_highlight`]).
+    pub(crate) fn selection_paint(&self, i: usize) -> Option<Selection> {
+        let styles = &self.docs.state.selection;
+        if styles.is_empty() {
+            return None;
+        }
+        self.inherited_highlight(i, |key| styles.get(&key).map(|s| &**s))
+    }
+
+    /// `::target-text`'s style for node `i`'s text
+    /// ([`Self::inherited_highlight`]).
+    pub(crate) fn target_text_paint(&self, i: usize) -> Option<Selection> {
+        let styles = &self.docs.state.target_text;
+        if styles.is_empty() {
+            return None;
+        }
+        self.inherited_highlight(i, |key| styles.get(&key).map(|s| &**s))
+    }
+
+    /// A highlight pseudo-element's style for node `i`'s text, `own`
+    /// giving each element's own by its render key: each property from the
+    /// nearest of the text's element and its ancestors that declares it,
+    /// inherited or not (highlight inheritance, CSS Pseudo-Elements 4
+    /// §3.5); `None` when none does.
+    fn inherited_highlight<'a>(
+        &self,
+        i: usize,
+        own: impl Fn(u64) -> Option<&'a Selection>,
+    ) -> Option<Selection> {
         let mut out = Selection::default();
         let mut k = self.text_owner(i);
         while k != NONE {
             let n = &self.tree.nodes[k];
-            if let Some(s) = self
-                .docs
-                .state
-                .highlights
-                .get(&n.key)
-                .and_then(|m| m.get(name))
-            {
+            if let Some(s) = own(n.key) {
                 out.background = out.background.or(s.background);
                 out.color = out.color.or(s.color);
                 out.decoration = out.decoration.take().or_else(|| s.decoration.clone());

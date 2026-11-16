@@ -641,13 +641,13 @@ impl Ui {
     /// ([`Self::overlay_commands`]): the `Mark` system colour under each
     /// marked stretch by default, as a browser's.
     pub(super) fn target_text_commands(&self, i: usize, under: usize, cmds: &mut Vec<DrawCmd>) {
-        let owner = self.tree.nodes[self.text_owner(i)].key;
-        let style = self.docs.state.target_text.get(&owner);
+        let style = self.target_text_paint(i);
         let fill = style
+            .as_ref()
             .and_then(|s| s.background)
             .or(Some(self.paint_theme().palette.primary_soft));
         let marks = &self.tree.nodes[i].marks.target_text;
-        self.overlay_commands(i, under, marks, style.map(|s| &**s), fill, cmds);
+        self.overlay_commands(i, under, marks, style.as_ref(), fill, cmds);
     }
 
     /// A highlight overlay (CSS Pseudo-Elements 4 §3.6) of node `i`'s

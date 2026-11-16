@@ -1151,10 +1151,7 @@ impl Ui {
                 caret(cmds);
             }
             let selection = self
-                .docs
-                .state
-                .selection
-                .get(&key)
+                .selection_paint(i)
                 .and_then(|s| s.background)
                 .unwrap_or(p.control_strong);
             span("selection", e.selection, cmds, 0.0, ch, selection);

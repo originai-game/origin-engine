@@ -1614,16 +1614,10 @@ impl Ui {
             }
             self.selection_fills(i, &selected, clip, cmds);
         }
-        let selection = self
-            .docs
-            .state
-            .selection
-            .get(&n.key)
-            .filter(|s| {
-                !selected.is_empty()
-                    && (s.color.is_some() || s.decoration.is_some() || s.shadows.is_some())
-            })
-            .cloned();
+        let selection = (!selected.is_empty())
+            .then(|| self.selection_paint(i))
+            .flatten()
+            .filter(|s| s.color.is_some() || s.decoration.is_some() || s.shadows.is_some());
         for piece in self.rich_pieces(i) {
             let s = &rc.spans[piece.span];
             let r = piece.rect;
@@ -1821,7 +1815,7 @@ impl Ui {
                 .filter(|b| b.overlaps(&r))
                 .copied()
                 .collect();
-            if let Some(sel) = selection.as_deref().filter(|_| !bands.is_empty()) {
+            if let Some(sel) = selection.as_ref().filter(|_| !bands.is_empty()) {
                 bands.sort_by(|a, b| a.y.total_cmp(&b.y));
                 let drawn: Vec<DrawCmd> = cmds.drain(first..).collect();
                 // The unselected stretches: each glyph clipped between the bands.

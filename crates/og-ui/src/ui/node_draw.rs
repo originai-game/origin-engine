@@ -485,10 +485,6 @@ impl Ui {
                         }
                         // `::selection`'s ink, lines and shadows: the line's
                         // selected glyphs drawn again, clipped to their runs.
-                        let owner = self.tree.nodes[self.text_owner(i)].key;
-                        let selection = self.docs.state.selection.get(&owner).filter(|s| {
-                            s.color.is_some() || s.decoration.is_some() || s.shadows.is_some()
-                        });
                         let range = match &field {
                             Some(e) if e.focused && !e.placeholder => Some((
                                 e.selection.0.min(e.selection.1),
@@ -502,7 +498,13 @@ impl Ui {
                                 )
                             }),
                         };
-                        let runs = match (selection, range) {
+                        let selection = range
+                            .filter(|(a, b)| a < b)
+                            .and_then(|_| self.selection_paint(i))
+                            .filter(|s| {
+                                s.color.is_some() || s.decoration.is_some() || s.shadows.is_some()
+                            });
+                        let runs = match (&selection, range) {
                             (Some(_), Some((a, b))) if a < b => selected_runs(
                                 m,
                                 &line.text,
@@ -1702,10 +1704,7 @@ impl Ui {
             .text_drop(role, size, m.pixel_grid(), &self.env)
             .filter(|_| !own && !plated);
         let selection = self
-            .docs
-            .state
-            .selection
-            .get(&n.key)
+            .selection_paint(i)
             .filter(|s| s.color.is_some() || s.decoration.is_some() || s.shadows.is_some());
         // A copy of a line's glyphs moved, in another ink, cut to `band`.
         let copy = |line: &[DrawCmd],
@@ -1811,7 +1810,7 @@ impl Ui {
                 dropped(band, cmds);
                 copy(line, (0.0, 0.0), None, band, true, cmds);
             }
-            let Some(sel) = selection.filter(|_| cut) else {
+            let Some(sel) = selection.as_ref().filter(|_| cut) else {
                 continue;
             };
             let ink = sel
@@ -1899,10 +1898,7 @@ impl Ui {
         let n = &self.tree.nodes[i];
         let (alpha, dpr) = (n.placed.alpha, self.env.viewport.dpr());
         let fill = self
-            .docs
-            .state
-            .selection
-            .get(&n.key)
+            .selection_paint(i)
             .and_then(|s| s.background)
             .unwrap_or(self.paint_theme().palette.control_strong);
         let part = crate::dress::PartRef::of("TextEdit", "selection", None);

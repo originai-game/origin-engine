@@ -429,11 +429,12 @@ engine differs or limits as follows:
   followed link's text fragment matched (below); its default background
   is the `Mark` system colour. `::highlight(<name>)` takes the same four
   and styles the ranges the game registers under that name with
-  `og.ui.setHighlight` (CSS Custom Highlight API). Each property comes from
-  the nearest of the element and its ancestors that declares it (highlight
-  inheritance), so a highlight with no rule paints nothing. The overlays
-  stack under `::target-text`'s by priority; of equal priorities, the
-  highlight registered later is above. `::file-selector-button` styles nothing. The CSS 2
+  `og.ui.setHighlight` (CSS Custom Highlight API); a highlight with no rule
+  paints nothing. The overlays stack under `::target-text`'s by priority;
+  of equal priorities, the highlight registered later is above. In all
+  three, each property comes from the nearest of the text's element and
+  its ancestors that declares it, `background-color` too (highlight
+  inheritance), so `:root::selection { … }` styles every element. `::file-selector-button` styles nothing. The CSS 2
   single-colon spellings work.
 - **Units.** Physical units are 96 px to the inch. Viewport units read the
   play surface; the small and large forms read it with the browser's
