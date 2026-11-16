@@ -14,13 +14,13 @@ to change it; the game's copy of the same name wins.
 
 ## Structure and appearance
 
-Each member's `<style>` holds structure only: layout, sizes and spacing, and
-a token background on its frame. It lands in the `og-components` layer; a
-style pack (`og-pack`, above it) supplies every appearance through the
-members' named parts (docs/ui.md §3.2), qualified by their states and
-`data-*` attributes, for example `PuzzleLevelPath::node[data-state=current]`.
-The fantasy pack dresses them
-through its tokens alone (`templates/styles/fantasy/base.css`).
+Each member is HTML with component CSS in the `og-components` layer.
+`:host` owns the root layout; parts and classes own the interior. Optional
+pieces use `{#if}`, and scrolling is ordinary CSS overflow. The default
+appearance uses semantic tokens: readable figures, quiet captions, earned
+stars, a current-level badge and an armed booster ring. A style pack
+(`og-pack`, above it) can override the named parts (docs/ui.md §3.2),
+qualified by states such as `PuzzleLevelPath::node[data-state=current]`.
 
 Hooks for a pack: `data-state` (locked, open, current, done) on level-path
 lanes, trails, nodes and stars, `aria-selected` on the node the player
@@ -70,13 +70,15 @@ actions. Only the summary's padding follows the screen's width.
 ## Review sheet and tests
 
 `og ui sheet puzzle` renders the review pages from
-`packages/engine/sheets/puzzle/`, dressed by the fantasy pack (`style:default`
-shows core default): play (goals and moves over the board, the booster tray
+`packages/engine/sheets/puzzle/`, in the default style (the fantasy pack is
+also available): play (goals and moves over the board, the booster tray
 with one armed and one unavailable), map (a two-chapter level path beside a
 won level's summary) and states (every member in every fixture). The sheet's
 fixtures in `src/fixtures.ts` are the documents' own fixture metas; the icons
 are the shared ink icon sheet, and `assets/strings/` carries ja and ar
 string tables for the locale cells.
+On the states page, `member:boosters` (or `goals`, `level-path`, `summary`)
+isolates that component's fixtures for a closer review.
 `og ui review puzzle --style scifi` (or `--style cartoon`) renders the same
 pages in that pack, dressed by its tokens
 (`templates/styles/<pack>/base.css`).

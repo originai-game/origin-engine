@@ -25,18 +25,18 @@
   met goal's looks, and any pulse, are the pack's.
 -->
 <section id="PuzzleGoals" part="PuzzleGoals.frame" class="hud" aria-label={t("puzzle.goals.name")} data-low={low}>
-  <div class="hud">
+  <div class="counters">
     <div part="PuzzleGoals.counter PuzzleGoals.plate" role={counter == 'time' ? 'timer' : 'status'} data-kind={counter} data-low={low} aria-label={counter == 'time' ? t("puzzle.goals.timeLeft", { time: formatCountdown(seconds) }) : t("puzzle.goals.movesLeft", { moves: moves })}>
       <span part="PuzzleGoals.label" class="label">{counter == 'time' ? t("puzzle.goals.time") : t("puzzle.goals.moves")}</span>
       <span part="PuzzleGoals.figure" data-low={low}>{counter == 'time' ? formatCountdown(seconds) : formatNumber(moves)}</span>
-      <span part="PuzzleGoals.warning PuzzleGoals.plate" hidden={!low}>{t("puzzle.goals.low")}</span>
+      {#if low}<span part="PuzzleGoals.warning PuzzleGoals.plate">{t("puzzle.goals.low")}</span>{/if}
     </div>
     <div part="PuzzleGoals.goals" role="list" aria-label={t("puzzle.goals.name")}>
       {#each goals as g (g.id)}
         <div part="PuzzleGoals.goal PuzzleGoals.plate" role="listitem" data-done={g.done} aria-label={g.done ? t("puzzle.goals.done", { label: g.label }) : t("puzzle.goals.left", { label: g.label, left: g.left })}>
           <og-icon class="goal-art" icon={g.icon}></og-icon>
-          <span part="PuzzleGoals.count PuzzleGoals.figure" hidden={g.done}>{formatNumber(g.left)}</span>
-          <svg part="PuzzleGoals.done" class="check" viewBox="0 0 24 24" hidden={!g.done}><path d="M4.5 12.5l5 5 10-11"></path></svg>
+          {#if g.done}<svg part="PuzzleGoals.done" class="check" viewBox="0 0 24 24"><path d="M4.5 12.5l5 5 10-11"></path></svg>
+          {:else}<span part="PuzzleGoals.count PuzzleGoals.figure">{formatNumber(g.left)}</span>{/if}
         </div>
       {:else}
         <p class="none">{t("puzzle.goals.none")}</p>
@@ -52,24 +52,24 @@
 <style>
 /* Drawn over the scene: the style's tag halo holds its text there. */
 :host { text-shadow: var(--tag-halo); }
-[part="PuzzleGoals.frame"] [hidden] { display: none; }
-[part="PuzzleGoals.frame"] { display: flex; width: stretch; container-type: inline-size; }
-.hud { display: flex; width: stretch; align-items: stretch; gap: var(--space-md); padding: var(--space-sm) var(--space-md); min-width: 0; }
+:host { container-type: inline-size; inline-size: stretch; }
+.counters { display: flex; align-items: stretch; gap: var(--space-md); padding: var(--space-sm); }
 [part="PuzzleGoals.counter PuzzleGoals.plate"] { display: flex; flex: none; flex-direction: column; align-items: center; justify-content: center; min-width: calc(var(--size-xl) * 1.4); padding: var(--space-xs) var(--space-sm); }
-[part="PuzzleGoals.label"], .score-label { white-space: nowrap; }
-[part="PuzzleGoals.figure"] { white-space: nowrap; }
-[part="PuzzleGoals.warning PuzzleGoals.plate"] { white-space: nowrap; }
+[part="PuzzleGoals.label"], .score-label { white-space: nowrap; font: var(--text-caption); color: var(--ink-muted); }
+[part="PuzzleGoals.figure"], .score-figure { white-space: nowrap; font-size: var(--font-step-2xl); font-weight: var(--font-weight-semibold); font-family: var(--figure-font); }
+[part="PuzzleGoals.warning PuzzleGoals.plate"] { white-space: nowrap; color: var(--warn); font: var(--text-caption); }
+[part="PuzzleGoals.figure"][data-low=true] { color: var(--warn); }
 [part="PuzzleGoals.goals"] { display: flex; flex: 1; min-width: 0; flex-wrap: wrap; align-items: center; justify-content: center; gap: var(--space-sm) var(--space-md); }
 [part="PuzzleGoals.goal PuzzleGoals.plate"] { position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; width: var(--size-xl); padding: var(--space-xxs); }
 .goal-art { width: var(--size-lg); height: var(--size-lg); }
 [part="PuzzleGoals.count PuzzleGoals.figure"] { white-space: nowrap; }
-.check { width: var(--size-sm); height: var(--size-sm); fill: none; stroke-linecap: round; stroke-linejoin: round; }
+.check { width: var(--size-sm); height: var(--size-sm); fill: none; stroke: var(--success); stroke-width: var(--stroke-thick); stroke-linecap: round; stroke-linejoin: round; }
 .none { margin: 0; text-align: center; }
 [part="PuzzleGoals.score PuzzleGoals.figure"] { display: flex; flex: none; flex-direction: column; align-items: flex-end; justify-content: center; min-width: calc(var(--size-xl) * 1.6); padding: var(--space-xs) var(--space-sm); }
 .score-figure { white-space: nowrap; }
 /* The frame is the container, so a narrow panel on a wide screen wraps as a phone does. */
 @container (width < 600px) {
-  .hud { flex-wrap: wrap; gap: var(--space-xs) var(--space-sm); padding: var(--space-xs) var(--space-sm); }
+  .counters { flex-wrap: wrap; gap: var(--space-xs) var(--space-sm); padding: var(--space-xs); }
   [part="PuzzleGoals.counter PuzzleGoals.plate"] { min-width: var(--size-xl); }
   [part="PuzzleGoals.goals"] { order: 3; flex-basis: 100%; }
   [part="PuzzleGoals.score PuzzleGoals.figure"] { flex: 1; min-width: 0; }

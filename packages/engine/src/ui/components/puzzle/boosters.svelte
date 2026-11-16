@@ -20,7 +20,7 @@
 -->
 <nav id="PuzzleBoosters" part="PuzzleBoosters.frame" class="hud" aria-label={t("puzzle.boosters.name")}>
   {#if boosters.length}
-    <scroll class="tray-scroll">
+    <div class="tray-scroll">
       <div class="tray" role="toolbar" aria-label={t("puzzle.boosters.name")}>
         {#each boosters as b (b.id)}
           <button part="PuzzleBoosters.booster PuzzleBoosters.cell" data-available={b.available} data-armed={b.id == armed} aria-pressed={b.id == armed} disabled={!b.available} aria-label={!b.available ? t("puzzle.boosters.unavailable", { name: b.name }) : b.id == armed ? t("puzzle.boosters.armedName", { name: b.name, count: b.count }) : t("puzzle.boosters.count", { name: b.name, count: b.count })} onclick={choose}><div class="face">
@@ -30,11 +30,11 @@
               <span part="PuzzleBoosters.count PuzzleBoosters.figure" data-available={b.available}>{formatNumber(b.count)}</span>
             </div>
             <span part="PuzzleBoosters.name" class="name">{b.name}</span>
-            <span part="PuzzleBoosters.state PuzzleBoosters.label" data-armed={b.available && b.id == armed} hidden={b.available && b.id != armed}>{b.available ? t("puzzle.boosters.armed") : t("puzzle.boosters.locked")}</span>
+            {#if !b.available || b.id == armed}<span part="PuzzleBoosters.state PuzzleBoosters.label" data-armed={b.available && b.id == armed}>{b.available ? t("puzzle.boosters.armed") : t("puzzle.boosters.locked")}</span>{/if}
           </div></button>
         {/each}
       </div>
-    </scroll>
+    </div>
   {:else}
     <p part="PuzzleBoosters.empty" role="status">{t("puzzle.boosters.empty")}</p>
   {/if}
@@ -43,22 +43,25 @@
 <style>
 /* Drawn over the scene: the style's tag halo holds its text there. */
 :host { text-shadow: var(--tag-halo); }
-[part="PuzzleBoosters.frame"] [hidden] { display: none; }
-[part="PuzzleBoosters.frame"] { display: flex; width: stretch; min-width: 0; padding: var(--space-xs); container-type: inline-size; }
-.tray-scroll { width: stretch; min-width: 0; overflow-x: auto; overflow-y: hidden; }
+:host { display: flex; inline-size: stretch; padding: var(--space-sm); container-type: inline-size; }
+.tray-scroll { flex: 1; min-inline-size: 0; overflow-x: auto; overflow-y: hidden; }
 .tray { display: flex; width: max-content; min-width: 100%; justify-content: center; gap: var(--space-sm); padding: var(--space-xxs); }
 [part="PuzzleBoosters.booster PuzzleBoosters.cell"] { flex: none; width: max-content; min-width: calc(var(--size-xl) * 1.5); max-width: calc(var(--size-xl) * 2.5); min-height: var(--size-touch); padding: var(--space-xs); }
-[part="PuzzleBoosters.booster PuzzleBoosters.cell"] .face { display: flex; flex-direction: column; width: stretch; align-items: center; gap: var(--space-xxs); }
+[part="PuzzleBoosters.booster PuzzleBoosters.cell"] .face { display: flex; flex-direction: column; align-items: center; gap: var(--space-xs); }
+[part="PuzzleBoosters.booster PuzzleBoosters.cell"][data-armed=true] { background: var(--selection); border-color: var(--focus); box-shadow: inset 0 0 0 var(--stroke-hairline) var(--focus); }
+[part="PuzzleBoosters.booster PuzzleBoosters.cell"]:disabled { opacity: var(--state-disabled-opacity); }
 .well { position: relative; display: flex; width: var(--size-xl); height: var(--size-xl); align-items: center; justify-content: center; }
 .art { width: 72%; height: 72%; }
 .lock { position: absolute; inset-inline-start: 0; top: 0; width: var(--size-xs); height: var(--size-xs); }
 [part="PuzzleBoosters.count PuzzleBoosters.figure"] { position: absolute; inset-inline-end: calc(var(--space-xs) * -1); bottom: calc(var(--space-xxs) * -1); min-width: var(--size-xs); padding: 0 var(--space-xxs); text-align: center; white-space: nowrap; }
-[part="PuzzleBoosters.name"] { width: stretch; text-align: center; text-wrap: balance; }
-[part="PuzzleBoosters.state PuzzleBoosters.label"] { max-width: stretch; padding: 0 var(--space-xxs); white-space: nowrap; text-overflow: ellipsis; overflow: hidden; }
-[part="PuzzleBoosters.empty"] { margin: 0; width: stretch; padding: var(--space-sm); text-align: center; min-width: 0; }
+[part="PuzzleBoosters.name"] { align-self: stretch; text-align: center; font: var(--text-caption); font-weight: var(--font-weight-semibold); }
+[part="PuzzleBoosters.count PuzzleBoosters.figure"] { background: var(--badge-fill); color: var(--badge-ink); border-radius: var(--badge-radius); font-family: var(--figure-font); }
+[part="PuzzleBoosters.state PuzzleBoosters.label"] { color: var(--ink-muted); font: var(--text-caption); max-inline-size: 100%; padding: 0 var(--space-xxs); white-space: nowrap; text-overflow: ellipsis; overflow: hidden; }
+[part="PuzzleBoosters.empty"] { margin: 0; flex: 1; padding: var(--space-lg); text-align: center; color: var(--ink-muted); }
 @container (width < 600px) {
   .tray { justify-content: flex-start; gap: var(--space-xs); }
-  [part="PuzzleBoosters.booster PuzzleBoosters.cell"] { min-width: calc(var(--size-lg) * 1.75); max-width: calc(var(--size-lg) * 3); }
+  [part="PuzzleBoosters.booster PuzzleBoosters.cell"] { width: calc(var(--size-lg) * 1.65); min-width: 0; max-width: none; padding: var(--space-xxs); }
+  [part="PuzzleBoosters.state PuzzleBoosters.label"] { padding: 0; }
   .well { width: var(--size-lg); height: var(--size-lg); }
 }
 </style>

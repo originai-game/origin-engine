@@ -14,6 +14,9 @@ profile "2d"
 tick 60
 seed 1
 ui {
+  screen "play-default" "style:default;page:play"
+  screen "map-default" "style:default;page:map"
+  screen "states-default" "style:default;page:states"
   screen "play-fantasy" "style:fantasy;page:play"
   screen "map-fantasy" "style:fantasy;page:map"
   screen "states-fantasy" "style:fantasy;page:states"

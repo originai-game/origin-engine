@@ -29,49 +29,50 @@
 <section id="PuzzleSummary" part="PuzzleSummary.frame" data-result={result} aria-label={result == 'win' ? t("puzzle.summary.win") : t("puzzle.summary.lose")} onback={menu}>
   <header part="PuzzleSummary.band" data-result={result}>
     <h2 part="PuzzleSummary.title">{result == 'win' ? t("puzzle.summary.win") : t("puzzle.summary.lose")}</h2>
-    <p part="PuzzleSummary.level PuzzleSummary.label" hidden={!level}>{level}</p>
+    {#if level}<p part="PuzzleSummary.level PuzzleSummary.label">{level}</p>{/if}
   </header>
   <div part="PuzzleSummary.stars" data-result={result}>
     <StarBar value={score} max={scoreMax} stars={thresholds} label="" valueText="" compact={false} />
     <span part="PuzzleSummary.earned PuzzleSummary.label" class="earned">{t("puzzle.summary.stars", { stars: stars, max: maxStars })}</span>
-    <span part="PuzzleSummary.record PuzzleSummary.label" hidden={!record}>{t("puzzle.summary.record")}</span>
+    {#if record}<span part="PuzzleSummary.record PuzzleSummary.label">{t("puzzle.summary.record")}</span>{/if}
   </div>
-  <scroll part="PuzzleSummary.breakdown" role="table" aria-label={t("puzzle.summary.breakdown")} hidden={!rows.length}>
+  {#if rows.length}<div part="PuzzleSummary.breakdown" role="table" aria-label={t("puzzle.summary.breakdown")}>
     {#each rows as r (r.id)}
       <div part="PuzzleSummary.row" role="row">
         <span part="PuzzleSummary.rowLabel" role="rowheader">{r.label}</span>
         <span part="PuzzleSummary.rowValue" role="cell">{r.value}</span>
       </div>
     {/each}
-    <div part="PuzzleSummary.total PuzzleSummary.label" role="row" hidden={!total}>
+    {#if total}<div part="PuzzleSummary.total PuzzleSummary.label" role="row">
       <span class="total-label" role="rowheader">{t("puzzle.summary.total")}</span>
       <span class="total-value" role="cell">{total}</span>
-    </div>
-  </scroll>
+    </div>{/if}
+  </div>{/if}
   <div part="PuzzleSummary.actions">
     <button id="Menu" part="PuzzleSummary.menu" aria-label={t("puzzle.summary.menu")} onclick={menu}>{t("puzzle.summary.menu")}</button>
     <button id="Retry" part="PuzzleSummary.retry" class:primary={!canNext} aria-label={t("puzzle.summary.retry")} onclick={retry}>{t("puzzle.summary.retry")}</button>
-    <button id="Next" part="PuzzleSummary.next" class="primary" aria-label={t("puzzle.summary.next")} hidden={!canNext} disabled={!canNext} onclick={next}>{t("puzzle.summary.next")}</button>
+    {#if canNext}<button id="Next" part="PuzzleSummary.next" class="primary" aria-label={t("puzzle.summary.next")} onclick={next}>{t("puzzle.summary.next")}</button>{/if}
   </div>
 </section>
 
 <style>
-[part="PuzzleSummary.frame"] [hidden], [part="PuzzleSummary.actions"] [hidden] { display: none; }
-[part="PuzzleSummary.frame"] { display: flex; flex-direction: column; width: stretch; max-height: stretch; min-height: 0; gap: var(--space-md); padding: var(--space-lg); background: var(--panel); }
+:host { display: flex; flex-direction: column; inline-size: stretch; max-block-size: stretch; min-block-size: 0; gap: var(--space-lg); padding: var(--space-lg); background: var(--panel); }
 [part="PuzzleSummary.band"] { display: flex; flex: none; flex-direction: column; align-items: center; gap: var(--space-xxs); padding: var(--space-sm) var(--space-lg); }
 [part="PuzzleSummary.title"] { margin: 0; text-align: center; }
-[part="PuzzleSummary.level PuzzleSummary.label"] { margin: 0; width: stretch; text-align: center; white-space: nowrap; text-overflow: ellipsis; overflow: hidden; }
-[part="PuzzleSummary.stars"] { display: flex; flex: none; width: stretch; flex-direction: column; align-items: center; gap: var(--space-xs); }
+[part="PuzzleSummary.level PuzzleSummary.label"] { margin: 0; align-self: stretch; text-align: center; color: var(--ink-muted); line-clamp: 2; }
+[part="PuzzleSummary.stars"] { display: flex; flex: none; flex-direction: column; align-items: center; gap: var(--space-xs); }
 [part="PuzzleSummary.earned PuzzleSummary.label"], [part="PuzzleSummary.record PuzzleSummary.label"] { white-space: nowrap; }
-[part="PuzzleSummary.record PuzzleSummary.label"] { padding: var(--space-xxs) var(--space-sm); }
-[part="PuzzleSummary.breakdown"] { width: stretch; flex: 1 1 auto; min-height: 0; }
-[part="PuzzleSummary.row"], [part="PuzzleSummary.total PuzzleSummary.label"] { display: flex; width: stretch; align-items: baseline; gap: var(--space-md); padding: var(--space-xs) var(--space-sm); }
+[part="PuzzleSummary.record PuzzleSummary.label"] { padding: var(--space-xs) var(--space-md); border-radius: var(--radius-capsule); background: var(--selection); color: var(--ink); font-weight: var(--font-weight-semibold); }
+[part="PuzzleSummary.breakdown"] { flex: 1 1 auto; min-block-size: 0; overflow-y: auto; }
+[part="PuzzleSummary.row"]:nth-child(odd) { background: var(--well); border-radius: var(--radius-control); }
+[part="PuzzleSummary.total PuzzleSummary.label"] { margin-block-start: var(--space-sm); border-block-start: var(--stroke-hairline) solid var(--line); font-weight: var(--font-weight-semibold); color: var(--ink); }
+[part="PuzzleSummary.row"], [part="PuzzleSummary.total PuzzleSummary.label"] { display: flex; align-items: baseline; gap: var(--space-md); padding: var(--space-sm); }
 [part="PuzzleSummary.rowLabel"], .total-label { flex: 1; min-width: 0; text-align: start; }
-[part="PuzzleSummary.rowValue"], .total-value { flex: none; text-align: end; white-space: nowrap; }
-[part="PuzzleSummary.actions"] { display: flex; flex: none; width: stretch; gap: var(--space-sm); justify-content: center; }
+[part="PuzzleSummary.rowValue"], .total-value { flex: none; text-align: end; white-space: nowrap; font-family: var(--figure-font); font-variant-numeric: tabular-nums; }
+[part="PuzzleSummary.actions"] { display: flex; flex: none; gap: var(--space-sm); justify-content: center; }
 [part="PuzzleSummary.actions"] button { flex: 1; min-width: 0; min-height: var(--size-touch); }
 @media (width < 600px) {
-  [part="PuzzleSummary.frame"] { padding: var(--space-md); gap: var(--space-sm); }
+  :host { padding: var(--space-md); gap: var(--space-sm); }
   [part="PuzzleSummary.actions"] { gap: var(--space-xs); }
 }
 </style>

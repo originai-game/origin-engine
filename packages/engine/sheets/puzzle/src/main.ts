@@ -33,13 +33,14 @@ const INK_NAMES = [
 function setStyle(world: World, name: string): void {
   const ink = must(og.load.texture(world, "icons/ink-icons.png"), "ink icons");
   const style = name === "default" ? null : must(og.load.style(world, `@styles/${name}`), name);
-  og.ui.configure(world, { style, fallbackIcons: { texture: ink, columns: 8, rows: 4, names: INK_NAMES } });
+  const font = name === "default" ? must(og.load.font(world, "fonts/InstrumentSans-Regular.ttf"), "font") : null;
+  og.ui.configure(world, { style, font, fallbackIcons: { texture: ink, columns: 8, rows: 4, names: INK_NAMES } });
 }
 
 /** Each fixture as a store of its scalars (`<member>_<state>`) and a keyed collection per list (`<member>_<state>_<prop>`). */
 function stores(world: World): Record<string, UiReadable<unknown>> {
   const scope = og.ui.scope(world, "sheet");
-  const out: Record<string, UiReadable<unknown>> = { page: scope.writable("page", "play") };
+  const out: Record<string, UiReadable<unknown>> = { page: scope.writable("page", "play"), member: scope.writable("member", "") };
   const captions: Record<string, string> = {};
   for (const [member, states] of Object.entries(FIXTURES)) {
     for (const [state, fixture] of Object.entries(states)) {
@@ -80,11 +81,13 @@ export default og.game({
     page: (world, args) => {
       og.ui.scope(world, "sheet").writable("page", "play").set(PAGES.includes(args[0] as never) ? args[0]! : "play");
     },
+    member: (world, args) => og.ui.scope(world, "sheet").writable("member", "").set(args[0] ?? ""),
     reduced: (world, args) => og.ui.configure(world, { reducedMotion: args[0] !== "off" }),
   },
   commandHelp: {
     style: { usage: `<${STYLES.join("|")}>`, doc: "The style the pages are dressed in." },
     page: { usage: `<${PAGES.join("|")}>`, doc: "A review page of the puzzle kit." },
+    member: { usage: "<goals|boosters|level-path|summary>", doc: "Show one component's fixtures on the states page; empty shows all." },
     reduced: { usage: "<on|off>", doc: "Reduced motion on or off." },
   },
 });

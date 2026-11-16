@@ -23,7 +23,7 @@
 -->
 <section id="PuzzleLevelPath" part="PuzzleLevelPath.frame" aria-label={t("puzzle.path.name")}>
   {#if levels.length}
-    <scroll class="path">
+    <div class="path">
       {#each chapters as c (c.id)}
         <section class="chapter" aria-label={c.label}>
           <header part="PuzzleLevelPath.chapter">
@@ -44,12 +44,12 @@
                       <span part="PuzzleLevelPath.number" class="number">{formatNumber(l.number)}</span>
                       {#if l.state == 'locked'}<og-icon class="lock" icon="lock"></og-icon>{/if}
                     </div></button>
-                    <div part="PuzzleLevelPath.stars" data-state={l.state} hidden={l.state != 'done'}>
+                    {#if l.state == 'done'}<div part="PuzzleLevelPath.stars" data-state={l.state}>
                       <svg class="star" class:lit={l.stars >= 1} viewBox="0 0 24 24"><path d="M12 2.5l2.9 6.1 6.6.8-4.9 4.6 1.3 6.6L12 17.3l-5.9 3.3 1.3-6.6-4.9-4.6 6.6-.8z"></path></svg>
-                      <svg class="star" class:lit={l.stars >= 2} hidden={l.maxStars < 2} viewBox="0 0 24 24"><path d="M12 2.5l2.9 6.1 6.6.8-4.9 4.6 1.3 6.6L12 17.3l-5.9 3.3 1.3-6.6-4.9-4.6 6.6-.8z"></path></svg>
-                      <svg class="star" class:lit={l.stars >= 3} hidden={l.maxStars < 3} viewBox="0 0 24 24"><path d="M12 2.5l2.9 6.1 6.6.8-4.9 4.6 1.3 6.6L12 17.3l-5.9 3.3 1.3-6.6-4.9-4.6 6.6-.8z"></path></svg>
-                    </div>
-                    <span part="PuzzleLevelPath.here" hidden={l.state != 'current'}>{t("puzzle.path.play")}</span>
+                      {#if l.maxStars >= 2}<svg class="star" class:lit={l.stars >= 2} viewBox="0 0 24 24"><path d="M12 2.5l2.9 6.1 6.6.8-4.9 4.6 1.3 6.6L12 17.3l-5.9 3.3 1.3-6.6-4.9-4.6 6.6-.8z"></path></svg>{/if}
+                      {#if l.maxStars >= 3}<svg class="star" class:lit={l.stars >= 3} viewBox="0 0 24 24"><path d="M12 2.5l2.9 6.1 6.6.8-4.9 4.6 1.3 6.6L12 17.3l-5.9 3.3 1.3-6.6-4.9-4.6 6.6-.8z"></path></svg>{/if}
+                    </div>{/if}
+                    {#if l.state == 'current'}<span part="PuzzleLevelPath.here">{t("puzzle.path.play")}</span>{/if}
                   </div>
                   <div class="tail"></div>
                 </div>
@@ -58,37 +58,39 @@
           </div>
         </section>
       {/each}
-    </scroll>
+    </div>
   {:else}
     <div part="PuzzleLevelPath.empty" role="status"><p class="empty-text">{t("puzzle.path.empty")}</p></div>
   {/if}
 </section>
 
 <style>
-[part="PuzzleLevelPath.frame"] [hidden] { display: none; }
-[part="PuzzleLevelPath.frame"] { display: flex; flex-direction: column; width: stretch; height: stretch; min-height: 0; background: var(--panel); container-type: inline-size; }
-.path { width: stretch; flex: 1; min-height: 0; gap: var(--space-lg); padding: var(--space-sm) var(--space-md) var(--space-xl); }
-.chapter { display: flex; flex-direction: column; width: stretch; gap: var(--space-xs); }
-[part="PuzzleLevelPath.chapter"] { display: flex; width: stretch; align-items: center; gap: var(--space-sm); padding: var(--space-xs) var(--space-md); min-height: var(--size-touch); }
-[part="PuzzleLevelPath.title"] { margin: 0; flex: 1; min-width: 0; white-space: nowrap; text-overflow: ellipsis; overflow: hidden; text-align: start; }
+:host { display: flex; flex-direction: column; inline-size: stretch; block-size: stretch; min-block-size: 0; background: var(--panel); container-type: inline-size; }
+.path { display: flex; flex-direction: column; flex: 1; min-block-size: 0; overflow-y: auto; gap: var(--space-lg); padding: var(--space-sm) var(--space-md) var(--space-xl); }
+.chapter { display: flex; flex-direction: column; flex: none; gap: var(--space-sm); }
+[part="PuzzleLevelPath.chapter"] { display: flex; align-items: center; gap: var(--space-sm); padding: var(--space-sm) 0; min-height: var(--size-touch); border-block-end: var(--stroke-hairline) solid var(--line); }
+[part="PuzzleLevelPath.title"] { margin: 0; flex: 1; min-width: 0; text-align: start; }
 [part="PuzzleLevelPath.badge"] { display: flex; flex: none; align-items: center; gap: var(--space-xxs); padding: var(--space-xxs) var(--space-sm); white-space: nowrap; }
-.badge-star { width: var(--size-xs); height: var(--size-xs); flex: none; }
-.lanes { display: flex; flex-direction: column; width: stretch; }
-[part="PuzzleLevelPath.lane"] { display: flex; width: stretch; align-items: flex-start; }
+.badge-star { width: var(--size-xs); height: var(--size-xs); flex: none; fill: var(--warn); }
+.lanes { display: flex; flex-direction: column; }
+[part="PuzzleLevelPath.lane"] { display: flex; align-items: flex-start; padding-block-end: var(--space-sm); }
 .lead { flex-grow: var(--x); flex-shrink: 1; flex-basis: 0; }
 .tail { flex-grow: calc(1 - var(--x)); flex-shrink: 1; flex-basis: 0; }
 .stop { display: flex; flex: none; flex-direction: column; align-items: center; width: calc(var(--size-xl) * 1.5); }
-[part="PuzzleLevelPath.trail PuzzleLevelPath.well"] { width: var(--stroke-thick); height: var(--space-lg); }
+[part="PuzzleLevelPath.trail PuzzleLevelPath.well"] { width: var(--stroke-thick); height: var(--space-lg); background: var(--line-strong); }
 [part="PuzzleLevelPath.lane"]:first-child [part="PuzzleLevelPath.trail PuzzleLevelPath.well"] { visibility: hidden; }
-[part="PuzzleLevelPath.node PuzzleLevelPath.cell"] { width: var(--size-xl); height: var(--size-xl); min-height: var(--size-touch); padding: 0; border-radius: var(--radius-pill); }
-[part="PuzzleLevelPath.node PuzzleLevelPath.cell"] .face { position: relative; display: flex; width: stretch; height: stretch; align-items: center; justify-content: center; }
-[part="PuzzleLevelPath.number"] { white-space: nowrap; }
+[part="PuzzleLevelPath.node PuzzleLevelPath.cell"] { width: var(--size-xl); height: var(--size-xl); min-height: var(--size-touch); padding: 0; border-radius: var(--radius-capsule); }
+[part="PuzzleLevelPath.node PuzzleLevelPath.cell"][data-state=current] { background: var(--primary); color: var(--on-primary); }
+[part="PuzzleLevelPath.node PuzzleLevelPath.cell"][aria-selected=true] { box-shadow: 0 0 0 var(--stroke-thick) var(--focus); }
+[part="PuzzleLevelPath.node PuzzleLevelPath.cell"] .face { position: relative; display: flex; inline-size: 100%; block-size: 100%; align-items: center; justify-content: center; }
+[part="PuzzleLevelPath.number"] { white-space: nowrap; font-family: var(--figure-font); font-weight: var(--font-weight-semibold); }
 [part="PuzzleLevelPath.node PuzzleLevelPath.cell"][data-state=locked] [part="PuzzleLevelPath.number"] { display: none; }
 .lock { width: var(--size-sm); height: var(--size-sm); }
-[part="PuzzleLevelPath.stars"] { display: flex; align-items: center; justify-content: center; gap: var(--space-xxs); margin-top: calc(var(--space-sm) * -1); }
-.star { width: var(--size-xs); height: var(--size-xs); }
-[part="PuzzleLevelPath.here"] { margin-top: var(--space-xxs); padding: var(--space-xxs) var(--space-sm); white-space: nowrap; }
-[part="PuzzleLevelPath.empty"] { display: flex; width: stretch; flex: 1; align-items: center; justify-content: center; padding: var(--space-xl); }
+[part="PuzzleLevelPath.stars"] { display: flex; align-items: center; justify-content: center; gap: var(--space-xxs); margin-top: var(--space-xs); }
+.star { width: var(--size-xs); height: var(--size-xs); fill: var(--control-strong); stroke: var(--line-strong); stroke-width: var(--stroke-hairline); }
+.star.lit { fill: var(--warn); stroke: var(--warn); }
+[part="PuzzleLevelPath.here"] { margin-top: var(--space-xs); padding: var(--space-xxs) var(--space-sm); white-space: nowrap; background: var(--primary); color: var(--on-primary); border-radius: var(--radius-capsule); font: var(--text-caption); }
+[part="PuzzleLevelPath.empty"] { display: flex; flex: 1; align-items: center; justify-content: center; padding: var(--space-xl); color: var(--ink-muted); }
 .empty-text { margin: 0; text-align: center; }
 @container (width < 600px) { .stop { width: calc(var(--size-xl) * 1.25); } [part="PuzzleLevelPath.node PuzzleLevelPath.cell"] { width: var(--size-lg); height: var(--size-lg); } }
 </style>

@@ -2,7 +2,7 @@
 
 <!-- Every puzzle component in every fixture state it declares, a captioned
      cell each, in a grid that scrolls (docs/ui.md §6.1). -->
-<scroll id="Page">
+<div id="Page" data-member={$member}>
   <div id="Cells">
     <section class="cell" data-member="goals"><span class="caption">{$captions.goals_default}</span><div class="stage"><PuzzleGoals goals={$goals_default_goals} counter={$goals_default.counter} moves={$goals_default.moves} seconds={$goals_default.seconds} low={$goals_default.low} score={$goals_default.score} /></div></section>
     <section class="cell" data-member="goals"><span class="caption">{$captions.goals_time}</span><div class="stage"><PuzzleGoals goals={$goals_time_goals} counter={$goals_time.counter} moves={$goals_time.moves} seconds={$goals_time.seconds} low={$goals_time.low} score={$goals_time.score} /></div></section>
@@ -27,10 +27,14 @@
     <section class="cell" data-member="summary"><span class="caption">{$captions.summary_empty}</span><div class="stage"><PuzzleSummary result={$summary_empty.result} level={$summary_empty.level} score={$summary_empty.score} scoreMax={$summary_empty.scoreMax} thresholds={$summary_empty_thresholds} stars={$summary_empty.stars} maxStars={$summary_empty.maxStars} record={$summary_empty.record} rows={$summary_empty_rows} total={$summary_empty.total} canNext={$summary_empty.canNext} /></div></section>
     <section class="cell" data-member="summary"><span class="caption">{$captions.summary_overflow}</span><div class="stage"><PuzzleSummary result={$summary_overflow.result} level={$summary_overflow.level} score={$summary_overflow.score} scoreMax={$summary_overflow.scoreMax} thresholds={$summary_overflow_thresholds} stars={$summary_overflow.stars} maxStars={$summary_overflow.maxStars} record={$summary_overflow.record} rows={$summary_overflow_rows} total={$summary_overflow.total} canNext={$summary_overflow.canNext} /></div></section>
   </div>
-</scroll>
+</div>
 
 <style>
-#Page { width: stretch; height: stretch; }
+#Page { width: stretch; height: stretch; overflow-y: auto; }
+#Page[data-member=goals] .cell:not([data-member=goals]),
+#Page[data-member=boosters] .cell:not([data-member=boosters]),
+#Page[data-member=level-path] .cell:not([data-member=level-path]),
+#Page[data-member=summary] .cell:not([data-member=summary]) { display: none; }
 #Cells { display: grid; grid-template-columns: repeat(auto-fill, minmax(calc(var(--size-xxl) * 4.4), 1fr)); gap: var(--space-lg); padding: var(--space-lg); }
 .cell { display: flex; flex-direction: column; gap: var(--space-xs); min-width: 0; }
 .cell[data-member=goals] { grid-column: span 2; }
