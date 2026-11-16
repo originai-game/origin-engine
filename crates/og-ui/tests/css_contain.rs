@@ -441,3 +441,75 @@ fn overflow_clip_margin_moves_the_clip_edge() {
         cut("Oh", 0.0);
     });
 }
+
+/// CSS Will Change 1 §2: `will-change` makes now what a non-initial value
+/// of each property it names would make, and nothing more. `transform`
+/// (and `filter`, even listed after a property that makes nothing) makes
+/// both a stacking context, keeping a z-index: 1 child in, and a
+/// containing block that holds a fixed box; `opacity` makes the stacking
+/// context but holds no fixed box; `left`, `scroll-position`, `contents`
+/// and `auto` make neither. Ways it could fail: every named property read
+/// as a layer, a stacking property read as a containing block, a list read
+/// by its first entry only, or `auto` read as a property.
+#[test]
+fn will_change_makes_what_its_properties_would_and_nothing_else() {
+    let text = r#"<meta name="component" content="t">
+<div><div id="Root">
+  <div id="P" class={$will}><div id="K"></div><div id="F"></div></div>
+  <div id="Q"></div>
+</div></div>
+<style>
+#Root { position: relative; width: 200px; height: 100px; }
+#P, #K, #Q { position: absolute; left: 50px; top: 20px; width: 40px; height: 40px; }
+#K { left: 0; top: 0; z-index: 1; background: #ff0000; }
+#P { background: #0000ff; }
+#Q { background: #00ff00; }
+#F { position: fixed; left: 3px; top: 4px; width: 5px; height: 5px; }
+.transform { will-change: transform; }
+.list { will-change: left, filter; }
+.opacity { will-change: opacity; }
+.left { will-change: left; }
+.scroll { will-change: scroll-position, contents; }
+.auto { will-change: auto; }
+</style>"#;
+    let stores = [("will", json!(""))];
+    with_doc(text, &stores, |d| {
+        for (will, stacks, holds) in [
+            ("", false, false),
+            ("transform", true, true),
+            ("list", true, true),
+            ("opacity", true, false),
+            ("left", false, false),
+            ("scroll", false, false),
+            ("auto", false, false),
+        ] {
+            d.set("will", json!(will));
+            let name = |c: [f32; 4]| match [c[0], c[1], c[2]] {
+                [1.0, 0.0, 0.0] => Some("K"),
+                [0.0, 0.0, 1.0] => Some("P"),
+                [0.0, 1.0, 0.0] => Some("Q"),
+                _ => None,
+            };
+            let order: Vec<_> =
+                d.ui.frame()
+                    .items
+                    .iter()
+                    .filter_map(|i| i.cmd.filled())
+                    .filter_map(|(_, c)| name(c))
+                    .collect();
+            let want = if stacks {
+                ["P", "K", "Q"]
+            } else {
+                ["P", "Q", "K"]
+            };
+            assert_eq!(order, want, "{will:?}: stacking context {stacks}");
+            let (f, p) = (d.get("F"), d.get("P"));
+            let at = if holds {
+                (f.x - p.x, f.y - p.y)
+            } else {
+                (f.x, f.y)
+            };
+            assert_eq!(at, (3.0, 4.0), "{will:?}: holds the fixed box {holds}");
+        }
+    });
+}
