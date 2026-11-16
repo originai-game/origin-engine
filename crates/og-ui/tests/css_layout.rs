@@ -2140,3 +2140,117 @@ fn stretch_in_a_flex_line_is_its_stretch_fit_size() {
         assert_eq!(d.get("Body").height, 200.0, "the whole line, not a share");
     });
 }
+
+/// The box rows of docs/ui.md's CSS checklist, each against the number its
+/// spec gives: `display`'s outer types (CSS Display 3 §2), `position:
+/// static` ignoring its insets (CSS Position 3 §3.1), the physical insets
+/// with `auto` (CSS Position 3 §3.5, CSS 2 §10.3.7), block
+/// `align-content` (CSS Box Alignment 3 §5.1) and the `fit-content`
+/// keyword (CSS Sizing 3 §5.2: min(max-content, max(min-content,
+/// available))).
+///
+/// Ways it could fail: an inline box laid out as a block (a line of its
+/// own) or `display: none` keeping its room; a static box moved by its
+/// insets; an `auto` inset read as 0 instead of from the opposite one;
+/// block content kept at the top; `fit-content` read as `auto` (the
+/// available width) or as `max-content` (overflowing a narrow box).
+#[test]
+fn boxes_take_display_position_insets_and_fit_content_as_css_does() {
+    let text = r#"<meta name="component" content="t">
+<div><div id="Root">
+  <div id="Line"><span id="I1">ab</span><span id="I2">cd</span><div id="Ib"></div><span id="Gone">x</span><div id="Blk"></div></div>
+  <div id="After"></div>
+  <div id="St"><div id="StK"></div></div>
+  <div id="Ph"><div id="Both"></div><div id="FromRight"></div><div id="FromBottom"></div></div>
+  <div id="Ac"><div id="AcK"></div><div id="AcL"></div></div>
+  <div id="Fc"><span>alpha beta</span></div>
+  <div id="Mc"><span>alpha beta</span></div>
+  <div id="Narrow"><div id="FcLong"><span>alpha beta gamma delta epsilon zeta eta theta</span></div></div>
+</div></div>
+<style>
+#Root { width: 400px; }
+#Line { width: 300px; }
+#Ib { display: inline-block; width: 30px; height: 10px; }
+#Gone { display: none; }
+#Blk { display: block; height: 5px; }
+#After { height: 4px; }
+#St { position: relative; height: 30px; }
+#StK { position: static; left: 30px; top: 7px; width: 10px; height: 10px; }
+#Ph { position: relative; width: 200px; height: 100px; }
+#Both { position: absolute; left: 5px; right: 15px; top: 3px; bottom: 7px; }
+#FromRight { position: absolute; left: auto; right: 20px; top: 0; width: 30px; height: 10px; }
+#FromBottom { position: absolute; left: 0; top: auto; bottom: 10px; width: 10px; height: 25px; }
+#Ac { height: 100px; align-content: end; }
+#AcK { height: 20px; }
+#AcL { height: 10px; }
+#Fc { width: fit-content; }
+#Mc { width: max-content; }
+#Narrow { width: 60px; }
+#FcLong { width: fit-content; }
+</style>"#;
+    with_doc(text, &[], |d| {
+        let at = |id: &str, of: &str| {
+            let (e, p) = (d.get(id), d.get(of));
+            (e.x - p.x, e.y - p.y)
+        };
+        // Inline boxes share a line; a block is a line of its own, full width.
+        let i1 = d.get("I1");
+        assert_eq!(
+            at("I2", "Line"),
+            (i1.width, 0.0),
+            "inline boxes sit side by side"
+        );
+        assert_eq!(
+            at("Ib", "Line").0,
+            i1.width + d.get("I2").width,
+            "inline-block on the line"
+        );
+        assert_eq!(wh(d, "Ib"), (30.0, 10.0), "an inline-block keeps its size");
+        assert!(d.el("Gone").is_none(), "display: none makes no box");
+        let blk = d.get("Blk");
+        assert_eq!(
+            (blk.x - d.get("Line").x, blk.width),
+            (0.0, 300.0),
+            "a block fills its line"
+        );
+        assert!(at("Blk", "Line").1 >= 10.0, "a block starts below the line");
+        assert_eq!(
+            d.get("After").y,
+            blk.y + 5.0,
+            "nothing is left where display: none was"
+        );
+        // position: static ignores its insets.
+        assert_eq!(
+            at("StK", "St"),
+            (0.0, 0.0),
+            "a static box ignores its insets"
+        );
+        // Opposite insets size an auto box; an auto inset follows the other.
+        assert_eq!(
+            (at("Both", "Ph"), wh(d, "Both")),
+            ((5.0, 3.0), (180.0, 90.0))
+        );
+        assert_eq!(
+            at("FromRight", "Ph"),
+            (150.0, 0.0),
+            "left: auto, right: 20px"
+        );
+        assert_eq!(
+            at("FromBottom", "Ph"),
+            (0.0, 65.0),
+            "top: auto, bottom: 10px"
+        );
+        // Block align-content: end puts the 30px of content at the foot.
+        assert_eq!(at("AcK", "Ac").1, 70.0, "align-content: end in a block");
+        assert_eq!(at("AcL", "Ac").1, 90.0);
+        // fit-content is max-content when it fits, the available width when not.
+        let (mc, fc) = (d.get("Mc").width, d.get("Fc").width);
+        assert!(mc > 0.0 && mc < 400.0, "{mc}");
+        assert_eq!(fc, mc, "fit-content is max-content where it fits");
+        assert_eq!(
+            d.get("FcLong").width,
+            60.0,
+            "and the available width where it does not"
+        );
+    });
+}
