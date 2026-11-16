@@ -1168,10 +1168,14 @@ impl Ui {
         }
         // A reading key changed alone (`order`, `reading-order`, a grid
         // placement that moved no hit): the written node is a reading
-        // container's item, or one is laid out (CSS Display 4 §3).
+        // container's item or has an `order` (its container paints in
+        // it, focus keeps the document's), or one is laid out (CSS
+        // Display 4 §3).
         let reads = |i: usize| {
             let u = &self.tree.nodes[i].layout.used;
-            u.reading_flow != crate::layout::ReadingFlow::Normal || u.reading_order != 0
+            u.reading_flow != crate::layout::ReadingFlow::Normal
+                || u.reading_order != 0
+                || u.order != 0
         };
         let reading =
             self.interaction.reading.is_some() || self.tree.emitted.iter().any(|&i| reads(i));

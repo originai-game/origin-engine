@@ -3378,6 +3378,7 @@ fn tab_follows_reading_flow() {
 #F.swap #A { order: 5; }
 #G { display: grid; grid-template-columns: 40px 40px; reading-flow: grid-columns; }
 #S { display: flex; reading-flow: source-order; }
+#S1 { order: 1; }
 #S2.late { reading-order: -1; }
 #N { display: flex; }
 #N2 { order: -1; }

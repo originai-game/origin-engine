@@ -1140,6 +1140,36 @@ pub(crate) fn all_children(n: &Node) -> Vec<usize> {
     n.ordered_children.clone()
 }
 
+/// Whether container `i` is a flex or grid container whose `order` moves
+/// an item: then its items paint (CSS Flexbox 1 §5.4, CSS Grid 2 §9) and
+/// are hit in order-modified document order ([`paint_children`]), and
+/// sequential focus keeps the document's ([`reading::reorder`]).
+pub(crate) fn order_moves(nodes: &[Node], i: usize) -> bool {
+    nodes[i]
+        .ordered_children
+        .iter()
+        .any(|&c| item_order(&nodes[c]) != 0)
+        && matches!(css::kind(nodes, i), css::Kind::Flex | css::Kind::Grid)
+}
+
+/// An item's `order`: an out-of-flow child's counts as 0 (CSS Flexbox 1
+/// §4.1, CSS Grid 2 §9.2).
+fn item_order(n: &Node) -> i32 {
+    if n.props.out_of_flow() { 0 } else { n.el.order }
+}
+
+/// Node `i`'s children in painting order: as built, or a flex or grid
+/// container's in order-modified document order ([`order_moves`]).
+pub(crate) fn paint_children(nodes: &[Node], i: usize) -> std::borrow::Cow<'_, [usize]> {
+    let kids = &nodes[i].ordered_children;
+    if !order_moves(nodes, i) {
+        return std::borrow::Cow::Borrowed(kids);
+    }
+    let mut kids = kids.clone();
+    og_core::sort::sort_by_key(&mut kids, |&c| item_order(&nodes[c]));
+    std::borrow::Cow::Owned(kids)
+}
+
 /// Whether `n` makes a stacking context, in which the stack levels (`z`)
 /// of the boxes below it are ordered (CSS 2 §9.9.1; CSS Positioned Layout
 /// 3 §4.1): a root, a stack level of its own, opacity under 1, a
@@ -1180,7 +1210,8 @@ pub(crate) fn stacking_context(n: &Node, drawn: bool) -> bool {
 /// game draw) paints itself, then the boxes below it with a negative stack
 /// level, then the rest of its subtree in tree order (a context among them
 /// whole, where it stands), then those with a positive level; equal levels
-/// in tree order. A box with a level paints in its nearest ancestor that
+/// in tree order (a flex or grid container's items in order-modified
+/// document order, [`paint_children`]). A box with a level paints in its nearest ancestor that
 /// makes a context, not among its siblings: a lifted card draws over its
 /// parent's later siblings and is hit first. Parents no longer always come
 /// before their children: one with a negative level comes before a parent
@@ -1192,15 +1223,15 @@ pub(crate) fn draw_order(nodes: &[Node], root: usize, drawn: &dyn Fn(usize) -> b
         order: Vec<usize>,
         scratch: Vec<usize>,
     }
-    impl Walk<'_> {
+    impl<'a> Walk<'a> {
         fn z(&self, i: usize) -> i32 {
             self.nodes[i].style.sampled.z
         }
         fn context(&self, i: usize) -> bool {
             stacking_context(&self.nodes[i], (self.drawn)(i))
         }
-        fn kids(&self, i: usize) -> &[usize] {
-            &self.nodes[i].ordered_children
+        fn kids(&self, i: usize) -> std::borrow::Cow<'a, [usize]> {
+            paint_children(self.nodes, i)
         }
         fn context_of(&mut self, c: usize) {
             self.order.push(c);
@@ -1228,8 +1259,7 @@ pub(crate) fn draw_order(nodes: &[Node], root: usize, drawn: &dyn Fn(usize) -> b
             }
         }
         fn flow(&mut self, i: usize) {
-            for k in 0..self.kids(i).len() {
-                let c = self.kids(i)[k];
+            for &c in self.kids(i).iter() {
                 if self.z(c) != 0 {
                 } else if self.context(c) {
                     self.context_of(c);

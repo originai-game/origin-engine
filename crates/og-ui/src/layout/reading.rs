@@ -4,8 +4,9 @@
 //! End, the accessibility tree's focus order): their places on screen
 //! (`flex-visual`, `grid-rows`, `grid-columns`), their `order`
 //! (`flex-flow`, `grid-order`) or the source (`source-order`), each item's
-//! `reading-order` first. Pointer hits and arrow moves keep the tree's
-//! order.
+//! `reading-order` first. Pointer hits and arrow moves keep the painting
+//! order; in a `normal` container whose `order` moved an item, which
+//! paints its items in that order, focus keeps the document's.
 
 use super::css::{Kind, kind};
 use super::*;
@@ -39,10 +40,13 @@ impl ReadingFlow {
     }
 
     /// Whether it orders container `i`'s items: the flex values in a flex
-    /// container, the grid values in a grid, `source-order` in either.
+    /// container, the grid values in a grid, `source-order` in either, and
+    /// `normal` in either when `order` moved an item: its items are hit in
+    /// the order they paint ([`super::paint_children`]), and focus keeps
+    /// the document's.
     fn applies(self, nodes: &[Node], i: usize) -> bool {
         match (self, kind(nodes, i)) {
-            (ReadingFlow::Normal, _) => false,
+            (ReadingFlow::Normal, _) => super::order_moves(nodes, i),
             (ReadingFlow::FlexVisual | ReadingFlow::FlexFlow, k) => k == Kind::Flex,
             (ReadingFlow::GridRows | ReadingFlow::GridColumns | ReadingFlow::GridOrder, k) => {
                 k == Kind::Grid
@@ -126,9 +130,20 @@ fn ranks(nodes: &[Node], i: usize, rtl: bool) -> Vec<usize> {
         rank
     };
     let order = |k: usize| i64::from(nodes[kids[k]].layout.used.order);
+    // `children` are in `order`; the document's is `ordered_children`.
+    let source = || {
+        let mut at = vec![0i64; nodes.len()];
+        for (p, &c) in n.ordered_children.iter().enumerate() {
+            at[c] = p as i64;
+        }
+        at
+    };
     let area = |k: usize| n.layout.grid_items.get(k).copied().unwrap_or([u16::MAX; 4]);
     match used.reading_flow {
-        ReadingFlow::SourceOrder | ReadingFlow::Normal => (0..kids.len()).collect(),
+        ReadingFlow::SourceOrder | ReadingFlow::Normal => {
+            let at = source();
+            by(&|k| (at[kids[k]], 0))
+        }
         ReadingFlow::GridOrder => by(&|k| (order(k), 0)),
         ReadingFlow::FlexFlow => {
             let rank = by(&|k| (order(k), 0));

@@ -513,3 +513,79 @@ fn will_change_makes_what_its_properties_would_and_nothing_else() {
         }
     });
 }
+
+/// CSS Flexbox 1 §5.4 and CSS Grid 2 §9: flex and grid items paint in
+/// order-modified document order, so an item `order` moves ahead paints
+/// under the siblings it now precedes, and the one drawn on top is hit
+/// first. B comes after A in the document; with `order: -1` it paints
+/// first. In the flex row each item's `margin-right: -20px` overlaps the
+/// next by 20px; in the grid both sit in one cell.
+///
+/// Ways it could fail: painting in document order (B over A); the order
+/// kept from an earlier frame after `order` changes (A over B once B's
+/// order is 1, or B over A once it is -1 again); hits following the
+/// document instead of the paint.
+#[test]
+fn order_modified_document_order_paints_and_hits() {
+    let text = r#"<meta name="component" content="t">
+<div><div id="Root" class={$c}>
+  <div id="A" onpointerdown={a}></div>
+  <div id="B" class={$b} onpointerdown={b}></div>
+</div></div>
+<style>
+#Root { width: 200px; height: 40px; }
+.flex { display: flex; }
+.grid { display: grid; grid-template-columns: 40px; }
+#A, #B { width: 40px; height: 40px; flex: none; }
+.flex #A, .flex #B { margin-right: -20px; }
+.grid #A, .grid #B { grid-area: 1 / 1; }
+#A { background: #ff0000; }
+#B { background: #0000ff; }
+.first { order: -1; }
+.last { order: 1; }
+</style>"#;
+    fn top(d: &mut Doc, c: &str, b: &str) -> (Vec<&'static str>, Vec<String>) {
+        d.set("c", json!(c));
+        d.set("b", json!(b));
+        let name = |c: [f32; 4]| match [c[0], c[1], c[2]] {
+            [1.0, 0.0, 0.0] => Some("A"),
+            [0.0, 0.0, 1.0] => Some("B"),
+            _ => None,
+        };
+        let painted =
+            d.ui.frame()
+                .items
+                .iter()
+                .filter_map(|i| i.cmd.filled())
+                .filter_map(|(_, c)| name(c))
+                .collect();
+        // Over the overlap in both layouts.
+        let hit = d.click_at(og_core::glam::Vec2::new(30.0, 20.0));
+        (painted, hit.into_iter().map(|e| e.name).collect())
+    }
+    let stores = [("c", json!("flex")), ("b", json!(""))];
+    with_doc(text, &stores, |d| {
+        for c in ["flex", "grid"] {
+            assert_eq!(
+                top(d, c, ""),
+                (vec!["A", "B"], vec!["b".into()]),
+                "{c}: document order"
+            );
+            assert_eq!(
+                top(d, c, "first"),
+                (vec!["B", "A"], vec!["a".into()]),
+                "{c}: B moved first paints under A, which is hit"
+            );
+            assert_eq!(
+                top(d, c, "last"),
+                (vec!["A", "B"], vec!["b".into()]),
+                "{c}: and back"
+            );
+            assert_eq!(
+                top(d, c, "first"),
+                (vec!["B", "A"], vec!["a".into()]),
+                "{c}: again"
+            );
+        }
+    });
+}
