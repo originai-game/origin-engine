@@ -266,8 +266,39 @@ pub(super) fn is_image(t: &Tok) -> bool {
     }
 }
 
-/// A quoted or unquoted file URL.
+/// A quoted or unquoted file URL, or an http(s) URL with its request
+/// modifiers, as the one key its request is named by
+/// ([`crate::css::request::UrlRequest::key`]).
 pub(crate) fn url(args: &[Vec<Tok>]) -> Result<String, String> {
+    use crate::css::request::UrlRequest;
+    if let [arg] = args
+        && let [Tok::Str(u), modifiers @ ..] = arg.as_slice()
+    {
+        // A key a stylesheet's reader already wrote holds its modifiers
+        // after a space, which no URL holds.
+        if modifiers.is_empty() && crate::css::request::is_remote(u) && u.contains(' ') {
+            return UrlRequest::from_key(u).map(|r| r.key());
+        }
+        if !modifiers.is_empty() {
+            let modifiers = modifiers
+                .iter()
+                .map(|t| match t {
+                    Tok::Func(name, a) => match a.as_slice() {
+                        [v] => match v.as_slice() {
+                            [Tok::Ident(v) | Tok::Str(v)] => Ok((name.clone(), v.clone())),
+                            _ => Err(format!("url(): {name}() takes one value")),
+                        },
+                        _ => Err(format!("url(): {name}() takes one value")),
+                    },
+                    t => Err(format!(
+                        "url(): '{}' after the URL is not a request modifier",
+                        describe(t)
+                    )),
+                })
+                .collect::<Result<Vec<_>, _>>()?;
+            return UrlRequest::new(u, &modifiers).map(|r| r.key());
+        }
+    }
     let mut out = String::new();
     for t in args.iter().flatten() {
         match t {

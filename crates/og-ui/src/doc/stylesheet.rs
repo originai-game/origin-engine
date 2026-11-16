@@ -1073,6 +1073,9 @@ impl<'a> Reader<'a> {
                             .iter()
                             .map(|url| super::at_rules::resolve(&self.base, url)),
                     );
+                    self.sheet
+                        .remote
+                        .extend(super::at_rules::remote_urls(block));
                     if prelude.starts_with('@') {
                         self.group(prelude, block, at, block_at, context, out, false)?;
                     } else {

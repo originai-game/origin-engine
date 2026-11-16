@@ -28,7 +28,13 @@ impl Ui {
     /// Binds the texture asset `path` a document names
     /// ([`UiDocument::cover_image`]) to its loaded handle.
     pub fn define_texture(&mut self, path: &str, texture: og_draw::TextureHandle) {
-        self.docs.library.textures.insert(path.to_owned(), texture);
+        let previous = self.docs.library.textures.insert(path.to_owned(), texture);
+        // A mounted element resolved its layers without it (a remote image
+        // that lands after the first build) or with the old one: it
+        // restyles, as for a new UI material.
+        if previous != Some(texture) {
+            self.tree.invalidation_mut().epoch += 1;
+        }
     }
 
     /// Gives the texture asset `path` its alpha channel on the CPU, which

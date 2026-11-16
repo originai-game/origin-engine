@@ -13,6 +13,10 @@ pub struct Sheet {
     pub imports: Vec<(String, String)>,
     /// Asset URLs resolved against the stylesheet that authored them.
     pub assets: std::collections::BTreeSet<String>,
+    /// The http(s) images its `url()`s name, by request key
+    /// ([`super::request::UrlRequest::key`]): the host fetches each and
+    /// binds it under its key.
+    pub remote: std::collections::BTreeSet<String>,
     pub font_faces: Vec<FontFace>,
     /// `@property` registrations by custom property name.
     pub properties: Vec<(String, Property)>,
@@ -489,6 +493,25 @@ pub fn urls(css: &str) -> Vec<String> {
     out
 }
 
+/// The http(s) images a declaration or stylesheet names, each as its
+/// request key (super::request::UrlRequest::key), which the host fetches
+/// and binds.
+pub fn remote_urls(css: &str) -> Vec<String> {
+    let mut out = Vec::new();
+    map_urls_in(
+        css,
+        &mut |url| {
+            if super::request::is_remote(url) && !out.iter().any(|s| s == url) {
+                out.push(url.to_owned());
+            }
+            url.to_owned()
+        },
+        false,
+        true,
+    );
+    out
+}
+
 fn map_urls(css: &str, map: &mut impl FnMut(&str) -> String) -> String {
     map_urls_in(css, map, false, false)
 }
@@ -525,16 +548,44 @@ fn map_urls_in(
                 "url({})",
                 Token::QuotedString(map(&url).into()).to_css_string()
             )),
+            // `url("…" <request modifiers>)`: a remote URL and its
+            // modifiers become one request key (super::request); a
+            // modifier this cannot read stays as written, for the value's
+            // own parse to name.
             Token::Function(ref name) if name.eq_ignore_ascii_case("url") => {
                 let url = p.parse_nested_block(|p| {
-                    Ok::<_, cssparser::ParseError<()>>(p.expect_string()?.to_string())
+                    let url = p.expect_string()?.to_string();
+                    let mut modifiers = Vec::new();
+                    while !p.is_exhausted() {
+                        let m = match p.next()?.clone() {
+                            Token::Function(m) => m,
+                            _ => return Err(cssparser::ParseError::custom(())),
+                        };
+                        let value = p.parse_nested_block(|p| {
+                            Ok::<_, cssparser::ParseError<()>>(match p.next()?.clone() {
+                                Token::Ident(v) | Token::QuotedString(v) => v.to_string(),
+                                _ => return Err(cssparser::ParseError::custom(())),
+                            })
+                        })?;
+                        modifiers.push((m.to_string(), value));
+                    }
+                    Ok::<_, cssparser::ParseError<()>>((url, modifiers))
                 });
-                url.ok().map(|url| {
-                    format!(
-                        "url({})",
-                        Token::QuotedString(map(&url).into()).to_css_string()
-                    )
-                })
+                url.ok()
+                    .and_then(|(url, modifiers)| {
+                        if modifiers.is_empty() {
+                            return Some(url);
+                        }
+                        super::request::UrlRequest::new(&url, &modifiers)
+                            .ok()
+                            .map(|r| r.key())
+                    })
+                    .map(|url| {
+                        format!(
+                            "url({})",
+                            Token::QuotedString(map(&url).into()).to_css_string()
+                        )
+                    })
             }
             Token::Function(_)
             | Token::ParenthesisBlock

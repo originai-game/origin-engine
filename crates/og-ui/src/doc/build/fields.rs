@@ -320,6 +320,10 @@ impl Ui {
                         nearest,
                     }
                 }
+                // A remote image not bound yet is still being fetched: the
+                // layer draws nothing until it lands, as a page's image
+                // before it loads. Its host warns when it fails.
+                p::ImageSource::Url(u) if crate::css::request::is_remote(u) => return None,
                 p::ImageSource::Url(u) => {
                     warn.push(format!("{what}: url({u}) names no texture asset"));
                     return None;
