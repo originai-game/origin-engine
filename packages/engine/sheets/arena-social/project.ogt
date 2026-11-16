@@ -1,0 +1,14 @@
+type project
+version 1
+---
+name "Ready, vote and spectator review"
+id "arena-social-sheet"
+entry "src/main.ts"
+profile "2d"
+tick 60
+seed 1
+ui {
+  screen "ready-default" "page:ready;state:default"
+  screen "vote-default" "page:vote;state:default"
+  screen "spectator-default" "page:spectator;state:default"
+}

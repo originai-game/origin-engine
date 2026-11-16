@@ -1,0 +1,7 @@
+{
+  "added": [
+    { "member": "ArenaReady", "summary": "Ready checks with participant responses, game-owned countdown text, changeable local accept/decline intents, closed, loading, empty and disabled states." },
+    { "member": "ArenaVote", "summary": "Map voting with stable option-id intents, game-owned tallies and winners, visible local selection and per-option disabled reasons." },
+    { "member": "ArenaSpectator", "summary": "Spectator HUD with keyed follow intents, current subject, free camera, previous/next and Leave actions; loading never removes the exit. All three support phone text, bounded scrolling and token/part styling." }
+  ]
+}
