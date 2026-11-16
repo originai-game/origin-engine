@@ -33,7 +33,10 @@ pub(crate) fn node_info(
     let mut name = n.a11y.name.clone().unwrap_or_default();
     let mut description = n.a11y.description.clone().unwrap_or_default();
     if name.is_empty() && !textbox {
-        name = n.probe_text.clone();
+        name = spoken(n).to_string();
+    }
+    if name.is_empty() && role == "text" && n.a11y.spoken.is_some() {
+        return none();
     }
     if name.is_empty() && role == "image" && !n.nav {
         return none();
@@ -52,7 +55,7 @@ pub(crate) fn node_info(
             && at > 0
             && kinds[siblings[at - 1]].0 == "label"
         {
-            name = nodes[siblings[at - 1]].probe_text.clone();
+            name = spoken(&nodes[siblings[at - 1]]).to_string();
         }
     }
     if name.is_empty() && !description.is_empty() {
@@ -71,6 +74,11 @@ pub struct A11y {
     pub role: Option<&'static str>,
     /// A name other than its text (an icon button's icon, a dialog's title).
     pub name: Option<String>,
+    /// What its text reads as where that differs from what it draws: its
+    /// generated content's alternative text (CSS Generated Content 3
+    /// §1.2). It stands in for the text wherever the text names a node;
+    /// a text that reads as nothing is left out of the tree.
+    pub spoken: Option<String>,
     /// Read after the name (a text field's placeholder: its name is its
     /// label); it names the control when nothing else does.
     pub description: Option<String>,
@@ -491,6 +499,11 @@ pub(crate) fn role_of(kind: &str, n: &Node) -> &'static str {
     }
 }
 
+/// What a node's text reads as: its alternative text, else its text.
+fn spoken(n: &Node) -> &str {
+    n.a11y.spoken.as_deref().unwrap_or(&n.probe_text)
+}
+
 /// The text of a node's content and its descendants', for a control
 /// named by what it shows (a card: "Iron sword 300").
 pub(crate) fn text_within(nodes: &[Node], i: usize) -> String {
@@ -501,11 +514,12 @@ pub(crate) fn text_within(nodes: &[Node], i: usize) -> String {
         if n.is_hidden() {
             continue;
         }
-        if !n.probe_text.is_empty() {
+        let text = spoken(n);
+        if !text.is_empty() {
             if !out.is_empty() {
                 out.push(' ');
             }
-            out.push_str(&n.probe_text);
+            out.push_str(text);
         }
         stack.extend(n.children.iter().rev());
     }

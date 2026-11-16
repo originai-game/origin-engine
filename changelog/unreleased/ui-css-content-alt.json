@@ -1,0 +1,8 @@
+{
+  "added": [
+    {
+      "member": "CSS content alternative text",
+      "summary": "A ::before or ::after content's alternative text, the list after / of strings, counter()s and attr()s (CSS Generated Content 3 §1.2), is what the accessibility tree reads in place of what it draws: `content: \"★\" / \"Featured\"` reads Featured. An empty one, `/ \"\"`, marks the content decorative and leaves it unread. The drawn content is unchanged. A / followed by a quote, an image or nothing is refused."
+    }
+  ]
+}

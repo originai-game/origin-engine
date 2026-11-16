@@ -341,7 +341,8 @@ impl Generated {
         out.before = take("before");
         out.after = take("after");
         out.marker = take("marker");
-        let shown = |b: Option<PseudoBox>| b.filter(|b| matches!(b.content, Content::Pieces(_)));
+        let shown =
+            |b: Option<PseudoBox>| b.filter(|b| matches!(b.content, Content::Pieces { .. }));
         out.scroll_marker = shown(take("scroll-marker"));
         out.scroll_buttons = BUTTONS.map(|p| shown(take(p)));
         out.column_marker = shown(take("column-scroll-marker"));
@@ -383,13 +384,19 @@ pub enum Content {
     #[default]
     Normal,
     None,
-    Pieces(Vec<Piece>),
+    /// What it draws, and the alternative text read in its place (CSS
+    /// Generated Content 3 §1.2: the list after `/`, of strings,
+    /// `counter()`s and `attr()`s; empty for decorative content).
+    Pieces {
+        pieces: Vec<Piece>,
+        alt: Option<Vec<Piece>>,
+    },
 }
 
 impl Content {
     /// Whether evaluating it reads the counters or the quote depth.
     pub fn reads_run(&self) -> bool {
-        matches!(self, Self::Pieces(p) if p.iter().any(|p| !matches!(p, Piece::Text(_) | Piece::Attr(_) | Piece::Image(_))))
+        matches!(self, Self::Pieces { pieces, alt } if pieces.iter().chain(alt.iter().flatten()).any(|p| !matches!(p, Piece::Text(_) | Piece::Attr(_) | Piece::Image(_))))
     }
 }
 
@@ -492,8 +499,9 @@ pub fn list_style_type(value: &str) -> Result<(), String> {
 }
 
 /// Parses `content`: `normal | none | [<string> | <counter> | <quote> |
-/// attr() | <image>]+ [/ <string>+]?` (the alternative text is for
-/// assistive technology and is dropped).
+/// attr() | <image>]+ [/ [<string> | <counter> | attr()]+]?` (CSS
+/// Generated Content 3 §1.2; the alternative text is for assistive
+/// technology).
 pub fn parse_content(value: &str) -> Result<Content, String> {
     let trimmed = value.trim();
     match trimmed.to_ascii_lowercase().as_str() {
@@ -503,6 +511,7 @@ pub fn parse_content(value: &str) -> Result<Content, String> {
     }
     let mut p = Parser::new(trimmed);
     let mut pieces = Vec::new();
+    let mut alt: Option<Vec<Piece>> = None;
     while !p.is_exhausted() {
         let token = p
             .next()
@@ -510,7 +519,10 @@ pub fn parse_content(value: &str) -> Result<Content, String> {
             .clone();
         let piece = match token {
             Token::QuotedString(s) => Piece::Text(s.to_string()),
-            Token::Delim('/') => break,
+            Token::Delim('/') if alt.is_none() && !pieces.is_empty() => {
+                alt = Some(Vec::new());
+                continue;
+            }
             Token::Ident(w) => match w.to_ascii_lowercase().as_str() {
                 "open-quote" => Piece::OpenQuote,
                 "close-quote" => Piece::CloseQuote,
@@ -546,12 +558,21 @@ pub fn parse_content(value: &str) -> Result<Content, String> {
             }
             _ => return unexpected("content", value),
         };
-        pieces.push(piece);
+        match &mut alt {
+            // The alternative is text: no quotes or images.
+            Some(alt) => match piece {
+                Piece::Text(_) | Piece::Attr(_) | Piece::Counter(..) | Piece::Counters(..) => {
+                    alt.push(piece)
+                }
+                _ => return unexpected("content", value),
+            },
+            None => pieces.push(piece),
+        }
     }
-    if pieces.is_empty() {
+    if pieces.is_empty() || alt.as_ref().is_some_and(Vec::is_empty) {
         return unexpected("content", value);
     }
-    Ok(Content::Pieces(pieces))
+    Ok(Content::Pieces { pieces, alt })
 }
 
 /// One element's (or pseudo-element's) counter properties.
@@ -1299,7 +1320,7 @@ mod tests {
             })
         };
         let content = |c: &str| match parse_content(c).unwrap() {
-            Content::Pieces(p) => p,
+            Content::Pieces { pieces, .. } => pieces,
             other => panic!("{other:?}"),
         };
         let mut run = Run::default();
@@ -1379,13 +1400,19 @@ mod tests {
         assert_eq!(parse_content("normal").unwrap(), Content::Normal);
         assert_eq!(parse_content("none").unwrap(), Content::None);
         assert_eq!(
-            parse_content("\"#\" attr(data-n) counter(c, lower-alpha) / \"alt\"").unwrap(),
-            Content::Pieces(vec![
-                Piece::Text("#".into()),
-                Piece::Attr("data-n".into()),
-                Piece::Counter("c".into(), "lower-alpha".into()),
-            ])
+            parse_content("\"#\" attr(data-n) counter(c, lower-alpha) / \"alt\" attr(t)").unwrap(),
+            Content::Pieces {
+                pieces: vec![
+                    Piece::Text("#".into()),
+                    Piece::Attr("data-n".into()),
+                    Piece::Counter("c".into(), "lower-alpha".into()),
+                ],
+                alt: Some(vec![Piece::Text("alt".into()), Piece::Attr("t".into())]),
+            }
         );
+        assert!(parse_content("\"x\" / open-quote").is_err());
+        assert!(parse_content("/ \"x\"").is_err());
+        assert!(parse_content("\"x\" /").is_err());
         assert!(parse_content("12px").is_err());
         assert_eq!(
             parse_ops("counter-increment", "a b 2").unwrap(),

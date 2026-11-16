@@ -438,7 +438,11 @@ engine differs or limits as follows:
   properties only); on any other element they are real boxes (`inline` by
   default) that take every box property. A pseudo-element is a synthetic
   node made at cook: it is never a child to `:nth-child`, `:empty` or `+`,
-  adds no binding and exists only while `content` makes it. Counter
+  adds no binding and exists only while `content` makes it. Their
+  `content`'s alternative text (after `/`: strings, counters and
+  `attr()`) is what the accessibility tree reads in place of what they
+  draw, inside their text element's text or as their own text record;
+  an empty one leaves them out. Counter
   styles are the predefined ones plus `@counter-style`. Counters run in
   document order; a retained subtree replays its counter effects and
   rebuilds only when counters enter it differently. `::marker` takes
