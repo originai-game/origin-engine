@@ -1911,6 +1911,77 @@ fn if_style_follows_a_parent_s_custom_property() {
     assert_eq!((d.get("Child").width, d.get("Via").width), (80.0, 60.0));
 }
 
+/// CSS Custom Functions and Mixins 1: a `--name()` call is its `result`
+/// on a hypothetical child of the element. §2.3's example in px (1px from
+/// the element's --a, 20px from the --b argument, 300px from the local
+/// --c over the 30px argument: 321px); §4.1's @media result (16px, 20px
+/// past 1000px wide); a default argument, a braced one, a nested call, a
+/// typed parameter given a colour and too many arguments (each leaving
+/// width unset, not an earlier 70px), and a call in a custom property
+/// inherited as its result.
+#[test]
+fn custom_functions_return_their_result() {
+    let text = r#"<meta name="component" content="t">
+<div id="Root">
+  <div id="Double"></div><div id="Abc"></div><div id="Size"></div><div id="Default"></div>
+  <div id="Braced"></div><div id="Nested"></div><div id="Typed" class="x"></div>
+  <div id="Many" class="x"></div><div id="Parent"><div id="Child"></div></div>
+</div>
+<style>
+@function --double(--x <length>) returns <length> { result: calc(var(--x) * 2); }
+@function --add-a-b-c(--b, --c) { --c: 300px; result: calc(var(--a) + var(--b) + var(--c)); }
+@function --size() { result: 16px; @media (width > 1000px) { result: 20px; } }
+@function --pick(--x, --y: 7px) { result: var(--y); }
+@function --outer(--v) { result: --double(var(--v)); }
+#Root div { height: 1px; }
+.x { width: 70px; }
+#Double { width: --double(21px); }
+#Abc { --a: 1px; --b: 2px; --c: 3px; width: --add-a-b-c(20px, 30px); }
+#Size { width: --size(); }
+#Default { width: --pick(1px); }
+#Braced { width: --pick(1px, {calc(2px + 3px)}); }
+#Nested { width: --outer(5px); }
+#Typed { width: --double(red); }
+#Many { width: --double(1px, 2px); }
+#Parent { --w: --double(15px); width: var(--w); }
+#Child { width: var(--w); }
+</style>"#;
+    let mut d = Doc::new(text, &[]);
+    for (id, width) in [
+        ("Double", 42.0),
+        ("Abc", 321.0),
+        ("Size", 16.0),
+        ("Default", 7.0),
+        ("Braced", 5.0),
+        ("Nested", 10.0),
+        ("Parent", 30.0),
+        ("Child", 30.0),
+    ] {
+        assert_eq!(d.get(id).width, width, "{id}");
+    }
+    for id in ["Typed", "Many"] {
+        assert_ne!(d.get(id).width, 70.0, "{id}: invalid, so unset");
+    }
+    d.viewport = og_ui::Viewport::new(1200.0, 900.0);
+    d.step(Default::default());
+    assert_eq!(d.get("Size").width, 20.0, "@media in the body at 1200px");
+    for bad in [
+        "@function f() { result: 1px; }",
+        "@function --f(--a <length>: red) { result: var(--a); }",
+        "@function --f() { color: red; }",
+        "@function --f() returning <length> { result: 1px; }",
+        "@function --f(--a, --a) { result: 1px; }",
+    ] {
+        let text = format!(
+            "<meta name=\"component\" content=\"t\">\n<div id=\"A\"></div>\n<style>{bad}</style>"
+        );
+        assert!(
+            og_ui::UiDocument::parse("ui/t.svelte", &text).is_err(),
+            "{bad}"
+        );
+    }
+}
+
 /// CSS Values 4 §6.1.2's small, large and dynamic viewports: `sv*` read the
 /// surface with the host's controls shown, `lv*` with them hidden, `dv*`
 /// and the bare units the surface now, each axis and min/max apart.

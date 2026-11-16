@@ -1,0 +1,6 @@
+{
+  "simulation": "unchanged",
+  "added": [
+    {"member":"ui","summary":"A document's CSS takes `@function --name(--param <type>: <default>, …) returns <type> { --local: …; result: …; }` (CSS Custom Functions and Mixins 1) and calls `--name(arg, …)` in any value, a comma-holding argument in braces. A call substitutes as `var()` does: its body is evaluated on the calling element, reading the element's custom properties, the arguments, defaults and locals (a local shadows a parameter), with `@media` and `@supports` inside it. An argument that does not match its type, too many arguments, an unknown function, a self-call or a result that does not match `returns` make the property invalid. A call in a custom property resolves there and is inherited as its result."}
+  ]
+}

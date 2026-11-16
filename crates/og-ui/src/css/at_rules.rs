@@ -36,6 +36,28 @@ pub struct Sheet {
     /// `@custom-media` definitions in source order, unresolved: the last
     /// of a name defines it ([`super::media::Query::resolve`]).
     pub custom_media: Vec<(String, super::media::Query)>,
+    /// `@function` custom functions by name; the last of a name defines it.
+    pub functions: Vec<(String, Function)>,
+}
+
+/// One `@function --name(<params>) returns <type> { … }` (CSS Custom
+/// Functions and Mixins 1 §2).
+#[derive(Clone, Debug, Default, PartialEq)]
+pub struct Function {
+    pub params: Vec<Param>,
+    /// The result's syntax; none: `*`.
+    pub returns: Option<String>,
+    /// Its custom properties and `result`, in order, each with the
+    /// `@media` queries it sits under (`@supports` holds or not at cook).
+    pub body: Vec<(Vec<super::media::Query>, StyleDeclaration)>,
+}
+
+/// A `@function` parameter: its name, its syntax and its default value.
+#[derive(Clone, Debug, Default, PartialEq)]
+pub struct Param {
+    pub name: String,
+    pub syntax: Option<String>,
+    pub default: Option<String>,
 }
 
 /// One `@font-face`: a family the document names in `font-family`, drawn

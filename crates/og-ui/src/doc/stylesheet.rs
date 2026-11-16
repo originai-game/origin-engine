@@ -1427,6 +1427,13 @@ impl<'a> Reader<'a> {
                 .sheet
                 .font_palette_values(rest, block)
                 .map_err(|e| (at, e)),
+            "function" if !nested => {
+                let function = function_rule(rest, block, block_at, &self.sheet.custom_media)
+                    .map_err(|(i, e)| (if i == 0 { at } else { i }, e))?;
+                self.sheet.functions.retain(|(n, _)| *n != function.0);
+                self.sheet.functions.push(function);
+                Ok(())
+            }
             "keyframes" | "view-transition" if !nested => {
                 out.push(Rule {
                     selector: prelude.to_string(),
@@ -1957,6 +1964,346 @@ fn if_condition(condition: &str, tests: &mut IfTests<'_>) -> Result<bool, String
     cssparser::Parser::new(condition)
         .parse_entirely(|p| test(p, tests))
         .map_err(|e| format!("if(): the condition {condition:?}: {:?}", e.kind))
+}
+
+/// `@function --name(<param>#?) returns <css-type>? { … }` after the
+/// at-keyword (CSS Custom Functions and Mixins 1 §2.1): its name and
+/// definition. A parameter is `--name <css-type>? [: <default>]?`, a type
+/// a syntax component or `type(<syntax>)`; the body holds custom
+/// properties and `result`, in `@media` and `@supports` too.
+fn function_rule(
+    prelude: &str,
+    block: &str,
+    block_at: usize,
+    custom_media: &[(String, super::media::Query)],
+) -> Result<(String, super::at_rules::Function), Error> {
+    use super::at_rules::{Function, Param, matches_syntax};
+    const HOW: &str =
+        "@function --name(--param <type>: <default>, …) returns <type> { result: …; }";
+    let fail = |e: String| (0, e);
+    let open = prelude.find('(').ok_or_else(|| fail(HOW.into()))?;
+    let name = prelude[..open].trim();
+    if !name.starts_with("--")
+        || name.len() < 3
+        || !name
+            .chars()
+            .all(|c| c.is_ascii_alphanumeric() || c == '-' || c == '_')
+    {
+        return Err(fail(format!(
+            "@function names a --name, not {name:?}: {HOW}"
+        )));
+    }
+    let inside = top_level(&prelude[open + 1..], ')');
+    let params_text = inside.join(",");
+    let after = prelude[open + 1 + params_text.len()..]
+        .strip_prefix(')')
+        .ok_or_else(|| fail(format!("@function {name}( is not closed")))?
+        .trim();
+    // `type(<syntax>)` or one syntax component.
+    let css_type = |t: &str| -> String {
+        let t = t.trim();
+        t.strip_prefix("type(")
+            .and_then(|t| t.strip_suffix(')'))
+            .unwrap_or(t)
+            .trim()
+            .to_string()
+    };
+    let returns = match after {
+        "" => None,
+        a => Some(css_type(a.strip_prefix("returns").ok_or_else(|| {
+            fail(format!(
+                "@function {name}: write returns <type> after the parameters, not {a:?}"
+            ))
+        })?)),
+    };
+    let mut params: Vec<Param> = Vec::new();
+    for param in top_level(&params_text, ',') {
+        let param = param.trim();
+        if param.is_empty() && params_text.trim().is_empty() {
+            break;
+        }
+        let (head, default) = match top_level(param, ':').as_slice() {
+            [head, _, ..] => (*head, Some(param[head.len() + 1..].trim().to_string())),
+            _ => (param, None),
+        };
+        let (pname, ty) = head
+            .trim()
+            .split_once(char::is_whitespace)
+            .unwrap_or((head.trim(), ""));
+        if !pname.starts_with("--") || pname.len() < 3 || params.iter().any(|p| p.name == pname) {
+            return Err(fail(format!(
+                "@function {name}: each parameter is a distinct --name, not {pname:?}"
+            )));
+        }
+        let syntax = (!ty.trim().is_empty()).then(|| css_type(ty));
+        if let (Some(s), Some(d)) = (&syntax, &default)
+            && !matches_syntax(s, d)
+        {
+            return Err(fail(format!(
+                "@function {name}: {pname}'s default {d} does not match its type {s}"
+            )));
+        }
+        params.push(Param {
+            name: pname.to_string(),
+            syntax,
+            default,
+        });
+    }
+    fn body(
+        name: &str,
+        block: &str,
+        block_at: usize,
+        conditions: &[super::media::Query],
+        custom_media: &[(String, super::media::Query)],
+        out: &mut Vec<(Vec<super::media::Query>, StyleDeclaration)>,
+    ) -> Result<(), Error> {
+        for item in items(block, block_at)? {
+            match item {
+                Item::Statement(statement, at) => {
+                    for d in variables::declarations(statement).map_err(|e| (at, e))? {
+                        if !d.name.starts_with("--") && d.name != "result" {
+                            return Err((
+                                at,
+                                format!(
+                                    "@function {name} takes custom properties and result, not {}",
+                                    d.name
+                                ),
+                            ));
+                        }
+                        if d.source.contains("if(") {
+                            check_ifs(&d.source).map_err(|e| (at, e))?;
+                        }
+                        out.push((conditions.to_vec(), d));
+                    }
+                }
+                Item::Block {
+                    prelude,
+                    block,
+                    at,
+                    block_at,
+                } => match at_rule(prelude) {
+                    Some((rule, rest)) if rule == "media" => {
+                        let q = super::media::Query::parse(rest)
+                            .and_then(|q| q.resolve(custom_media))
+                            .map_err(|e| (at, e))?;
+                        let mut inner = conditions.to_vec();
+                        inner.push(q);
+                        body(name, block, block_at, &inner, custom_media, out)?;
+                    }
+                    Some((rule, rest)) if rule == "supports" => {
+                        if supports(rest).map_err(|e| (at, e))? {
+                            body(name, block, block_at, conditions, custom_media, out)?;
+                        }
+                    }
+                    _ => {
+                        return Err((
+                            at,
+                            format!("@function {name} takes @media and @supports, not {prelude}"),
+                        ));
+                    }
+                },
+            }
+        }
+        Ok(())
+    }
+    let mut decls = Vec::new();
+    body(name, block, block_at, &[], custom_media, &mut decls)?;
+    Ok((
+        name.to_string(),
+        Function {
+            params,
+            returns,
+            body: decls,
+        },
+    ))
+}
+
+/// `text` with each custom function call (`--name(<arg>#?)`) replaced by
+/// its result (CSS Custom Functions and Mixins 1 §3): its body evaluated
+/// on a hypothetical child of the calling context, whose custom
+/// properties `site` gives, `media` testing its `@media`. An argument is
+/// substituted in the calling context, braces around it dropped; a
+/// parameter takes it or its default, and one that does not match its
+/// type, too many arguments, an unknown function, a cycle, no `result`
+/// or a result that does not match `returns` make the call (and so its
+/// property) invalid at computed-value time.
+pub(crate) fn replace_functions(
+    text: &str,
+    functions: &[(String, super::at_rules::Function)],
+    site: &mut dyn FnMut(&str) -> Option<String>,
+    media: &mut dyn FnMut(&super::media::Query) -> bool,
+    stack: &mut Vec<String>,
+) -> Result<String, String> {
+    let mut out = String::with_capacity(text.len());
+    let mut rest = text;
+    while let Some(at) = dashed_call(rest) {
+        let open = rest[at..].find('(').map(|i| at + i).expect("a call");
+        let name = &rest[at..open];
+        let inside = top_level(&rest[open + 1..], ')');
+        let args_text = inside.join(",");
+        let close = open + 1 + args_text.len();
+        if rest.as_bytes().get(close) != Some(&b')') {
+            return Err(format!("{name}( is not closed"));
+        }
+        out.push_str(&rest[..at]);
+        let mut args = Vec::new();
+        if !args_text.trim().is_empty() {
+            for arg in top_level(&args_text, ',') {
+                let arg = arg.trim();
+                let arg = arg
+                    .strip_prefix('{')
+                    .and_then(|a| a.strip_suffix('}'))
+                    .unwrap_or(arg)
+                    .trim();
+                args.push(replace_functions(arg, functions, site, media, stack)?);
+            }
+        }
+        out.push_str(&call(name, args, functions, site, media, stack)?);
+        rest = &rest[close + 1..];
+    }
+    out.push_str(rest);
+    Ok(out)
+}
+
+/// Where the first `--name(` outside a string starts in `text`.
+fn dashed_call(text: &str) -> Option<usize> {
+    let b = text.as_bytes();
+    let mut quote = None;
+    let mut i = 0;
+    while i < b.len() {
+        let c = b[i];
+        match quote {
+            Some(q) if c == q => quote = None,
+            Some(_) => {}
+            None if c == b'"' || c == b'\'' => quote = Some(c),
+            None if text[i..].starts_with("--")
+                && (i == 0 || {
+                    let p = b[i - 1];
+                    !(p.is_ascii_alphanumeric() || p == b'-' || p == b'_')
+                }) =>
+            {
+                let end = i + text[i..]
+                    .find(|c: char| !(c.is_ascii_alphanumeric() || c == '-' || c == '_'))
+                    .unwrap_or(text.len() - i);
+                if end > i + 2 && b.get(end) == Some(&b'(') {
+                    return Some(i);
+                }
+                i = end.max(i + 1);
+                continue;
+            }
+            None => {}
+        }
+        i += 1;
+    }
+    None
+}
+
+/// One custom function call with its substituted arguments.
+fn call(
+    name: &str,
+    args: Vec<String>,
+    functions: &[(String, super::at_rules::Function)],
+    site: &mut dyn FnMut(&str) -> Option<String>,
+    media: &mut dyn FnMut(&super::media::Query) -> bool,
+    stack: &mut Vec<String>,
+) -> Result<String, String> {
+    use super::at_rules::matches_syntax;
+    let Some((_, f)) = functions.iter().rev().find(|(n, _)| n == name) else {
+        return Err(format!("no @function {name}"));
+    };
+    if stack.iter().any(|n| n == name) {
+        return Err(format!("{name}() calls itself"));
+    }
+    if args.len() > f.params.len() {
+        return Err(format!(
+            "{name}() takes {} arguments, not {}",
+            f.params.len(),
+            args.len()
+        ));
+    }
+    // The hypothetical element's own custom properties: its parameters,
+    // then the body's in order where its @media holds (a local shadows a
+    // parameter), and its `result`.
+    let mut defs: std::collections::BTreeMap<String, Option<String>> = Default::default();
+    for (i, p) in f.params.iter().enumerate() {
+        defs.insert(p.name.clone(), args.get(i).cloned().or(p.default.clone()));
+    }
+    for (conditions, d) in &f.body {
+        if conditions.iter().all(&mut *media) {
+            defs.insert(d.name.clone(), Some(d.source.clone()));
+        }
+    }
+    struct Frame {
+        defs: std::collections::BTreeMap<String, Option<String>>,
+        done: std::collections::BTreeMap<String, Option<String>>,
+        resolving: Vec<String>,
+    }
+    impl Frame {
+        fn resolve(
+            &mut self,
+            n: &str,
+            site: &mut dyn FnMut(&str) -> Option<String>,
+        ) -> Option<String> {
+            if let Some(v) = self.done.get(n) {
+                return v.clone();
+            }
+            let Some(text) = self.defs.get(n).cloned() else {
+                return site(n);
+            };
+            if self.resolving.iter().any(|r| r == n) {
+                return None;
+            }
+            self.resolving.push(n.to_string());
+            let v = text.and_then(|t: String| {
+                let value = variables::Value::parse(&t).ok()?;
+                value.substitute(&mut |m| self.resolve(m, site)).ok()
+            });
+            self.resolving.pop();
+            self.done.insert(n.to_string(), v.clone());
+            v
+        }
+    }
+    let mut frame = Frame {
+        defs,
+        done: Default::default(),
+        resolving: Vec::new(),
+    };
+    for p in &f.params {
+        let value = frame.resolve(&p.name, site);
+        if let (Some(s), Some(v)) = (&p.syntax, &value)
+            && !matches_syntax(s, v)
+        {
+            return Err(format!("{name}(): {} {} is not a {s}", p.name, v.trim()));
+        }
+    }
+    let Some(result) = frame.resolve("result", site) else {
+        return Err(format!("{name}() has no result"));
+    };
+    let frame = std::cell::RefCell::new(frame);
+    let site = std::cell::RefCell::new(site);
+    let mut local = |n: &str| frame.borrow_mut().resolve(n, *site.borrow_mut());
+    let result = replace_ifs(
+        &result,
+        &mut IfTests {
+            media: &mut |q| media(q),
+            style: &mut local,
+        },
+    )?;
+    stack.push(name.to_string());
+    let result = replace_functions(&result, functions, &mut local, media, stack);
+    stack.pop();
+    let result = result?.trim().to_string();
+    if let Some(t) = &f.returns {
+        let checked = if super::calc::has_math(&result) {
+            super::calc::reduce(&result).ok()
+        } else {
+            Some(result.clone())
+        };
+        if checked.is_some_and(|c| !matches_syntax(t, &c)) {
+            return Err(format!("{name}() returns a {t}, not {result}"));
+        }
+    }
+    Ok(result)
 }
 
 /// Whether the cascade takes `name: value` as written.

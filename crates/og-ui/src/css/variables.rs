@@ -308,12 +308,27 @@ impl Value {
     }
 
     /// Whether it substitutes when its element resolves: it reads a
-    /// `var()` or has a `random-item()` or an `if()`, which substitute as
-    /// `var()` does (CSS Values 5 §8.3, §9.2).
+    /// `var()` or has a `random-item()`, an `if()` or a custom function
+    /// call, which substitute as `var()` does (CSS Values 5 §8.3, §9.2;
+    /// CSS Mixins 1 §3).
     pub fn has_variables(&self) -> bool {
         let mut names = BTreeSet::new();
         self.dependencies(&mut names);
-        !names.is_empty() || self.has_function("random-item(") || self.has_function("if(")
+        !names.is_empty()
+            || self.has_function("random-item(")
+            || self.has_function("if(")
+            || self.has_dashed_call()
+    }
+
+    /// Whether it calls a custom function (`--name(…)`).
+    fn has_dashed_call(&self) -> bool {
+        self.0.iter().any(|piece| match piece {
+            Piece::Block(o, value, _) => {
+                (o.starts_with("--") && o.ends_with('(')) || value.has_dashed_call()
+            }
+            Piece::Var(_, Some(fallback)) => fallback.has_dashed_call(),
+            _ => false,
+        })
     }
 
     fn has_function(&self, open: &str) -> bool {
