@@ -523,6 +523,85 @@ div { margin: 0; }
     check(126, 78, [encode(1.0 - k), 0.0, encode(k)]);
 }
 
+/// `background-clip: border-area` (CSS Backgrounds 4 §2.1) paints a layer
+/// only under the border: the border box less the padding box, whatever
+/// the border's own colour. A colour clipped so leaves the padding box
+/// empty, and an image layer clipped so draws over the colour only there.
+///
+/// Ways it could fail: the layer drawn over the whole box (the clip read
+/// as border-box), the padding box cut from the layers under it too, or
+/// the ring inset by the padding instead of the border.
+#[test]
+#[ignore = "requires GPU"]
+fn border_area_paints_a_layer_only_under_the_border() {
+    use og_render::*;
+    let mut scene = RenderScene::new();
+    let mut ui = ui_with_font(add_test_font(&mut scene));
+    let text = r##"<meta name="component" content="area"/>
+<div id="Row">
+  <div id="Colour"></div><div id="Layer"></div>
+</div>
+<style>
+#Row { display: flex; }
+#Colour, #Layer { width: 32px; height: 32px; box-sizing: border-box; padding: 4px;
+  border: 6px solid transparent; flex-shrink: 0; }
+#Colour { background-color: #00ff00; background-clip: border-area; }
+#Layer { background: linear-gradient(#ff0000, #ff0000) border-area, #0000ff; }
+</style>"##;
+    ui.define_document(UiDocument::parse("ui/area.svelte", text).unwrap());
+    ui.mount_document(
+        reactive::SourceId::new("test", "area"),
+        "area",
+        Default::default(),
+        Default::default(),
+        &bind::NoEnv,
+    )
+    .unwrap();
+    ui.begin(InputFrame::default(), Viewport::new(64.0, 32.0));
+    ui.build_retained_documents(&bind::NoEnv).unwrap();
+    ui.end();
+    assert!(ui.frame().warnings.is_empty(), "{:?}", ui.frame().warnings);
+    let mut overlay = Overlay::new(64.0, 32.0, 1.0);
+    ui.frame().emit(&EmitDesc::default(), &mut overlay);
+    scene.ui.overlay = Some(overlay);
+    scene.lighting.environment.background = Background::Color(og_core::glam::Vec3::ZERO);
+    scene.look.post.tonemap = Tonemap::None;
+    let mut renderer = Renderer::new_blocking(&RenderDesc {
+        width: 64,
+        height: 32,
+        ..Default::default()
+    })
+    .expect("a headless adapter");
+    renderer.render(&scene, &RenderTarget::Offscreen).unwrap();
+    let pixels = renderer.read_offscreen().unwrap().pixels;
+    image::save_buffer(
+        out_dir().join("css-border-area.png"),
+        &pixels,
+        64,
+        32,
+        image::ColorType::Rgba8,
+    )
+    .unwrap();
+    let check = |x: usize, y: usize, expected: [u8; 3]| {
+        let at = (y * 64 + x) * 4;
+        let actual = &pixels[at..at + 3];
+        assert!(
+            actual.iter().zip(expected).all(|(&a, b)| a.abs_diff(b) < 8),
+            "({x},{y}): {actual:?}, expected {expected:?}"
+        );
+    };
+    // Under the 6 px border, at each side, and inside the padding box
+    // (its edge 6 px in, before the 4 px padding).
+    for (x, y) in [(2, 16), (29, 16), (16, 2), (16, 29), (2, 2)] {
+        check(x, y, [0, 255, 0]);
+        check(x + 32, y, [255, 0, 0]);
+    }
+    for (x, y) in [(7, 16), (16, 16), (24, 7)] {
+        check(x, y, [0, 0, 0]);
+        check(x + 32, y, [0, 0, 255]);
+    }
+}
+
 #[test]
 #[ignore = "requires GPU"]
 fn a_gradient_leaving_the_gamut_keeps_its_lightness_and_hue() {
