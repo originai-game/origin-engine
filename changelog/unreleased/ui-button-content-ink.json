@@ -1,0 +1,8 @@
+{
+  "fixed": [
+    {
+      "member": "button",
+      "summary": "Text inside a document `<button>` that sets no colour of its own (`<button><span>Buy</span></button>`) takes the button's ink as that ink changes, as slotted content inherits from its slot: after a style pack is set on a mounted document, after a scheme switch, and through the style's colour transition. Before, it kept the ink the button had on the frame it was built, often the old scheme's or the old pack's."
+    }
+  ]
+}

@@ -399,12 +399,25 @@ impl Ui {
         if !carried.any() {
             return;
         }
+        // A button's document content takes its ink where it declares no
+        // colour (`Ui::content_ink`), as slotted content inherits from its
+        // slot: it follows the ink as it moves (a transition, a new scheme).
+        let owner = self.tree.nodes[i].part_box.as_ref().map_or(i, |p| p.owner);
+        let button_ink = matches!(
+            self.tree.nodes[owner].widget,
+            crate::layout::Widget::Button { .. }
+        )
+        .then(|| r.color("color"))
+        .flatten();
         let mut stack: Vec<(usize, Chain)> = vec![(i, vec![(r.clone(), carried)])];
         while let Some((at, chain)) = stack.pop() {
             for k in 0..self.tree.nodes[at].built_children.len() {
                 let c = self.tree.nodes[at].built_children[k];
                 let n = &self.tree.nodes[c];
                 if n.part_host.is_some() {
+                    if let Some(ink) = button_ink {
+                        self.ink_document_content(c, ink);
+                    }
                     continue;
                 }
                 let own = if n.part_box.is_some() {
@@ -425,6 +438,31 @@ impl Ui {
                 self.inherit_text(c, &chain);
                 stack.push((c, chain.clone()));
             }
+        }
+    }
+
+    /// Document content `c` inside a button and what it holds: its text
+    /// that declares no colour and is no part of its own takes `ink`.
+    fn ink_document_content(&mut self, c: usize, ink: Srgba) {
+        let n = &self.tree.nodes[c];
+        if n.part().is_some() || n.el.frame.is_some() || n.content_slot != NONE {
+            return;
+        }
+        let declared = self
+            .tree
+            .part_host(n.key)
+            .is_none_or(|host| host.own.contains("color"));
+        if !declared
+            && let crate::layout::Content::Text(text) = &*n.content
+            && text.color != ink
+        {
+            self.tree.rewrite(c);
+            if let crate::layout::Content::Text(text) = self.tree.content_mut(c) {
+                text.color = ink;
+            }
+        }
+        for k in 0..self.tree.nodes[c].built_children.len() {
+            self.ink_document_content(self.tree.nodes[c].built_children[k], ink);
         }
     }
 
