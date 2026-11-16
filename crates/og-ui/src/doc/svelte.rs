@@ -90,6 +90,7 @@ pub(crate) fn parse_with_pack(
             svg_text: false,
             inline_element: false,
             exportparts: None,
+            pseudo: Vec::new(),
         };
         let mut script = false;
         let mut window = None;
@@ -147,6 +148,36 @@ pub(crate) fn parse_with_pack(
                 at,
                 "exportparts is written in a control document, on a control its inside holds: elsewhere there is no host to export a part to".into(),
             ));
+        }
+        if let Some(&(_, at)) = p.pseudo.first() {
+            let Some(host) = &p.doc.control else {
+                return Err((
+                    at,
+                    "pseudo is written in a control document: elsewhere an element is no host's pseudo-element".into(),
+                ));
+            };
+            for (k, &(pseudo, at)) in p.pseudo.iter().enumerate() {
+                if !pseudo.belongs_to(host) {
+                    return Err((
+                        at,
+                        format!(
+                            "a <{}> has no {}: HTML gives ::backdrop to a dialog or popover, ::details-content to details, ::picker(select) and ::picker-icon to select, ::checkmark to option and ::file-selector-button to input[type=file]",
+                            host.tag,
+                            cssparser::ToCss::to_css_string(&pseudo)
+                        ),
+                    ));
+                }
+                if p.pseudo[..k].iter().any(|(q, _)| *q == pseudo) {
+                    return Err((
+                        at,
+                        format!(
+                            "pseudo=\"{}\" is written twice: one element of the document is its host's {}",
+                            pseudo.name(),
+                            cssparser::ToCss::to_css_string(&pseudo)
+                        ),
+                    ));
+                }
+            }
         }
         if let Some((n, _)) = p
             .doc
@@ -590,6 +621,9 @@ struct Parser {
     /// Where the first `exportparts` is written, checked once the
     /// document is known to be a control's.
     exportparts: Option<usize>,
+    /// The `pseudo=` elements read and where each is written, checked
+    /// once the document is known to be a control's.
+    pseudo: Vec<(super::selectors::PseudoElement, usize)>,
 }
 /// A `<datalist>`: its id, its options' values and labels, and its bound
 /// `items`.

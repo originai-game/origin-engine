@@ -88,9 +88,30 @@ fn selectors(rules: Vec<Rule>) -> Result<Vec<(Selector, Rule)>, Error> {
                 .to_vec()
         })
         .collect();
+    // A rule for a standard pseudo-element a control document gives an
+    // element of its own (`details::details-content`) is read as written
+    // too: it reaches that element as `::part()` reaches a part. Read off
+    // the selector, it styles the box og draws for an element no control
+    // document has taken over yet.
+    let mut reaching = Vec::new();
     for rule in &mut rules {
+        let written = (rule.selector.clone(), rule.body.clone());
         pseudo_element(rule)?;
+        if rule
+            .pseudo
+            .is_some_and(|p| super::selectors::PseudoElement::named(p).is_some())
+        {
+            reaching.push(Rule {
+                selector: written.0,
+                body: written.1,
+                pseudo: None,
+                boxed: String::new(),
+                pseudo_states: Vec::new(),
+                ..rule.clone()
+            });
+        }
     }
+    rules.extend(reaching);
     let mut parsed = Vec::new();
     for rule in rules {
         for mut selector in Selector::parse_list(&rule.selector).map_err(|e| (rule.at, e))? {
@@ -301,10 +322,11 @@ impl Reading {
                 }) {
                     return Err(error((rule.at, "use lowercase markup tags in global CSS".into())));
                 }
-                if components
-                    .iter()
-                    .flatten()
-                    .any(|c| matches!(c, super::selectors::Component::Part(_)))
+                if selector.pseudo_element().is_some()
+                    || components
+                        .iter()
+                        .flatten()
+                        .any(|c| matches!(c, super::selectors::Component::Part(_)))
                 {
                     part_selector(&selector).map_err(|e| error((rule.at, e)))?;
                 }
@@ -579,8 +601,21 @@ fn part_selector(selector: &Selector) -> Result<(), String> {
     {
         return Ok(());
     }
-    let mut part = false;
+    let (mut part, mut pseudo) = (false, None);
     for c in simples {
+        // A pseudo-element's own states, as a box pseudo-element's.
+        if let (Some(p), Component::NonTSPseudoClass(PseudoClass::State(state))) = (pseudo, c)
+            && !PSEUDO_STATES.contains(state)
+        {
+            return Err(format!(
+                "{}: a state after {} is the element's own: :hover, :active, :focus, :focus-visible, :disabled or :enabled",
+                selector.source,
+                cssparser::ToCss::to_css_string(&p)
+            ));
+        }
+        if let Component::PseudoElement(p) = c {
+            pseudo = Some(*p);
+        }
         match c {
             Component::LocalName(tag) if !part && tag.name.0 == tag.name.0.to_ascii_lowercase() => {
             }
@@ -589,7 +624,7 @@ fn part_selector(selector: &Selector) -> Result<(), String> {
             c if !part && super::selectors::structural_component(c) => {}
             Component::Negation(_) | Component::Is(_) | Component::Where(_)
                 if !part && nested(c).iter().all(|selector| !structural(selector)) => {}
-            Component::Part(_) if !part => part = true,
+            Component::Part(_) | Component::PseudoElement(_) if !part => part = true,
             Component::NonTSPseudoClass(PseudoClass::State(_)) => {}
             _ => return Err(bad()),
         }
@@ -734,18 +769,19 @@ impl Global {
                 rule.global = true;
                 selector.global = true;
             }
-            let lowered = if rule.selector.contains("::part(") {
-                None
-            } else {
-                let entries = css::declarations(&checked, line).map_err(error)?;
-                let boxed = match rule.pseudo {
-                    Some(_) if !rule.boxed.is_empty() => {
-                        Some(lowered(&rule.boxed, line, &known).map_err(error)?)
-                    }
-                    _ => None,
+            let lowered =
+                if rule.selector.contains("::part(") || selector.pseudo_element().is_some() {
+                    None
+                } else {
+                    let entries = css::declarations(&checked, line).map_err(error)?;
+                    let boxed = match rule.pseudo {
+                        Some(_) if !rule.boxed.is_empty() => {
+                            Some(lowered(&rule.boxed, line, &known).map_err(error)?)
+                        }
+                        _ => None,
+                    };
+                    Some(((declarations, entries), boxed))
                 };
-                Some(((declarations, entries), boxed))
-            };
             let root = root_only(&selector, &rule);
             let lowered = match lowered {
                 Some((own, boxed)) if root => Some((without_custom(own), boxed)),
@@ -939,6 +975,34 @@ pub fn apply(
         .collect();
     order.sort_by_key(|(selector, rule, _)| cascade_key(selector, rule, &layers));
     for (parsed, rule, kept) in order {
+        // A rule for a control document's `pseudo=` element is matched,
+        // as a `::part()` rule is, against the host where that document
+        // is instantiated; a global sheet's is the style's.
+        if let Some(pseudo) = parsed.pseudo_element() {
+            if kept.is_some() {
+                continue;
+            }
+            if doc.control.is_some() && rule.selector.trim_start().starts_with(":host") {
+                return Err((rule.at, host_pseudo(&rule.selector, pseudo.name())));
+            }
+            part_selector(parsed).map_err(|e| (rule.at, e))?;
+            let (declarations, _) = lower(&rule.body, &known).map_err(|e| (rule.at, e))?;
+            doc.part_rules.push(StyleRule {
+                inline: false,
+                context: super::TreeContext::Outer,
+                depth: 0,
+                layer: rank(&layers, &rule.layer),
+                starting: rule.starting,
+                query: rule.query.clone(),
+                condition: None,
+                structure: Some(parsed.clone()),
+                instance_states: Vec::new(),
+                props: Vec::new(),
+                declarations,
+                line: syntax::location(&doc.text, rule.at).0,
+            });
+            continue;
+        }
         // A control document's rule whose subject is its host: kept apart
         // and applied to the host element where the document is
         // instantiated, under every rule written for the host there.
@@ -947,14 +1011,8 @@ pub fn apply(
                 .condition(doc, &lookup, super::HOST_NODE)
                 .map_err(|e| (rule.at, e))?;
             if condition != Expr::Lit(false.into()) {
-                if rule.pseudo.is_some() {
-                    return Err((
-                        rule.at,
-                        format!(
-                            "{}: a pseudo-element of the host is the host document's to style; give the control an element with a part",
-                            rule.selector
-                        ),
-                    ));
+                if let Some(pseudo) = rule.pseudo {
+                    return Err((rule.at, host_pseudo(&rule.selector, pseudo)));
                 }
                 let (declarations, _) = lower(&rule.body, &known).map_err(|e| (rule.at, e))?;
                 doc.host_rules.push(StyleRule {
@@ -3163,6 +3221,17 @@ fn pseudo_suffix(selector: &str) -> Option<(Cow<'static, str>, &str, Vec<Interac
                 )
             })
         })
+}
+
+/// Why a control document's rule for a pseudo-element of its host is
+/// refused: the host's document styles it, and the control document gives
+/// the standard ones an element of its own.
+fn host_pseudo(selector: &str, pseudo: &str) -> String {
+    let fix = match super::selectors::PseudoElement::named(pseudo) {
+        Some(_) => format!("declare the element that is it with pseudo=\"{pseudo}\""),
+        None => "give the control an element with a part".into(),
+    };
+    format!("{selector}: a pseudo-element of the host is the host document's to style; {fix}")
 }
 
 /// A rule on an element-backed pseudo-element selects its originating

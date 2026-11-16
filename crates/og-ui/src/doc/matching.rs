@@ -12,8 +12,8 @@
 //! matches nothing of the rule. A global sheet matches the whole tree.
 use super::UiDocument;
 use super::selectors::{
-    Atom, Combinator, Component, Inner, OgImpl, PseudoClass, Selector, compound_of, compounds,
-    nested, structural, structural_component,
+    Atom, Combinator, Component, Inner, OgImpl, PseudoClass, PseudoElement, Selector, compound_of,
+    compounds, nested, structural, structural_component,
 };
 use crate::bind::InteractionState;
 use cssparser::ToCss;
@@ -64,8 +64,14 @@ pub trait Tree {
     fn filtered(&self, id: &Self::Id, filter: &[Selector]) -> (usize, usize);
     /// The tree's own id for `id`.
     fn canonical(&self, id: &Self::Id) -> Option<&Self::Id>;
-    /// The host a part is exposed by.
+    /// The host a part is exposed by, or a pseudo-element's originating
+    /// element.
     fn part_host(&self, _id: &Self::Id) -> Option<&Self::Id> {
+        None
+    }
+    /// The standard pseudo-element the element is of its host
+    /// ([`Tree::part_host`]): a control document's `pseudo=` element.
+    fn pseudo(&self, _id: &Self::Id) -> Option<PseudoElement> {
         None
     }
     /// The view-transition types the element's screen declares
@@ -223,7 +229,11 @@ impl<'a, T: Tree> Element for DocElement<'a, T> {
     }
 
     fn is_pseudo_element(&self) -> bool {
-        false
+        self.tree.pseudo(self.id).is_some()
+    }
+
+    fn pseudo_element_originating_element(&self) -> Option<Self> {
+        self.tree.part_host(self.id).map(|host| self.at(host))
     }
 
     fn prev_sibling_element(&self) -> Option<Self> {
@@ -334,7 +344,7 @@ impl<'a, T: Tree> Element for DocElement<'a, T> {
         pe: &super::selectors::PseudoElement,
         _: &mut MatchingContext<OgImpl>,
     ) -> bool {
-        match *pe {}
+        self.tree.pseudo(self.id) == Some(*pe)
     }
 
     fn apply_selector_flags(&self, _: ElementSelectorFlags) {}
@@ -490,8 +500,13 @@ impl<'a, T: Tree> Matcher<'a, T> {
 }
 
 /// One element's facts as a tree of its own: a part is exposed by a host
-/// that has the same facts.
-struct Lone<'f>(Facts<'f>);
+/// that has the same facts; a control document's `pseudo=` element is a
+/// pseudo-element of a host with its facts, and holds states of its own.
+struct Lone<'f> {
+    host: Facts<'f>,
+    inner: Facts<'f>,
+    pseudo: Option<PseudoElement>,
+}
 
 #[derive(Debug, PartialEq)]
 enum LoneNode {
@@ -507,12 +522,8 @@ impl Tree for Lone<'_> {
 
     fn facts(&self, id: &LoneNode) -> Facts<'_> {
         match id {
-            LoneNode::Part => self.0,
-            LoneNode::Host => Facts {
-                part: None,
-                own_part: None,
-                ..self.0
-            },
+            LoneNode::Part => self.inner,
+            LoneNode::Host => self.host,
         }
     }
 
@@ -546,14 +557,48 @@ impl Tree for Lone<'_> {
     fn part_host(&self, id: &LoneNode) -> Option<&LoneNode> {
         (*id == LoneNode::Part).then_some(&HOST)
     }
+
+    fn pseudo(&self, id: &LoneNode) -> Option<PseudoElement> {
+        self.pseudo.filter(|_| *id == LoneNode::Part)
+    }
 }
 
 /// Whether an element's own facts match `selector`: its part, when the
 /// facts name one, under a host with the same facts.
 pub fn matches_facts(facts: &Facts<'_>, selector: &Selector) -> bool {
     let subject = if facts.part.is_some() { &PART } else { &HOST };
-    let lone = Lone(*facts);
+    let lone = Lone {
+        host: Facts {
+            part: None,
+            own_part: None,
+            ..*facts
+        },
+        inner: *facts,
+        pseudo: None,
+    };
     Matcher::new(&lone, None, subject).matches(selector, &mut MatchWork::default())
+}
+
+/// Whether `selector` matches the `pseudo` element of a control document
+/// whose host has the facts `host`: the element's own `states` are what a
+/// state pseudo-class after the pseudo-element reads.
+pub fn matches_pseudo(
+    host: &Facts<'_>,
+    pseudo: PseudoElement,
+    states: &BTreeSet<InteractionState>,
+    selector: &Selector,
+) -> bool {
+    let host = Facts {
+        part: None,
+        own_part: None,
+        ..*host
+    };
+    let lone = Lone {
+        host,
+        inner: Facts { states, ..host },
+        pseudo: Some(pseudo),
+    };
+    Matcher::new(&lone, None, &PART).matches(selector, &mut MatchWork::default())
 }
 
 /// Whether an element's own facts match one `of S` filter list.

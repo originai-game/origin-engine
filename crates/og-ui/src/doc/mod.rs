@@ -603,6 +603,18 @@ impl DocNode {
             })
     }
 
+    /// The standard pseudo-element of its control document's host this
+    /// element is (`pseudo="details-content"`, docs/ui.md §2.4).
+    pub fn pseudo_element(&self) -> Option<selectors::PseudoElement> {
+        self.selector_attrs
+            .iter()
+            .find(|(name, _)| name == "pseudo")
+            .and_then(|(_, value)| match value {
+                Expr::Lit(serde_json::Value::String(s)) => selectors::PseudoElement::named(s),
+                _ => None,
+            })
+    }
+
     /// The parts of this control's inside that are parts of the host of
     /// the control document it is written in too (`exportparts`, CSS
     /// Shadow Parts §4.2): each inner name with the name it takes there.

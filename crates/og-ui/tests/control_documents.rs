@@ -17,6 +17,13 @@
 //!   its inner name, or loses to the holding document's own rule for it;
 //!   a renamed part still answers to its inner name outside
 //!   → `exportparts_makes_a_nested_part_the_outer_hosts`
+//! - a host's document or the style does not reach the element a control
+//!   document declares as a standard pseudo-element, loses to the
+//!   document's own rule for it, or reaches it by a part name or another
+//!   pseudo-element's → `a_standard_pseudo_element_reaches_the_control_documents_element`
+//! - a state after the pseudo-element reads the host's state, or the
+//!   element is not styled again when its own changes
+//!   → `a_state_after_a_pseudo_element_is_its_elements_own`
 //!
 //! Instance state (docs/ui.md §2 Components in documents):
 //! - two instances share one value, or `bind:` does not write it
@@ -26,6 +33,7 @@
 //!   → `a_removed_instance_takes_its_state_with_it`
 
 use crate::support::*;
+use og_core::glam::Vec2;
 use og_ui::*;
 use serde_json::json;
 
@@ -429,4 +437,176 @@ fn exportparts_is_read_where_a_part_can_be_exported() {
     assert!(refused(&mut ui, instance).contains("component instance"));
     let list = r#"<meta name="control" content="meter"><div><progress exportparts="fill: :x"></progress></div>"#;
     assert!(refused(&mut ui, list).contains("part names"));
+}
+
+/// A UI with a game's control document `text` for `host` defined.
+fn with_document(host: &str, text: &str) -> Ui {
+    let mut ui = ui_with_font(test_font_metrics());
+    let doc = ui
+        .parse_document(&format!("ui/controls/{host}.svelte"), text, Vec::new())
+        .unwrap_or_else(|e| panic!("{e:?}"));
+    ui.define_document(doc);
+    ui
+}
+
+/// A select whose control document gives its picker icon an element of
+/// its own (`pseudo="picker-icon"`), painted green by its own rule.
+fn select_with_icon() -> Ui {
+    with_document(
+        "select",
+        r#"<meta name="control" content="select">
+<div id="Box"><div id="Icon" pseudo="picker-icon"></div></div>
+<style>
+:host { display: block; inline-size: 200px; }
+[pseudo="picker-icon"] { inline-size: 40px; block-size: 40px; background: #00ff00; }
+</style>"#,
+    )
+}
+
+/// The colours painted in `target` of a page holding `host` under the
+/// page's `<style>` `css`, with the pointer at `pointer` (none: outside
+/// the window).
+fn reached_colours(
+    ui: Ui,
+    host: &str,
+    target: &str,
+    css: &str,
+    pointer: Option<Vec2>,
+) -> Vec<[f32; 4]> {
+    let text = format!(
+        r#"<meta name="component" content="t">
+<div id="Form">{host}</div>
+<style>
+#Form {{ width: 400px; }}
+{css}
+</style>"#
+    );
+    let mut d = Doc::mounted(ui, &text, &[]);
+    let input = InputFrame {
+        pointer: pointer.unwrap_or_default(),
+        pointer_inside: pointer.is_some(),
+        ..InputFrame::default()
+    };
+    for _ in 0..3 {
+        d.step(input.clone());
+    }
+    let at = d.get(target);
+    fills_in(&d.ui, Rect::new(at.x, at.y, at.width, at.height))
+}
+
+fn icon_colours(ui: Ui, css: &str) -> Vec<[f32; 4]> {
+    let select = r#"<select id="S" class="pick"></select>"#;
+    reached_colours(ui, select, "S/Box/Icon", css, None)
+}
+
+#[test]
+fn a_standard_pseudo_element_reaches_the_control_documents_element() {
+    let (red, blue, green) = (
+        Srgba::rgb(255, 0, 0).linear(),
+        Srgba::rgb(0, 0, 255).linear(),
+        Srgba::rgb(0, 255, 0).linear(),
+    );
+    // The page's rule for the host's pseudo-element wins over the control
+    // document's own rule for its element, whatever either's specificity.
+    let fills = icon_colours(
+        select_with_icon(),
+        ":where(select)::picker-icon { background: #ff0000; }",
+    );
+    assert!(fills.contains(&red) && !fills.contains(&green), "{fills:?}");
+    // Its name is apart from parts', and a rule for another host's
+    // pseudo-element, or for this one's under another host test, misses.
+    let fills = icon_colours(
+        select_with_icon(),
+        "select::part(picker-icon) { background: #ff0000; }
+         .other::picker-icon { background: #0000ff; }
+         select::checkmark { background: #0000ff; }",
+    );
+    assert!(fills.contains(&green), "{fills:?}");
+    // The style's rule reaches it too, under the page's.
+    let mut ui = select_with_icon();
+    ui.set_part_css("select::picker-icon { background: #0000ff; }")
+        .unwrap();
+    assert!(icon_colours(ui, "").contains(&blue));
+    let mut ui = select_with_icon();
+    ui.set_part_css("select::picker-icon { background: #0000ff; }")
+        .unwrap();
+    let fills = icon_colours(ui, "select::picker-icon { background: #ff0000; }");
+    assert!(fills.contains(&red) && !fills.contains(&blue), "{fills:?}");
+}
+
+#[test]
+fn a_state_after_a_pseudo_element_is_its_elements_own() {
+    // A file input whose button is its document's: the pointer on the
+    // input beside the button leaves it unhovered, on the button hovers it
+    // (CSS Pseudo-Elements 4: a pseudo-class after an element-backed
+    // pseudo-element reads that element's state).
+    let file = r#"<meta name="control" content="input[type=file]">
+<div id="Box"><button id="Pick" pseudo="file-selector-button"></button></div>
+<style>
+:host { display: block; inline-size: 300px; block-size: 40px; }
+#Box { display: flex; }
+[pseudo="file-selector-button"] { inline-size: 40px; block-size: 40px; }
+</style>"#;
+    let page = r#"<meta name="component" content="t">
+<div id="Form"><input id="F" type="file"></div>
+<style>
+#Form { width: 400px; }
+input::file-selector-button:hover { inline-size: 120px; }
+</style>"#;
+    let mut d = Doc::mounted(with_document("file", file), page, &[]);
+    let mut width = |x: f32| {
+        let input = InputFrame {
+            pointer: Vec2::new(x, 20.0),
+            pointer_inside: true,
+            ..InputFrame::default()
+        };
+        for _ in 0..3 {
+            d.step(input.clone());
+        }
+        d.get("F/Box/Pick").width
+    };
+    assert_eq!(width(250.0), 40.0, "the pointer on the input beside it");
+    assert_eq!(width(20.0), 120.0, "the pointer on the button");
+    assert_eq!(width(250.0), 40.0, "the pointer off the button again");
+}
+
+#[test]
+fn pseudo_is_read_where_an_element_can_be_its_hosts_pseudo_element() {
+    let mut ui = ui_with_font(test_font_metrics());
+    let refused = |ui: &mut Ui, text: &str| {
+        let errors = ui
+            .parse_document("ui/t.svelte", text, Vec::new())
+            .expect_err(text);
+        errors.join("\n")
+    };
+    let screen = r#"<meta name="component" content="t"><div><div pseudo="backdrop"></div></div>"#;
+    assert!(refused(&mut ui, screen).contains("control document"));
+    let host = r#"<meta name="control" content="select"><div><div pseudo="backdrop"></div></div>"#;
+    assert!(refused(&mut ui, host).contains("a <select> has no ::backdrop"));
+    let twice = r#"<meta name="control" content="details"><div><div pseudo="details-content"></div><div pseudo="details-content"></div></div>"#;
+    assert!(refused(&mut ui, twice).contains("written twice"));
+    let marker = r#"<meta name="control" content="select"><div><div pseudo="marker"></div></div>"#;
+    assert!(refused(&mut ui, marker).contains("standard pseudo-element name"));
+    let bound = r#"<meta name="control" content="select"><div><div pseudo={x}></div></div>"#;
+    assert!(refused(&mut ui, bound).contains("not a binding"));
+    let instance =
+        r#"<meta name="control" content="select"><div><Icon pseudo="picker-icon"/></div>"#;
+    assert!(refused(&mut ui, instance).contains("component instance"));
+    let own = r#"<meta name="control" content="select"><div></div><style>:host::picker-icon { color: red; }</style>"#;
+    assert!(refused(&mut ui, own).contains("pseudo=\"picker-icon\""));
+    let dialog = r#"<meta name="control" content="dialog"><div></div><style>:host::backdrop { color: red; }</style>"#;
+    assert!(refused(&mut ui, dialog).contains("pseudo=\"backdrop\""));
+    // A popover's backdrop and a file input's button are theirs.
+    for host in ["div[popover]", "input[type=file]"] {
+        let name = if host.starts_with("div") {
+            "backdrop"
+        } else {
+            "file-selector-button"
+        };
+        let text = format!(
+            r#"<meta name="control" content="{host}"><div><div pseudo="{name}"></div></div>"#
+        );
+        ui.parse_document("ui/t.svelte", &text, Vec::new())
+            .unwrap_or_else(|e| panic!("{host}: {e:?}"));
+    }
 }

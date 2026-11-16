@@ -193,19 +193,88 @@ impl sp::NonTSPseudoClass for PseudoClass {
     }
 }
 
-/// og selectors take no pseudo-elements but `::part()`, which the crate
-/// parses itself; `::before` and the like are read off a rule before its
-/// selector is parsed (`stylesheet::pseudo_element`).
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub enum PseudoElement {}
+/// The standard pseudo-elements a control document gives an element of its
+/// own (`pseudo="details-content"`, docs/ui.md §2.4): a rule written for
+/// one in the host's document (`details::details-content`) reaches that
+/// element as `::part()` reaches a part. `::part()` the crate parses
+/// itself; `::before` and the other pseudo-elements og draws are read off
+/// a rule before its selector is parsed (`stylesheet::pseudo_element`).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum PseudoElement {
+    Backdrop,
+    DetailsContent,
+    Picker,
+    PickerIcon,
+    Checkmark,
+    FileSelectorButton,
+}
 
-impl ToCss for PseudoElement {
-    fn to_css<W: fmt::Write>(&self, _: &mut W) -> fmt::Result {
-        match *self {}
+impl PseudoElement {
+    pub const ALL: [PseudoElement; 6] = [
+        PseudoElement::Backdrop,
+        PseudoElement::DetailsContent,
+        PseudoElement::Picker,
+        PseudoElement::PickerIcon,
+        PseudoElement::Checkmark,
+        PseudoElement::FileSelectorButton,
+    ];
+
+    /// Its `pseudo=` name.
+    pub fn name(self) -> &'static str {
+        match self {
+            PseudoElement::Backdrop => "backdrop",
+            PseudoElement::DetailsContent => "details-content",
+            PseudoElement::Picker => "picker",
+            PseudoElement::PickerIcon => "picker-icon",
+            PseudoElement::Checkmark => "checkmark",
+            PseudoElement::FileSelectorButton => "file-selector-button",
+        }
+    }
+
+    pub fn named(name: &str) -> Option<Self> {
+        Self::ALL.into_iter().find(|p| p.name() == name)
+    }
+
+    /// The host it belongs to, as a control's host selector names it:
+    /// HTML gives a `<dialog>` and a popover a backdrop, a `<select>` its
+    /// picker and picker icon, an `<option>` its checkmark and a file
+    /// input its button.
+    pub fn belongs_to(self, host: &super::ControlHost) -> bool {
+        let tests = |name: &str, value: Option<&str>| {
+            host.attributes
+                .iter()
+                .any(|(n, v)| n == name && (value.is_none() || v.as_deref() == value))
+        };
+        match self {
+            PseudoElement::Backdrop => host.tag == "dialog" || tests("popover", None),
+            PseudoElement::DetailsContent => host.tag == "details",
+            PseudoElement::Picker | PseudoElement::PickerIcon => host.tag == "select",
+            PseudoElement::Checkmark => host.tag == "option",
+            PseudoElement::FileSelectorButton => host.tag == "input" && tests("type", Some("file")),
+        }
     }
 }
 
-impl sp::PseudoElement for PseudoElement {}
+impl ToCss for PseudoElement {
+    fn to_css<W: fmt::Write>(&self, dest: &mut W) -> fmt::Result {
+        match self {
+            PseudoElement::Picker => dest.write_str("::picker(select)"),
+            p => write!(dest, "::{}", p.name()),
+        }
+    }
+}
+
+/// Each is an element of the control's document, so it takes state
+/// pseudo-classes of its own as a part does (`dialog::backdrop:hover`).
+impl sp::PseudoElement for PseudoElement {
+    fn accepts_state_pseudo_classes(&self) -> bool {
+        true
+    }
+
+    fn parses_as_element_backed(&self) -> bool {
+        true
+    }
+}
 
 /// og's selector vocabulary for the crate.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -339,8 +408,27 @@ impl<'i> sp::Parser<'i> for OgParser {
     }
 
     fn parse_pseudo_element(&self, name: &str) -> Result<PseudoElement, ParseError<OgError>> {
+        PseudoElement::named(&name.to_ascii_lowercase())
+            .filter(|p| *p != PseudoElement::Picker)
+            .ok_or_else(|| {
+                message(format!(
+                    "unsupported pseudo-element ::{name}; use ::part(name)"
+                ))
+            })
+    }
+
+    fn parse_functional_pseudo_element(
+        &self,
+        name: &str,
+        input: &mut CssParser<'i>,
+    ) -> Result<PseudoElement, ParseError<OgError>> {
+        if name.eq_ignore_ascii_case("picker")
+            && input.expect_ident()?.eq_ignore_ascii_case("select")
+        {
+            return Ok(PseudoElement::Picker);
+        }
         Err(message(format!(
-            "unsupported pseudo-element ::{name}; use ::part(name)"
+            "unsupported pseudo-element ::{name}(); a select's picker is ::picker(select)"
         )))
     }
 }
@@ -946,6 +1034,18 @@ impl Selector {
             .iter_raw_match_order()
             .take_while(|c| !matches!(c, Component::Combinator(_)))
             .any(|c| matches!(c, Component::Slotted(_)))
+    }
+
+    /// The control document element its subject is (`details::details-content`),
+    /// which the host's document reaches as it reaches a part.
+    pub fn pseudo_element(&self) -> Option<PseudoElement> {
+        self.inner
+            .iter_raw_match_order()
+            .take_while(|c| !matches!(c, Component::Combinator(_)))
+            .find_map(|c| match c {
+                Component::PseudoElement(p) => Some(*p),
+                _ => None,
+            })
     }
 
     /// Whether matching needs the instantiated sibling order ([`structural`]).

@@ -1,0 +1,8 @@
+{
+  "added": [
+    {
+      "member": "og.load.document",
+      "summary": "`pseudo=` in a control document (docs/ui.md §2.4): an element declared `pseudo=\"details-content\"` is its host's standard pseudo-element, so the host's document and the style pack style it as `details::details-content`, `select::picker(select)`, `select::picker-icon`, `option::checkmark`, `dialog::backdrop` or `input::file-selector-button`, one shadow boundary in from the host (over the control document's own rule for it). A state after it reads the element's own state (`input::file-selector-button:hover` is the pointer on the button). The names are apart from `part=`. `pseudo=` is refused outside a control document, on a host HTML does not give that pseudo-element, twice for one name, bound, or on a component instance; a control document's own `:host::backdrop` rule is refused with `pseudo=` as its fix."
+    }
+  ]
+}

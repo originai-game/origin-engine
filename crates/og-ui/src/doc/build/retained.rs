@@ -59,6 +59,13 @@ impl RetainedHost {
         {
             self.topology.set_state(node, state, enabled)?;
             graph.interaction_changed(node, state);
+            // A control document's pseudo-element is matched by the host's
+            // document's rules on its own states, which no binding reads.
+            if self.elements.get(node).is_some_and(|e| {
+                e.document.control.is_some() && e.document.nodes[e.index].pseudo_element().is_some()
+            }) {
+                self.dirty.insert(node.clone());
+            }
         }
         let pseudo = self.pseudo_boxes.get(&key).copied().unwrap_or(key);
         if let Some((node, states)) = self.pseudo_nodes.get_mut(&pseudo) {

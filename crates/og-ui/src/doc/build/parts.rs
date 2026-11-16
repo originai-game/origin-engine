@@ -2,6 +2,16 @@
 use super::*;
 use crate::doc::matching::Facts;
 use crate::doc::schema::Kind;
+use crate::doc::selectors::PseudoElement;
+
+/// An element of a control document that rules of the host's document
+/// reach: a part by one of its names (`meter::part(fill)`), or a standard
+/// pseudo-element with its own states (`details::details-content:hover`).
+#[derive(Clone, Copy)]
+pub(crate) enum Reached<'a> {
+    Part(&'a str),
+    Pseudo(PseudoElement, &'a BTreeSet<crate::bind::InteractionState>),
+}
 
 impl Resolved {
     pub(crate) fn part_type(&self, theme: &crate::Theme, step: crate::TypeStep) -> crate::TypeStep {
@@ -86,7 +96,15 @@ impl PartIndex {
                 })
             };
             let subject = compounds.last();
-            if let Some(name) = subject.and_then(part) {
+            // A control document's `pseudo=` element is found by its CSS
+            // name, which no part name is.
+            if let Some(pseudo) = s.pseudo_element() {
+                index
+                    .named
+                    .entry(cssparser::ToCss::to_css_string(&pseudo))
+                    .or_default()
+                    .push(i);
+            } else if let Some(name) = subject.and_then(part) {
                 index.named.entry(name).or_default().push(i);
             } else if compounds.iter().any(|c| part(c).is_some()) {
                 index.loose.push(i);
@@ -153,6 +171,20 @@ impl PartIndex {
         at.sort_unstable();
         at.dedup();
         at.into_iter().map(move |i| &rules[i])
+    }
+
+    /// The rules of `rules` (the list this was made from) for the
+    /// pseudo-element `pseudo`, in cascade order.
+    fn pseudo<'r>(
+        &self,
+        rules: &'r [crate::doc::StyleRule],
+        pseudo: PseudoElement,
+    ) -> impl Iterator<Item = &'r crate::doc::StyleRule> {
+        self.named
+            .get(&cssparser::ToCss::to_css_string(&pseudo))
+            .into_iter()
+            .flatten()
+            .map(move |&i| &rules[i])
     }
 }
 
@@ -787,11 +819,11 @@ impl Ui {
             })
     }
 
-    /// The `::part()` rules that reach the part `part` of a control
-    /// document from outside it (docs/ui.md §2.4): the style's and those
-    /// of the document `host` stands in, matched against the host's facts
-    /// and ranked `depth` shadow boundaries in (+1 for the part's own
-    /// host, one more for each `exportparts` it is exported through), in
+    /// The rules that reach the element `reached` of a control document
+    /// from outside it (docs/ui.md §2.4): the style's and those of the
+    /// document `host` stands in, matched against the host's facts and
+    /// ranked `depth` shadow boundaries in (+1 for the element's own host,
+    /// one more for each `exportparts` a part is exported through), in
     /// cascade order.
     /// A selector that reads the host's siblings or descendants is not
     /// matched here yet.
@@ -799,7 +831,7 @@ impl Ui {
         &self,
         document: &Arc<UiDocument>,
         tag: &str,
-        part: &str,
+        reached: Reached<'_>,
         attributes: &BTreeMap<String, Value>,
         states: &BTreeSet<crate::bind::InteractionState>,
         depth: i8,
@@ -822,21 +854,34 @@ impl Ui {
         let facts = Facts {
             scope: "",
             tag,
-            part: Some(part),
+            part: match reached {
+                Reached::Part(part) => Some(part),
+                Reached::Pseudo(..) => None,
+            },
             own_part: None,
             root: false,
             attributes,
             states,
             text: "",
         };
-        index
-            .candidates(rules, &facts)
+        let candidates: Box<dyn Iterator<Item = &crate::doc::StyleRule>> = match reached {
+            Reached::Part(_) => Box::new(index.candidates(rules, &facts)),
+            Reached::Pseudo(pseudo, _) => Box::new(index.pseudo(rules, pseudo)),
+        };
+        candidates
             .filter(|rule| {
                 rule.query.container.is_empty()
                     && rule.structure.as_ref().is_some_and(|s| {
-                        s.inner.is_part()
-                            && s.local.is_none()
-                            && crate::doc::matching::matches_facts(&facts, s)
+                        s.local.is_none()
+                            && match reached {
+                                Reached::Part(_) => {
+                                    s.inner.is_part()
+                                        && crate::doc::matching::matches_facts(&facts, s)
+                                }
+                                Reached::Pseudo(pseudo, own) => {
+                                    crate::doc::matching::matches_pseudo(&facts, pseudo, own, s)
+                                }
+                            }
                     })
             })
             .map(|rule| crate::doc::StyleRule {

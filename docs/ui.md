@@ -1324,6 +1324,20 @@ element, the one with more tests is its control. Its contract:
   exportparts="fill: bar-fill">` in the meter's document lets a page
   write `meter::part(bar-fill)`. Only a control in a control document
   exports; a component instance exports nothing.
+- **Standard pseudo-elements.** An element declared `pseudo="name"` is
+  the host's standard pseudo-element of that name, a namespace apart from
+  `part`: `backdrop` (a `<dialog>`'s or a popover's), `details-content`
+  (`<details>`), `picker` and `picker-icon` (`<select>`, styled as
+  `::picker(select)` and `::picker-icon`), `checkmark` (`<option>`) and
+  `file-selector-button` (`input[type=file]`). One element of the
+  document is each, only in a control document whose host HTML gives
+  that pseudo-element; a summary's marker stays CSS's `::marker`. The
+  host's document and the style reach it as they reach a part
+  (`details::details-content`, depth +1); no `exportparts` names it. A
+  state pseudo-class after it reads the element's own state
+  (`input::file-selector-button:hover` is the pointer on the button). The
+  document styles its own element as `[pseudo="backdrop"]`; its
+  `:host::backdrop` is refused.
 - **Rank.** The document's own rules style its elements at depth 0
   (§3.2), in the `og-components` layer. A `::part()` rule of the default
   style, a pack or the document the host stands in reaches a part at
@@ -1678,10 +1692,11 @@ first:
 1. on the host only, the control document's `:host` rules (depth -1);
 2. the control document's own rules for the part (depth 0, in
    `og-components`);
-3. the `::part()` rules that reach it from outside (depth +1): the
-   style's and a pack's, then those of the document its host stands in;
-   through each `exportparts` its host is exported by, one depth more
-   (a page's `meter::part(bar-fill)` on the bar inside a meter, +2).
+3. the `::part()` rules, or for a `pseudo=` element the rules for that
+   pseudo-element, that reach it from outside (depth +1): the style's
+   and a pack's, then those of the document its host stands in; through
+   each `exportparts` its host is exported by, one depth more (a page's
+   `meter::part(bar-fill)` on the bar inside a meter, +2).
 
 `revert-layer` in a rule rolls back the layers of that rule's own depth
 and then falls to the depth below, so a style's

@@ -767,7 +767,7 @@ impl RetainedHost {
                     reaching.extend(ui.control_part_rules(
                         &element.document,
                         tag,
-                        name,
+                        super::super::parts::Reached::Part(name),
                         facts.attributes,
                         facts.states,
                         depth,
@@ -782,6 +782,27 @@ impl RetainedHost {
                 inside = element;
                 depth += 1;
             }
+        }
+        // A standard pseudo-element of the host is reached from the host's
+        // document alone: no `exportparts` names it.
+        if own.document.control.is_some()
+            && let Some(pseudo) = own.document.nodes[own.index].pseudo_element()
+            && let Some(host) = own.context.selector_nodes.get(&crate::doc::HOST_NODE)
+            && let (Some(element), Some(facts), Some(this)) = (
+                self.elements.get(host),
+                self.topology.node(host),
+                self.topology.node(identity),
+            )
+        {
+            let node = &element.document.nodes[element.index];
+            reaching.extend(ui.control_part_rules(
+                &element.document,
+                node.selector_tag.as_deref().unwrap_or_default(),
+                super::super::parts::Reached::Pseudo(pseudo, this.states),
+                facts.attributes,
+                facts.states,
+                1,
+            ));
         }
         let e = self.elements.get_mut(identity).unwrap();
         // An instance's root inherits the instance's style props as if a
@@ -1038,8 +1059,9 @@ impl RetainedHost {
                 let Some(element) = self.elements.get(&at) else {
                     continue;
                 };
+                let node = &element.document.nodes[element.index];
                 if element.document.control.is_some()
-                    && element.document.nodes[element.index].part_name().is_some()
+                    && (node.part_name().is_some() || node.pseudo_element().is_some())
                 {
                     self.dirty.insert(at.clone());
                 }

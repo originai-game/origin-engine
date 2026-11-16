@@ -617,6 +617,40 @@ impl Parser {
                 self.exportparts.get_or_insert(a.at);
                 continue;
             }
+            // `pseudo` (docs/ui.md §2.4): the element of a control document
+            // that is a standard pseudo-element of its host, which the
+            // host's document styles as `details::details-content`. Its
+            // names are apart from `part`'s. Read where parts are matched.
+            if a.name == "pseudo" {
+                if component {
+                    return Err((
+                        a.at,
+                        format!(
+                            "<{tag}> is a component instance: wrap it in the element that is the pseudo-element"
+                        ),
+                    ));
+                }
+                let pseudo = super::super::selectors::PseudoElement::named(&a.value)
+                    .filter(|_| !a.bound)
+                    .ok_or_else(|| {
+                        (
+                            a.at,
+                            format!(
+                                "pseudo is a literal standard pseudo-element name: {}, not {}",
+                                super::super::selectors::PseudoElement::ALL
+                                    .map(|p| p.name())
+                                    .join(", "),
+                                if a.bound {
+                                    "a binding"
+                                } else {
+                                    a.value.as_str()
+                                }
+                            ),
+                        )
+                    })?;
+                self.pseudo.push((pseudo, a.at));
+                continue;
+            }
             if a.name == "id" {
                 if a.bound || a.value.is_empty() || a.value.contains(['/', '#']) {
                     return Err((
