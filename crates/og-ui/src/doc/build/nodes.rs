@@ -154,6 +154,7 @@ impl Ui {
             }
         };
         let mut resp = crate::ui::Response::default();
+        let mut generated = None;
         // A button with only text is the leaf control; with content it holds it.
         let container = kind.container() && (kind != Kind::Button || !n.children.is_empty());
         if container {
@@ -183,7 +184,8 @@ impl Ui {
         *self.front.accent_mut() = styled.text.as_deref().and_then(|t| t.accent);
         match kind {
             Kind::Label => {
-                resp = self.doc_label(b, n, &doc, &id, &path, key, &r, styled, t, &raw_of)?;
+                (resp, generated) =
+                    self.doc_label(b, n, &doc, &id, &path, key, &r, styled, t, &raw_of)?;
             }
             Kind::Button => {
                 let text = text_of(&r, b);
@@ -298,6 +300,7 @@ impl Ui {
             {
                 fields.text = self.revealed(key, raw_of(styled, b));
             }
+            fields.generated = generated;
             self.apply_document_fields(&doc, n, styled, &fields);
             self.docs.note_render_fields(key, fields);
             if styled.has("dataOgTouch") {
@@ -955,8 +958,12 @@ impl Ui {
         styled: &Resolved,
         t: crate::style::Theme,
         raw_of: &impl Fn(&Resolved, &Build<'_>) -> String,
-    ) -> Option<crate::ui::Response> {
+    ) -> Option<(
+        crate::ui::Response,
+        Option<std::sync::Arc<fields::GeneratedRuns>>,
+    )> {
         let mut resp = crate::ui::Response::default();
+        let mut generated = None;
         let source = raw_of(r, b);
         let text = css_text(r, b.env.language(), &source);
         let desc = r.label_desc(&t, self.fonts(), r.own_flow().rtl);
@@ -982,6 +989,9 @@ impl Ui {
                     },
                 )
                 .response;
+            // Its CSS-owned fields style these runs again
+            // (`apply_document_fields`), not a plain label.
+            generated = Some(std::sync::Arc::new((full, runs)));
         } else if let Some(V::Spans(spans)) = r.get("spans") {
             let spans = match spans {
                 Ok(spans) => spans,
@@ -1031,7 +1041,7 @@ impl Ui {
                 self.tree.css_text_content(i, styled);
             }
         }
-        Some(resp)
+        Some((resp, generated))
     }
 
     /// The document's `select` element.

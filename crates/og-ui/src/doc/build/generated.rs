@@ -166,25 +166,20 @@ impl Ui {
             at += length;
         }
         // `::first-letter`: the first typographic letter unit, with the
-        // punctuation before it, of the text including `::before`.
-        if let Some(style) = &g.first_letter {
-            let chars: Vec<char> = full.chars().collect();
-            let lead = chars
-                .iter()
-                .take_while(|c| c.is_ascii_punctuation() || c.is_whitespace())
-                .count();
-            if lead < chars.len() {
-                let style = self.pseudo_style(style, r);
-                spans.push((
-                    crate::TextSpan {
-                        name: "::first-letter".into(),
-                        position: 0,
-                        length: lead as u32 + 1,
-                        properties: Default::default(),
-                    },
-                    style,
-                ));
-            }
+        // punctuation around it, of the text including `::before`.
+        if let Some(style) = &g.first_letter
+            && let Some((start, end)) = og_i18n::text::first_letter(&full)
+        {
+            let style = self.pseudo_style(style, r);
+            spans.push((
+                crate::TextSpan {
+                    name: "::first-letter".into(),
+                    position: start as u32,
+                    length: (end - start) as u32,
+                    properties: Default::default(),
+                },
+                style,
+            ));
         }
         // `::first-line`: the characters of the first line as the last
         // layout broke it (the whole text before the first). The line moves

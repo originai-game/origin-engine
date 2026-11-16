@@ -155,6 +155,96 @@ h3::before { content: counter(sec, upper-roman) ". "; }
     }
 }
 
+/// The text runs drawn inside element `id` with their ink and size, top
+/// to bottom and left to right.
+fn inked(d: &Doc, id: &str) -> Vec<(String, [f32; 4], f32)> {
+    let r = d.get(id);
+    let mut out: Vec<(f32, f32, String, [f32; 4], f32)> =
+        d.ui.frame()
+            .items
+            .iter()
+            .filter_map(|it| match it.cmd.unstyled() {
+                DrawCmd::Text {
+                    text,
+                    x,
+                    baseline,
+                    bounds,
+                    size,
+                    color,
+                    ..
+                } if (r.y..r.y + r.height).contains(&(bounds.y + bounds.height / 2.0))
+                    && (r.x - 0.5..r.x + r.width + 0.5).contains(&bounds.x) =>
+                {
+                    Some((*baseline, *x, text.clone(), *color, *size))
+                }
+                _ => None,
+            })
+            .collect();
+    out.sort_by(|a, b| a.0.total_cmp(&b.0).then(a.1.total_cmp(&b.1)));
+    out.into_iter().map(|(_, _, t, c, s)| (t, c, s)).collect()
+}
+
+/// CSS Pseudo-Elements 4 §2.2: `::first-letter` styles the first
+/// typographic letter unit (a grapheme cluster that is a letter, number
+/// or symbol) with the punctuation (Ps, Pe, Pi, Pf, Po) before and after
+/// it, of the text with its `::before`: “¿Q of “¿Qué?”, (1) of (1),
+/// e with its combining acute of étude, and "A." of a `::before` "A. ";
+/// a text that starts with a dash (Pd) has none. Its color and font-size
+/// draw that run only. §2.1: `::first-line` styles the first line as the
+/// line breaks: three words of six at 100 px, the same words as the
+/// unstyled twin's first line, the rest in the element's ink.
+/// `::before`'s and the element's own colors draw too.
+///
+/// Ways it could fail: the pseudo-elements' runs replaced by a plain
+/// label (one run in the element's ink), the letter cut before the
+/// opening quote or the combining mark, closing punctuation left out,
+/// a dash taken as a letter, or the first line's style on every line.
+#[test]
+fn first_letter_and_first_line_style_their_runs() {
+    let mut d = doc(
+        "<p id=\"Q\">\u{201C}\u{BF}Qu\u{E9}?\u{201D} dijo</p><p id=\"N\">(1) item</p>
+<p id=\"M\">e\u{301}tude</p><p id=\"D\">- dash</p><p id=\"B\">x</p><p id=\"F\">Big</p>
+<p id=\"L\">one two three four five six</p><p id=\"T\">one two three four five six</p>",
+        "p::first-letter { color: #ff0000; } #F::first-letter { font-size: 28px; }
+#B { color: #0000ff; } #B::before { content: \"A. \"; color: #00ff00; }
+#L, #T { width: 100px; } #T::first-letter { color: inherit; } #L::first-letter { color: inherit; }
+#L::first-line { color: #00ff00; }",
+    );
+    d.step(InputFrame::default());
+    let red = Srgba::rgb(255, 0, 0);
+    let letter = |id: &str| -> String {
+        inked(&d, id)
+            .iter()
+            .filter(|(_, c, _)| near(*c, red))
+            .map(|(t, ..)| t.as_str())
+            .collect()
+    };
+    assert_eq!(letter("Q"), "\u{201C}\u{BF}Q");
+    assert_eq!(letter("N"), "(1)");
+    // A shaped cluster's command keeps its first character; the mark is
+    // drawn with it, not in the next run.
+    assert_eq!(letter("M"), "e");
+    assert_eq!(inked(&d, "M")[1].0, "tude");
+    assert_eq!(letter("D"), "");
+    assert_eq!(letter("B"), "A.");
+    let b = inked(&d, "B");
+    assert!(near(b[1].1, Srgba::rgb(0, 255, 0)), "::before after its first letter: {b:?}");
+    assert!(near(b[2].1, Srgba::rgb(0, 0, 255)), "the element's own ink: {b:?}");
+    let f = inked(&d, "F");
+    assert_eq!((f[0].0.as_str(), f[0].2), ("B", 28.0));
+    assert_eq!((f[1].0.as_str(), f[1].2), ("ig", 14.0));
+    let twin: Vec<String> = lines(&d, "T").into_iter().map(|l| l.text).collect();
+    assert_eq!(twin.len(), 2, "{twin:?}");
+    let l = inked(&d, "L");
+    let green: String = l
+        .iter()
+        .filter(|(_, c, _)| near(*c, Srgba::rgb(0, 255, 0)))
+        .map(|(t, ..)| t.as_str())
+        .collect();
+    assert_eq!(green.trim_end(), twin[0].trim_end());
+    assert!(!near(l.last().unwrap().1, Srgba::rgb(0, 255, 0)), "{l:?}");
+}
+
 /// CSS Lists 3 §3.3: `list-style-type` takes a counter style or a
 /// string, and CSS Counter Styles 3 §6.1's `symbols()` declares an
 /// anonymous one (`symbolic` by default, an empty prefix, a space for

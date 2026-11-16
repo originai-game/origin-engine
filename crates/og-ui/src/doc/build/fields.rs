@@ -28,7 +28,13 @@ pub struct RenderFields {
     art: Option<String>,
     /// Hidden by something other than the document's `display`.
     hidden: bool,
+    /// A text's runs with its generated content (`::before`, `::after`,
+    /// `::first-letter`, `::first-line`), as its build made them.
+    pub generated: Option<std::sync::Arc<GeneratedRuns>>,
 }
+
+/// A text with its generated content, and the runs that style it.
+pub type GeneratedRuns = (String, Vec<(crate::TextSpan, crate::TextSpanStyle)>);
 
 impl RenderFields {
     pub fn capture(
@@ -58,6 +64,7 @@ impl RenderFields {
             texture,
             art: (kind == Some(Kind::Art)).then(|| ui.docs.last_art_path()),
             hidden: node.hidden,
+            generated: None,
         }
     }
 }
@@ -601,7 +608,17 @@ impl Ui {
                     }
                     None => base,
                 };
-                if r.get("spans").is_none()
+                if let Some(g) = &base.generated {
+                    let (text, runs) = &**g;
+                    let spans: Vec<crate::TextSpan> =
+                        runs.iter().map(|(span, _)| span.clone()).collect();
+                    self.apply_text_spans(i, text, &spans, r.rich_desc(&desc), |span| {
+                        runs.iter()
+                            .find(|(s, _)| s == span)
+                            .map(|(_, style)| style.clone())
+                            .unwrap_or_default()
+                    });
+                } else if r.get("spans").is_none()
                     && let Some((span, style)) = r.css_span(&base.text)
                 {
                     self.apply_text_spans(

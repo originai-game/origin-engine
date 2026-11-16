@@ -1,0 +1,8 @@
+{
+  "fixed": [
+    {
+      "member": "CSS ::first-letter, ::first-line, ::before and ::after styles",
+      "summary": "A text's pseudo-element styles draw: ::first-letter, ::first-line, ::before and ::after colours, fonts and decorations were replaced by the element's plain style once its CSS fields applied. ::first-letter takes the first letter, number or symbol with the Unicode punctuation around it (“¿Q, (1)) and a base with its combining marks, as CSS Pseudo-Elements 4 §2.2 says; it took only ASCII punctuation before a single character."
+    }
+  ]
+}

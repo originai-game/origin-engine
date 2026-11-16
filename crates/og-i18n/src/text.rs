@@ -194,6 +194,60 @@ pub fn takes_emphasis(cluster: &str) -> bool {
     !matches!(gc, G::Control | G::Format | G::Unassigned)
 }
 
+/// CSS Pseudo-Elements 4 §2.2's `::first-letter` of a text that starts a
+/// line: its character range `[start, end)`. It is the first typographic
+/// letter unit, a grapheme cluster that is a letter, number or symbol,
+/// with the punctuation (Ps, Pe, Pi, Pf, Po) before and after it and the
+/// spaces (Zs) between them; white space before it is not part of it.
+/// `None` when the text starts with anything else, such as a dash.
+pub fn first_letter(text: &str) -> Option<(usize, usize)> {
+    use icu_properties::CodePointMapData;
+    use icu_properties::props::{GeneralCategory, GeneralCategoryGroup as G};
+    let categories = CodePointMapData::<GeneralCategory>::new();
+    let chars: Vec<char> = text.chars().collect();
+    let clusters = graphemes(text);
+    let first = |k: usize| categories.get(chars[clusters[k].0]);
+    let punctuation = |k: usize| {
+        [
+            G::OpenPunctuation,
+            G::ClosePunctuation,
+            G::InitialPunctuation,
+            G::FinalPunctuation,
+            G::OtherPunctuation,
+        ]
+        .iter()
+        .any(|g| g.contains(first(k)))
+    };
+    let space = |k: usize| G::SpaceSeparator.contains(first(k));
+    let letter = |k: usize| [G::Letter, G::Number, G::Symbol].iter().any(|g| g.contains(first(k)));
+    let mut k = 0;
+    while k < clusters.len() && chars[clusters[k].0].is_whitespace() {
+        k += 1;
+    }
+    let start = clusters.get(k)?.0;
+    let mut j = k;
+    while j < clusters.len() && (punctuation(j) || (j > k && space(j))) {
+        j += 1;
+    }
+    if j == clusters.len() || !letter(j) {
+        return None;
+    }
+    let mut end = clusters[j].1;
+    // Punctuation after it, with the spaces between.
+    let mut m = j + 1;
+    loop {
+        while m < clusters.len() && space(m) {
+            m += 1;
+        }
+        if m < clusters.len() && punctuation(m) {
+            end = clusters[m].1;
+            m += 1;
+        } else {
+            return Some((start, end));
+        }
+    }
+}
+
 /// A text's grapheme clusters (UAX #29, extended, `icu_segmenter`):
 /// character ranges `[start, end)`, a base with its combining marks, an
 /// emoji with its modifiers and joiners, a Hangul syllable of jamo, an
