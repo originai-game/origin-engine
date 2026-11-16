@@ -746,7 +746,9 @@ impl Ui {
     /// The `::part()` rules that reach the part `part` of a control
     /// document from outside it (docs/ui.md §2.4): the style's and those
     /// of the document `host` stands in, matched against the host's facts
-    /// and ranked one shadow boundary in (depth +1), in cascade order.
+    /// and ranked `depth` shadow boundaries in (+1 for the part's own
+    /// host, one more for each `exportparts` it is exported through), in
+    /// cascade order.
     /// A selector that reads the host's siblings or descendants is not
     /// matched here yet.
     pub(crate) fn control_part_rules(
@@ -756,6 +758,7 @@ impl Ui {
         part: &str,
         attributes: &BTreeMap<String, Value>,
         states: &BTreeSet<crate::bind::InteractionState>,
+        depth: i8,
     ) -> Vec<crate::doc::StyleRule> {
         let merged = (!document.part_rules.is_empty())
             .then(|| self.document_part_rules(&document.name, document));
@@ -793,7 +796,7 @@ impl Ui {
                     })
             })
             .map(|rule| crate::doc::StyleRule {
-                depth: 1,
+                depth,
                 condition: None,
                 structure: None,
                 ..rule.clone()

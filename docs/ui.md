@@ -1290,7 +1290,12 @@ element, the one with more tests is its control. Its contract:
   keeps its name for as long as the control exists; where CSS names the
   box with a standard pseudo-element (`::backdrop`, `::details-content`,
   `::picker(select)`, `::placeholder`, `::selection`) the control takes
-  the standard name alone.
+  the standard name alone. A control written inside a control document
+  makes parts of its own inside parts of that document's host with
+  `exportparts` (CSS Shadow Parts §4.2): `<progress
+  exportparts="fill: bar-fill">` in the meter's document lets a page
+  write `meter::part(bar-fill)`. Only a control in a control document
+  exports; a component instance exports nothing.
 - **Rank.** The document's own rules style its elements at depth 0
   (§3.2), in the `og-components` layer. A `::part()` rule of the default
   style, a pack or the document the host stands in reaches a part at
@@ -1637,7 +1642,9 @@ first:
 2. the control document's own rules for the part (depth 0, in
    `og-components`);
 3. the `::part()` rules that reach it from outside (depth +1): the
-   style's and a pack's, then those of the document its host stands in.
+   style's and a pack's, then those of the document its host stands in;
+   through each `exportparts` its host is exported by, one depth more
+   (a page's `meter::part(bar-fill)` on the bar inside a meter, +2).
 
 `revert-layer` in a rule rolls back the layers of that rule's own depth
 and then falls to the depth below, so a style's

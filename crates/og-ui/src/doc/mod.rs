@@ -606,6 +606,44 @@ impl DocNode {
                 _ => None,
             })
     }
+
+    /// The parts of this control's inside that are parts of the host of
+    /// the control document it is written in too (`exportparts`, CSS
+    /// Shadow Parts §4.2): each inner name with the name it takes there.
+    pub fn exported_parts(&self) -> Vec<(String, String)> {
+        self.selector_attrs
+            .iter()
+            .find(|(name, _)| name == "exportparts")
+            .and_then(|(_, value)| match value {
+                Expr::Lit(serde_json::Value::String(s)) => part_mappings(s).ok(),
+                _ => None,
+            })
+            .unwrap_or_default()
+    }
+}
+
+/// A part mapping list (`fill, track: bar-track`, CSS Shadow Parts §4.2):
+/// each inner part name with the outer name it is exported as.
+pub(crate) fn part_mappings(text: &str) -> Result<Vec<(String, String)>, String> {
+    if text.trim().is_empty() {
+        return Ok(Vec::new());
+    }
+    let name = |s: &str| {
+        let s = s.trim();
+        matches!(css::tokens(s).as_deref(), Ok([css::Tok::Ident(_)])).then(|| s.to_owned())
+    };
+    text.split(',')
+        .map(|mapping| {
+            let (inner, outer) = mapping.split_once(':').unwrap_or((mapping, mapping));
+            match (name(inner), name(outer)) {
+                (Some(inner), Some(outer)) => Ok((inner, outer)),
+                _ => Err(format!(
+                    "exportparts lists part names, each one renamed or not: `fill, track: bar-track`, not `{}`",
+                    mapping.trim()
+                )),
+            }
+        })
+        .collect()
 }
 
 /// One run of a text element's inline content.

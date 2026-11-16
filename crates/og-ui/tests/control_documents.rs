@@ -13,6 +13,10 @@
 //! - a control held by a control document gets no inside of its own, or
 //!   the holding document's rules do not reach it
 //!   → `a_control_document_nests_another_control`
+//! - a nested control's part reaches the page without `exportparts`, under
+//!   its inner name, or loses to the holding document's own rule for it;
+//!   a renamed part still answers to its inner name outside
+//!   → `exportparts_makes_a_nested_part_the_outer_hosts`
 //!
 //! Instance state (docs/ui.md §2 Components in documents):
 //! - two instances share one value, or `bind:` does not write it
@@ -318,4 +322,111 @@ fn a_separator_is_drawn_by_the_default_styles_rule() {
     assert!(fills.contains(&Srgba::rgb(255, 0, 0).linear()), "{fills:?}");
     assert_eq!(painted(&d, "Post").0, (1.0, 40.0));
     assert_eq!(d.a11y("Line").role, "separator");
+}
+
+/// A game's meter drawn with a progress bar, which exports the bar's fill
+/// under `exported`.
+fn meter_exporting(exported: &str) -> Ui {
+    meter_with(exported, "#00ff00")
+}
+
+/// The same, with the meter document's own fill `fill`.
+fn meter_with(exported: &str, fill: &str) -> Ui {
+    let meter = format!(
+        r#"<meta name="control" content="meter">
+<meta name="parts" content="frame">
+<meta name="prop:value" content="number">
+<meta name="prop:max" content="number" data-default="1">
+<div id="Frame" part="frame"><progress id="Bar" value={{value / max}} {exported}></progress></div>
+<style>
+:host {{ display: block; inline-size: 200px; }}
+progress {{ block-size: 10px; }}
+progress::part(fill) {{ border-radius: 0; background: {fill}; }}
+</style>"#
+    );
+    let mut ui = with_control("progress");
+    let doc = ui
+        .parse_document("ui/controls/meter.svelte", &meter, Vec::new())
+        .unwrap_or_else(|e| panic!("{e:?}"));
+    ui.define_document(doc);
+    ui
+}
+
+/// The colours painted in the bar's fill under a page whose `<style>`
+/// is `css`.
+fn fill_colours(ui: Ui, css: &str) -> Vec<[f32; 4]> {
+    let text = format!(
+        r#"<meta name="component" content="t">
+<div id="Form"><meter id="M" value={{$v}} max="100"></meter></div>
+<style>
+#Form {{ width: 400px; }}
+{css}
+</style>"#
+    );
+    let mut d = Doc::mounted(ui, &text, &[("v", json!(50))]);
+    d.step(InputFrame::default());
+    let fill = d.get("M/Frame/Bar/Track/Fill");
+    fills_in(&d.ui, Rect::new(fill.x, fill.y, fill.width, fill.height))
+}
+
+#[test]
+fn exportparts_makes_a_nested_part_the_outer_hosts() {
+    let (red, blue, green) = (
+        Srgba::rgb(255, 0, 0).linear(),
+        Srgba::rgb(0, 0, 255).linear(),
+        Srgba::rgb(0, 255, 0).linear(),
+    );
+    let page =
+        "meter::part(bar-fill) { background: #ff0000; } meter::part(fill) { background: #0000ff; }";
+    // Not exported: the page reaches the meter's own parts only, and the
+    // meter document's rule paints the bar it holds.
+    let fills = fill_colours(meter_exporting(""), page);
+    assert!(
+        fills.contains(&green) && !fills.contains(&red) && !fills.contains(&blue),
+        "{fills:?}"
+    );
+    // Exported under another name: the page reaches it by that name,
+    // over the meter document's own rule, and not by the inner name.
+    let fills = fill_colours(meter_exporting(r#"exportparts="fill: bar-fill""#), page);
+    assert!(fills.contains(&red) && !fills.contains(&blue), "{fills:?}");
+    // Exported as it is named, beside another part under another name,
+    // which is that part's alone.
+    let fills = fill_colours(
+        meter_exporting(r#"exportparts="fill, track: bar-track""#),
+        "meter::part(fill) { background: #0000ff; } meter::part(bar-track) { background: #ff0000; }",
+    );
+    assert!(fills.contains(&blue) && !fills.contains(&red), "{fills:?}");
+    // `!important` reverses the rank (CSS Cascade 5 §6.1): the meter
+    // document's important rule wins over the page's.
+    let ui = meter_with(r#"exportparts="fill""#, "#00ff00 !important");
+    let fills = fill_colours(ui, "meter::part(fill) { background: #0000ff !important; }");
+    assert!(
+        fills.contains(&green) && !fills.contains(&blue),
+        "{fills:?}"
+    );
+    // The page's rule is one boundary further out than the meter
+    // document's: it wins whatever the specificity of either.
+    let fills = fill_colours(
+        meter_exporting(r#"exportparts="fill""#),
+        ":where(meter)::part(fill) { background: #0000ff; }",
+    );
+    assert!(fills.contains(&blue), "{fills:?}");
+}
+
+#[test]
+fn exportparts_is_read_where_a_part_can_be_exported() {
+    let mut ui = with_control("progress");
+    let refused = |ui: &mut Ui, text: &str| {
+        let errors = ui
+            .parse_document("ui/t.svelte", text, Vec::new())
+            .expect_err(text);
+        errors.join("\n")
+    };
+    let screen =
+        r#"<meta name="component" content="t"><div><progress exportparts="fill"></progress></div>"#;
+    assert!(refused(&mut ui, screen).contains("control document"));
+    let instance = r#"<meta name="control" content="meter"><div><Bar exportparts="fill"/></div>"#;
+    assert!(refused(&mut ui, instance).contains("component instance"));
+    let list = r#"<meta name="control" content="meter"><div><progress exportparts="fill: :x"></progress></div>"#;
+    assert!(refused(&mut ui, list).contains("part names"));
 }

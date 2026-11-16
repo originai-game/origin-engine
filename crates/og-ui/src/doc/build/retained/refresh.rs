@@ -748,23 +748,42 @@ impl RetainedHost {
                     }),
             );
         }
+        // A part is reached from its host's document, and from each
+        // document further out that its host exports it to (`exportparts`,
+        // CSS Shadow Parts §4.2), one boundary deeper each time.
         if own.document.control.is_some()
             && let Some(part) = own.document.nodes[own.index].part_name()
-            && let Some(host) = own.context.selector_nodes.get(&crate::doc::HOST_NODE)
-            && let (Some(element), Some(facts)) =
-                (self.elements.get(host), self.topology.node(host))
         {
-            let tag = element.document.nodes[element.index]
-                .selector_tag
-                .as_deref()
-                .unwrap_or_default();
-            reaching.extend(ui.control_part_rules(
-                &element.document,
-                tag,
-                part,
-                facts.attributes,
-                facts.states,
-            ));
+            let mut names: Vec<String> = part.split_ascii_whitespace().map(str::to_owned).collect();
+            let mut inside = own;
+            let mut depth = 1;
+            while !names.is_empty()
+                && inside.document.control.is_some()
+                && let Some(host) = inside.context.selector_nodes.get(&crate::doc::HOST_NODE)
+                && let (Some(element), Some(facts)) =
+                    (self.elements.get(host), self.topology.node(host))
+            {
+                let node = &element.document.nodes[element.index];
+                let tag = node.selector_tag.as_deref().unwrap_or_default();
+                for name in &names {
+                    reaching.extend(ui.control_part_rules(
+                        &element.document,
+                        tag,
+                        name,
+                        facts.attributes,
+                        facts.states,
+                        depth,
+                    ));
+                }
+                names = node
+                    .exported_parts()
+                    .into_iter()
+                    .filter(|(inner, _)| names.contains(inner))
+                    .map(|(_, outer)| outer)
+                    .collect();
+                inside = element;
+                depth += 1;
+            }
         }
         let e = self.elements.get_mut(identity).unwrap();
         // An instance's root inherits the instance's style props as if a
@@ -1012,16 +1031,16 @@ impl RetainedHost {
         self.elements.get_mut(identity).unwrap().theme_epoch = self.theme_epoch;
         self.topology.set_text(identity, text)?;
         self.topology.style_resolved(identity)?;
-        // The parts of its control document match `::part()` rules by
-        // its facts: they are styled again after it.
+        // The parts of its control document, and those of nested controls
+        // that may be exported to it, match `::part()` rules by its facts:
+        // they are styled again after it.
         if let Some(root) = self.elements[identity].control.clone() {
-            let control = self.elements[&root].document.clone();
             let mut pending = vec![root];
             while let Some(at) = pending.pop() {
                 let Some(element) = self.elements.get(&at) else {
                     continue;
                 };
-                if Arc::ptr_eq(&element.document, &control)
+                if element.document.control.is_some()
                     && element.document.nodes[element.index].part_name().is_some()
                 {
                     self.dirty.insert(at.clone());

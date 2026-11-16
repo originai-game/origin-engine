@@ -88,6 +88,7 @@ pub(crate) fn parse_with_pack(
             aria_refs_for: Vec::new(),
             white_space: None,
             inline_element: false,
+            exportparts: None,
         };
         let mut script = false;
         let mut window = None;
@@ -137,6 +138,14 @@ pub(crate) fn parse_with_pack(
         }
         if p.doc.root == NONE {
             return Err((0, "add one root UI element".into()));
+        }
+        if let Some(at) = p.exportparts
+            && p.doc.control.is_none()
+        {
+            return Err((
+                at,
+                "exportparts is written in a control document, on a control its inside holds: elsewhere there is no host to export a part to".into(),
+            ));
         }
         if let Some((n, _)) = p
             .doc
@@ -574,6 +583,9 @@ struct Parser {
     /// The next element `element_node` reads is an inline element of a
     /// text ([`Kind::Inline`]).
     inline_element: bool,
+    /// Where the first `exportparts` is written, checked once the
+    /// document is known to be a control's.
+    exportparts: Option<usize>,
 }
 /// A `<datalist>`: its id, its options' values and labels, and its bound
 /// `items`.

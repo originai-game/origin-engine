@@ -593,6 +593,30 @@ impl Parser {
                 request.push(("integrity".to_string(), a.value.clone(), a.at));
                 continue;
             }
+            // `exportparts` (CSS Shadow Parts §4.2): a control written in a
+            // control document makes parts of its own inside parts of that
+            // document's host too. Read where parts are matched.
+            if a.name == "exportparts" {
+                // A component is styled through what it declares, never
+                // from outside by selector (docs/ui.md §3.2).
+                if component {
+                    return Err((
+                        a.at,
+                        format!(
+                            "<{tag}> is a component instance: a component exports no part; pass it a prop or set a custom property on it"
+                        ),
+                    ));
+                }
+                if a.bound {
+                    return Err((
+                        a.at,
+                        "exportparts is a literal: exportparts=\"fill, track: bar-track\"".into(),
+                    ));
+                }
+                super::super::part_mappings(&a.value).map_err(|e| (a.at, e))?;
+                self.exportparts.get_or_insert(a.at);
+                continue;
+            }
             if a.name == "id" {
                 if a.bound || a.value.is_empty() || a.value.contains(['/', '#']) {
                     return Err((
