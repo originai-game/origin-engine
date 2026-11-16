@@ -30,6 +30,11 @@
 //!   list, its overrides or base dropped, an index past the font's
 //!   palettes not falling back to the first, or a palette not inherited →
 //!   `font_palette_draws_a_colour_face_in_the_palette_css_picks`
+//! - `palette-mix()` mixing in the wrong space or ignoring its
+//!   percentages, `normal` in a mix not the font's first palette, a
+//!   `font-palette` animation flipping at 50% instead of mixing in OKLab,
+//!   or an animated palette's text blank while each frame's font is made →
+//!   `font_palettes_mix_and_animate_entry_by_entry`
 //! - `ui-monospace` or `ui-rounded` drawn in a face standing in for the
 //!   role where the style has none of its own instead of going on down the
 //!   list, `ui-serif` or `math` taken as the body face ahead of a later
@@ -658,5 +663,85 @@ fn generic_families_take_the_style_faces_that_suit_them() {
         ("Always", 1),
     ] {
         assert_eq!(face_of(&plain, id), h(want), "#{id} in body-only fonts");
+    }
+}
+
+/// CSS Fonts 4 §9.1: `palette-mix()` mixes its palettes entry by entry as
+/// `color-mix()` mixes colours (`normal` in it is the font's first
+/// palette), and `font-palette` animates by such a mix in OKLab. A palette
+/// that moves every frame makes an instance every frame; until the host
+/// makes one's font, its text draws with the nearest one made.
+#[test]
+fn font_palettes_mix_and_animate_entry_by_entry() {
+    let pal = face(PALETTE, 8);
+    let file = pal.metrics.file.clone().expect("its file");
+    let mut d = doc(
+        vec![family("Pal", (400, 400), pal)],
+        r#"<p id="Mix">AB</p><p id="Normal">AB</p><p id="Half">AB</p><p id="Run">AB</p>"#,
+        r#"#Root { font-family: "Pal"; }
+@keyframes swap { from { font-palette: light; } to { font-palette: dark; } }
+#Mix { font-palette: palette-mix(in srgb, light 25%, dark); }
+#Normal { font-palette: palette-mix(in srgb, normal, dark); }
+#Half { animation: swap 1000ms linear -500ms paused; }
+#Run { animation: swap 1000ms linear infinite; }"#,
+    );
+    let mut made: Vec<std::sync::Arc<og_ui::shape::FontFile>> = Vec::new();
+    let make = |made: &mut Vec<_>| {
+        for f in file.take_instances() {
+            f.set_handle(FontHandle::from_index(100 + made.len()));
+            made.push(f);
+        }
+    };
+    make(&mut made);
+    d.step(InputFrame::default());
+    // The palette each text is drawn in, 8-bit.
+    let palette_of = |d: &Doc, made: &[std::sync::Arc<og_ui::shape::FontFile>], id: &str| {
+        let t = drawn(d, id);
+        assert!(!t.is_empty(), "#{id} draws");
+        let instance = made
+            .iter()
+            .find(|f| f.handle() == Some(t[0].font))
+            .unwrap_or_else(|| panic!("#{id} in an instance"));
+        instance
+            .palette()
+            .expect("in a palette")
+            .iter()
+            .map(|c| c.map(|v| (v * 255.0).round() as u8))
+            .collect::<Vec<_>>()
+    };
+    let near = |got: Vec<[u8; 4]>, want: [[u8; 3]; 2]| {
+        got.len() == 2 && got.iter().zip(want).all(|(g, w)| near_rgb(*g, w))
+    };
+    // light is blue and yellow, dark white and black, normal red and green.
+    let mix = palette_of(&d, &made, "Mix");
+    assert!(near(mix.clone(), [[191, 191, 255], [64, 64, 0]]), "{mix:?}");
+    let normal = palette_of(&d, &made, "Normal");
+    assert!(
+        near(normal.clone(), [[255, 128, 128], [0, 128, 0]]),
+        "{normal:?}"
+    );
+    // Halfway in OKLab: in sRGB it would be 128, 128, 255 and 128, 128, 0.
+    let half = palette_of(&d, &made, "Half");
+    assert!(
+        near(half.clone(), [[116, 163, 255], [99, 99, 0]]),
+        "{half:?}"
+    );
+    // A running one makes a new instance each frame; each frame draws
+    // with one already made while the new one's font waits.
+    for _ in 0..3 {
+        make(&mut made);
+        d.step(InputFrame::default());
+        let before = made.len();
+        let fresh = file.take_instances();
+        assert!(!fresh.is_empty(), "the palette moved");
+        let font = drawn(&d, "Run")[0].font;
+        assert!(
+            made[..before].iter().any(|f| f.handle() == Some(font)),
+            "drawn with a made instance's font"
+        );
+        for f in fresh {
+            f.set_handle(FontHandle::from_index(100 + made.len()));
+            made.push(f);
+        }
     }
 }

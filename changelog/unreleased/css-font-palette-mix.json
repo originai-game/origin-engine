@@ -1,0 +1,8 @@
+{
+  "added": [
+    {
+      "member": "ui",
+      "summary": "font-palette takes palette-mix() (CSS Fonts 4 \u00a79.1), mixing palettes entry by entry as color-mix() mixes colours, and font-palette transitions and @keyframes interpolate through it in OKLab. An instance (a variable location or a palette) whose font the host has not made yet draws with the nearest one made instead of blank, so an animated palette or axis stays on screen."
+    }
+  ]
+}

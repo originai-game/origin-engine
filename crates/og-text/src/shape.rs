@@ -94,12 +94,30 @@ pub enum PaletteBase {
     Dark,
 }
 
-/// A colour face's palette (CSS Fonts 4 §9): a CPAL palette and the
-/// entries `override-colors` replaces, each an index and straight sRGB.
+/// A colour face's palette (CSS Fonts 4 §9).
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
-pub struct PaletteSpec {
-    pub base: PaletteBase,
-    pub overrides: Vec<(u16, [u8; 4])>,
+pub enum PaletteSpec {
+    /// A CPAL palette and the entries `override-colors` replaces, each an
+    /// index and straight sRGB.
+    Cpal {
+        base: PaletteBase,
+        overrides: Vec<(u16, [u8; 4])>,
+    },
+    /// `palette-mix()`: palettes, each with its percentage in tenths if
+    /// it was given, whose entries mix one by one as `color-mix()` mixes
+    /// colours in `method` (what follows `in`: `oklab`, `oklch longer hue`).
+    Mix {
+        method: String,
+        items: Vec<(PaletteSpec, Option<u16>)>,
+    },
+}
+
+impl PaletteSpec {
+    /// The font's first palette as it is (`normal` within a mix).
+    pub const FIRST: PaletteSpec = PaletteSpec::Cpal {
+        base: PaletteBase::Index(0),
+        overrides: Vec::new(),
+    };
 }
 
 /// A text's palette (CSS `font-palette`), interned as [`Variations`] is so
@@ -134,8 +152,10 @@ impl Palette {
     }
 }
 
-/// An instance's normalised coordinates' bits and its palette's id.
-type InstanceKey = (Vec<i16>, u32);
+/// An instance's normalised coordinates' bits and its palette's colours,
+/// straight 8-bit sRGB (empty: the cooked palette). Palettes that come to
+/// the same colours, as an animated palette's frames often do, share one.
+type InstanceKey = (Vec<i16>, Vec<[u8; 4]>);
 
 /// One axis of a variable font: its tag, and its minimum, default and
 /// maximum in user space.
@@ -515,8 +535,25 @@ impl FontFile {
     /// `spec`'s colours in this font, straight sRGB 0 to 1 (`None`: it
     /// has no CPAL palette). A base index past its palettes takes its
     /// first, as does `light` or `dark` where it marks none; an override
-    /// past the palette's entries is ignored (CSS Fonts 4 §9.1).
+    /// past the palette's entries is ignored (CSS Fonts 4 §9.1). A mix
+    /// mixes each entry of its palettes as `color-mix()` mixes colours.
     pub fn colours(&self, spec: &PaletteSpec) -> Option<Vec<[f32; 4]>> {
+        let (base, overrides) = match spec {
+            PaletteSpec::Cpal { base, overrides } => (*base, overrides),
+            PaletteSpec::Mix { method, items } => {
+                let palettes = items
+                    .iter()
+                    .map(|(s, p)| Some((self.colours(s)?, p.map(|p| f32::from(p) / 10.0))))
+                    .collect::<Option<Vec<_>>>()?;
+                let entries = palettes.iter().map(|(c, _)| c.len()).min()?;
+                return (0..entries)
+                    .map(|i| {
+                        let entry: Vec<_> = palettes.iter().map(|(c, p)| (c[i], *p)).collect();
+                        og_css::color::mix_srgb(method, &entry).ok()
+                    })
+                    .collect();
+            }
+        };
         let face = skrifa::FontRef::new(&self.ttf).ok()?;
         let palettes = face.color_palettes();
         let n = palettes.len();
@@ -528,7 +565,7 @@ impl FontFile {
                     .is_some_and(|t| t.bits() & bits != 0)
             })
         };
-        let index = match spec.base {
+        let index = match base {
             PaletteBase::Index(i) if i < n => i,
             PaletteBase::Index(_) => 0,
             PaletteBase::Light => marked(1).unwrap_or(0),
@@ -540,7 +577,7 @@ impl FontFile {
             .iter()
             .map(|c| [c.red, c.green, c.blue, c.alpha].map(|v| f32::from(v) / 255.0))
             .collect();
-        for &(i, c) in &spec.overrides {
+        for &(i, c) in overrides {
             if let Some(e) = out.get_mut(usize::from(i)) {
                 *e = c.map(|v| f32::from(v) / 255.0);
             }
@@ -575,13 +612,18 @@ impl FontFile {
                 coords.clear();
             }
         }
-        let colours = spec.and_then(|s| self.colours(&s));
+        // Painted in 8-bit colours, so an instance is too.
+        let colours: Option<Vec<[u8; 4]>> = spec.and_then(|s| self.colours(&s)).map(|c| {
+            c.iter()
+                .map(|c| c.map(|v| (v * 255.0).round() as u8))
+                .collect()
+        });
         if coords.is_empty() && colours.is_none() {
             return self.clone();
         }
         let key = (
             coords.iter().map(|c| c.to_bits()).collect::<Vec<i16>>(),
-            if colours.is_some() { palette.0 } else { 0 },
+            colours.clone().unwrap_or_default(),
         );
         let Ok(mut made) = self.instances.lock() else {
             return self.clone();
@@ -604,7 +646,11 @@ impl FontFile {
                 (a.tag, v)
             })
             .collect();
-        let colours = colours.map(Arc::from);
+        let colours = colours.map(|c| {
+            c.iter()
+                .map(|c| c.map(|v| f32::from(v) / 255.0))
+                .collect::<Arc<[_]>>()
+        });
         let Some(f) = Self::read_at(self.ttf.clone(), self.runtime, variations, coords, colours)
         else {
             return self.clone();
@@ -614,6 +660,58 @@ impl FontFile {
             fresh.push(f.clone());
         }
         f
+    }
+
+    /// The instance of it to draw `instance` with while the host makes
+    /// `instance`'s own font: of those whose fonts are made, the nearest
+    /// to it, by location and then by palette (`None`: the file itself is
+    /// as near). An animated location or palette, which makes an instance
+    /// a frame, draws each frame with the last one's font rather than
+    /// with none.
+    pub fn stand_in(&self, instance: &FontFile) -> Option<Arc<FontFile>> {
+        let made = self.instances.lock().ok()?;
+        let (to_coords, to_colours) = made
+            .iter()
+            .find(|(_, f)| std::ptr::eq(&***f, instance))
+            .map(|(k, _)| k.clone())?;
+        let cooked: Vec<[u8; 4]> = self
+            .colours(&PaletteSpec::FIRST)
+            .unwrap_or_default()
+            .iter()
+            .map(|c| c.map(|v| (v * 255.0).round() as u8))
+            .collect();
+        let or_cooked = |c: &'_ [[u8; 4]]| {
+            if c.is_empty() {
+                cooked.clone()
+            } else {
+                c.to_vec()
+            }
+        };
+        let to_colours = or_cooked(&to_colours);
+        let distance = |(coords, colours): &InstanceKey| {
+            let n = coords.len().max(to_coords.len());
+            let at = |c: &[i16], i: usize| i32::from(c.get(i).copied().unwrap_or(0));
+            let moved: i32 = (0..n)
+                .map(|i| (at(coords, i) - at(&to_coords, i)).abs())
+                .sum();
+            let painted: i32 = or_cooked(colours)
+                .iter()
+                .zip(&to_colours)
+                .flat_map(|(a, b)| {
+                    a.iter()
+                        .zip(b)
+                        .map(|(a, b)| (i32::from(*a) - i32::from(*b)).abs())
+                })
+                .sum();
+            (moved, painted)
+        };
+        let own = distance(&(Vec::new(), Vec::new()));
+        made.iter()
+            .filter(|(_, f)| f.handle().is_some())
+            .map(|(k, f)| (distance(k), f))
+            .filter(|(d, _)| *d < own)
+            .min_by_key(|(d, _)| *d)
+            .map(|(_, f)| f.clone())
     }
 
     /// The instances made since the last call: the host makes each one's

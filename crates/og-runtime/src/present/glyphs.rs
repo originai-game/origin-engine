@@ -884,7 +884,7 @@ mod tests {
             0,
             RuntimeFont::new(file.clone(), 48.0, 16.0, 0, Some(cooked)),
         );
-        let light = Palette::new(PaletteSpec {
+        let light = Palette::new(PaletteSpec::Cpal {
             base: PaletteBase::Light,
             overrides: Vec::new(),
         });

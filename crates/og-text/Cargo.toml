@@ -16,6 +16,8 @@ shaping = ["dep:harfrust"]
 
 [dependencies]
 og-core = { path = "../og-core" }
+# palette-mix(): each palette entry mixed as color-mix() mixes (og-css).
+og-css = { path = "../og-css" }
 # The glyph keys, placements and MSDF fonts text is drawn with.
 og-draw = { path = "../og-draw" }
 # Localization: text direction and shaped scripts (og-i18n).

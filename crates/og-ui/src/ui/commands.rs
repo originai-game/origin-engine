@@ -1165,17 +1165,21 @@ impl Ui {
         )
     }
 
-    /// Whether a node's text is in a variable face's instance whose font
-    /// the host has not made yet (`og_text::shape::FontFile::take_instances`):
-    /// it draws nothing until it has, so it is painted again each frame
-    /// ([`PaintCache::awaiting`](crate::layout::PaintCache)).
+    /// Whether a node's text is in an instance (a variable face's location
+    /// or a colour face's palette) whose font the host has not made yet
+    /// (`og_text::shape::FontFile::take_instances`): it draws with a
+    /// stand-in's font or nothing until it has, so it is painted again
+    /// each frame ([`PaintCache::awaiting`](crate::layout::PaintCache)).
     fn awaits_instance(&self, node: &crate::layout::Node) -> bool {
         let Content::Text(tc) = &*node.content else {
             return false;
         };
         let t = node.used_text(tc);
         let font = self.env.fonts.for_styled(t.font, t.query(), &t.text).0;
-        font.handle.is_none() && font.metrics.file.as_ref().is_some_and(|f| f.is_instance())
+        font.metrics
+            .file
+            .as_ref()
+            .is_some_and(|f| f.is_instance() && f.handle().is_none())
     }
 
     fn scroll_bar_commands(&self, s: usize, cmds: &mut Vec<DrawCmd>) {

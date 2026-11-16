@@ -924,13 +924,21 @@ impl Fonts {
         );
         let made = match self.family_lists.instances.get(&key) {
             Some(f) => f,
-            None => self.family_lists.instances.insert(
-                key,
-                Box::new(UiFont {
-                    handle: instance.handle(),
-                    metrics: font.metrics.at_instance(instance),
-                }),
-            ),
+            None => {
+                // Until the host makes its font, it draws with the nearest
+                // instance's that it has made, so an animated palette or
+                // axis keeps its text on screen between frames.
+                let handle = instance
+                    .handle()
+                    .or_else(|| file.stand_in(&instance).and_then(|f| f.handle()));
+                self.family_lists.instances.insert(
+                    key,
+                    Box::new(UiFont {
+                        handle,
+                        metrics: font.metrics.at_instance(instance),
+                    }),
+                )
+            }
         };
         Some(made)
     }

@@ -1847,9 +1847,16 @@ that background (else its first), and a `--name` takes the last
 `override-colors`; a name with no rule for the family is `normal`, the
 cooked palette. The text is drawn with an instance of the font in that
 palette, whose glyphs the host paints at run time from the frame after it
-first appears (that frame draws it blank). A font cooked without `runtime
-true` keeps its cooked palette. Palette transitions and `palette-mix()`
-are not supported.
+first appears; until then the text draws with the nearest instance made
+(by location, then by palette), or blank if there is none. A font cooked
+without `runtime true` keeps its cooked palette.
+
+`palette-mix([in <method>,] <palette> [<n>%], …)` mixes its palettes
+entry by entry as `color-mix()` mixes colours (OKLab when no method is
+named; `normal` in it is the font's first palette), and `font-palette`
+transitions and animates through such a mix in OKLab, so each frame of
+the move is a palette of its own. Instances are shared by their 8-bit
+colours.
 
 ## 4. Shipped catalogue
 

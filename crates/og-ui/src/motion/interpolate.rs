@@ -180,6 +180,17 @@ pub(crate) fn interpolate(property: &str, a: &str, b: &str, p: f32) -> Option<St
     }
     match property {
         "transform" => return transform(a, b, p),
+        // CSS Fonts 4 §9.1: palettes interpolate entry by entry, in OKLab.
+        "font-palette" => {
+            let pct = p.clamp(0.0, 1.0) * 100.0;
+            return Some(if pct <= 0.0 {
+                a.to_string()
+            } else if pct >= 100.0 {
+                b.to_string()
+            } else {
+                format!("palette-mix(in oklab, {a}, {b} {}%)", num(pct))
+            });
+        }
         "box-shadow" | "text-shadow" => {
             let (x, y) = shadow_pair(property, a, b)?;
             return Some(write(&lerp_list(property, &x, &y, p)?));

@@ -772,6 +772,25 @@ fn mix(space: Space, hue: HueDirection, items: Vec<(DynamicColor, Option<f32>)>)
     }
 }
 
+/// `color-mix(in <method>, …)` of straight sRGB colours (0 to 1), each with
+/// its percentage if it was given: what `palette-mix()` does to each of a
+/// palette's entries (CSS Fonts 4 §9.1). `method` is what follows `in`
+/// (`oklab`, `oklch longer hue`). The mix is clamped to sRGB.
+pub fn mix_srgb(method: &str, items: &[([f32; 4], Option<f32>)]) -> Result<[f32; 4], String> {
+    let (space, hue) = interpolation(&tokens(method)?)?;
+    let items = items
+        .iter()
+        .map(|&(c, p)| {
+            let c = color::AlphaColor::<color::Srgb>::new(c);
+            (DynamicColor::from_alpha_color(c), p)
+        })
+        .collect();
+    let c = mix(space, hue, items)
+        .to_alpha_color::<color::Srgb>()
+        .components;
+    Ok(c.map(|v| v.clamp(0.0, 1.0)))
+}
+
 /// `c` in `space`, ready for `color`'s interpolation there: a hue made
 /// missing where it is powerless (CSS Color 4 §12.4). `color` 0.3 takes a
 /// hue as powerless under an absolute chroma of 1e-6, which suits OKLCh

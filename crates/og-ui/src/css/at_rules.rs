@@ -552,26 +552,47 @@ impl Sheet {
     }
 
     /// The palette `font-palette: value` gives a text in `families`: `light`
-    /// and `dark` as they say, and a name as the last
-    /// `@font-palette-values` of that name whose `font-family` lists one
-    /// of the text's named families (none: `normal`, CSS Fonts 4 §9.2).
+    /// and `dark` as they say, a name as the last `@font-palette-values`
+    /// of that name whose `font-family` lists one of the text's named
+    /// families (none: `normal`, CSS Fonts 4 §9.2), and `palette-mix()`
+    /// its palettes' entries mixed as `color-mix()` mixes colours (§9.1;
+    /// in OKLab when it names no method).
     pub fn palette(
         &self,
         value: Option<&str>,
         families: Option<&[crate::FontFamily]>,
     ) -> crate::shape::Palette {
-        use crate::shape::{Palette, PaletteBase, PaletteSpec};
-        let plain = |base| {
-            Palette::new(PaletteSpec {
-                base,
-                overrides: Vec::new(),
-            })
+        use crate::shape::Palette;
+        let Some(value) = value.map(str::trim).filter(|v| *v != "normal") else {
+            return Palette::NONE;
         };
-        match value {
-            None | Some("normal") => Palette::NONE,
-            Some("light") => plain(PaletteBase::Light),
-            Some("dark") => plain(PaletteBase::Dark),
-            Some(name) => {
+        let spec = og_css::tokens(value)
+            .ok()
+            .and_then(|t| match t.as_slice() {
+                [t] => Some(self.palette_spec(t, families)),
+                _ => None,
+            })
+            .flatten();
+        spec.map_or(Palette::NONE, Palette::new)
+    }
+
+    /// One `font-palette` value as a palette (`None`: `normal`).
+    fn palette_spec(
+        &self,
+        t: &og_css::Tok,
+        families: Option<&[crate::FontFamily]>,
+    ) -> Option<crate::shape::PaletteSpec> {
+        use crate::shape::{PaletteBase, PaletteSpec};
+        use og_css::Tok;
+        let plain = |base| PaletteSpec::Cpal {
+            base,
+            overrides: Vec::new(),
+        };
+        match t {
+            Tok::Ident(w) if w == "normal" => None,
+            Tok::Ident(w) if w == "light" => Some(plain(PaletteBase::Light)),
+            Tok::Ident(w) if w == "dark" => Some(plain(PaletteBase::Dark)),
+            Tok::Ident(name) if name.starts_with("--") => {
                 let named = |f: &str| {
                     families.unwrap_or_default().iter().any(
                         |n| matches!(n, crate::FontFamily::Named(n) if n.eq_ignore_ascii_case(f)),
@@ -580,14 +601,41 @@ impl Sheet {
                 self.palettes
                     .iter()
                     .rev()
-                    .find(|r| r.name == name && r.families.iter().any(|f| named(f)))
-                    .map_or(Palette::NONE, |r| {
-                        Palette::new(PaletteSpec {
-                            base: r.base.unwrap_or(PaletteBase::Index(0)),
-                            overrides: r.overrides.clone(),
-                        })
+                    .find(|r| &r.name == name && r.families.iter().any(|f| named(f)))
+                    .map(|r| PaletteSpec::Cpal {
+                        base: r.base.unwrap_or(PaletteBase::Index(0)),
+                        overrides: r.overrides.clone(),
                     })
             }
+            Tok::Func(f, args) if f == "palette-mix" => {
+                let (method, items) = palette_mix_method(args)?;
+                let mut out = Vec::new();
+                for item in items {
+                    let (palette, pct) = match item.as_slice() {
+                        [p] => (p, None),
+                        [p, Tok::Num(n, u)] | [Tok::Num(n, u), p] if u == "%" => {
+                            let n: f32 = n.parse().ok().filter(|n| (0.0..=100.0).contains(n))?;
+                            (p, Some((n * 10.0).round() as u16))
+                        }
+                        _ => return None,
+                    };
+                    let spec = self
+                        .palette_spec(palette, families)
+                        .unwrap_or(PaletteSpec::FIRST);
+                    out.push((spec, pct));
+                }
+                // One palette mixed with itself is that palette (§9.1's
+                // simplification), as long as nothing thins it.
+                let given: u16 = out.iter().filter_map(|(_, p)| *p).sum();
+                if out.iter().all(|(s, _)| *s == out[0].0)
+                    && (given >= 1000 || out.iter().any(|(_, p)| p.is_none()))
+                {
+                    let one = out.swap_remove(0).0;
+                    return (one != PaletteSpec::FIRST).then_some(one);
+                }
+                Some(PaletteSpec::Mix { method, items: out })
+            }
+            _ => None,
         }
     }
 
@@ -847,4 +895,22 @@ fn component_matches(component: &str, value: &str) -> bool {
         "<transform-function>" | "<transform-list>" => value.contains('('),
         ident => ident == value,
     }
+}
+
+/// `palette-mix()`'s `<color-interpolation-method>` (what follows `in`,
+/// OKLab when it is not given) and its palettes; `None` when the method
+/// is not one or no palette follows it.
+pub(crate) fn palette_mix_method(
+    args: &[Vec<og_css::Tok>],
+) -> Option<(String, &[Vec<og_css::Tok>])> {
+    use og_css::Tok;
+    let (method, items) = match args.first().map(Vec::as_slice) {
+        Some([Tok::Ident(i), rest @ ..]) if i == "in" => {
+            og_css::color::interpolation(rest).ok()?;
+            let words: Vec<String> = rest.iter().map(og_css::describe).collect();
+            (words.join(" "), &args[1..])
+        }
+        _ => ("oklab".to_string(), args),
+    };
+    (!items.is_empty()).then_some((method, items))
 }

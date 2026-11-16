@@ -795,7 +795,9 @@ fn check(name: &str, v: &str) -> Result<(), String> {
         "font-language-override" => v == "normal" || v.starts_with('"'),
         "font-feature-settings" => v == "normal" || feature_settings(v).is_ok(),
         "font-variation-settings" => v == "normal" || variation_settings(v).is_ok(),
-        "font-palette" => matches!(v, "normal" | "light" | "dark") || v.starts_with("--"),
+        "font-palette" => {
+            og_css::tokens(v).is_ok_and(|t| matches!(t.as_slice(), [t] if palette(t)))
+        }
         "text-underline-position" => {
             return words_in(name, v, &["auto", "from-font", "under", "left", "right"]);
         }
@@ -2024,6 +2026,26 @@ pub(crate) fn transform(w: &str, s: &str, locale: &str) -> String {
             })
             .collect(),
         _ => s.to_string(),
+    }
+}
+
+/// Whether a token is a `font-palette` value: `normal`, `light`, `dark`,
+/// a dashed name or a `palette-mix()` of them (CSS Fonts 4 §9.1).
+fn palette(t: &og_css::Tok) -> bool {
+    use og_css::Tok;
+    match t {
+        Tok::Ident(w) => matches!(w.as_str(), "normal" | "light" | "dark") || w.starts_with("--"),
+        Tok::Func(f, args) if f == "palette-mix" => super::at_rules::palette_mix_method(args)
+            .is_some_and(|(_, items)| {
+                items.iter().all(|i| match i.as_slice() {
+                    [p] => palette(p),
+                    [p, Tok::Num(n, u)] | [Tok::Num(n, u), p] if u == "%" => {
+                        palette(p) && n.parse::<f32>().is_ok_and(|n| (0.0..=100.0).contains(&n))
+                    }
+                    _ => false,
+                })
+            }),
+        _ => false,
     }
 }
 
