@@ -129,11 +129,16 @@ fi
 # shellcheck disable=SC2016 # Expand CHROME in the new login shell, not setup.
 step bash -lc 'command -v cargo bun sccache og-sccache-wrap wasm-bindgen node; test -x "$CHROME" && "$CHROME" --headless=new --version'
 
-# Prewarm (the owner, 2026-11-01): the snapshot carries target/ with what an
-# agent's loop builds (clippy over every target, the test binaries the gate's
-# nextest runs, og), so a new orb starts warm and a stale snapshot only
-# rebuilds what changed. Dependencies come from the local sccache
-# (.agents/environment), so even a cold snapshot build mostly downloads.
+# Prewarm (the owner, 2026-11-01; trimmed 2026-11-16). The snapshot carries a
+# warm target and sccache so a new orb starts warm; a stale snapshot only
+# rebuilds what changed. It must also stay restorable on a small guest's
+# ~59 GB root disk: building every test and bench binary (--all-targets,
+# nextest --no-run) grew target/ to ~47 GB, and restoring that snapshot onto a
+# fresh 8c16g guest filled the disk so repository configuration could not write
+# its .gitconfig and startup failed. So the prewarm now warms sccache with the
+# workspace's lib and bin crates only -- sccache keeps the compiled deps, so
+# test binaries rebuild quickly on first use -- and a guard below drops the
+# target if the warm build still leaves the disk too tight to restore safely.
 # A failing build on main does not fail setup; a run past the timeout stops
 # here, so setup stays under Amp's 20-minute limit and still publishes.
 # shellcheck disable=SC1091
@@ -147,7 +152,15 @@ done
 prewarm() {
   timeout "$1" "${@:2}" || printf '==> prewarm step failed or timed out (%s); continuing\n' "$*"
 }
-step prewarm 600 cargo clippy --workspace "${exclude[@]}" --all-targets --locked -q -- -D warnings
-step prewarm 600 cargo nextest run --workspace "${exclude[@]}" --no-run --locked
+step prewarm 600 cargo clippy --workspace "${exclude[@]}" --locked -q -- -D warnings
+# Keep the published snapshot restorable on a small guest's root disk. If the
+# warm target leaves under this much free, drop it; sccache still holds the
+# compiled dependencies, so the next orb rebuilds quickly from cache. (This is
+# the setup/snapshot path, not the dev checkout AGENTS.md's "never delete a
+# target/" rule protects.)
+min_free_kib=$((20 * 1024 * 1024))
+if (( $(df -P . | awk 'NR == 2 { print $4 }') < min_free_kib )); then
+  step cargo clean
+fi
 step sccache --show-stats
 sccache --stop-server >/dev/null 2>&1 || true
