@@ -614,6 +614,20 @@ pub const PROPS: &[PropSpec] = &[
         doc: "CSS `break-inside` (and `page-break-inside`): `avoid` keeps a text's lines in one column.",
     },
     PropSpec {
+        name: "orphans",
+        ty: Ty::Text,
+        on: On::All,
+        two_way: false,
+        doc: "CSS `orphans`: the fewest of a text's lines a column break inside it leaves at the end of the column before it (2 by default). Inherited.",
+    },
+    PropSpec {
+        name: "widows",
+        ty: Ty::Text,
+        on: On::All,
+        two_way: false,
+        doc: "CSS `widows`: the fewest of a text's lines a column break inside it carries to the top of the next column (2 by default). Inherited.",
+    },
+    PropSpec {
         name: "contain",
         ty: Ty::Text,
         on: On::All,

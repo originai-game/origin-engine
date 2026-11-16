@@ -940,6 +940,8 @@ fn multi_column_lays_out_as_css_multicol_does() {
   <div id="Fa"><div id="F1"></div><div id="F2"></div><div id="F3"></div></div>
   <div id="Bk"><div id="X"></div><div id="Y"></div><div id="Z"></div></div>
   <div id="Tx"><p id="P">one two three four five six seven eight nine ten eleven twelve thirteen fourteen fifteen sixteen seventeen eighteen nineteen twenty</p></div>
+  <div id="Tw" class="tx"><p id="Pw">one two three four five six seven eight nine ten eleven twelve thirteen fourteen fifteen sixteen seventeen eighteen nineteen twenty</p></div>
+  <div id="To" class="tx"><p id="Po">one two three four five six seven eight nine ten eleven twelve thirteen fourteen fifteen sixteen seventeen eighteen nineteen twenty</p></div>
 </div></div>
 <style>
 #Root { width: 400px; }
@@ -953,7 +955,9 @@ fn multi_column_lays_out_as_css_multicol_does() {
 #F1, #F2, #F3 { height: 20px; }
 #Bk { columns: 2; column-gap: 0; width: 200px; }
 #Y { break-before: column; }
-#Tx { columns: 2; column-gap: 0; width: 160px; }
+#Tx, .tx { columns: 2; column-gap: 0; width: 160px; }
+#Tw { widows: 9; }
+#Po { orphans: 10; }
 p { margin: 0; }
 </style>"#;
     with_doc(text, &[], |d| {
@@ -999,6 +1003,12 @@ p { margin: 0; }
         // the container that tall; the rest are in the second column.
         let (p, tx) = (d.get("P"), d.get("Tx"));
         assert_eq!((p.width, p.height, tx.height), (80.0, 160.0, 160.0));
+        // CSS Fragmentation 3 §4.4: `widows: 9` (inherited) leaves nine
+        // lines after the break, so it moves up to line 6; `orphans: 10`
+        // keeps ten before it.
+        let wh = |p: &str, c: &str| (d.get(p).height, d.get(c).height);
+        assert_eq!(wh("Pw", "Tw"), (120.0, 180.0), "widows: 9");
+        assert_eq!(wh("Po", "To"), (200.0, 200.0), "orphans: 10");
     });
 }
 

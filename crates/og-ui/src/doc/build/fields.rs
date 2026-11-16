@@ -883,6 +883,8 @@ impl Ui {
                 "breakBefore",
                 "breakAfter",
                 "breakInside",
+                "orphans",
+                "widows",
             ] {
                 if r.has(name) {
                     el = Self::box_of(

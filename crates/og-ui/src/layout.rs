@@ -712,6 +712,10 @@ pub struct Element {
     /// Its CSS `break-before`, `break-after` and `break-inside` in a
     /// fragmented flow ([`multicol::BREAK_BEFORE`] …).
     pub breaks: u8,
+    /// Its CSS `orphans` and `widows`: the fewest of its text's lines a
+    /// break inside it leaves before and after the break (0: the initial
+    /// 2).
+    pub keep: [u8; 2],
     /// Its inline direction runs against its layout space's (a
     /// right-to-left element on a left-to-right surface, or the other way
     /// round under the surface's mirror): its children's margin boxes flip

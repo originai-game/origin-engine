@@ -151,6 +151,11 @@ impl Ui {
                 }
             }
         }
+        for (k, name) in ["orphans", "widows"].into_iter().enumerate() {
+            if let Some(n) = r.str(name).and_then(|v| v.parse::<u16>().ok()) {
+                el.keep[k] = n.clamp(1, 255) as u8;
+            }
+        }
         // CSS Containment: layout and paint containment start a formatting
         // context of their own (CSS Containment 2 §3.2, §3.4).
         if [

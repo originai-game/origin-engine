@@ -93,6 +93,18 @@ pub(crate) fn lower(name: &str, value: &str) -> Option<Result<Vec<Lowered>, Stri
                 "'{v}' is no break-inside: auto, avoid, avoid-column or avoid-page"
             )),
         },
+        // CSS Fragmentation 3 §4.4: a positive integer.
+        "orphans" | "widows" => match v.parse::<u16>() {
+            Ok(n) if n > 0 => Ok(vec![(
+                if name == "orphans" {
+                    "orphans"
+                } else {
+                    "widows"
+                },
+                text(v),
+            )]),
+            _ => Err(format!("'{v}' is no {name}: a positive integer of lines")),
+        },
         "column-span" => match v {
             "none" | "all" => Ok(vec![("columnSpan", text(v))]),
             v => Err(format!("'{v}' is no column-span: none or all")),

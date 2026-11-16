@@ -8,9 +8,9 @@
 //! between two columns that hold content.
 //!
 //! Fragmentation (CSS Fragmentation 3): the flow breaks between children
-//! and between the lines of a text, keeping two lines of a paragraph on
-//! each side of a break (`orphans` and `widows` at their initial 2), and
-//! never inside a text with `break-inside: avoid`. `break-before` and
+//! and between the lines of a text, keeping `orphans` lines of a
+//! paragraph before a break and `widows` after it (2 each by default),
+//! and never inside a text with `break-inside: avoid`. `break-before` and
 //! `break-after` `column` (or `page`, `always`) force a break. Any other
 //! box is monolithic: it moves to the next column whole.
 
@@ -39,8 +39,8 @@ pub const BREAK_BEFORE: u8 = 1;
 pub const BREAK_AFTER: u8 = 2;
 pub const AVOID_INSIDE: u8 = 4;
 
-/// Lines a break inside a paragraph leaves on each side (`orphans`,
-/// `widows`).
+/// Lines a break inside a paragraph leaves before and after it by
+/// default (`orphans` and `widows`' initial value).
 const KEEP: usize = 2;
 
 /// The used column count and width (CSS Multicol §3.4) in `inner` with
@@ -107,7 +107,13 @@ fn pieces(nodes: &[Node], run: &[usize], tops: &[f32], h: &dyn Fn(&Node) -> f32)
             }
             _ => 0.0,
         };
-        if lh <= 0.0 || lines < 2 * KEEP {
+        // `orphans` lines before a break, `widows` after it (CSS
+        // Fragmentation 3 §4.4).
+        let [orphans, widows] = n.layout.used.keep.map(|k| match k {
+            0 => KEEP,
+            k => k as usize,
+        });
+        if lh <= 0.0 || lines < orphans + widows {
             out.push(Piece {
                 top,
                 bottom,
@@ -117,10 +123,10 @@ fn pieces(nodes: &[Node], run: &[usize], tops: &[f32], h: &dyn Fn(&Node) -> f32)
             });
             continue;
         }
-        // Breaks between lines `KEEP..=lines - KEEP`.
+        // Breaks between lines `orphans..=lines - widows`.
         let y0 = top + n.layout.used.padding.top;
         let mut starts = vec![0];
-        starts.extend(KEEP..=lines - KEEP);
+        starts.extend(orphans..=lines - widows);
         for (j, &s) in starts.iter().enumerate() {
             let e = starts.get(j + 1).copied().unwrap_or(lines);
             out.push(Piece {
