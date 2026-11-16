@@ -297,6 +297,8 @@ proof("scroll-axis-lock", "css_interact", "scroll_axis_lock_keeps_a_drag_to_the_
       "Scroll offsets of a 200px scroller over 1000x1000 content, read while the drag is held: a first move 40 across and 19 down scrolls 40, 0 and one 19 across and 40 down 0, 40 (within a 2:1 slope the other axis is dropped); 40 by 21 moves both; a drag locked to x by its first move and then turned 50px down never moves y; the next press decides afresh; scroll-axis-lock: none follows every drag and the turn. Mouse drags only (a touch drag takes the same path after touch-action); the wheel and two-finger pans are not locked.")
 proof("scroll-initial-target", "css_interact", "a_scroller_starts_at_its_initial_target",
       "In a 100px scroller of 40px rows, the first scroll-initial-target: nearest row at 200px, with a 10px scroll-margin-top and the container's 5px scroll-padding-top, gives an offset of exactly 185 on the container's first frame, the row drawn 15px into the view; a later target loses; one near the end clamps to the 300px range; a target added to a container already shown leaves it at 0. Block-axis start alignment only (scroll-snap-align is not read); containers in floating layers are not covered.")
+proof("interpolate-size", "motion", "interpolate_size_moves_to_and_from_intrinsic_keywords",
+      "Under interpolate-size: allow-keywords declared on a parent (inherited), height 0px to auto over a 1000ms linear transition lays a box over 200px of content at 200t px every tick (within 0.5 px), and back down the same way; the same declarations without it (numeric-only) snap at once both ways. Transitions of width and height only (calc-size()'s own limit); @keyframes between a length and a keyword stay discrete.")
 not_applicable("webxr-dom-overlays", "Styles the DOM overlay of a WebXR session; the engine renders its own UI in its world and has no WebXR DOM layer.")
 not_applicable("window-controls-overlay window-drag", "Installed web-app title-bar integration (the OS window's caption buttons and drag regions); a game's UI is drawn inside its own surface, and the host owns its window.")
 not_applicable("picture-in-picture", "Styles a video in the browser's floating picture-in-picture window, which is browser chrome outside the game's surface.")
@@ -404,7 +406,6 @@ MISSING = {
     "highlight": "No ::highlight() or highlight registry: only ::selection paints a text range.",
     "webvtt": "No WebVTT captions or ::cue: a video draws no text track.",
     # layout
-    "interpolate-size": "No intrinsic-size interpolation implementation or output proof.",
     "backdrop-filter": "Ordinary staged backdrop chains have fixtures; native glass rejects chains requiring intermediate clamps, drop-shadow and SVG url filters.",
     "background-clip-text": "background-clip: text clips to the element's own glyphs only; CSS also clips to its descendants' text, which needs the subtree's text grouped where og-ui draws it (ui/commands.rs).",
     "element": "No element() image; feImage's element images exist for SVG filters but no background or border layer reads a live element.",
