@@ -12,6 +12,37 @@ use selectors::attr::{AttrSelectorOperator, ParsedAttrSelectorOperation, ParsedC
 use selectors::parser::{self as sp, SelectorParseErrorKind};
 use std::fmt;
 
+/// A document's elements with their tags and attributes, found by node
+/// index in constant time: matching a rule's selector against every
+/// element asks for elements by index (each one's ancestors too), and a
+/// search of the list made that rules × elements².
+pub(crate) struct Elements<'a> {
+    list: &'a [(usize, String, Vec<Attr>)],
+    /// Each node's place in `list`; `usize::MAX` for a node not in it.
+    at: Vec<usize>,
+}
+
+impl<'a> Elements<'a> {
+    pub(crate) fn new(list: &'a [(usize, String, Vec<Attr>)], nodes: usize) -> Self {
+        let mut at = vec![usize::MAX; nodes];
+        for (k, (i, _, _)) in list.iter().enumerate() {
+            // The first entry for a node, as a search of the list finds.
+            if at[*i] == usize::MAX {
+                at[*i] = k;
+            }
+        }
+        Self { list, at }
+    }
+
+    /// The element at node `index`, when it is one.
+    fn get(&self, index: usize) -> Option<&'a (usize, String, Vec<Attr>)> {
+        self.at
+            .get(index)
+            .filter(|&&k| k != usize::MAX)
+            .map(|&k| &self.list[k])
+    }
+}
+
 pub use selectors::parser::Combinator;
 /// One simple selector or combinator of a parsed selector.
 pub type Component = sp::Component<OgImpl>;
@@ -966,7 +997,7 @@ impl Selector {
     pub(super) fn condition(
         &self,
         doc: &UiDocument,
-        elements: &[(usize, String, Vec<Attr>)],
+        elements: &Elements<'_>,
         index: usize,
     ) -> Result<Expr, String> {
         condition(&self.inner, &self.source, doc, elements, index)
@@ -977,7 +1008,7 @@ fn condition(
     selector: &Inner,
     source: &str,
     doc: &UiDocument,
-    elements: &[(usize, String, Vec<Attr>)],
+    elements: &Elements<'_>,
     index: usize,
 ) -> Result<Expr, String> {
     let runtime = || format!("{source} needs the instantiated tree; it is matched at runtime");
@@ -989,7 +1020,7 @@ fn condition(
         source: &str,
         runtime: &dyn Fn() -> String,
         doc: &UiDocument,
-        elements: &[(usize, String, Vec<Attr>)],
+        elements: &Elements<'_>,
         index: usize,
         part: usize,
     ) -> Result<Expr, String> {
@@ -1014,7 +1045,7 @@ fn condition(
                 Expr::Lit(false.into())
             });
         }
-        let Some((_, tag, attrs)) = elements.iter().find(|(i, _, _)| *i == index) else {
+        let Some((_, tag, attrs)) = elements.get(index) else {
             return Ok(Expr::Lit(false.into()));
         };
         let mut own = Expr::Lit(true.into());
@@ -1224,7 +1255,7 @@ fn condition(
         let mut candidates = Vec::new();
         let mut parent = doc.nodes[index].parent;
         while parent != NONE {
-            if elements.iter().any(|(i, _, _)| *i == parent) {
+            if elements.get(parent).is_some() {
                 candidates.push(parent);
                 if combinator == Combinator::Child {
                     break;
@@ -1321,12 +1352,12 @@ pub fn attribute_value(attr: &Attr) -> Result<Expr, super::syntax::Error> {
 /// one, within the document.
 fn inherited<'a>(
     doc: &UiDocument,
-    elements: &'a [(usize, String, Vec<Attr>)],
+    elements: &Elements<'a>,
     mut index: usize,
     name: &str,
 ) -> Option<&'a Attr> {
     while index != NONE {
-        if let Some((_, _, attrs)) = elements.iter().find(|(i, _, _)| *i == index)
+        if let Some((_, _, attrs)) = elements.get(index)
             && let Some(attr) = attrs.iter().find(|a| a.name == name)
         {
             return Some(attr);

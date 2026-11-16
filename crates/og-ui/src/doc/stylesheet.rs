@@ -860,6 +860,7 @@ pub fn apply(
     styles: &[(String, usize)],
     global: &Global,
 ) -> Result<(), Error> {
+    let lookup = super::selectors::Elements::new(elements, doc.nodes.len());
     let mut rules = read(&doc.source, &mut doc.sheet, styles, global)?;
     doc.style_faces = global.sheet.font_faces.len();
     let layers = doc.sheet.layers.clone();
@@ -901,7 +902,7 @@ pub fn apply(
         // instantiated, under every rule written for the host there.
         if doc.control.is_some() && kept.is_none() {
             let condition = parsed
-                .condition(doc, elements, super::HOST_NODE)
+                .condition(doc, &lookup, super::HOST_NODE)
                 .map_err(|e| (rule.at, e))?;
             if condition != Expr::Lit(false.into()) {
                 if rule.pseudo.is_some() {
@@ -1001,7 +1002,7 @@ pub fn apply(
                 if structure.is_some() {
                     if host
                         .subject_filter()
-                        .condition(doc, elements, *i)
+                        .condition(doc, &lookup, *i)
                         .map_err(|e| (rule.at, e))?
                         == Expr::Lit(false.into())
                     {
@@ -1015,7 +1016,7 @@ pub fn apply(
                         ),
                     ));
                 }
-                let Some(condition) = matches(doc, elements, *i, parent, rule.at)? else {
+                let Some(condition) = matches(doc, &lookup, *i, &host, rule.at)? else {
                     continue;
                 };
                 text_span = true;
@@ -1063,13 +1064,13 @@ pub fn apply(
                     }
                     let condition = match &filter {
                         Some(filter) => match filter
-                            .condition(doc, elements, *i)
+                            .condition(doc, &lookup, *i)
                             .map_err(|e| (rule.at, e))?
                         {
                             Expr::Lit(serde_json::Value::Bool(false)) => continue,
                             _ => None,
                         },
-                        None => match matches(doc, elements, *i, parent, rule.at)? {
+                        None => match matches(doc, &lookup, *i, &host, rule.at)? {
                             Some(Expr::Lit(serde_json::Value::Bool(true))) => None,
                             Some(condition) => Some(condition),
                             None => continue,
@@ -1118,18 +1119,33 @@ pub fn apply(
             }
         };
         let subject_filter = structure.as_ref().map(|_| parsed.subject_filter());
+        // The rule's selector as written, read once for all its elements.
+        let written = match &subject_filter {
+            Some(_) => None,
+            None => Some(
+                Selector::parse_list(&rule.selector)
+                    .map_err(|e| (rule.at, e))?
+                    .swap_remove(0),
+            ),
+        };
         for (i, _, _) in elements {
             let condition = match &subject_filter {
                 // The subject's static facts prune elements at cook; the whole
                 // selector is matched on the instantiated tree.
                 Some(filter) => match filter
-                    .condition(doc, elements, *i)
+                    .condition(doc, &lookup, *i)
                     .map_err(|e| (rule.at, e))?
                 {
                     Expr::Lit(serde_json::Value::Bool(false)) => continue,
                     _ => host.cloned().unwrap_or(Expr::Lit(true.into())),
                 },
-                None => match matches(doc, elements, *i, &rule.selector, rule.at)? {
+                None => match matches(
+                    doc,
+                    &lookup,
+                    *i,
+                    written.as_ref().expect("read without a filter"),
+                    rule.at,
+                )? {
                     Some(condition) => condition,
                     None => continue,
                 },
@@ -2806,13 +2822,12 @@ pub(super) fn lower(
 
 fn matches(
     doc: &UiDocument,
-    elements: &[(usize, String, Vec<Attr>)],
+    elements: &super::selectors::Elements<'_>,
     index: usize,
-    selector: &str,
+    selector: &Selector,
     at: usize,
 ) -> Result<Option<Expr>, Error> {
-    let parsed = Selector::parse_list(selector).map_err(|e| (at, e))?;
-    let condition = parsed[0]
+    let condition = selector
         .condition(doc, elements, index)
         .map_err(|e| (at, e))?;
     Ok(match condition {

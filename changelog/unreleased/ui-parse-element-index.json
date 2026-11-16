@@ -1,0 +1,8 @@
+{
+  "fixed": [
+    {
+      "member": "Documents",
+      "summary": "Parsing a UI document matches each rule against its elements by node index rather than by searching the element list, and reads each rule's selector once rather than once per element. The 148 built-in documents parse in 370 ms rather than 493 ms without a style pack, and in 1056 ms rather than 1282 ms under fantasy (release, x86-64)."
+    }
+  ]
+}
