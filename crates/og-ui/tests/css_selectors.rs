@@ -17,7 +17,8 @@
 //!   state, or `~` reaching an earlier sibling → the same test
 
 use crate::support::*;
-use og_ui::InputFrame;
+use og_core::glam::Vec2;
+use og_ui::{InputFrame, UiKey};
 use serde_json::json;
 
 const DOC: &str = r##"<meta name="component" content="sel">
@@ -171,4 +172,120 @@ fn active_view_transition_matches_the_root_while_it_runs() {
         d.step(InputFrame::default());
     }
     assert_eq!(widths(&d), [10.0; 6], "after it ends");
+}
+
+/// The user-action, focus, user-validity and `:target` pseudo-classes
+/// follow the pointer and the keys as a browser's do: `:hover` under the
+/// pointer, `:active` while it is down, `:focus` on a clicked control but
+/// `:focus-visible` only for keyboard focus, `:user-invalid` and
+/// `:user-valid` only once the player has typed, and `:target` on the
+/// element a `#fragment` link names.
+///
+/// Ways it could fail: a state set on the wrong element or never cleared,
+/// `:focus-visible` matching a pointer focus, an untouched required field
+/// counting as `:user-invalid`, `:target` matching before the link is
+/// followed.
+#[test]
+fn interaction_pseudo_classes_follow_the_pointer_and_keys() {
+    let doc = r##"<meta name="component" content="ix">
+<column id="Root">
+  <button id="A">A</button><div class="probe" id="Hover"></div><div class="probe" id="Down"></div>
+  <button id="B">B</button><div class="probe" id="Focus"></div><div class="probe" id="Ring"></div>
+  <input id="Mail" type="email" required bind:value={$mail}><div class="probe" id="Bad"></div><div class="probe" id="Good"></div>
+  <a href="#Goal" id="Go">go</a>
+  <div class="probe" id="Goal"></div><div class="probe" id="NotGoal"></div>
+</column>
+<style>
+.probe { width: 10px; height: 4px; }
+button, input, a { width: 80px; height: 30px; }
+#A:hover + #Hover, #A:active ~ #Down { width: 50px; }
+#B:focus + #Focus, #B:focus-visible ~ #Ring { width: 50px; }
+#Mail:user-invalid + #Bad, #Mail:user-valid ~ #Good { width: 50px; }
+.probe:target { width: 50px; }
+</style>"##;
+    let mut d = Doc::new(doc, &[("mail", json!(""))]);
+    let w = |d: &Doc, ids: &[&str]| ids.iter().map(|id| d.get(id).width).collect::<Vec<_>>();
+    let all = [
+        "Hover", "Down", "Focus", "Ring", "Bad", "Good", "Goal", "NotGoal",
+    ];
+    assert_eq!(w(&d, &all), [10.0; 8], "nothing yet");
+    let a = d.get("A");
+    let over = Vec2::new(a.x + 5.0, a.y + 5.0);
+    let at = |down: bool, pressed: bool| InputFrame {
+        pointer: over,
+        pointer_inside: true,
+        down,
+        pressed,
+        ..InputFrame::default()
+    };
+    d.step(at(false, false));
+    d.step(at(false, false));
+    assert_eq!(w(&d, &["Hover", "Down"]), [50.0, 10.0], "hovered");
+    d.step(at(true, true));
+    d.step(at(true, false));
+    assert_eq!(w(&d, &["Hover", "Down"]), [50.0, 50.0], "pressed");
+    d.click("B");
+    assert_eq!(
+        w(&d, &["Hover", "Focus", "Ring"]),
+        [10.0, 50.0, 10.0],
+        "clicked: focus, no ring"
+    );
+    d.click("Mail");
+    assert_eq!(
+        w(&d, &["Focus", "Bad", "Good"]),
+        [10.0, 10.0, 10.0],
+        "untouched"
+    );
+    let typed = |d: &mut Doc, text: &str| {
+        d.step(InputFrame {
+            text: text.into(),
+            ..InputFrame::default()
+        });
+        d.step(InputFrame::default());
+        d.step(InputFrame::default());
+    };
+    typed(&mut d, "x");
+    assert_eq!(w(&d, &["Bad", "Good"]), [50.0, 10.0], "refused text");
+    typed(&mut d, "@y.z");
+    assert_eq!(w(&d, &["Bad", "Good"]), [10.0, 50.0], "taken text");
+    // Shift+Tab back from the field reaches B by the keyboard: the ring.
+    d.step(InputFrame {
+        keys: vec![UiKey::Tab],
+        shift: true,
+        ..InputFrame::default()
+    });
+    d.step(InputFrame::default());
+    d.step(InputFrame::default());
+    assert_eq!(w(&d, &["Focus", "Ring"]), [50.0, 50.0], "keyboard focus");
+    // A link is its text run, not its box: click on the glyphs.
+    let go = d.get("Go");
+    d.click_at(Vec2::new(go.x + 3.0, go.y + go.height / 2.0));
+    assert_eq!(
+        w(&d, &["Goal", "NotGoal"]),
+        [50.0, 10.0],
+        "followed the link"
+    );
+}
+
+/// `:modal` matches a dialog opened modally (it makes the rest of the page
+/// inert) and not one open in place.
+#[test]
+fn modal_matches_only_a_modal_dialog() {
+    let doc = r##"<meta name="component" content="dlg">
+<column id="Root">
+  <dialog id="Plain" open><div class="probe" id="InPlain"></div></dialog>
+  <dialog id="Ask" modal open aria-label="Quit?"><div class="probe" id="InModal"></div></dialog>
+</column>
+<style>
+.probe { width: 10px; height: 4px; }
+:modal .probe { width: 50px; }
+</style>"##;
+    let mut d = Doc::new(doc, &[]);
+    for _ in 0..30 {
+        d.step(InputFrame::default());
+    }
+    assert_eq!(
+        (d.get("InModal").width, d.get("InPlain").width),
+        (50.0, 10.0)
+    );
 }

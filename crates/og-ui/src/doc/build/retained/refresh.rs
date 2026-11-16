@@ -99,6 +99,10 @@ impl RetainedHost {
             _ => None,
         };
         let editable = kind == Some(Kind::Field) && !flag("readonly") && !disabled;
+        let changed = facts
+            .get("input")
+            .and_then(Value::as_str)
+            .is_some_and(|v| !v.is_empty());
         let open = flag("open");
         if facts.contains_key("popover") {
             let key = super::popover::popover_key(&build.mount, &node.id);
@@ -115,15 +119,10 @@ impl RetainedHost {
             (Checked, flag("checked")),
             (Invalid, invalid),
             (Valid, form && !invalid),
-            // After the player changed it: a field with text it refuses.
-            (
-                UserInvalid,
-                invalid
-                    && facts
-                        .get("input")
-                        .and_then(Value::as_str)
-                        .is_some_and(|v| !v.is_empty()),
-            ),
+            // After the player changed it: a field with text it refuses,
+            // or one with text it takes.
+            (UserInvalid, invalid && changed),
+            (UserValid, form && !invalid && changed),
             (Required, flag("required")),
             (Optional, form && !flag("required")),
             (ReadWrite, editable),

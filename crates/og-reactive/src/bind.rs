@@ -54,6 +54,8 @@ pub enum InteractionState {
     Valid,
     /// Invalid after the player changed it and left it (`:user-invalid`).
     UserInvalid,
+    /// Valid after the player changed it (`:user-valid`).
+    UserValid,
     InRange,
     OutOfRange,
     Indeterminate,

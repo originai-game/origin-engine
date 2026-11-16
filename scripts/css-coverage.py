@@ -387,8 +387,12 @@ proof("shadow-parts", "dressing", "a_part_rule_reads_its_hosts_place_in_the_docu
       "A built-in control's parts are a shadow tree under its element: .shop button::part(base) and ul > li:first-child button::part(base) widen only the button they reach, from a document and from a pack, and follow a class change. part lists (one element under two names) are covered by the role parts' tests; exportparts is not built (no component re-exports a part).")
 proof("active-view-transition", "css_selectors", "active_view_transition_matches_the_root_while_it_runs",
       "Computed widths through a screen layer's default 250ms view transition: :active-view-transition and :root:active-view-transition-type(slide) descendant rules widen probes on the first frame and not after it ends; a type the screen's @view-transition does not declare (fade) never matches, a list matches by any of its types, the root alone matches (.probe:active-view-transition never does), and a sibling rule matched on the instantiated tree reads the types too.")
-not_applicable("time-relative-selectors",
-               "WebVTT cue timing: :past and :future match text-track cues during media playback, and a game's <video> carries no text tracks.")
+proof("user-action-pseudos focus-visible user-pseudos target", "css_selectors", "interaction_pseudo_classes_follow_the_pointer_and_keys",
+      "Computed widths, each beside a decoy: :hover under the pointer and :active only while it is down; a clicked button matches :focus but not :focus-visible, and the same button reached by Shift+Tab matches both; an untouched required email field is neither :user-invalid nor :user-valid, typed 'x' it is :user-invalid, typed on to 'x@y.z' it is :user-valid; following an <a href=\"#Goal\"> makes #Goal :target and not its sibling. A field's typed text counts as changed by the player once it is non-empty (no blur is waited for).")
+proof("modal", "css_selectors", "modal_matches_only_a_modal_dialog",
+      "Computed widths: a probe inside <dialog modal open> matches :modal .probe, one inside an in-place <dialog open> does not.")
+not_applicable("host-context",
+               ":host-context() was dropped from CSS Scoping and Firefox never shipped it; :host() with an ancestor selector in the document covers the case.")
 not_applicable("autonomous-custom-elements",
                "customElements.define() is a script API. A game's components are .svelte documents used by their own tag, with no script to register a class.")
 
@@ -414,9 +418,9 @@ MISSING = {
     "host": ":host and :host() parse and match through the selectors crate, but a component instance's host element is not styled, so no output proves it.",
     "has-slotted": "A component's content is passed as snippets, not <slot> elements, so no :has-slotted output exists.",
     "slot": "A component's content is passed as snippets ({@render}), not <slot> elements, and no <slot> output is proved.",
-    "host-context": ":host-context() is not parsed (Selectors 4 dropped it, and Firefox never shipped it).",
     "heading-selectors": ":heading and :heading() are not parsed yet.",
     "revert-rule": "The revert-rule keyword is not read yet.",
+    "time-relative-selectors": ":past and :future match WebVTT cues during media playback; <video> draws no text track yet (motion is building WebVTT), and the selectors come with it.",
     "media-pseudos": "<video> plays footage, but :playing, :paused and the other media pseudo-classes are not parsed yet.",
 }
 

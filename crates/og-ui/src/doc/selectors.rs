@@ -279,6 +279,7 @@ const STATES: &[(&str, InteractionState)] = {
         ("invalid", Invalid),
         ("valid", Valid),
         ("user-invalid", UserInvalid),
+        ("user-valid", UserValid),
         ("placeholder-shown", PlaceholderShown),
         ("required", Required),
         ("optional", Optional),
