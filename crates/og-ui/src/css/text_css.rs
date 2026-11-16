@@ -74,6 +74,9 @@ pub(crate) const INHERITED: &[&str] = &[
     "caret-shape",
     "accent-color",
     "color-scheme",
+    // CSS Color Adjust 1 §3.2: whether forced colours mode forces its
+    // colours (the cascade reads it, `css::forced_colors`).
+    "forced-color-adjust",
     // CSS Text Decoration 4 §3: emphasis marks.
     "text-emphasis-style",
     "text-emphasis-color",
@@ -858,6 +861,7 @@ fn check(name: &str, v: &str) -> Result<(), String> {
                     .all(|w| w == "only" || super::syntax::identifier(w))
         }
         "caret-shape" => matches!(v, "auto" | "bar" | "block" | "underscore"),
+        "forced-color-adjust" => matches!(v, "auto" | "none" | "preserve-parent-color"),
         "caret-color" | "accent-color" if v == "auto" => true,
         "text-decoration-color"
         | "text-emphasis-color"
