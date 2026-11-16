@@ -1,7 +1,8 @@
 //! CSS interaction properties on document elements (CSS UI 4 §5,
 //! Pointer Events 3 §9, CSS Display 3 §7, CSS UI 4 §6.1): `cursor` with
-//! `url()` images, `pointer-events`, `touch-action`, `visibility` and
-//! `interactivity`.
+//! `url()` images, `pointer-events`, `touch-action`, `visibility`,
+//! `interactivity` and the interest invokers' `interest-delay-start` and
+//! `-end`.
 //!
 //! Each is one reflected prop holding its CSS value as written, checked
 //! here when the stylesheet is lowered and read here again when the
@@ -20,6 +21,8 @@ pub(crate) fn prop_of(css: &str) -> Option<&'static str> {
         "touch-action" => "touchAction",
         "visibility" => "visibility",
         "interactivity" => "interactivity",
+        "interest-delay-start" => "interestDelayStart",
+        "interest-delay-end" => "interestDelayEnd",
         _ => return None,
     })
 }
@@ -38,6 +41,7 @@ pub(crate) fn form(prop: &str) -> Option<&'static str> {
         }
         "visibility" => "visible | hidden | collapse",
         "interactivity" => "auto | inert",
+        "interestDelayStart" | "interestDelayEnd" => "normal | <time>",
         _ => return None,
     })
 }
@@ -50,6 +54,7 @@ pub(crate) fn check(css: &str, value: &str) -> Result<(), String> {
         "touch-action" => touch_action(value).map(|_| ()),
         "visibility" => visibility(value).map(|_| ()),
         "interactivity" => interactivity(value).map(|_| ()),
+        "interest-delay-start" | "interest-delay-end" => interest_delay(value).map(|_| ()),
         _ => Ok(()),
     }
 }
@@ -205,6 +210,34 @@ pub(crate) fn interactivity(value: &str) -> Result<bool, String> {
         "inert" => Ok(true),
         w => Err(format!("interactivity: '{w}' is not auto or inert")),
     }
+}
+
+/// An `interest-delay-start` or `-end`: ms, `None` for `normal` (the
+/// engine's own, from the style's durations).
+pub(crate) fn interest_delay(value: &str) -> Result<Option<f32>, String> {
+    let v = value.trim();
+    if v == "normal" {
+        return Ok(None);
+    }
+    match super::motion::time(v) {
+        Some(ms) if ms >= 0.0 => Ok(Some(ms)),
+        _ => Err(format!(
+            "interest-delay is normal or a time (0.5s, 200ms), not '{v}'"
+        )),
+    }
+}
+
+/// The `interest-delay` shorthand: one value for both, or start then end.
+pub(crate) fn interest_delays(value: &str) -> Result<[String; 2], String> {
+    let words: Vec<&str> = value.split_whitespace().collect();
+    let (start, end) = match words.as_slice() {
+        [one] => (*one, *one),
+        [start, end] => (*start, *end),
+        _ => return Err("interest-delay takes one or two of normal | <time>".into()),
+    };
+    interest_delay(start)?;
+    interest_delay(end)?;
+    Ok([start.to_string(), end.to_string()])
 }
 
 #[cfg(test)]

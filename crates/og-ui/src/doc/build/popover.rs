@@ -124,18 +124,49 @@ impl Ui {
         }
         if let Some(target) = r.str("interestfor") {
             let pk = popover_key(&b.mount, target);
-            let delay = (self.env.theme().durations_ms.slow * self.env.ticks_per_second() as f32
-                / 1000.0)
-                .ceil() as u32;
+            // CSS's `interest-delay-start` and `-end` on the control, in
+            // ticks; `normal` is the style's slow and fast durations.
+            let theme = *self.env.theme();
+            let tps = self.env.ticks_per_second();
+            let delay = |prop: &str, normal: f32| {
+                let ms = r
+                    .str(prop)
+                    .and_then(|v| crate::doc::interact_css::interest_delay(v).ok())
+                    .flatten()
+                    .unwrap_or(normal);
+                (ms * tps as f32 / 1000.0).ceil() as u32
+            };
+            let start = delay("interestDelayStart", theme.durations_ms.slow);
+            let end = delay("interestDelayEnd", theme.durations_ms.fast);
             let s = &self.interaction.state();
-            let interest =
-                (s.hot == key && s.hover_ticks >= delay) || (s.focus == key && s.focus_visible);
+            let wants =
+                (s.hot == key && s.hover_ticks >= start) || (s.focus == key && s.focus_visible);
+            let now = s.tick;
+            // The tick interest was lost, plus one: widget memory, so a
+            // restore lands mid-delay too.
+            let mk = crate::id::child_key(pk, "~interest");
+            let lost = self.anim(mk);
             let link = self.docs.state_mut().popovers.entry(pk).or_default();
-            if interest {
+            if wants {
                 link.invoker = (at, key);
                 link.interest = true;
-            } else if link.invoker.1 == key {
-                link.interest = false;
+                if lost.t != 0 {
+                    self.set_anim(mk, crate::ui::Anim::default());
+                }
+            } else if link.invoker.1 == key && link.interest {
+                let since = if lost.t == 0 { now + 1 } else { lost.t };
+                if now + 1 >= since + u64::from(end) {
+                    link.interest = false;
+                    self.set_anim(mk, crate::ui::Anim::default());
+                } else {
+                    if lost.t == 0 {
+                        self.set_anim(mk, crate::ui::Anim { t: since, ..lost });
+                    }
+                    // Counting down: it builds again next frame.
+                    if let Some(owned) = self.tree.owning_mut().last_mut() {
+                        owned.moved = true;
+                    }
+                }
             }
         }
     }

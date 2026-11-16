@@ -107,7 +107,7 @@ fn items(text: &str) -> Vec<Vec<String>> {
     out
 }
 
-fn time(word: &str) -> Option<f32> {
+pub(crate) fn time(word: &str) -> Option<f32> {
     let ms = if let Some(n) = word.strip_suffix("ms") {
         n.parse::<f32>().ok()?
     } else {

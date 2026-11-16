@@ -639,6 +639,16 @@ pub const CORE_PROPS: &[PropSpec] = &[
         "CSS `touch-action`: the pans (pan-x, pan-left…, pan-y…) and pinch-zoom a touch starting on it may make; none keeps the touch for its own handlers. The used value intersects its ancestors'."
     ),
     p!(
+        "interestDelayStart",
+        Ty::Text,
+        "CSS `interest-delay-start` on an `interestfor` control: how long the pointer rests on it before its target shows, `normal` (the style's slow duration) or a time. Keyboard focus shows it at once."
+    ),
+    p!(
+        "interestDelayEnd",
+        Ty::Text,
+        "CSS `interest-delay-end` on an `interestfor` control: how long its target stays after the pointer and focus leave, `normal` (the style's fast duration) or a time; the pointer resting on the target keeps it."
+    ),
+    p!(
         "interactivity",
         Ty::Text,
         "CSS `interactivity`: inert makes it and its subtree take no pointer, focus or keys (as the `inert` attribute, which it overrides when declared); auto is the default."

@@ -2810,3 +2810,84 @@ input, textarea { padding: 4px; }
         },
     );
 }
+
+/// HTML's interest invokers with CSS's `interest-delay` on the control:
+/// the pointer resting on an `interestfor` control shows its target after
+/// `interest-delay-start`, and the target leaves `interest-delay-end`
+/// after the pointer does. At 60 ticks a second, 200ms is 12 ticks, 500ms
+/// 30 and 300ms 18: `A` (200ms 300ms) shows 18 ticks before `B` (500ms
+/// 0s) and hides 18 after it; the shorthand and the longhands agree
+/// (`C`). Keyboard focus shows a target with no delay.
+///
+/// Ways it could fail: the delays ignored (the engine's one fixed delay
+/// for every control), the end delay dropped (a hint gone the frame the
+/// pointer leaves), start and end swapped, or the shorthand's one value
+/// set on only one side.
+#[test]
+fn interest_delays_time_when_a_hint_shows_and_leaves() {
+    let text = r#"<meta name="component" content="t">
+<div id="Page">
+  <button id="TipA" interestfor="A">a</button>
+  <div id="A" popover="hint"><p id="AText">A</p></div>
+  <button id="TipB" interestfor="B">b</button>
+  <div id="B" popover="hint"><p id="BText">B</p></div>
+  <button id="TipC" interestfor="C">c</button>
+  <div id="C" popover="hint"><p id="CText">C</p></div>
+  <p id="Far">far away</p>
+</div>
+<style>
+#Page { padding: 40px; gap: 80px; }
+#TipA { interest-delay: 200ms 300ms; }
+#TipB { interest-delay-start: 500ms; interest-delay-end: 0s; }
+#TipC { interest-delay: 200ms; }
+</style>"#;
+    with_doc(text, &[], |d| {
+        let point = |d: &Doc, id: &str| {
+            let e = d.get(id);
+            Vec2::new(e.x + e.width / 2.0, e.y + e.height / 2.0)
+        };
+        let far = point(d, "Far");
+        // Ticks from the pointer arriving until `shown` appears, then from
+        // it leaving until it is gone.
+        let timing = |d: &mut Doc, tip: &str, shown: &str| {
+            let at = point(d, tip);
+            let hold = |d: &mut Doc, at: Vec2| {
+                d.step(InputFrame {
+                    pointer: at,
+                    pointer_inside: true,
+                    ..InputFrame::default()
+                })
+            };
+            for _ in 0..10 {
+                hold(d, far);
+            }
+            let mut show = 0;
+            while d.el(shown).is_none() {
+                hold(d, at);
+                show += 1;
+                assert!(show < 200, "{shown} never shows");
+            }
+            for _ in 0..5 {
+                hold(d, at);
+            }
+            let mut hide = 0;
+            while d.el(shown).is_some() {
+                hold(d, far);
+                hide += 1;
+                assert!(hide < 200, "{shown} never hides");
+            }
+            (show, hide)
+        };
+        let a = timing(d, "TipA", "AText");
+        let b = timing(d, "TipB", "BText");
+        let c = timing(d, "TipC", "CText");
+        assert_eq!(b.0 - a.0, 18, "500ms against 200ms to show: {a:?} {b:?}");
+        assert_eq!(a.1 - b.1, 18, "300ms against 0s to hide: {a:?} {b:?}");
+        assert_eq!(c, (a.0, a.1 - 6), "one value is both: {c:?} {a:?}");
+        // On top of the delays, the engine's fixed latency: a 0s end hides
+        // within 2 ticks (last frame's hits), and a show waits at most 3
+        // (the hover count and the frame `:popover-open` matches on).
+        assert!(b.1 <= 2, "a 0s end: {b:?}");
+        assert!((12..=15).contains(&a.0), "200ms to show: {a:?}");
+    });
+}

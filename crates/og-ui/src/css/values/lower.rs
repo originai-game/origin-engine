@@ -207,6 +207,13 @@ pub(super) fn lower_decl(name: &str, value: &str, state: bool) -> Result<Vec<Par
             let axis = if name == "grid-column" { 0 } else { 1 };
             Ok(vec![Part::Grid(axis, start, span)])
         }
+        "interest-delay" => {
+            let [start, end] = super::interact_css::interest_delays(value)?;
+            Ok(vec![
+                e("interestDelayStart", vec![Value::String(start)]),
+                e("interestDelayEnd", vec![Value::String(end)]),
+            ])
+        }
         "-og-text-path" => {
             crate::text_path::parse_shape(value)?;
             Ok(vec![e(
