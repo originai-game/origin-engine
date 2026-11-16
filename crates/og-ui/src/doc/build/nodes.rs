@@ -132,6 +132,12 @@ impl Ui {
                 } else {
                     s
                 }
+            } else if let Some(source) = n
+                .source_text
+                .as_ref()
+                .filter(|_| r.text.as_deref().is_some_and(|t| t.preserves()))
+            {
+                source.clone()
             } else {
                 r.str("text").unwrap_or_default().to_string()
             }

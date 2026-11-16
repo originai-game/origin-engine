@@ -717,6 +717,7 @@ impl Parser {
             level: 0,
             inline: Vec::new(),
             links: Vec::new(),
+            source_text: None,
             custom: Vec::new(),
             uses: Vec::new(),
             pseudo: Vec::new(),

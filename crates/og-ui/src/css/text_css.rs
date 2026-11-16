@@ -1444,6 +1444,13 @@ impl TextCss {
         (indent, line_break)
     }
 
+    /// Whether its white space keeps spaces or line breaks the document's
+    /// HTML collapsing removed.
+    pub fn preserves(&self) -> bool {
+        self.collapse
+            .is_some_and(|c| !matches!(c, Collapse::Collapse | Collapse::Discard))
+    }
+
     /// `text` as shown: transformed (CSS Text 3 §2.1) and its white space
     /// processed (§4.1). `locale` cases it. Shown text shown again is
     /// unchanged, so settlement can restyle a built text.
@@ -1483,7 +1490,9 @@ impl TextCss {
                 let n = self.tab_size.unwrap_or(8.0).round().max(0.0) as usize;
                 let mut out = String::with_capacity(text.len());
                 let mut col = 0;
-                for c in text.chars() {
+                let mut chars = text.chars().peekable();
+                while let Some(c) = chars.next() {
+                    let next = chars.peek();
                     match c {
                         '\t' if n > 0 => {
                             let k = n - col % n;
@@ -1495,10 +1504,18 @@ impl TextCss {
                             col = 0;
                         }
                         // Preserved spaces do not collapse: no-break, so a
-                        // run keeps its width (break-spaces lets each one
-                        // break).
-                        ' ' if collapse == Collapse::Preserve => {
+                        // run keeps its width; a wrapping line may break
+                        // after a run (break-spaces after each space).
+                        ' ' if collapse == Collapse::Preserve
+                            && (self.nowrap == Some(true) || next == Some(&' ')) =>
+                        {
                             out.push('\u{a0}');
+                            col += 1;
+                        }
+                        // break-spaces: each space keeps its room, even at
+                        // a line's end, and a line may break after it.
+                        ' ' if collapse == Collapse::BreakSpaces => {
+                            out.push_str("\u{a0}\u{200b}");
                             col += 1;
                         }
                         c => {
@@ -1639,7 +1656,13 @@ mod tests {
             t(Collapse::PreserveBreaks).shown(" a  b\n c", "en"),
             "a b\nc"
         );
-        assert_eq!(t(Collapse::Preserve).shown("a  b", "en"), "a\u{a0}\u{a0}b");
+        // pre keeps every space unbreakable; pre-wrap may break after a run.
+        let pre = TextCss {
+            nowrap: Some(true),
+            ..t(Collapse::Preserve)
+        };
+        assert_eq!(pre.shown("a  b", "en"), "a\u{a0}\u{a0}b");
+        assert_eq!(t(Collapse::Preserve).shown("a  b", "en"), "a\u{a0} b");
         // A tab goes to the next stop of tab-size columns.
         let tab = TextCss {
             collapse: Some(Collapse::BreakSpaces),
@@ -1647,6 +1670,7 @@ mod tests {
             ..TextCss::default()
         };
         assert_eq!(tab.shown("ab\tc", "en"), "ab\u{a0}\u{a0}c");
+        assert_eq!(tab.shown("a b", "en"), "a\u{a0}\u{200b}b");
     }
 
     #[test]

@@ -1863,6 +1863,7 @@ fn pseudo_node(doc: &mut UiDocument, i: usize, pseudo: &'static str) -> usize {
         level: 0,
         inline: Vec::new(),
         links: Vec::new(),
+        source_text: None,
         custom: Vec::new(),
         uses: Vec::new(),
         pseudo: Vec::new(),

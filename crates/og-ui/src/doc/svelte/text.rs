@@ -332,6 +332,21 @@ impl Parser {
                 .collect();
             PropValue::Lit(Lit::Str(text))
         };
+        // Plain literal text keeps its source for a white-space that
+        // preserves (an SVG text's own white-space has processed it).
+        if self.white_space.is_none()
+            && let PropValue::Lit(Lit::Str(text)) = &value
+            && let Some(source) = nodes
+                .iter()
+                .map(|n| match n {
+                    Node::Text(t, _) => Some(t.as_str()),
+                    _ => None,
+                })
+                .collect::<Option<String>>()
+            && source != *text
+        {
+            self.doc.nodes[i].source_text = Some(source);
+        }
         self.prop(i, Some(Kind::Label), "text", value, at, "")?;
         if runs.iter().any(|r| {
             r.bold

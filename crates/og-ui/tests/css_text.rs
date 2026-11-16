@@ -462,3 +462,62 @@ fn east_asian_variants_take_the_fonts_full_width_forms() {
     );
     assert_eq!(ids(&d, "Prop"), [None, None]);
 }
+
+/// A line's text as it reads: no-break spaces as spaces, no zero-width
+/// break opportunities.
+fn reads(l: &Line) -> String {
+    l.text.replace('\u{a0}', " ").replace('\u{200b}', "")
+}
+
+/// CSS Text 3 §4: `normal` collapses spaces and line breaks; `pre` keeps
+/// both and does not wrap; `pre-line` keeps only line breaks;
+/// `pre-wrap` keeps spaces and wraps after them (they hang at the line's
+/// end); `break-spaces` keeps each space's room on its line; the
+/// `preserve-spaces` longhand turns line breaks into kept spaces. A tab
+/// advances to the next multiple of `tab-size` columns (§4.2).
+/// `text-wrap: nowrap` keeps a line wider than its box whole (§5.1).
+#[test]
+fn white_space_and_tab_size_process_the_source_as_css_text_does() {
+    let src = "a   b\n  c";
+    let d = doc(
+        &format!(
+            r#"<p id="Normal">{src}</p><p id="Pre">{src}</p><p id="Line">  a   b
+ c  </p><p id="Wrap">alpha   beta gamma</p><p id="Break">alpha   beta gamma</p>
+<p id="Spaces">a  b
+c</p><p id="Tab4">a	b</p><p id="Tab8">a	b</p>
+<p id="NoWrap">alpha beta gamma</p><p id="Wraps">alpha beta gamma</p>"#
+        ),
+        "#Pre, #Tab4, #Tab8 { white-space: pre; } #Tab4 { tab-size: 4; } #Line { white-space: pre-line; }
+#Wrap { white-space: pre-wrap; width: 70px; } #Break { white-space: break-spaces; width: 70px; }
+#Spaces { white-space-collapse: preserve-spaces; }
+#NoWrap, #Wraps { width: 70px; } #NoWrap { text-wrap: nowrap; }",
+    );
+    let read = |id| lines(&d, id).iter().map(reads).collect::<Vec<_>>();
+    assert_eq!(read("Normal"), ["a b c"]);
+    assert_eq!(read("Pre"), ["a   b", "  c"]);
+    assert_eq!(read("Line"), ["a b", "c"]);
+    assert_eq!(read("Spaces"), ["a  b c"]);
+    assert_eq!(read("Tab4"), ["a   b"], "to column 4");
+    assert_eq!(read("Tab8"), ["a       b"], "to column 8");
+    // pre-wrap breaks after the run of spaces, which hangs: each line
+    // fits; break-spaces keeps all three spaces on the first line.
+    let wrap = lines(&d, "Wrap");
+    assert_eq!(
+        wrap.iter()
+            .map(|l| reads(l).trim_end().to_string())
+            .collect::<Vec<_>>(),
+        ["alpha", "beta", "gamma"]
+    );
+    let alpha = d.ui.fonts().body.metrics.measure("alpha", 14.0);
+    let space = d.ui.fonts().body.metrics.measure(" ", 14.0);
+    let brk = lines(&d, "Break");
+    assert_eq!(reads(&brk[0]), "alpha   ");
+    assert!(
+        (brk[0].width - (alpha + 3.0 * space)).abs() < 0.5,
+        "{brk:?}"
+    );
+    assert!(wrap[0].width > alpha, "its spaces are kept: {wrap:?}");
+    let nowrap = lines(&d, "NoWrap");
+    assert!(nowrap.len() == 1 && nowrap[0].width > 70.0, "{nowrap:?}");
+    assert_eq!(lines(&d, "Wraps").len(), 2);
+}

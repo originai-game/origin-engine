@@ -1012,6 +1012,14 @@ impl Parser {
                     _ => None,
                 })
                 .collect::<String>();
+            // Plain literal text keeps its source for a CSS white-space
+            // that preserves spaces or line breaks.
+            if let PropValue::Lit(Lit::Str(text)) = &value
+                && children.iter().all(|c| matches!(c, Node::Text(..)))
+                && source != *text
+            {
+                self.doc.nodes[i].source_text = Some(source.clone());
+            }
             self.prop(i, internal, "text", value, at, &source)?;
         }
         Ok(i)
