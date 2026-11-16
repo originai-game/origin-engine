@@ -107,6 +107,100 @@ impl RetainedHost {
         Ok(child)
     }
 
+    /// Gives the instance of `doc` whose root is compiled at `path` its
+    /// state (docs/ui.md §2 Instance state): for each `<meta
+    /// name="state:…">` a writable store of the reactive session, which a
+    /// snapshot carries, named by the mount and the path so a restored or
+    /// recompiled instance finds its own again. The instance reads it by
+    /// the state's name, as a prop bound two-way, so `bind:` writes it.
+    pub(crate) fn declare_states(
+        &mut self,
+        ui: &mut Ui,
+        doc: &UiDocument,
+        context: &mut BindingContext,
+        path: &str,
+    ) {
+        use crate::reactive::session::Command;
+        let mount = &context.node.mount;
+        let mut inputs = (*context.inputs).clone();
+        let mut sources = Vec::new();
+        for state in &doc.states {
+            let source = SourceId::new(
+                crate::doc::STATE_SCOPE,
+                &format!("{}/{}/{path}~{}", mount.scope, mount.id, state.name),
+            );
+            let declare = || Command::Signal {
+                source: source.clone(),
+                initial: state.default.clone().unwrap_or(Value::Null),
+                readable: false,
+            };
+            // A store kept from a document that declared another type
+            // starts again at this one's default.
+            if ui.docs.execute(declare()).is_err() {
+                let _ = ui.docs.execute(Command::RemoveSource {
+                    source: source.clone(),
+                });
+                if let Err(error) = ui.docs.execute(declare()) {
+                    ui.out.warnings_mut().push(error);
+                }
+            }
+            inputs.insert(format!("state:{}", state.name), source.clone());
+            sources.push(source);
+        }
+        let holder = Arc::new(BindingContext {
+            node: context.node.clone(),
+            inputs: Arc::new(inputs),
+            rows: Arc::default(),
+            row_key: String::new(),
+            selector_nodes: Arc::default(),
+            lexical: Arc::default(),
+        });
+        let lexical = Arc::make_mut(&mut context.lexical);
+        for state in &doc.states {
+            let store = format!("$state:{}", state.name);
+            lexical.props.insert(
+                state.name.clone(),
+                PropRef {
+                    expression: Expr::Path(store.clone()).into(),
+                    model: Some(store),
+                    context: holder.clone(),
+                },
+            );
+        }
+        self.states.insert(context.node.clone(), sources);
+    }
+
+    /// Drops the state of instances that are gone: their roots are no
+    /// longer mounted. After a restore, also the stores the snapshot
+    /// carried for instances the restored mounts did not make again.
+    pub(crate) fn sweep_states(&mut self, ui: &mut Ui) {
+        use crate::reactive::session::Command;
+        let mut gone = Vec::new();
+        self.states.retain(|root, sources| {
+            let mounted = self.elements.contains_key(root);
+            if !mounted {
+                gone.append(sources);
+            }
+            mounted
+        });
+        if std::mem::take(&mut self.states_restored) {
+            let held: BTreeSet<&SourceId> = self.states.values().flatten().collect();
+            gone.extend(
+                ui.docs
+                    .state()
+                    .memory
+                    .reactive
+                    .sources
+                    .in_scope(crate::doc::STATE_SCOPE)
+                    .filter(|id| !held.contains(id))
+                    .cloned(),
+            );
+        }
+        for source in gone {
+            let _ = ui.docs.execute(Command::RemoveSource { source });
+        }
+    }
+
     /// A control document under its host element (docs/ui.md §2.4): its
     /// root, compiled as the host's child. Each prop reads the host's
     /// authored attribute of its name in the host's context (`bind:name`

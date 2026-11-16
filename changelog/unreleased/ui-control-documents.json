@@ -11,6 +11,10 @@
     {
       "member": "meter[region]",
       "summary": "A <meter> carries HTML's region of its value as its region attribute (optimum, suboptimum or poor) for its own document's selectors as well as its parts': meter[region=poor] { ... } matches."
+    },
+    {
+      "member": "Instance state",
+      "summary": "A document holds UI state of its own: <meta name=\"state:open\" content=\"bool\"> (number, string or bool, with data-default) gives each instance of the document, and each host of a control document, its own value, read by its name and written with bind: (<details bind:open={open}>). A snapshot carries it, and it goes when the instance does. Use it for what the game has no stake in (a picker open, the tab shown); $state stays refused."
     }
   ],
   "fixed": [

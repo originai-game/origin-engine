@@ -288,6 +288,10 @@ fn rejects_wrong_syntax_and_reports_authored_locations() {
         ("<slot/>", "{@render"),
         ("<script>let count = $state(0)</script><text/>", "TS system"),
         (
+            "<script>let open = $state(false)</script><text/>",
+            "<meta name=\"state:name\"",
+        ),
+        (
             "<script>$effect(() => log())</script><text/>",
             "$effect is not allowed",
         ),

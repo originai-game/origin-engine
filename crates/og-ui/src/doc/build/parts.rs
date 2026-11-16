@@ -769,7 +769,7 @@ impl Ui {
                     .borrow_mut()
                     .get_or_insert_with(|| Arc::new(PartIndex::new(&self.style.part_rules)))
                     .clone();
-                (&self.style.part_rules, &*global_index)
+                (&*self.style.part_rules, &*global_index)
             }
         };
         let facts = Facts {

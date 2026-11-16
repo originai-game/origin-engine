@@ -50,6 +50,7 @@ pub(crate) fn parse_with_pack(
                 strings: Vec::new(),
                 layer: LayerSpec::of(LayerKind::Menu),
                 props: Vec::new(),
+                states: Vec::new(),
                 parts: Vec::new(),
                 actions: Vec::new(),
                 timelines: Vec::new(),
@@ -692,7 +693,9 @@ impl Parser {
             self.doc.name = host.document_name();
             self.doc.control = Some(host);
         } else if let Some(name) = name.strip_prefix("prop:") {
-            if self.doc.props.iter().any(|p| p.name == name) {
+            if self.doc.props.iter().any(|p| p.name == name)
+                || self.doc.states.iter().any(|p| p.name == name)
+            {
                 return Err((at, format!("duplicate prop {name}; declare it once")));
             }
             if !identifier(name)
@@ -720,6 +723,31 @@ impl Parser {
                 (None, None) => zero(content),
             };
             self.doc.props.push(ContractProp {
+                name: name.into(),
+                ty: content.into(),
+                doc: get("data-doc").into(),
+                default,
+            });
+        } else if let Some(name) = name.strip_prefix("state:") {
+            if self.doc.states.iter().any(|p| p.name == name)
+                || self.doc.props.iter().any(|p| p.name == name)
+            {
+                return Err((
+                    at,
+                    format!("{name} is declared already; a state and a prop share no name"),
+                ));
+            }
+            if !identifier(name) || !["number", "string", "bool"].contains(&content) {
+                return Err((
+                    at,
+                    "state metadata needs a name and type number/string/bool".into(),
+                ));
+            }
+            let default = match attrs.iter().find(|a| a.name == "data-default") {
+                Some(a) => Some(prop_default(name, content, &a.value).map_err(|why| (a.at, why))?),
+                None => zero(content),
+            };
+            self.doc.states.push(ContractProp {
                 name: name.into(),
                 ty: content.into(),
                 doc: get("data-doc").into(),
@@ -754,7 +782,7 @@ impl Parser {
         } else {
             return Err((
                 at,
-                "unknown meta name; use screen, component, control, prop:…, action:…, fixture:…, strings, parts or responsive-embedded-sizing"
+                "unknown meta name; use screen, component, control, prop:…, state:…, action:…, fixture:…, strings, parts or responsive-embedded-sizing"
                     .into(),
             ));
         }

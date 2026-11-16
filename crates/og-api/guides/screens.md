@@ -395,6 +395,10 @@ screen can wait for it.
   `data-default="0.8"` (`data-required` for one that must be passed);
   actions use `name="action:back"`;
   fixtures use `name="fixture:default"` with JSON content.
+  UI state the game has no stake in (a panel open, the tab shown) is
+  `name="state:open" content="bool"` (`number`, `string` or `bool`): each
+  instance has its own, read as `open` and written with `bind:`
+  (`<details bind:open={open}>`), and a save carries it.
 - Mount a screen with stores, not a viewmodel: `og.ui.scope(world,
   "menus").mount("pause", "pause", { volume })` puts it on the layer stack
   while it is mounted; Back unmounts it. Give it a CSS view transition with

@@ -67,6 +67,10 @@ impl RetainedHost {
         };
         let path = parent.map_or_else(|| id.clone(), |p| format!("{}/{id}", self.content_path(p)));
         context.node.key = crate::id::key_of_path(&path);
+        // A document's instance state: a store per instance and state.
+        if index == doc.root && !doc.states.is_empty() {
+            self.declare_states(ui, &doc, &mut context, &path);
+        }
         Arc::make_mut(&mut context.selector_nodes).insert(index, context.node.clone());
         // Its box pseudo-elements are selector nodes of their own: a
         // pseudo-class after one reads the pseudo-element's states.
