@@ -27,22 +27,34 @@ pub use og_draw::GlyphKey;
 
 /// The OpenType features a type step turns on (docs/ui.md §6.3.4): small
 /// caps, capitals to small caps, tabular and lining figures, case-sensitive
-/// forms. A run with any of them is shaped with the font file, so its glyphs
-/// and advances are the feature's; the font's import names the same
-/// features (`features smcp tnum`) so its atlas holds their glyphs. A
+/// forms by name, and any other feature settings CSS gives (`font-variant-*`,
+/// `font-feature-settings`, `font-kerning`: a tag and its value, `0` turning
+/// a default feature such as `kern` or `liga` off). A run with any of them
+/// is shaped with the font file, so its glyphs and advances are the
+/// features'; the font's import names the features its atlas holds glyphs
+/// for (`features smcp tnum`), and a run-time font renders the rest. A
 /// feature the font lacks changes nothing.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
-pub struct Features(u8);
+pub struct Features(u32);
+
+/// One OpenType feature setting: its tag and value.
+pub type Setting = ([u8; 4], u16);
+
+/// Every distinct list of settings a [`Features`] has carried, by its id
+/// less one: a few per game (one per CSS feature combination).
+static SETTINGS: Mutex<Vec<Arc<[Setting]>>> = Mutex::new(Vec::new());
 
 impl Features {
     /// No feature: the font's defaults.
     pub const NONE: Features = Features(0);
     /// The features, in bit order, by their OpenType tags.
     pub const TAGS: [&'static str; 5] = ["smcp", "c2sc", "tnum", "lnum", "case"];
+    /// The bits of the named features; the rest is the settings' id.
+    const NAMED: u32 = (1 << Self::TAGS.len()) - 1;
 
     /// The features of `tags`; an unknown tag is an error naming it.
     pub fn parse<'a>(tags: impl IntoIterator<Item = &'a str>) -> Result<Features, String> {
-        let mut bits = 0u8;
+        let mut bits = 0;
         for t in tags {
             let i = Self::TAGS.iter().position(|k| *k == t).ok_or_else(|| {
                 format!(
@@ -59,9 +71,82 @@ impl Features {
     /// role always sets (scores, timers, the HUD's numerals).
     pub const FIGURES: Features = Features(1 << 2 | 1 << 3);
 
-    /// Both sets of features.
+    /// Both sets of named features, with `self`'s settings (else `other`'s).
     pub const fn with(self, other: Features) -> Features {
-        Features(self.0 | other.0)
+        let settings = if self.0 & !Self::NAMED != 0 {
+            self.0 & !Self::NAMED
+        } else {
+            other.0 & !Self::NAMED
+        };
+        Features(settings | ((self.0 | other.0) & Self::NAMED))
+    }
+
+    /// These features with `settings` applied in order, each a tag and its
+    /// value: a named feature at 1 is turned on and at 0 off; every other
+    /// setting (a named one at another value too) is kept, a later one
+    /// replacing an earlier one of its tag.
+    pub fn with_settings(self, settings: &[Setting]) -> Features {
+        let mut bits = self.0 & Self::NAMED;
+        let mut list: Vec<Setting> = self.settings().to_vec();
+        for &(tag, value) in settings {
+            list.retain(|(t, _)| *t != tag);
+            match Self::TAGS.iter().position(|k| k.as_bytes() == tag) {
+                Some(i) if value <= 1 => {
+                    bits &= !(1 << i);
+                    bits |= u32::from(value) << i;
+                }
+                Some(i) => {
+                    bits &= !(1 << i);
+                    list.push((tag, value));
+                }
+                None => list.push((tag, value)),
+            }
+        }
+        list.sort();
+        if list.is_empty() {
+            return Features(bits);
+        }
+        let mut all = SETTINGS.lock().unwrap_or_else(|e| e.into_inner());
+        let id = match all.iter().position(|s| **s == *list) {
+            Some(i) => i,
+            None => {
+                all.push(list.into());
+                all.len() - 1
+            }
+        };
+        Features(bits | ((id as u32 + 1) << Self::TAGS.len()))
+    }
+
+    /// Its settings beyond the named features, by tag.
+    pub fn settings(self) -> Arc<[Setting]> {
+        match (self.0 >> Self::TAGS.len()).checked_sub(1) {
+            Some(i) => SETTINGS.lock().unwrap_or_else(|e| e.into_inner())[i as usize].clone(),
+            None => Arc::new([]),
+        }
+    }
+
+    /// Every feature it sets, a tag and its value: the named ones on, then
+    /// its settings.
+    pub fn values(self) -> Vec<Setting> {
+        let mut out: Vec<Setting> = self
+            .tags()
+            .map(|t| {
+                let b = t.as_bytes();
+                ([b[0], b[1], b[2], b[3]], 1)
+            })
+            .collect();
+        out.extend(self.settings().iter().copied());
+        out
+    }
+
+    /// [`Features::values`] in CSS `font-feature-settings` syntax, as
+    /// Parley reads it.
+    pub fn css(self) -> String {
+        self.values()
+            .iter()
+            .map(|(t, v)| format!("'{}' {v}", String::from_utf8_lossy(t)))
+            .collect::<Vec<_>>()
+            .join(",")
     }
 
     pub fn is_empty(self) -> bool {
@@ -75,7 +160,7 @@ impl Features {
         self.0 & (1 << 2) != 0
     }
 
-    /// The tags turned on, in [`Features::TAGS`] order.
+    /// The named tags turned on, in [`Features::TAGS`] order.
     pub fn tags(self) -> impl Iterator<Item = &'static str> {
         Self::TAGS
             .into_iter()
@@ -84,15 +169,15 @@ impl Features {
             .map(|(_, t)| t)
     }
 
-    /// The bits, for a cache key.
+    /// The named features' bits ([`Features::from_bits`] reads them back).
     pub fn bits(self) -> u8 {
-        self.0
+        (self.0 & Self::NAMED) as u8
     }
 
-    /// The features of `bits` (as [`Features::bits`] gives them), for the
-    /// generated default style.
+    /// The named features of `bits` (as [`Features::bits`] gives them), for
+    /// the generated default style.
     pub const fn from_bits(bits: u8) -> Features {
-        Features(bits & ((1 << Self::TAGS.len()) - 1))
+        Features(bits as u32 & Self::NAMED)
     }
 }
 
@@ -139,7 +224,7 @@ pub struct FontFile {
     #[cfg(feature = "shaping")]
     shaper: harfrust::ShaperData,
     #[cfg(feature = "shaping")]
-    shaped: Mutex<HashMap<(String, bool, u8), ShapedRun>>,
+    shaped: Mutex<HashMap<(String, bool, Features), ShapedRun>>,
     /// Glyphs outside the atlas: their advance in em (`None`: not in the font).
     extra: Mutex<BTreeMap<GlyphKey, Option<f32>>>,
     /// Glyphs outside the atlas laid out since the host last took them.
@@ -258,7 +343,7 @@ impl FontFile {
     ) -> ShapedRun {
         #[cfg(feature = "shaping")]
         {
-            let key = (run.to_string(), rtl, features.bits());
+            let key = (run.to_string(), rtl, features);
             if let Some(hit) = self.shaped.lock().ok()?.get(&key) {
                 return hit.clone();
             }
@@ -296,12 +381,9 @@ impl FontFile {
             harfrust::Direction::LeftToRight
         });
         let on: Vec<harfrust::Feature> = features
-            .tags()
-            .map(|t| {
-                let b = t.as_bytes();
-                let tag = harfrust::Tag::new(&[b[0], b[1], b[2], b[3]]);
-                harfrust::Feature::new(tag, 1, ..)
-            })
+            .values()
+            .into_iter()
+            .map(|(t, v)| harfrust::Feature::new(harfrust::Tag::new(&t), u32::from(v), ..))
             .collect();
         let shaper = self.shaper.shaper(&face).build();
         let out = shaper.shape(buf, harfrust::ShapeOptions::new().features(&on));

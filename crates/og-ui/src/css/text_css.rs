@@ -1401,19 +1401,7 @@ impl TextCss {
         if let Some(t) = &self.transform {
             step.uppercase = t.split_whitespace().any(|w| w == "uppercase");
         }
-        let mut tags: Vec<&str> = step.features.tags().collect();
-        for (tag, v) in &self.features {
-            let t = std::str::from_utf8(tag).unwrap_or("");
-            if let Some(known) = crate::shape::Features::TAGS.iter().find(|k| **k == t) {
-                tags.retain(|k| k != known);
-                if *v != 0 {
-                    tags.push(known);
-                }
-            }
-        }
-        if let Ok(f) = crate::shape::Features::parse(tags) {
-            step.features = f;
-        }
+        step.features = step.features.with_settings(&self.features);
         step
     }
 

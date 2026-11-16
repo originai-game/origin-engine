@@ -440,13 +440,7 @@ fn shaped<R>(
                 StyleProperty::LetterSpacing(span_tracking(s, &s.text) * s.step.size),
                 range.clone(),
             );
-            let features = s
-                .step
-                .features
-                .tags()
-                .map(|tag| format!("'{tag}' 1"))
-                .collect::<Vec<_>>()
-                .join(",");
+            let features = s.step.features.css();
             builder.push(
                 StyleProperty::FontFeatures(features.as_str().into()),
                 range.clone(),

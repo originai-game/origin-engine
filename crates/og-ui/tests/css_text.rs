@@ -11,23 +11,36 @@
 //!   wrong depth, `attr()` not reading the element, or a later
 //!   `content: none` drawing the earlier string →
 //!   `generated_content_counts_quotes_and_reads_attributes`
+//! - a variant keyword or a feature setting never reaching the shaper,
+//!   `font-kerning: none` still kerning, a variant winning over the
+//!   settings that come after it, or a line measured without the features
+//!   it is drawn with → `font_variants_and_feature_settings_draw_the_fonts_glyphs`,
+//!   `east_asian_variants_take_the_fonts_full_width_forms`
 
 use crate::support::Doc;
 use og_ui::*;
 
-/// Noto Sans Latin, shaped from its file, drawn under the test font's handle.
-fn noto() -> UiFont {
-    let mut font = crate::features::font_at("templates/fonts/latin/NotoSans-Latin.ttf");
+/// The font at `path` (from the repository's root), shaped from its file,
+/// drawn under the test font's handle.
+fn face(path: &str) -> UiFont {
+    let mut font = crate::features::font_at(path);
     font.handle = crate::support::test_font().handle;
     font
 }
 
+const NOTO: &str = "templates/fonts/latin/NotoSans-Latin.ttf";
+
 /// A document of `body` under `css`, laid out 400 px wide in Noto Sans.
 fn doc(body: &str, css: &str) -> Doc {
+    doc_in(NOTO, body, css)
+}
+
+/// [`doc`] in the font at `path`.
+fn doc_in(path: &str, body: &str, css: &str) -> Doc {
     let text = format!(
         "<meta name=\"component\" content=\"t\">\n<div><div id=\"Root\">{body}</div></div>\n<style>#Root {{ width: 400px; }} p {{ margin: 0; }} {css}</style>"
     );
-    let d = Doc::with_font(&text, &[], noto());
+    let d = Doc::with_font(&text, &[], face(path));
     assert!(
         d.ui.frame().warnings.is_empty(),
         "{:?}",
@@ -36,7 +49,8 @@ fn doc(body: &str, css: &str) -> Doc {
     d
 }
 
-/// A drawn line: its text, left, baseline, width, size and tracking.
+/// A drawn line: its text, left, baseline, width, size, tracking and
+/// glyphs (a shaped form's id, or `None` for its character's own glyph).
 #[derive(Clone, Debug)]
 struct Line {
     text: String,
@@ -45,6 +59,7 @@ struct Line {
     width: f32,
     size: f32,
     tracking: f32,
+    glyphs: Vec<og_draw::GlyphPlacement>,
 }
 
 /// The lines drawn inside element `id`, top to bottom.
@@ -62,6 +77,7 @@ fn lines(d: &Doc, id: &str) -> Vec<Line> {
                     bounds,
                     size,
                     tracking,
+                    placements,
                     ..
                 } if (r.y..r.y + r.height).contains(&(bounds.y + bounds.height / 2.0))
                     && (r.x - 0.5..r.x + r.width + 0.5).contains(&bounds.x) =>
@@ -73,6 +89,7 @@ fn lines(d: &Doc, id: &str) -> Vec<Line> {
                         width: bounds.width,
                         size: *size,
                         tracking: *tracking,
+                        glyphs: placements.clone(),
                     })
                 }
                 _ => None,
@@ -347,4 +364,101 @@ fn text_stroke_and_fill_paint_as_the_compat_standard_does() {
     let under = outline(&d, "Under").expect("a stroke");
     assert_eq!((under.width, under.align), (2.0, og_draw::UiAlign::Outside));
     assert_eq!(outline(&d, "Plain"), None);
+}
+
+/// The glyph ids drawn in `id`'s first line (`None`: the character's own).
+fn ids(d: &Doc, id: &str) -> Vec<Option<u16>> {
+    lines(d, id)[0].glyphs.iter().map(|g| g.glyph).collect()
+}
+
+/// CSS Fonts 4 §6 turns each variant keyword into its OpenType feature
+/// (§6.4–6.9), `font-kerning: none` turns `kern` off (§6.1) and
+/// `font-feature-settings` applies last (§7.2, over a variant that set
+/// the same feature). The expected glyphs are Noto Sans's own GSUB
+/// substitutions and its `hmtx` advances (fontTools reads them): small
+/// capitals a → 954, b → 967 (and A → 954 under `c2sc`); oldstyle 1–3
+/// → 1092–1094; the slashed zero 1121; the fraction slash 371;
+/// superior 1 → 121, inferior → 1123; the `fi` ligature 890. Each line is
+/// as wide as what it draws.
+#[test]
+fn font_variants_and_feature_settings_draw_the_fonts_glyphs() {
+    let d = doc(
+        r#"<p id="Plain">AVA fi 123</p><p id="Kern">AVA</p><p id="Caps">ab</p><p id="All">Ab</p>
+<p id="Old">0123</p><p id="Zero">0</p><p id="Frac">1/2</p><p id="Sup">1</p><p id="Sub">1</p>
+<p id="NoLig">fi</p><p id="Set">fi 123</p><p id="Over">123</p><p id="Short">ab 1</p>
+<div id="Parent"><p id="Child">ab</p></div>"#,
+        r#"#Kern { font-kerning: none; } #Caps { font-variant-caps: small-caps; }
+#All { font-variant-caps: all-small-caps; } #Old { font-variant-numeric: oldstyle-nums; }
+#Zero { font-variant-numeric: slashed-zero; } #Frac { font-variant-numeric: diagonal-fractions; }
+#Sup { font-variant-position: super; } #Sub { font-variant-position: sub; }
+#NoLig { font-variant-ligatures: no-common-ligatures; }
+#Set { font-feature-settings: "onum", "liga" 0; }
+#Over { font-variant-numeric: oldstyle-nums; font-feature-settings: "onum" 0; }
+#Short { font-variant: small-caps oldstyle-nums; } #Parent { font-variant-caps: small-caps; }"#,
+    );
+    let plain = lines(&d, "Plain").remove(0);
+    let adv: Vec<f32> = plain.glyphs.iter().map(|g| g.advance).collect();
+    assert!(adv[0] < 0.639 - 0.01, "A kerned against V: {adv:?}");
+    assert_eq!(plain.glyphs[4].glyph, Some(890), "the fi ligature");
+    let kern: Vec<f32> = lines(&d, "Kern")[0]
+        .glyphs
+        .iter()
+        .map(|g| g.advance)
+        .collect();
+    assert!(
+        kern.iter()
+            .zip([0.639, 0.6, 0.639])
+            .all(|(a, b)| (a - b).abs() < 1e-4),
+        "hmtx advances, unkerned: {kern:?}"
+    );
+    assert_eq!(ids(&d, "Caps"), [Some(954), Some(967)]);
+    assert_eq!(ids(&d, "All"), [Some(954), Some(967)]);
+    assert_eq!(ids(&d, "Old")[1..], [Some(1092), Some(1093), Some(1094)]);
+    assert_eq!(ids(&d, "Zero"), [Some(1121)]);
+    let frac = ids(&d, "Frac");
+    assert!(
+        frac[1] == Some(371) && frac[0].is_some() && frac[2].is_some(),
+        "{frac:?}"
+    );
+    assert_eq!(
+        (ids(&d, "Sup"), ids(&d, "Sub")),
+        (vec![Some(121)], vec![Some(1123)])
+    );
+    assert_eq!(ids(&d, "NoLig"), [None, None], "f and i, no ligature");
+    let set = ids(&d, "Set");
+    assert_eq!(set[..2], [None, None]);
+    assert_eq!(set[3..], [Some(1092), Some(1093), Some(1094)]);
+    assert_eq!(ids(&d, "Over"), [None, None, None], "the settings win");
+    assert_eq!(ids(&d, "Short"), [Some(954), Some(967), None, Some(1092)]);
+    assert_eq!(ids(&d, "Child"), [Some(954), Some(967)], "inherited");
+    for id in ["Plain", "Old", "Set", "Short"] {
+        let l = &lines(&d, id)[0];
+        let drawn: f32 = l.glyphs.iter().map(|g| g.advance).sum::<f32>() * l.size;
+        assert!(
+            (l.width - drawn).abs() < 0.01,
+            "#{id} measured {} drew {drawn}",
+            l.width
+        );
+    }
+}
+
+/// CSS Fonts 4 §6.10: `font-variant-east-asian: full-width` turns on
+/// `fwid`, Noto Sans SC's full-width forms of A, 1 and ! (glyphs 7935,
+/// 7919, 7903, each one em wide); `proportional-width` (`pwid`) leaves
+/// Latin that is already proportional as it is.
+#[test]
+fn east_asian_variants_take_the_fonts_full_width_forms() {
+    let d = doc_in(
+        "tests/fixtures/ui-text/assets/fonts/NotoSansSC-Regular-subset.ttf",
+        r#"<p id="Full">A1!</p><p id="Prop">A!</p>"#,
+        "#Full { font-variant-east-asian: full-width; } #Prop { font-variant-east-asian: proportional-width; }",
+    );
+    let full = lines(&d, "Full").remove(0);
+    assert_eq!(ids(&d, "Full"), [Some(7935), Some(7919), Some(7903)]);
+    assert!(
+        full.glyphs.iter().all(|g| g.advance == 1.0),
+        "{:?}",
+        full.glyphs
+    );
+    assert_eq!(ids(&d, "Prop"), [None, None]);
 }

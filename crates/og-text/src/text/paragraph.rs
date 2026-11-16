@@ -122,11 +122,7 @@ fn styled<'a>(
     });
     builder.push_default(StyleProperty::FontSize(size));
     builder.push_default(StyleProperty::OverflowWrap(parley::OverflowWrap::Anywhere));
-    let settings = features
-        .tags()
-        .map(|tag| format!("'{tag}' 1"))
-        .collect::<Vec<_>>()
-        .join(",");
+    let settings = features.css();
     builder.push_default(StyleProperty::FontFeatures(settings.as_str().into()));
     for ((range, k), family) in runs.iter().zip(families) {
         builder.push(

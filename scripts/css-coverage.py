@@ -181,6 +181,11 @@ proof("text-stroke-fill", "css_text", "text_stroke_and_fill_paint_as_the_compat_
       "Emitted text ink and outline effect: the fill colour over color, a stroke centred on the edge at its width and colour, currentcolor by default, and paint-order: stroke drawing only its outer half under the fill.")
 proof("custom-ellipses", "html_text", "text_wrap_styles_and_overflow_strings_lay_out_as_css_does",
       "A one-line clipped text draws its text-overflow string in place of the ellipsis. Two-value (start and end) strings are not covered.")
+proof("font-feature-settings font-kerning font-variant font-variant-caps font-variant-numeric font-variant-ligatures font-variant-position",
+      "css_text", "font_variants_and_feature_settings_draw_the_fonts_glyphs",
+      "Drawn glyph ids and advances match Noto Sans's own GSUB/hmtx: small-caps and all-small-caps, oldstyle, slashed-zero and diagonal fractions, super/sub digits, no-common-ligatures, the font-variant shorthand, inheritance, font-kerning: none's unkerned advances and font-feature-settings applied after a variant; each line measures as drawn. A cooked font draws the forms its import cooks or renders at run time. petite-caps, unicase and titling-caps without the font's features, and synthesised small caps or super/subscripts, are not covered.")
+proof("font-variant-east-asian", "css_text", "east_asian_variants_take_the_fonts_full_width_forms",
+      "Drawn glyphs of Noto Sans SC: full-width takes its one-em fwid forms of A, 1 and !, and proportional-width leaves proportional Latin as it is. The JIS and simplified/traditional and ruby forms are mapped but not asserted (the subset has none).")
 proof("font-face", "runs", "a_font_face_family_takes_its_faces_by_weight_and_range",
       "Glyph faces per character for @font-face weight ranges matched in CSS Fonts 4 §5.2's order, unicode-range and a declared family in a document's font-family list. src resolution is runtime ui_configure's; font-style, font-stretch, format() and tech() descriptors are not covered.")
 
