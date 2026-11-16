@@ -258,16 +258,24 @@ pub(crate) static DEFAULT: std::sync::LazyLock<Reading> = std::sync::LazyLock::n
     };
     let (default, empty) = (read(crate::DEFAULT_CSS), read(""));
     // What lets its rules be laid beside another sheet's as they were read:
-    // nothing but their own text decides how they read.
+    // nothing but their own text decides how they read. Its keyframes (the
+    // shared motions, docs/ui.md §3.1) are the one thing it declares, and
+    // Reading::with_default carries them.
+    let declared = super::at_rules::Sheet {
+        keyframes: Vec::new(),
+        keyframe_rules: Vec::new(),
+        ..default.sheet.clone()
+    };
     assert!(
-        default.sheet == empty.sheet
+        declared == empty.sheet
             && default.layers == empty.layers
             && default.anonymous == 0
-            && !default
-                .rules
+            && default
+                .sheet
+                .keyframe_rules
                 .iter()
-                .any(|r| r.rule.body.contains("animation")),
-        "the default style is rules in og-default: an at-rule that declares something, another layer or an animation in it needs Reading::with_default to carry it"
+                .all(|(_, q, _)| *q == AtQuery::default()),
+        "the default style is rules in og-default and unconditional keyframes: an at-rule that declares something else, or another layer, in it needs Reading::with_default to carry it"
     );
     default
 });
@@ -311,7 +319,7 @@ impl Reading {
             .map_err(error)?;
         let (layers, anonymous) = (std::mem::take(&mut reader.layers), reader.anonymous);
         let count = rules.len();
-        keyframes(&mut sheet, &mut rules).map_err(error)?;
+        keyframes(&mut sheet, &mut rules, Some(&order_layers(&layers))).map_err(error)?;
         let known = |name: &str| sheet.keyframe_rules.iter().any(|(n, ..)| n == name);
         let mut out = Vec::new();
         for (selector, rule) in selectors(rules).map_err(error)? {
@@ -374,6 +382,34 @@ impl Reading {
     /// reading the two texts as one reads them.
     fn with_default(mut self, place: DefaultRules) -> Self {
         let default = &*DEFAULT;
+        // The default style's keyframes, under the sheet's own (its layer,
+        // og-default, is the lowest): a pack's definition of a shared
+        // motion's name wins, wherever the two texts are read.
+        let own = |name: &str| self.sheet.keyframe_rules.iter().any(|(n, ..)| n == name);
+        let shared: Vec<_> = default
+            .sheet
+            .keyframe_rules
+            .iter()
+            .filter(|(n, ..)| !own(n))
+            .cloned()
+            .collect();
+        let frames: Vec<_> = default
+            .sheet
+            .keyframes
+            .iter()
+            .filter(|(k, _)| shared.iter().any(|(.., key)| key == k))
+            .cloned()
+            .collect();
+        let at = match place {
+            DefaultRules::Before => 0,
+            DefaultRules::After(_) => self.sheet.keyframe_rules.len(),
+        };
+        let at_frames = match place {
+            DefaultRules::Before => 0,
+            DefaultRules::After(_) => self.sheet.keyframes.len(),
+        };
+        self.sheet.keyframe_rules.splice(at..at, shared);
+        self.sheet.keyframes.splice(at_frames..at_frames, frames);
         let own = self.count - self.ua;
         let rules = default.rules[default.ua_rules()..].iter().cloned();
         match place {
@@ -846,8 +882,16 @@ fn lowered(body: &str, line: usize, known: &dyn Fn(&str) -> bool) -> Result<Lowe
 
 /// Takes the `@keyframes` out of `rules` into `sheet`, each parsed: a
 /// later definition of a name replaces an earlier one under the same
-/// conditions.
-fn keyframes(sheet: &mut super::at_rules::Sheet, rules: &mut Vec<Rule>) -> Result<(), Error> {
+/// conditions. With `layers` (a style's reading, in precedence order) a
+/// definition in a lower layer than the one it would replace does not
+/// (CSS Cascade 5 §6.4.3: a pack's `og-pack` keyframes over the default
+/// style's `og-default`); a document's own always do.
+fn keyframes(
+    sheet: &mut super::at_rules::Sheet,
+    rules: &mut Vec<Rule>,
+    layers: Option<&[String]>,
+) -> Result<(), Error> {
+    let mut ranks: std::collections::HashMap<String, u32> = Default::default();
     for rule in rules.iter() {
         if let Some(name) = rule
             .selector
@@ -879,6 +923,13 @@ fn keyframes(sheet: &mut super::at_rules::Sheet, rules: &mut Vec<Rule>) -> Resul
             } else {
                 format!("{name}@{}", sheet.keyframe_rules.len())
             };
+            if let Some(layers) = layers {
+                let rank = self::rank(layers, &rule.layer);
+                if ranks.get(&key).is_some_and(|held| *held > rank) {
+                    continue;
+                }
+                ranks.insert(key.clone(), rank);
+            }
             sheet.keyframe_rules.retain(|(_, _, k)| *k != key);
             sheet.keyframes.retain(|(k, _)| *k != key);
             sheet
@@ -926,7 +977,7 @@ fn read(
     let layers = order_layers(&reader.layers);
     sheet.layers = layers;
     rules.drain(..global.count);
-    keyframes(sheet, &mut rules)?;
+    keyframes(sheet, &mut rules, None)?;
     Ok(rules)
 }
 
@@ -3456,6 +3507,34 @@ button::part(base):hover { background: red; }
             assert!(read == whole, "{directory}: as the whole text reads");
             assert!(read.count > DEFAULT.count, "{directory}");
         }
+    }
+
+    /// A keyframes name is its highest layer's definition, whatever the
+    /// order (CSS Cascade 5 §6.4.3): a pack's shared motion over the
+    /// default style's, read first or last. Wrong: the last text read.
+    #[test]
+    fn a_keyframes_name_is_its_highest_layers() {
+        let css = "@layer low, high;\n@layer high { @keyframes k { to { opacity: 0.25; } } }\n@layer low { @keyframes k { to { opacity: 0.75; } } }\n@keyframes u { to { opacity: 0.5; } }\n@layer high { @keyframes u { to { opacity: 0.125; } } }";
+        let read = Reading::read("t", css, 0, Vec::new()).unwrap();
+        let frames = |name: &str| {
+            let (_, k) = read
+                .sheet
+                .keyframes
+                .iter()
+                .find(|(n, _)| n == name)
+                .unwrap();
+            format!("{k:?}")
+        };
+        assert!(
+            frames("k").contains("0.25") && !frames("k").contains("0.75"),
+            "{}",
+            frames("k")
+        );
+        assert!(
+            frames("u").contains("0.5") && !frames("u").contains("0.125"),
+            "{}",
+            frames("u")
+        );
     }
 
     /// The role rules a document without a pack takes are those of the
