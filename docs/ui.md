@@ -208,7 +208,8 @@ attributes: `<img src="coin" alt="">` (a registered picture,
 data-action>` (the action's glyph). `<span part="big">` names a run for
 `p::part(big)`, which takes `color`, `font`, `font-family`, `font-weight`,
 `font-style`, `text-decoration-line`, `-og-text-motion`, `vertical-align`,
-and `font-size`, `line-height` and `letter-spacing` in px or em. A run's
+`text-combine-upright` (down a vertical line, `all` sets the run in one
+upright em, one unit of the line), and `font-size`, `line-height` and `letter-spacing` in px or em. A run's
 `vertical-align` follows CSS 2.1 §10.8 and CSS Inline 3; `<sub>` and
 `<sup>` are runs at ÷ 1.2 size as HTML's UA sheet has them. A translated
 string styles runs with MessageFormat 2 markup: `{#b}…{/b}`, `{#i}`,
@@ -367,8 +368,8 @@ engine differs or limits as follows:
   text work in vertical lines. Text on a path keeps its physical box. A
   container variant (`Query::container`) reads a vertical element's
   height. `glyph-orientation-vertical` is read as `text-orientation`;
-  `text-combine-upright` combines a whole plain text (`all`) or each short
-  digit run (`digits`), squeezing it across to one em.
+  `text-combine-upright` combines a whole text or a `::part` run (`all`)
+  or each short digit run (`digits`), squeezing it across to one em.
 - **Ruby and emphasis marks.** `<ruby>` is inline markup of a text: each
   `<rt>` annotates the words before it as one unbreakable box (no `<rtc>`,
   no nested ruby, no `display: ruby` on other elements). `ruby-position`

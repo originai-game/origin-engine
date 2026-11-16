@@ -68,7 +68,9 @@ string "coins" "{n, plural, =0 {コインなし} other {# コイン}}"
 - Vertical text: `writing-mode: vertical-rl` with the face's own vertical
   forms (`vmtx`, `vert`), which the cooked CJK font packs keep. Set dates
   and two-digit numbers upright with `text-combine-upright: digits 2`;
-  longer numbers lie sideways. Latin words lie sideways by default;
+  longer numbers lie sideways. A short Latin abbreviation or a number in a
+  run of its own takes one upright em with `text-combine-upright: all` on
+  its `::part` (`<span part="n">ABC</span>`, `p::part(n) { … }`). Latin words lie sideways by default;
   `text-orientation: upright` stacks them, which reads well only for short
   initialisms.
 - Emphasis marks (`text-emphasis: filled`) take their side from the

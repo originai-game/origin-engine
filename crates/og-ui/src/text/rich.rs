@@ -69,12 +69,30 @@ pub struct RichSpan {
     pub valign: VerticalAlign,
     /// CSS `word-spacing`, px: added after each word separator.
     pub word_spacing: f32,
+    /// Its own `text-combine-upright` (CSS Writing Modes 4 §9.1); `None`:
+    /// its text's.
+    pub combine: Option<crate::layout::flow::Combine>,
 }
 
 impl RichSpan {
     /// What it asks of its font family: its weight and slant.
     pub fn query(&self) -> crate::FontQuery {
         crate::FontQuery::new(self.weight, self.italic).at_width(self.stretch)
+    }
+
+    /// Its text's setting down a vertical line `v`: under its own
+    /// `text-combine-upright`, `all` composing its whole text in one em.
+    pub(crate) fn vertical(
+        &self,
+        v: crate::layout::flow::VerticalText,
+    ) -> crate::layout::flow::VerticalText {
+        self.combine.map_or(v, |c| v.combining(c, &self.text))
+    }
+
+    /// Whether it is composed in one upright em down `v`, one unit of
+    /// its line (CSS Writing Modes 4 §9.1: as U+FFFC for line breaking).
+    fn combined(&self, v: Option<crate::layout::flow::VerticalText>) -> bool {
+        self.atom.is_none() && v.is_some_and(|v| self.vertical(v).combine)
     }
 }
 
@@ -214,6 +232,7 @@ pub(crate) fn span_advance(
     let Some(v) = v else {
         return span_width(s, text, fonts);
     };
+    let v = s.vertical(v);
     let size = s.step.size;
     let down = |t: &str, size: f32| {
         let m = fonts.metrics_styled(s.font, s.query(), t);
@@ -326,13 +345,19 @@ fn paragraphs(
 ) -> Vec<Vec<Unit>> {
     let mut out: Vec<Vec<Unit>> = vec![Vec::new()];
     for (k, s) in rc.spans.iter().enumerate() {
-        if s.atom.is_some() {
+        // An atom, or a text composed in one em: one unit of the line.
+        if s.atom.is_some() || s.combined(v) {
+            let text = if s.atom.is_some() {
+                String::new()
+            } else {
+                s.text.replace('\n', "")
+            };
             let glued = out.last().and_then(|p| p.last()).is_some_and(|u| !u.space);
             out.last_mut().expect("a paragraph").push(Unit {
                 span: k,
-                text: String::new(),
+                width: span_advance(s, &text, fonts, v),
+                text,
                 space: false,
-                width: span_advance(s, "", fonts, v),
                 glued,
             });
             continue;
@@ -1364,9 +1389,9 @@ impl Ui {
                     let size = sp.step.size * sk;
                     let r =
                         self.span_run(i, sp, font, &seg.text, size, v, (mid, col, across), false);
-                    crate::text::vertical::runs(&seg.text, v).into_iter().fold(
-                        0.0,
-                        |at, (range, up)| {
+                    crate::text::vertical::runs(&seg.text, sp.vertical(v))
+                        .into_iter()
+                        .fold(0.0, |at, (range, up)| {
                             crate::ui::vertical_run(
                                 &r,
                                 &seg.text[range],
@@ -1377,8 +1402,7 @@ impl Ui {
                                 &mut |_, _, _| {},
                                 &mut |_, _, _, _, _, _, _| {},
                             )
-                        },
-                    )
+                        })
                 })
                 .collect();
             let total: f32 = lengths.iter().sum();
@@ -1464,7 +1488,7 @@ impl Ui {
             };
             let glyphs = &mut out[k].glyphs;
             let mut at = 0.0;
-            for (range, up) in crate::text::vertical::runs(&piece.text, v) {
+            for (range, up) in crate::text::vertical::runs(&piece.text, s.vertical(v)) {
                 let off = first + piece.text[..range.start].chars().count();
                 at = crate::ui::vertical_run(
                     &run,
@@ -1647,7 +1671,7 @@ impl Ui {
             // Each cluster's characters and its stretch down the column,
             // for its emphasis mark.
             let mut stretches: Vec<(usize, f32, f32)> = Vec::new();
-            for (range, set) in crate::text::vertical::runs(&text, v) {
+            for (range, set) in crate::text::vertical::runs(&text, s.vertical(v)) {
                 let off = text[..range.start].chars().count();
                 at = crate::ui::vertical_run(
                     &run,

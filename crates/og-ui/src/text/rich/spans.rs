@@ -73,6 +73,9 @@ pub struct TextSpanStyle {
     pub oblique: Option<f32>,
     /// Its width (CSS `font-stretch`), a percentage of the normal.
     pub stretch: Option<f32>,
+    /// CSS `text-combine-upright` down a vertical line: `all` composes
+    /// the span's text in one upright em.
+    pub combine: Option<crate::layout::flow::Combine>,
 }
 
 /// An inline object of a text (a document's `<img>`, `<og-icon>` or `<kbd
@@ -174,6 +177,7 @@ impl Ui {
                 decoration: None,
                 valign: crate::VerticalAlign::Baseline,
                 word_spacing: 0.0,
+                combine: None,
             };
             for (_, _, style) in ranges.iter().filter(|(a, b, _)| *a <= start && end <= *b) {
                 if let Some(c) = &style.color {
@@ -204,6 +208,9 @@ impl Ui {
                 }
                 if let Some(v) = style.vertical_align {
                     s.valign = v;
+                }
+                if let Some(c) = style.combine {
+                    s.combine = Some(c);
                 }
                 if let Some(atom) = &style.atom {
                     // A ruby's text is its base; another atom has none.

@@ -233,8 +233,10 @@ fn ruby_lays_out_as_css_ruby_does() {
 fn vertical_text_orients_and_combines_as_css_writing_modes_does() {
     let d = doc(
         r#"<p id="Up">AB</p><p id="Side">日A</p><p id="G0">AB</p><p id="G90">日A</p>
-<p id="Tb">AB</p><p id="Lr">AB</p><p id="All">123</p><p id="Dig">年10月100</p>"#,
-        "#Up, #Side, #G0, #G90, #All, #Dig { writing-mode: vertical-rl; height: 100px; }
+<p id="Tb">AB</p><p id="Lr">AB</p><p id="All">123</p><p id="Dig">年10月100</p>
+<p id="Span">年<span part="y">AB</span>月</p>"#,
+        "#Up, #Side, #G0, #G90, #All, #Dig, #Span { writing-mode: vertical-rl; height: 100px; }
+#Span::part(y) { text-combine-upright: all; }
 #Up { text-orientation: upright; } #Side { text-orientation: sideways; }
 #G0 { glyph-orientation-vertical: 0deg; } #G90 { glyph-orientation-vertical: 90deg; }
 #Tb { writing-mode: tb; height: 100px; } #Lr { writing-mode: lr-tb; }
@@ -284,6 +286,21 @@ fn vertical_text_orients_and_combines_as_css_writing_modes_does() {
     );
     assert!(ten.transform[1..] == [0.0, 0.0, 1.0] && ten.transform[0] <= 1.0);
     assert_eq!(one(&d, "Dig", "100").transform, TURNED);
+    // all on an inline span: its AB upright in one em between 年 and 月,
+    // squeezed across.
+    let (nen, ab, tsuki) = (
+        one(&d, "Span", "年"),
+        one(&d, "Span", "AB"),
+        one(&d, "Span", "月"),
+    );
+    assert!(
+        close(ab.baseline - nen.baseline, 20.0) && close(tsuki.baseline - ab.baseline, 20.0),
+        "{nen:?} {ab:?} {tsuki:?}"
+    );
+    assert!(
+        ab.transform[1..] == [0.0, 0.0, 1.0] && ab.transform[0] < 1.0,
+        "{ab:?}"
+    );
 }
 
 /// CSS Text Decoration 4 §3: a mark for each character but punctuation

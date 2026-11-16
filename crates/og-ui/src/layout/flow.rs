@@ -151,6 +151,18 @@ impl VerticalText {
         self.orient == TextOrientation::Sideways
             || matches!(self.mode, WritingMode::SidewaysRl | WritingMode::SidewaysLr)
     }
+
+    /// The setting of `text` under its own `text-combine-upright`.
+    pub(crate) fn combining(self, combine: Combine, text: &str) -> VerticalText {
+        VerticalText {
+            combine: combine.takes(text),
+            digits: match combine {
+                Combine::Digits(n) => n,
+                _ => 0,
+            },
+            ..self
+        }
+    }
 }
 
 /// The flow properties a document declares ([`check`]).
@@ -288,14 +300,14 @@ impl Flow {
     /// Its text's vertical setting (`None`: horizontal), for its own
     /// `text`.
     pub(crate) fn vertical_text(&self, text: &str) -> Option<VerticalText> {
-        self.mode.vertical().then(|| VerticalText {
-            mode: self.mode,
-            orient: self.orient,
-            combine: self.combine.takes(text),
-            digits: match self.combine {
-                Combine::Digits(n) => n,
-                _ => 0,
-            },
+        self.mode.vertical().then(|| {
+            VerticalText {
+                mode: self.mode,
+                orient: self.orient,
+                combine: false,
+                digits: 0,
+            }
+            .combining(self.combine, text)
         })
     }
 
