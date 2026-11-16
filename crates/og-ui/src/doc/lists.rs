@@ -26,6 +26,7 @@ use serde_json::Value;
 /// (CSS Text Decoration 4 Appendix B).
 pub(super) const UA_CSS: &str = "
 ul, ol { padding: 0 0 0 40px; }
+li { display: list-item; }
 ul { list-style-type: disc; }
 ol { list-style-type: decimal; }
 ul ul, ol ul { list-style-type: circle; }

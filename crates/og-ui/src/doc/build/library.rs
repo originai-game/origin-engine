@@ -49,7 +49,11 @@ impl Library {
                 .flat_map(|n| &n.rules)
                 .flat_map(|r| &r.declarations)
         };
-        self.uses_run |= declarations().any(|d| crate::doc::generated::longhand(&d.name));
+        // A list item other than an `<li>` counts on the run's `list-item`.
+        self.uses_run |= declarations().any(|d| {
+            crate::doc::generated::longhand(&d.name)
+                || d.name == "display" && d.source.contains("list-item")
+        });
         self.wide_keywords |= declarations().any(|d| {
             d.value.binding().is_some()
                 || super::cascade::CARRIED_BY_DEFAULT.contains(&d.name.as_str())

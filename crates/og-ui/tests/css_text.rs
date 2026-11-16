@@ -337,6 +337,31 @@ li::marker { content: counter(list-item, thumbs); color: #ff0000; }"#,
     }
 }
 
+/// CSS Display 3 §2.5 and CSS Lists 3 §2: any box with `display:
+/// list-item` is a list item with a `::marker` in its `list-style-type`,
+/// and (§4.6) increments `list-item` by 1 unless its `counter-increment`
+/// names that counter: A 1, B 2, C with `list-item 5` 7, D 8. The
+/// disclosure styles draw ▸ (U+25B8) and ▾ (U+25BE). An `<li>` set to
+/// `display: block` is no list item, so it has no marker.
+///
+/// Ways it could fail: a marker only for `<li>`, every item numbered 1
+/// (no counter), C's explicit increment added to the implicit one (8,
+/// 9), or a block `<li>` keeping its marker.
+#[test]
+fn display_list_item_makes_any_box_a_list_item() {
+    let d = doc(
+        r#"<div id="L"><div class="i">A</div><div class="i">B</div><div class="i" id="C">C</div><div class="i">D</div></div>
+<div id="Disc"><div class="i" id="Closed">x</div><div class="i" id="Open">y</div></div>
+<ul id="Blocks"><li>a</li><li>b</li></ul>"#,
+        ".i { display: list-item; } #L, #Disc { padding-left: 40px; } #L { list-style-type: decimal; } #C { counter-increment: list-item 5; }
+#Closed { list-style-type: disclosure-closed; } #Open { list-style-type: disclosure-open; }
+#Blocks > li { display: block; }",
+    );
+    assert_eq!(d.markers("L"), ["1.", "2.", "7.", "8."]);
+    assert_eq!(d.markers("Disc"), ["\u{25B8}", "\u{25BE}"]);
+    assert!(d.markers("Blocks").is_empty(), "{:?}", d.markers("Blocks"));
+}
+
 /// CSS Lists 3 §4.4.2: `reversed(c)` with no value starts at the sum of
 /// the negated increments in its scope, up to the first element that
 /// sets it (whose value is added instead), plus the last non-zero

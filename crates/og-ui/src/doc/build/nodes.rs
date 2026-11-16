@@ -705,17 +705,23 @@ impl Ui {
             let open = self.tree.parent();
             self.tree.note_touch_button(open, r, &mut self.docs);
         }
-        if kind == Kind::Box
-            && n.selector_tag.as_deref() == Some("li")
-            && let Some(marker) = r.str("markerType")
-        {
+        // A list item: an `<li>`, numbered by its list, or any box with
+        // `display: list-item`, numbered by the run's `list-item` counter.
+        let li = n.selector_tag.as_deref() == Some("li");
+        if kind == Kind::Box && r.str("display") == Some("listItem") {
+            let marker = r.str("markerType").unwrap_or("disc");
+            let ordinal = if li {
+                r.ordinal.unwrap_or(1)
+            } else {
+                self.docs.state_mut().run.read("list-item").unwrap_or(1)
+            };
             // `::marker { content }` replaces the list style's text;
             // its color inks either.
             let (content, ink) = self.marker_override(b, n, r);
             // The style's text without its suffix's trailing space: the
             // marker's gap stands for it.
             let style = (marker != "none").then(|| {
-                crate::doc::generated::marker(r.ordinal.unwrap_or(1), marker, &b.doc.sheet)
+                crate::doc::generated::marker(ordinal, marker, &b.doc.sheet)
                     .trim_end()
                     .to_string()
             });

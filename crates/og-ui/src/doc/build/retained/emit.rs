@@ -145,7 +145,10 @@ impl RetainedHost {
         let mut result = Ok(());
         let mut children_built = false;
         let mut images = Vec::new();
-        ui.docs.run_enter(&resolved.values);
+        let node = &e.document.nodes[e.index];
+        let list_item = resolved.values.str("display") == Some("listItem")
+            && node.selector_tag.as_deref() != Some("li");
+        ui.docs.run_enter(&resolved.values, list_item);
         *ui.tree.scope_mut() = e.scope.clone();
         ui.build_resolved_node(&mut b, e.index, resolved, |ui, b, inner| {
             let built = match inner {

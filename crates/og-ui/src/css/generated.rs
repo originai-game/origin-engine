@@ -705,6 +705,13 @@ impl Run {
             && self.contained == other.contained
     }
 
+    /// Counter `name`'s innermost value in scope, read as generated text
+    /// reads it (the reader is built again when the run it enters moves).
+    pub fn read(&mut self, name: &str) -> Option<i64> {
+        self.reads += 1;
+        self.counters.get(name)?.last().map(|c| c.value)
+    }
+
     /// Where the log stands, to take a subtree's events with [`Run::since`].
     pub fn mark(&self) -> usize {
         self.log.len()

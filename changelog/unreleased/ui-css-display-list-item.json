@@ -1,0 +1,8 @@
+{
+  "added": [
+    {
+      "member": "CSS display: list-item",
+      "summary": "Any box with display: list-item is a list item: it draws a ::marker in its list-style-type, numbered by the list-item counter (CSS Lists 3 §4.6: each one increments it by 1 unless its counter-increment names list-item). An <li> is a list item through the UA sheet's li { display: list-item }, so an <li> set to another display draws no marker."
+    }
+  ]
+}

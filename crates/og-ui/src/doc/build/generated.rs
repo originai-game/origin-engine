@@ -244,7 +244,10 @@ impl Ui {
 impl crate::ui::Docs {
     /// Enters an element in the counter run and applies its counter
     /// properties; nothing unless some document uses generated content.
-    pub(crate) fn run_enter(&mut self, r: &Resolved) {
+    /// A list item other than an `<li>` (`list_item`, whose number its
+    /// list's structure gives) increments `list-item` by 1 unless its
+    /// `counter-increment` names it (CSS Lists 3 §4.6).
+    pub(crate) fn run_enter(&mut self, r: &Resolved, list_item: bool) {
         if !self.library.uses_run {
             return;
         }
@@ -258,6 +261,18 @@ impl crate::ui::Docs {
         }
         if let Some(g) = &r.generated {
             self.state_mut().run.apply(&g.ops);
+        }
+        if list_item
+            && !r
+                .generated
+                .as_ref()
+                .is_some_and(|g| g.ops.increment.iter().any(|(n, _)| n == "list-item"))
+        {
+            let ops = gc::Ops {
+                increment: vec![("list-item".into(), 1)],
+                ..Default::default()
+            };
+            self.state_mut().run.apply(&std::sync::Arc::new(ops));
         }
     }
 
