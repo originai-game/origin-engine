@@ -56,7 +56,7 @@ impl Library {
                 || !d.name.starts_with("--")
                     && matches!(
                         crate::doc::stylesheet::wide_keyword(&d.source),
-                        Some("inherit" | "unset" | "revert" | "revert-layer")
+                        Some("inherit" | "unset" | "revert" | "revert-layer" | "revert-rule")
                     )
         });
         let prefix = format!("{}/", doc.name);

@@ -533,3 +533,57 @@ a:target-current + .probe { width: 50px; }
         "the first is current"
     );
 }
+
+/// `revert-rule` rolls a property back to what it is without the
+/// keyword's own rule (CSS Cascade 5 §7.3): the next rule's declaration,
+/// whatever its layer, where `revert-layer` would drop the whole layer.
+///
+/// Ways it could fail: the keyword read as `revert-layer` or `unset` (an
+/// equal-layer rule below lost too), an earlier declaration of the same
+/// rule surviving, a custom property or a `var()` fallback not rolled back.
+#[test]
+fn revert_rule_rolls_back_one_rule() {
+    let doc = r##"<meta name="component" content="rr">
+<column id="Root">
+  <div class="probe on" id="Same"></div>
+  <div class="probe on" id="Earlier"></div>
+  <div class="probe on" id="Layered"></div>
+  <div class="probe on" id="Custom"></div>
+  <div class="probe on" id="Fallback"></div>
+  <div class="probe" id="Off"></div>
+  <div class="probe on" id="Text"></div>
+  <div class="on" id="Alone"></div><div id="Plain"></div>
+</column>
+<style>
+@layer low { #Layered { width: 70px; } }
+.probe { width: 10px; height: 4px; }
+#Same { width: 50px; }
+#Same.on { width: revert-rule; }
+#Earlier { width: 30px; }
+#Earlier.on { width: 90px; width: revert-rule; }
+#Layered.on { width: revert-rule; }
+#Custom { --w: 50px; width: var(--w); }
+#Custom.on { --w: revert-rule; }
+#Fallback { width: 50px; }
+#Fallback.on { width: var(--none, revert-rule); }
+#Off { width: 50px; }
+#Off.on { width: revert-rule; }
+#Text { font-size: 20px; width: 2em; }
+#Text.on { font-size: revert-rule; }
+#Alone.on { margin-left: revert-rule; width: 20px; height: 6px; }
+#Plain { margin-left: 8px; width: 20px; height: 6px; }
+</style>"##;
+    with_doc(doc, &[], |d| {
+        let w =
+            ["Same", "Earlier", "Layered", "Custom", "Fallback", "Off"].map(|id| d.get(id).width);
+        assert_eq!(w, [50.0, 30.0, 10.0, 50.0, 50.0, 50.0]);
+        assert_eq!(d.get("Text").width, 40.0, "an inherited text property");
+        // With no rule below, the property is as if never declared; the
+        // rule's other declarations stay.
+        let (alone, plain) = (d.get("Alone"), d.get("Plain"));
+        assert_eq!(
+            (alone.x, alone.width, alone.height),
+            (plain.x - 8.0, 20.0, 6.0)
+        );
+    });
+}

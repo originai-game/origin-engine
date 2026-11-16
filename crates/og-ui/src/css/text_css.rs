@@ -528,7 +528,7 @@ pub(crate) fn font(v: &str) -> Result<Vec<(String, String)>, String> {
 fn wide(v: &str) -> bool {
     matches!(
         v,
-        "inherit" | "initial" | "unset" | "revert" | "revert-layer"
+        "inherit" | "initial" | "unset" | "revert" | "revert-layer" | "revert-rule"
     )
 }
 
@@ -682,7 +682,7 @@ fn check(name: &str, v: &str) -> Result<(), String> {
     let v = v.trim();
     if matches!(
         v,
-        "inherit" | "initial" | "unset" | "revert" | "revert-layer"
+        "inherit" | "initial" | "unset" | "revert" | "revert-layer" | "revert-rule"
     ) {
         return Ok(());
     }
@@ -1203,7 +1203,7 @@ pub(crate) fn inherit(inp: Inputs<'_>) -> TextCss {
         let value = value.trim();
         let computed_value = match value {
             "inherit" | "unset" if INHERITED.contains(&name.as_str()) => continue,
-            "initial" | "revert" | "revert-layer" | "unset" => {
+            "initial" | "revert" | "revert-layer" | "revert-rule" | "unset" => {
                 computed.remove(&key(name));
                 continue;
             }

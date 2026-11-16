@@ -1382,7 +1382,8 @@ and the structural, form, `:open`, `:modal`, `:popover-open`, `:target`
 The cascade follows Cascade 5 and 6 and CSS Nesting: `!important`,
 `@layer` (UA rules below every layer), `@scope`, `@supports` (declarations
 and `selector()`), and `inherit`, `initial`, `unset`, `revert`,
-`revert-layer`. The engine's layer order is §5's. `@import "x.css"
+`revert-layer` and `revert-rule` (the property as it is without the
+keyword's own rule). The engine's layer order is §5's. `@import "x.css"
 [layer()] [supports()] [media]` is read at cook from beside the document
 into its blob. `@property` registers syntax, inheritance and initial
 value. `@counter-style` and `@position-try` feed counters and anchor

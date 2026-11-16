@@ -351,9 +351,16 @@ fn part_selector(selector: &Selector) -> Result<(), String> {
 /// The CSS-wide keywords every property takes.
 pub fn wide_keyword(value: &str) -> Option<&'static str> {
     let v = value.trim();
-    ["inherit", "initial", "unset", "revert", "revert-layer"]
-        .into_iter()
-        .find(|k| v.eq_ignore_ascii_case(k))
+    [
+        "inherit",
+        "initial",
+        "unset",
+        "revert",
+        "revert-layer",
+        "revert-rule",
+    ]
+    .into_iter()
+    .find(|k| v.eq_ignore_ascii_case(k))
 }
 
 /// Order merged layer names without allowing a late sublayer to escape its parent.
@@ -1810,7 +1817,7 @@ pub(super) fn lower(
         }
         if declaration.name == "all" {
             return Err(format!(
-                "all takes only inherit, initial, unset, revert or revert-layer, written out, not {}",
+                "all takes only inherit, initial, unset, revert, revert-layer or revert-rule, written out, not {}",
                 declaration.source
             ));
         }

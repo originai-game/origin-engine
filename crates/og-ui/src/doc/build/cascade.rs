@@ -288,7 +288,8 @@ fn names_reduced_motion(query: &crate::doc::media::Query) -> bool {
 #[derive(Clone, Copy)]
 enum Winner<'a> {
     Declared(&'a crate::doc::StyleDeclaration),
-    /// `revert` or `revert-layer` with nothing below it: as `unset`.
+    /// `revert`, `revert-layer` or `revert-rule` with nothing below it: as
+    /// `unset`.
     Unset,
 }
 
@@ -398,17 +399,25 @@ pub(crate) fn values_with<'r>(
     }
     // The winner of a property's declarations, highest first, where
     // `keyword` is a declaration's CSS-wide keyword: `revert` rolls back to
-    // the user-agent rules, `revert-layer` to the layers below its own.
+    // the user-agent rules, `revert-layer` to the layers below its own,
+    // `revert-rule` to what the property is without the keyword's own rule
+    // (CSS Cascade 5 §7.3).
     fn pick<'a>(
         list: &[Candidate<'a>],
         keyword: &dyn Fn(&crate::doc::StyleDeclaration) -> Option<&'static str>,
     ) -> ((bool, u8, bool, u32, usize, usize), Winner<'a>, usize) {
         let (mut ua_only, mut below) = (false, None);
+        // The rules rolled back by `revert-rule`, by their order.
+        let mut without: Vec<usize> = Vec::new();
         for (priority, declaration, line, layer) in list {
-            if (ua_only && *layer != 0) || below.is_some_and(|b| *layer >= b) {
+            if (ua_only && *layer != 0)
+                || below.is_some_and(|b| *layer >= b)
+                || without.contains(&priority.4)
+            {
                 continue;
             }
             match keyword(declaration) {
+                Some("revert-rule") => without.push(priority.4),
                 Some("revert") => ua_only = true,
                 Some("revert-layer") if *layer > 0 => below = Some(*layer),
                 Some("revert-layer") => ua_only = true,
