@@ -786,13 +786,19 @@ impl Parser {
                 name = "visible".into();
             }
             // Selector facts only: `:lang()`, `:dir()`, `[data-…]` and
-            // `:state(name)` (CSS custom states, `state:name={…}`).
+            // `:state(name)` (CSS custom states, `state:name={…}`). `lang`
+            // and `dir` are HTML's global attributes: an element that does
+            // not reflect them itself (a field's `lang` picks its keyboard)
+            // still has them for its selectors.
+            let reflected = schema::prop(&name)
+                .is_some_and(|(_, p)| internal.is_none_or(|kind| p.applies(kind)));
             if !component
                 && model.is_none()
-                && schema::prop(&name).is_none()
+                && !reflected
                 && (matches!(a.name.as_str(), "lang" | "dir")
-                    || a.name.starts_with("data-")
-                    || a.name.strip_prefix("state:").is_some_and(identifier))
+                    || (schema::prop(&name).is_none()
+                        && (a.name.starts_with("data-")
+                            || a.name.strip_prefix("state:").is_some_and(identifier))))
             {
                 if a.bound {
                     expression(&a.value, a.at)?;
