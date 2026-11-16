@@ -112,8 +112,11 @@ impl Ui {
     /// unbroken, moved with each piece's lines and cut at its breaks;
     /// under `clone` each piece's own box, its padding and border at the
     /// breaks too. None for a box no break splits.
-    pub(super) fn decor_pieces(&self, i: usize, rect: Rect) -> Vec<DecorPiece> {
+    pub(crate) fn decor_pieces(&self, i: usize, rect: Rect) -> Vec<DecorPiece> {
         let n = &self.tree.nodes[i];
+        if !n.layout.inline_frags.is_empty() {
+            return self.inline_pieces(i);
+        }
         let Content::Text(tc) = &*n.content else {
             return Vec::new();
         };
@@ -167,6 +170,88 @@ impl Ui {
                         cut: Some(at(top, bottom, far)),
                     }
                 }
+            })
+            .collect()
+    }
+
+    /// The pieces inline element `i`'s box draws on its fragments
+    /// (`LayoutBox::inline_frags`, CSS Fragmentation 3 §5.4): under
+    /// `clone`, and on a fragment holding both edges, each fragment's own
+    /// box; under `slice` the box as if unbroken, as long along the line
+    /// as its fragments together, moved so each fragment shows its part,
+    /// cut at the line breaks (along the line only: shadows and the edges
+    /// it holds are not cut).
+    fn inline_pieces(&self, i: usize) -> Vec<DecorPiece> {
+        let n = &self.tree.nodes[i];
+        let frags = &n.layout.inline_frags;
+        let clone = n.el.breaks & crate::layout::multicol::DECORATION_CLONE != 0;
+        // Its text: the line direction its fragments run in.
+        let mut text = n.parent;
+        while text != NONE && self.tree.kind_of(text) == "inline" {
+            text = self.tree.nodes[text].parent;
+        }
+        let (vertical, rtl) = match self.tree.nodes.get(text) {
+            Some(_) if self.tree.rich_vertical(text).is_some() => (true, false),
+            Some(t) => (false, t.props.flow.rtl),
+            None => (false, false),
+        };
+        // Along the line: a rect's start and length, and a rect with them.
+        let along = |r: &Rect| {
+            if vertical {
+                (r.y, r.height)
+            } else {
+                (r.x, r.width)
+            }
+        };
+        let with = |r: &Rect, at: f32, len: f32| {
+            if vertical {
+                Rect::new(r.x, at, r.width, len)
+            } else {
+                Rect::new(at, r.y, len, r.height)
+            }
+        };
+        let total: f32 = frags.iter().map(|f| along(&f.rect).1).sum();
+        // Past the box's outer edges: a shadow there is not cut.
+        let far = 1e4;
+        let mut before = 0.0;
+        frags
+            .iter()
+            .map(|f| {
+                let (at, len) = along(&f.rect);
+                let piece = if clone || (f.start && f.end) {
+                    DecorPiece {
+                        at: f.rect,
+                        cut: None,
+                    }
+                } else {
+                    // Its start along the unbroken box, from the line's
+                    // start: the left, or the right right to left.
+                    let start = if rtl {
+                        at + len + before - total
+                    } else {
+                        at - before
+                    };
+                    // The cut: the fragment along the line (and past an
+                    // edge it holds), everything across it.
+                    let (lo, hi) = if rtl {
+                        (f.end, f.start)
+                    } else {
+                        (f.start, f.end)
+                    };
+                    let a = if lo { at - far } else { at };
+                    let b = if hi { at + len + far } else { at + len };
+                    let across = if vertical {
+                        Rect::new(f.rect.x - far, a, f.rect.width + 2.0 * far, b - a)
+                    } else {
+                        Rect::new(a, f.rect.y - far, b - a, f.rect.height + 2.0 * far)
+                    };
+                    DecorPiece {
+                        at: with(&f.rect, start, total),
+                        cut: Some(across),
+                    }
+                };
+                before += len;
+                piece
             })
             .collect()
     }
@@ -2205,13 +2290,13 @@ fn selected_runs(
 /// One piece of a box a column break splits ([`Ui::decor_pieces`]): the
 /// box its decorations are drawn for, and the part of it shown (`None`:
 /// all of it).
-pub(super) struct DecorPiece {
+pub(crate) struct DecorPiece {
     pub at: Rect,
     pub cut: Option<Rect>,
 }
 
 /// Cuts what follows, until its pop, to `r`.
-pub(super) fn cut_to(r: Rect) -> DrawCmd {
+pub(crate) fn cut_to(r: Rect) -> DrawCmd {
     DrawCmd::PushClip {
         geometry: og_draw::UiGeometry::Rect {
             radii: [0.0; 4],

@@ -252,12 +252,15 @@ impl Ui {
                     .collect::<Vec<u64>>(),
             );
         }
-        // Elements that style nothing and name no part leave it a plain
-        // text.
+        // Elements that style nothing, decorate no box and name no part
+        // leave it a plain text.
         if out
             .span_styles
             .iter()
             .all(|(span, s)| span.name == "inline" && *s == TextSpanStyle::default())
+            && b.inline
+                .iter()
+                .all(|(_, e)| self.inline_decor(b, &e.values).is_none())
         {
             out.span_styles.clear();
         } else if let Some((spec, _)) = schema::prop("spans") {
@@ -268,6 +271,34 @@ impl Ui {
             out.vals.push((spec, V::Spans(Ok(spans))));
         }
         out
+    }
+
+    /// An inline element's box as its fragments draw it (CSS 2 §8,
+    /// §10.8): its background, borders, corners and shadows, and its
+    /// border and padding (`content`, left, top, right, bottom); `None`
+    /// when it decorates nothing.
+    pub(crate) fn inline_decor(
+        &self,
+        b: &Build<'_>,
+        r: &Resolved,
+    ) -> Option<crate::decor::BoxDecor> {
+        let mut el = Self::box_of(r, Default::default(), 0.0);
+        let mut warn = Vec::new();
+        let mut d = self
+            .box_decor(Some(&b.doc), r, &mut el, None, &mut warn)
+            .unwrap_or_default();
+        // The background is drawn with the decorations, on each fragment.
+        if d.background.is_none() {
+            d.background = el
+                .background
+                .map(|c| crate::paint::Paint::Solid(crate::paint::ColorRef::Literal(c)));
+        }
+        if d.corners.is_none() && el.radius > 0.0 {
+            d.radius = Some(el.radius);
+        }
+        let p = el.padding;
+        d.content = [p.left, p.top, p.right, p.bottom];
+        (d != crate::decor::BoxDecor::default()).then_some(d)
     }
 
     /// Text node `text`'s inline elements as nodes under it, nested as
@@ -283,7 +314,13 @@ impl Ui {
                 open.pop();
                 self.tree.stack.pop();
             }
-            let i = self.push("inline", r.id.as_str().into(), Default::default());
+            // `box-decoration-break` is read from its element's breaks.
+            let el = crate::Element {
+                breaks: Self::box_of(&r.values, Default::default(), 0.0).breaks,
+                ..Default::default()
+            };
+            let i = self.push("inline", r.id.as_str().into(), el);
+            self.tree.nodes[i].inline_decor = self.inline_decor(b, &r.values).map(Box::new);
             open.push(*e);
             self.tree.stack.push(i);
         }

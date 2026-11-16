@@ -1006,6 +1006,49 @@ impl Ui {
             .collect()
     }
 
+    /// The boxes of text `i`'s inline elements (`Node::inline_decor`),
+    /// under its words, an outer element's under the elements in it (CSS
+    /// 2 Appendix E): each drawn on its fragments ([`Ui::decor_pieces`]).
+    pub(crate) fn inline_box_commands(&self, i: usize, cmds: &mut Vec<crate::draw::DrawCmd>) {
+        let n = &self.tree.nodes[i];
+        let t = self.paint_theme();
+        let clip = self.paint_clip(n);
+        let alpha = n.placed.alpha;
+        // Its inline elements in document order.
+        let mut stack: Vec<usize> = n.ordered_children.iter().rev().copied().collect();
+        while let Some(j) = stack.pop() {
+            if self.tree.kind_of(j) != "inline" {
+                continue;
+            }
+            let e = &self.tree.nodes[j];
+            stack.extend(e.ordered_children.iter().rev());
+            let Some(decor) = e.inline_decor.as_deref() else {
+                continue;
+            };
+            for p in self.decor_pieces(j, e.placed.rect) {
+                let at = crate::paint::Placed {
+                    rect: p.at,
+                    radius: 0.0,
+                    clip,
+                    alpha,
+                };
+                let d = decor.over(
+                    None,
+                    crate::css::paint_css::LayerFrame {
+                        size: [p.at.width, p.at.height],
+                        viewport: [self.env.viewport.width, self.env.viewport.height],
+                        ..Default::default()
+                    },
+                );
+                cmds.extend(p.cut.map(crate::ui::cut_to));
+                cmds.extend(d.enter(t, &at));
+                cmds.extend(d.leave(t, &at));
+                cmds.extend(decor.lines(&at));
+                cmds.extend(p.cut.map(|_| crate::draw::DrawCmd::PopClip));
+            }
+        }
+    }
+
     /// The draw commands of rich node `i`: each piece in its span's font,
     /// ink, weight and tracking (a moving span glyph by glyph), icons from
     /// the atlas, links underlined (and ringed while focused by keys).
@@ -1025,6 +1068,7 @@ impl Ui {
         let clip = self.paint_clip(n);
         let tick = self.interaction.state.tick as f32;
         let still = t.reduced_motion;
+        self.inline_box_commands(i, cmds);
         // A link focused by keys or a pad: the focus ring around it, under the text.
         if self.interaction.state.focus_visible {
             for (l, r) in self.rich_links(i) {

@@ -1098,6 +1098,11 @@ pub struct Node {
     /// A document's CSS border, outline, shadows and clip
     /// ([`crate::decor::BoxDecor`]), painted over its draw.
     pub decor: Option<Box<crate::decor::BoxDecor>>,
+    /// An inline element of a text: its box's background, border,
+    /// padding, corners and shadows, which its text draws on its
+    /// fragments under its words ([`crate::Ui::inline_box_commands`]),
+    /// not as a box of its own.
+    pub inline_decor: Option<Box<crate::decor::BoxDecor>>,
     /// Widget data its children read while they are built (a list's row
     /// height, a grid's cell size, the filler after the rows in view);
     /// never drawn, so a change to it repaints nothing.
@@ -1445,6 +1450,7 @@ impl Node {
             locked: false,
             shapes: Authored::new(Vec::new()),
             decor: None,
+            inline_decor: None,
             aux: [0.0; 3],
             heading: false,
             a11y: crate::a11y::A11y::default(),

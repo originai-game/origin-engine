@@ -2684,3 +2684,189 @@ fn dynamic_range_limit_sets_the_frames_peak() {
         );
     }
 }
+
+#[test]
+fn inline_boxes_draw_on_their_line_fragments() {
+    // CSS 2 §10.8 and CSS Fragmentation 3 §5.4: an inline element's
+    // background and border draw on each line fragment, under its words.
+    // With 20 px Noto Sans SC (each ideograph 20 px), あい日本東京中漢です
+    // in 100 px breaks after 東: the span 日本東京中漢 has fragments from
+    // 40 to 100 on the first line and 0 to 60 on the second, each around
+    // its words' content area (ascent 1.160 em, descent 0.288 em). Under
+    // `clone` each fragment draws its own whole box; under `slice`, the
+    // initial value, each draws the box as if unbroken (120 px long),
+    // moved so its part shows and cut at the break, so the border's
+    // start edge is drawn on the first line only and its end edge on the
+    // last. A label change outside the text keeps the boxes as a whole
+    // build draws them (run with OG_UI_CHECK_BOUNDED=1 too).
+    //
+    // Ways it could fail: one box over the union of the lines, or none;
+    // the box over the words; both edges on every fragment under slice,
+    // or the unbroken box not continued across the break; the right to
+    // left line's box continued the wrong way.
+    const SC: &str = "tests/fixtures/ui-text/assets/fonts/NotoSansSC-Regular-subset.ttf";
+    let doc = |mode: &str, dir: &str| {
+        let text = format!(
+            r#"<meta name="component" content="t">
+<meta name="prop:label" content="string">
+<div><div id="Root">
+  <p id="P" dir="{dir}">あい<span id="S">日本東京中漢</span>です</p>
+  <p id="Other">{{label}}</p>
+</div></div>
+<style>
+#Root {{ width: 400px; }}
+p {{ margin: 0; font-size: 20px; width: 100px; }}
+#S {{ background: #ff0000; border: 2px solid #00ff00; box-decoration-break: {mode}; }}
+</style>"#
+        );
+        let mut font = crate::features::font_at(SC);
+        font.handle = test_font().handle;
+        let d = Doc::with_font(&text, &[("label", serde_json::json!("one"))], font);
+        assert!(
+            d.ui.frame().warnings.is_empty(),
+            "{:?}",
+            d.ui.frame().warnings
+        );
+        d
+    };
+    // Each red background and green border: its box, and what of it the
+    // clips it is drawn under leave; and where the words are drawn.
+    let drawn = |d: &Doc| {
+        let mut clips: Vec<Rect> = Vec::new();
+        let mut out = Vec::new();
+        let mut words = None;
+        for (k, it) in d.ui.frame().items.iter().enumerate() {
+            let (rect, green) = match &it.cmd {
+                DrawCmd::PushClip { center, half, .. } => {
+                    clips.push(it.transform.map_rect(&Rect::new(
+                        center.0 - half.0,
+                        center.1 - half.1,
+                        2.0 * half.0,
+                        2.0 * half.1,
+                    )));
+                    continue;
+                }
+                DrawCmd::PopClip => {
+                    clips.pop();
+                    continue;
+                }
+                DrawCmd::StyledText { text, .. } if matches!(&**text, DrawCmd::Text { text, .. } if text.contains('日')) =>
+                {
+                    words.get_or_insert(k);
+                    continue;
+                }
+                DrawCmd::Shape { shape, .. } => {
+                    let og_draw::UiPaint::Solid(c) = shape.paint else {
+                        continue;
+                    };
+                    let green = same(c, Srgba::rgb(0, 255, 0));
+                    if !green && !same(c, Srgba::rgb(255, 0, 0)) {
+                        continue;
+                    }
+                    (
+                        Rect::new(
+                            shape.center.x - shape.half.x,
+                            shape.center.y - shape.half.y,
+                            2.0 * shape.half.x,
+                            2.0 * shape.half.y,
+                        ),
+                        green,
+                    )
+                }
+                _ => continue,
+            };
+            let rect = it.transform.map_rect(&rect);
+            let shown = clips.iter().fold(rect, |a, c| a.intersect(c));
+            let q = |r: Rect| [r.x, r.y, r.width, r.height].map(|v| (v * 100.0).round() / 100.0);
+            out.push((green, q(rect), q(shown), k));
+        }
+        (out, words.expect("the span's words"))
+    };
+    let r = |x: f32, y: f32, w: f32, h: f32| [x, y, w, h].map(|v| (v * 100.0).round() / 100.0);
+
+    let slice = doc("slice", "ltr");
+    let p = slice.get("P");
+    let (boxes, words) = drawn(&slice);
+    assert!(
+        boxes.iter().all(|b| b.3 < words),
+        "under the words: {boxes:?} {words}"
+    );
+    let strip = |b: Vec<(bool, [f32; 4], [f32; 4], usize)>| -> Vec<(bool, [f32; 4], [f32; 4])> {
+        b.into_iter().map(|(g, a, s, _)| (g, a, s)).collect()
+    };
+    // Clone: a whole box on each fragment, 40 to 100 then 0 to 60. Across
+    // the line each is its line's fragment (its words' content area): the
+    // second line's below the first's, each around its words' baseline.
+    let clone = strip(drawn(&doc("clone", "ltr")).0);
+    assert_eq!(clone.len(), 4, "{clone:?}");
+    let (first, second) = (clone[0].1, clone[2].1);
+    assert_eq!(
+        clone,
+        [
+            (false, first, first),
+            (true, first, first),
+            (false, second, second),
+            (true, second, second),
+        ],
+        "clone: a whole box on each fragment"
+    );
+    assert_eq!(
+        [first[0], first[2], second[0], second[2]],
+        [p.x + 40.0, 60.0, p.x, 60.0]
+    );
+    let line = p.height / 2.0;
+    assert!(
+        first[1] >= p.y - 0.01
+            && first[1] + first[3] <= p.y + line + 0.01
+            && second[1] >= first[1] + first[3]
+            && second[1] + second[3] <= p.y + p.height + 0.01,
+        "{first:?} {second:?} in {p:?}"
+    );
+    // Slice: the 120 px box from 40 on the first line, from -60 on the
+    // second, each showing its fragment along the line (its block sides
+    // and the edge it holds not cut).
+    let unbroken = |f: [f32; 4], x: f32| r(x, f[1], 120.0, f[3]);
+    let (a, b) = (unbroken(first, p.x + 40.0), unbroken(second, p.x - 60.0));
+    assert_eq!(
+        strip(boxes),
+        [
+            (false, a, first),
+            (true, a, first),
+            (false, b, second),
+            (true, b, second),
+        ],
+        "slice"
+    );
+
+    // Right to left: the ideographs are a left to right run, so the
+    // fragments stay where they were, but the element's start edge is at
+    // its right: the unbroken box runs on leftward from the first
+    // fragment's right edge (-20 to 100) and the second shows its left
+    // part (0 to 120).
+    let rtl = strip(drawn(&doc("slice", "rtl")).0);
+    let (a, b) = (unbroken(first, p.x - 20.0), unbroken(second, p.x));
+    assert_eq!(
+        rtl,
+        [
+            (false, a, first),
+            (true, a, first),
+            (false, b, second),
+            (true, b, second),
+        ],
+        "right to left slice"
+    );
+
+    // A change outside the text: the same boxes.
+    let mut slice = slice;
+    let before = drawn(&slice).0;
+    slice.set("label", serde_json::json!("two"));
+    assert_eq!(drawn(&slice).0.len(), before.len());
+    assert_eq!(
+        drawn(&slice)
+            .0
+            .iter()
+            .map(|b| (b.0, b.1, b.2))
+            .collect::<Vec<_>>(),
+        before.iter().map(|b| (b.0, b.1, b.2)).collect::<Vec<_>>()
+    );
+}
