@@ -1,0 +1,8 @@
+{
+  "fixed": [
+    {
+      "member": "text-align: justify",
+      "summary": "Moves frames: a justified line ends at its box's edge. Each glyph after a widened space was moved by the extra room twice (by the pen and again by its offset), so a justified line ran past its box by its free room."
+    }
+  ]
+}

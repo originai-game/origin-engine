@@ -994,12 +994,10 @@ pub fn pieces_spaced(
     let mut glyphs = default
         .into()
         .visual(&font.metrics, line, tracking, features);
-    let mut shift = 0.0;
+    // The pen carries each space's extra to the glyphs after it.
     for g in &mut glyphs {
-        g.x += shift;
         if matches!(g.ch, ' ' | '\u{a0}' | '\u{3000}') {
             g.advance += extra;
-            shift += extra;
         }
     }
     split(font, &glyphs)
