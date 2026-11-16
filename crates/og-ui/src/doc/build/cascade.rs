@@ -101,6 +101,8 @@ pub(crate) struct Inputs {
     pub inherited: variables::Computed,
     pub basis: Option<crate::doc::calc::Basis>,
     pub carry: bool,
+    /// What an `if()`'s `media()` reads.
+    pub media: Option<crate::doc::media::Context>,
 }
 
 impl Inputs {
@@ -109,6 +111,7 @@ impl Inputs {
             && self.node == other.node
             && self.carry == other.carry
             && self.basis == other.basis
+            && self.media == other.media
             && self.rules == other.rules
             && self.inline == other.inline
             && self.attrs == other.attrs
@@ -316,6 +319,7 @@ pub(crate) fn resolve_values(
             starting: false,
             carry: false,
             text_scale: 1.0,
+            media: None,
         },
         applies,
     )
@@ -339,6 +343,9 @@ pub(crate) struct Options<'a> {
     /// `--type-*-line-height`) set here in px is grown by it, wherever it is
     /// set, as the ramp widgets draw with is (`Theme::to_text_scale`).
     pub text_scale: f32,
+    /// The media context an `if()`'s `media()` tests read; none: they are
+    /// false.
+    pub media: Option<crate::doc::media::Context>,
 }
 
 /// `rules` in cascade order; a subset in that order (rules `applies`
@@ -511,8 +518,38 @@ pub(crate) fn values_with<'r>(
             computed.insert(name.clone(), p.initial.clone());
         }
     }
+    // A custom property's `if()` resolves where it is computed, so its
+    // children inherit the branch taken (CSS Values 5 §8.3).
+    let mut style_reads = BTreeSet::new();
+    let mut media_reads = crate::doc::media::Reads::default();
+    let mut resolved = BTreeMap::new();
+    for name in specified.keys() {
+        let mut media =
+            |q: &crate::doc::media::Query| o.media.is_some_and(|c| q.matches(c, &mut media_reads));
+        if let Err(error) = custom_if(
+            name,
+            &computed,
+            &mut resolved,
+            &mut Vec::new(),
+            &mut media,
+            &mut style_reads,
+        ) {
+            out.diagnostics.push(format!("{name}: {error}"));
+        }
+    }
+    for (name, value) in resolved {
+        computed.insert(name, value);
+    }
+    out.viewport_reads.extend(media_reads);
     out.diagnostics.extend(diagnostics);
     out.inherited_reads = inherited_reads;
+    out.inherited_reads.extend(
+        style_reads
+            .iter()
+            .filter(|n| !specified.contains_key(n.as_str()))
+            .cloned(),
+    );
+    out.reads.extend(style_reads);
     out.local_names = specified.keys().cloned().collect();
     // A property's winner, once its custom properties are known: a `var()`
     // whose value is `revert` or `revert-layer` rolls the cascade back as
@@ -719,6 +756,33 @@ pub(crate) fn values_with<'r>(
             }),
             (None, Winner::Unset) => unreachable!("unset is a keyword"),
         };
+        // An `if()` takes the branch its tests pick on this element.
+        let value = value.and_then(|v| {
+            if !v.contains("if(") {
+                return Ok(v);
+            }
+            let computed = out.computed.clone();
+            let mut media_reads = crate::doc::media::Reads::default();
+            let mut style_reads = Vec::new();
+            let v = crate::doc::stylesheet::replace_ifs(
+                &v,
+                &mut crate::doc::stylesheet::IfTests {
+                    media: &mut |q| o.media.is_some_and(|c| q.matches(c, &mut media_reads)),
+                    style: &mut |n| {
+                        style_reads.push(n.to_string());
+                        computed.get(n).cloned().flatten()
+                    },
+                },
+            );
+            out.viewport_reads.extend(media_reads);
+            for n in style_reads {
+                if !specified.contains_key(n.as_str()) {
+                    out.inherited_reads.insert(n.clone());
+                }
+                out.reads.insert(n);
+            }
+            v
+        });
         // `currentcolor` as the value of `color` is `inherit` (CSS Color 4
         // §4.4): the element takes its parent's colour, as one that
         // declares none does (a button's content its plate's ink).
@@ -1128,4 +1192,61 @@ fn lower(body: &str) -> Lowered {
         Err(error) => said.push(error),
     }
     (props, said)
+}
+
+/// Custom property `name`'s value with its `if()`s replaced, kept in
+/// `done`; a `style()` test of another custom property reads that one's
+/// value resolved the same way, and one of a property being resolved (a
+/// cycle) is false (CSS Values 5 §8.3). `reads`: the names tests read.
+fn custom_if(
+    name: &str,
+    computed: &variables::Computed,
+    done: &mut BTreeMap<String, Option<String>>,
+    stack: &mut Vec<String>,
+    media: &mut dyn FnMut(&crate::doc::media::Query) -> bool,
+    reads: &mut BTreeSet<String>,
+) -> Result<Option<String>, String> {
+    if let Some(v) = done.get(name) {
+        return Ok(v.clone());
+    }
+    let value = computed.get(name).cloned().flatten();
+    let Some(text) = value.as_deref().filter(|v| v.contains("if(")) else {
+        return Ok(value);
+    };
+    stack.push(name.to_string());
+    let mut error = None;
+    // The tests run one at a time; a style() test's own media() tests too.
+    let media = std::cell::RefCell::new(media);
+    let result = {
+        let mut style = |n: &str| {
+            reads.insert(n.to_string());
+            if stack.iter().any(|s| s == n) {
+                return None;
+            }
+            match custom_if(n, computed, done, stack, *media.borrow_mut(), reads) {
+                Ok(v) => v,
+                Err(e) => {
+                    error.get_or_insert(e);
+                    None
+                }
+            }
+        };
+        let mut media_test = |q: &crate::doc::media::Query| (media.borrow_mut())(q);
+        crate::doc::stylesheet::replace_ifs(
+            text,
+            &mut crate::doc::stylesheet::IfTests {
+                media: &mut media_test,
+                style: &mut style,
+            },
+        )
+    };
+    stack.pop();
+    let value = result.map(Some);
+    let value = match error {
+        Some(e) => Err(e),
+        None => value,
+    };
+    // An if() that does not resolve makes its property guaranteed-invalid.
+    done.insert(name.to_string(), value.clone().ok().flatten());
+    value
 }

@@ -645,6 +645,7 @@ impl Ui {
                 starting: false,
                 carry: false,
                 text_scale: self.css_text_scale(),
+                media: Some(self.media_context()),
             },
             |rule| self.part_matches(rule, &facts, None),
         )
@@ -923,6 +924,7 @@ impl Ui {
                 starting: false,
                 carry: false,
                 text_scale: self.css_text_scale(),
+                media: Some(self.media_context()),
             };
             // The style's rules for the host read its custom properties: what
             // its document's elements hand down (a button's `--figure-ink`),

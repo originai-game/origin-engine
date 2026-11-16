@@ -894,6 +894,7 @@ impl Ui {
             starting: false,
             carry: self.docs.library.wide_keywords,
             text_scale: self.css_text_scale(),
+            media: Some(context),
         };
         let mut rule_applies = |rule: &super::StyleRule| {
             applies(&rule.query, &mut media_reads)
@@ -962,6 +963,7 @@ impl Ui {
                     inherited: inherited.clone(),
                     basis: Some(basis),
                     carry: options.carry,
+                    media: options.media,
                 };
                 // The rules that apply, in order, cascade as all of them do.
                 kept.cascade(inputs, || {

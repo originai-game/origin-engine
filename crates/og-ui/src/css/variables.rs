@@ -308,12 +308,12 @@ impl Value {
     }
 
     /// Whether it substitutes when its element resolves: it reads a
-    /// `var()` or has a `random-item()`, which substitutes as `var()` does
-    /// (CSS Values 5 §9.2).
+    /// `var()` or has a `random-item()` or an `if()`, which substitute as
+    /// `var()` does (CSS Values 5 §8.3, §9.2).
     pub fn has_variables(&self) -> bool {
         let mut names = BTreeSet::new();
         self.dependencies(&mut names);
-        !names.is_empty() || self.has_function("random-item(")
+        !names.is_empty() || self.has_function("random-item(") || self.has_function("if(")
     }
 
     fn has_function(&self, open: &str) -> bool {

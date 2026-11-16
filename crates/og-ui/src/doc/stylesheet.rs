@@ -1714,6 +1714,188 @@ pub(super) fn supports(condition: &str) -> Result<bool, String> {
         .map_err(|e| format!("invalid @supports condition {condition:?}: {:?}", e.kind))
 }
 
+/// What an `if()` test reads where its element resolves (CSS Values 5
+/// §8.3): `media()` the media context, `style()` the element's custom
+/// properties (`None`: guaranteed-invalid). `supports()` asks
+/// [`supports`].
+pub(crate) struct IfTests<'a> {
+    pub media: &'a mut dyn FnMut(&super::media::Query) -> bool,
+    pub style: &'a mut dyn FnMut(&str) -> Option<String>,
+}
+
+/// `text` with each `if(<condition>: <value>; …)` replaced by the value of
+/// its first branch whose condition holds (`else` always does), its own
+/// `if()`s replaced in turn, or by nothing when none holds (CSS Values 5
+/// §8.3). A branch without a `:` or a test that does not parse is an
+/// error.
+pub(crate) fn replace_ifs(text: &str, tests: &mut IfTests<'_>) -> Result<String, String> {
+    ifs(text, tests, false)
+}
+
+/// Checks every `if()` in `text` as written: each branch's condition and
+/// value, with no test holding.
+pub(crate) fn check_ifs(text: &str) -> Result<(), String> {
+    let tests = &mut IfTests {
+        media: &mut |_| false,
+        style: &mut |_| None,
+    };
+    ifs(text, tests, true).map(drop)
+}
+
+fn ifs(text: &str, tests: &mut IfTests<'_>, every: bool) -> Result<String, String> {
+    let mut out = String::with_capacity(text.len());
+    let mut rest = text;
+    loop {
+        let at = rest.match_indices("if(").map(|(at, _)| at).find(|&at| {
+            at == 0 || {
+                let p = rest.as_bytes()[at - 1];
+                !(p.is_ascii_alphanumeric() || p == b'-' || p == b'_')
+            }
+        });
+        let Some(at) = at else { break };
+        let open = at + 2;
+        let close = top_level(&rest[open + 1..], ')')
+            .first()
+            .map(|inside| open + 1 + inside.len())
+            .filter(|&c| rest.as_bytes().get(c) == Some(&b')'))
+            .ok_or("if( is not closed")?;
+        out.push_str(&rest[..at]);
+        let mut chosen = None;
+        for branch in top_level(&rest[open + 1..close], ';') {
+            // A branch spread from a variable (`...var(--clause)`, CSS
+            // Values 5 Appendix A) is known once it substitutes, which it
+            // has where the element resolves.
+            if branch.trim().is_empty() || (every && branch.contains("var(")) {
+                continue;
+            }
+            let branch = branch.trim_start();
+            let branch = branch.strip_prefix("...").unwrap_or(branch);
+            let condition = match top_level(branch, ':').as_slice() {
+                [condition, _, ..] => *condition,
+                _ => {
+                    return Err(format!(
+                        "if(): write each branch as <condition>: <value>, not {:?}",
+                        branch.trim()
+                    ));
+                }
+            };
+            let value = &branch[condition.len() + 1..];
+            let holds = if_condition(condition.trim(), tests)?;
+            if every {
+                ifs(value, tests, true)?;
+            } else if holds {
+                chosen = Some(value.trim());
+                break;
+            }
+        }
+        if let Some(value) = chosen {
+            out.push_str(&ifs(value, tests, false)?);
+        }
+        rest = &rest[close + 1..];
+    }
+    out.push_str(rest);
+    Ok(out)
+}
+
+/// `text` split at each top-level `sep`: one inside brackets, braces or a
+/// string does not split. A `)` that closes nothing ends the last piece
+/// there.
+fn top_level(text: &str, sep: char) -> Vec<&str> {
+    let (mut out, mut depth, mut quote, mut from) = (Vec::new(), 0i32, None, 0);
+    for (i, c) in text.char_indices() {
+        match (quote, c) {
+            (Some(q), c) if c == q => quote = None,
+            (Some(_), _) => {}
+            (None, '"' | '\'') => quote = Some(c),
+            (None, '(' | '[' | '{') => depth += 1,
+            (None, ')') if depth == 0 => {
+                out.push(&text[from..i]);
+                return out;
+            }
+            (None, ')' | ']' | '}') => depth -= 1,
+            (None, c) if c == sep && depth == 0 => {
+                out.push(&text[from..i]);
+                from = i + 1;
+            }
+            _ => {}
+        }
+    }
+    out.push(&text[from..]);
+    out
+}
+
+/// An `<if-condition>`: `else`, or `media()`, `supports()` and `style()`
+/// tests joined by `not`, `and` and `or` (CSS Values 5 §8.3).
+fn if_condition(condition: &str, tests: &mut IfTests<'_>) -> Result<bool, String> {
+    use cssparser::{ParseError, Parser, Token};
+    type Error = ParseError<String>;
+    if condition == "else" {
+        return Ok(true);
+    }
+    fn test(p: &mut Parser<'_>, tests: &mut IfTests<'_>) -> Result<bool, Error> {
+        if p.try_parse(|p| p.expect_ident_matching("not")).is_ok() {
+            return Ok(!group(p, tests)?);
+        }
+        let mut result = group(p, tests)?;
+        let mut operator: Option<String> = None;
+        while !p.is_exhausted() {
+            let word = p.expect_ident_cloned()?.to_ascii_lowercase();
+            if (word != "and" && word != "or") || operator.as_ref().is_some_and(|o| *o != word) {
+                return Err(ParseError::custom(
+                    "join if() tests with one of and or or; group mixed ones in parentheses"
+                        .to_string(),
+                ));
+            }
+            // Every test parses, held or not.
+            let next = group(p, tests)?;
+            result = if word == "and" {
+                result && next
+            } else {
+                result || next
+            };
+            operator = Some(word);
+        }
+        Ok(result)
+    }
+    fn group(p: &mut Parser<'_>, tests: &mut IfTests<'_>) -> Result<bool, Error> {
+        match p.next()?.clone() {
+            Token::ParenthesisBlock => p.parse_nested_block(|p| test(p, tests)),
+            Token::Function(name) => {
+                let name = name.to_ascii_lowercase();
+                p.parse_nested_block(|p| {
+                    let start = p.position();
+                    while p.next().is_ok() {}
+                    let arg = p.slice_from(start).trim();
+                    leaf(&name, arg, tests).map_err(ParseError::custom)
+                })
+            }
+            _ => Err(ParseError::custom(
+                "if() tests are media(…), supports(…) and style(…), joined by not, and and or"
+                    .to_string(),
+            )),
+        }
+    }
+    fn leaf(name: &str, arg: &str, tests: &mut IfTests<'_>) -> Result<bool, String> {
+        match name {
+            // A feature or a condition: `media(width >= 600px)`.
+            "media" => super::media::Query::parse(&format!("({arg})")).map(|q| (tests.media)(&q)),
+            // A declaration or a condition: `supports(display: grid)`.
+            "supports" => supports(arg).or_else(|_| supports(&format!("({arg})"))),
+            "style" => super::media::Query::parse_container(&format!("style({arg})")).map(|q| {
+                q.test(&mut |f| {
+                    super::container::style_holds(f, &mut |n: &String| (tests.style)(n))
+                })
+            }),
+            _ => Err(format!(
+                "if() tests are media(…), supports(…) and style(…), not {name}()"
+            )),
+        }
+    }
+    cssparser::Parser::new(condition)
+        .parse_entirely(|p| test(p, tests))
+        .map_err(|e| format!("if(): the condition {condition:?}: {:?}", e.kind))
+}
+
 /// Whether the cascade takes `name: value` as written.
 fn declaration_supported(name: &str, value: &str) -> bool {
     if name.starts_with("--") {
@@ -1769,6 +1951,11 @@ pub(super) fn lower(
 ) -> Result<(Vec<StyleDeclaration>, String), String> {
     let mut declarations = Vec::new();
     for declaration in variables::declarations(text)? {
+        // An `if()`'s branches and tests are checked as written; which
+        // branch it takes is known where its element resolves.
+        if declaration.source.contains("if(") {
+            check_ifs(&declaration.source).map_err(|e| format!("{}: {e}", declaration.name))?;
+        }
         // A random function's key names the property it is parsed for,
         // a shorthand's before it expands (CSS Values 5 §9.4.1); a custom
         // property's is named where it is substituted.

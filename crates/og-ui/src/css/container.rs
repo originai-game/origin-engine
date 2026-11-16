@@ -97,6 +97,44 @@ pub(crate) fn style_entry(key: u64, name: &str) -> String {
     format!("@cq:{key}:{name}")
 }
 
+/// Whether a `style()` feature holds, `property` giving a custom
+/// property's computed value (`None`: guaranteed-invalid). A range's sides
+/// are a property's value or a literal; sides that are not numbers of one
+/// type compare false. Any other feature: false.
+pub(crate) fn style_holds(
+    feature: &Feature,
+    property: &mut dyn FnMut(&String) -> Option<String>,
+) -> bool {
+    match feature {
+        Feature::Style(name, value) => match (value, property(name)) {
+            (_, None) => false,
+            (None, Some(_)) => true,
+            (Some(v), Some(a)) => super::media::normalize(&a) == *v,
+        },
+        Feature::StyleRange(operands, comparisons) => {
+            let values: Option<Vec<_>> = operands
+                .iter()
+                .map(|o| {
+                    let text = if o.starts_with("--") {
+                        property(o)?
+                    } else {
+                        o.clone()
+                    };
+                    super::media::range_value(&text)
+                })
+                .collect();
+            values.is_some_and(|v| {
+                v.iter().all(|(_, unit)| *unit == v[0].1)
+                    && super::media::Comparison::chain(
+                        comparisons,
+                        &v.iter().map(|(n, _)| *n).collect::<Vec<_>>(),
+                    )
+            })
+        }
+        _ => false,
+    }
+}
+
 /// The size features a condition reads ([`Condition::needs`]).
 #[derive(Clone, Copy, Debug, Default)]
 struct Needs {
@@ -421,32 +459,8 @@ impl Condition {
             actual
         };
         self.query.test(&mut |feature| match feature {
-            Feature::Style(name, value) => match (value, property(name, read)) {
-                (_, None) => false,
-                (None, Some(_)) => true,
-                (Some(v), Some(a)) => super::media::normalize(&a) == *v,
-            },
-            // Each side is a property's value or a literal; sides that are
-            // not numbers of one type compare false.
-            Feature::StyleRange(operands, comparisons) => {
-                let values: Option<Vec<_>> = operands
-                    .iter()
-                    .map(|o| {
-                        let text = if o.starts_with("--") {
-                            property(o, read)?
-                        } else {
-                            o.clone()
-                        };
-                        super::media::range_value(&text)
-                    })
-                    .collect();
-                values.is_some_and(|v| {
-                    v.iter().all(|(_, unit)| *unit == v[0].1)
-                        && super::media::Comparison::chain(
-                            comparisons,
-                            &v.iter().map(|(n, _)| *n).collect::<Vec<_>>(),
-                        )
-                })
+            Feature::Style(..) | Feature::StyleRange(..) => {
+                style_holds(feature, &mut |name| property(name, read))
             }
             &Feature::ScrollState { group, bits } => {
                 if bits == 0 {

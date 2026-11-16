@@ -1808,6 +1808,87 @@ fn percent_progress_and_random_item_resolve() {
     assert_eq!(d.get("I2").width, i, "a --pick key is shared");
 }
 
+/// CSS Values 5 §8.3's `if()`: the value of the first branch whose
+/// condition holds, its `media()`, `supports()` and `style()` tests read
+/// on the element (a `style()` of the element's own custom properties and
+/// those it inherits), `else` always holding, a custom property's `if()`
+/// resolved where it is computed and inherited as that branch, a
+/// `style()` test of the property being computed false, and no branch
+/// that holds leaving the property unset (`auto`, not the earlier 70px),
+/// and a branch spread from a variable (`...var(--clause)`).
+#[test]
+fn if_takes_the_first_branch_whose_test_holds() {
+    let text = r#"<meta name="component" content="t">
+<div id="Root">
+  <div id="Media"></div><div id="Own"></div><div id="Grid"></div><div id="NoGrid"></div>
+  <div id="Logic"></div><div id="Nested"></div><div id="None"></div>
+  <div id="Parent"><div id="Child"></div></div><div id="Cycle"></div><div id="Spread"></div>
+</div>
+<style>
+#Root div { height: 1px; }
+#Root { --mode: wide; }
+#Media { width: if(media(width >= 600px): 100px; else: 50px); }
+#Own { --mode: narrow; width: if(style(--mode: wide): 200px; style(--mode: narrow): 20px; else: 2px); }
+#Grid { width: if(supports(display: grid): 30px; else: 10px); }
+#NoGrid { width: if(supports(display: nonsense): 30px; else: 10px); }
+#Logic { width: if((not media(width < 600px)) and style(--mode: wide): 41px; else: 1px); }
+#Nested { width: if(style(--mode): if(media(height > 10000px): 1px; else: 42px); else: 2px); }
+#None { width: 70px; }
+#None { width: if(media(width < 1px): 10px); }
+#Parent { --k: a; --size: if(style(--k: a) and media(width >= 600px): 40px; else: 4px); width: var(--size); }
+#Child { --k: b; width: var(--size); }
+#Cycle { --foo: if(style(--foo: bar): 1px; else: 9px); width: var(--foo); }
+#Spread { --clause: media(width >= 600px): 60px; width: if(...var(--clause); else: 6px); }
+</style>"#;
+    let mut d = Doc::new(text, &[]);
+    for (id, width) in [
+        ("Media", 100.0),
+        ("Own", 20.0),
+        ("Grid", 30.0),
+        ("NoGrid", 10.0),
+        ("Logic", 41.0),
+        ("Nested", 42.0),
+        ("Parent", 40.0),
+        ("Child", 40.0),
+        ("Cycle", 9.0),
+        ("Spread", 60.0),
+    ] {
+        assert_eq!(d.get(id).width, width, "{id}");
+    }
+    assert_ne!(
+        d.get("None").width,
+        70.0,
+        "no branch: unset, not the earlier value"
+    );
+    // A narrower viewport takes the other media() branches.
+    d.viewport = og_ui::Viewport::new(500.0, 900.0);
+    d.step(Default::default());
+    for (id, width) in [
+        ("Media", 50.0),
+        ("Logic", 1.0),
+        ("Parent", 4.0),
+        ("Child", 4.0),
+    ] {
+        assert_eq!(d.get(id).width, width, "{id} at 500px");
+    }
+    // A branch is <condition>: <value>, a test is media(), supports() or
+    // style(), and `not` joins no other test without parentheses.
+    for bad in [
+        "width: if(media(width > 1px) 10px)",
+        "width: if(color(red): 10px)",
+        "width: if(media(width >): 10px; else: 1px)",
+        "width: if(not media(width < 1px) and style(--a): 10px)",
+    ] {
+        let text = format!(
+            "<meta name=\"component\" content=\"t\">\n<div id=\"A\"></div>\n<style>#A {{ {bad}; }}</style>"
+        );
+        assert!(
+            og_ui::UiDocument::parse("ui/t.svelte", &text).is_err(),
+            "{bad}"
+        );
+    }
+}
+
 /// CSS Values 4 §6.1.2's small, large and dynamic viewports: `sv*` read the
 /// surface with the host's controls shown, `lv*` with them hidden, `dv*`
 /// and the bare units the surface now, each axis and min/max apart.
