@@ -21,6 +21,10 @@
     {
       "member": "revert-layer across documents",
       "summary": "revert-layer in a rule that reaches an element from another document (a ::part() rule on a control document's part) rolls back that document's layers only and then falls to the element's own document, instead of also discarding the element's own rules."
+    },
+    {
+      "member": "<hr>",
+      "summary": "A separator is drawn by the default style's hr rule (a --stroke-hairline line in currentColor, --line by default; vertical stands it up) instead of by og-ui, so hr { color; block-size } and any other rule for hr restyle it as CSS does."
     }
   ]
 }

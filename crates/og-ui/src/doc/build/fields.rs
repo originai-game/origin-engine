@@ -779,11 +779,6 @@ impl Ui {
                 self.tree.el_mut(i).width = size;
                 self.tree.el_mut(i).height = size;
             }
-            Some(Kind::Divider) => {
-                if let Some(color) = r.color("color") {
-                    self.tree.el_mut(i).background = Some(color);
-                }
-            }
             _ => {}
         }
         self.apply_box_fields(

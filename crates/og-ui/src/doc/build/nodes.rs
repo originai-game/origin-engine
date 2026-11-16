@@ -281,7 +281,7 @@ impl Ui {
                 let s = r.size("width").or(r.size("height"));
                 self.spacer(id.as_str(), s);
             }
-            Kind::Divider => self.divider(id.as_str(), r.flag("vertical")),
+            Kind::Divider => self.divider(id.as_str()),
             Kind::Joystick | Kind::Dpad => {
                 resp = self.build_touch_control(kind, id.as_str(), &r, styled);
             }

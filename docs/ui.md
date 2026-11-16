@@ -1299,7 +1299,9 @@ element, the one with more tests is its control. Its contract:
 An element with no control document loaded is drawn by og-ui's own
 fallback for its kind while the controls move to documents
 ([roadmap](roadmap.md)); the documents so far are `progress` and
-`meter`.
+`meter`. `<hr>` has no inside: the default style's `hr` rule draws it as
+a `--stroke-hairline` line in `currentColor` (`--line`), across its
+container or, with `vertical`, down it, and any rule for `hr` restyles it.
 
 `<select bind:value>` lists literal `<option>`s in at most one level of
 `<optgroup>`, valued by text when `value` is absent; `selected` and

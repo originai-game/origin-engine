@@ -133,6 +133,10 @@ const PART_RULES: &[(&str, &str, &str)] = &[
 /// own part wins whatever the order.
 const ROLE_RULES: &str = r#"  /* Roles: frame, plate, band, title, row, cell, badge, well, figure, label,
      heading, name, picture, tab. */
+  /* A separator (`<hr>`) is a line of its own colour across its container;
+     `vertical` stands it up. `hr { color }` recolours it. */
+  hr { inline-size: stretch; block-size: var(--stroke-hairline); color: var(--line); background: currentColor; }
+  hr[vertical] { inline-size: var(--stroke-hairline); block-size: stretch; }
   :where([part$=".frame"]) {
     box-sizing: border-box;
     padding: var(--frame-pad);

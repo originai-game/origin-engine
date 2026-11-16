@@ -81,29 +81,11 @@ impl Ui {
         n.probe_text = text.to_owned();
     }
 
-    /// A hairline (`line`) across its parent; `vertical` stands it up.
-    pub(crate) fn divider(&mut self, id: impl Into<Id>, vertical: bool) {
-        let c = self.env.theme.palette.line;
-        let px = 1.0 / self.env.viewport.dpr().max(1.0);
-        let px = px.max(0.5);
-        self.leaf(
-            "divider",
-            id.into(),
-            Element {
-                width: if vertical {
-                    Size::Fixed(px)
-                } else {
-                    Size::grow()
-                },
-                height: if vertical {
-                    Size::grow()
-                } else {
-                    Size::Fixed(px)
-                },
-                background: Some(c),
-                ..Element::default()
-            },
-        );
+    /// A separator (`<hr>`): a box with no look of its own. The default
+    /// style's `hr` rule gives it its line (docs/ui.md §2.4); a style
+    /// pack's divider ornament is drawn at its centre.
+    pub(crate) fn divider(&mut self, id: impl Into<Id>) {
+        self.leaf("divider", id.into(), Element::default());
     }
 
     /// Empty space: `size` along both axes (the zero value grows).
