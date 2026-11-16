@@ -266,6 +266,7 @@ proof("interest-invokers", "control_props", "interest_delays_time_when_a_hint_sh
       "At 60 ticks a second, an interestfor control with interest-delay: 200ms 300ms shows its hint exactly 18 ticks before one with interest-delay-start: 500ms and hides it exactly 18 ticks after one with interest-delay-end: 0s; a one-value shorthand sets both; the fixed engine latency is at most 3 ticks to show and 2 to hide. control_props::titles_and_popovers_show_against_their_controls covers hover and keyboard-focus interest. The interest and loseinterest events, :interest-source/:interest-target and long-press interest on touch are not covered.")
 proof("appearance", "control_props", "dialogs_close_as_closedby_says",
       "appearance: none drops a dialog's own frame: its content sits at the dialog's corner with no padding. dressing::a_tight_field_takes_its_components_text_parts proves it on a field: one line of its text tall with the placeholder at its edge, no inset. appearance applies to dialogs and fields (auto | none); the compat keywords (button, checkbox, menulist-button, textfield…) and base-select are not taken.")
+not_applicable("autofill", "og's fields are engine-drawn; no browser or OS autofill fills them, so there is no autofilled state to style.")
 not_applicable("webxr-dom-overlays", "Styles the DOM overlay of a WebXR session; the engine renders its own UI in its world and has no WebXR DOM layer.")
 not_applicable("window-controls-overlay window-drag", "Installed web-app title-bar integration (the OS window's caption buttons and drag regions); a game's UI is drawn inside its own surface, and the host owns its window.")
 not_applicable("picture-in-picture", "Styles a video in the browser's floating picture-in-picture window, which is browser chrome outside the game's surface.")
@@ -339,7 +340,6 @@ MISSING = {
     "caret-shape": "No caret-shape: a field's caret is always a bar.",
     "highlight": "No ::highlight() or highlight registry: only ::selection paints a text range.",
     "webvtt": "No WebVTT captions or ::cue: a video draws no text track.",
-    "autofill": "The autocomplete hint reaches the host, but the host reports no autofilled field and :autofill matches nothing (the selector is engine-gaps').",
     # layout
     "scrollbar-gutter": "Gap: a box with overflow-y: auto or scroll and overflow-x left visible (which computes to auto) reserves no gutter, because a box that may scroll both ways draws its bars over its content.",
     "default": "documents::boolean_attribute_selectors_follow_svelte_presence proves retained :default follows false/present checked attributes. The immediate builder does not expose :default state; full support is missing.",
