@@ -2472,3 +2472,57 @@ fn line_clamp_cuts_a_texts_lines() {
         assert_eq!(d.get("T").y, d.get("P").y + 2.0 * line);
     });
 }
+
+/// An absolute box is placed against its nearest positioned ancestor, not
+/// its parent (CSS Position 3 §2.1); a fixed box against the viewport,
+/// unless an ancestor is transformed, has a `will-change` naming a
+/// transform, or contains layout or paint (CSS Transforms 1 §3, CSS
+/// Containment 2 §3.2, §3.4), when that ancestor's box holds it.
+///
+/// Ways it could fail: an absolute box placed in its unpositioned parent
+/// (at 130, 40 in the relative box instead of 290, 90), or a fixed box
+/// under a transform or containment placed on the viewport.
+#[test]
+fn out_of_flow_boxes_are_placed_in_their_containing_block() {
+    let text = r#"<meta name="component" content="t">
+<div><div id="Root">
+  <div id="Rel"><div id="Pad"><div id="Abs"></div></div></div>
+  <div id="Tr"><div id="Fx"></div></div>
+  <div id="Wc"><div id="FxW"></div></div>
+  <div id="Cl"><div id="FxL"></div></div>
+  <div id="Cp"><div id="FxP"></div></div>
+  <div id="Plain"><div id="FxV"></div></div>
+</div></div>
+<style>
+#Root { width: 400px; padding-top: 100px; }
+#Rel { position: relative; width: 300px; height: 100px; }
+#Pad { margin: 20px 0 0 40px; width: 100px; height: 50px; }
+#Abs { position: absolute; right: 0; bottom: 0; width: 10px; height: 10px; }
+#Tr, #Wc, #Cl, #Cp, #Plain { width: 100px; height: 50px; margin-left: 50px; }
+#Tr { transform: translateX(0px); }
+#Wc { will-change: transform; }
+#Cl { contain: layout; }
+#Cp { contain: paint; }
+#Fx, #FxW, #FxL, #FxP, #FxV { position: fixed; left: 3px; top: 4px; width: 5px; height: 5px; }
+</style>"#;
+    with_doc(text, &[], |d| {
+        let at = |id: &str, of: &str| {
+            let (e, p) = (d.get(id), d.get(of));
+            (e.x - p.x, e.y - p.y)
+        };
+        assert_eq!(
+            at("Abs", "Rel"),
+            (290.0, 90.0),
+            "the positioned ancestor holds it"
+        );
+        for (fx, holder) in [("Fx", "Tr"), ("FxW", "Wc"), ("FxL", "Cl"), ("FxP", "Cp")] {
+            assert_eq!(at(fx, holder), (3.0, 4.0), "{holder} holds {fx}");
+        }
+        let v = d.get("FxV");
+        assert_eq!(
+            (v.x, v.y),
+            (3.0, 4.0),
+            "with no holder a fixed box is on the viewport"
+        );
+    });
+}

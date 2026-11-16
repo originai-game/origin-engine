@@ -255,6 +255,9 @@ not_applicable("target-text", "::target-text styles the text a URL scroll-to-tex
 not_applicable("ime-mode", "Obsolete, non-standard IME switch that browsers ignore in favour of inputmode; og-ui fields take inputmode and the platform's text input.")
 
 # layout
+proof("position contain-layout",
+      "css_layout", "out_of_flow_boxes_are_placed_in_their_containing_block",
+      "Computed boxes: an absolute box with right: 0; bottom: 0 sits in the corner of its nearest position: relative ancestor, past an unpositioned parent with margins; a fixed box with left: 3px; top: 4px sits at 3, 4 in an ancestor with a transform, will-change: transform, contain: layout or contain: paint, and at 3, 4 on the viewport with none. The holder's rect is its border box (og-ui keeps no border widths apart from padding), so insets measure from its outer edge, not the padding edge; position: sticky and anchor-positioned boxes are other rows.")
 proof("display static-positioning physical-properties align-content-block fit-content",
       "css_layout", "boxes_take_display_position_insets_and_fit_content_as_css_does",
       "Computed boxes: inline and inline-block boxes share a line and a block takes its own, full width; display: none makes no box and keeps no room; position: static ignores its insets; opposite insets size an auto box and an auto inset follows the other; block align-content: end; width: fit-content is max-content where it fits and the available width where it does not. fit-content on height and the min/max properties is not asserted.")
@@ -304,8 +307,6 @@ MISSING = {
     "active-view-transition": ":active-view-transition-type() qualifies only ::view-transition-* rules; :active-view-transition does not match elements during a transition (a selectors-side gap).",
     "view-transitions-element-scoped": "No view-transition-scope or element-scoped transitions: a transition captures a whole layer.",
     # layout
-    "position": "Gap: an absolutely positioned box is placed against its parent, not its nearest positioned ancestor (CSS Position 3 §2.1), and a fixed box against the viewport even under a transform or containment. Direct-parent cases are positioning_places_as_css_positioning_does.",
-    "contain-layout": "Gap: contain: layout makes no containing block for its absolute and fixed descendants (CSS Containment 2 §3.2); they are placed against their parent or the viewport.",
     "scrollbar-gutter": "Gap: a box with overflow-y: auto or scroll and overflow-x left visible (which computes to auto) reserves no gutter, because a box that may scroll both ways draws its bars over its content.",
     "default": "documents::boolean_attribute_selectors_follow_svelte_presence proves retained :default follows false/present checked attributes. The immediate builder does not expose :default state; full support is missing.",
     "interpolate-size": "No intrinsic-size interpolation implementation or output proof.",

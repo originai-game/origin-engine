@@ -486,9 +486,39 @@ impl Ui {
             bottom: r.num("bottom"),
             ..Edges::default()
         };
+        p.css_position = matches!(r.str("position"), Some("absolute" | "screen"));
         if p.position == Position::Flow && p.insets.is_set() {
             p.position = Position::Absolute;
         }
+        let set = |k: &str| r.str(k).is_some_and(|v| v != "none") || r.num(k).is_some();
+        p.holds_fixed = p.space3d.is_some()
+            || [
+                "xShift",
+                "yShift",
+                "rotate",
+                "scale",
+                "scaleX",
+                "scaleY",
+                "filter",
+                "backdropFilter",
+            ]
+            .into_iter()
+            .any(set)
+            || r.str("willChange").is_some_and(|v| {
+                v.split(',').map(str::trim).any(|w| {
+                    matches!(
+                        w,
+                        "transform"
+                            | "translate"
+                            | "rotate"
+                            | "scale"
+                            | "perspective"
+                            | "filter"
+                            | "backdrop-filter"
+                            | "contain"
+                    )
+                })
+            });
         let (spec, resolved_later) = Self::anchor_spec(r, &mut p);
         if resolved_later && matches!(p.position, Position::Absolute | Position::Screen) {
             p.anchor = Some(Box::new(spec));

@@ -512,6 +512,68 @@ pub(crate) fn auto_height(n: &Node) -> bool {
         && !(n.layout.insets.top.is_some() && n.layout.insets.bottom.is_some())
 }
 
+/// The box a document's absolute or fixed node is placed against when it
+/// is not the one the main pass places it in (CSS Position 3 §2.1).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(crate) enum Holder {
+    /// Its parent's box (an absolute node's), or the screen (a fixed
+    /// node's): where the main pass and the screen pass place it already.
+    Own,
+    /// An ancestor's box.
+    Node(usize),
+}
+
+/// Node `i`'s containing block, when it is not its own ([`Holder`]): an
+/// absolute node's is its nearest ancestor that is positioned, transformed
+/// or contained, else its tree's root (the initial containing block); a
+/// fixed node's is its nearest transformed or contained ancestor (CSS
+/// Transforms 1 §3, CSS Containment 2 §3.2, §3.4), else the screen.
+pub(crate) fn containing_block(nodes: &[Node], i: usize) -> Holder {
+    let n = &nodes[i];
+    let fixed = match n.props.position {
+        Position::Screen => true,
+        Position::Absolute => false,
+        _ => return Holder::Own,
+    };
+    if !n.props.css_position || n.props.anchor.is_some() || n.up == NONE {
+        return Holder::Own;
+    }
+    // A stack overlays its children: it holds them as a positioned box does.
+    let holds = |a: usize| {
+        let m = &nodes[a];
+        let c = m.layout.used.contain;
+        m.props.holds_fixed
+            || c.has(Contain::LAYOUT)
+            || c.has(Contain::PAINT)
+            || (!fixed && (m.props.position != Position::Flow || kind(nodes, a) == Kind::Stack))
+    };
+    let top = |a: usize| {
+        let up = nodes[a].up;
+        up == NONE || up >= nodes.len() || nodes[up].up == NONE || nodes[up].up >= nodes.len()
+    };
+    let mut a = n.up;
+    loop {
+        if holds(a) {
+            break;
+        }
+        if top(a) {
+            // The outermost box under the UI's root (its layer, inside the
+            // safe area): an absolute node's initial containing block; a
+            // fixed node stays on the screen.
+            if fixed {
+                return Holder::Own;
+            }
+            break;
+        }
+        a = nodes[a].up;
+    }
+    if !fixed && a == n.up {
+        Holder::Own
+    } else {
+        Holder::Node(a)
+    }
+}
+
 /// Where an out-of-flow element placed on the screen ([`Position::Screen`])
 /// stands: its size and place by its insets in the whole surface; an axis
 /// with no inset keeps its static position. An [`auto_height`] is

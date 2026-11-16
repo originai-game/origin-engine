@@ -635,13 +635,31 @@ impl Ui {
             for &f in &self.tree.floating {
                 placed_order.extend(preorder(&self.tree.nodes, f));
             }
+            // A document's absolute or fixed element whose containing block
+            // is an ancestor's box (CSS Position 3 §2.1, Transforms 1 §3,
+            // Containment 2 §3.2) is placed against that box the same way.
             for &i in &placed_order {
-                if self.tree.nodes[i].props.position != crate::element::Position::Screen
-                    || skipped(&self.tree.nodes, i)
+                use crate::element::Position;
+                if !matches!(
+                    self.tree.nodes[i].props.position,
+                    Position::Screen | Position::Absolute
+                ) || skipped(&self.tree.nodes, i)
                 {
                     continue;
                 }
-                let mut r = crate::layout::on_screen(&self.tree.nodes, i, &screen, &offset, None);
+                let cb = match crate::layout::containing_block(&self.tree.nodes, i) {
+                    crate::layout::Holder::Node(a) => {
+                        let l = &self.tree.nodes[a].layout;
+                        Rect::new(l.x, l.y, l.w, l.h)
+                    }
+                    crate::layout::Holder::Own
+                        if self.tree.nodes[i].props.position == Position::Screen =>
+                    {
+                        screen
+                    }
+                    crate::layout::Holder::Own => continue,
+                };
+                let mut r = crate::layout::on_screen(&self.tree.nodes, i, &cb, &offset, None);
                 if crate::layout::auto_height(&self.tree.nodes[i]) {
                     // Its height is its content's at its width: laid out at
                     // that width first, then placed by that height.
@@ -657,7 +675,7 @@ impl Ui {
                         &mut self.layout.queries,
                     );
                     let h = self.tree.nodes[i].layout.css.size.height;
-                    r = crate::layout::on_screen(&self.tree.nodes, i, &screen, &offset, Some(h));
+                    r = crate::layout::on_screen(&self.tree.nodes, i, &cb, &offset, Some(h));
                 }
                 place_box(
                     &mut self.tree.nodes,

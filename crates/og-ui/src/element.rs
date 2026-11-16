@@ -253,6 +253,15 @@ pub struct Props {
     pub z: i32,
     pub position: Position,
     pub insets: Edges,
+    /// Its `position: absolute` or `fixed` is a document's CSS: it is placed
+    /// against its containing block (CSS Position 3 §2.1), which need not
+    /// be its parent. A builder's absolute part stays on its parent.
+    pub css_position: bool,
+    /// It is the containing block of its fixed and absolute descendants as
+    /// a transform, perspective, filter or `will-change` naming one makes
+    /// it (CSS Transforms 1 §3, Filter Effects 1 §2); containment adds its
+    /// own ([`crate::layout::containing_block`]).
+    pub holds_fixed: bool,
     /// The path of the element an `Anchored` element is placed against.
     pub anchor_to: String,
     /// The target's point it sits on.
@@ -376,6 +385,8 @@ impl Default for Props {
             z: 0,
             position: Position::Flow,
             insets: Edges::default(),
+            css_position: false,
+            holds_fixed: false,
             anchor_to: String::new(),
             anchor_at: Anchor::default(),
             anchor_self: Anchor::default(),
