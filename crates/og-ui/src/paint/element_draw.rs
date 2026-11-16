@@ -698,9 +698,17 @@ impl ElementDraw {
     /// shadows and inner glows.
     pub(crate) fn enter(&self, theme: &Theme, at: &Placed) -> Vec<DrawCmd> {
         let mut out = self.begin(theme, at);
-        if self.element_image.is_some() {
-            return out;
+        if self.element_image.is_none() {
+            out.extend(self.enter_box(theme, at));
         }
+        out
+    }
+
+    /// [`ElementDraw::enter`] after its layer's start: what one box of it
+    /// draws before its content (each piece of a box a column break
+    /// splits draws its own).
+    pub(crate) fn enter_box(&self, theme: &Theme, at: &Placed) -> Vec<DrawCmd> {
+        let mut out = Vec::new();
         // Inside a layer the composite carries the opacity and blend.
         let (opacity, blend) = if self.composited() {
             (at.alpha, Blend::Normal)
