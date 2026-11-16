@@ -42,6 +42,7 @@ p { margin: 0; }
    extra rows) the column starts at the top and scrolls, so no logo or
    button is cut off out of reach. */
 [part="main-menu.frame"] { position: relative; display: flex; flex-direction: column; gap: var(--space-md); inline-size: fit-content; min-inline-size: var(--measure-lg); block-size: 100%; padding: var(--space-3xl); overflow-y: auto; }
+[part="main-menu.frame"] > * { flex-shrink: 0; }
 [part="main-menu.logo"] { align-self: start; inline-size: var(--size-7xl); block-size: var(--size-3xl); }
 [part="main-menu.logo"] + * { margin-block-start: auto; }
 #Extra { margin-block-end: auto; }

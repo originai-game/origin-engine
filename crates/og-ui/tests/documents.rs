@@ -436,7 +436,7 @@ fn css_wide_keywords_inherit_reset_and_revert() {
 <div id="Rtl"><div id="Ltr"><div id="Dot"></div></div></div></div>
 <style>
 #Row { display: flex; width: 300px; font-size: 20px; }
-.c { width: 30px; height: 1px; font-size: 10px; }
+.c { width: 30px; height: 1px; font-size: 10px; flex-shrink: 0; }
 #Inherit { width: inherit; }
 #Initial { width: initial; }
 #Unset { width: unset; }
@@ -483,13 +483,13 @@ fn all_sets_every_property_but_direction() {
   <div id="After" class="c"></div><div id="Before" class="c"></div><div id="Size" class="c"></div>
 </div><div id="Rtl"><div id="Kept"><div id="Dot"></div></div></div></div>
 <style>
-#Row { display: flex; width: 300px; height: 5px; font-size: 20px; --gap: 7px; }
+#Row { display: flex; width: 300px; height: 5px; font-size: 20px; --gap: 7px; flex-shrink: 0; }
 .c { width: 30px; height: 1px; font-size: 10px; }
 #Inherit { all: inherit; }
 #Initial { all: initial; }
-#After { all: unset; width: 2em; height: var(--gap); }
+#After { all: unset; width: 2em; height: var(--gap); flex-shrink: 0; }
 #Before { width: 2em; all: unset; }
-#Size { all: initial; width: 2em; height: 1px; }
+#Size { all: initial; width: 2em; height: 1px; flex-shrink: 0; }
 #Rtl { display: flex; direction: rtl; width: 100px; height: 1px; }
 #Kept { all: initial; display: flex; width: 50px; height: 1px; }
 #Dot { width: 10px; height: 1px; }
@@ -497,7 +497,7 @@ fn all_sets_every_property_but_direction() {
     let d = Doc::new(text, &[]);
     let root = d.ui.theme().type_ramp.body.size;
     for (id, width, height) in [
-        // Width, height and font size come from the row.
+        // Width, height, font size and flex-shrink: 0 come from the row.
         ("Inherit", 300.0, 5.0),
         // Width auto with no content; height auto, stretched to the
         // row's 5px line.

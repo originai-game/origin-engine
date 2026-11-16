@@ -1231,6 +1231,15 @@ impl Ui {
             self.out.warnings.push(format!("line {}: {w}", source.line));
         }
         let mut el = Self::sized(r, Self::item_of(r, el));
+        // A flex item that declares no `flex` is CSS's initial `0 1 auto`;
+        // a box the engine sizes to grow (a control filling its row) keeps
+        // its kind.
+        if el.flex.is_none()
+            && !matches!(el.width, Size::Grow { .. })
+            && !matches!(el.height, Size::Grow { .. })
+        {
+            el.flex = Some(crate::layout::FlexItem::default());
+        }
         // A clip's reference box from the laid-out box: its insets from
         // the border box and the corner it takes (CSS Masking 1 §4.1; the
         // border width pads the element, so padding holds it).

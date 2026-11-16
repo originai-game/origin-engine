@@ -32,7 +32,7 @@
 <style>
 #Carousel { display: flex; flex-direction: column; width: var(--measure-md); gap: var(--space-sm); align-items: center; }
 #Viewport { display: flex; width: var(--measure-md); gap: var(--space-md); overflow-x: scroll; scroll-snap-type: x mandatory; }
-.page { width: var(--measure-sm); padding: var(--space-md); gap: var(--space-xs); scroll-snap-align: center; }
+.page { flex: none; width: var(--measure-sm); padding: var(--space-md); gap: var(--space-xs); scroll-snap-align: center; }
 .art, .well { width: stretch; height: var(--size-3xl); }
 .art { border-radius: var(--well-radius); }
 .body { font: var(--text-sm); color: var(--ink-muted); }

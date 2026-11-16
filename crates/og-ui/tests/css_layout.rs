@@ -502,7 +502,7 @@ fn flex_lays_out_as_css_flexbox_does() {
 #O1 { order: 2; width: 10px; height: 4px; }
 #O2 { width: 20px; height: 4px; }
 #Shrink { width: 200px; }
-#S1 { flex: 0 1 auto; width: 150px; height: 4px; }
+#S1 { width: 150px; height: 4px; }
 #S2 { flex: 0 3 auto; width: 150px; height: 4px; }
 #Safe { justify-content: safe center; width: 100px; }
 #F1 { flex: none; width: 160px; height: 4px; }
@@ -2640,7 +2640,13 @@ fn stretch_in_a_flex_line_is_its_stretch_fit_size() {
 </style>"#;
     with_doc(along, &[], |d| {
         assert_eq!(d.get("Tall").height, 200.0, "not floored by its content");
-        assert_eq!(d.get("Body").height, 200.0, "the whole line, not a share");
+        // Its basis is the whole line (200px), not a share; as a flex item
+        // it then shrinks with #Head by basis, 200:40, to fit (§9.7).
+        assert_eq!(
+            d.get("Body").height,
+            167.0,
+            "the whole line, shrunk by its basis"
+        );
     });
 }
 

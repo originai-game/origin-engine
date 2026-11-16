@@ -636,12 +636,16 @@ impl tf::CoreStyle for View<'_> {
         };
         // A `stretch` along a flex line: CSS caps its automatic minimum
         // at its stretched size, the specified size suggestion (CSS
-        // Flexbox 1 §4.5), which Taffy takes only from a length. With no
-        // `flex` it neither grows nor shrinks, so a zero minimum keeps it
-        // at that size as the cap would; without one its content floored
-        // it (a screen as tall as its rows).
+        // Flexbox 1 §4.5), which Taffy takes only from a length; without
+        // one its content floored it (a screen as tall as its rows). With
+        // no `flex` or the initial `0 1 auto` a zero minimum stands in for
+        // the cap: it differs only when siblings shrink it below its
+        // content, where CSS would stop at its min-content size.
         if let Some(axis) = self.stretch_along()
-            && self.el().flex.is_none()
+            && self
+                .el()
+                .flex
+                .is_none_or(|f| f == crate::layout::FlexItem::default())
         {
             let side = if axis == 0 {
                 &mut min.width

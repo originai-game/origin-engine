@@ -513,9 +513,9 @@ engine differs or limits as follows:
   size, so siblings that share a row or column say so with `flex: 1` (and
   `min-width: 0` or `min-height: 0` to let content shrink), never with
   `stretch`. A percentage bound against an unknown size is ignored. A flex
-  item without `flex` properties keeps its kind: a fit-content item
-  shrinks to its content, and a definite or `stretch` one neither grows
-  nor shrinks. `order` keeps the document's reading order.
+  item without `flex` properties is CSS's `flex: 0 1 auto`: it does not
+  grow, and shrinks with its siblings when the line overflows. `order`
+  keeps the document's reading order.
 - **Grid.** One `repeat(auto-fill | auto-fit, …)` of fixed sizes per axis.
   A masonry item keeps the width of the track it is first given.
 

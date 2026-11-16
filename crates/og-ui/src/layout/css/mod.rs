@@ -1100,10 +1100,25 @@ mod text {
                 let h = lines.iter().map(|l| l.height).sum();
                 (size(w, h), Some(Lines::Rich(lines)))
             }
-            Content::Image { .. } | Content::None => (
-                size(contained[0].unwrap_or(0.0), contained[1].unwrap_or(0.0)),
-                None,
-            ),
+            // A picture or a drawn icon is a replaced box: its natural size
+            // is the size it is given, so a flex line shrinks it no smaller
+            // (CSS Flexbox 1 §4.5); a percentage one is compressible.
+            Content::Image { .. } | Content::None => {
+                let replaced = matches!(&*n.content, Content::Image { .. }) || !n.shapes.is_empty();
+                let used = &n.layout.used;
+                let pad = [used.padding.horizontal(), used.padding.vertical()];
+                let natural = |axis: usize| match [used.width, used.height][axis] {
+                    Size::Fixed(v) if replaced => (v - pad[axis]).max(0.0),
+                    _ => 0.0,
+                };
+                (
+                    size(
+                        contained[0].unwrap_or_else(|| natural(0)),
+                        contained[1].unwrap_or_else(|| natural(1)),
+                    ),
+                    None,
+                )
+            }
         }
     }
 

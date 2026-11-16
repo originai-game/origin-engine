@@ -101,7 +101,7 @@ proof("aspect-ratio box-sizing width-height min-max-width-height fit-content-fun
       "css_layout", "the_box_model_sizes_as_css_does",
       "Computed content-box padding, auto/percentage bounds, 16:9 ratio, logical dimensions and intrinsic widths.")
 proof("flexbox flexbox-gap", "css_layout", "flex_lays_out_as_css_flexbox_does",
-      "Computed grow/shrink shares, reverse/order, safe alignment, wrapping, row and column gaps.")
+      "Computed grow/shrink shares (a 150px item with no flex shrinks as flex: 0 1 auto beside a flex-shrink: 3 one, 125:75), reverse/order, safe alignment, wrapping, row and column gaps.")
 proof("flexbox-flex-wrap-balance", "css_layout", "balanced_flex_lines_are_even",
       "Computed line breaks of four equal items under wrap and balance, and balance through flex-flow.")
 proof("grid subgrid", "css_layout", "grid_lays_out_as_css_grid_does",
@@ -192,7 +192,7 @@ proof("margin", "html_text", "block_margins_follow_the_ua_stylesheet_and_collaps
 proof("text-wrap-balance text-wrap-pretty text-overflow", "html_text", "text_wrap_styles_and_overflow_strings_lay_out_as_css_does",
       "Inspects emitted lines: balance reduces width spread at the same line count; pretty avoids the final single-word line; custom overflow text replaces the ellipsis on one clipped line.")
 proof("stretch", "css_layout", "stretch_in_a_flex_line_is_its_stretch_fit_size",
-      "Computed sizes of `stretch` across a flex line (filling it, the row laid out at the line's width), along one (the container's inner size, not floored by taller content nor shared with a sibling); a block's stretch height is asserted in css_layout::a_stretch_height_in_a_block_fills_its_containing_block. Grid areas and absolute boxes are not asserted.")
+      "Computed sizes of `stretch` across a flex line (filling it, the row laid out at the line's width), along one (its basis is the container's inner size, not floored by taller content, and beside a sibling it shrinks by that basis as flex: 0 1 auto does); a block's stretch height is asserted in css_layout::a_stretch_height_in_a_block_fills_its_containing_block. Grid areas and absolute boxes are not asserted.")
 proof("text-indent text-indent-each-line text-indent-hanging line-break", "css_layout", "text_indent_and_line_break_lay_out_as_css_text_does",
       "Drawn lines of a shaped face show the first-line, hanging and each-line indents, a right-aligned indented line ending at its box, a max-content box growing by the indent, and line-break: anywhere filling a line mid-word. Strict/loose CJK punctuation rules are Parley's and not asserted; atlas-only and pixel faces are not indented.")
 proof("container-queries", "documents", "container_queries_restyle_lists_grids_and_rive_frames_before_paint",
