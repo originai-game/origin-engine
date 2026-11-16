@@ -1,0 +1,8 @@
+{
+  "fixed": [
+    {
+      "member": "Currency",
+      "summary": "The capacity readout uses its strings table, so locales can translate the separator and built-in component documents cook without an untranslated-text warning."
+    }
+  ]
+}

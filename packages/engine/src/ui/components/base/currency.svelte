@@ -28,7 +28,7 @@
     {:else}
       <div class="figures">
         <div part="Currency.amount">{valueText || formatCompact(amount)}</div>
-        {#if limit}<div part="Currency.limit">/ {limit}</div>{/if}
+        {#if limit}<div part="Currency.limit">{t("currency.capacity", { limit })}</div>{/if}
       </div>
       {#if rate}<div part="Currency.rate">{rate}</div>{/if}
       {#if full}<div part="Currency.state">{t("currency.full")}</div>{/if}
