@@ -44,6 +44,9 @@ pub struct RichSpan {
     pub italic: bool,
     /// The weight its face is picked at: 700 for bold, else its step's.
     pub weight: u16,
+    /// The width its face is picked at (CSS `font-stretch`), a percentage
+    /// of the normal; `None`: normal.
+    pub stretch: Option<f32>,
     /// The bold and slant no real face of the style draws, synthesised.
     pub synth: crate::ui::Synth,
     /// A synthesised oblique's angle, degrees (CSS `font-style: oblique
@@ -68,7 +71,7 @@ pub struct RichSpan {
 impl RichSpan {
     /// What it asks of its font family: its weight and slant.
     pub fn query(&self) -> crate::FontQuery {
-        crate::FontQuery::new(self.weight, self.italic)
+        crate::FontQuery::new(self.weight, self.italic).at_width(self.stretch)
     }
 }
 

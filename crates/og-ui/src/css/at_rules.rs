@@ -47,6 +47,9 @@ pub struct FontFace {
     /// `font-weight` as a range (a single weight is both ends).
     pub weight: (f32, f32),
     pub style: String,
+    /// `font-stretch` (`font-width`) as a range of percentages of the
+    /// normal width (one width is both ends).
+    pub stretch: (f32, f32),
     /// `unicode-range` as inclusive code point ranges; empty: all.
     pub unicode_range: Vec<(u32, u32)>,
     pub display: String,
@@ -145,6 +148,7 @@ impl Sheet {
     pub fn font_face(&mut self, body: &str, base: &str) -> Result<(), String> {
         let mut face = FontFace {
             weight: (400.0, 400.0),
+            stretch: (100.0, 100.0),
             style: "normal".into(),
             display: "auto".into(),
             ..FontFace::default()
@@ -190,6 +194,24 @@ impl Sheet {
                         _ => return Err("@font-face font-weight takes one or two weights".into()),
                     };
                 }
+                "font-stretch" | "font-width" => {
+                    let w: Vec<f32> = v
+                        .split_whitespace()
+                        .map(|w| {
+                            super::text_css::stretch_percent(w).ok_or_else(|| {
+                                format!(
+                                    "@font-face {} takes a width keyword or a percentage, not {w}",
+                                    d.name
+                                )
+                            })
+                        })
+                        .collect::<Result<_, _>>()?;
+                    face.stretch = match w.as_slice() {
+                        [a] => (*a, *a),
+                        [a, b] => (a.min(*b), a.max(*b)),
+                        _ => return Err(format!("@font-face {} takes one or two widths", d.name)),
+                    };
+                }
                 "font-style" => face.style = v.split_whitespace().next().unwrap_or("normal").into(),
                 "font-display" => face.display = v.into(),
                 "unicode-range" => {
@@ -214,8 +236,7 @@ impl Sheet {
                 }
                 // Descriptors that tune what the engine's font path already
                 // decides (metrics overrides, features): accepted, unused.
-                "font-stretch"
-                | "font-feature-settings"
+                "font-feature-settings"
                 | "font-variation-settings"
                 | "ascent-override"
                 | "descent-override"

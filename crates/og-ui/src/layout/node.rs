@@ -224,6 +224,9 @@ pub struct TextContent {
     /// a rich text's bold span is ([`crate::Synth::bold`]; CSS
     /// `font-synthesis-weight: auto`).
     pub synthesize_bold: bool,
+    /// Its width (CSS `font-stretch`, `font-width`), a percentage of the
+    /// normal: what face of its family it takes ([`crate::FontQuery`]).
+    pub stretch: Option<f32>,
 }
 
 /// CSS `text-wrap-style` (CSS Text 4 §6.2): `stable` lays out as `auto`.
@@ -343,14 +346,15 @@ impl std::ops::Deref for UsedText<'_> {
 }
 
 impl<'a> UsedText<'a> {
+    /// What it asks of its font family: its step's weight and its width.
+    pub fn query(&self) -> crate::FontQuery {
+        crate::FontQuery::new(self.step.weight, false).at_width(self.stretch)
+    }
+
     /// The metrics of the face it is drawn in: its role's nearest its
-    /// step's weight ([`crate::Fonts::for_styled`]).
+    /// [`UsedText::query`] ([`crate::Fonts::for_styled`]).
     pub(crate) fn metrics<'m>(&self, fonts: &'m dyn Metrics) -> &'m FontMetrics {
-        fonts.metrics_styled(
-            self.font,
-            crate::FontQuery::new(self.step.weight, false),
-            &self.text,
-        )
+        fonts.metrics_styled(self.font, self.query(), &self.text)
     }
 
     /// The OpenType features the text is set with ([`text_features`]).

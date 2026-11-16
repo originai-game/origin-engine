@@ -157,15 +157,7 @@ impl Ui {
                 column: Some(tc.line_height() * n.placed.scale),
             });
         }
-        let font = self
-            .env
-            .fonts
-            .for_styled(
-                tc.font,
-                crate::FontQuery::new(tc.step.weight, false),
-                &tc.text,
-            )
-            .0;
+        let font = self.env.fonts.for_styled(tc.font, tc.query(), &tc.text).0;
         let m = &font.metrics;
         let sk = n.placed.scale;
         let size = tc.step.size * sk;
@@ -374,15 +366,7 @@ impl Ui {
         if b <= first || a >= first + count {
             return;
         }
-        let font = self
-            .env
-            .fonts
-            .for_styled(
-                tc.font,
-                crate::FontQuery::new(tc.step.weight, false),
-                &tc.text,
-            )
-            .0;
+        let font = self.env.fonts.for_styled(tc.font, tc.query(), &tc.text).0;
         // The selection on this line, in its own characters.
         let on = |k: u32| k.saturating_sub(first).min(count) as usize;
         let edit = crate::layout::EditView {

@@ -1394,8 +1394,9 @@ system fonts). The runtime registers the first source the bundle has.
 glyph, skipping unavailable names; generics map to the style's roles
 (`monospace`, `ui-rounded`, `fantasy`/`cursive`, else body), and a quoted
 `"serif"` is a named family. In a family the text takes the nearest
-`font-style`, then `font-weight`, and per character the last-declared face
-whose `unicode-range` has it. After the list come the role's face, the CJK
+`font-stretch` (`font-width`; at or under normal the narrower faces
+first, over it the wider), then `font-style`, then `font-weight`, and per
+character the last-declared face whose `unicode-range` has it. After the list come the role's face, the CJK
 companion, the locale's and the game's fonts. A missing weight or slant is
 synthesised: a computed weight of 600 or more whose face is lighter than
 600 is thickened and drawn again one device pixel right, in place of the

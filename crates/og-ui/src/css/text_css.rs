@@ -579,6 +579,17 @@ const STRETCH: &[(&str, f32)] = &[
     ("ultra-expanded", 200.0),
 ];
 
+/// A `font-stretch` (`font-width`) keyword's or percentage's width, a
+/// percentage of the normal (CSS Fonts 4 §2.4); a negative one is none.
+pub(crate) fn stretch_percent(v: &str) -> Option<f32> {
+    STRETCH
+        .iter()
+        .find(|(k, _)| *k == v)
+        .map(|(_, p)| *p)
+        .or_else(|| v.strip_suffix('%')?.parse::<f32>().ok())
+        .filter(|p| *p >= 0.0)
+}
+
 /// A length in px against `em` (the font size it is relative to) and
 /// `pct` (what 100% is). `rem` and viewport units are px by now.
 pub(crate) fn length_of(s: &str, em: f32, pct: f32) -> Option<f32> {

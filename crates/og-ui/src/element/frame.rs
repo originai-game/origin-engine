@@ -286,11 +286,7 @@ impl crate::ui::Layout {
                 let line = n.layout.lines.first()?;
                 let m = &env
                     .fonts
-                    .for_styled(
-                        tc.font,
-                        crate::FontQuery::new(tc.step.weight, false),
-                        &tc.text,
-                    )
+                    .for_styled(tc.font, tc.query(), &tc.text)
                     .0
                     .metrics;
                 let lh = tc.line_height();
@@ -473,11 +469,7 @@ impl crate::ui::Layout {
                 let line = n.layout.lines.last()?;
                 let m = &env
                     .fonts
-                    .for_styled(
-                        tc.font,
-                        crate::FontQuery::new(tc.step.weight, false),
-                        &tc.text,
-                    )
+                    .for_styled(tc.font, tc.query(), &tc.text)
                     .0
                     .metrics;
                 let lh = tc.line_height();

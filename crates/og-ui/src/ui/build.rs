@@ -594,6 +594,7 @@ impl crate::ui::Tree {
             cut: None,
             vertical: None,
             synthesize_bold: true,
+            stretch: None,
         }
     }
 }

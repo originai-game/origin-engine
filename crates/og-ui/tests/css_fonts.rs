@@ -9,6 +9,12 @@
 //!   weight its family lacks drawn regular (or thickened when
 //!   `font-synthesis-weight: none`) →
 //!   `font_weight_picks_the_face_and_synthesises_a_missing_bold`
+//! - a width matched to the nearest face instead of CSS's order (at or
+//!   under normal the narrower faces first, over it the wider), a width
+//!   not inherited, `font-width` not read as `font-stretch`, the
+//!   `@font-face` width descriptor dropped, or a text measured in another
+//!   face than it draws in →
+//!   `font_stretch_takes_the_family_face_of_the_nearest_width_in_css_order`
 
 use crate::support::Doc;
 use og_draw::FontHandle;
@@ -16,6 +22,7 @@ use og_ui::*;
 
 const NOTO: &str = "templates/fonts/latin/NotoSans-Latin.ttf";
 const INTER: &str = "tests/fixtures/ui-text/assets/fonts/Inter-Display.ttf";
+const GARAMOND: &str = "tests/fixtures/ui-text/assets/fonts/EBGaramond-Medium.ttf";
 
 /// The font at `path` (from the repository's root), shaped from its file,
 /// drawn under handle `slot`.
@@ -196,4 +203,83 @@ fn font_weight_picks_the_face_and_synthesises_a_missing_bold() {
     assert!(!synthesised("S400") && !synthesised("S500"));
     assert!(synthesised("S600") && synthesised("S700"));
     assert!(!synthesised("Snone"), "font-synthesis-weight: none");
+}
+
+/// CSS Fonts 4 §5.2 step 4a: a face whose width range holds the text's
+/// width; else, at or under 100 %, the narrower faces nearest first and
+/// then the wider; over 100 %, the wider then the narrower. `font-width`
+/// is `font-stretch` (Fonts 5), the keywords are §2.4's percentages, and
+/// the width is inherited. Each face is a different font here, so which
+/// one a text takes is the handle it is drawn with, and the layout
+/// measures it in that face.
+#[test]
+fn font_stretch_takes_the_family_face_of_the_nearest_width_in_css_order() {
+    let at = |path, slot, width: u16| FamilyFace {
+        stretch: (width, width),
+        ..family("Wide", (400, 400), face(path, slot))
+    };
+    let (normal, condensed, expanded) =
+        (at(NOTO, 4, 1000), at(INTER, 5, 750), at(GARAMOND, 6, 1250));
+    let (n, c, e) = (
+        normal.font.handle.unwrap(),
+        condensed.font.handle.unwrap(),
+        expanded.font.handle.unwrap(),
+    );
+    let d = doc(
+        vec![
+            normal,
+            condensed.clone(),
+            expanded,
+            FamilyFace {
+                family: "Narrow".into(),
+                ..condensed
+            },
+        ],
+        r#"<p id="N">mmmmmmmm</p><p id="C">mmmmmmmm</p><p id="P95">Ab</p><p id="P105">Ab</p><p id="Ultra">Ab</p>
+<p id="Width">Ab</p><div id="Up"><p id="Inherit">Ab</p></div><p id="Narrow">mmmmmmmm</p>"#,
+        r#"#Root { font-family: "Wide"; } p { width: max-content; }
+#C { font-stretch: condensed; } #P95 { font-stretch: 95%; } #P105 { font-stretch: 105%; }
+#Ultra { font-stretch: ultra-condensed; } #Width { font-width: expanded; }
+#Up { font-stretch: 75%; } #Narrow { font-family: "Narrow"; }"#,
+    );
+    for (id, want) in [
+        ("N", n),
+        ("C", c),
+        // Nearer the normal face, but narrower ones come first under 100 %.
+        ("P95", c),
+        // Nearer the normal face, but wider ones come first over 100 %.
+        ("P105", e),
+        // Nothing narrower than 50 %: the nearest wider.
+        ("Ultra", c),
+        ("Width", e),
+        ("Inherit", c),
+    ] {
+        let t = drawn(&d, id);
+        assert!(!t.is_empty(), "#{id} draws");
+        assert!(t.iter().all(|t| t.font == want), "#{id}: {t:?}");
+    }
+    // Measured in the face it draws: the condensed text is as wide as the
+    // same text in a family whose only face is that one (Inter's m is
+    // 0.87 em, Noto Sans's 0.935).
+    let w = |id: &str| d.get(id).width;
+    assert_eq!(w("C"), w("Narrow"));
+    assert_ne!(w("C"), w("N"));
+    // The @font-face descriptors: one width, a range, and `font-width`.
+    let sheet = UiDocument::parse(
+        "ui/f.svelte",
+        r#"<meta name="component" content="f"><div></div>
+<style>
+@font-face { font-family: A; src: url(a.ttf); font-stretch: condensed; }
+@font-face { font-family: A; src: url(b.ttf); font-stretch: 125% 75%; }
+@font-face { font-family: A; src: url(c.ttf); font-width: semi-expanded; }
+@font-face { font-family: A; src: url(d.ttf); }
+</style>"#,
+    )
+    .unwrap_or_else(|e| panic!("{e:?}"))
+    .sheet;
+    let widths: Vec<(f32, f32)> = sheet.font_faces.iter().map(|f| f.stretch).collect();
+    assert_eq!(
+        widths,
+        [(75.0, 75.0), (75.0, 125.0), (112.5, 112.5), (100.0, 100.0)]
+    );
 }

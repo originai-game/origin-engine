@@ -210,6 +210,8 @@ proof("font-face", "runs", "a_font_face_family_takes_its_faces_by_weight_and_ran
       "Glyph faces per character for @font-face weight ranges matched in CSS Fonts 4 §5.2's order, unicode-range and a declared family in a document's font-family list. src resolution is runtime ui_configure's; font-style, font-stretch, format() and tech() descriptors are not covered.")
 proof("font-weight", "css_fonts", "font_weight_picks_the_face_and_synthesises_a_missing_bold",
       "Drawn font handle and thickening per element: bold, 650 and 550 take a family's 700 face, 300 its 400; bolder over 400 and lighter over 700 step by Fonts 4 §2.2's table; a family with only a 400 face draws 600 and 700 thickened twice one device pixel apart, at the thickening a rich span at 600 draws, in place of the style's textWeight, and 400 and 500 plain; font-synthesis-weight: none draws it plain. Variable weight axes are not covered.")
+proof("font-stretch font-width", "css_fonts", "font_stretch_takes_the_family_face_of_the_nearest_width_in_css_order",
+      "Drawn font handle of a family with 75 %, 100 % and 125 % faces: condensed takes 75 %, 95 % the narrower 75 % before the nearer 100 % and 105 % the wider 125 % (Fonts 4 §5.2), ultra-condensed with nothing narrower the nearest wider, font-width: expanded as font-stretch, an inherited width; the text measures in the face it draws; the @font-face font-stretch and font-width descriptors parse to one width or a range. Width matching applies to @font-face families (a style's role faces carry no width); variable wdth axes are not covered.")
 
 # values, units, media and at-rules
 proof("abs-sign calc-constants exp-functions trig-functions q-unit", "custom_properties", "math_functions_and_constants_take_their_mathematical_values",

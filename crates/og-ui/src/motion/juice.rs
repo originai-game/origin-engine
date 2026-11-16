@@ -234,6 +234,7 @@ impl Ui {
             cut: None,
             vertical: None,
             synthesize_bold: true,
+            stretch: None,
         });
         n.probe_text = text;
         // The landing pop: a bump of `pop` over `motion.duration.fast`.

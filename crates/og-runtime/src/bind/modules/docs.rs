@@ -457,6 +457,10 @@ pub(super) fn sheet_faces(
             family: face.family.clone(),
             document: owner.to_owned(),
             weight: (weight(face.weight.0), weight(face.weight.1)),
+            stretch: (
+                og_ui::FontQuery::width_tenths(face.stretch.0),
+                og_ui::FontQuery::width_tenths(face.stretch.1),
+            ),
             style: match face.style.as_str() {
                 "italic" => og_ui::FaceStyle::Italic,
                 "oblique" => og_ui::FaceStyle::Oblique,

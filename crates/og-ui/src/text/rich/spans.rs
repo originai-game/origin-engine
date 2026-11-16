@@ -71,6 +71,8 @@ pub struct TextSpanStyle {
     /// A synthesised oblique's angle, degrees (CSS `font-style: oblique
     /// <angle>`).
     pub oblique: Option<f32>,
+    /// Its width (CSS `font-stretch`), a percentage of the normal.
+    pub stretch: Option<f32>,
 }
 
 /// An inline object of a text (a document's `<img>`, `<og-icon>` or `<kbd
@@ -158,6 +160,7 @@ impl Ui {
                 bold: false,
                 italic: false,
                 weight: step.weight,
+                stretch: None,
                 synth: Default::default(),
                 oblique: None,
                 underline: false,
@@ -247,6 +250,9 @@ impl Ui {
                 }
                 if let Some(italic) = style.italic {
                     s.italic = italic;
+                }
+                if let Some(stretch) = style.stretch {
+                    s.stretch = Some(stretch);
                 }
                 if let Some(underline) = style.underline {
                     s.underline = underline;

@@ -233,11 +233,7 @@ impl Ui {
             }
             Content::Text(tc) => {
                 let tc = n.used_text(tc);
-                let (font, synth) = self.env.fonts.for_styled(
-                    tc.font,
-                    crate::FontQuery::new(tc.step.weight, false),
-                    &tc.text,
-                );
+                let (font, synth) = self.env.fonts.for_styled(tc.font, tc.query(), &tc.text);
                 if font.handle.is_some() {
                     let m = &font.metrics;
                     let sk = n.placed.scale;
@@ -1051,11 +1047,7 @@ impl Ui {
         cmds: &mut Vec<DrawCmd>,
     ) {
         let n = &self.tree.nodes[i];
-        let (font, synth) = self.env.fonts.for_styled(
-            tc.font,
-            crate::FontQuery::new(tc.step.weight, false),
-            &tc.text,
-        );
+        let (font, synth) = self.env.fonts.for_styled(tc.font, tc.query(), &tc.text);
         if font.handle.is_none() {
             return;
         }
@@ -1307,11 +1299,7 @@ impl Ui {
         use crate::layout::flow::WritingMode;
         use crate::text::vertical::runs;
         let n = &self.tree.nodes[i];
-        let (font, synth) = self.env.fonts.for_styled(
-            tc.font,
-            crate::FontQuery::new(tc.step.weight, false),
-            &tc.text,
-        );
+        let (font, synth) = self.env.fonts.for_styled(tc.font, tc.query(), &tc.text);
         let m = &font.metrics;
         let sk = n.placed.scale;
         let size = tc.step.size * sk;
@@ -1554,15 +1542,7 @@ impl Ui {
         cmds: &mut Vec<DrawCmd>,
     ) {
         let n = &self.tree.nodes[i];
-        let font = self
-            .env
-            .fonts
-            .for_styled(
-                tc.font,
-                crate::FontQuery::new(tc.step.weight, false),
-                &tc.text,
-            )
-            .0;
+        let font = self.env.fonts.for_styled(tc.font, tc.query(), &tc.text).0;
         if font.handle.is_none() {
             return;
         }

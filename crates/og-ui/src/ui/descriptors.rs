@@ -296,7 +296,7 @@ pub struct Fonts {
     pub backed: [Option<og_draw::FontHandle>; 4],
 }
 
-type FamilySelection = (u32, usize, u16, bool);
+type FamilySelection = (u32, usize, FontQuery);
 
 /// One entry in an ordered CSS font-family list. Quoted generic names are named families.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -344,7 +344,7 @@ pub enum FaceStyle {
 }
 
 /// One `@font-face` of a named family ([`Fonts::families`]).
-#[derive(Clone, Debug, Default, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct FamilyFace {
     /// The family name as declared (matched case-insensitively).
     pub family: String,
@@ -354,6 +354,9 @@ pub struct FamilyFace {
     /// `font-weight` as an inclusive range (one weight is both ends).
     pub weight: (u16, u16),
     pub style: FaceStyle,
+    /// `font-stretch` (`font-width`) as an inclusive range in tenths of a
+    /// percent of the normal width (1000: normal; one width is both ends).
+    pub stretch: (u16, u16),
     /// Its font, limited to its `unicode-range`
     /// ([`crate::FontMetrics::with_range`]).
     pub font: UiFont,
@@ -361,6 +364,20 @@ pub struct FamilyFace {
     /// fallback role (body, display, mono, rounded): made by
     /// [`Fonts::link`] (leave it empty).
     pub linked: Vec<UiFont>,
+}
+
+impl Default for FamilyFace {
+    fn default() -> FamilyFace {
+        FamilyFace {
+            family: String::new(),
+            document: String::new(),
+            weight: (400, 400),
+            style: FaceStyle::Normal,
+            stretch: (FontQuery::NORMAL_WIDTH, FontQuery::NORMAL_WIDTH),
+            font: UiFont::default(),
+            linked: Vec::new(),
+        }
+    }
 }
 
 impl FamilyFace {
@@ -440,16 +457,46 @@ pub struct Synth {
 }
 
 /// What a text asks of its font family besides its characters (CSS Fonts
-/// 4 §5.2): its weight (0: the role's own face) and whether it is italic.
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
+/// 4 §5.2): its weight (0: the role's own face), whether it is italic, and
+/// its width (`font-stretch`, `font-width`) in tenths of a percent of the
+/// normal width.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub struct FontQuery {
     pub weight: u16,
     pub italic: bool,
+    pub stretch: u16,
 }
 
 impl FontQuery {
+    /// The normal width, 100 %, in [`FontQuery::stretch`]'s tenths.
+    pub const NORMAL_WIDTH: u16 = 1000;
+
+    /// At `weight` and slant, the normal width.
     pub const fn new(weight: u16, italic: bool) -> FontQuery {
-        FontQuery { weight, italic }
+        FontQuery {
+            weight,
+            italic,
+            stretch: Self::NORMAL_WIDTH,
+        }
+    }
+
+    /// At a width, a percentage of the normal (`None`: normal).
+    pub fn at_width(self, percent: Option<f32>) -> FontQuery {
+        FontQuery {
+            stretch: percent.map_or(Self::NORMAL_WIDTH, Self::width_tenths),
+            ..self
+        }
+    }
+
+    /// A width percentage in tenths, as [`FontQuery::stretch`] keeps it.
+    pub fn width_tenths(percent: f32) -> u16 {
+        (percent * 10.0).round().clamp(1.0, f32::from(u16::MAX)) as u16
+    }
+}
+
+impl Default for FontQuery {
+    fn default() -> FontQuery {
+        FontQuery::new(0, false)
     }
 }
 
@@ -527,7 +574,7 @@ impl Fonts {
             FontRole::Family(f) if self.family_lists.names.get(&f.id()).is_some() => {
                 self.for_styled(role, FontQuery::new(400, false), "").0
             }
-            FontRole::Family(f) => match self.family_set(f, 400, false).0.first() {
+            FontRole::Family(f) => match self.family_set(f, FontQuery::new(400, false)).0.first() {
                 Some(face) => &face.font,
                 None => self.get(f.fallback()),
             },
@@ -614,8 +661,10 @@ impl Fonts {
                 let FontFamily::Named(name) = name else {
                     return None;
                 };
-                let (set, got, _) =
-                    self.family_set(crate::Family::new(name, FontRole::Body), weight, false);
+                let (set, got, _) = self.family_set(
+                    crate::Family::new(name, FontRole::Body),
+                    FontQuery::new(weight, false),
+                );
                 let face = set
                     .iter()
                     .find(|f| f.font.metrics.has('a'))
@@ -645,18 +694,35 @@ impl Fonts {
             .any(|f| crate::Family::id_of(&f.family) == id)
     }
 
-    /// The faces of `family` a text at `weight` (0: 400) and slant takes
-    /// (CSS Fonts 4 §5.2): of the faces of the nearest style (italic, then
-    /// oblique, then normal for an italic text; normal, oblique, italic
-    /// otherwise), those of the nearest weight range, last declared first;
-    /// with the weight they draw at and whether they slant.
-    fn family_set(
-        &self,
-        family: crate::Family,
-        weight: u16,
-        italic: bool,
-    ) -> (Vec<&FamilyFace>, u16, bool) {
+    /// The faces of `family` a text asking `query` (weight 0: 400) takes
+    /// (CSS Fonts 4 §5.2): of the faces of the nearest width (a width
+    /// range that holds it; else, at or under normal, the narrower ones
+    /// nearest first and then the wider; over normal, the wider then the
+    /// narrower), those of the nearest style (italic, then oblique, then
+    /// normal for an italic text; normal, oblique, italic otherwise), those
+    /// of the nearest weight range, last declared first; with the weight
+    /// they draw at and whether they slant.
+    fn family_set(&self, family: crate::Family, query: FontQuery) -> (Vec<&FamilyFace>, u16, bool) {
+        let FontQuery {
+            weight,
+            italic,
+            stretch,
+        } = query;
         let faces: Vec<&FamilyFace> = self.families.iter().filter(|f| f.is(family)).collect();
+        let narrow = stretch <= FontQuery::NORMAL_WIDTH;
+        let width_key = |&(a, b): &(u16, u16)| -> (u8, u16) {
+            if (a..=b).contains(&stretch) {
+                (0, 0)
+            } else if b < stretch {
+                (if narrow { 1 } else { 2 }, stretch - b)
+            } else {
+                (if narrow { 2 } else { 1 }, a - stretch)
+            }
+        };
+        let Some(width) = faces.iter().map(|f| f.stretch).min_by_key(width_key) else {
+            return (Vec::new(), 0, false);
+        };
+        let faces: Vec<&FamilyFace> = faces.into_iter().filter(|f| f.stretch == width).collect();
         let order = if italic {
             [FaceStyle::Italic, FaceStyle::Oblique, FaceStyle::Normal]
         } else {
@@ -712,10 +778,10 @@ impl Fonts {
     /// real face for ([`Synth`]: a weight of 600 or more whose face is
     /// lighter than 600, an italic with no italic face).
     pub fn for_styled(&self, role: FontRole, query: FontQuery, text: &str) -> (&UiFont, Synth) {
-        let FontQuery { weight, italic } = query;
+        let FontQuery { weight, italic, .. } = query;
         if let FontRole::Family(family) = role {
             if let Some(names) = self.family_lists.names.get(&family.id()) {
-                let key = (family.id(), family.fallback_index(), weight, italic);
+                let key = (family.id(), family.fallback_index(), query);
                 let resolved = self.family_lists.fonts.get(&key).unwrap_or_else(|| {
                     let mut fonts = Vec::new();
                     let mut synth = Synth::default();
@@ -723,11 +789,8 @@ impl Fonts {
                     for name in names {
                         let (set, got, slanted) = match name {
                             FontFamily::Named(name) => {
-                                let (faces, got, slanted) = self.family_set(
-                                    crate::Family::new(name, family.fallback()),
-                                    weight,
-                                    italic,
-                                );
+                                let (faces, got, slanted) = self
+                                    .family_set(crate::Family::new(name, family.fallback()), query);
                                 (
                                     faces.into_iter().map(|f| &f.font).collect::<Vec<_>>(),
                                     got,
@@ -775,9 +838,9 @@ impl Fonts {
                 });
                 return (&resolved.0, resolved.1);
             }
-            let (set, got, slanted) = self.family_set(family, weight, italic);
+            let (set, got, slanted) = self.family_set(family, query);
             let Some(first) = set.first() else {
-                return self.for_styled(family.fallback(), FontQuery::new(weight, italic), text);
+                return self.for_styled(family.fallback(), query, text);
             };
             let drawn = || text.chars().filter(|c| !c.is_whitespace());
             // The face that sets the text whole, else the first that draws
