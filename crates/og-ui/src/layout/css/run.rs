@@ -954,13 +954,9 @@ fn lines_of(nodes: &mut [Node], i: usize) {
     nodes[i].layout.rows = rows;
 }
 
-/// A grid's gap rules' segments (CSS Gap Decorations 1): a column gap's
-/// rule runs down the rows, a row gap's along the columns, from the first
-/// track's start to the last one's end. `normal` runs it through every
-/// crossing gap and stops it, at the crossing gaps' edges, where an item
-/// spans its gap (§3.2); `intersection` stops it at every crossing gap;
-/// `none` runs it end to end. Row rules are drawn over column rules
-/// (`rule-overlap: row-over-column`).
+/// A grid's or flex container's gap rules' segments (CSS Gap
+/// Decorations 1), from its box's origin. Row rules are drawn over
+/// column rules (`rule-overlap: row-over-column`).
 fn gap_rules(nodes: &mut [Node], i: usize) {
     let n = &nodes[i];
     let Some(rules) = n
@@ -973,6 +969,21 @@ fn gap_rules(nodes: &mut [Node], i: usize) {
         }
         return;
     };
+    let segs = if kind(nodes, i) == Kind::Flex {
+        flex_gap_rules(nodes, i, rules.map(|r| r.is_some()))
+    } else {
+        grid_gap_rules(&nodes[i], rules)
+    };
+    nodes[i].layout.gap_segs = segs;
+}
+
+/// A grid's: a column gap's rule runs down the rows, a row gap's along the
+/// columns, from the first track's start to the last one's end. `normal`
+/// runs it through every crossing gap and stops it, at the crossing gaps'
+/// edges, where an item spans its gap (§3.2); `intersection` stops it at
+/// every crossing gap; `none` runs it end to end. An end where the rule
+/// goes on past the crossing gap is a junction, any other a cap (§3.3).
+fn grid_gap_rules(n: &Node, rules: [Option<crate::decor::GapBreak>; 2]) -> Vec<GapSeg> {
     let [cols, rows] = &n.layout.grid_tracks;
     let areas = &n.layout.grid_items;
     let mut segs = Vec::new();
@@ -987,6 +998,7 @@ fn gap_rules(nodes: &mut [Node], i: usize) {
         if along.is_empty() {
             continue;
         }
+        let last = along.len() - 1;
         for g in 0..across.len().saturating_sub(1) {
             let at = (across[g][1] + across[g + 1][0]) / 2.0;
             // Whether an item spans gap `g` in track `t` along the rule
@@ -1006,7 +1018,7 @@ fn gap_rules(nodes: &mut [Node], i: usize) {
                 })
             };
             let runs: Vec<(usize, usize)> = match brk {
-                crate::decor::GapBreak::None => vec![(0, along.len() - 1)],
+                crate::decor::GapBreak::None => vec![(0, last)],
                 crate::decor::GapBreak::Intersection => (0..along.len())
                     .filter(|&t| !spanned(t))
                     .map(|t| (t, t))
@@ -1022,20 +1034,140 @@ fn gap_rules(nodes: &mut [Node], i: usize) {
                     out
                 }
             };
-            for (a, b) in runs {
+            for (k, &(a, b)) in runs.iter().enumerate() {
                 let (start, len) = (along[a][0], along[b][1] - along[a][0]);
-                segs.push((
-                    axis as u8,
-                    if axis == 0 {
+                let first = (a > 0).then(|| {
+                    let junction = k > 0 && runs[k - 1].1 + 1 == a;
+                    (junction, along[a][0] - along[a - 1][1])
+                });
+                let after = (b < last).then(|| {
+                    let junction = runs.get(k + 1).is_some_and(|r| r.0 == b + 1);
+                    (junction, along[b + 1][0] - along[b][1])
+                });
+                segs.push(GapSeg {
+                    axis: axis as u8,
+                    at: if axis == 0 {
                         [at, start, len]
                     } else {
                         [start, at, len]
                     },
-                ));
+                    ends: [first.unwrap_or((false, 0.0)), after.unwrap_or((false, 0.0))],
+                });
             }
         }
     }
-    nodes[i].layout.gap_segs = segs;
+    segs
+}
+
+/// A flex container's (`rule-break` acts as `none`): a rule in each main
+/// axis gap between two items of a line, as long as the line is across,
+/// and one in each gap between two lines, across its content box; each
+/// end a cap, meeting the gap between lines (0 at its content box's edge).
+fn flex_gap_rules(nodes: &[Node], i: usize, rules: [bool; 2]) -> Vec<GapSeg> {
+    let n = &nodes[i];
+    // Its main axis runs across the screen.
+    let row = (n.layout.used.direction == Direction::Row) != turns(frame_of(nodes, i));
+    let (ox, oy) = (n.layout.x, n.layout.y);
+    // Each item's (main start, main end, cross start, cross end).
+    let span = |c: usize| {
+        let l = &nodes[c].layout;
+        let (x, y) = (l.x - ox, l.y - oy);
+        if row {
+            [x, x + l.w, y, y + l.h]
+        } else {
+            [y, y + l.h, x, x + l.w]
+        }
+    };
+    // Lines: a new one where the main position steps back the flow's way.
+    let ahead = !n.layout.used.reverse;
+    let mut lines: Vec<Vec<[f32; 4]>> = Vec::new();
+    let mut prev: Option<f32> = None;
+    for &c in &n.children {
+        let s = span(c);
+        let back = prev.is_some_and(|p| {
+            if ahead {
+                s[0] < p - 0.5
+            } else {
+                s[0] > p + 0.5
+            }
+        });
+        match lines.last_mut() {
+            Some(line) if !back => line.push(s),
+            _ => lines.push(vec![s]),
+        }
+        prev = Some(s[0]);
+    }
+    let pad = n.layout.used.padding;
+    let (main_lo, main_hi) = if row {
+        (pad.left, n.layout.w - pad.right)
+    } else {
+        (pad.top, n.layout.h - pad.bottom)
+    };
+    // Rules across the main axis are column rules in a row (axis 0),
+    // row rules in a column.
+    let (main_axis, cross_axis) = if row { (0u8, 1u8) } else { (1, 0) };
+    let place = |axis: u8, at: f32, start: f32, len: f32| -> [f32; 3] {
+        if axis == 0 {
+            [at, start, len]
+        } else {
+            [start, at, len]
+        }
+    };
+    let mut segs = Vec::new();
+    let mut bands: Vec<[f32; 2]> = lines
+        .iter()
+        .map(|l| {
+            l.iter()
+                .fold([f32::INFINITY, f32::NEG_INFINITY], |[a, b], s| {
+                    [a.min(s[2]), b.max(s[3])]
+                })
+        })
+        .collect();
+    let mut order: Vec<usize> = (0..lines.len()).collect();
+    order.sort_by(|&a, &b| bands[a][0].total_cmp(&bands[b][0]));
+    bands = order.iter().map(|&k| bands[k]).collect();
+    let lines: Vec<&Vec<[f32; 4]>> = order.iter().map(|&k| &lines[k]).collect();
+    // The gap each band meets before and after it (0: the box's edge).
+    let gap_before = |k: usize| {
+        if k == 0 {
+            0.0
+        } else {
+            bands[k][0] - bands[k - 1][1]
+        }
+    };
+    let gap_after = |k: usize| {
+        if k + 1 == bands.len() {
+            0.0
+        } else {
+            bands[k + 1][0] - bands[k][1]
+        }
+    };
+    if rules[usize::from(main_axis)] {
+        for (k, line) in lines.iter().enumerate() {
+            let mut items: Vec<[f32; 4]> = line.to_vec();
+            items.sort_by(|a, b| a[0].total_cmp(&b[0]));
+            for w in items.windows(2) {
+                let at = (w[0][1] + w[1][0]) / 2.0;
+                let [lo, hi] = bands[k];
+                segs.push(GapSeg {
+                    axis: main_axis,
+                    at: place(main_axis, at, lo, hi - lo),
+                    ends: [(false, gap_before(k)), (false, gap_after(k))],
+                });
+            }
+        }
+    }
+    if rules[usize::from(cross_axis)] {
+        for k in 0..bands.len().saturating_sub(1) {
+            let at = (bands[k][1] + bands[k + 1][0]) / 2.0;
+            segs.push(GapSeg {
+                axis: cross_axis,
+                at: place(cross_axis, at, main_lo, main_hi - main_lo),
+                ends: [(false, 0.0), (false, 0.0)],
+            });
+        }
+    }
+    segs
 }
 
 /// A table's row, group and column boxes over their slots.

@@ -298,8 +298,13 @@ impl Ui {
         }
         // A grid's gap rules (CSS Gap Decorations 1); a multi-column
         // container draws its column rules itself.
-        if super::inner_display(r.str("display")) == "grid" {
+        if matches!(super::inner_display(r.str("display")), "grid" | "flex") {
             for (k, axis) in ["column", "row"].iter().enumerate() {
+                for (e, name) in crate::css::multicol_css::RULE_INSETS[k].iter().enumerate() {
+                    if let Some(v) = r.str(name).and_then(crate::css::multicol_css::inset) {
+                        d.gap_insets[k][e] = v;
+                    }
+                }
                 let style = r
                     .str(&format!("{axis}RuleStyle"))
                     .and_then(LineStyle::from_css);

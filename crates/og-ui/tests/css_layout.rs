@@ -3249,3 +3249,67 @@ fn grid_gap_rules_break_as_css_gap_decorations_do() {
         );
     });
 }
+
+/// CSS Gap Decorations 1 §3.3 and flex containers: a flex container draws
+/// a rule between the items of each line, as long as the line is across,
+/// and one between lines, across its content box. `rule-inset` moves a
+/// rule's ends in from the items: a cap's inset at the box's edge or where
+/// the rule stops, a junction's where it goes on past a crossing gap, a
+/// percentage of the gap that end meets.
+///
+/// Ways it could fail: no rules in a flex container, a rule drawn in a
+/// line with one item, the row rule as long as one line, a percentage read
+/// from the gap the rule sits in (10 rather than 6) or from the box, caps
+/// and junctions swapped (the grid's intersection segments 16 and 26
+/// tall), or an inset applied to only one end.
+#[test]
+fn gap_rules_in_flex_lines_and_rule_insets() {
+    let text = r#"<meta name="component" content="t">
+<div><div id="Root">
+  <div id="Fx"><div></div><div></div><div></div></div>
+  <div id="I"><div></div><div></div><div></div><div class="wide"></div><div></div></div>
+</div></div>
+<style>
+#Root { width: 400px; }
+#Fx { display: flex; flex-wrap: wrap; width: 100px; column-gap: 10px; row-gap: 6px; margin-bottom: 10px;
+  column-rule: 2px solid #ff0000; row-rule: 2px solid #0000ff; column-rule-inset-cap: 0px -50%; }
+#Fx > div { width: 40px; height: 20px; }
+#I { display: grid; grid-template-columns: 40px 40px 40px; grid-template-rows: 20px 20px; column-gap: 10px; row-gap: 6px; width: 140px;
+  column-rule: 2px solid #00ff00; column-rule-break: intersection; column-rule-inset: 2px / -50%; }
+.wide { grid-column: 1 / 3; }
+</style>"#;
+    with_doc(text, &[], |d| {
+        let rules = |id: &str, c: [f32; 4]| {
+            let b = d.get(id);
+            let mut v: Vec<_> =
+                d.ui.frame()
+                    .items
+                    .iter()
+                    .filter_map(|i| i.cmd.filled())
+                    .filter(|(_, k)| *k == c)
+                    .map(|(r, _)| (r.x - b.x, r.y - b.y, r.width, r.height))
+                    .collect();
+            v.sort_by(|a, b| a.partial_cmp(b).unwrap());
+            v
+        };
+        assert_eq!(
+            rules("Fx", [1.0, 0.0, 0.0, 1.0]),
+            vec![(44.0, 0.0, 2.0, 23.0)],
+            "the first line's rule, its end 50% into the row gap"
+        );
+        assert_eq!(
+            rules("Fx", [0.0, 0.0, 1.0, 1.0]),
+            vec![(0.0, 22.0, 100.0, 2.0)],
+            "between the lines"
+        );
+        assert_eq!(
+            rules("I", [0.0, 1.0, 0.0, 1.0]),
+            vec![
+                (44.0, 2.0, 2.0, 16.0),
+                (94.0, 2.0, 2.0, 21.0),
+                (94.0, 23.0, 2.0, 21.0)
+            ],
+            "caps 2px in, junctions 3px into the row gap"
+        );
+    });
+}
