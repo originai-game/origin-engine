@@ -239,6 +239,7 @@ impl Ui {
             optical_sizing: true,
             palette: Default::default(),
             emoji: Default::default(),
+            size_adjust: None,
         });
         n.probe_text = text;
         // The landing pop: a bump of `pop` over `motion.duration.fast`.

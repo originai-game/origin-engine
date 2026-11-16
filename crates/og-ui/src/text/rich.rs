@@ -59,6 +59,8 @@ pub struct RichSpan {
     pub palette: crate::shape::Palette,
     /// How its emoji are presented (CSS `font-variant-emoji`).
     pub emoji: crate::text::EmojiStyle,
+    /// The size its faces are drawn at (CSS `font-size-adjust`).
+    pub size_adjust: Option<crate::text::SizeAdjust>,
     /// The bold and slant no real face of the style draws, synthesised.
     pub synth: crate::ui::Synth,
     /// A synthesised oblique's angle, degrees (CSS `font-style: oblique
@@ -199,6 +201,7 @@ impl RichSpan {
             .with_axes(self.variations, self.optical_sizing, self.step.size)
             .in_palette(self.palette)
             .with_emoji(self.emoji)
+            .with_size_adjust(self.size_adjust)
     }
 
     /// Its text's setting down a vertical line `v`: under its own
@@ -1569,24 +1572,29 @@ impl Ui {
             } else {
                 (0.0, 0.0)
             };
+            // A face drawn at its own size (`font-size-adjust`).
+            let scale = m.scale;
             let glyph = |x: f32,
                          dy: f32,
                          a: f32,
                          text: String,
-                         placements: Vec<og_draw::GlyphPlacement>,
-                         w: f32| DrawCmd::Text {
-                x: snap(x),
-                baseline: snap(baseline + dy),
-                size,
-                text,
-                color: color.fade(alpha * a).linear(),
-                font: handle,
-                bounds: Rect::new(x, r.y + dy, w, r.height),
-                clip,
-                tracking,
-                weight,
-                glow: None,
-                placements,
+                         mut placements: Vec<og_draw::GlyphPlacement>,
+                         w: f32| {
+                crate::text::unscale(&mut placements, scale);
+                DrawCmd::Text {
+                    x: snap(x),
+                    baseline: snap(baseline + dy),
+                    size: size * scale,
+                    text,
+                    color: color.fade(alpha * a).linear(),
+                    font: handle,
+                    bounds: Rect::new(x, r.y + dy, w, r.height),
+                    clip,
+                    tracking: tracking / scale,
+                    weight,
+                    glow: None,
+                    placements,
+                }
             };
             // A span's effect at this tick for its `g`-th glyph: (rise, alpha).
             let effect = |g: usize| match s.fx {
@@ -1616,7 +1624,9 @@ impl Ui {
                         x += w;
                         continue;
                     };
-                    let (text, placements) = crate::text::FontMetrics::drawn(run);
+                    let scale = font.scale_of(run[0].font);
+                    let (text, mut placements) = crate::text::FontMetrics::drawn(run);
+                    crate::text::unscale(&mut placements, scale);
                     let (dy, a) = effect(g);
                     let copies = if smear > 0.0 {
                         &[smear, 0.0][..]
@@ -1627,13 +1637,13 @@ impl Ui {
                         cmds.push(DrawCmd::Text {
                             x: snap(x + dx),
                             baseline: snap(baseline + dy),
-                            size,
+                            size: size * scale,
                             text: text.clone(),
                             color: color.fade(alpha * a).linear(),
                             font: f,
                             bounds: Rect::new(x + dx, r.y + dy, w, r.height),
                             clip,
-                            tracking,
+                            tracking: tracking / scale,
                             weight,
                             glow: None,
                             placements: placements.clone(),
@@ -1656,7 +1666,7 @@ impl Ui {
                         cmds.push(DrawCmd::Text {
                             x: snap(r.x + dx) + pc.dx * size,
                             baseline: snap(baseline),
-                            size,
+                            size: size * pc.scale,
                             text: pc.text.clone(),
                             color: color.fade(alpha).linear(),
                             font: f,
@@ -1667,7 +1677,7 @@ impl Ui {
                                 r.height,
                             ),
                             clip,
-                            tracking,
+                            tracking: tracking / pc.scale,
                             weight,
                             glow: None,
                             placements: pc.placements.clone(),

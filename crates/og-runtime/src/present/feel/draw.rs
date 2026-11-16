@@ -657,6 +657,7 @@ fn floating(rs: &mut RenderState, feel: &Feel, now: f64) {
             };
             let piece = og_ui::Piece {
                 font: None,
+                scale: 1.0,
                 dx: 0.0,
                 width: 0.0,
                 text: t.text.clone(),

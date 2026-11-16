@@ -78,6 +78,8 @@ const PALETTE: &str = "crates/og-ui/tests/fixtures/palette-test.ttf";
 const EMOJI_TEXT: &str = "crates/og-ui/tests/fixtures/emoji-text-test.ttf";
 /// Noto's COLRv1 colour emoji (the shipped emoji pack).
 const EMOJI: &str = "templates/fonts/emoji/Noto-COLRv1.ttf";
+/// Noto Sans SC: CJK, with no Latin.
+const CJK: &str = "templates/fonts/chinese-simplified/NotoSansSC-Regular.ttf";
 
 /// The sRGB pixel at (`x`, `y`) em from the pen of a colour glyph's image
 /// painted at `em_px`.
@@ -899,4 +901,75 @@ fn font_variant_emoji_picks_a_colour_or_text_face() {
     assert_eq!(runs("Over"), emoji);
     assert_eq!(runs("Inherit"), emoji);
     assert_eq!(runs("Rich"), emoji);
+}
+
+/// CSS Fonts 5 §2.5: `font-size-adjust` draws each face of a text at the
+/// size where its x-height (or the metric named) is the value times the
+/// text's size, its advances scaled with it; `from-font` takes the first
+/// face's own value, so a fallback matches it. It inherits, `none` turns
+/// it off, and rich text sizes its runs alike.
+#[test]
+fn font_size_adjust_sizes_each_face_by_its_metric() {
+    let fonts = Fonts {
+        body: face(GARAMOND, 1),
+        fallbacks: vec![face(CJK, 2)],
+        ..Fonts::default()
+    };
+    let d = doc_in(
+        fonts,
+        Vec::new(),
+        "<p id=\"None\">x水</p><p id=\"Num\">x水</p><p id=\"From\">x水</p><p id=\"Ch\">x水</p>\
+<div id=\"Up\"><p id=\"Inherit\">x水</p><p id=\"Off\">x水</p></div><p id=\"Rich\">x水</p>",
+        r#"p { font-size: 20px; } #Num { font-size-adjust: 0.5; }
+#From { font-size-adjust: from-font; } #Ch { font-size-adjust: ch-width 0.6; }
+#Up { font-size-adjust: 0.5; } #Off { font-size-adjust: none; }
+#Rich { font-size-adjust: 0.5; text-decoration: underline; }"#,
+    );
+    // Each run: its face, where it starts and the size it is drawn at.
+    let runs = |id: &str| -> Vec<(FontHandle, f32, f32)> {
+        let r = d.get(id);
+        let mut out: Vec<_> =
+            d.ui.frame()
+                .items
+                .iter()
+                .filter_map(|it| match it.cmd.unstyled() {
+                    DrawCmd::Text {
+                        font,
+                        x,
+                        size,
+                        bounds,
+                        ..
+                    } if (r.y..r.y + r.height).contains(&(bounds.y + bounds.height / 2.0)) => {
+                        Some((*font, x - r.x, *size))
+                    }
+                    _ => None,
+                })
+                .collect();
+        out.sort_by(|a, b| a.1.total_cmp(&b.1));
+        out
+    };
+    let (latin, cjk) = (FontHandle::from_index(1), FontHandle::from_index(2));
+    // From the fonts' tables (fontTools): EB Garamond Medium's OS/2
+    // sxHeight 407 and "0" 497 and "x" 456 of 1000; Noto Sans SC's
+    // sxHeight 543 of 1000.
+    let (gx, g0, gadv, cx) = (0.407, 0.497, 0.456, 0.543);
+    let expect = |id: &str, latin_size: f32, cjk_size: f32| {
+        let got = runs(id);
+        let want = [(latin, 0.0, latin_size), (cjk, gadv * latin_size, cjk_size)];
+        assert_eq!(got.len(), 2, "{id}: {got:?}");
+        for ((f, x, s), (wf, wx, ws)) in got.iter().zip(want) {
+            assert!(
+                *f == wf && (x - wx).abs() < 0.6 && (s - ws).abs() < 0.01,
+                "{id}: {got:?}, want {want:?}"
+            );
+        }
+    };
+    expect("None", 20.0, 20.0);
+    expect("Num", 20.0 * 0.5 / gx, 20.0 * 0.5 / cx);
+    expect("From", 20.0, 20.0 * gx / cx);
+    // Noto Sans SC has no "0": CSS Values 4 §6.1.1's half an em.
+    expect("Ch", 20.0 * 0.6 / g0, 20.0 * 0.6 / 0.5);
+    expect("Inherit", 20.0 * 0.5 / gx, 20.0 * 0.5 / cx);
+    expect("Off", 20.0, 20.0);
+    expect("Rich", 20.0 * 0.5 / gx, 20.0 * 0.5 / cx);
 }

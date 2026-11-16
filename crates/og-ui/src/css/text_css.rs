@@ -799,12 +799,7 @@ fn check(name: &str, v: &str) -> Result<(), String> {
         | "font-synthesis-style"
         | "font-synthesis-small-caps"
         | "font-synthesis-position" => matches!(v, "auto" | "none"),
-        "font-size-adjust" => {
-            v == "none"
-                || v.split_whitespace()
-                    .last()
-                    .is_some_and(|n| n.parse::<f32>().is_ok() || n == "from-font")
-        }
+        "font-size-adjust" => size_adjust(v).is_some(),
         "font-language-override" => v == "normal" || language_tag(v).is_some(),
         "font-feature-settings" => v == "normal" || feature_settings(v).is_ok(),
         "font-variation-settings" => v == "normal" || variation_settings(v).is_ok(),
@@ -1252,6 +1247,8 @@ pub struct TextCss {
     /// `font-variant-emoji` (`None`: `normal`, which presents as
     /// `unicode` does).
     pub emoji: Option<crate::text::EmojiStyle>,
+    /// `font-size-adjust` (`Some(None)`: `none`).
+    pub size_adjust: Option<Option<crate::text::SizeAdjust>>,
     pub synthesis: [Option<bool>; 4],
     pub decoration: Decoration,
     pub stroke: Option<(f32, Option<Srgba>)>,
@@ -1499,6 +1496,7 @@ pub(crate) fn inherit(inp: Inputs<'_>) -> TextCss {
             Some("unicode") => Some(crate::text::EmojiStyle::Unicode),
             _ => None,
         },
+        size_adjust: get("font-size-adjust").and_then(|v| size_adjust(&v)),
         language: get("font-language-override")
             .and_then(|v| language_tag(&v))
             .map(|tag| {
@@ -1793,6 +1791,41 @@ fn variant_features(w: &str) -> Vec<(&'static [u8; 4], u16)> {
 
 /// `font-language-override`'s OpenType language system tag: a quoted one
 /// to four letters (CSS Fonts 4 §6.13), trailing spaces dropped.
+/// A `font-size-adjust` value (CSS Fonts 5 §2.5): `Some(None)` for
+/// `none`, else its metric and its number or `from-font`.
+fn size_adjust(v: &str) -> Option<Option<crate::text::SizeAdjust>> {
+    use crate::text::AspectMetric;
+    let words: Vec<&str> = v.split_whitespace().collect();
+    if words == ["none"] {
+        return Some(None);
+    }
+    let (metric, value) = match words.as_slice() {
+        [value] => (AspectMetric::ExHeight, *value),
+        [metric, value] => (
+            match *metric {
+                "ex-height" => AspectMetric::ExHeight,
+                "cap-height" => AspectMetric::CapHeight,
+                "ch-width" => AspectMetric::ChWidth,
+                "ic-width" => AspectMetric::IcWidth,
+                "ic-height" => AspectMetric::IcHeight,
+                _ => return None,
+            },
+            *value,
+        ),
+        _ => return None,
+    };
+    let value = match value {
+        "from-font" => None,
+        n => Some(
+            n.parse::<f32>()
+                .ok()
+                .filter(|n| n.is_finite() && *n >= 0.0)
+                .map(|n| (n * 1000.0).round() as u32)?,
+        ),
+    };
+    Some(Some(crate::text::SizeAdjust { metric, value }))
+}
+
 fn language_tag(v: &str) -> Option<String> {
     let inner = v
         .strip_prefix('"')
