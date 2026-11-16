@@ -615,6 +615,36 @@ pub(crate) fn values_with<'r>(
         }
         b
     });
+    // A registered length computes to an absolute one (CSS Properties and
+    // Values API 1 §2.4): `--gap: 2em` set here is this element's em, and
+    // its children inherit the px, not the text.
+    if let Some(b) = basis {
+        for (name, p) in &registered {
+            if !p.syntax.contains("<length") || !specified.contains_key(name.as_str()) {
+                continue;
+            }
+            let Some(Some(text)) = out.computed.get(name.as_str()) else {
+                continue;
+            };
+            if !crate::doc::calc::per_element(name, text) {
+                continue;
+            }
+            let (text, read) = crate::doc::calc::absolute(text, b, name);
+            let text = if crate::doc::calc::has_math(&text) {
+                match crate::doc::calc::reduce(&text) {
+                    Ok(text) => text,
+                    Err(_) => continue,
+                }
+            } else {
+                text
+            };
+            out.viewport_reads.width |= read.width;
+            out.viewport_reads.height |= read.height;
+            out.container_reads
+                .extend(read.containers.into_iter().flatten());
+            Arc::make_mut(&mut out.computed).insert(name.clone(), Some(text));
+        }
+    }
     for (name, (_, winner, line)) in declarations {
         for prop in css::targets(name) {
             if let Some((spec, _)) = schema::prop(prop) {

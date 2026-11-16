@@ -264,6 +264,49 @@ fn calc_reduces_once_its_variables_are_known() {
     assert!(mixed.contains("calc() mixes % and ms"), "{mixed}");
 }
 
+/// `@property` (CSS Properties and Values API 1): a registered property
+/// that does not inherit starts from its initial value under a parent that
+/// sets it; a value that does not match its syntax takes the initial value
+/// (§2.4, invalid at computed-value time); a registered length computes to
+/// px where it is set, so a child of another font size inherits the px
+/// (an unregistered one is re-read as `2em` there); a universal one with
+/// no initial value leaves var()'s fallback.
+#[test]
+fn registered_custom_properties_take_their_syntax_initial_value_and_computed_length() {
+    let text = r#"<meta name="component" content="t">
+<div><div id="Root">
+  <div id="A"></div><div id="B"></div><div id="E"></div><div id="F"></div>
+  <div id="Mid"><div id="C"></div><div id="D"></div></div>
+</div></div>
+<style>
+@property --w { syntax: "<length>"; inherits: false; initial-value: 20px; }
+@property --g { syntax: "<length>"; inherits: true; initial-value: 0px; }
+@property --n { syntax: "<number>"; inherits: true; initial-value: 3; }
+@property --any { syntax: "*"; inherits: true; }
+#Root { width: 400px; --w: 50px; }
+#Root div { height: 1px; }
+#A { width: var(--w); }
+#B { --w: red; width: var(--w); }
+#E { width: calc(var(--n) * 10px); }
+#F { width: var(--any, 7px); }
+#Mid { font-size: 20px; --g: 2em; --u: 2em; }
+#C { font-size: 10px; width: var(--g); }
+#D { font-size: 10px; width: var(--u); }
+</style>"#;
+    with_doc(text, &[], |d| {
+        for (id, width) in [
+            ("A", 20.0),
+            ("B", 20.0),
+            ("E", 30.0),
+            ("F", 7.0),
+            ("C", 40.0),
+            ("D", 20.0),
+        ] {
+            assert_eq!(d.get(id).width, width, "{id}");
+        }
+    });
+}
+
 /// Each row's width against the value CSS Values 4 gives, to ±0.5px (layout
 /// snaps to device pixels).
 fn widths_near(d: &Doc, expected: &[(&str, f64)]) {
