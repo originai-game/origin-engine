@@ -637,6 +637,10 @@ pub struct Element {
     /// leaves (docs/ui.md §2, HTML blocks). A stack places its children
     /// without them.
     pub margin: [Margin; 4],
+    /// CSS `margin-trim` of a block container: bit 0 drops its first
+    /// in-flow block-level child's block-start margin, bit 2 its last
+    /// one's block-end margin (CSS Box 4 §3.3.1).
+    pub margin_trim: u8,
     /// A CSS block box (`display: block`): its in-flow children's vertical
     /// margins collapse with each other and, where no padding separates
     /// them, with its own (CSS 2 §8.3.1). A text with it is block-level

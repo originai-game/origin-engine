@@ -1,0 +1,9 @@
+{
+  "simulation": "unchanged",
+  "added": [
+    {
+      "member": "UI CSS margin-trim",
+      "summary": "`margin-trim: block | block-start | block-end` on a block container drops its first in-flow block child's top margin and its last child's bottom margin (CSS Box 4 §3.3), so a list's padding alone sets the room at its edges."
+    }
+  ]
+}

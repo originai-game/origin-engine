@@ -621,6 +621,13 @@ pub const PROPS: &[PropSpec] = &[
         doc: "CSS `fit-tolerance` of a grid-lanes box (its `display` is `grid-lanes`): lanes whose filled length is within it of the shortest count as tied, and an item takes the first tied lane after the last item's (`normal`: 1em; `infinite`: strictly in order; a px or em length).",
     },
     PropSpec {
+        name: "marginTrim",
+        ty: Ty::Text,
+        on: On::All,
+        two_way: false,
+        doc: "CSS `margin-trim` of a block container: `block-start` drops its first in-flow block child's top margin, `block-end` its last child's bottom margin, `block` both, `none` (default) neither; padding then sets the room at its edges.",
+    },
+    PropSpec {
         name: "orphans",
         ty: Ty::Text,
         on: On::All,

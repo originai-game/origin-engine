@@ -109,6 +109,28 @@ pub(crate) fn lower(name: &str, value: &str) -> Option<Result<Vec<Lowered>, Stri
             "none" | "all" => Ok(vec![("columnSpan", text(v))]),
             v => Err(format!("'{v}' is no column-span: none or all")),
         },
+        // CSS Box 4 §3.3: `none | block | [block-start || block-end]`.
+        "margin-trim" => {
+            let ws: Vec<&str> = v.split_whitespace().collect();
+            let ok = match ws.as_slice() {
+                ["none"] | ["block"] => true,
+                [a] => matches!(*a, "block-start" | "block-end"),
+                [a, b] => {
+                    a != b
+                        && [a, b]
+                            .iter()
+                            .all(|w| matches!(**w, "block-start" | "block-end"))
+                }
+                _ => false,
+            };
+            if ok {
+                Ok(vec![("marginTrim", text(v))])
+            } else {
+                Err(format!(
+                    "'{v}' is no margin-trim: none, block, block-start or block-end"
+                ))
+            }
+        }
         "column-fill" => match v {
             "auto" | "balance" | "balance-all" => Ok(vec![("columnFill", text(v))]),
             v => Err(format!(

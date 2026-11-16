@@ -2721,3 +2721,44 @@ fn grid_lanes_pack_items_within_their_fit_tolerance() {
         );
     });
 }
+
+/// CSS Box 4 §3.3.1: a block container's `margin-trim: block` drops its
+/// first in-flow block child's block-start margin and its last child's
+/// block-end margin; `block-start` only the first; the margin between the
+/// children stays, and an absolutely positioned first child is no first
+/// child.
+///
+/// Ways it could fail: the trim ignored (C1 at 10, height 70), applied to
+/// every child (the gap between them gone), or `block-start` trimming the
+/// end too.
+#[test]
+fn margin_trim_drops_the_margins_at_a_blocks_edges() {
+    let text = r#"<meta name="component" content="t">
+<div><div id="Root">
+  <div id="N" class="b"><div id="N1"></div><div id="N2"></div></div>
+  <div id="T" class="b"><div class="abs"></div><div id="T1"></div><div id="T2"></div></div>
+  <div id="S" class="b"><div id="S1"></div><div id="S2"></div></div>
+</div></div>
+<style>
+#Root { width: 200px; }
+.b { display: flow-root; width: 100px; }
+.b > div { height: 20px; margin: 10px 0; }
+.b > .abs { position: absolute; margin: 0; }
+#T { margin-trim: block; }
+#S { margin-trim: block-start; }
+</style>"#;
+    with_doc(text, &[], |d| {
+        let y = |id: &str, of: &str| d.get(id).y - d.get(of).y;
+        assert_eq!((y("N1", "N"), d.get("N").height), (10.0, 70.0), "none");
+        assert_eq!(
+            (y("T1", "T"), y("T2", "T"), d.get("T").height),
+            (0.0, 30.0, 50.0),
+            "block trims both edges, not the margin between"
+        );
+        assert_eq!(
+            (y("S1", "S"), d.get("S").height),
+            (0.0, 60.0),
+            "block-start keeps the end"
+        );
+    });
+}

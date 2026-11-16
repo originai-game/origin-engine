@@ -124,6 +124,16 @@ impl Ui {
         if let Some(v) = r.str("columnSpan") {
             el.span_all = v == "all";
         }
+        if let Some(v) = r.str("marginTrim") {
+            el.margin_trim = v.split_whitespace().fold(0, |b, w| {
+                b | match w {
+                    "block" => 0b101,
+                    "block-start" => 0b001,
+                    "block-end" => 0b100,
+                    _ => 0,
+                }
+            });
+        }
         let forced = |v: Option<&str>| {
             matches!(
                 v,

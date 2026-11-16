@@ -244,6 +244,7 @@ pub const STYLE: &[(&str, &str)] = &[
     ("breakAfter", "break-after"),
     ("breakInside", "break-inside"),
     ("orphans", "orphans"),
+    ("marginTrim", "margin-trim"),
     ("widows", "widows"),
     ("float", "float"),
     ("clear", "clear"),
@@ -449,7 +450,7 @@ fn conv(prop: &str) -> Conv {
         | "positionVisibility" | "anchorWidth" | "anchorHeight" => Conv::Raw,
         "columnCount" | "columnWidth" | "columnSpan" | "columnFill" | "columnRuleWidth"
         | "columnRuleStyle" | "columnRuleColor" | "breakBefore" | "breakAfter" | "breakInside"
-        | "orphans" | "widows" | "float" | "clear" | "fitTolerance" => Conv::Raw,
+        | "orphans" | "widows" | "float" | "clear" | "fitTolerance" | "marginTrim" => Conv::Raw,
         "viewTransitionName" | "viewTransitionClass" | "viewTransitionGroup" => Conv::Raw,
         "backgroundImage"
         | "backgroundSize"

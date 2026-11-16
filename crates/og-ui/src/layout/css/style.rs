@@ -244,6 +244,30 @@ impl<'a> View<'a> {
             .then(|| (&self.nodes[up], kind(self.nodes, up)))
     }
 
+    /// The sides of its frame (bit 0 top … 3 left) its block container
+    /// parent's `margin-trim` takes its margin from: block-start if it is
+    /// the parent's first in-flow block-level child, block-end if its last
+    /// (CSS Box 4 §3.3.1).
+    fn trimmed(&self) -> u8 {
+        let Some((p, _)) = self.parent() else {
+            return 0;
+        };
+        let trim = p.layout.used.margin_trim;
+        if trim == 0 || self.line || !p.layout.used.block {
+            return 0;
+        }
+        let flow = |c: &&usize| {
+            let n = &self.nodes[**c];
+            !n.props.out_of_flow()
+                && !n.layout.used.inline
+                && n.layout.used.float == crate::layout::FloatSide::None
+        };
+        let mut kids = p.children.iter().filter(flow);
+        let first = kids.next() == Some(&self.i);
+        let last = p.children.iter().rev().find(flow) == Some(&self.i);
+        (if first { trim & 1 } else { 0 }) | (if last { trim & 4 } else { 0 })
+    }
+
     /// Its parent's main axis is horizontal (a flex row).
     fn main_across(&self) -> bool {
         self.parent()
@@ -619,10 +643,14 @@ impl tf::CoreStyle for View<'_> {
                 bottom: tf::LengthPercentageAuto::length(0.0),
             };
         }
+        let trimmed = self.trimmed();
         let side = |k: usize| {
+            let f = k;
             let k = self.side(k);
             let m = el.margin[k];
-            if m.auto {
+            if trimmed & (1 << f) != 0 {
+                tf::LengthPercentageAuto::length(0.0)
+            } else if m.auto {
                 tf::LengthPercentageAuto::auto()
             } else if m.len.pct == 0.0 {
                 tf::LengthPercentageAuto::length(m.len.px)
