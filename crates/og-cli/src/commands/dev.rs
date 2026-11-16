@@ -784,7 +784,7 @@ pub fn run(args: &[&str]) -> ExitCode {
         // A document's types follow it (`og ui types`), so code that
         // mounts it is checked again.
         let documents = changes.iter().any(|c| {
-            c.starts_with(p.root.join("assets")) && c.extension().is_some_and(|e| e == "ogt")
+            c.starts_with(p.root.join("assets")) && c.extension().is_some_and(|e| e == "svelte")
         });
         if documents {
             match crate::ui::write_types(&p.root) {

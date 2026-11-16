@@ -112,6 +112,12 @@ fn dev_reports_the_check_of_each_save_and_reloads_anyway() {
     std::fs::remove_dir_all(dir.join("crates")).unwrap();
     let engine = dir.join("engine");
     std::fs::create_dir_all(engine.join("src/node")).unwrap();
+    std::fs::create_dir_all(engine.join("types")).unwrap();
+    std::fs::copy(
+        repo().join("packages/engine/types/index.d.ts"),
+        engine.join("types/index.d.ts"),
+    )
+    .unwrap();
     std::fs::write(
         engine.join("src/node/build.ts"),
         "const i = process.argv.indexOf('--out'); await Bun.write(process.argv[i + 1], `export default ${Date.now()};`);\n",
@@ -142,6 +148,9 @@ setInterval(() => {
     .unwrap();
     let game = dir.join("game");
     std::fs::create_dir_all(game.join("src")).unwrap();
+    std::fs::create_dir_all(game.join("assets/ui")).unwrap();
+    let document = "<meta name='screen' content='shop'><meta name='prop:gold' content='number' data-doc='Gold.'><div></div>";
+    std::fs::write(game.join("assets/ui/shop.svelte"), document).unwrap();
     std::fs::write(game.join("src/main.ts"), "export default 0;\n").unwrap();
     std::fs::write(
         game.join("project.ogt"),
@@ -149,7 +158,7 @@ setInterval(() => {
     )
     .unwrap();
     let mut child = og()
-        .args(["dev", "--json", "--exit-after", "2", "--port", "47997"])
+        .args(["dev", "--json", "--exit-after", "3", "--port", "47997"])
         .arg(&game)
         .env("OG_ENGINE_PACKAGE", &engine)
         .env("RELEASE_RELOAD", dir.join("release"))
@@ -199,9 +208,19 @@ setInterval(() => {
         }
     }
     let mut events = Vec::<serde_json::Value>::new();
-    for (i, source) in [
-        "export const n: number = \"one\";\nexport default 0;\n",
-        "export const n: number = 1;\nexport default 0;\n",
+    for (i, (file, source)) in [
+        (
+            "src/main.ts",
+            "export const n: number = \"one\";\nexport default 0;\n".to_string(),
+        ),
+        (
+            "src/main.ts",
+            "export const n: number = 1;\nexport default 0;\n".to_string(),
+        ),
+        (
+            "assets/ui/shop.svelte",
+            document.replace("content='number'", "content='string'"),
+        ),
     ]
     .iter()
     .enumerate()
@@ -210,7 +229,7 @@ setInterval(() => {
         // phase, rather than a truncate and a write observed separately.
         let staged = dir.join("saved.ts");
         std::fs::write(&staged, source).unwrap();
-        std::fs::rename(staged, game.join("src/main.ts")).unwrap();
+        std::fs::rename(staged, game.join(file)).unwrap();
         let (mut bundled, mut checked) = (false, false);
         while !bundled || !checked {
             let event = next_event().expect("og dev ended");
@@ -232,13 +251,18 @@ setInterval(() => {
         events.push(event);
     }
     let status = child.wait().unwrap();
+    let types = std::fs::read_to_string(game.join(".og/types/ui/shop.d.ts")).unwrap();
+    assert!(
+        types.contains("gold?: string"),
+        "the .svelte save must retype: {types}"
+    );
     let _ = std::fs::remove_dir_all(&dir);
     let mut pending = None;
     let mut reloads = 0;
     for event in &events {
         if event["event"] == "check" {
             assert!(pending.replace(event).is_none(), "{events:?}");
-            assert_eq!(event["ok"], reloads == 1, "{event}");
+            assert_eq!(event["ok"], reloads > 0, "{event}");
             if reloads == 0 {
                 assert_eq!(event["diagnostics"][0]["code"], 2322, "{event}");
                 assert_eq!(event["diagnostics"][0]["file"], "src/main.ts", "{event}");
@@ -263,7 +287,7 @@ setInterval(() => {
             reloads += 1;
         }
     }
-    assert_eq!(reloads, 2, "{events:?}");
+    assert_eq!(reloads, 3, "{events:?}");
     assert!(pending.is_none(), "{events:?}");
     assert!(status.success(), "{status:?}");
 }

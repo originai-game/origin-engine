@@ -1,0 +1,5 @@
+{
+  "fixed": [
+    "og dev regenerates UI types and restarts source checks when a .svelte document changes, instead of watching the obsolete .ogt document extension."
+  ]
+}
