@@ -114,7 +114,22 @@ fn release_only() {
 
 /// A UI with `text` defined and mounted over the test stores `stores`.
 fn mounted(text: &str, stores: &[(&str, Value)]) -> Ui {
+    mounted_with(text, stores, &[])
+}
+
+/// [`mounted`] with the library's control documents `controls` defined
+/// (`progress`: `packages/engine/src/ui/controls/progress.svelte`), as a
+/// game's load defines those its elements use.
+fn mounted_with(text: &str, stores: &[(&str, Value)], controls: &[&str]) -> Ui {
     let mut ui = ui_with_font(test_font_metrics());
+    for name in controls {
+        let path = engine_dir(&format!("src/ui/controls/{name}.svelte"));
+        let text = std::fs::read_to_string(&path).unwrap_or_else(|e| panic!("{path:?}: {e}"));
+        let control = ui
+            .parse_document(&format!("@ui/controls/{name}.svelte"), &text, Vec::new())
+            .unwrap_or_else(|e| panic!("{e:?}"));
+        ui.define_document(control);
+    }
     let doc = UiDocument::parse("ui/perf.svelte", text).unwrap_or_else(|e| panic!("{e:?}"));
     let name = doc.name.clone();
     ui.define_document(doc);
@@ -161,6 +176,33 @@ const SHOP: &str = r#"<meta name="component" content="shop">
 #[ignore = "perf: run on the reference machines in release"]
 fn perf_dense_menu_300_elements_40_animating() {
     release_only();
+    let (m, animating) = dense_menu(&[]);
+    assert!(m.elements >= 300, "{} elements", m.elements);
+    assert!(animating >= 40, "{animating} animating");
+    let budget = dense_menu_budget_ms();
+    assert!(
+        m.median <= budget,
+        "median {:.3} ms a tick (budget {budget} ms)",
+        m.median
+    );
+}
+
+/// The dense menu with its 49 stock bars drawn by the progress control
+/// document (docs/ui.md §2.4) instead of og-ui's fallback: what a control
+/// document costs on the budget's own screen. It reports and holds no
+/// budget until the controls have all moved.
+#[test]
+#[ignore = "perf lane: run in release with --ignored"]
+fn perf_dense_menu_with_control_documents() {
+    release_only();
+    let (m, animating) = dense_menu(&["progress"]);
+    assert!(animating >= 40, "{animating} animating");
+    assert!(m.elements >= 300 + 2 * 49, "{} elements", m.elements);
+}
+
+/// The dense menu's measurement and how many of its elements are in
+/// motion, with the control documents `controls` defined.
+fn dense_menu(controls: &[&str]) -> (Measured, usize) {
     let tabs: Vec<Value> = ["Weapons", "Armour", "Potions", "Gems"]
         .iter()
         .map(|t| json!({"id": t, "name": t}))
@@ -178,13 +220,14 @@ fn perf_dense_menu_300_elements_40_animating() {
             })
         })
         .collect();
-    let mut ui = mounted(
+    let mut ui = mounted_with(
         SHOP,
         &[
             ("tabs", Value::Array(tabs)),
             ("cards", Value::Array(cards)),
             ("phase", json!(0)),
         ],
+        controls,
     );
     // Retargeted every 12 ticks, before a 300 ms spring settles: always in flight.
     let m = measure(&mut ui, |ui, tick| {
@@ -198,17 +241,21 @@ fn perf_dense_menu_300_elements_40_animating() {
         .filter(|d| !d.moving.is_empty())
         .count();
     println!(
-        "perf ui dense menu: median {:.3} ms, p95 {:.3} ms a tick (build {:.3}, end {:.3}, record {:.3}); {} elements, {animating} animating, {} commands",
-        m.median, m.p95, m.parts[0], m.parts[1], m.parts[2], m.elements, m.commands
+        "perf ui dense menu{}: median {:.3} ms, p95 {:.3} ms a tick (build {:.3}, end {:.3}, record {:.3}); {} elements, {animating} animating, {} commands",
+        if controls.is_empty() {
+            String::new()
+        } else {
+            format!(" with control documents ({})", controls.join(", "))
+        },
+        m.median,
+        m.p95,
+        m.parts[0],
+        m.parts[1],
+        m.parts[2],
+        m.elements,
+        m.commands
     );
-    assert!(m.elements >= 300, "{} elements", m.elements);
-    assert!(animating >= 40, "{animating} animating");
-    let budget = dense_menu_budget_ms();
-    assert!(
-        m.median <= budget,
-        "median {:.3} ms a tick (budget {budget} ms)",
-        m.median
-    );
+    (m, animating)
 }
 
 /// The dense menu's budget on this machine, by its CPU as og-runtime keeps
