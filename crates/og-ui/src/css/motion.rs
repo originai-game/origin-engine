@@ -175,14 +175,16 @@ pub(crate) fn expand(
             return timeline_shorthand(&d);
         }
         name if longhand(name) => {
-            if !d.value.has_variables() {
+            if !d.value.has_variables() && !super::calc::has_absolute(&d.source) {
                 validate(name, &d.source, keyframes)?;
             }
             return Ok(vec![d]);
         }
         _ => return Ok(vec![d]),
     };
-    if d.value.has_variables() {
+    // Math its element resolves (`calc(sibling-index() * 50ms)`) is
+    // known by its kind once it has, as a variable is.
+    if d.value.has_variables() || super::calc::has_absolute(&d.source) {
         let pending = if d.name == "transition" {
             "transition"
         } else {

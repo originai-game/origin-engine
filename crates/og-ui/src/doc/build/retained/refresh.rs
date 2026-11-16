@@ -688,12 +688,20 @@ impl RetainedHost {
             kept.get_or_insert_default();
         }
         let build = e.build(env, inherited);
+        let siblings = match self.topology.position(identity) {
+            Some(at) if ui.docs.library.uses_siblings => [
+                at as u32 + 1,
+                self.topology.child_count(parent.as_ref()) as u32,
+            ],
+            _ => [0; 2],
+        };
         let mut probe = Built {
             path: e.path.clone(),
             doc: e.document.name.clone(),
             node: e.index,
             line: e.document.nodes[e.index].line,
             mount: identity.mount.id.clone(),
+            siblings,
             ..Default::default()
         };
         let topology = &self.topology;

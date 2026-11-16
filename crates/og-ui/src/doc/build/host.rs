@@ -58,6 +58,9 @@ pub struct Built {
     pub line: usize,
     /// The mount it belongs to (a screen's name is its layer).
     pub mount: String,
+    /// Its index among its parent's children, from 1, and their count,
+    /// when a document uses `sibling-index()` or `sibling-count()`; else 0.
+    pub siblings: [u32; 2],
     /// `(prop, expression as written, value now)`.
     pub bindings: Vec<(String, String, Value)>,
     /// Its probe edits: `(prop, value as given)`.

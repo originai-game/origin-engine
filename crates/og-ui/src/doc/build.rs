@@ -872,6 +872,7 @@ impl Ui {
             vertical: cascade::root_vertical(inherited).unwrap_or(false),
             element: crate::id::key_of_path(path),
             document: crate::id::key_of_path(&built.mount),
+            siblings: built.siblings,
             ..Default::default()
         };
         // An attribute attr() reads, as its text.

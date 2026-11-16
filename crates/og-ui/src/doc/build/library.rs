@@ -19,6 +19,9 @@ pub(crate) struct Library {
     /// Some defined document uses generated content, so builds keep the
     /// document-order counters and quote run.
     pub(crate) uses_run: bool,
+    /// Some defined document uses `sibling-index()` or `sibling-count()`,
+    /// so builds give each element its place among its siblings.
+    pub(crate) uses_siblings: bool,
     /// The textures documents name by asset path (a view transition's
     /// cover image), by path.
     pub(crate) textures: BTreeMap<String, og_draw::TextureHandle>,
@@ -54,6 +57,7 @@ impl Library {
             crate::doc::generated::longhand(&d.name)
                 || d.name == "display" && d.source.contains("list-item")
         });
+        self.uses_siblings |= crate::doc::matching::counts_siblings(&doc);
         self.wide_keywords |= declarations().any(|d| {
             d.value.binding().is_some()
                 || super::cascade::CARRIED_BY_DEFAULT.contains(&d.name.as_str())

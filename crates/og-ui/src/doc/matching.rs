@@ -504,6 +504,12 @@ pub fn type_filter(tag: &str) -> Option<Vec<Selector>> {
     Selector::parse_list(tag).ok()
 }
 
+/// Whether `document` uses `sibling-index()` or `sibling-count()` (CSS
+/// Values 5 §8.1): its elements read their place among their siblings.
+pub(crate) fn counts_siblings(document: &UiDocument) -> bool {
+    document.text.contains("sibling-index(") || document.text.contains("sibling-count(")
+}
+
 /// What structural rules of a set of documents can depend on; it bounds the
 /// invalidation that sibling edits and fact changes cause.
 #[derive(Clone, Debug, Default, PartialEq)]
@@ -829,6 +835,13 @@ impl Profile {
             }
         }
         profile.reads.extend(profile.states.iter().copied());
+        // An element's sibling-index() reads its earlier siblings and its
+        // sibling-count() all of them, as nth positions do.
+        if counts_siblings(document) {
+            profile.any = true;
+            profile.forward = true;
+            profile.backward = true;
+        }
         if profile.of_type {
             let mut tags: Vec<&str> = document
                 .nodes

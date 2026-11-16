@@ -1924,6 +1924,51 @@ fn pushed_screens_match_sibling_and_structural_selectors_on_instantiated_rows() 
     assert_ne!(measure(&ui, "Box").1, 17.0);
 }
 
+/// CSS Values 5 §8.1: `sibling-index()` and `sibling-count()` are an
+/// element's place among its parent's children, from 1, and their count,
+/// and follow a row inserted before it or removed on the same frame.
+#[test]
+fn sibling_index_and_count_follow_inserted_and_removed_rows() {
+    let document = UiDocument::parse(
+        "siblings.svelte",
+        r#"<meta name="screen" content="siblings">
+<column id="Root">
+  {#each $items as item (item.id)}<text id="Item">{item.id}</text>{/each}
+</column>
+<style>
+  text { width: calc(sibling-index() * 10px); height: calc(100px / sibling-count()); }
+</style>
+"#,
+    )
+    .unwrap();
+    let mut ui = ui_with_font(test_font_metrics());
+    ui.define_document(document);
+    let size = |ui: &Ui, text: &str| {
+        let e = ui.probe_elements();
+        let e = e.iter().find(|e| e.text == text).unwrap();
+        (e.width.round(), e.height.round())
+    };
+    let rows = json!([{"id": "a"}, {"id": "b"}, {"id": "c"}, {"id": "d"}]);
+    mount_screen(&mut ui, "siblings", &[("items", rows)]);
+    tick(&mut ui, InputFrame::default());
+    assert_eq!(size(&ui, "a"), (10.0, 25.0));
+    assert_eq!(size(&ui, "c"), (30.0, 25.0));
+    edit_store(
+        &mut ui,
+        "items",
+        json!({"op": "insert", "row": {"id": "n"}, "before": "b"}),
+    );
+    tick(&mut ui, InputFrame::default());
+    assert_eq!(size(&ui, "a"), (10.0, 20.0));
+    assert_eq!(size(&ui, "n"), (20.0, 20.0));
+    assert_eq!(size(&ui, "c"), (40.0, 20.0));
+    assert_eq!(size(&ui, "d"), (50.0, 20.0));
+    edit_store(&mut ui, "items", json!({"op": "remove", "key": "a"}));
+    tick(&mut ui, InputFrame::default());
+    assert_eq!(size(&ui, "n"), (10.0, 25.0));
+    assert_eq!(size(&ui, "d"), (40.0, 25.0));
+}
+
 /// A pushed viewmodel's list is iterated by its rows' `id`s: rows that
 /// each have a unique string `id` are a keyed list, and a screen that
 /// iterates any other list is told what the rows need.

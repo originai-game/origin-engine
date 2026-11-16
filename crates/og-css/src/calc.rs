@@ -138,6 +138,10 @@ pub struct Basis {
     /// function's cache name, so a shared `--key` draws apart in another
     /// document.
     pub document: u64,
+    /// The element's index among its parent's element children, from 1,
+    /// and their count, for `sibling-index()` and `sibling-count()` (CSS
+    /// Values 5 §8.1); 0: not known, read as 1.
+    pub siblings: [u32; 2],
 }
 
 impl Basis {
@@ -166,11 +170,13 @@ pub struct Read {
 }
 
 /// Whether `text` has a number in a unit [`absolute`] resolves, an
-/// `env()`, a `random-item()` or a `random()` whose key reads its element
-/// or document.
+/// `env()`, a tree-counting function, a `random-item()` or a `random()`
+/// whose key reads its element or document.
 pub fn has_absolute(text: &str) -> bool {
     text.contains("env(")
         || text.contains("random-item(")
+        || text.contains("sibling-index(")
+        || text.contains("sibling-count(")
         || text
             .match_indices("random(")
             .any(|(at, f)| !text[at + f.len()..].trim_start().starts_with("fixed"))
@@ -198,6 +204,7 @@ pub fn per_element(name: &str, text: &str) -> bool {
 pub fn absolute(text: &str, basis: Basis, name: &str) -> (String, Read) {
     let mut read = Read::default();
     let text = env(text, basis, &mut read);
+    let text = tree_counts(&text, basis);
     let text = randoms(&text, basis, name);
     let mut out = String::with_capacity(text.len());
     let mut last = 0;
@@ -296,6 +303,46 @@ pub fn absolute(text: &str, basis: Basis, name: &str) -> (String, Read) {
     }
     out.push_str(&text[last..]);
     (out, read)
+}
+
+/// `text` with each `sibling-index()` and `sibling-count()` written as the
+/// element's integer (CSS Values 5 §8.1).
+fn tree_counts(text: &str, basis: Basis) -> String {
+    if !text.contains("sibling-") {
+        return text.into();
+    }
+    let mut out = String::with_capacity(text.len());
+    let mut rest = text;
+    while let Some(at) = rest.find("sibling-") {
+        let boundary = at == 0 || {
+            let p = rest.as_bytes()[at - 1];
+            !(p.is_ascii_alphanumeric() || p == b'-' || p == b'_')
+        };
+        let value = [("sibling-index(", 0), ("sibling-count(", 1)]
+            .into_iter()
+            .filter(|_| boundary)
+            .find_map(|(name, i)| {
+                let after = rest[at..].strip_prefix(name)?;
+                let close = after.find(')')?;
+                after[..close]
+                    .trim()
+                    .is_empty()
+                    .then(|| (basis.siblings[i].max(1), at + name.len() + close + 1))
+            });
+        match value {
+            Some((n, end)) => {
+                out.push_str(&rest[..at]);
+                out.push_str(&n.to_string());
+                rest = &rest[end..];
+            }
+            None => {
+                out.push_str(&rest[..at + 1]);
+                rest = &rest[at + 1..];
+            }
+        }
+    }
+    out.push_str(rest);
+    out
 }
 
 /// `text`'s random functions resolved for an element (CSS Values 5 §9):
@@ -2019,6 +2066,32 @@ mod tests {
         assert_ne!(margin, at(1, 1, "margin-left", scoped));
         let expanded = random_keys(scoped, "margin");
         assert_eq!(at(1, 1, "margin-left", &expanded), margin);
+    }
+
+    /// CSS Values 5 §8.1: the tree-counting functions are integers that
+    /// take part in math; an element with no known place is first of one.
+    #[test]
+    fn sibling_index_and_count_are_the_element_s_integers() {
+        let basis = Basis {
+            siblings: [3, 5],
+            ..Basis::default()
+        };
+        let at = |basis: Basis, text: &str| reduce(&absolute(text, basis, "width").0).unwrap();
+        assert!(has_absolute("sibling-count()"));
+        assert_eq!(at(basis, "sibling-index()"), "3");
+        assert_eq!(at(basis, "sibling-count( )"), "5");
+        assert_eq!(
+            at(
+                basis,
+                "calc(sibling-index() * 10px) calc(100% / sibling-count())"
+            ),
+            "30px 20%"
+        );
+        assert_eq!(at(basis, "-og-sibling-index()"), "-og-sibling-index()");
+        assert_eq!(
+            at(Basis::default(), "calc(sibling-index() + sibling-count())"),
+            "2"
+        );
     }
 
     /// CSS Values 5 §9.2 and §9.3: random-item() is its item

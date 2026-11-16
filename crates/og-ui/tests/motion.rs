@@ -413,6 +413,43 @@ fn transitions_and_easings_sample_the_specs_curves_by_the_tick() {
     }
 }
 
+/// CSS Values 5 §8.1 staggering a transition: each item's delay is its
+/// `sibling-index()` times 100ms, written in the `transition` shorthand
+/// and in `transition-delay`, so item k is `(t − 100k) / 300` of the way
+/// at t ms.
+#[test]
+fn sibling_index_staggers_transition_delays() {
+    let text = r#"<meta name="component" content="t">
+<div id="Page" class={$mode}>
+  <div id="S"><div id="S1"></div><div id="S2"></div><div id="S3"></div></div>
+  <div id="L"><div id="L1"></div><div id="L2"></div><div id="L3"></div></div>
+</div>
+<style>
+#Page, #S, #L { display: flex; flex-direction: column; align-items: start; }
+#S > div, #L > div { height: 10px; width: 0px; }
+#S > div { transition: width 300ms linear calc(sibling-index() * 100ms); }
+#L > div { transition: width 300ms linear; transition-delay: calc(sibling-index() * 100ms); }
+#Page.on > div > div { width: 600px; }
+</style>"#;
+    let mut d = Doc::new(text, &[("mode", serde_json::json!("off"))]);
+    d.set("mode", serde_json::json!("on"));
+    for tick in 1..=40 {
+        let ms = tick as f64 * 1000.0 / 60.0;
+        for group in ["S", "L"] {
+            for k in 1..=3 {
+                let id = format!("{group}{k}");
+                let want = 600.0 * ((ms - 100.0 * k as f64) / 300.0).clamp(0.0, 1.0);
+                let w = d.get(&id).width as f64;
+                assert!(
+                    (w - want).abs() <= 0.5 + 1e-3,
+                    "{id} at tick {tick}: {w} vs {want}"
+                );
+            }
+        }
+        d.step(InputFrame::default());
+    }
+}
+
 /// CSS View Transitions 1 and 2 across a navigation (a layer replacing
 /// another): a named element's group moves from its old border box to its
 /// new one, every tick on the box the spec's interpolation gives
