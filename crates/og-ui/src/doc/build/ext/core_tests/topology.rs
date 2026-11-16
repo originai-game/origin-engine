@@ -20,6 +20,7 @@ fn instance(doc: &Arc<UiDocument>, key: u64) -> Instance {
         identity: id(key),
         document: doc.clone(),
         document_node: doc.root,
+        user: None,
         attributes: BTreeMap::new(),
         direct_text: String::new(),
         states: BTreeSet::new(),

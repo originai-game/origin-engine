@@ -100,6 +100,7 @@ impl RetainedHost {
                 identity: identity.clone(),
                 document: doc.clone(),
                 document_node: index,
+                user: None,
                 attributes: BTreeMap::new(),
                 direct_text: String::new(),
                 states: BTreeSet::new(),

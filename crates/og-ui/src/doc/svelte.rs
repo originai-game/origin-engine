@@ -50,6 +50,7 @@ pub(crate) fn parse_with_pack(
                     ..Default::default()
                 },
                 part_rules: Vec::new(),
+                slotted_rules: Vec::new(),
                 nodes: Vec::new(),
                 root: NONE,
                 warnings: Vec::new(),

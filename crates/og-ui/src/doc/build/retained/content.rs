@@ -98,7 +98,13 @@ impl RetainedHost {
             lexical: Arc::new(lexical),
         };
         let root = instance.root;
-        self.compile(ui, (instance, root), inner, parent, id, env)
+        let child = self.compile(ui, (instance, root), inner, parent, id, env)?;
+        // The instance stands where its user wrote it: selectors that ask
+        // whose content an element is read that, not the root's document.
+        if let Child::Element(root) = &child {
+            self.topology.set_user(root, doc);
+        }
+        Ok(child)
     }
 
     /// `<iframe src="news.svelte" items={$news}>`: the document `src`

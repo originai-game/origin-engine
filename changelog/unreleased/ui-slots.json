@@ -1,0 +1,12 @@
+{
+  "added": [
+    {
+      "member": "::slotted()",
+      "summary": "`::slotted(<compound>)` in a component's sheet selects the top-level elements of the content rendered at its `{@render}` sites, from the element around the site: `.body::slotted(p) { margin: 0 }`, or bare `::slotted(p)` for every site. The rule ranks under the rules of the document that wrote the content, as CSS ranks a shadow tree's rules on slotted content, and `!important` reverses that. A component instance passed as content is selected by its root's tag, classes and attributes, and there the rule wins over the component's own rules for its root. Before, `::slotted()` was refused."
+    },
+    {
+      "member": ":has-slotted",
+      "summary": "`:has-slotted` matches the element around a `{@render}` site while content passed to the component (elements or component instances) is rendered there, and not for the component's own fallback snippet: `.footer:has-slotted { padding: 8px }`. Before, it was refused."
+    }
+  ]
+}

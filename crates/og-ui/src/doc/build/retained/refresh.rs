@@ -653,6 +653,13 @@ impl RetainedHost {
                 .map(|image| image.inherited.clone())
                 .unwrap_or_default(),
         };
+        // Content rendered at a `{@render}` site of another document's
+        // element takes that document's `::slotted()` rules too.
+        let slotted = parent.as_ref().and_then(|parent| {
+            let holder = &self.elements[parent].document;
+            let passed = self.topology.writer(identity) != Some(&holder.name);
+            (passed && !holder.slotted_rules.is_empty()).then(|| holder.clone())
+        });
         let e = self.elements.get_mut(identity).unwrap();
         // An instance's root inherits the instance's style props as if a
         // box around it set them: its own rules and `style:` win. Null (or
@@ -715,14 +722,33 @@ impl RetainedHost {
         let mut work = crate::doc::matching::MatchWork::default();
         let mut matcher =
             crate::doc::matching::Matcher::new(topology, Some(&e.document.name), identity);
+        // The node with the rules of the document it is rendered in: a
+        // rule list of its own, so no kept cascade is its.
+        // On a plain element they rank under its own document's rules
+        // (their depth, -1). A component instance is its user's content,
+        // and its component's rules for its root are the inner ones, as
+        // a browser ranks `:host` rules under `::slotted()`.
+        let instance = topology.writer(identity) != Some(&e.document.name);
+        let passed = slotted.map(|holder| {
+            let mut node = e.document.nodes[e.index].clone();
+            node.rules
+                .extend(holder.slotted_rules.iter().cloned().map(|rule| crate::doc::StyleRule {
+                    depth: if instance { 1 } else { rule.depth },
+                    ..rule
+                }));
+            node
+        });
         let mut values = ui.resolve(
             &build,
-            &e.document.nodes[e.index],
+            passed.as_ref().unwrap_or(&e.document.nodes[e.index]),
             &e.path,
             &mut probe,
             &build.inherited,
             &mut |selector| matcher.matches(selector, &mut work),
-            kept.as_mut().map(Arc::make_mut),
+            match passed {
+                Some(_) => None,
+                None => kept.as_mut().map(Arc::make_mut),
+            },
         );
         e.cascades = kept;
         values.ordinal = ui.docs.ordinal_of(

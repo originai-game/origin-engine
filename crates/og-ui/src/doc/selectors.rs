@@ -79,6 +79,10 @@ pub enum PseudoClass {
     /// `:heading` (no levels) and `:heading(1, 2)`: an `<h1>` to `<h6>`,
     /// of one of the levels.
     Heading(Box<[u8]>),
+    /// `:has-slotted`: an element that holds a `{@render}` site where
+    /// content passed to its document is rendered. The site has no box,
+    /// so the element around it answers for the slot.
+    HasSlotted,
 }
 
 /// The heading level of a tag: `h1` to `h6`.
@@ -118,6 +122,7 @@ impl ToCss for PseudoClass {
             }
             PseudoClass::Defined => dest.write_str(":defined"),
             PseudoClass::AnyLink => dest.write_str(":any-link"),
+            PseudoClass::HasSlotted => dest.write_str(":has-slotted"),
             PseudoClass::Heading(levels) => {
                 dest.write_str(":heading")?;
                 if !levels.is_empty() {
@@ -219,6 +224,10 @@ impl<'i> sp::Parser<'i> for OgParser {
         true
     }
 
+    fn parse_slotted(&self) -> bool {
+        true
+    }
+
     fn parse_nth_child_of(&self) -> bool {
         true
     }
@@ -245,6 +254,7 @@ impl<'i> sp::Parser<'i> for OgParser {
         match name.as_str() {
             "defined" => Ok(PseudoClass::Defined),
             "heading" => Ok(PseudoClass::Heading(Box::default())),
+            "has-slotted" => Ok(PseudoClass::HasSlotted),
             "any-link" | "link" => Ok(PseudoClass::AnyLink),
             _ => Err(message(format!(
                 "unsupported pseudo-class :{name}; see the selector list in docs/ui.md §2.4"
@@ -471,7 +481,9 @@ pub fn nested(c: &Component) -> &[Inner] {
     match c {
         Component::Negation(list) | Component::Is(list) | Component::Where(list) => list.slice(),
         Component::NthOf(nth) => nth.selectors(),
-        Component::Host(Some(argument)) => std::slice::from_ref(argument),
+        Component::Host(Some(argument)) | Component::Slotted(argument) => {
+            std::slice::from_ref(argument)
+        }
         _ => &[],
     }
 }
@@ -640,7 +652,12 @@ pub(crate) fn reflects_open(tag: &str) -> bool {
 /// Whether a component needs the instantiated sibling order or children.
 pub fn structural_component(c: &Component) -> bool {
     match c {
-        Component::Nth(_) | Component::NthOf(_) | Component::Empty | Component::Has(_) => true,
+        Component::Nth(_)
+        | Component::NthOf(_)
+        | Component::Empty
+        | Component::Has(_)
+        | Component::Slotted(_)
+        | Component::NonTSPseudoClass(PseudoClass::HasSlotted) => true,
         c => nested(c).iter().any(structural),
     }
 }
@@ -777,7 +794,13 @@ impl Selector {
             let mut input = CssParser::new(&selector);
             let inner = input
                 .parse_entirely(|input| Inner::parse(&OgParser, input))
-                .map_err(|e| fail(explain(&e)))?;
+                .map_err(|e| {
+                    let hint = match item.contains("::slotted(") {
+                        true => "; ::slotted() takes one compound selector and ends the selector: write a state inside it, as ::slotted(p:hover)",
+                        false => "",
+                    };
+                    fail(format!("{}{hint}", explain(&e)))
+                })?;
             check(&inner).map_err(fail)?;
             let local = part_local(&inner).map(std::sync::Arc::new);
             list.push(Selector {
@@ -875,6 +898,16 @@ impl Selector {
         let mut selector = list.swap_remove(0);
         selector.global = self.global;
         Ok(Some((selector, condition)))
+    }
+
+    /// Whether its subject is content rendered at a `{@render}` site
+    /// (`.body::slotted(p)`): the selector is its document's, the subject
+    /// another's.
+    pub fn slotted(&self) -> bool {
+        self.inner
+            .iter_raw_match_order()
+            .take_while(|c| !matches!(c, Component::Combinator(_)))
+            .any(|c| matches!(c, Component::Slotted(_)))
     }
 
     /// Whether matching needs the instantiated sibling order ([`structural`]).
@@ -1142,6 +1175,8 @@ fn condition(
                 | Component::NthOf(_)
                 | Component::Empty
                 | Component::Has(_)
+                | Component::Slotted(_)
+                | Component::NonTSPseudoClass(PseudoClass::HasSlotted)
                 | Component::RelativeSelectorAnchor => return Err(runtime()),
                 _ => Expr::Lit(false.into()),
             };

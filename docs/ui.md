@@ -1451,9 +1451,20 @@ into its blob. `@property` registers syntax, inheritance and initial
 value. `@counter-style` and `@position-try` feed counters and anchor
 positioning.
 
-**Cascade order.** A declaration ranks by its importance, then its rule's
-tree context, then the style attribute, then its layer, specificity and
-order (Cascade 5 §6). The default style and a pack are adopted into every
+**Cascade order.** A declaration ranks by its importance, then its origin
+(HTML's user-agent rules under every other rule), then its rule's depth
+and tree context, then the style attribute, then its layer, specificity
+and order (Cascade 5 §6). Depth is Cascade 5 §6.1's encapsulation
+context: how many document boundaries lie between the document a rule is
+written in and the element it styles. A rule of the element's own
+document, or of a sheet adopted into it, is at depth 0; a `::slotted()`
+rule reaches out of its document onto content it was given, at depth -1,
+so it ranks under every rule of the content's own document (on a
+component instance passed as content it is an outer rule, at +1, over
+the component's rules for its root); a rule that
+reaches into another document's element from the document its host
+stands in is at +1. A higher depth wins, and `!important` reverses it.
+The default style and a pack are adopted into every
 tree, so their rules rank there by layer: `og-default` < `og-components`
 (a built-in component's own `<style>`) < `og-pack` < `og-game` < a
 document's unlayered rules. A pack beats a built-in component's own rules
@@ -1466,6 +1477,23 @@ first:
 1. the style's `::part()` rules;
 2. the control's own box declarations (a `<button>`'s plate, below);
 3. its document's own `::part()` rules.
+
+**Slots.** A `{@render name()}` site is the slot, and there is no
+`<slot>` element. `::slotted(<compound>)` selects the top-level elements
+of the content rendered at a site, from the element around the site:
+`.body::slotted(p)`, or bare `::slotted(p)` for every site of the
+document. It takes one compound and ends the selector (a state goes
+inside, `::slotted(p:hover)`), and a structural pseudo-class in it counts
+among what is rendered in that element. `:has-slotted` matches the
+element around a site while content passed to the document is rendered
+there, not the document's own fallback snippet. A component instance
+passed as content is slotted like an element: the compound reads its
+root (its tag, classes and attributes, not the component's name), and
+the rule wins over the component's own rules for its root, as a browser
+ranks `::slotted()` over the slotted element's `:host` rules. An
+instance the document wrote itself is not slotted. Limits: elements
+rendered at two sites are not siblings of each other, and `:host()`
+before `::slotted()` and a pseudo-element after it are refused.
 
 `!important` reverses the contexts, as it reverses layers. Servo's
 `selectors` crate parses and matches every selector. og adds three things

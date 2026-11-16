@@ -693,6 +693,39 @@ pub fn apply(
             None => (parsed, None),
         };
         let structure = parsed.structural().then(|| parsed.clone());
+        // `::slotted()`: the rule is this document's and its subject is
+        // content another document passes it, so it is kept apart and
+        // matched where that content is rendered. It ranks under the
+        // content's own document's rules.
+        if parsed.slotted() {
+            let refused = if rule.pseudo.is_some() {
+                Some("a pseudo-element after ::slotted() is not read")
+            } else if host.is_some() {
+                Some(
+                    ":host() before ::slotted() is not read; give the element a class from the prop",
+                )
+            } else {
+                None
+            };
+            if let Some(why) = refused {
+                return Err((rule.at, format!("{}: {why}", rule.selector)));
+            }
+            let (declarations, _) = lower(&rule.body, &known).map_err(|e| (rule.at, e))?;
+            doc.slotted_rules.push(StyleRule {
+                inline: false,
+                context: super::TreeContext::Tree,
+                depth: -1,
+                layer: rank(&layers, &rule.layer),
+                starting: rule.starting,
+                query: rule.query.clone(),
+                condition: None,
+                structure: Some(parsed.clone()),
+                props: Vec::new(),
+                declarations,
+                line: syntax::location(&doc.text, rule.at).0,
+            });
+            continue;
+        }
         if let Some((parent, selector)) = rule.selector.split_once("::part(") {
             let parent = if parent.is_empty() { "text" } else { parent };
             let host = Selector::parse_list(parent)

@@ -662,6 +662,9 @@ pub struct UiDocument {
     pub sheet: at_rules::Sheet,
     /// Scoped rules for exposed component parts, in cascade order.
     pub part_rules: Vec<StyleRule>,
+    /// Its `::slotted()` rules, in cascade order: each applies to the
+    /// top-level elements of content rendered inside its elements.
+    pub slotted_rules: Vec<StyleRule>,
     pub nodes: Vec<DocNode>,
     pub root: usize,
     /// Author diagnostics that publish promotes to errors.

@@ -996,3 +996,135 @@ fn host_refusals_name_their_fix() {
         "{error}"
     );
 }
+
+const PANEL: &str = r##"<meta name="component" content="Panel">
+<meta name="prop:children" content="content">
+<meta name="prop:footer" content="content">
+<meta name="prop:open" content="bool" data-default="false">
+<div id="Frame">
+  <div id="Body" class="body" class:open={open}>{@render children?.()}</div>
+  <div id="Foot" class="foot">{@render footer()}</div>
+  <div id="Own" class="own"><Chip id="Mine" /></div>
+</div>
+{#snippet footer()}<p id="Default">d</p>{/snippet}
+<style>
+.own::slotted(p) { margin-left: 21px; }
+.own:has-slotted { min-height: 40px; }
+::slotted(p) { margin-left: 9px; width: 50px; }
+.body::slotted(.lead) { margin-top: 5px; }
+.body.open::slotted(p) { margin-left: 30px; }
+.foot::slotted(p) { margin-left: 13px; height: 8px !important; }
+.body:has-slotted { padding-left: 3px; min-height: 40px; }
+.foot:has-slotted { padding-left: 4px; }
+</style>"##;
+
+/// A component with rules of its own for its root.
+const CHIP: &str = r##"<meta name="component" content="Chip">
+<p id="Chip" class="chip">x</p>
+<style>.chip { margin-left: 2px; width: 30px; height: 6px; }</style>"##;
+
+/// A `{@render}` site is the slot. `::slotted(<compound>)` selects the
+/// top-level elements of the content rendered there, from the element
+/// around the site, and ranks under the content's own document's rules
+/// unless it is `!important`; `:has-slotted` matches that element while
+/// passed content, not the component's own fallback, is rendered in it.
+/// A component instance passed as content is slotted like an element, and
+/// the rule wins over its component's rules for its root; an instance the
+/// component wrote itself is not.
+///
+/// Ways it could fail: `::slotted()` reaching a nested element, the
+/// component's own fallback or content rendered at another site; winning
+/// over the content's document by specificity or order; losing to a
+/// user-agent rule; not following the holder's class; `:has-slotted`
+/// counting the fallback, or not following content that comes and goes;
+/// a passed instance read as the component's own (its root is another
+/// document's root either way), or the reverse.
+#[test]
+fn slotted_selects_content_rendered_at_a_site() {
+    let page = r##"<meta name="component" content="page">
+<column id="Root">
+  <Panel id="One" open={$open}><p id="Lead" class="lead">a</p><div id="Rest"><p id="Deep">b</p></div></Panel>
+  <Panel id="Two">{#snippet footer()}<p id="Sig">c</p>{/snippet}</Panel>
+  <Panel id="Three">{#if $show}<p id="Late">e</p>{/if}</Panel>
+  <Panel id="Four"><Chip id="C" /></Panel>
+</column>
+<style>p { width: 20px; height: 4px; } #Rest { height: 4px; }</style>"##;
+    let stores = [("open", json!(false)), ("show", json!(false))];
+    let mut d = Doc::with_components(&[CHIP, PANEL], page, &stores);
+    // Left edge within its instance, and size.
+    let at = |d: &Doc, card: &str, id: &str| {
+        let e = d.get(&format!("{card}/{id}"));
+        (e.x - d.get(card).x, e.width, e.height)
+    };
+    // The holder's 3px, the rule's 9px; the page's own width stands.
+    assert_eq!(at(&d, "One", "Body/children/Lead"), (12.0, 20.0, 4.0));
+    let (lead, body) = (d.get("One/Body/children/Lead"), d.get("One"));
+    assert_eq!(lead.y - body.y, 5.0, ".body::slotted(.lead)");
+    // A nested element is not slotted, nor is the component's fallback.
+    assert_eq!(at(&d, "One", "Body/children/Rest/Deep").0, 3.0);
+    assert_eq!(at(&d, "One", "Foot/footer/Default").0, 0.0);
+    // The other site's rule, later in the sheet, and `!important` over
+    // the page's own height.
+    assert_eq!(at(&d, "Two", "Foot/footer/Sig"), (17.0, 20.0, 8.0));
+    d.set("open", json!(true));
+    assert_eq!(
+        at(&d, "One", "Body/children/Lead").0,
+        33.0,
+        "the holder's class"
+    );
+    // `:has-slotted` follows what is rendered at the site.
+    let height = |d: &Doc, card: &str| d.get(&format!("{card}/Body")).height;
+    assert_eq!(
+        [height(&d, "One"), height(&d, "Two"), height(&d, "Three")],
+        [40.0, 0.0, 0.0]
+    );
+    d.set("show", json!(true));
+    assert_eq!(at(&d, "Three", "Body/children/Late").0, 12.0);
+    assert_eq!(height(&d, "Three"), 40.0);
+    d.set("show", json!(false));
+    assert_eq!(height(&d, "Three"), 0.0);
+    // A passed instance is slotted: the holder's 3px and the rule's 9px
+    // and width over its component's own, whose height stands.
+    assert_eq!(at(&d, "Four", "Body/children/C"), (12.0, 50.0, 6.0));
+    assert_eq!(height(&d, "Four"), 40.0);
+    // The panel's own instance is not: its component's margin and width.
+    assert_eq!(at(&d, "Four", "Own/Mine"), (2.0, 30.0, 6.0));
+    assert_eq!(d.get("Four/Own").height, 6.0);
+}
+
+/// What `::slotted()` does not read is refused with what to write.
+#[test]
+fn slotted_refusals_name_their_fix() {
+    let said = |css: &str| {
+        let text = format!(
+            "<meta name=\"component\" content=\"Panel\">\n<meta name=\"prop:open\" content=\"bool\" data-default=\"false\">\n<div class=\"b\">{{@render children?.()}}</div>\n<style>{css}</style>"
+        );
+        og_ui::UiDocument::parse("ui/panel.svelte", &text)
+            .err()
+            .map(|e| e.join("\n"))
+            .unwrap_or_default()
+    };
+    for (css, why) in [
+        ("::slotted(p) span { width: 1px; }", "ends the selector"),
+        (
+            "::slotted(p):hover { width: 1px; }",
+            "as ::slotted(p:hover)",
+        ),
+        (
+            "::slotted(div p) { width: 1px; }",
+            "takes one compound selector",
+        ),
+        (
+            "::slotted(p)::before { content: 'x'; }",
+            "a pseudo-element after ::slotted()",
+        ),
+        (
+            ":host([open]) .b::slotted(p) { width: 1px; }",
+            ":host() before ::slotted()",
+        ),
+    ] {
+        let error = said(css);
+        assert!(error.contains(why), "{css}: {error}");
+    }
+    assert_eq!(said(".b::slotted(p:hover) { width: 1px; }"), "");
+}

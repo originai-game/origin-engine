@@ -22,6 +22,10 @@ pub struct Instance {
     pub identity: MountedNode,
     pub document: Arc<UiDocument>,
     pub document_node: usize,
+    /// For the root of a component instance, the document the instance is
+    /// written in ([`Topology::set_user`]): the instance and its root are
+    /// one element, which stands where that document put it.
+    pub user: Option<Arc<UiDocument>>,
     pub attributes: BTreeMap<String, Value>,
     pub direct_text: String,
     pub states: BTreeSet<InteractionState>,
@@ -280,6 +284,23 @@ impl Topology {
             self.at(root, range.end),
         ]
         .map(|i| i.map(|i| self.identity(i).clone()))
+    }
+
+    /// Records that `id` is the root of a component instance written in
+    /// `user`. An instance whose root is an instance is its outermost
+    /// user's.
+    pub fn set_user(&mut self, id: &MountedNode, user: Arc<UiDocument>) {
+        if let Some(&i) = self.identities.get(id) {
+            self.entry_mut(i).instance.user = Some(user);
+        }
+    }
+
+    /// The name of the document that put the element where it stands: its
+    /// own, or for an instance's root the instance's user
+    /// ([`Instance::user`]).
+    pub fn writer(&self, id: &MountedNode) -> Option<&str> {
+        let instance = &self.entry(*self.identities.get(id)?).instance;
+        Some(&instance.user.as_ref().unwrap_or(&instance.document).name)
     }
 
     pub fn node(&self, id: &MountedNode) -> Option<SelectorNode<'_>> {
@@ -751,6 +772,10 @@ impl super::matching::Tree for Topology {
             let frame = &self.entry(self.identities[*p]).instance;
             frame.document.nodes[frame.document_node].frame.is_none()
         })
+    }
+
+    fn writer(&self, id: &MountedNode) -> &str {
+        Topology::writer(self, id).unwrap_or_default()
     }
 
     fn transition_types(&self, id: &MountedNode) -> &[String] {

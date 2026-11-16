@@ -50,6 +50,11 @@ pub trait Tree {
     type Id: PartialEq + std::fmt::Debug;
     fn facts(&self, id: &Self::Id) -> Facts<'_>;
     fn parent(&self, id: &Self::Id) -> Option<&Self::Id>;
+    /// The document that put the element where it stands: its own, or for
+    /// a component instance's root the document the instance is written in.
+    fn writer(&self, id: &Self::Id) -> &str {
+        self.facts(id).scope
+    }
     /// The immediately preceding element sibling.
     fn previous(&self, id: &Self::Id) -> Option<&Self::Id>;
     /// The immediately following element sibling.
@@ -93,6 +98,8 @@ pub struct DocElement<'a, T: Tree> {
     facts: Facts<'a>,
     /// Of another document than the rule's: it matches nothing.
     foreign: bool,
+    /// Reached as the slot of the content rendered in it.
+    slot: bool,
     context: &'a Context<'a>,
 }
 
@@ -117,8 +124,18 @@ impl<'a, T: Tree> DocElement<'a, T> {
             id,
             facts,
             foreign: context.scope.is_some_and(|s| s != facts.scope),
+            slot: false,
             context,
         }
+    }
+
+    /// Whether the element is content rendered at a `{@render}` site of
+    /// `parent`, its parent in the instantiated tree: put there by another
+    /// document than `parent`'s. A component instance is its user's, so
+    /// one passed as content is slotted and one the document wrote itself
+    /// is not.
+    fn slotted_in(&self, parent: &Facts<'_>) -> bool {
+        parent.scope != self.tree.writer(self.id)
     }
 
     fn at(&self, id: &'a T::Id) -> Self {
@@ -194,13 +211,15 @@ impl<'a, T: Tree> Element for DocElement<'a, T> {
         }
         self.context.scope?;
         let mut at = self.id;
-        loop {
-            let parent = self.tree.parent(at)?;
+        while let Some(parent) = self.tree.parent(at) {
             if self.tree.facts(at).root && self.tree.facts(parent).scope != self.facts.scope {
                 return Some(self.at(parent));
             }
             at = parent;
         }
+        // A slot of a document mounted on its own has no host: it stands
+        // for its tree, which is all a `::slotted()` match asks of it.
+        self.slot.then_some(*self)
     }
 
     fn is_pseudo_element(&self) -> bool {
@@ -285,6 +304,16 @@ impl<'a, T: Tree> Element for DocElement<'a, T> {
                 .get(&format!("state:{}", name.0))
                 .is_some_and(|v| crate::bind::truthy(v) && v.as_str() != Some("false")),
             PseudoClass::Defined => true,
+            PseudoClass::HasSlotted => {
+                let mut child = self.tree.first_child(self.id);
+                while let Some(id) = child {
+                    if self.at(id).slotted_in(&self.facts) {
+                        return true;
+                    }
+                    child = self.tree.following(id);
+                }
+                false
+            }
             PseudoClass::Heading(levels) => PseudoClass::heading_matches(levels, self.facts.tag),
             PseudoClass::AnyLink => self.is_link(),
             PseudoClass::ViewTransitionType(types) => {
@@ -321,7 +350,16 @@ impl<'a, T: Tree> Element for DocElement<'a, T> {
     }
 
     fn is_html_slot_element(&self) -> bool {
-        false
+        self.slot
+    }
+
+    /// The element a `{@render}` site's content is rendered in stands for
+    /// the slot: the site itself has no box.
+    fn assigned_slot(&self) -> Option<Self> {
+        let parent = self.tree.parent(self.id)?;
+        let slot = self.at(parent);
+        self.slotted_in(&slot.facts)
+            .then_some(Self { slot: true, ..slot })
     }
 
     fn has_id(&self, id: &Atom, _: CaseSensitivity) -> bool {
@@ -378,6 +416,9 @@ pub struct Matcher<'a, T: Tree> {
     /// The rule's document, for its own rules; none for a global sheet's.
     scoped: Context<'a>,
     global: Context<'a>,
+    /// For a `::slotted()` rule: the document of the element the subject
+    /// is rendered in, when the subject is content passed to it.
+    slot: Option<Context<'a>>,
     caches: SelectorCaches,
 }
 
@@ -385,9 +426,18 @@ impl<'a, T: Tree> Matcher<'a, T> {
     /// Document sheets supply their scope; global sheets have no scope
     /// restriction.
     pub fn new(tree: &'a T, scope: Option<&'a str>, id: &T::Id) -> Self {
+        let subject = tree.canonical(id).map(|id| (id, tree.facts(id)));
+        let slot = subject.as_ref().and_then(|(id, _)| {
+            let holder = tree.facts(tree.parent(id)?);
+            (holder.scope != tree.writer(id)).then(|| Context {
+                scope: Some(holder.scope),
+                candidates: Cell::new(0),
+            })
+        });
         Self {
             tree,
-            subject: tree.canonical(id).map(|id| (id, tree.facts(id))),
+            subject,
+            slot,
             scoped: Context {
                 scope,
                 candidates: Cell::new(0),
@@ -406,10 +456,12 @@ impl<'a, T: Tree> Matcher<'a, T> {
         let Some((id, facts)) = self.subject else {
             return false;
         };
-        let context = if selector.global {
-            &self.global
-        } else {
-            &self.scoped
+        let slotted = selector.slotted();
+        let context = match &self.slot {
+            Some(slot) if slotted => slot,
+            None if slotted => return false,
+            _ if selector.global => &self.global,
+            _ => &self.scoped,
         };
         context.candidates.set(0);
         let mut matching = MatchingContext::new(
@@ -420,8 +472,18 @@ impl<'a, T: Tree> Matcher<'a, T> {
             NeedsSelectorFlags::No,
             MatchingForInvalidation::No,
         );
-        let element = DocElement::new(self.tree, id, facts, context);
-        let hit = matches_selector(&selector.inner, 0, None, element, &mut matching);
+        let mut element = DocElement::new(self.tree, id, facts, context);
+        // Slotted content is read by its own features, from the document
+        // it is rendered in: that document's tree is the rule's scope.
+        let host = slotted
+            .then(|| {
+                element.foreign = false;
+                element.assigned_slot()?.containing_shadow_host()
+            })
+            .flatten();
+        let hit = matching.with_shadow_host(host, |matching| {
+            matches_selector(&selector.inner, 0, None, element, matching)
+        });
         work.candidates += context.candidates.get();
         hit
     }
@@ -700,6 +762,8 @@ impl Profile {
                 PseudoClass::ViewTransitionType(_) => {
                     self.states.insert(InteractionState::ActiveViewTransition);
                 }
+                // A holder depends on what is rendered inside it.
+                PseudoClass::HasSlotted => self.empty = true,
                 PseudoClass::Defined | PseudoClass::Heading(_) => {}
             },
             Component::Nth(nth) => self.nth(nth, false),
@@ -746,6 +810,14 @@ impl Profile {
                 }
             }
             Component::Empty => self.empty = true,
+            // Slotted content is styled through the element it is
+            // rendered in.
+            Component::Slotted(argument) => {
+                self.ancestors = true;
+                for c in argument.iter_raw_parse_order_from(0) {
+                    self.component(c);
+                }
+            }
             Component::Negation(_) | Component::Is(_) | Component::Where(_) => {
                 // Nested complex selectors are anchored at this element; their
                 // own sibling and ancestor reads count as this selector's.
@@ -819,6 +891,13 @@ impl Profile {
             }
         }
         let mut profile = Self::default();
+        for selector in document
+            .slotted_rules
+            .iter()
+            .filter_map(|r| r.structure.as_ref())
+        {
+            profile.add(selector);
+        }
         for node in &document.nodes {
             for rule in &node.rules {
                 if let Some(selector) = &rule.structure {
