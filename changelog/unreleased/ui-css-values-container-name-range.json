@@ -1,0 +1,6 @@
+{
+  "simulation": "unchanged",
+  "added": [
+    {"member":"ui","summary":"`@container card { … }` with only a name applies under an ancestor container named `card`. `@container style()` takes ranges such as `style(--level > 3)`, `style(2 < --n <= 5)` and `style(--gap >= 12px)`. Custom properties and literals are compared once each side reduces to one unit; sides of different types are false (CSS Conditional 5)."}
+  ]
+}

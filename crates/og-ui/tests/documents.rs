@@ -462,7 +462,9 @@ p { margin: 0; font-size: 15px; line-height: 20px; }
 
 /// `@container style()` (CSS Conditional 5 §6.2) reads the nearest
 /// ancestor's computed custom property, a bound one re-read when its store
-/// changes, an unset one never matching; `scroll-state()` (§6.3) reads the
+/// changes, an unset one never matching, and its ranges compare property
+/// values and literals; a container name alone applies under that
+/// container (§6.1); `scroll-state()` (§6.3) reads the
 /// nearest scroll-state container's edges and last scroll direction, and
 /// follows a wheel.
 #[test]
@@ -472,11 +474,21 @@ fn container_style_and_scroll_state_queries_follow_their_container() {
 <div id="Root">
   <div id="Box" style:--t={$t}><div id="Styled"></div><div id="Missing"></div>
     <div id="Inner"><div id="Shadowed"></div></div></div>
+  <div id="Ranged"><div id="Gt"></div><div id="Lt"></div><div id="Between"></div><div id="Props"></div><div id="Length"></div><div id="Mixed"></div><div id="Named"></div><div id="Unnamed"></div></div>
   <div id="Scroller"><div id="Fill"></div></div>
 </div>
 <style>
 div div { height: 1px; width: 10px; }
 #Inner { --t: light; }
+#Ranged { --n: 5; --gap: 12px; --low: 2; container-name: ranged; }
+@container style(--n > 3) { #Gt { width: 51px; } }
+@container style(--n < 3) { #Lt { width: 52px; } }
+@container style(2 < --n <= 5) { #Between { width: 53px; } }
+@container style(--low < --n) { #Props { width: 54px; } }
+@container style(--gap >= calc(0.125in)) { #Length { width: 55px; } }
+@container style(--gap > 3) { #Mixed { width: 56px; } }
+@container ranged { #Named { width: 57px; } }
+@container nowhere { #Unnamed { width: 58px; } }
 @container style(--t: dark) { #Styled, #Shadowed { width: 31px; } }
 @container style(--missing) { #Missing { width: 32px; } }
 #Scroller { container-type: scroll-state; overflow-y: auto; scrollbar-width: none; height: 50px; width: 100px; }
@@ -495,6 +507,20 @@ div div { height: 1px; width: 10px; }
         "the nearest container's --t is light"
     );
     assert_eq!(d.get("Missing").width, 10.0);
+    // Ranges compare numbers of one type (12px ≥ 0.125in = 12px; 12px
+    // against 3 is false); a name alone needs only the named container.
+    for (id, width) in [
+        ("Gt", 51.0),
+        ("Lt", 10.0),
+        ("Between", 53.0),
+        ("Props", 54.0),
+        ("Length", 55.0),
+        ("Mixed", 10.0),
+        ("Named", 57.0),
+        ("Unnamed", 10.0),
+    ] {
+        assert_eq!(d.get(id).width, width, "{id}");
+    }
     d.set("t", json!("light"));
     assert_eq!(d.get("Styled").width, 10.0);
     d.set("t", json!("dark"));

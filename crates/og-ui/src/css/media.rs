@@ -220,6 +220,10 @@ pub enum Feature {
         group: u16,
         bits: u16,
     },
+    /// A container `style()` range (CSS Conditional 5 §6.2): custom
+    /// property names or literal values, each pair joined by its
+    /// comparison, compared once each reduces to one unit.
+    StyleRange(Vec<String>, Vec<Comparison>),
     /// `(--name)`, a custom media query (Media Queries 5 §3), until
     /// [`Query::resolve`] puts its `@custom-media` definition in its place.
     Custom(String),
@@ -451,6 +455,7 @@ impl Context {
                 Feature::Fixed(value) => value,
                 // Container-only features never parse in a media query.
                 Feature::Style(..)
+                | Feature::StyleRange(..)
                 | Feature::ScrollState { .. }
                 | Feature::Custom(_) => false,
                 Feature::ColorVision(value) => {
@@ -567,6 +572,9 @@ fn group(input: &mut Parser<'_>, scope: Scope) -> Result<Query, Error> {
 /// tokens with whitespace runs collapsed, as substituted custom properties
 /// do.
 fn style_feature(input: &mut Parser<'_>) -> Result<Query, Error> {
+    if let Ok(range) = input.try_parse(style_range) {
+        return Ok(range);
+    }
     let name = input.expect_ident_cloned()?.to_string();
     if !name.starts_with("--") {
         return Err(ParseError::custom(format!(
@@ -581,6 +589,69 @@ fn style_feature(input: &mut Parser<'_>) -> Result<Query, Error> {
     while input.next().is_ok() {}
     let value = normalize(input.slice_from(start));
     Ok(Query::Feature(Feature::Style(name, Some(value))))
+}
+
+/// `a < b`, `a >= b`, `a = b` or `a < b <= c` inside `style()`.
+fn style_range(input: &mut Parser<'_>) -> Result<Query, Error> {
+    let mut operands = vec![style_operand(input)?];
+    let mut comparisons = Vec::new();
+    while !input.is_exhausted() {
+        comparisons.push(comparison(input)?);
+        operands.push(style_operand(input)?);
+    }
+    match comparisons[..] {
+        [_] => {}
+        [a, b] if a.direction() != 0 && a.direction() == b.direction() => {}
+        [_, _] => {
+            return Err(ParseError::custom(
+                "style(): chained ranges must point in the same direction".to_string(),
+            ));
+        }
+        _ => return Err(ParseError::custom("not a style() range".to_string())),
+    }
+    Ok(Query::Feature(Feature::StyleRange(operands, comparisons)))
+}
+
+/// One side of a `style()` range: a custom property name, a number,
+/// dimension or percentage, or a math function.
+fn style_operand(input: &mut Parser<'_>) -> Result<String, Error> {
+    let start = input.position();
+    match input.next()?.clone() {
+        Token::Ident(name) if name.starts_with("--") => {}
+        Token::Number { .. } | Token::Dimension { .. } | Token::Percentage { .. } => {}
+        Token::Function(_) => input.parse_nested_block(|p| {
+            while p.next().is_ok() {}
+            Ok::<_, Error>(())
+        })?,
+        token => {
+            return Err(ParseError::custom(format!(
+                "a style() range compares custom properties and numbers, not {token:?}"
+            )));
+        }
+    }
+    Ok(input.slice_from(start).trim().to_string())
+}
+
+/// A style range's value: its number in its canonical unit (px, deg, ms,
+/// dppx, %, or none), or `None` when it is not one number.
+pub fn range_value(text: &str) -> Option<(f64, String)> {
+    let reduced = og_css::calc::reduce(&format!("calc({})", text.trim())).ok()?;
+    let reduced = reduced.trim();
+    let at = reduced
+        .find(|c: char| c.is_ascii_alphabetic() || c == '%')
+        .unwrap_or(reduced.len());
+    let (number, unit) = reduced.split_at(at);
+    Some((number.parse().ok()?, unit.to_string()))
+}
+
+impl Comparison {
+    /// Whether `values` hold each comparison in turn (`a < b <= c`).
+    pub fn chain(comparisons: &[Self], values: &[f64]) -> bool {
+        comparisons
+            .iter()
+            .zip(values.windows(2))
+            .all(|(c, v)| c.test(v[0], v[1]))
+    }
 }
 
 /// A custom property value as style queries compare it.
