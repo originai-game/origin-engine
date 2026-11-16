@@ -10,6 +10,11 @@
 //! components it uses, as it bundles a look's `@styles/`. A game document
 //! declaring the same name wins (`og ui eject` makes one).
 //!
+//! `src/ui/controls/` holds the control documents (docs/ui.md §2.4), each
+//! the inside of the element its `<meta name="control">` names. A document
+//! uses a control document by having such an element, so a game bundles
+//! only the controls its documents show.
+//!
 //! The directory is `src/ui` of the engine package `OG_ENGINE_PACKAGE`
 //! names (bin/og.mjs sets it), else of an installed `@origingame/engine`
 //! or a checkout's `packages/engine` above the running executable, else of
@@ -24,7 +29,7 @@ use std::sync::OnceLock;
 pub const PREFIX: &str = "@ui/";
 
 /// The directories under `src/ui` that hold built-in documents.
-const ROOTS: [&str; 2] = ["components/", "screens/"];
+const ROOTS: [&str; 3] = ["components/", "controls/", "screens/"];
 
 /// One built-in document, a component or a screen.
 pub struct Component {
@@ -39,15 +44,42 @@ pub struct Component {
     pub files: Vec<(String, Vec<u8>)>,
 }
 
-/// The component names a document uses (its capitalised tags).
+/// The documents a document uses, by name: the components its
+/// capitalised tags name and the built-in control documents its elements
+/// are hosts of.
 pub fn uses(doc: &og_ui::UiDocument) -> BTreeSet<String> {
-    doc.nodes
-        .iter()
-        .filter_map(|n| match &n.kind {
-            og_ui::doc::NodeKind::Use(name) => Some(name.clone()),
-            _ => None,
-        })
-        .collect()
+    let controls: Vec<&og_ui::UiDocument> = index().map_or_else(
+        |_| Vec::new(),
+        |index| {
+            index
+                .values()
+                .map(|c| &c.doc)
+                .filter(|d| d.control.is_some())
+                .collect()
+        },
+    );
+    uses_among(doc, &controls)
+}
+
+/// [`uses`] with the control documents there are.
+fn uses_among(doc: &og_ui::UiDocument, controls: &[&og_ui::UiDocument]) -> BTreeSet<String> {
+    let mut out = BTreeSet::new();
+    for n in &doc.nodes {
+        match &n.kind {
+            og_ui::doc::NodeKind::Use(name) => {
+                out.insert(name.clone());
+            }
+            og_ui::doc::NodeKind::Element(_) => out.extend(
+                controls
+                    .iter()
+                    .filter(|c| c.name != doc.name)
+                    .filter(|c| c.control.as_ref().is_some_and(|host| host.hosts(n)))
+                    .map(|c| c.name.clone()),
+            ),
+            _ => {}
+        }
+    }
+    out
 }
 
 /// The directory the built-in documents are read from (`src/ui`); `None`
@@ -155,6 +187,11 @@ fn build(dir: &Path) -> Result<BTreeMap<String, Component>, String> {
                 "{id}: a built-in component declares <meta name=\"component\">; screens go in src/ui/screens"
             ));
         }
+        if doc.control.is_some() != rel.starts_with("controls/") {
+            return Err(format!(
+                "{id}: src/ui/controls holds the control documents (<meta name=\"control\">), and only them"
+            ));
+        }
         let mut named: BTreeSet<String> = doc.strings.iter().cloned().collect();
         named.extend(doc.sheet.assets.iter().cloned());
         named.extend(doc.material_assets());
@@ -178,7 +215,8 @@ fn build(dir: &Path) -> Result<BTreeMap<String, Component>, String> {
         }
         let mut component = Component {
             id: id.clone(),
-            uses: uses(&doc),
+            // Filled in below, once the control documents are known.
+            uses: BTreeSet::new(),
             files: vec![(id.clone(), text.into_bytes())],
             doc,
         };
@@ -190,6 +228,19 @@ fn build(dir: &Path) -> Result<BTreeMap<String, Component>, String> {
                 other.id
             ));
         }
+    }
+    let used: Vec<BTreeSet<String>> = {
+        let controls: Vec<&og_ui::UiDocument> = out
+            .values()
+            .map(|c| &c.doc)
+            .filter(|d| d.control.is_some())
+            .collect();
+        out.values()
+            .map(|c| uses_among(&c.doc, &controls))
+            .collect()
+    };
+    for (component, uses) in out.values_mut().zip(used) {
+        component.uses = uses;
     }
     Ok(out)
 }
