@@ -60,10 +60,15 @@ The HUD sheet mounts `HudSheet`; its review command is
 | Abilities and touch/button states (cooldown, charges, locked/unaffordable, held/disabled, overflow) | `sheets/hud`: `actions`, `buttons`, `touch` |
 | Compass and maps | `sheets/hud`: `navigation` |
 | Radial commands (chosen, disabled, unaffordable) and map-layer legend (selected, unselected) | `sheets/hud`: `tactics` |
+| Resource pips, boss/combo HUD, pickups, diagnostics and timed input | `sheets/hud-builtins`: `resources`, `resource-states`, `activity`, `activity-states`, `prompts`, `outcomes`, `waiting` |
 | Panels and data (breadcrumbs, grid, tooltip comparison, menu, chart, graph, carousel) | `sheets/components`: `panels`, isolated `sample` fixtures |
 | Feedback and loading (celebration, ribbon, skeletons, spinner, split panes, score thresholds, effects, action hints) | `sheets/components`: isolated `sample` fixtures |
 | Cards and run maps | `sheets/card`: `table`, `builder`, `run` |
 | Store, progression and social panels | `sheets/meta`: `store`, `progress`, `social`, `states` |
+| Base states, selectable rows and progress steps | `sheets/components`: `sample:emptyState`, `sample:errorState`, `sample:listItem`, `sample:steps` with named fixtures (`base/README.md`) |
+| Item slots and identity | `sheets/rpg`: `primitives` (`base/README.md`) |
+| Pass rewards, reveals, inbox and news | `sheets/components`: `sample:passTrack`, `sample:reveal`, `sample:inbox`, `sample:news` with named fixtures (`meta/README.md`) |
+| Tooltip comparison presence and long names | `sheets/components`: `sample:tooltipCard:comparison`, desktop side-by-side and phone stacked; signed deltas, added/removed stats |
 
 Shooter and racing keep their own group READMEs and sheets. World
 components keep anchor, ground and mass primitives; missing world captures
@@ -147,12 +152,12 @@ pressed, focus-visible and disabled states (docs/ui.md §3.2).
 | `AbilitySlot` (`hud/ability-slot.svelte`) | `frame` (`.ultimate`), `cell` (a button: `.active` `.cooling` `.full` `.locked` `.off` `.tinted` `:disabled`), `well`, `icon`, `ultimate`, `figure`, `percent`, `badge` (`.short`), `track`, `fill`, `label` |
 | `ActionButton` (`hud/action-button.svelte`) | `disc` (a button: `.primary` `:disabled`), `charge`, `icon`, `text` |
 | `ActionHints` (`hud/action-hints.svelte`) | `frame`, `row` (a button), `cap`, `label` |
-| `Avatar` (`base/avatar.svelte`) | `frame`, `picture`, `clip`, `portrait`, `fallback`, `base/spinner`, `ring`, `level`, `name`, `status`, `mark`, `loading` |
+| `Avatar` (`base/avatar.svelte`) | `frame`, `picture`, `clip`, `portrait`, `fallback`, `spinner`, `ring`, `level`, `name`, `status`, `mark`, `loading` |
 | `Breadcrumbs` (`panels/breadcrumbs.svelte`) | `frame`, `crumb` (`.current`), `icon`, `link`, `current` (`[aria-current=page]`), `separator` |
 | `Carousel` (`panels/carousel.svelte`) | `frame`, `cell`, `art`, `picture`, `well`, `title`, `body`, `prev` (a button: `:disabled` with fewer than two pages), `next` (a button: `:disabled` with fewer than two pages), `dot`, `lit` |
 | `Celebration` (`hud/celebration.svelte`) | `ring`, `shell`, `stage`, `rays`, `halo`, `title`, `value` |
 | `Chart` (`panels/chart.svelte`) | `frame`, `title`, `subtitle`, `tick`, `grid`, `plate`, `bar` (`.tinted`), `area`, `line`, `label` |
-| `Compass` (`world/compass.svelte`) | `frame`, `window`, `poi` (`.ally` `.enemy` `.loot` `.objective` `.ping`), `distance`, `notch`, `badge` |
+| `Compass` (`world/compass.svelte`) | `frame`, `window`, `poi` (`.ally` `.enemy` `.loot` `.objective` `.ping`), `distance`, `notch`, `badge`, `readout` |
 | `Cooldown` (`hud/cooldown.svelte`) | `cell` (a button: `.ready` `:disabled`), `icon`, `figure` |
 | `DamageNumbers` (`hud/damage-numbers.svelte`) | `figure` (`.tinted`) |
 | `DataGrid` (`panels/data-grid.svelte`) | `frame`, `band`, `heading` (`.numeric`), `row` (a button: `[aria-selected]`), `value` (`.numeric`), `ghost`, `error`, `empty`, `mark`, `message`, `hint`, `retry` (a button) |
@@ -160,11 +165,11 @@ pressed, focus-visible and disabled states (docs/ui.md §3.2).
 | `HoldButton` (`hud/hold-button.svelte`) | `base` (a button: `.primary` `.secondary` `:disabled`), `icon`, `label`, `hint` |
 | `HudTimer` (`hud/hud-timer.svelte`) | `frame` (`.critical` `.paused` `.warn`), `label`, `ring`, `figure` |
 | `InteractionPrompt` (`world/interaction-prompt.svelte`) | `frame` (`.disabled` `:disabled`), `key`, `verb`, `name`, `reason` (`:disabled`) |
-| `ItemSlot` (`base/item-slot.svelte`) | `frame`, `cell` (a button: `[aria-pressed]` `:disabled`), `icon`, `loading`, `count`, `hud/cooldown`, `remaining`, `key`, `state`, `name` |
+| `ItemSlot` (`base/item-slot.svelte`) | `frame`, `cell` (a button: `[aria-pressed]` `:disabled`), `icon`, `loading`, `count`, `cooldown`, `remaining`, `key`, `state`, `name` |
 | `LootLabel` (`world/loot-label.svelte`) | `tag` (a button: `.epic` `.legendary` `.rare` `.uncommon`), `name`, `count` |
 | `Menu` (`panels/menu.svelte`) | `frame`, `row` (a button: `.danger` `[aria-checked]` `:disabled`), `heading`, `separator`, `icon`, `check`, `dot`, `shortcut`, `chevron` |
 | `MinimapView` (`world/minimap-view.svelte`) | `bezel`, `glass` (a button), `grid`, `marker` (`.ally` `.enemy` `.loot` `.objective` `.ping`), `player` (`.turning`), `north`, `badge` |
-| `Minimap` (`world/minimap.svelte`) | `frame`, `marker` (`.accent` `.danger` `.info` `.player` `.success` `.warn`), `label` |
+| `Minimap` (`world/minimap.svelte`) | `frame`, `marker` (`.accent` `.danger` `.info` `.player` `.success` `.warn`), `label`, `cell`, `grid` (only without a texture) |
 | `Nameplate` (`world/nameplate.svelte`) | `frame` (`.boss` `.friendly` `.hostile` `.player` `.targeted`), `icon`, `badge`, `name`, `subtitle`, `well`, `fill`, `shield`, `cast`, `spell` |
 | `NodeGraph` (`panels/node-graph.svelte`) | `well`, `link` (`.active`), `node` (a button: `.active` `.ally` `.current` `.diamond` `.done` `.enemy` `.hex` `.locked` `.selected` `.square` `[aria-disabled]` `:disabled`), `icon`, `label` |
 | `OrbMeter` (`hud/orb-meter.svelte`) | `orb`, `fill`, `value`, `label` |
@@ -174,9 +179,9 @@ pressed, focus-visible and disabled states (docs/ui.md §3.2).
 | `PlacementGhost` (`world/placement-ghost.svelte`) | `reach`, `footprint`, `badge` |
 | `ProgressBar` (`hud/progress-bar.svelte`) | `label`, `figure`, `track`, `buffer`, `fill` |
 | `ProgressRing` (`hud/progress-ring.svelte`) | `ring`, `figure` |
-| `RadialMenu` (`hud/radial-menu.svelte`) | `disc`, `slice` (`.chosen` `.disabled`), `item` / `cell` (one menuitem button: `[aria-current=true]` `:disabled`), `label`, `centre` (empty `detail` shows the chosen label) |
+| `RadialMenu` (`hud/radial-menu.svelte`) | `disc`, `slice` (`.chosen` `.disabled`), `item` / `cell` (one menuitem button: `[aria-current=true]` `:disabled`), `label`, `centre` / `well` (filled centre; empty `detail` shows the chosen label) |
 | `RadialMeter` (`hud/radial-meter.svelte`) | `wheels` |
-| `Ribbon` (`base/ribbon.svelte`) | `frame` (`.bottomLeft` `.bottomRight` `.center` `.danger` `.info` `.success` `.topLeft` `.warn`), `base/ribbon`, `text` |
+| `Ribbon` (`base/ribbon.svelte`) | `frame` (`.bottomLeft` `.bottomRight` `.center` `.danger` `.info` `.success` `.topLeft` `.warn`), `ribbon`, `text` |
 | `SelectionRing` (`world/selection-ring.svelte`) | `ring` (`.hostile` `.hover` `.neutral` `.segmented`) |
 | `SkeletonGroup` (`base/skeleton-group.svelte`) | `art`, `picture`, `line` |
 | `SpeechBubble` (`world/speech-bubble.svelte`) | `frame`, `label`, `line`, `tail` |
@@ -186,6 +191,6 @@ pressed, focus-visible and disabled states (docs/ui.md §3.2).
 | `StatBar` (`hud/stat-bar.svelte`) | `shield`, `frame` (`.bare` `.hud`), `label`, `track`, `fill`, `inside`, `figure` |
 | `StatusGrid` (`hud/status-grid.svelte`) | `cell`, `badge`, `figure` |
 | `Telegraph` (`world/telegraph.svelte`) | `area` (`.friendly`) |
-| `TooltipCard` (`panels/tooltip-card.svelte`) | `frame` (`.common` `.epic` `.legendary` `.mythic` `.rare` `.uncommon`), `title`, `label`, `row`, `figure`, `well`, `badge` |
+| `TooltipCard` (`panels/tooltip-card.svelte`) | `frame` (`.common` `.epic` `.legendary` `.mythic` `.rare` `.uncommon`), `title`, `label`, `row` (`[data-change=added]` `[data-change=removed]`), `figure` (removed value muted), `well`, `badge`, `change` (translated Added/Removed), `delta`, `mark` (signed direction) |
 | `TouchControls` (`hud/touch-controls.svelte`) | `frame` (`.always`), `stick` (`:disabled`), `actions`, `look` (`:disabled`) |
 | `Waypoint` (`world/waypoint.svelte`) | `pin`, `label`, `figure` |

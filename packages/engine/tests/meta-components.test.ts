@@ -19,7 +19,7 @@ beforeAll(() => {
   cpSync(join(import.meta.dir, "../sheets/components/assets/fonts"), join(root, "assets/fonts"), { recursive: true });
   writeFileSync(join(root, "project.ogt"), 'type project\nversion 1\n---\nname "Meta components"\nid "meta-components-test"\nentry "main.ts"\n');
   writeFileSync(join(root, "main.ts"), 'import { og } from "@origingame/engine"; export default og.game({});\n');
-  for (const [name, file] of Object.entries({ PassTrack: "meta/pass-track", Reveal: "meta/reveal", Inbox: "meta/inbox", News: "meta/news" })) {
+  for (const [name, file] of Object.entries({ PassTrack: "meta/pass-track", Reveal: "meta/reveal", Inbox: "meta/inbox", News: "meta/news", TooltipCard: "panels/tooltip-card" })) {
     const source = readFileSync(join(import.meta.dir, `../src/ui/components/${file}.svelte`), "utf8");
     const props = [...source.matchAll(/<meta name="prop:([^"]+)" content="([^"]+)"([^>]*)>/g)];
     defaults[name] = Object.fromEntries(props.map(m => {
@@ -112,4 +112,13 @@ test("nested meta recovery exposes the parent's retry intent", () => {
     const { engine, events } = mount(name, { error: "Reconnect to continue." });
     try { click(engine, buttons(engine).find(e => e.name === "Try again")!); expect(events.filter(e => e.name === "retry")).toHaveLength(1); } finally { engine.destroy(); }
   }
+});
+test("comparison presence is translated, restylable, and never treated as a delta", () => {
+  const { engine } = mount("TooltipCard", { stats: [{ id: "added", label: "Burn resistance", value: "8%", change: "added", delta: 999, deltaText: "BAD_ADDED_DELTA" }, { id: "removed", label: "Poison resistance", value: "12%", change: "removed", delta: -999, deltaText: "BAD_REMOVED_DELTA" }, { id: "both", label: "Cooldown", value: "3 s", better: true, delta: -1, deltaText: "−1 s" }] });
+  try {
+    const rows = elements(engine), text = rows.map(e => e.text).join(" ");
+    expect(text).toContain("Added"); expect(text).toContain("Removed"); expect(text).toContain("8%"); expect(text).toContain("12%"); expect(text).toContain("−1 s"); expect(text).not.toContain("BAD_");
+    expect(rows.some(e => e.part?.includes("data-change=added"))).toBe(true);
+    expect(rows.some(e => e.part?.includes("data-change=removed"))).toBe(true);
+  } finally { engine.destroy(); }
 });

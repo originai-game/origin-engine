@@ -1,4 +1,4 @@
-# general: built-in components
+# Meta components
 
 The pieces most games share whatever their genre: a shop and its purchase
 confirmation, achievements, daily quests and a login reward calendar, chat
@@ -27,7 +27,7 @@ pieces through
 the members' named parts (docs/ui.md §3.2), qualified by their states and
 `data-*` attributes, for example `Shop::offer[data-sold-out=true]` or
 `button::part(DailyRewards\.day)` for a part that is a button. Each member
-lists its parts in its `<meta name="parts">`. The plain action buttons
+lists its parts in its `<meta name="parts">`. The shop/social members' plain action buttons
 (Claim, Buy, Cancel, Send, Accept, Decline, Invite, Add friend, Try again)
 name no part: they are core buttons (`variant="primary"`, `secondary`,
 `ghost`) and take the pack's plates. The fantasy pack dresses them
@@ -86,16 +86,16 @@ message at the foot.
 
 ## Review sheet and tests
 
-`og ui sheet general` renders the four review pages from
+`og ui sheet meta` renders the four review pages from
 `packages/engine/sheets/meta/`, in the default style and fantasy pack: `store`
 (shop, purchase confirmation, login calendar), `progress` (achievements,
 daily quests, calendar), `social` (chat, friends) and `states` (the shop
 failed, a purchase that failed, no achievements, quests
 loading and empty, today's reward already taken, a muted chat, no friends).
 Icons come from the shared ink icon sheet; the default style uses the
-sheet's licensed Instrument Sans font. There is no painted art and no
-locale table yet.
-`og ui review general --style scifi` (or `--style cartoon`) renders the same
+sheet's licensed Instrument Sans font. There is no painted art. Visible
+words use the members' companion string tables.
+`og ui review meta --style scifi` (or `--style cartoon`) renders the same
 pages in that pack, dressed by its tokens
 (`templates/styles/<pack>/base.css`).
 
@@ -108,3 +108,41 @@ absent where the game refuses it; that a hidden achievement leaks its name
 neither in its text nor in its accessible name; that typing writes the draft back and
 does not switch channels; that the chat log shows its newest line and breaks
 a long word; and that each member's markup and its parts list agree.
+
+## Progression and updates
+
+PassTrack, Reveal, Inbox and News display game-owned progression, rewards,
+messages and updates. They never roll rewards, grant entitlement, perform
+purchases, mark messages read or delete data themselves. Props have typed
+defaults; collections carry stable `id` keys and intents return those keys.
+
+| Component | Inputs and states | Intents |
+| --- | --- | --- |
+| `PassTrack` | Season/refresh words, progress fraction/text, premium entitlement, ordered keyed reward tiles with formatted tier/amount and `locked/available/claimed` state, loading/error/empty, disabled | `claim` with reward key, `upgrade`, `retry`. Claims require available state and premium entitlement where applicable. Disabled prevents claims/upgrades. |
+| `Reveal` | Game-owned `sealed/loading/revealing/revealed`, rewards with rarity and fresh flags, optional skip, disabled/error | `open`, `skip`, `continue`, `retry`, keyed `inspect`. Rewards stay hidden until revealed. No animation timer or roll runs in the document. |
+| `Inbox` | Keyed messages, separate attachments referencing their message id, selected message, loading/error/empty, busy, unread/claimed/expired facts | `choose`, `claim`, `delete` with message key; `retry`. Attachments do not replace the enclosing message key. Busy prevents duplicate mutations; expired/claimed rewards cannot be claimed. |
+| `News` | Keyed entries in game order, optional art/action, plain multiline body, selected/expanded id, pinned/unread, disabled/loading/error/empty | `choose`, `open` with article key; `retry`. The game updates selected to expand/collapse. Only the expanded article exposes its action. |
+
+Free/premium, rarity, unread/read, claimed/expired and progress states are
+worded as well as exposed through declared parts or `data-*` attributes.
+Buttons keep shared hover/focus/press/disabled states. PassTrack scrolls
+horizontally; Inbox is side-by-side on desktop and stacked on a phone.
+List subjects use a whole-line ellipsis with a title tooltip, and the
+selected reader shows the full subject. Loading composes shared Spinner.
+These are ordinary lists, not virtualised lists.
+
+The components sheet accepts
+`style:default;sample:<member>:<fixture>` at desktop and `phonePortrait`:
+
+| Member | Fixtures |
+| --- | --- |
+| `passTrack` | `default`, `premium`, `disabled`, `empty`, `loading`, `error` |
+| `reveal` | `default`, `loading`, `revealing`, `revealed`, `disabled`, `empty`, `error` |
+| `inbox` | `default`, `busy`, `unselected`, `claimed`, `expired`, `overflow`, `empty`, `loading`, `error` |
+| `news` | `default`, `collapsed`, `disabled`, `overflow`, `empty`, `loading`, `error` |
+
+The sample inputs put an available free reward beside an entitlement-gated
+premium reward, unclaimed/read messages, and a long announcement beside a
+collapsed one. Review loading and error separately; the absence of a
+mutation button is part of those contracts. Native contract tests are in
+`tests/meta-components.test.ts`.
