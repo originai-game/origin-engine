@@ -199,6 +199,35 @@ pub(crate) struct PartStyles {
     context: Option<PartContext>,
     tick: u64,
     styles: std::collections::HashMap<(Option<u64>, &'static str), Vec<PartStyle>>,
+    /// Parts' cascades before their motion ([`Ui::cascade_part`]): a part
+    /// whose transition runs is moved from its kept cascade each tick
+    /// instead of cascaded again.
+    cascades: std::collections::HashMap<(Option<u64>, &'static str), Vec<KeptCascade>>,
+}
+
+/// A part's cascade before its transitions and animations move it, and
+/// what [`Ui::finish_part`] moves it by.
+pub(crate) struct CascadedPart {
+    values: cascade::Cascade,
+    transitions: Vec<crate::motion::css::CssTransition>,
+    animations: Vec<crate::motion::css::CssAnimation>,
+    /// What the part inherits: its flow reads it.
+    inherited: super::super::variables::Computed,
+    /// Its document's part rules merged into the global ones; none: the
+    /// global sheet.
+    merged: Option<Arc<crate::ui::MergedPartRules>>,
+}
+
+/// A part's cascade and what it was cascaded from: as [`PartStyle`], but
+/// not its transition state, which the cascade does not read, nor its
+/// hover and press amounts, which no rule reads.
+#[derive(Clone)]
+struct KeptCascade {
+    part: crate::dress::PartRef,
+    host: Option<Arc<PartHost>>,
+    document: Option<Arc<UiDocument>>,
+    ink: [crate::Srgba; 3],
+    cascaded: Arc<CascadedPart>,
 }
 
 impl std::fmt::Debug for PartStyles {
@@ -288,6 +317,7 @@ impl PartStyles {
             };
         } else if self.tick != tick {
             self.styles.retain(|(key, _), _| key.is_none_or(&alive));
+            self.cascades.retain(|(key, _), _| key.is_none_or(&alive));
             self.tick = tick;
         }
     }
@@ -307,6 +337,23 @@ impl PartStyles {
             kept.remove(0);
         }
         kept.push(style);
+    }
+
+    fn find_cascade(
+        &self,
+        slot: (Option<u64>, &'static str),
+        same: impl Fn(&KeptCascade) -> bool,
+    ) -> Option<Arc<CascadedPart>> {
+        let kept = self.cascades.get(&slot)?.iter().find(|s| same(s))?;
+        Some(kept.cascaded.clone())
+    }
+
+    fn keep_cascade(&mut self, slot: (Option<u64>, &'static str), cascade: KeptCascade) {
+        let kept = self.cascades.entry(slot).or_default();
+        if kept.len() == PART_VARIANTS {
+            kept.remove(0);
+        }
+        kept.push(cascade);
     }
 
     /// Drops every kept style: what they derive from changed.
@@ -964,7 +1011,7 @@ impl Ui {
     /// samples), kept ([`PartStyles`]) where it is resolved from the same
     /// part, host, document and painting theme and its transitions stand
     /// where its kept style left them. A part whose transition or
-    /// animation still runs is resolved every time.
+    /// animation still runs moves from its kept cascade every time.
     pub(crate) fn part_values(
         &self,
         part: &crate::dress::PartRef,
@@ -1006,7 +1053,38 @@ impl Ui {
                 return values;
             }
         }
-        let values = Arc::new(self.resolve_part_values(part, key));
+        // Not kept as a whole (its transition state moved, or it runs):
+        // its cascade may be, and only its motion is worked out again.
+        let plain = crate::dress::PartRef {
+            hover: 0.0,
+            press: 0.0,
+            ..*part
+        };
+        let kept = self.style.part_styles.borrow().find_cascade(slot, |k| {
+            k.part == plain
+                && k.cascaded.values.media.matches(self.media_context())
+                && same_host(&k.host, host)
+                && same_arc(&k.document, document)
+                && k.ink == ink
+        });
+        let cascaded = match kept {
+            Some(cascaded) => cascaded,
+            None => {
+                let cascaded = Arc::new(self.cascade_part(part, key));
+                self.style.part_styles.borrow_mut().keep_cascade(
+                    slot,
+                    KeptCascade {
+                        part: plain,
+                        host: host.cloned(),
+                        document: document.cloned(),
+                        ink,
+                        cascaded: cascaded.clone(),
+                    },
+                );
+                cascaded
+            }
+        };
+        let values = Arc::new(self.finish_part(part, key, &cascaded));
         if !values.style.as_ref().is_some_and(|c| c.running) {
             self.style.part_styles.borrow_mut().keep(
                 slot,
@@ -1023,7 +1101,30 @@ impl Ui {
         values
     }
 
+    #[cfg(test)]
     fn resolve_part_values(&self, part: &crate::dress::PartRef, key: Option<u64>) -> Resolved {
+        self.finish_part(part, key, &self.cascade_part(part, key))
+    }
+
+    /// The viewport and root type lengths a part's CSS reads.
+    fn part_basis(&self) -> crate::doc::calc::Basis {
+        let vp = self.viewport();
+        let body = self.theme().type_ramp.body;
+        crate::doc::calc::Basis {
+            width: vp.width,
+            height: vp.height,
+            small: [vp.width, vp.height],
+            large: [vp.width, vp.height],
+            rem: body.size,
+            rlh: body.line_height,
+            ..Default::default()
+        }
+    }
+
+    /// Part `part`'s cascade on node `key`, before its transitions and
+    /// animations move it: what its selectors, custom properties and the
+    /// host's declarations give, which no tick of its motion changes.
+    fn cascade_part(&self, part: &crate::dress::PartRef, key: Option<u64>) -> CascadedPart {
         let host = key.and_then(|k| self.tree.part_host(k));
         let document = host.and_then(|h| self.docs.library.documents.get(&h.document));
         // A document's own part rules laid into the global ones: merged
@@ -1072,20 +1173,11 @@ impl Ui {
                 ..facts
             };
             let empty = Default::default();
-            let vp = self.viewport();
             let body = self.theme().type_ramp.body;
             let options = cascade::Options {
                 inline: &[],
                 inherited: &empty,
-                basis: Some(crate::doc::calc::Basis {
-                    width: vp.width,
-                    height: vp.height,
-                    small: [vp.width, vp.height],
-                    large: [vp.width, vp.height],
-                    rem: body.size,
-                    rlh: body.line_height,
-                    ..Default::default()
-                }),
+                basis: Some(self.part_basis()),
                 attr: &|_| None,
                 sheet: Some(sheet),
                 starting: false,
@@ -1264,58 +1356,77 @@ impl Ui {
                 }
             }
             values.media.extend(&media);
-            let style = key.and_then(|key| {
-                self.animate_values(
-                    animate::StyleTarget::Part(key, part.part),
-                    &mut values,
-                    &[],
-                    &transitions,
-                    &animations,
-                    options.basis.expect("part CSS has viewport units"),
-                    Some(sheet),
-                )
-            });
-            if let (Some(key), Some(commit)) = (key, &style) {
-                self.style
-                    .part_commits
-                    .borrow_mut()
-                    .insert((key, part.part), commit.clone());
-            }
-            let flow = cascade::flow(
-                &mut values,
-                &inherited,
-                self.env.direction == og_i18n::Direction::Rtl,
-                None,
-            );
-            cascade::route(&mut values, flow);
-            let space3d = crate::transform3d::resolve(&values.transform, &mut values.diagnostics)
-                .map(Arc::new);
-            let mut vals: Vec<_> = values
-                .props
-                .iter()
-                .filter_map(|p| match &p.value {
-                    PropValue::Lit(value) => lit(self, value).map(|v| (p.spec, v)),
-                    _ => None,
-                })
-                .collect();
-            if let Some((_, color)) = values.text.iter().find(|(name, _)| name == "color")
-                && let Ok(color) = crate::css_color::parse_str(color)
-            {
-                let (spec, _) = schema::prop("color").expect("color is a reflected property");
-                vals.push((
-                    spec,
-                    V::Color(color.resolve(&crate::css_color::Context::of(self.theme()))),
-                ));
-            }
-            Resolved {
-                vals,
-                cascade: values,
-                flow,
-                space3d,
-                style,
-                ..Default::default()
+            CascadedPart {
+                values,
+                transitions,
+                animations,
+                inherited,
+                merged: merged.clone(),
             }
         })
+    }
+
+    /// Part `part`'s values on node `key` from its cascade `c`: its motion
+    /// this tick, then its flow, routing and props.
+    fn finish_part(
+        &self,
+        part: &crate::dress::PartRef,
+        key: Option<u64>,
+        c: &CascadedPart,
+    ) -> Resolved {
+        let mut values = c.values.clone();
+        let sheet = c.merged.as_ref().map_or(&*self.style.part_sheet, |m| &m.1);
+        let style = key.and_then(|key| {
+            self.animate_values(
+                animate::StyleTarget::Part(key, part.part),
+                &mut values,
+                &[],
+                &c.transitions,
+                &c.animations,
+                self.part_basis(),
+                Some(sheet),
+            )
+        });
+        if let (Some(key), Some(commit)) = (key, &style) {
+            self.style
+                .part_commits
+                .borrow_mut()
+                .insert((key, part.part), commit.clone());
+        }
+        let flow = cascade::flow(
+            &mut values,
+            &c.inherited,
+            self.env.direction == og_i18n::Direction::Rtl,
+            None,
+        );
+        cascade::route(&mut values, flow);
+        let space3d =
+            crate::transform3d::resolve(&values.transform, &mut values.diagnostics).map(Arc::new);
+        let mut vals: Vec<_> = values
+            .props
+            .iter()
+            .filter_map(|p| match &p.value {
+                PropValue::Lit(value) => lit(self, value).map(|v| (p.spec, v)),
+                _ => None,
+            })
+            .collect();
+        if let Some((_, color)) = values.text.iter().find(|(name, _)| name == "color")
+            && let Ok(color) = crate::css_color::parse_str(color)
+        {
+            let (spec, _) = schema::prop("color").expect("color is a reflected property");
+            vals.push((
+                spec,
+                V::Color(color.resolve(&crate::css_color::Context::of(self.theme()))),
+            ));
+        }
+        Resolved {
+            vals,
+            cascade: values,
+            flow,
+            space3d,
+            style,
+            ..Default::default()
+        }
     }
 
     pub(crate) fn part_draw_values(
@@ -1614,6 +1725,122 @@ mod media_cache_tests {
                 );
             }
             ui.end();
+        }
+    }
+}
+
+#[cfg(test)]
+mod transition_keep_tests {
+    use super::*;
+    use crate::reactive::SourceId;
+    use std::collections::BTreeMap;
+
+    /// A button whose base part transitions its fill to the theme's
+    /// `--primary` and its opacity on hover.
+    fn button() -> Ui {
+        let mut ui = Ui::new(Default::default());
+        ui.set_part_css(
+            "button::part(base) { opacity: 0.2; background: #000000; \
+             transition: opacity 200ms linear, background 200ms linear; } \
+             button::part(base):hover { opacity: 1; background: var(--primary); }",
+        )
+        .unwrap();
+        let doc = r#"<meta name="component" content="t">
+<column><button id="B"></button></column>
+<style>#B { width: 80px; height: 40px; }</style>"#;
+        ui.define_document(UiDocument::parse("t.svelte", doc).unwrap());
+        ui.mount_document(
+            SourceId::new("test", "t"),
+            "t",
+            BTreeMap::new(),
+            BTreeMap::new(),
+            &crate::bind::NoEnv,
+        )
+        .unwrap();
+        ui
+    }
+
+    fn tick(ui: &mut Ui, hovered: bool) {
+        let input = if hovered {
+            crate::InputFrame::hover(40.0, 20.0)
+        } else {
+            crate::InputFrame::default()
+        };
+        ui.begin(input, crate::Viewport::new(100.0, 100.0));
+        ui.build_retained_documents(&crate::bind::NoEnv).unwrap();
+        ui.end();
+    }
+
+    /// The base part's values as the build asks for them against a full
+    /// resolve in the same state; whether its transition still runs.
+    fn same_as_full(ui: &Ui, frame: &str) -> (bool, Arc<Resolved>) {
+        let n = ui
+            .tree
+            .nodes()
+            .iter()
+            .find(|n| n.part().is_some_and(|p| p.part == "base"))
+            .expect("the button's base part");
+        let (part, key) = (n.part().unwrap(), Some(n.key));
+        let kept = ui.part_values(&part, key);
+        let full = ui.resolve_part_values(&part, key);
+        ui.style.part_commits.borrow_mut().clear();
+        assert_eq!(kept.vals, full.vals, "{frame}");
+        assert_eq!(kept.cascade.values, full.cascade.values, "{frame}");
+        let running = full.style.as_ref().is_some_and(|c| c.running);
+        if running {
+            assert!(
+                ui.style
+                    .part_styles
+                    .borrow()
+                    .cascades
+                    .get(&(key, "base"))
+                    .is_some_and(|kept| !kept.is_empty()),
+                "{frame}: a running part moves from a kept cascade"
+            );
+        }
+        (running, kept)
+    }
+
+    /// A part whose hover transition runs moves from its kept cascade each
+    /// tick, frame for frame what a full resolve gives, through a theme
+    /// change that retargets it mid-flight and a hover let go mid-flight.
+    ///
+    /// Ways it could fail: a kept cascade outliving the theme it read (the
+    /// fill keeps running to the old `--primary`), or one kept for the
+    /// hovered flags answering the part once it is no longer hovered.
+    #[test]
+    fn a_running_part_transition_moves_from_its_kept_cascade_as_a_full_resolve() {
+        let orange = crate::style_file::parse_color("#ff8800").unwrap();
+        for case in ["theme", "unhover"] {
+            let mut ui = button();
+            tick(&mut ui, false);
+            same_as_full(&ui, "rest");
+            let mut running = 0;
+            let mut last = None;
+            for frame in 0..40 {
+                let hovered = !(case == "unhover" && frame >= 4);
+                if case == "theme" && frame == 4 {
+                    let mut theme = ui.env.configured;
+                    theme.palette.primary = orange;
+                    ui.set_theme(theme);
+                }
+                tick(&mut ui, hovered);
+                let (moving, values) = same_as_full(&ui, &format!("{case} frame {frame}"));
+                running += usize::from(moving && frame < 4);
+                last = Some(values);
+            }
+            assert!(running >= 3, "{case}: the transition was mid-flight");
+            let last = last.unwrap();
+            match case {
+                "theme" => {
+                    let fill = last.color("background").expect("a fill");
+                    assert!(
+                        (0..3).all(|c| fill.rgb[c].abs_diff(orange.rgb[c]) <= 2),
+                        "settles on the new --primary: {fill:?}"
+                    );
+                }
+                _ => assert_eq!(last.num("opacity"), Some(0.2), "settles unhovered"),
+            }
         }
     }
 }
