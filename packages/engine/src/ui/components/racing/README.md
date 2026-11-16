@@ -81,3 +81,18 @@ by name from a game page in every fixture at desktop and phone, checks the
 declared parts, the intents and their keys, the disabled states, keyed
 selection through a reorder, keyboard and pad focus, and that each state is
 a word.
+
+## Document layout
+
+The members use HTML with CSS and `:host` for their roots. Optional badges,
+figures and readouts use `{#if}`; scroll regions are HTML boxes with
+overflow. The telemetry dial contains its centered speed and gear, and
+the bar readout declares its own columns. Captions are quieter than the
+figures and player standings have a primary edge. Results keep the driver
+on a full line above You and Fastest, so those badges never squeeze the
+name away on a phone. Garage names can wrap without losing their title.
+All existing ids, parts and intents remain.
+
+The sheet declares `race-default`, `garage-default` and `states-default`
+and supplies the default style's font explicitly, as it does for the
+pack's icons. Pass each page's commands when using `og ui preview`.

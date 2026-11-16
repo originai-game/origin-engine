@@ -20,23 +20,22 @@
   reduced motion shows its end at once. Announced as a status.
 -->
 <div id="RacingBanner" part="RacingBanner.frame" class="bare" role="status" aria-atomic="true" aria-label={t("racing.banner.name")} data-kind={kind}>
+  {#if kind == 'countdown' || kind == 'go' || kind == 'finalLap' || kind == 'finish'}
   {#key at}
-    <div part="RacingBanner.plate" class="plate" hidden={!(kind == 'countdown' || kind == 'go' || kind == 'finalLap' || kind == 'finish')} data-kind={kind}>
+    <div part="RacingBanner.plate" class="plate" data-kind={kind}>
       <span part="RacingBanner.title" class="call">{kind == 'countdown' ? formatNumber(figure) : (kind == 'go' ? t("racing.banner.go") : (kind == 'finalLap' ? t("racing.banner.finalLap") : t("racing.banner.finish")))}</span>
-      <span part="RacingBanner.badge" class="place" hidden={!(kind == 'finish' && place > 0)}>{formatOrdinal(place)}</span>
-      <span class="detail" hidden={detail == ''}>{detail}</span>
+      {#if kind == 'finish' && place > 0}<span part="RacingBanner.badge" class="place">{formatOrdinal(place)}</span>{/if}
+      {#if detail != ''}<span class="detail">{detail}</span>{/if}
     </div>
   {/key}
+  {/if}
 </div>
 
 <style>
-/* Drawn over the scene: the style's tag halo holds its text there. */
-:host { text-shadow: var(--tag-halo); }
-[part="RacingBanner.frame"][hidden], [part="RacingBanner.frame"] [hidden] { display: none; }
-[part="RacingBanner.frame"] { display: flex; width: stretch; align-items: center; justify-content: center; pointer-events: none; }
+:host { display: flex; width: stretch; align-items: center; justify-content: center; pointer-events: none; text-shadow: var(--tag-halo); }
 .plate { display: flex; flex-direction: column; align-items: center; gap: var(--space-xxs); max-width: stretch; padding: var(--space-sm) var(--space-3xl); animation-name: racing-call; animation-duration: var(--motion-duration-slow); animation-timing-function: var(--motion-easing-out); animation-fill-mode: both; }
 .plate[data-kind=countdown] { animation-name: racing-count; animation-duration: var(--motion-duration-bounce); animation-timing-function: var(--motion-easing-snappy); }
-.call { white-space: nowrap; line-height: 1; font-variant-numeric: tabular-nums; }
+.call { text-align: center; line-height: 1; font-variant-numeric: tabular-nums; }
 .place { white-space: nowrap; }
 .detail { text-align: center; max-width: stretch; }
 @keyframes racing-count { from { opacity: 0; scale: 1.6; } to { opacity: 1; scale: 1; } }

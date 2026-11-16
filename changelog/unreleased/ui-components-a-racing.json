@@ -1,0 +1,6 @@
+{
+  "fixed": [{
+    "member": "RacingTelemetry, RacingLapHud, RacingStandings, RacingBanner, RacingGarage, RacingResults",
+    "summary": "Racing components use HTML with CSS and retain their parts, ids, intents and keyed replay. Telemetry has visible token-colored gauge tracks and centered speed and gear, optional readouts occupy no blank space, garage names wrap, and classification badges no longer squeeze the driver's name on a phone. Default review pages now load a readable font."
+  }]
+}

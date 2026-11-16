@@ -27,16 +27,16 @@
 <div id="RacingTelemetry" part="RacingTelemetry.frame" class="hud" role="group" aria-label={t("racing.telemetry.name")} data-dial={dial} data-shift={shift} data-boosting={boosting} data-redline={redline > 0 && rpm >= redline}>
   {#if dial == 'bar'}
     <div class="strip">
-      <div part="RacingTelemetry.gear RacingTelemetry.plate" class="gear" hidden={gear == ''} role="group" aria-label={t("racing.telemetry.gearValue", { gear: gear })}><span class="gear-value">{gear}</span></div>
+      {#if gear != ''}<div part="RacingTelemetry.gear RacingTelemetry.plate" class="gear" role="group" aria-label={t("racing.telemetry.gearValue", { gear: gear })}><span class="gear-value">{gear}</span></div>{/if}
       <div class="readout" role="group" aria-label={t("racing.telemetry.speed", { speed: speed, units: units })}>
         <span part="RacingTelemetry.speed RacingTelemetry.figure" class="speed">{formatNumber(speed)}</span>
         <span part="RacingTelemetry.units RacingTelemetry.label" class="units">{units}</span>
       </div>
       <div class="bars">
         <div part="RacingTelemetry.dial" class="rev"><StatBar value={rpm} max={rpmMax} kind="stamina" segment={rpmMax / 8} shield={0} shieldMax={0} heal={0} recoverable={0} label="" icon="" showValue={false} valueInside={false} valueText={t("racing.telemetry.rpmValue", { rpm: rpm })} low={0} critical={0} bare={true} name={t("racing.telemetry.rpm")} /></div>
-        <div class="boost" hidden={!(boostMax > 0)}><StatBar value={boost} max={boostMax} kind="mana" segment={0} shield={0} shieldMax={0} heal={0} recoverable={0} label={t("racing.telemetry.boost")} icon="" showValue={false} valueInside={false} valueText="" low={0} critical={0} bare={true} name={t("racing.telemetry.boost")} /></div>
+        {#if boostMax > 0}<div class="boost"><StatBar value={boost} max={boostMax} kind="mana" segment={0} shield={0} shieldMax={0} heal={0} recoverable={0} label={t("racing.telemetry.boost")} icon="" showValue={false} valueInside={false} valueText="" low={0} critical={0} bare={true} name={t("racing.telemetry.boost")} /></div>{/if}
       </div>
-      <span part="RacingTelemetry.badge" class="shift" hidden={!shift} role="status">{t("racing.telemetry.shift")}</span>
+      {#if shift}<span part="RacingTelemetry.badge" class="shift" role="status">{t("racing.telemetry.shift")}</span>{/if}
     </div>
   {:else}
     <div class="gauge">
@@ -49,27 +49,28 @@
         <span part="RacingTelemetry.speed RacingTelemetry.figure" class="speed">{formatNumber(speed)}</span>
         <span part="RacingTelemetry.units RacingTelemetry.label" class="units">{units}</span>
       </div>
-      <div part="RacingTelemetry.gear RacingTelemetry.plate" class="gear" hidden={gear == ''} role="group" aria-label={t("racing.telemetry.gearValue", { gear: gear })}><span class="gear-value">{gear}</span></div>
-      <div class="boost-ring" hidden={!(boostMax > 0)}><svg class="boost-dial" viewBox="0 0 56 56" role="meter" aria-label={t("racing.telemetry.boost")} aria-valuemin="0" aria-valuemax={boostMax} aria-valuenow={boost}><circle class="track" cx="28" cy="28" r="22" fill="none" stroke-width="7"></circle><circle class="boost" cx="28" cy="28" r="22" fill="none" stroke-width="7" pathLength="1" stroke-dasharray={(boostMax > 0 ? (boost >= boostMax ? 1 : boost / boostMax) : 0) + " 1"} transform="rotate(-90 28 28)"></circle></svg><span class="boost-label">{t("racing.telemetry.boost")}</span></div>
-      <span part="RacingTelemetry.badge" class="shift" hidden={!shift} role="status">{t("racing.telemetry.shift")}</span>
+      {#if gear != ''}<div part="RacingTelemetry.gear RacingTelemetry.plate" class="gear" role="group" aria-label={t("racing.telemetry.gearValue", { gear: gear })}><span class="gear-value">{gear}</span></div>{/if}
+      {#if boostMax > 0}<div class="boost-ring"><svg class="boost-dial" viewBox="0 0 56 56" role="meter" aria-label={t("racing.telemetry.boost")} aria-valuemin="0" aria-valuemax={boostMax} aria-valuenow={boost}><circle class="track" cx="28" cy="28" r="22" fill="none" stroke-width="7"></circle><circle class="boost" cx="28" cy="28" r="22" fill="none" stroke-width="7" pathLength="1" stroke-dasharray={(boostMax > 0 ? (boost >= boostMax ? 1 : boost / boostMax) : 0) + " 1"} transform="rotate(-90 28 28)"></circle></svg><span class="boost-label">{t("racing.telemetry.boost")}</span></div>{/if}
+      {#if shift}<span part="RacingTelemetry.badge" class="shift" role="status">{t("racing.telemetry.shift")}</span>{/if}
     </div>
   {/if}
 </div>
 
 <style>
-/* Drawn over the scene: the style's tag halo holds its text there. */
-:host { text-shadow: var(--tag-halo); }
-[part="RacingTelemetry.frame"][hidden], [part="RacingTelemetry.frame"] [hidden] { display: none; }
-[part="RacingTelemetry.frame"] { position: relative; width: fit-content; max-width: stretch; }
+:host { position: relative; width: fit-content; max-width: 100%; text-shadow: var(--tag-halo); }
 /* Radial: the speed in the dial's centre, the gear in the gap at its foot,
    the boost ring off its lower corner and the shift badge over its top. */
 .gauge { position: relative; width: calc(var(--size-xxl) * 2.2); height: calc(var(--size-xxl) * 2.2); }
-.dial { position: absolute; left: 0; top: 0; width: stretch; height: stretch; }
-.centre { display: flex; flex-direction: column; position: absolute; left: 0; top: 0; width: stretch; height: stretch; align-items: center; justify-content: center; gap: 0; padding: 0 calc(var(--size-xxl) * 0.35); }
-.speed { font-variant-numeric: tabular-nums; white-space: nowrap; line-height: 1; }
-.units { white-space: nowrap; text-overflow: ellipsis; overflow: hidden; max-width: stretch; }
+.dial { position: absolute; inset: 0; width: 100%; height: 100%; }
+.centre { display: flex; flex-direction: column; position: absolute; inset: 0; align-items: center; justify-content: center; gap: var(--space-xxs); padding: 0 calc(var(--size-xxl) * 0.35); }
+.speed { font: var(--text-xl2); font-family: var(--figure-font); font-variant-numeric: tabular-nums; white-space: nowrap; line-height: 1; }
+.units { font: var(--text-caption); white-space: nowrap; text-overflow: ellipsis; overflow: hidden; max-width: stretch; }
+.track { stroke: var(--control-strong); }
+.red { stroke: var(--danger); }
+.rev { stroke: var(--primary); }
+.boost { stroke: var(--mana); }
 .gauge .gear { display: flex; flex-direction: column; position: absolute; left: calc(50% - var(--size-md) * 0.75); bottom: 0; width: calc(var(--size-md) * 1.5); height: calc(var(--size-md) * 1.5); align-items: center; justify-content: center; }
-.gear-value { white-space: nowrap; line-height: 1; }
+.gear-value { font: var(--text-lg); font-family: var(--figure-font); white-space: nowrap; line-height: 1; }
 /* The boost ring stands beside the dial, clear of the redline, inside the frame's box. */
 [part="RacingTelemetry.frame"]:not([data-dial=bar]) { padding-inline-end: calc(var(--size-lg) + var(--space-sm)); }
 .boost-ring { display: flex; flex-direction: column; position: absolute; inset-inline-start: calc(100% + var(--space-sm)); bottom: 0; align-items: center; gap: 0; }
@@ -78,9 +79,9 @@
 .gauge .shift { position: absolute; left: 50%; top: 22%; translate: -50% 0; white-space: nowrap; padding: 0 var(--space-xs); }
 /* Bar: one strip, gear and speed at its start, the bars after them. */
 .strip { display: flex; align-items: center; gap: var(--space-md); padding: var(--space-xs) var(--space-md); max-width: stretch; }
-.strip .gear { width: var(--size-lg); height: var(--size-lg); flex: none; align-items: center; justify-content: center; }
-.readout { flex: none; align-items: flex-start; gap: 0; }
-.bars { gap: var(--space-xs); min-width: 0; }
+.strip .gear { display: flex; width: var(--size-lg); height: var(--size-lg); flex: none; align-items: center; justify-content: center; }
+.readout { display: flex; flex-direction: column; flex: none; align-items: flex-start; gap: var(--space-xxs); }
+.bars { display: flex; flex-direction: column; gap: var(--space-xs); min-width: 0; }
 .strip .shift { flex: none; white-space: nowrap; padding: 0 var(--space-xs); }
 @media (width < 600px) {
   .gauge { width: calc(var(--size-xxl) * 1.6); height: calc(var(--size-xxl) * 1.6); }

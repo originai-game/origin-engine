@@ -17,4 +17,7 @@ ui {
   screen "race-fantasy" "style:fantasy;page:race"
   screen "garage-fantasy" "style:fantasy;page:garage"
   screen "states-fantasy" "style:fantasy;page:states"
+  screen "race-default" "style:default;page:race"
+  screen "garage-default" "style:default;page:garage"
+  screen "states-default" "style:default;page:states"
 }

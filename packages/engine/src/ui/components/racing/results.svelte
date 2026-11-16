@@ -28,20 +28,20 @@
       <span class="time">{t("racing.results.time")}</span>
       <span class="points">{t("racing.results.points")}</span>
     </div>
-    <scroll class="list">
+    <div class="list">
       <div class="rows" role="list" aria-label={title != '' ? title : t("racing.results.title")}>
         {#each rows as r (r.id)}
           <div part="RacingResults.row" role="listitem" aria-current={r.player} aria-label={r.name} data-player={r.player} data-state={r.state} data-fastest={r.fastest}>
             <span part="RacingResults.place RacingResults.label" class="place">{r.state == 'dnf' || r.state == 'dsq' ? t("racing.results.unplaced") : formatNumber(r.position)}</span>
-            <div class="name"><span part="RacingResults.name" class="driver">{r.name}</span><span class="you" hidden={!r.player}>{t("racing.results.you")}</span><span part="RacingResults.badge" class="fastest" hidden={!r.fastest} aria-label={t("racing.results.fastest")}>{t("racing.results.fastest")}</span></div>
-            <span class="time" hidden={r.state == 'dnf' || r.state == 'dsq'}>{r.time}</span>
-            <span part="RacingResults.badge" class="out" data-state={r.state} hidden={!(r.state == 'dnf' || r.state == 'dsq')} aria-label={r.state == 'dsq' ? t("racing.results.dsqName") : t("racing.results.dnfName")}>{r.state == 'dsq' ? t("racing.results.dsq") : t("racing.results.dnf")}</span>
+            <div class="name"><span part="RacingResults.name" class="driver">{r.name}</span>{#if r.player}<span class="you">{t("racing.results.you")}</span>{/if}{#if r.fastest}<span part="RacingResults.badge" class="fastest" aria-label={t("racing.results.fastest")}>{t("racing.results.fastest")}</span>{/if}</div>
+            {#if r.state == 'dnf' || r.state == 'dsq'}<span part="RacingResults.badge" class="out" data-state={r.state} aria-label={r.state == 'dsq' ? t("racing.results.dsqName") : t("racing.results.dnfName")}>{r.state == 'dsq' ? t("racing.results.dsq") : t("racing.results.dnf")}</span>
+            {:else}<span class="time">{r.time}</span>{/if}
             <span class="points">{r.points}</span>
           </div>
         {/each}
       </div>
-    </scroll>
-    <p class="best" hidden={bestLap == ''}>{bestBy != '' ? t("racing.results.bestLap", { time: bestLap, name: bestBy }) : t("racing.results.bestLapTime", { time: bestLap })}</p>
+    </div>
+    {#if bestLap != ''}<p class="best">{bestBy != '' ? t("racing.results.bestLap", { time: bestLap, name: bestBy }) : t("racing.results.bestLapTime", { time: bestLap })}</p>{/if}
   {:else}
     <p class="empty-text" role="status">{t("racing.results.empty")}</p>
   {/if}
@@ -52,19 +52,18 @@
 </section>
 
 <style>
-[part="RacingResults.frame"][hidden], [part="RacingResults.frame"] [hidden] { display: none; }
-[part="RacingResults.frame"] { display: flex; flex-direction: column; width: stretch; height: stretch; gap: var(--space-sm); container-type: inline-size; }
+:host { display: flex; flex-direction: column; width: stretch; height: stretch; gap: var(--space-sm); container-type: inline-size; }
 [part="RacingResults.band"] { display: flex; width: stretch; align-items: center; flex: none; }
-[part="RacingResults.title"] { margin: 0; white-space: nowrap; text-overflow: ellipsis; overflow: hidden; }
+[part="RacingResults.title"] { flex: 1; min-width: 0; margin: 0; overflow-wrap: anywhere; }
 [part="RacingResults.heading"], [part="RacingResults.row"] { display: flex; width: stretch; align-items: center; gap: var(--space-md); padding: var(--space-xs) var(--space-md); }
 [part="RacingResults.heading"] { flex: none; }
-.list { width: stretch; flex: 1; min-height: 0; }
+.list { overflow-y: auto; flex: 1; min-height: 0; }
 .rows { display: flex; flex-direction: column; width: stretch; gap: var(--space-xxs); }
 [part="RacingResults.row"] { min-height: var(--size-touch); }
 .place { flex: none; width: var(--size-md); text-align: center; font-variant-numeric: tabular-nums; }
-.name { display: flex; flex: 1; min-width: 0; align-items: center; gap: var(--space-sm); }
+.name { display: flex; flex-wrap: wrap; flex: 1; min-width: 0; align-items: center; gap: var(--space-xxs) var(--space-sm); }
 .head-name { flex: 1; min-width: 0; text-align: start; }
-.driver { min-width: 0; text-align: start; white-space: nowrap; text-overflow: ellipsis; overflow: hidden; }
+.driver { flex: 1 0 100%; text-align: start; overflow-wrap: anywhere; }
 .you, .fastest, .out { flex: none; white-space: nowrap; padding: 0 var(--space-xs); }
 .time { flex: none; width: calc(var(--size-xxl) * 1.15); text-align: end; white-space: nowrap; font-variant-numeric: tabular-nums; }
 .out { width: calc(var(--size-xxl) * 1.15); text-align: end; }
