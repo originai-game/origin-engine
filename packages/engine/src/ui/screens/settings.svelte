@@ -61,21 +61,21 @@
 </column>
 
 <style>
-#Screen { width: stretch; height: stretch; padding: var(--space-xxl); gap: var(--space-lg); }
+#Screen { width: stretch; height: stretch; padding: var(--space-xxl); gap: var(--space-lg); min-height: 0; }
 @media (width < 600px), (height < 600px) {
 #Screen { padding: var(--space-lg); gap: var(--space-md); }
 }
 #Header { width: stretch; gap: var(--space-md); align-items: center; }
-#Heading { width: stretch; gap: var(--space-xxs); }
+#Heading { flex: 1; min-width: 0; gap: var(--space-xxs); }
 #Title { font-size: var(--type-xl2-size); }
 @media (width < 600px), (height < 600px) {
 #Title { font-size: var(--type-xl-size); }
 }
 #Note { font: var(--text-caption); letter-spacing: var(--type-caption-tracking); color: var(--ink-muted); line-clamp: 2; }
-#Tree { width: stretch; height: stretch; gap: var(--space-md); }
+#Tree { width: stretch; flex: 1; min-height: 0; gap: var(--space-md); }
 #Pages { display: flex; gap: var(--space-sm); flex-wrap: wrap; }
-#Entries { list-style: none; padding: 0; margin: 0; width: stretch; height: stretch; overflow-y: auto; }
+#Entries { list-style: none; padding: 0; margin: 0; width: stretch; flex: 1; min-height: 0; overflow-y: auto; }
 .entry { display: flex; align-items: center; gap: var(--space-md); padding: var(--space-sm) 0; border-bottom: var(--stroke-hairline) solid var(--line); }
-.entry .name { width: stretch; }
+.entry .name { flex: 1; min-width: 0; }
 #Foot { display: flex; justify-content: end; gap: var(--space-sm); width: stretch; }
 </style>

@@ -81,7 +81,7 @@
 .rows { display: flex; flex-direction: column; width: stretch; margin: 0; padding: 0; list-style: none; gap: var(--space-xxs); }
 [part="Friends.request"], .friend { display: flex; width: stretch; align-items: center; gap: var(--space-sm); }
 [part="Friends.request"] { padding: var(--space-xs) var(--space-sm); flex-wrap: wrap; }
-[part="Friends.row"] { width: stretch; min-width: 0; min-height: var(--size-touch); padding: var(--space-xs) var(--space-sm); justify-content: flex-start; }
+[part="Friends.row"] { flex: 1; min-width: 0; min-height: var(--size-touch); padding: var(--space-xs) var(--space-sm); justify-content: flex-start; }
 [part="Friends.row"] .face { display: flex; width: stretch; align-items: center; gap: var(--space-sm); }
 [part="Friends.avatar Friends.picture"] { position: relative; display: flex; flex: none; width: var(--size-lg); height: var(--size-lg); align-items: center; justify-content: center; }
 .avatar-icon { width: var(--size-sm); height: var(--size-sm); }

@@ -124,12 +124,12 @@
 .currency { width: var(--size-xs); height: var(--size-xs); flex: none; }
 .figure { font-variant-numeric: tabular-nums; white-space: nowrap; }
 .tabs { display: flex; width: stretch; flex: none; }
-.tabs-scroll { width: stretch; overflow-x: auto; overflow-y: hidden; }
+.tabs-scroll { width: stretch; overflow-x: auto; overflow-y: hidden; min-width: 0; }
 .tabs-row { display: flex; gap: var(--space-xs); }
 [part="Shop.tab"] { flex: none; min-height: var(--size-touch); padding: 0 var(--space-md); }
 .grid-scroll { width: stretch; flex: 1; min-height: 0; }
 .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(calc(var(--size-xxl) * 2.6), 1fr)); gap: var(--space-sm); width: stretch; padding: var(--space-xs); }
-[part="Shop.offer Shop.cell"] { position: relative; width: stretch; height: stretch; min-height: calc(var(--size-xxl) * 2.2); padding: var(--space-sm); align-items: stretch; justify-content: flex-start; }
+[part="Shop.offer Shop.cell"] { position: relative; width: stretch; height: stretch; min-height: calc(var(--size-xxl) * 2.2); padding: var(--space-sm); align-items: stretch; justify-content: flex-start; min-width: 0; }
 [part="Shop.offer Shop.cell"][data-featured=true] { grid-column: span 2; }
 [part="Shop.offer Shop.cell"] .face { display: flex; flex-direction: column; width: stretch; height: stretch; gap: var(--space-xs); }
 .art { display: flex; width: stretch; flex: 1; min-height: calc(var(--size-xl) * 1.5); align-items: center; justify-content: center; }

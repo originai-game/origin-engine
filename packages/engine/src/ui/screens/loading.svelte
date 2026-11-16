@@ -30,7 +30,7 @@
 </stack>
 
 <style>
-#Loading { width: stretch; height: stretch; }
+#Loading { width: stretch; height: stretch; min-height: 0; }
 #Art { object-fit: cover; width: stretch; height: stretch; position: absolute; inset-inline-start: 0; top: 0; inset-inline-end: 0; bottom: 0; }
 #Scrim { width: stretch; height: stretch; position: absolute; inset-inline-start: 0; top: 0; inset-inline-end: 0; bottom: 0; background: var(--scrim); }
 #Foot { width: stretch; height: stretch; padding: var(--space-3xl); gap: var(--space-md); }
@@ -48,6 +48,6 @@
 #Place { font-size: var(--type-lg-size); }
 }
 #Progress { width: stretch; gap: var(--space-md); align-items: center; }
-#Bar { width: stretch; height: var(--space-md); }
+#Bar { flex: 1; min-width: 0; height: var(--space-md); }
 #Percent { font: var(--text-caption); letter-spacing: var(--type-caption-tracking); color: var(--ink-muted); }
 </style>

@@ -52,7 +52,7 @@
 <style>
 [part="PuzzleGoals.frame"] [hidden] { display: none; }
 [part="PuzzleGoals.frame"] { display: flex; width: stretch; container-type: inline-size; }
-.hud { display: flex; width: stretch; align-items: stretch; gap: var(--space-md); padding: var(--space-sm) var(--space-md); }
+.hud { display: flex; width: stretch; align-items: stretch; gap: var(--space-md); padding: var(--space-sm) var(--space-md); min-width: 0; }
 [part="PuzzleGoals.counter PuzzleGoals.plate"] { display: flex; flex: none; flex-direction: column; align-items: center; justify-content: center; min-width: calc(var(--size-xl) * 1.4); padding: var(--space-xs) var(--space-sm); }
 [part="PuzzleGoals.label"], .score-label { white-space: nowrap; }
 [part="PuzzleGoals.figure"] { white-space: nowrap; }

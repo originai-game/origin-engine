@@ -24,7 +24,7 @@
 </ul>
 
 <style>
-.face { width: stretch; height: stretch; align-items: center; justify-content: center; }
+.face { width: stretch; height: stretch; align-items: center; justify-content: center; min-width: 0; }
 ul, ol { list-style-type: none; }
 /* The slots grow with the player's text scale, as AbilitySlot's do:
    --text-px is one CSS px at 100 % text. */

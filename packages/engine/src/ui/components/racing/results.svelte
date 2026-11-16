@@ -56,7 +56,7 @@
 [part="RacingResults.frame"] { display: flex; flex-direction: column; width: stretch; height: stretch; gap: var(--space-sm); container-type: inline-size; }
 [part="RacingResults.band"] { display: flex; width: stretch; align-items: center; flex: none; }
 [part="RacingResults.title"] { margin: 0; white-space: nowrap; text-overflow: ellipsis; overflow: hidden; }
-[part="RacingResults.heading"], [part="RacingResults.row"] { display: flex; width: stretch; align-items: center; gap: var(--space-md); padding: var(--space-xs) var(--space-md); }
+[part="RacingResults.heading"], [part="RacingResults.row"] { display: flex; flex: 1; min-width: 0; align-items: center; gap: var(--space-md); padding: var(--space-xs) var(--space-md); }
 [part="RacingResults.heading"] { flex: none; }
 .list { width: stretch; flex: 1; min-height: 0; }
 .rows { display: flex; flex-direction: column; width: stretch; gap: var(--space-xxs); }

@@ -47,10 +47,10 @@
 .band-end { width: var(--size-lg); height: var(--space-lg); flex: none; }
 .body { width: stretch; flex: 1; min-height: 0; }
 .columns { display: flex; width: stretch; gap: var(--space-md); padding: 0 var(--space-xs); }
-.column { display: flex; flex-direction: column; width: stretch; gap: var(--space-sm); }
+.column { display: flex; flex-direction: column; flex: 1; min-width: 0; gap: var(--space-sm); }
 .split { width: var(--stroke-hairline); align-self: stretch; }
 .group { display: flex; flex-direction: column; width: stretch; padding-bottom: var(--space-xs); }
-[part="RpgStats.row"] { display: flex; width: stretch; align-items: center; gap: var(--space-sm); padding: var(--space-sm) 0; }
+[part="RpgStats.row"] { display: flex; flex: 1; min-width: 0; align-items: center; gap: var(--space-sm); padding: var(--space-sm) 0; }
 .row-mark { width: var(--size-sm); height: var(--size-sm); flex: none; }
 .row-label { width: stretch; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .row-value { flex: none; font-variant-numeric: tabular-nums; white-space: nowrap; }

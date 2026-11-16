@@ -36,7 +36,7 @@
 @media (height < 600px) and (orientation: landscape) {
 .large, .large::part(base) { height: var(--control-md); }
 }
-#RootMenu { width: stretch; height: stretch; }
+#RootMenu { width: stretch; height: stretch; min-height: 0; }
 #Art { width: stretch; height: stretch; position: absolute; inset-inline-start: 0; top: 0; inset-inline-end: 0; bottom: 0; }
 #Background { width: stretch; height: stretch; position: absolute; inset-inline-start: 0; top: 0; inset-inline-end: 0; bottom: 0; }
 /* Centred while it fits; taller than the screen (a short landscape phone,

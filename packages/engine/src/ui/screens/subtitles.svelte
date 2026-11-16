@@ -13,7 +13,7 @@
 </column>
 
 <style>
-#Subtitles { width: stretch; height: stretch; justify-content: end; align-items: center; padding: var(--space-3xl) var(--space-xl); gap: var(--space-xs); }
+#Subtitles { width: stretch; height: stretch; justify-content: end; align-items: center; padding: var(--space-3xl) var(--space-xl); gap: var(--space-xs); min-height: 0; }
 .line { display: flex; gap: var(--space-sm); padding: var(--space-xs) var(--space-md); max-width: var(--measure-xxl); background: var(--hud); border-radius: var(--radius-control); }
 .speaker, .said { margin: 0; }
 .speaker { color: var(--accent); }

@@ -46,12 +46,12 @@
 #Plot { flex: 1; height: stretch; }
 .grid { position: absolute; inset-inline-start: 0; bottom: calc(var(--at) * var(--size-5xl)); width: stretch; height: var(--stroke-hairline); background: var(--line); }
 #Bars { display: flex; height: stretch; width: stretch; gap: var(--space-sm); align-items: end; padding: 0 var(--space-sm); }
-.column { width: stretch; height: stretch; justify-content: end; }
+.column { flex: 1; min-width: 0; height: stretch; justify-content: end; }
 .bar { width: stretch; height: calc(var(--v) * var(--size-5xl)); border-radius: var(--radius-control); background: var(--primary); opacity: var(--opacity-soft); }
 .bar.tinted { background: var(--c); }
 #Line { position: absolute; top: 0; inset-inline-start: 0; width: stretch; height: stretch; }
 #Area { fill: var(--gold); fill-opacity: var(--opacity-wash); }
 #Stroke { stroke: var(--gold); stroke-width: 2; stroke-linejoin: round; }
 #Categories { display: flex; gap: var(--space-sm); padding: 0 var(--space-sm) 0 calc(var(--size-md) + var(--space-xs) + var(--space-sm)); }
-.category { width: stretch; text-align: center; font-size: var(--font-step-sm); }
+.category { flex: 1; min-width: 0; text-align: center; font-size: var(--font-step-sm); }
 </style>

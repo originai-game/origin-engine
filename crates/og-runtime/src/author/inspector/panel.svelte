@@ -152,7 +152,7 @@
 #Inspector { width: var(--measure-md); height: stretch; display: flex; flex-direction: column; gap: var(--space-sm); padding: var(--space-md); }
 #Title { font: var(--text-base); color: var(--ink); white-space: nowrap; }
 .line { display: flex; flex-direction: row; align-items: center; gap: var(--space-xs); width: stretch; }
-.gap, .grow { flex-grow: 1; width: stretch; }
+.gap, .grow { flex: 1; min-width: 0; }
 .tool { height: var(--control-sm); min-height: var(--control-sm); font: var(--text-sm); }
 p, .label, .count { margin: 0; font: var(--text-sm); white-space: nowrap; text-overflow: ellipsis; overflow: hidden; }
 .muted { color: var(--ink-muted); }

@@ -43,7 +43,7 @@ button::part(base) { padding: 0 var(--space-md); }
 button, button::part(base) { height: var(--control-md); }
 button::part(base) { padding: 0 var(--space-lg); }
 }
-#Tutorial { width: stretch; height: stretch; }
+#Tutorial { width: stretch; height: stretch; min-height: 0; }
 #Highlight { width: stretch; height: stretch; position: absolute; inset-inline-start: 0; top: 0; inset-inline-end: 0; bottom: 0; }
 .card { width: stretch; max-width: var(--measure-md); gap: var(--space-sm); opacity: 1; scale: 1; transition: opacity var(--motion-enter), scale var(--motion-enter); }
 @starting-style { .card { opacity: 0; scale: 0.6; } }

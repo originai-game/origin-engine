@@ -34,7 +34,7 @@
 </stack>
 
 <style>
-#FilmChoices { width: stretch; height: stretch; }
+#FilmChoices { width: stretch; height: stretch; min-height: 0; }
 #Hotspots { position: absolute; top: 0; inset-inline-start: 0; width: stretch; height: stretch; }
 .hotspot { position: absolute; inset-inline-start: calc(var(--x) * 100%); top: calc(var(--y) * 100%); width: calc(var(--w) * 100%); height: calc(var(--h) * 100%); min-width: var(--control-lg); min-height: var(--control-lg); padding: 0; border-radius: var(--radius-card); border: var(--stroke-thick) solid var(--accent); background: color-mix(in srgb, var(--accent) 18%, transparent); box-shadow: 0 0 var(--space-md) var(--accent); }
 #Dock { width: stretch; height: stretch; justify-content: end; align-items: center; padding: var(--space-xxl) calc(env(safe-area-inset-right) + var(--space-xl)) calc(env(safe-area-inset-bottom) + var(--space-xxl)) calc(env(safe-area-inset-left) + var(--space-xl)); }
@@ -42,7 +42,7 @@
 #Timer { width: stretch; }
 #Choices { display: flex; flex-wrap: wrap; width: stretch; gap: var(--space-sm); }
 .choice { flex: 1 1 0; min-width: var(--measure-xs); min-height: var(--control-lg); }
-.body { width: stretch; align-items: center; gap: var(--space-xxs); }
+.body { width: stretch; align-items: center; gap: var(--space-xxs); min-width: 0; }
 .qte { width: stretch; }
 .chosen { outline: var(--stroke-regular) solid var(--accent); outline-offset: var(--stroke-regular); }
 @media (width < 600px), (height < 600px) {

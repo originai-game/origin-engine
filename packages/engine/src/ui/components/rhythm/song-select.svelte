@@ -85,7 +85,7 @@
 .body { display: flex; width: stretch; flex: 1; min-height: 0; gap: var(--space-lg); }
 .list { flex: 3; min-width: 0; height: stretch; }
 .rows { display: flex; flex-direction: column; width: stretch; gap: var(--space-xs); padding: var(--space-xxs); }
-[part="RhythmSongSelect.row"] { width: stretch; min-height: var(--size-touch); padding: var(--space-xs) var(--space-sm); }
+[part="RhythmSongSelect.row"] { width: stretch; min-height: var(--size-touch); padding: var(--space-xs) var(--space-sm); min-width: 0; }
 .face { display: flex; width: stretch; align-items: center; gap: var(--space-sm); }
 .thumb { flex: none; width: var(--size-lg); height: var(--size-lg); }
 img.thumb, img.cover { object-fit: cover; }

@@ -24,10 +24,10 @@
 <style>
 #Card { display: flex; flex-direction: column; width: var(--measure-sm); gap: var(--space-sm); }
 .hit { padding: var(--space-md); width: stretch; }
-#Face { display: flex; flex-direction: column; gap: var(--space-sm); width: stretch; }
+#Face { display: flex; flex-direction: column; gap: var(--space-sm); width: stretch; min-width: 0; }
 #Image { width: stretch; aspect-ratio: 1.778; border-radius: var(--radius-control); }
 #Head { display: flex; align-items: center; gap: var(--space-sm); }
-#Title { width: stretch; }
+#Title { flex: 1; min-width: 0; }
 #Body { margin: 0; color: var(--ink-muted); line-clamp: 3; }
 #Actions { display: flex; justify-content: end; gap: var(--space-sm); }
 </style>

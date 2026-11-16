@@ -49,11 +49,11 @@
 
 <style>
 #DataGrid { width: stretch; }
-#Head, .cells { display: grid; grid-template-columns: var(--tracks); gap: var(--space-md); width: stretch; }
+#Head, .cells { display: grid; grid-template-columns: var(--tracks); gap: var(--space-md); width: stretch; min-width: 0; }
 .heading { font-size: var(--font-step-sm); white-space: nowrap; }
 .numeric { text-align: end; font-family: var(--font-mono); }
 #Rows { width: stretch; height: var(--size-6xl); }
-.row { width: stretch; height: var(--row); padding: 0 var(--space-md); justify-content: start; }
+.row { width: stretch; height: var(--row); padding: 0 var(--space-md); justify-content: start; min-width: 0; }
 .cell { width: stretch; white-space: nowrap; text-overflow: ellipsis; }
 #Empty, #Error { width: stretch; padding: var(--space-xl); gap: var(--space-sm); align-items: center; }
 .mark { width: var(--size-lg); height: var(--size-lg); border-radius: var(--radius-capsule); align-items: center; justify-content: center; background: var(--control); }

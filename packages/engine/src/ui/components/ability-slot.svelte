@@ -40,7 +40,7 @@
 </div>
 
 <style>
-#Face { width: stretch; height: stretch; align-items: center; justify-content: center; }
+#Face { width: stretch; height: stretch; align-items: center; justify-content: center; min-width: 0; }
 /* The slot grows with the player's text scale, as the text in it does,
    so its icon, badges and ring keep their proportions:
    --text-px is one CSS px at 100 % text (rem is the body type step, 14 px

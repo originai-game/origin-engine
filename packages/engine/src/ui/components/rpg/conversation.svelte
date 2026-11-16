@@ -44,8 +44,8 @@
 .said { display: flex; flex-direction: column; width: 42%; gap: var(--space-sm); padding: var(--space-md) 0; flex: none; }
 [part="RpgConversation.name"], .line { margin: 0; }
 .line { display: block; }
-.replies { display: flex; flex-direction: column; margin: 0; padding: var(--space-md) 0; list-style: none; width: stretch; gap: var(--space-xxs); }
-.reply-item { width: stretch; }
+.replies { display: flex; flex-direction: column; margin: 0; padding: var(--space-md) 0; list-style: none; flex: 1; min-width: 0; gap: var(--space-xxs); }
+.reply-item { flex: 1; min-width: 0; }
 [part="RpgConversation.row"] { width: stretch; min-height: var(--size-touch); gap: var(--space-md); align-items: center; justify-content: flex-start; padding: var(--space-xs) var(--space-md); }
 [part="RpgConversation.row"] .face { display: flex; width: stretch; align-items: center; gap: var(--space-md); }
 .reply-number { flex: none; font-variant-numeric: tabular-nums; }
@@ -53,7 +53,7 @@
 .reply-mark { width: var(--space-lg); height: var(--space-lg); flex: none; visibility: hidden; }
 [part="RpgConversation.row"][aria-selected=true] .reply-mark { visibility: visible; }
 @media (pointer: fine) and (width >= 600px) { [part="RpgConversation.row"] { min-height: calc(var(--size-touch) * 0.8); } .replies { padding: var(--space-sm) 0; } }
-.go { display: flex; flex-direction: column; width: stretch; align-items: flex-end; justify-content: flex-end; padding: var(--space-md); }
+.go { display: flex; flex-direction: column; flex: 1; min-width: 0; align-items: flex-end; justify-content: flex-end; padding: var(--space-md); }
 @container (width < 720px) {
   [part="RpgConversation.frame"] { flex-wrap: wrap; gap: var(--space-sm); }
   .portrait { width: var(--size-xxl); height: var(--size-xxl); }

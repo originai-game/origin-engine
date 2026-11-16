@@ -50,10 +50,10 @@
 [part="RpgQuestLog.heading"] { display: flex; margin: 0; align-items: center; gap: var(--space-sm); padding: var(--space-xs) var(--space-sm); }
 .group-mark { width: var(--space-md); height: var(--space-md); flex: none; }
 .rows { display: flex; flex-direction: column; width: stretch; }
-[part="RpgQuestLog.row"] { width: stretch; min-height: var(--size-touch); align-items: center; gap: var(--space-sm); padding: var(--space-xs) var(--space-sm) var(--space-xs) var(--space-md); justify-content: flex-start; }
+[part="RpgQuestLog.row"] { width: stretch; min-height: var(--size-touch); align-items: center; gap: var(--space-sm); padding: var(--space-xs) var(--space-sm) var(--space-xs) var(--space-md); justify-content: flex-start; min-width: 0; }
 [part="RpgQuestLog.row"] .face { display: flex; width: stretch; align-items: center; gap: var(--space-sm); }
 .quest-mark { width: var(--space-lg); height: var(--space-lg); flex: none; }
-.quest-name { width: stretch; text-align: start; white-space: nowrap; text-overflow: ellipsis; overflow: hidden; }
+.quest-name { flex: 1; min-width: 0; text-align: start; white-space: nowrap; text-overflow: ellipsis; overflow: hidden; }
 .quest-open { display: none; width: var(--space-md); height: var(--space-md); flex: none; }
 [part="RpgQuestLog.row"][aria-selected=true] .quest-open { display: block; }
 .quest-open:dir(rtl) { transform: scaleX(-1); }

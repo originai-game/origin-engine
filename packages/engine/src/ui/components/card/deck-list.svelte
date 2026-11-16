@@ -77,5 +77,5 @@
 .empty { display: flex; width: stretch; flex: 1; align-items: center; justify-content: center; }
 .empty-text { margin: 0; }
 .foot { display: flex; width: stretch; flex: none; }
-#Confirm { width: stretch; min-height: var(--size-touch); }
+#Confirm { width: stretch; min-height: var(--size-touch); min-width: 0; }
 </style>

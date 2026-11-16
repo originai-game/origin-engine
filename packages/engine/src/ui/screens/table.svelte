@@ -23,5 +23,5 @@
 #Cells { padding: 0 var(--space-lg); }
 .heading { margin: 0; }
 .cell { width: stretch; justify-content: start; }
-#Body { width: stretch; height: stretch; }
+#Body { width: stretch; flex: 1; min-height: 0; }
 </style>

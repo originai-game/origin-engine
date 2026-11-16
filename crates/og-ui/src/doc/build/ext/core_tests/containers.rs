@@ -15,7 +15,7 @@ const DOC: &str = r#"<meta name="screen" content="q" data-layer="hud">
 <style>
 #Root { width: stretch; gap: 0px; padding: 0px; }
 #Side { width: 150px; height: 120px; padding: 0px; container: side rail / inline-size; }
-#Main { width: stretch; height: 200px; padding: 0px; container-type: size; }
+#Main { flex: 1; min-width: 0; height: 200px; padding: 0px; container-type: size; }
 #Inner { width: stretch; padding: 0px; gap: 0px; }
 #Wide { display: none; padding: 0px; }
 #WideDot { width: 6px; height: 4px; }

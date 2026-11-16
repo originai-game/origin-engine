@@ -81,7 +81,7 @@
   .foot { gap: var(--space-sm); padding-top: var(--space-xs); }
   [part="RpgBackpack.tab"] { min-height: calc(var(--size-touch) * 0.85); }
 }
-.tabs-scroll { width: stretch; overflow-x: auto; overflow-y: hidden; }
+.tabs-scroll { width: stretch; overflow-x: auto; overflow-y: hidden; min-width: 0; }
 .tabs-row { display: flex; gap: 0; justify-content: space-between; width: stretch; }
 [part="RpgBackpack.tab"] { flex: none; min-height: var(--size-touch); padding: 0; }
 .grid-scroll { width: stretch; flex: 1; min-height: 0; }
@@ -99,8 +99,8 @@
 .empty-mark { width: var(--size-lg); height: var(--size-lg); }
 .empty-text { margin: 0; }
 .foot { display: flex; width: stretch; gap: var(--space-lg); align-items: center; padding: var(--space-sm) var(--space-xs) 0; }
-.weight { display: flex; width: stretch; gap: var(--space-sm); align-items: center; }
-.weight-text { display: flex; flex-direction: column; width: stretch; gap: var(--space-xs); }
+.weight { display: flex; flex: 1; min-width: 0; gap: var(--space-sm); align-items: center; }
+.weight-text { display: flex; flex-direction: column; flex: 1; min-width: 0; gap: var(--space-xs); }
 .weight-line { display: flex; gap: var(--space-sm); align-items: baseline; white-space: nowrap; }
 .foot-mark { width: var(--size-sm); height: var(--size-sm); flex: none; }
 .bar { width: stretch; height: var(--space-sm); }

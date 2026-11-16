@@ -179,14 +179,14 @@ pub const SAMPLE_DOC: &str = r#"<meta name="component" content="sample">
 #Title { font: var(--text-display-sm); letter-spacing: var(--type-display-sm-tracking); }
 #Subtitle { font: var(--text-meta); letter-spacing: var(--type-meta-tracking); color: var(--ink-muted); }
 #Start, #Options, #Quit { width: stretch; }
-#Store { width: stretch; height: stretch; }
+#Store { flex: 1; min-width: 0; height: stretch; }
 #Header { width: stretch; align-items: center; gap: var(--space-sm); }
 #Heading { font: var(--text-xl); letter-spacing: var(--type-xl-tracking); }
-#Engine { width: stretch; color: var(--ink-muted); }
+#Engine { flex: 1; min-width: 0; color: var(--ink-muted); }
 #Coins { font: var(--text-meta); letter-spacing: var(--type-meta-tracking); color: var(--highlight); white-space: nowrap; }
-#List { width: stretch; height: stretch; gap: var(--space-xs); }
+#List { width: stretch; flex: 1; min-height: 0; gap: var(--space-xs); }
 #Row { width: stretch; padding: var(--space-xs) var(--space-md); align-items: center; background: var(--control); border-radius: var(--radius-control); }
-#Name { width: stretch; }
+#Name { flex: 1; min-width: 0; }
 .small, .small::part(base) { height: var(--control-sm); }
 .small::part(base) { padding: 0 var(--space-md); }
 #Tags { width: stretch; flex-wrap: wrap; gap: var(--space-xs); }

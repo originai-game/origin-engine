@@ -23,7 +23,7 @@
 #SkeletonGroup { width: stretch; gap: var(--space-lg); animation-name: breathe; animation-duration: var(--motion-duration-breathe); animation-timing-function: var(--motion-easing-in-out); animation-iteration-count: infinite; }
 .item { width: stretch; gap: var(--space-sm); }
 .art { display: none; background: var(--control-strong); border-radius: var(--radius-block); }
-.lines { width: stretch; gap: var(--space-sm); }
+.lines { flex: 1; min-width: 0; gap: var(--space-sm); }
 .piece { width: stretch; height: var(--space-md); border-radius: var(--radius-capsule); background: linear-gradient(90deg, transparent 30%, var(--sheen) 50%, transparent 70%), var(--control-strong); }
 .piece.last { width: 62%; }
 .avatar .art { display: block; width: var(--size-lg); height: var(--size-lg); border-radius: var(--radius-capsule); }

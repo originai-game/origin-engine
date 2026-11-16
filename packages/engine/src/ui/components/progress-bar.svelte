@@ -23,13 +23,13 @@
 </div>
 
 <style>
-#ProgressBar { width: stretch; gap: var(--space-xs); --tone: var(--primary); }
+#ProgressBar { width: stretch; gap: var(--space-xs); --tone: var(--primary); min-width: 0; }
 #ProgressBar.success { --tone: var(--success); }
 #ProgressBar.warn { --tone: var(--warn); }
 #ProgressBar.danger { --tone: var(--danger); }
 #ProgressBar.info { --tone: var(--info); }
 #Head { display: flex; width: stretch; gap: var(--space-sm); align-items: end; }
-[part="ProgressBar.label"] { font: var(--text-sm); font-family: var(--label-font); width: stretch; white-space: nowrap; text-overflow: ellipsis; }
+[part="ProgressBar.label"] { font: var(--text-sm); font-family: var(--label-font); flex: 1; min-width: 0; white-space: nowrap; text-overflow: ellipsis; }
 [part="ProgressBar.figure"] { font: var(--text-sm); font-family: var(--figure-font); white-space: nowrap; }
 [part="ProgressBar.track ProgressBar.well"] { width: stretch; height: var(--space-sm); border-radius: var(--meter-radius); background: var(--control-strong); overflow: hidden; box-shadow: var(--meter-shadow); }
 @media (width < 600px) { [part="ProgressBar.track ProgressBar.well"] { height: calc(var(--space-xs) + var(--space-xxs)); } }

@@ -65,18 +65,18 @@
 </column>
 
 <style>
-#Results { width: stretch; height: stretch; padding: var(--space-xxl); justify-content: center; align-items: center; }
+#Results { width: stretch; height: stretch; padding: var(--space-xxl); justify-content: center; align-items: center; min-height: 0; }
 @media (width < 600px), (height < 600px) {
 #Results { padding: var(--space-md); }
 }
-#Panel { width: stretch; max-width: var(--measure-3xl); height: stretch; max-height: var(--measure-3xl); gap: var(--space-lg); }
+#Panel { width: stretch; max-width: var(--measure-3xl); height: stretch; max-height: var(--measure-3xl); gap: var(--space-lg); min-height: 0; }
 @media (width < 600px), (height < 600px) {
 #Panel { gap: var(--space-md); }
 }
 @media (height < 600px) and (orientation: landscape) {
 #Panel { flex-direction: row; }
 }
-#Page { width: stretch; height: stretch; gap: var(--space-lg); -og-scroll-fade: var(--space-xxl); }
+#Page { width: stretch; flex: 1; min-height: 0; gap: var(--space-lg); -og-scroll-fade: var(--space-xxl); }
 @media (width < 600px), (height < 600px) {
 #Page { gap: var(--space-md); }
 }
@@ -84,7 +84,7 @@
 #Page { gap: var(--space-sm); }
 }
 #Head { width: stretch; gap: var(--space-lg); align-items: center; }
-#Text { width: stretch; gap: var(--space-xs); }
+#Text { flex: 1; min-width: 0; gap: var(--space-xs); }
 #Title { font-size: var(--type-xl4-size); }
 @media (width < 600px), (height < 600px) {
 #Title { font-size: var(--type-xl2-size); }
@@ -94,7 +94,7 @@
 #Gained { color: var(--xp); }
 #Level { width: stretch; gap: var(--space-md); align-items: center; }
 #LevelValue { font: var(--text-lg); letter-spacing: var(--type-lg-tracking); }
-#Xp { width: stretch; }
+#Xp { flex: 1; min-width: 0; }
 #Grade { font: var(--text-display-lg); letter-spacing: var(--type-display-lg-tracking); }
 @media (width < 600px), (height < 600px) {
 #Grade { font: var(--text-xl4); letter-spacing: var(--type-xl4-tracking); }

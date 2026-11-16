@@ -29,14 +29,14 @@
 </row>
 
 <style>
-#Pause { width: stretch; height: stretch; padding: var(--space-xxl); gap: var(--space-xl); justify-content: center; align-items: center; }
+#Pause { width: stretch; height: stretch; padding: var(--space-xxl); gap: var(--space-xl); justify-content: center; align-items: center; min-height: 0; }
 @media (width < 600px), (height < 600px) {
 #Pause { padding: var(--space-lg); }
 }
-#Panel { width: stretch; max-width: var(--measure-lg); gap: var(--space-lg); opacity: 1; translate: 0 0; transition: opacity var(--motion-enter), translate var(--motion-enter); }
+#Panel { flex: 1; min-width: 0; max-width: var(--measure-lg); gap: var(--space-lg); opacity: 1; translate: 0 0; transition: opacity var(--motion-enter), translate var(--motion-enter); }
 @starting-style { #Panel { opacity: 0; translate: 0 var(--space-xl); } }
 @media (height < 600px) and (orientation: landscape) {
-#Panel { width: stretch; max-width: var(--measure-xl); gap: var(--space-sm); }
+#Panel { flex: 1; min-width: 0; max-width: var(--measure-xl); gap: var(--space-sm); }
 }
 #Title { font-size: var(--type-xl2-size); }
 #Status { width: stretch; gap: var(--space-xs); }

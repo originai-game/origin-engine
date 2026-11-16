@@ -54,7 +54,7 @@ button, button.compact, button::part(base), button.compact::part(base) { height:
 button::part(base), button.compact::part(base) { padding: 0 var(--space-lg); }
 button.compact[variant="ghost"]::part(base) { padding-inline: calc(var(--space-lg) - var(--button-border-width)); }
 }
-#Editor { width: stretch; height: stretch; }
+#Editor { width: stretch; height: stretch; min-height: 0; }
 #Toolbar { width: stretch; gap: var(--space-sm); align-items: center; flex-wrap: wrap; }
 #Select.selection-off { opacity: var(--opacity-soft); }
 #Select.selection-on { opacity: 1; }
@@ -66,7 +66,7 @@ button.compact[variant="ghost"]::part(base) { padding-inline: calc(var(--space-l
 #Scale.selection-on { opacity: 1; }
 #Play.run-stopped { opacity: 1; }
 #Play.run-playing { opacity: 0.8; }
-#Body { width: stretch; height: stretch; grid-template-columns: var(--measure-sm) 1fr var(--measure-md); grid-template-rows: 1fr var(--measure-xs); grid-template-areas: "tree view inspector" "tree catalogue inspector"; }
+#Body { width: stretch; flex: 1; min-height: 0; grid-template-columns: var(--measure-sm) 1fr var(--measure-md); grid-template-rows: 1fr var(--measure-xs); grid-template-areas: "tree view inspector" "tree catalogue inspector"; }
 @media (600px <= width < 1024px) and (height >= 600px) {
 #Body { grid-template-columns: var(--measure-xs) 1fr var(--measure-sm); }
 }
@@ -78,7 +78,7 @@ button.compact[variant="ghost"]::part(base) { padding-inline: calc(var(--space-l
 #TreePanel { grid-area: panel; }
 }
 #TreePanelTitle { font: var(--text-caption); letter-spacing: var(--type-caption-tracking); }
-#TreePanelHierarchy { width: stretch; height: stretch; }
+#TreePanelHierarchy { width: stretch; flex: 1; min-height: 0; }
 #View { width: stretch; height: stretch; grid-area: view; }
 #Tabs { width: stretch; gap: var(--space-sm); padding: var(--space-sm); grid-area: tabs; }
 #InspectorPanel { width: stretch; height: stretch; gap: var(--space-sm); grid-area: inspector; }
@@ -86,14 +86,14 @@ button.compact[variant="ghost"]::part(base) { padding-inline: calc(var(--space-l
 #InspectorPanel { grid-area: panel; }
 }
 #Selected { font-size: var(--type-lg-size); line-clamp: 1; text-overflow: ellipsis; }
-#Scroll { width: stretch; height: stretch; }
+#Scroll { width: stretch; flex: 1; min-height: 0; }
 #ScrollInspector { width: stretch; }
 #CataloguePanel { width: stretch; height: stretch; gap: var(--space-sm); grid-area: catalogue; }
 @media (width < 600px) and (orientation: portrait) {
 #CataloguePanel { grid-area: panel; }
 }
 #CataloguePanelTitle { font: var(--text-caption); letter-spacing: var(--type-caption-tracking); }
-#CataloguePanelCatalogue { width: stretch; height: stretch; }
+#CataloguePanelCatalogue { width: stretch; flex: 1; min-height: 0; }
 @media (width < 600px) and (orientation: portrait) {
 #Tabs { display: initial; }
 #TreePanel, #InspectorPanel, #CataloguePanel { display: none; }

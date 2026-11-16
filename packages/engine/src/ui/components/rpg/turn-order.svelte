@@ -31,7 +31,7 @@
 [part="RpgTurnOrder.frame"] { display: flex; flex-direction: column; width: stretch; gap: var(--space-xs); align-items: center; }
 .track { display: flex; width: stretch; align-items: center; gap: var(--space-xs); }
 .end { width: var(--size-sm); height: var(--size-md); flex: none; }
-.turns { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; gap: var(--space-xs); width: stretch; margin: 0; padding: var(--space-xs) 0; list-style: none; }
+.turns { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; gap: var(--space-xs); flex: 1; min-width: 0; margin: 0; padding: var(--space-xs) 0; list-style: none; }
 [part="RpgTurnOrder.cell"] { display: flex; flex-direction: column; width: stretch; align-items: center; }
 .ring { width: stretch; max-width: var(--size-xxl); aspect-ratio: 1; overflow: hidden; border-radius: 50%; }
 .portrait { width: stretch; height: stretch; object-fit: cover; object-position: center top; }
