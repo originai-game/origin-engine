@@ -225,7 +225,12 @@ li::marker { content: counter(list-item, thumbs); color: #ff0000; }"#,
     };
     assert!(near(ink("B"), Srgba::rgb(255, 0, 0)));
     assert!(!near(ink("b"), Srgba::rgb(255, 0, 0)));
-    for bad in ["symbols(alphabetic \"x\")", "symbols()", "12px", "thumbs thumbs"] {
+    for bad in [
+        "symbols(alphabetic \"x\")",
+        "symbols()",
+        "12px",
+        "thumbs thumbs",
+    ] {
         let errors = UiDocument::parse(
             "ui/t.svelte",
             &format!("<meta name=\"component\" content=\"t\"><ul><li>A</li></ul><style>li {{ list-style-type: {bad}; }}</style>"),

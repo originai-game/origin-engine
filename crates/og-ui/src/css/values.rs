@@ -492,8 +492,8 @@ fn conv(prop: &str) -> Conv {
         "rotate" => Conv::Angle,
         "background" | "fadeInto" | "color" | "ink" => Conv::Paint,
         "align" | "cross" | "direction" | "frame" | "textAlign" | "verticalAlign"
-        | "captionSide" | "fit" | "display" | "markerPosition" | "userSelect"
-        | "appearance" | "labelDirection" | "fitMin" => Conv::Kebab,
+        | "captionSide" | "fit" | "display" | "markerPosition" | "userSelect" | "appearance"
+        | "labelDirection" | "fitMin" => Conv::Kebab,
         "fieldSizing" => Conv::Kebab,
         "wrap" => Conv::Bool("wrap", "nowrap"),
         "uppercase" => Conv::Bool("uppercase", "none"),
