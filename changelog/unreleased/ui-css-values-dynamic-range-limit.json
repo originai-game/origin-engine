@@ -1,0 +1,6 @@
+{
+  "simulation": "unchanged",
+  "added": [
+    {"member":"ui","summary":"CSS `dynamic-range-limit: standard | constrained | no-limit | dynamic-range-limit-mix()` (CSS Color HDR 1) on a document's root element caps how far over SDR white the frame goes on an extended-range surface. `standard` caps it at SDR white, `constrained` at one stop over (2×), and `no-limit` (the initial value) at the display's headroom. A mix is weighted in stops. The display pass clamps there, and the tone curves roll off to it. Where several documents' roots declare one, the most limiting wins."}
+  ]
+}

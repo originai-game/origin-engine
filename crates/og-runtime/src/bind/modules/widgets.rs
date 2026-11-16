@@ -13,6 +13,9 @@ pub(crate) fn emit(rs: &mut super::extract::RenderState, shifts: &og_core::IdMap
     // The player's colour vision filter over the whole frame (docs/ui.md
     // §3.2), whether or not the UI draws anything this frame.
     rs.scene.look.color_filter = ui.theme().color_filter();
+    // How far over SDR white the frame goes: the documents' CSS
+    // dynamic-range-limit, which the display pass ends it at.
+    rs.scene.look.range_limit = ui.range_limit();
     let frame = ui.frame();
     let world_frame = ui.world_frame();
     if frame.items.is_empty() && world_frame.batches.is_empty() {

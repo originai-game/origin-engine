@@ -303,6 +303,10 @@ proof("url-referrer-policy", "remote_images", "remote_images_load_under_their_re
 not_applicable("namespace",
                "A document's elements are in one namespace (a .svelte document is not XML), so @namespace prefixes "
                "select nothing apart; the rule is accepted and has no effect.")
+proof("dynamic-range-limit", "css_paint", "dynamic_range_limit_sets_the_frames_peak",
+      "A document root's dynamic-range-limit is the frame's (Ui::range_limit, the most limiting of several roots); on an 8x display standard ends it at 1x, constrained at 2x (one stop), no-limit and none declared at 8x, "
+      "an even mix at 2^1.5 and the spec's nested dynamic-range-limit-mix() at 2^1.9 (normalized weights mixed in stops); a mix without a percentage or over 100 % is refused. og-render's display unit test checks the transfer's clamp and the tone curves end at that peak per keyword. "
+      "A child element's own limit does not cap its content apart from the rest of the frame, and the frames on an HDR surface await the milestone's GPU look.")
 proof("forced-colors", "css_paint", "forced_colors_force_author_colours_to_system_colours",
       "With Viewport::forced_colors (the web shell's matchMedia), (forced-colors: active) matches; an author's background is the system colour paired with the element's color (Canvas, ButtonFace behind ButtonText) at its own alpha (50 % stays 50 %), "
       "a border's colour is currentcolor (the inherited ink), box-shadow and a gradient without url() are none, a system colour stands and color reverts to the ink; forced-color-adjust: none opts out an element and, inherited, its child; "

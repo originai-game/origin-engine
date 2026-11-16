@@ -401,6 +401,13 @@ impl Ui {
         self.paint_theme()
     }
 
+    /// How far over SDR white the frame may go: the documents' CSS
+    /// `dynamic-range-limit` ([`Docs::range_limit`]). The host hands it to
+    /// the renderer's display pass.
+    pub fn range_limit(&self) -> og_draw::RangeLimit {
+        self.docs.range_limit()
+    }
+
     pub fn set_theme(&mut self, theme: Theme) {
         self.style.write_theme_tokens(theme, &self.env);
         self.env.configured = theme;

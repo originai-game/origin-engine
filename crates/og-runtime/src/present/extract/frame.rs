@@ -99,6 +99,7 @@ fn begin(world: &World, rs: &mut RenderState, h: &mut Hierarchy) -> Begun {
     scene.sprite.sprite_meshes.clear();
     scene.ui.overlay = None;
     scene.look.color_filter = None;
+    scene.look.range_limit = Default::default();
     scene.objects.joint_palettes.clear();
     scene.objects.skinned_instances.clear();
     scene.objects.crowds.clear();

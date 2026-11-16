@@ -154,6 +154,30 @@ impl Docs {
             .map(|(m, r)| (m.clone(), r.document.clone()))
             .collect()
     }
+    /// How far over SDR white the frame may go: the computed
+    /// `dynamic-range-limit` (CSS Color HDR 1) of the mounted documents'
+    /// root elements, the most limiting where they differ (the lowest peak
+    /// on a display with four stops of headroom, 16×); `no-limit`, the
+    /// initial value, when none declares one.
+    pub fn range_limit(&self) -> og_draw::RangeLimit {
+        let r = &self.state.memory.retained;
+        r.roots
+            .values()
+            .filter_map(|root| match root {
+                crate::doc::build::instances::Child::Element(n) => r.elements.get(n),
+                _ => None,
+            })
+            .filter_map(|e| {
+                let values = &e.resolved.as_ref()?.values.cascade.values;
+                let (_, v, _) = values
+                    .iter()
+                    .rev()
+                    .find(|(n, ..)| n == "dynamic-range-limit")?;
+                crate::css::text_css::range_limit(v)
+            })
+            .min_by(|a, b| a.peak(16.0).total_cmp(&b.peak(16.0)))
+            .unwrap_or_default()
+    }
     /// The bindings the mounts evaluated and the elements they reconciled this tick.
     pub fn mount_counts(&self) -> (usize, usize) {
         let r = &self.state.memory.retained;

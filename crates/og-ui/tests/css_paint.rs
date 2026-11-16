@@ -2616,3 +2616,71 @@ fn glass_takes_any_backdrop_filter_chain() {
     );
     assert_eq!(ops.len(), 7);
 }
+
+/// CSS Color HDR 1 `dynamic-range-limit` on a document's root is the
+/// frame's: the peak the display pass ends it at, worked on a display with
+/// 8× headroom (3 stops). `standard` is SDR white (1×), `constrained` one
+/// stop (2×), `no-limit` and no declaration the display's 8×. A mix is its
+/// computed weights (§3.3): the spec's nested example, normalized from 10,
+/// 20 and 20 %, is standard 10 %, constrained 40 %, no-limit 50 %, so
+/// 0.4 × 1 + 0.5 × 3 = 1.9 stops, 2^1.9 = 3.73×. A value with no
+/// percentage, or one over 100 %, is refused.
+///
+/// Ways it could fail: the mix's percentages not normalized (the example
+/// summing to 50 % would end at 2^0.95), a nested mix read as a keyword,
+/// the limit read from a child rather than the root, or mixed in linear
+/// luminance rather than stops.
+#[test]
+fn dynamic_range_limit_sets_the_frames_peak() {
+    let nested = "dynamic-range-limit-mix(no-limit 10%, dynamic-range-limit-mix(standard 25%, constrained 75%) 20%, dynamic-range-limit-mix(constrained 10%, no-limit 30%) 20%)";
+    for (root, child, want) in [
+        ("", "standard", 8.0),
+        ("standard", "no-limit", 1.0),
+        ("constrained", "", 2.0),
+        ("no-limit", "", 8.0),
+        (
+            "dynamic-range-limit-mix(standard 50%, no-limit 50%)",
+            "",
+            2f32.powf(1.5),
+        ),
+        (nested, "", 2f32.powf(1.9)),
+    ] {
+        let decl = |v: &str| {
+            if v.is_empty() {
+                String::new()
+            } else {
+                format!("dynamic-range-limit: {v};")
+            }
+        };
+        let text = format!(
+            "<meta name=\"component\" content=\"t\">\n<column id=\"Root\"><div id=\"Kid\"></div></column>\n<style>\n#Root {{ {} }}\n#Kid {{ {} }}\n</style>",
+            decl(root),
+            decl(child)
+        );
+        let d = Doc::new(&text, &[]);
+        assert!(
+            d.ui.frame().warnings.is_empty(),
+            "{:?}",
+            d.ui.frame().warnings
+        );
+        let peak = d.ui.range_limit().peak(8.0);
+        assert!(
+            (peak - want).abs() < 1e-3,
+            "{root} / {child}: {peak}, not {want}"
+        );
+    }
+    for bad in [
+        "dynamic-range-limit-mix(standard, no-limit 50%)",
+        "dynamic-range-limit-mix(standard 150%)",
+        "high",
+    ] {
+        let text = format!(
+            "<meta name=\"component\" content=\"t\">\n<column id=\"Root\"></column>\n<style>#Root {{ dynamic-range-limit: {bad}; }}</style>"
+        );
+        let e = UiDocument::parse("ui/t.svelte", &text).err();
+        assert!(
+            e.is_some_and(|e| format!("{e:?}").contains("dynamic-range-limit")),
+            "{bad}"
+        );
+    }
+}

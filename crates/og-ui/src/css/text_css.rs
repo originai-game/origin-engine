@@ -79,6 +79,9 @@ pub(crate) const INHERITED: &[&str] = &[
     // CSS Color Adjust 1 §3.2: whether forced colours mode forces its
     // colours (the cascade reads it, `css::forced_colors`).
     "forced-color-adjust",
+    // CSS Color HDR 1 §3.1: how far over SDR white the frame may go (the
+    // documents' roots' value is the frame's, `Ui::range_limit`).
+    "dynamic-range-limit",
     // CSS Text Decoration 4 §3: emphasis marks.
     "text-emphasis-style",
     "text-emphasis-color",
@@ -866,6 +869,7 @@ fn check(name: &str, v: &str) -> Result<(), String> {
         }
         "caret-shape" => matches!(v, "auto" | "bar" | "block" | "underscore"),
         "forced-color-adjust" => matches!(v, "auto" | "none" | "preserve-parent-color"),
+        "dynamic-range-limit" => range_limit(v).is_some(),
         "caret-color" | "accent-color" if v == "auto" => true,
         "text-decoration-color"
         | "text-emphasis-color"
@@ -1655,6 +1659,62 @@ pub(crate) fn scheme_dark(value: &str, style_dark: bool) -> bool {
         (false, true) => true,
         _ => style_dark,
     }
+}
+
+/// A `dynamic-range-limit` value as its computed weights (CSS Color HDR 1
+/// §3.3): a keyword is all of its own; `dynamic-range-limit-mix()`
+/// normalizes its percentages to sum to 100 % and sums each argument's
+/// weights by them, nested mixes included. `None`: not a value.
+pub(crate) fn range_limit(v: &str) -> Option<og_draw::RangeLimit> {
+    fn of(t: &[og_css::Tok]) -> Option<og_draw::RangeLimit> {
+        use og_css::Tok;
+        let keyword = |standard, constrained, no_limit| og_draw::RangeLimit {
+            standard,
+            constrained,
+            no_limit,
+        };
+        match t {
+            [Tok::Ident(w)] => match w.to_ascii_lowercase().as_str() {
+                "standard" => Some(keyword(1.0, 0.0, 0.0)),
+                "constrained" => Some(keyword(0.0, 1.0, 0.0)),
+                "no-limit" => Some(keyword(0.0, 0.0, 1.0)),
+                _ => None,
+            },
+            [Tok::Func(f, args)] if f.eq_ignore_ascii_case("dynamic-range-limit-mix") => {
+                let mut parts = Vec::new();
+                for arg in args {
+                    let at = arg
+                        .iter()
+                        .position(|t| matches!(t, Tok::Num(_, u) if u == "%"))?;
+                    let Tok::Num(n, _) = &arg[at] else {
+                        return None;
+                    };
+                    let p: f32 = n.parse().ok().filter(|p| (0.0..=100.0).contains(p))?;
+                    let rest: Vec<Tok> = arg
+                        .iter()
+                        .enumerate()
+                        .filter(|(k, _)| *k != at)
+                        .map(|(_, t)| t.clone())
+                        .collect();
+                    parts.push((of(&rest)?, p));
+                }
+                let sum: f32 = parts.iter().map(|(_, p)| p).sum();
+                if parts.is_empty() || sum <= 0.0 {
+                    return None;
+                }
+                let mut mixed = keyword(0.0, 0.0, 0.0);
+                for (l, p) in parts {
+                    let w = p / sum;
+                    mixed.standard += l.standard * w;
+                    mixed.constrained += l.constrained * w;
+                    mixed.no_limit += l.no_limit * w;
+                }
+                Some(mixed)
+            }
+            _ => None,
+        }
+    }
+    of(&og_css::tokens(v.trim()).ok()?)
 }
 
 /// A variant keyword's OpenType features (CSS Fonts 4 §6.4–6.11).
