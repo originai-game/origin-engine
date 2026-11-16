@@ -1,0 +1,12 @@
+type project
+version 1
+---
+name "Currency review"
+id "currency-sheet"
+entry "src/main.ts"
+profile "2d"
+tick 60
+seed 1
+ui {
+  screen "states-default" "style:default;page:states"
+}
