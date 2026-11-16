@@ -1147,8 +1147,8 @@ afresh when it opens. `details::details-content` (Pseudo-Elements 4)
 styles the content box under the summary with every box property over
 the disclosure's own padding and gap; a closed disclosure hides the box
 whole (CSS keeps its margins, borders and background and hides only its
-contents), and `details[open]` follows a literal or one-way `open`, not
-`bind:open` or the player's toggle.
+contents), and `details[open]` follows the element's open state (a
+literal or bound `open`, or the player's toggle).
 
 `<meter>` dresses its fill by HTML's region, `Meter.fill[region=optimum |
 suboptimum | poor]` (undressed: success, warn, danger), over `Meter.track`;
