@@ -118,6 +118,8 @@ pub struct DocState {
     pub selection: BTreeMap<u64, Arc<crate::doc::generated::Selection>>,
     /// `::target-text` styles by render key.
     pub target_text: BTreeMap<u64, Arc<crate::doc::generated::Selection>>,
+    /// Each `::highlight(<name>)` style by render key, then name.
+    pub highlights: BTreeMap<u64, BTreeMap<String, crate::doc::generated::Selection>>,
 }
 
 /// The element a `#fragment` link indicates (CSS `:target`).

@@ -445,6 +445,11 @@ pub struct Interaction {
     /// with them.
     pub(crate) target_text: Vec<(crate::ui::select::SelectEnd, crate::ui::select::SelectEnd)>,
     pub(crate) target_marked: Vec<u64>,
+    /// The custom highlights registered, in order
+    /// ([`crate::ui::highlight`]), and the text elements last marked with
+    /// them.
+    pub(crate) highlights: Vec<crate::ui::highlight::Registered>,
+    pub(crate) highlight_marked: Vec<u64>,
     /// Last frame's drop targets and dragged elements: their paths, and the
     /// tags each target takes.
     pub(crate) drop_paths: IdMap<u64, String>,

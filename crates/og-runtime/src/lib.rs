@@ -107,10 +107,11 @@ pub use bind::modules::{
     og_ui_overlaps, og_ui_pause, og_ui_paused, og_ui_play, og_ui_play_info, og_ui_play_timeline,
     og_ui_pop, og_ui_preview_viewport, og_ui_push, og_ui_replace, og_ui_resume, og_ui_reverse,
     og_ui_save_edits, og_ui_screen_vm, og_ui_scroll_into_view, og_ui_scroll_state, og_ui_seconds,
-    og_ui_seek, og_ui_set_device, og_ui_set_focus, og_ui_set_haptics, og_ui_set_hud_edit,
-    og_ui_set_hud_layout, og_ui_set_hud_player, og_ui_set_navigation, og_ui_set_players,
-    og_ui_set_prop, og_ui_set_virtual_cursor, og_ui_stop, og_ui_theme, og_ui_tick, og_ui_toast,
-    og_ui_viewport, og_ui_virtual_cursor, og_ui_visual_state, set_viewport,
+    og_ui_seek, og_ui_set_device, og_ui_set_focus, og_ui_set_haptics, og_ui_set_highlight,
+    og_ui_set_hud_edit, og_ui_set_hud_layout, og_ui_set_hud_player, og_ui_set_navigation,
+    og_ui_set_players, og_ui_set_prop, og_ui_set_virtual_cursor, og_ui_stop, og_ui_theme,
+    og_ui_tick, og_ui_toast, og_ui_viewport, og_ui_virtual_cursor, og_ui_visual_state,
+    set_viewport,
 };
 pub use bind::motion::{
     og_motion_capabilities, og_motion_clear, og_motion_face, og_motion_jump, og_motion_look_at,

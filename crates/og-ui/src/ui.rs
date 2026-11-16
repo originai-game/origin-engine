@@ -19,6 +19,7 @@ mod finish;
 mod inspect;
 mod node_draw;
 pub(crate) use node_draw::{VerticalLine, VerticalRun, vertical_run};
+pub(crate) mod highlight;
 pub(crate) mod resize;
 pub(crate) mod scene_text;
 pub(crate) mod select;

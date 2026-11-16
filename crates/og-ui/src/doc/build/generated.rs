@@ -429,10 +429,24 @@ impl Ui {
         }
     }
 
-    /// Records a built element's `::selection` and `::target-text`
-    /// styles for the draw.
+    /// Records a built element's `::selection`, `::target-text` and
+    /// `::highlight()` styles for the draw.
     pub(crate) fn note_selection(&mut self, key: u64, r: &Resolved) {
         let g = r.generated.as_ref();
+        let highlights: BTreeMap<String, crate::doc::generated::Selection> = g
+            .into_iter()
+            .flat_map(|g| &g.highlights)
+            .filter_map(|(name, body)| Some((name.clone(), self.selection_style(body)?)))
+            .collect();
+        let old = self.docs.state().highlights.get(&key);
+        if old.map_or(!highlights.is_empty(), |old| *old != highlights) {
+            let map = &mut self.docs.state_mut().highlights;
+            if highlights.is_empty() {
+                map.remove(&key);
+            } else {
+                map.insert(key, highlights);
+            }
+        }
         for target in [false, true] {
             let body = g.and_then(|g| {
                 if target {
