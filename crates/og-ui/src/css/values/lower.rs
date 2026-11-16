@@ -66,7 +66,12 @@ pub(super) fn lower_decl(name: &str, value: &str, state: bool) -> Result<Vec<Par
         "scale" => lower_scale(t),
         "rotate" => Ok(vec![e("rotate", vec![want_angle(&one(&t, name)?)?])]),
         "opacity" => Ok(vec![e("opacity", vec![want_num(&one(&t, name)?)?])]),
-        "z-index" => Ok(vec![e("z", vec![want_num(&one(&t, name)?)?])]),
+        // `auto` is stack level 0, the level of a box that sets none
+        // (CSS 2 §9.9.1): it undoes an earlier rule's level.
+        "z-index" => match one(&t, name)? {
+            Tok::Ident(w) if w == "auto" => Ok(vec![e("z", vec![number("0")?])]),
+            t => Ok(vec![e("z", vec![want_num(&t)?])]),
+        },
         "border-radius" if state => Ok(vec![e("radius", vec![want_len(&one(&t, name)?)?])]),
         n if !state && !super::boxes::corner_props(n).is_empty() => {
             super::boxes::lower_corners(n, &t)
