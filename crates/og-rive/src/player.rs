@@ -413,6 +413,9 @@ impl Player {
                                     luminance: false,
                                     offset: Default::default(),
                                     nearest: false,
+                                    // A Rive file's image is drawn as its
+                                    // own transform places it.
+                                    orient: false,
                                 }),
                                 mode: UiMode::Fill,
                                 opacity: 1.0,

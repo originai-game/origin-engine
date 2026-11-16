@@ -169,11 +169,15 @@ fn walk(dir: &Path, out: &mut Vec<PathBuf>) -> Result<(), String> {
     Ok(())
 }
 
+/// A decoded texture: its width, height, straight RGBA8 texels as stored
+/// and its orientation (EXIF).
+type Texels = (u32, u32, Vec<u8>, og_draw::UiOrientation);
+
 /// The texture assets a pack's `url()`s name, by the path the cascade
 /// resolves them to, decoded the first time a ground reads them.
 pub struct Textures {
     files: Vec<(String, PathBuf)>,
-    decoded: HashMap<u32, Option<(u32, u32, Vec<u8>)>>,
+    decoded: HashMap<u32, Option<Texels>>,
 }
 
 impl Textures {
@@ -219,8 +223,9 @@ impl Textures {
         }
     }
 
-    /// Texture `t` decoded, if it is one of these.
-    fn decoded(&mut self, t: TextureHandle) -> Option<&(u32, u32, Vec<u8>)> {
+    /// Texture `t` decoded, with its orientation (EXIF), if it is one of
+    /// these.
+    fn decoded(&mut self, t: TextureHandle) -> Option<&Texels> {
         let files = &self.files;
         self.decoded
             .entry(t.0)
@@ -228,20 +233,22 @@ impl Textures {
                 let (_, path) = files.get(t.index().checked_sub(1)?)?;
                 let bytes = std::fs::read(path).ok()?;
                 let i = og_cook::cook::decode_image(&bytes).ok()?;
-                Some((i.width, i.height, i.rgba))
+                let o = og_draw::UiOrientation::from_exif(og_cook::cook::image_orientation(&bytes));
+                Some((i.width, i.height, i.rgba, o))
             })
             .as_ref()
     }
 
-    /// Texture `t`'s texels across and down.
-    fn size(&mut self, t: TextureHandle) -> Option<[f32; 2]> {
-        let (w, h, _) = self.decoded(t)?;
-        Some([*w as f32, *h as f32])
+    /// Texture `t`'s texels across and down as stored, and its
+    /// orientation.
+    fn size(&mut self, t: TextureHandle) -> Option<([f32; 2], og_draw::UiOrientation)> {
+        let (w, h, _, o) = self.decoded(t)?;
+        Some(([*w as f32, *h as f32], *o))
     }
 
     /// The straight sRGB texel at `uv` of texture `t`, if it is one of these.
     fn texel(&mut self, t: TextureHandle, uv: [f32; 2]) -> Option<[f32; 4]> {
-        let (w, h, rgba) = self.decoded(t)?;
+        let (w, h, rgba, _) = self.decoded(t)?;
         let x = ((uv[0].clamp(0.0, 1.0) * *w as f32) as u32).min(w - 1);
         let y = ((uv[1].clamp(0.0, 1.0) * *h as f32) as u32).min(h - 1);
         let at = ((y * w + x) * 4) as usize;
@@ -605,7 +612,8 @@ fn paint_at(
                     (gradient(&g.gradient, f, (tile[0], tile[1])), "gradient")
                 }
                 UiPaint::Image(i) => {
-                    let f = i.place(pos, size, textures.size(i.texture)?)?;
+                    let (texels, orientation) = textures.size(i.texture)?;
+                    let f = i.place(pos, size, texels, orientation)?;
                     let at = [
                         i.uv[0] + f[0] * (i.uv[2] - i.uv[0]),
                         i.uv[1] + f[1] * (i.uv[3] - i.uv[1]),

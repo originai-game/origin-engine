@@ -872,9 +872,10 @@ fn paint(w: &mut W, p: &UiPaint) {
         }
         UiPaint::Image(im) => {
             // A luminance image is its own tag (2 stays what it was); one
-            // with an offset or sampled nearest is 6, with both after it.
+            // with an offset, sampled nearest or drawn as stored (not
+            // oriented) is 6, with its offset and flags after it.
             let density = im.density != 1.0;
-            let extra = im.offset != Vec2::ZERO || im.nearest || density;
+            let extra = im.offset != Vec2::ZERO || im.nearest || !im.orient || density;
             w.u8(match (density, extra, im.luminance) {
                 (true, _, _) => 7,
                 (false, true, _) => 6,
@@ -889,7 +890,9 @@ fn paint(w: &mut W, p: &UiPaint) {
             v2(w, im.focal);
             if extra {
                 v2(w, im.offset);
-                w.u8(u8::from(im.luminance) | u8::from(im.nearest) << 1);
+                w.u8(u8::from(im.luminance)
+                    | u8::from(im.nearest) << 1
+                    | u8::from(!im.orient) << 2);
             }
             if density {
                 w.f32(im.density);
@@ -937,6 +940,7 @@ fn rpaint(r: &mut R) -> Option<UiPaint> {
                 offset,
                 luminance: flags & 1 != 0,
                 nearest: flags & 2 != 0,
+                orient: flags & 4 == 0,
             })
         }
         3 => UiPaint::Layer(r.u32()?),
@@ -1514,7 +1518,7 @@ mod tests {
 
     #[test]
     fn image_density_survives_a_saved_drawing() {
-        for density in [1.0, 2.0] {
+        for (density, orient) in [(1.0, false), (2.0, true)] {
             let image = UiPaint::Image(UiImage {
                 texture: TextureHandle::from_slot(1).unwrap(),
                 uv: [0.25, 0.0, 0.75, 1.0],
@@ -1526,6 +1530,7 @@ mod tests {
                 offset: Vec2::new(3.0, -2.0),
                 luminance: true,
                 nearest: true,
+                orient,
             });
             let mut bytes = Vec::new();
             paint(&mut W(&mut bytes), &image);

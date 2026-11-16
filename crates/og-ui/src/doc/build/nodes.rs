@@ -328,7 +328,7 @@ impl Ui {
         // placeholder for its kind (docs/ui.md §3.3).
         self.docs.art_spec(path, r);
         let mut spec = self.docs.last_art().clone();
-        let (at, nearest) = r.object_css();
+        let (at, nearest, orient) = r.object_css();
         if let Some([focal, _]) = at {
             spec.focal = focal;
         }
@@ -344,6 +344,7 @@ impl Ui {
                 label: r.str("name").unwrap_or_default().to_string(),
                 offset: at.map_or([0.0; 2], |a| a[1]),
                 nearest,
+                orient,
             },
         );
         texture

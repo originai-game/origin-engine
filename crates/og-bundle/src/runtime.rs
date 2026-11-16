@@ -643,11 +643,19 @@ impl Bundle {
             ),
             None => None,
         };
+        let orientation = match blob.raw_opt("orientation") {
+            Some(b) => b
+                .try_into()
+                .map(u32::from_le_bytes)
+                .map_err(|_| invalid(&blob, "its `orientation` section is not 4 bytes"))?,
+            None => 1,
+        };
         Ok(CookedTexture {
             id: asset_id(id).to_string(),
             meta,
             ktx2,
             mips,
+            orientation,
         })
     }
 

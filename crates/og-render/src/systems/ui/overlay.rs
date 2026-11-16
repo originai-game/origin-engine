@@ -246,6 +246,7 @@ pub(crate) fn build<'a>(
     array_layers: impl Fn(TextureArrayHandle) -> Option<u32>,
     vector: impl Fn(UiVectorHandle) -> Option<&'a UiVectorData>,
     panel_target: impl Fn(crate::TextureHandle) -> Option<crate::TargetTexture>,
+    orientation: impl Fn(crate::TextureHandle) -> og_draw::UiOrientation,
     target: OverlayTarget,
     mass_eases: &mut crate::ui::mass::EaseTables,
 ) -> Result<OverlayFrame, RenderError> {
@@ -348,6 +349,13 @@ pub(crate) fn build<'a>(
         let (mut g, source) = ub::shape(i, s, clip, tables, texture_count, layers.len())?;
         if let (Some(b), crate::ui::UiPaint::Gradient(gr)) = (abs_box, &s.paint) {
             g.extra[1] = tables.gradient(gr, Some(b)) as f32;
+        }
+        // An oriented image turns its texture upright (ui.wgsl's
+        // `image_uv`): the texture's orientation in bits 18..21.
+        if let crate::ui::UiPaint::Image(im) = &s.paint
+            && im.orient
+        {
+            g.kinds[1] |= u32::from(orientation(im.texture).bits()) << 18;
         }
         keyed.push((
             target_of(s.layer, layers),

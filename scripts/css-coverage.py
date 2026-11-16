@@ -319,6 +319,8 @@ proof("opacity-svg paint-order mask-type mask-border",
       "SVG fill-opacity and stroke-opacity (attributes, percentages and CSS) scale only their paint; paint-order draws a shape's stroke under its fill, on the shape or inherited, with omitted paints in default order; a <mask>'s mask-type attribute (alpha vs luminance) changes the emitted gradient mask; mask-border slices a gradient's border area. Text paint-order, mask-type in a stylesheet rule and non-gradient masks are not covered.")
 proof("svg", "inline_svg", "inline_svg_matches_its_reference_frames",
       "References at 1280/390 compare inline SVG paths, polygons, a url(#) gradient fill, even-odd fill-rule, a pathLength dash offset and bound path data in CSS-sized boxes. css_paint::svg_paint_opacities_order_and_mask_types_draw_as_svg_says adds paint opacities, paint-order and mask types. The SVG DOM interfaces, <foreignObject>, <a>, <script>, <switch> and systemLanguage are not covered.")
+proof("image-orientation", "css_paint", "image_orientation_turns_images_by_their_exif_or_draws_them_as_stored",
+      "Emitted images read through og-render's own placement against a 2x1 texture carrying EXIF orientations 1, 3, 6 and 8: from-image turns it as EXIF defines (6 red on top, 8 blue on top, 3 blue on the left) with the turned natural size under object-fit: none; none, inherited from the parent, samples the texels as stored; a background follows the property too. og-cook textures::exif_orientation_is_kept_beside_the_texels_as_stored: the cook keeps the orientation beside unturned texels, a streamed tail too. The deprecated <angle> || flip form is refused; sprites and materials sample as stored; the GPU shader path is not pixel-checked.")
 not_applicable("color-adjust print-color-adjust",
                "Print colour economy: a game draws to its screen, never to paper or a printer's economy mode.")
 not_applicable("paint",
@@ -353,7 +355,6 @@ MISSING = {
     "filter-function": "No filter(<image>, <filter-function>) image: background and mask layers take url(), image-set(), gradients and light-dark() only.",
     "cross-fade": "No cross-fade() image: a box layer draws one image, and a premultiplied sum of several needs layers that hold more than one.",
     "element": "No element() image; feImage's element images exist for SVG filters but no background or border layer reads a live element.",
-    "image-orientation": "The cook decodes images without their EXIF orientation and there is no image-orientation property; from-image and none are both unimplemented.",
     "border-shape": "No border-shape: borders, border images, outlines and shadows follow border-radius and corner-shape only.",
     "box-decoration-break": "Inline boxes and column fragments draw no per-fragment decorations, so neither slice nor clone is implemented.",
     "shadow-parts": "Host/part/state selector registry is present; all-property part applicability awaits the parts-as-nodes stream and its output tests.",

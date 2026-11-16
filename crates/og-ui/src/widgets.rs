@@ -292,6 +292,9 @@ pub struct ArtDesc {
     pub offset: [f32; 2],
     /// Sampled at the nearest texel (CSS `image-rendering: pixelated`).
     pub nearest: bool,
+    /// Turned upright by the orientation its source carries (CSS
+    /// `image-orientation: from-image`); false draws it as stored.
+    pub orient: bool,
 }
 
 #[derive(Clone, Debug, Default, PartialEq)]

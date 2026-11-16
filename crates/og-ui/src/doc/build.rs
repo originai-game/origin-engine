@@ -258,9 +258,10 @@ impl Resolved {
         }
     }
     /// CSS `object-position` as its fractions and its px (`None`: not
-    /// declared), and whether `image-rendering` samples nearest; both
+    /// declared), whether `image-rendering` samples nearest and whether
+    /// `image-orientation` turns its images upright (from-image); each
     /// checked when the CSS was lowered.
-    pub fn object_css(&self) -> (Option<[[f32; 2]; 2]>, bool) {
+    pub fn object_css(&self) -> (Option<[[f32; 2]; 2]>, bool, bool) {
         use crate::doc::image_css as ic;
         let at = self
             .str("objectPosition")
@@ -270,7 +271,11 @@ impl Resolved {
             .str("imageRendering")
             .and_then(|v| ic::image_rendering(v).ok())
             .unwrap_or(false);
-        (at, nearest)
+        let orient = self
+            .str("imageOrientation")
+            .and_then(|v| ic::image_orientation(v).ok())
+            .unwrap_or(true);
+        (at, nearest, orient)
     }
     pub fn size(&self, name: &str) -> Option<Size> {
         match self.get(name)? {

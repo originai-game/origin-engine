@@ -1,12 +1,15 @@
 //! CSS properties of how an image is drawn on document elements (CSS
 //! Images 3 §5): `image-rendering`, which picks the sampling of every
 //! image the element draws (its `<image>`, `<art>`, background, border
-//! image), and `object-position`, which places an `<image>` or `<art>`
-//! inside its box under `object-fit`.
+//! image), `image-orientation`, which turns them upright by the
+//! orientation their source carries (EXIF) or draws them as stored, and
+//! `object-position`, which places an `<image>` or `<art>` inside its box
+//! under `object-fit`.
 //!
 //! Each is one reflected prop holding its CSS value as written, checked
 //! here when the stylesheet is lowered and read here again when the
-//! element is built. `image-rendering` inherits through the cascade
+//! element is built. `image-rendering` and `image-orientation` inherit
+//! through the cascade
 //! ([`super::build::cascade::CARRIED_BY_DEFAULT`]).
 
 use super::css::{Tok, describe, tokens};
@@ -15,6 +18,7 @@ use super::css::{Tok, describe, tokens};
 pub(crate) fn prop_of(css: &str) -> Option<&'static str> {
     Some(match css {
         "image-rendering" => "imageRendering",
+        "image-orientation" => "imageOrientation",
         "object-position" => "objectPosition",
         _ => return None,
     })
@@ -24,6 +28,7 @@ pub(crate) fn prop_of(css: &str) -> Option<&'static str> {
 pub(crate) fn form(prop: &str) -> Option<&'static str> {
     Some(match prop {
         "imageRendering" => "auto | smooth | high-quality | pixelated | crisp-edges",
+        "imageOrientation" => "from-image | none",
         "objectPosition" => {
             "<position>: one to four of left, center, right, top, bottom, <n>px, <n>%"
         }
@@ -35,6 +40,7 @@ pub(crate) fn form(prop: &str) -> Option<&'static str> {
 pub(crate) fn check(css: &str, value: &str) -> Result<(), String> {
     match css {
         "image-rendering" => image_rendering(value).map(|_| ()),
+        "image-orientation" => image_orientation(value).map(|_| ()),
         "object-position" => object_position(value).map(|_| ()),
         _ => Ok(()),
     }
@@ -59,6 +65,21 @@ pub(crate) fn image_rendering(value: &str) -> Result<bool, String> {
             describe(t)
         )),
         _ => Err("image-rendering: one keyword".into()),
+    }
+}
+
+/// `image-orientation` (CSS Images 3 §5.1): whether its images turn
+/// upright by the orientation their source carries (EXIF), `from-image`,
+/// the initial value, or draw as stored, `none`. The deprecated
+/// `<angle> || flip` form is optional and not taken.
+pub(crate) fn image_orientation(value: &str) -> Result<bool, String> {
+    match tokens(value)?.as_slice() {
+        [Tok::Ident(w)] if w.eq_ignore_ascii_case("from-image") => Ok(true),
+        [Tok::Ident(w)] if w.eq_ignore_ascii_case("none") => Ok(false),
+        _ => Err(format!(
+            "image-orientation: '{}' is not from-image or none",
+            value.trim()
+        )),
     }
 }
 
@@ -111,5 +132,8 @@ mod tests {
         assert!(image_rendering("pixelated").unwrap());
         assert!(!image_rendering("smooth").unwrap());
         assert!(image_rendering("pixel").is_err());
+        assert!(image_orientation("from-image").unwrap());
+        assert!(!image_orientation("NONE").unwrap());
+        assert!(image_orientation("90deg flip").is_err());
     }
 }

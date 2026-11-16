@@ -209,10 +209,13 @@ pub struct ImagePaint {
     pub fit: Fit,
     pub focal: [f32; 2],
     /// CSS px added to where `focal` places it (`object-position`
-    /// lengths), and whether it is sampled at the nearest texel (CSS
-    /// `image-rendering: pixelated | crisp-edges`).
+    /// lengths), whether it is sampled at the nearest texel (CSS
+    /// `image-rendering: pixelated | crisp-edges`) and whether it turns
+    /// upright by its texture's orientation (`image-orientation:
+    /// from-image`; [`og_draw::UiImage::orient`]).
     pub offset: [f32; 2],
     pub nearest: bool,
+    pub orient: bool,
 }
 
 /// One layer of fill or a stroke's paint.
@@ -268,6 +271,7 @@ impl Paint {
                 offset: Vec2::from(im.offset),
                 luminance: false,
                 nearest: im.nearest,
+                orient: im.orient,
             }),
             Paint::Vector { tint, .. } => og_draw::UiPaint::Solid(tint.resolve(theme)),
             Paint::Atlas(a) => match theme.art.atlas {
@@ -282,6 +286,8 @@ impl Paint {
                     offset: Vec2::ZERO,
                     luminance: false,
                     nearest: false,
+                    // A region of the packed atlas, drawn as packed.
+                    orient: false,
                 }),
                 None => og_draw::UiPaint::Solid([0.0; 4]),
             },

@@ -264,6 +264,7 @@ impl Ui {
                     focal: spec.focal,
                     offset: desc.offset,
                     nearest: desc.nearest,
+                    orient: desc.orient,
                 }));
             }
             None => {

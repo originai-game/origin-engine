@@ -683,6 +683,7 @@ pub(crate) fn emit(
                         luminance: false,
                         offset: Default::default(),
                         nearest: false,
+                        orient: true,
                     });
                 }
                 put(overlay, s, c);

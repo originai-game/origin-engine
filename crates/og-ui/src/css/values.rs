@@ -270,6 +270,7 @@ pub const STYLE: &[(&str, &str)] = &[
     ("interestDelayEnd", "interest-delay-end"),
     ("visibility", "visibility"),
     ("imageRendering", "image-rendering"),
+    ("imageOrientation", "image-orientation"),
     ("contain", "contain"),
     ("contentVisibility", "content-visibility"),
     ("containIntrinsicWidth", "contain-intrinsic-width"),

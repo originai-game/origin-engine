@@ -297,6 +297,7 @@ impl Renderer {
                 array_layers,
                 |v| scene.ui.ui_vectors.get(v.index()),
                 |t| scene.target_texture(t),
+                |t| scene.texture_orientation(t),
                 overlay::OverlayTarget {
                     scale: overlay::OverlayRenderer::scale(self.out_height, o),
                     width: self.out_width,
