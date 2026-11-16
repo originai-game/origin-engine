@@ -275,6 +275,11 @@ const ROLE_RULES: &str = r#"  /* Roles: frame, plate, band, title, row, cell, ba
               [part$=".name"], [part$=".picture"], [part$=".tab"])[data-team=b]) {
     color: var(--team2); border-color: var(--team2);
   }
+  /* A selected row's ground is the selection, too light for a team's ink
+     in the dark scheme: it keeps the selected ink, its team in its rim. */
+  :where([part$=".row"][data-team]:where([aria-selected=true], [aria-current=true], [data-selected=true])) {
+    color: var(--ink-selected);
+  }
   :where([data-trend=up]) { color: var(--trend-up); }
   :where([data-trend=down]) { color: var(--trend-down); }
   :where([data-tone=damage]) { color: var(--tone-damage); }

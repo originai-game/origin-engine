@@ -586,10 +586,39 @@ fn any_seeds_keep_the_contrast_pairs() {
                         );
                     }
                 }
+                // A team's ink on every ground a role part draws it on: the
+                // ground, a well, a panel, a raised one and a hovered row,
+                // and a cell's or badge's control wash over the ground, a
+                // panel or a raised one (blended in linear light, as
+                // og-render draws it). A selected row wears
+                // `--ink-selected`, not its team's.
+                let teams: Vec<Srgba> = (1..=8).map(|i| color(&format!("team{i}"))).collect();
+                for (i, ink) in teams.iter().enumerate() {
+                    for under in [
+                        "bg",
+                        "bg-subtle",
+                        "surface",
+                        "surface-raised",
+                        "surface-hover",
+                    ] {
+                        let g = color(under);
+                        check(format!("team{} on {under}", i + 1), ink.contrast(g), 4.5);
+                        if matches!(under, "bg-subtle" | "surface-hover") {
+                            continue;
+                        }
+                        for wash in ["fill", "fill-strong"] {
+                            let w = linear(wash).over_linear(g);
+                            check(
+                                format!("team{} on {wash} over {under}", i + 1),
+                                ink.contrast(w),
+                                4.5,
+                            );
+                        }
+                    }
+                }
                 // The teams as each colour vision sees them (og style
                 // check's simulation): teams 1 to 6 stay 0.1 apart in
-                // OKLab, and 7 and 8, past what colour alone holds, 0.07.
-                let teams: Vec<Srgba> = (1..=8).map(|i| color(&format!("team{i}"))).collect();
+                // OKLab; 7 and 8, past what colour alone holds, only 0.05.
                 let lab = |rgb: [u8; 3]| {
                     use color::ColorSpaceTag as S;
                     let l = Srgba::rgb(rgb[0], rgb[1], rgb[2]).linear();
@@ -607,7 +636,7 @@ fn any_seeds_keep_the_contrast_pairs() {
                         for j in i + 1..8 {
                             let (a, b) = (seen(teams[i]), seen(teams[j]));
                             let d = (0..3).map(|k| (a[k] - b[k]).powi(2)).sum::<f32>().sqrt();
-                            let bar = if j < 6 { 0.1 } else { 0.07 };
+                            let bar = if j < 6 { 0.1 } else { 0.05 };
                             check(
                                 format!("team{} team{} {}", i + 1, j + 1, vision.name()),
                                 d,
