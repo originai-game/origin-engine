@@ -230,7 +230,7 @@ pub(crate) struct LayerFrame {
 impl LayerFrame {
     fn edge(&self, e: BoxEdge) -> [f32; 4] {
         match e {
-            BoxEdge::Border | BoxEdge::Text | BoxEdge::NoClip => [0.0; 4],
+            BoxEdge::Border | BoxEdge::Text | BoxEdge::NoClip | BoxEdge::BorderArea => [0.0; 4],
             BoxEdge::Padding => self.borders,
             BoxEdge::Content => self.padding,
         }
@@ -266,6 +266,7 @@ impl LayerFrame {
         };
         let clip = match l.clip {
             BoxEdge::Text => LayerClip::Text,
+            BoxEdge::BorderArea => LayerClip::BorderArea(self.borders),
             BoxEdge::NoClip => LayerClip::Rect([-1e5; 4]),
             e if l.luminance
                 || matches!(
@@ -298,6 +299,7 @@ impl LayerFrame {
             area: Area::Box([0.0; 4]),
             clip: match clip {
                 BoxEdge::Text => LayerClip::Text,
+                BoxEdge::BorderArea => LayerClip::BorderArea(self.borders),
                 e => LayerClip::Box(self.edge(e)),
             },
             blend: Blend::Normal,

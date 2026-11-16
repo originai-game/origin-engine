@@ -139,6 +139,8 @@ pub const STYLE: &[(&str, &str)] = &[
     ("backgroundImage", "background-image"),
     ("backgroundSize", "background-size"),
     ("backgroundPosition", "background-position"),
+    ("backgroundPositionX", "background-position-x"),
+    ("backgroundPositionY", "background-position-y"),
     ("backgroundRepeat", "background-repeat"),
     ("maskImage", "mask-image"),
     ("backgroundOrigin", "background-origin"),
@@ -373,6 +375,7 @@ pub(crate) fn targets(name: &str) -> impl Iterator<Item = &'static str> + '_ {
             .collect(),
         "border-image" => super::paint_css::C4_PROPS[11..16].to_vec(),
         "mask-border" => super::paint_css::C4_PROPS[16..].to_vec(),
+        "background-color" => vec!["background"],
         "padding-block" => vec!["paddingTop", "paddingBottom"],
         "padding-inline" => vec!["paddingRight", "paddingLeft"],
         "padding-block-start" => vec!["paddingTop"],
@@ -436,6 +439,8 @@ fn conv(prop: &str) -> Conv {
         "backgroundImage"
         | "backgroundSize"
         | "backgroundPosition"
+        | "backgroundPositionX"
+        | "backgroundPositionY"
         | "backgroundRepeat"
         | "maskImage"
         | "backdropFilter"
@@ -544,6 +549,12 @@ pub fn value_form(prop: &str, words: &[&str]) -> Option<String> {
         }
         Conv::Raw if prop == "backgroundPosition" => {
             "[left | center | right | top | bottom | <n>px | <n>%]{1,4}, …".into()
+        }
+        Conv::Raw if prop == "backgroundPositionX" => {
+            "[left | center | right] [<n>px | <n>%] | <n>px | <n>%, …".into()
+        }
+        Conv::Raw if prop == "backgroundPositionY" => {
+            "[top | center | bottom] [<n>px | <n>%] | <n>px | <n>%, …".into()
         }
         Conv::Raw if prop == "backgroundRepeat" => {
             "repeat-x | repeat-y | [repeat | no-repeat | space | round]{1,2}, …".into()

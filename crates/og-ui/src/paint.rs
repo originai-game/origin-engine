@@ -341,6 +341,9 @@ pub enum LayerClip {
     Rect([f32; 4]),
     /// The element's own text (`background-clip: text`).
     Text,
+    /// The box less its padding box, whose edges are in by these
+    /// (`background-clip: border-area`): the area under the border.
+    BorderArea([f32; 4]),
 }
 
 /// An element's CSS background and mask layers ([`ElementDraw::boxes`]).
@@ -403,6 +406,8 @@ impl BoxLayer {
         let inset = match self.clip {
             LayerClip::Box(i) | LayerClip::Rect(i) => i,
             LayerClip::Text => [0.0; 4],
+            LayerClip::BorderArea(i) if inset_rect(b, i).contains(p.0, p.1) => return false,
+            LayerClip::BorderArea(_) => [0.0; 4],
         };
         let r = inset_rect(b, inset);
         if !r.contains(p.0, p.1) {

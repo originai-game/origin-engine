@@ -42,6 +42,44 @@ impl ElementDraw {
                 LayerClip::Box(i) => (i, false),
                 LayerClip::Text => ([0.0; 4], false),
                 LayerClip::Rect(i) => (i, true),
+                LayerClip::BorderArea(i) => {
+                    // A group: the padding box, then the layer drawn only
+                    // where it is not (source-out), leaving the ring.
+                    let geometry = self.geometry(&self.shape, at);
+                    let pad = inset_rect(at.rect, i);
+                    let shape = |geometry, r: Rect, paint, blend| DrawCmd::Shape {
+                        shape: Box::new(og_draw::UiShape {
+                            geometry,
+                            center: Vec2::new(r.x + r.width / 2.0, r.y + r.height / 2.0),
+                            half: Vec2::new(r.width / 2.0, r.height / 2.0),
+                            transform: [1.0, 0.0, 0.0, 1.0],
+                            paint,
+                            mode: og_draw::UiMode::Fill,
+                            opacity: 1.0,
+                            blend,
+                            layer: 0,
+                            clip: None,
+                        }),
+                        clip: at.clip,
+                    };
+                    out.push(plain_layer(None));
+                    if !pad.is_empty() {
+                        out.push(shape(
+                            inset_geometry(geometry.clone(), i),
+                            pad,
+                            og_draw::UiPaint::Solid([1.0; 4]),
+                            Blend::Normal,
+                        ));
+                    }
+                    out.push(shape(
+                        geometry,
+                        at.rect,
+                        l.resolve(theme, at.rect, at.rect),
+                        Blend::SourceOut,
+                    ));
+                    out.push(end_layer(None, at, opacity, blend(l)));
+                    continue;
+                }
             };
             let r = inset_rect(at.rect, inset);
             if r.is_empty() {

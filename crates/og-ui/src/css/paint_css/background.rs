@@ -6,6 +6,9 @@ pub(crate) enum CssImage {
     None,
     Image(ImageSource),
     Set(Vec<(ImageSource, f32)>),
+    /// `light-dark(<image>, <image>)` (CSS Color 5 §2.2): the first in a
+    /// light colour scheme, the second in a dark one.
+    LightDark(Box<CssImage>, Box<CssImage>),
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -16,9 +19,17 @@ pub(crate) enum ImageSource {
 }
 
 impl CssImage {
+    /// The image of the used colour scheme: a `light-dark()` resolved.
+    pub(crate) fn in_scheme(self, dark: bool) -> CssImage {
+        match self {
+            Self::LightDark(l, d) => if dark { *d } else { *l }.in_scheme(dark),
+            i => i,
+        }
+    }
+
     pub(crate) fn select(&self, resolution: f32) -> Option<(&ImageSource, f32)> {
         match self {
-            Self::None => None,
+            Self::None | Self::LightDark(..) => None,
             Self::Image(image) => Some((image, 1.0)),
             Self::Set(options) => options
                 .iter()
@@ -35,27 +46,23 @@ impl CssImage {
         }
     }
 
-    pub(crate) fn urls(&self) -> impl Iterator<Item = &str> {
-        let single = match self {
-            Self::Image(image) => Some(image),
-            _ => None,
-        };
-        let options = match self {
-            Self::Set(options) => options.as_slice(),
-            _ => &[],
-        };
-        single
-            .into_iter()
-            .chain(
-                options
-                    .iter()
-                    .filter(|(_, density)| *density > 0.0)
-                    .map(|(image, _)| image),
-            )
-            .filter_map(|image| match image {
+    pub(crate) fn urls(&self) -> Vec<&str> {
+        fn url(image: &ImageSource) -> Option<&str> {
+            match image {
                 ImageSource::Url(url) => Some(url.as_str()),
                 _ => None,
-            })
+            }
+        }
+        match self {
+            Self::None => Vec::new(),
+            Self::Image(image) => url(image).into_iter().collect(),
+            Self::Set(options) => options
+                .iter()
+                .filter(|(_, density)| *density > 0.0)
+                .filter_map(|(image, _)| url(image))
+                .collect(),
+            Self::LightDark(l, d) => l.urls().into_iter().chain(d.urls()).collect(),
+        }
     }
 }
 
@@ -153,6 +160,9 @@ pub enum BoxEdge {
     Content,
     /// `background-clip: text`.
     Text,
+    /// `background-clip: border-area` (CSS Backgrounds 4 §2.1): the border
+    /// box less the padding box, under the border.
+    BorderArea,
     /// `mask-clip: no-clip`.
     NoClip,
 }
@@ -246,7 +256,14 @@ fn mask_mode(w: &str) -> Option<bool> {
 pub(crate) type Background = (Vec<CssLayer>, Option<Tok>);
 
 pub(super) fn is_image(t: &Tok) -> bool {
-    matches!(t, Tok::Func(f, _) if f == "url" || f == "image-set") || gradient(t).is_some()
+    match t {
+        Tok::Func(f, _) if f == "url" || f == "image-set" => true,
+        // `light-dark()` of images, not of colours.
+        Tok::Func(f, a) if f == "light-dark" => a.iter().all(|a| {
+            matches!(a.as_slice(), [t] if is_image(t) || matches!(t, Tok::Ident(w) if w == "none"))
+        }),
+        t => gradient(t).is_some(),
+    }
 }
 
 /// A quoted or unquoted file URL.
@@ -273,6 +290,16 @@ pub(super) fn image(t: &Tok) -> Result<CssImage, String> {
     match t {
         Tok::Ident(w) if w == "none" => Ok(CssImage::None),
         Tok::Func(f, a) if f == "url" => url(a).map(|u| CssImage::Image(ImageSource::Url(u))),
+        Tok::Func(f, a) if f == "light-dark" => match a.as_slice() {
+            [l, d] => match (l.as_slice(), d.as_slice()) {
+                ([l], [d]) => Ok(CssImage::LightDark(
+                    Box::new(image(l)?),
+                    Box::new(image(d)?),
+                )),
+                _ => Err("light-dark(<image>, <image>)".into()),
+            },
+            _ => Err("light-dark(<image>, <image>)".into()),
+        },
         Tok::Func(f, options) if f == "image-set" => {
             let mut out = Vec::new();
             for option in options {
@@ -347,6 +374,31 @@ pub(super) fn image(t: &Tok) -> Result<CssImage, String> {
             )),
         },
     }
+}
+
+/// One axis of a `background-position` (`background-position-x`, `-y`).
+fn axis(t: &[Tok], k: usize) -> Result<BgPos, String> {
+    let other = if k == 0 {
+        ["top", "bottom"]
+    } else {
+        ["left", "right"]
+    };
+    if t.is_empty()
+        || t.iter()
+            .any(|t| matches!(t, Tok::Ident(w) if other.contains(&w.as_str())))
+    {
+        return Err(format!(
+            "background-position-{}: one edge or centre and its offset",
+            ["x", "y"][k]
+        ));
+    }
+    let centre = Tok::Ident("center".into());
+    let both: Vec<Tok> = if k == 0 {
+        t.iter().cloned().chain([centre]).collect()
+    } else {
+        [centre].into_iter().chain(t.iter().cloned()).collect()
+    };
+    Ok(bg_position(&both)?[k])
 }
 
 /// A `background-position` (one to four values, CSS Backgrounds 3
@@ -542,6 +594,9 @@ fn layer(item: &str, last: bool, mask: bool) -> Result<(CssLayer, Option<Tok>), 
         } else if ident == Some(if mask { "no-clip" } else { "text" }) {
             l.clip = if mask { BoxEdge::NoClip } else { BoxEdge::Text };
             boxes.push(l.clip);
+        } else if ident == Some("border-area") && !mask {
+            l.clip = BoxEdge::BorderArea;
+            boxes.push(l.clip);
         } else if let Some(a) = ident.filter(|_| !mask).and_then(attach) {
             l.attach = a;
         } else if let Some(c) = ident.filter(|_| mask).and_then(composite) {
@@ -568,9 +623,11 @@ fn layer(item: &str, last: bool, mask: bool) -> Result<(CssLayer, Option<Tok>), 
     // (`text` and `no-clip` the clip only).
     match boxes.as_slice() {
         [] => {}
-        [BoxEdge::Text | BoxEdge::NoClip] => {}
+        [BoxEdge::Text | BoxEdge::NoClip | BoxEdge::BorderArea] => {}
         [e] => (l.origin, l.clip) = (*e, *e),
-        [o, c] if !matches!(o, BoxEdge::Text | BoxEdge::NoClip) => (l.origin, l.clip) = (*o, *c),
+        [o, c] if !matches!(o, BoxEdge::Text | BoxEdge::NoClip | BoxEdge::BorderArea) => {
+            (l.origin, l.clip) = (*o, *c)
+        }
         _ => return Err("a layer takes one or two boxes: <origin> [<clip>]".into()),
     }
     l.position = bg_position(&place)?;
@@ -588,10 +645,11 @@ fn layer(item: &str, last: bool, mask: bool) -> Result<(CssLayer, Option<Tok>), 
 /// has no image (a plain colour, lowered as before).
 pub(crate) fn background(text: &str) -> Option<Result<Background, String>> {
     let Ok(t) = tokens(text) else { return None };
-    if !t
-        .iter()
-        .any(|t| is_image(t) || matches!(t, Tok::Ident(w) if w == "none"))
-    {
+    // A colour with a box (`#123 padding-box`) is a layer too: its clip.
+    if !t.iter().any(|t| {
+        is_image(t)
+            || matches!(t, Tok::Ident(w) if matches!(w.as_str(), "none" | "border-box" | "padding-box" | "content-box" | "text" | "border-area"))
+    }) {
         return None;
     }
     let items = super::boxes::items(text);
@@ -652,6 +710,10 @@ pub(crate) fn longhands(
         match *name {
             "size" => each(*text, layers, bg_size, |l, v| l.size = v)?,
             "position" => each(*text, layers, bg_position, |l, v| l.position = v)?,
+            // One axis of a position (CSS Backgrounds 4 §2.3), read as the
+            // position it makes with the other axis centred.
+            "position-x" => each(*text, layers, |t| axis(t, 0), |l, v| l.position[0] = v)?,
+            "position-y" => each(*text, layers, |t| axis(t, 1), |l, v| l.position[1] = v)?,
             "repeat" => each(*text, layers, bg_repeat, |l, v| l.repeat = v)?,
             "origin" => each(*text, layers, word("box", |w| box_edge(w, mask)), |l, v| {
                 l.origin = v
@@ -661,6 +723,7 @@ pub(crate) fn longhands(
                 layers,
                 word("clip box", |w| match w {
                     "text" if !mask => Some(BoxEdge::Text),
+                    "border-area" if !mask => Some(BoxEdge::BorderArea),
                     "no-clip" if mask => Some(BoxEdge::NoClip),
                     w => box_edge(w, mask),
                 }),
@@ -725,9 +788,11 @@ pub(crate) const C4_PROPS: [&str; 22] = [
 
 /// The layer longhands (after `background-` or `mask-`), each with its
 /// element prop.
-pub(crate) const BACKGROUND_LONGHANDS: [(&str, &str); 7] = [
+pub(crate) const BACKGROUND_LONGHANDS: [(&str, &str); 9] = [
     ("size", "backgroundSize"),
     ("position", "backgroundPosition"),
+    ("position-x", "backgroundPositionX"),
+    ("position-y", "backgroundPositionY"),
     ("repeat", "backgroundRepeat"),
     ("origin", "backgroundOrigin"),
     ("clip", "backgroundClip"),

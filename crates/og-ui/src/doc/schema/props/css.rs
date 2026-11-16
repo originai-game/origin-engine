@@ -26,6 +26,20 @@ pub const PROPS: &[PropSpec] = &[
         doc: "CSS `background-position` of each image layer, a comma list: one to four of `left`, `center`, `right`, `top`, `bottom`, `<n>px` and `<n>%` (`right 10px bottom 20%` from those edges).",
     },
     PropSpec {
+        name: "backgroundPositionX",
+        ty: Ty::Text,
+        on: On::All,
+        two_way: false,
+        doc: "CSS `background-position-x` of each image layer, a comma list: `left`, `center`, `right`, `<n>px` or `<n>%`, an edge keyword with its offset (`right 10px`). Over `background-position`'s x, which resets it.",
+    },
+    PropSpec {
+        name: "backgroundPositionY",
+        ty: Ty::Text,
+        on: On::All,
+        two_way: false,
+        doc: "CSS `background-position-y` of each image layer, as `background-position-x` with `top` and `bottom`.",
+    },
+    PropSpec {
         name: "backgroundRepeat",
         ty: Ty::Text,
         on: On::All,

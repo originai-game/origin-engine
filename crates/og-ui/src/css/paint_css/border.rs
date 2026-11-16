@@ -265,7 +265,18 @@ pub(crate) fn lower(
             if let Some(key) = n.strip_prefix("background-")
                 && let Some((_, prop)) = BACKGROUND_LONGHANDS.iter().find(|(k, _)| *k == key)
             {
-                check_layer(false, key).map(|_| one(prop))
+                check_layer(false, key).map(|_| {
+                    let mut out = one(prop);
+                    // `background-position` is the shorthand of its two
+                    // axes: it resets them.
+                    if key == "position" {
+                        out.extend(
+                            ["backgroundPositionX", "backgroundPositionY"]
+                                .map(|p| (p, String::new())),
+                        );
+                    }
+                    out
+                })
             } else if let Some(key) = n.strip_prefix("mask-border-")
                 && let Some((_, prop)) = MASK_BORDER_PROPS.iter().find(|(k, _)| *k == key)
             {
