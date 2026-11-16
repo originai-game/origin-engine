@@ -617,7 +617,9 @@ mod tests {
         let css = ui.docs.state().memory.retained.css;
         // The insert plus the inserted row's facts; each costs a few intervals.
         assert!(css.changes <= 8 && css.intervals <= 2 * 8, "{css:?}");
-        assert!(css.selectors <= now * 5, "{css:?}");
+        // Each restyled row tests its few rules: the author's, HTML's
+        // button rule and the default style's halo stop.
+        assert!(css.selectors <= now * 6, "{css:?}");
         let far = ui
             .mounted_topology()
             .child_at(Some(&list), 1000)
