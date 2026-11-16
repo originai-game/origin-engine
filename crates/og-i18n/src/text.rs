@@ -219,7 +219,11 @@ pub fn first_letter(text: &str) -> Option<(usize, usize)> {
         .any(|g| g.contains(first(k)))
     };
     let space = |k: usize| G::SpaceSeparator.contains(first(k));
-    let letter = |k: usize| [G::Letter, G::Number, G::Symbol].iter().any(|g| g.contains(first(k)));
+    let letter = |k: usize| {
+        [G::Letter, G::Number, G::Symbol]
+            .iter()
+            .any(|g| g.contains(first(k)))
+    };
     let mut k = 0;
     while k < clusters.len() && chars[clusters[k].0].is_whitespace() {
         k += 1;

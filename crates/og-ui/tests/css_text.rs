@@ -228,8 +228,14 @@ fn first_letter_and_first_line_style_their_runs() {
     assert_eq!(letter("D"), "");
     assert_eq!(letter("B"), "A.");
     let b = inked(&d, "B");
-    assert!(near(b[1].1, Srgba::rgb(0, 255, 0)), "::before after its first letter: {b:?}");
-    assert!(near(b[2].1, Srgba::rgb(0, 0, 255)), "the element's own ink: {b:?}");
+    assert!(
+        near(b[1].1, Srgba::rgb(0, 255, 0)),
+        "::before after its first letter: {b:?}"
+    );
+    assert!(
+        near(b[2].1, Srgba::rgb(0, 0, 255)),
+        "the element's own ink: {b:?}"
+    );
     let f = inked(&d, "F");
     assert_eq!((f[0].0.as_str(), f[0].2), ("B", 28.0));
     assert_eq!((f[1].0.as_str(), f[1].2), ("ig", 14.0));
