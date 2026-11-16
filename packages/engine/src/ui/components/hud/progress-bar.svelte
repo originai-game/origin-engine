@@ -19,8 +19,8 @@
   {/if}
   <div id="Track" part="ProgressBar.track ProgressBar.well" style:--value={value} style:--buffer={buffer}>
     {#if !indeterminate}<div id="Buffer" part="ProgressBar.buffer"></div>{/if}
-    <div id="Fill" part="ProgressBar.fill"></div>
-    {#if !indeterminate && value < 1}<div id="Sheen"></div>{/if}
+    <div id="Fill" part="ProgressBar.fill" data-motion={indeterminate ? 'shimmer' : null}></div>
+    {#if !indeterminate && value < 1}<div id="Sheen" data-motion="shimmer"></div>{/if}
   </div>
 </div>
 
@@ -40,8 +40,7 @@
 @media (width < 600px) { [part="ProgressBar.track ProgressBar.well"] { height: calc(var(--space-xs) + var(--space-xxs)); } }
 [part="ProgressBar.buffer"] { position: absolute; top: 0; bottom: 0; inset-inline-start: 0; inline-size: calc(var(--buffer) * 100%); border-radius: var(--meter-radius); background: var(--tone); opacity: var(--opacity-faint); }
 [part="ProgressBar.fill"] { position: absolute; top: 0; bottom: 0; inset-inline-start: 0; inline-size: calc(var(--value) * 100%); border-radius: var(--meter-radius); background: linear-gradient(180deg, var(--sheen), transparent 55%, var(--shadow-30)), var(--tone); box-shadow: var(--meter-fill-shadow); }
-#Sheen { position: absolute; top: 0; bottom: 0; inset-inline-start: 0; inline-size: 24%; background: linear-gradient(90deg, transparent, var(--sheen), transparent); mix-blend-mode: screen; animation-name: sweep; animation-duration: var(--motion-duration-sheen); animation-timing-function: linear; animation-iteration-count: infinite; }
+#Sheen { position: absolute; top: 0; bottom: 0; inset-inline-start: 0; inline-size: 24%; background: linear-gradient(90deg, transparent, var(--sheen), transparent); mix-blend-mode: screen; }
 .done [part="ProgressBar.fill"] { box-shadow: 0 0 var(--space-sm) var(--tone); }
-.indeterminate [part="ProgressBar.fill"] { inline-size: 36%; background: linear-gradient(90deg, transparent, var(--tone), transparent); box-shadow: none; animation-name: sweep; animation-duration: var(--motion-duration-sweep); animation-timing-function: var(--motion-easing-in-out); animation-iteration-count: infinite; }
-@keyframes sweep { from { translate: -100% 0; } to { translate: 420% 0; } }
+.indeterminate [part="ProgressBar.fill"] { inline-size: 36%; background: linear-gradient(90deg, transparent, var(--tone), transparent); box-shadow: none; }
 </style>

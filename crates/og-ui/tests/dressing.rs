@@ -2917,3 +2917,63 @@ fn an_icon_takes_its_parents_colour() {
     );
     assert!(near(tints[1], colour("#0000ff")), "its own: {:?}", tints[1]);
 }
+
+/// A part asks for a shared motion by meaning (`data-motion`); the
+/// keyframes are the style's (docs/ui.md §3.1). The default style's play
+/// in a document that defines none, a pack's definition of the name
+/// replaces the default's, and a document's own wins over both. Wrong: a
+/// shared name unknown to a document (its keyframes are only its own), a
+/// pack unable to restyle one, or a document unable to shadow one.
+#[test]
+fn shared_motions_are_the_styles_keyframes() {
+    let settled = |pack: Option<&str>, own: &str| {
+        let mut ui = ui_with_font(test_font());
+        if let Some(css) = pack {
+            let pack = og_ui::style_pack::StylePack::parse(
+                "styles/test",
+                vec![("styles/test/main.css".into(), css.into())],
+            )
+            .unwrap();
+            ui.set_style_pack(&pack).unwrap();
+        }
+        let mut d = mounted(
+            ui,
+            &format!(
+                r#"<column id="Root"><div id="B" data-motion="exit"></div></column>
+<style>#B {{ width: 40px; height: 40px; background: #ff0000; }} {own}</style>"#
+            ),
+            &[],
+            Viewport::new(400.0, 300.0),
+        );
+        for _ in 0..60 {
+            d.step(InputFrame::default());
+        }
+        d.ui.frame()
+            .items
+            .iter()
+            .find_map(|i| match &i.cmd {
+                DrawCmd::Shape { shape, .. } => Some(shape.opacity),
+                DrawCmd::Quad { color, .. } => Some(color[3]),
+                _ => None,
+            })
+            .unwrap_or(0.0)
+    };
+    let near = |a: f32, b: f32| (a - b).abs() < 0.02;
+    let default = settled(None, "");
+    assert!(
+        near(default, 0.0),
+        "the default style's og-fade-out: {default}"
+    );
+    let under = settled(Some(":root { --own: 1; }"), "");
+    assert!(
+        near(under, 0.0),
+        "the default's og-fade-out under a pack: {under}"
+    );
+    let pack = settled(Some("@keyframes og-fade-out { to { opacity: 0.5; } }"), "");
+    assert!(near(pack, 0.5), "the pack's og-fade-out: {pack}");
+    let own = settled(
+        Some("@keyframes og-fade-out { to { opacity: 0.5; } }"),
+        "@keyframes og-fade-out { to { opacity: 0.25; } }",
+    );
+    assert!(near(own, 0.25), "the document's own og-fade-out: {own}");
+}

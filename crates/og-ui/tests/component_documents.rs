@@ -722,9 +722,10 @@ fn component_styles_lay_out_and_roles_dress() {
     assert!(failures.is_empty(), "{}", failures.join("\n"));
 }
 
-/// The look declarations of a document's `<style>` that read no role
-/// token, as `property: value`. Keyframes are motion and custom
-/// properties are tokens, so neither counts.
+/// The look and motion declarations of a document's `<style>` that read
+/// no role token, as `property: value`, and each `@keyframes` it defines
+/// (the shared motions are the style's). Custom properties are tokens and
+/// do not count.
 fn look_declarations(source: &str, roles: &std::collections::BTreeSet<String>) -> Vec<String> {
     const LOOK: &[&str] = &[
         "background",
@@ -740,6 +741,7 @@ fn look_declarations(source: &str, roles: &std::collections::BTreeSet<String>) -
         "filter",
         "backdrop-filter",
         "corner-shape",
+        "animation",
     ];
     const RESETS: &[&str] = &[
         "none",
@@ -766,6 +768,7 @@ fn look_declarations(source: &str, roles: &std::collections::BTreeSet<String>) -
         rest = rest[i..].find("*/").map_or("", |j| &rest[i + j + 2..]);
     }
     text.push_str(rest);
+    let mut found = Vec::new();
     while let Some(i) = text.find("@keyframes") {
         let open = i + text[i..].find('{').unwrap();
         let (mut depth, mut end) = (0, open);
@@ -782,6 +785,7 @@ fn look_declarations(source: &str, roles: &std::collections::BTreeSet<String>) -
                 _ => {}
             }
         }
+        found.push(text[i..open].trim().to_string());
         text.replace_range(i..end, "");
     }
     let role_var = |v: &str| {
@@ -790,7 +794,6 @@ fn look_declarations(source: &str, roles: &std::collections::BTreeSet<String>) -
             .and_then(|r| r.strip_suffix(')'))
             .is_some_and(|name| roles.contains(name))
     };
-    let mut found = Vec::new();
     for body in text.split('{').skip(1).filter_map(|b| b.split('}').next()) {
         for decl in body.split(';') {
             let Some((property, value)) = decl.split_once(':') else {

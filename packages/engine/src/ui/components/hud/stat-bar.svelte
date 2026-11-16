@@ -28,8 +28,8 @@
     <div id="Track" part="StatBar.well StatBar.track" style:--value={value / max} style:--heal={heal / max} style:--recoverable={recoverable / max} style:--block={segment / max}>
       <div id="Recoverable"></div>
       <div id="Ghost"></div>
-      {#if heal > 0}<div id="Heal"></div>{/if}
-      <div id="Fill" part="StatBar.fill"></div>
+      {#if heal > 0}<div id="Heal" data-motion="pulse"></div>{/if}
+      <div id="Fill" part="StatBar.fill" data-motion={kind == 'health' && value / max <= critical ? 'pulse' : null}></div>
       {#if segment > 0}<div id="Blocks"></div>{/if}
       <div id="Gloss"></div>
       {#if showValue && valueInside}<span id="Inside" part="StatBar.inside">{valueText || t("component.stat-bar.value", { value: value, max: max })}</span>{/if}
@@ -56,7 +56,7 @@
 #Recoverable { inset-inline-start: 0; width: calc(var(--recoverable) * 100%); background: var(--ink-muted); opacity: var(--opacity-muted); }
 #Ghost { inset-inline-start: 0; inline-size: 100%; background: var(--scene-ink); opacity: var(--opacity-soft); scale: var(--value) 1; transform-origin: 0% 50%; transition: scale var(--motion-duration-bounce) var(--motion-easing-in-out) var(--motion-duration-slow); }
 #Fill { inset-inline-start: 0; width: calc(var(--value) * 100%); }
-#Heal { inset-inline-start: 0; width: calc((var(--value) + var(--heal)) * 100%); background: var(--success); opacity: var(--opacity-dim); animation-name: pulse; animation-duration: var(--motion-duration-turn); animation-timing-function: var(--motion-easing-in-out); animation-iteration-count: infinite; animation-direction: alternate; }
+#Heal { inset-inline-start: 0; width: calc((var(--value) + var(--heal)) * 100%); background: var(--success); opacity: var(--opacity-dim); }
 #Blocks { inset-inline-start: 0; inline-size: 100%; background: repeating-linear-gradient(90deg, transparent 0% calc(var(--block) * 100% - 0.8%), var(--scene-shadow) calc(var(--block) * 100% - 0.8%) calc(var(--block) * 100%)); }
 /* Transforms and gradients are physical: right to left, the ghost shrinks towards
    the right and the blocks count from the right, as the fill does. */
@@ -66,6 +66,4 @@
 [part="StatBar.inside"] { position: absolute; inset-inline-end: var(--space-xs); top: 0; bottom: 0; font: var(--text-caption); font-family: var(--figure-font); text-shadow: 0 var(--stroke-hairline) var(--stroke-regular) var(--scene-shadow); }
 [part="StatBar.figure"] { font: var(--text-sm); font-family: var(--figure-font); white-space: nowrap; text-shadow: 0 var(--stroke-hairline) var(--stroke-regular) var(--scene-shadow); }
 .critical [part="StatBar.figure"] { color: var(--danger); }
-.critical #Fill { animation-name: pulse; animation-duration: var(--motion-duration-bounce); animation-timing-function: var(--motion-easing-in-out); animation-iteration-count: infinite; animation-direction: alternate; }
-@keyframes pulse { from { opacity: 1; } to { opacity: 0.7; } }
 </style>

@@ -6,7 +6,7 @@
 <meta name="fixture:default" content='{"size":28,"name":""}'>
 
 <div id="Spinner" role="progressbar" aria-busy="true" aria-label={name || t("component.spinner.name")} style:--size={size + "px"}>
-  <svg id="Ring" part="Spinner.ring" viewBox="0 0 40 40">
+  <svg id="Ring" part="Spinner.ring" data-motion="spin" viewBox="0 0 40 40">
     <circle id="Track" cx="20" cy="20" r="16" fill="none" stroke-width="4"></circle>
     <circle id="Arc" cx="20" cy="20" r="16" fill="none" stroke-width="4" stroke-linecap="round" pathLength="1" stroke-dasharray="0.3 1" transform="rotate(-90 20 20)"></circle>
   </svg>
@@ -14,8 +14,7 @@
 
 <style>
 :host { inline-size: var(--size); block-size: var(--size); flex: none; }
-[part="Spinner.ring"] { inline-size: 100%; block-size: 100%; animation-name: turn; animation-duration: var(--motion-duration-turn); animation-timing-function: linear; animation-iteration-count: infinite; }
+[part="Spinner.ring"] { inline-size: 100%; block-size: 100%; }
 #Track { stroke: var(--control-strong); }
 #Arc { stroke: var(--ink); }
-@keyframes turn { from { rotate: 0deg; } to { rotate: 360deg; } }
 </style>

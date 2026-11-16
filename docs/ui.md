@@ -1569,7 +1569,20 @@ wears. A built-in component's own `<style>` therefore lays it out only
 a look property there reads a role token or resets, and what one
 component needs it sets as a role token on itself (`--fill-color`) or a
 `data-tone` on the part (og-ui's `component_styles_lay_out_and_roles_dress`
-holds the built-ins to it). The role rules sit in `:where()`, so any pack or document rule wins.
+holds the built-ins to it). Motion is the roles' too. An interactive role
+part (row, cell, card, tab, badge) eases between its states by
+`--change-motion`, and a cell gives under a press. A part asks for a shared
+motion by meaning with `data-motion` (`enter`, `exit`, `pop`, `stamp`,
+`beat`, `pulse`, `spin`, `ping`, `shimmer`), which plays `--<name>-motion`:
+an `animation` over one of the default style's shared keyframes
+(`og-fade-in`, `og-fade-out`, `og-rise-in`, `og-drop-in`, `og-pop-in`,
+`og-stamp-in`, `og-beat`, `og-pulse`, `og-spin`, `og-ping`, `og-shimmer`),
+timed from motion.css. A pack retunes a motion by its token or redefines
+its keyframes: a keyframes name is its highest layer's definition, so a
+pack's (`og-pack`) replaces the default style's (`og-default`), and a
+document's own keyframes of a name replace both. Under reduced motion
+every `data-motion` but `spin` stops. A built-in component defines no
+`@keyframes` of its own and names no keyframes in an `animation`. The role rules sit in `:where()`, so any pack or document rule wins.
 A part named for what it shows declares its role with a part list, as in
 HTML: `part="ArenaRoster.portrait ArenaRoster.picture"` is reached by
 `::part()` under either name, by its document's `[part~="ArenaRoster.portrait"]`,
@@ -1601,6 +1614,7 @@ it shows (`RacingLapHud.readout`, `RacingStandings.place`,
 | `picture` | `--picture-fill/rim/rim-width/radius/shadow` (unset by default) | |
 | `tab` | the core tabs' `--tabs-tab-fill/hover-fill/selected-fill/ink/selected-ink`, `--tabs-font/tracking/transform` | hover, selected |
 | any part | `--trend-up/down`, `--tone-damage/heal/crit/success/danger/warn/info` | `data-trend`, `data-tone` |
+| any part, motion | `--change-motion`, `--cell-pressed-scale`, `--enter/exit/pop/stamp/beat/pulse/spin/ping/shimmer-motion`, `--pulse-opacity` | hover, pressed, selected (row, cell, card, tab, badge); `data-motion` |
 | any role part | `--team1`, `--team2` | `data-team=a` and `data-team=b`: the team's colour as its ink and rim |
 
 `--mark-*` are the small signs a pack supplies as images and `--sfx-*`

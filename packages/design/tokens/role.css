@@ -193,6 +193,27 @@
   --role-tone-warn: var(--warn);
   --role-tone-info: var(--info);
 
+  /* Motion: what a role part does when it changes, and the shared
+     motions a part asks for with `data-motion` (enter, exit, pop, stamp,
+     beat, pulse, spin, ping). Each is an `animation` over one of the
+     default style's shared keyframes (`og-rise-in`, `og-pulse`…), timed
+     from motion.css; a pack retunes one here, or redefines the keyframes
+     of its name. `change` is the transition every interactive role part
+     (row, cell, card, tab, badge) takes on hover, press and selection. */
+  --role-change-motion: background-color var(--motion-ui-duration) var(--motion-ui-easing), border-color var(--motion-ui-duration) var(--motion-ui-easing), box-shadow var(--motion-ui-duration) var(--motion-ui-easing), color var(--motion-ui-duration) var(--motion-ui-easing), scale var(--motion-duration-instant) var(--motion-easing-out);
+  --role-cell-pressed-scale: var(--motion-scale-press);
+  --role-enter-motion: og-rise-in var(--motion-named-enter-duration) var(--motion-named-enter-easing) both;
+  --role-exit-motion: og-fade-out var(--motion-named-exit-duration) var(--motion-named-exit-easing) both;
+  --role-pop-motion: og-pop-in var(--motion-named-emphasis-duration) var(--motion-easing-spring) both;
+  --role-stamp-motion: og-stamp-in var(--motion-duration-slow) var(--motion-easing-out) both;
+  --role-beat-motion: og-beat var(--motion-duration-slow) var(--motion-easing-out);
+  /* How far a pulse dims its part. */
+  --role-pulse-opacity: 0.7;
+  --role-pulse-motion: og-pulse var(--motion-duration-bounce) var(--motion-easing-in-out) infinite alternate;
+  --role-spin-motion: og-spin var(--motion-duration-turn) linear infinite;
+  --role-ping-motion: og-ping var(--motion-duration-ping) var(--motion-easing-out) infinite;
+  --role-shimmer-motion: og-shimmer var(--motion-duration-sweep) var(--motion-easing-in-out) infinite;
+
   /* Marks: small drawn signs a pack supplies as images (none by default,
      where a component's own icon shows). */
   --role-mark-diamond: none;

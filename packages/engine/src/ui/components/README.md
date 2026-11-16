@@ -136,11 +136,12 @@ events and shows only where the primary pointer is a finger (`always`
 shows it under a mouse too). Its parts are `frame`, `stick`, `actions` and
 `look`.
 
-## A component's own CSS lays it out; roles dress it
+## A component's own CSS lays it out; roles dress and move it
 
 A component's `<style>` holds layout only: `display`, grid and flex, gaps
 from the space tokens, sizing, positions, overflow. Its look (fills, rims,
-radii, shadows, ink, type, filters) comes from naming each part for its
+radii, shadows, ink, type, filters) and its motion come from naming each
+part for its
 role (`News.card`, `Steps.dot`, `StatBar.fill`), which the default style
 dresses from that role's tokens (docs/ui.md §3.1 Role parts), so a style
 pack's tokens restyle every component at once. A part named for what it
@@ -148,7 +149,11 @@ shows takes a role as the last name of a part list (`part="News.date
 News.caption"`). What only a component needs it sets as a role's token on
 itself (`--fill-color: var(--mana)`), never as a look property. A
 genre-wide or per-state colour is a `data-tone` (`success`, `danger`,
-`warn`, `info`) on the part. A look property in a component's `<style>`
+`warn`, `info`) on the part. A part that moves asks for a shared motion
+with `data-motion` (`enter`, `exit`, `pop`, `stamp`, `beat`, `pulse`,
+`spin`, `ping`, `shimmer`; `<svg part="Spinner.ring" data-motion="spin">`)
+and defines no `@keyframes` of its own: the keyframes and their timing are
+the style's. A look or motion property in a component's `<style>`
 may read only a role token or reset (`none`, `0`, `inherit`); og-ui's
 `component_styles_lay_out_and_roles_dress` test checks this, and the
 documents written before the rule carry their remaining count in

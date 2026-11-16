@@ -1,14 +1,15 @@
-# A document written before component styles lost their look, and how many
-# look declarations outside the roles it still has (docs/ui.md §3.1).
-# It only shrinks: convert a document and lower or drop its line.
+# A document written before component styles lost their look and motion,
+# and how many look and motion declarations outside the roles it still has
+# (docs/ui.md §3.1). It only shrinks: convert a document and lower or drop
+# its line.
 arena/draft.svelte	10
 arena/lobby.svelte	7
 arena/ready.svelte	7
 arena/roster.svelte	7
-arena/round-hud.svelte	9
+arena/round-hud.svelte	14
 arena/scoreboard.svelte	10
 arena/spectator.svelte	5
-arena/versus.svelte	9
+arena/versus.svelte	22
 arena/vote.svelte	4
 base/avatar.svelte	22
 base/currency.svelte	10
@@ -17,42 +18,42 @@ base/error-state.svelte	6
 base/item-slot.svelte	13
 base/list-item.svelte	7
 base/pips.svelte	5
-base/ribbon.svelte	7
-base/skeleton-group.svelte	6
+base/ribbon.svelte	13
+base/skeleton-group.svelte	11
 card/collection.svelte	1
 card/deck-list.svelte	7
 card/face.svelte	7
 card/piles.svelte	3
 card/reward.svelte	2
 card/run-map.svelte	2
-hud/ability-bar.svelte	16
-hud/ability-slot.svelte	24
+hud/ability-bar.svelte	22
+hud/ability-slot.svelte	35
 hud/action-button.svelte	9
 hud/action-hints.svelte	2
 hud/ammo-counter.svelte	30
 hud/boss-bar.svelte	9
-hud/celebration.svelte	15
+hud/celebration.svelte	61
 hud/combat-log.svelte	7
 hud/combo.svelte	6
-hud/cooldown.svelte	3
+hud/cooldown.svelte	7
 hud/crosshair.svelte	9
-hud/damage-numbers.svelte	4
+hud/damage-numbers.svelte	8
 hud/hero-button.svelte	12
 hud/hold-button.svelte	18
-hud/hud-timer.svelte	6
+hud/hud-timer.svelte	10
 hud/killfeed.svelte	12
-hud/orb-meter.svelte	11
+hud/orb-meter.svelte	13
 hud/overlay-bar.svelte	19
 hud/perf-readout.svelte	5
 hud/pickup-feed.svelte	3
 hud/progress-bar.svelte	13
-hud/progress-ring.svelte	1
+hud/progress-ring.svelte	6
 hud/qte-prompt.svelte	11
 hud/quest-tracker.svelte	7
 hud/radial-menu.svelte	14
-hud/star-bar.svelte	9
+hud/star-bar.svelte	13
 hud/stat-bar.svelte	16
-hud/status-grid.svelte	4
+hud/status-grid.svelte	10
 idle/generators.svelte	9
 idle/offline.svelte	9
 idle/prestige.svelte	11
@@ -89,7 +90,7 @@ puzzle/boosters.svelte	9
 puzzle/goals.svelte	7
 puzzle/level-path.svelte	13
 puzzle/summary.svelte	13
-racing/banner.svelte	1
+racing/banner.svelte	10
 racing/garage.svelte	2
 racing/lap-hud.svelte	3
 racing/results.svelte	3
@@ -118,13 +119,14 @@ strategy/selection.svelte	12
 strategy/tower.svelte	17
 strategy/wave.svelte	7
 world/compass.svelte	7
-world/interaction-prompt.svelte	7
+world/interaction-prompt.svelte	9
 world/loot-label.svelte	9
-world/minimap-view.svelte	21
+world/minimap-view.svelte	23
 world/minimap.svelte	14
 world/nameplate.svelte	19
 world/overhead-bars.svelte	2
 world/path-line.svelte	1
 world/placement-ghost.svelte	5
-world/speech-bubble.svelte	2
-world/waypoint.svelte	3
+world/selection-ring.svelte	9
+world/speech-bubble.svelte	6
+world/waypoint.svelte	8

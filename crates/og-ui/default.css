@@ -413,6 +413,7 @@
     --band-small-fill: none;
     --band-small-height: var(--size-md);
     --band-small-pad: var(--space-xxs) var(--space-md);
+    --beat-motion: og-beat var(--motion-duration-slow) var(--motion-easing-out);
     --caption-ink: var(--ink-muted);
     --caption-text: var(--text-caption);
     --card-corner-shape: round;
@@ -436,6 +437,7 @@
     --cell-mythic-fill: var(--control);
     --cell-mythic-shadow: inset 0 0 0 var(--stroke-regular) var(--mythic);
     --cell-pressed-fill: var(--control-strong);
+    --cell-pressed-scale: var(--motion-scale-press);
     --cell-radius: var(--slot-radius);
     --cell-rare-fill: var(--control);
     --cell-rare-shadow: inset 0 0 0 var(--stroke-regular) var(--rare);
@@ -445,13 +447,16 @@
     --cell-shadow: var(--shadow-well);
     --cell-uncommon-fill: var(--control);
     --cell-uncommon-shadow: inset 0 0 0 var(--stroke-regular) var(--uncommon);
+    --change-motion: background-color var(--motion-ui-duration) var(--motion-ui-easing), border-color var(--motion-ui-duration) var(--motion-ui-easing), box-shadow var(--motion-ui-duration) var(--motion-ui-easing), color var(--motion-ui-duration) var(--motion-ui-easing), scale var(--motion-duration-instant) var(--motion-easing-out);
     --common: var(--line-strong);
     --dot-fill: var(--well);
     --dot-ink: var(--ink);
     --dot-radius: var(--radius-capsule);
     --dot-rim: transparent;
     --dot-rim-width: 0px;
+    --enter-motion: og-rise-in var(--motion-named-enter-duration) var(--motion-named-enter-easing) both;
     --epic: var(--xp);
+    --exit-motion: og-fade-out var(--motion-named-exit-duration) var(--motion-named-exit-easing) both;
     --figure-font: var(--type-numeric-font);
     --figure-ink: var(--ink);
     --fill-color: var(--primary);
@@ -494,6 +499,7 @@
     --mark-travel: none;
     --mark-triangle: none;
     --mythic: var(--danger);
+    --ping-motion: og-ping var(--motion-duration-ping) var(--motion-easing-out) infinite;
     --plate-corner-shape: round;
     --plate-fill: var(--hud);
     --plate-pad: var(--space-sm);
@@ -501,6 +507,9 @@
     --plate-rim: var(--line-70);
     --plate-rim-width: var(--stroke-hairline);
     --plate-shadow: none;
+    --pop-motion: og-pop-in var(--motion-named-emphasis-duration) var(--motion-easing-spring) both;
+    --pulse-motion: og-pulse var(--motion-duration-bounce) var(--motion-easing-in-out) infinite alternate;
+    --pulse-opacity: 0.7;
     --rare: var(--info);
     --row-corner-shape: round;
     --row-fill: none;
@@ -516,6 +525,9 @@
     --sfx-reward: none;
     --sfx-tap: none;
     --sfx-tap2: none;
+    --shimmer-motion: og-shimmer var(--motion-duration-sweep) var(--motion-easing-in-out) infinite;
+    --spin-motion: og-spin var(--motion-duration-turn) linear infinite;
+    --stamp-motion: og-stamp-in var(--motion-duration-slow) var(--motion-easing-out) both;
     --tag-fill: none;
     --tag-halo: 1.5px 0 0 contrast-color(currentColor), -1.5px 0 0 contrast-color(currentColor), 0 1.5px 0 contrast-color(currentColor), 0 -1.5px 0 contrast-color(currentColor), 1px 1px 0 contrast-color(currentColor), -1px 1px 0 contrast-color(currentColor), 1px -1px 0 contrast-color(currentColor), -1px -1px 0 contrast-color(currentColor);
     --tag-pad: 0px;
@@ -1938,6 +1950,38 @@
   :where([part$=".fill"][data-tone=danger]) { --fill-color: var(--tone-danger); }
   :where([part$=".fill"][data-tone=warn]) { --fill-color: var(--tone-warn); }
   :where([part$=".fill"][data-tone=info]) { --fill-color: var(--tone-info); }
+  /* Motion. An interactive role part eases between its states; a cell
+     gives under a press. */
+  :where([part$=".row"], [part$=".cell"], [part$=".card"], [part$=".tab"], [part$=".badge"]) { transition: var(--change-motion); }
+  :where([part$=".cell"]:active:not(:disabled, [aria-disabled=true], [data-locked=true])) { scale: var(--cell-pressed-scale); }
+  /* A part asks for a shared motion by meaning (`data-motion`), never by
+     its keyframes or timing. */
+  :where([data-motion=enter]) { animation: var(--enter-motion); }
+  :where([data-motion=exit]) { animation: var(--exit-motion); }
+  :where([data-motion=pop]) { animation: var(--pop-motion); }
+  :where([data-motion=stamp]) { animation: var(--stamp-motion); }
+  :where([data-motion=beat]) { animation: var(--beat-motion); }
+  :where([data-motion=pulse]) { animation: var(--pulse-motion); }
+  :where([data-motion=spin]) { animation: var(--spin-motion); }
+  :where([data-motion=ping]) { animation: var(--ping-motion); }
+  :where([data-motion=shimmer]) { animation: var(--shimmer-motion); }
+  @media (prefers-reduced-motion: reduce) {
+    :where([data-motion]:not([data-motion=spin])) { animation: none; }
+    :where([part$=".cell"]:active) { scale: 1; }
+  }
+  /* The shared motions, each from (or to) the part's own state, so one
+     name serves any part; their sizes are motion.css's tokens. */
+  @keyframes og-fade-in { from { opacity: 0; } }
+  @keyframes og-fade-out { to { opacity: 0; } }
+  @keyframes og-rise-in { from { opacity: 0; translate: 0 var(--space-xs); } }
+  @keyframes og-drop-in { from { opacity: 0; translate: 0 calc(var(--space-xs) * -1); } }
+  @keyframes og-pop-in { from { opacity: 0; scale: var(--motion-scale-shrink); } }
+  @keyframes og-stamp-in { from { opacity: 0; scale: var(--motion-scale-pop); } }
+  @keyframes og-beat { from { scale: var(--motion-scale-swell); } }
+  @keyframes og-pulse { to { opacity: var(--pulse-opacity); } }
+  @keyframes og-spin { from { rotate: 0deg; } to { rotate: 360deg; } }
+  @keyframes og-ping { from { opacity: 1; scale: var(--motion-scale-shrink); } to { opacity: 0; scale: 2; } }
+  @keyframes og-shimmer { from { translate: -100% 0; } to { translate: 420% 0; } }
   /* A phone on its side: bands and titles one step down. */
   @media (height < 500px) {
     :where([part$=".band"]) { min-height: var(--band-small-height); padding-top: 0; padding-bottom: 0; }

@@ -328,6 +328,38 @@ const ROLE_RULES: &str = r#"  /* Roles: frame, plate, band, title, row, cell, ca
   :where([part$=".fill"][data-tone=danger]) { --fill-color: var(--tone-danger); }
   :where([part$=".fill"][data-tone=warn]) { --fill-color: var(--tone-warn); }
   :where([part$=".fill"][data-tone=info]) { --fill-color: var(--tone-info); }
+  /* Motion. An interactive role part eases between its states; a cell
+     gives under a press. */
+  :where([part$=".row"], [part$=".cell"], [part$=".card"], [part$=".tab"], [part$=".badge"]) { transition: var(--change-motion); }
+  :where([part$=".cell"]:active:not(:disabled, [aria-disabled=true], [data-locked=true])) { scale: var(--cell-pressed-scale); }
+  /* A part asks for a shared motion by meaning (`data-motion`), never by
+     its keyframes or timing. */
+  :where([data-motion=enter]) { animation: var(--enter-motion); }
+  :where([data-motion=exit]) { animation: var(--exit-motion); }
+  :where([data-motion=pop]) { animation: var(--pop-motion); }
+  :where([data-motion=stamp]) { animation: var(--stamp-motion); }
+  :where([data-motion=beat]) { animation: var(--beat-motion); }
+  :where([data-motion=pulse]) { animation: var(--pulse-motion); }
+  :where([data-motion=spin]) { animation: var(--spin-motion); }
+  :where([data-motion=ping]) { animation: var(--ping-motion); }
+  :where([data-motion=shimmer]) { animation: var(--shimmer-motion); }
+  @media (prefers-reduced-motion: reduce) {
+    :where([data-motion]:not([data-motion=spin])) { animation: none; }
+    :where([part$=".cell"]:active) { scale: 1; }
+  }
+  /* The shared motions, each from (or to) the part's own state, so one
+     name serves any part; their sizes are motion.css's tokens. */
+  @keyframes og-fade-in { from { opacity: 0; } }
+  @keyframes og-fade-out { to { opacity: 0; } }
+  @keyframes og-rise-in { from { opacity: 0; translate: 0 var(--space-xs); } }
+  @keyframes og-drop-in { from { opacity: 0; translate: 0 calc(var(--space-xs) * -1); } }
+  @keyframes og-pop-in { from { opacity: 0; scale: var(--motion-scale-shrink); } }
+  @keyframes og-stamp-in { from { opacity: 0; scale: var(--motion-scale-pop); } }
+  @keyframes og-beat { from { scale: var(--motion-scale-swell); } }
+  @keyframes og-pulse { to { opacity: var(--pulse-opacity); } }
+  @keyframes og-spin { from { rotate: 0deg; } to { rotate: 360deg; } }
+  @keyframes og-ping { from { opacity: 1; scale: var(--motion-scale-shrink); } to { opacity: 0; scale: 2; } }
+  @keyframes og-shimmer { from { translate: -100% 0; } to { translate: 420% 0; } }
   /* A phone on its side: bands and titles one step down. */
   @media (height < 500px) {
     :where([part$=".band"]) { min-height: var(--band-small-height); padding-top: 0; padding-bottom: 0; }
@@ -485,7 +517,10 @@ pub fn generate(t: &Value) -> Result<String, String> {
         .as_object()
         .ok_or("tokens: role is not an object")?
     {
-        writeln!(out, "    --{name}: {};", value.as_str().unwrap_or_default()).unwrap();
+        match value {
+            Value::String(s) => writeln!(out, "    --{name}: {s};").unwrap(),
+            v => writeln!(out, "    --{name}: {v};").unwrap(),
+        }
     }
     for (name, value) in super::get(t, &["derived", "alias"])?
         .as_object()
