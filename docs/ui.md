@@ -1457,7 +1457,11 @@ states; it is not a second styling language. Engine rules:
   property moves its computed value, and an element with one in flight
   builds each frame until it settles. `display`, `visibility`,
   `content-visibility` and `overlay` keep their shown value through a move
-  to or from hidden. A property not declared transitions from its CSS
+  to or from hidden. Under `interpolate-size: allow-keywords` (inherited)
+  a `width` or `height` moves between a length and an intrinsic keyword
+  (`auto`, `min-content`, `max-content`, `fit-content`, `stretch`) through
+  `calc-size()`, as CSS Values 5 §8.2 has it, by a transition (keyframes
+  still step a keyword). A property not declared transitions from its CSS
   initial value where one is fixed, else it jumps. `var()` inside a
   shorthand, a non-animatable property and unknown keyframes fail at cook.
 - `@starting-style` gives a first style; an exit transitions to

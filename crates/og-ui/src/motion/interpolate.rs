@@ -44,7 +44,12 @@ pub(crate) fn animatable(property: &str) -> bool {
         || property.starts_with("container")
         || matches!(
             property,
-            "timeline-scope" | "direction" | "unicode-bidi" | "will-change" | "all"
+            "timeline-scope"
+                | "direction"
+                | "unicode-bidi"
+                | "will-change"
+                | "interpolate-size"
+                | "all"
         ))
 }
 
@@ -97,6 +102,44 @@ fn hidden(property: &str) -> Option<&'static str> {
         "overlay" => "none",
         _ => return None,
     })
+}
+
+/// A size pair under `interpolate-size: allow-keywords` (CSS Values 5
+/// §8.2): when one side is an intrinsic size keyword (`auto`,
+/// `min-content`, `max-content`, `fit-content`, `stretch`) or a
+/// `calc-size()` of one, both become `calc-size(<keyword>, …)` and their
+/// calculations mix, linear in `size` (`0px` → `auto` at p is
+/// `calc-size(auto, size * p)`). `None` for two lengths (the ordinary
+/// mix), two different keywords, or another property.
+pub(crate) fn mix_sizes(property: &str, a: &str, b: &str, p: f32) -> Option<String> {
+    if !matches!(property, "width" | "height" | "inline-size" | "block-size") {
+        return None;
+    }
+    let size = |v: &str| {
+        let v = v.trim();
+        let text = if v.starts_with("calc-size(") {
+            v.to_string()
+        } else {
+            format!("calc-size({v}, size)")
+        };
+        og_css::calc::calc_size(&text).ok()
+    };
+    let (x, y) = (size(a)?, size(b)?);
+    let basis = match (x.basis, y.basis) {
+        (Some(k), Some(l)) if k != l => return None,
+        (k, l) => k.or(l)?,
+    };
+    let q = f64::from(p);
+    let mix = |u: f64, v: f64| (u * (1.0 - q) + v * q) as f32;
+    let mut out = format!("calc-size({basis}, size * {}", num(mix(x.scale, y.scale)));
+    for (v, unit) in [(mix(x.pct, y.pct) * 100.0, "%"), (mix(x.px, y.px), "px")] {
+        if num(v) != "0" {
+            let sign = if v < 0.0 { '-' } else { '+' };
+            out.push_str(&format!(" {sign} {}{unit}", num(v.abs())));
+        }
+    }
+    out.push(')');
+    Some(out)
 }
 
 /// A property's value at `p` (0 is `a`, 1 is `b`; easings may go beyond),

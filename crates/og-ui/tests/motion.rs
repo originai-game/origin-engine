@@ -866,3 +866,56 @@ fn offset_paths_move_the_anchor_along_the_path() {
     assert_eq!(at(&mut d, 398.0, 100.0), Cursor::Copy, "the moved box");
     assert_ne!(at(&mut d, 5.0, 5.0), Cursor::Copy, "its laid-out place");
 }
+
+/// CSS Values 5 §8.2: under `interpolate-size: allow-keywords`, set on a
+/// parent and inherited, `height: 0px` → `auto` moves through
+/// `calc-size(auto, size * p)`: over a 1000 ms linear transition a box
+/// whose content is 200 px tall is 200·t/1000 px every tick, and back
+/// down the same way. Without it (`numeric-only`, the initial value) the
+/// same declarations snap at once, as before.
+///
+/// Ways it could fail: the keyword end left discrete (a jump at once or
+/// at 50%), the property not inherited, the mix taken against a stale or
+/// zero `size`, a reverse that jumps, numeric-only interpolating too.
+#[test]
+fn interpolate_size_moves_to_and_from_intrinsic_keywords() {
+    let text = r#"<meta name="component" content="t">
+<div id="Page" class={$mode}>
+  <div id="Keys"><div id="Grow"><div class="kid"></div></div></div>
+  <div id="Plain"><div id="Snap"><div class="kid"></div></div></div>
+</div>
+<style>
+#Page { display: block; }
+#Keys { interpolate-size: allow-keywords; }
+#Grow, #Snap { width: 100px; height: 0px; overflow: hidden; transition: height 1000ms linear; }
+.kid { height: 200px; }
+#Page.on #Grow, #Page.on #Snap { height: auto; }
+</style>"#;
+    let mut d = Doc::new(text, &[("mode", serde_json::json!("off"))]);
+    d.viewport = vp();
+    d.step(InputFrame::default());
+    d.step(InputFrame::default());
+    assert_eq!(d.get("Grow").height, 0.0);
+    d.set("mode", serde_json::json!("on"));
+    assert_eq!(d.get("Snap").height, 200.0, "numeric-only snaps");
+    for k in 1..=64 {
+        let want = 200.0 * (k as f32 / 60.0).min(1.0);
+        let h = d.get("Grow").height;
+        assert!(
+            (h - want).abs() <= 0.5,
+            "opening at tick {k}: {h} vs {want}"
+        );
+        d.step(InputFrame::default());
+    }
+    d.set("mode", serde_json::json!("off"));
+    assert_eq!(d.get("Snap").height, 0.0, "numeric-only snaps back");
+    for k in 1..=64 {
+        let want = 200.0 * (1.0 - k as f32 / 60.0).max(0.0);
+        let h = d.get("Grow").height;
+        assert!(
+            (h - want).abs() <= 0.5,
+            "closing at tick {k}: {h} vs {want}"
+        );
+        d.step(InputFrame::default());
+    }
+}

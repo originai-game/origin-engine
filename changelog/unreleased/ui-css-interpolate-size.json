@@ -1,0 +1,6 @@
+{
+  "simulation": "unchanged",
+  "added": [
+    {"member":"ui","summary":"CSS `interpolate-size` (inherited): under `allow-keywords` a `width` or `height` transition between a length and `auto`, `min-content`, `max-content`, `fit-content` or `stretch` moves through `calc-size()` instead of jumping, so `height: 0` → `auto` opens smoothly. `numeric-only`, the initial value, keeps the jump."}
+  ]
+}

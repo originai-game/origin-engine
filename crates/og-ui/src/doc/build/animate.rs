@@ -196,6 +196,17 @@ impl Ui {
                 .or_else(|| from_shorthand(values, name))
                 .or_else(|| interpolate::initial(name).map(str::to_string))
         };
+        // CSS Values 5 §8.2: under `interpolate-size: allow-keywords` (an
+        // inherited value) a size moves to or from an intrinsic keyword
+        // through calc-size().
+        let keywords = value_of(&cascade.values, "interpolate-size")
+            .is_some_and(|v| v.trim() == "allow-keywords");
+        let mix = |name: &str, a: &str, b: &str, p: f32| {
+            keywords
+                .then(|| interpolate::mix_sizes(name, a, b, p))
+                .flatten()
+                .unwrap_or_else(|| interpolate::mix(name, a, b, p))
+        };
         let mut running = false;
         let mut animated_values = Vec::new();
         let mut animation_cascade = cascade.values.clone();
@@ -349,7 +360,7 @@ impl Ui {
                     return (r.from.clone(), false);
                 }
                 let (p, done) = progress(&transition, ms, r, tps, &theme.motion);
-                (interpolate::mix(&name, &r.from, &r.to, p), done)
+                (mix(&name, &r.from, &r.to, p), done)
             };
             let run = match old {
                 // Still heading where it was.
@@ -368,7 +379,10 @@ impl Ui {
                                 && duration_ms + t.delay_ms > 0.0
                                 && (t.discrete
                                     || interpolate::interpolate(&name, &from, &after, 0.5)
-                                        .is_some()) =>
+                                        .is_some()
+                                    || (keywords
+                                        && interpolate::mix_sizes(&name, &from, &after, 0.5)
+                                            .is_some())) =>
                         {
                             // CSS Transitions 1 §3, step 4: back towards
                             // where a running one started, shortened by how

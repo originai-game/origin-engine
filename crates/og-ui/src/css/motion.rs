@@ -52,9 +52,11 @@ pub(crate) const TIMELINES: [&str; 6] = [
     "timeline-scope",
 ];
 
-/// Whether a declaration is a transition, animation or timeline longhand.
+/// Whether a declaration is a transition, animation or timeline longhand,
+/// or `interpolate-size`, which the transitions read (CSS Values 5 §8.2).
 pub(crate) fn longhand(name: &str) -> bool {
-    TRANSITION.contains(&name)
+    name == "interpolate-size"
+        || TRANSITION.contains(&name)
         || ANIMATION.contains(&name)
         || ANIMATION_EXTRA.contains(&name)
         || TIMELINES.contains(&name)
@@ -432,6 +434,9 @@ fn validate(name: &str, value: &str, keyframes: &dyn Fn(&str) -> bool) -> Result
                         ))
             }
             "transition-behavior" => matches!(word.as_str(), "normal" | "allow-discrete"),
+            "interpolate-size" => {
+                list.len() == 1 && matches!(word.as_str(), "numeric-only" | "allow-keywords")
+            }
             "animation-composition" => Composite::from_css(word).is_some(),
             "transition-duration" | "animation-duration" => time(word).is_some_and(|t| t >= 0.0),
             "transition-delay" | "animation-delay" => time(word).is_some(),
