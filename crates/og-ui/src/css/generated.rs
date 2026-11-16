@@ -77,7 +77,7 @@ pub fn allows(pseudo: &str, property: &str) -> bool {
         }
         "first-letter" | "first-line" => text,
         "placeholder" => property == "color",
-        "selection" | "target-text" => matches!(
+        p if paints_range(p) => matches!(
             property,
             "background-color" | "background" | "color" | "text-decoration" | "text-shadow"
         ),
@@ -93,9 +93,24 @@ pub fn encode(pseudo: &str, property: &str) -> String {
     format!("-og-pe-{pseudo}__{property}")
 }
 
-/// `(pseudo, property)` of an [`encode`]d name.
+/// `(pseudo, property)` of an [`encode`]d name (a highlight's name may
+/// hold `__`; a property never does).
 pub fn decode(name: &str) -> Option<(&str, &str)> {
-    name.strip_prefix("-og-pe-")?.split_once("__")
+    name.strip_prefix("-og-pe-")?.rsplit_once("__")
+}
+
+/// How [`encode`] names `::highlight(<name>)`: this, then the name.
+pub const HIGHLIGHT: &str = "highlight-";
+
+/// The custom highlight's name a pseudo of [`HIGHLIGHT`] styles.
+pub fn highlight_name(pseudo: &str) -> Option<&str> {
+    pseudo.strip_prefix(HIGHLIGHT)
+}
+
+/// Whether `pseudo` is a highlight pseudo-element (CSS Pseudo-Elements 4
+/// §3): `::selection`, `::target-text` or a `::highlight()`.
+fn paints_range(pseudo: &str) -> bool {
+    matches!(pseudo, "selection" | "target-text") || highlight_name(pseudo).is_some()
 }
 
 /// The element properties of generated content that cascade per element
@@ -121,10 +136,10 @@ pub fn check(name: &str, value: &str) -> Result<(), String> {
             parse_ops(property, value).map(|_| ())
         }
         _ if pseudo == Some("file-selector-button") => Ok(()),
-        "text-decoration" if matches!(pseudo, Some("selection" | "target-text")) => {
+        "text-decoration" if pseudo.is_some_and(paints_range) => {
             selection_decoration(value).map(|_| ())
         }
-        "text-shadow" if matches!(pseudo, Some("selection" | "target-text")) => {
+        "text-shadow" if pseudo.is_some_and(paints_range) => {
             super::paint_css::text_shadows(value, crate::paint::ColorRef::token("ink")).map(|_| ())
         }
         // The text properties check as a span's do, when the element
@@ -205,6 +220,9 @@ pub struct Generated {
     pub placeholder: Option<String>,
     pub selection: Option<String>,
     pub target_text: Option<String>,
+    /// Each `::highlight(<name>)`'s declarations, by its custom highlight's
+    /// name (CSS Custom Highlight API 1 §4.1).
+    pub highlights: BTreeMap<String, String>,
     /// `::scroll-marker`'s label (CSS Overflow 5 §3.1.5): generated only
     /// for a `content` other than `normal` or `none`.
     pub scroll_marker: Option<PseudoBox>,
@@ -269,6 +287,12 @@ impl Generated {
                             .copied()
                             .unwrap_or("before");
                         boxes.entry(p).or_default().0.content = parse_content(value)?;
+                    }
+                    (Some(p), property) if highlight_name(p).is_some() => {
+                        out.highlights
+                            .entry(p[HIGHLIGHT.len()..].to_string())
+                            .or_default()
+                            .push_str(&format!("{property}: {value};"));
                     }
                     (Some(p), property) => {
                         let p = PSEUDOS

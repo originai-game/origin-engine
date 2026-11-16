@@ -54,6 +54,8 @@ impl Ui {
                 selected: Vec::new(),
                 target_text: Vec::new(),
                 target_marked: Vec::new(),
+                highlights: Vec::new(),
+                highlight_marked: Vec::new(),
                 drop_paths: IdMap::new(),
                 drag_paths: IdMap::new(),
                 drop_accepts: IdMap::new(),

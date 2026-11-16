@@ -17383,6 +17383,90 @@ impl ToJson for UiPointer {
     }
 }
 
+/// `UiHighlightRange`: packages/knowledge/wiki/ui.md.
+#[derive(Clone, Debug, PartialEq)]
+pub struct UiHighlightRange {
+    pub start: String,
+    pub start_offset: u32,
+    pub end: String,
+    pub end_offset: u32,
+}
+
+impl Default for UiHighlightRange {
+    fn default() -> Self {
+        Self {
+            start: Default::default(),
+            start_offset: Default::default(),
+            end: Default::default(),
+            end_offset: Default::default(),
+        }
+    }
+}
+
+impl FromJson for UiHighlightRange {
+    fn from_json(v: &Value) -> Result<Self, String> {
+        Self::from_json_over(v, Self::default())
+    }
+    fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
+        let o = object(v)?;
+        Ok(Self {
+            start: field(o, "start", d.start)?,
+            start_offset: field(o, "startOffset", d.start_offset)?,
+            end: field(o, "end", d.end)?,
+            end_offset: field(o, "endOffset", d.end_offset)?,
+        })
+    }
+}
+
+impl ToJson for UiHighlightRange {
+    fn to_json(&self) -> Value {
+        let mut o = Map::new();
+        o.insert("start".into(), self.start.to_json());
+        o.insert("startOffset".into(), self.start_offset.to_json());
+        o.insert("end".into(), self.end.to_json());
+        o.insert("endOffset".into(), self.end_offset.to_json());
+        Value::Object(o)
+    }
+}
+
+/// `UiHighlight`: packages/knowledge/wiki/ui.md.
+#[derive(Clone, Debug, PartialEq)]
+pub struct UiHighlight {
+    pub ranges: Vec<UiHighlightRange>,
+    pub priority: i32,
+}
+
+impl Default for UiHighlight {
+    fn default() -> Self {
+        Self {
+            ranges: Default::default(),
+            priority: Default::default(),
+        }
+    }
+}
+
+impl FromJson for UiHighlight {
+    fn from_json(v: &Value) -> Result<Self, String> {
+        Self::from_json_over(v, Self::default())
+    }
+    fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
+        let o = object(v)?;
+        Ok(Self {
+            ranges: field(o, "ranges", d.ranges)?,
+            priority: field(o, "priority", d.priority)?,
+        })
+    }
+}
+
+impl ToJson for UiHighlight {
+    fn to_json(&self) -> Value {
+        let mut o = Map::new();
+        o.insert("ranges".into(), self.ranges.to_json());
+        o.insert("priority".into(), self.priority.to_json());
+        Value::Object(o)
+    }
+}
+
 /// `ScrollState`: packages/knowledge/wiki/ui.md.
 #[derive(Clone, Debug, PartialEq)]
 pub struct ScrollState {

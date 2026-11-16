@@ -12125,6 +12125,8 @@
         "UiInlineImage",
         "ToastDesc",
         "UiPointer",
+        "UiHighlightRange",
+        "UiHighlight",
         "ScrollState",
         "VirtualCursorDesc",
         "VirtualCursor",
@@ -12317,6 +12319,26 @@
               "type": "bool",
               "optional": false,
               "doc": "Centre it in the view, as far as the range allows; false scrolls by the least that shows it."
+            }
+          ],
+          "returns": "Void",
+          "publish": true
+        },
+        {
+          "name": "setHighlight",
+          "doc": "Register a custom highlight under a name, as a browser's CSS.highlights.set does: from the next frame, its ranges paint with the `::highlight(<name>)` rules of the elements they cross. Each property comes from the nearest of the element and its ancestors that declares it, so `:root::highlight(found) { … }` styles every element. A highlight with no rule paints nothing. Setting a name again replaces its highlight in its place of registration. It holds until it is set again or removed, and it is presentation: snapshots do not carry it. Search hits, a tutorial's pointed-out words and a spell checker's marks are what it is for.",
+          "params": [
+            {
+              "name": "name",
+              "type": "String",
+              "optional": false,
+              "doc": "Its name, as `::highlight(<name>)` writes it (case matters)."
+            },
+            {
+              "name": "highlight",
+              "type": "Option<UiHighlight>",
+              "optional": false,
+              "doc": "Its ranges and priority; null removes it."
             }
           ],
           "returns": "Void",
@@ -46491,6 +46513,65 @@
         "ctrl",
         "alt"
       ],
+      "additionalProperties": false
+    },
+    "UiHighlightRange": {
+      "x-og-kind": "struct",
+      "x-og-module": "ui",
+      "description": "A range of laid-out text for og.ui.setHighlight, from a character of one text element to a character of the same element or a later one in document order.",
+      "type": "object",
+      "properties": {
+        "start": {
+          "type": "string",
+          "description": "The full path of the element it starts in (og.ui.focus, the probe's dump)."
+        },
+        "startOffset": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "The character it starts at, counting the element's characters over its lines joined by one break each."
+        },
+        "end": {
+          "type": "string",
+          "description": "The full path of the element it ends in."
+        },
+        "endOffset": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "The character after its last, counted as startOffset is."
+        }
+      },
+      "required": [
+        "start",
+        "startOffset",
+        "end",
+        "endOffset"
+      ],
+      "additionalProperties": false
+    },
+    "UiHighlight": {
+      "x-og-kind": "desc",
+      "x-og-module": "ui",
+      "description": "A custom highlight (CSS Custom Highlight API) for og.ui.setHighlight: ranges of text that `::highlight(<name>)` rules style. The zero value covers nothing, at priority 0.",
+      "type": "object",
+      "properties": {
+        "ranges": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/UiHighlightRange"
+          },
+          "description": "Its ranges. Overlapping ranges paint once, as their union, and a collapsed range paints nothing.",
+          "default": []
+        },
+        "priority": {
+          "type": "integer",
+          "minimum": -2147483648,
+          "maximum": 2147483647,
+          "description": "Where its overlay stacks: higher priorities paint above, and of equal ones the highlight registered later is above. Every custom highlight paints under ::target-text and the selection.",
+          "default": 0
+        }
+      },
       "additionalProperties": false
     },
     "ScrollState": {

@@ -162,6 +162,7 @@ pub use text::{
 };
 pub use text_path::{PathShape, TextPath};
 pub use tokens::StyleTokens;
+pub use ui::highlight::{Highlight, HighlightRange};
 pub use ui::{
     ARROW_DOWN, ARROW_LEFT, ARROW_RIGHT, ARROW_UP, CjkLocale, FaceStyle, FamilyFace, FeedbackPlay,
     FontFace, FontFamily, FontQuery, Fonts, HUD_MAX_ASPECT, IconAtlas, IconCell, InlineImage,

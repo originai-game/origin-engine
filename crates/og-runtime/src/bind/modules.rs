@@ -27,7 +27,7 @@ use ui_desc::paint;
 pub use ui_desc::{
     THEME_COLORS, TYPE_STEPS, og_ui_frame_cursor, og_ui_frame_direction, og_ui_frame_pointer,
     og_ui_frame_theme, og_ui_frame_viewport, og_ui_has_icon, og_ui_scroll_into_view, og_ui_seconds,
-    og_ui_set_focus, og_ui_theme, og_ui_viewport,
+    og_ui_set_focus, og_ui_set_highlight, og_ui_theme, og_ui_viewport,
 };
 pub(crate) use ui_desc::{UiAnswers, texture_of, ui_engine, with_ui};
 mod widgets;

@@ -1,0 +1,9 @@
+{
+  "simulation": "unchanged",
+  "added": [
+    {
+      "member": "ui",
+      "summary": "Custom highlights (CSS Custom Highlight API): `og.ui.setHighlight(name, { ranges, priority })` registers ranges of laid-out text, each from a character of one element to a character of the same element or a later one, by path and offset, and `::highlight(<name>)` styles them with background-color, color, text-decoration and text-shadow, as ::selection is styled. A style reaches the elements under its rule (`:root::highlight(found)` styles them all). Overlays stack by priority under ::target-text and the selection, a tie going to the highlight registered later. It suits search hits, words a tutorial points out, and a spell checker's marks."
+    }
+  ]
+}

@@ -5,6 +5,7 @@ use super::syntax::{Attr, Error};
 use super::*;
 use crate::bind::InteractionState;
 use crate::doc::schema::Kind;
+use std::borrow::Cow;
 
 #[derive(Clone, Default)]
 struct Rule {
@@ -2708,7 +2709,7 @@ fn trailing_states(selector: &str) -> (&str, Vec<InteractionState>) {
 /// `::scroll-marker:target-current`), which only a pseudo-element that is
 /// a box of its own beside its element's content takes. CSS 2's `:before`,
 /// `:after`, `:first-line` and `:first-letter` count too.
-fn pseudo_suffix(selector: &str) -> Option<(&'static str, &str, Vec<InteractionState>)> {
+fn pseudo_suffix(selector: &str) -> Option<(Cow<'static, str>, &str, Vec<InteractionState>)> {
     let lower = selector.to_ascii_lowercase();
     let boxed = |lower: &str| {
         BOXES[2..]
@@ -2717,13 +2718,26 @@ fn pseudo_suffix(selector: &str) -> Option<(&'static str, &str, Vec<InteractionS
             .map(|(written, name)| (*name, lower.len() - written.len()))
     };
     if let Some((name, at)) = boxed(&lower) {
-        return Some((name, &selector[..at], Vec::new()));
+        return Some((name.into(), &selector[..at], Vec::new()));
     }
     let (stem, states) = trailing_states(&lower);
     if !states.is_empty()
         && let Some((name, at)) = boxed(stem)
     {
-        return Some((name, &selector[..at], states));
+        return Some((name.into(), &selector[..at], states));
+    }
+    // `::highlight(<custom-ident>)`, its name as written (case matters).
+    const HIGHLIGHT: &str = "::highlight(";
+    if let Some(at) = lower.rfind(HIGHLIGHT)
+        && lower.ends_with(')')
+    {
+        let name = selector[at + HIGHLIGHT.len()..selector.len() - 1].trim();
+        let mut parser = cssparser::Parser::new(name);
+        let ident = parser.expect_ident().is_ok() && parser.is_exhausted();
+        return ident.then(|| {
+            let pseudo = format!("{}{name}", super::generated::HIGHLIGHT);
+            (pseudo.into(), &selector[..at], Vec::new())
+        });
     }
     // A scroll control is written as its box ([`BOXES`]), never by name.
     super::generated::PSEUDOS
@@ -2732,12 +2746,22 @@ fn pseudo_suffix(selector: &str) -> Option<(&'static str, &str, Vec<InteractionS
         .find_map(|&p| {
             let double = format!("::{p}");
             if lower.ends_with(&double) {
-                return Some((p, &selector[..selector.len() - double.len()], Vec::new()));
+                return Some((
+                    p.into(),
+                    &selector[..selector.len() - double.len()],
+                    Vec::new(),
+                ));
             }
             let single = format!(":{p}");
             (matches!(p, "before" | "after" | "first-line" | "first-letter")
                 && lower.ends_with(&single))
-            .then(|| (p, &selector[..selector.len() - single.len()], Vec::new()))
+            .then(|| {
+                (
+                    p.into(),
+                    &selector[..selector.len() - single.len()],
+                    Vec::new(),
+                )
+            })
         })
 }
 
@@ -2771,31 +2795,31 @@ fn pseudo_element(rule: &mut Rule) -> Result<(), (usize, String)> {
             }
         }
     }
-    let boxed = BOXES.iter().any(|(_, name)| *name == pseudo);
+    let boxed = BOXES.iter().find(|(_, name)| *name == pseudo).map(|b| b.1);
     let (mut body, mut own) = (String::new(), String::new());
     for d in variables::declarations(&rule.body).map_err(|e| (rule.at, e))? {
         let important = if d.important { " !important" } else { "" };
         let generated = !matches!(
-            pseudo,
+            pseudo.as_ref(),
             "backdrop" | "picker" | "details-content" | "hold" | "arrow" | "scroll-marker-group"
-        ) && super::generated::allows(pseudo, &d.name);
+        ) && super::generated::allows(&pseudo, &d.name);
         if generated {
             body.push_str(&format!(
                 "{}: {}{important};",
-                super::generated::encode(pseudo, &d.name),
+                super::generated::encode(&pseudo, &d.name),
                 d.source,
             ));
-        } else if !boxed {
+        } else if boxed.is_none() {
             return Err((rule.at, format!("::{pseudo} does not take {}", d.name)));
         }
         // `display` lays out the box and hides the generated text.
-        if boxed && (!generated || d.name == "display") {
+        if boxed.is_some() && (!generated || d.name == "display") {
             own.push_str(&format!("{}: {}{important};", d.name, d.source));
         }
     }
     rule.selector = originating.join(", ");
     rule.body = body;
-    if boxed {
+    if let Some(pseudo) = boxed {
         rule.pseudo = Some(pseudo);
         rule.boxed = own;
         rule.pseudo_states = states;

@@ -1327,6 +1327,7 @@ impl Ui {
         };
         let mut selected = self.interaction.mark_selection(&mut self.tree);
         selected.extend(self.interaction.mark_target_text(&mut self.tree));
+        selected.extend(self.mark_highlights());
         (cursor, cursor_images, selected)
     }
 

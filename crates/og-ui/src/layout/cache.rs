@@ -380,7 +380,8 @@ pub(crate) struct DrawSig {
     scale: f32,
     sampled: crate::layout::node::SampledStyle,
     selected: Option<(u32, u32)>,
-    /// Its text-fragment marks, hashed (they are a list).
+    /// Its text-fragment and custom-highlight marks, hashed (they are
+    /// lists).
     target_text: u64,
 }
 
@@ -431,9 +432,14 @@ impl DrawSig {
             selected: n.marks.selected,
             target_text: n
                 .marks
-                .target_text
+                .highlights
                 .iter()
-                .fold(0xcbf2_9ce4_8422_2325, |h, &(a, b)| {
+                .flat_map(|(style, r)| {
+                    let p = std::sync::Arc::as_ptr(style) as usize as u64;
+                    std::iter::once((p as u32, (p >> 32) as u32)).chain(r.iter().copied())
+                })
+                .chain(n.marks.target_text.iter().copied())
+                .fold(0xcbf2_9ce4_8422_2325, |h, (a, b)| {
                     (h ^ (u64::from(a) << 32 | u64::from(b))).wrapping_mul(0x0100_0000_01b3)
                 }),
         }
@@ -476,6 +482,7 @@ pub(crate) fn painted_eq(a: &Node, b: &Node) -> bool {
         && a.layout.lines == b.layout.lines
         && a.marks.selected == b.marks.selected
         && a.marks.target_text == b.marks.target_text
+        && a.marks.highlights == b.marks.highlights
         && a.props.text_path == b.props.text_path
         && a.layout.rich_lines == b.layout.rich_lines
         && a.layout.col_rules == b.layout.col_rules

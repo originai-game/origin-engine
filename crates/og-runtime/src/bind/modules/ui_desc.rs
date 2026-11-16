@@ -273,6 +273,28 @@ pub fn og_ui_scroll_into_view(path: String, center: bool) {
     });
 }
 
+pub fn og_ui_set_highlight(name: String, highlight: String) {
+    let h = crate::host::wire::arg::<Option<crate::host::wire::UiHighlight>>(
+        Some(&highlight),
+        "highlight",
+    )
+    .unwrap_or_default();
+    let h = h.map(|h| og_ui::Highlight {
+        ranges: h
+            .ranges
+            .into_iter()
+            .map(|r| og_ui::HighlightRange {
+                start: r.start,
+                start_offset: r.start_offset,
+                end: r.end,
+                end_offset: r.end_offset,
+            })
+            .collect(),
+        priority: h.priority,
+    });
+    with_ui("og.ui.setHighlight", |ui| ui.set_highlight(&name, h));
+}
+
 pub fn og_ui_has_icon(name: String) -> bool {
     with_ui("og.ui.hasIcon", |ui| ui.has_icon(&name)).unwrap_or(false)
 }

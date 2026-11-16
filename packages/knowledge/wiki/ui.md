@@ -63,6 +63,9 @@ module ui {
 | [`og.ui.seconds`](ui/fn-seconds.md) | function | `(): number` | The UI's clock in seconds: frames built over the tick rate (simulation time, never the wall clock). |
 | [`og.ui.setFocus`](ui/fn-setFocus.md) | function | `(path: string): void` | Move the focus (the pointer's, the keys' and pad 0's) to the element at a full path when this frame ends, if a focusable control is there then: a component moving the focus with its choice (a radio g… |
 | [`og.ui.scrollIntoView`](ui/fn-scrollIntoView.md) | function | `(path: string, center: boolean): void` | Scroll the scroll container around a control (an interactive or focusable element, by its full path) so the control is in its view, by where both were in the last frame: by the least that shows it wh… |
+| [`UiHighlightRange`](ui/type-UiHighlightRange.md) | struct |  | A range of laid-out text for og.ui.setHighlight, from a character of one text element to a character of the same element or a later one in document order. |
+| [`UiHighlight`](ui/type-UiHighlight.md) | desc struct |  | A custom highlight (CSS Custom Highlight API) for og.ui.setHighlight: ranges of text that `::highlight(<name>)` rules style. |
+| [`og.ui.setHighlight`](ui/fn-setHighlight.md) | function | `(name: string, highlight: UiHighlight \| null): void` | Register a custom highlight under a name, as a browser's CSS.highlights.set does: from the next frame, its ranges paint with the `::highlight(<name>)` rules of the elements they cross. |
 | [`og.ui.frameDirection`](ui/fn-frameDirection.md) | function | `(): string` | The writing direction of the frame being built, `ltr` or `rtl` (og.i18n's locale sets it): code that draws its own arrows, chevrons or progress along a line mirrors them by it; layout mirrors rows an… |
 | [`og.ui.frameTheme`](ui/fn-frameTheme.md) | function | `(): UiTheme` | The style values of the frame being built: og.ui.theme without the world, for code that only builds UI (the components and patterns). |
 | [`og.ui.bounds`](ui/fn-bounds.md) | function | `(path: string): UiRect \| null` | Where an element was in the last frame, by id or `Parent/Child` path (topmost first), as touch_move_to resolves it. |
@@ -221,7 +224,7 @@ column VectorArt {
 }
 ```
 
-<sub>Module `ui` line 1317</sub>
+<sub>Module `ui` line 1339</sub>
 
 ```ogt
 column UiMaterial {
@@ -232,4 +235,4 @@ column UiMaterial {
 }
 ```
 
-<sub>Module `ui` line 1324</sub>
+<sub>Module `ui` line 1346</sub>

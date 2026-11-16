@@ -1001,6 +1001,9 @@ pub struct NodeMarks {
     /// The characters a followed text fragment matched (`::target-text`),
     /// each `[start, end)` as [`Self::selected`] counts them.
     pub target_text: Vec<(u32, u32)>,
+    /// The custom highlights over its characters, bottom first
+    /// ([`crate::ui::highlight`]).
+    pub highlights: crate::ui::highlight::HighlightMarks,
 }
 
 #[derive(Clone, Debug)]

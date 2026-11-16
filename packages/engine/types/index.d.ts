@@ -25815,6 +25815,43 @@ export interface UiPointer {
 
 
 
+/**
+ * A range of laid-out text for og.ui.setHighlight, from a character of one text element to a character of the same element or a later one in document order.
+ */
+export interface UiHighlightRange {
+  /** The full path of the element it starts in (og.ui.focus, the probe's dump). */
+  readonly start: string;
+  /**
+   * The character it starts at, counting the element's characters over its lines joined by one break each.
+   */
+  readonly startOffset: number;
+  /** The full path of the element it ends in. */
+  readonly end: string;
+  /** The character after its last, counted as startOffset is. */
+  readonly endOffset: number;
+}
+
+/**
+ * A custom highlight (CSS Custom Highlight API) for og.ui.setHighlight: ranges of text that `::highlight(<name>)` rules style. The zero value covers nothing, at priority 0.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface UiHighlight {
+  /**
+   * Its ranges. Overlapping ranges paint once, as their union, and a collapsed range paints nothing.
+   *
+   * @default []
+   */
+  readonly ranges?: readonly UiHighlightRange[];
+  /**
+   * Where its overlay stacks: higher priorities paint above, and of equal ones the highlight registered later is above. Every custom highlight paints under ::target-text and the selection.
+   *
+   * @default 0
+   */
+  readonly priority?: number;
+}
+
+
 
 
 
@@ -37476,6 +37513,13 @@ export declare namespace og {
      * @param center Centre it in the view, as far as the range allows; false scrolls by the least that shows it.
      */
     function scrollIntoView(path: string, center: boolean): void;
+    /**
+     * Register a custom highlight under a name, as a browser's CSS.highlights.set does: from the next frame, its ranges paint with the `::highlight(<name>)` rules of the elements they cross. Each property comes from the nearest of the element and its ancestors that declares it, so `:root::highlight(found) { … }` styles every element. A highlight with no rule paints nothing. Setting a name again replaces its highlight in its place of registration. It holds until it is set again or removed, and it is presentation: snapshots do not carry it. Search hits, a tutorial's pointed-out words and a spell checker's marks are what it is for.
+     *
+     * @param name Its name, as `::highlight(<name>)` writes it (case matters).
+     * @param highlight Its ranges and priority; null removes it.
+     */
+    function setHighlight(name: string, highlight: UiHighlight | null): void;
     /**
      * The writing direction of the frame being built, `ltr` or `rtl` (og.i18n's locale sets it): code that draws its own arrows, chevrons or progress along a line mirrors them by it; layout mirrors rows and insets itself.
      */
