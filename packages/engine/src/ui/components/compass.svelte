@@ -44,9 +44,9 @@
       </svg>
       {#each pois as poi (poi.id)}
         <div part="Compass.poi" class="poi" class:objective={poi.kind == 'objective'} class:ping={poi.kind == 'ping'} class:enemy={poi.kind == 'enemy'} class:ally={poi.kind == 'ally'} class:loot={poi.kind == 'loot'} style:--b={poi.bearing} aria-label={poi.label}>
-          <div class="copy back"><og-icon class="mark" icon={poi.icon} hidden={!poi.icon}></og-icon><svg class="mark" viewBox="0 0 16 16" hidden={!!poi.icon}><path class="diamond" d="M8 1l7 7-7 7-7-7z"></path></svg><span part="Compass.distance" class="distance" hidden={poi.distance < 0}>{formatNumber(poi.distance) + units}</span></div>
-          <div class="copy"><og-icon class="mark" icon={poi.icon} hidden={!poi.icon}></og-icon><svg class="mark" viewBox="0 0 16 16" hidden={!!poi.icon}><path class="diamond" d="M8 1l7 7-7 7-7-7z"></path></svg><span part="Compass.distance" class="distance" hidden={poi.distance < 0}>{formatNumber(poi.distance) + units}</span></div>
-          <div class="copy ahead"><og-icon class="mark" icon={poi.icon} hidden={!poi.icon}></og-icon><svg class="mark" viewBox="0 0 16 16" hidden={!!poi.icon}><path class="diamond" d="M8 1l7 7-7 7-7-7z"></path></svg><span part="Compass.distance" class="distance" hidden={poi.distance < 0}>{formatNumber(poi.distance) + units}</span></div>
+          <div class="copy back">{#if poi.icon}<og-icon class="mark" icon={poi.icon}></og-icon>{:else}<svg class="mark" viewBox="0 0 16 16"><path class="diamond" d="M8 1l7 7-7 7-7-7z"></path></svg>{/if}{#if poi.distance >= 0}<span part="Compass.distance" class="distance">{formatNumber(poi.distance) + units}</span>{/if}</div>
+          <div class="copy">{#if poi.icon}<og-icon class="mark" icon={poi.icon}></og-icon>{:else}<svg class="mark" viewBox="0 0 16 16"><path class="diamond" d="M8 1l7 7-7 7-7-7z"></path></svg>{/if}{#if poi.distance >= 0}<span part="Compass.distance" class="distance">{formatNumber(poi.distance) + units}</span>{/if}</div>
+          <div class="copy ahead">{#if poi.icon}<og-icon class="mark" icon={poi.icon}></og-icon>{:else}<svg class="mark" viewBox="0 0 16 16"><path class="diamond" d="M8 1l7 7-7 7-7-7z"></path></svg>{/if}{#if poi.distance >= 0}<span part="Compass.distance" class="distance">{formatNumber(poi.distance) + units}</span>{/if}</div>
         </div>
       {/each}
     </div>
@@ -58,29 +58,27 @@
 </div>
 
 <style>
-/* Drawn over the scene: the style's tag halo holds its text there. */
-:host { text-shadow: var(--tag-halo); }
-#Compass { display: flex; flex-direction: column; align-items: center; gap: 0; }
-#Window { width: var(--measure-xl); aspect-ratio: 10.77; overflow: hidden; border-radius: var(--radius-control); background: linear-gradient(90deg, transparent, var(--hud) 18%, var(--hud) 82%, transparent); }
-#Strip { position: absolute; top: 0; inset-inline-start: 0; width: calc(var(--measure-xl) * 6); height: stretch; translate: calc(var(--h) * var(--measure-xl) * -0.3183099 - var(--measure-xl) * 1.5) 0; }
-#Laps { position: absolute; top: 0; inset-inline-start: 0; width: stretch; height: stretch; }
+:host { display: flex; flex-direction: column; align-items: center; gap: 0; max-width: 100%; text-shadow: var(--tag-halo); }
+#Window { position: relative; width: var(--measure-xl); max-width: 100%; height: var(--size-xl); overflow: hidden; border-radius: var(--radius-control); background: linear-gradient(90deg, transparent, var(--hud) 18%, var(--hud) 82%, transparent); }
+#Strip { position: absolute; top: 0; bottom: 0; inset-inline-start: 50%; width: calc(var(--measure-xl) * 6); translate: calc(var(--h) * var(--measure-xl) * -0.3183099 - var(--measure-xl) * 2) 0; }
+#Laps { position: absolute; top: 0; inset-inline: 0; width: 100%; height: calc(var(--measure-xl) / 10.77); }
 .north { fill: var(--danger); }
 .point { fill: var(--ink); }
 .tick { fill: var(--ink-muted); }
-.poi { position: absolute; top: 0; inset-inline-start: 0; width: stretch; height: stretch; --ink-mark: var(--ink); }
+.poi { position: absolute; inset: 0; --ink-mark: var(--ink); }
 .poi.objective { --ink-mark: var(--gold); }
 .poi.ping { --ink-mark: var(--info); }
 .poi.enemy { --ink-mark: var(--danger); }
 .poi.ally { --ink-mark: var(--success); }
 .poi.loot { --ink-mark: var(--xp); }
-.copy { display: flex; flex-direction: column; position: absolute; top: var(--space-lg); width: var(--size-lg); align-items: center; gap: 0; inset-inline-start: calc(var(--b) * var(--measure-xl) * 0.3183099 + var(--measure-xl) * 2 - var(--size-lg) * 0.5); }
+.copy { display: flex; flex-direction: column; position: absolute; top: calc(var(--space-xl) + var(--space-xs)); width: var(--size-lg); align-items: center; gap: 0; inset-inline-start: calc(var(--b) * var(--measure-xl) * 0.3183099 + var(--measure-xl) * 2 - var(--size-lg) * 0.5); }
 .copy.back { inset-inline-start: calc(var(--b) * var(--measure-xl) * 0.3183099 - var(--size-lg) * 0.5); }
 .copy.ahead { inset-inline-start: calc(var(--b) * var(--measure-xl) * 0.3183099 + var(--measure-xl) * 4 - var(--size-lg) * 0.5); }
 .mark { width: var(--size-xs); height: var(--size-xs); color: var(--ink-mark); }
 .diamond { fill: var(--ink-mark); stroke: var(--shadow-45); stroke-width: 1; }
 .distance { font: var(--text-caption); color: var(--ink); white-space: nowrap; text-shadow: 0 var(--stroke-hairline) var(--stroke-regular) var(--scene-shadow); }
-#FadeStart { position: absolute; top: 0; inset-inline-start: 0; width: var(--size-xl); height: stretch; background: linear-gradient(90deg, var(--scrim), transparent); }
-#FadeEnd { position: absolute; top: 0; inset-inline-end: 0; width: var(--size-xl); height: stretch; background: linear-gradient(90deg, transparent, var(--scrim)); }
+#FadeStart { position: absolute; top: 0; bottom: 0; inset-inline-start: 0; width: var(--size-xl); background: linear-gradient(90deg, var(--scrim), transparent); }
+#FadeEnd { position: absolute; top: 0; bottom: 0; inset-inline-end: 0; width: var(--size-xl); background: linear-gradient(90deg, transparent, var(--scrim)); }
 #Notch { width: var(--stroke-regular); height: var(--space-sm); background: var(--ink); margin-top: calc(var(--space-xs) * -1); }
 #Bearing { font-size: var(--font-step-sm); padding: 0 var(--space-xs); }
 </style>

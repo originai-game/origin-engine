@@ -13,16 +13,16 @@
 <anchor id="Waypoint" entity={entity || null} at={at} offset={"0 " + height + " 0"} clamp="edge" declutter="shift" priority="500">
   <div id="Mark" class:ping={kind == 'ping'} class:danger={kind == 'danger'} class:ally={kind == 'ally'} class:loot={kind == 'loot'}>
     <div id="Pin" part="Waypoint.pin">
-      <svg id="Diamond" viewBox="0 0 28 28" hidden={!!icon}><path d="M14 2l12 12-12 12L2 14z"></path></svg>
-      <og-icon id="Icon" icon={icon} hidden={!icon}></og-icon>
+      {#if icon}<og-icon id="Icon" icon={icon}></og-icon>
+      {:else}<svg id="Diamond" viewBox="0 0 28 28"><path d="M14 2l12 12-12 12L2 14z"></path></svg>{/if}
     </div>
-    <span id="Label" part="Waypoint.label" hidden={!label}>{label}</span>
-    <span id="Distance" part="Waypoint.figure" hidden={distance < 0}>{formatNumber(distance) + units}</span>
+    {#if label}<span id="Label" part="Waypoint.label">{label}</span>{/if}
+    {#if distance >= 0}<span id="Distance" part="Waypoint.figure">{formatNumber(distance) + units}</span>{/if}
   </div>
 </anchor>
 
 <style>
-#Waypoint { align-items: center; }
+:host { text-shadow: var(--tag-halo); }
 #Mark { display: flex; flex-direction: column; align-items: center; gap: var(--space-xxs); --tone: var(--gold); }
 #Mark.ping { --tone: var(--info); }
 #Mark.danger { --tone: var(--danger); }

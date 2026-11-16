@@ -17,8 +17,8 @@
   <div id="Bezel" part="MinimapView.bezel">
     <button id="Glass" part="MinimapView.glass" onclick={pick} aria-label={t("component.minimap-view.name")}>
       <div id="World" class:turning={rotate}>
-        <img id="Map" src={texture} hidden={!texture}>
-        <div id="Grid" part="MinimapView.grid MinimapView.plate" hidden={!!texture}></div>
+        {#if texture}<img id="Map" src={texture}>
+        {:else}<div id="Grid" part="MinimapView.grid MinimapView.plate"></div>{/if}
         {#each markers as m (m.id)}
           <div class="marker" part="MinimapView.marker MinimapView.cell" class:ally={m.kind == 'ally'} class:enemy={m.kind == 'enemy'} class:objective={m.kind == 'objective'} class:ping={m.kind == 'ping'} class:loot={m.kind == 'loot'} style:--x={m.x} style:--y={m.y} aria-label={m.label}></div>
         {/each}
@@ -27,16 +27,14 @@
     </button>
     <span id="North" part="MinimapView.north">{t("component.minimap-view.north")}</span>
   </div>
-  <span id="Zone" part="MinimapView.badge" hidden={!zone}>{zone}</span>
+  {#if zone}<span id="Zone" part="MinimapView.badge">{zone}</span>{/if}
 </div>
 
 <style>
-/* Drawn over the scene: the style's tag halo holds its text there. */
-:host { text-shadow: var(--tag-halo); }
-#MinimapView { display: flex; flex-direction: column; align-items: center; gap: var(--space-xs); --side: var(--size-5xl); --pip: var(--space-sm); }
-[part="MinimapView.bezel"] { width: calc(var(--side) + var(--space-xs) * 2); height: calc(var(--side) + var(--space-xs) * 2); padding: var(--space-xs); border-radius: var(--radius-capsule); background: linear-gradient(180deg, var(--panel-raised), var(--well)); box-shadow: var(--shadow-minimap); }
+:host { display: flex; flex-direction: column; align-items: center; gap: var(--space-sm); --side: var(--size-5xl); --pip: var(--space-sm); text-shadow: var(--tag-halo); }
+[part="MinimapView.bezel"] { position: relative; width: calc(var(--side) + var(--space-xs) * 2); height: calc(var(--side) + var(--space-xs) * 2); padding: var(--space-xs); border-radius: var(--radius-capsule); background: linear-gradient(180deg, var(--panel-raised), var(--well)); box-shadow: var(--shadow-minimap); }
 .square [part="MinimapView.bezel"] { border-radius: var(--radius-panel); }
-[part="MinimapView.glass"] { width: var(--side); height: var(--side); padding: 0; border-radius: var(--radius-capsule); overflow: hidden; background: var(--well); border: var(--stroke-hairline) solid var(--color-minimap-edge); }
+[part="MinimapView.glass"] { position: relative; width: var(--side); height: var(--side); padding: 0; border-radius: var(--radius-capsule); overflow: hidden; background: var(--well); border: var(--stroke-hairline) solid var(--color-minimap-edge); }
 .square [part="MinimapView.glass"] { border-radius: var(--radius-card); }
 #World { position: absolute; top: 0; inset-inline-start: 0; width: var(--side); height: var(--side); transform-origin: 50% 50%; }
 #World.turning { rotate: calc(var(--heading) * -1deg); }

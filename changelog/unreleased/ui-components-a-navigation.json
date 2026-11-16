@@ -1,0 +1,6 @@
+{
+  "fixed": [{
+    "member": "Compass, Minimap, MinimapView, Waypoint",
+    "summary": "Navigation documents use HTML with CSS and retain their ids and parts. Map markers and rotating map content belong to their own positioned viewports. The compass centers its heading in the actual available width on a phone and separates objective icons and distances from the cardinal directions. Optional labels, textures and distances leave no blank space."
+  }]
+}
