@@ -1,0 +1,8 @@
+{
+  "added": [
+    {
+      "member": "ui",
+      "summary": "@font-feature-values (CSS Fonts 4 \u00a76.9) names values for font-variant-alternates' stylistic(), styleset(), character-variant(), swash(), ornaments() and annotation(), which set salt, ssNN, cvNN, swsh and cswh, ornm and nalt for a text whose family the rule lists."
+    }
+  ]
+}

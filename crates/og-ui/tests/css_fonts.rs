@@ -35,6 +35,11 @@
 //!   `font-palette` animation flipping at 50% instead of mixing in OKLab,
 //!   or an animated palette's text blank while each frame's font is made →
 //!   `font_palettes_mix_and_animate_entry_by_entry`
+//! - an alternates function ignoring `@font-feature-values`, taking a
+//!   rule for another family or an earlier definition of a name, a
+//!   styleset of two values setting one, a name nobody defines not
+//!   ignored, the shorthand dropping it, or `font-feature-settings` not
+//!   applying after it → `font_variant_alternates_take_the_feature_values_named`
 //! - `ui-monospace` or `ui-rounded` drawn in a face standing in for the
 //!   role where the style has none of its own instead of going on down the
 //!   list, `ui-serif` or `math` taken as the body face ahead of a later
@@ -744,4 +749,65 @@ fn font_palettes_mix_and_animate_entry_by_entry() {
             made.push(f);
         }
     }
+}
+
+/// The glyph ids drawn inside element `id`, left to right.
+fn glyph_ids(d: &Doc, id: &str) -> Vec<Option<u16>> {
+    let r = d.get(id);
+    d.ui.frame()
+        .items
+        .iter()
+        .filter_map(|it| match it.cmd.unstyled() {
+            DrawCmd::Text {
+                bounds, placements, ..
+            } if (r.y..r.y + r.height).contains(&(bounds.y + bounds.height / 2.0)) => {
+                Some(placements.iter().map(|g| g.glyph).collect::<Vec<_>>())
+            }
+            _ => None,
+        })
+        .next()
+        .unwrap_or_default()
+}
+
+/// CSS Fonts 4 §6.8 and §6.9: `font-variant-alternates`' functions name
+/// values an `@font-feature-values` rule for the text's family defines
+/// (the last definition of a name), and set `salt`, one `ssNN` per value
+/// and so on; a name no rule for the family defines is ignored, and
+/// `font-feature-settings` applies after them (§7.2). Noto Sans's own
+/// GSUB (fontTools): I is 904 under `salt` or `ss04`; ƒ is 319 and 1231
+/// under `ss03`.
+#[test]
+fn font_variant_alternates_take_the_feature_values_named() {
+    let d = doc(
+        vec![family("Noto", (400, 400), face(NOTO, 9))],
+        r#"<p id="Plain">Iƒ</p><p id="Alt">Iƒ</p><p id="Florin">Iƒ</p><p id="Both">Iƒ</p>
+<p id="Late">Iƒ</p><p id="Other">Iƒ</p><p id="Nope">Iƒ</p><div id="Up"><p id="Inherit">Iƒ</p></div>
+<p id="Short">Iƒ</p><p id="Off">Iƒ</p>"#,
+        r#"#Root { font-family: Noto; }
+@font-feature-values Noto, Other { @stylistic { alt: 1; } @styleset { florin: 3; both: 3 4; late: 3; } }
+@font-feature-values "noto" { @styleset { late: 4; } }
+@font-feature-values Other { @styleset { other: 4; } }
+#Alt { font-variant-alternates: stylistic(alt); }
+#Florin { font-variant-alternates: styleset(florin); }
+#Both { font-variant-alternates: styleset(both); }
+#Late { font-variant-alternates: styleset(late); }
+#Other { font-variant-alternates: styleset(other); }
+#Nope { font-variant-alternates: styleset(nope) stylistic(nope); }
+#Up { font-variant-alternates: styleset(florin); }
+#Short { font-variant: stylistic(alt) small-caps; }
+#Off { font-variant-alternates: stylistic(alt); font-feature-settings: "salt" 0; }"#,
+    );
+    let ids = |id: &str| glyph_ids(&d, id);
+    // An I no feature substitutes is drawn by its character.
+    let (plain, alt, florin) = (None, Some(904), Some(1231));
+    assert_eq!(ids("Plain"), [plain, Some(319)]);
+    assert_eq!(ids("Alt"), [alt, Some(319)]);
+    assert_eq!(ids("Florin"), [plain, florin]);
+    assert_eq!(ids("Both"), [alt, florin]);
+    assert_eq!(ids("Late"), [alt, Some(319)]);
+    assert_eq!(ids("Other"), [plain, Some(319)]);
+    assert_eq!(ids("Nope"), [plain, Some(319)]);
+    assert_eq!(ids("Inherit"), [plain, florin]);
+    assert_eq!(ids("Short")[0], alt);
+    assert_eq!(ids("Off"), [plain, Some(319)]);
 }

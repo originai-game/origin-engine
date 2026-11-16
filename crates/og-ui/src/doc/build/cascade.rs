@@ -150,6 +150,7 @@ impl Kept {
         theme: &crate::Theme,
         inputs: TextInputs,
         declared: &dyn Fn(&str) -> bool,
+        feature_values: &[crate::css::at_rules::FontFeatureValues],
     ) -> crate::doc::text_css::TextCss {
         let found = kept.as_ref().and_then(|kept| {
             kept.texts.iter().position(|(read, _)| {
@@ -180,6 +181,7 @@ impl Kept {
             current: inputs.current,
             step: inputs.step,
             declared,
+            feature_values,
         });
         c.diagnostics.extend(diagnostics.iter().cloned());
         let reads: Vec<String> = reads.into_iter().collect();

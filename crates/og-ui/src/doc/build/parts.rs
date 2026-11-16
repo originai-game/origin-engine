@@ -43,6 +43,8 @@ impl Resolved {
             current: self.color("color").unwrap_or(theme.palette.ink),
             step,
             declared,
+            // A pack's @font-feature-values are not read.
+            feature_values: &[],
         })
     }
 }
@@ -975,6 +977,7 @@ impl Ui {
                 current: self.paint_theme().palette.ink,
                 step: body,
                 declared: &|name| self.style.family_declared(name, &self.env),
+                feature_values: &[],
             });
             inherited = (*global.computed).clone();
             if let Some(host) = host {

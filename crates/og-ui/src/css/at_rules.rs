@@ -23,6 +23,8 @@ pub struct Sheet {
     pub counter_styles: Vec<(String, CounterStyle)>,
     /// `@font-palette-values --name` rules in source order.
     pub palettes: Vec<FontPaletteValues>,
+    /// `@font-feature-values` rules in source order.
+    pub feature_values: Vec<FontFeatureValues>,
     /// `@position-try --name` fallbacks: their declarations, in order.
     pub position_tries: Vec<(String, Vec<StyleDeclaration>)>,
     /// Cascade layer names in precedence order, lowest first (a layer's
@@ -93,6 +95,49 @@ pub struct FontPaletteValues {
     pub base: Option<crate::shape::PaletteBase>,
     /// `override-colors`: palette entries and their colours, straight sRGB.
     pub overrides: Vec<(u16, [u8; 4])>,
+}
+
+/// One `@font-feature-values` (CSS Fonts 4 §6.9.1): the names
+/// `font-variant-alternates`' functions take, for the families it lists.
+#[derive(Clone, Debug, Default, PartialEq)]
+pub struct FontFeatureValues {
+    /// The families it applies to, as written.
+    pub families: Vec<String>,
+    /// Each name's values, by its block (`styleset`, `swash`, …).
+    pub values: Vec<(String, String, Vec<u16>)>,
+}
+
+/// The `@font-feature-values` blocks and how many values each name may
+/// take (CSS Fonts 4 §6.9.2).
+const FEATURE_BLOCKS: [(&str, usize); 6] = [
+    ("stylistic", 1),
+    ("styleset", usize::MAX),
+    ("character-variant", 2),
+    ("swash", 1),
+    ("ornaments", 1),
+    ("annotation", 1),
+];
+
+/// The values `name` has in `block` for a text in `families`: the last
+/// definition in an `@font-feature-values` listing one of them (case
+/// insensitive), else `None`, and the function is ignored (§6.9.1).
+pub fn feature_value<'a>(
+    rules: &'a [FontFeatureValues],
+    block: &str,
+    name: &str,
+    families: &[String],
+) -> Option<&'a [u16]> {
+    rules
+        .iter()
+        .rev()
+        .filter(|r| {
+            r.families
+                .iter()
+                .any(|f| families.iter().any(|n| n.eq_ignore_ascii_case(f)))
+        })
+        .flat_map(|r| r.values.iter().rev())
+        .find(|(b, n, _)| b == block && n == name)
+        .map(|(_, _, v)| v.as_slice())
 }
 
 /// One `@property` registration (CSS Properties and Values API).
@@ -548,6 +593,72 @@ impl Sheet {
             }
         }
         self.palettes.push(rule);
+        Ok(())
+    }
+
+    /// `@font-feature-values <families> { @styleset { name: 1 2; } … }`.
+    pub fn font_feature_values(&mut self, families: &str, body: &str) -> Result<(), String> {
+        let mut rule = FontFeatureValues {
+            families: families
+                .split(',')
+                .map(|f| unquote(f.trim()))
+                .filter(|f| !f.is_empty())
+                .collect(),
+            values: Vec::new(),
+        };
+        if rule.families.is_empty() {
+            return Err("@font-feature-values names one family or more".into());
+        }
+        let mut rest = body;
+        loop {
+            rest = rest.trim_start();
+            if rest.is_empty() {
+                break;
+            }
+            // `font-display` is its one descriptor: fonts are always loaded.
+            if let Some(after) = rest.strip_prefix("font-display") {
+                rest = after.split_once(';').map_or("", |(_, r)| r);
+                continue;
+            }
+            let Some(after) = rest.strip_prefix('@') else {
+                return Err(format!(
+                    "@font-feature-values holds feature blocks (@styleset {{ … }}), not '{}'",
+                    rest.chars().take(20).collect::<String>()
+                ));
+            };
+            let (head, inner) = after
+                .split_once('{')
+                .ok_or("@font-feature-values: a feature block has no body")?;
+            let (inner, after) = inner
+                .split_once('}')
+                .ok_or("@font-feature-values: a feature block is not closed")?;
+            rest = after;
+            let block = head.trim();
+            let Some(&(_, most)) = FEATURE_BLOCKS.iter().find(|(b, _)| *b == block) else {
+                return Err(format!("@font-feature-values has no block @{block}"));
+            };
+            for d in super::variables::declarations(inner)? {
+                let values = d
+                    .source
+                    .split_whitespace()
+                    .map(|v| {
+                        v.parse::<u16>().map_err(|_| {
+                            format!("@{block} {}: '{v}' is not a whole number", d.name)
+                        })
+                    })
+                    .collect::<Result<Vec<_>, _>>()?;
+                if values.is_empty() || values.len() > most {
+                    return Err(format!(
+                        "@{block} {} takes {} value(s)",
+                        d.name,
+                        if most == 1 { "one" } else { "one or more" }
+                    ));
+                }
+                rule.values
+                    .push((block.to_string(), d.name.clone(), values));
+            }
+        }
+        self.feature_values.push(rule);
         Ok(())
     }
 

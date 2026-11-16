@@ -1470,6 +1470,10 @@ impl<'a> Reader<'a> {
                 self.sheet.counter_style(rest, block).map_err(|e| (at, e))
             }
             "position-try" if !nested => self.sheet.position_try(rest, block).map_err(|e| (at, e)),
+            "font-feature-values" if !nested => self
+                .sheet
+                .font_feature_values(rest, block)
+                .map_err(|e| (at, e)),
             "font-palette-values" if !nested => self
                 .sheet
                 .font_palette_values(rest, block)

@@ -1501,6 +1501,7 @@ impl Ui {
                     fonts: self.env.fonts.families.len(),
                 },
                 &|name| self.style.family_declared(name, &self.env),
+                &b.doc.sheet.feature_values,
             );
             r.text = (text != Default::default()).then(|| Arc::new(text));
         }

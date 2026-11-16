@@ -1288,6 +1288,8 @@ pub(crate) struct Inputs<'a> {
     pub step: TypeStep,
     /// Whether a document declares an `@font-face` for a family name.
     pub declared: &'a dyn Fn(&str) -> bool,
+    /// The document's `@font-feature-values` rules.
+    pub feature_values: &'a [super::at_rules::FontFeatureValues],
 }
 
 /// Computes the element's inherited text values into its computed map
@@ -1302,6 +1304,7 @@ pub(crate) fn inherit(inp: Inputs<'_>) -> TextCss {
         current,
         step,
         declared,
+        feature_values,
     } = inp;
     // The parent's font size (px), what `em` and `%` here are against.
     let parent_num = |name: &str| {
@@ -1528,6 +1531,33 @@ pub(crate) fn inherit(inp: Inputs<'_>) -> TextCss {
             }
         }
     }
+    // Alternates' functions take the values their names have for the
+    // text's families (CSS Fonts 4 §6.8); a name none defines is ignored.
+    if let Some(v) = get("font-variant-alternates") {
+        let names: Vec<String> = t
+            .family
+            .iter()
+            .flatten()
+            .filter_map(|f| match f {
+                crate::FontFamily::Named(n) => Some(n.clone()),
+                _ => None,
+            })
+            .collect();
+        for item in split_top(&v) {
+            let Some((f, args)) = item.strip_suffix(')').and_then(|i| i.split_once('(')) else {
+                continue;
+            };
+            for name in args.split(',').map(str::trim) {
+                let Some(values) = super::at_rules::feature_value(feature_values, f, name, &names)
+                else {
+                    continue;
+                };
+                for (tag, value) in alternate_features(f, values) {
+                    on(&tag, value);
+                }
+            }
+        }
+    }
     if t.kerning == Some(false) {
         on(b"kern", 0);
     }
@@ -1667,6 +1697,33 @@ fn variant_features(w: &str) -> Vec<(&'static [u8; 4], u16)> {
         "sub" => vec![(b"subs", 1)],
         "super" => vec![(b"sups", 1)],
         "historical-forms" => vec![(b"hist", 1)],
+        _ => Vec::new(),
+    }
+}
+
+/// The OpenType features an alternates function sets from a name's
+/// values (CSS Fonts 4 §6.8): `salt`, `ssNN` for each value, `cvNN` set to
+/// its second value (else 1), `swsh` and `cswh`, `ornm` and `nalt`. A
+/// value outside a feature's range sets nothing.
+fn alternate_features(function: &str, values: &[u16]) -> Vec<([u8; 4], u16)> {
+    let numbered = |prefix: &str, n: u16| -> [u8; 4] {
+        let t = format!("{prefix}{n:02}");
+        t.as_bytes().try_into().expect("four bytes")
+    };
+    let first = values.first().copied().unwrap_or(0);
+    match function {
+        "stylistic" => vec![(*b"salt", first)],
+        "styleset" => values
+            .iter()
+            .filter(|v| (1..=20).contains(*v))
+            .map(|&v| (numbered("ss", v), 1))
+            .collect(),
+        "character-variant" if (1..=99).contains(&first) => {
+            vec![(numbered("cv", first), values.get(1).copied().unwrap_or(1))]
+        }
+        "swash" => vec![(*b"swsh", first), (*b"cswh", first)],
+        "ornaments" => vec![(*b"ornm", first)],
+        "annotation" => vec![(*b"nalt", first)],
         _ => Vec::new(),
     }
 }
