@@ -129,6 +129,7 @@ fn styled<'a>(
     direction: Direction,
     runs: &[(Range<usize>, usize)],
     families: &[String],
+    metrics: &FontMetrics,
 ) -> parley::RangedBuilder<'a, Brush> {
     // A variable font's instance is laid out at its location.
     let variations: Vec<String> = families.iter().map(|f| cx.variations(f)).collect();
@@ -156,6 +157,11 @@ fn styled<'a>(
                 StyleProperty::FontVariations(variations.as_str().into()),
                 range.clone(),
             );
+        }
+        // Each face at its own size (`font-size-adjust`).
+        let scale = metrics.part(*k).map_or(1.0, |m| m.scale);
+        if scale != 1.0 {
+            builder.push(StyleProperty::FontSize(size * scale), range.clone());
         }
         builder.push(
             StyleProperty::Brush(Brush {
@@ -223,6 +229,7 @@ pub fn editable(
             direction,
             &runs,
             &families,
+            metrics,
         );
         builder.push_default(StyleProperty::LineHeight(parley::LineHeight::Absolute(
             line_height,
@@ -396,7 +403,7 @@ pub fn layout(
             families.push(cx.family(file));
         }
         let builder = styled(
-            cx, text, size, tracking, features, direction, &runs, &families,
+            cx, text, size, tracking, features, direction, &runs, &families, metrics,
         );
         let mut layout = builder.build(text);
         layout.break_all_lines(width);

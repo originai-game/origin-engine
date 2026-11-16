@@ -1960,6 +1960,16 @@ emoji, © as text). A variation selector in the text wins: U+FE0F draws
 the character before it as emoji, U+FE0E as text. A keycap base (a digit,
 `#` or `*`) is text except in a keycap sequence.
 
+`font-size-adjust` (Fonts 5 §2.5, inherited) draws each face of a text at
+the size where its metric is the given number of the text's size: the
+x-height by default, or `cap-height`, `ch-width` (the advance of "0"),
+`ic-width` or `ic-height` (those of 水). `from-font` takes the first face's
+own value, so a fallback face (CJK beside a Latin face, say) is drawn to
+match it. A face is scaled with its advances, in plain and rich text; a
+face without the glyph measured takes CSS Values 4's fallback (half an em
+for `ch`, an em for `ic`). Line boxes keep the text's size, and vertical
+text draws its faces unadjusted.
+
 ## 4. Shipped catalogue
 
 Every component and screen document under `packages/engine/src/ui/` is

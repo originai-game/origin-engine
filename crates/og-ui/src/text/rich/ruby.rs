@@ -1192,13 +1192,13 @@ impl Ui {
                     cmds.extend(text_cmd(
                         x,
                         baseline,
-                        p.size,
+                        p.size * pc.scale,
                         pc.text,
                         pc.font,
                         pc.placements,
                         bounds,
                         [1.0, 0.0, 0.0, 1.0],
-                        track,
+                        track / pc.scale,
                     ));
                 }
             }

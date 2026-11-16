@@ -351,6 +351,7 @@ fn shaped<R>(
     let mut ranges = Vec::new();
     let mut boxes = Vec::new();
     let mut selected = Vec::new();
+    let mut scaled = Vec::new();
     for (span, s) in content.spans.iter().enumerate() {
         let start = text.len();
         if s.atom.is_some() {
@@ -379,6 +380,13 @@ fn shaped<R>(
                 let m = metrics.part(k)?;
                 if m.fixed.is_some() || m.pixel != 0 {
                     return None;
+                }
+                // Each face at its own size (`font-size-adjust`).
+                if m.scale != 1.0 {
+                    scaled.push((
+                        start + range.start..start + range.end,
+                        s.step.size * m.scale,
+                    ));
                 }
                 selected.push((
                     start + range.start..start + range.end,
@@ -469,6 +477,9 @@ fn shaped<R>(
                 StyleProperty::Locale(language.and_then(|l| l.parse().ok())),
                 range.clone(),
             );
+        }
+        for (range, size) in scaled {
+            builder.push(StyleProperty::FontSize(size), range);
         }
         for atom in boxes {
             builder.push_inline_box(atom);

@@ -96,6 +96,8 @@ pub struct TextSpanStyle {
     pub owners: Vec<u64>,
     /// How its emoji are presented (CSS `font-variant-emoji`).
     pub emoji: Option<crate::text::EmojiStyle>,
+    /// CSS `font-size-adjust` (`Some(None)`: `none`).
+    pub size_adjust: Option<Option<crate::text::SizeAdjust>>,
 }
 
 /// An inline object of a text (a document's `<img>`, `<og-icon>` or `<kbd
@@ -191,6 +193,7 @@ impl Ui {
                 optical_sizing: true,
                 palette: Default::default(),
                 emoji: Default::default(),
+                size_adjust: None,
                 synth: Default::default(),
                 oblique: None,
                 underline: false,
@@ -310,6 +313,9 @@ impl Ui {
                 }
                 if let Some(e) = style.emoji {
                     s.emoji = e;
+                }
+                if let Some(a) = style.size_adjust {
+                    s.size_adjust = a;
                 }
                 if let Some(underline) = style.underline {
                     s.underline = underline;

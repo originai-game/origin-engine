@@ -1491,8 +1491,10 @@ impl crate::ui::Tree {
             sheet.palette(t.palette.as_deref(), t.family.as_deref())
         });
         let emoji = css.and_then(|t| t.emoji).unwrap_or_default();
+        let size_adjust = css.and_then(|t| t.size_adjust).flatten();
         if let crate::layout::Content::Text(t) = self.content_mut(i) {
             t.emoji = emoji;
+            t.size_adjust = size_adjust;
             t.synthesize_bold = synthesize_bold;
             t.stretch = stretch;
             t.variations = variations;
@@ -1804,6 +1806,7 @@ impl Resolved {
                 .is_some()
                 .then(|| sheet.palette(t.palette.as_deref(), t.family.as_deref())),
             emoji: t.emoji,
+            size_adjust: t.size_adjust,
             synthesis: (t.synthesis[0].is_some() || t.synthesis[1].is_some()).then(|| {
                 crate::Synth {
                     bold: t.synthesis[0] != Some(false),

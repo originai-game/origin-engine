@@ -36,6 +36,50 @@ pub enum EmojiStyle {
     Emoji,
 }
 
+/// The metric `font-size-adjust` matches across a text's faces (CSS
+/// Fonts 5 §2.5).
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
+pub enum AspectMetric {
+    /// The x-height (`ex-height`, the default).
+    #[default]
+    ExHeight,
+    /// The capital height.
+    CapHeight,
+    /// The advance of "0".
+    ChWidth,
+    /// The advance of "水" (U+6C34), an ideograph's.
+    IcWidth,
+    /// The vertical advance of "水".
+    IcHeight,
+}
+
+/// CSS `font-size-adjust` other than `none`: each face of the text is drawn
+/// at the size where its `metric` is `value` of the text's size.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
+pub struct SizeAdjust {
+    pub metric: AspectMetric,
+    /// The aspect value in thousandths; `None` for `from-font`, the first
+    /// face's own.
+    pub value: Option<u32>,
+}
+
+impl SizeAdjust {
+    /// The scales of a text's faces (`metrics.part(k)`, `0..parts`) under
+    /// it: the aspect value over each face's own (1 for a face without the
+    /// metric).
+    pub fn scales(self, metrics: &FontMetrics, parts: usize) -> Vec<f32> {
+        let value = self
+            .value
+            .map_or_else(|| metrics.aspect(self.metric), |v| v as f32 / 1000.0);
+        (0..parts)
+            .map(|k| {
+                let own = metrics.part(k).map_or(0.0, |m| m.aspect(self.metric));
+                if own > 0.0 { value / own } else { 1.0 }
+            })
+            .collect()
+    }
+}
+
 impl EmojiStyle {
     /// Whether the grapheme cluster `cluster` is drawn in a colour face
     /// (`Some(true)`) or a text face (`Some(false)`); `None` for one that
@@ -104,6 +148,11 @@ pub struct FontMetrics {
     /// `font-variant-emoji`): which of its runs' faces, colour or text,
     /// draws one that both have.
     pub emoji: EmojiStyle,
+    /// Its used size over the text's (CSS `font-size-adjust`, which sizes
+    /// each face of a text so their x-heights, or another metric, match):
+    /// its advances are scaled by it and its runs drawn at it
+    /// ([`Piece::scale`]). 1 for a font as it is.
+    pub scale: f32,
 }
 
 /// One glyph of a line as drawn, left to right.
@@ -206,6 +255,7 @@ impl FontMetrics {
             pixel: 0,
             range: None,
             emoji: EmojiStyle::Unicode,
+            scale: 1.0,
         }
     }
 
@@ -225,6 +275,7 @@ impl FontMetrics {
             pixel: 0,
             range: None,
             emoji: EmojiStyle::Unicode,
+            scale: 1.0,
         }
     }
 
@@ -321,10 +372,10 @@ impl FontMetrics {
     /// the font its run takes.
     pub fn advance(&self, c: char) -> f32 {
         if self.runs.is_none() {
-            return self.own_advance(c);
+            return self.own_advance(c) * self.scale;
         }
         self.part(self.font_of(c, None))
-            .map_or(0.0, |m| m.own_advance(c))
+            .map_or(0.0, |m| m.own_advance(c) * m.scale)
     }
 
     fn own_advance(&self, c: char) -> f32 {
@@ -555,6 +606,28 @@ impl FontMetrics {
         self.file.as_ref().map_or(0.5, |f| f.x_height())
     }
 
+    /// Its `metric`, em of its size (CSS Fonts 5 §2.5): a font without
+    /// the glyph measured takes the CSS Values 4 §6.1.1 fallbacks (half an
+    /// em for `ch`, an em for `ic`).
+    pub fn aspect(&self, metric: AspectMetric) -> f32 {
+        let own = |c: char| {
+            self.own_has(c)
+                .then(|| self.own_advance(c))
+                .filter(|a| *a > 0.0)
+        };
+        match metric {
+            AspectMetric::ExHeight => self.x_height(),
+            AspectMetric::CapHeight => self.cap_height(),
+            AspectMetric::ChWidth => own('0').unwrap_or(0.5),
+            AspectMetric::IcWidth => own('\u{6C34}').unwrap_or(1.0),
+            AspectMetric::IcHeight => self
+                .file
+                .as_ref()
+                .and_then(|f| f.vertical_advance('\u{6C34}'))
+                .unwrap_or(1.0),
+        }
+    }
+
     /// The height of its capitals, em: its file's, else its ascent (as
     /// CSS Values 4 §6.1.1 assumes for `cap`).
     pub fn cap_height(&self) -> f32 {
@@ -603,6 +676,11 @@ impl FontMetrics {
 
     /// The kerning between `a` and the `b` after it, em (0: none).
     pub fn kern(&self, a: char, b: char) -> f32 {
+        self.own_kern(a, b) * self.scale
+    }
+
+    /// [`FontMetrics::kern`] in this font's own em.
+    fn own_kern(&self, a: char, b: char) -> f32 {
         if self.kerning.is_empty() {
             return 0.0;
         }
@@ -741,9 +819,18 @@ impl FontMetrics {
         font: u8,
         features: Features,
     ) -> Vec<VisualGlyph> {
+        // Scaled after, so its tracking (em of the text's size) is not.
+        let tracking = tracking / self.scale;
         let mut out = self.run_raw(text, rtl, tracking, first, font, features);
         if tabulates(text, features) {
             self.tabulate(text, first, tracking, features, &mut out);
+        }
+        if self.scale != 1.0 {
+            for g in &mut out {
+                g.advance *= self.scale;
+                g.x *= self.scale;
+                g.y *= self.scale;
+            }
         }
         out
     }
@@ -901,7 +988,7 @@ impl FontMetrics {
                 if let (Some(p), true) = (prev, self.own_has(c))
                     && let Some(last) = out.last_mut()
                 {
-                    last.advance += self.kern(p, c);
+                    last.advance += self.own_kern(p, c);
                 }
                 prev = self.own_has(c).then_some(c);
                 out.push(g);
@@ -1071,6 +1158,10 @@ impl Para {
 #[derive(Clone, Debug, PartialEq)]
 pub struct Piece {
     pub font: Option<FontHandle>,
+    /// Its font's size over the text's ([`FontMetrics::scale`]): it is
+    /// drawn at the text's size times this, its placements in that size's
+    /// em.
+    pub scale: f32,
     pub dx: f32,
     pub width: f32,
     pub text: String,
@@ -1095,9 +1186,12 @@ pub fn pieces_with(
 ) -> Vec<Piece> {
     let default = default.into();
     if !font.metrics.is_mixed() {
-        let (text, placements) = drawn_line(&font.metrics, line, default, tracking, features);
+        let scale = font.metrics.scale;
+        let (text, mut placements) = drawn_line(&font.metrics, line, default, tracking, features);
+        unscale(&mut placements, scale);
         return vec![Piece {
             font: font.handle,
+            scale,
             dx: 0.0,
             width: 0.0,
             text,
@@ -1132,15 +1226,30 @@ pub fn pieces_spaced(
     split(font, &glyphs)
 }
 
+/// Placements in the text size's em into those of a face drawn at `scale`
+/// times it ([`FontMetrics::scale`]).
+pub fn unscale(placements: &mut [GlyphPlacement], scale: f32) {
+    if scale != 1.0 {
+        for p in placements {
+            p.advance /= scale;
+            p.x /= scale;
+            p.y /= scale;
+        }
+    }
+}
+
 /// Visual glyphs cut into one piece per run of one font, left to right.
 pub fn split(font: &UiFont, glyphs: &[VisualGlyph]) -> Vec<Piece> {
     let mut out = Vec::new();
     let mut x = 0.0f32;
     for run in glyphs.chunk_by(|a, b| a.font == b.font) {
-        let (text, placements) = FontMetrics::drawn(run);
+        let scale = font.scale_of(run[0].font);
+        let (text, mut placements) = FontMetrics::drawn(run);
+        unscale(&mut placements, scale);
         let width = run.iter().map(|g| g.advance).sum::<f32>();
         out.push(Piece {
             font: font.handle_of(run[0].font),
+            scale,
             dx: x,
             width,
             text,
@@ -1235,6 +1344,12 @@ impl UiFont {
             0 => self.handle,
             k => self.metrics.runs.as_ref()?.get(k as usize - 1)?.handle,
         }
+    }
+
+    /// The size [`VisualGlyph::font`] `k` is drawn at, over the text's
+    /// ([`FontMetrics::scale`]).
+    pub fn scale_of(&self, k: u8) -> f32 {
+        self.metrics.part(usize::from(k)).map_or(1.0, |m| m.scale)
     }
 
     /// This font alone: no runs and no mixed variant (what a mixed font's

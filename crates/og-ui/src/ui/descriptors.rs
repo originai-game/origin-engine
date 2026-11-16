@@ -351,6 +351,10 @@ pub struct FamilyLists {
     /// ([`Fonts::presented`]), by the font's handle, its runs' and file's
     /// addresses (the entry holds both) and the presentation.
     presented: elsa::FrozenMap<PresentedKey, Box<UiFont>>,
+    /// Fonts with their faces at `font-size-adjust`'s sizes
+    /// ([`Fonts::adjusted`]), keyed as `presented` with the presentation
+    /// the font has and the adjustment.
+    adjusted: elsa::FrozenMap<(PresentedKey, crate::text::SizeAdjust), Box<UiFont>>,
 }
 
 type PresentedKey = (
@@ -507,8 +511,9 @@ pub struct Synth {
 /// normal width; and of a variable face (§7.2) its variation settings
 /// (`font-variation-settings`) and its optical size in tenths of a CSS
 /// px (`font-optical-sizing: auto`, the text's size; 0: `none`); and of a
-/// colour face its palette (`font-palette`, §9); and how its emoji are
-/// presented (`font-variant-emoji`, §6.12).
+/// colour face its palette (`font-palette`, §9); how its emoji are
+/// presented (`font-variant-emoji`, §6.12); and the size its faces are
+/// drawn at (`font-size-adjust`, CSS Fonts 5 §2.5).
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub struct FontQuery {
     pub weight: u16,
@@ -518,6 +523,7 @@ pub struct FontQuery {
     pub optical: u16,
     pub palette: crate::shape::Palette,
     pub emoji: crate::text::EmojiStyle,
+    pub size_adjust: Option<crate::text::SizeAdjust>,
 }
 
 impl FontQuery {
@@ -534,6 +540,15 @@ impl FontQuery {
             optical: 0,
             palette: crate::shape::Palette::NONE,
             emoji: crate::text::EmojiStyle::Unicode,
+            size_adjust: None,
+        }
+    }
+
+    /// With its faces sized as `adjust` says.
+    pub fn with_size_adjust(self, size_adjust: Option<crate::text::SizeAdjust>) -> FontQuery {
+        FontQuery {
+            size_adjust,
+            ..self
         }
     }
 
@@ -917,6 +932,7 @@ impl Fonts {
             variations: crate::shape::Variations::NONE,
             optical: 0,
             palette: crate::shape::Palette::NONE,
+            size_adjust: None,
             ..query
         };
         let (font, synth, (weight, stretch)) = self.face_styled(role, face, text);
@@ -926,7 +942,53 @@ impl Fonts {
             ..query
         };
         let font = self.instanced(font, drawn).unwrap_or(font);
-        (self.presented(font, query.emoji), synth)
+        let font = self.presented(font, query.emoji);
+        (self.adjusted(font, query.size_adjust), synth)
+    }
+
+    /// `font` with each of its faces at the size `font-size-adjust` gives
+    /// it ([`crate::text::SizeAdjust::scales`]); itself for `none`.
+    fn adjusted<'a>(
+        &'a self,
+        font: &'a UiFont,
+        adjust: Option<crate::text::SizeAdjust>,
+    ) -> &'a UiFont {
+        let Some(adjust) = adjust else {
+            return font;
+        };
+        let runs = font.metrics.runs.as_ref();
+        let file = font
+            .metrics
+            .file
+            .as_ref()
+            .map_or(0, |f| std::sync::Arc::as_ptr(f) as usize);
+        let key = (
+            (
+                font.handle,
+                runs.map_or(0, |r| r.as_ptr() as usize),
+                file,
+                font.metrics.emoji,
+            ),
+            adjust,
+        );
+        if let Some(f) = self.family_lists.adjusted.get(&key) {
+            return f;
+        }
+        let parts = 1 + runs.map_or(0, |r| r.len());
+        let scales = adjust.scales(&font.metrics, parts);
+        let mut made = font.clone();
+        made.metrics.scale = scales[0];
+        made.metrics.runs = runs.map(|r| {
+            r.iter()
+                .zip(&scales[1..])
+                .map(|(f, &scale)| {
+                    let mut f = f.clone();
+                    f.metrics.scale = scale;
+                    f
+                })
+                .collect()
+        });
+        self.family_lists.adjusted.insert(key, Box::new(made))
     }
 
     /// A mixed `font` presenting its emoji as `emoji` says (CSS
