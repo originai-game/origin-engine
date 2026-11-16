@@ -380,6 +380,7 @@ export const NOT_FIELDS: Record<string, string> = {
   transition: "the CSS transition shorthand (document stylesheets)",
   gap: "the CSS gap property (document stylesheets)",
   flex: "the CSS flex shorthand (document stylesheets)",
+  overflow: "the CSS overflow shorthand (document stylesheets)",
 };
 
 export function readApiNames(engine: string): ApiNames | undefined {
