@@ -517,6 +517,35 @@ impl RetainedHost {
         Ok(())
     }
 
+    /// An inherited value `node` hands down without declaring it (a
+    /// custom property, ` text color`) is read through it: `node` reads it
+    /// from its parent too, and so on up to the element that declares it,
+    /// so a change there restyles what reads it below.
+    fn read_through(&mut self, mut node: MountedNode, name: &str) {
+        while let Some(parent) = self.topology.parent(&node).cloned() {
+            let computed = |n: &MountedNode| {
+                self.elements
+                    .get(n)
+                    .and_then(|e| e.resolved.as_ref())
+                    .map(|r| r.values.cascade.computed.clone())
+            };
+            let passes = match (computed(&node), computed(&parent)) {
+                (Some(own), Some(above)) => own.dependency(name) == above.dependency(name),
+                _ => false,
+            };
+            if !passes
+                || !self
+                    .inherited
+                    .entry((parent.clone(), name.to_owned()))
+                    .or_default()
+                    .insert(node.clone())
+            {
+                break;
+            }
+            node = parent;
+        }
+    }
+
     pub(crate) fn resolve(
         &mut self,
         ui: &mut Ui,
@@ -683,6 +712,16 @@ impl RetainedHost {
                     .insert(identity.clone());
             }
         }
+        let added: Vec<String> = match &parent {
+            Some(_) => values
+                .cascade
+                .inherited_reads
+                .iter()
+                .filter(|name| previous.is_none_or(|p| !p.inherited_reads.contains(*name)))
+                .cloned()
+                .collect(),
+            None => Vec::new(),
+        };
         if let Some(previous) = previous {
             for name in previous.computed.changed(&values.cascade.computed) {
                 if let Some(readers) = self.inherited.get(&(identity.clone(), name.clone())) {
@@ -698,6 +737,23 @@ impl RetainedHost {
             probe,
         };
         self.elements.get_mut(identity).unwrap().resolved = Some(Arc::new(resolved));
+        if let Some(parent) = &parent {
+            for name in &added {
+                self.read_through(parent.clone(), name);
+            }
+        }
+        // What its children read through it, now that it may hand down
+        // what it declared before.
+        let read: Vec<String> = self
+            .inherited
+            .range((identity.clone(), String::new())..)
+            .take_while(|((node, _), _)| node == identity)
+            .filter(|(_, readers)| !readers.is_empty())
+            .map(|((_, name), _)| name.clone())
+            .collect();
+        for name in read {
+            self.read_through(identity.clone(), &name);
+        }
         self.emit.insert(identity.clone());
         self.elements.get_mut(identity).unwrap().style_dirty = false;
         self.elements.get_mut(identity).unwrap().theme_epoch = self.theme_epoch;

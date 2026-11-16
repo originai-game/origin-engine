@@ -1772,6 +1772,42 @@ fn quiet_and_ghost_buttons_take_their_own_inks() {
     );
 }
 
+/// An inherited value reaches what reads it through elements that only
+/// hand it down: a custom property set on a container by a bound class
+/// restyles a grandchild under a plain `<div>` when the class goes. Wrong:
+/// the grandchild keeps the value its first build read.
+#[test]
+fn an_inherited_change_reaches_through_elements_between() {
+    let mut d = mounted(
+        ui_with_font(test_font()),
+        r##"<column id="Root"><div class:v={$on}><div><p class="u">Var</p></div></div></column>
+<style>.v { --x: #ff8800; } .u { color: var(--x, #0000ff); }</style>"##,
+        &[("on", json!(true))],
+        Viewport::new(400.0, 300.0),
+    );
+    let colour = |hex: &str| og_ui::style_file::parse_color(hex).unwrap();
+    for (on, hex) in [(true, "#ff8800"), (false, "#0000ff"), (true, "#ff8800")] {
+        d.set("on", json!(on));
+        d.step(InputFrame::default());
+        let got = text_ink(&d, "Var").expect("Var drawn");
+        assert!(near(got, colour(hex)), "on {on}: {got:?}, want {hex}");
+    }
+}
+
+/// The ink of the drawn text `want`.
+fn text_ink(d: &Doc, want: &str) -> Option<[f32; 4]> {
+    d.ui.frame().items.iter().find_map(|i| {
+        let text = match &i.cmd {
+            DrawCmd::StyledText { text, .. } => text.as_ref(),
+            other => other,
+        };
+        match text {
+            DrawCmd::Text { text, color, .. } if text == want => Some(*color),
+            _ => None,
+        }
+    })
+}
+
 /// A kit's text element that names its part takes the part's `-og-ink` and
 /// `-og-step` (docs/ui.md §3.2), qualified by its classes, as a field's
 /// `text` part does: a pack inks a killfeed's names by team. Wrong: the

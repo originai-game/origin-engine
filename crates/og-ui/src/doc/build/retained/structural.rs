@@ -540,14 +540,14 @@ impl RetainedHost {
                 for readers in &mut self.media {
                     readers.remove(&id);
                 }
-                if let Some(resolved) = element.resolved {
-                    for name in &resolved.values.cascade.inherited_reads {
-                        if let Some(parent) = &parent
-                            && let Some(readers) =
-                                self.inherited.get_mut(&(parent.clone(), name.clone()))
-                        {
-                            readers.remove(&id);
-                        }
+                // What it read of its parent, its own and through it.
+                if let Some(parent) = &parent {
+                    for ((_, _), readers) in self
+                        .inherited
+                        .range_mut((parent.clone(), String::new())..)
+                        .take_while(|((node, _), _)| node == parent)
+                    {
+                        readers.remove(&id);
                     }
                 }
             }

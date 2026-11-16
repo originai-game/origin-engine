@@ -1,0 +1,8 @@
+{
+  "fixed": [
+    {
+      "member": "ui",
+      "summary": "A change to an inherited value (a custom property, a text property) reaches what reads it through elements that only hand it down: toggling a class that sets `--x` on a container restyles a `<p>` under a plain `<div>` inside it. Before, the `<p>` kept the value its first build read."
+    }
+  ]
+}
