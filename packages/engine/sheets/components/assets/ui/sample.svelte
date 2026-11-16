@@ -42,6 +42,14 @@
       <ListItem title={$sample.title} subtitle={$sample.subtitle} icon={$sample.icon} image={$sample.image} value={$sample.value} badge={$sample.badge} selected={$sample.selected} disabled={$sample.disabled} loading={$sample.loading} />
     {:else if $member == 'steps'}
       <Steps title={$sample.title} steps={$sample_steps} column={$sample.column} />
+    {:else if $member == 'passTrack'}
+      <PassTrack title={$sample.title} season={$sample.season} refresh={$sample.refresh} progress={$sample.progress} progressText={$sample.progressText} premiumUnlocked={$sample.premiumUnlocked} upgradeLabel={$sample.upgradeLabel} rewards={$sample_rewards} loading={$sample.loading} error={$sample.error} disabled={$sample.disabled} />
+    {:else if $member == 'reveal'}
+      <Reveal title={$sample.title} body={$sample.body} state={$sample.state} rewards={$sample_rewards} canSkip={$sample.canSkip} continueLabel={$sample.continueLabel} disabled={$sample.disabled} error={$sample.error} />
+    {:else if $member == 'inbox'}
+      <Inbox title={$sample.title} summary={$sample.summary} messages={$sample_messages} attachments={$sample_attachments} selected={$sample.selected} loading={$sample.loading} busy={$sample.busy} error={$sample.error} />
+    {:else if $member == 'news'}
+      <News title={$sample.title} entries={$sample_entries} selected={$sample.selected} loading={$sample.loading} disabled={$sample.disabled} error={$sample.error} />
     {/if}
   </div>
 </section>

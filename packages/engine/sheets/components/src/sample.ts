@@ -2,19 +2,20 @@
 import { og, type UiReadable, type World } from "@origingame/engine";
 import { FIXTURES, NAMES } from "./fixtures.ts";
 import { BASE_FIXTURES, BASE_NAMES } from "./base-fixtures.ts";
+import { META_FIXTURES, META_NAMES } from "./meta-fixtures.ts";
 
-const LISTS = ["items", "pages", "shots", "bars", "ticks", "columns", "rows", "entries", "stars", "buffs", "debuffs", "stats", "compareStats", "hints", "steps"];
-const MEMBERS = ["breadcrumbs", "carousel", "celebration", "chart", "dataGrid", "menu", "ribbon", "skeletonGroup", "spinner", "splitView", "starBar", "statusGrid", "tooltipCard", "actionHints", ...Object.keys(BASE_NAMES)];
+const LISTS = ["items", "pages", "shots", "bars", "ticks", "columns", "rows", "entries", "stars", "buffs", "debuffs", "stats", "compareStats", "hints", "steps", "rewards", "messages", "attachments"];
+const MEMBERS = ["breadcrumbs", "carousel", "celebration", "chart", "dataGrid", "menu", "ribbon", "skeletonGroup", "spinner", "splitView", "starBar", "statusGrid", "tooltipCard", "actionHints", ...Object.keys(BASE_NAMES), ...Object.keys(META_NAMES)];
 
 export function sample(world: World, args: readonly string[]): void {
   const member = args[0] || "tooltipCard";
   const state = args[1] || "default";
-  const fixture = (BASE_FIXTURES[member] || FIXTURES[member])?.[state];
+  const fixture = (META_FIXTURES[member] || BASE_FIXTURES[member] || FIXTURES[member])?.[state];
   if (!MEMBERS.includes(member) || !fixture) throw new Error(`Unknown panel or feedback fixture: ${member} ${state}`);
   const scope = og.ui.scope(world, `sample-${member}-${state}`);
   const inputs: Record<string, UiReadable<unknown>> = {
     member: scope.writable("member", member),
-    caption: scope.writable("caption", `${BASE_NAMES[member] || NAMES[member]} · ${state}`),
+    caption: scope.writable("caption", `${META_NAMES[member] || BASE_NAMES[member] || NAMES[member]} · ${state}`),
     sample: scope.writable("sample", fixture),
   };
   for (const prop of LISTS) {
