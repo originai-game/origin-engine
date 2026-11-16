@@ -566,7 +566,12 @@ flings and wheels; `proximity` snaps within a third of the view;
 it started (saved UI state). A fling is steered onto its target exactly.
 `overscroll-behavior` `contain` and `none` act alike (og-ui draws no
 glow or bounce). `scroll-behavior: smooth` glides a scroll into view as a
-fling; reduced motion jumps. A modal `<dialog data-detents="40% 90%">` is a
+fling; reduced motion jumps. `scroll-initial-target: nearest` (Scroll
+Snap 2) starts a scroll container that appears scrolled to the first such
+element in it, at its view's start, from its first frame (its layout runs
+again once); a target added to a container already shown does not move
+it, and floating layers' containers are not covered. A modal
+`<dialog data-detents="40% 90%">` is a
 bottom sheet (full width, opened at its first detent, dragged between
 detents, swiped down to close, writing `open` back); `data-edge=
 "inline-start" | "inline-end"` docks it to a side, its detents widths. The

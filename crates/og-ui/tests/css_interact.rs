@@ -795,3 +795,63 @@ fn interactivity_inert_stops_a_subtree_and_overrides_the_attribute() {
     assert_eq!(sent(&mut d, "Drop"), Vec::<String>::new(), "[inert] alone");
     assert_eq!(sent(&mut d, "Free"), vec!["free"]);
 }
+
+/// CSS Scroll Snap 2 §3: a scroll container starts scrolled to its first
+/// `scroll-initial-target: nearest` descendant, aligned as a scroll into
+/// view with `start`: in a 100px-tall scroller of 40px rows, `Six` starts
+/// at 200px, less its 10px `scroll-margin-top` and the container's 5px
+/// `scroll-padding-top`, so the offset is 185 and `Six` sits 15px into
+/// the view from the very first frame; `Eight`, later in tree order,
+/// loses. `End`'s target near the bottom clamps to the range (300). A
+/// target that appears in a container already shown does not move it
+/// (here one whose -40px scroll-margin would ask for 40): the position is
+/// only an initial one.
+///
+/// Ways it could fail: the property refused or ignored, the first frame
+/// drawn at 0 and corrected a frame later, the last target winning, the
+/// margin or padding dropped, no clamp, or a later target scrolling an
+/// existing container.
+#[test]
+fn a_scroller_starts_at_its_initial_target() {
+    let text = r#"<meta name="component" content="t">
+<div id="Page">
+  <div id="List" class="list">
+    <div class="row"></div><div class="row"></div><div class="row"></div><div class="row"></div><div class="row"></div>
+    <div id="Six" class="row target"></div><div class="row"></div><div id="Eight" class="row target"></div><div class="row"></div><div class="row"></div>
+  </div>
+  <div id="Tail" class="list">
+    <div class="row"></div><div class="row"></div><div class="row"></div><div class="row"></div><div class="row"></div>
+    <div class="row"></div><div class="row"></div><div class="row"></div><div class="row"></div><div id="End" class="row target"></div>
+  </div>
+  <div id="Later" class="list">
+    {#if $more}<div id="Added" class="row target"></div>{/if}
+    <div class="row"></div><div class="row"></div><div class="row"></div><div class="row"></div>
+    <div class="row"></div><div class="row"></div><div class="row"></div>
+  </div>
+</div>
+<style>
+#Page { padding: 20px; gap: 20px; }
+.list { height: 100px; width: 200px; overflow-y: auto; scroll-padding-top: 5px; }
+.row { height: 40px; flex-shrink: 0; }
+.target { scroll-initial-target: nearest; scroll-margin-top: 10px; }
+#Later { scroll-padding-top: 0; }
+#Added { scroll-margin-top: -40px; }
+</style>"#;
+    let mut d = crate::support::Doc::new(text, &[("more", serde_json::json!(false))]);
+    let offset = |d: &crate::support::Doc, id: &str| {
+        let path = d.get(id).path;
+        d.ui.scroll_state(&path)
+            .expect("a scroll container")
+            .offset_y
+    };
+    // The first frame Doc::new built.
+    let (list, six) = (d.get("List"), d.get("Six"));
+    assert_eq!(offset(&d, "List"), 185.0);
+    assert_eq!(six.y - list.y, 15.0, "drawn there on its first frame");
+    assert_eq!(offset(&d, "Tail"), 300.0, "clamped to its range");
+    assert_eq!(offset(&d, "Later"), 0.0);
+    d.set("more", serde_json::json!(true));
+    d.step(InputFrame::default());
+    assert!(d.el("Added").is_some());
+    assert_eq!(offset(&d, "Later"), 0.0, "only an initial position");
+}

@@ -267,6 +267,35 @@ impl Ui {
         }
     }
 
+    /// CSS Scroll Snap 2 §3, `scroll-initial-target: nearest` on element
+    /// `key`, about to be built: its nearest scroll container, if that is
+    /// new this frame (it was not laid out last frame and has no offset),
+    /// starts scrolled to it; the first such target in tree order wins.
+    pub(crate) fn note_initial_target(&mut self, key: u64) {
+        let Some(&c) = self
+            .tree
+            .stack
+            .iter()
+            .rev()
+            .find(|&&i| self.tree.nodes[i].el.scroll || self.tree.nodes[i].el.scroll_x)
+        else {
+            return;
+        };
+        let container = self.tree.nodes[c].key;
+        let s = &self.interaction.state;
+        if s.scroll_info.contains_key(&container)
+            || s.scroll.contains_key(&container)
+            || s.scroll_x.contains_key(&container)
+            || s.initial_targets.iter().any(|(k, _)| *k == container)
+        {
+            return;
+        }
+        self.interaction
+            .state
+            .initial_targets
+            .push((container, key));
+    }
+
     pub(crate) fn scroll_input(&mut self, input: &crate::input::InputFrame) -> Option<u64> {
         let p = input.pointer;
         self.interaction.gesture = self.two_touches(input);
@@ -547,6 +576,48 @@ impl crate::ui::Interaction {
             break;
         }
         flags
+    }
+
+    /// Moves each new container noted by `Ui::note_initial_target` so its
+    /// target's scroll-margin box starts at its view's start (inside its
+    /// padding and scroll-padding), clamped to its range, from the boxes
+    /// just laid out (CSSOM View's scroll into view, `start` alignment).
+    /// Whether one moved: the layout runs again at the new offsets.
+    pub(crate) fn apply_initial_targets(&mut self, tree: &crate::ui::Tree) -> bool {
+        let mut moved = false;
+        for (container, target) in std::mem::take(&mut self.state.initial_targets) {
+            let (Some(c), Some(t)) = (tree.index.find(container), tree.index.find(target)) else {
+                continue;
+            };
+            let (cn, tn) = (&tree.nodes[c], &tree.nodes[t]);
+            let pad = cn.layout.used.padding;
+            let view = cn.placed.rect;
+            let (w, h) = (
+                (view.width - pad.horizontal()).max(0.0),
+                (view.height - pad.vertical()).max(0.0),
+            );
+            let sp = cn.el.scroll_css.padding_px(w, h);
+            let m = tn.el.scroll_css.margin;
+            let r = tn.placed.rect;
+            let at = self.offset(container);
+            let range = Vec2::new(cn.max_scroll_x(), cn.max_scroll());
+            let to = (at
+                + Vec2::new(
+                    r.x - m[3] - (view.x + pad.left + sp[3]),
+                    r.y - m[0] - (view.y + pad.top + sp[0]),
+                ))
+            .clamp(Vec2::ZERO, range.max(Vec2::ZERO));
+            let s = &mut self.state;
+            if cn.el.scroll_x && to.x != at.x {
+                s.scroll_x.insert(container, to.x);
+                moved = true;
+            }
+            if cn.el.scroll && to.y != at.y {
+                s.scroll.insert(container, to.y);
+                moved = true;
+            }
+        }
+        moved
     }
 
     /// The offset of scroll container `key` (x, y).

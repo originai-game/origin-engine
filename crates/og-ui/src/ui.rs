@@ -328,6 +328,10 @@ pub struct State {
     pub scroll_x: IdMap<u64, f32>,
     /// Each scroll container's ranges and scrollbar lengths, last frame.
     pub scroll_info: IdMap<u64, crate::scroll::ScrollInfo>,
+    /// Scroll containers new this frame and their `scroll-initial-target`
+    /// (container, target), first in tree order: their first layout
+    /// takes them there. Empty between frames.
+    pub initial_targets: Vec<(u64, u64)>,
     /// A released drag's momentum: the container and its velocity per tick.
     pub fling: Option<(u64, Vec2)>,
     /// A snapping container the wheel moves and its offset before the

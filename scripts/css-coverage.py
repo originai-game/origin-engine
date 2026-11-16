@@ -267,6 +267,8 @@ proof("interest-invokers", "control_props", "interest_delays_time_when_a_hint_sh
 proof("appearance", "control_props", "dialogs_close_as_closedby_says",
       "appearance: none drops a dialog's own frame: its content sits at the dialog's corner with no padding. dressing::a_tight_field_takes_its_components_text_parts proves it on a field: one line of its text tall with the placeholder at its edge, no inset. appearance applies to dialogs and fields (auto | none); the compat keywords (button, checkbox, menulist-button, textfield…) and base-select are not taken.")
 not_applicable("autofill", "og's fields are engine-drawn; no browser or OS autofill fills them, so there is no autofilled state to style.")
+proof("scroll-initial-target", "css_interact", "a_scroller_starts_at_its_initial_target",
+      "In a 100px scroller of 40px rows, the first scroll-initial-target: nearest row at 200px, with a 10px scroll-margin-top and the container's 5px scroll-padding-top, gives an offset of exactly 185 on the container's first frame, the row drawn 15px into the view; a later target loses; one near the end clamps to the 300px range; a target added to a container already shown leaves it at 0. Block-axis start alignment only (scroll-snap-align is not read); containers in floating layers are not covered.")
 not_applicable("webxr-dom-overlays", "Styles the DOM overlay of a WebXR session; the engine renders its own UI in its world and has no WebXR DOM layer.")
 not_applicable("window-controls-overlay window-drag", "Installed web-app title-bar integration (the OS window's caption buttons and drag regions); a game's UI is drawn inside its own surface, and the host owns its window.")
 not_applicable("picture-in-picture", "Styles a video in the browser's floating picture-in-picture window, which is browser chrome outside the game's surface.")
@@ -331,7 +333,6 @@ MISSING = {
     "scroll-marker-targets": "No :target-current, :target-before or :target-after (needs scroll markers; the selectors are engine-gaps').",
     "scroll-target-group": "No scroll-target-group: anchor links do not act as scroll markers.",
     "scroll-buttons": "No ::scroll-button(): a scroll container generates no buttons.",
-    "scroll-initial-target": "No scroll-initial-target: a scroll container starts at its origin.",
     "scroll-axis-lock": "No scroll-axis-lock property; how og-ui's pan treats a mostly-one-axis drag is not asserted either.",
     "scroll-triggered-animations": "No timeline-trigger or animation-trigger: scroll timelines drive animations (scroll-driven), but none starts or stops one.",
     "overflow-anchor": "No scroll anchoring: content inserted above the scrollport moves what is shown.",

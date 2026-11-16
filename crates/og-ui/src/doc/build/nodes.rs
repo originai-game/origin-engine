@@ -95,6 +95,9 @@ impl Ui {
             self.build_container(container);
         }
         let props = self.props_of(b, n, key, r, &mut built);
+        if r.str("scrollInitialTarget") == Some("nearest") {
+            self.note_initial_target(key);
+        }
         if kind == Kind::Viewport {
             return self.build_viewport(b, n, id.as_str(), r, props, path, key, built);
         }

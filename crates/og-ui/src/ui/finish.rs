@@ -394,6 +394,13 @@ impl Ui {
                 &mut self.layout.cache,
                 &mut self.layout.queries,
             );
+            // A new scroll container's `scroll-initial-target`: lay out
+            // again at its offset, so its first frame draws there.
+            if !self.interaction.state.initial_targets.is_empty()
+                && self.interaction.apply_initial_targets(&self.tree)
+            {
+                continue;
+            }
             let safe = Rect::new(
                 vp.safe_area.left,
                 vp.safe_area.top,

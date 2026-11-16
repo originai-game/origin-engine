@@ -383,6 +383,13 @@ pub const PROPS: &[PropSpec] = &[
         doc: "CSS `scroll-padding-left` (`scroll-padding`, `-inline`, `-inline-start`).",
     },
     PropSpec {
+        name: "scrollInitialTarget",
+        ty: Ty::Text,
+        on: On::All,
+        two_way: false,
+        doc: "CSS `scroll-initial-target: none | nearest`: a scroll container appearing starts scrolled so the first such element in it stands at its view's start (its scroll-margin and the container's scroll-padding apply); only the initial position.",
+    },
+    PropSpec {
         name: "scrollSnapStop",
         ty: Ty::Text,
         on: On::All,
