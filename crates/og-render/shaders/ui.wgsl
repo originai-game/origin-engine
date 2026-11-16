@@ -153,6 +153,28 @@ fn background_axis(x: f32, len: f32, w: f32, origin: f32, rep: u32) -> vec3<f32>
   return vec3<f32>(min(t, 1.0), k * pitch / iw, select(0.0, 1.0, t <= 1.0));
 }
 
+// An image's texture orientation (UiOrientation, kinds.y bits 18..21):
+// bit 0 flips x, bit 1 flips y, bit 2 swaps the axes first; 0 upright
+// (and for every paint but a texture's).
+fn orientation(s: UiInstance) -> u32 {
+  return select(0u, (s.kinds.y >> 18u) & 7u, (s.kinds.y & 15u) == PAINT_IMAGE);
+}
+
+// A size in stored texels as the image stands upright.
+fn upright(s: UiInstance, v: vec2<f32>) -> vec2<f32> {
+  return select(v, v.yx, (orientation(s) & 4u) != 0u);
+}
+
+// The texture coordinate of the image's fraction `f` as it stands upright:
+// the fraction turned back to the stored texels, in its region paint.xy to
+// paint.zw.
+fn region_uv(s: UiInstance, f: vec2<f32>) -> vec2<f32> {
+  let o = orientation(s);
+  var t = select(f, f.yx, (o & 4u) != 0u);
+  t = select(t, vec2<f32>(1.0) - t, vec2<bool>((o & 1u) != 0u, (o & 2u) != 0u));
+  return mix(s.paint.xy, s.paint.zw, t);
+}
+
 fn image_uv(s: UiInstance, p: vec2<f32>) -> ImageUv {
   var out: ImageUv;
   out.mask = 1.0;
@@ -162,7 +184,7 @@ fn image_uv(s: UiInstance, p: vec2<f32>) -> ImageUv {
   var img = max(s.paint2.zw, vec2<f32>(1.0));
   if ((s.kinds.y & 15u) == PAINT_IMAGE && s.paint2.z <= 0.0) {
     // No size given: the region's own pixels.
-    img = max(abs(s.paint.zw - s.paint.xy) * vec2<f32>(textureDimensions(sprite_tex, 0)), vec2<f32>(1.0));
+    img = max(upright(s, abs(s.paint.zw - s.paint.xy) * vec2<f32>(textureDimensions(sprite_tex, 0))), vec2<f32>(1.0));
   }
   let density = select(1.0, s.extra.y, (s.kinds.y & 15u) == PAINT_IMAGE);
   img = img / density;
@@ -199,8 +221,8 @@ fn image_uv(s: UiInstance, p: vec2<f32>) -> ImageUv {
       if (!center && ax.z > 0.5 && ay.z > 0.5) {
         out.mask = 0.0;
       }
-      let uv0 = mix(s.paint.xy, s.paint.zw, vec2<f32>(ax.x, ay.x));
-      let raw = mix(s.paint.xy, s.paint.zw, vec2<f32>(ax.y, ay.y));
+      let uv0 = region_uv(s, vec2<f32>(ax.x, ay.x));
+      let raw = region_uv(s, vec2<f32>(ax.y, ay.y));
       out.uv = uv0;
       out.raw = raw;
       return out;
@@ -212,8 +234,8 @@ fn image_uv(s: UiInstance, p: vec2<f32>) -> ImageUv {
       let moved = pos - s.paint3.xy - s.paint3.zw * frame.origin.z;
       let r = rotate2(moved, -s.geo2.w);
       let k = r / tile;
-      out.uv = mix(s.paint.xy, s.paint.zw, fract(k));
-      out.raw = mix(s.paint.xy, s.paint.zw, k);
+      out.uv = region_uv(s, fract(k));
+      out.raw = region_uv(s, k);
       return out;
     }
     case 6u: {
@@ -223,7 +245,7 @@ fn image_uv(s: UiInstance, p: vec2<f32>) -> ImageUv {
       // repeated per axis (the edges' bits).
       // A gradient's natural size is its own (paint2.zw); the
       // positioning area is paint4's edges in from the box's.
-      var nat = max(abs(s.paint.zw - s.paint.xy) * vec2<f32>(textureDimensions(sprite_tex, 0)), vec2<f32>(1.0));
+      var nat = max(upright(s, abs(s.paint.zw - s.paint.xy) * vec2<f32>(textureDimensions(sprite_tex, 0))), vec2<f32>(1.0));
       nat = nat / density;
       if ((s.kinds.y & 15u) == PAINT_GRADIENT_IMAGE) {
         nat = s.paint2.zw;
@@ -264,8 +286,8 @@ fn image_uv(s: UiInstance, p: vec2<f32>) -> ImageUv {
       let ax = background_axis(pos.x, size.x, w.x, origin.x, rx);
       let ay = background_axis(pos.y, size.y, w.y, origin.y, ry);
       out.mask = ax.z * ay.z;
-      out.uv = mix(s.paint.xy, s.paint.zw, vec2<f32>(ax.x, ay.x));
-      out.raw = mix(s.paint.xy, s.paint.zw, vec2<f32>(ax.y, ay.y));
+      out.uv = region_uv(s, vec2<f32>(ax.x, ay.x));
+      out.raw = region_uv(s, vec2<f32>(ax.y, ay.y));
       return out;
     }
     case 7u: {
@@ -276,7 +298,7 @@ fn image_uv(s: UiInstance, p: vec2<f32>) -> ImageUv {
       // bottom rows tiles at its own edge's scale, the middle row at the
       // top's (else the bottom's); columns likewise from the left and
       // right (CSS Backgrounds 3 §6.2).
-      var nat = max(abs(s.paint.zw - s.paint.xy) * vec2<f32>(textureDimensions(sprite_tex, 0)), vec2<f32>(1.0));
+      var nat = max(upright(s, abs(s.paint.zw - s.paint.xy) * vec2<f32>(textureDimensions(sprite_tex, 0))), vec2<f32>(1.0));
       if ((s.kinds.y & 15u) == PAINT_GRADIENT_IMAGE) {
         nat = s.paint2.zw;
       }
@@ -306,15 +328,15 @@ fn image_uv(s: UiInstance, p: vec2<f32>) -> ImageUv {
       if (((s.kinds.y >> 12u) & 1u) == 0u && ax.w > 0.5 && ay.w > 0.5) {
         out.mask = 0.0;
       }
-      out.uv = mix(s.paint.xy, s.paint.zw, vec2<f32>(ax.x, ay.x));
-      out.raw = mix(s.paint.xy, s.paint.zw, vec2<f32>(ax.y, ay.y));
+      out.uv = region_uv(s, vec2<f32>(ax.x, ay.x));
+      out.raw = region_uv(s, vec2<f32>(ax.y, ay.y));
       return out;
     }
     default: {}
   }
   let c = clamp(f, vec2<f32>(0.0), vec2<f32>(1.0));
-  out.uv = mix(s.paint.xy, s.paint.zw, c);
-  out.raw = mix(s.paint.xy, s.paint.zw, f);
+  out.uv = region_uv(s, c);
+  out.raw = region_uv(s, f);
   return out;
 }
 

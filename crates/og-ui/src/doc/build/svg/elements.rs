@@ -988,6 +988,7 @@ impl crate::ui::Docs {
                 focal: [0.5, 0.5],
                 offset: [0.0; 2],
                 nearest: false,
+                orient: true,
             })],
             view_box: Some(vb),
             view_rect: Some(rect),

@@ -245,6 +245,7 @@ impl RenderScene {
                 grass_pushers: Vec::new(),
             },
             texture_filters: Vec::new(),
+            texture_orientations: Vec::new(),
             texture_sizes: Default::default(),
             texture_normals: Vec::new(),
             paletted: std::collections::HashMap::new(),

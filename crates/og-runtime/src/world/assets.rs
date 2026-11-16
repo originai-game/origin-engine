@@ -446,7 +446,7 @@ pub(crate) fn refresh(eng: &Engine) -> (Vec<String>, Vec<String>) {
         let decoded = decode(eng, &id);
         let mut rs = eng.render.borrow_mut();
         match decoded {
-            Fetch::Ready((source, _)) => {
+            Fetch::Ready((source, ..)) => {
                 crate::world::stream::replace_texture(&mut rs.scene, h, source)
             }
             Fetch::Pending => {

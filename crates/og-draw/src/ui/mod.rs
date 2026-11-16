@@ -401,13 +401,25 @@ impl UiImage {
     /// falls in it, as og-render draws it: the fraction of its region to
     /// sample, or `None` where it draws nothing (past a contained or lone
     /// image, in a gap between tiles, a nine-slice's or border image's
-    /// empty middle). `texels`: its texture's size. A pattern is read at
-    /// the UI clock's start.
-    pub fn place(&self, pos: [f32; 2], size: [f32; 2], texels: [f32; 2]) -> Option<[f32; 2]> {
-        let region = [
+    /// empty middle). `texels`: its texture's size as stored, and
+    /// `orientation` its texture's ([`UiImage::orient`]). A pattern is
+    /// read at the UI clock's start.
+    pub fn place(
+        &self,
+        pos: [f32; 2],
+        size: [f32; 2],
+        texels: [f32; 2],
+        orientation: UiOrientation,
+    ) -> Option<[f32; 2]> {
+        let orientation = if self.orient {
+            orientation
+        } else {
+            UiOrientation::UPRIGHT
+        };
+        let region = orientation.size([
             ((self.uv[2] - self.uv[0]).abs() * texels[0]).max(1.0),
             ((self.uv[3] - self.uv[1]).abs() * texels[1]).max(1.0),
-        ];
+        ]);
         let density = self.density.max(1e-3);
         let given = if self.size.x <= 0.0 || self.size.y <= 0.0 {
             region
@@ -421,7 +433,7 @@ impl UiImage {
             focal: self.focal,
             offset: self.offset,
         };
-        place_fit(&self.fit, pos, size, &source)
+        place_fit(&self.fit, pos, size, &source).map(|f| orientation.stored(f))
     }
 }
 
@@ -720,6 +732,69 @@ pub struct UiImage {
     /// texture's own filter (CSS `image-rendering: pixelated` and
     /// `crisp-edges`): scaled up, its pixels stay square and sharp.
     pub nearest: bool,
+    /// Turned upright by its texture's orientation (the EXIF orientation
+    /// its cook or decoder read, og-render's `set_texture_orientation`),
+    /// as CSS `image-orientation: from-image`, the initial value; false
+    /// draws the texels as stored (`none`). Its region `uv` is in the
+    /// stored texels either way.
+    pub orient: bool,
+}
+
+/// How a texture's stored texels turn to stand upright: EXIF orientation
+/// 1 to 8 (EXIF 2.32 tag 0x0112; TIFF 6 §Orientation) as the turn a
+/// displayed point takes back to the stored one. Bit 0 flips x, bit 1
+/// flips y, bit 2 swaps the axes first (a quarter turn or a transpose,
+/// which swaps the natural width and height); 0 is upright.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
+pub struct UiOrientation(u8);
+
+impl UiOrientation {
+    pub const UPRIGHT: UiOrientation = UiOrientation(0);
+
+    /// From an EXIF orientation value; anything but 2 to 8 is upright.
+    pub fn from_exif(value: u32) -> UiOrientation {
+        UiOrientation(match value {
+            2 => 0b001,
+            3 => 0b011,
+            4 => 0b010,
+            5 => 0b100,
+            6 => 0b110,
+            7 => 0b111,
+            8 => 0b101,
+            _ => 0,
+        })
+    }
+
+    /// Its three bits (ui.wgsl reads them from an image's paint word).
+    pub fn bits(self) -> u8 {
+        self.0
+    }
+
+    /// Whether the axes swap: a quarter turn or a transpose.
+    pub fn transposed(self) -> bool {
+        self.0 & 4 != 0
+    }
+
+    /// A stored size, as it stands upright.
+    pub fn size(self, stored: [f32; 2]) -> [f32; 2] {
+        if self.transposed() {
+            [stored[1], stored[0]]
+        } else {
+            stored
+        }
+    }
+
+    /// The stored fraction of the image under displayed fraction `f`.
+    pub fn stored(self, f: [f32; 2]) -> [f32; 2] {
+        let mut t = if self.transposed() { [f[1], f[0]] } else { f };
+        if self.0 & 1 != 0 {
+            t[0] = 1.0 - t[0];
+        }
+        if self.0 & 2 != 0 {
+            t[1] = 1.0 - t[1];
+        }
+        t
+    }
 }
 
 /// A gradient drawn as an image `size` CSS px (its concrete size, which

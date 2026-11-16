@@ -204,12 +204,12 @@ pub use ui::{
     UiGlassFallback, UiGlassShadow, UiGlassStyle, UiGlassWeight, UiGradient, UiGradientImage,
     UiGradientKind, UiGround, UiImage, UiJoin, UiLayer, UiLight, UiList, UiMask, UiMassBatch,
     UiMassInstance, UiMassKey, UiMassKind, UiMassSpace, UiMassTemplate, UiMaterial,
-    UiMaterialHandle, UiMaterialShader, UiMode, UiOccluder, UiOcclusion, UiPaint, UiParticleShape,
-    UiPath, UiRepeat, UiShape, UiSpread, UiStop, UiStroke, UiTextEffects, UiTextOutline,
-    UiTextShadow, UiTransfer, UiVectorData, UiVectorDraw, UiVectorHandle, UiVectorPaint,
-    UiVectorStroke, UiVectorVertex, example_ui_material, flatten_cubic, format_number, glam_vec2,
-    kurbo_point, oklab, oklab_to_linear, polylines, square_to_quad, ui_material_module_source,
-    ui_scrim,
+    UiMaterialHandle, UiMaterialShader, UiMode, UiOccluder, UiOcclusion, UiOrientation, UiPaint,
+    UiParticleShape, UiPath, UiRepeat, UiShape, UiSpread, UiStop, UiStroke, UiTextEffects,
+    UiTextOutline, UiTextShadow, UiTransfer, UiVectorData, UiVectorDraw, UiVectorHandle,
+    UiVectorPaint, UiVectorStroke, UiVectorVertex, example_ui_material, flatten_cubic,
+    format_number, glam_vec2, kurbo_point, oklab, oklab_to_linear, polylines, square_to_quad,
+    ui_material_module_source, ui_scrim,
 };
 
 thread_local! {

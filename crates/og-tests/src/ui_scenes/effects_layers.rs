@@ -521,6 +521,7 @@ pub fn blur_detail(radius: f32) -> RenderScene {
                     luminance: false,
                     offset: Default::default(),
                     nearest: false,
+                    orient: true,
                 }),
             )
         };

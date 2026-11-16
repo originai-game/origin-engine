@@ -429,7 +429,8 @@ pub enum Content {
         uv: [f32; 4],
         tint: Srgba,
         /// How it fills its box (CSS `object-fit`, `object-position`,
-        /// `image-rendering`); stretched by default.
+        /// `image-rendering`, `image-orientation`); stretched and upright
+        /// by default.
         object: ObjectFit,
     },
 }
@@ -437,13 +438,15 @@ pub enum Content {
 /// How an image element's texture fills its box: CSS `object-fit` (`fit`,
 /// with `None` for scale-down's own size resolved by the renderer),
 /// `object-position` (`focal`, the fraction of the free space, and
-/// `offset`, the px after it) and `image-rendering` (`nearest`).
+/// `offset`, the px after it), `image-rendering` (`nearest`) and
+/// `image-orientation` (`orient`: from-image turns it upright).
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct ObjectFit {
     pub fit: og_draw::UiFit,
     pub focal: [f32; 2],
     pub offset: [f32; 2],
     pub nearest: bool,
+    pub orient: bool,
 }
 
 impl Default for ObjectFit {
@@ -453,6 +456,7 @@ impl Default for ObjectFit {
             focal: [0.5; 2],
             offset: [0.0; 2],
             nearest: false,
+            orient: true,
         }
     }
 }

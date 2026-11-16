@@ -690,7 +690,7 @@ impl Ui {
             } if *object != crate::layout::ObjectFit::default() => {
                 // Fitted and placed in its box by the renderer, which
                 // reads the region's own size (CSS object-fit, object-
-                // position, image-rendering).
+                // position, image-rendering, image-orientation).
                 let color = tint.fade(alpha).linear();
                 let mut shape =
                     og_draw::UiShape::rect([rect.x, rect.y, rect.width, rect.height], 0.0, color);
@@ -705,6 +705,7 @@ impl Ui {
                     offset: object.offset.into(),
                     luminance: false,
                     nearest: object.nearest,
+                    orient: object.orient,
                 });
                 cmds.push(DrawCmd::Shape {
                     shape: Box::new(shape),

@@ -83,6 +83,20 @@ pub fn decode(bytes: &[u8]) -> Result<Image, String> {
     })
 }
 
+/// A source image's EXIF orientation (1 to 8; 1 upright), read from its
+/// metadata alone: what a JPEG, PNG (`eXIf`), WebP or TIFF carries. The
+/// texels stay as stored; the texture keeps it for the draw to apply
+/// (CSS `image-orientation`).
+pub fn orientation(bytes: &[u8]) -> u32 {
+    use image::ImageDecoder;
+    image::ImageReader::new(std::io::Cursor::new(bytes))
+        .with_guessed_format()
+        .ok()
+        .and_then(|r| r.into_decoder().ok())
+        .and_then(|mut d| d.orientation().ok())
+        .map_or(1, |o| u32::from(o.to_exif()))
+}
+
 /// A source image's longest side, read from its header alone (a KTX2's,
 /// or what the `image` crate reads without decoding); `None` when that is
 /// not cheap (DDS, PSD, TGA) or the bytes are not an image.
@@ -137,6 +151,9 @@ pub fn tail(whole: &[u8], stamp: u64) -> Result<(Vec<u8>, String), CookError> {
     w.table("meta", &[tail_meta], row_hash::<TextureMeta>())
         .raw("ktx2", ktx2::tail(ktx, from as usize).map_err(bad)?, 16)
         .raw("mips", chain.to_bytes(), 4);
+    if let Some(o) = blob.raw_opt("orientation") {
+        w.raw("orientation", o, 4);
+    }
     let note = if side(from) > crate::runtime::MIP_TAIL {
         format!(
             "streamed: no level of its {levels} is at most {} texels (no mips), so its tail is the whole texture",
@@ -549,6 +566,19 @@ fn toktx(img: &Image, k: u32, opts: &TextureOptions) -> Result<Vec<u8>, String> 
 
 /// Cooks an image into a texture blob.
 pub fn cook(img: &Image, k: u32, opts: &TextureOptions, stamp: u64) -> Result<Vec<u8>, CookError> {
+    cook_oriented(img, k, opts, stamp, 1)
+}
+
+/// [`cook`] for an image whose source carries EXIF orientation
+/// `orientation` ([`orientation`]): kept in the raw section `orientation`
+/// (a little-endian u32) when it is not 1, the texels as stored.
+pub fn cook_oriented(
+    img: &Image,
+    k: u32,
+    opts: &TextureOptions,
+    stamp: u64,
+    orientation: u32,
+) -> Result<Vec<u8>, CookError> {
     if img.width == 0 || img.height == 0 {
         return Err(CookError("image has no pixels".into()));
     }
@@ -581,6 +611,9 @@ pub fn cook(img: &Image, k: u32, opts: &TextureOptions, stamp: u64) -> Result<Ve
         );
         w.table("meta", &[meta], row_hash::<TextureMeta>())
             .raw("ktx2", ktx, 16);
+        if orientation != 1 {
+            w.raw("orientation", orientation.to_le_bytes(), 4);
+        }
         return Ok(w.finish());
     }
     let srgb = k == kind::COLOR;
@@ -650,6 +683,9 @@ pub fn cook(img: &Image, k: u32, opts: &TextureOptions, stamp: u64) -> Result<Ve
     );
     w.table("meta", &[meta], row_hash::<TextureMeta>())
         .raw("ktx2", ktx, 16);
+    if orientation != 1 {
+        w.raw("orientation", orientation.to_le_bytes(), 4);
+    }
     Ok(w.finish())
 }
 
@@ -809,7 +845,8 @@ impl Job for TextureJob<'_> {
             });
         }
         split_texture(s, 0, split, p, |stamp| {
-            let img = decode(s.conformed.as_deref().unwrap_or(&s.bytes)).map_err(CookError)?;
+            let bytes = s.conformed.as_deref().unwrap_or(&s.bytes);
+            let img = decode(bytes).map_err(CookError)?;
             if let Some(c) = mesh_texture(s, options) {
                 let mut t = options.texture.clone();
                 let (img, k, mips, note) = conform::mesh::texture(&c, None, img, *k, t.mipmaps);
@@ -834,7 +871,8 @@ impl Job for TextureJob<'_> {
                     _ => "colour (ETC1S)",
                 }
             );
-            cook(&img, *k, &options.texture, stamp).map(|b| (b, vec![note]))
+            cook_oriented(&img, *k, &options.texture, stamp, orientation(bytes))
+                .map(|b| (b, vec![note]))
         })
     }
 

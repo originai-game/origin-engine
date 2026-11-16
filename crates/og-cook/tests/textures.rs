@@ -5,6 +5,10 @@
 //! - a `ru` KTX2 cooked as stored (upside down), a swizzle ignored, or an
 //!   identity KTX2 re-encoded instead of taken as it is →
 //!   `ktx2_sources_are_flipped_and_swizzled_to_rd_rgba_or_taken_as_they_are`
+//! - a source image's EXIF orientation lost, or baked into its texels
+//!   (the texture is then upright under `image-orientation: none`), or a
+//!   streamed tail without it →
+//!   `exif_orientation_is_kept_beside_the_texels_as_stored`
 //! - a streamed texture's tail and chain from two encodes, a texture inside
 //!   the tail split, or stream accepted where it cannot apply →
 //!   `a_streamed_texture_cooks_its_mip_tail_and_its_whole_chain`
@@ -660,4 +664,96 @@ fn a_cut_off_is_the_texture_byte_through_the_alpha_factor_or_none() {
     let c = encoded_coverage(&b, &half, 179);
     assert_eq!((c.len(), c[0]), (3, 0.25), "4x4 to 1x1: {c:?}");
     assert!(c.iter().all(|&c| c >= 0.25), "{c:?}");
+}
+
+/// A PNG of `rgba` with an `eXIf` chunk holding EXIF orientation `o`
+/// (PNG 3 §11.3.6: a big-endian TIFF header and one IFD entry, tag
+/// 0x0112), after IHDR (8 + 25 bytes).
+fn png_with_orientation(w: u32, h: u32, rgba: &[u8], o: u8) -> Vec<u8> {
+    fn crc(bytes: &[u8]) -> u32 {
+        let mut c = !0u32;
+        for &b in bytes {
+            c ^= u32::from(b);
+            for _ in 0..8 {
+                c = if c & 1 != 0 {
+                    0xedb8_8320 ^ (c >> 1)
+                } else {
+                    c >> 1
+                };
+            }
+        }
+        !c
+    }
+    let mut out = Vec::new();
+    image::ImageEncoder::write_image(
+        image::codecs::png::PngEncoder::new(&mut out),
+        rgba,
+        w,
+        h,
+        image::ExtendedColorType::Rgba8,
+    )
+    .unwrap();
+    let exif = [
+        b'M', b'M', 0, 42, 0, 0, 0, 8, 0, 1, 0x01, 0x12, 0, 3, 0, 0, 0, 1, 0, o, 0, 0, 0, 0, 0, 0,
+    ];
+    let body = [b"eXIf".as_slice(), &exif].concat();
+    let mut chunk = (exif.len() as u32).to_be_bytes().to_vec();
+    chunk.extend_from_slice(&body);
+    chunk.extend_from_slice(&crc(&body).to_be_bytes());
+    out.splice(33..33, chunk);
+    out
+}
+
+/// A source image's EXIF orientation (EXIF 2.32 tag 0x0112) is kept in
+/// its texture beside the texels as stored, for the draw to apply (CSS
+/// Images 3 §5.1 `image-orientation`): a 16 × 8 card carrying 6 cooks
+/// 16 × 8 with the same texels as without it and orientation 6; one
+/// without it is 1; a streamed 512 × 256 card carrying 8 keeps 8 in its
+/// mip tail and its whole chain.
+///
+/// Ways it could fail: the orientation dropped (1), or applied to the
+/// texels at cook (8 × 16, and `none` could no longer draw it as
+/// stored), or the tail written without it.
+#[test]
+fn exif_orientation_is_kept_beside_the_texels_as_stored() {
+    let root = project("exif");
+    let side = card(16, 8, 0);
+    std::fs::write(
+        root.join("assets/tex/side.png"),
+        png_with_orientation(16, 8, &side, 6),
+    )
+    .unwrap();
+    png(&root.join("assets/tex/plain.png"), 16, 8, &side);
+    std::fs::write(
+        root.join("assets/tex/big.png"),
+        png_with_orientation(512, 256, &card(512, 256, 1), 8),
+    )
+    .unwrap();
+    std::fs::write(
+        root.join("assets/tex/big.png.ogt"),
+        "type import\nversion 1\n---\ntexture {\n  stream true\n}\n",
+    )
+    .unwrap();
+    let source = std::fs::read(root.join("assets/tex/side.png")).unwrap();
+    assert_eq!(og_cook::cook::image_orientation(&source), 6);
+    let decoded = og_cook::cook::decode_image(&source).unwrap();
+    assert_eq!((decoded.width, decoded.height), (16, 8));
+    assert_eq!(decoded.rgba, side, "the texels stay as stored");
+    let report = cook_project(&root, &CookOptions::default()).unwrap();
+    assert!(report.ok(), "{:?}", report.errors());
+    let b = Bundle::open(&root.join("cooked")).unwrap();
+    let turned = b.load_texture("tex/side.png").unwrap();
+    let plain = b.load_texture("tex/plain.png").unwrap();
+    assert_eq!(
+        (turned.meta.width, turned.meta.height, turned.orientation),
+        (16, 8, 6)
+    );
+    assert_eq!(turned.ktx2, plain.ktx2, "the same texels as without it");
+    assert_eq!(plain.orientation, 1);
+    let tail = b.load_texture("tex/big.png").unwrap();
+    let whole = b
+        .load_texture(&og_cook::runtime::mips_id("tex/big.png"))
+        .unwrap();
+    assert!(tail.mips.is_some(), "streamed");
+    assert_eq!((tail.orientation, whole.orientation), (8, 8));
 }

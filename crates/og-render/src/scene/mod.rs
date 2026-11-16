@@ -162,6 +162,9 @@ pub struct RenderScene {
     pub atmosphere: SceneAtmosphere,
     /// How each texture is sampled by sprites, tiles and text (by texture index).
     texture_filters: Vec<TextureFilter>,
+    /// How each texture's texels turn upright where an oriented UI image
+    /// draws it (by texture index).
+    texture_orientations: Vec<og_draw::UiOrientation>,
     /// The size a streamed texture reports while it holds only its mip
     /// tail ([`RenderScene::set_texture_size`]): its whole chain's.
     texture_sizes: std::collections::HashMap<TextureHandle, (u32, u32)>,

@@ -77,6 +77,7 @@ fn image(texture: og_render::TextureHandle, fit: UiFit) -> UiImage {
         offset: Vec2::ZERO,
         luminance: false,
         nearest: false,
+        orient: true,
     }
 }
 

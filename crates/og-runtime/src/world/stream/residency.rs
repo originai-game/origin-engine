@@ -9,7 +9,7 @@ enum Full {
         model: Box<og_bundle::runtime::CookedModel>,
         textures: Vec<TextureSource>,
     },
-    Texture(TextureSource, bool),
+    Texture(TextureSource, bool, og_render::UiOrientation),
     /// The cooked sound: whole, or the head of one cooked in chunks.
     Sound(Box<CookedSound>),
 }
@@ -34,15 +34,16 @@ fn decode_texture(
     group: &str,
     id: &str,
     formats: Option<&og_render::TextureFormats>,
-) -> Result<Option<(TextureSource, bool)>, String> {
+) -> Result<Option<(TextureSource, bool, og_render::UiOrientation)>, String> {
     let out = bundle.output(id).map_err(|e| e.to_string())?;
     let bytes = super::assets::aligned(files.file(group, &out.file)?);
     let tex = bundle
         .texture(id, bytes.bytes())
         .map_err(|e| e.to_string())?;
     let pixel = tex.is_pixel_art();
+    let orientation = og_render::UiOrientation::from_exif(tex.orientation);
     match hooks().map(|h| h.texture(&tex, formats)) {
-        Some(super::assets::Fetch::Ready(d)) => Ok(Some((d, pixel))),
+        Some(super::assets::Fetch::Ready(d)) => Ok(Some((d, pixel, orientation))),
         Some(super::assets::Fetch::Pending) => Ok(None),
         Some(super::assets::Fetch::Failed(e)) => Err(format!("{id}: {e}")),
         None => Err("no host is installed to decode textures".into()),
@@ -76,7 +77,7 @@ pub(super) fn upgrade(eng: &Engine, group: &str) -> Result<bool, String> {
                     let mut textures = Vec::with_capacity(model.textures.len());
                     for t in &model.textures {
                         match decode_texture(bundle, s, group, &t.id, formats.as_ref())? {
-                            Some((d, _)) => textures.push(d),
+                            Some((d, ..)) => textures.push(d),
                             None => return Ok(false),
                         }
                     }
@@ -88,7 +89,7 @@ pub(super) fn upgrade(eng: &Engine, group: &str) -> Result<bool, String> {
                 }
                 Slot::Texture { .. } => {
                     match decode_texture(bundle, s, group, id, formats.as_ref())? {
-                        Some((d, pixel)) => Full::Texture(d, pixel),
+                        Some((d, pixel, o)) => Full::Texture(d, pixel, o),
                         None => return Ok(false),
                     }
                 }
@@ -151,8 +152,9 @@ pub(super) fn upgrade(eng: &Engine, group: &str) -> Result<bool, String> {
                     }
                 }
             }
-            (Slot::Texture { id, handle }, Full::Texture(d, pixel)) => {
+            (Slot::Texture { id, handle }, Full::Texture(d, pixel, orientation)) => {
                 replace_texture(&mut rs.scene, *handle, d);
+                rs.scene.set_texture_orientation(*handle, orientation);
                 rs.decoded.ids.insert(*handle, id.clone());
                 if pixel {
                     rs.scene

@@ -236,6 +236,7 @@ pub(crate) fn inherited_property(name: &str) -> bool {
                 | "paint-order"
                 | "pointer-events"
                 | "image-rendering"
+                | "image-orientation"
                 | "border-collapse"
                 | "border-spacing"
                 | "caption-side"
@@ -254,11 +255,13 @@ pub(crate) fn inherited_property(name: &str) -> bool {
 /// The inherited properties an element reads as it is built rather than
 /// from the frame's orders: with nothing declared, each takes its
 /// parent's value through the cascade (CSS Scrollbars 1 §2:
-/// `scrollbar-color` inherits; CSS Images 3 §5.3: `image-rendering`). A document declaring one carries its
+/// `scrollbar-color` inherits; CSS Images 3 §5.3 and §5.1:
+/// `image-rendering`, `image-orientation`). A document declaring one carries its
 /// values, as one writing `inherit` does.
 pub const CARRIED_BY_DEFAULT: &[&str] = &[
     "scrollbar-color",
     "image-rendering",
+    "image-orientation",
     "list-style-type",
     "list-style-position",
     "list-style-image",

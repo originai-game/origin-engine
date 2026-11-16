@@ -1433,3 +1433,104 @@ fn svg_paint_opacities_order_and_mask_types_draw_as_svg_says() {
         ([6.0; 4], [4.0; 4], false)
     );
 }
+
+/// `image-orientation` (CSS Images 3 §5.1), inherited: `none` on a parent
+/// reaches its `<img>` and its background, which draw their texels as
+/// stored, while a child saying `from-image` (the initial value) turns
+/// them upright. Where each emitted image samples comes from og-render's
+/// own `place` (ui.wgsl's `image_uv`), against a 2 × 1 texture, red then
+/// blue, carrying each EXIF orientation (EXIF 2.32 tag 0x0112): under 6
+/// (row 0 on the right, column 0 at the top) the upright image is 1 × 2
+/// with red, the stored left column, on top; under 8 (row 0 on the left,
+/// column 0 at the bottom) blue is on top; under 3 (turned 180°) blue is on
+/// the left. `object-fit: none` draws it at its natural size, which is the
+/// turned image's (1 × 2) and, under `none`, the stored one's (2 × 1).
+///
+/// Ways it could fail: `none` not reaching the image or not inherited, a
+/// quarter turn taken the wrong way (6 and 8 swapped), the natural size
+/// not swapped by a quarter turn, or `none` still turning the texels.
+#[test]
+fn image_orientation_turns_images_by_their_exif_or_draws_them_as_stored() {
+    struct Env(og_draw::TextureHandle);
+    impl bind::Env for Env {
+        fn texture(&self, _: f64) -> Option<og_draw::TextureHandle> {
+            Some(self.0)
+        }
+    }
+    let mut handles = Handles::default();
+    let t = handles.texture();
+    let doc = r#"<meta name="component" content="or">
+<div id="Root"><img id="Stored" src={1} alt="" /><img id="Upright" src={1} alt="" /><div id="BgStored"></div><div id="BgUpright"></div></div>
+<style>
+#Root { image-orientation: none; }
+img { width: 10px; height: 20px; object-fit: none; }
+#Upright, #BgUpright { image-orientation: from-image; }
+#BgStored, #BgUpright { width: 10px; height: 10px; background: url(a.png); }
+</style>"#;
+    let mut ui = ui_with_font(test_font_metrics());
+    ui.define_texture("ui/a.png", t);
+    ui.define_document(UiDocument::parse("ui/or.svelte", doc).expect("parses"));
+    ui.mount_document(
+        reactive::SourceId::new("test", "or"),
+        "or",
+        Default::default(),
+        Default::default(),
+        &Env(t),
+    )
+    .unwrap();
+    for _ in 0..2 {
+        ui.begin(InputFrame::default(), Viewport::new(400.0, 300.0));
+        ui.build_retained_documents(&Env(t)).unwrap();
+        ui.end();
+    }
+    assert!(ui.frame().warnings.is_empty(), "{:?}", ui.frame().warnings);
+    let images: Vec<og_draw::UiImage> = ui
+        .frame()
+        .items
+        .iter()
+        .filter_map(|i| match &i.cmd {
+            DrawCmd::Shape { shape, .. } => match &shape.paint {
+                og_draw::UiPaint::Image(im) => Some(*im),
+                _ => None,
+            },
+            _ => None,
+        })
+        .collect();
+    assert_eq!(images.len(), 4, "{images:?}");
+    let (stored, upright) = (images[0], images[1]);
+    assert_eq!(
+        (stored.fit, upright.fit),
+        (og_draw::UiFit::None, og_draw::UiFit::None)
+    );
+    assert!(!stored.orient, "none inherited from the parent");
+    assert!(upright.orient, "from-image on the child");
+    assert!(matches!(images[2].fit, og_draw::UiFit::Background(_)));
+    assert!(!images[2].orient, "a background under none draws as stored");
+    assert!(images[3].orient, "a background under from-image turns");
+
+    // The texel a point of the 10 × 20 box samples: red (the stored left
+    // half), blue (the right) or nothing.
+    let texel = |im: &og_draw::UiImage, exif: u32, p: [f32; 2]| {
+        im.place(
+            p,
+            [10.0, 20.0],
+            [2.0, 1.0],
+            og_draw::UiOrientation::from_exif(exif),
+        )
+        .map(|f| if f[0] < 0.5 { "red" } else { "blue" })
+    };
+    // 6: 1 × 2 upright, centred at x 4.5..5.5, y 9..11.
+    assert_eq!(texel(&upright, 6, [5.0, 9.5]), Some("red"));
+    assert_eq!(texel(&upright, 6, [5.0, 10.5]), Some("blue"));
+    assert_eq!(texel(&upright, 6, [4.0, 10.0]), None, "1 px wide");
+    // 8: the other quarter turn.
+    assert_eq!(texel(&upright, 8, [5.0, 9.5]), Some("blue"));
+    assert_eq!(texel(&upright, 8, [5.0, 10.5]), Some("red"));
+    // 3: 2 × 1, x 4..6, y 9.5..10.5, turned half round.
+    assert_eq!(texel(&upright, 3, [4.5, 10.0]), Some("blue"));
+    assert_eq!(texel(&upright, 1, [4.5, 10.0]), Some("red"));
+    // none: the stored 2 × 1 whatever the texture carries.
+    assert_eq!(texel(&stored, 6, [4.5, 10.0]), Some("red"));
+    assert_eq!(texel(&stored, 6, [5.0, 10.8]), None, "1 px tall");
+    assert_eq!(texel(&upright, 6, [5.0, 10.8]), Some("blue"));
+}

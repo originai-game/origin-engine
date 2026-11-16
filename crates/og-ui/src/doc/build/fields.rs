@@ -296,7 +296,7 @@ impl Ui {
         use crate::doc::paint_css as p;
         let current = cx.current;
         let mut c = p::CssPaint::default();
-        let nearest = r.object_css().1;
+        let (_, nearest, orient) = r.object_css();
         // Asset paths were resolved beside their stylesheet before the cascade.
         let mut image = |what: &str, i: p::CssImage| -> Option<p::BgImage> {
             let i = i.in_scheme(cx.dark);
@@ -318,6 +318,7 @@ impl Ui {
                         uv: [0.0, 0.0, 1.0, 1.0],
                         density,
                         nearest,
+                        orient,
                     }
                 }
                 p::ImageSource::Url(u) => {
@@ -643,7 +644,7 @@ impl Ui {
                     |name| r.str(name).map(str::to_string),
                     |name| r.nums(name).map(<[f32]>::to_vec),
                 );
-                let (at, nearest) = r.object_css();
+                let (at, nearest, orient) = r.object_css();
                 if let Some([focal, _]) = at {
                     spec.focal = focal;
                 }
@@ -661,6 +662,7 @@ impl Ui {
                         label: r.str("name").unwrap_or_default().to_string(),
                         offset: at.map_or([0.0; 2], |a| a[1]),
                         nearest,
+                        orient,
                     },
                 );
             }
@@ -1280,10 +1282,11 @@ impl crate::ui::Tree {
         }
     }
 
-    /// An `<image>`'s CSS `object-fit`, `object-position` and
-    /// `image-rendering`, checked when the CSS was lowered.
+    /// An `<image>`'s CSS `object-fit`, `object-position`,
+    /// `image-rendering` and `image-orientation`, checked when the CSS was
+    /// lowered.
     pub fn object_fit(&mut self, i: usize, r: &Resolved) {
-        let (at, nearest) = r.object_css();
+        let (at, nearest, orient) = r.object_css();
         let fit = match r.str("fit") {
             Some("contain") => og_draw::UiFit::Contain,
             Some("cover") => og_draw::UiFit::Cover,
@@ -1297,6 +1300,7 @@ impl crate::ui::Tree {
                 focal: at.map_or([0.5; 2], |a| a[0]),
                 offset: at.map_or([0.0; 2], |a| a[1]),
                 nearest,
+                orient,
             };
         }
     }

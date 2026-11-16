@@ -125,6 +125,9 @@ pub enum BgImage {
         density: f32,
         /// Sampled at the nearest texel (CSS `image-rendering`).
         nearest: bool,
+        /// Turned upright by its texture's orientation (CSS
+        /// `image-orientation: from-image`).
+        orient: bool,
     },
 }
 
@@ -191,6 +194,7 @@ impl BgLayer {
                 uv,
                 density,
                 nearest,
+                orient,
             } => Paint::Image(ImagePaint {
                 texture: *texture,
                 uv: *uv,
@@ -207,6 +211,7 @@ impl BgLayer {
                 focal: [0.5; 2],
                 offset: [0.0; 2],
                 nearest: *nearest,
+                orient: *orient,
             }),
         }
     }
@@ -362,6 +367,7 @@ impl LayerFrame {
                 uv,
                 density,
                 nearest,
+                orient,
             } => crate::paint::Paint::Image(crate::paint::ImagePaint {
                 texture: *texture,
                 uv: *uv,
@@ -372,6 +378,7 @@ impl LayerFrame {
                 focal: [0.5; 2],
                 offset: [0.0; 2],
                 nearest: *nearest,
+                orient: *orient,
             }),
         };
         let o = [-out[3], -out[0], -out[1], -out[2]];

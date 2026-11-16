@@ -1,0 +1,9 @@
+{
+  "simulation": "unchanged",
+  "added": [
+    {
+      "member": "UI CSS image-orientation",
+      "summary": "`image-orientation` (CSS Images 3 §5.1) is inherited and takes `from-image`, the initial value, and `none`. Under `from-image`, a UI image (`<img>`, art, a background or a border image) whose source carries an EXIF orientation (a phone photo saved as JPEG, PNG or WebP) is drawn upright, and its natural width and height are those of the turned image. Under `none`, its pixels are drawn as stored. The cook keeps the orientation beside the texels, which stay as stored, and the turn is applied when the image is drawn. Sprites and materials sample the texels as stored."
+    }
+  ]
+}

@@ -49,6 +49,36 @@ impl RenderScene {
         self.texture_normals.iter().any(Option::is_some)
     }
 
+    /// Turns `texture` upright where a UI image that honours its
+    /// orientation draws it ([`og_draw::UiImage::orient`], CSS
+    /// `image-orientation: from-image`): the orientation its source image
+    /// carries (EXIF), which the texels keep as stored. `false` for a
+    /// handle of another scene.
+    pub fn set_texture_orientation(
+        &mut self,
+        texture: TextureHandle,
+        orientation: og_draw::UiOrientation,
+    ) -> bool {
+        let i = texture.index();
+        if !self.texture_slots.live(i, texture.generation()) {
+            return false;
+        }
+        if self.texture_orientations.len() <= i {
+            self.texture_orientations
+                .resize(i + 1, og_draw::UiOrientation::UPRIGHT);
+        }
+        self.texture_orientations[i] = orientation;
+        true
+    }
+
+    /// `texture`'s orientation ([`RenderScene::set_texture_orientation`]).
+    pub fn texture_orientation(&self, texture: TextureHandle) -> og_draw::UiOrientation {
+        self.texture_orientations
+            .get(texture.index())
+            .copied()
+            .unwrap_or_default()
+    }
+
     /// How sprites sample `texture`.
     pub fn texture_filter(&self, texture: TextureHandle) -> TextureFilter {
         self.texture_filters
@@ -321,6 +351,9 @@ impl RenderScene {
             if let Some(f) = self.texture_filters.get_mut(i) {
                 *f = TextureFilter::Linear;
             }
+            if let Some(o) = self.texture_orientations.get_mut(i) {
+                *o = og_draw::UiOrientation::UPRIGHT;
+            }
             if let Some(n) = self.texture_normals.get_mut(i) {
                 *n = None;
             }
@@ -360,6 +393,9 @@ impl RenderScene {
         self.texture_revisions[i] += 1;
         if let Some(f) = self.texture_filters.get_mut(i) {
             *f = TextureFilter::Linear;
+        }
+        if let Some(o) = self.texture_orientations.get_mut(i) {
+            *o = og_draw::UiOrientation::UPRIGHT;
         }
         self.texture_sizes.remove(&handle);
         if let Some(n) = self.texture_normals.get_mut(i) {

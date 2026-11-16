@@ -34,9 +34,10 @@ pub(crate) fn load_texture(eng: &Engine, path: &str) -> Result<usize, String> {
         crate::world::stream::add_texture(eng, &group, &id, handle);
         return Ok(i);
     }
-    let (data, pixel) = decode_texture(eng, &id)?;
+    let (data, pixel, orientation) = decode_texture(eng, &id)?;
     let mut rs = eng.render.borrow_mut();
     let handle = rs.scene.add_texture_source(data);
+    rs.scene.set_texture_orientation(handle, orientation);
     rs.decoded.ids.insert(handle, id.clone());
     if pixel {
         rs.scene
@@ -86,7 +87,7 @@ fn link_normal(eng: &Engine, id: &str, texture: og_render::TextureHandle) {
     let decoded = decode_texture(eng, &name);
     let mut rs = eng.render.borrow_mut();
     match decoded {
-        Ok((data, _)) => {
+        Ok((data, ..)) => {
             let h = rs.scene.add_texture_source(data);
             rs.decoded.ids.insert(h, name);
             rs.scene.set_texture_normal(texture, Some(h));
@@ -99,7 +100,10 @@ fn link_normal(eng: &Engine, id: &str, texture: og_render::TextureHandle) {
 
 /// A cooked texture decoded through the host's texture hook, and whether
 /// its kind is pixel art (sampled nearest).
-fn decode_texture(eng: &Engine, id: &str) -> Result<(og_render::TextureSource, bool), String> {
+fn decode_texture(
+    eng: &Engine,
+    id: &str,
+) -> Result<(og_render::TextureSource, bool, og_render::UiOrientation), String> {
     match decode(eng, id) {
         Fetch::Ready(d) => Ok(d),
         Fetch::Pending => Err(format!("{id}: the texture is still being transcoded")),
@@ -108,8 +112,12 @@ fn decode_texture(eng: &Engine, id: &str) -> Result<(og_render::TextureSource, b
 }
 
 /// [`decode_texture`], with a texture the host is still transcoding
-/// answered `Pending`.
-pub(super) fn decode(eng: &Engine, id: &str) -> Fetch<(og_render::TextureSource, bool)> {
+/// answered `Pending`: its source, whether it is pixel art, and the
+/// orientation its source image carries (EXIF; the texels as stored).
+pub(super) fn decode(
+    eng: &Engine,
+    id: &str,
+) -> Fetch<(og_render::TextureSource, bool, og_render::UiOrientation)> {
     let formats = texture_formats(eng);
     let assets = eng.assets.borrow();
     let tex = match assets
@@ -120,8 +128,9 @@ pub(super) fn decode(eng: &Engine, id: &str) -> Fetch<(og_render::TextureSource,
         Err(e) => return Fetch::Failed(e),
     };
     let pixel = tex.is_pixel_art();
+    let orientation = og_render::UiOrientation::from_exif(tex.orientation);
     match hooks().map(|h| h.texture(&tex, formats.as_ref())) {
-        Some(Fetch::Ready(d)) => Fetch::Ready((d, pixel)),
+        Some(Fetch::Ready(d)) => Fetch::Ready((d, pixel, orientation)),
         Some(Fetch::Pending) => Fetch::Pending,
         Some(Fetch::Failed(e)) => Fetch::Failed(format!("{id}: {e}")),
         None => Fetch::Failed("no host is installed to decode textures".into()),
@@ -201,7 +210,7 @@ pub(crate) fn retranscode(eng: &Engine) {
         let decoded = decode(eng, &id);
         let mut rs = eng.render.borrow_mut();
         match decoded {
-            Fetch::Ready((source, _)) => {
+            Fetch::Ready((source, ..)) => {
                 crate::world::stream::replace_texture(&mut rs.scene, h, source);
             }
             Fetch::Pending => {
@@ -270,7 +279,7 @@ fn link_sway(eng: &Engine, id: &str, texture: og_render::TextureHandle) {
     let decoded = decode_texture(eng, &name);
     let mut rs = eng.render.borrow_mut();
     match (parts, decoded) {
-        (Ok(Some(parts)), Ok((data, pixel))) => {
+        (Ok(Some(parts)), Ok((data, pixel, _))) => {
             let (w, h) = data.size();
             let added = rs.scene.add_texture_source(data);
             if pixel {
@@ -309,7 +318,7 @@ fn link_index(eng: &Engine, id: &str, texture: og_render::TextureHandle) {
         let name = format!("{id}#index");
         let known = eng.assets.borrow().blob(&name).is_ok();
         match known.then(|| decode_texture(eng, &name)) {
-            Some(Ok((data, pixel))) => {
+            Some(Ok((data, pixel, _))) => {
                 let mut rs = eng.render.borrow_mut();
                 let h = rs.scene.add_texture_source(data);
                 if pixel {

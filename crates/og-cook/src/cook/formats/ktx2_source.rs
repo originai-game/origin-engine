@@ -128,6 +128,7 @@ fn decode(
         },
         ktx2: bytes.to_vec(),
         mips: None,
+        orientation: 1,
     };
     t.to_texture_data()
         .map(|d| d.rgba)

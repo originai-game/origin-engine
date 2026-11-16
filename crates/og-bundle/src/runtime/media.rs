@@ -11,6 +11,11 @@ pub struct CookedTexture {
     /// A streamed texture's whole chain, when this blob holds only its mip
     /// tail (`texture { stream true }`, G3-3); [`mips_id`] holds every level.
     pub mips: Option<MipChain>,
+    /// Its source's EXIF orientation (1 to 8, 1 upright): the texels are
+    /// as stored, and a UI image that honours it turns them upright at
+    /// draw time (og-render's `set_texture_orientation`, CSS
+    /// `image-orientation`).
+    pub orientation: u32,
 }
 
 /// The whole mip chain of a texture whose blob holds its tail: level 0's
