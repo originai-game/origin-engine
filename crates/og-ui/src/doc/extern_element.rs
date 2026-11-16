@@ -73,42 +73,42 @@ const SVG_PARENTS: &[&str] = &[
 /// What a `<tspan>` inside a `<text>` takes: the run's look.
 pub const TSPAN_ATTRS: &[&str] = &["font-weight", "font-style", "text-decoration", "fill"];
 
-/// `run` styled by a `<tspan>`'s attribute `name`.
-pub fn tspan(run: &mut super::InlineRun, name: &str, value: &str) -> Result<(), String> {
+/// The CSS declaration a `<tspan>`'s attribute `name` is: its run's look.
+pub fn tspan(name: &str, value: &str) -> Result<String, String> {
     let v = value.trim();
-    match name {
+    Ok(match name {
         "font-weight" => {
-            run.bold = match v {
-                "bold" | "bolder" => true,
-                "normal" | "lighter" => false,
-                n => n
-                    .parse::<u16>()
-                    .map(|w| w >= 600)
-                    .map_err(|_| format!("font-weight=\"{v}\" is normal, bold or 100–900"))?,
+            if !matches!(v, "bold" | "bolder" | "normal" | "lighter")
+                && !v.parse::<u16>().is_ok_and(|w| (1..=1000).contains(&w))
+            {
+                return Err(format!("font-weight=\"{v}\" is normal, bold or 100–900"));
             }
+            format!("font-weight: {v};")
         }
-        "font-style" => run.italic = matches!(v, "italic" | "oblique"),
+        "font-style" => format!(
+            "font-style: {};",
+            if matches!(v, "italic" | "oblique") {
+                v
+            } else {
+                "normal"
+            }
+        ),
         "text-decoration" => {
             for w in v.split_whitespace() {
-                match w {
-                    "underline" => run.underline = true,
-                    "line-through" => run.strike = true,
-                    "none" => {}
-                    w => {
-                        return Err(format!(
-                            "text-decoration \"{w}\" is underline, line-through or none"
-                        ));
-                    }
+                if !matches!(w, "underline" | "line-through" | "none") {
+                    return Err(format!(
+                        "text-decoration \"{w}\" is underline, line-through or none"
+                    ));
                 }
             }
+            format!("text-decoration-line: {v};")
         }
         "fill" => {
             crate::svg::color(v).map_err(|e| format!("fill: {e}"))?;
-            run.color = Some(v.to_string());
+            format!("color: {v};")
         }
-        _ => {}
-    }
-    Ok(())
+        _ => String::new(),
+    })
 }
 
 /// SVG's presentation properties: attributes on SVG elements and CSS

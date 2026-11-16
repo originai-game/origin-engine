@@ -50,6 +50,7 @@ struct Glyphs {
     baseline: f32,
     size: f32,
     transform: [f32; 4],
+    color: [f32; 4],
 }
 
 /// The glyph commands drawn inside element `id` (their line boxes'
@@ -71,6 +72,7 @@ fn glyphs(d: &Doc, id: &str) -> Vec<Glyphs> {
                     baseline,
                     size,
                     bounds,
+                    color,
                     ..
                 } if (r.y..r.y + r.height).contains(&(bounds.y + bounds.height / 2.0))
                     && (r.x..r.x + r.width).contains(&(bounds.x + bounds.width / 2.0)) =>
@@ -81,6 +83,7 @@ fn glyphs(d: &Doc, id: &str) -> Vec<Glyphs> {
                         baseline: *baseline,
                         size: *size,
                         transform,
+                        color: *color,
                     })
                 }
                 _ => None,
@@ -146,6 +149,47 @@ const TURNED: [f32; 4] = [0.0, 1.0, -1.0, 0.0];
 /// `none` (§5.1); `<rp>` is not shown; a line too tight for its
 /// annotation grows (§3.6). Down a vertical line the annotation is on the
 /// right (line-over).
+/// A text's inline elements are elements (CSS 2 §9.2.2): class, id,
+/// attribute, structural, child and state selectors match them, their CSS
+/// styles their words, `display` gives any of them a ruby role, and a
+/// text's `::part(name)` still styles the element naming its part.
+///
+/// Ways it could fail: a rule reaching only plain `<b>` (the tag's UA
+/// style) and not a classed or attributed element; `:last-of-type`
+/// counted among the paragraph's blocks rather than its inline siblings;
+/// a hover that restyles nothing until something else rebuilds the text;
+/// ruby only from `<ruby>` tags; a part rule lost under the element's.
+#[test]
+fn inline_elements_are_matched_and_styled_as_css_does() {
+    let mut d = doc(
+        r#"<p id="P">あ<span class="gold" id="G">日</span><b data-k="1">本</b><b>で</b><a id="L" href="r">す</a><span part="big">漢</span><span style="display: ruby">東<span style="display: ruby-text">とう</span></span></p>"#,
+        ".gold { color: #ff0000; } #G { font-size: 30px; } [data-k] { color: #00ff00; }
+b:last-of-type { color: #0000ff; } p > a { color: #ff00ff; } a:hover { color: #00ffff; }
+p::part(big) { font-size: 40px; }",
+    );
+    let ink = |d: &Doc, t: &str| {
+        let c = one(d, "P", t).color;
+        [c[0] > 0.5, c[1] > 0.5, c[2] > 0.5]
+    };
+    assert_eq!(d.get("P").text, "あ日本です漢東");
+    assert_eq!(one(&d, "P", "あ").size, 20.0);
+    assert_eq!(one(&d, "P", "日").size, 30.0);
+    assert_eq!(ink(&d, "日"), [true, false, false]);
+    assert_eq!(ink(&d, "本"), [false, true, false]);
+    assert_eq!(ink(&d, "で"), [false, false, true]);
+    assert_eq!(ink(&d, "す"), [true, false, true]);
+    assert_eq!(one(&d, "P", "漢").size, 40.0);
+    let (base, top) = (one(&d, "P", "東"), one(&d, "P", "と"));
+    assert_eq!((base.size, top.size), (20.0, 10.0));
+    assert!(top.baseline < base.baseline - 10.0, "{top:?} {base:?}");
+    let link = format!("{}/L", d.get("P").path);
+    d.ui.force_state(&link, "interaction", Some("hover"));
+    d.step(InputFrame::default());
+    d.step(InputFrame::default());
+    assert_eq!(ink(&d, "す"), [false, true, true]);
+    assert_eq!(ink(&d, "で"), [false, false, true]);
+}
+
 #[test]
 fn ruby_lays_out_as_css_ruby_does() {
     let d = doc(

@@ -172,7 +172,7 @@ What every kind takes: its box, layout, paint, motion and input.
 | `aria-current` | `page \| step \| location \| date \| time \| true \| false` | The current item in a set (`aria-current`): a pagination's page, a breadcrumb's last, a wizard's step. |
 | `data-og-instant` | `bool` | Its first entrance is settled (`data-og-instant`): the screen a game opens on, which the web draws behind its play gate. Later entrances play. |
 | `data-hold` | `number` | How long a press is held before `onhold` fires, in ms (`data-hold`; default 500). While it is held a fill grows across the element from its start edge, drawn over its background and under its content and coloured by `::-og-hold { background }` (else the style's primary at a third); with `data-action`, holding that action holds it too. |
-| `display:` | `block \| inline \| inline-block \| flow-root \| list-item \| flex \| inline-flex \| grid \| inline-grid \| grid-lanes \| inline-grid-lanes \| table \| inline-table \| contents \| table-row-group \| table-header-group \| table-footer-group \| table-row \| table-cell \| table-caption \| table-column \| table-column-group` | Its CSS `display`. On a box its layout: `block` stacks its children top to bottom (the default), `flex` lays them out as a row (or `flex-direction`), `grid` in tracks, `table` (and its parts) as a table, `flowRoot` a block whose children's margins stay inside, `contents` no box at all (its children are its parent's). On any element `inline…` puts it in lines beside its inline-level siblings. |
+| `display:` | `block \| inline \| inline-block \| flow-root \| list-item \| flex \| inline-flex \| grid \| inline-grid \| grid-lanes \| inline-grid-lanes \| table \| inline-table \| contents \| table-row-group \| table-header-group \| table-footer-group \| table-row \| table-cell \| table-caption \| table-column \| table-column-group \| ruby \| ruby-base \| ruby-text \| ruby-base-container \| ruby-text-container` | Its CSS `display`. On a box its layout: `block` stacks its children top to bottom (the default), `flex` lays them out as a row (or `flex-direction`), `grid` in tracks, `table` (and its parts) as a table, `flowRoot` a block whose children's margins stay inside, `contents` no box at all (its children are its parent's). An inline element of a text takes `inline`, `none` and the ruby values (CSS Ruby 1 §2.1). On any element `inline…` puts it in lines beside its inline-level siblings. |
 | `vertical-align:` | `baseline \| top \| middle \| bottom \| text-top \| text-bottom \| sub \| super` | CSS `vertical-align`: where an inline-level element sits in its line, and a table cell's content in its row (`middle` by default). |
 | `caption-side:` | `top \| bottom` | CSS `caption-side`: a table caption above (default) or below its table. |
 | `list-style-image:` | `none \| url(<image>)` | CSS `list-style-image`: an inherited image URL replacing a list item's marker, or none. Only list items draw the image. |
@@ -527,7 +527,7 @@ Its own props, beside every element's:
 
 | Write | Value | What |
 |---|---|---|
-| `text` | `text` | What it says. |
+| `text` | `text` | What it says (an inline element's: its own words, not its children's). |
 | `i18n` | `name` | A string table key (og.i18n) its text comes from; `text` is the fallback. |
 | `font:` | `var(--text-<name>)` | The type step. |
 | `color:` | `var(--<role>) \| #rrggbb[aa]` | Its ink. |
@@ -549,7 +549,18 @@ Its own props, beside every element's:
 | `href` | `text` | An `<a>`'s destination: a click sends a `link` event named by it (as `onclick` fires). |
 
 <a id="guide-components-11"></a>
-### `components §11` `<button>` (`button`): A button: its text, or its content (an icon, a text, a badge) in a row inside its frame and states; `data-hold` makes it a hold-to-confirm button that fills while held down
+### `components §11` `<span>`, `<ruby>` (`inline`): An inline element inside a text (`<span>`, `<b>`, `<a>`, `<ruby>`, `<rt>`…): selectors match it and its CSS styles its words, which lay out in its text's lines
+
+An inline element inside a text (`<span>`, `<b>`, `<a>`, `<ruby>`, `<rt>`…): selectors match it and its CSS styles its words, which lay out in its text's lines. A container with nested children: `<p>A <span class="gold">gold</span> coin</p> (b, strong, i, em, u, s, del, sub, sup, a, ruby, rb, rt, rtc, rp, tspan inside a text)` or `<p><ruby>漢<rt>かん</rt>字<rt>じ</rt></ruby></p>`.
+
+Its own props, beside every element's:
+
+| Write | Value | What |
+|---|---|---|
+| `text` | `text` | What it says (an inline element's: its own words, not its children's). |
+
+<a id="guide-components-12"></a>
+### `components §12` `<button>` (`button`): A button: its text, or its content (an icon, a text, a badge) in a row inside its frame and states; `data-hold` makes it a hold-to-confirm button that fills while held down
 
 A button: its text, or its content (an icon, a text, a badge) in a row inside its frame and states; `data-hold` makes it a hold-to-confirm button that fills while held down. A container with nested children: `<button id="Name">…</button>`.
 
@@ -558,7 +569,7 @@ Its own props, beside every element's:
 | Write | Value | What |
 |---|---|---|
 | `data-action` | `name` | On `<kbd>`, the action whose glyph it shows on the device used last (its key, its pad button, or its touch icon); it follows the device live. On a `<button data-hold>`, the action whose hold holds it as a press does. |
-| `text` | `text` | What it says. |
+| `text` | `text` | What it says (an inline element's: its own words, not its children's). |
 | `i18n` | `name` | A string table key (og.i18n) its text comes from; `text` is the fallback. |
 | `variant` | `secondary \| primary \| quiet \| danger \| ghost` | The button's role. |
 | `disabled` | `bool` | Takes no input. |
@@ -566,8 +577,8 @@ Its own props, beside every element's:
 | `square` | `bool` | A square of the control height: an icon button. |
 | `data-og-touch` | `name` | A touch button (`<button data-og-touch="jump">`): the input source of og-input's action `jump`, held while a touch that went down on it is held, whatever else is held (a thumb on the stick). |
 
-<a id="guide-components-12"></a>
-### `components §12` `<kbd>` (`kbd`): A key or an action's glyph: `<kbd>Esc</kbd>` a keycap, `<kbd data-action="jump"></kbd>` the action's glyph on the device used last
+<a id="guide-components-13"></a>
+### `components §13` `<kbd>` (`kbd`): A key or an action's glyph: `<kbd>Esc</kbd>` a keycap, `<kbd data-action="jump"></kbd>` the action's glyph on the device used last
 
 A key or an action's glyph: `<kbd>Esc</kbd>` a keycap, `<kbd data-action="jump"></kbd>` the action's glyph on the device used last. A leaf; text-bearing controls accept text content: `<kbd id="Name">…</kbd>`.
 
@@ -579,11 +590,11 @@ Its own props, beside every element's:
 | `glyph-device` | `text` | The device it draws for (bound to `$ui.device` by the parser: a device change rebuilds it). |
 | `data-og-rebind` | `bool` | A press captures the next key as its binding (`bind:value`), Escape cancels. |
 | `binding` | `text` | With dataOgRebind: the key code it captured (`bind:value`), written back. Two-way only with an explicit bind: attribute. |
-| `text` | `text` | What it says. |
+| `text` | `text` | What it says (an inline element's: its own words, not its children's). |
 | `i18n` | `name` | A string table key (og.i18n) its text comes from; `text` is the fallback. |
 
-<a id="guide-components-13"></a>
-### `components §13` `<img>` (`image`): A texture. CSS filter with an SVG colour matrix multiplies its RGBA channels; use a background for a solid fill
+<a id="guide-components-14"></a>
+### `components §14` `<img>` (`image`): A texture. CSS filter with an SVG colour matrix multiplies its RGBA channels; use a background for a solid fill
 
 A texture. CSS filter with an SVG colour matrix multiplies its RGBA channels; use a background for a solid fill. A leaf; text-bearing controls accept text content: `<img id="Name" />`.
 
@@ -596,8 +607,8 @@ Its own props, beside every element's:
 | `object-fit:` | `cover \| contain \| fill \| none \| scale-down \| nine-slice \| tile` | CSS `object-fit`: how the image fills its box (fill, contain, cover, none, scale-down) or the art its slot (also nineSlice and tile). |
 | `object-position:` | `<position>: one to four of left, center, right, top, bottom, <n>px, <n>%` | CSS `object-position`: where contain, cover, none or scale-down place the image in its box, as background-position is written (50% 50% by default). |
 
-<a id="guide-components-14"></a>
-### `components §14` `<art>` (`art`): An art slot (docs/ui.md §3.3): a spec the art pipeline reads, its texture once there is one
+<a id="guide-components-15"></a>
+### `components §15` `<art>` (`art`): An art slot (docs/ui.md §3.3): a spec the art pipeline reads, its texture once there is one
 
 An art slot (docs/ui.md §3.3): a spec the art pipeline reads, its texture once there is one. A leaf; text-bearing controls accept text content: `<art id="Name" />`.
 
@@ -616,8 +627,8 @@ Its own props, beside every element's:
 | `slice` | `insets` | A nine-slice's insets as fractions of the art: all, x y, or left top right bottom. |
 | `art-set` | `name` | The set it is generated with for a consistent look (the kind's name by default). |
 
-<a id="guide-components-15"></a>
-### `components §15` `<og-icon>` (`icon`): An icon of the style's set
+<a id="guide-components-16"></a>
+### `components §16` `<og-icon>` (`icon`): An icon of the style's set
 
 An icon of the style's set. A leaf; text-bearing controls accept text content: `<og-icon id="Name" />`.
 
@@ -631,8 +642,8 @@ Its own props, beside every element's:
 | `icon-size` | `number` | CSS px (24 by default). |
 | `cue` | `name` | On <og-icon cue="danger">, the style's icon for that status, rarity, team or damage type, so its meaning never rests on colour alone. Its `icon`, when set, wins. Style the primary and secondary layers with ::part(image) and ::part(secondary). |
 
-<a id="guide-components-16"></a>
-### `components §16` `<progress>` (`progress`): A progress bar
+<a id="guide-components-17"></a>
+### `components §17` `<progress>` (`progress`): A progress bar
 
 A progress bar. A leaf; text-bearing controls accept text content: `<progress id="Name" />`.
 
@@ -642,8 +653,8 @@ Its own props, beside every element's:
 |---|---|---|
 | `value` | `number` | Its value (a slider writes it back). Two-way only with an explicit bind: attribute. |
 
-<a id="guide-components-17"></a>
-### `components §17` `<input type="range">` (`slider`): A slider (two-way `value`)
+<a id="guide-components-18"></a>
+### `components §18` `<input type="range">` (`slider`): A slider (two-way `value`)
 
 A slider (two-way `value`). A leaf; text-bearing controls accept text content: `<input type="range" id="Name" />`.
 
@@ -664,8 +675,8 @@ Its own props, beside every element's:
 | `high` | `number` | A meter's bottom of the high region (HTML `high`; default `max`). On a range input, its high knob: two knobs on one track, `low` to `high` (a slider writes both back). Two-way only with an explicit bind: attribute. |
 | `data-min-gap` | `number` | The least distance between a range input's two knobs (`data-min-gap`, in its values; default 0). |
 
-<a id="guide-components-18"></a>
-### `components §18` `<input type="checkbox">`, `<input type="checkbox" switch>`, `<label>` (`toggle`): A switch with a label (two-way `checked`)
+<a id="guide-components-19"></a>
+### `components §19` `<input type="checkbox">`, `<input type="checkbox" switch>`, `<label>` (`toggle`): A switch with a label (two-way `checked`)
 
 A switch with a label (two-way `checked`). A leaf; text-bearing controls accept text content: `<input type="checkbox" id="Name" />` or `<input type="checkbox" switch id="Name" />` or `<label id="Name"><input type="checkbox" /> Caption</label>`.
 
@@ -673,7 +684,7 @@ Its own props, beside every element's:
 
 | Write | Value | What |
 |---|---|---|
-| `text` | `text` | What it says. |
+| `text` | `text` | What it says (an inline element's: its own words, not its children's). |
 | `i18n` | `name` | A string table key (og.i18n) its text comes from; `text` is the fallback. |
 | `disabled` | `bool` | Takes no input. |
 | `switch` | `bool` | Draws the checkbox as a switch (HTML `switch`); without it, a box with a check. |
@@ -686,8 +697,8 @@ Its own props, beside every element's:
 | `flex-direction:` | `row \| row-reverse \| column \| column-reverse` | `flex-direction` on a checkbox's label: rowReverse swaps its caption's side. |
 | `invalid` | `bool` | Its value is wrong (`aria-invalid`): the danger frame. |
 
-<a id="guide-components-19"></a>
-### `components §19` `<input>` (`color`): A colour input: a swatch that opens a picker (two-way `value`, `#rrggbb`)
+<a id="guide-components-20"></a>
+### `components §20` `<input>` (`color`): A colour input: a swatch that opens a picker (two-way `value`, `#rrggbb`)
 
 A colour input: a swatch that opens a picker (two-way `value`, `#rrggbb`). A leaf; text-bearing controls accept text content: `<input type="color" id="Name" bind:value={$tint} />`.
 
@@ -698,8 +709,8 @@ Its own props, beside every element's:
 | `disabled` | `bool` | Takes no input. |
 | `color-value` | `text` | Its colour as `#rrggbb` (HTML `value`; written back). Two-way only with an explicit bind: attribute. |
 
-<a id="guide-components-20"></a>
-### `components §20` `<input type="date">` (`datetime`): A date or time input (`<input type="date|time|datetime-local|month|week">`): a stepper per part, two-way `dateValue` in HTML's format
+<a id="guide-components-21"></a>
+### `components §21` `<input type="date">` (`datetime`): A date or time input (`<input type="date|time|datetime-local|month|week">`): a stepper per part, two-way `dateValue` in HTML's format
 
 A date or time input (`<input type="date|time|datetime-local|month|week">`): a stepper per part, two-way `dateValue` in HTML's format. A leaf; text-bearing controls accept text content: `<input type="date" id="Name" /> (time, datetime-local, month, week)`.
 
@@ -716,8 +727,8 @@ Its own props, beside every element's:
 | `readonly` | `bool` | Its text is selected and copied but never edited; it keeps its focus stop. |
 | `required` | `bool` | Empty is invalid (`valueMissing`). |
 
-<a id="guide-components-21"></a>
-### `components §21` `<video>` (`video`): HTML's `<video>`: the frame of the og.VideoPlayer entity `src` binds, with Svelte's media bindings and optional controls
+<a id="guide-components-22"></a>
+### `components §22` `<video>` (`video`): HTML's `<video>`: the frame of the og.VideoPlayer entity `src` binds, with Svelte's media bindings and optional controls
 
 HTML's `<video>`: the frame of the og.VideoPlayer entity `src` binds, with Svelte's media bindings and optional controls. A leaf; text-bearing controls accept text content: `<video id="Name" />`.
 
@@ -737,8 +748,8 @@ Its own props, beside every element's:
 | `poster` | `number` | A texture handle shown until the first frame plays (HTML `poster`), usually bound. |
 | `controls` | `bool` | Draws a play and pause button and its time. |
 
-<a id="guide-components-22"></a>
-### `components §22` `<audio>` (`audio`): HTML's `<audio>`: the og.AudioSource entity `src` binds, played and paused by `paused`; drawn only with `controls`
+<a id="guide-components-23"></a>
+### `components §23` `<audio>` (`audio`): HTML's `<audio>`: the og.AudioSource entity `src` binds, played and paused by `paused`; drawn only with `controls`
 
 HTML's `<audio>`: the og.AudioSource entity `src` binds, played and paused by `paused`; drawn only with `controls`. A leaf; text-bearing controls accept text content: `<audio id="Name" />`.
 
@@ -754,8 +765,8 @@ Its own props, beside every element's:
 | `loop` | `bool` | Starts again at its end. |
 | `controls` | `bool` | Draws a play and pause button and its time. |
 
-<a id="guide-components-23"></a>
-### `components §23` `<input type="file">` (`file`): A file input (`<input type="file">`), built only where the host opens a file picker (og.ui.filePicker): a button whose press sends `filepick`; the host writes the names chosen to two-way `fileValue`
+<a id="guide-components-24"></a>
+### `components §24` `<input type="file">` (`file`): A file input (`<input type="file">`), built only where the host opens a file picker (og.ui.filePicker): a button whose press sends `filepick`; the host writes the names chosen to two-way `fileValue`
 
 A file input (`<input type="file">`), built only where the host opens a file picker (og.ui.filePicker): a button whose press sends `filepick`; the host writes the names chosen to two-way `fileValue`. A leaf; text-bearing controls accept text content: `<input type="file" id="Name" />`.
 
@@ -768,8 +779,8 @@ Its own props, beside every element's:
 | `accept` | `text` | The types it takes (HTML `accept`: `.png,image/*`). |
 | `multiple` | `bool` | More than one file may be chosen. |
 
-<a id="guide-components-24"></a>
-### `components §24` `<input>` (`radio`): One choice of a radio group with its caption: checked while its group (`bind:group`) holds its value, which a press writes
+<a id="guide-components-25"></a>
+### `components §25` `<input>` (`radio`): One choice of a radio group with its caption: checked while its group (`bind:group`) holds its value, which a press writes
 
 One choice of a radio group with its caption: checked while its group (`bind:group`) holds its value, which a press writes. A leaf; text-bearing controls accept text content: `<label><input type="radio" value="easy" bind:group={$level} /> Easy</label>`.
 
@@ -777,7 +788,7 @@ Its own props, beside every element's:
 
 | Write | Value | What |
 |---|---|---|
-| `text` | `text` | What it says. |
+| `text` | `text` | What it says (an inline element's: its own words, not its children's). |
 | `i18n` | `name` | A string table key (og.i18n) its text comes from; `text` is the fallback. |
 | `disabled` | `bool` | Takes no input. |
 | `group` | `text` | The store its group's choice is in (`bind:group`): it is checked while that holds its value, and a press writes its value. Two-way only with an explicit bind: attribute. |
@@ -786,8 +797,8 @@ Its own props, beside every element's:
 | `description` | `text` | A line under its caption: a `<small>` in its `<label>`. |
 | `side` | `start \| end` | Where its caption sits, from the source order in its `<label>`: start before the switch (caption first), end after it. |
 
-<a id="guide-components-25"></a>
-### `components §25` `<tabs>` (`tabs`): A tab list (two-way `selected`), using the core tabs widget
+<a id="guide-components-26"></a>
+### `components §26` `<tabs>` (`tabs`): A tab list (two-way `selected`), using the core tabs widget
 
 A tab list (two-way `selected`), using the core tabs widget. A leaf; text-bearing controls accept text content: `<tabs id="Name">…</tabs>`.
 
@@ -795,7 +806,7 @@ Its own props, beside every element's:
 
 | Write | Value | What |
 |---|---|---|
-| `text` | `text` | What it says. |
+| `text` | `text` | What it says (an inline element's: its own words, not its children's). |
 | `i18n` | `name` | A string table key (og.i18n) its text comes from; `text` is the fallback. |
 | `disabled` | `bool` | Takes no input. |
 | `items` | `names` | The tab or option labels, literal names or a bound list of strings (a `<select>`'s `<option>`s set them). |
@@ -807,8 +818,8 @@ Its own props, beside every element's:
 | `selected` | `number` | The selected tab's zero-based index. Two-way only with an explicit bind: attribute. |
 | `fill` | `bool` | Equal tabs filling the available width. |
 
-<a id="guide-components-26"></a>
-### `components §26` `<input type="text">`, `<textarea>` (`field`): A text control (two-way `input`): `<input>` for one line, `<textarea>` for several; `type="number"` keeps editable text and adds increment/decrement buttons. Min, max and step constrain stepping; data-wrap, data-large-step and data-format configure it
+<a id="guide-components-27"></a>
+### `components §27` `<input type="text">`, `<textarea>` (`field`): A text control (two-way `input`): `<input>` for one line, `<textarea>` for several; `type="number"` keeps editable text and adds increment/decrement buttons. Min, max and step constrain stepping; data-wrap, data-large-step and data-format configure it
 
 A text control (two-way `input`): `<input>` for one line, `<textarea>` for several; `type="number"` keeps editable text and adds increment/decrement buttons. Min, max and step constrain stepping; data-wrap, data-large-step and data-format configure it. A leaf; text-bearing controls accept text content: `<input type="text" id="Name" />` or `<textarea id="Name" rows="4" />`.
 
@@ -845,8 +856,8 @@ Its own props, beside every element's:
 | `lang` | `name` | The language typed (HTML `lang`): `ja` offers the on-screen keyboard's kana table. |
 | `autocomplete` | `name` | The page's autofill hint (HTML `autocomplete`: `username`, `current-password`, `new-password`, `one-time-code`, `email`, `off`…). |
 
-<a id="guide-components-27"></a>
-### `components §27` `<badge>` (`badge`): A small toned label
+<a id="guide-components-28"></a>
+### `components §28` `<badge>` (`badge`): A small toned label
 
 A small toned label. A leaf; text-bearing controls accept text content: `<badge id="Name">…</badge>`.
 
@@ -854,19 +865,19 @@ Its own props, beside every element's:
 
 | Write | Value | What |
 |---|---|---|
-| `text` | `text` | What it says. |
+| `text` | `text` | What it says (an inline element's: its own words, not its children's). |
 | `i18n` | `name` | A string table key (og.i18n) its text comes from; `text` is the fallback. |
 | `tone` | `neutral \| info \| success \| warn \| danger \| accent` | Its tone. |
 
-<a id="guide-components-28"></a>
-### `components §28` `<spacer>` (`spacer`): Empty room (grows by default)
+<a id="guide-components-29"></a>
+### `components §29` `<spacer>` (`spacer`): Empty room (grows by default)
 
 Empty room (grows by default). A leaf; text-bearing controls accept text content: `<spacer id="Name" />`.
 
 It takes every element's props and none of its own.
 
-<a id="guide-components-29"></a>
-### `components §29` `<hr>` (`divider`): A hairline
+<a id="guide-components-30"></a>
+### `components §30` `<hr>` (`divider`): A hairline
 
 A hairline. A leaf; text-bearing controls accept text content: `<hr id="Name" />`.
 
@@ -876,8 +887,8 @@ Its own props, beside every element's:
 |---|---|---|
 | `vertical` | `bool` | Upright. |
 
-<a id="guide-components-30"></a>
-### `components §30` `<select>` (`select`): A select (two-way `value`): its `<option>`s, under `<optgroup>`s, in a list that opens over it
+<a id="guide-components-31"></a>
+### `components §31` `<select>` (`select`): A select (two-way `value`): its `<option>`s, under `<optgroup>`s, in a list that opens over it
 
 A select (two-way `value`): its `<option>`s, under `<optgroup>`s, in a list that opens over it. A leaf; text-bearing controls accept text content: `<select id="Name" bind:value={$x}><optgroup label="G"><option value="a">A</option></optgroup></select>`.
 
@@ -897,8 +908,8 @@ Its own props, beside every element's:
 | `placeholder` | `text` | Shown while it is empty. |
 | `invalid` | `bool` | Its value is wrong (`aria-invalid`): the danger frame. |
 
-<a id="guide-components-31"></a>
-### `components §31` `<dialog>`, `<og-spotlight>` (`dialog`): A dialog (two-way `open`): `modal` over a backdrop that traps the focus, else a panel in place; Escape or B closes it and the focus returns
+<a id="guide-components-32"></a>
+### `components §32` `<dialog>`, `<og-spotlight>` (`dialog`): A dialog (two-way `open`): `modal` over a backdrop that traps the focus, else a panel in place; Escape or B closes it and the focus returns
 
 A dialog (two-way `open`): `modal` over a backdrop that traps the focus, else a panel in place; Escape or B closes it and the focus returns. A container with nested children: `<dialog id="Name" modal bind:open={$x} aria-label="Quit?">…</dialog>` or `<og-spotlight id="Name">…</og-spotlight>`.
 
@@ -914,8 +925,8 @@ Its own props, beside every element's:
 | `data-detents` | `text` | `<dialog modal data-detents="40% 90%">`: a sheet docked to its `data-edge` (the bottom at full width by default), dragged onto its detents and swiped off its edge to close (writing `open` back). Detents are positive px or percentages of viewport height, or width for a side sheet. It opens at the first; drag and snap state is checkpointed. |
 | `data-edge` | `block-end \| inline-start \| inline-end` | `data-edge="block-end\|inline-start\|inline-end"` beside `data-detents`: the edge the sheet docks to, in CSS's logical names, so the inline ones mirror right to left (`inline-end` is the right left to right, the left in Arabic); a side sheet is full height, its detents widths, and swipes off sideways. |
 
-<a id="guide-components-32"></a>
-### `components §32` `<details>` (`details`): A disclosure (two-way `open`): its `<summary>` row, its content shown only while open
+<a id="guide-components-33"></a>
+### `components §33` `<details>` (`details`): A disclosure (two-way `open`): its `<summary>` row, its content shown only while open
 
 A disclosure (two-way `open`): its `<summary>` row, its content shown only while open. A container with nested children: `<details id="Name" bind:open={$x}><summary>More</summary>…</details>`.
 
@@ -928,8 +939,8 @@ Its own props, beside every element's:
 | `summary` | `text` | Its `<summary>`'s text; empty is `Details`. Written as the first child, `<summary>…</summary>`. |
 | `name` | `name` | HTML `name` on a `<details>`, an exclusive accordion: of the disclosures in a document sharing it, one is open at once, and opening one closes the others (its open state written back). |
 
-<a id="guide-components-33"></a>
-### `components §33` `<div>`, `<nav>`, `<ul>`, `<ol>`, `<og-emitter>`, `<og-overlay>` (`box`): A generic HTML block (`<div>`, `<section>`, `<nav>`, `<ul>`, `<li>`…): its layout is its CSS `display`, `block` (children top to bottom) by default, `flex` (a row, or `flex-direction`) or `grid`. Text inside it is an anonymous text element; an `<li>` draws its list marker
+<a id="guide-components-34"></a>
+### `components §34` `<div>`, `<nav>`, `<ul>`, `<ol>`, `<og-emitter>`, `<og-overlay>` (`box`): A generic HTML block (`<div>`, `<section>`, `<nav>`, `<ul>`, `<li>`…): its layout is its CSS `display`, `block` (children top to bottom) by default, `flex` (a row, or `flex-direction`) or `grid`. Text inside it is an anonymous text element; an `<li>` draws its list marker
 
 A generic HTML block (`<div>`, `<section>`, `<nav>`, `<ul>`, `<li>`…): its layout is its CSS `display`, `block` (children top to bottom) by default, `flex` (a row, or `flex-direction`) or `grid`. Text inside it is an anonymous text element; an `<li>` draws its list marker. A container with nested children: `<div id="Name">…</div>` or `<nav aria-label="Site">…</nav> (section, header, footer, main, aside, article)` or `<ul><li>…</li></ul>` or `<ol start="1"><li>…</li></ol>` or `<og-emitter id="Name">…</og-emitter>` or `<og-overlay id="Name">…</og-overlay>`.
 
@@ -945,8 +956,8 @@ Its own props, beside every element's:
 | `<og-emitter effect>` | `text` | `<og-emitter effect="confetti 70 burst 110 for 1.4s">`: particles from the element while it stands, drawn over it; `none` stops. Grammar: `[<preset>] [<rate>] [burst <n>] [for <time>] [life <time>] [<speed>px/s [<speed>px/s]] [up\|down\|<angle>deg] [square\|circle\|diamond] [<size>px] [<colour>…]`. Presets: sparkles, confetti, embers, snow, bubbles, dust, sparks, fireworks. Later words override the preset's look, rate and palette colours. `burst` throws that many once when the element first stands, `for` stops its rate after that time, `life` is each particle's life and speed (one or a range) is travel per second. Silent under reduced motion; state and seeded replay are checkpointed. |
 | `<og-overlay effect>` | `text` | `<og-overlay effect="vignette [<colour>] \| tint <colour> \| material <material>">`: a full-screen overlay drawn with the element, never taking input, its strength the element's `opacity` (`<og-overlay id="Hurt" effect="vignette #a00">` with `#Hurt { opacity: var(--hit); }`); `material` composites the frame under it through a material written as `-og-material` writes one (`effect="material ripple(6 48 60)"` for sanity, `effect={$fx}` from a store holding the whole value). A pulse is a CSS animation of its opacity. |
 
-<a id="guide-components-34"></a>
-### `components §34` `<meter>` (`meter`): A gauge of a value in a known range (HTML `<meter>`), its fill dressed by the region `low`, `high` and `optimum` put the value in
+<a id="guide-components-35"></a>
+### `components §35` `<meter>` (`meter`): A gauge of a value in a known range (HTML `<meter>`), its fill dressed by the region `low`, `high` and `optimum` put the value in
 
 A gauge of a value in a known range (HTML `<meter>`), its fill dressed by the region `low`, `high` and `optimum` put the value in. A leaf; text-bearing controls accept text content: `<meter id="Name" value={$hp} min="0" max="100" low="25" high="75" optimum="90" />`.
 
@@ -961,8 +972,8 @@ Its own props, beside every element's:
 | `high` | `number` | A meter's bottom of the high region (HTML `high`; default `max`). On a range input, its high knob: two knobs on one track, `low` to `high` (a slider writes both back). Two-way only with an explicit bind: attribute. |
 | `optimum` | `number` | The best value (HTML `optimum`; default the middle): its region is `optimum`, the next `suboptimum`, the far one `poor`. |
 
-<a id="guide-components-35"></a>
-### `components §35` `<anchor>` (`anchor`): A box held over a world point (`<anchor entity={u.entity} offset="0 2 0">`): placed every tick from the camera and the entity's pose, its children laid out as a column; `occlusion`, `declutter`, `clamp="edge"`, `priority`, `max-distance`, `scale-at`
+<a id="guide-components-36"></a>
+### `components §36` `<anchor>` (`anchor`): A box held over a world point (`<anchor entity={u.entity} offset="0 2 0">`): placed every tick from the camera and the entity's pose, its children laid out as a column; `occlusion`, `declutter`, `clamp="edge"`, `priority`, `max-distance`, `scale-at`
 
 A box held over a world point (`<anchor entity={u.entity} offset="0 2 0">`): placed every tick from the camera and the entity's pose, its children laid out as a column; `occlusion`, `declutter`, `clamp="edge"`, `priority`, `max-distance`, `scale-at`. A container with nested children: `<anchor entity={u.entity} offset="0 2.1 0" occlusion="fade" declutter="stack" clamp="edge">…</anchor>`.
 
@@ -983,8 +994,8 @@ Its own props, beside every element's:
 | `max-distance` | `number` | `max-distance`: hidden past this many world units, fading over its last tenth. |
 | `world-scale-at` | `number` | `scale-at="10"`: scaled 1 at this distance, larger nearer and smaller farther (0.5 to 2). |
 
-<a id="guide-components-36"></a>
-### `components §36` `<ground>` (`ground`): A box laid flat in the world (`<ground entity={u.entity} size="3 3">…</ground>`): laid out at its CSS size and drawn by the UI onto the horizontal plane `size` world units across at the entity's (or `at`'s) height and draped over the terrain under it as a decal, seen in perspective under the screen's elements (a selection ring, a range marker, a decal); `rotation="0 45 0"` turns it. Inert
+<a id="guide-components-37"></a>
+### `components §37` `<ground>` (`ground`): A box laid flat in the world (`<ground entity={u.entity} size="3 3">…</ground>`): laid out at its CSS size and drawn by the UI onto the horizontal plane `size` world units across at the entity's (or `at`'s) height and draped over the terrain under it as a decal, seen in perspective under the screen's elements (a selection ring, a range marker, a decal); `rotation="0 45 0"` turns it. Inert
 
 A box laid flat in the world (`<ground entity={u.entity} size="3 3">…</ground>`): laid out at its CSS size and drawn by the UI onto the horizontal plane `size` world units across at the entity's (or `at`'s) height and draped over the terrain under it as a decal, seen in perspective under the screen's elements (a selection ring, a range marker, a decal); `rotation="0 45 0"` turns it. Inert. A container with nested children: `<ground entity={u.entity} size="3 3"><svg viewBox="0 0 40 40">…</svg></ground>`.
 
@@ -997,8 +1008,8 @@ Its own props, beside every element's:
 | `entity` | `number` | The entity it follows, by its bits (`entity={u.entity}`): its world pose as the host hands it in. |
 | `world-at` | `text` | `at="x y z"`: a world point it follows, without an entity. |
 
-<a id="guide-components-37"></a>
-### `components §37` `<joystick>` (`joystick`): A virtual stick (`<joystick action="move">`): a base and a knob that follows the touch that started on it, the input source of og-input's two-axis action `action` (from the base's centre over its radius, y up, past `data-dead-zone`). Its CSS width sizes it (default 128 px)
+<a id="guide-components-38"></a>
+### `components §38` `<joystick>` (`joystick`): A virtual stick (`<joystick action="move">`): a base and a knob that follows the touch that started on it, the input source of og-input's two-axis action `action` (from the base's centre over its radius, y up, past `data-dead-zone`). Its CSS width sizes it (default 128 px)
 
 A virtual stick (`<joystick action="move">`): a base and a knob that follows the touch that started on it, the input source of og-input's two-axis action `action` (from the base's centre over its radius, y up, past `data-dead-zone`). Its CSS width sizes it (default 128 px). A leaf; text-bearing controls accept text content: `<joystick id="Stick" action="move" data-dead-zone="0.2" customize />`.
 
@@ -1010,8 +1021,8 @@ Its own props, beside every element's:
 | `action` | `name` | The og-input action it is an input source of (`og.input.defineAction`; a two-axis one), read in the tick from the touches that started on it. |
 | `data-dead-zone` | `number` | A stick's dead zone, a ratio of its radius (`data-dead-zone="0.2"`; default 0.15): past it the value rises from 0. |
 
-<a id="guide-components-38"></a>
-### `components §38` `<dpad>` (`dpad`): A virtual d-pad (`<dpad action="move">`): four arms read by the angle of the touch that started on it, eight ways, the input source of og-input's two-axis action `action` (each part -1, 0 or 1). Its CSS width sizes it (default 132 px)
+<a id="guide-components-39"></a>
+### `components §39` `<dpad>` (`dpad`): A virtual d-pad (`<dpad action="move">`): four arms read by the angle of the touch that started on it, eight ways, the input source of og-input's two-axis action `action` (each part -1, 0 or 1). Its CSS width sizes it (default 132 px)
 
 A virtual d-pad (`<dpad action="move">`): four arms read by the angle of the touch that started on it, eight ways, the input source of og-input's two-axis action `action` (each part -1, 0 or 1). Its CSS width sizes it (default 132 px). A leaf; text-bearing controls accept text content: `<dpad id="Pad" action="move" />`.
 
@@ -1022,8 +1033,8 @@ Its own props, beside every element's:
 | `disabled` | `bool` | Takes no input. |
 | `action` | `name` | The og-input action it is an input source of (`og.input.defineAction`; a two-axis one), read in the tick from the touches that started on it. |
 
-<a id="guide-components-39"></a>
-### `components §39` `<viewport>` (`viewport`): A camera's view of a scene layer in the layout (`<viewport src={$target} camera-orbit="30deg 75deg 3m" bind:clientWidth={$w}>`): the render target `src` names, its camera written as `<model-viewer>` writes one (`camera-controls` orbits, zooms and flings it within `min-camera-orbit` and `max-camera-orbit`), its pointer events carrying the ray into its scene
+<a id="guide-components-40"></a>
+### `components §40` `<viewport>` (`viewport`): A camera's view of a scene layer in the layout (`<viewport src={$target} camera-orbit="30deg 75deg 3m" bind:clientWidth={$w}>`): the render target `src` names, its camera written as `<model-viewer>` writes one (`camera-controls` orbits, zooms and flings it within `min-camera-orbit` and `max-camera-orbit`), its pointer events carrying the ray into its scene
 
 A camera's view of a scene layer in the layout (`<viewport src={$target} camera-orbit="30deg 75deg 3m" bind:clientWidth={$w}>`): the render target `src` names, its camera written as `<model-viewer>` writes one (`camera-controls` orbits, zooms and flings it within `min-camera-orbit` and `max-camera-orbit`), its pointer events carrying the ray into its scene. A leaf; text-bearing controls accept text content: `<viewport id="Preview" src={$target} camera-orbit="30deg 75deg 3m" bind:clientWidth={$w} onpointermove={orbit} />`.
 
@@ -1041,8 +1052,8 @@ Its own props, beside every element's:
 | `client-width` | `number` | Svelte's `bind:clientWidth`: its laid-out width, CSS px, written when it changes (size its render target by it times the pixel ratio). Two-way only with an explicit bind: attribute. |
 | `client-height` | `number` | Svelte's `bind:clientHeight`: its laid-out height, CSS px. Two-way only with an explicit bind: attribute. |
 
-<a id="guide-components-40"></a>
-### `components §40` `<svg>` (`svg`): Inline SVG (`<svg viewBox>`): its shapes drawn in its box, the view box fitted by `xMidYMid meet`; its `width` and `height` are CSS px (default: the view box's size)
+<a id="guide-components-41"></a>
+### `components §41` `<svg>` (`svg`): Inline SVG (`<svg viewBox>`): its shapes drawn in its box, the view box fitted by `xMidYMid meet`; its `width` and `height` are CSS px (default: the view box's size)
 
 Inline SVG (`<svg viewBox>`): its shapes drawn in its box, the view box fitted by `xMidYMid meet`; its `width` and `height` are CSS px (default: the view box's size). A container with nested children: `<svg id="Name" viewBox="0 0 40 40">…</svg>`.
 
@@ -1083,8 +1094,8 @@ Its own props, beside every element's:
 | `marker-end` | `text` | SVG `marker-end`: the `<marker>` drawn at a shape's last vertex (an arrowhead). |
 | `preserveAspectRatio` | `text` | SVG `preserveAspectRatio` of a `<symbol>`, a `<pattern>` or an `<image>`. |
 
-<a id="guide-components-41"></a>
-### `components §41` `<g>` (`svgGroup`): SVG's `<g>`: a transform and presentation attributes its shapes inherit
+<a id="guide-components-42"></a>
+### `components §42` `<g>` (`svgGroup`): SVG's `<g>`: a transform and presentation attributes its shapes inherit
 
 SVG's `<g>`: a transform and presentation attributes its shapes inherit. A container with nested children: `<g transform="rotate(-90 20 20)" stroke="var(--accent)">…</g>`.
 
@@ -1127,8 +1138,8 @@ Its own props, beside every element's:
 | `mask` | `text` | SVG `mask="url(#id)"`: the `<mask>` whose luminance cuts it (white shapes, or one gradient-filled shape). |
 | `filter` | `text` | SVG `filter="url(#id)"`: the `<filter>` the element and its subtree are drawn through. |
 
-<a id="guide-components-42"></a>
-### `components §42` `<path>`, `<circle>`, `<rect>`, `<polygon>` (`svgShape`): An SVG shape (`<path>`, `<rect>`, `<circle>`, `<ellipse>`, `<line>`, `<polyline>`, `<polygon>`): one element drawn as an analytic path, its attributes bindable
+<a id="guide-components-43"></a>
+### `components §43` `<path>`, `<circle>`, `<rect>`, `<polygon>` (`svgShape`): An SVG shape (`<path>`, `<rect>`, `<circle>`, `<ellipse>`, `<line>`, `<polyline>`, `<polygon>`): one element drawn as an analytic path, its attributes bindable
 
 An SVG shape (`<path>`, `<rect>`, `<circle>`, `<ellipse>`, `<line>`, `<polyline>`, `<polygon>`): one element drawn as an analytic path, its attributes bindable. A leaf; text-bearing controls accept text content: `<path d={$line} fill="none" stroke="currentColor" />` or `<circle cx="20" cy="20" r="18" pathLength="1" stroke-dasharray="1 1" stroke-dashoffset={1 - $ready} />` or `<rect x={b.x} y={40 - b.h} width="8" height={b.h} rx="2" />` or `<polygon points="0,0 10,0 5,8" /> (ellipse, line, polyline)`.
 
@@ -1174,8 +1185,8 @@ Its own props, beside every element's:
 | `filter` | `text` | SVG `filter="url(#id)"`: the `<filter>` the element and its subtree are drawn through. |
 | `preserveAspectRatio` | `text` | SVG `preserveAspectRatio` of a `<symbol>`, a `<pattern>` or an `<image>`. |
 
-<a id="guide-components-43"></a>
-### `components §43` `<text>` (`svgText`): SVG's `<text x y text-anchor dominant-baseline font-size white-space>`: a line shaped by og-ui's text, its anchor on the point fitted into the `<svg>`'s box and scaled with the view box; `<tspan>` runs inside it take `font-weight`, `font-style`, `text-decoration` and `fill`, a `<tspan x>` (with `y` or `dy`) starts another line, and a `<textPath>` runs it along a path
+<a id="guide-components-44"></a>
+### `components §44` `<text>` (`svgText`): SVG's `<text x y text-anchor dominant-baseline font-size white-space>`: a line shaped by og-ui's text, its anchor on the point fitted into the `<svg>`'s box and scaled with the view box; `<tspan>` runs inside it take `font-weight`, `font-style`, `text-decoration` and `fill`, a `<tspan x>` (with `y` or `dy`) starts another line, and a `<textPath>` runs it along a path
 
 SVG's `<text x y text-anchor dominant-baseline font-size white-space>`: a line shaped by og-ui's text, its anchor on the point fitted into the `<svg>`'s box and scaled with the view box; `<tspan>` runs inside it take `font-weight`, `font-style`, `text-decoration` and `fill`, a `<tspan x>` (with `y` or `dy`) starts another line, and a `<textPath>` runs it along a path. A leaf; text-bearing controls accept text content: `<svg viewBox="0 0 40 40"><text x="20" y="24" text-anchor="middle">…</text></svg>`.
 
@@ -1222,8 +1233,8 @@ Its own props, beside every element's:
 | `path` | `text` | A `<textPath>`'s `path`: its own path data instead of `href`. |
 | `svg-text-path-href` | `text` | A `<textPath>`'s `href="#id"`: the path or shape the text runs along. |
 
-<a id="guide-components-44"></a>
-### `components §44` `<foreignObject>` (`svgForeign`): SVG's `<foreignObject x y width height>`: document elements laid out in a box of `width` by `height` user units at `(x, y)`, scaled with the view box as the shapes are
+<a id="guide-components-45"></a>
+### `components §45` `<foreignObject>` (`svgForeign`): SVG's `<foreignObject x y width height>`: document elements laid out in a box of `width` by `height` user units at `(x, y)`, scaled with the view box as the shapes are
 
 SVG's `<foreignObject x y width height>`: document elements laid out in a box of `width` by `height` user units at `(x, y)`, scaled with the view box as the shapes are. A container with nested children: `<foreignObject x="10" y="10" width="80" height="30"><button onclick={buy}>Buy</button></foreignObject>`.
 
@@ -1257,8 +1268,8 @@ Its own props, beside every element's:
 | `marker-mid` | `text` | SVG `marker-mid`: the `<marker>` drawn at every vertex between the first and the last. |
 | `marker-end` | `text` | SVG `marker-end`: the `<marker>` drawn at a shape's last vertex (an arrowhead). |
 
-<a id="guide-components-45"></a>
-### `components §45` `<use>` (`svgUse`): SVG's `<use href="#id" x y width height>`: the symbol, group or shape `#id` drawn again here, inheriting this element's presentation attributes; a `<symbol>`'s view box is fitted into its width and height
+<a id="guide-components-46"></a>
+### `components §46` `<use>` (`svgUse`): SVG's `<use href="#id" x y width height>`: the symbol, group or shape `#id` drawn again here, inheriting this element's presentation attributes; a `<symbol>`'s view box is fitted into its width and height
 
 SVG's `<use href="#id" x y width height>`: the symbol, group or shape `#id` drawn again here, inheriting this element's presentation attributes; a `<symbol>`'s view box is fitted into its width and height. A container with nested children: `<symbol id="Coin" viewBox="0 0 24 24">…</symbol><use href="#Coin" x={i * 12} y="0" width="10" height="10" />`.
 
@@ -1302,8 +1313,8 @@ Its own props, beside every element's:
 | `clip-rule` | `text` | SVG `clip-rule` of a shape in a `<clipPath>`: nonzero or evenodd (a ring cuts a hole). |
 | `filter` | `text` | SVG `filter="url(#id)"`: the `<filter>` the element and its subtree are drawn through. |
 
-<a id="guide-components-46"></a>
-### `components §46` `<linearGradient>`, `<symbol>` (`svgDef`): An SVG definition (`<defs>`, `<symbol>`, `<clipPath>`, `<mask>`, `<pattern>`, `<linearGradient>`, `<radialGradient>`, `<stop>`, `<title>`, `<desc>`): not drawn where written; `<use>`, `clip-path`, `mask` and paints reference them by `#id`, and a `<title>` names its parent
+<a id="guide-components-47"></a>
+### `components §47` `<linearGradient>`, `<symbol>` (`svgDef`): An SVG definition (`<defs>`, `<symbol>`, `<clipPath>`, `<mask>`, `<pattern>`, `<linearGradient>`, `<radialGradient>`, `<stop>`, `<title>`, `<desc>`): not drawn where written; `<use>`, `clip-path`, `mask` and paints reference them by `#id`, and a `<title>` names its parent
 
 An SVG definition (`<defs>`, `<symbol>`, `<clipPath>`, `<mask>`, `<pattern>`, `<linearGradient>`, `<radialGradient>`, `<stop>`, `<title>`, `<desc>`): not drawn where written; `<use>`, `clip-path`, `mask` and paints reference them by `#id`, and a `<title>` names its parent. A container with nested children: `<linearGradient id="Up" x2="0" y2="1"><stop offset="0" stop-color="#fff" />…</linearGradient> (radialGradient, defs)` or `<symbol id="Coin" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" /></symbol> (clipPath, mask, pattern, title)`.
 

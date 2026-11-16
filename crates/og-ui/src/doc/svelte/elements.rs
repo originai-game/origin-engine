@@ -194,7 +194,7 @@ impl Parser {
         }
         self.element_node(tag, attrs, children, at, parent)
     }
-    fn element_node(
+    pub(super) fn element_node(
         &mut self,
         tag: &str,
         attrs: &[Attr],
@@ -202,9 +202,12 @@ impl Parser {
         at: usize,
         parent: usize,
     ) -> Result<usize, Error> {
+        // An inline element of a text (`runs`): its attributes read as any
+        // element's, its content its text's runs.
+        let inline_el = std::mem::take(&mut self.inline_element);
         // A label around a checkbox is the checkbox, its text the caption
         // (HTML's implicit label association).
-        if tag == "label" {
+        if tag == "label" && !inline_el {
             // A `<small>` in it is the checkbox's description line.
             let small = |c: &Node| matches!(c, Node::Element { tag, .. } if tag == "small");
             let controls: Vec<&Node> = children
@@ -313,9 +316,13 @@ impl Parser {
         if tag == "li" && !self.in_list(parent) {
             return Err((at, "<li> belongs inside a <ul> or an <ol>".into()));
         }
-        let html = self.html_kind(tag, parent, at)?;
+        let html = match inline_el {
+            true => None,
+            false => self.html_kind(tag, parent, at)?,
+        };
         // The element's kind: none for a component.
         let internal = match tag {
+            _ if inline_el => Some(Kind::Inline),
             _ if let Some((_, kind)) =
                 schema::ELEMENT_TAGS.iter().find(|(name, _)| *name == tag) =>
             {
@@ -357,8 +364,17 @@ impl Parser {
                 Some(Err(hint)) => return Err((at, hint)),
                 None => match renamed(other) {
                     Some(hint) => return Err((at, hint)),
-                    // A kind written by its own name.
-                    None => Kind::named(other),
+                    // A kind written by its own name; an inline element is
+                    // written by its HTML tag inside a text.
+                    None => match Kind::named(other) {
+                        Some(Kind::Inline) => {
+                            return Err((
+                                at,
+                                "<inline> is no tag: write <span> (or <b>, <a>, <ruby>…) inside a text".into(),
+                            ));
+                        }
+                        kind => kind,
+                    },
                 },
             },
         };
@@ -496,6 +512,16 @@ impl Parser {
             }
             // An animation's attributes are read as it plays (svg::smil).
             if smil || tag == "mpath" {
+                continue;
+            }
+            // Read by its text's runs: its part, a link's href, a
+            // `<tspan>`'s presentation attributes.
+            if inline_el
+                && (a.name == "part"
+                    || (tag == "a" && a.name == "href")
+                    || (tag == "tspan"
+                        && super::extern_element::TSPAN_ATTRS.contains(&a.name.as_str())))
+            {
                 continue;
             }
             if a.name == "class" || a.name.starts_with("class:") {
@@ -919,6 +945,9 @@ impl Parser {
                 "an <iframe> needs src naming a document of the game".into(),
             ));
         }
+        if inline_el {
+            return Ok(i);
+        }
         // An action's glyph follows the device: it reads `$ui.device`.
         if internal == Some(Kind::Kbd) && attrs.iter().any(|a| a.name == "data-action") {
             let device = expression("$ui.device", at)?;
@@ -963,7 +992,7 @@ impl Parser {
             && !component
             && children
                 .iter()
-                .any(|c| matches!(c, Node::Element { .. }) && !inline(c));
+                .any(|c| matches!(c, Node::Element { .. }) && !inline(c, false));
         if internal == Some(Kind::Box) || content_button {
             // Text between a block's elements is an anonymous text
             // element, its inline markup kept (HTML's anonymous block box).
@@ -971,7 +1000,7 @@ impl Parser {
             let mut texts = Vec::new();
             let mut run = Vec::new();
             for child in children {
-                if inline(child) {
+                if inline(child, false) {
                     run.push(child.clone());
                     continue;
                 }

@@ -200,18 +200,35 @@ on both hosts today; elsewhere the frame warns): a press sends the host a
 (CSS UI 4) applies to text inputs, textareas (along the inline axis),
 selects and file inputs.
 
-#### Inline objects, span parts and translated markup
+#### Inline elements, inline objects, span parts and translated markup
+
+A text element's inline markup is elements (kind `inline`, CSS 2 §9.2.2):
+`<span>`, `<a href>`, `<b>`, `<strong>`, `<i>`, `<em>`, `<u>`, `<s>`,
+`<del>`, `<sub>`, `<sup>`, `<ruby>`, `<rb>`, `<rt>`, `<rtc>`, `<rp>` and an
+SVG `<tspan>`, each with any attributes (`class`, `id`, `data-*`, `lang`,
+`style`, `part`). Selectors match them as any element: class, id,
+attribute, structural (among their text's inline elements), child and
+descendant, and states (`a:hover`). Every inherited text property and
+`vertical-align` and `display` apply to the words in them; a box property
+(`padding`, `background`, `width`…) is ignored on them for now, as their
+fragments are not boxes yet. HTML's look is the UA sheet's (`b { font-weight:
+bold }`, `sub { vertical-align: sub; font-size: smaller }`, the ruby
+`display`s), so a rule overrides it. An inline element takes no event
+handlers, `bind:`, `use:` or transitions: put them on the text. In a block,
+a formatting element joins the words around it into an anonymous text; a
+`<span>` or `<a>` with attributes there is a text of its own, as a flex
+item is.
 
 A text element's words may hold one-em inline objects with literal
 attributes: `<img src="coin" alt="">` (a registered picture,
 `UiDesc.images`), `<og-icon name>` (the style's atlas) and `<kbd
-data-action>` (the action's glyph). `<span part="big">` names a run for
-`p::part(big)`, which takes `color`, `font`, `font-family`, `font-weight`,
+data-action>` (the action's glyph). `<span part="big">` names its element
+for `p::part(big)`, whose declarations win over its element's rules and
+which takes `color`, `font`, `font-family`, `font-weight`,
 `font-style`, `text-decoration-line`, `-og-text-motion`, `vertical-align`,
 `text-combine-upright` (down a vertical line, `all` sets the run in one
 upright em, one unit of the line), and `font-size`, `line-height` and `letter-spacing` in px or em. A run's
-`vertical-align` follows CSS 2.1 §10.8 and CSS Inline 3; `<sub>` and
-`<sup>` are runs at ÷ 1.2 size as HTML's UA sheet has them. A translated
+`vertical-align` follows CSS 2.1 §10.8 and CSS Inline 3. A translated
 string styles runs with MessageFormat 2 markup: `{#b}…{/b}`, `{#i}`,
 `{#u}`, `{#s}`, `{#br/}`; `\{` escapes a brace.
 
@@ -371,10 +388,10 @@ engine differs or limits as follows:
   `text-combine-upright` combines a whole text or a `::part` run (`all`)
   or each short digit run (`digits`), squeezing it across to one em.
 - **Ruby and emphasis marks.** `<ruby>`, `<rb>`, `<rt>`, `<rtc>` and
-  `<rp>` are inline markup of a text, and a text's `::part` spans take
-  `display: ruby`, `ruby-base`, `ruby-text`, `ruby-base-container`,
-  `ruby-text-container` and `none` (and `ruby-position`), since spans are
-  runs, not elements. CSS Ruby 1 §2.2's anonymous boxes and §2.3's pairing
+  `<rp>` are inline elements of a text with the UA sheet's ruby
+  `display`s, and any inline element takes `display: ruby`, `ruby-base`,
+  `ruby-text`, `ruby-base-container`, `ruby-text-container` and `none`
+  (and `ruby-position`), from a rule or its `::part`. CSS Ruby 1 §2.2's anonymous boxes and §2.3's pairing
   make each segment one unbreakable box of its line, with any number of
   levels and nested rubies; `ruby-merge` is not read (`separate`).
   Emphasis marks are drawn shapes; their side follows the content language through the user-agent rules (under for `zh`, over

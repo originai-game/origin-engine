@@ -1,0 +1,9 @@
+{
+  "simulation": "unchanged",
+  "breaking": [
+    {"member":"ui","change":"A text's inline markup is elements: `<span>`, `<a href>`, `<b>`, `<i>`, `<ruby>`, `<rt>` and the other formatting tags inside a text are `inline` elements that class, id, attribute, structural, child and state selectors (`a:hover`) match, and every inherited text property, `vertical-align` and `display` styles their words. A document or pack rule such as `span { … }` or `.gold { … }` now reaches them, and HTML's formatting comes from the UA sheet, which rules override.","fix":"Check rules whose selectors name span, a, b, i or a class that inline markup now carries; a box property (padding, background, width) on an inline element is ignored until its fragments are boxes."}
+  ],
+  "added": [
+    {"member":"ui","summary":"`display: ruby`, `ruby-base`, `ruby-text`, `ruby-base-container` and `ruby-text-container` on any inline element of a text, from a rule or an inline style, lay it out as CSS Ruby 1 does."}
+  ]
+}

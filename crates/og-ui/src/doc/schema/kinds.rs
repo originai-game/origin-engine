@@ -72,6 +72,8 @@ kinds! {
         "A virtualised grid of equal cells: its `for` builds only the cells in view.";
     Label leaf "label"
         "A text.";
+    Inline children "inline"
+        "An inline element inside a text (`<span>`, `<b>`, `<a>`, `<ruby>`, `<rt>`…): selectors match it and its CSS styles its words, which lay out in its text's lines.";
     Button children "button"
         "A button: its text, or its content (an icon, a text, a badge) in a row inside its frame and states; `data-hold` makes it a hold-to-confirm button that fills while held down.";
     Kbd leaf "kbd"

@@ -43,6 +43,16 @@ pub fn of(kind: Kind) -> Vec<(String, String)> {
             ("h1".into(), "<h1 id=\"Name\">…</h1> (to <h6>)".into()),
             ("a".into(), "<a id=\"Name\" href=\"shop\">…</a>".into()),
         ],
+        Kind::Inline => vec![
+            (
+                "span".into(),
+                "<p>A <span class=\"gold\">gold</span> coin</p> (b, strong, i, em, u, s, del, sub, sup, a, ruby, rb, rt, rtc, rp, tspan inside a text)".into(),
+            ),
+            (
+                "ruby".into(),
+                "<p><ruby>漢<rt>かん</rt>字<rt>じ</rt></ruby></p>".into(),
+            ),
+        ],
         Kind::Box => vec![
             ("div".into(), "<div id=\"Name\">…</div>".into()),
             ("nav".into(), "<nav aria-label=\"Site\">…</nav> (section, header, footer, main, aside, article)".into()),

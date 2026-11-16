@@ -506,6 +506,7 @@ impl ElementInstance {
             events: Vec::new(),
             writes: Vec::new(),
             cached: Some(&self.cached),
+            inline: Vec::new(),
         }
     }
 }

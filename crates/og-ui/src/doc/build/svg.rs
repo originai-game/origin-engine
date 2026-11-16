@@ -33,7 +33,7 @@ mod smil;
 mod tests;
 
 pub use defs::*;
-pub(crate) use defs::{css_clip, css_filter, srgba};
+pub(crate) use defs::{css_clip, css_filter};
 pub use shapes::*;
 pub(super) use smil::animate;
 pub use smil::*;

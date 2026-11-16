@@ -73,6 +73,7 @@ pub(crate) fn parse_with_pack(
             novalidate: Vec::new(),
             aria_refs_for: Vec::new(),
             white_space: None,
+            inline_element: false,
         };
         let mut script = false;
         let mut window = None;
@@ -232,22 +233,29 @@ fn directive_name(name: &str) -> bool {
         || (name.starts_with("style:") && !name.starts_with("style:--"))
 }
 
+/// The formatting and ruby elements, which are inline elements of the text
+/// they sit in wherever they are written.
+const FORMATTING: &[&str] = &[
+    "b", "strong", "i", "em", "u", "s", "del", "sub", "sup", "ruby", "rb", "rt", "rtc", "rp",
+];
+
 /// Inline content a text element reads as runs: words, expressions, the
-/// formatting elements, a plain `<span>` and a literal `<a href>`.
-fn inline(node: &Node) -> bool {
+/// formatting elements, a `<span>` and an `<a href>`. Inside a text
+/// (`in_text`) a span or a link takes any attributes; in a block only a
+/// plain one (perhaps naming its part) joins the words around it, and one
+/// with attributes is a text element of its own.
+fn inline(node: &Node, in_text: bool) -> bool {
     match node {
         Node::Text(..) | Node::Expression(..) => true,
         Node::Element { tag, attrs, .. } => match tag.as_str() {
             "br" => attrs.is_empty(),
-            // Formatting and ruby elements and a plain span, each perhaps
-            // naming its part for `::part(name)`.
-            "b" | "strong" | "i" | "em" | "u" | "s" | "del" | "sub" | "sup" | "span" | "ruby"
-            | "rb" | "rt" | "rtc" | "rp" => attrs.iter().all(|a| a.name == "part" && !a.bound),
+            t if FORMATTING.contains(&t) => true,
+            "span" => in_text || attrs.iter().all(|a| a.name == "part" && !a.bound),
             // SVG's run inside a `<text>`: its weight, style, decoration and fill.
             "tspan" => attrs
                 .iter()
                 .all(|a| !a.bound && super::extern_element::TSPAN_ATTRS.contains(&a.name.as_str())),
-            "a" => attrs.iter().all(|a| a.name == "href" && !a.bound),
+            "a" => in_text || attrs.iter().all(|a| a.name == "href" && !a.bound),
             _ => false,
         },
         _ => false,
@@ -516,6 +524,9 @@ struct Parser {
     /// An SVG `<text>`'s `white-space` while its runs are read: whether
     /// spaces and line breaks are kept (`None`: both collapse).
     white_space: Option<(bool, bool)>,
+    /// The next element `element_node` reads is an inline element of a
+    /// text ([`Kind::Inline`]).
+    inline_element: bool,
 }
 /// A `<datalist>`: its id, its options' values and labels, and its bound
 /// `items`.

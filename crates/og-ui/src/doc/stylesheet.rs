@@ -2583,7 +2583,24 @@ fn rule_props(entries: &[og_core::ogt::Entry], kind: Kind) -> Result<Vec<PropSet
         let inherited = css::STYLE.iter().any(|(property, name)| {
             *property == key && super::build::cascade::inherited_property(name)
         });
-        if (!p.applies(kind) && !inherited) || (e.key == "display" && kind != Kind::Box && !inner) {
+        let ruby = written(&e.values).starts_with("ruby");
+        // An inline element of a text has no box of its own yet: what does
+        // not apply to it is ignored, as CSS ignores it on an inline box.
+        if kind == Kind::Inline {
+            let shown = matches!(written(&e.values).as_str(), "inline" | "none") || ruby;
+            if (!p.applies(kind) && !inherited) || (e.key == "display" && !shown) {
+                continue;
+            }
+        } else if e.key == "display" && ruby {
+            return Err(format!(
+                "display: {} is an inline element's of a text (a <span>, <rt>…): a {kind} is no ruby box",
+                written(&e.values)
+            ));
+        }
+        if kind != Kind::Inline
+            && ((!p.applies(kind) && !inherited)
+                || (e.key == "display" && kind != Kind::Box && !inner))
+        {
             return Err(if e.key == "display" {
                 format!(
                     "display: {} lays out a <div> (or another HTML block); a {kind}'s layout is its tag, so it takes only none, block, inline, inline-block or flow-root",
@@ -2646,7 +2663,9 @@ const ANY_BUTTON: &str = "::scroll-button(*)";
 fn holds(pseudo: &str, kind: Kind, node: &DocNode) -> bool {
     match pseudo {
         "before" | "after" => {
-            kind.container() && (kind != Kind::Button || !node.children.is_empty())
+            kind.container()
+                && kind != Kind::Inline
+                && (kind != Kind::Button || !node.children.is_empty())
         }
         "backdrop" => kind == Kind::Dialog || node.props.iter().any(|p| p.name() == "popover"),
         "picker" => kind == Kind::Select,

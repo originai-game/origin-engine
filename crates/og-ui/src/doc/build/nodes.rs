@@ -72,6 +72,14 @@ impl Ui {
             probe,
         } = resolved;
         let (id, path, key) = (id.clone(), path.clone(), *key);
+        // A text's inline elements style its runs.
+        let lowered;
+        let r = if matches!(kind, Kind::Label | Kind::SvgText) && !n.inline.is_empty() {
+            lowered = self.lower_inline(b, n, r);
+            &lowered
+        } else {
+            r
+        };
         let mut built = probe.clone();
         if let Some(commit) = &r.style {
             self.style
@@ -295,6 +303,7 @@ impl Ui {
             | Kind::Cells
             | Kind::Dialog
             | Kind::Details
+            | Kind::Inline
             | Kind::Box => unreachable!("'{kind}' is built before the leaf controls"),
         }
         self.tree.pending_host = None;
@@ -313,7 +322,11 @@ impl Ui {
             {
                 fields.text = self.revealed(key, raw_of(styled, b));
             }
-            fields.generated = generated;
+            // Its inline elements' runs: settlement styles them again.
+            fields.generated = generated.or_else(|| {
+                (!n.inline.is_empty() && !styled.span_styles.is_empty())
+                    .then(|| std::sync::Arc::new((raw_of(styled, b), styled.span_styles.clone())))
+            });
             self.apply_document_fields(&doc, n, styled, &fields);
             self.docs.note_render_fields(key, fields);
             if styled.has("dataOgTouch") {
@@ -683,6 +696,7 @@ impl Ui {
             | Kind::SvgForeign
             | Kind::SvgUse
             | Kind::SvgDef => unreachable!("'{kind}' is built before the containers"),
+            Kind::Inline => unreachable!("an inline element is built by its text"),
             Kind::Label
             | Kind::Kbd
             | Kind::Image

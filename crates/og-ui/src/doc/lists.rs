@@ -23,7 +23,8 @@ use serde_json::Value;
 /// are menu items): each item spans the menu, so its items are as wide as
 /// each other, with their labels at the start, as a desktop's and a game's
 /// menus are. Emphasis marks take their side from the content language
-/// (CSS Text Decoration 4 Appendix B).
+/// (CSS Text Decoration 4 Appendix B). A text's inline elements take HTML's
+/// formatting and ruby rules (HTML §15.3.3, §15.3.4).
 pub(super) const UA_CSS: &str = "
 ul, ol { padding: 0 0 0 40px; }
 li { display: list-item; }
@@ -55,6 +56,17 @@ td, th { display: table-cell; padding: 1px; }
 th { font-weight: bold; text-align: center; }
 :root:lang(zh), [lang|=zh] { text-emphasis-position: under right; }
 [lang|=ja], [lang|=ko] { text-emphasis-position: over right; }
+b, strong { font-weight: bold; }
+i, em { font-style: italic; }
+u { text-decoration-line: underline; }
+s, del { text-decoration-line: line-through; }
+sub { vertical-align: sub; font-size: smaller; }
+sup { vertical-align: super; font-size: smaller; }
+ruby { display: ruby; }
+rb { display: ruby-base; }
+rt { display: ruby-text; }
+rtc { display: ruby-text-container; }
+rp { display: none; }
 ";
 
 const POSITIONS: [&str; 2] = ["outside", "inside"];

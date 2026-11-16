@@ -611,6 +611,58 @@ impl RetainedHost {
         }
     }
 
+    /// Whether `identity` is an inline element of a text.
+    pub(crate) fn is_inline(&self, identity: &MountedNode) -> bool {
+        self.elements.get(identity).is_some_and(|e| {
+            e.document.nodes[e.index].kind == NodeKind::Element(crate::doc::schema::Kind::Inline)
+        })
+    }
+
+    /// Text `identity`'s inline elements, resolved where they are stale,
+    /// by document node, for its build to lower ([`Build::inline`]).
+    pub(crate) fn resolve_inline(
+        &mut self,
+        ui: &mut Ui,
+        identity: &MountedNode,
+        env: &dyn Env,
+    ) -> Result<Vec<(usize, Arc<ResolvedNode>)>, String> {
+        let mut out = Vec::new();
+        let mut stack: Vec<MountedNode> = self.elements[identity]
+            .children
+            .iter()
+            .rev()
+            .filter_map(|c| match c {
+                Child::Element(e) => Some(e.clone()),
+                _ => None,
+            })
+            .collect();
+        while let Some(child) = stack.pop() {
+            if !self.is_inline(&child) {
+                continue;
+            }
+            let e = &self.elements[&child];
+            if self.dirty.remove(&child)
+                || e.resolved.is_none()
+                || e.style_dirty
+                || e.theme_epoch != self.theme_epoch
+                || self.topology.style_is_stale(&child) == Some(true)
+            {
+                self.resolve(ui, &child, env)?;
+            }
+            let e = &self.elements[&child];
+            out.push((e.index, e.resolved.clone().expect("resolved")));
+            stack.extend(e.children.iter().rev().filter_map(|c| match c {
+                Child::Element(e) => Some(e.clone()),
+                _ => None,
+            }));
+        }
+        // Resolving them marked the text, which is building now.
+        if !out.is_empty() {
+            self.emit.remove(identity);
+        }
+        Ok(out)
+    }
+
     pub(crate) fn resolve(
         &mut self,
         ui: &mut Ui,
@@ -891,7 +943,14 @@ impl RetainedHost {
         for name in read {
             self.read_through(identity.clone(), &name);
         }
-        self.emit.insert(identity.clone());
+        // An inline element is built by its text: the text builds again.
+        let mut built = identity.clone();
+        while self.is_inline(&built)
+            && let Some(parent) = self.topology.parent(&built)
+        {
+            built = parent.clone();
+        }
+        self.emit.insert(built);
         self.elements.get_mut(identity).unwrap().style_dirty = false;
         self.elements.get_mut(identity).unwrap().theme_epoch = self.theme_epoch;
         self.topology.set_text(identity, text)?;

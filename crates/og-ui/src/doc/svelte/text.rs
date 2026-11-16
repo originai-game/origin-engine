@@ -279,18 +279,11 @@ impl Parser {
         let mut links = Vec::new();
         let base = InlineRun {
             text: Expr::Lit("".into()),
-            bold: false,
-            italic: false,
-            underline: false,
-            strike: false,
-            color: None,
             link,
-            part: None,
             atom: None,
-            valign: None,
             path: Vec::new(),
         };
-        self.runs(nodes, &base, &mut runs, &mut links, translated)?;
+        self.runs(nodes, i, &base, &mut runs, &mut links, translated)?;
         // No space at either end, as a CSS block trims its line (an SVG
         // text keeping its white space trims its line breaks there too).
         let ends: &[char] = if self.white_space.is_some() {
@@ -316,15 +309,17 @@ impl Parser {
         runs.retain(|r| r.text != Expr::Lit("".into()) || !r.path.is_empty());
         let bound = runs.iter().any(|r| !matches!(r.text, Expr::Lit(_)));
         // The text as HTML's sheet shows it: annotations (`<rt>`, `<rtc>`)
-        // and `<rp>` are not base text. The builder recomputes it where
-        // `::part` rules give elements other ruby roles.
+        // and `<rp>` are not base text. The builder recomputes it from the
+        // elements' `display`.
+        let annotation = |e: &usize| {
+            matches!(
+                self.doc.nodes[*e].selector_tag.as_deref(),
+                Some("rt" | "rtc" | "rp")
+            )
+        };
         let shown: Vec<&InlineRun> = runs
             .iter()
-            .filter(|r| {
-                !r.path
-                    .iter()
-                    .any(|e| matches!(e.tag.as_str(), "rt" | "rtc" | "rp"))
-            })
+            .filter(|r| !r.path.iter().any(annotation))
             .collect();
         let plain = shown.iter().fold(Expr::Lit("".into()), |acc, r| {
             Expr::Bin(
@@ -361,30 +356,22 @@ impl Parser {
             self.doc.nodes[i].source_text = Some(source);
         }
         self.prop(i, Some(Kind::Label), "text", value, at, "")?;
-        if runs.iter().any(|r| {
-            r.bold
-                || r.italic
-                || r.underline
-                || r.strike
-                || r.color.is_some()
-                || r.link.is_some()
-                || r.part.is_some()
-                || r.atom.is_some()
-                || r.valign.is_some()
-                || r.path.iter().any(|e| {
-                    e.part.is_some()
-                        || matches!(e.tag.as_str(), "ruby" | "rb" | "rt" | "rtc" | "rp")
-                })
-        }) {
+        if runs
+            .iter()
+            .any(|r| r.link.is_some() || r.atom.is_some() || !r.path.is_empty())
+        {
             self.doc.nodes[i].inline = runs;
             self.doc.nodes[i].links = links;
         }
         Ok(())
     }
 
+    /// The runs of `nodes`, the content of text `i` or of one of its inline
+    /// elements, each inline element among them a node under `parent`.
     fn runs(
         &mut self,
         nodes: &[Node],
+        parent: usize,
         style: &InlineRun,
         out: &mut Vec<InlineRun>,
         links: &mut Vec<String>,
@@ -428,43 +415,57 @@ impl Parser {
                     children,
                     at,
                     ..
-                } if inline(node) => {
+                } if inline(node, true) => {
                     let mut inner = style.clone();
-                    if tag != "br" {
-                        if let Some(a) = attrs.iter().find(|a| a.name == "part") {
-                            if !super::syntax::identifier(&a.value) {
-                                return Err((a.at, "part names a span: an identifier".into()));
-                            }
-                            inner.part = Some(a.value.clone());
+                    if tag == "br" {
+                        if !children.is_empty() {
+                            return Err((*at, "<br> is empty".into()));
                         }
-                        inner.path.push(crate::doc::InlineEl {
-                            id: *at as u32,
-                            tag: tag.clone(),
-                            part: attrs
-                                .iter()
-                                .find(|a| a.name == "part")
-                                .map(|a| a.value.clone()),
-                        });
+                        out.push(run(Expr::Lit("\n".into())));
+                        continue;
                     }
+                    if let Some(a) = attrs.iter().find(|a| a.name == "part")
+                        && (a.bound || !super::syntax::identifier(&a.value))
+                    {
+                        return Err((a.at, "part names a span: an identifier".into()));
+                    }
+                    if let Some(a) = attrs.iter().find(|a| {
+                        a.name.starts_with("on")
+                            || a.name.starts_with("bind:")
+                            || (directive_name(&a.name)
+                                && a.name != "style"
+                                && !a.name.starts_with("style:"))
+                    }) {
+                        return Err((
+                            a.at,
+                            format!(
+                                "{} sits on an element of a text's lines; put it on the text, or make <{tag}> an element of its own beside the text",
+                                a.name
+                            ),
+                        ));
+                    }
+                    // An element of the document: selectors match it, and
+                    // its CSS styles the words in it.
+                    self.inline_element = true;
+                    let e = self.element_node(tag, attrs, &[], *at, parent)?;
+                    self.doc.nodes[parent].children.push(e);
+                    inner.path.push(e);
                     match tag.as_str() {
-                        "b" | "strong" => inner.bold = true,
-                        "i" | "em" => inner.italic = true,
-                        "u" => inner.underline = true,
-                        "s" | "del" => inner.strike = true,
-                        "sub" => inner.valign = Some(crate::VerticalAlign::Sub),
-                        "sup" => inner.valign = Some(crate::VerticalAlign::Super),
-                        "br" => {
-                            if !children.is_empty() {
-                                return Err((*at, "<br> is empty".into()));
-                            }
-                            out.push(run(Expr::Lit("\n".into())));
-                            continue;
-                        }
                         "tspan" => {
-                            for a in attrs {
-                                super::extern_element::tspan(&mut inner, &a.name, &a.value)
-                                    .map_err(|e| (a.at, e))?;
+                            let mut body = String::new();
+                            for a in attrs.iter().filter(|a| a.name != "part") {
+                                body.push_str(
+                                    &super::extern_element::tspan(&a.name, &a.value)
+                                        .map_err(|e| (a.at, e))?,
+                                );
                             }
+                            let declarations = super::super::stylesheet::inline(
+                                &self.doc,
+                                &self.doc.nodes[e],
+                                &body,
+                                *at,
+                            )?;
+                            self.inline_styles.push((e, declarations));
                         }
                         "a" => {
                             if style.link.is_some() {
@@ -473,13 +474,38 @@ impl Parser {
                             let Some(href) = attrs.iter().find(|a| a.name == "href") else {
                                 return Err((*at, "an inline <a> needs an href".into()));
                             };
+                            if href.bound {
+                                return Err((href.at, "an inline <a>'s href is literal".into()));
+                            }
                             links.push(href.value.clone());
                             inner.link = Some(links.len() - 1);
                         }
                         _ => {}
                     }
                     let before = out.len();
-                    self.runs(children, &inner, out, links, translated)?;
+                    self.runs(children, e, &inner, out, links, translated)?;
+                    // Its own words, which `:empty` reads.
+                    let own: Vec<&Expr> = out[before..]
+                        .iter()
+                        .filter(|r| r.path.last() == Some(&e) && r.atom.is_none())
+                        .map(|r| &r.text)
+                        .collect();
+                    let value = if own.iter().all(|t| matches!(t, Expr::Lit(_))) {
+                        PropValue::Lit(Lit::Str(
+                            own.iter()
+                                .map(|t| match t {
+                                    Expr::Lit(v) => crate::bind::text(v),
+                                    _ => String::new(),
+                                })
+                                .collect(),
+                        ))
+                    } else {
+                        let joined = own.iter().fold(Expr::Lit("".into()), |acc, t| {
+                            Expr::Bin(crate::bind::Op::Add, Box::new(acc), Box::new((*t).clone()))
+                        });
+                        PropValue::Bind(joined, None)
+                    };
+                    self.prop(e, Some(Kind::Inline), "text", value, *at, "")?;
                     // An empty element is still there: an empty `<rt>`.
                     if out.len() == before {
                         out.push(InlineRun {
@@ -561,7 +587,7 @@ impl Parser {
                     return Err((
                         *at,
                         format!(
-                            "<{tag}> cannot sit inside text: text holds words, {{expressions}} and the inline elements b, strong, i, em, u, s, del, sub, sup, br, ruby, rb, rt, rtc, rp, a plain <span> (each perhaps with a part) and <a href>; put <{tag}> beside the text in a <div>"
+                            "<{tag}> cannot sit inside text: text holds words, {{expressions}} and the inline elements b, strong, i, em, u, s, del, sub, sup, br, ruby, rb, rt, rtc, rp, <span> and <a href>; put <{tag}> beside the text in a <div>"
                         ),
                     ));
                 }

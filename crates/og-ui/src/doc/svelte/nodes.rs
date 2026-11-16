@@ -190,7 +190,7 @@ impl Parser {
             }
             return self.element(&this.value, &rest, children, at, parent);
         }
-        let tags: &[&str] = if children.iter().all(inline) {
+        let tags: &[&str] = if children.iter().all(|c| inline(c, false)) {
             &["p", "span", "small", "h1", "h2", "h3", "h4", "h5", "h6"]
         } else {
             &[

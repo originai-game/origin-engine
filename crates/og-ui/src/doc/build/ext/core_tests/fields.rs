@@ -85,6 +85,7 @@ fn settled_document_fields_match_fresh_styles_without_rebuilding_controls() {
                     events: Vec::new(),
                     writes: Vec::new(),
                     cached: Some(&cached),
+                    inline: Vec::new(),
                 };
                 let values = patched.resolve(
                     &build,

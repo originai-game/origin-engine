@@ -140,8 +140,10 @@ impl RetainedHost {
             .is_some_and(|slot| ui.tree.holds(slot, identity.key, parent_slot));
         ui.tree.owning_mut().push(Default::default());
         ui.docs.state_mut().capture.push(Default::default());
+        let inline = self.resolve_inline(ui, identity, env)?;
         let resolved = e.resolved.as_ref().expect("resolved mount");
         let mut b = e.build(env, resolved.values.cascade.computed.clone());
+        b.inline = inline;
         let mut result = Ok(());
         // The ranges of its children it built: a closed disclosure builds
         // its summary alone.

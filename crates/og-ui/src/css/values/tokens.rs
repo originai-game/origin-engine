@@ -380,6 +380,12 @@ pub(super) fn display_word(v: &str) -> Result<&'static str, String> {
         "table-caption" => Some("tableCaption"),
         "table-column" => Some("tableColumn"),
         "table-column-group" => Some("tableColumnGroup"),
+        // CSS Ruby 1 §2.1: an inline element of a text's ruby boxes.
+        "ruby" | "inline ruby" | "ruby inline" => Some("ruby"),
+        "ruby-base" => Some("rubyBase"),
+        "ruby-text" => Some("rubyText"),
+        "ruby-base-container" => Some("rubyBaseContainer"),
+        "ruby-text-container" => Some("rubyTextContainer"),
         _ => None,
     };
     if let Some(w) = one {
@@ -387,7 +393,7 @@ pub(super) fn display_word(v: &str) -> Result<&'static str, String> {
     }
     let how = || {
         format!(
-            "'{v}' is not a display: block, inline, inline-block, flow-root, flex, grid, table, contents, none, list-item, a table part, or [block | inline] [flow | flow-root | flex | grid | table] [list-item]"
+            "'{v}' is not a display: block, inline, inline-block, flow-root, flex, grid, table, contents, none, list-item, a table part, a ruby box, or [block | inline] [flow | flow-root | flex | grid | table] [list-item]"
         )
     };
     let (mut outer, mut inner, mut item) = (None, None, false);

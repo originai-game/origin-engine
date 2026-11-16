@@ -586,42 +586,33 @@ pub struct DocNode {
     pub frame: Option<String>,
 }
 
+impl DocNode {
+    /// The `part` an inline element names for `::part(name)` rules.
+    pub fn part_name(&self) -> Option<&str> {
+        self.selector_attrs
+            .iter()
+            .find(|(name, _)| name == "part")
+            .and_then(|(_, value)| match value {
+                Expr::Lit(serde_json::Value::String(s)) => Some(s.as_str()),
+                _ => None,
+            })
+    }
+}
+
 /// One run of a text element's inline content.
 #[derive(Clone, Debug, PartialEq)]
 pub struct InlineRun {
     pub text: Expr,
-    pub bold: bool,
-    pub italic: bool,
-    pub underline: bool,
-    pub strike: bool,
-    /// Its colour (an SVG `<tspan fill>`), CSS text.
-    pub color: Option<String>,
     /// Its link: an index into [`DocNode::links`], or `usize::MAX` for the
     /// `<a>` element's own `href`.
     pub link: Option<usize>,
-    /// The `<span part="name">` it is in: its span's name, which
-    /// `text::part(name)` rules style.
-    pub part: Option<String>,
     /// An inline `<img>`, `<og-icon>` or `<kbd data-action>`: its text is the
     /// placeholder U+FFFC.
     pub atom: Option<crate::rich::InlineAtom>,
-    /// HTML's `<sub>` or `<sup>`: its `vertical-align`, its size the
-    /// smaller one.
-    pub valign: Option<crate::VerticalAlign>,
-    /// The inline elements it sits in, outermost first, which the builder
-    /// reads ruby structure from (CSS Ruby 1 §2.2).
-    pub path: Vec<InlineEl>,
-}
-
-/// An inline element of a text that runs sit in.
-#[derive(Clone, Debug, PartialEq)]
-pub struct InlineEl {
-    /// Its order among its text's inline elements, telling apart two
-    /// elements of one tag side by side.
-    pub id: u32,
-    pub tag: String,
-    /// Its `part`, whose `::part(name)` rules may set its `display`.
-    pub part: Option<String>,
+    /// The inline elements ([`schema::Kind::Inline`] nodes) it sits in,
+    /// outermost first: their CSS styles it, and their `display` gives its
+    /// ruby structure (CSS Ruby 1 §2.2).
+    pub path: Vec<usize>,
 }
 
 /// A prop of the document's contract (`props { gold number "…" }`).

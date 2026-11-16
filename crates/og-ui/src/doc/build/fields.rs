@@ -1778,7 +1778,18 @@ impl Resolved {
             length: text.chars().count() as u32,
             properties: Default::default(),
         };
-        let style = crate::TextSpanStyle {
+        Some((span, self.text_style(t, sheet)))
+    }
+
+    /// The run style its text CSS `t` gives: its font's style, weight,
+    /// width, variations, palette and synthesis, its fill, stroke,
+    /// decoration and word spacing.
+    pub fn text_style(
+        &self,
+        t: &crate::css::text_css::TextCss,
+        sheet: &crate::css::at_rules::Sheet,
+    ) -> crate::TextSpanStyle {
+        crate::TextSpanStyle {
             italic: t.italic,
             weight: t.weight,
             oblique: t.slant,
@@ -1820,8 +1831,7 @@ impl Resolved {
             hyphen: t.hyphen.as_deref().map(Into::into),
             word_spacing: t.word_spacing.filter(|w| *w != 0.0),
             ..Default::default()
-        };
-        Some((span, style))
+        }
     }
 
     pub fn button_desc(&self) -> ButtonDesc {

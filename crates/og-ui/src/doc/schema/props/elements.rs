@@ -858,8 +858,8 @@ pub const CORE_PROPS: &[PropSpec] = &[
     p!(
         "text",
         Ty::Text,
-        [Label, Button, Badge, Toggle, Radio, Tabs, Kbd],
-        "What it says."
+        [Label, Inline, Button, Badge, Toggle, Radio, Tabs, Kbd],
+        "What it says (an inline element's: its own words, not its children's)."
     ),
     p!(
         "key",
@@ -1358,9 +1358,14 @@ pub const CORE_PROPS: &[PropSpec] = &[
             "tableCell",
             "tableCaption",
             "tableColumn",
-            "tableColumnGroup"
+            "tableColumnGroup",
+            "ruby",
+            "rubyBase",
+            "rubyText",
+            "rubyBaseContainer",
+            "rubyTextContainer"
         ]),
-        "Its CSS `display`. On a box its layout: `block` stacks its children top to bottom (the default), `flex` lays them out as a row (or `flex-direction`), `grid` in tracks, `table` (and its parts) as a table, `flowRoot` a block whose children's margins stay inside, `contents` no box at all (its children are its parent's). On any element `inline…` puts it in lines beside its inline-level siblings."
+        "Its CSS `display`. On a box its layout: `block` stacks its children top to bottom (the default), `flex` lays them out as a row (or `flex-direction`), `grid` in tracks, `table` (and its parts) as a table, `flowRoot` a block whose children's margins stay inside, `contents` no box at all (its children are its parent's). An inline element of a text takes `inline`, `none` and the ruby values (CSS Ruby 1 §2.1). On any element `inline…` puts it in lines beside its inline-level siblings."
     ),
     p!(
         "verticalAlign",

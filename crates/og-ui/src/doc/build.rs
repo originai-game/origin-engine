@@ -155,7 +155,7 @@ fn inherit_color(r: &mut Resolved, kind: &NodeKind) {
                 Some(format!("#{red:02x}{green:02x}{blue:02x}{alpha:02x}")),
             );
         }
-        (None, NodeKind::Element(Kind::Label)) => {
+        (None, NodeKind::Element(Kind::Label | Kind::Inline)) => {
             let inherited = computed
                 .get(&key)
                 .cloned()
@@ -561,6 +561,9 @@ pub struct Build<'a> {
     pub events: Vec<DocEvent>,
     pub writes: Vec<(String, Value)>,
     pub cached: Option<&'a instances::CachedInputs>,
+    /// A text's inline elements as they resolved, by document node: their
+    /// CSS styles its runs ([`Ui::lower_inline`]).
+    pub inline: Vec<(usize, Arc<ResolvedNode>)>,
 }
 
 impl Build<'_> {
@@ -1277,16 +1280,9 @@ impl Ui {
             }
         }
         if !n.inline.is_empty() {
-            // A text element's inline markup: one span per run, styled by
-            // its elements (a run of an `<a href>` is a link).
-            let mut spans = Vec::new();
-            let mut position = 0u32;
-            // A translated `<a i18n>` is one run: the string's text.
-            let translated = r
-                .str("key")
-                .and_then(|k| b.env.translate(k))
-                .map(|t| b.env.shown(t))
-                .filter(|_| n.inline.len() == 1);
+            // Each part its inline elements name: what its `::part(name)`
+            // rules give it, kept as an empty span of that name for the
+            // build to lay over its runs ([`Ui::lower_inline`]).
             let rules: Vec<_> = n
                 .span_rules
                 .iter()
@@ -1295,15 +1291,17 @@ impl Ui {
                         && rule.condition.as_ref().is_none_or(|e| truthy(&b.eval(e)))
                 })
                 .collect();
-            // Each inline element naming its part: what its `::part` rules
-            // give it, a ruby `display` and `ruby-position` among them.
-            let mut parted: BTreeMap<u32, crate::TextSpanStyle> = BTreeMap::new();
-            for el in n.inline.iter().flat_map(|run| &run.path) {
-                let Some(name) = el.part.as_ref().filter(|_| !parted.contains_key(&el.id)) else {
-                    continue;
-                };
+            let mut names: Vec<&str> = n
+                .inline
+                .iter()
+                .flat_map(|run| &run.path)
+                .filter_map(|&e| b.doc.nodes[e].part_name())
+                .collect();
+            names.sort_unstable();
+            names.dedup();
+            for name in names {
                 let span = crate::TextSpan {
-                    name: name.clone(),
+                    name: name.into(),
                     position: 0,
                     length: 0,
                     properties: Default::default(),
@@ -1316,112 +1314,8 @@ impl Ui {
                     self.fonts(),
                 );
                 r.cascade.reads.extend(cascade.reads);
-                parted.insert(el.id, style);
-            }
-            // Its runs as ruby boxes (CSS Ruby 1 §2.2): each element's role
-            // its `display`, else its tag's.
-            let paths: Vec<Vec<(u32, crate::rich::RubyRole)>> = n
-                .inline
-                .iter()
-                .map(|run| {
-                    run.path
-                        .iter()
-                        .map(|e| {
-                            let role = parted.get(&e.id).and_then(|s| s.ruby_role);
-                            (
-                                e.id,
-                                role.unwrap_or_else(|| crate::rich::RubyRole::of_tag(&e.tag)),
-                            )
-                        })
-                        .collect()
-                })
-                .collect();
-            let leaves: Vec<crate::rich::RubyLeaf> = n
-                .inline
-                .iter()
-                .zip(&paths)
-                .map(|(run, path)| crate::rich::RubyLeaf {
-                    path,
-                    text: match &run.text {
-                        _ if translated.is_some() => translated.clone().unwrap_or_default(),
-                        crate::bind::Expr::Lit(v) => crate::bind::text(v),
-                        e => crate::bind::text(&b.eval(e)),
-                    },
-                })
-                .collect();
-            let boxes = crate::rich::ruby_structure(&leaves, &|ids| {
-                ids.iter()
-                    .rev()
-                    .find_map(|id| parted.get(id).and_then(|s| s.ruby_position))
-            });
-            // The text shown: its bases and words, not its annotations.
-            let shown: String = boxes
-                .iter()
-                .map(|o| match o {
-                    crate::rich::RubyOut::Text { text, .. } => text.clone(),
-                    crate::rich::RubyOut::Ruby { ruby, .. } => ruby.base_text(),
-                })
-                .collect();
-            if r.str("text") != Some(shown.as_str())
-                && let Some((spec, _)) = schema::prop("text")
-            {
-                r.vals.push((spec, V::Str(shown)));
-            }
-            for out in boxes {
-                let (k, text, ruby) = match out {
-                    crate::rich::RubyOut::Text { run, text } => (run, text, None),
-                    crate::rich::RubyOut::Ruby { run, ruby } => (run, ruby.base_text(), Some(ruby)),
-                };
-                let run = &n.inline[k];
-                let length = text.chars().count() as u32;
-                let span = crate::TextSpan {
-                    name: run.part.clone().unwrap_or_else(|| "inline".into()),
-                    position,
-                    length,
-                    properties: Default::default(),
-                };
-                position += length;
-                // A named span's `::part(name)` rules, under its elements'.
-                let mut style = if run.part.is_some() {
-                    let (style, cascade) = super::spans::resolve(
-                        &rules,
-                        &span,
-                        &r.cascade.computed,
-                        self.theme(),
-                        self.fonts(),
-                    );
-                    r.cascade.reads.extend(cascade.reads);
-                    style
-                } else {
-                    crate::TextSpanStyle::default()
-                };
-                let on = |b: bool, was: Option<bool>| if b { Some(true) } else { was };
-                style.bold = on(run.bold, style.bold);
-                style.italic = on(run.italic, style.italic);
-                style.underline = on(run.underline, style.underline);
-                style.strike = on(run.strike, style.strike);
-                if let Some(c) = run.color.as_deref().and_then(|c| {
-                    let c = crate::svg::color(c).ok()?;
-                    Some(crate::paint::ColorRef::Literal(svg::srgba(c, 1.0)))
-                }) {
-                    style.color = Some(c);
-                }
-                // HTML's UA sheet: `sub, sup { vertical-align: sub | super;
-                // font-size: smaller }` (a size step of 1.2, as browsers take).
-                if let Some(v) = run.valign {
-                    style.vertical_align = style.vertical_align.or(Some(v));
-                    style.size_scale = Some(1.0 / 1.2);
-                }
-                style.link = run.link.map(inline_link).or(style.link);
-                style.atom = run.atom.clone();
-                if let Some(ruby) = ruby {
-                    style.atom = Some(crate::rich::InlineAtom::Ruby(ruby));
-                }
-                r.span_styles.push((span.clone(), style));
-                spans.push(span);
-            }
-            if let Some((spec, _)) = schema::prop("spans") {
-                r.vals.push((spec, V::Spans(Ok(spans))));
+                r.cascade.diagnostics.extend(cascade.diagnostics);
+                r.span_styles.push((span, style));
             }
         }
         media_reads.resolution |= [
@@ -1473,6 +1367,7 @@ impl Ui {
             n.kind,
             NodeKind::Element(
                 Kind::Label
+                    | Kind::Inline
                     | Kind::Kbd
                     | Kind::Button
                     | Kind::Field
@@ -1738,6 +1633,7 @@ pub(crate) mod generated;
 pub(crate) mod gestures;
 #[doc(hidden)]
 pub mod host;
+pub(crate) mod inline;
 #[doc(hidden)]
 pub mod instances;
 pub(crate) mod kbd;
