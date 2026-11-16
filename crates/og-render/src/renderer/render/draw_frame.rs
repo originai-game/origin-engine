@@ -1298,7 +1298,11 @@ impl Renderer {
                 to: finished,
             },
         );
-        plans.hdr_output = HdrOutputPass::bind(self, &mut frames.hdr_output, (output, destination));
+        plans.hdr_output = HdrOutputPass::bind(
+            self,
+            &mut frames.hdr_output,
+            (output, destination, scene.look.range_limit),
+        );
         // The graph's passes in order, the passes over the finished frame
         // last (execute.rs).
         self.execute_graph(GraphRun {

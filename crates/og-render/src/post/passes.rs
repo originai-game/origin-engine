@@ -502,7 +502,6 @@ impl PostPasses {
             stylise_shader: None,
             fxaa_shader: None,
             output_format,
-            hdr,
             chain_format,
             stylise_buffer: uniform("stylise", std::mem::size_of::<StyliseUniform>()),
             repeat_sampler,

@@ -446,7 +446,6 @@ pub(crate) struct PostPasses {
     fxaa_shader: Option<wgpu::ShaderModule>,
     smaa: Option<smaa::Smaa>,
     output_format: wgpu::TextureFormat,
-    hdr: [f32; 4],
     pub chain_format: wgpu::TextureFormat,
     /// `struct Stylise` (stylise.wgsl), written per frame.
     pub stylise_buffer: wgpu::Buffer,

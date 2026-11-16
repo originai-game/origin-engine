@@ -151,6 +151,9 @@ impl Renderer {
             scene.frame.tick,
             self.history_size().0,
             lens_flare.as_ref().map(|f| (f, flare_turn)),
+            self.display
+                .as_ref()
+                .map_or([0.0; 4], |d| d.curve(scene.look.range_limit)),
         );
         if camera.exposure.adaptation().is_some() {
             self.post.advance_exposure(

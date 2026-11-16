@@ -157,6 +157,7 @@ impl RenderScene {
                 custom_post: Vec::new(),
                 color_filter: None,
                 fog_of_war: None,
+                range_limit: Default::default(),
             },
             sprite: SceneSprites {
                 sprites: Vec::new(),

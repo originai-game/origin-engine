@@ -50,7 +50,8 @@ impl PostPasses {
     /// image's alpha is the fraction of each pixel to tone map (sprites
     /// drawn untonemapped lowered it); `tick` seeds the grain; `flare`:
     /// the lens flare's passes run, with the starburst's turn with the
-    /// camera.
+    /// camera; `hdr`: the tone curves' HDR settings this frame
+    /// (`display::Output::curve`).
     #[allow(clippy::too_many_arguments)]
     pub fn write_uniform(
         &self,
@@ -63,6 +64,7 @@ impl PostPasses {
         tick: u64,
         width: u32,
         flare: Option<(&crate::LensFlare, f32)>,
+        hdr: [f32; 4],
     ) {
         let (exposure, compensation) = Self::exposure_rows(exposure);
         let lit_bloom = post.bloom.filter(|b| b.intensity > 0.0);
@@ -119,7 +121,7 @@ impl PostPasses {
             f.color.extend(f.amount.clamp(0.0, 1.0)).to_array()
         });
         let uniform = PostUniform {
-            hdr: self.hdr,
+            hdr,
             exposure,
             bloom,
             mode: [tonemap, 1.0, lit_feeds as u32 as f32, glow as u32 as f32],

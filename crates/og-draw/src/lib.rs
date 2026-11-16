@@ -9,9 +9,11 @@
 //! - The resource handles ([`TextureHandle`], [`FontHandle`], ...) a scene
 //!   gives what is added to it.
 //! - [`ColorFilter`]: the colour vision filter over the presented frame.
+//! - [`RangeLimit`]: how far over SDR white the presented frame may go.
 
 mod color_vision;
 mod handles;
+mod range_limit;
 mod sprites;
 pub mod ui;
 
@@ -19,6 +21,7 @@ pub use color_vision::{ColorFilter, ColorVision, ColorVisionFilter};
 pub use handles::*;
 /// The path model ([`UiPath`]'s `BezPath`) and its geometry.
 pub use kurbo;
+pub use range_limit::RangeLimit;
 pub use sprites::*;
 pub use ui::{
     UI_GRADIENT_STOPS, UI_MASS_KEYS, UI_MASS_QUADS, UI_MATERIAL_PARAMS, UI_QUAD_LAYER_MAX, UiAlign,

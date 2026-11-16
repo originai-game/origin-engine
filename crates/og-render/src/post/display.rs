@@ -146,8 +146,11 @@ pub(crate) fn display_headroom(info: &wgpu::DisplayHdrInfo) -> Option<f32> {
 pub(crate) const TRANSFER: &str = wgsl!("display_transfer.wgsl");
 
 pub(crate) struct Output {
-    /// The tone curves' HDR settings ([`curve`]).
+    /// The tone curves' HDR settings ([`curve`]) at the whole headroom.
     pub curve: [f32; 4],
+    space: Space,
+    /// The display's highlight multiplier ([`headroom`]).
+    headroom: f32,
     layout: wgpu::BindGroupLayout,
     pipeline: wgpu::RenderPipeline,
     sampler: wgpu::Sampler,
@@ -180,7 +183,7 @@ impl Output {
             &wgpu::util::BufferInitDescriptor {
                 label: Some("display output"),
                 contents: bytemuck::bytes_of(&[scale, f32::from(encode), headroom, f32::from(p3)]),
-                usage: wgpu::BufferUsages::UNIFORM,
+                usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
             },
         );
         let layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
@@ -207,6 +210,8 @@ impl Output {
             post::fullscreen_pipeline(device, "display output", &shader, "fs", &pl, format, None);
         Self {
             curve: curve(space, headroom),
+            space,
+            headroom,
             layout,
             pipeline,
             uniform,
@@ -214,13 +219,33 @@ impl Output {
         }
     }
 
+    /// The brightest the frame shows under `limit` (CSS
+    /// `dynamic-range-limit`), as a multiple of SDR white: the transfer
+    /// clamps there.
+    pub fn peak(&self, limit: og_draw::RangeLimit) -> f32 {
+        limit.peak(self.headroom)
+    }
+
+    /// The tone curves' HDR settings under `limit`: their shoulders end at
+    /// its [`Self::peak`], so a limited frame's highlights roll off below
+    /// it rather than clip at it.
+    pub fn curve(&self, limit: og_draw::RangeLimit) -> [f32; 4] {
+        if limit == og_draw::RangeLimit::default() {
+            return self.curve;
+        }
+        curve(self.space, self.peak(limit))
+    }
+
     pub fn encode(
         &self,
         device: &wgpu::Device,
+        queue: &wgpu::Queue,
         encoder: &mut crate::Encoder,
-        source: &wgpu::TextureView,
-        output: &wgpu::TextureView,
+        (source, output): (&wgpu::TextureView, &wgpu::TextureView),
+        limit: og_draw::RangeLimit,
     ) {
+        // The uniform's z: the headroom, or less under `limit`.
+        queue.write_buffer(&self.uniform, 8, bytemuck::bytes_of(&self.peak(limit)));
         let group = device.create_bind_group(&wgpu::BindGroupDescriptor {
             label: Some("display output"),
             layout: &self.layout,
@@ -382,5 +407,33 @@ mod tests {
         // No headroom: the SDR curves themselves.
         let [_, ka, kx, _] = curve(Space::ExtendedSrgbLinear, 1.0);
         assert!((ka - 1.0).abs() < 1e-5 && (kx - 1.0).abs() < 1e-5);
+    }
+    /// CSS `dynamic-range-limit` on an 8× scRGB display: the transfer's
+    /// clamp (the uniform's z, [`Output::peak`]) and the tone curves'
+    /// headroom (their x, [`Output::curve`]) are SDR white under
+    /// `standard`, one stop (2×) under `constrained`, the display's 8×
+    /// under `no-limit`, and 2^1.5 under an even mix of the two ends;
+    /// `standard`'s curves are the SDR ones.
+    #[test]
+    fn the_range_limit_ends_the_frame_at_its_peak() {
+        let limit = |standard, constrained, no_limit| og_draw::RangeLimit {
+            standard,
+            constrained,
+            no_limit,
+        };
+        for (l, want) in [
+            (limit(1.0, 0.0, 0.0), 1.0),
+            (limit(0.0, 1.0, 0.0), 2.0),
+            (limit(0.0, 0.0, 1.0), 8.0),
+            (limit(0.5, 0.0, 0.5), 2f32.powf(1.5)),
+        ] {
+            let peak = l.peak(8.0);
+            assert!((peak - want).abs() < 1e-4, "{l:?}: {peak}");
+            let [h, ka, kx, _] = curve(Space::ExtendedSrgbLinear, peak);
+            assert!((h - want).abs() < 1e-4, "{l:?}: curves end at {h}");
+            if want == 1.0 {
+                assert!((ka - 1.0).abs() < 1e-5 && (kx - 1.0).abs() < 1e-5);
+            }
+        }
     }
 }

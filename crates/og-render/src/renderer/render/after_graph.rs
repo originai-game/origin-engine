@@ -90,7 +90,9 @@ impl Pass for ViewportViewsPass {
                 cx.encoder,
                 p,
                 plan.scene.look.post.tonemap,
-                r.display.as_ref().map_or([0.0; 4], |d| d.curve),
+                r.display
+                    .as_ref()
+                    .map_or([0.0; 4], |d| d.curve(plan.scene.look.range_limit)),
                 dest,
                 plan.viewport_format,
                 false,
@@ -352,10 +354,20 @@ impl Pass for HdrOutputPass {
     type Frame = ();
     type PlanIn<'a> = ();
     type UploadIn<'a> = ();
-    /// The frame drawn (the offscreen target) and where it goes.
-    type BindIn<'f> = (&'f wgpu::TextureView, &'f wgpu::TextureView);
-    /// The frame drawn (the offscreen target) and the surface's view.
-    type Plan<'f> = (&'f wgpu::TextureView, &'f wgpu::TextureView);
+    /// The frame drawn (the offscreen target), where it goes and how
+    /// bright it may be (the scene's `range_limit`).
+    type BindIn<'f> = (
+        &'f wgpu::TextureView,
+        &'f wgpu::TextureView,
+        og_draw::RangeLimit,
+    );
+    /// The frame drawn (the offscreen target), the surface's view and the
+    /// limit.
+    type Plan<'f> = (
+        &'f wgpu::TextureView,
+        &'f wgpu::TextureView,
+        og_draw::RangeLimit,
+    );
 
     fn state(r: &Renderer) -> &Self::State {
         &r.display
@@ -367,12 +379,19 @@ impl Pass for HdrOutputPass {
 
     fn encode<'f>(
         st: &Self::State,
-        &(output, destination): &Self::Plan<'f>,
+        &(output, destination, limit): &Self::Plan<'f>,
         _: FramePass,
         cx: &mut EncodeCx<'_, 'f>,
     ) {
         let display = st.as_ref().expect("planned with it");
-        display.encode(&cx.ctx.r.device, cx.encoder, output, destination);
+        let r = cx.ctx.r;
+        display.encode(
+            &r.device,
+            &r.queue,
+            cx.encoder,
+            (output, destination),
+            limit,
+        );
         cx.stats.draw_calls += 1;
     }
 }

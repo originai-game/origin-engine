@@ -120,7 +120,7 @@ use media::atmosphere;
 use media::aurora;
 use media::clouds;
 use mesh::compact;
-pub use og_draw::{ColorFilter, ColorVision, ColorVisionFilter};
+pub use og_draw::{ColorFilter, ColorVision, ColorVisionFilter, RangeLimit};
 use og_render_data::custom;
 use post::color_vision;
 use shader::blue_noise;

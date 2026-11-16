@@ -24,6 +24,11 @@ pub struct SceneLook {
     pub color_filter: Option<crate::ColorFilter>,
     /// The fog of war over the lit image (`post/sight.rs`; `None`: none).
     pub fog_of_war: Option<crate::FogOfWar>,
+    /// How far over SDR white the presented frame may go (the UI's CSS
+    /// `dynamic-range-limit`): the display pass ends it there and the tone
+    /// curves roll off to it. Only an extended-range surface has room over
+    /// SDR white.
+    pub range_limit: og_draw::RangeLimit,
 }
 
 /// The overlay (its UI tree and canvases) and the UI's vector paths and
