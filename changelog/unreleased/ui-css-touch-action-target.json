@@ -1,0 +1,6 @@
+{
+  "simulation": "unchanged",
+  "fixed": [
+    {"member":"ui","summary":"CSS `touch-action` is read from the element a touch lands on (intersected with its ancestors), as Pointer Events 3 says, not from the scroll container the drag moves: `touch-action: pan-y` on a card inside a two-axis scroller now keeps its drag vertical. UI state is version 24 (version 23 upgrades with no touch in progress)."}
+  ]
+}

@@ -339,6 +339,10 @@ pub struct State {
     pub pinch: Option<crate::scroll::Pinch>,
     /// The drag's velocity so far, CSS px per tick.
     pub drag_v: Vec2,
+    /// The element a press on a coarse pointer landed on (0: none, or a
+    /// fine pointer's press): its used `touch-action` decides what the drag
+    /// pans (Pointer Events 3 §9).
+    pub touch_key: u64,
     /// A scrollbar the press grabbed.
     pub thumb: Option<crate::scroll::Thumb>,
     /// A resize handle the press grabbed (CSS `resize`), and the sizes
@@ -490,7 +494,7 @@ impl Default for Ui {
     }
 }
 
-const STATE_VERSION: u32 = 23;
+const STATE_VERSION: u32 = 24;
 
 /// `theme` with a viewport's preferences: the page's reduced motion turns
 /// its flag on, its contrast preference takes the high-contrast variant,

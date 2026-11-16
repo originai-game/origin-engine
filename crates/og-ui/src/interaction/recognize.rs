@@ -437,7 +437,7 @@ impl crate::ui::Tree {
             interaction.state.hot
         };
         let hovered = if interaction.state.active == 0 {
-            let Some(i) = self.cursor_node(order, paint, interaction) else {
+            let Some(i) = self.cursor_node(order, paint, interaction.state.pointer) else {
                 return (Cursor::Default, NONE);
             };
             // Keep a control's link, resize handle or native cursor when
@@ -523,15 +523,16 @@ impl crate::ui::Tree {
         (Cursor::Default, at)
     }
 
-    /// Cursor targeting includes plain boxes without giving them input hits.
-    fn cursor_node(
+    /// The topmost element under `p` in drawing `order`: cursor and
+    /// touch-action targeting include plain boxes without giving them
+    /// input hits.
+    pub(crate) fn cursor_node(
         &self,
         order: &[usize],
         paint: &crate::ui::Paint,
-        interaction: &crate::ui::Interaction,
+        p: Vec2,
     ) -> Option<usize> {
         use crate::element::{PointerEvents, SvgPointer};
-        let p = interaction.state.pointer;
         order.iter().rev().copied().find(|&i| {
             let n = &self.nodes[i];
             let pointer = self.orders.pointer_of[i];
