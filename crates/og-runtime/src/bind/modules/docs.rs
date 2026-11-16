@@ -153,19 +153,12 @@ fn read_document(eng: &Engine, id: &str) -> Result<UiDocument, String> {
                 .map_err(|e| e.to_string())?,
         )
     };
-    let doc = UiDocument::parse_with_imports(id, &text, imports).map_err(|e| e.join("\n"))?;
-    let doc = match configured_style(eng).and_then(|h| super::assets::index_of(h as f64)) {
-        Some(index) => eng
-            .assets
-            .borrow()
-            .styles
-            .get(index)
-            .ok_or("the configured style is not alive")?
-            .pack
-            .apply_document(&doc)
-            .map_err(|e| e.join("\n"))?,
-        None => doc,
-    };
+    // Its one parse, against the style the UI is configured with.
+    let ui = eng.state.borrow().ui.clone().ok_or("the world has no UI")?;
+    let doc = ui
+        .lock()
+        .parse_document(id, &text, imports)
+        .map_err(|e| e.join("\n"))?;
     let tables = doc
         .strings
         .iter()
@@ -426,21 +419,19 @@ fn load_uses(eng: &Engine, id: &str) -> Result<(), String> {
 /// `local()` source names no font the engine has), limited to its
 /// `unicode-range`.
 fn family_faces(eng: &Engine, doc: &UiDocument) -> Result<Vec<og_ui::FamilyFace>, String> {
-    // Pack faces have a pack owner so replacing a pack also removes its fonts.
-    let authored =
-        UiDocument::parse_with_imports(&doc.source, &doc.text, doc.sheet.imports.clone())
-            .map_err(|e| e.join("\n"))?;
-    sheet_faces(eng, &authored.sheet, &doc.source, &doc.name)
+    // Its own faces: a pack's have the pack for owner, so replacing the
+    // pack also removes its fonts.
+    sheet_faces(eng, doc.font_faces(), &doc.source, &doc.name)
 }
 
 pub(super) fn sheet_faces(
     eng: &Engine,
-    sheet: &og_ui::doc::at_rules::Sheet,
+    faces: &[og_ui::doc::at_rules::FontFace],
     source: &str,
     owner: &str,
 ) -> Result<Vec<og_ui::FamilyFace>, String> {
     let mut out = Vec::new();
-    for face in &sheet.font_faces {
+    for face in faces {
         let Some(src) = face
             .src
             .iter()
@@ -500,6 +491,20 @@ fn define(ui: &mut og_ui::Ui, doc: UiDocument, faces: Vec<og_ui::FamilyFace>) {
         ui.set_fonts(fonts);
     }
     ui.define_document(doc);
+}
+
+/// After `og.ui.configure` changed the style: every loaded document is
+/// read again, parsed once against the new style, and replaces its
+/// definition in place (the UI's state is kept, as for an edited
+/// document).
+pub(crate) fn restyle_loaded(eng: &Engine) -> Result<(), String> {
+    let ui = eng.state.borrow().ui.clone().ok_or("the world has no UI")?;
+    for l in with(eng.id, |d| d.loaded.clone()) {
+        let doc = read_document(eng, &l.id)?;
+        let faces = family_faces(eng, &doc)?;
+        define(&mut ui.lock(), doc, faces);
+    }
+    Ok(())
 }
 
 /// `og.load.document`.

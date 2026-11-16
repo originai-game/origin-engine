@@ -7,8 +7,8 @@ use super::*;
 pub(crate) struct Library {
     /// By name.
     pub(crate) documents: BTreeMap<String, Arc<UiDocument>>,
-    /// The style pack its documents are styled against
-    /// ([`Ui::style_documents`]); none is the default style.
+    /// The style pack its documents are parsed against
+    /// ([`Ui::parse_document`]); none is the default style.
     pub(crate) pack: Option<Arc<crate::style_pack::StylePack>>,
     /// CSS `@keyframes` of every defined document, as `<doc>/<name>`.
     pub(crate) keyframes: BTreeMap<String, Arc<crate::motion::css::Keyframes>>,

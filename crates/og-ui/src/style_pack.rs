@@ -81,17 +81,23 @@ impl StylePack {
         })
     }
 
-    /// Reparse a document against this pack, preserving its authored source.
-    pub fn apply_document(
+    /// Parses a document against this pack: [`crate::UiDocument::parse_with_imports`]
+    /// with the pack's rules for its elements placed with its own. A
+    /// document is parsed once, against the pack of the UI it is defined
+    /// in ([`crate::Ui::parse_document`] reads that pack).
+    pub fn parse_document(
         &self,
-        doc: &crate::UiDocument,
+        source: &str,
+        text: &str,
+        imports: Vec<(String, String)>,
     ) -> Result<crate::UiDocument, Vec<String>> {
-        crate::doc::svelte::parse_with_pack(
-            &doc.source,
-            &doc.text,
-            doc.sheet.imports.clone(),
-            Some(self),
-        )
+        crate::doc::svelte::parse_with_pack(source, text, imports, Some(self))
+    }
+
+    /// Whether `other` is this reading of the pack: a clone of it, not
+    /// another parse of the same files.
+    fn same(&self, other: &Self) -> bool {
+        std::sync::Arc::ptr_eq(&self.global, &other.global)
     }
 }
 
@@ -106,10 +112,17 @@ impl crate::Ui {
         self.interaction.state_mut().feedback_rng = seed ^ 0x9e37_79b9_7f4a_7c15;
     }
 
-    /// Replace the active pack without retaining a previous pack's rules.
-    /// Game document styles remain in their own scopes and higher layers.
+    /// Sets the style pack: its tokens, its `::part()` rules, its fonts
+    /// and its name, in place of the pack before it.
+    ///
+    /// A document carries the rules of the pack it was parsed against
+    /// ([`Ui::parse_document`]) and is never read again, so the pack is
+    /// set before the UI's documents are parsed and defined. A host that
+    /// replaces the pack under loaded documents (a style edited under
+    /// `og dev`) parses and defines them again; [`Ui::styled_by`] tells it
+    /// when.
     pub fn set_style_pack(&mut self, pack: &StylePack) -> Result<(), String> {
-        self.style_documents(Some(pack))?;
+        self.docs.library.pack = Some(std::sync::Arc::new(pack.clone()));
         self.style.part_rules_mut().clone_from(&pack.rules);
         self.style.part_sheet_mut().clone_from(&pack.sheet);
         self.style.root_inputs_changed();
@@ -122,27 +135,38 @@ impl crate::Ui {
         Ok(())
     }
 
-    /// Rebuild authored document rules when a pack changes or is cleared.
-    pub fn style_documents(&mut self, pack: Option<&StylePack>) -> Result<(), String> {
-        let docs = self
-            .documents()
-            .iter()
-            .filter_map(|name| self.document(name))
-            .map(|doc| {
-                crate::doc::svelte::parse_with_pack(
-                    &doc.source,
-                    &doc.text,
-                    doc.sheet.imports.clone(),
-                    pack,
-                )
-                .map_err(|e| e.join("\n"))
-            })
-            .collect::<Result<Vec<_>, _>>()?;
-        // A document defined from now on is styled against it too.
-        self.docs.library.pack = pack.cloned().map(std::sync::Arc::new);
-        for doc in docs {
-            self.define_document(doc);
+    /// Forgets the style pack: a document parsed from now on
+    /// ([`Ui::parse_document`]) takes the default style's rules. The part
+    /// stylesheet is the caller's to replace ([`Ui::set_part_css`]).
+    pub fn clear_style_pack(&mut self) {
+        self.docs.library.pack = None;
+    }
+
+    /// Whether `pack` is the one in effect (none: the default style), so
+    /// the UI's documents were parsed against it.
+    pub fn styled_by(&self, pack: Option<&StylePack>) -> bool {
+        match (&self.docs.library.pack, pack) {
+            (None, None) => true,
+            (Some(mine), Some(pack)) => mine.same(pack),
+            _ => false,
         }
-        Ok(())
+    }
+
+    /// Parses a document against the style pack in effect, or the default
+    /// style without one: the one reading of its text. Give the
+    /// stylesheets its `@import`s name as for
+    /// [`crate::UiDocument::parse_with_imports`].
+    pub fn parse_document(
+        &self,
+        source: &str,
+        text: &str,
+        imports: Vec<(String, String)>,
+    ) -> Result<crate::UiDocument, Vec<String>> {
+        crate::doc::svelte::parse_with_pack(
+            source,
+            text,
+            imports,
+            self.docs.library.pack.as_deref(),
+        )
     }
 }

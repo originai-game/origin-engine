@@ -17,12 +17,21 @@ pub(super) fn parse(
     parse_with_pack(source, text, imports, None)
 }
 
+thread_local! {
+    /// How many documents this thread has parsed ([`UiDocument::parses`]).
+    static PARSES: std::cell::Cell<u64> = const { std::cell::Cell::new(0) };
+}
+
+/// Parses a document against `pack`, or the default style: the pack's
+/// rules for its elements are placed with its own, so the document a UI
+/// is given is styled already and is never read again.
 pub(crate) fn parse_with_pack(
     source: &str,
     text: &str,
     mut imports: Vec<(String, String)>,
     pack: Option<&crate::style_pack::StylePack>,
 ) -> Result<UiDocument, Vec<String>> {
+    PARSES.set(PARSES.get() + 1);
     if let Some(pack) = pack {
         for (id, css) in &pack.sheet.imports {
             imports.retain(|(old, _)| old != id);
@@ -51,10 +60,10 @@ pub(crate) fn parse_with_pack(
                 },
                 part_rules: Vec::new(),
                 slotted_rules: Vec::new(),
+                style_faces: 0,
                 nodes: Vec::new(),
                 root: NONE,
                 warnings: Vec::new(),
-                styled: 0,
                 embedded_sizing: false,
             },
             ids: BTreeSet::new(),
@@ -146,7 +155,6 @@ pub(crate) fn parse_with_pack(
         // Without a pack the default style still dresses the role parts.
         let global = pack.map_or(&*super::stylesheet::DEFAULT_GLOBAL, |p| &*p.global);
         super::stylesheet::apply(&mut p.doc, &p.selectors, &p.styles, global)?;
-        p.doc.styled = global.id();
         // Inline declarations come last: they win over every rule but an
         // `!important` one, which an `|important` one wins over in turn.
         for (i, declarations) in std::mem::take(&mut p.inline_styles) {
@@ -787,6 +795,13 @@ impl UiDocument {
         super::svelte::parse(source, text, Vec::new())
     }
 
+    /// How many documents the calling thread has parsed: every reading of
+    /// a document's text counts once, whatever style it is read against.
+    /// A document is parsed once, and a test holds a load to that.
+    pub fn parses() -> u64 {
+        PARSES.get()
+    }
+
     /// [`UiDocument::parse`] with the stylesheets its `@import`s name, by
     /// the path written ([`UiDocument::imports`] lists them).
     pub fn parse_with_imports(
@@ -802,10 +817,28 @@ impl UiDocument {
     /// Saves a probe edit as an authored attribute, text or scoped CSS rule.
     /// Unrelated source is preserved; an invalid edit leaves the document unchanged.
     pub fn set_prop(&mut self, node: usize, prop: &str, value: &str) -> Result<(), String> {
-        let text = super::writeback::edit(self, node, prop, value)?;
-        let doc = UiDocument::parse(&self.source, &text).map_err(|e| e.join("; "))?;
-        *self = doc;
+        *self = self.edited(node, prop, value, None)?;
         Ok(())
+    }
+
+    /// The document with a probe edit saved ([`UiDocument::set_prop`]),
+    /// parsed against `pack`.
+    pub(crate) fn edited(
+        &self,
+        node: usize,
+        prop: &str,
+        value: &str,
+        pack: Option<&crate::style_pack::StylePack>,
+    ) -> Result<UiDocument, String> {
+        let text = super::writeback::edit(self, node, prop, value)?;
+        parse_with_pack(&self.source, &text, Vec::new(), pack).map_err(|e| e.join("; "))
+    }
+
+    /// The faces its own `@font-face` rules declare. `sheet.font_faces`
+    /// begins with those of the style pack it was parsed against, which
+    /// are the pack's to load.
+    pub fn font_faces(&self) -> &[at_rules::FontFace] {
+        &self.sheet.font_faces[self.style_faces..]
     }
 }
 

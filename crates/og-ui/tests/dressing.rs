@@ -12,7 +12,10 @@ use serde_json::{Value, json};
 fn mounted(ui: Ui, body: &str, stores: &[(&str, Value)], vp: Viewport) -> Doc {
     let mut ui = ui;
     let text = format!("<meta name=\"component\" content=\"t\">\n{body}");
-    ui.define_document(UiDocument::parse("ui/t.svelte", &text).unwrap_or_else(|e| panic!("{e:?}")));
+    let doc = ui
+        .parse_document("ui/t.svelte", &text, Vec::new())
+        .unwrap_or_else(|e| panic!("{e:?}"));
+    ui.define_document(doc);
     mount_stores(&mut ui, reactive::SourceId::new("test", "t"), "t", stores);
     let mut d = Doc {
         ui,
@@ -1795,7 +1798,11 @@ fn a_part_rule_reads_its_hosts_place_in_the_document() {
     )
     .unwrap();
     for with_pack in [false, true] {
-        let ui = ui_with_font(test_font());
+        let mut ui = ui_with_font(test_font());
+        // The pack first: the document is parsed against it.
+        if with_pack {
+            ui.set_style_pack(&pack).unwrap();
+        }
         let own = if with_pack {
             String::new()
         } else {
@@ -1809,9 +1816,6 @@ fn a_part_rule_reads_its_hosts_place_in_the_document() {
             &[("on", json!(true))],
             Viewport::new(400.0, 600.0),
         );
-        if with_pack {
-            d.ui.set_style_pack(&pack).unwrap();
-        }
         for _ in 0..3 {
             d.step(InputFrame::default());
         }

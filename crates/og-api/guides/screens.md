@@ -116,6 +116,10 @@ if (!style.ok) throw new Error(style.reason);
 og.ui.configure(engine, { style: style.value });
 ```
 
+Select the style before loading documents: a document is read once,
+against the style in effect. Changing the style later reads every loaded
+document again.
+
 Every literal value (colours, lengths, durations, art and sound URLs)
 goes in a `:root` rule as a token; every other rule reads tokens with
 `var()`. Set the engine's own tokens (`--primary`, `--radius-md`,

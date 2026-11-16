@@ -660,9 +660,9 @@ pub struct UiDocument {
     pub root: usize,
     /// Author diagnostics that publish promotes to errors.
     pub warnings: Vec<String>,
-    /// The global sheet whose rules its elements carry, by its id: the
-    /// default style's, or the pack's it was parsed against.
-    pub(crate) styled: u64,
+    /// How many of `sheet.font_faces` the style it was parsed against
+    /// declared; the rest are its own ([`UiDocument::font_faces`]).
+    pub(crate) style_faces: usize,
     /// `<meta name="responsive-embedded-sizing">`: shown in an `<iframe>`
     /// with `frame-sizing: content-…`, its laid-out content size becomes
     /// the frame's natural size (CSS Sizing 4); without it the frame keeps

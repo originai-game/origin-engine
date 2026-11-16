@@ -298,6 +298,12 @@ pub fn og_ui_configure(world: u32, desc: Option<String>) -> Result<(), String> {
         ui.set_fonts(fonts);
         ui.set_icons(atlas);
         ui.set_images(images);
+        // A document carries the rules of the style it was parsed against.
+        // A game configures its style before it loads documents, so none
+        // is read twice; when this call changes the style under loaded
+        // documents (a style edited under `og dev`), they are read again
+        // below.
+        let restyle = !ui.styled_by(style.as_ref().map(|(pack, ..)| pack));
         if let Some((pack, _, textures, sounds)) = &style {
             ui.set_style_pack(pack)?;
             ui.set_css_sounds(sounds.clone());
@@ -305,7 +311,7 @@ pub fn og_ui_configure(world: u32, desc: Option<String>) -> Result<(), String> {
                 ui.define_texture(path, *texture);
             }
         } else {
-            ui.style_documents(None)?;
+            ui.clear_style_pack();
             ui.set_part_css(og_ui::DEFAULT_CSS)?;
             ui.set_css_sounds(Default::default());
             ui.set_style_name("");
@@ -324,6 +330,10 @@ pub fn og_ui_configure(world: u32, desc: Option<String>) -> Result<(), String> {
                 st.log
                     .push(json!({ "tick": tick, "warning": true, "text": text }));
             }
+        }
+        drop(st);
+        if restyle {
+            docs::restyle_loaded(&eng)?;
         }
         Ok(())
     })();
@@ -382,7 +392,7 @@ pub(super) fn read_style(eng: &Engine, id: &str) -> Result<LoadedStyle, String> 
     };
     let files = serde_json::from_str(&text).map_err(|e| format!("{id}: CSS pack sources: {e}"))?;
     let pack = og_ui::style_pack::StylePack::parse(id, files)?;
-    let faces = docs::sheet_faces(eng, &pack.sheet, id, &format!("@pack:{id}"))?;
+    let faces = docs::sheet_faces(eng, &pack.sheet.font_faces, id, &format!("@pack:{id}"))?;
     let texture = |p: &str| -> Result<og_render::TextureHandle, String> {
         let i = super::assets::load_texture(eng, p)?;
         eng.render

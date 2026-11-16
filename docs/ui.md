@@ -2014,6 +2014,17 @@ the file containing them; a leading slash names an asset-root path
 (`/@styles/shared/`, `/@styles/cjk/`). Pack CSS reaches authored document
 elements and exposed `::part()`s.
 
+A document is parsed once, against the style in effect: the pack's rules
+for its elements are placed with its own as its text is read
+(`Ui::parse_document`), and defining it, a build or another
+`og.ui.configure` reads nothing again (`UiDocument::parses` counts the
+readings). A pack's tokens and its plain `::part()` rules are the UI's
+and follow the pack at once. So a game selects its style before it loads
+its documents. When `og.ui.configure` changes the style under loaded
+documents, as a style edited under `og dev` does, the runtime reads each
+loaded document again, once. The cook does not style documents: a cooked
+document is its text, and a parsed document has no cooked form.
+
 Built-in styles live in `templates/styles/<name>` and ship in the engine
 package's `styles/<name>`, loaded as `@styles/<name>`
 (`og.load.style(world, "@styles/scifi")`, or a look's `ui "scifi"`); the

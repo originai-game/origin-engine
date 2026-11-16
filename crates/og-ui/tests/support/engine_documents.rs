@@ -145,7 +145,14 @@ pub fn preview(
     height: f32,
 ) -> Vec<String> {
     for d in all {
-        ui.define_document(d.doc.clone());
+        // Under a pack each is parsed against it, as a host loads it.
+        let doc = if ui.styled_by(None) {
+            d.doc.clone()
+        } else {
+            ui.parse_document(&d.doc.source, &d.doc.text, Vec::new())
+                .unwrap_or_else(|e| panic!("{}: {}", d.doc.source, e.join("\n")))
+        };
+        ui.define_document(doc);
     }
     ui.set_world_view(Some(view(width, height)));
     ui.mount_with_values(

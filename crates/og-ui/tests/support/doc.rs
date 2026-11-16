@@ -38,7 +38,8 @@ impl Doc {
     ) -> Doc {
         let mut ui = ui_with_font(test_font_metrics());
         for (i, component) in components.iter().enumerate() {
-            let doc = UiDocument::parse(&format!("ui/c{i}.svelte"), component)
+            let doc = ui
+                .parse_document(&format!("ui/c{i}.svelte"), component, Vec::new())
                 .unwrap_or_else(|e| panic!("{e:?}"));
             ui.define_document(doc);
         }
@@ -48,7 +49,10 @@ impl Doc {
     /// [`Doc::new`] in `ui`, which may hold other documents (those it
     /// embeds).
     pub(crate) fn mounted(mut ui: Ui, text: &str, stores: &[(&str, Value)]) -> Doc {
-        let doc = UiDocument::parse("ui/t.svelte", text).unwrap_or_else(|e| panic!("{e:?}"));
+        // Against the pack `ui` was given, as a host parses a document.
+        let doc = ui
+            .parse_document("ui/t.svelte", text, Vec::new())
+            .unwrap_or_else(|e| panic!("{e:?}"));
         let name = doc.name.clone();
         ui.define_document(doc);
         let mut d = Doc {
@@ -79,7 +83,10 @@ impl Doc {
     /// CSS), with no stores: the first step builds under that setup.
     pub(crate) fn with_ui(ui: Ui, text: &str) -> Doc {
         let mut ui = ui;
-        let doc = UiDocument::parse("ui/t.svelte", text).unwrap_or_else(|e| panic!("{e:?}"));
+        // Against the pack `ui` was given, as a host parses a document.
+        let doc = ui
+            .parse_document("ui/t.svelte", text, Vec::new())
+            .unwrap_or_else(|e| panic!("{e:?}"));
         let name = doc.name.clone();
         ui.define_document(doc);
         ui.mount_document(

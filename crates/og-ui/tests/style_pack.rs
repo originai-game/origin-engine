@@ -3,24 +3,12 @@ use og_ui::{Ui, UiDesc, dress::PartRef, style_pack::StylePack};
 #[test]
 fn pack_selectors_cross_components_but_document_selectors_stay_local() {
     use og_ui::{
-        UiDocument, Viewport,
+        Viewport,
         bind::NoEnv,
         reactive::{SourceId, wire},
     };
     use serde_json::json;
     let mut ui = Ui::new(UiDesc::default());
-    for (path, text) in [
-        (
-            "@ui/test/child.svelte",
-            r#"<meta name="component" content="Child"><div><div id="Target"></div></div><style>#Target { width: 21px; height: 20px; }</style>"#,
-        ),
-        (
-            "@ui/test/parent.svelte",
-            r#"<meta name="component" content="Parent"><div class:active={$on}><Child/></div><style>.active #Target { height: 99px; }</style>"#,
-        ),
-    ] {
-        ui.define_document(UiDocument::parse(path, text).unwrap());
-    }
     ui.set_style_pack(
         &StylePack::parse(
             "styles/test",
@@ -32,6 +20,19 @@ fn pack_selectors_cross_components_but_document_selectors_stay_local() {
         .unwrap(),
     )
     .unwrap();
+    for (path, text) in [
+        (
+            "@ui/test/child.svelte",
+            r#"<meta name="component" content="Child"><div><div id="Target"></div></div><style>#Target { width: 21px; height: 20px; }</style>"#,
+        ),
+        (
+            "@ui/test/parent.svelte",
+            r#"<meta name="component" content="Parent"><div class:active={$on}><Child/></div><style>.active #Target { height: 99px; }</style>"#,
+        ),
+    ] {
+        let doc = ui.parse_document(path, text, Vec::new()).unwrap();
+        ui.define_document(doc);
+    }
     let source = SourceId::new("test", "on");
     let apply = |ui: &mut Ui, command| {
         let reply =
@@ -70,7 +71,7 @@ fn pack_selectors_cross_components_but_document_selectors_stay_local() {
 
 #[test]
 fn pack_document_rules_respect_kit_game_layers_media_and_replacement() {
-    use og_ui::{UiDocument, Viewport, bind::NoEnv, reactive::SourceId};
+    use og_ui::{Viewport, bind::NoEnv, reactive::SourceId};
     let pack = StylePack::parse(
         "styles/test",
         vec![(
@@ -101,18 +102,24 @@ fn pack_document_rules_respect_kit_game_layers_media_and_replacement() {
         let text = format!(
             r#"<meta name="screen" content="test"><div id="Box"></div><style>{local}</style>"#
         );
-        let doc = UiDocument::parse(source, &text).unwrap();
-        let mut ui = Ui::new(UiDesc::default());
-        ui.define_document(doc);
-        ui.set_style_pack(&pack).unwrap();
-        ui.mount_document(
-            SourceId::new("test", "test"),
-            "test",
-            Default::default(),
-            Default::default(),
-            &NoEnv,
-        )
-        .unwrap();
+        let shown = |pack: Option<&StylePack>| {
+            let mut ui = Ui::new(UiDesc::default());
+            if let Some(pack) = pack {
+                ui.set_style_pack(pack).unwrap();
+            }
+            let doc = ui.parse_document(source, &text, Vec::new()).unwrap();
+            ui.define_document(doc);
+            ui.mount_document(
+                SourceId::new("test", "test"),
+                "test",
+                Default::default(),
+                Default::default(),
+                &NoEnv,
+            )
+            .unwrap();
+            ui
+        };
+        let mut ui = shown(Some(&pack));
         let width = |ui: &mut Ui, w| {
             ui.begin(Default::default(), Viewport::new(w, 400.0));
             ui.build_retained_documents(&NoEnv).unwrap();
@@ -130,8 +137,8 @@ fn pack_document_rules_respect_kit_game_layers_media_and_replacement() {
             theme.reduced_motion = true;
             ui.set_theme(theme);
             assert_eq!(width(&mut ui, 300.0), 39.0);
-            ui.style_documents(None).unwrap();
-            assert_eq!(width(&mut ui, 600.0), 91.0);
+            // Without the pack its own layer stands.
+            assert_eq!(width(&mut shown(None), 600.0), 91.0);
         }
     }
 }
@@ -332,7 +339,8 @@ fn documents_share_a_pack_s_rules_and_keep_their_own() {
         )],
     )
     .unwrap();
-    let first = UiDocument::parse(
+    let parse = |source: &str, text: &str| pack.parse_document(source, text, Vec::new()).unwrap();
+    let first = parse(
         "ui/first.svelte",
         r#"<meta name="component" content="First"><div id="A" class="card"></div>
 <style>
@@ -341,16 +349,10 @@ fn documents_share_a_pack_s_rules_and_keep_their_own() {
 @keyframes drift { to { opacity: 0.25; } }
 .card { width: 61px; }
 </style>"#,
-    )
-    .unwrap();
-    let second = UiDocument::parse(
+    );
+    let second = parse(
         "ui/second.svelte",
         r#"<meta name="component" content="Second"><div id="B" class="card"></div>"#,
-    )
-    .unwrap();
-    let (first, second) = (
-        pack.apply_document(&first).unwrap(),
-        pack.apply_document(&second).unwrap(),
     );
     let keyframes = |doc: &UiDocument| -> Vec<String> {
         let mut names: Vec<String> = doc.sheet.keyframes.iter().map(|(k, _)| k.clone()).collect();
@@ -404,20 +406,21 @@ fn documents_share_a_pack_s_rules_and_keep_their_own() {
 /// so the pack's inline padding (`--button-pad-inline`) beats the button's.
 #[test]
 fn a_buttons_own_padding_is_above_a_packs_part_rules() {
-    use og_ui::{UiDocument, Viewport, bind::NoEnv, reactive::SourceId};
+    use og_ui::{Viewport, bind::NoEnv, reactive::SourceId};
     let face = |pack: Option<&StylePack>| {
         let mut ui = Ui::new(UiDesc::default());
-        ui.define_document(
-            UiDocument::parse(
-                "ui/plate.svelte",
-                r#"<meta name="component" content="Plate"><div id="Root"><button id="B"><div id="Face"></div></button></div>
-<style>#Root { width: 200px; } #B { width: stretch; padding: 2px; } #Face { width: stretch; height: 10px; }</style>"#,
-            )
-            .unwrap(),
-        );
         if let Some(pack) = pack {
             ui.set_style_pack(pack).unwrap();
         }
+        let doc = ui
+            .parse_document(
+                "ui/plate.svelte",
+                r#"<meta name="component" content="Plate"><div id="Root"><button id="B"><div id="Face"></div></button></div>
+<style>#Root { width: 200px; } #B { width: stretch; padding: 2px; } #Face { width: stretch; height: 10px; }</style>"#,
+                Vec::new(),
+            )
+            .unwrap();
+        ui.define_document(doc);
         ui.mount_document(
             SourceId::new("test", "plate"),
             "Plate",
@@ -459,26 +462,27 @@ fn a_buttons_own_padding_is_above_a_packs_part_rules() {
 /// a game's, above the pack.
 #[test]
 fn a_rule_ranks_by_its_tree_context_then_its_layer() {
-    use og_ui::{UiDocument, Viewport, bind::NoEnv, reactive::SourceId};
+    use og_ui::{Viewport, bind::NoEnv, reactive::SourceId};
     // The face inside a 200px button, so 200 less twice the padding won.
     let face = |source: &str, css: &str, pack: &str| {
         let mut ui = Ui::new(UiDesc::default());
-        ui.define_document(
-            UiDocument::parse(
-                source,
-                &format!(
-                    r#"<meta name="component" content="Plate"><div id="Root"><button id="B"><div id="Face"></div></button></div>
-<style>#Root {{ width: 200px; }} #B {{ width: stretch; }} #Face {{ width: stretch; height: 10px; }} {css}</style>"#
-                ),
-            )
-            .unwrap(),
-        );
         let pack = StylePack::parse(
             "styles/test",
             vec![("styles/test/main.css".into(), pack.into())],
         )
         .unwrap();
         ui.set_style_pack(&pack).unwrap();
+        let doc = ui
+            .parse_document(
+                source,
+                &format!(
+                    r#"<meta name="component" content="Plate"><div id="Root"><button id="B"><div id="Face"></div></button></div>
+<style>#Root {{ width: 200px; }} #B {{ width: stretch; }} #Face {{ width: stretch; height: 10px; }} {css}</style>"#
+                ),
+                Vec::new(),
+            )
+            .unwrap();
+        ui.define_document(doc);
         ui.mount_document(
             SourceId::new("test", "plate"),
             "Plate",
@@ -576,15 +580,9 @@ fn a_rule_ranks_by_its_tree_context_then_its_layer() {
 /// token.
 #[test]
 fn a_pack_restyles_role_parts_through_role_tokens_alone() {
-    use og_ui::{UiDocument, Viewport, bind::NoEnv, reactive::SourceId};
+    use og_ui::{Viewport, bind::NoEnv, reactive::SourceId};
     let inner = |pack: Option<&str>| {
-        let doc = UiDocument::parse(
-            "@ui/test/main.svelte",
-            r#"<meta name="component" content="Shop"><meta name="parts" content="Shop.frame"><section id="Box" part="Shop.frame"><div id="In"></div></section><style>[part="Shop.frame"] { display: flex; width: 300px; } #In { width: stretch; height: 10px; }</style>"#,
-        )
-        .unwrap();
         let mut ui = Ui::new(UiDesc::default());
-        ui.define_document(doc);
         if let Some(css) = pack {
             let pack = StylePack::parse(
                 "styles/test",
@@ -593,6 +591,13 @@ fn a_pack_restyles_role_parts_through_role_tokens_alone() {
             .unwrap();
             ui.set_style_pack(&pack).unwrap();
         }
+        let doc = ui.parse_document(
+            "@ui/test/main.svelte",
+            r#"<meta name="component" content="Shop"><meta name="parts" content="Shop.frame"><section id="Box" part="Shop.frame"><div id="In"></div></section><style>[part="Shop.frame"] { display: flex; width: 300px; } #In { width: stretch; height: 10px; }</style>"#,
+            Vec::new(),
+        )
+        .unwrap();
+        ui.define_document(doc);
         ui.mount_document(
             SourceId::new("test", "test"),
             "Shop",
@@ -629,7 +634,7 @@ fn a_pack_restyles_role_parts_through_role_tokens_alone() {
 
 #[test]
 fn a_packs_light_block_applies_under_the_light_scheme() {
-    use og_ui::{Scheme, Theme, UiDocument, Viewport, bind::NoEnv, reactive::SourceId};
+    use og_ui::{Scheme, Theme, Viewport, bind::NoEnv, reactive::SourceId};
     let pack = StylePack::parse(
         "styles/test",
         vec![(
@@ -640,14 +645,16 @@ fn a_packs_light_block_applies_under_the_light_scheme() {
     )
     .unwrap();
     for source in ["@ui/test/main.svelte", "ui/game.svelte"] {
-        let doc = UiDocument::parse(
-            source,
-            r#"<meta name="screen" content="test"><div><div id="Box"></div></div>"#,
-        )
-        .unwrap();
         let mut ui = Ui::new(UiDesc::default());
-        ui.define_document(doc);
         ui.set_style_pack(&pack).unwrap();
+        let doc = ui
+            .parse_document(
+                source,
+                r#"<meta name="screen" content="test"><div><div id="Box"></div></div>"#,
+                Vec::new(),
+            )
+            .unwrap();
+        ui.define_document(doc);
         ui.mount_document(
             SourceId::new("test", "test"),
             "test",
@@ -678,7 +685,7 @@ fn a_packs_light_block_applies_under_the_light_scheme() {
 
 #[test]
 fn a_headings_flourish_part_draws_its_css_box_beside_the_line() {
-    use og_ui::{DrawCmd, UiDocument, Viewport, bind::NoEnv, reactive::SourceId};
+    use og_ui::{DrawCmd, Viewport, bind::NoEnv, reactive::SourceId};
     let pack = StylePack::parse(
         "styles/test",
         vec![(
@@ -687,14 +694,16 @@ fn a_headings_flourish_part_draws_its_css_box_beside_the_line() {
         )],
     )
     .unwrap();
-    let doc = UiDocument::parse(
-        "ui/game.svelte",
-        r#"<meta name="screen" content="test"><div><h1>Title</h1><p>body</p></div>"#,
-    )
-    .unwrap();
     let mut ui = crate::support::ui_with_font(crate::support::test_font());
-    ui.define_document(doc);
     ui.set_style_pack(&pack).unwrap();
+    let doc = ui
+        .parse_document(
+            "ui/game.svelte",
+            r#"<meta name="screen" content="test"><div><h1>Title</h1><p>body</p></div>"#,
+            Vec::new(),
+        )
+        .unwrap();
+    ui.define_document(doc);
     ui.mount_document(
         SourceId::new("test", "test"),
         "test",
@@ -745,7 +754,7 @@ fn a_headings_flourish_part_draws_its_css_box_beside_the_line() {
 /// game's seeds (UiDesc.seeds) win over the pack's.
 #[test]
 fn pack_seeds_reach_the_derived_palette() {
-    use og_ui::{Scheme, Srgba, Theme, UiDocument, Viewport, bind::NoEnv, reactive::SourceId};
+    use og_ui::{Scheme, Srgba, Theme, Viewport, bind::NoEnv, reactive::SourceId};
     let pack = StylePack::parse(
         "styles/test",
         vec![(
@@ -769,14 +778,15 @@ fn pack_seeds_reach_the_derived_palette() {
             theme,
             ..Default::default()
         });
-        ui.define_document(
-            UiDocument::parse(
+        ui.set_style_pack(&pack).unwrap();
+        let doc = ui
+            .parse_document(
                 "ui/game.svelte",
                 r#"<meta name="screen" content="test"><div id="Box"></div><style>#Box { width: 23px; height: 23px; background: var(--primary); }</style>"#,
+                Vec::new(),
             )
-            .unwrap(),
-        );
-        ui.set_style_pack(&pack).unwrap();
+            .unwrap();
+        ui.define_document(doc);
         ui.mount_document(
             SourceId::new("test", "test"),
             "test",
@@ -813,31 +823,37 @@ fn pack_seeds_reach_the_derived_palette() {
     }
 }
 
-/// A document takes the active pack's element rules whenever it is
-/// defined: before the pack is set, after it, or after the pack is
-/// cleared again. A document bundled on use is defined after the pack.
+/// A document is parsed once, against the style pack of the UI it is
+/// defined in, and nothing reads its text again: not defining it, not
+/// setting the pack in effect once more (every `og.ui.configure` call of a
+/// game does), not a build. The UI takes a document as it was parsed.
 ///
-/// Ways it could fail: a document defined after `set_style_pack` keeping
-/// only the default style's rules, one defined after the pack is cleared
-/// keeping the pack's, or a document already styled against the active
-/// pack being styled twice (its rules doubled).
+/// Ways it could fail: `define_document` reading a document again; a
+/// repeated `set_style_pack` restyling the UI's documents;
+/// `Ui::parse_document` reading the default style under a pack, or the
+/// pack after it is cleared; a clone of the pack taken for another pack,
+/// or another reading of its files for the same.
 #[test]
-fn a_document_takes_the_active_packs_rules_whenever_it_is_defined() {
-    use og_ui::{UiDocument, Viewport, bind::NoEnv, reactive::SourceId};
-    let pack = StylePack::parse(
-        "styles/test",
+fn a_document_is_parsed_once_against_the_uis_pack() {
+    use og_ui::{Theme, UiDocument, Viewport, bind::NoEnv, reactive::SourceId};
+    let files = || {
         vec![(
-            "styles/test/main.css".into(),
-            "div.box { width: 73px; }".into(),
-        )],
-    )
-    .unwrap();
+            "styles/test/main.css".to_string(),
+            "div.box { width: 73px; }".to_string(),
+        )]
+    };
+    let pack = StylePack::parse("styles/test", files()).unwrap();
     let text = |name: &str| {
         format!(
             "<meta name=\"component\" content=\"{name}\"><div id=\"Box\" class=\"box\"></div><style>#Box {{ height: 20px; }}</style>"
         )
     };
-    let parse = |name: &str| UiDocument::parse(&format!("ui/{name}.svelte"), &text(name)).unwrap();
+    let define = |ui: &mut Ui, name: &str| {
+        let doc = ui
+            .parse_document(&format!("ui/{name}.svelte"), &text(name), Vec::new())
+            .unwrap();
+        ui.define_document(doc);
+    };
     let width = |ui: &mut Ui, name: &str| {
         let mount = SourceId::new("test", name);
         // Mounted once; a later reading builds the same mount again.
@@ -853,21 +869,38 @@ fn a_document_takes_the_active_packs_rules_whenever_it_is_defined() {
         found.width
     };
     let mut ui = Ui::new(UiDesc::default());
-    ui.define_document(parse("Early"));
+    assert!(ui.styled_by(None));
     ui.set_style_pack(&pack).unwrap();
-    ui.define_document(parse("Late"));
-    assert_eq!(width(&mut ui, "Early"), 73.0, "defined before the pack");
-    assert_eq!(width(&mut ui, "Late"), 73.0, "defined after the pack");
-    // Styled against the pack beforehand: defined as it is.
-    let styled = pack.apply_document(&parse("Styled")).unwrap();
-    let rules = styled.nodes[styled.root].rules.len();
-    ui.define_document(styled);
-    assert_eq!(ui.document("Styled").unwrap().nodes[0].rules.len(), rules);
-    assert_eq!(width(&mut ui, "Styled"), 73.0);
-    // The pack cleared: a document that carries its rules sheds them.
-    ui.style_documents(None).unwrap();
-    ui.define_document(pack.apply_document(&parse("After")).unwrap());
-    let plain = width(&mut ui, "After");
-    assert_ne!(plain, 73.0, "defined after the pack was cleared");
-    assert_eq!(width(&mut ui, "Late"), plain);
+    assert!(ui.styled_by(Some(&pack)) && !ui.styled_by(None));
+    let names = ["A", "B", "C", "D", "E"];
+    let before = UiDocument::parses();
+    for name in names {
+        define(&mut ui, name);
+    }
+    assert_eq!(UiDocument::parses() - before, 5, "one parse a document");
+    for name in names {
+        assert_eq!(width(&mut ui, name), 73.0, "{name} has the pack's rule");
+    }
+    // The pack in effect set again, a clone as a host holds it, and
+    // another theme: the documents stand as they are.
+    ui.set_style_pack(&pack.clone()).unwrap();
+    ui.set_theme(Theme::light());
+    for name in names {
+        assert_eq!(width(&mut ui, name), 73.0);
+    }
+    assert_eq!(UiDocument::parses() - before, 5, "nothing is read again");
+    // Another reading of the same files is another pack.
+    assert!(!ui.styled_by(Some(&StylePack::parse("styles/test", files()).unwrap())));
+    // A document parsed with no pack is taken as it is too.
+    ui.define_document(UiDocument::parse("ui/Plain.svelte", &text("Plain")).unwrap());
+    let plain = width(&mut ui, "Plain");
+    assert_ne!(plain, 73.0, "it carries the default style's rules only");
+    // The pack cleared: a document parsed from now on has no rule of it,
+    // and those defined keep theirs.
+    ui.clear_style_pack();
+    assert!(ui.styled_by(None));
+    define(&mut ui, "After");
+    assert_eq!(width(&mut ui, "After"), plain);
+    assert_eq!(width(&mut ui, "A"), 73.0);
+    assert_eq!(UiDocument::parses() - before, 7);
 }

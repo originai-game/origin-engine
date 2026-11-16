@@ -4,29 +4,10 @@ use crate::reactive::{SourceId, session};
 
 impl Ui {
     /// Registers a document (its timelines as `<name>/<timeline>`); one of
-    /// the same name is replaced, the UI's state kept (a hot reload). It
-    /// takes the active style pack's rules whenever it is defined: one
-    /// parsed against another sheet is read again against the active one.
-    pub fn define_document(&mut self, mut doc: UiDocument) {
-        let pack = self.docs.library.pack.clone();
-        let active = pack.as_ref().map_or_else(
-            || crate::doc::stylesheet::DEFAULT_GLOBAL.id(),
-            |pack| pack.global.id(),
-        );
-        if doc.styled != active {
-            let imports = doc.sheet.imports.clone();
-            match crate::doc::svelte::parse_with_pack(
-                &doc.source,
-                &doc.text,
-                imports,
-                pack.as_deref(),
-            ) {
-                Ok(styled) => doc = styled,
-                // The pack's rules do not fit it: it keeps the rules it
-                // came with, and says why.
-                Err(errors) => doc.warnings.extend(errors),
-            }
-        }
+    /// the same name is replaced, the UI's state kept (a hot reload). It is
+    /// taken as it was parsed: against the style pack in effect, when
+    /// [`Ui::parse_document`] read it.
+    pub fn define_document(&mut self, doc: UiDocument) {
         for (n, t) in &doc.timelines {
             self.define_timeline(&format!("{}/{n}", doc.name), t.clone());
         }
@@ -197,6 +178,8 @@ impl Ui {
     /// the edits written are dropped (the documents now say it).
     pub fn save_doc_edits(&mut self) -> Result<Vec<(String, String, String)>, String> {
         let edits = self.docs.state().edits.clone();
+        // An edited document is parsed as it was first: against the pack.
+        let pack = self.docs.library.pack.clone();
         let mut changed: BTreeMap<String, UiDocument> = BTreeMap::new();
         let mut kept = Vec::new();
         for e in edits {
@@ -212,7 +195,8 @@ impl Ui {
                     changed.entry(doc.clone()).or_insert(d)
                 }
             };
-            d.set_prop(node, &e.prop, &e.source)
+            *d = d
+                .edited(node, &e.prop, &e.source, pack.as_deref())
                 .map_err(|why| format!("{}: {}.{}: {why}", d.source, e.path, e.prop))?;
         }
         self.docs.state_mut().edits = kept;

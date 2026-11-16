@@ -1,8 +1,0 @@
-{
-  "fixed": [
-    {
-      "member": "style pack rules on documents defined later",
-      "summary": "A document defined after the style pack is set takes the pack's element rules and `::part` host rules, as one defined before it does, and a document that carries a pack's rules sheds them when it is defined after the pack is cleared. Before, `Ui::define_document` kept whatever sheet the document was parsed against, so a document loaded after `set_style_pack` showed the default style's element rules until the pack was set again."
-    }
-  ]
-}

@@ -49,7 +49,8 @@ fn project() -> &'static Path {
             "styles/mini/main.css",
             br#"@font-face { font-family: Mini; src: url(Body.ttf); }
                 button::part(base) { opacity: 0.37; }
-                button::part(text) { font-family: Mini; }"#,
+                button::part(text) { font-family: Mini; }
+                .once { width: 61px; }"#,
         );
         let font = repo().join("templates/styles/shared/Cinzel-Bold.ttf");
         write("styles/copied/Body.ttf", &std::fs::read(font).unwrap());
@@ -60,7 +61,8 @@ fn project() -> &'static Path {
         write(
             "styles/copied/main.css",
             br#"@import "nested/fonts.css";
-                button::part(text) { font-family: Copied, Mini; }"#,
+                button::part(text) { font-family: Copied, Mini; }
+                .once { width: 62px; }"#,
         );
         write(
             "styles/copied/nested/fonts.css",
@@ -87,6 +89,12 @@ fn project() -> &'static Path {
             br#"<meta name="screen" content="Vitals" />
 <div id="Vitals"><StatBar value={50} max={100} kind="health" segment={0} shield={0} shieldMax={0} heal={0} recoverable={0} label="" icon="" showValue={false} valueInside={false} valueText="" low={0.3} critical={0.15} bare={false} name="" /></div>"#,
         );
+        for name in ["Once", "Twice"] {
+            let text = format!(
+                "<meta name=\"screen\" content=\"{name}\" />\n<div><div id=\"{name}Box\" class=\"once\"></div></div>\n<style>#{name}Box {{ height: 9px; }}</style>"
+            );
+            write(&format!("ui/{}.svelte", name.to_lowercase()), text.as_bytes());
+        }
         // The game's code names a built-in screen by its id, which bundles it.
         std::fs::write(
             root.join("project.ogt"),
@@ -420,4 +428,60 @@ fn svg_asset_urls_supply_cursor_pixels_and_masks() {
     )));
     drop(ui);
     assert!(og_runtime::og_engine_destroy(e));
+}
+
+/// A document is read once, against the style `og.ui.configure` selected:
+/// loading it parses its text once, and a later configure that keeps the
+/// style (a scheme, reduced motion, nothing at all) reads nothing. When a
+/// configure changes the style under loaded documents, as a style edited
+/// under `og dev` does, each is read again once and shows the new pack's
+/// rules.
+///
+/// Ways it could fail: a load parsing the document for the default style,
+/// again for the pack and again for its fonts; every configure parsing
+/// every loaded document; a changed style leaving the loaded documents
+/// with the old pack's rules, or a cleared one leaving any.
+#[test]
+fn a_document_is_read_once_against_the_configured_style() {
+    let e = engine();
+    let style = |id: &str| value(og_runtime::host_impl::answer(og_load_style(e, id.into())));
+    let parses = og_ui::UiDocument::parses;
+    let width = || {
+        og_runtime::og_engine_frame(e, 1000.0 / 60.0);
+        let ui = og_runtime::shared_ui(e).unwrap();
+        let ui = ui.lock();
+        ui.probe_elements()
+            .into_iter()
+            .find(|el| el.id == "OnceBox")
+            .expect("the screen is up")
+            .width
+    };
+    configure(e, json!({ "style": style("styles/mini") }));
+    let before = parses();
+    for path in ["ui/once.svelte", "ui/twice.svelte"] {
+        value(og_runtime::host_impl::answer(og_runtime::og_load_document(
+            e,
+            path.into(),
+        )));
+    }
+    assert_eq!(parses() - before, 2, "one reading a document");
+    value(og_runtime::host_impl::answer(og_runtime::og_ui_push(
+        e,
+        "Once".into(),
+        None,
+    )));
+    assert_eq!(width(), 61.0, "the configured pack's rule");
+    configure(e, json!({ "reducedMotion": true }));
+    configure(e, json!({ "scheme": "light" }));
+    value(og_runtime::host_impl::answer(og_ui_configure(e, None)));
+    assert_eq!(width(), 61.0);
+    assert_eq!(parses() - before, 2, "a configure that keeps the style");
+    // Another style: the two loaded documents, once each.
+    configure(e, json!({ "style": style("styles/copied") }));
+    assert_eq!(parses() - before, 4);
+    assert_eq!(width(), 62.0, "the new pack's rule, the screen still up");
+    // None: once each again, and neither pack's rule is left.
+    configure(e, json!({ "style": null }));
+    assert_eq!(parses() - before, 6);
+    assert!(![61.0, 62.0].contains(&width()));
 }

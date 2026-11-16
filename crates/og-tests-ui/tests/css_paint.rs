@@ -703,16 +703,18 @@ fn masks_hide_invisible_boxes_and_fade_image_content() {
 #Child { width: 128px; height: 128px; background: blue; visibility: visible; }
 .rpg-minimap { position: absolute; top: 512px; width: 128px; height: 128px; }
 </style>"##;
-    ui.define_document(
-        UiDocument::parse(
-            "@ui/components/minimap.svelte",
-            include_str!("../../../packages/engine/src/ui/components/minimap.svelte"),
-        )
-        .unwrap(),
-    );
-    ui.define_document(UiDocument::parse("@ui/test/masks.svelte", text).unwrap());
     let pack = style_pack::StylePack::parse("styles/test", vec![("styles/test/main.css".into(), ".rpg-minimap #Frame { border-radius: 50%; mask-image: radial-gradient(circle, #000 69%, #0000 70.5%); }".into())]).unwrap();
     ui.set_style_pack(&pack).unwrap();
+    for (source, text) in [
+        (
+            "@ui/components/minimap.svelte",
+            include_str!("../../../packages/engine/src/ui/components/minimap.svelte"),
+        ),
+        ("@ui/test/masks.svelte", text),
+    ] {
+        let doc = ui.parse_document(source, text, Vec::new()).unwrap();
+        ui.define_document(doc);
+    }
     let markers = reactive::SourceId::new("test", "markers");
     let reply = reactive::wire::decode(
         &ui.apply_reactive(

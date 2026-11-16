@@ -44,7 +44,8 @@ pub fn set_screen_value(ui: &mut Ui, name: &str, value: Value) {
 /// as `screen:<name>` with `stores`, declared in the scope `screen` (a list
 /// of objects is a collection keyed by `id`).
 pub fn mount_screen_document(ui: &mut Ui, name: &str, text: &str, stores: &[(&str, Value)]) {
-    let doc = UiDocument::parse(&format!("ui/{name}.svelte"), text)
+    let doc = ui
+        .parse_document(&format!("ui/{name}.svelte"), text, Vec::new())
         .unwrap_or_else(|e| panic!("{name}: {e:?}"));
     assert_eq!(doc.name, name);
     ui.define_document(doc);
