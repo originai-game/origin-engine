@@ -13,24 +13,24 @@
       <li class="tile" class:expiring={e.expiring} aria-label={e.name}>
         <div class="face" part="StatusGrid.cell">
           <og-icon class="icon" icon={e.icon}></og-icon>
-          <svg class="sweep" viewBox="0 0 32 32" hidden={!(e.duration > 0)}><circle cx="16" cy="16" r="8" fill="none" stroke-width="16" pathLength="1" stroke-dasharray={(e.remaining >= e.duration ? 0 : 1 - e.remaining / e.duration) + " 1"} transform="rotate(-90 16 16)"></circle></svg>
-          <span class="stacks" part="StatusGrid.badge" hidden={!(e.stacks > 1)}>{formatNumber(e.stacks)}</span>
+          {#if e.duration > 0}<svg class="sweep" viewBox="0 0 32 32"><circle cx="16" cy="16" r="8" fill="none" stroke-width="16" pathLength="1" stroke-dasharray={(e.remaining >= e.duration ? 0 : 1 - e.remaining / e.duration) + " 1"} transform="rotate(-90 16 16)"></circle></svg>{/if}
+          {#if e.stacks > 1}<span class="stacks" part="StatusGrid.badge">{formatNumber(e.stacks)}</span>{/if}
         </div>
-        <span class="time" part="StatusGrid.figure" hidden={!(e.remaining > 0)}>{e.remaining < 10 ? formatNumber(e.remaining) : formatCountdown(e.remaining)}</span>
+        {#if e.remaining > 0}<span class="time" part="StatusGrid.figure">{e.remaining < 10 ? formatNumber(e.remaining) : formatCountdown(e.remaining)}</span>{/if}
       </li>
     {/each}
-    <li id="More" class="tile" hidden={!(more > 0)}><div class="face" part="StatusGrid.cell"><span id="Count">{"+" + formatNumber(more)}</span></div></li>
+    {#if more > 0}<li id="More" class="tile"><div class="face" part="StatusGrid.cell"><span id="Count">{"+" + formatNumber(more)}</span></div></li>{/if}
   </ul>
   <ul id="Debuffs" role="list" aria-label={t("component.status-grid.debuffs")}>
     {#each debuffs as e (e.id)}
       <li class="tile debuff" class:expiring={e.expiring} class:magic={e.type == 'magic'} class:curse={e.type == 'curse'} class:poison={e.type == 'poison'} class:disease={e.type == 'disease'} class:bleed={e.type == 'bleed'} aria-label={e.name}>
         <div class="face" part="StatusGrid.cell">
           <og-icon class="icon" icon={e.icon}></og-icon>
-          <svg class="sweep" viewBox="0 0 32 32" hidden={!(e.duration > 0)}><circle cx="16" cy="16" r="8" fill="none" stroke-width="16" pathLength="1" stroke-dasharray={(e.remaining >= e.duration ? 0 : 1 - e.remaining / e.duration) + " 1"} transform="rotate(-90 16 16)"></circle></svg>
+          {#if e.duration > 0}<svg class="sweep" viewBox="0 0 32 32"><circle cx="16" cy="16" r="8" fill="none" stroke-width="16" pathLength="1" stroke-dasharray={(e.remaining >= e.duration ? 0 : 1 - e.remaining / e.duration) + " 1"} transform="rotate(-90 16 16)"></circle></svg>{/if}
           <div class="notch"></div>
-          <span class="stacks" part="StatusGrid.badge" hidden={!(e.stacks > 1)}>{formatNumber(e.stacks)}</span>
+          {#if e.stacks > 1}<span class="stacks" part="StatusGrid.badge">{formatNumber(e.stacks)}</span>{/if}
         </div>
-        <span class="time" part="StatusGrid.figure" hidden={!(e.remaining > 0)}>{e.remaining < 10 ? formatNumber(e.remaining) : formatCountdown(e.remaining)}</span>
+        {#if e.remaining > 0}<span class="time" part="StatusGrid.figure">{e.remaining < 10 ? formatNumber(e.remaining) : formatCountdown(e.remaining)}</span>{/if}
       </li>
     {/each}
   </ul>
@@ -39,9 +39,8 @@
 <style>
 /* Drawn over the scene: the style's tag halo holds its text there. */
 :host { text-shadow: var(--tag-halo); }
-ul, ol { list-style-type: none; }
-#StatusGrid { gap: var(--space-xs); }
-#Buffs, #Debuffs { display: flex; gap: var(--space-xs); flex-wrap: wrap; max-width: var(--measure-sm); }
+:host { display: flex; flex-direction: column; gap: var(--space-xs); }
+#Buffs, #Debuffs { display: flex; gap: var(--space-xs); flex-wrap: wrap; max-width: var(--measure-sm); margin: 0; padding: 0; list-style: none; }
 .tile { display: flex; flex-direction: column; align-items: center; gap: var(--space-xxs); width: calc(var(--size-md) + var(--space-xs)); --edge: var(--line-strong); }
 .debuff { --edge: var(--danger); }
 .magic { --edge: var(--info); }
@@ -50,7 +49,7 @@ ul, ol { list-style-type: none; }
 .disease { --edge: var(--warn); }
 .bleed { --edge: var(--danger); }
 /* A debuff's type is the cell's rim, through its token, so a pack's cell still dresses it. */
-[part="StatusGrid.cell"] { display: flex; flex-direction: column; width: var(--size-md); height: var(--size-md); overflow: hidden; align-items: center; justify-content: center; --cell-rim: var(--edge); }
+[part="StatusGrid.cell"] { display: flex; flex-direction: column; position: relative; width: var(--size-md); height: var(--size-md); overflow: hidden; align-items: center; justify-content: center; --cell-rim: var(--edge); }
 .icon { width: var(--size-sm); height: var(--size-sm); }
 .sweep { position: absolute; top: 0; inset-inline-start: 0; width: var(--size-md); height: var(--size-md); stroke: var(--scrim); }
 .notch { position: absolute; top: 0; inset-inline-start: 0; width: var(--space-sm); height: var(--space-sm); background: var(--edge); clip-path: polygon(0% 0%, 100% 0%, 0% 100%); }

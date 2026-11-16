@@ -16,12 +16,12 @@
 </div>
 
 <style>
-[part="SplitView.frame"] { display: flex; width: var(--measure-xl); height: var(--measure-md); padding: 0; overflow: hidden; }
+:host { display: flex; inline-size: var(--measure-xl); max-inline-size: 100%; block-size: var(--measure-md); padding: 0; overflow: hidden; }
 [part="SplitView.frame"].column { flex-direction: column; }
-[part="SplitView.start"] { width: calc(var(--ratio) * 100%); height: stretch; background: var(--well); }
+[part="SplitView.start"] { width: calc(var(--ratio) * 100%); height: stretch; overflow: auto; background: var(--well); }
 .column [part="SplitView.start"] { width: stretch; height: calc(var(--ratio) * 100%); }
-[part="SplitView.end"] { flex: 1; min-width: 0; height: stretch; }
-[part="SplitView.divider"] { display: flex; flex-direction: column; width: var(--space-sm); height: stretch; align-items: center; justify-content: center; background: var(--line); cursor: ew-resize; }
+[part="SplitView.end"] { flex: 1; min-width: 0; min-height: 0; height: stretch; overflow: auto; }
+[part="SplitView.divider"] { display: flex; flex-direction: column; flex: none; width: var(--space-sm); height: stretch; align-items: center; justify-content: center; background: var(--line); cursor: ew-resize; }
 .column [part="SplitView.divider"] { width: stretch; height: var(--space-sm); cursor: ns-resize; }
 [part="SplitView.divider"]:hover { background: var(--primary); }
 [part="SplitView.grip"] { width: var(--stroke-regular); height: var(--size-sm); border-radius: var(--radius-capsule); background: var(--ink-muted); }

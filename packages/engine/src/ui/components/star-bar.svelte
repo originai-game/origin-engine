@@ -10,9 +10,9 @@
 <meta name="fixture:default" content='{"value":2140,"max":3000,"stars":[{"id":"1","at":0.3333},{"id":"2","at":0.6667},{"id":"3","at":1}],"label":"Score","valueText":"","compact":false}'>
 
 <div id="StarBar" role="meter" aria-label={label || t("component.star-bar.name")} aria-valuemin="0" aria-valuemax={max} aria-valuenow={value} class:compact={compact}>
-  <span id="Label" part="StarBar.label" hidden={!label || compact}>{label}</span>
+  {#if label && !compact}<span id="Label" part="StarBar.label">{label}</span>{/if}
   <span id="Value" part="StarBar.figure">{valueText || formatNumber(value)}</span>
-  <stack id="Bar">
+  <div id="Bar" class="bar">
     <div id="Track" part="StarBar.track StarBar.well" style:--fill={value / max}><div id="Fill" part="StarBar.fill"></div></div>
     <div id="Stars">
       {#each stars as star (star.id)}
@@ -22,23 +22,22 @@
         </svg>
       {/each}
     </div>
-  </stack>
+  </div>
 </div>
 
 <style>
 /* Drawn over the scene: the style's tag halo holds its text there. */
 :host { text-shadow: var(--tag-halo); }
-#StarBar { display: flex; flex-direction: column; align-items: center; gap: var(--space-xs); --bar: var(--measure-xs); --star: var(--size-md); }
-#StarBar.compact { display: flex; gap: var(--space-sm); --bar: var(--size-4xl); --star: var(--size-sm); }
+:host { display: flex; flex-direction: column; align-items: center; gap: var(--space-xs); --bar: var(--measure-xs); --star: var(--size-md); }
+.compact { flex-direction: row; gap: var(--space-sm); --bar: var(--size-4xl); --star: var(--size-sm); }
 [part="StarBar.label"] { font: var(--text-caption); font-family: var(--label-font); }
 [part="StarBar.figure"] { font: var(--text-xl3); font-family: var(--figure-font); white-space: nowrap; }
 .compact [part="StarBar.figure"] { font: var(--text-lg); font-family: var(--figure-font); }
-#Bar { width: var(--bar); height: calc(var(--star) + var(--space-xs)); }
-.compact #Bar { height: var(--star); }
-[part="StarBar.track StarBar.well"] { position: absolute; inset-inline-start: 0; bottom: 0; width: stretch; height: var(--space-md); border-radius: var(--meter-radius); background: var(--well); box-shadow: var(--meter-shadow); overflow: hidden; }
-[part="StarBar.fill"] { width: calc(var(--fill) * 100%); height: stretch; border-radius: var(--meter-radius); background: linear-gradient(180deg, var(--sheen), transparent 50%, var(--shadow-30)), var(--gold); box-shadow: 0 0 var(--space-xs) var(--gold); }
-#Stars { position: absolute; inset-inline-start: 0; top: 0; width: stretch; height: var(--star); }
-[part="StarBar.star"] { position: absolute; top: 0; inset-inline-start: calc(var(--at) * (var(--bar) - var(--star))); width: var(--star); height: var(--star); }
+.bar { position: relative; width: var(--bar); height: calc(var(--star) + var(--space-xs) + var(--space-md)); }
+[part="StarBar.track StarBar.well"] { position: absolute; inset-inline: calc(var(--star) / 2); bottom: 0; height: var(--space-md); border-radius: var(--meter-radius); background: var(--well); box-shadow: var(--meter-shadow); overflow: hidden; }
+[part="StarBar.fill"] { width: calc(var(--fill) * 100%); height: 100%; border-radius: var(--meter-radius); background: linear-gradient(180deg, var(--sheen), transparent 50%, var(--shadow-30)), var(--gold); box-shadow: 0 0 var(--space-xs) var(--gold); }
+#Stars { position: absolute; inset-inline: 0; top: 0; height: var(--star); }
+[part="StarBar.star"] { position: absolute; top: 0; inset-inline-start: calc(var(--at) * (100% - var(--star))); width: var(--star); height: var(--star); }
 .disc { fill: var(--scrim); }
 .mark { fill: none; stroke: var(--ink-faint); stroke-width: 1.6; }
 .lit .disc { fill: transparent; }

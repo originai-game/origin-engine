@@ -13,8 +13,8 @@
 </div>
 
 <style>
-#Spinner { width: var(--size); height: var(--size); }
-[part="Spinner.ring"] { width: stretch; height: stretch; animation-name: turn; animation-duration: var(--motion-duration-turn); animation-timing-function: linear; animation-iteration-count: infinite; }
+:host { inline-size: var(--size); block-size: var(--size); flex: none; }
+[part="Spinner.ring"] { inline-size: 100%; block-size: 100%; animation-name: turn; animation-duration: var(--motion-duration-turn); animation-timing-function: linear; animation-iteration-count: infinite; }
 #Track { stroke: var(--control-strong); }
 #Arc { stroke: var(--ink); }
 @keyframes turn { from { rotate: 0deg; } to { rotate: 360deg; } }

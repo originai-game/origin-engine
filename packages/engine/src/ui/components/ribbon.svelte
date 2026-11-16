@@ -10,7 +10,7 @@
 </div>
 
 <style>
-[part="Ribbon.frame"] { width: var(--size-4xl); height: calc(var(--size-xxl) + var(--space-lg)); padding: 0; overflow: hidden; --tone: var(--primary); }
+:host { position: relative; inline-size: var(--size-4xl); block-size: calc(var(--size-xxl) + var(--space-lg)); padding: 0; overflow: hidden; --tone: var(--primary); }
 [part="Ribbon.frame"].success { --tone: var(--success); }
 [part="Ribbon.frame"].warn { --tone: var(--warn); }
 [part="Ribbon.frame"].danger { --tone: var(--danger); }
@@ -23,7 +23,7 @@
 /* Its ink is whichever of white and black reads on its tone, any tone a
    pack gives it; the tag's outline holds it where the band's sheen lifts
    the tone toward the ink. */
-[part="Ribbon.text"] { font: var(--text-caption); text-transform: uppercase; color: contrast-color(var(--tone)); text-shadow: var(--tag-halo); white-space: nowrap; }
+[part="Ribbon.text"] { max-inline-size: calc(var(--size-4xl) - var(--space-3xl) * 2); font: var(--text-caption); text-transform: uppercase; color: contrast-color(var(--tone)); text-shadow: var(--tag-halo); white-space: nowrap; text-overflow: ellipsis; }
 @keyframes slap { from { opacity: 0; } to { opacity: 1; } }
 @keyframes stamp { from { scale: 2.4; opacity: 0; } to { scale: 1; opacity: 1; } }
 </style>

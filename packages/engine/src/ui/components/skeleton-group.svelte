@@ -9,32 +9,29 @@
 <div id="SkeletonGroup" role="progressbar" aria-busy="true" aria-label={name || t("component.skeleton-group.loading")} class:avatar={shape == 'avatar'} class:block={shape == 'block'} class:row={shape == 'row'} class:card={shape == 'card'}>
   {#each items as item (item.id)}
     <div class="item">
-      <div class="art" part="SkeletonGroup.art SkeletonGroup.picture"></div>
-      <div class="lines">
+      {#if shape == 'avatar' || shape == 'block' || shape == 'row' || shape == 'card'}<div class="art" part="SkeletonGroup.art SkeletonGroup.picture"></div>{/if}
+      {#if shape != 'avatar' && shape != 'block'}<div class="lines">
         <div class="piece first" part="SkeletonGroup.line"></div>
         <div class="piece" part="SkeletonGroup.line"></div>
-        <div class="piece last" part="SkeletonGroup.line"></div>
-      </div>
+        {#if shape != 'row'}<div class="piece last" part="SkeletonGroup.line"></div>{/if}
+      </div>{/if}
     </div>
   {/each}
 </div>
 
 <style>
-#SkeletonGroup { width: stretch; gap: var(--space-lg); animation-name: breathe; animation-duration: var(--motion-duration-breathe); animation-timing-function: var(--motion-easing-in-out); animation-iteration-count: infinite; }
-.item { width: stretch; gap: var(--space-sm); }
-.art { display: none; background: var(--control-strong); border-radius: var(--radius-block); }
-.lines { flex: 1; min-width: 0; gap: var(--space-sm); }
+:host { display: flex; flex-direction: column; inline-size: stretch; gap: var(--space-lg); animation-name: breathe; animation-duration: var(--motion-duration-breathe); animation-timing-function: var(--motion-easing-in-out); animation-iteration-count: infinite; }
+.item { display: flex; flex-direction: column; gap: var(--space-sm); }
+.art { background: var(--control-strong); border-radius: var(--radius-block); }
+.lines { display: flex; flex-direction: column; flex: 1; min-width: 0; gap: var(--space-sm); }
 .piece { width: stretch; height: var(--space-md); border-radius: var(--radius-capsule); background: linear-gradient(90deg, transparent 30%, var(--sheen) 50%, transparent 70%), var(--control-strong); }
 .piece.last { width: 62%; }
-.avatar .art { display: block; width: var(--size-lg); height: var(--size-lg); border-radius: var(--radius-capsule); }
-.avatar .lines { display: none; }
-.block .art { display: block; width: stretch; height: var(--size-3xl); }
-.block .lines { display: none; }
-.row .item { display: flex; align-items: center; gap: var(--space-lg); }
-.row .art { display: block; width: var(--size-touch); height: var(--size-touch); border-radius: var(--radius-capsule); }
+.avatar .art { width: var(--size-lg); height: var(--size-lg); border-radius: var(--radius-capsule); }
+.block .art { height: var(--size-3xl); }
+.row .item { flex-direction: row; align-items: center; gap: var(--space-lg); }
+.row .art { width: var(--size-touch); height: var(--size-touch); border-radius: var(--radius-capsule); }
 .row .piece.first { width: 60%; }
-.row .piece.last { display: none; }
-.card .art { display: block; width: stretch; height: var(--size-3xl); }
+.card .art { height: var(--size-3xl); }
 .card .piece.first { width: 55%; height: var(--space-lg); }
 @keyframes breathe { 50% { opacity: 0.6; } }
 </style>

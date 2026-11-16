@@ -28,13 +28,13 @@
 <style>
 /* Drawn over the scene: the style's tag halo holds its text there. */
 :host { text-shadow: var(--tag-halo); }
-#ActionHints { flex-direction: row; flex-wrap: wrap; justify-content: end; align-items: center; gap: var(--space-lg); }
-.item { display: flex; flex-direction: column; align-items: center; }
-.hint { min-height: var(--control-lg); padding: var(--space-xxs) var(--space-sm); gap: var(--space-sm); align-items: center; }
+:host { display: flex; flex-direction: row; flex-wrap: wrap; justify-content: end; align-items: center; gap: var(--space-lg); }
+.item { display: flex; flex-direction: column; align-items: center; max-inline-size: 100%; }
+.hint { max-inline-size: 100%; min-height: var(--control-lg); padding: var(--space-xxs) var(--space-sm); gap: var(--space-sm); align-items: center; }
 .hint:active { scale: var(--state-press-scale); }
 .hint::-og-hold { background: var(--selection); }
-.cap { min-width: var(--size-sm); height: var(--size-sm); }
-.words { white-space: nowrap; }
+.cap { min-width: var(--size-sm); height: var(--size-sm); flex: none; }
+.words { text-align: start; overflow-wrap: anywhere; }
 @media (pointer: coarse) {
   #ActionHints { justify-content: center; border-radius: 0; gap: var(--space-sm); }
   .hint { min-height: var(--touch-target); padding: var(--space-xxs) var(--space-md); background: var(--control-strong); }
