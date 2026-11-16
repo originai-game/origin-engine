@@ -249,6 +249,20 @@ pub const STYLE: &[(&str, &str)] = &[
     ("rowRuleStyle", "row-rule-style"),
     ("rowRuleColor", "row-rule-color"),
     ("rowRuleBreak", "row-rule-break"),
+    ("columnRuleInsetCapStart", "column-rule-inset-cap-start"),
+    ("columnRuleInsetCapEnd", "column-rule-inset-cap-end"),
+    (
+        "columnRuleInsetJunctionStart",
+        "column-rule-inset-junction-start",
+    ),
+    (
+        "columnRuleInsetJunctionEnd",
+        "column-rule-inset-junction-end",
+    ),
+    ("rowRuleInsetCapStart", "row-rule-inset-cap-start"),
+    ("rowRuleInsetCapEnd", "row-rule-inset-cap-end"),
+    ("rowRuleInsetJunctionStart", "row-rule-inset-junction-start"),
+    ("rowRuleInsetJunctionEnd", "row-rule-inset-junction-end"),
     ("breakBefore", "break-before"),
     ("breakAfter", "break-after"),
     ("breakInside", "break-inside"),
@@ -357,6 +371,32 @@ pub(crate) fn targets(name: &str) -> impl Iterator<Item = &'static str> + '_ {
         "rule-style" => vec!["columnRuleStyle", "rowRuleStyle"],
         "rule-color" => vec!["columnRuleColor", "rowRuleColor"],
         "rule-break" => vec!["columnRuleBreak", "rowRuleBreak"],
+        n if n.contains("rule-inset") => {
+            let axes: &[usize] = if n.starts_with("column-") {
+                &[0]
+            } else if n.starts_with("row-") {
+                &[1]
+            } else {
+                &[0, 1]
+            };
+            let ks: &[usize] = match n.split("rule-inset").nth(1).unwrap_or("") {
+                "-cap-start" => &[0],
+                "-cap-end" => &[1],
+                "-junction-start" => &[2],
+                "-junction-end" => &[3],
+                "-start" => &[0, 2],
+                "-end" => &[1, 3],
+                "-cap" => &[0, 1],
+                "-junction" => &[2, 3],
+                _ => &[0, 1, 2, 3],
+            };
+            axes.iter()
+                .flat_map(|&a| {
+                    ks.iter()
+                        .map(move |&k| super::multicol_css::RULE_INSETS[a][k])
+                })
+                .collect()
+        }
         "page-break-before" => vec!["breakBefore"],
         "page-break-after" => vec!["breakAfter"],
         "page-break-inside" => vec!["breakInside"],
@@ -474,11 +514,39 @@ fn conv(prop: &str) -> Conv {
         "insetTop" | "insetRight" | "insetBottom" | "insetLeft" | "anchorName"
         | "positionAnchor" | "positionArea" | "positionTry" | "positionTryOrder"
         | "positionVisibility" | "anchorWidth" | "anchorHeight" => Conv::Raw,
-        "columnCount" | "columnWidth" | "columnSpan" | "columnFill" | "columnHeight"
-        | "columnWrap" | "columnRuleWidth" | "columnRuleStyle" | "columnRuleColor"
-        | "columnRuleBreak" | "rowRuleWidth" | "rowRuleStyle" | "rowRuleColor" | "rowRuleBreak"
-        | "breakBefore" | "breakAfter" | "breakInside" | "orphans" | "widows" | "float"
-        | "clear" | "fitTolerance" | "marginTrim" | "borderSpacing" | "borderCollapse" => Conv::Raw,
+        "columnCount"
+        | "columnWidth"
+        | "columnSpan"
+        | "columnFill"
+        | "columnHeight"
+        | "columnWrap"
+        | "columnRuleWidth"
+        | "columnRuleStyle"
+        | "columnRuleColor"
+        | "columnRuleBreak"
+        | "rowRuleWidth"
+        | "rowRuleStyle"
+        | "rowRuleColor"
+        | "rowRuleBreak"
+        | "columnRuleInsetCapStart"
+        | "columnRuleInsetCapEnd"
+        | "columnRuleInsetJunctionStart"
+        | "columnRuleInsetJunctionEnd"
+        | "rowRuleInsetCapStart"
+        | "rowRuleInsetCapEnd"
+        | "rowRuleInsetJunctionStart"
+        | "rowRuleInsetJunctionEnd"
+        | "breakBefore"
+        | "breakAfter"
+        | "breakInside"
+        | "orphans"
+        | "widows"
+        | "float"
+        | "clear"
+        | "fitTolerance"
+        | "marginTrim"
+        | "borderSpacing"
+        | "borderCollapse" => Conv::Raw,
         "viewTransitionName" | "viewTransitionClass" | "viewTransitionGroup" => Conv::Raw,
         "backgroundImage"
         | "backgroundSize"

@@ -101,6 +101,10 @@ pub struct BoxDecor {
     /// A grid's gap rules (CSS Gap Decorations 1), its column gaps' and
     /// its row gaps', each with where it breaks.
     pub gap_rules: [Option<(Line, GapBreak)>; 2],
+    /// Each gap rule's `rule-inset`s (column rules', row rules'): cap
+    /// start, cap end, junction start, junction end, each as px and a
+    /// fraction of the gap its end meets (CSS Gap Decorations 1 §3.3).
+    pub gap_insets: [[(f32, f32); 4]; 2],
 }
 
 /// CSS `column-rule-break` and `row-rule-break` (CSS Gap Decorations 1

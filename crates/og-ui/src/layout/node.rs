@@ -633,6 +633,20 @@ impl Default for Placed {
     }
 }
 
+/// One segment of a gap rule (CSS Gap Decorations 1), from its box's
+/// origin.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct GapSeg {
+    /// 0: in a column gap, `at` is (x, top, height); 1: in a row gap,
+    /// (left, y, width).
+    pub axis: u8,
+    pub at: [f32; 3],
+    /// Its start and end: whether the rule goes on past the gap it meets
+    /// there (a junction, else a cap), and that gap's width (0 at the
+    /// box's edge): what a `rule-inset` percentage reads (§3.3).
+    pub ends: [(bool, f32); 2],
+}
+
 /// The box placement fixes for a node after it measured it: its size and
 /// the padding it adds (the safe area under a modal's backdrop).
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -823,10 +837,9 @@ pub struct LayoutBox {
     /// A multi-column container's rules between columns, from its box's
     /// top left: each one's middle x, its top and its length.
     pub col_rules: Vec<[f32; 3]>,
-    /// A grid's gap rules' segments, from its box's origin: the column
-    /// gaps' (axis 0: x, top, height), then the row gaps' (axis 1: left,
-    /// y, width), as CSS Gap Decorations 1 breaks them.
-    pub gap_segs: Vec<(u8, [f32; 3])>,
+    /// A grid's or flex container's gap rules' segments, as CSS Gap
+    /// Decorations 1 breaks them.
+    pub gap_segs: Vec<GapSeg>,
     /// A text a column break splits: from each line on, how far its lines
     /// move from where its box puts them (into the next column).
     pub frag: Vec<(u32, [f32; 2])>,

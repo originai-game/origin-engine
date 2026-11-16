@@ -210,6 +210,9 @@ pub(crate) fn lower(name: &str, value: &str) -> Option<Result<Vec<Lowered>, Stri
             }),
             v => Err(format!("'{v}' is no {name}: normal, none or intersection")),
         },
+        // CSS Gap Decorations 1 §3.3: where a rule's ends sit, in from the
+        // edges of the items beside them.
+        n if n.contains("rule-inset") => rule_inset(n, v),
         // The row gaps' rules (CSS Gap Decorations 1 §4), read as the
         // column rules are; `rule-*` sets both.
         n if n.starts_with("row-rule") || n.starts_with("rule") => {
@@ -236,6 +239,119 @@ pub(crate) fn lower(name: &str, value: &str) -> Option<Result<Vec<Lowered>, Stri
         }
         _ => return None,
     })
+}
+
+/// The four `rule-inset` longhands of each axis: cap start, cap end,
+/// junction start, junction end.
+pub(crate) const RULE_INSETS: [[&str; 4]; 2] = [
+    [
+        "columnRuleInsetCapStart",
+        "columnRuleInsetCapEnd",
+        "columnRuleInsetJunctionStart",
+        "columnRuleInsetJunctionEnd",
+    ],
+    [
+        "rowRuleInsetCapStart",
+        "rowRuleInsetCapEnd",
+        "rowRuleInsetJunctionStart",
+        "rowRuleInsetJunctionEnd",
+    ],
+];
+
+/// An `<inset-value>`: a px length or a percentage of the gap its end
+/// meets, negative ones too; (px, fraction).
+pub(crate) fn inset(v: &str) -> Option<(f32, f32)> {
+    if v == "0" {
+        return Some((0.0, 0.0));
+    }
+    if let Some(p) = v.strip_suffix('%') {
+        return p.parse::<f32>().ok().map(|p| (0.0, p / 100.0));
+    }
+    v.strip_suffix("px")?.parse().ok().map(|n| (n, 0.0))
+}
+
+/// `[column-|row-]rule-inset[-cap|-junction][-start|-end]`: the longhands
+/// it sets (CSS Gap Decorations 1 §3.3). A shorthand's second value is
+/// the end's; `rule-inset`'s junctions after a `/`, else its caps'.
+fn rule_inset(name: &str, v: &str) -> Result<Vec<Lowered>, String> {
+    let text = |s: &str| vec![Value::String(s.to_string())];
+    let axes: &[usize] = if name.starts_with("column-") {
+        &[0]
+    } else if name.starts_with("row-") {
+        &[1]
+    } else {
+        &[0, 1]
+    };
+    let tail = name.split("rule-inset").nth(1).unwrap_or("");
+    let words = |s: &str| -> Result<Vec<String>, String> {
+        let w: Vec<String> = s.split_whitespace().map(str::to_owned).collect();
+        match w.iter().find(|w| inset(w).is_none()) {
+            Some(bad) => Err(format!(
+                "'{bad}' is no rule inset: a px length or a percentage"
+            )),
+            None => Ok(w),
+        }
+    };
+    let pair = |w: &[String]| -> Result<[String; 2], String> {
+        match w {
+            [a] => Ok([a.clone(), a.clone()]),
+            [a, b] => Ok([a.clone(), b.clone()]),
+            _ => Err(format!("{name} takes one or two insets")),
+        }
+    };
+    // Cap start, cap end, junction start, junction end (`None`: not set).
+    let mut set: [Option<String>; 4] = Default::default();
+    match tail {
+        "-cap-start" | "-cap-end" | "-junction-start" | "-junction-end" => {
+            let w = words(v)?;
+            let [one] = w.as_slice() else {
+                return Err(format!("{name} takes one inset"));
+            };
+            let k = match tail {
+                "-cap-start" => 0,
+                "-cap-end" => 1,
+                "-junction-start" => 2,
+                _ => 3,
+            };
+            set[k] = Some(one.clone());
+        }
+        "-start" | "-end" => {
+            let w = words(v)?;
+            let [one] = w.as_slice() else {
+                return Err(format!("{name} takes one inset"));
+            };
+            let k = usize::from(tail == "-end");
+            set[k] = Some(one.clone());
+            set[k + 2] = Some(one.clone());
+        }
+        "-cap" | "-junction" => {
+            let [a, b] = pair(&words(v)?)?;
+            let k = if tail == "-cap" { 0 } else { 2 };
+            set[k] = Some(a);
+            set[k + 1] = Some(b);
+        }
+        "" => {
+            let (cap, junction) = match v.split_once('/') {
+                Some((c, j)) => (pair(&words(c)?)?, pair(&words(j)?)?),
+                None => {
+                    let c = pair(&words(v)?)?;
+                    (c.clone(), c)
+                }
+            };
+            let [a, b] = cap;
+            let [c, d] = junction;
+            set = [Some(a), Some(b), Some(c), Some(d)];
+        }
+        _ => return Err(format!("'{name}' is no rule-inset property")),
+    }
+    Ok(axes
+        .iter()
+        .flat_map(|&axis| {
+            set.iter()
+                .enumerate()
+                .filter_map(move |(k, s)| s.as_ref().map(|s| (RULE_INSETS[axis][k], text(s))))
+        })
+        .collect())
 }
 
 fn color(v: &str) -> Result<&str, String> {

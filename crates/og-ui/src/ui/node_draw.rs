@@ -163,14 +163,35 @@ impl Ui {
                 }
             }
         }
-        // A grid's gap rules (CSS Gap Decorations 1), centred on their gaps.
+        // A grid's or flex container's gap rules (CSS Gap Decorations 1),
+        // centred on their gaps, each end moved in by its `rule-inset`.
         if let Some(d) = n.decor.as_deref()
             && d.gap_rules.iter().any(Option::is_some)
         {
-            for &(axis, [x, y, len]) in &n.layout.gap_segs {
+            for seg in &n.layout.gap_segs {
+                let axis = seg.axis;
                 let Some((line, _)) = d.gap_rules[usize::from(axis)] else {
                     continue;
                 };
+                // Cap or junction inset at each end: px plus a fraction of
+                // the gap that end meets (§3.3).
+                let inset = d.gap_insets[usize::from(axis)];
+                let end = |k: usize| {
+                    let (junction, gap) = seg.ends[k];
+                    let (px, frac) = inset[k + if junction { 2 } else { 0 }];
+                    px + frac * gap
+                };
+                let (start, stop) = (end(0), end(1));
+                let [x, y, len] = seg.at;
+                let (x, y) = if axis == 0 {
+                    (x, y + start)
+                } else {
+                    (x + start, y)
+                };
+                let len = len - start - stop;
+                if len <= 0.0 {
+                    continue;
+                }
                 let (w, color) = (line.width, line.color);
                 // One stroke across the rule, `off` in from its edge.
                 let piece = |off: f32, thick: f32, at: f32, long: f32| {

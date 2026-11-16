@@ -1,0 +1,9 @@
+{
+  "simulation": "unchanged",
+  "added": [
+    {
+      "member": "UI CSS column-rule, row-rule, rule-inset",
+      "summary": "A flex container draws `column-rule` and `row-rule` too: a rule between the items of each line, as tall as the line, and one between lines across its content box (CSS Gap Decorations 1; `rule-break` acts as `none` there). The `rule-inset` family (`[column-|row-]rule-inset[-cap|-junction][-start|-end]`) moves a rule's ends in from the items beside them, a cap's at the box's edge or where the rule stops and a junction's where it goes on past a crossing gap, by a px length or a percentage of the gap that end meets; negative values extend it (§3.3)."
+    }
+  ]
+}
