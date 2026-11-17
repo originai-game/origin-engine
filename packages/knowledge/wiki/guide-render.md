@@ -285,6 +285,25 @@ depth-normal prepass: the first one pays for it.
   depth and fog just in front of surfaces. Froxel cells take the mean of
   eight samples over their depth; the raymarch path lights each step
   through shadows and cookies too.
+- `Fog.color` is the air's colour as the light around it leaves it, in
+  both fogs: the plain fog draws it, and volumetric fog tends to it where
+  no sun or lamp lights it, then adds the sun's shafts and the lamps'
+  glow, tinted by it and scaled by `scattering`. So `volumetric` never
+  makes a haze darker than the plain fog's, and a device that draws no
+  volumetric fog shows the same haze without the shafts. Set the colour
+  for the scene's light as for the plain fog (a night's haze dark, a
+  city's glow in it); og.DayNight's `tintFog` and a cloud cover do that
+  for a cycle.
+- An og.FogVolume's colour is an albedo alone: besides the sun and the
+  lamps it scatters the sky's light evenly (the environment's,
+  og.Environment's hemisphere light and, where it reaches, the probe
+  GI's), so mist in a hollow is as bright as the night sky and smoke in
+  a closed room with GI as dark as the room.
+- Past `volumetricDistance` the fog goes on to the far scene and, by
+  `Fog.sky`, over the sky, in its colour with the unshadowed sun's light
+  in it: far towers fade into the haze as in the plain fog. It has no
+  shafts and no lamps' glow there, so set the distance past the last
+  lamp whose glow should show (the froxels grow with it).
 - Local fog: og.FogVolume beside an og.Volume fills that box or sphere
   with fog (mist in a hollow, smoke in a room, haze for a lamp's shaft),
   lit as volumetric fog is. It needs no og.Fog: alone it lies over the
