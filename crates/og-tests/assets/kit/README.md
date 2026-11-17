@@ -27,7 +27,11 @@ The two columns are a second version: their first concepts were marbled in
 large orange and grey patches, which read as camouflage on the shafts, so
 each concept was repainted by `edit_image` as even pale limestone with dirt
 in the flutes and moss at the base, and the model made again from it. The
-first versions stay in the bucket under `…-v1/`.
+first versions stay in the bucket under `…-v1/`. Their material's
+`baseColorFactor` is 0.6 (linear): the limestone as painted was pale enough
+to glow under a night's light and to look dry in rain, so its albedo is
+two fifths lower (about a fifth as an sRGB value), a mid limestone; the
+textures are unchanged.
 
 Each committed model is its source with the emissive map dropped (Meshy
 writes a near-black one), its textures resized to 1024 px and re-encoded as
