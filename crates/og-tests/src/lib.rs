@@ -23,6 +23,7 @@ pub mod lighting_scenes;
 pub mod ocean_scenes;
 pub mod p2_scenes;
 pub mod physical_scenes;
+pub mod reflect_scenes;
 pub mod scenes;
 pub mod shadow_scenes;
 pub mod sky_scenes;

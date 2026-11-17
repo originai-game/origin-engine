@@ -222,6 +222,276 @@ pub fn two_rooms_scene(probes: bool) -> RenderScene {
     scene
 }
 
+/// `probe-two-rooms` as a shot of a game: two open-fronted shops side by
+/// side on the old town's street at noon, a dyer's hung in red cloth on
+/// the left and an apothecary washed blue on the right, each with its
+/// reflection probe and a silvered gazing ball on a plinth in [`ROOMS`]'
+/// places; both balls are one mesh and one material. Each ball reflects
+/// its own shop: a probe is picked per instance. [`two_rooms_scene`] is
+/// the plain fixture `tests/probes.rs` reads.
+pub fn two_shops_scene() -> RenderScene {
+    use crate::kit;
+    let mut scene = RenderScene::new();
+    let setts = kit::surface_tinted(&mut scene, "cobbles", [0.88, 0.86, 0.82]);
+    let street = scene.add_mesh(kit::slab(
+        Vec2::new(-30.0, 3.0),
+        Vec2::new(30.0, 30.0),
+        0.0,
+        2.0,
+    ));
+    scene.add_instance(street, setts, Mat4::IDENTITY);
+    let planks = kit::surface_tinted(&mut scene, "planks", [0.85, 0.75, 0.65]);
+    let lime = kit::surface_tinted(&mut scene, "stone", [1.1, 1.04, 0.92]);
+    let dyed = [
+        kit::surface_tinted(&mut scene, "stone", [1.3, 0.25, 0.18]),
+        kit::surface_tinted(&mut scene, "stone", [0.3, 0.5, 1.25]),
+    ];
+    let block = |s: &mut RenderScene, m, min: Vec3, max: Vec3| {
+        let mesh = s.add_mesh(kit::block(min, max, 1.6));
+        s.add_instance(mesh, m, Mat4::IDENTITY);
+    };
+    // The house front the shops open from: its storeys above them and
+    // the piers between, to either side the neighbours' walls.
+    block(
+        &mut scene,
+        lime,
+        Vec3::new(-14.0, 4.2, 2.8),
+        Vec3::new(14.0, 9.0, 3.2),
+    );
+    for x in [-7.0f32, 0.0, 7.0] {
+        block(
+            &mut scene,
+            lime,
+            Vec3::new(x - 0.6, 0.0, 2.8),
+            Vec3::new(x + 0.6, 4.2, 3.4),
+        );
+    }
+    block(
+        &mut scene,
+        lime,
+        Vec3::new(-14.0, 0.0, 2.8),
+        Vec3::new(-7.6, 4.2, 3.2),
+    );
+    block(
+        &mut scene,
+        lime,
+        Vec3::new(7.6, 0.0, 2.8),
+        Vec3::new(14.0, 4.2, 3.2),
+    );
+    let sphere = scene.add_mesh(shapes::sphere(48, 24));
+    let chrome = scene.add_standard_material(mat(Vec3::splat(0.95), 1.0, 0.02));
+    let crate_ = kit::prop(&mut scene, "crate");
+    let barrel = kit::prop(&mut scene, "winebarrel");
+    for (k, &x) in ROOMS.iter().enumerate() {
+        let at = |dx: f32, y: f32, z: f32| Vec3::new(x + dx, y, z);
+        let wall = dyed[k];
+        block(&mut scene, planks, at(-3.0, -0.2, -3.0), at(3.0, 0.0, 3.0));
+        block(&mut scene, planks, at(-3.1, 4.0, -3.1), at(3.1, 4.2, 3.0));
+        block(&mut scene, wall, at(-3.0, 0.0, -3.1), at(3.0, 4.0, -2.9));
+        block(&mut scene, wall, at(-3.1, 0.0, -3.0), at(-2.9, 4.0, 2.8));
+        block(&mut scene, wall, at(2.9, 0.0, -3.0), at(3.1, 4.0, 2.8));
+        // Shelves on the back wall, the wares under them.
+        for y in [1.6f32, 2.5] {
+            block(
+                &mut scene,
+                planks,
+                at(-2.6, y, -2.9),
+                at(2.6, y + 0.06, -2.5),
+            );
+        }
+        crate_.place(&mut scene, at(-2.2, 0.0, -2.3), 0.15, 0.6);
+        crate_.place(&mut scene, at(-2.15, 0.6, -2.35), -0.1, 0.55);
+        barrel.place(&mut scene, at(2.2, 0.0, -2.2), 0.6 + k as f32, 1.0);
+        barrel.place(&mut scene, at(2.3, 0.0, -1.1), 1.4, 1.0);
+        // The plinth and the ball on it.
+        block(
+            &mut scene,
+            lime,
+            at(-0.45, 0.0, -0.45),
+            at(0.45, SPHERE.1 - 0.5 * SPHERE.0, 0.45),
+        );
+        scene.add_instance(
+            sphere,
+            chrome,
+            Mat4::from_scale_rotation_translation(
+                Vec3::splat(SPHERE.0),
+                Quat::IDENTITY,
+                at(0.0, SPHERE.1, 0.0),
+            ),
+        );
+        scene.lighting.lights.push(Light {
+            kind: LightKind::Point,
+            position: at(0.0, 3.3, 1.0),
+            color: Vec3::new(1.0, 0.85, 0.65),
+            intensity: 25.0,
+            range: 9.0,
+            cast_shadows: false,
+        });
+        let mut p = ReflectionProbe::new(1 + k as u64, at(0.0, 1.6, 0.0), Vec3::new(6.0, 4.2, 6.0));
+        p.mode = ProbeMode::Baked;
+        p.fade = 0.3;
+        scene.lighting.reflection_probes.push(p);
+    }
+    // A market barrow in the street.
+    crate::lighting_scenes::wares(&mut scene, Vec3::new(-1.0, 0.0, 6.4), 0.1);
+    crate::sky_scenes::physical_light_under(&mut scene, Vec3::new(-0.3, 0.8, 0.5));
+    scene.frame.camera = Camera {
+        position: Vec3::new(0.0, 1.9, 10.5),
+        target: Vec3::new(0.0, 1.6, 0.0),
+        far: 2500.0,
+        exposure: Exposure::Manual { ev: 0.0 },
+        ..Default::default()
+    };
+    scene
+}
+
+/// `probe-outdoor` as a shot of a game: a cottage garden on the same
+/// meadow, a silvered gazing ball 1 m across on a plinth beside the
+/// probe's capture point, five villagers striding past on the probe's +x side (skinned,
+/// each at its own phase of the walk), a red stained-glass screen between
+/// two columns on its -z side, pines and a ruined arch behind. The probe's
+/// capture draws them all, so the ball reflects the villagers in their
+/// pose, the meadow and grass, and the screen over what is behind it.
+/// [`outdoor_scene`] is the plain fixture `tests/probes.rs` reads.
+pub fn garden_scene() -> RenderScene {
+    use crate::kit;
+    let mut scene = meadow();
+    let p = outdoor_probe();
+    let ground = meadow_height;
+    let ball = Vec3::new(p.x - 1.2, ground(p.x - 1.2, p.z) + 1.05, p.z);
+    // The meadow runs on past the terrain into the hills.
+    let grass = kit::surface_tinted(&mut scene, "grass", [0.86, 1.0, 0.72]);
+    let h = MEADOW * 0.5 - 0.5;
+    for (min, max) in [
+        (Vec2::new(-260.0, -260.0), Vec2::new(-h, 260.0)),
+        (Vec2::new(h, -260.0), Vec2::new(260.0, 260.0)),
+        (Vec2::new(-h, -260.0), Vec2::new(h, -h)),
+        (Vec2::new(-h, h), Vec2::new(h, 260.0)),
+    ] {
+        let m = scene.add_mesh(kit::slab(min, max, -0.05, 7.0));
+        scene.add_instance(m, grass, Mat4::IDENTITY);
+    }
+    kit::hills(&mut scene, None);
+    let stone = kit::surface_tinted(&mut scene, "stone", [0.95, 0.9, 0.84]);
+    let plinth = scene.add_mesh(kit::block(
+        Vec3::new(ball.x - 0.3, ground(ball.x, ball.z) - 0.2, ball.z - 0.3),
+        Vec3::new(ball.x + 0.3, ball.y - 0.48, ball.z + 0.3),
+        1.0,
+    ));
+    scene.add_instance(plinth, stone, Mat4::IDENTITY);
+    let sphere = scene.add_mesh(shapes::sphere(48, 24));
+    let chrome = scene.add_standard_material(mat(Vec3::splat(0.95), 1.0, 0.02));
+    scene.add_instance(
+        sphere,
+        chrome,
+        Mat4::from_scale_rotation_translation(Vec3::splat(1.0), Quat::IDENTITY, ball),
+    );
+    // The villagers on the path past the probe's +x side.
+    let (mesh, skin) = crate::fx_scenes::walker_mesh(16, 4);
+    let walker = scene.add_skinned_mesh(mesh, skin);
+    for i in 0..5 {
+        let z = p.z - 3.2 + i as f32 * 1.5;
+        let x = p.x + 2.6 + (i as f32 * 1.7).sin() * 0.3;
+        let cloth = scene.add_material(Material {
+            base_color: [
+                [0.55, 0.18, 0.12, 1.0],
+                [0.2, 0.3, 0.45, 1.0],
+                [0.45, 0.4, 0.25, 1.0],
+                [0.3, 0.42, 0.22, 1.0],
+                [0.5, 0.45, 0.4, 1.0],
+            ][i],
+            roughness: 0.8,
+            ..Default::default()
+        });
+        scene.objects.joint_palettes.push(og_render::JointPalette {
+            matrices: crate::fx_scenes::walker_palette(i as f32 * 0.21),
+        });
+        scene.objects.skinned_instances.push(SkinnedInstance::new(
+            walker,
+            cloth,
+            Mat4::from_translation(Vec3::new(x, ground(x, z), z))
+                * Mat4::from_rotation_y(std::f32::consts::PI),
+            i as u32,
+        ));
+    }
+    // The stained-glass screen between two columns on the -z side.
+    let pane = scene.add_mesh(shapes::cuboid(Vec3::new(3.0, 2.4, 0.05)));
+    let glass = scene.add_standard_material(StandardMaterial {
+        color: Vec3::new(1.0, 0.08, 0.05),
+        emissive: Vec3::new(0.5, 0.03, 0.02),
+        transparent: 1,
+        opacity: 0.6,
+        roughness: 0.2,
+        ..Default::default()
+    });
+    let screen = Vec3::new(p.x, p.y + 0.2, p.z - 2.4);
+    scene.add_instance(pane, glass, Mat4::from_translation(screen));
+    let column = kit::prop(&mut scene, "column");
+    for dx in [-1.75f32, 1.75] {
+        let x = screen.x + dx;
+        column.place(
+            &mut scene,
+            Vec3::new(x, ground(x, screen.z) - 0.1, screen.z),
+            0.3,
+            3.6,
+        );
+    }
+    let lintel = scene.add_mesh(kit::block(
+        Vec3::new(screen.x - 2.0, screen.y + 1.25, screen.z - 0.25),
+        Vec3::new(screen.x + 2.0, screen.y + 1.55, screen.z + 0.25),
+        1.0,
+    ));
+    scene.add_instance(lintel, stone, Mat4::IDENTITY);
+    // Pines along the garden's back, an arch and boulders.
+    let pine = kit::prop(&mut scene, "pine");
+    for (x, z, hgt) in [
+        (-9.0f32, -12.0f32, 11.0f32),
+        (-4.0, -15.0, 13.0),
+        (3.0, -13.0, 10.0),
+        (8.0, -16.0, 12.0),
+        (13.0, -10.0, 11.0),
+        (-14.0, -6.0, 12.0),
+    ] {
+        pine.place(
+            &mut scene,
+            Vec3::new(x, ground(x, z) - 0.1, z),
+            x * 0.3,
+            hgt,
+        );
+    }
+    kit::prop(&mut scene, "arch").place(
+        &mut scene,
+        Vec3::new(-7.0, ground(-7.0, -6.0) - 0.1, -6.0),
+        0.5,
+        5.0,
+    );
+    let boulder = kit::prop(&mut scene, "boulder");
+    boulder.place(
+        &mut scene,
+        Vec3::new(-3.4, ground(-3.4, 1.2) - 0.2, 1.2),
+        1.0,
+        0.7,
+    );
+    boulder.place(
+        &mut scene,
+        Vec3::new(4.8, ground(4.8, -3.0) - 0.2, -3.0),
+        2.3,
+        0.9,
+    );
+    scene.frame.camera = Camera {
+        position: Vec3::new(p.x - 1.4, ground(p.x - 1.4, p.z + 4.6) + 1.9, p.z + 4.6),
+        target: Vec3::new(p.x + 0.5, ground(p.x + 0.5, p.z - 0.8) + 1.1, p.z - 0.8),
+        far: 2500.0,
+        exposure: Exposure::linear(0.9),
+        ..Default::default()
+    };
+    let mut r = ReflectionProbe::new(7, p, Vec3::new(8.0, 5.0, 8.0));
+    r.mode = ProbeMode::Baked;
+    r.fade = 0.5;
+    scene.lighting.reflection_probes.push(r);
+    scene
+}
+
 /// What `probe-outdoor` puts in its probe's box.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Outdoor {

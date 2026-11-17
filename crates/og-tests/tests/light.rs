@@ -25,22 +25,33 @@ fn mean(img: &og_render::RgbaImage, x0: u32, y0: u32, x1: u32, y1: u32) -> [f32;
 /// Every kind of lit batch draws its lightmap (debt render-light #2): the
 /// box drawn with a physical ceiling, a compact back wall, an array-map tall
 /// block and a material-shader short block matches the all-standard
-/// `baked-cornell` over each of those parts, its bake drawn. A batch that
+/// box (`light_scenes::baked_cornell_scene`) over each of those parts,
+/// its bake drawn. A batch that
 /// ignores its lightmap takes the probes or the sky instead: the ceiling and
 /// the back wall, outside the light volume, the sky's blue-grey or near
 /// black; the blocks the probes' coarser light, the tall block's side
 /// with a third less red from the wall. On lavapipe (Mesa 22.3) every
 /// physical pipeline crashes the driver's draw thread, main's physical
 /// tests too, so this one is read on Metal. Then the whole frame: within
-/// `baked-batches`' reference tolerance of the standard box's, which
-/// `baked_cornell_matches_its_reference` holds to its reference (the two
-/// frames were the same pixels, so `baked-batches` has no reference of its
-/// own any more).
+/// `baked-batches`' reference tolerance of the standard box's.
 #[test]
 #[ignore = "requires GPU"]
 fn every_batch_kind_draws_its_lightmap() {
-    let standard = gfx::render("baked-cornell").expect("render").image;
-    let batches = gfx::render("baked-batches").expect("render").image;
+    // The plain boxes (the registered scenes are the cellar's shot): each
+    // built as its scene's entry is, with the fixture in its place.
+    let fixture = |name: &str, scene: og_render::RenderScene| {
+        let mut built = og_tests::scenes::build(name).expect("build");
+        built.scene = scene;
+        gfx::render_built(&mut built).expect("render").image
+    };
+    let standard = fixture(
+        "baked-cornell",
+        og_tests::light_scenes::baked_cornell_scene(true).expect("scene"),
+    );
+    let batches = fixture(
+        "baked-batches",
+        og_tests::light_scenes::baked_batches_scene(true).expect("scene"),
+    );
     let tolerance = og_tests::scenes::build("baked-batches")
         .expect("scene")
         .tolerance;
