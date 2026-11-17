@@ -7,13 +7,24 @@ lived in the art samples (`examples/art-*`, deleted on 2026-11-06) and is
 kept here, beside the look's preset, under the look's slug and, for a
 variant, the variant's name:
 
-- `<slug>/art/`: a look's own sprites: pixel's beats (the art sample's
-  16-bit set, with its import settings) and pixel-3d-hybrid's hero and
-  pine, the pixel sprites it stands in a 3D set.
-- `<slug>/<variant>/art/`: the 2D sample beats drawn in a variant (hero,
-  tree, crate, lantern, ground, backdrop): pixel's 8bit, coarse, detailed,
-  luminous and monochrome, cartoon-2d's storybook and rubber-hose, and
-  painterly-3d's expressionist, lush and luminous-layers.
+- `<slug>/art/` and `<slug>/<variant>/art/`: the 2D preview scene's beats
+  drawn in a 2D look or variant (pixel and its 8bit, coarse, detailed,
+  luminous, monochrome and topdown; cartoon-2d and its watercolor,
+  storybook and rubber-hose): hero, tree, crate, lantern, slime, gem, bush,
+  heart, platform, the ground's tile set (`tiles`), the tree line (`mid`)
+  and the far layer (`backdrop`); topdown has a floor, a path and a cliff
+  tile set (`grass`, `path`, `wall`) in place of the last four.
+  `preview/2d/tools/art.ts` makes them from each look's art brief.
+  Edited by hand after that: monochrome's `backdrop.png` (the earlier
+  sample's, its sun moved from the top right corner to the open sky, clear
+  of the HUD), and storybook's and rubber-hose's `crate.png` and
+  `lantern.png` (the earlier sample's, a strip of a neighbouring sprite
+  cut from the top of each).
+- `pixel-3d-hybrid/art/`: its hero and pine, the pixel sprites it stands
+  in a 3D set.
+- `painterly-3d/<variant>/art/`: the 2D sample beats drawn in its
+  expressionist, lush and luminous-layers variants (hero, tree, crate,
+  lantern, ground, backdrop).
 - `<slug>/models/` and `<slug>/<variant>/models/`: the 3D beats built in the
   style (`type model` text), for neon-vector, low-resolution-3d and toy-3d's
   paper variant.
