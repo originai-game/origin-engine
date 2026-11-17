@@ -536,10 +536,23 @@ pub(crate) fn values_with<'r>(
         variables::compute(inherited, &specified, &mut |_| None);
     for (name, p) in &registered {
         let value = computed.get(name.as_str()).cloned().flatten();
-        let valid = value
+        // Properties and Values API 1 §2.4: a typed property's math
+        // computes before syntax checking and substitution. Universal
+        // properties keep their tokens; relative lengths compute below
+        // once this element's font and viewport basis is known.
+        let checked = value.as_ref().and_then(|v| {
+            if p.syntax.trim() == "*" || crate::doc::calc::per_element(name, v) {
+                Some(v.clone())
+            } else {
+                crate::doc::calc::reduce(v).ok()
+            }
+        });
+        let valid = checked
             .as_deref()
             .is_some_and(|v| crate::doc::at_rules::matches_syntax(&p.syntax, v));
-        if !valid {
+        if valid {
+            computed.insert(name.clone(), checked);
+        } else {
             if let Some(v) = &value {
                 out.diagnostics.push(format!(
                     "{name}: {} does not match its @property syntax {}; it takes its initial value",

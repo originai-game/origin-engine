@@ -282,11 +282,12 @@ fn registered_custom_properties_take_their_syntax_initial_value_and_computed_len
     let text = r#"<meta name="component" content="t">
 <div><div id="Root">
   <div id="A"></div><div id="B"></div><div id="E"></div><div id="F"></div>
-  <div id="Mid"><div id="C"></div><div id="D"></div></div>
+  <div id="Mid"><div id="C"></div><div id="D"></div><div id="G"></div></div>
 </div></div>
 <style>
 @property --w { syntax: "<length>"; inherits: false; initial-value: 20px; }
 @property --g { syntax: "<length>"; inherits: true; initial-value: 0px; }
+@property --r { syntax: "<length>"; inherits: true; initial-value: 0px; }
 @property --n { syntax: "<number>"; inherits: true; initial-value: 3; }
 @property --any { syntax: "*"; inherits: true; }
 #Root { width: 400px; --w: 50px; }
@@ -295,9 +296,10 @@ fn registered_custom_properties_take_their_syntax_initial_value_and_computed_len
 #B { --w: red; width: var(--w); }
 #E { width: calc(var(--n) * 10px); }
 #F { width: var(--any, 7px); }
-#Mid { font-size: 20px; --g: 2em; --u: 2em; }
+#Mid { font-size: 20px; --g: 2em; --u: 2em; --r: calc(2rem + 3px); }
 #C { font-size: 10px; width: var(--g); }
 #D { font-size: 10px; width: var(--u); }
+#G { font-size: 10px; width: var(--r); }
 </style>"#;
     with_doc(text, &[], |d| {
         for (id, width) in [
@@ -307,6 +309,7 @@ fn registered_custom_properties_take_their_syntax_initial_value_and_computed_len
             ("F", 7.0),
             ("C", 40.0),
             ("D", 20.0),
+            ("G", d.ui.theme().type_ramp.body.size * 2.0 + 3.0),
         ] {
             assert_eq!(d.get(id).width, width, "{id}");
         }

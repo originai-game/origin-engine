@@ -800,6 +800,63 @@ fn every_colour_syntax_draws_the_colour_the_spec_gives() {
     }
 }
 
+#[test]
+fn conic_stops_compute_fraction_math_and_registered_percentages() {
+    for (registration, custom, stop) in [
+        ("", "", "calc(var(--v) * 100%)"),
+        (
+            "@property --sweep { syntax: '<percentage>'; inherits: false; initial-value: 0%; }",
+            "--sweep: calc(var(--v) * 100%);",
+            "var(--sweep)",
+        ),
+        (
+            "@property --sweep { syntax: '<angle>'; inherits: false; initial-value: 0deg; }",
+            "--sweep: calc(var(--v) * 360deg);",
+            "var(--sweep)",
+        ),
+    ] {
+        let text = format!(
+            r#"<meta name="component" content="t">
+<div id="Sweep" style:--v={{$value}}></div>
+<style>
+{registration}
+#Sweep {{ width: 100px; height: 100px; {custom}
+  background: conic-gradient(#000 {stop}, transparent 0); }}
+</style>"#
+        );
+        let mut d = Doc::new(&text, &[("value", serde_json::json!(0.35))]);
+        for value in [0.35, 0.8] {
+            d.set("value", serde_json::json!(value));
+            d.step(InputFrame::default());
+            let stops =
+                d.ui.frame()
+                    .items
+                    .iter()
+                    .find_map(|item| match &item.cmd {
+                        DrawCmd::Shape { shape, .. } => match &shape.paint {
+                            og_draw::UiPaint::GradientImage(g) => Some(&g.gradient.stops),
+                            _ => None,
+                        },
+                        _ => None,
+                    })
+                    .expect("the sweep draws a gradient");
+            assert_eq!(stops.len(), 2);
+            for stop in stops {
+                assert!(
+                    (f64::from(stop.offset) - value).abs() < 0.001,
+                    "{registration}: {} != {value}",
+                    stop.offset
+                );
+            }
+            assert!(
+                d.ui.frame().warnings.is_empty(),
+                "{:?}",
+                d.ui.frame().warnings
+            );
+        }
+    }
+}
+
 /// The first drawn gradient's stop colours inside `id`, as sRGB.
 fn gradient_stops(d: &Doc, id: &str) -> Vec<Srgba> {
     let e = d.get(id);
