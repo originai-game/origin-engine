@@ -191,6 +191,12 @@
   --role-dot-rim: transparent;
   --role-dot-rim-width: 0px;
   --role-dot-radius: var(--radius-capsule);
+  /* A dot that marks a failure without outshouting the way out of it (an
+     error state's mark): a tint of danger, ringed in it, its glyph in it.
+     The tint is thin: the engine blends in linear light, where a sixth of a
+     bright danger over dark glass is already a mid rose. */
+  --role-dot-alert-fill: rgb(from var(--danger) r g b / 0.06);
+  --role-dot-alert-rim: var(--danger);
 
   /* Track and fill: a meter's groove and the part of it that is full. A
      component names what the fill measures by setting `--fill-color` on
@@ -292,6 +298,10 @@
   --role-pip-ink: var(--danger);
   --role-pip-empty-ink: var(--ink-faint);
   --role-pip-motion: clip-path var(--motion-duration-base) var(--motion-easing-out);
+  /* Spinner: the ring a wait turns in, in the rim's colour so it shows on
+     glass, in a tile and over the scene, and the arc that runs round it. */
+  --role-spinner-track: var(--color-rim);
+  --role-spinner-ink: var(--primary);
   /* Skeleton: a stand-in while loading, and the sheen that sweeps it. */
   --role-skeleton-fill: var(--well);
   --role-skeleton-radius: var(--radius-control);
