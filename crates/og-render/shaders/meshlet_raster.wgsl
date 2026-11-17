@@ -274,7 +274,8 @@ fn raster_bary(clip: array<vec4<f32>, 3>, l: vec3<f32>) -> vec3<f32> {
 
 // One thread a pixel: the seen soft triangle's attributes at the pixel's
 // centre, perspective-correct, as a record: (world, depth), (normal oct,
-// uv, colour), (tangent oct, tangent w, its batch row, object id), the
+// uv, colour), (tangent oct, tangent w, its batch row with back-face bit
+// 31, object id), the
 // instance's look, (last frame's world, local x), (d(uv)/dx, d(uv)/dy),
 // (d(world)/dx, local y), (d(world)/dy, local z); with the extra rows
 // (`raster.soft.w` 12) then (d(local)/dx, affine u), (d(local)/dy,
@@ -381,6 +382,12 @@ fn setup(@builtin(global_invocation_id) gid: vec3<u32>) {
   let depth = bitcast<f32>(~atomicLoad(&vbuf[pixel]));
   let dwx = (model * vec4<f32>(dpos_x, 0.0)).xyz;
   let dwy = (model * vec4<f32>(dpos_y, 0.0)).xyz;
+  // The original triangle's projected winding, as triangle() culls it;
+  // never infer facing from its interpolated normal. NDC y runs up.
+  let p0 = clip[0].xy / clip[0].w;
+  let e1 = clip[1].xy / clip[1].w - p0;
+  let e2 = clip[2].xy / clip[2].w - p0;
+  let back = e1.x * e2.y - e1.y * e2.x < 0.0;
   // A tangent of w 0 is none (pbr.wgsl `lit_vertex`).
   let rows = array<vec4<u32>, 8>(
     vec4<u32>(bitcast<vec3<u32>>(world), bitcast<u32>(depth)),
@@ -388,7 +395,7 @@ fn setup(@builtin(global_invocation_id) gid: vec3<u32>) {
     vec4<u32>(
       pack2x16snorm(oct_encode(t)),
       bitcast<u32>(select(0.0, tangent.w, dot(tw, tw) > 1e-20)),
-      f.x & 0x0fffffffu,
+      (f.x & 0x0fffffffu) | select(0u, 0x80000000u, back),
       select(raster_object(model), group, group > 0u),
     ),
     bitcast<vec4<u32>>(look),

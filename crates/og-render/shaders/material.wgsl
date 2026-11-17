@@ -21,6 +21,13 @@ struct MaterialFactors {
 
 @group(1) @binding(0) var<uniform> material: MaterialFactors;
 
+// Only a double-sided material reverses its shading normal on the back
+// of a triangle. A smooth normal can point past the silhouette without
+// changing which side of the triangle is drawn (mode 32: single-sided).
+fn material_face(front: f32) -> f32 {
+  return select(front, 1.0, (u32(material.flags.w) & 32u) != 0u);
+}
+
 // The texture slots' uv transforms (KHR_texture_transform, three.js
 // Texture.offset/repeat/rotation): StandardMaterial::uv_transforms' order.
 const UV_MAP: u32 = 0u;

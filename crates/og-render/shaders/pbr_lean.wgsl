@@ -66,7 +66,8 @@ fn vs_lean_compact(v: CompactVertexIn, i: InstanceIn, k: InstanceFxIn) -> LeanOu
 }
 
 @fragment
-fn fs_lean(in: LeanOut) -> @location(0) vec4<f32> {
+fn fs_lean(in: LeanOut, @builtin(front_facing) front: bool) -> @location(0) vec4<f32> {
+  hook_front = select(-1.0, 1.0, front);
   var full: VertexOut;
   full.clip = in.clip;
   full.world_pos = in.world_pos;
@@ -112,7 +113,8 @@ fn vs_prepass_lean_compact(@location(0) position: vec4<f32>, @location(1) normal
 }
 
 @fragment
-fn fs_prepass_lean(in: LeanPrepassOut) -> PrepassTargets {
+fn fs_prepass_lean(in: LeanPrepassOut, @builtin(front_facing) front: bool) -> PrepassTargets {
+  hook_front = select(-1.0, 1.0, front);
   var full: PrepassOut;
   full.clip = in.clip;
   full.world_pos = in.world_pos;

@@ -164,6 +164,7 @@ fn vs_meshlet_resolve(@builtin(vertex_index) vi: u32, @builtin(instance_index) r
 struct MeshletRecord {
   // The pixel is this batch's.
   ok: bool,
+  front: f32,
   depth: f32,
   v: VertexOut,
   prev_world: vec3<f32>,
@@ -186,8 +187,9 @@ fn meshlet_record(pos: vec4<f32>, row: u32) -> MeshletRecord {
   let a = meshlet_attrs[at];
   let b = meshlet_attrs[at + 1u];
   let c = meshlet_attrs[at + 2u];
-  if (c.z != row) { return r; }
+  if ((c.z & 0x0fffffffu) != row) { return r; }
   r.ok = true;
+  r.front = select(1.0, -1.0, (c.z & 0x80000000u) != 0u);
   r.depth = bitcast<f32>(a.w);
   r.v.clip = pos;
   r.v.world_pos = bitcast<vec3<f32>>(a.xyz);
@@ -241,8 +243,7 @@ fn fs_meshlet_resolve(in: MeshletResolveOut) -> MeshletResolveLit {
   if (!r.ok) { discard; }
   var o: MeshletResolveLit;
   o.depth = r.depth;
-  // Read only by a material shader's hooks, which no soft batch has.
-  hook_front = 1.0;
+  hook_front = r.front;
   analytic_uv = r.lit_uv;
   o.color = lit_fragment(r.v);
   return o;
@@ -269,7 +270,7 @@ fn fs_prepass_meshlet_resolve(in: MeshletResolveOut) -> MeshletResolvePrepass {
   p.cur_clip = fx.view_proj_unjittered * vec4<f32>(r.v.world_pos, 1.0);
   p.prev_clip = mul_point(fx.prev_view_proj, vec4<f32>(r.prev_world, 1.0));
   p.object = r.object;
-  hook_front = 1.0;
+  hook_front = r.front;
   let t = prepass_targets(p);
   var o: MeshletResolvePrepass;
   o.gbuffer = t.gbuffer;

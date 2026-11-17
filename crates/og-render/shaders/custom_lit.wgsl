@@ -32,36 +32,36 @@ fn vs_skinned(@builtin(vertex_index) vi: u32, v: CustomVertexIn, i: CustomSkinne
 }
 
 @fragment
-fn fs(in: CustomOut) -> @location(0) vec4<f32> {
-  return custom_fragment(in);
+fn fs(in: CustomOut, @builtin(front_facing) front: bool) -> @location(0) vec4<f32> {
+  return custom_fragment(in, front);
 }
 
 // The order-independent passes' entries (pbr_fs.wgsl `fs_oit`).
 @fragment
-fn fs_oit(in: CustomOut) -> OitOutput {
-  return oit_weighted(custom_fragment(in), in.clip.z);
+fn fs_oit(in: CustomOut, @builtin(front_facing) front: bool) -> OitOutput {
+  return oit_weighted(custom_fragment(in, front), in.clip.z);
 }
 
 @fragment
-fn fs_oit_list(in: CustomOut, @builtin(sample_mask) mask: u32) -> OitOutput {
-  let c = custom_fragment(in);
+fn fs_oit_list(in: CustomOut, @builtin(front_facing) front: bool, @builtin(sample_mask) mask: u32) -> OitOutput {
+  let c = custom_fragment(in, front);
   oit_store(in.clip, c, mask, in.oit_key);
   return oit_weighted(c, in.clip.z);
 }
 
 @fragment
-fn fs_oit_front(in: CustomOut) -> OitOutput {
-  let c = custom_fragment(in);
+fn fs_oit_front(in: CustomOut, @builtin(front_facing) front: bool) -> OitOutput {
+  let c = custom_fragment(in, front);
   return oit_hybrid(c, in.clip);
 }
 
 @fragment
-fn fs_oit_mark(in: CustomOut) {
-  let c = custom_fragment(in);
+fn fs_oit_mark(in: CustomOut, @builtin(front_facing) front: bool) {
+  let c = custom_fragment(in, front);
   oit_front_mark(in.clip, c.a);
 }
 
-fn custom_fragment(in: CustomOut) -> vec4<f32> {
+fn custom_fragment(in: CustomOut, front: bool) -> vec4<f32> {
   // Before the shader's code, whose branches derivatives may not follow.
   let dpx = dpdx(in.world);
   let dpy = dpdy(in.world);
@@ -85,14 +85,13 @@ fn custom_fragment(in: CustomOut) -> vec4<f32> {
   s.f0 = mix(vec3<f32>(0.04), s.albedo, s.metallic);
   s.coat = 0.0;
   s.coat_roughness = 1.0;
-  var n = normalize(out.normal);
-  if (dot(n, v) < 0.0) { n = -n; }
+  let face = material_face(select(-1.0, 1.0, front));
+  var n = normalize(out.normal) * face;
   // The decals over it, then the rain, snow and dust on it, as on every
   // lit mesh (decals.wgsl, weather_surface.wgsl; pbr_fs.wgsl): they land
   // by the mesh's own normal, and the material's weathering scales the
   // weather.
-  var n_geo = normalize(in.normal);
-  if (dot(n_geo, v) < 0.0) { n_geo = -n_geo; }
+  let n_geo = normalize(in.normal) * face;
   var emissive = out.emissive;
   if (EFFECTS) {
     let decaled = surface_decals(s, n, n_geo, in.clip.xy, in.world, dpx, dpy);
@@ -175,7 +174,7 @@ struct CustomPrepassTargets {
 };
 
 @fragment
-fn fs_prepass(in: CustomPrepassOut) -> CustomPrepassTargets {
+fn fs_prepass(in: CustomPrepassOut, @builtin(front_facing) front: bool) -> CustomPrepassTargets {
   var o: CustomOut;
   o.clip = in.clip;
   o.world = in.world;
@@ -187,15 +186,14 @@ fn fs_prepass(in: CustomPrepassOut) -> CustomPrepassTargets {
   let v = toward_eye(in.world);
   let out = custom_surface(o, v);
   if (custom_cut(out)) { discard; }
-  var n = normalize(out.normal);
-  if (dot(n, v) < 0.0) { n = -n; }
+  let face = material_face(select(-1.0, 1.0, front));
+  var n = normalize(out.normal) * face;
   // The reflectivity screen-space reflections read (pbr_prepass.wgsl): a
   // lit shader's gloss and metalness as its lit pass shades them, wet and
   // rippled where the weather lies; none for an unlit shader.
   var reflectivity = 0.0;
   if (CUSTOM_LIT) {
-    var n_geo = normalize(in.normal);
-    if (dot(n_geo, v) < 0.0) { n_geo = -n_geo; }
+    let n_geo = normalize(in.normal) * face;
     let g = weather_gloss(clamp(out.roughness, 0.04, 1.0), clamp(out.metallic, 0.0, 1.0), n, n_geo, in.world, 0.5, material.uv[3].w, WEATHER_STANDS);
     n = g.n;
     reflectivity = reflectivity_bits(g.s.roughness, g.s.metallic);

@@ -164,9 +164,10 @@ fn fs_composite(in: FullOut) -> CompositeOut {
   let v = toward_eye(p);
   // A pixel whose neighbours are all at its own point (a lone sphere's
   // rim) has no tangent plane: it faces the eye.
+  // This is a front depth surface, not the full-screen triangle's side:
+  // screen y runs down, so right cross down reversed faces the camera.
   let nc = cross(ty, tx);
-  var n = select(v, nc * inverseSqrt(max(dot(nc, nc), 1e-30)), dot(nc, nc) > 1e-20);
-  if (dot(n, v) < 0.0) { n = -n; }
+  let n = select(v, nc * inverseSqrt(max(dot(nc, nc), 1e-30)), dot(nc, nc) > 1e-20);
 
   let thick = textureLoad(fluid_thick, px, 0);
   let a = max(thick.a, 1e-5);

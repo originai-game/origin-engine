@@ -394,11 +394,11 @@ fn physical_fragment(in: PhysicalOut) -> vec4<f32> {
   let dpy = dpdyFine(in.world_pos);
   var n = normalize(in.normal);
   if ((mode & 1u) != 0u) {
-    n = normalize(cross(dpx, dpy));
+    n = -normalize(cross(dpx, dpy)) * hook_front;
   }
   let v = toward_eye(in.world_pos);
   let n_vertex = n;
-  let face = select(1.0, -1.0, dot(n, v) < 0.0);
+  let face = material_face(hook_front);
   n = n * face;
   // The vertex tangent frame (pbr_fs.wgsl's), for the normal maps, the stretch and the iris.
   var t = in.tangent.xyz - n_vertex * dot(n_vertex, in.tangent.xyz);

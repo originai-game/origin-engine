@@ -142,3 +142,109 @@ fn a_made_surface_keeps_the_normal_where_it_lies_in_the_face() {
         );
     }
 }
+
+/// A smooth front face can have a shading normal just past the silhouette.
+/// It must keep receiving light from above, not be flipped into the ground.
+/// Turning the triangle over on a double-sided leaf must still flip its normal.
+#[test]
+#[ignore = "requires GPU"]
+fn triangle_facing_not_the_shading_normal_selects_the_lit_side() {
+    use og_render::meshlet::{Cluster, ClusterLevel, MeshClusters};
+    use og_render::{Culling, MaterialShader, ShaderMode, Side, StandardMaterial};
+    let desc = RenderDesc {
+        width: 64,
+        height: 64,
+        ..Default::default()
+    };
+    let render = |path: &str, back: bool, side: Side, flat: bool, z: f32| {
+        let mut scene = RenderScene::new();
+        let mut quad = shapes::plane_xy(0.5, 0.5);
+        for vertex in &mut quad.vertices {
+            vertex.normal = Vec3::new(0.0, 1.0, z).normalize().to_array();
+        }
+        if back {
+            for triangle in quad.indices.as_chunks_mut::<3>().0 {
+                triangle.swap(1, 2);
+            }
+        }
+        let clusters = MeshClusters {
+            levels: vec![ClusterLevel {
+                count: 6,
+                clusters: 0..1,
+                ..Default::default()
+            }],
+            clusters: vec![Cluster {
+                triangles: 2,
+                radius: 0.36,
+                cone_cutoff: 1.0,
+                ..Default::default()
+            }],
+            indices: quad.indices.clone(),
+        };
+        let mesh = scene.add_mesh(quad);
+        if path == "meshlet" {
+            assert!(scene.set_mesh_clusters(mesh, Some(clusters)));
+        }
+        let material = scene.add_standard_material(StandardMaterial {
+            color: Vec3::splat(0.5),
+            roughness: 1.0,
+            clearcoat: if path == "physical" { 0.5 } else { 0.0 },
+            side: side as u32,
+            flatShading: u32::from(flat),
+            ..Default::default()
+        });
+        if path == "custom" {
+            let shader = scene.add_shader(MaterialShader {
+                name: "smooth facing".into(),
+                code: "fn fragment(f: FragmentInput, p: Params) -> SurfaceOutput { return SurfaceOutput(vec4<f32>(0.5, 0.5, 0.5, 1.0), f.normal, 0.0, 1.0, vec3<f32>(0.0)); }".into(),
+                params: vec![],
+                mode: ShaderMode::Full { lit: true },
+            });
+            assert!(scene.set_material_shader(material, Some(shader)));
+        }
+        for _ in 0..if path == "meshlet" { 65 } else { 1 } {
+            scene.add_instance(mesh, material, Mat4::IDENTITY);
+        }
+        scene.frame.camera = Camera {
+            position: Vec3::Z * 3.0,
+            target: Vec3::ZERO,
+            ..Default::default()
+        };
+        scene.lighting.light.direction_to_light = if flat {
+            Vec3::Z
+        } else if back {
+            -Vec3::Y
+        } else {
+            Vec3::Y
+        };
+        scene.lighting.light.intensity = 3.0;
+        scene.lighting.light.cast_shadows = false;
+        scene.lighting.environment.intensity = 0.0;
+        let desc = RenderDesc {
+            culling: Culling::Gpu,
+            ..desc
+        };
+        let image = render_to_rgba(&desc, &scene).expect("renderer");
+        image.pixels[(32 * 64 + 32) * 4]
+    };
+    for path in ["standard", "physical", "custom", "meshlet"] {
+        let control = render(path, false, Side::Front, false, 0.05);
+        assert!(control > 100, "{path} lit control: {control}");
+        for side in [Side::Front, Side::Double] {
+            let past = render(path, false, side, false, -0.05);
+            assert!(
+                past.abs_diff(control) < 10,
+                "{path} {side:?} silhouette: {past}, control {control}"
+            );
+        }
+        let back = render(path, true, Side::Double, false, -0.05);
+        assert!(
+            back.abs_diff(control) < 10,
+            "{path} back of leaf: {back}, control {control}"
+        );
+    }
+    for back in [false, true] {
+        let flat = render("standard", back, Side::Double, true, -0.05);
+        assert!(flat > 100, "flat face back={back}: {flat}");
+    }
+}

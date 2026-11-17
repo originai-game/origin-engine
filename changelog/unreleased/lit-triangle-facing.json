@@ -1,0 +1,8 @@
+{
+  "fixed": [
+    {
+      "member": "og.StandardMaterial.side",
+      "summary": "Smooth lit surfaces no longer develop dark seams at hill ridges and silhouettes: triangle winding, not the shading normal's direction towards the eye, selects the shaded side. Double-sided back faces still reverse their normals, including the meshlet visibility-buffer path, custom shaders and depth-normal prepasses."
+    }
+  ]
+}

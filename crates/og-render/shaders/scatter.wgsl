@@ -133,10 +133,10 @@ fn fs(in: ScatterOut, @builtin(front_facing) front: bool) -> @location(0) vec4<f
   s.translucency = material.coat.z;
   var n = normalize(in.normal);
   if ((mode & 1u) != 0u) {
-    n = normalize(cross(dpx, dpy));
+    n = -normalize(cross(dpx, dpy)) * h.front;
   }
   let v = toward_eye(in.world);
-  if (dot(n, v) < 0.0) { n = -n; }
+  n *= material_face(h.front);
   let n_geo = n;
   n = normalize(surface_normal(h, shader_params(), n));
   // The decals over the copy, then the rain, snow and dust on it, as on a
@@ -194,9 +194,9 @@ fn fs_prepass(in: ScatterOut, @builtin(front_facing) front: bool) -> ScatterPrep
     discard;
   }
   var n = normalize(in.normal);
-  if ((u32(material.flags.w) & 1u) != 0u) { n = flat_n; }
-  let v = toward_eye(in.world);
-  if (dot(n, v) < 0.0) { n = -n; }
+  let face = select(-1.0, 1.0, front);
+  if ((u32(material.flags.w) & 1u) != 0u) { n = -flat_n * face; }
+  n *= material_face(face);
   let cur = in.cur_clip.xy / in.cur_clip.w;
   let prev = in.prev_clip.xy / max(in.prev_clip.w, 1e-6);
   var o: ScatterPrepass;

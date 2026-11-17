@@ -210,13 +210,14 @@ fn lit_fragment(in: VertexOut) -> vec4<f32> {
 
   var n = normalize(in.normal);
   if ((mode & 1u) != 0u) {
-    // Flat shading: the face normal from the position derivatives.
-    n = normalize(cross(dpx, dpy));
+    // Framebuffer y runs down: undo its winding, then recover the mesh's
+    // oriented normal before applying the material's side below.
+    n = -normalize(cross(dpx, dpy)) * hook_front;
   }
   // Perspective: towards the eye; orthographic: against the view direction.
   let v = toward_eye(in.world_pos);
   let n_vertex = n;
-  let face = select(1.0, -1.0, dot(n, v) < 0.0);
+  let face = material_face(hook_front);
   n = n * face;
   var decal_emissive = vec3<f32>(0.0);
   var decal_normal = vec4<f32>(0.0);
