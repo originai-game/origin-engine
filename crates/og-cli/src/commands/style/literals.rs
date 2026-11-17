@@ -8,7 +8,9 @@
 //! z-index, line-height, opacity, `border-image` slices, sound volumes),
 //! percentages (gradient stops, positions, sizes), container-query units
 //! (`cqw`, `cqh`…: a share of the container, as a percentage is) and angles stay
-//! structural. `@font-face`, `@property` and `@counter-style` take their
+//! structural. Colours inside `mask` and `mask-image` describe coverage
+//! (alpha or luminance), not the surface's ink. `@font-face`, `@property`
+//! and `@counter-style` take their
 //! own descriptors, and `-og-sound` names sound files: both declare assets,
 //! so their `url()`s may stand anywhere. `@media` and `@container`
 //! conditions are not values.
@@ -54,7 +56,8 @@ pub fn findings(file: &str, css: &str) -> Vec<String> {
         if name.eq_ignore_ascii_case(ASSETS) {
             return;
         }
-        if let Some(what) = literal(value) {
+        let coverage = name.eq_ignore_ascii_case("mask") || name.eq_ignore_ascii_case("mask-image");
+        if let Some(what) = literal(value, coverage) {
             let line = css[..at].bytes().filter(|b| *b == b'\n').count() + 1;
             out.push(format!(
                 "{file}:{line}: {name}: literal {what} outside :root; set it as a :root token and use var()"
@@ -196,17 +199,20 @@ fn root_only(selectors: &str) -> bool {
 }
 
 /// What literal `value` writes, if any.
-fn literal(value: &str) -> Option<String> {
+fn literal(value: &str, coverage: bool) -> Option<String> {
     use cssparser::{Parser, Token};
-    fn walk(p: &mut Parser<'_>) -> Option<String> {
+    fn walk(p: &mut Parser<'_>, coverage: bool) -> Option<String> {
         while let Ok(token) = p.next() {
             let token = token.clone();
             match token {
-                Token::Hash(h) | Token::IDHash(h) => return Some(format!("colour `#{h}`")),
+                Token::Hash(h) | Token::IDHash(h) if !coverage => {
+                    return Some(format!("colour `#{h}`"));
+                }
                 Token::UnquotedUrl(u) => return Some(format!("url `url({u})`")),
                 Token::Ident(name) => {
                     let n = name.to_ascii_lowercase();
-                    if n != "transparent"
+                    if !coverage
+                        && n != "transparent"
                         && n != "currentcolor"
                         && og_ui::css_color::parse_str(&n).is_ok()
                     {
@@ -231,7 +237,7 @@ fn literal(value: &str) -> Option<String> {
                         // The name and its fallback: a fallback is still a value.
                         let found = p.parse_nested_block(|p| {
                             let _ = p.next();
-                            let found = walk(p);
+                            let found = walk(p, coverage);
                             drain(p);
                             Ok::<_, cssparser::ParseError<()>>(found)
                         });
@@ -243,12 +249,12 @@ fn literal(value: &str) -> Option<String> {
                     let colour = COLOUR_FUNCTIONS.contains(&n.as_str());
                     let inner = p.parse_nested_block(|p| {
                         let start = p.position();
-                        let found = walk(p);
+                        let found = walk(p, coverage);
                         drain(p);
                         Ok::<_, cssparser::ParseError<()>>((found, p.slice_from(start).to_owned()))
                     });
                     if let Ok((found, text)) = inner {
-                        if colour && !text.contains("var(") {
+                        if !coverage && colour && !text.contains("var(") {
                             return Some(format!("colour `{name}({})`", text.trim()));
                         }
                         if found.is_some() {
@@ -258,7 +264,7 @@ fn literal(value: &str) -> Option<String> {
                 }
                 Token::ParenthesisBlock | Token::SquareBracketBlock | Token::CurlyBracketBlock => {
                     if let Ok(Some(f)) = p.parse_nested_block(|p| {
-                        let found = walk(p);
+                        let found = walk(p, coverage);
                         drain(p);
                         Ok::<_, cssparser::ParseError<()>>(found)
                     }) {
@@ -270,7 +276,7 @@ fn literal(value: &str) -> Option<String> {
         }
         None
     }
-    walk(&mut Parser::new(value))
+    walk(&mut Parser::new(value), coverage)
 }
 
 /// Consumes what a block's walk left after a find, so the block parses whole
@@ -282,6 +288,31 @@ fn drain(p: &mut cssparser::Parser<'_>) {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// Mask colours encode coverage, not the surface's look. The same
+    /// colours in a background, and mask lengths and assets, remain tokens.
+    #[test]
+    fn mask_coverage_colours_are_structural_but_other_literals_are_not() {
+        let css = r#"div {
+mask-image: repeating-linear-gradient(90deg, #000 0 var(--space-sm), transparent 0 var(--space-md));
+mask: linear-gradient(white, rgb(0 0 0 / 0.5), hsl(0 0% 0%));
+mask-image: linear-gradient(var(--coverage, black), transparent);
+background: linear-gradient(#000, transparent);
+mask-image: repeating-linear-gradient(#000 0 4px, transparent 0 8px);
+mask: url("shape.png") center / 50%;
+}"#;
+        let found = findings("mask.css", css);
+        assert_eq!(found.len(), 3, "{found:#?}");
+        assert!(
+            found[0].contains("background: literal colour `#000`"),
+            "{found:#?}"
+        );
+        assert!(
+            found[1].contains("mask-image: literal length `4px`"),
+            "{found:#?}"
+        );
+        assert!(found[2].contains("mask: literal url"), "{found:#?}");
+    }
 
     /// Ways it could fail: a value in `:root` reported, a structural number
     /// (0, a percentage stop, a slice, a unitless factor, an angle) or a
