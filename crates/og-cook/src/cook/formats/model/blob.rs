@@ -812,16 +812,3 @@ pub fn impostor_ids(id: &str) -> [String; 3] {
         format!("{id}#impostor-material"),
     ]
 }
-
-/// The asset ids of the leaf layer of model `id`'s impostor (a model
-/// whose leaves follow the year, og-cook's `impostor::LeafLayer`): the
-/// leaves' atlas, then the wood layer's albedo, normal and depth, and
-/// material.
-pub fn impostor_leaf_ids(id: &str) -> [String; 4] {
-    [
-        format!("{id}#impostor-leaf"),
-        format!("{id}#impostor-wood"),
-        format!("{id}#impostor-wood-normal"),
-        format!("{id}#impostor-wood-material"),
-    ]
-}
