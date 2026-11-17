@@ -1,6 +1,6 @@
 <meta name="component" content="RacingResults">
 <meta name="strings" content="./racing.en.ogt">
-<meta name="parts" content="RacingResults.frame RacingResults.band RacingResults.title RacingResults.heading RacingResults.row RacingResults.place RacingResults.name RacingResults.badge RacingResults.label">
+<meta name="parts" content="RacingResults.frame RacingResults.band RacingResults.title RacingResults.heading RacingResults.row RacingResults.place RacingResults.name RacingResults.badge RacingResults.label RacingResults.figure RacingResults.caption">
 <meta name="prop:title" content="string" data-doc="The page's heading (the event's name); empty takes the kit's (Results).">
 <meta name="prop:rows" content="list" data-doc="The finishing order as the game classifies it, keyed rows of { id, position, name, time, points, fastest, player, state }: time the race time or gap as the game words it; points as text (empty hides it); fastest marks the fastest lap; player the local player's row; state finished, dnf or dsq (dnf and dsq are named in words and show no place or time).">
 <meta name="prop:bestLap" content="string" data-doc="The race's fastest lap time, formatted; empty hides the line under the table.">
@@ -19,62 +19,59 @@
   every time and point. Continue (continue) and Retry (retry; also
   the details action, X or pad Y) report once; a Retry the game refuses is disabled.
 -->
-<section id="RacingResults" part="RacingResults.frame" aria-label={title != '' ? title : t("racing.results.title")}>
-  <header part="RacingResults.band"><h2 part="RacingResults.title">{title != '' ? title : t("racing.results.title")}</h2></header>
+<section id="RacingResults" part="RacingResults.frame" data-layout="shell" aria-label={title != '' ? title : t("racing.results.title")}>
+  <header part="RacingResults.band" data-layout="row"><h2 part="RacingResults.title" data-fill>{title != '' ? title : t("racing.results.title")}</h2></header>
   {#if rows.length}
-    <div part="RacingResults.heading" class="heading">
+    <div part="RacingResults.heading" class="heading" data-layout="row" data-gap="loose">
       <span class="place">{t("racing.results.position")}</span>
-      <span class="head-name">{t("racing.results.driver")}</span>
+      <span class="head-name" data-fill>{t("racing.results.driver")}</span>
       <span class="time">{t("racing.results.time")}</span>
       <span class="points">{t("racing.results.points")}</span>
     </div>
-    <div class="list">
-      <div class="rows" role="list" aria-label={title != '' ? title : t("racing.results.title")}>
+    <div class="list" data-layout="scroll" data-fill>
+      <div class="rows" data-layout="stack" data-gap="hair" role="list" aria-label={title != '' ? title : t("racing.results.title")}>
         {#each rows as r (r.id)}
-          <div part="RacingResults.row" role="listitem" aria-current={r.player} aria-label={r.name} data-player={r.player} data-state={r.state} data-fastest={r.fastest}>
-            <span part="RacingResults.place RacingResults.label" class="place">{r.state == 'dnf' || r.state == 'dsq' ? t("racing.results.unplaced") : formatNumber(r.position)}</span>
-            <div class="name"><span part="RacingResults.name" class="driver">{r.name}</span>{#if r.player}<span class="you">{t("racing.results.you")}</span>{/if}{#if r.fastest}<span part="RacingResults.badge" class="fastest" aria-label={t("racing.results.fastest")}>{t("racing.results.fastest")}</span>{/if}</div>
+          <div part="RacingResults.row" data-layout="row" data-gap="loose" role="listitem" aria-current={r.player} aria-label={r.name} data-player={r.player} data-state={r.state} data-fastest={r.fastest}>
+            <span part="RacingResults.place RacingResults.label RacingResults.figure" class="place">{r.state == 'dnf' || r.state == 'dsq' ? t("racing.results.unplaced") : formatNumber(r.position)}</span>
+            <div class="name" data-layout="cluster" data-gap="tight" data-fill><span part="RacingResults.name" class="driver">{r.name}</span>{#if r.player}<span class="you" part="RacingResults.caption">{t("racing.results.you")}</span>{/if}{#if r.fastest}<span part="RacingResults.badge" class="fastest" aria-label={t("racing.results.fastest")}>{t("racing.results.fastest")}</span>{/if}</div>
             {#if r.state == 'dnf' || r.state == 'dsq'}<span part="RacingResults.badge" class="out" data-state={r.state} aria-label={r.state == 'dsq' ? t("racing.results.dsqName") : t("racing.results.dnfName")}>{r.state == 'dsq' ? t("racing.results.dsq") : t("racing.results.dnf")}</span>
-            {:else}<span class="time">{r.time}</span>{/if}
-            <span class="points">{r.points}</span>
+            {:else}<span class="time" part="RacingResults.figure">{r.time}</span>{/if}
+            <span class="points" part="RacingResults.figure">{r.points}</span>
           </div>
         {/each}
       </div>
     </div>
-    {#if bestLap != ''}<p class="best">{bestBy != '' ? t("racing.results.bestLap", { time: bestLap, name: bestBy }) : t("racing.results.bestLapTime", { time: bestLap })}</p>{/if}
+    {#if bestLap != ''}<p class="best" part="RacingResults.caption">{bestBy != '' ? t("racing.results.bestLap", { time: bestLap, name: bestBy }) : t("racing.results.bestLapTime", { time: bestLap })}</p>{/if}
   {:else}
-    <p class="empty-text" role="status">{t("racing.results.empty")}</p>
+    <p class="empty-text" part="RacingResults.caption" data-fill role="status">{t("racing.results.empty")}</p>
   {/if}
-  <footer class="actions">
+  <footer class="actions" data-layout="row">
     <button id="Retry" variant="ghost" disabled={!canRetry} onclick={retry} ondetails={retry}><kbd class="key" data-action="details"></kbd><span>{t("racing.results.retry")}</span></button>
     <button id="Continue" variant="primary" onclick={continue}><span>{t("racing.results.continue")}</span></button>
   </footer>
 </section>
 
 <style>
-:host { display: flex; flex-direction: column; width: stretch; height: stretch; gap: var(--space-sm); container-type: inline-size; }
-[part="RacingResults.band"] { display: flex; width: stretch; align-items: center; flex: none; }
-[part="RacingResults.title"] { flex: 1; min-width: 0; margin: 0; overflow-wrap: anywhere; }
-[part="RacingResults.heading"], [part="RacingResults.row"] { display: flex; width: stretch; align-items: center; gap: var(--space-md); padding: var(--space-xs) var(--space-md); }
+[part="RacingResults.band"] { width: stretch; flex: none; }
+[part="RacingResults.title"] { margin: 0; overflow-wrap: anywhere; }
+[part="RacingResults.heading"], [part="RacingResults.row"] { width: stretch; padding: var(--space-xs) var(--space-md); }
 [part="RacingResults.heading"] { flex: none; }
-.list { overflow-y: auto; flex: 1; min-height: 0; }
-.rows { display: flex; flex-direction: column; width: stretch; gap: var(--space-xxs); }
+.rows { width: stretch; }
 [part="RacingResults.row"] { min-height: var(--size-touch); }
-.place { flex: none; width: var(--size-md); text-align: center; font-variant-numeric: tabular-nums; }
-.name { display: flex; flex-wrap: wrap; flex: 1; min-width: 0; align-items: center; gap: var(--space-xxs) var(--space-sm); }
-.head-name { flex: 1; min-width: 0; text-align: start; }
+.place { flex: none; width: var(--size-md); text-align: center; }
+.head-name { text-align: start; }
 .driver { flex: 1 0 100%; text-align: start; overflow-wrap: anywhere; }
 .you, .fastest, .out { flex: none; white-space: nowrap; padding: 0 var(--space-xs); }
-.time { flex: none; width: calc(var(--size-xxl) * 1.15); text-align: end; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.time { flex: none; width: calc(var(--size-xxl) * 1.15); text-align: end; white-space: nowrap; }
 .out { width: calc(var(--size-xxl) * 1.15); text-align: end; }
-.points { flex: none; width: var(--size-lg); text-align: end; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.points { flex: none; width: var(--size-lg); text-align: end; white-space: nowrap; }
 .best { margin: 0; flex: none; }
-.empty-text { margin: 0; flex: 1; text-align: center; }
-.actions { display: flex; width: stretch; flex: none; justify-content: flex-end; gap: var(--space-sm); padding-bottom: env(safe-area-inset-bottom); }
-.actions button { min-height: var(--size-touch); min-width: calc(var(--size-xxl) * 1.25); gap: var(--space-xs); }
+.empty-text { margin: 0; text-align: center; }
+.actions { width: stretch; flex: none; justify-content: flex-end; padding-bottom: env(safe-area-inset-bottom); }
+.actions button { min-height: var(--size-touch); min-width: calc(var(--size-xxl) * 1.25); }
 @media (pointer: coarse) { .key { display: none; } }
 @container (width < 600px) {
-  [part="RacingResults.heading"], [part="RacingResults.row"] { gap: var(--space-xs); padding: var(--space-xxs) var(--space-xs); }
+  [part="RacingResults.heading"], [part="RacingResults.row"] { --layout-gap-loose: var(--layout-gap-tight); padding: var(--space-xxs) var(--space-xs); }
   .time, .out { width: calc(var(--size-xxl) * 0.9); }
   .points { width: var(--size-md); }
   .actions { justify-content: stretch; }

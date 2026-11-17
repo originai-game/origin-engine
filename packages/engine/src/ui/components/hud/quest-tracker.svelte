@@ -1,6 +1,6 @@
 <meta name="component" content="RpgQuestTracker">
 <meta name="strings" content="./quest-tracker.en.ogt">
-<meta name="parts" content="RpgQuestTracker.frame RpgQuestTracker.title RpgQuestTracker.row">
+<meta name="parts" content="RpgQuestTracker.frame RpgQuestTracker.title RpgQuestTracker.row RpgQuestTracker.caption RpgQuestTracker.figure">
 <meta name="prop:name" content="string" data-doc="The tracked quest's name, on the plate; empty hides the tracker.">
 <meta name="prop:steps" content="list" data-doc="Its current objectives, keyed rows of { id, text, done }: done ticks and quiets one.">
 <meta name="prop:distance" content="string" data-doc="How far its marker is, as the game words it (312 m); empty hides it.">
@@ -12,30 +12,24 @@
   their ticks, and the distance to its marker. Read only; the journal owns
   choosing what to track.
 -->
-<section id="RpgQuestTracker" part="RpgQuestTracker.frame" class="hud" data-empty={!name} role="status" aria-label={t("rpg.quests.tracked")}>
+<section id="RpgQuestTracker" part="RpgQuestTracker.frame" class="hud" data-layout="stack" data-empty={!name} role="status" aria-label={t("rpg.quests.tracked")}>
   {#if name}
   <h3 part="RpgQuestTracker.title">{name}</h3>
-  <ul class="tracker-steps">
+  <ul class="tracker-steps" data-layout="stack">
     {#each steps as s (s.id)}
-      <li part="RpgQuestTracker.row" data-done={s.done}><og-icon class="tracker-mark" icon={s.done ? 'check' : 'flag'}></og-icon><span class="tracker-text">{s.text}</span></li>
+      <li part="RpgQuestTracker.row" data-layout="row" data-done={s.done}><og-icon class="tracker-mark" data-tone={s.done ? 'success' : null} icon={s.done ? 'check' : 'flag'}></og-icon><span class="tracker-text" data-fill>{s.text}</span></li>
     {/each}
   </ul>
-  {#if distance}<div class="tracker-distance"><og-icon class="tracker-arrow" icon="map"></og-icon><span class="tracker-far">{distance}</span></div>{/if}
+  {#if distance}<div class="tracker-distance" data-layout="row" data-gap="tight"><og-icon class="tracker-arrow" icon="map"></og-icon><span class="tracker-far" part="RpgQuestTracker.caption RpgQuestTracker.figure">{distance}</span></div>{/if}
   {/if}
 </section>
 
 <style>
-/* Drawn over the scene: the style's tag halo holds its text there. */
-:host { text-shadow: var(--tag-halo); }
-:host { display: flex; flex-direction: column; inline-size: stretch; gap: var(--space-sm); padding: var(--space-md); }
+:host { inline-size: stretch; }
 [part="RpgQuestTracker.frame"][data-empty=true] { display: none; }
-[part="RpgQuestTracker.title"] { margin: 0; text-align: start; font-size: var(--font-step-lg); }
-.tracker-steps { display: flex; flex-direction: column; margin: 0; padding: 0; list-style: none; gap: var(--space-sm); }
-[part="RpgQuestTracker.row"] { display: flex; align-items: center; gap: var(--space-sm); }
-[part="RpgQuestTracker.row"][data-done=true] { color: var(--scene-ink); text-shadow: var(--tag-halo); }
-.tracker-mark { width: var(--size-xs); height: var(--size-xs); flex: none; color: var(--primary); }
-[part="RpgQuestTracker.row"][data-done=true] .tracker-mark { color: var(--success); }
-.tracker-text { flex: 1; min-width: 0; }
-.tracker-distance { display: flex; align-items: center; gap: var(--space-xs); padding-block-start: var(--space-xs); border-block-start: var(--stroke-hairline) solid var(--line); color: var(--ink-muted); font: var(--text-caption); }
+[part="RpgQuestTracker.title"] { margin: 0; text-align: start; }
+.tracker-steps { margin: 0; padding: 0; list-style: none; }
+.tracker-mark { width: var(--size-xs); height: var(--size-xs); flex: none; }
+.tracker-distance { padding-block-start: var(--space-xs); }
 .tracker-arrow { width: var(--space-md); height: var(--space-md); }
 </style>

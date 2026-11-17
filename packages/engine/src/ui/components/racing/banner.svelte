@@ -1,6 +1,6 @@
 <meta name="component" content="RacingBanner">
 <meta name="strings" content="./racing.en.ogt">
-<meta name="parts" content="RacingBanner.frame RacingBanner.plate RacingBanner.title RacingBanner.badge">
+<meta name="parts" content="RacingBanner.frame RacingBanner.plate RacingBanner.title RacingBanner.badge RacingBanner.caption">
 <meta name="prop:kind" content="string" data-default="none" data-doc="What the banner calls: countdown (the count), go, finalLap, finish, or none (nothing shown, as for any other word).">
 <meta name="prop:figure" content="number" data-doc="The countdown's figure (3, 2, 1); the game steps it.">
 <meta name="prop:at" content="number" data-doc="The call's id: a new value replays the entrance (each count, the go, the flag).">
@@ -19,28 +19,23 @@
   call and its id (at); a new id plays the entrance again, which under
   reduced motion shows its end at once. Announced as a status.
 -->
-<div id="RacingBanner" part="RacingBanner.frame" class="bare" role="status" aria-atomic="true" aria-label={t("racing.banner.name")} data-kind={kind}>
+<div id="RacingBanner" part="RacingBanner.frame" class="bare" data-layout="center" role="status" aria-atomic="true" aria-label={t("racing.banner.name")} data-kind={kind}>
   {#if kind == 'countdown' || kind == 'go' || kind == 'finalLap' || kind == 'finish'}
   {#key at}
-    <div part="RacingBanner.plate" class="plate" data-kind={kind}>
+    <div part="RacingBanner.plate RacingBanner.frame" class="plate hud" data-layout="stack" data-gap="hair" data-motion={kind == 'countdown' ? 'stamp' : 'enter'} data-kind={kind}>
       <span part="RacingBanner.title" class="call">{kind == 'countdown' ? formatNumber(figure) : (kind == 'go' ? t("racing.banner.go") : (kind == 'finalLap' ? t("racing.banner.finalLap") : t("racing.banner.finish")))}</span>
       {#if kind == 'finish' && place > 0}<span part="RacingBanner.badge" class="place">{formatOrdinal(place)}</span>{/if}
-      {#if detail != ''}<span class="detail">{detail}</span>{/if}
+      {#if detail != ''}<span class="detail" part="RacingBanner.caption">{detail}</span>{/if}
     </div>
   {/key}
   {/if}
 </div>
 
 <style>
-:host { display: flex; width: stretch; align-items: center; justify-content: center; pointer-events: none; text-shadow: var(--tag-halo); }
-.plate { display: flex; flex-direction: column; align-items: center; gap: var(--space-xxs); max-width: stretch; padding: var(--space-sm) var(--space-3xl); animation-name: racing-call; animation-duration: var(--motion-duration-slow); animation-timing-function: var(--motion-easing-out); animation-fill-mode: both; }
-.plate[data-kind=countdown] { animation-name: racing-count; animation-duration: var(--motion-duration-bounce); animation-timing-function: var(--motion-easing-snappy); }
-.call { text-align: center; line-height: 1; font-variant-numeric: tabular-nums; }
+:host { width: stretch; pointer-events: none; }
+.plate { align-items: center; max-width: stretch; padding: var(--space-sm) var(--space-3xl); }
+.call { text-align: center; }
 .place { white-space: nowrap; }
 .detail { text-align: center; max-width: stretch; }
-@keyframes racing-count { from { opacity: 0; scale: 1.6; } to { opacity: 1; scale: 1; } }
-@keyframes racing-call { from { opacity: 0; translate: 0 -40%; } to { opacity: 1; translate: 0 0; } }
-/* Reduced motion: no zoom or slide; the call is simply there. */
-@media (prefers-reduced-motion: reduce) { .plate, .plate[data-kind=countdown] { animation-name: none; } }
 @media (width < 600px) { .plate { padding: var(--space-xs) var(--space-xl); } }
 </style>

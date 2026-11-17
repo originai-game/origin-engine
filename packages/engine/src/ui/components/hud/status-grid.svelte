@@ -1,36 +1,36 @@
 <meta name="component" content="StatusGrid">
 <meta name="strings" content="./status-grid.en.ogt">
-<meta name="parts" content="StatusGrid.cell StatusGrid.badge StatusGrid.figure">
+<meta name="parts" content="StatusGrid.cell StatusGrid.badge StatusGrid.figure StatusGrid.sweep StatusGrid.dot StatusGrid.tag">
 <meta name="prop:buffs" content="list" data-doc="The buffs, in the game's order: each { id, icon, name, stacks, remaining, duration, expiring }, remaining and duration in seconds (duration 0 lasts until removed; remaining past duration, an extended effect, sweeps nothing), expiring in its last five seconds.">
 <meta name="prop:debuffs" content="list" data-doc="The debuffs, in their own row and bordered by type: each as a buff with type magic, curse, poison, disease or bleed.">
 <meta name="prop:more" content="number" data-doc="Effects past the shown ones, folded into a +n tile (0: none).">
 <meta name="action:pick" content="Cancel">
 <meta name="fixture:default" content='{"more":2,"buffs":[{"id":"haste","icon":"bolt","name":"Haste","stacks":0,"remaining":12,"duration":30,"expiring":false},{"id":"shield","icon":"shield","name":"Barrier","stacks":3,"remaining":4.2,"duration":10,"expiring":true},{"id":"regen","icon":"heart","name":"Regrowth","stacks":0,"remaining":0,"duration":0,"expiring":false}],"debuffs":[{"id":"burn","icon":"fire","name":"Burning","stacks":2,"remaining":6,"duration":8,"expiring":false,"type":"magic"},{"id":"venom","icon":"drop","name":"Venom","stacks":0,"remaining":18,"duration":20,"expiring":false,"type":"poison"}]}'>
 
-<div id="StatusGrid">
-  <ul id="Buffs" role="list" aria-label={t("component.status-grid.buffs")}>
+<div id="StatusGrid" data-layout="stack" data-gap="tight">
+  <ul id="Buffs" data-layout="cluster" data-gap="tight" role="list" aria-label={t("component.status-grid.buffs")}>
     {#each buffs as e (e.id)}
-      <li class="tile" class:expiring={e.expiring} aria-label={e.name}>
-        <div class="face" part="StatusGrid.cell">
-          <og-icon class="icon" icon={e.icon}></og-icon>
-          {#if e.duration > 0}<svg class="sweep" viewBox="0 0 32 32"><circle cx="16" cy="16" r="8" fill="none" stroke-width="16" pathLength="1" stroke-dasharray={(e.remaining >= e.duration ? 0 : 1 - e.remaining / e.duration) + " 1"} transform="rotate(-90 16 16)"></circle></svg>{/if}
-          {#if e.stacks > 1}<span class="stacks" part="StatusGrid.badge">{formatNumber(e.stacks)}</span>{/if}
+      <li class="tile" data-layout="stack" data-gap="hair" class:expiring={e.expiring} aria-label={e.name}>
+        <div class="face" part="StatusGrid.cell" data-layout="cover" data-gap="none">
+          <og-icon class="icon" data-motion={e.expiring ? 'pulse' : null} icon={e.icon}></og-icon>
+          {#if e.duration > 0}<svg class="sweep" data-anchor="fill" viewBox="0 0 32 32"><circle part="StatusGrid.sweep" cx="16" cy="16" r="8" fill="none" stroke-width="16" pathLength="1" stroke-dasharray={(e.remaining >= e.duration ? 0 : 1 - e.remaining / e.duration) + " 1"} transform="rotate(-90 16 16)"></circle></svg>{/if}
         </div>
-        {#if e.remaining > 0}<span class="time" part="StatusGrid.figure">{e.remaining < 10 ? formatNumber(e.remaining) : formatCountdown(e.remaining)}</span>{/if}
+        {#if e.stacks > 1}<span class="stacks" part="StatusGrid.badge StatusGrid.tag">{formatNumber(e.stacks)}</span>{/if}
+        {#if e.remaining > 0}<div class="time" part="StatusGrid.tag"><span class="number" part="StatusGrid.figure">{e.remaining < 10 ? formatNumber(e.remaining) : formatCountdown(e.remaining)}</span></div>{/if}
       </li>
     {/each}
-    {#if more > 0}<li id="More" class="tile"><div class="face" part="StatusGrid.cell"><span id="Count">{"+" + formatNumber(more)}</span></div></li>{/if}
+    {#if more > 0}<li id="More" class="tile" data-layout="stack" data-gap="hair"><div class="face" part="StatusGrid.cell" data-layout="cover" data-gap="none"><span id="Count" class="count" part="StatusGrid.figure">{"+" + formatNumber(more)}</span></div></li>{/if}
   </ul>
-  <ul id="Debuffs" role="list" aria-label={t("component.status-grid.debuffs")}>
+  <ul id="Debuffs" data-layout="cluster" data-gap="tight" role="list" aria-label={t("component.status-grid.debuffs")}>
     {#each debuffs as e (e.id)}
-      <li class="tile debuff" class:expiring={e.expiring} class:magic={e.type == 'magic'} class:curse={e.type == 'curse'} class:poison={e.type == 'poison'} class:disease={e.type == 'disease'} class:bleed={e.type == 'bleed'} aria-label={e.name}>
-        <div class="face" part="StatusGrid.cell">
-          <og-icon class="icon" icon={e.icon}></og-icon>
-          {#if e.duration > 0}<svg class="sweep" viewBox="0 0 32 32"><circle cx="16" cy="16" r="8" fill="none" stroke-width="16" pathLength="1" stroke-dasharray={(e.remaining >= e.duration ? 0 : 1 - e.remaining / e.duration) + " 1"} transform="rotate(-90 16 16)"></circle></svg>{/if}
-          <div class="notch"></div>
-          {#if e.stacks > 1}<span class="stacks" part="StatusGrid.badge">{formatNumber(e.stacks)}</span>{/if}
+      <li class="tile debuff" data-layout="stack" data-gap="hair" class:expiring={e.expiring} class:magic={e.type == 'magic'} class:curse={e.type == 'curse'} class:poison={e.type == 'poison'} class:disease={e.type == 'disease'} class:bleed={e.type == 'bleed'} aria-label={e.name}>
+        <div class="face" part="StatusGrid.cell" data-layout="cover" data-gap="none">
+          <og-icon class="icon" data-motion={e.expiring ? 'pulse' : null} icon={e.icon}></og-icon>
+          {#if e.duration > 0}<svg class="sweep" data-anchor="fill" viewBox="0 0 32 32"><circle part="StatusGrid.sweep" cx="16" cy="16" r="8" fill="none" stroke-width="16" pathLength="1" stroke-dasharray={(e.remaining >= e.duration ? 0 : 1 - e.remaining / e.duration) + " 1"} transform="rotate(-90 16 16)"></circle></svg>{/if}
+          <div class="notch" part="StatusGrid.dot" data-anchor="top-start"></div>
         </div>
-        {#if e.remaining > 0}<span class="time" part="StatusGrid.figure">{e.remaining < 10 ? formatNumber(e.remaining) : formatCountdown(e.remaining)}</span>{/if}
+        {#if e.stacks > 1}<span class="stacks" part="StatusGrid.badge StatusGrid.tag">{formatNumber(e.stacks)}</span>{/if}
+        {#if e.remaining > 0}<div class="time" part="StatusGrid.tag"><span class="number" part="StatusGrid.figure">{e.remaining < 10 ? formatNumber(e.remaining) : formatCountdown(e.remaining)}</span></div>{/if}
       </li>
     {/each}
   </ul>
@@ -39,9 +39,8 @@
 <style>
 /* Drawn over the scene: the style's tag halo holds its text there. */
 :host { text-shadow: var(--tag-halo); }
-:host { display: flex; flex-direction: column; gap: var(--space-xs); }
-#Buffs, #Debuffs { display: flex; gap: var(--space-xs); flex-wrap: wrap; max-width: var(--measure-sm); margin: 0; padding: 0; list-style: none; }
-.tile { display: flex; flex-direction: column; align-items: center; gap: var(--space-xxs); width: calc(var(--size-md) + var(--space-xs)); --edge: var(--line-strong); }
+#Buffs, #Debuffs { max-width: var(--measure-sm); margin: 0; padding: 0; list-style: none; align-items: flex-start; }
+.tile { align-items: center; min-width: calc(var(--size-md) + var(--space-xs)); --edge: var(--line-strong); }
 .debuff { --edge: var(--danger); }
 .magic { --edge: var(--info); }
 .curse { --edge: var(--xp); }
@@ -49,16 +48,11 @@
 .disease { --edge: var(--warn); }
 .bleed { --edge: var(--danger); }
 /* A debuff's type is the cell's rim, through its token, so a pack's cell still dresses it. */
-[part="StatusGrid.cell"] { display: flex; flex-direction: column; position: relative; width: var(--size-md); height: var(--size-md); overflow: hidden; align-items: center; justify-content: center; --cell-rim: var(--edge); }
+[part="StatusGrid.cell"] { position: relative; width: var(--size-md); height: var(--size-md); overflow: hidden; --cell-rim: var(--edge); --layout-anchor-inset: 0; }
 .icon { width: var(--size-sm); height: var(--size-sm); }
-.sweep { position: absolute; top: 0; inset-inline-start: 0; width: var(--size-md); height: var(--size-md); stroke: var(--scrim); }
-.notch { position: absolute; top: 0; inset-inline-start: 0; width: var(--space-sm); height: var(--space-sm); background: var(--edge); clip-path: polygon(0% 0%, 100% 0%, 0% 100%); }
-[part="StatusGrid.badge"] { position: absolute; bottom: 0; inset-inline-end: 0; padding: 0 var(--space-xxs); font: var(--text-caption); font-family: var(--figure-font); }
-/* Over the scene under its cell: the figure role's ink and font, and the tag tokens outline it and give it a ground where a pack sets one. */
-[part="StatusGrid.figure"] { font: var(--text-caption); font-family: var(--figure-font); white-space: nowrap; text-shadow: var(--tag-halo); background: var(--tag-fill); padding: var(--tag-pad); border-radius: var(--tag-radius); }
-/* An expiring buff blinks its icon; its stack count keeps its ink. */
-.expiring .icon { animation-name: blink; animation-duration: var(--motion-duration-spring); animation-timing-function: var(--motion-easing-in-out); animation-iteration-count: infinite; animation-direction: alternate; }
-/* The +n tile's count: over the scene through the cell's translucent fill, so it wears the figures' ink and tag halo (muted ink, bare, read 1.5:1 over a bright sky). */
-#Count { font: var(--text-sm); color: var(--figure-ink); text-shadow: var(--tag-halo); }
-@keyframes blink { from { opacity: 1; } to { opacity: 0.35; } }
+.sweep { width: var(--size-md); height: var(--size-md); }
+.notch { width: var(--space-sm); height: var(--space-sm); --dot-fill: var(--edge); --dot-rim-width: 0; clip-path: polygon(0% 0%, 100% 0%, 0% 100%); }
+[part~="StatusGrid.badge"] { padding: 0 var(--space-xxs); }
+[part="StatusGrid.figure"] { --figure-size: var(--font-step-sm); white-space: nowrap; }
+#Count { --figure-shadow: var(--tag-halo); }
 </style>

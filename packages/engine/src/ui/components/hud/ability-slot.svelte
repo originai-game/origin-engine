@@ -1,6 +1,6 @@
 <meta name="component" content="AbilitySlot">
 <meta name="strings" content="./ability-slot.en.ogt">
-<meta name="parts" content="AbilitySlot.frame AbilitySlot.cell AbilitySlot.well AbilitySlot.icon AbilitySlot.ultimate AbilitySlot.figure AbilitySlot.percent AbilitySlot.badge AbilitySlot.track AbilitySlot.fill AbilitySlot.label">
+<meta name="parts" content="AbilitySlot.frame AbilitySlot.cell AbilitySlot.well AbilitySlot.icon AbilitySlot.ultimate AbilitySlot.figure AbilitySlot.percent AbilitySlot.badge AbilitySlot.track AbilitySlot.fill AbilitySlot.label AbilitySlot.sweep">
 <meta name="prop:icon" content="string" data-doc="An icon of the atlas, drawn large on a gradient.">
 <meta name="prop:name" content="string" data-doc="What a screen reader calls it (Fireball).">
 <meta name="prop:action" content="string" data-doc="The action whose glyph the hotkey cap shows on the device used last (it follows a rebinding); empty is none.">
@@ -21,71 +21,61 @@
 <meta name="action:use" content="Use">
 <meta name="fixture:default" content='{"icon":"fire","name":"Fireball","action":"","hotkey":"Q","cooldown":4.2,"cooldownMax":8,"charges":2,"maxCharges":3,"cost":"40","unaffordable":false,"outOfRange":false,"active":false,"locked":false,"disabled":false,"ultimate":-1,"level":2,"maxLevel":3}'>
 
-<div id="AbilitySlot" part="AbilitySlot.frame" class="bare" class:ultimate={ultimate >= 0}>
-  <button id="Slot" part="AbilitySlot.cell" onclick={use} aria-label={name} aria-valuetext={locked ? t("component.ability-slot.locked") : disabled ? t("component.ability-slot.unavailable") : cooldown > 0 ? formatNumber(cooldown) : t("component.ability-slot.ready")} disabled={locked || disabled} class:cooling={cooldown > 0} class:active={active} class:tinted={unaffordable || outOfRange} class:locked={locked} class:off={disabled} class:full={ultimate >= 1}>
-    <div id="Face">
-      <div id="Art" part="AbilitySlot.well"><og-icon id="Icon" part="AbilitySlot.icon" icon={icon}></og-icon></div>
-      {#if ultimate >= 0}<svg id="Ultimate" part="AbilitySlot.ultimate" viewBox="0 0 64 64"><circle cx="32" cy="32" r="29" fill="none" stroke-width="4"></circle><circle id="UltimateFill" cx="32" cy="32" r="29" fill="none" stroke-width="4" pathLength="1" stroke-dasharray={ultimate + " 1"} transform="rotate(-90 32 32)"></circle></svg>{/if}
+<div id="AbilitySlot" part="AbilitySlot.frame" data-layout="stack" data-gap="hair" class="bare" class:ultimate={ultimate >= 0}>
+  <button id="Slot" part="AbilitySlot.cell" data-shape={ultimate >= 0 ? 'round' : 'square'} data-active={active || ultimate >= 1} data-locked={locked} data-motion={active || ultimate >= 1 ? 'pulse' : null} onclick={use} aria-label={name} aria-valuetext={locked ? t("component.ability-slot.locked") : disabled ? t("component.ability-slot.unavailable") : cooldown > 0 ? formatNumber(cooldown) : t("component.ability-slot.ready")} disabled={locked || disabled} class:cooling={cooldown > 0} class:active={active} class:tinted={unaffordable || outOfRange} class:locked={locked} class:off={disabled} class:full={ultimate >= 1}>
+    <div id="Face" data-layout="overlay">
+      <div id="Art" part="AbilitySlot.well" data-layout="cover" data-gap="none" data-anchor="fill"><og-icon id="Icon" part="AbilitySlot.icon" icon={icon}></og-icon></div>
+      {#if ultimate >= 0}<svg id="Ultimate" part="AbilitySlot.ultimate" data-anchor="fill" viewBox="0 0 64 64"><circle part="AbilitySlot.track" cx="32" cy="32" r="29" fill="none" stroke-width="4"></circle><circle id="UltimateFill" part="AbilitySlot.fill" cx="32" cy="32" r="29" fill="none" stroke-width="4" pathLength="1" stroke-dasharray={ultimate + " 1"} transform="rotate(-90 32 32)"></circle></svg>{/if}
       {#if cooldown > 0}
-        <svg id="Sweep" viewBox="0 0 56 56"><circle cx="28" cy="28" r="20" fill="none" stroke-width="40" pathLength="1" stroke-dasharray={(cooldown / cooldownMax) + " 1"} transform="rotate(-90 28 28) scale(-1 1) translate(-56 0)"></circle></svg>
-        <span id="Time" part="AbilitySlot.figure">{cooldown < 10 ? formatNumber(cooldown) : formatCountdown(cooldown)}</span>
+        <svg id="Sweep" data-anchor="fill" viewBox="0 0 56 56"><circle part="AbilitySlot.sweep" cx="28" cy="28" r="20" fill="none" stroke-width="40" pathLength="1" stroke-dasharray={(cooldown / cooldownMax) + " 1"} transform="rotate(-90 28 28) scale(-1 1) translate(-56 0)"></circle></svg>
+        <span id="Time" class="time" part="AbilitySlot.figure" data-anchor="center">{cooldown < 10 ? formatNumber(cooldown) : formatCountdown(cooldown)}</span>
       {/if}
-      <div id="Charge">{#if ultimate >= 0 && ultimate < 1}<span id="Percent" part="AbilitySlot.percent">{formatPercent(ultimate)}</span>{/if}</div>
-      {#if disabled}<svg id="Slash" viewBox="0 0 56 56"><path d="M8 48L48 8" stroke-width="5" stroke-linecap="round"></path></svg>{/if}
-      {#if locked}<og-icon id="Lock" icon="lock"></og-icon>{/if}
-      <div id="Costs">{#if cost && cooldown <= 0 && !locked}<span id="Cost" part="AbilitySlot.badge" class="cost" class:short={unaffordable}>{cost}</span>{/if}</div>
-      {#if maxCharges > 1 && cooldown <= 0 && !locked}<span id="Charges" part="AbilitySlot.badge" class="charges">{formatNumber(charges)}</span>{/if}
+      <div id="Charge" data-layout="row" data-anchor="bottom">{#if ultimate >= 0 && ultimate < 1}<span id="Percent" class="percent" part="AbilitySlot.percent AbilitySlot.badge">{formatPercent(ultimate)}</span>{/if}</div>
+      {#if disabled}<svg id="Slash" data-anchor="fill" viewBox="0 0 56 56"><path part="AbilitySlot.fill" data-tone="danger" d="M8 48L48 8" stroke-width="5" stroke-linecap="round"></path></svg>{/if}
+      {#if locked}<og-icon id="Lock" data-anchor="center" icon="lock"></og-icon>{/if}
+      <div id="Costs" data-layout="row" data-anchor={ultimate >= 0 ? 'top' : 'bottom-start'}>{#if cost && cooldown <= 0 && !locked}<span id="Cost" part="AbilitySlot.badge" class="cost" class:short={unaffordable}>{cost}</span>{/if}</div>
+      {#if maxCharges > 1 && cooldown <= 0 && !locked}<span id="Charges" part="AbilitySlot.badge" class="charges" data-anchor="top-end">{formatNumber(charges)}</span>{/if}
     </div>
   </button>
-  {#if maxLevel > 0}<div id="Pips" part="AbilitySlot.track AbilitySlot.well" style:--ranks={maxLevel} style:--level={level}><div id="Ranked" part="AbilitySlot.fill"></div></div>{/if}
-  {#if hotkey || action}<kbd id="Hotkey" part="AbilitySlot.label" data-action={action}>{hotkey}</kbd>{/if}
+  {#if maxLevel > 0}<div id="Pips" part="AbilitySlot.well AbilitySlot.track" style:--ranks={maxLevel} style:--level={level}><div id="Ranked" part="AbilitySlot.fill"></div></div>{/if}
+  {#if hotkey || action}<kbd id="Hotkey" part="AbilitySlot.label AbilitySlot.badge" data-action={action}>{hotkey}</kbd>{/if}
 </div>
 
 <style>
 :host { text-shadow: var(--tag-halo); }
-#Face { position: relative; display: flex; flex-direction: column; inline-size: 100%; block-size: 100%; align-items: center; justify-content: center; }
+#Face { inline-size: 100%; block-size: 100%; --layout-anchor-inset: var(--space-xxs); }
 /* The slot grows with the player's text scale, as the text in it does,
    so its icon, badges and ring keep their proportions:
    --text-px is one CSS px at 100 % text (rem is the body type step, 14 px
    at 100 %, grown by the scale). */
-:host { display: flex; flex-direction: column; --text-px: var(--font-step-px); align-items: center; gap: var(--space-xxs); }
-#Slot { width: calc(48 * var(--text-px)); height: calc(48 * var(--text-px)); padding: 0; overflow: hidden; transition-property: scale; transition-duration: var(--motion-duration-fast); transition-timing-function: var(--motion-easing-out); }
-.ultimate #Slot { width: calc(64 * var(--text-px)); height: calc(64 * var(--text-px)); border-radius: var(--radius-capsule); }
-#Art { display: flex; flex-direction: column; inline-size: 100%; block-size: 100%; align-items: center; justify-content: center; }
-#Icon { width: calc(32 * var(--text-px)); height: calc(32 * var(--text-px)); color: var(--ink); }
-#Slot.tinted #Art { background: var(--danger-45); }
-#Slot.tinted #Icon { color: var(--danger); }
-#Slot.locked #Art { filter: var(--filter-locked); }
-#Slot.off #Art { filter: var(--filter-spent); }
-#Slot.active { box-shadow: 0 0 var(--space-md) var(--primary), inset 0 0 0 var(--stroke-regular) var(--primary); animation-name: breathe; animation-duration: var(--motion-duration-bounce); animation-timing-function: var(--motion-easing-in-out); animation-iteration-count: infinite; animation-direction: alternate; }
-#Slot.full { box-shadow: 0 0 var(--space-md) var(--gold), inset 0 0 0 var(--stroke-regular) var(--gold); animation-name: breathe; animation-duration: var(--motion-duration-bounce); animation-timing-function: var(--motion-easing-in-out); animation-iteration-count: infinite; animation-direction: alternate; }
-#Ultimate { position: absolute; inset: 0; inline-size: 100%; block-size: 100%; stroke: var(--scrim); }
-#UltimateFill { stroke: var(--gold); }
-#Sweep { position: absolute; inset: 0; inline-size: 100%; block-size: 100%; stroke: var(--scrim); }
-#Time { position: absolute; top: calc(12 * var(--text-px)); inset-inline: 0; text-align: center; font-size: var(--font-step-xl); font-family: var(--figure-font); color: var(--scene-ink); text-shadow: var(--tag-halo); }
+:host { --text-px: var(--font-step-px); align-items: center; }
+#Slot { width: calc(48 * var(--text-px)); height: calc(48 * var(--text-px)); padding: 0; overflow: hidden; }
+.ultimate #Slot { width: calc(64 * var(--text-px)); height: calc(64 * var(--text-px)); }
+#Art, #Ultimate, #Sweep, #Slash { --layout-anchor-inset: 0; }
+#Icon { width: calc(32 * var(--text-px)); height: calc(32 * var(--text-px)); }
+#Slot.tinted #Art { --well-fill: var(--danger-45); }
+#Slot.full { --cell-active-rim: var(--gold); }
+#Ultimate, #Sweep, #Slash { inline-size: 100%; block-size: 100%; }
+#UltimateFill { --fill-color: var(--gold); }
+#Time { --figure-size: var(--font-step-xl); --figure-ink: var(--scene-ink); --figure-shadow: var(--tag-halo); }
 /* The percent sits on a small ground of its own (a pack sets it with
    --ability-slot-percent-ground), so the ring's arc never runs through its
    digits, whatever size and shape a pack gives the ring. */
-#Charge { position: absolute; bottom: var(--space-xxs); inset-inline-start: 0; inset-inline-end: 0; display: flex; justify-content: center; }
-#Percent { padding: 0 var(--space-xs); border-radius: var(--radius-capsule); background: var(--ability-slot-percent-ground, var(--scrim)); font-size: var(--font-step-sm); color: var(--gold); }
-#Slash { position: absolute; inset: 0; inline-size: 100%; block-size: 100%; stroke: var(--danger); }
-#Lock { position: absolute; top: calc(12 * var(--text-px)); inset-inline-start: calc(12 * var(--text-px)); width: calc(24 * var(--text-px)); height: calc(24 * var(--text-px)); color: var(--ink); }
+#Charge { justify-content: center; }
+#Percent { --badge-fill: var(--ability-slot-percent-ground, var(--scrim)); --badge-ink: var(--gold); }
+#Lock { width: calc(24 * var(--text-px)); height: calc(24 * var(--text-px)); }
 /* The cost sits in a row of its own: at the bottom's leading corner on a
    square slot; on an ultimate, whose percent takes the bottom, centred at
    the top, where the round slot is wide enough for it and where nothing
    else shows while it does (it hides on cooldown and when locked, with the
    time and the lock). */
-#Costs { position: absolute; bottom: var(--space-xxs); inset-inline-start: var(--space-xxs); inset-inline-end: var(--space-xxs); display: flex; justify-content: flex-start; }
-.ultimate #Costs { top: var(--space-xxs); bottom: auto; justify-content: center; }
-#Cost { padding: 0 var(--space-xs); font-size: var(--font-step-sm); color: var(--mana); }
-#Cost.short { color: var(--danger); }
-#Charges { position: absolute; top: var(--space-xxs); inset-inline-end: var(--space-xxs); min-width: var(--size-xs); padding: 0 var(--space-xxs); font-size: var(--font-step-sm); align-items: center; }
-#Pips { width: calc(var(--ranks) * var(--space-md) - var(--space-xs)); height: var(--space-xs); background: repeating-linear-gradient(90deg, var(--scrim) 0, var(--scrim) var(--space-sm), transparent var(--space-sm), transparent var(--space-md)); }
-#Ranked { width: calc(var(--level) * var(--space-md) - var(--space-xs)); height: var(--space-xs); background: repeating-linear-gradient(90deg, var(--gold) 0, var(--gold) var(--space-sm), transparent var(--space-sm), transparent var(--space-md)); }
-#Hotkey { font-size: var(--font-step-sm); }
+#Cost { --badge-ink: var(--mana); --badge-fill: var(--scene-plate); }
+#Cost.short { --badge-ink: var(--tone-danger); }
+#Charges { min-width: var(--size-xs); }
+#Pips { width: calc(var(--ranks) * var(--space-md) - var(--space-xs)); height: var(--space-xs); mask-image: repeating-linear-gradient(90deg, #000 0 var(--space-sm), transparent 0 var(--space-md)); }
+#Ranked { width: calc(var(--level) * var(--space-md) - var(--space-xs)); height: var(--space-xs); --fill-color: var(--gold); }
 /* The cap sits under the slot, over the scene: it is the scene's plate in
    the scene's ink, the pair a pack sets for text over the scene, so it reads
    over a bright sky as over a dark floor. */
-[part="AbilitySlot.label"] { background: var(--scene-plate); color: var(--scene-ink); }
-@keyframes breathe { from { opacity: 1; } to { opacity: 0.8; } }
+#Hotkey { --badge-fill: var(--scene-plate); --badge-ink: var(--scene-ink); }
 </style>

@@ -22,12 +22,12 @@
 
 <style>
 :host { position: relative; width: var(--measure-xs); height: var(--measure-xs); text-shadow: var(--tag-halo); }
-[part="PathLine.line"] { width: var(--measure-xs); height: var(--measure-xs); --tone: var(--highlight); }
-[part="PathLine.line"].invalid { --tone: var(--danger); }
-#Walk { stroke: var(--tone); }
-#Past { stroke: var(--danger); }
-#End { fill: var(--tone); stroke: var(--scene-shadow); stroke-width: 2; }
-#Cross { stroke: var(--danger); }
+[part="PathLine.line"] { width: var(--measure-xs); height: var(--measure-xs); --fill-color: var(--highlight); }
+[part="PathLine.line"].invalid { --fill-color: var(--tone-danger); }
+#Walk { stroke: var(--fill-color); }
+#Past { --fill-color: var(--tone-danger); stroke: var(--fill-color); }
+#End { fill: var(--fill-color); stroke: var(--dot-rim); stroke-width: var(--dot-rim-width); }
+#Cross { --fill-color: var(--tone-danger); stroke: var(--fill-color); }
 /* In the world, over any ground: the badge takes the scene's plate and ink. */
-[part="PathLine.badge"] { position: absolute; inset-inline-start: calc(var(--x) / 200 * var(--measure-xs) + var(--space-sm)); top: calc(var(--y) / 200 * var(--measure-xs) - var(--space-sm)); font: var(--text-caption); padding: 0 var(--space-xs); white-space: nowrap; --badge-fill: var(--scene-plate); --badge-ink: var(--scene-ink); --badge-radius: var(--radius-control); }
+[part="PathLine.badge"] { position: absolute; inset-inline-start: calc(var(--x) / 200 * var(--measure-xs) + var(--space-sm)); top: calc(var(--y) / 200 * var(--measure-xs) - var(--space-sm)); white-space: nowrap; --badge-fill: var(--scene-plate); --badge-ink: var(--scene-ink); }
 </style>

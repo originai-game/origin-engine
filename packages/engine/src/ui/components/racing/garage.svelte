@@ -1,6 +1,6 @@
 <meta name="component" content="RacingGarage">
 <meta name="strings" content="./racing.en.ogt">
-<meta name="parts" content="RacingGarage.frame RacingGarage.band RacingGarage.title RacingGarage.hero RacingGarage.tile RacingGarage.name RacingGarage.badge RacingGarage.row RacingGarage.picture RacingGarage.cell">
+<meta name="parts" content="RacingGarage.frame RacingGarage.band RacingGarage.title RacingGarage.hero RacingGarage.tile RacingGarage.name RacingGarage.badge RacingGarage.row RacingGarage.picture RacingGarage.cell RacingGarage.headline RacingGarage.caption RacingGarage.well RacingGarage.figure">
 <meta name="prop:title" content="string" data-doc="The page's heading; empty takes the kit's (Garage).">
 <meta name="prop:vehicles" content="list" data-doc="The cars in the game's order, keyed rows of { id, title, body, image, owned, locked, affordable, price }: title the car's name, body its class line, image a texture (og.load.texture, 0 none); owned the player has it; locked it cannot be had yet; affordable the game allows buying it now (false disables Buy and names it Too costly); price what buying costs or why it is locked, as the game words it (12,500 cr, Reach level 12).">
 <meta name="prop:shown" content="string" data-doc="The car in view (its tile selected, its stats shown, the action for it); empty is none.">
@@ -27,34 +27,34 @@
   already the player's car. The game owns prices, unlocking and every
   rating; the garage reports the car's key and Back (back).
 -->
-<section id="RacingGarage" part="RacingGarage.frame" aria-label={title != '' ? title : t("racing.garage.title")}>
-  <header part="RacingGarage.band"><h2 part="RacingGarage.title">{title != '' ? title : t("racing.garage.title")}</h2></header>
+<section id="RacingGarage" part="RacingGarage.frame" data-layout="shell" data-gap="loose" aria-label={title != '' ? title : t("racing.garage.title")}>
+  <header part="RacingGarage.band" data-layout="row"><h2 part="RacingGarage.title" data-fill>{title != '' ? title : t("racing.garage.title")}</h2></header>
   {#if vehicles.length}
-    <div class="body">
-      <div class="show" ontabPrev={prev} ontabNext={next}>
+    <div class="body" data-layout="switcher" data-gap="wide" data-fill>
+      <div class="show" data-layout="stack" data-fill ontabPrev={prev} ontabNext={next}>
         {#each vehicles as v (v.id)}
           {#if v.id == shown}
-            <figure part="RacingGarage.hero RacingGarage.picture" class="hero" aria-label={v.title} data-owned={v.owned} data-locked={v.locked} data-chosen={v.id == chosen}>
+            <figure part="RacingGarage.hero RacingGarage.picture" class="hero" data-layout="stack" data-gap="hair" aria-label={v.title} data-owned={v.owned} data-locked={v.locked} data-chosen={v.id == chosen}>
               {#if v.image}<img class="art" src={v.image} alt="">
-              {:else}<div class="well"></div>{/if}
-              <span class="hero-name">{v.title}</span>
-              <span class="hero-body">{v.body}</span>
+              {:else}<div class="well" part="RacingGarage.well"></div>{/if}
+              <span class="hero-name" part="RacingGarage.headline">{v.title}</span>
+              <span class="hero-body" part="RacingGarage.caption">{v.body}</span>
             </figure>
           {/if}
         {/each}
-        <div class="steps">
+        <div class="steps" data-layout="row" data-gap="wide">
           <button id="Prev" variant="ghost" aria-label={t("racing.garage.prev")} onclick={prev}><og-icon icon="back"></og-icon></button>
-          <span class="count">{t("racing.garage.count", { n: index + 1, total: vehicles.length })}</span>
+          <span class="count" part="RacingGarage.figure">{t("racing.garage.count", { n: index + 1, total: vehicles.length })}</span>
           <button id="Next" variant="ghost" aria-label={t("racing.garage.next")} onclick={next}><og-icon class="next-icon" icon="back"></og-icon></button>
         </div>
       </div>
-      <div class="side">
-        <div class="stats" role="list" aria-label={t("racing.garage.stats")}>
+      <div class="side" data-layout="stack" data-gap="wide" data-fill>
+        <div class="stats" data-layout="stack" role="list" aria-label={t("racing.garage.stats")}>
           {#each stats as s (s.id)}
-            <div part="RacingGarage.row" role="listitem"><StatBar value={s.value} max={s.max} kind="stamina" segment={0} shield={0} shieldMax={0} heal={0} recoverable={0} label={s.label} icon="" showValue={true} valueInside={false} valueText={s.text} low={0} critical={0} bare={true} name={s.label} /></div>
+            <div part="RacingGarage.row" data-layout="row" role="listitem"><StatBar value={s.value} max={s.max} kind="stamina" segment={0} shield={0} shieldMax={0} heal={0} recoverable={0} label={s.label} icon="" showValue={true} valueInside={false} valueText={s.text} low={0} critical={0} bare={true} name={s.label} /></div>
           {/each}
         </div>
-        <div class="actions">
+        <div class="actions" data-layout="cluster">
           <button id="Back" variant="ghost" onclick={back} onback={back}><kbd class="key" data-action="back"></kbd><span>{t("racing.garage.back")}</span></button>
           {#each vehicles as v (v.id)}
             {#if v.id == shown}
@@ -73,9 +73,9 @@
       </div>
     </div>
     <div class="tiles-scroll">
-      <div class="tiles" role="listbox" aria-label={t("racing.garage.vehicles")}>
+      <div class="tiles" data-layout="row" role="listbox" aria-label={t("racing.garage.vehicles")}>
         {#each vehicles as v (v.id)}
-          <button part="RacingGarage.tile RacingGarage.cell" role="option" aria-selected={v.id == shown} aria-label={v.title} data-owned={v.owned} data-locked={v.locked} data-chosen={v.id == chosen} onclick={choose}><div class="face">
+          <button part="RacingGarage.tile RacingGarage.cell" role="option" aria-selected={v.id == shown} aria-label={v.title} data-owned={v.owned} data-locked={v.locked} data-chosen={v.id == chosen} onclick={choose}><div class="face" data-layout="stack" data-gap="hair">
             <span part="RacingGarage.name" class="name">{v.title}</span>
             <span part="RacingGarage.badge" class="tag" data-tag={v.id == chosen ? 'driving' : (v.locked ? 'locked' : (v.owned ? 'owned' : 'price'))}>{v.id == chosen ? t("racing.garage.driving") : (v.locked ? t("racing.garage.locked") : (v.owned ? t("racing.garage.owned") : v.price))}</span>
           </div></button>
@@ -83,55 +83,48 @@
       </div>
     </div>
   {:else}
-    <div class="empty" role="status">
-      <p class="empty-text">{t("racing.garage.empty")}</p>
+    <div class="empty" data-layout="cover" data-gap="loose" data-fill role="status">
+      <p class="empty-text" part="RacingGarage.caption">{t("racing.garage.empty")}</p>
       <button id="EmptyBack" variant="ghost" onclick={back} onback={back}><kbd class="key" data-action="back"></kbd><span>{t("racing.garage.back")}</span></button>
     </div>
   {/if}
 </section>
 
 <style>
-:host { display: flex; flex-direction: column; width: stretch; height: stretch; gap: var(--space-md); container-type: inline-size; }
-[part="RacingGarage.band"] { display: flex; width: stretch; align-items: center; flex: none; }
-[part="RacingGarage.title"] { flex: 1; min-width: 0; margin: 0; overflow-wrap: anywhere; }
-.body { display: flex; width: stretch; flex: 1; min-height: 0; gap: var(--space-xl); align-items: flex-start; justify-content: center; }
-.show { display: flex; flex-direction: column; flex: none; align-items: center; gap: var(--space-sm); width: calc(var(--size-xxl) * 3.6); max-width: stretch; }
-[part="RacingGarage.hero RacingGarage.picture"] { display: flex; flex-direction: column; width: stretch; margin: 0; gap: var(--space-xxs); padding: var(--space-sm); }
+[part="RacingGarage.band"] { width: stretch; flex: none; }
+[part="RacingGarage.title"] { margin: 0; overflow-wrap: anywhere; }
+.body { width: stretch; overflow-y: auto; align-items: flex-start; justify-content: center; --layout-switch-at: var(--measure-xl); }
+.show { align-items: center; max-width: stretch; }
+[part="RacingGarage.hero RacingGarage.picture"] { width: stretch; margin: 0; padding: var(--space-sm); }
 .art, .well { width: stretch; aspect-ratio: 1.8; }
 .art { object-fit: cover; }
 .hero-name, .hero-body { width: stretch; text-align: start; }
-.hero-name { font: var(--text-xl); }
-.steps { display: flex; align-items: center; gap: var(--space-lg); }
 .steps button { width: var(--size-touch); height: var(--size-touch); padding: 0; }
 .next-icon { rotate: 180deg; }
 #Prev:dir(rtl) og-icon { rotate: 180deg; }
 #Next:dir(rtl) .next-icon { rotate: 0deg; }
-.count { min-width: var(--size-xl); text-align: center; white-space: nowrap; font-variant-numeric: tabular-nums; }
-.side { display: flex; flex-direction: column; gap: var(--space-lg); min-width: 0; }
-.stats { display: flex; flex-direction: column; gap: var(--space-sm); }
-[part="RacingGarage.row"] { display: flex; align-items: center; }
-.actions { display: flex; gap: var(--space-sm); justify-content: flex-end; flex-wrap: wrap; }
-.actions button { min-height: var(--size-touch); min-width: calc(var(--size-xxl) * 1.25); gap: var(--space-xs); }
+.count { min-width: var(--size-xl); text-align: center; white-space: nowrap; }
+.actions { justify-content: flex-end; }
+.actions button { min-height: var(--size-touch); min-width: calc(var(--size-xxl) * 1.25); }
 .reason { white-space: nowrap; }
 /* The strip scrolls inside the garage's width and never widens it. */
 .tiles-scroll { overflow-x: auto; min-width: 0; flex: none; contain: inline-size; }
-.tiles { display: flex; gap: var(--space-sm); padding: var(--space-xxs); }
+.tiles { padding: var(--space-xxs); }
 [part="RacingGarage.tile RacingGarage.cell"] { flex: none; width: calc(var(--size-xxl) * 1.7); min-height: var(--size-xl); padding: var(--space-xs) var(--space-sm); }
-[part="RacingGarage.tile RacingGarage.cell"] .face { display: flex; flex-direction: column; width: stretch; align-items: flex-start; gap: var(--space-xxs); }
+[part="RacingGarage.tile RacingGarage.cell"] .face { width: stretch; align-items: flex-start; }
 .name { width: stretch; text-align: start; white-space: nowrap; text-overflow: ellipsis; overflow: hidden; }
 .tag { white-space: nowrap; text-overflow: ellipsis; overflow: hidden; max-width: stretch; padding: 0 var(--space-xs); }
-.empty { display: flex; flex-direction: column; flex: 1; align-items: center; justify-content: center; gap: var(--space-md); }
 .empty-text { margin: 0; }
 @media (pointer: coarse) { .key { display: none; } }
 /* A narrow panel stacks the shown car over the ratings and the action, the
    tiles along the foot under the thumb. The frame's own gap follows the
    viewport: a container cannot query itself. */
-@media (width < 600px) { [part="RacingGarage.frame"] { gap: var(--space-sm); } }
+@media (width < 600px) { [part="RacingGarage.frame"] { --layout-gap-loose: var(--layout-gap); } }
 @container (width < 600px) {
-  .body { flex-direction: column; align-items: center; justify-content: flex-start; gap: var(--space-sm); overflow-y: auto; }
+  .body { justify-content: flex-start; --layout-gap-wide: var(--layout-gap); }
   .show { width: stretch; }
   .art, .well { aspect-ratio: 3.2; }
-  .side { width: stretch; align-items: center; gap: var(--space-sm); }
+  .side { width: stretch; align-items: center; --layout-gap-wide: var(--layout-gap); }
   .actions { width: stretch; justify-content: center; }
 }
 </style>

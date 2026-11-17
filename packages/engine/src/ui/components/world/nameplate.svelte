@@ -1,5 +1,5 @@
 <meta name="component" content="Nameplate">
-<meta name="parts" content="Nameplate.frame Nameplate.icon Nameplate.badge Nameplate.name Nameplate.subtitle Nameplate.well Nameplate.fill Nameplate.shield Nameplate.cast Nameplate.spell">
+<meta name="parts" content="Nameplate.frame Nameplate.icon Nameplate.badge Nameplate.name Nameplate.subtitle Nameplate.well Nameplate.fill Nameplate.shield Nameplate.cast Nameplate.spell Nameplate.track Nameplate.tag Nameplate.caption">
 <meta name="prop:entity" content="number" data-doc="The unit it sits over, by its bits (0: use at).">
 <meta name="prop:at" content="string" data-default="0 0 0" data-doc="A world point it sits over without an entity (x y z).">
 <meta name="prop:height" content="number" data-doc="World units above the point (its head).">
@@ -18,49 +18,47 @@
 <meta name="fixture:default" content='{"entity":0,"at":"0 0 0","height":2.1,"name":"Grimtooth","title":"Warlord","level":"32","reaction":"hostile","health":0.62,"shield":0.15,"castName":"Cleave","castProgress":0.4,"icon":"skull","boss":true,"targeted":true,"maxDistance":80}'>
 
 <anchor id="Nameplate" entity={entity || null} at={at} offset={"0 " + height + " 0"} occlusion="fade" declutter="stack" priority={targeted ? 1100 : 100} max-distance={maxDistance}>
-  <div id="Plate" part="Nameplate.frame" class="bare" class:friendly={reaction == 'friendly'} class:hostile={reaction == 'hostile'} class:player={reaction == 'player'} class:boss={boss} class:targeted={targeted}>
-    <div id="Head">
+  <div id="Plate" part="Nameplate.frame" class="bare" data-layout="stack" data-gap="hair" class:friendly={reaction == 'friendly'} class:hostile={reaction == 'hostile'} class:player={reaction == 'player'} class:boss={boss} class:targeted={targeted}>
+    <div id="Head" data-layout="row" data-gap="tight">
       {#if icon}<og-icon id="Icon" part="Nameplate.icon" icon={icon}></og-icon>{/if}
       {#if level}<span id="Level" part="Nameplate.badge">{level}</span>{/if}
-      <span id="Name" part="Nameplate.name">{name}</span>
+      <div part="Nameplate.tag"><span id="Name" class="name" part="Nameplate.name">{name}</span></div>
     </div>
-    {#if title}<span id="Title" part="Nameplate.subtitle">{title}</span>{/if}
-    {#if health >= 0}<div id="Health" part="Nameplate.well" style:--hp={health} style:--shield={shield}>
-      <div id="Fill" part="Nameplate.fill"></div>
-      <div id="Shield" part="Nameplate.shield"></div>
+    {#if title}<div part="Nameplate.tag"><span id="Title" class="subtitle" part="Nameplate.subtitle Nameplate.caption">{title}</span></div>{/if}
+    {#if health >= 0}<div id="Health" part="Nameplate.well Nameplate.track" data-layout="overlay" style:--hp={health} style:--shield={shield}>
+      <div id="Fill" part="Nameplate.fill" data-anchor="top-start"></div>
+      <div id="Shield" part="Nameplate.shield Nameplate.fill" data-anchor="top-start"></div>
     </div>{/if}
-    {#if castName}<div id="Cast" part="Nameplate.well" style:--cast={castProgress}>
-      <div id="CastFill" part="Nameplate.cast"></div>
-      <span id="CastName" part="Nameplate.spell">{castName}</span>
+    {#if castName}<div id="Cast" part="Nameplate.well Nameplate.track" data-layout="overlay" style:--cast={castProgress}>
+      <div id="CastFill" part="Nameplate.cast Nameplate.fill" data-anchor="top-start" data-tone="warn"></div>
+      <span id="CastName" class="spell" part="Nameplate.spell" data-anchor="center">{castName}</span>
     </div>{/if}
   </div>
 </anchor>
 
 <style>
 :host { text-shadow: var(--tag-halo); }
-[part="Nameplate.frame"] { display: flex; flex-direction: column; align-items: center; gap: var(--space-xxs); --tone: var(--warn); --bar: var(--size-xxl); }
+[part="Nameplate.frame"] { align-items: center; --tone: var(--warn); --bar: var(--size-xxl); --fill-color: var(--tone); --layout-anchor-inset: 0; }
 [part="Nameplate.frame"].friendly { --tone: var(--success); }
 [part="Nameplate.frame"].hostile { --tone: var(--danger); }
 [part="Nameplate.frame"].player { --tone: var(--info); }
 [part="Nameplate.frame"].targeted { scale: var(--motion-scale-swell); z-index: 1; }
-#Head { display: flex; gap: var(--space-xs); align-items: center; }
-[part="Nameplate.icon"] { width: var(--size-xs); height: var(--size-xs); color: var(--tone); }
-[part="Nameplate.badge"] { font: var(--text-caption); padding: 0 var(--space-xs); }
-.boss [part="Nameplate.badge"] { border: var(--stroke-hairline) solid var(--gold); }
+[part="Nameplate.icon"] { width: var(--size-xs); height: var(--size-xs); color: var(--fill-color); }
+.boss [part="Nameplate.badge"] { border: var(--cell-rim-width) solid var(--cell-rim); --cell-rim: var(--gold); }
 /* Over the scene: the tag tokens outline it, and give it a ground where a pack sets one. */
-[part="Nameplate.name"] { font: var(--text-sm); color: var(--tone); white-space: nowrap; text-shadow: var(--tag-halo); background: var(--tag-fill); padding: var(--tag-pad); border-radius: var(--tag-radius); }
-.targeted [part="Nameplate.name"] { color: var(--scene-ink); }
-[part="Nameplate.subtitle"] { font: var(--text-caption); color: var(--ink-muted); white-space: nowrap; text-shadow: var(--tag-halo); background: var(--tag-fill); padding: var(--tag-pad); border-radius: var(--tag-radius); }
-[part="Nameplate.well"] { position: relative; width: var(--bar); overflow: hidden; border-radius: var(--meter-radius); background: var(--scene-plate); }
-#Health { height: var(--space-sm); border: var(--stroke-hairline) solid transparent; }
-.targeted #Health { border: var(--stroke-hairline) solid var(--highlight); }
-.boss #Health { border: var(--stroke-hairline) solid var(--gold); }
-[part="Nameplate.fill"] { position: absolute; top: 0; bottom: 0; inset-inline-start: 0; inline-size: calc(var(--hp) * 100%); background: var(--tone); }
-[part="Nameplate.shield"] { position: absolute; top: 0; bottom: 0; inset-inline-start: calc(var(--hp) * 100%); inline-size: calc(var(--shield) * 100%); background: var(--scene-ink); }
-#Cast { display: flex; flex-direction: column; height: var(--space-md); align-items: center; justify-content: center; }
-[part="Nameplate.cast"] { position: absolute; top: 0; bottom: 0; inset-inline-start: 0; inline-size: calc(var(--cast) * 100%); background: var(--warn); }
+[part="Nameplate.name"] { --name-size: var(--font-step-sm); --name-ink: var(--tone); white-space: nowrap; }
+.targeted [part="Nameplate.name"] { --name-ink: var(--scene-ink); }
+[part~="Nameplate.subtitle"] { white-space: nowrap; }
+[part~="Nameplate.well"] { width: var(--bar); overflow: hidden; }
+#Health { height: var(--space-sm); border: var(--cell-rim-width) solid var(--cell-rim); --cell-rim: transparent; }
+.targeted #Health { --cell-rim: var(--highlight); }
+.boss #Health { --cell-rim: var(--gold); }
+#Fill { block-size: 100%; inline-size: calc(var(--hp) * 100%); }
+#Shield { block-size: 100%; inset-inline-start: calc(var(--hp) * 100%); inline-size: calc(var(--shield) * 100%); --fill-color: var(--scene-ink); }
+#Cast { height: var(--space-md); }
+#CastFill { block-size: 100%; inline-size: calc(var(--cast) * 100%); }
 /* Across the bar (a name longer than it ends in an ellipsis), its glyphs
    inked for the warn fill as far as the cast has run and in the well's
    ink past it: it reads over both. */
-[part="Nameplate.spell"] { width: var(--bar); text-align: center; font: var(--text-caption); white-space: nowrap; text-overflow: ellipsis; color: transparent; background: linear-gradient(90deg, var(--ink-on-warn) calc(var(--cast) * 100%), var(--ink) calc(var(--cast) * 100%)); background-clip: text; }
+[part="Nameplate.spell"] { width: var(--bar); text-align: center; font: var(--caption-text); white-space: nowrap; text-overflow: ellipsis; color: transparent; background: linear-gradient(90deg, var(--ink-on-warn) calc(var(--cast) * 100%), var(--ink) calc(var(--cast) * 100%)); background-clip: text; }
 </style>

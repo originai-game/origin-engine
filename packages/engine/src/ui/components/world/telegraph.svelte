@@ -40,13 +40,13 @@
 
 <style>
 :host { width: var(--measure-xs); height: var(--measure-xs); }
-[part="Telegraph.area"] { width: var(--measure-xs); height: var(--measure-xs); --tone: var(--danger); --wash: color-mix(in srgb, var(--danger) 25%, transparent); }
-[part="Telegraph.area"].friendly { --tone: var(--info); --wash: color-mix(in srgb, var(--info) 25%, transparent); }
-.edge { fill: var(--wash); stroke: var(--tone); stroke-width: 3; }
-.fill { fill: var(--wash); }
-.band { fill: none; stroke: var(--wash); }
-.line { fill: none; stroke: var(--tone); stroke-width: 3; }
-.growth { fill: none; stroke: var(--tone); stroke-width: 2; opacity: 0.7; }
-.sector { fill: none; stroke: var(--wash); }
-.sector.fill { stroke: var(--wash); }
+[part="Telegraph.area"] { width: var(--measure-xs); height: var(--measure-xs); --fill-color: var(--tone-danger); }
+[part="Telegraph.area"].friendly { --fill-color: var(--tone-info); }
+.edge { fill: var(--fill-color); fill-opacity: var(--zone-wash); stroke: var(--fill-color); stroke-width: var(--zone-rim-width); }
+.fill { fill: var(--fill-color); fill-opacity: var(--zone-wash); }
+.band { fill: none; stroke: var(--fill-color); stroke-opacity: var(--zone-wash); }
+.line { fill: none; stroke: var(--fill-color); stroke-width: var(--zone-rim-width); }
+.growth { fill: none; stroke: var(--fill-color); stroke-width: var(--stroke-regular); }
+.sector { fill: none; stroke: var(--fill-color); stroke-opacity: var(--zone-wash); }
+.sector.fill { fill: none; }
 </style>

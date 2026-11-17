@@ -1,6 +1,6 @@
 <meta name="component" content="ProgressBar">
 <meta name="strings" content="./progress-bar.en.ogt">
-<meta name="parts" content="ProgressBar.label ProgressBar.figure ProgressBar.track ProgressBar.buffer ProgressBar.fill ProgressBar.well">
+<meta name="parts" content="ProgressBar.label ProgressBar.figure ProgressBar.track ProgressBar.buffer ProgressBar.fill ProgressBar.well ProgressBar.sheen">
 <meta name="prop:value" content="number" data-doc="Done, 0 to 1.">
 <meta name="prop:buffer" content="number" data-doc="A paler fill ahead of value (downloaded ahead of installed), 0 to 1.">
 <meta name="prop:label" content="string" data-doc="A caption over it at the start; empty is none.">
@@ -10,17 +10,17 @@
 <meta name="prop:tone" content="string" data-doc="The fill's tone: primary (empty), success, warn, danger or info.">
 <meta name="fixture:default" content='{"value":0.42,"buffer":0.6,"label":"Downloading","valueText":"","showValue":true,"indeterminate":false,"tone":""}'>
 
-<div id="ProgressBar" role="progressbar" aria-label={label || t("component.progress-bar.name")} aria-valuemin="0" aria-valuemax="100" aria-valuenow={value * 100} aria-valuetext={valueText || formatPercent(value)} aria-busy={indeterminate} class:done={value >= 1 && !indeterminate} class:indeterminate={indeterminate} class:success={tone == 'success'} class:warn={tone == 'warn'} class:danger={tone == 'danger'} class:info={tone == 'info'}>
+<div id="ProgressBar" data-layout="stack" data-gap="tight" role="progressbar" aria-label={label || t("component.progress-bar.name")} aria-valuemin="0" aria-valuemax="100" aria-valuenow={value * 100} aria-valuetext={valueText || formatPercent(value)} aria-busy={indeterminate} class:done={value >= 1 && !indeterminate} class:indeterminate={indeterminate} class:success={tone == 'success'} class:warn={tone == 'warn'} class:danger={tone == 'danger'} class:info={tone == 'info'}>
   {#if label || showValue}
-    <div id="Head">
-      <span id="Label" part="ProgressBar.label">{label}</span>
-      {#if showValue && !indeterminate}<span id="Value" part="ProgressBar.figure">{valueText || formatPercent(value)}</span>{/if}
+    <div id="Head" data-layout="row">
+      <span id="Label" class="label" part="ProgressBar.label" data-fill="true">{label}</span>
+      {#if showValue && !indeterminate}<span id="Value" class="value" part="ProgressBar.figure">{valueText || formatPercent(value)}</span>{/if}
     </div>
   {/if}
-  <div id="Track" part="ProgressBar.track ProgressBar.well" style:--value={value} style:--buffer={buffer}>
-    {#if !indeterminate}<div id="Buffer" part="ProgressBar.buffer"></div>{/if}
-    <div id="Fill" part="ProgressBar.fill" data-motion={indeterminate ? 'shimmer' : null}></div>
-    {#if !indeterminate && value < 1}<div id="Sheen" data-motion="shimmer"></div>{/if}
+  <div id="Track" part="ProgressBar.well ProgressBar.track" data-layout="overlay" style:--value={value} style:--buffer={buffer}>
+    {#if !indeterminate}<div id="Buffer" part="ProgressBar.buffer ProgressBar.fill" data-anchor="top-start"></div>{/if}
+    <div id="Fill" part="ProgressBar.fill" data-anchor="top-start" data-motion={indeterminate ? 'shimmer' : null}></div>
+    {#if !indeterminate && value < 1}<div id="Sheen" part="ProgressBar.sheen" data-anchor="top-start" data-motion="shimmer"></div>{/if}
   </div>
 </div>
 
@@ -28,19 +28,18 @@
 /* Drawn over the scene: the style's tag halo holds its text there. */
 :host { text-shadow: var(--tag-halo); }
 /* A bar fills the width its container gives it. */
-:host { display: flex; flex-direction: column; gap: var(--space-xs); inline-size: stretch; min-inline-size: 0; --tone: var(--primary); }
+:host { inline-size: stretch; min-inline-size: 0; --tone: var(--primary); --fill-color: var(--tone); --layout-anchor-inset: 0; }
 .success { --tone: var(--success); }
 .warn { --tone: var(--warn); }
 .danger { --tone: var(--danger); }
 .info { --tone: var(--info); }
-#Head { display: flex; gap: var(--space-sm); align-items: end; }
-[part="ProgressBar.label"] { font: var(--text-sm); font-family: var(--label-font); flex: 1; white-space: nowrap; text-overflow: ellipsis; }
-[part="ProgressBar.figure"] { font: var(--text-sm); font-family: var(--figure-font); white-space: nowrap; }
-[part="ProgressBar.track ProgressBar.well"] { position: relative; block-size: var(--space-sm); border-radius: var(--meter-radius); background: var(--control-strong); overflow: hidden; box-shadow: var(--meter-shadow); }
-@media (width < 600px) { [part="ProgressBar.track ProgressBar.well"] { height: calc(var(--space-xs) + var(--space-xxs)); } }
-[part="ProgressBar.buffer"] { position: absolute; top: 0; bottom: 0; inset-inline-start: 0; inline-size: calc(var(--buffer) * 100%); border-radius: var(--meter-radius); background: var(--tone); opacity: var(--opacity-faint); }
-[part="ProgressBar.fill"] { position: absolute; top: 0; bottom: 0; inset-inline-start: 0; inline-size: calc(var(--value) * 100%); border-radius: var(--meter-radius); background: linear-gradient(180deg, var(--sheen), transparent 55%, var(--shadow-30)), var(--tone); box-shadow: var(--meter-fill-shadow); }
-#Sheen { position: absolute; top: 0; bottom: 0; inset-inline-start: 0; inline-size: 24%; background: linear-gradient(90deg, transparent, var(--sheen), transparent); mix-blend-mode: screen; }
-.done [part="ProgressBar.fill"] { box-shadow: 0 0 var(--space-sm) var(--tone); }
-.indeterminate [part="ProgressBar.fill"] { inline-size: 36%; background: linear-gradient(90deg, transparent, var(--tone), transparent); box-shadow: none; }
+#Head { align-items: end; }
+[part="ProgressBar.label"] { white-space: nowrap; text-overflow: ellipsis; }
+[part="ProgressBar.figure"] { --figure-size: var(--font-step-sm); white-space: nowrap; }
+#Track { block-size: var(--space-sm); overflow: hidden; }
+@media (width < 600px) { #Track { height: calc(var(--space-xs) + var(--space-xxs)); } }
+#Buffer { inline-size: calc(var(--buffer) * 100%); block-size: 100%; opacity: var(--opacity-faint); }
+#Fill { inline-size: calc(var(--value) * 100%); block-size: 100%; }
+#Sheen { block-size: 100%; }
+.indeterminate #Fill { inline-size: 36%; }
 </style>

@@ -1,6 +1,6 @@
 <meta name="component" content="RpgCombatLog">
 <meta name="strings" content="./combat-log.en.ogt">
-<meta name="parts" content="RpgCombatLog.frame RpgCombatLog.band RpgCombatLog.title RpgCombatLog.row RpgCombatLog.fade">
+<meta name="parts" content="RpgCombatLog.frame RpgCombatLog.band RpgCombatLog.title RpgCombatLog.row RpgCombatLog.fade RpgCombatLog.caption">
 <meta name="prop:lines" content="list" data-doc="The log, oldest first, keyed rows of { id, text, tone, detail }: tone damage, heal, status, crit or plain inks the line; detail a quieter second line (→ 42 damage), empty for none. The game words every line.">
 <meta name="fixture:default" content='{"lines":[{"id":"l1","text":"Sir Aldric uses Shield Bash on Cultist.","tone":"plain","detail":"→ 42 damage"},{"id":"l2","text":"Cultist is Stunned!","tone":"status","detail":""}]}'>
 
@@ -8,26 +8,21 @@
   The combat log: the newest lines at the foot, each inked by its tone.
   Scrolls inside the height it is given. Read only.
 -->
-<section id="RpgCombatLog" part="RpgCombatLog.frame" class="hud" role="log" aria-label={t("rpg.log.name")}>
-  <header class="small" part="RpgCombatLog.band"><h3 part="RpgCombatLog.title">{t("rpg.log.name")}</h3></header>
-  <div class="scroll-shell"><div class="lines">
+<section id="RpgCombatLog" part="RpgCombatLog.frame" class="hud" data-layout="shell" role="log" aria-label={t("rpg.log.name")}>
+  <header class="small" part="RpgCombatLog.band" data-layout="row"><h3 part="RpgCombatLog.title">{t("rpg.log.name")}</h3></header>
+  <div class="scroll-shell" data-layout="overlay" data-fill><div class="lines" data-layout="scroll" data-anchor="fill">
     {#each lines as l (l.id)}
-      <div part="RpgCombatLog.row" data-tone={l.tone}><span class="line-text">{l.text}</span>{#if l.detail}<span class="line-detail">{l.detail}</span>{/if}</div>
+      <div part="RpgCombatLog.row" data-layout="stack" data-gap="hair" data-tone={l.tone}><span class="line-text">{l.text}</span>{#if l.detail}<span class="line-detail" part="RpgCombatLog.caption">{l.detail}</span>{/if}</div>
     {/each}
-  </div><div part="RpgCombatLog.fade"></div></div>
+  </div><div part="RpgCombatLog.fade" data-anchor="bottom-edge"></div></div>
 </section>
 
 <style>
 /* Drawn over the scene: the style's tag halo holds its text there. */
 :host { text-shadow: var(--tag-halo); }
-:host { display: flex; flex-direction: column; inline-size: stretch; block-size: stretch; gap: var(--space-sm); }
-[part="RpgCombatLog.band"] { display: flex; align-items: center; flex: none; }
-.scroll-shell { position: relative; display: flex; flex-direction: column; flex: 1; min-block-size: 0; }
-[part="RpgCombatLog.fade"] { position: absolute; inset-inline: 0; bottom: 0; block-size: var(--space-lg); pointer-events: none; background: linear-gradient(transparent, var(--panel)); }
-.lines { display: flex; flex-direction: column; gap: var(--space-sm); flex: 1; min-block-size: 0; overflow-y: auto; padding-block-end: var(--space-lg); }
-[part="RpgCombatLog.row"] { display: flex; flex: none; flex-direction: column; gap: var(--space-xxs); padding: var(--space-xs) var(--space-sm); border-inline-start: var(--stroke-regular) solid var(--line); }
-[part="RpgCombatLog.row"][data-tone=damage] { border-color: var(--danger); }
-[part="RpgCombatLog.row"][data-tone=heal] { border-color: var(--success); }
-[part="RpgCombatLog.row"][data-tone=crit] { border-color: var(--warn); }
-.line-detail { padding-inline-start: var(--space-md); color: var(--ink-muted); font: var(--text-caption); }
+[part="RpgCombatLog.band"] { flex: none; }
+.scroll-shell { --fade-size: var(--space-lg); }
+.lines { padding-block-end: var(--fade-size); }
+[part="RpgCombatLog.row"] { flex: none; padding: var(--space-xs) var(--space-sm); }
+.line-detail { padding-inline-start: var(--space-md); }
 </style>

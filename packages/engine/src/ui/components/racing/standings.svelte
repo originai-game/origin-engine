@@ -1,6 +1,6 @@
 <meta name="component" content="RacingStandings">
 <meta name="strings" content="./racing.en.ogt">
-<meta name="parts" content="RacingStandings.frame RacingStandings.band RacingStandings.title RacingStandings.row RacingStandings.place RacingStandings.name RacingStandings.gap RacingStandings.badge RacingStandings.label">
+<meta name="parts" content="RacingStandings.frame RacingStandings.band RacingStandings.title RacingStandings.row RacingStandings.place RacingStandings.name RacingStandings.gap RacingStandings.badge RacingStandings.label RacingStandings.figure RacingStandings.caption">
 <meta name="prop:title" content="string" data-doc="The board's heading; empty takes the kit's (Standings).">
 <meta name="prop:rows" content="list" data-doc="The running order as the game ranks it, keyed rows of { id, position, name, gap, player, state }: position the place shown; gap the interval as the game words it (+1.204, +1 lap; empty for the leader); player marks the local player's row (You); state racing, pitting, retired or finished, each with a word as well as its dress.">
 <meta name="fixture:default" content='{"title":"","rows":[{"id":"marlow","position":1,"name":"Marlow","gap":"","player":false,"state":"racing"},{"id":"okafor","position":2,"name":"Okafor","gap":"+0.884","player":false,"state":"racing"},{"id":"you","position":3,"name":"Rhea Vance","gap":"+1.512","player":true,"state":"racing"},{"id":"lindqvist","position":4,"name":"Lindqvist","gap":"+3.020","player":false,"state":"pitting"},{"id":"sato","position":5,"name":"Sato","gap":"+1 lap","player":false,"state":"racing"},{"id":"brandt","position":6,"name":"Brandt","gap":"","player":false,"state":"retired"}]}'>
@@ -15,38 +15,36 @@
   aria-current; pitting, retired and finished cars carry a short word
   badge. It fills the height it is given and scrolls inside it. Read only.
 -->
-<section id="RacingStandings" part="RacingStandings.frame" class="hud" aria-label={title != '' ? title : t("racing.standings.name")}>
-  <header part="RacingStandings.band"><h2 part="RacingStandings.title">{title != '' ? title : t("racing.standings.name")}</h2></header>
+<section id="RacingStandings" part="RacingStandings.frame" class="hud" data-layout="stack" data-gap="tight" aria-label={title != '' ? title : t("racing.standings.name")}>
+  <header part="RacingStandings.band" data-layout="row"><h2 part="RacingStandings.title">{title != '' ? title : t("racing.standings.name")}</h2></header>
   {#if rows.length}
-    <div class="list">
-      <div class="rows" role="list" aria-label={title != '' ? title : t("racing.standings.name")}>
+    <div class="list" data-layout="scroll" data-fill>
+      <div class="rows" data-layout="stack" data-gap="hair" role="list" aria-label={title != '' ? title : t("racing.standings.name")}>
         {#each rows as r (r.id)}
-          <div part="RacingStandings.row" role="listitem" aria-current={r.player} aria-label={r.name} data-player={r.player} data-state={r.state}>
-            <span part="RacingStandings.place RacingStandings.label" class="place">{formatNumber(r.position)}</span>
-            <span part="RacingStandings.name" class="name">{r.name}</span>
-            {#if r.player}<span class="you">{t("racing.standings.you")}</span>{/if}
+          <div part="RacingStandings.row" data-layout="row" role="listitem" aria-current={r.player} aria-label={r.name} data-player={r.player} data-state={r.state}>
+            <span part="RacingStandings.place RacingStandings.label RacingStandings.figure" class="place">{formatNumber(r.position)}</span>
+            <span part="RacingStandings.name" class="name" data-fill>{r.name}</span>
+            {#if r.player}<span class="you" part="RacingStandings.caption">{t("racing.standings.you")}</span>{/if}
             {#if r.state != 'racing'}<span part="RacingStandings.badge" class="state" data-state={r.state} aria-label={r.state == 'pitting' ? t("racing.standings.pittingName") : (r.state == 'retired' ? t("racing.standings.retiredName") : t("racing.standings.finishedName"))}>{r.state == 'pitting' ? t("racing.standings.pitting") : (r.state == 'retired' ? t("racing.standings.retired") : t("racing.standings.finished"))}</span>{/if}
-            {#if r.gap != ''}<span part="RacingStandings.gap RacingStandings.label" class="gap">{r.gap}</span>{/if}
+            {#if r.gap != ''}<span part="RacingStandings.gap RacingStandings.label RacingStandings.figure" class="gap">{r.gap}</span>{/if}
           </div>
         {/each}
       </div>
     </div>
   {:else}
-    <p class="empty-text" role="status">{t("racing.standings.empty")}</p>
+    <p class="empty-text" part="RacingStandings.caption" role="status">{t("racing.standings.empty")}</p>
   {/if}
 </section>
 
 <style>
-:host { display: flex; flex-direction: column; width: stretch; max-height: stretch; gap: var(--space-xs); text-shadow: var(--tag-halo); }
-[part="RacingStandings.band"] { display: flex; width: stretch; align-items: center; flex: none; }
+:host { width: stretch; max-height: stretch; }
+[part="RacingStandings.band"] { width: stretch; flex: none; }
 [part="RacingStandings.title"] { margin: 0; white-space: nowrap; text-overflow: ellipsis; overflow: hidden; }
-.list { overflow-y: auto; flex: 1; min-height: 0; }
-.rows { display: flex; flex-direction: column; width: stretch; gap: var(--space-xxs); }
-[part="RacingStandings.row"] { display: flex; width: stretch; align-items: center; gap: var(--space-sm); padding: var(--space-xxs) var(--space-sm); min-height: var(--size-sm); }
-[part="RacingStandings.row"][data-player=true] { border-inline-start: var(--stroke-regular) solid var(--primary); background: var(--control-strong); }
-.place { flex: none; width: var(--size-sm); text-align: center; font-variant-numeric: tabular-nums; }
-.name { flex: 1; min-width: 0; text-align: start; white-space: nowrap; text-overflow: ellipsis; overflow: hidden; }
+.rows { width: stretch; }
+[part="RacingStandings.row"] { width: stretch; padding: var(--space-xxs) var(--space-sm); min-height: var(--size-sm); }
+.place { flex: none; width: var(--size-sm); text-align: center; }
+.name { text-align: start; white-space: nowrap; text-overflow: ellipsis; overflow: hidden; }
 .you, .state { flex: none; white-space: nowrap; padding: 0 var(--space-xs); }
-.gap { flex: none; text-align: end; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.gap { flex: none; text-align: end; white-space: nowrap; }
 .empty-text { margin: 0; padding: var(--space-sm); }
 </style>

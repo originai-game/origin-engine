@@ -5,13 +5,12 @@
 
 <div id="DamageNumbers">
   {#each hits as hit (hit.id)}
-    <anchor part="DamageNumbers.figure" class="hit" class:tinted={!!hit.color} entity={hit.entity || null} at={hit.at} mass="damage" value={hit.amount} style:--tint={hit.color}></anchor>
+    <anchor part="DamageNumbers.figure" class="hit" data-motion="float" class:tinted={!!hit.color} entity={hit.entity || null} at={hit.at} mass="damage" value={hit.amount} style:--tint={hit.color}></anchor>
   {/each}
 </div>
 
 <style>
 :host { text-shadow: var(--tag-halo); }
-.hit { color: var(--scene-ink); font: var(--text-xl); font-family: var(--figure-font); font-variant-numeric: tabular-nums; animation-name: rise; animation-duration: var(--motion-duration-turn); animation-timing-function: var(--motion-easing-out); }
-.hit.tinted { color: var(--tint); }
-@keyframes rise { 0% { translate: 0 0; scale: 1.4; opacity: 1; } 20% { scale: 1; } 100% { translate: 0 calc(var(--space-3xl) * -1); opacity: 0; } }
+.hit { --figure-size: var(--font-step-xl); --figure-shadow: var(--tag-halo); }
+.hit.tinted { --figure-ink: var(--tint); }
 </style>

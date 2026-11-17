@@ -1,6 +1,6 @@
 <meta name="component" content="RacingLapHud">
 <meta name="strings" content="./racing.en.ogt">
-<meta name="parts" content="RacingLapHud.frame RacingLapHud.readout RacingLapHud.title RacingLapHud.row RacingLapHud.delta RacingLapHud.badge RacingLapHud.figure">
+<meta name="parts" content="RacingLapHud.frame RacingLapHud.readout RacingLapHud.title RacingLapHud.row RacingLapHud.delta RacingLapHud.badge RacingLapHud.figure RacingLapHud.caption">
 <meta name="prop:lap" content="number" data-doc="The lap the player is on, from 1; 0 before the start shows a dash.">
 <meta name="prop:laps" content="number" data-doc="Laps in the race; 0 hides the lap count (an open session).">
 <meta name="prop:position" content="number" data-doc="The player's place, from 1; 0 shows a dash.">
@@ -26,44 +26,43 @@
   time running, the best and last laps and the split delta, ahead or
   behind. Every time comes formatted from the game; read only.
 -->
-<section id="RacingLapHud" part="RacingLapHud.frame" class="hud" aria-label={t("racing.lap.name")} data-final={finalLap}>
-  <div class="cells">
-    {#if laps > 0 || lap > 0}<div part="RacingLapHud.readout RacingLapHud.figure" class="lap" role="group" aria-label={laps > 0 && lap > 0 ? t("racing.lap.lapValue", { lap: lap, laps: laps }) : t("racing.lap.lap")} data-final={finalLap}>
-      <span part="RacingLapHud.title" class="caption">{t("racing.lap.lap")}</span>
-      <div class="figure"><span class="now">{lap > 0 ? formatNumber(lap) : t("racing.lap.pending")}</span>{#if laps > 0}<span class="of">{t("racing.lap.of", { total: laps })}</span>{/if}</div>
+<section id="RacingLapHud" part="RacingLapHud.frame" class="hud" data-layout="stack" aria-label={t("racing.lap.name")} data-final={finalLap}>
+  <div class="cells" data-layout="row" data-gap="loose">
+    {#if laps > 0 || lap > 0}<div part="RacingLapHud.readout RacingLapHud.figure" class="lap" data-layout="stack" data-gap="none" role="group" aria-label={laps > 0 && lap > 0 ? t("racing.lap.lapValue", { lap: lap, laps: laps }) : t("racing.lap.lap")} data-final={finalLap}>
+      <span part="RacingLapHud.title RacingLapHud.caption" class="caption">{t("racing.lap.lap")}</span>
+      <div class="figure" data-layout="row" data-gap="hair"><span class="now">{lap > 0 ? formatNumber(lap) : t("racing.lap.pending")}</span>{#if laps > 0}<span class="of">{t("racing.lap.of", { total: laps })}</span>{/if}</div>
       {#if finalLap}<span part="RacingLapHud.badge" class="final">{t("racing.lap.finalLap")}</span>{/if}
     </div>{/if}
-    {#if racers > 0}<div part="RacingLapHud.readout RacingLapHud.figure" class="place" role="group" aria-label={position > 0 ? t("racing.lap.positionValue", { position: position, racers: racers }) : t("racing.lap.position")}>
-      <span part="RacingLapHud.title" class="caption">{t("racing.lap.position")}</span>
-      <div class="figure"><span class="now">{position > 0 ? formatNumber(position) : t("racing.lap.pending")}</span><span class="of">{t("racing.lap.of", { total: racers })}</span></div>
+    {#if racers > 0}<div part="RacingLapHud.readout RacingLapHud.figure" class="place" data-layout="stack" data-gap="none" role="group" aria-label={position > 0 ? t("racing.lap.positionValue", { position: position, racers: racers }) : t("racing.lap.position")}>
+      <span part="RacingLapHud.title RacingLapHud.caption" class="caption">{t("racing.lap.position")}</span>
+      <div class="figure" data-layout="row" data-gap="hair"><span class="now">{position > 0 ? formatNumber(position) : t("racing.lap.pending")}</span><span class="of">{t("racing.lap.of", { total: racers })}</span></div>
     </div>{/if}
   </div>
-  <div class="times" role="list" aria-label={t("racing.lap.name")}>
-    <div part="RacingLapHud.row" class="current" role="listitem"><span class="label">{t("racing.lap.current")}</span><span class="time">{current != '' ? current : t("racing.lap.none")}</span></div>
-    {#if split != ''}<div part="RacingLapHud.delta RacingLapHud.figure" class="split" role="listitem" data-state={splitState}><span class="sense">{splitState == 'ahead' ? t("racing.lap.ahead") : (splitState == 'behind' ? t("racing.lap.behind") : t("racing.lap.even"))}</span><span class="time">{split}</span></div>{/if}
-    <div part="RacingLapHud.row" class="best" role="listitem"><span class="label">{t("racing.lap.best")}</span><span class="time">{best != '' ? best : t("racing.lap.none")}</span></div>
-    <div part="RacingLapHud.row" class="last" role="listitem" data-fresh={freshBest}><span class="label">{t("racing.lap.last")}</span><span class="time">{last != '' ? last : t("racing.lap.none")}</span>{#if freshBest}<span part="RacingLapHud.badge" class="fresh">{t("racing.lap.newBest")}</span>{/if}</div>
+  <div class="times" data-layout="stack" data-gap="hair" role="list" aria-label={t("racing.lap.name")}>
+    <div part="RacingLapHud.row" data-layout="row" class="current" role="listitem"><span class="label" part="RacingLapHud.caption">{t("racing.lap.current")}</span><span class="time" part="RacingLapHud.figure" data-fill>{current != '' ? current : t("racing.lap.none")}</span></div>
+    {#if split != ''}<div part="RacingLapHud.delta RacingLapHud.figure" data-layout="row" class="split" role="listitem" data-state={splitState} data-trend={splitState == 'ahead' ? 'up' : splitState == 'behind' ? 'down' : null}><span class="sense">{splitState == 'ahead' ? t("racing.lap.ahead") : (splitState == 'behind' ? t("racing.lap.behind") : t("racing.lap.even"))}</span><span class="time" data-fill>{split}</span></div>{/if}
+    <div part="RacingLapHud.row" data-layout="row" class="best" role="listitem"><span class="label" part="RacingLapHud.caption">{t("racing.lap.best")}</span><span class="time" part="RacingLapHud.figure" data-fill>{best != '' ? best : t("racing.lap.none")}</span></div>
+    <div part="RacingLapHud.row" data-layout="row" class="last" role="listitem" data-fresh={freshBest}><span class="label" part="RacingLapHud.caption">{t("racing.lap.last")}</span><span class="time" part="RacingLapHud.figure" data-fill>{last != '' ? last : t("racing.lap.none")}</span>{#if freshBest}<span part="RacingLapHud.badge" class="fresh">{t("racing.lap.newBest")}</span>{/if}</div>
   </div>
   {#if timeLeft >= 0}<div class="clock"><HudTimer seconds={timeLeft} total={timeTotal} countdown={true} warnAt={warnAt} paused={false} label={t("racing.lap.timeLeft")} /></div>{/if}
 </section>
 
 <style>
-:host { display: flex; flex-direction: column; width: fit-content; max-width: 100%; gap: var(--space-sm); padding: var(--space-sm) var(--space-md); text-shadow: var(--tag-halo); }
-.cells { display: flex; gap: var(--space-md); align-items: flex-end; }
-[part="RacingLapHud.readout RacingLapHud.figure"] { display: flex; flex-direction: column; gap: 0; align-items: flex-start; min-width: 0; }
-.caption { font: var(--text-caption); color: var(--ink-muted); white-space: nowrap; }
-.figure { display: flex; align-items: baseline; gap: var(--space-xxs); white-space: nowrap; }
-.now, .of, .time { font-variant-numeric: tabular-nums; white-space: nowrap; }
+:host { width: fit-content; max-width: 100%; padding: var(--space-sm) var(--space-md); }
+.cells { align-items: flex-end; }
+[part="RacingLapHud.readout RacingLapHud.figure"] { align-items: flex-start; }
+.caption { white-space: nowrap; }
+.figure { align-items: baseline; white-space: nowrap; }
+.now, .of, .time { white-space: nowrap; }
 .final { white-space: nowrap; padding: 0 var(--space-xs); }
-.times { display: flex; flex-direction: column; gap: var(--space-xxs); min-width: 0; }
-[part="RacingLapHud.row"], [part="RacingLapHud.delta RacingLapHud.figure"] { display: flex; align-items: baseline; gap: var(--space-sm); min-width: 0; }
+[part="RacingLapHud.row"], [part="RacingLapHud.delta RacingLapHud.figure"] { align-items: baseline; }
 .label, .sense { flex: none; white-space: nowrap; min-width: calc(var(--size-xl) * 0.9); }
-.time { min-width: 0; overflow: hidden; text-overflow: ellipsis; font-family: var(--figure-font); }
+.time { overflow: hidden; text-overflow: ellipsis; }
 .fresh { flex: none; white-space: nowrap; padding: 0 var(--space-xs); }
 .clock { align-self: flex-start; }
 @media (width < 600px) {
   [part="RacingLapHud.frame"] { padding: var(--space-xs) var(--space-sm); }
-  .cells { gap: var(--space-sm); }
+  .cells { --layout-gap-loose: var(--layout-gap); }
   .label, .sense { min-width: var(--size-xl); }
 }
 </style>

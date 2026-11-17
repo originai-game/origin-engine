@@ -1,5 +1,5 @@
 <meta name="component" content="Waypoint">
-<meta name="parts" content="Waypoint.pin Waypoint.label Waypoint.figure">
+<meta name="parts" content="Waypoint.pin Waypoint.label Waypoint.figure Waypoint.tag">
 <meta name="prop:entity" content="number" data-doc="What it marks, by its bits (0: use at).">
 <meta name="prop:at" content="string" data-default="0 0 0" data-doc="A world point it marks without an entity (x y z).">
 <meta name="prop:height" content="number" data-doc="World units above the point.">
@@ -11,29 +11,27 @@
 <meta name="fixture:default" content='{"entity":0,"at":"0 0 0","height":1.5,"kind":"objective","icon":"","label":"Defend","distance":142,"units":"m"}'>
 
 <anchor id="Waypoint" entity={entity || null} at={at} offset={"0 " + height + " 0"} clamp="edge" declutter="shift" priority="500">
-  <div id="Mark" class:ping={kind == 'ping'} class:danger={kind == 'danger'} class:ally={kind == 'ally'} class:loot={kind == 'loot'}>
-    <div id="Pin" part="Waypoint.pin">
+  <div id="Mark" data-layout="stack" data-gap="hair" class:ping={kind == 'ping'} class:danger={kind == 'danger'} class:ally={kind == 'ally'} class:loot={kind == 'loot'}>
+    <div id="Pin" part="Waypoint.pin" data-layout="center" data-motion={kind == 'ping' ? 'ping' : null}>
       {#if icon}<og-icon id="Icon" icon={icon}></og-icon>
       {:else}<svg id="Diamond" viewBox="0 0 28 28"><path d="M14 2l12 12-12 12L2 14z"></path></svg>{/if}
     </div>
-    {#if label}<span id="Label" part="Waypoint.label">{label}</span>{/if}
-    {#if distance >= 0}<span id="Distance" part="Waypoint.figure">{formatNumber(distance) + units}</span>{/if}
+    {#if label}<div part="Waypoint.tag"><span id="Label" class="label" part="Waypoint.label">{label}</span></div>{/if}
+    {#if distance >= 0}<div part="Waypoint.tag"><span id="Distance" class="distance" part="Waypoint.figure">{formatNumber(distance) + units}</span></div>{/if}
   </div>
 </anchor>
 
 <style>
 :host { text-shadow: var(--tag-halo); }
-#Mark { display: flex; flex-direction: column; align-items: center; gap: var(--space-xxs); --tone: var(--gold); }
+#Mark { align-items: center; --tone: var(--gold); }
 #Mark.ping { --tone: var(--info); }
 #Mark.danger { --tone: var(--danger); }
 #Mark.ally { --tone: var(--success); }
 #Mark.loot { --tone: var(--xp); }
-[part="Waypoint.pin"] { display: flex; flex-direction: column; width: var(--size-sm); height: var(--size-sm); align-items: center; justify-content: center; }
-.ping [part="Waypoint.pin"] { animation-name: pulse; animation-duration: var(--motion-duration-ping); animation-timing-function: var(--motion-easing-out); animation-iteration-count: infinite; }
-#Diamond { width: var(--size-sm); height: var(--size-sm); fill: var(--tone); stroke: var(--scene-shadow); stroke-width: 1.5; }
-#Icon { width: var(--size-sm); height: var(--size-sm); color: var(--tone); }
+[part="Waypoint.pin"] { width: var(--size-sm); height: var(--size-sm); --dot-fill: var(--tone); }
+#Diamond { width: var(--size-sm); height: var(--size-sm); fill: var(--dot-fill); stroke: var(--dot-rim); stroke-width: var(--dot-rim-width); }
+#Icon { width: var(--size-sm); height: var(--size-sm); color: var(--dot-fill); }
 /* In the world, over any scene: the kind's tone and the scene's ink, through the role tokens; the tag tokens outline them, and give them a ground where a pack sets one. */
-[part="Waypoint.label"] { font: var(--text-caption); font-family: var(--label-font); white-space: nowrap; text-shadow: var(--tag-halo); background: var(--tag-fill); padding: var(--tag-pad); border-radius: var(--tag-radius); --ink-label: var(--tone); }
-[part="Waypoint.figure"] { font: var(--text-caption); font-family: var(--figure-font); white-space: nowrap; text-shadow: var(--tag-halo); background: var(--tag-fill); padding: var(--tag-pad); border-radius: var(--tag-radius); --figure-ink: var(--scene-ink); }
-@keyframes pulse { 0% { scale: 1.3; } 100% { scale: 1; } }
+[part="Waypoint.label"] { white-space: nowrap; --ink-label: var(--tone); }
+[part="Waypoint.figure"] { white-space: nowrap; --figure-size: var(--font-step-sm); --figure-ink: var(--scene-ink); }
 </style>

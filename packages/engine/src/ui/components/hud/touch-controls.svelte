@@ -26,8 +26,8 @@
   is set, and a control that is not shown or is disabled feeds nothing. The
   page places it: it is as wide as its box and stands on its bottom edge.
 -->
-<div id="TouchControls" part="TouchControls.frame" class="bare" class:always={always} role="group" aria-label={t("component.touch-controls.name")}>
-  <div id="Start">
+<div id="TouchControls" part="TouchControls.frame" data-layout="row" data-gap="wide" class="bare" class:always={always} role="group" aria-label={t("component.touch-controls.name")}>
+  <div id="Start" data-layout="row">
     {#if move}
       {#if pad}
         <dpad id="Pad" part="TouchControls.stick" action={move} disabled={disabled} aria-label={t("component.touch-controls.move")}></dpad>
@@ -36,8 +36,8 @@
       {/if}
     {/if}
   </div>
-  <div id="End">
-    <div id="Actions" part="TouchControls.actions">
+  <div id="End" data-layout="cluster" data-gap="loose" data-fill="true">
+    <div id="Actions" part="TouchControls.actions" data-layout="cluster" data-gap="loose" data-from="end">
       {#each actions as a (a.id)}
         <ActionButton action={a.action} label={a.label} icon={a.icon} primary={a.primary} charge={a.charge} disabled={disabled || a.disabled} />
       {/each}
@@ -49,16 +49,15 @@
 </div>
 
 <style>
-:host { display: flex; inline-size: stretch; justify-content: space-between; align-items: end; gap: var(--space-lg); padding: var(--space-lg); }
+:host { inline-size: stretch; justify-content: space-between; align-items: end; padding: var(--space-lg); }
 @media (pointer: fine) {
-  :host { display: none; }
-  .always { display: flex; }
+  #TouchControls:not(.always) { display: none; }
 }
-#Start { display: flex; align-items: end; flex: none; }
-#End { display: flex; flex: 1; min-inline-size: 0; align-items: end; justify-content: flex-end; gap: var(--space-md); }
-#Actions { display: flex; min-inline-size: 0; flex-direction: row-reverse; flex-wrap: wrap-reverse; align-items: end; justify-content: flex-start; gap: var(--space-md); max-width: min(100%, calc(var(--action-size) * 3.25 + var(--space-md) * 2)); }
+#Start { align-items: end; flex: none; }
+#End { min-inline-size: 0; align-items: end; justify-content: flex-end; }
+#Actions { min-inline-size: 0; align-items: end; justify-content: flex-start; max-width: min(100%, calc(var(--action-size) * 3.25 + var(--space-md) * 2)); }
 @media (width < 600px) {
-  :host { padding: var(--space-md); gap: var(--space-md); }
-  #End { gap: var(--space-sm); flex-wrap: wrap; justify-content: flex-end; }
+  :host { padding: var(--space-md); --layout-gap-wide: var(--layout-gap-loose); }
+  #End { --layout-gap-loose: var(--layout-gap-tight); }
 }
 </style>
