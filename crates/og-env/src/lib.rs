@@ -13,6 +13,7 @@
 //! | [`force`] | [`force::Forces`], the world's force fields: an acceleration inside a region, as one function of a point |
 //! | [`weather`] | the kinds of weather and what they leave on the ground: wetness, puddles, snow and dust |
 //! | [`day`] | the time of day at a tick |
+//! | [`season`] | the time of year at a tick, and what a date, a latitude and a climate make of it: the sun's place, the day's length, the temperature, the leaves' year |
 //! | [`sight`] | [`sight::SightMap`], fog of war: the cells of the ground each team sees and has seen |
 //!
 //! Invariants are og-core's: no global mutable state, no wall clock, and
@@ -24,6 +25,7 @@ pub mod day;
 pub mod force;
 pub mod ocean;
 pub mod river;
+pub mod season;
 pub mod shore;
 pub mod sight;
 pub mod volume;
