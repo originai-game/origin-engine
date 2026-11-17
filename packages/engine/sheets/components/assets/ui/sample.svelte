@@ -1,4 +1,5 @@
 <meta name="component" content="UngroupedSamplePage">
+<meta name="parts" content="Sheet.card">
 
 <section class="page">
   <h1 class="caption">{$caption}</h1>
@@ -16,7 +17,7 @@
     {:else if $member == 'menu'}
       <Menu entries={$sample_entries} submenu={$sample.submenu} label={$sample.label} />
     {:else if $member == 'ribbon'}
-      <Ribbon text={$sample.text} corner={$sample.corner} tone={$sample.tone} />
+      <div class="host" part="Sheet.card" class:low={$sample.corner == 'bottomRight' || $sample.corner == 'bottomLeft'}><p class="host-name">Ember Blade</p><p class="host-note">Legendary sword</p><div class="pin" class:topLeft={$sample.corner == 'topLeft'} class:bottomRight={$sample.corner == 'bottomRight'} class:bottomLeft={$sample.corner == 'bottomLeft'} class:center={$sample.corner == 'center'}><Ribbon text={$sample.text} corner={$sample.corner} tone={$sample.tone} /></div></div>
     {:else if $member == 'skeletonGroup'}
       <SkeletonGroup shape={$sample.shape} items={$sample_items} name={$sample.name} />
     {:else if $member == 'spinner'}
@@ -59,5 +60,16 @@
 .caption { margin: 0; font: var(--text-lg); color: var(--ink-muted); }
 .stage { position: relative; display: flex; flex-direction: column; align-items: start; flex: 1; gap: var(--space-md); }
 .pane { margin: 0; padding: var(--space-md); }
+/* A ribbon is shown where a game puts it: in the corner it names of a
+   card that clips, whose own corner cuts the strip's ends. */
+.host { position: relative; overflow: hidden; display: flex; flex-direction: column; justify-content: end; gap: var(--space-xxs); inline-size: calc(var(--size-xxl) * 2.75); max-inline-size: 100%; block-size: calc(var(--size-xxl) * 1.75); flex: none; }
+.host.low { justify-content: start; }
+.host-name { margin: 0; font: var(--text-base); font-weight: var(--font-weight-semibold); color: var(--ink); }
+.host-note { margin: 0; font: var(--text-caption); color: var(--ink-muted); }
+.pin { position: absolute; top: 0; right: 0; }
+.pin.topLeft { right: auto; left: 0; }
+.pin.bottomRight { top: auto; bottom: 0; }
+.pin.bottomLeft { top: auto; bottom: 0; right: auto; left: 0; }
+.pin.center { top: 50%; left: 50%; right: auto; translate: -50% -50%; }
 @media (width < 600px) { :host { padding: var(--space-sm); padding-top: env(safe-area-inset-top); } }
 </style>

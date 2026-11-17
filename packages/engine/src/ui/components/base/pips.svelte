@@ -16,16 +16,17 @@
 
 <!-- A counted resource on one line: its name, then one icon per unit. An
      empty unit is its socket; a full one is cut to its fraction and wears
-     the tone. -->
-<div id="Pips" part="Pips.frame" class="bare" data-layout="cluster" role="group" aria-label={label || t("base.pips.resource")} aria-busy={loading} aria-disabled={disabled}>
+     the tone. Unavailable, the units lose their colour and dim, full ones
+     still brighter than their sockets. -->
+<div id="Pips" part="Pips.frame" class="bare" data-layout="cluster" class:off={disabled} role="group" aria-label={label || t("base.pips.resource")} aria-busy={loading} aria-disabled={disabled}>
   <div part="Pips.caption" class="label">{label || t("base.pips.resource")}</div>
-  {#if loading}<div part="Pips.loading" data-layout="row" data-gap="tight"><Spinner size={16} name={t("base.pips.loading")} /><div part="Pips.state Pips.caption" role="status">{t("base.pips.loading")}</div></div>
+  {#if loading}<div part="Pips.loading" data-layout="row" data-gap="tight"><Spinner size={18} name={t("base.pips.loading")} /><div part="Pips.state Pips.caption" role="status">{t("base.pips.loading")}</div></div>
   {:else}
     {#if items.length}<div part="Pips.units" data-layout="cluster" data-gap="hair">
       {#each items as item (item.id)}
         <div class="unit" part="Pips.unit" role="meter" aria-label={item.label || label || t("base.pips.resource")} aria-valuemin="0" aria-valuemax="1" aria-valuenow={item.value < 0 ? 0 : item.value > 1 ? 1 : item.value} aria-valuetext={formatPercent(item.value < 0 ? 0 : item.value > 1 ? 1 : item.value)} style:--value={item.value}>
           <og-icon part="Pips.empty" class="empty" icon={icon}></og-icon>
-          <og-icon part="Pips.full Pips.figure" class="full" data-tone={tone || null} icon={icon}></og-icon>
+          <og-icon part="Pips.full Pips.figure" class="full" data-tone={disabled ? null : tone || null} icon={icon}></og-icon>
         </div>
       {/each}
     </div>{:else}<div part="Pips.state Pips.caption">{t("base.pips.empty")}</div>{/if}
@@ -38,5 +39,6 @@
 .unit { position: relative; inline-size: var(--pip-size, var(--size-sm)); block-size: var(--pip-size, var(--size-sm)); }
 .empty, .full { position: absolute; inset: 0; inline-size: 100%; block-size: 100%; }
 .empty { color: var(--pip-empty-ink); }
+.off .full { --figure-ink: var(--ink-label); }
 .full { --figure-ink: var(--pip-ink); clip-path: inset(0 calc((1 - clamp(0, var(--value), 1)) * 100%) 0 0); transition: var(--pip-motion); }
 </style>

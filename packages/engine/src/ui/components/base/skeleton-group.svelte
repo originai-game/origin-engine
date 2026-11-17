@@ -6,6 +6,9 @@
 <meta name="prop:name" content="string" data-doc="What a screen reader says while it loads; empty is Loading.">
 <meta name="fixture:default" content='{"shape":"row","items":[{"id":"a"},{"id":"b"},{"id":"c"}],"name":""}'>
 
+<!-- One band of light crosses the whole group: every bone's sheen is the
+     same width (a share of the group's) and starts from the group's edge,
+     so the bones light together as it passes. -->
 <div id="SkeletonGroup" data-layout="stack" data-gap="loose" role="progressbar" aria-busy="true" aria-label={name || t("component.skeleton-group.loading")} class:avatar={shape == 'avatar'} class:block={shape == 'block'} class:row={shape == 'row'} class:card={shape == 'card'}>
   {#each items as item (item.id)}
     <div class="item" data-layout={shape == 'row' ? 'row' : 'stack'} data-gap="tight">
@@ -20,13 +23,14 @@
 </div>
 
 <style>
-:host { inline-size: stretch; }
+:host { inline-size: stretch; container-type: inline-size; --sheen-width: 24cqi; }
 .piece { width: stretch; height: var(--space-md); --skeleton-radius: var(--radius-capsule); }
 .piece.last { width: 62%; }
 .avatar .art { width: var(--size-lg); height: var(--size-lg); --skeleton-radius: var(--radius-capsule); }
 .block .art { height: var(--size-3xl); }
 .row .item { --layout-gap-tight: var(--layout-gap-loose); }
 .row .art { width: var(--size-touch); height: var(--size-touch); --skeleton-radius: var(--radius-capsule); }
+.row .lines [part="SkeletonGroup.sheen"] { left: calc((var(--size-touch) + var(--layout-gap-loose)) * -1); }
 .row .piece.first { width: 60%; }
 .card .art { height: var(--size-3xl); }
 .card .piece.first { width: 55%; height: var(--space-lg); }

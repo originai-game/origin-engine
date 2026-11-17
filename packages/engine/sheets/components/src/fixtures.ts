@@ -199,6 +199,7 @@ export const FIXTURES: Record<string, Record<string, Record<string, unknown>>> =
     default: ribbon_default,
     topLeft: { ...ribbon_default, "corner": "topLeft", "tone": "success", "text": "Sale" },
     bottomRight: { ...ribbon_default, "corner": "bottomRight", "tone": "warn", "text": "−50%" },
+    bottomLeft: { ...ribbon_default, "corner": "bottomLeft", "tone": "info", "text": "Rank 1" },
     stamp: { ...ribbon_default, "corner": "center", "tone": "primary", "text": "Sold out" },
     overflow: { ...ribbon_default, "text": "Limited edition of the Ninefold Gate" },
   },

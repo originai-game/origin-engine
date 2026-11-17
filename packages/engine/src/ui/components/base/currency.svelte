@@ -27,7 +27,7 @@
   <div class="body" data-layout="stack" data-gap="none">
     <div part="Currency.caption" class="name">{name || t("currency.name")}</div>
     {#if loading}
-      <div class="figures" data-layout="row" data-gap="tight"><div part="Currency.spinner"><Spinner size={16} name={t("currency.loading")} /></div><div part="Currency.state Currency.headline" class="state" role="status">{t("currency.loading")}</div></div>
+      <div class="wait" data-layout="row" data-gap="tight"><div part="Currency.spinner"><Spinner size={18} name={t("currency.loading")} /></div><div part="Currency.state Currency.headline" class="state" role="status">{t("currency.loading")}</div></div>
     {:else if unavailable}
       <div part="Currency.state Currency.headline" class="state" role="status">{t("currency.unavailable")}</div>
     {:else}

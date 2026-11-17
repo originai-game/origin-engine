@@ -24,7 +24,12 @@ Component CSS keeps dimensions and placement. Shared `data-layout` and
 (`card`, `row`, `cell`, `badge`, `headline`, `caption`, `dot`, `track`,
 `fill`) supplies its dress. Existing semantic parts remain available.
 Loading uses the shared Spinner or a clipped `skeleton`/`sheen` with
-`data-motion="shimmer"`; ribbons use shared enter/stamp motion. Packs own
+`data-motion="shimmer"`, one band of light crossing the whole group;
+ribbons use shared enter/stamp motion. Spinner always shows its track ring;
+`size` is its width, and a host that holds nothing else while it waits (a
+portrait, a slot) sets `--spinner-size` on the box round it. Ribbon's box
+draws nothing: put it in the corner it names of a positioned card that
+clips (`overflow: hidden`), so the card's corner cuts the strip's ends. Packs own
 those role and motion tokens, not a component's private animations.
 
 An element wears one role, so a part that a role dresses is named for it:
@@ -47,7 +52,7 @@ The components sheet also reviews the four state/navigation documents with
 | `emptyState` | `default`, `minimal`, `disabled`, `overflow` |
 | `errorState` | `default`, `busy`, `terminal`, `overflow` |
 | `listItem` | `default`, `disabled`, `loading`, `overflow` |
-| `steps` | `default`, `empty`, `error`, `overflow` |
+| `steps` | `default`, `empty`, `column`, `error`, `overflow` |
 
 These are small building blocks, not virtualised lists. ListItem wraps long
 titles and keeps its trailing value over its badge at the row's end at any

@@ -7,7 +7,8 @@
 <meta name="action:choose" content="Choose a step, by its stable key">
 <meta name="fixture:default" content='{"title":"Prepare your expedition","steps":[{"id":"party","label":"Party","detail":"3 players ready","number":"1","state":"done","disabled":false},{"id":"route","label":"Route","detail":"Choose a destination","number":"2","state":"current","disabled":false},{"id":"launch","label":"Launch","detail":"Waiting for a route","number":"3","state":"upcoming","disabled":true}],"column":false}'>
 <meta name="fixture:empty" content='{"steps":[]}'>
-<meta name="fixture:error" content='{"column":true,"steps":[{"id":"gear","label":"Equipment","number":"1","state":"done"},{"id":"network","label":"Connection","detail":"Reconnect to continue","number":"2","state":"error"},{"id":"ready","label":"Ready","number":"3","state":"upcoming","disabled":true}]}'>
+<meta name="fixture:column" content='{"title":"Prepare your expedition","column":true,"steps":[{"id":"party","label":"Party","detail":"3 players ready","number":"1","state":"done","disabled":false},{"id":"route","label":"Route","detail":"Choose a destination","number":"2","state":"current","disabled":false},{"id":"launch","label":"Launch","detail":"Waiting for a route","number":"3","state":"upcoming","disabled":true}]}'>
+<meta name="fixture:error" content='{"steps":[{"id":"gear","label":"Equipment","number":"1","state":"done"},{"id":"network","label":"Connection","detail":"Reconnect to continue","number":"2","state":"error"},{"id":"ready","label":"Ready","number":"3","state":"upcoming","disabled":true}]}'>
 <meta name="fixture:overflow" content='{"title":"An expedition across the northern territories","steps":[{"id":"one","label":"Choose your character and starting equipment","detail":"Every choice can be changed later in the lobby.","number":"1","state":"done"},{"id":"two","label":"Invite the rest of your expedition party","detail":"Waiting for players to accept their invitations.","number":"2","state":"current"},{"id":"three","label":"Confirm the expedition destination","number":"3","state":"upcoming","disabled":true}]}'>
 
 <!-- A rail of numbered marks: each step is a mark, the reach to the next
@@ -50,7 +51,7 @@
 .step[data-state=upcoming] .mark { --dot-fill: var(--well-fill); --dot-rim: var(--cell-rim); --dot-rim-width: var(--cell-rim-width); --dot-ink: var(--ink-label); }
 .step[data-state=upcoming] .item { --headline-ink: var(--ink-label); }
 .icon { inline-size: var(--size-xs); block-size: var(--size-xs); }
-.reach { display: flex; flex: 1 1 0; min-inline-size: var(--space-md); block-size: var(--stroke-thick); overflow: hidden; }
+.reach { display: flex; flex: 1 1 0; min-inline-size: var(--space-md); block-size: var(--stroke-thick); margin-inline-end: calc(var(--space-xs) - var(--space-sm) * 2); overflow: hidden; --track-fill: var(--cell-rim); --track-shadow: none; }
 .done { flex: 0 0 0; }
 .step[data-state=done] .done { flex: 1 1 0; }
 .step:last-child .reach { visibility: hidden; }
@@ -59,11 +60,11 @@
 .column .steps { flex-direction: column; }
 .column .face { grid-template-columns: auto minmax(0, 1fr); }
 .column .rail { flex-direction: column; }
-.column .reach { flex-direction: column; inline-size: var(--stroke-thick); block-size: auto; min-inline-size: 0; min-block-size: var(--space-md); }
+.column .reach { flex-direction: column; inline-size: var(--stroke-thick); block-size: auto; min-inline-size: 0; min-block-size: var(--space-md); margin-inline-end: 0; margin-block-end: calc(var(--space-xs) - var(--space-sm) * 2); }
 @container (width < 480px) {
   .steps { flex-direction: column; }
   .face { grid-template-columns: auto minmax(0, 1fr); }
   .rail { flex-direction: column; }
-  .reach { flex-direction: column; inline-size: var(--stroke-thick); block-size: auto; min-inline-size: 0; min-block-size: var(--space-md); }
+  .reach { flex-direction: column; inline-size: var(--stroke-thick); block-size: auto; min-inline-size: 0; min-block-size: var(--space-md); margin-inline-end: 0; margin-block-end: calc(var(--space-xs) - var(--space-sm) * 2); }
 }
 </style>

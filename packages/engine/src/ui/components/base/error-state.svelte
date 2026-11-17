@@ -15,11 +15,12 @@
 <meta name="fixture:terminal" content='{"title":"This replay is no longer available","body":"It was recorded on an older game version.","canRetry":false,"dismissLabel":"Return to replays"}'>
 <meta name="fixture:overflow" content='{"title":"We could not retrieve the shared expedition report","body":"The host may have left the session. Your completed objectives are saved, and you can return to the lobby without losing rewards.","code":"EXPEDITION-REPORT-UNAVAILABLE","dismissLabel":"Return to the expedition lobby"}'>
 
-<!-- EmptyState's recess with the failure on a danger disc: what went
+<!-- EmptyState's recess with the failure on a disc tinted and ringed in
+     danger (quieter than the action it leads to): what went
      wrong, the support reference set apart as a code, then retry (the
      primary action) and the way out. -->
 <section id="ErrorState" part="ErrorState.frame" data-layout="stack" data-motion="enter" role="alert" aria-busy={busy} aria-label={title || t("base.error.title")}>
-  <div part="ErrorState.disc ErrorState.dot" class="disc" data-layout="cover" data-tone="danger" data-motion="pop"><og-icon part="ErrorState.mark" class="mark" icon="close"></og-icon></div>
+  <div part="ErrorState.disc ErrorState.dot" class="disc" data-layout="cover" data-motion="pop"><og-icon part="ErrorState.mark" class="mark" data-tone="danger" icon="close"></og-icon></div>
   <div class="words" data-layout="stack" data-gap="tight">
     <h3 part="ErrorState.headline" class="title">{title || t("base.error.title")}</h3>
     {#if body}<p part="ErrorState.body" class="body">{body}</p>{/if}
@@ -33,7 +34,7 @@
 
 <style>
 :host { align-items: center; padding: var(--space-xl); text-align: center; --layout-gap: var(--layout-gap-wide); --frame-fill: var(--well-fill); --frame-shadow: var(--well-shadow); --frame-rim-width: 0px; --frame-radius: var(--card-radius); }
-.disc { flex: none; inline-size: var(--size-xl); block-size: var(--size-xl); }
+.disc { flex: none; inline-size: var(--size-xl); block-size: var(--size-xl); --dot-fill: var(--dot-alert-fill); --dot-rim: var(--dot-alert-rim); --dot-rim-width: var(--stroke-thin); }
 .mark { inline-size: var(--size-md); block-size: var(--size-md); }
 .words { align-items: center; max-inline-size: var(--measure-lg); }
 .title { margin: 0; --headline-text: var(--text-lg); }

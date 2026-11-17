@@ -48,6 +48,6 @@
 .key { inset-inline-start: var(--space-xxs); top: var(--space-xxs); }
 .remaining { --figure-size: var(--type-lg-size); --figure-weight: var(--font-weight-bold); }
 .state { position: absolute; inset-inline: var(--space-xxs); bottom: var(--space-xxs); padding: var(--space-xxs); text-align: center; }
-[part="ItemSlot.loading"] { position: absolute; inset: 0; }
+[part="ItemSlot.loading"] { position: absolute; inset: 0; --spinner-size: calc(var(--item-slot-size, var(--size-xxl)) * 0.4); }
 .name { text-align: center; overflow-wrap: anywhere; }
 </style>

@@ -30,7 +30,8 @@ export const BASE_FIXTURES: Record<string, Record<string, Record<string, unknown
   steps: {
     default: steps,
     empty: { ...steps, title: "", steps: [] },
-    error: { ...steps, title: "", column: true, steps: [{ id: "gear", label: "Equipment", detail: "", number: "1", state: "done", disabled: false }, { id: "network", label: "Connection", detail: "Reconnect to continue", number: "2", state: "error", disabled: false }, { id: "ready", label: "Ready", detail: "", number: "3", state: "upcoming", disabled: true }] },
+    column: { ...steps, column: true },
+    error: { ...steps, title: "", steps: [{ id: "gear", label: "Equipment", detail: "", number: "1", state: "done", disabled: false }, { id: "network", label: "Connection", detail: "Reconnect to continue", number: "2", state: "error", disabled: false }, { id: "ready", label: "Ready", detail: "", number: "3", state: "upcoming", disabled: true }] },
     overflow: { ...steps, title: "An expedition across the northern territories", steps: [{ id: "one", label: "Choose your character and starting equipment", detail: "Every choice can be changed later in the lobby.", number: "1", state: "done", disabled: false }, { id: "two", label: "Invite the rest of your expedition party", detail: "Waiting for players to accept their invitations.", number: "2", state: "current", disabled: false }, { id: "three", label: "Confirm the expedition destination", detail: "", number: "3", state: "upcoming", disabled: true }] },
   },
 };
