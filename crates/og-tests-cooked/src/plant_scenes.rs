@@ -11,7 +11,8 @@
 //!   wood of the same cooked oaks and pines round it and the kit's hills
 //!   beyond, under the fair afternoon's sky and a sun from the front right.
 //! - `kinds_scene()` (`plant-kinds`): the kinds `plant-grown` does not
-//!   show, under the same sun: a palm, a birch, a willow, three bamboo
+//!   show, planted in the garden of a ruin (a path of setts to its arch,
+//!   a low wall, columns, the cooked wood beyond) under the same sky: a palm, a birch, a willow, three bamboo
 //!   canes and a cactus in a row with an autumn birch behind (`kind
 //!   birch` with its leaves' colours), and near the camera two ferns, two
 //!   reeds and red and yellow tulips.
@@ -37,7 +38,7 @@ use og_cook::runtime::Bundle;
 use og_render::{
     Camera, DirectionalLight, Grass, GrassDraw, Impostor, MaterialHandle, MaterialStyle,
     MeshHandle, OutlinePlace, Projection, RenderScene, ScatterDraw, StandardMaterial, Terrain,
-    TerrainData, TerrainLayer, TerrainScatter, TextureSource, Wind, shapes,
+    TerrainControl, TerrainData, TerrainLayer, TerrainScatter, TextureSource, Wind,
 };
 use std::path::PathBuf;
 use std::sync::{Arc, OnceLock};
@@ -204,8 +205,10 @@ pub const GROWN_AT: [Vec3; 3] = [
 /// A glade's ground: a terrain 384 m square of the kit's grass, level
 /// within 60 m of the middle and easing down 2.5 m by its edge to meet the
 /// kit's hills, short og.Grass on it, under the fair afternoon's physical
-/// sky with its sun turned to `sun` (toward the light).
-fn glade(scene: &mut RenderScene, sun: Vec3, max_shadow_distance: f32) {
+/// sky with its sun turned to `sun` (toward the light). With `path` its
+/// control map lays a path of setts 2.8 m wide along z from z = -16 to the
+/// camera, where no grass grows.
+fn glade(scene: &mut RenderScene, sun: Vec3, max_shadow_distance: f32, path: bool) {
     use og_tests::kit;
     let (n, size) = (193u32, 384.0f32);
     let cell = size / (n - 1) as f32;
@@ -220,22 +223,56 @@ fn glade(scene: &mut RenderScene, sun: Vec3, max_shadow_distance: f32) {
             height(c * cell - size * 0.5, r * cell - size * 0.5)
         })
         .collect();
+    // The path's control map (0.375 m a texel), its edges ragged.
+    let control = path.then(|| {
+        let m = 1024u32;
+        let mut rgba = Vec::with_capacity((m * m * 4) as usize);
+        for y in 0..m {
+            for x in 0..m {
+                let at = (Vec2::new(x as f32, y as f32) + 0.5) / m as f32 * size - size * 0.5;
+                let ragged = 0.35 * (at.y * 1.7).sin() * (at.y * 0.63 + 1.0).cos();
+                let across = ((1.6 - at.x.abs() + ragged) / 0.5).clamp(0.0, 1.0);
+                let along = ((at.y + 16.0) / 0.8).clamp(0.0, 1.0);
+                let paved = (across * along * 255.0) as u8;
+                rgba.extend_from_slice(&[255 - paved, paved, 0, 0]);
+            }
+        }
+        TerrainControl {
+            width: m,
+            height: m,
+            rgba: Arc::from(rgba),
+        }
+    });
     let h = scene.add_terrain(TerrainData {
         heights: Arc::from(heights),
+        control,
         ..TerrainData::flat(Vec2::splat(size), n, n)
     });
     let (grass, grass_normal) = kit::layer_maps(scene, "grass");
-    scene.world.terrains.push(Terrain {
-        layers: vec![TerrainLayer {
-            albedo: Some(grass),
-            normal: Some(grass_normal),
-            color: Vec3::new(0.72, 1.05, 0.5),
-            roughness: 0.95,
-            tile: 3.5,
-            anti_tiling: 0.5,
-            macro_variation: 0.5,
+    let mut layers = vec![TerrainLayer {
+        albedo: Some(grass),
+        normal: Some(grass_normal),
+        color: Vec3::new(0.72, 1.05, 0.5),
+        roughness: 0.95,
+        tile: 3.5,
+        anti_tiling: 0.5,
+        macro_variation: 0.5,
+        ..Default::default()
+    }];
+    if path {
+        let (setts, setts_normal) = kit::layer_maps(scene, "cobbles");
+        layers.push(TerrainLayer {
+            albedo: Some(setts),
+            normal: Some(setts_normal),
+            color: Vec3::new(1.15, 1.08, 0.92),
+            roughness: 0.85,
+            tile: 2.5,
             ..Default::default()
-        }],
+        });
+    }
+    scene.world.terrains.push(Terrain {
+        layers,
+        height_blend: if path { 0.5 } else { 0.0 },
         fade_in: false,
         ..Terrain::new(h)
     });
@@ -268,7 +305,7 @@ pub fn grown_scene() -> Result<RenderScene, String> {
     use og_tests::kit;
     let bundle = Bundle::open(&cooked()?.join("cooked")).map_err(|e| e.to_string())?;
     let mut scene = RenderScene::new();
-    glade(&mut scene, Vec3::new(0.5, 0.7, 0.45), 60.0);
+    glade(&mut scene, Vec3::new(0.5, 0.7, 0.45), 60.0, false);
     for (name, at) in ["oak", "pine", "bush"].into_iter().zip(GROWN_AT) {
         let p = plant(&mut scene, &bundle, name)?;
         for (mesh, material, local) in p.parts {
@@ -332,15 +369,48 @@ pub fn grown_scene() -> Result<RenderScene, String> {
 /// `plant-kinds` ([module docs](self)).
 pub fn kinds_scene() -> Result<RenderScene, String> {
     let bundle = Bundle::open(&cooked()?.join("cooked")).map_err(|e| e.to_string())?;
+    use og_tests::kit;
     let mut scene = RenderScene::new();
-    sun(&mut scene, Vec3::new(0.5, 0.7, 0.45), 60.0);
-    let ground = scene.add_standard_material(StandardMaterial {
-        color: Vec3::new(0.3, 0.32, 0.28),
-        roughness: 1.0,
-        ..Default::default()
-    });
-    let floor = scene.add_mesh(shapes::plane(120.0, 1.0));
-    scene.add_instance(floor, ground, Mat4::IDENTITY);
+    // The garden of a ruin: a path of setts through its beds to the arch,
+    // a low wall of stone behind, columns either side.
+    glade(&mut scene, Vec3::new(0.5, 0.7, 0.45), 60.0, true);
+    let stone = kit::surface_tinted(&mut scene, "cobbles", [1.0, 0.93, 0.8]);
+    for (x0, x1) in [(-26.0f32, -3.0f32), (3.0, 24.0)] {
+        let wall = scene.add_mesh(kit::block(
+            Vec3::new(x0, -0.3, -15.0),
+            Vec3::new(x1, 1.4, -14.2),
+            2.5,
+        ));
+        scene.add_instance(wall, stone, Mat4::IDENTITY);
+    }
+    kit::prop(&mut scene, "arch").place(&mut scene, Vec3::new(0.0, -0.1, -14.6), 0.0, 7.0);
+    let column = kit::prop(&mut scene, "column");
+    let broken = kit::prop(&mut scene, "column_broken");
+    column.place(&mut scene, Vec3::new(-15.5, -0.1, -4.0), 0.4, 6.0);
+    broken.place(&mut scene, Vec3::new(14.5, -0.1, -3.0), 2.0, 2.3);
+    column.place(&mut scene, Vec3::new(16.0, -0.1, 9.0), 1.1, 6.0);
+    let boulder = kit::prop(&mut scene, "boulder");
+    for (at, yaw, size) in [
+        (Vec3::new(-6.5, -0.2, 13.5), 0.7, 0.9),
+        (Vec3::new(9.5, -0.3, 11.0), 2.5, 1.4),
+    ] {
+        boulder.place(&mut scene, at, yaw, size);
+    }
+    // The wood beyond the wall.
+    let wood = [
+        plant(&mut scene, &bundle, "oak")?,
+        plant(&mut scene, &bundle, "pine")?,
+    ];
+    for k in 0..120 {
+        let a = -3.0 + 2.8 * hash(k, 11);
+        let d = 36.0 + 50.0 * hash(k, 12) * hash(k, 12);
+        let at = Mat4::from_translation(Vec3::new(d * a.cos(), -0.1, d * a.sin()))
+            * Mat4::from_rotation_y(6.3 * hash(k, 13))
+            * Mat4::from_scale(Vec3::splat(0.8 + 0.5 * hash(k, 14)));
+        for &(mesh, material, local) in &wood[(hash(k, 15) < 0.5) as usize].parts {
+            scene.add_instance(mesh, material, at * local);
+        }
+    }
     let stand: [(&str, Vec3); 15] = [
         ("palm", Vec3::new(-11.0, 0.0, 0.0)),
         ("birch", Vec3::new(-5.5, 0.0, -1.0)),
@@ -351,8 +421,8 @@ pub fn kinds_scene() -> Result<RenderScene, String> {
         ("cactus", Vec3::new(11.5, 0.0, 6.0)),
         ("fern", Vec3::new(-3.7, 0.0, 16.2)),
         ("fern", Vec3::new(-3.0, 0.0, 15.0)),
-        ("reed", Vec3::new(-0.8, 0.0, 15.6)),
-        ("reed", Vec3::new(0.2, 0.0, 14.6)),
+        ("reed", Vec3::new(-6.2, 0.0, 15.2)),
+        ("reed", Vec3::new(-5.2, 0.0, 14.2)),
         ("tulip", Vec3::new(2.2, 0.0, 16.4)),
         ("tulip-yellow", Vec3::new(3.9, 0.0, 16.2)),
         ("tulip-yellow", Vec3::new(4.3, 0.0, 15.7)),
@@ -365,18 +435,26 @@ pub fn kinds_scene() -> Result<RenderScene, String> {
             scene.add_instance(mesh, material, at * local);
         }
     }
-    let tulip = plant(&mut scene, &bundle, "tulip")?;
-    for (k, x) in [2.6f32, 3.0, 3.5].into_iter().enumerate() {
-        let at = Mat4::from_translation(Vec3::new(x, 0.0, 15.6 + 0.35 * k as f32))
-            * Mat4::from_rotation_y(1.7 * k as f32);
-        for &(mesh, material, local) in &tulip.parts {
+    // A bed of red and yellow tulips beside the path.
+    let tulips = [
+        plant(&mut scene, &bundle, "tulip")?,
+        plant(&mut scene, &bundle, "tulip-yellow")?,
+    ];
+    for k in 0..60 {
+        let at = Mat4::from_translation(Vec3::new(
+            2.4 + 3.2 * hash(k, 21),
+            0.0,
+            12.5 + 4.5 * hash(k, 22),
+        )) * Mat4::from_rotation_y(6.3 * hash(k, 23));
+        for &(mesh, material, local) in &tulips[(hash(k, 24) < 0.4) as usize].parts {
             scene.add_instance(mesh, material, at * local);
         }
     }
     scene.frame.camera = Camera {
         position: Vec3::new(0.0, 2.2, 21.0),
         target: Vec3::new(0.0, 3.6, 0.0),
-        far: 200.0,
+        far: 4000.0,
+        exposure: og_render::Exposure::linear(0.9),
         projection: Projection::Perspective {
             fov_y_degrees: 58.0,
         },
