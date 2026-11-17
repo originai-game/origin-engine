@@ -18,6 +18,7 @@ pub const ELEMENT_TAGS: &[(&str, Kind)] = &[
 
 /// Tag-exclusive attributes and the runtime properties they populate.
 pub const ELEMENT_ATTRIBUTES: &[(&str, &str, &str)] = &[
+    ("tabs", "fit", "fitTrack"),
     ("og-counter", "value", "count"),
     ("og-counter", "duration", "countDuration"),
     ("og-counter", "decimals", "countDecimals"),

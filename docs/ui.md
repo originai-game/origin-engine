@@ -166,6 +166,16 @@ refused with its HTML form. CSS type selectors match the written tag
 `stack`, `grid`, `panel`, `scroll`, the virtualised `list` and `cells`,
 `art`, `icon`, `tabs`, `badge`, `spacer`) keep their names. The mapping:
 
+Native `<tabs>` scrolls a long set horizontally by default; `fill` makes
+its tabs equally wide, without cutting their labels. For a short set that
+must all be visible, write `<tabs fit items={$labels}>`: side padding
+compresses to `space.xs` first, then the tabs share the track in proportion
+to their contents. Labels wrap to at most two lines before ellipsizing;
+their full text remains the accessible name. `fit fill` keeps equal widths
+when those fit and uses proportional widths when they do not. Give
+icon-only tabs `items={$emptyLabels} icons={$icons} aria-labels={$names}`:
+the parallel `aria-labels` string list supplies their accessible names.
+
 | Document | Core kind | Notes |
 |---|---|---|
 | `<input>` (`type` text, password, number, email, url, tel, search) | field | `placeholder`, `maxlength`, `minlength`, `readonly`, `required`, `pattern`, `min`, `max`, `step` (`any`), `aria-invalid`, `list` (below); `appearance: none` drops its frame |

@@ -70,7 +70,7 @@ pub(super) fn text_widest(t: UsedText<'_>, m: &FontMetrics) -> f32 {
 }
 
 /// A text's longest unbreakable unit along its line.
-pub(super) fn text_longest(t: UsedText<'_>, m: &FontMetrics) -> f32 {
+pub(crate) fn text_longest(t: UsedText<'_>, m: &FontMetrics) -> f32 {
     let (size, tr, ft) = (t.step.size, t.tracking(), t.features());
     match t.vertical {
         Some(v) => crate::text::vertical::longest_word(&t.text, m, size, tr, ft, v),

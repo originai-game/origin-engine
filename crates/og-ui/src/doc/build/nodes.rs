@@ -1477,7 +1477,8 @@ impl Ui {
             selected = (selected as i32 + step).rem_euclid(items.len() as i32) as usize;
         }
         let fill = r.flag("fill");
-        let (icons, badges) = (strs("icons"), strs("badges"));
+        let fit = r.flag("fitTrack");
+        let (icons, badges, aria_labels) = (strs("icons"), strs("badges"), strs("ariaLabels"));
         let out = self.segmented(
             id.as_str(),
             &crate::widgets::SegmentedDesc {
@@ -1488,12 +1489,14 @@ impl Ui {
                         label: l.clone(),
                         icon: icons.get(i).cloned().unwrap_or_default(),
                         badge: badges.get(i).cloned().unwrap_or_default(),
+                        aria_label: aria_labels.get(i).cloned().unwrap_or_default(),
                         ..crate::widgets::SegmentItem::default()
                     })
                     .collect(),
                 selected: selected as i32,
                 equal: fill,
-                width: Some(r.size("width").unwrap_or(if fill {
+                fit,
+                width: Some(r.size("width").unwrap_or(if fill || fit {
                     Size::grow()
                 } else {
                     Size::fit()

@@ -146,6 +146,9 @@ pub struct SegmentedDesc {
     pub size: ControlSize,
     /// Every segment as wide as the widest.
     pub equal: bool,
+    /// Fit the track: compress padding, then wrap labels to two lines,
+    /// ellipsizing only what still does not fit. Otherwise it scrolls.
+    pub fit: bool,
     pub width: Option<Size>,
     pub label: String,
     pub disabled: bool,
@@ -158,6 +161,7 @@ impl Default for SegmentedDesc {
             selected: 0,
             size: ControlSize::Medium,
             equal: true,
+            fit: false,
             width: None,
             label: String::new(),
             disabled: false,
@@ -971,11 +975,68 @@ impl Ui {
             nat.iter().sum()
         };
         let mut measured = vec![-1.0f32; n];
+        let mut minimum: Vec<f32> = (0..n)
+            .map(|i| self.memory(&format!("{key}~min{i}"), 0.0) as f32)
+            .collect();
         let mut adjust = 0;
         // The track as laid out last tick: where the thumb goes.
         let me_path = format!("{}/Strip/Track", self.child_path(&key));
         let me = self.bounds_of(&me_path);
         let sel_b = self.bounds_of(&format!("{me_path}/Item#{selected}"));
+        let base_pad_x = self.by_text(if small { t.space.sm } else { t.space.md });
+        let room = self
+            .bounds_of(parent_of(&me_path))
+            .map(|b| (b.width - 2.0 * pad).max(0.0));
+        // Natural measurements always include the original padding, not last
+        // tick's compressed padding. Otherwise fitting feeds back into itself.
+        let content: Vec<f32> = nat
+            .iter()
+            .map(|w| (w - 2.0 * base_pad_x).max(0.0))
+            .collect();
+        let content_sum: f32 = content.iter().sum();
+        let pad_x = if desc.fit && n > 0 {
+            room.map_or(base_pad_x, |room| {
+                ((room - content_sum) / (2.0 * n as f32))
+                    .clamp(self.by_text(t.space.xs).min(base_pad_x), base_pad_x)
+                    .min(room / (2.0 * n as f32))
+            })
+        } else {
+            base_pad_x
+        };
+        let text_room = room.unwrap_or(0.0) - 2.0 * pad_x * n as f32;
+        let min_sum: f32 = minimum.iter().sum();
+        // Keep whole words where the track can hold their minima. Only the
+        // remaining preferred widths compete for the remaining room.
+        let reserve_words = min_sum <= text_room;
+        let extra_sum = (content_sum - min_sum).max(0.0);
+        let widths: Vec<f32> = content
+            .iter()
+            .zip(&minimum)
+            .map(|(preferred, min)| {
+                let width = if reserve_words {
+                    min + (text_room - min_sum)
+                        * if extra_sum > 0.0 {
+                            (preferred - min).max(0.0) / extra_sum
+                        } else {
+                            1.0 / n as f32
+                        }
+                } else if content_sum > 0.0 {
+                    text_room.max(0.0) * preferred / content_sum
+                } else {
+                    text_room.max(0.0) / n as f32
+                };
+                2.0 * pad_x + width
+            })
+            .collect();
+        let fitted = desc.fit && room.is_some_and(|room| nat_sum > room);
+        let height = if desc.fit {
+            Size::Fit {
+                min: h,
+                max: f32::INFINITY,
+            }
+        } else {
+            Size::px(h)
+        };
         let (well, raised, ink, muted) = (
             self.role("well"),
             self.role("panelRaised"),
@@ -989,7 +1050,7 @@ impl Ui {
             Element {
                 direction: Direction::Row,
                 width: desc.width.unwrap_or(Size::grow()),
-                height: Size::px(h),
+                height,
                 ..Element::default()
             },
         );
@@ -997,7 +1058,7 @@ impl Ui {
             "Strip",
             crate::ui::ScrollDesc {
                 width: Size::grow(),
-                height: Size::px(h),
+                height,
                 axes: crate::ui::ScrollAxes::Horizontal,
                 ..crate::ui::ScrollDesc::default()
             },
@@ -1012,10 +1073,10 @@ impl Ui {
             Element {
                 direction: Direction::Row,
                 width: Size::Grow {
-                    min: nat_sum + 2.0 * pad,
+                    min: if desc.fit { 0.0 } else { nat_sum + 2.0 * pad },
                     max: f32::INFINITY,
                 },
-                height: Size::px(h),
+                height,
                 padding: Insets::all(pad),
                 cross: Cross::Stretch,
                 radius: t.radius.control + pad,
@@ -1056,7 +1117,6 @@ impl Ui {
                 ..Props::default()
             });
         }
-        let pad_x = self.by_text(if small { t.space.sm } else { t.space.md });
         let min_w = if touch { self.touch_target() } else { 0.0 };
         for (i, it) in desc.items.iter().enumerate() {
             let on = i as i32 == selected;
@@ -1074,7 +1134,9 @@ impl Ui {
                     cls: ElementClass::Tab,
                     disabled: off,
                     flags: vec![on.then_some("checked")],
-                    width: Some(if desc.equal {
+                    width: Some(if fitted {
+                        Size::px(widths[i])
+                    } else if desc.equal {
                         Size::Grow {
                             min: widest.max(min_w),
                             max: f32::INFINITY,
@@ -1085,7 +1147,14 @@ impl Ui {
                             max: f32::INFINITY,
                         }
                     }),
-                    height: Some(Size::grow()),
+                    height: Some(if desc.fit {
+                        Size::Fit {
+                            min: inner,
+                            max: f32::INFINITY,
+                        }
+                    } else {
+                        Size::grow()
+                    }),
                     padding: Insets::xy(pad_x, 0.0),
                     gap: t.space.xs,
                     fill: None,
@@ -1122,7 +1191,10 @@ impl Ui {
                                     t.type_ramp.body
                                 }),
                                 color: Ink::C(c),
-                                nowrap: true,
+                                nowrap: !desc.fit,
+                                ellipsis: desc.fit,
+                                max_lines: if desc.fit { 2 } else { 0 },
+                                width: desc.fit.then_some(Size::grow()),
                                 align: TextAlign::Center,
                                 ..Text::default()
                             },
@@ -1137,7 +1209,7 @@ impl Ui {
             // are clipped and pixel-snapped, feeding the track's size back
             // into its next measurement. Text keeps its preferred width even
             // when flex layout squeezes it; other parts use local layout size.
-            let parts: Vec<f32> = ["Icon", "Label", "Badge"]
+            let parts: Vec<(f32, f32)> = ["Icon", "Label", "Badge"]
                 .iter()
                 .filter_map(|c| {
                     let key = crate::id::key_of_path(&format!("{}/{c}", built.path));
@@ -1145,17 +1217,26 @@ impl Ui {
                         .filter_map(|i| self.tree.previous_node(i))
                         .find(|n| n.key == key && !n.is_hidden())
                         .map(|n| {
-                            n.text().map_or(n.layout.w, |text| {
-                                crate::layout::text_preferred(text, &self.env.fonts)
-                                    + n.layout.used.padding.horizontal()
+                            n.text().map_or((n.layout.w, n.layout.w), |text| {
+                                let padding = n.layout.used.padding.horizontal();
+                                (
+                                    crate::layout::text_preferred(text, &self.env.fonts) + padding,
+                                    crate::layout::text_longest(
+                                        text,
+                                        text.metrics(&self.env.fonts),
+                                    ) + padding,
+                                )
                             })
                         })
                 })
                 .collect();
             if !parts.is_empty() {
-                measured[i] = (parts.iter().sum::<f32>()
+                measured[i] = (parts.iter().map(|p| p.0).sum::<f32>()
                     + (parts.len() - 1) as f32 * t.space.xs
-                    + 2.0 * pad_x)
+                    + 2.0 * base_pad_x)
+                    .ceil();
+                minimum[i] = (parts.iter().map(|p| p.1).sum::<f32>()
+                    + (parts.len() - 1) as f32 * t.space.xs)
                     .ceil();
             }
             if built.r.focused {
@@ -1201,6 +1282,7 @@ impl Ui {
         self.edge_fade("FadeEnd", false, fe, 24.0, "panel");
         self.close();
         for (i, w) in measured.iter().enumerate() {
+            self.remember(&format!("{key}~min{i}"), f64::from(minimum[i]));
             if *w >= 0.0 {
                 self.remember(&format!("{key}~nat{i}"), f64::from(*w));
             } else {

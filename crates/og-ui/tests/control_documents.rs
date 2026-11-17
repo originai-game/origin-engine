@@ -38,6 +38,96 @@ use og_ui::*;
 use serde_json::json;
 
 #[test]
+fn fitted_tabs_keep_their_track_and_full_accessible_labels() {
+    let mut ui = ui_with_font(test_font_metrics());
+    let mut theme = *ui.theme();
+    theme.text_scale = 1.5;
+    ui.set_theme(theme);
+    let labels = ["Summary", "Detailed graphs", "Campaign scoreboard"];
+    let mut d = Doc::mounted(
+        ui,
+        r#"<meta name="component" content="FittedTabs">
+        <div id="Window"><tabs id="Tabs" items={$labels} fit={$fit} fill></tabs></div>
+        <style>#Window { width: 324px; height: 180px; }</style>"#,
+        &[("labels", json!(labels)), ("fit", json!(true))],
+    );
+    d.viewport = Viewport::new(390.0, 844.0);
+    d.viewport.coarse_pointer = true;
+    d.viewport.reduced_motion = true;
+    for _ in 0..16 {
+        d.step(InputFrame::default());
+    }
+    let strip = d.get("Strip");
+    let track = d.get("Track");
+    assert!(track.width <= strip.width + 0.5, "{track:?} in {strip:?}");
+    assert!(
+        d.ui.tree
+            .nodes()
+            .iter()
+            .find(|n| n.id == "Track")
+            .unwrap()
+            .placed
+            .screen
+            .width
+            <= strip.width + 0.5,
+        "the track itself fits, not only its clipped probe bounds"
+    );
+    for (i, name) in labels.iter().enumerate() {
+        let tab = d.get(&format!("Item#{i}"));
+        assert!(
+            tab.x >= strip.x - 0.5 && tab.x + tab.width <= strip.x + strip.width + 0.5,
+            "every fitted tab is visible without scrolling: {tab:?} in {strip:?}"
+        );
+        assert_eq!(d.a11y(&format!("Item#{i}")).name, *name);
+    }
+    assert!(
+        d.get("Item#2").width > d.get("Item#0").width,
+        "longer labels receive more space when equal tabs cannot fit"
+    );
+    let label =
+        d.ui.probe_elements()
+            .into_iter()
+            .find(|n| n.path.ends_with("Item#2/Label"))
+            .unwrap();
+    assert!(
+        label.height > 30.0,
+        "a long label may wrap before it is ellipsized: {label:?}"
+    );
+    d.set("fit", json!(false));
+    for _ in 0..16 {
+        d.step(InputFrame::default());
+    }
+    assert!(
+        d.ui.tree
+            .nodes()
+            .iter()
+            .find(|n| n.id == "Track")
+            .unwrap()
+            .placed
+            .screen
+            .width
+            > d.get("Strip").width + 1.0,
+        "without fit the existing scrollable, equal-width tabs remain"
+    );
+}
+
+#[test]
+fn icon_only_tabs_take_document_accessible_labels() {
+    let mut d = Doc::new(
+        r#"<meta name="component" content="IconTabs">
+        <tabs id="Tabs" items={$items} icons="plus check" aria-labels={$names} />"#,
+        &[
+            ("items", json!(["", ""])),
+            ("names", json!(["Add build", "Completed builds"])),
+        ],
+    );
+    assert_eq!(d.a11y("Item#0").name, "Add build");
+    assert_eq!(d.a11y("Item#1").name, "Completed builds");
+    d.set("names", json!(["Create loadout", "Saved loadouts"]));
+    assert_eq!(d.a11y("Item#0").name, "Create loadout");
+}
+
+#[test]
 fn native_tabs_natural_width_settles_without_screen_feedback() {
     for (name, css, width) in [
         (

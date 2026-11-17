@@ -1,0 +1,8 @@
+{
+  "added": [
+    {
+      "member": "<tabs fit> and aria-labels",
+      "summary": "A short tab set can opt into fitting its track: padding compresses first, then proportional tabs wrap labels to two lines and finally ellipsize, keeping their full accessible names. Without fit, long sets still scroll; fill keeps its existing equal-width behavior. Icon-only tabs accept an aria-labels string list."
+    }
+  ]
+}

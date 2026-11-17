@@ -1278,6 +1278,12 @@ pub const CORE_PROPS: &[PropSpec] = &[
         "An icon of the style's set per tab, before its label (`icons=\"sword shield\"`, or a bound list); an empty name is none."
     ),
     p!(
+        "ariaLabels",
+        Ty::Names,
+        [Tabs],
+        "An accessible name per icon-only tab (`aria-labels={$names}`, a list of strings); a visible label remains its accessible name."
+    ),
+    p!(
         "badges",
         Ty::Names,
         [Tabs],
@@ -1476,6 +1482,12 @@ pub const CORE_PROPS: &[PropSpec] = &[
         Ty::Bool,
         [Tabs],
         "Equal tabs filling the available width."
+    ),
+    p!(
+        "fitTrack",
+        Ty::Bool,
+        [Tabs],
+        "Fit tabs to the available track without scrolling: compress padding to space.xs, then share space in proportion to their labels, wrap up to two lines and finally ellipsize. Full labels stay accessible. Without fit, long tab sets scroll."
     ),
     p!(
         "input",

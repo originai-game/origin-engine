@@ -37,8 +37,8 @@ pub(crate) use node::{
 pub use node::{Family, FontRole};
 pub use reading::ReadingFlow;
 pub(crate) use table::{Table, derive_table, shown_children};
-pub(crate) use text::text_preferred;
 use text::*;
+pub(crate) use text::{text_longest, text_preferred};
 
 use crate::FontMetrics;
 use crate::element::{LayoutMode, Patch, Query};
