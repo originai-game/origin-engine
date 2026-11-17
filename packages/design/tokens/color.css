@@ -71,6 +71,44 @@
   --color-minimap: oklch(from var(--seed-neutral) 0.201 min(c, 0.04) h / 0.6);
   --color-minimap-edge: #ffffff14;
   --color-slot-selected-edge: #ffffff8c;
+  /* The game components' materials (role.css and the controls dress with
+     them): `glass` a frame's body from its lit top (`-hi`) to its foot
+     (`-lo`), all but opaque (no blur: a backdrop pass per frame costs a
+     software rasteriser seconds), and `plate` a HUD plate's, a little
+     thinner over the scene; `rim` the edge light catches on
+     glass, a tile and a raised control (`-soft` inside a frame, `-strong`
+     under a pointer); `lit` the highlight along a top edge and `lit-soft`
+     the light falling across a face; `shade` and `shade-deep` what a
+     recess and a foot fall into; `tile` a slot's sunken ground and
+     `tile-pressed` it held down; `raised-hi` to `raised-lo` a control's
+     face that stands up, `raised-hover-*` under a pointer; `glow` and
+     `glow-soft` the primary's light around what is chosen or live, and
+     `select-hi` to `select-lo` its wash across a chosen row. Opaque
+     wherever nothing shows through, since the engine blends in linear
+     light. */
+  --color-glass-hi: oklch(from var(--seed-neutral) 1 min(c, 0.02) h / 0.97);
+  --color-glass: oklch(from var(--seed-neutral) 0.985 min(c, 0.02) h / 0.97);
+  --color-glass-lo: oklch(from var(--seed-neutral) 0.955 min(c, 0.03) h / 0.97);
+  --color-plate-hi: oklch(from var(--seed-neutral) 1 min(c, 0.02) h / 0.9);
+  --color-plate-lo: oklch(from var(--seed-neutral) 0.96 min(c, 0.03) h / 0.86);
+  --color-rim: oklch(from var(--seed-neutral) 0.8 min(c, 0.04) h);
+  --color-rim-soft: oklch(from var(--seed-neutral) 0.88 min(c, 0.04) h);
+  --color-rim-strong: oklch(from var(--seed-neutral) 0.62 min(c, 0.04) h);
+  --color-lit: rgb(255 255 255 / 0.95);
+  --color-lit-soft: rgb(255 255 255 / 0.6);
+  --color-shade: rgb(10 16 32 / 0.05);
+  --color-shade-deep: rgb(10 16 32 / 0.14);
+  --color-tile: oklch(from var(--seed-neutral) 0.925 min(c, 0.03) h);
+  --color-tile-pressed: oklch(from var(--seed-neutral) 0.88 min(c, 0.03) h);
+  --color-raised-hi: oklch(from var(--seed-neutral) 1 min(c, 0.02) h);
+  --color-raised-lo: oklch(from var(--seed-neutral) 0.945 min(c, 0.03) h);
+  --color-raised-hover-hi: oklch(from var(--seed-neutral) 1 min(c, 0.02) h);
+  --color-raised-hover-lo: oklch(from var(--seed-neutral) 0.97 min(c, 0.03) h);
+  --color-raised-pressed: oklch(from var(--seed-neutral) 0.9 min(c, 0.03) h);
+  --color-glow: rgb(from var(--color-accent) r g b / 0.3);
+  --color-glow-soft: rgb(from var(--color-accent) r g b / 0.14);
+  --color-select-hi: rgb(from var(--color-accent) r g b / 0.16);
+  --color-select-lo: rgb(from var(--color-accent) r g b / 0.04);
   --color-team1: color(from color(from oklch(from var(--seed-team) calc(0.542 - 0.2296 * clamp(0, calc(calc(h - 30) * 1000000), 1) + 0.1792 * clamp(0, calc(calc(h - 90) * 1000000), 1) - 0.1067 * clamp(0, calc(calc(h - 150) * 1000000), 1) + 0.0897 * clamp(0, calc(calc(h - 210) * 1000000), 1) - 0.1433 * clamp(0, calc(calc(h - 270) * 1000000), 1) + 0.2107 * clamp(0, calc(calc(h - 330) * 1000000), 1)) calc(0.2886 - 0.1104 * clamp(0, calc(calc(h - 30) * 1000000), 1) + 0.0285 * clamp(0, calc(calc(h - 90) * 1000000), 1) - 0.0964 * clamp(0, calc(calc(h - 150) * 1000000), 1) + 0.2091 * clamp(0, calc(calc(h - 210) * 1000000), 1) - 0.1387 * clamp(0, calc(calc(h - 270) * 1000000), 1) + 0.1079 * clamp(0, calc(calc(h - 330) * 1000000), 1)) calc(332.9 - 270.5 * clamp(0, calc(calc(h - 30) * 1000000), 1) + 47.8 * clamp(0, calc(calc(h - 90) * 1000000), 1) + 80 * clamp(0, calc(calc(h - 150) * 1000000), 1) + 58.2 * clamp(0, calc(calc(h - 210) * 1000000), 1) + 51.9 * clamp(0, calc(calc(h - 270) * 1000000), 1) + 32.6 * clamp(0, calc(calc(h - 330) * 1000000), 1))) srgb clamp(0, r, 1) clamp(0, g, 1) clamp(0, b, 1)) xyz-d65 calc(x * min(1, calc(0.108 / y))) calc(y * min(1, calc(0.108 / y))) calc(z * min(1, calc(0.108 / y))));
   --color-team2: color(from color(from oklch(from var(--seed-team) calc(0.3849 + 0.0897 * clamp(0, calc(calc(h - 30) * 1000000), 1) - 0.1433 * clamp(0, calc(calc(h - 90) * 1000000), 1) + 0.2107 * clamp(0, calc(calc(h - 150) * 1000000), 1) - 0.2296 * clamp(0, calc(calc(h - 210) * 1000000), 1) + 0.1792 * clamp(0, calc(calc(h - 270) * 1000000), 1) - 0.1067 * clamp(0, calc(calc(h - 330) * 1000000), 1)) calc(0.1103 + 0.2091 * clamp(0, calc(calc(h - 30) * 1000000), 1) - 0.1387 * clamp(0, calc(calc(h - 90) * 1000000), 1) + 0.1079 * clamp(0, calc(calc(h - 150) * 1000000), 1) - 0.1104 * clamp(0, calc(calc(h - 210) * 1000000), 1) + 0.0285 * clamp(0, calc(calc(h - 270) * 1000000), 1) - 0.0964 * clamp(0, calc(calc(h - 330) * 1000000), 1)) calc(190.2 + 58.2 * clamp(0, calc(calc(h - 30) * 1000000), 1) + 51.9 * clamp(0, calc(calc(h - 90) * 1000000), 1) + 32.6 * clamp(0, calc(calc(h - 150) * 1000000), 1) - 270.5 * clamp(0, calc(calc(h - 210) * 1000000), 1) + 47.8 * clamp(0, calc(calc(h - 270) * 1000000), 1) + 80 * clamp(0, calc(calc(h - 330) * 1000000), 1))) srgb clamp(0, r, 1) clamp(0, g, 1) clamp(0, b, 1)) xyz-d65 calc(x * min(1, calc(0.108 / y))) calc(y * min(1, calc(0.108 / y))) calc(z * min(1, calc(0.108 / y))));
   --color-team3: color(from color(from oklch(from var(--seed-team) calc(0.3313 + 0.2107 * clamp(0, calc(calc(h - 30) * 1000000), 1) - 0.2296 * clamp(0, calc(calc(h - 90) * 1000000), 1) + 0.1792 * clamp(0, calc(calc(h - 150) * 1000000), 1) - 0.1067 * clamp(0, calc(calc(h - 210) * 1000000), 1) + 0.0897 * clamp(0, calc(calc(h - 270) * 1000000), 1) - 0.1433 * clamp(0, calc(calc(h - 330) * 1000000), 1)) calc(0.1807 + 0.1079 * clamp(0, calc(calc(h - 30) * 1000000), 1) - 0.1104 * clamp(0, calc(calc(h - 90) * 1000000), 1) + 0.0285 * clamp(0, calc(calc(h - 150) * 1000000), 1) - 0.0964 * clamp(0, calc(calc(h - 210) * 1000000), 1) + 0.2091 * clamp(0, calc(calc(h - 270) * 1000000), 1) - 0.1387 * clamp(0, calc(calc(h - 330) * 1000000), 1)) calc(300.3 + 32.6 * clamp(0, calc(calc(h - 30) * 1000000), 1) - 270.5 * clamp(0, calc(calc(h - 90) * 1000000), 1) + 47.8 * clamp(0, calc(calc(h - 150) * 1000000), 1) + 80 * clamp(0, calc(calc(h - 210) * 1000000), 1) + 58.2 * clamp(0, calc(calc(h - 270) * 1000000), 1) + 51.9 * clamp(0, calc(calc(h - 330) * 1000000), 1))) srgb clamp(0, r, 1) clamp(0, g, 1) clamp(0, b, 1)) xyz-d65 calc(x * min(1, calc(0.108 / y))) calc(y * min(1, calc(0.108 / y))) calc(z * min(1, calc(0.108 / y))));
@@ -174,6 +212,29 @@
   --color-hud: oklch(from var(--seed-neutral) 0.201 min(c, 0.04) h / 0.8);
   --color-knob: oklch(from var(--seed-neutral) 0.971 min(c, 0.04) h);
   --color-sheen: rgb(255 255 255 / 0.12);
+  --color-glass-hi: oklch(from var(--seed-neutral) 0.31 min(c, 0.04) h / 0.97);
+  --color-glass: oklch(from var(--seed-neutral) 0.225 min(c, 0.04) h / 0.97);
+  --color-glass-lo: oklch(from var(--seed-neutral) 0.16 min(c, 0.04) h / 0.98);
+  --color-plate-hi: oklch(from var(--seed-neutral) 0.27 min(c, 0.04) h / 0.9);
+  --color-plate-lo: oklch(from var(--seed-neutral) 0.15 min(c, 0.04) h / 0.92);
+  --color-rim: oklch(from var(--seed-neutral) 0.46 min(c, 0.04) h);
+  --color-rim-soft: oklch(from var(--seed-neutral) 0.36 min(c, 0.04) h);
+  --color-rim-strong: oklch(from var(--seed-neutral) 0.66 min(c, 0.04) h);
+  --color-lit: rgb(255 255 255 / 0.1);
+  --color-lit-soft: rgb(255 255 255 / 0.035);
+  --color-shade: rgb(0 0 0 / 0.22);
+  --color-shade-deep: rgb(0 0 0 / 0.5);
+  --color-tile: oklch(from var(--seed-neutral) 0.165 min(c, 0.04) h);
+  --color-tile-pressed: oklch(from var(--seed-neutral) 0.12 min(c, 0.04) h);
+  --color-raised-hi: oklch(from var(--seed-neutral) 0.4 min(c, 0.04) h);
+  --color-raised-lo: oklch(from var(--seed-neutral) 0.3 min(c, 0.04) h);
+  --color-raised-hover-hi: oklch(from var(--seed-neutral) 0.47 min(c, 0.04) h);
+  --color-raised-hover-lo: oklch(from var(--seed-neutral) 0.35 min(c, 0.04) h);
+  --color-raised-pressed: oklch(from var(--seed-neutral) 0.25 min(c, 0.04) h);
+  --color-glow: rgb(from var(--color-accent) r g b / 0.16);
+  --color-glow-soft: rgb(from var(--color-accent) r g b / 0.08);
+  --color-select-hi: rgb(from var(--color-accent) r g b / 0.07);
+  --color-select-lo: rgb(from var(--color-accent) r g b / 0.012);
   --color-team1: color(from color(from oklch(from var(--seed-team) calc(0.8093 + 0.0745 * clamp(0, calc(calc(h - 30) * 1000000), 1) + 0.0711 * clamp(0, calc(calc(h - 90) * 1000000), 1) - 0.0089 * clamp(0, calc(calc(h - 150) * 1000000), 1) - 0.1081 * clamp(0, calc(calc(h - 210) * 1000000), 1) - 0.0652 * clamp(0, calc(calc(h - 270) * 1000000), 1) + 0.0366 * clamp(0, calc(calc(h - 330) * 1000000), 1)) calc(0.1648 - 0.0424 * clamp(0, calc(calc(h - 30) * 1000000), 1) + 0.1139 * clamp(0, calc(calc(h - 90) * 1000000), 1) - 0.1152 * clamp(0, calc(calc(h - 150) * 1000000), 1) + 0.1039 * clamp(0, calc(calc(h - 210) * 1000000), 1) - 0.0433 * clamp(0, calc(calc(h - 270) * 1000000), 1) - 0.0169 * clamp(0, calc(calc(h - 330) * 1000000), 1)) calc(371.2 - 304.6 * clamp(0, calc(calc(h - 30) * 1000000), 1) + 48.1 * clamp(0, calc(calc(h - 90) * 1000000), 1) + 50.5 * clamp(0, calc(calc(h - 150) * 1000000), 1) + 50.4 * clamp(0, calc(calc(h - 210) * 1000000), 1) + 48.1 * clamp(0, calc(calc(h - 270) * 1000000), 1) + 107.5 * clamp(0, calc(calc(h - 330) * 1000000), 1))) srgb clamp(0, r, 1) clamp(0, g, 1) clamp(0, b, 1)) xyz-d65 calc(x + calc(0.9505 - x) * min(1, calc(max(0, calc(0.447 - y)) / max(calc(1 - y), 0.001)))) calc(y + calc(1 - y) * min(1, calc(max(0, calc(0.447 - y)) / max(calc(1 - y), 0.001)))) calc(z + calc(1.089 - z) * min(1, calc(max(0, calc(0.447 - y)) / max(calc(1 - y), 0.001)))));
   --color-team2: color(from color(from oklch(from var(--seed-team) calc(0.946 - 0.1081 * clamp(0, calc(calc(h - 30) * 1000000), 1) - 0.0652 * clamp(0, calc(calc(h - 90) * 1000000), 1) + 0.0366 * clamp(0, calc(calc(h - 150) * 1000000), 1) + 0.0745 * clamp(0, calc(calc(h - 210) * 1000000), 1) + 0.0711 * clamp(0, calc(calc(h - 270) * 1000000), 1) - 0.0089 * clamp(0, calc(calc(h - 330) * 1000000), 1)) calc(0.1211 + 0.1039 * clamp(0, calc(calc(h - 30) * 1000000), 1) - 0.0433 * clamp(0, calc(calc(h - 90) * 1000000), 1) - 0.0169 * clamp(0, calc(calc(h - 150) * 1000000), 1) - 0.0424 * clamp(0, calc(calc(h - 210) * 1000000), 1) + 0.1139 * clamp(0, calc(calc(h - 270) * 1000000), 1) - 0.1152 * clamp(0, calc(calc(h - 330) * 1000000), 1)) calc(165.2 + 50.4 * clamp(0, calc(calc(h - 30) * 1000000), 1) + 48.1 * clamp(0, calc(calc(h - 90) * 1000000), 1) + 107.5 * clamp(0, calc(calc(h - 150) * 1000000), 1) - 304.6 * clamp(0, calc(calc(h - 210) * 1000000), 1) + 48.1 * clamp(0, calc(calc(h - 270) * 1000000), 1) + 50.5 * clamp(0, calc(calc(h - 330) * 1000000), 1))) srgb clamp(0, r, 1) clamp(0, g, 1) clamp(0, b, 1)) xyz-d65 calc(x + calc(0.9505 - x) * min(1, calc(max(0, calc(0.447 - y)) / max(calc(1 - y), 0.001)))) calc(y + calc(1 - y) * min(1, calc(max(0, calc(0.447 - y)) / max(calc(1 - y), 0.001)))) calc(z + calc(1.089 - z) * min(1, calc(max(0, calc(0.447 - y)) / max(calc(1 - y), 0.001)))));
   --color-team3: color(from color(from oklch(from var(--seed-team) calc(0.7727 + 0.0366 * clamp(0, calc(calc(h - 30) * 1000000), 1) + 0.0745 * clamp(0, calc(calc(h - 90) * 1000000), 1) + 0.0711 * clamp(0, calc(calc(h - 150) * 1000000), 1) - 0.0089 * clamp(0, calc(calc(h - 210) * 1000000), 1) - 0.1081 * clamp(0, calc(calc(h - 270) * 1000000), 1) - 0.0652 * clamp(0, calc(calc(h - 330) * 1000000), 1)) calc(0.1817 - 0.0169 * clamp(0, calc(calc(h - 30) * 1000000), 1) - 0.0424 * clamp(0, calc(calc(h - 90) * 1000000), 1) + 0.1139 * clamp(0, calc(calc(h - 150) * 1000000), 1) - 0.1152 * clamp(0, calc(calc(h - 210) * 1000000), 1) + 0.1039 * clamp(0, calc(calc(h - 270) * 1000000), 1) - 0.0433 * clamp(0, calc(calc(h - 330) * 1000000), 1)) calc(263.7 + 107.5 * clamp(0, calc(calc(h - 30) * 1000000), 1) - 304.6 * clamp(0, calc(calc(h - 90) * 1000000), 1) + 48.1 * clamp(0, calc(calc(h - 150) * 1000000), 1) + 50.5 * clamp(0, calc(calc(h - 210) * 1000000), 1) + 50.4 * clamp(0, calc(calc(h - 270) * 1000000), 1) + 48.1 * clamp(0, calc(calc(h - 330) * 1000000), 1))) srgb clamp(0, r, 1) clamp(0, g, 1) clamp(0, b, 1)) xyz-d65 calc(x + calc(0.9505 - x) * min(1, calc(max(0, calc(0.447 - y)) / max(calc(1 - y), 0.001)))) calc(y + calc(1 - y) * min(1, calc(max(0, calc(0.447 - y)) / max(calc(1 - y), 0.001)))) calc(z + calc(1.089 - z) * min(1, calc(max(0, calc(0.447 - y)) / max(calc(1 - y), 0.001)))));
@@ -198,6 +259,6 @@
   --linear-color-fill-strong: oklch(from var(--seed-neutral) 0.575 min(c, 0.02) h / 0.195);
   --linear-color-material-control: rgb(255 255 255 / 0.039);
   --linear-color-material-control-hover: rgb(255 255 255 / 0.019);
-  --linear-color-accent-soft: oklch(from var(--color-accent) l c h / 0.03);
+  --linear-color-accent-soft: oklch(from var(--color-accent) l c h / 0.029);
   --linear-color-scrim: rgb(0 0 0 / 0.687);
 }

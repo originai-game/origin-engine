@@ -448,6 +448,38 @@ Button variants: `primary`
 (the neutral fill, one per surface), `secondary`, `quiet`, `glass`, `danger`, `inverse`.
 A style or a page never overrides the shared variants of the default.
 
+**The game components' materials.** The engine's built-in game components
+and og-ui's controls are dressed in four materials of their own, apart
+from the flat content ladder above, which origin-agent's surfaces keep.
+Their tokens are the engine default style's alone (`--color-glass*`,
+`-plate*`, `-rim*`, `-lit*`, `-shade*`, `-tile*`, `-raised*`, `-glow*`,
+`-select*`, and `--shadow-panel`, `-plate`, `-raise`, `-raise-hover`,
+`-sunk`, `-held`), and `role.css` and the control hooks of `state.css`
+draw with them:
+
+- **Glass** is what a component stands in: a frame's body falls from a lit
+  top to a darker foot, with a rim that catches the light and a highlight
+  along its top edge; a HUD plate is the same, thinner, over the scene.
+  Neither blurs what is behind it: a backdrop pass for every frame costs a
+  software rasteriser seconds a frame.
+- **A recess** holds what is kept or measured: an item's tile, a field, a
+  meter's track. It is shaded at its top and lit on its lower lip.
+  A recess needs a surface to be cut into: a tile that stands over the
+  scene with no frame under it (an ability, a buff) is a socket in a plate
+  instead (`--cell-scene-*`), and what it holds sits in a well inside the
+  plate's rim. Disabled, a recess goes flat and unlit.
+- **A raised face** is what is pressed: a button, a knob, a key, the tab
+  that is on. It is lit from above, stands on a short shadow, lifts under
+  a pointer and sinks when held.
+- **Light** marks what is chosen or live, in the primary: a chosen row's
+  wash and leading bar, a chosen tile's rim, the primary action's glow, a
+  focused field's halo. Rarity is light too: a rim, a wash rising from the
+  tile's foot and a glow inside the rim, so nothing clips it.
+
+The chrome stays neutral: every material derives from the seeds, so a
+game's `--seed-primary` colours its light and tints its glass. Meaning
+keeps its hues (status, rarity, health, mana, experience, gold).
+
 ## Agent workspace: symbols, not sentences
 
 The agent workspace (`/agent`, its Library, Session, docks and Stage page) is
