@@ -1,0 +1,8 @@
+{
+  "fixed": [
+    {
+      "member": "looks: anime-cel-3d, faceted-low-poly, toy-3d",
+      "summary": "Meter exposure in these three presets, adapting up at 1 EV/s and down at 3 EV/s, so backlit scenes retain readable foregrounds. Camera and frame exposure remain compensation, and a game's explicit autoExposure override still wins. The global default, neon-vector and every other preset are unchanged."
+    }
+  ]
+}

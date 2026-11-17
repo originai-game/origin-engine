@@ -23,6 +23,9 @@ MaterialStyle {
 }
 RenderSettings {
   toneMapping agx
+  autoExposure true
+  adaptSpeedUp 1
+  adaptSpeedDown 3
 }
 # The art contract (docs/art.md §2.1), from the catalogue entry's palette and
 # assets: 24 to 48 colours, two tones per material; 15k to 40k triangles with

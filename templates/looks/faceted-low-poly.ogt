@@ -16,6 +16,9 @@ MaterialStyle {
 }
 RenderSettings {
   toneMapping agx
+  autoExposure true
+  adaptSpeedUp 1
+  adaptSpeedDown 3
 }
 PostEffects {
   vignette true
