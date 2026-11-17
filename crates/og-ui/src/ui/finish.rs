@@ -22,6 +22,19 @@ fn place_box(
     n.derive_used();
 }
 
+/// The node of the world layer (a panel or a ground) node `i` is laid out
+/// in, if any.
+fn world_layer(nodes: &[Node], i: usize) -> Option<usize> {
+    let mut at = i;
+    while at != NONE && at < nodes.len() {
+        if nodes[at].float == Float::World {
+            return Some(at);
+        }
+        at = nodes[at].up;
+    }
+    None
+}
+
 /// Whether an element around node `i` skips its contents
 /// (`content-visibility`).
 fn skipped(nodes: &[Node], i: usize) -> bool {
@@ -717,6 +730,10 @@ impl Ui {
                     }
                     crate::layout::Holder::Own => continue,
                 };
+                // Cut as the layer it is in is: a world layer's own clip
+                // (a ground holds all it draws), else the screen.
+                let clip = world_layer(&self.tree.nodes, i)
+                    .map_or(screen, |w| self.world.area(w, screen).1);
                 let mut r = crate::layout::on_screen(&self.tree.nodes, i, &cb, &offset, None);
                 if crate::layout::auto_height(&self.tree.nodes[i]) {
                     // Its height is its content's at its width: laid out at
@@ -728,7 +745,7 @@ impl Ui {
                         &mut measure,
                         &offset,
                         dpr,
-                        screen,
+                        clip,
                         &mut self.layout.cache,
                         &mut self.layout.queries,
                     );
@@ -749,7 +766,7 @@ impl Ui {
                     &mut measure,
                     &offset,
                     dpr,
-                    screen,
+                    clip,
                     &mut self.layout.cache,
                     &mut self.layout.queries,
                 );
@@ -916,6 +933,8 @@ impl Ui {
                     if r == here {
                         continue;
                     }
+                    let clip = world_layer(&self.tree.nodes, i)
+                        .map_or(screen, |w| self.world.area(w, screen).1);
                     place_box(
                         &mut self.tree.nodes,
                         &mut self.layout.placed,
@@ -930,7 +949,7 @@ impl Ui {
                         &mut measure,
                         &offset,
                         dpr,
-                        screen,
+                        clip,
                         &mut self.layout.cache,
                         &mut self.layout.queries,
                     );

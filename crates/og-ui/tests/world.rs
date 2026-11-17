@@ -901,3 +901,61 @@ fn a_rising_number_keeps_clear_of_the_tag_over_it() {
         );
     }
 }
+
+/// A `<ground>`'s child centred by percent insets (an overlay's
+/// `data-anchor=center`: a placement ghost's footprint) is laid in the
+/// ground's box, as one placed in px is.
+///
+/// Ways it could fail: the placement laid out again after its percent is
+/// resolved, cut to the screen while the ground's layer lies off it, so
+/// the child and everything in it are gone from the ground.
+#[test]
+fn a_grounds_child_placed_by_percent_insets_stays_in_it() {
+    let mut ui = ui();
+    let doc = r#"<meta name="component" content="sel">
+<div id="Root">
+<ground id="Ghost" at="0 0 0" size="3 3"><div id="Room"><div id="Footprint"><span id="Cost">5</span></div></div></ground>
+</div>
+<style>
+#Room { position: relative; width: 200px; height: 200px; }
+#Footprint { position: absolute; top: 50%; left: 50%; translate: -50% -50%; width: 60px; height: 40px; background: red; }
+</style>"#;
+    ui.define_document(UiDocument::parse("sel.svelte", doc).unwrap());
+    ui.mount_document(
+        reactive::SourceId::new("test", "sel"),
+        "sel",
+        Default::default(),
+        Default::default(),
+        &bind::NoEnv,
+    )
+    .unwrap();
+    let above = WorldView::look_at(
+        Vec3::new(0.0, 5.0, 6.0),
+        Vec3::ZERO,
+        Vec3::Y,
+        50.0,
+        W / H,
+        0.1,
+        100.0,
+    );
+    for _ in 0..3 {
+        ui.begin(InputFrame::default(), vp());
+        ui.set_world_view(Some(above));
+        ui.end();
+    }
+    let all = ui.probe_elements();
+    let at = |name: &str| {
+        all.iter()
+            .find(|e| e.path.ends_with(name))
+            .unwrap_or_else(|| panic!("{name} is laid out"))
+    };
+    let (room, footprint) = (at("/Room"), at("/Footprint"));
+    at("/Cost");
+    // Its percent insets resolve against the room (100 px in, 100 down),
+    // and its translate centres it there.
+    assert_eq!(
+        (footprint.x - room.x, footprint.y - room.y),
+        (70.0, 80.0),
+        "{footprint:?}"
+    );
+}
