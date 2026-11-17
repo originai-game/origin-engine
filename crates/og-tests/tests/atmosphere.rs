@@ -328,6 +328,44 @@ fn the_clouds_stand_over_the_world_and_keep_their_shapes() {
     );
 }
 
+/// The clouds' history goes with a renderer snapshot
+/// (`og_render::Renderer::save_state`): the display frames after a restore
+/// are the frames the uninterrupted run drew next, byte for byte, though
+/// frames looking elsewhere were drawn between. Each frame marches a quarter
+/// of the cloud target and reprojects the rest from the frame before, so a
+/// history left out of the snapshot carries the other view's clouds into the
+/// restored one.
+#[test]
+#[ignore = "requires GPU"]
+fn a_restore_brings_back_the_clouds_history() {
+    let mut scene = og_tests::sky_scenes::sky_scene("clouds-fair");
+    scene.objects.instances.clear();
+    let draw = |r: &mut Renderer, s: &RenderScene, frames: u32| {
+        for _ in 0..frames {
+            r.render(s, &RenderTarget::Offscreen).expect("render");
+        }
+        r.read_offscreen().expect("capture")
+    };
+    let mut r = Renderer::new_blocking(&scenes::base_desc()).expect("renderer");
+    // Every pipeline in its full variant first (a display frame draws with a
+    // leaner one until it has compiled).
+    r.render_capture(&scene, &RenderTarget::Offscreen)
+        .expect("capture");
+    draw(&mut r, &scene, 3);
+    let saved = r.save_state();
+    let next = draw(&mut r, &scene, 2);
+    let camera = scene.frame.camera;
+    scene.frame.camera.target += Vec3::new(4.0, -0.5, 2.0);
+    draw(&mut r, &scene, 3);
+    scene.frame.camera = camera;
+    assert_eq!(r.restore_state(saved), og_render::Restored::Whole);
+    let again = draw(&mut r, &scene, 2);
+    assert!(
+        again.pixels == next.pixels,
+        "the frames after the restore are not the uninterrupted run's"
+    );
+}
+
 /// The clouds cast their shadows on the world (`og_render::Clouds::shadows`):
 /// - a place on the ground is sunlit where the sun is seen from it between
 ///   the clouds and shaded where a cloud stands before it, at places

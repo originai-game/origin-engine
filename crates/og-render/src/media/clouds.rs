@@ -250,21 +250,194 @@ pub(crate) struct CloudNoise {
 }
 
 /// The main camera's clouds marched at half the frame's size (render/pass_clouds.rs, sky.wgsl `fs_clouds_low`): a
-/// march is the sky's whole cost and a cloud has no edge a pixel wide.
+/// march is the sky's whole cost and a cloud has no edge a pixel wide. A frame that has the frame before's clouds
+/// marches one texel of each two by two and reprojects the rest ([`CloudsTemporal`]).
 pub(crate) struct CloudsLow {
     /// The cloud target's group in the sky's draw (group 2).
     pub layout: wgpu::BindGroupLayout,
-    /// The frame's view depth in `march_depth` (group 2).
-    pub depth: wgpu::BindGroupLayout,
-    /// The march into the cloud target.
+    /// The march into the cloud target, or into the quarter target in a frame that reprojects.
     pub march: crate::deferred::Deferred<wgpu::RenderPipeline>,
     /// The march in a frame with a prepass: it skips the texels only covered pixels read. A second pipeline, since
     /// the depth's read costs a frame without one about a tenth of the march (0.3 ms of 2.8 at 720p on an Apple M4
     /// Pro).
     pub march_depth: crate::deferred::Deferred<wgpu::RenderPipeline>,
+    /// The history reprojected around this frame's quarter march, into the cloud target.
+    pub resolve: crate::deferred::Deferred<wgpu::RenderPipeline>,
     /// The procedural sky drawn at the frame's size under the cloud target's clouds, in place of
     /// `SkyState::sky_look_pipeline`.
     pub sky: crate::deferred::Sampled<wgpu::RenderPipeline>,
+    pub temporal: CloudsTemporal,
+}
+
+/// The cloud target's size for a frame of `width` x `height`: half each way.
+pub(crate) fn low_size(width: u32, height: u32) -> (u32, u32) {
+    ((width / 2).max(1), (height / 2).max(1))
+}
+
+/// The quarter march's target for a cloud target of `size`: one texel of each two by two.
+pub(crate) fn quarter_size((w, h): (u32, u32)) -> (u32, u32) {
+    (w.div_ceil(2), h.div_ceil(2))
+}
+
+/// sky.wgsl `CloudsTemporal`.
+#[repr(C)]
+#[derive(Clone, Copy, bytemuck::Pod, bytemuck::Zeroable)]
+struct TemporalUniform {
+    prev_view_proj: [[f32; 4]; 4],
+    size: [f32; 4],
+    mode: [f32; 4],
+}
+
+/// The texel of each two by two that the frame of `phase` marches: the four in turn, each across from the last.
+fn block_offset(phase: u64) -> [f32; 2] {
+    [[0.0, 0.0], [1.0, 1.0], [1.0, 0.0], [0.0, 1.0]][(phase % 4) as usize]
+}
+
+/// The cloud target's history (Schneider 2015, the temporal upsampling of the Horizon Zero Dawn clouds): the last
+/// frame's resolved clouds, the view-projection that frame marched with, and the uniform that tells this frame's
+/// march and resolve which texel of each two by two it marches. A frame whose history is the frame before's (by the
+/// phase, so a capture, a restore and a cut start afresh) marches one texel in four; any other marches every texel.
+/// It is part of the frame history a save keeps (`renderer/history.rs`).
+pub(crate) struct CloudsTemporal {
+    /// Group 2 of the march without a prepass, of the march with one (its view depth at 1), and of the resolve.
+    pub march: wgpu::BindGroupLayout,
+    pub depth: wgpu::BindGroupLayout,
+    pub resolve: wgpu::BindGroupLayout,
+    pub uniform: wgpu::Buffer,
+    history: Option<(wgpu::Texture, wgpu::TextureView)>,
+    /// The phase of the frame that wrote the history and its jittered view-projection.
+    drawn: Option<(u64, glam::Mat4)>,
+    /// This frame marches one texel in four and resolves ([`CloudsTemporal::prepare`]).
+    pub reproject: bool,
+}
+
+/// [`CloudsTemporal::save`]: the history's copy and the frame that wrote it.
+pub(crate) struct CloudsSave {
+    copy: crate::gpu::copy::GpuCopy,
+    drawn: Option<(u64, glam::Mat4)>,
+}
+
+impl CloudsSave {
+    pub(crate) fn bytes(&self) -> u64 {
+        self.copy.bytes()
+    }
+}
+
+impl CloudsTemporal {
+    pub(crate) fn new(
+        device: &wgpu::Device,
+        march: wgpu::BindGroupLayout,
+        depth: wgpu::BindGroupLayout,
+        resolve: wgpu::BindGroupLayout,
+    ) -> CloudsTemporal {
+        CloudsTemporal {
+            march,
+            depth,
+            resolve,
+            uniform: device.create_buffer(&wgpu::BufferDescriptor {
+                label: Some("clouds temporal"),
+                size: std::mem::size_of::<TemporalUniform>() as u64,
+                usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+                mapped_at_creation: false,
+            }),
+            history: None,
+            drawn: None,
+            reproject: false,
+        }
+    }
+
+    /// Writes the step of the frame of `phase` at `frame_size`, whose march has `view_proj` (its jitter too); `cut`:
+    /// the camera cut, so the history shows another view. Makes the history at the cloud target's size.
+    pub(crate) fn prepare(
+        &mut self,
+        device: &wgpu::Device,
+        queue: &wgpu::Queue,
+        frame_size: (u32, u32),
+        phase: u64,
+        view_proj: glam::Mat4,
+        cut: bool,
+    ) {
+        let (w, h) = low_size(frame_size.0, frame_size.1);
+        if self
+            .history
+            .as_ref()
+            .is_none_or(|(t, _)| (t.width(), t.height()) != (w, h))
+        {
+            let texture = device.create_texture(&wgpu::TextureDescriptor {
+                label: Some("clouds history"),
+                size: wgpu::Extent3d {
+                    width: w,
+                    height: h,
+                    depth_or_array_layers: 1,
+                },
+                mip_level_count: 1,
+                sample_count: 1,
+                dimension: wgpu::TextureDimension::D2,
+                format: crate::HDR_FORMAT,
+                usage: wgpu::TextureUsages::TEXTURE_BINDING
+                    | wgpu::TextureUsages::COPY_SRC
+                    | wgpu::TextureUsages::COPY_DST,
+                view_formats: &[],
+            });
+            let view = texture.create_view(&Default::default());
+            self.history = Some((texture, view));
+            self.drawn = None;
+        }
+        let previous = self.drawn.filter(|(f, _)| f + 1 == phase && !cut);
+        self.reproject = previous.is_some();
+        let [x, y] = block_offset(phase);
+        let u = TemporalUniform {
+            prev_view_proj: previous.map_or(view_proj, |(_, m)| m).to_cols_array_2d(),
+            size: [w as f32, h as f32, x, y],
+            mode: [f32::from(u8::from(self.reproject)), 0.0, 0.0, 0.0],
+        };
+        queue.write_buffer(&self.uniform, 0, bytemuck::bytes_of(&u));
+        self.drawn = Some((phase, view_proj));
+    }
+
+    /// The history: what the resolve reads, and what this frame's cloud target is copied into after it.
+    pub(crate) fn history(&self) -> &(wgpu::Texture, wgpu::TextureView) {
+        self.history.as_ref().expect("CloudsTemporal::prepare")
+    }
+
+    /// Forgets the history (a resize, a new scene, a readback).
+    pub(crate) fn reset(&mut self) {
+        self.drawn = None;
+    }
+
+    /// The history copied for a presentation checkpoint; `None` before a frame had clouds.
+    pub(crate) fn save(
+        &self,
+        device: &wgpu::Device,
+        encoder: &mut wgpu::CommandEncoder,
+    ) -> Option<CloudsSave> {
+        let (texture, _) = self.history.as_ref()?;
+        Some(CloudsSave {
+            copy: crate::gpu::copy::GpuCopy::of(device, encoder, &[texture], &[]),
+            drawn: self.drawn,
+        })
+    }
+
+    /// Brings back [`CloudsTemporal::save`]'s history; true when it came back or neither had one (it starts afresh
+    /// otherwise).
+    pub(crate) fn restore(
+        &mut self,
+        encoder: &mut wgpu::CommandEncoder,
+        saved: Option<&CloudsSave>,
+    ) -> bool {
+        self.drawn = None;
+        match (saved, &self.history) {
+            (None, _) => true,
+            (Some(s), Some((texture, _))) => {
+                let back = s.copy.back(encoder, &[texture], &[]);
+                if back {
+                    self.drawn = s.drawn;
+                }
+                back
+            }
+            (Some(_), None) => false,
+        }
+    }
 }
 
 fn volume(device: &wgpu::Device, size: u32, storage: bool) -> wgpu::Texture {

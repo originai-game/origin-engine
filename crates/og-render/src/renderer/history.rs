@@ -1,14 +1,15 @@
 //! The frame history the display carries from one frame to the next, kept
 //! with a world snapshot (docs/design.md §2.4, presentation checkpoints):
 //! TAA's, SMAA T2x's and FSR's histories, screen-space GI's copy of the lit
-//! image and the reflections' accumulation, the previous camera, clock,
-//! wind and sway (motion vectors), the temporal phase (the jitter, the
-//! shadow filters' spiral, the screen noise), the adapted exposure, the
-//! tick-stepped wind field and trample map, and each streamed terrain
-//! tile's fade. [`Renderer::save_state`] copies them on the GPU (no
-//! readback) and [`Renderer::restore_state`] copies them back, so the
-//! display frames after a restore are the frames the uninterrupted run drew
-//! from that tick, byte for byte on one host and backend.
+//! image, the reflections' accumulation and the clouds' history, the
+//! previous camera, clock, wind and sway (motion vectors), the temporal
+//! phase (the jitter, the shadow filters' spiral, the screen noise), the
+//! adapted exposure, the tick-stepped wind field and trample map, and each
+//! streamed terrain tile's fade. [`Renderer::save_state`] copies them on
+//! the GPU (no readback) and [`Renderer::restore_state`] copies them
+//! back, so the display frames after a restore are the frames the
+//! uninterrupted run drew from that tick, byte for byte on one host and
+//! backend.
 //!
 //! A part whose GPU state is not there to copy back into (made since at
 //! another size, or not made yet) starts afresh instead, as it would after
@@ -31,6 +32,7 @@ struct GpuParts {
     smaa: Option<GpuCopy>,
     gi: Option<((u32, u32), GpuCopy)>,
     ssr: Option<ssr::SsrSave>,
+    clouds: Option<clouds::CloudsSave>,
     fsr: post::fsr::FsrSave,
     wind: wind_field::WindSave,
     trample: trample::TrampleSave,
@@ -42,6 +44,7 @@ impl GpuParts {
             + self.smaa.as_ref().map_or(0, GpuCopy::bytes)
             + self.gi.as_ref().map_or(0, |(_, c)| c.bytes())
             + self.ssr.as_ref().map_or(0, ssr::SsrSave::bytes)
+            + self.clouds.as_ref().map_or(0, clouds::CloudsSave::bytes)
             + post::fsr::FsrPasses::saved_bytes(&self.fsr)
             + self.wind.bytes()
             + self.trample.bytes()
@@ -142,6 +145,7 @@ impl Renderer {
                     )
                 }),
                 ssr: self.ssr.save(device, e),
+                clouds: self.sky.clouds_low.temporal.save(device, e),
                 fsr: self.post.fsr.save(device, e),
                 wind: self.world.wind_field.save(device, e),
                 trample: self.world.trample.save(device, e),
@@ -257,6 +261,7 @@ impl Renderer {
             }
             whole &= gi;
             whole &= self.ssr.restore(e, g.ssr.as_ref());
+            whole &= self.sky.clouds_low.temporal.restore(e, g.clouds.as_ref());
             whole &= self.post.fsr.restore(e, &g.fsr);
             whole &= self.world.wind_field.restore(e, &g.wind);
             whole &= self.world.trample.restore(e, &g.trample);

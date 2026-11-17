@@ -238,6 +238,7 @@ impl Renderer {
                     } else {
                         self.sky.clouds_low.march.start();
                     }
+                    self.sky.clouds_low.resolve.start();
                     self.sky.clouds_low.sky.start();
                 }
                 Background::Procedural { .. } => self.sky.sky_look_pipeline.start(),
@@ -790,6 +791,18 @@ impl Renderer {
                 temporal,
                 prepass: effects.prepass,
             });
+        // The clouds' history step: which texel of each two by two this frame marches (clouds.rs).
+        if CloudsPass::runs(scene) {
+            let phase = self.phase();
+            self.sky.clouds_low.temporal.prepare(
+                &self.device,
+                &self.queue,
+                (self.width, self.height),
+                phase,
+                cam.jittered_view_proj,
+                scene.frame.camera_cut,
+            );
+        }
         let slot = (self.frame_index % 2) as usize;
         let gtao = match effects.ao.map(|a| a.method) {
             Some(AoMethod::Gtao) => true,

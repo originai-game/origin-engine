@@ -1,7 +1,7 @@
 # Volumetric cloudscapes
 
-`crates/og-render/shaders/clouds_noise.wgsl`, `clouds_shape.wgsl` and
-`sky.wgsl` `clouds_march` follow published descriptions; no code is copied.
+`crates/og-render/shaders/clouds_noise.wgsl`, `clouds_shape.wgsl`,
+`sky.wgsl` `clouds_march` and `fs_clouds_resolve` follow published descriptions; no code is copied.
 
 ## Shape and march
 
@@ -22,11 +22,15 @@ What Origin takes from them:
   gradient that stands them on the layer's base, and the coverage remap;
 - the march in long steps through clear air on the cheap sample, going back
   and crossing a cloud in short steps on the full one, and the cone of
-  widening samples towards the light.
+  widening samples towards the light;
+- the temporal reprojection (2015): each frame marches one pixel of each
+  two by two of a reduced-resolution target and reprojects the rest from
+  the frame before (`fs_clouds_resolve`, `clouds.rs` `CloudsTemporal`).
 
 What differs: the detail moves the surface about a mean erosion, at two
 and a half times the Worley fBms' own spread, rather than only eroding it;
-the three carving fBms are baked into the shape's channel (one
+the reprojection clamps the history to the nine marched pixels around each
+pixel, as TAA does; the three carving fBms are baked into the shape's channel (one
 read a sample, not four), both noises share one 128³ volume, the weather map
 is procedural (a 2D value fBm in the volume's alpha) with the cloud type
 read from the cover, the channels are equalised so `Clouds.coverage` is the

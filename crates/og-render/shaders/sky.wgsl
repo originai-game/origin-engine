@@ -493,9 +493,12 @@ fn clouds_march(d: vec3<f32>, pixel: vec2<f32>) -> vec4<f32> {
   let stride = (end - start) / f32(steps);
   // A different start per pixel turns banding into fine noise: interleaved
   // gradient noise (Jimenez 2014), whose neighbours differ evenly, so a
-  // single frame shows an even fine grain rather than speckle (the cloud
-  // target's history averages it), offset each frame.
-  var jitter = ign(pixel + f32(i32(frame.time.y) & 15) * 5.588238);
+  // single frame shows an even fine grain rather than speckle, offset each
+  // drawn frame under TAA (frame.shadow.w, as the shadows' spiral turns), so
+  // its history averages the grain away. Offset by the tick, a frame drawn
+  // without one (a paused game, a still capture) kept the same grain and
+  // TAA held it.
+  var jitter = ign(pixel + max(frame.shadow.w - 1.0, 0.0) * 5.588238);
   // (A pixel of -1: undithered, the march's middle.)
   if (pixel.x < 0.0) { jitter = 0.5; }
   var t = start + stride * jitter;
@@ -505,6 +508,11 @@ fn clouds_march(d: vec3<f32>, pixel: vec2<f32>) -> vec4<f32> {
   // crossed.
   var fine = 0u;
   var strode = true;
+  // The fine samples lit so far, the far light samples' optical depth
+  // (read every other one) and the fine step the cloud was entered with.
+  var lit = 0u;
+  var far_od = 0.0;
+  var dt0 = stride;
   var transmittance = 1.0;
   var scattered = vec3<f32>(0.0);
   var depth = 0.0;
@@ -525,7 +533,8 @@ fn clouds_march(d: vec3<f32>, pixel: vec2<f32>) -> vec4<f32> {
         strode = true;
         continue;
       }
-      dt = max(stride / f32(CLOUD_FINE), t * 0.002);
+      dt0 = max(stride / f32(CLOUD_FINE), t * 0.002);
+      dt = dt0;
       fine = u32(stride / dt) + 1u;
       // Back over the stride that reached the cloud, once: the shell the
       // erosion empties holds no fine sample, and a march that went back
@@ -542,14 +551,27 @@ fn clouds_march(d: vec3<f32>, pixel: vec2<f32>) -> vec4<f32> {
       // The column towards the light: six steps, the first two through the
       // eroded cloud, each sample somewhere in its own step by the pixel's
       // jitter (at the steps' middles a cloud's shade fell in terraces, one
-      // to a step).
+      // to a step). The four far ones (90 m to 1.4 km off: the cloud's own
+      // shadow, which changes over hundreds of metres, not over a fine
+      // step) are read every other fine sample and held between: they were
+      // half the march's cost.
       var od = 0.0;
       var reach = light_step;
-      for (var k = 0u; k < 6u; k++) {
+      for (var k = 0u; k < 2u; k++) {
         let q = p + to_light * (reach * (1.0 + jitter) - light_step);
-        od += cloud_density(q, length(q) - radius, k >= 2u) * reach;
+        od += cloud_density(q, length(q) - radius, false) * reach;
         reach *= 2.0;
       }
+      if (lit % 2u == 0u) {
+        far_od = 0.0;
+        for (var k = 2u; k < 6u; k++) {
+          let q = p + to_light * (reach * (1.0 + jitter) - light_step);
+          far_od += cloud_density(q, length(q) - radius, true) * reach;
+          reach *= 2.0;
+        }
+      }
+      lit += 1u;
+      od += far_od;
       // Four octaves of multiple scattering (Wrenninge 2013; Hillaire,
       // "Physically Based Sky, Atmosphere and Cloud Rendering in
       // Frostbite", 2016), the later ones reaching deep into the shadowed
@@ -590,6 +612,11 @@ fn clouds_march(d: vec3<f32>, pixel: vec2<f32>) -> vec4<f32> {
       depth += t * transmittance * (1.0 - seg);
       transmittance *= seg;
       if (transmittance < 0.01) { break; }
+      // Behind the cloud's visible surface the fine steps lengthen with
+      // what is already hidden, up to five times at nothing let through:
+      // what they find is seen through the cloud in front, and the step's
+      // integration above is exact over any length of even density.
+      dt = dt0 * (1.0 + 4.0 * (1.0 - transmittance));
     }
     t += dt;
   }
@@ -782,35 +809,101 @@ fn cloud_grounded(d: vec3<f32>) -> bool {
   return viewer <= c[0].z && cloud_sphere(vec3<f32>(0.0, c[4].x + viewer, 0.0), d, c[4].x).x > 0.0;
 }
 
-// The cloud target's texel: `texel` is a texel in NDC.
-fn clouds_low_texel(in: SkyOut, texel: vec2<f32>) -> vec4<f32> {
-  var d = pixel_ray(in.ndc);
+// The cloud history's step (clouds.rs `CloudsLow::prepare`): the march and the resolve of a frame that reprojects.
+struct CloudsTemporal {
+  // The view-projection the history's frame marched with (its jitter too).
+  prev_view_proj: mat4x4<f32>,
+  // xy: the cloud target's size, zw: which texel of each two by two the march takes this frame.
+  size: vec4<f32>,
+  // x: 1 when the march takes one texel of each two by two (into the quarter target), 0 every texel.
+  mode: vec4<f32>,
+};
+@group(2) @binding(2) var<uniform> clouds_temporal: CloudsTemporal;
+// The resolve's reads: this frame's march at a quarter of the cloud target's texels, and the history.
+@group(2) @binding(3) var clouds_quarter: texture_2d<f32>;
+@group(2) @binding(4) var clouds_history: texture_2d<f32>;
+
+// The cloud target's texel along `ndc`, at `pos` of the target: `texel` is a texel in NDC.
+fn clouds_low_texel(ndc: vec2<f32>, pos: vec2<f32>, grey: vec4<f32>, texel: vec2<f32>) -> vec4<f32> {
+  var d = pixel_ray(ndc);
   // The horizon is an edge in the clouds (a ray that meets the ground sees none, one just over it the farthest)
   // and the sky's draw reads this target between its texels: a texel under the horizon beside one over it marches
   // that one's ray, so a pixel over the horizon reads only clouds over it. A pixel under it reads none
   // (fs_sky_look_low).
   if (cloud_grounded(d)) {
     for (var k = 0u; k < 9u; k++) {
-      let near = pixel_ray(in.ndc + (vec2<f32>(f32(k % 3u), f32(k / 3u)) - 1.0) * texel);
+      let near = pixel_ray(ndc + (vec2<f32>(f32(k % 3u), f32(k / 3u)) - 1.0) * texel);
       if (near.y > d.y) { d = near; }
     }
   }
-  let layer = clouds_over(d, in.pos.xy, in.grey);
+  let layer = clouds_over(d, pos, grey);
   return vec4<f32>(clamp(layer.rgb, vec3<f32>(0.0), vec3<f32>(65504.0)), layer.a);
+}
+
+// Where a fragment of the march falls in the cloud target: its texel's NDC, its position and a texel in NDC.
+// Marching one texel of each two by two (`clouds_temporal.mode.x`), a fragment of the quarter target is the texel
+// of its two by two the frame takes; otherwise it is its own.
+struct MarchAt {
+  ndc: vec2<f32>,
+  pos: vec2<f32>,
+  texel: vec2<f32>,
+};
+
+fn clouds_march_at(in: SkyOut) -> MarchAt {
+  let texel = vec2<f32>(dpdx(in.ndc.x), dpdy(in.ndc.y));
+  if (clouds_temporal.mode.x < 0.5) { return MarchAt(in.ndc, in.pos.xy, texel); }
+  let size = clouds_temporal.size.xy;
+  let at = min(floor(in.pos.xy) * 2.0 + clouds_temporal.size.zw, size - 1.0) + 0.5;
+  let ndc = vec2<f32>(at.x / size.x * 2.0 - 1.0, 1.0 - at.y / size.y * 2.0);
+  return MarchAt(ndc, at, vec2<f32>(2.0, -2.0) / size);
 }
 
 @fragment
 fn fs_clouds_low(in: SkyOut) -> @location(0) vec4<f32> {
   // A derivative: before any branch.
-  return clouds_low_texel(in, vec2<f32>(dpdx(in.ndc.x), dpdy(in.ndc.y)));
+  let m = clouds_march_at(in);
+  return clouds_low_texel(m.ndc, m.pos, in.grey, m.texel);
 }
 
 // In a frame with a prepass: nothing where its surfaces cover every pixel that reads the texel.
 @fragment
 fn fs_clouds_low_depth(in: SkyOut) -> @location(0) vec4<f32> {
-  let texel = vec2<f32>(dpdx(in.ndc.x), dpdy(in.ndc.y));
-  if (clouds_covered(in.pos.xy, texel)) { return vec4<f32>(0.0, 0.0, 0.0, 1.0); }
-  return clouds_low_texel(in, texel);
+  let m = clouds_march_at(in);
+  // Marching one texel of a two by two: nothing only where every pixel that reads any of the four is covered (the
+  // resolve fills the other three from this one).
+  let block = select(1.0, 2.0, clouds_temporal.mode.x > 0.5);
+  if (clouds_covered(in.pos.xy, m.texel * block)) { return vec4<f32>(0.0, 0.0, 0.0, 1.0); }
+  return clouds_low_texel(m.ndc, m.pos, in.grey, m.texel);
+}
+
+// The resolve of a frame that marched one texel of each two by two (Schneider 2015, the temporal upsampling of the
+// clouds): every texel reads the history where its ray was the frame before (a cloud is far enough that its
+// direction alone reprojects it), held within what this frame marched round it so a cloud that moved or a flash
+// leaves no ghost; the texel the frame marched blends its march into that, so the march's dither averages over the
+// frames that march it. A ray the history did not see reads the march. Into this frame's cloud target, which the
+// sky reads and the next frame's resolve reprojects.
+@fragment
+fn fs_clouds_resolve(in: SkyOut) -> @location(0) vec4<f32> {
+  let at = vec2<i32>(in.pos.xy);
+  let quarter = vec2<i32>(textureDimensions(clouds_quarter)) - 1;
+  let q = min(at / 2, quarter);
+  let fresh = textureLoad(clouds_quarter, q, 0);
+  var lo = fresh;
+  var hi = fresh;
+  for (var k = 0; k < 9; k++) {
+    let n = textureLoad(clouds_quarter, clamp(q + vec2<i32>(k % 3 - 1, k / 3 - 1), vec2<i32>(0), quarter), 0);
+    lo = min(lo, n);
+    hi = max(hi, n);
+  }
+  let prev = clouds_temporal.prev_view_proj * vec4<f32>(pixel_ray(in.ndc), 0.0);
+  let uv = vec2<f32>(0.5, -0.5) * prev.xy / max(prev.w, 1e-6) + 0.5;
+  var out = fresh;
+  if (prev.w > 0.0 && all(uv >= vec2<f32>(0.0)) && all(uv <= vec2<f32>(1.0))) {
+    let seen = clamp(textureSampleLevel(clouds_history, ibl_sampler, uv, 0.0), lo, hi);
+    let marched = all((at & vec2<i32>(1)) == vec2<i32>(clouds_temporal.size.zw));
+    out = select(seen, mix(seen, fresh, 0.5), marched);
+  }
+  return out;
 }
 
 @fragment

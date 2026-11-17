@@ -249,7 +249,20 @@ fn composed(g: &mut RenderGraph, cx: &PlanCx) {
         g.transient("glow", desc(hw, hh, HDR_FORMAT, 1, ATTACH_BIND));
     }
     if has(FramePass::Clouds) {
-        g.transient("clouds", desc(hw, hh, HDR_FORMAT, 1, ATTACH_BIND));
+        // Copied into the clouds' history after the resolve (clouds.rs `CloudsTemporal`).
+        let (cw, ch) = crate::clouds::low_size(w, h);
+        g.transient(
+            "clouds",
+            desc(
+                cw,
+                ch,
+                HDR_FORMAT,
+                1,
+                ATTACH_BIND | wgpu::TextureUsages::COPY_SRC,
+            ),
+        );
+        let (qw, qh) = crate::clouds::quarter_size((cw, ch));
+        g.transient("clouds.quarter", desc(qw, qh, HDR_FORMAT, 1, ATTACH_BIND));
     }
 }
 

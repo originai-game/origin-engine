@@ -1,0 +1,8 @@
+{
+  "fixed": [
+    {
+      "member": "rendering: og.Clouds",
+      "summary": "The main camera's clouds march one texel in four each frame and reproject the rest from the frame before (Schneider 2015), and the march takes longer steps behind a cloud's visible surface, so the cloud pass costs about a quarter of a full march. The march's dither turns every drawn frame and averages away over four frames, in a still frame as in a moving one: near clouds showed a fine regular grain. The first frame after a cut, a resize or a capture marches every texel."
+    }
+  ]
+}

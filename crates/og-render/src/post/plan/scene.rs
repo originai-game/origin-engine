@@ -79,8 +79,8 @@ pub(super) fn declare(g: &mut RenderGraph, cx: &PlanCx, p: FramePass) {
         // Into its own cubes and the bound IBL ones.
         FramePass::LiveSky => g.pass(name, &[], &[]),
         // With a prepass the march skips what its surfaces cover.
-        FramePass::Clouds if prepass => g.pass(name, &["lindepth"], &["clouds"]),
-        FramePass::Clouds => g.pass(name, &[], &["clouds"]),
+        FramePass::Clouds if prepass => g.pass(name, &["lindepth"], &["clouds.quarter", "clouds"]),
+        FramePass::Clouds => g.pass(name, &[], &["clouds.quarter", "clouds"]),
         // Into the light volumes' buffer, not a graph target.
         FramePass::GiProbes => g.pass(name, &[], &[]),
         FramePass::Reflection(k) => {

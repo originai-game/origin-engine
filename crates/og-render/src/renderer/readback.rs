@@ -52,6 +52,7 @@ impl Renderer {
                 &self.sky.clouds_low.sky,
                 &self.sky.clouds_low.march,
                 &self.sky.clouds_low.march_depth,
+                &self.sky.clouds_low.resolve,
             ])
             || self.lights.ibl.warm()
             || self.warm_plain_lit()
@@ -196,6 +197,7 @@ impl Renderer {
         self.history.taa_history = None;
         self.gi_history = None;
         self.ssr.reset();
+        self.sky.clouds_low.temporal.reset();
     }
 
     /// Draws the capture of `scene` into `target`: a pure function of the

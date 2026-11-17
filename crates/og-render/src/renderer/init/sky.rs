@@ -65,9 +65,12 @@ impl Renderer {
         };
         let sky_pipeline = sky_state(sky_pl, "vs_sky", "fs_sky");
         let sky_look_pipeline = sky_state(sky_pl, "vs_sky_look", "fs_sky_look");
-        // The main camera's clouds at half the frame's size: their march into the cloud target (with the frame's view
-        // depth as its group 2 in a frame with a prepass), and the sky drawn under them, with the target as its group 2.
+        // The main camera's clouds at half the frame's size: their march into the cloud target (group 2: the
+        // history's step, with the frame's view depth in a frame with a prepass), the resolve that reprojects the
+        // history around a march of one texel in four (group 2: the step, this frame's march, the history), and the
+        // sky drawn under them, with the target as its group 2.
         let clouds_low = {
+            use crate::gpu::layout::uniform_entry;
             let layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
                 label: Some("clouds low"),
                 entries: &[texture_entry(0, true, wgpu::TextureViewDimension::D2)],
@@ -77,15 +80,33 @@ impl Renderer {
                 bind_group_layouts: &[Some(frame_layout), Some(sky_layout), Some(&layout)],
                 immediate_size: 0,
             });
+            let step = uniform_entry(2, wgpu::ShaderStages::FRAGMENT);
+            let temporal = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+                label: Some("clouds low march"),
+                entries: &[step],
+            });
             let depth = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
                 label: Some("clouds low depth"),
-                entries: &[texture_entry(1, false, wgpu::TextureViewDimension::D2)],
+                entries: &[
+                    texture_entry(1, false, wgpu::TextureViewDimension::D2),
+                    step,
+                ],
             });
-            let march_pl = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-                label: Some("clouds low depth"),
-                bind_group_layouts: &[Some(frame_layout), Some(sky_layout), Some(&depth)],
-                immediate_size: 0,
+            let resolve = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+                label: Some("clouds low resolve"),
+                entries: &[
+                    step,
+                    texture_entry(3, true, wgpu::TextureViewDimension::D2),
+                    texture_entry(4, true, wgpu::TextureViewDimension::D2),
+                ],
             });
+            let with = |group: &wgpu::BindGroupLayout| {
+                device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+                    label: Some("clouds low"),
+                    bind_group_layouts: &[Some(frame_layout), Some(sky_layout), Some(group)],
+                    immediate_size: 0,
+                })
+            };
             let march = |layout: &wgpu::PipelineLayout, fs: &'static str| {
                 let (device, layout, module) = (device.clone(), layout.clone(), sky_shader.clone());
                 deferred::Deferred::anywhere(move || {
@@ -118,10 +139,11 @@ impl Renderer {
             };
             clouds::CloudsLow {
                 sky: sky_state(&sky_low_pl, "vs_sky_look", "fs_sky_look_low"),
+                march: march(&with(&temporal), "fs_clouds_low"),
+                march_depth: march(&with(&depth), "fs_clouds_low_depth"),
+                resolve: march(&with(&resolve), "fs_clouds_resolve"),
+                temporal: clouds::CloudsTemporal::new(device, temporal, depth, resolve),
                 layout,
-                march: march(sky_pl, "fs_clouds_low"),
-                march_depth: march(&march_pl, "fs_clouds_low_depth"),
-                depth,
             }
         };
         let ibl = ibl::IblGenerator::new(device);
