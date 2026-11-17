@@ -100,24 +100,26 @@ pub fn physical_light(
     look
 }
 
-/// `live-sky`: a chrome sphere on a grey ground at 14:00 under the
-/// physical sky, seen from a little above, under an overcast deck of
-/// rose-tinted cloud (no light dimmed: only the sky changes); without
-/// `clouds` the same deck at no coverage, so the two differ only in the
-/// clouds' uniform. The
-/// sphere's upper half reflects the sky over and behind the camera, out
-/// of the frame, so only the live sky capture can bring the clouds into it.
+/// `live-sky`: a mirrored orb 2.8 m across sunk to its middle in the
+/// colonnade's road at 14:00 under the physical sky, seen from above, under
+/// broken rose-tinted cloud lit as the runtime lights a clouded scene;
+/// without `clouds` the same layer at no coverage, so the two differ only
+/// in the clouds. No probe or screen-space reflection is on: the dome
+/// reflects the image-based light alone, and it faces the sky over and
+/// behind the camera, out of the frame, so only the live sky capture can
+/// bring those clouds, in their tint, into it (its rim shows the capture's
+/// ground). 150 s into the wind's drift, where the road stands in a gap of
+/// the clouds' shadows (as `clouds-fair`).
 pub fn live_sky_scene(clouds: bool) -> RenderScene {
     let mut scene = RenderScene::new();
-    physical_light(&mut scene, 14.0, PhysicalAtmosphere::EARTH);
-    scene.atmosphere.fog = None;
-    let ground = scene.add_mesh(shapes::plane(200.0, 1.0));
-    let grey = scene.add_standard_material(StandardMaterial {
-        color: Vec3::splat(0.35),
-        roughness: 0.9,
-        ..Default::default()
-    });
-    scene.add_instance(ground, grey, Mat4::IDENTITY);
+    colonnade(&mut scene);
+    // The air is lit from below by the road the orb lies on (its cobbles'
+    // mean colour), not Earth's mean grey: the orb's lower half shows it.
+    let air = PhysicalAtmosphere {
+        ground_albedo: Vec3::new(0.167, 0.145, 0.102),
+        ..PhysicalAtmosphere::EARTH
+    };
+    physical_light(&mut scene, 14.0, air);
     let sphere = scene.add_mesh(shapes::sphere(64, 32));
     let chrome = scene.add_standard_material(StandardMaterial {
         color: Vec3::splat(0.95),
@@ -125,19 +127,24 @@ pub fn live_sky_scene(clouds: bool) -> RenderScene {
         roughness: 0.02,
         ..Default::default()
     });
-    let at = Vec3::new(0.0, 1.0, 0.0);
-    scene.add_instance(sphere, chrome, Mat4::from_translation(at));
+    let at = Vec3::new(0.0, 0.0, -1.0);
+    scene.add_instance(
+        sphere,
+        chrome,
+        Mat4::from_translation(at) * Mat4::from_scale(Vec3::splat(2.8)),
+    );
     scene.frame.camera = colonnade_camera();
-    scene.frame.camera.position = Vec3::new(0.0, 2.2, 4.5);
-    scene.frame.camera.target = at;
-    scene.atmosphere.clouds = Some(Clouds {
-        coverage: if clouds { 0.95 } else { 0.0 },
-        density: 0.06,
-        color: Vec3::new(1.0, 0.45, 0.5),
-        base: 900.0,
+    scene.frame.camera.position = Vec3::new(1.6, 3.4, 4.6);
+    scene.frame.camera.target = at + Vec3::new(0.0, 1.3, -1.5);
+    let cover = Clouds {
+        coverage: if clouds { 0.55 } else { 0.0 },
+        color: Vec3::new(1.0, 0.6, 0.62),
         layer: 0.0,
         ..Clouds::default()
-    });
+    };
+    cover.light_scene(&mut scene);
+    scene.atmosphere.clouds = Some(cover);
+    scene.frame.tick = 9000;
     scene
 }
 
@@ -410,13 +417,20 @@ pub fn sky_scene(name: &str) -> RenderScene {
                 ..Clouds::default()
             },
         ),
-        "clouds-fair" => clouded(
-            physical_sky_scene(11.0, earth, false),
-            Clouds {
-                coverage: 0.5,
-                ..Clouds::default()
-            },
-        ),
+        // 150 s into the wind's drift: the colonnade stands in a gap of
+        // the clouds' shadows there, sunlit under a half-covered sky (at
+        // tick 0 a cloud's shadow lies over the whole of it).
+        "clouds-fair" => {
+            let mut scene = clouded(
+                physical_sky_scene(11.0, earth, false),
+                Clouds {
+                    coverage: 0.5,
+                    ..Clouds::default()
+                },
+            );
+            scene.frame.tick = 9000;
+            scene
+        }
         "clouds-overcast" => clouded(
             physical_sky_scene(13.0, earth, false),
             Clouds {
