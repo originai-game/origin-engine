@@ -78,13 +78,19 @@ pub(crate) fn colonnade(scene: &mut RenderScene) {
         24.0,
     );
     // Fallen stones on the plain between the rows and the tower: stumps
-    // and boulders in the foreground of a view into the setting sun.
+    // and boulders in the foreground of a view into the setting sun. None
+    // within 7 m of the line from the sun to the camera: a low sun draws
+    // each one's shadow out to the viewer, and two side by side would leave
+    // a sliver of light between their shadows; the sun's path on the ground
+    // stays open instead.
     for k in 0..12 {
         let h = |n: u32| hash2(k, n as i32, 0x57a);
         let across = Vec3::new(-west.z, 0.0, west.x);
-        let at = Vec3::new(-8.0, 0.0, 2.0)
-            + west * (9.0 + k as f32 * 5.5 + h(0) * 3.0)
-            + across * ((h(1) - 0.5) * (14.0 + k as f32 * 3.0));
+        let from = Vec3::new(-8.0, 0.0, 2.0);
+        let eye = (colonnade_camera().position - from).dot(across);
+        let side = (h(1) - 0.5) * (14.0 + k as f32 * 3.0);
+        let side = side + (side - eye).signum() * 7.0;
+        let at = from + west * (9.0 + k as f32 * 5.5 + h(0) * 3.0) + across * side;
         if k % 3 == 1 {
             broken.place(scene, at, h(2) * 6.0, 2.2 + h(3) * 1.6);
         } else {

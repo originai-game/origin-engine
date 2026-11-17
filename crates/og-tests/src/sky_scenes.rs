@@ -328,7 +328,8 @@ pub fn storm(strike: bool) -> RenderScene {
 
 /// The colonnade on a clear moonless night under `aurora` (its arcs out
 /// along -z, where the camera looks), the camera tilted up and opened up
-/// three stops for the night.
+/// three stops for the night. No moon stands in the sky and none lights
+/// the land: it lies in the light of the sky as drawn, the aurora's with it.
 fn auroral(aurora: Aurora) -> RenderScene {
     let mut scene = exposed(
         physical_sky_scene(23.5, PhysicalAtmosphere::EARTH, false),
@@ -337,6 +338,7 @@ fn auroral(aurora: Aurora) -> RenderScene {
     if let Some(look) = scene.lighting.environment.sky.look.as_mut() {
         look.moon_size = 0.0;
     }
+    scene.lighting.light.intensity = 0.0;
     scene.atmosphere.aurora = Some(aurora);
     scene.frame.camera.target += Vec3::Y * 22.0;
     scene
