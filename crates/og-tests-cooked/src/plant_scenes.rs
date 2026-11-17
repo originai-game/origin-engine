@@ -5,9 +5,11 @@
 //! pine and the shrub with their impostors.
 //!
 //! - `grown_scene()` (`plant-grown`): the oak, the pine and the shrub
-//!   standing in a row on a floor with three daisies near the camera, each drawn
-//!   as its cooked parts (the wood, then the leaves and petals with the
-//!   leaf's material), under a sun from the front right.
+//!   standing in a glade with a patch of daisies before the camera, each
+//!   drawn as its cooked parts (the wood, then the leaves and petals with
+//!   the leaf's material), a ruin's columns and boulders in the grass, a
+//!   wood of the same cooked oaks and pines round it and the kit's hills
+//!   beyond, under the fair afternoon's sky and a sun from the front right.
 //! - `kinds_scene()` (`plant-kinds`): the kinds `plant-grown` does not
 //!   show, under the same sun: a palm, a birch, a willow, three bamboo
 //!   canes and a cactus in a row with an autumn birch behind (`kind
@@ -33,9 +35,9 @@
 use glam::{Mat4, Vec2, Vec3};
 use og_cook::runtime::Bundle;
 use og_render::{
-    Camera, DirectionalLight, Impostor, MaterialHandle, MaterialStyle, MeshHandle, OutlinePlace,
-    Projection, RenderScene, ScatterDraw, StandardMaterial, Terrain, TerrainData, TerrainLayer,
-    TerrainScatter, TextureSource, Wind, shapes,
+    Camera, DirectionalLight, Grass, GrassDraw, Impostor, MaterialHandle, MaterialStyle,
+    MeshHandle, OutlinePlace, Projection, RenderScene, ScatterDraw, StandardMaterial, Terrain,
+    TerrainData, TerrainLayer, TerrainScatter, TextureSource, Wind, shapes,
 };
 use std::path::PathBuf;
 use std::sync::{Arc, OnceLock};
@@ -199,39 +201,129 @@ pub const GROWN_AT: [Vec3; 3] = [
     Vec3::new(7.5, 0.0, 2.0),
 ];
 
+/// A glade's ground: a terrain 384 m square of the kit's grass, level
+/// within 60 m of the middle and easing down 2.5 m by its edge to meet the
+/// kit's hills, short og.Grass on it, under the fair afternoon's physical
+/// sky with its sun turned to `sun` (toward the light).
+fn glade(scene: &mut RenderScene, sun: Vec3, max_shadow_distance: f32) {
+    use og_tests::kit;
+    let (n, size) = (193u32, 384.0f32);
+    let cell = size / (n - 1) as f32;
+    let height = |x: f32, z: f32| {
+        let d = (x * x + z * z).sqrt();
+        let t = ((d - 60.0) / 130.0).clamp(0.0, 1.0);
+        -2.5 * t * t * (3.0 - 2.0 * t) + 0.25 * (x * 0.07).sin() * (z * 0.05).cos() * t
+    };
+    let heights: Vec<f32> = (0..n * n)
+        .map(|i| {
+            let (c, r) = ((i % n) as f32, (i / n) as f32);
+            height(c * cell - size * 0.5, r * cell - size * 0.5)
+        })
+        .collect();
+    let h = scene.add_terrain(TerrainData {
+        heights: Arc::from(heights),
+        ..TerrainData::flat(Vec2::splat(size), n, n)
+    });
+    let (grass, grass_normal) = kit::layer_maps(scene, "grass");
+    scene.world.terrains.push(Terrain {
+        layers: vec![TerrainLayer {
+            albedo: Some(grass),
+            normal: Some(grass_normal),
+            color: Vec3::new(0.72, 1.05, 0.5),
+            roughness: 0.95,
+            tile: 3.5,
+            anti_tiling: 0.5,
+            macro_variation: 0.5,
+            ..Default::default()
+        }],
+        fade_in: false,
+        ..Terrain::new(h)
+    });
+    scene.world.grass.push(GrassDraw {
+        terrain: 0,
+        grass: Grass {
+            height: 0.28,
+            cast_shadows: true,
+            ..Default::default()
+        },
+    });
+    kit::hills(scene, None);
+    og_tests::terrain_scenes::afternoon(scene);
+    scene.lighting.light.direction_to_light = sun.normalize();
+    scene.lighting.light.max_shadow_distance = max_shadow_distance;
+    og_tests::terrain_scenes::fair_sky(scene, 8.6);
+    scene.frame.tick = 0;
+}
+
+/// A number in 0..1 for `k` and `i`, the same on every run.
+fn hash(k: u32, i: u32) -> f32 {
+    let mut h = k.wrapping_mul(0x8da6_b343) ^ i.wrapping_mul(0xd816_3841) ^ 0x51ed;
+    h = (h ^ (h >> 13)).wrapping_mul(0x85eb_ca6b);
+    h ^= h >> 16;
+    (h & 0xff_ffff) as f32 / 16_777_216.0
+}
+
 /// `plant-grown` ([module docs](self)).
 pub fn grown_scene() -> Result<RenderScene, String> {
+    use og_tests::kit;
     let bundle = Bundle::open(&cooked()?.join("cooked")).map_err(|e| e.to_string())?;
     let mut scene = RenderScene::new();
-    sun(&mut scene, Vec3::new(0.5, 0.7, 0.45), 60.0);
-    let ground = scene.add_standard_material(StandardMaterial {
-        color: Vec3::new(0.3, 0.32, 0.28),
-        roughness: 1.0,
-        ..Default::default()
-    });
-    let floor = scene.add_mesh(shapes::plane(120.0, 1.0));
-    scene.add_instance(floor, ground, Mat4::IDENTITY);
+    glade(&mut scene, Vec3::new(0.5, 0.7, 0.45), 60.0);
     for (name, at) in ["oak", "pine", "bush"].into_iter().zip(GROWN_AT) {
         let p = plant(&mut scene, &bundle, name)?;
         for (mesh, material, local) in p.parts {
             scene.add_instance(mesh, material, Mat4::from_translation(at) * local);
         }
     }
+    // The daisies: a patch in the grass before the camera.
     let daisy = plant(&mut scene, &bundle, "daisy")?;
-    for (k, x) in [2.6f32, 3.1, 3.5].into_iter().enumerate() {
-        let at = Mat4::from_translation(Vec3::new(x, 0.0, 15.2 + 0.4 * k as f32))
-            * Mat4::from_rotation_y(1.7 * k as f32);
+    for k in 0..46 {
+        let (d, a) = (2.2 * hash(k, 1).sqrt(), 6.3 * hash(k, 2));
+        let at = Mat4::from_translation(Vec3::new(3.0 + d * a.cos(), 0.0, 15.5 + d * a.sin()))
+            * Mat4::from_rotation_y(6.3 * hash(k, 3))
+            * Mat4::from_scale(Vec3::splat(1.2 + 0.5 * hash(k, 4)));
         for &(mesh, material, local) in &daisy.parts {
             scene.add_instance(mesh, material, at * local);
         }
     }
+    // A ruin at the glade's edge behind the trees, boulders in the grass
+    // and a dark wood closing it in.
+    let column = kit::prop(&mut scene, "column");
+    let broken = kit::prop(&mut scene, "column_broken");
+    column.place(&mut scene, Vec3::new(-16.0, -0.1, -14.0), 0.3, 6.5);
+    broken.place(&mut scene, Vec3::new(-11.5, -0.1, -16.0), 1.9, 2.6);
+    column.place(&mut scene, Vec3::new(14.0, -0.1, -13.0), 2.2, 6.5);
+    let boulder = kit::prop(&mut scene, "boulder");
+    for (at, yaw, size) in [
+        (Vec3::new(-3.0, -0.3, 6.0), 0.4, 1.3),
+        (Vec3::new(10.5, -0.4, 6.5), 2.1, 1.8),
+        (Vec3::new(-12.0, -0.3, 3.0), 4.0, 1.1),
+    ] {
+        boulder.place(&mut scene, at, yaw, size);
+    }
+    // The wood round the glade: the cook's oaks and pines, in clumps.
+    let wood = [
+        plant(&mut scene, &bundle, "oak")?,
+        plant(&mut scene, &bundle, "pine")?,
+    ];
+    for k in 0..130 {
+        let a = -3.0 + 2.8 * hash(k, 1);
+        let d = 34.0 + 50.0 * hash(k, 2) * hash(k, 2);
+        let at = Mat4::from_translation(Vec3::new(d * a.cos(), -0.1, d * a.sin()))
+            * Mat4::from_rotation_y(6.3 * hash(k, 3))
+            * Mat4::from_scale(Vec3::splat(0.8 + 0.5 * hash(k, 4)));
+        for &(mesh, material, local) in &wood[(hash(k, 5) < 0.55) as usize].parts {
+            scene.add_instance(mesh, material, at * local);
+        }
+    }
     scene.frame.camera = Camera {
-        position: Vec3::new(1.0, 3.2, 25.0),
-        target: Vec3::new(0.0, 5.0, 0.0),
-        far: 200.0,
+        position: Vec3::new(1.0, 2.2, 25.0),
+        target: Vec3::new(0.0, 5.2, 0.0),
+        far: 4000.0,
         projection: Projection::Perspective {
             fov_y_degrees: 50.0,
         },
+        exposure: og_render::Exposure::linear(0.9),
         ..Default::default()
     };
     Ok(scene)
