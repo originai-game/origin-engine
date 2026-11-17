@@ -15,8 +15,8 @@ use glam::{Mat4, Vec2, Vec3};
 use og_render::{
     AmbientOcclusion, AoMethod, Background, Bloom, Camera, ColorSpace, DirectionalLight,
     Environment, Exposure, Material, MaterialShader, MeshData, ParamKind, ProceduralSky,
-    RenderScene, ScatterDraw, ShaderParam, StandardMaterial, Terrain, TerrainData, TerrainLayer,
-    TerrainScatter, Tonemap, Vertex, Water, shapes,
+    RenderScene, ScatterDraw, ShaderParam, StandardMaterial, Terrain, TerrainControl, TerrainData,
+    TerrainLayer, TerrainScatter, Tonemap, Vertex, Water, shapes,
 };
 use std::sync::Arc;
 
@@ -813,5 +813,362 @@ pub fn terrain_flags_scene(visible: bool, cast_shadows: bool) -> RenderScene {
         exposure: Exposure::linear(0.9),
         ..Default::default()
     };
+    scene
+}
+
+// ---------------------------------------------------------------------------
+// `terrain-hidden`: an overgrown viaduct whose plants stand on a hidden
+// terrain.
+// ---------------------------------------------------------------------------
+
+/// The viaduct: its deck's top and half its width, the pitch of its piers,
+/// its arches' radius, where it starts and where it has fallen (x), and its
+/// stone's repeat (m).
+const DECK_TOP: f32 = 30.0;
+const DECK_HALF: f32 = 4.5;
+const SPAN: f32 = 16.0;
+const ARCH: f32 = 6.0;
+const DECK: [f32; 2] = [-120.0, 56.0];
+const MASONRY: f32 = 5.0;
+
+/// A quad of `corners` facing `normal`, each corner with its surface uv.
+fn quad(m: &mut MeshData, corners: [(Vec3, [f32; 2]); 4], normal: Vec3) {
+    let first = m.vertices.len() as u32;
+    for (p, uv) in corners {
+        m.vertices.push(Vertex {
+            position: p.into(),
+            normal: normal.into(),
+            uv,
+            color: [1.0; 4],
+            tangent: [0.0; 4],
+        });
+    }
+    let [a, b, c, _] = corners.map(|(p, _)| p);
+    let order: [u32; 6] = if (b - a).cross(c - a).dot(normal) > 0.0 {
+        [0, 1, 2, 0, 2, 3]
+    } else {
+        [0, 2, 1, 0, 3, 2]
+    };
+    m.indices.extend(order.map(|i| first + i));
+}
+
+/// One span of the viaduct between two piers, its opening's middle at
+/// x = 0: both faces from the arch up to the deck's top, and the arch's
+/// underside.
+fn viaduct_span() -> MeshData {
+    const STEPS: u32 = 20;
+    let spring = DECK_TOP - 2.0 - ARCH;
+    let mut m = MeshData::default();
+    let on_arch = |i: u32| {
+        let a = i as f32 / STEPS as f32 * std::f32::consts::PI;
+        (Vec3::new(-ARCH * a.cos(), spring + ARCH * a.sin(), 0.0), a)
+    };
+    let face = |v: Vec3| [v.x / MASONRY, v.y / MASONRY];
+    for i in 0..STEPS {
+        let ((p, a), (q, b)) = (on_arch(i), on_arch(i + 1));
+        for side in [-1.0f32, 1.0] {
+            let z = Vec3::Z * (side * DECK_HALF);
+            let corners = [
+                p + z,
+                q + z,
+                Vec3::new(q.x, DECK_TOP, 0.0) + z,
+                Vec3::new(p.x, DECK_TOP, 0.0) + z,
+            ];
+            quad(&mut m, corners.map(|v| (v, face(v))), Vec3::Z * side);
+        }
+        // The underside, facing the arch's centre.
+        let mid = (a + b) * 0.5;
+        let z = Vec3::Z * DECK_HALF;
+        let (u, v) = (a * ARCH / MASONRY, b * ARCH / MASONRY);
+        let w = DECK_HALF / MASONRY;
+        quad(
+            &mut m,
+            [
+                (p - z, [u, -w]),
+                (q - z, [v, -w]),
+                (q + z, [v, w]),
+                (p + z, [u, w]),
+            ],
+            Vec3::new(mid.cos(), -mid.sin(), 0.0),
+        );
+    }
+    m
+}
+
+/// `terrain-hidden`: a ruined viaduct across a valley in the early sun, its
+/// deck overgrown with grass, heather, gold flowers and young pines that
+/// og.TerrainScatter places on a terrain 256 by 64 m lying level at the
+/// deck's top, its second layer (by its control map) the deck. With
+/// `visible` false (the scene) the terrain is not drawn: the masonry is the
+/// game's own meshes, the valley shows beside the deck and through the
+/// arches, and the plants still stand on the terrain's heights. With
+/// `visible` true it is a grey sheet 64 m wide through the viaduct at the
+/// deck's top.
+pub fn viaduct_scene(visible: bool) -> RenderScene {
+    use crate::fx_scenes::{hash2, noise2, smooth};
+    use crate::kit;
+    use crate::terrain_scenes::{afternoon, camera_at, fair_sky, flower_clump, grass_tuft};
+    let mut scene = RenderScene::new();
+    afternoon(&mut scene);
+    scene.lighting.light.direction_to_light = Vec3::new(-0.5, 0.8, 0.62);
+    scene.lighting.light.max_shadow_distance = 320.0;
+    fair_sky(&mut scene, 9.2);
+    // The clouds where their shadows leave the valley in the sun.
+    scene.frame.tick = 0;
+    // The valley: its floor, and the hills round it.
+    let floor = -2.0;
+    let meadow = kit::surface_tinted(&mut scene, "grass", [0.78, 1.0, 0.62]);
+    let land = scene.add_mesh(kit::slab(
+        Vec2::splat(-160.0),
+        Vec2::splat(160.0),
+        floor,
+        6.0,
+    ));
+    scene.add_instance(land, meadow, Mat4::IDENTITY);
+    kit::hills(&mut scene, None);
+
+    // The masonry: piers to the deck's top with an impost where the arches
+    // spring and a plinth, the spans between them, a cornice, the deck's
+    // setts and what is left of its parapets.
+    let stone = kit::surface_tinted(&mut scene, "cobbles", [1.0, 0.93, 0.8]);
+    let setts = kit::surface_tinted(&mut scene, "cobbles", [0.8, 0.84, 0.66]);
+    let spring = DECK_TOP - 2.0 - ARCH;
+    let pier_half = SPAN * 0.5 - ARCH;
+    let side = Vec3::new(pier_half, 0.0, DECK_HALF);
+    let ledge = Vec3::new(0.3, 0.0, 0.3);
+    let pier = scene.add_mesh(kit::block(
+        Vec3::new(0.0, floor - 2.0, 0.0) - side,
+        Vec3::new(0.0, DECK_TOP, 0.0) + side,
+        MASONRY,
+    ));
+    let impost = scene.add_mesh(kit::block(
+        Vec3::new(0.0, spring - 0.7, 0.0) - side - ledge,
+        Vec3::new(0.0, spring, 0.0) + side + ledge,
+        MASONRY,
+    ));
+    let plinth = scene.add_mesh(kit::block(
+        Vec3::new(0.0, floor - 2.0, 0.0) - side - ledge * 2.0,
+        Vec3::new(0.0, floor + 2.2, 0.0) + side + ledge * 2.0,
+        MASONRY,
+    ));
+    let span = scene.add_mesh(viaduct_span());
+    let spans = ((DECK[1] - DECK[0]) / SPAN) as i32;
+    for k in 0..=spans {
+        let at = Mat4::from_translation(Vec3::X * (DECK[0] + k as f32 * SPAN));
+        for mesh in [pier, impost, plinth] {
+            scene.add_instance(mesh, stone, at);
+        }
+        if k < spans {
+            let middle = at * Mat4::from_translation(Vec3::X * (SPAN * 0.5));
+            scene.add_instance(span, stone, middle);
+        }
+    }
+    let lip = Vec3::new(0.0, 0.0, 0.35);
+    let cornice = scene.add_mesh(kit::block(
+        Vec3::new(DECK[0] - pier_half, DECK_TOP - 0.6, -DECK_HALF) - lip,
+        Vec3::new(DECK[1] + pier_half, DECK_TOP - 0.02, DECK_HALF) + lip,
+        MASONRY,
+    ));
+    scene.add_instance(cornice, stone, Mat4::IDENTITY);
+    let deck = scene.add_mesh(kit::slab(
+        Vec2::new(DECK[0] - pier_half, -DECK_HALF),
+        Vec2::new(DECK[1] + pier_half, DECK_HALF),
+        DECK_TOP,
+        2.5,
+    ));
+    scene.add_instance(deck, setts, Mat4::IDENTITY);
+    // The parapets in lengths of 4 m, one in four fallen.
+    for k in 0..((DECK[1] - DECK[0]) / 4.0) as i32 {
+        for (s, z) in [(0, -DECK_HALF), (1, DECK_HALF - 0.55)] {
+            if hash2(k, s, 0x9a11) < 0.25 {
+                continue;
+            }
+            let x = DECK[0] + k as f32 * 4.0;
+            let tall = 0.75 + 0.5 * hash2(k, s, 0x9a12);
+            let wall = scene.add_mesh(kit::block(
+                Vec3::new(x + 0.06, DECK_TOP, z),
+                Vec3::new(x + 3.94, DECK_TOP + tall, z + 0.55),
+                2.5,
+            ));
+            scene.add_instance(wall, stone, Mat4::IDENTITY);
+        }
+    }
+    // Past the fall: a pier still near its height, one broken low, and the
+    // stones of the spans between them in the grass.
+    for (x, top) in [
+        (DECK[1] + SPAN, DECK_TOP - 3.5),
+        (DECK[1] + 2.0 * SPAN, 13.0),
+    ] {
+        let stump = scene.add_mesh(kit::block(
+            Vec3::new(x, floor - 2.0, 0.0) - side,
+            Vec3::new(x, top, 0.0) + side,
+            MASONRY,
+        ));
+        scene.add_instance(stump, stone, Mat4::IDENTITY);
+        scene.add_instance(plinth, stone, Mat4::from_translation(Vec3::X * x));
+    }
+    let boulder = kit::prop(&mut scene, "boulder");
+    for k in 0..46 {
+        let h = |i: i32| hash2(k, i, 0x4b1d);
+        let height = 0.8 + 3.4 * h(2) * h(2);
+        let at = Vec3::new(
+            DECK[1] + 4.0 + 44.0 * h(0),
+            floor - 0.3 * height,
+            (h(1) - 0.5) * 30.0,
+        );
+        boulder.place(&mut scene, at, 6.3 * h(3), height);
+    }
+    // The valley's floor: a road of setts under the ninth arch, and pines
+    // in stands either side of it.
+    let road_x = DECK[0] + 8.5 * SPAN;
+    let road = scene.add_mesh(kit::slab(
+        Vec2::new(road_x - 2.6, -150.0),
+        Vec2::new(road_x + 2.6, 150.0),
+        floor + 0.04,
+        3.0,
+    ));
+    scene.add_instance(road, setts, Mat4::IDENTITY);
+    let pine = kit::prop(&mut scene, "pine");
+    for k in 0..900 {
+        let h = |i: i32| hash2(k, i, 0x71de);
+        let (x, z) = (-150.0 + 300.0 * h(0), -150.0 + 300.0 * h(1));
+        let stand = noise2(x / 38.0 + 3.0, z / 38.0 + 7.0, 0x33);
+        if stand < 0.44 || (x - road_x).abs() < 7.0 || z.abs() < 9.0 {
+            continue;
+        }
+        let at = Vec3::new(x, floor - 0.3, z);
+        pine.place(&mut scene, at, 6.3 * h(2), 9.0 + 9.0 * h(3));
+    }
+
+    // The terrain: level at the deck's top, its control map (0.25 m a
+    // texel) the deck between its parapets as layer 1, ragged at the
+    // edges, and layer 0 everywhere else.
+    let size = Vec2::new(256.0, 64.0);
+    let (cw, ch) = (1024u32, 256u32);
+    let mut rgba = Vec::with_capacity((cw * ch * 4) as usize);
+    for y in 0..ch {
+        for x in 0..cw {
+            let at = (Vec2::new(x as f32, y as f32) + 0.5) / Vec2::new(cw as f32, ch as f32) * size
+                - size * 0.5;
+            let ragged = 0.7 * noise2(at.x / 2.3, at.y / 2.3, 0x51);
+            let across = 1.0 - smooth(DECK_HALF - 1.9, DECK_HALF - 0.9, at.y.abs() + ragged);
+            let along =
+                smooth(DECK[0], DECK[0] + 2.0, at.x) * (1.0 - smooth(DECK[1], DECK[1] + 1.5, at.x));
+            let grown = (across * along * 255.0) as u8;
+            rgba.extend_from_slice(&[255 - grown, grown, 0, 0]);
+        }
+    }
+    let (w, h) = (129u32, 33u32);
+    let handle = scene.add_terrain(TerrainData {
+        heights: Arc::from(vec![DECK_TOP; (w * h) as usize]),
+        control: Some(TerrainControl {
+            width: cw,
+            height: ch,
+            rgba: Arc::from(rgba),
+        }),
+        ..TerrainData::flat(size, w, h)
+    });
+    let layer = TerrainLayer {
+        color: Vec3::splat(0.75),
+        ..Default::default()
+    };
+    scene.world.terrains.push(Terrain {
+        layers: vec![layer, layer],
+        fade_in: false,
+        visible,
+        ..Terrain::new(handle)
+    });
+
+    // What grows on the deck.
+    let plant = scene.add_material(Material {
+        base_color: [1.0; 4],
+        roughness: 0.85,
+        ..Default::default()
+    });
+    let green = scene.add_material(Material {
+        base_color: [0.3, 0.42, 0.12, 1.0],
+        roughness: 0.85,
+        ..Default::default()
+    });
+    let tuft = scene.add_mesh(grass_tuft());
+    let heather = scene.add_mesh(flower_clump([0.42, 0.12, 0.52], true));
+    let gold = scene.add_mesh(flower_clump([0.95, 0.66, 0.05], false));
+    // Young pines, a metre tall at scale 1.
+    let (sapling, bark) = pine.rooted(&mut scene, 1.0);
+    let grown = |scatter: TerrainScatter| TerrainScatter {
+        layer: 1,
+        distance: 220.0,
+        fade: 0.2,
+        ..scatter
+    };
+    for (mesh, material, scatter) in [
+        (
+            tuft,
+            green,
+            TerrainScatter {
+                density: 16.0,
+                scale: [0.7, 1.7],
+                seed: 3,
+                sway: 0.6,
+                noise_scale: 4.0,
+                noise_threshold: 0.3,
+                ..Default::default()
+            },
+        ),
+        (
+            heather,
+            plant,
+            TerrainScatter {
+                density: 1.6,
+                scale: [0.8, 1.5],
+                seed: 31,
+                sway: 0.6,
+                noise_scale: 6.0,
+                noise_threshold: 0.45,
+                ..Default::default()
+            },
+        ),
+        (
+            gold,
+            plant,
+            TerrainScatter {
+                density: 1.6,
+                scale: [0.8, 1.5],
+                seed: 37,
+                sway: 0.6,
+                noise_scale: 6.0,
+                noise_threshold: 0.45,
+                ..Default::default()
+            },
+        ),
+        (
+            sapling,
+            bark,
+            TerrainScatter {
+                density: 0.02,
+                scale: [1.6, 4.6],
+                seed: 11,
+                sway: 0.2,
+                footprint: 1.4,
+                ..Default::default()
+            },
+        ),
+    ] {
+        scene.world.scatters.push(ScatterDraw {
+            terrain: 0,
+            mesh,
+            material,
+            scatter: grown(scatter),
+            cast_shadows: true,
+            impostor: None,
+            impostor_distance: 0.0,
+            with: None,
+            lods: [None; 2],
+        });
+    }
+    scene.frame.camera = camera_at(
+        Vec3::new(-96.0, DECK_TOP + 5.5, 13.0),
+        Vec3::new(4.0, DECK_TOP - 6.0, -6.0),
+    );
     scene
 }

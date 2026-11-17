@@ -1572,7 +1572,7 @@ pub fn build(name: &str) -> Result<GfxScene, String> {
             Ok(())
         },
         "terrain-hidden" => |g, _| {
-            g.scene = crate::fork_scenes::terrain_flags_scene(false, true);
+            g.scene = crate::fork_scenes::viaduct_scene(false);
             Ok(())
         },
         "terrain-scatter-unshadowed" => |g, _| {
