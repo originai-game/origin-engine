@@ -26,7 +26,7 @@
   grid of their own.
 -->
 <section id="CardCollection" part="CardCollection.frame" data-layout="shell" aria-label={title || t("card.collection.cards")}>
-  {#if title}<header part="CardCollection.band"><h2 part="CardCollection.title">{title}</h2></header>{/if}
+  {#if title}<header part="CardCollection.band" data-layout="row"><h2 part="CardCollection.title">{title}</h2></header>{/if}
   {#if filters.length}<div class="filters" role="tablist" aria-label={t("card.collection.filters")} ontabNext={tabNext} ontabPrev={tabPrev}>
     <div class="filters-scroll">
       <div class="filters-row" data-layout="row" data-gap="tight">
@@ -55,7 +55,7 @@
                 {#if c.owned > 1}<span part="CardCollection.badge" class="owned">{t("card.collection.owned", { count: c.owned })}</span>{/if}
                 {#if c.inDeck > 0}<span part="CardCollection.badge" class="in-deck">{t("card.collection.inDeck", { count: c.inDeck })}</span>{/if}
               </div>
-              <div part="CardCollection.badge" class="state" aria-label={c.reason || (c.locked ? t("card.collection.locked") : t("card.collection.refused"))}><og-icon icon={c.locked ? "lock" : "close"}></og-icon></div>
+              <div part="CardCollection.badge" class="state" data-layout="row" data-gap="none" aria-label={c.reason || (c.locked ? t("card.collection.locked") : t("card.collection.refused"))}><og-icon icon={c.locked ? "lock" : "close"}></og-icon></div>
             </div></button>
           {/if}
         {/each}
@@ -67,9 +67,9 @@
 </section>
 
 <style>
-[part="CardCollection.band"] { display: flex; width: stretch; align-items: center; justify-content: center; flex: none; }
+[part="CardCollection.band"] { width: stretch; justify-content: center; flex: none; }
 [part="CardCollection.title"] { margin: 0; }
-.filters { display: flex; width: stretch; flex: none; }
+.filters { width: stretch; flex: none; }
 .filters-scroll { width: stretch; overflow-x: auto; overflow-y: hidden; min-width: 0; }
 [part="CardCollection.filter CardCollection.cell"] { flex: none; min-height: var(--size-touch); padding: 0 var(--space-md); }
 /* A card is at least the tile wide: five to a desktop panel, two on a phone. */
@@ -78,8 +78,8 @@
 .cell-face { position: relative; width: stretch; height: stretch; }
 /* Counts have their own footer, never laid over art or rules. */
 .badges { justify-content: center; padding: var(--space-xxs); }
-[part="CardCollection.badge"] { padding: 0 var(--space-xs); white-space: nowrap; font-variant-numeric: tabular-nums; }
-.state { position: absolute; inset-inline-end: var(--space-xxs); top: var(--space-xxs); display: flex; width: var(--size-sm); height: var(--size-sm); padding: 0; align-items: center; justify-content: center; }
+[part="CardCollection.badge"] { white-space: nowrap; }
+.state { position: absolute; inset-inline-end: var(--space-xxs); top: var(--space-xxs); width: var(--size-sm); height: var(--size-sm); padding: 0; justify-content: center; }
 .state og-icon { width: 70%; height: 70%; }
 .empty { width: stretch; }
 .empty-text { margin: 0; }

@@ -16,14 +16,14 @@
 <meta name="fixture:error" content='{"error":"Updates are temporarily unavailable. Try again when connected."}'>
 <meta name="fixture:overflow" content='{"selected":"long","entries":[{"id":"long","title":"The northern expedition and the return of the Watcher of the Ninefold Gate","date":"16 November 2026 · 09:00 UTC","kind":"Community event and balance notes","summary":"An announcement with a long title and detailed changes that remain readable at phone widths.","body":"Expedition changes\nThe new route includes additional checkpoints and improved navigation markers.\n\nEquipment changes\nLong equipment descriptions wrap instead of hiding important information.","image":0,"unread":true,"pinned":true,"actionLabel":"Read the complete expedition update"}]}'>
 
-<section id="News" part="News.frame" aria-label={title || t("meta.news.title")} aria-busy={loading}>
+<section id="News" part="News.frame" data-layout="stack" data-gap="loose" aria-label={title || t("meta.news.title")} aria-busy={loading}>
   <header part="News.band"><h2 part="News.title">{title || t("meta.news.title")}</h2></header>
-  {#if loading}<div class="wait" role="status"><Spinner name={t("meta.loading")} /><span>{t("meta.loading")}</span></div>
+  {#if loading}<div class="wait" data-layout="row" role="status"><Spinner name={t("meta.loading")} /><span>{t("meta.loading")}</span></div>
   {:else if error}<ErrorState body={error} />
   {:else if !entries.length}<EmptyState title={t("meta.news.empty")} icon="flag" />
-  {:else}<ul part="News.list" class="list">
-    {#each entries as entry (entry.id)}<li><article part="News.article News.card" class="article" data-unread={entry.unread} data-pinned={entry.pinned}>
-      <div class="meta"><span part="News.kind News.caption" class="kind">{entry.kind}</span><span part="News.date News.caption" class="date">{entry.date}</span>{#if entry.pinned}<span part="News.badge" class="badge">{t("meta.news.pinned")}</span>{/if}{#if entry.unread}<span part="News.badge" class="badge">{t("meta.news.unread")}</span>{/if}</div>
+  {:else}<ul part="News.list" class="list" data-layout="stack" data-gap="loose">
+    {#each entries as entry (entry.id)}<li><article part="News.article News.card" class="article" data-layout="stack" data-unread={entry.unread} data-pinned={entry.pinned}>
+      <div class="meta" data-layout="cluster"><span part="News.kind News.caption" class="kind">{entry.kind}</span><span part="News.date News.caption" class="date">{entry.date}</span>{#if entry.pinned}<span part="News.badge" class="badge">{t("meta.news.pinned")}</span>{/if}{#if entry.unread}<span part="News.badge" class="badge">{t("meta.news.unread")}</span>{/if}</div>
       <div part="News.heading" role="heading" aria-level="3"><button part="News.toggle" class="toggle" aria-expanded={entry.id == selected} aria-label={entry.title} disabled={disabled} onclick={choose}><span part="News.headline" class="headline">{entry.title}</span></button></div>
       {#if entry.summary}<p part="News.summary News.caption" class="summary">{entry.summary}</p>{/if}
       {#if entry.id == selected}
@@ -36,16 +36,15 @@
 </section>
 
 <style>
-:host { display: flex; flex-direction: column; inline-size: stretch; gap: var(--space-md); }
+:host { inline-size: stretch; }
 h2, h3, p { margin: 0; overflow-wrap: anywhere; }
-.list { display: flex; flex-direction: column; gap: var(--space-md); margin: 0; padding: 0; list-style: none; }
-.article { display: flex; flex-direction: column; align-items: start; gap: var(--space-sm); }
-.meta { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-sm); }
+.list { margin: 0; padding: 0; list-style: none; }
+.article { align-items: start; }
 [part="News.heading"] { inline-size: stretch; }
 .toggle { display: block; inline-size: stretch; min-block-size: var(--touch-target); text-align: start; white-space: normal; overflow-wrap: anywhere; }
 .headline { display: block; inline-size: stretch; white-space: normal; overflow-wrap: anywhere; }
 .picture { inline-size: 100%; max-block-size: var(--size-6xl); aspect-ratio: 2; object-fit: cover; }
 .body { white-space: pre-wrap; }
 .action { max-inline-size: 100%; min-block-size: var(--touch-target); white-space: normal; }
-.wait { display: flex; align-items: center; gap: var(--space-sm); padding: var(--space-lg); }
+.wait { padding: var(--space-lg); }
 </style>

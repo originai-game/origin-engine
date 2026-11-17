@@ -1,6 +1,6 @@
 <meta name="component" content="PassTrack">
 <meta name="strings" content="./meta.en.ogt">
-<meta name="parts" content="PassTrack.frame PassTrack.band PassTrack.title PassTrack.season PassTrack.refresh PassTrack.progress PassTrack.rewards PassTrack.reward PassTrack.tier PassTrack.lane PassTrack.well PassTrack.icon PassTrack.name PassTrack.amount PassTrack.detail PassTrack.state PassTrack.claim PassTrack.upgrade">
+<meta name="parts" content="PassTrack.frame PassTrack.band PassTrack.title PassTrack.season PassTrack.refresh PassTrack.progress PassTrack.rewards PassTrack.reward PassTrack.tier PassTrack.lane PassTrack.well PassTrack.icon PassTrack.name PassTrack.amount PassTrack.detail PassTrack.state PassTrack.claim PassTrack.upgrade PassTrack.caption PassTrack.card PassTrack.headline PassTrack.figure">
 <meta name="prop:title" content="string" data-default="" data-doc="Heading; empty uses Season pass.">
 <meta name="prop:season" content="string" data-default="" data-doc="The game's season name.">
 <meta name="prop:refresh" content="string" data-default="" data-doc="The game's already formatted time remaining; no clock runs here.">
@@ -21,19 +21,19 @@
 <meta name="fixture:error" content='{"error":"The season service is unavailable. Your progress is saved."}'>
 <meta name="fixture:premium" content='{"premiumUnlocked":true,"progress":1,"progressText":"Season complete","rewards":[{"id":"skin","tier":"50","premium":true,"name":"Watcher of the Ninefold Gate","icon":"crown","amount":"1","detail":"An exclusive outfit for completing this season’s premium track.","state":"available"}]}'>
 
-<section id="PassTrack" part="PassTrack.frame" aria-label={title || t("meta.pass.title")} aria-busy={loading}>
-  <header part="PassTrack.band" class="band"><div class="heading"><h2 part="PassTrack.title">{title || t("meta.pass.title")}</h2>{#if season}<span part="PassTrack.season" class="muted">{season}</span>{/if}</div>{#if refresh}<span part="PassTrack.refresh" class="muted">{refresh}</span>{/if}{#if !premiumUnlocked && upgradeLabel}<button id="Upgrade" part="PassTrack.upgrade" disabled={disabled || loading || !!error} onclick={upgrade}>{upgradeLabel}</button>{/if}</header>
-  {#if loading}<div class="wait" role="status"><Spinner name={t("meta.loading")} /><span>{t("meta.loading")}</span></div>
+<section id="PassTrack" part="PassTrack.frame" data-layout="stack" data-gap="loose" aria-label={title || t("meta.pass.title")} aria-busy={loading}>
+  <header part="PassTrack.band" class="band" data-layout="cluster" data-gap="loose"><div class="heading" data-layout="stack" data-gap="hair" data-fill><h2 part="PassTrack.title">{title || t("meta.pass.title")}</h2>{#if season}<span part="PassTrack.season PassTrack.caption" class="muted">{season}</span>{/if}</div>{#if refresh}<span part="PassTrack.refresh PassTrack.caption" class="muted">{refresh}</span>{/if}{#if !premiumUnlocked && upgradeLabel}<button id="Upgrade" part="PassTrack.upgrade" disabled={disabled || loading || !!error} onclick={upgrade}>{upgradeLabel}</button>{/if}</header>
+  {#if loading}<div class="wait" data-layout="row" role="status"><Spinner name={t("meta.loading")} /><span>{t("meta.loading")}</span></div>
   {:else if error}<ErrorState body={error} />
   {:else if !rewards.length}<EmptyState title={t("meta.pass.empty")} icon="bag" />
   {:else}
     <div part="PassTrack.progress"><ProgressBar value={progress} label={t("meta.pass.progress")} valueText={progressText} showValue={true} /></div>
-    <ol part="PassTrack.rewards" class="track" aria-label={t("meta.pass.rewards")}>
-      {#each rewards as reward (reward.id)}<li part="PassTrack.reward" class="reward" data-state={reward.state} data-premium={reward.premium}>
-        <div class="tier"><div part="PassTrack.tier">{t("meta.pass.tier", { tier: reward.tier })}</div><div part="PassTrack.lane" class="muted">{reward.premium ? t("meta.pass.premium") : t("meta.pass.free")}</div></div>
-        <div part="PassTrack.well" class="well"><og-icon part="PassTrack.icon" class="icon" icon={reward.icon}></og-icon></div>
-        <h3 part="PassTrack.name">{reward.name}</h3>{#if reward.amount}<span part="PassTrack.amount">{reward.amount}</span>{/if}{#if reward.detail}<p part="PassTrack.detail" class="muted">{reward.detail}</p>{/if}
-        <span part="PassTrack.state" class="state" data-state={reward.state}>{reward.state == 'claimed' ? t("meta.claimed") : reward.premium && !premiumUnlocked ? t("meta.pass.requiresPremium") : reward.state == 'available' ? t("meta.available") : t("meta.locked")}</span>
+    <ol part="PassTrack.rewards" class="track" data-layout="row" aria-label={t("meta.pass.rewards")}>
+      {#each rewards as reward (reward.id)}<li part="PassTrack.reward PassTrack.card" class="reward" data-layout="stack" data-gap="tight" data-state={reward.state} data-premium={reward.premium}>
+        <div class="tier" data-layout="cluster" data-gap="tight"><div part="PassTrack.tier PassTrack.caption">{t("meta.pass.tier", { tier: reward.tier })}</div><div part="PassTrack.lane PassTrack.caption" class="muted">{reward.premium ? t("meta.pass.premium") : t("meta.pass.free")}</div></div>
+        <div part="PassTrack.well" class="well" data-layout="row" data-gap="none"><og-icon part="PassTrack.icon" class="icon" icon={reward.icon}></og-icon></div>
+        <h3 part="PassTrack.name PassTrack.headline">{reward.name}</h3>{#if reward.amount}<span part="PassTrack.amount PassTrack.figure" class="amount">{reward.amount}</span>{/if}{#if reward.detail}<p part="PassTrack.detail PassTrack.caption" class="muted">{reward.detail}</p>{/if}
+        <span part="PassTrack.state PassTrack.caption" class="state" data-tone={reward.state == 'claimed' ? 'success' : ''} data-state={reward.state}>{reward.state == 'claimed' ? t("meta.claimed") : reward.premium && !premiumUnlocked ? t("meta.pass.requiresPremium") : reward.state == 'available' ? t("meta.available") : t("meta.locked")}</span>
         <button part="PassTrack.claim" disabled={disabled || reward.state != 'available' || (reward.premium && !premiumUnlocked)} onclick={claim}>{t("meta.claim")}</button>
       </li>{/each}
     </ol>
@@ -41,20 +41,16 @@
 </section>
 
 <style>
-:host { display: flex; flex-direction: column; inline-size: stretch; gap: var(--space-md); }
-.band { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-sm) var(--space-md); }
-.heading { display: flex; flex-direction: column; flex: 1 1 var(--measure-xs); min-inline-size: 0; gap: var(--space-xxs); }
+:host { inline-size: stretch; }
+.heading { flex-basis: var(--measure-xs); }
 h2, h3, p { margin: 0; overflow-wrap: anywhere; }
-h3 { font: var(--text-base); font-weight: var(--font-weight-semibold); }
-.muted { font: var(--text-sm); color: var(--ink-muted); overflow-wrap: anywhere; }
-.track { display: flex; gap: var(--space-sm); overflow-x: auto; scroll-snap-type: x proximity; margin: 0; padding: var(--space-xs); list-style: none; }
-.reward { display: flex; flex-direction: column; flex: 0 0 var(--measure-xs); max-inline-size: 100%; gap: var(--space-xs); padding: var(--space-md); background: var(--panel-raised); border: var(--stroke-thin) solid var(--line); border-radius: var(--radius-card); scroll-snap-align: start; }
-.tier { display: flex; justify-content: space-between; flex-wrap: wrap; gap: var(--space-xs); font: var(--text-sm); }
-.well { display: flex; align-items: center; justify-content: center; block-size: var(--size-xl); }
+.muted { overflow-wrap: anywhere; }
+.track { align-items: stretch; overflow-x: auto; scroll-snap-type: x proximity; margin: 0; padding: var(--space-xs); list-style: none; }
+.reward { flex: 0 0 var(--measure-xs); max-inline-size: 100%; scroll-snap-align: start; }
+.tier { justify-content: space-between; }
+.well { justify-content: center; block-size: var(--size-xl); }
 .icon { inline-size: var(--size-lg); block-size: var(--size-lg); }
-[part="PassTrack.amount"] { font-family: var(--figure-font); }
-.state { margin-top: auto; font: var(--text-sm); }
-[data-state="claimed"] .state { color: var(--success); }
-.wait { display: flex; align-items: center; gap: var(--space-sm); padding: var(--space-lg); }
+.state { margin-top: auto; }
+.wait { padding: var(--space-lg); }
 button { min-block-size: var(--touch-target); white-space: normal; }
 </style>

@@ -15,8 +15,11 @@ They are built into the engine: a game's page uses one by name
 
 Each member uses HTML with CSS: `:host` owns its root, optional content
 uses `{#if}`, and scroll containers use `overflow`. Its default appearance
-uses the shared design tokens for typography, surfaces and spacing, in the
-`og-components` layer. A style pack (`og-pack`, above it) can dress the named parts
+comes from shared role parts and tokens; its own CSS supplies only layout.
+`data-layout` and `data-gap` select the shared layout primitives and spacing,
+and `data-motion` selects shared motion. Role aliases follow the existing
+public part names, so the original hooks remain available. CardHand sets
+`--card-fill` to keep overlapping cards opaque. A style pack can dress the named parts
 (docs/ui.md §3.2), qualified by their states and `data-*` attributes, for
 example `CardFace.frame[data-rarity=legendary]` or
 `button[aria-selected=true]::part(CardHand\.card)`. Each member lists its

@@ -1,6 +1,6 @@
 <meta name="component" content="Friends">
 <meta name="strings" content="./general.en.ogt">
-<meta name="parts" content="Friends.frame Friends.band Friends.title Friends.heading Friends.request Friends.row Friends.avatar Friends.presence Friends.name Friends.status Friends.picture Friends.well Friends.label">
+<meta name="parts" content="Friends.frame Friends.band Friends.title Friends.heading Friends.request Friends.row Friends.avatar Friends.presence Friends.name Friends.status Friends.picture Friends.well Friends.label Friends.dot Friends.caption Friends.headline">
 <meta name="prop:title" content="string" data-doc="The panel's heading; empty takes the group's (Friends).">
 <meta name="prop:requests" content="list" data-doc="Friend requests waiting for an answer: keyed rows of { id, name, avatar, note }: avatar an icon of the style's atlas; note a second line as the game words it (3 mutual friends), empty hides it. Empty hides the section.">
 <meta name="prop:friends" content="list" data-doc="The friends in the game's order: keyed rows of { id, name, avatar, status, activity, canInvite, invited }: status online, ingame, away or offline, shown in words and by a mark; activity what they are doing (Ranked match, Last seen 2 d ago), empty hides it; canInvite the game will send an invite; invited one is pending.">
@@ -20,8 +20,8 @@
   and scrolls inside it.
 -->
 <section id="Friends" part="Friends.frame" data-layout="shell" aria-label={title != '' ? title : t("general.friends.name")}>
-  <header part="Friends.band">
-    <h2 part="Friends.title">{title != '' ? title : t("general.friends.name")}</h2>
+  <header part="Friends.band" data-layout="cluster" data-gap="loose">
+    <h2 part="Friends.title" data-fill>{title != '' ? title : t("general.friends.name")}</h2>
     <button id="Add" class="secondary" onclick={add}><og-icon class="mark" icon="plus"></og-icon><span>{t("general.friends.add")}</span></button>
   </header>
   <div class="body" data-layout="scroll" data-gap="loose">
@@ -29,11 +29,11 @@
       <h3 part="Friends.heading">{t("general.friends.requests")}</h3>
       <ul class="rows" data-layout="stack" data-gap="hair">
         {#each requests as r (r.id)}
-          <li part="Friends.request" data-layout="cluster" aria-label={r.name}>
-            <div part="Friends.avatar Friends.picture"><og-icon class="avatar-icon" icon={r.avatar}></og-icon></div>
+          <li part="Friends.request Friends.row" data-layout="cluster" aria-label={r.name}>
+            <div part="Friends.avatar Friends.picture Friends.well" data-layout="row" data-gap="none"><og-icon class="avatar-icon" icon={r.avatar}></og-icon></div>
             <div class="who" data-layout="stack" data-gap="none" data-fill>
-              <p part="Friends.name">{r.name}</p>
-              {#if r.note}<span class="note">{r.note}</span>{/if}
+              <p part="Friends.name Friends.headline">{r.name}</p>
+              {#if r.note}<span part="Friends.caption" class="note">{r.note}</span>{/if}
             </div>
             <div class="actions" data-layout="row" data-gap="tight">
               <button id="Accept" variant="primary" aria-label={t("general.friends.acceptName", { name: r.name })} onclick={accept}><og-icon class="mark" icon="check"></og-icon><span class="action-label">{t("general.friends.accept")}</span></button>
@@ -49,11 +49,11 @@
         <ul class="rows" data-layout="stack" data-gap="hair" aria-label={t("general.friends.list")}>
           {#each friends as f (f.id)}
             <li class="friend" data-layout="row">
-              <button part="Friends.row" data-status={f.status} data-selected={f.id == selected} aria-current={f.id == selected ? 'true' : 'false'} aria-label={f.name} onclick={choose}><div class="face" data-layout="row">
-                <div part="Friends.avatar Friends.picture" data-status={f.status}><og-icon class="avatar-icon" icon={f.avatar}></og-icon><div part="Friends.presence Friends.well" data-status={f.status}></div></div>
+              <button part="Friends.row" data-fill data-status={f.status} data-selected={f.id == selected} aria-current={f.id == selected ? 'true' : 'false'} aria-label={f.name} onclick={choose}><div class="face" data-layout="row">
+                <div part="Friends.avatar Friends.picture Friends.well" data-layout="row" data-gap="none" data-status={f.status}><og-icon class="avatar-icon" icon={f.avatar}></og-icon><div part="Friends.presence Friends.well Friends.dot" class="presence" data-tone={f.status == 'online' ? 'success' : f.status == 'ingame' ? 'info' : f.status == 'away' ? 'warn' : ''} data-status={f.status}></div></div>
                 <div class="who" data-layout="stack" data-gap="none" data-fill>
-                  <p part="Friends.name">{f.name}</p>
-                  <div class="line" data-layout="row"><p part="Friends.status Friends.label" data-status={f.status}>{f.status == 'ingame' ? t("general.friends.ingame") : f.status == 'online' ? t("general.friends.online") : f.status == 'away' ? t("general.friends.away") : t("general.friends.offline")}</p>{#if f.activity}<span class="activity">{f.activity}</span>{/if}</div>
+                  <p part="Friends.name Friends.headline">{f.name}</p>
+                  <div class="line" data-layout="row"><p part="Friends.status Friends.label" data-status={f.status}>{f.status == 'ingame' ? t("general.friends.ingame") : f.status == 'online' ? t("general.friends.online") : f.status == 'away' ? t("general.friends.away") : t("general.friends.offline")}</p>{#if f.activity}<span part="Friends.caption" class="activity">{f.activity}</span>{/if}</div>
                 </div>
               </div></button>
               {#if f.canInvite || f.invited}<button id="Invite" class="secondary" data-invited={f.invited} disabled={f.invited} aria-label={f.invited ? t("general.friends.invitedName", { name: f.name }) : t("general.friends.inviteName", { name: f.name })} onclick={invite}><og-icon class="mark" icon={f.invited ? 'clock' : 'plus'}></og-icon><span class="action-label">{f.invited ? t("general.friends.invited") : t("general.friends.invite")}</span></button>{/if}
@@ -69,26 +69,27 @@
 
 <style>
 :host p { margin: 0; }
-[part="Friends.band"] { display: flex; width: stretch; align-items: center; gap: var(--space-xs) var(--space-md); flex: none; flex-wrap: wrap; }
-[part="Friends.title"] { margin: 0; flex: 1; min-width: 0; }
-#Add { flex: none; margin-inline-start: auto; min-height: var(--size-touch); gap: var(--space-xs); }
+[part="Friends.band"] { width: stretch; flex: none; }
+[part="Friends.title"] { margin: 0; }
+#Add { flex: none; margin-inline-start: auto; min-height: var(--size-touch); }
 .mark { width: var(--size-xs); height: var(--size-xs); flex: none; }
 .section { width: stretch; }
 [part="Friends.heading"] { margin: 0; padding: var(--space-xxs) var(--space-sm); }
 .rows { width: stretch; margin: 0; padding: 0; list-style: none; }
-[part="Friends.request"], .friend { width: stretch; }
-[part="Friends.request"] { padding: var(--space-xs) var(--space-sm); }
-[part="Friends.row"] { flex: 1; min-width: 0; min-height: var(--size-touch); padding: var(--space-xs) var(--space-sm); justify-content: flex-start; }
+[part~="Friends.request"], .friend { width: stretch; }
+[part~="Friends.request"] { padding: var(--space-xs) var(--space-sm); }
+button[part="Friends.row"] { min-height: var(--size-touch); padding: var(--space-xs) var(--space-sm); justify-content: flex-start; }
 [part="Friends.row"] .face { width: stretch; }
-[part="Friends.avatar Friends.picture"] { position: relative; display: flex; flex: none; width: var(--size-lg); height: var(--size-lg); align-items: center; justify-content: center; border-radius: var(--radius-capsule); background: var(--control-strong); }
+[part~="Friends.avatar"] { position: relative; flex: none; width: var(--size-lg); height: var(--size-lg); justify-content: center; }
 .avatar-icon { width: var(--size-sm); height: var(--size-sm); }
-[part="Friends.presence Friends.well"] { position: absolute; inset-inline-end: 0; bottom: 0; width: var(--space-md); height: var(--space-md); }
-[part="Friends.name"] { text-align: start; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.presence { --dot-fill: currentColor; position: absolute; inset-inline-end: 0; bottom: 0; width: var(--space-md); height: var(--space-md); }
+.presence[data-status=offline] { --dot-fill: var(--ink-disabled); }
+[part~="Friends.name"] { text-align: start; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .line { width: stretch; align-items: baseline; }
 [part="Friends.status Friends.label"] { flex: none; white-space: nowrap; }
-.activity, .note { min-width: 0; text-align: start; font: var(--text-sm); color: var(--ink-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.activity, .note { min-width: 0; text-align: start; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .actions { flex: none; margin-inline-start: auto; }
-.actions button, #Invite { flex: none; min-height: var(--size-touch); min-width: var(--size-touch); gap: var(--space-xs); }
+.actions button, #Invite { flex: none; min-height: var(--size-touch); min-width: var(--size-touch); }
 .empty { width: stretch; align-items: center; padding: var(--space-xl) 0; }
 .empty-mark { width: var(--size-lg); height: var(--size-lg); }
 .empty-text { margin: 0; }

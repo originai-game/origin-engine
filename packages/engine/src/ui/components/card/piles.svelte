@@ -1,6 +1,6 @@
 <meta name="component" content="CardPiles">
 <meta name="strings" content="./card.en.ogt">
-<meta name="parts" content="CardPiles.frame CardPiles.pile CardPiles.count CardPiles.label CardPiles.cell CardPiles.figure">
+<meta name="parts" content="CardPiles.frame CardPiles.pile CardPiles.count CardPiles.label CardPiles.cell CardPiles.figure CardPiles.badge">
 <meta name="prop:piles" content="list" data-doc="The piles in the game's order, keyed rows of { id, kind, label, icon, count, enabled }: kind is draw, discard, exhaust or the game's own word (it reaches the pile as data-kind); count the game's number; enabled false when the game will not open it.">
 <meta name="prop:label" content="string" data-doc="What a screen reader calls the group; empty is Piles.">
 <meta name="fixture:default" content='{"label":"","piles":[{"id":"draw","kind":"draw","label":"Draw","icon":"bag","count":14,"enabled":true},{"id":"discard","kind":"discard","label":"Discard","icon":"back","count":3,"enabled":true},{"id":"exhaust","kind":"exhaust","label":"Exhaust","icon":"fire","count":1,"enabled":true}]}'>
@@ -14,21 +14,21 @@
   spread across the width they are given; a page that wants the draw pile
   in one corner and the discard in the other mounts two.
 -->
-<nav id="CardPiles" part="CardPiles.frame" class="bare" aria-label={label || t("card.piles.name")}>
+<nav id="CardPiles" part="CardPiles.frame" class="bare" data-layout="row" aria-label={label || t("card.piles.name")}>
   {#each piles as p (p.id)}
-    <button part="CardPiles.pile CardPiles.cell" data-kind={p.kind} data-empty={p.count == 0} disabled={!p.enabled} aria-label={t("card.piles.count", { label: p.label, count: p.count })} onclick={open}><div class="face">
-      <div class="mark"><og-icon class="icon" icon={p.icon}></og-icon><span part="CardPiles.count CardPiles.figure" class="count">{formatNumber(p.count)}</span></div>
+    <button part="CardPiles.pile CardPiles.cell" data-kind={p.kind} data-empty={p.count == 0} disabled={!p.enabled} aria-label={t("card.piles.count", { label: p.label, count: p.count })} onclick={open}><div class="face" data-layout="stack" data-gap="hair">
+      <div class="mark" data-layout="row" data-gap="none"><og-icon class="icon" icon={p.icon}></og-icon><span part="CardPiles.count CardPiles.figure CardPiles.badge" class="count">{formatNumber(p.count)}</span></div>
       <span part="CardPiles.label" class="label">{p.label}</span>
     </div></button>
   {/each}
 </nav>
 
 <style>
-:host { display: flex; inline-size: stretch; gap: var(--space-sm); align-items: flex-end; justify-content: space-between; }
+:host { inline-size: stretch; align-items: flex-end; justify-content: space-between; }
 [part="CardPiles.pile CardPiles.cell"] { flex: 0 1 auto; min-width: var(--size-touch); min-height: var(--size-touch); padding: var(--space-xs); align-items: center; justify-content: center; }
-[part="CardPiles.pile CardPiles.cell"] .face { display: flex; flex-direction: column; align-items: center; gap: var(--space-xxs); min-width: 0; }
-.mark { position: relative; display: flex; width: var(--size-lg); height: var(--size-lg); align-items: center; justify-content: center; }
+[part="CardPiles.pile CardPiles.cell"] .face { align-items: center; min-width: 0; }
+.mark { position: relative; width: var(--size-lg); height: var(--size-lg); justify-content: center; }
 .icon { width: 70%; height: 70%; }
-[part="CardPiles.count CardPiles.figure"] { position: absolute; inset-inline-end: calc(var(--space-xs) * -1); bottom: calc(var(--space-xxs) * -1); min-width: var(--size-xs); padding: 0 var(--space-xxs); text-align: center; font-variant-numeric: tabular-nums; white-space: nowrap; background: var(--panel-raised); border-radius: var(--radius-capsule); }
+[part~="CardPiles.count"] { position: absolute; inset-inline-end: calc(var(--space-xs) * -1); bottom: calc(var(--space-xxs) * -1); min-width: var(--size-xs); text-align: center; white-space: nowrap; }
 [part="CardPiles.label"] { max-width: calc(var(--size-xxl) * 1.5); white-space: nowrap; text-overflow: ellipsis; overflow: hidden; text-align: center; }
 </style>

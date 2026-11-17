@@ -18,31 +18,31 @@
   every other day is a labelled tile that takes no focus and reports
   nothing. A day shows the word of the state the game gave it.
 -->
-<section id="DailyRewards" part="DailyRewards.frame" aria-label={title != '' ? title : t("general.rewards.name")}>
-  <header part="DailyRewards.band">
-    <h2 part="DailyRewards.title">{title != '' ? title : t("general.rewards.name")}</h2>
-    {#if refresh}<div part="DailyRewards.refresh DailyRewards.label" role="timer"><og-icon class="mark" icon="clock"></og-icon><span>{refresh}</span></div>{/if}
+<section id="DailyRewards" part="DailyRewards.frame" data-layout="shell" aria-label={title != '' ? title : t("general.rewards.name")}>
+  <header part="DailyRewards.band" data-layout="cluster" data-gap="loose">
+    <h2 part="DailyRewards.title" data-fill>{title != '' ? title : t("general.rewards.name")}</h2>
+    {#if refresh}<div part="DailyRewards.refresh DailyRewards.label" data-layout="row" data-gap="hair" role="timer"><og-icon class="mark" icon="clock"></og-icon><span>{refresh}</span></div>{/if}
   </header>
-  <div class="days-scroll">
-    <ol class="days">
+  <div class="days-scroll" data-layout="scroll" data-fill>
+    <ol class="days" data-layout="grid" data-gap="tight">
       {#each days as d (d.id)}
-        <li class="slot">
+        <li class="slot" data-layout="row" data-gap="none">
           {#if d.state == 'today' && canClaim}
-            <button part="DailyRewards.day DailyRewards.cell" data-state={d.state} data-milestone={d.milestone} aria-current="date" aria-label={t("general.rewards.day", { day: d.label, reward: d.amount, state: t("general.rewards.claim") })} onclick={claim}><div class="face">
+            <button part="DailyRewards.day DailyRewards.cell" data-state={d.state} data-milestone={d.milestone} aria-current="date" aria-label={t("general.rewards.day", { day: d.label, reward: d.amount, state: t("general.rewards.claim") })} onclick={claim}><div class="face" data-layout="stack" data-gap="hair">
               <p part="DailyRewards.label">{d.label}</p>
               <og-icon class="reward" icon={d.icon}></og-icon>
-              <p part="DailyRewards.amount DailyRewards.figure">{d.amount}</p>
-              <div part="DailyRewards.state DailyRewards.label" data-state={d.state}>
+              <p part="DailyRewards.amount DailyRewards.figure" data-fill>{d.amount}</p>
+              <div part="DailyRewards.state DailyRewards.label" data-layout="cluster" data-gap="hair" data-state={d.state}>
                 <og-icon class="mark" icon="star"></og-icon>
                 <span class="state-text">{t("general.rewards.claim")}</span>
               </div>
             </div></button>
           {:else}
-            <div part="DailyRewards.day DailyRewards.cell" role="group" data-state={d.state} data-milestone={d.milestone} aria-current={d.state == 'today' ? 'date' : 'false'} aria-label={t("general.rewards.day", { day: d.label, reward: d.amount, state: d.state == 'claimed' ? t("general.rewards.claimed") : d.state == 'missed' ? t("general.rewards.missed") : d.state == 'today' ? t("general.rewards.today") : t("general.rewards.upcoming") })}><div class="face">
+            <div part="DailyRewards.day DailyRewards.cell" data-layout="row" data-gap="none" role="group" data-state={d.state} data-milestone={d.milestone} aria-current={d.state == 'today' ? 'date' : 'false'} aria-label={t("general.rewards.day", { day: d.label, reward: d.amount, state: d.state == 'claimed' ? t("general.rewards.claimed") : d.state == 'missed' ? t("general.rewards.missed") : d.state == 'today' ? t("general.rewards.today") : t("general.rewards.upcoming") })}><div class="face" data-layout="stack" data-gap="hair">
               <p part="DailyRewards.label">{d.label}</p>
               <og-icon class="reward" icon={d.icon}></og-icon>
-              <p part="DailyRewards.amount DailyRewards.figure">{d.amount}</p>
-              <div part="DailyRewards.state DailyRewards.label" data-state={d.state}>
+              <p part="DailyRewards.amount DailyRewards.figure" data-fill>{d.amount}</p>
+              <div part="DailyRewards.state DailyRewards.label" data-layout="cluster" data-gap="hair" data-state={d.state} data-tone={d.state == 'claimed' ? 'success' : ''}>
                 <og-icon class="mark" icon={d.state == 'claimed' ? 'check' : d.state == 'missed' ? 'close' : d.state == 'today' ? 'star' : 'clock'}></og-icon>
                 <span class="state-text">{d.state == 'claimed' ? t("general.rewards.claimed") : d.state == 'missed' ? t("general.rewards.missed") : d.state == 'today' ? t("general.rewards.today") : t("general.rewards.upcoming")}</span>
               </div>
@@ -55,21 +55,16 @@
 </section>
 
 <style>
-:host { display: flex; flex-direction: column; inline-size: stretch; block-size: stretch; gap: var(--space-sm); container-type: inline-size; }
-[part="DailyRewards.band"] { display: flex; width: stretch; align-items: center; gap: var(--space-md); flex: none; flex-wrap: wrap; }
-[part="DailyRewards.title"] { margin: 0; flex: 1; min-width: 0; }
-[part="DailyRewards.refresh DailyRewards.label"] { display: flex; align-items: center; gap: var(--space-xxs); }
+[part="DailyRewards.band"] { width: stretch; flex: none; }
+[part="DailyRewards.title"] { margin: 0; }
 .mark { width: var(--size-xs); height: var(--size-xs); flex: none; }
-.days-scroll { flex: 1; min-height: 0; overflow-y: auto; }
-.days { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: var(--space-xs); width: stretch; margin: 0; padding: var(--space-xxs); list-style: none; }
-.slot { display: flex; width: stretch; min-width: 0; }
+.days { grid-template-columns: repeat(7, minmax(0, 1fr)); width: stretch; margin: 0; padding: var(--space-xxs); list-style: none; }
+.slot { width: stretch; min-width: 0; }
 [part="DailyRewards.day DailyRewards.cell"] { width: stretch; min-width: 0; height: stretch; min-height: calc(var(--size-xxl) * 1.5); padding: var(--space-xs); align-items: stretch; justify-content: flex-start; }
-div[part="DailyRewards.day DailyRewards.cell"] { display: flex; box-sizing: border-box; }
-[part="DailyRewards.day DailyRewards.cell"] .face { display: flex; flex-direction: column; width: stretch; height: stretch; align-items: center; gap: var(--space-xxs); }
+[part="DailyRewards.day DailyRewards.cell"] .face { width: stretch; height: stretch; align-items: center; }
 [part="DailyRewards.label"], [part="DailyRewards.amount DailyRewards.figure"] { margin: 0; text-align: center; overflow-wrap: anywhere; }
 .reward { width: var(--size-lg); height: var(--size-lg); flex: none; }
-[part="DailyRewards.amount DailyRewards.figure"] { flex: 1; font-variant-numeric: tabular-nums; }
-[part="DailyRewards.state DailyRewards.label"] { display: flex; width: stretch; align-items: center; justify-content: center; flex-wrap: wrap; gap: var(--space-xxs); }
+[part="DailyRewards.state DailyRewards.label"] { width: stretch; justify-content: center; }
 .state-text { text-align: center; }
 @container (width < 760px) {
   .days { grid-template-columns: repeat(4, minmax(0, 1fr)); }

@@ -1,6 +1,6 @@
 <meta name="component" content="CardFace">
 <meta name="strings" content="./card.en.ogt">
-<meta name="parts" content="CardFace.frame CardFace.cost CardFace.art CardFace.name CardFace.type CardFace.text CardFace.picture CardFace.label CardFace.figure">
+<meta name="parts" content="CardFace.frame CardFace.cost CardFace.art CardFace.name CardFace.type CardFace.text CardFace.picture CardFace.label CardFace.figure CardFace.well CardFace.headline CardFace.caption">
 <meta name="prop:name" content="string" data-doc="The card's name as the game words it (an upgraded card's name included).">
 <meta name="prop:cost" content="string" data-doc="Its cost as the game words it (2, X, 0); empty hides the cost gem (a relic, an unplayable curse).">
 <meta name="prop:icon" content="string" data-doc="Its art as an icon in the style's or the game's atlas, used when art is 0.">
@@ -20,22 +20,22 @@
   buttons. It fills the box it is given (give the box the card's aspect
   ratio); long names cut at one line and the rules text at the foot.
 -->
-<div id="CardFace" part="CardFace.frame" class="bare" data-type={type} data-rarity={rarity}>
-  <div class="window">{#if art}<img class="picture" src={art} alt="">{:else}<og-icon part="CardFace.art CardFace.picture" class="art" icon={icon}></og-icon>{/if}</div>
-  <p part="CardFace.name" class="name">{name}</p>
-  {#if typeLabel}<p part="CardFace.type CardFace.label" class="type">{typeLabel}</p>{/if}
-  <p part="CardFace.text" class="text">{text}</p>
-  {#if cost}<div part="CardFace.cost CardFace.figure" class="cost" aria-label={t("card.face.cost", { cost })}><span class="cost-figure">{cost}</span></div>{/if}
+<div id="CardFace" part="CardFace.frame" class="bare" data-layout="stack" data-gap="tight" data-type={type} data-rarity={rarity}>
+  <div part="CardFace.well" class="window" data-layout="row" data-gap="none">{#if art}<img class="picture" src={art} alt="">{:else}<og-icon part="CardFace.art CardFace.picture" class="art" icon={icon}></og-icon>{/if}</div>
+  <p part="CardFace.name CardFace.headline" class="name">{name}</p>
+  {#if typeLabel}<p part="CardFace.type CardFace.label CardFace.caption" class="type">{typeLabel}</p>{/if}
+  <p part="CardFace.text CardFace.caption" class="text" data-fill>{text}</p>
+  {#if cost}<div part="CardFace.cost CardFace.figure" class="cost" data-layout="row" data-gap="none" aria-label={t("card.face.cost", { cost })}><span class="cost-figure">{cost}</span></div>{/if}
 </div>
 
 <style>
-:host { position: relative; display: flex; flex-direction: column; inline-size: stretch; block-size: stretch; gap: var(--space-xs); padding: var(--space-xs); overflow: hidden; background: var(--panel-raised); }
-.window { position: relative; display: flex; height: 46%; flex: none; align-items: center; justify-content: center; overflow: hidden; border-radius: var(--well-radius); background: radial-gradient(ellipse at center, var(--control-strong), var(--well)); }
+:host { --headline-text: var(--text-sm); position: relative; inline-size: stretch; block-size: stretch; padding: var(--space-xs); overflow: hidden; }
+.window { position: relative; height: 46%; flex: none; justify-content: center; overflow: hidden; }
 .picture { position: absolute; inset: 0; inline-size: 100%; block-size: 100%; object-fit: cover; }
 .art { width: 62%; height: 62%; }
-.name { margin: 0; flex: none; text-align: center; font: var(--text-sm); font-family: var(--label-font); line-clamp: 2; overflow: hidden; }
-.type { margin: 0; flex: none; text-align: center; font: var(--text-caption); color: var(--ink-muted); white-space: nowrap; text-overflow: ellipsis; overflow: hidden; }
-.text { margin: 0; flex: 1; min-height: 0; font: var(--text-sm); text-align: start; overflow: hidden; padding: var(--space-xxs); }
-.cost { position: absolute; inset-inline-start: 0; top: 0; display: flex; width: var(--size-md); height: var(--size-md); align-items: center; justify-content: center; }
-.cost-figure { font-variant-numeric: tabular-nums; white-space: nowrap; }
+.name { margin: 0; flex: none; text-align: center; line-clamp: 2; overflow: hidden; }
+.type { margin: 0; flex: none; text-align: center; white-space: nowrap; text-overflow: ellipsis; overflow: hidden; }
+.text { --caption-text: var(--text-sm); margin: 0; text-align: start; overflow: hidden; padding: var(--space-xxs); }
+.cost { position: absolute; inset-inline-start: 0; top: 0; width: var(--size-md); height: var(--size-md); justify-content: center; }
+.cost-figure { white-space: nowrap; }
 </style>

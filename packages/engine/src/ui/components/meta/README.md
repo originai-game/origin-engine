@@ -19,10 +19,12 @@ results screen are the built-in screens of those names; a menu is `Menu`.
 
 ## Structure and appearance
 
-Each member's `<style>` supplies its HTML layout and readable default
-appearance through shared spacing, typography and surface tokens, in the
-`og-components` layer. Optional content uses conditionals; bounded lists
-use CSS overflow. A style pack (`og-pack`, above it) restyles the meaningful
+Each member's `<style>` supplies only its HTML layout. Shared role parts
+dress its surfaces and text, `data-tone` colours its states, `data-motion`
+selects shared motion, and `data-layout` with `data-gap` supplies the layout
+primitives and spacing. Role aliases preserve the original public parts.
+Optional content uses conditionals; bounded lists use CSS overflow.
+A style pack restyles the meaningful
 pieces through
 the members' named parts (docs/ui.md §3.2), qualified by their states and
 `data-*` attributes, for example `Shop::offer[data-sold-out=true]` or

@@ -23,11 +23,11 @@
   plate, or X / pad Y on a focused playable card, its key). The game
   decides legality, cost and targets.
 -->
-<section id="CardHand" part="CardHand.frame" class="bare" aria-label={label || t("card.hand.name")} style:--fan={fan}>
+<section id="CardHand" part="CardHand.frame" class="bare" data-layout="shell" data-gap="none" aria-label={label || t("card.hand.name")} style:--fan={fan}>
   {#if cards.length}
-    <div class="cards" role="listbox" aria-label={label || t("card.hand.name")}>
+    <div class="cards" data-layout="row" data-gap="none" data-fill role="listbox" aria-label={label || t("card.hand.name")}>
       {#each cards as c (c.id)}
-        <div part="CardHand.slot" data-selected={c.id == selected} data-playable={c.playable} style:--at={c.at}>
+        <div part="CardHand.slot" data-motion="change" data-tail={c.at == 1 || cards.length == 1} data-selected={c.id == selected} data-playable={c.playable} style:--at={c.at}>
           <div class="stack">
             {#if c.playable}
               <button part="CardHand.card" role="option" data-type={c.type} data-rarity={c.rarity} data-playable={c.playable} aria-selected={c.id == selected} aria-label={c.name} aria-description={c.text} onclick={select} ondetails={play}>
@@ -36,7 +36,7 @@
             {:else}
               <button part="CardHand.card" role="option" data-type={c.type} data-rarity={c.rarity} data-playable={c.playable} aria-selected={c.id == selected} aria-label={c.name} aria-description={t("card.hand.unplayable")} onclick={select}>
                 <div class="face"><CardFace name={c.name} cost={c.cost} icon={c.icon} art={c.art} type={c.type} typeLabel={c.typeLabel} rarity={c.rarity} text={c.text} /></div>
-                <div part="CardHand.badge" class="unplayable" aria-label={t("card.hand.unplayable")}><og-icon icon="lock"></og-icon></div>
+                <div part="CardHand.badge" class="unplayable" data-layout="row" data-gap="none" aria-label={t("card.hand.unplayable")}><og-icon icon="lock"></og-icon></div>
               </button>
             {/if}
             {#if c.id == selected && c.playable}<button class="play primary" onclick={play}>{t("card.hand.play")}</button>{/if}
@@ -45,34 +45,33 @@
       {/each}
     </div>
   {:else}
-    <div class="empty" role="status"><p class="empty-text">{t("card.hand.empty")}</p></div>
+    <div class="empty" data-layout="cover" data-fill role="status"><p class="empty-text">{t("card.hand.empty")}</p></div>
   {/if}
 </section>
 
 <style>
-:host { display: flex; inline-size: stretch; block-size: stretch; align-items: flex-end; justify-content: center; container-type: size; }
+:host { --card-fill: var(--panel-raised); justify-content: center; container-type: size; }
 /* A card is the frame's height less the room the picked-up card rises
    into and the room the fan's end cards dip into, and 0.7 of that wide
    (a card's proportion), but at most 0.36 of the frame's width, so a
    tall hand on a narrow screen keeps every card in reach. The row keeps
    room at its ends for the fan's outer cards to lean into. */
-.cards { --card-width: min(calc((100cqh - var(--space-xl) * 2 - var(--space-md)) * 0.7), 36cqw); --card-height: calc(var(--card-width) / 0.7); display: flex; width: stretch; height: stretch; align-items: flex-end; justify-content: center; padding: 0 var(--space-xl) var(--space-xl); min-width: 0; }
+.cards { --card-width: min(calc((100cqh - var(--space-xl) * 2 - var(--space-md)) * 0.7), 36cqw); --card-height: calc(var(--card-width) / 0.7); width: stretch; height: stretch; align-items: flex-end; justify-content: center; padding: 0 var(--space-xl) var(--space-xl); }
 /* A slot is the card's share of the row: a card's width while there is
    room, less as the hand grows, so the next card overlaps it. The last
    slot keeps the whole card. */
-[part="CardHand.slot"] { position: relative; height: var(--card-height); flex: 0 1 var(--card-width); min-width: 0; transform-origin: 50% 100%; rotate: calc(var(--at, 0) * var(--fan, 0) * 1deg); translate: 0 calc(var(--at, 0) * var(--at, 0) * var(--fan, 0) * var(--space-xxs)); transition: translate var(--motion-duration-fast) var(--motion-easing-out), rotate var(--motion-duration-fast) var(--motion-easing-out); }
-[part="CardHand.slot"]:last-child { flex-shrink: 0; }
+[part="CardHand.slot"] { position: relative; height: var(--card-height); flex: 0 1 var(--card-width); min-width: 0; transform-origin: 50% 100%; rotate: calc(var(--at, 0) * var(--fan, 0) * 1deg); translate: 0 calc(var(--at, 0) * var(--at, 0) * var(--fan, 0) * var(--space-xxs)); }
+[part="CardHand.slot"][data-tail=true] { flex-shrink: 0; }
 [part="CardHand.slot"]:hover { translate: 0 calc(var(--space-sm) * -1); }
 [part="CardHand.slot"][data-selected=true] { rotate: 0deg; translate: 0 calc(var(--size-touch) * -1 - var(--space-xs)); z-index: 1; }
 .stack { position: absolute; inset-inline-start: 0; top: 0; bottom: 0; width: var(--card-width); }
 [part="CardHand.card"] { position: relative; width: stretch; height: stretch; padding: 0; align-items: stretch; justify-content: stretch; }
 [part="CardHand.card"] .face { width: stretch; height: stretch; min-width: 0; }
 /* Under the cost seal, on the edge the next card leaves uncovered. */
-.unplayable { position: absolute; inset-inline-start: var(--space-xxs); top: calc(var(--size-md) + var(--space-xs)); display: flex; width: var(--size-sm); height: var(--size-sm); align-items: center; justify-content: center; }
+.unplayable { position: absolute; inset-inline-start: var(--space-xxs); top: calc(var(--size-md) + var(--space-xs)); width: var(--size-sm); height: var(--size-sm); justify-content: center; }
 .unplayable og-icon { width: 70%; height: 70%; }
 /* Below the card's foot, in the room the lift leaves, so it never covers the rules text. */
 .play { position: absolute; inset-inline-start: 10%; top: calc(100% + var(--space-xxs)); width: 80%; min-height: var(--size-touch); }
-.empty { display: flex; width: stretch; height: stretch; align-items: center; justify-content: center; min-width: 0; }
+.empty { width: stretch; height: stretch; }
 .empty-text { margin: 0; }
-@media (prefers-reduced-motion: reduce) { [part="CardHand.slot"] { transition: none; } }
 </style>

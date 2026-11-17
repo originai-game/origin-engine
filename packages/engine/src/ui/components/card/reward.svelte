@@ -1,6 +1,6 @@
 <meta name="component" content="CardReward">
 <meta name="strings" content="./card.en.ogt">
-<meta name="parts" content="CardReward.frame CardReward.band CardReward.title CardReward.choice CardReward.relic CardReward.cell">
+<meta name="parts" content="CardReward.frame CardReward.band CardReward.title CardReward.choice CardReward.relic CardReward.cell CardReward.well CardReward.headline CardReward.caption">
 <meta name="prop:title" content="string" data-doc="The heading as the game words it (Choose a card, Treasure).">
 <meta name="prop:choices" content="list" data-doc="The offers the game rolled, keyed rows of { id, relic, name, cost, icon, art, type, typeLabel, rarity, text, enabled }: relic true draws a relic (its icon, name and text) instead of a card; enabled false when the game will not let it be taken.">
 <meta name="prop:selected" content="string" data-doc="The offer the player is looking at (focused or tapped once); empty is none.">
@@ -18,16 +18,16 @@
   is disabled. The offers sit in one row while it fits and wrap to the
   phone's width; with none to offer it says so.
 -->
-<section id="CardReward" part="CardReward.frame" class="bare" aria-label={title} onback={skip}>
-  <header part="CardReward.band"><h2 part="CardReward.title">{title}</h2></header>
-  <div class="choices" role="listbox" aria-label={t("card.reward.choices")}>
+<section id="CardReward" part="CardReward.frame" class="bare" data-layout="shell" data-gap="wide" aria-label={title} onback={skip}>
+  <header part="CardReward.band" data-layout="row"><h2 part="CardReward.title">{title}</h2></header>
+  <div class="choices" data-layout="cluster" data-gap="loose" role="listbox" aria-label={t("card.reward.choices")}>
     {#each choices as c (c.id)}
       {#if c.relic}
-        <button part="CardReward.relic" role="option" data-rarity={c.rarity} disabled={!c.enabled} aria-selected={c.id == selected} aria-label={c.name} aria-description={c.text} onclick={pick}><div class="relic-face">
-          <div class="relic-mark"><og-icon class="relic-icon" icon={c.icon}></og-icon></div>
-          <span class="relic-kind">{t("card.reward.relic")}</span>
-          <span class="relic-name">{c.name}</span>
-          <span class="relic-text">{c.text}</span>
+        <button part="CardReward.relic CardReward.cell" role="option" data-rarity={c.rarity} disabled={!c.enabled} aria-selected={c.id == selected} aria-label={c.name} aria-description={c.text} onclick={pick}><div class="relic-face" data-layout="stack" data-gap="tight">
+          <div part="CardReward.well" class="relic-mark" data-layout="row" data-gap="none"><og-icon class="relic-icon" icon={c.icon}></og-icon></div>
+          <span part="CardReward.caption" class="relic-kind">{t("card.reward.relic")}</span>
+          <span part="CardReward.headline" class="relic-name">{c.name}</span>
+          <span part="CardReward.caption" class="relic-text" data-fill>{c.text}</span>
         </div></button>
       {:else}
         <button part="CardReward.choice CardReward.cell" role="option" data-type={c.type} data-rarity={c.rarity} disabled={!c.enabled} aria-selected={c.id == selected} aria-label={c.name} aria-description={c.text} onclick={pick}><div class="face">
@@ -38,35 +38,35 @@
       <p class="empty-text" role="status">{t("card.reward.empty")}</p>
     {/each}
   </div>
-  {#if skipLabel}<footer class="foot">
+  {#if skipLabel}<footer class="foot" data-layout="row">
     <button id="Skip" onclick={skip}>{skipLabel}</button>
   </footer>{/if}
 </section>
 
 <style>
-:host { display: flex; flex-direction: column; inline-size: stretch; block-size: stretch; gap: var(--space-lg); align-items: center; justify-content: center; container-type: size; }
-[part="CardReward.band"] { display: flex; width: stretch; align-items: center; justify-content: center; flex: none; }
+:host { align-items: center; justify-content: center; container-type: size; }
+[part="CardReward.band"] { width: stretch; justify-content: center; flex: none; }
 [part="CardReward.title"] { margin: 0; text-align: center; }
 /* The offers share one row, each at most three icon sizes wide and no
    taller than the height left under the band and over Skip. */
-.choices { display: flex; flex-wrap: wrap; width: stretch; min-height: 0; gap: var(--space-md); align-items: center; justify-content: center; }
-[part="CardReward.choice CardReward.cell"], [part="CardReward.relic"] { flex: 1 1 0; min-width: calc(var(--size-xxl) * 1.1); max-width: min(calc(var(--size-xxl) * 3), calc((100cqh - var(--size-lg) * 3) * 0.7)); aspect-ratio: 0.7; }
+.choices { width: stretch; min-height: 0; justify-content: center; }
+[part~="CardReward.choice"], [part~="CardReward.relic"] { flex: 1 1 0; min-width: calc(var(--size-xxl) * 1.1); max-width: min(calc(var(--size-xxl) * 3), calc((100cqh - var(--size-lg) * 3) * 0.7)); aspect-ratio: 0.7; }
 [part="CardReward.choice CardReward.cell"] { padding: 0; align-items: stretch; justify-content: stretch; }
 [part="CardReward.choice CardReward.cell"] .face { width: stretch; height: stretch; }
-[part="CardReward.relic"] { padding: var(--space-sm); align-items: center; justify-content: center; }
-.relic-face { display: flex; flex-direction: column; width: stretch; height: stretch; align-items: center; justify-content: flex-start; gap: var(--space-xs); overflow: hidden; text-align: center; }
-.relic-mark { display: flex; width: 46%; aspect-ratio: 1; flex: none; align-items: center; justify-content: center; border-radius: var(--radius-capsule); background: var(--control-strong); }
+[part~="CardReward.relic"] { padding: var(--space-sm); align-items: center; justify-content: center; }
+.relic-face { width: stretch; height: stretch; align-items: center; overflow: hidden; text-align: center; }
+.relic-mark { width: 46%; aspect-ratio: 1; flex: none; justify-content: center; }
 .relic-icon { width: 60%; height: 60%; }
 .relic-name, .relic-kind, .relic-text { width: stretch; text-align: center; }
 .relic-kind { flex: none; }
 .relic-name { flex: none; }
-.relic-text { flex: 1; min-height: 0; overflow: hidden; }
+.relic-text { overflow: hidden; }
 .empty-text { margin: 0; text-align: center; }
-.foot { display: flex; flex: none; justify-content: center; }
+.foot { flex: none; justify-content: center; }
 #Skip { min-width: calc(var(--size-xxl) * 2); min-height: var(--size-touch); }
 /* Narrow panels keep readable cards in one scrollable row, not tiny thirds. */
 @container (width < 640px) {
-  .choices { flex-wrap: nowrap; gap: var(--space-sm); overflow-x: auto; justify-content: start; scroll-snap-type: x mandatory; padding: var(--space-xs); }
-  [part="CardReward.choice CardReward.cell"], [part="CardReward.relic"] { flex: 0 0 60%; min-width: 0; scroll-snap-align: center; }
+  .choices { flex-wrap: nowrap; overflow-x: auto; justify-content: start; scroll-snap-type: x mandatory; padding: var(--space-xs); }
+  [part~="CardReward.choice"], [part~="CardReward.relic"] { flex: 0 0 60%; min-width: 0; scroll-snap-align: center; }
 }
 </style>

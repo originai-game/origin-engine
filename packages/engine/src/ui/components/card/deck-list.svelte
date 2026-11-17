@@ -1,6 +1,6 @@
 <meta name="component" content="CardDeckList">
 <meta name="strings" content="./card.en.ogt">
-<meta name="parts" content="CardDeckList.frame CardDeckList.band CardDeckList.title CardDeckList.size CardDeckList.row CardDeckList.cost CardDeckList.name CardDeckList.copies CardDeckList.step CardDeckList.figure CardDeckList.label CardDeckList.cell">
+<meta name="parts" content="CardDeckList.frame CardDeckList.band CardDeckList.title CardDeckList.size CardDeckList.row CardDeckList.cost CardDeckList.name CardDeckList.copies CardDeckList.step CardDeckList.figure CardDeckList.label CardDeckList.cell CardDeckList.track CardDeckList.fill CardDeckList.caption">
 <meta name="prop:title" content="string" data-doc="The deck's name as the player named it.">
 <meta name="prop:entries" content="list" data-doc="The deck's cards in the game's order (by cost, then name), keyed rows of { id, name, cost, type, rarity, copies, canAdd, canRemove }: copies the game's count; canAdd and canRemove the game's answers (its copy limit, its deck limit, a card the deck must keep).">
 <meta name="prop:total" content="number" data-doc="How many cards the deck holds (the game's count).">
@@ -24,21 +24,21 @@
   the height given and scroll inside it; the size and the button keep
   the foot.
 -->
-<section id="CardDeckList" part="CardDeckList.frame" aria-label={title}>
-  <header part="CardDeckList.band"><h2 part="CardDeckList.title">{title}</h2></header>
-  {#if limit}<div part="CardDeckList.size" data-over={total > limit} data-under={total < limit}>
-    <span class="size-label">{t("card.deck.size")}</span>
-    <span class="size-figure">{t("card.deck.count", { count: total, limit })}</span>
-    <div class="bar" role="meter" aria-label={t("card.deck.size")} aria-valuetext={t("card.deck.count", { count: total, limit })} style:--fill={limit ? (total > limit ? 1 : total / limit) : 0}><div class="bar-fill"></div></div>
+<section id="CardDeckList" part="CardDeckList.frame" data-layout="shell" aria-label={title}>
+  <header part="CardDeckList.band" data-layout="row"><h2 part="CardDeckList.title">{title}</h2></header>
+  {#if limit}<div part="CardDeckList.size" data-layout="grid" data-gap="tight" data-over={total > limit} data-under={total < limit}>
+    <span part="CardDeckList.caption" class="size-label">{t("card.deck.size")}</span>
+    <span part="CardDeckList.figure" class="size-figure">{t("card.deck.count", { count: total, limit })}</span>
+    <div part="CardDeckList.track" class="bar" role="meter" aria-label={t("card.deck.size")} aria-valuetext={t("card.deck.count", { count: total, limit })} style:--fill={limit ? (total > limit ? 1 : total / limit) : 0}><div part="CardDeckList.fill" class="bar-fill" data-tone={total > limit ? 'danger' : ''}></div></div>
   </div>{/if}
   {#if entries.length}
-    <div class="rows">
-      <div class="list" role="list" aria-label={title}>
+    <div class="rows" data-layout="scroll" data-fill>
+      <div class="list" data-layout="stack" data-gap="hair" role="list" aria-label={title}>
         {#each entries as e (e.id)}
-          <div part="CardDeckList.row" role="listitem" data-type={e.type} data-rarity={e.rarity} data-selected={e.id == selected} aria-current={e.id == selected}>
-            <button class="pick" variant="quiet" aria-label={e.name} onclick={choose}><div class="pick-face">
-              <div part="CardDeckList.cost CardDeckList.figure" class="cost" aria-label={t("card.face.cost", { cost: e.cost })}><span class="cost-figure">{e.cost}</span></div>
-              <span part="CardDeckList.name" class="name">{e.name}</span>
+          <div part="CardDeckList.row" data-layout="row" data-gap="hair" role="listitem" data-type={e.type} data-rarity={e.rarity} data-selected={e.id == selected} aria-current={e.id == selected}>
+            <button class="pick" data-fill variant="quiet" aria-label={e.name} onclick={choose}><div class="pick-face" data-layout="row">
+              <div part="CardDeckList.cost CardDeckList.figure" class="cost" data-layout="row" data-gap="none" aria-label={t("card.face.cost", { cost: e.cost })}><span class="cost-figure">{e.cost}</span></div>
+              <span part="CardDeckList.name" class="name" data-fill>{e.name}</span>
               <span part="CardDeckList.copies CardDeckList.label" class="copies">{t("card.deck.copies", { count: e.copies })}</span>
             </div></button>
             <button part="CardDeckList.step CardDeckList.cell" class="minus" variant="quiet" disabled={!e.canRemove} aria-label={t("card.deck.remove", { name: e.name })} onclick={remove} ondetails={remove}><span class="step-mark">{t("card.deck.less")}</span></button>
@@ -48,34 +48,30 @@
       </div>
     </div>
   {:else}
-    <div class="empty" role="status"><p class="empty-text">{t("card.deck.empty")}</p></div>
+    <div class="empty" data-layout="cover" data-fill role="status"><p class="empty-text">{t("card.deck.empty")}</p></div>
   {/if}
-  {#if confirmLabel}<footer class="foot">
+  {#if confirmLabel}<footer class="foot" data-layout="row">
     <button id="Confirm" class="primary" disabled={!canConfirm} onclick={confirm}>{confirmLabel}</button>
   </footer>{/if}
 </section>
 
 <style>
-:host { display: flex; flex-direction: column; inline-size: stretch; block-size: stretch; gap: var(--space-sm); }
-[part="CardDeckList.band"] { display: flex; width: stretch; align-items: center; justify-content: center; flex: none; }
+[part="CardDeckList.band"] { width: stretch; justify-content: center; flex: none; }
 [part="CardDeckList.title"] { margin: 0; white-space: nowrap; text-overflow: ellipsis; overflow: hidden; }
-[part="CardDeckList.size"] { display: grid; grid-template-columns: 1fr auto; width: stretch; flex: none; align-items: baseline; gap: var(--space-xs); padding: 0 var(--space-xs); }
-.size-figure { font-variant-numeric: tabular-nums; white-space: nowrap; }
-.bar { position: relative; grid-column: 1 / -1; height: var(--space-sm); border-radius: var(--meter-radius); background: var(--control-strong); overflow: hidden; }
-.bar-fill { position: absolute; top: 0; bottom: 0; inset-inline-start: 0; inline-size: calc(var(--fill, 0) * 100%); background: var(--primary); }
-[data-over=true] .bar-fill { background: var(--danger); }
-.rows { flex: 1; min-height: 0; overflow-y: auto; }
-.list { display: flex; flex-direction: column; width: stretch; gap: var(--space-xxs); }
-[part="CardDeckList.row"] { display: flex; width: stretch; align-items: center; gap: var(--space-xxs); }
-.pick { flex: 1; min-width: 0; min-height: var(--size-touch); padding: 0 var(--space-sm); justify-content: flex-start; }
-.pick-face { display: flex; width: stretch; align-items: center; gap: var(--space-sm); }
-[part="CardDeckList.cost CardDeckList.figure"] { display: flex; flex: none; width: var(--size-sm); height: var(--size-sm); align-items: center; justify-content: center; font-variant-numeric: tabular-nums; }
-[part="CardDeckList.name"] { flex: 1; min-width: 0; text-align: start; white-space: nowrap; text-overflow: ellipsis; overflow: hidden; }
-[part="CardDeckList.copies CardDeckList.label"] { flex: none; font-variant-numeric: tabular-nums; white-space: nowrap; }
+[part="CardDeckList.size"] { grid-template-columns: 1fr auto; width: stretch; flex: none; align-items: baseline; padding: 0 var(--space-xs); }
+.size-figure { white-space: nowrap; }
+.bar { position: relative; grid-column: 1 / -1; height: var(--space-sm); overflow: hidden; }
+.bar-fill { position: absolute; top: 0; bottom: 0; inset-inline-start: 0; inline-size: calc(var(--fill, 0) * 100%); }
+.list, [part="CardDeckList.row"] { width: stretch; }
+.pick { min-height: var(--size-touch); padding: 0 var(--space-sm); justify-content: flex-start; }
+.pick-face { width: stretch; }
+[part="CardDeckList.cost CardDeckList.figure"] { flex: none; width: var(--size-sm); height: var(--size-sm); justify-content: center; }
+[part="CardDeckList.name"] { min-width: 0; text-align: start; white-space: nowrap; text-overflow: ellipsis; overflow: hidden; }
+[part="CardDeckList.copies CardDeckList.label"] { flex: none; white-space: nowrap; }
 [part="CardDeckList.step CardDeckList.cell"] { flex: none; width: var(--size-touch); min-height: var(--size-touch); padding: 0; align-items: center; justify-content: center; }
 .step-mark { text-align: center; }
-.empty { display: flex; width: stretch; flex: 1; align-items: center; justify-content: center; }
+.empty { width: stretch; }
 .empty-text { margin: 0; }
-.foot { display: flex; width: stretch; flex: none; }
+.foot { width: stretch; flex: none; }
 #Confirm { width: stretch; min-height: var(--size-touch); min-width: 0; }
 </style>

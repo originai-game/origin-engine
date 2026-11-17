@@ -1,6 +1,6 @@
 <meta name="component" content="ShopConfirm">
 <meta name="strings" content="./general.en.ogt">
-<meta name="parts" content="ShopConfirm.frame ShopConfirm.band ShopConfirm.title ShopConfirm.name ShopConfirm.price ShopConfirm.error ShopConfirm.figure">
+<meta name="parts" content="ShopConfirm.frame ShopConfirm.band ShopConfirm.title ShopConfirm.name ShopConfirm.price ShopConfirm.error ShopConfirm.figure ShopConfirm.headline ShopConfirm.caption ShopConfirm.well ShopConfirm.former">
 <meta name="prop:title" content="string" data-doc="The panel's heading; empty takes the group's (Confirm purchase).">
 <meta name="prop:name" content="string" data-doc="The offer's name.">
 <meta name="prop:icon" content="string" data-doc="The offer's icon in the style's atlas.">
@@ -25,57 +25,55 @@
   disabled. It is content, not a dialog: the host that shows it (the
   built-in confirm screen, or the game's own modal) owns modality and focus.
 -->
-<section id="ShopConfirm" part="ShopConfirm.frame" aria-label={title != '' ? title : t("general.confirm.name")} aria-busy={busy} onback={cancel}>
-  <header part="ShopConfirm.band"><h2 part="ShopConfirm.title">{title != '' ? title : t("general.confirm.name")}</h2></header>
-  <div class="body">
-    <div class="body-inner">
-      <div class="offer">
-        <div class="art"><og-icon class="art-icon" icon={icon}></og-icon></div>
-        <div class="text">
-          <h3 part="ShopConfirm.name">{name}</h3>
-          {#if detail}<p class="detail">{detail}</p>{/if}
+<section id="ShopConfirm" part="ShopConfirm.frame" data-layout="stack" data-gap="loose" aria-label={title != '' ? title : t("general.confirm.name")} aria-busy={busy} onback={cancel}>
+  <header part="ShopConfirm.band" data-layout="row"><h2 part="ShopConfirm.title">{title != '' ? title : t("general.confirm.name")}</h2></header>
+  <div class="body" data-layout="scroll">
+    <div class="body-inner" data-layout="stack" data-gap="loose">
+      <div class="offer" data-layout="row" data-gap="loose">
+        <div part="ShopConfirm.well" class="art" data-layout="row" data-gap="none"><og-icon class="art-icon" icon={icon}></og-icon></div>
+        <div class="text" data-layout="stack" data-gap="hair" data-fill>
+          <h3 part="ShopConfirm.name ShopConfirm.headline">{name}</h3>
+          {#if detail}<p part="ShopConfirm.caption" class="detail">{detail}</p>{/if}
         </div>
       </div>
-      <ul class="prices" aria-label={t("general.confirm.cost")}>
+      <ul class="prices" data-layout="stack" data-gap="tight" aria-label={t("general.confirm.cost")}>
         {#each prices as p (p.id)}
-          <li part="ShopConfirm.price ShopConfirm.figure" data-short={p.short}>
+          <li part="ShopConfirm.price ShopConfirm.figure" data-layout="cluster" data-tone={p.short ? 'danger' : ''} data-short={p.short}>
             <og-icon class="currency" icon={p.icon}></og-icon>
-            {#if p.was}<span class="was" aria-label={t("general.shop.was", { price: p.was })}>{p.was}</span>{/if}
+            {#if p.was}<span part="ShopConfirm.former" class="was" aria-label={t("general.shop.was", { price: p.was })}>{p.was}</span>{/if}
             <span class="figure" aria-label={t("general.shop.amount", { amount: p.amount, currency: p.label })}>{p.amount}</span>
-            {#if p.short}<div class="short"><og-icon class="short-mark" icon="lock"></og-icon><span>{t("general.shop.short")}</span></div>{/if}
-            {#if p.after}<span class="after">{t("general.confirm.after", { amount: p.after })}</span>{/if}
+            {#if p.short}<div class="short" data-layout="row" data-gap="hair"><og-icon class="short-mark" icon="lock"></og-icon><span>{t("general.shop.short")}</span></div>{/if}
+            {#if p.after}<span part="ShopConfirm.caption" class="after">{t("general.confirm.after", { amount: p.after })}</span>{/if}
           </li>
         {/each}
       </ul>
     </div>
   </div>
-  {#if error}<p part="ShopConfirm.error" role="alert">{error}</p>{/if}
-  <footer class="actions">
+  {#if error}<p part="ShopConfirm.error" data-tone="danger" role="alert">{error}</p>{/if}
+  <footer class="actions" data-layout="cluster">
     <button id="Cancel" variant="ghost" onclick={cancel}><span>{t("general.confirm.cancel")}</span></button>
     <button id="Buy" variant="primary" disabled={!canBuy || busy} aria-busy={busy} onclick={confirm}><span>{busy ? t("general.confirm.busy") : t("general.confirm.buy")}</span></button>
   </footer>
 </section>
 
 <style>
-:host { display: flex; flex-direction: column; inline-size: stretch; max-inline-size: var(--modal-width); max-block-size: 100%; min-block-size: 0; gap: var(--space-md); }
+:host { inline-size: stretch; max-inline-size: var(--modal-width); max-block-size: 100%; min-block-size: 0; }
 .body { flex: 0 1 auto; min-height: 0; overflow-y: auto; }
-.body-inner { display: flex; flex-direction: column; width: stretch; gap: var(--space-md); }
-[part="ShopConfirm.band"] { display: flex; width: stretch; align-items: center; justify-content: center; flex: none; }
+.body-inner { width: stretch; }
+[part="ShopConfirm.band"] { width: stretch; justify-content: center; flex: none; }
 [part="ShopConfirm.title"] { margin: 0; text-align: center; }
-.offer { display: flex; width: stretch; gap: var(--space-md); align-items: center; }
-.art { display: flex; flex: none; width: var(--size-xxl); height: var(--size-xxl); align-items: center; justify-content: center; background: var(--control-strong); border-radius: var(--well-radius); }
+.offer { width: stretch; }
+.art { flex: none; width: var(--size-xxl); height: var(--size-xxl); justify-content: center; }
 .art-icon { width: var(--size-xl); height: var(--size-xl); }
-.text { display: flex; flex-direction: column; flex: 1; min-width: 0; gap: var(--space-xxs); }
-[part="ShopConfirm.name"], .detail { margin: 0; overflow-wrap: anywhere; }
-.prices { display: flex; flex-direction: column; width: stretch; margin: 0; padding: 0; list-style: none; gap: var(--space-xs); }
-[part="ShopConfirm.price ShopConfirm.figure"] { display: flex; width: stretch; align-items: center; flex-wrap: wrap; gap: var(--space-xxs) var(--space-sm); padding: var(--space-xs) var(--space-sm); }
+[part~="ShopConfirm.name"], .detail { margin: 0; overflow-wrap: anywhere; }
+.prices { width: stretch; margin: 0; padding: 0; list-style: none; }
+[part="ShopConfirm.price ShopConfirm.figure"] { width: stretch; padding: var(--space-xs) var(--space-sm); }
 .currency, .short-mark { width: var(--size-xs); height: var(--size-xs); flex: none; }
-.figure { font-variant-numeric: tabular-nums; white-space: nowrap; }
-.was { text-decoration-line: line-through; white-space: nowrap; color: var(--ink-muted); }
-.short { display: flex; align-items: center; gap: var(--space-xxs); }
-.after { margin-inline-start: auto; font: var(--text-sm); color: var(--ink-muted); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.figure { white-space: nowrap; }
+.was { white-space: nowrap; }
+.after { margin-inline-start: auto; white-space: nowrap; }
 [part="ShopConfirm.error"] { flex: none; margin: 0; }
-.actions { display: flex; flex: none; width: stretch; justify-content: flex-end; gap: var(--space-sm); flex-wrap: wrap; }
-.actions button { min-height: var(--size-touch); min-width: calc(var(--size-xxl) * 1.25); gap: var(--space-xs); }
+.actions { flex: none; width: stretch; justify-content: flex-end; }
+.actions button { min-height: var(--size-touch); min-width: calc(var(--size-xxl) * 1.25); }
 @media (pointer: coarse) { .actions button { flex: 1; } }
 </style>

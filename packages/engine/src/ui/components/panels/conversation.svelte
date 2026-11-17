@@ -1,6 +1,6 @@
 <meta name="component" content="RpgConversation">
 <meta name="strings" content="./conversation.en.ogt">
-<meta name="parts" content="RpgConversation.frame RpgConversation.name RpgConversation.row RpgConversation.controls RpgConversation.backlog RpgConversation.skip RpgConversation.auto">
+<meta name="parts" content="RpgConversation.frame RpgConversation.name RpgConversation.row RpgConversation.controls RpgConversation.backlog RpgConversation.skip RpgConversation.auto RpgConversation.headline RpgConversation.figure">
 <meta name="prop:speaker" content="string" data-doc="The speaker's name; empty is narration.">
 <meta name="prop:portrait" content="number" data-doc="The speaker's portrait (og.load.texture); 0 hides it.">
 <meta name="prop:line" content="string" data-doc="What is said now.">
@@ -28,48 +28,45 @@
   reader) and reports revealed once it is whole; the game decides what a
   press before that does.
 -->
-<section id="RpgConversation" part="RpgConversation.frame" aria-label={speaker ? speaker : t("rpg.talk.narration")}>
+<section id="RpgConversation" part="RpgConversation.frame" data-layout="shell" data-gap="wide" aria-label={speaker ? speaker : t("rpg.talk.narration")}>
   {#if portrait}<img class="portrait" src={portrait} alt="">{/if}
-  <div class="said">
-    {#if speaker}<h3 part="RpgConversation.name">{speaker}</h3>{/if}
+  <div class="said" data-layout="stack">
+    {#if speaker}<h3 part="RpgConversation.name RpgConversation.headline">{speaker}</h3>{/if}
     <og-typewriter id="Line" class="line" rate={rate} onrevealed={revealed}>{line}</og-typewriter>
-    {#if showControls}<nav part="RpgConversation.controls">
+    {#if showControls}<nav part="RpgConversation.controls" data-layout="cluster" data-gap="tight">
       <button part="RpgConversation.backlog" disabled={!canBacklog} onclick={backlog}>{t("rpg.talk.backlog")}</button>
       <button part="RpgConversation.skip" disabled={!canSkip} onclick={skip}>{t("rpg.talk.skip")}</button>
       <button part="RpgConversation.auto" aria-pressed={auto} disabled={!canAuto} onclick={toggleAuto}>{t("rpg.talk.auto")}</button>
     </nav>{/if}
   </div>
   {#if replies.length}
-    <ol class="replies" role="listbox" aria-label={t("rpg.talk.replies")}>
+    <ol class="replies" data-layout="stack" data-gap="hair" data-fill role="listbox" aria-label={t("rpg.talk.replies")}>
       {#each replies as r (r.id)}
-        <li class="reply-item"><button part="RpgConversation.row" role="option" data-used={r.used} aria-selected={r.id == selected} onclick={reply}><div class="face"><span class="reply-number">{t("rpg.talk.number", { number: r.number })}</span><span class="reply-text">{r.text}</span><div class="reply-mark"></div></div></button></li>
+        <li class="reply-item"><button part="RpgConversation.row" role="option" data-used={r.used} data-done={r.used} aria-selected={r.id == selected} onclick={reply}><div class="face" data-layout="row" data-gap="loose"><span part="RpgConversation.figure" class="reply-number">{t("rpg.talk.number", { number: r.number })}</span><span class="reply-text" data-fill>{r.text}</span><div class="reply-mark"></div></div></button></li>
       {/each}
     </ol>
   {:else}
-    <div class="go"><button id="Continue" class="secondary" onclick={next} onconfirm={next}>{t("rpg.talk.continue")}</button></div>
+    <div class="go" data-layout="stack" data-fill><button id="Continue" class="secondary" onclick={next} onconfirm={next}>{t("rpg.talk.continue")}</button></div>
   {/if}
 </section>
 
 <style>
-:host { display: flex; flex-wrap: wrap; inline-size: stretch; block-size: stretch; overflow-y: auto; gap: var(--space-lg); container-type: inline-size; }
+:host { flex-flow: row wrap; overflow-y: auto; }
 .portrait { width: calc(var(--size-xxl) * 1.9); height: stretch; object-fit: cover; object-position: center top; flex: none; }
-.said { display: flex; flex-direction: column; width: 42%; gap: var(--space-sm); padding: var(--space-md) 0; flex: none; }
-[part="RpgConversation.name"], .line { margin: 0; }
-.line { display: block; line-height: var(--font-leading-normal); }
-[part="RpgConversation.controls"] { display: flex; flex-wrap: wrap; gap: var(--space-xs); }
+.said { width: 42%; padding: var(--space-md) 0; flex: none; }
+[part~="RpgConversation.name"], .line { margin: 0; }
+.line { display: block; }
 [part="RpgConversation.controls"] button { min-block-size: var(--size-touch); }
-[part="RpgConversation.name"] { color: var(--primary); font-weight: var(--font-weight-semibold); }
-.replies { display: flex; flex-direction: column; margin: 0; padding: var(--space-md) 0; list-style: none; flex: 1; min-width: 0; gap: var(--space-xxs); }
+.replies { margin: 0; padding: var(--space-md) 0; list-style: none; }
 .reply-item { width: stretch; }
-[part="RpgConversation.row"] { width: stretch; min-height: var(--size-touch); gap: var(--space-md); align-items: center; justify-content: flex-start; padding: var(--space-xs) var(--space-md); }
-[part="RpgConversation.row"] .face { display: flex; width: stretch; align-items: center; gap: var(--space-md); }
-.reply-number { flex: none; font-variant-numeric: tabular-nums; }
-.reply-text { flex: 1; text-align: start; }
-.reply-number { color: var(--ink-muted); font-family: var(--figure-font); }
+[part="RpgConversation.row"] { width: stretch; min-height: var(--size-touch); justify-content: flex-start; padding: var(--space-xs) var(--space-md); }
+[part="RpgConversation.row"] .face { width: stretch; }
+.reply-number { flex: none; }
+.reply-text { text-align: start; }
 .reply-mark { width: var(--space-lg); height: var(--space-lg); flex: none; visibility: hidden; }
 [part="RpgConversation.row"][aria-selected=true] .reply-mark { visibility: visible; }
 @media (pointer: fine) and (width >= 600px) { [part="RpgConversation.row"] { min-height: calc(var(--size-touch) * 0.8); } .replies { padding: var(--space-sm) 0; } }
-.go { display: flex; flex-direction: column; flex: 1; min-width: 0; align-items: flex-end; justify-content: flex-end; padding: var(--space-md); }
+.go { align-items: flex-end; justify-content: flex-end; padding: var(--space-md); }
 @container (width < 720px) {
   .portrait { width: var(--size-xxl); height: var(--size-xxl); }
   .said { width: stretch; flex: 1; padding: 0; }

@@ -1,6 +1,6 @@
 <meta name="component" content="Profile">
 <meta name="strings" content="./profile.en.ogt">
-<meta name="parts" content="Profile.frame Profile.identity Profile.avatar Profile.name Profile.handle Profile.rank Profile.bio Profile.stats Profile.stat Profile.label Profile.value Profile.detail Profile.actions Profile.action Profile.reason Profile.state Profile.spinner Profile.retry">
+<meta name="parts" content="Profile.frame Profile.identity Profile.avatar Profile.name Profile.handle Profile.rank Profile.bio Profile.stats Profile.stat Profile.label Profile.value Profile.detail Profile.actions Profile.action Profile.reason Profile.state Profile.spinner Profile.retry Profile.title Profile.caption Profile.headline Profile.cell Profile.figure Profile.fade">
 <meta name="prop:name" content="string" data-doc="Player display name; empty uses Player.">
 <meta name="prop:handle" content="string" data-doc="Stable player handle or discriminator, as the game words it; empty hides it.">
 <meta name="prop:portrait" content="number" data-doc="Loaded portrait texture; zero uses the base Avatar fallback.">
@@ -23,9 +23,9 @@
 <meta name="fixture:no-stats" content='{"stats":[],"actions":[]}'>
 <meta name="fixture:overflow" content='{"name":"Maximilian Vandenberghe-Okonkwo","handle":"@the-unforgotten-champion-of-the-eastern-isles","rank":"Grandmaster · Northern Championship Series","bio":"A player biography that takes several lines on a phone and never hides the player actions or pushes statistics beyond the screen width.","stats":[{"id":"damage","label":"Highest accumulated damage in a single championship","value":"123,456,789,012","detail":"All seasons combined"},{"id":"wins","label":"Wins","value":"12,345","detail":"Across all regions"}],"actions":[{"id":"friend","label":"Send a companion request","disabled":false,"reason":"","pending":false},{"id":"invite","label":"Invite to the championship lobby","disabled":true,"reason":"This player does not accept invitations from non-friends","pending":false}]}'>
 
-<section id="Profile" part="Profile.frame" aria-label={t("profile.title")} aria-busy={loading}>
+<section id="Profile" part="Profile.frame" data-layout="stack" data-gap="loose" aria-label={t("profile.title")} aria-busy={loading}>
   {#if loading}
-    <div part="Profile.spinner"><Spinner name={t("profile.loading")} /></div>
+    <div part="Profile.spinner" data-layout="row"><Spinner name={t("profile.loading")} /></div>
     <p part="Profile.state" role="status">{t("profile.loading")}</p>
   {:else if error}
     <p part="Profile.state" role="status">{error}</p>
@@ -33,38 +33,38 @@
   {:else if empty}
     <p part="Profile.state" role="status">{t("profile.empty")}</p>
   {:else}
-    <div class="scroll-area">
-    <div class="content">
-      <header part="Profile.identity">
+    <div class="scroll-area" data-layout="overlay" data-gap="none">
+    <div class="content" data-layout="scroll" data-gap="loose">
+      <header part="Profile.identity" data-layout="row" data-gap="loose">
         <div part="Profile.avatar"><Avatar name={name || t("profile.player")} showName={false} portrait={portrait} level={level} status={status} /></div>
-        <div class="identity-copy">
-          <h2 part="Profile.name">{name || t("profile.player")}</h2>
-          {#if handle}<div part="Profile.handle">{handle}</div>{/if}
-          {#if rank}<div part="Profile.rank">{rank}</div>{/if}
+        <div class="identity-copy" data-layout="stack" data-gap="tight" data-fill>
+          <h2 part="Profile.name Profile.title">{name || t("profile.player")}</h2>
+          {#if handle}<div part="Profile.handle Profile.caption">{handle}</div>{/if}
+          {#if rank}<div part="Profile.rank Profile.headline">{rank}</div>{/if}
         </div>
       </header>
       {#if bio}<p part="Profile.bio">{bio}</p>{/if}
       {#if privateStats}<p part="Profile.state">{t("profile.private")}</p>
       {:else if stats.length}
-        <div part="Profile.stats" role="list" aria-label={t("profile.stats")}>
+        <div part="Profile.stats" data-layout="grid" role="list" aria-label={t("profile.stats")}>
           {#each stats as s (s.id)}
-            <div part="Profile.stat" role="listitem">
-              <div part="Profile.label">{s.label}</div>
-              <div part="Profile.value">{s.value}</div>
-              {#if s.detail}<div part="Profile.detail">{s.detail}</div>{/if}
+            <div part="Profile.stat Profile.cell" data-layout="stack" data-gap="tight" role="listitem">
+              <div part="Profile.label Profile.caption">{s.label}</div>
+              <div part="Profile.value Profile.figure">{s.value}</div>
+              {#if s.detail}<div part="Profile.detail Profile.caption">{s.detail}</div>{/if}
             </div>
           {/each}
         </div>
       {:else}<p part="Profile.state">{t("profile.noStats")}</p>{/if}
     </div>
-    <div class="scroll-fade"></div>
+    <div part="Profile.fade" data-anchor="bottom-edge"></div>
     </div>
     {#if actions.length}
-      <footer part="Profile.actions">
+      <footer part="Profile.actions" data-layout="switcher">
         {#each actions as a (a.id)}
-          <div class="action-row">
+          <div class="action-row" data-layout="stack" data-gap="tight" data-fill>
             <button id="Action" part="Profile.action" disabled={a.disabled || a.pending} aria-busy={a.pending} onclick={action}>{a.pending ? t("profile.sending") : a.label}</button>
-            {#if a.reason}<div part="Profile.reason">{a.reason}</div>{/if}
+            {#if a.reason}<div part="Profile.reason Profile.caption">{a.reason}</div>{/if}
           </div>
         {/each}
       </footer>
@@ -72,24 +72,17 @@
   {/if}
 </section>
 <style>
-:host { display: flex; flex-direction: column; inline-size: stretch; max-block-size: stretch; gap: var(--space-md); }
-.scroll-area { display: flex; flex-direction: column; position: relative; min-block-size: 0; }
-.content { display: flex; flex-direction: column; min-block-size: 0; overflow-y: auto; gap: var(--space-md); padding-block-end: var(--space-lg); }
-.scroll-fade { position: absolute; inset-inline: 0; bottom: 0; block-size: var(--space-lg); pointer-events: none; background: linear-gradient(transparent, var(--panel)); }
-[part="Profile.identity"] { display: flex; align-items: center; gap: var(--space-md); flex: none; }
+:host { inline-size: stretch; max-block-size: stretch; }
+.scroll-area { position: relative; min-block-size: 0; }
+.content { padding-block-end: var(--space-lg); }
+[part="Profile.identity"] { flex: none; }
 [part="Profile.avatar"] { flex: none; }
-.identity-copy { display: flex; flex-direction: column; gap: var(--space-xs); min-inline-size: 0; }
-[part="Profile.name"], [part="Profile.bio"], [part="Profile.state"] { margin: 0; }
-[part="Profile.name"], [part="Profile.handle"], [part="Profile.rank"], [part="Profile.bio"], [part="Profile.label"], [part="Profile.value"], [part="Profile.detail"], [part="Profile.reason"], [part="Profile.state"] { overflow-wrap: anywhere; }
-[part="Profile.handle"], [part="Profile.detail"], [part="Profile.reason"] { color: var(--ink-muted); font: var(--text-sm); }
-[part="Profile.rank"] { font-weight: var(--font-weight-semibold); }
-[part="Profile.stats"] { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--space-sm); flex: none; }
-[part="Profile.stat"] { display: flex; flex-direction: column; gap: var(--space-xs); padding: var(--space-sm); border: var(--stroke-hairline) solid var(--line); border-radius: var(--radius-control); }
-[part="Profile.label"] { color: var(--ink-muted); font: var(--text-sm); }
-[part="Profile.value"] { font-family: var(--figure-font); font-weight: var(--font-weight-semibold); }
-[part="Profile.actions"] { display: flex; flex-wrap: wrap; gap: var(--space-sm); flex: none; }
-.action-row { display: flex; flex-direction: column; flex: 1; min-inline-size: 0; gap: var(--space-xs); }
+[part~="Profile.name"], [part="Profile.bio"], [part="Profile.state"] { margin: 0; }
+[part~="Profile.name"], [part~="Profile.handle"], [part~="Profile.rank"], [part="Profile.bio"], [part~="Profile.label"], [part~="Profile.value"], [part~="Profile.detail"], [part~="Profile.reason"], [part="Profile.state"] { overflow-wrap: anywhere; }
+[part="Profile.stats"] { grid-template-columns: repeat(3, 1fr); flex: none; }
+[part~="Profile.stat"] { padding: var(--space-sm); }
+[part="Profile.actions"] { flex: none; }
 [part="Profile.action"], [part="Profile.retry"] { min-block-size: var(--size-touch); }
-[part="Profile.spinner"] { display: flex; justify-content: center; }
-@media (width < 600px) { [part="Profile.stats"] { grid-template-columns: 1fr; } [part="Profile.actions"] { flex-direction: column; } }
+[part="Profile.spinner"] { justify-content: center; }
+@media (width < 600px) { [part="Profile.stats"] { grid-template-columns: 1fr; } }
 </style>

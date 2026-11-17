@@ -1,6 +1,6 @@
 <meta name="component" content="CardRunMap">
 <meta name="strings" content="./card.en.ogt">
-<meta name="parts" content="CardRunMap.frame CardRunMap.band CardRunMap.title CardRunMap.floor CardRunMap.board CardRunMap.legend CardRunMap.row CardRunMap.label CardRunMap.plate">
+<meta name="parts" content="CardRunMap.frame CardRunMap.band CardRunMap.title CardRunMap.floor CardRunMap.board CardRunMap.legend CardRunMap.row CardRunMap.label CardRunMap.plate CardRunMap.well CardRunMap.figure">
 <meta name="prop:title" content="string" data-doc="The map's heading (the act's name).">
 <meta name="prop:floor" content="string" data-doc="Where the run stands as the game words it (Floor 6 of 15); empty hides it.">
 <meta name="prop:nodes" content="list" data-doc="The rooms, NodeGraph's nodes: keyed rows of { id, x, y, label, icon, state, shape, team }. A room's kind is its icon and shape (fight sword circle, elite skull diamond, rest fire square, shop coin square, event flag hex, treasure gem hex, boss crown diamond, or the game's own) and its label; state is done (visited), current (where the player stands), available (reachable next, the game's answer) or locked (out of reach).">
@@ -20,25 +20,24 @@
   rooms, says which are reachable and applies the choice; the map reports
   NodeGraph's pick (a room's key) and its zoom, pinch and pan.
 -->
-<section id="CardRunMap" part="CardRunMap.frame" aria-label={title || t("card.map.name")}>
-  <header part="CardRunMap.band"><h2 part="CardRunMap.title">{title}</h2>{#if floor}<span part="CardRunMap.floor CardRunMap.label">{floor}</span>{/if}</header>
-  <div part="CardRunMap.board CardRunMap.plate" class="board">
+<section id="CardRunMap" part="CardRunMap.frame" data-layout="shell" aria-label={title || t("card.map.name")}>
+  <header part="CardRunMap.band" data-layout="cluster" data-gap="tight"><h2 part="CardRunMap.title">{title}</h2>{#if floor}<span part="CardRunMap.floor CardRunMap.label CardRunMap.figure" class="floor">{floor}</span>{/if}</header>
+  <div part="CardRunMap.board CardRunMap.plate" class="board" data-layout="row" data-fill>
     <NodeGraph nodes={nodes} links={links} view={view} zoom={zoom} panX={panX} panY={panY} selected={selected} name={title || t("card.map.name")} />
   </div>
-  {#if legend.length}<div part="CardRunMap.legend CardRunMap.plate" role="list" aria-label={t("card.map.legend")}>
+  {#if legend.length}<div part="CardRunMap.legend CardRunMap.plate CardRunMap.well" data-layout="cluster" data-gap="loose" role="list" aria-label={t("card.map.legend")}>
     {#each legend as l (l.id)}
-      <div part="CardRunMap.row" role="listitem"><og-icon class="legend-icon" icon={l.icon}></og-icon><span class="legend-label">{l.label}</span></div>
+      <div part="CardRunMap.row" data-layout="row" data-gap="tight" role="listitem"><og-icon class="legend-icon" icon={l.icon}></og-icon><span class="legend-label">{l.label}</span></div>
     {/each}
   </div>{/if}
 </section>
 
 <style>
-:host { display: flex; flex-direction: column; inline-size: stretch; block-size: stretch; gap: var(--space-sm); }
-[part="CardRunMap.band"] { display: flex; flex-wrap: wrap; width: stretch; align-items: baseline; justify-content: center; gap: var(--space-xs); flex: none; }
+[part="CardRunMap.band"] { width: stretch; align-items: baseline; justify-content: center; flex: none; }
 [part="CardRunMap.title"] { margin: 0; text-align: center; }
-[part="CardRunMap.floor CardRunMap.label"] { white-space: nowrap; font-variant-numeric: tabular-nums; }
-.board { display: flex; width: stretch; flex: 1; min-height: 0; align-items: center; justify-content: center; overflow: hidden; }
-[part="CardRunMap.legend CardRunMap.plate"] { display: flex; flex-wrap: wrap; flex: none; justify-content: center; gap: var(--space-sm) var(--space-md); padding: var(--space-sm); border-radius: var(--well-radius); background: var(--well); }
-[part="CardRunMap.row"] { display: flex; align-items: center; gap: var(--space-xs); flex: none; }
+.floor { white-space: nowrap; }
+.board { width: stretch; justify-content: center; overflow: hidden; }
+[part~="CardRunMap.legend"] { flex: none; justify-content: center; padding: var(--space-sm); }
+[part="CardRunMap.row"] { flex: none; }
 .legend-icon { width: var(--size-xs); height: var(--size-xs); }
 </style>

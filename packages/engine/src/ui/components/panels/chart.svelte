@@ -1,6 +1,6 @@
 <meta name="component" content="Chart">
 <meta name="strings" content="./chart.en.ogt">
-<meta name="parts" content="Chart.frame Chart.title Chart.subtitle Chart.tick Chart.grid Chart.bar Chart.area Chart.line Chart.label Chart.plate">
+<meta name="parts" content="Chart.frame Chart.title Chart.subtitle Chart.tick Chart.grid Chart.bar Chart.area Chart.line Chart.label Chart.plate Chart.caption Chart.fill Chart.series Chart.gridline">
 <meta name="prop:title" content="string" data-doc="A title over it; empty is none.">
 <meta name="prop:subtitle" content="string" data-doc="A line under the title.">
 <meta name="prop:max" content="number" data-default="1" data-doc="The value axis' top (its bottom is 0).">
@@ -10,50 +10,47 @@
 <meta name="prop:ticks" content="list" data-doc="Value axis gridlines: each { id, at, label }, at a fraction of max (0 to 1).">
 <meta name="fixture:default" content='{"title":"Weekly kills","subtitle":"Last 7 days","max":100,"area":true,"line":"M24 112 L74 86 L122 99 L175 54 L224 68 L273 32 L322 43","ticks":[{"id":"0","at":0,"label":"0"},{"id":"50","at":0.5,"label":"50"},{"id":"100","at":1,"label":"100"}],"bars":[{"id":"mon","label":"Mon","value":32,"color":""},{"id":"tue","label":"Tue","value":51,"color":""},{"id":"wed","label":"Wed","value":44,"color":""},{"id":"thu","label":"Thu","value":70,"color":""},{"id":"fri","label":"Fri","value":62,"color":"#e5484d"},{"id":"sat","label":"Sat","value":88,"color":""},{"id":"sun","label":"Sun","value":79,"color":""}]}'>
 
-<div id="Chart" part="Chart.frame" role="figure" aria-label={title || t("component.chart.name")}>
+<div id="Chart" part="Chart.frame" data-layout="stack" data-gap="tight" role="figure" aria-label={title || t("component.chart.name")}>
   {#if title}<span id="Title" part="Chart.title">{title}</span>{/if}
-  {#if subtitle}<span id="Subtitle" part="Chart.subtitle">{subtitle}</span>{/if}
-  <div id="Body">
+  {#if subtitle}<span id="Subtitle" part="Chart.subtitle Chart.caption" class="subtitle">{subtitle}</span>{/if}
+  <div id="Body" data-layout="row" data-gap="tight">
     <div id="Axis">
-      {#each ticks as tick (tick.id)}<span part="Chart.tick" class="tick" style:--at={tick.at}>{tick.label}</span>{/each}
+      {#each ticks as tick (tick.id)}<span part="Chart.tick Chart.caption" class="tick" style:--at={tick.at}>{tick.label}</span>{/each}
     </div>
-    <div id="Plot">
-      {#if !bars.length && !line}<p class="empty" part="Chart.label" role="status">{t("component.chart.empty")}</p>{/if}
-      {#each ticks as tick (tick.id)}<div part="Chart.grid Chart.plate" class="grid" style:--at={tick.at}></div>{/each}
-      <div id="Bars">
+    <div id="Plot" data-fill>
+      {#if !bars.length && !line}<p class="empty" part="Chart.label Chart.caption" role="status">{t("component.chart.empty")}</p>{/if}
+      {#each ticks as tick (tick.id)}<div part="Chart.grid Chart.plate Chart.gridline" class="grid" style:--at={tick.at}></div>{/each}
+      <div id="Bars" data-layout="row">
         {#each bars as bar (bar.id)}
-          <div class="column" aria-label={bar.label + " " + formatNumber(bar.value)}>
-            <div part="Chart.bar" class="bar" class:tinted={!!bar.color} style:--v={bar.value / max} style:--c={bar.color}></div>
+          <div class="column" data-layout="stack" data-gap="none" data-fill aria-label={bar.label + " " + formatNumber(bar.value)}>
+            <div part="Chart.bar Chart.fill" class="bar" class:tinted={!!bar.color} style:--v={bar.value / max} style:--c={bar.color}></div>
           </div>
         {/each}
       </div>
       {#if line}<svg id="Line" viewBox="0 0 350 180">
         {#if area}<path id="Area" part="Chart.area" d={line + " L322 180 L25 180 Z"}></path>{/if}
-        <path id="Stroke" part="Chart.line" d={line} fill="none"></path>
+        <path id="Stroke" part="Chart.line Chart.series" d={line} fill="none"></path>
       </svg>{/if}
     </div>
   </div>
-  <div id="Categories">
-    {#each bars as bar (bar.id)}<span part="Chart.label" class="category">{bar.label}</span>{/each}
+  <div id="Categories" data-layout="row">
+    {#each bars as bar (bar.id)}<span part="Chart.label Chart.caption" class="category" data-fill>{bar.label}</span>{/each}
   </div>
 </div>
 
 <style>
-:host { display: flex; flex-direction: column; inline-size: var(--measure-lg); max-inline-size: 100%; gap: var(--space-xs); }
-#Subtitle { font: var(--text-caption); color: var(--ink-muted); }
-#Body { display: flex; gap: var(--space-xs); height: var(--size-5xl); margin-top: var(--space-sm); }
+:host { inline-size: var(--measure-lg); max-inline-size: 100%; --series-color: var(--gold); }
+#Body { height: var(--size-5xl); margin-top: var(--space-sm); align-items: stretch; }
 #Axis { position: relative; width: var(--size-md); flex: none; }
-.tick { position: absolute; inset-inline-start: 0; bottom: calc(var(--at) * var(--size-5xl) - var(--at) * var(--size-xs)); font: var(--text-caption); color: var(--ink-muted); }
-#Plot { position: relative; flex: 1; }
-.empty { margin: 0; padding: var(--space-md); font: var(--text-sm); color: var(--ink-muted); }
-.grid { position: absolute; inset-inline-start: 0; inset-inline-end: 0; bottom: calc(var(--at) * var(--size-5xl)); height: var(--stroke-hairline); background: var(--line); }
-#Bars { display: flex; block-size: 100%; gap: var(--space-sm); align-items: end; padding: 0 var(--space-sm); }
-.column { display: flex; flex-direction: column; flex: 1; min-width: 0; height: stretch; justify-content: end; }
-.bar { width: stretch; height: calc(var(--v) * var(--size-5xl)); border-radius: var(--radius-control); background: var(--primary); opacity: var(--opacity-soft); }
-.bar.tinted { background: var(--c); }
+.tick { position: absolute; inset-inline-start: 0; bottom: calc(var(--at) * var(--size-5xl) - var(--at) * var(--size-xs)); }
+#Plot { position: relative; }
+.empty { margin: 0; padding: var(--space-md); }
+.grid { position: absolute; inset-inline-start: 0; inset-inline-end: 0; bottom: calc(var(--at) * var(--size-5xl)); height: var(--stroke-hairline); }
+#Bars { block-size: 100%; align-items: end; padding: 0 var(--space-sm); }
+.column { height: stretch; justify-content: end; }
+.bar { width: stretch; height: calc(var(--v) * var(--size-5xl)); }
+.bar.tinted { --fill-color: var(--c); }
 #Line { position: absolute; inset: 0; inline-size: 100%; block-size: 100%; }
-#Area { fill: var(--gold); fill-opacity: var(--opacity-wash); }
-#Stroke { stroke: var(--gold); stroke-width: 2; stroke-linejoin: round; }
-#Categories { display: flex; gap: var(--space-sm); padding: 0 var(--space-sm) 0 calc(var(--size-md) + var(--space-xs) + var(--space-sm)); }
-.category { flex: 1; min-width: 0; text-align: center; font-size: var(--font-step-sm); }
+#Categories { padding: 0 var(--space-sm) 0 calc(var(--size-md) + var(--space-xs) + var(--space-sm)); }
+.category { text-align: center; }
 </style>
