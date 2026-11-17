@@ -38,7 +38,9 @@
 @media (width < 600px) { :host { --edge: var(--space-md); } }
 #Damage { width: calc(var(--size-xxl) * 3); height: calc(var(--size-xxl) * 3); }
 #Feed { right: calc(env(safe-area-inset-right) + var(--edge)); top: calc(env(safe-area-inset-top) + var(--edge)); max-width: calc(100% - var(--edge) * 2); }
-#Vitals { left: calc(env(safe-area-inset-left) + var(--edge)); bottom: calc(env(safe-area-inset-bottom) + var(--edge)); padding: var(--space-sm) var(--space-md); width: fit-content; }
+/* The vitals plate has the bar's length: a plate that hugs a bar whose
+   length is its container's left it none. */
+#Vitals { left: calc(env(safe-area-inset-left) + var(--edge)); bottom: calc(env(safe-area-inset-bottom) + var(--edge)); padding: var(--space-sm) var(--space-md); width: var(--measure-sm); max-width: calc(100% - var(--edge) * 2 - env(safe-area-inset-left) - env(safe-area-inset-right)); }
 #Ammo { right: calc(env(safe-area-inset-right) + var(--edge)); bottom: calc(env(safe-area-inset-bottom) + var(--edge)); }
 /* Right to left the corners mirror with the reading order (the feed's and the
    readouts' own rows already run from the right): the feed and the ammunition

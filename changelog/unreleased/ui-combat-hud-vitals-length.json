@@ -1,0 +1,8 @@
+{
+  "fixed": [
+    {
+      "member": "CombatHud",
+      "summary": "The health bar has a length on desktop: the vitals plate is --measure-sm wide (within the safe area). It hugged its content, and a StatBar takes its container's width, so the bar drew 0 px wide and only the icon and the figure showed."
+    }
+  ]
+}
