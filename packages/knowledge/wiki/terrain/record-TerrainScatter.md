@@ -19,7 +19,7 @@ Token `og.TerrainScatter`, registered under the schema name `og.TerrainScatter`;
 | `material` | `Material` | `0` | — | — | — | Its material. |
 | `layer` | `number` | `0` | ≤ 15 | — | — | The terrain layer that places it, 0 to 15. |
 | `density` | `number` | `2` | 0 … 400 | — | tunable | Copies per square metre where the layer's weight is 1. |
-| `distance` | `number` | `40` | 0 … 500 | `m` | tunable | How far from the camera, along x and z, copies are placed. |
+| `distance` | `number` | `40` | 0 … 8000 | `m` | tunable | How far from the camera, along x and z, copies are placed: a wood drawn as impostors reaches the horizon. |
 | `fade` | `number` | `0.3` | 0 … 1 | `ratio` | tunable | The outer part of `distance` over which copies shrink and thin out to nothing. |
 | `minScale` | `number` | `0.8` | ≥ 0 | — | tunable | The smallest copy's uniform scale. |
 | `maxScale` | `number` | `1.2` | ≥ 0 | — | tunable | The largest copy's uniform scale. |
@@ -54,10 +54,10 @@ component TerrainScatter {
     max 400
     tunable true
   }
-  field distance f32 "How far from the camera, along x and z, copies are placed." {
+  field distance f32 "How far from the camera, along x and z, copies are placed: a wood drawn as impostors reaches the horizon." {
     default 40
     min 0
-    max 500
+    max 8000
     unit m
     tunable true
   }

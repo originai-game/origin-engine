@@ -52893,10 +52893,10 @@
         },
         "distance": {
           "type": "number",
-          "description": "How far from the camera, along x and z, copies are placed.",
+          "description": "How far from the camera, along x and z, copies are placed: a wood drawn as impostors reaches the horizon.",
           "default": 40,
           "minimum": 0,
-          "maximum": 500,
+          "maximum": 8000,
           "x-og-unit": "m",
           "x-og-tunable": true
         },

@@ -102,10 +102,10 @@ module terrain {
       max 400
       tunable true
     }
-    field distance f32 "How far from the camera, along x and z, copies are placed." {
+    field distance f32 "How far from the camera, along x and z, copies are placed: a wood drawn as impostors reaches the horizon." {
       default 40
       min 0
-      max 500
+      max 8000
       unit m
       tunable true
     }

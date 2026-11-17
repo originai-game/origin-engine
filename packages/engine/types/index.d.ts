@@ -29386,10 +29386,10 @@ export interface TerrainScatter {
    */
   density: number;
   /**
-   * How far from the camera, along x and z, copies are placed.
+   * How far from the camera, along x and z, copies are placed: a wood drawn as impostors reaches the horizon.
    *
    * @default 40
-   * @range 0..500
+   * @range 0..8000
    * @unit m (metres)
    * @tunable
    */
