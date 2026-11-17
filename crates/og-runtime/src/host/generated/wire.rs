@@ -37293,6 +37293,32 @@ pub mod record {
         }
     }
 
+    /// `ScatterClearing`: packages/knowledge/wiki/terrain.md.
+    #[derive(Clone, Debug, PartialEq)]
+    pub struct ScatterClearing {
+        pub size: Vec3,
+    }
+
+    impl Default for ScatterClearing {
+        fn default() -> Self {
+            Self {
+                size: Vec3::new(1.0_f32, 1.0_f32, 1.0_f32),
+            }
+        }
+    }
+
+    impl FromJson for ScatterClearing {
+        fn from_json(v: &Value) -> Result<Self, String> {
+            Self::from_json_over(v, Self::default())
+        }
+        fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
+            let o = object(v)?;
+            Ok(Self {
+                size: field(o, "size", d.size)?,
+            })
+        }
+    }
+
     /// `StreamCell`: packages/knowledge/wiki/stream.md.
     #[derive(Clone, Debug, PartialEq)]
     pub struct StreamCell {

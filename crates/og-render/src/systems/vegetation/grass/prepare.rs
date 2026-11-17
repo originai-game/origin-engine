@@ -144,6 +144,24 @@ impl GrassRenderer {
         // Where a blade's shadow lands, per metre of its height.
         let reach = Vec3::new(-l.x, -l.y, -l.z) / l.y.max(0.2);
         let lod_rows = LOD_ROWS;
+        // The clearings nearest the camera, in the frame's space.
+        let mut clearings: Vec<(f32, (glam::Mat4, Vec3))> = scene
+            .world
+            .scatter_clearings
+            .iter()
+            .filter_map(|c| {
+                let d = c.transform.w_axis.truncate().distance_squared(view.camera);
+                c.local().map(|l| (d, l))
+            })
+            .collect();
+        og_core::sort::sort_by(&mut clearings, |a, b| a.0.total_cmp(&b.0));
+        clearings.truncate(crate::scatter_place::MAX_CLEARINGS);
+        let mut clearing = [[[0.0; 4]; 4]; crate::scatter_place::MAX_CLEARINGS];
+        let mut clearing_half = [[0.0; 4]; crate::scatter_place::MAX_CLEARINGS];
+        for (i, (_, (m, half))) in clearings.iter().enumerate() {
+            clearing[i] = m.to_cols_array_2d();
+            clearing_half[i] = half.extend(0.0).to_array();
+        }
         for d in &scene.world.grass {
             let g = d.grass;
             let Some(t) = scene.world.terrains.get(d.terrain) else {
@@ -246,8 +264,10 @@ impl GrassRenderer {
                     f32::from(u8::from(g.type_map.is_some())),
                     f32::from(u8::from(g.density_map.is_some())),
                     f32::from(u8::from(g.height_map.is_some())),
-                    0.0,
+                    clearings.len() as f32,
                 ],
+                clearing,
+                clearing_half,
                 counts: [
                     slices.len() as u32,
                     f.blade_cap,

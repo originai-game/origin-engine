@@ -422,3 +422,159 @@ fn scattered_copies_take_the_decals_and_the_weather() {
         tops.len()
     );
 }
+
+/// An og.ScatterClearing under a slab turned 30° on a terrain grows
+/// nothing whose root stands in it, through either placer (the CPU's and
+/// the GPU's) and the grass, while the ground beside the slab's turned
+/// edges, inside the box an unturned clearing would cover, still grows.
+///
+/// Ways this could fail: copies grow through the slab (no clearing, as
+/// before), one placer skips the rule, or the box ignores its turn.
+#[test]
+#[ignore = "requires GPU"]
+fn a_turned_clearing_keeps_copies_and_grass_off_a_slab() {
+    use og_render::{Grass, GrassDraw, ScatterClearing, ScatterDraw};
+    let turn = glam::Quat::from_rotation_y(30f32.to_radians());
+    // A 30 × 10 m slab, 0.3 m thick, laid on the flat ground; the clearing
+    // reaches 2 m below and above it.
+    let slab_at = Mat4::from_rotation_translation(turn, Vec3::new(2.0, 0.15, -1.0));
+    let half = Vec2::new(15.0, 5.0);
+    let scene_with = |copies: Option<bool>, cleared: bool| {
+        let mut scene = RenderScene::new();
+        let h = scene.add_terrain(TerrainData::flat(Vec2::splat(256.0), 65, 65));
+        scene.world.terrains.push(Terrain {
+            layers: vec![TerrainLayer {
+                color: Vec3::splat(0.02),
+                ..Default::default()
+            }],
+            cast_shadows: false,
+            ..Terrain::new(h)
+        });
+        let slab = scene.add_mesh(shapes::cuboid(Vec3::new(30.0, 0.3, 10.0)));
+        let dark = scene.add_material(Material {
+            base_color: [0.02, 0.02, 0.02, 1.0],
+            roughness: 1.0,
+            ..Default::default()
+        });
+        scene.add_instance(slab, dark, slab_at);
+        match copies {
+            Some(gpu) => {
+                let cube = scene.add_mesh(shapes::cuboid(Vec3::new(0.5, 2.0, 0.5)));
+                let white = scene.add_material(Material {
+                    base_color: [0.9, 0.9, 0.9, 1.0],
+                    roughness: 1.0,
+                    ..Default::default()
+                });
+                scene.world.scatters.push(ScatterDraw {
+                    terrain: 0,
+                    mesh: cube,
+                    material: white,
+                    scatter: TerrainScatter {
+                        density: 1.0,
+                        distance: 90.0,
+                        scale: [1.0, 1.0],
+                        seed: 7,
+                        gpu,
+                        ..TerrainScatter::default()
+                    },
+                    cast_shadows: false,
+                    impostor: None,
+                    impostor_distance: 0.0,
+                    with: None,
+                    lods: [None; 2],
+                });
+            }
+            None => scene.world.grass.push(GrassDraw {
+                terrain: 0,
+                grass: Grass {
+                    density: 60.0,
+                    distance: 90.0,
+                    height: 0.8,
+                    width: 0.12,
+                    base_color: Vec3::splat(0.9),
+                    tip_color: Vec3::splat(0.9),
+                    dry_color: Vec3::splat(0.9),
+                    color_variation: 0.0,
+                    cast_shadows: false,
+                    ..Default::default()
+                },
+            }),
+        }
+        if cleared {
+            scene.world.scatter_clearings.push(ScatterClearing {
+                transform: slab_at,
+                size: Vec3::new(30.0, 4.0, 10.0),
+            });
+        }
+        scene.atmosphere.fog = None;
+        scene.look.post.tonemap = Tonemap::None;
+        scene.lighting.environment.background = Background::Color(Vec3::ZERO);
+        scene.lighting.light.cast_shadows = false;
+        // Straight down, +x to the right and +z down the frame, 12 px a metre.
+        scene.frame.camera = Camera {
+            position: Vec3::new(0.0, 100.0, 0.0),
+            target: Vec3::ZERO,
+            up: Vec3::NEG_Z,
+            near: 1.0,
+            far: 500.0,
+            projection: Projection::Orthographic { height: 60.0 },
+            exposure: Exposure::linear(1.0),
+        };
+        scene
+    };
+    let to_slab = slab_at.inverse();
+    // The slab's frame at a pixel: how far inside (negative) or outside
+    // its rectangle the ground there is, in metres.
+    let outside = |x: u32, y: u32| {
+        let p = Vec3::new((x as f32 - 640.0) / 12.0, 0.0, (y as f32 - 360.0) / 12.0);
+        let l = to_slab.transform_point3(p);
+        (l.x.abs() - half.x).max(l.z.abs() - half.y)
+    };
+    // The unturned rectangle's corners the turned slab leaves bare.
+    let corner = |x: u32, y: u32| {
+        let p = Vec2::new(
+            (x as f32 - 640.0) / 12.0 - 2.0,
+            (y as f32 - 360.0) / 12.0 + 1.0,
+        );
+        p.x.abs() < half.x && p.y.abs() < half.y && outside(x, y) > 1.5
+    };
+    for (label, copies) in [("cpu", Some(false)), ("gpu", Some(true)), ("grass", None)] {
+        // A renderer of its own: a chunk placed either way is reused by
+        // the other placer.
+        let mut r = Renderer::new_blocking(&scenes::base_desc()).expect("renderer");
+        let mut count = |cleared: bool| {
+            let scene = scene_with(copies, cleared);
+            for _ in 0..3 {
+                r.render(&scene, &RenderTarget::Offscreen).expect("render");
+            }
+            let img = r.read_offscreen().expect("capture");
+            keep(&format!("clearing-{label}-{cleared}"), &img);
+            let (mut inside, mut beside) = (0, 0);
+            for y in 0..img.height {
+                for x in 0..img.width {
+                    if luma(px(&img, x, y)) < 60.0 {
+                        continue;
+                    }
+                    // A copy whose root stands just outside reaches 0.5 m in.
+                    if outside(x, y) < -1.0 {
+                        inside += 1;
+                    } else if corner(x, y) {
+                        beside += 1;
+                    }
+                }
+            }
+            (inside, beside)
+        };
+        let (through, _) = count(false);
+        assert!(
+            through > 2_000,
+            "{label}: {through} bright pixels over the slab without a clearing"
+        );
+        let (inside, beside) = count(true);
+        assert_eq!(inside, 0, "{label}: copies grow through the cleared slab");
+        assert!(
+            beside > 1_000,
+            "{label}: {beside} bright pixels beside the slab's turned edges"
+        );
+    }
+}

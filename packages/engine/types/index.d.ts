@@ -29845,6 +29845,22 @@ export interface GrassPusher {
   strength: number;
 }
 
+/**
+ * Grows nothing inside a box: no og.TerrainScatter copy whose root stands in it and no og.Grass blade (a house's floor, a paved yard, a slab or a road laid over a terrain). The box is centred on the entity and follows its whole world transform, turned and scaled with it, so a slab's own entity can carry it. A copy is kept out by its root on the ground, so the box reaches below the ground and above the floor. Moving one places the copies again. Visual only. Grass skips the 16 clearings nearest the camera; scatters read every one, placed on the CPU past 16.
+ *
+ * The value of the `ScatterClearing` component (token `og.ScatterClearing`).
+ */
+export interface ScatterClearing {
+  /**
+   * The box's full extents along the entity's own x, y and z, before its world scale. 0 on any axis: no clearing.
+   *
+   * @default { x: 1, y: 1, z: 1 }
+   * @range 0..
+   * @unit m (metres)
+   */
+  size: Vector3;
+}
+
 /** A loaded terrain. */
 export interface TerrainInfo {
   /** Its handle, for og.Terrain.data and this module's functions. */
@@ -38249,6 +38265,10 @@ export declare namespace og {
    * Presses what covers the ground where the entity stands: a vertical capsule from its position up `height`, reaching `radius` on the ground. og.Grass blades bend away and flatten, standing again over the field's `recovery` after it passes (a trail behind a walker); og.TerrainScatter copies part the same way; snow and sand lying on a terrain (og.Weather) keep a track that fills in over four minutes. What a pusher floats above is not touched. Visual only, where the renderer can (RenderCapabilities.compute; elsewhere nothing): the simulation reads none of it. The 32 nearest the camera press.
    */
   const GrassPusher: ComponentType<{ readonly radius: FieldSpec<"f32">; readonly height: FieldSpec<"f32">; readonly strength: FieldSpec<"f32"> }, GrassPusher>;
+  /**
+   * Grows nothing inside a box: no og.TerrainScatter copy whose root stands in it and no og.Grass blade (a house's floor, a paved yard, a slab or a road laid over a terrain). The box is centred on the entity and follows its whole world transform, turned and scaled with it, so a slab's own entity can carry it. A copy is kept out by its root on the ground, so the box reaches below the ground and above the floor. Moving one places the copies again. Visual only. Grass skips the 16 clearings nearest the camera; scatters read every one, placed on the CPU past 16.
+   */
+  const ScatterClearing: ComponentType<{ readonly size: FieldSpec<"Vector3"> }, ScatterClearing>;
   /**
    * Terrain (phase 2): a height field over a rectangle, cooked by `og cook` from a `type terrain` .ogt (a heightmap, a control map, up to sixteen layered materials, a holes map) into tiles; drawn as a clipmap around the camera, collided with as a height field, baked into navmeshes.
    * Load it with og.terrain.load, then place it with an og.Terrain and an og.Collider of shape heightfield naming TerrainInfo.geometry. Edits are world state. Terrain is 3D: where RenderCapabilities.world3d is false every call answers a refusal naming that field. Its tiles stream; no tick reads which are resident.

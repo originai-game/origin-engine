@@ -132,6 +132,9 @@ pub struct SceneWorld {
     /// Copies scattered over this frame's terrains, placed and drawn by
     /// the renderer from cached chunks.
     pub scatters: Vec<crate::ScatterDraw>,
+    /// Boxes nothing grows in (og.ScatterClearing): no scattered copy
+    /// whose root stands in one, no blade of grass.
+    pub scatter_clearings: Vec<crate::ScatterClearing>,
     /// Fields of grass over this frame's terrains, generated and drawn by
     /// the renderer on the GPU (`grass.rs`).
     pub grass: Vec<crate::GrassDraw>,

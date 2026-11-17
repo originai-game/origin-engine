@@ -1,7 +1,7 @@
 // Scatter placement on the GPU (scatter_place.rs): a TerrainScatter with
 // `gpu` set has its chunks' copies placed here, once per chunk as the CPU
 // path builds them, by the same rules as scatter.rs `Terrain::copy_ruled`
-// (the layer's weight, holes, clusters, the water and the footprints of
+// (the layer's weight, holes, clusters, the water, the clearings and the footprints of
 // the scatters placed before it), into the chunk's instance buffer, which
 // scatter_cull.wgsl then culls copy by copy. Prepended by wind_common.wgsl,
 // grass_common.wgsl and terrain.wgsl (group 1: the terrain's uniform, tile
@@ -34,11 +34,13 @@ struct PlaceLayer {
 struct PlaceJob {
   model: mat4x4<f32>,    // the terrain's space to the frame's
   normal: mat4x4<f32>,   // normals from the terrain's space to the frame's (inverse transpose)
-  ground: vec4<f32>,     // x: the terrain's horizontal scale (world m per its metre), y: waters
+  ground: vec4<f32>,     // x: the terrain's horizontal scale (world m per its metre), y: waters, z: clearings
   counts: vec4<u32>,     // x: layers (the stages, then the placed scatter), y: the layer this dispatch evaluates, z: the mesh's index count
   layers: array<PlaceLayer, 8>,
   water: array<mat4x4<f32>, 8>,  // the frame's to each surface's (its surface local y = 0)
   water_half: array<vec4<f32>, 8>,  // xy: each one's half extent along local x and z
+  clearing: array<mat4x4<f32>, 16>,  // the frame's to each clearing's box (its centre at local 0)
+  clearing_half: array<vec4<f32>, 16>,  // xyz: each box's half extent along its own axes
 };
 
 @group(0) @binding(0) var<uniform> job: PlaceJob;
@@ -256,8 +258,13 @@ fn place_grown(li: u32, x: u32, z: u32) -> bool {
 }
 
 // A copy of layer `li` grows at `c` (its ground `height`, the frame's
-// `at`) under the water and the earlier layers' footprints.
+// `at`) outside the clearings, under the water and the earlier layers'
+// footprints.
 fn place_clear(li: u32, c: PlaceCell, at: vec3<f32>) -> bool {
+  for (var k = 0u; k < u32(job.ground.z); k++) {
+    let q = (job.clearing[k] * vec4<f32>(at, 1.0)).xyz;
+    if (all(abs(q) <= job.clearing_half[k].xyz)) { return false; }
+  }
   let l = job.layers[li];
   if (l.rules.w > 0.0) {
     for (var w = 0u; w < u32(job.ground.y); w++) {

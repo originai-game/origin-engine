@@ -460,6 +460,22 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState, h: &mut Hierarchy) ->
                 strength: v.strength,
             });
     }
+    // og.ScatterClearing: the boxes no copy or blade grows in, placed by
+    // their entities' drawn transforms.
+    rs.scene.world.scatter_clearings.clear();
+    let layout = rs.draw.scatter_clearing.clone();
+    for (e, v) in kept_rows(world, layout.as_ref()) {
+        let Ok(v) = record::ScatterClearing::from_json(&v) else {
+            continue;
+        };
+        rs.scene
+            .world
+            .scatter_clearings
+            .push(og_render::ScatterClearing {
+                transform: h.world_of(e),
+                size: v.size,
+            });
+    }
     // The unedited terrains' tiles, as the camera needs them.
     if !streamed.is_empty() {
         let height = match rs.backend.as_ref().map(|b| b.size()) {

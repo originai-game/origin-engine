@@ -19,7 +19,7 @@
 //! collisions between layers of different footprints by evaluating them
 //! in dependency order, with the exact distances of `copy_ruled` instead
 //! of a density map. A chunk whose chain is too long, too wide or near
-//! too many waters is placed on the CPU.
+//! too many waters or clearings is placed on the CPU.
 
 use crate::scatter::TerrainScatter;
 use crate::scatter_cull::{COPY_BYTES, MAX_CHUNK_COPIES};
@@ -29,6 +29,8 @@ use glam::{Mat3, Mat4, Vec2};
 const MAX_LAYERS: usize = 8;
 /// Water surfaces a job reads at most.
 const MAX_WATERS: usize = 8;
+/// Clearings (og.ScatterClearing) a job reads at most.
+pub(crate) const MAX_CLEARINGS: usize = 16;
 /// Bits a job's earlier scatters evaluate at most.
 const MAX_STAGE_BITS: u64 = 1 << 22;
 /// Where a placed chunk's draws start in its buffer, past its copies
@@ -62,6 +64,8 @@ pub(crate) struct JobGpu {
     layers: [LayerGpu; MAX_LAYERS],
     water: [[[f32; 4]; 4]; MAX_WATERS],
     water_half: [[f32; 4]; MAX_WATERS],
+    clearing: [[[f32; 4]; 4]; MAX_CLEARINGS],
+    clearing_half: [[f32; 4]; MAX_CLEARINGS],
 }
 
 /// One chunk to place: its terrain, its scatter and those before it.
@@ -75,6 +79,8 @@ pub(crate) struct PlaceInput<'a> {
     pub cells: (u32, u32, u32, u32),
     /// The waters from the frame (each to its surface) and their half extents.
     pub waters: &'a [(Mat4, Vec2)],
+    /// The clearings from the frame (each to its box) and their half extents.
+    pub clearings: &'a [(Mat4, glam::Vec3)],
     pub index_count: u32,
 }
 
@@ -97,7 +103,10 @@ fn cells_of(s: &TerrainScatter, size: Vec2) -> (u32, u32) {
 pub(crate) fn plan(input: &PlaceInput) -> Option<Plan> {
     let n = input.layers.len();
     let reads_water = input.layers.iter().any(|s| s.avoid_water > 0.0);
-    if n > MAX_LAYERS || (reads_water && input.waters.len() > MAX_WATERS) {
+    if n > MAX_LAYERS
+        || (reads_water && input.waters.len() > MAX_WATERS)
+        || input.clearings.len() > MAX_CLEARINGS
+    {
         return None;
     }
     let along = crate::ground::horizontal_scale(input.model).max(1e-6);
@@ -139,7 +148,14 @@ pub(crate) fn plan(input: &PlaceInput) -> Option<Plan> {
         layers: [LayerGpu::default(); MAX_LAYERS],
         water: [[[0.0; 4]; 4]; MAX_WATERS],
         water_half: [[0.0; 4]; MAX_WATERS],
+        clearing: [[[0.0; 4]; 4]; MAX_CLEARINGS],
+        clearing_half: [[0.0; 4]; MAX_CLEARINGS],
     };
+    base.ground[2] = input.clearings.len() as f32;
+    for (i, (m, half)) in input.clearings.iter().enumerate() {
+        base.clearing[i] = m.to_cols_array_2d();
+        base.clearing_half[i] = half.extend(0.0).to_array();
+    }
     if reads_water {
         base.ground[1] = input.waters.len() as f32;
         for (i, (m, half)) in input.waters.iter().enumerate() {
@@ -581,6 +597,7 @@ mod tests {
             layers: vec![&trees, &stones, &flowers],
             cells: (64, 64, 32, 32),
             waters: &[],
+            clearings: &[],
             index_count: 36,
         })
         .expect("on the GPU");

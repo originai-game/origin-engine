@@ -48,7 +48,9 @@ struct GrassGen {
   // tallest (m), y its root width (m), z where its share ends in [0, 1]
   // (shares summed in order), w 1 when the field has it.
   kinds: array<vec4<f32>, 4>,
-  maps: vec4<f32>,      // 1 where the field has x a type map, y a density map, z a height map
+  maps: vec4<f32>,      // 1 where the field has x a type map, y a density map, z a height map; w the clearings
+  clearing: array<mat4x4<f32>, 16>,  // the frame's to each og.ScatterClearing's box (its centre at local 0)
+  clearing_half: array<vec4<f32>, 16>,  // xyz: each box's half extent along its own axes
   wind: WindField,
 };
 
@@ -198,6 +200,11 @@ fn grass_evaluate(s: vec4<u32>, index: u32) -> vec4<u32> {
   let local = terrain_min() + rel;
   let maps = terrain_maps_at(samples, vec2<f32>(0.0), vec2<f32>(0.0));
   let root = terrain_world(vec3<f32>(local.x, terrain_height_at(0u, samples), local.y));
+  // No blade grows in a clearing (a floor laid over the field).
+  for (var k = 0u; k < u32(gen.maps.w); k++) {
+    let q = (gen.clearing[k] * vec4<f32>(root, 1.0)).xyz;
+    if (all(abs(q) <= gen.clearing_half[k].xyz)) { return none; }
+  }
   let normal = normalize(terrain.normal * maps.normal);
   // The plan's share (grass.rs Plan::density) on top of the distance
   // table: a view over the budget thins every chunk, its survivors wider.

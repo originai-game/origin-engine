@@ -228,6 +228,7 @@ impl RenderScene {
                 terrains: Vec::new(),
                 terrain_stamps: Vec::new(),
                 scatters: Vec::new(),
+                scatter_clearings: Vec::new(),
                 grass: Vec::new(),
                 fluids_3d: Vec::new(),
                 colliders: Vec::new(),

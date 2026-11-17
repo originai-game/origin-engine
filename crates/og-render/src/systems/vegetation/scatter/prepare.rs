@@ -295,7 +295,12 @@ impl ScatterRenderer {
                     m.w_axis += scene.frame.origin.extend(0.0);
                     (m, w.size, w.endless)
                 }),
-            );
+            )
+            .with_clearings(scene.world.scatter_clearings.iter().map(|c| {
+                let mut c = *c;
+                c.transform.w_axis += scene.frame.origin.extend(0.0);
+                c
+            }));
             let mut params: Vec<u32> = std::iter::once(&s)
                 .chain(&ctx.before)
                 .flat_map(|o| o.placement_bits())
@@ -305,6 +310,12 @@ impl ScatterRenderer {
                     params.extend(m.to_cols_array().map(f32::to_bits));
                     params.extend(half.to_array().map(f32::to_bits));
                 }
+            }
+            // The clearings move the copies of every scatter: a moved one
+            // places its chunks again.
+            for (m, half) in &ctx.clearings {
+                params.extend(m.to_cols_array().map(f32::to_bits));
+                params.extend(half.to_array().map(f32::to_bits));
             }
             // The copies are placed in the world (the terrain's placement
             // plus the scene's origin: exact, as the origin is on a coarse
@@ -396,6 +407,16 @@ impl ScatterRenderer {
                     .collect(),
                 None => Vec::new(),
             };
+            // The clearings in the frame's space, as the job's model.
+            let frame_clearings: Vec<(Mat4, Vec3)> = match gpu {
+                Some(_) => scene
+                    .world
+                    .scatter_clearings
+                    .iter()
+                    .filter_map(|c| c.local())
+                    .collect(),
+                None => Vec::new(),
+            };
             let chain: Vec<&TerrainScatter> = ctx.before.iter().chain([&s]).collect();
             let mut keys = Vec::new();
             // Nearest chunks first, so a budgeted frame builds those.
@@ -430,6 +451,7 @@ impl ScatterRenderer {
                             CHUNK_CELLS.min(cells.y as u32 - z),
                         ),
                         waters: &frame_waters,
+                        clearings: &frame_clearings,
                         index_count,
                     })
                 });
@@ -532,7 +554,7 @@ impl ScatterRenderer {
                 };
                 'cells: for z in cz * CHUNK_CELLS..((cz + 1) * CHUNK_CELLS).min(cells.y as u32) {
                     for x in cx * CHUNK_CELLS..((cx + 1) * CHUNK_CELLS).min(cells.x as u32) {
-                        match placed_on.copy_ruled(ground, &s, &ctx.before, &ctx.water, x, z) {
+                        match placed_on.copy_ruled(ground, &s, &ctx.before, &ctx, x, z) {
                             None => {
                                 complete = false;
                                 break 'cells;

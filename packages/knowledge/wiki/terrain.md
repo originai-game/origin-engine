@@ -10,7 +10,7 @@ See `world §1`.
 
 - **TypeScript**: functions are the namespace `og.terrain`; components, resources and events are tokens on `og`.
 - **Publish builds**: kept (members may override).
-- **Core** (what most games use): `og.Terrain`, `TerrainInfo`, `TerrainSampleDesc`, `TerrainSample`, `TerrainBrush`, `og.terrain.load`, `og.terrain.sample`, `og.terrain.edit`; 18 more are advanced (`og api show terrain --all`).
+- **Core** (what most games use): `og.Terrain`, `TerrainInfo`, `TerrainSampleDesc`, `TerrainSample`, `TerrainBrush`, `og.terrain.load`, `og.terrain.sample`, `og.terrain.edit`; 19 more are advanced (`og api show terrain --all`).
 - **Index**: [every module and guide](index.md).
 
 ```ogt
@@ -36,6 +36,7 @@ module terrain {
 | [`og.Grass`](terrain/record-Grass.md) | component |  | A field of grass over a loaded terrain where one of its layers shows, generated on the GPU every frame out to `distance`: curved blades on a blue-noise pattern fixed to the terrain, growing where the… |
 | [`og.GrassType`](terrain/record-GrassType.md) | component |  | Another kind of blade for og.Grass fields that list this entity in their `types`: its shape and colours replace the field's for the clumps that grow it, the rest (density, wind, lighting, dryness) is… |
 | [`og.GrassPusher`](terrain/record-GrassPusher.md) | component |  | Presses what covers the ground where the entity stands: a vertical capsule from its position up `height`, reaching `radius` on the ground. |
+| [`og.ScatterClearing`](terrain/record-ScatterClearing.md) | component |  | Grows nothing inside a box: no og.TerrainScatter copy whose root stands in it and no og.Grass blade (a house's floor, a paved yard, a slab or a road laid over a terrain). |
 | [`TerrainInfo`](terrain/type-TerrainInfo.md) | struct |  | A loaded terrain. |
 | [`TerrainSampleDesc`](terrain/type-TerrainSampleDesc.md) | desc struct |  | Where og.terrain.sample looks. |
 | [`TerrainSample`](terrain/type-TerrainSample.md) | struct |  | The terrain under a point. |

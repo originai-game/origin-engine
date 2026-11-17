@@ -435,6 +435,12 @@ pub(crate) const LAZY: &[Lazy] = &[
         name: "og.GrassPusher",
         enable: |_, _| Ok(()),
     },
+    // What nothing grows in, read by extraction alone: a world without one
+    // keeps its type table and hash.
+    Lazy {
+        name: "og.ScatterClearing",
+        enable: |_, _| Ok(()),
+    },
     // A region's acceleration, read as the tick starts
     // (bind::forces): a world without one keeps its type table and hash.
     Lazy {

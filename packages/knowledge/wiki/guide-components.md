@@ -813,11 +813,13 @@ Its own props, beside every element's:
 | `items` | `names` | The tab or option labels, literal names or a bound list of strings (a `<select>`'s `<option>`s set them). |
 | `keys` | `names` | A string table key (og.i18n) per tab its label comes from; its item is the fallback. |
 | `icons` | `names` | An icon of the style's set per tab, before its label (`icons="sword shield"`, or a bound list); an empty name is none. |
+| `aria-labels` | `names` | An accessible name per icon-only tab (`aria-labels={$names}`, a list of strings); a visible label remains its accessible name. |
 | `badges` | `names` | A count badge per tab, after its label (`badges={$unread}`, a list of strings); an empty one is none. |
 | `values` | `names` | A name per tab (a screen's mode) that `current` holds instead of `selected`'s index. |
 | `current` | `name` | The selected item's name from `values` (a `<select>`'s `value`); on tabs it takes over from `selected` when `values` is set. Two-way only with an explicit bind: attribute. |
 | `selected` | `number` | The selected tab's zero-based index. Two-way only with an explicit bind: attribute. |
 | `fill` | `bool` | Equal tabs filling the available width. |
+| `<tabs fit>` | `bool` | Fit tabs to the available track without scrolling: compress padding to space.xs, then share space in proportion to their labels, wrap up to two lines and finally ellipsize. Full labels stay accessible. Without fit, long tab sets scroll. |
 
 <a id="guide-components-26"></a>
 ### `components §26` `<input type="text">`, `<textarea>` (`field`): A text control (two-way `input`): `<input>` for one line, `<textarea>` for several; `type="number"` keeps editable text and adds increment/decrement buttons. Min, max and step constrain stepping; data-wrap, data-large-step and data-format configure it

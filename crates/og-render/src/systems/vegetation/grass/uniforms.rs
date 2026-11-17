@@ -102,6 +102,8 @@ pub(super) struct GenGpu {
     pub(super) trample: [f32; 4],
     pub(super) kinds: [[f32; 4]; 4],
     pub(super) maps: [f32; 4],
+    pub(super) clearing: [[[f32; 4]; 4]; crate::scatter_place::MAX_CLEARINGS],
+    pub(super) clearing_half: [[f32; 4]; crate::scatter_place::MAX_CLEARINGS],
     pub(super) wind: WindFieldGpu,
 }
 

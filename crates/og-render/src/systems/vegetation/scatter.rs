@@ -131,6 +131,41 @@ pub struct ScatterContext {
     /// from the world (its surface local y = 0) and its half extent along
     /// local x and z (infinite for an endless sea).
     pub water: Vec<(Mat4, Vec2)>,
+    /// The clearings no copy grows in ([`ScatterClearing`]): each one's
+    /// frame from the world (its centre at local 0) and its half extent
+    /// along its local axes ([`ScatterContext::with_clearings`]).
+    pub clearings: Vec<(Mat4, Vec3)>,
+}
+
+/// A box nothing is scattered or grown in (og.ScatterClearing): a floor, a
+/// yard or a slab laid over a terrain. No [`TerrainScatter`] copy whose
+/// root stands in it grows, nor any [`crate::GrassDraw`] blade.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct ScatterClearing {
+    /// The box's frame in the scene's space (as [`crate::Water::transform`]):
+    /// its centre, turn and scale.
+    pub transform: Mat4,
+    /// Its full extents along its own axes, before `transform`'s scale; 0
+    /// on any axis clears nothing.
+    pub size: Vec3,
+}
+
+impl ScatterClearing {
+    /// The box from the scene's space to its own and its half extent, or
+    /// `None` where it clears nothing (no size, or a transform that
+    /// collapses it).
+    pub(crate) fn local(&self) -> Option<(Mat4, Vec3)> {
+        let ok = self.size.cmpgt(Vec3::ZERO).all()
+            && self.size.is_finite()
+            && self.transform.determinant().abs() > 1e-12;
+        ok.then(|| (self.transform.inverse(), self.size * 0.5))
+    }
+
+    /// Whether `p`, a point in the space `to_local` maps from, stands in
+    /// the box (`local`'s answer).
+    pub(crate) fn holds((to_local, half): &(Mat4, Vec3), p: Vec3) -> bool {
+        to_local.transform_point3(p).abs().cmple(*half).all()
+    }
 }
 
 impl ScatterContext {
@@ -166,7 +201,18 @@ impl ScatterContext {
                     (m.inverse(), half)
                 })
                 .collect(),
+            clearings: Vec::new(),
         }
+    }
+
+    /// The context with `clearings` (in the world, as the water): those
+    /// that clear something.
+    pub fn with_clearings(
+        mut self,
+        clearings: impl IntoIterator<Item = ScatterClearing>,
+    ) -> ScatterContext {
+        self.clearings = clearings.into_iter().filter_map(|c| c.local()).collect();
+        self
     }
 
     /// Whether any rule of `s` or the scatters before it reads the water.

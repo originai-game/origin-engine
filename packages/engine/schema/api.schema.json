@@ -14512,6 +14512,7 @@
         "Grass",
         "GrassType",
         "GrassPusher",
+        "ScatterClearing",
         "TerrainInfo",
         "TerrainSampleDesc",
         "TerrainSample",
@@ -53379,6 +53380,26 @@
           "maximum": 1,
           "x-og-unit": "ratio",
           "x-og-tunable": true
+        }
+      },
+      "additionalProperties": false
+    },
+    "ScatterClearing": {
+      "x-og-kind": "component",
+      "x-og-module": "terrain",
+      "description": "Grows nothing inside a box: no og.TerrainScatter copy whose root stands in it and no og.Grass blade (a house's floor, a paved yard, a slab or a road laid over a terrain). The box is centred on the entity and follows its whole world transform, turned and scaled with it, so a slab's own entity can carry it. A copy is kept out by its root on the ground, so the box reaches below the ground and above the floor. Moving one places the copies again. Visual only. Grass skips the 16 clearings nearest the camera; scatters read every one, placed on the CPU past 16.",
+      "type": "object",
+      "properties": {
+        "size": {
+          "$ref": "#/$defs/Vector3",
+          "description": "The box's full extents along the entity's own x, y and z, before its world scale. 0 on any axis: no clearing.",
+          "default": {
+            "x": 1,
+            "y": 1,
+            "z": 1
+          },
+          "minimum": 0,
+          "x-og-unit": "m"
         }
       },
       "additionalProperties": false

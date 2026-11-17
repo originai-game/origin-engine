@@ -39,8 +39,8 @@ pub(crate) fn seed_hash(seed: u32) -> u32 {
 
 impl Terrain {
     /// The copy of cell (`x`, `z`) of `s`'s grid under every rule: its
-    /// own ([`Self::copy_at`]), then clear of the water by `avoid_water`
-    /// and of the copies of the scatters placed `before` it by the larger
+    /// own ([`Self::copy_at`]), then clear of the water by `avoid_water`,
+    /// outside every clearing (`ctx.clearings`), and of the copies of the scatters placed `before` it by the larger
     /// footprint. `Some(None)` where none grows, `None` where the ground is
     /// not resident yet.
     pub(super) fn copy_ruled(
@@ -48,16 +48,19 @@ impl Terrain {
         g: &dyn Ground,
         s: &TerrainScatter,
         before: &[TerrainScatter],
-        water: &[(Mat4, Vec2)],
+        ctx: &ScatterContext,
         x: u32,
         z: u32,
     ) -> Option<Option<(u32, Mat4, Vec2)>> {
         let Some(copy) = self.copy_at(g, s, x, z)? else {
             return Some(None);
         };
+        let at = copy.1.w_axis.truncate();
+        if ctx.clearings.iter().any(|c| ScatterClearing::holds(c, at)) {
+            return Some(None);
+        }
         if s.avoid_water > 0.0 {
-            let at = copy.1.w_axis.truncate();
-            for (to_local, half) in water {
+            for (to_local, half) in &ctx.water {
                 let l = to_local.transform_point3(at);
                 if l.x.abs() <= half.x && l.z.abs() <= half.y && l.y < s.avoid_water {
                     return Some(None);
@@ -78,7 +81,7 @@ impl Terrain {
             let hi = ((p + reach + size * 0.5) / cell).floor().min(cells - 1.0);
             for bz in lo.y as u32..=hi.y.max(0.0) as u32 {
                 for bx in lo.x as u32..=hi.x.max(0.0) as u32 {
-                    if let Some((_, _, q)) = self.copy_ruled(g, b, &before[..i], water, bx, bz)?
+                    if let Some((_, _, q)) = self.copy_ruled(g, b, &before[..i], ctx, bx, bz)?
                         && (q - p).length() < reach
                     {
                         return Some(None);
@@ -200,8 +203,7 @@ impl Terrain {
             .map(|z| z as u32)
         {
             for x in x0..x1 {
-                if let Some(Some((key, m, p))) =
-                    self.copy_ruled(data, s, &ctx.before, &ctx.water, x, z)
+                if let Some(Some((key, m, p))) = self.copy_ruled(data, s, &ctx.before, ctx, x, z)
                     && (p - eye).length() <= reach
                 {
                     out.push((key, m));

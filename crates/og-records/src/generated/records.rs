@@ -31066,6 +31066,30 @@ pub const RECORDS: &[RecordDecl] = &[
     },
     RecordDecl {
         kind: "component",
+        name: "ScatterClearing",
+        schema: "og.ScatterClearing",
+        fields: &[
+            FieldDecl {
+                name: "size",
+                column: "Vector3",
+                default: "{\"x\":1,\"y\":1,\"z\":1}",
+                readonly: false,
+                tunable: false,
+                min: Some(0.0),
+                max: None,
+                step: None,
+                unit: "m",
+                worldspace: "",
+                label: "",
+                doc: doc!("The box's full extents along the entity's own x, y and z, before its world scale. 0 on any axis: no clearing."),
+                variants: &[],
+                capacity: 0,
+                list: 0,
+            },
+        ],
+    },
+    RecordDecl {
+        kind: "component",
         name: "StreamCell",
         schema: "og.StreamCell",
         fields: &[

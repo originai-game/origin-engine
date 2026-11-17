@@ -7652,6 +7652,23 @@
     },
     {
       "id": 96,
+      "name": "ScatterClearing",
+      "schema": "og.ScatterClearing",
+      "module": "terrain",
+      "fields": [
+        {
+          "name": "size",
+          "column": "Vector3",
+          "default": {
+            "x": 1,
+            "y": 1,
+            "z": 1
+          }
+        }
+      ]
+    },
+    {
+      "id": 97,
       "name": "StreamCell",
       "schema": "og.StreamCell",
       "module": "stream",
@@ -7695,7 +7712,7 @@
       ]
     },
     {
-      "id": 97,
+      "id": 98,
       "name": "StreamAnchor",
       "schema": "og.StreamAnchor",
       "module": "stream",
@@ -7713,7 +7730,7 @@
       ]
     },
     {
-      "id": 98,
+      "id": 99,
       "name": "CellMember",
       "schema": "og.CellMember",
       "module": "stream",
@@ -7727,7 +7744,7 @@
       ]
     },
     {
-      "id": 99,
+      "id": 100,
       "name": "VideoPlayer",
       "schema": "og.VideoPlayer",
       "module": "video",
@@ -7784,7 +7801,7 @@
       ]
     },
     {
-      "id": 100,
+      "id": 101,
       "name": "PathFollower",
       "schema": "og.PathFollower",
       "module": "path",
@@ -7838,7 +7855,7 @@
       ]
     },
     {
-      "id": 101,
+      "id": 102,
       "name": "Timeline",
       "schema": "og.Timeline",
       "module": "timeline",
@@ -7872,7 +7889,7 @@
       ]
     },
     {
-      "id": 102,
+      "id": 103,
       "name": "PlayerInput",
       "schema": "og.PlayerInput",
       "module": "net",
@@ -7916,7 +7933,7 @@
       ]
     },
     {
-      "id": 103,
+      "id": 104,
       "name": "MotionAgent",
       "schema": "og.MotionAgent",
       "module": "motion",
@@ -7946,7 +7963,7 @@
       ]
     },
     {
-      "id": 104,
+      "id": 105,
       "name": "Destructible",
       "schema": "og.Destructible",
       "module": "destruction",
@@ -8044,7 +8061,7 @@
       ]
     },
     {
-      "id": 105,
+      "id": 106,
       "name": "Chunk",
       "schema": "og.Chunk",
       "module": "destruction",
@@ -8082,7 +8099,7 @@
       ]
     },
     {
-      "id": 106,
+      "id": 107,
       "name": "PixelTerrain",
       "schema": "og.PixelTerrain",
       "module": "destruction",
@@ -8194,7 +8211,7 @@
       ]
     },
     {
-      "id": 107,
+      "id": 108,
       "name": "PixelPiece",
       "schema": "og.PixelPiece",
       "module": "destruction",
@@ -8232,7 +8249,7 @@
       ]
     },
     {
-      "id": 108,
+      "id": 109,
       "name": "Vfx",
       "schema": "og.Vfx",
       "module": "vfx",
@@ -8296,7 +8313,7 @@
       ]
     },
     {
-      "id": 109,
+      "id": 110,
       "name": "SightMap",
       "schema": "og.SightMap",
       "module": "sight",
@@ -8339,7 +8356,7 @@
       ]
     },
     {
-      "id": 110,
+      "id": 111,
       "name": "Sight",
       "schema": "og.Sight",
       "module": "sight",
@@ -8358,7 +8375,7 @@
       ]
     },
     {
-      "id": 111,
+      "id": 112,
       "name": "SightBlocker",
       "schema": "og.SightBlocker",
       "module": "sight",
@@ -8371,7 +8388,7 @@
       ]
     },
     {
-      "id": 112,
+      "id": 113,
       "name": "Film",
       "schema": "og.Film",
       "module": "film",
@@ -8458,7 +8475,7 @@
       ]
     },
     {
-      "id": 113,
+      "id": 114,
       "name": "FilmDeck",
       "schema": "og.FilmDeck",
       "module": "film",
