@@ -3,14 +3,14 @@
 // and the check that keeps packages/vfx-packs/ out of the engine archives.
 import { afterAll, describe, expect, test } from "bun:test";
 import { spawnSync } from "node:child_process";
-import { cpSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { chmodSync, cpSync, mkdirSync, mkdtempSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { gunzipSync } from "node:zlib";
 import { ENGINE_PUBKEY, verifyMinisign } from "../packages/engine/src/node/vfx-pack.ts";
 import { ENGINE_PUBKEY as LAUNCHER_PUBKEY } from "../packages/launcher/og.ts";
 import { pinnedKey } from "../packages/launcher/build.ts";
-import { checkPacksOutside, finish, writeVfxArchives } from "./release-dist.ts";
+import { checkPacksOutside, deduplicateAssets, finish, writeVfxArchives } from "./release-dist.ts";
 import { splitSymbols } from "../packages/engine/scripts/wasm-symbols.ts";
 
 const fixture = join(import.meta.dir, "../tests/fixtures/vfx-release");
@@ -24,6 +24,28 @@ afterAll(() => {
   for (const d of made) rmSync(d, { recursive: true, force: true });
 });
 delete process.env.OG_ENGINE_MINISIGN_KEY;
+
+test("shared assets survive tar installation at every original path, with one stored copy and modes preserved", () => {
+  const root = scratch("og-assets-");
+  const copies = ["engine/styles/shared/font.ttf", "create/styles/shared/font.ttf", "engine/sheets/hud/assets/font.ttf"];
+  for (const path of copies) {
+    mkdirSync(join(root, path, ".."), { recursive: true });
+    writeFileSync(join(root, path), "shared font", { mode: 0o644 });
+  }
+  const distinct = join(root, "engine/styles/shared/other.ttf");
+  writeFileSync(distinct, "different font");
+  const executable = join(root, "engine/styles/shared/executable");
+  writeFileSync(executable, "shared font");
+  chmodSync(executable, 0o755);
+  deduplicateAssets(root);
+  const out = scratch("og-assets-installed-");
+  expect(spawnSync("tar", ["-czf", join(out, "assets.tgz"), "engine", "create"], { cwd: root }).status).toBe(0);
+  expect(spawnSync("tar", ["-xzf", "assets.tgz"], { cwd: out }).status).toBe(0);
+  for (const path of copies) expect(readFileSync(join(out, path), "utf8")).toBe("shared font");
+  expect(new Set(copies.map((path) => statSync(join(out, path)).ino)).size).toBe(1);
+  expect(readFileSync(join(out, "engine/styles/shared/other.ttf"), "utf8")).toBe("different font");
+  if (process.platform !== "win32") expect(statSync(join(out, "engine/styles/shared/executable")).mode & 0o777).toBe(0o755);
+});
 
 test("shipping wasm keeps its exports and other custom sections, with matching named modules outside the install", () => {
   const root = scratch("og-wasm-symbols-");

@@ -59,7 +59,7 @@
 
 import { execFileSync, spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
-import { chmodSync, copyFileSync, cpSync, existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, renameSync, rmSync, statSync, writeFileSync } from "node:fs";
+import { chmodSync, copyFileSync, cpSync, existsSync, linkSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, renameSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { basename, dirname, join, resolve } from "node:path";
 import { MAX_ARCHIVE, archivePath, packArchive, type VfxEntry } from "../packages/engine/src/node/vfx-pack.ts";
@@ -182,6 +182,32 @@ async function writeOverlay(engine: string, to: string) {
 /** Copies a directory tree as it is, without .DS_Store. */
 function copyTree(from: string, to: string) {
   cpSync(from, to, { recursive: true, filter: (p) => basename(p) !== ".DS_Store" });
+}
+
+/** Keep every asset path, but store identical bytes once in tar and on disk. */
+export function deduplicateAssets(root: string): number {
+  const first = new Map<string, string>();
+  let saved = 0;
+  const walk = (directory: string) => {
+    if (!existsSync(directory)) return;
+    for (const entry of readdirSync(directory, { withFileTypes: true }).sort((a, b) => a.name.localeCompare(b.name))) {
+      const path = join(directory, entry.name);
+      if (entry.isDirectory()) walk(path);
+      else if (entry.isFile()) {
+        const stat = statSync(path);
+        if (!stat.size) continue;
+        const key = `${stat.mode & 0o777}:${sha256(path)}`;
+        const original = first.get(key);
+        if (original) {
+          rmSync(path);
+          linkSync(original, path);
+          saved += stat.size;
+        } else first.set(key, path);
+      }
+    }
+  };
+  for (const directory of ["engine/fonts", "engine/styles", "engine/sheets", "engine/ui-sheet", "engine/extensions/materials/sheet", "create/fonts", "create/styles"]) walk(join(root, directory));
+  return saved;
 }
 
 /** The layout's required parts, as origin-agent's readEngineLayout checks them. */
@@ -332,6 +358,7 @@ async function assemble(o: { dir: string; work: string; version: string; revisio
   writeFileSync(join(root, "origin-engine.json"), `${JSON.stringify({ ...overlayManifest, build }, null, 2)}\n`);
   checkLayout(root, o.t);
   checkPacksOutside(root, o.downloadable);
+  say(`${o.t}: shared asset hardlinks avoid ${deduplicateAssets(root)} repeated bytes`);
 
   // One portable archive: ustar/pax entries owned by root, no macOS metadata (bsdtar) or xattrs.
   const archive = join(o.dir, archiveName(o.version, o.t));
