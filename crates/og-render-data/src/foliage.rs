@@ -93,3 +93,61 @@ impl Default for LeafSeason {
         Self::EVERGREEN
     }
 }
+
+/// A leaf's lot in its tree's year, from the point it hangs from
+/// ([`FoliageVertex::leaf`], `_OG_ANCHOR`, in model space): `order`, when
+/// it turns and falls among its tree's leaves (0 first), and `pick`, where
+/// its autumn colour lies between [`LeafSeason::autumn_color`] and
+/// `autumn_color2`; each even over 0 to 1 across a tree's leaves and
+/// independent of the other. A hash of the anchor to the millimetre, in
+/// `hash.wgsl`'s operations (its `lattice3`, then `pcg`), so every cook
+/// and a shader's twin agree and the leaves of one anchor turn together. A
+/// tree's own offset (`foliage_seed`) is added where it is drawn.
+pub fn leaf_order_pick(anchor: Vec3) -> (f32, f32) {
+    use og_core::hash::{pcg, unit24};
+    let q = (anchor * 1000.0).round();
+    let h = (q.x as i32 as u32).wrapping_mul(73_856_093)
+        ^ (q.y as i32 as u32).wrapping_mul(19_349_663)
+        ^ (q.z as i32 as u32).wrapping_mul(83_492_791);
+    let order = pcg(h);
+    (unit24(order), unit24(pcg(order)))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// The anchor is read to the millimetre (a bake and a draw of the same
+    /// leaf agree), and a crown's leaves spread their order and their
+    /// colour evenly and independently: a tree drops in no bands and its
+    /// first leaves to fall take every autumn colour.
+    #[test]
+    fn leaves_draw_even_independent_lots_from_their_anchors() {
+        let a = Vec3::new(1.2345, 7.5, -0.731);
+        assert_eq!(leaf_order_pick(a), leaf_order_pick(a + Vec3::splat(0.0003)));
+        assert_ne!(
+            leaf_order_pick(a),
+            leaf_order_pick(a + Vec3::new(0.002, 0.0, 0.0))
+        );
+        // Leaves 4 cm apart over a crown 4 m across.
+        let lots: Vec<(f32, f32)> = (0..100 * 100)
+            .map(|i| {
+                let (u, v) = ((i % 100) as f32 * 0.04, (i / 100) as f32 * 0.04);
+                leaf_order_pick(Vec3::new(u - 2.0, 4.0 + 0.3 * (u * 3.0).sin(), v - 2.0))
+            })
+            .collect();
+        let n = lots.len() as f32;
+        for part in [|l: &(f32, f32)| l.0, |l: &(f32, f32)| l.1] {
+            let mut tenths = [0u32; 10];
+            for l in &lots {
+                tenths[(part(l) * 10.0) as usize] += 1;
+            }
+            for t in tenths {
+                assert!((t as f32 - n / 10.0).abs() < 0.1 * n / 10.0, "{tenths:?}");
+            }
+        }
+        let mean = |f: &dyn Fn(&(f32, f32)) -> f32| lots.iter().map(f).sum::<f32>() / n;
+        let cov = mean(&|l| (l.0 - 0.5) * (l.1 - 0.5));
+        assert!(cov.abs() < 0.004, "order and pick correlate: {cov}");
+    }
+}
