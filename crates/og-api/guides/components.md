@@ -886,6 +886,7 @@ Its own props, beside every element's:
 
 | Write | Value | What |
 |---|---|---|
+| `flex-direction:` | `row \| column \| row-reverse \| column-reverse` | Lays a row's or a column's children out the other way (an `at` block's: a phone in landscape puts the actions beside the content). |
 | `<og-spotlight target>` | `name` | The id tracked by <og-spotlight target="Target">. While open it dims the page outside that element and places its content as a callout. |
 | `open` | `bool` | Whether it is open (HTML `open`; closing writes false back). Two-way only with an explicit bind: attribute. |
 | `closedby` | `any \| closerequest \| none` | What closes it (HTML `closedby`): any adds a press outside a modal (light dismiss) to closerequest's Escape or a pad's B; none leaves closing to the document. Default: closerequest for a modal, none in place. |

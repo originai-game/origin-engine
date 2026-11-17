@@ -3030,7 +3030,14 @@ fn rule_props(entries: &[og_core::ogt::Entry], kind: Kind) -> Result<Vec<PropSet
         }
         if kind != Kind::Inline
             && ((!p.applies(kind) && !inherited)
-                || (e.key == "display" && kind != Kind::Box && !inner))
+                || (e.key == "display"
+                    && kind != Kind::Box
+                    && !(kind == Kind::Dialog
+                        && matches!(
+                            written(&e.values).as_str(),
+                            "flex" | "inlineFlex" | "grid" | "inlineGrid"
+                        ))
+                    && !inner))
         {
             return Err(if e.key == "display" {
                 format!(

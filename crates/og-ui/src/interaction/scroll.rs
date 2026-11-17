@@ -219,12 +219,12 @@ impl Ui {
             offset_y: at.y.clamp(0.0, n.max_scroll()),
             view_width,
             view_height,
-            content_width: if n.el.scroll_x {
+            content_width: if n.layout.used.scroll_x {
                 n.layout.content_w
             } else {
                 view_width
             },
-            content_height: if n.el.scroll {
+            content_height: if n.layout.used.scroll {
                 n.layout.content_h
             } else {
                 view_height
@@ -310,13 +310,11 @@ impl Ui {
     /// new this frame (it was not laid out last frame and has no offset),
     /// starts scrolled to it; the first such target in tree order wins.
     pub(crate) fn note_initial_target(&mut self, key: u64) {
-        let Some(&c) = self
-            .tree
-            .stack
-            .iter()
-            .rev()
-            .find(|&&i| self.tree.nodes[i].el.scroll || self.tree.nodes[i].el.scroll_x)
-        else {
+        let Some(&c) = self.tree.stack.iter().rev().find(|&&i| {
+            let n = &self.tree.nodes[i];
+            // This runs during the build, before used geometry is derived.
+            n.el.scroll || n.el.scroll_x || n.layout.modal_room.is_some()
+        }) else {
             return;
         };
         let container = self.tree.nodes[c].key;
@@ -574,7 +572,7 @@ impl crate::ui::Interaction {
         };
         let mut flags = 0;
         let at = self.offset(key);
-        if n.el.scroll {
+        if n.layout.used.scroll {
             flags |= if at.y > 0.5 { TOP } else { 0 };
             flags |= if at.y < n.max_scroll() - 0.5 {
                 BOTTOM
@@ -582,7 +580,7 @@ impl crate::ui::Interaction {
                 0
             };
         }
-        if n.el.scroll_x {
+        if n.layout.used.scroll_x {
             flags |= if at.x > 0.5 { LEFT } else { 0 };
             flags |= if at.x < n.max_scroll_x() - 0.5 {
                 RIGHT
@@ -634,11 +632,11 @@ impl crate::ui::Interaction {
             let range = Vec2::new(cn.max_scroll_x(), cn.max_scroll());
             let to = (at + into_view_start(tree, c, t)).clamp(Vec2::ZERO, range.max(Vec2::ZERO));
             let s = &mut self.state;
-            if cn.el.scroll_x && to.x != at.x {
+            if cn.layout.used.scroll_x && to.x != at.x {
                 s.scroll_x.insert(container, to.x);
                 moved = true;
             }
-            if cn.el.scroll && to.y != at.y {
+            if cn.layout.used.scroll && to.y != at.y {
                 s.scroll.insert(container, to.y);
                 moved = true;
             }
@@ -837,12 +835,12 @@ impl crate::ui::Interaction {
             if cn.is_hidden() {
                 continue;
             }
-            if !(cn.el.scroll || cn.el.scroll_x) {
+            if !cn.scrolls() {
                 columns(cn, &mut found);
             }
             let a = cn.el.snap_align;
             if a == 0 {
-                if !(cn.el.scroll || cn.el.scroll_x) {
+                if !cn.scrolls() {
                     stack.extend(cn.children.iter().copied());
                 }
                 continue;
@@ -1009,10 +1007,10 @@ impl crate::ui::Tree {
             // it on an axis it scrolls.
             if let Some(n) = self.index.find(k).and_then(|i| self.nodes.get(i)) {
                 let o = n.el.scroll_css.overscroll;
-                if n.el.scroll_x && o[0] != Overscroll::Auto {
+                if n.layout.used.scroll_x && o[0] != Overscroll::Auto {
                     rest.x = 0.0;
                 }
-                if n.el.scroll && o[1] != Overscroll::Auto {
+                if n.layout.used.scroll && o[1] != Overscroll::Auto {
                     rest.y = 0.0;
                 }
             }

@@ -3103,6 +3103,63 @@ fn layout_primitives_are_the_styles_and_answer_their_container() {
     );
 }
 
+/// Oversized centred content starts at the reachable edge, rather than
+/// losing its beginning above or to the left of its container. A cover
+/// also scrolls its end into reach; smaller content remains centred.
+#[test]
+fn centring_primitives_keep_oversized_content_reachable() {
+    for size in [60, 180] {
+        let mut d = mounted(
+            ui_with_font(test_font()),
+            &format!(
+                r#"<div id="Root">
+  <div id="Cover" data-layout="cover"><div id="Tall"></div></div>
+  <div id="Center" data-layout="center"><div id="Wide"></div></div>
+</div>
+<style>
+#Root {{ width: 200px; }}
+#Cover {{ width: 100px; height: 100px; }}
+#Tall {{ width: 40px; height: {size}px; flex-shrink: 0; }}
+#Center {{ width: 100px; height: 40px; }}
+#Wide {{ width: {size}px; height: 20px; flex-shrink: 0; }}
+</style>"#
+            ),
+            &[],
+            Viewport::new(390.0, 844.0),
+        );
+        let (cover, tall, center, wide) = (
+            at(&d.ui, "Cover"),
+            at(&d.ui, "Tall"),
+            at(&d.ui, "Center"),
+            at(&d.ui, "Wide"),
+        );
+        let inset = ((100 - size) as f32 / 2.0).max(0.0);
+        assert!(
+            (tall.y - cover.y - inset).abs() < 0.01,
+            "{size}px cover child: {tall:?} in {cover:?}"
+        );
+        assert!(
+            (wide.x - center.x - inset).abs() < 0.01,
+            "{size}px centre child: {wide:?} in {center:?}"
+        );
+        if size > 100 {
+            for _ in 0..30 {
+                d.step(InputFrame {
+                    pointer: og_core::glam::Vec2::new(cover.x + 20.0, cover.y + 20.0),
+                    pointer_inside: true,
+                    wheel: og_core::glam::Vec2::new(0.0, 40.0),
+                    ..Default::default()
+                });
+            }
+            let tall = at(&d.ui, "Tall");
+            assert!(
+                (tall.y + tall.height - cover.y - cover.height).abs() < 0.01,
+                "the cover scrolls the end into reach: {tall:?} in {cover:?}"
+            );
+        }
+    }
+}
+
 /// Roles reach what a component draws beyond boxes (docs/ui.md §3.1): a
 /// zone washes and hatches in its own tone, and an SVG shape named for a
 /// meter's track strokes its ring instead of filling a box. Wrong: a

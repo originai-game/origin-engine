@@ -790,6 +790,9 @@ pub struct LayoutBox {
     /// The box placement gave it this frame: a layer's, a screen-placed or
     /// anchor-positioned element's (`Layout::placed`).
     pub placement: Option<Placement>,
+    /// Only a modal's panel: the safe content room of its scrim. A ceiling,
+    /// not a forced size, applied after author styles and variants.
+    pub modal_room: Option<[f32; 2]>,
     /// The viewport its breakpoint and orientation variants were matched
     /// against when it was written (`None`: it has none).
     pub media: Option<Media>,
@@ -932,6 +935,7 @@ impl Default for LayoutBox {
             varied: Varied::default(),
             gutter: 0.0,
             placement: None,
+            modal_room: None,
             media: None,
             resized: [None; 2],
             query_w: None,
@@ -1237,6 +1241,37 @@ impl Node {
             }
             if given(1) {
                 u.height = h;
+            }
+        }
+        if let Some(room) = self.layout.modal_room {
+            // A modal always has a reachable fallback, including when
+            // author CSS clears overflow or supplies oversized minimums.
+            u.scroll = true;
+            for (axis, size) in [u.width, u.height].into_iter().enumerate() {
+                if !room[axis].is_finite() {
+                    continue;
+                }
+                let sides = if axis == 0 { [3, 1] } else { [0, 2] };
+                let margin: f32 = sides.iter().map(|&s| u.margin[s].len.of(room[0])).sum();
+                let ceiling = (room[axis] - margin).max(0.0);
+                let (lo, hi) = match size {
+                    Size::Fit { min, max }
+                    | Size::Grow { min, max }
+                    | Size::Stretch { min, max } => (min, max),
+                    _ => (0.0, f32::INFINITY),
+                };
+                for (end, fallback) in [lo, hi].into_iter().enumerate() {
+                    let authored = u.bounds[axis][end]
+                        .and_then(|s| {
+                            s.definite(
+                                [self.layout.pref_w, self.layout.pref_h][axis],
+                                self.layout.min_content[axis],
+                                Some(room[axis]),
+                            )
+                        })
+                        .unwrap_or(fallback);
+                    u.bounds[axis][end] = Some(Size::Fixed(authored.min(ceiling)));
+                }
             }
         }
         u

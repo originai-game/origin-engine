@@ -91,7 +91,7 @@ impl crate::ui::Interaction {
         let mut c = tree.nodes[i].parent;
         while c != NONE {
             let cn = &tree.nodes[c];
-            if cn.el.scroll || cn.el.scroll_x {
+            if cn.scrolls() {
                 let pad = cn.layout.used.padding;
                 let p = cn.placed.rect;
                 let (w, h) = (
@@ -119,12 +119,12 @@ impl crate::ui::Interaction {
                 let range = Vec2::new(cn.max_scroll_x(), cn.max_scroll()).max(Vec2::ZERO);
                 let to = (at + d).clamp(Vec2::ZERO, range);
                 let s = &mut self.state;
-                if cn.el.scroll_x && to.x != at.x {
+                if cn.layout.used.scroll_x && to.x != at.x {
                     s.scroll_x.insert(cn.key, to.x);
                     moved = true;
                     r.x -= to.x - at.x;
                 }
-                if cn.el.scroll && to.y != at.y {
+                if cn.layout.used.scroll && to.y != at.y {
                     s.scroll.insert(cn.key, to.y);
                     moved = true;
                     r.y -= to.y - at.y;

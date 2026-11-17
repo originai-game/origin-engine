@@ -477,9 +477,9 @@ const ROLE_RULES: &str = r#"  /* Roles: frame, plate, band, title, row, cell, ca
   :where([data-layout=sidebar]) { display: flex; flex-wrap: wrap; gap: var(--layout-gap); }
   :where([data-layout=switcher]) { display: flex; flex-wrap: wrap; gap: var(--layout-gap); }
   :where([data-layout=grid]) { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(var(--layout-tile), 100%), 1fr)); gap: var(--layout-gap); }
-  :where([data-layout=cover]) { display: flex; flex-direction: column; align-items: center; justify-content: center; block-size: stretch; gap: var(--layout-gap); }
+  :where([data-layout=cover]) { display: flex; flex-direction: column; align-items: safe center; justify-content: safe center; block-size: stretch; gap: var(--layout-gap); overflow-y: auto; }
   :where([data-layout=cover] > [data-principal]) { margin-block: auto; }
-  :where([data-layout=center]) { display: flex; flex-direction: column; align-items: center; max-inline-size: var(--layout-measure); margin-inline: auto; gap: var(--layout-gap); }
+  :where([data-layout=center]) { display: flex; flex-direction: column; align-items: safe center; max-inline-size: var(--layout-measure); margin-inline: auto; gap: var(--layout-gap); }
   :where([data-layout=ratio]) { display: flex; align-items: center; justify-content: center; aspect-ratio: var(--layout-ratio); overflow: hidden; }
   :where([data-layout=ratio] > img) { inline-size: 100%; block-size: 100%; object-fit: cover; }
   /* A shell fills its container, its `data-fill` child (or scroller)

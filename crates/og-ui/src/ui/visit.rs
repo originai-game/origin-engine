@@ -514,7 +514,7 @@ impl Ui {
                 }
             }
             let mut flags = 0u16;
-            if n.scrolls() && !n.el.interactive {
+            if n.scrolls() {
                 flags |= HIT_SCROLL;
             }
             if n.el.interactive

@@ -128,7 +128,7 @@ impl Ui {
             })
             .unwrap_or_default();
         let mut boundaries = Vec::new();
-        if n.el.scroll || n.el.scroll_x {
+        if n.scrolls() {
             boundaries.push("scroll");
         }
         if n.props.container {

@@ -203,6 +203,32 @@ impl Ui {
             let i = self.tree.emitted[k];
             self.tree.nodes[i].derive_used();
         }
+        // Modal safety is frame-owned used geometry, not another CSS
+        // declaration that an author's width/minimum can override. The
+        // scrim's effective padding and device insets bound its panel.
+        let vp = self.env.viewport;
+        let safe = vp.env_insets();
+        for k in 0..self.tree.floating.len() {
+            let parent = self.tree.floating[k];
+            let Some(i) = self.tree.nodes[parent]
+                .built_children
+                .iter()
+                .copied()
+                .find(|&i| self.tree.nodes[i].layout.modal_room.is_some())
+            else {
+                continue;
+            };
+            let padding = self.tree.nodes[parent].layout.used.padding.add(&safe);
+            let room = [
+                (vp.width - padding.horizontal()).max(0.0),
+                (vp.height - padding.vertical()).max(0.0),
+            ];
+            if self.tree.nodes[i].layout.modal_room != Some(room) {
+                self.tree.invalidation.restored.push(i);
+            }
+            self.tree.nodes[i].layout.modal_room = Some(room);
+            self.tree.nodes[i].derive_used();
+        }
         // Hidden slots (a closed dialog, a finished transition) take no room.
         // A node's lists follow from its built children and their own
         // props: derived again where those were written or a child left.
@@ -574,7 +600,15 @@ impl Ui {
                 if float == Float::Modal {
                     // The backdrop covers the surface; the safe area pads its content.
                     let padding = if self.tree.nodes[f].backdrop {
-                        vp.safe_area
+                        if self.tree.nodes[f]
+                            .children
+                            .iter()
+                            .any(|&i| self.tree.nodes[i].layout.modal_room.is_some())
+                        {
+                            vp.env_insets()
+                        } else {
+                            vp.safe_area
+                        }
                     } else {
                         Insets::default()
                     };
@@ -1104,7 +1138,7 @@ impl Ui {
         self.interaction
             .state
             .scroll
-            .retain(|k, _| present(k).is_some_and(|i| self.tree.nodes[i].el.scroll));
+            .retain(|k, _| present(k).is_some_and(|i| self.tree.nodes[i].layout.used.scroll));
         self.interaction
             .state
             .virtual_lists
@@ -1118,7 +1152,7 @@ impl Ui {
         self.interaction
             .state
             .scroll_x
-            .retain(|k, _| present(k).is_some_and(|i| self.tree.nodes[i].el.scroll_x));
+            .retain(|k, _| present(k).is_some_and(|i| self.tree.nodes[i].layout.used.scroll_x));
         for (k, v) in self.interaction.state.scroll_x.iter_mut() {
             *v = v.clamp(
                 0.0,

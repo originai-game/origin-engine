@@ -1,0 +1,9 @@
+{
+  "simulation": "unchanged",
+  "fixed": [
+    {
+      "member": "og.ui",
+      "summary": "Cover and center primitives use safe centring, covers scroll overflow, and modal panels stay within the safe surface even when author sizes are larger. Modal content has a whole-panel scroll fallback; an explicit shell and scroll body keep title and actions fixed."
+    }
+  ]
+}

@@ -1404,6 +1404,17 @@ disabled one `:disabled`, and the select `:open` while its picker is.
 bound: a modal's content is built in the top layer under `<id>/Panel`) is
 `showModal()`: a scrim taking every press, focus moved in, trapped and
 returned to the opener, the panel centred in the viewport.
+The panel's border box is capped to the safe surface after styling,
+including an author's width, height and minimums. The scrim's padding
+and device/host-covered insets leave the available room; a smaller
+dialog keeps its preferred size. Unmarked content scrolls as a whole.
+For fixed title and actions, put `data-layout="shell"` on the dialog
+and wrap only its body in `data-layout="scroll" data-fill`. The body
+shrinks to the remaining space and scrolls independently; the engine
+does not infer regions from heading, paragraph or footer tags. Keep
+fixed children small enough to fit together; the whole-panel fallback
+remains available when they cannot. These modal constraints do not
+change non-modal dialogs, popovers or generic overlay primitives.
 `dialog::backdrop` is the scrim's box (default background the style's
 `scrim`) and takes every box property; to a style pack it is
 `Dialog.backdrop`. Without `modal` it is `show()` in place
@@ -1624,14 +1635,15 @@ every `data-motion` but `spin` stops, and a `float` (a damage number flying off 
 `@keyframes` of its own and names no keyframes in an `animation`. The role rules sit in `:where()`, so any pack or document rule wins. A role dresses every built-in part whose last name ends in it, so a new role is listed in og-ui's `tests/role_names.tsv` only once each part it would dress was checked to be meant for it (`component_parts_meant_for_a_role` fails otherwise, naming those parts); a name that already means something else is renamed.
 Layout is the style's as well. An element asks for a shape by meaning with
 `data-layout`, the primitives of Every Layout: `stack` (a column),
-`row` (a line, centred across), `cluster` (a wrapping line), `sidebar`
+`row` (a single line, centred across, never wrapping), `cluster` (a wrapping line), `sidebar`
 (its `data-side` child `--layout-sidebar-width` wide beside its
 `data-fill` child, stacked once that would be under
 `--layout-sidebar-content-min`), `switcher` (its `data-fill` children in
 one row while it is at least `--layout-switch-at` wide, stacked below), `grid` (tiles at least
 `--layout-tile` wide, `repeat(auto-fill, minmax(…, 1fr))`), `cover`
-(centred in its height, a `data-principal` child in the middle), `center`
-(kept to `--layout-measure`), `ratio` (an `--layout-ratio` frame, square unless set, its image
+(safely centred in its height, scrolling overflow, a `data-principal`
+child in the middle), `center`
+(kept to `--layout-measure`, safely centred across), `ratio` (an `--layout-ratio` frame, square unless set, its image
 covers), `shell` (header, body, footer filling its container, which is an
 `inline-size` container), `scroll` (a column that scrolls, contained) and
 `overlay` (a stack whose `data-anchor` children, any element, are laid over it at `top-start`,
@@ -1641,6 +1653,12 @@ a `scroll`) takes the room the others leave. A child is placed by its own
 mark, never by its position, so a primitive's rules are candidates only for
 the elements that carry one. A primitive goes on an HTML box, never on a `<button>` (a
 control's box is its own): a button's face is a `div` inside it. A
+dialog panel accepts the flex/grid primitives, including `shell`.
+Use `cluster` for wrapping action groups or `switcher` for actions that
+stack below a threshold; `row` remains the icon/text/value line. Safe
+centring leaves oversized content at the reachable start instead of
+losing its beginning beyond the container; explicit author CSS
+`align-items: center` keeps its standard unsafe meaning. A
 `scroll` with `data-from=end` is a log that starts at its foot, and a
 `cluster` with it starts at its end corner, later rows above. A
 component's own `@container` rules may still change its layout (a row

@@ -591,8 +591,8 @@ impl Ui {
         }
         // A `<div>` with `display: grid` lays out as a `<grid>` does; a
         // table lays its cells out in a grid of its own.
-        let grid_box =
-            *kind == NodeKind::Element(Kind::Box) && inner_display(r.str("display")) == "grid";
+        let grid_box = matches!(*kind, NodeKind::Element(Kind::Box | Kind::Dialog))
+            && inner_display(r.str("display")) == "grid";
         if *kind == NodeKind::Element(Kind::Box) && inner_display(r.str("display")) == "table" {
             p.layout = LayoutMode::Grid;
         }

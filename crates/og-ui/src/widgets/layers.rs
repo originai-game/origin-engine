@@ -181,6 +181,7 @@ impl Ui {
             },
         );
         self.tree.stack.push(panel);
+        self.tree.nodes[panel].layout.modal_room = Some([f32::INFINITY; 2]);
         self.tree.nodes[panel].a11y.role = Some("dialog");
         self.tree.nodes[panel].a11y.name = Some(desc.title.clone());
         if open && t.art.motion.stagger_ms > 0.0 {

@@ -857,7 +857,7 @@ impl Ui {
                 // A box is a column (CSS block), or a row as `display: flex`.
                 let display = super::inner_display(r.str("display"));
                 let initial = match (source.kind, display) {
-                    (Some(Kind::Box), "flex") => "row",
+                    (Some(Kind::Box | Kind::Dialog), "flex") => "row",
                     (Some(Kind::Box), _)
                         if r.str("display") == Some("listItem")
                             && r.str("markerPosition") == Some("inside") =>
@@ -876,14 +876,19 @@ impl Ui {
                 el.reverse = direction.ends_with("Reverse");
                 // A flex box's lines share its free room across it unless
                 // told otherwise (`align-content: normal`, CSS Flexbox §8.4).
-                if source.kind == Some(Kind::Box) && display == "flex" && el.align_content.is_none()
+                if matches!(source.kind, Some(Kind::Box | Kind::Dialog))
+                    && display == "flex"
+                    && el.align_content.is_none()
                 {
                     el.align_content = Some(crate::Align::Stretch);
                 }
                 // Its items stretch across their line unless told otherwise
                 // (`align-items: normal`, CSS Flexbox §8.3): an item with an
                 // `auto` cross size fills it.
-                if source.kind == Some(Kind::Box) && display == "flex" && !r.has("cross") {
+                if matches!(source.kind, Some(Kind::Box | Kind::Dialog))
+                    && display == "flex"
+                    && !r.has("cross")
+                {
                     el.cross = crate::layout::Cross::Stretch;
                 }
                 // A `display: block` box flows its children as CSS blocks.

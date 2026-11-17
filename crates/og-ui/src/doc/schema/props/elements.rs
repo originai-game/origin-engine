@@ -275,7 +275,7 @@ pub const CORE_PROPS: &[PropSpec] = &[
     p!(
         "direction",
         Ty::Word(&["row", "column", "rowReverse", "columnReverse"]),
-        [Row, Column, Box],
+        [Row, Column, Box, Dialog],
         "Lays a row's or a column's children out the other way (an `at` block's: a phone in landscape puts the actions beside the content)."
     ),
     p!("background", Ty::Paint, "Its fill."),

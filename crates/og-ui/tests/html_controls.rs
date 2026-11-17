@@ -32,6 +32,7 @@
 
 use crate::support;
 
+use og_core::glam::Vec2;
 use og_ui::reactive::SourceId;
 use og_ui::*;
 use serde_json::json;
@@ -634,6 +635,132 @@ input, progress, meter { writing-mode: vertical-lr; height: 200px; }
     }
 }
 
+/// A modal is bounded by the safe surface even when author dimensions
+/// exceed it. Unmarked content scrolls as a whole; an explicit shell's
+/// body scrolls without moving its fixed siblings.
+#[test]
+fn modal_panels_bound_author_sizes_and_keep_their_content_reachable() {
+    for (shell, zoom) in [(false, 1.0), (true, 1.0), (true, 1.25)] {
+        let marker = if shell { "data-layout=\"shell\"" } else { "" };
+        let body = if shell {
+            "data-layout=\"scroll\" data-fill"
+        } else {
+            ""
+        };
+        let text = format!(
+            r#"<meta name="component" content="form">
+<div id="Root"><dialog id="Ask" modal open {marker}>
+  <div id="Header">Question</div>
+  <div id="Body" {body}><div id="Content"><button id="Last">Last choice</button></div></div>
+  <button id="Actions">Accept</button>
+</dialog></div>
+<style>
+#Ask {{ width: 960px; min-width: 900px; min-height: 900px; gap: 8px; padding: 12px; zoom: {zoom}; }}
+#Header, #Actions {{ height: 40px; flex-shrink: 0; }}
+#Content {{ display: flex; flex-direction: column; justify-content: end; height: 900px; flex-shrink: 0; }}
+</style>"#
+        );
+        let mut ui = ui_with_font(test_font_metrics());
+        ui.set_theme(Theme {
+            reduced_motion: true,
+            text_scale: 1.5,
+            ..Theme::dark()
+        });
+        let mut d = Doc::mounted(ui, &text, &[]);
+        let mut vp = Viewport::new(640.0, 320.0);
+        vp.dpr = 2.0;
+        vp.safe_area = Insets {
+            top: 7.0,
+            right: 31.0,
+            bottom: 19.0,
+            left: 13.0,
+        };
+        d.viewport = vp;
+        for _ in 0..3 {
+            d.step(InputFrame::default());
+        }
+        let panel =
+            d.ui.elements()
+                .iter()
+                .find(|e| e.role == "dialog")
+                .unwrap_or_else(|| panic!("the modal panel: {:?}", d.ui.elements()))
+                .clone();
+        let safe = vp.safe_rect();
+        assert!(
+            !panel.clipped
+                && panel.x >= safe.x
+                && panel.y >= safe.y
+                && panel.x + panel.width <= safe.right() + 0.01
+                && panel.y + panel.height <= safe.bottom() + 0.01,
+            "shell={shell}: panel {panel:?} must fit {safe:?}"
+        );
+        let header = d.get("Header");
+        let actions = shell.then(|| d.get("Actions"));
+        let target = if shell { d.get("Body") } else { panel.clone() };
+        d.focus = Some(format!("{}/Actions", panel.path));
+        d.step(InputFrame::default());
+        d.step(InputFrame {
+            keys: vec![UiKey::Tab],
+            ..Default::default()
+        });
+        assert!(!d.get("Last").clipped, "focus reveals the last choice");
+        for _ in 0..30 {
+            d.step(InputFrame {
+                pointer: Vec2::new(target.x + 20.0, target.y + 20.0),
+                pointer_inside: true,
+                wheel: Vec2::new(0.0, -120.0),
+                ..Default::default()
+            });
+        }
+        for _ in 0..30 {
+            d.step(InputFrame {
+                pointer: Vec2::new(target.x + 20.0, target.y + 20.0),
+                pointer_inside: true,
+                wheel: Vec2::new(0.0, 120.0),
+                ..Default::default()
+            });
+        }
+        let last = d.el("Last").unwrap_or_else(|| {
+            panic!(
+                "shell={shell}: scroll={:?}, {:?}",
+                d.ui.scroll_state(&target.path),
+                d.ui.probe_elements()
+            )
+        });
+        assert!(
+            !last.clipped,
+            "shell={shell}: last choice remains unreachable: {last:?}"
+        );
+        if shell {
+            assert_eq!(
+                d.get("Header").y,
+                header.y,
+                "the explicit shell fixes its header"
+            );
+            assert_eq!(
+                d.get("Actions").y,
+                actions.unwrap().y,
+                "the explicit shell fixes its actions"
+            );
+        } else {
+            assert!(
+                d.el("Header").is_none_or(|e| e.y < header.y),
+                "the fallback scrolls the entire panel"
+            );
+        }
+        // The same retained modal must release its ceiling on a larger
+        // surface and restore it when the surface shrinks again.
+        d.viewport = Viewport::new(1400.0, 1200.0);
+        d.step(InputFrame::default());
+        assert!(d.ui.element(&panel.path).unwrap().width >= 900.0);
+        d.viewport = vp;
+        d.step(InputFrame::default());
+        assert!(d.ui.element(&panel.path).unwrap().width <= safe.width);
+        d.step(InputFrame::default());
+        assert!(d.ui.element(&panel.path).unwrap().width <= safe.width);
+    }
+}
+
 #[test]
 fn the_backdrop_pseudo_element_fills_the_scrim() {
     let doc = r#"<meta name="component" content="form">
@@ -675,6 +802,7 @@ dialog { width: 200px; }
     // A box property of `::backdrop` lays out the scrim: its top padding
     // moves the panel it centres down by half.
     let panel = rig.el("Ask/Panel").unwrap();
+    assert!(panel.height < 200.0, "a small dialog keeps its fit height");
     let middle = rig.ui.viewport().height / 2.0;
     assert!(
         (panel.y + panel.height / 2.0 - middle - 100.0).abs() < 20.0,

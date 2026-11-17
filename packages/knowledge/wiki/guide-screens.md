@@ -479,6 +479,18 @@ screen can wait for it.
   `<dialog modal data-detents="40% 90%" bind:open={$bag}>`;
   `data-edge="inline-end"` makes it a side sheet (the right, the left
   right to left) whose detents are widths.
+- Keep a centred screen reachable with `data-layout="cover"`: it centres
+  content that fits, starts oversized content at the safe edge and scrolls
+  overflow. `data-layout="center"` safely centres across the column. Use
+  `cluster` for wrapping action groups, or `switcher` when actions should
+  stack at a threshold; `row` deliberately stays one line.
+- A modal panel is bounded to the safe surface after author sizing; its
+  whole content scrolls when needed. For a fixed title and actions, make
+  the `<dialog modal>` a `data-layout="shell"`, place the body inside
+  `<div data-layout="scroll" data-fill>`, and keep the title and actions
+  as siblings. No heading or footer is inferred. An author width can stay;
+  the safe ceiling still wins. Generic `data-layout="overlay"` is not a
+  modal and does not impose this ceiling.
 - Paint with standard CSS: `background: linear-gradient(160deg,
   var(--panel), #0000), #123`, `mask-image: linear-gradient(#000 70%,
   transparent)`, `clip-path: polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%)`,
