@@ -309,6 +309,7 @@ pub fn asset(rel: &str) -> Result<std::borrow::Cow<'static, [u8]>, String> {
         "kit/adobe.glb" => include_bytes!("../assets/kit/adobe.glb"),
         "kit/crate.glb" => include_bytes!("../assets/kit/crate.glb"),
         "kit/barrel.glb" => include_bytes!("../assets/kit/barrel.glb"),
+        "kit/winebarrel.glb" => include_bytes!("../assets/kit/winebarrel.glb"),
         "kit/palm.glb" => include_bytes!("../assets/kit/palm.glb"),
         "kit/ground/grass.color.jpg" => include_bytes!("../assets/kit/ground/grass.color.jpg"),
         "kit/ground/grass.normal.jpg" => include_bytes!("../assets/kit/ground/grass.normal.jpg"),
@@ -321,6 +322,9 @@ pub fn asset(rel: &str) -> Result<std::borrow::Cow<'static, [u8]>, String> {
         "kit/ground/planks.color.jpg" => include_bytes!("../assets/kit/ground/planks.color.jpg"),
         "kit/ground/planks.normal.jpg" => include_bytes!("../assets/kit/ground/planks.normal.jpg"),
         "kit/ground/planks.orm.jpg" => include_bytes!("../assets/kit/ground/planks.orm.jpg"),
+        "kit/ground/stone.color.jpg" => include_bytes!("../assets/kit/ground/stone.color.jpg"),
+        "kit/ground/stone.normal.jpg" => include_bytes!("../assets/kit/ground/stone.normal.jpg"),
+        "kit/ground/stone.orm.jpg" => include_bytes!("../assets/kit/ground/stone.orm.jpg"),
         "kit/counter.glb" => include_bytes!("../assets/kit/counter.glb"),
         _ => {
             return Err(format!(

@@ -1,7 +1,7 @@
 //! The scenes' shared set dressing (`assets/kit`, its origins and licences
-//! in `assets/kit/README.md`): seven models (a column, a broken column, an
-//! arch, a watchtower, a boulder, a pine, a ladder) and three tiling
-//! surfaces (mossy grass, cobbles and a rock face), so a scene stands in a
+//! in `assets/kit/README.md`): ruins, a town and a yard's wares
+//! ([`MODELS`]) and tiling surfaces (grass, cobbles, planks, a rubble stone
+//! wall and a rock face: [`SURFACES`]), so a scene stands in a
 //! place instead of on a checker. A scene still builds its subject itself; this is what
 //! stands around it.
 //!
@@ -27,9 +27,18 @@ pub const MODELS: &[&str] = &[
     "boulder",
     "pine",
     "ladder",
+    "townhouse",
+    "streetlamp",
+    "car",
+    "adobe",
+    "counter",
+    "crate",
+    "barrel",
+    "palm",
+    "winebarrel",
 ];
 /// The kit's surfaces (`assets/kit/ground/<name>.{color,normal,orm}.jpg`).
-pub const SURFACES: &[&str] = &["grass", "cobbles"];
+pub const SURFACES: &[&str] = &["grass", "cobbles", "planks", "stone"];
 
 /// A committed asset is part of the harness: a missing or broken one is a
 /// defect of the checkout, not a condition a scene handles.
