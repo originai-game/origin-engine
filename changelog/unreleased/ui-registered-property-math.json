@@ -1,0 +1,8 @@
+{
+  "fixed": [
+    {
+      "member": "UI registered custom properties",
+      "summary": "Typed custom properties compute math before syntax checking and substitution, so a registered percentage calculated from a 0..1 value paints the correct gradient stop instead of resetting to its initial value. Universal properties retain their original tokens."
+    }
+  ]
+}

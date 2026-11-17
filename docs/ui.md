@@ -1806,8 +1806,11 @@ and `selector()`), and `inherit`, `initial`, `unset`, `revert`,
 keyword's own rule). The engine's layer order is §5's. `@import "x.css"
 [layer()] [supports()] [media]` is read at cook from beside the document
 into its blob. `@property` registers syntax, inheritance and initial
-value. `@counter-style` and `@position-try` feed counters and anchor
-positioning.
+value. Typed custom properties compute math before syntax validation and
+`var()` substitution; for example, a registered `<percentage>` can set
+`--sweep: calc(var(--value) * 100%)` from a 0..1 value and feed a conic
+gradient stop. Universal (`*`) properties keep their token sequence.
+`@counter-style` and `@position-try` feed counters and anchor positioning.
 
 **Cascade order.** A declaration ranks by its importance, then its origin
 (HTML's user-agent rules under every other rule), then its rule's depth
