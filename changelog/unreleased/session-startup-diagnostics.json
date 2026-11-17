@@ -1,0 +1,8 @@
+{
+  "fixed": [
+    {
+      "member": "og session",
+      "summary": "Automatic session startup reports an exited supervisor's error immediately instead of waiting for the readiness timeout. Missing build inputs name their path; concurrent starters still converge on the supervisor lock."
+    }
+  ]
+}

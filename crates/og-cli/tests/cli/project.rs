@@ -1,5 +1,54 @@
 use super::*;
 
+/// A failed supervisor reports its own diagnostic, not a readiness timeout.
+#[cfg(unix)]
+#[test]
+fn session_startup_failure_names_the_cause_without_waiting_for_readiness() {
+    let dir = TempDir::new("og-session-failure");
+    let engine = dir.join("engine");
+    std::fs::create_dir_all(engine.join("src/node")).unwrap();
+    std::fs::write(
+        engine.join("src/node/build.ts"),
+        "await Bun.write(process.argv[process.argv.indexOf('--out') + 1], '');",
+    )
+    .unwrap();
+    std::fs::write(
+        engine.join("src/node/session.ts"),
+        "console.error('fixture startup failure'); process.exit(23);",
+    )
+    .unwrap();
+    let entry = dir.join("main.ts");
+    std::fs::write(&entry, "export default {}; ").unwrap();
+    let addon = dir.join("fixture-addon.node");
+    for present in [false, true] {
+        if present {
+            std::fs::write(&addon, "fixture").unwrap();
+        }
+        let started = std::time::Instant::now();
+        let out = og()
+            .args(["run", entry.to_str().unwrap(), "--headless", "--no-check"])
+            .env("OG_ENGINE_PACKAGE", &engine)
+            .env("OG_NATIVE_ADDON", &addon)
+            .env("OG_SESSION", "1")
+            .env("HOME", &*dir)
+            .output()
+            .unwrap();
+        let t = text(&out);
+        assert!(!out.status.success(), "{t}");
+        assert!(t.contains("session exited before becoming ready"), "{t}");
+        assert!(t.contains("no command was sent"), "{t}");
+        assert!(
+            t.contains(if present {
+                "fixture startup failure"
+            } else {
+                addon.to_str().unwrap()
+            }),
+            "{t}"
+        );
+        assert!(started.elapsed().as_secs() < 5, "{t}");
+    }
+}
+
 /// A 2D project's publish build refuses the 3D world in its scenes (the 2D
 /// publish module leaves terrain, planar water, scattered copies and 3D
 /// fluids out: RenderCapabilities.world3d), naming each by scene and line,

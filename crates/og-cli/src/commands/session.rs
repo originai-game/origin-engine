@@ -12,7 +12,7 @@ mod local {
     use std::collections::BTreeMap;
     use std::fs::{self, File, OpenOptions};
     use std::hash::{Hash, Hasher};
-    use std::io::{BufRead, BufReader, Read, Write};
+    use std::io::{BufRead, BufReader, Read, Seek, Write};
     use std::os::unix::fs::{MetadataExt, OpenOptionsExt, PermissionsExt};
     use std::os::unix::net::UnixStream;
     use std::path::PathBuf;
@@ -46,7 +46,8 @@ mod local {
     pub(crate) fn build(package: &Path) -> Result<String, String> {
         fn stamp(path: &Path, hash: &mut impl Hasher) -> std::io::Result<()> {
             path.hash(hash);
-            let m = fs::metadata(path)?;
+            let m = fs::metadata(path)
+                .map_err(|e| std::io::Error::new(e.kind(), format!("{}: {e}", path.display())))?;
             (
                 m.dev(),
                 m.ino(),
@@ -101,7 +102,8 @@ mod local {
     pub(crate) fn connect(project: &Path) -> Result<UnixStream, String> {
         use std::os::unix::process::CommandExt;
         use std::time::{Duration, Instant};
-        let socket = directory(project).join("host.sock");
+        let dir = directory(project);
+        let socket = dir.join("host.sock");
         match UnixStream::connect(&socket) {
             Ok(stream) => return Ok(stream),
             Err(e)
@@ -113,12 +115,31 @@ mod local {
         }
         // Start races converge on the supervisor's inherited file lock.
         // Detached descriptors keep a caller's output pipe from staying open.
+        // An unlinked file captures startup errors without a pipe held open
+        // for the lifetime of the resident host, or competing starters sharing
+        // and truncating each other's diagnostics.
+        use std::sync::atomic::{AtomicU64, Ordering};
+        static START: AtomicU64 = AtomicU64::new(0);
+        fs::create_dir_all(&dir).map_err(|e| e.to_string())?;
+        let log = dir.join(format!(
+            "startup-{}-{}.log",
+            std::process::id(),
+            START.fetch_add(1, Ordering::Relaxed)
+        ));
+        let mut errors = OpenOptions::new()
+            .create_new(true)
+            .read(true)
+            .write(true)
+            .mode(0o600)
+            .open(&log)
+            .map_err(|e| e.to_string())?;
+        fs::remove_file(&log).map_err(|e| e.to_string())?;
         let mut child = Command::new(std::env::current_exe().map_err(|e| e.to_string())?)
             .arg("session")
             .arg(project)
             .stdin(Stdio::null())
             .stdout(Stdio::null())
-            .stderr(Stdio::null())
+            .stderr(Stdio::from(errors.try_clone().map_err(|e| e.to_string())?))
             .process_group(0)
             .spawn()
             .map_err(|e| format!("cannot start session: {e}"))?;
@@ -132,7 +153,26 @@ mod local {
                 });
                 return Ok(stream);
             }
-            let _ = child.try_wait().map_err(|e| e.to_string())?;
+            if let Some(status) = child.try_wait().map_err(|e| e.to_string())? {
+                // A losing starter exits while the winner owns this lock.
+                // Keep waiting for that host, not the exited starter.
+                let owner = OpenOptions::new()
+                    .read(true)
+                    .write(true)
+                    .open(dir.join("host.lock"));
+                if !owner.is_ok_and(|file| file.try_lock().is_err()) {
+                    errors.rewind().map_err(|e| e.to_string())?;
+                    let mut reason = String::new();
+                    errors
+                        .take(4096)
+                        .read_to_string(&mut reason)
+                        .map_err(|e| e.to_string())?;
+                    return Err(format!(
+                        "session exited before becoming ready ({status}); no command was sent: {}",
+                        reason.trim()
+                    ));
+                }
+            }
             if Instant::now() >= deadline {
                 std::thread::spawn(move || {
                     let _ = child.wait();
