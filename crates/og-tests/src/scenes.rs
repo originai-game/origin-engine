@@ -1576,7 +1576,7 @@ pub fn build(name: &str) -> Result<GfxScene, String> {
             Ok(())
         },
         "terrain-scatter-unshadowed" => |g, _| {
-            g.scene = crate::fork_scenes::terrain_flags_scene(true, false);
+            g.scene = crate::terrain_scenes::evening_meadow_scene(false);
             Ok(())
         },
         // The spike's scene through the teal-orange LUT at 0.6, then the

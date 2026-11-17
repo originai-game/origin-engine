@@ -2775,3 +2775,60 @@ pub fn snow_track_update(scene: &mut RenderScene, frame: u32) {
         strength: 1.0,
     }];
 }
+
+/// `terrain-scatter-unshadowed`: the island's meadow in the late
+/// afternoon, the sun from the right, a field of heather, gold flowers and
+/// long grass scattered on its grass layer with `cast_shadows` as given.
+/// The gate, the boulders and the pines shadow the field; with
+/// `cast_shadows` false (the scene) the plants throw none, so the ground
+/// between them stays lit to their roots, as a game draws its undergrowth
+/// (with it true the meadow's floor darkens under the blades).
+pub fn evening_meadow_scene(cast_shadows: bool) -> RenderScene {
+    let mut scene = island_view("near");
+    scene.lighting.light.direction_to_light = Vec3::new(0.85, 0.42, -0.25);
+    fair_sky(&mut scene, 7.6);
+    scene.frame.tick = 0;
+    let plant = scene.add_material(Material {
+        base_color: [1.0; 4],
+        roughness: 0.85,
+        ..Default::default()
+    });
+    let green = scene.add_material(Material {
+        base_color: [0.42, 0.46, 0.14, 1.0],
+        roughness: 0.85,
+        ..Default::default()
+    });
+    let tuft = scene.add_mesh(grass_tuft());
+    let heather = scene.add_mesh(flower_clump([0.42, 0.12, 0.52], true));
+    let gold = scene.add_mesh(flower_clump([0.95, 0.66, 0.05], false));
+    for (mesh, material, density, scale, seed) in [
+        (tuft, green, 3.0, [0.8, 1.5], 5),
+        (heather, plant, 0.7, [0.9, 1.7], 41),
+        (gold, plant, 0.9, [0.9, 1.4], 43),
+    ] {
+        scene.world.scatters.push(ScatterDraw {
+            terrain: 0,
+            mesh,
+            material,
+            scatter: TerrainScatter {
+                layer: 0,
+                density,
+                distance: 90.0,
+                fade: 0.3,
+                scale,
+                align: 0.3,
+                seed,
+                sway: 0.6,
+                noise_scale: 9.0,
+                noise_threshold: 0.35,
+                ..Default::default()
+            },
+            cast_shadows,
+            impostor: None,
+            impostor_distance: 0.0,
+            with: None,
+            lods: [None; 2],
+        });
+    }
+    scene
+}

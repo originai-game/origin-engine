@@ -5,7 +5,8 @@
 //! screen AO with water in its depth, CAS sharpening, UnrealBloomPass bloom,
 //! alpha to coverage, the hook functions (`h.eye`, `h.front`,
 //! `planar_reflection`, `screen_ao`), the second planar reflection, and the
-//! terrain's `visible` and its scatter's `cast_shadows`. Each is registered
+//! terrain's `visible` (the scatter's `cast_shadows` is
+//! `terrain_scenes::evening_meadow_scene`'s). Each is registered
 //! in [`crate::scenes::build`]; `tests/fork_fields.rs` renders each with and
 //! without its field and asserts what the field changes. Everything is
 //! generated here.
@@ -759,61 +760,6 @@ pub fn flags_terrain() -> TerrainData {
         heights: Arc::from(vec![2.0; n * n]),
         ..TerrainData::flat(Vec2::splat(48.0), n as u32, n as u32)
     }
-}
-
-/// The flags scene's scatter: 3 m posts, one per 6 m².
-pub fn flags_scatter() -> TerrainScatter {
-    TerrainScatter {
-        density: 0.16,
-        distance: 60.0,
-        fade: 0.0,
-        scale: [1.0, 1.0],
-        seed: 4,
-        ..TerrainScatter::default()
-    }
-}
-
-/// A 48 m terrain flat at 2 m over a magenta void, red 3 m posts scattered
-/// on it, a low sun from +x: with `visible` false the terrain is not drawn
-/// but its posts still stand on it; `cast_shadows` is the posts'.
-pub fn terrain_flags_scene(visible: bool, cast_shadows: bool) -> RenderScene {
-    let mut scene = RenderScene::new();
-    sky(&mut scene, Vec3::new(1.0, 0.7, 0.2), 3.0);
-    scene.lighting.environment.background = Background::Color(Vec3::new(1.0, 0.0, 1.0));
-    let h = scene.add_terrain(flags_terrain());
-    scene.world.terrains.push(Terrain {
-        layers: vec![TerrainLayer {
-            color: Vec3::splat(0.75),
-            ..Default::default()
-        }],
-        fade_in: false,
-        visible,
-        ..Terrain::new(h)
-    });
-    let cube = scene.add_mesh(shapes::cuboid(Vec3::new(0.4, 3.0, 0.4)));
-    let red = scene.add_material(Material {
-        base_color: [0.8, 0.1, 0.05, 1.0],
-        roughness: 0.8,
-        ..Default::default()
-    });
-    scene.world.scatters.push(ScatterDraw {
-        terrain: 0,
-        mesh: cube,
-        material: red,
-        scatter: flags_scatter(),
-        cast_shadows,
-        impostor: None,
-        impostor_distance: 0.0,
-        with: None,
-        lods: [None; 2],
-    });
-    scene.frame.camera = Camera {
-        position: Vec3::new(0.0, 14.0, 14.0),
-        target: Vec3::new(0.0, 2.0, 0.0),
-        exposure: Exposure::linear(0.9),
-        ..Default::default()
-    };
-    scene
 }
 
 // ---------------------------------------------------------------------------
