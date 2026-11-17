@@ -25,8 +25,9 @@
 //!   plant's copies draw as its impostor past [`card_distance`] (the
 //!   shrubs from 28 m, the pines from 81 m, no oak on a hill this small);
 //!   a light wind sways each copy's wood and leaves as one plant.
-//! - `switch_scene()` (`plant-scatter-switch`): oaks and pines on a flat
-//!   strip 224 m long, seen along it from 23 m to 247 m, so both kinds
+//! - `switch_scene()` (`plant-scatter-switch`): oaks and pines either
+//!   side of a road of setts down a flat strip 224 m long (the kit's
+//!   grass, its hills beyond, the fair afternoon's sky), seen along it from 23 m to 247 m, so both kinds
 //!   cross from mesh to card in the frame (the pines at 81 m, the oaks at
 //!   113 m). A card that is lit, shadowed or coloured unlike its mesh
 //!   shows as a band across the strip.
@@ -38,9 +39,9 @@
 use glam::{Mat4, Vec2, Vec3};
 use og_cook::runtime::Bundle;
 use og_render::{
-    Camera, DirectionalLight, Grass, GrassDraw, Impostor, MaterialHandle, MaterialStyle,
-    MeshHandle, OutlinePlace, Projection, RenderScene, ScatterDraw, StandardMaterial, Terrain,
-    TerrainControl, TerrainData, TerrainLayer, TerrainScatter, TextureSource, Wind,
+    Camera, Grass, GrassDraw, Impostor, MaterialHandle, MaterialStyle, MeshHandle, OutlinePlace,
+    Projection, RenderScene, ScatterDraw, StandardMaterial, Terrain, TerrainControl, TerrainData,
+    TerrainLayer, TerrainScatter, TextureSource, Wind,
 };
 use std::path::PathBuf;
 use std::sync::{Arc, OnceLock};
@@ -183,18 +184,6 @@ fn card_distance(impostor: Impostor) -> f32 {
     const ROWS: f32 = 720.0;
     const FRAME: f32 = 128.0;
     impostor.radius * ROWS / (FRAME * 25f32.to_radians().tan())
-}
-
-fn sun(scene: &mut RenderScene, direction: Vec3, max_shadow_distance: f32) {
-    let direction = direction.normalize();
-    scene.lighting.light = DirectionalLight {
-        direction_to_light: direction,
-        intensity: 3.0,
-        max_shadow_distance,
-        ..Default::default()
-    };
-    scene.lighting.environment.sky.sun_direction = direction;
-    scene.lighting.environment.intensity = 0.7;
 }
 
 /// Where `plant-grown` stands its oak, pine and shrub (their roots).
@@ -634,17 +623,82 @@ pub fn toon_scene() -> Result<RenderScene, String> {
 /// `plant-scatter-switch` ([module docs](self)).
 pub fn switch_scene() -> Result<RenderScene, String> {
     let bundle = Bundle::open(&cooked()?.join("cooked")).map_err(|e| e.to_string())?;
+    use og_tests::kit;
     let mut scene = RenderScene::new();
-    sun(&mut scene, Vec3::new(0.5, 0.7, 0.45), 260.0);
-    let h = scene.add_terrain(TerrainData::flat(Vec2::new(64.0, 224.0), 33, 113));
+    // The strip, a road of setts down its middle (layer 1 of the control
+    // map, 0.25 m a texel), where nothing is scattered.
+    let size = Vec2::new(64.0, 224.0);
+    let (cw, ch) = (256u32, 896u32);
+    let mut rgba = Vec::with_capacity((cw * ch * 4) as usize);
+    for y in 0..ch {
+        for x in 0..cw {
+            let p = (Vec2::new(x as f32, y as f32) + 0.5) / Vec2::new(cw as f32, ch as f32) * size
+                - size * 0.5;
+            let wander = 1.5 * (p.y * 0.031).sin() + 0.3 * (p.y * 0.41).sin();
+            let road = ((2.2 - (p.x - wander).abs()) / 0.6).clamp(0.0, 1.0);
+            let w = (road * 255.0) as u8;
+            rgba.extend_from_slice(&[255 - w, w, 0, 0]);
+        }
+    }
+    let h = scene.add_terrain(TerrainData {
+        control: Some(TerrainControl {
+            width: cw,
+            height: ch,
+            rgba: Arc::from(rgba),
+        }),
+        ..TerrainData::flat(size, 33, 113)
+    });
+    let (grass, grass_normal) = kit::layer_maps(&mut scene, "grass");
+    let (setts, setts_normal) = kit::layer_maps(&mut scene, "cobbles");
     scene.world.terrains.push(Terrain {
-        layers: vec![TerrainLayer {
-            color: Vec3::new(0.25, 0.36, 0.16),
-            ..Default::default()
-        }],
+        layers: vec![
+            TerrainLayer {
+                albedo: Some(grass),
+                normal: Some(grass_normal),
+                color: Vec3::new(0.66, 0.95, 0.46),
+                roughness: 0.95,
+                tile: 3.5,
+                anti_tiling: 0.5,
+                macro_variation: 0.5,
+                ..Default::default()
+            },
+            TerrainLayer {
+                albedo: Some(setts),
+                normal: Some(setts_normal),
+                color: Vec3::new(1.1, 1.04, 0.9),
+                roughness: 0.85,
+                tile: 2.5,
+                ..Default::default()
+            },
+        ],
+        height_blend: 0.5,
         fade_in: false,
         ..Terrain::new(h)
     });
+    // The land either side, out to where the hills rise over it, and the
+    // wood going on into it (the kit's pines, meshes, clear of the strip).
+    let meadow = kit::surface_tinted(&mut scene, "grass", [0.66, 0.95, 0.46]);
+    let land = scene.add_mesh(kit::slab(
+        Vec2::splat(-240.0),
+        Vec2::splat(240.0),
+        -0.02,
+        3.5,
+    ));
+    scene.add_instance(land, meadow, Mat4::IDENTITY);
+    let pine = kit::prop(&mut scene, "pine");
+    for k in 0..700 {
+        let (x, z) = (-200.0 + 400.0 * hash(k, 31), -200.0 + 330.0 * hash(k, 32));
+        if x.abs() < 36.0 {
+            continue;
+        }
+        let at = Vec3::new(x, -0.2, z);
+        pine.place(&mut scene, at, 6.3 * hash(k, 33), 11.0 + 9.0 * hash(k, 34));
+    }
+    kit::hills(&mut scene, None);
+    og_tests::terrain_scenes::afternoon(&mut scene);
+    scene.lighting.light.direction_to_light = Vec3::new(0.5, 0.7, 0.45).normalize();
+    scene.lighting.light.max_shadow_distance = 260.0;
+    og_tests::terrain_scenes::fair_sky(&mut scene, 8.6);
     for (name, density, seed, priority, footprint) in
         [("oak", 0.005, 3, 3, 6.0), ("pine", 0.006, 5, 2, 4.5)]
     {
@@ -679,7 +733,8 @@ pub fn switch_scene() -> Result<RenderScene, String> {
     scene.frame.camera = Camera {
         position: Vec3::new(0.0, 20.0, 135.0),
         target: Vec3::new(0.0, 2.0, 40.0),
-        far: 600.0,
+        far: 4000.0,
+        exposure: og_render::Exposure::linear(0.9),
         projection: Projection::Perspective {
             fov_y_degrees: 50.0,
         },
