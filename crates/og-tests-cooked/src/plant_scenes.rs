@@ -624,6 +624,10 @@ pub fn toon_scene() -> Result<RenderScene, String> {
         outline_place: OutlinePlace::Outside,
         ..Default::default()
     };
+    // At the wood's edge, where the look's bands and line read on the
+    // leaves, the cards beyond and the meadow.
+    scene.frame.camera.position = Vec3::new(-6.0, 5.0, 52.0);
+    scene.frame.camera.target = Vec3::new(2.0, 6.0, 18.0);
     Ok(scene)
 }
 
