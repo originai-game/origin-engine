@@ -1715,12 +1715,16 @@ pub fn build(name: &str) -> Result<GfxScene, String> {
             g.scene = crate::impostor_scenes::impostor_scatter_scene(15.0);
             Ok(())
         },
-        // R6: two 6 m columns on a grey floor, the red one (left) leaning
-        // downwind (+x, to the right) under og.Wind's hook, its top about
-        // 0.9 m over, the blue one (right) upright; the red column's
-        // shadow leans with it.
+        // R6: pines on a hilltop in a gale, leaning downwind (+x, to the
+        // right) under og.Wind's hook with the grass, their tops about two
+        // metres over; a ruin's column and arch among them stand upright;
+        // the pines' shadows lean with them.
         "wind-models" => |g, _| {
             g.scene = crate::wind_scenes::wind_scene(true, 90);
+            crate::terrain_scenes::fair_sky(&mut g.scene, 8.3);
+            // The sky's clouds are set some minutes on; the wind's tick stays.
+            g.scene.frame.tick = 90;
+            as_played(g);
             Ok(())
         },
         // R6's grass: a default og.Grass over the island's meadow, casting

@@ -103,6 +103,29 @@ impl Prop {
         self.parts.instance(scene, transform);
     }
 
+    /// The model's first part remade `height` metres tall, the middle of
+    /// its base at its origin, with its material: for what places a mesh
+    /// by its origin and in its own units (scattered copies, the wind
+    /// hook, which leans a model by its height above its origin).
+    pub fn rooted(
+        &self,
+        scene: &mut RenderScene,
+        height: f32,
+    ) -> (og_render::MeshHandle, MaterialHandle) {
+        let (mesh, material) = self.parts.parts[0];
+        let scale = height / (self.max.y - self.min.y).max(1e-3);
+        let foot = Vec3::new(
+            (self.min.x + self.max.x) * 0.5,
+            self.min.y,
+            (self.min.z + self.max.z) * 0.5,
+        );
+        let mut made = scene.mesh(mesh).expect("a kit model's mesh").clone();
+        for v in &mut made.vertices {
+            v.position = ((Vec3::from(v.position) - foot) * scale).into();
+        }
+        (scene.add_mesh(made), material)
+    }
+
     /// The model's meshes with their materials, for what draws a mesh
     /// itself (a terrain stamp, scattered copies).
     pub fn parts(&self) -> &[(og_render::MeshHandle, MaterialHandle)] {
