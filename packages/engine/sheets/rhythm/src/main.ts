@@ -16,11 +16,16 @@ const PAGES = ["songs", "play", "states"] as const;
 const STYLES = ["fantasy", "scifi", "cartoon", "default"] as const;
 const JUDGEMENTS = ["perfect", "great", "good", "bad", "miss"] as const;
 
+/** The play page's sample stage and jacket art (sheet only, never installed). */
+let stage = 0;
+let jacket = 0;
+
 const DOCUMENTS = ["ui/songs.svelte", "ui/play.svelte", "ui/states.svelte", "ui/sheet.svelte"];
 
 const NAMES: Record<string, string> = {
   songSelect: "RhythmSongSelect", difficulty: "RhythmDifficulty", judgement: "RhythmJudgement",
-  scoreHud: "RhythmScoreHud", results: "RhythmResults",
+  scoreHud: "RhythmScoreHud", results: "RhythmResults", songPlate: "RhythmSongPlate", songProgress: "RhythmSongProgress",
+  chain: "RhythmChain", gauge: "RhythmGauge", timing: "RhythmTiming", laneKeys: "RhythmLaneKeys",
 };
 
 function must<T>(r: { ok: true; value: T } | { ok: false; reason: string }, what: string): T {
@@ -48,7 +53,7 @@ function setStyle(world: World, name: string): void {
 /** Each fixture as a store of its scalars (`<member>_<state>`) and a keyed collection per list (`<member>_<state>_<prop>`). */
 function stores(world: World): Record<string, UiReadable<unknown>> {
   const scope = og.ui.scope(world, "sheet");
-  const out: Record<string, UiReadable<unknown>> = { page: scope.writable("page", "songs") };
+  const out: Record<string, UiReadable<unknown>> = { page: scope.writable("page", "songs"), stage: scope.writable("stage", stage), jacket: scope.writable("jacket", jacket) };
   const captions: Record<string, string> = {};
   for (const [member, states] of Object.entries(FIXTURES)) {
     for (const [state, fixture] of Object.entries(states)) {
@@ -77,6 +82,8 @@ export default og.game({
   start(world) {
     const camera = world.resource(og.Camera);
     if (camera.ok) camera.value.background = { r: 0.05, g: 0.05, b: 0.06 };
+    stage = must(og.load.texture(world, "art/stage.jpg"), "stage") as number;
+    jacket = must(og.load.texture(world, "art/jacket.jpg"), "jacket") as number;
     setStyle(world, "fantasy");
     for (const path of DOCUMENTS) must(og.load.document(world, path), path);
   },

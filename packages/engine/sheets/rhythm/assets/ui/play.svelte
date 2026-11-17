@@ -1,33 +1,54 @@
 <meta name="component" content="PlayPage">
 
-<!-- The stress page: the judgement over the lanes' hit line and the score HUD
-     in the corner, on a bright sky over dark lanes so each readout is reviewed
-     on both (docs/ui.md §6.3), beside the long results screen (the overflow
-     fixture: a long title, a large score, eight tally rows). On a phone they
-     stack, the results under the play field. -->
+<!-- The play page, as the approved HUD mockup lays it out over a stage: the
+     song's progress along the top edge, the song plate top left, the chain
+     top centre, the score top right, life and fever at the edges, the combo
+     and the judgement in the centre, the tally and timing bottom left and
+     the lane keys along the foot. The art is sample art of the sheet only. -->
 <div id="Page">
-  <div id="Field">
-    <div id="Sky"></div>
-    <div id="Lanes"></div>
-    <div id="Hud"><RhythmScoreHud score={$scoreHud_danger.score} accuracy={$scoreHud_danger.accuracy} life={$scoreHud_danger.life} danger={$scoreHud_danger.danger} failed={$scoreHud_danger.failed} progress={$scoreHud_danger.progress} /></div>
-    <div id="Judge"><RhythmJudgement judgement={$judgement_default.judgement} label={$judgement_default.label} timing={$judgement_default.timing} hit={$judgement_default.hit} combo={$judgement_default.combo} broken={$judgement_default.broken} /></div>
+  <img id="Stage" src={$stage} alt="">
+  <div id="Progress"><RhythmSongProgress value={$songProgress_default.value} elapsed={$songProgress_default.elapsed} length={$songProgress_default.length} /></div>
+  <div id="Hud">
+    <div id="Top">
+      <div id="Song"><RhythmSongPlate title={$songPlate_default.title} artist={$songPlate_default.artist} bpm={$songPlate_default.bpm} jacket={$jacket} tier={$songPlate_default.tier} chart={$songPlate_default.chart} rating={$songPlate_default.rating} modifiers={$songPlate_default_modifiers} /></div>
+      <div id="Chain"><RhythmChain multiplier={$chain_default.multiplier} step={$chain_default.step} steps={$chain_default.steps} hit={$chain_default.hit} /></div>
+      <div id="Score"><RhythmScoreHud score={$scoreHud_default.score} accuracy={$scoreHud_default.accuracy} grade={$scoreHud_default.grade} best={$scoreHud_default.best} /></div>
+    </div>
+    <div id="Mid">
+      <div id="Life"><RhythmGauge kind={$gauge_default.kind} value={$gauge_default.value} side={$gauge_default.side} danger={$gauge_default.danger} failed={$gauge_default.failed} ready={$gauge_default.ready} key={$gauge_default.key} /></div>
+      <div id="Judge"><RhythmJudgement judgement={$judgement_default.judgement} label={$judgement_default.label} timing={$judgement_default.timing} offset={$judgement_default.offset} hit={$judgement_default.hit} combo={$judgement_default.combo} broken={$judgement_default.broken} mark={$judgement_default.mark} /></div>
+      <div id="Fever"><RhythmGauge kind={$gauge_fever.kind} value={$gauge_fever.value} side={$gauge_fever.side} danger={$gauge_fever.danger} failed={$gauge_fever.failed} ready={$gauge_fever.ready} key={$gauge_fever.key} /></div>
+    </div>
+    <div id="Foot">
+      <div id="Timing"><RhythmTiming counts={$timing_default_counts} hits={$timing_default_hits} /></div>
+      <div id="Keys"><RhythmLaneKeys lanes={$laneKeys_default_lanes} /></div>
+    </div>
   </div>
-  <div id="Results"><RhythmResults song={$results_overflow.song} grade={$results_overflow.grade} cleared={$results_overflow.cleared} score={$results_overflow.score} previous={$results_overflow.previous} newBest={$results_overflow.newBest} maxCombo={$results_overflow.maxCombo} accuracy={$results_overflow.accuracy} mark={$results_overflow.mark} counts={$results_overflow_counts} canRetry={$results_overflow.canRetry} /></div>
 </div>
 
 <style>
-#Page { display: flex; width: stretch; height: stretch; gap: var(--space-xl); padding: var(--space-xl); }
-#Field { position: relative; flex: 1; min-width: 0; height: stretch; overflow: hidden; border-radius: var(--radius-sm); }
-#Sky { position: absolute; left: 0; top: 0; width: stretch; height: 40%; background: linear-gradient(180deg, #8fc3ea, #dfe9ef); }
-#Lanes { position: absolute; left: 0; bottom: 0; width: stretch; height: 60%; background: linear-gradient(180deg, #2a2440, #0c0b12); }
-#Hud { position: absolute; left: var(--space-md); top: var(--space-md); right: var(--space-md); display: flex; }
-#Judge { position: absolute; left: 0; right: 0; top: 52%; }
-#Results { flex: 1; min-width: 0; height: stretch; }
+#Page { position: relative; width: stretch; height: stretch; overflow: hidden; background: #05070c; }
+#Stage { position: absolute; left: 0; top: 0; width: stretch; height: stretch; object-fit: cover; }
+#Progress { position: absolute; left: 0; right: 0; top: 0; }
+#Hud { position: relative; display: flex; flex-direction: column; width: stretch; height: stretch; gap: var(--space-md); padding: calc(env(safe-area-inset-top) + var(--space-xl)) var(--space-xxl) calc(env(safe-area-inset-bottom) + var(--space-lg)); }
+#Top { display: flex; width: stretch; align-items: flex-start; gap: var(--space-lg); flex: none; }
+#Song { flex: 1; min-width: 0; display: flex; }
+#Chain { flex: none; display: flex; justify-content: center; padding-top: var(--space-xs); }
+#Score { flex: 1; min-width: 0; display: flex; justify-content: flex-end; }
+#Mid { display: flex; flex: 1; min-height: 0; width: stretch; align-items: center; gap: var(--space-lg); padding: var(--space-lg) var(--space-xxl); }
+#Life, #Fever { flex: none; display: flex; height: 60%; }
+#Judge { flex: 1; min-width: 0; display: flex; justify-content: center; }
+#Foot { display: flex; width: stretch; align-items: flex-end; gap: var(--space-xl); flex: none; }
+#Timing { flex: none; display: flex; }
+#Keys { flex: 1; min-width: 0; display: flex; }
 @media (width < 600px) {
-  #Page { flex-direction: column; gap: var(--space-sm); padding: var(--space-sm); }
-  #Field { flex: none; width: stretch; height: 42%; }
-  #Hud { left: var(--space-xs); top: var(--space-xs); right: var(--space-xs); }
-  #Judge { top: 64%; }
-  #Results { flex: 1; min-height: 0; width: stretch; height: auto; }
+  #Hud { gap: var(--space-sm); padding: calc(env(safe-area-inset-top) + var(--space-md)) var(--space-md) calc(env(safe-area-inset-bottom) + var(--space-md)); }
+  #Top { flex-wrap: wrap; gap: var(--space-sm); }
+  #Song { flex: 1 1 100%; }
+  #Score { flex: 1 1 100%; }
+  #Chain { flex: 1 1 100%; justify-content: flex-start; padding-top: 0; }
+  #Mid { padding: var(--space-sm) 0; gap: var(--space-sm); }
+  #Life, #Fever { height: 50%; }
+  #Foot { flex-direction: column; align-items: stretch; gap: var(--space-md); }
 }
 </style>
