@@ -72,7 +72,11 @@ pub(crate) fn step(k: Option<usize>, mips: u32) -> Step {
 
 /// The live sky's capture, filters and schedule.
 pub(crate) struct SkyCapture {
-    pipeline: wgpu::RenderPipeline,
+    /// The faces' pipeline (`fs_sky_look`, the whole sky with its clouds'
+    /// march): compiling on a worker from the frame that makes the
+    /// capture, beside the frame's other work and compiles, until the
+    /// frame's live sky pass draws with it.
+    pipeline: crate::deferred::Deferred<wgpu::RenderPipeline>,
     faces: [wgpu::TextureView; 6],
     irradiance: wgpu::Texture,
     prefiltered: wgpu::Texture,
@@ -95,40 +99,49 @@ impl SkyCapture {
         layouts: [&wgpu::BindGroupLayout; 2],
         off: crate::pipeline_features::Features,
     ) -> SkyCapture {
-        let module = device.create_shader_module(wgpu::ShaderModuleDescriptor {
-            label: Some("live sky"),
-            source: wgpu::ShaderSource::Wgsl(off.leave_out(super::sky::sky_source()).into()),
-        });
         let layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
             label: Some("live sky"),
             bind_group_layouts: &[Some(layouts[0]), Some(layouts[1])],
             immediate_size: 0,
         });
-        let pipeline = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
-            label: Some("live sky"),
-            layout: Some(&layout),
-            vertex: wgpu::VertexState {
-                module: &module,
-                entry_point: Some("vs_sky_look"),
-                compilation_options: Default::default(),
-                buffers: &[],
-            },
-            primitive: wgpu::PrimitiveState::default(),
-            depth_stencil: None,
-            multisample: Default::default(),
-            fragment: Some(wgpu::FragmentState {
-                module: &module,
-                entry_point: Some("fs_sky_look"),
-                compilation_options: Default::default(),
-                targets: &[Some(wgpu::ColorTargetState {
-                    format: HDR_FORMAT,
-                    blend: None,
-                    write_mask: wgpu::ColorWrites::ALL,
-                })],
-            }),
-            multiview_mask: None,
-            cache: crate::pipeline_cache::of(device).as_ref(),
-        });
+        let pipeline = {
+            let device = device.clone();
+            crate::deferred::Deferred::anywhere(move || {
+                crate::deferred::note(|| "live sky vs_sky_look/fs_sky_look".into());
+                let module = device.create_shader_module(wgpu::ShaderModuleDescriptor {
+                    label: Some("live sky"),
+                    source: wgpu::ShaderSource::Wgsl(
+                        off.leave_out(super::sky::sky_source()).into(),
+                    ),
+                });
+                device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
+                    label: Some("live sky"),
+                    layout: Some(&layout),
+                    vertex: wgpu::VertexState {
+                        module: &module,
+                        entry_point: Some("vs_sky_look"),
+                        compilation_options: Default::default(),
+                        buffers: &[],
+                    },
+                    primitive: wgpu::PrimitiveState::default(),
+                    depth_stencil: None,
+                    multisample: Default::default(),
+                    fragment: Some(wgpu::FragmentState {
+                        module: &module,
+                        entry_point: Some("fs_sky_look"),
+                        compilation_options: Default::default(),
+                        targets: &[Some(wgpu::ColorTargetState {
+                            format: HDR_FORMAT,
+                            blend: None,
+                            write_mask: wgpu::ColorWrites::ALL,
+                        })],
+                    }),
+                    multiview_mask: None,
+                    cache: crate::pipeline_cache::of(&device).as_ref(),
+                })
+            })
+        };
+        crate::deferred::Start::start(&pipeline);
         let capture = device.create_texture(&wgpu::TextureDescriptor {
             label: Some("live sky capture"),
             size: wgpu::Extent3d {
@@ -271,7 +284,7 @@ impl SkyCapture {
                 occlusion_query_set: None,
                 multiview_mask: None,
             });
-            pass.set_pipeline(&self.pipeline);
+            pass.set_pipeline(self.pipeline.get());
             pass.set_bind_group(0, &group, &[]);
             pass.set_bind_group(1, sky_group, &[]);
             pass.draw(0..3, 0..1);

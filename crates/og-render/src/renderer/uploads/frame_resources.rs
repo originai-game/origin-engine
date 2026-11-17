@@ -159,10 +159,10 @@ impl Renderer {
             },
             None => EnvironmentKey::Sky(*sky),
         };
-        // The first frame with clouds draws their noise and makes the sky
-        // group again with it.
+        // The first frame with clouds makes their noise (drawn before the
+        // frame's commands, draw_frame.rs) and the sky group again with it.
         if scene.atmosphere.clouds.is_some() && !self.sky.cloud_noise.made {
-            self.sky.cloud_noise.make(&self.device, &self.queue);
+            self.sky.cloud_noise.make(&self.device);
             self.lights.environment = None;
         }
         // The clouds' shadow on the world (clouds/shadow.rs): planned every

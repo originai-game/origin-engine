@@ -15,7 +15,9 @@ pub(crate) struct AuroraMap {
 }
 
 struct FootprintPass {
-    pipeline: wgpu::ComputePipeline,
+    /// Compiling on a worker from the frame that makes it until its first
+    /// footprint is recorded ([`AuroraMap::encode`]).
+    pipeline: crate::deferred::Deferred<wgpu::ComputePipeline>,
     layout: wgpu::BindGroupLayout,
     uniform: wgpu::Buffer,
     sampler: wgpu::Sampler,
@@ -163,10 +165,6 @@ impl AuroraMap {
             &table(FOOTPRINT as usize),
         );
         let view = texture.create_view(&Default::default());
-        let module = device.create_shader_module(wgpu::ShaderModuleDescriptor {
-            label: Some("aurora footprint"),
-            source: wgpu::ShaderSource::Wgsl(FOOTPRINT_WGSL.into()),
-        });
         let entry = |binding, ty| wgpu::BindGroupLayoutEntry {
             binding,
             visibility: wgpu::ShaderStages::COMPUTE,
@@ -206,20 +204,30 @@ impl AuroraMap {
                 ),
             ],
         });
-        let pipeline = device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
+        let pipeline_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
             label: Some("aurora footprint"),
-            layout: Some(
-                &device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-                    label: Some("aurora footprint"),
-                    bind_group_layouts: &[Some(&layout)],
-                    immediate_size: 0,
-                }),
-            ),
-            module: &module,
-            entry_point: Some("main"),
-            compilation_options: Default::default(),
-            cache: None,
+            bind_group_layouts: &[Some(&layout)],
+            immediate_size: 0,
         });
+        let pipeline = {
+            let device = device.clone();
+            crate::deferred::Deferred::anywhere(move || {
+                crate::deferred::note(|| "aurora footprint".into());
+                let module = device.create_shader_module(wgpu::ShaderModuleDescriptor {
+                    label: Some("aurora footprint"),
+                    source: wgpu::ShaderSource::Wgsl(FOOTPRINT_WGSL.into()),
+                });
+                device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
+                    label: Some("aurora footprint"),
+                    layout: Some(&pipeline_layout),
+                    module: &module,
+                    entry_point: Some("main"),
+                    compilation_options: Default::default(),
+                    cache: crate::pipeline_cache::of(&device).as_ref(),
+                })
+            })
+        };
+        crate::deferred::Start::start(&pipeline);
         let uniform = device.create_buffer(&wgpu::BufferDescriptor {
             label: Some("aurora footprint"),
             size: std::mem::size_of::<FootprintParams>() as u64,
@@ -280,7 +288,7 @@ impl AuroraMap {
             label: Some("aurora footprint"),
             timestamp_writes: None,
         });
-        compute.set_pipeline(&pass.pipeline);
+        compute.set_pipeline(pass.pipeline.get());
         compute.set_bind_group(0, &pass.group, &[]);
         compute.dispatch_workgroups(FOOTPRINT / 8, FOOTPRINT / 8, 1);
     }

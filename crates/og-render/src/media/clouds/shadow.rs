@@ -34,7 +34,9 @@ pub(crate) struct CloudShadow {
 }
 
 struct BakePass {
-    pipeline: wgpu::ComputePipeline,
+    /// Compiling on a worker from the frame that makes it until its first
+    /// bake is recorded ([`CloudShadow::encode`]).
+    pipeline: crate::deferred::Deferred<wgpu::ComputePipeline>,
     layout: wgpu::BindGroupLayout,
     uniform: wgpu::Buffer,
     frame: wgpu::BindGroup,
@@ -191,7 +193,7 @@ impl CloudShadow {
             label: Some("cloud shadow"),
             timestamp_writes: None,
         });
-        compute.set_pipeline(&pass.pipeline);
+        compute.set_pipeline(pass.pipeline.get());
         compute.set_bind_group(0, &pass.frame, &[]);
         compute.set_bind_group(1, &group, &[]);
         compute.dispatch_workgroups(SIDE / 8, SIDE / 8, 1);
@@ -237,10 +239,6 @@ fn texture(device: &wgpu::Device, side: u32) -> wgpu::TextureView {
 
 impl BakePass {
     fn new(device: &wgpu::Device, frame: &wgpu::Buffer) -> BakePass {
-        let module = device.create_shader_module(wgpu::ShaderModuleDescriptor {
-            label: Some("cloud shadow"),
-            source: wgpu::ShaderSource::Wgsl(bake_source().into()),
-        });
         let entry = |binding, ty| wgpu::BindGroupLayoutEntry {
             binding,
             visibility: wgpu::ShaderStages::COMPUTE,
@@ -282,20 +280,30 @@ impl BakePass {
                 ),
             ],
         });
-        let pipeline = device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
+        let pipeline_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
             label: Some("cloud shadow"),
-            layout: Some(
-                &device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-                    label: Some("cloud shadow"),
-                    bind_group_layouts: &[Some(&frame_layout), Some(&layout)],
-                    immediate_size: 0,
-                }),
-            ),
-            module: &module,
-            entry_point: Some("main"),
-            compilation_options: Default::default(),
-            cache: None,
+            bind_group_layouts: &[Some(&frame_layout), Some(&layout)],
+            immediate_size: 0,
         });
+        let pipeline = {
+            let device = device.clone();
+            crate::deferred::Deferred::anywhere(move || {
+                crate::deferred::note(|| "cloud shadow".into());
+                let module = device.create_shader_module(wgpu::ShaderModuleDescriptor {
+                    label: Some("cloud shadow"),
+                    source: wgpu::ShaderSource::Wgsl(bake_source().into()),
+                });
+                device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
+                    label: Some("cloud shadow"),
+                    layout: Some(&pipeline_layout),
+                    module: &module,
+                    entry_point: Some("main"),
+                    compilation_options: Default::default(),
+                    cache: crate::pipeline_cache::of(&device).as_ref(),
+                })
+            })
+        };
+        crate::deferred::Start::start(&pipeline);
         let uniform = device.create_buffer(&wgpu::BufferDescriptor {
             label: Some("cloud shadow"),
             size: 16,

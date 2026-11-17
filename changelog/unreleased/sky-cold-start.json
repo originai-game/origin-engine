@@ -1,0 +1,9 @@
+{
+  "simulation": "unchanged",
+  "fixed": [
+    {
+      "member": "og.Clouds and the live sky",
+      "summary": "The first frame with clouds, a live sky or an aurora no longer compiles the clouds' noise, the live sky's capture, the cloud shadow's bake or the aurora's footprint on the renderer's thread before any of its other pipelines start: they compile beside them on the compile workers. The sky over the clouds and the clouds' resolve no longer compile a cloud march in their vertex stage that they never read. The picture is unchanged. The web is unchanged."
+    }
+  ]
+}

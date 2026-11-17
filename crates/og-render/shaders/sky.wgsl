@@ -21,7 +21,8 @@ struct SkyParams {
 @group(1) @binding(6) var aurora_map: texture_2d<f32>;
 
 // grey: the overcast strip's shared grey (clouds_over), a cloud layer as clouds_march answers one, made by
-// vs_sky_look; zero from vs_sky, whose fragment stage draws no clouds.
+// vs_sky_look; zero from vs_sky, for the fragment stages that march no clouds (each pipeline with vs_sky_look
+// compiles a march in its vertex stage).
 struct SkyOut {
   @builtin(position) pos: vec4<f32>,
   @location(0) ndc: vec2<f32>,

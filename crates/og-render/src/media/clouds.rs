@@ -244,8 +244,15 @@ impl Clouds {
 pub(crate) struct CloudNoise {
     pub view: wgpu::TextureView,
     pub sampler: wgpu::Sampler,
-    /// Whether the full volume has been drawn.
+    /// Whether the full volume is made: drawn, or its draw pending.
     pub made: bool,
+    /// The volume's draw [`CloudNoise::make`] planned and
+    /// [`CloudNoise::submit`] submits: its pipeline, compiling on a worker
+    /// meanwhile, and its group.
+    pending: Option<(
+        crate::deferred::Deferred<wgpu::ComputePipeline>,
+        wgpu::BindGroup,
+    )>,
     _texture: wgpu::Texture,
 }
 
@@ -492,18 +499,20 @@ impl CloudNoise {
             view: texture.create_view(&Default::default()),
             sampler,
             made: false,
+            pending: None,
             _texture: texture,
         }
     }
 
-    /// Draws the full volume (once): a compute pass of `clouds_noise.wgsl`.
-    pub(crate) fn make(&mut self, device: &wgpu::Device, queue: &wgpu::Queue) {
+    /// Makes the full volume (once), to draw by a compute pass of
+    /// `clouds_noise.wgsl` before the frame's passes read it
+    /// ([`CloudNoise::submit`]). Its pipeline starts compiling on a worker
+    /// now, so the frame's other work and compiles overlap it: made here,
+    /// it was the first frame's longest wait before any of the frame's
+    /// pipelines started (a second of llvmpipe's).
+    pub(crate) fn make(&mut self, device: &wgpu::Device) {
         let texture = volume(device, NOISE_SIZE, true);
         let view = texture.create_view(&Default::default());
-        let module = device.create_shader_module(wgpu::ShaderModuleDescriptor {
-            label: Some("cloud noise"),
-            source: wgpu::ShaderSource::Wgsl(NOISE_WGSL.into()),
-        });
         let layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
             label: Some("cloud noise"),
             entries: &[wgpu::BindGroupLayoutEntry {
@@ -517,20 +526,30 @@ impl CloudNoise {
                 count: None,
             }],
         });
-        let pipeline = device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
+        let pipeline_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
             label: Some("cloud noise"),
-            layout: Some(
-                &device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-                    label: Some("cloud noise"),
-                    bind_group_layouts: &[Some(&layout)],
-                    immediate_size: 0,
-                }),
-            ),
-            module: &module,
-            entry_point: Some("main"),
-            compilation_options: Default::default(),
-            cache: None,
+            bind_group_layouts: &[Some(&layout)],
+            immediate_size: 0,
         });
+        let pipeline = {
+            let device = device.clone();
+            crate::deferred::Deferred::anywhere(move || {
+                crate::deferred::note(|| "cloud noise".into());
+                let module = device.create_shader_module(wgpu::ShaderModuleDescriptor {
+                    label: Some("cloud noise"),
+                    source: wgpu::ShaderSource::Wgsl(NOISE_WGSL.into()),
+                });
+                device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
+                    label: Some("cloud noise"),
+                    layout: Some(&pipeline_layout),
+                    module: &module,
+                    entry_point: Some("main"),
+                    compilation_options: Default::default(),
+                    cache: crate::pipeline_cache::of(&device).as_ref(),
+                })
+            })
+        };
+        crate::deferred::Start::start(&pipeline);
         let group = device.create_bind_group(&wgpu::BindGroupDescriptor {
             label: Some("cloud noise"),
             layout: &layout,
@@ -539,6 +558,19 @@ impl CloudNoise {
                 resource: wgpu::BindingResource::TextureView(&view),
             }],
         });
+        self.pending = Some((pipeline, group));
+        self.view = view;
+        self._texture = texture;
+        self.made = true;
+    }
+
+    /// Submits the volume's draw [`CloudNoise::make`] planned, waiting for
+    /// its pipeline if it is still compiling: before the frame's own
+    /// commands, the first that read it.
+    pub(crate) fn submit(&mut self, device: &wgpu::Device, queue: &wgpu::Queue) {
+        let Some((pipeline, group)) = self.pending.take() else {
+            return;
+        };
         let mut encoder = device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
             label: Some("cloud noise"),
         });
@@ -547,15 +579,12 @@ impl CloudNoise {
                 label: Some("cloud noise"),
                 timestamp_writes: None,
             });
-            pass.set_pipeline(&pipeline);
+            pass.set_pipeline(pipeline.get());
             pass.set_bind_group(0, &group, &[]);
             let n = NOISE_SIZE / 4;
             pass.dispatch_workgroups(n, n, n);
         }
         queue.submit(Some(encoder.finish()));
-        self.view = view;
-        self._texture = texture;
-        self.made = true;
     }
 }
 

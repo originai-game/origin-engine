@@ -107,15 +107,16 @@ impl Renderer {
                     immediate_size: 0,
                 })
             };
-            let march = |layout: &wgpu::PipelineLayout, fs: &'static str| {
+            let march = |layout: &wgpu::PipelineLayout, vs: &'static str, fs: &'static str| {
                 let (device, layout, module) = (device.clone(), layout.clone(), sky_shader.clone());
                 deferred::Deferred::anywhere(move || {
+                    deferred::note(|| format!("clouds low {vs}/{fs}"));
                     device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
                         label: Some("clouds low"),
                         layout: Some(&layout),
                         vertex: wgpu::VertexState {
                             module: module.get(),
-                            entry_point: Some("vs_sky_look"),
+                            entry_point: Some(vs),
                             compilation_options: Default::default(),
                             buffers: &[],
                         },
@@ -137,11 +138,14 @@ impl Renderer {
                     })
                 })
             };
+            // Only the march reads the overcast strip's grey, which
+            // vs_sky_look marches: the sky over the target and the resolve
+            // take vs_sky's triangle and compile no march of their own.
             clouds::CloudsLow {
-                sky: sky_state(&sky_low_pl, "vs_sky_look", "fs_sky_look_low"),
-                march: march(&with(&temporal), "fs_clouds_low"),
-                march_depth: march(&with(&depth), "fs_clouds_low_depth"),
-                resolve: march(&with(&resolve), "fs_clouds_resolve"),
+                sky: sky_state(&sky_low_pl, "vs_sky", "fs_sky_look_low"),
+                march: march(&with(&temporal), "vs_sky_look", "fs_clouds_low"),
+                march_depth: march(&with(&depth), "vs_sky_look", "fs_clouds_low_depth"),
+                resolve: march(&with(&resolve), "vs_sky", "fs_clouds_resolve"),
                 temporal: clouds::CloudsTemporal::new(device, temporal, depth, resolve),
                 layout,
             }

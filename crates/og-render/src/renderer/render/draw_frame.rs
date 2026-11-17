@@ -985,6 +985,9 @@ impl Renderer {
         // (pre_graph_stage.rs, execute.rs). Each graph pass owns the GPU
         // queries of the render and compute passes it opened (`timing.rs`).
         stages.end("uniforms and binds");
+        // The clouds' noise, the first frame with clouds: its pipeline
+        // has compiled beside all of the above (clouds.rs `CloudNoise`).
+        self.sky.cloud_noise.submit(&self.device, &self.queue);
         let mut encoder = self.open_frame_encoder();
         let mut pass_queries: Vec<(String, std::ops::Range<u32>)> = Vec::new();
         let pre_graph = PreGraphInputs {
