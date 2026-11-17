@@ -2834,6 +2834,88 @@ fn text_field_and_spinner_parts_keep_boxes_states_and_host_input() {
     assert!(!fill(&d.ui, [0, 255, 0]).iter().any(|r| r.y == name.y));
 }
 
+#[test]
+fn disabled_text_controls_style_their_frame_and_value_without_becoming_readonly() {
+    let mut ui = ui_with_font(test_font());
+    ui.set_part_css(
+        "input::part(frame), textarea::part(frame) { background: #00ff00; }
+         input::part(frame):disabled, textarea::part(frame):disabled { background: #ff0000; }
+         input::part(text):disabled, textarea::part(text):disabled { color: #0000ff; }",
+    )
+    .unwrap();
+    let mut d = mounted(
+        ui,
+        r#"<column id="Root">
+  <input id="Name" disabled={$off} value="Ada" />
+  <textarea id="Notes" disabled={$off} value="Notes"></textarea>
+  <input id="ReadOnly" readonly value="Read only" />
+</column>"#,
+        &[("off", json!(true))],
+        Viewport::new(600.0, 500.0),
+    );
+    for _ in 0..3 {
+        d.step(InputFrame::default());
+    }
+    for path in ["Name", "Notes", "ReadOnly"] {
+        let host = at(&d.ui, path);
+        let disabled = path != "ReadOnly";
+        assert_eq!(host.disabled, disabled, "{path}");
+        let expected = if disabled {
+            Srgba::rgb(255, 0, 0)
+        } else {
+            Srgba::rgb(0, 255, 0)
+        }
+        .linear();
+        assert!(
+            d.ui.frame().items.iter().any(|item| {
+                item.cmd
+                    .filled()
+                    .is_some_and(|(r, c)| r.y == host.y && c == expected)
+            }),
+            "{path}: missing state fill"
+        );
+    }
+    d.ui.set_part_css(&format!(
+        "{}\n:root {{ --field-disabled-ink: #123456; }}",
+        include_str!("../default.css")
+    ))
+    .unwrap();
+    d.step(InputFrame::default());
+    for want in ["Ada", "Notes"] {
+        let ink = d.ui.frame().items.iter().find_map(|item| {
+            let text = match &item.cmd {
+                DrawCmd::StyledText { text, .. } => text.as_ref(),
+                other => other,
+            };
+            match text {
+                DrawCmd::Text { text, color, .. } if text == want => Some(*color),
+                _ => None,
+            }
+        });
+        assert_eq!(ink, Some(Srgba::rgb(18, 52, 86).linear()), "{want}");
+    }
+    d.set("off", json!(false));
+    assert!(!at(&d.ui, "Name").disabled);
+    assert!(!at(&d.ui, "Notes").disabled);
+    let name = at(&d.ui, "Name");
+    press_at(
+        &mut d,
+        og_core::math::Vec2::new(name.x + name.width / 2.0, name.y + name.height / 2.0),
+    );
+    assert!(d.ui.focus_path(0).ends_with("/Name"));
+    d.step(InputFrame {
+        text: "!".into(),
+        ..Default::default()
+    });
+    assert_eq!(at(&d.ui, "Name").text, "Ada!");
+    d.put("off", json!(true));
+    d.step(InputFrame {
+        text: "leak".into(),
+        ..Default::default()
+    });
+    assert_eq!(at(&d.ui, "Name").text, "Ada!");
+}
+
 /// An undressed text control draws as before its frame became a box: one
 /// ground at the host's box, its text at the host's inset, no fill of the
 /// host's own. Wrong: the host and its frame both painted, or the text

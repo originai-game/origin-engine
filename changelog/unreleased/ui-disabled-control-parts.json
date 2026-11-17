@@ -1,0 +1,8 @@
+{
+  "fixed": [
+    {
+      "member": "UI disabled controls",
+      "summary": "Moves frames: disabled text inputs and textareas now expose their disabled frame and text state, reject editing and leave the focus order. Adds field-disabled-ink, field-disabled-shadow and checkbox-disabled-shadow style hooks, including radio rings."
+    }
+  ]
+}

@@ -16,6 +16,42 @@ fn tokens() -> serde_json::Value {
 }
 
 #[test]
+fn disabled_control_shadow_hooks_do_not_change_enabled_parts() {
+    use og_ui::paint::Effect;
+    let mut ui = og_ui::Ui::new(Default::default());
+    ui.set_part_css(&format!(
+        "{}\n:root {{ --field-disabled-shadow: 7px 3px 0 #123456; --checkbox-disabled-shadow: 7px 3px 0 #123456; }}",
+        include_str!("../default.css")
+    ))
+    .unwrap();
+    for selector in [
+        "input::part(frame)",
+        "textarea::part(frame)",
+        "select::part(trigger)",
+        "stepper::part(frame)",
+        "input[type=checkbox]::part(box)",
+        "input[type=radio]::part(ring)",
+    ] {
+        for disabled in [false, true] {
+            for checked in [false, true] {
+                let part = PartRef::parse(selector, None)
+                    .unwrap()
+                    .flag_if(disabled, "disabled")
+                    .flag_if(checked, "checked");
+                let draw = ui.resolve_part(&part, [100.0, 40.0]).unwrap();
+                let marker = draw.effects.iter().any(
+                    |e| matches!(e, Effect::DropShadow { offset, .. } if *offset == [7.0, 3.0]),
+                );
+                assert_eq!(
+                    marker, disabled,
+                    "{selector}: disabled={disabled}, checked={checked}"
+                );
+            }
+        }
+    }
+}
+
+#[test]
 fn conditional_design_tokens_survive_generation_without_changing_defaults() {
     let dir = std::env::temp_dir().join(format!("og-glass-token-test-{}", std::process::id()));
     std::fs::create_dir_all(&dir).unwrap();

@@ -85,12 +85,13 @@ impl Ui {
                 width: desc.width.unwrap_or(Size::grow()),
                 height: Size::Fixed(height),
                 padding,
-                interactive: true,
+                interactive: !desc.disabled,
                 radius: t.radius.control,
                 ..Element::default()
             },
         );
-        self.tree.nodes[i].focusable = true;
+        self.tree.nodes[i].disabled = desc.disabled;
+        self.tree.nodes[i].focusable = !desc.disabled;
         self.tree.nodes[i].nav = true;
         if number {
             self.tree.nodes[i].claim = ARROW_UP | ARROW_DOWN;
@@ -102,16 +103,21 @@ impl Ui {
         let cleared = search
             && !value.is_empty()
             && !desc.readonly
+            && !desc.disabled
             && self.clear_button(i, base, reveal_w, height);
         if cleared {
             value.clear();
         }
         let stepped = number && self.number_buttons(i, base, [spinner, height, 0.0], value, desc);
         self.tree.last_closed = i;
-        let mut r = self.respond(key);
+        let mut r = if desc.disabled {
+            Response::default()
+        } else {
+            self.respond(key)
+        };
         r.changed |= cleared || stepped;
         // Only the real focus edits; a forced one (the probe's) only shows.
-        if self.interaction.state.focus == key {
+        if !desc.disabled && self.interaction.state.focus == key {
             let inset = self.frame_inset(i, frame, padding);
             let inner = self.interaction.hit(key).map(|h| h.full.inset(&inset));
             let e = self.interaction.edit(
@@ -285,7 +291,7 @@ impl Ui {
                 .flag(class)
                 .flag_if(response.hovered, "hover")
                 .flag_if(response.pressed, "pressed")
-                .flag_if(desc.readonly, "disabled"),
+                .flag_if(desc.readonly || desc.disabled, "disabled"),
             );
             let part = self.tree.nodes[i].el.part.unwrap();
             for side in [-1.0, 1.0] {
@@ -298,7 +304,7 @@ impl Ui {
             }
             self.tree.nodes[i].a11y.name =
                 Some(if sign > 0.0 { "Increase" } else { "Decrease" }.into());
-            self.tree.nodes[i].disabled = desc.readonly;
+            self.tree.nodes[i].disabled = desc.readonly || desc.disabled;
             self.control_part(i, "button");
             let since_id = format!("{id}~since");
             let repeat_id = format!("{id}~repeat");
@@ -831,19 +837,24 @@ impl Ui {
                     (rows as f32 * lh + pad.vertical()).max(self.layout.touch_min(&self.env)),
                 ),
                 padding: pad,
-                interactive: true,
+                interactive: !desc.disabled,
                 radius: t.radius.control,
                 ..Element::default()
             },
         );
-        self.tree.nodes[i].focusable = true;
+        self.tree.nodes[i].disabled = desc.disabled;
+        self.tree.nodes[i].focusable = !desc.disabled;
         self.tree.nodes[i].nav = true;
         self.tree.nodes[i].multiline = true;
         let frame = (!desc.bare).then(|| self.field_frame(i, base));
         let key = self.tree.nodes[i].key;
-        let mut r = self.respond(key);
+        let mut r = if desc.disabled {
+            Response::default()
+        } else {
+            self.respond(key)
+        };
         // Only the real focus edits; a forced one (the probe's) only shows.
-        if self.interaction.state.focus == key {
+        if !desc.disabled && self.interaction.state.focus == key {
             let inset = self.frame_inset(i, frame, pad);
             let inner = self.interaction.hit(key).map(|h| h.full.inset(&inset));
             let e = self.interaction.edit(

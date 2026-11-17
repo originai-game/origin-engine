@@ -1207,7 +1207,14 @@ const FALLBACKS: &str = r#"
     background: var(--field-disabled-fill, var(--field-fill, revert-layer));
     border-color: var(--field-disabled-rim, var(--field-rim, var(--line)));
   }
+  input::part(frame):disabled, textarea::part(frame):disabled {
+    box-shadow: var(--field-disabled-shadow, var(--field-frame-shadow, none));
+  }
+  select::part(trigger):disabled, stepper::part(frame):disabled {
+    box-shadow: var(--field-disabled-shadow, var(--field-shadow));
+  }
   input::part(text), textarea::part(text) { color: var(--field-ink, revert-layer); font-family: var(--field-font, revert-layer); }
+  input::part(text):disabled, textarea::part(text):disabled { color: var(--field-disabled-ink, var(--ink-disabled)); }
   input::part(placeholder), textarea::part(placeholder) { color: var(--field-placeholder-ink, revert-layer); }
   input::part(selection), textarea::part(selection) { background: var(--field-selection-fill, revert-layer); }
   input::part(caret), textarea::part(caret) { background: var(--field-caret-fill, revert-layer); }
@@ -1248,11 +1255,17 @@ const FALLBACKS: &str = r#"
     background: var(--checkbox-disabled-fill, revert-layer);
     border-color: var(--checkbox-disabled-rim, var(--checkbox-box-rim));
   }
+  input[type=checkbox]::part(box):disabled {
+    box-shadow: var(--checkbox-disabled-shadow, var(--checkbox-box-shadow));
+  }
+  input[type=radio]::part(ring):disabled {
+    box-shadow: var(--checkbox-disabled-shadow, var(--radio-ring-shadow));
+  }
   input[type=checkbox]::part(box):checked:disabled, input[type=checkbox][aria-checked=mixed]::part(box):disabled,
   input[type=radio]::part(ring):checked:disabled {
     background: var(--checkbox-checked-disabled-fill, var(--checkbox-checked-fill, revert-layer));
     border-color: var(--checkbox-disabled-rim, var(--checkbox-checked-rim, transparent));
-    box-shadow: none;
+    box-shadow: var(--checkbox-disabled-shadow, none);
   }
   input[type=checkbox][aria-invalid=true]::part(box),
   select[aria-invalid=true]::part(trigger),

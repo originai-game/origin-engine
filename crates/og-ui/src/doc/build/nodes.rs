@@ -1567,6 +1567,7 @@ impl Ui {
                     tight: r.flag("tight"),
                     component: r.str("component").map(str::to_string),
                     readonly: r.flag("readonly"),
+                    disabled: r.flag("disabled"),
                     constraints: constraints.clone(),
                 },
             );
@@ -1589,6 +1590,7 @@ impl Ui {
                     inputmode: r.str("inputmode").and_then(crate::InputMode::from_name),
                     autocomplete: r.str("autocomplete").unwrap_or_default().to_string(),
                     readonly: r.flag("readonly"),
+                    disabled: r.flag("disabled"),
                     constraints: constraints.clone(),
                     number: (r.flag("dataWrap")
                         || r.num("dataLargeStep").is_some()
@@ -1610,7 +1612,7 @@ impl Ui {
             self.docs.state_mut().placeholder_ink = None;
             out
         };
-        if !r.flag("readonly") {
+        if !r.flag("readonly") && !r.flag("disabled") {
             self.pad_keyboard(path, r, &mut s, &mut resp);
         }
         if let Some(V::Strs(all)) = r.get("suggestions") {

@@ -1141,6 +1141,10 @@ digits, a sign, a point and an exponent. `maxlength` stops typing;
 `readonly` drops every edit and keeps selection, copy and the focus stop.
 `<textarea rows>` shows that many lines (0 is 4).
 
+`disabled` removes the focus stop and rejects edits, including when a focused
+field becomes disabled. Its frame and value parts match `:disabled`; this
+does not make a `readonly` field disabled.
+
 Editing is Parley's (`parley::editing`): the text is laid out as it is
 drawn (a face without a usable file through a layout-only face of its own
 advances and kerning), and Parley's cursor and selection place the caret
@@ -1591,6 +1595,12 @@ inserts the variant (`--button-primary-hover-fill`).
 | Slot, badge, bars | `--slot-fill/rim/rim-width/shadow/hover-rim/hover-shadow/pressed-fill/selected-rim/selected-shadow/corner-shape` (`--slot-shadow` none by default); `--badge-<tone>-fill/ink` (neutral, primary, info, success, warn, danger), `--badge-rim/rim-width` (by default the badge's ink, its tone's), `--badge-font/tracking/transform`; `--meter-track-fill/rim/rim-width/shadow`, `--meter-fill/suboptimum-fill/poor-fill/health-fill/mana-fill`, `--progress-fill` |
 | Keyboard, touch | `--keyboard-panel-fill`, `--keyboard-key-fill/rim/hover-fill/hover-rim/pressed-fill/pressed-rim/shadow/ink/font` (its candidates too); `--touch-plate-fill/rim`, `--touch-knob-fill`, `--touch-active-fill` |
 | Text | `--heading-flourish` (h1–h3), `--scrollbar-fill/radius`, `--icon-secondary-ink` |
+
+Disabled text values use `--field-disabled-ink` (default `--ink-disabled`).
+`--field-disabled-shadow` overrides input/textarea frames, select triggers
+and stepper frames; `--checkbox-disabled-shadow` overrides checkbox boxes
+and radio rings, checked or unchecked. Unset shadow hooks retain each
+part's existing shadow.
 
 Icon path coordinates and behaviour constants (key repeat, dead zones,
 caret blink, typewriter speed) are not tokens.

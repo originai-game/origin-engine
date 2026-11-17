@@ -1929,6 +1929,8 @@ pub struct FieldDesc {
     /// Its text is selected, copied and moved through but never edited
     /// (HTML `readonly`); it keeps its focus stop.
     pub readonly: bool,
+    /// HTML `disabled`: no editing or focus stop; its parts match `:disabled`.
+    pub disabled: bool,
     /// What else its text must be (`required`, `pattern`, `min`…): one
     /// failing makes it invalid as `invalid` does.
     pub constraints: crate::input_type::Constraints,
@@ -1958,6 +1960,8 @@ pub struct TextAreaDesc {
     pub component: Option<String>,
     /// Selected and copied, never edited ([`FieldDesc::readonly`]).
     pub readonly: bool,
+    /// No editing or focus stop ([`FieldDesc::disabled`]).
+    pub disabled: bool,
     /// What else its text must be ([`FieldDesc::constraints`]).
     pub constraints: crate::input_type::Constraints,
 }
