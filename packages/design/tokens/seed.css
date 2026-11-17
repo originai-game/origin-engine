@@ -8,18 +8,20 @@
    rings and rims 3:1), keeping the seed's hue. `primary` is the brand: the
    primary fill and its states. `accent` (by default the primary) is the second accent: the
    highlight ink, the accent role and the focus ring. `neutral` (by default
-   the primary's hue at chroma up to 0.012) tints the grounds, surfaces,
+   the primary's hue, or a cool ink blue under a primary with none) tints the grounds, surfaces,
    lines, inks and glass at its hue, its chroma up to 0.04. `danger`, `warn`,
    `success` and `info` are the status hues. `team` picks the first team:
    of six colours every colour vision tells apart (vermilion, yellow, bluish
    green, blue, violet, reddish purple), the one nearest its hue, the next
    five following in Okabe-Ito order; teams 7 and 8 are fixed. The default seeds are the design
    language's neutral chrome: a near-black primary in light, a near-white one
-   in dark. */
+   in dark, over grounds tinted a cool ink blue (the neutral: smoked glass
+   reads deeper than grey beside a coloured scene). A game's one
+   `--seed-primary` lights every edge, glow and fill the roles draw. */
 :root {
   --seed-primary: #1c1c1e;
   --seed-accent: var(--seed-primary);
-  --seed-neutral: oklch(from var(--seed-primary) l min(c, 0.012) h);
+  --seed-neutral: oklch(from var(--seed-primary) l 0.034 calc(h * clamp(0, calc(calc(c - 0.02) * 1000000), 1) + 264 * calc(1 - clamp(0, calc(calc(c - 0.02) * 1000000), 1))));
   --seed-danger: #b20011;
   --seed-warn: #c2410c;
   --seed-success: #1a7a37;
@@ -29,8 +31,8 @@
 
 :root[data-scheme=dark] {
   --seed-primary: #e8e8ed;
-  --seed-danger: #ff8a82;
-  --seed-warn: #ff8a3d;
-  --seed-success: #3dd68c;
+  --seed-danger: #ff7a80;
+  --seed-warn: #ffa53d;
+  --seed-success: #45e08f;
   --seed-info: #5cc8ff;
 }

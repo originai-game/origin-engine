@@ -11,6 +11,17 @@
   --shadow-minimap: 0 6px 16px 0 #00000073;
   --shadow-slot-selected: 0 0 8px 0 #ffffff1f, 0 6px 14px 0 #00000066;
   --shadow-tab-selected: 0 2px 4px 0 #00000073, inset 0 1px 0 0 #ffffff26;
+  /* What the game components' materials cast (role.css): `panel` under a
+     frame, lit along its top edge; `plate` under a HUD plate over the
+     scene; `raise` a control or card standing up, `raise-hover` it lifted
+     under a pointer; `sunk` a tile's or a track's recess, with the light
+     its lower lip catches; `held` a control pressed in. */
+  --shadow-panel: inset 0 1px 0 0 rgb(255 255 255 / 0.95), 0 1px 2px 0 rgb(10 16 32 / 0.1), 0 18px 44px -18px rgb(10 16 32 / 0.32);
+  --shadow-plate: inset 0 1px 0 0 rgb(255 255 255 / 0.8), 0 4px 14px -6px rgb(10 16 32 / 0.3);
+  --shadow-raise: inset 0 1px 0 0 rgb(255 255 255 / 0.95), 0 1px 2px 0 rgb(10 16 32 / 0.16);
+  --shadow-raise-hover: inset 0 1px 0 0 rgb(255 255 255 / 0.95), 0 4px 12px -4px rgb(10 16 32 / 0.28);
+  --shadow-sunk: inset 0 1px 2px 0 rgb(10 16 32 / 0.16), 0 1px 0 0 rgb(255 255 255 / 0.8);
+  --shadow-held: inset 0 2px 4px 0 rgb(10 16 32 / 0.22);
   /* The engine's two drop shadows under content that lifts
      (`--elevation-raised`: radio cards; `--elevation-floating`: open lists and
      slider bubbles): offset, blur and the `shadow` colour's alpha, emitted as `0
@@ -57,5 +68,11 @@
   --shadow-lift: 0 10px 24px -8px rgb(0 0 0 / 0.6), 0 32px 64px -16px rgb(0 0 0 / 0.8);
   --shadow-rim: inset 0 0 0 0.5px rgb(255 255 255 / 0.08);
   --shadow-lens: 0 0 0 rgb(0 0 0 / 0);
+  --shadow-panel: inset 0 1px 0 0 rgb(255 255 255 / 0.1), 0 1px 0 0 rgb(0 0 0 / 0.5), 0 22px 48px -16px rgb(0 0 0 / 0.8);
+  --shadow-plate: inset 0 1px 0 0 rgb(255 255 255 / 0.08), 0 6px 18px -6px rgb(0 0 0 / 0.6);
+  --shadow-raise: inset 0 1px 0 0 rgb(255 255 255 / 0.12), 0 1px 2px 0 rgb(0 0 0 / 0.5);
+  --shadow-raise-hover: inset 0 1px 0 0 rgb(255 255 255 / 0.16), 0 6px 14px -4px rgb(0 0 0 / 0.6);
+  --shadow-sunk: inset 0 1px 3px 0 rgb(0 0 0 / 0.6), 0 1px 0 0 rgb(255 255 255 / 0.04);
+  --shadow-held: inset 0 2px 5px 0 rgb(0 0 0 / 0.6);
   --glass-saturation: 120%;
 }

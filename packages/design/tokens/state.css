@@ -29,27 +29,27 @@
      the number it drew with; og-ui's theme reads them back). A ratio is of the
      control's own size. `button-pressed-*` is a button held down;
      `button-selected-*` one that is on (`aria-pressed`: a toggle, a chip). */
-  --controls-button-radius: var(--radius-button);
+  --controls-button-radius: var(--radius-card);
   --controls-button-border-width: var(--stroke-hairline);
-  --controls-button-shadow: var(--shadow-sheen);
-  --controls-button-pressed-shadow: var(--shadow-pressed);
+  --controls-button-shadow: var(--raise-shadow);
+  --controls-button-pressed-shadow: var(--held-shadow);
   --controls-button-selected-fill: var(--selection);
   --controls-button-selected-ink: var(--on-selection);
-  --controls-field-radius: var(--radius-button);
+  --controls-field-radius: var(--radius-card);
   --controls-field-border-width: var(--stroke-thin);
-  --controls-field-shadow: var(--shadow-well);
+  --controls-field-shadow: var(--sunk-shadow);
   --controls-panel-radius: var(--radius-panel);
   --controls-panel-border-width: var(--stroke-hairline);
   --controls-hud-radius: var(--radius-button);
-  --controls-chip-radius: var(--radius-button);
-  --controls-tabs-radius: var(--radius-button);
-  --controls-slot-radius: var(--radius-control);
-  --controls-slot-shadow: none;
+  --controls-chip-radius: var(--radius-card);
+  --controls-tabs-radius: var(--radius-block);
+  --controls-slot-radius: var(--radius-card);
+  --controls-slot-shadow: var(--sunk-shadow);
   --controls-meter-radius: var(--radius-capsule);
-  --controls-meter-shadow: var(--shadow-groove);
+  --controls-meter-shadow: var(--shadow-sunk);
   --controls-meter-fill-shadow: var(--shadow-fill-sheen);
   --controls-radio-card-radius: var(--radius-panel);
-  --controls-radio-card-shadow: var(--elevation-raised);
+  --controls-radio-card-shadow: var(--raise-shadow);
   --controls-dropdown-list-shadow: var(--elevation-floating);
   --controls-state-press-duration: 60ms;
   --controls-checkbox-size: 22px;
@@ -100,9 +100,9 @@
   --controls-button-danger-ink: var(--danger);
   --controls-button-ghost-ink: var(--button-ink);
   --controls-button-disabled-ink: var(--ink-faint);
-  --controls-button-fill: var(--control);
-  --controls-button-hover-fill: var(--control-strong);
-  --controls-button-pressed-fill: var(--control-strong);
+  --controls-button-fill: var(--color-raised-lo);
+  --controls-button-hover-fill: var(--color-raised-hover-lo);
+  --controls-button-pressed-fill: var(--color-raised-pressed);
   --controls-button-disabled-fill: var(--control);
   --controls-button-primary-fill: var(--primary);
   --controls-button-primary-hover-fill: var(--primary-hover);
@@ -118,6 +118,18 @@
   --controls-button-ghost-hover-fill: var(--control);
   --controls-button-ghost-pressed-fill: var(--control);
   --controls-button-corner-shape: round;
+  /* A button stands up from its surface: a lit rim, a face that falls
+     away from the light, and a short shadow at its foot; held, it sinks.
+     The primary action glows in the primary. Its fill stays one flat
+     colour (its label's contrast is measured on it) and it has no border:
+     the rim, the light and the shade are layers of its shadow. */
+  --controls-button-base-shadow: var(--raise-shadow);
+  --controls-button-hover-shadow: var(--raise-hover-shadow);
+  --controls-button-base-pressed-shadow: var(--held-shadow);
+  --controls-button-disabled-shadow: inset 0 0 0 var(--stroke-hairline) var(--color-rim-soft);
+  --controls-button-primary-shadow: inset 0 1px 0 0 var(--color-lit), inset 0 calc(var(--space-md) * -1) var(--space-md) calc(var(--space-sm) * -1) var(--shadow-30), 0 1px 2px 0 var(--shadow-45), 0 var(--space-xs) var(--space-md) calc(var(--space-xs) * -1) var(--color-glow);
+  --controls-button-danger-shadow: inset 0 0 0 var(--stroke-hairline) var(--danger-45), var(--shadow-raise);
+  --controls-button-selected-shadow: inset 0 0 0 var(--stroke-thin) var(--primary), var(--shadow-held);
   --controls-field-invalid-rim: var(--danger);
   --controls-field-corner-shape: round;
   --controls-checkbox-box-rim: var(--well-rim);
@@ -132,25 +144,84 @@
   --controls-switch-track-rim: var(--line);
   --controls-switch-knob-rim: var(--line);
   --controls-switch-corner-shape: round;
-  --controls-tabs-tab-selected-fill: var(--selection);
-  --controls-tabs-tab-selected-shadow: var(--shadow-tab-selected);
+  --controls-tabs-tab-selected-fill: var(--color-raised-hover-lo);
+  --controls-tabs-tab-selected-shadow: var(--raise-shadow);
   --controls-slider-track-fill: var(--color-track);
   --controls-slider-fill-shadow: var(--meter-fill-shadow);
-  --controls-slider-knob-rim: var(--line);
+  --controls-slider-knob-rim: var(--color-rim-strong);
   --controls-slider-knob-corner-shape: round;
   --controls-slider-bubble-rim: var(--line);
   --controls-slider-bubble-shadow: var(--dropdown-list-shadow);
   --controls-slider-bubble-radius: var(--panel-radius);
-  --controls-dropdown-list-rim: var(--line);
+  --controls-dropdown-list-rim: var(--color-rim);
   --controls-dropdown-list-rim-width: var(--panel-border-width);
   --controls-dropdown-list-radius: var(--panel-radius);
-  --controls-panel-rim: var(--line);
+  --controls-panel-rim: var(--color-rim);
   --controls-panel-corner-shape: round;
   --controls-tooltip-radius: var(--panel-radius);
   --controls-tooltip-corner-shape: round;
   --controls-hud-corner-shape: round;
-  --controls-slot-selected-rim: var(--color-slot-selected-edge);
-  --controls-slot-selected-shadow: var(--shadow-slot-selected);
+  --controls-slot-selected-rim: var(--primary);
+  --controls-slot-selected-shadow: var(--shadow-sunk), 0 0 var(--space-md) calc(var(--space-xxs) * -1) var(--color-glow);
   --controls-slot-corner-shape: round;
-  --controls-keyboard-key-rim: var(--line);
+  --controls-keyboard-key-rim: var(--color-rim);
+  /* The rest of the controls in the same materials: a field, a track and
+     a slot are recesses (`tile`, `sunk`); a knob, a tab that is on and a
+     key stand up (`raised`); a list, a panel and a tooltip are glass;
+     what is chosen or focused takes the primary's rim and glow. */
+  --controls-checkbox-radius: var(--radius-field);
+  --controls-checkbox-box-fill: var(--color-tile);
+  --controls-checkbox-box-hover-rim: var(--color-rim-strong);
+  --controls-checkbox-checked-shadow: 0 0 var(--space-sm) 0 var(--color-glow);
+  --controls-radio-ring-fill: var(--color-tile);
+  --controls-radio-checked-shadow: 0 0 var(--space-sm) 0 var(--color-glow);
+  --controls-radio-card-fill: var(--color-raised-lo);
+  --controls-radio-card-checked-shadow: inset 0 0 0 var(--stroke-thin) var(--primary), var(--shadow-held);
+  --controls-switch-track-fill: var(--color-tile);
+  --controls-switch-track-shadow: var(--shadow-sunk);
+  --controls-switch-checked-shadow: 0 0 var(--space-sm) 0 var(--color-glow);
+  --controls-switch-knob-shadow: var(--shadow-raise);
+  --controls-tabs-track-fill: var(--color-tile);
+  --controls-tabs-track-shadow: var(--shadow-sunk);
+  --controls-tabs-tab-hover-fill: var(--control);
+  --controls-tabs-tab-ink: var(--ink-muted);
+  --controls-tabs-tab-hover-ink: var(--ink);
+  --controls-tabs-tab-selected-ink: var(--ink);
+  --controls-slider-track-shadow: var(--shadow-sunk);
+  --controls-slider-knob-shadow: var(--shadow-raise);
+  --controls-slider-knob-hover-shadow: var(--shadow-raise-hover), 0 0 0 var(--space-xs) var(--color-glow-soft);
+  --controls-field-fill: var(--color-tile);
+  --controls-field-frame-shadow: var(--sunk-shadow);
+  --controls-field-focus-shadow: var(--sunk-focus-shadow);
+  /* Disabled, a recess goes flat and unlit, as a disabled button does. */
+  --controls-field-disabled-fill: var(--control);
+  --controls-field-disabled-rim: var(--color-rim-soft);
+  --controls-checkbox-disabled-fill: var(--control);
+  --controls-checkbox-disabled-rim: var(--color-rim-soft);
+  /* The accent badge is light in the primary, as what is chosen is. */
+  --controls-badge-primary-fill: var(--primary);
+  --controls-badge-primary-ink: var(--on-primary);
+  /* A HUD capsule and a tooltip stay real glass (the scene blurs through);
+     the lit edge and the foot shadow are the other frames'. */
+  --controls-hud-shadow: inset 0 0 0 var(--stroke-hairline) var(--color-rim-soft), var(--shadow-plate);
+  --controls-tooltip-shadow: inset 0 0 0 var(--stroke-hairline) var(--color-rim-soft), var(--shadow-panel);
+  --controls-dropdown-list-fill: linear-gradient(180deg, var(--color-glass-hi), var(--color-glass) 96px, var(--color-glass-lo));
+  --controls-dropdown-option-hover-fill: var(--control);
+  --controls-dropdown-option-selected-fill: linear-gradient(90deg, var(--color-select-hi), var(--color-select-lo));
+  --controls-stepper-button-fill: var(--color-raised-lo);
+  --controls-stepper-button-hover-fill: var(--color-raised-hover-lo);
+  --controls-stepper-button-pressed-fill: var(--color-raised-pressed);
+  --controls-stepper-button-rim: var(--color-rim);
+  /* The gradient lies on the glass's flat colour: a panel always draws a
+     ground of its own under it. */
+  --controls-panel-fill: linear-gradient(180deg, var(--color-glass-hi), var(--color-glass) 96px, var(--color-glass-lo)), var(--color-glass);
+  --controls-panel-shadow: var(--shadow-panel);
+  --controls-slot-fill: var(--color-tile);
+  --controls-slot-hover-shadow: inset 0 0 0 var(--stroke-hairline) var(--color-rim-strong), var(--shadow-raise-hover);
+  --controls-slot-pressed-fill: var(--color-tile-pressed);
+  --controls-meter-track-fill: var(--color-tile);
+  --controls-meter-track-shadow: var(--shadow-sunk);
+  --controls-keyboard-key-fill: var(--color-raised-lo);
+  --controls-keyboard-key-hover-fill: var(--color-raised-hover-lo);
+  --controls-keyboard-key-pressed-fill: var(--color-raised-pressed);
 }

@@ -35,7 +35,7 @@
   --motion-scale-press: 0.96;
   --motion-scale-swell: 1.15;
   --motion-scale-pop: 1.4;
-  --motion-scale-shrink: 0.6;
+  --motion-scale-shrink: 0.9;
   --motion-scale-breathe: 0.45;
   /* The timing table: what each moment of a UI moves on, by the duration, easing
      and spring names above (or a number of its own). A style overrides a row in
@@ -81,7 +81,7 @@
      document, a widget's motion token): each a spring of a perceptual duration
      and a bounce (0 none, towards 1 more), capped by a style's overshoot; `ui`
      also sets --motion-ui-easing, its 60 Hz samples. */
-  --motion-named-ui-duration: 300ms;
+  --motion-named-ui-duration: 160ms;
   --motion-named-ui-bounce: 0;
   --motion-named-panel-duration: 420ms;
   --motion-named-panel-bounce: 0.1;
