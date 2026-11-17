@@ -30,20 +30,20 @@
 
 <style>
 /* Geometry is the reticle's structure: arms of --arm length, --gap from the
-   centre plus the spread's travel; the dressing gives the ink and keyline.
-   The line's width is --weight: --line is the palette's rule colour, which a
-   style pack's :root sets on this root too, above the component's layer. */
+   centre plus the spread's travel, --weight thick; the roles give the ink
+   and the dark keyline that holds it over sky and snow alike. */
 :host {
   position: relative;
-  --arm: var(--size-xs);
-  --weight: var(--stroke-thick);
-  --gap: calc(var(--space-xs) + var(--spread, 0) * var(--size-md));
+  --arm: calc(10 * var(--font-step-px));
+  --weight: calc(2 * var(--font-step-px));
+  --gap: calc(var(--space-sm) + var(--spread, 0) * var(--size-md));
+  --tick: calc(14 * var(--font-step-px));
   width: var(--size-xxl); height: var(--size-xxl);
   pointer-events: none;
+  color: var(--hud-tick);
 }
-.arm { position: absolute; background: var(--scene-ink); border-radius: var(--radius-xs); transition: translate var(--motion-ui-duration) var(--motion-ui-easing); }
-/* A keyline keeps the reticle legible over a bright scene, not just dark ground. */
-.arm, .tick, #Dot, #Ring { box-shadow: 0 0 0 var(--stroke-hairline) var(--scene-shadow); }
+.arm { position: absolute; background: var(--hud-tick); box-shadow: var(--hud-reticle-rim); transition: translate var(--motion-ui-duration) var(--motion-ui-easing); }
+.arm.aimed, #Dot.aimed { background: var(--hud-foe); }
 .vertical { left: calc(50% - var(--weight) / 2); width: var(--weight); height: var(--arm); }
 .horizontal { top: calc(50% - var(--weight) / 2); width: var(--arm); height: var(--weight); }
 #Up { bottom: calc(50% + var(--gap)); }
@@ -51,18 +51,23 @@
 #Left { right: calc(50% + var(--gap)); }
 #Right { left: calc(50% + var(--gap)); }
 .dotOnly .arm, .circle .arm { display: none; }
-#Ring { display: none; position: absolute; left: calc(50% - var(--gap) - var(--arm) / 2); top: calc(50% - var(--gap) - var(--arm) / 2); width: calc(var(--gap) * 2 + var(--arm)); height: calc(var(--gap) * 2 + var(--arm)); border-radius: var(--radius-pill); border: var(--weight) solid var(--scene-ink); }
+#Ring { display: none; position: absolute; left: calc(50% - var(--gap) - var(--arm) / 2); top: calc(50% - var(--gap) - var(--arm) / 2); width: calc(var(--gap) * 2 + var(--arm)); height: calc(var(--gap) * 2 + var(--arm)); background: var(--hud-tick); mask-image: radial-gradient(closest-side, transparent calc(100% - var(--weight)), #000 calc(100% - var(--weight))); }
 .circle #Ring { display: block; }
-#Ring.aimed { border-color: var(--danger); }
-#Dot { position: absolute; left: calc(50% - var(--weight)); top: calc(50% - var(--weight)); width: calc(var(--weight) * 2); height: calc(var(--weight) * 2); border-radius: var(--radius-pill); background: var(--scene-ink); }
+#Ring.aimed { background: var(--hud-foe); }
+#Dot { position: absolute; left: calc(50% - var(--weight)); top: calc(50% - var(--weight)); width: calc(var(--weight) * 2); height: calc(var(--weight) * 2); border-radius: var(--hud-radar-radius); background: var(--hud-tick); box-shadow: var(--hud-reticle-rim); }
 /* Hit marks: four short diagonal ticks just outside the arms, shown while
-   the game holds `hit`, popped in again by a new `hitAt`. */
+   the game holds `hit`, popped in again by a new `hitAt`: white for a
+   hit, red with a glow for a headshot and a kill (a kill's thicker), the
+   shield's blue for a broken shield. */
 #Hit { position: absolute; inset: 0; opacity: 0; transition: opacity var(--motion-exit); }
 #Hit.shown { opacity: 1; scale: 1; transition: opacity var(--motion-enter), scale var(--motion-duration-spring) var(--motion-easing-spring); }
 @starting-style { #Hit.shown { opacity: 0; scale: 1.5; } }
-.tick { position: absolute; width: var(--weight); height: var(--space-md); background: var(--scene-ink); }
-#HitNE { left: calc(50% + var(--space-md)); top: calc(50% - var(--space-md) * 2); rotate: 45deg; }
-#HitSE { left: calc(50% + var(--space-md)); top: calc(50% + var(--space-md)); rotate: -45deg; }
-#HitSW { left: calc(50% - var(--space-md)); top: calc(50% + var(--space-md)); rotate: 45deg; }
-#HitNW { left: calc(50% - var(--space-md)); top: calc(50% - var(--space-md) * 2); rotate: -45deg; }
+.tick { position: absolute; width: var(--tick); height: calc(3 * var(--font-step-px)); background: var(--hud-tick); box-shadow: var(--hud-reticle-rim); }
+.tick.headshot, .tick.kill { background: var(--hud-hit); box-shadow: var(--hud-hit-glow); }
+.tick.kill { height: calc(4 * var(--font-step-px)); }
+.tick.shieldBreak { background: var(--hud-ally); box-shadow: var(--hud-hit-shield-glow); }
+#HitNE { left: calc(50% + var(--gap) + var(--space-xs)); top: calc(50% - var(--gap) - var(--space-xs) - var(--tick) / 2); rotate: -45deg; }
+#HitSE { left: calc(50% + var(--gap) + var(--space-xs)); top: calc(50% + var(--gap) + var(--space-xs) + var(--tick) / 2); rotate: 45deg; }
+#HitSW { left: calc(50% - var(--gap) - var(--space-xs) - var(--tick)); top: calc(50% + var(--gap) + var(--space-xs) + var(--tick) / 2); rotate: -45deg; }
+#HitNW { left: calc(50% - var(--gap) - var(--space-xs) - var(--tick)); top: calc(50% - var(--gap) - var(--space-xs) - var(--tick) / 2); rotate: 45deg; }
 </style>

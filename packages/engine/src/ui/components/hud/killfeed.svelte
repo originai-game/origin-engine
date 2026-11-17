@@ -1,35 +1,65 @@
 <meta name="component" content="Killfeed">
 <meta name="strings" content="./killfeed.en.ogt">
-<meta name="prop:rows" content="list" data-doc="The eliminations to show, newest first, a keyed collection of { id, killer, victim, weapon, headshot, self, team }: self the player took part (the row is emphasised); team ally or enemy, the killer's side (the victim takes the other). The game trims old rows; a new row slides in.">
-<meta name="parts" content="Killfeed.row Killfeed.name Killfeed.weapon Killfeed.headshot Killfeed.label">
-<meta name="fixture:default" content='{"rows":[{"id":"k3","killer":"Kestrel","victim":"Vanta","weapon":"Halcyon","headshot":true,"self":true,"team":"ally"},{"id":"k2","killer":"Halden","victim":"Moraine","weapon":"Brace-12","headshot":false,"self":false,"team":"enemy"},{"id":"k1","killer":"Sable","victim":"Quill","weapon":"Talon AR","headshot":false,"self":false,"team":"ally"}]}'>
+<meta name="prop:rows" content="list" data-doc="The eliminations to show, newest first, a keyed collection of { id, killer, victim, weapon, kind, headshot, self, team }: kind the weapon's class (rifle, smg, pistol, shotgun, sniper, launcher or melee) drawn as its glyph, empty for the weapon's name in words; self the player took part (the row's edge is lit and the player's name takes the HUD's accent); team ally or enemy, the killer's side (the victim takes the other). The game trims old rows (a phone shows the two newest upright, three on its side); a new row slides in and an old one stays whole until it fades out over its last 300 ms.">
+<meta name="parts" content="Killfeed.row Killfeed.name Killfeed.weapon Killfeed.glyph Killfeed.headshot Killfeed.edge">
+<meta name="fixture:default" content='{"rows":[{"id":"k3","killer":"You","victim":"Vanta","weapon":"VK-7 Carbine","kind":"rifle","headshot":true,"self":true,"team":"ally"},{"id":"k2","killer":"Quill","victim":"Okonkwo-Reyes","weapon":"Hollow SMG","kind":"smg","headshot":false,"self":false,"team":"ally"},{"id":"k1","killer":"Vanta","victim":"Moraine","weapon":"Talon AR","kind":"rifle","headshot":false,"self":false,"team":"enemy"}]}'>
+<meta name="fixture:words" content='{"rows":[{"id":"w2","killer":"Halden","victim":"Kestrel","weapon":"Brace-12","kind":"","headshot":true,"self":true,"team":"enemy"},{"id":"w1","killer":"Sable","victim":"Quill","weapon":"Pike .50","kind":"sniper","headshot":false,"self":false,"team":"ally"}]}'>
 <meta name="fixture:empty" content='{"rows":[]}'>
-<meta name="fixture:long" content='{"rows":[{"id":"l1","killer":"AVeryLongPlayerNameThatOverflows","victim":"AnotherExtremelyLongName_42","weapon":"Lancet DMR","headshot":true,"self":false,"team":"enemy"}]}'>
+<meta name="fixture:long" content='{"rows":[{"id":"l1","killer":"AVeryLongPlayerNameThatOverflows","victim":"AnotherExtremelyLongName_42","weapon":"Lancet DMR Extended Marksman Rifle","kind":"","headshot":true,"self":false,"team":"enemy"}]}'>
 
+<!--
+  Eliminations at the screen's top corner, newest first: each row the
+  killer, the weapon's glyph (or its name), the victim and a headshot tag,
+  names in their side's colour on a dark glass that fades toward the
+  middle, an edge at the screen's side lit for the player's own rows.
+  Read only.
+-->
 <div id="Killfeed" role="log" aria-label={t("shooter.killfeed.name")}>
   {#each rows as r (r.id)}
-    <div class="row" part="Killfeed.row" class:self={r.self} aria-label={t("shooter.killfeed.row", { killer: r.killer, victim: r.victim, weapon: r.weapon })} in:fly={{ x: 24, duration: 200 }} out:fade={{ duration: 200 }} animate:flip={{ duration: 200 }}>
+    <div class="row" part="Killfeed.row" data-layout="row" data-gap="tight" class:self={r.self} aria-label={t("shooter.killfeed.row", { killer: r.killer, victim: r.victim, weapon: r.weapon })} in:fly={{ x: 24, duration: 200 }} out:fade={{ duration: 300 }} animate:flip={{ duration: 200 }}>
       <span class="name killer" part="Killfeed.name" class:ally={r.team == 'ally'} class:enemy={r.team != 'ally'}>{r.killer}</span>
-      <span class="weapon" part="Killfeed.weapon Killfeed.label">{r.weapon}</span>
-      {#if r.headshot}<og-icon class="headshot" part="Killfeed.headshot" icon="skull" aria-label={t("shooter.killfeed.headshot")}></og-icon>{/if}
+      {#if r.kind == 'rifle' || r.kind == 'smg' || r.kind == 'pistol' || r.kind == 'shotgun' || r.kind == 'sniper' || r.kind == 'launcher' || r.kind == 'melee'}
+      <svg class="glyph" part="Killfeed.glyph" viewBox="0 0 46 16" aria-label={r.weapon}>
+        {#if r.kind == 'rifle'}<path d="M0 5h30V3h6v2h10v3H34l-2 3h-6l-1-3h-9l-3 7H8l2-7H0z"></path>{/if}
+        {#if r.kind == 'smg'}<path d="M2 6h38V4h4v6H22l-2 5h-6l1-5H2z"></path>{/if}
+        {#if r.kind == 'pistol'}<path d="M12 3h24v5H25l-2 7h-6l2-7h-7z"></path>{/if}
+        {#if r.kind == 'shotgun'}<path d="M0 5h44v3H20l-3 6h-6l3-6H0z"></path>{/if}
+        {#if r.kind == 'sniper'}<path d="M0 7h46v2H30l-2 6h-5l1-6H0zM17 3h13v3H17z"></path>{/if}
+        {#if r.kind == 'launcher'}<path d="M2 3h40v8H28l-2 4h-6l1-4H2z"></path>{/if}
+        {#if r.kind == 'melee'}<path d="M4 8l30-5 9 4-9 4-30-1z"></path>{/if}
+      </svg>
+      {:else}<span class="weapon" part="Killfeed.weapon">{r.weapon}</span>{/if}
       <span class="name victim" part="Killfeed.name" class:ally={r.team != 'ally'} class:enemy={r.team == 'ally'}>{r.victim}</span>
+      {#if r.headshot}<span class="headshot" part="Killfeed.headshot">{t("shooter.killfeed.hs")}</span>{/if}
+      <div class="edge" part="Killfeed.edge"></div>
     </div>
   {/each}
 </div>
 
 <style>
-:host { display: flex; flex-direction: column; align-items: flex-end; gap: var(--space-xs); pointer-events: none; max-width: 100%; text-shadow: var(--tag-halo); }
-.row { display: flex; align-items: center; gap: var(--space-sm); padding: var(--space-xs) var(--space-sm); border-radius: var(--radius-control); background: var(--scene-plate); width: fit-content; max-width: 100%; border-inline-end: var(--stroke-regular) solid var(--line-strong); }
-.row.self { border-inline-end-color: var(--primary); background: var(--hud); }
-.name { font-size: var(--font-step-sm); line-height: var(--font-leading-normal); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: calc(var(--size-xxl) * 1.6); color: var(--scene-ink); text-shadow: 0 var(--stroke-hairline) var(--stroke-regular) var(--scene-shadow); }
-/* Sides by place: the killer always leads the row; the pack inks each
-   name by team (Killfeed::name.ally, .enemy). */
-/* A phone shows the three newest, upright or on its side (where six rows
-   would cover the upper corner of the play area); the rest stay in the log
-   for a reader. */
-@media (width < 600px) { .row:nth-child(n + 4) { display: none; } }
+:host { display: flex; flex-direction: column; align-items: flex-end; row-gap: calc(5 * var(--font-step-px)); pointer-events: none; max-inline-size: 100%; color: var(--hud-ink); text-shadow: var(--hud-shadow); -webkit-text-stroke-width: var(--hud-stroke-width); -webkit-text-stroke-color: var(--hud-stroke-color); paint-order: stroke fill; }
+.row { align-items: center; max-inline-size: 100%; min-inline-size: 0; padding: 0; padding-inline-start: var(--space-md); background: var(--hud-feed-fill); }
+.row:dir(rtl) { background: var(--hud-feed-fill-start); }
+.name { flex: 0 1 auto; min-inline-size: 0; padding-block: calc(3 * var(--font-step-px)); font-size: var(--hud-size-feed); font-weight: var(--hud-label-weight); white-space: nowrap; text-overflow: -og-scroll var(--motion-duration-orbit) var(--motion-duration-turn); overflow: hidden; }
+/* Sides by colour and by place: the killer always leads the row. */
+.name.ally { color: var(--hud-ally); }
+.name.enemy { color: var(--hud-foe); }
+.self .killer.ally, .self .victim.ally { color: var(--hud-accent); }
+.glyph { flex: none; inline-size: calc(40 * var(--font-step-px)); block-size: calc(14 * var(--font-step-px)); fill: var(--hud-glyph); filter: var(--hud-glyph-shadow); }
+.weapon { flex: 0 1 auto; min-inline-size: 0; font-size: var(--hud-label-size); font-weight: var(--hud-label-weight); letter-spacing: var(--hud-label-tracking); text-transform: var(--hud-label-transform); color: var(--hud-label-ink); white-space: nowrap; text-overflow: -og-scroll var(--motion-duration-orbit) var(--motion-duration-turn); overflow: hidden; }
+.headshot { flex: none; padding: 0 calc(5 * var(--font-step-px)); font-size: var(--hud-tag-size); font-weight: var(--hud-figure-weight); letter-spacing: var(--hud-label-tracking); text-transform: var(--hud-label-transform); color: var(--hud-foe); white-space: nowrap; -webkit-text-stroke-width: 0; text-shadow: none; background: var(--hud-tag-fill); box-shadow: var(--hud-tag-rim); clip-path: polygon(var(--hud-tag-cut) 0, 100% 0, 100% calc(100% - var(--hud-tag-cut)), calc(100% - var(--hud-tag-cut)) 100%, 0 100%, 0 var(--hud-tag-cut)); }
+/* The edge at the screen's side, lit for the player's own rows. */
+.edge { flex: none; align-self: stretch; inline-size: var(--hud-feed-edge-width); margin-inline-start: var(--space-xs); background: var(--hud-feed-edge); }
+.self .edge { background: var(--hud-accent); }
+/* An upright phone shows the newest row across its width, and a phone on
+   its side, with the width for more, the three newest (where more rows
+   would cover the play area round the aim); the rest stay in the log for
+   a reader. */
+@media (width < 600px) {
+  .row:nth-child(n + 2) { display: none; }
+  .row { padding-inline-start: var(--space-sm); }
+  .name { font-size: var(--hud-size-xs); }
+  .glyph { inline-size: calc(26 * var(--font-step-px)); block-size: calc(10 * var(--font-step-px)); }
+}
 @media (height < 600px) and (orientation: landscape) { .row:nth-child(n + 4) { display: none; } }
-.weapon { font-size: var(--font-step-sm); line-height: var(--font-leading-normal); white-space: nowrap; text-transform: uppercase; }
-.headshot { width: var(--size-xs); height: var(--size-xs); color: var(--scene-ink); }
-.self .killer { font-weight: 600; }
 </style>

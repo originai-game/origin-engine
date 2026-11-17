@@ -19,7 +19,7 @@ import { afterAll, beforeAll, expect, setDefaultTimeout, test } from "bun:test";
 // The tests run on ticks, not the clock; a time limit only guards a hang
 // (the cook of the pack's fonts takes most of it).
 setDefaultTimeout(60_000);
-import { cpSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { cpSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -52,6 +52,15 @@ const PAGES: Record<string, string> = {
 <div style="width: stretch; height: stretch"><CombatHud health={$health} healthMax={100} shield={40} shieldMax={100} spread={$spread} hit={$hit} hitAt={$hitAt} aimed={false} shape="cross" weapon="Halcyon Carbine" mode="auto" magazine={$magazine} capacity={28} reserve={112} reloading={$reloading} hits={$hits} feed={$feed} /></div>`,
 };
 
+// The HUD members the combat page lays out, each mounted from every fixture
+// its document declares, as a game's tooling reads them.
+const HUD_MEMBERS = ["shooter/vitals", "shooter/squad", "shooter/objectives", "shooter/radar", "shooter/round", "shooter/pickups", "shooter/damage", "shooter/prompt", "shooter/effects", "shooter/abilities", "hud/ammo-counter", "hud/killfeed", "hud/crosshair", "hud/damage-direction", "world/compass"].map((path) => {
+  const text = readFileSync(join(ENGINE, `src/ui/components/${path}.svelte`), "utf8");
+  const component = /<meta name="component" content="([^"]+)">/.exec(text)![1]!;
+  const fixtures = Object.fromEntries([...text.matchAll(/<meta name="fixture:([^"]+)" content='([^']*)'>/g)].map((m) => [m[1]!, JSON.parse(m[2]!) as Record<string, unknown>]));
+  return { path, component, fixtures };
+});
+
 beforeAll(() => {
   loadNativeHost();
   root = mkdtempSync(join(tmpdir(), "og-shooter-kit-"));
@@ -61,6 +70,11 @@ beforeAll(() => {
   cpSync(join(ENGINE, "../../templates/styles/shared/InstrumentSans-Regular.ttf"), join(root, "assets/fonts/body.ttf"));
   writeFileSync(join(root, "assets/fonts/body.ttf.ogt"), 'type import\nversion 1\n---\nfont {\n  charset latin\n}\n');
   for (const [name, text] of Object.entries(PAGES)) writeFileSync(join(root, "assets/ui", `${name}.svelte`), text);
+  // A game mounts its own page, which uses the member by name: one host page per member, its props from stores.
+  for (const m of HUD_MEMBERS) {
+    const props = Object.keys(m.fixtures.default!).map((k) => `${k}={$${k}}`).join(" ");
+    writeFileSync(join(root, `assets/ui/host-${m.component}.svelte`), `<meta name="screen" content="Host_${m.component}" data-layer="menu" data-input="menu">\n<div style="width: stretch; height: stretch; padding: 16px"><${m.component} ${props} /></div>\n`);
+  }
   // A look naming a pack is what makes the cook bundle it (@styles/<pack>).
   for (const pack of PACKS) writeFileSync(join(root, `assets/looks/${pack}.ogt`), `type look\nversion 1\n---\nname "shooter kit ${pack}"\nui "${pack}"\n`);
   writeFileSync(join(root, "project.ogt"), 'type project\nversion 1\n---\nname "Shooter kit"\nid "shooter-kit"\nentry "main.ts"\n');
@@ -72,6 +86,8 @@ beforeAll(() => {
 afterAll(() => { if (root) rmSync(root, { recursive: true, force: true }); });
 
 const DOCUMENTS = ["ui/loadoutTest.svelte", "ui/hudTest.svelte"];
+/** The documents an engine loads: the two pages, and a member's host page when it mounts one. */
+const documents = (page: string): string[] => page.startsWith("Host_") ? [...DOCUMENTS, `ui/host-${page.slice(5)}.svelte`] : DOCUMENTS;
 
 /** An engine mounting `page` with these stores, in the default style or in `pack`; its document events are collected in `events`. */
 function engine(page: string, stores: Record<string, unknown>, events: Event[] = [], pack = ""): Engine {
@@ -91,7 +107,7 @@ function engine(page: string, stores: Record<string, unknown>, events: Event[] =
         if (!font.ok) throw new Error(font.reason);
         og.ui.configure(world, { font: font.value });
       }
-      for (const path of DOCUMENTS) {
+      for (const path of documents(page)) {
         const loaded = og.load.document(world, path);
         if (!loaded.ok) throw new Error(`${path}: ${loaded.reason}`);
       }
@@ -363,7 +379,7 @@ const DESKTOP = { width: 1920, height: 1080, dpr: 1, safeArea: { left: 0, top: 0
 const meet = (a: El, b: El): boolean => a.x < b.x + b.width && b.x < a.x + a.width && a.y < b.y + b.height && b.y < a.y + a.height;
 
 for (const pack of ["", ...PACKS]) for (const [name, viewport] of [["desktop", DESKTOP], ["phone", PHONE], ["landscape phone", LANDSCAPE]] as const) {
-  test(`CombatHud on a ${name} in ${pack || "the default style"}: readouts inside the safe area and clear of each other; a phone shows three feed rows`, () => {
+  test(`CombatHud on a ${name} in ${pack || "the default style"}: readouts inside the safe area and clear of each other; a phone shows the newest feed row upright and three on its side`, () => {
     const e = engine("hudTest", HUD, [], pack);
     try {
       og.ui.previewViewport(e.world, viewport as never);
@@ -383,7 +399,7 @@ for (const pack of ["", ...PACKS]) for (const [name, viewport] of [["desktop", D
       }
       for (let i = 0; i < readouts.length; i++) for (let j = i + 1; j < readouts.length; j++) expect(`${i}-${j} ${meet(readouts[i]!, readouts[j]!)} ${JSON.stringify([readouts[i], readouts[j]].map((r) => [r!.x, r!.y, r!.width, r!.height]))}`).toContain(" false ");
       const shown = elements(e).filter((x) => /Feed\/[^/]+\/[^/]+#k\d$/.test(x.path) && x.height > 0).length;
-      expect(shown).toBe(name === "desktop" ? 4 : 3);
+      expect(shown).toBe(name === "desktop" ? 4 : name === "phone" ? 1 : 3);
     } finally {
       e.destroy();
     }
@@ -407,4 +423,63 @@ test("CombatHud and Loadout text follows the player's text scale", () => {
     // A line box rounds to whole pixels, so the ratio is 1.5 within a few hundredths.
     expect(`${text} ${(height(1.5) / height(1)).toFixed(1)}`).toBe(`${text} 1.5`);
   }
+});
+
+const hudMember = (component: string, fixture = "default", view: typeof DESKTOP | typeof PHONE = DESKTOP): Engine => {
+  const m = HUD_MEMBERS.find((x) => x.component === component)!;
+  const e = engine(`Host_${component}`, { ...m.fixtures.default, ...m.fixtures[fixture] });
+  og.ui.previewViewport(e.world, view as never);
+  e.advance(4);
+  return e;
+};
+/** The words shown, lower-cased: the HUD sets its labels in capitals. */
+const texts = (e: Engine): string[] => elements(e).filter((x) => x.width > 0).map((x) => x.text.toLowerCase());
+
+for (const [view, viewport] of [["desktop", DESKTOP], ["phone", PHONE]] as const) {
+  for (const m of HUD_MEMBERS) {
+    test(`${m.component} mounts from every fixture on a ${view} without errors, inside the screen's width`, () => {
+      for (const fixture of Object.keys(m.fixtures)) {
+        const e = hudMember(m.component, fixture, viewport);
+        try {
+          expect(`${fixture}: ${store(e).takeErrors().join("; ")}`).toBe(`${fixture}: `);
+          const spill = elements(e).filter((x) => x.width > 0 && (x.x < -0.5 || x.x + x.width > viewport.width + 0.5)).map((x) => `${x.path} [${x.x}, ${x.x + x.width}]`);
+          expect(`${fixture}: ${spill.join(", ")}`).toBe(`${fixture}: `);
+        } finally {
+          e.destroy();
+        }
+      }
+    });
+  }
+}
+
+test("The HUD members show what the game told them, in words as well as colour", () => {
+  const check = (component: string, fixture: string, want: string[], not: string[] = []) => {
+    const e = hudMember(component, fixture);
+    try {
+      for (const w of want) expect(`${component}.${fixture} ${texts(e).includes(w)} ${w}`).toBe(`${component}.${fixture} true ${w}`);
+      for (const w of not) expect(`${component}.${fixture} ${texts(e).includes(w)} ${w}`).toBe(`${component}.${fixture} false ${w}`);
+    } finally {
+      e.destroy();
+    }
+  };
+  check("ShooterVitals", "default", ["ysolde", "lv 24", "64", "/ 100"]);
+  check("ShooterVitals", "noshield", ["150", "/ 200"], ["lv 0"]);
+  check("ShooterSquad", "default", ["moraine", "reviving", "quill"]);
+  check("ShooterObjectives", "default", ["objective", "secure the relay tower", "2 / 3", "0:45"]);
+  check("ShooterObjectives", "empty", [], ["objective"]);
+  check("ShooterRound", "default", ["round 2", "1:42", "7", "5"]);
+  check("ShooterRound", "clock", ["14:58"], ["0"]);
+  check("ShooterPickups", "default", ["frag grenade", "+1", "light rounds", "+30"]);
+  check("ShooterDamage", "default", ["headshot", "86", "31"]);
+  check("ShooterDamage", "shield", ["24"], ["headshot"]);
+  check("ShooterPrompt", "default", ["e", "open supply bin"]);
+  check("ShooterPrompt", "disabled", ["needs a keycard"]);
+  check("ShooterEffects", "default", ["0:12", "×3 4.2", "6"]);
+  check("ShooterAbilities", "default", ["q", "6", "×2", "74%", "38"]);
+  check("ShooterAbilities", "ready", ["z"], ["100%"]);
+  check("AmmoCounter", "default", ["hollow smg", "32", "2", "24", "120", "vk-7 carbine", "auto"]);
+  check("AmmoCounter", "low", ["2", "brace-12"], ["hollow smg"]);
+  check("Killfeed", "default", ["you", "vanta", "hs"], ["vk-7 carbine"]);
+  check("Killfeed", "words", ["brace-12", "halden"], ["pike .50"]);
+  check("Compass", "default", ["042°", "n", "ne", "e", "85m"]);
 });

@@ -1,0 +1,86 @@
+{
+  "added": [
+    {
+      "member": "ShooterVitals",
+      "summary": "The player's vitals at a bottom corner: the portrait in an octagon with a lit edge, name and level, health over its most, a shield bar cut into cells over a fat health bar that leaves a warm ghost when it drops and turns to danger (pulsing) when low. The name and level take the row first; the health figure goes under them when they need its room."
+    },
+    {
+      "member": "ShooterSquad",
+      "summary": "The squadmates' plates: portrait, name, a state in words (Reviving, Down), a thin cut shield bar over a thin health bar with its ghost; compact on a phone, with the state on a tag under the name and bars."
+    },
+    {
+      "member": "ShooterObjectives",
+      "summary": "The objectives under a heading in the HUD's accent: the one in play lit with its progress on a tag, the others dimmed with theirs. A phone shows the one in play alone."
+    },
+    {
+      "member": "ShooterRadar",
+      "summary": "A round radar over a map texture with a lit ring, a sweep and range rings: allies, foes and the objective as blips of their own shape and colour, the player's arrow turned to the heading, N on its top."
+    },
+    {
+      "member": "ShooterRound",
+      "summary": "The round and its time left on a lit plate, the score with the player's side in blue against the other's red; urgent turns the plate and clock to danger."
+    },
+    {
+      "member": "ShooterPickups",
+      "summary": "The pickup feed: icon, name and the count gained on a fading glass row with an edge tinted by rarity; a phone shows the newest."
+    },
+    {
+      "member": "ShooterDamage",
+      "summary": "Damage the player deals beside the reticle: the newest figure largest with Headshot or Eliminated over it, older ones stepping down and away."
+    },
+    {
+      "member": "ShooterPrompt",
+      "summary": "The interaction prompt under the aim: a key cap and the action in words, dimmed with its reason when it cannot be done."
+    },
+    {
+      "member": "ShooterEffects",
+      "summary": "The effects on the player as cut tiles, green for a boon and red for a harm, the time left as a dark sweep over the art and the time or stacks on a tag."
+    },
+    {
+      "member": "ShooterAbilities",
+      "summary": "The ability bar: octagon slots with a cooldown sweep and its seconds, charges on a tag and key caps under them, a ready slot lit; the ultimate in a larger hexagon inside a ring filled by its charge, with its share in figures."
+    }
+  ],
+  "breaking": [
+    {
+      "member": "AmmoCounter",
+      "change": "AmmoCounter stands bare over the scene as the mockup draws it: the reserve weapon's line, the magazine as the HUD's largest figure, a leaning tick per round and the fire mode as pips beside the weapon's name. New props secondary, secondaryAmmo and secondaryKey. Its parts are Ammo.frame, .alternate, .swap, .count, .reserve, .rounds, .magazine, .modes, .weapon, .mode, .reload and .prompt (the old .track, .label, .figure, .well, .fill and .caption are gone).",
+      "fix": "A style that dressed Ammo.track dresses Ammo.rounds, .label dresses .weapon or .mode, .figure dresses .count and .reserve; Ammo.magazine is now the loaded rounds' ticks.",
+      "find": [
+        "AmmoCounter"
+      ]
+    },
+    {
+      "member": "Killfeed",
+      "change": "A killfeed row draws the weapon as a glyph by its class (new row field kind: rifle, smg, pistol, shotgun, sniper, launcher or melee; empty keeps the name in words), names in their side's colour on a glass that fades toward the middle, a headshot tag (HS) and a lit edge for the player's rows. Killfeed.label is gone and Killfeed.headshot is a tag, not an og-icon; new parts Killfeed.glyph and Killfeed.edge. An upright phone shows the newest row (it showed three); a phone on its side still shows three.",
+      "fix": "Give each row a kind to show its glyph. A style that dressed Killfeed.label dresses Killfeed.weapon; one that inked og-icon[part=\"Killfeed.headshot\"]::part(image) sets the tag's color.",
+      "find": [
+        "Killfeed"
+      ]
+    },
+    {
+      "member": "DamageDirection",
+      "change": "The arcs are drawn in the HUD's danger red with a glow (the shield's blue for a shield hit); the part DamageDirection.fill is gone and an arc no longer takes data-tone.",
+      "fix": "A style that dressed DamageDirection.fill dresses DamageDirection.arc (its ink is stroke).",
+      "find": [
+        "DamageDirection.fill"
+      ]
+    },
+    {
+      "member": "Crosshair",
+      "change": "The reticle is white with a dark keyline and its hit marks red with a glow for a headshot or a kill and blue for a broken shield. The circle shape's ring is a masked fill: its ink is its background, not its border-color.",
+      "fix": "A style that set border-color on Crosshair.ring sets background.",
+      "find": [
+        "Crosshair.ring"
+      ]
+    },
+    {
+      "member": "Compass",
+      "change": "The compass is a strip with ticks every 15 degrees, large cardinal and dim intercardinal letters on a dark band fading at its ends, the heading on a tag in the HUD's accent over it (three digits, 042°) and a caret under the ticks; a poi with no icon is a diamond. The strip shows 120 degrees across its width (it showed 180).",
+      "fix": "A style that dressed Compass.badge, .notch or .window keeps the same parts; set --hud-accent for the heading's tag and caret.",
+      "find": [
+        "Compass"
+      ]
+    }
+  ]
+}

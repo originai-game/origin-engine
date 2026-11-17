@@ -20,8 +20,6 @@ card/run-map.svelte	CardRunMap.legend CardRunMap.plate CardRunMap.well	1
 hud/ability-bar.svelte	AbilityBar.label AbilityBar.badge	1
 hud/ability-slot.svelte	AbilitySlot.label AbilitySlot.badge	1
 hud/ability-slot.svelte	AbilitySlot.well AbilitySlot.track	1
-hud/ammo-counter.svelte	Ammo.magazine Ammo.well Ammo.fill	1
-hud/ammo-counter.svelte	Ammo.well Ammo.track	2
 hud/hud-timer.svelte	HudTimer.label HudTimer.caption	1
 hud/orb-meter.svelte	OrbMeter.label OrbMeter.tag	1
 hud/overlay-bar.svelte	OverlayBar.label OverlayBar.caption	2

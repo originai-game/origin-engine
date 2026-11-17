@@ -109,6 +109,7 @@ and their pending L4 review are recorded explicitly in the world sheet.
 | RPG quests, world map and conversation | `panels/quest-log`, `rpg/quest-detail`, `hud/quest-tracker`, `rpg/world-map`, `rpg/place-card`, `panels/conversation` |
 | RPG party, turn order and combat HUD | `rpg/vitals`, `rpg/party`, `rpg/turn-order`, `hud/combat-log`, `rpg/enemy-info`, `rpg/commands` |
 | Shooter HUD: aim, ammunition, damage direction, killfeed (`shooter/README.md`) | `hud/crosshair`, `hud/ammo-counter`, `hud/damage-direction`, `hud/killfeed`, `shooter/combat-hud` |
+| Shooter HUD: squad, objectives, radar, round, pickups, damage dealt, prompt, effects, vitals, abilities | `shooter/squad`, `shooter/objectives`, `shooter/radar`, `shooter/round`, `shooter/pickups`, `shooter/damage`, `shooter/prompt`, `shooter/effects`, `shooter/vitals`, `shooter/abilities` |
 | Shooter loadout | `shooter/loadout` |
 | Strategy selection, commands, production queue, waves, tower upgrades (`strategy/README.md`) | `strategy/selection`, `strategy/queue`, `strategy/wave`, `strategy/tower` |
 | Racing telemetry, laps, standings, banner, garage, results (`racing/README.md`) | `racing/telemetry`, `racing/lap-hud`, `racing/standings`, `racing/banner`, `racing/garage`, `racing/results` |

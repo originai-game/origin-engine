@@ -1434,6 +1434,116 @@
     ],
     "imports": []
   },
+  "ShooterAbilities": {
+    "id": "@ui/components/shooter/abilities.svelte",
+    "screen": false,
+    "control": null,
+    "uses": [],
+    "files": [
+      "@ui/components/shooter/abilities.svelte",
+      "@ui/components/shooter/shooter.en.ogt"
+    ],
+    "imports": []
+  },
+  "ShooterDamage": {
+    "id": "@ui/components/shooter/damage.svelte",
+    "screen": false,
+    "control": null,
+    "uses": [],
+    "files": [
+      "@ui/components/shooter/damage.svelte",
+      "@ui/components/shooter/shooter.en.ogt"
+    ],
+    "imports": []
+  },
+  "ShooterEffects": {
+    "id": "@ui/components/shooter/effects.svelte",
+    "screen": false,
+    "control": null,
+    "uses": [],
+    "files": [
+      "@ui/components/shooter/effects.svelte",
+      "@ui/components/shooter/shooter.en.ogt"
+    ],
+    "imports": []
+  },
+  "ShooterObjectives": {
+    "id": "@ui/components/shooter/objectives.svelte",
+    "screen": false,
+    "control": null,
+    "uses": [],
+    "files": [
+      "@ui/components/shooter/objectives.svelte",
+      "@ui/components/shooter/shooter.en.ogt"
+    ],
+    "imports": []
+  },
+  "ShooterPickups": {
+    "id": "@ui/components/shooter/pickups.svelte",
+    "screen": false,
+    "control": null,
+    "uses": [],
+    "files": [
+      "@ui/components/shooter/pickups.svelte",
+      "@ui/components/shooter/shooter.en.ogt"
+    ],
+    "imports": []
+  },
+  "ShooterPrompt": {
+    "id": "@ui/components/shooter/prompt.svelte",
+    "screen": false,
+    "control": null,
+    "uses": [],
+    "files": [
+      "@ui/components/shooter/prompt.svelte",
+      "@ui/components/shooter/shooter.en.ogt"
+    ],
+    "imports": []
+  },
+  "ShooterRadar": {
+    "id": "@ui/components/shooter/radar.svelte",
+    "screen": false,
+    "control": null,
+    "uses": [],
+    "files": [
+      "@ui/components/shooter/radar.svelte",
+      "@ui/components/shooter/shooter.en.ogt"
+    ],
+    "imports": []
+  },
+  "ShooterRound": {
+    "id": "@ui/components/shooter/round.svelte",
+    "screen": false,
+    "control": null,
+    "uses": [],
+    "files": [
+      "@ui/components/shooter/round.svelte",
+      "@ui/components/shooter/shooter.en.ogt"
+    ],
+    "imports": []
+  },
+  "ShooterSquad": {
+    "id": "@ui/components/shooter/squad.svelte",
+    "screen": false,
+    "control": null,
+    "uses": [],
+    "files": [
+      "@ui/components/shooter/shooter.en.ogt",
+      "@ui/components/shooter/squad.svelte"
+    ],
+    "imports": []
+  },
+  "ShooterVitals": {
+    "id": "@ui/components/shooter/vitals.svelte",
+    "screen": false,
+    "control": null,
+    "uses": [],
+    "files": [
+      "@ui/components/shooter/shooter.en.ogt",
+      "@ui/components/shooter/vitals.svelte"
+    ],
+    "imports": []
+  },
   "Shop": {
     "id": "@ui/components/meta/shop.svelte",
     "screen": false,

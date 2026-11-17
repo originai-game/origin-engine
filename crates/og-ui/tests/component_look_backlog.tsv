@@ -4,8 +4,6 @@
 # its line.
 hud/action-button.svelte	9
 hud/celebration.svelte	61
-hud/crosshair.svelte	9
 hud/hero-button.svelte	12
-hud/killfeed.svelte	12
 hud/orb-meter.svelte	7
 world/nameplate.svelte	4

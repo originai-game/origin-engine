@@ -1,12 +1,17 @@
 # shooter: built-in components
 
-Aim, ammunition, damage direction, killfeed and loadout, as documents over
-core controls (docs/ui.md §4). They draw what the game tells it and
+Aim, ammunition, damage direction, killfeed, loadout and the combat HUD
+(the squad, objectives, radar, round and score, pickups, damage dealt, the
+interaction prompt, the effects, the vitals and the ability bar), as
+documents over core controls (docs/ui.md §4). They draw what the game tells it and
 returns intents with stable ids. It never computes damage, spread,
 reloads, kills or legality. Team and match scores belong to `arena`.
 `Crosshair`, `AmmoCounter`, `DamageDirection` and `Killfeed` are filed in
 `../hud/`, since any game with aiming uses them; this README keeps their
-contract, and the kit holds `CombatHud` and `Loadout`.
+contract, and the kit holds `CombatHud`, `Loadout` and the `Shooter*` HUD
+members. The HUD is drawn as the approved "smoked glass, lit edges" mockup:
+stroked type over the scene, cut plates and tag plates, octagon portraits
+and slots, leaning bars, all from the default style's `--hud-*` roles.
 
 They are built into the engine: a game's page uses one by name
 (`<Killfeed .../>`) and loading the page loads it, with the `StatBar`
@@ -28,10 +33,20 @@ never for its art, brand or layout.
 | Document | Inputs (props) | Intents |
 | --- | --- | --- |
 | `Crosshair` | `spread` 0–1; `hit` none, hit, headshot, kill or shieldBreak (the game clears it to none); `hitAt` (a new id replays the mark); `aimed`; `shape` cross, dot or circle | none |
-| `AmmoCounter` | `weapon`, `mode` (auto, burst, single), `magazine`, `capacity`, `reserve`, `reloading` 0–1 (negative: not reloading), `low` (a fraction of capacity) | none |
+| `AmmoCounter` | `weapon`, `mode` (auto, burst, single), `magazine`, `capacity` (a tick per round; a strip past 60), `reserve`, `reloading` 0–1 (negative: not reloading), `low` (a fraction of capacity), `secondary`, `secondaryAmmo` (negative hides it), `secondaryKey` | none |
 | `DamageDirection` | `hits` keyed `{ id, angle (rad, 0 ahead, clockwise), strength 0–1, kind (normal, shield, critical) }` | none |
-| `Killfeed` | `rows` keyed `{ id, killer, victim, weapon, headshot, self, team (ally or enemy, the killer's side) }`, newest first; a phone, upright or on its side, shows the three newest | none |
+| `Killfeed` | `rows` keyed `{ id, killer, victim, weapon, kind (rifle, smg, pistol, shotgun, sniper, launcher, melee: its glyph; empty: the weapon's name), headshot, self, team (ally or enemy, the killer's side) }`, newest first; an upright phone shows the newest, one on its side the three newest | none |
 | `Loadout` | `title` (empty: the component's Loadout), `categories` keyed `{ id, label }` (an empty label: the component's string for primary, secondary, melee or utility), `slots` keyed `{ id, category, name, icon, detail, equipped, locked, cost }`, `selected` (a slot id) | `select` (row key: a tap, Enter or A on a slot), `equip` (row key: the Equip button sends the selected slot's, X or pad Y the focused slot's), `back` (the Back button, Escape or B) |
+| `ShooterVitals` | `name`, `level`, `portrait` (texture; 0: the person glyph), `health`, `healthMax`, `ghost` (health before the latest loss), `shield`, `shieldMax` (0 hides the shield bar), `segment` (shield per cell), `low` (a fraction of most health) | none |
+| `ShooterSquad` | `members` keyed `{ id, name, portrait, status, state (ok, down, reviving, out), shield, shieldMax, health, healthMax, ghost }`, `segment`; a phone shows compact plates | none |
+| `ShooterObjectives` | `label` (empty: Objective), `goals` keyed `{ id, text, tag, current }`; a phone shows the one in play alone | none |
+| `ShooterRadar` | `map` (texture), `centerX`, `centerY`, `zoom`, `heading` (degrees), `blips` keyed `{ id, kind (ally, foe, objective), x, y, label }` | none |
+| `ShooterRound` | `round` (0 hides it), `clock`, `ours`, `theirs` (negative hides the score), `urgent` | none |
+| `ShooterPickups` | `items` keyed `{ id, name, icon, glyph, quantity, rarity (common, rare, epic, legendary) }`, newest first; a phone shows the newest | none |
+| `ShooterDamage` | `hits` keyed `{ id, amount, kind (normal, headshot, shield, kill) }`, newest first | none |
+| `ShooterPrompt` | `key`, `text` (empty hides it), `disabled`, `reason` | none |
+| `ShooterEffects` | `effects` keyed `{ id, name, icon, glyph, remaining 0–1 (negative: no timer), label, harmful }` | none |
+| `ShooterAbilities` | `slots` keyed `{ id, name, icon, glyph, key, cooldown 0–1, time, count, ready, disabled, ultimate, charge 0–1 }` | none |
 | `CombatHud` | the members' inputs, plus `health`, `healthMax`, `shield`, `shieldMax` over core `StatBar`, and `feed` for the killfeed | none |
 
 A locked slot is disabled and sends nothing. The Equip button is disabled
@@ -51,28 +66,38 @@ the Back and Equip buttons drop their keycaps.
 | --- | --- | --- |
 | `CombatHud.vitals` | The plate behind the health and shield bar | |
 | `Crosshair.arm` | Each of the cross's four arms | `.aimed` |
-| `Crosshair.ring` | The circle shape's ring: its ink is its `border-color` | `.aimed` |
+| `Crosshair.ring` | The circle shape's ring: its ink is its `background` (a masked ring) | `.aimed` |
 | `Crosshair.dot` | The centre dot | `.aimed` |
 | `Crosshair.hit` | Each of the four hit ticks | `.headshot`, `.kill`, `.shieldBreak` |
-| `Ammo.frame` | The readout's plate | `.low`, `.empty` |
+| `Ammo.frame` | The readout (bare: it stands over the scene) | `.low`, `.empty` |
+| `Ammo.alternate` | The reserve weapon's line | |
+| `Ammo.swap` | The reserve weapon's key cap | |
 | `Ammo.count` | Rounds in the magazine | `.low`, `.empty` |
 | `Ammo.reserve` | Rounds in reserve | |
-| `Ammo.track` | The track of the magazine strip and of the reload bar | |
-| `Ammo.magazine` | The magazine strip's fill | `.low` |
+| `Ammo.rounds` | The magazine's ticks, one per round (the spent rounds' ink) | `.belt` |
+| `Ammo.magazine` | The loaded rounds' ticks | |
+| `Ammo.modes` | The fire mode's three pips | |
 | `Ammo.weapon` | The weapon's name | |
-| `Ammo.mode` | The fire mode's tag | |
+| `Ammo.mode` | The fire mode in words | |
 | `Ammo.reload` | The reload bar's fill | |
-| `Ammo.label` | The reload's label | |
 | `Ammo.prompt` | The empty magazine's prompt | |
 | `DamageDirection.arc` | One incoming hit's arc (an SVG path: its ink is `stroke`) | `.shield`, `.critical` |
 | `Killfeed.row` | One elimination | `.self` |
 | `Killfeed.name` | A player's name | `.killer`, `.victim`, `.ally`, `.enemy` |
-| `Killfeed.weapon` | The weapon's name | |
-| `Killfeed.headshot` | The headshot mark, an `og-icon`: its ink is `og-icon[part="Killfeed.headshot"]::part(image)`'s `color` | |
+| `Killfeed.glyph` | The weapon's glyph, an SVG (its ink is `fill`) | |
+| `Killfeed.weapon` | The weapon's name, where it has no glyph | |
+| `Killfeed.headshot` | The headshot tag (HS) | |
+| `Killfeed.edge` | The row's edge at the screen's side, lit for the player's rows | |
 | `Loadout.category` | A category's heading | |
 | `Loadout.item` | A slot, a button: hover, pressed, focused, selected and disabled come from the control | `.equipped`, `.locked` |
 | `Loadout.detail` | A slot's detail line | |
 | `Loadout.price` | A slot's cost | |
+
+The `Shooter*` members name each piece a pack dresses in their `parts`
+line (`ShooterVitals.portrait`, `.callsign`, `.shield`, `.health`,
+`.ghost`; `ShooterAbilities.slot`, `.cooldown`, `.ring`, `.key`; and so
+on); their look is the default style's `--hud-*` roles, so a pack that
+sets those restyles the whole HUD.
 
 A pack inks the text parts with `color`: the killfeed's names by team
 (`[part="Killfeed.name"].ally`, `.enemy`), and the weapon, reserve, fire
@@ -122,7 +147,7 @@ slots send nothing. It covers the empty outcome and checks that selection
 keeps its slot through a reorder, a removal and a restore. It also covers
 hit-mark replay, the ammunition states, the order of keyed collections,
 the safe area and spacing of the HUD on a desktop and on a phone both ways
-(where the feed shows three rows), in the default style and in a pack, and
+(where the feed shows the newest row upright and three on its side), in the default style and in a pack, and
 that the HUD's and the loadout's text follows the player's text scale.
 
 ## Document layout
