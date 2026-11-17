@@ -67,7 +67,8 @@ pub(crate) struct FrameUniform {
     /// towards, w: how far (0: off).
     pub shadow_tint: [f32; 4],
     /// `MaterialStyle`: x: the distance at which outlines are their width
-    /// (0: constant), y: the shadow darkness (0: off), zw: unused.
+    /// (0: constant), y: the shadow darkness (0: off), z: toon terrain,
+    /// w: the near-camera outline width cap as a multiple of its base width.
     pub outline_style: [f32; 4],
     /// `MaterialStyle`: rgb: the outline's colour, w: its width in pixels
     /// (0: none), for the surfaces no material carries it to (the terrain).

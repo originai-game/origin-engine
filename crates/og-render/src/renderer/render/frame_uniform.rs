@@ -151,7 +151,7 @@ impl Renderer {
                 scene.look.stylise.material.shadow_darkness.clamp(0.0, 1.0),
                 // The terrain's toon (terrain_lit.wgsl): it has no material to carry it.
                 f32::from(u8::from(scene.look.stylise.material.toon)),
-                0.0,
+                scene.look.stylise.material.outline_near_cap.clamp(1.0, 4.0),
             ],
             style_line: {
                 let m = &scene.look.stylise.material;

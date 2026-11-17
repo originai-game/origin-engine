@@ -95,6 +95,23 @@ fn material_style_carries_the_shadow_darkness() {
 }
 
 #[test]
+fn material_style_keeps_four_times_outline_growth_unless_a_near_cap_is_set() {
+    let style = |v: Value| stylise(None, Some(&material_style(v)), &[], &[]).material;
+    let base = serde_json::json!({ "outlineWidth": 2.5, "outlineDistance": 10.0 });
+    let default = style(base.clone());
+    assert_eq!(default.outline_near_cap, 4.0);
+    assert_eq!(
+        default.outline_near_cap,
+        og_render::MaterialStyle::default().outline_near_cap
+    );
+    let mut capped = base;
+    capped["outlineNearCap"] = serde_json::json!(1.0);
+    let capped = style(capped);
+    assert_eq!(capped.outline_near_cap, 1.0);
+    assert_eq!((capped.outline_width, capped.outline_distance), (2.5, 10.0));
+}
+
+#[test]
 fn the_material_style_s_surface_reaches_the_renderer() {
     let m = |v: Value| stylise(None, Some(&material_style(v)), &[], &[]).material;
     // Written as the variant's index and as its name (a look's).

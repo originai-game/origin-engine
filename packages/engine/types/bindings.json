@@ -11021,6 +11021,11 @@
           "default": 0
         },
         {
+          "name": "outlineNearCap",
+          "column": "f32",
+          "default": 4
+        },
+        {
           "name": "flatShading",
           "column": "bool",
           "default": false

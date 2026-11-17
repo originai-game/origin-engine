@@ -26212,10 +26212,18 @@
         },
         "outlineDistance": {
           "type": "number",
-          "description": "The distance at which outlines are outlineWidth wide: nearer they grow, up to four times outlineWidth, farther they thin in proportion (an inked look keeps line weight by depth); 0 keeps every outline outlineWidth wide.",
+          "description": "Distance in metres at which outlines have their base width. Nearer they grow up to outlineNearCap times that width (default 4); farther they thin proportionally. 0 keeps a constant width. Foliage never grows beyond its base width and fades below a pixel.",
           "default": 0,
           "minimum": 0,
           "x-og-unit": "m"
+        },
+        "outlineNearCap": {
+          "type": "number",
+          "description": "Near-camera width limit as a multiple of the base width, with outlineDistance > 0. Default 4 preserves existing growth; 1 caps near lines at base width while retaining far falloff. Also applies to material and ArtLine outlines. Foliage and orthographic cameras keep their existing rules.",
+          "default": 4,
+          "minimum": 1,
+          "maximum": 4,
+          "x-og-unit": "ratio"
         },
         "flatShading": {
           "type": "boolean",

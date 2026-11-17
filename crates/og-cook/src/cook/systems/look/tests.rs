@@ -544,7 +544,14 @@ fn every_preset_checks_against_the_records_with_the_built_ins() {
         let root = project(&[("looks/x.ogt", &format!("{HEAD}{slug}\n"))]);
         let s = source(&root, "looks/x.ogt");
         let known = |id: &str| builtin_ids.contains(&id) || packs.iter().any(|p| p == id);
-        resolve(&s, &root, &known, PRESETS).unwrap_or_else(|e| panic!("{slug}: {e}"));
+        let (look, _) =
+            resolve(&s, &root, &known, PRESETS).unwrap_or_else(|e| panic!("{slug}: {e}"));
+        let cap = number_of(&look, "MaterialStyle", "outlineNearCap");
+        if slug.starts_with("extends \"anime-cel-3d\"") {
+            assert_eq!(cap, Some(vec![1.0]), "{slug}");
+        } else {
+            assert_eq!(cap, None, "{slug} keeps the default 4× near growth");
+        }
         let text = String::from_utf8_lossy(&s.bytes).to_string();
         for (id, _) in builtin_files(&s.rel, &text, &root) {
             assert!(builtin_ids.contains(&id), "{slug}: {id}");

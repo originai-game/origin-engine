@@ -9150,12 +9150,20 @@ export interface MaterialStyle {
    */
   outlineWidth: number;
   /**
-   * The distance at which outlines are outlineWidth wide: nearer they grow, up to four times outlineWidth, farther they thin in proportion (an inked look keeps line weight by depth); 0 keeps every outline outlineWidth wide.
+   * Distance in metres at which outlines have their base width. Nearer they grow up to outlineNearCap times that width (default 4); farther they thin proportionally. 0 keeps a constant width. Foliage never grows beyond its base width and fades below a pixel.
    *
    * @range 0..
    * @unit m (metres)
    */
   outlineDistance: number;
+  /**
+   * Near-camera width limit as a multiple of the base width, with outlineDistance > 0. Default 4 preserves existing growth; 1 caps near lines at base width while retaining far falloff. Also applies to material and ArtLine outlines. Foliage and orthographic cameras keep their existing rules.
+   *
+   * @default 4
+   * @range 1..4
+   * @unit ratio (a fraction between 0 and 1)
+   */
+  outlineNearCap: number;
   // ── Facets ──
   /**
    * Shade every lit material with face normals, as StandardMaterialDesc.flatShading: visible facets for low-poly, paper-craft and voxel looks.
@@ -34923,7 +34931,7 @@ export declare namespace og {
    * Stylised defaults for a whole scene: toon shading and its ramp, a coloured shadow side, rim light, outlines, flat facets, made surfaces and wireframe. Each applies to a lit material that leaves that field at its own default; the terrain, grass, scattered copies, impostors and crowds take toon (built-in bands), shadowTint and shadowDarkness. Unlit and shader materials, StandardMaterialDesc.styled false, sprites and the UI are untouched. All off is no change. A look sets it; RenderCapabilities.stylise names what this renderer draws. Read after each tick; it never feeds the simulation.
    * See `looks §12`.
    */
-  const MaterialStyle: ResourceType<{ readonly toon: FieldSpec<"bool">; readonly gradientMap: FieldSpec<"Texture">; readonly shadowTint: FieldSpec<"Color">; readonly shadowTintAmount: FieldSpec<"f32">; readonly shadowDarkness: FieldSpec<"f32">; readonly rimColor: FieldSpec<"Color">; readonly rimIntensity: FieldSpec<"f32">; readonly rimPower: FieldSpec<"f32">; readonly outlineColor: FieldSpec<"Color">; readonly outlineWidth: FieldSpec<"f32">; readonly outlineDistance: FieldSpec<"f32">; readonly flatShading: FieldSpec<"bool">; readonly surface: FieldSpec<"MaterialSurface">; readonly surfaceStrength: FieldSpec<"f32">; readonly surfaceScale: FieldSpec<"f32">; readonly toonAmbient: FieldSpec<"f32">; readonly toonSoftness: FieldSpec<"f32">; readonly outlinePlace: FieldSpec<"OutlinePlace">; readonly wireframe: FieldSpec<"bool">; readonly wireframeAngle: FieldSpec<"f32">; readonly wireframeColor: FieldSpec<"Color"> }, MaterialStyle>;
+  const MaterialStyle: ResourceType<{ readonly toon: FieldSpec<"bool">; readonly gradientMap: FieldSpec<"Texture">; readonly shadowTint: FieldSpec<"Color">; readonly shadowTintAmount: FieldSpec<"f32">; readonly shadowDarkness: FieldSpec<"f32">; readonly rimColor: FieldSpec<"Color">; readonly rimIntensity: FieldSpec<"f32">; readonly rimPower: FieldSpec<"f32">; readonly outlineColor: FieldSpec<"Color">; readonly outlineWidth: FieldSpec<"f32">; readonly outlineDistance: FieldSpec<"f32">; readonly outlineNearCap: FieldSpec<"f32">; readonly flatShading: FieldSpec<"bool">; readonly surface: FieldSpec<"MaterialSurface">; readonly surfaceStrength: FieldSpec<"f32">; readonly surfaceScale: FieldSpec<"f32">; readonly toonAmbient: FieldSpec<"f32">; readonly toonSoftness: FieldSpec<"f32">; readonly outlinePlace: FieldSpec<"OutlinePlace">; readonly wireframe: FieldSpec<"bool">; readonly wireframeAngle: FieldSpec<"f32">; readonly wireframeColor: FieldSpec<"Color"> }, MaterialStyle>;
   /**
    * 2D lighting of the sprite layers minLayer to maxLayer (sprites, 2D particles and og.Tilemap layers there, a map layer unless its `lit` property is false): their colour is multiplied by ambient plus every Light2D reaching the pixel, shadowed by Occluder2Ds and sprites with castShadow. A texture with a normal map (`normal auto` or `normal "file.png"` in its import settings' texture block) is shaded by where its surface faces each light, which stands Light2D.height above the plane; a flat area keeps exactly the light it had. Other layers (and the overlay) are drawn as authored. Off by default.
    */

@@ -41,7 +41,8 @@ Token `og.MaterialStyle`, registered under the schema name `og.MaterialStyle`; i
 |---|---|---|---|---|---|---|
 | `outlineColor` | `Color` | `{ r: 0.02, g: 0.02, b: 0.03 }` | — | — | — | The outline colour for materials without their own (linear). |
 | `outlineWidth` | `number` | `0` | 0 … 31 | — | tunable | The outline width in pixels at outlineDistance for materials without their own; 0 is none. A hull outline (StandardMaterialDesc.outlineWidth): silhouettes and creases against other objects, never the faces of one. A surface seen at a grazing angle is lined only where it ends. See `looks §12`. |
-| `outlineDistance` | `number` | `0` | ≥ 0 | `m` | — | The distance at which outlines are outlineWidth wide: nearer they grow, up to four times outlineWidth, farther they thin in proportion (an inked look keeps line weight by depth); 0 keeps every outline outlineWidth wide. |
+| `outlineDistance` | `number` | `0` | ≥ 0 | `m` | — | Distance in metres at which outlines have their base width. Nearer they grow up to outlineNearCap times that width (default 4); farther they thin proportionally. 0 keeps a constant width. Foliage never grows beyond its base width and fades below a pixel. |
+| `outlineNearCap` | `number` | `4` | 1 … 4 | `ratio` | — | Near-camera width limit as a multiple of the base width, with outlineDistance > 0. Default 4 preserves existing growth; 1 caps near lines at base width while retaining far falloff. Also applies to material and ArtLine outlines. Foliage and orthographic cameras keep their existing rules. |
 
 #### Facets
 
@@ -124,9 +125,15 @@ resource MaterialStyle {
     tunable true
     guide "looks §12"
   }
-  field outlineDistance f32 "The distance at which outlines are outlineWidth wide: nearer they grow, up to four times outlineWidth, farther they thin in proportion (an inked look keeps line weight by depth); 0 keeps every outline outlineWidth wide." {
+  field outlineDistance f32 "Distance in metres at which outlines have their base width. Nearer they grow up to outlineNearCap times that width (default 4); farther they thin proportionally. 0 keeps a constant width. Foliage never grows beyond its base width and fades below a pixel." {
     min 0
     unit m
+  }
+  field outlineNearCap f32 "Near-camera width limit as a multiple of the base width, with outlineDistance > 0. Default 4 preserves existing growth; 1 caps near lines at base width while retaining far falloff. Also applies to material and ArtLine outlines. Foliage and orthographic cameras keep their existing rules." {
+    default 4
+    min 1
+    max 4
+    unit ratio
   }
   group "Facets"
   field flatShading bool "Shade every lit material with face normals, as StandardMaterialDesc.flatShading: visible facets for low-poly, paper-craft and voxel looks."

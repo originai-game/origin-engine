@@ -617,6 +617,8 @@ pub struct MaterialStyle {
     pub outline_width: f32,
     /// The distance at which outlines are `outline_width` wide (0: constant).
     pub outline_distance: f32,
+    /// Near-camera width limit as a multiple of the base width (default 4).
+    pub outline_near_cap: f32,
     pub flat_shading: bool,
     /// A made surface on every lit material (the IDL's `MaterialSurface`).
     pub surface: MaterialSurface,
@@ -696,6 +698,7 @@ impl Default for MaterialStyle {
             outline_color: [0.0; 3],
             outline_width: 0.0,
             outline_distance: 0.0,
+            outline_near_cap: 4.0,
             flat_shading: false,
             surface: MaterialSurface::None,
             surface_strength: 0.0,

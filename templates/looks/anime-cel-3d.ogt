@@ -17,6 +17,7 @@ MaterialStyle {
   shadowTintAmount 0.7
   outlineWidth 2.5
   outlineDistance 10
+  outlineNearCap 1
   outlinePlace outside
   outlineColor "#141028"
 }

@@ -1,0 +1,8 @@
+{
+  "added": [
+    {
+      "member": "MaterialStyle.outlineNearCap",
+      "summary": "Limit near-camera outline growth without losing the distance falloff. Defaults to the existing 4× growth; anime-cel-3d uses a 1× cap so its 2.5 px character lines stay thin up close."
+    }
+  ]
+}

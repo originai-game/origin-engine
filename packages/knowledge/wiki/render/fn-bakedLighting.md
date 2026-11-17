@@ -28,4 +28,4 @@ fn bakedLighting {
 }
 ```
 
-<sub>Module `render` line 4295</sub>
+<sub>Module `render` line 4300</sub>

@@ -637,9 +637,9 @@ fn outline_bytes(color: vec3<f32>, width: f32, object: u32, clump: bool) -> vec4
 }
 
 // A style line's width at the world point `p`: with the style's outline
-// distance, nearer than it the line grows, up to four times its width (a
-// ground a metre under the camera is not lined 30 px wide), farther it
-// thins in proportion (never for an orthographic camera). Never under a
+// distance, nearer than it the line grows up to the near cap (default four
+// times its width), farther it thins in proportion (never for an
+// orthographic camera). Never under a
 // pixel, where a far silhouette wants ink (inked-comic-3d's hills), unless
 // `thin` (foliage): its line never grows past its width and fades out by
 // coverage far off, so a wood is not filled with ink near or far.
@@ -648,7 +648,7 @@ fn style_line_width(width: f32, p: vec3<f32>, thin: bool) -> f32 {
   let depth = max(dot(p - frame.view_pos.xyz, frame.view_forward.xyz), 0.01);
   let w = width * frame.outline_style.x / depth;
   if (thin) { return min(w, width); }
-  return clamp(w, 1.0, max(min(31.0, width * 4.0), 1.0));
+  return clamp(w, 1.0, max(min(31.0, width * frame.outline_style.w), 1.0));
 }
 
 // A clump's id in the outline target, 1 to 255, from where it stands
@@ -752,4 +752,3 @@ fn style_local(s: Surface, n: vec3<f32>, v: vec3<f32>, l: vec3<f32>, shadow: f32
   }
   return brdf(s, n, v, l) * shadow;
 }
-

@@ -500,6 +500,7 @@ pub(super) fn stylise(
             outline_color: rgb(&m.outline_color),
             outline_width: m.outline_width,
             outline_distance: m.outline_distance,
+            outline_near_cap: m.outline_near_cap,
             flat_shading: m.flat_shading,
             surface: og_render::MaterialSurface::from_index(m.surface as usize),
             surface_strength: m.surface_strength,
