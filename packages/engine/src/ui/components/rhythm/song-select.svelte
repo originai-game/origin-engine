@@ -1,6 +1,6 @@
 <meta name="component" content="RhythmSongSelect">
 <meta name="strings" content="./rhythm.en.ogt">
-<meta name="parts" content="RhythmSongSelect.frame RhythmSongSelect.band RhythmSongSelect.title RhythmSongSelect.row RhythmSongSelect.name RhythmSongSelect.badge RhythmSongSelect.jacket RhythmSongSelect.detail RhythmSongSelect.fact RhythmSongSelect.picture RhythmSongSelect.label">
+<meta name="parts" content="RhythmSongSelect.frame RhythmSongSelect.band RhythmSongSelect.title RhythmSongSelect.row RhythmSongSelect.name RhythmSongSelect.badge RhythmSongSelect.jacket RhythmSongSelect.detail RhythmSongSelect.fact RhythmSongSelect.picture RhythmSongSelect.label RhythmSongSelect.headline RhythmSongSelect.caption RhythmSongSelect.figure RhythmSongSelect.well">
 <meta name="prop:title" content="string" data-doc="The page's heading (a pack or folder name); empty takes the kit's (Songs).">
 <meta name="prop:songs" content="list" data-doc="The songs in the game's order, keyed rows of { id, title, artist, bpm, length, jacket, locked, fresh, cleared }: bpm and length as the game words them (128, 90–180; 2:14); jacket the cover art texture (og.load.texture, 0 none); locked the song cannot be played yet (its row is disabled); fresh newly added (New); cleared the player has cleared it (Cleared).">
 <meta name="prop:selected" content="string" data-doc="The song in focus as the game holds it (its row selected, its details shown); empty is none.">
@@ -24,45 +24,45 @@
   the selection, the preview audio and the loading; status shows its
   loading and error states, and the error state offers Retry (retry).
 -->
-<section id="RhythmSongSelect" part="RhythmSongSelect.frame" aria-label={title != '' ? title : t("rhythm.songs.title")} aria-busy={status == 'loading'} data-status={status}>
-  <header part="RhythmSongSelect.band"><h2 part="RhythmSongSelect.title">{title != '' ? title : t("rhythm.songs.title")}</h2></header>
+<section id="RhythmSongSelect" part="RhythmSongSelect.frame" data-layout="shell" data-gap="loose" aria-label={title != '' ? title : t("rhythm.songs.title")} aria-busy={status == 'loading'} data-status={status}>
+  <header part="RhythmSongSelect.band" data-layout="row"><h2 part="RhythmSongSelect.title">{title != '' ? title : t("rhythm.songs.title")}</h2></header>
   {#if status == 'loading'}
-    <div class="state" role="status"><Spinner size={0} name={t("rhythm.songs.loading")} /><p class="state-text">{t("rhythm.songs.loading")}</p></div>
+    <div class="state" data-layout="cover" data-fill role="status"><Spinner size={0} name={t("rhythm.songs.loading")} /><p class="state-text" part="RhythmSongSelect.caption">{t("rhythm.songs.loading")}</p></div>
   {:else}
     {#if status == 'error'}
-      <div class="state" role="alert" data-status="error"><p class="state-text">{t("rhythm.songs.error")}</p><button id="Retry" variant="primary" onclick={retry}><span>{t("rhythm.songs.retry")}</span></button></div>
+      <div class="state" data-layout="cover" data-fill role="alert" data-status="error"><p class="state-text" part="RhythmSongSelect.caption">{t("rhythm.songs.error")}</p><button id="Retry" variant="primary" onclick={retry}><span>{t("rhythm.songs.retry")}</span></button></div>
     {:else}
       {#if songs.length}
-        <div class="body">
-          <div class="list">
-            <div class="rows" role="listbox" aria-label={t("rhythm.songs.list")}>
+        <div class="body" data-layout="row" data-gap="wide" data-fill>
+          <div class="list" data-layout="scroll">
+            <div class="rows" data-layout="stack" data-gap="tight" role="listbox" aria-label={t("rhythm.songs.list")}>
               {#each songs as s (s.id)}
-                <button part="RhythmSongSelect.row" role="option" aria-selected={s.id == selected} aria-label={s.title} aria-description={s.artist} disabled={s.locked} data-locked={s.locked} data-fresh={s.fresh} data-cleared={s.cleared} data-previewing={s.id == previewing} onclick={choose} ondetails={preview}><div class="face">
-                  {#if s.jacket}<img part="RhythmSongSelect.jacket RhythmSongSelect.picture" class="thumb" src={s.jacket} alt="">{:else}<div part="RhythmSongSelect.jacket RhythmSongSelect.picture" class="thumb well"><og-icon class="jacket-icon" icon="music"></og-icon></div>{/if}
-                  <div class="text"><span part="RhythmSongSelect.name" class="name">{s.title}</span><span class="artist">{s.artist}</span>
-                  <div class="badges">
+                <button part="RhythmSongSelect.row" role="option" aria-selected={s.id == selected} aria-label={s.title} aria-description={s.artist} disabled={s.locked} data-locked={s.locked} data-fresh={s.fresh} data-cleared={s.cleared} data-previewing={s.id == previewing} onclick={choose} ondetails={preview}><div class="face" data-layout="row" data-gap="loose">
+                  {#if s.jacket}<img part="RhythmSongSelect.jacket RhythmSongSelect.picture" class="thumb" src={s.jacket} alt="">{:else}<div part="RhythmSongSelect.jacket RhythmSongSelect.picture" class="thumb well" data-layout="ratio"><og-icon class="jacket-icon" icon="music"></og-icon></div>{/if}
+                  <div class="text" data-layout="stack" data-gap="none" data-fill><span part="RhythmSongSelect.name RhythmSongSelect.headline" class="name">{s.title}</span><span class="artist" part="RhythmSongSelect.caption">{s.artist}</span>
+                  <div class="badges" data-layout="cluster" data-gap="hair">
                     {#if s.id == selected}<span part="RhythmSongSelect.badge" data-tag="selected">{t("rhythm.songs.selected")}</span>{/if}
                     {#if s.id == previewing}<span part="RhythmSongSelect.badge" data-tag="previewing">{t("rhythm.songs.previewing")}</span>{/if}
                     {#if s.fresh}<span part="RhythmSongSelect.badge" data-tag="fresh">{t("rhythm.songs.fresh")}</span>{/if}
                     {#if s.cleared}<span part="RhythmSongSelect.badge" data-tag="cleared">{t("rhythm.songs.cleared")}</span>{/if}
                     {#if s.locked}<span part="RhythmSongSelect.badge" data-tag="locked">{t("rhythm.songs.locked")}</span>{/if}
                   </div></div>
-                  <span class="bpm">{t("rhythm.songs.bpm", { bpm: s.bpm })}</span>
+                  <span class="bpm" part="RhythmSongSelect.caption">{t("rhythm.songs.bpm", { bpm: s.bpm })}</span>
                 </div></button>
               {/each}
             </div>
           </div>
-          {#if selected == ''}<aside part="RhythmSongSelect.detail" class="detail" aria-label={t("rhythm.songs.none")}><p class="state-text">{t("rhythm.songs.none")}</p></aside>{/if}
+          {#if selected == ''}<aside part="RhythmSongSelect.detail RhythmSongSelect.well" class="detail" data-layout="scroll" data-gap="loose" aria-label={t("rhythm.songs.none")}><p class="state-text" part="RhythmSongSelect.caption">{t("rhythm.songs.none")}</p></aside>{/if}
           {#each songs as s (s.id)}
             {#if s.id == selected}
-              <aside part="RhythmSongSelect.detail" class="detail" aria-label={s.title} data-locked={s.locked} data-previewing={s.id == previewing}>
-                {#if s.jacket}<img part="RhythmSongSelect.jacket RhythmSongSelect.picture" class="cover" src={s.jacket} alt="">{:else}<div part="RhythmSongSelect.jacket RhythmSongSelect.picture" class="cover well"><og-icon class="jacket-icon" icon="music"></og-icon></div>{/if}
-                <div class="info">
-                  <span class="detail-name">{s.title}</span>
-                  <span class="detail-artist">{s.artist}</span>
-                  <div class="facts">
-                    <div part="RhythmSongSelect.fact RhythmSongSelect.label" class="fact"><span class="label">{t("rhythm.songs.bpmLabel")}</span><span class="value">{s.bpm}</span></div>
-                    <div part="RhythmSongSelect.fact RhythmSongSelect.label" class="fact"><span class="label">{t("rhythm.songs.lengthLabel")}</span><span class="value">{s.length}</span></div>
+              <aside part="RhythmSongSelect.detail RhythmSongSelect.well" class="detail" data-layout="scroll" data-gap="loose" aria-label={s.title} data-locked={s.locked} data-previewing={s.id == previewing}>
+                {#if s.jacket}<img part="RhythmSongSelect.jacket RhythmSongSelect.picture" class="cover" src={s.jacket} alt="">{:else}<div part="RhythmSongSelect.jacket RhythmSongSelect.picture" class="cover well" data-layout="ratio"><og-icon class="jacket-icon" icon="music"></og-icon></div>{/if}
+                <div class="info" data-layout="stack" data-gap="hair">
+                  <span class="detail-name" part="RhythmSongSelect.headline">{s.title}</span>
+                  <span class="detail-artist" part="RhythmSongSelect.caption">{s.artist}</span>
+                  <div class="facts" data-layout="row" data-gap="loose">
+                    <div part="RhythmSongSelect.fact RhythmSongSelect.label" class="fact" data-layout="stack" data-gap="none"><span class="label">{t("rhythm.songs.bpmLabel")}</span><span class="value" part="RhythmSongSelect.figure">{s.bpm}</span></div>
+                    <div part="RhythmSongSelect.fact RhythmSongSelect.label" class="fact" data-layout="stack" data-gap="none"><span class="label">{t("rhythm.songs.lengthLabel")}</span><span class="value" part="RhythmSongSelect.figure">{s.length}</span></div>
                   </div>
                   <button id="Preview" variant="ghost" aria-pressed={s.id == previewing} disabled={s.locked} onclick={preview}><kbd class="key" data-action="details"></kbd><span>{s.id == previewing ? t("rhythm.songs.previewing") : t("rhythm.songs.preview")}</span></button>
                 </div>
@@ -71,48 +71,45 @@
           {/each}
         </div>
       {:else}
-        <div class="state" role="status"><p class="state-text">{t("rhythm.songs.empty")}</p></div>
+        <div class="state" data-layout="cover" data-fill role="status"><p class="state-text" part="RhythmSongSelect.caption">{t("rhythm.songs.empty")}</p></div>
       {/if}
     {/if}
   {/if}
 </section>
 
 <style>
-:host { display: flex; flex-direction: column; inline-size: stretch; min-inline-size: 0; block-size: stretch; gap: var(--space-md); container-type: inline-size; }
-[part="RhythmSongSelect.band"] { display: flex; width: stretch; align-items: center; flex: none; }
+:host { inline-size: stretch; min-inline-size: 0; block-size: stretch; --headline-text: var(--text-lg); }
+[part="RhythmSongSelect.band"] { width: stretch; flex: none; }
 [part="RhythmSongSelect.title"] { margin: 0; white-space: nowrap; text-overflow: ellipsis; overflow: hidden; }
-.body { display: flex; width: stretch; flex: 1; min-height: 0; gap: var(--space-lg); }
+.body { width: stretch; min-height: 0; align-items: stretch; }
 .list { overflow-y: auto; flex: 3; min-width: 0; }
-.rows { display: flex; flex-direction: column; width: stretch; gap: var(--space-xs); padding: var(--space-xxs); }
+.rows { width: stretch; padding: var(--space-xxs); }
 [part="RhythmSongSelect.row"] { width: stretch; min-height: var(--size-touch); padding: var(--space-xs) var(--space-sm); min-width: 0; }
-.face { display: flex; width: stretch; align-items: center; gap: var(--space-md); }
+.face { width: stretch; }
 .thumb { flex: none; width: var(--size-lg); height: var(--size-lg); }
 img.thumb, img.cover { object-fit: cover; }
-.thumb.well, .cover.well { display: flex; align-items: center; justify-content: center; background: var(--control); border-radius: var(--radius-control); }
-.jacket-icon { inline-size: 50%; block-size: 50%; color: var(--ink-muted); }
-.text { display: flex; flex-direction: column; flex: 1; min-width: 0; align-items: flex-start; }
+.jacket-icon { inline-size: 50%; block-size: 50%; }
+.text { min-width: 0; align-items: flex-start; }
 .name, .artist { max-width: stretch; text-align: start; white-space: nowrap; text-overflow: ellipsis; overflow: hidden; }
-.name, .detail-name { font: var(--text-lg); font-weight: var(--font-weight-semibold); }
-.artist, .detail-artist, .bpm { font: var(--text-sm); color: var(--ink-muted); }
-.bpm { flex: none; white-space: nowrap; font-variant-numeric: tabular-nums; }
-.badges { display: flex; flex-wrap: wrap; gap: var(--space-xxs); margin-block-start: var(--space-xxs); font: var(--text-xs); }
+.bpm { flex: none; white-space: nowrap; }
+.badges { margin-block-start: var(--space-xxs); }
 [part="RhythmSongSelect.badge"] { white-space: nowrap; padding: 0 var(--space-xs); }
-.detail { display: flex; flex-direction: column; flex: 2; min-width: 0; min-height: 0; overflow-y: auto; gap: var(--space-md); padding: var(--space-md); background: var(--well); border-radius: var(--radius-control); }
+.detail { flex: 2; min-width: 0; min-height: 0; padding: var(--space-md); }
 .cover { flex: none; width: stretch; max-width: calc(var(--size-xxl) * 1.8); aspect-ratio: 1; align-self: center; }
-.info { display: flex; flex-direction: column; width: stretch; gap: var(--space-xxs); align-items: flex-start; }
+.info { width: stretch; align-items: flex-start; }
 .detail-name { max-width: stretch; text-align: start; }
 .detail-artist { max-width: stretch; text-align: start; white-space: nowrap; text-overflow: ellipsis; overflow: hidden; }
-.facts { display: flex; gap: var(--space-md); padding-block: var(--space-xs); }
-[part="RhythmSongSelect.fact RhythmSongSelect.label"] { display: flex; flex-direction: column; align-items: flex-start; }
-.value { white-space: nowrap; font-variant-numeric: tabular-nums; }
+.facts { padding-block: var(--space-xs); }
+[part="RhythmSongSelect.fact RhythmSongSelect.label"] { align-items: flex-start; }
+.value { white-space: nowrap; }
 #Preview, #Retry { min-height: var(--size-touch); min-width: calc(var(--size-xxl) * 1.25); gap: var(--space-xs); }
-.state { display: flex; flex-direction: column; flex: 1; align-items: center; justify-content: center; gap: var(--space-md); }
-.state-text { margin: 0; text-align: center; color: var(--ink-muted); }
+.state { align-items: center; }
+.state-text { margin: 0; text-align: center; }
 @media (pointer: coarse) { .key { display: none; } }
 /* A narrow panel (a phone, or a side column on a wide screen) puts the
    selected song's details over the list, the cover small at the start. */
 @container (width < 560px) {
-  .body { flex-direction: column-reverse; gap: var(--space-sm); }
+  .body { flex-direction: column-reverse; --layout-gap-wide: var(--layout-gap); }
   .list { flex: 1; width: stretch; min-height: 0; }
   .detail { flex: none; width: stretch; flex-direction: row; align-items: center; overflow-y: visible; padding: var(--space-xs); }
   .cover { flex: none; width: calc(var(--size-xxl) * 1.1); }
@@ -122,6 +119,6 @@ img.thumb, img.cover { object-fit: cover; }
 }
 /* The frame cannot ask its own width, so its gap follows the screen. */
 @media (width < 600px) {
-  :host { gap: var(--space-sm); }
+  :host { --layout-gap-loose: var(--layout-gap-tight); }
 }
 </style>

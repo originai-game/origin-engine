@@ -1,6 +1,6 @@
 <meta name="component" content="RhythmResults">
 <meta name="strings" content="./rhythm.en.ogt">
-<meta name="parts" content="RhythmResults.frame RhythmResults.band RhythmResults.title RhythmResults.grade RhythmResults.badge RhythmResults.readout RhythmResults.figure RhythmResults.row RhythmResults.name">
+<meta name="parts" content="RhythmResults.frame RhythmResults.band RhythmResults.title RhythmResults.grade RhythmResults.badge RhythmResults.readout RhythmResults.figure RhythmResults.row RhythmResults.name RhythmResults.caption RhythmResults.well">
 <meta name="prop:song" content="string" data-doc="The song's title as the heading; empty takes the kit's (Results).">
 <meta name="prop:grade" content="string" data-doc="The grade the game awarded (S, AA, C); empty hides it.">
 <meta name="prop:cleared" content="bool" data-doc="The game's verdict: Cleared, or Failed (data-cleared).">
@@ -28,83 +28,82 @@
   Next (next; also Escape, pad B) report once. The game computes every
   figure, grade and verdict.
 -->
-<section id="RhythmResults" part="RhythmResults.frame" aria-label={song != '' ? song : t("rhythm.results.title")} data-cleared={cleared} data-mark={mark}>
-  <header part="RhythmResults.band"><h2 part="RhythmResults.title">{song != '' ? song : t("rhythm.results.title")}</h2></header>
-  <div class="body">
-    <div class="content">
-      <div class="top">
-      <div class="verdict">
+<section id="RhythmResults" part="RhythmResults.frame" data-layout="shell" data-gap="loose" aria-label={song != '' ? song : t("rhythm.results.title")} data-cleared={cleared} data-mark={mark}>
+  <header part="RhythmResults.band" data-layout="row"><h2 part="RhythmResults.title">{song != '' ? song : t("rhythm.results.title")}</h2></header>
+  <div class="body" data-layout="scroll" data-fill>
+    <div class="content" data-layout="stack" data-gap="loose">
+      <div class="top" data-layout="cluster" data-gap="wide">
+      <div class="verdict" data-layout="row" data-gap="loose">
         {#if grade != ''}<span part="RhythmResults.grade RhythmResults.figure" class="grade" aria-label={t("rhythm.results.gradeName", { grade: grade })} data-cleared={cleared}>{grade}</span>{/if}
-        <div class="words">
+        <div class="words" data-layout="stack" data-gap="hair">
           <span part="RhythmResults.badge" data-tag={cleared ? 'cleared' : 'failed'}>{cleared ? t("rhythm.results.cleared") : t("rhythm.results.failed")}</span>
           {#if mark != ''}<span part="RhythmResults.badge" data-tag={mark}>{mark == 'allPerfect' ? t("rhythm.results.allPerfect") : t("rhythm.results.fullCombo")}</span>{/if}
         </div>
       </div>
-      <div part="RhythmResults.readout RhythmResults.figure" class="score-cell" role="group" aria-label={t("rhythm.results.score")}>
-        <span class="caption">{t("rhythm.results.score")}</span>
+      <div part="RhythmResults.readout RhythmResults.figure" class="score-cell" data-layout="stack" data-gap="none" role="group" aria-label={t("rhythm.results.score")}>
+        <span class="caption" part="RhythmResults.caption">{t("rhythm.results.score")}</span>
         <span part="RhythmResults.figure" class="score">{formatNumber(score)}</span>
-        <div class="best">
+        <div class="best" data-layout="cluster" data-gap="tight">
           {#if newBest}<span part="RhythmResults.badge" data-tag="newBest">{t("rhythm.results.newBest")}</span>{/if}
-          {#if previous > 0}<span class="previous">{t("rhythm.results.previous", { score: previous })}</span>{/if}
+          {#if previous > 0}<span class="previous" part="RhythmResults.caption">{t("rhythm.results.previous", { score: previous })}</span>{/if}
         </div>
       </div>
       </div>
-      <div class="lower">
-      <div class="stats">
-        <div part="RhythmResults.readout RhythmResults.figure" class="stat" role="group" aria-label={t("rhythm.results.maxCombo")}><span class="caption">{t("rhythm.results.maxCombo")}</span><span part="RhythmResults.figure" class="value">{formatNumber(maxCombo)}</span></div>
-        {#if accuracy != ''}<div part="RhythmResults.readout RhythmResults.figure" class="stat" role="group" aria-label={t("rhythm.results.accuracy")}><span class="caption">{t("rhythm.results.accuracy")}</span><span part="RhythmResults.figure" class="value">{accuracy}</span></div>{/if}
+      <div class="lower" data-layout="grid" data-gap="wide">
+      <div class="stats" part="RhythmResults.well" data-layout="stack">
+        <div part="RhythmResults.readout RhythmResults.figure" class="stat" data-layout="row" role="group" aria-label={t("rhythm.results.maxCombo")}><span class="caption" part="RhythmResults.caption">{t("rhythm.results.maxCombo")}</span><span part="RhythmResults.figure" class="value">{formatNumber(maxCombo)}</span></div>
+        {#if accuracy != ''}<div part="RhythmResults.readout RhythmResults.figure" class="stat" data-layout="row" role="group" aria-label={t("rhythm.results.accuracy")}><span class="caption" part="RhythmResults.caption">{t("rhythm.results.accuracy")}</span><span part="RhythmResults.figure" class="value">{accuracy}</span></div>{/if}
       </div>
       {#if counts.length}
-        <div class="counts" role="list" aria-label={t("rhythm.results.counts")}>
+        <div class="counts" data-layout="stack" data-gap="hair" role="list" aria-label={t("rhythm.results.counts")}>
           {#each counts as c (c.id)}
-            <div part="RhythmResults.row" role="listitem" aria-label={c.label} data-judgement={c.judgement}><span part="RhythmResults.name" class="label">{c.label}</span><span class="count">{formatNumber(c.count)}</span></div>
+            <div part="RhythmResults.row" data-layout="row" role="listitem" aria-label={c.label} data-judgement={c.judgement}><span part="RhythmResults.name" class="label" data-fill>{c.label}</span><span class="count" part="RhythmResults.figure">{formatNumber(c.count)}</span></div>
           {/each}
         </div>
       {:else}
-        <p class="empty-text" role="status">{t("rhythm.results.empty")}</p>
+        <p class="empty-text" part="RhythmResults.caption" role="status">{t("rhythm.results.empty")}</p>
       {/if}
       </div>
     </div>
   </div>
-  <footer class="actions">
+  <footer class="actions" data-layout="row">
     <button id="Retry" variant="ghost" disabled={!canRetry} onclick={retry}><span>{t("rhythm.results.retry")}</span></button>
     <button id="Next" variant="primary" onclick={next} onback={next}><kbd class="key" data-action="back"></kbd><span>{t("rhythm.results.next")}</span></button>
   </footer>
 </section>
 
 <style>
-:host { display: flex; flex-direction: column; inline-size: stretch; min-inline-size: 0; block-size: stretch; gap: var(--space-md); container-type: inline-size; }
-[part="RhythmResults.band"] { display: flex; width: stretch; align-items: center; flex: none; }
+:host { inline-size: stretch; min-inline-size: 0; block-size: stretch; }
+[part="RhythmResults.band"] { width: stretch; flex: none; }
 [part="RhythmResults.title"] { margin: 0; white-space: nowrap; text-overflow: ellipsis; overflow: hidden; }
 .body { overflow-y: auto; flex: 1; min-height: 0; }
-.content { display: flex; flex-direction: column; width: stretch; gap: var(--space-md); padding: var(--space-xs); }
+.content { width: stretch; padding: var(--space-xs); }
 /* The verdict and the score share a row and wrap rather than cut a figure. */
-.top { display: flex; flex-wrap: wrap; width: stretch; align-items: center; justify-content: space-between; gap: var(--space-sm) var(--space-xl); }
-.lower { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); width: stretch; gap: var(--space-md) var(--space-xl); align-items: start; }
-.verdict { display: flex; flex: none; align-items: center; gap: var(--space-md); }
-[part="RhythmResults.grade RhythmResults.figure"] { flex: none; min-width: var(--size-xl); font: var(--text-xl5); font-weight: var(--font-weight-bold); text-align: center; white-space: nowrap; }
-.words { display: flex; flex-direction: column; align-items: flex-start; gap: var(--space-xxs); min-width: 0; }
+.top { width: stretch; justify-content: space-between; }
+.lower { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); width: stretch; align-items: start; }
+.verdict { flex: none; }
+[part="RhythmResults.grade RhythmResults.figure"] { flex: none; min-width: var(--size-xl); --figure-size: var(--font-step-5xl); --figure-weight: var(--font-weight-bold); text-align: center; white-space: nowrap; }
+.words { align-items: flex-start; min-width: 0; }
 [part="RhythmResults.badge"] { white-space: nowrap; padding: 0 var(--space-xs); }
-.score-cell { display: flex; flex-direction: column; flex: none; max-width: stretch; align-items: flex-end; margin-inline-start: auto; }
-.score { font: var(--text-xl3); font-weight: var(--font-weight-semibold); white-space: nowrap; font-variant-numeric: tabular-nums; }
-.caption, .previous { font: var(--text-sm); color: var(--ink-muted); }
-.best { display: flex; align-items: center; gap: var(--space-xs); flex-wrap: wrap; justify-content: flex-end; }
-.previous { white-space: nowrap; font-variant-numeric: tabular-nums; }
-.stats { display: flex; flex-direction: column; gap: var(--space-sm); min-width: 0; padding: var(--space-sm); background: var(--well); border-radius: var(--radius-control); }
-.stat { display: flex; align-items: baseline; justify-content: space-between; gap: var(--space-sm); }
-.value, .count { flex: none; white-space: nowrap; font-variant-numeric: tabular-nums; }
-.counts { display: flex; flex-direction: column; gap: var(--space-xxs); min-width: 0; }
-[part="RhythmResults.row"] { display: flex; width: stretch; align-items: center; gap: var(--space-sm); padding: var(--space-xxs) var(--space-sm); }
+.score-cell { flex: none; max-width: stretch; align-items: flex-end; margin-inline-start: auto; }
+.score { --figure-size: var(--font-step-3xl); --figure-weight: var(--font-weight-semibold); white-space: nowrap; }
+.best { justify-content: flex-end; }
+.previous { white-space: nowrap; }
+.stats { min-width: 0; padding: var(--space-sm); }
+.stat { align-items: baseline; justify-content: space-between; }
+.value, .count { flex: none; white-space: nowrap; }
+.counts { min-width: 0; }
+[part="RhythmResults.row"] { width: stretch; padding: var(--space-xxs) var(--space-sm); }
 .label { flex: 1; min-width: 0; text-align: start; white-space: nowrap; text-overflow: ellipsis; overflow: hidden; }
-.empty-text { margin: 0; padding: var(--space-md); text-align: center; color: var(--ink-muted); }
-.actions { display: flex; width: stretch; flex: none; justify-content: flex-end; gap: var(--space-sm); }
+.empty-text { margin: 0; padding: var(--space-md); text-align: center; }
+.actions { width: stretch; flex: none; justify-content: flex-end; }
 .actions button { min-height: var(--size-touch); min-width: calc(var(--size-xxl) * 1.25); gap: var(--space-xs); }
 @media (pointer: coarse) { .key { display: none; } }
 /* A narrow panel (a phone, or a side column on a wide screen) stacks the
    verdict, score, figures and tally in one column; the actions share the width. */
 @container (width < 560px) {
-  .content { gap: var(--space-sm); }
-  .lower { grid-template-columns: minmax(0, 1fr); gap: var(--space-sm); }
+  .content { --layout-gap-loose: var(--layout-gap); }
+  .lower { grid-template-columns: minmax(0, 1fr); --layout-gap-wide: var(--layout-gap); }
   .score-cell { align-items: flex-start; margin-inline-start: 0; }
   .best { justify-content: flex-start; }
   .actions button { flex: 1; min-width: 0; }

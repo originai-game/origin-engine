@@ -1,6 +1,6 @@
 <meta name="component" content="IdlePurchases">
 <meta name="strings" content="./idle.en.ogt">
-<meta name="parts" content="IdlePurchases.frame IdlePurchases.band IdlePurchases.title IdlePurchases.amount IdlePurchases.row IdlePurchases.name IdlePurchases.effect IdlePurchases.cost IdlePurchases.badge IdlePurchases.figure">
+<meta name="parts" content="IdlePurchases.frame IdlePurchases.band IdlePurchases.title IdlePurchases.amount IdlePurchases.row IdlePurchases.name IdlePurchases.effect IdlePurchases.cost IdlePurchases.badge IdlePurchases.figure IdlePurchases.headline IdlePurchases.caption IdlePurchases.fade">
 <meta name="prop:title" content="string" data-doc="The list's heading; empty takes the group's (Upgrades).">
 <meta name="prop:amounts" content="list" data-doc="The buy amounts offered, keyed rows of { id, label }: label the amount as the game words it (it wins; empty reads the key max as Max and any other key as ×key: ×1, ×10, ×100). An empty list hides the choice.">
 <meta name="prop:amount" content="string" data-doc="The buy amount chosen, one of the amounts' keys.">
@@ -21,11 +21,11 @@
   is affordable and neither maxed nor locked, and each refused state is a
   word (Not enough, Maxed, Locked). It fills its height and scrolls.
 -->
-<section id="IdlePurchases" part="IdlePurchases.frame" aria-label={title != '' ? title : t("idle.purchases.name")}>
-  <header part="IdlePurchases.band">
-    <h2 part="IdlePurchases.title">{title != '' ? title : t("idle.purchases.name")}</h2>
+<section id="IdlePurchases" part="IdlePurchases.frame" data-layout="shell" data-gap="loose" aria-label={title != '' ? title : t("idle.purchases.name")}>
+  <header part="IdlePurchases.band" data-layout="cluster" data-gap="loose">
+    <h2 part="IdlePurchases.title" data-fill>{title != '' ? title : t("idle.purchases.name")}</h2>
     {#if amounts.length}
-    <div class="amounts" role="radiogroup" aria-label={t("idle.purchases.amount")}>
+    <div class="amounts" data-layout="row" data-gap="hair" role="radiogroup" aria-label={t("idle.purchases.amount")}>
       {#each amounts as a (a.id)}
         <button part="IdlePurchases.amount" role="radio" aria-checked={a.id == amount} data-amount={a.id} onclick={chooseamount}>{a.label != '' ? a.label : a.id == 'max' ? t("idle.purchases.max") : t("idle.purchases.times", { count: a.id })}</button>
       {/each}
@@ -33,27 +33,27 @@
     {/if}
   </header>
   {#if upgrades.length}
-    <div class="rows-shell">
-    <div class="rows-scroll">
-      <ul class="rows" aria-label={title != '' ? title : t("idle.purchases.name")}>
+    <div class="rows-shell" data-layout="stack" data-gap="none" data-fill>
+    <div class="rows-scroll" data-layout="scroll" data-gap="none">
+      <ul class="rows" data-layout="stack" data-gap="tight" aria-label={title != '' ? title : t("idle.purchases.name")}>
         {#each upgrades as u (u.id)}
-          <li part="IdlePurchases.row" aria-label={u.name} data-affordable={u.affordable} data-maxed={u.maxed} data-locked={u.locked}>
-            <div class="art"><og-icon class="icon" icon={u.locked ? 'lock' : u.icon}></og-icon></div>
-            <div class="body">
-              <div class="line">
-                <span part="IdlePurchases.name" class="name">{u.name}</span>
+          <li part="IdlePurchases.row" data-layout="row" data-gap="loose" aria-label={u.name} data-affordable={u.affordable} data-maxed={u.maxed} data-locked={u.locked}>
+            <div class="art" data-layout="ratio"><og-icon class="icon" icon={u.locked ? 'lock' : u.icon}></og-icon></div>
+            <div class="body" data-layout="stack" data-gap="hair" data-fill>
+              <div class="line" data-layout="row">
+                <span part="IdlePurchases.name IdlePurchases.headline" class="name">{u.name}</span>
                 {#if u.level > 0}<span part="IdlePurchases.badge" data-tag="level">{t("idle.purchases.level", { level: formatNumber(u.level) })}</span>{/if}
               </div>
-              <p part="IdlePurchases.effect">{u.effect}</p>
+              <p part="IdlePurchases.effect IdlePurchases.caption">{u.effect}</p>
             </div>
-            <div class="end">
+            <div class="end" data-layout="stack" data-gap="tight">
               {#if u.maxed}<span part="IdlePurchases.badge" data-tag="maxed">{t("idle.purchases.maxed")}</span>{/if}
               {#if !u.maxed && u.locked}<span part="IdlePurchases.badge" data-tag="locked">{t("idle.purchases.locked")}</span>{/if}
               {#if !u.maxed && !u.locked && !u.affordable}<span part="IdlePurchases.badge" data-tag="short">{t("idle.purchases.short")}</span>{/if}
               {#if !u.maxed}
-              <button id="Buy" variant="primary" disabled={!u.affordable || u.maxed || u.locked} aria-label={u.cost != '' ? t("idle.purchases.buyFor", { name: u.name, cost: u.cost }) : t("idle.purchases.buyNamed", { name: u.name })} data-affordable={u.affordable} onclick={buy}><div class="buy">
-                {#if u.count != ''}<span class="count">{u.count}</span>{/if}
-                {#if u.cost != ''}<div part="IdlePurchases.cost IdlePurchases.figure"><og-icon class="cost-icon" icon={u.costIcon}></og-icon><span class="cost-figure">{u.cost}</span></div>{:else}<span class="buy-word">{t("idle.purchases.buy")}</span>{/if}
+              <button id="Buy" variant="primary" disabled={!u.affordable || u.maxed || u.locked} aria-label={u.cost != '' ? t("idle.purchases.buyFor", { name: u.name, cost: u.cost }) : t("idle.purchases.buyNamed", { name: u.name })} data-affordable={u.affordable} onclick={buy}><div class="buy" data-layout="stack" data-gap="none">
+                {#if u.count != ''}<span class="count" part="IdlePurchases.figure">{u.count}</span>{/if}
+                {#if u.cost != ''}<div part="IdlePurchases.cost IdlePurchases.figure" data-layout="row" data-gap="hair"><og-icon class="cost-icon" icon={u.costIcon}></og-icon><span class="cost-figure">{u.cost}</span></div>{:else}<span class="buy-word">{t("idle.purchases.buy")}</span>{/if}
               </div></button>
               {/if}
             </div>
@@ -61,39 +61,38 @@
         {/each}
       </ul>
     </div>
-    <div class="scroll-fade"></div>
+    <div class="scroll-fade" part="IdlePurchases.fade" data-anchor="bottom-edge"></div>
     </div>
   {:else}
-    <p class="empty-text" role="status">{t("idle.purchases.empty")}</p>
+    <p class="empty-text" part="IdlePurchases.caption" role="status">{t("idle.purchases.empty")}</p>
   {/if}
 </section>
 
 <style>
-:host { display: flex; flex-direction: column; inline-size: stretch; block-size: stretch; gap: var(--space-md); min-block-size: 0; container-type: inline-size; }
-[part="IdlePurchases.band"] { display: flex; width: stretch; align-items: center; flex-wrap: wrap; gap: var(--space-xs) var(--space-md); flex: none; }
+:host { inline-size: stretch; block-size: stretch; min-block-size: 0; }
+[part="IdlePurchases.band"] { width: stretch; flex: none; }
 [part="IdlePurchases.title"] { margin: 0; flex: 1; min-width: 0; white-space: nowrap; text-overflow: ellipsis; overflow: hidden; }
-.amounts { display: flex; flex: none; gap: var(--space-xxs); }
-[part="IdlePurchases.amount"] { font-family: var(--figure-font); min-height: var(--size-touch); min-width: var(--size-touch); padding: 0 var(--space-sm); }
-.rows-shell { position: relative; display: flex; flex-direction: column; flex: 1; min-block-size: 0; }
+.amounts { flex: none; }
+[part="IdlePurchases.amount"] { min-height: var(--size-touch); min-width: var(--size-touch); padding: 0 var(--space-sm); }
+.rows-shell { position: relative; min-block-size: 0; }
 .rows-scroll { overflow-y: auto; flex: 1; min-height: 0; }
-.scroll-fade { position: absolute; inset-inline: 0; bottom: 0; block-size: var(--space-lg); pointer-events: none; background: linear-gradient(transparent, var(--panel)); }
-.rows { display: flex; flex-direction: column; width: stretch; margin: 0; padding: 0; padding-block-end: var(--space-lg); list-style: none; gap: var(--space-xs); }
-[part="IdlePurchases.row"] { display: flex; align-items: center; gap: var(--space-md); padding: var(--space-sm); background: var(--control); border-radius: var(--radius-control); }
-.art { display: flex; flex: none; width: var(--size-lg); height: var(--size-lg); align-items: center; justify-content: center; }
+.rows { width: stretch; margin: 0; padding: 0; padding-block-end: var(--space-lg); list-style: none; }
+[part="IdlePurchases.row"] { padding: var(--space-sm); }
+.art { --layout-ratio: 1; flex: none; width: var(--size-lg); height: var(--size-lg); }
 .icon { width: var(--size-md); height: var(--size-md); }
-.body { display: flex; flex-direction: column; flex: 1; min-width: 0; gap: var(--space-xxs); }
-.line { display: flex; width: stretch; align-items: center; gap: var(--space-sm); min-width: 0; }
-[part="IdlePurchases.name"] { flex: 0 1 auto; min-width: 0; font: var(--text-lg); font-weight: var(--font-weight-semibold); text-align: start; white-space: nowrap; text-overflow: ellipsis; overflow: hidden; }
-[part="IdlePurchases.effect"] { margin: 0; font: var(--text-sm); color: var(--ink-muted); text-align: start; overflow-wrap: anywhere; }
+.body { min-width: 0; }
+.line { width: stretch; min-width: 0; }
+.name { --headline-text: var(--text-lg); flex: 0 1 auto; min-width: 0; text-align: start; white-space: nowrap; text-overflow: ellipsis; overflow: hidden; }
+[part~="IdlePurchases.effect"] { margin: 0; text-align: start; overflow-wrap: anywhere; }
 [part="IdlePurchases.badge"] { flex: none; white-space: nowrap; padding: 0 var(--space-xs); }
-.end { display: flex; flex-direction: column; flex: none; align-items: flex-end; gap: var(--space-xs); max-width: 50%; }
+.end { flex: none; align-items: flex-end; max-width: 50%; }
 #Buy { min-height: var(--size-touch); min-width: calc(var(--size-xxl) * 1.1); max-width: stretch; padding: var(--space-xxs) var(--space-sm); }
-.buy { display: flex; flex-direction: column; align-items: center; min-width: 0; max-width: stretch; }
-.count { white-space: nowrap; font-variant-numeric: tabular-nums; }
-[part="IdlePurchases.cost IdlePurchases.figure"] { display: flex; align-items: center; gap: var(--space-xxs); min-width: 0; max-width: stretch; }
+.buy { align-items: center; min-width: 0; max-width: stretch; --figure-ink: currentColor; }
+.count { white-space: nowrap; }
+[part="IdlePurchases.cost IdlePurchases.figure"] { min-width: 0; max-width: stretch; }
 .cost-icon { width: var(--size-xs); height: var(--size-xs); flex: none; }
-.cost-figure { min-width: 0; white-space: nowrap; text-overflow: ellipsis; overflow: hidden; font-variant-numeric: tabular-nums; }
-.empty-text { margin: 0; flex: 1; padding: var(--space-lg); text-align: center; color: var(--ink-muted); }
+.cost-figure { min-width: 0; white-space: nowrap; text-overflow: ellipsis; overflow: hidden; }
+.empty-text { margin: 0; flex: 1; padding: var(--space-lg); text-align: center; }
 /* A narrow panel (a phone, or a side column on a wide screen) puts the
    amounts under the title and each row's price and Buy under its name. */
 @container (width < 560px) {

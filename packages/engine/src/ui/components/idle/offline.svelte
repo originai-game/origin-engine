@@ -1,6 +1,6 @@
 <meta name="component" content="IdleOffline">
 <meta name="strings" content="./idle.en.ogt">
-<meta name="parts" content="IdleOffline.frame IdleOffline.band IdleOffline.title IdleOffline.summary IdleOffline.row IdleOffline.name IdleOffline.figure IdleOffline.label">
+<meta name="parts" content="IdleOffline.frame IdleOffline.band IdleOffline.title IdleOffline.summary IdleOffline.row IdleOffline.name IdleOffline.figure IdleOffline.label IdleOffline.caption">
 <meta name="prop:title" content="string" data-doc="The panel's heading; empty takes the group's (Welcome back).">
 <meta name="prop:away" content="string" data-doc="How long the player was away, as the game words it (it wins; empty shows seconds as a duration: 1h 2m).">
 <meta name="prop:seconds" content="number" data-doc="How long the player was away, in seconds, when away is empty.">
@@ -19,46 +19,46 @@
   the game sets canDouble, reports double. The game computes the haul and
   applies it.
 -->
-<section id="IdleOffline" part="IdleOffline.frame" aria-label={title != '' ? title : t("idle.offline.name")}>
-  <header part="IdleOffline.band"><h2 part="IdleOffline.title">{title != '' ? title : t("idle.offline.name")}</h2></header>
-  <p part="IdleOffline.summary IdleOffline.label">{t("idle.offline.away", { time: away != '' ? away : formatDuration(seconds) })}</p>
+<section id="IdleOffline" part="IdleOffline.frame" data-layout="stack" data-gap="wide" aria-label={title != '' ? title : t("idle.offline.name")}>
+  <header part="IdleOffline.band" data-layout="row"><h2 part="IdleOffline.title">{title != '' ? title : t("idle.offline.name")}</h2></header>
+  <p part="IdleOffline.summary IdleOffline.label IdleOffline.caption">{t("idle.offline.away", { time: away != '' ? away : formatDuration(seconds) })}</p>
   {#if earned.length}
-    <div class="body">
-      <ul class="rows" aria-label={t("idle.offline.earned")}>
+    <div class="body" data-layout="scroll" data-gap="none">
+      <ul class="rows" data-layout="stack" data-gap="hair" aria-label={t("idle.offline.earned")}>
         {#each earned as e (e.id)}
-          <li part="IdleOffline.row" aria-label={e.name}>
+          <li part="IdleOffline.row" data-layout="cluster" aria-label={e.name}>
             <og-icon class="icon" icon={e.icon}></og-icon>
-            <span part="IdleOffline.name" class="name">{e.name}</span>
+            <span part="IdleOffline.name" class="name" data-fill>{e.name}</span>
             <span part="IdleOffline.figure" class="figure">{e.amount}</span>
           </li>
         {/each}
       </ul>
     </div>
   {:else}
-    <p class="empty-text" role="status">{t("idle.offline.empty")}</p>
+    <p class="empty-text" part="IdleOffline.caption" role="status">{t("idle.offline.empty")}</p>
   {/if}
-  <footer class="actions">
-    {#if canDouble}<button id="Double" variant="secondary" onclick={double}><div class="double"><span>{t("idle.offline.double")}</span>{#if doubleText != ''}<span class="double-text">{doubleText}</span>{/if}</div></button>{/if}
+  <footer class="actions" data-layout="cluster">
+    {#if canDouble}<button id="Double" variant="secondary" onclick={double}><div class="double" data-layout="stack" data-gap="none"><span>{t("idle.offline.double")}</span>{#if doubleText != ''}<span class="double-text" part="IdleOffline.caption">{doubleText}</span>{/if}</div></button>{/if}
     <button id="Collect" variant="primary" onclick={collect}><span>{t("idle.offline.collect")}</span></button>
   </footer>
 </section>
 
 <style>
-:host { display: flex; flex-direction: column; inline-size: stretch; min-inline-size: 0; max-inline-size: var(--modal-width); max-block-size: 100%; min-block-size: 0; gap: var(--space-lg); }
-[part="IdleOffline.band"] { display: flex; width: stretch; align-items: center; justify-content: center; flex: none; }
+:host { inline-size: stretch; min-inline-size: 0; max-inline-size: var(--modal-width); max-block-size: 100%; min-block-size: 0; }
+[part="IdleOffline.band"] { width: stretch; justify-content: center; flex: none; }
 [part="IdleOffline.title"] { margin: 0; text-align: center; overflow-wrap: anywhere; }
-[part="IdleOffline.summary IdleOffline.label"] { margin: 0; font: var(--text-sm); color: var(--ink-muted); text-align: center; flex: none; overflow-wrap: anywhere; }
+[part~="IdleOffline.summary"] { margin: 0; text-align: center; flex: none; overflow-wrap: anywhere; }
 .body { overflow-y: auto; flex: 0 1 auto; min-height: 0; }
-.rows { display: flex; flex-direction: column; width: stretch; margin: 0; padding: 0; list-style: none; gap: var(--space-xxs); }
-[part="IdleOffline.row"] { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-sm); padding: var(--space-sm); min-height: var(--size-touch); background: var(--control); border-radius: var(--radius-control); }
+.rows { width: stretch; margin: 0; padding: 0; list-style: none; }
+[part="IdleOffline.row"] { padding: var(--space-sm); min-height: var(--size-touch); }
 .icon { width: var(--size-sm); height: var(--size-sm); flex: none; }
 [part="IdleOffline.name"] { flex: 1 1 0; min-width: calc(var(--size-xxl) * 1.5); text-align: start; white-space: nowrap; text-overflow: ellipsis; overflow: hidden; }
-[part="IdleOffline.figure"] { flex: 0 1 auto; min-width: 0; max-width: stretch; margin-inline-start: auto; font: var(--text-lg); font-weight: var(--font-weight-semibold); text-align: end; white-space: nowrap; text-overflow: ellipsis; overflow: hidden; font-variant-numeric: tabular-nums; }
-.empty-text { margin: 0; padding: var(--space-lg); text-align: center; color: var(--ink-muted); }
-.actions { display: flex; width: stretch; flex: none; justify-content: flex-end; flex-wrap: wrap; gap: var(--space-sm); }
+[part="IdleOffline.figure"] { --figure-size: var(--type-lg-size); --figure-weight: var(--font-weight-semibold); flex: 0 1 auto; min-width: 0; max-width: stretch; margin-inline-start: auto; text-align: end; white-space: nowrap; text-overflow: ellipsis; overflow: hidden; }
+.empty-text { margin: 0; padding: var(--space-lg); text-align: center; }
+.actions { width: stretch; flex: none; justify-content: flex-end; }
 .actions button { min-height: var(--size-touch); min-width: calc(var(--size-xxl) * 1.25); max-width: stretch; gap: var(--space-xs); }
-.double { display: flex; flex-direction: column; align-items: center; min-width: 0; max-width: stretch; }
-.double-text { font: var(--text-xs); white-space: nowrap; text-overflow: ellipsis; overflow: hidden; max-width: stretch; }
+.double { align-items: center; min-width: 0; max-width: stretch; }
+.double-text { --caption-ink: currentColor; --caption-text: var(--text-xs); white-space: nowrap; text-overflow: ellipsis; overflow: hidden; max-width: stretch; }
 @media (pointer: coarse) { .actions button { flex: 1; } }
 @media (width < 600px) { .actions button { flex: 1; min-width: 0; } }
 </style>

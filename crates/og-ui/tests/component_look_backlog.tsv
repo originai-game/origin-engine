@@ -2,15 +2,6 @@
 # and how many look and motion declarations outside the roles it still has
 # (docs/ui.md §3.1). It only shrinks: convert a document and lower or drop
 # its line.
-arena/draft.svelte	10
-arena/lobby.svelte	7
-arena/ready.svelte	7
-arena/roster.svelte	7
-arena/round-hud.svelte	14
-arena/scoreboard.svelte	10
-arena/spectator.svelte	5
-arena/versus.svelte	22
-arena/vote.svelte	4
 hud/ability-bar.svelte	22
 hud/ability-slot.svelte	35
 hud/action-button.svelte	9
@@ -39,28 +30,14 @@ hud/radial-menu.svelte	14
 hud/star-bar.svelte	13
 hud/stat-bar.svelte	16
 hud/status-grid.svelte	10
-idle/generators.svelte	9
-idle/offline.svelte	9
-idle/prestige.svelte	11
-idle/purchases.svelte	10
-idle/resources.svelte	12
 racing/banner.svelte	10
 racing/garage.svelte	2
 racing/lap-hud.svelte	3
 racing/results.svelte	3
 racing/standings.svelte	4
 racing/telemetry.svelte	4
-rhythm/difficulty.svelte	7
-rhythm/judgement.svelte	8
-rhythm/results.svelte	12
-rhythm/score-hud.svelte	8
-rhythm/song-select.svelte	13
 shooter/combat-hud.svelte	2
 shooter/loadout.svelte	24
-strategy/queue.svelte	11
-strategy/selection.svelte	12
-strategy/tower.svelte	17
-strategy/wave.svelte	7
 world/compass.svelte	7
 world/interaction-prompt.svelte	9
 world/loot-label.svelte	9

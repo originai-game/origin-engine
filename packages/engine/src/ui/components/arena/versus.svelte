@@ -1,6 +1,6 @@
 <meta name="component" content="ArenaVersus">
 <meta name="strings" content="./arena.en.ogt">
-<meta name="parts" content="ArenaVersus.frame ArenaVersus.side ArenaVersus.heading ArenaVersus.card ArenaVersus.portrait ArenaVersus.name ArenaVersus.rank ArenaVersus.badge ArenaVersus.plate ArenaVersus.picture ArenaVersus.label">
+<meta name="parts" content="ArenaVersus.frame ArenaVersus.side ArenaVersus.heading ArenaVersus.card ArenaVersus.portrait ArenaVersus.name ArenaVersus.rank ArenaVersus.badge ArenaVersus.plate ArenaVersus.picture ArenaVersus.label ArenaVersus.caption ArenaVersus.headline">
 <meta name="prop:nameA" content="string" data-doc="The first side's team name; empty takes the kit's (Blue team).">
 <meta name="prop:nameB" content="string" data-doc="The second side's team name; empty takes the kit's (Red team).">
 <meta name="prop:sideA" content="list" data-doc="The first side's fighters in the game's order, keyed rows of { id, name, portrait, icon, character, rank, local }: portrait a texture (0 shows the icon); character the champion's name (empty hides); rank as the game words it (Gold II, 1840 SR; empty hides); local marks the local player (You).">
@@ -18,48 +18,48 @@
   filled reads Waiting for opponents. A new reveal id (at) replays the
   entrance, which reduced motion skips. Read only.
 -->
-<section id="ArenaVersus" part="ArenaVersus.frame" class="bare" aria-label={t("arena.versus.name")}>
+<section id="ArenaVersus" part="ArenaVersus.frame" class="bare" data-layout="row" aria-label={t("arena.versus.name")}>
   {#key at}
-    <div class="stage">
-      <div part="ArenaVersus.side ArenaVersus.plate" class="side a" data-team="a" role="group" aria-label={nameA != '' ? nameA : t("arena.team.a")}>
+    <div class="stage" data-layout="row" data-gap="wide">
+      <div part="ArenaVersus.side ArenaVersus.plate" class="side a" data-layout="stack" data-fill data-motion="enter" data-team="a" role="group" aria-label={nameA != '' ? nameA : t("arena.team.a")}>
         <h2 part="ArenaVersus.heading" class="team-name" data-team="a">{nameA != '' ? nameA : t("arena.team.a")}</h2>
         {#if sideA.length}
-          <div class="cards" role="list">
+          <div class="cards" data-layout="stack" role="list">
             {#each sideA as f (f.id)}
-              <div part="ArenaVersus.card" class="card" role="listitem" aria-current={f.local} data-local={f.local}>
-                <div part="ArenaVersus.portrait ArenaVersus.picture" class="portrait">{#if f.portrait}<img class="art" src={f.portrait} alt="">{:else}<og-icon class="glyph" icon={f.icon}></og-icon>{/if}</div>
-                <div class="who">
-                  <span part="ArenaVersus.name" class="name">{f.name}</span>
-                  {#if f.character != ''}<span class="character">{f.character}</span>{/if}
-                  {#if f.rank != ''}<span part="ArenaVersus.rank ArenaVersus.label" class="rank">{f.rank}</span>{/if}
-                  {#if f.local}<span class="you">{t("arena.you")}</span>{/if}
+              <div part="ArenaVersus.card" class="card" data-layout="row" data-gap="loose" role="listitem" aria-current={f.local} data-local={f.local}>
+                <div part="ArenaVersus.portrait ArenaVersus.picture" class="portrait" data-layout="ratio">{#if f.portrait}<img class="art" src={f.portrait} alt="">{:else}<og-icon class="glyph" icon={f.icon}></og-icon>{/if}</div>
+                <div class="who" data-layout="stack" data-gap="hair" data-fill>
+                  <span part="ArenaVersus.name ArenaVersus.headline" class="name">{f.name}</span>
+                  {#if f.character != ''}<span class="character" part="ArenaVersus.caption">{f.character}</span>{/if}
+                  {#if f.rank != ''}<span part="ArenaVersus.rank ArenaVersus.label ArenaVersus.caption" class="rank">{f.rank}</span>{/if}
+                  {#if f.local}<span class="you" part="ArenaVersus.badge">{t("arena.you")}</span>{/if}
                 </div>
               </div>
             {/each}
           </div>
         {:else}
-          <p class="waiting" role="status">{t("arena.versus.waiting")}</p>
+          <p class="waiting" part="ArenaVersus.caption" role="status">{t("arena.versus.waiting")}</p>
         {/if}
       </div>
-      <div class="seal"><span part="ArenaVersus.badge" class="vs">{t("arena.versus.vs")}</span></div>
-      <div part="ArenaVersus.side ArenaVersus.plate" class="side b" data-team="b" role="group" aria-label={nameB != '' ? nameB : t("arena.team.b")}>
+      <div class="seal" data-layout="ratio" data-motion="stamp"><span part="ArenaVersus.badge" class="vs">{t("arena.versus.vs")}</span></div>
+      <div part="ArenaVersus.side ArenaVersus.plate" class="side b" data-layout="stack" data-fill data-motion="enter" data-team="b" role="group" aria-label={nameB != '' ? nameB : t("arena.team.b")}>
         <h2 part="ArenaVersus.heading" class="team-name" data-team="b">{nameB != '' ? nameB : t("arena.team.b")}</h2>
         {#if sideB.length}
-          <div class="cards" role="list">
+          <div class="cards" data-layout="stack" role="list">
             {#each sideB as f (f.id)}
-              <div part="ArenaVersus.card" class="card" role="listitem" aria-current={f.local} data-local={f.local}>
-                <div part="ArenaVersus.portrait ArenaVersus.picture" class="portrait">{#if f.portrait}<img class="art" src={f.portrait} alt="">{:else}<og-icon class="glyph" icon={f.icon}></og-icon>{/if}</div>
-                <div class="who">
-                  <span part="ArenaVersus.name" class="name">{f.name}</span>
-                  {#if f.character != ''}<span class="character">{f.character}</span>{/if}
-                  {#if f.rank != ''}<span part="ArenaVersus.rank ArenaVersus.label" class="rank">{f.rank}</span>{/if}
-                  {#if f.local}<span class="you">{t("arena.you")}</span>{/if}
+              <div part="ArenaVersus.card" class="card" data-layout="row" data-gap="loose" role="listitem" aria-current={f.local} data-local={f.local}>
+                <div part="ArenaVersus.portrait ArenaVersus.picture" class="portrait" data-layout="ratio">{#if f.portrait}<img class="art" src={f.portrait} alt="">{:else}<og-icon class="glyph" icon={f.icon}></og-icon>{/if}</div>
+                <div class="who" data-layout="stack" data-gap="hair" data-fill>
+                  <span part="ArenaVersus.name ArenaVersus.headline" class="name">{f.name}</span>
+                  {#if f.character != ''}<span class="character" part="ArenaVersus.caption">{f.character}</span>{/if}
+                  {#if f.rank != ''}<span part="ArenaVersus.rank ArenaVersus.label ArenaVersus.caption" class="rank">{f.rank}</span>{/if}
+                  {#if f.local}<span class="you" part="ArenaVersus.badge">{t("arena.you")}</span>{/if}
                 </div>
               </div>
             {/each}
           </div>
         {:else}
-          <p class="waiting" role="status">{t("arena.versus.waiting")}</p>
+          <p class="waiting" part="ArenaVersus.caption" role="status">{t("arena.versus.waiting")}</p>
         {/if}
       </div>
     </div>
@@ -69,38 +69,29 @@
 <style>
 /* Drawn over the scene: the style's tag halo holds its text there. */
 :host { text-shadow: var(--tag-halo); }
-:host { display: flex; inline-size: stretch; min-inline-size: 0; max-block-size: stretch; }
-.stage { display: flex; width: stretch; min-width: 0; align-items: center; gap: var(--space-lg); }
-[part="ArenaVersus.side ArenaVersus.plate"] { display: flex; flex-direction: column; flex: 1 1 0; min-width: 0; gap: var(--space-sm); padding: var(--space-md); animation-duration: var(--motion-duration-slow); animation-timing-function: var(--motion-easing-out); animation-fill-mode: both; }
-.side.a { animation-name: arena-from-start; }
-.side.b, .side.a:dir(rtl) { animation-name: arena-from-end; }
-.side.b:dir(rtl) { animation-name: arena-from-start; }
+:host { inline-size: stretch; min-inline-size: 0; max-block-size: stretch; align-items: stretch; }
+.stage { width: stretch; min-width: 0; }
+[part="ArenaVersus.side ArenaVersus.plate"] { min-width: 0; padding: var(--space-md); }
 [part="ArenaVersus.heading"] { margin: 0; text-align: center; white-space: nowrap; text-overflow: ellipsis; overflow: hidden; }
-.cards { display: flex; flex-direction: column; gap: var(--space-sm); }
-[part="ArenaVersus.card"] { display: flex; align-items: center; gap: var(--space-md); padding: var(--space-sm); background: var(--control); border-radius: var(--radius-control); }
+[part="ArenaVersus.card"] { padding: var(--space-sm); }
 .b [part="ArenaVersus.card"] { flex-direction: row-reverse; }
-[part="ArenaVersus.portrait ArenaVersus.picture"] { display: flex; flex: none; width: var(--size-xl); height: var(--size-xl); align-items: center; justify-content: center; overflow: hidden; }
+[part="ArenaVersus.portrait ArenaVersus.picture"] { --layout-ratio: 1; flex: none; width: var(--size-xl); height: var(--size-xl); overflow: hidden; }
 .art { width: stretch; height: stretch; object-fit: cover; object-position: center top; }
 .glyph { width: var(--size-md); height: var(--size-md); }
-.who { display: flex; flex-direction: column; flex: 1; min-width: 0; gap: var(--space-xxs); }
-.name { font: var(--text-lg); font-weight: var(--font-weight-semibold); }
-.character, .rank { font: var(--text-sm); color: var(--ink-muted); }
+.who { min-width: 0; }
+.name { --headline-text: var(--text-lg); }
 .name, .character, .rank { max-inline-size: stretch; white-space: nowrap; text-overflow: ellipsis; overflow: hidden; text-align: start; }
 .rank { inline-size: stretch; white-space: normal; overflow-wrap: anywhere; }
 .b .name, .b .character, .b .rank { text-align: end; }
 .you { align-self: flex-start; white-space: nowrap; padding: 0 var(--space-xs); }
 .b .you { align-self: flex-end; }
-.waiting { margin: 0; padding: var(--space-lg); text-align: center; color: var(--ink-muted); }
-.seal { display: flex; flex: none; width: var(--size-xl); height: var(--size-xl); align-items: center; justify-content: center; animation-name: arena-seal; animation-duration: var(--motion-duration-bounce); animation-timing-function: var(--motion-easing-snappy); animation-fill-mode: both; }
-.vs { font: var(--text-xl2); font-weight: var(--font-weight-bold); white-space: nowrap; }
-@keyframes arena-from-start { from { opacity: 0; translate: -12% 0; } to { opacity: 1; translate: 0 0; } }
-@keyframes arena-from-end { from { opacity: 0; translate: 12% 0; } to { opacity: 1; translate: 0 0; } }
-@keyframes arena-seal { from { opacity: 0; scale: 1.8; } to { opacity: 1; scale: 1; } }
-@media (prefers-reduced-motion: reduce) { [part="ArenaVersus.side ArenaVersus.plate"], .seal { animation-name: none; } }
+.waiting { margin: 0; padding: var(--space-lg); text-align: center; }
+.seal { --layout-ratio: 1; flex: none; width: var(--size-xl); height: var(--size-xl); }
+.vs { --badge-text: var(--text-xl2); white-space: nowrap; }
 /* The reveal fills the screen, so the screen's width decides: a phone stacks the sides with the seal between them. */
 @media (width < 600px) {
-  .stage { flex-direction: column; align-items: stretch; gap: var(--space-xs); }
-  [part="ArenaVersus.side ArenaVersus.plate"] { padding: var(--space-xs); gap: var(--space-xs); }
+  .stage { flex-direction: column; align-items: stretch; --layout-gap-wide: var(--space-xs); }
+  [part="ArenaVersus.side ArenaVersus.plate"] { flex: none; padding: var(--space-xs); --layout-gap: var(--space-xs); }
   .seal { align-self: center; width: var(--size-lg); height: var(--size-lg); }
   [part="ArenaVersus.portrait ArenaVersus.picture"] { width: var(--size-lg); height: var(--size-lg); }
   .glyph { width: var(--size-sm); height: var(--size-sm); }

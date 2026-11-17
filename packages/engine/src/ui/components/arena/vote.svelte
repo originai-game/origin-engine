@@ -1,6 +1,6 @@
 <meta name="component" content="ArenaVote">
 <meta name="strings" content="./vote.en.ogt">
-<meta name="parts" content="ArenaVote.frame ArenaVote.title ArenaVote.detail ArenaVote.timer ArenaVote.options ArenaVote.option ArenaVote.icon ArenaVote.name ArenaVote.description ArenaVote.tally ArenaVote.state ArenaVote.empty">
+<meta name="parts" content="ArenaVote.frame ArenaVote.title ArenaVote.detail ArenaVote.timer ArenaVote.options ArenaVote.option ArenaVote.icon ArenaVote.name ArenaVote.description ArenaVote.tally ArenaVote.state ArenaVote.empty ArenaVote.caption ArenaVote.headline ArenaVote.figure ArenaVote.fade">
 <meta name="prop:title" content="string" data-doc="Heading; empty uses Map vote.">
 <meta name="prop:detail" content="string" data-doc="Voting rules or a disabled reason, supplied by the game.">
 <meta name="prop:timeText" content="string" data-doc="Game-owned time remaining; empty hides it. Hidden once closed.">
@@ -17,50 +17,45 @@
 <meta name="fixture:empty" content='{"options":[],"selected":"","detail":"Waiting for the host to choose maps"}'>
 <meta name="fixture:overflow" content='{"title":"Championship Series · Deciding map selection","options":[{"id":"isles","name":"The Shattered Isles of the Unforgotten Ancients","icon":"map","detail":"An extended description that must remain readable without pushing a vote count off the phone","votes":1234567,"disabled":false,"reason":""},{"id":"grove","name":"Moonlit Grove","icon":"leaf","detail":"Open lanes","votes":99,"disabled":false,"reason":""}],"selected":"isles"}'>
 
-<section id="ArenaVote" part="ArenaVote.frame" aria-label={title || t("vote.title")} aria-busy={loading}>
+<section id="ArenaVote" part="ArenaVote.frame" data-layout="shell" aria-label={title || t("vote.title")} aria-busy={loading}>
   <h2 part="ArenaVote.title">{title || t("vote.title")}</h2>
-  {#if detail}<p part="ArenaVote.detail">{detail}</p>{/if}
-  {#if closed}<div part="ArenaVote.state" role="status">{t("vote.closed")}</div>{:else}{#if timeText}<div part="ArenaVote.timer">{timeText}</div>{/if}{/if}
-  {#if loading}<p part="ArenaVote.empty" role="status">{t("vote.loading")}</p>
+  {#if detail}<p part="ArenaVote.detail ArenaVote.caption">{detail}</p>{/if}
+  {#if closed}<div part="ArenaVote.state ArenaVote.caption" role="status">{t("vote.closed")}</div>{:else}{#if timeText}<div part="ArenaVote.timer ArenaVote.figure">{timeText}</div>{/if}{/if}
+  {#if loading}<p part="ArenaVote.empty ArenaVote.caption" role="status">{t("vote.loading")}</p>
   {:else}{#if options.length}
-    <div class="scroll-area">
-    <div part="ArenaVote.options" role="group" aria-label={t("vote.options")}>
+    <div class="scroll-area" data-layout="stack" data-gap="none">
+    <div part="ArenaVote.options" data-layout="scroll" role="group" aria-label={t("vote.options")}>
       {#each options as o (o.id)}
         <button id="Choose" part="ArenaVote.option" aria-pressed={selected == o.id} disabled={!canVote || closed || o.disabled} onclick={choose}>
-          <div class="option-body">
+          <div class="option-body" data-layout="cluster">
           {#if o.icon}<og-icon part="ArenaVote.icon" icon={o.icon}></og-icon>{/if}
-          <div class="copy">
-            <div part="ArenaVote.name">{o.name}</div>
-            {#if o.detail}<div part="ArenaVote.description">{o.detail}</div>{/if}
-            {#if selected == o.id}<div part="ArenaVote.state">{t("vote.selected")}</div>{/if}
-            {#if closed && winner == o.id}<div part="ArenaVote.state">{t("vote.winner")}</div>{/if}
-            {#if o.disabled && o.reason}<div part="ArenaVote.state">{o.reason}</div>{/if}
+          <div class="copy" data-layout="stack" data-gap="hair" data-fill>
+            <div part="ArenaVote.name ArenaVote.headline">{o.name}</div>
+            {#if o.detail}<div part="ArenaVote.description ArenaVote.caption">{o.detail}</div>{/if}
+            {#if selected == o.id}<div part="ArenaVote.state ArenaVote.caption">{t("vote.selected")}</div>{/if}
+            {#if closed && winner == o.id}<div part="ArenaVote.state ArenaVote.caption" data-tone="success">{t("vote.winner")}</div>{/if}
+            {#if o.disabled && o.reason}<div part="ArenaVote.state ArenaVote.caption">{o.reason}</div>{/if}
           </div>
-          <div part="ArenaVote.tally">{t("vote.tally", { count: formatNumber(o.votes) })}</div>
+          <div part="ArenaVote.tally ArenaVote.figure">{t("vote.tally", { count: formatNumber(o.votes) })}</div>
           </div>
         </button>
       {/each}
     </div>
-    <div class="scroll-fade"></div>
+    <div class="scroll-fade" part="ArenaVote.fade" data-anchor="bottom-edge"></div>
     </div>
-  {:else}<p part="ArenaVote.empty" role="status">{t("vote.empty")}</p>{/if}{/if}
+  {:else}<p part="ArenaVote.empty ArenaVote.caption" role="status">{t("vote.empty")}</p>{/if}{/if}
 </section>
 <style>
-:host { display: flex; flex-direction: column; inline-size: stretch; max-block-size: stretch; gap: var(--space-sm); container-type: inline-size; }
-[part="ArenaVote.title"], [part="ArenaVote.detail"], [part="ArenaVote.empty"] { margin: 0; overflow-wrap: anywhere; }
-[part="ArenaVote.title"], [part="ArenaVote.detail"], [part="ArenaVote.timer"] { flex: none; }
-[part="ArenaVote.detail"], [part="ArenaVote.empty"] { color: var(--ink-muted); }
-[part="ArenaVote.timer"], [part="ArenaVote.tally"] { font-family: var(--figure-font); }
-.scroll-area { display: flex; flex-direction: column; position: relative; min-block-size: 0; }
-[part="ArenaVote.options"] { display: flex; flex-direction: column; gap: var(--space-sm); overflow-y: auto; min-block-size: 0; padding-block-end: var(--space-lg); }
-.scroll-fade { position: absolute; inset-inline: 0; bottom: 0; block-size: var(--space-lg); pointer-events: none; background: linear-gradient(transparent, var(--panel)); }
+:host { inline-size: stretch; block-size: auto; max-block-size: stretch; }
+[part="ArenaVote.title"], [part~="ArenaVote.detail"], [part~="ArenaVote.empty"] { margin: 0; overflow-wrap: anywhere; }
+[part="ArenaVote.title"], [part~="ArenaVote.detail"], [part~="ArenaVote.timer"] { flex: none; }
+.scroll-area { position: relative; min-block-size: 0; }
+[part="ArenaVote.options"] { min-block-size: 0; padding-block-end: var(--space-lg); }
 [part="ArenaVote.option"] { flex: none; min-block-size: var(--size-touch); text-align: start; }
-.option-body { display: flex; inline-size: stretch; flex-wrap: wrap; align-items: center; gap: var(--space-sm); }
+.option-body { inline-size: stretch; }
 [part="ArenaVote.icon"] { flex: none; inline-size: var(--size-sm); block-size: var(--size-sm); }
-.copy { display: flex; flex-direction: column; flex: 1; min-inline-size: 0; gap: var(--space-xxs); }
-[part="ArenaVote.name"] { font-weight: var(--font-weight-semibold); }
-[part="ArenaVote.name"], [part="ArenaVote.description"], [part="ArenaVote.tally"], [part="ArenaVote.state"] { overflow-wrap: anywhere; }
-[part="ArenaVote.description"], [part="ArenaVote.state"] { font: var(--text-sm); }
-[part="ArenaVote.tally"] { flex: 0 1 auto; }
-@container (width < 400px) { [part="ArenaVote.tally"] { flex-basis: 100%; text-align: end; } }
+.copy { min-inline-size: 0; }
+[part~="ArenaVote.name"], [part~="ArenaVote.description"], [part~="ArenaVote.tally"], [part~="ArenaVote.state"] { overflow-wrap: anywhere; }
+[part~="ArenaVote.tally"] { flex: 0 1 auto; }
+@container (width < 400px) { [part~="ArenaVote.tally"] { flex-basis: 100%; text-align: end; } }
 </style>
