@@ -634,11 +634,20 @@ pub fn cook(
     }
 
     // OpenType features: every glyph their lookups substitute for the
-    // charset's (small caps, tabular figures), drawn as glyph ids.
-    let featured = if s.features.is_empty() {
+    // charset's (small caps, tabular figures), drawn as glyph ids. A face
+    // with `tnum` always brings its tabular figures: the default style
+    // turns them on for its figures and badges, and a shaped run would
+    // otherwise draw forms the atlas lacks.
+    let mut features = s.features.clone();
+    if !features.iter().any(|t| t == "tnum")
+        && !feature_lookups(&face, &["tnum".to_string()]).is_empty()
+    {
+        features.push("tnum".to_string());
+    }
+    let featured = if features.is_empty() {
         0
     } else {
-        let lookups = feature_lookups(&face, &s.features);
+        let lookups = feature_lookups(&face, &features);
         let start: Vec<ttf_parser::GlyphId> = wanted
             .iter()
             .filter(|&&cp| cp < GLYPH_ID_KEYS)
@@ -976,13 +985,13 @@ pub fn cook(
             bytes.len()
         ));
     }
-    if !s.features.is_empty() {
+    if !features.is_empty() {
         note.push_str(&format!(
-            "; OpenType features {}: {featured} glyph(s) by id and the font file for run-time shaping",
-            s.features.join(" ")
+            "; OpenType features {}: {featured} glyph(s) by id",
+            features.join(" ")
         ));
     }
-    note.push_str(&figures_note(&face, &wanted, &s.features));
+    note.push_str(&figures_note(&face, &wanted, &features));
     if s.pixel > 0 {
         note.push_str(&format!("; pixel font on a {} px grid", s.pixel));
         let (off, all) = off_grid(&face, &wanted, s.pixel);
@@ -1584,31 +1593,50 @@ mod tests {
         assert!(bad.is_empty(), "seams inside the fill: {bad:?}");
     }
 
-    /// Inter's default figures are proportional: cooked without `tnum` it
-    /// is warned about, with the face's own `tnum` it is not.
+    /// Inter's default figures are proportional and its `tnum` makes them
+    /// tabular. The default style turns `tnum` on for its figures, so a
+    /// face that has it brings its tabular figures into the atlas without
+    /// a `features tnum` line: a shaped struck price draws them, not
+    /// glyphs the atlas lacks, and no figure warning is left to give.
     #[test]
-    fn proportional_figures_are_warned_without_tnum() {
+    fn a_face_with_tnum_brings_its_tabular_figures() {
         let path = concat!(
             env!("CARGO_MANIFEST_DIR"),
             "/../../tests/fixtures/ui-text/assets/fonts/Inter-Display.ttf"
         );
         let bytes = std::fs::read(path).expect("the kit's Inter");
-        let note = |features: &[&str]| {
-            let s = FontSettings {
-                charset: vec!["ascii".into()],
-                em_px: 16.0,
-                features: features.iter().map(|t| t.to_string()).collect(),
-                ..FontSettings::default()
-            };
-            cook(&bytes, &s, 2, 0).expect("cooks").1.note
+        let face = ttf_parser::Face::parse(&bytes, 0).unwrap();
+        let one = face.glyph_index('1').unwrap();
+        let lookups = feature_lookups(&face, &["tnum".to_string()]);
+        let tabular: Vec<u16> = closure_of(&face, &[one], Some(&lookups))
+            .into_iter()
+            .filter(|&g| g != one.0)
+            .collect();
+        assert!(!tabular.is_empty(), "tnum maps 1 to its tabular form");
+        let s = FontSettings {
+            charset: vec!["ascii".into()],
+            em_px: 16.0,
+            ..FontSettings::default()
         };
-        let plain = note(&[]);
+        let (blob, cooked) = cook(&bytes, &s, 2, 0).expect("cooks");
+        let b = og_blob::Blob::parse(&blob, "test").unwrap();
+        let rows: Vec<u32> = b
+            .table::<GlyphRow>("glyphs", row_hash::<GlyphRow>())
+            .unwrap()
+            .iter()
+            .map(|r| r.codepoint)
+            .collect();
+        for g in tabular {
+            assert!(
+                rows.contains(&(GLYPH_ID_KEYS + u32::from(g))),
+                "the tabular 1 (glyph {g}) is in the atlas"
+            );
+        }
         assert!(
-            plain.contains("proportional figures") && plain.contains("not imported"),
-            "{plain}"
+            !cooked.note.contains("proportional figures"),
+            "{}",
+            cooked.note
         );
-        let tnum = note(&["tnum"]);
-        assert!(!tnum.contains("proportional figures"), "{tnum}");
     }
 
     /// `pixel 12` cooks Fusion Pixel as its 12-pixel cells: every advance
