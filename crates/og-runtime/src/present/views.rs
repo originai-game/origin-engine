@@ -340,6 +340,8 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState, keys: &[(u64, u32)], 
             clear: v.clear.then(|| Vec3::new(c.r, c.g, c.b)),
             every: v.every_ticks,
             mirror: None,
+            // The scene's debug view tints every view (RenderScene::lod_debug).
+            lod_debug: false,
         });
         rs.views.entities.push(e);
     }
@@ -365,6 +367,7 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState, keys: &[(u64, u32)], 
                 width: v.width,
                 height: v.height,
             }),
+            lod_debug: false,
         });
         rs.views.entities.push(e);
     }

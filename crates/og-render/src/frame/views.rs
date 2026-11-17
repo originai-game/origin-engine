@@ -103,6 +103,11 @@ pub struct View {
     pub every: u32,
     /// A mirror: the camera reflected in the quad, the image fitted to it.
     pub mirror: Option<MirrorQuad>,
+    /// Tints the clustered instances it draws by the level of detail its
+    /// own culling picked, as [`crate::RenderScene::lod_debug`] does for
+    /// every view: a picture-in-picture of the levels beside an untinted
+    /// frame.
+    pub lod_debug: bool,
 }
 
 impl Default for View {
@@ -115,6 +120,7 @@ impl Default for View {
             clear: None,
             every: 1,
             mirror: None,
+            lod_debug: false,
         }
     }
 }

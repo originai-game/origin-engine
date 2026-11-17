@@ -89,7 +89,8 @@ fn meshlet_vertex(vi: u32, ii: u32) -> MeshletVertex {
     let f = meshlet_rows(c.w, index);
     r.v.position += meshlet_sway(r.rest, f[0], f[1], f[2], r.model, meshlet_draw.wind[0], foliage_sway(r.look.x), false);
   }
-  if (meshlet_draw.flags.x != 0u) {
+  // The scene's tint, or the view's own (frame.drawn.y, View::lod_debug).
+  if (meshlet_draw.flags.x != 0u || frame.drawn.y != 0u) {
     r.look.y = 0.8;
     r.look.z = meshlet_level_color(c.z);
   }
