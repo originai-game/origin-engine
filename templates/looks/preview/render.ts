@@ -3,18 +3,20 @@
 // that look draws. preview.json says which scene and art each look or
 // variant takes; a scene is copied to target/look-previews/<name>/, its
 // look set to extend the preset (and the variant), cooked and run headless
-// for one frame at 1.5 s.
+// for one frame at 1.5 s. The 2D scene is staged by 2d/stage.ts.
 //
 //   bun templates/looks/preview/render.ts [--out DIR] [--size WxH] [--webp] [name ...]
 //
 // A name is a look slug or <slug>:<variant>; none draws every look of the
-// catalogue. Writes DIR/<name>.png (default target/look-previews/frames);
-// with --webp the catalogue's previews/<slug>.webp too (960x540, by
-// ImageMagick). Run the og and addon of the commit under test (OG_NATIVE_ADDON,
+// catalogue. Writes DIR/<name>.png (default target/look-previews/frames),
+// 960x540 unless --size or the look's entry names a size; with --webp the
+// catalogue's previews/<slug>.webp too (960x540, by ImageMagick). Run the og and addon of the commit under test (OG_NATIVE_ADDON,
 // OG_ENGINE_PACKAGE): a preset is include_str! into og-cook.
-import { cpSync, existsSync, mkdirSync, readdirSync, readFileSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
+import { cpSync, existsSync, mkdirSync, readFileSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { spawnSync } from "node:child_process";
+import { stage2d } from "./2d/stage.ts";
+import type { Scene2d } from "./2d/stage.ts";
 
 const repo = resolve(import.meta.dir, "../../..");
 const looks = join(repo, "templates/looks");
@@ -27,18 +29,17 @@ const flag = (k: string, d: string) => {
   return v;
 };
 const out = resolve(flag("--out", join(repo, "target/look-previews/frames")));
-const size = flag("--size", "960x540");
+const size = flag("--size", "");
 const og = resolve(flag("--og", join(repo, "target/debug/og")));
 const webp = args.includes("--webp");
 const names = args.filter((a) => !a.startsWith("--"));
 
-interface Scene {
+interface Scene extends Scene2d {
   scene: "2d" | "3d";
   models?: string;
-  art?: string;
   sprites?: Record<string, { file: string; height: number }>;
-  view?: number;
-  heights?: Record<string, number>;
+  /** The frame's size when --size names none: a pixel look's whole multiple of its grid. */
+  size?: string;
 }
 const table = JSON.parse(readFileSync(join(import.meta.dir, "preview.json"), "utf8")) as Record<string, Scene>;
 const catalogue = JSON.parse(readFileSync(join(repo, "packages/knowledge/looks/catalogue.json"), "utf8")) as { styles: { slug: string }[] };
@@ -60,13 +61,6 @@ const aspect = (file: string) => {
   return w / h;
 };
 
-/** The art directory's file for a beat (hero.png, ground.jpg, ...). */
-function beatFile(dir: string, beat: string): string {
-  const f = readdirSync(dir).find((n) => n.startsWith(`${beat}.`) && /\.(png|jpe?g)$/.test(n));
-  if (!f) throw new Error(`${dir}: no ${beat}.png or .jpg`);
-  return f;
-}
-
 mkdirSync(out, { recursive: true });
 let failed = 0;
 for (const name of todo) {
@@ -74,7 +68,7 @@ for (const name of todo) {
   const scene: Scene = table[name] ?? table[slug] ?? { scene: "3d" };
   const dir = join(repo, "target/look-previews", name.replace(":", "@"));
   rmSync(dir, { recursive: true, force: true });
-  cpSync(join(import.meta.dir, scene.scene), dir, { recursive: true });
+  cpSync(join(import.meta.dir, scene.scene), dir, { recursive: true, filter: (from) => !/\/2d\/(tools|stage\.ts)/.test(from) });
   mkdirSync(join(dir, "node_modules/@origingame"), { recursive: true });
   symlinkSync(join(repo, "packages/engine"), join(dir, "node_modules/@origingame/engine"));
   mkdirSync(join(dir, "assets/looks"), { recursive: true });
@@ -89,25 +83,11 @@ for (const name of todo) {
     const ground = existsSync(join(dir, "assets/models/field.ogt")) ? "models/field.ogt" : "models/ground.glb";
     writeFileSync(join(dir, "src/sprites.ts"), `// Written by templates/looks/preview/render.ts from preview.json.\nexport const GROUND = ${JSON.stringify(ground)};\nexport const SPRITES: Record<string, { path: string; width: number; height: number }> = ${JSON.stringify(sprites)};\n`);
   } else {
-    const art = join(looks, scene.art!);
-    cpSync(art, join(dir, "assets/art"), { recursive: true });
-    // The far layer is drawn at the look's logical resolution: without its
-    // own import settings the cook would conform it to a sprite's cell.
-    const back = beatFile(art, "backdrop");
-    if (!existsSync(join(art, `${back}.ogt`))) {
-      const long = Math.max(...size2(join(art, back)));
-      writeFileSync(join(dir, "assets/art", `${back}.ogt`), `type import\nversion 1\n---\n# Written by templates/looks/preview/render.ts: the far layer keeps its drawn size.\nconform {\n  size ${long}\n}\n`);
-    }
-    const sprites: Record<string, { file: string; width: number; height: number }> = {};
-    for (const [beat, h] of Object.entries(scene.heights!)) {
-      const file = beatFile(art, beat);
-      sprites[beat] = { file, width: h * aspect(join(art, file)), height: h };
-    }
-    writeFileSync(join(dir, "src/sprites.ts"), `// Written by templates/looks/preview/render.ts from preview.json.\nexport const VIEW_HEIGHT = ${scene.view};\nexport const ART: Record<string, { file: string; width: number; height: number }> = ${JSON.stringify(sprites)};\n`);
+    stage2d(dir, name, scene, looks, repo);
   }
   const file = `${name.replace(":", "@")}.png`;
   rmSync(join(out, file), { force: true });
-  const run = spawnSync(og, ["run", dir, "--headless", "--size", size, "--out", out, "--commands", `1.5:screenshot:${file};1.6:quit`], { encoding: "utf8", timeout: 300_000 });
+  const run = spawnSync(og, ["run", dir, "--headless", "--size", size || scene.size || "960x540", "--out", out, "--commands", `1.5:screenshot:${file};1.6:quit`], { encoding: "utf8", timeout: 300_000 });
   if (run.status !== 0 || !existsSync(join(out, file))) {
     failed++;
     console.log(`${name}: run failed (${run.status}): ${(run.stderr || run.stdout).trim().split("\n").slice(-4).join(" | ")}`);
