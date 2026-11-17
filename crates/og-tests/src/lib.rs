@@ -19,6 +19,7 @@ pub mod ibl_scenes;
 pub mod impostor_scenes;
 pub mod kit;
 pub mod light_scenes;
+pub mod lighting_scenes;
 pub mod ocean_scenes;
 pub mod p2_scenes;
 pub mod physical_scenes;

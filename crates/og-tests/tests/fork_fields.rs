@@ -151,7 +151,10 @@ fn shadow_of(post: Vec3) -> (Vec3, Vec3) {
 #[test]
 #[ignore = "requires GPU"]
 fn the_shadow_box_shadows_inside_it_and_lights_outside_it() {
-    let (desc, scene) = built("shadow-box");
+    // The registered scene is a shot of the feature; this measures its
+    // plain fixture.
+    let (desc, _) = built("shadow-box");
+    let scene = fs::shadow_box_scene();
     let (near, open_near) = shadow_of(fs::BOX_NEAR_POST);
     let (far, open_far) = shadow_of(fs::BOX_FAR_POST);
     let near = around(project(&scene, near), 2);
@@ -236,7 +239,8 @@ fn the_shadow_box_shadows_inside_it_and_lights_outside_it() {
 #[test]
 #[ignore = "requires GPU"]
 fn the_hemisphere_light_lights_by_facing_and_only_diffusely() {
-    let (desc, scene) = built("hemisphere-light");
+    let (desc, _) = built("hemisphere-light");
+    let scene = fs::hemisphere_scene();
     let off = |i: f32| {
         let mut s = fs::hemisphere_scene();
         s.lighting.hemisphere.2 = i;
