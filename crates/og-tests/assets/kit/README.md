@@ -26,8 +26,10 @@ prompt, IDs and checksums) are in the `origin-generated-assets` bucket
 | `streetlamp.glb` | 3,000 | `meshy/model/showcase-weather-streetlamp-v1/` | `c5a2dd3a0f1544790517fb9d05ff35b8e41c79f3caab72421a86abca1f29c018` |
 | `car.glb` | 11,598 | `meshy/model/showcase-weather-car-v1/` | `7f83959ae7d1156128d96488a07582525e38789557fa1136be694487fa6c8413` |
 | `adobe.glb` | 8,941 | `meshy/model/showcase-weather-adobe-v2/` | `34c3eb207e6c69df6b34a465724b1dffd092bd487d407c4ea597433d07611782` |
+| `counter.glb` | 11,820 | `meshy/model/showcase-weather-counter-v1/` | `33000305a33547bdadd9754052cc04e0e29b50cdb736662e2fa4527f373acf09` |
 
-The weather set's four (townhouse, street lamp, car, adobe house) are
+The weather set's five (townhouse, street lamp, car, adobe house, a
+market counter of produce) are
 Meshy text-to-3D instead: `generate_3d` `text_preview` (meshy-6, triangles,
 remeshed) then `text_refine` with PBR, no concept image; each bucket key
 holds the model and the receipt (prompts, operation and task IDs). The
@@ -90,6 +92,7 @@ required.
 | `ground/grass.{color,normal,orm}.jpg` | `grp_b9a4454916bfef3264` | Aerial Grass Rock | `1a2ddfa4652adbe00447b940c40019d46f4b88245bc1b341cdf622c2110b7bc5` |
 | `ground/cobbles.{color,normal,orm}.jpg` | `grp_776009be378c7de71b` | Cobblestone 01 | `c224786e89cae7e2835a8dfafa6473c47d4d6deac0cca1db358002b8b6c4877e` |
 | `ground/rock.{color,normal}.jpg` | `grp_28a4c1a58ffc4b45d1` | Rock Face 03 | `644ee79df7ffbf5f6afc330b64dd3f33794bab8820915fe61ffe0c88ecfd7ece` |
+| `ground/planks.{color,normal,orm}.jpg` | `grp_5f733073766da2cdff` | Brown Planks 03 | `1140ceac531c2dfe2e714357e34cd81cce62878ced24fa711b87c4ca24416058` |
 
 `color` is the diffuse map, `normal` the OpenGL normal map, `orm` the
 occlusion (red), roughness (green) and metal (blue) map. The rock is a
