@@ -194,43 +194,137 @@ fn declutter(
         return None;
     }
     let moved = |d: Vec2| Rect::new(b.x + d.x, b.y + d.y, b.width, b.height);
-    let fits = |d: Vec2| {
-        let r = moved(d);
-        d.length() <= reach
-            && r.x >= inside.x - 0.5
-            && r.y >= inside.y - 0.5
-            && r.right() <= inside.right() + 0.5
-            && r.bottom() <= inside.bottom() + 0.5
-            && clear(&r)
-    };
     let (mut xs, mut ys) = (vec![0.0], vec![0.0]);
-    for p in placed.iter().filter(|p| p.overlaps(&b.outset(reach))) {
+    let nearby = b.outset(reach);
+    for p in placed.iter().filter(|p| p.overlaps(&nearby)) {
         xs.extend([p.x - gap - b.right(), p.right() + gap - b.x]);
         ys.extend([p.y - gap - b.bottom(), p.bottom() + gap - b.y]);
     }
-    let nearest = |mut tries: Vec<Vec2>| {
-        // Shortest first; equal ones straight before aslant, then up and
-        // to the start, so a tie settles the same way every tick.
-        og_core::sort::sort_by(&mut tries, |a, c| {
-            (a.length(), a.x.abs(), a.y, a.x)
-                .partial_cmp(&(c.length(), c.x.abs(), c.y, c.x))
-                .unwrap_or(std::cmp::Ordering::Equal)
-        });
-        tries.into_iter().find(|&d| fits(d))
-    };
-    if mode == Declutter::Stack {
-        for up in [true, false] {
-            let way = ys.iter().filter(|&&y| if up { y < 0.0 } else { y > 0.0 });
-            if let Some(d) = nearest(way.map(|&y| Vec2::new(0.0, y)).collect()) {
-                return Some(d);
+    // Keep the same coordinates, but sweep their free y intervals instead
+    // of materialising and sorting the Cartesian product. Each obstacle
+    // excludes one contiguous interval of sorted candidate ordinates.
+    xs.retain(|&x| {
+        Vec2::new(x, 0.0).length() <= reach
+            && b.x + x >= inside.x - 0.5
+            && b.x + x + b.width <= inside.right() + 0.5
+    });
+    ys.retain(|&y| {
+        Vec2::new(0.0, y).length() <= reach
+            && b.y + y >= inside.y - 0.5
+            && b.y + y + b.height <= inside.bottom() + 0.5
+    });
+    // Coordinates are deduplicated, and equal-start intervals commute:
+    // these sorts have no meaningful tie order to preserve.
+    ys.sort_unstable_by(f32::total_cmp);
+    ys.dedup();
+    if xs.is_empty() || ys.is_empty() {
+        return None;
+    }
+    let zero = ys.partition_point(|&y| y < 0.0);
+    if mode == Declutter::Stack && xs.contains(&0.0) {
+        // Stacks usually have room on their own vertical. Test it before
+        // building the two-dimensional collision index. A collision rules
+        // out a whole run of ordinates, not just the one tested.
+        let free = |at: usize| clear(&moved(Vec2::new(0.0, ys[at])));
+        let mut end = zero;
+        while end > 0 {
+            let at = end - 1;
+            let r = moved(Vec2::new(0.0, ys[at])).outset(gap - 0.01);
+            if let Some(p) = placed.iter().find(|p| p.overlaps(&r)) {
+                end = ys[..at].partition_point(|&y| {
+                    moved(Vec2::new(0.0, y)).outset(gap - 0.01).bottom() <= p.y
+                });
+            } else {
+                let length = Vec2::new(0.0, ys[at]).length();
+                let lo = ys[..=at].partition_point(|&y| Vec2::new(0.0, y).length() > length);
+                let at = (lo..=at).find(|&at| free(at)).unwrap();
+                return Some(Vec2::new(0.0, ys[at]));
+            }
+        }
+        let mut at = ys.partition_point(|&y| y <= 0.0);
+        while at < ys.len() {
+            let r = moved(Vec2::new(0.0, ys[at])).outset(gap - 0.01);
+            if let Some(p) = placed.iter().find(|p| p.overlaps(&r)) {
+                at += 1 + ys[at + 1..].partition_point(|&y| {
+                    moved(Vec2::new(0.0, y)).outset(gap - 0.01).y < p.bottom()
+                });
+            } else {
+                return Some(Vec2::new(0.0, ys[at]));
             }
         }
     }
-    nearest(
-        xs.iter()
-            .flat_map(|&x| ys.iter().map(move |&y| Vec2::new(x, y)))
-            .collect(),
-    )
+    xs.sort_unstable_by(f32::total_cmp);
+    xs.dedup();
+    let leftmost = moved(Vec2::new(xs[0], 0.0)).outset(gap - 0.01).x;
+    let rightmost = moved(Vec2::new(xs[xs.len() - 1], 0.0))
+        .outset(gap - 0.01)
+        .right();
+    let edges: Vec<_> = ys
+        .iter()
+        .map(|&y| {
+            let r = moved(Vec2::new(0.0, y)).outset(gap - 0.01);
+            (r.y, r.bottom())
+        })
+        .collect();
+    let topmost = edges[0].0;
+    let bottommost = edges[edges.len() - 1].1;
+    let mut blocked = Vec::new();
+    for p in placed {
+        if p.x >= rightmost || p.right() <= leftmost || p.y >= bottommost || p.bottom() <= topmost {
+            continue;
+        }
+        let top = edges.partition_point(|&(_, bottom)| bottom <= p.y);
+        let bottom = edges.partition_point(|&(top, _)| top < p.bottom());
+        if top < bottom {
+            blocked.push((p.x, p.right(), top, bottom));
+        }
+    }
+    blocked.sort_unstable_by_key(|(_, _, top, _)| *top);
+    xs.sort_unstable_by(|a, c| a.abs().total_cmp(&c.abs()).then(a.total_cmp(c)));
+    let order = |d: Vec2| (d.length(), d.x.abs(), d.y, d.x);
+    let mut best: Option<Vec2> = None;
+    for x in xs {
+        // No y can make this or a farther x nearer than the best spot.
+        if best.is_some_and(|d| Vec2::new(x, 0.0).length() > d.length()) {
+            break;
+        }
+        let mut free = |lo: usize, hi: usize| {
+            if lo >= hi {
+                return;
+            }
+            for at in [
+                zero.clamp(lo, hi - 1),
+                zero.saturating_sub(1).clamp(lo, hi - 1),
+            ] {
+                let length = Vec2::new(x, ys[at]).length();
+                // Preserve the old up-first tie when lengths round equal.
+                let at = if ys[at] < 0.0 {
+                    lo + ys[lo..=at].partition_point(|&y| Vec2::new(x, y).length() > length)
+                } else {
+                    at
+                };
+                let d = Vec2::new(x, ys[at]);
+                if d.length() <= reach && best.is_none_or(|old| order(d) < order(old)) {
+                    best = Some(d);
+                }
+            }
+        };
+        let r = moved(Vec2::new(x, 0.0)).outset(gap - 0.01);
+        let (left, right) = (r.x, r.right());
+        let mut start = 0;
+        for &(obstacle_left, obstacle_right, lo, hi) in &blocked {
+            if hi <= start || obstacle_left >= right || obstacle_right <= left {
+                continue;
+            }
+            free(start, lo);
+            start = start.max(hi);
+            if start >= ys.len() {
+                break;
+            }
+        }
+        free(start, ys.len());
+    }
+    best
 }
 
 /// The most numbers a template lays apart on one tick; the rest stand on

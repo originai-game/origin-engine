@@ -623,8 +623,9 @@ pub(crate) fn input_changes(a: &Node, b: &Node) -> Changed {
         && a.grid().columns == b.grid().columns
         && a.shape_outside == b.shape_outside
         && a.float == b.float
-        // A layer's layout is made again every frame.
-        && a.float == Float::None
+        // World projection changes the drawing, not its CSS layout.
+        // Screen-placed layers still restore their layout every frame.
+        && matches!(a.float, Float::None | Float::World)
         && a.children == b.children
         && a.out == b.out
         && a.floats == b.floats;

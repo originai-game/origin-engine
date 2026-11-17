@@ -700,7 +700,8 @@ impl crate::ui::Layout {
                 }
                 !a.changed.has(Changed::LAYOUT)
             } else {
-                a.float == Float::None && !a.props.variants.iter().any(|v| v.when.container)
+                matches!(a.float, Float::None | Float::World)
+                    && !a.props.variants.iter().any(|v| v.when.container)
             };
             k.clean[i] = !fresh
                 && same_layout

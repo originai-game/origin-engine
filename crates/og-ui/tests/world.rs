@@ -393,10 +393,10 @@ fn a_document_ground_follows_the_camera_and_builds_nothing() {
     assert!((centre.x - W / 2.0).abs() < 2.0, "{q:?}");
     let idle = tick(&mut ui, above, InputFrame::default());
     let items = ui.frame().items.clone();
-    // Laid out: the layer's root alone, as every layer each tick.
+    // Projection does not change the layer's CSS layout.
     assert_eq!(
         (idle.bindings, idle.reconciled, idle.laid_out),
-        (0, 0, 1),
+        (0, 0, 0),
         "{idle:?}"
     );
     // The camera moves: the quad moves, the commands stay as they were.
@@ -407,7 +407,7 @@ fn a_document_ground_follows_the_camera_and_builds_nothing() {
     );
     assert_eq!(
         (moved.bindings, moved.reconciled, moved.laid_out),
-        (0, 0, 1),
+        (0, 0, 0),
         "{moved:?}"
     );
     assert_eq!(moved.painted, idle.painted, "{moved:?} vs {idle:?}");
