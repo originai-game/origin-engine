@@ -878,7 +878,7 @@ fn shrunk(t: og_render::TextureData, size: u32) -> og_render::TextureData {
 
 /// The pit cut out of the island's meadow in `terrain-holes`: its world
 /// x and z ranges (whole 2 m cells), and the cave floor's height under it.
-pub const PIT_X: [f32; 2] = [-76.0, -60.0];
+pub const PIT_X: [f32; 2] = [-60.0, -44.0];
 pub const PIT_Z: [f32; 2] = [110.0, 122.0];
 
 /// The pit's centre on the surface it was cut from.
@@ -896,14 +896,26 @@ pub fn pit_floor() -> f32 {
         - 8.0
 }
 
-/// The island with a 16 × 12 m pit cut out of its meadow
-/// ([`TerrainData::holes`]) over an orange cave floor, the sun nearly
-/// overhead, seen from 30 m above and behind the pit: the floor shows
-/// through the hole with the sunlight that falls through it (the hole
-/// casts no shadow), the meadow round it unbroken.
+/// The pit's corners on the surface: their lowest and highest heights.
+fn pit_rim() -> (f32, f32) {
+    [PIT_X[0], PIT_X[1]]
+        .iter()
+        .flat_map(|&x| [PIT_Z[0], PIT_Z[1]].map(|z| island_height(x, z)))
+        .fold((f32::MAX, f32::MIN), |(lo, hi), h| (lo.min(h), hi.max(h)))
+}
+
+/// The island's meadow with a 16 × 12 m pit cut out of it
+/// ([`TerrainData::holes`]): a shaft of the ruins, walled and floored in
+/// cobbles, a kerb round its mouth, a fallen column and a boulder on its
+/// floor, the sun nearly overhead, seen from over its corner 15 m above
+/// the meadow. The floor shows through the hole with
+/// the sunlight that falls through it (the hole casts no shadow; only the
+/// walls shade their foot), the meadow round it unbroken.
 pub fn holes_scene() -> RenderScene {
-    let mut scene = RenderScene::new();
-    let mut data = island();
+    use crate::kit;
+    let mut scene = island_meadow();
+    let handle = scene.world.terrains[0].terrain;
+    let mut data = scene.terrain(handle).expect("the island").clone();
     let (cx, cz) = data.cells();
     let cell = ISLAND_SIZE / (ISLAND_SAMPLES - 1) as f32;
     let mut holes = vec![0u8; (cx * cz) as usize];
@@ -918,72 +930,180 @@ pub fn holes_scene() -> RenderScene {
         }
     }
     data.holes = Some(Arc::from(holes));
-    let handle = scene.add_terrain(data);
-    let layers = island_layers(&mut scene);
-    scene.world.terrains.push(Terrain {
-        layers,
-        height_blend: 0.6,
-        ..Terrain::new(handle)
-    });
-    let floor = scene.add_mesh(shapes::cuboid(Vec3::new(60.0, 1.0, 60.0)));
-    let rock = scene.add_material(Material {
-        // A deep red-orange: it stays saturated after the tonemap under the overhead sun.
-        base_color: [0.5, 0.08, 0.01, 1.0],
-        roughness: 0.8,
-        ..Default::default()
-    });
+    assert!(scene.set_terrain(handle, data));
+
     let c = pit_center();
-    scene.add_instance(
+    let floor = pit_floor();
+    let kerb = pit_rim().1 + 0.45;
+    let stone = kit::surface(&mut scene, "cobbles");
+    let paving = scene.add_mesh(kit::slab(
+        Vec2::new(PIT_X[0], PIT_Z[0]),
+        Vec2::new(PIT_X[1], PIT_Z[1]),
         floor,
-        rock,
-        Mat4::from_translation(Vec3::new(c.x, pit_floor() - 0.5, c.z)),
+        3.0,
+    ));
+    scene.add_instance(paving, stone, Mat4::IDENTITY);
+    // The walls stand outside the hole, 1.2 m thick, the corners closed
+    // by the two along x.
+    let thick = 1.2;
+    for (min, max) in [
+        (
+            Vec2::new(PIT_X[0] - thick, PIT_Z[0] - thick),
+            Vec2::new(PIT_X[1] + thick, PIT_Z[0]),
+        ),
+        (
+            Vec2::new(PIT_X[0] - thick, PIT_Z[1]),
+            Vec2::new(PIT_X[1] + thick, PIT_Z[1] + thick),
+        ),
+        (
+            Vec2::new(PIT_X[0] - thick, PIT_Z[0]),
+            Vec2::new(PIT_X[0], PIT_Z[1]),
+        ),
+        (
+            Vec2::new(PIT_X[1], PIT_Z[0]),
+            Vec2::new(PIT_X[1] + thick, PIT_Z[1]),
+        ),
+    ] {
+        let wall = scene.add_mesh(kit::block(
+            Vec3::new(min.x, floor - 0.5, min.y),
+            Vec3::new(max.x, kerb, max.y),
+            3.0,
+        ));
+        scene.add_instance(wall, stone, Mat4::IDENTITY);
+    }
+    let broken = kit::prop(&mut scene, "column_broken");
+    broken.place(&mut scene, Vec3::new(c.x - 3.5, floor, c.z - 2.0), 0.8, 2.8);
+    let boulder = kit::prop(&mut scene, "boulder");
+    boulder.place(
+        &mut scene,
+        Vec3::new(c.x + 2.5, floor - 0.4, c.z + 1.5),
+        2.3,
+        2.4,
     );
-    afternoon(&mut scene);
+    let column = kit::prop(&mut scene, "column");
+    let rim = |x: f32, z: f32| Vec3::new(x, island_height(x, z), z);
+    column.place(&mut scene, rim(PIT_X[0] - 3.5, PIT_Z[0] - 3.0), 0.3, 7.0);
+    broken.place(&mut scene, rim(PIT_X[1] + 3.5, PIT_Z[0] - 3.0), 1.9, 2.8);
+
     let sun = Vec3::new(0.2, 0.95, 0.15).normalize();
     scene.lighting.light.direction_to_light = sun;
-    scene.lighting.environment.sky.sun_direction = sun;
-    scene.frame.camera = camera_at(c + Vec3::new(0.0, 30.0, 24.0), c);
+    // 75° up.
+    fair_sky(&mut scene, 11.0);
+    scene.frame.camera = camera_at(
+        c + Vec3::new(13.0, 15.0, 12.0),
+        Vec3::new(c.x - 1.5, floor + 1.0, c.z - 1.5),
+    );
     scene
 }
 
-/// Where `terrain-layers` paints its four extra layers (world x, z), each
-/// a disc of [`LAYER_DISC`] metres (seven control texels) clear of the
-/// boulders, their shadows and each other, and their colours: clay,
-/// heather, mud and gold flowers.
-pub const LAYER_SPOTS: [(f32, f32); 4] = [
-    (-134.0, 92.0),
-    (-66.0, 92.0),
-    (-134.0, 132.0),
-    (-66.0, 132.0),
-];
-pub const LAYER_DISC: f32 = 14.0;
-pub const LAYER_TINTS: [[f32; 3]; 4] = [
-    [0.62, 0.2, 0.08],
-    [0.4, 0.14, 0.5],
-    [0.06, 0.045, 0.03],
-    [0.75, 0.58, 0.06],
-];
-/// A meadow point of `terrain-layers` clear of the discs and the boulders.
-pub const LAYER_MEADOW: (f32, f32) = (-100.0, 100.0);
+/// `terrain-layers`' flowers: clumps of blossoms of colour `petal` (sRGB)
+/// over half of a dark turf, the blossoms the layer's height.
+fn flowers(scene: &mut RenderScene, petal: [f32; 3], seed: u32) -> og_render::TextureHandle {
+    scene.add_texture(texture(256, ColorSpace::Srgb, |u, v| {
+        let clump = tiling_fbm(u, v, 5, seed) + 0.3 * tiling_fbm(u, v, 14, seed + 1);
+        let speck = tiling_fbm(u, v, 56, seed + 2);
+        let turf = 0.7 + 0.5 * tiling_fbm(u, v, 32, seed + 3);
+        if clump > 0.6 && speck > 0.42 {
+            let g = 0.75 + 0.5 * speck;
+            [
+                (petal[0] * g).min(255.0) as u8,
+                (petal[1] * g).min(255.0) as u8,
+                (petal[2] * g).min(255.0) as u8,
+                235,
+            ]
+        } else {
+            [
+                (52.0 * turf) as u8,
+                (84.0 * turf) as u8,
+                (34.0 * turf) as u8,
+                110,
+            ]
+        }
+    }))
+}
 
-/// The island's meadow from 70 m above with eight layers: its four with
-/// their maps in texture arrays, and four more (layers 4 to 7, plain clay,
-/// heather, mud and gold) on the control map's second page, each painted
-/// in a disc on the meadow ([`LAYER_SPOTS`]) where the first page gives
-/// the grass nothing. `painted` false leaves the second page 0: the extra
-/// layers show nowhere.
+/// The weights of `terrain-layers`' four extra layers at world `p` (xz),
+/// their sum at most 1: the path from behind the near camera to the gate
+/// (2.4 m wide), the ruin's floor round the gate, and drifts of heather
+/// and of gold flowers over the meadow within 150 m of the gate, none
+/// within 5 m of the path.
+fn layer_paint(p: Vec2) -> [f32; 4] {
+    let right = Vec2::new(-MEADOW_AHEAD.y, MEADOW_AHEAD.x);
+    let rel = p - MEADOW_EYE;
+    let (ahead, to_right) = (rel.dot(MEADOW_AHEAD), rel.dot(right));
+    let gate = Vec2::new(62.0, 13.0);
+    // The path wanders a few metres about its line, straight into the gate.
+    let line = 9.0
+        + 4.0 * ((ahead - 20.0) / 42.0).clamp(-1.0, 1.0)
+        + 9.0 * fbm(ahead / 45.0, 0.5, 2, 61) * smooth(4.0, 30.0, gate.x - ahead);
+    let off = if ahead < gate.x - 4.0 && ahead > -60.0 {
+        (to_right - line).abs()
+    } else {
+        f32::MAX
+    };
+    let edge = 1.2 * fbm(p.x / 2.5, p.y / 2.5, 2, 62);
+    let mud = 1.0 - smooth(0.5, 1.9, off + edge);
+    let from_gate = (Vec2::new(ahead, to_right) - gate).length();
+    let clay =
+        (1.0 - smooth(
+            9.0,
+            14.0,
+            from_gate + 5.0 * fbm(p.x / 9.0, p.y / 9.0, 3, 63),
+        )) * (1.0 - mud);
+    let open = smooth(5.0, 9.0, off) * (1.0 - clay) * (1.0 - smooth(110.0, 150.0, from_gate));
+    // The drifts thin out over metres, their edges ragged.
+    let fine = 0.14 * fbm(p.x / 2.2, p.y / 2.2, 2, 66);
+    let drift = |scale: f32, seed: u32| {
+        smooth(0.0, 0.14, fbm(p.x / scale, p.y / scale, 3, seed) + fine) * open
+    };
+    let heather = drift(34.0, 64);
+    let gold = drift(27.0, 65) * (1.0 - heather);
+    [mud, clay, heather, gold]
+}
+
+/// The island's meadow with eight layers, their maps in texture arrays,
+/// seen from 26 m up behind the near camera: its four, and four more
+/// (layers 4 to 7) on the control map's second page, painted
+/// ([`layer_paint`]) where the first page then gives the grass nothing: a
+/// mud path to the gate and the clay floor of the ruin (the island's rock
+/// and sand, tinted), heather and gold flowers in drifts ([`flowers`]).
+/// `painted` false leaves the second page 0: the extra layers show
+/// nowhere.
 pub fn layers_scene(painted: bool) -> RenderScene {
-    let mut scene = with_layer_arrays(island_view("near"));
-    let (x, z) = (-98.0, 114.0);
-    let below = Vec3::new(x, island_height(x, z), z);
-    scene.frame.camera = camera_at(below + Vec3::new(0.0, 70.0, 26.0), below);
+    let mut scene = island_view("near");
+    let heather = flowers(&mut scene, [150.0, 72.0, 176.0], 201);
+    let gold = flowers(&mut scene, [236.0, 190.0, 44.0], 211);
+    let t = &mut scene.world.terrains[0];
+    let (grass, rock, sand) = (t.layers[0], t.layers[1], t.layers[2]);
+    for (albedo, tint, tile) in [
+        (rock.albedo, [0.86, 0.72, 0.6], 5.0),
+        (sand.albedo, [0.66, 0.5, 0.4], 5.0),
+        (Some(heather), [1.0; 3], 6.0),
+        (Some(gold), [1.0; 3], 6.0),
+    ] {
+        t.layers.push(TerrainLayer {
+            albedo,
+            normal: None,
+            color: Vec3::from(tint),
+            roughness: 0.9,
+            tile,
+            macro_variation: 0.5,
+            ..grass
+        });
+    }
+    let mut scene = with_layer_arrays(scene);
+    let eye = MEADOW_EYE - MEADOW_AHEAD * 26.0;
+    let to = MEADOW_EYE + MEADOW_AHEAD * 58.0;
+    scene.frame.camera = camera_at(
+        Vec3::new(eye.x, island_height(eye.x, eye.y) + 26.0, eye.y),
+        Vec3::new(to.x, island_height(to.x, to.y) + 2.0, to.y),
+    );
     let handle = scene.world.terrains[0].terrain;
     let mut data = scene.terrain(handle).expect("the island").clone();
-    // Both pages at 1024 texels (2 m): the first resampled from the
-    // island's. Each disc's layer fades from its full weight at 60 % of
-    // the radius to none at the rim, the first page's weights scaled down
-    // under it by as much.
-    let m = 1024u32;
+    // Both pages at 2048 texels (1 m): the first resampled from the
+    // island's, its weights scaled down under the second's by as much as
+    // those take.
+    let m = 2048u32;
     let page = (m * m * 4) as usize;
     let mut rgba = vec![0u8; page * 2];
     for y in 0..m {
@@ -993,12 +1113,12 @@ pub fn layers_scene(painted: bool) -> RenderScene {
             let c = data.control_at(p);
             let at = ((y * m + x) * 4) as usize;
             let mut keep = 1.0;
-            for (i, s) in LAYER_SPOTS.iter().enumerate().filter(|_| painted) {
-                let d = (p - Vec2::new(s.0, s.1)).length() / LAYER_DISC;
-                let t = ((1.0 - d) / 0.4).clamp(0.0, 1.0);
-                let w = t * t * (3.0 - 2.0 * t);
-                rgba[page + at + i] = (w * 255.0).round() as u8;
-                keep -= w;
+            // Only the meadow about the view is painted.
+            if painted && (p - MEADOW_EYE).length() < 260.0 {
+                for (i, w) in layer_paint(p).into_iter().enumerate() {
+                    rgba[page + at + i] = (w * 255.0).round() as u8;
+                    keep -= w;
+                }
             }
             for k in 0..4 {
                 rgba[at + k] = (c[k] * keep.max(0.0) * 255.0).round() as u8;
@@ -1011,17 +1131,6 @@ pub fn layers_scene(painted: bool) -> RenderScene {
         rgba: Arc::from(rgba),
     });
     assert!(scene.set_terrain(handle, data));
-    let t = &mut scene.world.terrains[0];
-    let grass = t.layers[0];
-    for tint in LAYER_TINTS {
-        t.layers.push(TerrainLayer {
-            color: Vec3::from(tint),
-            roughness: 0.9,
-            albedo_layer: None,
-            normal_layer: None,
-            ..grass
-        });
-    }
     scene
 }
 
@@ -1093,27 +1202,61 @@ pub fn tiling_scene(anti_tiling: f32) -> RenderScene {
     scene
 }
 
-/// Where `steep_scene`'s wall starts (its foot along x) and its height.
+/// Where `steep_scene`'s cliff stands at z 0 (its foot along x) and its
+/// height above the valley.
 pub const STEEP_FOOT: f32 = 0.0;
 pub const STEEP_HEIGHT: f32 = 60.0;
 
-/// R7: a 85° wall 60 m high across a 128 m terrain (its foot at x 0, its
-/// face towards -x), one layer of a black and white checker of 4 m cells
-/// over everything, seen square-on from 30 m away at mid-height: from
-/// above (`project_slope` 0) the wall's cells stretch into vertical
-/// streaks; past `project_slope` the two projections facing it keep
-/// them square.
-pub fn steep_scene(project_slope: f32) -> RenderScene {
-    let mut scene = RenderScene::new();
-    let n = 257u32;
-    let size = 128.0;
-    let cell = size / (n - 1) as f32;
+/// `steep_scene`'s ground: a valley for x past the cliff's foot, scree
+/// against the wall, and an 85° wall up to a plateau 60 m above the
+/// valley, broken by a ledge part of the way up. The wall bends round
+/// the valley (its foot 1 m further out every 16 m along z at 64 m, so
+/// the cliff closes the view either way), wanders a few metres and
+/// stands out in ribs.
+fn steep_height(x: f32, z: f32) -> f32 {
+    let foot = STEEP_FOOT
+        + z * z / 2048.0
+        + 9.0 * fbm(z / 70.0, 0.3, 3, 77)
+        + 5.0 * ridged(z / 22.0, 1.7, 2, 78);
+    let top = STEEP_HEIGHT + 10.0 * fbm(x / 90.0, z / 90.0, 3, 79);
+    let valley = 1.6 * fbm(x / 45.0, z / 45.0, 3, 83);
+    // Metres into the wall from its foot.
+    let t = foot - x;
+    let scree = 0.7 * (12.0 + t.min(0.0)).max(0.0);
     let rise = 85f32.to_radians().tan();
+    let ledge = top * (0.42 + 0.3 * fbm(z / 60.0, 2.2, 2, 86));
+    let ledge_width = (8.0 * fbm(z / 35.0, 5.1, 2, 85) + 3.0).max(0.0);
+    let past = t - ledge / rise;
+    let wall = if t <= 0.0 {
+        0.0
+    } else if past <= 0.0 {
+        t * rise
+    } else {
+        ledge + past.min(ledge_width) * 0.35 + (past - ledge_width).max(0.0) * rise
+    };
+    valley + (scree + wall).min(top)
+}
+
+/// R7: a cliff 60 m high round a valley (`steep_height`: an 85° wall, its
+/// face towards +x), meadow on the flat and rock on the wall, seen from
+/// across the valley 100 m out, pines and boulders at its foot and a
+/// watchtower on its edge for its size. Sampled from above
+/// (`project_slope` 0) the rock stretches down the wall in vertical
+/// streaks; past `project_slope` the two projections facing the wall
+/// keep its cracks and ledges the shape they have on a boulder.
+pub fn steep_scene(project_slope: f32) -> RenderScene {
+    use crate::kit;
+    let mut scene = RenderScene::new();
+    let n = 1025u32;
+    let size = 512.0;
+    let cell = size / (n - 1) as f32;
     let mut heights = Vec::with_capacity((n * n) as usize);
-    for _ in 0..n {
+    for r in 0..n {
         for c in 0..n {
-            let x = c as f32 * cell - size * 0.5;
-            heights.push(((x - STEEP_FOOT) * rise).clamp(0.0, STEEP_HEIGHT));
+            heights.push(steep_height(
+                c as f32 * cell - size * 0.5,
+                r as f32 * cell - size * 0.5,
+            ));
         }
     }
     let handle = scene.add_terrain(TerrainData {
@@ -1124,55 +1267,129 @@ pub fn steep_scene(project_slope: f32) -> RenderScene {
         control: None,
         holes: None,
     });
-    let checker = scene.add_texture(texture(256, ColorSpace::Srgb, |u, v| {
-        let on = ((u * 2.0) as u32 + (v * 2.0) as u32).is_multiple_of(2);
-        let g = if on { 230 } else { 25 };
-        [g, g, g, 255]
-    }));
+    let (grass, grass_normal) = kit::layer_maps(&mut scene, "grass");
+    let (rock, rock_normal) = kit::layer_maps(&mut scene, "rock");
     scene.world.terrains.push(Terrain {
-        layers: vec![TerrainLayer {
-            albedo: Some(checker),
-            color: Vec3::ONE,
-            roughness: 0.9,
-            tile: V2_TILE * 2.0,
-            project_slope,
-            ..Default::default()
-        }],
+        layers: vec![
+            TerrainLayer {
+                albedo: Some(grass),
+                normal: Some(grass_normal),
+                color: Vec3::new(0.72, 1.05, 0.5),
+                roughness: 0.95,
+                tile: 3.5,
+                anti_tiling: 0.5,
+                slope: [0.0, 36.0],
+                slope_fade: 8.0,
+                ..Default::default()
+            },
+            TerrainLayer {
+                albedo: Some(rock),
+                normal: Some(rock_normal),
+                color: Vec3::new(0.9, 0.86, 0.82),
+                roughness: 0.85,
+                tile: V2_TILE * 2.5,
+                anti_tiling: 0.6,
+                macro_variation: 0.5,
+                slope: [30.0, 90.0],
+                slope_fade: 8.0,
+                project_slope,
+                ..Default::default()
+            },
+        ],
+        height_blend: 0.6,
         ..Terrain::new(handle)
     });
-    plain_light(&mut scene);
-    // The sun from the camera's side, so the face is lit.
-    scene.lighting.light.direction_to_light = Vec3::new(-0.8, 0.5, 0.3);
+    let ground = |x: f32, z: f32| Vec3::new(x, steep_height(x, z), z);
+    // The valley: pines in stands below the wall, boulders fallen from it.
+    let pine = kit::prop(&mut scene, "pine");
+    let boulder = kit::prop(&mut scene, "boulder");
+    for k in 0..46 {
+        let h = |i: i32| hash2(k, i, 0x57ee);
+        let z = -150.0 + 240.0 * h(0);
+        let out = 12.0 + 60.0 * h(1) * h(1);
+        let x = STEEP_FOOT + z * z / 2048.0 + 6.0 + out;
+        // Clear of the camera and its line to the wall.
+        if (x - 96.0).abs() < 16.0 && (z - 34.0).abs() < 16.0 {
+            continue;
+        }
+        if k % 4 == 0 {
+            let r = 1.0 + 2.6 * h(2);
+            boulder.place(
+                &mut scene,
+                ground(x - 4.0, z) - Vec3::Y * 0.3 * r,
+                h(3) * 6.3,
+                r * 1.7,
+            );
+        } else {
+            pine.place(
+                &mut scene,
+                ground(x, z) - Vec3::Y * 0.3,
+                h(3) * 6.3,
+                10.0 + 7.0 * h(2),
+            );
+        }
+    }
+    // The watchtower back from the cliff's edge, in the view's upper left.
+    let tower = kit::prop(&mut scene, "watchtower");
+    let edge = STEEP_FOOT + 30.0 * 30.0 / 2048.0;
+    tower.place(
+        &mut scene,
+        ground(edge - 22.0, -30.0) - Vec3::Y * 0.5,
+        0.7,
+        20.0,
+    );
+    fair_afternoon(&mut scene);
     scene.frame.camera = camera_at(
-        Vec3::new(STEEP_FOOT - 30.0, STEEP_HEIGHT * 0.5, 0.0),
-        Vec3::new(STEEP_FOOT, STEEP_HEIGHT * 0.5, 0.0),
+        ground(96.0, 34.0) + Vec3::Y * 6.0,
+        Vec3::new(STEEP_FOOT, STEEP_HEIGHT * 0.5, -26.0),
     );
     scene
 }
 
-/// `horizon_scene`'s ridge: where it stands along x, its height and
-/// half-width (m), and the sun's elevation (degrees) from +x behind it.
+/// `horizon_scene`'s ridge: where it stands along x, its height at its
+/// highest and half-width (m), and the sun's elevation (degrees) from +x
+/// behind it.
 pub const HORIZON_RIDGE: f32 = 2000.0;
 pub const HORIZON_RIDGE_HEIGHT: f32 = 300.0;
 pub const HORIZON_RIDGE_WIDTH: f32 = 160.0;
 pub const HORIZON_SUN: f32 = 8.0;
+/// The hill `horizon_scene` is seen from: its top (x, z) and its height.
+const HORIZON_HILL: (f32, f32, f32) = (-1500.0, 0.0, 300.0);
 
-/// T5: an 8 km plain with one ridge 300 m high running along z at x 2 km,
-/// the sun 8° up behind it (from +x), so the plain in front of it lies in
-/// its shade for about 2 km; seen from 1.5 km west of the origin, 120 m up,
-/// all of it far past the sun's 200 m of shadow cascades. With the
-/// terrain's horizon shadows the shade shows; without them only the
-/// cascades shade, and the far plain is lit to the ridge's foot.
+/// `horizon_scene`'s ground: a rolling plain, the ridge along z (its
+/// crest between half its height and all of it, its flanks furrowed) and
+/// the hill.
+fn horizon_height(x: f32, z: f32) -> f32 {
+    let d = (x - HORIZON_RIDGE) / HORIZON_RIDGE_WIDTH;
+    let crest = 0.5 + 0.53 * ridged(z / 800.0, 0.7, 4, 91).min(0.94);
+    let furrows = 0.8 + 0.4 * ridged(x / 260.0, z / 260.0, 3, 95);
+    let (kx, kz, kh) = HORIZON_HILL;
+    let k = Vec2::new(x - kx, z - kz).length() / 520.0;
+    14.0 * fbm(x / 500.0, z / 500.0, 4, 93)
+        + HORIZON_RIDGE_HEIGHT * (crest * furrows).min(1.0) * (-d * d).exp()
+        + kh * (-k * k).exp()
+}
+
+/// T5: an 8 km plain with one ridge about 300 m high running along z at
+/// x 2 km, the sun 8° up behind it (from +x), so the plain in front of it
+/// lies in its shade for up to 2 km, the crest's outline along the
+/// shade's edge; seen at sunset through a long lens from a hill as high
+/// 3.5 km west of it, a ruined gate and pines on the hill's brow, the
+/// plain and the ridge far past the sun's 400 m of shadow cascades. With the terrain's
+/// horizon shadows the shade shows; without them only the cascades
+/// shade, and the far plain is lit to the ridge's foot.
 pub fn horizon_scene(horizon: bool) -> RenderScene {
+    use crate::kit;
     let mut scene = RenderScene::new();
     let (n, size) = (1025u32, 8192.0f32);
     let cell = size / (n - 1) as f32;
     let mut heights = Vec::with_capacity((n * n) as usize);
-    for _ in 0..n {
+    for r in 0..n {
         for c in 0..n {
-            let x = c as f32 * cell - size * 0.5;
-            let d = (x - HORIZON_RIDGE) / HORIZON_RIDGE_WIDTH;
-            heights.push(HORIZON_RIDGE_HEIGHT * (-d * d).exp());
+            heights.push(horizon_height(
+                c as f32 * cell - size * 0.5,
+                r as f32 * cell - size * 0.5,
+            ));
         }
     }
     let handle = scene.add_terrain(TerrainData {
@@ -1183,27 +1400,99 @@ pub fn horizon_scene(horizon: bool) -> RenderScene {
         control: None,
         holes: None,
     });
+    let (grass, grass_normal) = kit::layer_maps(&mut scene, "grass");
+    let (rock, rock_normal) = kit::layer_maps(&mut scene, "rock");
     scene.world.terrains.push(Terrain {
-        layers: vec![TerrainLayer {
-            color: Vec3::new(0.32, 0.36, 0.22),
-            roughness: 0.95,
-            ..Default::default()
-        }],
+        layers: vec![
+            TerrainLayer {
+                albedo: Some(grass),
+                normal: Some(grass_normal),
+                color: Vec3::new(0.82, 1.0, 0.5),
+                roughness: 0.95,
+                tile: 3.5,
+                anti_tiling: 0.5,
+                macro_variation: 0.6,
+                slope: [0.0, 30.0],
+                slope_fade: 8.0,
+                ..Default::default()
+            },
+            TerrainLayer {
+                albedo: Some(rock),
+                normal: Some(rock_normal),
+                color: Vec3::new(0.86, 0.84, 0.82),
+                roughness: 0.85,
+                tile: 18.0,
+                triplanar: true,
+                anti_tiling: 0.5,
+                macro_variation: 0.4,
+                slope: [24.0, 90.0],
+                slope_fade: 8.0,
+                ..Default::default()
+            },
+        ],
+        height_blend: 0.6,
         horizon_shadows: horizon,
         ..Terrain::new(handle)
     });
-    plain_light(&mut scene);
+    // The brow's set, below the camera: the gate left of the view, pines
+    // either side of it down the slope.
+    let (kx, kz, _) = HORIZON_HILL;
+    let ground = |ahead: f32, right: f32| {
+        let (x, z) = (kx + ahead, kz + right);
+        Vec3::new(x, horizon_height(x, z), z)
+    };
+    let arch = kit::prop(&mut scene, "arch");
+    let column = kit::prop(&mut scene, "column");
+    let broken = kit::prop(&mut scene, "column_broken");
+    arch.place(&mut scene, ground(104.0, -15.0), 1.2, 9.5);
+    column.place(&mut scene, ground(98.0, -23.0), 0.4, 7.0);
+    broken.place(&mut scene, ground(110.0, -8.0), 2.1, 2.8);
+    let boulder = kit::prop(&mut scene, "boulder");
+    boulder.place(&mut scene, ground(92.0, 13.0) - Vec3::Y * 0.6, 0.9, 3.4);
+    boulder.place(&mut scene, ground(124.0, 20.0) - Vec3::Y * 0.4, 2.6, 2.2);
+    let pine = kit::prop(&mut scene, "pine");
+    for k in 0..60 {
+        let h = |i: i32| hash2(k, i, 0x4071);
+        let side = if k % 2 == 0 { -1.0 } else { 1.0 };
+        let ahead = 90.0 + 420.0 * h(0);
+        let right = side * (22.0 + (ahead - 60.0) * 0.12 + 150.0 * h(1));
+        pine.place(
+            &mut scene,
+            ground(ahead, right) - Vec3::Y * 0.3,
+            h(2) * 6.3,
+            10.0 + 7.0 * h(3),
+        );
+    }
+    // The hill's meadow: its blades against the sun.
+    scene.world.grass.push(og_render::GrassDraw {
+        terrain: 0,
+        grass: og_render::Grass {
+            cast_shadows: true,
+            ..Default::default()
+        },
+    });
+    afternoon(&mut scene);
     let e = HORIZON_SUN.to_radians();
-    let sun = Vec3::new(e.cos(), e.sin(), 0.0);
-    scene.lighting.light.direction_to_light = sun;
-    // A clear evening: the sun carries the plain's light.
-    scene.lighting.light.intensity = 7.0;
-    scene.lighting.environment.sky.sun_direction = sun;
-    scene.lighting.environment.intensity = 0.25;
-    scene.frame.camera = camera_at(
-        Vec3::new(-1500.0, 120.0, 0.0),
-        Vec3::new(HORIZON_RIDGE, 0.0, 0.0),
-    );
+    scene.lighting.light.direction_to_light = Vec3::new(e.cos(), e.sin(), 0.0);
+    fair_sky(&mut scene, 6.0 + HORIZON_SUN / 15.0);
+    // A clear evening: thin haze, and no cloud's shadow on the plain.
+    if let Some(fog) = &mut scene.atmosphere.fog {
+        fog.density = 0.00003;
+        fog.height_density = 0.0001;
+    }
+    if let Some(clouds) = &mut scene.atmosphere.clouds {
+        clouds.coverage = 0.3;
+        clouds.shadows = 0.0;
+    }
+    scene.frame.camera = Camera {
+        projection: Projection::Perspective {
+            fov_y_degrees: 40.0,
+        },
+        ..camera_at(
+            ground(62.0, 0.0) + Vec3::Y * 1.8,
+            Vec3::new(HORIZON_RIDGE, 0.0, 0.0),
+        )
+    };
     scene
 }
 
