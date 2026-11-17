@@ -221,16 +221,12 @@ fn configure_keeps_the_fields_a_call_leaves_out() {
         warnings(e).iter().all(|w| !w.contains("no font")),
         "the style's body font draws"
     );
-    // Without the style the UI has no font at all: a warning names the fix.
+    // Clearing the style restores the bundled default face, not a fontless UI.
     configure(e, json!({ "style": null }));
     assert_eq!(theme(e)["style"].as_str(), Some(""));
     assert_eq!(opacity(), 1.0, "clearing the pack removes its CSS");
     let w = warnings(e);
-    assert!(
-        w.iter()
-            .any(|w| w.contains("no font") && w.contains("og.load.font") && w.contains("style")),
-        "{w:?}"
-    );
+    assert!(w.iter().all(|w| !w.contains("no font")), "{w:?}");
     // A desc that is not an object is refused.
     let r: Value = serde_json::from_str(&og_runtime::host_impl::answer(og_ui_configure(
         e,
