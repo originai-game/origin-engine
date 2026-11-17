@@ -217,9 +217,9 @@ fn raining(hours: f32, lying: SurfaceWeather, wind: Vec3) -> RenderScene {
     metered(scene)
 }
 
-/// A flat canopy 8 m wide (x -4 to 4) and 6 m deep (z -9 to -3), its
-/// underside 3 m up, on four posts: in front of the weathered camera, which
-/// sees the ground under it.
+/// A market stall's flat canopy 8 m wide (x -4 to 4) and 6 m deep (z -9
+/// to -3), its underside 3 m up, on four posts, crates and barrels by it:
+/// in front of the weathered camera, which sees the ground under it.
 /// `clustered`: its slab and posts are clustered meshes, drawn through
 /// the meshlet path (one level, a cluster per 64 triangles).
 pub fn canopy(scene: &mut RenderScene, clustered: bool) {
@@ -247,7 +247,20 @@ pub fn canopy(scene: &mut RenderScene, clustered: bool) {
         for z in [-8.8f32, -3.2] {
             scene.add_instance(post, wood, Mat4::from_translation(Vec3::new(x, 1.5, z)));
         }
+    } // A market stall's wares round it: crates stacked by its posts and
+    // barrels beside them, outside its dry patch so the patch reads whole.
+    let crate_ = crate::kit::prop(scene, "crate");
+    let barrel = crate::kit::prop(scene, "barrel");
+    for (x, z, y, yaw) in [
+        (-4.9f32, -4.0f32, 0.0f32, 0.2f32),
+        (-4.95, -4.05, 0.55, 0.5),
+        (-5.0, -5.3, 0.0, -0.3),
+        (5.0, -8.0, 0.0, 0.4),
+    ] {
+        crate_.place(scene, Vec3::new(x, y, z), yaw, 0.55);
     }
+    barrel.place(scene, Vec3::new(4.9, 0.0, -3.4), 0.0, 1.0);
+    barrel.place(scene, Vec3::new(5.4, 0.0, -4.4), 1.2, 1.0);
 }
 
 /// `data` as one level of clusters, each of up to 64 of its triangles in

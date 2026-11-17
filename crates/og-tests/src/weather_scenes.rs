@@ -139,78 +139,76 @@ fn overcast(scene: &mut RenderScene, hours: f32, coverage: f32) {
     });
 }
 
-/// A street at dusk in the rain: asphalt between two kerbed pavements and
-/// brick walls, a parked lacquered box, lamps lit along it. The road is
-/// soaked and dark, its ruts hold rippling puddles that mirror the lamps,
-/// the rain runs down the walls in streaks, and the lacquer beads.
+/// A street at dusk in the rain: an old town's setts between kerbed
+/// pavements, its ochre townhouses shoulder to shoulder on both sides,
+/// iron lamps lit along the kerbs and a little lacquered city car parked
+/// by one. The setts are soaked and dark, their hollows hold rippling
+/// puddles that mirror the lamps and the house fronts, the rain runs down
+/// the walls and the car's lacquer beads.
 fn street() -> RenderScene {
+    use crate::kit;
     let mut scene = RenderScene::new();
     overcast(&mut scene, 18.5, 0.8);
-    let asphalt = StandardMaterial {
-        color: Vec3::splat(0.6),
-        map: scene.add_texture(mottled([0.17, 0.17, 0.18], 3)).slot(),
-        aoMap: scene.add_texture(relief(11)).slot(),
-        aoMapIntensity: 0.6,
-        roughness: 0.85,
-        ..Default::default()
-    };
-    ground(&mut scene, 80.0, 10.0, asphalt);
+    let setts = kit::surface_tinted(&mut scene, "cobbles", [0.8, 0.78, 0.76]);
+    let road = scene.add_mesh(kit::slab(
+        glam::Vec2::new(-4.0, -120.0),
+        glam::Vec2::new(4.0, 12.0),
+        0.0,
+        2.0,
+    ));
+    scene.add_instance(road, setts, Mat4::IDENTITY);
     let concrete = StandardMaterial {
         color: Vec3::new(0.42, 0.41, 0.39),
         map: scene.add_texture(mottled([0.9, 0.9, 0.88], 7)).slot(),
+        aoMap: scene.add_texture(relief(13)).slot(),
+        aoMapIntensity: 0.4,
         roughness: 0.92,
         ..Default::default()
     };
-    let brick = StandardMaterial {
-        color: Vec3::new(0.36, 0.17, 0.12),
-        map: scene.add_texture(mottled([0.95, 0.85, 0.8], 19)).slot(),
-        roughness: 0.9,
+    let house = kit::prop(&mut scene, "townhouse");
+    let lamp = kit::prop(&mut scene, "streetlamp");
+    let bulb = scene.add_mesh(shapes::sphere(12, 8));
+    let glow = scene.add_standard_material(StandardMaterial {
+        color: Vec3::ZERO,
+        emissive: Vec3::new(1.0, 0.72, 0.45),
+        emissiveIntensity: 12.0,
+        weathering: 0.0,
         ..Default::default()
-    };
+    });
     for side in [-1.0f32, 1.0] {
-        // The pavement, its kerb 15 cm up, and the wall behind it.
+        // The pavement, its kerb 15 cm up.
         bx(
             &mut scene,
-            Vec3::new(3.0, 0.15, 80.0),
-            Vec3::new(side * 5.5, 0.075, -20.0),
+            Vec3::new(2.4, 0.15, 132.0),
+            Vec3::new(side * 5.2, 0.075, -54.0),
             concrete,
         );
-        bx(
-            &mut scene,
-            Vec3::new(1.0, 9.0, 80.0),
-            Vec3::new(side * 7.5, 4.5, -20.0),
-            brick,
-        );
-        for k in 0..4 {
-            let z = -4.0 - 12.0 * k as f32;
-            // A lamp post on the kerb and its warm lamp.
-            let metal = StandardMaterial {
-                color: Vec3::splat(0.08),
-                metalness: 1.0,
-                roughness: 0.4,
-                ..Default::default()
-            };
-            bx(
+        // The houses' fronts on the pavement's back edge, facing the
+        // street, each a little taller or lower than its neighbour.
+        for k in 0..16 {
+            let z = 6.0 - 7.8 * k as f32 + if side > 0.0 { 3.4 } else { 0.0 };
+            let height = 11.5 + 2.5 * ((k as f32 * 2.3 + side).sin() * 0.5 + 0.5);
+            house.place(
                 &mut scene,
-                Vec3::new(0.12, 4.2, 0.12),
-                Vec3::new(side * 4.3, 2.25, z),
-                metal,
+                Vec3::new(side * 8.75, 0.15, z),
+                -side * std::f32::consts::FRAC_PI_2,
+                height,
             );
-            bx(
-                &mut scene,
-                Vec3::new(0.35, 0.15, 0.35),
-                Vec3::new(side * 4.0, 4.4, z),
-                StandardMaterial {
-                    color: Vec3::ZERO,
-                    emissive: Vec3::new(1.0, 0.7, 0.4),
-                    emissiveIntensity: 8.0,
-                    weathering: 0.0,
-                    ..Default::default()
-                },
+        }
+        for k in 0..5 {
+            // An iron lamp on the kerb, its lantern lit.
+            let z = -2.0 - 14.0 * k as f32 + if side > 0.0 { 7.0 } else { 0.0 };
+            let foot = Vec3::new(side * 4.4, 0.15, z);
+            lamp.place(&mut scene, foot, 0.0, 4.2);
+            let at = foot + Vec3::Y * 3.35;
+            scene.add_instance(
+                bulb,
+                glow,
+                Mat4::from_scale_rotation_translation(Vec3::splat(0.16), Quat::IDENTITY, at),
             );
             scene.lighting.lights.push(Light {
                 kind: LightKind::Point,
-                position: Vec3::new(side * 4.0, 4.2, z),
+                position: at - Vec3::new(side * 0.3, 0.2, 0.0),
                 color: Vec3::new(1.0, 0.72, 0.45),
                 intensity: 40.0,
                 range: 18.0,
@@ -218,30 +216,20 @@ fn street() -> RenderScene {
             });
         }
     }
-    // A lacquered box parked by the kerb: sealed paint, no pores to fill.
-    bx(
-        &mut scene,
-        Vec3::new(1.8, 1.2, 4.2),
-        Vec3::new(2.8, 0.75, -11.0),
-        StandardMaterial {
-            color: Vec3::new(0.45, 0.03, 0.03),
-            roughness: 0.35,
-            clearcoat: 1.0,
-            clearcoatRoughness: 0.05,
-            ..Default::default()
-        },
-    );
+    // A lacquered city car parked by the kerb: its clearcoat sealed, no
+    // pores to fill (the model's own KHR_materials_clearcoat).
+    kit::prop(&mut scene, "car").place(&mut scene, Vec3::new(2.6, 0.0, -11.0), 1.62, 1.45);
     scene.atmosphere.surface_weather = Some(SurfaceWeather {
         wetness: 1.0,
         puddles: 0.75,
         puddle_size: 2.5,
         ..SurfaceWeather::default()
     });
-    // The puddles and the lacquer mirror the lamps and the walls.
+    // The puddles and the lacquer mirror the lamps and the house fronts.
     scene.look.post.ssr = Some(ScreenSpaceReflections::default());
     scene.frame.camera = Camera {
-        position: Vec3::new(-1.2, 1.5, 6.0),
-        target: Vec3::new(0.6, 0.9, -30.0),
+        position: Vec3::new(-1.4, 1.6, 6.0),
+        target: Vec3::new(0.8, 2.4, -30.0),
         exposure: Exposure::Manual { ev: 0.5 },
         ..Default::default()
     };
@@ -249,10 +237,13 @@ fn street() -> RenderScene {
     scene
 }
 
-/// Rocky ground under a clearing sky half an hour after the rain: the
-/// puddles stand still and mirror the sky, and the ground dries in
-/// patches from its high spots, the hollows and the shores still dark.
+/// A farmyard half an hour after the rain under a clearing sky: the
+/// puddles on its packed earth stand still and mirror the sky and the
+/// cloud, and the yard dries in patches from its high spots, the hollows
+/// and the shores still dark. Weathered boulders, crates and barrels by a
+/// dry-stone wall, pines and a watchtower past it, the hills beyond.
 fn puddles() -> RenderScene {
+    use crate::kit;
     let mut scene = RenderScene::new();
     overcast(&mut scene, 15.0, 0.55);
     let dirt = StandardMaterial {
@@ -263,32 +254,48 @@ fn puddles() -> RenderScene {
         roughness: 0.95,
         ..Default::default()
     };
-    ground(&mut scene, 60.0, 6.0, dirt);
-    let rock = scene.add_mesh(shapes::sphere(32, 24));
-    for (i, (x, z, r)) in [
-        (-3.0, -7.0, 0.8),
-        (2.5, -10.0, 1.2),
-        (-1.0, -15.0, 0.6),
-        (4.5, -5.0, 0.5),
-    ]
-    .into_iter()
-    .enumerate()
-    {
-        put(
+    ground(&mut scene, 400.0, 40.0, dirt);
+    let stone = kit::surface_tinted(&mut scene, "cobbles", [1.0, 0.93, 0.8]);
+    for (min, max) in [
+        (Vec3::new(-22.0, -0.2, -19.0), Vec3::new(-1.5, 1.1, -18.3)),
+        (Vec3::new(2.5, -0.2, -19.0), Vec3::new(22.0, 1.1, -18.3)),
+    ] {
+        let m = scene.add_mesh(kit::block(min, max, 1.6));
+        scene.add_instance(m, stone, Mat4::IDENTITY);
+    }
+    let boulder = kit::prop(&mut scene, "boulder");
+    for (x, z, yaw, h) in [
+        (-3.2f32, -7.0f32, 0.3f32, 0.9f32),
+        (2.8, -10.5, 1.7, 1.3),
+        (-1.2, -15.0, 2.9, 0.7),
+        (4.6, -5.2, 4.1, 0.55),
+    ] {
+        boulder.place(&mut scene, Vec3::new(x, -0.1, z), yaw, h);
+    }
+    let crate_ = kit::prop(&mut scene, "crate");
+    let barrel = kit::prop(&mut scene, "barrel");
+    crate_.place(&mut scene, Vec3::new(-6.5, 0.0, -16.6), 0.1, 0.62);
+    crate_.place(&mut scene, Vec3::new(-6.4, 0.62, -16.6), 0.25, 0.62);
+    crate_.place(&mut scene, Vec3::new(-5.0, 0.0, -16.9), -0.2, 0.62);
+    barrel.place(&mut scene, Vec3::new(-8.0, 0.0, -17.0), 0.0, 1.0);
+    barrel.place(&mut scene, Vec3::new(-8.9, 0.0, -16.4), 1.0, 1.0);
+    let pine = kit::prop(&mut scene, "pine");
+    for k in 0..40u32 {
+        let h = |i: u32| {
+            let mut v = k.wrapping_mul(0x8da6_b343) ^ i.wrapping_mul(0xd816_3841);
+            v = (v ^ (v >> 13)).wrapping_mul(0x85eb_ca6b);
+            ((v ^ (v >> 16)) & 0xffff) as f32 / 65536.0
+        };
+        let (x, z) = (-70.0 + 140.0 * h(1), -26.0 - 60.0 * h(2));
+        pine.place(
             &mut scene,
-            rock,
-            StandardMaterial {
-                color: Vec3::splat(0.12 + 0.03 * i as f32),
-                roughness: 0.85,
-                ..Default::default()
-            },
-            Mat4::from_scale_rotation_translation(
-                Vec3::new(r * 1.3, r * 0.7, r),
-                Quat::from_rotation_y(i as f32),
-                Vec3::new(x, r * 0.25, z),
-            ),
+            Vec3::new(x, -0.2, z),
+            6.3 * h(3),
+            9.0 + 7.0 * h(4),
         );
     }
+    kit::prop(&mut scene, "watchtower").place(&mut scene, Vec3::new(14.0, -0.3, -34.0), 0.8, 13.0);
+    kit::hills(&mut scene, None);
     scene.atmosphere.surface_weather = Some(SurfaceWeather {
         wetness: 0.45,
         puddles: 0.6,
@@ -296,25 +303,28 @@ fn puddles() -> RenderScene {
         puddle_size: 3.0,
         ..SurfaceWeather::default()
     });
-    // The still puddles mirror the rocks and the sky.
+    // The still puddles mirror the boulders and the sky.
     scene.look.post.ssr = Some(ScreenSpaceReflections::default());
     scene.frame.camera = Camera {
         position: Vec3::new(0.0, 1.7, 3.0),
-        target: Vec3::new(0.5, 0.0, -12.0),
+        target: Vec3::new(0.5, 0.6, -14.0),
         exposure: Exposure::Manual { ev: 0.5 },
+        far: 3000.0,
         ..Default::default()
     };
     scene
 }
 
-/// A yard after a night's snowfall under a low winter sun: snow lies
-/// thick on the ground, on crates, on a wall's top and its stepped
-/// ledges and on rounded rocks, thinner where faces steepen and absent
-/// on the walls themselves and under a lean-to's roof.
+/// A farmyard after a night's snowfall under a low winter sun: snow lies
+/// thick on the yard, on its crates and barrels, on a dry-stone wall's
+/// top and its stepped ledges and on the boulders, thinner where faces
+/// steepen, absent on the wall's face and under a lean-to's roof. Pines
+/// and the hills stand white beyond.
 fn snow_buildup() -> RenderScene {
+    use crate::kit;
     let mut scene = RenderScene::new();
     physical_light(&mut scene, 10.0, PhysicalAtmosphere::EARTH);
-    let stone = StandardMaterial {
+    let yard = StandardMaterial {
         color: Vec3::new(0.4, 0.38, 0.35),
         map: scene.add_texture(mottled([0.9, 0.9, 0.9], 31)).slot(),
         aoMap: scene.add_texture(relief(37)).slot(),
@@ -322,47 +332,32 @@ fn snow_buildup() -> RenderScene {
         roughness: 0.9,
         ..Default::default()
     };
-    ground(&mut scene, 60.0, 6.0, stone);
+    ground(&mut scene, 400.0, 40.0, yard);
+    let stone = kit::surface_tinted(&mut scene, "cobbles", [1.0, 0.93, 0.8]);
+    let block = |scene: &mut RenderScene, min: Vec3, max: Vec3| {
+        let m = scene.add_mesh(kit::block(min, max, 1.6));
+        scene.add_instance(m, stone, Mat4::IDENTITY);
+    };
+    // A wall with three stepped ledges along its face.
+    block(
+        &mut scene,
+        Vec3::new(-6.0, 0.0, -9.3),
+        Vec3::new(4.0, 3.0, -8.7),
+    );
+    for k in 0..3 {
+        let y = 0.64 + 0.8 * k as f32;
+        block(
+            &mut scene,
+            Vec3::new(-6.0, y, -8.7),
+            Vec3::new(4.0, y + 0.12, -8.35),
+        );
+    }
     let wood = StandardMaterial {
         color: Vec3::new(0.4, 0.27, 0.16),
         roughness: 0.8,
         ..Default::default()
     };
-    // A wall with three stepped ledges along its face.
-    bx(
-        &mut scene,
-        Vec3::new(10.0, 3.0, 0.6),
-        Vec3::new(-1.0, 1.5, -9.0),
-        stone,
-    );
-    for k in 0..3 {
-        bx(
-            &mut scene,
-            Vec3::new(10.0, 0.12, 0.35),
-            Vec3::new(-1.0, 0.7 + 0.8 * k as f32, -8.55),
-            stone,
-        );
-    }
-    // Crates stacked and alone.
-    bx(
-        &mut scene,
-        Vec3::splat(1.0),
-        Vec3::new(2.6, 0.5, -5.0),
-        wood,
-    );
-    bx(
-        &mut scene,
-        Vec3::splat(0.8),
-        Vec3::new(2.5, 1.4, -5.1),
-        wood,
-    );
-    bx(
-        &mut scene,
-        Vec3::splat(0.9),
-        Vec3::new(-3.5, 0.45, -4.5),
-        wood,
-    );
-    // A lean-to: a roof on posts, dry ground under it.
+    // A lean-to: a plank roof on posts, dry ground under it.
     bx(
         &mut scene,
         Vec3::new(3.0, 0.12, 2.0),
@@ -377,27 +372,39 @@ fn snow_buildup() -> RenderScene {
             wood,
         );
     }
-    let rock = scene.add_mesh(shapes::sphere(40, 30));
-    for (x, z, r) in [
-        (0.4f32, -4.0f32, 0.7f32),
-        (-0.8, -6.2, 0.45),
-        (4.2, -7.5, 0.9),
+    // Crates stacked and alone, barrels by the wall, one under the roof.
+    let crate_ = kit::prop(&mut scene, "crate");
+    let barrel = kit::prop(&mut scene, "barrel");
+    crate_.place(&mut scene, Vec3::new(2.6, 0.0, -5.0), 0.2, 0.9);
+    crate_.place(&mut scene, Vec3::new(2.5, 0.9, -5.1), 0.6, 0.75);
+    crate_.place(&mut scene, Vec3::new(1.2, 0.0, -6.8), -0.3, 0.8);
+    barrel.place(&mut scene, Vec3::new(-3.6, 0.0, -6.6), 0.0, 1.0);
+    barrel.place(&mut scene, Vec3::new(3.3, 0.0, -7.9), 0.8, 1.0);
+    barrel.place(&mut scene, Vec3::new(-0.6, 0.0, -8.0), 2.1, 1.0);
+    let boulder = kit::prop(&mut scene, "boulder");
+    for (x, z, yaw, h) in [
+        (0.4f32, -3.6f32, 0.4f32, 0.7f32),
+        (-1.2, -5.6, 2.0, 0.5),
+        (5.4, -6.5, 3.4, 1.1),
     ] {
-        put(
+        boulder.place(&mut scene, Vec3::new(x, -0.1, z), yaw, h);
+    }
+    let pine = kit::prop(&mut scene, "pine");
+    for k in 0..30u32 {
+        let h = |i: u32| {
+            let mut v = k.wrapping_mul(0x27d4_eb2d) ^ i.wrapping_mul(0x1656_67b1);
+            v = (v ^ (v >> 15)).wrapping_mul(0x85eb_ca6b);
+            ((v ^ (v >> 16)) & 0xffff) as f32 / 65536.0
+        };
+        let (x, z) = (-50.0 + 100.0 * h(1), -14.0 - 50.0 * h(2));
+        pine.place(
             &mut scene,
-            rock,
-            StandardMaterial {
-                color: Vec3::splat(0.3),
-                roughness: 0.75,
-                ..Default::default()
-            },
-            Mat4::from_scale_rotation_translation(
-                Vec3::new(r, r * 0.8, r),
-                Quat::IDENTITY,
-                Vec3::new(x, r * 0.3, z),
-            ),
+            Vec3::new(x, -0.2, z),
+            6.3 * h(3),
+            8.0 + 7.0 * h(4),
         );
     }
+    kit::hills(&mut scene, None);
     scene.atmosphere.surface_weather = Some(SurfaceWeather {
         snow: 0.75,
         snow_depth: 0.06,
@@ -405,46 +412,83 @@ fn snow_buildup() -> RenderScene {
     });
     scene.frame.camera = Camera {
         position: Vec3::new(2.0, 4.3, 3.0),
-        target: Vec3::new(-0.5, 0.4, -6.5),
+        target: Vec3::new(-0.5, 1.2, -9.0),
         exposure: Exposure::Manual { ev: -0.3 },
+        far: 3000.0,
         ..Default::default()
     };
     scene
 }
 
-/// A desert yard in the late afternoon after a dust storm: sand lies on
-/// every block's top and drifts into the ground's low parts, dulls a
-/// once-polished steel drum and a glazed tile, and the blocks' sides stay
-/// their own colour.
+/// An oasis hamlet's yard in the late afternoon after a dust storm: sand
+/// lies on the adobe houses' flat roofs, the crates' and barrels' lids and
+/// the low sandstone walls' tops, drifts into the yard's low parts, dulls
+/// a once-polished steel drum and a glazed tile, while every wall's face
+/// keeps its own colour. Palms lean over the houses.
 fn desert() -> RenderScene {
+    use crate::kit;
     let mut scene = RenderScene::new();
     physical_light(&mut scene, 16.8, PhysicalAtmosphere::EARTH);
     let packed = StandardMaterial {
-        color: Vec3::splat(0.9),
+        color: Vec3::new(1.15, 0.95, 0.72),
         map: scene.add_texture(mottled([0.55, 0.42, 0.3], 41)).slot(),
         aoMap: scene.add_texture(relief(43)).slot(),
         aoMapIntensity: 0.5,
         roughness: 0.9,
         ..Default::default()
     };
-    ground(&mut scene, 80.0, 8.0, packed);
+    ground(&mut scene, 400.0, 40.0, packed);
     let sandstone = StandardMaterial {
         color: Vec3::new(0.5, 0.3, 0.2),
         map: scene.add_texture(mottled([0.95, 0.9, 0.85], 47)).slot(),
         roughness: 0.85,
         ..Default::default()
     };
+    // The yard's low walls and a well kerb.
     for (size, at) in [
-        (Vec3::new(2.0, 1.2, 2.0), Vec3::new(-2.5, 0.6, -6.0)),
-        (Vec3::new(1.2, 2.4, 1.2), Vec3::new(-2.0, 1.2, -9.5)),
-        (Vec3::new(4.0, 0.5, 1.5), Vec3::new(2.0, 0.25, -8.0)),
-        (Vec3::new(1.0, 0.8, 1.0), Vec3::new(3.3, 0.9, -8.0)),
+        (Vec3::new(7.0, 0.9, 0.5), Vec3::new(-4.5, 0.45, -3.5)),
+        (Vec3::new(0.5, 0.9, 5.0), Vec3::new(4.8, 0.45, -6.0)),
+        (Vec3::new(1.6, 0.6, 1.6), Vec3::new(0.6, 0.3, -9.0)),
     ] {
         bx(&mut scene, size, at, sandstone);
     }
-    // A polished steel ball resting on the sand (the sphere's radius is
-    // 0.5), a glazed tile slab.
-    let drum = scene.add_mesh(shapes::sphere(48, 32));
+    let adobe = kit::prop(&mut scene, "adobe");
+    // The skirt the model stands on sinks into the yard.
+    for (x, z, yaw, h) in [
+        (-4.6f32, -11.5f32, 0.25f32, 4.2f32),
+        (3.6, -14.5, -0.35, 4.6),
+        (-12.0, -18.0, 0.6, 4.0),
+        (11.0, -20.0, -0.7, 3.8),
+    ] {
+        adobe.place(&mut scene, Vec3::new(x, -0.15, z), yaw, h);
+    }
+    let palm = kit::prop(&mut scene, "palm");
+    for (x, z, yaw, h) in [
+        (-0.8f32, -15.5f32, 0.4f32, 7.5f32),
+        (7.5, -11.0, 2.2, 6.4),
+        (-8.5, -9.0, 4.0, 7.0),
+        (-16.0, -24.0, 1.1, 8.0),
+        (15.0, -26.0, 5.0, 7.2),
+    ] {
+        palm.place(&mut scene, Vec3::new(x, 0.0, z), yaw, h);
+    }
+    let crate_ = kit::prop(&mut scene, "crate");
+    let barrel = kit::prop(&mut scene, "barrel");
+    crate_.place(&mut scene, Vec3::new(2.4, 0.0, -7.0), 0.3, 0.6);
+    crate_.place(&mut scene, Vec3::new(2.5, 0.6, -7.05), 0.1, 0.6);
+    crate_.place(&mut scene, Vec3::new(3.6, 0.0, -6.4), -0.4, 0.6);
+    barrel.place(&mut scene, Vec3::new(-2.8, 0.0, -8.4), 0.0, 1.0);
+    barrel.place(&mut scene, Vec3::new(-3.6, 0.0, -7.6), 1.4, 1.0);
+    // A polished steel drum standing in the yard, a glazed tile slab.
+    let drum = scene.add_mesh(og_render::geometry::primitives::cylinder(
+        &og_render::geometry::primitives::Cylinder {
+            radius_top: 0.35,
+            radius_bottom: 0.35,
+            height: 0.95,
+            radial_segments: 48,
+            ..Default::default()
+        },
+    ));
     put(
         &mut scene,
         drum,
@@ -454,16 +498,12 @@ fn desert() -> RenderScene {
             roughness: 0.2,
             ..Default::default()
         },
-        Mat4::from_scale_rotation_translation(
-            Vec3::splat(1.1),
-            Quat::IDENTITY,
-            Vec3::new(-1.6, 0.55, -2.6),
-        ),
+        Mat4::from_translation(Vec3::new(-1.4, 0.475, -5.2)),
     );
     bx(
         &mut scene,
         Vec3::new(1.4, 0.1, 1.4),
-        Vec3::new(1.8, 0.05, -3.8),
+        Vec3::new(1.0, 0.05, -4.6),
         StandardMaterial {
             color: Vec3::new(0.05, 0.25, 0.45),
             roughness: 0.1,
@@ -476,11 +516,22 @@ fn desert() -> RenderScene {
         ..SurfaceWeather::default()
     });
     scene.frame.camera = Camera {
-        position: Vec3::new(1.5, 4.0, 2.5),
-        target: Vec3::new(-0.3, 0.3, -7.0),
+        position: Vec3::new(1.0, 3.2, 3.0),
+        target: Vec3::new(-0.3, 1.6, -12.0),
         exposure: Exposure::Manual { ev: -0.5 },
+        far: 3000.0,
         ..Default::default()
     };
+    // The yard turned to face away from the low sun in the west, which
+    // stands behind the camera's left shoulder: the house fronts and the
+    // yard lie in its light, their shadows thrown back away from the view.
+    let turn = Mat4::from_rotation_y(-2.29);
+    for i in &mut scene.objects.instances {
+        i.transform = turn * i.transform;
+    }
+    let camera = &mut scene.frame.camera;
+    camera.position = turn.transform_point3(camera.position);
+    camera.target = turn.transform_point3(camera.target);
     scene
 }
 
@@ -613,12 +664,20 @@ pub fn cloth_with(left: StandardMaterial, right: StandardMaterial) -> RenderScen
     scene
 }
 
-/// T4's displaced cobbles over their crest in the rain (a terrain): the
+/// T4's displaced cobbles over their crest in the rain (a terrain), the
+/// old way's ruined colonnade on the crest and pines beyond it: the
 /// mortar joints, the layer's low relief, fill with water first and
 /// mirror the sky between the stones, whose tops stay dark and wet under
 /// the running film, the drops splashing on them.
 fn cobbles_wet() -> RenderScene {
-    let mut scene = crate::terrain_scenes::displaced_scene(crate::terrain_scenes::DISPLACED_RELIEF);
+    // The old paved way over its crest (`terrain-displaced-way`'s set:
+    // the colonnade's stumps, a watchtower and pines past the crest) under
+    // a closing rain sky.
+    let mut scene = crate::terrain_scenes::displaced_way();
+    if let Some(c) = scene.atmosphere.clouds.as_mut() {
+        c.coverage = 0.85;
+        c.color = Vec3::splat(0.72);
+    }
     scene.atmosphere.surface_weather = Some(SurfaceWeather {
         wetness: 1.0,
         puddles: 0.55,
