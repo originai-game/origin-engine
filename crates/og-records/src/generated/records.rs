@@ -19451,7 +19451,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 unit: "ratio",
                 worldspace: "",
                 label: "",
-                doc: doc!("How much of the fog covers the sky (0: the sky stays clear)."),
+                doc: doc!("How much of the fog covers the sky and the clouds in it (0: they stay clear, however far the fog hides the land)."),
                 variants: &[],
                 capacity: 0,
                 list: 0,

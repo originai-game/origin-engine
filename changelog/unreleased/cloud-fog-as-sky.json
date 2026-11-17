@@ -1,0 +1,8 @@
+{
+  "fixed": [
+    {
+      "member": "rendering: og.Clouds",
+      "summary": "Clouds take og.Fog as the sky behind them does (the fog 5 km out, by Fog.sky's share); they took a mesh's distance fog and drew as flat fog-coloured cut-outs against a clear sky. Scenes with clouds and distance fog move: far clouds keep their light and shade."
+    }
+  ]
+}

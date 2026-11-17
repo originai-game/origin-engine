@@ -35371,7 +35371,7 @@
         },
         "sky": {
           "type": "number",
-          "description": "How much of the fog covers the sky (0: the sky stays clear).",
+          "description": "How much of the fog covers the sky and the clouds in it (0: they stay clear, however far the fog hides the land).",
           "default": 1,
           "minimum": 0,
           "maximum": 1,

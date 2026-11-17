@@ -262,18 +262,18 @@ fn clouds_over(d: vec3<f32>, pixel: vec2<f32>, grey: vec4<f32>) -> vec4<f32> {
   return mix(column, deck, cover);
 }
 
-// A cloud is a finite-distance participating surface, not the sky at
-// infinity: the distance fog to it as meshes take it, independent of
-// Fog.sky. Height fog is different: a cloud above it lies behind the same
-// finite column as the sky beside it, so it takes that column as the sky
-// does (Fog.sky's share): a hazed cloud against an unhazed sky drew a
-// bright flat band of washed-out cloud at the horizon. Scale its light
-// before fog, just as the background/probe capture does.
+// A cloud stands in the sky, and the fog reaches it as it reaches the sky
+// behind it (sky_fog: the fog 5 km out, by Fog.sky's share), at its own
+// distance while it is nearer than that. Fogged as a mesh at its distance,
+// a cloud some kilometres off was the fog's one colour against a sky the
+// fog had hardly touched: a flat cut-out with no light or shade of its
+// own, and a bright washed-out band of them at the horizon. Scale its
+// light before fog, just as the background/probe capture does.
 fn cloud_view_fog(color: vec3<f32>, d: vec3<f32>, distance: f32) -> vec3<f32> {
   let lit = color * (1.0 - frame.view_up.w);
   if (frame.fog_color.w < 0.5) { return lit; }
-  let f = fog_amount_scaled(frame.view_pos.xyz + d * distance, frame.fog_height.w);
-  return mix(lit, f.rgb, f.a);
+  let f = fog_amount(frame.view_pos.xyz + d * min(distance, 5000.0));
+  return mix(lit, f.rgb, f.a * frame.fog_height.w);
 }
 
 // Cloud light seen through the air in front of it (Hillaire 2020 §5.5,
