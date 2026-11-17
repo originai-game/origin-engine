@@ -14,7 +14,9 @@ items, advance cooldowns, grant levels or infer presence.
 | `Steps` | optional `title`, keyed `steps` of `{ id, label, detail, number, state, disabled }`, `column` | `choose` with the step id; disabled steps cannot activate. The game supplies order, formatted numbers and `upcoming/current/done/error` state; current has `aria-current=step`. |
 
 `--item-slot-size`, `--avatar-size` and `--avatar-radius` control their
-dimensions. Every visible piece is a named part. Rarity, frame and status
+dimensions. Without `--item-slot-size` a slot is 96px at 100% text and
+grows with the player's text scale, so the chips in it keep their room; a
+state word wider than a game's own slot ends in an ellipsis. Every visible piece is a named part. Rarity, frame and status
 are exposed as data attributes; presence is also worded so it does not rely
 on colour. Native buttons supply focus, hover, press and keyboard/pad
 activation. A pack may replace the look without changing the documents.

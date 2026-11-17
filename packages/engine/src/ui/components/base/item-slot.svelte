@@ -37,8 +37,12 @@
 </div>
 
 <style>
-:host { inline-size: var(--item-slot-size, var(--size-xxl)); }
-[part="ItemSlot.cell"] { position: relative; inline-size: 100%; block-size: var(--item-slot-size, var(--size-xxl)); min-block-size: var(--size-touch); padding: var(--space-sm); overflow: hidden; }
+/* The slot grows with the player's text scale, as the badges and the state
+   word in it do, so they keep their place around the icon and the word its
+   room: 96 px at 100 % text (--font-step-px is one CSS px there). A game's
+   --item-slot-size is taken as given. */
+:host { --slot: var(--item-slot-size, calc(96 * var(--font-step-px))); inline-size: var(--slot); }
+[part="ItemSlot.cell"] { position: relative; inline-size: 100%; block-size: var(--slot); min-block-size: var(--size-touch); padding: var(--space-sm); overflow: hidden; }
 [part="ItemSlot.icon"] { inline-size: 64%; block-size: 64%; }
 .plus { inline-size: 36%; block-size: 36%; }
 .cooling [part="ItemSlot.icon"] { opacity: var(--cell-cooling-opacity); }
@@ -47,7 +51,9 @@
 .count { inset-inline-end: var(--space-xxs); bottom: var(--space-xxs); }
 .key { inset-inline-start: var(--space-xxs); top: var(--space-xxs); }
 .remaining { --figure-size: var(--type-lg-size); --figure-weight: var(--font-weight-bold); }
-.state { position: absolute; inset-inline: var(--space-xxs); bottom: var(--space-xxs); padding: var(--space-xxs); text-align: center; }
-[part="ItemSlot.loading"] { position: absolute; inset: 0; --spinner-size: calc(var(--item-slot-size, var(--size-xxl)) * 0.4); }
+/* In a slot a game makes narrower than the word, the word ends in an
+   ellipsis inside its chip; the slot's accessible name carries it whole. */
+.state { position: absolute; inset-inline: var(--space-xxs); bottom: var(--space-xxs); padding: var(--space-xxs); text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+[part="ItemSlot.loading"] { position: absolute; inset: 0; --spinner-size: calc(var(--slot) * 0.4); }
 .name { text-align: center; overflow-wrap: anywhere; }
 </style>
