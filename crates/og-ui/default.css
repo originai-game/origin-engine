@@ -2193,9 +2193,11 @@
   :where([data-anchor=top-end]) { top: var(--layout-anchor-inset); right: var(--layout-anchor-inset); }
   :where([data-anchor=bottom-start]) { bottom: var(--layout-anchor-inset); left: var(--layout-anchor-inset); }
   :where([data-anchor=bottom-end]) { bottom: var(--layout-anchor-inset); right: var(--layout-anchor-inset); }
-  :where([data-anchor=top]) { top: var(--layout-anchor-inset); left: 0; right: 0; display: flex; justify-content: center; }
-  :where([data-anchor=bottom]) { bottom: var(--layout-anchor-inset); left: 0; right: 0; display: flex; justify-content: center; }
-  :where([data-anchor=center]) { inset: 0; display: flex; align-items: center; justify-content: center; }
+  /* Centred by its own size (a translate), so any element anchors: a box,
+     a label, an icon. */
+  :where([data-anchor=top]) { top: var(--layout-anchor-inset); left: 50%; translate: -50% 0; }
+  :where([data-anchor=bottom]) { bottom: var(--layout-anchor-inset); left: 50%; translate: -50% 0; }
+  :where([data-anchor=center]) { top: 50%; left: 50%; translate: -50% -50%; }
   /* Flush along a whole edge (a scroller's fade). */
   :where([data-anchor=top-edge]) { top: 0; left: 0; right: 0; }
   :where([data-anchor=bottom-edge]) { bottom: 0; left: 0; right: 0; }

@@ -3141,3 +3141,47 @@ fn a_from_only_scale_ends_at_no_scaling() {
     let b = at(&d.ui, "B");
     assert_eq!((b.width, b.height), (40.0, 40.0));
 }
+
+/// An SVG shape's `currentColor` is its CSS `color`, inherited as SVG's
+/// presentation properties are, so a tone on an ancestor reaches a star or
+/// a check; and an anchored label (not a box) sits centred over its
+/// overlay. Wrong: currentColor read as the style's ink whatever the
+/// colour, or a centring anchor that gives a label a box's display.
+#[test]
+fn svg_current_color_and_anchored_labels() {
+    let d = mounted(
+        ui_with_font(test_font()),
+        r#"<div id="Root" data-layout="stack">
+  <div data-tone="warn"><svg viewBox="0 0 10 10" style="width: 20px; height: 20px"><path fill="currentColor" d="M0 0 L10 0 L10 10 Z"></path></svg></div>
+  <svg viewBox="0 0 10 10" style="width: 20px; height: 20px; color: #ff0000"><path fill="currentColor" d="M0 0 L10 0 L10 10 Z"></path></svg>
+  <div id="O" data-layout="overlay" style="width: 100px; height: 60px"><span id="N" data-anchor="center">3</span></div>
+</div>"#,
+        &[],
+        Viewport::new(400.0, 300.0),
+    );
+    let fills: Vec<[f32; 4]> =
+        d.ui.frame()
+            .items
+            .iter()
+            .filter_map(|i| match &i.cmd {
+                DrawCmd::Shape { shape, .. } => match shape.paint {
+                    og_draw::UiPaint::Solid(c) => Some(c),
+                    _ => None,
+                },
+                _ => None,
+            })
+            .collect();
+    let warn = fills[0];
+    assert!(
+        warn[0] > 0.9 && warn[2] < 0.5,
+        "the ancestor's tone: {fills:?}"
+    );
+    assert_eq!(fills[1], [1.0, 0.0, 0.0, 1.0], "the svg's own colour");
+    let (o, n) = (at(&d.ui, "O"), at(&d.ui, "N"));
+    let mid = |x: f32, w: f32| x + w / 2.0;
+    assert!(
+        (mid(n.x, n.width) - mid(o.x, o.width)).abs() < 1.0
+            && (mid(n.y, n.height) - mid(o.y, o.height)).abs() < 1.0,
+        "a label anchored in the middle: {n:?} in {o:?}"
+    );
+}

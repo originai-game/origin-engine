@@ -277,6 +277,27 @@ pub fn shape_draw(
                 .map_err(|e| format!("{attr}: {e}"))?;
         }
     }
+    // `currentColor` is the element's CSS `color`, inherited as SVG's
+    // presentation properties are (a `data-tone` on an ancestor, a role's
+    // ink); only with no colour anywhere above is it the style's ink.
+    if let Some(c) = computed
+        .get(&crate::css::text_css::key("color"))
+        .cloned()
+        .flatten()
+        .and_then(|v| crate::style_file::parse_color(&v))
+    {
+        let own = PaintRef::Color([
+            f32::from(c.rgb[0]) / 255.0,
+            f32::from(c.rgb[1]) / 255.0,
+            f32::from(c.rgb[2]) / 255.0,
+            c.alpha,
+        ]);
+        for p in [&mut style.fill, &mut style.stroke] {
+            if *p == PaintRef::Current {
+                *p = own.clone();
+            }
+        }
+    }
     let t = computed
         .get(TRANSFORM)
         .cloned()

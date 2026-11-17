@@ -1600,7 +1600,7 @@ one row while it is at least `--layout-switch-at` wide, stacked below), `grid` (
 (kept to `--layout-measure`), `ratio` (an `--layout-ratio` frame its image
 covers), `shell` (header, body, footer filling its container, which is an
 `inline-size` container), `scroll` (a column that scrolls, contained) and
-`overlay` (a stack whose `data-anchor` children are laid over it at `top-start`,
+`overlay` (a stack whose `data-anchor` children, any element, are laid over it at `top-start`,
 `top-end`, `bottom-start`, `bottom-end`, `top`, `bottom`, `center` or
 `fill`, `--layout-anchor-inset` in). A `data-fill` child of a primitive (and
 a `scroll`) takes the room the others leave. A child is placed by its own
