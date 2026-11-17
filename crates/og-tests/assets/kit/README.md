@@ -33,9 +33,18 @@ to glow under a night's light and to look dry in rain, so its albedo is
 two fifths lower (about a fifth as an sRGB value), a mid limestone; the
 textures are unchanged.
 
-Each committed model is its source with the emissive map dropped (Meshy
+Each committed Meshy model is its source with the emissive map dropped (Meshy
 writes a near-black one), its textures resized to 1024 px and re-encoded as
 JPEG, then pruned and deduplicated with glTF Transform 4.5.1.
+
+`ladder.glb` (84 triangles) is from the platform's production asset catalog
+(release `catalog-20261107-kenney-particles-v1`, group
+`grp_840856f60c3e5156d0`): KayKit's Medieval Hexagon Pack 1.0 by Kay
+Lousberg, CC0 1.0, no attribution required. It is the pack's
+`ladder.gltf` (sha256
+`de1f471e8c11615388a9caad79aef97414903390ff54924b33bff2547bc19e72`), its
+buffer and its 16 KB palette texture, each checked against the catalog's
+sha256, packed as one GLB with glTF Transform 4.5.1.
 
 ## Surfaces
 

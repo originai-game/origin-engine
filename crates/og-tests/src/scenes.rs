@@ -1628,7 +1628,8 @@ pub fn build(name: &str) -> Result<GfxScene, String> {
             Ok(())
         },
         // R6: a 16 × 12 m pit cut out of the island's meadow, a cobbled
-        // shaft of the ruins, the sun nearly overhead: the floor and the
+        // shaft of the ruins with a ladder down its wall and rubble on its
+        // floor, the sun nearly overhead: the floor and the
         // sunlight falling through the hole show through it, the meadow
         // round it unbroken.
         "terrain-holes" => |g, _| {
@@ -1636,11 +1637,12 @@ pub fn build(name: &str) -> Result<GfxScene, String> {
             as_played(g);
             Ok(())
         },
-        // R6: the island's meadow from 26 m up with eight layers (texture
+        // R6: the island's meadow from 7 m up with eight layers (texture
         // arrays): a mud path to the gate, the ruin's clay floor, drifts of
-        // heather and of gold flowers, painted with layers 4 to 7 on the
-        // control map's second page, each blended into the grass by the
-        // terrain's height blend (a crisp rim) as the first four are.
+        // heather and of gold flowers (plants scattered on their layers),
+        // painted with layers 4 to 7 on the control map's second page,
+        // each blended into the grass by the terrain's height blend (a
+        // crisp rim) as the first four are.
         "terrain-layers" => |g, _| {
             g.scene = crate::terrain_scenes::layers_scene(true);
             as_played(g);
@@ -1653,9 +1655,11 @@ pub fn build(name: &str) -> Result<GfxScene, String> {
             g.scene = crate::terrain_scenes::tiling_scene(1.0);
             Ok(())
         },
-        // R7: a cliff 60 m high round a valley, its 85° wall's rock sampled
-        // past 45° by the two projections facing it (projectSlope 45): the
-        // rock's cracks keep their shape on the face, not vertical streaks.
+        // R7: a cliff round a valley seen along its foot (buttresses,
+        // ledges, scree, crags stamped out of the wall), its 85° walls'
+        // rock sampled past 45° by the two projections facing them
+        // (projectSlope 45): the rock's cracks keep their shape on the
+        // face, not vertical streaks.
         "terrain-steep" => |g, _| {
             g.scene = crate::terrain_scenes::steep_scene(45.0);
             as_played(g);

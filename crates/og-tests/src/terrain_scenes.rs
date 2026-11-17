@@ -906,9 +906,9 @@ fn pit_rim() -> (f32, f32) {
 
 /// The island's meadow with a 16 × 12 m pit cut out of it
 /// ([`TerrainData::holes`]): a shaft of the ruins, walled and floored in
-/// cobbles, a kerb round its mouth, a fallen column and a boulder on its
-/// floor, the sun nearly overhead, seen from over its corner 15 m above
-/// the meadow. The floor shows through the hole with
+/// cobbles, a kerb round its mouth, a ladder down its north wall, a
+/// fallen column and rubble on its floor, the sun nearly overhead, seen
+/// from over its corner 12 m above the meadow. The floor shows through the hole with
 /// the sunlight that falls through it (the hole casts no shadow; only the
 /// walls shade their foot), the meadow round it unbroken.
 pub fn holes_scene() -> RenderScene {
@@ -980,6 +980,37 @@ pub fn holes_scene() -> RenderScene {
         2.3,
         2.4,
     );
+    // Rubble fallen into the north-west corner, and a ladder up the north
+    // wall: four lengths end to end, leaning 12° onto the kerb.
+    for (i, (dx, dz, r)) in [
+        (1.6, 1.4, 1.5),
+        (3.4, 1.2, 1.0),
+        (1.3, 3.3, 1.1),
+        (2.6, 2.6, 0.7),
+        (4.8, 1.0, 0.6),
+        (1.0, 5.0, 0.6),
+    ]
+    .into_iter()
+    .enumerate()
+    {
+        boulder.place(
+            &mut scene,
+            Vec3::new(PIT_X[0] + dx, floor - 0.25 * r, PIT_Z[0] + dz),
+            1.7 * i as f32,
+            r * 1.3,
+        );
+    }
+    let ladder = kit::prop(&mut scene, "ladder");
+    let length = 2.6;
+    let lean = Mat4::from_translation(Vec3::new(c.x + 3.0, floor, PIT_Z[0] + 2.2))
+        * Mat4::from_rotation_x(-12f32.to_radians());
+    for i in 0..4 {
+        let along = Mat4::from_translation(Vec3::Y * (i as f32 * length));
+        ladder.place_by(
+            &mut scene,
+            lean * along * ladder.transform(Vec3::ZERO, 0.0, length),
+        );
+    }
     let column = kit::prop(&mut scene, "column");
     let rim = |x: f32, z: f32| Vec3::new(x, island_height(x, z), z);
     column.place(&mut scene, rim(PIT_X[0] - 3.5, PIT_Z[0] - 3.0), 0.3, 7.0);
@@ -990,8 +1021,8 @@ pub fn holes_scene() -> RenderScene {
     // 75° up.
     fair_sky(&mut scene, 11.0);
     scene.frame.camera = camera_at(
-        c + Vec3::new(13.0, 15.0, 12.0),
-        Vec3::new(c.x - 1.5, floor + 1.0, c.z - 1.5),
+        c + Vec3::new(13.0, 12.0, 12.0),
+        Vec3::new(c.x - 2.0, floor + 1.5, c.z - 2.0),
     );
     scene
 }
@@ -1020,6 +1051,85 @@ fn flowers(scene: &mut RenderScene, petal: [f32; 3], seed: u32) -> og_render::Te
             ]
         }
     }))
+}
+
+/// A clump of seven flowering stems up to 0.55 m, their roots over a
+/// disc 0.22 m in radius: each a thin green blade leaning outwards with a
+/// blossom of colour `petal` (linear) at its tip, drawn on both sides: a
+/// `spike` (heather: two crossed upright diamonds over the stem's upper
+/// half) or a flat head 0.14 m across facing up (a buttercup's).
+pub fn flower_clump(petal: [f32; 3], spike: bool) -> MeshData {
+    const STEMS: u32 = 7;
+    let mut m = MeshData::default();
+    let leaf = [0.2, 0.36, 0.1];
+    // A fan of triangles about its first point, seen from both sides.
+    let mut fan = |points: &[(Vec3, [f32; 3], f32)], normal: Vec3| {
+        for face in [1.0f32, -1.0] {
+            let first = m.vertices.len() as u32;
+            for &(p, tone, shade) in points {
+                m.vertices.push(Vertex {
+                    position: p.into(),
+                    normal: (normal * face.max(0.6)).normalize().into(),
+                    uv: [0.5, 0.5],
+                    color: [shade * tone[0], shade * tone[1], shade * tone[2], 1.0],
+                    tangent: [0.0; 4],
+                });
+            }
+            for i in 1..points.len() as u32 - 1 {
+                if face > 0.0 {
+                    m.indices.extend([first, first + i, first + i + 1]);
+                } else {
+                    m.indices.extend([first, first + i + 1, first + i]);
+                }
+            }
+        }
+    };
+    for b in 0..STEMS {
+        let yaw = b as f32 * 2.4 + 0.7;
+        let (sn, cs) = yaw.sin_cos();
+        let out = Vec3::new(cs, 0.0, sn);
+        let side = Vec3::new(-sn, 0.0, cs);
+        let root = out * (0.22 * ((b as f32 + 0.5) / STEMS as f32).sqrt());
+        let tall = 0.36 + 0.06 * (b % 4) as f32;
+        let tip = root + out * 0.07 + Vec3::Y * tall;
+        let up = (Vec3::Y * 2.0 + out).normalize();
+        fan(
+            &[
+                (tip, leaf, 0.9),
+                (root - side * 0.012, leaf, 0.45),
+                (root + side * 0.012, leaf, 0.45),
+            ],
+            up,
+        );
+        let tone = 0.8 + 0.1 * (b % 3) as f32;
+        if spike {
+            let (low, high) = (root.lerp(tip, 0.45), tip + Vec3::Y * 0.06);
+            let waist = low.lerp(high, 0.4);
+            for across in [side, out] {
+                fan(
+                    &[
+                        (low, petal, 0.6 * tone),
+                        (waist + across * 0.05, petal, tone),
+                        (high, petal, 1.1 * tone),
+                        (waist - across * 0.05, petal, tone),
+                    ],
+                    up,
+                );
+            }
+        } else {
+            let mut head = vec![(tip, [1.0, 0.72, 0.1], 0.9)];
+            for k in 0..=6 {
+                let a = k as f32 * std::f32::consts::TAU / 6.0;
+                head.push((
+                    tip + (side * a.cos() + out * a.sin()) * 0.07 + Vec3::Y * 0.015,
+                    petal,
+                    tone,
+                ));
+            }
+            fan(&head, Vec3::Y);
+        }
+    }
+    m
 }
 
 /// The weights of `terrain-layers`' four extra layers at world `p` (xz),
@@ -1062,13 +1172,14 @@ fn layer_paint(p: Vec2) -> [f32; 4] {
 }
 
 /// The island's meadow with eight layers, their maps in texture arrays,
-/// seen from 26 m up behind the near camera: its four, and four more
+/// seen from 7 m up behind the near camera: its four, and four more
 /// (layers 4 to 7) on the control map's second page, painted
 /// ([`layer_paint`]) where the first page then gives the grass nothing: a
 /// mud path to the gate and the clay floor of the ruin (the island's rock
-/// and sand, tinted), heather and gold flowers in drifts ([`flowers`]).
-/// `painted` false leaves the second page 0: the extra layers show
-/// nowhere.
+/// and sand, tinted), heather and gold flowers in drifts (their ground
+/// [`flowers`], the plants [`flower_clump`]s scattered on the two
+/// layers). `painted` false leaves the second page 0: the extra layers
+/// show nowhere, and no flower grows.
 pub fn layers_scene(painted: bool) -> RenderScene {
     let mut scene = island_view("near");
     let heather = flowers(&mut scene, [150.0, 72.0, 176.0], 201);
@@ -1092,11 +1203,44 @@ pub fn layers_scene(painted: bool) -> RenderScene {
         });
     }
     let mut scene = with_layer_arrays(scene);
-    let eye = MEADOW_EYE - MEADOW_AHEAD * 26.0;
+    // The flowers themselves: plants scattered on the two flower layers.
+    let bloom = scene.add_material(Material {
+        base_color: [1.0; 4],
+        roughness: 0.8,
+        ..Default::default()
+    });
+    for (layer, petal, spike, seed) in [
+        (6, [0.42, 0.12, 0.52], true, 31),
+        (7, [0.95, 0.66, 0.05], false, 37),
+    ] {
+        let mesh = scene.add_mesh(flower_clump(petal, spike));
+        scene.world.scatters.push(ScatterDraw {
+            terrain: 0,
+            mesh,
+            material: bloom,
+            scatter: TerrainScatter {
+                layer,
+                density: 7.0,
+                distance: 120.0,
+                fade: 0.3,
+                scale: [0.8, 1.4],
+                align: 0.2,
+                seed,
+                sway: 0.7,
+                ..Default::default()
+            },
+            cast_shadows: false,
+            impostor: None,
+            impostor_distance: 0.0,
+            with: None,
+            lods: [None; 2],
+        });
+    }
+    let eye = MEADOW_EYE - MEADOW_AHEAD * 14.0;
     let to = MEADOW_EYE + MEADOW_AHEAD * 58.0;
     scene.frame.camera = camera_at(
-        Vec3::new(eye.x, island_height(eye.x, eye.y) + 26.0, eye.y),
-        Vec3::new(to.x, island_height(to.x, to.y) + 2.0, to.y),
+        Vec3::new(eye.x, island_height(eye.x, eye.y) + 7.0, eye.y),
+        Vec3::new(to.x, island_height(to.x, to.y) + 3.0, to.y),
     );
     let handle = scene.world.terrains[0].terrain;
     let mut data = scene.terrain(handle).expect("the island").clone();
@@ -1207,43 +1351,88 @@ pub fn tiling_scene(anti_tiling: f32) -> RenderScene {
 pub const STEEP_FOOT: f32 = 0.0;
 pub const STEEP_HEIGHT: f32 = 60.0;
 
-/// `steep_scene`'s ground: a valley for x past the cliff's foot, scree
-/// against the wall, and an 85° wall up to a plateau 60 m above the
-/// valley, broken by a ledge part of the way up. The wall bends round
-/// the valley (its foot 1 m further out every 16 m along z at 64 m, so
-/// the cliff closes the view either way), wanders a few metres and
-/// stands out in ribs.
-fn steep_height(x: f32, z: f32) -> f32 {
-    let foot = STEEP_FOOT
+/// Where `steep_scene`'s camera stands along the cliff (z).
+const STEEP_EYE_Z: f32 = 100.0;
+
+/// `steep_scene`'s cliff line: where the wall's foot stands along x at
+/// `z`. It bends round the valley (1 m further out every 16 m along z at
+/// 64 m, so the cliff closes the view either way) and stands out in
+/// buttresses 20 m proud between bays.
+fn steep_foot(z: f32) -> f32 {
+    STEEP_FOOT
         + z * z / 2048.0
-        + 9.0 * fbm(z / 70.0, 0.3, 3, 77)
-        + 5.0 * ridged(z / 22.0, 1.7, 2, 78);
-    let top = STEEP_HEIGHT + 10.0 * fbm(x / 90.0, z / 90.0, 3, 79);
-    let valley = 1.6 * fbm(x / 45.0, z / 45.0, 3, 83);
-    // Metres into the wall from its foot.
-    let t = foot - x;
-    let scree = 0.7 * (12.0 + t.min(0.0)).max(0.0);
-    let rise = 85f32.to_radians().tan();
-    let ledge = top * (0.42 + 0.3 * fbm(z / 60.0, 2.2, 2, 86));
-    let ledge_width = (8.0 * fbm(z / 35.0, 5.1, 2, 85) + 3.0).max(0.0);
-    let past = t - ledge / rise;
-    let wall = if t <= 0.0 {
-        0.0
-    } else if past <= 0.0 {
-        t * rise
-    } else {
-        ledge + past.min(ledge_width) * 0.35 + (past - ledge_width).max(0.0) * rise
-    };
-    valley + (scree + wall).min(top)
+        + 56.0 * fbm(z / 130.0, 0.3, 2, 77)
+        + 12.0 * fbm(z / 30.0, 1.7, 2, 78)
 }
 
-/// R7: a cliff 60 m high round a valley (`steep_height`: an 85° wall, its
-/// face towards +x), meadow on the flat and rock on the wall, seen from
-/// across the valley 100 m out, pines and boulders at its foot and a
-/// watchtower on its edge for its size. Sampled from above
-/// (`project_slope` 0) the rock stretches down the wall in vertical
-/// streaks; past `project_slope` the two projections facing the wall
-/// keep its cracks and ledges the shape they have on a boulder.
+/// The plateau's height above the valley at `z` (45 to 75 m).
+fn steep_top(z: f32) -> f32 {
+    STEEP_HEIGHT + 40.0 * fbm(z / 110.0, 4.4, 2, 79)
+}
+
+/// The scree's height against the wall at `z`: fans up to 20 m in some
+/// bays, none in others.
+fn steep_fan(z: f32) -> f32 {
+    (9.0 + 30.0 * fbm(z / 55.0, 7.3, 2, 84)).max(0.0)
+}
+
+/// `steep_scene`'s ground: a valley for x past the cliff's foot, scree
+/// fans against the wall falling at 32°, and an 85° wall up to the
+/// plateau in three steps, the two ledges between them at heights and of
+/// widths that change along it (each there over about half its length).
+fn steep_height(x: f32, z: f32) -> f32 {
+    let top = steep_top(z);
+    let valley = 1.6 * fbm(x / 45.0, z / 45.0, 3, 83);
+    // Metres into the wall from its foot.
+    let t = steep_foot(z) - x;
+    let scree = (steep_fan(z) - 0.62 * (-t).max(0.0)).max(0.0);
+    let rubble = 1.4 * fbm(x / 4.0, z / 4.0, 2, 87) * smooth(0.0, 3.0, scree);
+    let rise = 85f32.to_radians().tan();
+    let ledges = [
+        (
+            0.34 + 0.3 * fbm(z / 50.0, 2.2, 2, 86),
+            (16.0 * fbm(z / 45.0, 5.1, 2, 85) + 1.5).max(0.0),
+        ),
+        (
+            0.7 + 0.22 * fbm(z / 38.0, 8.2, 2, 88),
+            (14.0 * fbm(z / 52.0, 9.1, 2, 89) + 1.0).max(0.0),
+        ),
+    ];
+    let (mut wall, mut left) = (0.0, t.max(0.0));
+    for (at, width) in ledges {
+        let up = (at * top - wall).max(0.0);
+        if left <= up / rise {
+            break;
+        }
+        wall += up;
+        left -= up / rise;
+        let on = left.min(width);
+        wall += on * 0.3;
+        left -= on;
+    }
+    wall += left * rise;
+    valley + (scree + rubble + wall).min(top.max(scree))
+}
+
+/// Where `steep_scene`'s wall stands along x at `z`, `height` metres above
+/// the valley (the first half metre in from its foot that reaches it).
+fn steep_face(z: f32, height: f32) -> f32 {
+    let foot = steep_foot(z);
+    (0..160)
+        .map(|i| foot - i as f32 * 0.5)
+        .find(|&x| steep_height(x, z) >= height)
+        .unwrap_or(foot - 80.0)
+}
+
+/// R7: a cliff 45 to 75 m high round a valley (`steep_height`: 85° walls
+/// in steps, their face towards +x), seen along its foot from the valley
+/// floor: buttresses and bays, ledges, scree fans with their stones, and
+/// crags of rock standing out of the wall and over its edge (terrain
+/// stamps, shaded by the terrain's layers), pines below for its size. Meadow (og.Grass) on the flat, scree on the
+/// fans, rock on the walls. Sampled from above (`project_slope` 0) the rock
+/// stretches down the walls in vertical streaks; past `project_slope`
+/// the two projections facing a wall keep its cracks the shape they have
+/// on a boulder.
 pub fn steep_scene(project_slope: f32) -> RenderScene {
     use crate::kit;
     let mut scene = RenderScene::new();
@@ -1269,6 +1458,17 @@ pub fn steep_scene(project_slope: f32) -> RenderScene {
     });
     let (grass, grass_normal) = kit::layer_maps(&mut scene, "grass");
     let (rock, rock_normal) = kit::layer_maps(&mut scene, "rock");
+    let stone = TerrainLayer {
+        albedo: Some(rock),
+        normal: Some(rock_normal),
+        roughness: 0.85,
+        anti_tiling: 0.6,
+        macro_variation: 0.5,
+        slope_fade: 6.0,
+        project_slope,
+        displacement: 0.35,
+        ..Default::default()
+    };
     scene.world.terrains.push(Terrain {
         layers: vec![
             TerrainLayer {
@@ -1278,70 +1478,140 @@ pub fn steep_scene(project_slope: f32) -> RenderScene {
                 roughness: 0.95,
                 tile: 3.5,
                 anti_tiling: 0.5,
-                slope: [0.0, 36.0],
-                slope_fade: 8.0,
+                slope: [0.0, 24.0],
+                slope_fade: 6.0,
                 ..Default::default()
             },
+            // The walls, and the undersides of the crags that overhang
+            // them (a face turned down is past 90° from flat).
             TerrainLayer {
-                albedo: Some(rock),
-                normal: Some(rock_normal),
                 color: Vec3::new(0.9, 0.86, 0.82),
-                roughness: 0.85,
                 tile: V2_TILE * 2.5,
-                anti_tiling: 0.6,
-                macro_variation: 0.5,
-                slope: [30.0, 90.0],
-                slope_fade: 8.0,
-                project_slope,
-                ..Default::default()
+                slope: [44.0, 180.0],
+                ..stone
+            },
+            // The scree and the ledges' edges: the same rock broken small.
+            TerrainLayer {
+                color: Vec3::new(1.05, 1.0, 0.96),
+                tile: V2_TILE,
+                slope: [24.0, 44.0],
+                ..stone
             },
         ],
         height_blend: 0.6,
+        displacement_distance: 70.0,
         ..Terrain::new(handle)
     });
     let ground = |x: f32, z: f32| Vec3::new(x, steep_height(x, z), z);
-    // The valley: pines in stands below the wall, boulders fallen from it.
-    let pine = kit::prop(&mut scene, "pine");
     let boulder = kit::prop(&mut scene, "boulder");
-    for k in 0..46 {
-        let h = |i: i32| hash2(k, i, 0x57ee);
-        let z = -150.0 + 240.0 * h(0);
-        let out = 12.0 + 60.0 * h(1) * h(1);
-        let x = STEEP_FOOT + z * z / 2048.0 + 6.0 + out;
-        // Clear of the camera and its line to the wall.
-        if (x - 96.0).abs() < 16.0 && (z - 34.0).abs() < 16.0 {
+    let (rock_mesh, rock_material) = boulder.parts()[0];
+    let unit = boulder.max - boulder.min;
+    let mid = (boulder.min + boulder.max) * 0.5;
+    // Crags: the boulder's shape as a terrain stamp `size` metres along
+    // x, y and z, its middle at `at`, turned and tipped, taking the
+    // ground's look over its lowest `blend` metres.
+    let crag = |scene: &mut RenderScene, at: Vec3, size: Vec3, yaw: f32, tip: f32, blend: f32| {
+        scene
+            .world
+            .terrain_stamps
+            .push(og_render::TerrainStampDraw {
+                terrain: 0,
+                mesh: rock_mesh,
+                transform: Mat4::from_translation(at)
+                    * Mat4::from_rotation_y(yaw)
+                    * Mat4::from_rotation_z(tip)
+                    * Mat4::from_scale(size / unit)
+                    * Mat4::from_translation(-mid),
+                blend,
+                cast_shadows: true,
+            });
+    };
+    for k in 0..26 {
+        let h = |i: i32| hash2(k, i, 0xc7a9);
+        let z = -170.0 + 300.0 * (k as f32 + h(0)) / 26.0;
+        let top = steep_top(z);
+        // A third over the plateau's edge, the rest out of the walls.
+        let level = if k % 3 == 0 { 0.96 } else { 0.18 + 0.66 * h(1) };
+        let across = 13.0 + 20.0 * h(2);
+        let size = Vec3::new(across * 0.7, 10.0 + 16.0 * h(3), across);
+        let base = steep_height(steep_foot(z) + 30.0, z);
+        // Its middle a fifth of its depth inside the wall.
+        let at = Vec3::new(
+            steep_face(z, base + level * top) - size.x * 0.2,
+            base + level * top,
+            z,
+        );
+        crag(&mut scene, at, size, 6.3 * h(4), 0.5 * (h(5) - 0.5), 1.5);
+    }
+    // Blocks fallen onto the fans and the valley's edge, half sunk.
+    for k in 0..22 {
+        let h = |i: i32| hash2(k, i, 0xb10c);
+        let z = -150.0 + 270.0 * h(0);
+        let x = steep_foot(z) + 2.0 + 30.0 * h(1) * h(1);
+        let across = 2.5 + 7.0 * h(2) * h(2);
+        let size = Vec3::new(
+            across,
+            across * (0.6 + 0.5 * h(3)),
+            across * (0.8 + 0.5 * h(4)),
+        );
+        // Clear of where the camera stands.
+        if (z - STEEP_EYE_Z).abs() < 16.0 && x - steep_foot(z) > 24.0 {
             continue;
         }
-        if k % 4 == 0 {
-            let r = 1.0 + 2.6 * h(2);
-            boulder.place(
-                &mut scene,
-                ground(x - 4.0, z) - Vec3::Y * 0.3 * r,
-                h(3) * 6.3,
-                r * 1.7,
-            );
-        } else {
-            pine.place(
-                &mut scene,
-                ground(x, z) - Vec3::Y * 0.3,
-                h(3) * 6.3,
-                10.0 + 7.0 * h(2),
-            );
-        }
+        let at = ground(x, z) + Vec3::Y * size.y * 0.18;
+        crag(&mut scene, at, size, 6.3 * h(5), 0.6 * (h(6) - 0.5), 0.4);
     }
-    // The watchtower back from the cliff's edge, in the view's upper left.
-    let tower = kit::prop(&mut scene, "watchtower");
-    let edge = STEEP_FOOT + 30.0 * 30.0 / 2048.0;
-    tower.place(
-        &mut scene,
-        ground(edge - 22.0, -30.0) - Vec3::Y * 0.5,
-        0.7,
-        20.0,
-    );
+    // The scree's stones.
+    scene.world.scatters.push(ScatterDraw {
+        terrain: 0,
+        mesh: rock_mesh,
+        material: rock_material,
+        scatter: TerrainScatter {
+            layer: 2,
+            density: 0.3,
+            distance: 170.0,
+            fade: 0.2,
+            scale: [0.25 / unit.y, 1.3 / unit.y],
+            align: 0.7,
+            seed: 21,
+            sway: 0.0,
+            ..Default::default()
+        },
+        cast_shadows: true,
+        impostor: None,
+        impostor_distance: 0.0,
+        with: None,
+        lods: [None; 2],
+    });
+    // The valley: pines in stands clear of the fans.
+    let pine = kit::prop(&mut scene, "pine");
+    for k in 0..40 {
+        let h = |i: i32| hash2(k, i, 0x57ee);
+        let z = -160.0 + 260.0 * h(0);
+        let x = steep_foot(z) + steep_fan(z) / 0.62 + 6.0 + 60.0 * h(1) * h(1);
+        // Clear of the camera and its line along the wall.
+        if (z - STEEP_EYE_Z).abs() < 34.0 && x - steep_foot(z) < 70.0 {
+            continue;
+        }
+        pine.place(
+            &mut scene,
+            ground(x, z) - Vec3::Y * 0.3,
+            h(3) * 6.3,
+            10.0 + 7.0 * h(2),
+        );
+    }
+    // The valley's meadow.
+    scene.world.grass.push(og_render::GrassDraw {
+        terrain: 0,
+        grass: og_render::Grass {
+            cast_shadows: true,
+            ..Default::default()
+        },
+    });
     fair_afternoon(&mut scene);
     scene.frame.camera = camera_at(
-        ground(96.0, 34.0) + Vec3::Y * 6.0,
-        Vec3::new(STEEP_FOOT, STEEP_HEIGHT * 0.5, -26.0),
+        ground(steep_foot(STEEP_EYE_Z) + 42.0, STEEP_EYE_Z) + Vec3::Y * 1.8,
+        Vec3::new(steep_foot(-40.0) - 4.0, STEEP_HEIGHT * 0.8, -40.0),
     );
     scene
 }

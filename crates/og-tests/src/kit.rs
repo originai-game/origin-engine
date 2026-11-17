@@ -1,8 +1,8 @@
 //! The scenes' shared set dressing (`assets/kit`, its origins and licences
-//! in `assets/kit/README.md`): six models (a column, a broken column, an
-//! arch, a watchtower, a boulder, a pine) and two tiling surfaces (mossy
-//! grass and cobbles), so a scene stands in a place instead
-//! of on a checker. A scene still builds its subject itself; this is what
+//! in `assets/kit/README.md`): seven models (a column, a broken column, an
+//! arch, a watchtower, a boulder, a pine, a ladder) and three tiling
+//! surfaces (mossy grass, cobbles and a rock face), so a scene stands in a
+//! place instead of on a checker. A scene still builds its subject itself; this is what
 //! stands around it.
 //!
 //! Every file is decoded once per process and shared by the scenes that
@@ -26,6 +26,7 @@ pub const MODELS: &[&str] = &[
     "watchtower",
     "boulder",
     "pine",
+    "ladder",
 ];
 /// The kit's surfaces (`assets/kit/ground/<name>.{color,normal,orm}.jpg`).
 pub const SURFACES: &[&str] = &["grass", "cobbles"];
@@ -94,6 +95,18 @@ impl Prop {
     pub fn place(&self, scene: &mut RenderScene, foot: Vec3, yaw: f32, height: f32) {
         self.parts
             .instance(scene, self.transform(foot, yaw, height));
+    }
+
+    /// Places one copy by `transform` (a copy that leans or is stretched:
+    /// a frame of the scene's times [`Self::transform`] at the origin).
+    pub fn place_by(&self, scene: &mut RenderScene, transform: Mat4) {
+        self.parts.instance(scene, transform);
+    }
+
+    /// The model's meshes with their materials, for what draws a mesh
+    /// itself (a terrain stamp, scattered copies).
+    pub fn parts(&self) -> &[(og_render::MeshHandle, MaterialHandle)] {
+        &self.parts.parts
     }
 }
 
