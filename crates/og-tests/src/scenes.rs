@@ -1678,8 +1678,8 @@ pub fn build(name: &str) -> Result<GfxScene, String> {
         // skyline and the ground near it carry the setts' relief and
         // their shadows.
         "terrain-displaced" => |g, _| {
-            g.scene =
-                crate::terrain_scenes::displaced_scene(crate::terrain_scenes::DISPLACED_RELIEF);
+            g.scene = crate::terrain_scenes::displaced_way();
+            as_played(g);
             Ok(())
         },
         // T3: a 160 m cliff the height field cannot make: a wall of rock

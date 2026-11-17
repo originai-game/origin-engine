@@ -2450,6 +2450,80 @@ pub fn displaced_scene(displacement: f32) -> RenderScene {
     scene
 }
 
+/// [`displaced_scene`]'s crest as a place: an old paved way over a hill
+/// in the morning, the stumps and columns of a colonnade either side of
+/// it on the crest, and past the crest (the ground falls away at once) the
+/// top of a watchtower, the tips of pines and far hills. The setts before
+/// the camera and the skyline they make are left clear: nothing stands or
+/// throws its shadow there.
+pub fn displaced_way() -> RenderScene {
+    use crate::kit;
+    let mut scene = displaced_scene(DISPLACED_RELIEF);
+    let ground = |x: f32, z: f32| Vec3::new(x, displaced_height(z), z);
+    let broken = kit::prop(&mut scene, "column_broken");
+    let column = kit::prop(&mut scene, "column");
+    let crest = DISPLACED_CREST;
+    for (x, dz, height, standing) in [
+        (-2.7f32, 0.6f32, 1.25f32, false),
+        (3.0, 0.2, 1.0, false),
+        (-6.4, -0.9, 3.3, true),
+        (7.2, -1.4, 3.3, true),
+        (-11.5, -2.2, 1.6, false),
+        (12.4, -2.6, 3.3, true),
+    ] {
+        let prop = if standing { &column } else { &broken };
+        prop.place(
+            &mut scene,
+            ground(x, crest + dz) - Vec3::Y * 0.05,
+            x,
+            height,
+        );
+    }
+    let boulder = kit::prop(&mut scene, "boulder");
+    boulder.place(
+        &mut scene,
+        ground(-4.6, crest - 2.4) - Vec3::Y * 0.2,
+        1.3,
+        0.9,
+    );
+    boulder.place(
+        &mut scene,
+        ground(5.3, crest - 3.4) - Vec3::Y * 0.2,
+        4.1,
+        0.7,
+    );
+    // Past the crest: what stands tall enough shows its top over it.
+    let tower = kit::prop(&mut scene, "watchtower");
+    tower.place(
+        &mut scene,
+        ground(4.5, crest - 16.0) - Vec3::Y * 0.5,
+        0.6,
+        18.0,
+    );
+    let pine = kit::prop(&mut scene, "pine");
+    for k in 0..34 {
+        let h = |i: i32| hash2(k, i, 0xd15b);
+        let x = -40.0 + 80.0 * h(0);
+        let z = crest - 9.0 - 12.0 * h(1);
+        // The way's own line stays open to the hills.
+        if x > -5.0 && x < 10.0 {
+            continue;
+        }
+        pine.place(
+            &mut scene,
+            ground(x, z) - Vec3::Y * 0.3,
+            6.3 * h(2),
+            8.0 + 6.0 * h(3),
+        );
+    }
+    kit::hills(&mut scene, None);
+    // The sun stays where the bare crest has it, 20° up; the clouds stand
+    // where their shadows leave the crest in the sun.
+    fair_sky(&mut scene, 7.37);
+    scene.frame.tick = 0;
+    scene
+}
+
 /// `terrain-snow-track`'s footprints: one pressed each tick (a tick a
 /// second), its frames.
 pub const SNOW_TRACK_STEPS: u32 = 20;
