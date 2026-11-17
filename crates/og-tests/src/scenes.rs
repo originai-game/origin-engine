@@ -1702,19 +1702,18 @@ pub fn build(name: &str) -> Result<GfxScene, String> {
             as_played(g);
             Ok(())
         },
-        // R6: a ball red on its +x half and blue on its -x half, 2 m
-        // across on a grey floor, drawn as its mesh (left) and as its
-        // octahedral impostor (right): the two read alike, red towards the
-        // camera's right, blue its left, each casting a round shadow.
+        // R6: a formal garden's walk of clipped box balls, the front pair
+        // its mesh (left) and its octahedral impostor (right) reading
+        // alike, every ball past them its card.
         "impostors" => |g, _| {
             g.scene = crate::impostor_scenes::impostors_scene();
             Ok(())
         },
-        // R6: the ball scattered over a 48 m green terrain, its copies
-        // farther than 15 m drawn as its impostor (cross-dithered over the
-        // last 1.5 m): the far balls look as the near ones do.
+        // R6: a moor of cushion shrubs scattered on a hillside, the
+        // bushes farther than 15 m drawn as their impostor (cross-dithered
+        // over the last 1.5 m): the far bushes look as the near ones do.
         "impostor-scatter" => |g, _| {
-            g.scene = crate::impostor_scenes::impostor_scatter_scene(15.0);
+            g.scene = crate::impostor_scenes::heath_scene(15.0);
             Ok(())
         },
         // R6: pines on a hilltop in a gale, leaning downwind (+x, to the
