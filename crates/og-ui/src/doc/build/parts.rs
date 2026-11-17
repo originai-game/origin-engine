@@ -1461,6 +1461,7 @@ impl Ui {
         decor.radius = r.num("radius");
         let mut draw = decor.over(
             base,
+            false,
             crate::doc::paint_css::LayerFrame {
                 size,
                 viewport: [vp.width, vp.height],

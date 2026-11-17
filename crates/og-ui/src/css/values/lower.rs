@@ -89,6 +89,16 @@ pub(super) fn lower_decl(name: &str, value: &str, state: bool) -> Result<Vec<Par
         {
             lower_background_image(name, value)
         }
+        "background" if !state => {
+            let mut out = vec![
+                e("background", paint_vals(&t)?),
+                e("backgroundImage", vec![Value::String("none".into())]),
+            ];
+            for (_, prop) in super::paint_css::BACKGROUND_LONGHANDS {
+                out.push(e(prop, vec![Value::String(String::new())]));
+            }
+            Ok(out)
+        }
         "background" | "background-color" => Ok(vec![e("background", paint_vals(&t)?)]),
         "color" => Ok(vec![e(
             if state { "ink" } else { "color" },

@@ -1492,6 +1492,7 @@ impl Ui {
                         .get(&i)
                         .map(|d| &**d)
                         .or_else(|| self.paint.part_draws.get(&i)),
+                    !self.tree.draws.contains_key(&i),
                     crate::css::paint_css::LayerFrame {
                         size: [r.width, r.height],
                         viewport: [self.env.viewport.width, self.env.viewport.height],

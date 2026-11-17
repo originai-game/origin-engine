@@ -165,7 +165,20 @@ impl Ui {
         let theme = self.theme();
         let current = r.current(theme);
         let cx = r.color_context(theme);
-        let mut d = BoxDecor::default();
+        let native = el.part.is_some() || el.frame.is_some() || r.part.is_some();
+        let mut d = BoxDecor {
+            background_color_written: native && r.has("background"),
+            background_image_written: native && r.has("backgroundImage"),
+            ..Default::default()
+        };
+        if d.background_color_written {
+            // Native parts retain their authored colour as sampled state
+            // (including pseudo boxes restyled after they were built).
+            // The composed dressing draws it only once.
+            d.background = el
+                .background
+                .map(|c| crate::paint::Paint::Solid(crate::paint::ColorRef::Literal(c)));
+        }
         for (k, side) in crate::doc::boxes::SIDES.iter().enumerate() {
             let style = r
                 .str(&format!("border{side}Style"))
@@ -224,7 +237,11 @@ impl Ui {
                 }
             }
             // Outer shadows go under the background: it is drawn with them.
-            if d.shadows.iter().any(|s| !s.inset) && el.part.is_none() && el.frame.is_none() {
+            if d.background.is_none()
+                && d.shadows.iter().any(|s| !s.inset)
+                && el.part.is_none()
+                && el.frame.is_none()
+            {
                 d.background = el
                     .background
                     .take()

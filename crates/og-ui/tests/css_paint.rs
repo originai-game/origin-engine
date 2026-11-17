@@ -21,6 +21,74 @@ use og_ui::*;
 use support::*;
 
 #[test]
+fn authored_native_backgrounds_replace_material_layers() {
+    for (tag, css, gradient, red) in [
+        ("panel", "", true, false),
+        ("panel", "background: #ff0000;", false, true),
+        ("panel", "background: transparent;", false, false),
+        ("panel", "background-image: none;", false, false),
+        ("panel", "background-color: #ff0000;", true, true),
+        ("button", "", false, false),
+        ("button", "background-color: #ff0000;", false, true),
+        (
+            "button",
+            "background: #ff0000; border: 3px solid #00ff00; border-radius: 0;",
+            false,
+            true,
+        ),
+        ("svg", "background: transparent;", false, true),
+    ] {
+        let content = if tag == "svg" {
+            r##"<rect width="100" height="80" fill="#ff0000"/>"##
+        } else {
+            ""
+        };
+        let d = Doc::new(
+            &format!(
+                r#"<meta name="component" content="t">
+<{tag} id="Box">{content}</{tag}><style>#Box {{ width: 100px; height: 80px; {css} }}</style>"#
+            ),
+            &[],
+        );
+        assert!(
+            d.ui.frame().warnings.is_empty(),
+            "{tag} {css}: {:?}",
+            d.ui.frame().warnings
+        );
+        let paints =
+            d.ui.frame()
+                .items
+                .iter()
+                .filter_map(|item| match &item.cmd {
+                    DrawCmd::Shape { shape, .. } => Some(&shape.paint),
+                    _ => None,
+                })
+                .collect::<Vec<_>>();
+        assert_eq!(
+            paints
+                .iter()
+                .any(|paint| matches!(paint, og_draw::UiPaint::GradientImage(_))),
+            gradient,
+            "{tag} {css}: default images reset only when authored"
+        );
+        assert_eq!(
+            paints.iter().any(
+                |paint| matches!(paint, og_draw::UiPaint::Solid(c) if *c == [1.0, 0.0, 0.0, 1.0])
+            ),
+            red,
+            "{tag} {css}: authored colour"
+        );
+        if css.contains("border:") {
+            assert!(d.ui.frame().items.iter().any(|item| {
+                matches!(&item.cmd, DrawCmd::Shape { shape, .. }
+                    if matches!(shape.paint, og_draw::UiPaint::Solid([0.0, 1.0, 0.0, 1.0]))
+                    && matches!(shape.geometry, og_draw::UiGeometry::Rect { radii, .. } if radii == [0.0; 4]))
+            }), "the author's square green border replaces the button plate");
+        }
+    }
+}
+
+#[test]
 fn image_urls_resolve_files_not_atlas_names_or_handles() {
     use og_draw::UiPaint;
     let mut handles = Handles::default();

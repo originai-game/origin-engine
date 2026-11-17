@@ -1425,6 +1425,7 @@ impl Ui {
                 };
                 let d = decor.over(
                     None,
+                    false,
                     crate::css::paint_css::LayerFrame {
                         size: [p.at.width, p.at.height],
                         viewport: [self.env.viewport.width, self.env.viewport.height],

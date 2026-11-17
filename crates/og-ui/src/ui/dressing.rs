@@ -156,6 +156,7 @@ impl Ui {
                 |decor| {
                     decor.over(
                         Some(&draw),
+                        true,
                         crate::css::paint_css::LayerFrame {
                             size: [node.placed.rect.width, node.placed.rect.height],
                             viewport: [self.env.viewport.width, self.env.viewport.height],

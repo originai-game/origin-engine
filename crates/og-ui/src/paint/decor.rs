@@ -81,6 +81,10 @@ pub struct BoxDecor {
     /// Its background, drawn here (under the inner shadows, over the
     /// outer ones) instead of as the element's own.
     pub background: Option<Paint>,
+    /// Authored longhands replace the native dressing's corresponding
+    /// background, including an explicitly transparent colour or no image.
+    pub background_color_written: bool,
+    pub background_image_written: bool,
     /// `overflow: hidden` or `clip`: its children are cut to its shape.
     pub clip: bool,
     /// CSS `overflow-clip-margin` of that cut, as written: the box its
@@ -199,6 +203,7 @@ impl BoxDecor {
     pub(crate) fn over(
         &self,
         base: Option<&ElementDraw>,
+        native_background: bool,
         frame: crate::css::paint_css::LayerFrame,
     ) -> ElementDraw {
         let size = frame.size;
@@ -208,6 +213,23 @@ impl BoxDecor {
             ..frame
         };
         let mut d = base.cloned().unwrap_or_default();
+        // A native dressing is a default background, not authored content
+        // such as an SVG's fills or a game's set_draw artwork.
+        if native_background && (self.background_color_written || self.background_image_written) {
+            let keep = |color: bool| {
+                if color {
+                    !self.background_color_written
+                } else {
+                    !self.background_image_written
+                }
+            };
+            d.fills.retain(|p| keep(matches!(p, Paint::Solid(_))));
+            if let Some(boxes) = &mut d.boxes {
+                boxes
+                    .backgrounds
+                    .retain(|l| keep(matches!(l.paint, Paint::Solid(_)) && l.fade.is_empty()));
+            }
+        }
         let layered = self.css.as_ref().is_some_and(|c| {
             !c.images.is_empty()
                 || !c.masks.is_empty()

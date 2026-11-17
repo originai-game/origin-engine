@@ -1481,46 +1481,33 @@ impl Ui {
                     .partition(|(spec, _)| plate_prop(PROPS[*spec].name));
                 r.vals = rest;
                 plate = std::mem::take(&mut plate_rules);
-                // Its fill replaces the style's whole background and its
-                // border the style's painted frame, as the `background`
-                // and `border` shorthands reset the image beside them.
+                // Background resets come from CSS lowering, including a
+                // plain colour. The legacy border bridge also resets art.
                 let has = |name: &str| own.iter().any(|(spec, _)| PROPS[*spec].name == name);
                 let border = own.iter().any(|(spec, _)| {
                     let name = PROPS[*spec].name;
                     name.starts_with("border") && !name.starts_with("borderImage")
                 });
-                for (written, image, css) in [
-                    (has("background"), "backgroundImage", "background"),
-                    (border, "borderImageSource", "border"),
-                ] {
-                    let Some((rule, important)) = plate.iter_mut().rev().find_map(|r| {
+                if border
+                    && !has("borderImageSource")
+                    && let Some((rule, important)) = plate.iter_mut().rev().find_map(|r| {
                         let d = r.declarations.iter().rfind(|d| {
-                            d.name.starts_with(css) && !d.name.starts_with("border-image")
+                            d.name.starts_with("border") && !d.name.starts_with("border-image")
                         })?;
                         let important = d.important;
                         Some((r, important))
-                    }) else {
-                        continue;
-                    };
-                    if written
-                        && !has(image)
-                        && let Ok(reset) = super::stylesheet::inline(
-                            &b.doc,
-                            n,
-                            &format!(
-                                "{}: none{}",
-                                if css == "background" {
-                                    "background-image"
-                                } else {
-                                    "border-image-source"
-                                },
-                                if important { " !important" } else { "" }
-                            ),
-                            0,
-                        )
-                    {
-                        rule.declarations.extend(reset);
-                    }
+                    })
+                    && let Ok(reset) = super::stylesheet::inline(
+                        &b.doc,
+                        n,
+                        &format!(
+                            "border-image-source: none{}",
+                            if important { " !important" } else { "" }
+                        ),
+                        0,
+                    )
+                {
+                    rule.declarations.extend(reset);
                 }
                 r.vals.extend(
                     own.into_iter()

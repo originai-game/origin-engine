@@ -2096,6 +2096,11 @@ reads against that dressing. Core parts keep their names and meanings.
   keeps the corners for its clip and outline. An own `background` clears
   the style's `background-image` and an own border its
   `border-image-source` unless the author writes them.
+- A native frame's material is a default background, not another layer
+  over the author's CSS. `background` replaces its colour and images,
+  including `transparent`; `background-image: none` removes only its
+  images, while `background-color` keeps them. Its other dressing stays.
+  This replacement does not erase authored SVG or `set_draw` content.
 - A missing dressing uses the readable core token fallback; it is not
   permission to leave a required state unfinished. Missing art draws a
   small mark fitted to the slot's shorter side, at most 32 UI units,
