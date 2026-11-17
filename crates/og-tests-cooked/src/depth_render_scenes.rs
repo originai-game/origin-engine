@@ -7,12 +7,13 @@
 //!   eye height. Each copy draws the level `og_render::lod::select` picks
 //!   for its error projected to the 720 px view, tinted as `debugView lod`
 //!   tints it: green the full mesh (near), yellow level 1, orange level 2.
+//!   They stand by a farm track in a clearing of the kit's grass, a wall
+//!   and a wood of its pines past them and its hills beyond, under the
+//!   fair afternoon's sky: an editor's level-of-detail view of a scene.
 
 use glam::{Mat4, Quat, Vec3};
 use og_cook::runtime::Bundle;
-use og_render::{
-    Camera, DirectionalLight, Exposure, InstanceFx, RenderScene, StandardMaterial, lod, shapes,
-};
+use og_render::{Camera, Exposure, InstanceFx, RenderScene, lod};
 use std::path::PathBuf;
 use std::sync::OnceLock;
 
@@ -60,23 +61,70 @@ pub fn lod_scene() -> Result<LodScene, String> {
     let model = bundle
         .load_model("models/tree.glb")
         .map_err(|e| e.to_string())?;
+    use og_tests::kit;
     let mut scene = RenderScene::new();
-    let sun = Vec3::new(-0.4, 0.7, 0.5);
-    scene.lighting.light = DirectionalLight {
-        direction_to_light: sun,
-        intensity: 3.0,
-        ..Default::default()
+    // A clearing in an orchard country: the kit's grass out to its hills,
+    // a farm track running away beside the row, a stone wall and a wood
+    // of the kit's pines closing the view past the farthest tree, under
+    // the fair afternoon's sky with the sun behind the left shoulder.
+    let meadow = kit::surface_tinted(&mut scene, "grass", [0.78, 1.0, 0.62]);
+    let land = scene.add_mesh(kit::slab(
+        glam::Vec2::splat(-200.0),
+        glam::Vec2::splat(200.0),
+        0.0,
+        4.0,
+    ));
+    scene.add_instance(land, meadow, Mat4::IDENTITY);
+    let setts = kit::surface_tinted(&mut scene, "cobbles", [0.95, 0.88, 0.74]);
+    let track = scene.add_mesh(kit::slab(
+        glam::Vec2::new(-0.8, -150.0),
+        glam::Vec2::new(0.8, 4.0),
+        0.02,
+        2.5,
+    ));
+    scene.add_instance(track, setts, Mat4::IDENTITY);
+    let stone = kit::surface_tinted(&mut scene, "cobbles", [1.0, 0.93, 0.8]);
+    let wall = scene.add_mesh(kit::block(
+        Vec3::new(-40.0, -0.2, -96.0),
+        Vec3::new(-2.0, 1.1, -95.3),
+        2.5,
+    ));
+    scene.add_instance(wall, stone, Mat4::IDENTITY);
+    let wall = scene.add_mesh(kit::block(
+        Vec3::new(2.0, -0.2, -96.0),
+        Vec3::new(40.0, 1.1, -95.3),
+        2.5,
+    ));
+    scene.add_instance(wall, stone, Mat4::IDENTITY);
+    let pine = kit::prop(&mut scene, "pine");
+    for k in 0..260i32 {
+        let h = |i: i32| {
+            let mut v = (k as u32).wrapping_mul(0x8da6_b343) ^ (i as u32).wrapping_mul(0xd816_3841);
+            v = (v ^ (v >> 13)).wrapping_mul(0x85eb_ca6b);
+            ((v ^ (v >> 16)) & 0xffff) as f32 / 65536.0
+        };
+        let (x, z) = (-150.0 + 300.0 * h(1), -100.0 - 70.0 * h(2));
+        if x.abs() < 3.0 {
+            continue;
+        }
+        pine.place(
+            &mut scene,
+            Vec3::new(x, -0.2, z),
+            6.3 * h(3),
+            11.0 + 8.0 * h(4),
+        );
+    }
+    kit::hills(&mut scene, None);
+    og_tests::terrain_scenes::afternoon(&mut scene);
+    scene.lighting.light.direction_to_light = Vec3::new(-0.4, 0.7, 0.5).normalize();
+    scene.lighting.light.max_shadow_distance = 200.0;
+    og_tests::terrain_scenes::fair_sky(&mut scene, 8.6);
+    scene.frame.tick = 0;
+    scene.frame.camera = Camera {
+        far: 4000.0,
+        exposure: Exposure::linear(0.9),
+        ..lod_camera()
     };
-    scene.lighting.environment.sky.sun_direction = sun;
-    scene.lighting.environment.intensity = 0.6;
-    scene.frame.camera = lod_camera();
-    let ground = scene.add_standard_material(StandardMaterial {
-        color: Vec3::new(0.3, 0.32, 0.28),
-        roughness: 1.0,
-        ..Default::default()
-    });
-    let floor = scene.add_mesh(shapes::plane(200.0, 1.0));
-    scene.add_instance(floor, ground, Mat4::IDENTITY);
     let base = scene.mesh_count();
     let parts = model.add_to(&mut scene, &[]).parts;
     let levels = model.add_lod_levels(&mut scene);
@@ -143,7 +191,7 @@ pub fn lod_scene() -> Result<LodScene, String> {
                 transform: at * local,
                 material_layer: None,
                 fx: InstanceFx {
-                    flash: 0.8,
+                    flash: 0.45,
                     flash_color: lod::debug_color(level),
                     ..InstanceFx::NONE
                 },
