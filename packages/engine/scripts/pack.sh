@@ -142,6 +142,13 @@ done
 # og.motion's weights (docs/design.md §2.7) ship in motion/, read by og's
 # cook (og-cook's motion.rs). Use the same pin check as development builds.
 bun "$here/scripts/motion-model.ts" ensure
+# Keep named bindgen modules for offline symbolication outside the install.
+# Do this before build-facts: their hashes and sizes describe the shipped bytes.
+symbols="$out/stage/wasm-symbols"
+mkdir -p "$symbols"
+bun "$here/scripts/wasm-symbols.ts" "$here/dist" "$symbols"
+tar -czf "$out/origingame-engine-wasm-symbols-$version.tgz" -C "$out/stage" wasm-symbols
+(cd "$out" && printf '%s  %s\n' "$(sum "origingame-engine-wasm-symbols-$version.tgz")" "origingame-engine-wasm-symbols-$version.tgz" > "origingame-engine-wasm-symbols-$version.tgz.sha256")
 # What every game's build asks of the engine's own modules (each web host
 # file's brotli size, each host's probe) is computed here once, into
 # dist/build-facts.json, so an install's first og build does not spend a

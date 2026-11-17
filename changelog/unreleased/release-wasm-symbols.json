@@ -1,0 +1,8 @@
+{
+  "fixed": [
+    {
+      "member": "engine install",
+      "summary": "Shipping wasm omits function-name metadata without changing bindgen instructions; matching named modules ship as a separate checksummed symbol archive."
+    }
+  ]
+}

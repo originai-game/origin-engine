@@ -34,6 +34,19 @@ The targets are `x86_64-unknown-linux-gnu`, `aarch64-apple-darwin` and
 `x86_64-pc-windows-msvc`, each a `.tar.gz`. `revision` is the commit the
 version was built from.
 
+Shipping wasm is bindgen output with only the optional `name` custom
+section removed. Instructions, imports, exports and other custom sections
+stay unchanged; this does not reintroduce wasm-opt. The separate symbols
+archive contains the original named modules, at `wasm-symbols/web*/`, for
+offline stack symbolication by function index. Pack writes
+`origingame-engine-wasm-symbols-<version>.tgz` and its `.sha256` checksum.
+Keep these in the team's private bucket under `engine/<version>/symbols/`,
+outside the downloads endpoint, public manifest and signed install sums.
+Before publishing, record the actual private bucket path and verified hash
+in this document's version release notes. Build facts are computed after
+removing names. A future public symbols endpoint requires the platform's
+download filename allowlist to accept optional artifacts first.
+
 **The dist** is one archive's root, assembled by `scripts/release-dist.ts`
 and run unpacked, with no npm and no `bun
 install`: `origin-engine.json` with the `build` record, `bin/og`,

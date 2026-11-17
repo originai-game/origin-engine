@@ -11,6 +11,7 @@ import { ENGINE_PUBKEY, verifyMinisign } from "../packages/engine/src/node/vfx-p
 import { ENGINE_PUBKEY as LAUNCHER_PUBKEY } from "../packages/launcher/og.ts";
 import { pinnedKey } from "../packages/launcher/build.ts";
 import { checkPacksOutside, finish, writeVfxArchives } from "./release-dist.ts";
+import { splitSymbols } from "../packages/engine/scripts/wasm-symbols.ts";
 
 const fixture = join(import.meta.dir, "../tests/fixtures/vfx-release");
 const made: string[] = [];
@@ -23,6 +24,38 @@ afterAll(() => {
   for (const d of made) rmSync(d, { recursive: true, force: true });
 });
 delete process.env.OG_ENGINE_MINISIGN_KEY;
+
+test("shipping wasm keeps its exports and other custom sections, with matching named modules outside the install", () => {
+  const root = scratch("og-wasm-symbols-");
+  const dist = join(root, "dist");
+  const symbols = join(root, "symbols");
+  mkdirSync(join(dist, "web-publish"), { recursive: true });
+  // One exported function returning 42, plus a name section and an unrelated
+  // custom section that must survive byte-for-byte (including on a second run).
+  const code = Buffer.from([
+    0, 97, 115, 109, 1, 0, 0, 0,
+    1, 5, 1, 96, 0, 1, 127, 3, 2, 1, 0,
+    7, 7, 1, 3, 114, 117, 110, 0, 0,
+    10, 6, 1, 4, 0, 65, 42, 11,
+    0, 14, 4, 110, 97, 109, 101, 1, 7, 1, 0, 4, 116, 101, 115, 116,
+    0, 6, 4, 107, 101, 101, 112, 99,
+  ]);
+  const path = join(dist, "web-publish/origin-engine_bg.wasm");
+  writeFileSync(path, code);
+  splitSymbols(dist, symbols);
+  const shipped = readFileSync(path);
+  const module = new WebAssembly.Module(shipped);
+  expect(WebAssembly.Module.customSections(module, "name")).toHaveLength(0);
+  expect(new Uint8Array(WebAssembly.Module.customSections(module, "keep")[0]!)).toEqual(new Uint8Array([99]));
+  const run = new WebAssembly.Instance(module).exports.run;
+  expect(typeof run).toBe("function");
+  if (typeof run !== "function") throw new Error("missing wasm export");
+  expect(run()).toBe(42);
+  expect(readFileSync(join(symbols, "web-publish/origin-engine_bg.wasm"))).toEqual(code);
+  splitSymbols(dist, symbols);
+  expect(readFileSync(path)).toEqual(shipped);
+  expect(readFileSync(join(symbols, "web-publish/origin-engine_bg.wasm"))).toEqual(code);
+});
 
 describe("vfx archives", () => {
   test("are the same bytes on every build, root <name>/, owned by 0:0 at mtime 0, without preview/", () => {
@@ -55,10 +88,14 @@ describe("vfx archives", () => {
   test("are named in manifest.json and listed in SHA256SUMS beside the engine archives", () => {
     const dir = scratch("og-vfx-release-");
     const vfx = writeVfxArchives(dir, "1.2.3-dev.4", fixture);
+    const symbols = "origingame-engine-wasm-symbols-1.2.3-dev.4.tgz";
+    writeFileSync(join(dir, symbols), "matching named modules");
     finish(dir, "1.2.3-dev.4", "0".repeat(40), "2026-11-07T00:00:00.000Z", vfx);
     const manifest = JSON.parse(readFileSync(join(dir, "manifest.json"), "utf8"));
     expect(manifest.vfx).toEqual(vfx);
+    expect(manifest).not.toHaveProperty("symbols");
     const sums = readFileSync(join(dir, "SHA256SUMS"), "utf8");
+    expect(sums).not.toContain(symbols);
     expect(sums).toContain(`${vfx["spark-pack"]!.sha256}  vfx/spark-pack.tar.gz\n`);
     expect(sums).toContain("  manifest.json\n");
     // Every line verifies from the version's directory, as publish checks them.
