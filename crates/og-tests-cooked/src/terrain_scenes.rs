@@ -14,7 +14,9 @@ use std::sync::OnceLock;
 /// control map the island's four layers read (grass on the low flats,
 /// rock on the slopes, sand on the shore below 7 m and in the rivers'
 /// beds where the flow gathers, snow above 70 m). The sea's water stands at the terrain's
-/// `seaLevel`, seen from 450 m out to sea at the south-east.
+/// `seaLevel`, seen from 450 m out to sea at the south-east under the fair
+/// afternoon's physical sky, the kit's pines scattered where the biomes
+/// laid grass.
 pub const GENERATED_TERRAIN: &str = "type terrain
 version 1
 ---
@@ -117,8 +119,8 @@ pub fn generated_island() -> Result<(TerrainData, f32), String> {
 }
 
 /// Where the `terrain-generated` camera stands and looks.
-pub const GENERATED_EYE: Vec3 = Vec3::new(560.0, 300.0, 700.0);
-pub const GENERATED_TARGET: Vec3 = Vec3::new(-20.0, 10.0, -40.0);
+pub const GENERATED_EYE: Vec3 = Vec3::new(470.0, 170.0, 560.0);
+pub const GENERATED_TARGET: Vec3 = Vec3::new(-40.0, 25.0, -80.0);
 
 /// `terrain-generated` (see [`GENERATED_TERRAIN`]).
 #[cfg(not(target_arch = "wasm32"))]
@@ -142,7 +144,38 @@ pub fn generated_scene() -> Result<RenderScene, String> {
         ..Terrain::new(handle)
     });
     afternoon(&mut scene);
-    scene.frame.camera = camera_at(GENERATED_EYE, GENERATED_TARGET);
+    scene.lighting.light.max_shadow_distance = 1500.0;
+    og_tests::terrain_scenes::fair_sky(&mut scene, 8.3);
+    scene.frame.tick = 0;
+    scene.frame.camera = og_render::Camera {
+        far: 20000.0,
+        ..camera_at(GENERATED_EYE, GENERATED_TARGET)
+    };
+    // Pines where the biomes laid grass, so the woods follow the land the
+    // cook shaped: on the low flats and up the valleys, not on the rock,
+    // the shore or the snow.
+    let pine = og_tests::kit::prop(&mut scene, "pine");
+    let (mesh, material) = pine.rooted(&mut scene, 1.0);
+    scene.world.scatters.push(og_render::ScatterDraw {
+        terrain: 0,
+        mesh,
+        material,
+        scatter: og_render::TerrainScatter {
+            layer: 0,
+            density: 0.004,
+            distance: 3000.0,
+            scale: [9.0, 16.0],
+            seed: 7,
+            footprint: 3.0,
+            avoid_water: 2.0,
+            ..Default::default()
+        },
+        cast_shadows: true,
+        impostor: None,
+        impostor_distance: 0.0,
+        with: None,
+        lods: [None; 2],
+    });
     scene.world.water.push(Water {
         transform: Mat4::from_translation(Vec3::new(0.0, sea, 0.0)),
         size: Vec2::splat(12000.0),
