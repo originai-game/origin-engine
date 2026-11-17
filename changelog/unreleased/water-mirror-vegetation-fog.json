@@ -1,0 +1,12 @@
+{
+  "fixed": [
+    {
+      "member": "og.Water.planarReflection",
+      "summary": "A planar reflection draws what grows on the terrain: og.TerrainScatter's copies with their impostors, the crowds' cards and og.Grass. Before, a mirror drew the meshes, the terrain and the sky, so a lake's shore stood in it bare, without its woods and reeds."
+    },
+    {
+      "member": "og.Fog.volumetric",
+      "summary": "A planar reflection keeps the fog under volumetric fog: the mirror is fogged by the same fog unlit. Before, a scene with Fog.volumetric drew its mirror without any fog, so hills in mist stood clear in the water."
+    }
+  ]
+}

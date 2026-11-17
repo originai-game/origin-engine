@@ -195,6 +195,24 @@ pub(crate) struct AtmosphereGpu {
 }
 
 impl AtmosphereGpu {
+    /// The block's fog: `f`, the plain fog its shaders mix in.
+    pub(crate) fn fog(&mut self, f: &Fog) {
+        self.fog_color = f.color.extend(1.0).to_array();
+        self.fog_distance = [
+            f.density.max(0.0),
+            f.start.max(0.0),
+            f.end.max(0.0),
+            f.max_opacity.clamp(0.0, 1.0),
+        ];
+        self.fog_height = [
+            f.height,
+            f.falloff.max(1e-4),
+            f.height_density.max(0.0),
+            f.sky.clamp(0.0, 1.0),
+        ];
+        self.fog_sun = f.sun_color.extend(f.sun_power.max(0.0)).to_array();
+    }
+
     /// `sky`: the drawn sky's look, sun direction and sun colour. `clouds`:
     /// with whether the live sky captures them (RenderScene::sky_captured).
     /// `eye`: the camera's x and z in the world, which the clouds stand over.
@@ -211,20 +229,7 @@ impl AtmosphereGpu {
     ) -> AtmosphereGpu {
         let mut a: AtmosphereGpu = bytemuck::Zeroable::zeroed();
         if let Some(f) = fog {
-            a.fog_color = f.color.extend(1.0).to_array();
-            a.fog_distance = [
-                f.density.max(0.0),
-                f.start.max(0.0),
-                f.end.max(0.0),
-                f.max_opacity.clamp(0.0, 1.0),
-            ];
-            a.fog_height = [
-                f.height,
-                f.falloff.max(1e-4),
-                f.height_density.max(0.0),
-                f.sky.clamp(0.0, 1.0),
-            ];
-            a.fog_sun = f.sun_color.extend(f.sun_power.max(0.0)).to_array();
+            a.fog(f);
         }
         if let Some((look, sun, color)) = sky {
             let g = look.gpu(true, color);

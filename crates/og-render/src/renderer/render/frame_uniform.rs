@@ -308,6 +308,14 @@ impl Renderer {
             u.view_forward = f.forward.extend(u.view_forward[3]).to_array();
             (u.view_right, u.view_up) = f.axes();
             u.caustics = [[0.0; 4]; 6];
+            // The lit volume (volumetric.rs) is the main view's alone: a
+            // mirror keeps the scene's plain fog, the same medium unlit,
+            // so what stands in mist is in mist in the water too.
+            if frame_fog.is_none()
+                && let Some(fog) = &scene.atmosphere.fog
+            {
+                u.atmosphere.fog(fog);
+            }
             u.cluster = self.reflections.reflection_clusters[k].params;
             u.ssr = [0.0; 4];
             self.queue.write_buffer(

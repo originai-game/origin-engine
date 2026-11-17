@@ -4,6 +4,11 @@
 //! opaque meshes, the first through the GPU cull's reflection pass, the
 //! rest culled on the CPU, and its transparent meshes back to front from
 //! the mirrored eye. Its bind step makes each mirror's effect groups.
+//!
+//! A mirror draws what stands in the scene: its meshes, the terrain, what
+//! grows on it (the scattered copies with their impostors, the crowds'
+//! cards and the grass) and the sky, so a shore's woods and reeds stand
+//! in the water as its hills do.
 
 use super::*;
 
@@ -21,6 +26,8 @@ pub(super) struct ReflectionPlan<'f> {
     #[allow(clippy::type_complexity)]
     pub(super) reflections: &'f [(usize, Camera, frame::CameraFrame, Mat4, (u32, u32))],
     pub(super) terrain_draws: &'f [terrain::TerrainDraw],
+    pub(super) scatter_batches: &'f scatter::ScatterBatches,
+    pub(super) grass_frame: &'f grass::GrassFrame,
     pub(super) reflection_blended: &'f [DrawList],
     /// Each pass's view of the meshlet dispatch (0: none), and the
     /// frame's batches it draws.
@@ -46,6 +53,8 @@ impl Renderer {
             terrain_indices,
             reflections,
             terrain_draws,
+            scatter_batches,
+            grass_frame,
             reflection_blended,
             meshlet_views,
             batches,
@@ -142,6 +151,39 @@ impl Renderer {
             stats.draw_calls += n;
             stats.reflection_draws += n;
         }
+        // What grows there: the copies the cull listed for the passes off
+        // the camera (scatter_cull.rs), each chunk the mirror sees, with
+        // their impostors and the crowds' cards, then the grass.
+        if let Some(r) = reflections.get(k) {
+            let frustum = Frustum::from_view_proj(r.3);
+            let fx = &reflection_fx_group[k];
+            let (n, _) = self.world.scatter.draw(
+                &mut pass,
+                scatter::ScatterPass::Lit,
+                scatter_batches,
+                |m| ctx.scatter_material(m),
+                |m| ctx.scatter_mesh(m),
+                |c, r| frustum.intersects_sphere(c, r),
+                None,
+                Some(fx),
+                false,
+                scatter::CardSource::Cpu,
+                ShadowTarget::Cascade,
+            );
+            if n > 0 {
+                // The copies' group 2 is theirs: the effects' back for what follows.
+                pass.set_bind_group(2, fx, &[]);
+            }
+            let n = n + self.world.grass.draw(
+                &mut pass,
+                grass::GrassPass::Lit,
+                grass_frame,
+                Some(fx),
+                f32::INFINITY,
+            );
+            stats.draw_calls += n;
+            stats.reflection_draws += n;
+        }
         let sky = match scene.lighting.environment.background {
             Background::Sky => Some(&self.sky.sky_pipeline),
             Background::Procedural { .. } => Some(&self.sky.sky_look_pipeline),
@@ -205,6 +247,8 @@ pub(super) struct ReflectionBindIn<'f> {
     pub skinned_visible: &'f [Batch],
     pub lit_skinned_standard: &'f [&'f wgpu::RenderPipeline],
     pub terrain_draws: &'f [terrain::TerrainDraw],
+    pub scatter_batches: &'f scatter::ScatterBatches,
+    pub grass_frame: &'f grass::GrassFrame,
 }
 
 impl Pass for ReflectionPass {
@@ -330,6 +374,8 @@ impl Pass for ReflectionPass {
             skinned_visible,
             lit_skinned_standard,
             terrain_draws,
+            scatter_batches,
+            grass_frame,
         }: ReflectionBindIn<'f>,
     ) -> Option<ReflectionPlan<'f>> {
         // The planar reflection's effect group: its decals, no AO.
@@ -389,6 +435,8 @@ impl Pass for ReflectionPass {
             terrain_indices: r.world.terrain.index_buffer(),
             reflections,
             terrain_draws,
+            scatter_batches,
+            grass_frame,
             reflection_blended: &frame.blended,
         })
     }
