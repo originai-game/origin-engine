@@ -1,8 +1,0 @@
-{
-  "fixed": [
-    {
-      "member": "ui.Rpg components",
-      "summary": "Improves the default RPG kit with visible health, mana and carry fills; grounded shortcut and quantity badges; clearer selected, acting and down states; quest progress marks; separated attributes and rewards; quieter supporting text; and readable phone tab spacing. Converts optional content and scrollers to HTML with token-based CSS. Default-style review sheets now keep desktop panels inside the viewport and give all phone equipment slots room above the stats."
-    }
-  ]
-}

@@ -1,8 +1,0 @@
-{
-  "fixed": [
-    {
-      "member": "render CPU time of large still scenes",
-      "summary": "A frame compares its instances with the frame before's once, in order, and every stage reads that answer: the sorted batches re-key only the instances that differ, the motion test reads whether one moved from the same pass, the sorted transforms are not uploaded or compared again when they are the ones the GPU culling's buffer holds, and each instance's sway is not copied again when none changed. Frames are unchanged. A still city of 94,865 instances under TAA went from 10.5 to 5.8 ms of `render` CPU a frame on a software Vulkan device; with one instance moving, unchanged."
-    }
-  ]
-}

@@ -1,6 +1,0 @@
-{
-  "simulation": "changed",
-  "fixed": [
-    "og.CameraRail's inline points and a spline emitter's shape follow og-core's one Catmull-Rom (og_core::math::catmull_rom, the cubic og.path evaluates): the same curve, computed in another order, so a rail camera's position can differ in its last bits and a replay recorded before this may step differently."
-  ]
-}

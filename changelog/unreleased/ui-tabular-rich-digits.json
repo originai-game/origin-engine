@@ -1,8 +1,0 @@
-{
-  "fixed": [
-    {
-      "member": "font-variant-numeric",
-      "summary": "tabular-nums on a rich text (a struck price, a value with inline markup) in a face whose atlas was cooked without `features tnum` drew no digits, only the punctuation and decoration: the shaped paragraph drew the face's tabular forms, which the atlas lacks. Such a text is now laid out run by run and draws its digits from the atlas, as a plain label does. The built-in figure role's prices and progress values show their numbers again."
-    }
-  ]
-}

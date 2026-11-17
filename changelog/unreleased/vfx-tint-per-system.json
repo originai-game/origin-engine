@@ -1,6 +1,0 @@
-{
-  "simulation": "unchanged",
-  "fixed": [
-    {"member":"og.Vfx.tint","summary":"A tinted composed effect no longer adds a copy of each of its emitters to the renderer for every tint it is drawn with (copies that were never freed, one per distinct tint); the tint is the particle system's own, and draws exactly as before."}
-  ]
-}

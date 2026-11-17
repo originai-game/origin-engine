@@ -1,8 +1,0 @@
-{
-  "fixed": [
-    {
-      "member": "og.ui stores",
-      "summary": "Store writes send the mutation and first reactive poll in one host call, with synchronous errors and subscriptions unchanged. Own writable and collection reads avoid temporary subscriptions; readable and derived reads retain their start/stop lifecycle. Binary patches use a growable byte buffer, and derived values are encoded once."
-    }
-  ]
-}

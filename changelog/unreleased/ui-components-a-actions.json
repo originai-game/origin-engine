@@ -1,6 +1,0 @@
-{
-  "fixed": [{
-    "member": "AbilityBar, AbilitySlot, ActionButton, Cooldown, HeroButton, HoldButton, RadialMenu, TouchControls, OverlayBar, StatBar",
-    "summary": "HUD controls use HTML with CSS while retaining ids, parts and input contracts. Optional cooldowns, costs and hints occupy no blank space; labels stay visible when a hold has no alternate wording, and long confirmation labels wrap. Primary touch labels use their contrasting foreground and twin-stick actions wrap within phone width. Radial commands announce the current choice and show its label when no detail is supplied; the RadialMenu.well surface hook stops the scene halo at the centre. Overlay legends have explicit spacing and their choices scroll within the available width. Stat bars fill the slot supplied by their container."
-  }]
-}

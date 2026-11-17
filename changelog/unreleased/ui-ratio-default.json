@@ -1,8 +1,0 @@
-{
-  "fixed": [
-    {
-      "member": "data-layout=ratio",
-      "summary": "A ratio box that does not set --layout-ratio is now square (1) instead of 16 / 9, as a portrait, a jacket or an icon's box is. ArenaRoster's portraits are square again. A box meant to be wide sets --layout-ratio: 16 / 9 on itself."
-    }
-  ]
-}

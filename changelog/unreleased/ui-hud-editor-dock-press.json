@@ -1,6 +1,0 @@
-{
-  "simulation": "unchanged",
-  "fixed": [
-    {"member":"og.ui","summary":"A press on the built-in hud-editor screen's dock reaches the dock's buttons again: HUD edit mode no longer takes it for a customisable element under the dock."}
-  ]
-}

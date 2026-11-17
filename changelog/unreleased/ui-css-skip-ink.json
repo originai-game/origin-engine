@@ -1,8 +1,0 @@
-{
-  "added": [
-    {
-      "member": "CSS text-decoration-skip-ink",
-      "summary": "Underlines and overlines break where they would cross a glyph's ink, a line thickness to either side, as CSS Text Decoration 4 §2.10.4 asks: auto (the initial value) skips every script but CJK, all skips CJK too, none draws the line whole. A line-through never breaks. Before, decoration lines ran through descenders."
-    }
-  ]
-}

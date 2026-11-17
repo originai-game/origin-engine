@@ -1,9 +1,0 @@
-{
-  "simulation": "unchanged",
-  "added": [
-    {"member":"ui","summary":"A document's CSS takes `sibling-index()` and `sibling-count()` (CSS Values 5 §8.1): an element's place among its parent's children, from 1, and their count, as integers in any value or math (`transition-delay: calc(sibling-index() * 50ms)`). Inserting, removing or moving a row restyles its siblings on that frame. A document that uses neither pays nothing for them."}
-  ],
-  "fixed": [
-    {"member":"ui","summary":"Transition and animation longhands and the `transition` and `animation` shorthands take math their element resolves (viewport and font units, `env()`, `random()`, the tree-counting functions): the value is checked when the element resolves, as a `var()` is, instead of being refused when the document is defined."}
-  ]
-}

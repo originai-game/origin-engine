@@ -1,8 +1,0 @@
-{
-  "fixed": [
-    {
-      "member": "rendering: particle draws",
-      "summary": "Every CPU-simulated particle system, sub-emitter, CPU trail and effect mesh now writes its drawn slots into one vertex buffer the frame shares, in one write, instead of a write to a buffer of its own each (wgpu makes and frees a staging buffer per write), and an effect material's check no longer formats a name for each of its custom values every frame. With twenty starter effects on screen (og vfx preview --together, release, on a CPU Vulkan), the particle renderer's prepare fell from 38 % to 30 % of the render call's CPU samples and queue writes from 25 % to 16 %. Frames do not change."
-    }
-  ]
-}

@@ -1,8 +1,0 @@
-{
-  "fixed": [
-    {
-      "member": "og.TerrainScatter on a terrain with a height blend",
-      "summary": "Moves frames: a copy now grows by its layer's weight as the height blend draws it (at even heights, a layer shows only within its window under the strongest), not by the raw weight before the blend. Trees no longer stand on rock whose control channel still holds a little grass at a biome's edge; where the blend draws the layer whole every copy grows. A terrain without a height blend places as before."
-    }
-  ]
-}

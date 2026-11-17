@@ -1,9 +1,0 @@
-{
-  "simulation": "unchanged",
-  "fixed": [
-    {
-      "member": "ui",
-      "summary": "The team colours (`--team1` to `--team8`, UiTheme.tokens.team) read 4.5:1 as text on the grounds and surfaces whatever the seeds, as the default style's role parts on a team (`data-team=a|b`) use them as ink: the light scheme's are derived darker (WCAG luminance at most 0.135, was 0.245) and the dark scheme's lighter (at least 0.31, was 0.195). The default light team1 and team2 are #2e62c9 and #be3333 (were #3d7eff and #f74545, 3.73 and 3.56 on white)."
-    }
-  ]
-}

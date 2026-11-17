@@ -1,9 +1,0 @@
-{
-  "simulation": "unchanged",
-  "fixed": [
-    {
-      "member": "og.Renderer",
-      "summary": "A renderer no longer compiles the UI filter pipeline (every SVG and CSS filter primitive in one shader) when it is made: the pipeline compiles the first time a UI layer draws with a filter, as the UI's other pipelines do. With an empty Metal shader cache on an Apple M4 Pro, a scene's setup and first frame take 1.27 s instead of 1.71–1.83 s (the terrain scene), 0.89 s instead of 1.28–1.31 s (glTF) and 0.93–0.96 s instead of 1.33–1.37 s (materials). The picture is unchanged; a game whose first frame draws a filtered UI layer waits for it then instead."
-    }
-  ]
-}

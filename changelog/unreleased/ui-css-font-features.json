@@ -1,8 +1,0 @@
-{
-  "added": [
-    {
-      "member": "CSS font features",
-      "summary": "Moves frames where a document sets them: every font-variant-* keyword, font-feature-settings and font-kerning reach the shaper as OpenType settings with their values (oldstyle and slashed-zero figures, fractions, ligatures off, superior and inferior digits, full-width forms, kern off), not only small caps and tabular figures; settings apply after the variants, and a line is measured with the features it is drawn with."
-    }
-  ]
-}

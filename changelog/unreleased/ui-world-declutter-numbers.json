@@ -1,8 +1,0 @@
-{
-  "fixed": [
-    {
-      "member": "DamageNumbers",
-      "summary": "Numbers spawned on one tick over one target stand apart as a stack, clear of its nameplate and of the numbers still rising, instead of drawn over each other where none reads."
-    }
-  ]
-}

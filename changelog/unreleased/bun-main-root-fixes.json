@@ -1,9 +1,0 @@
-{
-  "fixed": [
-    {
-      "member": "og.ui.setHighlight",
-      "summary": "The TypeScript runtime now exports the declared setHighlight and remoteFrames operations through the existing host ABI."
-    },
-    "The native watch loop announces probe readiness after installing its bundle watcher, so the first edit made on readiness is observed."
-  ]
-}

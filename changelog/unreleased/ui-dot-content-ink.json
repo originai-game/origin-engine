@@ -1,8 +1,0 @@
-{
-  "fixed": [
-    {
-      "member": "Toned dot content",
-      "summary": "What a toned dot holds (a check, a cross, a number) now takes the readable contrast of the dot's fill instead of the tone itself, which had made it invisible on the fill."
-    }
-  ]
-}

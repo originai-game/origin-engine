@@ -1,8 +1,0 @@
-{
-  "added": [
-    {
-      "member": "Currency",
-      "summary": "A reusable currency/resource pill at @ui/components/base/currency.svelte: compact or game-formatted balances, optional capacity and income, explicit Full, Loading and Unavailable states, wrapping phone text and independently restylable parts. Read-only; the game owns the economy."
-    }
-  ]
-}

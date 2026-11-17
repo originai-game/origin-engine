@@ -5,7 +5,7 @@ version 1
 # Master slider, switches, Done) and a pause dialog, opened by `show`.
 name "A11y"
 id "a11y"
-engine "0.7.7"
+engine "0.8.0"
 entry "src/main.ts"
 profile "2d"
 tick 60

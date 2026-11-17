@@ -1,9 +1,0 @@
-{
-  "simulation": "unchanged",
-  "fixed": [
-    {
-      "member": "UI CSS z-index: auto",
-      "summary": "`z-index: auto`, the property's initial value, now cooks instead of failing as \"not a number\". It is stack level 0, so a later `auto` undoes an earlier rule's level (CSS 2 §9.9.1)."
-    }
-  ]
-}

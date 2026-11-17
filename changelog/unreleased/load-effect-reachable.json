@@ -1,8 +1,0 @@
-{
-  "fixed": [
-    {
-      "member": "og.load.effect",
-      "summary": "og.load.effect was declared and bound on both hosts but missing from og.load, so a game calling it got `not a function`; it now loads the effect material."
-    }
-  ]
-}

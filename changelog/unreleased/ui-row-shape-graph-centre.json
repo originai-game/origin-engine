@@ -1,6 +1,0 @@
-{
-  "simulation": "unchanged",
-  "fixed": [
-    {"member":"ui","summary":"NodeGraph stands its graph in the middle of its well, as an SVG viewBox's xMidYMid does, and zooms about that middle. Since the well stretches over its container, the graph sat in its top-left corner (CardRunMap's map in a corner of an empty panel)."}
-  ]
-}

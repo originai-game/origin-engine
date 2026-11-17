@@ -1,8 +1,0 @@
-{
-  "fixed": [
-    {
-      "member": "rendering: particle draws",
-      "summary": "A particle system draws only the slots of its ring its living particles can be in (those spawned within its longest lifetime), in slot order, instead of every slot up to maxParticles: a system emitting 60 a second for 1 s in a ring of 120 runs the vertex stage for about 60, an empty one issues no draw. A ring that wraps is two draws, so the render dump's draw count can differ by one per system. Frames do not change."
-    }
-  ]
-}

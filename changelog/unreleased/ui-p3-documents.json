@@ -1,8 +1,0 @@
-{
-  "fixed": [
-    {
-      "member": "UI: Display P3 colours in documents",
-      "summary": "On a Display P3 output a document's colours outside sRGB (`background: color(display-p3 1 0 0)`, a wide `oklch()`, in a stylesheet or a `style` attribute) now keep their gamut through the UI's style, so they draw in P3. They were gamut mapped into sRGB when the document built, so only gradients and colours a host drew directly kept their range. On an sRGB output nothing changes."
-    }
-  ]
-}

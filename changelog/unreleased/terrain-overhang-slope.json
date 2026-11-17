@@ -1,8 +1,0 @@
-{
-  "fixed": [
-    {
-      "member": "og.TerrainStamp",
-      "summary": "Moves frames: a stamp's face turned past vertical (an overhang's or an arch's underside) takes the layers a vertical face takes. Its slope counted past 90°, which no layer's `slopeMax` can name, so no layer showed there and the first layer was drawn alone: grass under every overhang."
-    }
-  ]
-}

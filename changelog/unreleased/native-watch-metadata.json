@@ -1,5 +1,0 @@
-{
-  "fixed": [
-    "The native watch loop reloads only a newly written bundle, ignoring metadata-only and duplicate filesystem notifications. Asset edits still reload when the rebuilt JavaScript is identical."
-  ]
-}

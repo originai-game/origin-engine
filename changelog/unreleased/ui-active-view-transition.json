@@ -1,8 +1,0 @@
-{
-  "added": [
-    {
-      "member": ":active-view-transition and :active-view-transition-type()",
-      "summary": "A screen's root matches `:active-view-transition` from the frame its layer's view transition starts until it ends, so `:active-view-transition .card { … }` styles the screen during the transition. `:active-view-transition-type(slide)` matches when the screen's `@view-transition { types: slide; }` declares one of the types; it now works in any rule, not only before a `::view-transition-*` pseudo-element."
-    }
-  ]
-}

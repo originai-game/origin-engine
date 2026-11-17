@@ -1,8 +1,0 @@
-{
-  "fixed": [
-    {
-      "member": "ui.screens.tree",
-      "summary": "A Tree row is indented by the body type's size per level (--type-body-size) at every width, so the step grows with the player's text scale (21 px at 150 % text where a phone had 12 px, which read as no hierarchy beside 21 px names), and the indent stops growing after four levels so a deep row keeps room for its name. The overflow fixture is a tree a game could flatten: Camera is open over the rows it holds, and a closed row (Audio) follows."
-    }
-  ]
-}

@@ -1,8 +1,0 @@
-{
-  "fixed": [
-    {
-      "member": "StrategySelection",
-      "summary": "Unit tray portraits keep their square ratio after the shared-layout conversion, restoring full-size centered fallback icons on desktop and phone."
-    }
-  ]
-}

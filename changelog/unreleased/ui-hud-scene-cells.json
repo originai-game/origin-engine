@@ -1,8 +1,0 @@
-{
-  "fixed": [
-    {
-      "member": "ui components",
-      "summary": "AbilityBar, AbilitySlot, Cooldown and StatusGrid cells stand over the scene as sockets in plates instead of flat tiles; a cost the player cannot pay washes its well from the foot instead of filling it; StatBar's shield is a tab of its plate, and its dark gloss band (the part StatBar.sheen) is gone, the fill's own gloss replacing it; RadialMenu's disc takes the HUD ground."
-    }
-  ]
-}

@@ -1,8 +1,0 @@
-{
-  "fixed": [
-    {
-      "member": "UI world anchors and damage numbers",
-      "summary": "Crowded world labels find the same decluttered positions without allocating and sorting every pair of candidate coordinates. Unchanged world-layer boxes retain their CSS layout while the camera moves; projection and interaction still update each tick."
-    }
-  ]
-}

@@ -1,8 +1,0 @@
-{
-  "fixed": [
-    {
-      "member": "lang and dir attributes",
-      "summary": "`lang` and `dir` are HTML global attributes, so `:lang()` and `:dir()` read them on every element (`<div lang=\"fr\">`, `<p dir=\"rtl\">`). Before, any element except a field refused them (\"lang does not apply to box\"). A field's `lang` still picks its on-screen keyboard."
-    }
-  ]
-}

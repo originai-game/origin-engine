@@ -1,5 +1,0 @@
-{
-  "fixed": [
-    "A tileset's numbers in .ogt text are refused when they are not finite (such as 1e39, past f32), as timelines, effects and 2D rigs already refuse them; a 2D rig's, a vfx colour's and a timeline's line errors now read the same way (`line N: `key` takes a number`, `must be finite`, `takes true or false`, `takes a colour: r g b [a]`)."
-  ]
-}

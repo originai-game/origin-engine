@@ -1,9 +1,0 @@
-{
-  "simulation": "unchanged",
-  "fixed": [
-    {
-      "member": "TerrainLayer.cellVariation",
-      "summary": "A layer without anti-tiling no longer tints itself by cellVariation when its normal map's alpha is opaque (no cells named): it read the opaque alpha as a cell of its own and moved the layer's tone very slightly. With anti-tiling it already left it alone."
-    }
-  ]
-}

@@ -1,8 +1,0 @@
-{
-  "added": [
-    {
-      "member": "EmptyState, ErrorState, ListItem, Steps",
-      "summary": "Add restylable base documents for empty and recoverable error states, selectable icon/title/value rows and progress steps. Each exposes token-based layouts, named parts, typed defaults, stable keyed intents, disabled and loading states where applicable, responsive overflow and review fixtures."
-    }
-  ]
-}

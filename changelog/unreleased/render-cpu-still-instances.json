@@ -1,8 +1,0 @@
-{
-  "fixed": [
-    {
-      "member": "render CPU time of large still scenes",
-      "summary": "The renderer's CPU work per frame no longer grows with the instances that hold still: the sorted batches compare the submission in its own order and recompute only the instances that changed, a frame under TAA or motion blur where no instance moved builds and uploads no previous-transform records (its motion vectors read the instances themselves, as they did), and a scene without foliage meshes no longer walks every instance for foliage bounds. Frames are unchanged. A still city of 94,865 instances under TAA went from 32 to 13 ms of `render` CPU a frame on a software Vulkan device; with one instance moving, from 30 to 22 ms."
-    }
-  ]
-}

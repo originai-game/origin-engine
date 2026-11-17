@@ -1,8 +1,0 @@
-{
-  "fixed": [
-    {
-      "member": "UI default style (text-shadow on surfaces)",
-      "summary": "A halo a document drawn over the scene sets on its root (`text-shadow: var(--tag-halo)`, inherited) now stops at a surface with a fill of its own: a `<button>`, a `<badge>` and a frame (except a `.bare` one), band, row, cell, badge, well or tab part reset `text-shadow` in the default style, so text on a HUD's panels and buttons is no longer outlined. A rule a document writes for the element still wins."
-    }
-  ]
-}

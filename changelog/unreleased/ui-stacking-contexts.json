@@ -1,9 +1,0 @@
-{
-  "simulation": "unchanged",
-  "fixed": [
-    {
-      "member": "UI z-index stacking contexts",
-      "summary": "A box with a `z-index` now paints, and is hit, in its nearest ancestor that makes a stacking context, not only among its siblings (CSS 2 Appendix E). A positive level lifts it over its parent's later siblings, and a negative one puts it under its parent's own background. A parent keeps its children's levels inside it when it has a level of its own, opacity under 1, a transform, a filter, a mask, a clip-path, a blend mode, `isolation: isolate`, a `will-change` naming one of those, or paint containment. Scroll containers, shaped overflow clips, dressed parts and game draws also keep their children's levels inside them."
-    }
-  ]
-}

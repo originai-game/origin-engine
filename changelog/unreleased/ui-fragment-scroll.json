@@ -1,6 +1,0 @@
-{
-  "simulation": "unchanged",
-  "added": [
-    {"member":"ui","summary":"A document link `href=\"#id\"` now scrolls the element with that id into view, as HTML's \"scroll to the fragment\" does: its `scroll-margin` box to the start of each scroller around it, inside the scroller's `scroll-padding` (and the least move across). A text fragment that matches nothing scrolls to its id the same way, and a matched passage's centring respects `scroll-padding`. A help page's table of contents now takes the reader to the section."}
-  ]
-}

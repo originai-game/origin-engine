@@ -1,6 +1,0 @@
-{
-  "simulation": "unchanged",
-  "added": [
-    {"member":"ui","summary":"A document's CSS takes anchored container queries (CSS Anchor Positioning 2 §2): an anchor-positioned element with `container-type: anchored` answers `@container anchored(fallback: …)` for its descendants with the `position-try-fallbacks` entry it applied: `none` (its own placement), an `@position-try` name and try-tactics matched in order, or a position-area (`top`, `bottom any`), and `anchored(fallback)` for any entry. The descendants restyle on the frame after the applied entry changes."}
-  ]
-}

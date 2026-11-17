@@ -1,8 +1,0 @@
-{
-  "fixed": [
-    {
-      "member": "UI built-ins: HUD, world, shooter, racing",
-      "summary": "Dress HUD instruments, world labels and maps, shooter panels and racing readouts through shared role tokens, state tones and motion. Layout primitives place their children and keep the component sheet's round timer clear of the HP value and compass clear of the resource bars. Buff stacks and timers have their own rows below their icons. Custom orb glass, premium and round action controls, keylined crosshairs, split-ink casts, celebrations and keyed exit motion remain unchanged pending shared mechanisms."
-    }
-  ]
-}

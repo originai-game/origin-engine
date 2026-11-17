@@ -1,8 +1,0 @@
-{
-  "added": [
-    {
-      "member": "UI document grid tracks",
-      "summary": "A grid track size takes calc(), min(), max() and clamp() of px and %, resolved against the grid's own size, so repeat(auto-fill, minmax(min(240px, 100%), 1fr)) shrinks its tile to a container narrower than one instead of overflowing it."
-    }
-  ]
-}

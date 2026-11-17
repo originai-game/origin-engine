@@ -1,6 +1,0 @@
-{
-  "simulation": "unchanged",
-  "added": [
-    {"member": "render.applyLook", "summary": "A look's `uiSeeds { primary \"#rrggbb\" … }` block gives the UI its seed colours with its style, so the UI's palette matches the scene; applying a look with a `ui` line replaces the last seeds (none without the block). anime-cel-3d, cinematic-realism, faceted-low-poly, inked-comic-3d, low-resolution-3d, minimal-geometric and pixel, whose `ui` is the default style, set seeds from their scenes."}
-  ]
-}

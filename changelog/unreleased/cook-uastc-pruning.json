@@ -1,3 +1,0 @@
-{
-  "fixed": ["Cooking UASTC textures skips encoder candidates whose exact error lower bound cannot beat the current result, reducing cold model-cook time without changing encoded output or quality settings."]
-}

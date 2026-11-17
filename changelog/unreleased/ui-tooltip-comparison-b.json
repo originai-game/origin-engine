@@ -1,8 +1,0 @@
-{
-  "fixed": [
-    {
-      "member": "TooltipCard",
-      "summary": "Comparison rows accept optional added/removed facts, show translated presence words and restylable data-change hooks without fake deltas, mute removed values and wrap long names in desktop and stacked phone layouts."
-    }
-  ]
-}

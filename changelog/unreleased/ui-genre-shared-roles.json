@@ -1,8 +1,0 @@
-{
-  "fixed": [
-    {
-      "member": "Arena, idle, rhythm and strategy components",
-      "summary": "The 23 genre components now take their surfaces, text hierarchy, meter fills, scroll fades and cooldown shades from shared role tokens, and their shapes and reveal motion from shared layout and motion primitives. Style packs can dress these parts consistently without component-specific look rules. Existing states, actions and part names remain available."
-    }
-  ]
-}

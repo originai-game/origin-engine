@@ -1,8 +1,0 @@
-{
-  "simulation": "unchanged",
-  "added": [
-    {"member":"ui","summary":"Documents lay out HTML ruby (<ruby>, <rb>, <rt>, <rp>) inside text as CSS Ruby 1 does: the annotation at half the base's size over or under it (ruby-position), spread by ruby-align, hanging over the text beside it by up to one character under ruby-overhang, the line growing where its leading cannot hold it; across and down vertical lines."},
-    {"member":"ui","summary":"text-emphasis, text-emphasis-style, -color and -position draw CSS Text Decoration 4's emphasis marks: one per character but punctuation and separators, at half the text's size over or under it, right or left of it in vertical text; the shapes are drawn, so every face has them."},
-    {"member":"ui","summary":"text-combine-upright: digits combines each run of up to its count of ASCII digits into one upright em (CSS Writing Modes 4 §9.1), not only a text that is all digits; a combined run takes no letter-spacing. glyph-orientation-vertical (auto, 0deg, 90deg) is read as text-orientation."}
-  ]
-}

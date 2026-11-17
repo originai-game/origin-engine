@@ -1,8 +1,0 @@
-{
-  "fixed": [
-    {
-      "member": "ui.screens.results",
-      "summary": "On a short landscape phone the result's line and the XP gained share a line and the stats close up, so every stat of a three-stat result shows before the page scrolls at 150 % text (the third was cut by the page's lower edge); the rewards follow under a shorter scroll fade."
-    }
-  ]
-}

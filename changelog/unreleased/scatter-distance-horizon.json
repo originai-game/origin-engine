@@ -1,8 +1,0 @@
-{
-  "added": [
-    {
-      "member": "TerrainScatter.distance",
-      "summary": "Reaches 8000 m (was 500 m): a wood scattered with an impostor is drawn as cards out to the horizon."
-    }
-  ]
-}

@@ -1,6 +1,0 @@
-{
-  "simulation": "unchanged",
-  "added": [
-    {"member":"ui","summary":"New role tokens `--frame-corner-shape`, `--plate-corner-shape`, `--row-corner-shape`, `--cell-corner-shape`, `--badge-corner-shape` and `--well-corner-shape` (default `round`): the default style's role rules set `corner-shape` from them, so a style pack chamfers or scoops every frame or cell by setting a token."}
-  ]
-}

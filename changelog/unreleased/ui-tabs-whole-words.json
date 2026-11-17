@@ -1,8 +1,0 @@
-{
-  "fixed": [
-    {
-      "member": "Fitted tab labels",
-      "summary": "Moves frames: fitted tabs wrap between words, never inside an overwide word. Each overflowing line ellipsizes independently while the full accessible label remains intact. Plain text now respects overflow-wrap: normal; anywhere and break-word retain emergency breaks."
-    }
-  ]
-}

@@ -1,8 +1,0 @@
-{
-  "fixed": [
-    {
-      "member": "og.TerrainStamp.blend",
-      "summary": "Moves frames: a stamp lays every layer on its mesh by the mesh's own normal, biplanar past 45° where the layer names no `projectSlope`. Within `blend` the layer was projected by the band's normal, the ground's: from above onto a steep side, where its texture stretched into vertical streaks. The band still takes the ground's layers and shading normal."
-    }
-  ]
-}

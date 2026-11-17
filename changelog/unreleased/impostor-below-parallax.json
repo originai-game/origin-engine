@@ -1,9 +1,0 @@
-{
-  "simulation": "unchanged",
-  "fixed": [
-    {
-      "member": "rendering: impostors",
-      "summary": "A near impostor baked with `impostorBelow` and seen from under its horizon draws its trunk clean and its crown whole: each view found the surface on a different side of the trunk's edge, so the trunk drew blotched and dark pieces of crown floated beside it. Up close and from below its card costs more to draw (a screen of 300 near cards seen from below: main pass 8.6 to 13.8 ms on Metal); from above and at a distance its cost is unchanged."
-    }
-  ]
-}

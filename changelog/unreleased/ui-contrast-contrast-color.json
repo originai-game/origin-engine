@@ -1,8 +1,0 @@
-{
-  "added": [
-    {
-      "member": "CSS contrast-color()",
-      "summary": "CSS Color 5's contrast-color(<colour>) resolves to white or black, whichever has the greater WCAG 2 ratio on the colour as an opaque ground (white on a tie), so it reads at least 4.58:1 on any ground. It takes any colour, a role included (contrast-color(var(--panel)) is resolved where it is drawn and follows a scheme switch), and nests in color-mix() and relative colours."
-    }
-  ]
-}

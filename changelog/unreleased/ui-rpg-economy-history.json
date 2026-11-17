@@ -1,8 +1,0 @@
-{
-  "added": [
-    {
-      "member": "ui.RpgCrafting, ui.RpgTrade, ui.RpgLoot, ui.RpgConversationBacklog",
-      "summary": "Adds token-styled crafting requirements and batch controls, buy/sell inspection with game-owned prices and restrictions, keyed loot collection, and scrollable conversation history with earlier lines and replay/stop intents. Loading spinners, pending-action guards, failure messages and explicit empty states remain readable at phone and desktop sizes; named parts expose each panel for style packs."
-    }
-  ]
-}

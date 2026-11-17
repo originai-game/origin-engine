@@ -1,8 +1,0 @@
-{
-  "added": [
-    {
-      "member": "CSS display: list-item on text and <summary>",
-      "summary": "A text-only element such as a <p> or <span> with display: list-item draws a ::marker too: outside before its first line, or inside as the first run of its text in the ::marker's style. <summary> is a list item in the UA sheet (HTML §15.3.12): its marker is disclosure-closed, or disclosure-open while its <details> is open, and list-style restyles or removes it. The disclosure-closed and disclosure-open styles draw the theme's disclosure chevron on any list item. The summary is now an element of the details' header, so its own rules (summary, summary::marker, details[open] > summary) style it."
-    }
-  ]
-}

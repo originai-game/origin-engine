@@ -1,8 +1,0 @@
-{
-  "added": [
-    {
-      "member": "ui",
-      "summary": "font-size-adjust (CSS Fonts 5 §2.5) draws each face of a text at the size where its x-height, or the cap-height, ch-width, ic-width or ic-height named, is the given number of the text's size; from-font matches every face to the first's own value, so a fallback face is drawn to match its text. Advances scale with the face in plain and rich text. FontQuery gains size_adjust (FontQuery::with_size_adjust, og_text::text::SizeAdjust), FontMetrics a per-face scale and aspect(), and Piece a scale its text is drawn at, which a draw command's size multiplies."
-    }
-  ]
-}

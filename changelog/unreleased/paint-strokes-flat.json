@@ -1,8 +1,0 @@
-{
-  "fixed": [
-    {
-      "member": "Stylise.paintStrokes",
-      "summary": "Where the image has no structure (a sky, a flat wall) strokes are short, straight dabs along a lay that turns slowly, where the long smears along a fast-turning lay closed into loops and read as marble. Strokes along structure keep their length."
-    }
-  ]
-}

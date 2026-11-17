@@ -1,8 +1,0 @@
-{
-  "added": [
-    {
-      "member": "UI documents: a remote url() image's EXIF orientation",
-      "summary": "An http(s) url() image turned by its EXIF orientation draws upright under image-orientation: from-image, as a package image does; natively, image-orientation: none draws it as stored. On the web the browser's decoder turns it before the engine sees it."
-    }
-  ]
-}

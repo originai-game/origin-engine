@@ -1,8 +1,0 @@
-{
-  "added": [
-    {
-      "member": "UI documents and style packs: url() of http(s) images",
-      "summary": "A url() in a document, an inline style or a style pack may name an http:// or https:// PNG, JPEG, WebP or SVG image (background, mask and border images, image-set()), fetched at run time in CORS mode on both hosts and drawn once it lands; until then its layer draws nothing, and a refused or failed image is one warning naming the URL and the reason. CSS's request modifiers cross-origin(), integrity() and referrer-policy() apply. Native executors wait for every image a document named before drawing, so captures do not depend on the network, and og.loading.idle is false while one is fetched. The screens guide's §3 Images on a CDN."
-    }
-  ]
-}

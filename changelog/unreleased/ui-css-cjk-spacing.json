@@ -1,8 +1,0 @@
-{
-  "added": [
-    {
-      "member": "CSS text-autospace and text-spacing-trim",
-      "summary": "CJK text is spaced as CSS Text 4 §8.4 and §8.5 say. text-autospace (normal by default) puts an eighth of an ideograph's advance between an ideograph and a Latin letter or digit on one line, never at a line break; replace and French punctuation spacing work too. text-spacing-trim (normal by default: space-start trim-adjacent allow-end) sets fullwidth brackets and punctuation half-width through the font's halt feature at a line's start and end and between punctuation pairs, and allow-end fits a closing bracket on a line it fits only trimmed. Mixed CJK and Latin text and CJK punctuation now lay out a little differently by default; text-autospace: no-autospace and text-spacing-trim: space-all restore the old spacing."
-    }
-  ]
-}

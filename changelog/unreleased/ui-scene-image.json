@@ -1,8 +1,0 @@
-{
-  "fixed": [
-    {
-      "member": "Text over the scene",
-      "summary": "Moves frames: a background image layer counts as the ground under a text only where it paints, placed as og-render places it: an image in a plate's corner (a filigree) no longer makes the whole plate an authored ground, so text on the plate's thin fill takes the style's --tag-halo over the scene (fantasy's done quest step on its HUD plate read 2.3:1 over a bright sky)."
-    }
-  ]
-}

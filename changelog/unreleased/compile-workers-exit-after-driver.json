@@ -1,8 +1,0 @@
-{
-  "fixed": [
-    {
-      "member": "native host",
-      "summary": "A native game that exits while a pipeline variant is still compiling in the background no longer crashes (SIGSEGV) or hangs at exit on NVIDIA's Linux driver when the shader cache is cold: the exit now waits for the running compiles before the driver's compiler is torn down."
-    }
-  ]
-}

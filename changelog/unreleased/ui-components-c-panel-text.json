@@ -1,8 +1,0 @@
-{
-  "fixed": [
-    {
-      "member": "ui.PuzzleBoosters, ui.PuzzleSummary",
-      "summary": "Keeps booster and summary panel text crisp without scene halos, and gives the scrolling score breakdown a fading edge above its actions."
-    }
-  ]
-}

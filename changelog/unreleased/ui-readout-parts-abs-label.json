@@ -1,6 +1,0 @@
-{
-  "simulation": "unchanged",
-  "fixed": [
-    {"member":"ui","summary":"An absolutely positioned text element in centred text (inside a `<button>`, or under `text-align: center`) shrinks to fit its text, as CSS sizes a positioned box, instead of taking its column's width. AbilitySlot's cost and charge badges and AbilityBar's cost no longer span the slot and cover its icon."}
-  ]
-}

@@ -1,9 +1,0 @@
-{
-  "simulation": "unchanged",
-  "added": [
-    {
-      "member": "UI CSS border-shape",
-      "summary": "`border-shape` (CSS Borders 4 §7): one basic shape strokes the border along its path, over the half-border box by default; two fill the border between them, the outer over the border box and the inner over the padding box by default. The width and colour come from the first side, in block-start, inline-start, block-end, inline-end order, that has a border style. The outer shape becomes the element's shape, so its background, shadows and overflow cut follow it, and its border-radius is ignored. Layout is unchanged."
-    }
-  ]
-}

@@ -1,9 +1,0 @@
-{
-  "simulation": "unchanged",
-  "fixed": [
-    {
-      "member": "UI CSS line-clamp",
-      "summary": "`line-clamp: N` now keeps a text's first N lines and sizes its box to them without `text-overflow: ellipsis` as well (CSS Overflow 4 §4.1: `max-lines` with `block-ellipsis: auto`). It used to cut nothing unless the ellipsis was set, so the box stayed as tall as all its lines."
-    }
-  ]
-}

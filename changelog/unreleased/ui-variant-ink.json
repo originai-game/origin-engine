@@ -1,8 +1,0 @@
-{
-  "fixed": [
-    {
-      "member": "button",
-      "summary": "A document `<button variant=\"primary\">` (or `danger`, `ghost`, `quiet`, `secondary`) is that class for a style's host rules as it is for its parts, so `button.primary { color: … }` inks its label where `button.primary::part(base)` already dressed its plate. Before, a pack set on a mounted document drew a variant button's label in the plain `--button-ink`. A bound variant is that class only while it holds that word."
-    }
-  ]
-}

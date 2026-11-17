@@ -1,8 +1,0 @@
-{
-  "fixed": [
-    {
-      "member": "UI heading flourishes",
-      "summary": "Moves frames: headings laid out on more than one line no longer draw side flourishes beside their first line, regardless of alignment or style pack. Single-line headings retain their flourishes, including smaller headings with explicitly sized flourish parts."
-    }
-  ]
-}

@@ -1,8 +1,0 @@
-{
-  "fixed": [
-    {
-      "member": "fantasy style pack",
-      "summary": "A painted button draws its plate alone. The pack set none of the default style's button shadow hooks, so the default's raised shadow, the primary's glow and the danger variant's inset ring drew the button's rectangle around the plate's pointed ends: a rose rectangle round a danger button (Confirm's Quit), a dark one behind a primary (GameOver's Revive). The pack now sets --button-base-shadow, -hover-shadow, -base-pressed-shadow, -primary-shadow, -danger-shadow, -selected-shadow and -disabled-shadow to none."
-    }
-  ]
-}

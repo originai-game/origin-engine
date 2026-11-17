@@ -1,6 +1,0 @@
-{
-  "simulation": "unchanged",
-  "fixed": [
-    {"member":"ui","summary":"A custom property registered with `@property` and a `<length>` syntax now computes to px where it is set, so `--gap: 2em` is the setting element's em and its children inherit those pixels. Children used to re-read `2em` at their own font size."}
-  ]
-}

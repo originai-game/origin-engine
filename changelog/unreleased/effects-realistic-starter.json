@@ -1,8 +1,0 @@
-{
-  "added": [
-    {
-      "member": "effect packs: realistic-starter bundled",
-      "summary": "The engine bundles a third vfx pack, realistic-starter: seven realistic type vfx effects for 3D games written for the engine (a muzzle flash, a bullet impact, an explosion, the dust of something breaking, a water splash, a looping torch fire and looping dust in the air), on greyscale Kenney Particle Pack textures (CC0). Their smoke and dust are lit, blend alpha, fade into the scene and drift with og.Wind; sparks, chips and droplets bounce off or die on the drawn depth; each one-shot sends its impact at its first frame. `og vfx add realistic-starter` installs it; `og api show effect-packs` lists it."
-    }
-  ]
-}

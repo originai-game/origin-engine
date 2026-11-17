@@ -1,6 +1,0 @@
-{
-  "simulation": "unchanged",
-  "added": [
-    {"member":"ui.IconAtlasDesc.pictures","summary":"Marks an atlas's cells as full-colour pictures (item art): `<og-icon>`, rich text's `[icon=]` and every other icon drawn from it keep their own colours, as an `<img>` does, whatever the icon's `color`. Without it the cells stay masks drawn in the icon's `color`, as a CSS `mask-image` over `currentColor` is, so a light scheme's dark ink no longer turns item art into silhouettes once the atlas says what it holds."}
-  ]
-}

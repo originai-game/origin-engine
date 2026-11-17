@@ -1,9 +1,0 @@
-{
-  "simulation": "unchanged",
-  "fixed": [
-    {
-      "member": "ui",
-      "summary": "Team inks (`--team1` to `--team8`) keep 4.5:1 on every ground they are drawn on, whatever the seeds: the page, its subtle ground, panels, raised panels, a hovered row and a cell's or badge's control wash, in both schemes. Light teams now sit at or under luminance 0.108 and dark teams at or over 0.447; the default light team1 is #0041fd (was #005ee0, about 4.0:1 on tinted light grounds). A selected row on a team keeps the selected ink (`--ink-selected`), its team in its rim, since the selection ground is too light for a dark team ink. Teams 1 to 6 still hold 0.1 apart in OKLab under every colour vision; teams 7 and 8 now hold 0.05."
-    }
-  ]
-}

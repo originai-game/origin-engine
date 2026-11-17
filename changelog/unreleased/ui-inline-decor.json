@@ -1,9 +1,0 @@
-{
-  "simulation": "unchanged",
-  "added": [
-    {
-      "member": "UI CSS inline box decorations",
-      "summary": "An inline element inside a text (a `<span>`, `<b>`, `<a>` and so on) draws its `background`, `border`, `border-radius` and `box-shadow` on each line it wraps onto, under its words (CSS 2 §10.8). Under `box-decoration-break: slice`, the initial value, the box is drawn as if unbroken and cut at the line breaks, so its start edge shows on its first line and its end edge on its last; under `clone` each line gets a whole box. An element that only decorates its box, with no text style of its own, now becomes an inline element node too. Its text decorated nothing before."
-    }
-  ]
-}

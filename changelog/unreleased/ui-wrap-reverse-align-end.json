@@ -1,8 +1,0 @@
-{
-  "fixed": [
-    {
-      "member": "align-items",
-      "summary": "Under flex-wrap: wrap-reverse, align-items and align-self: start and end are the writing mode's sides again (end is the bottom of a row's line), as CSS has them; they were laid out as flex-start and flex-end, on the reversed side. flex-start and flex-end still follow the reversed lines, and so does an alignment left unwritten. A container that wrote flex-start to get the bottom keeps its layout."
-    }
-  ]
-}

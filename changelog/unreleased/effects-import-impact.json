@@ -1,8 +1,0 @@
-{
-  "added": [
-    {
-      "member": "og vfx import: impact and --hit",
-      "summary": "A converted Effekseer one-shot effect (by `og vfx import` or by the cook, from an `.efkproj` or `.efkefc` in assets/) now has an `impact`: the frame in its first 60% where the most is added to the picture at once, so it sends og.VfxEvent `impact` where it hits. `og vfx import --hit` also adds a light in the colour of what starts there and a camera shake by its size. Looping effects get neither."
-    }
-  ]
-}

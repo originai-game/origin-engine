@@ -1,9 +1,0 @@
-{
-  "simulation": "unchanged",
-  "added": [
-    {"member":"ui","summary":"A text's inline elements that style its words are nodes under it (kind `inline` in the probe), each with its fragments, one per line it has words on, and its box their union; the pointer over an inline link's words sets its `<a>`'s `:hover` and `:active` (and focus its `:focus`), which its CSS styles in place of the built-in hover ink."}
-  ],
-  "fixed": [
-    {"member":"ui","summary":"A wrapped inline link is hit on its words' fragment on each line (their content area), no longer on the rectangle around all its lines, which took presses on the words before and after it."}
-  ]
-}

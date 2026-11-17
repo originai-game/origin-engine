@@ -1,8 +1,0 @@
-{
-  "fixed": [
-    {
-      "member": "UI text strokes",
-      "summary": "Oversized strokes on small synthetic-bold text clamp to the distance field's remaining reach instead of painting tinted glyph rectangles."
-    }
-  ]
-}

@@ -1,8 +1,0 @@
-{
-  "fixed": [
-    {
-      "member": "[open] on <details> and <dialog>",
-      "summary": "`details[open]` and `dialog[open]` follow the element's open state as HTML reflects it, however it changed: the player toggling it, a `bind:open` store, or the player closing one written `open`. Before, `[open]` read only the written attribute, so a bound or toggled element never matched and a closed literal one still did. An unbound element's toggled state is now carried by a UI snapshot."
-    }
-  ]
-}

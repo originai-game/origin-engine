@@ -1,6 +1,0 @@
-{
-  "simulation": "unchanged",
-  "fixed": [
-    {"member":"ui","summary":"The `background` shorthand resets the colour it leaves out to transparent, as CSS's does: a part dressed with `background: linear-gradient(…)` no longer keeps the widget's own ground under it. A core panel's or modal dialog's translucent pack fill now shows the scene (and its `backdrop-filter` blur) behind it."}
-  ]
-}

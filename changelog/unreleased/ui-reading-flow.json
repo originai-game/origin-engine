@@ -1,9 +1,0 @@
-{
-  "simulation": "unchanged",
-  "added": [
-    {
-      "member": "UI CSS reading-flow, reading-order",
-      "summary": "A flex or grid container's `reading-flow` sets the order Tab and Shift+Tab move through its items in, and the accessibility tree's focus order (CSS Display 4 §3): `flex-visual` by where the items are, `flex-flow` and `grid-order` by `order`, `grid-rows` and `grid-columns` by row or column, `source-order` by the source. Each item's `reading-order` comes first. `normal` (the default) keeps the source order. Pointer hits and arrow moves are unchanged."
-    }
-  ]
-}

@@ -1,9 +1,0 @@
-{
-  "simulation": "unchanged",
-  "fixed": [
-    {
-      "member": "UI CSS align-items (initial value)",
-      "summary": "A `display: flex` box that sets no `align-items` now stretches its items across their line, as CSS's initial `normal` does (CSS Flexbox §8.3): in a column an item with an `auto` width fills the column, in a row an item with an `auto` height takes the line's height. It used to place them at the start at their content's size. A definite cross size, `align-self` or an authored `align-items` keeps its own; write `align-items: flex-start` where items should keep their content's size."
-    }
-  ]
-}

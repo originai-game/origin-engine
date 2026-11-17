@@ -1,8 +1,0 @@
-{
-  "fixed": [
-    {
-      "member": "CSS ::marker counter(list-item)",
-      "summary": "counter(list-item) in a <ul>'s ::marker or ::before reads the item's number; it read 0 unless the list was numbered."
-    }
-  ]
-}

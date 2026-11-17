@@ -1,8 +1,0 @@
-{
-  "added": [
-    {
-      "member": "CSS: ::part() selectors",
-      "summary": "A built-in control's parts are a shadow tree under its element, so a ::part() rule can read where that element stands in its document, as in a browser: `.shop button::part(base)`, `#Bag > li:first-child button::part(base)`. This works in a document's <style> and in a style pack, and the part restyles when an ancestor's class or the element's place changes. Before, a ::part() selector had to be one compound."
-    }
-  ]
-}

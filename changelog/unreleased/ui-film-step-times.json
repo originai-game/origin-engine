@@ -1,8 +1,0 @@
-{
-  "fixed": [
-    {
-      "member": "og ui preview --film",
-      "summary": "A film no longer fails as a malformed script when its steps land at sums such as 0.1 + 0.2 (each timed step is written to four decimals) or when a capture in `--at` comes before a later step (the script is put in time order)."
-    }
-  ]
-}

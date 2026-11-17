@@ -1,8 +1,0 @@
-{
-  "added": [
-    {
-      "member": "PostEffects.dofTiltShift",
-      "summary": "Tilt-shift depth of field, the miniature look: above 0 the sharp band is a strip across the middle of the image, this fraction of its height above and below the centre line, instead of a range of depths, so it holds whatever the camera's distance; the blur grows above the strip as far and below it as near, to dofMaxBlur at dofTiltShift times (1 + dofFalloff) past its edge. 0 focuses by depth as before."
-    }
-  ]
-}

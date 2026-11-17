@@ -1,8 +1,0 @@
-{
-  "fixed": [
-    {
-      "member": "CSS polygon coordinates",
-      "summary": "Moves frames: polygon() points now accept calc() mixing percentages and pixel offsets. Each coordinate resolves against its reference box's used axis, preserving fixed-size notches and corners when the box resizes."
-    }
-  ]
-}

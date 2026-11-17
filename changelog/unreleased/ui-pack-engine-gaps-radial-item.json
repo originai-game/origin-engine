@@ -1,6 +1,0 @@
-{
-  "simulation": "unchanged",
-  "added": [
-    {"member":"ui","summary":"The radial menu names its item button `RadialMenu.item`, so a style pack reaches each wedge's button with `button::part(RadialMenu\\.item)` and clears or dresses the plate its `button::part(base)` rule gives it. The component draws no plate on it itself."}
-  ]
-}

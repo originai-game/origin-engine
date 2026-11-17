@@ -1,8 +1,0 @@
-{
-  "fixed": [
-    {
-      "member": "UI icons",
-      "summary": "Built-in UI icon names now have on-demand vector fallbacks when neither the game's atlas nor fallbackIcons supplies them, including check, lock, close and all three chevrons. Game-supplied icons retain precedence."
-    }
-  ]
-}

@@ -1,8 +1,0 @@
-{
-  "fixed": [
-    {
-      "member": "<ground>",
-      "summary": "A child of a ground or a world panel placed by percent insets or by anchor positioning (an overlay's data-anchor=center, top: 50%) vanished with everything in it: once placed, it was laid out again cut to the screen, while its layer lies off it. It is now cut as its layer is, so a placement ghost's centred footprint, a panel's centred badge and the like draw."
-    }
-  ]
-}

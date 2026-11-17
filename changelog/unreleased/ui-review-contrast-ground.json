@@ -1,8 +1,0 @@
-{
-  "fixed": [
-    {
-      "member": "og ui check and og ui review contrast",
-      "summary": "Contrast is read where the text draws: over the line box of its drawn run, against the composited pixels behind its glyphs, as a WCAG tool reads a rendered page. Right-aligned figures in wide cells and text on stacked translucent panels, gradients, scanlines or border-image plates no longer read about 1:1 when they read 8:1. Text on translucent grounds is measured when the stacked grounds, composited, cover at least half of what is behind it, and inside scroll containers too; a lone faint tint is still over the scene."
-    }
-  ]
-}

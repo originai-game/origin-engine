@@ -1,8 +1,0 @@
-{
-  "fixed": [
-    {
-      "member": "ui.components",
-      "summary": "Backpack, ItemCard and RpgCharacter's fixtures name built-in glyphs (sword, apple, potion) instead of the rpg sheet's painted art ids, so their review states draw an icon in a project with no icon atlas."
-    }
-  ]
-}

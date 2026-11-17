@@ -1,6 +1,0 @@
-{
-  "simulation": "unchanged",
-  "added": [
-    {"member":"ui","summary":"A document's CSS takes `if(<condition>: <value>; …; else: <value>)` (CSS Values 5 §8.3): the value of the first branch whose condition holds, or nothing (the property unset) when none does. Conditions are `media(…)`, `supports(…)` and `style(…)` tests of the element's custom properties, joined by `not`, `and` and `or`. It substitutes as `var()` does: a custom property's `if()` resolves where the property is computed and its children inherit that branch, and a `media()` test resolves again when the viewport or preferences change. A malformed branch or test fails when the document is defined."}
-  ]
-}

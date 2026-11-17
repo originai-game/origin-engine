@@ -1,5 +1,0 @@
-{
-  "fixed": [
-    "Resizing single-level UI layers reuse render targets in 64-pixel buckets instead of allocating a texture for each pixel-size change. Composites and SVG filters read only the used rectangle, preserving the layer's pixel grid and edge sampling. Mipmapped Blur and DropShadow targets keep exact sizes because padding would change their downsampled pixels."
-  ]
-}

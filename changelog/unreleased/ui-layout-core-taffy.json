@@ -1,9 +1,0 @@
-{
-  "simulation": "unchanged",
-  "fixed": [
-    {
-      "member": "UI layout",
-      "summary": "UI documents lay out as a browser lays out the same CSS: CSS Flexbox, Grid and block flow (margin collapsing, floats, clearance) now run on Taffy 0.15.1 in place of the engine's own approximation, on both hosts. Where the two differed, the CSS answer now holds. Flex items shrink in proportion to their flex basis. A border-box size is never smaller than its padding and border. An aspect ratio carries a size the parent decides (a stretched or flexed side) to the other axis. A wrapping column's lines stretch under align-content: normal. A box with size containment is sized as if empty, then by contain-intrinsic-size. An absolutely positioned box centred by its insets keeps its own width instead of its column's. align-items: end keeps the writing mode's end under wrap-reverse. A box in another writing mode starts a formatting context of its own, so its floats stay inside it. Text, line boxes beside floats, shape-outside, tables, multi-column, writing modes and anchored boxes keep og-ui's layout, now fed by the CSS core."
-    }
-  ]
-}

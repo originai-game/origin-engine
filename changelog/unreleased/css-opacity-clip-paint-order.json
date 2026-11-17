@@ -1,8 +1,0 @@
-{
-  "added": [
-    {
-      "member": "UI: CSS opacity percentages, clip: rect(), SVG paint-order and mask-type",
-      "summary": "opacity takes a percentage (opacity: 40%). CSS 2's clip: rect(<top>, <right>, <bottom>, <left>) cuts an absolutely positioned element to that rectangle of its border box (edges from its top and left, auto the box's edge; clip-path wins over it). paint-order on an SVG shape, set or inherited, draws its stroke and markers in the order given (paint-order: stroke draws the stroke under the fill). A <mask>'s mask-type=\"alpha\" cuts by its content's alpha rather than its luminance."
-    }
-  ]
-}

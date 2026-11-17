@@ -1,8 +1,0 @@
-{
-  "added": [
-    {
-      "member": "CSS font-synthesis and oblique angles",
-      "summary": "font-style: oblique <angle> slants a synthesised oblique by its angle (14deg when it names none) instead of the engine's fixed slant; font-synthesis-weight, font-synthesis-style and the font-synthesis shorthand set to none stop a bold or a slant from being synthesised where no face has it."
-    }
-  ]
-}

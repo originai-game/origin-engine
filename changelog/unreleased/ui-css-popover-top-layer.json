@@ -1,9 +1,0 @@
-{
-  "simulation": "unchanged",
-  "added": [
-    {"member":"ui","summary":"A popover takes `::backdrop`: styled, it covers the page under the open popover (as a modal dialog's does), and closes with it."}
-  ],
-  "fixed": [
-    {"member":"ui","summary":"A popover opens and closes as HTML's top layer does. Closed, it keeps no style, so it opens from its `@starting-style` and shows from the frame `:popover-open` matches, one tick after the press, instead of transitioning from its closed style. Its own `opacity`, `transform`, transitions and animations now move its shown layer, not an empty placeholder. Closing with an `allow-discrete` transition of `overlay` or `display` keeps it shown, inert, until that transition ends while its closed style transitions in, where it vanished at once. An open popover keeps its anchor across `restoreState`."}
-  ]
-}

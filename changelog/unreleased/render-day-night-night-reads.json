@@ -1,8 +1,0 @@
-{
-  "fixed": [
-    {
-      "member": "rendering: DayNight (the gradient sky's night)",
-      "summary": "A night under og.DayNight without og.PhysicalSky reads instead of drawing the land as black. The moon's light is 1 at full night, a third of the noon sun's (it was 0.45; get:og.DayNight's lightIntensity and the driven DirectionalLight's intensity answer the new value). The sky's light on surfaces out of the moon's light no longer falls below what it is at sunset: from sunset to sunrise the image-based light is raised as the eye adapts, in the night sky's blue, and a water surface's mirror of the sky stays as bright as the sky is drawn. The set sun's glow fades out with the twilight; it used to stay in the sky under the horizon and light the land from below in orange. Days are unchanged, dusk's shade is a little brighter, and nights under og.PhysicalSky are unchanged. A game that wants a darker night lowers DayNight.lightIntensity (the moon's light) or Camera.exposure by og.atmosphere.timeOfDay."
-    }
-  ]
-}

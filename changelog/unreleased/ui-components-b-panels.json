@@ -1,8 +1,0 @@
-{
-  "fixed": [
-    {
-      "member": "Breadcrumbs, Carousel, Chart, DataGrid, Menu, TooltipCard",
-      "summary": "Panel components use HTML-with-CSS roots and conditional optional content. Tooltip comparisons wrap inside phone viewports, chart layers are contained in their plot, grid text is start-aligned with numeric cells end-aligned, and carousel page dots stay in their own control row. Empty charts and carousels explain their state. Breadcrumbs expose the current page and reverse separators in RTL. Carousel navigation remains game-owned intents, disabled only with fewer than two pages. Existing ids, parts and virtualised list markup are preserved; isolated sheet fixtures expose individual panel states for review."
-    }
-  ]
-}

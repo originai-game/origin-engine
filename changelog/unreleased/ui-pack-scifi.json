@@ -1,8 +1,0 @@
-{
-  "added": [
-    {
-      "member": "@styles/scifi",
-      "summary": "A second built-in style pack: dark translucent glass, thin glowing cyan rims, chamfered frames with corner brackets, scan lines, condensed technical type, an amber accent for what is chosen, and quick motion without overshoot, in a dark and a light scheme. It dresses every core control, the ten component groups, the ungrouped components and the built-in screens. Load it with og.load.style(world, \"@styles/scifi\"), or name it in a look (ui \"scifi\")."
-    }
-  ]
-}

@@ -1,6 +1,0 @@
-{
-  "simulation": "unchanged",
-  "fixed": [
-    {"member":"ui","summary":"A modal `<dialog>` in the top layer is `dialog::part(panel)` (with `:open`) as a dialog opened in place is, so a style pack's panel rule dresses it (the confirm screen drew a flat surface)."}
-  ]
-}

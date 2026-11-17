@@ -1,8 +1,0 @@
-{
-  "added": [
-    {
-      "member": "og.load.document",
-      "summary": "`exportparts` on a control written inside a control document (CSS Shadow Parts §4.2): `<progress exportparts=\"fill: bar-fill\">` in a meter's control document makes the bar's fill the meter's `::part(bar-fill)`, so a page or a style pack reaches it from outside. A rule reaching a part through an export ranks one shadow boundary further out, over the holding document's own rule for it. Written anywhere else, or on a component instance, it is refused."
-    }
-  ]
-}

@@ -1,8 +1,0 @@
-{
-  "fixed": [
-    {
-      "member": "UI.Pips, UI.PickupFeed, UI.PerfReadout",
-      "summary": "Use the shared Spinner alongside loading labels in resource pips and pickup feeds, with loading parts for style packs. Connecting performance fixtures show unavailable samples rather than invented zero readings; measured zero remains distinct and is covered separately."
-    }
-  ]
-}

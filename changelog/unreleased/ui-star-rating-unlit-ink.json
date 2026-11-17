@@ -1,8 +1,0 @@
-{
-  "fixed": [
-    {
-      "member": "star-rating screen",
-      "summary": "An unlit star takes --ink-faint, the faintest ink that still reads, instead of --well, a ground that vanished on a dark one (the \"none\" state drew three near-black stars on the default style's dark ground)."
-    }
-  ]
-}

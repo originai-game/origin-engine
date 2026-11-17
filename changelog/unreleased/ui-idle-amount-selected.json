@@ -1,8 +1,0 @@
-{
-  "fixed": [
-    {
-      "member": "IdlePurchases",
-      "summary": "The chosen buy amount (×1, ×10, ×100, Max) shows as selected. Each amount button was also named the figure role (`IdlePurchases.amount IdlePurchases.figure`), and a control named for a role wears that role alone, so it lost the button's selected look. It is now `IdlePurchases.amount` only, with the figure font set on it; `::part(IdlePurchases.figure)` no longer reaches the amount buttons."
-    }
-  ]
-}

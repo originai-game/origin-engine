@@ -1,8 +1,0 @@
-{
-  "added": [
-    {
-      "member": "PassTrack, Reveal, Inbox, News",
-      "summary": "Add restylable progression and update panels with game-owned facts: free/premium reward claims, sealed and revealed rewards, keyed inbox attachments and message actions, and expandable news. Include localized states, disabled/loading/error/empty recovery and desktop/phone fixtures."
-    }
-  ]
-}

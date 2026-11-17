@@ -1,6 +1,0 @@
-{
-  "simulation": "unchanged",
-  "added": [
-    {"member":"ui","summary":"`<iframe src=\"news.svelte\">` embeds another document of the game inside a box: the cook bundles it with its embedder, the iframe's other attributes are its props, and its events reach the game as a component's do. It is a separate cascade, as an iframe's document is: no rule of the embedder matches inside, no selector inside sees the page around it, and nothing is inherited across its edge; the style pack and colour scheme still apply. The box is 300 × 150 px by default, and `frame-sizing: content-height` (or `content-width`, `content-block-size`, `content-inline-size`) sizes it to the document's content when that document declares `<meta name=\"responsive-embedded-sizing\">`. A URL `src` is refused for now. See the `frames` guide."}
-  ]
-}

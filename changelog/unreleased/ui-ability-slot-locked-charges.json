@@ -1,8 +1,0 @@
-{
-  "fixed": [
-    {
-      "member": "AbilitySlot",
-      "summary": "A locked slot hides its charges badge, as it hides its cost, so the badge no longer covers the lock."
-    }
-  ]
-}

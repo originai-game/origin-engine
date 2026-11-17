@@ -1,9 +1,0 @@
-{
-  "simulation": "unchanged",
-  "fixed": [
-    {
-      "member": "UI CSS overflow: overlay",
-      "summary": "`overflow: overlay` (and on `overflow-x` and `overflow-y`) now cooks as the legacy alias of `auto` (CSS Overflow 3 §3.1) instead of failing as not an overflow."
-    }
-  ]
-}

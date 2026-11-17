@@ -1,6 +1,0 @@
-{
-  "simulation": "unchanged",
-  "added": [
-    {"member":"ui","summary":"A heading's `::part(flourish)` draws its CSS box (`background`, `border`, `box-shadow`…) beside the heading's first line, as `::before` and `::after` boxes are, sized by its `width` and `height` and kept a small gap from the text, so a style pack without an ornament atlas can frame its headings."}
-  ]
-}

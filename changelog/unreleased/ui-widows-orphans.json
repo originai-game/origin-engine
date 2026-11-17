@@ -1,9 +1,0 @@
-{
-  "simulation": "unchanged",
-  "added": [
-    {
-      "member": "UI CSS orphans, widows",
-      "summary": "`orphans` and `widows` (inherited positive integers, 2 by default) set the fewest lines of a text a column break leaves before and after it in a multi-column box (CSS Fragmentation 3 §4.4). Before, the break always kept two lines on each side."
-    }
-  ]
-}

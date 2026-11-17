@@ -1,9 +1,0 @@
-{
-  "simulation": "unchanged",
-  "added": [
-    {
-      "member": "UI CSS column-rule, row-rule, rule, column-rule-break, row-rule-break, rule-break",
-      "summary": "A grid draws `column-rule` and `row-rule` (and the `rule` shorthands) centred in its gaps, from its first track's start to its last one's end (CSS Gap Decorations 1). `*-rule-break: normal` (the default) runs a rule through crossing gaps and stops it where an item spans its gap, `intersection` stops it at every crossing gap, and `none` runs it end to end. Row rules draw over column rules. Multi-column rules are unchanged. Flex containers, `rule-inset`, `rule-visibility-items` and lists of rule values are not supported yet."
-    }
-  ]
-}

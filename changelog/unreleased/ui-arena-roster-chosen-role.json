@@ -1,8 +1,0 @@
-{
-  "fixed": [
-    {
-      "member": "ArenaRoster",
-      "summary": "The selected character's role wraps inside the footer instead of running past both edges of a narrow roster (it was one unbroken line that never shrank: 430 px across a 390 px phone at 150 % text in the scifi pack)."
-    }
-  ]
-}

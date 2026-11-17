@@ -1,8 +1,0 @@
-{
-  "fixed": [
-    {
-      "member": "og.ui",
-      "summary": "Text-only native buttons honor white-space wrapping and grow above their control-height minimum to hold wrapped labels. Long EmptyState actions stay inside their button on phones; nowrap and explicit heights still hold."
-    }
-  ]
-}

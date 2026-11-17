@@ -1,8 +1,0 @@
-{
-  "added": [
-    {
-      "member": "ui",
-      "summary": "font-variant-caps and font-variant-position are synthesised where the face lacks their forms (CSS Fonts 4 §6.3, §6.5): a small capital is drawn as its capital at 80 % of the size, letter by letter, and a super- or subscript run whose face lacks the form of any of its characters is drawn whole at 82 % (two-thirds from 45 px) and raised a third or lowered a fifth of the size. font-synthesis-small-caps and font-synthesis-position: none turn it off. Synth gains small_caps and position (Synth::ALL), og_text's FontFile has_variant()."
-    }
-  ]
-}

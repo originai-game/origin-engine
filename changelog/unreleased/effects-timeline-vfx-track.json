@@ -1,8 +1,0 @@
-{
-  "added": [
-    {
-      "member": "timeline: vfx track",
-      "summary": "A `track vfx` keys composed effects: `effect \"fx/hit.ogt\"`, optional `at \"<entity>\"` (played as its child), `position`, `scale` and `seed`. From its key the effect plays as an og.Vfx the timeline owns; a seek into it joins it mid-way without resending the events, shakes and sounds already passed, and a seek out of it, og.timeline.stop and the timeline's end remove it. The cook refuses a vfx track naming an effect the bundle lacks."
-    }
-  ]
-}

@@ -1,6 +1,0 @@
-{
-  "simulation": "unchanged",
-  "added": [
-    {"member":"ui","summary":"A text's ::part run takes text-combine-upright: all (or digits) down a vertical line: the run's text is set upright in one em, squeezed across, and breaks as one unit (CSS Writing Modes 4 §9.1)."}
-  ]
-}

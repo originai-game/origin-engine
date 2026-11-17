@@ -1,8 +1,0 @@
-{
-  "fixed": [
-    {
-      "member": "<anchor declutter>",
-      "summary": "Moves frames: a decluttered tag stays on the screen and clear of the tags placed before it. Each takes the nearest spot a gap off the tags near it (a stack straight above first, then straight below, then any way) that is inside the safe area and within its reach, and fades out while none is; only a Rust `contain` anchor was kept on the screen, so a crowd of nameplates and speech bubbles climbed past the screen's top."
-    }
-  ]
-}

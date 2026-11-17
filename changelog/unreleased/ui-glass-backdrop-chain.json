@@ -1,9 +1,0 @@
-{
-  "simulation": "unchanged",
-  "fixed": [
-    {
-      "member": "UI CSS backdrop-filter on glass",
-      "summary": "A `-og-material: glass …` surface now takes any `backdrop-filter` chain. Blurs followed by colour functions still fold into the glass backdrop. Any other chain (a colour function before a blur, colour functions that need clamping between them, `drop-shadow()` or `url()`) runs as the staged backdrop filter in order, and the glass draws over its result without filtering again. Such a chain used to be refused with a warning and drew no filter."
-    }
-  ]
-}

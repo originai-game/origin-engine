@@ -1,8 +1,0 @@
-{
-  "fixed": [
-    {
-      "member": "UI: gradients that leave the output's gamut",
-      "summary": "Moves frames where a gradient's mix leaves the gamut (a hue turned `in oklch`, a wide stop): each pixel is gamut mapped into the output's gamut by OKLCh chroma reduction (CSS Color 4 §13.2), keeping its lightness and hue, instead of clipped per channel, which turned both and left a crease along the ramp. On a Display P3 output the mix keeps P3's range; on sRGB it stays inside sRGB. Gradients inside the gamut draw as before."
-    }
-  ]
-}

@@ -1,8 +1,0 @@
-{
-  "added": [
-    {
-      "member": "RenderSettings.particleEmission",
-      "summary": "A quality field: every particle system's emission times this (0 to 1, default 1), each emitter kept above it where it would otherwise have fewer than 8 particles alive at once, so a flash, a ring or a handful of embers stays whole. The low preset (og.render.applyQuality) now writes 0.5, so low draws busy effects with about half their particles; medium and high write 1, and frames at the default do not change. Drawing only: particle events and collisions are the full emitter's."
-    }
-  ]
-}

@@ -1,8 +1,0 @@
-{
-  "fixed": [
-    {
-      "member": "og ui review",
-      "summary": "Reviews of one sheet in different styles (`--style fantasy` and `--style scifi`) run at once from one checkout: each style list stages its own copy of the sheet under .og/review instead of removing the other run's copy while it renders."
-    }
-  ]
-}

@@ -1,9 +1,0 @@
-{
-  "simulation": "unchanged",
-  "fixed": [
-    {
-      "member": "UI CSS anchor(), position-area",
-      "summary": "An anchored element is now placed against its anchor's box as drawn, with the anchor's (and its ancestors') transforms, `translate`, `scale` and `rotate` (CSS Anchor Positioning 1 §2.4.1); it used to read the untransformed layout box. Transforms are composed after layout, so when an anchor's transform changes the anchored element follows on the next frame."
-    }
-  ]
-}

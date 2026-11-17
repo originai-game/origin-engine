@@ -1,8 +1,0 @@
-{
-  "added": [
-    {
-      "member": "particles and effect materials: blend subtractive, blend multiply",
-      "summary": "A `blend` line in a particles, effect or vfx mesh file takes `subtractive` (its colour taken away from what is behind at its alpha: dark smoke over a bright sky, a void) and `multiply` (what is behind tinted by its colour, mixed towards none as its alpha falls: scorch, a shadow under a spell). Both are order independent and draw on billboards, mesh particles and effect meshes on both simulation paths; sprite mode refuses them and a trail, ribbon or beam blends them as alpha. `og vfx import` keeps Effekseer's subtractive and multiplicative sprites, models and rings, which it drew alpha blended."
-    }
-  ]
-}

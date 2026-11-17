@@ -1,9 +1,0 @@
-{
-  "simulation": "unchanged",
-  "fixed": [
-    {
-      "member": "ui",
-      "summary": "::selection and ::target-text follow highlight inheritance (CSS Pseudo-Elements 4 §3.5), as ::highlight() does. Each property the text's own element leaves unset comes from the nearest ancestor's rule that sets it, background-color included, so `div::selection { color: red }` now styles the selection in the paragraphs inside that div."
-    }
-  ]
-}

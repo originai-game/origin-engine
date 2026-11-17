@@ -1,9 +1,0 @@
-{
-  "simulation": "unchanged",
-  "fixed": [
-    {
-      "member": "og.Lockstep.stallTimeoutMs",
-      "summary": "A peer catching up many ticks in one long frame (after a rejoin or under load) no longer drops the other peers' seats as stalled. The room's messages reach the engine between frames, so the ticks of one frame now judge the others' silence as of the frame's start, and a long frame counts as this peer's own pause, as a suspended tab already does."
-    }
-  ]
-}

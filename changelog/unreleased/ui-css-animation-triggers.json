@@ -1,6 +1,0 @@
-{
-  "simulation": "unchanged",
-  "added": [
-    {"member":"ui","summary":"Scroll-triggered animations (CSS Animation Triggers 1): `timeline-trigger: --name view() contain / cover` on an element makes a trigger that activates when its timeline enters the first range and deactivates when it leaves the second; `animation-trigger: --name play-forwards play-backwards` (or play, play-once, pause, reset, replay) makes an animation wait at its start until then, so a card can animate in once it scrolls into view and back out when it leaves. `trigger-scope` keeps a name to a subtree. Trigger states and playback are saved UI state."}
-  ]
-}

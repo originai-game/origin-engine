@@ -1,8 +1,0 @@
-{
-  "fixed": [
-    {
-      "member": "UI scroll anchoring",
-      "summary": "Anchor selection visits the slots with positive vertical scroll offsets instead of scanning every UI slot, retaining the previous slot order and anchor rules. Layout and drawing are unchanged."
-    }
-  ]
-}

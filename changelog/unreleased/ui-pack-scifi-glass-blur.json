@@ -1,8 +1,0 @@
-{
-  "added": [
-    {
-      "member": "scifi style pack",
-      "summary": "The pack's glass blurs the scene behind it: panels, dialogs, tooltips and role frames take `--scifi-glass-blur` over a thinner frost, and HUD plates and `.hud` frames take the lighter `--scifi-plate-blur` over a denser frost that keeps their captions readable over a bright sky. World tags, per-value bars and the small chips of a busy HUD stay on solid glass and do not blur."
-    }
-  ]
-}

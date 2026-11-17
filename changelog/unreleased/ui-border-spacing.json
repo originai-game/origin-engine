@@ -1,9 +1,0 @@
-{
-  "simulation": "unchanged",
-  "added": [
-    {
-      "member": "UI CSS border-spacing, border-collapse",
-      "summary": "A table's `border-spacing: <h> [<v>]` (inherited, 0 by default) separates its cells and its outer cells from its padding edge (CSS 2 §17.6.1); `border-collapse: collapse` sets the cells edge to edge. Both were refused. A table now ignores `gap`, as CSS tables do."
-    }
-  ]
-}

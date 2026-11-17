@@ -1,9 +1,0 @@
-{
-  "simulation": "unchanged",
-  "added": [
-    {
-      "member": "og.Sprite.sway",
-      "summary": "A sprite whose texture is cooked with wind parts is drawn as those parts in og.Wind: a tree's wood stands, its clumps of leaves or tiers of branches lean downwind with the gusts and loop as the wind's wave passes, in step with grass and 3D vegetation. Pixel art moves by whole texels and holds each pose (ArtMotion.stepFps, else 10 a second). 0, the default, draws the sprite whole; so do still air, a flipbook, slices, a palette, a material or a uv region. Presentation only."
-    }
-  ]
-}

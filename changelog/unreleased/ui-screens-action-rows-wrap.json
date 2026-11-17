@@ -1,8 +1,0 @@
-{
-  "fixed": [
-    {
-      "member": "ui.screens",
-      "summary": "The action rows of Calibration, Pagination, Leaderboard, FilmFlowchart, Settings, SaveLoad, Card, ModeSelect and Tutorial wrap at 150 % text instead of running off a phone's screen; Calibration centres through the cover primitive, and a CreatorTools panel title ends in an ellipsis instead of widening its panel."
-    }
-  ]
-}

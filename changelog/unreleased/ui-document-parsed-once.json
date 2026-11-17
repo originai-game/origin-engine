@@ -1,8 +1,0 @@
-{
-  "fixed": [
-    {
-      "member": "og.load.document",
-      "summary": "A document is read once, against the style `og.ui.configure` selected. Before, loading a document under a style parsed its text three times, and every `og.ui.configure` call (a scheme or text-scale change included) parsed every loaded document again. Select the style before loading documents; when a later `og.ui.configure` changes the style, the loaded documents are read again, once each."
-    }
-  ]
-}

@@ -1,6 +1,0 @@
-{
-  "simulation": "unchanged",
-  "fixed": [
-    {"member":"ui","summary":"`font-family` on a part whose element is its own text (`badge::part(base)`, a keycap) reaches that text, as the part's colour and size already did."}
-  ]
-}

@@ -1,9 +1,0 @@
-{
-  "simulation": "unchanged",
-  "fixed": [
-    {
-      "member": "og.ui",
-      "summary": "A frame that restyles many document elements at once (a menu switching its phase) costs about 15% less: an element restyled re-walks only the inherited values that changed, or every one when what it declares changes."
-    }
-  ]
-}

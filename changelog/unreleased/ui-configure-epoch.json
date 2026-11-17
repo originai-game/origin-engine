@@ -1,8 +1,0 @@
-{
-  "fixed": [
-    {
-      "member": "og.ui.configure and CSS texture loading",
-      "summary": "Repeating unchanged UI configuration retains mounted styles and text measurements. Loading or replacing a CSS texture or its shape-outside alpha updates only elements referencing that asset, rather than invalidating the whole UI; a late alpha now updates its float without another style change."
-    }
-  ]
-}

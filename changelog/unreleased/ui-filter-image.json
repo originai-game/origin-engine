@@ -1,9 +1,0 @@
-{
-  "simulation": "unchanged",
-  "added": [
-    {
-      "member": "UI CSS filter() image",
-      "summary": "`filter(<image>, <filter functions>)` (Filter Effects 1 §12) is an image wherever a background, mask or border image takes one: `filter(url(a.png), grayscale(1) blur(2px))` draws the image through the same functions the `filter` property takes, in order, without filtering the element. It works inside `cross-fade()`, and a `filter()` of a `filter()` applies both lists. `url(#id)` references are refused."
-    }
-  ]
-}

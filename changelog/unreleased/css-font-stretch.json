@@ -1,8 +1,0 @@
-{
-  "added": [
-    {
-      "member": "ui",
-      "summary": "font-stretch and font-width pick an @font-face family's face by width (CSS Fonts 4 §5.2: at or under normal the narrower faces first, over it the wider), from the @font-face font-stretch or font-width descriptor (one width or a range), before style and weight; the text is measured in the face it draws."
-    }
-  ]
-}

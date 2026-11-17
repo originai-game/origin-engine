@@ -1,8 +1,0 @@
-{
-  "fixed": [
-    {
-      "member": "ui.PuzzleGoals, ui.PuzzleBoosters, ui.PuzzleLevelPath, ui.PuzzleSummary",
-      "summary": "Improves the default puzzle kit with stronger counter hierarchy, visible completion checks and earned stars, current-level and armed-booster emphasis, readable count badges, quieter disabled states and a separated score total. Uses HTML and token-based CSS, with conditional optional content and phone-sized booster cards. Review sheets now include the default style."
-    }
-  ]
-}

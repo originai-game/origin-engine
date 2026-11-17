@@ -1,8 +1,0 @@
-{
-  "fixed": [
-    {
-      "member": "UI CSS width/height: stretch",
-      "summary": "Layout change: a `stretch` box with margins across a centred or end-aligned flex line is sized to the line less its margins (calc(100% - margins)), clamped by its max size, and then aligned with the line. It was laid out at the line's start when a max size clamped it."
-    }
-  ]
-}

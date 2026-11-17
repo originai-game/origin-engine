@@ -1,8 +1,0 @@
-{
-  "added": [
-    {
-      "member": "og.RenderSettings.maxVfx",
-      "summary": "RenderSettings.maxVfx and maxVfxParticles cap the composed effects (og.Vfx) drawn at once and the particle slots among their emitters: 64 and 65536 by default, 32 and 32768 on the low preset, 128 and 131072 on high. Past either, the oldest one-shot effects are left out first, then the oldest looping ones; the probe's dump_render reports `vfx: { drawn, dropped }`. Drawing only: the effects' events, shakes and sounds still come, and their entities stay. Scenes within the limits draw as before."
-    }
-  ]
-}

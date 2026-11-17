@@ -1,6 +1,0 @@
-{
-  "simulation": "unchanged",
-  "fixed": [
-    {"member":"og.scene.current","summary":"Called inside a system it names the scene in place (the one og.SceneChanged reported this tick), not always GameDesc.scene: a system that waits for its change to land can compare it with the scene it asked for."}
-  ]
-}

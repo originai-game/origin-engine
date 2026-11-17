@@ -1,8 +1,0 @@
-{
-  "added": [
-    {
-      "member": "Nameplate",
-      "summary": "A cast's spell name spans the cast bar and is inked `--ink-on-warn` over the part the cast has filled and `--ink` past it, so it reads over both; a name longer than the bar ends in an ellipsis."
-    }
-  ]
-}

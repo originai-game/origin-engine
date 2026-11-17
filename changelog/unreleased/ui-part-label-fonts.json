@@ -1,6 +1,0 @@
-{
-  "simulation": "unchanged",
-  "fixed": [
-    {"member":"UI part text inheritance","summary":"A control's text inside a part now inherits the font family, size, weight, letter spacing, word spacing, text transform and colour the part declares, as CSS inheritance gives them: a tab's label takes `tabs::part(tab)`'s (`--tabs-font`, `--tabs-transform`, `--tabs-tracking`, `--tabs-tab-ink`), a select's value `select::part(trigger)`'s and a date stepper's value its frame's (`--field-font`), and a details summary its label type. Before, only a part whose box was its own text (a button's label, a number field's value) took them. A nested part's own declarations win inside it, and a component document's content keeps its own cascade."}
-  ]
-}

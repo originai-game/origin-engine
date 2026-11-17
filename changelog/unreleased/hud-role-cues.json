@@ -1,7 +1,0 @@
-{
-  "fixed": [
-    "StarBar keeps an outlined unearned star on a translucent ground; earned stars keep their gold fill.",
-    "MinimapView keeps a visible warning ring while its separate ping ripple fades.",
-    "StatusGrid shows stack counts and labelled seconds together below each effect icon instead of stacking ambiguous numbers."
-  ]
-}

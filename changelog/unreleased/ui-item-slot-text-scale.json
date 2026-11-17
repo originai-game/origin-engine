@@ -1,8 +1,0 @@
-{
-  "fixed": [
-    {
-      "member": "ui components",
-      "summary": "ItemSlot grows with the player's text scale (96px at 100% text), so its key, count and Locked or Unavailable chip keep their room around the icon at 150% text instead of being cut by the slot. A game's `--item-slot-size` is still taken as given; in a slot narrower than its state word, the word ends in an ellipsis inside its chip."
-    }
-  ]
-}

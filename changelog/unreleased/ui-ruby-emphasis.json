@@ -1,6 +1,0 @@
-{
-  "simulation": "unchanged",
-  "added": [
-    {"member":"ui","summary":"A ruby's base takes its text's emphasis marks, placed outside its annotations on that side as CSS Text Decoration 4 §3.4 says, and its line grows for them; annotations take none."}
-  ]
-}

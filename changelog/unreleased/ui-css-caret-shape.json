@@ -1,6 +1,0 @@
-{
-  "simulation": "unchanged",
-  "added": [
-    {"member":"ui","summary":"CSS `caret-shape: auto | bar | block | underscore` (inherited): a focused field draws its caret as a bar, a block under the next character's advance, or an underscore below it; with no next character the block and underscore take 1ch after the text. A terminal or retro console screen gets its caret without game code."}
-  ]
-}

@@ -1,8 +1,0 @@
-{
-  "fixed": [
-    {
-      "member": "UiScope.mount",
-      "summary": "A mount whose document uses a component without a prop that component declares data-required now returns an error naming the instance and the prop (`row.svelte:2: <Card> leaves out its prop 'orientation', which it requires (data-required)`). It used to return ok and build nothing, with a misleading 'not a row variable' message only in the warnings. Every other prop may be left out (ui-props-have-defaults)."
-    }
-  ]
-}

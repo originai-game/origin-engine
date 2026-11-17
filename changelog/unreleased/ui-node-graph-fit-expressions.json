@@ -1,6 +1,0 @@
-{
-  "simulation": "unchanged",
-  "added": [
-    {"member":"UI: expression index and number lists","summary":"A document's expressions take an index (`items[i]`, `row['key']`, a string's character) and `numbers(text)`, a number list as SVG writes one (`numbers(view)[2]` is a viewBox's width). A component can size from a viewBox string without the game splitting it."}
-  ]
-}

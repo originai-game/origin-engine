@@ -1,8 +1,0 @@
-{
-  "fixed": [
-    {
-      "member": "<ground>, PathLine",
-      "summary": "Moves frames: a ground's texts and badges draw over every ground's other drawing. Grounds were composited in tree order in one band, so a ring or line laid after a ground covered its label (on the world sheet, PlacementGhost's range ring and the path's dashes crossed PathLine's \"12 m · 2 AP\")."
-    }
-  ]
-}

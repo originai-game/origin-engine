@@ -1,6 +1,0 @@
-{
-  "simulation": "unchanged",
-  "fixed": [
-    {"member":"og.ui","summary":"A document element's style warnings (a missing token, a value invalid at computed-value time, an -og-burst keyframe whose var() does not resolve) are in every frame's warnings while they hold, not only in the frame the element was styled again; they go when the element is styled without them or leaves. An `<svg width=\"0\" height=\"0\">` holding only `<defs>` no longer warns that its viewBox has no size: only a viewBox the author wrote is checked."}
-  ]
-}

@@ -1,8 +1,0 @@
-{
-  "fixed": [
-    {
-      "member": "Stylise.ink",
-      "summary": "Luminance ink no longer dots a textured surface: an edge is inked only where it runs on along itself for six pixels on at least one side, with about the same direction. A dark speck or mottle in a texture (a meadow's soil, a stone's grain) drew a black dot under inked-comic-3d and its variants; now it draws none, while long edges, creases and thin lines keep their line to the end."
-    }
-  ]
-}

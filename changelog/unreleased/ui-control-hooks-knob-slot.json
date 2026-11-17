@@ -1,9 +1,0 @@
-{
-  "simulation": "unchanged",
-  "added": [
-    {"member":"UI control hooks","summary":"`--switch-knob-shadow` gives a switch's knob a shadow, and `--checkbox-radius` a checkbox's box its radius (by default the field radius)."}
-  ],
-  "fixed": [
-    {"member":"UI control hooks","summary":"A slot now draws the `--slot-shadow` a pack sets; a later rule had cleared it. It is none by default, and a component cell keeps the well shadow it drew, so the default style is unchanged."}
-  ]
-}

@@ -1,9 +1,0 @@
-{
-  "simulation": "unchanged",
-  "fixed": [
-    {
-      "member": "UI CSS min-width: 0, min-height: 0",
-      "summary": "`min-width: 0` and `min-height: 0` now lift a flex item's automatic minimum (CSS Flexbox 1 §4.5), so a sharing item (`flex: 1`) shrinks below its content, as browsers do. The zero used to be folded into the size's range, where 0 means no minimum, and the item stayed floored at its content's width."
-    }
-  ]
-}

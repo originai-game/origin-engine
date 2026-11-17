@@ -1,6 +1,0 @@
-{
-  "simulation": "unchanged",
-  "added": [
-    {"member":"ui","summary":"`select::part(option):checked` matches the chosen option of an open select, as HTML's selected `<option>` matches `:checked`."}
-  ]
-}

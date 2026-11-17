@@ -1,6 +1,0 @@
-{
-  "simulation": "unchanged",
-  "added": [
-    {"member":"ui","summary":"Document media queries take `device-width`, `device-height` and `device-aspect-ratio`, with their `min-` and `max-` forms (Media Queries 4). They read the play surface. Also new: `-webkit-device-pixel-ratio` and its `min-`/`max-` forms, which are `resolution` in dppx; `-webkit-transform-3d`, which is 1 since 3D transforms draw; and `device-posture`, `horizontal-viewport-segments` and `vertical-viewport-segments`. No host reports a fold, so those answer `continuous` and 1."}
-  ]
-}

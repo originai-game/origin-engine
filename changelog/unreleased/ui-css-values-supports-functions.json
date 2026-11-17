@@ -1,6 +1,0 @@
-{
-  "simulation": "unchanged",
-  "added": [
-    {"member":"ui","summary":"`@supports` takes CSS Conditional 5's `at-rule(@name)`, `named-feature(name)` and `env(name)`. `at-rule()` is true for the at-rules a document can use (not `@charset` or `@page`). `named-feature()` is true for `gamut-mapping`. `env()` is true for the safe-area and `-og-hud-inset-*` variables. `@import … supports(…)` now takes these too."}
-  ]
-}

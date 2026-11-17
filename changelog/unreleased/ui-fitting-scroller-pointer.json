@@ -1,8 +1,0 @@
-{
-  "fixed": [
-    {
-      "member": "UI pointer input",
-      "summary": "Scroll containers whose content fits no longer swallow taps or drag starts intended for a parent control. Overflowing containers still drag-scroll; wheel routing and overscroll boundaries are unchanged."
-    }
-  ]
-}

@@ -1,6 +1,0 @@
-{
-  "simulation": "unchanged",
-  "fixed": [
-    {"member":"ui","summary":"A transition or keyframe animation between `anchor()` insets, or between `anchor-size()` sizes, moves through the lengths they resolve to (CSS Anchor Positioning 1), following an anchor that moves meanwhile, instead of jumping from one anchor to the other. An inset and an anchor size also take `calc()` of weighted terms added, `calc(0.5 * anchor(--a right) + 0.5 * anchor(--b right))`."}
-  ]
-}

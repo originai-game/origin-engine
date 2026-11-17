@@ -1,8 +1,0 @@
-{
-  "added": [
-    {
-      "member": "ShellOptions.onBuffering",
-      "summary": "The web shell tells its page when a playing video player with `wait` holds the clock for its frame (true) and lets it go (false), so the page shows a loading sign; the frame answer carries `buffering`."
-    }
-  ]
-}

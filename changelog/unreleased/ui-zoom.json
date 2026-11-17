@@ -1,9 +1,0 @@
-{
-  "simulation": "unchanged",
-  "added": [
-    {
-      "member": "UI CSS zoom",
-      "summary": "`zoom` (CSS Viewport 1 §4) makes a box and its subtree that many times larger, and its parent makes room for it: its size, padding, margins and text, and every length under it, grow by the factor; a percentage or `auto` does not. Zooms nest by multiplying, a percentage is its hundredth, and 0 is 1. The subtree is drawn scaled from the box's top left, so its transforms act inside the zoom. A zoomed box starts its own float context."
-    }
-  ]
-}

@@ -1,8 +1,0 @@
-{
-  "fixed": [
-    {
-      "member": "AbilitySlot",
-      "summary": "An ultimate's cost sits centred at the top of its round slot instead of at the bottom corner, where its plate covered the charge percent (72 % read as 2 %); the two stay apart at every text scale. A square slot keeps the cost at its bottom leading corner."
-    }
-  ]
-}

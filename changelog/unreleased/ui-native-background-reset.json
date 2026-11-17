@@ -1,8 +1,0 @@
-{
-  "fixed": [
-    {
-      "member": "ui CSS backgrounds",
-      "summary": "Authored native-frame backgrounds replace the default material's matching colour and image layers, including transparent and background-image:none. Colour-only overrides retain the material's images; authored SVG and custom drawing content are preserved."
-    }
-  ]
-}

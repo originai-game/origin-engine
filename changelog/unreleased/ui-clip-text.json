@@ -1,9 +1,0 @@
-{
-  "simulation": "unchanged",
-  "fixed": [
-    {
-      "member": "UI CSS background-clip: text",
-      "summary": "`background-clip: text` cuts the background to the text of the element and of all its descendants (CSS Backgrounds 4 §2.1), drawn where the background is, under that text; it cut only to the element's own text, so a box whose text sat in child elements drew no background at all."
-    }
-  ]
-}

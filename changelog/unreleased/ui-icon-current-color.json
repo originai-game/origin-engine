@@ -1,8 +1,0 @@
-{
-  "fixed": [
-    {
-      "member": "<og-icon> colour",
-      "summary": "An icon that declares no color now takes its parent's, as an SVG icon in a page draws in currentColor: a step's check in its success tone, an icon in a danger label in danger. An icon that declares its own colour keeps it, and og-icon::part(image) still restyles it."
-    }
-  ]
-}

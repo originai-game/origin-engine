@@ -1,3 +1,0 @@
-{
-  "fixed": [{ "member": "Rhythm components", "summary": "Moves frames: rhythm documents use HTML with CSS and conditional content. Default chart ratings, judgement calls, combo counts, grades and scores have clearer hierarchy; song details have a quiet surface, missing jackets have a music-icon fallback, and secondary metadata recedes. Review sheets load the default font. Ids, parts and gameplay intents are unchanged." }]
-}

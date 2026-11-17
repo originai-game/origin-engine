@@ -1,8 +1,0 @@
-{
-  "added": [
-    {
-      "member": "--button-selected-fill",
-      "summary": "A button that is on (<button aria-pressed={on}>: a toggle, a chip) has a look in the default style: --button-selected-fill under --button-selected-ink, the neutral selection, whatever its variant, at rest, hovered and held. Before, the default style left it looking like its off neighbour and each document wrote its own selected state. A style pack sets the two tokens or dresses button[aria-pressed=true]::part(base); a document that draws its own state on a part still wins. Built-in components that mark a button on (the strategy command card's active command, an armed puzzle booster, the rhythm song list's Preview) now show it."
-    }
-  ]
-}

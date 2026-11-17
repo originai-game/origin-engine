@@ -1,6 +1,0 @@
-{
-  "simulation": "unchanged",
-  "added": [
-    {"member":"ui","summary":"A document's `width` and `height` (and `inline-size` and `block-size`) take `calc-size(<basis>, <calculation>)` (CSS Values 5). The basis is `auto`, `min-content`, `max-content`, `fit-content`, `stretch`, a length or another calc-size(). The calculation is linear in `size`, as in `calc-size(auto, size * 0.5)` or `calc-size(max-content, size + 12px)`, and min and max apply after. og-ui's `Size::CalcSize` and `SizeBasis` carry it. A non-linear calculation, or calc-size() in a min-/max- bound, fails to cook."}
-  ]
-}

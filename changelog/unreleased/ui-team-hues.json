@@ -1,9 +1,0 @@
-{
-  "simulation": "unchanged",
-  "fixed": [
-    {
-      "member": "ui",
-      "summary": "The team colours stay apart under every colour vision. Teams 1 to 6 (`--team1` to `--team6`, UiTheme.tokens.team) are six fixed colours per scheme, vermilion, yellow, bluish green, blue, violet and reddish purple, alternately lighter and darker, at least 0.1 apart in OKLab under protanopia, deuteranopia and tritanopia (og style check's simulation) and 4.5:1 on the grounds, whatever the seeds. The team seed (`--seed-team`, UiSeeds.team) picks the first, the nearest by hue, and the rest follow in Okabe-Ito order: the default blue seed gives blue, vermilion, bluish green, yellow, reddish purple and violet. Teams 7 and 8 are fixed and hold 0.07: past six sides, give each a shape, a pattern or an icon as well. The default dark team2 and team3 were 0.009 apart under deuteranopia."
-    }
-  ]
-}

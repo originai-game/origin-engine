@@ -1,8 +1,0 @@
-{
-  "fixed": [
-    {
-      "member": "Panels, meta and card components",
-      "summary": "Built-in panels, shops, progression, social and card documents now take their surfaces, typography, state colours and motion from shared role parts and tokens, and their layout from shared primitives. Existing component parts, inputs and intents remain available. Style packs can retune these families together; overlapping hand cards keep an opaque role fill, and loading rows use shared skeleton shimmer."
-    }
-  ]
-}

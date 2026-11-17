@@ -1,6 +1,0 @@
-{
-  "simulation": "unchanged",
-  "fixed": [
-    {"member":"ui","summary":"A document's `ex`, `cap`, `rex` and `rcap` now read the body face's own x-height and cap height (OS/2) instead of 0.5em and the ascent. `ch` and `ic` use the advance of the face's `0` and 水, and fall back to CSS Values 4's 0.5em and 1em when the face lacks the glyph. They used to take the .notdef advance."}
-  ]
-}

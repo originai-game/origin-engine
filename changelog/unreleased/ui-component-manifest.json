@@ -1,5 +1,0 @@
-{
-  "fixed": [
-    "Built-in UI name and dependency lookup now reads a generated package manifest instead of parsing every built-in document. UI type generation parses only the built-ins it needs."
-  ]
-}

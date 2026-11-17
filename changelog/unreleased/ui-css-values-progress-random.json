@@ -1,6 +1,0 @@
-{
-  "simulation": "unchanged",
-  "added": [
-    {"member":"ui","summary":"A document's CSS math takes `progress(no-clamp? value, start, end)` (CSS Values 5 §5), the value's place between start and end as a number clamped to [0, 1] unless `no-clamp`, and `random(key?, min, max, step?)` (§9.1). random() draws from a hash of its random cache name: by default the element, the property and its place in the value, shared by a `--name` key, scoped by `element-scoped`, `property-scoped` or `property-index-scoped`, or set by `fixed <number>`. A value is the same each time the element resolves and on every host. random() with a step, and progress(), take arguments in one unit."}
-  ]
-}

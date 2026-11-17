@@ -1,8 +1,0 @@
-{
-  "added": [
-    {
-      "member": "CSS hyphens: auto, hyphenate-character and hyphenate-limit-chars",
-      "summary": "hyphens: auto breaks words at the hyphenation points of the game's language (og.i18n's locale), from hyph-utf8's TeX patterns; a text with no locale set is not hyphenated. The dictionaries ship in the latin (27 languages) and cyrillic-greek (7) font packs, and the cook packs one only when the game declares hyphens: auto and ships a locale of that language; a shipped locale with no dictionary is warned of at cook and breaks only at soft hyphens. hyphenate-character sets what a hyphenated line ends in (a hyphen by default), and hyphenate-limit-chars the fewest characters of a word that hyphenates and of its parts before and after the break (CSS Text 4 §6). manual stays the initial value: only soft hyphens break."
-    }
-  ]
-}

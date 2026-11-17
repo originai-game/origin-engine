@@ -1,6 +1,0 @@
-{
-  "simulation": "unchanged",
-  "added": [
-    {"member":"UI control hooks","summary":"Quiet and ghost buttons, which are text on the surface rather than plates, take inks of their own: `--button-quiet-ink`, `--button-quiet-hover-ink`, `--button-quiet-pressed-ink`, `--button-ghost-hover-ink` and `--button-ghost-pressed-ink`. Unset, they fall back to `--button-ink`, `--button-hover-ink` and `--button-pressed-ink` as before, so the default style is unchanged."}
-  ]
-}

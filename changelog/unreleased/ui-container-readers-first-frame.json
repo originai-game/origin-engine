@@ -1,8 +1,0 @@
-{
-  "fixed": [
-    {
-      "member": "og.ui documents with container queries",
-      "summary": "An element that reads its container's size (a container query or cq units) and has a child reading it too now takes its queried values on the first frame: settlement could resolve the child first and leave the element as the unmeasured build made it, so a card hand's slots drew 0×0 for a frame and the first focus landed on the one card that had a box."
-    }
-  ]
-}

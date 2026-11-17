@@ -1,8 +1,0 @@
-{
-  "added": [
-    {
-      "member": "Shared motions and role motion",
-      "summary": "The default style owns a shared set of keyframes (og-fade-in, og-fade-out, og-rise-in, og-drop-in, og-pop-in, og-stamp-in, og-beat, og-pulse, og-spin, og-ping, og-shimmer) every document can name. A part asks for one by meaning with data-motion (enter, exit, pop, stamp, beat, pulse, spin, ping, shimmer), timed by the role tokens --<name>-motion from motion.css; a pack retunes a token or redefines the keyframes. Interactive role parts (row, cell, card, tab, badge) ease between hover, press and selection (--change-motion), and a cell gives under a press (--cell-pressed-scale). Under prefers-reduced-motion every data-motion but spin stops. Spinner, StatBar and ProgressBar use them."
-    }
-  ]
-}

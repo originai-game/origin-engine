@@ -1,8 +1,0 @@
-{
-  "fixed": [
-    {
-      "member": "draw calls under GPU culling",
-      "summary": "In a frame the GPU culls (one of 16,384 instances or more) a pass no longer issues a draw for a batch none of whose instances it can see: each shadow cascade, local light face, planar reflection, view, the camera's opaque and occluder passes, and the cluster path's views leave out the (mesh, material) batches whose instances' bounds lie outside their volume, as the CPU path's lists already did. The picture is unchanged; `dump_render`'s `draws` falls. A town of 1,156 buildings seen across from its edge went from 345 to 244 draws, and with its `hlod` proxies from 699 to 404; seen from the street with proxies, from 597 to 386."
-    }
-  ]
-}

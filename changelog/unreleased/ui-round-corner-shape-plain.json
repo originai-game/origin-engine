@@ -1,6 +1,0 @@
-{
-  "simulation": "unchanged",
-  "fixed": [
-    {"member":"ui","summary":"A `corner-shape: round` beside one `border-radius` (the default style's role rules since the `--*-corner-shape` tokens) is the plain corner again. It had made every role box a CSS-corner box, which left a dressed table row's fill undrawn: the default style's selected or current row (a scoreboard's own player) showed no highlight."}
-  ]
-}

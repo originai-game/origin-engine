@@ -1,8 +1,0 @@
-{
-  "fixed": [
-    {
-      "member": "UI text overflow",
-      "summary": "Moves frames: nowrap text styled as rich paragraphs, including trimmed headings, now ellipsizes at its final flex-item width. Overflow hidden and clip also cut a text leaf's own line instead of only its children."
-    }
-  ]
-}

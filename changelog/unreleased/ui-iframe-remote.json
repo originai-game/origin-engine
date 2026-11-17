@@ -1,9 +1,0 @@
-{
-  "simulation": "unchanged",
-  "added": [
-    {
-      "member": "ui",
-      "summary": "`<iframe src=\"https://events.example.com/og/event.svelte\">` shows a document another origin serves, such as an event page on the game's CDN. project.ogt's new `frames \"https://events.example.com\"` lists the origins it may come from (none by default); the cook refuses any other, and og-build.json's new `frames` carries the list for the page's CSP. `crossorigin`, `integrity` and `referrerpolicy` apply as url()'s request modifiers. The engine fetches the `.svelte` source on both hosts, with its relative images and nested frames beside it (at most 3 deep), and executors wait for it. A remote document reads only its props and `$ui`, uses only the engine's built-in components, and stays within 256 KiB, 4,096 nodes and 64 images; otherwise it shows nothing and warns. Its events never reach docEvents: read them from the new `og.ui.frameMessages(world)`, each with the origin it came from. See the `frames` guide."
-    }
-  ]
-}

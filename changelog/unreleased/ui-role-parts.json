@@ -1,7 +1,0 @@
-{
-  "simulation": "unchanged",
-  "added": [
-    {"member":"UI part lists","summary":"A document element's `part` takes a list of names, as in HTML (`part=\"Bag.portrait Bag.picture\"`): `::part()` reaches it by any of them, the document's own `[part~=\"Bag.portrait\"]` by one, and it wears the role of its last name. Every name is in the document's `parts` line."},
-    {"member":"UI roles","summary":"Three new roles: `name` (`--name-font/size/tracking/transform/ink/shadow/selected-ink`), `picture` (`--picture-fill/rim/rim-width/radius/shadow`) and `tab`, which wears the core tabs' `--tabs-tab-*` and `--tabs-font/tracking/transform`. The name and picture hooks are unset by default, so the components' own look stands until a pack sets them."}
-  ]
-}

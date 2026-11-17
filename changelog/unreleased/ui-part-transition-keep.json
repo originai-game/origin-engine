@@ -1,8 +1,0 @@
-{
-  "fixed": [
-    {
-      "member": "Component part transitions",
-      "summary": "A running part transition reuses its retained cascade and updates only motion instead of resolving the unchanged cascade again each frame."
-    }
-  ]
-}

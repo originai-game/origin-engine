@@ -1,8 +1,0 @@
-{
-  "added": [
-    {
-      "member": ":user-valid",
-      "summary": "`:user-valid` matches a form control whose value the player changed and its constraints accept, the counterpart of `:user-invalid` (`input:user-valid { border-color: var(--good) }`). An untouched control matches neither."
-    }
-  ]
-}

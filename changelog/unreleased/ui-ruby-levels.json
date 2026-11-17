@@ -1,6 +1,0 @@
-{
-  "simulation": "unchanged",
-  "added": [
-    {"member":"ui","summary":"Ruby follows CSS Ruby 1's box model: <rb> columns pair with <rt>s one by one, <rtc> adds another level (its bare words spanning the bases), nested <ruby> stacks its annotation past the inner one's, and a text's ::part spans take display: ruby, ruby-base, ruby-text, ruby-base-container, ruby-text-container and none. ruby-position: alternate puts each level on the other side of the one before, and inter-character stands the annotation upright in a column right of its base."}
-  ]
-}

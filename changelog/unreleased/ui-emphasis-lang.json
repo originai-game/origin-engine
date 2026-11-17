@@ -1,6 +1,0 @@
-{
-  "simulation": "unchanged",
-  "added": [
-    {"member":"ui","summary":"Emphasis marks take their side from the content language, as CSS Text Decoration 4's default sheet does: under horizontal Chinese text (lang=\"zh\", or a Chinese locale at the root), over Japanese and Korean; an author's text-emphasis-position still wins."}
-  ]
-}

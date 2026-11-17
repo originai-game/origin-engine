@@ -10,7 +10,7 @@ version 1
 # the core default style.
 name "Shooter kit sheet"
 id "shooter-sheet"
-engine "0.7.7"
+engine "0.8.0"
 entry "src/main.ts"
 profile "2d"
 tick 60

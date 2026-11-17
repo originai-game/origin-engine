@@ -1,6 +1,0 @@
-{
-  "simulation": "unchanged",
-  "added": [
-    {"member":"ui","summary":"CSS Motion Path: `offset-path` (`path(\"…\")`, `circle([<n>px])` or `ray(<angle> [<size>])`), `offset-distance` (px or % of the path, and it transitions and animates), `offset-rotate` (`auto`, `reverse` and/or an angle), `offset-anchor` and `offset-position` move an element's anchor along a path in its parent's border box, after `translate`/`rotate`/`scale` and before `transform`. Hits and the cursor follow the moved box."}
-  ]
-}

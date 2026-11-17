@@ -1,8 +1,0 @@
-{
-  "fixed": [
-    {
-      "member": "og style check",
-      "summary": "Text over a nine-slice, a border image, a pattern or a cover, contain, none or scale-down image is read on what that layer draws under it, placed as og-render places it (og-draw's UiImage::place and UiGradientImage::place, ui.wgsl's image_uv); such pairs were reported `unchecked`, their ratio leaving the layer out (fantasy's 152). The `unchecked` ground kind is gone."
-    }
-  ]
-}

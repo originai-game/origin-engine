@@ -1,6 +1,0 @@
-{
-  "simulation": "unchanged",
-  "fixed": [
-    {"member":"ui","summary":"`<kbd data-action>` naming an action the game defined with `og.input.defineAction`, and no UI action, shows that action's binding on the device used last. It drew the raw action name (`interact` on an InteractionPrompt)."}
-  ]
-}

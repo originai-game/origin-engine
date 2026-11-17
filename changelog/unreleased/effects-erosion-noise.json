@@ -1,8 +1,0 @@
-{
-  "fixed": [
-    {
-      "member": "effect materials: erosion without a noise texture",
-      "summary": "An effect material's erosion without a `noise` texture dissolves along the shader library's value noise (two octaves, as before) instead of its own copy: the same softness and scale, a different pattern of holes."
-    }
-  ]
-}

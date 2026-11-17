@@ -1,6 +1,0 @@
-{
-  "simulation": "unchanged",
-  "fixed": [
-    {"member":"UI focus ring","summary":"A control's focus ring now follows the control's corners and their shape, as a CSS outline follows its box: a button a pack bevels with `--button-corner-shape` rings bevelled instead of round. `--button-focus-radius` and `--button-focus-corner-shape` give the ring its own corners. Unset, the default style draws the same ring."}
-  ]
-}

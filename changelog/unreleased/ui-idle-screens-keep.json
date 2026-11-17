@@ -1,5 +1,0 @@
-{
-  "fixed": [
-    "An idle UI screen no longer rebuilds or repaints anything each tick. A focused or hovered control is written again when its focus or hover changes, not every tick while it lasts (a tooltip's or an interest delay counts, a text field's caret blinks, a pressed control follows the pointer). A closed or open popover, a scroll container with scroll markers or buttons and a `::first-line` text are built again only when what they show changes. Inline SVG and other element draws, rich text without moving spans and a scroller's bars keep last tick's paint while they are unchanged, and a styled part's draw is kept while its style, size and ground are."
-  ]
-}

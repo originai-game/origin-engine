@@ -1,8 +1,0 @@
-{
-  "fixed": [
-    {
-      "member": "ActionHints, Celebration, Ribbon, SkeletonGroup, Spinner, SplitView, StarBar, StatusGrid",
-      "summary": "Feedback components use HTML-with-CSS roots and conditionals while retaining their HUD halo hooks and style-pack parts. Loading skeleton shapes have explicit layouts; split panes fit phone widths and scroll their content; score stars sit above a separate inset track, with the final threshold inside the bar, and status countdown overlays measure against their own holders. Long action hints wrap inside the viewport and long ribbon labels ellipsize instead of spilling across the band. SplitView retains its game-owned ratio and raw resize intents."
-    }
-  ]
-}

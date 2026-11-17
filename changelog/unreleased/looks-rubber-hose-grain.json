@@ -1,8 +1,0 @@
-{
-  "fixed": [
-    {
-      "member": "looks: presets",
-      "summary": "cartoon-2d's rubber-hose variant has the film grain its description names: PostEffects filmGrain 0.08 at filmGrainSize 2, so its flat fills read as the stock of an early theatrical cartoon. A game in this variant draws with the grain from this version on; set filmGrain 0 in the game's look to keep the frame clean. The variant still has no gate weave: the engine has no such effect."
-    }
-  ]
-}

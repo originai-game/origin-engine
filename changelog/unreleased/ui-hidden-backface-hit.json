@@ -1,8 +1,0 @@
-{
-  "fixed": [
-    {
-      "member": "CSS backface-visibility",
-      "summary": "A hidden backface and the children composited into its layer no longer intercept the pointer. Front-facing planes and visible backfaces remain interactive."
-    }
-  ]
-}

@@ -1,8 +1,0 @@
-{
-  "fixed": [
-    {
-      "member": "frame CPU time of large still scenes",
-      "summary": "A frame of many instances spends less CPU when they hold still: TAA and motion blur take each instance's previous transform by position while the drawn set is the frame before's, instead of building and searching a map of every instance; the probe's raycast record keeps each og.Model as one row and lists its parts only for a tick's first raycast from a system; and under GPU culling an instance that did not move takes its previous transform's columns from its current one. Frames are unchanged. A town of 1,156 buildings (94,784 instances) seen across from its edge went from 55 to 38 ms of CPU a frame on a software Vulkan device, and with its `hlod` proxies from 24 to 20 ms."
-    }
-  ]
-}

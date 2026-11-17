@@ -1,9 +1,0 @@
-{
-  "simulation": "unchanged",
-  "added": [
-    {
-      "member": "ui",
-      "summary": "`<input type=\"file\">` is now HTML's file upload control: a button (`::file-selector-button`, \"Choose file…\" unless the input has text) with the names chosen beside it (\"No file chosen\" before any). A press anywhere on the input still sends `filepick`. `::file-selector-button` rules now style the button as they style a `<button>`, where before they were accepted and styled nothing. `field-sizing: fixed` keeps the names at the width \"No file chosen\" takes."
-    }
-  ]
-}

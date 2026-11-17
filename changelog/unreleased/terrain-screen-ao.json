@@ -1,9 +1,0 @@
-{
-  "simulation": "unchanged",
-  "fixed": [
-    {
-      "member": "og.Terrain",
-      "summary": "The terrain now takes the screen-space ambient occlusion (`post.ao`), as meshes, grass and scattered copies already did: whatever stands on the ground darkens it softly around its foot. Before, the terrain shader had no texture slot left for the occlusion and drew without it. The AO debug view now shows the terrain's occlusion instead of the unsupported checker. With AO off the frame is unchanged."
-    }
-  ]
-}

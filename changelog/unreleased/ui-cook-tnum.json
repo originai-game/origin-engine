@@ -1,8 +1,0 @@
-{
-  "fixed": [
-    {
-      "member": "font-variant-numeric",
-      "summary": "A font whose face has tabular figures (`tnum`) now cooks them into its atlas without a `features tnum` line, since the default style turns tabular numerals on for its figures and badges. A struck price or a value with inline markup in such a face draws tabular digits that hold their width, and the cook no longer warns about its proportional figures. Fonts re-cook once with this version."
-    }
-  ]
-}

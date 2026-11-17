@@ -1,6 +1,0 @@
-{
-  "simulation": "unchanged",
-  "added": [
-    {"member":"ui","summary":"Scroll anchoring (CSS Scroll Anchoring 1): a scroll container scrolled down from its start keeps what it shows in place when content above it grows or shrinks, a chat log or quest list that loads older entries no longer jumps. `overflow-anchor: none` turns it off on a container or keeps a subtree from being the anchor. UI state version 26 saves the anchors; version 25 upgrades with none."}
-  ]
-}

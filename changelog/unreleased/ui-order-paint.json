@@ -1,8 +1,0 @@
-{
-  "fixed": [
-    {
-      "member": "CSS order: painting and hit testing",
-      "summary": "Flex and grid items now paint and are hit in order-modified document order (CSS Flexbox 1 §5.4, CSS Grid 2 §9): an item that `order` moves ahead paints under the siblings it now precedes, and where items overlap the one drawn on top takes the pointer. Before, they painted and were hit in document order whatever their `order`. Tab and Shift+Tab still follow the document (or the container's `reading-flow`), and `reading-flow: source-order` now ranks by the document rather than by `order`."
-    }
-  ]
-}

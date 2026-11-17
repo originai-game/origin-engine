@@ -1,6 +1,0 @@
-{
-  "simulation": "unchanged",
-  "added": [
-    {"member":"ui","summary":"CSS `scroll-initial-target: nearest`: a scroll container that appears starts scrolled so the first such element in it stands at its view's start (its `scroll-margin` and the container's `scroll-padding` apply), from its first frame. A saga map or a long list can open on the current item without game code; a target added later does not move a container already shown."}
-  ]
-}

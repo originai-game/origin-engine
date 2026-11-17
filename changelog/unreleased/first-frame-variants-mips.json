@@ -1,9 +1,0 @@
-{
-  "simulation": "unchanged",
-  "fixed": [
-    {
-      "member": "og.Renderer",
-      "summary": "The pipelines that generate an uploaded texture's mip levels start compiling on the compile workers when the renderer is made, instead of on the renderer's thread during the scene's first sync, where they held up every compile of the first frame (about 60 ms on Metal with an empty shader cache). The picture is unchanged."
-    }
-  ]
-}

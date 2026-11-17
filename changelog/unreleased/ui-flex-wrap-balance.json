@@ -1,9 +1,0 @@
-{
-  "simulation": "unchanged",
-  "added": [
-    {
-      "member": "UI document scoped CSS",
-      "summary": "`flex-wrap: balance` (CSS Flexbox 2): a wrapping flex container breaks its items into lines as even as the breaks allow, the longest line as short as it can be, through Taffy's balanced line breaking. `flex-flow` takes it too, and the element's `wrapBalance` prop sets it."
-    }
-  ]
-}

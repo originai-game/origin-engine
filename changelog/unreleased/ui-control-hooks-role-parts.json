@@ -1,6 +1,0 @@
-{
-  "simulation": "unchanged",
-  "fixed": [
-    {"member":"ui","summary":"A control a component names for a role (`<button part=\"Bag.cell\">`, any part ending in `.frame`, `.cell`, `.row`, `.badge` and the other roles) wears its role and the role's tokens alone, as `appearance: none` gives a browser's button its page's look: `button::part(base)` and the control's other own-part rules no longer paint their plate, padding or border image over it. A part named for no role (`Shop.buy`) keeps its control's dress. A control's focus ring is its `focus` part alone and never draws the base's fill, border or border image again over the focused control."}
-  ]
-}

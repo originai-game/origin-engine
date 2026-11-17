@@ -1,8 +1,0 @@
-{
-  "fixed": [
-    {
-      "member": "UI control focus",
-      "summary": "Moves frames: a range input's keyboard and gamepad focus ring follows its moving knob instead of its full input reach. Focus outlines follow the painted part's dimensions and corners, including CSS-sized knobs."
-    }
-  ]
-}

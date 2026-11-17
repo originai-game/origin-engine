@@ -1,6 +1,0 @@
-{
-  "simulation": "unchanged",
-  "fixed": [
-    {"member":"ui","summary":"A node graph's hex node is cut by its corners (`corner-shape: bevel` on a 25% / 50% radius) instead of a `clip-path`, so it no longer clips its own caption below it (the card run map's Event and Treasure), and its rim follows the hexagon. The graph's well sizes as a box does, across and down its container (no less than a graph's height), instead of a fixed 420 × 288, so it no longer overflows a phone."}
-  ]
-}

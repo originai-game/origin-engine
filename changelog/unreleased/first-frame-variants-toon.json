@@ -1,9 +1,0 @@
-{
-  "simulation": "unchanged",
-  "fixed": [
-    {
-      "member": "og.Renderer",
-      "summary": "A scene whose materials use no toon shading and no dissolve compiles its first frame's lit pipelines without that code: cel shading and the dissolve are now features of the lit pipeline variants, like the weather and the local lights, decided from the scene's materials (a material's own toon or the material style's). With screen-space AO on, where every lit pipeline carried the effects' code, one lit variant compiled in 273 ms instead of 416 ms on a software Vulkan adapter (611 ms instead of 779 ms with soft shadows, local lights and made surfaces). A scene with a toon or dissolving material compiles as before. The picture is unchanged."
-    }
-  ]
-}

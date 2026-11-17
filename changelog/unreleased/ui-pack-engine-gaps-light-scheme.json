@@ -1,6 +1,0 @@
-{
-  "simulation": "unchanged",
-  "fixed": [
-    {"member":"ui","summary":"A style pack's or a document's `:root[data-scheme=light]` rules now apply under the light scheme (`og.ui.configure(world, { scheme: \"light\" })`). Before, every document's root matched the pack's `:root` block but never its `data-scheme` blocks, so a pack's light palette could not be reached while the engine's own inks turned light."}
-  ]
-}

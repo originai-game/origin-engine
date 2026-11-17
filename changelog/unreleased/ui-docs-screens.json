@@ -1,8 +1,0 @@
-{
-  "fixed": [
-    {
-      "member": "Built-in screens",
-      "summary": "The 33 built-in screens are written in HTML with CSS instead of the engine's layout tags (row, column, stack, grid, text, spacer, scroll, panel): their element ids and parts are unchanged, so ::part() and #id rules still reach them, but a rule selecting an engine tag inside a screen (pause column, main-menu stack) no longer matches. film-choices draws no empty quick-time bar on a choice without one, and notifications keep clear of the HUD insets on a phone."
-    }
-  ]
-}

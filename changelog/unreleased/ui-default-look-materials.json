@@ -1,8 +1,0 @@
-{
-  "added": [
-    {
-      "member": "ui default style",
-      "summary": "The default style is redesigned as smoked glass with lit edges, in four materials: glass frames and plates, recesses (cells, wells, fields, tracks), raised faces (buttons, knobs, keys, the chosen tab) and light in the primary for what is chosen, focused or active. New tokens a pack can set: --color-glass*, --color-plate-*, --color-rim*, --color-lit, --color-shade*, --color-tile*, --color-raised-*, --color-glow*, --color-select-*, --shadow-panel/plate/raise/raise-hover/sunk/held, and the roles' --raise-shadow, --held-shadow, --sunk-shadow, --cell-scene-* (a cell that stands over the scene), --cell-marked-shadow and --well-alert-fill. Disabled checkboxes, radios and fields go flat (--checkbox-disabled-fill, --field-disabled-fill), and the accent badge is light in the primary (--badge-primary-fill)."
-    }
-  ]
-}

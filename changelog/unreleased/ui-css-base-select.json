@@ -1,9 +1,0 @@
-{
-  "simulation": "unchanged",
-  "added": [
-    {
-      "member": "ui",
-      "summary": "Customizable select (HTML `appearance: base-select`): `select { appearance: base-select }` builds the select from its own children instead of the native dropdown. Its `<button>` is the trigger, `<selectedcontent>` shows the chosen option's content, and `::picker(select)` is an anchored top-layer popover holding `<option>`s with any content, `<optgroup>`s and `<hr>`s. A press on an option writes its value, fires onchange and closes the picker. The chosen option matches `:checked` and the select matches `:open`. Options may now carry an id and a class."
-    }
-  ]
-}

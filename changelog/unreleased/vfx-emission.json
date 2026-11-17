@@ -1,6 +1,0 @@
-{
-  "simulation": "unchanged",
-  "added": [
-    {"member":"og.Vfx.emission, VfxSpawnDesc.emission","summary":"The share of a composed effect instance's particles that are born, 0 to 1 (default 1): 0.5 draws half the sparks and smoke of the same effect, each emitter thinned by its own pick, as an emitter's own emission line does. A distant or smaller fire costs less without a second file. Its glows, meshes, trails, lights and decals are unchanged."}
-  ]
-}

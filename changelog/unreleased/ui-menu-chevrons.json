@@ -1,8 +1,0 @@
-{
-  "fixed": [
-    {
-      "member": "Menu",
-      "summary": "The back row's and a submenu row's chevrons are the engine's chevronLeft and chevronRight icons, line glyphs like the menu's other icons, instead of a heavier inline mark."
-    }
-  ]
-}

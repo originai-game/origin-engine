@@ -1,6 +1,0 @@
-{
-  "simulation": "unchanged",
-  "added": [
-    {"member":"ui","summary":"CSS `interest-delay-start`, `interest-delay-end` and the `interest-delay` shorthand on an `interestfor` control: how long the pointer rests before its hint shows, and how long the hint stays after the pointer and focus leave. `normal` is the style's slow duration to show and its fast duration to leave; a hint used to vanish the frame its control lost interest."}
-  ]
-}

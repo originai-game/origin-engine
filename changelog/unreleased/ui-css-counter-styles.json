@@ -1,8 +1,0 @@
-{
-  "added": [
-    {
-      "member": "CSS list-style-type",
-      "summary": "list-style-type and the list-style shorthand take any counter style: the predefined ones, an @counter-style name, symbols(…) (CSS Counter Styles 3 §6.1), or a \"string\" drawn as the marker. counter() and counters() take symbols(…) too. markerType now holds the CSS value as written (lower-alpha, not lowerAlpha)."
-    }
-  ]
-}

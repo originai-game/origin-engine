@@ -1,8 +1,0 @@
-{
-  "fixed": [
-    {
-      "member": "rendering: particle draws",
-      "summary": "A particle system no view can see is not drawn: each system carries a box that holds every particle it can have alive (its emission shape and speeds, how far gravity, noise and the wind can carry one in a lifetime, and, in world space, every place its emitter stood within that lifetime), and the main view and each extra view skip the systems whose box misses their frustum. They still simulate, so a system that comes into view shows its particles where they are, and one blown into view by the wind is drawn. The render dump's draw count drops by the systems culled. Frames do not change."
-    }
-  ]
-}

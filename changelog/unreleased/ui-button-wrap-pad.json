@@ -1,8 +1,0 @@
-{
-  "fixed": [
-    {
-      "member": "ui.screens",
-      "summary": "A button whose label wraps (Confirm's actions, a Tree row's name) takes its padding above and below from --button-wrap-pad, --space-sm where a style sets none, so a pack whose plate has a thick frame keeps a wrapped label clear of it. The fantasy pack sets --space-md: a two-line action no longer sits against the plate's top bevel."
-    }
-  ]
-}

@@ -1,8 +1,0 @@
-{
-  "fixed": [
-    {
-      "member": "CardFace, CardCollection, CardDeckList, CardHand, CardPiles, CardReward, CardRunMap, NodeGraph",
-      "summary": "Card components use HTML-with-CSS roots and conditional content. Card faces have two-line names, start-aligned rules and inset art wells; collection counts sit below cards instead of on their art, and phone collections use two readable columns. Deck size has a contained meter with a danger fill above the limit, pile counts have a solid ground, relics have an icon well, narrow rewards scroll as readable cards and map legends have a spaced surface. NodeGraph positions its graph inside its own well rather than the screen, keeping the run map visible. Existing ids, parts and intents are retained."
-    }
-  ]
-}

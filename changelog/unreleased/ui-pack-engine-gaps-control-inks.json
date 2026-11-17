@@ -1,6 +1,0 @@
-{
-  "simulation": "unchanged",
-  "added": [
-    {"member":"ui","summary":"New tokens `--slider-bubble-ink` (default `--ink-inverse`) and `--checkbox-mark-ink` (default `--on-primary`): a slider's value bubble draws its text, and a checkbox its tick, in their part's `color` (`input[type=range]::part(bubble)`, `input[type=checkbox]::part(mark)`), so a style pack sets the ink to suit its plates."}
-  ]
-}

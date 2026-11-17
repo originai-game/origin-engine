@@ -1,8 +1,0 @@
-{
-  "fixed": [
-    {
-      "member": "render CPU time of large still scenes",
-      "summary": "The static shadow cache no longer re-tracks every instance in a frame where nothing it reads changed: once every drawn instance has stood still long enough to be cached, a frame whose batches, instances, hashes and bounding spheres are the frame before's reuses its split. Frames are unchanged. A still city of 94,865 instances under TAA went from 12.5 to 10.0 ms of `render` CPU a frame on a software Vulkan device."
-    }
-  ]
-}

@@ -1,8 +1,0 @@
-{
-  "fixed": [
-    {
-      "member": "rendering: WindMotorKind.vortex",
-      "summary": "A vortex leans vegetation counter-clockwise seen from above, as its description says; it turned clockwise."
-    }
-  ]
-}

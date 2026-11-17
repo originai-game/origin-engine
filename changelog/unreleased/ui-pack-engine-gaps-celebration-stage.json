@@ -1,6 +1,0 @@
-{
-  "simulation": "unchanged",
-  "added": [
-    {"member":"ui","summary":"`Celebration.stage` names the level-up row that holds `Celebration.title` and `Celebration.value`, so a style pack can stack or space the word and the level."}
-  ]
-}

@@ -1,8 +1,0 @@
-{
-  "fixed": [
-    {
-      "member": "ui.PuzzleBoosters, ui.PuzzleSummary",
-      "summary": "Keeps unavailable booster words and counts readable while dimming only their art, uses the shared opaque-surface halo reset, and labels the puzzle review sheet's empty board explicitly."
-    }
-  ]
-}

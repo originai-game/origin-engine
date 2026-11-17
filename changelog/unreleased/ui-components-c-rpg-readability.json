@@ -1,8 +1,0 @@
-{
-  "fixed": [
-    {
-      "member": "ui.RpgBackpack, ui.RpgQuestDetail, ui.RpgVitals, ui.RpgParty, ui.RpgEnemyInfo, ui.RpgWorldMap, ui.RpgItemCard, ui.RpgQuestTracker",
-      "summary": "Wraps backpack categories, tightens quest spacing to expose rewards, grounds bar values on contrasting plates, distinguishes quest diamonds from waypoint dots, keeps item actions beside their content, and makes completed HUD objectives legible."
-    }
-  ]
-}

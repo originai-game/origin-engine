@@ -1,9 +1,0 @@
-{
-  "simulation": "unchanged",
-  "fixed": [
-    {
-      "member": "UI built-in components and screens",
-      "summary": "Boxes the `stretch` migration missed or that read differently under CSS sizing now lay out as designed at phone and container-query widths: Calibration's dead-zone slider shares its row with its label instead of overflowing it, RpgQuestTracker's step text no longer runs past its row, the Achievements title wraps the summary below it on a narrow panel instead of being squeezed to a few pixels, and the film chapter and gallery cards share each row evenly on a phone (two across in portrait, four in landscape) instead of each taking its title's width."
-    }
-  ]
-}

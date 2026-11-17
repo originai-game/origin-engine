@@ -1,9 +1,0 @@
-{
-  "simulation": "unchanged",
-  "added": [
-    {"member":"ui","summary":"A document's CSS takes `random-item(<key>, item, …)` (CSS Values 5 §9.2): it substitutes, as `var()` does, the item `floor(R × N)` of its random base value R, an item in braces (`{Times, serif}`) taken whole. A random function's key now names the property it is written in (a shorthand's, such as `margin` or `transition`, before it expands) and its place among the declaration's random functions (§9.4.1), and its cache name includes the document (the mount), so a shared `--name` draws apart in another mount. `progress()` of lengths that mix `%` with px, times a length (`calc(progress(50%, 0px, 200px) * 100px)`), reads its basis at layout."}
-  ],
-  "fixed": [
-    {"member":"ui","summary":"A `box-sizing: content-box` size written as `round()`, `mod()`, `rem()`, `abs()` or `hypot()` adds its padding once to the result; it used to add it to each argument, so `round(down, 60%, 50px)` also moved its step."}
-  ]
-}

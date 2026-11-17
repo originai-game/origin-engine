@@ -1,8 +1,0 @@
-{
-  "fixed": [
-    {
-      "member": "rendering: particle simulation",
-      "summary": "A particle system simulated on the GPU keeps the bind group of its particles and surface points from when they were made, and the frame's part (emitter rows, view, scene depth and G-buffer, colliders) is made once a frame for every system, instead of a new group per system each frame. Twenty starter effects playing at once record their particle dispatches in about a twentieth of the CPU time (1.86 ms at their peak before, 0.10 ms after, release on a CPU Vulkan); the GPU's work and frames do not change."
-    }
-  ]
-}

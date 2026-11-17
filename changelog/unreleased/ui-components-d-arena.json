@@ -1,3 +1,0 @@
-{
-  "fixed": [{ "member": "Arena components", "summary": "Moves frames: arena documents use HTML with CSS and conditional content. The default look gives roster choices two readable phone columns, quieter role labels, distinct draft and lobby row surfaces, stronger versus names, and larger match scores. Ids, parts and gameplay intents are unchanged." }]
-}

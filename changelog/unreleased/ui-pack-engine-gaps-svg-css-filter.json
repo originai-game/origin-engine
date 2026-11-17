@@ -1,6 +1,0 @@
-{
-  "simulation": "unchanged",
-  "fixed": [
-    {"member":"ui","summary":"A CSS `filter` function list on an inline SVG element (`drop-shadow()`, `blur()`…, as in `[part=\"DamageDirection.arc\"] { filter: drop-shadow(0 0 6px …) }`) now draws, as it does on a CSS box. Before, an SVG shape read only the `filter=\"url(#id)\"` attribute and dropped the rule's value without a warning. A rule's `filter` overrides the attribute."}
-  ]
-}

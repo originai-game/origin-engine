@@ -1,8 +1,0 @@
-{
-  "fixed": [
-    {
-      "member": "CSS white-space",
-      "summary": "white-space: pre, pre-wrap, pre-line and break-spaces (and white-space-collapse) keep the spaces, tabs and line breaks a document's literal text was written with: the text was HTML-collapsed when the document was read, so they had nothing left to keep. pre-wrap may break after a run of spaces, break-spaces after each one, and a tab advances to the next tab-size column."
-    }
-  ]
-}

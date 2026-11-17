@@ -1,8 +1,0 @@
-{
-  "added": [
-    {
-      "member": "og.ScatterClearing",
-      "summary": "A box nothing grows in: no og.TerrainScatter copy whose root stands in it and no og.Grass blade, so a house's floor, a paved yard or a slab laid over a terrain no longer has grass and trees growing through it. The box is centred on the entity and follows its whole world transform, rotation and scale included; `size` 0 on any axis clears nothing. Both scatter placers (CPU and GPU) honour it, and moving one places the copies again. Visual only. (Unreal's procedural foliage blocking volume, Unity's detail exclusion.)"
-    }
-  ]
-}

@@ -1,8 +1,0 @@
-{
-  "added": [
-    {
-      "member": "media pseudo-classes",
-      "summary": "`:playing`, `:paused`, `:muted` and `:seeking` match a `<video>` or `<audio>` by its own state: `video:paused` while its `paused` is true and `video:playing` once it is false, `:muted` with its `muted`, `:seeking` from a `currentTime` write until the seek reaches the player. `:buffering`, `:stalled` and `:volume-locked` parse and never match. Before, all were refused."
-    }
-  ]
-}

@@ -1,3 +1,0 @@
-{
-  "fixed": [{ "member": "Arena, idle and rhythm components", "summary": "Moves frames: roster, generator and purchase scrollers show a stationary token-based bottom fade so partially visible phone rows read as scrollable, not broken. The idle review sheet adds an isolated bounded Welcome back page to show both claim actions entirely on phone; its combined reset page still scrolls between panels. The rhythm phone HUD gives song progress its own padded strip instead of straddling the playfield background." }]
-}

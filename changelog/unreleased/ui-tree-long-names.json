@@ -1,8 +1,0 @@
-{
-  "fixed": [
-    {
-      "member": "ui.screens.tree",
-      "summary": "A Tree name longer than its row wraps inside it (inside a word too, for an identifier) instead of running off the screen; a leaf lines up with the rows that open, the selected row's highlight ends at the row, the chevron of a row that opens shows in every style pack (a pack's button padding left it no width), and the indent step is smaller on a phone. The document declares an overflow fixture."
-    }
-  ]
-}

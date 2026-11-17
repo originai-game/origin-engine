@@ -1,8 +1,0 @@
-{
-  "fixed": [
-    {
-      "member": "og.assert's default invariants",
-      "summary": "A default invariant's violation names its own world's tick. It took the tick of whichever world in the process stepped last, so with several engines in one process (a host's previews, tests run in parallel) the report's `tick` and `lastTick` could name another world's tick."
-    }
-  ]
-}

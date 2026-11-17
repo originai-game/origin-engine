@@ -1,9 +1,0 @@
-{
-  "simulation": "unchanged",
-  "fixed": [
-    {
-      "member": "UI document scoped CSS",
-      "summary": "A right-to-left box (`dir=\"rtl\"`, `direction: rtl`) lays its flex lines, grid columns, block flow and floats out from the right as CSS `direction` does, instead of being laid out left to right and mirrored afterwards. Its floats, `clear` and `shape-outside` contours keep the sides they name."
-    }
-  ]
-}

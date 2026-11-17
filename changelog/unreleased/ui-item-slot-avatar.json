@@ -1,8 +1,0 @@
-{
-  "added": [
-    {
-      "member": "ui.ItemSlot, ui.Avatar",
-      "summary": "Adds restylable item slots with rarity, count, cooldown, selection and unavailable states, plus avatars with portrait fallback, level, presence and loading states."
-    }
-  ]
-}

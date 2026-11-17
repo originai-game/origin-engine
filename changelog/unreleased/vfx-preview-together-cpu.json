@@ -1,8 +1,0 @@
-{
-  "added": [
-    {
-      "member": "og vfx preview --together",
-      "summary": "together.json also holds the CPU's milliseconds (`cpu`: the frame's and each render pass's, over the empty stage, at the run's peak and typical frame) beside the GPU's: what recording the effects' draws and particle dispatches costs, which the GPU rows do not show."
-    }
-  ]
-}

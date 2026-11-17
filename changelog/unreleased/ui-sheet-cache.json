@@ -1,5 +1,0 @@
-{
-  "fixed": [
-    "og ui sheet reuses its incremental cook cache across invocations. Built-in style-sheet pages share one engine and renderer per breakpoint, locale and style, switching page and text scale in place and drawing only captures."
-  ]
-}

@@ -1,6 +1,0 @@
-{
-  "simulation": "unchanged",
-  "fixed": [
-    {"member":"og.ui","summary":"Restyling a document's elements costs about a third less CPU: telling whether a CSS value holds a math function (calc(), min(), clamp() and the rest) no longer tries every function name at every character, so a menu whose cards change class on the same tick restyles in less time, with the same values."}
-  ]
-}

@@ -1,9 +1,0 @@
-{
-  "simulation": "unchanged",
-  "fixed": [
-    {
-      "member": "UI CSS justify-self, justify-items in a block",
-      "summary": "`justify-self` and `justify-items` now align a block container's block-level children in its inline axis (CSS Box Alignment 3 §6.1.1); an `auto` width aligned anything but `normal` or `stretch` shrinks to `fit-content`. They used to apply only in grids, so such a child stayed at the start."
-    }
-  ]
-}

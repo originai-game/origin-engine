@@ -1,6 +1,0 @@
-{
-  "simulation": "unchanged",
-  "fixed": [
-    {"member":"ui","summary":"A table's rows and row groups are in the UI tree's orders, so what reads them (their CSS decor, a part's dressing) reaches them. A table row given a corner shape other than round (`--row-corner-shape: bevel`, `scoop`, `notch`, `squircle`, `square`) drew no fill at all, so the arena scoreboard lost the local player's highlight."}
-  ]
-}

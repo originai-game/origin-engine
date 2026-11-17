@@ -1,8 +1,0 @@
-{
-  "fixed": [
-    {
-      "member": "ui.screens.confirm",
-      "summary": "Confirm stays whole on a phone at 150 % text: the question and the actions keep their place and what follows scrolls between them; the actions share a line and fill it, take a line each (the confirming one first) where both do not fit, and a long action wraps inside its button. The question is one type step smaller on a phone, and on a phone on its side the dialog widens with what it holds. The document declares an overflow fixture."
-    }
-  ]
-}

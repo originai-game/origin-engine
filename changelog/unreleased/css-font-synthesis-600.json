@@ -1,8 +1,0 @@
-{
-  "fixed": [
-    {
-      "member": "ui",
-      "summary": "Text at a computed weight of 600 or more whose face is lighter than 600 is drawn with a synthesised bold, as browsers draw it, in plain and rich text alike (rich text synthesised only from 700, and plain text from a face more than 100 lighter). The synthesised bold replaces the style's textWeight thickening instead of adding to it. Semibold headings and buttons in a style without a semibold face now read bold; a style that wants its own thickening sets font-synthesis-weight: none."
-    }
-  ]
-}

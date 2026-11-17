@@ -1,9 +1,0 @@
-{
-  "simulation": "unchanged",
-  "fixed": [
-    {
-      "member": "og.Renderer",
-      "summary": "A renderer no longer starts compiling the scattered copies' GPU cull and the realtime light volumes' projection when it is made: each compiles when a frame first has copies to cull or a probe to capture. Before, both took a compile worker during every scene's first frame whether the scene used them or not. The picture is unchanged."
-    }
-  ]
-}

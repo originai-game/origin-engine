@@ -1,8 +1,0 @@
-{
-  "fixed": [
-    {
-      "member": "og ui sheet <group>",
-      "summary": "The group review sheets ship with the engine package in `sheets/` (without their references), so `og ui sheet arena` and `og ui review arena --style fantasy` run on an installed engine instead of failing to find the sheet. No game's cook bundles a sheet."
-    }
-  ]
-}

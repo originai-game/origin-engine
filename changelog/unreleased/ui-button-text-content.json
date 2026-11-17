@@ -1,8 +1,0 @@
-{
-  "fixed": [
-    {
-      "member": "Document button labels",
-      "summary": "Moves frames: native button labels now honor overflow-wrap, text-wrap-style, text-align-last, text-justify and custom text-overflow markers through the same CSS text-content path as text elements. Long unbroken labels with overflow-wrap:anywhere wrap inside the button; white-space:nowrap still prevents wrapping."
-    }
-  ]
-}

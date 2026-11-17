@@ -1,8 +1,0 @@
-{
-  "fixed": [
-    {
-      "member": "<button> padding under a style pack",
-      "summary": "Moves frames: a document <button>'s own padding is above the style's ::part rules under a pack too, as docs/ui.md §3.2 says. A pack's button::part(base) padding replaced it, so a narrow button's face shrank to a few pixels and its text broke into many lines (StrategySelection's commands on a phone at 150 % text)."
-    }
-  ]
-}

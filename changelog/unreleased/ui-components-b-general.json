@@ -1,8 +1,0 @@
-{
-  "fixed": [
-    {
-      "member": "Achievements, Chat, DailyQuests, DailyRewards, Friends, Shop, ShopConfirm",
-      "summary": "General components use HTML-with-CSS roots, conditional optional content and bounded CSS scrollers. Names, descriptions and rewards have consistent spacing and readable hierarchy in the default style; reward calendars switch to four columns before narrow day states collide. Loading indicators remain visible, and existing ids, parts and keyed intents are preserved. The review sheet includes default-style desktop and phone pages."
-    }
-  ]
-}

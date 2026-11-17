@@ -1,8 +1,0 @@
-{
-  "added": [
-    {
-      "member": "UI.QtePrompt",
-      "summary": "Add press, hold and mash prompts with game-supplied time and completion bars, accessible input hints, stable keyed respond intents and distinct waiting, disabled, success, failure and expired states. Pointer and keyboard holds cancel on early release; the game owns deadlines and outcomes. Parts and shared tokens support restyling."
-    }
-  ]
-}

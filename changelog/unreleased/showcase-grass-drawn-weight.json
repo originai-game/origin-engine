@@ -1,8 +1,0 @@
-{
-  "fixed": [
-    {
-      "member": "og.Grass on a terrain with a height blend",
-      "summary": "Moves frames: blades now grow by their layer's weight as the height blend draws it (at even heights a layer shows only within its window under the strongest), as og.TerrainScatter copies already do, not by the raw weight before the blend. Grass no longer thins out across rock whose control channel still holds a little grass; where the blend draws the layer whole every blade grows. A terrain without a height blend grows as before."
-    }
-  ]
-}

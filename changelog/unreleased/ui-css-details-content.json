@@ -1,6 +1,0 @@
-{
-  "simulation": "unchanged",
-  "added": [
-    {"member":"ui","summary":"CSS `::details-content`: a `<details>` element's content under its summary is one box its rules style (padding, background, border, gap and every other box property over the disclosure's own), including under the details' `[open]`. A codex or settings accordion can frame its revealed panel without wrapping it."}
-  ]
-}

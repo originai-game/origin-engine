@@ -1,9 +1,0 @@
-{
-  "simulation": "unchanged",
-  "fixed": [
-    {
-      "member": "og.ui",
-      "summary": "A frame that restyles many document elements at once (a class toggled on every card of a shop) costs about 15% less: an element is rebuilt from its kept style without copying it."
-    }
-  ]
-}

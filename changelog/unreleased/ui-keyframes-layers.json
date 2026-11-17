@@ -1,8 +1,0 @@
-{
-  "fixed": [
-    {
-      "member": "@keyframes in a style pack",
-      "summary": "A keyframes name is its highest cascade layer's definition (CSS Cascade 5), not the last read: a pack's og-pack keyframes win over the default style's og-default ones whichever is read first."
-    }
-  ]
-}

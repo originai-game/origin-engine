@@ -1,8 +1,0 @@
-{
-  "fixed": [
-    {
-      "member": "og ui literals",
-      "summary": "Colours inside mask and mask-image are classified as coverage data rather than visible look literals. Structural gradient masks may use colour stops directly; lengths, durations and asset URLs still require tokens, as do visible colours in backgrounds and other paint declarations."
-    }
-  ]
-}

@@ -1,8 +1,0 @@
-{
-  "fixed": [
-    {
-      "member": "AbilitySlot",
-      "summary": "An ultimate's charge percent sits on a small ground of its own (a pack sets it with --ability-slot-percent-ground; --scrim by default), so the ring's arc no longer runs through its digits."
-    }
-  ]
-}

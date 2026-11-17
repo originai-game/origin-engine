@@ -1,8 +1,0 @@
-{
-  "added": [
-    {
-      "member": "revert-rule",
-      "summary": "The CSS-wide keyword `revert-rule` rolls a property back to what it is without the keyword's own rule: `button.quiet { background: revert-rule }` shows the background the rules below give. It works on custom properties and as a `var()` fallback. Before, the value was refused."
-    }
-  ]
-}

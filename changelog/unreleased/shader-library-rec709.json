@@ -1,9 +1,0 @@
-{
-  "simulation": "unchanged",
-  "fixed": [
-    {
-      "member": "rendering: luminance",
-      "summary": "The probe GI's temporal estimator and the terrain's blend between layers weighed colour with Rec.601's luma weights (0.299, 0.587, 0.114) where every other pass uses Rec.709's for linear light; they now call the library's `luma`, so green counts for more and blue for less there."
-    }
-  ]
-}

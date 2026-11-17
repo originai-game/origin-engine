@@ -1,8 +1,0 @@
-{
-  "fixed": [
-    {
-      "member": "Temporal antialiasing",
-      "summary": "A frame without valid TAA history compiles a current-frame-only resolve rather than the full history pipeline, retaining its sampling, upscaling and sharpening."
-    }
-  ]
-}

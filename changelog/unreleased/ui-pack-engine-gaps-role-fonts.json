@@ -1,6 +1,0 @@
-{
-  "simulation": "unchanged",
-  "fixed": [
-    {"member":"ui","summary":"A style that brings its faces only through `@font-face` backs the body, display, mono and rounded roles with the families its `--font-body`, `--font-display`, `--font-mono` and `--font-rounded` name, wherever `UiDesc` gives a role no font. Text a widget draws in a role (a radio's, checkbox's or switch's label, a select's value, a range's bubble, a badge, a tab, damage numbers) drew nothing under such a style."}
-  ]
-}

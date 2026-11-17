@@ -1,8 +1,0 @@
-{
-  "added": [
-    {
-      "member": "effect packs: effekseer-starter and effekseer-<contributor>",
-      "summary": "The 323 Effekseer effects of the starter and the ten contributor packs are converted again with the new particle lines: uneven sizes, upright, flat and velocity-aligned sprites, camera-facing rings, two-colour random colours, per-particle trails, subtractive and multiply blends. What the conversion could not carry fell from 5765 findings to 3305. Every one-shot effect now sends an `impact` og.VfxEvent where most of it starts; the hit-spark, explosion and magic-impact ones also flash a light and shake the camera there. Reinstall a pack (`og vfx add`) to take them."
-    }
-  ]
-}

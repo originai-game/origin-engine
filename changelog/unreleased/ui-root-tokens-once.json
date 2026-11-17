@@ -1,8 +1,0 @@
-{
-  "fixed": [
-    {
-      "member": ":root",
-      "summary": "A style pack's `:root` custom properties are declared once, at the root, and every document inherits their values, as a component's root inherits in a browser instead of matching the page's `:root` again. A token an ancestor sets (`<div style=\"--w: 30px\"><Child/></div>`) now reaches inside the component; before, the component's root declared the pack's value again over it. A pack's other `:root` declarations (`font-family`, `color`) still apply to every document's root. Parsing a document under a pack no longer copies the pack's several hundred tokens onto it: the 148 built-in documents parse in 494 ms under fantasy, from 1056 ms (release, x86-64)."
-    }
-  ]
-}

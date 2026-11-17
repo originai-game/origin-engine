@@ -1,8 +1,0 @@
-{
-  "added": [
-    {
-      "member": "prop",
-      "summary": "Every built-in screen reads its declared props bare ({title}, bind:open={open}), as the built-in components do, so each serves both as a pushed or mounted screen and as an instance (<Confirm title=... />). They read them as $name before; what a screen shows from the same values is unchanged. $toasts and $captions stay: they are the engine's stores, not props. An ejected screen written with $name keeps working."
-    }
-  ]
-}

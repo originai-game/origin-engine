@@ -1,8 +1,0 @@
-{
-  "fixed": [
-    {
-      "member": "StatusGrid",
-      "summary": "An effect with more seconds left than its duration (refreshed or extended) draws no sweep; its negative dash was refused with a warning and the sweep covered the whole tile."
-    }
-  ]
-}

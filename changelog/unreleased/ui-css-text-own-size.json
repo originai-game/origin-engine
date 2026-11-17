@@ -1,8 +1,0 @@
-{
-  "fixed": [
-    {
-      "member": "CSS text lengths",
-      "summary": "A text length in em or a percentage (line-height: 200%, letter-spacing: 0.5em, text-indent, tab-size) resolves against the element's own font-size even when its rule declares that size after it, as CSS computes it; it took the parent's size before."
-    }
-  ]
-}
