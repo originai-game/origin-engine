@@ -52,6 +52,7 @@ plant "shrub" {
     sizeVariance 0.5
     color 0.1 0.2 0.03
     color2 0.2 0.3 0.05
+    season 1
   }
   flowers {
     share 0.8

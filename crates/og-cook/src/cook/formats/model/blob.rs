@@ -9,6 +9,23 @@ pub(super) fn texture_kind(k: og_render_data::gltf::TextureKind) -> u32 {
     }
 }
 
+/// A material row with a leaf's season, everything else its default.
+fn season_row(s: og_render_data::foliage::LeafSeason) -> MaterialRow {
+    let [autumn_r, autumn_g, autumn_b] = s.autumn_color;
+    let [autumn2_r, autumn2_g, autumn2_b] = s.autumn_color2;
+    MaterialRow {
+        season: s.season,
+        autumn_r,
+        autumn_g,
+        autumn_b,
+        autumn2_r,
+        autumn2_g,
+        autumn2_b,
+        season_shift: s.shift,
+        ..Default::default()
+    }
+}
+
 /// A material row's `KHR_texture_transform` fields, per og-render slot.
 fn set_uv(row: &mut MaterialRow, t: &[og_render_data::UvTransform; 5]) {
     let f = |t: &og_render_data::UvTransform| {
@@ -182,7 +199,7 @@ pub fn cook(
             unlit: super::ext::unlit(&src.json, m.index().unwrap_or(usize::MAX)) as u32,
             translucency: super::impostor::diffuse_transmission(&m).unwrap_or(0.0),
             dome_normals: super::impostor::dome_normals(&m),
-            ..Default::default()
+            ..season_row(super::ext::leaf_season(&m))
         });
         let row = materials.last_mut().expect("pushed");
         unlit += row.unlit as usize;
@@ -221,7 +238,7 @@ pub fn cook(
         anisotropy_texture: NONE,
         name_offset,
         name_len,
-        ..Default::default()
+        ..season_row(og_render_data::foliage::LeafSeason::EVERGREEN)
     });
     set_uv(
         materials.last_mut().expect("pushed"),

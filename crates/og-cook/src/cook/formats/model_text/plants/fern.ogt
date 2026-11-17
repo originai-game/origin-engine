@@ -34,5 +34,8 @@ plant "fern" {
     sizeVariance 0.1
     color 0.05 0.2 0.03
     color2 0.1 0.3 0.05
+    season 1
+    autumnColor 0.28 0.15 0.04
+    autumnColor2 0.18 0.09 0.03
   }
 }

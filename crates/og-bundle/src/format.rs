@@ -398,8 +398,9 @@ row!(
     /// (og-render's `PhysicalExtensions`). Texture fields index the model's
     /// `textures` table ([`NONE`] when absent). The last material of every
     /// model is the default one primitives without a material use.
-    /// Version 4 added `translucency` and `dome_normals`.
-    MaterialRow, "og.ModelMaterial", 4 {
+    /// Version 4 added `translucency` and `dome_normals`, version 5 the
+    /// leaf's season (`season` to `season_shift`).
+    MaterialRow, "og.ModelMaterial", 5 {
         base_r: f32, base_g: f32, base_b: f32, base_a: f32,
         emissive_r: f32, emissive_g: f32, emissive_b: f32,
         metallic: f32,
@@ -469,6 +470,14 @@ row!(
         /// glTF material's `extras.ogFoliage.domeNormals`): one soft
         /// crown from many flat leaves. It needs the primitives' foliage.
         dome_normals: f32,
+        /// How a leaf follows the year (og-render-data's `LeafSeason`, the
+        /// glTF material's `extras.ogFoliage`): `season` 0 evergreen to 1
+        /// deciduous, the two linear colours it turns to in autumn, and
+        /// the days its species runs late (negative: early).
+        season: f32,
+        autumn_r: f32, autumn_g: f32, autumn_b: f32,
+        autumn2_r: f32, autumn2_g: f32, autumn2_b: f32,
+        season_shift: f32,
     }
 );
 

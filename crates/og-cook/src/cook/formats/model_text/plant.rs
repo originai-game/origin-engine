@@ -17,6 +17,34 @@ pub(super) struct PlantLook {
     pub(super) leaf: Option<(String, usize)>,
     pub(super) translucency: f64,
     pub(super) dome_normals: f64,
+    /// How the leaves follow the year, also the material's.
+    pub(super) season: og_render_data::foliage::LeafSeason,
+}
+
+/// The keys a leaf's material takes for the season: in a plant's
+/// `leaves` block and in a `material` block.
+pub(super) const SEASON_KEYS: [&str; 4] = ["season", "autumnColor", "autumnColor2", "seasonShift"];
+
+/// A leaf's season from its block's [`SEASON_KEYS`], `d`'s where absent.
+pub(super) fn leaf_season(
+    f: &Fields,
+    d: og_render_data::foliage::LeafSeason,
+) -> Result<og_render_data::foliage::LeafSeason, String> {
+    use og_render_data::foliage::LeafSeason;
+    let shift = f.num("seasonShift", f64::from(d.shift))?;
+    if shift.abs() > f64::from(LeafSeason::MAX_SHIFT) {
+        return Err(format!(
+            "{}.seasonShift is days, -{max} to {max}, got {shift}",
+            f.what,
+            max = LeafSeason::MAX_SHIFT
+        ));
+    }
+    Ok(LeafSeason {
+        season: unit_field(f, "season", f64::from(d.season))? as f32,
+        autumn_color: color_field(f, "autumnColor", d.autumn_color)?,
+        autumn_color2: color_field(f, "autumnColor2", d.autumn_color2)?,
+        shift: shift as f32,
+    })
 }
 
 fn unit_field(f: &Fields, k: &str, default: f64) -> Result<f64, String> {
@@ -114,6 +142,7 @@ pub(super) fn plant_desc(b: &Block) -> Result<(og_geom::Plant, PlantLook), Strin
                 leaf: None,
                 translucency: 0.5,
                 dome_normals: 0.6,
+                season: og_render_data::foliage::LeafSeason::EVERGREEN,
             },
         ),
     };
@@ -165,31 +194,32 @@ pub(super) fn plant_desc(b: &Block) -> Result<(og_geom::Plant, PlantLook), Strin
     look.wood = f.get("material").map(named).transpose()?;
     let leaves = match f.block("leaves")? {
         Some(lb) => {
-            let lf = Fields::new(
-                lb,
-                "plant.leaves",
-                &[
-                    "shape",
-                    "count",
-                    "start",
-                    "end",
-                    "angle",
-                    "facing",
-                    "rows",
-                    "size",
-                    "width",
-                    "sizeVariance",
-                    "color",
-                    "color2",
-                    "colorVariation",
-                    "material",
-                    "translucency",
-                    "domeNormals",
-                ],
-            )?;
+            let mut keys = vec![
+                "shape",
+                "count",
+                "start",
+                "end",
+                "angle",
+                "facing",
+                "rows",
+                "size",
+                "width",
+                "sizeVariance",
+                "color",
+                "color2",
+                "colorVariation",
+                "material",
+                "translucency",
+                "domeNormals",
+            ];
+            keys.extend(SEASON_KEYS);
+            let lf = Fields::new(lb, "plant.leaves", &keys)?;
             let l = d.leaves.unwrap_or_default();
             look.leaf = lf.get("material").map(named).transpose()?;
-            for k in ["translucency", "domeNormals"] {
+            for k in ["translucency", "domeNormals"]
+                .into_iter()
+                .chain(SEASON_KEYS)
+            {
                 if let (Some(_), Some(e)) = (&look.leaf, lf.get(k)) {
                     return Err(at(
                         e,
@@ -199,6 +229,7 @@ pub(super) fn plant_desc(b: &Block) -> Result<(og_geom::Plant, PlantLook), Strin
             }
             look.translucency = unit_field(&lf, "translucency", look.translucency)?;
             look.dome_normals = unit_field(&lf, "domeNormals", look.dome_normals)?;
+            look.season = leaf_season(&lf, look.season)?;
             let color = color_field(&lf, "color", l.color)?;
             let start = unit_field(&lf, "start", l.start)?;
             let end = unit_field(&lf, "end", l.end)?;

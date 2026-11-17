@@ -59,3 +59,37 @@ impl FoliageBounds {
         leaf + branch + chord(self.root_radius, lean)
     }
 }
+
+/// How a leaf material follows the year (`og.Season`): a species' own
+/// values, which a plant's `leaves` block, a model text's `material` block
+/// and glTF `extras.ogFoliage` set (`season`, `autumnColor`,
+/// `autumnColor2`, `seasonShift`) and the cooked material carries.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct LeafSeason {
+    /// How far the leaves follow the year: 0 evergreen, 1 deciduous.
+    pub season: f32,
+    /// Each leaf turns to a colour between these two (linear RGB) before
+    /// it browns and falls.
+    pub autumn_color: [f32; 3],
+    pub autumn_color2: [f32; 3],
+    /// Days the species runs early (negative) or late.
+    pub shift: f32,
+}
+
+impl LeafSeason {
+    /// An evergreen's, with the default autumn colours: orange and deep red.
+    pub const EVERGREEN: Self = Self {
+        season: 0.0,
+        autumn_color: [0.42, 0.12, 0.015],
+        autumn_color2: [0.25, 0.025, 0.015],
+        shift: 0.0,
+    };
+    /// The most days a species runs early or late.
+    pub const MAX_SHIFT: f32 = 120.0;
+}
+
+impl Default for LeafSeason {
+    fn default() -> Self {
+        Self::EVERGREEN
+    }
+}

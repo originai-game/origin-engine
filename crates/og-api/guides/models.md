@@ -16,7 +16,8 @@ An `.ogt` under `assets/` (for example `assets/models/crate.ogt`) that starts `t
   `roughness`, `emissive`, `emissiveIntensity`, `doubleSided`,
   `alphaTest`, `map` and `normalMap` (image files beside the model),
   `normalScale`, `transmission`, `ior`, `thickness`, `clearcoat`,
-  `clearcoatRoughness`, and a leaf's `translucency` and `domeNormals`.
+  `clearcoatRoughness`, and a leaf's `translucency`, `domeNormals`,
+  `season`, `autumnColor`, `autumnColor2` and `seasonShift`.
   Unit fields are 0 to 1; an unknown key is an error.
 - `pivot "<name>" { position ...; parent "<pivot>" }`: a named node that
   animation and code find by name. A part hangs from its `pivot` (default:
@@ -92,7 +93,10 @@ the instance sways once `og.Model.sway` is set and og.Wind blows.
   `rows` (0 anywhere round the branch; 2 in two rows to its sides, a
   palm's or a fern's frond), `size` (m), `width`, `sizeVariance`, `color` and `color2` (each leaf one
   between the two, linear), `colorVariation`, `translucency`,
-  `domeNormals`.
+  `domeNormals`, and how they follow the year: `season` (0 evergreen, 1
+  deciduous), `autumnColor` and `autumnColor2` (each leaf turns to one
+  between the two, linear) and `seasonShift` (days its species runs
+  late, negative early, at most 120).
 - `flowers { ... }`: `share` of the branch ends that flower, `count` more
   along each branch, `petals`, `size` (a petal's length, m), `width`, `cup`
   (degrees: 0 flat as a daisy, 60 a tulip), `color`, `color2`,
@@ -128,6 +132,15 @@ colour from the same shape (`kind tulip` with `flowers { color 1 0.7 0
 `trunk { length }`, a level's `children` or the leaves' `size` make a
 young, an old or a sparse one. A plant no kind is near (a vine, a
 mushroom's cap) is a model of parts or an imported one.
+
+The leaves of `oak`, `birch`, `willow`, `shrub`, `fern` and `reed` have
+`season 1`, each kind with its own autumn colours (birch and willow
+yellow, oak russet, fern brown, reed straw, shrub orange to red) and oak
+10 days late, birch 5 and willow 10 early; the other kinds' are 0, and a
+plant without a kind starts at 0. The cook keeps these four with the
+leaf material, as glTF `extras.ogFoliage` members of the same names, so
+an imported tree states them on its leaf material. Leaves do not yet
+change with the date.
 
 A plant's triangles are mostly its leaves (`children` multiplied down
 the levels, times `count`, four triangles a blade). As written above the
@@ -182,5 +195,5 @@ flat. Give trees their own lower `sway` when one wind blows over both.
   `type model` needs no export step.
 - A model grows one plant: the wind bends a model as one tree about its
   root, so two plants in one file are two files.
-- Leaves that name a `material` take `translucency` and `domeNormals` from
-  that material block; without either the leaves draw one face, as bark.
+- Leaves that name a `material` take `translucency`, `domeNormals` and the
+  four season keys from that material block; without either the leaves draw one face, as bark.

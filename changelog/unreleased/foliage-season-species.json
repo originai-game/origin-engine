@@ -1,0 +1,6 @@
+{
+  "simulation": "unchanged",
+  "added": [
+    {"member":"type model","summary":"A leaf's material states how its species follows the year: `season` (0 evergreen, 1 deciduous), `autumnColor` and `autumnColor2` (linear) and `seasonShift` (days late, negative early), in a plant's `leaves` block, a `material` block or glTF extras.ogFoliage. The oak, birch, willow, shrub, fern and reed kinds have `season 1` and their own autumn colours. The cook stores them in og.ModelMaterial (version 5), so a project's models cook again; nothing drawn changes yet."}
+  ]
+}

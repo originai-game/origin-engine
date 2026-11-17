@@ -112,7 +112,11 @@
 //!     color2 0.17 0.33 0.06
 //!     colorVariation 0.3
 //!     translucency 0.5           # light through a leaf, and
-//!     domeNormals 0.6            # its shading by the canopy's dome; or
+//!     domeNormals 0.6            # its shading by the canopy's dome,
+//!     season 1                   # 0 evergreen, 1 deciduous (og.Season):
+//!     autumnColor 0.42 0.12 0.015  # each leaf turns to one between the
+//!     autumnColor2 0.25 0.025 0.015  # two (linear) in autumn,
+//!     seasonShift 0              # days its species runs late; or
 //!                                # material "<name>" with those keys
 //!   }
 //!   flowers {                    # none without the block
@@ -132,7 +136,10 @@
 //! A material's `translucency` (0 to 1) is glTF's
 //! `KHR_materials_diffuse_transmission` and its `domeNormals` (0 to 1)
 //! `extras.ogFoliage.domeNormals`: a material with either is a leaf's,
-//! drawn from both faces.
+//! drawn from both faces. Its `season`, `autumnColor`, `autumnColor2` and
+//! `seasonShift` are `extras.ogFoliage`'s members of those names: how a
+//! leaf follows the year. The built-in deciduous kinds (oak, birch,
+//! willow, shrub, fern, reed) have `season` 1, the others 0.
 
 mod plant;
 
@@ -985,6 +992,31 @@ fn placed_geometry(block: &Block, what: &str, line: usize, detail: f64) -> Resul
 /// material read its factor).
 const DIFFUSE_TRANSMISSION: &str = "KHR_materials_diffuse_transmission";
 
+/// A leaf material's glTF `extras`, `{ "ogFoliage": { … } }` with the
+/// members that differ from none (og-bundle's `leaf_season` and the
+/// cook's `impostor::dome_normals` read them back), or `None` when every
+/// one is its default.
+fn foliage_extras(dome: f64, s: &og_render_data::foliage::LeafSeason) -> Option<serde_json::Value> {
+    let d = og_render_data::foliage::LeafSeason::EVERGREEN;
+    let mut o = serde_json::Map::new();
+    if dome > 0.0 {
+        o.insert("domeNormals".into(), dome.into());
+    }
+    if s.season > 0.0 {
+        o.insert("season".into(), s.season.into());
+    }
+    if s.autumn_color != d.autumn_color {
+        o.insert("autumnColor".into(), s.autumn_color.to_vec().into());
+    }
+    if s.autumn_color2 != d.autumn_color2 {
+        o.insert("autumnColor2".into(), s.autumn_color2.to_vec().into());
+    }
+    if s.shift != 0.0 {
+        o.insert("seasonShift".into(), s.shift.into());
+    }
+    (!o.is_empty()).then(|| serde_json::json!({ "ogFoliage": o }))
+}
+
 // ── the model ───────────────────────────────────────────────────────────────
 
 /// A material as glTF writes it. Its maps (`map`, `normalMap`) name image
@@ -1018,6 +1050,10 @@ pub(crate) fn material(
             "clearcoatRoughness",
             "translucency",
             "domeNormals",
+            "season",
+            "autumnColor",
+            "autumnColor2",
+            "seasonShift",
         ],
     )?;
     let c = f.vec3("color", DVec3::ONE)?;
@@ -1114,8 +1150,11 @@ pub(crate) fn material(
     // A leaf's: how far its normals turn to the canopy's dome (og-render's
     // `foliage.domeNormals`; it needs a plant's or a glTF's foliage).
     let dome = unit("domeNormals", f.num("domeNormals", 0.0)?)?;
-    if dome > 0.0 {
-        m["extras"] = serde_json::json!({ "ogFoliage": { "domeNormals": dome } });
+    // A leaf's: how it follows the year.
+    let season = plant::leaf_season(&f, og_render_data::foliage::LeafSeason::EVERGREEN)
+        .map_err(|e| format!("material '{name}': {}", e.trim_start_matches("material.")))?;
+    if let Some(extras) = foliage_extras(dome, &season) {
+        m["extras"] = extras;
     }
     let coat = unit("clearcoat", f.num("clearcoat", 0.0)?)?;
     if coat > 0.0 {
@@ -1483,8 +1522,8 @@ fn build_at(text: &str, detail: f64) -> Result<Built, String> {
                             DIFFUSE_TRANSMISSION: { "diffuseTransmissionFactor": look.translucency }
                         });
                     }
-                    if look.dome_normals > 0.0 {
-                        own["extras"] = serde_json::json!({ "ogFoliage": { "domeNormals": look.dome_normals } });
+                    if let Some(extras) = foliage_extras(look.dome_normals, &look.season) {
+                        own["extras"] = extras;
                     }
                     let leaf = named(look.leaf, own)?;
                     primitives.push(write_primitive(

@@ -36,7 +36,7 @@ pub use media::*;
 pub use model::*;
 pub use scene::*;
 pub use terrain::*;
-pub use uncooked::UncookedGltf;
+pub use uncooked::{UncookedGltf, leaf_season};
 
 /// The manifest's file name inside `cooked/`.
 pub const MANIFEST: &str = ".cook.ogt";

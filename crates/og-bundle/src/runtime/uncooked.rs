@@ -98,6 +98,30 @@ fn num(v: &Value, k: &str, default: f32) -> f32 {
         .map_or(default, |x| x as f32)
 }
 
+/// A glTF material's `extras.ogFoliage` as a leaf's season, as the cook
+/// and an uncooked load both read it: `season` (0 evergreen to 1
+/// deciduous), `autumnColor` and `autumnColor2` (linear RGB) and
+/// `seasonShift` (days late, negative early), each [`LeafSeason`]'s
+/// default where absent and clamped to its range.
+///
+/// [`LeafSeason`]: og_render_data::foliage::LeafSeason
+pub fn leaf_season(og_foliage: &Value) -> og_render_data::foliage::LeafSeason {
+    use og_render_data::foliage::LeafSeason;
+    let d = LeafSeason::EVERGREEN;
+    let color = |k: &str, d: [f32; 3]| floats(og_foliage, k, d).map(|c| c.max(0.0));
+    let shift = num(og_foliage, "seasonShift", 0.0);
+    LeafSeason {
+        season: num(og_foliage, "season", 0.0).clamp(0.0, 1.0),
+        autumn_color: color("autumnColor", d.autumn_color),
+        autumn_color2: color("autumnColor2", d.autumn_color2),
+        shift: if shift.is_finite() {
+            shift.clamp(-LeafSeason::MAX_SHIFT, LeafSeason::MAX_SHIFT)
+        } else {
+            0.0
+        },
+    }
+}
+
 fn floats<const N: usize>(v: &Value, k: &str, default: [f32; N]) -> [f32; N] {
     let mut out = default;
     if let Some(a) = v.get(k).and_then(Value::as_array) {
@@ -435,6 +459,7 @@ impl UncookedGltf {
                         num(t, "diffuseTransmissionFactor", 0.0).clamp(0.0, 1.0)
                     }),
                 dome_normals: num(&m["extras"]["ogFoliage"], "domeNormals", 0.0).clamp(0.0, 1.0),
+                season: leaf_season(&m["extras"]["ogFoliage"]),
                 uv_transforms: [og_render_data::UvTransform::IDENTITY; 5],
             };
             self.materials.push(material);
@@ -460,6 +485,7 @@ impl UncookedGltf {
             unlit: false,
             translucency: 0.0,
             dome_normals: 0.0,
+            season: og_render_data::foliage::LeafSeason::EVERGREEN,
             uv_transforms: [og_render_data::UvTransform::IDENTITY; 5],
         });
         Ok(())

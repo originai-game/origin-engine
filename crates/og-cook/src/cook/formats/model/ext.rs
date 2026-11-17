@@ -25,6 +25,19 @@ fn vec2_at(v: &Value, key: &str, d: [f32; 2]) -> glam::Vec2 {
     glam::Vec2::new(at(0), at(1))
 }
 
+/// How a material's leaves follow the year: its glTF `extras.ogFoliage`
+/// (`season`, `autumnColor`, `autumnColor2`, `seasonShift`), read as an
+/// uncooked load reads it. A material with `season` above 0 is a
+/// deciduous leaf's.
+pub fn leaf_season(m: &gltf::Material) -> og_render_data::foliage::LeafSeason {
+    let extras = m
+        .extras()
+        .as_ref()
+        .and_then(|e| serde_json::from_str::<Value>(e.get()).ok())
+        .unwrap_or(Value::Null);
+    og_bundle::runtime::leaf_season(&extras["ogFoliage"])
+}
+
 /// A texture info's `KHR_texture_transform` (identity without one) and
 /// the `texCoord` it overrides, if any.
 pub fn transform(info: &Value) -> (UvTransform, Option<u64>) {

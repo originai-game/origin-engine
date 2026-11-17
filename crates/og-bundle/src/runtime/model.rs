@@ -166,6 +166,8 @@ pub struct CookedMaterial {
     pub translucency: f32,
     /// How far its normals turn to the canopy's dome (0..1; the foliage's y).
     pub dome_normals: f32,
+    /// How its leaves follow the year (`og.ModelMaterial` version 5).
+    pub season: og_render_data::foliage::LeafSeason,
     /// Each texture slot's `KHR_texture_transform` (og-render's slot
     /// order, [`og_render_data::StandardMaterial::uv_transforms`]): identity
     /// where none, or where the cook baked it into the primitives' uvs.
@@ -635,6 +637,12 @@ impl CookedModel {
                 unlit: m.unlit != 0,
                 translucency: m.translucency,
                 dome_normals: m.dome_normals,
+                season: og_render_data::foliage::LeafSeason {
+                    season: m.season,
+                    autumn_color: [m.autumn_r, m.autumn_g, m.autumn_b],
+                    autumn_color2: [m.autumn2_r, m.autumn2_g, m.autumn2_b],
+                    shift: m.season_shift,
+                },
                 uv_transforms: {
                     let t = |o: [f32; 2], sc: [f32; 2], r: f32| og_render_data::UvTransform {
                         offset: glam::Vec2::from(o),

@@ -367,7 +367,9 @@ fn a_plant_cooks_to_wood_and_leaves_that_sway_and_let_light_through() {
 
 /// Ways this could fail: a kind that does not cook or grows nothing; a
 /// block's own keys lost to its kind's (or the kind's lost to the
-/// defaults'); a colour named that moves the plant's shape.
+/// defaults'); a colour named that moves the plant's shape; an evergreen
+/// kind that drops its leaves, or a deciduous one whose season (or its
+/// autumn colours, in their order) does not reach the cooked material.
 #[test]
 fn a_kind_is_a_plant_s_defaults_and_its_own_keys_change_only_what_they_name() {
     const KINDS: [&str; 12] = [
@@ -386,6 +388,23 @@ fn a_kind_is_a_plant_s_defaults_and_its_own_keys_change_only_what_they_name() {
         text("tulip", "  flowers {\n    color 1 0.7 0\n  }\n"),
     ));
     files.push(("plants/other.ogt".into(), text("tulip", "  seed 21\n")));
+    // A birch in autumn colours is still a birch that turns; one of its
+    // own autumn and a late year; leaves of another material its own.
+    files.push((
+        "plants/birch-red.ogt".into(),
+        text("birch", "  leaves {\n    color 0.5 0.3 0.02\n  }\n"),
+    ));
+    files.push((
+        "plants/late.ogt".into(),
+        text(
+            "oak",
+            "  leaves {\n    autumnColor 0.6 0.2 0.1\n    seasonShift -21\n  }\n",
+        ),
+    ));
+    files.push((
+        "plants/painted.ogt".into(),
+        "type model\nversion 1\n---\nmaterial \"leaf\" {\n  season 0.5\n  autumnColor2 0.1 0.2 0.3\n}\nplant \"p\" {\n  kind pine\n  leaves {\n    material \"leaf\"\n  }\n}\n".into(),
+    ));
     files.push((
         "plants/tall.ogt".into(),
         text("tulip", "  trunk {\n    length 0.8\n  }\n"),
@@ -409,6 +428,36 @@ fn a_kind_is_a_plant_s_defaults_and_its_own_keys_change_only_what_they_name() {
         heights.push(top);
     }
     assert!(heights[3] > 9.0 && heights[11] < 0.6, "{heights:?}");
+
+    // The deciduous kinds' leaves follow the year, each in its own
+    // autumn; the evergreen ones', and a kind's wood, do not.
+    let season = |name: &str| {
+        let model = load(name);
+        let [wood, leaves] = &model.primitives[..] else {
+            panic!("{name}");
+        };
+        assert_eq!(model.materials[wood.material].season.season, 0.0, "{name}");
+        model.materials[leaves.material].season
+    };
+    for kind in KINDS {
+        let deciduous = ["oak", "birch", "willow", "shrub", "fern", "reed"].contains(&kind);
+        assert_eq!(season(kind).season, f32::from(deciduous), "{kind}");
+    }
+    let birch = season("birch");
+    assert_eq!(birch.autumn_color, [0.5, 0.36, 0.03]);
+    assert_eq!(birch.autumn_color2, [0.42, 0.24, 0.02]);
+    assert_eq!(birch.shift, -5.0);
+    assert_eq!(season("birch-red"), birch);
+    let (oak, late) = (season("oak"), season("late"));
+    assert_eq!(late.autumn_color, [0.6, 0.2, 0.1]);
+    assert_eq!((late.autumn_color2, late.shift), (oak.autumn_color2, -21.0));
+    let painted = season("painted");
+    assert_eq!(painted.season, 0.5);
+    assert_eq!(painted.autumn_color2, [0.1, 0.2, 0.3]);
+    assert_eq!(
+        painted.autumn_color,
+        og_render_data::foliage::LeafSeason::EVERGREEN.autumn_color
+    );
 
     // A tulip of another colour is the same tulip; another seed or a
     // longer stem is another.
@@ -477,6 +526,34 @@ fn a_plant_s_mistakes_are_refused_with_their_line() {
             .replace("count 12\n", "count 12\n    material \"leaf\"\n"),
         "line 26",
         "is its material's",
+    );
+    // ... and their season.
+    refused(
+        "og-cook-model-text-plant-material-season",
+        SHRUB
+            .replace(
+                "plant \"shrub\" {",
+                "material \"leaf\" {\n  season 1\n}\nplant \"shrub\" {",
+            )
+            .replace(
+                "count 12\n",
+                "count 12\n    material \"leaf\"\n    seasonShift 4\n",
+            ),
+        "line 27",
+        "is its material's",
+    );
+    // A season is a share of the year's change; a shift some days.
+    refused(
+        "og-cook-model-text-plant-season",
+        SHRUB.replace("count 12\n", "count 12\n    season 2\n"),
+        "plant.leaves.season",
+        "0 to 1",
+    );
+    refused(
+        "og-cook-model-text-plant-shift",
+        SHRUB.replace("count 12\n", "count 12\n    seasonShift 400\n"),
+        "plant.leaves.seasonShift",
+        "-120 to 120",
     );
     // A kind the cook does not grow: the ones it does, by name.
     refused(

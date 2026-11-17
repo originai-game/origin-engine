@@ -52,5 +52,9 @@ plant "willow" {
     width 0.18
     color 0.12 0.26 0.05
     color2 0.2 0.36 0.08
+    season 1
+    autumnColor 0.42 0.36 0.06
+    autumnColor2 0.3 0.26 0.05
+    seasonShift -10
   }
 }

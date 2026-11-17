@@ -35,6 +35,9 @@ plant "reed" {
     sizeVariance 0.3
     color 0.14 0.3 0.05
     color2 0.3 0.4 0.1
+    season 1
+    autumnColor 0.42 0.33 0.16
+    autumnColor2 0.3 0.22 0.1
   }
   flowers {
     share 0.7
