@@ -1,0 +1,8 @@
+{
+  "fixed": [
+    {
+      "member": "UI scroll clipping",
+      "summary": "Moves frames: positioned descendant text and icons retain their containing block's inherited scroll clip when laid out at their resolved position. Viewport-fixed content still escapes the scroll chain."
+    }
+  ]
+}

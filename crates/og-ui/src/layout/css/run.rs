@@ -777,13 +777,35 @@ fn place(
         (n.layout.w, n.layout.h) = (s.width / z, s.height / z);
     }
     nodes[root].placed.clip = clip;
+    // A positioned subtree is laid out again at its resolved location. It
+    // still paints inside its containing block's inherited scroll clip;
+    // only a viewport-fixed box escapes that chain (CSS 2.1 §11.1.1).
+    let holder = match containing_block(nodes, root) {
+        Holder::Node(i) => Some(i),
+        Holder::Own if nodes[root].props.position == Position::Absolute => {
+            (nodes[root].up != NONE).then_some(nodes[root].up)
+        }
+        Holder::Own => None,
+    };
+    let (root_clip, root_src) = holder.map_or((clip, NONE), |i| {
+        let p = &nodes[i];
+        if p.layout.used.scroll || p.layout.used.scroll_x {
+            (
+                clip.intersect(&p.layout.laid_clip)
+                    .intersect(&p.layout.laid_rect),
+                i,
+            )
+        } else {
+            (clip.intersect(&p.layout.laid_clip), p.placed.clip_src)
+        }
+    });
     let mut stack = vec![root];
     while let Some(i) = stack.pop() {
         content_extent(nodes, i);
         let n = &nodes[i];
         let rect = Rect::new(n.layout.x, n.layout.y, n.layout.w, n.layout.h);
         let (parent_clip, src) = if n.up == NONE || i == root {
-            (clip, NONE)
+            (root_clip, root_src)
         } else {
             let p = &nodes[n.up];
             if p.layout.used.scroll || p.layout.used.scroll_x {

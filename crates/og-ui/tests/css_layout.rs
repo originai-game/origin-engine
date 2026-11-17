@@ -76,6 +76,75 @@ use crate::support::{Doc, with_doc};
 use og_core::glam::Vec2;
 use og_ui::{ImageAlpha, InputFrame, UiKey};
 
+/// Re-laying out an absolutely positioned overlay must not replace the
+/// scroller's inherited paint clip with the whole surface.
+#[test]
+fn positioned_descendants_keep_the_scroller_paint_clip() {
+    let mut handles = crate::support::Handles::default();
+    let d = Doc::with_font(
+        r##"<meta name="component" content="t">
+<div><div id="Scroll"><div id="Spacer"></div>
+  <div id="Face" data-layout="overlay">
+    <span id="Count" data-anchor="center">3</span>
+    <svg id="Lock" data-anchor="center" viewBox="0 0 10 10"><path fill="#ff00ff" d="M0 0 L10 0 L10 10 L0 10 Z"></path></svg>
+    <span id="Fixed">fixed</span>
+  </div>
+</div></div>
+<style>
+#Scroll { width: 100px; height: 80px; overflow: auto; }
+#Spacer { height: 45px; flex: none; }
+#Face { width: 140px; height: 60px; flex: none; }
+#Count { font-size: 24px; }
+#Lock { width: 20px; height: 20px; }
+#Fixed { position: fixed; top: 100px; left: 200px; }
+</style>"##,
+        &[],
+        handles.test_font(),
+    );
+    let scroll = d.get("Scroll");
+    let mut count = 0;
+    let mut lock = 0;
+    let mut fixed = 0;
+    for item in &d.ui.frame().items {
+        let cmd = match &item.cmd {
+            og_ui::DrawCmd::StyledText { text, .. } => &**text,
+            c => c,
+        };
+        let clip = match cmd {
+            og_ui::DrawCmd::Text {
+                text, bounds, clip, ..
+            } if text == "fixed" => {
+                fixed += 1;
+                assert!(bounds.x >= 200.0 && bounds.y >= 100.0);
+                assert!(
+                    clip.right() > scroll.x + scroll.width
+                        && clip.bottom() > scroll.y + scroll.height
+                );
+                continue;
+            }
+            og_ui::DrawCmd::Text { text, clip, .. } if text == "3" => {
+                count += 1;
+                clip
+            }
+            og_ui::DrawCmd::Shape { shape, clip, .. } if matches!(shape.paint, og_draw::UiPaint::Solid(c) if c == [1.0, 0.0, 1.0, 1.0]) =>
+            {
+                lock += 1;
+                clip
+            }
+            _ => continue,
+        };
+        assert!(
+            clip.right() <= scroll.x + scroll.width + 0.1
+                && clip.bottom() <= scroll.y + scroll.height + 0.1,
+            "positioned content escaped its scroller: {clip:?}, {scroll:?}"
+        );
+    }
+    assert!(
+        count > 0 && lock > 0 && fixed > 0,
+        "text, icon and viewport-fixed control were checked: {count}/{lock}/{fixed}"
+    );
+}
+
 fn wh(d: &Doc, id: &str) -> (f32, f32) {
     let e = d.get(id);
     (e.width, e.height)
