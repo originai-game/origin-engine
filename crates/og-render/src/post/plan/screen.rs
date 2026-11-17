@@ -12,7 +12,26 @@ pub(super) fn declare(g: &mut RenderGraph, cx: &PlanCx, p: FramePass) {
     let (aa, after_dof, lit) = (cx.aa, cx.after_dof, cx.lit);
     let name = p.name();
     match p {
-        FramePass::DepthBands => g.pass(name, &["hdr", "lindepth"], &["hdr.bands"]),
+        FramePass::DepthRange(0) => {
+            g.pass(name, &["hdr", "lindepth", "gbuffer"], &["depth.range0"])
+        }
+        FramePass::DepthRange(1) => g.pass(
+            name,
+            &["depth.range0", "lindepth", "gbuffer"],
+            &["depth.range1"],
+        ),
+        FramePass::DepthRange(2) => g.pass(
+            name,
+            &["depth.range1", "lindepth", "gbuffer"],
+            &["depth.range2"],
+        ),
+        FramePass::DepthBands => {
+            let mut reads = vec!["hdr", "lindepth", "gbuffer"];
+            if cx.has(FramePass::DepthRange(2)) {
+                reads.push("depth.range2");
+            }
+            g.pass(name, &reads, &["hdr.bands"])
+        }
         FramePass::FogOfWar => {
             let mut reads = vec![names.banded];
             if prepass {

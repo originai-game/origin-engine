@@ -12,8 +12,7 @@ MaterialStyle {
 }
 Stylise {
   depthBands 6
-  depthBandsNear 3
-  depthBandsFar 50
+  depthBandsFit true
   depthBandsNearColor "#141028"
   depthBandsFarColor "#c8d8ec"
   depthBandsFlatten 1

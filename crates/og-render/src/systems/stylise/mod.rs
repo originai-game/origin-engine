@@ -543,11 +543,15 @@ impl Default for Ink {
 /// layers from `near` to `far`, the first `near_color`, the last
 /// `far_color` (and everything beyond `far`), those between stepping
 /// evenly in OkLCh (`band_color`: lightness and chroma straight, hue the
-/// short way round), never through grey.
+/// short way round), never through grey. With `fit`, logarithmic layers
+/// span all visible non-sky depths instead of the absolute endpoints.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct DepthBands {
     /// 2 to 8 bands.
     pub count: u32,
+    /// Fit logarithmic layers to all visible non-sky depths each frame;
+    /// false divides `near..far` linearly, as before.
+    pub fit: bool,
     pub near: f32,
     pub far: f32,
     pub near_color: [f32; 3],

@@ -10810,6 +10810,11 @@
           "default": 0
         },
         {
+          "name": "depthBandsFit",
+          "column": "bool",
+          "default": false
+        },
+        {
           "name": "depthBandsNear",
           "column": "f32",
           "default": 5

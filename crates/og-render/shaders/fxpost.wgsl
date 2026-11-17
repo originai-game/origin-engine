@@ -642,6 +642,43 @@ fn outline_texel(px: vec2<i32>) -> vec4<u32> {
   return vec4<u32>(round(textureLoad(tex_b, clamp(px, vec2<i32>(0), size - 1), 0) * 255.0));
 }
 
+// Extrema of every non-sky pixel, stored in log
+// space so RGBA16F covers the entire camera range without overflow.
+@fragment
+fn fs_depth_range(in: VsOut) -> @location(0) vec4<f32> {
+  let tile = vec2<u32>(in.pos.xy);
+  let size = textureDimensions(tex_depth);
+  let start = tile * size / 64u;
+  let end = (tile + 1u) * size / 64u;
+  var lo = 65504.0;
+  var hi = -65504.0;
+  for (var y = start.y; y < end.y; y++) {
+    for (var x = start.x; x < end.x; x++) {
+      let d = textureLoad(tex_depth, vec2<i32>(i32(x), i32(y)), 0).r;
+      if (!is_sky(d) && d > 0.0) {
+        lo = min(lo, log2(d));
+        hi = max(hi, log2(d));
+      }
+    }
+  }
+  return vec4<f32>(lo, hi, 0.0, 1.0);
+}
+
+@fragment
+fn fs_depth_range_reduce(in: VsOut) -> @location(0) vec4<f32> {
+  let start = vec2<i32>(in.pos.xy) * 8;
+  var lo = 65504.0;
+  var hi = -65504.0;
+  for (var y = 0; y < 8; y++) {
+    for (var x = 0; x < 8; x++) {
+      let range = textureLoad(tex_a, start + vec2<i32>(x, y), 0).rg;
+      lo = min(lo, range.x);
+      hi = max(hi, range.y);
+    }
+  }
+  return vec4<f32>(lo, hi, 0.0, 1.0);
+}
+
 // Flat colour bands by depth (stylise.rs DepthBands): the scene between
 // near and far cut into `bands` layers; the first is the near colour, the
 // last the far colour (from near + (bands - 1) / bands of the range, and
@@ -658,7 +695,11 @@ fn fs_depth_bands(in: VsOut) -> @location(0) vec4<f32> {
   let d = depth_at(px);
   if (is_sky(d) || fxp.bands.x < 2.0) { return c; }
   let n = fxp.bands.x;
-  let t = clamp((d - fxp.bands.y) / max(fxp.bands.z - fxp.bands.y, 1e-3), 0.0, 1.0);
+  var t = clamp((d - fxp.bands.y) / max(fxp.bands.z - fxp.bands.y, 1e-3), 0.0, 1.0);
+  if (fxp.bands_near.w > 0.5) {
+    let range = textureLoad(tex_b, vec2<i32>(0), 0).rg;
+    t = clamp((log2(max(d, 1e-6)) - range.x) / max(range.y - range.x, 1e-3), 0.0, 1.0);
+  }
   let band = min(floor(t * n), n - 1.0) / (n - 1.0);
   let color = band_color(fxp.bands_near.rgb, fxp.bands_far.rgb, band);
   let tinted = c.rgb * color / max(dot(color, LUMA), 1e-4);
@@ -890,4 +931,3 @@ fn fs_godrays_blur(in: VsOut) -> @location(0) vec4<f32> {
   // Normalized to 48 taps: the brightness does not depend on the tap count.
   return vec4<f32>(sum * (4.0 / f32(max(n, 1u))) * fxp.god_tint.rgb * fxp.god2.z, 1.0);
 }
-

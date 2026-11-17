@@ -293,17 +293,18 @@
       max 2
     }
     group "Depth bands"
-    field depthBands u32 "Colour bands by depth (2 to 8): the scene from depthBandsNear to depthBandsFar is cut into this many equal layers, the first in depthBandsNearColor, the last in depthBandsFarColor, those between stepping evenly from one to the other in lightness, chroma and hue (never through grey); 0 is off." {
+    field depthBands u32 "Colour bands by depth (2 to 8), interpolating depthBandsNearColor to depthBandsFarColor in lightness, chroma and hue. By default the layers divide depthBandsNear..depthBandsFar evenly; depthBandsFit instead fits logarithmic layers to visible geometry. 0 is off." {
       min 0
       max 8
       guide "looks §11"
     }
-    field depthBandsNear f32 "Where the first band starts." {
+    field depthBandsFit bool "Fit logarithmic bands to the full visible non-sky depth range, measured each drawn frame. Nearer layers span less distance than farther ones. Ignores depthBandsNear and depthBandsFar; false keeps their absolute linear layers. The farthest layer still merges geometry within it."
+    field depthBandsNear f32 "Where the first band starts, unless depthBandsFit is true." {
       default 5
       min 0
       unit m
     }
-    field depthBandsFar f32 "Where the last band ends; the last band (the far colour) starts one band's depth before it, and everything beyond it is the far colour too." {
+    field depthBandsFar f32 "Where the last band ends; the far colour starts one band's depth before it and continues beyond it. Ignored when depthBandsFit is true." {
       default 60
       min 0
       unit m
@@ -1655,4 +1656,3 @@
     param desc TextDesc "The font, text, placement and colour."
     returns Result.Void "Refused for a dead font."
   }
-

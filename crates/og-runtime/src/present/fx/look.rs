@@ -471,6 +471,7 @@ pub(super) fn stylise(
         if bands > 0 {
             out.depth_bands = Some(og_render::DepthBands {
                 count: bands,
+                fit: s.depth_bands_fit,
                 near: s.depth_bands_near,
                 far: s.depth_bands_far,
                 near_color: rgb(&s.depth_bands_near_color),

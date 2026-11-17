@@ -278,6 +278,15 @@ fn effects(g: &mut RenderGraph, cx: &PlanCx) {
     if has(FramePass::DepthBands) {
         g.transient("hdr.bands", desc(w, h, HDR_FORMAT, 1, ATTACH_BIND));
     }
+    if has(FramePass::DepthRange(0)) {
+        for (name, size) in [
+            ("depth.range0", 64),
+            ("depth.range1", 8),
+            ("depth.range2", 1),
+        ] {
+            g.transient(name, desc(size, size, HDR_FORMAT, 1, ATTACH_BIND));
+        }
+    }
     if has(FramePass::FogOfWar) {
         g.transient("hdr.sight", desc(w, h, HDR_FORMAT, 1, ATTACH_BIND));
     }
