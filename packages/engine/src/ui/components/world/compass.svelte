@@ -65,6 +65,10 @@
 #Strip { position: absolute; top: 0; bottom: 0; inset-inline-start: 50%; inline-size: calc(var(--w) * 9); translate: calc(var(--h) * var(--w) * -0.4774648 - var(--w) * 3) 0; }
 .point { position: absolute; top: 0; inset-inline-start: calc(var(--at) * var(--w)); translate: -50% 0; font-size: var(--hud-size-sm); line-height: 1.2; font-weight: var(--hud-figure-weight); color: var(--hud-ink-dim); white-space: nowrap; }
 .point.cardinal { font-size: var(--hud-size-cardinal); line-height: 1; color: var(--hud-ink); }
+/* A letter under the heading tag fades out, so the tag never sits on a
+   letter: its distance from the centre, in windows (the heading is at
+   h × 0.477 + 3), fades it from 0.09 to 0.05 of a window. */
+.point { --d: max(calc(var(--at) - var(--h) * 0.4774648 - 3), calc(var(--h) * 0.4774648 + 3 - var(--at))); opacity: clamp(0, calc((var(--d) - 0.05) * 25), 1); }
 /* Ticks: a short one each 15 degrees, a tall one each 45 (a lap is 3w). */
 .ticks { position: absolute; inset-inline: 0; bottom: auto; top: calc(var(--band) - 10 * var(--font-step-px)); block-size: calc(6 * var(--font-step-px)); margin-inline-start: calc(-1 * var(--font-step-px)); background: var(--hud-ink-dim); mask-image: repeating-linear-gradient(90deg, #000 0 calc(2 * var(--font-step-px)), transparent calc(2 * var(--font-step-px)) calc(var(--w) / 8)); }
 #Major { top: calc(var(--band) - 14 * var(--font-step-px)); block-size: calc(10 * var(--font-step-px)); background: var(--hud-tick); mask-image: repeating-linear-gradient(90deg, #000 0 calc(2 * var(--font-step-px)), transparent calc(2 * var(--font-step-px)) calc(var(--w) * 0.375)); }
@@ -91,7 +95,8 @@
 #Notch { position: absolute; top: calc(var(--band) - 4 * var(--font-step-px)); inset-inline-start: calc(50% - 6 * var(--font-step-px)); inline-size: calc(12 * var(--font-step-px)); block-size: calc(8 * var(--font-step-px)); background: var(--hud-accent); clip-path: polygon(0 0, 100% 0, 50% 100%); }
 @media (width < 600px) {
   :host { --band: calc(22 * var(--font-step-px)); }
-  #Window { block-size: calc(var(--band) + 24 * var(--font-step-px)); }
+  /* Room under the band for a mark and its distance (1 + 12 + 14.3 steps). */
+  #Window { block-size: calc(var(--band) + 30 * var(--font-step-px)); }
   .copy { top: calc(var(--band) + 1 * var(--font-step-px)); row-gap: 0; }
   .point { font-size: var(--hud-size-xs); }
   .point.cardinal { font-size: var(--hud-size-sm); }
