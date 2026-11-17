@@ -139,9 +139,9 @@ fn macro_tint(li: u32, p: vec3<f32>) -> vec3<f32> {
 // ── A layer at a point ──────────────────────────────────────────────────
 
 // Its albedo and height alone (the prepass: no normal map is read).
-fn sample_layer_albedo(i: u32, p: vec3<f32>, n: vec3<f32>, dpx: vec3<f32>, dpy: vec3<f32>) -> vec4<f32> {
+fn sample_layer_albedo(i: u32, p: vec3<f32>, lay: Lay, dpx: vec3<f32>, dpy: vec3<f32>) -> vec4<f32> {
   if ((u32(terrain.layers[i].mapping.w) & 1u) == 0u) { return vec4<f32>(1.0); }
-  let proj = layer_projection(i, n);
+  let proj = layer_projection(i, lay);
   let coarse = layer_coarse(i, p);
   var a = vec4<f32>(0.0);
   for (var k = 0u; k < proj.count; k++) {
@@ -208,15 +208,17 @@ fn unfolded_at(
 // the ground's normal where the fragment stands (its relief is the
 // ground's, the walls included), the albedo where `unfolded_at` puts it,
 // tinted by its cell's tone (`cell_tone`, read from above where it
-// stands: a stone's walls take its top's tone).
-fn sample_layer(i: u32, p: vec3<f32>, n: vec3<f32>, face: vec3<f32>, lift: f32, dpx: vec3<f32>, dpy: vec3<f32>) -> LayerSample {
+// stands: a stone's walls take its top's tone). Its maps are projected
+// as `lay` says (by `n` on the ground; by a stamp's own normal where `n`
+// is the ground's it blends into).
+fn sample_layer(i: u32, p: vec3<f32>, n: vec3<f32>, lay: Lay, face: vec3<f32>, lift: f32, dpx: vec3<f32>, dpy: vec3<f32>) -> LayerSample {
   let has_albedo = (u32(terrain.layers[i].mapping.w) & 1u) != 0u;
   let has_normal = (u32(terrain.layers[i].mapping.w) & 2u) != 0u;
   var s: LayerSample;
   s.albedo = vec4<f32>(1.0);
   s.normal = n;
   if (!has_albedo && !has_normal) { return s; }
-  let proj = layer_projection(i, n);
+  let proj = layer_projection(i, lay);
   let at = unfolded_at(i, p, n, face, lift, dpx, dpy);
   let coarse = layer_coarse(i, p);
   var albedo = vec4<f32>(0.0);
@@ -342,9 +344,10 @@ fn blended_roughness(pick: LayerPick, w: vec4<f32>) -> f32 {
 }
 
 // The layers at world point `p` whose geometric normal is `n_geo` (the
-// terrain's, or a stamp's) under control channels `control`, its drawn
-// face's normal `face` and its lift over the field (`sample_layer`).
-fn terrain_look(p: vec3<f32>, n_geo: vec3<f32>, face: vec3<f32>, lift: f32, control: array<vec4<f32>, 4>, dpx: vec3<f32>, dpy: vec3<f32>) -> TerrainLook {
+// terrain's, or a stamp's) under control channels `control`, their maps
+// laid as `lay` says, its drawn face's normal `face` and its lift over
+// the field (`sample_layer`).
+fn terrain_look(p: vec3<f32>, n_geo: vec3<f32>, lay: Lay, face: vec3<f32>, lift: f32, control: array<vec4<f32>, 4>, dpx: vec3<f32>, dpy: vec3<f32>) -> TerrainLook {
   let count = u32(terrain.origin.w);
   let pick = pick_layers(p, n_geo, control);
   // The picked layers' colours and normals (a layer of weight 0 skips its maps).
@@ -353,7 +356,7 @@ fn terrain_look(p: vec3<f32>, n_geo: vec3<f32>, face: vec3<f32>, lift: f32, cont
   // To the picked count, not to a constant 4 (as `sample_layer`'s reads).
   for (var k = 0u; k < pick.n; k++) {
     if (pick.w[k] > 0.0 || k == 0u) {
-      samples[k] = sample_layer(pick.ids[k], p, n_geo, face, lift, dpx, dpy);
+      samples[k] = sample_layer(pick.ids[k], p, n_geo, lay, face, lift, dpx, dpy);
       heights_of[k] = samples[k].albedo.a;
     }
   }
@@ -379,13 +382,13 @@ fn terrain_look(p: vec3<f32>, n_geo: vec3<f32>, face: vec3<f32>, lift: f32, cont
 // the layers' relief (y), from the layers' heights alone: the prepass
 // reads no normal map and blends no colour. (The heights are read when
 // the layers blend by them or the weather needs them.)
-fn terrain_roughness(p: vec3<f32>, n_geo: vec3<f32>, control: array<vec4<f32>, 4>, dpx: vec3<f32>, dpy: vec3<f32>) -> vec2<f32> {
+fn terrain_roughness(p: vec3<f32>, n_geo: vec3<f32>, lay: Lay, control: array<vec4<f32>, 4>, dpx: vec3<f32>, dpy: vec3<f32>) -> vec2<f32> {
   let pick = pick_layers(p, n_geo, control);
   var heights_of = vec4<f32>(1.0);
   if ((terrain.params.x > 0.0 && !pick.fallback) || weather_active()) {
     for (var k = 0u; k < 4u; k++) {
       if (k < pick.n && (pick.w[k] > 0.0 || k == 0u)) {
-        heights_of[k] = sample_layer_albedo(pick.ids[k], p, n_geo, dpx, dpy).a;
+        heights_of[k] = sample_layer_albedo(pick.ids[k], p, lay, dpx, dpy).a;
       }
     }
   }
@@ -562,7 +565,7 @@ fn fs(in: TerrainOut) -> @location(0) vec4<f32> {
     let near = 1.0 - smoothstep(0.6 * reach, reach, distance(p, frame.view_pos.xyz));
     n_face = normalize(mix(n_geo, facet, near));
   }
-  let look = terrain_look(p, n_geo, n_face, lift, point.control, dpx, dpy);
+  let look = terrain_look(p, n_geo, ground_lay(n_geo), n_face, lift, point.control, dpx, dpy);
   let grass = grass_far(look.albedo, p, in.local, n_geo, point.control, max(length(dpx), length(dpy)));
   let roughness = toksvig_roughness(look.roughness, point.variance);
   // A displaced ground's shading takes the relief no normal map draws.
@@ -706,7 +709,7 @@ fn fs_prepass(in: TerrainOut) -> TerrainPrepass {
   let point = terrain_point_from(first, s, false);
   // The layers' roughness as the lit pass shades it, for screen-space
   // reflections (a terrain is never metal): their weights alone.
-  let layers = terrain_roughness(in.world, point.normal, point.control, dpdxFine(in.world), dpdyFine(in.world));
+  let layers = terrain_roughness(in.world, point.normal, ground_lay(point.normal), point.control, dpdxFine(in.world), dpdyFine(in.world));
   let roughness = toksvig_roughness(layers.x, point.variance);
   return terrain_prepass_out(in.world, terrain_tilt(point, point.normal, in.relief.xy), point.normal, vec2<f32>(roughness, layers.y), in.cur_clip, in.prev_clip);
 }
@@ -784,13 +787,25 @@ fn stamp_ground(p: vec3<f32>, n_mesh: vec3<f32>) -> StampGround {
   return o;
 }
 
+// How a stamp lays the layers on its mesh: by the mesh's own normal,
+// whichever layers the blend picks (the band's normal turns to the
+// ground's, and the ground's layer laid by that would be read from above
+// onto a wall: one texel's column streaked up the band), and biplanar
+// past STAMP_PROJECT_SLOPE where the layer does not say (the ground's
+// grass names no `projectSlope`: the height field never stands it up).
+const STAMP_PROJECT_SLOPE: f32 = 45.0;
+
+fn stamp_lay(n_mesh: vec3<f32>) -> Lay {
+  return Lay(normalize(n_mesh), STAMP_PROJECT_SLOPE);
+}
+
 @fragment
 fn fs_stamp(in: StampOut) -> @location(0) vec4<f32> {
   let p = in.world;
   let dpx = dpdxFine(p);
   let dpy = dpdyFine(p);
   let g = stamp_ground(p, normalize(in.normal));
-  let look = terrain_look(p, g.normal, g.normal, 0.0, g.control, dpx, dpy);
+  let look = terrain_look(p, g.normal, stamp_lay(in.normal), g.normal, 0.0, g.control, dpx, dpy);
   var grass = grass_far(look.albedo, p, g.local, g.normal, g.control, max(length(dpx), length(dpy)));
   grass.albedo = mix(look.albedo, grass.albedo, g.ground);
   grass.light = mix(vec2<f32>(1.0), grass.light, g.ground);
@@ -802,6 +817,6 @@ fn fs_stamp(in: StampOut) -> @location(0) vec4<f32> {
 fn fs_stamp_prepass(in: StampOut) -> TerrainPrepass {
   let p = in.world;
   let g = stamp_ground(p, normalize(in.normal));
-  let roughness = terrain_roughness(p, g.normal, g.control, dpdxFine(p), dpdyFine(p));
+  let roughness = terrain_roughness(p, g.normal, stamp_lay(in.normal), g.control, dpdxFine(p), dpdyFine(p));
   return terrain_prepass_out(p, g.normal, g.normal, roughness, in.cur_clip, in.prev_clip);
 }

@@ -71,17 +71,37 @@ fn axis_plane(a: u32) -> u32 {
   return select(select(2u, 0u, a == 1u), 1u, a == 0u);
 }
 
-fn layer_projection(li: u32, n: vec3<f32>) -> Projection {
+// How a layer's maps are laid on a face: the normal its projections are
+// chosen by, and the slope (degrees) past which a layer that names no
+// `projectSlope` and is not triplanar is sampled biplanar all the same.
+// The height field's ground names 0 (such a layer is read from above at
+// any slope, as its author set it); a stamp's mesh names
+// STAMP_PROJECT_SLOPE, for it has walls no layer's author planned for.
+struct Lay {
+  n: vec3<f32>,
+  steep: f32,
+};
+
+// The height field's own: by its normal `n`, each layer as it says.
+fn ground_lay(n: vec3<f32>) -> Lay {
+  return Lay(n, 0.0);
+}
+
+fn layer_projection(li: u32, lay: Lay) -> Projection {
+  let n = lay.n;
   var o: Projection;
   o.planes = vec4<u32>(0u);
   o.w = vec4<f32>(0.0);
   o.whiteout = vec4<u32>(0u);
   o.count = 0u;
   var biplanar = 0.0;
-  if (terrain.layers[li].look.z > 0.0) {
+  let own = terrain.layers[li].look.z;
+  let triplanar = own <= 0.0 && terrain.layers[li].mapping.y > 0.5;
+  let past = select(lay.steep, own, own > 0.0);
+  if (!triplanar && past > 0.0) {
     let angle = degrees(acos(clamp(n.y, -1.0, 1.0)));
-    biplanar = smoothstep(terrain.layers[li].look.z - 5.0, terrain.layers[li].look.z + 5.0, angle);
-  } else if (terrain.layers[li].mapping.y > 0.5) {
+    biplanar = smoothstep(past - 5.0, past + 5.0, angle);
+  } else if (triplanar) {
     var w = pow(abs(n), vec3<f32>(4.0));
     w = w / max(w.x + w.y + w.z, 1e-5);
     o.planes = vec4<u32>(1u, 0u, 2u, 0u);
@@ -312,7 +332,7 @@ fn taps_albedo(i: u32, t: PlaneTaps, coarse: f32) -> TapsAlbedo {
 // blend, which depends on the eye); -1 without an albedo map.
 fn layer_height(i: u32, p: vec3<f32>, n: vec3<f32>, dpx: vec3<f32>, dpy: vec3<f32>) -> f32 {
   if ((u32(terrain.layers[i].mapping.w) & 1u) == 0u) { return -1.0; }
-  let proj = layer_projection(i, n);
+  let proj = layer_projection(i, ground_lay(n));
   var a = 0.0;
   for (var k = 0u; k < proj.count; k++) {
     let t = plane_taps(i, proj.planes[k], p, dpx, dpy);

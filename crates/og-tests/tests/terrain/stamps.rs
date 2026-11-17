@@ -63,3 +63,45 @@ fn an_overhangs_underside_takes_the_steepest_rule() {
         );
     }
 }
+
+/// Within a stamp's blend band the ground's layer is laid on the mesh's
+/// own face. The valley's grass carries stripes half a metre wide along
+/// z; the cliff's face (turned to +x) blends into it over 6 m, so its
+/// lowest 2 m are wholly the grass. Projected along the face's own
+/// normal the stripes cross it as on the ground beside it (bands up the
+/// face); read up the face at one z they alternate. Before, the layer was
+/// projected by the band's normal, the ground's: from above onto a
+/// vertical face, where one texel's column ran the band's whole height,
+/// a streak.
+#[test]
+#[ignore = "requires GPU"]
+fn a_stamps_blend_lays_the_ground_on_its_own_face() {
+    let mut scene = ts::cliff_scene(6.0);
+    let stripes = scene.add_texture(og_tests::physical_scenes::stripes(64, 2.0, true));
+    let grass = &mut scene.world.terrains[0].layers[0];
+    grass.albedo = Some(stripes);
+    grass.tile = 2.0;
+    let (img, _) = render(&scene);
+    keep("stamp-blend-face", &img);
+    // Up the face from 0.3 m to 1.8 m, three stripes' worth.
+    let up: Vec<[f32; 3]> = (0..16)
+        .map(|i| {
+            let at = Vec3::new(ts::CLIFF_ROCK, 0.3 + 0.1 * i as f32, 0.0);
+            let (x, y) = project(&scene.frame.camera, at);
+            px(&img, x, y)
+        })
+        .collect();
+    let by_luma = |a: &&[f32; 3], b: &&[f32; 3]| luma(**a).total_cmp(&luma(**b));
+    let dark = up.iter().min_by(by_luma).unwrap();
+    let bright = up.iter().max_by(by_luma).unwrap();
+    assert!(
+        luma(*bright) > 3.0 * luma(*dark).max(4.0),
+        "no stripe crosses the face's foot: {up:?}"
+    );
+    // The layer there is still the ground's grass (green), not the
+    // face's own grey rock.
+    assert!(
+        bright[1] > 1.3 * bright[0],
+        "the face's foot is not the grass: {bright:?}"
+    );
+}
