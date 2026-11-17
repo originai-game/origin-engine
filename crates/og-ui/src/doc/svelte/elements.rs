@@ -1110,13 +1110,15 @@ impl Parser {
                 PropValue::Model(path)
             } else if a.bound {
                 PropValue::Bind(expression(&a.value, a.at)?, None)
+            } else if component {
+                // The callee owns this literal's type, not the native
+                // attribute schema (for example Inbox's string selected).
+                PropValue::Lit(Lit::Str(a.value.clone()))
             } else if name == "stepBy" && a.value == "any" {
                 // HTML's step="any": no step constraint.
                 PropValue::Lit(Lit::Num(0.0))
             } else if let Some((_, spec)) = schema::prop(&name) {
                 literal(spec.ty, &a.value).map_err(|why| (a.at, why))?
-            } else if component {
-                PropValue::Lit(Lit::Str(a.value.clone()))
             } else {
                 return Err((
                     a.at,

@@ -1020,6 +1020,54 @@ fn lexical_css_inherits_computed_values_and_cascades_before_substitution() {
     );
 }
 
+#[test]
+fn component_literals_use_the_declared_prop_not_a_native_attribute_type() {
+    let mut ui = ui_with_font(test_font());
+    for (name, body) in [
+        (
+            "Words",
+            r#"<meta name="prop:selected" content="string"><meta name="prop:count" content="string">
+<div><text>{selected}</text><text>{count}</text></div>"#,
+        ),
+        (
+            "Flag",
+            r#"<meta name="prop:selected" content="bool"><meta name="prop:count" content="number">
+<div>{#if selected}<text>enabled</text>{:else}<text>disabled</text>{/if}<text>{count + 1}</text></div>"#,
+        ),
+        (
+            "page",
+            r#"<div><Words selected="welcome" count="007"/><Words selected={$word} count="008"/>
+<Flag selected="false" count="4"/><Flag selected="true" count="8"/></div>"#,
+        ),
+    ] {
+        ui.define_document(
+            UiDocument::parse(
+                &format!("{name}.svelte"),
+                &format!(r#"<meta name="component" content="{name}">{body}"#),
+            )
+            .unwrap(),
+        );
+    }
+    mount_screen(&mut ui, "page", &[("word", json!("bound"))]);
+    for _ in 0..3 {
+        tick(&mut ui, InputFrame::default());
+    }
+    let all: Vec<_> = ui
+        .frame()
+        .items
+        .iter()
+        .filter_map(|item| match &item.cmd {
+            DrawCmd::Text { text, .. } => Some(text.as_str()),
+            _ => None,
+        })
+        .collect();
+    for expected in [
+        "welcome", "007", "bound", "008", "disabled", "enabled", "5", "9",
+    ] {
+        assert!(all.contains(&expected), "{expected}: {all:?}");
+    }
+}
+
 /// A component is styled through what it declares: its props, its parts
 /// and the custom properties it reads, which an instance sets with a style
 /// prop. A user's rule does not reach its root.

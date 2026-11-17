@@ -575,6 +575,21 @@ fn passed(node: &DocNode, instance: &UiDocument, user: &Arc<BindingContext>) -> 
     let mut lexical = Lexical::default();
     for (name, value, _) in &node.args {
         let (expression, model) = match value {
+            PropValue::Lit(Lit::Str(text)) => {
+                // As for control documents, quoted attributes are text
+                // until the callee declares a numeric or boolean prop.
+                let ty = instance
+                    .props
+                    .iter()
+                    .find(|p| p.name == *name)
+                    .map(|p| p.ty.as_str());
+                let value = match ty {
+                    Some("number") => text.trim().parse::<f64>().map_or(Value::Null, |x| json!(x)),
+                    Some("bool") => (text != "false").into(),
+                    _ => text.clone().into(),
+                };
+                (Expr::Lit(value).into(), None)
+            }
             PropValue::Lit(lit) => (Expr::Lit(literal(lit)).into(), None),
             PropValue::Bind(e, format) => (
                 format

@@ -419,6 +419,18 @@ fn a_component_prop_may_share_a_tag_owned_property_name() {
         .flat_map(|n| n.args.iter().map(|(name, ..)| name.as_str()))
         .collect();
     assert_eq!(passed, ["count", "reveal", "hidden"]);
+    let native = UiDocument::parse(
+        "native.svelte",
+        "<meta name='screen' content='x'><tabs items='One Two' selected='1'/>",
+    )
+    .unwrap();
+    assert!(
+        native
+            .nodes
+            .iter()
+            .flat_map(|n| &n.props)
+            .any(|p| { p.name() == "selected" && p.value == PropValue::Lit(Lit::Num(1.0)) })
+    );
     let errors = UiDocument::parse(
         "bad.svelte",
         "<meta name='screen' content='x'><column><text count={3}/></column>",

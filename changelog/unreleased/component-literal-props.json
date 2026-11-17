@@ -1,0 +1,8 @@
+{
+  "fixed": [
+    {
+      "member": "og.ui",
+      "summary": "Quoted component props use the component's declared type, not a same-named native attribute's type. Inbox selected=\"welcome\" and boolean selected props work without renaming; native numeric tabs attributes retain their meaning."
+    }
+  ]
+}
