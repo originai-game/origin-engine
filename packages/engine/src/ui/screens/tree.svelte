@@ -5,7 +5,7 @@
 <meta name="action:toggle" content="Open or close">
 <meta name="action:choose" content="Select">
 <meta name="fixture:default" content="{&quot;label&quot;:&quot;Scene&quot;,&quot;rows&quot;:[{&quot;id&quot;:&quot;w&quot;,&quot;label&quot;:&quot;World&quot;,&quot;depth&quot;:0,&quot;open&quot;:true,&quot;selected&quot;:false},{&quot;id&quot;:&quot;p&quot;,&quot;label&quot;:&quot;Player&quot;,&quot;depth&quot;:1,&quot;open&quot;:null,&quot;selected&quot;:true},{&quot;id&quot;:&quot;c&quot;,&quot;label&quot;:&quot;Camera&quot;,&quot;depth&quot;:1,&quot;open&quot;:false,&quot;selected&quot;:false}]}">
-<meta name="fixture:overflow" content="{&quot;label&quot;:&quot;Scene&quot;,&quot;rows&quot;:[{&quot;id&quot;:&quot;t0&quot;,&quot;label&quot;:&quot;World&quot;,&quot;depth&quot;:0,&quot;open&quot;:true,&quot;selected&quot;:false},{&quot;id&quot;:&quot;t1&quot;,&quot;label&quot;:&quot;Region of the Ninefold Gate&quot;,&quot;depth&quot;:1,&quot;open&quot;:true,&quot;selected&quot;:false},{&quot;id&quot;:&quot;t2&quot;,&quot;label&quot;:&quot;Lighthouse&quot;,&quot;depth&quot;:2,&quot;open&quot;:true,&quot;selected&quot;:false},{&quot;id&quot;:&quot;t3&quot;,&quot;label&quot;:&quot;Lantern_03 (the one on the north stair)&quot;,&quot;depth&quot;:3,&quot;open&quot;:null,&quot;selected&quot;:true},{&quot;id&quot;:&quot;t4&quot;,&quot;label&quot;:&quot;Player&quot;,&quot;depth&quot;:1,&quot;open&quot;:null,&quot;selected&quot;:false},{&quot;id&quot;:&quot;t5&quot;,&quot;label&quot;:&quot;Camera&quot;,&quot;depth&quot;:1,&quot;open&quot;:false,&quot;selected&quot;:false},{&quot;id&quot;:&quot;t6&quot;,&quot;label&quot;:&quot;Light&quot;,&quot;depth&quot;:2,&quot;open&quot;:true,&quot;selected&quot;:false},{&quot;id&quot;:&quot;t7&quot;,&quot;label&quot;:&quot;Particles&quot;,&quot;depth&quot;:3,&quot;open&quot;:null,&quot;selected&quot;:false}]}">
+<meta name="fixture:overflow" content="{&quot;label&quot;:&quot;Scene&quot;,&quot;rows&quot;:[{&quot;id&quot;:&quot;t0&quot;,&quot;label&quot;:&quot;World&quot;,&quot;depth&quot;:0,&quot;open&quot;:true,&quot;selected&quot;:false},{&quot;id&quot;:&quot;t1&quot;,&quot;label&quot;:&quot;Region of the Ninefold Gate&quot;,&quot;depth&quot;:1,&quot;open&quot;:true,&quot;selected&quot;:false},{&quot;id&quot;:&quot;t2&quot;,&quot;label&quot;:&quot;Lighthouse&quot;,&quot;depth&quot;:2,&quot;open&quot;:true,&quot;selected&quot;:false},{&quot;id&quot;:&quot;t3&quot;,&quot;label&quot;:&quot;Lantern_03 (the one on the north stair)&quot;,&quot;depth&quot;:3,&quot;open&quot;:null,&quot;selected&quot;:true},{&quot;id&quot;:&quot;t4&quot;,&quot;label&quot;:&quot;Player&quot;,&quot;depth&quot;:1,&quot;open&quot;:null,&quot;selected&quot;:false},{&quot;id&quot;:&quot;t5&quot;,&quot;label&quot;:&quot;Camera&quot;,&quot;depth&quot;:1,&quot;open&quot;:true,&quot;selected&quot;:false},{&quot;id&quot;:&quot;t6&quot;,&quot;label&quot;:&quot;Light&quot;,&quot;depth&quot;:2,&quot;open&quot;:true,&quot;selected&quot;:false},{&quot;id&quot;:&quot;t7&quot;,&quot;label&quot;:&quot;Particles&quot;,&quot;depth&quot;:3,&quot;open&quot;:null,&quot;selected&quot;:false},{&quot;id&quot;:&quot;t8&quot;,&quot;label&quot;:&quot;Audio&quot;,&quot;depth&quot;:1,&quot;open&quot;:false,&quot;selected&quot;:false}]}">
 
 <list id="Tree" role="tree" aria-label={label}>
   {#each rows as r (r.id)}
@@ -18,9 +18,11 @@
 
 <style>
 #Tree { width: stretch; height: stretch; }
-/* A row is indented by its depth; on a phone the step is smaller, so a
-   deep row keeps room for its name. */
-.row { display: flex; align-items: start; gap: var(--space-xxs); margin-inline-start: calc(var(--depth) * var(--indent) + var(--twisty-room)); --indent: var(--space-lg); --twisty-room: 0px; }
+/* A row is indented by its depth, the body type's size per level (an em,
+   as desktop outlines step): the step grows with the player's text scale,
+   so the levels stay apart when the names are large. The indent stops
+   growing after four levels, so a deep row keeps room for its name. */
+.row { display: flex; align-items: start; gap: var(--space-xxs); margin-inline-start: calc(min(var(--depth), 4) * var(--indent) + var(--twisty-room)); --indent: var(--type-body-size); --twisty-room: 0px; }
 .twisty { flex: none; width: var(--control-sm); }
 /* The twisty is its chevron alone: a pack's button padding would leave the
    chevron no width. */
@@ -33,5 +35,4 @@
 .item { flex: 1; min-width: 0; justify-content: start; text-align: start; white-space: normal; overflow-wrap: anywhere; }
 /* A wrapped name keeps clear of its row's frame above and below. */
 .item::part(base) { padding-block: var(--button-wrap-pad, var(--space-sm)); }
-@media (width < 600px) { .row { --indent: var(--space-md); } }
 </style>

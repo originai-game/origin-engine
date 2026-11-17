@@ -180,7 +180,7 @@ export const FIXTURES: Record<string, Record<string, Record<string, unknown>>> =
   },
   tree: {
     default: tree_default,
-    overflow: { ...tree_default, "rows": [{"id":"t0","label":"World","depth":0,"open":true,"selected":false},{"id":"t1","label":"Region of the Ninefold Gate","depth":1,"open":true,"selected":false},{"id":"t2","label":"Lighthouse","depth":2,"open":true,"selected":false},{"id":"t3","label":"Lantern_03 (the one on the north stair)","depth":3,"open":null,"selected":true},{"id":"t4","label":"Player","depth":1,"open":null,"selected":false},{"id":"t5","label":"Camera","depth":1,"open":false,"selected":false},{"id":"t6","label":"Light","depth":2,"open":true,"selected":false},{"id":"t7","label":"Particles","depth":3,"open":null,"selected":false}] },
+    overflow: { ...tree_default, "rows": [{"id":"t0","label":"World","depth":0,"open":true,"selected":false},{"id":"t1","label":"Region of the Ninefold Gate","depth":1,"open":true,"selected":false},{"id":"t2","label":"Lighthouse","depth":2,"open":true,"selected":false},{"id":"t3","label":"Lantern_03 (the one on the north stair)","depth":3,"open":null,"selected":true},{"id":"t4","label":"Player","depth":1,"open":null,"selected":false},{"id":"t5","label":"Camera","depth":1,"open":true,"selected":false},{"id":"t6","label":"Light","depth":2,"open":true,"selected":false},{"id":"t7","label":"Particles","depth":3,"open":null,"selected":false},{"id":"t8","label":"Audio","depth":1,"open":false,"selected":false}] },
   },
   tutorial: {
     default: tutorial_default,
