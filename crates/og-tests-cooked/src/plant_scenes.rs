@@ -16,7 +16,9 @@
 //!   canes and a cactus in a row with an autumn birch behind (`kind
 //!   birch` with its leaves' colours), and near the camera two ferns, two
 //!   reeds and red and yellow tulips.
-//! - `scatter_scene()` (`plant-scatter`): a 64 m hill with the three woody
+//! - `scatter_scene()` (`plant-scatter`): a hill 6 m high in rolling
+//!   grassland (384 m of terrain, the kit's hills beyond, the fair
+//!   afternoon's sky) with the three woody
 //!   plants scattered whole, as og.TerrainScatter.model has og-runtime make
 //!   them: one `ScatterDraw` per part, the parts after the first drawn
 //!   `with` it. Oaks keep pines and shrubs out of their footprint; a
@@ -469,38 +471,88 @@ pub fn hill_height(x: f32, z: f32) -> f32 {
     1.0 - z / 32.0 + 6.0 * (-(x * x + z * z) / 320.0).exp()
 }
 
+/// The hill and the land round it, 384 m square, out to where the kit's
+/// hills take over.
 fn hill() -> TerrainData {
-    let n = 129u32;
-    let at = |i: u32| (i as f32 / (n - 1) as f32 - 0.5) * 64.0;
+    let (n, size) = (385u32, 384.0f32);
+    let at = |i: u32| (i as f32 / (n - 1) as f32 - 0.5) * size;
     let heights: Vec<f32> = (0..n * n)
         .map(|i| hill_height(at(i % n), at(i / n)))
         .collect();
+    // The control map (0.75 m a texel): the meadow (layer 1, where nothing
+    // is scattered) south of a ragged line 40 m from the hill's top, the
+    // wood's ground (layer 0) north of it.
+    let m = 512u32;
+    let mut rgba = Vec::with_capacity((m * m * 4) as usize);
+    for y in 0..m {
+        for x in 0..m {
+            let p = (Vec2::new(x as f32, y as f32) + 0.5) / m as f32 * size - size * 0.5;
+            let edge = 40.0 + 6.0 * (p.x * 0.11).sin() + 3.0 * (p.x * 0.37 + 1.0).cos();
+            let meadow = ((p.y - edge) / 3.0).clamp(0.0, 1.0);
+            let w = (meadow * 255.0) as u8;
+            rgba.extend_from_slice(&[255 - w, w, 0, 0]);
+        }
+    }
     TerrainData {
         heights: Arc::from(heights),
-        ..TerrainData::flat(Vec2::splat(64.0), n, n)
+        control: Some(TerrainControl {
+            width: m,
+            height: m,
+            rgba: Arc::from(rgba),
+        }),
+        ..TerrainData::flat(Vec2::splat(size), n, n)
     }
 }
 
 /// `plant-scatter` ([module docs](self)).
 pub fn scatter_scene() -> Result<RenderScene, String> {
     let bundle = Bundle::open(&cooked()?.join("cooked")).map_err(|e| e.to_string())?;
+    use og_tests::kit;
     let mut scene = RenderScene::new();
-    sun(&mut scene, Vec3::new(0.5, 0.7, 0.45), 120.0);
     let h = scene.add_terrain(hill());
+    let (grass, grass_normal) = kit::layer_maps(&mut scene, "grass");
+    let wood_floor = TerrainLayer {
+        albedo: Some(grass),
+        normal: Some(grass_normal),
+        color: Vec3::new(0.62, 0.9, 0.42),
+        roughness: 0.95,
+        tile: 3.5,
+        anti_tiling: 0.5,
+        macro_variation: 0.5,
+        ..Default::default()
+    };
     scene.world.terrains.push(Terrain {
-        layers: vec![TerrainLayer {
-            color: Vec3::new(0.25, 0.36, 0.16),
-            ..Default::default()
-        }],
+        layers: vec![
+            wood_floor,
+            TerrainLayer {
+                color: Vec3::new(0.78, 1.05, 0.52),
+                ..wood_floor
+            },
+        ],
         fade_in: false,
         ..Terrain::new(h)
     });
+    scene.world.grass.push(GrassDraw {
+        terrain: 0,
+        grass: Grass {
+            layer: 1,
+            height: 0.4,
+            dryness: 0.1,
+            cast_shadows: true,
+            ..Default::default()
+        },
+    });
+    kit::hills(&mut scene, None);
+    og_tests::terrain_scenes::afternoon(&mut scene);
+    scene.lighting.light.direction_to_light = Vec3::new(0.5, 0.7, 0.45).normalize();
+    scene.lighting.light.max_shadow_distance = 160.0;
+    og_tests::terrain_scenes::fair_sky(&mut scene, 8.6);
     // (plant, copies a square metre, seed, priority, footprint in metres,
     // the share of the ground its noise leaves bare).
     for (name, density, seed, priority, footprint, bare) in [
-        ("oak", 0.012, 3, 3, 5.0, 0.35),
-        ("pine", 0.016, 5, 2, 4.0, 0.45),
-        ("bush", 0.03, 9, 1, 2.0, 0.3),
+        ("oak", 0.012, 3, 3, 5.0, 0.5),
+        ("pine", 0.016, 5, 2, 4.0, 0.55),
+        ("bush", 0.03, 9, 1, 2.0, 0.4),
     ] {
         let p = plant(&mut scene, &bundle, name)?;
         let scatter = TerrainScatter {
@@ -546,9 +598,10 @@ pub fn scatter_scene() -> Result<RenderScene, String> {
     });
     scene.frame.tick = 90;
     scene.frame.camera = Camera {
-        position: Vec3::new(0.0, 22.0, 44.0),
-        target: Vec3::new(0.0, 4.0, 0.0),
-        far: 400.0,
+        position: Vec3::new(-14.0, 4.5, 92.0),
+        target: Vec3::new(0.0, 8.0, 0.0),
+        far: 4000.0,
+        exposure: og_render::Exposure::linear(0.9),
         projection: Projection::Perspective {
             fov_y_degrees: 50.0,
         },
