@@ -261,7 +261,7 @@
   --role-hud-size-score: calc(66 * var(--font-step-px));
   --role-hud-size-score-compact: calc(38 * var(--font-step-px));
   --role-hud-size-judge: calc(64 * var(--font-step-px));
-  --role-hud-size-judge-compact: calc(28 * var(--font-step-px));
+  --role-hud-size-judge-compact: calc(24 * var(--font-step-px));
   --role-hud-size-hero: calc(150 * var(--font-step-px));
   --role-hud-size-hero-compact: calc(52 * var(--font-step-px));
   /* HUD plate: smoked glass with a lit top edge and two corners cut, the
