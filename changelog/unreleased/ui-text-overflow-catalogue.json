@@ -1,0 +1,6 @@
+{
+  "fixed": [{
+    "member": "og api",
+    "summary": "The generated component catalogue lists text-overflow's clip, ellipsis, string and -og-scroll travel/hold values instead of generic lengths."
+  }]
+}

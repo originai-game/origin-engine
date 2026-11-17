@@ -536,9 +536,9 @@ Its own props, beside every element's:
 | `text-transform:` | `uppercase \| none` | Uppercase in the UI's locale, as a type role with `case upper` is. |
 | `text-align:` | `start \| center \| end` | How its lines align. |
 | `white-space:` | `nowrap \| normal` | One line. |
+| `text-overflow:` | `clip \| ellipsis \| "<string>" \| -og-scroll <travel-time> <hold-time>` | The explicitly authored CSS text-overflow policy. `ellipsis`: Cut with … where it does not fit. `ellipsisText`: What its cut ends in instead of … (`text-overflow: "<string>"`). |
 | `line-clamp:` | `<number>` | The most lines it shows. |
 | `-og-fit-min:` | `body \| xs \| meta \| caption \| sm \| reading \| base \| lg \| xl \| xl2 \| xl3 \| xl4 \| xl5 \| xl6 \| xl7 \| xl8 \| display-sm \| display-md \| display-lg \| display-xl \| display-xl2 \| hero` | Shrinks by measured text fit through type steps down to this literal step (for example -og-fit-min: caption). Extension reason: clamp() and container units cannot choose a type step by measuring shaped text. Author variables may substitute a step name; no custom-property name has engine meaning. |
-| `text-overflow:` | `ellipsis \| clip` | Cut with … where it does not fit. `ellipsisText`: What its cut ends in instead of … (`text-overflow: "<string>"`). |
 | `font-family:` | `var(--font-<name>)` | The font role. |
 | `heading` | `bool` | A heading (a style's flourish frames it). |
 | `<og-counter value>` | `number` | The target value of <og-counter value={$score}>. Changes interpolate over its duration in engine ticks. |

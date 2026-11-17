@@ -276,5 +276,9 @@ mod tests {
             }
         }
         assert!(md.contains("\n| `<og-rive src>` |") && !md.contains("\n| `-og-frame:` |"));
+        assert!(
+            md.contains("| `text-overflow:` | `clip \\| ellipsis \\| \"<string>\" \\| -og-scroll <travel-time> <hold-time>` |"),
+            "text-overflow lists its authored values rather than the internal property's generic length form"
+        );
     }
 }

@@ -725,6 +725,7 @@ fn joint_form(css: &str) -> Option<&'static str> {
         "scale" => "<both> | <x> <y>",
         "grid-column" => "<n> | <n> / span <n> | span <n>",
         "grid-auto-flow" => "row | column [dense]",
+        "text-overflow" => "clip | ellipsis | \"<string>\" | -og-scroll <travel-time> <hold-time>",
         _ => return None,
     })
 }
