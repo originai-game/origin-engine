@@ -32,6 +32,6 @@
    word with no break (an identifier): it is never cut by the screen. */
 .item { flex: 1; min-width: 0; justify-content: start; text-align: start; white-space: normal; overflow-wrap: anywhere; }
 /* A wrapped name keeps clear of its row's frame above and below. */
-.item::part(base) { padding-block: var(--space-sm); }
+.item::part(base) { padding-block: var(--button-wrap-pad, var(--space-sm)); }
 @media (width < 600px) { .row { --indent: var(--space-md); } }
 </style>

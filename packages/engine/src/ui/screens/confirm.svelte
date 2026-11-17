@@ -38,7 +38,7 @@
 /* An action longer than the dialog is wide wraps inside its button. */
 #Buttons button { flex: 1 1 auto; max-inline-size: 100%; white-space: normal; }
 /* A wrapped action keeps clear of its button's frame above and below. */
-#Buttons button::part(base) { padding-block: var(--space-sm); }
+#Buttons button::part(base) { padding-block: var(--button-wrap-pad, var(--space-sm)); }
 /* A phone: the question is the style's title one step down, so a long one
    leaves room for what follows. */
 @media (width < 600px), (height < 500px) {

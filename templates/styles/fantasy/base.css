@@ -263,6 +263,9 @@
   --button-danger-shadow: none;
   --button-selected-shadow: none;
   --button-disabled-shadow: none;
+  /* A label that wraps keeps clear of the plate's frame, which is thicker
+     than a drawn rim. */
+  --button-wrap-pad: var(--space-md);
   --button-fill: none;
   --button-hover-fill: none;
   --button-pressed-fill: none;
