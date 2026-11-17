@@ -22,6 +22,19 @@ prompt, IDs and checksums) are in the `origin-generated-assets` bucket
 | `watchtower.glb` | 14,170 | `meshy/model/showcase-kit-watchtower-v1/` | `68fd5be60fc89fd66e1e7edafdf77ce788ee2bce63e3ebf8c6a468de4e9b5fc6` |
 | `boulder.glb` | 4,077 | `meshy/model/showcase-kit-boulder-v1/` | `c6943d632184979e4b114e65c4d6403e9515bb04375f2064bcb43d4379e06e3e` |
 | `pine.glb` | 9,037 | `meshy/model/showcase-kit-pine-v1/` | `3b7220f86ca3e135e07d2b87f0fd621afbc8512b2d30b611b8db73c275fbacac` |
+| `townhouse.glb` | 13,285 | `meshy/model/showcase-weather-townhouse-v1/` | `e5b8117dbbc225d4d6d82dae29b55c4b0c7cacf5250b7eb04e066e5639cb10d5` |
+| `streetlamp.glb` | 3,000 | `meshy/model/showcase-weather-streetlamp-v1/` | `c5a2dd3a0f1544790517fb9d05ff35b8e41c79f3caab72421a86abca1f29c018` |
+| `car.glb` | 11,598 | `meshy/model/showcase-weather-car-v1/` | `7f83959ae7d1156128d96488a07582525e38789557fa1136be694487fa6c8413` |
+| `adobe.glb` | 8,941 | `meshy/model/showcase-weather-adobe-v2/` | `34c3eb207e6c69df6b34a465724b1dffd092bd487d407c4ea597433d07611782` |
+
+The weather set's four (townhouse, street lamp, car, adobe house) are
+Meshy text-to-3D instead: `generate_3d` `text_preview` (meshy-6, triangles,
+remeshed) then `text_refine` with PBR, no concept image; each bucket key
+holds the model and the receipt (prompts, operation and task IDs). The
+adobe is a second preview: the first stood on a round plinth. The street
+lamp's textures are 512 px. `car.glb`'s material carries
+`KHR_materials_clearcoat` (factor 1, roughness 0.05), added with glTF
+Transform: the lacquer the rain beads on.
 
 The two columns are a second version: their first concepts were marbled in
 large orange and grey patches, which read as camouflage on the shafts, so
@@ -45,6 +58,24 @@ Lousberg, CC0 1.0, no attribution required. It is the pack's
 `de1f471e8c11615388a9caad79aef97414903390ff54924b33bff2547bc19e72`), its
 buffer and its 16 KB palette texture, each checked against the catalog's
 sha256, packed as one GLB with glTF Transform 4.5.1.
+
+From the same catalog release (`catalog-20261107-kenney-particles-v1`),
+CC0 1.0, no attribution required, each file checked against the
+catalog's sha256 on download:
+
+- `crate.glb` (6,576 triangles): Poly Haven's Wooden Crate 01, group
+  `grp_4824f0a4cc69401f82`, the 1k glTF (sha256
+  `fd9c6073acfc671e12b64666053f2805ae33aff5d3dbbcfe5c97c08c06644927`).
+- `barrel.glb` (1,473 triangles): Poly Haven's Barrel 03, group
+  `grp_175cd071a79cb720cb`, the 1k glTF (sha256
+  `80e2faf48b7423bb522b573e459d99c5656a16763285ec8268e957fc7d41f9b8`).
+- `palm.glb` (482 triangles): Kenney's Pirate Kit `palm-detailed-bend.glb`,
+  group `grp_821b501ff5b37b9d37` (sha256
+  `9bc339e2942d6fba9007caa9fa4301a6a08f4b134511bea65ce236ba2910e7f8`),
+  its external `colormap.png` packed in.
+
+The crate and barrel are packed as GLBs with their textures at 1024 px
+JPEG, pruned and deduplicated with glTF Transform 4.5.1.
 
 ## Surfaces
 
