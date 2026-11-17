@@ -41,6 +41,10 @@ fn create_and_new_scaffold_from_an_installed_distribution() {
             .output()
             .unwrap();
         assert!(!refused.status.success(), "{}", text(&refused));
-        assert!(text(&refused).contains("is not empty"), "{}", text(&refused));
+        assert!(
+            text(&refused).contains("is not empty"),
+            "{}",
+            text(&refused)
+        );
     }
 }
