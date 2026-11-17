@@ -21,4 +21,5 @@ ui {
   screen "hud-default" "style:default;page:hud"
   screen "panels-default" "style:default;page:panels"
   screen "states-default" "style:default;page:states"
+  screen "states-no-atlas" "atlas:off;style:default;page:states"
 }

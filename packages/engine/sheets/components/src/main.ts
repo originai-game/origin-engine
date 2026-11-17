@@ -11,7 +11,9 @@
 // and ground marks are the world sheet's (sheets/world).
 //
 // Commands: style:<fantasy|scifi|cartoon|default>, page:<hud|panels|states>,
-// reduced:<on|off>.
+// reduced:<on|off>, atlas:<on|off>. With the atlas off the sheet gives no
+// icon sheet of its own, as a game that ships none: every icon a built-in
+// component draws comes from the engine's default set.
 
 import { og, type UiReadable, type World } from "@origingame/engine";
 import { FIXTURES, NAMES } from "./fixtures.ts";
@@ -40,9 +42,12 @@ const INK_NAMES = [
  * other. A pack brings its own fonts; the default style has none, so it is
  * given the sheet's font (without one the UI draws no text).
  */
+let styleName = "fantasy";
+let atlas = true;
+
 function setStyle(world: World, name: string): void {
-  const ink = must(og.load.texture(world, "icons/ink-icons.png"), "ink icons");
-  const fallbackIcons = { texture: ink, columns: 8, rows: 4, names: INK_NAMES };
+  styleName = name;
+  const fallbackIcons = atlas ? { texture: must(og.load.texture(world, "icons/ink-icons.png"), "ink icons"), columns: 8, rows: 4, names: INK_NAMES } : null;
   if (name === "default") {
     const font = must(og.load.font(world, "fonts/InstrumentSans-Regular.ttf"), "font");
     og.ui.configure(world, { style: null, font, fallbackIcons });
@@ -96,11 +101,13 @@ export default og.game({
       og.ui.scope(world, "sheet").writable("page", "hud").set(PAGES.includes(args[0] as never) ? args[0]! : "hud");
     },
     reduced: (world, args) => og.ui.configure(world, { reducedMotion: args[0] !== "off" }),
+    atlas: (world, args) => { atlas = args[0] !== "off"; setStyle(world, styleName); },
   },
   commandHelp: {
     sample: { usage: "<member> [fixture]", doc: "One isolated panel or feedback fixture, such as tooltipCard overflow or starBar compact." },
     style: { usage: `<${STYLES.join("|")}>`, doc: "The style the pages are dressed in." },
     page: { usage: `<${PAGES.join("|")}>`, doc: "A review page of the ungrouped components." },
     reduced: { usage: "<on|off>", doc: "Reduced motion on or off." },
+    atlas: { usage: "<on|off>", doc: "The sheet's own icon sheet on or off; off draws every icon from the engine's default set." },
   },
 });
