@@ -91,7 +91,8 @@ fn a_moving_instance_takes_its_history_along_on_every_culling_path() {
         ("meshlets", Culling::Gpu, true),
     ] {
         let mut scene = og_tests_cooked::meshlet_scenes::near_scene(meshlets).expect("the tree");
-        // Instance 0 is the ground; the rest are the tree's parts.
+        // Instance 0 is the hills (the ground is a terrain); the rest are
+        // the tree's parts.
         let rest: Vec<glam::Mat4> = scene
             .objects
             .instances

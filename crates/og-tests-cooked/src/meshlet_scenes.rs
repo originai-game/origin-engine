@@ -84,13 +84,15 @@ fn base() -> Result<(RenderScene, Parts), String> {
         exposure: Exposure::linear(0.8),
         ..Default::default()
     };
-    let ground = scene.add_standard_material(StandardMaterial {
-        color: Vec3::new(0.3, 0.32, 0.28),
-        roughness: 1.0,
-        ..Default::default()
-    });
-    let floor = scene.add_mesh(shapes::plane(400.0, 1.0));
-    scene.add_instance(floor, ground, Mat4::IDENTITY);
+    scene.frame.camera.far = 4000.0;
+    // An orchard in rolling country: a terrain of the kit's grass (its
+    // repeat broken by anti-tiling), level within 150 m and rising into
+    // the kit's hills (just under them, where they take over), under the
+    // fair afternoon's physical sky and cumulus. The hills are the
+    // scene's first instance; the tree's parts follow.
+    orchard_ground(&mut scene);
+    og_tests::kit::hills(&mut scene, None);
+    sky(&mut scene, 8.6);
     let parts = model.add_to(&mut scene, &[]).parts;
     if !parts
         .iter()
@@ -99,6 +101,93 @@ fn base() -> Result<(RenderScene, Parts), String> {
         return Err("the cooked tree has no clusters".into());
     }
     Ok((scene, parts))
+}
+
+/// The orchard's ground: 512 m of terrain, level within 150 m of the
+/// middle, then easing into the kit's hills 0.6 m under them.
+fn orchard_ground(scene: &mut RenderScene) {
+    use og_render::{Terrain, TerrainData, TerrainLayer};
+    let (n, size) = (257u32, 512.0f32);
+    let cell = size / (n - 1) as f32;
+    let heights: Vec<f32> = (0..n * n)
+        .map(|i| {
+            let (x, z) = (
+                (i % n) as f32 * cell - size * 0.5,
+                (i / n) as f32 * cell - size * 0.5,
+            );
+            let t = ((x.hypot(z) - 150.0) / 50.0).clamp(0.0, 1.0);
+            let t = t * t * (3.0 - 2.0 * t);
+            t * (og_tests::kit::hills_height(x, z, None) - 0.6)
+        })
+        .collect();
+    let h = scene.add_terrain(TerrainData {
+        heights: std::sync::Arc::from(heights),
+        ..TerrainData::flat(glam::Vec2::splat(size), n, n)
+    });
+    let (grass, grass_normal) = og_tests::kit::layer_maps(scene, "grass");
+    scene.world.terrains.push(Terrain {
+        layers: vec![TerrainLayer {
+            albedo: Some(grass),
+            normal: Some(grass_normal),
+            color: Vec3::new(0.72, 1.05, 0.5),
+            roughness: 0.95,
+            tile: 3.5,
+            anti_tiling: 0.6,
+            macro_variation: 0.6,
+            ..Default::default()
+        }],
+        fade_in: false,
+        ..Terrain::new(h)
+    });
+}
+
+/// The farm round the orchard, for the views that see past it: a dry
+/// stone wall round the forest's plot (open at the camera's end), stands
+/// of the kit's pines beyond it and a watchtower on the far side. Not in
+/// `meshlet-forest` (its pines would join the tints the test counts) or
+/// `meshlet-near` (whose test moves every instance after the first).
+fn farmland(scene: &mut RenderScene) {
+    use og_tests::kit;
+    let stone = kit::surface_tinted(scene, "cobbles", [0.95, 0.9, 0.78]);
+    let mut wall = |min: Vec3, max: Vec3| {
+        let m = scene.add_mesh(kit::block(min, max, 1.6));
+        scene.add_instance(m, stone, Mat4::IDENTITY);
+    };
+    let (x0, x1, z0, z1, h) = (-32.0f32, 32.0f32, 0.0f32, -124.0f32, 1.2f32);
+    wall(Vec3::new(x0, -0.2, z1), Vec3::new(x1, h, z1 + 0.7));
+    wall(Vec3::new(x0, -0.2, z1), Vec3::new(x0 + 0.7, h, z0));
+    wall(Vec3::new(x1 - 0.7, -0.2, z1), Vec3::new(x1, h, z0));
+    wall(Vec3::new(x0, -0.2, z0 - 0.7), Vec3::new(-4.0, h, z0));
+    wall(Vec3::new(4.0, -0.2, z0 - 0.7), Vec3::new(x1, h, z0));
+    let hash = |k: u32, i: u32| {
+        let mut v = k.wrapping_mul(0x8da6_b343) ^ i.wrapping_mul(0xd816_3841) ^ 0x3c1;
+        v = (v ^ (v >> 13)).wrapping_mul(0x85eb_ca6b);
+        ((v ^ (v >> 16)) & 0xffff) as f32 / 65536.0
+    };
+    let pine = kit::prop(scene, "pine");
+    for k in 0..900u32 {
+        let (x, z) = (-170.0 + 340.0 * hash(k, 1), 60.0 - 230.0 * hash(k, 2));
+        // In stands, clear of the walled plot and the lane to its gate.
+        let stand = (x * 0.045).sin() + (z * 0.06 + 1.3).cos();
+        if stand < 0.3 || (x.abs() < 44.0 && z > -136.0) {
+            continue;
+        }
+        pine.place(
+            scene,
+            Vec3::new(x, -0.2, z),
+            6.3 * hash(k, 3),
+            10.0 + 9.0 * hash(k, 4),
+        );
+    }
+    kit::prop(scene, "watchtower").place(scene, Vec3::new(-54.0, -0.3, -70.0), 0.6, 17.0);
+}
+
+/// The fair afternoon's physical sky over the scene's sun as it stands,
+/// its light the colour Earth's air gives it at `hours`, the clouds where
+/// their shadows leave the orchard in the sun.
+fn sky(scene: &mut RenderScene, hours: f32) {
+    og_tests::terrain_scenes::fair_sky(scene, hours);
+    scene.frame.tick = 0;
 }
 
 /// The forest's trees: 11 across (5 m apart), 12 deep (10 m apart from
@@ -130,19 +219,16 @@ pub fn forest_scene() -> Result<RenderScene, String> {
 pub fn occlusion_scene(meshlets: bool) -> Result<RenderScene, String> {
     let (mut scene, parts) = base()?;
     plant_forest(&mut scene, &parts);
-    let wall = scene.add_standard_material(StandardMaterial {
-        color: Vec3::new(0.55, 0.5, 0.45),
-        roughness: 0.9,
-        ..Default::default()
-    });
-    // 20 m wide and 8 m high, 4 m ahead, its right edge a little right of
-    // the line of sight.
-    let cube = scene.add_mesh(shapes::cuboid(Vec3::new(20.0, 8.0, 0.4)));
-    scene.add_instance(
-        cube,
-        wall,
-        Mat4::from_translation(Vec3::new(-8.6, 4.0, -4.0)),
-    );
+    // A ruined curtain wall of stone, 20 m wide and 8 m high, 4 m ahead,
+    // its right edge a little right of the line of sight.
+    let stone = og_tests::kit::surface_tinted(&mut scene, "cobbles", [1.0, 0.93, 0.8]);
+    let wall = scene.add_mesh(og_tests::kit::block(
+        Vec3::new(-18.6, 0.0, -4.2),
+        Vec3::new(1.4, 8.0, -3.8),
+        6.0,
+    ));
+    scene.add_instance(wall, stone, Mat4::IDENTITY);
+    farmland(&mut scene);
     scene.objects.meshlets = meshlets;
     Ok(scene)
 }
@@ -164,10 +250,13 @@ pub fn near_scene(meshlets: bool) -> Result<RenderScene, String> {
 /// `meshlets`.
 pub fn shadow_scene(meshlets: bool) -> Result<RenderScene, String> {
     let (mut scene, parts) = base()?;
-    let sun = Vec3::new(-0.8, 0.35, 0.3);
-    scene.lighting.light.direction_to_light = sun;
-    scene.lighting.environment.sky.sun_direction = sun;
-    scene.lighting.environment.intensity = 0.3;
+    // Evening: the sun low in the west, its long shadows over the grass.
+    scene.lighting.light.direction_to_light = Vec3::new(-0.8, 0.35, 0.3);
+    sky(&mut scene, 7.6);
+    farmland(&mut scene);
+    // The low sun's light is weaker: open the exposure as a game's
+    // adaptation would.
+    scene.frame.camera.exposure = Exposure::linear(1.4);
     for (k, x) in [-8.0f32, -4.0, 0.0, 4.0, 8.0].into_iter().enumerate() {
         let at = Mat4::from_rotation_translation(
             Quat::from_rotation_y(0.9 * k as f32),
@@ -245,8 +334,9 @@ pub fn views_scene(meshlets: bool, bias: f32) -> Result<RenderScene, String> {
 pub fn far_scene(visibility_buffer: bool) -> Result<RenderScene, String> {
     let (mut scene, parts) = base()?;
     plant_forest(&mut scene, &parts);
+    farmland(&mut scene);
     scene.frame.camera.position = Vec3::new(0.0, 40.0, 54.0);
-    scene.frame.camera.target = Vec3::new(0.0, 0.0, -50.0);
+    scene.frame.camera.target = Vec3::new(0.0, 12.0, -50.0);
     scene.objects.visibility_buffer = visibility_buffer;
     Ok(scene)
 }
@@ -332,8 +422,11 @@ pub fn sway_far_scene(vbuffer: bool) -> Result<RenderScene, String> {
         .map(|i| (i.mesh, i.material, Mat4::IDENTITY))
         .collect();
     give_foliage(&mut scene, &parts);
+    // The trees sway; the land and the hills stand.
     for i in &mut scene.objects.instances {
-        i.sway = 1.0;
+        if parts.iter().any(|p| p.0 == i.mesh) {
+            i.sway = 1.0;
+        }
     }
     windy(&mut scene);
     Ok(scene)
