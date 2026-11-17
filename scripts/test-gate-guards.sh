@@ -220,10 +220,19 @@ mkdir -p "$t/repo/scripts" "$t/repo/.agents" "$t/bin"
 cp "$root/scripts/gpu-milestone.sh" "$t/repo/scripts/"
 printf 'export VK_ICD_FILENAMES=/dev/null CHROME=/bin/true\n' > "$t/repo/scripts/gpu-env.sh"
 : > "$t/repo/.agents/environment"
-printf 'og_gpu_acquire_all() { :; }\nog_lock_release() { :; }\n' > "$t/repo/scripts/lock.sh"
+printf 'og_gpu_acquire() { :; }\nog_gpu_acquire_all() { :; }\nog_lock_release() { :; }\n' > "$t/repo/scripts/lock.sh"
 printf '#!/bin/sh\nexit 0\n' > "$t/repo/scripts/clean-targets.sh"
 mkdir -p "$t/repo/packages/engine/scripts"
-printf '#!/bin/sh\nexit 1\n' > "$t/repo/packages/engine/scripts/build.sh"
+printf '/target/\n/packages/engine/native/\n' > "$t/repo/.gitignore"
+cat > "$t/repo/packages/engine/scripts/build.sh" <<'EOF'
+#!/bin/sh
+cd "$(dirname "$0")/../../.." || exit 1
+[ "${MILESTONE_NATIVE_FAIL:-0}" = 0 ] || exit 97
+[ "$OG_RELEASE" = 1 ] && [ "${OG_GATE:-0}" != 1 ] || exit 98
+cargo build || exit 1
+mkdir -p packages/engine/native
+touch packages/engine/native/addon-ready
+EOF
 cat > "$t/repo/scripts/check.sh" <<'EOF'
 #!/usr/bin/env bash
 set -eu
@@ -260,16 +269,33 @@ for arg in "$@"; do
 done
 exec "$MILESTONE_REAL_GIT" "$@"
 EOF
-printf '#!/bin/sh\nexit 1\n' > "$t/bin/cargo"
+cat > "$t/bin/cargo" <<'EOF'
+#!/bin/sh
+[ "$1" = build ] || exit 1
+mkdir -p target/release
+cat > target/release/og <<'OG'
+#!/bin/sh
+[ -f packages/engine/native/addon-ready ] || exit 97
+echo screen >> "$MILESTONE_FIXTURE/screens"
+OG
+chmod +x target/release/og
+EOF
 printf '#!/bin/sh\nexit 0\n' > "$t/bin/sleep"
 chmod +x "$t/bin/"*
 for run in new existing; do
-  rm -f "$t/hook-ran"
+  rm -f "$t/hook-ran" "$t/screens"
   PATH="$t/bin:$PATH" bash "$t/repo/scripts/gpu-milestone.sh" > "$t/run.log" 2>&1 ||
     { cat "$t/run.log"; echo "FAIL milestone with $run worktrees"; exit 1; }
   [ -f "$t/hook-ran" ] || { echo 'FAIL milestone disabled nested gate hooks'; exit 1; }
+  [ -f "$t/screens" ] && [ "$(wc -l < "$t/screens")" -eq 4 ] ||
+    { echo 'FAIL milestone screens did not build their native addon first'; exit 1; }
 done
 echo 'ok   milestone suppresses checkout hooks only; nested gate hooks run'
+rm -f "$t/screens" "$t/l4-gate/packages/engine/native/addon-ready"
+PATH="$t/bin:$PATH" MILESTONE_NATIVE_FAIL=1 bash "$t/repo/scripts/gpu-milestone.sh" > "$t/run.log" 2>&1 ||
+  { cat "$t/run.log"; echo 'FAIL milestone with failed native build'; exit 1; }
+[ ! -f "$t/screens" ] || { echo 'FAIL milestone ran screens after native build failed'; exit 1; }
+echo 'ok   milestone builds native before screens and skips them on build failure'
 
 [ "$failures" -eq 0 ] || { echo "$failures case(s) failed"; exit 1; }
 echo "every case failed as it should"

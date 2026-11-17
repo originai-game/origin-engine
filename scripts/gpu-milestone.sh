@@ -58,7 +58,8 @@ record 'full gate' "$logs/full.log" env OG_WASM_VARIANTS=all scripts/check.sh fu
 printf 'reference mismatches: %s\n' "$(grep -c 'REFERENCE MISMATCH' "$logs/full.log" || true)" >> "$summary"
 
 # 2. Four-style screens on the same pinned head.
-if record 'release og' "$logs/og-build.log" cargo build -q --release -p og-cli --bin og; then
+# The session controller loads the package's native addon as well as og.
+if record 'screen native build' "$logs/screen-native-build.log" env OG_RELEASE=1 OG_GATE=0 sh packages/engine/scripts/build.sh --native; then
   og_gpu_acquire 'milestone screens'
   for style in default fantasy scifi cartoon; do
     record "screens $style" "$logs/screens-$style.log" target/release/og ui review screens --style "$style" --locales game --out "$art/screens4/$style" || true
