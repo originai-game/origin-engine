@@ -1,5 +1,6 @@
 <meta name="component" content="styleSheet">
 <meta name="strings" content="./sheet.en.ogt">
+<meta name="parts" content="Sheet.card Sheet.frame Sheet.cell">
 <meta name="prop:page" content="string" data-doc="The page shown: controls (buttons and toggles in every state), fields (tabs, text, select, stepper and range in every state), surfaces (type, frames and slots) or overlays (dialog, disclosures, meters and badges).">
 <meta name="fixture:default" content='{"page":"controls"}'>
 <meta name="fixture:fields" content='{"page":"fields"}'>
@@ -33,10 +34,10 @@
           <button id="DialogConfirm" variant="primary">{t("sheet.confirm")}</button>
         </div>
       </dialog>
-      <div id="Accordion" class="accordion">
+      <panel id="Accordion" class="accordion">
         <details id="Closed"><summary>{t("sheet.details.closed")}</summary><p>{t("sheet.details.body")}</p></details>
         <details id="Opened" open><summary>{t("sheet.details.open")}</summary><p class="muted">{t("sheet.details.body")}</p></details>
-      </div>
+      </panel>
     </section>
     <section id="Feedback" class="group" aria-label={t("sheet.group.feedback")}>
       <h2 class="caption">{t("sheet.group.feedback")}</h2>
@@ -74,15 +75,15 @@
       <h2 class="caption">{t("sheet.group.frames")}</h2>
       <div id="FrameRow" class="wrap">
         <panel id="PanelFrame" class="frame"><p class="title">{t("sheet.frame.panel")}</p><p class="muted">{t("sheet.frame.note")}</p></panel>
-        <div id="CardFrame" class="frame card"><p class="title">{t("sheet.frame.card")}</p><p class="muted">{t("sheet.frame.note")}</p></div>
-        <div id="TooltipFrame" class="frame tip" role="tooltip"><p class="title">{t("sheet.frame.tooltip")}</p><p class="muted">{t("sheet.frame.tip")}</p></div>
-        <div id="HudFrame" class="frame hud"><og-icon icon="heart"></og-icon><span class="numeric">{t("sheet.hud")}</span></div>
+        <div id="CardFrame" part="Sheet.card" class="frame"><p class="title">{t("sheet.frame.card")}</p><p class="muted">{t("sheet.frame.note")}</p></div>
+        <div id="TooltipFrame" part="Sheet.frame" class="frame" role="tooltip"><p class="title">{t("sheet.frame.tooltip")}</p><p class="muted">{t("sheet.frame.tip")}</p></div>
+        <div id="HudFrame" part="Sheet.frame" class="frame hud"><og-icon icon="heart"></og-icon><span class="numeric">{t("sheet.hud")}</span></div>
       </div>
       <div id="Slots" class="wrap" role="list" aria-label={t("sheet.slots")}>
-        <div id="SlotEmpty" class="slot" role="listitem" aria-label={t("sheet.slot.empty")}></div>
-        <div id="SlotItem" class="slot" data-rarity="epic" role="listitem" aria-label={t("sheet.slot.item")}><og-icon icon="sword"></og-icon></div>
-        <div id="SlotStack" class="slot" role="listitem" aria-label={t("sheet.slot.stack")}><og-icon icon="potion"></og-icon><badge class="count" tone="neutral">12</badge></div>
-        <div id="SlotLocked" class="slot locked" role="listitem" aria-label={t("sheet.slot.locked")}><og-icon icon="lock"></og-icon></div>
+        <div id="SlotEmpty" part="Sheet.cell" class="slot" data-empty="true" role="listitem" aria-label={t("sheet.slot.empty")}></div>
+        <div id="SlotItem" part="Sheet.cell" class="slot" data-rarity="epic" role="listitem" aria-label={t("sheet.slot.item")}><og-icon icon="sword"></og-icon></div>
+        <div id="SlotStack" part="Sheet.cell" class="slot" role="listitem" aria-label={t("sheet.slot.stack")}><og-icon icon="potion"></og-icon><badge class="count" tone="neutral">12</badge></div>
+        <div id="SlotLocked" part="Sheet.cell" class="slot" data-locked="true" aria-disabled="true" role="listitem" aria-label={t("sheet.slot.locked")}><og-icon icon="lock"></og-icon></div>
       </div>
     </section>
     </div>
@@ -253,14 +254,15 @@
 </div>
 
 <style>
-:root { --surface-saturation: 120%; }
-@media (prefers-color-scheme: light) { :root { --surface-saturation: 200%; } }
 #Page { width: stretch; height: stretch; background: var(--backdrop); }
 #StyleSheet, #FieldSheet, #SurfaceSheet, #OverlaySheet { width: stretch; height: stretch; padding: var(--space-xl); }
 /* Headings in the pack's display face (the generic family picks the role). */
 #Display, #Heading { font-family: fantasy; }
 .label, .state { font: var(--text-caption); color: var(--ink-muted); margin: 0; }
-.na { width: var(--space-lg); height: var(--stroke-regular); background: var(--line); }
+/* A state the control does not have: its caption fades and a dash sits
+   where the control's middle would be. */
+.na { width: var(--space-lg); height: var(--stroke-regular); background: var(--ink-faint); margin-block: calc((var(--control-md) - var(--stroke-regular)) / 2); }
+.absent .state { color: var(--ink-faint); }
 /* A row per control, a captioned box per state: seven abreast on a desktop,
    two on a phone, so every state's caption and control keep their width at
    150 % text and no word breaks. */
@@ -291,14 +293,13 @@
 .wrap { display: flex; flex-wrap: wrap; gap: var(--space-md); align-items: center; }
 .keys { display: flex; gap: var(--space-sm); align-items: center; }
 .frame { width: 12rem; padding: var(--space-md); gap: var(--space-xs); }
-.card { border-radius: var(--radius-card); outline: 1px solid var(--line); outline-offset: -1px; background: var(--panel-raised); }
-.tip { border-radius: var(--radius-panel); backdrop-filter: blur(32px) saturate(var(--surface-saturation)); -og-material: glass thick float;  }
-.hud { border-radius: var(--radius-button); backdrop-filter: blur(22px) saturate(var(--surface-saturation)); -og-material: glass regular float;  display: flex; gap: var(--space-sm); align-items: center; width: auto; }
+/* The frames and slots are the style's roles (card, frame, plate, cell):
+   the sheet only sizes them. */
+.hud { display: flex; flex-direction: row; gap: var(--space-sm); align-items: center; width: auto; }
 .title { margin: 0; }
-.slot { border: 1px solid var(--line); border-radius: var(--radius-control); width: var(--size-xl); height: var(--size-xl); background: var(--well); align-items: center; justify-content: center; }
-.locked { opacity: 0.5; }
+.slot { position: relative; display: grid; place-items: center; width: var(--size-xl); height: var(--size-xl); }
 .count { position: absolute; right: var(--space-xxs); bottom: var(--space-xxs); }
-.accordion { width: stretch; padding: var(--space-sm); gap: var(--space-xs);  border-radius: var(--radius-panel); backdrop-filter: blur(32px) saturate(var(--surface-saturation)); -og-material: glass thick lift; }
+.accordion { width: stretch; padding: var(--space-sm); gap: var(--space-xs); }
 .actions { display: flex; gap: var(--space-sm); justify-content: end; }
 meter, progress { width: stretch; }
 .meters { display: grid; grid-template-columns: auto 1fr; gap: var(--space-sm) var(--space-md); align-items: center; width: stretch; }
