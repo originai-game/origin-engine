@@ -334,12 +334,16 @@ const ROLE_RULES: &str = r#"  /* Roles: frame, plate, band, title, row, cell, ca
   :where([part$=".fill"][data-tone=danger]) { --fill-color: var(--tone-danger); }
   :where([part$=".fill"][data-tone=warn]) { --fill-color: var(--tone-warn); }
   :where([part$=".fill"][data-tone=info]) { --fill-color: var(--tone-info); }
-  /* A dot in a tone fills with it. */
+  /* A dot in a tone fills with it (after the tone rules, so its ink is
+     its fill's contrast, below, not the tone). */
   :where([part$=".dot"][data-tone=success]) { --dot-fill: var(--tone-success); }
   :where([part$=".dot"][data-tone=danger]) { --dot-fill: var(--tone-danger); }
   :where([part$=".dot"][data-tone=warn]) { --dot-fill: var(--tone-warn); }
   :where([part$=".dot"][data-tone=info]) { --dot-fill: var(--tone-info); }
   :where([part$=".dot"][data-tone=primary]) { --dot-fill: var(--primary); }
+  /* What a toned dot holds (a check, a cross, a number) reads on its
+     fill, as a ribbon's words do. */
+  :where([part$=".dot"][data-tone]) { color: contrast-color(var(--dot-fill)); }
   /* Text over the scene: its halo, and a ground of its own where a pack
      gives one. */
   :where([part$=".tag"]) { text-shadow: var(--tag-halo); background: var(--tag-fill); padding: var(--tag-pad); border-radius: var(--tag-radius); }

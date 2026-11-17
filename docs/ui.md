@@ -1643,7 +1643,7 @@ it shows (`RacingLapHud.readout`, `RacingStandings.place`,
 | `card` | `--card-fill/rim/rim-width/selected-rim/radius/shadow/pad` | selected or current (a step) |
 | `badge`, `well`, `figure` | `--badge-fill/ink/radius/shadow/pad/text`, `--well-fill/radius/shadow`, `--figure-ink/font/shadow` | |
 | `headline`, `caption` | `--headline-text/weight/ink`, `--headline-card-text` (a headline in a card, its title), `--caption-text/ink` | |
-| `dot` | `--dot-fill/ink/rim/rim-width/radius` | `data-tone` fills it |
+| `dot` | `--dot-fill/ink/rim/rim-width/radius` | `data-tone` fills it, and what it holds takes the fill's contrast |
 | `track`, `fill` | `--track-fill/radius/shadow`, `--fill-color/gloss`; a meter sets `--fill-color` for what it measures | `data-tone` on a fill |
 | text over the scene (StatusGrid's time left, Nameplate's name and subtitle, Waypoint's label and distance) | `--tag-halo` its outline, `--tag-fill/pad/radius` a ground of its own (none in the default style) | |
 | text over a warn fill (Nameplate's spell) | `--ink-on-warn` | |

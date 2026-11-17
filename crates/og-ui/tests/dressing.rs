@@ -3145,16 +3145,19 @@ fn a_from_only_scale_ends_at_no_scaling() {
 /// An SVG shape's `currentColor` is its CSS `color`, inherited as SVG's
 /// presentation properties are, so a tone on an ancestor reaches a star or
 /// a check; and an anchored label (not a box) sits centred over its
-/// overlay. Wrong: currentColor read as the style's ink whatever the
+/// overlay, and a toned dot's check reads on its fill. Wrong: currentColor
+/// read as the style's ink whatever the
 /// colour, or a centring anchor that gives a label a box's display.
 #[test]
 fn svg_current_color_and_anchored_labels() {
     let d = mounted(
         ui_with_font(test_font()),
-        r#"<div id="Root" data-layout="stack">
+        r#"<meta name="parts" content="t.dot">
+<div id="Root" data-layout="stack">
   <div data-tone="warn"><svg viewBox="0 0 10 10" style="width: 20px; height: 20px"><path fill="currentColor" d="M0 0 L10 0 L10 10 Z"></path></svg></div>
   <svg viewBox="0 0 10 10" style="width: 20px; height: 20px; color: #ff0000"><path fill="currentColor" d="M0 0 L10 0 L10 10 Z"></path></svg>
   <div id="O" data-layout="overlay" style="width: 100px; height: 60px"><span id="N" data-anchor="center">3</span></div>
+  <div part="t.dot" data-tone="success" style="width: 20px; height: 20px"><svg viewBox="0 0 10 10" style="width: 20px; height: 20px"><path fill="currentColor" d="M0 0 L10 0 L10 10 Z"></path></svg></div>
 </div>"#,
         &[],
         Viewport::new(400.0, 300.0),
@@ -3177,6 +3180,12 @@ fn svg_current_color_and_anchored_labels() {
         "the ancestor's tone: {fills:?}"
     );
     assert_eq!(fills[1], [1.0, 0.0, 0.0, 1.0], "the svg's own colour");
+    // A toned dot's fill, then its check: the check reads on the fill.
+    let (dot, check) = (fills[fills.len() - 2], fills[fills.len() - 1]);
+    assert!(
+        (dot[0] - check[0]).abs() + (dot[1] - check[1]).abs() + (dot[2] - check[2]).abs() > 0.5,
+        "a toned dot's content in its fill's contrast: {fills:?}"
+    );
     let (o, n) = (at(&d.ui, "O"), at(&d.ui, "N"));
     let mid = |x: f32, w: f32| x + w / 2.0;
     assert!(
