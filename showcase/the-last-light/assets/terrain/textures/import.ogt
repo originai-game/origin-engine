@@ -1,0 +1,8 @@
+type import
+version 1
+---
+match "*_nor_gl_*.jpg" {
+  texture {
+    kind normal
+  }
+}

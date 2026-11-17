@@ -1,0 +1,52 @@
+type terrain
+version 1
+---
+# The coast: the cliff path's shelf, the saddle, the headland and the
+# seabed off them, made by tools/terrain.ts (src/layout.ts holds the
+# numbers both share). The sea is y 0.
+heightmap "coast-height.png"
+height -80 80
+size 480 480
+control "coast-control.png"
+heightBlend 0.5
+# Turf: the control map's red.
+layer {
+  albedo "terrain/textures/aerial_grass_rock_diff_1k.jpg"
+  normal "terrain/textures/aerial_grass_rock_nor_gl_1k.jpg"
+  color 0.62 0.74 0.5
+  roughness 0.95
+  tile 7
+  antiTiling 0.7
+  macroVariation 0.6
+}
+# Cliff rock: green; drawn by the faces' own projections where it is steep.
+layer {
+  albedo "terrain/textures/rock_face_03_grey_1k.jpg"
+  normal "terrain/textures/rock_face_03_nor_gl_1k.jpg"
+  color 0.78 0.78 0.8
+  roughness 0.9
+  tile 14
+  antiTiling 0.5
+  normalStrength 1.6
+  triplanar true
+  macroVariation 0.5
+}
+# The trodden path: blue.
+layer {
+  albedo "terrain/textures/forest_ground_04_diff_1k.jpg"
+  normal "terrain/textures/forest_ground_04_nor_gl_1k.jpg"
+  color 0.95 0.8 0.66
+  roughness 1
+  tile 2.5
+  antiTiling 0.6
+  macroVariation 0.3
+}
+# Wave-washed rock at the waterline and the seabed: alpha.
+layer {
+  albedo "terrain/textures/rock_face_03_grey_1k.jpg"
+  normal "terrain/textures/rock_face_03_nor_gl_1k.jpg"
+  color 0.3 0.31 0.33
+  roughness 0.45
+  tile 14
+  triplanar true
+}

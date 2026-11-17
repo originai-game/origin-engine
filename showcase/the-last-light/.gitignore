@@ -1,0 +1,15 @@
+cooked/
+dist/
+og-out/
+.og/
+node_modules/
+# Binary assets: pinned in assets.json and installed by
+# `bun scripts/showcase-assets.ts ensure showcase/the-last-light`
+# (docs/ci.md §The model bucket).
+assets/models/*.glb
+assets/terrain/textures/*.jpg
+assets/terrain/coast-height.png
+assets/terrain/coast-control.png
+# The generated models' reference images: archived with their sources
+# (README.md); their prompts stay beside them.
+tools/refs/*.png

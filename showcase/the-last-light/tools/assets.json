@@ -1,0 +1,102 @@
+{
+  "note": "The ledger of gateway work for this project: each generated source with the call that made it. tools/fetch.ts downloads the finished ones, tools/pack.ts packs them for the game and tools/archive.ts keeps the sources; README.md's asset table is written from it.",
+  "tasks": {
+    "lighthouse": {
+      "operation": "image",
+      "operation_id": "hero-a-lighthouse-v1",
+      "task_id": "01a1e8a3-e502-7361-8f58-8d69585bbb16",
+      "reference": "tools/refs/lighthouse.png",
+      "out": "../.work/the-last-light/lighthouse.glb",
+      "reference_media": [
+        "9d83c712a19dea32a5a853ca06f0c1e6"
+      ],
+      "image_model": "gpt-image-2.6-sunburst"
+    },
+    "cottage": {
+      "operation": "image",
+      "operation_id": "hero-a-cottage-v1",
+      "task_id": "01a1e8a3-eb83-77bf-a193-76265cd910fb",
+      "reference": "tools/refs/cottage.png",
+      "out": "../.work/the-last-light/cottage.glb",
+      "reference_media": [
+        "6d06814f3166c88bf63b27aadf84f8b9"
+      ],
+      "image_model": "gpt-image-2.6-sunburst"
+    },
+    "rock-cliff": {
+      "operation": "image",
+      "operation_id": "hero-a-rock-cliff-v1",
+      "task_id": "01a1e8a7-94d6-7313-8352-60b5a7fd7233",
+      "reference": "tools/refs/rock-cliff.png",
+      "out": "../.work/the-last-light/rock-cliff.glb",
+      "reference_media": [
+        "be7319b7dc9bc829a0e94677488bdde8"
+      ],
+      "image_model": "gpt-image-2.6-sunburst"
+    },
+    "sea-stack": {
+      "operation": "image",
+      "operation_id": "hero-a-sea-stack-v1",
+      "task_id": "01a1e8a7-9f75-743e-ad81-2390114c23b3",
+      "reference": "tools/refs/sea-stack.png",
+      "out": "../.work/the-last-light/sea-stack.glb",
+      "reference_media": [
+        "8f591a238b3a105a1944c8b309448388"
+      ],
+      "image_model": "gpt-image-2.6-sunburst"
+    },
+    "ruin": {
+      "operation": "image",
+      "operation_id": "hero-a-ruin-v1",
+      "task_id": "01a1e8a7-aa13-71c5-8526-eb087d8abdf4",
+      "reference": "tools/refs/ruin.png",
+      "out": "../.work/the-last-light/ruin.glb",
+      "reference_media": [
+        "4f4384cf3811108b5e1721af06b14f6d"
+      ],
+      "image_model": "gpt-image-2.6-sunburst"
+    },
+    "boulder": {
+      "operation": "image",
+      "operation_id": "hero-a-boulder-v1",
+      "task_id": "01a1e8a7-b1ee-7746-a887-e75ebe577f71",
+      "reference": "tools/refs/boulder.png",
+      "out": "../.work/the-last-light/boulder.glb",
+      "reference_media": [
+        "6743e88e526e2b47021b396822fadf0c"
+      ],
+      "image_model": "gpt-image-2.6-sunburst"
+    },
+    "wanderer-mesh": {
+      "operation": "multiview",
+      "operation_id": "hero-a-wanderer-v1b",
+      "task_id": "01a1e8a7-dfd2-70e3-a729-8746dfdbc122",
+      "reference": "tools/refs/wanderer-front.png tools/refs/wanderer-back.png",
+      "out": "../.work/the-last-light/wanderer-mesh.glb",
+      "reference_media": [
+        "87816eadef36874dcee3324c44883bef",
+        "928b553c2339704026d35e0fb567dfdf"
+      ],
+      "image_model": "gpt-image-2.6-sunburst"
+    },
+    "wanderer-rig": {
+      "operation": "rig",
+      "operation_id": "hero-a-wanderer-rig-v1",
+      "task_id": "01a1e8c5-0bc3-7783-af0f-90b87fb60f01",
+      "input": "wanderer-mesh",
+      "out": "../.work/the-last-light/wanderer-rig.glb"
+    },
+    "wanderer-idles": {
+      "operation": "animate",
+      "operation_id": "hero-a-wanderer-idles-v1",
+      "task_id": "01a1e8c7-7cf4-769d-948e-ebca895e9744",
+      "input": "wanderer-rig",
+      "action_ids": [
+        0,
+        11,
+        336
+      ],
+      "out": "../.work/the-last-light/wanderer-idles.glb"
+    }
+  }
+}
