@@ -137,3 +137,6 @@ target/look-previews/raw/ on the machine that made them, not in git.
 | 2026-11-17 17:02 | generate_image | pixel:luminous hero | generation ddee7a51-5d98-44a9-b591-e2ae41fecf0e | 1024 x 1536, sha256 e3117ac97abb25fb78b9adad3da2dc6c5d0137168e46c0647da9060bfeffd8a7 |
 | 2026-11-17 17:02 | generate_image | pixel:monochrome backdrop | generation 6862cc0f-c88b-4c86-a7ac-3d36f88c0470 | 1536 x 1024, sha256 e114e8b7f6fd19f1336558295ecccc00b8e581313cc63ea86544d2497bcdef90 |
 | 2026-11-17 17:06 | note | pixel:monochrome backdrop | generations b7568ccb and 6862cc0f | neither answer is used: the look keeps its earlier backdrop with the sun moved by hand (templates/looks/AUTHORED.md) |
+| 2026-11-17 17:15 | generate_image | pixel:luminous backdrop | generation fca5071e-5f27-40c1-8290-cc82d5c93985 | 1536 x 1024, sha256 21bbafb264576c02124da03c946b6ae4fc446c31b8d56d52486c1710eead8a12 |
+| 2026-11-17 17:15 | generate_image | pixel:luminous gem | generation cf496576-63c1-45f1-94d3-d76b4cfc4812 | 1024 x 1024, sha256 eb84a20f5acb27e0edac7f0ceae0d1055fd9278be5adfcce3468afcbf37d346a |
+| 2026-11-17 17:18 | generate_image | pixel:luminous backdrop | generation d41a1cb3-1553-4822-9454-95938d6adeb4 | 1536 x 1024, sha256 010812a9460b05cb47949bf07cd49de579ac5dcfb4d943bd9e824f611ff14378 |

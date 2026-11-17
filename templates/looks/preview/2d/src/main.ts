@@ -127,7 +127,7 @@ function side(world: World) {
   // At night the slime glows, as the gems do.
   sprite(world, "slime", 6.25, 2, { layer: 2, glow: DARK ? 0.4 : 0 });
   const over = 3 + (ART.platform?.height ?? 1) + 0.5;
-  for (const [x, y] of [[-4, over], [-3, over], [-2, over], [3.25, 2.25], [8, 3.25]] as const) sprite(world, "gem", x, y, { layer: 3, glow: DARK ? 0.6 : 0 });
+  for (const [x, y] of [[-4, over], [-3, over], [-2, over], [3.25, 2.25], [8, 3.25]] as const) sprite(world, "gem", x, y, { layer: 3, glow: DARK ? 1.6 : 0 });
   sprite(world, "hero", -2.25, 0, { layer: 5 });
   for (const [x, y, flip] of [[-5.25, 0, false], [1.9, 0, true], [4.9, 2, false], [-10, 0, true]] as const) sprite(world, "bush", x, y, { layer: 8, flipX: flip });
 
