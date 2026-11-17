@@ -1,0 +1,8 @@
+{
+  "fixed": [
+    {
+      "member": "Default UI icons",
+      "summary": "Moves frames: adds pinned Lucide fallback vectors for apple, bomb, crown, drop, fire, gear, gem, heart, home, key, leaf, pause, potion, shield and sword, so built-in documents and their sample data draw these icons without a game atlas. Game-supplied icons still win."
+    }
+  ]
+}
