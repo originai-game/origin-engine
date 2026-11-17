@@ -1,7 +1,7 @@
-// The shooter components' review sheet (docs/ui.md §6.2): the normal page (combat
-// HUD over a bright sky and a dark ground) and the stress page (a loadout
-// with long names, locked and equipped slots, and a dense killfeed),
-// dressed by a style pack or the default style. The pages use the built-in
+// The shooter components' review sheet (docs/ui.md §6.2): the normal page (the
+// combat HUD over sample stage art, as the approved mockup lays it out) and
+// the stress page (a loadout with long names, locked and equipped slots, and
+// a dense killfeed), dressed by a style pack or the default style. The pages use the built-in
 // components by name, as a game does, with fixture stores; loading a page
 // loads them.
 //
@@ -11,12 +11,25 @@
 // reduced:<on|off> sets reduced motion.
 
 import { og, type World } from "@origingame/engine";
-import { COMBAT, FEED, LOADOUT } from "./fixtures.ts";
+import { ART, COMBAT, FEED, LOADOUT } from "./fixtures.ts";
 
 const PAGES = ["combat", "loadout"] as const;
 const HITS = ["none", "hit", "headshot", "kill", "shieldBreak"] as const;
 const KINDS = ["normal", "shield", "critical"] as const;
 const STYLES = ["fantasy", "scifi", "cartoon", "default"] as const;
+
+/** The sample art's textures by name (sheet only, never installed). */
+const art: Record<string, number> = {};
+
+/** A fixture with each field that names sample art (portrait, icon, map) given its texture. */
+function withArt<T>(value: T): T {
+  if (Array.isArray(value)) return value.map(withArt) as T;
+  if (value && typeof value === "object") {
+    return Object.fromEntries(Object.entries(value).map(([k, v]) =>
+      [k, ["portrait", "icon", "map"].includes(k) && typeof v === "string" ? (art[v] ?? 0) : withArt(v)])) as T;
+  }
+  return value;
+}
 
 const DOCUMENTS = [
   "ui/combat.svelte",
@@ -53,7 +66,7 @@ function setStyle(world: World, name: string): void {
 /** Mounts the sheet, its stores the fixtures and the page shown. */
 function show(world: World): void {
   const scope = og.ui.scope(world, "sheet");
-  const stores = Object.fromEntries(Object.entries({ ...COMBAT, feed: FEED, ...LOADOUT, page: "combat" }).map(([k, v]) =>
+  const stores = Object.fromEntries(Object.entries({ ...withArt(COMBAT), stage: art.stage ?? 0, feed: FEED, ...LOADOUT, page: "combat" }).map(([k, v]) =>
     [k, Array.isArray(v) ? scope.collection(k, v as { id: string }[], { key: "id" }) : scope.writable(k, v)]));
   must(scope.mount("sheet", "ShooterSheet", stores), "mount");
   const errors = scope.takeErrors();
@@ -66,6 +79,7 @@ export default og.game({
   start(world) {
     const camera = world.resource(og.Camera);
     if (camera.ok) camera.value.background = { r: 0.05, g: 0.06, b: 0.08 };
+    for (const name of ART) art[name] = must(og.load.texture(world, `art/${name}.jpg`), name) as number;
     setStyle(world, "fantasy");
     // The kit's strings in the review's CJK and right-to-left locales, as a
     // game ships them (English comes with the kit).

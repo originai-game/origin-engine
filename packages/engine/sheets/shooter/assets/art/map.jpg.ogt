@@ -1,0 +1,7 @@
+type import
+version 1
+---
+# Sample map art for the radar for the review sheet only (generated for the HUD art
+# direction; never part of an install). Colour art: sRGB.
+texture {
+}
