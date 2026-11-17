@@ -1,0 +1,8 @@
+{
+  "fixed": [
+    {
+      "member": "og cook",
+      "summary": "BasisU uses non-contracting floating-point arithmetic so macOS ARM64 UASTC texture mips match the existing Linux x86-64 bytes. Quality and encoder search settings are unchanged. The encoder identity invalidates stale project and shared-cache texture entries; Linux encoded texture payloads stay unchanged."
+    }
+  ]
+}

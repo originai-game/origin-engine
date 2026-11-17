@@ -127,6 +127,8 @@ fn uastc_candidate_pruning_preserves_encoded_mips() {
     // A non-square gradient with alternating alpha exercises RGB/RGBA,
     // perceptual/linear candidates and the RDO selector history. These
     // hashes were recorded with the unmodified encoder, not the pruning.
+    // Non-contracting native arithmetic keeps the same golden on ARM64
+    // and x86-64; do not replace it with a host-specific expectation.
     let rgba = card(128, 64, 3);
     for (kind, _) in cases {
         png(&root.join(format!("assets/tex/{kind}.png")), 128, 64, &rgba);

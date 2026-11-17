@@ -2,12 +2,22 @@
 fn build_with_common_settings() -> cc::Build {
     let mut build = cc::Build::new();
     build
+        .cpp(true)
         .flag_if_supported("-fvisibility=hidden")
         .flag_if_supported("-fno-strict-aliasing")
         // Vendored (a path dependency, whose warnings cargo prints on
         // every build): basisu's own warnings are upstream's to fix.
         .warnings(false)
         .cargo_warnings(false);
+
+    // A multiply and add must round separately on every host. ARM64's
+    // default contraction otherwise changes UASTC candidate/RDO choices
+    // relative to x86-64, despite identical source/settings/cache keys.
+    if build.get_compiler().is_like_msvc() {
+        build.flag("/fp:precise");
+    } else {
+        build.flag("-ffp-contract=off");
+    }
 
     build
 }
@@ -17,7 +27,6 @@ fn main() {
     // invalidate the archive as well as changes to this build script.
     println!("cargo:rerun-if-changed=vendor");
     build_with_common_settings()
-        .cpp(true)
         .define("BASISD_SUPPORT_KTX2_ZSTD", "0")
         //.define("BASISU_SUPPORT_SSE", "1") TODO: expose this in a futher release
         .flag_if_supported("--std=c++11")

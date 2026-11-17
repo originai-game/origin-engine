@@ -517,16 +517,22 @@ files its build compiles). `-ftrivial-auto-var-init=zero` is no
 substitute: gcc leaves the temporaries the map is called with
 uninitialised.
 
+BasisU uses non-contracting scalar arithmetic: `-ffp-contract=off` with
+GCC/Clang, `/fp:precise` without `/fp:contract` with MSVC. Otherwise an ARM64
+FMA rounds once where x86-64 rounds a multiply and add separately, changing
+the selected UASTC blocks. The unchanged UASTC mip goldens check the same
+bytes on Linux x86-64 and macOS ARM64. The encoder identity includes this
+policy, invalidating older texture results in both the project and shared
+cache. The native build still leaves BasisU's optional SSE path disabled.
+
 Limits:
 
-- The C++ encoders (basisu, meshoptimizer, fdsm) are compiled by `cc` with
-  the profile's optimisation level and clang's default `-ffp-contract=on`;
-  an `-O0` basisu writes different UASTC bytes, and an arm64 host (FMA) can
-  differ from x86-64. The workspace pins them at `opt-level = 3` in the dev
-  profile, so debug and release agree. Stamps stay correct (they describe
-  inputs), but "same bytes" holds per cooker build, not across hosts;
-  cross-host identity would need `-ffp-contract=off` for the C++ crates,
-  which is not set.
+- C++ encoders use the profile's optimisation level; an `-O0` basisu
+  writes different UASTC bytes. The workspace pins them at `opt-level = 3`
+  in the dev profile, so debug and release agree. Meshoptimizer and fdsm
+  retain their compiler's floating-point defaults: the BasisU contraction
+  policy does not establish cross-host byte identity for every cooked
+  format. The general guarantee remains per cooker build.
 - `toktx` output depends on its version (toktx 4 prints it on stderr),
   which is part of every texture stamp.
 
