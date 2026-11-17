@@ -1,0 +1,8 @@
+{
+  "added": [
+    {
+      "member": "star-rating",
+      "summary": "An earned star is drawn filled in the style's star gold under a lit edge, with a soft glow; an unearned star is a faint outline over a dim well. Each star keeps its star icon, as the well under the glyph. New parts star-rating.star and star-rating.glyph, and the --star-* role tokens, let a style pack recolour both. The landing animation is unchanged."
+    }
+  ]
+}

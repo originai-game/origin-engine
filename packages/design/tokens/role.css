@@ -305,6 +305,16 @@
   --role-hud-accent: rgb(56 232 255);
   --role-hud-gold: rgb(255 207 90);
 
+  /* A rating's stars: an earned star is a filled gold glyph with a lit
+     edge and a soft glow; an unearned one is a faint outline over a dim
+     well, so the count reads at a glance on any ground. */
+  --role-star-fill-solid: rgb(255 207 90);
+  --role-star-edge: rgb(255 248 214);
+  --role-star-glow: drop-shadow(0 0 calc(6 * var(--font-step-px)) rgb(255 196 70 / 0.65));
+  --role-star-empty-fill: rgb(255 255 255 / 0.08);
+  --role-star-empty-edge: rgb(255 255 255 / 0.42);
+  --role-star-edge-width: 1.5;
+
   /* Rhythm: the judgement words, each in a colour of its own and the best
      in a lit gold ramp; the life and fever gauges; the combo. */
   --role-judge-perfect-fill: linear-gradient(180deg, rgb(255 255 255) 30%, rgb(255 243 138) 55%, rgb(255 181 71));
