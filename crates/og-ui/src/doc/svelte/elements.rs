@@ -980,6 +980,7 @@ impl Parser {
                     *owner == tag && *attribute == model.unwrap_or(&a.name)
                 });
             let mut name = match (internal, model.unwrap_or(&a.name)) {
+                (_, name) if component => name.into(),
                 _ if let Some((_, _, property)) = mapped => (*property).into(),
                 (Some(Kind::Field), "maxlength") => "maxChars".into(),
                 (Some(Kind::Field), "minlength") => "minChars".into(),

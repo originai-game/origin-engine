@@ -1,0 +1,8 @@
+{
+  "fixed": [
+    {
+      "member": "UI component props",
+      "summary": "Component props retain their declared names, including step and src, instead of being renamed as native HTML attributes. Native element attribute mappings are unchanged."
+    }
+  ]
+}

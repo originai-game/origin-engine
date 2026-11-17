@@ -1027,7 +1027,8 @@ fn component_literals_use_the_declared_prop_not_a_native_attribute_type() {
         (
             "Words",
             r#"<meta name="prop:selected" content="string"><meta name="prop:count" content="string">
-<div><text>{selected}</text><text>{count}</text></div>"#,
+<meta name="prop:step" content="string"><meta name="prop:src" content="string">
+<div><text>{selected}</text><text>{count}</text><text>{step}</text><text>{src}</text></div>"#,
         ),
         (
             "flag",
@@ -1040,9 +1041,10 @@ fn component_literals_use_the_declared_prop_not_a_native_attribute_type() {
         ),
         (
             "page",
-            r#"<div><Words selected="welcome" count="007"/><ui:Words selected={$word} count="008"/>
+            r#"<div><Words selected="welcome" count="007" step="controller" src="component-source"/><ui:Words selected={$word} count="008" bind:step={$stage}/>
 <ui:flag selected="false" count="4"/><ui:flag selected="true" count="8"/>
 <ui:table><tr><td>passed row</td></tr></ui:table>
+<input id="NativeStep" type="number" step="0.25" value="1">
 <table><tr><td>native table</td></tr></table></div>"#,
         ),
     ] {
@@ -1054,7 +1056,21 @@ fn component_literals_use_the_declared_prop_not_a_native_attribute_type() {
             .unwrap(),
         );
     }
-    mount_screen(&mut ui, "page", &[("word", json!("bound"))]);
+    let page = ui.document("page").unwrap();
+    let native = page
+        .nodes
+        .iter()
+        .find(|node| node.id == "NativeStep")
+        .unwrap();
+    assert!(native.props.iter().any(|prop| {
+        doc::schema::PROPS[prop.spec].name == "stepBy"
+            && matches!(&prop.value, doc::PropValue::Lit(doc::Lit::Num(n)) if *n == 0.25)
+    }));
+    mount_screen(
+        &mut ui,
+        "page",
+        &[("word", json!("bound")), ("stage", json!("brightness"))],
+    );
     for _ in 0..3 {
         tick(&mut ui, InputFrame::default());
     }
@@ -1069,6 +1085,9 @@ fn component_literals_use_the_declared_prop_not_a_native_attribute_type() {
         .collect();
     for expected in [
         "welcome",
+        "controller",
+        "component-source",
+        "brightness",
         "007",
         "bound",
         "008",
