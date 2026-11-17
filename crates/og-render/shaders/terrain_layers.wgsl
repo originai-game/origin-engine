@@ -376,7 +376,7 @@ fn taps_normal(i: u32, t: PlaneTaps, w: vec3<f32>) -> TapsNormal {
   var o: TapsNormal;
   if (t.n == 1u) {
     o.normal = m[0].xyz;
-    o.tone = cell_tone(m[0].w, s);
+    o.tone = cell_tone(m[0].w, select(s, 0.0, m[0].w == 1.0));
     return o;
   }
   let m0 = m[0];
