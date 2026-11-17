@@ -1,6 +1,6 @@
 <meta name="component" content="SkeletonGroup">
 <meta name="strings" content="./skeleton-group.en.ogt">
-<meta name="parts" content="SkeletonGroup.art SkeletonGroup.line SkeletonGroup.picture SkeletonGroup.skeleton SkeletonGroup.sheen">
+<meta name="parts" content="SkeletonGroup.art SkeletonGroup.line SkeletonGroup.skeleton SkeletonGroup.sheen">
 <meta name="prop:shape" content="string" data-doc="What it stands in for: lines (empty), avatar, block, row or card.">
 <meta name="prop:items" content="list" data-doc="One entry per repeat (rows of a list), each with a stable id.">
 <meta name="prop:name" content="string" data-doc="What a screen reader says while it loads; empty is Loading.">
@@ -9,7 +9,7 @@
 <div id="SkeletonGroup" data-layout="stack" data-gap="loose" role="progressbar" aria-busy="true" aria-label={name || t("component.skeleton-group.loading")} class:avatar={shape == 'avatar'} class:block={shape == 'block'} class:row={shape == 'row'} class:card={shape == 'card'}>
   {#each items as item (item.id)}
     <div class="item" data-layout={shape == 'row' ? 'row' : 'stack'} data-gap="tight">
-      {#if shape == 'avatar' || shape == 'block' || shape == 'row' || shape == 'card'}<div class="art" part="SkeletonGroup.art SkeletonGroup.picture SkeletonGroup.skeleton"><div part="SkeletonGroup.sheen" data-motion="shimmer"></div></div>{/if}
+      {#if shape == 'avatar' || shape == 'block' || shape == 'row' || shape == 'card'}<div class="art" part="SkeletonGroup.art SkeletonGroup.skeleton"><div part="SkeletonGroup.sheen" data-motion="shimmer"></div></div>{/if}
       {#if shape != 'avatar' && shape != 'block'}<div class="lines" data-layout="stack" data-gap="tight" data-fill>
         <div class="piece first" part="SkeletonGroup.line SkeletonGroup.skeleton"><div part="SkeletonGroup.sheen" data-motion="shimmer"></div></div>
         <div class="piece" part="SkeletonGroup.line SkeletonGroup.skeleton"><div part="SkeletonGroup.sheen" data-motion="shimmer"></div></div>

@@ -1,6 +1,6 @@
 <meta name="component" content="ErrorState">
 <meta name="strings" content="./states.en.ogt">
-<meta name="parts" content="ErrorState.frame ErrorState.mark ErrorState.title ErrorState.body ErrorState.code ErrorState.actions ErrorState.retry ErrorState.dismiss ErrorState.headline ErrorState.caption">
+<meta name="parts" content="ErrorState.frame ErrorState.disc ErrorState.dot ErrorState.mark ErrorState.headline ErrorState.body ErrorState.code ErrorState.badge ErrorState.actions ErrorState.retry ErrorState.dismiss">
 <meta name="prop:title" content="string" data-default="" data-doc="Heading; empty uses Something went wrong.">
 <meta name="prop:body" content="string" data-default="" data-doc="The game's explanation and recovery advice.">
 <meta name="prop:code" content="string" data-default="" data-doc="Optional support reference; never a raw exception or credential.">
@@ -15,22 +15,31 @@
 <meta name="fixture:terminal" content='{"title":"This replay is no longer available","body":"It was recorded on an older game version.","canRetry":false,"dismissLabel":"Return to replays"}'>
 <meta name="fixture:overflow" content='{"title":"We could not retrieve the shared expedition report","body":"The host may have left the session. Your completed objectives are saved, and you can return to the lobby without losing rewards.","code":"EXPEDITION-REPORT-UNAVAILABLE","dismissLabel":"Return to the expedition lobby"}'>
 
-<section id="ErrorState" part="ErrorState.frame" data-layout="stack" role="alert" aria-busy={busy} aria-label={title || t("base.error.title")}>
-  <og-icon part="ErrorState.mark" class="mark" data-tone="danger" icon="close"></og-icon>
-  <h3 part="ErrorState.title ErrorState.headline">{title || t("base.error.title")}</h3>
-  {#if body}<p part="ErrorState.body" class="body">{body}</p>{/if}
-  {#if code}<p part="ErrorState.code ErrorState.caption" class="code">{code}</p>{/if}
+<!-- EmptyState's recess with the failure on a danger disc: what went
+     wrong, the support reference set apart as a code, then retry (the
+     primary action) and the way out. -->
+<section id="ErrorState" part="ErrorState.frame" data-layout="stack" data-motion="enter" role="alert" aria-busy={busy} aria-label={title || t("base.error.title")}>
+  <div part="ErrorState.disc ErrorState.dot" class="disc" data-layout="cover" data-tone="danger" data-motion="pop"><og-icon part="ErrorState.mark" class="mark" icon="close"></og-icon></div>
+  <div class="words" data-layout="stack" data-gap="tight">
+    <h3 part="ErrorState.headline" class="title">{title || t("base.error.title")}</h3>
+    {#if body}<p part="ErrorState.body" class="body">{body}</p>{/if}
+    {#if code}<p part="ErrorState.code ErrorState.badge" class="code">{code}</p>{/if}
+  </div>
   {#if canRetry || dismissLabel}<div part="ErrorState.actions" class="actions" data-layout="cluster">
-    {#if canRetry}<button id="Retry" part="ErrorState.retry" variant="primary" disabled={busy} onclick={retry}>{#if busy}<Spinner size={16} name={t("base.error.busy")} />{/if}<span>{busy ? t("base.error.busy") : retryLabel || t("base.error.retry")}</span></button>{/if}
+    {#if canRetry}<button id="Retry" part="ErrorState.retry" variant="primary" disabled={busy} onclick={retry}>{#if busy}<Spinner size={16} name={t("base.error.busy")} />{/if}<span class="retry">{busy ? t("base.error.busy") : retryLabel || t("base.error.retry")}</span></button>{/if}
     {#if dismissLabel}<button id="Dismiss" part="ErrorState.dismiss" disabled={busy} onclick={dismiss}>{dismissLabel}</button>{/if}
   </div>{/if}
 </section>
 
 <style>
-:host { align-items: center; padding: var(--space-xl); text-align: center; }
-.mark { inline-size: var(--size-lg); block-size: var(--size-lg); }
-[part~="ErrorState.title"] { margin: 0; --headline-text: var(--text-lg); }
-.body, .code { margin: 0; align-self: center; max-inline-size: var(--measure-lg); text-align: center; overflow-wrap: anywhere; }
-.actions { justify-content: center; margin-top: var(--space-xs); }
+:host { align-items: center; padding: var(--space-xl); text-align: center; --layout-gap: var(--layout-gap-wide); --frame-fill: var(--well-fill); --frame-shadow: var(--well-shadow); --frame-rim-width: 0px; --frame-radius: var(--card-radius); }
+.disc { flex: none; inline-size: var(--size-xl); block-size: var(--size-xl); }
+.mark { inline-size: var(--size-md); block-size: var(--size-md); }
+.words { align-items: center; max-inline-size: var(--measure-lg); }
+.title { margin: 0; --headline-text: var(--text-lg); }
+.body { margin: 0; text-align: center; overflow-wrap: anywhere; }
+.code { align-self: center; inline-size: fit-content; margin: var(--space-xs) 0 0; max-inline-size: 100%; overflow-wrap: anywhere; --badge-radius: var(--radius-control); }
+.actions { justify-content: center; }
 .actions button { min-block-size: var(--touch-target); max-inline-size: 100%; white-space: normal; }
+.retry { font-weight: var(--headline-weight); }
 </style>

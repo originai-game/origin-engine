@@ -1,6 +1,6 @@
 <meta name="component" content="EmptyState">
 <meta name="strings" content="./states.en.ogt">
-<meta name="parts" content="EmptyState.frame EmptyState.mark EmptyState.title EmptyState.body EmptyState.hint EmptyState.action EmptyState.headline EmptyState.caption">
+<meta name="parts" content="EmptyState.frame EmptyState.disc EmptyState.dot EmptyState.mark EmptyState.headline EmptyState.body EmptyState.hint EmptyState.action EmptyState.caption">
 <meta name="prop:title" content="string" data-default="" data-doc="Heading; empty uses Nothing here yet.">
 <meta name="prop:body" content="string" data-default="" data-doc="Why this area is empty.">
 <meta name="prop:hint" content="string" data-default="" data-doc="An optional next step, in quieter text.">
@@ -13,18 +13,24 @@
 <meta name="fixture:disabled" content='{"title":"No saved builds","body":"Finish the tutorial before saving a build.","actionLabel":"Save build","disabled":true}'>
 <meta name="fixture:overflow" content='{"title":"No discoveries in the northern reaches of the Sunken Kingdom","body":"Explore the coast and investigate the old watchtowers to add discoveries to this collection.","hint":"Progress is shared across every character on your account.","actionLabel":"Return to the world map and choose a destination"}'>
 
-<section id="EmptyState" part="EmptyState.frame" data-layout="stack" role="status" aria-label={title || t("base.empty.title")}>
-  {#if icon}<og-icon part="EmptyState.mark EmptyState.caption" class="mark" icon={icon}></og-icon>{/if}
-  <h3 part="EmptyState.title EmptyState.headline">{title || t("base.empty.title")}</h3>
-  {#if body}<p part="EmptyState.body" class="body">{body}</p>{/if}
-  {#if hint}<p part="EmptyState.hint EmptyState.caption" class="hint">{hint}</p>{/if}
-  {#if actionLabel}<button id="Action" part="EmptyState.action" disabled={disabled} onclick={activate}>{actionLabel}</button>{/if}
+<!-- Where content would be, there is a recess: a mark on a disc, why the
+     area is empty, and the one thing to do about it. -->
+<section id="EmptyState" part="EmptyState.frame" data-layout="stack" data-motion="enter" role="status" aria-label={title || t("base.empty.title")}>
+  {#if icon}<div part="EmptyState.disc EmptyState.dot" class="disc" data-layout="cover"><og-icon part="EmptyState.mark EmptyState.caption" class="mark" icon={icon}></og-icon></div>{/if}
+  <div class="words" data-layout="stack" data-gap="tight">
+    <h3 part="EmptyState.headline" class="title">{title || t("base.empty.title")}</h3>
+    {#if body}<p part="EmptyState.body" class="body">{body}</p>{/if}
+    {#if hint}<p part="EmptyState.hint EmptyState.caption" class="hint">{hint}</p>{/if}
+  </div>
+  {#if actionLabel}<button id="Action" part="EmptyState.action" variant="primary" disabled={disabled} onclick={activate}>{actionLabel}</button>{/if}
 </section>
 
 <style>
-:host { align-items: center; padding: var(--space-xl); text-align: center; }
-.mark { inline-size: var(--size-lg); block-size: var(--size-lg); }
-[part~="EmptyState.title"] { margin: 0; --headline-text: var(--text-lg); }
-.body, .hint { margin: 0; align-self: center; max-inline-size: var(--measure-lg); text-align: center; overflow-wrap: anywhere; }
-[part="EmptyState.action"] { max-inline-size: 100%; min-block-size: var(--touch-target); white-space: normal; margin-top: var(--space-xs); }
+:host { align-items: center; padding: var(--space-xl); text-align: center; --layout-gap: var(--layout-gap-wide); --frame-fill: var(--well-fill); --frame-shadow: var(--well-shadow); --frame-rim-width: 0px; --frame-radius: var(--card-radius); }
+.disc { flex: none; inline-size: var(--size-xl); block-size: var(--size-xl); --dot-fill: var(--card-fill); --dot-rim: var(--card-rim); --dot-rim-width: var(--card-rim-width); }
+.mark { inline-size: var(--size-md); block-size: var(--size-md); }
+.words { align-items: center; max-inline-size: var(--measure-lg); }
+.title { margin: 0; --headline-text: var(--text-lg); }
+.body, .hint { margin: 0; text-align: center; overflow-wrap: anywhere; }
+[part="EmptyState.action"] { max-inline-size: 100%; min-block-size: var(--touch-target); white-space: normal; }
 </style>

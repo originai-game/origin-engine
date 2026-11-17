@@ -27,6 +27,12 @@ Loading uses the shared Spinner or a clipped `skeleton`/`sheen` with
 `data-motion="shimmer"`; ribbons use shared enter/stamp motion. Packs own
 those role and motion tokens, not a component's private animations.
 
+An element wears one role, so a part that a role dresses is named for it:
+a name is `headline` (Avatar, ListItem, Steps, EmptyState, ErrorState) or
+`caption` (ItemSlot, Currency, Pips), with no second `name`, `title` or
+`label` part beside it. Steps keeps `title` for its heading, which wears
+the title role a step down.
+
 Avatar's `showName` defaults to true; set it to false beside a player heading to hide only the caption while preserving the figure's accessible name, level and status.
 
 Review: the RPG sheet's `primitives` page in the default style shows ready,
@@ -44,9 +50,12 @@ The components sheet also reviews the four state/navigation documents with
 | `steps` | `default`, `empty`, `error`, `overflow` |
 
 These are small building blocks, not virtualised lists. ListItem wraps long
-titles and moves trailing text values onto another line on a phone; a
-loading spinner stays beside the content. Steps wraps horizontally or
-stacks explicitly with `column`; state words and marks make progress
-readable without colour. Every visible piece has a named part. Buttons
+titles and keeps its trailing value over its badge at the row's end at any
+width; the check or the loading spinner stays beside the content. Steps is
+a rail of marks, each joined to the next by a reach that fills once the
+step is done; it lies along a row and stands up as a column with `column`
+or in a narrow container. State words and marks make progress readable
+without colour. EmptyState and ErrorState are a recess where the content
+would be, with their mark on a disc. Every visible piece has a named part. Buttons
 inherit shared hover/focus/press/disabled states; the game owns all
 selection, progress and retry transitions.

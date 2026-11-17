@@ -197,7 +197,7 @@ pressed, focus-visible and disabled states (docs/ui.md §3.2).
 | `AbilitySlot` (`hud/ability-slot.svelte`) | `frame` (`.ultimate`), `cell` (a button: `.active` `.cooling` `.full` `.locked` `.off` `.tinted` `:disabled`), `well`, `icon`, `ultimate`, `figure`, `percent`, `badge` (`.short`), `track`, `fill`, `label` |
 | `ActionButton` (`hud/action-button.svelte`) | `disc` (a button: `.primary` `:disabled`), `charge`, `icon`, `text` |
 | `ActionHints` (`hud/action-hints.svelte`) | `frame`, `row` (a button), `cap`, `label` |
-| `Avatar` (`base/avatar.svelte`) | `frame`, `picture`, `clip`, `portrait`, `fallback`, `spinner`, `ring`, `level`, `name`, `status`, `mark`, `loading` |
+| `Avatar` (`base/avatar.svelte`) | `frame`, `well`, `clip`, `portrait`, `fallback`, `spinner`, `ring`, `mark` (the presence dot on the rim), `level`, `headline` (the name), `status`, `loading` |
 | `Breadcrumbs` (`panels/breadcrumbs.svelte`) | `frame`, `crumb` (`.current`), `icon`, `link`, `current` (`[aria-current=page]`), `separator` |
 | `Carousel` (`panels/carousel.svelte`) | `frame`, `cell`, `art`, `picture`, `well`, `title`, `body`, `prev` (a button: `:disabled` with fewer than two pages), `next` (a button: `:disabled` with fewer than two pages), `dot`, `lit` |
 | `Celebration` (`hud/celebration.svelte`) | `ring`, `shell`, `stage`, `rays`, `halo`, `title`, `value` |
@@ -210,7 +210,7 @@ pressed, focus-visible and disabled states (docs/ui.md §3.2).
 | `HoldButton` (`hud/hold-button.svelte`) | `base` (a button: `.primary` `.secondary` `:disabled`), `icon`, `label`, `hint` |
 | `HudTimer` (`hud/hud-timer.svelte`) | `frame` (`.critical` `.paused` `.warn`), `label`, `ring`, `figure` |
 | `InteractionPrompt` (`world/interaction-prompt.svelte`) | `frame` (`.disabled` `:disabled`), `key`, `verb`, `name`, `reason` (`:disabled`) |
-| `ItemSlot` (`base/item-slot.svelte`) | `frame`, `cell` (a button: `[aria-pressed]` `:disabled`), `icon`, `loading`, `count`, `cooldown`, `remaining`, `key`, `state`, `name` |
+| `ItemSlot` (`base/item-slot.svelte`) | `frame`, `cell` (a button: `[aria-pressed]` `:disabled`), `icon`, `plus` (an empty slot's mark), `loading`, `count`, `cooldown`, `remaining`, `key`, `state`, `caption` (the name) |
 | `LootLabel` (`world/loot-label.svelte`) | `tag` (a button: `.epic` `.legendary` `.rare` `.uncommon`), `name`, `count` |
 | `Menu` (`panels/menu.svelte`) | `frame`, `row` (a button: `.danger` `[aria-checked]` `:disabled`), `heading`, `separator`, `icon`, `check`, `dot`, `shortcut`, `chevron` |
 | `MinimapView` (`world/minimap-view.svelte`) | `bezel`, `glass` (a button), `grid`, `marker` (`.ally` `.enemy` `.loot` `.objective` `.ping`), `player` (`.turning`), `north`, `badge` |
@@ -228,7 +228,7 @@ pressed, focus-visible and disabled states (docs/ui.md §3.2).
 | `RadialMeter` (`hud/radial-meter.svelte`) | `wheels` |
 | `Ribbon` (`base/ribbon.svelte`) | `frame` (`.bottomLeft` `.bottomRight` `.center` `.danger` `.info` `.success` `.topLeft` `.warn`), `ribbon`, `text` |
 | `SelectionRing` (`world/selection-ring.svelte`) | `ring` (`.hostile` `.hover` `.neutral` `.segmented`) |
-| `SkeletonGroup` (`base/skeleton-group.svelte`) | `art`, `picture`, `line` |
+| `SkeletonGroup` (`base/skeleton-group.svelte`) | `art`, `line` |
 | `SpeechBubble` (`world/speech-bubble.svelte`) | `frame`, `label`, `line`, `tail` |
 | `Spinner` (`base/spinner.svelte`) | `ring` |
 | `SplitView` (`panels/split-view.svelte`) | `frame`, `start`, `divider`, `grip`, `end` |

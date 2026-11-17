@@ -1,6 +1,6 @@
 <meta name="component" content="Steps">
 <meta name="strings" content="./states.en.ogt">
-<meta name="parts" content="Steps.frame Steps.title Steps.list Steps.step Steps.item Steps.cell Steps.mark Steps.dot Steps.label Steps.headline Steps.detail Steps.state Steps.caption Steps.empty">
+<meta name="parts" content="Steps.frame Steps.title Steps.list Steps.step Steps.item Steps.row Steps.mark Steps.dot Steps.track Steps.fill Steps.headline Steps.detail Steps.state Steps.caption Steps.empty">
 <meta name="prop:title" content="string" data-default="" data-doc="Optional visible heading; the accessible fallback is Progress steps.">
 <meta name="prop:steps" content="list" data-default="[]" data-doc="Keyed { id, label, detail, number, state, disabled } rows. number is the game's formatted marker, state upcoming/current/done/error. The game chooses order and allowed navigation.">
 <meta name="prop:column" content="bool" data-default="false" data-doc="Stack steps vertically instead of a wrapping horizontal sequence.">
@@ -10,27 +10,60 @@
 <meta name="fixture:error" content='{"column":true,"steps":[{"id":"gear","label":"Equipment","number":"1","state":"done"},{"id":"network","label":"Connection","detail":"Reconnect to continue","number":"2","state":"error"},{"id":"ready","label":"Ready","number":"3","state":"upcoming","disabled":true}]}'>
 <meta name="fixture:overflow" content='{"title":"An expedition across the northern territories","steps":[{"id":"one","label":"Choose your character and starting equipment","detail":"Every choice can be changed later in the lobby.","number":"1","state":"done"},{"id":"two","label":"Invite the rest of your expedition party","detail":"Waiting for players to accept their invitations.","number":"2","state":"current"},{"id":"three","label":"Confirm the expedition destination","number":"3","state":"upcoming","disabled":true}]}'>
 
-<nav id="Steps" part="Steps.frame" data-layout="stack" class:column={column} aria-label={title || t("base.steps.title")}>
-  {#if title}<h3 part="Steps.title Steps.headline">{title}</h3>{/if}
-  <ol part="Steps.list" class="steps" data-layout={column ? 'stack' : 'switcher'}>
-    {#each steps as step (step.id)}<li part="Steps.step" class="step" data-fill={column ? null : true} data-state={step.state}>
-      <button part="Steps.item Steps.cell" class="item" disabled={step.disabled} aria-current={step.state == 'current' ? 'step' : null} aria-label={step.label} aria-description={step.detail} onclick={choose}>
-        <div class="face" data-layout="row">
-        <div part="Steps.mark Steps.dot" class="mark" data-layout="cover" data-tone={step.state == 'done' ? 'success' : step.state == 'error' ? 'danger' : null}>{#if step.state == 'done' || step.state == 'error'}<og-icon class="icon" icon={step.state == 'done' ? 'check' : 'close'}></og-icon>{:else}<span>{step.number}</span>{/if}</div>
-        <div class="copy" data-layout="stack" data-gap="hair" data-fill><span part="Steps.label Steps.headline" class="label">{step.label}</span>{#if step.detail}<span part="Steps.detail Steps.caption" class="detail">{step.detail}</span>{/if}<span part="Steps.state Steps.caption" class="state" data-tone={step.state == 'error' ? 'danger' : null}>{step.state == 'done' ? t("base.steps.done") : step.state == 'error' ? t("base.steps.error") : step.state == 'current' ? t("base.steps.current") : t("base.steps.upcoming")}</span></div>
+<!-- A rail of numbered marks: each step is a mark, the reach to the next
+     one (full once the step is done) and its words. It lies along a row
+     and stands up as a column where `column` asks or the container is
+     narrow. -->
+<div data-layout="shell">
+<nav id="Steps" part="Steps.frame" class="bare" data-layout="stack" data-gap="loose" class:column={column} aria-label={title || t("base.steps.title")}>
+  {#if title}<h3 part="Steps.title" class="title">{title}</h3>{/if}
+  <ol part="Steps.list" class="steps">
+    {#each steps as step (step.id)}<li part="Steps.step" class="step" data-state={step.state}>
+      <button part="Steps.item Steps.row" class="item" disabled={step.disabled} aria-current={step.state == 'current' ? 'step' : null} aria-label={step.label} aria-description={step.detail} onclick={choose}>
+        <div class="face">
+          <div class="rail">
+            <div part="Steps.mark Steps.dot" class="mark" data-layout="cover" data-tone={step.state == 'done' ? 'success' : step.state == 'error' ? 'danger' : step.state == 'current' ? 'primary' : null} data-motion={step.state == 'current' ? 'pop' : null}>{#if step.state == 'done' || step.state == 'error'}<og-icon class="icon" icon={step.state == 'done' ? 'check' : 'close'}></og-icon>{:else}<span>{step.number}</span>{/if}</div>
+            <div part="Steps.track" class="reach"><div part="Steps.fill" class="done" data-tone="success"></div></div>
+          </div>
+          <div class="copy" data-layout="stack" data-gap="hair">
+            <span part="Steps.state Steps.caption" class="state" data-tone={step.state == 'done' ? 'success' : step.state == 'error' ? 'danger' : step.state == 'current' ? 'primary' : null}>{step.state == 'done' ? t("base.steps.done") : step.state == 'error' ? t("base.steps.error") : step.state == 'current' ? t("base.steps.current") : t("base.steps.upcoming")}</span>
+            <span part="Steps.headline" class="label">{step.label}</span>
+            {#if step.detail}<span part="Steps.detail Steps.caption" class="detail">{step.detail}</span>{/if}
+          </div>
         </div>
       </button>
     </li>{:else}<li part="Steps.empty Steps.caption" class="empty" role="status">{t("base.steps.empty")}</li>{/each}
   </ol>
 </nav>
+</div>
 
 <style>
-:host { inline-size: stretch; }
-[part~="Steps.title"] { margin: 0; }
-.steps { margin: 0; padding: 0; list-style: none; }
-.item { display: block; inline-size: stretch; min-block-size: var(--touch-target); padding: var(--space-sm); text-align: start; }
-.face { align-items: start; inline-size: stretch; }
+:host { block-size: auto; }
+.title { --title-size: var(--title-small-size); }
+.steps { display: flex; margin: 0; padding: 0; list-style: none; }
+.step { display: flex; flex: 1 1 0; min-inline-size: 0; }
+.item { display: block; align-items: flex-start; inline-size: stretch; min-block-size: var(--touch-target); padding: var(--space-sm); text-align: start; --row-selected-fill: var(--row-fill); --row-selected-edge: none; }
+.item:disabled { --headline-ink: var(--ink-disabled); }
+.face { display: grid; align-self: flex-start; grid-template-columns: minmax(0, 1fr); gap: var(--space-sm) var(--space-md); inline-size: stretch; }
+.rail { display: flex; align-items: center; gap: var(--space-xs); }
 .mark { flex: none; inline-size: var(--size-md); block-size: var(--size-md); }
+.step[data-state=upcoming] .mark { --dot-fill: var(--well-fill); --dot-rim: var(--cell-rim); --dot-rim-width: var(--cell-rim-width); --dot-ink: var(--ink-label); }
+.step[data-state=upcoming] .item { --headline-ink: var(--ink-label); }
 .icon { inline-size: var(--size-xs); block-size: var(--size-xs); }
+.reach { display: flex; flex: 1 1 0; min-inline-size: var(--space-md); block-size: var(--stroke-thick); overflow: hidden; }
+.done { flex: 0 0 0; }
+.step[data-state=done] .done { flex: 1 1 0; }
+.step:last-child .reach { visibility: hidden; }
+.copy { min-inline-size: 0; }
 .label, .detail, .state { overflow-wrap: anywhere; }
+.column .steps { flex-direction: column; }
+.column .face { grid-template-columns: auto minmax(0, 1fr); }
+.column .rail { flex-direction: column; }
+.column .reach { flex-direction: column; inline-size: var(--stroke-thick); block-size: auto; min-inline-size: 0; min-block-size: var(--space-md); }
+@container (width < 480px) {
+  .steps { flex-direction: column; }
+  .face { grid-template-columns: auto minmax(0, 1fr); }
+  .rail { flex-direction: column; }
+  .reach { flex-direction: column; inline-size: var(--stroke-thick); block-size: auto; min-inline-size: 0; min-block-size: var(--space-md); }
+}
 </style>

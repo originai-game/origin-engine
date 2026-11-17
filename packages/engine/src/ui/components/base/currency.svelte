@@ -1,6 +1,6 @@
 <meta name="component" content="Currency">
 <meta name="strings" content="./currency.en.ogt">
-<meta name="parts" content="Currency.frame Currency.icon Currency.name Currency.amount Currency.limit Currency.rate Currency.state Currency.spinner Currency.card Currency.caption Currency.headline">
+<meta name="parts" content="Currency.frame Currency.socket Currency.well Currency.icon Currency.amount Currency.figure Currency.limit Currency.rate Currency.badge Currency.full Currency.ribbon Currency.state Currency.headline Currency.spinner Currency.caption">
 <meta name="prop:name" content="string" data-doc="Resource name; empty uses Currency.">
 <meta name="prop:icon" content="string" data-doc="Atlas icon; empty omits it.">
 <meta name="prop:amount" content="number" data-doc="Amount held; zero remains visible. Ignored when valueText is supplied.">
@@ -18,28 +18,37 @@
 <meta name="fixture:overflow" content='{"name":"Sovereigns of the Eastern Treasury","icon":"crown","valueText":"123.45 quattuordecillion","limit":"500 quattuordecillion","rate":"−4.2 million per second"}'>
 
 <!-- A readout, not a button. A game can put it beside a separately named
-     purchase control; Currency never invents an economy or sends an intent. -->
-<div id="Currency" part="Currency.frame Currency.card" class="bare" data-layout="row" aria-label={name || t("currency.name")} aria-busy={loading} data-full={full} data-unavailable={unavailable}>
-  {#if icon}<og-icon part="Currency.icon" icon={icon}></og-icon>{/if}
-  <div class="body" data-layout="stack" data-gap="hair" data-fill>
-    <div part="Currency.name Currency.caption">{name || t("currency.name")}</div>
-    {#if loading || unavailable}
-      {#if loading}<div part="Currency.spinner"><Spinner name={t("currency.loading")} /></div>{/if}
-      <div part="Currency.state Currency.headline" role="status">{loading ? t("currency.loading") : t("currency.unavailable")}</div>
+     purchase control; Currency never invents an economy or sends an intent.
+     A chip: the resource's icon in a socket, its name over the amount, and
+     beside the amount its capacity, its rate and Full. It is as wide as
+     what it holds. -->
+<div id="Currency" part="Currency.frame" class="hud" data-layout="row" aria-label={name || t("currency.name")} aria-busy={loading} aria-disabled={unavailable} data-full={full} data-unavailable={unavailable}>
+  {#if icon}<div part="Currency.socket Currency.well" class="socket" data-layout="cover"><og-icon part="Currency.icon" icon={icon}></og-icon></div>{/if}
+  <div class="body" data-layout="stack" data-gap="none">
+    <div part="Currency.caption" class="name">{name || t("currency.name")}</div>
+    {#if loading}
+      <div class="figures" data-layout="row" data-gap="tight"><div part="Currency.spinner"><Spinner size={16} name={t("currency.loading")} /></div><div part="Currency.state Currency.headline" class="state" role="status">{t("currency.loading")}</div></div>
+    {:else if unavailable}
+      <div part="Currency.state Currency.headline" class="state" role="status">{t("currency.unavailable")}</div>
     {:else}
       <div class="figures" data-layout="cluster" data-gap="tight">
-        <div part="Currency.amount Currency.headline">{valueText || formatCompact(amount)}</div>
+        <div part="Currency.amount Currency.figure" class="amount">{valueText || formatCompact(amount)}</div>
         {#if limit}<div part="Currency.limit Currency.caption">{t("currency.capacity", { limit })}</div>{/if}
+        {#if full}<div part="Currency.full Currency.ribbon" class="full" data-tone="warn" data-motion="pop">{t("currency.full")}</div>{/if}
+        {#if rate}<div part="Currency.rate Currency.badge" class="rate">{rate}</div>{/if}
       </div>
-      {#if rate}<div part="Currency.rate Currency.caption">{rate}</div>{/if}
-      {#if full}<div part="Currency.state Currency.headline">{t("currency.full")}</div>{/if}
     {/if}
   </div>
 </div>
 
 <style>
-:host { max-inline-size: stretch; padding: var(--space-xs) var(--space-sm); --headline-text: var(--text-caption); --headline-card-text: var(--text-caption); }
-[part="Currency.icon"] { flex: none; inline-size: var(--size-sm); block-size: var(--size-sm); }
-.body { overflow-wrap: anywhere; }
+:host { inline-size: fit-content; max-inline-size: 100%; padding: var(--space-xs) var(--space-md) var(--space-xs) var(--space-xs); }
+.socket { flex: none; inline-size: calc(var(--size-md) + var(--space-xs)); block-size: calc(var(--size-md) + var(--space-xs)); }
+[part="Currency.icon"] { inline-size: var(--size-sm); block-size: var(--size-sm); }
+.body { flex: 0 1 auto; min-inline-size: 0; overflow-wrap: anywhere; }
 .figures { align-items: baseline; }
+.amount { --figure-size: var(--type-lg-size); --figure-weight: var(--font-weight-bold); }
+.state { --headline-ink: var(--ink-label); }
+.full { --ribbon-radius: var(--radius-capsule); }
+.rate { --badge-radius: var(--radius-control); }
 </style>

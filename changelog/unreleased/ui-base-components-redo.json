@@ -1,0 +1,14 @@
+{
+  "added": [
+    {
+      "member": "ui components",
+      "summary": "The base components are redone. Currency is a chip as wide as what it holds: the icon in a socket, the name over the amount, then its capacity, a Full pill and its rate. Steps is a rail of marks, each joined to the next by a reach that fills once the step is done, with the step's state above its name in its tone; it lies along a row and stands up as a column with `column` or in a container under 480px. Pips sits on one line and takes `tone` (empty is the style's pip colour, a life's red; success, warn, danger, info or primary); a unit eases as it drains. EmptyState and ErrorState are a recess with their mark on a disc (ErrorState's in danger), EmptyState's action is the primary button, and ErrorState's support code is set apart as a chip. ListItem keeps its value over its badge at the row's end at any width instead of dropping them under the words on a phone, and a disabled row dims its name. Avatar carries presence as a dot on its rim and in the tone of its words, its level across its foot, and a rim round its picture. ItemSlot shows the time left large over its dimmed icon, an empty slot's plus sits back, and a loading slot shows only its spinner."
+    }
+  ],
+  "fixed": [
+    {
+      "member": "ui components",
+      "summary": "Each base part wears one role, so a pack's role tokens reach it. Parts renamed for the role they wear: Avatar.name, ListItem.title, EmptyState.title, ErrorState.title and Steps.label are `headline`; ItemSlot.name, Currency.name and Pips.label are `caption`; Avatar's picture ground is Avatar.well; Steps.cell is Steps.row and Steps.title wears the title role; SkeletonGroup.art no longer lists `picture`. New parts: Currency.socket, Currency.full, Steps.track, Steps.fill, EmptyState.disc, ErrorState.disc, ItemSlot.plus. Ribbon's box draws nothing of its own, so the card under it shows."
+    }
+  ]
+}

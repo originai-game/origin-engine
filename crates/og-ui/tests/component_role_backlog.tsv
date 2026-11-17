@@ -12,18 +12,6 @@ arena/spectator.svelte	ArenaSpectator.name ArenaSpectator.headline	1
 arena/versus.svelte	ArenaVersus.name ArenaVersus.headline	2
 arena/versus.svelte	ArenaVersus.rank ArenaVersus.label ArenaVersus.caption	2
 arena/vote.svelte	ArenaVote.name ArenaVote.headline	1
-base/avatar.svelte	Avatar.name Avatar.headline	1
-base/avatar.svelte	Avatar.picture Avatar.well	1
-base/currency.svelte	Currency.frame Currency.card	1
-base/currency.svelte	Currency.name Currency.caption	1
-base/empty-state.svelte	EmptyState.title EmptyState.headline	1
-base/error-state.svelte	ErrorState.title ErrorState.headline	1
-base/item-slot.svelte	ItemSlot.name ItemSlot.caption	1
-base/list-item.svelte	ListItem.title ListItem.headline	1
-base/pips.svelte	Pips.label Pips.caption	1
-base/skeleton-group.svelte	SkeletonGroup.art SkeletonGroup.picture SkeletonGroup.skeleton	1
-base/steps.svelte	Steps.label Steps.headline	1
-base/steps.svelte	Steps.title Steps.headline	1
 card/face.svelte	CardFace.name CardFace.headline	1
 card/face.svelte	CardFace.type CardFace.label CardFace.caption	1
 card/piles.svelte	CardPiles.count CardPiles.figure CardPiles.badge	1

@@ -5,12 +5,15 @@
 <meta name="prop:tone" content="string" data-doc="Its tone: primary (empty), success, warn, danger or info.">
 <meta name="fixture:default" content='{"text":"New","corner":"","tone":"danger"}'>
 
-<div id="Corner" part="Ribbon.frame" class:topLeft={corner == 'topLeft'} class:bottomRight={corner == 'bottomRight'} class:bottomLeft={corner == 'bottomLeft'} class:center={corner == 'center'}>
+<!-- A strip across a corner of whatever it lies over (or a stamp across
+     its middle). Its box only holds and cuts the strip: it draws nothing
+     of its own, so the card under it shows. -->
+<div id="Corner" part="Ribbon.frame" class="bare" class:topLeft={corner == 'topLeft'} class:bottomRight={corner == 'bottomRight'} class:bottomLeft={corner == 'bottomLeft'} class:center={corner == 'center'}>
   <div id="Ribbon" part="Ribbon.ribbon" data-layout="stack" data-gap="none" data-tone={tone || 'primary'} data-motion={corner == 'center' ? 'stamp' : 'enter'} role="status" aria-label={text}><span id="Text" class="text" part="Ribbon.text">{text}</span></div>
 </div>
 
 <style>
-:host { position: relative; inline-size: var(--size-4xl); block-size: calc(var(--size-xxl) + var(--space-lg)); padding: 0; overflow: hidden; }
+:host { position: relative; inline-size: var(--size-4xl); block-size: calc(var(--size-xxl) + var(--space-lg)); overflow: hidden; pointer-events: none; }
 [part="Ribbon.ribbon"] { position: absolute; top: var(--space-lg); inset-inline-start: var(--space-3xl); width: var(--size-4xl); padding: var(--space-xxs) 0; align-items: center; rotate: 45deg; }
 .topLeft [part="Ribbon.ribbon"] { inset-inline-start: calc(var(--space-3xl) * -1); rotate: -45deg; }
 .bottomRight [part="Ribbon.ribbon"] { top: var(--size-xl); rotate: -45deg; }
