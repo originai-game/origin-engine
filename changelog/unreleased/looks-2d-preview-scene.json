@@ -1,0 +1,8 @@
+{
+  "fixed": [
+    {
+      "member": "looks: previews",
+      "summary": "The pixel and cartoon-2d catalogue previews show one 2D game screen instead of a row of sprites: a traveller on a tilemap level with a ledge and a floating platform, gems, a slime, two layers of parallax behind, the lanterns' 2D lights and a HUD, each drawn in art made to the look's own brief (templates/looks/preview/2d). cartoon-2d's preview is drawn in its own flat-colour art, no longer the storybook variant's."
+    }
+  ]
+}
