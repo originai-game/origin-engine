@@ -13,6 +13,9 @@ fn build_with_common_settings() -> cc::Build {
 }
 
 fn main() {
+    // This is a patched path dependency: native source/header edits must
+    // invalidate the archive as well as changes to this build script.
+    println!("cargo:rerun-if-changed=vendor");
     build_with_common_settings()
         .cpp(true)
         .define("BASISD_SUPPORT_KTX2_ZSTD", "0")

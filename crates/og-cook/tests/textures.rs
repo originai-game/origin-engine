@@ -106,6 +106,59 @@ fn psnr(a: &[u8], b: &[u8]) -> f64 {
     10.0 * (255.0f64 * 255.0 / mse).log10()
 }
 
+#[cfg(feature = "basis")]
+#[test]
+fn uastc_candidate_pruning_preserves_encoded_mips() {
+    let root = project("uastc-pruning");
+    let cases = [
+        (
+            "color",
+            "96e7bada036e62f65e7cf6053ed1d45b45c2ccc54909bf007d65c94c35b009cd",
+        ),
+        (
+            "linear",
+            "f565d752f591e6be68983ab821470417c1045a581ca6297d2263d2c4c23871f3",
+        ),
+        (
+            "normal",
+            "707bc70eaa62e72780b54672f773395790850710850ed957d2ad6e15c20bca51",
+        ),
+    ];
+    // A non-square gradient with alternating alpha exercises RGB/RGBA,
+    // perceptual/linear candidates and the RDO selector history. These
+    // hashes were recorded with the unmodified encoder, not the pruning.
+    let rgba = card(128, 64, 3);
+    for (kind, _) in cases {
+        png(&root.join(format!("assets/tex/{kind}.png")), 128, 64, &rgba);
+        std::fs::write(
+            root.join(format!("assets/tex/{kind}.png.ogt")),
+            format!("type import\nversion 1\n---\ntexture {{\n  kind {kind}\n}}\n"),
+        )
+        .unwrap();
+    }
+    let options = CookOptions {
+        texture: og_cook::cook::TextureOptions {
+            color_uastc: true,
+            ..Default::default()
+        },
+        ..Default::default()
+    };
+    let report = og_cook::cook::cook_project_with_texture_cache(&root, &options, None).unwrap();
+    assert!(report.ok(), "{:?}", report.errors());
+    let bundle = Bundle::open(&root.join("cooked")).unwrap();
+    for (kind, expected) in cases {
+        let texture = bundle.load_texture(&format!("tex/{kind}.png")).unwrap();
+        let info = ktx2::parse(&texture.ktx2).unwrap();
+        assert_eq!((info.width, info.height, info.levels.len()), (128, 64, 8));
+        let mut hash = blake3::Hasher::new();
+        for level in info.levels {
+            hash.update(&texture.ktx2[level.offset..level.offset + level.length]);
+        }
+        assert_eq!(hash.finalize().to_hex().as_str(), expected, "{kind} mips");
+    }
+    std::fs::remove_dir_all(root).unwrap();
+}
+
 #[test]
 fn ktx2_sources_are_flipped_and_swizzled_to_rd_rgba_or_taken_as_they_are() {
     let root = project("ktx2");

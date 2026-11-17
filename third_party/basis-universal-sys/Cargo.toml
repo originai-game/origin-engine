@@ -7,6 +7,11 @@
 # kept (no tools, tests, OpenCL headers or zstd sources). The root
 # Cargo.toml's [patch.crates-io] puts it in place of the crates.io one;
 # drop it when a basis-universal-sys release carries the fix.
+# Additional local optimization: exact nonnegative-error lower bounds in
+# basisu_bc7enc.cpp and basisu_uastc_enc.cpp reject losing candidates before
+# evaluating their remaining pixels or transcoding them to BC7. Encoded
+# mips remain identical (og-cook tests/textures.rs); no search/quality
+# settings change. Retain this optimization when updating the dependency.
 [package]
 name = "basis-universal-sys"
 version = "0.3.1"

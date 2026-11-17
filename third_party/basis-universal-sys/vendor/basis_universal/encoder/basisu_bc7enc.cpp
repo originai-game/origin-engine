@@ -885,6 +885,10 @@ static uint64_t evaluate_solution(const color_quad_u8 *pLow, const color_quad_u8
 	{
 		for (uint32_t i = 0; i < pParams->m_num_pixels; i++)
 		{
+			// Error contributions are nonnegative and ties never replace the
+			// incumbent. A losing candidate needs no remaining selectors; the
+			// callers use the winning result, not this candidate's total.
+			if (total_err >= pResults->m_best_overall_err) return total_err;
 			const color_quad_u8* pC = &pParams->m_pPixels[i];
 			
 			const uint8_t sel = pParams->m_pForce_selectors[i];
@@ -906,6 +910,7 @@ static uint64_t evaluate_solution(const color_quad_u8 *pLow, const color_quad_u8
 
 			for (uint32_t i = 0; i < pParams->m_num_pixels; i++)
 			{
+				if (total_err >= pResults->m_best_overall_err) return total_err;
 				const color_quad_u8 *pC = &pParams->m_pPixels[i];
 				int r = pC->m_c[0];
 				int g = pC->m_c[1];
@@ -940,6 +945,7 @@ static uint64_t evaluate_solution(const color_quad_u8 *pLow, const color_quad_u8
 
 			for (uint32_t i = 0; i < pParams->m_num_pixels; i++)
 			{
+				if (total_err >= pResults->m_best_overall_err) return total_err;
 				const color_quad_u8 *pC = &pParams->m_pPixels[i];
 				int r = pC->m_c[0];
 				int g = pC->m_c[1];
@@ -975,6 +981,7 @@ static uint64_t evaluate_solution(const color_quad_u8 *pLow, const color_quad_u8
 	{
 		for (uint32_t i = 0; i < pParams->m_num_pixels; i++)
 		{
+			if (total_err >= pResults->m_best_overall_err) return total_err;
 			uint64_t best_err = UINT64_MAX;
 			uint32_t best_sel = 0;
 

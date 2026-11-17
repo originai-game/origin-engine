@@ -3999,6 +3999,16 @@ namespace basisu
 				for (uint32_t i = 0; i < 16; i++)
 					trial_uastc_err += color_distance(perceptual, pPixels[i], ((color_rgba*)decoded_trial_uastc_block)[i], true);
 
+				const int block_dist_in_bytes = (block_index - match_block_index) * 16;
+				const int match_bits = compute_match_cost_estimate(block_dist_in_bytes);
+				// BC7 error is nonnegative. Before transcoding and decoding it,
+				// reject candidates whose UASTC-only lower bound already cannot
+				// improve the incumbent. Keep the original integer rounding and
+				// float evaluation order, including the strict tie rule below.
+				const float min_ms_err = (float)(trial_uastc_err / 2) * (1.0f / 64.0f);
+				if (min_ms_err * smooth_block_error_scale + match_bits * params.m_lambda >= best_t)
+					continue;
+
 				// Transcode trial to BC7, compute error
 				bc7_optimization_results trial_b7_results;
 				if (!transcode_uastc_to_bc7(unpacked_trial_blk, trial_b7_results))
@@ -4021,9 +4031,6 @@ namespace basisu
 
 				if (trial_rms_err > cur_rms_err * params.m_max_allowed_rms_increase_ratio)
 					continue;
-
-				const int block_dist_in_bytes = (block_index - match_block_index) * 16;
-				const int match_bits = compute_match_cost_estimate(block_dist_in_bytes);
 
 				float t = trial_ms_err * smooth_block_error_scale + match_bits * params.m_lambda;
 				if (t < best_t)
