@@ -1,0 +1,26 @@
+type particles
+version 1
+---
+# Steam off the stall's pots: pale puffs that rise, spread and drift with
+# the wind, lit by the lanterns round them.
+maxParticles 256
+shape box 0.3 0.02 0.3
+spread 25
+rate 16
+lifetime 2.5 4.5
+speed 0.25 0.6
+size 0.3 0.55
+sizeOverLife 0 0.5 1 2.6
+colorOverLife {
+  key 0 0.9 0.88 0.86 0
+  key 0.15 0.9 0.88 0.86 0.3
+  key 0.6 0.9 0.88 0.86 0.14
+  key 1 0.9 0.88 0.86 0
+}
+gravity 0 0.3 0
+drag 0.8
+wind 0.25
+noise 0.4 0.8 0.3
+blend alpha
+lit true
+softDistance 0.4

@@ -1,0 +1,7 @@
+type strings
+version 1
+---
+locale "en"
+string "hud.drop" "Drop-off"
+string "hud.parcel" "Parcel"
+string "hud.switches" "Switches"

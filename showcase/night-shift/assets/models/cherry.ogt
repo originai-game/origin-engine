@@ -1,0 +1,33 @@
+type model
+version 1
+---
+# The tree over the shophouse. Its leaves and petals are near white: the
+# season tints the instance (og.Model.tint), pink blossom in spring, green
+# in summer, amber in autumn. Its wood alone is cherry-bare.ogt, the same
+# seed without leaves, drawn in winter.
+plant "cherry" {
+  seed 11
+  barkColor 0.06 0.045 0.04
+  trunk {
+    length 3.4
+    radius 0.17
+    gnarliness 0.14
+  }
+  leaves {
+    count 18
+    size 0.2
+    color 0.95 0.95 0.95
+    color2 0.8 0.8 0.8
+    translucency 0.6
+  }
+  flowers {
+    share 0.9
+    count 6
+    petals 5
+    size 0.07
+    cup 15
+    color 1 1 1
+    color2 0.9 0.9 0.9
+    centerColor 0.9 0.8 0.5
+  }
+}

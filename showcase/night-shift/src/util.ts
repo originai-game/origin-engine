@@ -1,7 +1,7 @@
 // Small helpers every module of the scene shares: unwrapping results and
 // spawning the boxes, quads and lights the set is laid out with.
 import { math, og } from "@origingame/engine";
-import type { Color, Entity, Geometry, Material, Quaternion, StandardMaterialDesc, Vector3, World } from "@origingame/engine";
+import type { Color, Entity, Geometry, Material, Quaternion, StandardMaterialDesc, Texture, Vector3, World } from "@origingame/engine";
 
 export function must<T>(r: { ok: true; value: T } | { ok: false; reason: string }): T {
   if (!r.ok) throw new Error(r.reason);
@@ -38,6 +38,9 @@ export function shapes(world: World): Shapes {
     cone: must(og.render.coneGeometry(world, { radius: 0.5, height: 1, radialSegments: 16 })),
   };
 }
+
+/** A cooked texture by its asset id. */
+export const tex = (world: World, path: string): Texture => must(og.load.texture(world, path));
 
 export const mat = (world: World, desc: StandardMaterialDesc): Material => must(og.render.standardMaterial(world, desc));
 

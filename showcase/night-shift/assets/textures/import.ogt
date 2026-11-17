@@ -1,0 +1,15 @@
+type import
+version 1
+---
+# Poly Haven sets: the normal maps and the packed occlusion-roughness-metal
+# maps are data, not colour.
+match "*_nor_gl_*.jpg" {
+  texture {
+    kind normal
+  }
+}
+match "*_arm_*.jpg" {
+  texture {
+    kind linear
+  }
+}

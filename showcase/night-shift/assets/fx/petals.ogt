@@ -1,0 +1,27 @@
+type particles
+version 1
+---
+# Blossom shed by the cherry in spring: petals tumbling down on the wind.
+maxParticles 512
+shape box 2.6 1.2 2.6
+spread 180
+rate 26
+lifetime 5 8
+speed 0.1 0.4
+size 0.035 0.06
+colorOverLife {
+  key 0 1 0.62 0.8 0
+  key 0.05 1 0.62 0.8 1
+  key 0.9 1 0.7 0.84 1
+  key 1 1 0.7 0.84 0
+}
+rotation 0 360
+angularVelocity -220 220
+gravity 0 -0.45 0
+drag 1.2
+wind 0.8
+noise 0.7 0.6 0.4
+render mesh tetrahedron
+blend alpha
+lit true
+collision 0 1 depth die

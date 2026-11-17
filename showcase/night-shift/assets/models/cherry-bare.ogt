@@ -1,0 +1,13 @@
+type model
+version 1
+---
+# The cherry tree bare: cherry.ogt without its leaves and flowers, for winter.
+plant "cherry" {
+  seed 11
+  barkColor 0.06 0.045 0.04
+  trunk {
+    length 3.4
+    radius 0.17
+    gnarliness 0.14
+  }
+}

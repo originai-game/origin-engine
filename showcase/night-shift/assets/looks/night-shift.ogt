@@ -11,11 +11,11 @@ RenderSettings {
   bloom true
   bloomIntensity 0.4
   bloomThreshold 1.1
-  environmentIntensity 0.6
+  environmentIntensity 0.25
 }
 PostEffects {
   ssr true
   ssrMaxDistance 60
   ao true
-  saturation 0.1
+  saturation 0.2
 }

@@ -3,3 +3,9 @@ dist/
 og-out/
 .og/
 node_modules/
+raw/
+# Binary assets are not in git: assets.json pins them in the model bucket
+# (docs/ci.md, The model bucket; `bun scripts/showcase-assets.ts ensure`).
+assets/models/*.glb
+assets/textures/*.jpg
+assets/textures/signs/*.png

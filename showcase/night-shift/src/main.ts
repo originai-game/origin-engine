@@ -1,58 +1,63 @@
 // Night Shift: a courier and a hover-bike at the mouth of a market alley.
-// The set is built once (set.ts); this file sets the night, the fog, the
-// rain and the camera over it.
-import { og, WEATHER_RAIN } from "@origingame/engine";
+// The set and the cast are built once (set.ts, cast.ts); air.ts runs the
+// weather, the season and the time of day over them.
+import { defineSystem, og } from "@origingame/engine";
 import type { World } from "@origingame/engine";
+import { Air, AirSystem, buildAir, SEASONS, setSeason, setTime, setWeather, TIMES, WEATHERS } from "./air.ts";
+import { buildCast, Stand, Walk } from "./cast.ts";
+import { buildFlora, Flora } from "./flora.ts";
+import { Hud, HudAssets, loadHud, mountHud, toggleHud } from "./hud.ts";
 import { buildSet } from "./set.ts";
-import { must, rgb, v3 } from "./util.ts";
+import { must, v3 } from "./util.ts";
 
 function start(world: World): void {
   buildSet(world);
+  buildCast(world);
+  buildFlora(world);
+  buildAir(world);
 
-  // Night over the city: a violet overcast lit from below, no sun.
-  const sky = must(world.resource(og.Sky));
-  sky.enabled = true;
-  sky.zenith = rgb(0.035, 0.022, 0.075);
-  sky.horizon = rgb(0.2, 0.08, 0.26);
-  sky.ground = rgb(0.01, 0.008, 0.015);
-  sky.sunSize = 0;
-  sky.glow = 0;
-  sky.brightness = 1;
-  const moon = must(world.spawn({ name: "moon", quaternion: og.transform.lookAt(v3(0, 0, 0), v3(-0.3, -0.8, -0.5)) }));
-  must(world.insert(moon, og.DirectionalLight, { color: rgb(0.55, 0.6, 1), intensity: 0.08, castShadow: true }));
-
-  const fog = must(world.resource(og.Fog));
-  fog.enabled = true;
-  fog.color = rgb(0.16, 0.075, 0.24);
-  fog.density = 0.009;
-  fog.heightDensity = 0.015;
-  fog.height = 2;
-  fog.falloff = 0.08;
-  fog.volumetric = true;
-  fog.volumetricDistance = 60;
-  fog.scattering = 0.6;
-
-  const weather = must(world.resource(og.Weather));
-  weather.kind = WEATHER_RAIN;
-  weather.intensity = 1;
-  weather.radius = 22;
-  const ground = must(world.resource(og.WeatherState));
-  ground.soakTime = 0.5;
-  ground.puddleTime = 1;
-  const wind = must(world.resource(og.Wind));
-  wind.direction = v3(0.4, 0, -1);
-  wind.speed = 3;
+  loadHud(world);
+  // The switches: each key steps its setting to the next, which ramps in.
+  for (const [name, key, pad] of [["weather", "KeyR", "pad.x"], ["season", "KeyF", "pad.y"], ["time", "KeyT", "pad.b"], ["hud", "KeyH", "pad.back"]] as const) {
+    must(og.input.defineAction(world, { name, kind: "button", bindings: [{ control: key }, { control: pad }] }));
+  }
 
   const cam = must(world.resource(og.Camera));
-  cam.position = v3(0.7, 0.32, 7.2);
-  cam.quaternion = og.transform.lookAt(cam.position, v3(0.5, 4.6, -12));
+  // Low, near the street, pitched up: the wet setts fill the lower third
+  // and the towers stand over the gate.
+  cam.position = v3(0, 0.7, 7);
+  cam.quaternion = og.transform.lookAt(cam.position, v3(0, 5.2, -13));
   cam.fov = 62;
   cam.far = 600;
 }
+
+/** Steps the weather, the season and the time of day on their keys, and hides the HUD on its. */
+const Switches = defineSystem("Switches", { writes: [Air] }, (_q, _time, world) => {
+  const air = must(world.resource(Air));
+  if (og.input.isActionJustPressed(world, "weather")) air.weather = (air.weather + 1) % WEATHERS.length;
+  if (og.input.isActionJustPressed(world, "season")) air.season = (air.season + 1) % SEASONS.length;
+  if (og.input.isActionJustPressed(world, "time")) air.time = (air.time + 1) % TIMES.length;
+  if (og.input.isActionJustPressed(world, "hud")) toggleHud(world);
+});
 
 export default og.game({
   tick: 60,
   seed: 1,
   look: "looks/night-shift.ogt",
+  resources: [Air, HudAssets],
+  systems: [Switches, AirSystem, Flora, Walk, Stand, Hud],
+  ui: mountHud,
+  commands: {
+    weather: (world, args) => setWeather(world, args[0]),
+    season: (world, args) => setSeason(world, args[0]),
+    time: (world, args) => setTime(world, args[0]),
+    hud: (world) => toggleHud(world),
+  },
+  commandHelp: {
+    weather: { usage: "<rain|storm|fog|clear|snow>", doc: "Switch the weather; it ramps over a few seconds." },
+    season: { usage: "<spring|summer|autumn|winter>", doc: "Turn the season." },
+    time: { usage: "<night|dawn>", doc: "Break the dawn, or go back to night." },
+    hud: { usage: "", doc: "Show or hide the HUD." },
+  },
   start,
 });
