@@ -441,6 +441,12 @@ on its own (docs/web-export.md §Variants). `budgets.txt`'s
   unchecked, and `--require-checked` makes unchecked checks exit 1.
   `packages/engine/tests/no-renderer.test.ts` and og-runtime's
   `tests/no_renderer.rs` hold the contract.
+  `og test` defaults an unset switch to `hardware`: a software-only adapter
+  (lavapipe, llvmpipe or SwiftShader) is reported as unavailable before
+  device creation, not silently used to draw every tick on the CPU.
+  `OG_RENDERER=software og test` opts into software rendering; it can be very
+  slow. Real GPU adapters still render normally. Other commands keep their
+  existing adapter selection unless the switch is explicitly set.
 - `OG_GATE_JOBS`, `OG_GATE_THREADS` (§Running the gate locally),
   `OG_WASM_PROFILE` (§Lanes), `OG_BUN_TEST_TIMEOUT` and `OG_WEB_JOBS`
   (§What runs where).

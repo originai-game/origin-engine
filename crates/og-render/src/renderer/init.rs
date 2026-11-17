@@ -260,6 +260,19 @@ impl Renderer {
         desc: &RenderDesc,
         shared: Option<(wgpu::Device, wgpu::Queue, Option<pipeline_cache::DiskCache>)>,
     ) -> Result<Renderer, RenderError> {
+        #[cfg(not(target_arch = "wasm32"))]
+        {
+            let info = adapter.get_info();
+            if std::env::var(RENDERER_SWITCH)
+                .is_ok_and(|v| v.trim().eq_ignore_ascii_case("hardware"))
+                && is_software_adapter(info.device_type, &info.name)
+            {
+                return Err(RenderError::NoAdapter(format!(
+                    "only software adapter '{}' is available; OG_RENDERER=hardware refuses slow CPU rendering. Use OG_RENDERER=software to opt in, or OG_RENDERER=none for simulation only",
+                    info.name
+                )));
+            }
+        }
         // The adapter's capabilities and the device's plan (init/adapter.rs).
         let AdapterPlanOutputs {
             adapter_info,

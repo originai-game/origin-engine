@@ -550,7 +550,9 @@ impl RenderInfo {
 /// [`RenderError::NoAdapter`], as on a machine with no usable adapter (the
 /// platform's `engine` and `probe` sandboxes, docs/design.md §5), so the
 /// no-renderer path is testable where a GPU is present (docs/ci.md
-/// §Switches). Any other value, or none, leaves adapters as they are. Read
+/// §Switches). `hardware` rejects software rasterizers before device creation
+/// (the default for `og test`); `software` explicitly permits them. Any other
+/// value, or none, leaves adapters as they are. Read
 /// natively only; the web always has its canvas's adapter.
 pub const RENDERER_SWITCH: &str = "OG_RENDERER";
 

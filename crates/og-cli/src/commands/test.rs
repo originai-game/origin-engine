@@ -47,6 +47,23 @@ pub(crate) fn files(dir: &Path, suffix: &str, out: &mut Vec<PathBuf>) {
 }
 
 pub fn run(args: &[&str]) -> ExitCode {
+    // Keep the harness and its resident host in the same environment, without
+    // mutating this process's environment after threads may have started.
+    if std::env::var_os(og_render::RENDERER_SWITCH).is_none() {
+        return match std::env::current_exe().and_then(|exe| {
+            Command::new(exe)
+                .arg("test")
+                .args(args)
+                .env(og_render::RENDERER_SWITCH, "hardware")
+                .status()
+        }) {
+            Ok(status) => ExitCode::from(status.code().unwrap_or(1) as u8),
+            Err(error) => {
+                eprintln!("og test: cannot start hardware-only test harness: {error}");
+                ExitCode::FAILURE
+            }
+        };
+    }
     let mut project = ".";
     let mut json = false;
     let mut check = true;

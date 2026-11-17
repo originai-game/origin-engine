@@ -1,0 +1,3 @@
+{
+  "fixed": ["og test now defaults to hardware rendering and clearly reports software-only adapters as unavailable, leaving frame checks unchecked instead of silently rendering every tick on the CPU. OG_RENDERER=software explicitly opts into software rendering; OG_RENDERER=none still runs simulation only."]
+}

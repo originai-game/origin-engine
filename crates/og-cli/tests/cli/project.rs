@@ -1,5 +1,29 @@
 use super::*;
 
+#[test]
+fn tests_default_to_hardware_but_preserve_explicit_renderer_selection() {
+    let dir = TempDir::new("og-test-renderer");
+    std::fs::create_dir_all(dir.join("tests")).unwrap();
+    std::fs::write(dir.join("main.ts"), "export default {};").unwrap();
+    std::fs::write(
+        dir.join("project.ogt"),
+        "type project\nversion 1\n---\nname \"Test\"\nentry \"main.ts\"\n",
+    )
+    .unwrap();
+    std::fs::write(dir.join("tests/renderer.test.ts"), "import { test, expect } from 'bun:test'; test('renderer policy', () => expect(process.env.OG_RENDERER).toBe(process.env.EXPECT_RENDERER));").unwrap();
+    for renderer in [None, Some("software"), Some("none")] {
+        let mut command = og();
+        command.args(["test", dir.to_str().unwrap(), "--no-check"]);
+        command.env("EXPECT_RENDERER", renderer.unwrap_or("hardware"));
+        command.env_remove("OG_RENDERER");
+        if let Some(renderer) = renderer {
+            command.env("OG_RENDERER", renderer);
+        }
+        let out = command.output().unwrap();
+        assert!(out.status.success(), "{}", text(&out));
+    }
+}
+
 /// A failed supervisor reports its own diagnostic, not a readiness timeout.
 #[cfg(unix)]
 #[test]
