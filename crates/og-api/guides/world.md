@@ -43,6 +43,9 @@ world.insert(ground, og.Collider, { shape: "heightfield", mesh: t.geometry });
   surface there (a cliff's face and lip, an arch, an overhang). At the
   edge of what the mesh covers the ground goes down to the underside
   itself, so the ground beside it meets its foot with no trench.
+- An og.TerrainStamp's mesh takes the terrain's layers by its own normal.
+  A face turned past vertical (an overhang's or an arch's underside)
+  counts as vertical: it takes the layers whose `slopeMax` reaches 90°.
 - Terrain is 3D. The 2D profile's publish and lanes builds leave it out
   (RenderCapabilities.world3d is false), and every call answers a refusal
   naming that field.

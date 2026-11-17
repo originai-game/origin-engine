@@ -408,7 +408,10 @@ struct LayerPick {
 
 fn pick_layers(p: vec3<f32>, n: vec3<f32>, c: array<vec4<f32>, 4>) -> LayerPick {
   let count = min(u32(terrain.origin.w), 16u);
-  let angle = degrees(acos(clamp(n.y, -1.0, 1.0)));
+  // A face turned past vertical (a stamp's overhang, the underside of an
+  // arch) is as steep as a slope rule can name: it takes what a vertical
+  // face takes, never the fallback's first layer.
+  let angle = min(degrees(acos(clamp(n.y, -1.0, 1.0))), 90.0);
   let altitude = p.y - terrain.origin.y;
   var pick: LayerPick;
   pick.ids = vec4<u32>(0u, 1u, 2u, 3u);
