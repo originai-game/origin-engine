@@ -11,6 +11,9 @@
 //! - a face that cannot shape `tnum` (no file, or no feature) keeps its
 //!   proportional figures, so a timer changes width as it ticks →
 //!   `tabular_figures_hold_a_width_without_the_feature`
+//! - a rich text shaped whole with `tnum` draws the face's tabular forms,
+//!   which an atlas cooked without `features tnum` lacks, so its digits
+//!   vanish → `tabular_digits_of_a_rich_text_are_drawn_from_its_atlas`
 
 use crate::support::Doc;
 use og_draw::{Glyph, GlyphKey, MsdfFont, TextureHandle};
@@ -26,6 +29,12 @@ pub(crate) fn font(file: &str) -> UiFont {
 
 /// [`font`] for a font at `path` from the repository's root.
 pub(crate) fn font_at(path: &str) -> UiFont {
+    cooked(path, true)
+}
+
+/// A font at `path` as the cook makes it: its printable ASCII by code
+/// point, and with `forms` every glyph by id (cooked with `features`).
+fn cooked(path: &str, forms: bool) -> UiFont {
     let path = format!("{}/../../{path}", env!("CARGO_MANIFEST_DIR"));
     let bytes = std::fs::read(&path).expect("a kit font");
     let face = ttf_parser::Face::parse(&bytes, 0).expect("a font ttf-parser reads");
@@ -41,10 +50,12 @@ pub(crate) fn font_at(path: &str) -> UiFont {
         .map(char::from)
         .filter_map(|c| Some(glyph(c.into(), advance(face.glyph_index(c)?))))
         .collect();
-    glyphs.extend(
-        (0..face.number_of_glyphs())
-            .map(|g| glyph(GlyphKey::Id(g), advance(ttf_parser::GlyphId(g)))),
-    );
+    if forms {
+        glyphs.extend(
+            (0..face.number_of_glyphs())
+                .map(|g| glyph(GlyphKey::Id(g), advance(ttf_parser::GlyphId(g)))),
+        );
+    }
     let msdf = MsdfFont {
         atlas: TextureHandle::from_slot(1).expect("a handle"),
         distance_range: 4.0,
@@ -160,4 +171,44 @@ fn display_text_under_the_styles_display_min_takes_the_body_face() {
         width(0.0, 18.0, display),
         "at it: the display face"
     );
+}
+
+/// A struck price (a rich text: its decoration makes it one) in a face
+/// cooked without `features tnum`, under `tabular-nums`: its atlas has its
+/// characters but not the face's `tnum` forms, so the digits are drawn as
+/// their characters (the run path's tabular backstop), never as forms the
+/// atlas lacks. Inter's figures are proportional, its `tnum` tabular.
+#[test]
+fn tabular_digits_of_a_rich_text_are_drawn_from_its_atlas() {
+    let mut f = cooked(
+        "tests/fixtures/ui-text/assets/fonts/Inter-Display.ttf",
+        false,
+    );
+    f.handle = Some(og_draw::FontHandle::from_index(0));
+    let d = Doc::with_font(
+        &label_doc(
+            "1,000",
+            "font-variant-numeric: tabular-nums; text-decoration: line-through;",
+        ),
+        &[],
+        f,
+    );
+    let drawn: Vec<_> =
+        d.ui.frame()
+            .items
+            .iter()
+            .filter_map(|i| match &i.cmd {
+                DrawCmd::Text {
+                    text, placements, ..
+                } if text == "1,000" => Some(placements.clone()),
+                _ => None,
+            })
+            .collect();
+    assert!(!drawn.is_empty(), "the price is drawn");
+    for p in &drawn {
+        assert!(
+            p.iter().all(|g| g.glyph.is_none()),
+            "a form outside the atlas draws nothing: {p:?}"
+        );
+    }
 }

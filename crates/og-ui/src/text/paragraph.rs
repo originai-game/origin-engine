@@ -571,7 +571,9 @@ fn shaped<R>(
             let metrics = fonts.metrics_styled(s.font, s.query(), &s.text);
             for (range, k) in metrics.font_runs(&s.text) {
                 let m = metrics.part(k)?;
-                if m.fixed.is_some() || m.pixel != 0 {
+                // A face that sets its digits on the tabular backstop is
+                // laid out run by run, which holds them as drawn.
+                if m.fixed.is_some() || m.pixel != 0 || m.tabulates(&s.text, s.step.features) {
                     return None;
                 }
                 // Each face at its own size (`font-size-adjust`).

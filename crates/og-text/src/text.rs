@@ -889,6 +889,15 @@ impl FontMetrics {
         out
     }
 
+    /// Whether this face sets `text`'s digits on the tabular backstop
+    /// ([`FontMetrics::tabulate`]): `tnum` is on, `text` has a digit and
+    /// the face's figures stay proportional under it as its atlas draws
+    /// them. A shaped layout must not take such a text: it would draw the
+    /// face's own `tnum` forms, which its atlas may lack.
+    pub fn tabulates(&self, text: &str, features: Features) -> bool {
+        tabulates(text, features) && self.tabular_advance(features).is_some()
+    }
+
     /// The widest of the font's digits 0 to 9, em; `None` when its digits
     /// are already one advance (a face whose figures are tabular, by
     /// default or by its `tnum` as shaped) or it has none.

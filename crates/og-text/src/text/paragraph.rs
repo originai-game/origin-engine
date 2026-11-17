@@ -378,13 +378,11 @@ pub fn layout(
     // Chakra Petch has no `tnum`): the run path sets its digits on the
     // widest digit's advance (FontMetrics::tabulate), which a shaped layout
     // would not, and a counting clock would change width as it runs.
-    if super::tabulates(text, features)
-        && runs.iter().any(|(_, k)| {
-            metrics
-                .part(*k)
-                .is_some_and(|m| m.tabular_advance(features).is_some())
-        })
-    {
+    if runs.iter().any(|(_, k)| {
+        metrics
+            .part(*k)
+            .is_some_and(|m| m.tabulates(text, features))
+    }) {
         return None;
     }
     let files = runs
