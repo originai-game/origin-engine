@@ -405,8 +405,10 @@ model, Position 3, Writing Modes 4, Anchor Positioning 1, floats (CSS 2
 Values 4 and 5, Sizing 3, Flexbox 1 and Grid (with `subgrid` and
 `masonry`). HTML's UA rules come first in every cascade: list indents and
 markers, the heading steps above, and block margins (`<p>`, `<ul>`, `<ol>`
-1em, nested lists none; headings 0.67em to 2.33em of their step). The
-engine differs or limits as follows:
+1em, nested lists none; headings 0.67em to 2.33em of their step). Heading
+defaults set size, weight and tracking, not a `font` shorthand: headings
+and `<small>` retain the document's inherited font family and line height.
+The engine differs or limits as follows:
 
 - **Display.** Only boxes take every `display` value; other elements take
   `none`, `block`, `inline`, `inline-block` and `flow-root`. An

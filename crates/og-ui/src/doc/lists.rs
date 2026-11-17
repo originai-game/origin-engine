@@ -14,8 +14,10 @@ pub use crate::css::image_css::list_style_image as image;
 use serde_json::Value;
 
 /// The user-agent rules HTML's stylesheet gives these elements (and the
-/// headings' type steps), cascaded before every author rule: list
+/// headings' type sizes and weights), cascaded before every author rule: list
 /// indents and markers, and the block margins (`margin: 0` resets them).
+/// Headings and small text inherit their family's face and line height:
+/// a `font` shorthand here would reset an author's inherited typography.
 /// A `<button>` centres its label, as HTML's sheet has it, so it does not
 /// inherit its parent's `text-align`, and a figure on it (a cost) takes the
 /// plate's ink: `--figure-ink` is the button's colour inside it, under any
@@ -36,13 +38,13 @@ ul ul, ol ul { list-style-type: circle; }
 ul ul ul, ul ol ul, ol ul ul, ol ol ul { list-style-type: square; }
 p, ul, ol { margin-block: 1em; }
 ul ul, ul ol, ol ul, ol ol { margin-block: 0; }
-h1 { font: var(--text-xl3); letter-spacing: var(--type-xl3-tracking); margin-block: 0.67em; }
-h2 { font: var(--text-xl); letter-spacing: var(--type-xl-tracking); margin-block: 0.83em; }
-h3 { font: var(--text-lg); letter-spacing: var(--type-lg-tracking); margin-block: 1em; }
-h4 { font: var(--text-body); margin-block: 1.33em; }
-h5 { font: var(--text-sm); margin-block: 1.67em; }
-h6 { font: var(--text-xs); margin-block: 2.33em; }
-small { font: var(--text-sm); }
+h1 { font-size: var(--type-xl3-size); font-weight: var(--type-xl3-weight); letter-spacing: var(--type-xl3-tracking); margin-block: 0.67em; }
+h2 { font-size: var(--type-xl-size); font-weight: var(--type-xl-weight); letter-spacing: var(--type-xl-tracking); margin-block: 0.83em; }
+h3 { font-size: var(--type-lg-size); font-weight: var(--type-lg-weight); letter-spacing: var(--type-lg-tracking); margin-block: 1em; }
+h4 { font-size: var(--type-body-size); font-weight: var(--type-body-weight); margin-block: 1.33em; }
+h5 { font-size: var(--type-sm-size); font-weight: var(--type-sm-weight); margin-block: 1.67em; }
+h6 { font-size: var(--type-xs-size); font-weight: var(--type-xs-weight); margin-block: 2.33em; }
+small { font-size: var(--type-sm-size); }
 iframe { overflow: clip; }
 button { text-align: center; --figure-ink: currentColor; }
 menu > button { width: stretch; text-align: start; }

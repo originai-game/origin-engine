@@ -31,6 +31,46 @@ fn face(path: &str) -> UiFont {
 const NOTO: &str = "templates/fonts/latin/NotoSans-Latin.ttf";
 
 #[test]
+fn html_type_defaults_preserve_inherited_typography() {
+    for tag in ["h1", "h2", "h3", "h4", "h5", "h6", "small"] {
+        let mut mono = face(NOTO);
+        mono.handle = Some(og_draw::FontHandle::from_index(1));
+        let handle = mono.handle.unwrap();
+        let ui = Ui::new(UiDesc {
+            fonts: Fonts {
+                body: face(NOTO),
+                mono: Some(mono),
+                ..Fonts::default()
+            },
+            ..UiDesc::default()
+        });
+        let d = Doc::mounted(
+            ui,
+            &format!(
+                "<meta name=\"component\" content=\"t\"><div><div id=\"Root\">
+                 <{tag} id=\"Title\">Mission complete!</{tag}><span id=\"Next\">Stage one</span></div></div>
+                 <style>#Root {{ display: flex; flex-direction: column; gap: 10px;
+                 font-family: monospace; line-height: 1.25; }}
+                 {tag} {{ margin: 0; font-size: 54px; }} #Next {{ font-size: 24px; }}</style>"
+            ),
+            &[],
+        );
+        let title = d.get("Title");
+        let next = d.get("Next");
+        assert!((title.height - 67.5).abs() <= 0.5, "{tag}: {title:?}");
+        assert!((next.y - title.y - title.height - 10.0).abs() <= 0.5);
+        assert!((next.height - 30.0).abs() <= 0.5, "{tag}: {next:?}");
+        assert!(
+            d.ui.frame().items.iter().any(|it| matches!(
+                text_of(&it.cmd), DrawCmd::Text { text, font, .. }
+                if text == "Mission complete!" && *font == handle
+            )),
+            "{tag} must inherit its font family"
+        );
+    }
+}
+
+#[test]
 fn scrolling_overflow_moves_retained_text_but_not_fitting_text() {
     let mut d = doc(
         "<p id=\"Long\">A deliberately long song title for scrolling</p><p id=\"Short\">Hi</p>",
