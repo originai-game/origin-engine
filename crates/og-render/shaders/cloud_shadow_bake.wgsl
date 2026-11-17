@@ -5,7 +5,11 @@
 // (lighting.wgsl `cloud_shadow`). A texel is where a ray to the sun leaves
 // the layer's base, in the noise's own x and z; the ray is marched from
 // there to the layer's top through the density the sky draws
-// (clouds_shape.wgsl), without the fine erosion a texel is too wide for.
+// (clouds_shape.wgsl), with its detail: a texel (70 m) holds the detail's
+// cells (140 to 280 m), which move a cloud's edge by hundreds of metres,
+// and a shadow baked at their mean lay where the drawn cloud had a gap.
+// Baked again only when the sun moves a step, so the detail's read is
+// not a frame's cost.
 // After frame.wgsl and clouds_shape.wgsl.
 
 struct CloudShadowBake {
@@ -33,7 +37,7 @@ fn main(@builtin(global_invocation_id) id: vec3<u32>) {
     let hf = (f32(i) + 0.5) / f32(steps);
     let rise = hf * c[0].w;
     let at = vec3<f32>(base.x + bake.ray.x * rise, c[0].z + rise - bake.ray.y, base.y + bake.ray.z * rise);
-    depth += cloud_density_in(at, hf, true) * ds;
+    depth += cloud_density_in(at, hf, false) * ds;
   }
   textureStore(shadow_out, vec2<i32>(id.xy), vec4<f32>(exp(-depth), 0.0, 0.0, 1.0));
 }

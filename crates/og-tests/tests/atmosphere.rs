@@ -386,7 +386,9 @@ fn the_clouds_shade_the_ground_under_them() {
         };
         middle(&capture(&scene))
     };
-    // The sun from that place, in a narrow view.
+    // The sun from that place, in a narrow view, exposed so its disc does
+    // not clip (at the scene's own exposure a thin cloud before it still
+    // drew it white).
     let sun = |place: Vec3| {
         let mut scene = scene_at(place, 1.0);
         let to_light = scene.lighting.light.direction_to_light.normalize();
@@ -394,6 +396,7 @@ fn the_clouds_shade_the_ground_under_them() {
             position: place + Vec3::Y * 2.0,
             target: place + Vec3::Y * 2.0 + to_light,
             projection: og_render::Projection::Perspective { fov_y_degrees: 8.0 },
+            exposure: og_render::Exposure::Manual { ev: -9.0 },
             ..Default::default()
         };
         middle(&capture(&scene))
@@ -412,13 +415,19 @@ fn the_clouds_shade_the_ground_under_them() {
         );
         rows.push((sky_mean, lit, plain));
     }
-    // The sun's disc fills the middle of the narrow view: white where
-    // nothing stands before it.
-    let covered = |sky: f32| sky < 252.0;
+    // The sun's disc fills the middle of the narrow view: about as bright as
+    // the brightest where nothing stands before it (a wisp that dims it by a
+    // fifth or less is finer than the shadow map's 70 m texel), a quarter of
+    // that or less behind a cloud, and between the two behind a cloud's thin
+    // edge.
+    let open_sun = rows.iter().map(|r| r.0).fold(0.0, f32::max);
+    let open = |sky: f32| sky > 0.8 * open_sun;
+    let covered = |sky: f32| sky < 0.25 * open_sun;
     let shaded = rows.iter().filter(|r| covered(r.0)).count();
+    let clear = rows.iter().filter(|r| open(r.0)).count();
     assert!(
-        shaded >= 3 && rows.len() - shaded >= 3,
-        "{shaded} of {} places under a cloud: the places do not tell the shadows from the sun",
+        shaded >= 3 && clear >= 3,
+        "{shaded} of {} places under a cloud, {clear} under an open sun: the places do not tell the shadows from the sun",
         rows.len()
     );
     let plain = rows.iter().map(|r| r.2).sum::<f32>() / rows.len() as f32;
@@ -432,10 +441,15 @@ fn the_clouds_shade_the_ground_under_them() {
                 *lit < 0.75 * unshaded,
                 "a cloud stands before the sun at {p} and the ground is lit {lit} of {unshaded}"
             );
-        } else {
+        } else if open(*sky) {
             assert!(
                 (lit - unshaded).abs() < 0.03 * unshaded,
                 "the sun is open at {p} and the ground is lit {lit} of {unshaded}"
+            );
+        } else {
+            assert!(
+                *lit < 0.97 * unshaded,
+                "a cloud's edge stands before the sun at {p} and the ground is lit {lit} of {unshaded}"
             );
         }
     }

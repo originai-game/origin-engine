@@ -6,9 +6,14 @@
 //! of the multiple scattering approximation of Wrenninge et al.), the
 //! environment's irradiance and a lightning strike's flash inside them
 //! ([`Clouds::flash`]), faded into the sky with distance; and a thin high layer
-//! (cirrus) over it. Their shapes come from a tiling 64³ noise volume
-//! (Perlin–Worley base, two Worley detail octaves, a coverage channel),
-//! made once on the GPU by a compute pass the first frame that has clouds.
+//! (cirrus) over it. Their shapes are the cloudscape of Schneider's Horizon
+//! Zero Dawn and Nubis talks (`third_party/nubis-clouds.md`): a tiling 128³
+//! noise volume (a carved Perlin–Worley base shape, two Worley detail
+//! channels, a weather map), made once on the GPU by a compute pass the
+//! first frame that has clouds; a weather map and a height gradient that
+//! stand each cloud on the layer's base; and a march in strides through
+//! clear air and fine steps through cloud (`clouds_shape.wgsl`, sky.wgsl
+//! `clouds_march`).
 //! The wind moves them by the tick's seconds, so they look the same on
 //! every run and after a restore; nothing in the simulation reads them.
 //!
@@ -24,7 +29,7 @@ mod shadow;
 pub(crate) use shadow::{CloudShadow, bake_source};
 
 /// The noise volume's size per side.
-pub(crate) const NOISE_SIZE: u32 = 64;
+pub(crate) const NOISE_SIZE: u32 = 128;
 /// The vec4s of the frame uniform's cloud block (`frame.clouds`).
 pub(crate) const CLOUD_VEC4S: usize = 12;
 /// The first of the clouds' block's rows that hold the clear sky's light
