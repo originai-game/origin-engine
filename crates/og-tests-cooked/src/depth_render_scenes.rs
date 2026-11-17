@@ -17,7 +17,8 @@ use og_render::{Camera, Exposure, InstanceFx, RenderScene, lod};
 use std::path::PathBuf;
 use std::sync::OnceLock;
 
-/// The project holding the tree (`assets/tree.glb`), cooked once per process.
+/// The project holding the tree (`assets/tree.glb`) and the kit's pine
+/// (`assets/kit/pine.glb`), cooked once per process.
 pub(crate) fn cooked() -> Result<&'static PathBuf, String> {
     static ROOT: OnceLock<Result<PathBuf, String>> = OnceLock::new();
     ROOT.get_or_init(|| {
@@ -27,6 +28,11 @@ pub(crate) fn cooked() -> Result<&'static PathBuf, String> {
         std::fs::create_dir_all(&models).map_err(|e| format!("{}: {e}", models.display()))?;
         std::fs::write(models.join("tree.glb"), crate::scenes::asset("tree.glb")?)
             .map_err(|e| format!("tree.glb: {e}"))?;
+        // The kit's pine (og-tests/assets/kit/README.md), cooked as any
+        // model is: clusters for the meshlet path and its mesh levels; its
+        // foot moved to the origin, where the wind's bend roots a model.
+        let pine = rooted_glb(&crate::scenes::asset("kit/pine.glb")?)?;
+        std::fs::write(models.join("pine.glb"), pine).map_err(|e| format!("pine.glb: {e}"))?;
         let report = og_cook::cook_project(&root, &og_cook::CookOptions::default())
             .map_err(|e| format!("cook: {e}"))?;
         if !report.ok() {
@@ -36,6 +42,53 @@ pub(crate) fn cooked() -> Result<&'static PathBuf, String> {
     })
     .as_ref()
     .map_err(Clone::clone)
+}
+
+/// A one-mesh GLB `bytes` with its first primitive's positions raised so
+/// the lowest stands at y = 0 (the kit's pine is modelled about its
+/// middle; og.Model.sway and the meshlet foliage bend a model from its
+/// origin). Float positions only; the bounds are written again.
+fn rooted_glb(bytes: &[u8]) -> Result<Vec<u8>, String> {
+    let u32_at = |o: usize| u32::from_le_bytes(bytes[o..o + 4].try_into().unwrap()) as usize;
+    let json_len = u32_at(12);
+    let mut json: serde_json::Value =
+        serde_json::from_slice(&bytes[20..20 + json_len]).map_err(|e| e.to_string())?;
+    let bin_at = 20 + json_len;
+    let mut bin = bytes[bin_at + 8..bin_at + 8 + u32_at(bin_at)].to_vec();
+    let pos = json["meshes"][0]["primitives"][0]["attributes"]["POSITION"]
+        .as_u64()
+        .ok_or("no POSITION")? as usize;
+    let acc = json["accessors"][pos].clone();
+    if acc["componentType"] != 5126 {
+        return Err("positions are not floats".into());
+    }
+    let view = &json["bufferViews"][acc["bufferView"].as_u64().unwrap_or(0) as usize];
+    let stride = view["byteStride"].as_u64().unwrap_or(12) as usize;
+    let first = view["byteOffset"].as_u64().unwrap_or(0) as usize
+        + acc["byteOffset"].as_u64().unwrap_or(0) as usize;
+    let lift = -acc["min"][1].as_f64().ok_or("no bounds")? as f32;
+    for k in 0..acc["count"].as_u64().unwrap_or(0) as usize {
+        let o = first + k * stride + 4;
+        let y = f32::from_le_bytes(bin[o..o + 4].try_into().unwrap()) + lift;
+        bin[o..o + 4].copy_from_slice(&y.to_le_bytes());
+    }
+    for b in ["min", "max"] {
+        let y = json["accessors"][pos][b][1].as_f64().unwrap_or(0.0) + lift as f64;
+        json["accessors"][pos][b][1] = serde_json::json!(y);
+    }
+    let mut text = serde_json::to_vec(&json).map_err(|e| e.to_string())?;
+    text.resize(text.len().next_multiple_of(4), b' ');
+    let total = 12 + 8 + text.len() + 8 + bin.len();
+    let mut out = Vec::with_capacity(total);
+    out.extend_from_slice(&bytes[0..8]);
+    out.extend_from_slice(&(total as u32).to_le_bytes());
+    out.extend_from_slice(&(text.len() as u32).to_le_bytes());
+    out.extend_from_slice(b"JSON");
+    out.extend_from_slice(&text);
+    out.extend_from_slice(&(bin.len() as u32).to_le_bytes());
+    out.extend_from_slice(b"BIN\0");
+    out.extend_from_slice(&bin);
+    Ok(out)
 }
 
 /// The trees' distances along the row (m) and the camera of `lod-levels`.

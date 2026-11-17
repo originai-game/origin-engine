@@ -1,56 +1,55 @@
 //! The meshlet path's scenes (R1 batch 2, og-render's `meshlet` and
-//! `meshlet_gpu`): the fx-showcase tree (3,160 triangles, cooked with the
-//! default `lods 1 0.5 0.25` and cut into clusters), its instances drawn
-//! at level 0's mesh so the GPU picks each one's level and culls its
-//! clusters.
+//! `meshlet_gpu`): the kit's pine (og-tests/assets/kit/README.md; 9,037
+//! triangles, cooked with the default `lods 1 0.5 0.25` and cut into
+//! clusters) planted as a plantation in an orchard's rolling country, its
+//! instances drawn at level 0's mesh so the GPU picks each one's level and
+//! culls its clusters. Where a scene shows the levels, it shows them in an
+//! inset in the top right corner ([`INSET`], `View::lod_debug`), as an
+//! editor's overlay beside the untinted shot.
 //!
-//! - `meshlet-forest`: 132 trees on a grid 11 wide and 12 deep, 6 m to
-//!   116 m from an eye 1.7 m up, each tinted by the level the GPU picked
-//!   (`RenderScene::lod_debug`): the near rows' canopies green (the full
-//!   mesh), from about 20 m yellow, from about 40 m orange (by the
-//!   horizon); the trunks orange everywhere (their levels stand
-//!   micrometres apart); no tree missing or cut open (a cluster
-//!   culled wrongly shows as a hole in a crown).
-//! - `meshlet-occlusion`: the same forest without the tint, behind a wall
-//!   4 m away that hides the left two thirds of the view, three frames
+//! - `meshlet-forest`: 132 pines 8 to 12 m tall, 11 rows across and 12
+//!   deep from 6 m to 116 m, seen from the lane's end at the walled plot's
+//!   gate; the inset looks down the same rows from 30 m up, its near rows
+//!   green (the full mesh) and its far rows yellow (level 1), no tree
+//!   missing or cut open (a cluster culled wrongly shows as a hole in a
+//!   crown).
+//! - `meshlet-occlusion`: the plantation behind its old curtain wall, run
+//!   at a slant across the left of the view to a broken end, three frames
 //!   so the second and third cull in two phases (the clusters visible
 //!   the frame before, drawn into the occluders' depth; the rest against
-//!   the pyramid built again from it): the right third shows the forest
-//!   whole, as `occlusion_scene(false)` draws it through the regular
-//!   path.
-//! - `meshlet-near`: one tree 6 m away, drawn through the meshlet path;
-//!   `meshlet_near_scene(false)` draws it through the regular path, and
-//!   the two frames match (the level is 0 at that distance).
-//! - `meshlet-shadows` (batch 3): five trees under a low sun and a
-//!   shadowed spot light, seen from above so their long shadows lie on the
-//!   ground: the casters go through the meshlet path's shadow views (each
-//!   cascade's and the spot's face), and `shadow_scene(false)` draws the
-//!   same frame through the regular path; the two match.
-//! - `meshlet-views`: the forest from the camera, with a view from high
-//!   above over the right half of the frame and a chrome ball 4 m ahead
-//!   and 2.5 m left (in the left half, in front of the first row, low in
-//!   the frame) inside a reflection probe's box among the near trees, each tinted by the level
-//!   its own view picked: the main view's near rows green, the view from
-//!   above coarser (yellow, orange), the ball's reflection of the trees
-//!   around it green (the probe is among them). `views_scene(false, 0)`
+//!   the pyramid built again from it): the crowns over the wall and the
+//!   rows past its broken end show whole, as `occlusion_scene(false)`
+//!   draws them through the regular path.
+//! - `meshlet-near`: one pine 7 m tall, 8 m away, drawn through the
+//!   meshlet path; `near_scene(false)` draws it through the regular path,
+//!   and the two frames match (the level is 0 at that distance).
+//! - `meshlet-shadows` (batch 3): five pines under the evening's low sun
+//!   and a shadowed spot light, seen from above so their long shadows lie
+//!   on the grass: the casters go through the meshlet path's shadow views
+//!   (each cascade's and the spot's face), and `shadow_scene(false)` draws
+//!   the same frame through the regular path; the two match.
+//! - `meshlet-views`: the plantation from the lawn, a chrome gazing ball
+//!   before its first row reflecting it through a probe captured from the
+//!   ball's centre, and a view from a watchtower's height in the inset,
+//!   tinted by the levels its own culling picked. `views_scene(false, 0)`
 //!   and `views_scene(true, 0)` draw it with every level 0 (bias 0)
 //!   through the regular and the meshlet path; the two match.
-//! - `meshlet-far` (batch 4): the forest from 40 m up and 60 m behind its
-//!   first row, untinted, so nearly every cluster covers a few pixels and
-//!   goes through the visibility buffer (rasterised in compute, shaded by
-//!   each batch's resolve): 132 whole trees with their shadows, no holes,
+//! - `meshlet-far` (batch 4): the plantation from 40 m up and 54 m behind
+//!   the lane's end, so nearly every cluster covers a few pixels and goes
+//!   through the visibility buffer (rasterised in compute, shaded by each
+//!   batch's resolve): 132 whole pines with their shadows, no holes,
 //!   specks or seams between a tree's compute and hardware clusters.
 //!   `far_scene(false)` draws it with every cluster by the hardware; the
 //!   two match.
-//! - `meshlet-sway` (foliage transport): the near tree given foliage (a
-//!   pivot at its root, stiffness 0.2, each vertex its own anchor) in a
-//!   strong wind blowing towards +x (screen right), seen from the side:
-//!   the crown leans right of its trunk's foot and its shadow leans with
-//!   it, the trunk's base stays where it was. `sway_scene(0.0, ..)` keeps
-//!   it still in the same wind and matches the tree with no foliage.
-//!   `sway_far_scene(vbuffer)`: the forest from above, every tree
-//!   swaying, through the visibility buffer and through the hardware;
-//!   the two match (the compute rasteriser sways what the hardware does).
+//! - `meshlet-sway` (foliage transport): one pine given foliage (a pivot
+//!   at its root, stiffness 0.2, each vertex its own anchor) in a strong
+//!   wind blowing towards +x (screen right): the crown leans right of its
+//!   trunk's foot and its shadow leans with it, the trunk's base stays
+//!   where it was. `sway_scene(0.0, ..)` keeps it still in the same wind
+//!   and matches the tree with no foliage. `sway_far_scene(vbuffer)`: the
+//!   plantation from above, every tree swaying, through the visibility
+//!   buffer and through the hardware; the two match (the compute
+//!   rasteriser sways what the hardware does).
 
 use glam::{Mat4, Quat, Vec3};
 use og_cook::runtime::Bundle;
@@ -66,8 +65,8 @@ type Parts = Vec<(MeshHandle, MaterialHandle, Mat4)>;
 fn base() -> Result<(RenderScene, Parts), String> {
     let root = crate::depth_render_scenes::cooked()?;
     let bundle = Bundle::open(&root.join("cooked")).map_err(|e| e.to_string())?;
-    let model = bundle
-        .load_model("models/tree.glb")
+    let (model, textures) = bundle
+        .load_model_with_textures("models/pine.glb")
         .map_err(|e| e.to_string())?;
     let mut scene = RenderScene::new();
     let sun = Vec3::new(-0.4, 0.7, 0.5);
@@ -93,12 +92,12 @@ fn base() -> Result<(RenderScene, Parts), String> {
     orchard_ground(&mut scene);
     og_tests::kit::hills(&mut scene, None);
     sky(&mut scene, 8.6);
-    let parts = model.add_to(&mut scene, &[]).parts;
+    let parts = model.add_to(&mut scene, &textures).parts;
     if !parts
         .iter()
         .any(|&(m, _, _)| scene.mesh_clusters(m).is_some())
     {
-        return Err("the cooked tree has no clusters".into());
+        return Err("the cooked pine has no clusters".into());
     }
     Ok((scene, parts))
 }
@@ -143,9 +142,9 @@ fn orchard_ground(scene: &mut RenderScene) {
 
 /// The farm round the orchard, for the views that see past it: a dry
 /// stone wall round the forest's plot (open at the camera's end), stands
-/// of the kit's pines beyond it and a watchtower on the far side. Not in
-/// `meshlet-forest` (its pines would join the tints the test counts) or
-/// `meshlet-near` (whose test moves every instance after the first).
+/// of the kit's pines beyond it and a watchtower on the far side. Its
+/// pines are plain props, never tinted by level. Not in `meshlet-near`
+/// (whose test moves every instance after the first).
 fn farmland(scene: &mut RenderScene) {
     use og_tests::kit;
     let stone = kit::surface_tinted(scene, "cobbles", [0.95, 0.9, 0.78]);
@@ -190,27 +189,80 @@ fn sky(scene: &mut RenderScene, hours: f32) {
     scene.frame.tick = 0;
 }
 
-/// The forest's trees: 11 across (5 m apart), 12 deep (10 m apart from
-/// 6 m), each turned its own way.
+/// The cooked pine's height in its own units (its foot at the origin).
+const PINE_UNITS: f32 = 1.898;
+
+/// A hash of `k` and `i` to 0..1 (the plantation's jitter).
+fn hash(k: u32, i: u32) -> f32 {
+    let mut v = k.wrapping_mul(0x8da6_b343) ^ i.wrapping_mul(0xd816_3841) ^ 0x3c1;
+    v = (v ^ (v >> 13)).wrapping_mul(0x85eb_ca6b);
+    ((v ^ (v >> 16)) & 0xffff) as f32 / 65536.0
+}
+
+/// A pine standing at (`x`, `z`), turned `yaw`, `height` metres tall.
+fn pine(x: f32, z: f32, yaw: f32, height: f32) -> Mat4 {
+    Mat4::from_scale_rotation_translation(
+        Vec3::splat(height / PINE_UNITS),
+        Quat::from_rotation_y(yaw),
+        Vec3::new(x, 0.0, z),
+    )
+}
+
+fn place(scene: &mut RenderScene, parts: &[(MeshHandle, MaterialHandle, Mat4)], at: Mat4) {
+    for &(mesh, material, local) in parts {
+        scene.add_instance(mesh, material, at * local);
+    }
+}
+
+/// The plantation: 11 rows across (5 m apart), 12 deep (10 m apart from
+/// 6 m), each pine a little off its mark, turned its own way and 8 to
+/// 12 m tall.
 fn plant_forest(scene: &mut RenderScene, parts: &[(MeshHandle, MaterialHandle, Mat4)]) {
-    for row in 0..12 {
-        for col in 0..11 {
-            let at = Mat4::from_rotation_translation(
-                Quat::from_rotation_y(0.7 * (row * 11 + col) as f32),
-                Vec3::new(-25.0 + col as f32 * 5.0, 0.0, -6.0 - row as f32 * 10.0),
+    for row in 0..12u32 {
+        for col in 0..11u32 {
+            let k = row * 11 + col;
+            let at = pine(
+                -25.0 + col as f32 * 5.0 + 2.0 * hash(k, 1) - 1.0,
+                -6.0 - row as f32 * 10.0 + 3.0 * hash(k, 2) - 1.5,
+                0.7 * k as f32,
+                8.0 + 4.0 * hash(k, 3),
             );
-            for &(mesh, material, local) in parts {
-                scene.add_instance(mesh, material, at * local);
-            }
+            place(scene, parts, at);
         }
     }
+}
+
+/// The level-of-detail inset: a second view small in the top right
+/// corner, its clustered pines tinted by the level it picked
+/// (`View::lod_debug`): an editor's overlay beside the untinted shot.
+pub const INSET: [f32; 4] = [0.6, 0.04, 0.37, 0.37];
+
+fn lod_inset(scene: &mut RenderScene, camera: Camera) {
+    scene.frame.views.push(View {
+        camera,
+        target: ViewTarget::Viewport(INSET),
+        lod_debug: true,
+        ..Default::default()
+    });
 }
 
 /// `meshlet-forest` (module docs).
 pub fn forest_scene() -> Result<RenderScene, String> {
     let (mut scene, parts) = base()?;
     plant_forest(&mut scene, &parts);
-    scene.objects.lod_debug = true;
+    farmland(&mut scene);
+    // From the lane's end at the plot's gate, a little raised: the rows
+    // run away from the camera to the far wall.
+    scene.frame.camera.position = Vec3::new(1.0, 4.5, 16.0);
+    scene.frame.camera.target = Vec3::new(-1.0, 3.0, -60.0);
+    // The inset looks down the same rows from 30 m up, so every row
+    // shows: the near ones low in it, the far ones high.
+    let camera = Camera {
+        position: Vec3::new(1.0, 30.0, 16.0),
+        target: Vec3::new(-1.0, 0.0, -70.0),
+        ..scene.frame.camera
+    };
+    lod_inset(&mut scene, camera);
     Ok(scene)
 }
 
@@ -219,29 +271,47 @@ pub fn forest_scene() -> Result<RenderScene, String> {
 pub fn occlusion_scene(meshlets: bool) -> Result<RenderScene, String> {
     let (mut scene, parts) = base()?;
     plant_forest(&mut scene, &parts);
-    // A ruined curtain wall of stone, 20 m wide and 8 m high, 4 m ahead,
-    // its right edge a little right of the line of sight.
-    let stone = og_tests::kit::surface_tinted(&mut scene, "cobbles", [1.0, 0.93, 0.8]);
-    let wall = scene.add_mesh(og_tests::kit::block(
-        Vec3::new(-18.6, 0.0, -4.2),
-        Vec3::new(1.4, 8.0, -3.8),
-        6.0,
-    ));
-    scene.add_instance(wall, stone, Mat4::IDENTITY);
+    // The plantation's old curtain wall, 6 m high and 1.2 m thick, run
+    // from the left of the view across it at a slant to its broken end a
+    // little right of the line of sight: buttresses on its face, merlons
+    // along its walk, fallen blocks at its foot. It hides the lower
+    // two thirds of the rows behind it on the left; the crowns stand over.
+    use og_tests::kit;
+    let stone = kit::surface_tinted(&mut scene, "cobbles", [1.0, 0.93, 0.8]);
+    let turn =
+        Mat4::from_rotation_translation(Quat::from_rotation_y(-0.42), Vec3::new(0.9, 0.0, -9.0));
+    let mut block = |min: Vec3, max: Vec3| {
+        let m = scene.add_mesh(kit::block(min, max, 1.8));
+        scene.add_instance(m, stone, turn);
+    };
+    block(Vec3::new(-22.0, -0.3, -0.6), Vec3::new(0.0, 6.0, 0.6));
+    for k in 0..9 {
+        let x = -21.5 + k as f32 * 2.4;
+        block(Vec3::new(x, 6.0, -0.6), Vec3::new(x + 1.3, 7.1, 0.6));
+    }
+    for x in [-17.0f32, -9.5] {
+        block(Vec3::new(x, -0.3, 0.6), Vec3::new(x + 1.6, 4.6, 2.0));
+    }
+    // The broken end: steps down in courses.
+    block(Vec3::new(0.0, -0.3, -0.6), Vec3::new(1.2, 4.2, 0.6));
+    block(Vec3::new(1.2, -0.3, -0.6), Vec3::new(2.3, 2.1, 0.6));
+    let boulder = kit::prop(&mut scene, "boulder");
+    let foot = |x: f32, z: f32| turn.transform_point3(Vec3::new(x, -0.1, z));
+    boulder.place(&mut scene, foot(3.4, 1.4), 0.4, 0.9);
+    boulder.place(&mut scene, foot(-4.0, 2.2), 1.9, 0.6);
     farmland(&mut scene);
+    scene.frame.camera.position = Vec3::new(1.5, 2.2, 1.0);
+    scene.frame.camera.target = Vec3::new(-1.0, 3.2, -20.0);
     scene.objects.meshlets = meshlets;
     Ok(scene)
 }
 
-/// `meshlet-near` (module docs): one tree 6 m away and a little left,
+/// `meshlet-near` (module docs): one pine 8 m away and a little left,
 /// through the meshlet path when `meshlets`.
 pub fn near_scene(meshlets: bool) -> Result<RenderScene, String> {
     let (mut scene, parts) = base()?;
-    let at =
-        Mat4::from_rotation_translation(Quat::from_rotation_y(0.4), Vec3::new(-0.8, 0.0, -6.0));
-    for &(mesh, material, local) in &parts {
-        scene.add_instance(mesh, material, at * local);
-    }
+    place(&mut scene, &parts, pine(-0.8, -8.0, 0.4, 7.0));
+    scene.frame.camera.target = Vec3::new(0.0, 3.0, -8.0);
     scene.objects.meshlets = meshlets;
     Ok(scene)
 }
@@ -258,13 +328,13 @@ pub fn shadow_scene(meshlets: bool) -> Result<RenderScene, String> {
     // adaptation would.
     scene.frame.camera.exposure = Exposure::linear(1.4);
     for (k, x) in [-8.0f32, -4.0, 0.0, 4.0, 8.0].into_iter().enumerate() {
-        let at = Mat4::from_rotation_translation(
-            Quat::from_rotation_y(0.9 * k as f32),
-            Vec3::new(x, 0.0, -14.0 - 2.0 * k as f32),
+        let at = pine(
+            x,
+            -14.0 - 2.0 * k as f32,
+            0.9 * k as f32,
+            7.0 + hash(k as u32, 5) * 3.0,
         );
-        for &(mesh, material, local) in &parts {
-            scene.add_instance(mesh, material, at * local);
-        }
+        place(&mut scene, &parts, at);
     }
     // A spot over the middle tree, its shadow cast forward on the ground.
     scene.lighting.lights.push(Light {
@@ -298,34 +368,38 @@ pub fn views_scene(meshlets: bool, bias: f32) -> Result<RenderScene, String> {
         ..Default::default()
     });
     let ball = scene.add_mesh(shapes::sphere(32, 16));
+    // A gazing ball on the lawn before the first row, its probe captured
+    // from its centre: the capture sees out through the ball's back faces,
+    // so the ball reflects the plantation, not itself.
+    let centre = Vec3::new(-1.3, 0.8, -4.5);
     scene.add_instance(
         ball,
         chrome,
-        Mat4::from_scale_rotation_translation(
-            // 0.8 m across the unit sphere's 0.5.
-            Vec3::splat(1.6),
-            Quat::IDENTITY,
-            Vec3::new(-2.5, 0.9, -4.0),
-        ),
+        // 1.6 m across the unit sphere's 1 (radius 0.5).
+        Mat4::from_scale_rotation_translation(Vec3::splat(1.6), Quat::IDENTITY, centre),
     );
     scene.lighting.reflection_probes.push(ReflectionProbe::new(
         1,
-        Vec3::new(-2.5, 1.6, -5.0),
+        centre,
         Vec3::new(14.0, 6.0, 14.0),
     ));
+    farmland(&mut scene);
+    // The plantation from a watchtower's height, an inset in the top right
+    // corner, tinted by the levels its own culling picked.
     scene.frame.views.push(View {
         camera: Camera {
             position: Vec3::new(0.0, 70.0, -30.0),
             target: Vec3::new(0.0, 0.0, -62.0),
             exposure: Exposure::linear(0.8),
+            far: 4000.0,
             ..Default::default()
         },
-        target: ViewTarget::Viewport([0.5, 0.0, 0.5, 1.0]),
+        target: ViewTarget::Viewport(INSET),
+        lod_debug: bias > 0.0,
         ..Default::default()
     });
     scene.objects.meshlets = meshlets;
     scene.objects.lod_bias = bias;
-    scene.objects.lod_debug = bias > 0.0;
     Ok(scene)
 }
 
@@ -396,7 +470,7 @@ fn windy(scene: &mut RenderScene) {
 /// instances swaying by `sway`; without `foliage` the tree has none.
 pub fn sway_scene(sway: f32, foliage: bool) -> Result<RenderScene, String> {
     let (mut scene, parts) = base()?;
-    let at = Mat4::from_translation(Vec3::new(0.0, 0.0, -7.0));
+    let at = pine(0.0, -9.0, 0.3, 7.0);
     for &(mesh, material, local) in &parts {
         scene.add_instance(mesh, material, at * local);
         scene.objects.instances.last_mut().expect("added").sway = sway;
@@ -405,8 +479,8 @@ pub fn sway_scene(sway: f32, foliage: bool) -> Result<RenderScene, String> {
         give_foliage(&mut scene, &parts);
     }
     windy(&mut scene);
-    scene.frame.camera.position = Vec3::new(0.0, 2.0, 0.0);
-    scene.frame.camera.target = Vec3::new(0.0, 2.0, -7.0);
+    scene.frame.camera.position = Vec3::new(0.0, 2.5, 0.0);
+    scene.frame.camera.target = Vec3::new(0.0, 3.4, -9.0);
     Ok(scene)
 }
 
