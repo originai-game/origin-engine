@@ -1272,7 +1272,7 @@ impl Node {
                     continue;
                 }
                 let sides = if axis == 0 { [3, 1] } else { [0, 2] };
-                let margin: f32 = sides.iter().map(|&s| u.margin[s].len.of(room[0])).sum();
+                let margin: f32 = sides.iter().map(|&s| u.margin[s].of(room[0])).sum();
                 let ceiling = (room[axis] - margin).max(0.0);
                 let (lo, hi) = match size {
                     Size::Fit { min, max }

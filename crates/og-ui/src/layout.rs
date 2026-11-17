@@ -264,6 +264,7 @@ impl Calc {
 pub struct Margin {
     pub len: Length,
     pub auto: bool,
+    pub calc: Option<Calc>,
 }
 
 impl Margin {
@@ -271,23 +272,30 @@ impl Margin {
         Margin {
             len: Length::px(v),
             auto: false,
+            calc: None,
         }
     }
 
     /// Its CSS px against `basis` (its parent's content width); `auto` is 0.
     pub fn of(self, basis: f32) -> f32 {
-        if self.auto { 0.0 } else { self.len.of(basis) }
+        if self.auto {
+            0.0
+        } else {
+            self.calc
+                .map_or_else(|| self.len.of(basis), |c| c.of(basis))
+        }
     }
 
     /// Its CSS px for an intrinsic size: a percentage and `auto` are 0.
     pub fn intrinsic(self) -> f32 {
-        if self.auto { 0.0 } else { self.len.px }
+        self.of(0.0)
     }
 
     pub(crate) fn zoomed(self, z: f32) -> Margin {
         Margin {
             len: self.len.zoomed(z),
             auto: self.auto,
+            calc: self.calc.map(|c| c.zoomed(z)),
         }
     }
 }

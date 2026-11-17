@@ -78,22 +78,22 @@ pub const CORE_PROPS: &[PropSpec] = &[
     ),
     p!(
         "marginTop",
-        Ty::Num4,
+        Ty::Margin,
         "Space outside its top edge: CSS px, em of its type step, a percentage of its parent's content width, or auto (the free space). Adjacent block margins collapse."
     ),
     p!(
         "marginRight",
-        Ty::Num4,
+        Ty::Margin,
         "Space outside its right edge: CSS px, em of its type step, a percentage of its parent's content width, or auto (the free space)."
     ),
     p!(
         "marginBottom",
-        Ty::Num4,
+        Ty::Margin,
         "Space outside its bottom edge: CSS px, em of its type step, a percentage of its parent's content width, or auto (the free space). Adjacent block margins collapse."
     ),
     p!(
         "marginLeft",
-        Ty::Num4,
+        Ty::Margin,
         "Space outside its left edge: CSS px, em of its type step, a percentage of its parent's content width, or auto (the free space)."
     ),
     p!("gap", Ty::Num, "Space between its children, CSS px."),

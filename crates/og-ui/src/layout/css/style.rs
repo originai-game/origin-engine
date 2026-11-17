@@ -63,7 +63,7 @@ pub(super) fn calc_of(nodes: &[Node], p: *const (), basis: f32) -> f32 {
     // stretch-fit size, the basis less the margins along its axis.
     let fills = |axis: usize, scale: f32, add: Length| {
         let [a, b] = if axis == 0 { [3, 1] } else { [0, 2] };
-        let room = basis - el.margin[a].len.of(basis) - el.margin[b].len.of(basis);
+        let room = basis - el.margin[a].of(basis) - el.margin[b].of(basis);
         scale * room.max(0.0) + add.of(basis)
     };
     match s {
@@ -86,13 +86,13 @@ pub(super) fn calc_of(nodes: &[Node], p: *const (), basis: f32) -> f32 {
                 // less the margins along its axis (CSS Sizing 4 §3.1).
                 Some(Size::Stretch { .. }) => {
                     let [a, b] = if k / 2 == 0 { [3, 1] } else { [0, 2] };
-                    (basis - el.margin[a].len.of(basis) - el.margin[b].len.of(basis)).max(0.0)
+                    (basis - el.margin[a].of(basis) - el.margin[b].of(basis)).max(0.0)
                 }
                 Some(s) => size(s),
                 None => 0.0,
             }
         }
-        m if (slot::MARGIN..slot::BASIS).contains(&m) => el.margin[m - slot::MARGIN].len.of(basis),
+        m if (slot::MARGIN..slot::BASIS).contains(&m) => el.margin[m - slot::MARGIN].of(basis),
         _ => el.flex.and_then(|f| f.basis).map_or(0.0, size),
     }
 }
@@ -716,6 +716,8 @@ impl tf::CoreStyle for View<'_> {
                 tf::LengthPercentageAuto::length(0.0)
             } else if m.auto {
                 tf::LengthPercentageAuto::auto()
+            } else if m.calc.is_some() {
+                tf::LengthPercentageAuto::calc(self.calc(slot::MARGIN + k))
             } else if m.len.pct == 0.0 {
                 tf::LengthPercentageAuto::length(m.len.px)
             } else if m.len.px == 0.0 {

@@ -44,6 +44,11 @@ pub(super) fn margin_vals(t: &Tok) -> Result<Vec<Value>, String> {
         let v = want_len(t)?;
         return Ok(vec![v, n(0.0)?, n(0.0)?, n(0.0)?]);
     }
+    if let Tok::Func(f, args) = t
+        && f != "calc"
+    {
+        return size_calc("margin", f, args);
+    }
     let [pct, px, em] = want_lin(t)?;
     [px, em, pct, 0.0].into_iter().map(n).collect()
 }
@@ -214,9 +219,7 @@ pub(crate) fn want_lin(t: &Tok) -> Result<[f64; 3], String> {
             }
         }
         Tok::Func(f, _) if matches!(f.as_str(), "min" | "max" | "clamp") => {
-            return Err(format!(
-                "{f}() over lengths in more than one unit takes a width or a height; a margin takes calc()"
-            ));
+            return Err(format!("{f}() is not a linear sum of lengths"));
         }
         t => term(t, 1.0, &mut out)?,
     }

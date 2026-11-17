@@ -1032,6 +1032,10 @@ pub fn parse_lit(ty: Ty, vals: &[Value]) -> Result<Lit, String> {
         Ty::Num => Lit::Num(nums(vals, 1, "a number")?[0]),
         Ty::Num2 => Lit::Nums(nums(vals, 2, "x y")?),
         Ty::Num4 => Lit::Nums(nums(vals, 4, "four numbers")?),
+        Ty::Margin if vals.first().and_then(Value::as_word) == Some("calc") => Lit::Size(
+            Size::Calc(crate::css::values::calc(vals).ok_or("takes length math")?),
+        ),
+        Ty::Margin => Lit::Nums(nums(vals, 4, "px, em, percentage and auto")?),
         Ty::Insets => {
             let v = nums(vals, vals.len(), "1, 2 or 4 numbers")?;
             if !matches!(v.len(), 1 | 2 | 4) {

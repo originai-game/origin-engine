@@ -151,6 +151,55 @@ fn wh(d: &Doc, id: &str) -> (f32, f32) {
 }
 
 #[test]
+fn margin_math_resolves_against_the_containing_width() {
+    for (width, em, expected) in [
+        (800, 16, 508.0),
+        (200, 16, 88.0),
+        (100, 16, 12.0),
+        (200, 24, 32.0),
+    ] {
+        for shorthand in [false, true] {
+            let property = if shorthand {
+                "margin: min(10%, 20px) max(24px, 10%) max(-10px, -5%)"
+            } else {
+                "margin-inline-start:"
+            };
+            let source = format!(
+                r#"<meta name="component" content="t">
+<div><div id="Parent"><div id="Child"></div></div></div>
+<style>
+#Parent {{ display:flex; flex-direction:column; width:{width}px; font-size:{em}px; }}
+#Child {{ align-self:flex-start; width:20px; height:10px;
+  {property} clamp(12px, calc(0.63 * 100% + 4px), calc(100% - 7em)); }}
+</style>"#
+            );
+            let mut d = Doc::new(&source, &[]);
+            d.step(InputFrame::default());
+            assert!(
+                d.ui.frame().warnings.is_empty(),
+                "{:?}",
+                d.ui.frame().warnings
+            );
+            let offset = d.get("Child").x - d.get("Parent").x;
+            assert!(
+                (offset - expected).abs() < 0.1,
+                "width {width}: {offset} != {expected}"
+            );
+            if shorthand {
+                assert_eq!(
+                    d.get("Child").y - d.get("Parent").y,
+                    if width == 100 { 10.0 } else { 20.0 }
+                );
+                assert_eq!(
+                    d.get("Parent").height,
+                    if width == 100 { 15.0 } else { 20.0 }
+                );
+            }
+        }
+    }
+}
+
+#[test]
 fn skew_migration_preserves_composition() {
     for (x, y) in [(17.0_f32, -9.0_f32), (0.0, 23.0)] {
         let draw = |css: &str| {

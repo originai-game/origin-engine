@@ -506,7 +506,10 @@ engine differs or limits as follows:
   of `%`, px and em terms that layout resolves; `min()`, `max()`,
   `clamp()`, `round()`, `mod()`, `rem()`, `abs()` and `hypot()` mixing `%`
   with px are evaluated at layout and must stand alone as the value; other
-  functions refuse mixed units. NaN is 0 and infinity the largest value.
+  functions refuse mixed units. Margins accept these functions too: their
+  percentages read the containing block's width on every side, including
+  logical margins, while font-relative terms compute before layout.
+  NaN is 0 and infinity the largest value.
   `var()` substitutes first, so a `style:--w` store moves only its element;
   viewport and container unit readers resolve again on resize. Container
   units with no container are viewport units. `attr()` takes Values 5's

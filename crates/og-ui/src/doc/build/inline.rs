@@ -396,7 +396,7 @@ impl Ui {
         );
         let p = el.padding;
         let pad = [p.top, p.right, p.bottom, p.left];
-        let margin = el.margin.map(|m| if m.auto { 0.0 } else { m.len.px });
+        let margin = el.margin.map(|m| m.intrinsic());
         let ([start, end], across) = if mode.vertical() {
             let up = rtl != (mode == WritingMode::SidewaysLr);
             (if up { [2, 0] } else { [0, 2] }, [3, 1])

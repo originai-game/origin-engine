@@ -401,7 +401,7 @@ pub fn coerce(ui: &Ui, ty: Ty, v: &Value) -> Option<V> {
             };
             V::Color(paint(ui, &p)?)
         }
-        Ty::Num2 | Ty::Num4 | Ty::Insets => match v {
+        Ty::Num2 | Ty::Num4 | Ty::Margin | Ty::Insets => match v {
             Value::Array(a) => V::Nums(a.iter().filter_map(number).map(|x| x as f32).collect()),
             _ => V::Nums(vec![number(v)? as f32]),
         },

@@ -24,6 +24,8 @@ pub enum Ty {
     Insets,
     /// Four numbers.
     Num4,
+    /// A margin's linear px/em/percentage/auto terms, or length math.
+    Margin,
     /// `true` or `false`.
     Bool,
     /// A string; one with `{` is a template (`"{gold, compact} gold"`).
@@ -55,6 +57,7 @@ impl Ty {
             Ty::Num2 => "x y",
             Ty::Insets => "insets",
             Ty::Num4 => "4 numbers",
+            Ty::Margin => "margin",
             Ty::Bool => "bool",
             Ty::Text => "text",
             Ty::Word(_) => "word",

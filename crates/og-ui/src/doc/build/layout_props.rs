@@ -20,6 +20,12 @@ impl Ui {
                         px: px + ems * em,
                     },
                     auto: auto != 0.0,
+                    calc: None,
+                };
+            } else if let Some(Size::Calc(calc)) = r.size(name) {
+                *edge = crate::Margin {
+                    calc: Some(calc),
+                    ..Default::default()
                 };
             }
         }

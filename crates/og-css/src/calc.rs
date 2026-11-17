@@ -183,10 +183,13 @@ pub fn has_absolute(text: &str) -> bool {
         || numbers(text).any(|(_, _, unit)| ABSOLUTE.contains(&unit))
 }
 
-/// A property that keeps its `em` terms to the element's resolve (a
-/// margin's em reads the element's own type step there).
-pub fn keeps_em(name: &str) -> bool {
+/// Linear margins keep `em` for their type step. Nonlinear length math
+/// computes it to px first, leaving only percentages for layout.
+pub fn keeps_em(name: &str, text: &str) -> bool {
     name.starts_with("margin")
+        && !LAYOUT_FUNCTIONS
+            .iter()
+            .any(|f| text.contains(&format!("{f}(")))
 }
 
 /// Whether property `name`'s `text` resolves only when its element does:
@@ -195,7 +198,7 @@ pub fn keeps_em(name: &str) -> bool {
 pub fn per_element(name: &str, text: &str) -> bool {
     has_absolute(text)
         || text.contains("attr(")
-        || (!keeps_em(name) && numbers(text).any(|(_, _, unit)| unit == "em"))
+        || (!keeps_em(name, text) && numbers(text).any(|(_, _, unit)| unit == "em"))
 }
 
 /// `text` with every viewport, root and font-relative number written in px
@@ -206,6 +209,7 @@ pub fn absolute(text: &str, basis: Basis, name: &str) -> (String, Read) {
     let text = env(text, basis, &mut read);
     let text = tree_counts(&text, basis);
     let text = randoms(&text, basis, name);
+    let keep_em = keeps_em(name, &text);
     let mut out = String::with_capacity(text.len());
     let mut last = 0;
     let (em, lh) = basis.em();
@@ -257,7 +261,7 @@ pub fn absolute(text: &str, basis: Basis, name: &str) -> (String, Read) {
                 }
             }
             "rem" => root as f64,
-            "em" if !keeps_em(name) => em as f64,
+            "em" if !keep_em => em as f64,
             "lh" => lh as f64,
             "rlh" => basis.rlh as f64,
             "ch" => (ch * em) as f64,

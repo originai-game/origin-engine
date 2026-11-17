@@ -111,6 +111,9 @@ fn value_css(prop: &str, c: Conv, vals: &[Value]) -> Result<String, String> {
             v => Err(format!("'{}' is not an angle", text_of(v))),
         },
         Conv::Paint => paint_css(vals),
+        Conv::Margin if vals.first().and_then(Value::as_word) == Some("calc") => {
+            value_css(prop, Conv::Size, vals)
+        }
         Conv::Margin => match vals {
             [_, _, _, Value::Number(a)] if a.text() != "0" => Ok("auto".into()),
             [Value::Number(p), Value::Number(e), Value::Number(c), _] => {
