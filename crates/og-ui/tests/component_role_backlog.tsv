@@ -76,8 +76,6 @@ racing/standings.svelte	RacingStandings.gap RacingStandings.label RacingStanding
 racing/standings.svelte	RacingStandings.place RacingStandings.label RacingStandings.figure	1
 racing/telemetry.svelte	RacingTelemetry.gear RacingTelemetry.plate RacingTelemetry.frame	2
 rhythm/difficulty.svelte	RhythmDifficulty.name RhythmDifficulty.headline	1
-rhythm/score-hud.svelte	RhythmScoreHud.row RhythmScoreHud.well	1
-rhythm/score-hud.svelte	RhythmScoreHud.title RhythmScoreHud.caption	2
 rhythm/song-select.svelte	RhythmSongSelect.name RhythmSongSelect.headline	1
 rpg/enemy-info.svelte	RpgEnemyInfo.name RpgEnemyInfo.headline	1
 rpg/place-card.svelte	RpgPlaceCard.name RpgPlaceCard.headline	1

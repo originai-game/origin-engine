@@ -1052,6 +1052,17 @@
     ],
     "imports": []
   },
+  "RhythmChain": {
+    "id": "@ui/components/rhythm/chain.svelte",
+    "screen": false,
+    "control": null,
+    "uses": [],
+    "files": [
+      "@ui/components/rhythm/chain.svelte",
+      "@ui/components/rhythm/rhythm.en.ogt"
+    ],
+    "imports": []
+  },
   "RhythmDifficulty": {
     "id": "@ui/components/rhythm/difficulty.svelte",
     "screen": false,
@@ -1063,6 +1074,17 @@
     ],
     "imports": []
   },
+  "RhythmGauge": {
+    "id": "@ui/components/rhythm/gauge.svelte",
+    "screen": false,
+    "control": null,
+    "uses": [],
+    "files": [
+      "@ui/components/rhythm/gauge.svelte",
+      "@ui/components/rhythm/rhythm.en.ogt"
+    ],
+    "imports": []
+  },
   "RhythmJudgement": {
     "id": "@ui/components/rhythm/judgement.svelte",
     "screen": false,
@@ -1070,6 +1092,17 @@
     "uses": [],
     "files": [
       "@ui/components/rhythm/judgement.svelte",
+      "@ui/components/rhythm/rhythm.en.ogt"
+    ],
+    "imports": []
+  },
+  "RhythmLaneKeys": {
+    "id": "@ui/components/rhythm/lane-keys.svelte",
+    "screen": false,
+    "control": null,
+    "uses": [],
+    "files": [
+      "@ui/components/rhythm/lane-keys.svelte",
       "@ui/components/rhythm/rhythm.en.ogt"
     ],
     "imports": []
@@ -1089,12 +1122,32 @@
     "id": "@ui/components/rhythm/score-hud.svelte",
     "screen": false,
     "control": null,
-    "uses": [
-      "ProgressBar"
-    ],
+    "uses": [],
     "files": [
       "@ui/components/rhythm/rhythm.en.ogt",
       "@ui/components/rhythm/score-hud.svelte"
+    ],
+    "imports": []
+  },
+  "RhythmSongPlate": {
+    "id": "@ui/components/rhythm/song-plate.svelte",
+    "screen": false,
+    "control": null,
+    "uses": [],
+    "files": [
+      "@ui/components/rhythm/rhythm.en.ogt",
+      "@ui/components/rhythm/song-plate.svelte"
+    ],
+    "imports": []
+  },
+  "RhythmSongProgress": {
+    "id": "@ui/components/rhythm/song-progress.svelte",
+    "screen": false,
+    "control": null,
+    "uses": [],
+    "files": [
+      "@ui/components/rhythm/rhythm.en.ogt",
+      "@ui/components/rhythm/song-progress.svelte"
     ],
     "imports": []
   },
@@ -1108,6 +1161,17 @@
     "files": [
       "@ui/components/rhythm/rhythm.en.ogt",
       "@ui/components/rhythm/song-select.svelte"
+    ],
+    "imports": []
+  },
+  "RhythmTiming": {
+    "id": "@ui/components/rhythm/timing.svelte",
+    "screen": false,
+    "control": null,
+    "uses": [],
+    "files": [
+      "@ui/components/rhythm/rhythm.en.ogt",
+      "@ui/components/rhythm/timing.svelte"
     ],
     "imports": []
   },

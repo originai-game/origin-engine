@@ -1,0 +1,46 @@
+{
+  "added": [
+    {
+      "member": "RhythmGauge",
+      "summary": "A tall gauge at a screen edge, cut into ten cells and leaning toward the play field: the run's life (Danger and Failed in words, a pulsing danger rim) or its fever charge (Ready and the key cap that spends it)."
+    },
+    {
+      "member": "RhythmSongPlate",
+      "summary": "The song in play: the jacket in an octagon with a lit edge, title, artist and tempo, the chart's chip in its tier's colour with its level, and the modifiers on tags."
+    },
+    {
+      "member": "RhythmSongProgress",
+      "summary": "The song's progress as a thin lit line along the screen's top edge, with the time played over the length riding under its played end."
+    },
+    {
+      "member": "RhythmChain",
+      "summary": "The score chain: a lit plate with the multiplier and the steps to the next one as leaning pips; the plate pops when the multiplier rises."
+    },
+    {
+      "member": "RhythmTiming",
+      "summary": "The judgement tally so far, each judgement in its colour, over a timing scale from Early to Late with the beat at its centre and the latest hits as ticks that fade with their age."
+    },
+    {
+      "member": "RhythmLaneKeys",
+      "summary": "The lanes' key caps under the judgement line, spread across the field, each lit while the player holds it."
+    }
+  ],
+  "breaking": [
+    {
+      "member": "RhythmScoreHud",
+      "change": "RhythmScoreHud is the score alone, set against the screen's end: score, accuracy, a new grade and the player's best with the gap to it. The life, danger, failed and progress props are gone, and its parts are RhythmScoreHud.frame, .legend, .score, .accuracy, .grade, .best and .delta.",
+      "fix": "Show life with <RhythmGauge kind=\"life\" value danger failed> and the song's progress with <RhythmSongProgress value elapsed length>; pass grade and best for the new readouts. A style that dressed the old parts dresses the new ones.",
+      "find": [
+        "RhythmScoreHud"
+      ]
+    },
+    {
+      "member": "RhythmJudgement",
+      "change": "The combo stands above the judgement as the hero figure, and the word is drawn in its judgement's lit gradient. Its parts are RhythmJudgement.frame, .combo, .count, .legend, .mark, .call, .word, .timing and .offset (the old .plate, .title, .badge, .figure and .caption are gone). New props offset (+4 ms) and mark (fullCombo, allPerfect).",
+      "fix": "A style that dressed RhythmJudgement.plate dresses RhythmJudgement.call, .title dresses .word, .badge dresses .timing, .figure dresses .count and .caption dresses .legend.",
+      "find": [
+        "RhythmJudgement"
+      ]
+    }
+  ]
+}

@@ -149,7 +149,7 @@ const focused = (e: Engine): string => elements(e).find((x) => x.states?.include
 
 // One test per pack, member and view: each fixture boots its own engine.
 for (const pack of PACKS) for (const [view, viewport] of [["desktop", DESKTOP], ["phone", PHONE]] as const) {
-  for (const name of ["song-select", "difficulty", "judgement", "score-hud", "results"]) {
+  for (const name of ["song-select", "difficulty", "song-plate", "song-progress", "chain", "score-hud", "gauge", "judgement", "timing", "lane-keys", "results"]) {
     test(`${name} mounts from every fixture on a ${view} in ${pack} without errors, inside the screen's width`, () => {
       for (const fixture of Object.keys(MEMBERS[name]!.fixtures)) {
         run(member(name, fixture, {}, { view: viewport, pack }), (e) => {
@@ -282,15 +282,14 @@ test("RhythmDifficulty: keyboard and pad reach a chart and confirm it with its k
   }
 });
 
-test("RhythmJudgement: the word and timing, a new hit id remakes the plate, the combo and its break in words", () => {
+test("RhythmJudgement: the word, timing and offset, a new hit id remakes the word, the combo, its mark and its break in words", () => {
   run(member("judgement"), (e) => {
-    expect(texts(e)).toContain("perfect");
-    expect(texts(e)).toContain("128");
-    expect(texts(e)).toContain("combo");
-    const plate = () => elements(e).find((x) => /^t:page\/Root\/node1\/[^/]+$/.test(x.path) && x.width > 0)!.path;
+    for (const want of ["perfect", "412", "combo", "full combo", "late", "+4 ms"]) expect(texts(e)).toContain(want);
+    // The word's plate is the frame's last child; the combo above it is not remade.
+    const plate = () => elements(e).filter((x) => /^t:page\/Root\/node1\/[^/]+$/.test(x.path) && x.width > 0).at(-1)!.path;
     const before = plate();
     const scope = og.ui.scope(e.world, "t");
-    scope.writable("combo", 128).set(129);
+    scope.writable("combo", 412).set(413);
     e.advance(2);
     expect(plate()).toBe(before);
     scope.writable("hit", 1).set(2);
@@ -300,6 +299,7 @@ test("RhythmJudgement: the word and timing, a new hit id remakes the plate, the 
   run(member("judgement", "great"), (e) => {
     expect(texts(e)).toContain("great");
     expect(texts(e)).toContain("early");
+    expect(texts(e)).not.toContain("full combo");
   });
   run(member("judgement", "good"), (e) => expect(texts(e)).toContain("late"));
   run(member("judgement", "miss"), (e) => {
@@ -307,27 +307,64 @@ test("RhythmJudgement: the word and timing, a new hit id remakes the plate, the 
     expect(texts(e)).toContain("combo broken");
   });
   run(member("judgement", "none"), (e) => expect(texts(e).some((x) => /perfect|great|good|miss|combo/.test(x))).toBeFalse());
-  run(member("judgement", "overflow"), (e) => expect(texts(e)).toContain("transcendent critical perfect"));
+  run(member("judgement", "overflow"), (e) => {
+    expect(texts(e)).toContain("transcendent critical perfect");
+    expect(texts(e)).toContain("all perfect");
+  });
   // Under reduced motion the word is there at once (it fades, not pops; the frames show it).
   run(member("judgement", "default", {}, { reduced: true }), (e) => expect(texts(e)).toContain("perfect"));
 });
 
-test("RhythmScoreHud: score with grouping, the life gauge hidden when negative, Danger and Failed in words", () => {
-  const meters = (e: Engine) => elements(e).filter((x) => x.role === "progressbar" && x.width > 0).length;
+test("RhythmScoreHud: score with grouping, accuracy and grade, the best with the gap to it signed", () => {
   run(member("score-hud"), (e) => {
-    for (const want of ["482,310", "97.42%"]) expect(texts(e)).toContain(want);
-    expect(texts(e)).not.toContain("danger");
-    expect(meters(e)).toBe(2);
+    for (const want of ["987,450", "98.42%", "s", "991,208", "−3,758"]) expect(texts(e)).toContain(want);
   });
-  run(member("score-hud", "danger"), (e) => expect(texts(e)).toContain("danger"));
-  run(member("score-hud", "failed"), (e) => {
+  run(member("score-hud", "ahead"), (e) => expect(texts(e)).toContain("+27,310"));
+  run(member("score-hud", "first"), (e) => expect(texts(e)).not.toContain("best"));
+  run(member("score-hud", "start"), (e) => {
+    expect(texts(e)).toContain("0");
+    expect(texts(e)).not.toContain("accuracy");
+  });
+});
+
+test("RhythmGauge: life and fever as meters, Danger, Failed and Ready in words, the key that spends it", () => {
+  const meter = (e: Engine) => elements(e).find((x) => x.role === "meter" && x.width > 0);
+  run(member("gauge"), (e) => {
+    expect(meter(e)).toBeDefined();
+    expect(texts(e)).toContain("life");
+    expect(texts(e).some((x) => /danger|failed|ready/.test(x))).toBeFalse();
+  });
+  run(member("gauge", "danger"), (e) => expect(texts(e)).toContain("danger"));
+  run(member("gauge", "failed"), (e) => {
     expect(texts(e)).toContain("failed");
     expect(texts(e)).not.toContain("danger");
   });
-  run(member("score-hud", "nolife"), (e) => {
-    expect(meters(e)).toBe(1);
-    expect(texts(e)).not.toContain("accuracy");
+  run(member("gauge", "ready"), (e) => {
+    for (const want of ["fever", "ready", "space"]) expect(texts(e)).toContain(want);
   });
+});
+
+test("RhythmSongPlate, RhythmChain, RhythmSongProgress, RhythmTiming and RhythmLaneKeys show what the game told them", () => {
+  run(member("song-plate"), (e) => {
+    for (const want of ["neon tidal", "halcyon array · 174 bpm", "expert 27", "mirror"]) expect(texts(e)).toContain(want);
+  });
+  run(member("song-plate", "plain"), (e) => expect(texts(e).some((x) => /bpm/.test(x))).toBeFalse());
+  run(member("chain"), (e) => {
+    expect(texts(e)).toContain("×4");
+    expect(elements(e).some((x) => x.role === "meter" && x.width > 0)).toBeTrue();
+  });
+  run(member("chain", "top"), (e) => expect(elements(e).some((x) => x.role === "meter" && x.width > 0)).toBeFalse());
+  run(member("chain", "none"), (e) => expect(texts(e)).not.toContain("chain"));
+  run(member("song-progress"), (e) => {
+    expect(texts(e)).toContain("2:07");
+    expect(elements(e).some((x) => x.role === "progressbar" && x.width > 0)).toBeTrue();
+  });
+  run(member("song-progress", "bare"), (e) => expect(texts(e).some((x) => /:/.test(x))).toBeFalse());
+  run(member("timing"), (e) => {
+    for (const want of ["perfect", "380", "early", "late"]) expect(texts(e)).toContain(want);
+  });
+  run(member("lane-keys"), (e) => expect(["s", "d", "f", "j", "k", "l"].every((k) => texts(e).includes(k))).toBeTrue());
+  run(member("lane-keys", "empty"), (e) => expect(texts(e)).not.toContain("s"));
 });
 
 test("RhythmResults: Retry and Next report once each; Escape and pad B are Next; a refused Retry is silent", () => {

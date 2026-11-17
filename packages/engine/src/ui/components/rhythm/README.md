@@ -1,8 +1,10 @@
 # rhythm: built-in components
 
-Song select, difficulty, the judgement call, the score HUD and the results
-screen, as documents over core controls (docs/ui.md §4). They draw what the
-game tells them and return intents with stable row keys. They never judge a
+Song select, difficulty, the results screen and the play HUD (the song
+plate, its progress line, the chain, the score, the life and fever gauges,
+the combo and judgement, the timing tally and the lane keys), as
+documents over core controls (docs/ui.md §4). They draw what the game
+tells them and return intents with stable row keys. They never judge a
 hit, keep time, count a combo, compute a score, accuracy, life, grade or
 verdict, or decide what is unlocked: every figure arrives from the game,
 formatted where it is text.
