@@ -296,6 +296,21 @@ pub fn asset(rel: &str) -> Result<std::borrow::Cow<'static, [u8]>, String> {
         "fonts/noto-sans-sc-msdf.json" => include_bytes!("../assets/fonts/noto-sans-sc-msdf.json"),
         "fonts/noto-sans-sc-msdf.csv" => include_bytes!("../assets/fonts/noto-sans-sc-msdf.csv"),
         "env/studio.hdr" => include_bytes!("../assets/env/studio.hdr"),
+        // The set dressing (kit.rs).
+        "kit/column.glb" => include_bytes!("../assets/kit/column.glb"),
+        "kit/column_broken.glb" => include_bytes!("../assets/kit/column_broken.glb"),
+        "kit/arch.glb" => include_bytes!("../assets/kit/arch.glb"),
+        "kit/watchtower.glb" => include_bytes!("../assets/kit/watchtower.glb"),
+        "kit/boulder.glb" => include_bytes!("../assets/kit/boulder.glb"),
+        "kit/pine.glb" => include_bytes!("../assets/kit/pine.glb"),
+        "kit/ground/grass.color.jpg" => include_bytes!("../assets/kit/ground/grass.color.jpg"),
+        "kit/ground/grass.normal.jpg" => include_bytes!("../assets/kit/ground/grass.normal.jpg"),
+        "kit/ground/grass.orm.jpg" => include_bytes!("../assets/kit/ground/grass.orm.jpg"),
+        "kit/ground/cobbles.color.jpg" => include_bytes!("../assets/kit/ground/cobbles.color.jpg"),
+        "kit/ground/cobbles.normal.jpg" => {
+            include_bytes!("../assets/kit/ground/cobbles.normal.jpg")
+        }
+        "kit/ground/cobbles.orm.jpg" => include_bytes!("../assets/kit/ground/cobbles.orm.jpg"),
         _ => {
             return Err(format!(
                 "{rel}: not compiled into the wasm harness (scenes::asset)"

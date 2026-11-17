@@ -17,6 +17,7 @@ pub mod gfx;
 pub mod grass_scenes;
 pub mod ibl_scenes;
 pub mod impostor_scenes;
+pub mod kit;
 pub mod light_scenes;
 pub mod ocean_scenes;
 pub mod p2_scenes;
