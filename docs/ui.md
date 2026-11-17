@@ -247,8 +247,14 @@ item is.
 
 A text element's words may hold one-em inline objects with literal
 attributes: `<img src="coin" alt="">` (a registered picture,
-`UiDesc.images`), `<og-icon name>` (the style's atlas) and `<kbd
-data-action>` (the action's glyph). `<span part="big">` names its element
+`UiDesc.images`), `<og-icon name>` (the icon layers) and `<kbd
+data-action>` (the action's glyph). Icon lookup uses the game's/style's
+atlas, then `UiDesc.fallbackIcons`, then the engine's Lucide vectors.
+`og_ui::DEFAULT_ICON_NAMES` lists that last set; its SVG filenames under
+`third_party/lucide/icons/` give the same names for repository checks.
+The vectors allocate and parse only when drawn, once per used icon; a
+game supplying every requested name loads no default geometry or texture.
+Unknown names still warn. `<span part="big">` names its element
 for `p::part(big)`, whose declarations win over its element's rules and
 which takes `color`, `font`, `font-family`, `font-weight`,
 `font-style`, `text-decoration-line`, `-og-text-motion`, `vertical-align`,

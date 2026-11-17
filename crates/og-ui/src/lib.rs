@@ -30,6 +30,9 @@
 /// The engine's default CSS, generated from the shared design tokens.
 pub const DEFAULT_CSS: &str = include_str!("../default.css");
 
+mod default_icons;
+pub use default_icons::DEFAULT_ICON_NAMES;
+
 #[doc(hidden)]
 pub mod a11y;
 pub use interaction::actions;

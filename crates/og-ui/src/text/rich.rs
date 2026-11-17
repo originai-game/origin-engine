@@ -1578,6 +1578,16 @@ impl Ui {
             if let Some(Atom::Icon(cell)) = &s.atom {
                 let side = s.step.size * n.placed.scale;
                 match *cell {
+                    crate::ui::IconCell::Builtin(name) => {
+                        let rect = Rect::new(r.x + side * 0.05, baseline - side * 0.85, side, side);
+                        cmds.extend(crate::default_icons::commands(
+                            name,
+                            rect,
+                            clip,
+                            color.fade(alpha),
+                            self.paint_theme(),
+                        ));
+                    }
                     crate::ui::IconCell::Glyph(font, ch) => {
                         // An icon set's glyph: its em square where a cell would be.
                         let (x, top) = (r.x + side * 0.05, baseline - side * 0.85);
@@ -2242,6 +2252,15 @@ impl Ui {
                 Some(Atom::Icon(cell)) => {
                     let b = upright_box(em, em);
                     match *cell {
+                        crate::ui::IconCell::Builtin(name) => {
+                            cmds.extend(crate::default_icons::commands(
+                                name,
+                                b,
+                                clip,
+                                color.fade(alpha),
+                                self.paint_theme(),
+                            ))
+                        }
                         crate::ui::IconCell::Glyph(font, ch) => cmds.push(DrawCmd::Text {
                             x: b.x,
                             baseline: b.y + em * 0.85,

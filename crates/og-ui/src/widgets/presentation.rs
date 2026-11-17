@@ -103,8 +103,8 @@ impl Ui {
         self.tree.nodes[i].widget = Widget::Spacer;
     }
 
-    /// An icon of the atlas (`set_icons`) by name; a missing name draws an
-    /// empty slot and warns.
+    /// An icon by name: game atlas, game fallback, then engine vectors.
+    /// A name missing from all three draws an empty slot and warns.
     pub(crate) fn icon(&mut self, id: impl Into<Id>, name: &str, desc: IconDesc) {
         let i = self.leaf("icon", id.into(), Element::default());
         self.apply_icon(i, name, desc);
@@ -137,7 +137,7 @@ impl Ui {
             match self.icon_shape(part.reference(None), name, Frame::FULL, tint) {
                 Some(shape) => self.tree.shapes_mut(i).push(shape),
                 None => self.out.warnings.push(format!(
-                    "icon '{name}' is in neither the icon atlas nor UiDesc.fallbackIcons; add it to one of them"
+                    "icon '{name}' is in neither the icon atlas, UiDesc.fallbackIcons nor the engine default set; add it to an atlas"
                 )),
             }
         }
@@ -334,7 +334,7 @@ impl Ui {
         n.a11y.name = Some(n.probe_text.clone());
     }
 
-    /// Whether the icon atlas has an icon of this name.
+    /// Whether an atlas or the engine default set has an icon of this name.
     pub fn has_icon(&self, name: &str) -> bool {
         self.env.icons.find(name).is_some()
     }
@@ -347,6 +347,12 @@ impl Ui {
         color: Srgba,
     ) -> Option<Shape> {
         Some(match self.env.icons.find_drawn(name)? {
+            (IconCell::Builtin(name), _) => Shape::BuiltinIcon {
+                part,
+                frame,
+                name,
+                color,
+            },
             (IconCell::Glyph(font, ch), _) => Shape::Glyph {
                 part,
                 frame,

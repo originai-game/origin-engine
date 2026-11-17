@@ -110,6 +110,73 @@ fn a_cue_draws_the_tokens_icon_from_the_styles_names() {
 }
 
 #[test]
+fn engine_icons_draw_without_a_game_atlas_and_remain_last_fallback() {
+    let names = [
+        "back",
+        "bag",
+        "bolt",
+        "check",
+        "chevronDown",
+        "chevronLeft",
+        "chevronRight",
+        "clock",
+        "close",
+        "coin",
+        "flag",
+        "lock",
+        "map",
+        "music",
+        "person",
+        "play",
+        "plus",
+        "skull",
+        "star",
+        "trophy",
+    ];
+    for name in names {
+        let mut ui = ui_with_font(test_font_metrics());
+        mount_screen_document(
+            &mut ui,
+            "icons",
+            &format!(
+                r#"<meta name="component" content="icons"><og-icon id="Mark" icon="{name}"/>"#
+            ),
+            &[],
+        );
+        step_screen(&mut ui, InputFrame::default(), Viewport::new(160.0, 100.0));
+        assert!(
+            ui.frame().warnings.is_empty(),
+            "{name}: {:?}",
+            ui.frame().warnings
+        );
+        assert!(
+            ui.frame()
+                .items
+                .iter()
+                .any(|item| matches!(item.cmd, DrawCmd::Shape { .. })),
+            "{name} draws vector ink, not an empty slot"
+        );
+        assert!(DEFAULT_ICON_NAMES.contains(&name), "{name} is discoverable");
+    }
+    let mut handles = Handles::default();
+    let own = handles.texture();
+    let fallback = handles.texture();
+    let icons = IconAtlas {
+        texture: Some(own),
+        names: vec!["check".into()],
+        fallback: Some(Box::new(IconAtlas {
+            texture: Some(fallback),
+            names: vec!["lock".into()],
+            ..Default::default()
+        })),
+        ..Default::default()
+    };
+    assert!(matches!(icons.find("check"), Some(IconCell::Image(t, _)) if t == own));
+    assert!(matches!(icons.find("lock"), Some(IconCell::Image(t, _)) if t == fallback));
+    assert!(icons.find("not-an-engine-icon").is_none());
+}
+
+#[test]
 fn icon_layers_keep_independent_colors() {
     for rejected in [
         "<icon icon=\"base\" />",

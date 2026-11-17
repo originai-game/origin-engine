@@ -45900,7 +45900,7 @@
               "type": "null"
             }
           ],
-          "description": "The icon set that draws the names the atlas lacks (icons, or the style's when icons is null): a game's whole set, such as the UI kit's iconoir set, under a style pack's few painted icons, which keep the names they paint. A document's `<og-icon>`, rich text's [icon=], an action's glyph and an art slot's placeholder all look in it; a name in neither warns. null is none.",
+          "description": "The icon set that draws the names the atlas lacks (icons, or the style's when icons is null): a game's whole set under a style pack's few painted icons. A document's `<og-icon>`, rich text's [icon=], an action's glyph and an art slot's placeholder all look in it. Names absent from both sets use the engine's on-demand vector icons: back, bag, bolt, check, chevronDown, chevronLeft, chevronRight, clock, close, coin, flag, lock, map, music, person, play, plus, skull, star, trophy. Unknown names still warn. null is no game fallback.",
           "default": null
         },
         "images": {

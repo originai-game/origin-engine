@@ -1535,6 +1535,8 @@ pub enum IconCell {
     Glyph(og_draw::FontHandle, char),
     /// A cell of a texture grid, `[u0, v0, u1, v1]`.
     Image(TextureHandle, [f32; 4]),
+    /// A lazily parsed engine vector, after every game-supplied icon layer.
+    Builtin(&'static str),
 }
 
 /// A picture rich text draws inline by name (`[img=<name>]`): a texture
@@ -1575,7 +1577,7 @@ impl IconAtlas {
     }
 
     /// The icon named `name`: from this atlas where it draws one, else
-    /// from its fallback's.
+    /// from its fallback's, then the engine's default vector set.
     pub fn find(&self, name: &str) -> Option<IconCell> {
         self.find_drawn(name).map(|(cell, _)| cell)
     }
@@ -1590,6 +1592,9 @@ impl IconAtlas {
                 .map(|t| (IconCell::Image(t, self.uv(k)), self.pictures)),
         });
         own.or_else(|| self.fallback.as_deref()?.find_drawn(name))
+            .or_else(|| {
+                crate::default_icons::find(name).map(|name| (IconCell::Builtin(name), false))
+            })
     }
 
     /// This atlas and the fallbacks under it, top first.

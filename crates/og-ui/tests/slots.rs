@@ -34,6 +34,21 @@ fn missing_art_marks_stay_small_and_square_in_every_slot_kind() {
                 .items
                 .iter()
                 .filter_map(|item| {
+                    if let DrawCmd::Shape { shape, .. } = &item.cmd
+                        && matches!(
+                            shape.geometry,
+                            og_draw::UiGeometry::Path(_) | og_draw::UiGeometry::Polyline { .. }
+                        )
+                    {
+                        // Default vector icons may have several contours;
+                        // each fits the same small square, as an atlas did.
+                        return Some(Rect::new(
+                            shape.center.x - shape.half.x,
+                            shape.center.y - shape.half.y,
+                            2.0 * shape.half.x,
+                            2.0 * shape.half.y,
+                        ));
+                    }
                     if let Some((rect, radius)) = crate::support::round_fill(&item.cmd) {
                         (radius >= rect.width.min(rect.height) / 2.0).then_some(rect)
                     } else {
@@ -41,14 +56,11 @@ fn missing_art_marks_stay_small_and_square_in_every_slot_kind() {
                     }
                 })
                 .collect();
-            assert_eq!(marks.len(), 1, "{}", kind.name());
-            assert_eq!(
-                marks[0].width,
-                marks[0].height,
-                "{} {width}×{height}",
-                kind.name()
-            );
-            assert!(marks[0].width <= 32.0, "{}: {:?}", kind.name(), marks[0]);
+            assert!(!marks.is_empty(), "{}", kind.name());
+            for mark in marks {
+                assert_eq!(mark.width, mark.height, "{} {width}×{height}", kind.name());
+                assert!(mark.width <= 32.0, "{}: {mark:?}", kind.name());
+            }
         }
     }
 }

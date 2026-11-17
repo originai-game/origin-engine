@@ -1189,6 +1189,26 @@ impl Ui {
                         });
                     }
                 }
+                Shape::BuiltinIcon {
+                    part,
+                    frame,
+                    name,
+                    color,
+                } => {
+                    let values = self.part_values(part, Some(n.key));
+                    let rect = values.part_rect(frame.resolve(&n.placed.rect), n.placed.rect);
+                    let color = values
+                        .color("color")
+                        .unwrap_or(*color)
+                        .fade(alpha * values.num("opacity").unwrap_or(1.0));
+                    cmds.extend(crate::default_icons::commands(
+                        name,
+                        rect,
+                        clip,
+                        color,
+                        self.paint_theme(),
+                    ));
+                }
                 Shape::Glyph {
                     part,
                     frame,

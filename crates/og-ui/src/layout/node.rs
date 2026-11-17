@@ -69,6 +69,13 @@ pub enum Shape {
         ch: char,
         color: Srgba,
     },
+    /// A last-resort engine vector icon, fitted to the frame's shorter side.
+    BuiltinIcon {
+        part: crate::dress::PartRef,
+        frame: Frame,
+        name: &'static str,
+        color: Srgba,
+    },
     /// A piece of the widget that is a part of its own (a meter's fill, a
     /// checkbox's box), drawn as the style dresses it, or from the tokens,
     /// with the widget's colour for it.
