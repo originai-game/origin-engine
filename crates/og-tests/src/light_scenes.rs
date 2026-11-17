@@ -116,69 +116,59 @@ fn fixture(scene: &mut RenderScene, light: &Light) {
     put(scene, shapes::cuboid(size), glow(light.color, 2.0), basis);
 }
 
-/// Three rect lights over a glossy floor before a matte wall at night: a
-/// warm one-sided panel facing down (its highlight on the boards is its
-/// rectangle stretched toward the camera), a cyan two-sided panel standing
-/// upright (it lights the wall behind it and the floor before it), and a
-/// magenta one-sided panel facing left (nothing lit to its right).
+/// A night market in the old town's square after rain, lit by three rect
+/// lights over the wet setts: a warm one-sided strip lamp under the
+/// stall's roof facing down (its highlight on the setts is its rectangle
+/// stretched toward the camera), a cyan two-sided lantern sign standing
+/// upright beside the stall (it lights the stall's side behind it and the
+/// setts before it), and a magenta one-sided panel at the back of a booth
+/// facing left (nothing lit to its right).
 pub fn rect_lights_scene() -> RenderScene {
     let mut scene = RenderScene::new();
-    dark(&mut scene, 0.03);
+    crate::lighting_scenes::market_square(&mut scene);
+    crate::lighting_scenes::night(&mut scene);
+    crate::sky_scenes::canopy(&mut scene, false);
+    crate::lighting_scenes::wares(&mut scene, Vec3::new(9.5, 0.0, -4.5), -1.4);
+    scene.atmosphere.surface_weather = Some(og_render::SurfaceWeather {
+        wetness: 0.8,
+        ..og_render::SurfaceWeather::default()
+    });
+    scene.look.post.ssr = Some(og_render::ScreenSpaceReflections::default());
+    // The booth's back board, the magenta panel's housing.
     put(
         &mut scene,
-        shapes::plane(14.0, 1.0),
-        matte(Vec3::splat(0.45), 0.25),
-        Mat4::IDENTITY,
-    );
-    put(
-        &mut scene,
-        quad(
-            Vec3::new(-7.0, 0.0, -3.0),
-            Vec3::new(7.0, 0.0, -3.0),
-            Vec3::new(7.0, 5.0, -3.0),
-            Vec3::new(-7.0, 5.0, -3.0),
-        ),
-        matte(Vec3::splat(0.6), 0.85),
-        Mat4::IDENTITY,
-    );
-    put(
-        &mut scene,
-        shapes::sphere(32, 16),
-        matte(Vec3::splat(0.7), 0.4),
-        Mat4::from_scale_rotation_translation(
-            Vec3::splat(0.5),
-            Quat::IDENTITY,
-            Vec3::new(-0.2, 0.5, -0.4),
-        ),
+        shapes::cuboid(Vec3::new(0.15, 2.4, 2.6)),
+        matte(Vec3::new(0.25, 0.18, 0.12), 0.7),
+        Mat4::from_translation(Vec3::new(8.3, 1.2, -4.6)),
     );
     scene.lighting.lights = vec![
         // Facing down: right × up = +y, so up is -z.
         rect(
-            Vec3::new(-2.6, 2.4, -0.8),
+            Vec3::new(0.0, 2.9, -6.6),
             Vec3::X,
             Vec3::NEG_Z,
-            (2.4, 0.5),
+            (5.0, 0.35),
             Vec3::new(1.0, 0.75, 0.45),
-            10.0,
+            40.0,
             false,
         ),
         rect(
-            Vec3::new(1.4, 1.1, -1.6),
+            Vec3::new(5.2, 1.2, -3.0),
             Vec3::X,
             Vec3::Y,
-            (0.4, 2.0),
+            (0.45, 2.0),
             Vec3::new(0.3, 0.85, 1.0),
-            12.0,
+            28.0,
             true,
         ),
         // Facing -x: right × up = +x.
         rect(
-            Vec3::new(4.2, 1.0, -0.5),
+            Vec3::new(8.2, 1.4, -4.6),
             Vec3::NEG_Z,
             Vec3::Y,
-            (1.2, 0.8),
+            (2.0, 1.4),
             Vec3::new(1.0, 0.25, 0.8),
-            12.0,
+            28.0,
             false,
         ),
     ];
@@ -186,9 +176,10 @@ pub fn rect_lights_scene() -> RenderScene {
         fixture(&mut scene, &l);
     }
     scene.frame.camera = Camera {
-        position: Vec3::new(0.0, 2.6, 6.5),
-        target: Vec3::new(0.0, 0.8, -1.0),
-        exposure: Exposure::linear(1.0),
+        position: Vec3::new(-1.0, 1.9, 3.5),
+        target: Vec3::new(3.0, 1.0, -5.0),
+        far: 2500.0,
+        exposure: Exposure::Manual { ev: -0.6 },
         ..Default::default()
     };
     scene
@@ -212,78 +203,92 @@ fn texture(width: u32, height: u32, f: impl Fn(u32, u32) -> [u8; 3]) -> TextureD
     }
 }
 
-/// A spot with a stained-glass cookie (red, amber and blue panes in dark
-/// leading) thrown on the floor and the back wall, and a point light with a
-/// cube cookie (six faces stacked +X, -X, +Y, -Y, +Z, -Z, each a grid of
-/// round holes, green on the sides, closed above) dotting the walls and
-/// floor around it.
+/// The crypt ([`crate::shadow_scenes::crypt_room`]) at night, lit by two
+/// cookies: the moon through a rose window high in the south wall, a spot
+/// whose stained-glass cookie (red, blue, amber and green panes in dark
+/// leading, round a white boss) lays the window's colours across the floor
+/// and the altar, and a pierced brass lantern on the floor, a point light with a cube cookie (six faces stacked +X, -X,
+/// +Y, -Y, +Z, -Z, each a grid of round holes, closed above) dotting the
+/// walls and the floor round it.
 pub fn light_cookies_scene() -> RenderScene {
     let mut scene = RenderScene::new();
+    crate::shadow_scenes::crypt_room(&mut scene);
     dark(&mut scene, 0.04);
-    let wall = matte(Vec3::splat(0.7), 0.9);
-    put(&mut scene, shapes::plane(14.0, 1.0), wall, Mat4::IDENTITY);
-    put(
-        &mut scene,
-        quad(
-            Vec3::new(-7.0, 0.0, -3.0),
-            Vec3::new(7.0, 0.0, -3.0),
-            Vec3::new(7.0, 5.0, -3.0),
-            Vec3::new(-7.0, 5.0, -3.0),
-        ),
-        wall,
-        Mat4::IDENTITY,
-    );
-    put(
-        &mut scene,
-        quad(
-            Vec3::new(5.0, 0.0, -3.0),
-            Vec3::new(5.0, 0.0, 4.0),
-            Vec3::new(5.0, 5.0, 4.0),
-            Vec3::new(5.0, 5.0, -3.0),
-        ),
-        wall,
-        Mat4::IDENTITY,
-    );
-    let glass = scene.add_texture(texture(64, 64, |x, y| {
-        let (cx, cy) = (x % 32, y % 32);
-        if cx < 3 || cy < 3 {
-            return [12, 10, 8];
+    let window = |x: u32, y: u32| {
+        let (dx, dy) = (x as f32 - 63.5, y as f32 - 63.5);
+        let r = (dx * dx + dy * dy).sqrt();
+        let a = dy.atan2(dx) / std::f32::consts::TAU + 0.5;
+        if r > 60.0 {
+            return [6, 5, 4];
         }
-        match (x / 32, y / 32) {
-            (0, 0) => [235, 40, 30],
-            (1, 0) => [255, 190, 60],
-            (0, 1) => [40, 90, 240],
-            _ => [250, 250, 240],
+        if r < 12.0 {
+            return if r > 10.0 {
+                [10, 8, 6]
+            } else {
+                [250, 245, 225]
+            };
         }
-    }));
+        let ring = if r < 36.0 { 0 } else { 1 };
+        let sectors = if ring == 0 { 8.0 } else { 16.0 };
+        let s = a * sectors;
+        let lead = (s - s.round()).abs() * (r * std::f32::consts::TAU / sectors) < 1.2
+            || (r - 36.0).abs() < 1.5
+            || (r - 58.5).abs() < 1.5;
+        if lead {
+            return [10, 8, 6];
+        }
+        let palette = [[230, 40, 35], [40, 80, 235], [255, 185, 60], [60, 170, 80]];
+        palette[(s.floor() as usize + ring * 2) % 4]
+    };
+    let glass = scene.add_texture(texture(128, 128, window));
     let cube = scene.add_texture(texture(32, 32 * 6, |x, y| {
         let (face, fy) = (y / 32, y % 32);
-        let (cx, cy) = ((x % 16) as f32 - 7.5, (fy % 16) as f32 - 7.5);
-        let hole = cx * cx + cy * cy < 22.0;
+        let (cx, cy) = ((x % 8) as f32 - 3.5, (fy % 8) as f32 - 3.5);
+        let hole = cx * cx + cy * cy < 4.5;
         match face {
             2 => [8, 8, 8],
-            _ if hole => [90, 255, 120],
+            _ if hole => [255, 200, 120],
             _ => [8, 8, 8],
         }
     }));
+    // The window: its glass glows in the wall, the spot just inside it.
+    let pane = Vec3::new(0.2, 3.0, 3.98);
+    put(
+        &mut scene,
+        quad(
+            pane + Vec3::new(0.6, -0.6, 0.0),
+            pane + Vec3::new(-0.6, -0.6, 0.0),
+            pane + Vec3::new(-0.6, 0.6, 0.0),
+            pane + Vec3::new(0.6, 0.6, 0.0),
+        ),
+        StandardMaterial {
+            color: Vec3::ZERO,
+            emissive: Vec3::ONE,
+            emissiveIntensity: 1.5,
+            emissiveMap: glass.slot(),
+            ..Default::default()
+        },
+        Mat4::IDENTITY,
+    );
+    let lamp = Vec3::new(1.9, 0.45, 1.9);
     scene.lighting.lights = vec![
         Light {
             kind: LightKind::Spot {
-                direction: Vec3::new(0.15, -1.0, -0.55).normalize(),
-                angle_degrees: 32.0,
+                direction: Vec3::new(-0.45, -0.7, -0.75).normalize(),
+                angle_degrees: 26.0,
                 penumbra: 0.1,
             },
-            position: Vec3::new(-2.2, 4.2, 1.6),
-            color: Vec3::ONE,
-            intensity: 60.0,
-            range: 12.0,
+            position: pane - Vec3::Z * 0.1,
+            color: Vec3::new(0.9, 0.92, 1.0),
+            intensity: 90.0,
+            range: 14.0,
             cast_shadows: false,
         },
         Light {
             kind: LightKind::Point,
-            position: Vec3::new(3.0, 1.4, -1.0),
-            color: Vec3::ONE,
-            intensity: 12.0,
+            position: lamp,
+            color: Vec3::new(1.0, 0.75, 0.45),
+            intensity: 10.0,
             range: 8.0,
             cast_shadows: false,
         },
@@ -298,91 +303,104 @@ pub fn light_cookies_scene() -> RenderScene {
             texture: cube,
         },
     ];
+    // The lantern's brass body, its flame glowing through it.
     put(
         &mut scene,
         shapes::sphere(16, 8),
-        glow(Vec3::new(0.4, 1.0, 0.5), 1.5),
-        Mat4::from_scale_rotation_translation(
-            Vec3::splat(0.12),
-            Quat::IDENTITY,
-            Vec3::new(3.0, 1.4, -1.0),
-        ),
+        glow(Vec3::new(1.0, 0.7, 0.35), 2.0),
+        Mat4::from_scale_rotation_translation(Vec3::splat(0.1), Quat::IDENTITY, lamp),
     );
     scene.frame.camera = Camera {
-        position: Vec3::new(-0.5, 3.0, 7.0),
-        target: Vec3::new(0.6, 1.0, -1.0),
-        exposure: Exposure::linear(1.0),
+        position: Vec3::new(3.3, 1.9, -3.2),
+        target: Vec3::new(-2.0, 1.0, 1.4),
+        exposure: Exposure::linear(1.2),
         ..Default::default()
     };
     scene
 }
 
-/// Fog lit as a medium: a low sun behind a wall shines through its three
-/// slots, throwing shafts toward the camera (anisotropy 0.6, forward
-/// scattering) and bright bars on the ground; a warm spot on the right
-/// draws its cone in the fog (the clustered lights light the froxels, and
-/// the raymarch's steps).
+/// Fog lit as a medium: a pine wood at sunrise, the sun low behind the
+/// trees ahead throwing shafts between their trunks and crowns towards the
+/// camera (anisotropy 0.6, forward scattering) and bright bars on the
+/// forest floor; a lantern over the watchtower's door in the clearing
+/// draws its warm cone in the fog (the clustered lights light the froxels,
+/// and the raymarch's steps).
 pub fn volumetric_fog_scene() -> RenderScene {
+    use crate::kit;
     let mut scene = RenderScene::new();
-    let sun = Vec3::new(0.15, 0.32, -1.0).normalize();
-    scene.lighting.light.direction_to_light = sun;
-    scene.lighting.light.intensity = 4.0;
-    scene.lighting.light.color = Vec3::new(1.0, 0.9, 0.75);
-    scene.lighting.light.cast_shadows = true;
-    scene.lighting.environment.sky.sun_direction = sun;
-    scene.lighting.environment.intensity = 0.15;
-    scene.lighting.environment.background = Background::Color(Vec3::new(0.05, 0.06, 0.09));
-    let stone = matte(Vec3::new(0.55, 0.5, 0.45), 0.9);
-    put(&mut scene, shapes::plane(40.0, 1.0), stone, Mat4::IDENTITY);
-    // The wall: piers between three slots 0.5 m wide, 0.6 m thick.
-    let piers = [
-        (-6.0f32, -1.75f32),
-        (-1.25, -0.25),
-        (0.25, 1.25),
-        (1.75, 6.0),
-    ];
-    for (x0, x1) in piers {
-        put(
+    let floor = kit::surface_tinted(&mut scene, "grass", [0.62, 0.7, 0.5]);
+    let ground = scene.add_mesh(kit::slab(
+        glam::Vec2::splat(-300.0),
+        glam::Vec2::splat(300.0),
+        0.0,
+        6.0,
+    ));
+    scene.add_instance(ground, floor, Mat4::IDENTITY);
+    kit::hills(&mut scene, None);
+    let pine = kit::prop(&mut scene, "pine");
+    // Pines all round, thickest ahead where the sun comes through; none in
+    // the clearing before the camera.
+    for k in 0..150 {
+        let h = |n: i32| crate::fx_scenes::hash2(k, n, 0xf06);
+        let (x, z) = (-60.0 + h(0) * 120.0, 18.0 - h(1) * 110.0);
+        let clearing = (x - 1.0).powi(2) / 64.0 + (z + 4.0).powi(2) / 100.0 < 1.0;
+        if clearing {
+            continue;
+        }
+        pine.place(
             &mut scene,
-            shapes::cuboid(Vec3::new(x1 - x0, 5.0, 0.6)),
-            stone,
-            Mat4::from_translation(Vec3::new((x0 + x1) * 0.5, 2.5, -3.0)),
+            Vec3::new(x, 0.0, z),
+            h(2) * 6.0,
+            14.0 + h(3) * 10.0,
         );
     }
-    put(
-        &mut scene,
-        shapes::cuboid(Vec3::new(12.0, 1.0, 0.6)),
-        stone,
-        Mat4::from_translation(Vec3::new(0.0, 5.5, -3.0)),
-    );
+    let boulder = kit::prop(&mut scene, "boulder");
+    boulder.place(&mut scene, Vec3::new(-4.5, -0.3, -3.0), 1.2, 1.6);
+    boulder.place(&mut scene, Vec3::new(5.5, -0.4, 1.0), 4.0, 1.2);
+    kit::prop(&mut scene, "watchtower").place(&mut scene, Vec3::new(11.0, 0.0, -17.0), 2.4, 16.0);
+    let sun = Vec3::new(-0.12, 0.22, -1.0).normalize();
+    crate::sky_scenes::physical_light_under(&mut scene, sun);
+    scene.lighting.light.max_shadow_distance = 80.0;
     scene.lighting.lights = vec![Light {
         kind: LightKind::Spot {
-            direction: Vec3::new(-0.2, -1.0, 0.1).normalize(),
-            angle_degrees: 22.0,
+            direction: Vec3::new(-0.35, -1.0, 0.25).normalize(),
+            angle_degrees: 26.0,
             penumbra: 0.3,
         },
-        position: Vec3::new(3.6, 4.2, 0.5),
+        position: Vec3::new(8.6, 4.0, -13.6),
         color: Vec3::new(1.0, 0.6, 0.3),
-        intensity: 40.0,
-        range: 9.0,
+        intensity: 60.0,
+        range: 10.0,
         cast_shadows: true,
     }];
+    put(
+        &mut scene,
+        shapes::sphere(12, 8),
+        glow(Vec3::new(1.0, 0.65, 0.3), 2.5),
+        Mat4::from_scale_rotation_translation(
+            Vec3::splat(0.14),
+            Quat::IDENTITY,
+            Vec3::new(8.6, 4.1, -13.6),
+        ),
+    );
     scene.atmosphere.volumetric_fog = Some(VolumetricFog {
         color: Vec3::new(0.9, 0.92, 0.96),
-        // A dark hall: the fog shows the sun's and the spot's light alone.
-        ambient: Vec3::ZERO,
-        density: 0.06,
+        // Morning mist in the wood: the fog shows the sun's and the
+        // lantern's light, a little of the sky's.
+        ambient: Vec3::new(0.02, 0.025, 0.03),
+        density: 0.035,
         height: 0.0,
-        height_density: 0.04,
-        falloff: 0.4,
+        height_density: 0.03,
+        falloff: 0.15,
         scattering: 0.9,
         anisotropy: 0.6,
-        distance: 30.0,
+        distance: 60.0,
     });
     scene.frame.camera = Camera {
-        position: Vec3::new(-0.8, 1.5, 6.0),
-        target: Vec3::new(0.3, 2.0, -3.0),
-        exposure: Exposure::linear(0.9),
+        position: Vec3::new(-2.5, 1.7, 8.0),
+        target: Vec3::new(1.5, 3.6, -20.0),
+        far: 2500.0,
+        exposure: Exposure::Manual { ev: 1.2 },
         ..Default::default()
     };
     scene

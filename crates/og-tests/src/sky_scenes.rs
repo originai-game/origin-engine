@@ -63,7 +63,21 @@ pub fn physical_light(
     hours: f32,
     air: PhysicalAtmosphere,
 ) -> og_render::DayNightLook {
-    let look = day_night(hours, 25.0, 70.0).with_atmosphere(&air);
+    physical_look(scene, day_night(hours, 25.0, 70.0).with_atmosphere(&air))
+}
+
+/// [`physical_light`] with the sun at `sun` (towards it) over Earth's air:
+/// for a shot that aims its sun.
+pub fn physical_light_under(scene: &mut RenderScene, sun: Vec3) -> og_render::DayNightLook {
+    let look =
+        og_render::day_night_under(sun.normalize()).with_atmosphere(&PhysicalAtmosphere::EARTH);
+    physical_look(scene, look)
+}
+
+fn physical_look(
+    scene: &mut RenderScene,
+    look: og_render::DayNightLook,
+) -> og_render::DayNightLook {
     scene.lighting.light = DirectionalLight {
         direction_to_light: look.light_direction,
         color: look.light_color,

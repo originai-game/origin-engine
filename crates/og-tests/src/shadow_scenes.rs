@@ -4,8 +4,8 @@
 //! and the thin geometry under TAA with motion, Catmull-Rom history and
 //! sharpening.
 
-use crate::scenes::{ground, load};
-use glam::{Mat4, Quat, Vec3};
+use crate::scenes::load;
+use glam::{Mat4, Vec3};
 use og_render::{
     Background, Camera, DirectionalLight, Environment, Exposure, Light, LightKind, Material,
     RenderScene, shapes,
@@ -15,166 +15,111 @@ use og_render::{
 pub const SOFTNESS: f32 = 0.03;
 pub const CASCADE_BLEND: f32 = 0.2;
 
-/// A low sun over a long field: a cube on the ground (contact shadows stay
-/// sharp), a plank on two posts 2.5 m up and a ball floating at 3 m (their
-/// penumbrae widen with the height), and a row of thin poles running away
-/// from the camera across the cascade splits. `soft` turns PCSS and the
-/// cascade blend on.
+/// A market stall in the old town's square on a summer afternoon: crates
+/// and barrels on the setts (their contact shadows stay sharp), the
+/// stall's plank roof and canvas 2.5 to 3.2 m up on its posts (its shadow's
+/// edge softens with the height), and a row of street lamps running away
+/// across the square through the cascade splits. `soft` turns PCSS and the cascade
+/// blend on.
 pub fn soft_shadows_scene(soft: bool) -> RenderScene {
     let mut scene = RenderScene::new();
-    ground(&mut scene, 160.0, 1.0, 0.9);
-    let stone = scene.add_material(Material {
-        base_color: [0.78, 0.74, 0.68, 1.0],
-        roughness: 0.8,
-        ..Default::default()
-    });
-    let red = scene.add_material(Material {
-        base_color: [0.75, 0.16, 0.1, 1.0],
-        roughness: 0.5,
-        ..Default::default()
-    });
-    let cube = scene.add_mesh(shapes::cuboid(Vec3::splat(1.2)));
-    let post = scene.add_mesh(shapes::cuboid(Vec3::new(0.25, 2.5, 0.25)));
-    let plank = scene.add_mesh(shapes::cuboid(Vec3::new(4.0, 0.15, 1.2)));
-    let ball = scene.add_mesh(shapes::sphere(32, 24));
-    let pole = scene.add_mesh(shapes::cuboid(Vec3::new(0.15, 5.0, 0.15)));
-    scene.add_instance(cube, red, Mat4::from_translation(Vec3::new(-3.5, 0.6, 1.0)));
-    for x in [-1.6f32, 1.6] {
-        scene.add_instance(
-            post,
-            stone,
-            Mat4::from_translation(Vec3::new(1.5 + x, 1.25, -1.0)),
+    crate::lighting_scenes::market_square(&mut scene);
+    crate::sky_scenes::canopy(&mut scene, false);
+    let lamp = crate::kit::prop(&mut scene, "streetlamp");
+    for k in 0..8 {
+        lamp.place(
+            &mut scene,
+            Vec3::new(-7.5, 0.0, 4.0 - 7.0 * k as f32),
+            0.0,
+            4.2,
         );
     }
-    scene.add_instance(
-        plank,
-        stone,
-        Mat4::from_translation(Vec3::new(1.5, 2.575, -1.0)),
-    );
-    scene.add_instance(
-        ball,
-        red,
-        Mat4::from_scale_rotation_translation(
-            Vec3::splat(1.4),
-            Quat::IDENTITY,
-            Vec3::new(-1.0, 3.0, -5.0),
-        ),
-    );
-    for i in 0..10 {
-        let z = -9.0 - i as f32 * 6.0;
-        let x = if i % 2 == 0 { -3.0 } else { 3.0 };
-        scene.add_instance(pole, stone, Mat4::from_translation(Vec3::new(x, 2.5, z)));
-    }
-    let sun = Vec3::new(0.75, 0.42, 0.3);
-    scene.lighting.light = DirectionalLight {
-        direction_to_light: sun,
-        intensity: 4.0,
-        max_shadow_distance: 90.0,
-        shadow_softness: if soft { SOFTNESS } else { 0.0 },
-        cascade_blend: if soft { CASCADE_BLEND } else { 0.0 },
-        ..Default::default()
-    };
-    scene.lighting.environment.sky.sun_direction = sun;
-    scene.lighting.environment.intensity = 0.45;
+    // The sun behind the stall and to its left: the roof's shadow comes
+    // towards the camera over the setts, the lamps' shadows run alongside.
+    let sun = Vec3::new(-0.5, 0.5, -0.62);
+    crate::sky_scenes::physical_light_under(&mut scene, sun);
+    let light = &mut scene.lighting.light;
+    light.max_shadow_distance = 90.0;
+    light.shadow_softness = if soft { SOFTNESS } else { 0.0 };
+    light.cascade_blend = if soft { CASCADE_BLEND } else { 0.0 };
     scene.frame.camera = Camera {
-        position: Vec3::new(0.0, 5.5, 9.0),
-        target: Vec3::new(0.0, 0.0, -14.0),
-        exposure: Exposure::linear(0.85),
+        position: Vec3::new(5.5, 1.8, 5.0),
+        target: Vec3::new(-0.8, 0.9, -5.0),
+        far: 2500.0,
+        exposure: Exposure::Manual { ev: -0.2 },
         ..Default::default()
     };
     scene
 }
 
-/// Night over a plaza: eight shadowed lights (six point, two spot), each
-/// beside a pillar, the brightest nearest the camera, plus two more
-/// shadowed point lights far behind (dim at the camera: past the tier's
-/// eight, their shadows are the ones left out). `extra` adds those two.
+/// A night market in the old town's square, lit by eight shadowed lights:
+/// six lamps standing round the stall and its wares (point lights in their
+/// lanterns) and two spots hung under the stall's roof over its counters;
+/// with `extra`, two more lamps at the back row of houses, whose shadows
+/// fall past the tier's eight and are left out (they are the farthest and
+/// the faintest at the camera). Every crate, barrel, post and lamp throws a
+/// shadow from each light near it.
 pub fn many_shadowed_lights(extra: bool) -> RenderScene {
     let mut scene = RenderScene::new();
-    ground(&mut scene, 60.0, 0.5, 0.7);
-    let pillar = scene.add_mesh(shapes::cuboid(Vec3::new(0.5, 2.4, 0.5)));
-    let white = scene.add_material(Material {
-        base_color: [0.85, 0.85, 0.85, 1.0],
-        roughness: 0.6,
-        ..Default::default()
-    });
-    let colors = [
-        Vec3::new(1.0, 0.55, 0.25),
-        Vec3::new(0.3, 0.6, 1.0),
-        Vec3::new(0.35, 1.0, 0.4),
-        Vec3::new(1.0, 0.3, 0.7),
-        Vec3::new(1.0, 0.9, 0.4),
-        Vec3::new(0.6, 0.4, 1.0),
-        Vec3::new(1.0, 1.0, 1.0),
-        Vec3::new(0.3, 1.0, 1.0),
+    crate::lighting_scenes::market_square(&mut scene);
+    crate::lighting_scenes::night(&mut scene);
+    crate::sky_scenes::canopy(&mut scene, false);
+    crate::lighting_scenes::wares(&mut scene, Vec3::new(-7.5, 0.0, -1.0), 0.6);
+    crate::lighting_scenes::wares(&mut scene, Vec3::new(7.0, 0.0, -2.5), -0.9);
+    let lamp = crate::kit::prop(&mut scene, "streetlamp");
+    let warm = [
+        Vec3::new(1.0, 0.7, 0.42),
+        Vec3::new(1.0, 0.62, 0.35),
+        Vec3::new(1.0, 0.76, 0.5),
     ];
+    let mut lamps = vec![
+        Vec3::new(-5.5, 0.0, 1.5),
+        Vec3::new(5.5, 0.0, 0.5),
+        Vec3::new(-9.5, 0.0, -6.5),
+        Vec3::new(9.5, 0.0, -7.5),
+        Vec3::new(-3.0, 0.0, -12.5),
+        Vec3::new(3.5, 0.0, -13.0),
+    ];
+    if extra {
+        lamps.extend([Vec3::new(-14.0, 0.0, -23.0), Vec3::new(14.0, 0.0, -23.5)]);
+    }
     let mut lights = Vec::new();
-    for (i, color) in colors.iter().enumerate() {
-        let col = (i % 4) as f32;
-        let row = (i / 4) as f32;
-        let at = Vec3::new(-6.0 + col * 4.0, 0.0, -1.0 - row * 5.0);
-        scene.add_instance(
-            pillar,
-            white,
-            Mat4::from_translation(at + Vec3::new(0.0, 1.2, 0.0)),
-        );
-        let kind = if i == 3 || i == 6 {
-            LightKind::Spot {
-                direction: Vec3::new(0.35, -1.0, -0.3),
-                angle_degrees: 38.0,
-                penumbra: 0.3,
-            }
-        } else {
-            LightKind::Point
-        };
-        let position = if matches!(kind, LightKind::Spot { .. }) {
-            at + Vec3::new(-1.0, 3.6, 0.8)
-        } else {
-            at + Vec3::new(-0.9, 1.0, 0.9)
-        };
+    for (i, foot) in lamps.iter().enumerate() {
+        lamp.place(&mut scene, *foot, 0.0, 4.2);
         lights.push(Light {
-            kind,
-            position,
-            color: *color,
-            intensity: if matches!(kind, LightKind::Spot { .. }) {
-                40.0
-            } else {
-                9.0
-            },
-            range: 7.0,
+            position: *foot + Vec3::new(0.0, 3.1, 0.0),
+            color: warm[i % 3],
+            intensity: if i < 6 { 70.0 } else { 40.0 },
+            range: 13.0,
             cast_shadows: true,
+            ..Default::default()
         });
     }
-    if extra {
-        for x in [-8.0f32, 8.0] {
-            let at = Vec3::new(x, 0.0, -24.0);
-            scene.add_instance(
-                pillar,
-                white,
-                Mat4::from_translation(at + Vec3::new(0.0, 1.2, 0.0)),
-            );
-            lights.push(Light {
-                position: at + Vec3::new(-0.9, 1.0, 0.9),
-                color: Vec3::new(1.0, 0.8, 0.6),
-                intensity: 6.0,
-                range: 7.0,
+    // The two spots under the roof, over the counters (inserted among the
+    // lamps: the nearest and brightest lights keep their shadows).
+    for (k, x) in [-1.9f32, 1.9].into_iter().enumerate() {
+        lights.insert(
+            3 + k,
+            Light {
+                kind: LightKind::Spot {
+                    direction: Vec3::new(0.0, -1.0, -0.35).normalize(),
+                    angle_degrees: 50.0,
+                    penumbra: 0.4,
+                },
+                position: Vec3::new(x, 2.85, -6.6),
+                color: Vec3::new(1.0, 0.82, 0.6),
+                intensity: 120.0,
+                range: 8.0,
                 cast_shadows: true,
-                ..Default::default()
-            });
-        }
+            },
+        );
     }
     scene.lighting.lights = lights;
-    scene.lighting.light.intensity = 0.0;
-    scene.lighting.light.cast_shadows = false;
-    scene.lighting.environment = Environment {
-        intensity: 0.03,
-        background: Background::Color(Vec3::new(0.004, 0.006, 0.015)),
-        ..Default::default()
-    };
     scene.frame.camera = Camera {
-        position: Vec3::new(0.0, 8.5, 9.0),
-        target: Vec3::new(0.0, 0.0, -5.0),
-        exposure: Exposure::linear(1.1),
+        position: Vec3::new(1.5, 5.2, 11.0),
+        target: Vec3::new(0.0, 0.6, -6.0),
+        far: 2500.0,
+        exposure: Exposure::Manual { ev: -1.2 },
         ..Default::default()
     };
     scene
@@ -210,87 +155,78 @@ pub fn pan_and_roll_sphere(scene: &mut RenderScene, frame: u32) {
     scene.objects.previous_transforms[sphere] = at(frame.saturating_sub(1));
 }
 
-/// A roofed stone room (a crypt) on a lit field: four walls with a door in
-/// the east one, a roof slab, an altar and a pillar inside, a low sun
-/// outside that reaches the floor only through the door, and a shadowed point
-/// light hanging inside in a glowing glass box that casts no shadow
+/// A crypt of rubble stone: a vaulted room 8 m square inside, walls 0.6 m
+/// thick and 4 m high under a stone roof, a door 2.4 m wide and 3 m high
+/// in its east wall; inside, an altar against the west wall, a column on
+/// its left, a stone sarcophagus against the north wall, a barrel, and
+/// crates by the door.
+/// Outside, a meadow under hills. Lit by nothing: the scenes light it.
+pub fn crypt_room(scene: &mut RenderScene) {
+    use crate::kit;
+    let grass = kit::surface_tinted(scene, "grass", [0.86, 1.0, 0.72]);
+    let field = scene.add_mesh(kit::slab(
+        glam::Vec2::splat(-200.0),
+        glam::Vec2::splat(200.0),
+        0.0,
+        7.0,
+    ));
+    scene.add_instance(field, grass, Mat4::IDENTITY);
+    kit::hills(scene, None);
+    let stone = kit::surface_tinted(scene, "stone", [0.92, 0.88, 0.82]);
+    let flags = kit::surface_tinted(scene, "cobbles", [0.7, 0.68, 0.64]);
+    let (half, t, h) = (4.0f32, 0.6f32, 4.0f32);
+    let wall = |scene: &mut RenderScene, min: Vec3, max: Vec3| {
+        let mesh = scene.add_mesh(kit::block(min, max, 2.4));
+        scene.add_instance(mesh, stone, Mat4::IDENTITY);
+    };
+    let o = half + t;
+    let floor = scene.add_mesh(kit::slab(
+        glam::Vec2::splat(-half),
+        glam::Vec2::splat(half),
+        0.01,
+        1.6,
+    ));
+    scene.add_instance(floor, flags, Mat4::IDENTITY);
+    wall(scene, Vec3::new(-o, 0.0, -o), Vec3::new(o, h, -half));
+    wall(scene, Vec3::new(-o, 0.0, half), Vec3::new(o, h, o));
+    wall(scene, Vec3::new(-o, 0.0, -half), Vec3::new(-half, h, half));
+    let (door, door_h) = (1.2f32, 3.0f32);
+    wall(scene, Vec3::new(half, 0.0, -half), Vec3::new(o, h, -door));
+    wall(scene, Vec3::new(half, 0.0, door), Vec3::new(o, h, half));
+    wall(scene, Vec3::new(half, door_h, -door), Vec3::new(o, h, door));
+    wall(scene, Vec3::new(-o, h, -o), Vec3::new(o, h + 0.4, o));
+    // The altar, its top slab overhanging; the sarcophagus by the north wall.
+    wall(scene, Vec3::new(-3.7, 0.0, -1.1), Vec3::new(-2.3, 1.0, 1.1));
+    wall(
+        scene,
+        Vec3::new(-3.8, 1.0, -1.25),
+        Vec3::new(-2.15, 1.15, 1.25),
+    );
+    wall(scene, Vec3::new(-0.6, 0.0, -3.9), Vec3::new(1.6, 0.8, -2.9));
+    wall(
+        scene,
+        Vec3::new(-0.7, 0.8, -4.0),
+        Vec3::new(1.7, 0.95, -2.8),
+    );
+    kit::prop(scene, "column").place(scene, Vec3::new(-1.6, 0.0, -2.2), 0.4, h);
+    // Between the lamp and the column, a barrel (once a red post).
+    kit::prop(scene, "winebarrel").place(scene, Vec3::new(-0.2, 0.0, -1.4), 0.7, 1.05);
+    let crate_ = kit::prop(scene, "crate");
+    crate_.place(scene, Vec3::new(3.2, 0.0, -3.2), 0.2, 0.6);
+    crate_.place(scene, Vec3::new(3.25, 0.6, -3.15), -0.1, 0.6);
+    crate_.place(scene, Vec3::new(3.3, 0.0, 3.2), 0.5, 0.6);
+}
+
+/// A roofed stone room (a crypt, [`crypt_room`]) on a lit field: a low
+/// sun outside reaches the floor only through the door, and a shadowed
+/// point light hanging inside in a glowing glass box that casts no shadow
 /// (`Instance::cast_shadows` false: The Kestrel Stair's crypt lamp, web
-/// findings #4), so the light reaches the altar and the pillar and throws a
-/// post's shadow beside them. The camera stands inside by the door,
+/// findings #4), so the light reaches the altar and the column and throws
+/// the barrel's shadow beside them. The camera stands inside by the door,
 /// looking west at the altar.
 pub fn crypt_scene() -> RenderScene {
     let mut scene = RenderScene::new();
-    ground(&mut scene, 60.0, 1.0, 0.9);
-    let stone = scene.add_material(Material {
-        base_color: [0.72, 0.66, 0.58, 1.0],
-        roughness: 0.85,
-        ..Default::default()
-    });
-    let red = scene.add_material(Material {
-        base_color: [0.7, 0.14, 0.1, 1.0],
-        roughness: 0.6,
-        ..Default::default()
-    });
-    // The room: 8 m square inside, walls 0.6 m thick and 4 m high, a roof
-    // 0.4 m thick on them; the door is 2.4 m wide and 3 m high.
-    let (half, t, h) = (4.0f32, 0.6f32, 4.0f32);
-    let slab = |scene: &mut RenderScene, size: Vec3, at: Vec3| {
-        let mesh = scene.add_mesh(shapes::cuboid(size));
-        scene.add_instance(mesh, stone, Mat4::from_translation(at));
-    };
-    let outer = 2.0 * (half + t);
-    slab(
-        &mut scene,
-        Vec3::new(outer, h, t),
-        Vec3::new(0.0, h / 2.0, -half - t / 2.0),
-    );
-    slab(
-        &mut scene,
-        Vec3::new(outer, h, t),
-        Vec3::new(0.0, h / 2.0, half + t / 2.0),
-    );
-    slab(
-        &mut scene,
-        Vec3::new(t, h, 2.0 * half),
-        Vec3::new(-half - t / 2.0, h / 2.0, 0.0),
-    );
-    let (door, door_h) = (1.2f32, 3.0f32);
-    let side = half - door;
-    for z in [-(door + side / 2.0), door + side / 2.0] {
-        slab(
-            &mut scene,
-            Vec3::new(t, h, side),
-            Vec3::new(half + t / 2.0, h / 2.0, z),
-        );
-    }
-    slab(
-        &mut scene,
-        Vec3::new(t, h - door_h, 2.0 * door),
-        Vec3::new(half + t / 2.0, (h + door_h) / 2.0, 0.0),
-    );
-    slab(
-        &mut scene,
-        Vec3::new(outer, 0.4, outer),
-        Vec3::new(0.0, h + 0.2, 0.0),
-    );
-    // Inside: an altar against the west wall, a pillar, and a post between
-    // the light and the pillar.
-    slab(
-        &mut scene,
-        Vec3::new(1.4, 1.1, 2.2),
-        Vec3::new(-3.0, 0.55, 0.0),
-    );
-    slab(
-        &mut scene,
-        Vec3::new(0.8, h, 0.8),
-        Vec3::new(-1.6, h / 2.0, -2.2),
-    );
-    let post = scene.add_mesh(shapes::cuboid(Vec3::new(0.3, 1.6, 0.3)));
-    scene.add_instance(
-        post,
-        red,
-        Mat4::from_translation(Vec3::new(-0.2, 0.8, -1.4)),
-    );
+    crypt_room(&mut scene);
     // A low sun from the east: outside it lights the field, inside only
     // the patch the door lets in; the roof and the walls shadow the rest.
     let sun = Vec3::new(0.75, 0.42, 0.3).normalize();
@@ -302,13 +238,27 @@ pub fn crypt_scene() -> RenderScene {
     };
     scene.lighting.environment.sky.sun_direction = sun;
     scene.lighting.environment.intensity = 0.12;
+    // The lamp hangs on a chain from the roof, in a glass lantern lit by
+    // its flame.
     let lamp = Vec3::new(0.4, 2.2, 0.6);
     let glass = scene.add_material(Material {
         base_color: [1.0, 0.8, 0.4, 1.0],
-        emissive: [4.0, 2.4, 1.0],
+        emissive: [0.45, 0.26, 0.1],
         ..Default::default()
     });
-    let lantern = scene.add_mesh(shapes::cuboid(Vec3::new(0.22, 0.3, 0.22)));
+    let iron = scene.add_material(Material {
+        base_color: [0.05, 0.05, 0.05, 1.0],
+        metallic: 1.0,
+        roughness: 0.5,
+        ..Default::default()
+    });
+    let chain = scene.add_mesh(shapes::cuboid(Vec3::new(0.03, 4.0 - 2.35, 0.03)));
+    scene.add_instance(
+        chain,
+        iron,
+        Mat4::from_translation(lamp + Vec3::Y * (0.15 + (4.0 - 2.35) * 0.5)),
+    );
+    let lantern = scene.add_mesh(shapes::cuboid(Vec3::new(0.16, 0.24, 0.16)));
     scene.objects.instances.push(og_render::Instance {
         mesh: lantern,
         material: glass,
@@ -322,7 +272,7 @@ pub fn crypt_scene() -> RenderScene {
     scene.lighting.lights = vec![Light {
         position: lamp,
         color: Vec3::new(1.0, 0.62, 0.3),
-        intensity: 7.0,
+        intensity: 22.0,
         range: 9.0,
         cast_shadows: true,
         ..Default::default()
@@ -346,36 +296,27 @@ pub struct FlagsScene {
     pub model_no_cast: std::ops::Range<usize>,
     /// The wall.
     pub wall: usize,
-    /// Behind the wall, in its shadow: a box and a trickster that receive,
-    /// and a box and a trickster with `receive_shadows` off.
-    pub box_receives: usize,
+    /// Behind the wall, in its shadow: a crate and a trickster that
+    /// receive, and a crate and a trickster with `receive_shadows` off.
+    pub box_receives: std::ops::Range<usize>,
     pub model_receives: std::ops::Range<usize>,
-    pub box_no_receive: usize,
+    pub box_no_receive: std::ops::Range<usize>,
     pub model_no_receive: std::ops::Range<usize>,
 }
 
 /// Shadow flags per instance (`Instance::cast_shadows` and
 /// `receive_shadows`; og.Mesh's and og.Model's castShadow and
-/// receiveShadow): a low sun from the east over a field. In front, on open
-/// ground, two tricksters: the left one added as a model is (it casts) and
-/// the right one with `cast_shadows` off (no shadow beside it). Behind
-/// them a 5 m wall on the east side throws its shadow over a row of four:
-/// a red box and a trickster that receive (dark in the wall's shadow),
-/// then a red box and a trickster with `receive_shadows` off, lit as if
-/// the wall were not there while still casting on the ground.
+/// receiveShadow): a troupe of tricksters performing in the old town's
+/// square under a low sun from the east. In front, on the open setts, two
+/// of them: the left one added as a model is (it casts) and the right one
+/// with `cast_shadows` off (no shadow beside it). Behind them a 5 m rubble
+/// wall on the east side throws its shadow over a row of four: a crate and
+/// a trickster that receive (dark in the wall's shadow), then a crate and a
+/// trickster with `receive_shadows` off, lit as if the wall were not there
+/// while still casting on the ground.
 pub fn shadow_flags_scene() -> Result<FlagsScene, String> {
     let mut scene = RenderScene::new();
-    ground(&mut scene, 60.0, 1.0, 0.9);
-    let stone = scene.add_material(Material {
-        base_color: [0.72, 0.68, 0.62, 1.0],
-        roughness: 0.85,
-        ..Default::default()
-    });
-    let red = scene.add_material(Material {
-        base_color: [0.75, 0.16, 0.1, 1.0],
-        roughness: 0.5,
-        ..Default::default()
-    });
+    crate::lighting_scenes::market_square(&mut scene);
     let model = load("trickster.glb")?;
     let parts = model.add_to(&mut scene);
     let scale = 1.8 / (model.max - model.min).max_element().max(1e-3);
@@ -392,21 +333,18 @@ pub fn shadow_flags_scene() -> Result<FlagsScene, String> {
     let model_as_is = trickster(&mut scene, -1.6, 2.2, 0.4);
     let model_no_cast = trickster(&mut scene, 2.4, 2.2, -0.4);
     let wall = scene.objects.instances.len();
-    let slab = scene.add_mesh(shapes::cuboid(Vec3::new(0.5, 5.0, 6.0)));
-    scene.add_instance(
-        slab,
-        stone,
-        Mat4::from_translation(Vec3::new(3.6, 2.5, -3.2)),
-    );
-    let cube = scene.add_mesh(shapes::cuboid(Vec3::splat(1.0)));
+    let stone = crate::kit::surface_tinted(&mut scene, "stone", [0.95, 0.9, 0.84]);
+    let slab = scene.add_mesh(crate::kit::block(
+        Vec3::new(3.35, 0.0, -6.2),
+        Vec3::new(3.85, 5.0, -0.2),
+        2.4,
+    ));
+    scene.add_instance(slab, stone, Mat4::IDENTITY);
+    let crate_ = crate::kit::prop(&mut scene, "crate");
     let block = |scene: &mut RenderScene, x: f32| {
-        let i = scene.objects.instances.len();
-        scene.add_instance(
-            cube,
-            red,
-            Mat4::from_translation(Vec3::new(x, 0.5, -3.0)) * Mat4::from_rotation_y(0.35),
-        );
-        i
+        let first = scene.objects.instances.len();
+        crate_.place(scene, Vec3::new(x, 0.0, -3.0), 0.35, 0.9);
+        first..scene.objects.instances.len()
     };
     let box_receives = block(&mut scene, 2.3);
     let model_receives = trickster(&mut scene, 1.0, -3.0, 0.2);
@@ -415,22 +353,17 @@ pub fn shadow_flags_scene() -> Result<FlagsScene, String> {
     for i in model_no_cast.clone() {
         scene.objects.instances[i].cast_shadows = false;
     }
-    for i in model_no_receive.clone().chain([box_no_receive]) {
+    for i in model_no_receive.clone().chain(box_no_receive.clone()) {
         scene.objects.instances[i].receive_shadows = false;
     }
-    let sun = Vec3::new(0.85, 0.48, 0.12).normalize();
-    scene.lighting.light = DirectionalLight {
-        direction_to_light: sun,
-        intensity: 4.0,
-        max_shadow_distance: 60.0,
-        ..Default::default()
-    };
-    scene.lighting.environment.sky.sun_direction = sun;
-    scene.lighting.environment.intensity = 0.3;
+    let sun = Vec3::new(0.85, 0.42, 0.12).normalize();
+    crate::sky_scenes::physical_light_under(&mut scene, sun);
+    scene.lighting.light.max_shadow_distance = 60.0;
     scene.frame.camera = Camera {
-        position: Vec3::new(0.2, 3.6, 8.6),
-        target: Vec3::new(0.4, 0.7, -1.2),
-        exposure: Exposure::linear(1.0),
+        position: Vec3::new(-1.6, 2.3, 9.8),
+        target: Vec3::new(0.8, 1.6, -1.6),
+        far: 2500.0,
+        exposure: Exposure::Manual { ev: -0.3 },
         ..Default::default()
     };
     Ok(FlagsScene {

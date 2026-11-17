@@ -309,6 +309,7 @@ pub fn asset(rel: &str) -> Result<std::borrow::Cow<'static, [u8]>, String> {
         "kit/adobe.glb" => include_bytes!("../assets/kit/adobe.glb"),
         "kit/crate.glb" => include_bytes!("../assets/kit/crate.glb"),
         "kit/barrel.glb" => include_bytes!("../assets/kit/barrel.glb"),
+
         "kit/winebarrel.glb" => include_bytes!("../assets/kit/winebarrel.glb"),
         "kit/palm.glb" => include_bytes!("../assets/kit/palm.glb"),
         "kit/ground/grass.color.jpg" => include_bytes!("../assets/kit/ground/grass.color.jpg"),
@@ -493,14 +494,15 @@ pub fn build(name: &str) -> Result<GfxScene, String> {
             g.update = Some(crate::visual_scenes::next_tick);
             Ok(())
         },
-        // A 400 m field with pillars from 3 m to 190 m: shadows in every cascade.
+        // The high street on a morning, 200 m of it: shadows in every cascade.
         "cascades-200m" => |g, _| {
-            g.scene = cascades_200m(true);
+            g.scene = crate::lighting_scenes::cascades_scene();
             Ok(())
         },
-        // Night: seven point and spot lights, the first two shadowed.
+        // The high street at night: seven point and spot lights, the first
+        // two shadowed.
         "point-spot-lights" => |g, _| {
-            g.scene = point_spot_lights();
+            g.scene = crate::lighting_scenes::point_spot_scene();
             Ok(())
         },
         // Thin geometry after 16 frames of TAA (static camera, converged).
@@ -584,7 +586,7 @@ pub fn build(name: &str) -> Result<GfxScene, String> {
         // and shadows-local-8 with each point shadow storage forced, and the
         // thin geometry without antialiasing.
         "point-shadows-cube" => |g, _| {
-            g.scene = point_spot_lights();
+            g.scene = crate::lighting_scenes::point_spot_scene();
             g.desc.point_shadows = og_render::PointShadows::Cube;
             Ok(())
         },
@@ -613,7 +615,7 @@ pub fn build(name: &str) -> Result<GfxScene, String> {
         // point-spot-lights with the point light's shadow in two paraboloid
         // hemispheres instead of six cube faces (`PointShadows::Paraboloid`).
         "point-shadows-paraboloid" => |g, _| {
-            g.scene = point_spot_lights();
+            g.scene = crate::lighting_scenes::point_spot_scene();
             g.desc.point_shadows = og_render::PointShadows::Paraboloid;
             Ok(())
         },
@@ -647,18 +649,18 @@ pub fn build(name: &str) -> Result<GfxScene, String> {
         },
         // Eight shadowed lights (six point, two spot) and two more far
         // behind whose shadows are left out (the default quality's eight).
-        // A box and a ball on a plain floor lit by one shadowed spot: the
-        // box's shadow starts at its base (no lit line), its edges soft
-        // and straight (the tent PCF).
+        // A cellar lit by one shadowed spot: the crate's shadow starts at
+        // its base (no lit line), its edges soft and straight (the tent
+        // PCF).
         "shadows-local-contact" => |g, _| {
-            g.scene = crate::shadow_scenes::local_contact_scene(false, true);
+            g.scene = crate::lighting_scenes::cellar_scene();
             Ok(())
         },
-        // The 200 m street of pillars and kerbs under four cascades (the
-        // high preset's count): the near pillars' shadows finer than three
-        // cascades give over the same distance.
+        // The same street under four cascades (the high preset's count):
+        // the near wares' shadows finer than three cascades give over the
+        // same distance.
         "shadows-cascades-4" => |g, _| {
-            g.scene = crate::scenes::cascades_200m(true);
+            g.scene = crate::lighting_scenes::cascades_scene();
             g.scene.frame.quality.shadow_cascades = 4;
             Ok(())
         },
@@ -676,9 +678,9 @@ pub fn build(name: &str) -> Result<GfxScene, String> {
             });
             Ok(())
         },
-        // A dim scene brought to middle grey by metered exposure.
+        // The street at deep dusk brought to middle grey by metered exposure.
         "exposure" => |g, _| {
-            g.scene = dim_scene(1.0);
+            g.scene = crate::lighting_scenes::exposure_scene();
             Ok(())
         },
         // 20,000 sprites, three textures (one an atlas), two layers.
@@ -1024,22 +1026,22 @@ pub fn build(name: &str) -> Result<GfxScene, String> {
             Ok(())
         },
         "god-rays" => |g, _| {
-            g.scene = fx::god_rays_scene();
+            g.scene = crate::lighting_scenes::god_rays_scene();
             Ok(())
         },
         // Lens flare: a sun almost overhead seen past the roofs, a low sun
-        // half behind a wall's edge, and lamps at night (one half behind a
+        // half behind the watchtower's edge, and lamps at night (one half behind a
         // pillar, a spot aimed at the camera).
         "flare-noon" => |g, _| {
-            g.scene = fx::flare_noon_scene();
+            g.scene = crate::lighting_scenes::flare_noon_scene();
             Ok(())
         },
         "flare-edge" => |g, _| {
-            g.scene = fx::flare_edge_scene(0.3);
+            g.scene = crate::lighting_scenes::flare_edge_scene(0.1);
             Ok(())
         },
         "flare-lights" => |g, _| {
-            g.scene = fx::flare_lights_scene();
+            g.scene = crate::lighting_scenes::flare_lights_scene();
             Ok(())
         },
         "motion-blur" => |g, _| {
@@ -1114,9 +1116,10 @@ pub fn build(name: &str) -> Result<GfxScene, String> {
             g.scene = crate::atmo_scenes::hooks_scene(45);
             Ok(())
         },
-        // Phase 2: 256 point and spot lights over a night plaza (Forward+).
+        // 256 point and spot lights over a festival night in the square
+        // (Forward+).
         "lights-256" => |g, _| {
-            g.scene = crate::p2_scenes::many_lights(256);
+            g.scene = crate::lighting_scenes::festival_scene();
             Ok(())
         },
         // Phase 2: the night colonnade with a waxing gibbous moon in view.
@@ -1537,11 +1540,11 @@ pub fn build(name: &str) -> Result<GfxScene, String> {
             Ok(())
         },
         "shadow-box" => |g, _| {
-            g.scene = crate::fork_scenes::shadow_box_scene();
+            g.scene = crate::lighting_scenes::shadow_box_scene();
             Ok(())
         },
         "hemisphere-light" => |g, _| {
-            g.scene = crate::fork_scenes::hemisphere_scene();
+            g.scene = crate::lighting_scenes::hemisphere_scene();
             Ok(())
         },
         "ao-direct" => |g, _| {
