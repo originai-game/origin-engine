@@ -39,7 +39,8 @@ pub struct EnvironmentMapData {
     /// convolved: `sum(irradiance[k] * Y_k(n))` with the real basis
     /// `Y_0 = 0.282095`, `Y_1..3 = 0.488603 (y, z, x)`, `Y_4..8 =
     /// 1.092548 xy, 1.092548 yz, 0.315392 (3z² - 1), 1.092548 xz,
-    /// 0.546274 (x² - y²)`.
+    /// 0.546274 (x² - y²)`. Adaptively windowed to prevent negative
+    /// irradiance from ringing around compact bright sources; DC is kept.
     pub irradiance: [[f32; 3]; 9],
     /// The sun the bake took out of the image ([`bake::BakeDesc::sun`]);
     /// intensity 0: none.
@@ -160,6 +161,138 @@ pub fn sh9(d: glam::Vec3) -> [f32; 9] {
     ]
 }
 
+/// Minimum of an L2 SH channel on the unit sphere. In Cartesian form it is
+/// c + b·n + nᵀQn. Diagonalize symmetric Q, then maximize its Lagrangian
+/// lower bound c + lambda - sum(b_i² / (4 (q_i - lambda))), lambda < min(q).
+/// Unlike a direction grid this cannot miss a narrow negative lobe.
+fn irradiance_minimum(f: [f64; 9]) -> f64 {
+    if f.iter().all(|&v| v == 0.0) {
+        return 0.0;
+    }
+    let c = 0.282095 * f[0];
+    let mut b = [0.488603 * f[3], 0.488603 * f[1], 0.488603 * f[2]];
+    let mut q = [
+        [
+            0.546274 * f[8] - 0.315392 * f[6],
+            0.546274 * f[4],
+            0.546274 * f[7],
+        ],
+        [
+            0.546274 * f[4],
+            -0.546274 * f[8] - 0.315392 * f[6],
+            0.546274 * f[5],
+        ],
+        [0.546274 * f[7], 0.546274 * f[5], 0.630784 * f[6]],
+    ];
+    // Jacobi rotations; rotate the linear term into the same eigenbasis.
+    for _ in 0..16 {
+        for (p, r) in [(0, 1), (0, 2), (1, 2)] {
+            let off = q[p][r];
+            if off == 0.0 {
+                continue;
+            }
+            let tau = (q[r][r] - q[p][p]) / (2.0 * off);
+            let t = tau.signum() / (tau.abs() + tau.hypot(1.0));
+            let cos = 1.0 / (1.0 + t * t).sqrt();
+            let sin = t * cos;
+            q[p][p] -= t * off;
+            q[r][r] += t * off;
+            q[p][r] = 0.0;
+            q[r][p] = 0.0;
+            for k in 0..3 {
+                if k != p && k != r {
+                    let (x, y) = (q[k][p], q[k][r]);
+                    q[k][p] = cos * x - sin * y;
+                    q[p][k] = q[k][p];
+                    q[k][r] = sin * x + cos * y;
+                    q[r][k] = q[k][r];
+                }
+            }
+            let (x, y) = (b[p], b[r]);
+            b[p] = cos * x - sin * y;
+            b[r] = sin * x + cos * y;
+        }
+    }
+    let eigen = [q[0][0], q[1][1], q[2][2]];
+    let least = eigen.into_iter().fold(f64::INFINITY, f64::min);
+    let length = b.iter().map(|v| v * v).sum::<f64>().sqrt();
+    let epsilon = (c.abs() + length + least.abs()).max(f64::MIN_POSITIVE) * 1e-12;
+    let (mut low, mut high) = (least - length * 0.5 - epsilon, least - epsilon);
+    for _ in 0..64 {
+        let lambda = (low + high) * 0.5;
+        let norm = (0..3)
+            .map(|i| (b[i] / (2.0 * (eigen[i] - lambda))).powi(2))
+            .sum::<f64>();
+        if norm > 1.0 {
+            high = lambda;
+        } else {
+            low = lambda;
+        }
+    }
+    // Residual off-diagonal terms are bounded by their maximum row sum.
+    let residual = (0..3)
+        .map(|i| {
+            (0..3)
+                .filter(|&j| j != i)
+                .map(|j| q[i][j].abs())
+                .sum::<f64>()
+        })
+        .fold(0.0, f64::max);
+    c + low
+        - (0..3)
+            .map(|i| b[i] * b[i] / (4.0 * (eigen[i] - low)))
+            .sum::<f64>()
+        - residual
+}
+
+/// Sloan's sinc^4 deringing window ("Deringing Spherical Harmonics",
+/// https://www.ppsloan.org/publications/shdering.pdf), as used by cmgen.
+/// Find the weakest common RGB window that keeps irradiance nonnegative;
+/// preserve DC, hue balance between channels, and already-safe maps.
+fn window_irradiance(coefficients: [[f32; 3]; 9]) -> [[f32; 3]; 9] {
+    let window = |strength: f64| {
+        std::array::from_fn(|k| {
+            let band = if k == 0 {
+                0.0
+            } else if k < 4 {
+                1.0
+            } else {
+                2.0
+            };
+            let x = std::f64::consts::PI * band * strength;
+            let weight = if x == 0.0 {
+                1.0
+            } else if x >= std::f64::consts::PI {
+                0.0
+            } else {
+                (x.sin() / x).powi(4)
+            };
+            coefficients[k].map(|v| (v as f64 * weight) as f32)
+        })
+    };
+    let safe = |sh: &[[f32; 3]; 9]| {
+        (0..3).all(|channel| {
+            let f = std::array::from_fn(|k| sh[k][channel] as f64);
+            // Leave room for f32 basis evaluation and summation in the shader.
+            let roundoff = f.iter().map(|v| v.abs()).sum::<f64>() * 8.0 * f32::EPSILON as f64;
+            irradiance_minimum(f) >= roundoff
+        })
+    };
+    if safe(&coefficients) {
+        return coefficients;
+    }
+    let (mut low, mut high) = (0.0, 1.0);
+    for _ in 0..32 {
+        let mid = (low + high) * 0.5;
+        if safe(&window(mid)) {
+            high = mid;
+        } else {
+            low = mid;
+        }
+    }
+    window(high)
+}
+
 /// An equirectangular HDR image the renderer prefilters itself, on the GPU
 /// when the map is uploaded ([`crate::RenderScene::add_environment_equirect`]:
 /// uncooked environments loaded at run time). The same levels as a cooked
@@ -206,7 +339,8 @@ impl EnvironmentEquirect {
 /// [`EnvironmentMapData::irradiance`] holds it, gathered a row at a time
 /// (so a loader can spread it over frames): each pixel's radiance
 /// projected onto the nine harmonics with its solid angle, then the cosine
-/// lobe's band factors, as the cook's bake projects its radiance cube.
+/// lobe's band factors and nonnegative-irradiance window, as the cook's
+/// bake projects its radiance cube.
 #[derive(Clone, Debug)]
 pub struct EquirectIrradiance {
     width: u32,
@@ -257,7 +391,9 @@ impl EquirectIrradiance {
             0.25,
             0.25,
         ];
-        std::array::from_fn(|k| std::array::from_fn(|c| (self.sum[k][c] * BAND[k]) as f32))
+        window_irradiance(std::array::from_fn(|k| {
+            std::array::from_fn(|c| (self.sum[k][c] * BAND[k]) as f32)
+        }))
     }
 }
 
@@ -862,7 +998,7 @@ pub mod bake {
             0.25,
             0.25,
         ];
-        std::array::from_fn(|k| (coeffs[k] * band[k]).to_array())
+        super::window_irradiance(std::array::from_fn(|k| (coeffs[k] * band[k]).to_array()))
     }
 
     /// The irradiance over pi of `map` facing unit `n` (what the renderer's
@@ -873,5 +1009,109 @@ pub mod bake {
             .zip(sh9(n))
             .map(|(c, y)| Vec3::from_array(*c) * y)
             .sum()
+    }
+}
+
+#[cfg(all(test, feature = "bake"))]
+mod tests {
+    use super::*;
+    use glam::Vec3;
+
+    #[test]
+    fn compact_sun_irradiance_is_nonnegative_for_runtime_and_cooked_maps() {
+        let (width, height) = (256, 128);
+        let sun = Vec3::new(0.83, 0.31, -0.46).normalize();
+        let radiance = |d: Vec3| {
+            Vec3::new(0.1, 0.2, 0.39)
+                + if d.dot(sun) > 0.999 {
+                    Vec3::new(20_000.0, 13_000.0, 6_000.0)
+                } else {
+                    Vec3::ZERO
+                }
+        };
+        let mut rows = EquirectIrradiance::new(width, height);
+        for y in 0..height {
+            let lat = (0.5 - (y as f32 + 0.5) / height as f32) * std::f32::consts::PI;
+            let row: Vec<_> = (0..width)
+                .flat_map(|x| {
+                    let lon = ((x as f32 + 0.5) / width as f32 - 0.5) * std::f32::consts::TAU;
+                    radiance(Vec3::new(
+                        lat.cos() * lon.cos(),
+                        lat.sin(),
+                        lat.cos() * lon.sin(),
+                    ))
+                    .to_array()
+                })
+                .collect();
+            rows.add_row(y, &row);
+        }
+        let size = 64;
+        let mut cube = Vec::new();
+        for face in 0..6 {
+            for y in 0..size {
+                for x in 0..size {
+                    cube.extend(
+                        radiance(face_direction(
+                            face,
+                            2.0 * (x as f32 + 0.5) / size as f32 - 1.0,
+                            1.0 - 2.0 * (y as f32 + 0.5) / size as f32,
+                        ))
+                        .to_array(),
+                    );
+                }
+            }
+        }
+        let cooked = bake::bake_cube(
+            &bake::CubeFaces { size, rgb: &cube },
+            &bake::BakeDesc {
+                size: 16,
+                samples: 1,
+                ..Default::default()
+            },
+        )
+        .unwrap();
+        let mut minima = Vec::new();
+        for (name, coefficients) in [("runtime", rows.finish()), ("cooked", cooked.irradiance)] {
+            let evaluate = |d| {
+                coefficients
+                    .iter()
+                    .zip(sh9(d))
+                    .map(|(c, y)| Vec3::from_array(*c) * y)
+                    .sum::<Vec3>()
+            };
+            assert!(
+                (evaluate(sun) - evaluate(-sun) * 2.0).min_element() > 0.0,
+                "{name}: window erased directional lighting"
+            );
+            // Uniformly spaced sphere samples, independent of either projection grid.
+            let mut minimum = f32::INFINITY;
+            for i in 0..20_000 {
+                let z = 1.0 - 2.0 * (i as f32 + 0.5) / 20_000.0;
+                let phi = i as f32 * 2.399_963_1;
+                let r = (1.0 - z * z).sqrt();
+                let d = Vec3::new(r * phi.cos(), r * phi.sin(), z);
+                minimum = minimum.min(evaluate(d).min_element());
+            }
+            minima.push((name, minimum));
+        }
+        assert!(minima.iter().all(|(_, value)| *value >= 0.0), "{minima:?}");
+
+        // Safe monochrome lighting (including zero channels) keeps its energy.
+        for color in [Vec3::ZERO, Vec3::X] {
+            let mut constant = EquirectIrradiance::new(64, 32);
+            let row = color.to_array().repeat(64);
+            for y in 0..32 {
+                constant.add_row(y, &row);
+            }
+            let coefficients = constant.finish();
+            for direction in [Vec3::X, Vec3::Y, Vec3::Z, -Vec3::Y] {
+                let value: Vec3 = coefficients
+                    .iter()
+                    .zip(sh9(direction))
+                    .map(|(c, y)| Vec3::from_array(*c) * y)
+                    .sum();
+                assert!((value - color).abs().max_element() < 0.002, "{value:?}");
+            }
+        }
     }
 }
