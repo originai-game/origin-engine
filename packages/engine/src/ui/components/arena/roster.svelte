@@ -85,7 +85,8 @@
 .chosen { flex: none; align-items: baseline; justify-content: center; padding: var(--space-sm); }
 .chosen .tag { align-self: center; }
 .chosen-name { min-width: 0; white-space: nowrap; text-overflow: ellipsis; overflow: hidden; }
-.chosen-role { flex: none; white-space: nowrap; }
+/* A role longer than the footer wraps inside it. */
+.chosen-role { flex: 0 1 auto; min-width: 0; max-inline-size: 100%; text-align: center; overflow-wrap: anywhere; }
 .empty-text { margin: 0; padding: var(--space-lg); text-align: center; }
 /* The roster sits in a panel: its own width, not the screen's, tightens it,
    once three whole cells no longer fit on a line. */
