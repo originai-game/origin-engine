@@ -17,17 +17,17 @@
 
 <style>
 #Stars { display: flex; gap: var(--space-xs); }
-/* Each star is the star icon as a dim well under a glyph of the same
-   shape drawn as an outline. An earned star fills the glyph (the style's
+/* Each star is the star icon (kept for its name and as a hook, drawn
+   clear) under a glyph that draws the star: a dim well with a faint
+   outline. An earned star fills the glyph (the style's
    star gold) under a lit edge, with a glow; an unearned one is a faint
    outline over the dim well. A pack recolours both through the --star-*
    roles or the star and glyph parts. */
 .star { position: relative; display: block; width: var(--size-md); height: var(--size-md); }
 .glyph, .well { position: absolute; inset: 0; width: 100%; height: 100%; }
-.well { color: var(--star-empty-fill); }
-.glyph { fill: none; stroke: var(--star-empty-edge); stroke-width: var(--star-edge-width); stroke-linejoin: round; }
+.well { color: transparent; }
+.glyph { fill: var(--star-empty-fill); stroke: var(--star-empty-edge); stroke-width: var(--star-edge-width); stroke-linejoin: round; }
 .star.lit { filter: var(--star-glow); animation: land var(--motion-named-ui-duration) ease-out both; animation-delay: calc(var(--i) * var(--motion-duration-instant)); }
-.star.lit .well { color: var(--star-fill-solid); }
 .star.lit .glyph { fill: var(--star-fill-solid); stroke: var(--star-edge); }
 @keyframes land { from { scale: 0.4; opacity: 0; } 70% { scale: 1.2; opacity: 1; } to { scale: 1; } }
 </style>
