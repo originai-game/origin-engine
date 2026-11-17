@@ -1,0 +1,8 @@
+{
+  "fixed": [
+    {
+      "member": "UI painter batching",
+      "summary": "Shadowed interfaces use fewer painter levels without changing their look: font-to-shape crossings reuse the renderer's existing order, and ordinary round-rectangle shadows use conservative shader-derived Y bounds. Real overlaps retain their ordering, including after retained updates and raster-scale changes."
+    }
+  ]
+}

@@ -176,10 +176,12 @@ fn levelled(
     drawn: Option<&mut Rect>,
     top: Option<&mut Levels>,
 ) -> Vec<DrawItem> {
+    // Nested targets have their own raster scale, unknown at this stage.
+    let pixel_width = top.as_ref().and_then(|top| top.pixel_width);
     let keyed: Vec<(Rect, Batch)> = entries
         .iter()
         .map(|e| match e {
-            Entry::Cmd(c, m) => (mapped_bounds(c, m), c.batch()),
+            Entry::Cmd(c, m) => (mapped_bounds(c, m, pixel_width), c.batch()),
             Entry::Bracket(..) | Entry::Panel { .. } => (Rect::default(), Batch::Ui(0, None)),
             Entry::Layer { bounds, .. } => {
                 *layers += 1;
@@ -265,6 +267,7 @@ fn levelled(
     }
     if let Some(top) = top {
         *top = Levels {
+            pixel_width,
             at: Vec::new(),
             keyed,
             levels,
@@ -278,7 +281,10 @@ fn levelled(
 
 /// [`assign_levels`], with what it decided about the top level space for
 /// the next frame's [`Levels::update`].
-pub(crate) fn assign_levels_kept(cmds: Vec<(DrawCmd, Affine)>) -> (Vec<DrawItem>, Levels) {
+pub(crate) fn assign_levels_kept(
+    cmds: Vec<(DrawCmd, Affine)>,
+    pixel_width: Option<f32>,
+) -> (Vec<DrawItem>, Levels) {
     let at = top_entries(&cmds);
     let mut layers = 0;
     let mut it = cmds.into_iter();
@@ -291,15 +297,18 @@ pub(crate) fn assign_levels_kept(cmds: Vec<(DrawCmd, Affine)>) -> (Vec<DrawItem>
             break;
         }
     }
-    let mut top = Levels::default();
+    let mut top = Levels {
+        pixel_width,
+        ..Default::default()
+    };
     let items = levelled(entries, &mut layers, None, Some(&mut top));
     top.at = at;
     (items, top)
 }
 
 /// The levels of `keyed` (bounds and batch) in submission order: a command
-/// goes above every earlier one it overlaps (on the same level when they
-/// share a batch); `None` for empty bounds. Each placed rectangle is filed
+/// advances past earlier overlaps whose order the renderer would reverse;
+/// `None` for empty bounds. Each placed rectangle is filed
 /// in the cells of a coarse grid it touches, and a command tests only the
 /// rectangles of its own cells: a screen transition's dissolve is 1,620
 /// quads over the frame, and testing each against every earlier command was
@@ -327,6 +336,8 @@ fn assign(keyed: &[(Rect, Batch)]) -> (Vec<Option<i32>>, Grid, Vec<Vec<u32>>) {
 /// commands there levels again only what they overlap ([`Levels::update`]).
 #[derive(Clone, Debug, Default)]
 pub(crate) struct Levels {
+    /// Top-level shape-local units per device pixel, before zoom_items.
+    pub(crate) pixel_width: Option<f32>,
     /// Per submitted command: its top level entry when it is one levelled
     /// command (`u32::MAX`: a bracket, a layer's or panel's, an end).
     at: Vec<u32>,
@@ -356,7 +367,7 @@ impl Levels {
             let Some(&e) = self.at.get(*p).filter(|&&e| e != u32::MAX) else {
                 return false;
             };
-            let key = (mapped_bounds(cmd, m), cmd.batch());
+            let key = (mapped_bounds(cmd, m, self.pixel_width), cmd.batch());
             let shown = !key.0.is_empty() || unmeasured_text(cmd);
             if key.0.is_empty() != self.keyed[e as usize].0.is_empty()
                 || shown != self.items[e as usize].is_some()
@@ -497,7 +508,7 @@ impl Levels {
             let key = if bracket {
                 gone
             } else {
-                (mapped_bounds(&cmd, &m), cmd.batch())
+                (mapped_bounds(&cmd, &m, self.pixel_width), cmd.batch())
             };
             let shown = bracket || !key.0.is_empty() || unmeasured_text(&cmd);
             let item = shown.then(|| {
@@ -637,6 +648,7 @@ impl Levels {
             }));
         }
         *self = Levels {
+            pixel_width: self.pixel_width,
             at,
             keyed,
             levels,
@@ -758,8 +770,8 @@ impl Grid {
         }
     }
 
-    /// Entry `e`'s level: above every earlier entry it overlaps, on the
-    /// same level as one of its own batch.
+    /// Entry `e`'s level: preserve every earlier overlapping entry's
+    /// order, including crossings the renderer already sorts correctly.
     fn level(
         &self,
         keyed: &[(Rect, Batch)],
@@ -778,7 +790,7 @@ impl Grid {
                         && let Some(l) = levels[p]
                         && keyed[p].0.overlaps(&bounds)
                     {
-                        level = level.max(if keyed[p].1 == batch { l } else { l + 1 });
+                        level = level.max(l + batch.step_after(keyed[p].1));
                     }
                 }
             }

@@ -7,6 +7,76 @@ use crate::support::*;
 use og_ui::*;
 use serde_json::{Value, json};
 
+#[test]
+fn the_default_sample_keeps_its_painter_budget_with_hover_and_tooltip() {
+    let mut ui = ui_with_font(test_font());
+    let state = sample_session(&mut ui);
+    assert_eq!(state.search, "pot");
+    assert!(ui.element("tooltip").is_some());
+    assert!(ui.frame().warnings.is_empty(), "{:?}", ui.frame().warnings);
+    assert!(
+        ui.frame().levels() <= 4,
+        "{} painter levels",
+        ui.frame().levels()
+    );
+}
+
+#[test]
+fn shadow_order_keeps_real_overlap_and_matches_fresh_after_retained_changes() {
+    const BODY: &str = r#"
+<div id="Stage"><text id="Before" class:near={$near}>before</text><div id="Shadow"/><text id="After">after</text></div>
+<style>
+#Stage { width: 400px; height: 400px; background: #112233; }
+#Before, #After { position: absolute; left: 200px; font-size: 20px; line-height: 20px; }
+#Before { top: 150px; }
+#Before.near { top: 180px; }
+#After { top: 190px; }
+#Shadow { position: absolute; left: 200px; top: 186px; width: 50px; height: 28px;
+  box-shadow: 0 6px 14px -4px #000000; }
+</style>"#;
+    let vp = Viewport::new(800.0, 600.0);
+    let mut d = mounted(
+        ui_with_font(test_font()),
+        BODY,
+        &[("near", json!(false))],
+        vp,
+    );
+    for (near, dpr) in [
+        (false, 1.0),
+        (false, 0.1),
+        (false, 2.0),
+        (true, 1.0),
+        (false, 0.1),
+        (true, 2.0),
+        (false, 1.0),
+    ] {
+        d.viewport.dpr = dpr;
+        d.set("near", json!(near));
+        let fresh = mounted(
+            ui_with_font(test_font()),
+            BODY,
+            &[("near", json!(near))],
+            d.viewport,
+        );
+        assert!(
+            d.ui.frame().warnings.is_empty(),
+            "{:?}",
+            d.ui.frame().warnings
+        );
+        assert_eq!(
+            d.ui.frame().items,
+            fresh.ui.frame().items,
+            "near={near}, dpr={dpr}"
+        );
+        if dpr == 1.0 {
+            // A preceding label ending at Y170 misses the shader's Y175
+            // shadow support. At Y180 it really overlaps, so the later
+            // label must advance. Font→shape itself needs no new level.
+            assert_eq!(d.ui.frame().levels(), if near { 3 } else { 2 });
+        }
+    }
+}
+
 /// `body` (a component document's markup and `<style>`) mounted in `ui`
 /// with `stores`, laid out in `vp`, built once.
 fn mounted(ui: Ui, body: &str, stores: &[(&str, Value)], vp: Viewport) -> Doc {

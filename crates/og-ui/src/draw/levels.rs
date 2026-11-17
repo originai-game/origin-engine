@@ -100,7 +100,10 @@ fn the_grid_assigns_the_levels_of_every_pair_tested() {
     cases.push(screen);
     for cmds in cases {
         let want = quadratic(&cmds);
-        let got: Vec<i32> = assign_levels(plain(cmds)).iter().map(|i| i.level).collect();
+        let got: Vec<i32> = assign_levels(plain(cmds), None)
+            .iter()
+            .map(|i| i.level)
+            .collect();
         assert_eq!(got, want);
     }
 }
@@ -177,7 +180,7 @@ fn levelling_again_what_changed_matches_levelling_afresh() {
         },
     );
     cmds.insert(90, DrawCmd::PopClip);
-    let (mut items, mut levels) = assign_levels_kept(plain(cmds.clone()));
+    let (mut items, mut levels) = assign_levels_kept(plain(cmds.clone()), None);
     let movable: Vec<usize> = (0..cmds.len())
         .filter(|&p| !(40..44).contains(&p) && p != 70 && p != 90)
         .collect();
@@ -191,7 +194,11 @@ fn levelling_again_what_changed_matches_levelling_afresh() {
             changed.push((p, cmds[p].clone(), Affine::IDENTITY));
         }
         assert!(levels.update(&mut items, changed, 1.0));
-        assert_eq!(items, assign_levels(plain(cmds.clone())), "round {round}");
+        assert_eq!(
+            items,
+            assign_levels(plain(cmds.clone()), None),
+            "round {round}"
+        );
     }
     let inside = vec![(42, quad(Rect::new(5.0, 5.0, 5.0, 5.0)), Affine::IDENTITY)];
     let before = items.clone();
@@ -220,11 +227,14 @@ fn only_a_text_that_measured_no_width_goes_on_without_bounds() {
         placements: Vec::new(),
     };
     let view = Rect::new(0.0, 0.0, 100.0, 100.0);
-    let items = assign_levels(plain(vec![
-        text(Rect::new(10.0, 10.0, 0.0, 16.0), view),
-        text(Rect::new(10.0, 300.0, 60.0, 16.0), view),
-        text(Rect::new(10.0, 30.0, 60.0, 16.0), view),
-    ]));
+    let items = assign_levels(
+        plain(vec![
+            text(Rect::new(10.0, 10.0, 0.0, 16.0), view),
+            text(Rect::new(10.0, 300.0, 60.0, 16.0), view),
+            text(Rect::new(10.0, 30.0, 60.0, 16.0), view),
+        ]),
+        None,
+    );
     let ys: Vec<f32> = items
         .iter()
         .map(|i| match &i.cmd {
@@ -287,7 +297,7 @@ fn splicing_a_scroll_matches_levelling_afresh() {
     };
     let mut was = frame(0.0);
     let (mut items, mut levels) =
-        assign_levels_kept(plain(was.iter().map(|(_, c)| c.clone()).collect()));
+        assign_levels_kept(plain(was.iter().map(|(_, c)| c.clone()).collect()), None);
     let mut off = 0.0f32;
     let steps = [
         7.5, 30.0, 12.25, -9.75, 60.0, 0.0, -45.0, 0.5, 200.0, -100.0, -60.0, -60.0, 3.3, -9.7,
@@ -318,7 +328,7 @@ fn splicing_a_scroll_matches_levelling_afresh() {
         items = levels
             .splice(items, next, 1.0)
             .unwrap_or_else(|| panic!("step {step} refused"));
-        let fresh = assign_levels(plain(now.iter().map(|(_, c)| c.clone()).collect()));
+        let fresh = assign_levels(plain(now.iter().map(|(_, c)| c.clone()).collect()), None);
         assert_eq!(items, fresh, "step {step}");
         off += step;
         was = now;
@@ -349,7 +359,7 @@ fn a_layer_is_one_command_of_its_parent_with_levels_of_its_own() {
         end(),
         quad(Rect::new(50.0, 50.0, 10.0, 10.0)),
     ];
-    let items = assign_levels(plain(cmds));
+    let items = assign_levels(plain(cmds), None);
     let levels: Vec<i32> = items.iter().map(|i| i.level).collect();
     // Outer: quad 0, image 1 (a texture is its own batch), layer 2 (over
     // the image), quad 3 (over the layer); inside: quad 0, image 1, quad 2.
@@ -388,7 +398,7 @@ fn layers_and_cuts_emit_their_ranges_and_shapes() {
         DrawCmd::PopClip,
         quad(Rect::new(0.0, 0.0, 10.0, 10.0)),
     ];
-    let items = assign_levels(plain(cmds));
+    let items = assign_levels(plain(cmds), None);
     let mut overlay = Overlay::new(200.0, 200.0, 1.0);
     emit(
         &items,

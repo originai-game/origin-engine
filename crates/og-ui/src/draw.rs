@@ -5,11 +5,11 @@
 //! Every rectangle, bar, half disc, image and glass panel is a UI shape:
 //! a signed distance evaluated per pixel, so its edge is exact at any
 //! scale. og-render sorts by (layer, kind, texture), so draw order is kept
-//! with **painter levels**: a command's level is one above every earlier
-//! command it overlaps that batches differently, and equal to that of an
-//! overlapping earlier command of its own batch. Commands of different
-//! batches on one level never overlap, so the sort cannot reorder anything
-//! visible, and a typical screen is two to four draws (§5.7).
+//! with **painter levels**: an overlapping command advances a level when
+//! the renderer would otherwise reverse its order. Same-batch commands
+//! and font→shape crossings already draw in submission order on one level.
+//! Other crossings conservatively advance, so the sort cannot reorder
+//! anything visible, and a typical screen is two to four draws (§5.7).
 //!
 //! **Clipping is per pixel**: every command carries its clip rectangle,
 //! and the commands between a [`DrawCmd::PushClip`] and its
@@ -234,6 +234,24 @@ enum Batch {
     Mass,
 }
 
+impl Batch {
+    fn step_after(self, earlier: Self) -> i32 {
+        // OverlaySource::Font sorts before every UI ShapeSource, including
+        // backdrop and composite shapes. Keep ambiguous shape/pipeline
+        // crossings conservative: their exact source depends on the target.
+        i32::from(
+            self != earlier
+                && !matches!(
+                    (earlier, self),
+                    (
+                        Self::Font(_),
+                        Self::Ui(..) | Self::Backdrop | Self::Composite(_)
+                    )
+                ),
+        )
+    }
+}
+
 fn pipe_of(blend: UiBlend) -> u8 {
     match blend {
         UiBlend::Normal => 0,
@@ -357,15 +375,55 @@ fn mapped_shape(mut s: UiShape, m: &Affine) -> UiShape {
     s
 }
 
-/// A command's bounds on the screen under its map.
-fn mapped_bounds(c: &DrawCmd, m: &Affine) -> Rect {
-    if m.is_identity() {
-        return c.bounds();
-    }
+/// A command's bounds on the screen under its map. Only the top-level
+/// overlay supplies its local device-pixel width; other targets keep the
+/// broad bounds, since their independent raster scale is not known here.
+fn mapped_bounds(c: &DrawCmd, m: &Affine, pixel_width: Option<f32>) -> Rect {
     match c {
         DrawCmd::Shape { shape, clip } => {
-            shape_bounds(&mapped_shape((**shape).clone(), m)).intersect(clip)
+            let mapped;
+            let s = if m.is_identity() {
+                &**shape
+            } else {
+                mapped = mapped_shape((**shape).clone(), m);
+                &mapped
+            };
+            let mut bounds = shape_bounds(s);
+            if let Some(px) = pixel_width
+                && px.is_finite()
+                && px > 0.0
+                && s.transform == [1.0, 0.0, 0.0, 1.0]
+                && matches!(
+                    s.geometry,
+                    UiGeometry::Rect {
+                        corner: og_draw::UiCorner::Round,
+                        ..
+                    }
+                )
+                && let UiMode::Shadow {
+                    offset,
+                    blur,
+                    spread,
+                } = s.mode
+            {
+                // rounded_box_shadow in ui_common.wgsl integrates only
+                // across ±3σ in Y. Its erf approximation has no matching
+                // compact X support, so retain the broad X bounds.
+                let half = (s.half.y + spread).max(0.0);
+                let reach = 3.0 * (0.5 * blur.max(0.0)).max(0.5 * px);
+                // Outward device-pixel and arithmetic guards preserve
+                // coverage at the CPU/GPU floating-point boundary.
+                let guard =
+                    px + 8.0 * f32::EPSILON * (s.center.y.abs() + offset.y.abs() + half + reach);
+                let lo = s.center.y + offset.y - half - reach - guard;
+                let hi = s.center.y + offset.y + half + reach + guard;
+                if lo.is_finite() && hi.is_finite() {
+                    bounds = bounds.intersect(&Rect::new(bounds.x, lo, bounds.width, hi - lo));
+                }
+            }
+            bounds.intersect(clip)
         }
+        _ if m.is_identity() => c.bounds(),
         _ => m.map_rect(&c.unclipped()).intersect(c.clip()),
     }
 }
@@ -537,8 +595,11 @@ impl DrawCmd {
 /// Assigns painter levels in submission order (see the module
 /// documentation); each command's bounds are taken under its map.
 #[cfg(any(test, debug_assertions))]
-pub(crate) fn assign_levels(cmds: Vec<(DrawCmd, Affine)>) -> Vec<DrawItem> {
-    assign_levels_kept(cmds).0
+pub(crate) fn assign_levels(
+    cmds: Vec<(DrawCmd, Affine)>,
+    pixel_width: Option<f32>,
+) -> Vec<DrawItem> {
+    assign_levels_kept(cmds, pixel_width).0
 }
 
 #[cfg(test)]

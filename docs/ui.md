@@ -618,6 +618,17 @@ CSS paint follows Backgrounds 3, Images 3 and 4, Masking 1, Shapes 2
 (`shape()`), Filter Effects 1 and 2 and Compositing 1, with these engine
 rules and limits:
 
+- Painter levels preserve submission order where paint overlaps. A font
+  followed by a shape can share a level because the renderer already
+  sorts fonts before shapes; the reverse crossing advances. Ambiguous
+  pipeline crossings keep conservative levels. Top-level untransformed
+  round-rectangle outer shadows use the analytic shader's compact Y
+  support with device-pixel guards, not a filled rectangle around the
+  unshifted box. Other geometry, transforms and offscreen targets keep
+  broad bounds. Retained levels use the same bounds and invalidate when
+  the viewport's raster scale changes. Emit into an overlay with the
+  viewport's size and DPR, as required by `UiFrame::emit`; a separately
+  rescaled overlay is not that viewport's raster target.
 - `url(<file>)` resolves beside the stylesheet that wrote it (inline styles
   beside the document) and names a cooked texture (SVG included) the
   document load registers; it never selects an atlas icon or a numeric

@@ -1553,9 +1553,23 @@ impl Ui {
         self.interaction
             .virtual_cursor_commands(&mut over, &self.env);
         tail.extend(over.into_iter().map(|c| (c, Affine::IDENTITY)));
+        // Env.viewport is already zoomed: its DPR includes env.unit.
+        // Every reuse route must keep the same shadow coverage context.
+        let px = 1.0 / self.env.viewport.dpr();
+        let pixel_width = px.is_finite().then_some(px.max(1e-6));
+        let same_pixels = self
+            .paint
+            .cache
+            .levels
+            .as_ref()
+            .is_some_and(|levels| levels.pixel_width == pixel_width);
+        if !same_pixels {
+            self.paint.cache.levels = None;
+        }
         // Every tree drew as last frame, and what is over them too: the
         // frame's items are last frame's.
         let kept_items = view.is_none()
+            && same_pixels
             && self.paint.cache.reused_all
             && tail == self.paint.cache.last_tail
             && self.out.frame.unit == self.env.unit;
@@ -1616,7 +1630,7 @@ impl Ui {
                 }
                 cmds = out;
             }
-            let (items, levels) = crate::draw::assign_levels_kept(cmds);
+            let (items, levels) = crate::draw::assign_levels_kept(cmds, pixel_width);
             // Levels of a list with elements left out are no base for the
             // next frame's.
             self.paint.cache.levels = view.is_none().then_some(levels);
@@ -1992,7 +2006,10 @@ impl crate::ui::Layout {
             let mut cmds: Vec<(DrawCmd, Affine)> = trees.to_vec();
             cmds.extend(tail.iter().cloned());
             let cmds: Vec<_> = cmds.into_iter().map(|(c, m)| bake(c, m)).collect();
-            let fresh = crate::draw::zoom_items(crate::draw::assign_levels(cmds), env.unit);
+            let fresh = crate::draw::zoom_items(
+                crate::draw::assign_levels(cmds, levels.pixel_width),
+                env.unit,
+            );
             assert!(
                 fresh == items,
                 "the frame's items levelled again differ from levelling it afresh"
@@ -2018,6 +2035,8 @@ impl crate::ui::Layout {
             return None;
         }
         let levels = paint.cache.levels.as_mut()?;
+        #[cfg(debug_assertions)]
+        let pixel_width = levels.pixel_width;
         let mut from: Vec<Option<(usize, (f32, f32))>> = vec![None; trees.len()];
         for &(start, was, len, delta) in &paint.cache.copied {
             for k in 0..len {
@@ -2080,7 +2099,8 @@ impl crate::ui::Layout {
             let mut cmds: Vec<(DrawCmd, Affine)> = trees.to_vec();
             cmds.extend(tail.iter().cloned());
             let cmds: Vec<_> = cmds.into_iter().map(|(c, m)| bake(c, m)).collect();
-            let fresh = crate::draw::zoom_items(crate::draw::assign_levels(cmds), env.unit);
+            let fresh =
+                crate::draw::zoom_items(crate::draw::assign_levels(cmds, pixel_width), env.unit);
             assert!(
                 fresh == items,
                 "the frame's items spliced from last frame's differ from levelling it afresh"
