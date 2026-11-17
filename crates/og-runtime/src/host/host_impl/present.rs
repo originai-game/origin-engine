@@ -231,6 +231,9 @@ macro_rules! __og_host_bindings_present {
             fn og_atmosphere_time_of_day(&self, world: u32) -> f64 {
                 $crate::og_atmosphere_time_of_day(world)
             }
+            fn og_atmosphere_season(&self, world: u32) -> String {
+                $crate::host_impl::json($crate::og_atmosphere_season(world))
+            }
         }
 
         impl $crate::host_impl::api::TerrainApi for $host {

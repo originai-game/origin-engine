@@ -632,6 +632,8 @@ export interface HostAbi<A, V> {
   og_physics_stats(world: number): string;
   /** `og.atmosphere.timeOfDay` */
   og_atmosphere_time_of_day(world: number): number;
+  /** `og.atmosphere.season` */
+  og_atmosphere_season(world: number): string;
   /** `og.anim.graph` */
   og_anim_graph(world: number, desc: string | undefined): string;
   /** `og.anim.humanoid` */
@@ -1647,6 +1649,7 @@ export const SYMBOLS: readonly string[] = [
   "og_physics_ragdoll_pose",
   "og_physics_stats",
   "og_atmosphere_time_of_day",
+  "og_atmosphere_season",
   "og_anim_graph",
   "og_anim_humanoid",
   "og_anim_retarget",

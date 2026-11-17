@@ -124,6 +124,7 @@ most; `--all` lists every member.
 | load models, textures, sounds | `loading` | `og.load.gltf`, `og.load.texture`, `og.load.flipbook` |
 | choose the look | `looks`, `art-review` | `og.render.applyLook`, `og.Stylise` |
 | light and render the scene | `render`, looks §3, looks §5 | `og.Mesh`, `og.DirectionalLight`, `og.RenderSettings`, `og.render.standardMaterial` |
+| set the time of day, the season and the weather | render §7, `seasons` | `og.DayNight`, `og.Season`, `og.Weather`, `og.atmosphere.season` |
 | draw 2D sprites and lights | looks §13, render §11 | `og.Sprite`, `og.Light2D`, `og.Lighting2D` |
 | make models in code | `models` | the `type model` asset |
 | animate characters and props | `animation` | `og.AnimationPlayer`, `og.anim.clip`, `og.MotionAgent`, `og.tween` |

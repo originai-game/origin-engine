@@ -1569,6 +1569,11 @@ pub fn og_atmosphere_time_of_day(world: u32) -> f64 {
 }
 
 #[wasm_bindgen]
+pub fn og_atmosphere_season(world: u32) -> String {
+    <Host as AtmosphereApi>::og_atmosphere_season(&Host, world)
+}
+
+#[wasm_bindgen]
 pub fn og_anim_graph(world: u32, desc: Option<String>) -> String {
     <Host as AnimApi>::og_anim_graph(&Host, world, desc)
 }

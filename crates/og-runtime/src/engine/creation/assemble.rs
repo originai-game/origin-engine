@@ -585,6 +585,7 @@ pub(crate) fn assemble(
     let feel = super::feel::install_front(&mut world, &components)?;
     super::video::install(&mut world, mount, &layouts)?;
     crate::bind::weather::install(&mut world, &layouts)?;
+    crate::bind::season::install(&mut world, &layouts)?;
     // og.path and og.timeline after tweens, before og-anim (an animation
     // track sets players) and physics.
     super::timeline::install(&mut world, mount, &layouts, &ui)?;

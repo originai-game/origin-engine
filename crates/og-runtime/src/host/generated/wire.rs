@@ -10215,6 +10215,80 @@ impl ToJson for WindMotorKind {
     }
 }
 
+/// `SeasonInfo`: packages/knowledge/wiki/atmosphere.md.
+#[derive(Clone, Debug, PartialEq)]
+pub struct SeasonInfo {
+    pub day: f32,
+    pub season: f32,
+    pub declination: f32,
+    pub sunrise: f32,
+    pub sunset: f32,
+    pub day_length: f32,
+    pub temperature: f32,
+    pub leaf_out: f32,
+    pub leaf_turn: f32,
+    pub leaf_fall: f32,
+    pub grass_growth: f32,
+}
+
+impl Default for SeasonInfo {
+    fn default() -> Self {
+        Self {
+            day: Default::default(),
+            season: Default::default(),
+            declination: Default::default(),
+            sunrise: Default::default(),
+            sunset: Default::default(),
+            day_length: Default::default(),
+            temperature: Default::default(),
+            leaf_out: Default::default(),
+            leaf_turn: Default::default(),
+            leaf_fall: Default::default(),
+            grass_growth: Default::default(),
+        }
+    }
+}
+
+impl FromJson for SeasonInfo {
+    fn from_json(v: &Value) -> Result<Self, String> {
+        Self::from_json_over(v, Self::default())
+    }
+    fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
+        let o = object(v)?;
+        Ok(Self {
+            day: field(o, "day", d.day)?,
+            season: field(o, "season", d.season)?,
+            declination: field(o, "declination", d.declination)?,
+            sunrise: field(o, "sunrise", d.sunrise)?,
+            sunset: field(o, "sunset", d.sunset)?,
+            day_length: field(o, "dayLength", d.day_length)?,
+            temperature: field(o, "temperature", d.temperature)?,
+            leaf_out: field(o, "leafOut", d.leaf_out)?,
+            leaf_turn: field(o, "leafTurn", d.leaf_turn)?,
+            leaf_fall: field(o, "leafFall", d.leaf_fall)?,
+            grass_growth: field(o, "grassGrowth", d.grass_growth)?,
+        })
+    }
+}
+
+impl ToJson for SeasonInfo {
+    fn to_json(&self) -> Value {
+        let mut o = Map::new();
+        o.insert("day".into(), self.day.to_json());
+        o.insert("season".into(), self.season.to_json());
+        o.insert("declination".into(), self.declination.to_json());
+        o.insert("sunrise".into(), self.sunrise.to_json());
+        o.insert("sunset".into(), self.sunset.to_json());
+        o.insert("dayLength".into(), self.day_length.to_json());
+        o.insert("temperature".into(), self.temperature.to_json());
+        o.insert("leafOut".into(), self.leaf_out.to_json());
+        o.insert("leafTurn".into(), self.leaf_turn.to_json());
+        o.insert("leafFall".into(), self.leaf_fall.to_json());
+        o.insert("grassGrowth".into(), self.grass_growth.to_json());
+        Value::Object(o)
+    }
+}
+
 /// `RootMotion`: packages/knowledge/wiki/anim.md.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub enum RootMotion {
@@ -33662,6 +33736,59 @@ pub mod record {
                 step: field(o, "step", d.step)?,
                 moon_size: field(o, "moonSize", d.moon_size)?,
                 moon_phase: field(o, "moonPhase", d.moon_phase)?,
+            })
+        }
+    }
+
+    /// `Season`: packages/knowledge/wiki/atmosphere.md.
+    #[derive(Clone, Debug, PartialEq)]
+    pub struct Season {
+        pub enabled: bool,
+        pub start: f32,
+        pub speed: f32,
+        pub latitude: f32,
+        pub change: f32,
+        pub sun: bool,
+        pub temperature: f32,
+        pub temperature_range: f32,
+        pub day_range: f32,
+        pub day: f32,
+    }
+
+    impl Default for Season {
+        fn default() -> Self {
+            Self {
+                enabled: Default::default(),
+                start: 172.0_f32,
+                speed: Default::default(),
+                latitude: 45.0_f32,
+                change: Default::default(),
+                sun: true,
+                temperature: 10.0_f32,
+                temperature_range: 20.0_f32,
+                day_range: 8.0_f32,
+                day: -1.0_f32,
+            }
+        }
+    }
+
+    impl FromJson for Season {
+        fn from_json(v: &Value) -> Result<Self, String> {
+            Self::from_json_over(v, Self::default())
+        }
+        fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
+            let o = object(v)?;
+            Ok(Self {
+                enabled: field(o, "enabled", d.enabled)?,
+                start: field(o, "start", d.start)?,
+                speed: field(o, "speed", d.speed)?,
+                latitude: field(o, "latitude", d.latitude)?,
+                change: field(o, "change", d.change)?,
+                sun: field(o, "sun", d.sun)?,
+                temperature: field(o, "temperature", d.temperature)?,
+                temperature_range: field(o, "temperatureRange", d.temperature_range)?,
+                day_range: field(o, "dayRange", d.day_range)?,
+                day: field(o, "day", d.day)?,
             })
         }
     }

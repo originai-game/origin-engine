@@ -1,0 +1,16 @@
+{
+  "added": [
+    {
+      "member": "og.Season",
+      "summary": "The time of year: a calendar date (`start`, `speed`), a `latitude` and a climate (`temperature`, `temperatureRange`, `dayRange`). With og.DayNight it sets where the sun rises, how high it climbs and how long the day is in place of `DayNight.tilt` (`sun: false` keeps DayNight's path). A change of `start` plays over `change` seconds, the date running through the days between. Off by default and registered when first named: existing worlds, saves and frames are unchanged."
+    },
+    {
+      "member": "og.atmosphere.season",
+      "summary": "The time of year now, for gameplay: the date, the season (0 spring to 3 winter, with how far through it), sunrise, sunset and the day's length on og.atmosphere.timeOfDay's clock, the air's temperature, and how far the leaves and the grass are through their year. The probe's `get:og.Season` adds the same fields to the record's (the air's temperature as `temperatureNow`)."
+    },
+    {
+      "member": "SEASON_SPRING, SEASON_SUMMER, SEASON_AUTUMN, SEASON_WINTER",
+      "summary": "The northern equinoxes and solstices as days of the year, for og.Season.start."
+    }
+  ]
+}

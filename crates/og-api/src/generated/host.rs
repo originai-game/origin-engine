@@ -707,6 +707,8 @@ pub trait PhysicsApi: Wire {
 pub trait AtmosphereApi: Wire {
     /// `og.atmosphere.timeOfDay`
     fn og_atmosphere_time_of_day(&self, world: u32) -> f64;
+    /// `og.atmosphere.season`
+    fn og_atmosphere_season(&self, world: u32) -> String;
 }
 
 /// `anim`: packages/knowledge/wiki/anim.md.
@@ -1835,6 +1837,7 @@ pub const SYMBOLS: &[&str] = &[
     "og_physics_ragdoll_pose",
     "og_physics_stats",
     "og_atmosphere_time_of_day",
+    "og_atmosphere_season",
     "og_anim_graph",
     "og_anim_humanoid",
     "og_anim_retarget",

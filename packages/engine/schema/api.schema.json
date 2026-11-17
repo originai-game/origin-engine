@@ -8242,6 +8242,7 @@
         "FogVolume",
         "Sky",
         "DayNight",
+        "Season",
         "PhysicalSky",
         "Clouds",
         "Aurora",
@@ -8252,6 +8253,7 @@
         "WindMotorKind",
         "WindMotorKind",
         "WindMotor",
+        "SeasonInfo",
         "Water",
         "Water2D"
       ],
@@ -8285,6 +8287,30 @@
           "type": "u32",
           "value": 4,
           "doc": "Weather.kind: no particles, a dense low height fog."
+        },
+        {
+          "name": "SEASON_SPRING",
+          "type": "u32",
+          "value": 79,
+          "doc": "og.Season.start: the northern spring equinox, about 20 March (the autumn equinox south of the equator)."
+        },
+        {
+          "name": "SEASON_SUMMER",
+          "type": "u32",
+          "value": 172,
+          "doc": "og.Season.start: the northern summer solstice, about 21 June (the winter solstice south of the equator)."
+        },
+        {
+          "name": "SEASON_AUTUMN",
+          "type": "u32",
+          "value": 265,
+          "doc": "og.Season.start: the northern autumn equinox, about 23 September (the spring equinox south of the equator)."
+        },
+        {
+          "name": "SEASON_WINTER",
+          "type": "u32",
+          "value": 355,
+          "doc": "og.Season.start: the northern winter solstice, about 21 December (the summer solstice south of the equator)."
         }
       ],
       "functions": [
@@ -8300,6 +8326,20 @@
             }
           ],
           "returns": "f32",
+          "publish": true
+        },
+        {
+          "name": "season",
+          "doc": "The time of year at the current tick, from og.Season: its defaults in a world that has none, the date at its start while it is disabled. For lamps that light at sunset, snow that should fall instead of rain, crops and festivals. Inside a system, declare og.Season among its reads, and og.DayNight for the hour's temperature.\nSee `seasons §1`.",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world."
+            }
+          ],
+          "returns": "SeasonInfo",
           "publish": true
         }
       ],
@@ -35621,7 +35661,7 @@
         },
         "tilt": {
           "type": "number",
-          "description": "How far the sun's path leans from overhead.",
+          "description": "How far the sun's path leans from overhead. Not used while an enabled og.Season sets the sun's path.",
           "default": 25,
           "minimum": 0,
           "maximum": 89,
@@ -35673,6 +35713,88 @@
           "maximum": 1,
           "x-og-unit": "ratio",
           "x-og-tunable": true
+        }
+      },
+      "additionalProperties": false
+    },
+    "Season": {
+      "x-og-kind": "resource",
+      "x-og-module": "atmosphere",
+      "description": "The time of year: a calendar date, a latitude and a climate. With og.DayNight it sets where the sun rises, how high it climbs and how long the day is; og.atmosphere.season gives the date, the season, the temperature and how far the leaves and the grass are through their year. The date is start plus the simulated seconds times speed, wrapped to 365 days, the same on every run and after a restore. Registered the first time a game names it: a world that never does keeps its type table and hash.\nSee `seasons §1`.",
+      "type": "object",
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "description": "Run the year.",
+          "default": false
+        },
+        "start": {
+          "type": "number",
+          "description": "The day of the year at tick 0, counted from New Year's midnight: SEASON_SPRING 79, SEASON_SUMMER 172, SEASON_AUTUMN 265 and SEASON_WINTER 355 are the northern equinoxes and solstices.",
+          "default": 172,
+          "minimum": 0,
+          "maximum": 365,
+          "x-og-tunable": true
+        },
+        "speed": {
+          "type": "number",
+          "description": "Days per simulated second (0 holds the date; 0.05: a season in half an hour).",
+          "default": 0,
+          "minimum": 0,
+          "maximum": 365,
+          "x-og-tunable": true
+        },
+        "latitude": {
+          "type": "number",
+          "description": "Degrees north of the equator. South of it (negative) the same date is the opposite season and the noon sun stands in the north.",
+          "default": 45,
+          "minimum": -90,
+          "maximum": 90,
+          "x-og-unit": "deg",
+          "x-og-tunable": true
+        },
+        "change": {
+          "type": "number",
+          "description": "Seconds a jump of one season (a quarter of the year) takes to play when start or speed changes: the date drawn and read runs forward through the days between, or back for a jump of under 30 days. 0 cuts to the new date.\nSee `seasons §2`.",
+          "default": 0,
+          "minimum": 0,
+          "x-og-unit": "s",
+          "x-og-tunable": true
+        },
+        "sun": {
+          "type": "boolean",
+          "description": "With og.DayNight enabled, the sun rises, climbs and sets where and when it does on this date at this latitude: DayNight.tilt is not used, its azimuth stays the heading of due east, and its hours are solar time (12 the sun's highest). False keeps DayNight's own path.\nSee `seasons §3`.",
+          "default": true
+        },
+        "temperature": {
+          "type": "number",
+          "description": "The year's mean air temperature, in °C.",
+          "default": 10,
+          "minimum": -60,
+          "maximum": 60,
+          "x-og-tunable": true
+        },
+        "temperatureRange": {
+          "type": "number",
+          "description": "The warmest month's mean temperature less the coldest's, in °C; the warmest day comes 30 days after the summer solstice. 0: the same all year.",
+          "default": 20,
+          "minimum": 0,
+          "maximum": 80,
+          "x-og-tunable": true
+        },
+        "dayRange": {
+          "type": "number",
+          "description": "The afternoon's temperature (at 15 h) less the dawn's, in °C.",
+          "default": 8,
+          "minimum": 0,
+          "maximum": 40,
+          "x-og-tunable": true
+        },
+        "day": {
+          "type": "number",
+          "description": "The calendar's date as og.season last followed it, 0 to 365: on its way there while a jump plays over `change`; negative before the first tick and while the year is off. og.atmosphere.season's `day` is the date drawn and read (written by og.season).",
+          "default": -1,
+          "readOnly": true
         }
       },
       "additionalProperties": false
@@ -36364,6 +36486,77 @@
           "x-og-tunable": true
         }
       },
+      "additionalProperties": false
+    },
+    "SeasonInfo": {
+      "x-og-kind": "struct",
+      "x-og-module": "atmosphere",
+      "description": "The time of year now (og.atmosphere.season): the date, the sun's day and the climate's facts for it, each a function of og.Season's fields and the tick.",
+      "type": "object",
+      "properties": {
+        "day": {
+          "type": "number",
+          "description": "The date drawn and read: days from New Year's midnight, 0 to 365 (og.Season.day: the calendar's date, or on its way there after a jump)."
+        },
+        "season": {
+          "type": "number",
+          "description": "The local season, from 0 up to 4 and never 4: its whole part is the season (0 spring, 1 summer, 2 autumn, 3 winter, each from its equinox or solstice, in either hemisphere), its fraction how far through it."
+        },
+        "declination": {
+          "type": "number",
+          "description": "How far north of the equator the sun stands overhead: +23.4 at the northern summer solstice, 0 at the equinoxes.",
+          "x-og-unit": "deg"
+        },
+        "sunrise": {
+          "type": "number",
+          "description": "The hour of solar time the sun rises, as og.atmosphere.timeOfDay counts hours (0 where it does not set that day, 12 where it does not rise)."
+        },
+        "sunset": {
+          "type": "number",
+          "description": "The hour of solar time the sun sets (24 where it does not set that day, 12 where it does not rise)."
+        },
+        "dayLength": {
+          "type": "number",
+          "description": "Hours from sunrise to sunset, 0 to 24."
+        },
+        "temperature": {
+          "type": "number",
+          "description": "The air's temperature now, in °C: the season's with the day's swing at og.DayNight's hour (the day's mean without an enabled og.DayNight)."
+        },
+        "leafOut": {
+          "type": "number",
+          "description": "How far deciduous leaves have opened: 0 at the bud, 1 in full leaf and through autumn until the next bud.",
+          "x-og-unit": "ratio"
+        },
+        "leafTurn": {
+          "type": "number",
+          "description": "How far they have turned to their autumn colour.",
+          "x-og-unit": "ratio"
+        },
+        "leafFall": {
+          "type": "number",
+          "description": "The share of them that has fallen: a tree carries leafOut times (1 - leafFall) of its leaves.",
+          "x-og-unit": "ratio"
+        },
+        "grassGrowth": {
+          "type": "number",
+          "description": "How far the grass has grown, 0 dormant in the cold to 1 full grown.",
+          "x-og-unit": "ratio"
+        }
+      },
+      "required": [
+        "day",
+        "season",
+        "declination",
+        "sunrise",
+        "sunset",
+        "dayLength",
+        "temperature",
+        "leafOut",
+        "leafTurn",
+        "leafFall",
+        "grassGrowth"
+      ],
       "additionalProperties": false
     },
     "Water": {

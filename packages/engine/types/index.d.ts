@@ -17077,6 +17077,26 @@ export declare const WEATHER_DUST: 3;
 export declare const WEATHER_MIST: 4;
 
 /**
+ * og.Season.start: the northern spring equinox, about 20 March (the autumn equinox south of the equator).
+ */
+export declare const SEASON_SPRING: 79;
+
+/**
+ * og.Season.start: the northern summer solstice, about 21 June (the winter solstice south of the equator).
+ */
+export declare const SEASON_SUMMER: 172;
+
+/**
+ * og.Season.start: the northern autumn equinox, about 23 September (the spring equinox south of the equator).
+ */
+export declare const SEASON_AUTUMN: 265;
+
+/**
+ * og.Season.start: the northern winter solstice, about 21 December (the summer solstice south of the equator).
+ */
+export declare const SEASON_WINTER: 355;
+
+/**
  * Distance and height fog over the 3D scene and world sprites: distance fog, measured from the camera, thickens exponentially by density per metre past start and, when end > start, also by a linear ramp from start to full fog at end; the two apply together, and density defaults to 0.02, so setting only end still adds exponential fog (set density 0 for the ramp alone). Height fog is densest below height and thins by falloff per metre above it; looking into the sun it turns towards sunColor. The overlay is never fogged.
  * See `render §7`.
  *
@@ -17379,7 +17399,7 @@ export interface DayNight {
    */
   speed: number;
   /**
-   * How far the sun's path leans from overhead.
+   * How far the sun's path leans from overhead. Not used while an enabled og.Season sets the sun's path.
    *
    * @default 25
    * @range 0..89
@@ -17435,6 +17455,93 @@ export interface DayNight {
    * @tunable
    */
   moonPhase: number;
+}
+
+/**
+ * The time of year: a calendar date, a latitude and a climate. With og.DayNight it sets where the sun rises, how high it climbs and how long the day is; og.atmosphere.season gives the date, the season, the temperature and how far the leaves and the grass are through their year. The date is start plus the simulated seconds times speed, wrapped to 365 days, the same on every run and after a restore. Registered the first time a game names it: a world that never does keeps its type table and hash.
+ * See `seasons §1`.
+ *
+ * The `Season` resource (token `og.Season`).
+ */
+export interface Season {
+  /** Run the year. */
+  enabled: boolean;
+  // ── Calendar ──
+  /**
+   * The day of the year at tick 0, counted from New Year's midnight: SEASON_SPRING 79, SEASON_SUMMER 172, SEASON_AUTUMN 265 and SEASON_WINTER 355 are the northern equinoxes and solstices.
+   *
+   * @default 172
+   * @range 0..365
+   * @tunable
+   */
+  start: number;
+  /**
+   * Days per simulated second (0 holds the date; 0.05: a season in half an hour).
+   *
+   * @range 0..365
+   * @tunable
+   */
+  speed: number;
+  /**
+   * Degrees north of the equator. South of it (negative) the same date is the opposite season and the noon sun stands in the north.
+   *
+   * @default 45
+   * @range -90..90
+   * @unit deg (degrees: a field of view (the full angle), a slope, the sky's angles (the sun's path, disc sizes, the aurora), camera roll, and the angles of post effects, styles and the art contract)
+   * @tunable
+   */
+  latitude: number;
+  /**
+   * Seconds a jump of one season (a quarter of the year) takes to play when start or speed changes: the date drawn and read runs forward through the days between, or back for a jump of under 30 days. 0 cuts to the new date.
+   * See `seasons §2`.
+   *
+   * @range 0..
+   * @unit s (seconds of simulation time)
+   * @tunable
+   */
+  change: number;
+  // ── Sun ──
+  /**
+   * With og.DayNight enabled, the sun rises, climbs and sets where and when it does on this date at this latitude: DayNight.tilt is not used, its azimuth stays the heading of due east, and its hours are solar time (12 the sun's highest). False keeps DayNight's own path.
+   * See `seasons §3`.
+   *
+   * @default true
+   */
+  sun: boolean;
+  // ── Climate ──
+  /**
+   * The year's mean air temperature, in °C.
+   *
+   * @default 10
+   * @range -60..60
+   * @tunable
+   */
+  temperature: number;
+  /**
+   * The warmest month's mean temperature less the coldest's, in °C; the warmest day comes 30 days after the summer solstice. 0: the same all year.
+   *
+   * @default 20
+   * @range 0..80
+   * @tunable
+   */
+  temperatureRange: number;
+  /**
+   * The afternoon's temperature (at 15 h) less the dawn's, in °C.
+   *
+   * @default 8
+   * @range 0..40
+   * @tunable
+   */
+  dayRange: number;
+  // ── State ──
+  // Written by og.season; read them, never write them.
+  /**
+   * The calendar's date as og.season last followed it, 0 to 365: on its way there while a jump plays over `change`; negative before the first tick and while the year is off. og.atmosphere.season's `day` is the date drawn and read (written by og.season).
+   *
+   * @default -1
+   * @readonly written by the engine
+   */
+  readonly day: number;
 }
 
 /**
@@ -18064,6 +18171,65 @@ export interface WindMotor {
    * @tunable
    */
   strength: number;
+}
+
+
+/**
+ * The time of year now (og.atmosphere.season): the date, the sun's day and the climate's facts for it, each a function of og.Season's fields and the tick.
+ */
+export interface SeasonInfo {
+  /**
+   * The date drawn and read: days from New Year's midnight, 0 to 365 (og.Season.day: the calendar's date, or on its way there after a jump).
+   */
+  readonly day: number;
+  /**
+   * The local season, from 0 up to 4 and never 4: its whole part is the season (0 spring, 1 summer, 2 autumn, 3 winter, each from its equinox or solstice, in either hemisphere), its fraction how far through it.
+   */
+  readonly season: number;
+  /**
+   * How far north of the equator the sun stands overhead: +23.4 at the northern summer solstice, 0 at the equinoxes.
+   *
+   * @unit deg (degrees: a field of view (the full angle), a slope, the sky's angles (the sun's path, disc sizes, the aurora), camera roll, and the angles of post effects, styles and the art contract)
+   */
+  readonly declination: number;
+  /**
+   * The hour of solar time the sun rises, as og.atmosphere.timeOfDay counts hours (0 where it does not set that day, 12 where it does not rise).
+   */
+  readonly sunrise: number;
+  /**
+   * The hour of solar time the sun sets (24 where it does not set that day, 12 where it does not rise).
+   */
+  readonly sunset: number;
+  /** Hours from sunrise to sunset, 0 to 24. */
+  readonly dayLength: number;
+  /**
+   * The air's temperature now, in °C: the season's with the day's swing at og.DayNight's hour (the day's mean without an enabled og.DayNight).
+   */
+  readonly temperature: number;
+  /**
+   * How far deciduous leaves have opened: 0 at the bud, 1 in full leaf and through autumn until the next bud.
+   *
+   * @unit ratio (a fraction between 0 and 1)
+   */
+  readonly leafOut: number;
+  /**
+   * How far they have turned to their autumn colour.
+   *
+   * @unit ratio (a fraction between 0 and 1)
+   */
+  readonly leafTurn: number;
+  /**
+   * The share of them that has fallen: a tree carries leafOut times (1 - leafFall) of its leaves.
+   *
+   * @unit ratio (a fraction between 0 and 1)
+   */
+  readonly leafFall: number;
+  /**
+   * How far the grass has grown, 0 dormant in the cold to 1 full grown.
+   *
+   * @unit ratio (a fraction between 0 and 1)
+   */
+  readonly grassGrowth: number;
 }
 
 
@@ -36025,6 +36191,11 @@ export declare namespace og {
    */
   const DayNight: ResourceType<{ readonly enabled: FieldSpec<"bool">; readonly start: FieldSpec<"f32">; readonly speed: FieldSpec<"f32">; readonly tilt: FieldSpec<"f32">; readonly azimuth: FieldSpec<"f32">; readonly lightIntensity: FieldSpec<"f32">; readonly tintFog: FieldSpec<"bool">; readonly step: FieldSpec<"f32">; readonly moonSize: FieldSpec<"f32">; readonly moonPhase: FieldSpec<"f32"> }, DayNight>;
   /**
+   * The time of year: a calendar date, a latitude and a climate. With og.DayNight it sets where the sun rises, how high it climbs and how long the day is; og.atmosphere.season gives the date, the season, the temperature and how far the leaves and the grass are through their year. The date is start plus the simulated seconds times speed, wrapped to 365 days, the same on every run and after a restore. Registered the first time a game names it: a world that never does keeps its type table and hash.
+   * See `seasons §1`.
+   */
+  const Season: ResourceType<{ readonly enabled: FieldSpec<"bool">; readonly start: FieldSpec<"f32">; readonly speed: FieldSpec<"f32">; readonly latitude: FieldSpec<"f32">; readonly change: FieldSpec<"f32">; readonly sun: FieldSpec<"bool">; readonly temperature: FieldSpec<"f32">; readonly temperatureRange: FieldSpec<"f32">; readonly dayRange: FieldSpec<"f32">; readonly day: FieldSpec<"f32"> }, Season>;
+  /**
    * A physical sky: sunlight scattered by the air (Rayleigh) and haze (Mie), with ozone, in a spherical atmosphere of Earth's proportions with multiple scattering (Hillaire 2020). It replaces og.Sky's and og.DayNight's gradient, and the image-based light follows it. With og.DayNight it also gives the cycle its sun colour, ambient light and fog colour; with og.Sky, og.Sky's sun, disc, stars, moon and brightness are drawn through the air; alone it draws towards the first DirectionalLight. Visual only: drawn from the tick.
    * See `render §7`.
    */
@@ -36082,6 +36253,13 @@ export declare namespace og {
      * @param world The world.
      */
     function timeOfDay(world: World): number;
+    /**
+     * The time of year at the current tick, from og.Season: its defaults in a world that has none, the date at its start while it is disabled. For lamps that light at sunset, snow that should fall instead of rain, crops and festivals. Inside a system, declare og.Season among its reads, and og.DayNight for the hour's temperature.
+     * See `seasons §1`.
+     *
+     * @param world The world.
+     */
+    function season(world: World): SeasonInfo;
   }
   /**
    * A posed skeleton: the entity is drawn skinned by the joint palette og.anim writes each tick. The pose itself (every node's local transform) is world state kept by the `og.anim` state block.

@@ -130,6 +130,8 @@ mod scene_change;
 mod scene_string;
 #[path = "../seabed.rs"]
 mod seabed;
+#[path = "../season.rs"]
+mod season;
 #[path = "../shadow_flags.rs"]
 mod shadow_flags;
 #[path = "../shared_models.rs"]

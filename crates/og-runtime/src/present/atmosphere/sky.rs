@@ -3,6 +3,7 @@
 //! into the scene's light, environment and background.
 
 use super::{AtmoLayouts, rgb};
+use crate::bind::season::Now as SeasonNow;
 use crate::bind::wind::WorldWind;
 use crate::engine::engine;
 use crate::host::codec::Layout;
@@ -28,6 +29,8 @@ fn hours(d: &record::DayNight, tick: u64, dt: f32) -> f32 {
 /// lightIntensity).
 struct DayNightNow {
     d: record::DayNight,
+    /// The og.Season that sets the sun's path, if one does.
+    season: Option<SeasonNow>,
     hours: f32,
     look: og_render::DayNightLook,
     intensity: f32,
@@ -41,16 +44,17 @@ fn day_night_now(
     world: &World,
     layout: Option<&Layout>,
     physical: Option<&Layout>,
+    season: Option<&Layout>,
 ) -> Option<DayNightNow> {
     let d = record::DayNight::from_json(&*resource(world, layout)?).ok()?;
     if !d.enabled {
         return None;
     }
     let time = world.time();
-    let (tilt, azimuth) = (d.tilt, d.azimuth);
     let now = hours(&d, time.tick, time.dt);
     let air = physical_air(world, physical);
-    let look = og_render::day_night(now, tilt, azimuth);
+    let season = season_sun(world, season);
+    let look = look_at(&d, season.as_ref(), now);
     let look = match &air {
         Some(a) => look.with_atmosphere(a),
         None => look,
@@ -58,10 +62,39 @@ fn day_night_now(
     let intensity = look.light_intensity * d.light_intensity.max(0.0);
     Some(DayNightNow {
         d,
+        season,
         hours: now,
         look,
         intensity,
     })
+}
+
+/// An enabled og.Season that sets the sun's path (Season.sun), at the
+/// world's tick.
+fn season_sun(world: &World, layout: Option<&Layout>) -> Option<SeasonNow> {
+    let s = record::Season::from_json(&*resource(world, layout)?).ok()?;
+    let time = world.time();
+    Some(SeasonNow::of(&s, time.tick, time.dt)).filter(|s| s.sun)
+}
+
+/// The cycle's look at `hours`: under the date's sun at the latitude when
+/// an og.Season sets the path, else along og.DayNight's own. Either way
+/// DayNight.azimuth is the heading of due east, and the noon sun of the
+/// north stands a quarter turn on from it (the heading azimuth + 90, the
+/// way `tilt` leans the path).
+fn look_at(
+    d: &record::DayNight,
+    season: Option<&SeasonNow>,
+    hours: f32,
+) -> og_render::DayNightLook {
+    match season {
+        Some(s) => {
+            let [east, up, south] = s.sun(hours);
+            let turn = glam::Quat::from_rotation_y((d.azimuth - 90.0).to_radians());
+            og_render::day_night_under(turn * Vec3::new(east, up, -south))
+        }
+        None => og_render::day_night(hours, d.tilt, d.azimuth),
+    }
 }
 
 /// An enabled og.PhysicalSky as the renderer's atmosphere.
@@ -167,6 +200,7 @@ pub(super) fn extract(
     let mut fog_tint = None;
     if let Some(DayNightNow {
         d,
+        season,
         hours: now,
         look,
         intensity,
@@ -174,11 +208,11 @@ pub(super) fn extract(
         world,
         layouts.day_night.as_ref(),
         layouts.physical_sky.as_ref(),
+        layouts.season.as_ref(),
     ) {
-        let (tilt, azimuth) = (d.tilt, d.azimuth);
         // The image-based light steps every `step` game minutes.
         let step = d.step.clamp(1.0, 120.0) / 60.0;
-        let mut stepped = og_render::day_night((now / step).floor() * step, tilt, azimuth);
+        let mut stepped = look_at(&d, season.as_ref(), (now / step).floor() * step);
         if let Some(a) = &air {
             stepped = stepped.with_atmosphere(a);
         }
@@ -290,8 +324,11 @@ fn xyz(v: Vec3) -> Value {
 /// `lightIntensity`); the first og.DirectionalLight, the one it drives, is
 /// answered with the colour and intensity it is drawn with, `toLight` (the
 /// unit vector towards the sun or the moon that replaces the entity's -Z)
-/// and `drivenBy`. Reads only; the world is never written. A publish
-/// build has no `get`, so no derive.
+/// and `drivenBy`; og.Season is answered with og.atmosphere.season's
+/// fields, its `day` the date drawn and the air's temperature now as
+/// `temperatureNow` (og.Season.temperature is the year's mean). Reads
+/// only; the world is never written. A publish build has no `get`, so no
+/// derive.
 #[cfg(not(feature = "publish"))]
 pub(crate) fn derive(
     world: &World,
@@ -301,6 +338,18 @@ pub(crate) fn derive(
     fields: &mut serde_json::Map<String, Value>,
 ) {
     let driven = match (name, entity) {
+        (crate::bind::season::STATE, None) => {
+            use crate::host::wire::ToJson;
+            if let Some(info) = crate::bind::season::of_world(world, layouts)
+                && let Value::Object(info) = info.to_json()
+            {
+                fields.extend(info.into_iter().map(|(k, v)| match k.as_str() {
+                    "temperature" => ("temperatureNow".into(), v),
+                    _ => (k, v),
+                }));
+            }
+            return;
+        }
         ("og.DayNight", None) => false,
         ("og.DirectionalLight", Some(e)) => {
             let first = crate::present::fx::rows(world, layouts.get("og.DirectionalLight"))
@@ -318,6 +367,7 @@ pub(crate) fn derive(
         world,
         layouts.get("og.DayNight"),
         layouts.get("og.PhysicalSky"),
+        layouts.get(crate::bind::season::STATE),
     ) else {
         return;
     };

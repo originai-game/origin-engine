@@ -467,6 +467,11 @@ pub(crate) const LAZY: &[Lazy] = &[
         name: crate::bind::weather::STRIKE,
         enable: |w, _| crate::bind::weather::enable(w, crate::bind::weather::STRIKE),
     },
+    // The time of year; og.season writes the date it draws and reads.
+    Lazy {
+        name: crate::bind::season::STATE,
+        enable: |w, _| crate::bind::season::enable(w),
+    },
     // og.sight: read by the runtime's before-tick hook (bind::sight); no
     // module to grant. Naming any registers the three and the state block.
     Lazy {

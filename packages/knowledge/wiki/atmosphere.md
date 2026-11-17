@@ -28,10 +28,15 @@ module atmosphere {
 | [`WEATHER_SNOW`](#const-WEATHER_SNOW) | constant |  | Weather.kind: flakes drifting down on gusts, a pale fog. |
 | [`WEATHER_DUST`](#const-WEATHER_DUST) | constant |  | Weather.kind: dust blowing along the wind near the ground, a warm thick fog. |
 | [`WEATHER_MIST`](#const-WEATHER_MIST) | constant |  | Weather.kind: no particles, a dense low height fog. |
+| [`SEASON_SPRING`](#const-SEASON_SPRING) | constant |  | og.Season.start: the northern spring equinox, about 20 March (the autumn equinox south of the equator). |
+| [`SEASON_SUMMER`](#const-SEASON_SUMMER) | constant |  | og.Season.start: the northern summer solstice, about 21 June (the winter solstice south of the equator). |
+| [`SEASON_AUTUMN`](#const-SEASON_AUTUMN) | constant |  | og.Season.start: the northern autumn equinox, about 23 September (the spring equinox south of the equator). |
+| [`SEASON_WINTER`](#const-SEASON_WINTER) | constant |  | og.Season.start: the northern winter solstice, about 21 December (the summer solstice south of the equator). |
 | [`og.Fog`](atmosphere/record-Fog.md) | resource |  | Distance and height fog over the 3D scene and world sprites: distance fog, measured from the camera, thickens exponentially by density per metre past start and, when end > start, also by a linear ram… |
 | [`og.FogVolume`](atmosphere/record-FogVolume.md) | component |  | Fog inside the og.Volume on its entity (none: everywhere), lit by the sun through its shadows and by the point, spot and rect lights: mist in a hollow, smoke in a room, the haze a light shaft shows i… |
 | [`og.Sky`](atmosphere/record-Sky.md) | resource |  | A procedural sky of chosen colours, drawn behind the scene per pixel and lighting it: the image-based light and the reflections' sky (where a surface reflects no probe and SSR misses) follow it as dr… |
 | [`og.DayNight`](atmosphere/record-DayNight.md) | resource |  | A day-night cycle: the time of day drives the sun's direction, the sky's colours, stars and moon, the first DirectionalLight (the sun by day, a dim moon opposite it by night), the ambient light and t… |
+| [`og.Season`](atmosphere/record-Season.md) | resource |  | The time of year: a calendar date, a latitude and a climate. |
 | [`og.PhysicalSky`](atmosphere/record-PhysicalSky.md) | resource |  | A physical sky: sunlight scattered by the air (Rayleigh) and haze (Mie), with ozone, in a spherical atmosphere of Earth's proportions with multiple scattering (Hillaire 2020). |
 | [`og.Clouds`](atmosphere/record-Clouds.md) | resource |  | Clouds in the procedural sky: a volumetric cumulus layer raymarched through a curved shell over the planet, lit by the first DirectionalLight (self-shadowed, with multiple scattering) and the sky, fa… |
 | [`og.Aurora`](atmosphere/record-Aurora.md) | resource |  | The aurora: curtains of light in the upper atmosphere raymarched in the procedural sky (after Lawlor and Genetti 2011), each a sheet of falling electrons along the auroral oval, folded by travelling … |
@@ -43,6 +48,8 @@ module atmosphere {
 | [`WindMotorKind()`](#column-WindMotorKind) | column kind |  | A WindMotorKind field: the variant's index. |
 | [`og.WindMotor`](atmosphere/record-WindMotor.md) | component |  | A local push on the air at the entity's position, away from it (omni), along it (directional) or around it (vortex), fading to nothing at `radius`. |
 | [`og.atmosphere.timeOfDay`](atmosphere/fn-timeOfDay.md) | function | `(world: World): number` | The DayNight clock at the current tick, in hours from 0 to 24 (its start when the cycle is off): for lamps that light at dusk and shops that close at night. |
+| [`SeasonInfo`](atmosphere/type-SeasonInfo.md) | struct |  | The time of year now (og.atmosphere.season): the date, the sun's day and the climate's facts for it, each a function of og.Season's fields and the tick. |
+| [`og.atmosphere.season`](atmosphere/fn-season.md) | function | `(world: World): SeasonInfo` | The time of year at the current tick, from og.Season: its defaults in a world that has none, the date at its start while it is disabled. |
 | [`og.Water`](atmosphere/record-Water.md) | component |  | A planar water surface on the entity's xz plane (centred on it, turned with it): colour by the water's depth over what is below, foam where it meets geometry, animated waves, refraction and reflectio… |
 | [`og.Water2D`](atmosphere/record-Water2D.md) | component |  | Draws the og.WaterLine on the same entity in the sprite order: the body from its surface down, a gradient from the top colour to the bottom one, and a bright lip along the surface. |
 
@@ -63,7 +70,7 @@ column WindMotorKind {
 }
 ```
 
-<sub>Module `atmosphere` line 641</sub>
+<sub>Module `atmosphere` line 705</sub>
 
 ## Constants
 
@@ -74,6 +81,10 @@ column WindMotorKind {
 | <a id="const-WEATHER_SNOW"></a>`WEATHER_SNOW` | `number` | `2` | Weather.kind: flakes drifting down on gusts, a pale fog. |
 | <a id="const-WEATHER_DUST"></a>`WEATHER_DUST` | `number` | `3` | Weather.kind: dust blowing along the wind near the ground, a warm thick fog. |
 | <a id="const-WEATHER_MIST"></a>`WEATHER_MIST` | `number` | `4` | Weather.kind: no particles, a dense low height fog. |
+| <a id="const-SEASON_SPRING"></a>`SEASON_SPRING` | `number` | `79` | og.Season.start: the northern spring equinox, about 20 March (the autumn equinox south of the equator). |
+| <a id="const-SEASON_SUMMER"></a>`SEASON_SUMMER` | `number` | `172` | og.Season.start: the northern summer solstice, about 21 June (the winter solstice south of the equator). |
+| <a id="const-SEASON_AUTUMN"></a>`SEASON_AUTUMN` | `number` | `265` | og.Season.start: the northern autumn equinox, about 23 September (the spring equinox south of the equator). |
+| <a id="const-SEASON_WINTER"></a>`SEASON_WINTER` | `number` | `355` | og.Season.start: the northern winter solstice, about 21 December (the summer solstice south of the equator). |
 
 ```ogt
 const WEATHER_NONE u32 0 "Weather.kind: clear."
@@ -104,3 +115,27 @@ const WEATHER_MIST u32 4 "Weather.kind: no particles, a dense low height fog."
 ```
 
 <sub>Module `atmosphere` line 9</sub>
+
+```ogt
+const SEASON_SPRING u32 79 "og.Season.start: the northern spring equinox, about 20 March (the autumn equinox south of the equator)."
+```
+
+<sub>Module `atmosphere` line 10</sub>
+
+```ogt
+const SEASON_SUMMER u32 172 "og.Season.start: the northern summer solstice, about 21 June (the winter solstice south of the equator)."
+```
+
+<sub>Module `atmosphere` line 11</sub>
+
+```ogt
+const SEASON_AUTUMN u32 265 "og.Season.start: the northern autumn equinox, about 23 September (the spring equinox south of the equator)."
+```
+
+<sub>Module `atmosphere` line 12</sub>
+
+```ogt
+const SEASON_WINTER u32 355 "og.Season.start: the northern winter solstice, about 21 December (the summer solstice south of the equator)."
+```
+
+<sub>Module `atmosphere` line 13</sub>

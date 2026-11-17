@@ -515,7 +515,13 @@ pub fn day_night(hours: f32, tilt: f32, azimuth: f32) -> DayNightLook {
     // The path of a sun rising in +x; a heading counts from +z, a quarter
     // turn before it.
     let path = Vec3::new(a.cos(), a.sin() * tilt.cos(), -a.sin() * tilt.sin());
-    let sun = glam::Quat::from_rotation_y((azimuth - 90.0).to_radians()) * path;
+    day_night_under(glam::Quat::from_rotation_y((azimuth - 90.0).to_radians()) * path)
+}
+
+/// The look under a sun towards unit `sun`, wherever a clock, a date or a
+/// latitude puts it: [`day_night`]'s palettes, light and sky by the sun's
+/// height alone. A pure function of its input.
+pub fn day_night_under(sun: Vec3) -> DayNightLook {
     let e = sun.y;
     // Palettes by the sun's elevation: night, twilight, golden hour, day.
     let day = ramp(0.05, 0.45, e);

@@ -56,6 +56,7 @@ pub(crate) mod particles;
 pub(crate) mod physics_ext;
 pub(crate) mod procgen;
 pub(crate) mod seabed;
+pub(crate) mod season;
 pub(crate) mod sight;
 pub(crate) mod skeleton2d;
 #[cfg(feature = "story")]

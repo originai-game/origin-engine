@@ -112,6 +112,10 @@ export const WEATHER_RAIN: typeof Api.WEATHER_RAIN = 1;
 export const WEATHER_SNOW: typeof Api.WEATHER_SNOW = 2;
 export const WEATHER_DUST: typeof Api.WEATHER_DUST = 3;
 export const WEATHER_MIST: typeof Api.WEATHER_MIST = 4;
+export const SEASON_SPRING: typeof Api.SEASON_SPRING = 79;
+export const SEASON_SUMMER: typeof Api.SEASON_SUMMER = 172;
+export const SEASON_AUTUMN: typeof Api.SEASON_AUTUMN = 265;
+export const SEASON_WINTER: typeof Api.SEASON_WINTER = 355;
 
 // anim
 export const SkeletonAsset = ((value = 0 as Api.SkeletonAsset, options) => spec("SkeletonAsset", value, options)) as typeof Api.SkeletonAsset;

@@ -1881,6 +1881,12 @@ pub fn og_atmosphere_time_of_day(env: Env, world: u32) -> f64 {
     <Host as AtmosphereApi>::og_atmosphere_time_of_day(&Host, world)
 }
 
+#[napi(js_name = "og_atmosphere_season")]
+pub fn og_atmosphere_season(env: Env, world: u32) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as AtmosphereApi>::og_atmosphere_season(&Host, world)
+}
+
 #[napi(js_name = "og_anim_graph")]
 pub fn og_anim_graph(env: Env, world: u32, desc: Option<String>) -> String {
     let _env = crate::EnvScope::enter(&env);

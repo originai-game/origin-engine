@@ -293,6 +293,8 @@ depth-normal prepass: the first one pays for it.
   `get:og.DayNight` adds `hours`, `toSun`, `toLight`, `lightColor` and
   `lightIntensity`; `get:<sun>.og.DirectionalLight` gives the drawn
   `color` and `intensity` with `toLight` and `drivenBy`.
+- Seasons: an enabled og.Season sets the sun's path and the day's length
+  by its date and latitude in place of `DayNight.tilt` (`seasons §3`).
 - PhysicalSky gives blue overhead, red sunsets, a white glow round the sun
   and a blue twilight zenith; the sun's colour turns white, then orange,
   then red, gone below the horizon, and `get:og.DayNight` answers those.

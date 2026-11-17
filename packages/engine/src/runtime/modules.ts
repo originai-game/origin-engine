@@ -266,6 +266,7 @@ export const audio = Object.freeze({
 
 export const atmosphere = Object.freeze({
   timeOfDay: (world: WorldImpl) => abi().og_atmosphere_time_of_day(world.id),
+  season: (world: WorldImpl) => parse(abi().og_atmosphere_season(world.id)),
 });
 
 export const ui = Object.freeze({
