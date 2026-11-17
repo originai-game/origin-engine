@@ -187,7 +187,7 @@
     "screen": false,
     "control": null,
     "uses": [
-      "control:meter"
+      "Spinner"
     ],
     "files": [
       "@ui/components/hud/boss-bar.en.ogt",

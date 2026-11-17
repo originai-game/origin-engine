@@ -1,0 +1,24 @@
+{
+  "breaking": [
+    {
+      "member": "BossBar",
+      "change": "The health bar is no longer a <meter>: it is a BossBar.health track holding BossBar.fill parts and BossBar.notch gates, with role meter and the same name and values. The BossBar.heading part is gone (the name is BossBar.headline).",
+      "fix": "A style that dressed the meter's parts dresses BossBar.health and BossBar.fill; one that dressed BossBar.heading dresses BossBar.headline."
+    },
+    {
+      "member": "ProgressBar",
+      "change": "The ProgressBar.well part is gone: the track is the bar's well.",
+      "fix": "A style that dressed ProgressBar.well dresses ProgressBar.track."
+    }
+  ],
+  "fixed": [
+    {
+      "member": "BossBar",
+      "summary": "BossBar wears the HUD bar (--bar-*): a leaning danger bar in a dark well, a ghost that holds and drains after a hit, a gate cut into the bar at each phase boundary, the info tone while invulnerable and a pulsing danger rim under a quarter. It stands over the scene on the halo instead of a plate, its phases are a line of chips under the bar, and its loading state shows a spinner."
+    },
+    {
+      "member": "ProgressBar",
+      "summary": "ProgressBar wears the HUD bar (--bar-*): a thin leaning bar in a dark well with a lit fill, its words in the scene's opaque ink and its figure bold and tabular; the track grows with the text scale."
+    }
+  ]
+}

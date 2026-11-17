@@ -1,6 +1,6 @@
 <meta name="component" content="ProgressBar">
 <meta name="strings" content="./progress-bar.en.ogt">
-<meta name="parts" content="ProgressBar.label ProgressBar.figure ProgressBar.track ProgressBar.buffer ProgressBar.fill ProgressBar.well ProgressBar.sheen">
+<meta name="parts" content="ProgressBar.label ProgressBar.figure ProgressBar.track ProgressBar.buffer ProgressBar.fill ProgressBar.sheen">
 <meta name="prop:value" content="number" data-doc="Done, 0 to 1.">
 <meta name="prop:buffer" content="number" data-doc="A paler fill ahead of value (downloaded ahead of installed), 0 to 1.">
 <meta name="prop:label" content="string" data-doc="A caption over it at the start; empty is none.">
@@ -17,7 +17,7 @@
       {#if showValue && !indeterminate}<span id="Value" class="value" part="ProgressBar.figure">{valueText || formatPercent(value)}</span>{/if}
     </div>
   {/if}
-  <div id="Track" part="ProgressBar.well ProgressBar.track" data-layout="overlay" style:--value={value} style:--buffer={buffer}>
+  <div id="Track" part="ProgressBar.track" data-layout="overlay" style:--value={value} style:--buffer={buffer}>
     {#if !indeterminate}<div id="Buffer" part="ProgressBar.buffer ProgressBar.fill" data-anchor="top-start"></div>{/if}
     <div id="Fill" part="ProgressBar.fill" data-anchor="top-start" data-motion={indeterminate ? 'shimmer' : null}></div>
     {#if !indeterminate && value < 1}<div id="Sheen" part="ProgressBar.sheen" data-anchor="top-start" data-motion="shimmer"></div>{/if}
@@ -25,8 +25,10 @@
 </div>
 
 <style>
-/* Drawn over the scene: the style's tag halo holds its text there. */
-:host { text-shadow: var(--tag-halo); }
+/* Drawn over the scene: the style's tag halo holds its text there, and its
+   words take the scene's opaque ink (a translucent ink lets the halo show
+   through the glyphs). */
+:host { text-shadow: var(--tag-halo); --ink-label: var(--scene-ink); --figure-ink: var(--scene-ink); }
 /* A bar fills the width its container gives it. */
 :host { inline-size: stretch; min-inline-size: 0; --tone: var(--primary); --fill-color: var(--tone); --layout-anchor-inset: 0; }
 .success { --tone: var(--success); }
@@ -35,11 +37,12 @@
 .info { --tone: var(--info); }
 #Head { align-items: end; }
 [part="ProgressBar.label"] { white-space: nowrap; text-overflow: ellipsis; }
-[part="ProgressBar.figure"] { --figure-size: var(--font-step-sm); white-space: nowrap; }
-#Track { block-size: var(--space-sm); overflow: hidden; }
-@media (width < 600px) { #Track { height: calc(var(--space-xs) + var(--space-xxs)); } }
-#Buffer { inline-size: calc(var(--buffer) * 100%); block-size: 100%; opacity: var(--opacity-faint); }
-#Fill { inline-size: calc(var(--value) * 100%); block-size: 100%; }
+[part="ProgressBar.figure"] { --figure-size: var(--font-step-sm); --figure-weight: var(--bar-figure-weight); font-stretch: var(--bar-figure-stretch); white-space: nowrap; }
+/* The HUD's bar: it leans in a dark well with one lit rim, thinner than a
+   vital's, and grows with the text scale. */
+#Track { block-size: calc(8 * var(--font-step-px)); overflow: hidden; transform: skewX(var(--bar-skew)); border-radius: 0; background: var(--bar-well); box-shadow: var(--bar-rim); }
+#Buffer { inline-size: calc(var(--buffer) * 100%); block-size: 100%; opacity: var(--opacity-faint); --fill-gloss: none; }
+#Fill { inline-size: calc(var(--value) * 100%); block-size: 100%; --fill-gloss: var(--bar-gloss); }
 #Sheen { block-size: 100%; }
 .indeterminate #Fill { inline-size: 36%; }
 </style>
