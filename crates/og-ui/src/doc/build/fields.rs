@@ -725,6 +725,9 @@ impl Ui {
                     base.amounts,
                     base.press,
                 );
+                // The native label lives in the base part, not its host.
+                let label = self.tree.nodes[i].content_slot;
+                self.tree.css_text_content(label, r, &doc.sheet);
                 // Content and wrapping labels grow to fit, with the
                 // control height as their minimum, as an HTML button does.
                 if (!n.children.is_empty()

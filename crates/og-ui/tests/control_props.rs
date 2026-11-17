@@ -1665,14 +1665,20 @@ fn a_button_grows_to_hold_tall_content() {
 fn a_text_button_wraps_and_grows_when_white_space_is_normal() {
     let source = r#"<meta name="component" content="t">
 <div>
+  <button id="Anywhere">Lantern_03_north_stair_upper_landing</button>
+  <button id="Unbroken">Lantern_03_north_stair_upper_landing</button>
+  <button id="UnbrokenNoWrap">Lantern_03_north_stair_upper_landing</button>
   <button id="Normal">Create a new expedition and invite your friends to join the adventure</button>
   <button id="NoWrap">Create a new expedition and invite your friends to join the adventure</button>
   <button id="Fixed">Create a new expedition and invite your friends to join the adventure</button>
 </div>
 <style>
-button { inline-size: 180px; white-space: normal; }
+button { inline-size: 180px; white-space: normal; font-weight: 400; }
 #NoWrap { white-space: nowrap; }
 #Fixed { block-size: 32px; }
+#Anywhere, #Unbroken, #UnbrokenNoWrap { inline-size: 120px; }
+#Anywhere, #UnbrokenNoWrap { overflow-wrap: anywhere; }
+#UnbrokenNoWrap { white-space: nowrap; }
 </style>"#;
     let mut d = Doc::with_font(source, &[], crate::support::test_font());
     d.viewport = Viewport::new(390.0, 844.0);
@@ -1698,6 +1704,42 @@ button { inline-size: 180px; white-space: normal; }
         last.y >= normal.y && last.bottom() <= normal.y + normal.height + 0.5,
         "the measured height holds its final drawn line: {last:?} in {normal:?}"
     );
+    let anywhere = d.get("Anywhere");
+    assert!(
+        anywhere.height > d.get("Unbroken").height,
+        "overflow-wrap:anywhere breaks the long word: {anywhere:?}"
+    );
+    assert_eq!(
+        d.get("UnbrokenNoWrap").height,
+        d.get("Unbroken").height,
+        "white-space:nowrap still prevents emergency breaks"
+    );
+    let lines: Vec<_> =
+        d.ui.frame()
+            .items
+            .iter()
+            .filter_map(|item| match &item.cmd {
+                DrawCmd::Text { text, bounds, .. }
+                    if bounds.y >= anywhere.y && bounds.y < anywhere.y + anywhere.height =>
+                {
+                    Some((text.as_str(), bounds))
+                }
+                _ => None,
+            })
+            .collect();
+    assert!(lines.len() > 1, "the broken word draws multiple lines");
+    assert_eq!(
+        lines.iter().map(|(text, _)| *text).collect::<String>(),
+        "Lantern_03_north_stair_upper_landing"
+    );
+    for (_, bounds) in lines {
+        assert!(
+            bounds.x >= anywhere.x
+                && bounds.right() <= anywhere.x + anywhere.width + 0.5
+                && bounds.bottom() <= anywhere.y + anywhere.height + 0.5,
+            "every drawn line fits the button: {bounds:?} in {anywhere:?}"
+        );
+    }
 }
 
 /// A declared action's handler on each `{#each}` row acts for the row
