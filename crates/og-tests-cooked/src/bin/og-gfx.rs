@@ -8,6 +8,10 @@
 //!
 //! Prints the backend tier, the frame stats, setup, CPU-submit and frame
 //! times, and the comparison with the committed reference when one exists.
+//! `setup+first` runs from making the renderer to the end of the GPU's
+//! work on the first frame, whatever frames the scene settles over after
+//! it, with its parts: making the renderer, the first frame's submit (its
+//! compiles are waited for there) and the GPU's wait.
 //! Frame times run the scene's per-frame update (moving sprites) each frame.
 //! `OG_GFX_DEBUG_CASCADES=1` draws the cascade debug view instead.
 //! `OG_GFX_AO_HALF=1` runs the scene's ambient occlusion at half resolution
@@ -311,7 +315,9 @@ fn run(
     }
     let t0 = Instant::now();
     let mut renderer = Renderer::new_blocking(&built.desc).map_err(|e| e.to_string())?;
+    let made_ms = t0.elapsed().as_secs_f64() * 1000.0;
     let mut stats = FrameStats::default();
+    let (mut setup_ms, mut submit_ms, mut first_compiles) = (0.0, 0.0, Vec::new());
     for f in 0..built.frames.max(1) {
         if let Some(update) = built.update {
             update(&mut built.scene, f);
@@ -319,11 +325,18 @@ fn run(
         stats = renderer
             .render(&built.scene, &RenderTarget::Offscreen)
             .map_err(|e| e.to_string())?;
+        if f == 0 {
+            // The first frame alone, on the GPU's side too: the frames a
+            // scene settles over (and the full variants its second frame
+            // starts) are not the wait before its first picture.
+            submit_ms = t0.elapsed().as_secs_f64() * 1000.0 - made_ms;
+            renderer.wait_idle().map_err(|e| e.to_string())?;
+            setup_ms = t0.elapsed().as_secs_f64() * 1000.0;
+            first_compiles = og_render::take_compile_times();
+        }
     }
     renderer.finish_stats(&mut stats);
     renderer.wait_idle().map_err(|e| e.to_string())?;
-    let setup_ms = t0.elapsed().as_secs_f64() * 1000.0;
-    let first_compiles = og_render::take_compile_times();
     // The reference frame is the last of the scene's own frames.
     let image = renderer.read_offscreen().map_err(|e| e.to_string())?;
     let timing = if frames > 0 {
@@ -339,7 +352,7 @@ fn run(
     let info = renderer.info();
     let tier = info.backend_tier();
     let mut line = format!(
-        "{name}: {}x{} tier={tier} adapter=\"{}\" aa={:?} draws={} batches={} instances={} culled={} triangles={} shadow_passes={} shadow_casters={} lights={} sprites={} glyphs={} sprite_draws={} setup+first={setup_ms:.1}ms",
+        "{name}: {}x{} tier={tier} adapter=\"{}\" aa={:?} draws={} batches={} instances={} culled={} triangles={} shadow_passes={} shadow_casters={} lights={} sprites={} glyphs={} sprite_draws={} setup+first={setup_ms:.1}ms (renderer {made_ms:.1}, submit {submit_ms:.1}, gpu {:.1})",
         image.width,
         image.height,
         info.adapter,
@@ -354,7 +367,8 @@ fn run(
         stats.lights,
         stats.sprites,
         stats.glyphs,
-        stats.sprite_draws
+        stats.sprite_draws,
+        setup_ms - made_ms - submit_ms
     );
     if info.pipeline_cache {
         line.push_str(" pipeline_cache");
