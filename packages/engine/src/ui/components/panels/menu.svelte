@@ -11,7 +11,7 @@
 <menu id="Menu" part="Menu.frame" data-layout="stack" data-gap="none" class="bare" role="menu" aria-label={label || t("component.menu.name")}>
   {#if submenu != ""}
     <button id="Back" part="Menu.row" class="entry back" role="menuitem" onclick={back}><div class="face" data-layout="row">
-      <svg class="chevron" part="Menu.chevron" viewBox="0 0 10 10"><polyline part="Menu.glyph" points="6.5,1.5 3,5 6.5,8.5"></polyline></svg>
+      <og-icon class="chevron" part="Menu.chevron" icon="chevronLeft"></og-icon>
       <span class="name" data-fill>{t("component.menu.back")}</span>
     </div></button>
     <hr class="separator" part="Menu.separator">
@@ -31,7 +31,7 @@
           </div>
           <span class="name" data-fill>{e.label}</span>
           {#if e.shortcut}<span class="shortcut" part="Menu.shortcut Menu.caption">{e.shortcut}</span>{/if}
-          {#if e.more}<svg class="chevron" part="Menu.chevron" viewBox="0 0 10 10"><polyline part="Menu.glyph" points="3.5,1.5 7,5 3.5,8.5"></polyline></svg>{/if}
+          {#if e.more}<og-icon class="chevron" part="Menu.chevron" icon="chevronRight"></og-icon>{/if}
         </div></button>
       {/if}
     </div>{/if}
@@ -49,7 +49,9 @@
 [part="Menu.dot"] { --dot-fill: var(--primary); width: 50%; height: 50%; }
 .name { text-align: start; white-space: nowrap; text-overflow: ellipsis; }
 [part~="Menu.shortcut"] { white-space: nowrap; }
-[part="Menu.chevron"] { width: var(--font-step-2xs); height: var(--font-step-2xs); }
+/* The back and submenu marks are the engine's line chevrons, as wide as
+   the menu's other icons. */
+[part="Menu.chevron"] { flex: none; width: var(--size-xs); height: var(--size-xs); }
 [part="Menu.chevron"]:dir(rtl) { scale: -1 1; }
 [part="Menu.heading"] { padding: var(--space-sm) var(--space-md) var(--space-xs); }
 [part="Menu.separator"] { width: stretch; margin: var(--space-xs) 0; }
