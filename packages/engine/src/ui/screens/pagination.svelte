@@ -9,9 +9,9 @@
 <meta name="action:page" content="Go to page">
 <meta name="fixture:default" content="{&quot;label&quot;:&quot;Pages&quot;,&quot;atStart&quot;:false,&quot;atEnd&quot;:false,&quot;pages&quot;:[{&quot;id&quot;:&quot;1&quot;,&quot;label&quot;:&quot;1&quot;,&quot;current&quot;:false},{&quot;id&quot;:&quot;2&quot;,&quot;label&quot;:&quot;2&quot;,&quot;current&quot;:true},{&quot;id&quot;:&quot;3&quot;,&quot;label&quot;:&quot;3&quot;,&quot;current&quot;:false},{&quot;id&quot;:&quot;gap&quot;,&quot;label&quot;:&quot;…&quot;,&quot;gap&quot;:true},{&quot;id&quot;:&quot;9&quot;,&quot;label&quot;:&quot;9&quot;,&quot;current&quot;:false}]}">
 
-<nav id="Pagination" part="pagination.frame" class="bare" aria-label={label}>
+<nav id="Pagination" part="pagination.frame" class="bare" data-layout="row" aria-label={label}>
   <button id="Prev" variant="quiet" disabled={atStart} onclick={previous} aria-label={label}><og-icon icon="chevronLeft"/></button>
-  <ol id="Pages">
+  <ol id="Pages" data-layout="cluster">
     {#each pages as p (p.id)}
       <li class="page">
         {#if p.gap}<span class="gap" part="pagination.gap">{p.label}</span>{/if}
@@ -23,7 +23,10 @@
 </nav>
 
 <style>
-#Pagination { display: flex; align-items: center; gap: var(--space-xs); }
-#Pages { display: flex; list-style: none; padding: 0; margin: 0; gap: var(--space-xs); }
+/* The arrows keep their ends; the pages between them wrap onto more lines
+   where the row is too narrow for them all. */
+#Pagination { max-inline-size: 100%; gap: var(--space-xs); }
+#Prev, #Next { flex: none; }
+#Pages { flex: 0 1 auto; min-inline-size: 0; justify-content: center; list-style: none; padding: 0; margin: 0; gap: var(--space-xs); }
 .gap { color: var(--ink-muted); padding: 0 var(--space-xs); }
 </style>

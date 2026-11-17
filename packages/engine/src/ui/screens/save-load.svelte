@@ -43,7 +43,7 @@
     </div>
     <aside id="Side">
       <div id="Preview">{@render preview?.()}</div>
-      <div id="Actions">
+      <div id="Actions" data-layout="cluster">
         <button id="Delete" variant="danger" onclick={delete} ondetails={delete}>{t("screen.save-load.delete")}</button>
         {#if mode == "save"}
           <button id="New" onclick={newSlot}>{t("screen.save-load.new")}</button>
@@ -79,7 +79,7 @@ h1, p { margin: 0; }
 #Meta { display: flex; gap: var(--space-sm); }
 #Meta p { font: var(--text-caption); letter-spacing: var(--type-caption-tracking); color: var(--ink-muted); }
 #Side { display: flex; flex-direction: column; gap: var(--space-md); }
-#Actions { display: flex; justify-content: end; gap: var(--space-sm); }
+#Actions { justify-content: end; gap: var(--space-sm); }
 @media (width < 600px), (height < 600px) {
   :root { padding: var(--space-lg); gap: var(--space-md); }
   [part="save-load.title"] { font-size: var(--type-xl-size); letter-spacing: var(--type-xl-tracking); }

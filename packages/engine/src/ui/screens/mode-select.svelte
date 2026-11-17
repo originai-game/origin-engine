@@ -28,7 +28,7 @@
     </div>
   </div>
   <div id="Detail">{@render detail?.()}</div>
-  <footer id="Footer">
+  <footer id="Footer" data-layout="cluster">
     <button id="Play" variant="primary" disabled={modes.length == 0} onclick={play} onconfirm={play}>{t("screen.mode-select.play")}</button>
   </footer>
 </div>
@@ -52,7 +52,7 @@ h1, h2, p { margin: 0; }
 [part="mode-select.name"] { flex: 1; font: var(--text-lg); letter-spacing: var(--type-lg-tracking); }
 #Line { color: var(--ink-muted); line-clamp: 2; }
 #Reason { font: var(--text-caption); letter-spacing: var(--type-caption-tracking); color: var(--warn); }
-#Footer { display: flex; justify-content: end; gap: var(--space-md); }
+#Footer { justify-content: end; gap: var(--space-md); }
 #Play, #Play::part(base) { block-size: var(--control-lg); }
 @media (600px <= width < 1024px) and (height >= 600px) {
   #Modes { grid-template-columns: repeat(2, 1fr); }

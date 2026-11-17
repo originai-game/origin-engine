@@ -58,7 +58,9 @@ button.selection-off::part(base) { border-color: transparent; }
 /* The hierarchy, the view and the inspector side by side, the catalogue
    under the view; on a portrait phone the view over one chosen panel. */
 #Body { flex: 1; min-block-size: 0; display: grid; grid-template-columns: var(--measure-sm) 1fr var(--measure-md); grid-template-rows: 1fr var(--measure-xs); grid-template-areas: "tree view inspector" "tree catalogue inspector"; }
-.panel { display: flex; flex-direction: column; gap: var(--space-sm); min-block-size: 0; }
+/* A panel is as wide as its column, never as wide as its longest word: its
+   title ends in an ellipsis instead of pushing the panel off the screen. */
+.panel { display: flex; flex-direction: column; gap: var(--space-sm); min-block-size: 0; min-inline-size: 0; }
 .fill { flex: 1; min-block-size: 0; }
 #Scroll { overflow-y: auto; }
 #TreePanel { grid-area: tree; }

@@ -28,7 +28,7 @@
   <h2 id="Title" part="tutorial.title">{title}</h2>
   <p id="Text" part="tutorial.text">{text}</p>
   <div id="Hint">{@render hint?.()}</div>
-  <footer id="Foot">
+  <footer id="Foot" data-layout="cluster">
     <p id="Step" part="tutorial.step">{t("screen.tutorial.Step", { step: step, steps: steps })}</p>
     <button id="Skip" variant="quiet" onclick={skip}>{t("screen.tutorial.skip")}</button>
     {#if !waits}<button id="Next" variant="primary" onclick={next} onconfirm={next}>{t("screen.tutorial.next")}</button>{/if}
@@ -45,8 +45,10 @@ h2, p { margin: 0; }
 #Card { display: flex; flex-direction: column; position: absolute; inset-inline-start: bind(x); top: bind(y); }
 [part="tutorial.title"] { font-size: var(--type-lg-size); letter-spacing: var(--type-lg-tracking); }
 [part="tutorial.text"] { font: var(--text-reading); letter-spacing: var(--type-reading-tracking); line-clamp: 5; }
-#Foot { display: flex; align-items: center; gap: var(--space-sm); }
-[part="tutorial.step"] { flex: 1; font: var(--text-caption); letter-spacing: var(--type-caption-tracking); color: var(--ink-muted); }
+/* The step count takes the line's start; the actions wrap under it where
+   the card is too narrow for both. */
+#Foot { gap: var(--space-sm); }
+[part="tutorial.step"] { flex: 1 1 auto; font: var(--text-caption); letter-spacing: var(--type-caption-tracking); color: var(--ink-muted); }
 button, button::part(base) { block-size: var(--control-sm); }
 button::part(base) { padding: 0 var(--space-md); }
 @media (width < 600px), (height < 600px) {

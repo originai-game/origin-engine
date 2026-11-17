@@ -10,9 +10,9 @@
 <meta name="action:back" content="Back">
 <meta name="fixture:default" content="{&quot;brightness&quot;:0.5,&quot;deadZone&quot;:0.12,&quot;offset&quot;:24,&quot;step&quot;:&quot;offset&quot;,&quot;taps&quot;:6}">
 
-<div id="Calibration">
+<div id="Calibration" data-layout="cover">
   <section id="Panel" part="calibration.frame">
-    <ol id="Steps">
+    <ol id="Steps" data-layout="cluster">
       <badge id="Brightness" tone={step == "brightness" ? "accent" : "neutral"}>{t("screen.calibration.brightness")}</badge>
       <badge id="Offset" tone={step == "offset" ? "accent" : "neutral"}>{t("screen.calibration.offset")}</badge>
       <badge id="Controller" tone={step == "controller" ? "accent" : "neutral"}>{t("screen.calibration.controller")}</badge>
@@ -26,7 +26,7 @@
     {:else if step == "offset"}
       <div id="OffsetStep" class="step">
         <p id="OffsetHint">{t("screen.calibration.offsetHint")}</p>
-        <div id="Measure" class="line">
+        <div id="Measure" class="line" data-layout="cluster">
           <button id="Start" onclick={measure}>{t("screen.calibration.start")}</button>
           <button id="Tap" variant="primary" onclick={tap}>{t("screen.calibration.tap")}</button>
           <p id="Taps">{t("screen.calibration.Taps", { taps: taps })}</p>
@@ -45,7 +45,7 @@
         </div>
       </div>
     {/if}
-    <footer id="Foot">
+    <footer id="Foot" data-layout="cluster">
       <button id="Back" variant="quiet" onclick={back}>{t("screen.common.back")}</button>
       {#if step == "controller"}
         <button id="Done" variant="primary" onclick={done}>{t("screen.calibration.done")}</button>
@@ -57,10 +57,15 @@
 </div>
 
 <style>
-:root { display: flex; align-items: center; justify-content: center; block-size: stretch; padding: var(--space-xxl); }
+/* The cover centres the panel where it fits; one taller than the screen
+   starts at the safe top and scrolls. */
+:root { block-size: stretch; padding: var(--space-xxl); }
+#Calibration { inline-size: stretch; }
 p { margin: 0; }
-[part="calibration.frame"] { display: flex; flex-direction: column; gap: var(--space-lg); inline-size: 100%; max-inline-size: var(--measure-xl); }
-#Steps { display: flex; gap: var(--space-sm); margin: 0; padding: 0; list-style: none; }
+[part="calibration.frame"] { flex: none; display: flex; flex-direction: column; gap: var(--space-lg); inline-size: 100%; max-inline-size: var(--measure-xl); }
+/* The steps, the tap line and the actions each wrap where their row is
+   too narrow for them. */
+#Steps { gap: var(--space-sm); margin: 0; padding: 0; list-style: none; }
 .step { display: flex; flex-direction: column; gap: var(--space-sm); }
 .step > p { line-clamp: 3; }
 /* A control and what it reads, on one line. */
@@ -69,7 +74,7 @@ p { margin: 0; }
 #Tap, #Tap::part(base) { block-size: var(--control-lg); }
 #Taps { font: var(--text-caption); letter-spacing: var(--type-caption-tracking); color: var(--ink-muted); }
 #Ms { inline-size: var(--size-xl); text-align: end; }
-#Foot { display: flex; justify-content: end; gap: var(--space-sm); }
+#Foot { justify-content: end; gap: var(--space-sm); }
 @media (width < 600px), (height < 600px) {
   :root { padding: var(--space-md); }
 }

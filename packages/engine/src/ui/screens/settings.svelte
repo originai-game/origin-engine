@@ -50,7 +50,7 @@
           {/if}
         {/each}
       </ul>
-      <footer id="Foot">
+      <footer id="Foot" data-layout="cluster">
         <button id="Defaults" variant="quiet" onclick={defaults}>{t("screen.settings.defaults")}</button>
         <button id="Revert" disabled={!pending} onclick={revert}>{t("screen.settings.revert")}</button>
         <button id="Apply" variant="primary" disabled={!pending} onclick={apply}>{t("screen.settings.apply")}</button>
@@ -72,7 +72,7 @@ h1, #Note { margin: 0; }
 #Entries { flex: 1; min-block-size: 0; overflow-y: auto; margin: 0; padding: 0; list-style: none; }
 .entry { display: flex; align-items: center; gap: var(--space-md); padding-block: var(--space-sm); border-block-end: var(--stroke-hairline) solid var(--line); }
 .entry .name { flex: 1; min-inline-size: 0; }
-#Foot { display: flex; justify-content: end; gap: var(--space-sm); }
+#Foot { justify-content: end; gap: var(--space-sm); }
 @media (width < 600px), (height < 600px) {
   :root { padding: var(--space-lg); gap: var(--space-md); }
   [part="settings.title"] { font-size: var(--type-xl-size); letter-spacing: var(--type-xl-tracking); }

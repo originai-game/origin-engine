@@ -19,7 +19,7 @@
     <h1 id="Title" part="leaderboard.title">{t("screen.leaderboard.title")}</h1>
     <button id="Period" onclick={period}>{period}</button>
   </header>
-  <div id="Tabs" focus-group="wrap">
+  <div id="Tabs" data-layout="cluster" focus-group="wrap">
     <button id="Global" variant="ghost" class:selection-off={tab != "global"} class:selection-on={tab == "global"}>{t("screen.leaderboard.global")}</button>
     <button id="Friends" variant="ghost" class:selection-off={tab != "friends"} class:selection-on={tab == "friends"}>{t("screen.leaderboard.friends")}</button>
     <button id="League" variant="ghost" class:selection-off={tab != "league"} class:selection-on={tab == "league"}>{t("screen.leaderboard.league")}</button>
@@ -58,7 +58,8 @@ h1, h2, p { margin: 0; }
 [part="leaderboard.title"] { flex: 1; font-size: var(--type-xl2-size); letter-spacing: var(--type-xl2-tracking); }
 #Period, #Period::part(base) { block-size: var(--control-sm); }
 #Period::part(base) { padding: 0 var(--space-md); }
-#Tabs { display: flex; gap: var(--space-sm); }
+/* The tabs wrap onto a second line where the row is too narrow for them. */
+#Tabs { gap: var(--space-sm); }
 /* An unselected tab keeps its words' ink; only its rim goes. */
 button.selection-off::part(base) { border-color: transparent; }
 /* The league bar and the player's own row: raised plates. */

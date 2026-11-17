@@ -18,7 +18,7 @@
     <p id="Body" part="card.body" hidden={body == ""}>{body}</p>
     </div>
   </button>
-  <footer id="Actions">{@render actions?.()}</footer>
+  <footer id="Actions" data-layout="cluster">{@render actions?.()}</footer>
 </article>
 
 <style>
@@ -29,5 +29,5 @@
 #Head { display: flex; align-items: center; gap: var(--space-sm); }
 #Title { flex: 1; min-width: 0; }
 #Body { margin: 0; color: var(--ink-muted); line-clamp: 3; }
-#Actions { display: flex; justify-content: end; gap: var(--space-sm); }
+#Actions { justify-content: end; gap: var(--space-sm); }
 </style>
