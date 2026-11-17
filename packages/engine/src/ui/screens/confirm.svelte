@@ -28,8 +28,9 @@
    tall as what it holds, up to the screen's safe height. */
 #Confirm { inline-size: var(--modal-width); block-size: auto; gap: var(--space-md); }
 #Title, #Buttons { flex: none; }
-/* What follows keeps a line of its own however long the question is. */
-#Scroll { flex: 0 1 auto; min-block-size: 1lh; }
+/* What follows keeps a line of its own however long the question is: the
+   body type's line, which grows with the player's text scale. */
+#Scroll { flex: 0 1 auto; min-block-size: var(--type-body-line-height); }
 #Body { margin: 0; color: var(--ink-muted); }
 /* The actions share the row and fill it. Where both do not fit on one line
    each takes a line of its own, the confirming one above the way out. */
