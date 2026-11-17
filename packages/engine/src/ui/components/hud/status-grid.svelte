@@ -44,7 +44,7 @@
 /* Drawn over the scene: the style's tag halo holds its text there. */
 :host { text-shadow: var(--tag-halo); }
 #Buffs, #Debuffs { max-width: var(--measure-sm); margin: 0; padding: 0; list-style: none; align-items: flex-start; }
-.tile { align-items: center; min-width: calc(var(--size-md) + var(--space-xs)); --edge: var(--line-strong); }
+.tile { align-items: center; min-width: calc(var(--size-md) + var(--space-xs)); --edge: var(--cell-scene-rim); }
 .debuff { --edge: var(--danger); }
 .magic { --edge: var(--info); }
 .curse { --edge: var(--xp); }
@@ -52,7 +52,7 @@
 .disease { --edge: var(--warn); }
 .bleed { --edge: var(--danger); }
 /* A debuff's type is the cell's rim, through its token, so a pack's cell still dresses it. */
-[part="StatusGrid.cell"] { position: relative; width: var(--size-md); height: var(--size-md); overflow: hidden; --cell-rim: var(--edge); --layout-anchor-inset: 0; }
+[part="StatusGrid.cell"] { position: relative; width: var(--size-md); height: var(--size-md); overflow: hidden; --cell-fill: var(--cell-scene-fill); --cell-shadow: var(--cell-scene-shadow); --cell-rim: var(--edge); --layout-anchor-inset: 0; }
 .icon { width: var(--size-sm); height: var(--size-sm); }
 .sweep { width: var(--size-md); height: var(--size-md); }
 .notch { width: var(--space-sm); height: var(--space-sm); --dot-fill: var(--edge); --dot-rim-width: 0; clip-path: polygon(0% 0%, 100% 0%, 0% 100%); }
