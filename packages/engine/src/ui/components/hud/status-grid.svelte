@@ -8,20 +8,22 @@
 <meta name="fixture:default" content='{"more":2,"buffs":[{"id":"haste","icon":"bolt","name":"Haste","stacks":0,"remaining":12,"duration":30,"expiring":false},{"id":"shield","icon":"shield","name":"Barrier","stacks":3,"remaining":4.2,"duration":10,"expiring":true},{"id":"regen","icon":"heart","name":"Regrowth","stacks":0,"remaining":0,"duration":0,"expiring":false}],"debuffs":[{"id":"burn","icon":"fire","name":"Burning","stacks":2,"remaining":6,"duration":8,"expiring":false,"type":"magic"},{"id":"venom","icon":"drop","name":"Venom","stacks":0,"remaining":18,"duration":20,"expiring":false,"type":"poison"}]}'>
 
 <div id="StatusGrid" data-layout="stack" data-gap="tight">
-  <ul id="Buffs" data-layout="cluster" data-gap="tight" role="list" aria-label={t("component.status-grid.buffs")}>
+  <ul id="Buffs" data-layout="cluster" data-gap="loose" role="list" aria-label={t("component.status-grid.buffs")}>
     {#each buffs as e (e.id)}
       <li class="tile" data-layout="stack" data-gap="hair" class:expiring={e.expiring} aria-label={e.name}>
         <div class="face" part="StatusGrid.cell" data-layout="cover" data-gap="none">
           <og-icon class="icon" data-motion={e.expiring ? 'pulse' : null} icon={e.icon}></og-icon>
           {#if e.duration > 0}<svg class="sweep" data-anchor="fill" viewBox="0 0 32 32"><circle part="StatusGrid.sweep" cx="16" cy="16" r="8" fill="none" stroke-width="16" pathLength="1" stroke-dasharray={(e.remaining >= e.duration ? 0 : 1 - e.remaining / e.duration) + " 1"} transform="rotate(-90 16 16)"></circle></svg>{/if}
         </div>
-        {#if e.stacks > 1}<span class="stacks" part="StatusGrid.badge StatusGrid.tag">{formatNumber(e.stacks)}</span>{/if}
-        {#if e.remaining > 0}<div class="time" part="StatusGrid.tag"><span class="number" part="StatusGrid.figure">{e.remaining < 10 ? formatNumber(e.remaining) : formatCountdown(e.remaining)}</span></div>{/if}
+        {#if e.stacks > 1 || e.remaining > 0}<div class="details" data-layout="row" data-gap="tight">
+          {#if e.stacks > 1}<span class="stacks" part="StatusGrid.badge StatusGrid.tag">{t("component.status-grid.stacks", { count: e.stacks })}</span>{/if}
+          {#if e.remaining > 0}<div class="time" part="StatusGrid.tag"><span class="number" part="StatusGrid.figure">{e.remaining < 10 ? t("component.status-grid.seconds", { value: e.remaining }) : formatCountdown(e.remaining)}</span></div>{/if}
+        </div>{/if}
       </li>
     {/each}
     {#if more > 0}<li id="More" class="tile" data-layout="stack" data-gap="hair"><div class="face" part="StatusGrid.cell" data-layout="cover" data-gap="none"><span id="Count" class="count" part="StatusGrid.figure">{"+" + formatNumber(more)}</span></div></li>{/if}
   </ul>
-  <ul id="Debuffs" data-layout="cluster" data-gap="tight" role="list" aria-label={t("component.status-grid.debuffs")}>
+  <ul id="Debuffs" data-layout="cluster" data-gap="loose" role="list" aria-label={t("component.status-grid.debuffs")}>
     {#each debuffs as e (e.id)}
       <li class="tile debuff" data-layout="stack" data-gap="hair" class:expiring={e.expiring} class:magic={e.type == 'magic'} class:curse={e.type == 'curse'} class:poison={e.type == 'poison'} class:disease={e.type == 'disease'} class:bleed={e.type == 'bleed'} aria-label={e.name}>
         <div class="face" part="StatusGrid.cell" data-layout="cover" data-gap="none">
@@ -29,8 +31,10 @@
           {#if e.duration > 0}<svg class="sweep" data-anchor="fill" viewBox="0 0 32 32"><circle part="StatusGrid.sweep" cx="16" cy="16" r="8" fill="none" stroke-width="16" pathLength="1" stroke-dasharray={(e.remaining >= e.duration ? 0 : 1 - e.remaining / e.duration) + " 1"} transform="rotate(-90 16 16)"></circle></svg>{/if}
           <div class="notch" part="StatusGrid.dot" data-anchor="top-start"></div>
         </div>
-        {#if e.stacks > 1}<span class="stacks" part="StatusGrid.badge StatusGrid.tag">{formatNumber(e.stacks)}</span>{/if}
-        {#if e.remaining > 0}<div class="time" part="StatusGrid.tag"><span class="number" part="StatusGrid.figure">{e.remaining < 10 ? formatNumber(e.remaining) : formatCountdown(e.remaining)}</span></div>{/if}
+        {#if e.stacks > 1 || e.remaining > 0}<div class="details" data-layout="row" data-gap="tight">
+          {#if e.stacks > 1}<span class="stacks" part="StatusGrid.badge StatusGrid.tag">{t("component.status-grid.stacks", { count: e.stacks })}</span>{/if}
+          {#if e.remaining > 0}<div class="time" part="StatusGrid.tag"><span class="number" part="StatusGrid.figure">{e.remaining < 10 ? t("component.status-grid.seconds", { value: e.remaining }) : formatCountdown(e.remaining)}</span></div>{/if}
+        </div>{/if}
       </li>
     {/each}
   </ul>

@@ -37,8 +37,8 @@
 [part="StarBar.fill"] { width: calc(var(--fill) * 100%); height: 100%; }
 #Stars { position: absolute; inset-inline: 0; top: 0; height: var(--star); }
 [part="StarBar.star"] { position: absolute; top: 0; inset-inline-start: calc(var(--at) * (100% - var(--star))); width: var(--star); height: var(--star); }
-.disc { fill: var(--track-fill); }
-.mark { fill: none; stroke: var(--dot-rim); stroke-width: var(--dot-rim-width); }
+.disc { fill: var(--track-fill); --track-fill: var(--scrim); }
+.mark { fill: none; stroke: var(--dot-rim); stroke-width: var(--dot-rim-width); --dot-rim: var(--ink-faint); --dot-rim-width: var(--stroke-regular); }
 .lit .disc { fill: transparent; }
-.lit .mark { fill: var(--fill-color); stroke: var(--dot-rim); }
+.lit .mark { fill: var(--fill-color); stroke: var(--dot-rim); --dot-rim: transparent; }
 </style>

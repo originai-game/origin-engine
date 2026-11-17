@@ -2,7 +2,7 @@
 // In particular, a QTE is an input surface, not a gameplay timer: the game
 // supplies resolution; early release cancels a hold and keyed rows retain ids.
 import { afterAll, beforeAll, expect, test } from "bun:test";
-import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { copyFileSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -12,7 +12,7 @@ import { createEngine, type Engine, type GameToken } from "../src/runtime.ts";
 import { cookProject } from "./support/og-bin.ts";
 
 const ENGINE = dirname(dirname(fileURLToPath(import.meta.url)));
-const PATHS = ["base/pips", "hud/boss-bar", "hud/combo", "hud/pickup-feed", "hud/perf-readout", "hud/qte-prompt"];
+const PATHS = ["base/pips", "hud/boss-bar", "hud/combo", "hud/pickup-feed", "hud/perf-readout", "hud/qte-prompt", "hud/status-grid"];
 const members = PATHS.map((path) => {
   const text = readFileSync(join(ENGINE, `src/ui/components/${path}.svelte`), "utf8");
   const name = /name="component" content="([^"]+)"/.exec(text)![1]!;
@@ -26,6 +26,8 @@ beforeAll(() => {
   loadNativeHost();
   root = mkdtempSync(join(tmpdir(), "og-hud-builtins-"));
   mkdirSync(join(root, "assets/ui"), { recursive: true });
+  mkdirSync(join(root, "assets/icons"), { recursive: true });
+  copyFileSync(join(ENGINE, "../../templates/styles/shared/ink-icons.png"), join(root, "assets/icons/ink-icons.png"));
   writeFileSync(join(root, "project.ogt"), 'type project\nversion 1\n---\nname "HUD builtins"\nid "hud-builtins"\nentry "main.ts"\nprofile "2d"\n');
   writeFileSync(join(root, "main.ts"), 'import { og } from "@origingame/engine"; export default og.game({});\n');
   for (const m of members) {
@@ -44,7 +46,9 @@ function mount(name: string, stores: Record<string, unknown>, phone = false, eve
   const r = createEngine(og.game({
     systems: [Collect],
     start(w) {
-      og.ui.configure(w, { style: null });
+      const ink = og.load.texture(w, "icons/ink-icons.png");
+      if (!ink.ok) throw new Error(ink.reason);
+      og.ui.configure(w, { style: null, fallbackIcons: { texture: ink.value, columns: 8, rows: 4, names: ["heart", "star", "coin", "lock", "pause", "gear", "sword", "shield"] } });
       const d = og.load.document(w, `ui/${name === "Keyed" ? "keyed" : name}.svelte`);
       if (!d.ok) throw new Error(d.reason);
     },
@@ -72,6 +76,25 @@ function check(name: string, fixture: string, fn: (e: Engine) => void, over: Rec
   const e = mount(name, { ...m.fixtures.default, ...m.fixtures[fixture], ...over });
   try { fn(e); } finally { e.destroy(); }
 }
+
+for (const phone of [false, true]) test(`status counts and seconds read side by side below their icon on ${phone ? "phone" : "desktop"}`, () => {
+  const m = members.find((x) => x.name === "StatusGrid")!;
+  const e = mount(m.name, m.fixtures.default, phone);
+  try {
+    const boxes = elements(e);
+    for (const [count, time, label] of [["×3", "4.2 s", "Barrier"], ["×2", "6 s", "Burning"]]) {
+      const stack = boxes.find((x) => x.text === count)!;
+      const timer = boxes.find((x) => x.text === time)!;
+      const effect = boxes.find((x) => x.name === label)!;
+      const icon = boxes.find((x) => x.role === "image" && x.path.startsWith(effect.path + "/"))!;
+      expect(stack).toBeDefined();
+      expect(timer).toBeDefined();
+      expect(Math.min(stack.y + stack.height, timer.y + timer.height)).toBeGreaterThan(Math.max(stack.y, timer.y));
+      expect(stack.x + stack.width).toBeLessThanOrEqual(timer.x);
+      expect(Math.min(stack.y, timer.y)).toBeGreaterThanOrEqual(icon.y + icon.height);
+    }
+  } finally { e.destroy(); }
+});
 
 for (const phone of [false, true]) for (const m of members) test(`${m.name}: all fixtures are readable in default style on ${phone ? "phone" : "desktop"}`, () => {
   for (const [name, fixture] of Object.entries(m.fixtures)) {

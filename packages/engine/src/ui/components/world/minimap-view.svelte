@@ -20,7 +20,9 @@
         {#if texture}<img id="Map" src={texture}>
         {:else}<svg id="Grid" part="MinimapView.grid MinimapView.plate" data-anchor="fill" viewBox="0 0 200 200"><path part="MinimapView.gridline" d="M0 20H200 M0 40H200 M0 60H200 M0 80H200 M0 100H200 M0 120H200 M0 140H200 M0 160H200 M0 180H200 M20 0V200 M40 0V200 M60 0V200 M80 0V200 M100 0V200 M120 0V200 M140 0V200 M160 0V200 M180 0V200" fill="none"></path></svg>{/if}
         {#each markers as m (m.id)}
-          <div class="marker" part="MinimapView.marker MinimapView.cell MinimapView.dot" data-shape={m.kind == 'enemy' || m.kind == 'objective' ? 'diamond' : m.kind == 'loot' ? 'square' : 'round'} data-tone={m.kind == 'ally' ? 'info' : m.kind == 'enemy' ? 'danger' : m.kind == 'objective' ? 'primary' : m.kind == 'ping' ? 'warn' : null} data-motion={m.kind == 'ping' ? 'ping' : null} class:ally={m.kind == 'ally'} class:enemy={m.kind == 'enemy'} class:objective={m.kind == 'objective'} class:ping={m.kind == 'ping'} class:loot={m.kind == 'loot'} style:--x={m.x} style:--y={m.y} aria-label={m.label}></div>
+          <div class="marker" part="MinimapView.marker MinimapView.cell MinimapView.dot" data-layout="overlay" data-shape={m.kind == 'enemy' || m.kind == 'objective' ? 'diamond' : m.kind == 'loot' ? 'square' : 'round'} data-tone={m.kind == 'ally' ? 'info' : m.kind == 'enemy' ? 'danger' : m.kind == 'objective' ? 'primary' : m.kind == 'ping' ? 'warn' : null} class:ally={m.kind == 'ally'} class:enemy={m.kind == 'enemy'} class:objective={m.kind == 'objective'} class:ping={m.kind == 'ping'} class:loot={m.kind == 'loot'} style:--x={m.x} style:--y={m.y} aria-label={m.label}>
+            {#if m.kind == 'ping'}<div class="echo" part="MinimapView.dot" data-anchor="fill" data-shape="round" data-motion="ping"></div>{/if}
+          </div>
         {/each}
       </div>
       <svg id="Player" part="MinimapView.player" viewBox="0 0 16 16" class:turning={!rotate}><path d="M8 1l6 13-6-3.5L2 14z"></path></svg>
@@ -41,7 +43,7 @@
 #Grid { width: var(--side); height: var(--side); }
 .marker { position: absolute; width: var(--pip); height: var(--pip); inset-inline-start: calc(var(--side) / 2 + (var(--x) - var(--cx)) * var(--side) / var(--zoom) - var(--pip) / 2); top: calc(var(--side) / 2 + (var(--y) - var(--cy)) * var(--side) / var(--zoom) - var(--pip) / 2); }
 .marker.objective { --pip: var(--space-md); }
-.marker.ping { --dot-fill: transparent; --dot-rim: var(--tone-warn); --dot-rim-width: var(--stroke-regular); }
+.marker.ping { --dot-fill: transparent; --dot-rim: var(--tone-warn); --dot-rim-width: var(--stroke-regular); --layout-anchor-inset: 0; }
 .marker.loot { --dot-fill: var(--xp); }
 [part="MinimapView.player"] { position: absolute; top: calc(var(--side) / 2 - var(--size-xs) / 2); inset-inline-start: calc(var(--side) / 2 - var(--size-xs) / 2); width: var(--size-xs); height: var(--size-xs); fill: var(--dot-fill); stroke: var(--dot-rim); stroke-width: var(--dot-rim-width); --dot-fill: var(--primary); --dot-rim: var(--ink); transform-origin: 50% 50%; }
 [part="MinimapView.player"].turning { rotate: calc(var(--heading) * 1deg); }
