@@ -920,7 +920,10 @@ fn fs_godrays_blur(in: VsOut) -> @location(0) vec4<f32> {
   if (fxp.god2.y < 0.5) { return vec4<f32>(0.0, 0.0, 0.0, 1.0); }
   let n = u32(fxp.god2.x);
   let step = (in.uv - fxp.god.xy) * fxp.god.w / f32(max(n, 1u));
-  var uv = in.uv;
+  // Interleave the ray's phase across the same 4x4 pattern as the AO.
+  // This runs after TAA: keep it stable and resolve the pattern spatially,
+  // rather than introducing frame noise that no history will integrate.
+  var uv = in.uv - step * (ao_noise(in.pos.xy) - 0.5);
   var decay = 1.0;
   var sum = vec3<f32>(0.0);
   for (var i = 0u; i < n; i++) {
@@ -930,4 +933,21 @@ fn fs_godrays_blur(in: VsOut) -> @location(0) vec4<f32> {
   }
   // Normalized to 48 taps: the brightness does not depend on the tap count.
   return vec4<f32>(sum * (4.0 / f32(max(n, 1u))) * fxp.god_tint.rgb * fxp.god2.z, 1.0);
+}
+
+// Each 4x4 window contains all sixteen ray phases, replacing coherent
+// radial tap rings with their integral even with AA off (GPU Gems 3 §13.8).
+@fragment
+fn fs_godrays_resolve(in: VsOut) -> @location(0) vec4<f32> {
+  let texel = 1.0 / vec2<f32>(textureDimensions(tex_b));
+  let px = floor(in.pos.xy);
+  var sum = vec3<f32>(0.0);
+  for (var y = -1; y <= 2; y++) {
+    for (var x = -1; x <= 2; x++) {
+      // Bilinear taps centre the even window without shifting the shafts.
+      let uv = (px + vec2<f32>(f32(x), f32(y))) * texel;
+      sum += textureSampleLevel(tex_b, fx_linear, uv, 0.0).rgb;
+    }
+  }
+  return vec4<f32>(sum / 16.0, 1.0);
 }

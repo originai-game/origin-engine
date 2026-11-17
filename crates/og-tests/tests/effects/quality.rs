@@ -20,8 +20,81 @@ fn effects_off_add_no_passes() {
         stats.graph_passes, all.graph_passes
     );
     assert_eq!(stats.prepass_draws, 0);
-    assert_eq!(all.graph_passes, stats.graph_passes + 1 + 2 + 3 + 1 + 2);
+    assert_eq!(all.graph_passes, stats.graph_passes + 1 + 2 + 3 + 1 + 3);
     let _ = Curve::default();
+}
+
+/// Resolving the interleaved rays must not brighten a frame whose sky
+/// contributes nothing to the ray mask, even with a visible sun.
+#[test]
+#[ignore = "requires GPU"]
+fn an_empty_god_rays_mask_adds_no_light() {
+    let mut built = scenes::build("god-rays").expect("scene");
+    built.scene.look.post.god_rays.as_mut().unwrap().threshold = f32::MAX;
+    let masked = gfx::render_built(&mut built).expect("masked rays").image;
+    built.scene.look.post.god_rays = None;
+    let off = gfx::render_built(&mut built).expect("rays off").image;
+    assert!(masked.pixels == off.pixels, "an empty ray mask adds light");
+}
+
+/// Independently recorded, unjittered 1536-tap integrals of this fixture:
+/// subdivide each original tap's centred interval into 32 midpoint taps,
+/// retaining its decay weight and the march extent, with no spatial resolve.
+/// Doubling 768 to 1536 moved these means by less than 0.003/255.
+/// Fixed 48-tap rays undersample the sun here: their corner means are
+/// 6 to 10/255 too dark, even though their whole-frame means look close.
+#[test]
+#[ignore = "requires GPU"]
+fn god_rays_match_a_converged_radial_integral() {
+    let mean = |image: &RgbaImage, (x0, y0, x1, y1): (u32, u32, u32, u32)| {
+        let mut rgb = [0.0f64; 3];
+        for y in y0..y1 {
+            for x in x0..x1 {
+                let i = ((y * image.width + x) * 4) as usize;
+                for (c, sum) in rgb.iter_mut().enumerate() {
+                    *sum += f64::from(image.pixels[i + c]);
+                }
+            }
+        }
+        rgb.map(|sum| sum / f64::from((x1 - x0) * (y1 - y0)))
+    };
+    for (threshold, expected) in [
+        (
+            2.0,
+            [
+                [171.103183, 148.288516, 115.668623],
+                [126.938958, 115.172500, 112.688021],
+                [126.925729, 115.164688, 112.683854],
+            ],
+        ),
+        (
+            10.0,
+            [
+                [136.725448, 117.172923, 93.168024],
+                [94.580938, 92.688021, 102.019271],
+                [94.565729, 92.677083, 102.017083],
+            ],
+        ),
+    ] {
+        let mut built = scenes::build("god-rays").expect("scene");
+        built.scene.look.post.god_rays.as_mut().unwrap().threshold = threshold;
+        let image = gfx::render_built(&mut built).expect("rays").image;
+        assert_eq!((image.width, image.height), (1280, 720));
+        for (rect, reference) in [(0, 0, 1280, 720), (0, 0, 120, 80), (1160, 0, 1280, 80)]
+            .into_iter()
+            .zip(expected)
+        {
+            let actual = mean(&image, rect);
+            println!("threshold {threshold}, {rect:?}: {actual:?}, reference {reference:?}");
+            assert!(
+                actual
+                    .into_iter()
+                    .zip(reference)
+                    .all(|(a, b)| (a - b).abs() < 1.0),
+                "threshold {threshold}, {rect:?}: {actual:?} differs from the converged {reference:?}"
+            );
+        }
+    }
 }
 
 /// Scene `name` (`edit` applied) drawn at `quality`: its last frame.

@@ -355,6 +355,7 @@ pub(crate) fn frame_passes(d: &PassDecisions<'_>, caps: Caps) -> Vec<FramePass> 
     if d.god_rays {
         push(FramePass::GodRaysMask);
         push(FramePass::GodRaysBlur);
+        push(FramePass::GodRaysResolve);
     }
     if d.auto_exposure {
         push(FramePass::Meter);

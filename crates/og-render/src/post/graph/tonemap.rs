@@ -28,7 +28,7 @@ impl BindCx<'_> {
                 tex(self.lum(slot)),
                 tex(bloom),
                 tex(self.lut),
-                tex(self.view_of(FramePass::GodRaysBlur, "god.blur")),
+                tex(self.view_of(FramePass::GodRaysResolve, "god.resolve")),
                 tex(flare),
             ],
         )

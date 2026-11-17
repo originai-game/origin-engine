@@ -21,8 +21,8 @@ pub(super) fn declare(g: &mut RenderGraph, cx: &PlanCx, p: FramePass) {
             if bloom {
                 reads.push("bloom.0");
             }
-            if has(FramePass::GodRaysBlur) {
-                reads.push("god.blur");
+            if has(FramePass::GodRaysResolve) {
+                reads.push("god.resolve");
             }
             if has(FramePass::FlareBlurY) {
                 reads.push("flare");

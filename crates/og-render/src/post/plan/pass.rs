@@ -110,6 +110,7 @@ pub(crate) enum FramePass {
     CustomPost(u32),
     GodRaysMask,
     GodRaysBlur,
+    GodRaysResolve,
     Meter,
     /// Metering level `i` into `i + 1`.
     Reduce(u32),
@@ -265,6 +266,7 @@ impl FramePass {
                 | FramePass::CustomPost(_)
                 | FramePass::GodRaysMask
                 | FramePass::GodRaysBlur
+                | FramePass::GodRaysResolve
                 | FramePass::Meter
                 | FramePass::Reduce(_)
                 | FramePass::Adapt
@@ -340,6 +342,7 @@ impl FramePass {
             FramePass::CustomPost(i) => format!("custom-post.{i}"),
             FramePass::GodRaysMask => "god-rays-mask".into(),
             FramePass::GodRaysBlur => "god-rays-blur".into(),
+            FramePass::GodRaysResolve => "god-rays-resolve".into(),
             FramePass::Meter => "meter".into(),
             FramePass::Reduce(i) => format!("meter-reduce.{i}"),
             FramePass::Adapt => "exposure-adapt".into(),

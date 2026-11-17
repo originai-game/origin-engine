@@ -108,6 +108,9 @@ pub(super) fn declare(g: &mut RenderGraph, cx: &PlanCx, p: FramePass) {
         }
         FramePass::GodRaysMask => g.pass(name, &[lit, "lindepth", "gbuffer"], &["god.mask"]),
         FramePass::GodRaysBlur => g.pass(name, &["god.mask", "lindepth", "gbuffer"], &["god.blur"]),
+        FramePass::GodRaysResolve => {
+            g.pass(name, &["god.blur", "lindepth", "gbuffer"], &["god.resolve"])
+        }
         _ => unreachable!("{p:?} is not a screen effect"),
     };
 }

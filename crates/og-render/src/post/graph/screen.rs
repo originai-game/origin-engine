@@ -32,6 +32,7 @@ pub(super) fn groups(cx: &BindCx, pass: FramePass) -> Option<Pair> {
         FramePass::ScreenBlur => cx.pair(|slot| cx.fx_after(cx.stage(names.after_mb, slot), black)),
         FramePass::GodRaysMask => cx.pair(|slot| cx.fx_after(cx.source(slot), black)),
         FramePass::GodRaysBlur => cx.pair(|_| cx.fx_after(black, cx.view("god.mask"))),
+        FramePass::GodRaysResolve => cx.pair(|_| cx.fx_after(black, cx.view("god.blur"))),
         _ => return None,
     })
 }
@@ -50,6 +51,7 @@ pub(super) fn draw(pass: FramePass) -> Option<fx::Draw> {
         FramePass::ScreenBlur => ("fs_screen_blur", "hdr.blur"),
         FramePass::GodRaysMask => ("fs_godrays_mask", "god.mask"),
         FramePass::GodRaysBlur => ("fs_godrays_blur", "god.blur"),
+        FramePass::GodRaysResolve => ("fs_godrays_resolve", "god.resolve"),
         _ => return None,
     })
 }

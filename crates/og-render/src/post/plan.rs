@@ -83,7 +83,8 @@ pub(crate) fn build_graph(passes: &[FramePass], cfg: &GraphConfig) -> RenderGrap
             | FramePass::ScreenBlur
             | FramePass::CustomPost(_)
             | FramePass::GodRaysMask
-            | FramePass::GodRaysBlur => screen::declare,
+            | FramePass::GodRaysBlur
+            | FramePass::GodRaysResolve => screen::declare,
             FramePass::Meter | FramePass::Reduce(_) | FramePass::Adapt => exposure::declare,
             FramePass::BloomPrefilter
             | FramePass::BloomDown(_)
