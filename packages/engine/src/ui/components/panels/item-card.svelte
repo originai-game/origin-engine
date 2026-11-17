@@ -14,8 +14,8 @@
 <meta name="prop:canPrimary" content="bool" data-doc="The main button is enabled.">
 <meta name="prop:canSecondary" content="bool" data-doc="The second button is enabled.">
 <meta name="action:details" content="Equip">
-<meta name="fixture:default" content='{"name":"Emberwake Blade","icon":"item-blade","art":0,"rarity":"legendary","kind":"Legendary · Longsword","lead":[{"id":"dmg","icon":"sword","label":"Damage","value":"12–20","delta":"+4","trend":"up","current":"8–16"}],"stats":[{"id":"crit","icon":"star","label":"Critical chance","value":"12%","delta":"+4%","trend":"up","current":"8%"},{"id":"res","icon":"shield","label":"Spell resistance","value":"+10%","delta":"−5%","trend":"down","current":"+15%"}],"lore":"Forged in a dying star.","primary":"Equip","secondary":"Drop","canPrimary":true,"canSecondary":true}'>
-<meta name="fixture:plain" content='{"name":"Bread","icon":"item-bread","art":0,"rarity":"common","kind":"Common · Food","lead":[],"stats":[],"lore":"","primary":"Use","secondary":"","canPrimary":true,"canSecondary":false}'>
+<meta name="fixture:default" content='{"name":"Emberwake Blade","icon":"sword","art":0,"rarity":"legendary","kind":"Legendary · Longsword","lead":[{"id":"dmg","icon":"sword","label":"Damage","value":"12–20","delta":"+4","trend":"up","current":"8–16"}],"stats":[{"id":"crit","icon":"star","label":"Critical chance","value":"12%","delta":"+4%","trend":"up","current":"8%"},{"id":"res","icon":"shield","label":"Spell resistance","value":"+10%","delta":"−5%","trend":"down","current":"+15%"}],"lore":"Forged in a dying star.","primary":"Equip","secondary":"Drop","canPrimary":true,"canSecondary":true}'>
+<meta name="fixture:plain" content='{"name":"Bread","icon":"apple","art":0,"rarity":"common","kind":"Common · Food","lead":[],"stats":[],"lore":"","primary":"Use","secondary":"","canPrimary":true,"canSecondary":false}'>
 
 <!--
   One item in detail: its art, name and kind, a headline figure with its

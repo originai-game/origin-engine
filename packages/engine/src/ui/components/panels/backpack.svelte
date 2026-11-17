@@ -11,7 +11,7 @@
 <meta name="prop:gold" content="string" data-doc="The purse as the game formats it; empty hides it.">
 <meta name="action:tabPrev" content="Previous category">
 <meta name="action:tabNext" content="Next category">
-<meta name="fixture:default" content='{"title":"Backpack","tab":"all","tabs":[{"id":"all","label":"All"},{"id":"gear","label":"Weapons"}],"items":[{"id":"blade","name":"Emberwake Blade","icon":"item-blade","count":1,"rarity":"legendary","equipped":true,"fresh":false,"locked":false,"broken":false},{"id":"potion","name":"Healing Draught","icon":"item-potion","count":5,"rarity":"common","equipped":false,"fresh":true,"locked":false,"broken":false}],"selected":"blade","weight":"92.4 / 120","load":0.77,"gold":"4,327"}'>
+<meta name="fixture:default" content='{"title":"Backpack","tab":"all","tabs":[{"id":"all","label":"All"},{"id":"gear","label":"Weapons"}],"items":[{"id":"blade","name":"Emberwake Blade","icon":"sword","count":1,"rarity":"legendary","equipped":true,"fresh":false,"locked":false,"broken":false},{"id":"potion","name":"Healing Draught","icon":"potion","count":5,"rarity":"common","equipped":false,"fresh":true,"locked":false,"broken":false}],"selected":"blade","weight":"92.4 / 120","load":0.77,"gold":"4,327"}'>
 <meta name="fixture:empty" content='{"title":"Backpack","tab":"all","tabs":[{"id":"all","label":"All"}],"items":[],"selected":"","weight":"0 / 120","load":0,"gold":"0"}'>
 
 <!--
