@@ -4,7 +4,9 @@
 //! layers (grass, rock on slopes, sand by the water, snow on the peaks)
 //! seen from three distances, grass scattered over its meadow, and the
 //! water's planar reflection, its shadows and the view from under the
-//! lake. Everything is generated here.
+//! lake. The land and its layers are generated here; what stands on the
+//! meadow (boulders, a ruined gate, a watchtower, pines), the meadow's
+//! grass and the mountains' rock are the kit's (`crate::kit`).
 
 use crate::fx_scenes::{hash2, noise2, smooth, tiling_fbm};
 use crate::scenes::texture;
@@ -221,9 +223,8 @@ pub fn island_layers(scene: &mut RenderScene) -> Vec<TerrainLayer> {
     ]
 }
 
-/// The island with its layers, the afternoon sun and sky, and a few
-/// boulders on the meadow (shadow casters at the near camera).
-pub fn island_scene() -> RenderScene {
+/// The island's terrain with its layers, alone in an empty scene.
+fn island_terrain() -> RenderScene {
     let mut scene = RenderScene::new();
     let data = island();
     let handle = scene.add_terrain(data);
@@ -233,6 +234,148 @@ pub fn island_scene() -> RenderScene {
         height_blend: 0.6,
         ..Terrain::new(handle)
     });
+    scene
+}
+
+/// Where the near camera stands on the meadow (xz) and the way it looks
+/// (a unit bearing in xz): what [`meadow_set`] is laid out from.
+pub const MEADOW_EYE: Vec2 = Vec2::new(-80.0, 150.0);
+const MEADOW_AHEAD: Vec2 = Vec2::new(-0.316_228, -0.948_683);
+
+/// The meadow's boulders (xz): shadow casters at the near camera.
+const MEADOW_BOULDERS: [(f32, f32); 4] = [
+    (-96.0, 120.0),
+    (-104.0, 128.0),
+    (-88.0, 133.0),
+    (-110.0, 112.0),
+];
+
+/// The meadow's set (the kit's models, `crate::kit`), laid out for the
+/// near camera and standing for every other view of the island: the
+/// boulders in front of it, a ruined gate with its columns across the way
+/// to the mountains, a watchtower on the rise behind the gate, and stands
+/// of pines either side of the view and up to the mountains' foot.
+pub fn meadow_set(scene: &mut RenderScene) {
+    use crate::kit;
+    let ground = |p: Vec2| Vec3::new(p.x, island_height(p.x, p.y), p.y);
+    // `ahead` metres along the near camera's view, `right` metres to its right.
+    let right = Vec2::new(-MEADOW_AHEAD.y, MEADOW_AHEAD.x);
+    let at = |ahead: f32, to_right: f32| MEADOW_EYE + MEADOW_AHEAD * ahead + right * to_right;
+    let turn = |i: u32| hash2(i as i32, 7, 0x3ead) * std::f32::consts::TAU;
+    let facing = MEADOW_AHEAD.x.atan2(MEADOW_AHEAD.y);
+
+    let boulder = kit::prop(scene, "boulder");
+    for (i, &(x, z)) in MEADOW_BOULDERS.iter().enumerate() {
+        let r = 1.2 + i as f32 * 0.5;
+        let foot = ground(Vec2::new(x, z)) - Vec3::Y * 0.3 * r;
+        boulder.place(scene, foot, turn(i as u32), r * 1.7);
+    }
+    // Smaller stones about the gate and the tower's rise.
+    for (i, (ahead, to_right, h)) in [
+        (52.0, 30.0, 1.3),
+        (70.0, -8.0, 1.0),
+        (96.0, 22.0, 1.8),
+        (128.0, 52.0, 2.4),
+        (24.0, 17.0, 0.9),
+    ]
+    .into_iter()
+    .enumerate()
+    {
+        let foot = ground(at(ahead, to_right)) - Vec3::Y * 0.25 * h;
+        boulder.place(scene, foot, turn(i as u32 + 10), h);
+    }
+
+    // The gate: an arch, a standing and a broken column either side.
+    let arch = kit::prop(scene, "arch");
+    let column = kit::prop(scene, "column");
+    let broken = kit::prop(scene, "column_broken");
+    arch.place(scene, ground(at(62.0, 13.0)), facing, 9.5);
+    column.place(scene, ground(at(62.0, 4.5)), turn(20), 7.0);
+    column.place(scene, ground(at(62.0, 21.5)), turn(21), 7.0);
+    broken.place(scene, ground(at(61.0, -2.5)), turn(22), 2.8);
+    broken.place(scene, ground(at(63.0, 28.5)), turn(23), 2.8);
+
+    // The watchtower on the highest ground near the rise behind the gate.
+    let rise = {
+        let c = at(150.0, 44.0);
+        let mut best = c;
+        for dz in -8..=8 {
+            for dx in -8..=8 {
+                let p = c + Vec2::new(dx as f32, dz as f32) * 4.0;
+                if island_height(p.x, p.y) > island_height(best.x, best.y) {
+                    best = p;
+                }
+            }
+        }
+        best
+    };
+    let tower = kit::prop(scene, "watchtower");
+    tower.place(scene, ground(rise) - Vec3::Y * 0.4, 2.2, 22.0);
+
+    // The pines: one by the boulders, then stands (where along the view,
+    // how far to its right, their radius and how many), on ground that is
+    // neither shore nor steep.
+    let pine = kit::prop(scene, "pine");
+    pine.place(scene, ground(at(36.0, -21.0)), turn(30), 15.0);
+    for (s, (ahead, to_right, radius, count)) in [
+        (78.0, -52.0, 22.0, 13),
+        (56.0, 50.0, 15.0, 8),
+        (104.0, 78.0, 28.0, 16),
+        (120.0, -24.0, 12.0, 5),
+        (180.0, -80.0, 42.0, 26),
+        (205.0, 96.0, 40.0, 22),
+        (270.0, 4.0, 55.0, 30),
+        (340.0, -130.0, 60.0, 30),
+        (345.0, 130.0, 60.0, 30),
+        (-60.0, -90.0, 40.0, 18),
+        (-40.0, 110.0, 45.0, 20),
+    ]
+    .into_iter()
+    .chain(woods())
+    .enumerate()
+    {
+        for k in 0..count {
+            let h = |n: i32| hash2(k, n, 0x91e0 + s as u32);
+            // Denser towards the stand's middle.
+            let d = radius * h(0).sqrt() * (0.35 + 0.65 * h(3));
+            let a = h(1) * std::f32::consts::TAU;
+            let p = at(ahead, to_right) + Vec2::new(a.cos(), a.sin()) * d;
+            let y = island_height(p.x, p.y);
+            let steep = (island_height(p.x + 3.0, p.y) - y)
+                .abs()
+                .max((island_height(p.x, p.y + 3.0) - y).abs())
+                > 2.2;
+            if y < LAKE_LEVEL + 4.0 || steep || p.distance(rise) < 9.0 {
+                continue;
+            }
+            let foot = Vec3::new(p.x, y - 0.3, p.y);
+            pine.place(scene, foot, a * 3.0, 9.5 + 6.0 * h(2));
+        }
+    }
+}
+
+/// The island's other woods, for the views from above and from the sea:
+/// a stand (as [`meadow_set`]'s: along the near view, to its right, its
+/// radius, its pines) in under half the cells of a 120 m grid, none where
+/// the near camera's view runs to the mountains.
+fn woods() -> impl Iterator<Item = (f32, f32, f32, i32)> {
+    (-6..=6).flat_map(|r: i32| {
+        (-6..=6).filter_map(move |c: i32| {
+            let h = |n: i32| hash2(c * 31 + n, r, 0x700d);
+            let ahead = r as f32 * 120.0 + (h(1) - 0.5) * 70.0;
+            let to_right = c as f32 * 120.0 + (h(2) - 0.5) * 70.0;
+            let in_view = ahead > -90.0 && ahead < 420.0 && to_right.abs() < 190.0;
+            (h(0) < 0.45 && !in_view)
+                .then(|| (ahead, to_right, 28.0 + 30.0 * h(3), 8 + (h(4) * 9.0) as i32))
+        })
+    })
+}
+
+/// The lake scenes' island: the terrain, the afternoon and four plain
+/// boulders on the meadow. They keep it until the water family dresses
+/// them; every other view of the island is [`island_meadow`].
+pub fn island_scene() -> RenderScene {
+    let mut scene = island_terrain();
     let boulder = scene.add_mesh(shapes::sphere(18, 12));
     let stone = scene.add_material(Material {
         base_color: [0.26, 0.25, 0.24, 1.0],
@@ -259,6 +402,79 @@ pub fn island_scene() -> RenderScene {
     }
     afternoon(&mut scene);
     scene
+}
+
+/// The island with its meadow's set ([`meadow_set`]) on a fair afternoon
+/// ([`fair_afternoon`]). Its grass layer is the kit's mossy grass (colour
+/// and normal map), so the ground holds up at eye height.
+pub fn island_meadow() -> RenderScene {
+    let mut scene = island_terrain();
+    let (color, normal) = crate::kit::layer_maps(&mut scene, "grass");
+    let grass = &mut scene.world.terrains[0].layers[0];
+    grass.albedo = Some(color);
+    grass.normal = Some(normal);
+    grass.color = Vec3::new(0.72, 1.05, 0.5);
+    grass.tile = 3.5;
+    grass.anti_tiling = 0.5;
+    let (color, normal) = crate::kit::layer_maps(&mut scene, "rock");
+    let rock = &mut scene.world.terrains[0].layers[1];
+    rock.albedo = Some(color);
+    rock.normal = Some(normal);
+    rock.color = Vec3::new(0.86, 0.84, 0.82);
+    rock.tile = 18.0;
+    meadow_set(&mut scene);
+    fair_afternoon(&mut scene);
+    scene
+}
+
+/// [`afternoon`] under the physical sky: the same sun (so every shadow
+/// falls where it did) 31° up, as [`fair_sky`] colours it.
+pub fn fair_afternoon(scene: &mut RenderScene) {
+    afternoon(scene);
+    fair_sky(scene, 8.07);
+}
+
+/// The physical sky over the scene's sun, left where it stands: its light
+/// and the sky's the colours Earth's air gives the sun at `hours` (6 at
+/// the horizon, 15° higher each hour), the scene's haze in the horizon's
+/// colour, and fair-weather cumulus with their shadows on the land. The
+/// sky is drawn per pixel, which the clouds need.
+pub fn fair_sky(scene: &mut RenderScene, hours: f32) {
+    let sun = scene.lighting.light.direction_to_light;
+    // A path with no tilt: only the look's colours are taken.
+    let look = og_render::day_night(hours, 0.0, 57.3)
+        .with_atmosphere(&og_render::PhysicalAtmosphere::EARTH);
+    scene.lighting.light.color = look.light_color;
+    scene.lighting.light.intensity = look.light_intensity;
+    scene.lighting.environment = Environment {
+        sky: ProceduralSky {
+            sun_direction: sun,
+            sun_color: look.sun_color,
+            look: Some(look.sky),
+        },
+        intensity: look.ambient,
+        background: Background::Procedural {
+            sun_direction: sun,
+            sun_color: look.sun_color,
+        },
+        ..Environment::default()
+    };
+    scene.atmosphere.adaptation = look.adaptation;
+    if let Some(fog) = &mut scene.atmosphere.fog {
+        fog.color = look.fog_color;
+        fog.sun_color = look.fog_sun.unwrap_or(fog.sun_color);
+    }
+    let clouds = og_render::Clouds {
+        coverage: 0.4,
+        layer: 0.15,
+        scale: 6000.0,
+        detail: 0.55,
+        ..og_render::Clouds::default()
+    };
+    clouds.light_scene(scene);
+    scene.atmosphere.clouds = Some(clouds);
+    // Their shapes some minutes into the wind's drift.
+    scene.frame.tick = 9000;
 }
 
 /// The island's afternoon: the sun, the sky lighting the scene and a
@@ -312,11 +528,11 @@ pub fn camera_at(position: Vec3, target: Vec3) -> Camera {
 /// at the boulders and the mountains (`near`), from 150 m over a valley
 /// (`mid`), and from 700 m out at sea across the whole island (`far`).
 pub fn island_view(distance: &str) -> RenderScene {
-    let mut scene = island_scene();
+    let mut scene = island_meadow();
     let ground = |x: f32, z: f32| island_height(x, z);
     scene.frame.camera = match distance {
         "near" => {
-            let (x, z) = (-80.0, 150.0);
+            let (x, z) = (MEADOW_EYE.x, MEADOW_EYE.y);
             camera_at(
                 Vec3::new(x, ground(x, z) + 1.8, z),
                 Vec3::new(-110.0, ground(-110.0, 60.0) + 10.0, 60.0),
@@ -329,15 +545,21 @@ pub fn island_view(distance: &str) -> RenderScene {
                 Vec3::new(0.0, 60.0, -220.0),
             )
         }
-        _ => camera_at(
-            Vec3::new(240.0, 700.0, 1350.0),
-            Vec3::new(0.0, 40.0, -150.0),
-        ),
+        // From 700 m up the horizon is 95 km off: the view and the sea
+        // reach well past it, so the sea meets the sky in one line.
+        _ => Camera {
+            far: 1.0e6,
+            ..camera_at(
+                Vec3::new(240.0, 700.0, 1350.0),
+                Vec3::new(0.0, 40.0, -150.0),
+            )
+        },
     };
-    // The sea around the island (flat, the sky's cubemap reflected).
+    // The sea around the island, out to the horizon (flat, the sky's
+    // cubemap reflected).
     scene.world.water.push(Water {
         transform: Mat4::from_translation(Vec3::new(0.0, 0.0, 0.0)),
-        size: Vec2::splat(24000.0),
+        size: Vec2::splat(4.0e6),
         segments: 1,
         depth_fade: 6.0,
         foam_width: 0.6,
@@ -476,53 +698,65 @@ pub fn water_underwater_shafts_scene() -> RenderScene {
     scene
 }
 
-/// A tuft of five grass blades, 0.5 m tall: each a tapered quad drawn on
-/// both sides, darker at the root, its normals leaning up so the tuft
-/// shades like the meadow under it.
+/// A clump of fourteen grass blades up to 0.55 m tall, their roots spread
+/// over a disc 0.2 m in radius (so neighbouring clumps close into turf):
+/// each a thin strip of two quads and a tip, curving outwards as it rises,
+/// drawn on both sides, dark at the root and lighter to the tip, one in
+/// three a drier tone, its normals leaning up so the clump shades like the
+/// meadow under it.
 pub fn grass_tuft() -> MeshData {
+    const BLADES: u32 = 14;
     let mut m = MeshData::default();
-    for b in 0..5u32 {
+    for b in 0..BLADES {
         let yaw = b as f32 * 2.4 + 0.3;
         let (s, c) = yaw.sin_cos();
-        let lean = Vec3::new(c, 0.0, s) * (0.08 + 0.03 * b as f32);
-        let side = Vec3::new(-s, 0.0, c) * 0.035;
-        let root = Vec3::new(c, 0.0, s) * 0.04;
-        let tall = 0.38 + 0.05 * (b % 3) as f32;
-        let tip = root + lean + Vec3::Y * tall;
-        let n = (Vec3::Y * 2.0 + Vec3::new(c, 0.0, s)).normalize();
+        let out = Vec3::new(c, 0.0, s);
+        let side = Vec3::new(-s, 0.0, c);
+        let root = out * (0.2 * ((b as f32 + 0.5) / BLADES as f32).sqrt());
+        let tall = 0.34 + 0.07 * (b % 4) as f32;
+        let reach = 0.1 + 0.035 * (b % 3) as f32;
+        let tone = [[0.86, 1.0, 0.7], [0.78, 0.92, 0.62], [1.0, 0.96, 0.52]][(b % 3) as usize];
+        let n = (Vec3::Y * 2.0 + out).normalize();
+        // The blade's middle line and its half width at `t` of its height.
+        let at = |t: f32| root + out * (reach * t * t) + Vec3::Y * (tall * t);
+        let half = |t: f32| side * (0.028 * (1.0 - 0.75 * t));
         for face in [1.0f32, -1.0] {
-            let at = m.vertices.len() as u32;
+            let first = m.vertices.len() as u32;
             for (p, u, v, shade) in [
-                (root - side, 0.0, 0.0, 0.45),
-                (root + side, 1.0, 0.0, 0.45),
-                (tip, 0.5, 1.0, 1.0),
+                (at(0.0) - half(0.0), 0.0, 0.0, 0.4),
+                (at(0.0) + half(0.0), 1.0, 0.0, 0.4),
+                (at(0.55) - half(0.55), 0.0, 0.55, 0.78),
+                (at(0.55) + half(0.55), 1.0, 0.55, 0.78),
+                (at(1.0), 0.5, 1.0, 1.0),
             ] {
                 m.vertices.push(Vertex {
                     position: p.into(),
                     normal: (n * face.max(0.6)).normalize().into(),
                     uv: [u, v],
-                    color: [shade, shade, shade, 1.0],
+                    color: [shade * tone[0], shade * tone[1], shade * tone[2], 1.0],
                     tangent: [0.0; 4],
                 });
             }
-            if face > 0.0 {
-                m.indices.extend([at, at + 2, at + 1]);
-            } else {
-                m.indices.extend([at, at + 1, at + 2]);
+            for [i, j, k] in [[0, 2, 1], [1, 2, 3], [2, 4, 3]] {
+                if face > 0.0 {
+                    m.indices.extend([first + i, first + j, first + k]);
+                } else {
+                    m.indices.extend([first + i, first + k, first + j]);
+                }
             }
         }
     }
     m
 }
 
-/// The near view with grass on the meadow (the grass layer, 4 tufts a
+/// The near view with grass on the meadow (the grass layer, 6 clumps a
 /// square metre within 60 m, fading out over its last third), placed and
 /// drawn by the renderer (`RenderScene::scatters`).
 pub fn grass_scene() -> RenderScene {
     let mut scene = island_view("near");
     let tuft = scene.add_mesh(grass_tuft());
     let grass = scene.add_material(Material {
-        base_color: [0.2, 0.33, 0.08, 1.0],
+        base_color: [0.24, 0.42, 0.1, 1.0],
         roughness: 0.85,
         ..Default::default()
     });
@@ -544,7 +778,7 @@ pub fn grass_scene() -> RenderScene {
 pub fn grass_scatter() -> TerrainScatter {
     TerrainScatter {
         layer: 0,
-        density: 4.0,
+        density: 6.0,
         distance: 60.0,
         fade: 0.35,
         scale: [0.8, 1.4],
@@ -580,28 +814,32 @@ pub fn with_lod(mut scene: RenderScene, lod: TerrainLod) -> RenderScene {
 
 /// `scene` with every terrain's layer textures moved into two texture
 /// arrays (`Terrain::layer_arrays`): the albedos as layers of one, the
-/// normal maps of another, each layer naming its layers. The same images,
-/// so the same frame within mip filtering (an array's mips are box-filtered
-/// on the CPU, a texture's on the GPU).
+/// normal maps of another, each layer naming its layers. The same images
+/// (an array's layers share one size, so each at its array's smallest),
+/// so the same frame within mip filtering (an array's mips are
+/// box-filtered on the CPU, a texture's on the GPU).
 pub fn with_layer_arrays(mut scene: RenderScene) -> RenderScene {
-    use og_render::{TerrainLayerArrays, TextureArrayData, TextureSource};
+    use og_render::{TerrainLayerArrays, TextureArrayData, TextureData, TextureSource};
     for ti in 0..scene.world.terrains.len() {
         let layers = scene.world.terrains[ti].layers.clone();
         let mut albedos = Vec::new();
         let mut normals = Vec::new();
         let mut picked = Vec::new();
         for l in &layers {
-            let take = |h: Option<og_render::TextureHandle>, list: &mut Vec<TextureSource>| {
+            let take = |h: Option<og_render::TextureHandle>, list: &mut Vec<TextureData>| {
                 h.map(|h| {
-                    list.push(TextureSource::Rgba(
-                        scene.texture(h).expect("a texture").clone(),
-                    ));
+                    list.push(scene.texture(h).expect("a texture").clone());
                     list.len() as u32 - 1
                 })
             };
             picked.push((take(l.albedo, &mut albedos), take(l.normal, &mut normals)));
         }
-        let mut array = |list: Vec<TextureSource>| {
+        let mut array = |list: Vec<TextureData>| {
+            let size = list.iter().map(|t| t.width.min(t.height)).min();
+            let list: Vec<TextureSource> = list
+                .into_iter()
+                .map(|t| TextureSource::Rgba(shrunk(t, size.unwrap_or(0))))
+                .collect();
             (!list.is_empty()).then(|| {
                 scene
                     .add_texture_array(TextureArrayData { layers: list })
@@ -620,6 +858,22 @@ pub fn with_layer_arrays(mut scene: RenderScene) -> RenderScene {
         }
     }
     scene
+}
+
+/// `t` as a square of `size` texels (itself when it is one already).
+fn shrunk(t: og_render::TextureData, size: u32) -> og_render::TextureData {
+    if t.width == size && t.height == size {
+        return t;
+    }
+    let from =
+        image::RgbaImage::from_raw(t.width, t.height, t.rgba.to_vec()).expect("a texture's texels");
+    let to = image::imageops::resize(&from, size, size, image::imageops::FilterType::Triangle);
+    og_render::TextureData {
+        width: size,
+        height: size,
+        rgba: to.into_raw(),
+        ..t
+    }
 }
 
 /// The pit cut out of the island's meadow in `terrain-holes`: its world

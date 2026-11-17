@@ -364,6 +364,14 @@ pub const MINI_GAME_SCENES: &[&str] = &[
     "mini-game-ui-shapes",
 ];
 
+/// Draws `g` as a game does, with the tier's antialiasing settled over
+/// eight frames: an outdoor set's thin edges (pine needles, blades of
+/// grass) alias without it, and the clouds' march is dithered for it.
+fn as_played(g: &mut GfxScene) {
+    g.desc.antialias = Antialias::Tier;
+    g.frames = g.frames.max(8);
+}
+
 /// Builds the scene called `name`.
 pub fn build(name: &str) -> Result<GfxScene, String> {
     if let Some(scene) = name.strip_prefix("mini-game-") {
@@ -1453,14 +1461,17 @@ pub fn build(name: &str) -> Result<GfxScene, String> {
         // planar reflection, shadows and underwater view.
         "terrain-near" => |g, _| {
             g.scene = crate::terrain_scenes::island_view("near");
+            as_played(g);
             Ok(())
         },
         "terrain-mid" => |g, _| {
             g.scene = crate::terrain_scenes::island_view("mid");
+            as_played(g);
             Ok(())
         },
         "terrain-far" => |g, _| {
             g.scene = crate::terrain_scenes::island_view("far");
+            as_played(g);
             Ok(())
         },
         "water-planar" => |g, _| {
@@ -1481,6 +1492,7 @@ pub fn build(name: &str) -> Result<GfxScene, String> {
         },
         "terrain-grass" => |g, _| {
             g.scene = crate::terrain_scenes::grass_scene();
+            as_played(g);
             Ok(())
         },
         // Footprints in lying snow: an og.GrassPusher stepping a tick at
@@ -1612,6 +1624,7 @@ pub fn build(name: &str) -> Result<GfxScene, String> {
                 ..og_render::Wind::default()
             });
             g.scene.frame.tick = 90;
+            as_played(g);
             Ok(())
         },
         // R6: a 16 × 12 m pit cut out of the island's meadow over an
@@ -1704,6 +1717,7 @@ pub fn build(name: &str) -> Result<GfxScene, String> {
         // the boulders' and the blades' own shadows on them.
         "grass-near" => |g, _| {
             g.scene = crate::grass_scenes::grass_scene("near");
+            as_played(g);
             Ok(())
         },
         // 12 m up across 100 m of meadow: thinner, wider blades past 30 m,
@@ -1711,6 +1725,7 @@ pub fn build(name: &str) -> Result<GfxScene, String> {
         // levels of detail change.
         "grass-mid" => |g, _| {
             g.scene = crate::grass_scenes::grass_scene("mid");
+            as_played(g);
             Ok(())
         },
         // 40 m up towards the mountains: the meadow reads as grass to the
@@ -1718,18 +1733,21 @@ pub fn build(name: &str) -> Result<GfxScene, String> {
         // snow above.
         "grass-far" => |g, _| {
             g.scene = crate::grass_scenes::grass_scene("far");
+            as_played(g);
             Ok(())
         },
         // At eye height into a low sun: the blades glow yellow-green where
         // it shines through them, their edges brightest.
         "grass-backlit" => |g, _| {
             g.scene = crate::grass_scenes::grass_scene("backlit");
+            as_played(g);
             Ok(())
         },
         // The near view in a gusting wind (+x, tick 90): every blade bent
         // downwind, further in the gust patches.
         "grass-wind" => |g, _| {
             g.scene = crate::grass_scenes::grass_wind_scene(90);
+            as_played(g);
             Ok(())
         },
         // The bloom scene through a zoom blur towards a point left of and

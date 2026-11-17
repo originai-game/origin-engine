@@ -1452,7 +1452,12 @@ Scenes: `terrain-near`, `terrain-mid`, `terrain-far` (the 2 km island of
 `og_tests::terrain_scenes`, clipmap, four layers, shadows, fog, from 2 m,
 150 m and 700 m) and `terrain-grass-wind` (the meadow in a gusting wind at
 tick 90; the boulders, plain instances, stand still); tests in
-`og-tests/tests/terrain.rs`. `plant-grown` (og-tests-cooked's
+`og-tests/tests/terrain.rs`. The island is a place (`meadow_set`, the
+kit's models): rock boulders, a ruined gate, a watchtower and stands of
+pines on a meadow of the kit's mossy grass under mountains of its rock,
+on a fair afternoon under the physical sky with cumulus and their shadows
+(`fair_afternoon`), the sea out to the horizon. The lake scenes keep the bare island (`island_scene`)
+until the water scenes are dressed. `plant-grown` (og-tests-cooked's
 `plant_scenes`): an oak, a pine, a flowering shrub and daisies the cook
 grew from `plant` blocks, each drawn as its wood and its leaves;
 `plant-scatter`: a 64 m hill with the oak, the pine and the shrub

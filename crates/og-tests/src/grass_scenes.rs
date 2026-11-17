@@ -71,6 +71,8 @@ pub fn grass_scene(view: &str) -> RenderScene {
                 sun_direction: sun,
                 sun_color: warm,
             };
+            // The clouds where their drift leaves the sun clear.
+            scene.frame.tick = 30_000;
             // Towards the sun, a little to its right so its disc is in frame.
             scene.frame.camera = camera_at(
                 Vec3::new(x, ground(x, z) + 1.2, z),
