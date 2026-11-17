@@ -305,6 +305,7 @@ impl PhysicsSystem {
                 lazy,
                 &ids,
                 &mut ids.kept(),
+                &ctx.parent_frames()?,
             )?;
             let mut shared = lock(&shared);
             shared.recorded = Some((settings, scene));
@@ -709,6 +710,7 @@ impl PhysicsSystem {
             &self.ids,
             // Outside a system nothing kept can be relied on (`gather::Kept`).
             &mut gather::Kept::default(),
+            &world.parent_frames()?,
         )?;
         let inner = Arc::new(QueryInner::build_outside(
             settings.profile,

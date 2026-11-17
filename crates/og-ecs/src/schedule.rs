@@ -343,6 +343,17 @@ impl<'w> SystemContext<'w> {
         self.world.time()
     }
 
+    /// Posed parent frames supplied by engine modules, like the clock an
+    /// engine service rather than a component view held by this system.
+    pub fn parent_frames(&self) -> Result<og_core::IdMap<u64, og_core::glam::Mat4>> {
+        self.world.parent_frames()
+    }
+
+    /// A simulation matrix including the module-supplied parent frames.
+    pub fn matrix_world(&self, entity: Entity) -> Result<og_core::glam::Mat4> {
+        self.world.matrix_world(entity)
+    }
+
     /// The component types `e` has (archetype membership, not component
     /// data, so no declaration is needed). `DeadHandle` for a dead entity.
     pub fn components_of(&self, e: Entity) -> Result<Vec<SchemaId>> {

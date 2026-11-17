@@ -39,6 +39,10 @@ pub trait PaletteSink {
     /// vertex is drawn at `matrixWorld(entity) · Σ wᵢ · joints[jᵢ] · v`; the
     /// skinned mesh node's own transform is not applied (glTF).
     fn joint_palette(&mut self, entity: Entity, skin: u32, joints: &[Mat4]);
+    /// Posed model matrices in Animation.nodes order, before inverse bind.
+    fn node_pose(&mut self, entity: Entity, nodes: &[Mat4]) {
+        let _ = (entity, nodes);
+    }
     /// The blendshape weights of `entity`'s mesh `mesh` (glTF mesh index),
     /// in target order; entities without `og.Blendshapes` report none.
     fn morph_weights(&mut self, entity: Entity, mesh: u32, weights: &[f32; BLENDSHAPES]) {
@@ -55,6 +59,8 @@ pub type JointPalette = Vec<Mat4>;
 pub struct AnimOutput {
     pub skin: u32,
     pub palette: JointPalette,
+    /// Posed model matrices in node order, shared by skinning and sockets.
+    pub nodes: Vec<Mat4>,
     /// The mesh the weights are for ([`NONE`] without `og.Blendshapes`).
     pub mesh: u32,
     pub weights: [f32; BLENDSHAPES],
@@ -377,13 +383,15 @@ impl Shared {
             if let Some(skel) = self.skeletons.get(&st.skeleton)
                 && skel.nodes.len() == st.pose.len()
             {
+                let nodes = skel.model_matrices(&st.pose);
                 let mut palette = Vec::new();
-                skel.palette(st.skin, &st.pose, &mut palette);
+                skel.palette_from_model(st.skin, &nodes, &mut palette);
                 self.outputs.insert(
                     e,
                     AnimOutput {
                         skin: st.skin,
                         palette,
+                        nodes,
                         mesh: st.mesh,
                         weights: st.weights,
                         drawn: skel.drawn(&st.visible),
@@ -497,6 +505,9 @@ pub struct StepDefault {
 /// smooth, as [`install`]).
 pub fn install_with(world: &mut World, step: Option<StepDefault>) -> Result<AnimationSystem> {
     world.register::<Transform>()?;
+    world.register::<og_ecs::transform::Parent>()?;
+    world.register::<og_ecs::transform::MatrixWorld>()?;
+    world.register::<BoneAttachment>()?;
     world.register::<Skeleton>()?;
     world.register::<AnimationPlayer>()?;
     world.register::<AnimationGraph>()?;
@@ -549,10 +560,104 @@ pub fn install_with(world: &mut World, step: Option<StepDefault>) -> Result<Anim
     let s = shared.clone();
     world.add_system(desc, move |ctx| run(ctx, &s, step))?;
     world.add_state_block(SYSTEM_NAME, Box::new(AnimState(shared.clone())))?;
-    Ok(AnimationSystem { shared })
+    let system = AnimationSystem { shared };
+    let frames = system.clone();
+    world.set_parent_frames(move |world| frames.attachment_frames(world));
+    use og_ecs::transform::{MatrixWorld, Parent};
+    world.add_system(
+        SystemDesc::new("og.boneAttachments")
+            .read::<Transform>()
+            .read::<Parent>()
+            .write::<MatrixWorld>()
+            .query(QueryDesc::new().read::<Transform>().read::<Parent>())
+            .query(QueryDesc::new().read::<Transform>().write::<MatrixWorld>()),
+        |ctx| {
+            let frames = ctx.parent_frames()?;
+            let parent = |e| {
+                ctx.get::<Parent>(e)
+                    .ok()
+                    .map(|p| Entity::from_bits(p.entity))
+            };
+            let mut entities = BTreeSet::new();
+            if !frames.is_empty() {
+                for a in ctx.query(0)? {
+                    for &e in a.entities() {
+                        if og_ecs::transform::under_parent_frame(e, &frames, parent) {
+                            entities.insert(e);
+                        }
+                    }
+                }
+            }
+            for a in ctx.query(1)? {
+                entities.extend(a.entities().iter().copied());
+            }
+            for e in entities {
+                let matrix = og_ecs::transform::world_matrix(
+                    e,
+                    &frames,
+                    |p| {
+                        ctx.get::<Parent>(p)
+                            .ok()
+                            .map(|p| Entity::from_bits(p.entity))
+                    },
+                    |p| ctx.get::<Transform>(p).ok(),
+                );
+                ctx.insert(e, MatrixWorld { matrix })?;
+            }
+            Ok(())
+        },
+    )?;
+    Ok(system)
 }
 
 impl AnimationSystem {
+    /// Model-space node frames for bone children, from the final pose
+    /// after IK, or the asset's rest pose before its first tick. Matrices
+    /// are computed once per skeleton with attachments, not per child.
+    pub fn attachment_frames(&self, world: &World) -> Result<IdMap<u64, Mat4>> {
+        let sh = lock(&self.shared);
+        let mut models = IdMap::new();
+        let mut frames = IdMap::new();
+        for a in world.query(&QueryDesc::new().read::<BoneAttachment>())? {
+            for &e in a.entities() {
+                let attachment = world.get::<BoneAttachment>(e)?;
+                let parent = world.get::<og_ecs::transform::Parent>(e).map_err(|_| {
+                    invalid("og.BoneAttachment requires og.Parent naming a skeleton".into())
+                })?;
+                let parent = Entity::from_bits(parent.entity);
+                let skeleton = world.get::<Skeleton>(parent).map_err(|_| {
+                    invalid("og.BoneAttachment's parent must have og.Skeleton".into())
+                })?;
+                let asset = sh.skeletons.get(&skeleton.asset).ok_or_else(|| {
+                    invalid("og.BoneAttachment's skeleton asset is not loaded".into())
+                })?;
+                let nodes = models.entry(parent.to_bits()).or_insert_with(|| {
+                    match sh.states.get(&parent.to_bits()) {
+                        Some(st)
+                            if st.skeleton == skeleton.asset
+                                && st.pose.len() == asset.nodes.len() =>
+                        {
+                            asset.model_matrices(&st.pose)
+                        }
+                        _ => asset.model_matrices(&asset.rest_pose()),
+                    }
+                });
+                let matrix = nodes
+                    .get(attachment.node as usize)
+                    .copied()
+                    .ok_or_else(|| {
+                        invalid(format!(
+                            "og.BoneAttachment.node {} is outside Animation.nodes ({} nodes)",
+                            attachment.node,
+                            nodes.len()
+                        ))
+                    })?;
+                frames.insert(e.to_bits(), matrix);
+            }
+        }
+        Ok(frames)
+    }
+
     /// Registers (or replaces) skeleton asset `handle` (not 0).
     pub fn add_skeleton(&self, handle: u64, asset: SkeletonAsset) -> Result<()> {
         if handle == 0 {
@@ -655,6 +760,7 @@ impl AnimationSystem {
         for (&e, out) in &sh.outputs {
             let e = Entity::from_bits(e);
             sink.joint_palette(e, out.skin, &out.palette);
+            sink.node_pose(e, &out.nodes);
             if out.mesh != NONE {
                 sink.morph_weights(e, out.mesh, &out.weights);
             }
@@ -1053,14 +1159,15 @@ fn run(
     // The joint palettes, in lanes; then everything is written back in
     // entity order.
     let palettes = og_lanes::map(og_lanes::Site::Anim, &work, GRAIN, |w| {
+        let nodes = w.asset.model_matrices(&w.pose.nodes);
         let mut palette = Vec::new();
         w.asset
-            .palette(w.skeleton.skin, &w.pose.nodes, &mut palette);
-        palette
+            .palette_from_model(w.skeleton.skin, &nodes, &mut palette);
+        (palette, nodes)
     });
     let mut states = IdMap::new();
     let mut outputs = IdMap::new();
-    for (mut w, palette) in work.into_iter().zip(palettes) {
+    for (mut w, (palette, nodes)) in work.into_iter().zip(palettes) {
         w.skeleton.joint_count = palette.len() as u32;
         ctx.set(w.entity, w.skeleton)?;
         if let Some(p) = w.player {
@@ -1083,6 +1190,7 @@ fn run(
             AnimOutput {
                 skin: w.state.skin,
                 palette,
+                nodes,
                 mesh: w.state.mesh,
                 weights: w.state.weights,
                 drawn: w.asset.drawn(&w.state.visible),

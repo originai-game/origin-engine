@@ -12,7 +12,7 @@ use crate::schema::{
     Garment, Joint, Parent, PlatformerController, Ragdoll, RigidBody, Rope, SoftBody, Transform,
     Vehicle, VehicleWheel, Velocity, WaterLine, WaterSurface,
 };
-use og_core::glam::{Quat, Vec3};
+use og_core::glam::{Mat4, Quat, Vec3};
 use og_core::{Layout, Reflect, Result};
 use og_ecs::{
     ArchetypeView, Entity, FieldRef, QueryDesc, QueryIter, SchemaId, SystemContext, World,
@@ -46,6 +46,9 @@ pub(crate) struct Body {
     /// their own) whose `og.Parent` chain reaches this body, in entity-bits
     /// order, each placed relative to the body.
     pub children: Vec<Child>,
+    /// Bone-parent world frame, for converting a moved kinematic body
+    /// back to its authored local offset instead of overwriting it.
+    pub parent_frame: Option<Mat4>,
 }
 
 /// A collider on a child entity, part of its ancestor body: its pose
@@ -170,10 +173,22 @@ struct Chains<'a> {
     parents: ByEntity<u64>,
     get: GetBytes<'a>,
     ids: &'a Ids,
+    frames: &'a og_core::IdMap<u64, Mat4>,
 }
 
 impl Chains<'_> {
     fn place(&self, e: Entity, position: Vec3, quaternion: Quat) -> (Vec3, Quat) {
+        let parent = |c| self.parents.get(c).map(Entity::from_bits);
+        if og_ecs::transform::under_parent_frame(e, self.frames, parent) {
+            let m = og_ecs::transform::world_matrix(e, self.frames, parent, |p| {
+                self.ids
+                    .transform_layout
+                    .decode::<Transform>(&(self.get)(p, self.ids.transform).ok()?)
+                    .ok()
+            });
+            let (_, q, p) = m.to_scale_rotation_translation();
+            return (p, q);
+        }
         world_pose(
             e,
             (position, quaternion),
@@ -218,7 +233,33 @@ fn ancestor_body(
     bodies: &ByEntity<usize>,
     get: GetBytes<'_>,
     ids: &Ids,
+    frames: &og_core::IdMap<u64, Mat4>,
 ) -> Option<(usize, (Vec3, Quat, Vec3))> {
+    if og_ecs::transform::under_parent_frame(e, frames, |c| parents.get(c).map(Entity::from_bits)) {
+        let mut m = Mat4::from_scale_rotation_translation(own.2, own.1, own.0);
+        let mut at = e;
+        for _ in 0..256 {
+            if let Some(frame) = frames.get(&at.to_bits()) {
+                m = *frame * m;
+            }
+            let parent = Entity::from_bits(parents.get(at)?);
+            if parent == e {
+                return None;
+            }
+            if let Some(i) = bodies.get(parent) {
+                let (s, r, p) = m.to_scale_rotation_translation();
+                return Some((i, (p, r, s)));
+            }
+            if let Some(t) = get(parent, ids.transform)
+                .ok()
+                .and_then(|b| ids.transform_layout.decode::<Transform>(&b).ok())
+            {
+                m = t.matrix() * m;
+            }
+            at = parent;
+        }
+        return None;
+    }
     let (mut p, mut r, mut s) = own;
     let mut at = e;
     for _ in 0..256 {
@@ -252,6 +293,7 @@ pub(crate) fn gather<'w>(
     lazy: LazyIds,
     ids: &Ids,
     kept: &mut Kept,
+    frames: &og_core::IdMap<u64, Mat4>,
 ) -> Result<Scene> {
     let mut colliders = ByEntity::new();
     for (at, a) in q(Q_BODY_COLLIDERS)?.enumerate() {
@@ -324,6 +366,7 @@ pub(crate) fn gather<'w>(
                 },
                 control,
                 children: Vec::new(),
+                parent_frame: None,
             });
         }
     }
@@ -359,6 +402,7 @@ pub(crate) fn gather<'w>(
                     velocity: None,
                     control: Some(control[row]),
                     children: Vec::new(),
+                    parent_frame: None,
                 });
             }
         }
@@ -379,6 +423,32 @@ pub(crate) fn gather<'w>(
     // The bodies a child collider can join: rigid bodies a controller
     // does not move (a controller moves its own shape alone).
     let mut joinable = ByEntity::new();
+    let parent_of = |c| parents.get(c).map(Entity::from_bits);
+    let transform_of = |p| {
+        get(p, ids.transform)
+            .ok()
+            .and_then(|b| ids.transform_layout.decode::<Transform>(&b).ok())
+    };
+    for b in &mut scene.bodies {
+        if og_ecs::transform::under_parent_frame(b.entity, frames, parent_of) {
+            if b.body.kind == crate::BODY_DYNAMIC {
+                return Err(og_core::Error::new(
+                    og_core::ErrorKind::Invalid,
+                    "a bone-attached transform cannot have a dynamic og.RigidBody; use kinematic",
+                ));
+            }
+            let mut prefix = parent_of(b.entity)
+                .map(|p| og_ecs::transform::world_matrix(p, frames, parent_of, transform_of))
+                .unwrap_or(Mat4::IDENTITY);
+            if let Some(frame) = frames.get(&b.entity.to_bits()) {
+                prefix *= *frame;
+            }
+            let m =
+                prefix * Mat4::from_scale_rotation_translation(b.scale, b.quaternion, b.position);
+            (b.scale, b.quaternion, b.position) = m.to_scale_rotation_translation();
+            b.parent_frame = Some(prefix);
+        }
+    }
     if any_parent {
         for (i, b) in scene.bodies.iter().enumerate() {
             if b.control.is_none() {
@@ -396,7 +466,8 @@ pub(crate) fn gather<'w>(
         for (row, (e, collider)) in a.entities().iter().zip(rows.iter().copied()).enumerate() {
             let own = (position[row], quaternion[row], scale[row]);
             if any_parent
-                && let Some((i, (p, r, s))) = ancestor_body(*e, own, &parents, &joinable, get, ids)
+                && let Some((i, (p, r, s))) =
+                    ancestor_body(*e, own, &parents, &joinable, get, ids, frames)
             {
                 let body = &mut scene.bodies[i];
                 body.children.push(Child {
@@ -409,6 +480,14 @@ pub(crate) fn gather<'w>(
                 joined = true;
                 continue;
             }
+            let own = if og_ecs::transform::under_parent_frame(*e, frames, parent_of) {
+                let (s, r, p) =
+                    og_ecs::transform::world_matrix(*e, frames, parent_of, transform_of)
+                        .to_scale_rotation_translation();
+                (p, r, s)
+            } else {
+                own
+            };
             scene.statics.push(Static {
                 entity: *e,
                 position: own.0,
@@ -420,7 +499,7 @@ pub(crate) fn gather<'w>(
         let len = scene.statics.len() - first;
         scene.static_runs.push(StaticRun {
             len,
-            written: (len == a.len())
+            written: (len == a.len() && frames.is_empty())
                 .then(|| a.written(ids.transform).zip(a.written(ids.collider)))
                 .flatten(),
         });
@@ -484,7 +563,7 @@ pub(crate) fn gather<'w>(
                 .map_or((Vec3::ZERO, Quat::IDENTITY, Vec3::ONE), |t| {
                     (t.position, t.quaternion, t.scale)
                 });
-            if let Some((i, (p, _, _))) = ancestor_body(e, own, &parents, &cars, get, ids) {
+            if let Some((i, (p, _, _))) = ancestor_body(e, own, &parents, &cars, get, ids, frames) {
                 let car = scene.vehicles[i].0;
                 found.push((
                     car.to_bits(),
@@ -504,7 +583,12 @@ pub(crate) fn gather<'w>(
             list.truncate(MAX_WHEELS);
         }
     }
-    let chains = any_parent.then_some(Chains { parents, get, ids });
+    let chains = any_parent.then_some(Chains {
+        parents,
+        get,
+        ids,
+        frames,
+    });
     macro_rules! placed {
         ($index:expr, $rows:expr, $list:expr, $make:expr) => {
             for a in q($index)? {
@@ -568,6 +652,7 @@ pub(crate) fn softs<'w>(
     get: GetBytes<'_>,
     soft: SchemaId,
     ids: &Ids,
+    frames: &og_core::IdMap<u64, Mat4>,
 ) -> Result<Vec<(Entity, Vec3, Quat, SoftBody)>> {
     let desc = QueryDesc {
         read: vec![TRANSFORM.to_string(), SoftBody::NAME.to_string()],
@@ -588,12 +673,19 @@ pub(crate) fn softs<'w>(
         let quaternion = a.read::<Quat>(ids.t_quaternion)?;
         for (row, e) in a.entities().iter().enumerate() {
             let body = ids.soft_layout.decode::<SoftBody>(&get(*e, soft)?)?;
-            let (p, q) = world_pose(
-                *e,
-                (position[row], quaternion[row]),
-                parent_of,
-                transform_of,
-            );
+            let (p, q) = if og_ecs::transform::under_parent_frame(*e, frames, parent_of) {
+                let (_, q, p) =
+                    og_ecs::transform::world_matrix(*e, frames, parent_of, transform_of)
+                        .to_scale_rotation_translation();
+                (p, q)
+            } else {
+                world_pose(
+                    *e,
+                    (position[row], quaternion[row]),
+                    parent_of,
+                    transform_of,
+                )
+            };
             out.push((*e, p, q, body));
         }
     }
@@ -658,6 +750,19 @@ pub(crate) fn write_back(
             for row in 0..a.len() {
                 debug_assert_eq!(scene.bodies[k].entity, a.entities()[row]);
                 if let Some((p, q, v)) = out.moved[k] {
+                    let (p, q) = match scene.bodies[k].parent_frame {
+                        Some(frame) => {
+                            let local = frame.inverse()
+                                * Mat4::from_scale_rotation_translation(
+                                    scene.bodies[k].scale,
+                                    q,
+                                    p,
+                                );
+                            let (_, q, p) = local.to_scale_rotation_translation();
+                            (p, q)
+                        }
+                        None => (p, q),
+                    };
                     position[row] = p;
                     quaternion[row] = q;
                     if let Some(v) = v {

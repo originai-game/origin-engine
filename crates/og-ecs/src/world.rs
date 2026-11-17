@@ -170,7 +170,14 @@ pub struct World {
     pub(crate) resume: Option<usize>,
     /// Change detection, hooks and state machines (`reactive`).
     pub(crate) reactive: crate::reactive::Reactive,
+    /// Derived frames inserted between a parent and its child's authored
+    /// transform (animation sockets). The owning module saves its pose;
+    /// this reader is installation, not snapshot state.
+    pub(crate) parent_frames: Option<Box<ParentFrameSource>>,
 }
+
+type ParentFrameSource =
+    dyn Fn(&World) -> Result<og_core::IdMap<u64, og_core::glam::Mat4>> + Send + Sync;
 
 fn two_mut<T>(v: &mut [T], a: usize, b: usize) -> (&mut T, &mut T) {
     assert_ne!(a, b);
@@ -211,6 +218,7 @@ impl World {
             clock: None,
             resume: None,
             reactive: Default::default(),
+            parent_frames: None,
         };
         world.archetype_for(Vec::new());
         world.time_id = world.register::<Time>()?;

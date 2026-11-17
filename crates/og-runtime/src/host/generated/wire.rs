@@ -34433,6 +34433,32 @@ pub mod record {
         }
     }
 
+    /// `BoneAttachment`: packages/knowledge/wiki/anim.md.
+    #[derive(Clone, Debug, PartialEq)]
+    pub struct BoneAttachment {
+        pub node: u32,
+    }
+
+    impl Default for BoneAttachment {
+        fn default() -> Self {
+            Self {
+                node: Default::default(),
+            }
+        }
+    }
+
+    impl FromJson for BoneAttachment {
+        fn from_json(v: &Value) -> Result<Self, String> {
+            Self::from_json_over(v, Self::default())
+        }
+        fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
+            let o = object(v)?;
+            Ok(Self {
+                node: field(o, "node", d.node)?,
+            })
+        }
+    }
+
     /// `CrowdAnimation`: packages/knowledge/wiki/anim.md.
     #[derive(Clone, Debug, PartialEq)]
     pub struct CrowdAnimation {

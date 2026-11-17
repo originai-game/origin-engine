@@ -139,18 +139,16 @@ pub(crate) fn posed_model(
     let Some(mut out) = anim.output(Entity::from_bits(entity)) else {
         return false;
     };
+    let source = fx.pose_sources.get(&entity).and_then(|&h| anim.skeleton(h));
     // og.motion's generated pose, when it has one: between ticks, blended
     // from the tick before's like og-anim's.
     let matrices = match motion.drawn(entity, alpha) {
         Some(m) if m.len() == out.palette.len() => m,
-        _ => {
-            crate::present::interpolate::pose(interp, entity, alpha, &out.palette, &mut out.weights)
-        }
+        _ => crate::present::interpolate::pose(interp, entity, alpha, &mut out, source.as_deref()),
     };
     let Some(info) = fx.models.get(&asset).cloned() else {
         return false;
     };
-    let source = fx.pose_sources.get(&entity).and_then(|&h| anim.skeleton(h));
     let reason = match fx.skins.get(&info.id) {
         None => Some("model skin data is not loaded; load its animation asset".to_string()),
         Some(model) if !model.streams.is_empty() => {

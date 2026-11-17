@@ -6,7 +6,8 @@
 use crate::support;
 
 use og_anim::*;
-use og_core::glam::{Mat4, Vec3};
+use og_core::glam::{Mat4, Quat, Vec3};
+use og_ecs::transform::Parent;
 use og_ecs::{Entity, World, WorldDesc};
 use support::*;
 
@@ -26,6 +27,103 @@ fn skel() -> Skeleton {
         asset: SKELETON,
         ..Skeleton::default()
     }
+}
+
+#[test]
+fn a_lantern_follows_the_posed_hand_and_a_non_joint_socket() {
+    let (mut w, anim) = world();
+    w.register::<Parent>().unwrap();
+    w.register::<BoneAttachment>().unwrap();
+    let mut asset = skeleton();
+    asset.nodes.push(SkeletonNode {
+        name: "socket".into(),
+        parent: 12,
+        rest: Trs::new(Vec3::new(0.2, 0.1, -0.3), Quat::IDENTITY, Vec3::ONE),
+        mesh: NONE,
+    });
+    anim.add_skeleton(SKELETON, asset).unwrap();
+    anim.add_clip(
+        100,
+        clip(
+            "grip",
+            1.0,
+            &[],
+            vec![(
+                12,
+                "hand.L",
+                ChannelPath::Translation,
+                3,
+                Box::new(|_| vec![0.4, 0.2, -0.1]),
+            )],
+        ),
+    )
+    .unwrap();
+    let rig = w
+        .spawn((
+            Transform {
+                position: Vec3::new(4.0, 5.0, 6.0),
+                quaternion: og_core::math::quat_from_axis_angle(
+                    Vec3::Z,
+                    std::f32::consts::FRAC_PI_2,
+                ),
+                scale: Vec3::new(2.0, 3.0, 4.0),
+            },
+            skel(),
+            AnimationPlayer::new(100),
+        ))
+        .unwrap();
+    let offset = Transform::at(Vec3::new(0.1, -0.2, 0.3));
+    let lantern = w
+        .spawn((
+            offset,
+            Parent {
+                entity: rig.to_bits(),
+            },
+            BoneAttachment { node: 12 },
+        ))
+        .unwrap();
+    let socket = w
+        .spawn((
+            Transform::default(),
+            Parent {
+                entity: rig.to_bits(),
+            },
+            BoneAttachment { node: 13 },
+        ))
+        .unwrap();
+    let child = w
+        .spawn((
+            Transform::at(Vec3::new(0.2, 0.3, -0.4)),
+            Parent {
+                entity: lantern.to_bits(),
+            },
+        ))
+        .unwrap();
+    let place = |w: &World, e| w.matrix_world(e).unwrap().transform_point3(Vec3::ZERO);
+    // No tick yet: an attachment uses the loaded rig's rest frame.
+    assert!((place(&w, lantern) - Vec3::new(-0.2, 6.9, 7.2)).length() < 1e-4);
+    w.step().unwrap();
+    // Independent affine calculation: parent Rz(90) * scale(2,3,4),
+    // posed hand (0.95,1.8,-0.1), then the authored grip offset.
+    assert!(
+        (place(&w, lantern) - Vec3::new(-0.8, 7.1, 6.8)).length() < 1e-4,
+        "the lantern stayed at the skeleton root: {:?}",
+        place(&w, lantern)
+    );
+    assert!((place(&w, socket) - Vec3::new(-1.7, 7.3, 4.4)).length() < 1e-4);
+    assert!((place(&w, child) - Vec3::new(-1.7, 7.5, 5.2)).length() < 1e-4);
+    assert_eq!(
+        w.get::<og_ecs::transform::MatrixWorld>(child)
+            .unwrap()
+            .matrix,
+        w.matrix_world(child).unwrap()
+    );
+    assert_eq!(w.get::<Transform>(lantern).unwrap(), offset);
+    let saved = w.snapshot();
+    w.remove::<BoneAttachment>(lantern).unwrap();
+    assert!((place(&w, lantern) - Vec3::new(4.6, 5.2, 7.2)).length() < 1e-4);
+    w.restore(&saved).unwrap();
+    assert!((place(&w, lantern) - Vec3::new(-0.8, 7.1, 6.8)).length() < 1e-4);
 }
 
 #[derive(Default)]

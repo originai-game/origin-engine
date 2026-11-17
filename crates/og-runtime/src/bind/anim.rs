@@ -114,6 +114,114 @@ fn system(eng: &Engine) -> Result<AnimationSystem, String> {
         .ok_or_else(|| "this engine has no animation system".to_string())
 }
 
+/// Check cross-component links before an out-of-system component edit.
+/// Queued structural edits and direct column writes are checked again by
+/// og.boneAttachments after the game's systems, before physics.
+pub(crate) fn validate_attachment_edit(
+    eng: &Engine,
+    world: &og_ecs::World,
+    e: og_ecs::Entity,
+    component: &str,
+    bytes: &[u8],
+) -> Result<(), String> {
+    use og_core::Reflect;
+    use og_ecs::transform::Parent;
+    let err = |e: og_core::Error| e.reason().to_string();
+    let decode = |schema: og_core::Schema| og_core::Layout::of(&schema);
+    let validate_node = |skeleton: og_anim::Skeleton, node: u32| -> Result<(), String> {
+        let asset = system(eng)?
+            .skeleton(skeleton.asset)
+            .ok_or("og.BoneAttachment's skeleton asset is not loaded")?;
+        if node as usize >= asset.nodes.len() {
+            return Err(format!(
+                "og.BoneAttachment.node {node} is outside Animation.nodes ({} nodes)",
+                asset.nodes.len()
+            ));
+        }
+        Ok(())
+    };
+    if component == "og.BoneAttachment" || component == "og.Parent" {
+        let attachment = if component == "og.BoneAttachment" {
+            Some(
+                decode(og_anim::BoneAttachment::schema())
+                    .decode::<og_anim::BoneAttachment>(bytes)
+                    .map_err(err)?,
+            )
+        } else {
+            world.get::<og_anim::BoneAttachment>(e).ok()
+        };
+        if let Some(attachment) = attachment {
+            let parent = if component == "og.Parent" {
+                decode(Parent::schema())
+                    .decode::<Parent>(bytes)
+                    .map_err(err)?
+            } else {
+                world
+                    .get::<Parent>(e)
+                    .map_err(|_| "og.BoneAttachment requires og.Parent naming a skeleton")?
+            };
+            let skeleton = world
+                .get::<og_anim::Skeleton>(og_ecs::Entity::from_bits(parent.entity))
+                .map_err(|_| "og.BoneAttachment's parent must have og.Skeleton")?;
+            validate_node(skeleton, attachment.node)?;
+            if let Ok(id) = world.id_by_name("og.RigidBody")
+                && let Ok(body) = world.get_bytes(e, id)
+                && decode(og_physics::RigidBody::schema())
+                    .decode::<og_physics::RigidBody>(&body)
+                    .map_err(err)?
+                    .kind
+                    == og_physics::BODY_DYNAMIC
+            {
+                return Err(
+                    "a bone-attached transform cannot have a dynamic og.RigidBody; use kinematic"
+                        .into(),
+                );
+            }
+        }
+    } else if component == "og.Skeleton" {
+        let skeleton = decode(og_anim::Skeleton::schema())
+            .decode::<og_anim::Skeleton>(bytes)
+            .map_err(err)?;
+        for a in world
+            .query(&og_ecs::QueryDesc::new().read::<og_anim::BoneAttachment>())
+            .map_err(err)?
+        {
+            for &child in a.entities() {
+                if world
+                    .get::<Parent>(child)
+                    .is_ok_and(|p| p.entity == e.to_bits())
+                {
+                    validate_node(
+                        skeleton,
+                        world
+                            .get::<og_anim::BoneAttachment>(child)
+                            .map_err(err)?
+                            .node,
+                    )?;
+                }
+            }
+        }
+    } else if component == "og.RigidBody" {
+        let body = decode(og_physics::RigidBody::schema())
+            .decode::<og_physics::RigidBody>(bytes)
+            .map_err(err)?;
+        if body.kind == og_physics::BODY_DYNAMIC
+            && og_ecs::transform::under_parent_frame(e, &world.parent_frames().map_err(err)?, |c| {
+                world
+                    .get::<Parent>(c)
+                    .ok()
+                    .map(|p| og_ecs::Entity::from_bits(p.entity))
+            })
+        {
+            return Err(
+                "a bone-attached transform cannot have a dynamic og.RigidBody; use kinematic"
+                    .into(),
+            );
+        }
+    }
+    Ok(())
+}
+
 /// A clip as og.load.animation, og.anim.retarget and og.anim.mirror answer it.
 fn clip_info(h: u64, c: &ClipAsset) -> ClipInfo {
     ClipInfo {

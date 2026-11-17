@@ -378,6 +378,7 @@ fn render(eng: &Engine, alpha: Option<f32>) -> Result<bool, String> {
     let mut frame = og_render::FrameStats::default();
     let notes = {
         let world = eng.world()?;
+        world.parent_frames().map_err(err)?;
         let texel_paint = super::art::texel_paint(eng);
         let mut rs = eng.render.borrow_mut();
         rs.art.contract = super::art::contract(eng);

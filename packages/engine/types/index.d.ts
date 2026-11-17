@@ -18802,6 +18802,20 @@ export interface Skeleton {
 }
 
 /**
+ * An entity parented to an animated bone, as a child of a three.js Bone. Its og.Parent must name an entity with og.Skeleton. Its og.Transform is the offset in that bone's frame; the engine composes MatrixWorld as the parent's world matrix times the posed node's model matrix times that offset. Children use the normal parent chain. Dynamic rigid bodies cannot own an attached transform; use a kinematic body instead.
+ *
+ * The value of the `BoneAttachment` component (token `og.BoneAttachment`).
+ */
+export interface BoneAttachment {
+  /**
+   * A node index in Animation.nodes, not a skin.joints index used by FootLock, IkChain, LookAt, SpringBone and SpringCollider. Non-joint glTF socket helpers work here. Use Animation.nodes.indexOf(name); 0 selects the first node.
+   *
+   * @range 0..
+   */
+  node: number;
+}
+
+/**
  * Plays a clip on a model on the GPU, for crowds: on an entity with og.Model and no og.Skeleton (which og.anim would pose on the CPU), the model is drawn skinned by `clip` baked into joint palettes, shared by every entity playing that clip on that skeleton. Nothing reads the pose (no markers, root motion, IK, blendshapes or joint attachments) and a change of `clip` cuts without a fade.
  * The clip's time is `offset` plus `speed` times the world's time. Drawn only, never fed back; TAA takes its motion vectors from the frame before.
  * See `animation §7`.
@@ -36289,6 +36303,10 @@ export declare namespace og {
    * A posed skeleton: the entity is drawn skinned by the joint palette og.anim writes each tick. The pose itself (every node's local transform) is world state kept by the `og.anim` state block.
    */
   const Skeleton: ComponentType<{ readonly asset: FieldSpec<"SkeletonAsset">; readonly skin: FieldSpec<"u32">; readonly rootMotion: FieldSpec<"RootMotion">; readonly rootJoint: FieldSpec<"u32">; readonly jointCount: FieldSpec<"u32"> }, Skeleton>;
+  /**
+   * An entity parented to an animated bone, as a child of a three.js Bone. Its og.Parent must name an entity with og.Skeleton. Its og.Transform is the offset in that bone's frame; the engine composes MatrixWorld as the parent's world matrix times the posed node's model matrix times that offset. Children use the normal parent chain. Dynamic rigid bodies cannot own an attached transform; use a kinematic body instead.
+   */
+  const BoneAttachment: ComponentType<{ readonly node: FieldSpec<"u32"> }, BoneAttachment>;
   /**
    * Plays a clip on a model on the GPU, for crowds: on an entity with og.Model and no og.Skeleton (which og.anim would pose on the CPU), the model is drawn skinned by `clip` baked into joint palettes, shared by every entity playing that clip on that skeleton. Nothing reads the pose (no markers, root motion, IK, blendshapes or joint attachments) and a change of `clip` cuts without a fade.
    * The clip's time is `offset` plus `speed` times the world's time. Drawn only, never fed back; TAA takes its motion vectors from the frame before.

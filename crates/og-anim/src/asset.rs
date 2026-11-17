@@ -169,11 +169,16 @@ impl SkeletonAsset {
     /// matrix times its inverse bind matrix (glTF's joint matrix, in the
     /// skeleton's model space).
     pub fn palette(&self, skin: u32, pose: &[Trs], out: &mut Vec<Mat4>) {
+        self.palette_from_model(skin, &self.model_matrices(pose), out);
+    }
+
+    /// A palette from posed node matrices already computed for sockets or
+    /// presentation; inverse bind is applied only here, after posing.
+    pub fn palette_from_model(&self, skin: u32, model: &[Mat4], out: &mut Vec<Mat4>) {
         out.clear();
         let Some(skin) = self.skins.get(skin as usize) else {
             return;
         };
-        let model = self.model_matrices(pose);
         out.extend(
             skin.joints
                 .iter()

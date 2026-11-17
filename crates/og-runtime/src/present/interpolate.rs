@@ -64,6 +64,7 @@ pub(crate) struct InterpState {
 #[derive(Clone, Default)]
 struct Pose {
     palette: Vec<Mat4>,
+    nodes: Vec<Mat4>,
     weights: Vec<f32>,
 }
 
@@ -81,6 +82,13 @@ impl og_anim::PaletteSink for Poses<'_> {
         p.palette.extend_from_slice(joints);
         p.weights.clear();
         self.new.insert(bits, p);
+    }
+
+    fn node_pose(&mut self, entity: og_ecs::Entity, nodes: &[Mat4]) {
+        if let Some(p) = self.new.get_mut(&entity.to_bits()) {
+            p.nodes.clear();
+            p.nodes.extend_from_slice(nodes);
+        }
     }
 
     fn morph_weights(
@@ -184,15 +192,47 @@ pub(crate) fn pose(
     s: &InterpState,
     entity: u64,
     alpha: Option<f32>,
-    palette: &[Mat4],
-    weights: &mut [f32],
+    output: &mut og_anim::AnimOutput,
+    skeleton: Option<&og_anim::SkeletonAsset>,
 ) -> Vec<Mat4> {
-    let prev = alpha.zip(s.poses.get(&entity));
+    let palette = &output.palette;
+    // A loaded rig can exist before its first animation tick. The
+    // hierarchy's socket frame is the rest pose then, so skinning must
+    // blend from that same pose, not jump straight to the first output.
+    let rest = if alpha.is_some() && !s.poses.contains_key(&entity) {
+        skeleton.map(|skeleton| {
+            let nodes = skeleton.model_matrices(&skeleton.rest_pose());
+            let mut palette = Vec::new();
+            skeleton.palette_from_model(output.skin, &nodes, &mut palette);
+            Pose {
+                palette,
+                nodes,
+                weights: output.weights.to_vec(),
+            }
+        })
+    } else {
+        None
+    };
+    let prev = alpha.zip(s.poses.get(&entity).or(rest.as_ref()));
     let Some((a, p)) = prev.filter(|(_, p)| p.palette.len() == palette.len()) else {
         return palette.to_vec();
     };
-    for (w, &w0) in weights.iter_mut().zip(&p.weights) {
+    for (w, &w0) in output.weights.iter_mut().zip(&p.weights) {
         *w = w0 + (*w - w0) * a;
+    }
+    if let Some(skeleton) = skeleton.filter(|_| p.nodes.len() == output.nodes.len()) {
+        // Pose before inverse bind, just as sockets do. Interpolating
+        // palette matrices instead moves an off-origin bind frame along
+        // a different arc from an attached object on that same bone.
+        let nodes: Vec<_> = p
+            .nodes
+            .iter()
+            .zip(&output.nodes)
+            .map(|(&a0, &a1)| crate::present::extract::blend(a0, a1, a, f32::INFINITY))
+            .collect();
+        let mut palette = Vec::new();
+        skeleton.palette_from_model(output.skin, &nodes, &mut palette);
+        return palette;
     }
     p.palette
         .iter()

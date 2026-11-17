@@ -56,11 +56,29 @@ test.skipIf(STALE_WASM)("og.anim poses the walker the same way on both hosts", (
   expect(node.brokenGraph).toMatch(/line|nowhere/);
   expect(node.spriteGraph).toBe("number");
   expect(node.spriteBroken).toMatch(/line|nowhere/);
+  // FABRIK's model-space target (0.65, 1.6, 0.3), transformed by
+  // Rz(90) * scale(2,3,4) + (6,0,0), is (1.2,1.3,1.2).
+  const hand = node.attachment.matrix.elements;
+  for (const [axis, expected] of [[12, 1.2], [13, 1.3], [14, 1.2]]) {
+    expect(hand[axis!]).toBeCloseTo(expected!, 3);
+  }
+  for (const [axis, expected] of [[12, 5.4], [13, 0.2], [14, 1.2]]) {
+    expect(node.helperSocket.matrix.elements[axis!]).toBeCloseTo(expected!, 5);
+  }
+  expect(node.gripOffset.position).toEqual({ x: 0, y: 0, z: 0 });
+  expect(node.socketCollider).toBe(true);
+  expect(node.badSocket).toMatch(/Animation.nodes/);
+  expect(node.dynamicSocket).toMatch(/kinematic/);
   // One engine, two hosts.
   expect(web.hash).toBe(node.hash);
   expect(web.skeleton).toEqual(node.skeleton);
   expect(web.graph).toEqual(node.graph);
   expect(web.spriteBroken).toBe(node.spriteBroken);
+  expect(web.attachment).toEqual(node.attachment);
+  expect(web.helperSocket).toEqual(node.helperSocket);
+  expect(web.socketCollider).toBe(true);
+  expect(web.badSocket).toBe(node.badSocket);
+  expect(web.dynamicSocket).toBe(node.dynamicSocket);
   // The pose moved the world: a different tick count is another hash.
   expect(run("node", "--ticks", "301").hash).not.toBe(node.hash);
 }, 240_000);

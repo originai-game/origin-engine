@@ -12,7 +12,7 @@ See `animation §7`.
 
 - **TypeScript**: functions are the namespace `og.anim`; components, resources and events are tokens on `og`.
 - **Publish builds**: kept (members may override).
-- **Core** (what most games use): `og.Skeleton`, `og.AnimationPlayer`, `og.AnimationGraph`, `ClipInfo`, `Animation`, `GraphDesc`, `og.anim.graph`, `og.Flipbook`, `og.FlipbookEvent`, `FlipbookInfo`, `og.anim.clip`, `og.anim.clip`, `og.anim.clip`; 51 more are advanced (`og api show anim --all`).
+- **Core** (what most games use): `og.Skeleton`, `og.AnimationPlayer`, `og.AnimationGraph`, `ClipInfo`, `Animation`, `GraphDesc`, `og.anim.graph`, `og.Flipbook`, `og.FlipbookEvent`, `FlipbookInfo`, `og.anim.clip`, `og.anim.clip`, `og.anim.clip`; 52 more are advanced (`og api show anim --all`).
 - **Index**: [every module and guide](index.md).
 
 ```ogt
@@ -44,6 +44,7 @@ module anim {
 | [`IkSpace`](anim/type-IkSpace.md) | enum |  | What an IK chain's target and pole are relative to. |
 | [`IkSpace()`](#column-IkSpace) | column kind |  | An IkSpace field: the variant's index. |
 | [`og.Skeleton`](anim/record-Skeleton.md) | component |  | A posed skeleton: the entity is drawn skinned by the joint palette og.anim writes each tick. |
+| [`og.BoneAttachment`](anim/record-BoneAttachment.md) | component |  | An entity parented to an animated bone, as a child of a three.js Bone. |
 | [`og.CrowdAnimation`](anim/record-CrowdAnimation.md) | component |  | Plays a clip on a model on the GPU, for crowds: on an entity with og.Model and no og.Skeleton (which og.anim would pose on the CPU), the model is drawn skinned by `clip` baked into joint palettes, sh… |
 | [`og.AnimationPlayer`](anim/record-AnimationPlayer.md) | component |  | Plays one clip on a skeleton. |
 | [`og.AnimationGraph`](anim/record-AnimationGraph.md) | component |  | Runs a blend-tree graph (og.anim.graph) on a skeleton: its layers' state machines pick motions by the parameters p0...p7, named in the graph's `param` order (`param speed` is p0). |
@@ -199,7 +200,7 @@ column SpringSpace {
 }
 ```
 
-<sub>Module `anim` line 440</sub>
+<sub>Module `anim` line 448</sub>
 
 ```ogt
 column SpringColliderShape {
@@ -210,7 +211,7 @@ column SpringColliderShape {
 }
 ```
 
-<sub>Module `anim` line 514</sub>
+<sub>Module `anim` line 522</sub>
 
 ```ogt
 column Rig {
@@ -221,7 +222,7 @@ column Rig {
 }
 ```
 
-<sub>Module `anim` line 593</sub>
+<sub>Module `anim` line 601</sub>
 
 ```ogt
 column FlipbookSheet {
@@ -232,7 +233,7 @@ column FlipbookSheet {
 }
 ```
 
-<sub>Module `anim` line 664</sub>
+<sub>Module `anim` line 672</sub>
 
 ```ogt
 column Rig2D {
@@ -243,4 +244,4 @@ column Rig2D {
 }
 ```
 
-<sub>Module `anim` line 767</sub>
+<sub>Module `anim` line 775</sub>

@@ -67,12 +67,14 @@ pub(super) fn run(ctx: &mut SystemContext<'_>, ids: &Ids, shared: &Mutex<Shared>
     let started = stats::now_ms();
     let mut laps = stats::Laps::start();
     let lazy = gather::LazyIds::of(|n| ctx.id_by_name(n).ok());
+    let frames = ctx.parent_frames()?;
     let mut scene: Scene = gather::gather(
         &|i| ctx.query(i),
         &|e, id| ctx.get_bytes(e, id),
         lazy,
         ids,
         &mut ids.kept(),
+        &frames,
     )?;
     if let Some(soft) = lazy.soft {
         scene.softs = gather::softs(
@@ -80,6 +82,7 @@ pub(super) fn run(ctx: &mut SystemContext<'_>, ids: &Ids, shared: &Mutex<Shared>
             &|e, id| ctx.get_bytes(e, id),
             soft,
             ids,
+            &frames,
         )?;
     }
     if let Some(garment) = lazy.garment {

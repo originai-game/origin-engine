@@ -98,6 +98,14 @@ module anim {
     }
   }
 
+  component BoneAttachment {
+    aliases "attach to bone, bone socket, Unreal socket, Unity parent to bone, three.js bone.add"
+    doc "An entity parented to an animated bone, as a child of a three.js Bone. Its og.Parent must name an entity with og.Skeleton. Its og.Transform is the offset in that bone's frame; the engine composes MatrixWorld as the parent's world matrix times the posed node's model matrix times that offset. Children use the normal parent chain. Dynamic rigid bodies cannot own an attached transform; use a kinematic body instead."
+    field node u32 "A node index in Animation.nodes, not a skin.joints index used by FootLock, IkChain, LookAt, SpringBone and SpringCollider. Non-joint glTF socket helpers work here. Use Animation.nodes.indexOf(name); 0 selects the first node." {
+      min 0
+    }
+  }
+
   component CrowdAnimation {
     doc "Plays a clip on a model on the GPU, for crowds: on an entity with og.Model and no og.Skeleton (which og.anim would pose on the CPU), the model is drawn skinned by `clip` baked into joint palettes, shared by every entity playing that clip on that skeleton. Nothing reads the pose (no markers, root motion, IK, blendshapes or joint attachments) and a change of `clip` cuts without a fade."
     doc "The clip's time is `offset` plus `speed` times the world's time. Drawn only, never fed back; TAA takes its motion vectors from the frame before."
@@ -901,4 +909,3 @@ module anim {
 }
 
 # ── tween ─────────────────────────────────────────────────────────────────
-

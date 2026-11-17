@@ -101,6 +101,29 @@ function start(world: World): void {
   if (!chain.ok) throw new Error(chain.reason);
   const joints = a.skins[0] ?? 0;
   world.insert(chain.value, og.IkChain, { skeleton: player, tip: Math.max(0, joints - 1), bones: 2, solver: "fabrik", target: { x: 0.3, y: 0.8, z: 0.2 } });
+
+  // A posed hand and a non-joint glTF node use the same socket API. The
+  // rotated, nonuniform parent makes a missing bone frame unambiguous.
+  const carrier = spawn("socket-rig", 6);
+  world.set(carrier, og.Transform, { quaternion: { x: 0, y: 0, z: Math.SQRT1_2, w: Math.SQRT1_2 }, scale: { x: 2, y: 3, z: 4 } });
+  world.insert(carrier, og.AnimationPlayer, { clip: first.clip });
+  const grip = world.spawn({ name: "socket-ik" });
+  if (!grip.ok) throw new Error(grip.reason);
+  world.insert(grip.value, og.IkChain, { skeleton: carrier, tip: joints - 1, bones: 2, solver: "fabrik", space: "model", target: { x: 0.65, y: 1.6, z: 0.3 }, tolerance: 0.000001 });
+  for (const [name, node, position] of [
+    ["lantern", a.nodes.indexOf("hand.L"), { x: 0, y: 0, z: 0 }],
+    ["helper-socket", a.nodes.indexOf("body"), { x: 0.1, y: 0.2, z: 0.3 }],
+  ] as const) {
+    const child = world.spawn({ name, parent: carrier, position });
+    if (!child.ok) throw new Error(child.reason);
+    const attached = world.insert(child.value, og.BoneAttachment, { node });
+    if (!attached.ok) throw new Error(attached.reason);
+    if (name === "lantern") {
+      const body = world.insert(child.value, og.RigidBody, { kind: "kinematic" });
+      if (!body.ok) throw new Error(body.reason);
+      world.insert(child.value, og.Collider, { shape: "sphere", radius: 0.03 });
+    }
+  }
 }
 
 const game = og.game({ tick: 60, seed: 3, resources: [Tally], systems: [Drive, Count], start }) as unknown as GameToken;
@@ -121,6 +144,15 @@ out.player = get("player", og.AnimationPlayer);
 out.graph = get("graph", og.AnimationGraph);
 out.shapes = get("shapes", og.Blendshapes);
 out.chain = get("chain", og.IkChain);
+out.attachment = get("lantern", og.MatrixWorld);
+out.helperSocket = get("helper-socket", og.MatrixWorld);
+out.gripOffset = get("lantern", og.Transform);
+const hit = og.physics.castRay(w, { origin: { x: 1.2, y: 1.3, z: 2.2 }, direction: { x: 0, y: 0, z: -1 }, maxDistance: 2 });
+out.socketCollider = hit.ok && hit.value?.entity === w.find("lantern");
+const badNode = w.set(w.find("lantern")!, og.BoneAttachment, { node: 9999 });
+out.badSocket = badNode.ok ? null : badNode.reason;
+const dynamic = w.set(w.find("lantern")!, og.RigidBody, { kind: "dynamic" });
+out.dynamicSocket = dynamic.ok ? null : dynamic.reason;
 const tally = w.resource(Tally);
 out.events = tally.ok ? tally.value.events : null;
 console.log(JSON.stringify(out));

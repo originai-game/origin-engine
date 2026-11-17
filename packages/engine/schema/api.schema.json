@@ -8367,6 +8367,7 @@
         "IkSpace",
         "IkSpace",
         "Skeleton",
+        "BoneAttachment",
         "CrowdAnimation",
         "AnimationPlayer",
         "AnimationGraph",
@@ -37115,6 +37116,23 @@
           "description": "Written: the number of joints in the palette (0 until the first tick).",
           "default": 0,
           "readOnly": true
+        }
+      },
+      "additionalProperties": false
+    },
+    "BoneAttachment": {
+      "x-og-kind": "component",
+      "x-og-module": "anim",
+      "description": "An entity parented to an animated bone, as a child of a three.js Bone. Its og.Parent must name an entity with og.Skeleton. Its og.Transform is the offset in that bone's frame; the engine composes MatrixWorld as the parent's world matrix times the posed node's model matrix times that offset. Children use the normal parent chain. Dynamic rigid bodies cannot own an attached transform; use a kinematic body instead.",
+      "type": "object",
+      "properties": {
+        "node": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "A node index in Animation.nodes, not a skin.joints index used by FootLock, IkChain, LookAt, SpringBone and SpringCollider. Non-joint glTF socket helpers work here. Use Animation.nodes.indexOf(name); 0 selects the first node.",
+          "default": 0,
+          "minimum": 0
         }
       },
       "additionalProperties": false

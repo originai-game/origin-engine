@@ -126,6 +126,8 @@ struct Seen {
     palettes: Vec<Vec<f32>>,
     skinned: Vec<f32>,
     instances: Vec<f32>,
+    hand: Option<og_core::glam::Vec3>,
+    sockets: Vec<og_core::glam::Vec3>,
 }
 
 /// The height of `mesh`'s vertices.
@@ -169,6 +171,19 @@ impl RenderBackend for Recorder {
             .iter()
             .map(|i| height(scene, i.mesh))
             .collect();
+        s.hand = scene.objects.skinned_instances.first().and_then(|i| {
+            // The fixture's hand.L is joint 11, bound at (0.85,1.6,0).
+            let hand = scene.objects.joint_palettes[i.palette as usize]
+                .matrices
+                .get(11)?;
+            Some((i.transform * *hand).transform_point3(og_core::glam::Vec3::new(0.85, 1.6, 0.0)))
+        });
+        s.sockets = scene
+            .objects
+            .instances
+            .iter()
+            .map(|i| i.transform.w_axis.truncate())
+            .collect();
         Ok(())
     }
     fn capture(&mut self, _: &RenderScene, _: u32, _: u32) -> Option<og_render::RgbaImage> {
@@ -193,6 +208,84 @@ fn engine() -> (u32, Rc<RefCell<Seen>>) {
     set_render_backend(engine, Some(Box::new(Recorder(seen.clone())))).unwrap();
     value(og_engine_frame(engine, 1000.0 / 60.0));
     (engine, seen)
+}
+
+#[test]
+fn a_bone_socket_stays_on_the_drawn_hand_between_ticks() {
+    use og_runtime::{og_render_box_geometry, og_render_standard_material, og_world_spawn};
+    let (engine, seen) = engine();
+    let anim = value(og_runtime::host_impl::answer(og_load_animation(
+        engine,
+        "models/walker.glb".into(),
+    )));
+    let model = value(og_runtime::host_impl::answer(og_load_gltf(
+        engine,
+        "models/walker.glb".into(),
+        None,
+    )));
+    let rig = value(og_runtime::host_impl::answer(og_world_instantiate(
+        engine,
+        model.as_f64().unwrap(),
+        Some(json!({"position":{"x":2,"y":3,"z":4},"scale":{"x":2,"y":3,"z":4}}).to_string()),
+    )))
+    .as_f64()
+    .unwrap();
+    let insert = |e, component: &str, desc: Value| {
+        value(og_runtime::host_impl::answer(og_world_insert(
+            engine,
+            e,
+            component.into(),
+            Some(desc.to_string()),
+        )))
+    };
+    insert(rig, "og.Skeleton", json!({"asset":anim["skeleton"]}));
+    insert(
+        rig,
+        "og.AnimationPlayer",
+        json!({"clip":anim["clips"][0]["clip"]}),
+    );
+    let node = anim["nodes"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .position(|n| n == "hand.L")
+        .unwrap();
+    let socket = value(og_runtime::host_impl::answer(og_world_spawn(
+        engine,
+        Some(json!({"name":"lantern","parent":rig}).to_string()),
+    )))
+    .as_f64()
+    .unwrap();
+    insert(socket, "og.BoneAttachment", json!({"node":node}));
+    let geometry = value(og_runtime::host_impl::answer(og_render_box_geometry(
+        engine, None,
+    )));
+    let material = value(og_runtime::host_impl::answer(og_render_standard_material(
+        engine, None,
+    )));
+    insert(
+        socket,
+        "og.Mesh",
+        json!({"geometry":geometry,"material":material}),
+    );
+    value(og_engine_frame(engine, 1000.0 / 60.0));
+    let mut last = None;
+    let mut moved = false;
+    for _ in 0..120 {
+        // Half ticks exercise interpolation, not only the simulation pose.
+        value(og_engine_frame(engine, 1000.0 / 120.0));
+        let s = seen.borrow();
+        let hand = s.hand.expect("skinned walker");
+        assert_eq!(s.sockets.len(), 1);
+        assert!(
+            (s.sockets[0] - hand).length() < 1e-4,
+            "socket {:?} disagrees with the skinned hand {hand:?}",
+            s.sockets[0]
+        );
+        moved |= last.is_some_and(|p: og_core::glam::Vec3| p.distance(hand) > 0.001);
+        last = Some(hand);
+    }
+    assert!(moved, "the control must actually animate the hand");
 }
 
 #[test]

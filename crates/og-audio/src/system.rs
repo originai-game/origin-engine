@@ -14,7 +14,7 @@ use crate::schema::{
 };
 use crate::sound::SoundBank;
 use og_core::IdMap;
-use og_core::glam::{Quat, Vec3, Vec4};
+use og_core::glam::{Mat4, Quat, Vec3, Vec4};
 use og_core::hash::StableHasher;
 use og_core::{Reflect, Result};
 use og_ecs::{Entity, QueryDesc, SystemContext, SystemDesc, World};
@@ -474,6 +474,7 @@ pub fn install(world: &mut World, desc: &AudioDesc) -> Result<AudioLink> {
 struct Places {
     /// Parents by child bits; empty when nothing is parented.
     parents: IdMap<u64, Entity>,
+    frames: IdMap<u64, Mat4>,
 }
 
 impl Places {
@@ -485,13 +486,28 @@ impl Places {
                 parents.insert(e.to_bits(), Entity::from_bits(p.entity));
             }
         }
-        Ok(Places { parents })
+        Ok(Places {
+            parents,
+            frames: ctx.parent_frames()?,
+        })
     }
 
     /// `e`'s transform in the world: its own composed down `og.Parent` (a
     /// parent without `og.Transform` ends the chain).
     fn world(&self, ctx: &SystemContext<'_>, e: Entity) -> Result<Transform> {
         let t = ctx.get::<Transform>(e)?;
+        let parent = |c: Entity| self.parents.get(&c.to_bits()).copied();
+        if og_ecs::transform::under_parent_frame(e, &self.frames, parent) {
+            let m = og_ecs::transform::world_matrix(e, &self.frames, parent, |p| {
+                ctx.get::<Transform>(p).ok()
+            });
+            let (scale, quaternion, position) = m.to_scale_rotation_translation();
+            return Ok(Transform {
+                position,
+                quaternion,
+                scale,
+            });
+        }
         if self.parents.is_empty() {
             return Ok(t);
         }

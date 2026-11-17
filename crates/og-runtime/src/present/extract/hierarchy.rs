@@ -22,6 +22,8 @@ pub struct Hierarchy {
     data: Vec<SlotData>,
     /// Parents by child bits (only entities with `og.Parent`).
     parent: IdMap<u64, u64>,
+    /// Posed model frames inserted before an attached entity's local TRS.
+    frames: IdMap<u64, Mat4>,
     /// World matrices of chain members without `og.Transform` (no slot).
     loose: IdMap<u64, Mat4>,
     /// World matrices composed since the last read of the world (the
@@ -141,6 +143,7 @@ pub(crate) fn blend(a: Mat4, b: Mat4, t: f32, snap_sq: f32) -> Mat4 {
 struct Pending {
     still: Vec<bool>,
     reparented: bool,
+    frames: IdMap<u64, ()>,
 }
 
 #[derive(Clone, Copy)]
@@ -283,6 +286,14 @@ impl Hierarchy {
         let p = pending.get_or_insert_with(Pending::default);
         p.still = still;
         p.reparented = reparented;
+        // Invalid links are refused by the tick and frame entry paths.
+        let frames = world.parent_frames().unwrap_or_default();
+        for &e in self.frames.keys().chain(frames.keys()) {
+            if self.frames.get(&e) != frames.get(&e) {
+                p.frames.insert(e, ());
+            }
+        }
+        self.frames = frames;
         self.pending = pending;
     }
 
@@ -296,13 +307,18 @@ impl Hierarchy {
     /// last [`Hierarchy::capture`] (nothing when there is none pending).
     #[inline(never)]
     fn apply(&mut self) {
-        let Some(Pending { still, reparented }) = self.pending.take() else {
+        let Some(Pending {
+            still,
+            reparented,
+            frames,
+        }) = self.pending.take()
+        else {
             return;
         };
         self.loose.clear();
         self.walked = 0;
         let applied = std::mem::replace(&mut self.applied, still.len());
-        if !reparented && still.len() == applied && still.iter().all(|&s| s) {
+        if !reparented && frames.is_empty() && still.len() == applied && still.iter().all(|&s| s) {
             // The same archetypes, entities, bytes and parents as the
             // slots were last brought to: every slot, its `local_set` and
             // its kept world matrix stand as they are (`changed` is only
@@ -361,7 +377,13 @@ impl Hierarchy {
         }
         // A slot that lost its transform changed; one that never had one
         // did not.
-        let mut moved = false;
+        for &e in frames.keys() {
+            if let Some((s, _)) = self.slot(e) {
+                s.changed = true;
+                s.world_set = false;
+            }
+        }
+        let mut moved = !frames.is_empty();
         for (i, s) in self.slots.iter_mut().enumerate() {
             if !s.local_set {
                 s.changed = was.get(i).copied().unwrap_or(false);
@@ -397,7 +419,7 @@ impl Hierarchy {
                         .slots
                         .get(Entity::from_bits(p).index() as usize)
                         .is_some_and(|s| s.changed);
-                    if changed || depth > 256 || p == child {
+                    if changed || frames.contains_key(&p) || depth > 256 || p == child {
                         stale = true;
                         break;
                     }
@@ -536,7 +558,51 @@ impl Hierarchy {
     /// its parents', blended with the previous tick's on a frame between
     /// ticks ([`Hierarchy::set_blend`]).
     pub(crate) fn world_of(&mut self, e: u64) -> Mat4 {
+        self.drawn_world_of(e, 0)
+    }
+
+    fn drawn_world_of(&mut self, e: u64, depth: usize) -> Mat4 {
         let m = self.tick_world_of(e);
+        if self.blend.is_none() || depth > 256 {
+            return m;
+        }
+        let affected =
+            og_ecs::transform::under_parent_frame(Entity::from_bits(e), &self.frames, |c| {
+                self.parent
+                    .get(&c.to_bits())
+                    .copied()
+                    .map(Entity::from_bits)
+            });
+        if affected && let Some(mut b) = self.blend.take() {
+            let drawn = if b.holds(&self.parent, e) || !b.prev.knows(e) {
+                m
+            } else {
+                let local = self
+                    .slot(e)
+                    .map(|(_, d)| d.local())
+                    .unwrap_or(Mat4::IDENTITY);
+                let old = b
+                    .prev
+                    .slot(e)
+                    .map(|(_, d)| d.local())
+                    .unwrap_or(Mat4::IDENTITY);
+                let local = blend(old, local, b.alpha, b.snap_sq);
+                let frame = self.frames.get(&e).copied().unwrap_or(Mat4::IDENTITY);
+                let frame = match b.prev.frames.get(&e) {
+                    Some(&prev) => blend(prev, frame, b.alpha, f32::INFINITY),
+                    None => frame,
+                };
+                self.blend = Some(b);
+                let parent = match self.parent.get(&e).copied() {
+                    Some(p) => self.drawn_world_of(p, depth + 1),
+                    None => Mat4::IDENTITY,
+                };
+                b = self.blend.take().unwrap();
+                parent * frame * local
+            };
+            self.blend = Some(b);
+            return drawn;
+        }
         match self.blend.as_mut() {
             Some(b) => b.of(&self.parent, e, m),
             None => m,
@@ -585,6 +651,9 @@ impl Hierarchy {
                 continue;
             }
             self.composed += 1;
+            if let Some(frame) = self.frames.get(&id) {
+                m *= *frame;
+            }
             match self.slot(id) {
                 Some((s, d)) => {
                     m *= d.local();

@@ -66,6 +66,7 @@ pub fn og_world_insert(
         let value = parse(value.as_deref())?;
         let bytes = layout.encode(None, Some(&value))?;
         layout.check_ranges(&value)?;
+        crate::bind::anim::validate_attachment_edit(&eng, eng.world()?, e, &comp, &bytes)?;
         before_structural(&eng);
         eng.world()?.insert_bytes(e, id, &bytes).map_err(err)
     })()
@@ -162,6 +163,7 @@ pub fn og_world_set(world: u32, entity_id: f64, comp: String, value: String) -> 
         let w = eng.world()?;
         let current = w.get_bytes(e, id).map_err(err)?;
         let bytes = layout.encode(Some(&current), Some(&value))?;
+        crate::bind::anim::validate_attachment_edit(&eng, w, e, &comp, &bytes)?;
         // Overwriting a present component moves nothing, but the runtime
         // treats every insert as structural so views never see a half-write.
         before_structural(&eng);
@@ -234,6 +236,9 @@ pub fn og_engine_write_component(world: u32, entity_id: f64, component: u32, epo
         }
         // The entity has the component, so this overwrites and adds nothing.
         let bytes = patched(eng.world().ok()?.get_bytes(e, id).ok()?)?;
+        let w = eng.world().ok()?;
+        crate::bind::anim::validate_attachment_edit(&eng, w, e, &w.schema(id).ok()?.name, &bytes)
+            .ok()?;
         before_structural(&eng);
         eng.world().ok()?.insert_bytes(e, id, &bytes).ok()
     };

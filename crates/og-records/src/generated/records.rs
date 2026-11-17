@@ -22506,6 +22506,30 @@ pub const RECORDS: &[RecordDecl] = &[
     },
     RecordDecl {
         kind: "component",
+        name: "BoneAttachment",
+        schema: "og.BoneAttachment",
+        fields: &[
+            FieldDecl {
+                name: "node",
+                column: "u32",
+                default: "0",
+                readonly: false,
+                tunable: false,
+                min: Some(0.0),
+                max: None,
+                step: None,
+                unit: "",
+                worldspace: "",
+                label: "",
+                doc: doc!("A node index in Animation.nodes, not a skin.joints index used by FootLock, IkChain, LookAt, SpringBone and SpringCollider. Non-joint glTF socket helpers work here. Use Animation.nodes.indexOf(name); 0 selects the first node."),
+                variants: &[],
+                capacity: 0,
+                list: 0,
+            },
+        ],
+    },
+    RecordDecl {
+        kind: "component",
         name: "CrowdAnimation",
         schema: "og.CrowdAnimation",
         fields: &[

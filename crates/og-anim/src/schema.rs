@@ -4,6 +4,7 @@
 //! Asset fields (`asset`, `clip`) are handles the host registered with
 //! [`crate::AnimationSystem`]; 0 means none. Joint fields index the skin's
 //! `joints` list (glTF `skin.joints`), so `0` is the skin's first joint.
+//! BoneAttachment instead selects a skeleton node, including socket helpers.
 
 // 3.1416 and 1.5708 are the IDL's angle bounds (og.LookAt, og.JointLimit), a
 // hair above pi and pi/2 so the default ranges hold nothing; the derive
@@ -43,6 +44,16 @@ pub struct Skeleton {
     /// Written: the number of joints in the palette (0 until the first tick).
     #[reflect(name = "jointCount")]
     pub joint_count: u32,
+}
+
+/// Selects the posed node frame between og.Parent and og.Transform.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Reflect)]
+#[reflect(name = "og.BoneAttachment")]
+pub struct BoneAttachment {
+    /// A node index in Animation.nodes, not a skin joint index. Non-joint
+    /// glTF socket helpers can be selected too.
+    #[reflect(min = 0)]
+    pub node: u32,
 }
 
 /// Plays one clip on a skeleton. Alone it poses the skeleton from its rest

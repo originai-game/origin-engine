@@ -1,0 +1,8 @@
+{
+  "added": [
+    {
+      "member": "og.BoneAttachment",
+      "summary": "Attach an entity to an animated node, including non-joint glTF socket helpers. Parent selects the skeleton, node indexes Animation.nodes (not skin.joints), and Transform remains the bone-local offset. Attachments and descendants follow the final pose after IK, interpolate with the skin, survive snapshot/restore, and place lights, audio and kinematic colliders at the socket on both hosts. Dynamic rigid bodies under a socket are refused."
+    }
+  ]
+}
