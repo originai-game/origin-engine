@@ -29,6 +29,7 @@ const GAME = [
   "packages/create/template",
   "packages/engine/examples",
   "crates/og-tests/reference-scene",
+  "showcase",
 ];
 const TESTS = ["packages/engine/tests"];
 
