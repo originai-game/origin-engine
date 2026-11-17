@@ -1,0 +1,8 @@
+{
+  "added": [
+    {
+      "member": "ui default style",
+      "summary": "A card is the frame's own glass a step nearer (--color-card) instead of a grey wash; a role badge is a raised chip of the glass with its rim, so a count or a key holds over a picture; a chosen row on dark glass is the glass a step lighter with the primary on its edge, not a grey slab. New role tokens a pack can set: --pip-ink, --pip-empty-ink and --pip-motion (a counted unit, Pips) and --cell-cooling-opacity (what a cooling cell's icon dims to under its time left). A ribbon's words are bold."
+    }
+  ]
+}

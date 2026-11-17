@@ -451,11 +451,11 @@
     --tooltip-shadow: inset 0 0 0 var(--stroke-hairline) var(--color-rim-soft), var(--shadow-panel);
     --avatar-radius: var(--radius-capsule);
     --badge-corner-shape: round;
-    --badge-fill: var(--control-strong);
+    --badge-fill: var(--color-raised-lo);
     --badge-ink: var(--ink);
     --badge-pad: 0 var(--space-sm);
     --badge-radius: var(--radius-capsule);
-    --badge-shadow: none;
+    --badge-shadow: inset 0 0 0 var(--stroke-hairline) var(--color-rim);
     --badge-text: var(--text-caption);
     --band-end-finish-image: none;
     --band-end-start-image: none;
@@ -474,7 +474,7 @@
     --caption-ink: var(--ink-muted);
     --caption-text: var(--text-caption);
     --card-corner-shape: round;
-    --card-fill: linear-gradient(180deg, var(--color-lit-soft), transparent 48px), var(--control);
+    --card-fill: linear-gradient(180deg, var(--color-lit-soft), transparent 48px), var(--color-card);
     --card-pad: var(--space-md);
     --card-radius: var(--radius-panel);
     --card-rim: var(--color-rim-soft);
@@ -485,6 +485,7 @@
     --cell-active-shadow: 0 0 var(--space-md) var(--primary);
     --cell-common-fill: var(--cell-fill);
     --cell-common-shadow: inset 0 0 0 var(--stroke-thin) var(--common), var(--shadow-sunk);
+    --cell-cooling-opacity: 0.12;
     --cell-corner-shape: round;
     --cell-done-rim: var(--success);
     --cell-empty-shadow: var(--shadow-sunk);
@@ -602,6 +603,9 @@
     --notch-ink: var(--line-strong);
     --picture-muted-opacity: var(--opacity-dim);
     --ping-motion: og-ping var(--motion-duration-ping) var(--motion-easing-out) infinite;
+    --pip-empty-ink: var(--ink-faint);
+    --pip-ink: var(--danger);
+    --pip-motion: clip-path var(--motion-duration-base) var(--motion-easing-out);
     --plate-corner-shape: round;
     --plate-fill: linear-gradient(180deg, var(--color-plate-hi), var(--color-plate-lo));
     --plate-pad: var(--space-sm);
@@ -620,7 +624,7 @@
     --ribbon-fill: var(--primary);
     --ribbon-pad: var(--space-xxs) var(--space-sm);
     --ribbon-radius: 0px;
-    --ribbon-text: var(--text-caption);
+    --ribbon-text: var(--font-weight-bold) var(--type-caption-size)/var(--type-caption-line-height) var(--font-body);
     --row-corner-shape: round;
     --row-fill: none;
     --row-hover-fill: var(--control);
@@ -984,6 +988,7 @@
     --color-bg-subtle: oklch(from var(--seed-neutral) 0.179 min(c, 0.04) h);
     --color-border: oklch(from var(--seed-neutral) 0.341 min(c, 0.04) h);
     --color-border-strong: oklch(from var(--seed-neutral) 0.447 min(c, 0.04) h);
+    --color-card: oklch(from var(--seed-neutral) 0.36 min(c, 0.05) h / 0.42);
     --color-danger: color(from color(from var(--seed-danger) srgb clamp(0, r, 1) clamp(0, g, 1) clamp(0, b, 1)) xyz-d65 calc(x + calc(0.9505 - x) * min(1, calc(max(0, calc(0.45 - y)) / max(calc(1 - y), 0.001)))) calc(y + calc(1 - y) * min(1, calc(max(0, calc(0.45 - y)) / max(calc(1 - y), 0.001)))) calc(z + calc(1.089 - z) * min(1, calc(max(0, calc(0.45 - y)) / max(calc(1 - y), 0.001)))));
     --color-fg: oklch(from var(--seed-neutral) 0.971 min(c, 0.025) h);
     --color-fg-inverse: oklch(from var(--seed-neutral) 0.21 min(c, 0.025) h);
@@ -1024,8 +1029,8 @@
     --color-rim-soft: oklch(from var(--seed-neutral) 0.36 min(c, 0.04) h);
     --color-rim-strong: oklch(from var(--seed-neutral) 0.66 min(c, 0.04) h);
     --color-scrim: rgb(0 0 0 / 0.42);
-    --color-select-hi: rgb(from var(--color-accent) r g b / 0.07);
-    --color-select-lo: rgb(from var(--color-accent) r g b / 0.012);
+    --color-select-hi: oklch(from var(--seed-neutral) 0.36 min(c, 0.05) h);
+    --color-select-lo: oklch(from var(--seed-neutral) 0.36 min(c, 0.05) h / 0);
     --color-shade: rgb(0 0 0 / 0.22);
     --color-shade-deep: rgb(0 0 0 / 0.5);
     --color-shadow: #000000;
@@ -1160,6 +1165,7 @@
     --color-bg-subtle: oklch(from var(--seed-neutral) 0.935 min(c, 0.04) h);
     --color-border: oklch(from var(--seed-neutral) 0.896 min(c, 0.04) h);
     --color-border-strong: oklch(from var(--seed-neutral) 0.822 min(c, 0.04) h);
+    --color-card: oklch(from var(--seed-neutral) 1 min(c, 0.02) h / 0.72);
     --color-danger: color(from color(from var(--seed-danger) srgb clamp(0, r, 1) clamp(0, g, 1) clamp(0, b, 1)) xyz-d65 calc(x * min(1, calc(0.088 / y))) calc(y * min(1, calc(0.088 / y))) calc(z * min(1, calc(0.088 / y))));
     --color-fg: oklch(from var(--seed-neutral) 0.21 min(c, 0.025) h);
     --color-fg-inverse: oklch(from var(--seed-neutral) 0.985 min(c, 0.025) h);

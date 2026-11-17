@@ -461,7 +461,8 @@ draw with them:
   top to a darker foot, with a rim that catches the light and a highlight
   along its top edge; a HUD plate is the same, thinner, over the scene.
   Neither blurs what is behind it: a backdrop pass for every frame costs a
-  software rasteriser seconds a frame.
+  software rasteriser seconds a frame. A card in a frame is the same glass
+  a step nearer (`--color-card`), never a grey wash.
 - **A recess** holds what is kept or measured: an item's tile, a field, a
   meter's track. It is shaded at its top and lit on its lower lip.
   A recess needs a surface to be cut into: a tile that stands over the
@@ -470,9 +471,12 @@ draw with them:
   plate's rim. Disabled, a recess goes flat and unlit.
 - **A raised face** is what is pressed: a button, a knob, a key, the tab
   that is on. It is lit from above, stands on a short shadow, lifts under
-  a pointer and sinks when held.
+  a pointer and sinks when held. A badge is a small raised chip with its
+  rim, so a count or a key holds over a picture.
 - **Light** marks what is chosen or live, in the primary: a chosen row's
-  wash and leading bar, a chosen tile's rim, the primary action's glow, a
+  leading bar over its wash (on dark glass the wash is the glass a step
+  lighter: the engine blends in linear light, where a pale primary washed
+  over dark glass is a grey slab), a chosen tile's rim, the primary action's glow, a
   focused field's halo. Rarity is light too: a rim, a wash rising from the
   tile's foot and a glow inside the rim, so nothing clips it.
 

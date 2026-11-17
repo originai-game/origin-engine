@@ -125,8 +125,9 @@
   --role-cell-mythic-shadow: inset 0 0 0 var(--stroke-thin) var(--mythic), inset 0 0 var(--space-md) 0 rgb(from var(--mythic) r g b / var(--rarity-glow));
 
   /* Card: a surface inside a frame that holds one thing (an article, an
-     entry, a step, an offer), set apart by its rim. */
-  --role-card-fill: linear-gradient(180deg, var(--color-lit-soft), transparent 48px), var(--control);
+     entry, a step, an offer), set apart by its rim: the frame's own glass
+     a step nearer, lit across its top. */
+  --role-card-fill: linear-gradient(180deg, var(--color-lit-soft), transparent 48px), var(--color-card);
   --role-card-rim: var(--color-rim-soft);
   --role-card-rim-width: var(--stroke-hairline);
   --role-card-selected-rim: var(--primary);
@@ -136,13 +137,14 @@
   --role-card-pad: var(--space-md);
 
   /* Badge, well, figure: a count or state pinned to a thing (a pill: the
-     unread, the pinned, a stack's count); a sunken ground for a bar or
-     picture; a number read at a glance. */
-  --role-badge-fill: var(--control-strong);
+     unread, the pinned, a stack's count), a raised chip of the glass with
+     its rim, so it holds over a picture or an icon; a sunken ground for a
+     bar or picture; a number read at a glance. */
+  --role-badge-fill: var(--color-raised-lo);
   --role-badge-ink: var(--ink);
   --role-badge-radius: var(--radius-capsule);
   --role-badge-corner-shape: round;
-  --role-badge-shadow: none;
+  --role-badge-shadow: inset 0 0 0 var(--stroke-hairline) var(--color-rim);
   --role-badge-pad: 0 var(--space-sm);
   --role-badge-text: var(--text-caption);
   --role-well-fill: var(--color-tile);
@@ -268,6 +270,10 @@
   --role-disabled-content-opacity: var(--opacity-dim);
   /* A down row, cell, card or frame (`data-down`) dims to this. */
   --role-down-opacity: var(--opacity-dim);
+  /* What a cooling cell holds dims to this, so the time left reads over it
+     (low: the engine blends in linear light, where a quarter of white is
+     still a mid grey). */
+  --role-cell-cooling-opacity: 0.12;
   /* A cell's done and active (in progress) rims. */
   --role-cell-done-rim: var(--success);
   --role-cell-active-rim: var(--primary);
@@ -278,7 +284,14 @@
   --role-ribbon-fill: var(--primary);
   --role-ribbon-pad: var(--space-xxs) var(--space-sm);
   --role-ribbon-radius: 0px;
-  --role-ribbon-text: var(--text-caption);
+  --role-ribbon-text: var(--font-weight-bold) var(--type-caption-size)/var(--type-caption-line-height) var(--font-body);
+  /* Pip: one unit of a counted resource (a life, a charge). A full unit
+     takes `pip-ink` (a life's red; `data-tone` names another) and an empty
+     one is its socket, `pip-empty-ink`; a unit draining or refilling eases
+     over `pip-motion`. */
+  --role-pip-ink: var(--danger);
+  --role-pip-empty-ink: var(--ink-faint);
+  --role-pip-motion: clip-path var(--motion-duration-base) var(--motion-easing-out);
   /* Skeleton: a stand-in while loading, and the sheen that sweeps it. */
   --role-skeleton-fill: var(--well);
   --role-skeleton-radius: var(--radius-control);
