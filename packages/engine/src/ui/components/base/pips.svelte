@@ -1,6 +1,6 @@
 <meta name="component" content="Pips">
 <meta name="strings" content="./pips.en.ogt">
-<meta name="parts" content="Pips.frame Pips.label Pips.units Pips.unit Pips.empty Pips.full Pips.state Pips.loading">
+<meta name="parts" content="Pips.frame Pips.label Pips.units Pips.unit Pips.empty Pips.full Pips.state Pips.loading Pips.caption Pips.figure">
 <meta name="prop:label" content="string" data-default="" data-doc="The resource's name; empty uses Resource.">
 <meta name="prop:icon" content="string" data-default="heart" data-doc="The atlas icon for a unit: heart, bullet, bolt or a game's own icon.">
 <meta name="prop:items" content="list" data-doc="Keyed units { id, value, label }: value is the filled fraction, 0 to 1; label names the unit for accessibility. The game supplies capacity, ordering and fractional units, with no fixed maximum.">
@@ -13,32 +13,27 @@
 <meta name="fixture:loading" content='{"label":"Lives","loading":true}'>
 <meta name="fixture:disabled" content='{"label":"Action points","disabled":true,"items":[{"id":"ap-a","value":1}]}'>
 
-<div id="Pips" part="Pips.frame" class="bare" class:unavailable={disabled} role="group" aria-label={label || t("base.pips.resource")} aria-busy={loading} aria-disabled={disabled}>
-  <div part="Pips.label">{label || t("base.pips.resource")}</div>
-  {#if loading}<div part="Pips.loading"><Spinner name={t("base.pips.loading")} /><div part="Pips.state" role="status">{t("base.pips.loading")}</div></div>
+<div id="Pips" part="Pips.frame" class="bare" data-layout="stack" data-gap="tight" class:unavailable={disabled} role="group" aria-label={label || t("base.pips.resource")} aria-busy={loading} aria-disabled={disabled}>
+  <div part="Pips.label Pips.caption">{label || t("base.pips.resource")}</div>
+  {#if loading}<div part="Pips.loading" data-layout="row"><Spinner name={t("base.pips.loading")} /><div part="Pips.state Pips.caption" role="status">{t("base.pips.loading")}</div></div>
   {:else}
-    <div part="Pips.units">
+    <div part="Pips.units" data-layout="cluster" data-gap="tight">
       {#each items as item (item.id)}
         <div class="unit" part="Pips.unit" role="meter" aria-label={item.label || label || t("base.pips.resource")} aria-valuemin="0" aria-valuemax="1" aria-valuenow={item.value < 0 ? 0 : item.value > 1 ? 1 : item.value} aria-valuetext={formatPercent(item.value < 0 ? 0 : item.value > 1 ? 1 : item.value)} style:--value={item.value}>
-          <og-icon part="Pips.empty" icon={icon}></og-icon>
-          <og-icon part="Pips.full" icon={icon}></og-icon>
+          <og-icon part="Pips.empty Pips.caption" icon={icon}></og-icon>
+          <og-icon part="Pips.full Pips.figure" icon={icon}></og-icon>
         </div>
       {/each}
     </div>
-    {#if !items.length}<div part="Pips.state">{t("base.pips.empty")}</div>{/if}
-    {#if disabled}<div part="Pips.state">{t("base.pips.disabled")}</div>{/if}
+    {#if !items.length}<div part="Pips.state Pips.caption">{t("base.pips.empty")}</div>{/if}
+    {#if disabled}<div part="Pips.state Pips.caption">{t("base.pips.disabled")}</div>{/if}
   {/if}
 </div>
 
 <style>
-:host { display: flex; flex-direction: column; gap: var(--space-xs); max-inline-size: 100%; }
-[part="Pips.label"] { font: var(--text-caption); }
-[part="Pips.loading"] { display: flex; align-items: center; gap: var(--space-sm); }
-[part="Pips.units"] { display: flex; flex-wrap: wrap; gap: var(--space-xs); }
+:host { max-inline-size: 100%; }
 .unit { position: relative; inline-size: var(--pip-size, var(--size-sm)); block-size: var(--pip-size, var(--size-sm)); }
-[part="Pips.empty"], [part="Pips.full"] { position: absolute; inset: 0; inline-size: 100%; block-size: 100%; }
-[part="Pips.empty"] { color: var(--ink-faint); }
-[part="Pips.full"] { color: var(--pip-ink, var(--health)); clip-path: inset(0 calc((1 - clamp(0, var(--value), 1)) * 100%) 0 0); }
-.unavailable .unit { opacity: var(--state-disabled-opacity); }
-[part="Pips.state"] { font: var(--text-caption); color: var(--ink-muted); }
+[part~="Pips.empty"], [part~="Pips.full"] { position: absolute; inset: 0; inline-size: 100%; block-size: 100%; }
+[part~="Pips.empty"] { --caption-ink: var(--ink-faint); }
+[part~="Pips.full"] { --figure-ink: var(--pip-ink, var(--health)); clip-path: inset(0 calc((1 - clamp(0, var(--value), 1)) * 100%) 0 0); }
 </style>

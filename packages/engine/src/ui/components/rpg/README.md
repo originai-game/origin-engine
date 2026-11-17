@@ -26,10 +26,12 @@ The game feeds its current auto setting back through `auto`.
 ## Structure and appearance
 
 Each member is HTML with component CSS in the `og-components` layer.
-`:host` owns the root layout; parts and classes own the interior. Optional
-pieces use `{#if}`, and scrolling is ordinary CSS overflow. Semantic tokens
-supply the default appearance: health and mana fills, grounded count and
-key badges, quiet captions, selected rings and quest progress marks. A style
+`:host` owns the root dimensions; shared `data-layout` and `data-gap`
+primitives arrange the interior. Component CSS keeps sizes and placement.
+Optional pieces use `{#if}`. Parts retain their semantic names and end in
+shared roles: health and mana `track`/`fill`, count `badge`, `headline`,
+`caption`, selection `cell` and quest progress `dot`. Role tokens supply
+the appearance and shared motion supplies transitions. A style
 pack (`og-pack`, above it) overrides the members' named parts (docs/ui.md
 §3.2), qualified by states, for example
 `RpgBackpack::cell[data-rarity=epic]`. Each member lists its

@@ -15,10 +15,12 @@ to change it; the game's copy of the same name wins.
 ## Structure and appearance
 
 Each member is HTML with component CSS in the `og-components` layer.
-`:host` owns the root layout; parts and classes own the interior. Optional
-pieces use `{#if}`, and scrolling is ordinary CSS overflow. The default
-appearance uses semantic tokens: readable figures, quiet captions, earned
-stars, a current-level badge and an armed booster ring. A style pack
+`:host` owns the root dimensions; shared `data-layout` and `data-gap`
+primitives arrange the interior. Component CSS keeps sizes and placement.
+Optional pieces use `{#if}`. Semantic parts remain and end in shared roles
+such as `card`, `band`, `cell`, `badge`, `figure`, `headline` and `caption`.
+Role tokens and `data-tone` dress figures, captions, earned stars, the
+current-level badge and armed booster selection. A style pack
 (`og-pack`, above it) can override the named parts (docs/ui.md §3.2),
 qualified by states such as `PuzzleLevelPath::node[data-state=current]`.
 

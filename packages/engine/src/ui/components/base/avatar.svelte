@@ -1,6 +1,6 @@
 <meta name="component" content="Avatar">
 <meta name="strings" content="./avatar.en.ogt">
-<meta name="parts" content="Avatar.frame Avatar.picture Avatar.clip Avatar.portrait Avatar.fallback Avatar.spinner Avatar.ring Avatar.level Avatar.name Avatar.status Avatar.mark Avatar.loading">
+<meta name="parts" content="Avatar.frame Avatar.picture Avatar.clip Avatar.portrait Avatar.fallback Avatar.spinner Avatar.ring Avatar.level Avatar.name Avatar.status Avatar.mark Avatar.loading Avatar.well Avatar.badge Avatar.headline Avatar.caption Avatar.dot">
 <meta name="prop:name" content="string" data-default="" data-doc="The displayed and accessible name; empty uses the localized unnamed-player label.">
 <meta name="prop:showName" content="bool" data-default="true" data-doc="Shows the name caption; false keeps the accessible name for composition beside a heading.">
 <meta name="prop:portrait" content="number" data-default="0" data-doc="A loaded portrait texture; 0 shows the fallback icon.">
@@ -18,31 +18,27 @@
 <meta name="fixture:loading" content='{"name":"Loading companion","loading":true}'>
 <meta name="fixture:captionless" content='{"name":"Brenna Vale","showName":false,"level":12,"status":"online"}'>
 
-<figure id="Avatar" part="Avatar.frame" class="bare" data-frame={frame} data-status={status} aria-label={name || t("base.avatar.unnamed")} aria-busy={loading}>
-  <div part="Avatar.picture" class="picture">
-    <div part="Avatar.clip">{#if loading}<div part="Avatar.spinner"><Spinner name={t("base.avatar.loading")} /></div>{:else if portrait}<img part="Avatar.portrait" src={portrait} alt="">{:else}<og-icon part="Avatar.fallback" icon={icon}></og-icon>{/if}</div>
-    {#if frame}<div part="Avatar.ring" data-frame={frame}></div>{/if}
-    {#if level > 0}<div part="Avatar.level" aria-label={t("base.avatar.level", { level })}>{formatNumber(level)}</div>{/if}
+<figure id="Avatar" part="Avatar.frame" class="bare" data-layout="stack" data-gap="tight" data-frame={frame} data-status={status} aria-label={name || t("base.avatar.unnamed")} aria-busy={loading}>
+  <div part="Avatar.picture Avatar.well" class="picture" data-layout="overlay">
+    <div part="Avatar.clip Avatar.picture" data-layout="cover" data-gap="none">{#if loading}<div part="Avatar.spinner" data-layout="cover"><Spinner name={t("base.avatar.loading")} /></div>{:else if portrait}<img part="Avatar.portrait" src={portrait} alt="">{:else}<og-icon part="Avatar.fallback Avatar.caption" icon={icon}></og-icon>{/if}</div>
+    {#if frame}<div part="Avatar.ring Avatar.picture" class="ring" data-frame={frame} data-anchor="fill"></div>{/if}
+    {#if level > 0}<div part="Avatar.level Avatar.badge" class="level" data-anchor="bottom-end" aria-label={t("base.avatar.level", { level })}>{formatNumber(level)}</div>{/if}
   </div>
-  {#if showName}<p part="Avatar.name">{name || t("base.avatar.unnamed")}</p>{/if}
-  {#if loading}<p part="Avatar.loading" role="status">{t("base.avatar.loading")}</p>
-  {:else if status || statusText}<div part="Avatar.status"><div part="Avatar.mark"></div><span>{statusText || (status == 'online' ? t("base.avatar.online") : status == 'away' ? t("base.avatar.away") : status == 'busy' ? t("base.avatar.busy") : t("base.avatar.offline"))}</span></div>{/if}
+  {#if showName}<p part="Avatar.name Avatar.headline" class="name">{name || t("base.avatar.unnamed")}</p>{/if}
+  {#if loading}<p part="Avatar.loading Avatar.caption" class="loading" role="status">{t("base.avatar.loading")}</p>
+  {:else if status || statusText}<div part="Avatar.status Avatar.caption" data-layout="row" data-gap="tight"><div part="Avatar.mark Avatar.dot" class="mark" data-tone={status == 'online' ? 'success' : status == 'away' ? 'warn' : status == 'busy' ? 'danger' : null}></div><span>{statusText || (status == 'online' ? t("base.avatar.online") : status == 'away' ? t("base.avatar.away") : status == 'busy' ? t("base.avatar.busy") : t("base.avatar.offline"))}</span></div>{/if}
 </figure>
 
 <style>
-:host { display: flex; flex-direction: column; align-items: center; inline-size: var(--avatar-size, var(--size-xxl)); gap: var(--space-xs); margin: 0; }
-.picture { position: relative; inline-size: 100%; aspect-ratio: 1; background: var(--well); border: var(--stroke-hairline) solid var(--line); border-radius: var(--avatar-radius, var(--radius-capsule)); }
-[part="Avatar.clip"] { display: flex; align-items: center; justify-content: center; inline-size: 100%; block-size: 100%; overflow: hidden; border-radius: var(--avatar-radius, var(--radius-capsule)); }
-[part="Avatar.portrait"] { inline-size: 100%; block-size: 100%; object-fit: cover; object-position: center top; border-radius: var(--avatar-radius, var(--radius-capsule)); }
-[part="Avatar.fallback"] { inline-size: 60%; block-size: 60%; color: var(--ink-muted); }
-[part="Avatar.ring"] { position: absolute; inset: 0; border: var(--stroke-thick) solid var(--focus); border-radius: var(--avatar-radius, var(--radius-capsule)); pointer-events: none; }
-[part="Avatar.spinner"] { display: flex; align-items: center; justify-content: center; inline-size: 100%; block-size: 100%; }
-[part="Avatar.level"] { position: absolute; inset-inline-end: 0; bottom: 0; padding-inline: var(--space-xs); background: var(--panel); color: var(--ink); border-radius: var(--radius-capsule); font-family: var(--figure-font); }
-[part="Avatar.name"] { margin: 0; text-align: center; overflow-wrap: anywhere; font: var(--text-caption); font-weight: var(--font-weight-semibold); }
-[part="Avatar.status"] { display: flex; align-items: center; gap: var(--space-xs); font: var(--text-caption); color: var(--ink-muted); }
-[part="Avatar.mark"] { inline-size: var(--space-xs); block-size: var(--space-xs); border-radius: var(--radius-capsule); background: var(--ink-muted); }
-[part="Avatar.frame"][data-status=online] [part="Avatar.mark"] { background: var(--success); }
-[part="Avatar.frame"][data-status=away] [part="Avatar.mark"] { background: var(--warn); }
-[part="Avatar.frame"][data-status=busy] [part="Avatar.mark"] { background: var(--danger); }
-[part="Avatar.loading"] { margin: 0; font: var(--text-caption); color: var(--ink-muted); }
+:host { align-items: center; inline-size: var(--avatar-size, var(--size-xxl)); margin: 0; }
+.picture { inline-size: 100%; aspect-ratio: 1; --well-radius: var(--avatar-radius, var(--radius-capsule)); --picture-radius: var(--avatar-radius, var(--radius-capsule)); }
+[part~="Avatar.clip"] { inline-size: 100%; block-size: 100%; overflow: hidden; }
+[part="Avatar.portrait"] { inline-size: 100%; block-size: 100%; object-fit: cover; object-position: center top; }
+[part~="Avatar.fallback"] { inline-size: 60%; block-size: 60%; }
+.ring { --picture-rim-width: var(--stroke-thick); --picture-rim: var(--focus); --picture-radius: var(--avatar-radius, var(--radius-capsule)); pointer-events: none; }
+[part="Avatar.spinner"] { inline-size: 100%; block-size: 100%; }
+.level { --layout-anchor-inset: 0px; }
+.name { margin: 0; text-align: center; overflow-wrap: anywhere; --headline-text: var(--text-caption); }
+.mark { inline-size: var(--space-xs); block-size: var(--space-xs); }
+.loading { margin: 0; }
 </style>

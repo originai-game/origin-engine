@@ -1,6 +1,6 @@
 <meta name="component" content="Currency">
 <meta name="strings" content="./currency.en.ogt">
-<meta name="parts" content="Currency.frame Currency.icon Currency.name Currency.amount Currency.limit Currency.rate Currency.state Currency.spinner">
+<meta name="parts" content="Currency.frame Currency.icon Currency.name Currency.amount Currency.limit Currency.rate Currency.state Currency.spinner Currency.card Currency.caption Currency.headline">
 <meta name="prop:name" content="string" data-doc="Resource name; empty uses Currency.">
 <meta name="prop:icon" content="string" data-doc="Atlas icon; empty omits it.">
 <meta name="prop:amount" content="number" data-doc="Amount held; zero remains visible. Ignored when valueText is supplied.">
@@ -19,34 +19,27 @@
 
 <!-- A readout, not a button. A game can put it beside a separately named
      purchase control; Currency never invents an economy or sends an intent. -->
-<div id="Currency" part="Currency.frame" class="bare" aria-label={name || t("currency.name")} aria-busy={loading} data-full={full} data-unavailable={unavailable}>
+<div id="Currency" part="Currency.frame Currency.card" class="bare" data-layout="row" aria-label={name || t("currency.name")} aria-busy={loading} data-full={full} data-unavailable={unavailable}>
   {#if icon}<og-icon part="Currency.icon" icon={icon}></og-icon>{/if}
-  <div class="body">
-    <div part="Currency.name">{name || t("currency.name")}</div>
+  <div class="body" data-layout="stack" data-gap="hair" data-fill>
+    <div part="Currency.name Currency.caption">{name || t("currency.name")}</div>
     {#if loading || unavailable}
       {#if loading}<div part="Currency.spinner"><Spinner name={t("currency.loading")} /></div>{/if}
-      <div part="Currency.state" role="status">{loading ? t("currency.loading") : t("currency.unavailable")}</div>
+      <div part="Currency.state Currency.headline" role="status">{loading ? t("currency.loading") : t("currency.unavailable")}</div>
     {:else}
-      <div class="figures">
-        <div part="Currency.amount">{valueText || formatCompact(amount)}</div>
-        {#if limit}<div part="Currency.limit">{t("currency.capacity", { limit })}</div>{/if}
+      <div class="figures" data-layout="cluster" data-gap="tight">
+        <div part="Currency.amount Currency.headline">{valueText || formatCompact(amount)}</div>
+        {#if limit}<div part="Currency.limit Currency.caption">{t("currency.capacity", { limit })}</div>{/if}
       </div>
-      {#if rate}<div part="Currency.rate">{rate}</div>{/if}
-      {#if full}<div part="Currency.state">{t("currency.full")}</div>{/if}
+      {#if rate}<div part="Currency.rate Currency.caption">{rate}</div>{/if}
+      {#if full}<div part="Currency.state Currency.headline">{t("currency.full")}</div>{/if}
     {/if}
   </div>
 </div>
 
 <style>
-:host { display: flex; align-items: center; gap: var(--space-sm); max-inline-size: stretch; padding: var(--space-xs) var(--space-sm); border: var(--stroke-hairline) solid var(--line); border-radius: var(--radius-control); background: var(--panel); color: var(--ink); }
+:host { max-inline-size: stretch; padding: var(--space-xs) var(--space-sm); --headline-text: var(--text-caption); --headline-card-text: var(--text-caption); }
 [part="Currency.icon"] { flex: none; inline-size: var(--size-sm); block-size: var(--size-sm); }
-.body { display: flex; flex-direction: column; gap: var(--space-xxs); min-inline-size: 0; }
-[part="Currency.name"] { font: var(--text-sm); color: var(--ink-muted); overflow-wrap: anywhere; }
-.figures { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0 var(--space-xs); }
-[part="Currency.amount"] { font-weight: var(--font-weight-semibold); }
-[part="Currency.amount"], [part="Currency.limit"], [part="Currency.rate"] { font-family: var(--figure-font); overflow-wrap: anywhere; }
-[part="Currency.limit"], [part="Currency.rate"], [part="Currency.state"] { font: var(--text-sm); }
-[part="Currency.limit"], [part="Currency.rate"] { color: var(--ink-muted); }
-[part="Currency.state"] { font-weight: var(--font-weight-semibold); }
-[part="Currency.spinner"] { display: flex; }
+.body { overflow-wrap: anywhere; }
+.figures { align-items: baseline; }
 </style>

@@ -19,6 +19,14 @@ are exposed as data attributes; presence is also worded so it does not rely
 on colour. Native buttons supply focus, hover, press and keyboard/pad
 activation. A pack may replace the look without changing the documents.
 
+Component CSS keeps dimensions and placement. Shared `data-layout` and
+`data-gap` primitives arrange the boxes; the final role in each part list
+(`card`, `row`, `cell`, `badge`, `headline`, `caption`, `dot`, `track`,
+`fill`) supplies its dress. Existing semantic parts remain available.
+Loading uses the shared Spinner or a clipped `skeleton`/`sheen` with
+`data-motion="shimmer"`; ribbons use shared enter/stamp motion. Packs own
+those role and motion tokens, not a component's private animations.
+
 Avatar's `showName` defaults to true; set it to false beside a player heading to hide only the caption while preserving the figure's accessible name, level and status.
 
 Review: the RPG sheet's `primitives` page in the default style shows ready,

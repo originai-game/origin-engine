@@ -1,6 +1,6 @@
 <meta name="component" content="PuzzleGoals">
 <meta name="strings" content="./puzzle.en.ogt">
-<meta name="parts" content="PuzzleGoals.frame PuzzleGoals.counter PuzzleGoals.label PuzzleGoals.figure PuzzleGoals.warning PuzzleGoals.goals PuzzleGoals.goal PuzzleGoals.count PuzzleGoals.done PuzzleGoals.score PuzzleGoals.plate">
+<meta name="parts" content="PuzzleGoals.frame PuzzleGoals.counter PuzzleGoals.label PuzzleGoals.figure PuzzleGoals.warning PuzzleGoals.goals PuzzleGoals.goal PuzzleGoals.count PuzzleGoals.done PuzzleGoals.score PuzzleGoals.plate PuzzleGoals.caption PuzzleGoals.headline PuzzleGoals.glyph">
 <meta name="prop:goals" content="list" data-doc="The level's goals in order, keyed rows of { id, icon, label, left, done }: left how many are still to clear, as the game counts them; done the goal is met (a check replaces the count).">
 <meta name="prop:counter" content="string" data-doc="What limits the level: moves (a move count) or time (a countdown).">
 <meta name="prop:moves" content="number" data-doc="Moves left, when counter is moves.">
@@ -24,27 +24,27 @@
   goals wrap under the counter and the score. The low counter's and the
   met goal's looks, and any pulse, are the pack's.
 -->
-<section id="PuzzleGoals" part="PuzzleGoals.frame" class="hud" aria-label={t("puzzle.goals.name")} data-low={low}>
-  <div class="counters">
-    <div part="PuzzleGoals.counter PuzzleGoals.plate" role={counter == 'time' ? 'timer' : 'status'} data-kind={counter} data-low={low} aria-label={counter == 'time' ? t("puzzle.goals.timeLeft", { time: formatCountdown(seconds) }) : t("puzzle.goals.movesLeft", { moves: moves })}>
-      <span part="PuzzleGoals.label" class="label">{counter == 'time' ? t("puzzle.goals.time") : t("puzzle.goals.moves")}</span>
-      <span part="PuzzleGoals.figure" data-low={low}>{counter == 'time' ? formatCountdown(seconds) : formatNumber(moves)}</span>
-      {#if low}<span part="PuzzleGoals.warning PuzzleGoals.plate">{t("puzzle.goals.low")}</span>{/if}
+<section id="PuzzleGoals" part="PuzzleGoals.frame" class="hud" data-layout="shell" aria-label={t("puzzle.goals.name")} data-low={low}>
+  <div class="counters" data-layout="cluster" data-gap="loose">
+    <div part="PuzzleGoals.counter PuzzleGoals.plate" data-layout="stack" data-gap="none" role={counter == 'time' ? 'timer' : 'status'} data-kind={counter} data-low={low} aria-label={counter == 'time' ? t("puzzle.goals.timeLeft", { time: formatCountdown(seconds) }) : t("puzzle.goals.movesLeft", { moves: moves })}>
+      <span part="PuzzleGoals.label PuzzleGoals.caption" class="label">{counter == 'time' ? t("puzzle.goals.time") : t("puzzle.goals.moves")}</span>
+      <span class="counter-figure" part="PuzzleGoals.figure PuzzleGoals.headline" data-tone={low ? 'warn' : ''} data-low={low}>{counter == 'time' ? formatCountdown(seconds) : formatNumber(moves)}</span>
+      {#if low}<span class="warning" part="PuzzleGoals.warning PuzzleGoals.plate PuzzleGoals.caption" data-tone="warn">{t("puzzle.goals.low")}</span>{/if}
     </div>
-    <div part="PuzzleGoals.goals" role="list" aria-label={t("puzzle.goals.name")}>
+    <div part="PuzzleGoals.goals" data-layout="cluster" data-gap="loose" data-fill role="list" aria-label={t("puzzle.goals.name")}>
       {#each goals as g (g.id)}
-        <div part="PuzzleGoals.goal PuzzleGoals.plate" role="listitem" data-done={g.done} aria-label={g.done ? t("puzzle.goals.done", { label: g.label }) : t("puzzle.goals.left", { label: g.label, left: g.left })}>
+        <div part="PuzzleGoals.goal PuzzleGoals.plate" data-layout="stack" data-gap="none" role="listitem" data-done={g.done} aria-label={g.done ? t("puzzle.goals.done", { label: g.label }) : t("puzzle.goals.left", { label: g.label, left: g.left })}>
           <og-icon class="goal-art" icon={g.icon}></og-icon>
-          {#if g.done}<svg part="PuzzleGoals.done" class="check" viewBox="0 0 24 24"><path d="M4.5 12.5l5 5 10-11"></path></svg>
+          {#if g.done}<svg part="PuzzleGoals.done" class="check" data-tone="success" viewBox="0 0 24 24"><path part="PuzzleGoals.glyph" d="M4.5 12.5l5 5 10-11"></path></svg>
           {:else}<span part="PuzzleGoals.count PuzzleGoals.figure">{formatNumber(g.left)}</span>{/if}
         </div>
       {:else}
-        <p class="none">{t("puzzle.goals.none")}</p>
+        <p class="none" part="PuzzleGoals.caption">{t("puzzle.goals.none")}</p>
       {/each}
     </div>
-    <div part="PuzzleGoals.score PuzzleGoals.figure" role="status" aria-label={t("puzzle.goals.scoreName", { score: formatNumber(score) })}>
-      <span class="score-label">{t("puzzle.goals.score")}</span>
-      <span class="score-figure">{formatNumber(score)}</span>
+    <div part="PuzzleGoals.score PuzzleGoals.figure" data-layout="stack" data-gap="none" role="status" aria-label={t("puzzle.goals.scoreName", { score: formatNumber(score) })}>
+      <span class="score-label" part="PuzzleGoals.caption">{t("puzzle.goals.score")}</span>
+      <span class="score-figure" part="PuzzleGoals.headline">{formatNumber(score)}</span>
     </div>
   </div>
 </section>
@@ -52,24 +52,21 @@
 <style>
 /* Drawn over the scene: the style's tag halo holds its text there. */
 :host { text-shadow: var(--tag-halo); }
-:host { container-type: inline-size; inline-size: stretch; }
-.counters { display: flex; align-items: stretch; gap: var(--space-md); padding: var(--space-sm); }
-[part="PuzzleGoals.counter PuzzleGoals.plate"] { display: flex; flex: none; flex-direction: column; align-items: center; justify-content: center; min-width: calc(var(--size-xl) * 1.4); padding: var(--space-xs) var(--space-sm); }
-[part="PuzzleGoals.label"], .score-label { white-space: nowrap; font: var(--text-caption); color: var(--ink-muted); }
-[part="PuzzleGoals.figure"], .score-figure { white-space: nowrap; font-size: var(--font-step-2xl); font-weight: var(--font-weight-semibold); font-family: var(--figure-font); }
-[part="PuzzleGoals.warning PuzzleGoals.plate"] { white-space: nowrap; color: var(--warn); font: var(--text-caption); }
-[part="PuzzleGoals.figure"][data-low=true] { color: var(--warn); }
-[part="PuzzleGoals.goals"] { display: flex; flex: 1; min-width: 0; flex-wrap: wrap; align-items: center; justify-content: center; gap: var(--space-sm) var(--space-md); }
-[part="PuzzleGoals.goal PuzzleGoals.plate"] { position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; width: var(--size-xl); padding: var(--space-xxs); }
+:host { block-size: auto; --headline-text: var(--text-lg); }
+.counters { align-items: stretch; padding: var(--space-sm); }
+[part="PuzzleGoals.counter PuzzleGoals.plate"] { flex: none; align-items: center; justify-content: center; min-width: calc(var(--size-xl) * 1.4); padding: var(--space-xs) var(--space-sm); }
+.label, .score-label, .counter-figure, .score-figure, .warning { white-space: nowrap; }
+[part="PuzzleGoals.goals"] { justify-content: center; }
+[part="PuzzleGoals.goal PuzzleGoals.plate"] { position: relative; align-items: center; justify-content: center; width: var(--size-xl); padding: var(--space-xxs); }
 .goal-art { width: var(--size-lg); height: var(--size-lg); }
 [part="PuzzleGoals.count PuzzleGoals.figure"] { white-space: nowrap; }
-.check { width: var(--size-sm); height: var(--size-sm); fill: none; stroke: var(--success); stroke-width: var(--stroke-thick); stroke-linecap: round; stroke-linejoin: round; }
+.check { width: var(--size-sm); height: var(--size-sm); }
 .none { margin: 0; text-align: center; }
-[part="PuzzleGoals.score PuzzleGoals.figure"] { display: flex; flex: none; flex-direction: column; align-items: flex-end; justify-content: center; min-width: calc(var(--size-xl) * 1.6); padding: var(--space-xs) var(--space-sm); }
+[part="PuzzleGoals.score PuzzleGoals.figure"] { flex: none; align-items: flex-end; justify-content: center; min-width: calc(var(--size-xl) * 1.6); padding: var(--space-xs) var(--space-sm); }
 .score-figure { white-space: nowrap; }
 /* The frame is the container, so a narrow panel on a wide screen wraps as a phone does. */
 @container (width < 600px) {
-  .counters { flex-wrap: wrap; gap: var(--space-xs) var(--space-sm); padding: var(--space-xs); }
+  .counters { --layout-gap-loose: var(--layout-gap-tight); padding: var(--space-xs); }
   [part="PuzzleGoals.counter PuzzleGoals.plate"] { min-width: var(--size-xl); }
   [part="PuzzleGoals.goals"] { order: 3; flex-basis: 100%; }
   [part="PuzzleGoals.score PuzzleGoals.figure"] { flex: 1; min-width: 0; }

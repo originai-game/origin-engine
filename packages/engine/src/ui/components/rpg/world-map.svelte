@@ -1,6 +1,6 @@
 <meta name="component" content="RpgWorldMap">
 <meta name="strings" content="./rpg.en.ogt">
-<meta name="parts" content="RpgWorldMap.frame RpgWorldMap.marker RpgWorldMap.row RpgWorldMap.cell">
+<meta name="parts" content="RpgWorldMap.frame RpgWorldMap.marker RpgWorldMap.row RpgWorldMap.cell RpgWorldMap.dot RpgWorldMap.plate RpgWorldMap.caption">
 <meta name="prop:map" content="number" data-doc="The map's texture (og.load.texture); markers sit on it in fractions of its size.">
 <meta name="prop:markers" content="list" data-doc="Keyed rows of { id, kind, x, y, label }: kind is quest, waypoint, danger or player; x and y 0 to 1 across and down the map.">
 <meta name="prop:selected" content="string" data-doc="The marker selected; empty is none.">
@@ -21,49 +21,42 @@
   release (a press, its moves and its end, each with x and y in the map's
   box), and draws what the game sets.
 -->
-<figure id="RpgWorldMap" part="RpgWorldMap.frame" class="bare" aria-label={t("rpg.map.name")}>
-  <div class="sheet" onwheel={zoom} onpinch={pinch} onpointerdown={grab} onpointermove={pan} onpointerup={release}>
+<figure id="RpgWorldMap" part="RpgWorldMap.frame" class="bare" data-layout="shell" aria-label={t("rpg.map.name")}>
+  <div class="sheet" data-fill onwheel={zoom} onpinch={pinch} onpointerdown={grab} onpointermove={pan} onpointerup={release}>
     <div class="land" style:--zoom={zoom || 1} style:--pan-x={panX + "px"} style:--pan-y={panY + "px"}>
       <img class="terrain" src={map} alt="">
       <div class="markers" role="group" aria-label={t("rpg.map.places")}>
         {#each markers as m (m.id)}
-          <button part="RpgWorldMap.marker RpgWorldMap.cell" data-kind={m.kind} disabled={m.kind == 'player'} aria-selected={m.id == selected} aria-label={m.label} style:--x={m.x} style:--y={m.y} onclick={choose}><div class="face">
-            <div class="marker-mark"></div>
+          <button part="RpgWorldMap.marker RpgWorldMap.cell" data-kind={m.kind} disabled={m.kind == 'player'} aria-selected={m.id == selected} aria-label={m.label} style:--x={m.x} style:--y={m.y} onclick={choose}><div class="face" data-layout="cover">
+            <div class="marker-mark" part="RpgWorldMap.dot" data-shape={m.kind == 'quest' ? 'diamond' : null} data-tone={m.kind == 'danger' ? 'danger' : m.kind == 'player' ? 'success' : 'primary'}></div>
           </div></button>
         {/each}
       </div>
     </div>
-    {#if here}<div class="here"><div class="here-mark"></div><span class="here-text">{here}</span></div>{/if}
+    {#if here}<div class="here hud" part="RpgWorldMap.plate RpgWorldMap.frame" data-layout="row" data-gap="tight"><div class="here-mark" part="RpgWorldMap.dot" data-tone="success"></div><span class="here-text" part="RpgWorldMap.caption">{here}</span></div>{/if}
   </div>
-  {#if legend.length}<div class="legend" aria-label={t("rpg.map.legend")}>
+  {#if legend.length}<div class="legend hud" part="RpgWorldMap.plate RpgWorldMap.frame" data-layout="row" data-gap="loose" aria-label={t("rpg.map.legend")}>
     {#each legend as l (l.id)}
-      <div part="RpgWorldMap.row" data-kind={l.kind}><div class="legend-mark"></div><span class="legend-label">{l.label}</span></div>
+      <div part="RpgWorldMap.row" data-layout="row" data-gap="tight" data-kind={l.kind}><div class="legend-mark" part="RpgWorldMap.dot" data-shape={l.kind == 'quest' ? 'diamond' : null} data-tone={l.kind == 'danger' ? 'danger' : l.kind == 'player' ? 'success' : 'primary'}></div><span class="legend-label" part="RpgWorldMap.caption">{l.label}</span></div>
     {/each}
   </div>{/if}
 </figure>
 
 <style>
-:host { position: relative; display: block; inline-size: stretch; block-size: stretch; margin: 0; container-type: inline-size; }
-.sheet { position: relative; width: stretch; height: stretch; overflow: hidden; }
+:host { position: relative; margin: 0; --plate-fill: var(--scene-plate); --caption-ink: var(--scene-ink); --row-fill: none; --row-pad: 0px; }
+.sheet { position: relative; width: stretch; overflow: hidden; }
 .land { position: absolute; left: 0; top: 0; width: calc(var(--zoom) * 100%); height: calc(var(--zoom) * 100%); translate: var(--pan-x) var(--pan-y); }
 .terrain { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
 .markers { position: absolute; inset: 0; }
 [part="RpgWorldMap.marker RpgWorldMap.cell"] { position: absolute; left: calc(var(--x) * 100%); top: calc(var(--y) * 100%); width: var(--size-md); height: var(--size-md); padding: 0; translate: -50% -50%; align-items: center; justify-content: center; }
-[part="RpgWorldMap.marker RpgWorldMap.cell"] .face { display: flex; flex-direction: column; width: stretch; height: stretch; align-items: center; justify-content: center; }
-.marker-mark { width: 45%; height: 45%; background: var(--primary); border-radius: var(--radius-capsule); }
-[data-kind=quest] .marker-mark, [data-kind=quest] .legend-mark { border-radius: 0; rotate: 45deg; }
-[data-kind=danger] .marker-mark { background: var(--danger); }
-[data-kind=player] .marker-mark { background: var(--success); }
-[part="RpgWorldMap.marker RpgWorldMap.cell"][aria-selected=true] { border-color: var(--focus); box-shadow: 0 0 0 var(--stroke-regular) var(--focus); }
-.here { position: absolute; left: 0; bottom: 0; display: flex; align-items: center; gap: var(--space-sm); padding: var(--space-xs) var(--space-md); margin: 0; }
+[part="RpgWorldMap.marker RpgWorldMap.cell"] .face { width: stretch; height: stretch; }
+.marker-mark { width: 45%; height: 45%; }
+.here { position: absolute; left: 0; bottom: 0; padding: var(--space-xs) var(--space-md); margin: 0; }
 .here:dir(rtl) { left: auto; right: 0; }
-.here-mark { width: var(--space-sm); height: var(--space-sm); background: var(--success); border-radius: var(--radius-capsule); }
-.here { background: var(--scene-plate); color: var(--scene-ink); border-radius: var(--radius-control); }
+.here-mark { width: var(--space-sm); height: var(--space-sm); }
 /* Over the map art, which the game draws: the scene plate and its ink. */
-.legend { position: absolute; left: 50%; bottom: var(--space-sm); translate: -50% 0; display: flex; align-items: center; gap: var(--space-md); padding: var(--space-xxs) var(--space-md); white-space: nowrap; background: var(--scene-plate); color: var(--scene-ink); border-radius: var(--radius-control); }
+.legend { position: absolute; left: 50%; bottom: var(--space-sm); translate: -50% 0; padding: var(--space-xxs) var(--space-md); white-space: nowrap; }
 @container (width < 760px) { .legend { left: auto; right: var(--space-sm); translate: none; } .here { bottom: auto; top: 0; } .legend:dir(rtl) { right: auto; left: var(--space-sm); } }
-[part="RpgWorldMap.row"] { display: flex; align-items: center; gap: var(--space-xs); flex: none; }
-.legend-mark { width: var(--space-sm); height: var(--space-sm); background: var(--primary); border-radius: var(--radius-capsule); }
-[data-kind=danger] .legend-mark { background: var(--danger); }
-[data-kind=player] .legend-mark { background: var(--success); }
+[part="RpgWorldMap.row"] { flex: none; }
+.legend-mark { width: var(--space-sm); height: var(--space-sm); }
 </style>
