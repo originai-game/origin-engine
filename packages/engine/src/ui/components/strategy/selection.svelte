@@ -78,7 +78,7 @@
 .units { padding: var(--space-xxs); }
 [part="StrategySelection.cell"] { flex: none; width: var(--size-xl); padding: var(--space-xxs); }
 [part="StrategySelection.cell"] .face { position: relative; width: stretch; }
-[part="StrategySelection.portrait StrategySelection.picture"] { position: relative; overflow: hidden; }
+[part="StrategySelection.portrait StrategySelection.picture"] { --layout-ratio: 1; position: relative; overflow: hidden; }
 .art { width: stretch; height: stretch; object-fit: cover; }
 .mark { width: 62%; height: 62%; }
 .count { position: absolute; inset-inline-end: 0; bottom: 0; padding: 0 var(--space-xxs); white-space: nowrap; }

@@ -187,6 +187,21 @@ test("StrategySelection: a cell chooses by key, a command reports its key, a dis
   run(member("selection", "empty"), (e) => expect(texts(e)).toContain("nothing selected"));
 });
 
+test("StrategySelection: unit tray fallback icons stay square and centered at desktop and phone sizes", () => {
+  for (const pack of PACKS) for (const view of [DESKTOP, PHONE]) {
+    run(member("selection", "default", { pack, view }), (e) => {
+      const drawn = elements(e);
+      for (const cell of drawn.filter((x) => x.role === "option")) {
+        const icon = drawn.find((x) => x.role === "image" && x.path.startsWith(`${cell.path}/`))!;
+        expect(icon.width).toBeGreaterThan(cell.width / 2);
+        expect(Math.abs(icon.width - icon.height)).toBeLessThanOrEqual(1);
+        expect(Math.abs(icon.x + icon.width / 2 - cell.x - cell.width / 2)).toBeLessThanOrEqual(1);
+        expect(Math.abs(icon.y + icon.height / 2 - cell.y - cell.width / 2)).toBeLessThanOrEqual(1);
+      }
+    });
+  }
+});
+
 test("StrategySelection: the chosen subgroup keeps its key through a reorder", () => {
   const events: Event[] = [];
   run(member("selection", "default", { events }), (e) => {
