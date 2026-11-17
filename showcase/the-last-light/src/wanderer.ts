@@ -51,5 +51,5 @@ export function buildWanderer(world: World, coast: Coast): void {
     geometry: must(og.render.sphereGeometry(world, { radius: 0.03 * size })),
     material: must(og.render.standardMaterial(world, { color: { r: 1, g: 0.75, b: 0.4 }, emissive: { r: 1, g: 0.62, b: 0.22 }, emissiveIntensity: 2.5 })),
   }));
-  must(world.insert(flame, og.PointLight, { color: { r: 1, g: 0.62, b: 0.26 }, intensity: 2.2, distance: 7 }));
+  must(world.insert(flame, og.PointLight, { color: { r: 1, g: 0.62, b: 0.26 }, intensity: 2.2, distance: 7, castShadow: true }));
 }

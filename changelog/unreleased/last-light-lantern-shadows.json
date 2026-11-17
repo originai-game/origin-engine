@@ -1,0 +1,8 @@
+{
+  "fixed": [
+    {
+      "member": "The Last Light showcase",
+      "summary": "The lantern's point light casts shadows, allowing its housing and frame to occlude light instead of lighting through the staff and backpack. Intensity, range, bloom and materials remain as authored."
+    }
+  ]
+}
