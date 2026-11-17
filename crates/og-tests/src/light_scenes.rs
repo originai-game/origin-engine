@@ -480,19 +480,18 @@ pub fn baked_batches_scene(baked: bool) -> Result<RenderScene, String> {
     Ok(scene)
 }
 
-/// The material of part `i` of a Cornell box (0 floor, 1 ceiling, 2 back,
-/// 3 and 4 the side walls, 5 the tall block, 6 the short one): matte, or
-/// with `batches` the batch kind [`baked_batches_scene`] names (the back
-/// wall's compact vertices are set by the caller).
+/// The material of part `i` of a baked room (0 floor, 1 ceiling, 2 back,
+/// 3 and 4 the side walls, 5 the tall block, 6 the short one): `m`, or
+/// with `batches` the batch kind [`baked_batches_scene`] names drawing it
+/// (the back wall's compact vertices are set by the caller).
 #[cfg(not(target_arch = "wasm32"))]
 fn part_material(
     scene: &mut RenderScene,
     i: usize,
-    color: Vec3,
+    m: StandardMaterial,
     batches: bool,
 ) -> og_render::MaterialHandle {
     use og_render::{MaterialShader, ParamKind, ShaderParam, TextureArrayData, TextureSource};
-    let m = matte(color, 0.9);
     if !batches {
         return scene.add_standard_material(m);
     }
@@ -553,9 +552,6 @@ fn cornell_box(
     baked: bool,
     batches: bool,
 ) -> Result<(), String> {
-    use og_render::{BakedMesh, LightmapPages, LightmapUvs, ProbeVolume};
-    use std::sync::Arc;
-
     let (white, red, green) = (
         Vec3::new(0.73, 0.73, 0.73),
         Vec3::new(0.63, 0.065, 0.05),
@@ -643,19 +639,77 @@ fn cornell_box(
         if batches && i == 2 {
             scene.set_vertex_encoding(mesh, og_render::VertexEncoding::Compact);
         }
-        let material = part_material(scene, i, color, batches);
+        let material = part_material(scene, i, matte(color, 0.9), batches);
         scene.add_instance(mesh, material, Mat4::IDENTITY);
     };
-    if !baked {
+    let LightKind::Spot {
+        direction,
+        angle_degrees,
+        penumbra,
+    } = spot.kind
+    else {
+        unreachable!("the box's light is a spot");
+    };
+    let lights = [og_bake::Light::Spot {
+        position: spot.position,
+        direction,
+        radiance: spot.color * spot.intensity,
+        range: spot.range,
+        cos_outer: angle_degrees.to_radians().cos(),
+        cos_inner: (angle_degrees * (1.0 - penumbra)).to_radians().cos(),
+    }];
+    let volume = og_bake::VolumeDesc {
+        min: p(-0.95, 0.05, -0.95),
+        max: p(0.95, 1.95, 0.95),
+        spacing: 0.3,
+    };
+    bake_parts(
+        scene,
+        parts,
+        baked.then_some(BakeLight {
+            sky: Vec3::splat(0.05),
+            lights: &lights,
+            volume,
+        }),
+        &mut |scene: &mut RenderScene, i, mesh, color| place(scene, i, mesh, color),
+    )
+}
+
+/// What [`bake_parts`] bakes its parts under: the sky's radiance, the
+/// lights and the light volume's box.
+#[cfg(not(target_arch = "wasm32"))]
+struct BakeLight<'a> {
+    sky: Vec3,
+    lights: &'a [og_bake::Light],
+    volume: og_bake::VolumeDesc,
+}
+
+/// Adds `parts` (each a mesh and the linear albedo og-bake bakes it with)
+/// to `scene`, each drawn by `place` (its index, its mesh, its albedo),
+/// and with `bake_light` lightmaps them by og-bake when the scene is built
+/// (xatlas charts 16 texels a metre in pages up to 256, 64 paths a texel,
+/// one thread: the same pages every build) and bakes the light volume
+/// over its `volume` (L1 harmonics), its pages and volume added to the
+/// scene's bake. Without, the parts are drawn unbaked.
+#[cfg(not(target_arch = "wasm32"))]
+fn bake_parts(
+    scene: &mut RenderScene,
+    parts: Vec<(MeshData, Vec3)>,
+    bake_light: Option<BakeLight>,
+    place: &mut dyn FnMut(&mut RenderScene, usize, og_render::MeshHandle, Vec3),
+) -> Result<(), String> {
+    use og_render::{BakedMesh, LightmapPages, LightmapUvs, ProbeVolume};
+    use std::sync::Arc;
+
+    let Some(light) = bake_light else {
         for (i, (mesh, color)) in parts.into_iter().enumerate() {
             let mesh = scene.add_mesh(mesh);
             place(scene, i, mesh, color);
         }
         return Ok(());
-    }
-
+    };
     let mut bake = og_bake::Scene {
-        sky: Vec3::splat(0.05),
+        sky: light.sky,
         ..Default::default()
     };
     for (i, (mesh, color)) in parts.iter().enumerate() {
@@ -676,22 +730,7 @@ fn cornell_box(
             ..Default::default()
         });
     }
-    let LightKind::Spot {
-        direction,
-        angle_degrees,
-        penumbra,
-    } = spot.kind
-    else {
-        unreachable!("the box's light is a spot");
-    };
-    bake.lights.push(og_bake::Light::Spot {
-        position: spot.position,
-        direction,
-        radiance: spot.color * spot.intensity,
-        range: spot.range,
-        cos_outer: angle_degrees.to_radians().cos(),
-        cos_inner: (angle_degrees * (1.0 - penumbra)).to_radians().cos(),
-    });
+    bake.lights.extend_from_slice(light.lights);
     let unwrap: Vec<og_bake::UnwrapMesh> = parts
         .iter()
         .map(|(m, _)| og_bake::UnwrapMesh {
@@ -720,18 +759,7 @@ fn cornell_box(
         },
         &mut |_, _, _| {},
     );
-    let volume = og_bake::volume::bake(
-        &bake,
-        &og_bake::VolumeDesc {
-            min: p(-0.95, 0.05, -0.95),
-            max: p(0.95, 1.95, 0.95),
-            spacing: 0.3,
-        },
-        64,
-        3,
-        1,
-        1,
-    );
+    let volume = og_bake::volume::bake(&bake, &light.volume, 64, 3, 1, 1);
     let pages = Arc::new(LightmapPages {
         width: lightmap.width,
         height: lightmap.height,
