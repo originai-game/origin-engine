@@ -35,5 +35,7 @@ mod tier;
 mod ui_image;
 #[path = "../ui_text.rs"]
 mod ui_text;
+#[path = "../volumetric.rs"]
+mod volumetric;
 #[path = "../wgsl_rules.rs"]
 mod wgsl_rules;

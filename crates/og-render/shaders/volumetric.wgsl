@@ -12,10 +12,11 @@
 //
 // The froxel grid: `inject` lights every froxel (160 × 90 × 64 cells over the
 // view, slices quadratically deeper to `distance`) by the sun through its
-// cascades and the cluster's point, spot and rect lights through their
+// cascades and the cluster's point and rect lights through their
 // shadows and cookies; `integrate` sums them front to back into the
 // in-scattered light and the transmittance at each slice's far edge;
-// `fs_froxel` reads that at each pixel's depth. The raymarch: `fs_raymarch`
+// `fs_froxel` reads that at each pixel's depth and resolves spot cones on
+// that pixel's ray, using the grid's extinction. The raymarch: `fs_raymarch`
 // marches each pixel's view ray in steps, lit by the sun and the first
 // RAYMARCH_LIGHTS lights of each step's cluster. Both
 // output (in-scattered light, transmittance), blended over the lit image
@@ -138,9 +139,10 @@ fn water_in(p: vec3<f32>, dir: vec3<f32>, width: f32) -> vec3<f32> {
 
 // The light scattered towards the eye at p (frag: its pixel; `most`: as `locals_in`), a sample `width` metres
 // across: the medium's, but for the light from every side (MediumAt's `own` and `local`).
-fn medium_in(p: vec3<f32>, dir: vec3<f32>, frag: vec2<f32>, most: u32, width: f32) -> vec3<f32> {
-  if (VOL_WATER) { return water_in(p, dir, width); }
-  return sun_in(p, dir) + locals_in(p, dir, frag, most);
+// span.xy bounds the integration step along dir relative to p; span.z is its uniform sample.
+fn medium_in(p: vec3<f32>, dir: vec3<f32>, frag: vec2<f32>, most: u32, width: f32, m: MediumAt, span: vec3<f32>, spots: bool) -> vec3<f32> {
+  if (VOL_WATER) { return m.scatter * water_in(p, dir, width); }
+  return m.scatter * sun_in(p, dir) + locals_in(p, dir, frag, most, m.scatter, span, spots);
 }
 
 // The environment's and the hemisphere light's light from every side about p, as an even phase scatters it
@@ -209,10 +211,75 @@ fn far_air(dir: vec3<f32>, depth: f32) -> vec4<f32> {
   return vec4<f32>((sun + vol.own.rgb) * hidden, 1.0 - hidden);
 }
 
+// Intersect a step p + t*dir with the spot's finite cone. A spot can be much
+// thinner than a depth stratum; drawing its one sample from this interval,
+// weighted by the interval's share of the step, integrates that thin support
+// instead of randomly lighting or missing the entire stratum.
+fn spot_span(light: LocalLight, p: vec3<f32>, dir: vec3<f32>, span: vec2<f32>) -> vec2<f32> {
+  let v = p - light.position_range.xyz;
+  let vd = dot(v, dir);
+  let sphere = vd * vd - dot(v, v) + light.position_range.w * light.position_range.w;
+  if (sphere <= 0.0) { return vec2<f32>(0.0); }
+  var lo = max(span.x, -vd - sqrt(sphere));
+  var hi = min(span.y, -vd + sqrt(sphere));
+  let va = dot(v, light.direction_slot.xyz);
+  let da = dot(dir, light.direction_slot.xyz);
+  // Select the forward half of the double cone before clipping its quadratic.
+  if (da > 0.0) { lo = max(lo, -va / da); }
+  else if (da < 0.0) { hi = min(hi, -va / da); }
+  else if (va <= 0.0) { return vec2<f32>(0.0); }
+  if (hi <= lo) { return vec2<f32>(0.0); }
+  let c2 = light.cone.x * light.cone.x;
+  let a = c2 - da * da;
+  let b = c2 * vd - va * da;
+  let c = c2 * dot(v, v) - va * va;
+  if (a == 0.0) {
+    if (b > 0.0) { hi = min(hi, -c / (2.0 * b)); }
+    else if (b < 0.0) { lo = max(lo, -c / (2.0 * b)); }
+    else if (c > 0.0) { return vec2<f32>(0.0); }
+  } else {
+    let discriminant = b * b - a * c;
+    if (discriminant <= 0.0) {
+      if (a > 0.0) { return vec2<f32>(0.0); }
+    } else {
+      let q = -b - select(-sqrt(discriminant), sqrt(discriminant), b >= 0.0);
+      let r0 = min(q / a, c / q);
+      let r1 = max(q / a, c / q);
+      if (a > 0.0) { lo = max(lo, r0); hi = min(hi, r1); }
+      else if (lo < r0) { hi = min(hi, r0); }
+      else { lo = max(lo, r1); }
+    }
+  }
+  return vec2<f32>(lo, hi);
+}
+
+// One local light's radiance scattered towards the eye, before the medium's tint.
+fn local_in(light: LocalLight, p: vec3<f32>, dir: vec3<f32>) -> vec3<f32> {
+  let kind = light.color_kind.w;
+  let to_light = light.position_range.xyz - p;
+  let d2 = max(dot(to_light, to_light), 1e-4);
+  var atten = range_window(light, d2) / d2;
+  let l = to_light * inverseSqrt(d2);
+  if (kind < -0.5) {
+    // A rect light as a small panel: its area, facing p.
+    let side = cross(light.direction_slot.xyz, light.cone.xyz);
+    let area = 4.0 * length(side);
+    var facing = dot(l, normalize(side));
+    if (kind < -1.5) { facing = abs(facing); }
+    atten *= area * max(facing, 0.0);
+    if (atten > 0.0) { atten *= rect_shadow(light, p, l); }
+  } else {
+    if (kind > 0.5) { atten *= spot_cone(light, l); }
+    if (atten > 0.0) { atten *= local_shadow_lookup(light, p, l, false); }
+  }
+  if (atten <= 0.0) { return vec3<f32>(0.0); }
+  return light.color_kind.rgb * atten * light_cookie(light, -l) * hg_phase(dot(dir, l), vol.scatter.w);
+}
+
 // The cluster's lights scattered towards the eye at p (frag: its pixel),
 // the first `most` of them (the cluster keeps the brightest at the camera
 // first): every one in the froxel grid, RAYMARCH_LIGHTS in the raymarch.
-fn locals_in(p: vec3<f32>, dir: vec3<f32>, frag: vec2<f32>, most: u32) -> vec3<f32> {
+fn locals_in(p: vec3<f32>, dir: vec3<f32>, frag: vec2<f32>, most: u32, scatter: vec3<f32>, span: vec3<f32>, spots: bool) -> vec3<f32> {
   var sum = vec3<f32>(0.0);
   if (frame.params.z < 0.5) { return sum; }
   let word = cluster_word(cluster_at(frag, p));
@@ -220,29 +287,19 @@ fn locals_in(p: vec3<f32>, dir: vec3<f32>, frag: vec2<f32>, most: u32) -> vec3<f
   let count = min(word >> 24u, most);
   for (var k = 0u; k < count; k++) {
     let light = light_at(cluster_ref(first + k));
-    let to_light = light.position_range.xyz - p;
-    let d2 = max(dot(to_light, to_light), 1e-4);
-    var atten = range_window(light, d2) / d2;
-    let l = to_light * inverseSqrt(d2);
     let kind = light.color_kind.w;
-    if (kind < -0.5) {
-      // A rect light as a small panel: its area, facing p.
-      let side = cross(light.direction_slot.xyz, light.cone.xyz);
-      let area = 4.0 * length(side);
-      var facing = dot(l, normalize(side));
-      if (kind < -1.5) { facing = abs(facing); }
-      atten *= area * max(facing, 0.0);
-      if (atten > 0.0) {
-        atten *= rect_shadow(light, p, l);
-      }
-    } else {
-      if (kind > 0.5) { atten *= spot_cone(light, l); }
-      if (atten > 0.0) {
-        atten *= local_shadow_lookup(light, p, l, false);
-      }
+    if (kind > 0.5 && !spots) { continue; }
+    var at = p;
+    var weight = 1.0;
+    var tint = scatter;
+    if (kind > 0.5) {
+      let interval = spot_span(light, p, dir, span.xy);
+      if (interval.y <= interval.x) { continue; }
+      at += dir * mix(interval.x, interval.y, span.z);
+      weight = (interval.y - interval.x) / (span.y - span.x);
+      tint = vol_medium(at).scatter;
     }
-    if (atten <= 0.0) { continue; }
-    sum += light.color_kind.rgb * atten * light_cookie(light, -l) * hg_phase(dot(dir, l), vol.scatter.w);
+    sum += tint * weight * local_in(light, at, dir);
   }
   return sum;
 }
@@ -264,4 +321,3 @@ fn pixel_depth(frag: vec2<f32>) -> f32 {
   let at = clamp(vec2<i32>(frag * vec2<f32>(size) / vol.extent.zw), vec2<i32>(0), size - 1);
   return textureLoad(scene_depth, at, 0).r;
 }
-

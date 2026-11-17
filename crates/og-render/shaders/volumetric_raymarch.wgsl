@@ -25,7 +25,8 @@ fn fs_raymarch(in: VolOut) -> @location(0) vec4<f32> {
     if (sigma <= 0.0) { continue; }
     let tr = exp(-sigma * dt);
     // A step holds the water's light as far as its length.
-    var s = m.own + m.scatter * medium_in(p, dir, in.pos.xy, RAYMARCH_LIGHTS, 0.5 * dt);
+    let span = vec3<f32>(-jitter * dt, (1.0 - jitter) * dt, jitter);
+    var s = m.own + medium_in(p, dir, in.pos.xy, RAYMARCH_LIGHTS, 0.5 * dt, m, span, true);
     if (m.local.x + m.local.y + m.local.z > 0.0) { s += m.local * ambient_in(p, env); }
     acc += transmittance * s * (1.0 - tr) / sigma;
     transmittance *= tr;

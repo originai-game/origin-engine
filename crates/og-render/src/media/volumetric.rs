@@ -20,12 +20,13 @@
 //! - [`VolumetricMethod::Froxel`] (the default): the graph pass `volumetric`
 //!   (two compute dispatches after the shadow passes) lights a 160 × 90 ×
 //!   64 froxel grid over the view by the sun through its cascades and by
-//!   the clustered point, spot and rect lights through their shadows and
+//!   the clustered point and rect lights through their shadows and
 //!   cookies, then sums it front to back. Each froxel's light is the mean
-//!   of eight stratified samples over its slice's depth, jittered per
-//!   froxel and per frame: a slice is metres deep far out, and a single
-//!   sample there landed in or out of a shaft column by column (vertical
-//!   streaks).
+//!   of eight depth-stratified samples, jittered per froxel and per frame.
+//!   Spots resolve on the pixel ray, with eight samples per depth slice
+//!   clipped to the finite cone, taking extinction from the grid. A
+//!   subfroxel beam retains its silhouette instead of disappearing or
+//!   lighting whole cuboids.
 //! - [`VolumetricMethod::Raymarch`] (asked for with
 //!   `RenderDesc::volumetric`): no compute pass; the apply pass marches
 //!   each pixel's view ray in 24 jittered steps, lit by the sun through its

@@ -9,7 +9,9 @@
 // shaft depending on the column, which the front-to-back sum turns into
 // vertical streaks. INJECT_TAPS stratified samples over the slice's depth,
 // each jittered within its stratum per froxel and per frame, integrate the
-// slice instead.
+// slice instead. Spots are resolved on the pixel ray: their cones can be
+// narrower than a cell, so neither a centre ray nor a cell average can
+// reconstruct their silhouette.
 const INJECT_TAPS: u32 = 8u;
 
 // Interleaved gradient noise (Jimenez 2014) at a froxel, moved by the
@@ -44,7 +46,7 @@ fn inject(@builtin(global_invocation_id) id: vec3<u32>) {
     sigma_sum += m.sigma;
     if (m.sigma > 0.0) {
       local_sum += m.local;
-      light_sum += m.own + m.scatter * medium_in(p, dir, uv * vol.extent.zw, 0xffffffffu, max(along * across, deep));
+      light_sum += m.own + medium_in(p, dir, uv * vol.extent.zw, 0xffffffffu, max(along * across, deep), m, vec3<f32>(0.0), false);
     }
   }
   if (local_sum.x + local_sum.y + local_sum.z > 0.0) {
@@ -82,21 +84,71 @@ fn integrate(@builtin(global_invocation_id) id: vec3<u32>) {
 @group(1) @binding(5) var froxel_tex: texture_3d<f32>;
 @group(1) @binding(6) var froxel_sampler: sampler;
 
-@fragment
-fn fs_froxel(in: VolOut) -> @location(0) vec4<f32> {
-  let depth = pixel_depth(in.pos.xy);
-  let d = min(depth, vol.extent.x);
-  let uv = in.pos.xy / vol.extent.zw;
+fn froxel_at(uv: vec2<f32>, d: f32) -> vec4<f32> {
   let f = sqrt(max(d, 0.0) / vol.extent.x);
   let z = f - 0.5 / vol.grid.z;
   let s = textureSampleLevel(froxel_tex, froxel_sampler, vec3<f32>(uv, max(z, 0.5 / vol.grid.z)), 0.0);
   // Nearer than the first slice's far edge: that slice's share of it.
   let k = clamp(f * vol.grid.z, 0.0, 1.0);
-  var o = mix(vec4<f32>(0.0, 0.0, 0.0, 1.0), s, k);
+  return mix(vec4<f32>(0.0, 0.0, 0.0, 1.0), s, k);
+}
+
+// Integrate only inside each finite spot cone, on the actual pixel ray.
+// The grid still supplies extinction; no spot radiance is stored in it,
+// so interpolating it cannot turn a beam into lit/unlit cuboids.
+fn spots_in(uv: vec2<f32>, d: f32) -> vec3<f32> {
+  var sum = vec3<f32>(0.0);
+  if (VOL_WATER) { return sum; }
+  let dir = view_ray(uv);
+  let forward = max(dot(dir, frame.view_forward.xyz), 1e-3);
+  let jitter = ign(uv * vol.extent.zw + vec2<f32>(47.0, 17.0) * vol.grid.w);
+  for (var i = 0u; i < u32(frame.params.z); i++) {
+    let light = light_at(i);
+    if (light.color_kind.w < 0.5) { continue; }
+    let span = spot_span(light, frame.view_pos.xyz, dir, vec2<f32>(0.0, d / forward));
+    if (span.y <= span.x) { continue; }
+    // Keep the grid's depth strata, including for wide cones and an eye
+    // inside the beam. Only the portion inside the cone is integrated.
+    let first_slice = u32(min(floor(sqrt(max(span.x * forward, 0.0) / vol.extent.x) * vol.grid.z), vol.grid.z - 1.0));
+    let end_slice = u32(min(ceil(sqrt(max(span.y * forward, 0.0) / vol.extent.x) * vol.grid.z), vol.grid.z));
+    for (var z = first_slice; z < end_slice; z++) {
+      let start = max(span.x, slice_depth(f32(z) / vol.grid.z) / forward);
+      let end = min(span.y, slice_depth(f32(z + 1u) / vol.grid.z) / forward);
+      let dt = (end - start) / f32(INJECT_TAPS);
+      for (var t = 0u; t < INJECT_TAPS; t++) {
+        let near = start + f32(t) * dt;
+        let p = frame.view_pos.xyz + dir * (near + jitter * dt);
+        // Preserve the cluster's light cap and selection, even though the
+        // cone intersection is found before choosing a depth cluster.
+        let word = cluster_word(cluster_at(uv * vol.extent.zw, p));
+        let first = word & 0xffffffu;
+        let count = word >> 24u;
+        var present = false;
+        for (var k = 0u; k < count; k++) {
+          if (cluster_ref(first + k) == i) { present = true; break; }
+        }
+        if (!present) { continue; }
+        let m = vol_medium(p);
+        if (m.sigma <= 0.0) { continue; }
+        let trans = froxel_at(uv, near * forward).a;
+        let length = (1.0 - exp(-m.sigma * dt)) / m.sigma;
+        sum += trans * length * m.scatter * local_in(light, p, dir);
+      }
+    }
+  }
+  return sum;
+}
+
+@fragment
+fn fs_froxel(in: VolOut) -> @location(0) vec4<f32> {
+  let depth = pixel_depth(in.pos.xy);
+  let d = min(depth, vol.extent.x);
+  let uv = in.pos.xy / vol.extent.zw;
+  var o = froxel_at(uv, d);
+  o = vec4<f32>(o.rgb + spots_in(uv, d), o.a);
   // The air past the grid, behind what the grid holds.
   let far = far_air(view_ray(uv), depth);
   o = vec4<f32>(o.rgb + o.a * far.rgb, o.a * far.a);
   // The water's fog has dimmed the scene already.
   return vec4<f32>(o.rgb, select(o.a, 1.0, VOL_WATER));
 }
-
