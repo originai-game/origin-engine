@@ -385,31 +385,90 @@ pub const POOL_POST: Vec3 = Vec3::new(0.0, 1.5, 0.0);
 /// A 0.5 m block on the pool's bed, 0.5 m under the water.
 pub const POOL_BLOCK: Vec3 = Vec3::new(1.6, 0.25, 0.0);
 
-/// A 3 m post and a sunk 0.5 m block standing on a pool's bed, the water
-/// 1 m deep around them, the
-/// screen AO (three.js-era post SSAO) on the direct light too. With
-/// `water` the surface is at 1 m; without, the same surface 2 m under the
-/// bed, where the prepass hides it.
+/// A flooded cistern in a ruined courtyard on a summer afternoon: a 3 m
+/// column standing on its stone bed and a 0.5 m block sunk beside it, the
+/// water 1 m deep round them inside a rubble rim, the yard's setts, crates
+/// and a barrel above, with the screen AO (three.js-era post SSAO) on the
+/// direct light too. With `water` the surface is at 1 m; without, the same
+/// surface 2 m under the bed, where the prepass hides it.
 pub fn ao_screen_water_scene(water: bool) -> RenderScene {
+    use crate::kit;
     let mut scene = RenderScene::new();
-    sky(&mut scene, Vec3::new(0.4, 0.8, 0.6), 2.5);
-    plain_ground(&mut scene, 30.0, Vec3::new(0.55, 0.5, 0.4));
-    let post = scene.add_mesh(shapes::cuboid(Vec3::new(0.6, 3.0, 0.6)));
-    let stone = scene.add_standard_material(StandardMaterial {
-        color: Vec3::splat(0.75),
-        roughness: 0.9,
-        ..Default::default()
-    });
-    scene.add_instance(post, stone, Mat4::from_translation(POOL_POST));
-    let block = scene.add_mesh(shapes::cuboid(Vec3::splat(0.5)));
-    scene.add_instance(block, stone, Mat4::from_translation(POOL_BLOCK));
+    let bed = kit::surface_tinted(&mut scene, "stone", [0.7, 0.66, 0.6]);
+    let floor = scene.add_mesh(kit::slab(Vec2::splat(-4.0), Vec2::splat(4.0), 0.0, 2.0));
+    scene.add_instance(floor, bed, Mat4::IDENTITY);
+    // The rim: four rubble walls from the bed to the yard, 1.4 m high.
+    let stone = kit::surface_tinted(&mut scene, "stone", [0.95, 0.9, 0.84]);
+    for (min, max) in [
+        (Vec3::new(-4.6, 0.0, -4.6), Vec3::new(4.6, 1.4, -4.0)),
+        (Vec3::new(-4.6, 0.0, 4.0), Vec3::new(4.6, 1.4, 4.6)),
+        (Vec3::new(-4.6, 0.0, -4.0), Vec3::new(-4.0, 1.4, 4.0)),
+        (Vec3::new(4.0, 0.0, -4.0), Vec3::new(4.6, 1.4, 4.0)),
+    ] {
+        let m = scene.add_mesh(kit::block(min, max, 2.4));
+        scene.add_instance(m, stone, Mat4::IDENTITY);
+    }
+    // The yard round it, cobbled, and the country beyond.
+    let setts = kit::surface_tinted(&mut scene, "cobbles", [0.9, 0.88, 0.84]);
+    for (min, max) in [
+        (Vec2::new(-30.0, -30.0), Vec2::new(30.0, -4.6)),
+        (Vec2::new(-30.0, 4.6), Vec2::new(30.0, 30.0)),
+        (Vec2::new(-30.0, -4.6), Vec2::new(-4.6, 4.6)),
+        (Vec2::new(4.6, -4.6), Vec2::new(30.0, 4.6)),
+    ] {
+        let m = scene.add_mesh(kit::slab(min, max, 1.4, 2.0));
+        scene.add_instance(m, setts, Mat4::IDENTITY);
+    }
+    let grass = kit::surface_tinted(&mut scene, "grass", [0.86, 1.0, 0.72]);
+    for (min, max) in [
+        (Vec2::new(-260.0, -260.0), Vec2::new(-30.0, 260.0)),
+        (Vec2::new(30.0, -260.0), Vec2::new(260.0, 260.0)),
+        (Vec2::new(-30.0, -260.0), Vec2::new(30.0, -30.0)),
+        (Vec2::new(-30.0, 30.0), Vec2::new(30.0, 260.0)),
+    ] {
+        let m = scene.add_mesh(kit::slab(min, max, 1.4, 7.0));
+        scene.add_instance(m, grass, Mat4::IDENTITY);
+    }
+    kit::hills(&mut scene, None);
+    // The column standing in the water and the block sunk beside it.
+    let column = kit::prop(&mut scene, "column");
+    column.place(&mut scene, POOL_POST - Vec3::Y * 1.5, 0.3, 3.0);
+    let block = scene.add_mesh(kit::block(
+        POOL_BLOCK - Vec3::splat(0.25),
+        POOL_BLOCK + Vec3::splat(0.25),
+        1.0,
+    ));
+    scene.add_instance(block, stone, Mat4::IDENTITY);
+    // The yard's clutter on the rim.
+    let crate_ = kit::prop(&mut scene, "crate");
+    crate_.place(&mut scene, Vec3::new(-3.2, 1.4, -5.6), 0.2, 0.8);
+    crate_.place(&mut scene, Vec3::new(-2.3, 1.4, -5.5), -0.3, 0.7);
+    kit::prop(&mut scene, "winebarrel").place(&mut scene, Vec3::new(-1.2, 1.4, -5.4), 0.5, 1.0);
+    kit::prop(&mut scene, "column_broken").place(&mut scene, Vec3::new(2.6, 1.4, -5.6), 1.1, 1.3);
+    kit::prop(&mut scene, "boulder").place(&mut scene, Vec3::new(-5.6, 1.3, -1.0), 0.7, 0.9);
+    // What is left of the colonnade round the yard, and the town behind.
+    for x in [-6.5, -2.2, 2.2, 6.5] {
+        column.place(&mut scene, Vec3::new(x, 1.4, -8.0), 0.2 * x, 4.2);
+    }
+    column.place(&mut scene, Vec3::new(-6.5, 1.4, -3.0), 0.9, 4.2);
+    let house = kit::prop(&mut scene, "townhouse");
+    for (x, z, turn) in [
+        (-12.0, -15.0, 0.0),
+        (-1.0, -16.0, 0.1),
+        (10.0, -15.0, -0.1),
+        (-16.0, -4.0, 1.57),
+    ] {
+        house.place(&mut scene, Vec3::new(x, 1.4, z), turn, 9.0);
+    }
+    let sun = Vec3::new(0.4, 0.8, 0.6);
+    crate::sky_scenes::physical_light_under(&mut scene, sun);
     scene.world.water.push(Water {
         transform: Mat4::from_translation(Vec3::new(
             0.0,
             if water { POOL_LEVEL } else { -2.0 },
             0.0,
         )),
-        size: Vec2::splat(30.0),
+        size: Vec2::splat(8.0),
         segments: 1,
         foam_width: 0.0,
         wave_strength: 0.0,
@@ -422,9 +481,10 @@ pub fn ao_screen_water_scene(water: bool) -> RenderScene {
         ..Default::default()
     });
     scene.frame.camera = Camera {
-        position: Vec3::new(0.0, 5.0, 4.0),
-        target: Vec3::new(0.0, 1.0, 0.0),
-        exposure: Exposure::linear(0.9),
+        position: Vec3::new(3.0, 4.6, 6.4),
+        target: Vec3::new(0.0, 1.0, -0.6),
+        far: 2500.0,
+        exposure: Exposure::Manual { ev: 0.0 },
         ..Default::default()
     };
     scene

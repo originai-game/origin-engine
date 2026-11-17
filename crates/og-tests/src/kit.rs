@@ -161,16 +161,49 @@ pub fn surface(scene: &mut RenderScene, name: &str) -> MaterialHandle {
 
 /// [`surface`] with its colour multiplied by `tint`.
 pub fn surface_tinted(scene: &mut RenderScene, name: &str, tint: [f32; 3]) -> MaterialHandle {
+    surface_finish(scene, name, tint, 1.0)
+}
+
+/// [`surface_tinted`] with its roughness map scaled by `roughness`: below
+/// 1 the surface is polished or wet.
+pub fn surface_finish(
+    scene: &mut RenderScene,
+    name: &str,
+    tint: [f32; 3],
+    roughness: f32,
+) -> MaterialHandle {
+    let [color, normal, orm] = surface_textures(scene, name);
+    scene.add_material(Material {
+        base_color: [tint[0], tint[1], tint[2], 1.0],
+        base_color_texture: Some(color),
+        normal_texture: Some(normal),
+        metallic_roughness_texture: Some(orm),
+        metallic: 0.0,
+        roughness,
+        ..Default::default()
+    })
+}
+
+/// The kit surface `name`'s maps added to `scene`: its colour (sRGB), its
+/// normal map and its occlusion-roughness-metal map.
+pub fn surface_textures(scene: &mut RenderScene, name: &str) -> [TextureHandle; 3] {
     let mut add = |part: &str, space| {
         let rel = format!("kit/ground/{name}.{part}.jpg");
         scene.add_texture((*image(&rel, space)).clone())
     };
-    let color = add("color", ColorSpace::Srgb);
-    let normal = add("normal", ColorSpace::Linear);
-    let orm = add("orm", ColorSpace::Linear);
+    [
+        add("color", ColorSpace::Srgb),
+        add("normal", ColorSpace::Linear),
+        add("orm", ColorSpace::Linear),
+    ]
+}
+
+/// Lime plaster painted `color` (linear) over the kit's rubble stone: the
+/// stone's normal and roughness maps under a flat coat of paint.
+pub fn plaster(scene: &mut RenderScene, color: [f32; 3]) -> MaterialHandle {
+    let [_, normal, orm] = surface_textures(scene, "stone");
     scene.add_material(Material {
-        base_color: [tint[0], tint[1], tint[2], 1.0],
-        base_color_texture: Some(color),
+        base_color: [color[0], color[1], color[2], 1.0],
         normal_texture: Some(normal),
         metallic_roughness_texture: Some(orm),
         metallic: 0.0,

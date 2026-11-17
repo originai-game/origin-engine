@@ -955,14 +955,14 @@ pub fn build(name: &str) -> Result<GfxScene, String> {
         // the last one's lit image, one more bounce a frame, so the capture
         // waits four.
         "gi-room" => |g, _| {
-            g.scene = fx::gi_scene(true);
+            g.scene = crate::reflect_scenes::atrium_scene(crate::reflect_scenes::AtriumGi::Screen);
             g.frames = 4;
             Ok(())
         },
         // The same under TAA: the rays turn every frame and TAA's history
         // averages them (and is the image the GI reads).
         "gi-room-taa" => |g, _| {
-            g.scene = fx::gi_scene(true);
+            g.scene = crate::reflect_scenes::atrium_scene(crate::reflect_scenes::AtriumGi::Screen);
             g.desc.antialias = Antialias::Taa;
             g.frames = 32;
             Ok(())
@@ -970,7 +970,7 @@ pub fn build(name: &str) -> Result<GfxScene, String> {
         // The probe GI (gi_probes.rs): a bounce more each frame, the
         // probes' estimators settled by the capture.
         "gi-room-probes" => |g, _| {
-            g.scene = fx::gi_probe_scene(true);
+            g.scene = crate::reflect_scenes::atrium_scene(crate::reflect_scenes::AtriumGi::Probes);
             g.frames = 32;
             Ok(())
         },
@@ -1234,12 +1234,12 @@ pub fn build(name: &str) -> Result<GfxScene, String> {
         },
         #[cfg(not(target_arch = "wasm32"))]
         "baked-cornell" => |g, _| {
-            g.scene = crate::light_scenes::baked_cornell_scene(true)?;
+            g.scene = crate::light_scenes::baked_cellar_scene(false)?;
             Ok(())
         },
         #[cfg(not(target_arch = "wasm32"))]
         "baked-batches" => |g, _| {
-            g.scene = crate::light_scenes::baked_batches_scene(true)?;
+            g.scene = crate::light_scenes::baked_cellar_scene(true)?;
             Ok(())
         },
         // Materials sampling texture arrays: eight cubes of one tile
@@ -1330,7 +1330,7 @@ pub fn build(name: &str) -> Result<GfxScene, String> {
             Ok(())
         },
         "ssr-wet-floor" => |g, _| {
-            g.scene = crate::depth_render_scenes::ssr_scene(true);
+            g.scene = crate::reflect_scenes::ssr_street_scene();
             g.frames = crate::depth_render_scenes::SSR_FRAMES;
             Ok(())
         },
@@ -1339,15 +1339,12 @@ pub fn build(name: &str) -> Result<GfxScene, String> {
         // translucent pane outdoors (probe_scenes.rs).
         #[cfg(not(target_arch = "wasm32"))]
         "probe-two-rooms" => |g, _| {
-            g.scene = crate::probe_scenes::two_rooms_scene(true);
+            g.scene = crate::probe_scenes::two_shops_scene();
             Ok(())
         },
         #[cfg(not(target_arch = "wasm32"))]
         "probe-outdoor" => |g, _| {
-            g.scene = crate::probe_scenes::outdoor_scene(crate::probe_scenes::Outdoor {
-                content: true,
-                probe: Some(1.0),
-            });
+            g.scene = crate::probe_scenes::garden_scene();
             Ok(())
         },
         "stylise-toon-physical" => |g, _| {

@@ -136,8 +136,8 @@ fn the_high_preset_refines_ao_reflections_and_fog_and_medium_moves_nothing() {
         ao_high.pixels == at_quality("ao-gtao", shadows_only, full).pixels,
         "high draws the scene's AO at full resolution"
     );
-    // The contacts under the larger sphere and the box beside it.
-    let r = (600, 440, 760, 530);
+    // The broken column's foot on the setts and the drum lying by it.
+    let r = (610, 600, 900, 690);
     assert!(
         report(
             "ao-gtao, half asked: shadows only -> high",
@@ -163,7 +163,7 @@ fn the_high_preset_refines_ao_reflections_and_fog_and_medium_moves_nothing() {
         ssr_high.pixels == at_quality("ssr-wet-floor", shadows_only, steps(96)).pixels,
         "high marches twice the scene's 48 steps"
     );
-    // The emissive slab's reflection in the floor.
+    // The right lantern's light standing in the wet setts below it.
     let r = (745, 405, 885, 665);
     assert!(
         report(
@@ -179,8 +179,7 @@ fn the_high_preset_refines_ao_reflections_and_fog_and_medium_moves_nothing() {
     assert!(at_quality("volumetric-fog", medium, |_| {}).pixels == fog_default.pixels);
     let fog_high = at_quality("volumetric-fog", high, |_| {});
     let fog_shadows = at_quality("volumetric-fog", shadows_only, |_| {});
-    // The fog in front of the dark middle slot of the wall, between two
-    // shafts.
+    // The fog in the middle of the wood, between the pines' shafts.
     let r = (640, 120, 720, 520);
     assert!(
         report(

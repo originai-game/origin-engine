@@ -50,96 +50,162 @@ pub fn adjust(scene: &mut RenderScene) {
 // Ambient occlusion.
 // ---------------------------------------------------------------------------
 
-/// Stacked blocks, steps, a sphere on the ground and a wall corner under a
-/// bright overcast sky: contact shadows only the ambient occlusion makes.
+/// A corner of a rubble-walled yard under an overcast sky: crates stacked
+/// in the corner, oak barrels, stone steps up to a door, a ladder and a
+/// broken column stump: contact shadows only the ambient occlusion makes.
 pub fn ao_scene(method: AoMethod) -> RenderScene {
     let mut scene = RenderScene::new();
-    ground(&mut scene, 30.0, 1.0, 0.9);
-    let cube = scene.add_mesh(shapes::cuboid(Vec3::ONE));
-    let sphere = scene.add_mesh(shapes::sphere(32, 24));
-    let white = scene.add_material(Material {
-        base_color: [0.8, 0.78, 0.74, 1.0],
-        roughness: 0.85,
+    // Pale limestone setts, their joints pointed with lime: the setts' own
+    // relief and roughness under an even colour, so the darkening at the
+    // props' feet is the occlusion and not the stones' mottle.
+    let [_, setts_normal, setts_orm] = crate::kit::surface_textures(&mut scene, "cobbles");
+    let flags = scene.add_material(Material {
+        base_color: [0.4, 0.37, 0.32, 1.0],
+        normal_texture: Some(setts_normal),
+        metallic_roughness_texture: Some(setts_orm),
+        roughness: 1.0,
         ..Default::default()
     });
-    let place = |s: &mut RenderScene, m, p: Vec3, size: Vec3| {
-        s.add_instance(m, white, Mat4::from_translation(p) * Mat4::from_scale(size));
+    let yard = scene.add_mesh(crate::kit::slab(
+        Vec2::splat(-40.0),
+        Vec2::splat(40.0),
+        0.0,
+        2.0,
+    ));
+    scene.add_instance(yard, flags, Mat4::IDENTITY);
+    let grass = crate::kit::surface_tinted(&mut scene, "grass", [0.86, 1.0, 0.72]);
+    for (min, max) in [
+        (Vec2::new(-260.0, -260.0), Vec2::new(-40.0, 260.0)),
+        (Vec2::new(40.0, -260.0), Vec2::new(260.0, 260.0)),
+        (Vec2::new(-40.0, -260.0), Vec2::new(40.0, -40.0)),
+        (Vec2::new(-40.0, 40.0), Vec2::new(40.0, 260.0)),
+    ] {
+        let m = scene.add_mesh(crate::kit::slab(min, max, 0.0, 7.0));
+        scene.add_instance(m, grass, Mat4::IDENTITY);
+    }
+    crate::kit::hills(&mut scene, None);
+    let stone = crate::kit::surface_tinted(&mut scene, "stone", [0.95, 0.9, 0.84]);
+    let limewash = crate::kit::plaster(&mut scene, [0.5, 0.47, 0.41]);
+    let block = |s: &mut RenderScene, min: Vec3, max: Vec3, material| {
+        let m = s.add_mesh(crate::kit::block(min, max, 2.4));
+        s.add_instance(m, material, Mat4::IDENTITY);
     };
-    // A wall corner.
-    place(
+    // A corner of a limewashed yard: the back wall and the left wall, a
+    // buttress where they meet, a stone coping along their tops.
+    block(
         &mut scene,
-        cube,
-        Vec3::new(0.0, 1.5, -3.0),
-        Vec3::new(8.0, 3.0, 0.4),
+        Vec3::new(-4.0, 0.0, -3.2),
+        Vec3::new(4.5, 4.0, -2.8),
+        limewash,
     );
-    place(
+    block(
         &mut scene,
-        cube,
-        Vec3::new(-3.8, 1.5, -1.0),
-        Vec3::new(0.4, 3.0, 4.0),
+        Vec3::new(-4.0, 0.0, -2.8),
+        Vec3::new(-3.6, 4.0, 1.4),
+        limewash,
     );
-    // Steps.
+    block(
+        &mut scene,
+        Vec3::new(-4.1, 4.0, -3.3),
+        Vec3::new(4.6, 4.18, -2.7),
+        stone,
+    );
+    block(
+        &mut scene,
+        Vec3::new(-3.6, 0.0, -2.8),
+        Vec3::new(-3.0, 1.6, -2.2),
+        limewash,
+    );
+    // Stone steps up to a door in the back wall, on the right.
     for i in 0..4 {
-        let h = 0.25 * (i + 1) as f32;
-        place(
+        let h = 0.25 * (4 - i) as f32;
+        let z = -2.8 + 0.4 * i as f32;
+        block(
             &mut scene,
-            cube,
-            Vec3::new(2.2, h / 2.0, -2.4 + i as f32 * 0.0)
-                + Vec3::new(0.0, 0.0, 0.5 * i as f32 - 0.5),
-            Vec3::new(2.0, h, 0.5),
+            Vec3::new(1.2, 0.0, z),
+            Vec3::new(3.2, h, z + 0.4),
+            stone,
         );
     }
-    // Blocks stacked and leaning.
-    place(
+    let door = crate::kit::surface_tinted(&mut scene, "planks", [0.7, 0.6, 0.5]);
+    let leaf = scene.add_mesh(crate::kit::block(
+        Vec3::new(1.6, 1.0, -2.84),
+        Vec3::new(2.8, 2.9, -2.76),
+        1.2,
+    ));
+    scene.add_instance(leaf, door, Mat4::IDENTITY);
+    // The yard's clutter pushed tight into the walls and their creases:
+    // crates stacked against the buttress, one along the left wall,
+    // barrels in the angle of the steps, a boulder against the left wall,
+    // a broken column lying on the setts.
+    let crate_ = crate::kit::prop(&mut scene, "crate");
+    crate_.place(&mut scene, Vec3::new(-2.25, 0.0, -2.4), 0.0, 0.8);
+    crate_.place(&mut scene, Vec3::new(-2.2, 0.8, -2.42), -0.08, 0.8);
+    crate_.place(
         &mut scene,
-        cube,
-        Vec3::new(-1.6, 0.4, -0.6),
-        Vec3::splat(0.8),
+        Vec3::new(-3.28, 0.0, -0.9),
+        std::f32::consts::FRAC_PI_2,
+        0.65,
     );
-    place(
+    crate_.place(&mut scene, Vec3::new(-1.2, 0.0, -2.48), 0.05, 0.6);
+    let barrel = crate::kit::prop(&mut scene, "winebarrel");
+    barrel.place(&mut scene, Vec3::new(0.15, 0.0, -2.42), 0.4, 1.05);
+    barrel.place(&mut scene, Vec3::new(0.84, 0.0, -2.42), 1.7, 1.05);
+    barrel.place(&mut scene, Vec3::new(0.5, 1.05, -2.45), 0.9, 1.05);
+    // Two boards leant on the back wall, a broken column stump by the steps.
+    let board = scene.add_mesh(crate::kit::block(
+        Vec3::new(-0.16, 0.0, -0.025),
+        Vec3::new(0.16, 2.7, 0.025),
+        1.2,
+    ));
+    for (x, turn) in [(-0.6, 0.04), (-0.3, -0.03)] {
+        scene.add_instance(
+            board,
+            door,
+            Mat4::from_translation(Vec3::new(x, 0.0, -2.3))
+                * Mat4::from_rotation_y(turn)
+                * Mat4::from_rotation_x(-0.2),
+        );
+    }
+    crate::kit::prop(&mut scene, "column_broken").place(
         &mut scene,
-        cube,
-        Vec3::new(-1.5, 1.1, -0.6),
-        Vec3::splat(0.6),
+        Vec3::new(0.6, 0.0, 0.2),
+        0.8,
+        1.3,
     );
-    place(
+    crate::kit::prop(&mut scene, "boulder").place(
         &mut scene,
-        sphere,
-        Vec3::new(0.3, 0.5, 0.2),
-        Vec3::splat(1.0),
+        Vec3::new(-3.0, -0.15, 0.9),
+        2.0,
+        0.8,
     );
-    place(
-        &mut scene,
-        sphere,
-        Vec3::new(-0.6, 0.25, 1.0),
-        Vec3::splat(0.5),
-    );
-    let sun = Vec3::new(0.3, 0.9, 0.5);
-    scene.lighting.light = DirectionalLight {
-        direction_to_light: sun,
-        intensity: 0.6,
-        ..Default::default()
-    };
-    scene.lighting.environment = Environment {
-        sky: ProceduralSky {
-            sun_direction: sun,
-            sun_color: Vec3::new(1.0, 0.98, 0.95),
-            look: None,
-        },
-        intensity: 1.0,
-        background: Background::Sky,
-        ..Environment::default()
-    };
+    // A hazy afternoon, the sun behind the back wall: the wall's shadow
+    // falls over the corner, where the sky's light from everywhere is all
+    // there is, so the occlusion in the corner, under the stacks, in the
+    // steps' angle and where the column meets the setts carries the shot.
+    let sun = Vec3::new(0.5, 0.75, -0.45);
+    crate::sky_scenes::physical_light_under(&mut scene, sun);
+    scene.lighting.light.intensity *= 0.5;
+    scene.atmosphere.clouds = Some(og_render::Clouds {
+        coverage: 0.6,
+        color: Vec3::splat(0.75),
+        base: 900.0,
+        layer: 0.0,
+        ..og_render::Clouds::default()
+    });
+    // Two metres' reach (Unreal's default): GTAO's falloff starts at half
+    // the radius, so a crate's top still shades the setts in front of it.
     scene.look.post.ao = Some(AmbientOcclusion {
-        radius: 0.7,
-        intensity: 1.2,
+        radius: 2.0,
+        intensity: 1.3,
         method,
         ..Default::default()
     });
     scene.frame.camera = Camera {
-        position: Vec3::new(1.0, 2.6, 5.0),
-        target: Vec3::new(-0.2, 0.6, -1.2),
-        exposure: Exposure::linear(0.9),
+        position: Vec3::new(1.0, 1.75, 3.4),
+        target: Vec3::new(-0.7, 0.75, -1.7),
+        far: 2500.0,
+        exposure: Exposure::Manual { ev: 0.4 },
         ..Default::default()
     };
     scene
@@ -261,60 +327,117 @@ pub fn gi_probe_scene(probes: bool) -> RenderScene {
     scene
 }
 
-/// A porch under an overcast sky: a roof slab on a back wall and a left
-/// wall, open to the front and the right, on a pale ground. No sun: the
-/// sky is all the light, so what the roof and walls hide of it is what
-/// the probe GI's sky occlusion shows (`probes`) and the environment's
-/// light alone does not: the floor under the roof dark, darkest in the
-/// back left corner, the open ground in front as bright as without. With
-/// `ao`, GTAO (whose bent normals the probes are read along) darkens the
-/// wall-floor joins.
+/// A farm's lean-to under an overcast sky: a plank roof on a rubble back
+/// wall and an ochre-plastered left wall, open to the yard in front and on
+/// the right, its stores inside (crates, barrels, a ladder's worth of
+/// boards, a millstone of a boulder), the yard's setts and the meadow
+/// beyond. No sun: the sky is all the light, so what the roof and walls
+/// hide of it is what the probe GI's sky occlusion shows (`probes`) and
+/// the environment's light alone does not: the floor under the roof dark,
+/// darkest in the back left corner, the open yard in front as bright as
+/// without. With `ao`, GTAO (whose bent normals the probes are read along)
+/// darkens the wall-floor joins and the stores' feet.
 pub fn gi_shelter_scene(probes: bool, ao: bool) -> RenderScene {
+    use crate::kit;
     let mut scene = RenderScene::new();
-    ground(&mut scene, 40.0, 1.0, 0.75);
-    let cube = scene.add_mesh(shapes::cuboid(Vec3::ONE));
-    let sphere = scene.add_mesh(shapes::sphere(32, 24));
-    let matte = |s: &mut RenderScene, c: [f32; 3]| {
-        s.add_material(Material {
-            base_color: [c[0], c[1], c[2], 1.0],
-            roughness: 0.9,
-            ..Default::default()
-        })
+    let setts = kit::surface_tinted(&mut scene, "cobbles", [0.95, 0.92, 0.86]);
+    let yard = scene.add_mesh(kit::slab(Vec2::splat(-12.0), Vec2::splat(12.0), 0.0, 2.0));
+    scene.add_instance(yard, setts, Mat4::IDENTITY);
+    let grass = kit::surface_tinted(&mut scene, "grass", [0.86, 1.0, 0.72]);
+    for (min, max) in [
+        (Vec2::new(-260.0, -260.0), Vec2::new(-12.0, 260.0)),
+        (Vec2::new(12.0, -260.0), Vec2::new(260.0, 260.0)),
+        (Vec2::new(-12.0, -260.0), Vec2::new(12.0, -12.0)),
+        (Vec2::new(-12.0, 12.0), Vec2::new(12.0, 260.0)),
+    ] {
+        let m = scene.add_mesh(kit::slab(min, max, -0.01, 7.0));
+        scene.add_instance(m, grass, Mat4::IDENTITY);
+    }
+    kit::hills(&mut scene, None);
+    let stone = kit::surface_tinted(&mut scene, "stone", [0.95, 0.9, 0.84]);
+    let ochre = kit::surface_tinted(&mut scene, "stone", [1.25, 0.85, 0.45]);
+    let planks = kit::surface_tinted(&mut scene, "planks", [0.85, 0.75, 0.65]);
+    let block = |s: &mut RenderScene, m, min: Vec3, max: Vec3| {
+        let mesh = s.add_mesh(kit::block(min, max, 1.6));
+        s.add_instance(mesh, m, Mat4::IDENTITY);
     };
-    let stone = matte(&mut scene, [0.7, 0.68, 0.64]);
-    let ochre = matte(&mut scene, [0.75, 0.45, 0.15]);
-    let place = |s: &mut RenderScene, m, mat, p: Vec3, size: Vec3| {
-        s.add_instance(m, mat, Mat4::from_translation(p) * Mat4::from_scale(size));
-    };
-    // Roof, back wall, left wall.
-    place(
+    // Roof, back wall, left wall: the porch's slabs, the roof on rafters.
+    block(
         &mut scene,
-        cube,
-        stone,
-        Vec3::new(0.0, 3.1, -0.5),
-        Vec3::new(6.4, 0.2, 5.4),
+        planks,
+        Vec3::new(-3.2, 3.0, -3.2),
+        Vec3::new(3.2, 3.2, 2.2),
     );
-    place(
+    for x in [-2.4f32, -0.8, 0.8, 2.4] {
+        block(
+            &mut scene,
+            planks,
+            Vec3::new(x - 0.08, 2.84, -3.0),
+            Vec3::new(x + 0.08, 3.0, 2.2),
+        );
+    }
+    block(
         &mut scene,
-        cube,
-        stone,
-        Vec3::new(0.0, 1.5, -3.1),
-        Vec3::new(6.4, 3.0, 0.2),
+        planks,
+        Vec3::new(-3.2, 2.84, 1.95),
+        Vec3::new(3.2, 3.0, 2.15),
     );
-    place(
+    block(
         &mut scene,
-        cube,
+        stone,
+        Vec3::new(-3.2, 0.0, -3.2),
+        Vec3::new(3.2, 3.0, -3.0),
+    );
+    block(
+        &mut scene,
         ochre,
-        Vec3::new(-3.1, 1.5, -0.5),
-        Vec3::new(0.2, 3.0, 5.4),
+        Vec3::new(-3.2, 0.0, -3.0),
+        Vec3::new(-3.0, 3.0, 2.2),
     );
-    place(
+    // A post holding the roof's open corner.
+    block(
         &mut scene,
-        sphere,
-        stone,
-        Vec3::new(1.2, 0.5, -1.2),
-        Vec3::splat(1.0),
+        planks,
+        Vec3::new(2.95, 0.0, 1.95),
+        Vec3::new(3.15, 2.84, 2.15),
     );
+    // The stores: crates and barrels in the back left corner, boards
+    // leant on the back wall, a boulder where the sphere lay.
+    let crate_ = kit::prop(&mut scene, "crate");
+    crate_.place(&mut scene, Vec3::new(-2.4, 0.0, -2.4), 0.1, 0.7);
+    crate_.place(&mut scene, Vec3::new(-2.35, 0.7, -2.45), -0.15, 0.65);
+    crate_.place(&mut scene, Vec3::new(-2.5, 0.0, -1.3), 0.5, 0.6);
+    let barrel = kit::prop(&mut scene, "winebarrel");
+    barrel.place(&mut scene, Vec3::new(-1.3, 0.0, -2.5), 0.4, 1.0);
+    barrel.place(&mut scene, Vec3::new(-0.4, 0.0, -2.55), 1.6, 1.0);
+    let board = scene.add_mesh(kit::block(
+        Vec3::new(-0.15, 0.0, -0.025),
+        Vec3::new(0.15, 2.6, 0.025),
+        1.2,
+    ));
+    for (x, turn) in [(0.7f32, 0.03f32), (1.05, -0.04), (1.4, 0.02)] {
+        scene.add_instance(
+            board,
+            planks,
+            Mat4::from_translation(Vec3::new(x, 0.0, -2.75))
+                * Mat4::from_rotation_y(turn)
+                * Mat4::from_rotation_x(-0.18),
+        );
+    }
+    kit::prop(&mut scene, "boulder").place(&mut scene, Vec3::new(1.2, -0.1, -1.2), 0.9, 0.9);
+    // The farm's pines past the yard, its watchtower on the hill.
+    let pine = kit::prop(&mut scene, "pine");
+    for (x, z, h) in [
+        (-9.0f32, -10.0f32, 10.0f32),
+        (-4.5, -13.0, 12.0),
+        (6.0, -11.0, 11.0),
+        (10.5, -7.0, 9.5),
+        (14.0, -14.0, 12.5),
+    ] {
+        pine.place(&mut scene, Vec3::new(x, 0.0, z), x * 0.4, h);
+    }
+    kit::prop(&mut scene, "watchtower").place(&mut scene, Vec3::new(30.0, 0.0, -60.0), 1.2, 18.0);
+    // Overcast: no sun, a grey sky.
     scene.lighting.light = DirectionalLight {
         direction_to_light: Vec3::new(0.3, 0.9, 0.2),
         intensity: 0.0,
@@ -330,6 +453,13 @@ pub fn gi_shelter_scene(probes: bool, ao: bool) -> RenderScene {
         background: Background::Sky,
         ..Environment::default()
     };
+    scene.atmosphere.clouds = Some(og_render::Clouds {
+        coverage: 0.9,
+        color: Vec3::splat(0.8),
+        base: 900.0,
+        layer: 0.0,
+        ..og_render::Clouds::default()
+    });
     scene.look.post.gi_probes = probes.then(|| og_render::ProbeGlobalIllumination {
         spacing: 1.0,
         cascades: 2,
@@ -341,11 +471,11 @@ pub fn gi_shelter_scene(probes: bool, ao: bool) -> RenderScene {
         method: og_render::AoMethod::Gtao,
         ..Default::default()
     });
-    // Below the roof, looking at the floor in the porch's middle (the
-    // frame's centre).
+    // From the yard, under the roof's edge, into the lean-to.
     scene.frame.camera = Camera {
-        position: Vec3::new(0.6, 1.5, 6.5),
-        target: Vec3::new(0.0, 0.0, -0.8),
+        position: Vec3::new(1.6, 1.6, 6.2),
+        target: Vec3::new(-0.4, 0.8, -1.2),
+        far: 2500.0,
         exposure: Exposure::linear(1.0),
         ..Default::default()
     };
@@ -373,40 +503,54 @@ pub fn gi_shelter_scene(probes: bool, ao: bool) -> RenderScene {
 /// probes' own soft light as the roughness rises past 0.4.
 pub fn light_volume_scene(realtime: bool, colour: Vec3, mirror: Option<f32>) -> RenderScene {
     let mut scene = RenderScene::new();
-    let cube = scene.add_mesh(shapes::cuboid(Vec3::ONE));
     let sphere = scene.add_mesh(shapes::sphere(32, 24));
-    let matte = |s: &mut RenderScene, c: [f32; 3]| {
-        s.add_material(Material {
-            base_color: [c[0], c[1], c[2], 1.0],
-            roughness: 0.9,
-            ..Default::default()
-        })
-    };
-    let white = matte(&mut scene, [0.8, 0.8, 0.8]);
-    let red = matte(&mut scene, [0.8, 0.08, 0.06]);
-    let green = matte(&mut scene, [0.08, 0.7, 0.1]);
-    let boxes = [
-        // Floor, ceiling, back, front (behind the camera), left, right.
-        (white, Vec3::new(0.0, -0.1, 0.0), Vec3::new(6.4, 0.2, 6.4)),
-        (white, Vec3::new(0.0, 3.1, 0.0), Vec3::new(6.4, 0.2, 6.4)),
-        (white, Vec3::new(0.0, 1.5, -3.1), Vec3::new(6.4, 3.4, 0.2)),
-        (white, Vec3::new(0.0, 1.5, 3.1), Vec3::new(6.4, 3.4, 0.2)),
-        (red, Vec3::new(-3.1, 1.5, 0.0), Vec3::new(0.2, 3.4, 6.4)),
-        (green, Vec3::new(3.1, 1.5, 0.0), Vec3::new(0.2, 3.4, 6.4)),
-        (white, Vec3::new(-0.6, 0.6, -0.9), Vec3::new(1.0, 1.2, 1.0)),
-    ];
-    for (mat, p, size) in boxes {
-        scene.add_instance(
-            cube,
-            mat,
-            Mat4::from_translation(p) * Mat4::from_scale(size),
-        );
+    // A painted room of an inn: limewashed plaster, an ochre-red wall on
+    // the left and a green one on the right (their bounce is what the
+    // light volume carries), a plank floor and ceiling.
+    let plaster =
+        |s: &mut RenderScene, tint: [f32; 3]| crate::kit::surface_tinted(s, "stone", tint);
+    let white = plaster(&mut scene, [1.15, 1.1, 1.0]);
+    let red = plaster(&mut scene, [1.3, 0.22, 0.16]);
+    let green = plaster(&mut scene, [0.25, 1.0, 0.3]);
+    let planks = crate::kit::surface_tinted(&mut scene, "planks", [0.9, 0.82, 0.72]);
+    for (mat, min, max) in [
+        (
+            planks,
+            Vec3::new(-3.2, -0.2, -3.2),
+            Vec3::new(3.2, 0.0, 3.2),
+        ),
+        (planks, Vec3::new(-3.2, 3.0, -3.2), Vec3::new(3.2, 3.2, 3.2)),
+        (
+            white,
+            Vec3::new(-3.2, -0.2, -3.2),
+            Vec3::new(3.2, 3.2, -3.0),
+        ),
+        (white, Vec3::new(-3.2, -0.2, 3.0), Vec3::new(3.2, 3.2, 3.2)),
+        (red, Vec3::new(-3.2, -0.2, -3.2), Vec3::new(-3.0, 3.2, 3.2)),
+        (green, Vec3::new(3.0, -0.2, -3.2), Vec3::new(3.2, 3.2, 3.2)),
+    ] {
+        let m = scene.add_mesh(crate::kit::block(min, max, 1.6));
+        scene.add_instance(m, mat, Mat4::IDENTITY);
     }
-    scene.add_instance(
-        sphere,
-        white,
-        Mat4::from_translation(Vec3::new(1.2, 0.5, 0.3)),
+    // A dresser-high stack of crates where the block stood, an oak barrel
+    // where the white ball sat, beams under the ceiling.
+    let crate_ = crate::kit::prop(&mut scene, "crate");
+    crate_.place(&mut scene, Vec3::new(-0.6, 0.0, -0.9), 0.1, 0.62);
+    crate_.place(&mut scene, Vec3::new(-0.55, 0.62, -0.95), -0.12, 0.6);
+    crate::kit::prop(&mut scene, "winebarrel").place(
+        &mut scene,
+        Vec3::new(1.2, 0.0, 0.3),
+        0.7,
+        1.0,
     );
+    for x in [-1.6f32, 0.0, 1.6] {
+        let beam = scene.add_mesh(crate::kit::block(
+            Vec3::new(x - 0.12, 2.78, -3.0),
+            Vec3::new(x + 0.12, 3.0, 3.0),
+            1.2,
+        ));
+        scene.add_instance(beam, planks, Mat4::IDENTITY);
+    }
     if let Some(roughness) = mirror {
         let chrome = scene.add_material(Material {
             base_color: [0.95, 0.95, 0.95, 1.0],
@@ -414,12 +558,19 @@ pub fn light_volume_scene(realtime: bool, colour: Vec3, mirror: Option<f32>) -> 
             roughness,
             ..Default::default()
         });
-        // On the camera's axis, clear of the block and the other sphere.
+        // On the camera's axis, clear of the crates and the barrel: a
+        // gazing ball on a broken column's stump.
         scene.add_instance(
             sphere,
             chrome,
             Mat4::from_translation(Vec3::new(0.0, 1.215, 0.39))
                 * Mat4::from_scale(Vec3::splat(0.8)),
+        );
+        crate::kit::prop(&mut scene, "column_broken").place(
+            &mut scene,
+            Vec3::new(0.0, 0.0, 0.39),
+            0.5,
+            0.95,
         );
         // Over the room, its capture point above the sphere (the box's
         // ceiling 0.8 above the room's: a little parallax upwards).

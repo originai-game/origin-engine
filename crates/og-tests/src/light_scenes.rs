@@ -480,6 +480,216 @@ pub fn baked_batches_scene(baked: bool) -> Result<RenderScene, String> {
     Ok(scene)
 }
 
+/// `baked-cornell` and `baked-batches` as a shot of a game: a monastery's
+/// closed cellar at night, 4 × 3 × 4 m, seen from just inside its front
+/// wall, lit by one lantern hung under the middle
+/// of its ceiling (a spot thrown down): a plank floor, a limewashed ceiling
+/// and back wall, the left wall painted red and the right green, a
+/// plastered pier standing out of the back wall on the left and a plank
+/// chest at the front right, every one of them lightmapped by og-bake when the scene is built
+/// (its parts in [`baked_cornell_scene`]'s order, so with `batches` each
+/// is drawn by the same kind of batch as there), and wine barrels and
+/// crates lit by the cellar's light volume. The lantern and its shadows
+/// are drawn live; the bake carries the bounces: the pier's side and the
+/// floor take red from the left wall, the chest green from the right,
+/// and the ceiling is lit by bounces alone. [`baked_cornell_scene`] and
+/// [`baked_batches_scene`] are the plain fixtures `tests/light.rs` reads.
+#[cfg(not(target_arch = "wasm32"))]
+pub fn baked_cellar_scene(batches: bool) -> Result<RenderScene, String> {
+    use crate::kit;
+    let mut scene = RenderScene::new();
+    dark(&mut scene, 0.1);
+    let [planks, planks_normal, _] = kit::surface_textures(&mut scene, "planks");
+    let [_, stone_normal, _] = kit::surface_textures(&mut scene, "stone");
+    let paint = |color: Vec3| StandardMaterial {
+        color,
+        normalMap: stone_normal.slot(),
+        roughness: 0.9,
+        ..Default::default()
+    };
+    let wood = |tint: Vec3| StandardMaterial {
+        color: tint,
+        map: planks.slot(),
+        normalMap: planks_normal.slot(),
+        roughness: 0.85,
+        ..Default::default()
+    };
+    // The planks' mean linear albedo (their colour map averaged), which
+    // og-bake bakes them with.
+    let planks_albedo = Vec3::new(0.165, 0.143, 0.115);
+    let (white, red, green) = (
+        Vec3::new(0.78, 0.75, 0.68),
+        Vec3::new(0.6, 0.07, 0.04),
+        Vec3::new(0.09, 0.36, 0.11),
+    );
+    let block = |min: Vec3, max: Vec3| {
+        let size = max - min;
+        transformed(
+            shapes::cuboid(size),
+            Mat4::from_translation((min + max) * 0.5),
+        )
+    };
+    // (mesh, the albedo it is baked with, how it draws)
+    let parts: Vec<(MeshData, Vec3, StandardMaterial)> = vec![
+        (
+            quad(
+                Vec3::new(-2.0, 0.0, 2.0),
+                Vec3::new(2.0, 0.0, 2.0),
+                Vec3::new(2.0, 0.0, -2.0),
+                Vec3::new(-2.0, 0.0, -2.0),
+            ),
+            planks_albedo * 1.2,
+            wood(Vec3::splat(1.2)),
+        ),
+        (
+            quad(
+                Vec3::new(-2.0, 3.0, -2.0),
+                Vec3::new(2.0, 3.0, -2.0),
+                Vec3::new(2.0, 3.0, 2.0),
+                Vec3::new(-2.0, 3.0, 2.0),
+            ),
+            white,
+            paint(white),
+        ),
+        (
+            quad(
+                Vec3::new(-2.0, 0.0, -2.0),
+                Vec3::new(2.0, 0.0, -2.0),
+                Vec3::new(2.0, 3.0, -2.0),
+                Vec3::new(-2.0, 3.0, -2.0),
+            ),
+            white,
+            paint(white),
+        ),
+        (
+            quad(
+                Vec3::new(-2.0, 0.0, 2.0),
+                Vec3::new(-2.0, 0.0, -2.0),
+                Vec3::new(-2.0, 3.0, -2.0),
+                Vec3::new(-2.0, 3.0, 2.0),
+            ),
+            red,
+            paint(red),
+        ),
+        (
+            quad(
+                Vec3::new(2.0, 0.0, -2.0),
+                Vec3::new(2.0, 0.0, 2.0),
+                Vec3::new(2.0, 3.0, 2.0),
+                Vec3::new(2.0, 3.0, -2.0),
+            ),
+            green,
+            paint(green),
+        ),
+        (
+            block(Vec3::new(-1.5, 0.0, -2.0), Vec3::new(-0.7, 3.0, -1.45)),
+            white,
+            paint(white),
+        ),
+        (
+            block(Vec3::new(0.7, 0.0, 0.2), Vec3::new(1.8, 0.6, 0.9)),
+            planks_albedo * 1.2,
+            wood(Vec3::splat(1.2)),
+        ),
+        // The front wall behind the camera: the cellar is closed, so what
+        // faces the camera takes the light the front wall bounces back.
+        (
+            quad(
+                Vec3::new(2.0, 0.0, 2.0),
+                Vec3::new(-2.0, 0.0, 2.0),
+                Vec3::new(-2.0, 3.0, 2.0),
+                Vec3::new(2.0, 3.0, 2.0),
+            ),
+            white,
+            paint(white),
+        ),
+    ];
+    let lantern = Vec3::new(0.0, 2.75, 0.0);
+    let spot = Light {
+        kind: LightKind::Spot {
+            direction: Vec3::NEG_Y,
+            angle_degrees: 62.0,
+            penumbra: 0.4,
+        },
+        position: lantern - Vec3::Y * 0.12,
+        color: Vec3::new(1.0, 0.78, 0.5),
+        intensity: 16.0,
+        range: 8.0,
+        cast_shadows: true,
+    };
+    scene.lighting.lights.push(spot);
+    put(
+        &mut scene,
+        shapes::sphere(16, 12),
+        glow(Vec3::new(1.0, 0.78, 0.5), 6.0),
+        Mat4::from_scale_rotation_translation(Vec3::splat(0.16), Quat::IDENTITY, lantern),
+    );
+    // The lantern's chain and the cellar's stores, lit by its light volume.
+    put(
+        &mut scene,
+        shapes::cuboid(Vec3::new(0.02, 0.17, 0.02)),
+        matte(Vec3::splat(0.05), 0.5),
+        Mat4::from_translation(lantern + Vec3::Y * 0.165),
+    );
+    let barrel = kit::prop(&mut scene, "winebarrel");
+    barrel.place(&mut scene, Vec3::new(-1.5, 0.0, 0.25), 0.4, 0.95);
+    barrel.place(&mut scene, Vec3::new(-1.45, 0.0, -0.6), 1.5, 0.95);
+    let crate_ = kit::prop(&mut scene, "crate");
+    crate_.place(&mut scene, Vec3::new(1.3, 0.0, -1.5), 0.2, 0.6);
+    crate_.place(&mut scene, Vec3::new(1.35, 0.6, -1.55), -0.15, 0.55);
+    let LightKind::Spot {
+        direction,
+        angle_degrees,
+        penumbra,
+    } = spot.kind
+    else {
+        unreachable!("the lantern's light is a spot");
+    };
+    let lights = [og_bake::Light::Spot {
+        position: spot.position,
+        direction,
+        radiance: spot.color * spot.intensity,
+        range: spot.range,
+        cos_outer: angle_degrees.to_radians().cos(),
+        cos_inner: (angle_degrees * (1.0 - penumbra)).to_radians().cos(),
+    }];
+    let (meshes, materials): (Vec<_>, Vec<_>) = parts
+        .into_iter()
+        .map(|(m, albedo, draw)| ((m, albedo), draw))
+        .unzip();
+    bake_parts(
+        &mut scene,
+        meshes,
+        Some(BakeLight {
+            sky: Vec3::splat(0.02),
+            lights: &lights,
+            volume: og_bake::VolumeDesc {
+                min: Vec3::new(-1.9, 0.05, -1.9),
+                max: Vec3::new(1.9, 2.9, 1.9),
+                spacing: 0.4,
+            },
+        }),
+        &mut |scene: &mut RenderScene, i, mesh, _| {
+            if batches && i == 2 {
+                scene.set_vertex_encoding(mesh, og_render::VertexEncoding::Compact);
+            }
+            let material = part_material(scene, i, materials[i], batches);
+            scene.add_instance(mesh, material, Mat4::IDENTITY);
+        },
+    )?;
+    // Inside, at the front wall.
+    scene.frame.camera = Camera {
+        position: Vec3::new(0.5, 1.55, 1.85),
+        target: Vec3::new(-0.2, 1.1, -1.0),
+        projection: og_render::Projection::Perspective {
+            fov_y_degrees: 62.0,
+        },
+        exposure: Exposure::linear(0.85),
+        ..Default::default()
+    };
+    Ok(scene)
+}
+
 /// The material of part `i` of a baked room (0 floor, 1 ceiling, 2 back,
 /// 3 and 4 the side walls, 5 the tall block, 6 the short one): `m`, or
 /// with `batches` the batch kind [`baked_batches_scene`] names drawing it
