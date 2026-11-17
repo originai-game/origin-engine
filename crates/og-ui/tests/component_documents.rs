@@ -865,6 +865,78 @@ fn look_declarations(source: &str, roles: &std::collections::BTreeSet<String>) -
     found
 }
 
+/// Only the final name in a part list wears its role. Keep existing
+/// ambiguities in a shrinking backlog while the documents are redesigned;
+/// new ones fail, and removed ones must lose their exception.
+#[test]
+fn component_parts_wear_at_most_one_role() {
+    let rule = regex_lite::Regex::new(r#"part\$="\.([a-z-]+)""#).unwrap();
+    let roles: std::collections::BTreeSet<String> = rule
+        .captures_iter(og_ui::DEFAULT_CSS)
+        .map(|c| c[1].to_string())
+        .collect();
+    let backlog = std::fs::read_to_string(
+        std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/component_role_backlog.tsv"),
+    )
+    .unwrap();
+    let mut allowed = std::collections::BTreeMap::new();
+    for line in backlog
+        .lines()
+        .filter(|l| !l.is_empty() && !l.starts_with('#'))
+    {
+        let columns: Vec<_> = line.split('\t').collect();
+        assert_eq!(columns.len(), 3, "path<TAB>part list<TAB>count");
+        let key = (columns[0].to_string(), columns[1].to_string());
+        assert!(
+            allowed
+                .insert(key, columns[2].parse::<usize>().unwrap())
+                .is_none()
+        );
+    }
+    let (docs, _) = engine_documents(&["src/ui/components"]);
+    let mut found = std::collections::BTreeMap::new();
+    for doc in &docs {
+        for node in &doc.doc.nodes {
+            let Some(part) = node.part_name() else {
+                continue;
+            };
+            let count = part
+                .split_ascii_whitespace()
+                .filter(|name| {
+                    name.rsplit_once('.')
+                        .is_some_and(|(_, role)| roles.contains(role))
+                })
+                .count();
+            if count > 1 {
+                let path = doc.path.strip_prefix("src/ui/components/").unwrap();
+                *found
+                    .entry((path.to_string(), part.to_string()))
+                    .or_insert(0usize) += 1;
+            }
+        }
+    }
+    let mut problems = Vec::new();
+    for ((path, part), count) in &found {
+        let limit = allowed
+            .get(&(path.clone(), part.clone()))
+            .copied()
+            .unwrap_or(0);
+        if *count > limit {
+            problems.push(format!("{path}: `{part}` lists multiple roles ({count} occurrences, backlog {limit}); keep one role"));
+        }
+    }
+    for ((path, part), limit) in &allowed {
+        let count = found
+            .get(&(path.clone(), part.clone()))
+            .copied()
+            .unwrap_or(0);
+        if count < *limit {
+            problems.push(format!("{path}: `{part}` now has {count} occurrences; lower or remove its role backlog line ({limit})"));
+        }
+    }
+    assert!(problems.is_empty(), "{}", problems.join("\n"));
+}
+
 /// A role dresses every built-in part whose last name ends in it, so a new
 /// role silently restyles parts named before it existed (a chart's text
 /// `tick` would have taken a box's fill from a meter's `tick` role). Each

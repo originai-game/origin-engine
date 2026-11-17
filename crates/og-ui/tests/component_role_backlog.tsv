@@ -1,0 +1,113 @@
+# Existing ambiguous part lists only; this listing may only shrink.
+# Remove a line (or lower its count) when the component keeps one role.
+# path<TAB>part list<TAB>markup occurrences
+arena/draft.svelte	ArenaDraft.name ArenaDraft.caption	2
+arena/draft.svelte	ArenaDraft.name ArenaDraft.headline	2
+arena/draft.svelte	ArenaDraft.team ArenaDraft.plate ArenaDraft.card	2
+arena/lobby.svelte	ArenaLobby.name ArenaLobby.headline	1
+arena/roster.svelte	ArenaRoster.name ArenaRoster.headline	1
+arena/roster.svelte	ArenaRoster.role ArenaRoster.label ArenaRoster.caption	1
+arena/scoreboard.svelte	ArenaScoreboard.name ArenaScoreboard.headline	2
+arena/spectator.svelte	ArenaSpectator.name ArenaSpectator.headline	1
+arena/versus.svelte	ArenaVersus.name ArenaVersus.headline	2
+arena/versus.svelte	ArenaVersus.rank ArenaVersus.label ArenaVersus.caption	2
+arena/vote.svelte	ArenaVote.name ArenaVote.headline	1
+base/avatar.svelte	Avatar.name Avatar.headline	1
+base/avatar.svelte	Avatar.picture Avatar.well	1
+base/currency.svelte	Currency.frame Currency.card	1
+base/currency.svelte	Currency.name Currency.caption	1
+base/empty-state.svelte	EmptyState.title EmptyState.headline	1
+base/error-state.svelte	ErrorState.title ErrorState.headline	1
+base/item-slot.svelte	ItemSlot.name ItemSlot.caption	1
+base/list-item.svelte	ListItem.title ListItem.headline	1
+base/pips.svelte	Pips.label Pips.caption	1
+base/skeleton-group.svelte	SkeletonGroup.art SkeletonGroup.picture SkeletonGroup.skeleton	1
+base/steps.svelte	Steps.label Steps.headline	1
+base/steps.svelte	Steps.title Steps.headline	1
+card/face.svelte	CardFace.name CardFace.headline	1
+card/face.svelte	CardFace.type CardFace.label CardFace.caption	1
+card/piles.svelte	CardPiles.count CardPiles.figure CardPiles.badge	1
+card/run-map.svelte	CardRunMap.floor CardRunMap.label CardRunMap.figure	1
+card/run-map.svelte	CardRunMap.legend CardRunMap.plate CardRunMap.well	1
+hud/ability-bar.svelte	AbilityBar.label AbilityBar.badge	1
+hud/ability-slot.svelte	AbilitySlot.label AbilitySlot.badge	1
+hud/ability-slot.svelte	AbilitySlot.well AbilitySlot.track	1
+hud/ammo-counter.svelte	Ammo.magazine Ammo.well Ammo.fill	1
+hud/ammo-counter.svelte	Ammo.well Ammo.track	2
+hud/boss-bar.svelte	BossBar.heading BossBar.headline	1
+hud/hud-timer.svelte	HudTimer.label HudTimer.caption	1
+hud/orb-meter.svelte	OrbMeter.label OrbMeter.tag	1
+hud/overlay-bar.svelte	OverlayBar.label OverlayBar.caption	2
+hud/perf-readout.svelte	PerfReadout.label PerfReadout.caption	4
+hud/progress-bar.svelte	ProgressBar.well ProgressBar.track	1
+hud/qte-prompt.svelte	QtePrompt.label QtePrompt.headline	1
+hud/quest-tracker.svelte	RpgQuestTracker.caption RpgQuestTracker.figure	1
+hud/star-bar.svelte	StarBar.well StarBar.track	1
+hud/stat-bar.svelte	StatBar.well StatBar.track	1
+hud/status-grid.svelte	StatusGrid.badge StatusGrid.tag	2
+idle/generators.svelte	IdleGenerators.name IdleGenerators.headline	1
+idle/generators.svelte	IdleGenerators.rate IdleGenerators.label IdleGenerators.caption	1
+idle/offline.svelte	IdleOffline.summary IdleOffline.label IdleOffline.caption	1
+idle/purchases.svelte	IdlePurchases.name IdlePurchases.headline	1
+idle/resources.svelte	IdleResources.name IdleResources.caption	1
+meta/achievements.svelte	Achievements.name Achievements.headline	1
+meta/chat.svelte	Chat.log Chat.plate Chat.well	1
+meta/chat.svelte	Chat.time Chat.figure Chat.caption	2
+meta/daily-quests.svelte	DailyQuests.name DailyQuests.headline	1
+meta/friends.svelte	Friends.avatar Friends.picture Friends.well	2
+meta/friends.svelte	Friends.name Friends.headline	2
+meta/friends.svelte	Friends.presence Friends.well Friends.dot	1
+meta/pass-track.svelte	PassTrack.name PassTrack.headline	1
+meta/profile.svelte	Profile.label Profile.caption	1
+meta/profile.svelte	Profile.name Profile.title	1
+meta/reveal.svelte	Reveal.name Reveal.headline	1
+meta/shop-confirm.svelte	ShopConfirm.name ShopConfirm.headline	1
+meta/shop.svelte	Shop.name Shop.headline	2
+panels/breadcrumbs.svelte	Breadcrumbs.link Breadcrumbs.caption	1
+panels/chart.svelte	Chart.grid Chart.plate Chart.gridline	1
+panels/chart.svelte	Chart.label Chart.caption	2
+panels/conversation.svelte	RpgConversation.name RpgConversation.headline	1
+panels/data-grid.svelte	DataGrid.heading DataGrid.caption	1
+panels/item-card.svelte	RpgItemCard.name RpgItemCard.title	1
+panels/item-card.svelte	RpgItemCard.well RpgItemCard.caption	1
+panels/loot.svelte	RpgLoot.name RpgLoot.headline	1
+panels/node-graph.svelte	NodeGraph.label NodeGraph.badge	1
+puzzle/boosters.svelte	PuzzleBoosters.count PuzzleBoosters.figure PuzzleBoosters.badge	1
+puzzle/boosters.svelte	PuzzleBoosters.name PuzzleBoosters.headline	1
+puzzle/boosters.svelte	PuzzleBoosters.state PuzzleBoosters.label PuzzleBoosters.caption	1
+puzzle/goals.svelte	PuzzleGoals.figure PuzzleGoals.headline	1
+puzzle/goals.svelte	PuzzleGoals.label PuzzleGoals.caption	1
+puzzle/goals.svelte	PuzzleGoals.warning PuzzleGoals.plate PuzzleGoals.caption	1
+puzzle/level-path.svelte	PuzzleLevelPath.frame PuzzleLevelPath.card	1
+puzzle/summary.svelte	PuzzleSummary.earned PuzzleSummary.label PuzzleSummary.caption	1
+puzzle/summary.svelte	PuzzleSummary.frame PuzzleSummary.card	1
+puzzle/summary.svelte	PuzzleSummary.level PuzzleSummary.label PuzzleSummary.caption	1
+puzzle/summary.svelte	PuzzleSummary.record PuzzleSummary.label PuzzleSummary.badge	1
+puzzle/summary.svelte	PuzzleSummary.total PuzzleSummary.label PuzzleSummary.row	1
+racing/banner.svelte	RacingBanner.plate RacingBanner.frame	1
+racing/lap-hud.svelte	RacingLapHud.title RacingLapHud.caption	2
+racing/results.svelte	RacingResults.place RacingResults.label RacingResults.figure	1
+racing/standings.svelte	RacingStandings.gap RacingStandings.label RacingStandings.figure	1
+racing/standings.svelte	RacingStandings.place RacingStandings.label RacingStandings.figure	1
+racing/telemetry.svelte	RacingTelemetry.gear RacingTelemetry.plate RacingTelemetry.frame	2
+rhythm/difficulty.svelte	RhythmDifficulty.name RhythmDifficulty.headline	1
+rhythm/score-hud.svelte	RhythmScoreHud.row RhythmScoreHud.well	1
+rhythm/score-hud.svelte	RhythmScoreHud.title RhythmScoreHud.caption	2
+rhythm/song-select.svelte	RhythmSongSelect.name RhythmSongSelect.headline	1
+rpg/enemy-info.svelte	RpgEnemyInfo.name RpgEnemyInfo.headline	1
+rpg/place-card.svelte	RpgPlaceCard.name RpgPlaceCard.headline	1
+rpg/turn-order.svelte	RpgTurnOrder.title RpgTurnOrder.badge	1
+rpg/world-map.svelte	RpgWorldMap.plate RpgWorldMap.frame	2
+shooter/combat-hud.svelte	CombatHud.vitals CombatHud.plate CombatHud.frame	1
+strategy/queue.svelte	StrategyQueue.name StrategyQueue.headline	1
+strategy/selection.svelte	StrategySelection.meter StrategySelection.well StrategySelection.track	1
+strategy/selection.svelte	StrategySelection.name StrategySelection.headline	1
+strategy/tower.svelte	StrategyTower.name StrategyTower.headline	1
+strategy/wave.svelte	StrategyWave.title StrategyWave.caption	2
+world/interaction-prompt.svelte	InteractionPrompt.name InteractionPrompt.caption	1
+world/interaction-prompt.svelte	InteractionPrompt.reason InteractionPrompt.label InteractionPrompt.caption	1
+world/loot-label.svelte	LootLabel.tag LootLabel.cell	1
+world/minimap-view.svelte	MinimapView.marker MinimapView.cell MinimapView.dot	1
+world/minimap.svelte	Minimap.label Minimap.tag	1
+world/minimap.svelte	Minimap.marker Minimap.cell Minimap.dot	1
+world/nameplate.svelte	Nameplate.well Nameplate.track	2
