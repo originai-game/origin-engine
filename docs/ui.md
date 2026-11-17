@@ -540,6 +540,11 @@ corners is dashed as browsers do, half a dash at each corner. One uniform
 px radius is the element's `radius`, which states and transitions animate.
 A `<button>`'s own box declarations are its plate part's (§3.2).
 
+Core control focus outlines follow the painted part, not its larger input
+reach. `input[type=range]::part(focus)` follows the moving knob, with
+`--state-focus-ring-offset` outside it; the track keeps the slider's focus
+stop, keyboard adjustment and accessibility role.
+
 Text and fonts follow Fonts 4, Text 3 and 4 and Text Decoration 3, beside
 the house form `font: var(--text-<step>)`. A generic family picks the
 style's body, display or mono role. `text-transform` cases for the UI's

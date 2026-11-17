@@ -9,7 +9,9 @@ impl Ui {
     pub(super) fn focus_ring_commands(&self, i: usize, cmds: &mut Vec<DrawCmd>) {
         let t = self.paint_theme();
         let n = &self.tree.nodes[i];
-        let rect = n.placed.rect;
+        // A control's painted part may be smaller than its input reach.
+        let shaped = self.tree.nodes.get(n.content_slot).unwrap_or(n);
+        let rect = shaped.placed.rect;
         let ring = |player: usize, outline: bool| {
             use crate::paint::Placed;
             let mut part = n
@@ -36,7 +38,6 @@ impl Ui {
             // An outline follows the box's corners, their shape too (CSS
             // UI 4 §5.1, Borders 4 §5): the control's, unless the focus
             // part declares its own.
-            let shaped = self.tree.nodes.get(n.content_slot).unwrap_or(n);
             if let Some(lines) = draw.borders.as_mut()
                 && lines.corners.is_none()
                 && !values.has("radius")

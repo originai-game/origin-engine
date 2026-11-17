@@ -333,6 +333,49 @@ fn range_part_css_sizes_and_states_its_boxes() {
 }
 
 #[test]
+fn range_focus_outline_follows_the_moving_knob_not_its_reach() {
+    let mut d = mounted(
+        range_ui(Some(
+            "input[type=range]::part(knob) { width: 30px; height: 18px; }
+             input[type=range]::part(focus):focus-visible { outline: 2px solid #ff00ff; outline-offset: 3px; }",
+        )),
+        r#"<div style="width: 250px"><input id="Range" type="range" bind:value={$v} min="0" max="100" show-value={false} /></div>"#,
+        &[("v", json!(20))],
+        Viewport::new(400.0, 300.0),
+    );
+    d.step(InputFrame {
+        keys: vec![UiKey::Tab],
+        ..Default::default()
+    });
+    assert!(d.ui.focus_path(0).ends_with("/Range/Track"));
+    for v in [20, 80] {
+        d.set("v", json!(v));
+        for _ in 0..3 {
+            d.step(InputFrame::default());
+            let knob = at(&d.ui, "Range/Track/Knob/::part(knob)#0");
+            let rings: Vec<_> = d.ui.frame().items.iter().filter_map(|item| match &item.cmd {
+                DrawCmd::Shape { shape, .. }
+                    if matches!(&shape.mode, og_draw::UiMode::Stroke(s) if s.align == og_draw::UiAlign::Outside) => Some(shape),
+                _ => None,
+            }).collect();
+            assert_eq!(rings.len(), 1, "one ring at value {v}");
+            let ring = rings[0];
+            for (got, expected) in [
+                (ring.center.x, knob.x + knob.width / 2.0),
+                (ring.center.y, knob.y + knob.height / 2.0),
+                (ring.half.x * 2.0, knob.width + 6.0),
+                (ring.half.y * 2.0, knob.height + 6.0),
+            ] {
+                assert!(
+                    (got - expected).abs() < 0.01,
+                    "value {v}: {got} != {expected}"
+                );
+            }
+        }
+    }
+}
+
+#[test]
 fn widget_part_placement_follows_the_writing_direction() {
     // A part's own insets are in its layout's terms: in a right-to-left
     // frame the fill and the switch's knob stay on their track.

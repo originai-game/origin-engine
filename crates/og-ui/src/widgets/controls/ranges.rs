@@ -371,8 +371,9 @@ impl Ui {
 
     /// A slider's knob: a round part at a fraction of the rail, drawn in
     /// its state; it swells under a finger and takes no press of its own.
-    fn knob_at(&mut self, f: f32, g: Geo, pressed: bool, focused: bool, disabled: bool) {
-        self.knob_named("Knob", None, None, f, g, (pressed, focused, disabled));
+    fn knob_at(&mut self, f: f32, g: Geo, pressed: bool, focused: bool, disabled: bool) -> usize {
+        self.knob_named("Knob", None, None, f, g, (pressed, focused, disabled))
+            .node
     }
 
     /// A knob named `name`, with a flag (`low`, `high`); with `semantics`
@@ -775,6 +776,7 @@ impl Ui {
             );
         }
         let (track_w, track_h) = g.track();
+        let mut knob_node = crate::layout::NONE;
         let built = self.ctl(
             "Track",
             Ctl {
@@ -805,12 +807,19 @@ impl Ui {
             |ui, _| {
                 ui.rail(g, f.min(of), f.max(of), &ticks, disabled);
                 let pressed = held || reach == Ix::Pressed;
-                ui.knob_at(f, g, pressed, reach == Ix::Focused, disabled);
+                knob_node = ui.knob_at(f, g, pressed, reach == Ix::Focused, disabled);
                 if show_bubble && (pressed || flash > now) {
                     ui.bubble(f, &shown, g);
                 }
             },
         );
+        // Input and semantics stay on the reach; only its focus paint
+        // belongs to the moving knob, including each gamepad's ring.
+        let marks = &mut self.tree.nodes[built.node].marks;
+        let ring = std::mem::take(&mut marks.ring);
+        let pads = std::mem::take(&mut marks.pad_rings);
+        self.tree.nodes[knob_node].marks.ring = ring;
+        self.tree.nodes[knob_node].marks.pad_rings = pads;
         if let (true, false, Some(b)) = (built.r.pressed, held, tb) {
             v = snap(min + self.fraction_at(b, knob, axis) * span, min, max, step);
         }
