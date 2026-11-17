@@ -15,7 +15,7 @@ Token `og.Grass`, registered under the schema name `og.Grass`; its value type is
 | Field | Type | Default | Range | Unit | Notes | Doc |
 |---|---|---|---|---|---|---|
 | `data` | `TerrainData` | `0` | — | — | — | The terrain (og.terrain.load's TerrainInfo.data). |
-| `layer` | `number` | `0` | ≤ 15 | — | — | The terrain layer that places it, 0 to 15. |
+| `layer` | `number` | `0` | ≤ 15 | — | — | The terrain layer that places it, 0 to 15. With a height blend it grows where the layer is drawn, the layers taken as standing level: a layer whose texture stands higher shows a little past that edge. |
 | `density` | `number` | `300` | 0 … 4000 | — | tunable | Blades per square metre near the camera where the layer's weight is 1. |
 | `distance` | `number` | `150` | 0 … 1000 | `m` | tunable | How far from the camera blades are drawn; they thin out to nothing there. |
 | `farTint` | `boolean` | `true` | — | — | — | The terrain takes the field's average colour under its blades, where they thin out and past them, so the gaps and the far field read as the same grass. |
@@ -51,7 +51,7 @@ component Grass {
   doc "A field of grass over a loaded terrain where one of its layers shows, generated on the GPU every frame out to `distance`: curved blades on a blue-noise pattern fixed to the terrain, growing where the layer's weight is, never over holes, in clumps sharing tint and height; thinning with distance, the terrain under and past them taking `farTint`. Bent by og.Wind. Visual only: nothing in the simulation reads it, and the same tick draws the same blades on every run. It grows over the og.Terrain drawing the same data (a visible one)."
   guide "world §3"
   field data TerrainData "The terrain (og.terrain.load's TerrainInfo.data)."
-  field layer u32 "The terrain layer that places it, 0 to 15." {
+  field layer u32 "The terrain layer that places it, 0 to 15. With a height blend it grows where the layer is drawn, the layers taken as standing level: a layer whose texture stands higher shows a little past that edge." {
     max 15
   }
   field density f32 "Blades per square metre near the camera where the layer's weight is 1." {

@@ -154,23 +154,43 @@ fn grass_band(x: f32, lo: f32, hi: f32, fade: f32) -> f32 {
 
 // The grass layer's weight at a point (world `p`, world normal `n`, the
 // control channels `c`): its control channel times its slope and altitude
-// rules over every layer's (scatter.rs Terrain::layer_weights); the first
-// layer where none shows.
+// rules over every layer's (scatter.rs Terrain::layer_weights; the first
+// layer where none shows), then as the height blend draws it.
 fn grass_layer_weight(p: vec3<f32>, n: vec3<f32>, c: array<vec4<f32>, 4>) -> f32 {
   let count = min(u32(terrain.origin.w), 16u);
   let layer = u32(gen.chunk.y);
   let angle = degrees(acos(clamp(n.y, -1.0, 1.0)));
   let altitude = p.y - terrain.origin.y;
+  var w: array<f32, 16>;
   var sum = 0.0;
-  var mine = 0.0;
   for (var i = 0u; i < count; i++) {
     let l = terrain.layers[i];
-    let w = c[i / 4u][i % 4u] * grass_band(angle, l.slope.x, l.slope.y, l.slope.z) * grass_band(altitude, l.altitude.x, l.altitude.y, l.altitude.z);
-    sum += w;
-    if (i == layer) { mine = w; }
+    w[i] = c[i / 4u][i % 4u] * grass_band(angle, l.slope.x, l.slope.y, l.slope.z) * grass_band(altitude, l.altitude.x, l.altitude.y, l.altitude.z);
+    sum += w[i];
   }
   if (sum < 1e-4) { return select(0.0, 1.0, layer == 0u); }
-  return mine / sum;
+  if (layer >= count) { return 0.0; }
+  if (terrain.params.x <= 0.0) { return w[layer] / sum; }
+  // As the height blend draws the layers at even heights (sample.rs
+  // Terrain::drawn_weights, scatter_place.wgsl place_weight): a layer
+  // shows only within its window under the strongest.
+  var top = 0.0;
+  for (var i = 0u; i < count; i++) {
+    w[i] = w[i] / sum;
+    top = max(top, w[i]);
+  }
+  var drawn = 0.0;
+  var mine = 0.0;
+  for (var i = 0u; i < count; i++) {
+    if (w[i] > 1e-3) {
+      let window = 0.15 * (1.0 - 0.9 * clamp(terrain.layers[i].look.y, 0.0, 1.0));
+      let d = max(w[i] - (top - window), 0.0);
+      drawn += d;
+      if (i == layer) { mine = d; }
+    }
+  }
+  if (drawn < 1e-4) { return w[layer]; }
+  return mine / drawn;
 }
 
 // Candidate `index` of slice `s`'s chunk, packed (level GRASS_NO_BLADE:

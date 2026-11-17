@@ -17,7 +17,7 @@ Token `og.TerrainScatter`, registered under the schema name `og.TerrainScatter`;
 | `data` | `TerrainData` | `0` | — | — | — | The terrain (og.terrain.load's TerrainInfo.data). |
 | `geometry` | `Geometry` | `0` | — | — | — | The mesh, its origin at its root. When it belongs to the named impostor model, all of that primitive's node placements are applied in model space, at every distance (including impostorDistance 0). Other geometry must already be in that space. |
 | `material` | `Material` | `0` | — | — | — | Its material. |
-| `layer` | `number` | `0` | ≤ 15 | — | — | The terrain layer that places it, 0 to 15. |
+| `layer` | `number` | `0` | ≤ 15 | — | — | The terrain layer that places it, 0 to 15. With a height blend it grows where the layer is drawn, the layers taken as standing level: a layer whose texture stands higher shows a little past that edge. |
 | `density` | `number` | `2` | 0 … 400 | — | tunable | Copies per square metre where the layer's weight is 1. |
 | `distance` | `number` | `40` | 0 … 8000 | `m` | tunable | How far from the camera, along x and z, copies are placed: a wood drawn as impostors reaches the horizon. |
 | `fade` | `number` | `0.3` | 0 … 1 | `ratio` | tunable | The outer part of `distance` over which copies shrink and thin out to nothing. |
@@ -45,7 +45,7 @@ component TerrainScatter {
   field data TerrainData "The terrain (og.terrain.load's TerrainInfo.data)."
   field geometry Geometry "The mesh, its origin at its root. When it belongs to the named impostor model, all of that primitive's node placements are applied in model space, at every distance (including impostorDistance 0). Other geometry must already be in that space."
   field material Material "Its material."
-  field layer u32 "The terrain layer that places it, 0 to 15." {
+  field layer u32 "The terrain layer that places it, 0 to 15. With a height blend it grows where the layer is drawn, the layers taken as standing level: a layer whose texture stands higher shows a little past that edge." {
     max 15
   }
   field density f32 "Copies per square metre where the layer's weight is 1." {

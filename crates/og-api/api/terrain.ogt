@@ -93,7 +93,7 @@ module terrain {
     field data TerrainData "The terrain (og.terrain.load's TerrainInfo.data)."
     field geometry Geometry "The mesh, its origin at its root. When it belongs to the named impostor model, all of that primitive's node placements are applied in model space, at every distance (including impostorDistance 0). Other geometry must already be in that space."
     field material Material "Its material."
-    field layer u32 "The terrain layer that places it, 0 to 15." {
+    field layer u32 "The terrain layer that places it, 0 to 15. With a height blend it grows where the layer is drawn, the layers taken as standing level: a layer whose texture stands higher shows a little past that edge." {
       max 15
     }
     field density f32 "Copies per square metre where the layer's weight is 1." {
@@ -195,7 +195,7 @@ module terrain {
     doc "A field of grass over a loaded terrain where one of its layers shows, generated on the GPU every frame out to `distance`: curved blades on a blue-noise pattern fixed to the terrain, growing where the layer's weight is, never over holes, in clumps sharing tint and height; thinning with distance, the terrain under and past them taking `farTint`. Bent by og.Wind. Visual only: nothing in the simulation reads it, and the same tick draws the same blades on every run. It grows over the og.Terrain drawing the same data (a visible one)."
     guide "world §3"
     field data TerrainData "The terrain (og.terrain.load's TerrainInfo.data)."
-    field layer u32 "The terrain layer that places it, 0 to 15." {
+    field layer u32 "The terrain layer that places it, 0 to 15. With a height blend it grows where the layer is drawn, the layers taken as standing level: a layer whose texture stands higher shows a little past that edge." {
       max 15
     }
     field density f32 "Blades per square metre near the camera where the layer's weight is 1." {

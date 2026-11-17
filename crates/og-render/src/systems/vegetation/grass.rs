@@ -72,7 +72,9 @@ pub(crate) use uniforms::*;
 /// meadow.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Grass {
-    /// The terrain layer whose weight places the blades.
+    /// The terrain layer whose weight places the blades; with a height
+    /// blend, as the blend draws it with every layer's height level (as
+    /// [`crate::TerrainScatter::layer`]).
     pub layer: u32,
     /// Blades per square metre where the layer's weight is 1, near the camera.
     pub density: f32,

@@ -29372,7 +29372,7 @@ export interface TerrainScatter {
   /** Its material. */
   material: Material;
   /**
-   * The terrain layer that places it, 0 to 15.
+   * The terrain layer that places it, 0 to 15. With a height blend it grows where the layer is drawn, the layers taken as standing level: a layer whose texture stands higher shows a little past that edge.
    *
    * @range ..15
    */
@@ -29526,7 +29526,7 @@ export interface Grass {
   /** The terrain (og.terrain.load's TerrainInfo.data). */
   data: TerrainData;
   /**
-   * The terrain layer that places it, 0 to 15.
+   * The terrain layer that places it, 0 to 15. With a height blend it grows where the layer is drawn, the layers taken as standing level: a layer whose texture stands higher shows a little past that edge.
    *
    * @range ..15
    */

@@ -578,3 +578,110 @@ fn a_turned_clearing_keeps_copies_and_grass_off_a_slab() {
         );
     }
 }
+
+/// With a height blend og.Grass grows only where its layer is drawn: on
+/// a flat terrain whose control map fades grass into dark rock along x,
+/// the blend draws grass (at even heights) only past a weight of 0.425,
+/// so no blade stands where it weighs under 0.3; without the blend blades
+/// thin out all the way to bare rock.
+///
+/// Ways this could fail: generation weighs the raw control channel (as
+/// before), or the blend's window is read from the wrong layer.
+#[test]
+#[ignore = "requires GPU"]
+fn grass_grows_only_where_the_height_blend_draws_its_layer() {
+    use og_render::{Grass, GrassDraw};
+    let render_with = |blend: f32| {
+        let mut data = TerrainData::flat(Vec2::splat(64.0), 65, 65);
+        let rgba: Vec<u8> = (0..65 * 65)
+            .flat_map(|i| {
+                let grass = ((i % 65) as f32 / 64.0 * 255.0).round() as u8;
+                [grass, 255 - grass, 0, 0]
+            })
+            .collect();
+        data.control = Some(TerrainControl {
+            width: 65,
+            height: 65,
+            rgba: rgba.into(),
+        });
+        let mut scene = RenderScene::new();
+        let h = scene.add_terrain(data);
+        let dark = TerrainLayer {
+            color: Vec3::splat(0.02),
+            ..Default::default()
+        };
+        scene.world.terrains.push(Terrain {
+            layers: vec![dark, dark],
+            height_blend: blend,
+            cast_shadows: false,
+            ..Terrain::new(h)
+        });
+        scene.world.grass.push(GrassDraw {
+            terrain: 0,
+            grass: Grass {
+                density: 60.0,
+                distance: 90.0,
+                far_tint: false,
+                height: 0.8,
+                width: 0.12,
+                base_color: Vec3::splat(0.9),
+                tip_color: Vec3::splat(0.9),
+                dry_color: Vec3::splat(0.9),
+                color_variation: 0.0,
+                cast_shadows: false,
+                ..Default::default()
+            },
+        });
+        scene.atmosphere.fog = None;
+        scene.look.post.tonemap = Tonemap::None;
+        scene.lighting.environment.background = Background::Color(Vec3::ZERO);
+        scene.lighting.light.cast_shadows = false;
+        // Straight down, +x to the right, 12 px a metre.
+        scene.frame.camera = Camera {
+            position: Vec3::new(0.0, 100.0, 0.0),
+            target: Vec3::ZERO,
+            up: Vec3::NEG_Z,
+            near: 1.0,
+            far: 500.0,
+            projection: Projection::Orthographic { height: 60.0 },
+            exposure: Exposure::linear(1.0),
+        };
+        let mut r = Renderer::new_blocking(&scenes::base_desc()).expect("renderer");
+        for _ in 0..3 {
+            r.render(&scene, &RenderTarget::Offscreen).expect("render");
+        }
+        let img = r.read_offscreen().expect("capture");
+        keep(&format!("grass-blend-{blend}"), &img);
+        img
+    };
+    // Bright pixels where grass weighs under 0.3 (x < -12.8 m) and over
+    // 0.7 (x > 12.8 m), a metre inside each.
+    let count = |img: &RgbaImage| {
+        let (mut rock, mut meadow) = (0, 0);
+        for y in 0..img.height {
+            for x in 0..img.width {
+                let at = (x as f32 - 640.0) / 12.0;
+                if luma(px(img, x, y)) < 60.0 || at.abs() > 31.0 {
+                    continue;
+                }
+                if at < -13.8 {
+                    rock += 1;
+                } else if at > 13.8 {
+                    meadow += 1;
+                }
+            }
+        }
+        (rock, meadow)
+    };
+    let (rock, _) = count(&render_with(0.0));
+    assert!(
+        rock > 2_000,
+        "{rock} bright pixels on rock-heavy ground without the blend"
+    );
+    let (rock, meadow) = count(&render_with(0.5));
+    assert_eq!(rock, 0, "blades where the blend draws rock");
+    assert!(
+        meadow > 20_000,
+        "{meadow} bright pixels where the blend draws grass"
+    );
+}

@@ -73,7 +73,10 @@ const KEEP_FRAMES: u64 = 240;
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct TerrainScatter {
     /// The layer whose weight (control map, slope and altitude rules,
-    /// normalised over the layers) places the instances.
+    /// normalised over the layers) places the instances; with a height
+    /// blend, as the blend draws it with every layer's height level
+    /// ([`Terrain::drawn_weights`]): a layer whose texture stands higher
+    /// shows a little past where copies stop.
     pub layer: u32,
     /// Instances per square metre where the layer's weight is 1.
     pub density: f32,
