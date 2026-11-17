@@ -132,7 +132,8 @@ const PREVIEW_FRAMES: usize = 30;
 
 /// `doc` mounted as `test:preview` with its `props` as its stores, in a UI
 /// that knows every document of `all`, [`PREVIEW_FRAMES`] frames (its
-/// intros settled), at `width` × `height`. Answers the warnings of those frames,
+/// intros settled), at `width` × `height`, inside a 24px stage over the
+/// theme's panel ground. Answers the warnings of those frames,
 /// each once (an element's hold in every frame). A document that
 /// does not mount or build from its props fails the test, named by its
 /// path.
@@ -155,12 +156,55 @@ pub fn preview(
         ui.define_document(doc);
     }
     ui.set_world_view(Some(view(width, height)));
-    ui.mount_with_values(
-        reactive::SourceId::new("test", "preview"),
-        &doc.doc.name,
-        &doc.props,
-    )
-    .unwrap_or_else(|e| panic!("{}: {e}", doc.path));
+    let mount = reactive::SourceId::new("test", "preview");
+    ui.mount_with_values(mount.clone(), &doc.doc.name, &doc.props)
+        .unwrap_or_else(|e| panic!("{}: {e}", doc.path));
+    // Hold values against the original document first: its iterators name
+    // the collection keys (ActionHints uses `action`, not `id`). Replacing
+    // the registration keeps those stores and writable prop bindings.
+    let inputs = ui.docs.state().memory.retained.registrations[&mount]
+        .inputs
+        .clone();
+    let root = &doc.doc.nodes[doc.doc.root].id;
+    let root = if root.is_empty() { "Document" } else { root };
+    let text = format!(
+        r#"<meta name="component" content="EngineDocumentPreview">
+<div id="PreviewStage"><div id="PreviewBody">
+<ui:{name} id="{root}"/>
+</div></div>
+<style>
+#PreviewStage {{ display: flex; flex-direction: column; width: stretch; height: stretch; padding: 24px; background: var(--panel); }}
+#PreviewBody {{ width: stretch; height: stretch; min-width: 0; min-height: 0; contain: layout; }}
+</style>"#,
+        name = doc.doc.name,
+    );
+    let mut stage = ui
+        .parse_document("<engine-document-preview>", &text, Vec::new())
+        .unwrap_or_else(|e| panic!("{}: {}", doc.path, e.join("\n")));
+    // Forward the document's prop names verbatim, not native attribute
+    // aliases (for example `step`), and retain their writable models.
+    let instance = stage
+        .nodes
+        .iter_mut()
+        .find(|node| matches!(&node.kind, doc::NodeKind::Use(name) if name == &doc.doc.name))
+        .unwrap();
+    instance.args = doc
+        .doc
+        .bare_names()
+        .into_iter()
+        .map(|name| (name.clone(), doc::PropValue::Model(name), 3))
+        .collect();
+    stage.kind = doc.doc.kind;
+    stage.layer = doc.doc.layer.clone();
+    if !stage.layer.focus.is_empty() {
+        stage.layer.focus = format!("PreviewBody/{root}/{}", stage.layer.focus);
+    }
+    let name = stage.name.clone();
+    ui.define_document(stage);
+    super::apply(
+        ui,
+        serde_json::json!({"op": "mount", "mount": mount, "document": name, "inputs": inputs}),
+    );
     let mut warnings: Vec<String> = Vec::new();
     for _ in 0..PREVIEW_FRAMES {
         ui.begin(InputFrame::default(), Viewport::new(width, height));

@@ -9,6 +9,85 @@ use og_ui::*;
 use support::*;
 
 #[test]
+fn document_preview_stage_preserves_fixtures_and_contains_fixed_roots() {
+    use serde_json::json;
+    let messages = Messages(Default::default());
+    let mount = reactive::SourceId::new("test", "preview");
+    for kind in ["component", "screen"] {
+        let text = format!(
+            r##"<meta name="{kind}" content="table" data-focus="Choose">
+<meta name="prop:rows" content="list">
+<meta name="prop:count" content="number" data-default="7">
+<div id="FixtureRoot">
+  <p>Fixture {{count}}</p>
+  {{#each rows as row (row.action)}}<p>{{row.label}}</p>{{/each}}
+  <button id="Other">Other</button>
+  <button id="Choose">Choose</button>
+</div>
+<style>:host {{ position: fixed; inset: 0; background: #123456; }}</style>"##
+        );
+        let doc = EngineDocument {
+            path: "preview-fixture.svelte".into(),
+            doc: UiDocument::parse("preview-fixture.svelte", &text).unwrap(),
+            props: json!({"rows": [{"action": "jump", "label": "Jump"}]}),
+        };
+        for (width, height) in [(1280.0, 720.0), (390.0, 844.0)] {
+            let mut ui = ui_with_font(test_font_metrics());
+            let warnings = preview(
+                &mut ui,
+                std::slice::from_ref(&doc),
+                &doc,
+                &messages,
+                width,
+                height,
+            );
+            assert!(warnings.is_empty(), "{kind}: {warnings:?}");
+            let root_path = ui
+                .doc_built()
+                .into_iter()
+                .find(|e| e.doc == doc.doc.name && e.node == doc.doc.root)
+                .unwrap()
+                .path;
+            let root = ui.elements().iter().find(|e| e.path == root_path).unwrap();
+            for (got, expected) in [
+                (root.x, 24.0),
+                (root.y, 24.0),
+                (root.width, width - 48.0),
+                (root.height, height - 48.0),
+            ] {
+                assert!((got - expected).abs() < 0.1, "{kind}: {root:?}");
+            }
+            assert!(!fills_in(&ui, Rect::new(0.0, 0.0, width, height)).is_empty());
+            assert!(
+                !fills_in(&ui, Rect::new(24.0, 24.0, width - 48.0, height - 48.0)).is_empty(),
+                "the original :host still paints its root"
+            );
+            assert_eq!(ui.layer_stack().len(), usize::from(kind == "screen"));
+            if kind == "screen" {
+                assert!(
+                    ui.focus_path(0).ends_with("/Choose"),
+                    "{}",
+                    ui.focus_path(0)
+                );
+            }
+            assert_eq!(ui.mount_values(&mount).unwrap()["count"], 7);
+            assert!(ui.probe_elements().iter().any(|item| item.text == "Jump"));
+            ui.set_mount_values(
+                &mount,
+                &json!({"count": 11, "rows": [{"action": "hold", "label": "Hold"}]}),
+            )
+            .unwrap();
+            ui.begin(InputFrame::default(), Viewport::new(width, height));
+            ui.build_retained_documents(&messages).unwrap();
+            ui.end();
+            assert_eq!(ui.mount_values(&mount).unwrap()["count"], 11);
+            assert!(ui.probe_elements().iter().any(|item| item.text == "Hold"));
+            assert!(!ui.probe_elements().iter().any(|item| item.text == "Jump"));
+        }
+    }
+}
+
+#[test]
 fn component_documents_build_from_their_fixtures() {
     let (docs, messages) = engine_documents(&["src/ui/components"]);
     assert!(!docs.is_empty());
@@ -51,7 +130,9 @@ fn every_built_in_document_mounts_from_its_fixture() {
         ui.set_icons(icons(og_draw::TextureHandle::from_slot(1)));
         preview(&mut ui, &docs, doc, &messages, 1280.0, 720.0);
         assert!(
-            !ui.probe_elements().is_empty(),
+            ui.doc_built().iter().any(|built| {
+                built.doc == doc.doc.name && ui.elements().iter().any(|e| e.path == built.path)
+            }),
             "{}: draws no element",
             doc.path
         );
@@ -340,15 +421,13 @@ fn main_menu_scrolls_when_it_is_taller_than_the_screen() {
         ui.set_icons(icons(og_draw::TextureHandle::from_slot(1)));
         preview(&mut ui, &docs, doc, &messages, w, h);
         let quit = |ui: &Ui| {
-            let e = ui
-                .elements()
+            ui.elements()
                 .iter()
                 .find(|e| e.path.ends_with("/Quit"))
-                .expect("Quit");
-            (e.y, e.height, e.clipped)
+                .map(|e| (e.y, e.height, e.clipped))
         };
         assert!(
-            quit(&ui).2,
+            quit(&ui).is_none_or(|(_, _, clipped)| clipped),
             "{w}×{h}: the menu fits, so this checks nothing: {:?}",
             quit(&ui)
         );
@@ -363,9 +442,14 @@ fn main_menu_scrolls_when_it_is_taller_than_the_screen() {
             ui.build_retained_documents(&messages).unwrap();
             ui.end();
         }
-        let (y, height, clipped) = quit(&ui);
+        let (y, height, clipped) = quit(&ui).expect("Quit reachable after scrolling");
+        let body = ui
+            .elements()
+            .iter()
+            .find(|e| e.id == "PreviewBody")
+            .unwrap();
         assert!(
-            !clipped && y + height <= h,
+            !clipped && y >= body.y && y + height <= body.y + body.height,
             "{w}×{h}: Quit out of reach after scrolling: y {y}, height {height}"
         );
     }
