@@ -27,6 +27,7 @@ prompt, IDs and checksums) are in the `origin-generated-assets` bucket
 | `car.glb` | 11,598 | `meshy/model/showcase-weather-car-v1/` | `7f83959ae7d1156128d96488a07582525e38789557fa1136be694487fa6c8413` |
 | `adobe.glb` | 8,941 | `meshy/model/showcase-weather-adobe-v2/` | `34c3eb207e6c69df6b34a465724b1dffd092bd487d407c4ea597433d07611782` |
 | `counter.glb` | 11,820 | `meshy/model/showcase-weather-counter-v1/` | `33000305a33547bdadd9754052cc04e0e29b50cdb736662e2fa4527f373acf09` |
+| `winebarrel.glb` | 3,730 | `meshy/model/showcase-lighting-winebarrel-v1/` | `e76e56fbbb562df7f03e3ee02dfd4a0717bf69c75a21e85d44632e0c4b69203f` |
 
 The weather set's five (townhouse, street lamp, car, adobe house, a
 market counter of produce) are
@@ -37,6 +38,11 @@ adobe is a second preview: the first stood on a round plinth. The street
 lamp's textures are 512 px. `car.glb`'s material carries
 `KHR_materials_clearcoat` (factor 1, roughness 0.05), added with glTF
 Transform: the lacquer the rain beads on.
+
+The lighting set's oak wine barrel is Meshy text-to-3D the same way
+(`text_preview` at 4,000 triangles, then `text_refine` with PBR; 30
+credits), its textures at 512 px: the market's and the cellar's barrels,
+where the yard's blue steel drum (`barrel.glb`) would not belong.
 
 The two columns are a second version: their first concepts were marbled in
 large orange and grey patches, which read as camouflage on the shafts, so
@@ -93,6 +99,7 @@ required.
 | `ground/cobbles.{color,normal,orm}.jpg` | `grp_776009be378c7de71b` | Cobblestone 01 | `c224786e89cae7e2835a8dfafa6473c47d4d6deac0cca1db358002b8b6c4877e` |
 | `ground/rock.{color,normal}.jpg` | `grp_28a4c1a58ffc4b45d1` | Rock Face 03 | `644ee79df7ffbf5f6afc330b64dd3f33794bab8820915fe61ffe0c88ecfd7ece` |
 | `ground/planks.{color,normal,orm}.jpg` | `grp_5f733073766da2cdff` | Brown Planks 03 | `1140ceac531c2dfe2e714357e34cd81cce62878ced24fa711b87c4ca24416058` |
+| `ground/stone.{color,normal,orm}.jpg` | `grp_65c1eae191c77733e1` | Broken Wall | `35615ed619b14ab8991205e887a24cadcf8edffdf15b36b153421604b9ba29ce` |
 
 `color` is the diffuse map, `normal` the OpenGL normal map, `orm` the
 occlusion (red), roughness (green) and metal (blue) map. The rock is a
