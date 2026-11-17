@@ -104,3 +104,16 @@ required.
 `color` is the diffuse map, `normal` the OpenGL normal map, `orm` the
 occlusion (red), roughness (green) and metal (blue) map. The rock is a
 terrain layer only (`kit::layer_maps`), which takes no `orm`.
+
+## Environment maps
+
+`../env/kloofendal.hdr` and `../env/spruit.hdr` are Poly Haven skies from
+the same catalog release (`catalog-20261107-kenney-particles-v1`), CC0 1.0,
+no attribution required. Each is the catalog's 2k Radiance HDR (checked
+against its sha256 on download), resized to 1024 × 512 with ImageMagick
+and written as Radiance RGBE again; the 2k sources stay in the catalog.
+
+| File | Catalog group | Poly Haven asset | Source sha256 (2k) | Committed sha256 |
+|---|---|---|---|---|
+| `env/kloofendal.hdr` | `grp_992b5f9ad847d66702` | Kloofendal Partly Cloudy (pure sky) | `5244534e9cf5b606f2ff513aa00ddb161b0a4826ffd88a0d3bd03ac29247d198` | `5a36c9ffafbf22beaeb738f55a035e00f428857e977c5a2046ab389ff2989da5` |
+| `env/spruit.hdr` | `grp_2c118eb3d4bb794027` | Spruit Sunrise | `be35af1e825dc7506df48bf86568f9c05f8a8552cf57edf36beb16e54534ec57` | `7a287c6684bee62d4efdbe13b617048ecb076007ab787eb088290ee6ee6659b9` |

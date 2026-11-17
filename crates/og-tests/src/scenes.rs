@@ -296,6 +296,8 @@ pub fn asset(rel: &str) -> Result<std::borrow::Cow<'static, [u8]>, String> {
         "fonts/noto-sans-sc-msdf.json" => include_bytes!("../assets/fonts/noto-sans-sc-msdf.json"),
         "fonts/noto-sans-sc-msdf.csv" => include_bytes!("../assets/fonts/noto-sans-sc-msdf.csv"),
         "env/studio.hdr" => include_bytes!("../assets/env/studio.hdr"),
+        "env/kloofendal.hdr" => include_bytes!("../assets/env/kloofendal.hdr"),
+        "env/spruit.hdr" => include_bytes!("../assets/env/spruit.hdr"),
         // The set dressing (kit.rs).
         "kit/column.glb" => include_bytes!("../assets/kit/column.glb"),
         "kit/column_broken.glb" => include_bytes!("../assets/kit/column_broken.glb"),
