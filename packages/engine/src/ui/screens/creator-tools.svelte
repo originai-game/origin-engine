@@ -75,8 +75,11 @@ button.selection-off::part(base) { border-color: transparent; }
   button, button.compact, button::part(base), button.compact::part(base) { block-size: var(--control-md); }
   button::part(base), button.compact::part(base) { padding: 0 var(--space-lg); }
   button.compact[variant="ghost"]::part(base) { padding-inline: calc(var(--space-lg) - var(--button-border-width)); }
-  #Body { grid-template-columns: 1fr; grid-template-rows: 1fr auto var(--measure-sm); grid-template-areas: "view" "tabs" "panel"; }
-  #Tabs { display: flex; }
+  /* One column no wider than the screen (it shrinks below its content),
+     and the tabs wrap as the toolbar does, so large text never pushes a
+     tab or the panel past the edge. */
+  #Body { grid-template-columns: minmax(0, 1fr); grid-template-rows: 1fr auto var(--measure-sm); grid-template-areas: "view" "tabs" "panel"; }
+  #Tabs { display: flex; flex-wrap: wrap; }
   #TreePanel, #InspectorPanel, #CataloguePanel { grid-area: panel; display: none; }
   #TreePanel.chosen, #InspectorPanel.chosen, #CataloguePanel.chosen { display: flex; }
 }
