@@ -4,7 +4,8 @@
 //! water body, a 2D fluid drawn as metaballs, and material shader hooks
 //! (a dissolve by noise and wind-swayed grass), and weather presets.
 
-use crate::fx_scenes::terrain;
+use crate::fx_scenes::{hash2, terrain};
+use crate::kit;
 use glam::{Mat4, Vec2, Vec3, Vec4};
 use og_render::{
     Background, Bloom, Camera, DirectionalLight, Environment, Exposure, Fog, Material,
@@ -13,36 +14,106 @@ use og_render::{
 };
 use std::sync::Arc;
 
-/// Pillars and boulders receding into the distance, for fog to swallow.
+/// The bearing (xz) of the day-night look's setting sun at this module's
+/// tilt and azimuth (25°, 70°): where the hills round the colonnade stay
+/// low, so the sun sets on an open horizon.
+pub(crate) const WEST: Vec2 = Vec2::new(-0.934, -0.357);
+
+/// A ruined processional way, for fog to swallow and a sky to stand over:
+/// a cobbled road down -z between two rows of 8 m columns 9 m apart (14
+/// pairs from z = -6, five of them broken stumps), mossy boulders outside
+/// the rows, an arch across the road's end, a watchtower to the west, and
+/// pines and hills around (`crate::kit`).
 pub(crate) fn colonnade(scene: &mut RenderScene) {
-    terrain(scene, 400.0);
-    let pillar = scene.add_mesh(shapes::cuboid(Vec3::new(1.0, 8.0, 1.0)));
-    let rock = scene.add_mesh(shapes::sphere(20, 14));
-    let stone = scene.add_material(Material {
-        base_color: [0.72, 0.68, 0.62, 1.0],
-        roughness: 0.85,
-        ..Default::default()
-    });
-    let moss = scene.add_material(Material {
-        base_color: [0.34, 0.42, 0.26, 1.0],
-        roughness: 0.95,
-        ..Default::default()
-    });
+    // Mossy grass either side of the road and past its ends.
+    let floor = kit::surface_tinted(scene, "grass", [0.86, 1.0, 0.72]);
+    let (half, way, from, to) = (220.0, 3.6, -142.0, 24.0);
+    for (min, max) in [
+        (Vec2::new(-half, -half), Vec2::new(-way, half)),
+        (Vec2::new(way, -half), Vec2::new(half, half)),
+        (Vec2::new(-way, to), Vec2::new(way, half)),
+        (Vec2::new(-way, -half), Vec2::new(way, from)),
+    ] {
+        let mesh = scene.add_mesh(kit::slab(min, max, 0.0, 7.0));
+        scene.add_instance(mesh, floor, Mat4::IDENTITY);
+    }
+    let cobbles = kit::surface(scene, "cobbles");
+    let road = scene.add_mesh(kit::slab(
+        Vec2::new(-way, from),
+        Vec2::new(way, to),
+        0.0,
+        2.4,
+    ));
+    scene.add_instance(road, cobbles, Mat4::IDENTITY);
+    kit::hills(scene, Some(WEST));
+
+    let column = kit::prop(scene, "column");
+    let broken = kit::prop(scene, "column_broken");
+    let boulder = kit::prop(scene, "boulder");
+    let turn = |i: usize, side: usize| hash2(i as i32, side as i32, 0xc01) * std::f32::consts::TAU;
     for i in 0..14 {
         let z = -6.0 - i as f32 * 9.0;
-        for x in [-6.0f32, 6.0] {
-            scene.add_instance(pillar, stone, Mat4::from_translation(Vec3::new(x, 4.0, z)));
+        for (side, x) in [-6.0f32, 6.0].into_iter().enumerate() {
+            let foot = Vec3::new(x, 0.0, z);
+            // The first pair stands whole: it frames the view.
+            if matches!((i, side), (2, 0) | (4, 1) | (7, 0) | (9, 1) | (12, 0)) {
+                broken.place(scene, foot, turn(i, side), 3.4);
+            } else {
+                column.place(scene, foot, turn(i, side), 8.0);
+            }
         }
         let r = 1.2 + (i % 3) as f32 * 0.7;
-        scene.add_instance(
-            rock,
-            moss,
-            Mat4::from_translation(Vec3::new(
-                if i % 2 == 0 { -14.0 } else { 15.0 },
-                r * 0.3,
-                z - 3.0,
-            )) * Mat4::from_scale(Vec3::splat(r * 2.0)),
-        );
+        let at = Vec3::new(if i % 2 == 0 { -14.0 } else { 15.0 }, -0.25 * r, z - 3.0);
+        boulder.place(scene, at, turn(i, 2), r * 1.5);
+    }
+    let arch = kit::prop(scene, "arch");
+    arch.place(scene, Vec3::new(0.0, 0.0, from - 2.0), 0.0, 13.0);
+    // The watchtower stands a little north of where the sun sets.
+    let tower = kit::prop(scene, "watchtower");
+    let west = Vec3::new(WEST.x, 0.0, WEST.y);
+    tower.place(
+        scene,
+        Vec3::new(0.0, 0.0, 4.0) + Mat4::from_rotation_y(-0.3).transform_vector3(west) * 96.0,
+        2.2,
+        24.0,
+    );
+    // Fallen stones on the plain between the rows and the tower: stumps
+    // and boulders in the foreground of a view into the setting sun.
+    for k in 0..12 {
+        let h = |n: u32| hash2(k, n as i32, 0x57a);
+        let across = Vec3::new(-west.z, 0.0, west.x);
+        let at = Vec3::new(-8.0, 0.0, 2.0)
+            + west * (9.0 + k as f32 * 5.5 + h(0) * 3.0)
+            + across * ((h(1) - 0.5) * (14.0 + k as f32 * 3.0));
+        if k % 3 == 1 {
+            broken.place(scene, at, h(2) * 6.0, 2.2 + h(3) * 1.6);
+        } else {
+            let r = 1.0 + h(3) * 1.6;
+            boulder.place(scene, at - Vec3::Y * 0.2 * r, h(2) * 6.0, r * 1.5);
+        }
+    }
+    // Pines in loose stands outside the rows, thinning into the hills.
+    let pine = kit::prop(scene, "pine");
+    for k in 0..190 {
+        let h = |n: u32| hash2(k, n as i32, 0x91e);
+        let bearing = h(0) * std::f32::consts::TAU;
+        // A third of them near the rows, the rest out on the hills.
+        let d = if k % 3 == 0 {
+            34.0 + h(1) * 90.0
+        } else {
+            120.0 + h(1) * 640.0
+        };
+        let (x, z) = (bearing.cos() * d, bearing.sin() * d - 40.0);
+        // None on the road or between the rows, none before the setting sun.
+        let on_way = x.abs() < 17.0 && z < 40.0 && z > from - 30.0;
+        let before_sun = Vec2::new(x, z - 4.0).normalize().dot(WEST) > 0.93;
+        if on_way || before_sun {
+            continue;
+        }
+        let y = kit::hills_height(x, z, Some(WEST)).max(0.0) - 0.3;
+        // Taller with distance, so the far woods still read as trees.
+        let tall = (11.0 + h(3) * 8.0) * (1.0 + d / 500.0);
+        pine.place(scene, Vec3::new(x, y, z), h(2) * 6.0, tall);
     }
 }
 

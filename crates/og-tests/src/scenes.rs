@@ -1048,14 +1048,20 @@ pub fn build(name: &str) -> Result<GfxScene, String> {
         // and at night (stars, moonlight), planar water.
         "atmosphere-fog" => |g, _| {
             g.scene = crate::atmo_scenes::fog_scene();
+            g.desc.antialias = Antialias::Tier;
+            g.frames = 8;
             Ok(())
         },
         "atmosphere-dusk" => |g, _| {
             g.scene = crate::atmo_scenes::day_night_scene(18.2, true);
+            g.desc.antialias = Antialias::Tier;
+            g.frames = 8;
             Ok(())
         },
         "atmosphere-night" => |g, _| {
             g.scene = crate::atmo_scenes::day_night_scene(23.0, false);
+            g.desc.antialias = Antialias::Tier;
+            g.frames = 8;
             Ok(())
         },
         "water-3d" => |g, _| {
@@ -1093,6 +1099,8 @@ pub fn build(name: &str) -> Result<GfxScene, String> {
         // Phase 2: the night colonnade with a waxing gibbous moon in view.
         "atmosphere-moon" => |g, _| {
             g.scene = crate::p2_scenes::moon_scene(0.35, 2.4);
+            g.desc.antialias = Antialias::Tier;
+            g.frames = 8;
             Ok(())
         },
         // Phase 2: every M6 material feature (metalness, roughness,
@@ -1383,6 +1391,10 @@ pub fn build(name: &str) -> Result<GfxScene, String> {
                 g.frames = crate::atmo_scenes::WEATHER_FRAMES;
                 g.update = Some(fx::tick_update);
             }
+            // As a game draws them: the set's thin edges (capitals, pine
+            // needles, the cobbles' joints) alias without it.
+            g.desc.antialias = Antialias::Tier;
+            g.frames = g.frames.max(8);
             Ok(())
         },
         // R5: the sea under the physical sky, and a stream's flow map.
