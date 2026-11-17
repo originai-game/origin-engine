@@ -1051,7 +1051,7 @@ type StepOf = fn(&TypeRamp) -> TypeStep;
 /// One line of text (`markup`: HTML's inline `<b>` runs) rendered through
 /// og-render at the type step `css` names (`xs`, `reading`, `display-md`).
 fn rich_frame(markup: &str, css: &str) -> (Vec<u8>, usize, usize, [u8; 3]) {
-    inked_frame(markup, css, None)
+    inked_frame(markup, css, None, Some(400))
 }
 
 /// [`rich_frame`] in an ink over a ground (`None`: the theme's ink over
@@ -1060,6 +1060,7 @@ fn inked_frame(
     markup: &str,
     css: &str,
     colors: Option<(Srgba, Srgba)>,
+    weight: Option<u16>,
 ) -> (Vec<u8>, usize, usize, [u8; 3]) {
     let vp = Viewport {
         dpr: 1.0,
@@ -1072,12 +1073,13 @@ fn inked_frame(
     let (ink, ground) = colors.map_or(("var(--ink)".into(), "var(--backdrop)".into()), |c| {
         (hex(c.0), hex(c.1))
     });
+    let weight = weight.map_or(String::new(), |w| format!("font-weight: {w};"));
     let doc = format!(
         r#"<meta name="component" content="card">
 <column id="Card"><text id="Line">{markup}</text></column>
 <style>
 #Card {{ width: stretch; height: stretch; padding: var(--space-md); gap: var(--space-md); background: {ground}; }}
-#Line {{ font: var(--text-{css}); letter-spacing: var(--type-{css}-tracking); color: {ink}; }}
+#Line {{ font: var(--text-{css}); {weight} letter-spacing: var(--type-{css}-tracking); color: {ink}; }}
 </style>"#
     );
     mount_screen_document(&mut ui, "card", &doc, &[]);
@@ -1134,8 +1136,10 @@ fn bold_rich_text_is_heavier_ink_never_a_box() {
     ui.begin(InputFrame::default(), Viewport::new(360.0, 120.0));
     let theme = *ui.theme();
     for (name, css, step) in steps {
+        // The display role itself is 700: neither comparison may inherit
+        // its weight, or regular and <b> measure identical ink.
         let (plain, w, h, bg) = rich_frame(LINE, css);
-        let (bold, ..) = rich_frame(&format!("<b>{LINE}</b>"), css);
+        let (bold, ..) = rich_frame(&format!("<b style=\"font-weight:700\">{LINE}</b>"), css);
         // Each glyph's advance in the plain line (from the card's padding, at
         // 1 device pixel a CSS px) and how far bold moves it: a bold
         // face's added stem (og-ui's 0.056 em) for each glyph before it.
@@ -1220,7 +1224,7 @@ fn dark_small_text_on_light_keeps_its_weight() {
     // Ink drawn: each pixel's sRGB distance from its ground, as a fraction
     // of the ink's own.
     let mass = |ink: Srgba, ground: Srgba, css: &str| {
-        let (px, w, h, bg) = inked_frame("Play Continue 42", css, Some((ink, ground)));
+        let (px, w, h, bg) = inked_frame("Play Continue 42", css, Some((ink, ground)), None);
         let full: f64 = (ink.rgb[0] as f64 - bg[0] as f64).abs();
         (0..w * h)
             .map(|i| (px[i * 4] as f64 - bg[0] as f64).abs() / full)
