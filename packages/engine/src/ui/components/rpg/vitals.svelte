@@ -1,6 +1,6 @@
 <meta name="component" content="RpgVitals">
 <meta name="strings" content="./rpg.en.ogt">
-<meta name="parts" content="RpgVitals.frame">
+<meta name="parts" content="RpgVitals.frame RpgVitals.picture RpgVitals.badge RpgVitals.track RpgVitals.fill">
 <meta name="prop:name" content="string" data-doc="The character's name; read out, and shown on the large plate.">
 <meta name="prop:portrait" content="number" data-doc="A head-and-shoulders texture (og.load.texture); 0 is none.">
 <meta name="prop:level" content="number" data-doc="The level on the badge; 0 hides the badge.">
@@ -18,32 +18,31 @@
   mana bars beside it. large is the player's plate, with the figures on the
   bars; compact is a party row. Read only.
 -->
-<div id="RpgVitals" part="RpgVitals.frame" class="bare" data-plate={plate} data-down={down} role="group" aria-label={name}>
-  <div class="ring">{#if portrait}<img class="portrait" src={portrait} alt="">{/if}</div>
-  {#if level}<div class="badge"><span class="badge-level">{formatNumber(level)}</span></div>{/if}
-  <div class="bars">
-    <div class="bar health" role="meter" aria-label={t("rpg.party.health")} aria-valuetext={t("rpg.party.figure", { now: health, max: healthMax })} style:--fill={healthMax > 0 ? health / healthMax : 0}><div class="bar-fill"></div>{#if plate == 'large'}<div class="bar-figure"><span>{t("rpg.party.figure", { now: health, max: healthMax })}</span></div>{/if}</div>
-    {#if manaMax}<div class="bar mana" role="meter" aria-label={t("rpg.party.mana")} aria-valuetext={t("rpg.party.figure", { now: mana, max: manaMax })} style:--fill={mana / manaMax}><div class="bar-fill"></div>{#if plate == 'large'}<div class="bar-figure"><span>{t("rpg.party.figure", { now: mana, max: manaMax })}</span></div>{/if}</div>{/if}
+<div id="RpgVitals" part="RpgVitals.frame" class="bare" data-layout="row" data-plate={plate} data-down={down} role="group" aria-label={name}>
+  <div class="ring" part="RpgVitals.picture">{#if portrait}<img class="portrait" src={portrait} alt="">{/if}</div>
+  {#if level}<div class="badge" part="RpgVitals.badge" data-layout="cover"><span class="badge-level">{formatNumber(level)}</span></div>{/if}
+  <div class="bars" data-layout="stack" data-gap={plate == 'large' ? 'tight' : 'hair'}>
+    <div class="bar health" part="RpgVitals.track" data-layout="row" role="meter" aria-label={t("rpg.party.health")} aria-valuetext={t("rpg.party.figure", { now: health, max: healthMax })} style:--fill={healthMax > 0 ? health / healthMax : 0}><div class="bar-fill" part="RpgVitals.fill"></div>{#if plate == 'large'}<div class="bar-figure" part="RpgVitals.badge"><span>{t("rpg.party.figure", { now: health, max: healthMax })}</span></div>{/if}</div>
+    {#if manaMax}<div class="bar mana" part="RpgVitals.track" data-layout="row" role="meter" aria-label={t("rpg.party.mana")} aria-valuetext={t("rpg.party.figure", { now: mana, max: manaMax })} style:--fill={mana / manaMax}><div class="bar-fill" part="RpgVitals.fill"></div>{#if plate == 'large'}<div class="bar-figure" part="RpgVitals.badge"><span>{t("rpg.party.figure", { now: mana, max: manaMax })}</span></div>{/if}</div>{/if}
   </div>
 </div>
 
 <style>
 /* Drawn over the scene: the style's tag halo holds its text there. */
 :host { text-shadow: var(--tag-halo); }
-:host { position: relative; display: flex; align-items: center; gap: var(--space-sm); inline-size: fit-content; }
-[part="RpgVitals.frame"][data-down=true] { opacity: var(--state-disabled-opacity); }
-.ring { width: var(--size-xl); height: var(--size-xl); flex: none; overflow: hidden; border-radius: var(--radius-capsule); }
+:host { position: relative; inline-size: fit-content; }
+.ring { width: var(--size-xl); height: var(--size-xl); flex: none; overflow: hidden; --picture-radius: var(--radius-capsule); }
 [part="RpgVitals.frame"][data-plate=large] .ring { width: calc(var(--size-xxl) * 1.6); height: calc(var(--size-xxl) * 1.6); }
 .portrait { width: stretch; height: stretch; object-fit: cover; object-position: center top; }
-.badge { display: flex; flex-direction: column; position: absolute; inset-inline-start: 0; top: calc(var(--size-xl) - var(--space-lg)); width: var(--space-xl); height: var(--space-xl); align-items: center; justify-content: center; border-radius: var(--radius-capsule); background: var(--scene-plate); color: var(--scene-ink); font-family: var(--figure-font); }
+.badge { position: absolute; inset-inline-start: 0; top: calc(var(--size-xl) - var(--space-lg)); width: var(--space-xl); height: var(--space-xl); }
 [part="RpgVitals.frame"][data-plate=large] .badge { top: calc(var(--size-xxl) * 1.6 - var(--size-md)); width: var(--size-md); height: var(--size-md); }
-.bars { display: flex; flex-direction: column; gap: var(--space-xxs); width: calc(var(--size-xxl) * 1.4); }
-[part="RpgVitals.frame"][data-plate=large] .bars { width: calc(var(--size-xxl) * 2.6); gap: var(--space-xs); }
-.bar { position: relative; display: flex; height: var(--space-sm); align-items: center; justify-content: center; border-radius: var(--meter-radius); overflow: hidden; background: var(--well); box-shadow: var(--shadow-well); }
+.bars { width: calc(var(--size-xxl) * 1.4); }
+[part="RpgVitals.frame"][data-plate=large] .bars { width: calc(var(--size-xxl) * 2.6); }
+.bar { position: relative; height: var(--space-sm); justify-content: center; overflow: hidden; --fill-color: var(--health); }
 [part="RpgVitals.frame"][data-plate=large] .bar { height: calc(var(--space-md) * 1.6); min-block-size: var(--size-sm); }
-.bar-fill { position: absolute; inset-inline-start: 0; top: 0; bottom: 0; inline-size: calc(var(--fill) * 100%); background: var(--health); }
-.mana .bar-fill { background: var(--mana); }
-.bar-figure { position: relative; font-family: var(--figure-font); font-variant-numeric: tabular-nums; white-space: nowrap; padding-inline: var(--space-xs); background: var(--panel); color: var(--ink); border-radius: var(--radius-capsule); text-shadow: none; }
+.bar-fill { position: absolute; inset-inline-start: 0; top: 0; bottom: 0; inline-size: calc(var(--fill) * 100%); }
+.mana { --fill-color: var(--mana); }
+.bar-figure { position: relative; white-space: nowrap; padding-inline: var(--space-xs); }
 @media (width < 600px), (height < 500px) {
   [part="RpgVitals.frame"][data-plate=compact] .bars { width: var(--size-xxl); }
   [part="RpgVitals.frame"][data-plate=large] .ring { width: calc(var(--size-xxl) * 1.05); height: calc(var(--size-xxl) * 1.05); }

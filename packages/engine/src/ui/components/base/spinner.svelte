@@ -15,6 +15,6 @@
 <style>
 :host { inline-size: var(--size); block-size: var(--size); flex: none; }
 [part="Spinner.ring"] { inline-size: 100%; block-size: 100%; }
-#Track { stroke: var(--control-strong); }
-#Arc { stroke: var(--ink); }
+#Track { stroke: var(--track-fill); }
+#Arc { stroke: var(--figure-ink); }
 </style>

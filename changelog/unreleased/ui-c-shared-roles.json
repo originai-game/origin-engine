@@ -1,0 +1,8 @@
+{
+  "fixed": [
+    {
+      "member": "ui",
+      "summary": "Base, RPG and puzzle components use shared role, layout and motion tokens instead of private look declarations; semantic parts, game-owned states and intents remain available. Ribbons and loading skeletons use the style's shared motion, and puzzle score breakdowns use the shared scroll fade."
+    }
+  ]
+}

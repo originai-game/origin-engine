@@ -1,6 +1,6 @@
 <meta name="component" content="RpgCharacter">
 <meta name="strings" content="./rpg.en.ogt">
-<meta name="parts" content="RpgCharacter.frame RpgCharacter.band RpgCharacter.title RpgCharacter.name RpgCharacter.cell RpgCharacter.row">
+<meta name="parts" content="RpgCharacter.frame RpgCharacter.band RpgCharacter.title RpgCharacter.name RpgCharacter.cell RpgCharacter.row RpgCharacter.caption RpgCharacter.figure">
 <meta name="prop:title" content="string" data-doc="A heading band over the figure (Equipment); empty shows the name header instead.">
 <meta name="prop:name" content="string" data-doc="The character's name; with an empty title it heads the sheet beside the portrait.">
 <meta name="prop:line" content="string" data-doc="The class and level line as the game words it (Rogue · Level 12).">
@@ -18,76 +18,72 @@
   columns beneath. The game owns what fits where; the sheet reports choose
   (a slot's key) and unequip (X or pad Y on the focused slot, its key).
 -->
-<section id="RpgCharacter" part="RpgCharacter.frame" aria-label={title ? title : name}>
-  {#if title}<header part="RpgCharacter.band"><div class="band-end start"></div><h2 part="RpgCharacter.title">{title}</h2><div class="band-end finish"></div></header>
-  {:else}<header class="who">
+<section id="RpgCharacter" part="RpgCharacter.frame" data-layout="shell" aria-label={title ? title : name}>
+  {#if title}<header part="RpgCharacter.band" data-layout="row" data-gap="loose"><div class="band-end start"></div><h2 part="RpgCharacter.title">{title}</h2><div class="band-end finish"></div></header>
+  {:else}<header class="who" data-layout="row" data-gap="loose">
     {#if portrait}<img class="portrait" src={portrait} alt="">{/if}
-    <div class="who-text">
+    <div class="who-text" data-layout="stack" data-gap="hair" data-fill>
       <h2 part="RpgCharacter.name">{name}</h2>
-      <p class="char-line">{line}</p>
+      <p class="char-line" part="RpgCharacter.caption">{line}</p>
       <div class="rpg-rule" role="separator"></div>
     </div>
   </header>{/if}
-  <div class="doll">
+  <div class="doll" data-layout="row" data-fill>
     {#if figure}<img class="figure" src={figure} alt="">{/if}
-    <div class="column start" role="group">
+    <div class="column start" data-layout="stack" data-gap="tight" role="group">
       {#each slots as s (s.id)}
         {#if s.side == 'start'}
-          <button part="RpgCharacter.cell" data-rarity={s.icon ? s.rarity : ''} data-empty={!s.icon} aria-selected={s.id == selected} aria-label={s.label} onclick={choose} ondetails={unequip}><div class="face"><og-icon class="art" icon={s.icon ? s.icon : 'plus'}></og-icon></div></button>
+          <button part="RpgCharacter.cell" data-rarity={s.icon ? s.rarity : ''} data-empty={!s.icon} aria-selected={s.id == selected} aria-label={s.label} onclick={choose} ondetails={unequip}><div class="face" data-layout="cover"><og-icon class="art" icon={s.icon ? s.icon : 'plus'}></og-icon></div></button>
         {/if}
       {/each}
     </div>
-    <div class="column end" role="group">
+    <div class="column end" data-layout="stack" data-gap="tight" role="group">
       {#each slots as s (s.id)}
         {#if s.side == 'end'}
-          <button part="RpgCharacter.cell" data-rarity={s.icon ? s.rarity : ''} data-empty={!s.icon} aria-selected={s.id == selected} aria-label={s.label} onclick={choose} ondetails={unequip}><div class="face"><og-icon class="art" icon={s.icon ? s.icon : 'plus'}></og-icon></div></button>
+          <button part="RpgCharacter.cell" data-rarity={s.icon ? s.rarity : ''} data-empty={!s.icon} aria-selected={s.id == selected} aria-label={s.label} onclick={choose} ondetails={unequip}><div class="face" data-layout="cover"><og-icon class="art" icon={s.icon ? s.icon : 'plus'}></og-icon></div></button>
         {/if}
       {/each}
     </div>
   </div>
-  {#if attributes.length}<div class="attributes" role="table" aria-label={t("rpg.character.attributes")}>
-    <div class="attr-column">
+  {#if attributes.length}<div class="attributes" data-layout="switcher" data-gap="loose" role="table" aria-label={t("rpg.character.attributes")}>
+    <div class="attr-column" data-layout="stack" data-gap="none" data-fill>
       {#each attributes as a (a.id)}
-        {#if a.group == 'a'}<div part="RpgCharacter.row" role="row"><og-icon class="attr-mark" icon={a.icon}></og-icon><span class="attr-label" role="rowheader">{a.label}</span><span class="attr-value" role="cell">{a.value}</span></div>{/if}
+        {#if a.group == 'a'}<div part="RpgCharacter.row" data-layout="row" data-gap="tight" role="row"><og-icon class="attr-mark" icon={a.icon}></og-icon><span class="attr-label" data-fill role="rowheader">{a.label}</span><span class="attr-value" part="RpgCharacter.figure" role="cell">{a.value}</span></div>{/if}
       {/each}
     </div>
-    <div class="attr-split"></div>
-    <div class="attr-column">
+    <hr class="attr-split" vertical>
+    <div class="attr-column" data-layout="stack" data-gap="none" data-fill>
       {#each attributes as a (a.id)}
-        {#if a.group == 'b'}<div part="RpgCharacter.row" role="row"><og-icon class="attr-mark" icon={a.icon}></og-icon><span class="attr-label" role="rowheader">{a.label}</span><span class="attr-value" role="cell">{a.value}</span></div>{/if}
+        {#if a.group == 'b'}<div part="RpgCharacter.row" data-layout="row" data-gap="tight" role="row"><og-icon class="attr-mark" icon={a.icon}></og-icon><span class="attr-label" data-fill role="rowheader">{a.label}</span><span class="attr-value" part="RpgCharacter.figure" role="cell">{a.value}</span></div>{/if}
       {/each}
     </div>
   </div>{/if}
 </section>
 
 <style>
-:host { display: flex; flex-direction: column; inline-size: stretch; block-size: stretch; gap: var(--space-sm); container-type: inline-size; }
-[part="RpgCharacter.band"] { display: flex; width: stretch; align-items: center; justify-content: center; gap: var(--space-md); flex: none; }
+[part="RpgCharacter.band"] { width: stretch; justify-content: center; flex: none; }
 .band-end { width: var(--size-lg); height: var(--space-lg); flex: none; }
-.who { display: flex; width: stretch; gap: var(--space-md); align-items: center; flex: none; }
+.who { width: stretch; flex: none; }
 .portrait { width: calc(var(--size-xxl) * 1.15); height: calc(var(--size-xxl) * 1.15); object-fit: cover; flex: none; }
-.who-text { display: flex; flex-direction: column; flex: 1; min-width: 0; gap: var(--space-xxs); align-items: center; text-align: center; }
+.who-text { align-items: center; text-align: center; }
 [part="RpgCharacter.name"], .char-line { margin: 0; }
-.doll { position: relative; display: flex; width: stretch; flex: 1; min-height: 0; justify-content: space-between; padding: var(--space-sm) var(--space-xs); }
+.doll { position: relative; width: stretch; justify-content: space-between; padding: var(--space-sm) var(--space-xs); }
 .figure { position: absolute; inset-inline-start: 15%; top: 0; bottom: 0; inline-size: 70%; block-size: 100%; object-fit: contain; object-position: center bottom; }
-.column { display: flex; flex-direction: column; gap: var(--space-xs); height: stretch; min-height: 0; justify-content: space-between; }
+.column { height: stretch; min-height: 0; justify-content: space-between; }
 [part="RpgCharacter.cell"] { flex: none; width: var(--size-xl); height: var(--size-xl); padding: var(--space-xs); }
-[part="RpgCharacter.cell"] .face { display: flex; width: stretch; height: stretch; align-items: center; justify-content: center; }
+[part="RpgCharacter.cell"] .face { width: stretch; height: stretch; }
 .art { width: stretch; height: stretch; }
-.attributes { display: flex; gap: var(--space-md); flex: none; padding: var(--space-sm) var(--space-xs) 0; border-block-start: var(--stroke-hairline) solid var(--line); }
-.attr-column { display: flex; flex-direction: column; flex: 1; min-width: 0; align-self: stretch; }
-.attr-split { width: var(--stroke-hairline); align-self: stretch; }
-[part="RpgCharacter.row"] { display: flex; width: stretch; align-items: center; gap: var(--space-sm); padding: var(--space-xs) 0; }
+.attributes { flex: none; padding: var(--space-sm) var(--space-xs) 0; --layout-switch-at: var(--measure-xs); }
+.attr-column { align-self: stretch; }
+.attr-split { width: var(--stroke-hairline); align-self: stretch; margin: 0; }
+[part="RpgCharacter.row"] { width: stretch; padding: var(--space-xs) 0; }
 .attr-mark { width: var(--size-sm); height: var(--size-sm); flex: none; }
-.attr-label { flex: 1; min-width: 0; white-space: nowrap; text-overflow: ellipsis; overflow: hidden; }
-[part="RpgCharacter.row"] { column-gap: var(--space-xs); }
-.attr-value { font-family: var(--figure-font); font-weight: var(--font-weight-semibold); font-variant-numeric: tabular-nums; white-space: nowrap; }
-.char-line { color: var(--ink-muted); }
-.attr-split { background: var(--line); }
+.attr-label { white-space: nowrap; text-overflow: ellipsis; overflow: hidden; }
+.attr-value { white-space: nowrap; }
 @media (width < 600px) { [part="RpgCharacter.cell"] { width: var(--size-touch); height: var(--size-touch); } }
-@container (width < 300px) { .attributes { flex-direction: column; gap: 0; } .attr-split { display: none; } }
-@media (height < 500px) { .doll { padding: var(--space-xxs) var(--space-xs); } .column { gap: var(--space-xxs); } [part="RpgCharacter.cell"] { width: var(--size-lg); height: var(--size-lg); padding: var(--space-xxs); } }
+@container (width < 300px) { .attr-split { display: none; } }
+@media (height < 500px) { .doll { padding: var(--space-xxs) var(--space-xs); } .column { --layout-gap-tight: var(--layout-gap-hair); } [part="RpgCharacter.cell"] { width: var(--size-lg); height: var(--size-lg); padding: var(--space-xxs); } }
 /* A short screen (a desktop at large text): smaller slots, so the doll can give height to the attributes. */
-@media (600px <= width) and (500px <= height < 800px) { [part="RpgCharacter.cell"] { width: var(--size-lg); height: var(--size-lg); padding: var(--space-xxs); } .column { gap: var(--space-xxs); } }
-@media (600px <= width) and (500px <= height < 800px) { .attr-mark { display: none; } .attributes { gap: var(--space-sm); } }
+@media (600px <= width) and (500px <= height < 800px) { [part="RpgCharacter.cell"] { width: var(--size-lg); height: var(--size-lg); padding: var(--space-xxs); } .column { --layout-gap-tight: var(--layout-gap-hair); } }
+@media (600px <= width) and (500px <= height < 800px) { .attr-mark { display: none; } .attributes { --layout-gap-loose: var(--layout-gap); } }
 </style>
