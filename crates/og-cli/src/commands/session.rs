@@ -13,7 +13,8 @@ mod local {
     use std::fs::{self, File, OpenOptions};
     use std::hash::{Hash, Hasher};
     use std::io::{BufRead, BufReader, Read, Seek, Write};
-    use std::os::unix::fs::{MetadataExt, OpenOptionsExt, PermissionsExt};
+    use std::os::unix::ffi::OsStrExt;
+    use std::os::unix::fs::{DirBuilderExt, MetadataExt, OpenOptionsExt, PermissionsExt};
     use std::os::unix::net::UnixStream;
     use std::path::PathBuf;
     use std::process::Stdio;
@@ -23,7 +24,7 @@ mod local {
     /// (a test's OG_RENDERER, a terminal's variables) each start their own
     /// host instead of finding another's and running alone. The variables
     /// the shell changes per command are left out, as session.ts does.
-    pub(crate) fn directory(project: &Path) -> PathBuf {
+    pub(crate) fn directory(project: &Path) -> Result<PathBuf, String> {
         let worktree = project
             .ancestors()
             .find(|path| path.join(".git").exists())
@@ -34,11 +35,49 @@ mod local {
             .filter(|(key, _)| !["_", "SHLVL", "PWD", "OLDPWD"].iter().any(|k| key == k))
             .collect::<BTreeMap<_, _>>()
             .hash(&mut hash);
-        std::env::var_os("HOME")
+        let key = format!("{:016x}", hash.finish());
+        // Both calls only read plain OS identity/address data. sockaddr_un
+        // has integer fields and an integer array, so all-zero is valid.
+        let uid = unsafe { libc::geteuid() };
+        let limit = unsafe { std::mem::zeroed::<libc::sockaddr_un>() }
+            .sun_path
+            .len();
+        let candidates = std::env::var_os("XDG_RUNTIME_DIR")
             .map(PathBuf::from)
-            .unwrap_or_else(|| project.to_path_buf())
-            .join(".cache/og/sessions")
-            .join(format!("{:016x}", hash.finish()))
+            .into_iter()
+            .chain([std::env::temp_dir(), PathBuf::from("/tmp")]);
+        let mut reason = "no absolute runtime directory".to_string();
+        for base in candidates.filter(|base| base.is_absolute()) {
+            let root = base.join(format!("og-{uid}"));
+            let dir = root.join(&key);
+            // sun_path includes the terminating NUL. Count encoded bytes,
+            // not characters; Darwin's limit is smaller than Linux's.
+            if dir.join("host.sock").as_os_str().as_bytes().len() >= limit {
+                reason = format!("{} exceeds sun_path's {limit} bytes", dir.display());
+                continue;
+            }
+            let private = || -> std::io::Result<()> {
+                match fs::DirBuilder::new().mode(0o700).create(&root) {
+                    Ok(()) => {}
+                    Err(e) if e.kind() == std::io::ErrorKind::AlreadyExists => {}
+                    Err(e) => return Err(e),
+                }
+                let metadata = fs::symlink_metadata(&root)?;
+                if !metadata.is_dir() || metadata.uid() != uid || metadata.mode() & 0o077 != 0 {
+                    return Err(std::io::Error::other(
+                        "session runtime directory is not private to this user",
+                    ));
+                }
+                Ok(())
+            };
+            match private() {
+                Ok(()) => return Ok(dir),
+                Err(e) => reason = format!("{}: {e}", root.display()),
+            }
+        }
+        Err(format!(
+            "cannot place session socket within sun_path's {limit}-byte limit: {reason}"
+        ))
     }
 
     // A local build identity, not a cook-cache key. Replaced binaries and
@@ -102,7 +141,7 @@ mod local {
     pub(crate) fn connect(project: &Path) -> Result<UnixStream, String> {
         use std::os::unix::process::CommandExt;
         use std::time::{Duration, Instant};
-        let dir = directory(project);
+        let dir = directory(project)?;
         let socket = dir.join("host.sock");
         match UnixStream::connect(&socket) {
             Ok(stream) => return Ok(stream),
@@ -267,7 +306,7 @@ mod local {
             Project::open(Path::new(path))?.root
         };
         let package = project::engine_package(Some(&root)).ok_or(project::NO_ENGINE)?;
-        let dir = directory(&root);
+        let dir = directory(&root)?;
         fs::create_dir_all(&dir).map_err(|e| e.to_string())?;
         fs::set_permissions(&dir, fs::Permissions::from_mode(0o700)).map_err(|e| e.to_string())?;
         let lock: File = OpenOptions::new()
@@ -329,10 +368,10 @@ pub fn try_run(
 pub fn playtest_args(project: &Path, package: &Path) -> Result<Vec<std::ffi::OsString>, String> {
     #[cfg(unix)]
     {
-        let socket = local::directory(project).join("host.sock");
         if std::env::var("OG_SESSION").as_deref() != Ok("0")
             && package.join("src/node/session.ts").is_file()
         {
+            let socket = local::directory(project)?.join("host.sock");
             drop(local::connect(project)?);
             return Ok(vec![
                 "--session-socket".into(),

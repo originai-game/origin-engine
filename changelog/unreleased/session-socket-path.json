@@ -1,0 +1,8 @@
+{
+  "fixed": [
+    {
+      "member": "og session",
+      "summary": "Resident sessions work with long HOME and temporary-directory paths on macOS and Linux. Sockets use a length-checked private per-user runtime directory, falling back to /tmp when necessary, and report a clear error if no safe location fits."
+    }
+  ]
+}

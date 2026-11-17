@@ -24,6 +24,50 @@ fn tests_default_to_hardware_but_preserve_explicit_renderer_selection() {
     }
 }
 
+/// Sessions can bind and serve a request even when HOME and runtime hints
+/// are longer than a Unix socket address on every supported native host.
+#[cfg(unix)]
+#[test]
+fn session_serves_a_request_with_a_long_home_and_runtime_directory() {
+    let dir = TempDir::new("og-session-long-home");
+    let home = dir.join("long-home-directory-".repeat(12));
+    std::fs::create_dir_all(&home).unwrap();
+    let engine = dir.join("engine");
+    std::fs::create_dir_all(engine.join("src/node")).unwrap();
+    std::fs::write(
+        engine.join("src/node/build.ts"),
+        "await Bun.write(process.argv[process.argv.indexOf('--out') + 1], '');",
+    )
+    .unwrap();
+    std::fs::write(engine.join("src/node/session.ts"), r#"
+import { createServer } from 'node:net';
+const server = createServer(socket => socket.once('data', () => {
+  for (const event of [{event:'accepted'}, {event:'stdout', text:'long-home session served\n'}, {event:'exit', code:0}])
+    socket.write(JSON.stringify(event) + '\n');
+  socket.end();
+  server.close();
+}));
+server.listen(process.argv[2]);
+"#).unwrap();
+    let entry = dir.join("main.ts");
+    std::fs::write(&entry, "export default {};").unwrap();
+    let addon = dir.join("fixture-addon.node");
+    std::fs::write(&addon, "fixture").unwrap();
+    let out = og()
+        .args(["run", entry.to_str().unwrap(), "--headless", "--no-check"])
+        .env("OG_ENGINE_PACKAGE", &engine)
+        .env("OG_NATIVE_ADDON", &addon)
+        .env("OG_SESSION", "1")
+        .env("HOME", &home)
+        .env("XDG_RUNTIME_DIR", &home)
+        .env("TMPDIR", &home)
+        .output()
+        .unwrap();
+    let t = text(&out);
+    assert!(out.status.success(), "{t}");
+    assert!(t.contains("long-home session served"), "{t}");
+}
+
 /// A failed supervisor reports its own diagnostic, not a readiness timeout.
 #[cfg(unix)]
 #[test]
