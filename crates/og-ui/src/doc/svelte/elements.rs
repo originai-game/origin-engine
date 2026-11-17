@@ -482,15 +482,21 @@ impl Parser {
                 },
             },
         };
-        let component = tag.starts_with(char::is_uppercase);
+        // An explicit component name cannot collide with a native tag
+        // (`ui:table` is the component, `table` the HTML element).
+        let component_name = tag
+            .strip_prefix("ui:")
+            .filter(|name| !name.is_empty())
+            .or_else(|| tag.starts_with(char::is_uppercase).then_some(tag));
+        let component = component_name.is_some();
         let kind = match internal {
-            _ if component => NodeKind::Use(tag.into()),
+            _ if let Some(name) = component_name => NodeKind::Use(name.into()),
             Some(kind) => NodeKind::Element(kind),
             None => {
                 return Err((
                     at,
                     format!(
-                        "unknown element <{tag}>; use a reflected core tag or capitalised component"
+                        "unknown element <{tag}>; use a reflected core tag, capitalised component or <ui:name> with the component's declared name"
                     ),
                 ));
             }

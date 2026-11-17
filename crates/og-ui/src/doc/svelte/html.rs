@@ -32,7 +32,12 @@ impl Parser {
         if let Some((_, parents)) = TABLE_PARENTS.iter().find(|(t, _)| *t == tag) {
             // A component's root is placed where its user puts it.
             let inside = self.parent_tag(parent);
-            if inside.is_some_and(|p| !parents.contains(&p) && !p.starts_with(char::is_uppercase)) {
+            let component = self
+                .doc
+                .nodes
+                .get(parent)
+                .is_some_and(|n| matches!(n.kind, NodeKind::Use(_)));
+            if inside.is_some_and(|p| !parents.contains(&p)) && !component {
                 return Err((
                     at,
                     format!("<{tag}> belongs inside a <{}>", parents.join(">, <")),

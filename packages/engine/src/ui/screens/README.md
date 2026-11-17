@@ -26,8 +26,13 @@ Game translations override those base messages. Each screen declares a
 `<meta name="fixture:default" content="…">` JSON fixture for previews.
 
 The component documents here (`card`, `confirm` and the lists, tables and
-HUD feedback rows) are used by the name they declare, as any component is,
-or ejected and edited. Lists are keyed
+HUD feedback rows) use the explicit component form with the exact name
+they declare: `<ui:card>…</ui:card>`, `<ui:star-rating stars={$stars}
+label={$label}/>`, `<ui:key-values rows={$rows}/>` and `<ui:banner
+title={$title} subtitle={$subtitle}/>`; the prefix is not part of the name
+or manifest key. This keeps `<ui:table>` separate from native `<table>`.
+Capitalised component names also keep their unprefixed form (`<StatBar/>`).
+They can also be ejected and edited. Lists are keyed
 collections; a nested list is flattened, as a retained `{#each}` reads a
 named collection (a table's `cells` row by row, a tree's visible `rows`).
 

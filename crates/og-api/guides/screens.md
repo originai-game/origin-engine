@@ -29,7 +29,14 @@ Nothing is installed or copied to use them.
 
 - A component is used by the name its `<meta name="component">` declares,
   with props from named stores: `<RpgBackpack items={$items}
-  selected={$selected} />`. Its header (`<meta name="prop:…">`) names its
+  selected={$selected} />`. The explicit form `<ui:name>` accepts any
+  declared component name, case-sensitively: `<ui:star-rating stars={$stars}
+  label={$label}/>`, `<ui:key-values rows={$rows}/>` and `<ui:banner
+  title={$title} subtitle={$subtitle}/>` use the lowercase library names.
+  The prefix is not part of the manifest key or document name. `<table>`
+  remains HTML; `<ui:table>` uses the component named `table`. `<Card>` and
+  `<ui:Card>` are equivalent, but `StarRating` is not an alias for `star-rating`.
+  Its header (`<meta name="prop:…">`) names its
   props, and its group's README its intents and parts. The cook bundles
   every built-in component the game's documents use, with the components
   those use, and `og.load.document` of the screen loads them with it.

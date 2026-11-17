@@ -874,7 +874,15 @@ mount (`UiLayer.mount`). Each layer adds one wrapper node per frame; the
 tree under it is written only where it changed.
 
 Components and snippets follow Svelte 5. A capitalised tag instantiates
-that component; its attributes are props evaluated in the user's context
+that component. The explicit form `<ui:name>` instantiates the exact,
+case-sensitive name declared by `<meta name="component" content="name">`,
+including lowercase and hyphenated names: `<ui:star-rating stars={$stars}
+label={$label}/>`, `<ui:key-values rows={$rows}/>` and `<ui:banner
+title={$title} subtitle={$subtitle}/>`. The prefix is syntax, not part of
+the document name or manifest key; it works for game documents too.
+Native tags are unchanged: `<table>` is HTML, `<ui:table>` is the component
+named `table`. `<Card>` and `<ui:Card>` name the same component; `StarRating`
+is not an alias for `star-rating`. An instance's attributes are props evaluated in the user's context
 (`<Card title={item.name}>` follows that row only), `bind:` writes back
 through the prop, `{#snippet}` children are passed content and the other
 children are `children`. `{@render body?.()}` renders passed content with

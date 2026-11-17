@@ -1,0 +1,6 @@
+{
+  "fixed": [{
+    "member": "og.ui",
+    "summary": "Compose library or game components by their exact declared name with <ui:name>, including star-rating, key-values and banner; native tags and existing capitalised component tags are unchanged."
+  }]
+}

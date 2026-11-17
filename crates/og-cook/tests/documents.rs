@@ -272,6 +272,33 @@ fn a_screen_cooks_in_the_built_in_components_it_uses() {
     );
 }
 
+#[test]
+fn lowercase_library_components_cook_by_their_declared_names() {
+    let source = r#"<meta name="component" content="results-card">
+<column>
+  <ui:star-rating stars={$stars} label="Rating"/>
+  <ui:key-values rows={$rows}/>
+  <ui:banner title="Mission complete" subtitle="Stage 1"/>
+  <ui:table columns={$columns} cells={$cells} label="Standings"/>
+</column>"#;
+    let root = project("lowercase-library", &[("ui/results.svelte", source)]);
+    let report = cook_project(&root, &CookOptions::default()).unwrap();
+    assert!(report.ok(), "{}", report.errors().join("\n"));
+    assert_eq!(
+        uses(&root, "ui/results.svelte"),
+        [
+            "@ui/screens/banner.svelte",
+            "@ui/screens/key-values.svelte",
+            "@ui/screens/star-rating.svelte",
+            "@ui/screens/table.svelte",
+        ]
+    );
+    let bundle = Bundle::open(&root.join("cooked")).unwrap();
+    for name in ["banner", "key-values", "star-rating", "table"] {
+        assert!(bundle.output(&format!("@ui/screens/{name}.svelte")).is_ok());
+    }
+}
+
 /// A document with a control element cooks in that element's control
 /// document (docs/ui.md §2.4), and a game's own control document for the
 /// element replaces the built-in one. Ways it could fail: the control left

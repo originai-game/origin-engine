@@ -1030,14 +1030,20 @@ fn component_literals_use_the_declared_prop_not_a_native_attribute_type() {
 <div><text>{selected}</text><text>{count}</text></div>"#,
         ),
         (
-            "Flag",
+            "flag",
             r#"<meta name="prop:selected" content="bool"><meta name="prop:count" content="number">
 <div>{#if selected}<text>enabled</text>{:else}<text>disabled</text>{/if}<text>{count + 1}</text></div>"#,
         ),
         (
+            "table",
+            r#"<table><tr><td>component table</td></tr>{@render children?.()}</table>"#,
+        ),
+        (
             "page",
-            r#"<div><Words selected="welcome" count="007"/><Words selected={$word} count="008"/>
-<Flag selected="false" count="4"/><Flag selected="true" count="8"/></div>"#,
+            r#"<div><Words selected="welcome" count="007"/><ui:Words selected={$word} count="008"/>
+<ui:flag selected="false" count="4"/><ui:flag selected="true" count="8"/>
+<ui:table><tr><td>passed row</td></tr></ui:table>
+<table><tr><td>native table</td></tr></table></div>"#,
         ),
     ] {
         ui.define_document(
@@ -1062,7 +1068,17 @@ fn component_literals_use_the_declared_prop_not_a_native_attribute_type() {
         })
         .collect();
     for expected in [
-        "welcome", "007", "bound", "008", "disabled", "enabled", "5", "9",
+        "welcome",
+        "007",
+        "bound",
+        "008",
+        "disabled",
+        "enabled",
+        "5",
+        "9",
+        "component table",
+        "passed row",
+        "native table",
     ] {
         assert!(all.contains(&expected), "{expected}: {all:?}");
     }

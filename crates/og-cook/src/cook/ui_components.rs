@@ -91,7 +91,7 @@ impl Component {
 }
 
 /// The documents a document uses, by name: the components its
-/// capitalised tags name and the built-in control documents its elements
+/// capitalised or `ui:` tags name and the built-in control documents its elements
 /// are hosts of.
 pub fn uses(doc: &og_ui::UiDocument) -> BTreeSet<String> {
     let controls: Vec<(String, og_ui::doc::ControlHost)> = index().map_or_else(
