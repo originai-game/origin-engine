@@ -884,7 +884,13 @@ fn plan_model<'a>(
             u32::from(b.below).to_le_bytes(),
         ]
         .concat();
-        for (kind, id) in impostor_ids(&s.rel).into_iter().enumerate() {
+        // A model whose leaves follow the year adds its leaf layer's four
+        // (kinds 3 to 6: the leaves', the wood's albedo, normal, material).
+        let leaf_ids = impostor::has_season_leaves(g)
+            .then(|| impostor_leaf_ids(&s.rel))
+            .into_iter()
+            .flatten();
+        for (kind, id) in impostor_ids(&s.rel).into_iter().chain(leaf_ids).enumerate() {
             // `6`: the atlas's layout version (2, the
             // hemi-octahedron; 3, 16 samples a texel, filtered
             // textures and the material atlas; 4, the leaves' dome
@@ -1012,14 +1018,32 @@ impl Job for ImpostorJob<'_> {
         let baked = g
             .impostor(*b)
             .map_err(|e| CookError(format!("{}: impostor: {e}", s.rel)))?;
+        let leaf = || {
+            baked
+                .leaf
+                .as_ref()
+                .ok_or_else(|| CookError(format!("{}: impostor: no seasonal leaves", s.rel)))
+        };
         let (img, k, what) = match kind {
             0 => (&baked.albedo, format::kind::COLOR, "albedo"),
             1 => (&baked.normal, format::kind::LINEAR, "normal and depth"),
-            _ => (
+            2 => (
                 &baked.material,
                 format::kind::LINEAR,
                 "roughness, translucency and metallic",
             ),
+            3 => (
+                &leaf()?.leaves,
+                format::kind::LINEAR,
+                "leaves' drop order, colour pick and share",
+            ),
+            4 => (&leaf()?.wood[0], format::kind::COLOR, "wood albedo"),
+            5 => (
+                &leaf()?.wood[1],
+                format::kind::LINEAR,
+                "wood normal and depth",
+            ),
+            _ => (&leaf()?.wood[2], format::kind::LINEAR, "wood material"),
         };
         let note = format!(
             "{}: {}x{} impostor {what} ({}×{} frames)",

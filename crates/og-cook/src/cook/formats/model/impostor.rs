@@ -37,6 +37,7 @@
 use super::GltfSource;
 use crate::cook::texture::Image;
 use glam::{Mat4, Quat, Vec2, Vec3, Vec4};
+use og_render_data::foliage::leaf_order_pick;
 use og_render_data::impostor::{frame_basis, frame_direction};
 
 /// How a model's impostor is baked: frames per side (0: by the model,
@@ -136,8 +137,32 @@ pub struct Baked {
     pub normal: Image,
     /// Roughness, translucency and metallic (linear), coverage in alpha.
     pub material: Image,
+    /// A model with seasonal leaves' leaf layer ([`has_season_leaves`]).
+    pub leaf: Option<LeafLayer>,
     pub center: Vec3,
     pub radius: f32,
+}
+
+/// The layers of a model whose leaves follow the year: the card draws
+/// its leaves where a leaf is kept and its wood where one has fallen.
+pub struct LeafLayer {
+    /// Per texel: the leaves' drop order (red) and colour pick (green),
+    /// their mean over the texel's leaf samples
+    /// ([`og_render_data::foliage::leaf_order_pick`]), and the share of
+    /// the texel's surface that is seasonal leaf (alpha). Linear.
+    pub leaves: Image,
+    /// The same frames with the seasonal leaves left out: albedo, normal
+    /// and depth, material, as [`Baked`]'s.
+    pub wood: [Image; 3],
+}
+
+/// Whether a material of `src` is a leaf that follows the year
+/// (`season` above 0, [`super::ext::leaf_season`]): its impostor bakes a
+/// [`LeafLayer`].
+pub fn has_season_leaves(src: &GltfSource) -> bool {
+    src.doc
+        .materials()
+        .any(|m| super::ext::leaf_season(&m).season > 0.0)
 }
 
 /// A texture decoded once, linear, with its box-filtered mips.
@@ -232,6 +257,12 @@ struct Tri {
     metallic: f32,
     mr_texture: Option<usize>,
     translucency: f32,
+    /// A leaf of a species that follows the year (its material's
+    /// `season` above 0, [`super::ext::leaf_season`]): left out of the
+    /// wood layer. `anchor` is its leaf's anchor (`_OG_ANCHOR`) in the
+    /// model's space, the same for the whole leaf.
+    leaf: bool,
+    anchor: Vec3,
 }
 
 fn srgb_to_linear(v: f32) -> f32 {
@@ -365,7 +396,8 @@ fn triangles(
                 // A leaf's normals turn to its canopy's dome before they
                 // are placed, as the mesh's are drawn.
                 let dome = dome_normals(&m);
-                let anchors = (dome > 0.0)
+                let leaf = super::ext::leaf_season(&m).season > 0.0;
+                let anchors = (dome > 0.0 || leaf)
                     .then(|| super::primitive::read_foliage(src, &prim, pos.len()).ok()?)
                     .flatten();
                 for xf in &at {
@@ -382,7 +414,7 @@ fn triangles(
                             normals
                                 .as_ref()
                                 .and_then(|n| n.get(v(j)))
-                                .map(|n| match &anchors {
+                                .map(|n| match anchors.as_ref().filter(|_| dome > 0.0) {
                                     Some(a) => {
                                         let a = a[v(j)];
                                         dome_normal(*n, Vec3::new(a[4], a[5], a[6]), canopy, dome)
@@ -405,6 +437,10 @@ fn triangles(
                                 .copied()
                                 .unwrap_or(Vec4::ONE)
                         });
+                        let anchor = anchors.as_ref().map_or(Vec3::ZERO, |a| {
+                            let a = a[v(0)];
+                            xf.transform_point3(Vec3::new(a[4], a[5], a[6]))
+                        });
                         out.push(Tri {
                             p,
                             n,
@@ -416,6 +452,8 @@ fn triangles(
                             metallic,
                             mr_texture,
                             translucency: translucent,
+                            leaf,
+                            anchor,
                         });
                     }
                 }
@@ -436,6 +474,7 @@ struct Fine {
     col: Vec<Vec4>,
     nrm: Vec<Vec3>,
     mat: Vec<Vec3>,
+    leaf: Vec<Vec3>,
 }
 
 /// The band (radii) over which the card's own shadow takes over from the
@@ -500,21 +539,20 @@ pub fn bake(
     let grid = b.grid;
     // The atlases' width (their rows' stride) and height.
     let (size, height) = (b.columns() * b.frame, grid * b.frame);
-    let mut albedo = vec![0u8; (size * height * 4) as usize];
-    let mut normal = vec![0u8; (size * height * 4) as usize];
-    let mut material = vec![0u8; (size * height * 4) as usize];
     let ss = SUPERSAMPLE;
     let fine = b.frame * ss;
-    // The model drawn from `d` (from the centre towards the viewer).
-    let raster = |d: Vec3| {
+    // `tris` drawn from `d` (from the centre towards the viewer).
+    let raster = |tris: &[&Tri], d: Vec3| {
         let (right, up) = frame_basis(d);
-        // Per fine pixel: depth, albedo (linear rgba), normal and
-        // material (roughness, translucency, metallic).
+        // Per fine pixel: depth, albedo (linear rgba), normal, material
+        // (roughness, translucency, metallic) and leaf (1 on a seasonal
+        // leaf, its drop order, its colour pick).
         let n_px = (fine * fine) as usize;
         let mut depth = vec![f32::MIN; n_px];
         let mut col = vec![Vec4::ZERO; n_px];
         let mut nrm = vec![Vec3::ZERO; n_px];
         let mut mat = vec![Vec3::ZERO; n_px];
+        let mut leaf = vec![Vec3::ZERO; n_px];
         let to_px = |p: Vec3| {
             let q = p - center;
             let x = q.dot(right) / radius;
@@ -525,7 +563,7 @@ pub fn bake(
                 q.dot(d) / radius,
             )
         };
-        for t in &tris {
+        for t in tris {
             let s = t.p.map(to_px);
             let area =
                 (s[1].x - s[0].x) * (s[2].y - s[0].y) - (s[1].y - s[0].y) * (s[2].x - s[0].x);
@@ -542,6 +580,12 @@ pub fn bake(
                     .map_or(Vec4::ONE, |m| {
                         m.sample(uv - uv.floor(), m.lod(uv_area, area))
                     })
+            };
+            let leaf_of = if t.leaf {
+                let (order, pick) = leaf_order_pick(t.anchor);
+                Vec3::new(1.0, order, pick)
+            } else {
+                Vec3::ZERO
             };
             let lo = s[0].min(s[1]).min(s[2]);
             let hi = s[0].max(s[1]).max(s[2]);
@@ -579,6 +623,7 @@ pub fn bake(
                         t.translucency,
                         (t.metallic * mr.z).clamp(0.0, 1.0),
                     );
+                    leaf[at] = leaf_of;
                     let mut n = (t.n[0] * w.x + t.n[1] * w.y + t.n[2] * w.z).normalize_or(d);
                     // The side seen: a back face shows its normal turned to the viewer.
                     if n.dot(d) < 0.0 {
@@ -593,126 +638,160 @@ pub fn bake(
             col,
             nrm,
             mat,
+            leaf,
         }
     };
-    // The model's depth from a spread of sun directions: every third
-    // frame's.
-    let suns: Vec<(Vec3, Vec<f32>)> = (1..grid)
-        .step_by(3)
-        .flat_map(|j| {
-            (1..grid)
-                .step_by(3)
-                .map(move |i| frame_direction(i, j, grid))
-        })
-        .map(|d| (d, raster(d).depth))
-        .collect();
-    for j in 0..grid {
-        for i in 0..b.columns() {
-            let d = frame_direction(i, j, grid);
-            let (right, up) = frame_basis(d);
-            let Fine {
-                depth,
-                col,
-                nrm,
-                mat,
-            } = raster(d);
-            // How much of `suns` reaches the fine pixel (x, y), whose normal
-            // in the frame's basis is `n`, past the model's faces near it
-            // ([`near_shade`]), and how much would in the open: each sun
-            // by its cosine on the face (either side of a leaf, which
-            // light passes through), so one grazing it counts for nothing.
-            let sunlit = |x: u32, y: u32, z: f32, n: Vec3, leaf: bool| {
-                let at = |v: u32| (v as f32 + 0.5) / fine as f32 * 2.0 - 1.0;
-                let q = right * at(x) - up * at(y) + d * z;
-                let n = right * n.x + up * n.y + d * n.z;
-                suns.iter().fold(Vec2::ZERO, |sum, (sun, front)| {
-                    let cos = n.dot(*sun);
-                    let cos = if leaf { cos.abs() } else { cos.max(0.0) };
-                    let (r, u) = frame_basis(*sun);
-                    let px = (Vec2::new(q.dot(r), -q.dot(u)) * 0.5 + 0.5) * fine as f32;
-                    let shade = if px.min_element() < 0.0 || px.max_element() >= fine as f32 {
-                        0.0
-                    } else {
-                        let ahead =
-                            front[px.y as usize * fine as usize + px.x as usize] - q.dot(*sun);
-                        near_shade(ahead, 2.0 / fine as f32)
-                    };
-                    sum + Vec2::new(1.0 - shade, 1.0) * cos
-                })
-            };
-            // Box filter down to the frame's pixels and write them.
-            let (ox, oy) = (i * b.frame, j * b.frame);
-            for y in 0..b.frame {
-                for x in 0..b.frame {
-                    let (mut c, mut n, mut m, mut z, mut k) =
-                        (Vec4::ZERO, Vec3::ZERO, Vec3::ZERO, 0.0f32, 0.0f32);
-                    let mut lit = Vec2::ZERO;
-                    for sy in 0..ss {
-                        for sx in 0..ss {
-                            let at = ((y * ss + sy) * fine + x * ss + sx) as usize;
-                            if depth[at] > f32::MIN {
-                                c += col[at];
-                                n += nrm[at];
-                                m += mat[at];
-                                z += depth[at];
-                                k += 1.0;
-                                // One sample in four, a rotated grid.
-                                if (sx + 2 * sy) % 4 == 0 {
-                                    lit += sunlit(
-                                        x * ss + sx,
-                                        y * ss + sy,
-                                        depth[at],
-                                        nrm[at],
-                                        mat[at].y > 0.0,
-                                    );
+    // One layer of `tris`: its albedo, normal and depth, and material
+    // atlases, and its leaves' atlas (r drop order, g colour pick, a the
+    // share of the texel's surface that is seasonal leaf).
+    let layer = |tris: &[&Tri]| {
+        let mut albedo = vec![0u8; (size * height * 4) as usize];
+        let mut normal = vec![0u8; (size * height * 4) as usize];
+        let mut material = vec![0u8; (size * height * 4) as usize];
+        let mut leaves = vec![0u8; (size * height * 4) as usize];
+        // The layer's depth from a spread of sun directions: every third
+        // frame's.
+        let suns: Vec<(Vec3, Vec<f32>)> = (1..grid)
+            .step_by(3)
+            .flat_map(|j| {
+                (1..grid)
+                    .step_by(3)
+                    .map(move |i| frame_direction(i, j, grid))
+            })
+            .map(|d| (d, raster(tris, d).depth))
+            .collect();
+        for j in 0..grid {
+            for i in 0..b.columns() {
+                let d = frame_direction(i, j, grid);
+                let (right, up) = frame_basis(d);
+                let Fine {
+                    depth,
+                    col,
+                    nrm,
+                    mat,
+                    leaf,
+                } = raster(tris, d);
+                // How much of `suns` reaches the fine pixel (x, y), whose normal
+                // in the frame's basis is `n`, past the model's faces near it
+                // ([`near_shade`]), and how much would in the open: each sun
+                // by its cosine on the face (either side of a leaf, which
+                // light passes through), so one grazing it counts for nothing.
+                let sunlit = |x: u32, y: u32, z: f32, n: Vec3, leaf: bool| {
+                    let at = |v: u32| (v as f32 + 0.5) / fine as f32 * 2.0 - 1.0;
+                    let q = right * at(x) - up * at(y) + d * z;
+                    let n = right * n.x + up * n.y + d * n.z;
+                    suns.iter().fold(Vec2::ZERO, |sum, (sun, front)| {
+                        let cos = n.dot(*sun);
+                        let cos = if leaf { cos.abs() } else { cos.max(0.0) };
+                        let (r, u) = frame_basis(*sun);
+                        let px = (Vec2::new(q.dot(r), -q.dot(u)) * 0.5 + 0.5) * fine as f32;
+                        let shade = if px.min_element() < 0.0 || px.max_element() >= fine as f32 {
+                            0.0
+                        } else {
+                            let ahead =
+                                front[px.y as usize * fine as usize + px.x as usize] - q.dot(*sun);
+                            near_shade(ahead, 2.0 / fine as f32)
+                        };
+                        sum + Vec2::new(1.0 - shade, 1.0) * cos
+                    })
+                };
+                // Box filter down to the frame's pixels and write them.
+                let (ox, oy) = (i * b.frame, j * b.frame);
+                for y in 0..b.frame {
+                    for x in 0..b.frame {
+                        let (mut c, mut n, mut m, mut z, mut k) =
+                            (Vec4::ZERO, Vec3::ZERO, Vec3::ZERO, 0.0f32, 0.0f32);
+                        let mut lf = Vec3::ZERO;
+                        let mut lit = Vec2::ZERO;
+                        for sy in 0..ss {
+                            for sx in 0..ss {
+                                let at = ((y * ss + sy) * fine + x * ss + sx) as usize;
+                                if depth[at] > f32::MIN {
+                                    c += col[at];
+                                    n += nrm[at];
+                                    m += mat[at];
+                                    z += depth[at];
+                                    lf += leaf[at];
+                                    k += 1.0;
+                                    // One sample in four, a rotated grid.
+                                    if (sx + 2 * sy) % 4 == 0 {
+                                        lit += sunlit(
+                                            x * ss + sx,
+                                            y * ss + sy,
+                                            depth[at],
+                                            nrm[at],
+                                            mat[at].y > 0.0,
+                                        );
+                                    }
                                 }
                             }
                         }
-                    }
-                    let at = (((oy + y) * size + ox + x) * 4) as usize;
-                    if k == 0.0 {
-                        continue;
-                    }
-                    let a = k / (ss * ss) as f32;
-                    let c = c / k;
-                    let q = |v: f32| (v.clamp(0.0, 1.0) * 255.0).round() as u8;
-                    albedo[at] = q(linear_to_srgb(c.x));
-                    albedo[at + 1] = q(linear_to_srgb(c.y));
-                    albedo[at + 2] = q(linear_to_srgb(c.z));
-                    albedo[at + 3] = q(a);
-                    // The mean, not normalised: its length says how far
-                    // the texel's normals agree (impostor.wgsl imp_direct).
-                    let n = n / k * 0.5 + 0.5;
-                    let z = (z / k).clamp(-1.0, 1.0) * 0.5 + 0.5;
-                    for (o, v) in [n.x, n.y, n.z, z].into_iter().enumerate() {
-                        normal[at + o] = q(v);
-                    }
-                    let m = m / k;
-                    // A texel no sun faces takes the open sky's.
-                    let lit = if lit.y > 1e-4 { lit.x / lit.y } else { 1.0 };
-                    for (o, v) in [m.x, m.y, m.z, lit].into_iter().enumerate() {
-                        material[at + o] = q(v);
+                        let at = (((oy + y) * size + ox + x) * 4) as usize;
+                        if k == 0.0 {
+                            continue;
+                        }
+                        let a = k / (ss * ss) as f32;
+                        let c = c / k;
+                        let q = |v: f32| (v.clamp(0.0, 1.0) * 255.0).round() as u8;
+                        albedo[at] = q(linear_to_srgb(c.x));
+                        albedo[at + 1] = q(linear_to_srgb(c.y));
+                        albedo[at + 2] = q(linear_to_srgb(c.z));
+                        albedo[at + 3] = q(a);
+                        // The mean, not normalised: its length says how far
+                        // the texel's normals agree (impostor.wgsl imp_direct).
+                        let n = n / k * 0.5 + 0.5;
+                        let z = (z / k).clamp(-1.0, 1.0) * 0.5 + 0.5;
+                        for (o, v) in [n.x, n.y, n.z, z].into_iter().enumerate() {
+                            normal[at + o] = q(v);
+                        }
+                        let m = m / k;
+                        // A texel no sun faces takes the open sky's.
+                        let lit = if lit.y > 1e-4 { lit.x / lit.y } else { 1.0 };
+                        for (o, v) in [m.x, m.y, m.z, lit].into_iter().enumerate() {
+                            material[at + o] = q(v);
+                        }
+                        // The leaves' mean order and pick, over the leaf
+                        // samples only, and their share of the covered ones.
+                        if lf.x > 0.0 {
+                            leaves[at] = q(lf.y / lf.x);
+                            leaves[at + 1] = q(lf.z / lf.x);
+                            leaves[at + 3] = q(lf.x / k);
+                        }
                     }
                 }
+                dilate(
+                    [&mut albedo, &mut normal, &mut material],
+                    size,
+                    ox,
+                    oy,
+                    b.frame,
+                );
             }
-            dilate(
-                [&mut albedo, &mut normal, &mut material],
-                size,
-                ox,
-                oy,
-                b.frame,
-            );
         }
-    }
-    let image = |rgba| Image {
-        width: size,
-        height,
-        rgba,
+        let image = |rgba| Image {
+            width: size,
+            height,
+            rgba,
+        };
+        (
+            [image(albedo), image(normal), image(material)],
+            image(leaves),
+        )
     };
+    let all: Vec<&Tri> = tris.iter().collect();
+    let ([albedo, normal, material], leaves) = layer(&all);
+    // A species that follows the year: the same frames without its
+    // leaves, which the card draws where a leaf has fallen.
+    let leaf = has_season_leaves(src).then(|| {
+        let wood: Vec<&Tri> = tris.iter().filter(|t| !t.leaf).collect();
+        let (wood, _) = layer(&wood);
+        LeafLayer { leaves, wood }
+    });
     Ok(Baked {
-        albedo: image(albedo),
-        normal: image(normal),
-        material: image(material),
+        albedo,
+        normal,
+        material,
+        leaf,
         center,
         radius,
     })
@@ -1052,6 +1131,55 @@ pub(crate) mod tests {
             "{m:?}"
         );
         assert_eq!(texel(&b.material, grid, frame, (1, 1), (0, 0))[3], 0);
+    }
+
+    /// Ways this could fail: no leaf layer for a seasonal species, or one
+    /// for an evergreen (every tree then carries two layers); the wood
+    /// layer drawn with the leaves still in it, or without what they hid;
+    /// the leaves' atlas marking wood as leaf, or carrying order and pick
+    /// other than [`leaf_order_pick`]'s. The red box is a leaf of a
+    /// species that follows the year (`ogFoliage.season` 1), the blue one
+    /// wood: from +x the red box hides the blue one behind it.
+    #[test]
+    fn a_seasonal_species_bakes_its_leaves_and_the_wood_they_hide() {
+        let glb = boxes(serde_json::json!([
+            {"pbrMetallicRoughness": {"baseColorFactor": [1.0, 0.0, 0.0, 1.0]},
+             "extras": {"ogFoliage": {"season": 1.0}}},
+            {"pbrMetallicRoughness": {"baseColorFactor": [0.0, 0.0, 1.0, 1.0]}}
+        ]));
+        let src = super::super::load(&glb, std::path::Path::new(".")).unwrap();
+        assert!(has_season_leaves(&src));
+        let (grid, frame) = (3, 32);
+        let bake = ImpostorBake {
+            grid,
+            frame,
+            below: false,
+        };
+        let b = src.impostor(bake).unwrap();
+        let leaf = b.leaf.as_ref().expect("a leaf layer");
+        let mid = (frame / 2, frame / 2);
+        // From +x: the red leaf in front, the blue wood behind it.
+        assert_eq!(texel(&b.albedo, grid, frame, (2, 2), mid), [255, 0, 0, 255]);
+        assert_eq!(
+            texel(&leaf.wood[0], grid, frame, (2, 2), mid),
+            [0, 0, 255, 255]
+        );
+        let (order, pick) = leaf_order_pick(Vec3::ZERO);
+        let q = |v: f32| (v * 255.0).round() as u8;
+        assert_eq!(
+            texel(&leaf.leaves, grid, frame, (2, 2), mid),
+            [q(order), q(pick), 0, 255]
+        );
+        // From -x the wood in front: no leaf, and the wood layer the same.
+        assert_eq!(texel(&leaf.leaves, grid, frame, (0, 0), mid)[3], 0);
+        assert_eq!(
+            texel(&leaf.wood[0], grid, frame, (0, 0), mid),
+            texel(&b.albedo, grid, frame, (0, 0), mid)
+        );
+        // An evergreen bakes one layer.
+        let solid = super::super::load(&two_boxes(), std::path::Path::new(".")).unwrap();
+        assert!(!has_season_leaves(&solid));
+        assert!(solid.impostor(bake).unwrap().leaf.is_none());
     }
 
     /// Ways this could fail: the material atlas's alpha left as coverage
