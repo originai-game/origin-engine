@@ -1,0 +1,3 @@
+{
+  "fixed": ["og create and og new now scaffold a game from both the installed release distribution and the npm og entry point, forwarding creation options and errors."]
+}

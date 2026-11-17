@@ -67,6 +67,7 @@ mod cli {
     use super::*;
 
     mod check;
+    mod create;
     mod i18n;
     mod maintenance;
     mod project;

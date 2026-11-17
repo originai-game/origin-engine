@@ -18,6 +18,21 @@ function files(root: string): string[] {
   return readdirSync(root, { withFileTypes: true }).flatMap(e => e.isDirectory() ? files(join(root, e.name)).map(f => `${e.name}/${f}`) : e.isFile() ? [e.name] : []).sort();
 }
 
+test("the installed npm og routes create and new without a native platform package", () => {
+  const install = join(scratch, "npm-install");
+  const engine = join(install, "node_modules/@origingame/engine");
+  mkdirSync(join(engine, "bin"), { recursive: true });
+  cpSync(join(pkg, "../engine/bin/og.mjs"), join(engine, "bin/og.mjs"));
+  symlinkSync(pkg, join(install, "node_modules/@origingame/create-game"), "dir");
+  for (const command of ["create", "new"]) {
+    const r = Bun.spawnSync(["node", join(engine, "bin/og.mjs"), command, command, "--name", "Installed Game", "--view", "side-2d", "--look", "pixel", "--no-prompt"], { cwd: install });
+    expect(r.exitCode, new TextDecoder().decode(r.stderr)).toBe(0);
+    expect(read("npm-install", command, "project.ogt")).toContain('name "Installed Game"');
+    expect(read("npm-install", command, "project.ogt")).toContain('view "side-2d"');
+    expect(existsSync(join(install, command, "src/main.ts"))).toBeTrue();
+  }
+});
+
 test("the fixtures and the sheet carry the skeleton's tsconfig, whose include names only what a project has", () => {
   const skeleton = readFileSync(join(pkg, "template/tsconfig.json"), "utf8");
   expect(JSON.parse(skeleton).include).toEqual(["src/**/*.ts", "tests/**/*.ts", ".og/types/**/*.d.ts"]);

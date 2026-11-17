@@ -12,6 +12,7 @@ pub(super) mod cache;
 pub(super) mod check;
 pub(super) mod compare;
 pub(super) mod cook;
+pub(super) mod create;
 pub(super) mod dev;
 pub(super) mod doctor;
 pub(super) mod explore;

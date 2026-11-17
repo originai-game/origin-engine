@@ -10,7 +10,7 @@
 mod commands;
 use commands::{
     api, assets, bake_lightmaps, bake_probes, bake_projection, bundle, cache, check, compare, cook,
-    dev, doctor, explore, fmt, frame, i18n, migrate, prefab, probe, render, replay, run,
+    create, dev, doctor, explore, fmt, frame, i18n, migrate, prefab, probe, render, replay, run,
     serve_relay, session, sfx, sprite, style, test, ui, upgrade, vfx_import, vfx_preview, video,
 };
 mod api_lookup;
@@ -39,6 +39,11 @@ og: the Origin Engine tool
 usage: og <command> [options]
 
 commands:
+  create [dir] [--name \"Name\"] [--id slug] [--premise \"one line\"] [--force] [--no-prompt]
+      [--genre G] [--view V] [--look L] [--mood M] [--ui U] [--platform P]
+      [--input I] [--players P] [--lang en,zh] [--music M]
+                      write one empty game project and its creation choices; `og new` is an alias
+  new [dir] [options]  alias for og create
   session [project]   keep a worktree's native host warm until idle or interrupted
   run [project|entry] [--headless] [--commands \"t:action[:args];...\"] [--seed S] [--port P]
       [--ticks N] [--out DIR] [--size WxH] [--setup action[:arg]]... [--audio <out.wav>]
@@ -369,6 +374,7 @@ fn main() -> ExitCode {
             ExitCode::SUCCESS
         }
         ["doctor", rest @ ..] => doctor::run(rest),
+        ["create" | "new", rest @ ..] => create::run(rest),
         ["upgrade", rest @ ..] => upgrade::run(rest),
         ["run", rest @ ..] => run::run(rest),
         ["session", rest @ ..] => session::run(rest),

@@ -8,6 +8,13 @@ import { createRequire } from "node:module";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
+if (process.argv[2] === "create" || process.argv[2] === "new") {
+  const script = createRequire(import.meta.url).resolve("@origingame/create-game");
+  const r = spawnSync("bun", [script, ...process.argv.slice(3)], { stdio: "inherit" });
+  if (r.error) process.stderr.write(`og: cannot start bun (${r.error.message}); install Bun to create a game\n`);
+  process.exit(r.status ?? 1);
+}
+
 const platform = `${process.platform}-${process.arch}`;
 let bin;
 try {
