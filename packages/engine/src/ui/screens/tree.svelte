@@ -5,10 +5,11 @@
 <meta name="action:toggle" content="Open or close">
 <meta name="action:choose" content="Select">
 <meta name="fixture:default" content="{&quot;label&quot;:&quot;Scene&quot;,&quot;rows&quot;:[{&quot;id&quot;:&quot;w&quot;,&quot;label&quot;:&quot;World&quot;,&quot;depth&quot;:0,&quot;open&quot;:true,&quot;selected&quot;:false},{&quot;id&quot;:&quot;p&quot;,&quot;label&quot;:&quot;Player&quot;,&quot;depth&quot;:1,&quot;open&quot;:null,&quot;selected&quot;:true},{&quot;id&quot;:&quot;c&quot;,&quot;label&quot;:&quot;Camera&quot;,&quot;depth&quot;:1,&quot;open&quot;:false,&quot;selected&quot;:false}]}">
+<meta name="fixture:overflow" content="{&quot;label&quot;:&quot;Scene&quot;,&quot;rows&quot;:[{&quot;id&quot;:&quot;t0&quot;,&quot;label&quot;:&quot;World&quot;,&quot;depth&quot;:0,&quot;open&quot;:true,&quot;selected&quot;:false},{&quot;id&quot;:&quot;t1&quot;,&quot;label&quot;:&quot;Region of the Ninefold Gate&quot;,&quot;depth&quot;:1,&quot;open&quot;:true,&quot;selected&quot;:false},{&quot;id&quot;:&quot;t2&quot;,&quot;label&quot;:&quot;Lighthouse&quot;,&quot;depth&quot;:2,&quot;open&quot;:true,&quot;selected&quot;:false},{&quot;id&quot;:&quot;t3&quot;,&quot;label&quot;:&quot;Lantern_03 (the one on the north stair)&quot;,&quot;depth&quot;:3,&quot;open&quot;:null,&quot;selected&quot;:true},{&quot;id&quot;:&quot;t4&quot;,&quot;label&quot;:&quot;Player&quot;,&quot;depth&quot;:1,&quot;open&quot;:null,&quot;selected&quot;:false},{&quot;id&quot;:&quot;t5&quot;,&quot;label&quot;:&quot;Camera&quot;,&quot;depth&quot;:1,&quot;open&quot;:false,&quot;selected&quot;:false},{&quot;id&quot;:&quot;t6&quot;,&quot;label&quot;:&quot;Light&quot;,&quot;depth&quot;:2,&quot;open&quot;:true,&quot;selected&quot;:false},{&quot;id&quot;:&quot;t7&quot;,&quot;label&quot;:&quot;Particles&quot;,&quot;depth&quot;:3,&quot;open&quot;:null,&quot;selected&quot;:false}]}">
 
 <list id="Tree" role="tree" aria-label={label}>
   {#each rows as r (r.id)}
-    <div class="row" part="tree.row" role="treeitem" aria-level={r.depth + 1} aria-selected={r.selected} aria-expanded={r.open} style:--depth={r.depth}>
+    <div class="row" class:leaf={r.open == null} part="tree.row" role="treeitem" aria-level={r.depth + 1} aria-selected={r.selected} aria-expanded={r.open} style:--depth={r.depth}>
       <button id="Twisty" class="twisty" variant="quiet" hidden={r.open == null} onclick={toggle} aria-label={r.label}><og-icon icon={r.open ? "chevronDown" : "chevronRight"}/></button>
       <button id="Item" class="item" variant={r.selected ? "primary" : "quiet"} onclick={choose}>{r.label}</button>
     </div>
@@ -17,7 +18,20 @@
 
 <style>
 #Tree { width: stretch; height: stretch; }
-.row { display: flex; align-items: center; gap: var(--space-xxs); margin-inline-start: calc(var(--depth) * var(--space-lg)); }
-.twisty { width: var(--control-sm); }
-.item { flex: 1; min-width: 0; justify-content: start; }
+/* A row is indented by its depth; on a phone the step is smaller, so a
+   deep row keeps room for its name. */
+.row { display: flex; align-items: start; gap: var(--space-xxs); margin-inline-start: calc(var(--depth) * var(--indent) + var(--twisty-room)); --indent: var(--space-lg); --twisty-room: 0px; }
+.twisty { flex: none; width: var(--control-sm); }
+/* The twisty is its chevron alone: a pack's button padding would leave the
+   chevron no width. */
+.twisty::part(base) { padding-inline: 0; }
+/* A leaf has no twisty and keeps its room, so its name lines up with its
+   siblings' that open. */
+.leaf { --twisty-room: calc(var(--control-sm) + var(--space-xxs)); }
+/* A name longer than its row wraps inside it, at any word and inside a
+   word with no break (an identifier): it is never cut by the screen. */
+.item { flex: 1; min-width: 0; justify-content: start; text-align: start; white-space: normal; overflow-wrap: anywhere; }
+/* A wrapped name keeps clear of its row's frame above and below. */
+.item::part(base) { padding-block: var(--space-sm); }
+@media (width < 600px) { .row { --indent: var(--space-md); } }
 </style>
