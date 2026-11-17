@@ -1,6 +1,6 @@
 <meta name="component" content="StatBar">
 <meta name="strings" content="./stat-bar.en.ogt">
-<meta name="parts" content="StatBar.shield StatBar.frame StatBar.label StatBar.track StatBar.fill StatBar.inside StatBar.figure StatBar.well StatBar.icon StatBar.tag StatBar.notch StatBar.sheen">
+<meta name="parts" content="StatBar.shield StatBar.frame StatBar.label StatBar.track StatBar.fill StatBar.inside StatBar.figure StatBar.well StatBar.icon StatBar.tag StatBar.notch">
 <meta name="prop:value" content="number" data-doc="The value.">
 <meta name="prop:max" content="number" data-default="1" data-doc="Its maximum.">
 <meta name="prop:kind" content="string" data-default="health" data-doc="What it measures (its colour): health, mana, stamina or xp; health turns warn and danger as it falls.">
@@ -31,7 +31,6 @@
       {#if heal > 0}<div id="Heal" part="StatBar.fill" data-anchor="top-start" data-motion="pulse"></div>{/if}
       <div id="Fill" part="StatBar.fill" data-anchor="top-start" data-motion={kind == 'health' && value / max <= critical ? 'pulse' : null}></div>
       {#if segment > 0}<div id="Blocks" part="StatBar.notch" data-anchor="fill"></div>{/if}
-      <div id="Gloss" part="StatBar.sheen" data-anchor="top-start"></div>
       {#if showValue && valueInside}<div id="Inside" part="StatBar.inside StatBar.tag" data-anchor="top-end"><span class="inside" part="StatBar.figure">{valueText || t("component.stat-bar.value", { value: value, max: max })}</span></div>{/if}
     </div>
     {#if showValue && !valueInside}<div part="StatBar.tag"><span id="Value" class="value" part="StatBar.figure">{valueText || t("component.stat-bar.value", { value: value, max: max })}</span></div>{/if}
@@ -46,7 +45,8 @@
 .xp { --meter: var(--xp); --fill-color: var(--meter); }
 .low { --meter: var(--warn); --fill-color: var(--meter); }
 .critical { --meter: var(--danger); --fill-color: var(--meter); }
-#Shield { block-size: var(--space-xs); overflow: hidden; }
+/* The shield is a tab of the plate, on the straight run of its top edge. */
+#Shield { block-size: var(--space-xs); margin-inline: var(--plate-radius); overflow: hidden; --track-fill: var(--plate-fill); }
 #ShieldFill { inline-size: calc(var(--shield) * 100%); block-size: 100%; }
 #Icon { width: var(--size-xs); height: var(--size-xs); }
 [part="StatBar.label"] { white-space: nowrap; }
@@ -58,7 +58,6 @@
 #Heal { inline-size: calc((var(--value) + var(--heal)) * 100%); --fill-color: var(--tone-heal); }
 #Blocks { mask-image: repeating-linear-gradient(90deg, transparent 0% calc(var(--block) * 100% - 0.8%), #000 calc(var(--block) * 100% - 0.8%) calc(var(--block) * 100%)); }
 :host(:dir(rtl)) #Blocks { scale: -1 1; }
-#Gloss { inline-size: 100%; block-size: 42%; }
 #Inside { padding-inline: var(--space-xs); }
 [part="StatBar.figure"] { --figure-size: var(--font-step-sm); white-space: nowrap; }
 .critical [part="StatBar.figure"] { --figure-ink: var(--tone-danger); }

@@ -49,11 +49,14 @@
    --text-px is one CSS px at 100 % text (rem is the body type step, 14 px
    at 100 %, grown by the scale). */
 :host { --text-px: var(--font-step-px); align-items: center; }
-#Slot { width: calc(48 * var(--text-px)); height: calc(48 * var(--text-px)); padding: 0; overflow: hidden; }
+/* Over the scene the slot is the style's scene cell: a socket in a plate. */
+#Slot { width: calc(48 * var(--text-px)); height: calc(48 * var(--text-px)); padding: 0; overflow: hidden; --cell-fill: var(--cell-scene-fill); --cell-rim: var(--cell-scene-rim); --cell-shadow: var(--cell-scene-shadow); --cell-empty-shadow: var(--cell-scene-shadow); }
 .ultimate #Slot { width: calc(64 * var(--text-px)); height: calc(64 * var(--text-px)); }
-#Art, #Ultimate, #Sweep, #Slash { --layout-anchor-inset: 0; }
+#Ultimate, #Sweep, #Slash { --layout-anchor-inset: 0; }
+#Art { inset: var(--cell-scene-inset); --well-radius: var(--cell-scene-well-radius); }
+.ultimate #Art { --well-radius: var(--radius-capsule); }
 #Icon { width: calc(32 * var(--text-px)); height: calc(32 * var(--text-px)); }
-#Slot.tinted #Art { --well-fill: var(--danger-45); }
+#Slot.tinted #Art { --well-fill: var(--well-alert-fill); }
 #Slot.full { --cell-active-rim: var(--gold); }
 #Ultimate, #Sweep, #Slash { inline-size: 100%; block-size: 100%; }
 #UltimateFill { --fill-color: var(--gold); }

@@ -33,10 +33,11 @@
    --text-px is one CSS px at 100 % text. */
 :host { --text-px: var(--font-step-px); margin: 0; padding: 0; list-style-type: none; justify-content: center; max-inline-size: min(100%, var(--measure-xl)); }
 .cell { align-items: center; }
-.slot { width: calc(48 * var(--text-px)); height: calc(48 * var(--text-px)); padding: 0; overflow: hidden; }
-.art { --layout-anchor-inset: 0; }
+/* Over the scene the slot is the style's scene cell: a socket in a plate. */
+.slot { width: calc(48 * var(--text-px)); height: calc(48 * var(--text-px)); padding: 0; overflow: hidden; --cell-fill: var(--cell-scene-fill); --cell-rim: var(--cell-scene-rim); --cell-shadow: var(--cell-scene-shadow); --cell-empty-shadow: var(--cell-scene-shadow); }
+.art { inset: var(--cell-scene-inset); --well-radius: var(--cell-scene-well-radius); }
 .icon { width: calc(32 * var(--text-px)); height: calc(32 * var(--text-px)); }
-.slot.tinted .art { --well-fill: var(--danger-45); }
+.slot.tinted .art { --well-fill: var(--well-alert-fill); }
 .sweep { inline-size: 100%; block-size: 100%; --layout-anchor-inset: 0; }
 .time { --figure-size: var(--font-step-xl); --figure-ink: var(--scene-ink); --figure-shadow: var(--tag-halo); }
 .lock { width: calc(24 * var(--text-px)); height: calc(24 * var(--text-px)); }

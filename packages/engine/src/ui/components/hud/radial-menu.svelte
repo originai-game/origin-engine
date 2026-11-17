@@ -34,7 +34,7 @@
 :host { text-shadow: var(--tag-halo); }
 /* The wheel is two --size-4xl across; every offset below is a share of that. */
 :host { --wheel: calc(var(--size-4xl) * 2); width: var(--wheel); height: var(--wheel); --layout-anchor-inset: 0; }
-[part="RadialMenu.disc"] { width: var(--wheel); height: var(--wheel); fill: var(--plate-fill); }
+[part="RadialMenu.disc"] { width: var(--wheel); height: var(--wheel); fill: var(--hud); }
 [part="RadialMenu.slice"] { width: var(--wheel); height: var(--wheel); }
 .wedge { width: var(--wheel); height: var(--wheel); stroke: var(--cell-rim); }
 .chosen .wedge { stroke: var(--cell-selected-rim); }

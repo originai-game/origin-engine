@@ -20,7 +20,8 @@
 <style>
 :host { text-shadow: var(--tag-halo); }
 #Face { inline-size: 100%; block-size: 100%; }
-:host { width: var(--size-lg); height: var(--size-lg); padding: 0; overflow: hidden; }
+/* Over the scene it is the style's scene cell. */
+:host { width: var(--size-lg); height: var(--size-lg); padding: 0; overflow: hidden; --cell-fill: var(--cell-scene-fill); --cell-rim: var(--cell-scene-rim); --cell-shadow: var(--cell-scene-shadow); --cell-empty-shadow: var(--cell-scene-shadow); }
 #Icon { width: var(--size-md); height: var(--size-md); }
 #Sweep { inline-size: 100%; block-size: 100%; }
 #Seconds { text-align: center; --figure-size: var(--font-step-xl); --figure-shadow: var(--tag-halo); }
