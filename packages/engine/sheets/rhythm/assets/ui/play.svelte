@@ -38,7 +38,8 @@
 #Score { grid-area: score; display: flex; justify-content: flex-end; min-width: 0; }
 #Life { grid-area: life; display: flex; min-height: 0; }
 #Timing { grid-area: timing; display: flex; align-self: end; min-width: 0; }
-#Judge { grid-area: judge; display: flex; align-items: center; justify-content: center; min-width: 0; min-height: 0; }
+/* A size container: the combo and judgement figures size to this cell. */
+#Judge { grid-area: judge; display: flex; align-items: center; justify-content: center; min-width: 0; min-height: 0; container-type: size; }
 #Fever { grid-area: fever; display: flex; justify-content: flex-end; min-height: 0; }
 #Keys { grid-area: keys; display: flex; min-width: 0; }
 @media (width < 600px) {

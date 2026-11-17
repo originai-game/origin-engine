@@ -253,17 +253,23 @@
   /* A fill painted through the glyphs (a judgement's gradient). */
   --role-hud-text-clip: text;
   /* The HUD's type steps, smallest to the hero figure; `-compact` is the
-     same figure on a phone. */
+     same figure on a phone. The combo and judgement figures are also held
+     to a share of their size container's height (cqb), so the combo block
+     fits the space a page gives it at any text scale. */
   --role-hud-size-xs: calc(13 * var(--font-step-px));
   --role-hud-size-sm: calc(16 * var(--font-step-px));
   --role-hud-size-md: calc(24 * var(--font-step-px));
   --role-hud-size-lg: calc(34 * var(--font-step-px));
   --role-hud-size-score: calc(66 * var(--font-step-px));
   --role-hud-size-score-compact: calc(38 * var(--font-step-px));
-  --role-hud-size-judge: calc(64 * var(--font-step-px));
-  --role-hud-size-judge-compact: calc(24 * var(--font-step-px));
-  --role-hud-size-hero: calc(150 * var(--font-step-px));
-  --role-hud-size-hero-compact: calc(52 * var(--font-step-px));
+  --role-hud-size-judge: min(calc(64 * var(--font-step-px)), 12cqb);
+  --role-hud-size-judge-compact: min(calc(24 * var(--font-step-px)), 12cqb);
+  --role-hud-size-hero: min(calc(150 * var(--font-step-px)), 26cqb);
+  --role-hud-size-hero-compact: min(calc(52 * var(--font-step-px)), 26cqb);
+  /* A label sharing a line in a narrow size container (the combo word and
+     its tag on a phone): the label's size, held to a share of the
+     container's width. */
+  --role-hud-size-label-compact: min(calc(12 * var(--font-step-px)), 7cqi);
   /* HUD plate: smoked glass with a lit top edge and two corners cut, the
      surface a small HUD readout stands on. */
   --role-hud-plate-fill: linear-gradient(180deg, rgb(24 31 48 / 0.84), rgb(9 12 22 / 0.88));

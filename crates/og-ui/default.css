@@ -629,10 +629,11 @@
     --hud-plate-lit-rim: inset 0 0 0 var(--stroke-hairline) rgb(from var(--hud-accent) r g b / 0.45), inset 0 calc(2 * var(--stroke-hairline)) 0 var(--hud-accent);
     --hud-plate-rim: inset 0 0 0 var(--stroke-hairline) rgb(255 255 255 / 0.18), inset 0 var(--stroke-hairline) 0 rgb(255 255 255 / 0.55);
     --hud-shadow: 0 calc(2 * var(--font-step-px)) calc(6 * var(--font-step-px)) rgb(0 0 0 / 0.55);
-    --hud-size-hero: calc(150 * var(--font-step-px));
-    --hud-size-hero-compact: calc(52 * var(--font-step-px));
-    --hud-size-judge: calc(64 * var(--font-step-px));
-    --hud-size-judge-compact: calc(24 * var(--font-step-px));
+    --hud-size-hero: min(calc(150 * var(--font-step-px)), 26cqb);
+    --hud-size-hero-compact: min(calc(52 * var(--font-step-px)), 26cqb);
+    --hud-size-judge: min(calc(64 * var(--font-step-px)), 12cqb);
+    --hud-size-judge-compact: min(calc(24 * var(--font-step-px)), 12cqb);
+    --hud-size-label-compact: min(calc(12 * var(--font-step-px)), 7cqi);
     --hud-size-lg: calc(34 * var(--font-step-px));
     --hud-size-md: calc(24 * var(--font-step-px));
     --hud-size-score: calc(66 * var(--font-step-px));

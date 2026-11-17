@@ -29,8 +29,10 @@
   {#if combo > 0 || broken}
   <div part="RhythmJudgement.combo" class="combo" data-layout="stack" data-gap="none" data-broken={broken}>
     {#if !broken}{#key hit}<span part="RhythmJudgement.count" class="count" data-motion="beat">{formatNumber(combo)}</span>{/key}{/if}
-    <span part="RhythmJudgement.legend" class="combo-word">{broken ? t("rhythm.judge.broken") : t("rhythm.judge.combo")}</span>
-    {#if !broken && mark != ''}<span part="RhythmJudgement.mark" class="mark" data-mark={mark}>{mark == 'allPerfect' ? t("rhythm.judge.allPerfect") : t("rhythm.judge.fullCombo")}</span>{/if}
+    <div class="words" data-layout="stack" data-gap="none">
+      <span part="RhythmJudgement.legend" class="combo-word">{broken ? t("rhythm.judge.broken") : t("rhythm.judge.combo")}</span>
+      {#if !broken && mark != ''}<span part="RhythmJudgement.mark" class="mark" data-mark={mark}>{mark == 'allPerfect' ? t("rhythm.judge.allPerfect") : t("rhythm.judge.fullCombo")}</span>{/if}
+    </div>
   </div>
   {/if}
   {#if judgement != 'none'}
@@ -54,6 +56,7 @@
 .combo { align-items: center; max-inline-size: stretch; }
 .count { font-size: var(--hud-size-hero); line-height: 0.85; font-weight: var(--hud-figure-weight); font-stretch: var(--hud-figure-stretch); font-style: var(--judge-slant); font-variant-numeric: var(--hud-figure-numeric); white-space: nowrap; filter: var(--combo-glow); }
 .combo-word { font-size: var(--hud-size-sm); font-weight: var(--hud-label-weight); letter-spacing: var(--combo-tracking); text-transform: var(--hud-label-transform); color: var(--hud-accent); white-space: nowrap; }
+.words { align-items: center; }
 .combo[data-broken=true] .combo-word { color: var(--judge-miss-ink); letter-spacing: var(--hud-label-tracking); }
 /* A small word over the scene sits on a tag plate. */
 .mark { margin-block-start: var(--space-xs); padding: 0 var(--space-sm); font-size: var(--hud-label-size); font-weight: var(--hud-label-weight); letter-spacing: var(--hud-label-tracking); text-transform: var(--hud-label-transform); color: var(--hud-gold); white-space: nowrap; background: var(--hud-tag-fill); box-shadow: var(--hud-tag-rim); -webkit-text-stroke-width: 0; text-shadow: none; clip-path: polygon(var(--hud-tag-cut) 0, 100% 0, 100% calc(100% - var(--hud-tag-cut)), calc(100% - var(--hud-tag-cut)) 100%, 0 100%, 0 var(--hud-tag-cut)); }
@@ -74,5 +77,12 @@
   .count { font-size: var(--hud-size-hero-compact); }
   .word { font-size: var(--hud-size-judge-compact); }
   .plate { margin-block-start: var(--space-md); }
+  /* On a phone the combo's word and its mark share a line and its type
+     (the label's tracking and compact size, held to the container's
+     width), so the pair fits between the gauges at any text scale. */
+  .words { flex-direction: row; align-items: baseline; gap: var(--space-sm); }
+  .combo-word, .mark { font-size: var(--hud-size-label-compact); }
+  .combo-word { letter-spacing: var(--hud-label-tracking); }
+  .mark { margin-block-start: 0; }
 }
 </style>
