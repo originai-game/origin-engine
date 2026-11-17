@@ -232,6 +232,121 @@
   --role-bar-figure-weight: var(--font-weight-bold);
   --role-bar-figure-stretch: 87.5%;
 
+  /* HUD type: text that stands straight over the scene. One real stroke
+     under the fill and one soft shadow hold it over sky and snow alike (no
+     stacked offsets); figures are bold, tabular and condensed, labels are
+     small tracked capitals. Sizes are in font steps, so they follow the
+     player's text scale. */
+  --role-hud-ink: rgb(255 255 255);
+  --role-hud-ink-dim: rgb(255 255 255 / 0.66);
+  --role-hud-stroke-width: calc(3 * var(--font-step-px));
+  --role-hud-stroke-color: rgb(4 6 12 / 0.62);
+  --role-hud-shadow: 0 calc(2 * var(--font-step-px)) calc(6 * var(--font-step-px)) rgb(0 0 0 / 0.55);
+  --role-hud-figure-weight: var(--font-weight-bold);
+  --role-hud-figure-stretch: 78%;
+  --role-hud-label-size: calc(12 * var(--font-step-px));
+  --role-hud-label-weight: var(--font-weight-semibold);
+  --role-hud-label-tracking: 0.14em;
+  --role-hud-label-transform: uppercase;
+  --role-hud-label-ink: rgb(255 255 255 / 0.78);
+  --role-hud-figure-numeric: tabular-nums;
+  /* A fill painted through the glyphs (a judgement's gradient). */
+  --role-hud-text-clip: text;
+  /* The HUD's type steps, smallest to the hero figure; `-compact` is the
+     same figure on a phone. */
+  --role-hud-size-xs: calc(13 * var(--font-step-px));
+  --role-hud-size-sm: calc(16 * var(--font-step-px));
+  --role-hud-size-md: calc(24 * var(--font-step-px));
+  --role-hud-size-lg: calc(34 * var(--font-step-px));
+  --role-hud-size-score: calc(66 * var(--font-step-px));
+  --role-hud-size-score-compact: calc(38 * var(--font-step-px));
+  --role-hud-size-judge: calc(64 * var(--font-step-px));
+  --role-hud-size-judge-compact: calc(28 * var(--font-step-px));
+  --role-hud-size-hero: calc(150 * var(--font-step-px));
+  --role-hud-size-hero-compact: calc(52 * var(--font-step-px));
+  /* HUD plate: smoked glass with a lit top edge and two corners cut, the
+     surface a small HUD readout stands on. */
+  --role-hud-plate-fill: linear-gradient(180deg, rgb(24 31 48 / 0.84), rgb(9 12 22 / 0.88));
+  --role-hud-plate-rim: inset 0 0 0 var(--stroke-hairline) rgb(255 255 255 / 0.18), inset 0 var(--stroke-hairline) 0 rgb(255 255 255 / 0.55);
+  --role-hud-plate-cut: calc(6 * var(--font-step-px));
+  --role-hud-plate-lit-rim: inset 0 0 0 var(--stroke-hairline) rgb(from var(--hud-accent) r g b / 0.45), inset 0 calc(2 * var(--stroke-hairline)) 0 var(--hud-accent);
+  /* HUD tag: a solid chip behind a small figure (a timer, a stack, a
+     modifier), so it reads where a stroke would clog it. */
+  --role-hud-tag-fill: rgb(6 9 16 / 0.88);
+  --role-hud-tag-rim: inset 0 var(--stroke-hairline) 0 rgb(255 255 255 / 0.22);
+  --role-hud-tag-cut: calc(4 * var(--font-step-px));
+  --role-hud-tag-size: calc(12 * var(--font-step-px));
+  /* HUD key: a key cap that names the input, lit while it is held. */
+  --role-hud-key-fill: linear-gradient(180deg, rgb(255 255 255), rgb(201 209 226));
+  --role-hud-key-lit-fill: linear-gradient(180deg, rgb(234 255 255), var(--hud-accent));
+  --role-hud-key-ink: rgb(11 15 24);
+  --role-hud-key-radius: calc(4 * var(--font-step-px));
+  --role-hud-key-shadow: 0 calc(2 * var(--font-step-px)) 0 rgb(0 0 0 / 0.55), inset 0 calc(-2 * var(--font-step-px)) 0 rgb(0 0 0 / 0.18);
+  --role-hud-key-lit-shadow: 0 0 calc(14 * var(--font-step-px)) var(--hud-accent), inset 0 calc(-2 * var(--font-step-px)) 0 rgb(0 0 0 / 0.18);
+  /* HUD pips: a short run of leaning steps (charges, a chain's steps). */
+  --role-hud-pip-off: rgb(255 255 255 / 0.22);
+  --role-hud-pip-on: var(--hud-accent);
+  --role-hud-pip-glow: 0 0 calc(6 * var(--font-step-px)) var(--hud-accent);
+  /* The thin line at the screen's top edge (a song's progress). */
+  --role-hud-line-fill: linear-gradient(90deg, var(--hud-accent), rgb(255 255 255));
+  --role-hud-line-glow: 0 0 calc(12 * var(--font-step-px)) var(--hud-accent);
+  --role-hud-line-well: rgb(4 6 12 / 0.7);
+  /* A picture's octagon (a jacket, a portrait) and its lit edge. */
+  --role-hud-octagon: polygon(22% 0, 78% 0, 100% 22%, 100% 78%, 78% 100%, 22% 100%, 0 78%, 0 22%);
+  --role-hud-edge: linear-gradient(180deg, rgb(255 255 255 / 0.75), rgb(255 255 255 / 0.22) 45%, rgb(255 255 255 / 0.14));
+  --role-hud-tick: rgb(255 255 255);
+  /* The HUD's own accent: a game sets it to its key colour. */
+  --role-hud-accent: rgb(56 232 255);
+  --role-hud-gold: rgb(255 207 90);
+
+  /* Rhythm: the judgement words, each in a colour of its own and the best
+     in a lit gold ramp; the life and fever gauges; the combo. */
+  --role-judge-perfect-fill: linear-gradient(180deg, rgb(255 255 255) 30%, rgb(255 243 138) 55%, rgb(255 181 71));
+  --role-judge-perfect-glow: drop-shadow(0 0 calc(14 * var(--font-step-px)) rgb(255 214 90 / 0.9));
+  --role-judge-great-fill: linear-gradient(180deg, rgb(255 255 255) 25%, rgb(140 245 255) 55%, var(--hud-accent));
+  --role-judge-great-glow: drop-shadow(0 0 calc(14 * var(--font-step-px)) rgb(from var(--hud-accent) r g b / 0.85));
+  --role-judge-good-fill: linear-gradient(180deg, rgb(255 255 255) 25%, rgb(85 227 154));
+  --role-judge-good-glow: drop-shadow(0 0 calc(14 * var(--font-step-px)) rgb(85 227 154 / 0.7));
+  --role-judge-bad-fill: linear-gradient(180deg, rgb(255 230 210) 20%, rgb(255 140 70));
+  --role-judge-bad-glow: drop-shadow(0 0 calc(14 * var(--font-step-px)) rgb(255 140 70 / 0.55));
+  --role-judge-miss-fill: linear-gradient(180deg, rgb(200 206 220), rgb(120 128 146));
+  --role-judge-miss-glow: none;
+  --role-judge-perfect-ink: var(--hud-gold);
+  --role-judge-great-ink: var(--hud-accent);
+  --role-judge-good-ink: rgb(85 227 154);
+  --role-judge-bad-ink: rgb(255 150 90);
+  --role-judge-miss-ink: rgb(255 255 255 / 0.66);
+  --role-judge-early-ink: var(--hud-accent);
+  --role-judge-late-ink: rgb(255 140 70);
+  --role-judge-tracking: 0.12em;
+  --role-judge-slant: oblique;
+  --role-gauge-life: rgb(85 227 154);
+  --role-gauge-fever: rgb(255 61 138);
+  --role-gauge-fever-ink: rgb(255 122 176);
+  --role-gauge-lean: 12deg;
+  --role-gauge-well: rgb(4 6 12 / 0.72);
+  --role-gauge-cut: rgb(4 6 12 / 0.92);
+  --role-gauge-life-glow: 0 calc(-4 * var(--font-step-px)) calc(14 * var(--font-step-px)) rgb(85 227 154 / 0.8);
+  --role-gauge-fever-glow: 0 calc(-4 * var(--font-step-px)) calc(14 * var(--font-step-px)) rgb(255 61 138 / 0.85);
+  --role-gauge-danger-glow: 0 0 calc(18 * var(--font-step-px)) rgb(222 38 52 / 0.8);
+  /* The gauge's light: a lit left edge over its colour. */
+  --role-gauge-gloss: linear-gradient(90deg, rgb(255 255 255 / 0.5), transparent 45%);
+  --role-gauge-life-fill: var(--gauge-gloss), var(--gauge-life);
+  --role-gauge-fever-fill: var(--gauge-gloss), var(--gauge-fever);
+  --role-gauge-danger-fill: var(--gauge-gloss), var(--bar-danger);
+  --role-gauge-rim: 0 0 0 var(--stroke-hairline) rgb(255 255 255 / 0.25), 0 calc(3 * var(--font-step-px)) calc(8 * var(--font-step-px)) rgb(0 0 0 / 0.45);
+  /* A chart's tier on its chip (easy to special), with its ink. */
+  --role-chart-easy: rgb(52 199 120);
+  --role-chart-normal: rgb(50 160 230);
+  --role-chart-hard: rgb(255 165 40);
+  --role-chart-expert: rgb(255 61 138);
+  --role-chart-master: rgb(160 90 255);
+  --role-chart-special: linear-gradient(90deg, rgb(255 61 138), rgb(160 90 255) 50%, rgb(56 232 255));
+  --role-chart-ink: rgb(255 255 255);
+  --role-combo-tracking: 0.4em;
+  --role-combo-glow: drop-shadow(0 0 calc(18 * var(--font-step-px)) rgb(from var(--hud-accent) r g b / 0.55));
+  --role-combo-burst: radial-gradient(closest-side, rgb(255 255 255 / 0.9) 0 8%, rgb(from var(--hud-accent) r g b / 0.7) 22%, transparent 70%);
+
   /* Label: a caption or column heading, opened a little so it sits back
      from the values it names. */
   --role-label-font: var(--type-label-font);
