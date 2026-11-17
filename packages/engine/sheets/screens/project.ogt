@@ -10,6 +10,7 @@ version 1
 # same pages in the core default style.
 name "Built-in screens sheet"
 id "screens-sheet"
+engine "0.7.7"
 entry "src/main.ts"
 profile "2d"
 tick 60

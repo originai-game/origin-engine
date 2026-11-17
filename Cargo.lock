@@ -3490,7 +3490,7 @@ dependencies = [
 
 [[package]]
 name = "og-ui-fuzz"
-version = "0.0.0"
+version = "0.7.7"
 dependencies = [
  "libfuzzer-sys",
  "og-ui",

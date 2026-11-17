@@ -11,6 +11,7 @@ version 1
 # default style.
 name "World components sheet"
 id "world-sheet"
+engine "0.7.7"
 entry "src/main.ts"
 profile "3d"
 tick 60

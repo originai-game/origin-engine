@@ -9,6 +9,7 @@ version 1
 # style.
 name "Ungrouped components sheet"
 id "components-sheet"
+engine "0.7.7"
 entry "src/main.ts"
 profile "2d"
 tick 60

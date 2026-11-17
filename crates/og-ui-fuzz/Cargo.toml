@@ -1,6 +1,6 @@
 [package]
 name = "og-ui-fuzz"
-version = "0.0.0"
+version = "0.7.7"
 edition.workspace = true
 license.workspace = true
 rust-version.workspace = true

@@ -9,6 +9,7 @@ version 1
 # states every member in every fixture state it declares.
 name "Racing kit sheet"
 id "racing-sheet"
+engine "0.7.7"
 entry "src/main.ts"
 profile "2d"
 tick 60

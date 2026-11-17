@@ -10,6 +10,7 @@ version 1
 # screens review the same pages in the core default style.
 name "Arena kit sheet"
 id "arena-sheet"
+engine "0.7.7"
 entry "src/main.ts"
 profile "2d"
 tick 60
