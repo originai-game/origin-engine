@@ -316,7 +316,10 @@ fn ssr_hiz(pos: vec2<f32>, res: vec2<f32>, level: i32) -> vec2<f32> {
   if (level == 0) {
     return vec2<f32>(ssr_view_depth(vec2<i32>(floor(pos * res))));
   }
-  let dims = vec2<i32>(textureDimensions(hiz, level - 1));
+  // Rays select different levels. A divergent mip-size query returned
+  // zero on lavapipe beside rays at level zero, clamping valid cells to
+  // (-1, -1). Query the common base extent and halve it per ray instead.
+  let dims = max(vec2<i32>(textureDimensions(hiz, 0)) >> vec2<u32>(u32(level - 1)), vec2<i32>(1));
   let cell = clamp(vec2<i32>(floor(pos * res)), vec2<i32>(0), dims - 1);
   return textureLoad(hiz, cell, level - 1).rg;
 }

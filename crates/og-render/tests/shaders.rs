@@ -306,3 +306,185 @@ fn the_shaders_level_rule_reads_the_cpus_pixel_error() {
         "lod.wgsl does not state `{expected}`"
     );
 }
+
+/// Adjacent SSR rays descend independently, including rays at level zero
+/// beside rays reading the pyramid. A read must address its own mip and
+/// pixel, not the mip selected by another lane of the subgroup.
+#[test]
+#[ignore = "requires GPU"]
+fn ssr_depth_reads_follow_each_rays_level() {
+    use og_render::wgpu;
+    let renderer = og_render::Renderer::new_blocking(&og_render::RenderDesc {
+        width: 16,
+        height: 16,
+        ..Default::default()
+    })
+    .expect("renderer");
+    let (device, queue) = (renderer.device(), renderer.queue());
+    let mut source = og_render::shader_sources()
+        .into_iter()
+        .find(|s| s.label == "ssr")
+        .unwrap()
+        .wgsl;
+    source.push_str(r#"
+@group(2) @binding(0) var<storage, read_write> results: array<vec4<f32>>;
+@compute @workgroup_size(8, 8)
+fn depth_contract(@builtin(local_invocation_index) lane: u32) {
+  var level = i32(lane % 9u);
+  for (var step = 0u; step < 18u; step++) {
+    let res = ssr.screen.xy * exp2(-f32(level));
+    results[lane * 18u + step] = vec4<f32>(ssr_hiz(vec2<f32>(0.923, 0.637), res, level), f32(level), 1.0);
+    level = (level + 1 + i32(lane % 3u)) % 9;
+  }
+}
+"#);
+    let module = device.create_shader_module(wgpu::ShaderModuleDescriptor {
+        label: Some("SSR depth contract"),
+        source: wgpu::ShaderSource::Wgsl(source.into()),
+    });
+    let pipeline = device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
+        label: None,
+        layout: None,
+        module: &module,
+        entry_point: Some("depth_contract"),
+        compilation_options: Default::default(),
+        cache: None,
+    });
+    let make = |width, height, mips| {
+        device.create_texture(&wgpu::TextureDescriptor {
+            label: None,
+            size: wgpu::Extent3d {
+                width,
+                height,
+                depth_or_array_layers: 1,
+            },
+            mip_level_count: mips,
+            sample_count: 1,
+            dimension: wgpu::TextureDimension::D2,
+            format: wgpu::TextureFormat::Rg32Float,
+            usage: wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::COPY_DST,
+            view_formats: &[],
+        })
+    };
+    let depth = make(512, 256, 1);
+    let pyramid = make(256, 128, 8);
+    for (texture, start, count) in [(&depth, 0, 1), (&pyramid, 1, 8)] {
+        for mip in 0..count {
+            let level = start + mip;
+            let (w, h) = (512 >> level, 256 >> level);
+            let values: Vec<[f32; 2]> = (0..h)
+                .flat_map(|y| {
+                    (0..w).map(move |x| {
+                        let value = (level * 10000 + y * 512 + x) as f32;
+                        [value, value + 0.5]
+                    })
+                })
+                .collect();
+            queue.write_texture(
+                wgpu::TexelCopyTextureInfo {
+                    texture,
+                    mip_level: mip,
+                    origin: Default::default(),
+                    aspect: wgpu::TextureAspect::All,
+                },
+                bytemuck::cast_slice(&values),
+                wgpu::TexelCopyBufferLayout {
+                    offset: 0,
+                    bytes_per_row: Some(w * 8),
+                    rows_per_image: Some(h),
+                },
+                wgpu::Extent3d {
+                    width: w,
+                    height: h,
+                    depth_or_array_layers: 1,
+                },
+            );
+        }
+    }
+    // Five matrices, then screen dimensions; no other uniform is read.
+    let mut uniform = [0.0f32; 104];
+    uniform[80..84].copy_from_slice(&[512.0, 256.0, 1.0 / 512.0, 1.0 / 256.0]);
+    let uniform_buffer = device.create_buffer(&wgpu::BufferDescriptor {
+        label: None,
+        size: std::mem::size_of_val(&uniform) as u64,
+        usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+        mapped_at_creation: false,
+    });
+    queue.write_buffer(&uniform_buffer, 0, bytemuck::cast_slice(&uniform));
+    let output = device.create_buffer(&wgpu::BufferDescriptor {
+        label: None,
+        size: 64 * 18 * 16,
+        usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_SRC,
+        mapped_at_creation: false,
+    });
+    let read = device.create_buffer(&wgpu::BufferDescriptor {
+        label: None,
+        size: output.size(),
+        usage: wgpu::BufferUsages::COPY_DST | wgpu::BufferUsages::MAP_READ,
+        mapped_at_creation: false,
+    });
+    let depth = depth.create_view(&Default::default());
+    let pyramid = pyramid.create_view(&Default::default());
+    let groups = [
+        device.create_bind_group(&wgpu::BindGroupDescriptor {
+            label: None,
+            layout: &pipeline.get_bind_group_layout(0),
+            entries: &[
+                wgpu::BindGroupEntry {
+                    binding: 0,
+                    resource: uniform_buffer.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 1,
+                    resource: wgpu::BindingResource::TextureView(&depth),
+                },
+            ],
+        }),
+        device.create_bind_group(&wgpu::BindGroupDescriptor {
+            label: None,
+            layout: &pipeline.get_bind_group_layout(1),
+            entries: &[wgpu::BindGroupEntry {
+                binding: 2,
+                resource: wgpu::BindingResource::TextureView(&pyramid),
+            }],
+        }),
+        device.create_bind_group(&wgpu::BindGroupDescriptor {
+            label: None,
+            layout: &pipeline.get_bind_group_layout(2),
+            entries: &[wgpu::BindGroupEntry {
+                binding: 0,
+                resource: output.as_entire_binding(),
+            }],
+        }),
+    ];
+    let mut encoder = device.create_command_encoder(&Default::default());
+    {
+        let mut pass = encoder.begin_compute_pass(&Default::default());
+        pass.set_pipeline(&pipeline);
+        for (i, group) in groups.iter().enumerate() {
+            pass.set_bind_group(i as u32, group, &[]);
+        }
+        pass.dispatch_workgroups(1, 1, 1);
+    }
+    encoder.copy_buffer_to_buffer(&output, 0, &read, 0, output.size());
+    queue.submit([encoder.finish()]);
+    read.slice(..).map_async(wgpu::MapMode::Read, |_| {});
+    device.poll(wgpu::PollType::wait_indefinitely()).unwrap();
+    let mapped = read.slice(..).get_mapped_range().unwrap();
+    let values: &[[f32; 4]] = bytemuck::cast_slice(&mapped);
+    for lane in 0..64usize {
+        let mut level = lane % 9;
+        for step in 0..18 {
+            let x = (0.923 * (512 >> level) as f32) as u32;
+            let y = (0.637 * (256 >> level) as f32) as u32;
+            let value = (level as u32 * 10000 + y * 512 + x) as f32;
+            let max = if level == 0 { value } else { value + 0.5 };
+            assert_eq!(
+                values[lane * 18 + step],
+                [value, max, level as f32, 1.0],
+                "lane {lane}, step {step}"
+            );
+            level = (level + 1 + lane % 3) % 9;
+        }
+    }
+}

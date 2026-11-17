@@ -1,0 +1,3 @@
+{
+  "fixed": ["Screen-space reflections no longer lose valid Hi-Z cells when neighbouring rays select different depth levels on software Vulkan. Mip bounds are derived per ray from the base extent instead of a divergent mip-size query; trace steps, thickness and quality settings are unchanged."]
+}
