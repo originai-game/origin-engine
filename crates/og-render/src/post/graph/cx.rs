@@ -141,6 +141,7 @@ pub(in crate::post) struct PostCx<'a> {
     /// Where the last pass of the frame draws.
     pub output: &'a wgpu::TextureView,
     pub gtao: bool,
+    pub taa_blend: bool,
 }
 
 /// The clear every post target starts from.

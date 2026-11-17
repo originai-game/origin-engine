@@ -9,13 +9,15 @@ impl PostPasses {
     /// Starts compiling the passes every frame of a camera draws, the
     /// tonemap and TAA with its sharpening, on worker threads before the
     /// scene's passes are encoded (deferred.rs).
-    pub(crate) fn start(&self) {
+    pub(crate) fn start(&self, history_valid: bool) {
         use crate::deferred::Start;
         self.tonemap.start();
-        for p in [&self.taa, &self.taa_sharpen_pipeline]
-            .into_iter()
-            .flatten()
-        {
+        let taa = if history_valid {
+            &self.taa
+        } else {
+            &self.taa_fresh
+        };
+        for p in [taa, &self.taa_sharpen_pipeline].into_iter().flatten() {
             p.start();
         }
     }
@@ -33,6 +35,11 @@ impl PostPasses {
             &self.down,
             &self.up,
         ];
+        items.extend(
+            self.taa_fresh
+                .iter()
+                .map(|p| p as &dyn crate::deferred::Warm),
+        );
         items.extend(self.taa.iter().map(|p| p as &dyn crate::deferred::Warm));
         items.extend(
             self.taa_sharpen_pipeline
@@ -337,6 +344,17 @@ impl PostPasses {
                 None,
             )
         });
+        let taa_fresh = taa_shader.as_ref().map(|taa_shader| {
+            deferred_fullscreen(
+                device,
+                "taa fresh",
+                taa_shader,
+                "fs_fresh",
+                &taa_pl,
+                HDR_FORMAT,
+                None,
+            )
+        });
         let taa_sharpen = if taa_on {
             aa.taa_sharpen.clamp(0.0, 1.0)
         } else {
@@ -489,6 +507,7 @@ impl PostPasses {
             up,
             tonemap,
             taa,
+            taa_fresh,
             taa_sharpen_pipeline,
             taa_sharpen,
             tonemap_ldr: None,

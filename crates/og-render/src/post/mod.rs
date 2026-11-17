@@ -330,6 +330,7 @@ pub(crate) fn fullscreen_pipeline(
     format: wgpu::TextureFormat,
     blend: Option<wgpu::BlendState>,
 ) -> wgpu::RenderPipeline {
+    crate::deferred::note(|| format!("{label} vs/{entry}"));
     device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
         label: Some(label),
         layout: Some(layout),
@@ -427,6 +428,8 @@ pub(crate) struct PostPasses {
     up: Deferred<wgpu::RenderPipeline>,
     tonemap: Deferred<wgpu::RenderPipeline>,
     taa: Option<Deferred<wgpu::RenderPipeline>>,
+    /// The current-frame-only resolve when no history is valid yet.
+    taa_fresh: Option<Deferred<wgpu::RenderPipeline>>,
     /// TAA's sharpening pass, when [`AaOptions::taa_sharpen`] is above 0.
     taa_sharpen_pipeline: Option<Deferred<wgpu::RenderPipeline>>,
     /// Its strength (`TaaUniform::params.w`).

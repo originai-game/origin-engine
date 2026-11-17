@@ -242,7 +242,7 @@ impl Renderer {
                 Background::Color(_) => {}
             }
         }
-        self.post.start();
+        self.post.start(self.history.taa_history.is_some());
         self.world.water.start(scene_water, self.frame_features);
         let (face_fluid, face_depth, object_space) =
             self.prepare_frame_pipelines(PrepareFramePipelinesInputs {

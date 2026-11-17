@@ -131,6 +131,7 @@ impl Renderer {
                         slot,
                         post_output,
                         gtao,
+                        self.history.taa_history.is_some(),
                     );
                 }
             }

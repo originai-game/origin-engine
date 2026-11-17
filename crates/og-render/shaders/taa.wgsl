@@ -77,6 +77,23 @@ fn history_catmull_rom(uv: vec2<f32>) -> vec3<f32> {
   return max(c, vec3<f32>(0.0));
 }
 
+// A new history takes only the current frame, with the same jittered
+// bilinear upscale as the full resolve. Its own entry point lets the
+// first frame compile without reprojection or neighbourhood rejection.
+fn fresh(in: VsOut) -> vec4<f32> {
+  if (taa.upscale.z > 0.5) {
+    let size = taa.params.yz;
+    let s = in.pos.xy / taa.upscale.xy * size;
+    return sample_exact(current, linear_sampler, (s + taa.still.zw) / size);
+  }
+  return textureLoad(current, vec2<i32>(in.pos.xy), 0);
+}
+
+@fragment
+fn fs_fresh(in: VsOut) -> @location(0) vec4<f32> {
+  return fresh(in);
+}
+
 @fragment
 fn fs(in: VsOut) -> @location(0) vec4<f32> {
   return resolve(in, false, false);
@@ -103,6 +120,7 @@ fn fs_smaa_srgb(in: VsOut) -> @location(0) vec4<f32> {
 }
 
 fn resolve(in: VsOut, catmull_rom: bool, smaa: bool) -> vec4<f32> {
+  if (taa.params.x >= 1.0) { return fresh(in); }
   let size = vec2<i32>(taa.params.yz);
   let out_size = taa.upscale.xy;
   let upscale = taa.upscale.z > 0.5;
@@ -120,14 +138,7 @@ fn resolve(in: VsOut, catmull_rom: bool, smaa: bool) -> vec4<f32> {
     off = (s - (vec2<f32>(at) + 0.5 - jitter)) * out_size / vec2<f32>(size);
   }
   let cur4 = textureLoad(current, at, 0);
-  // The current frame where there is no history to blend with: under TAAU
-  // filtered to the output (bilinear at the jittered place).
-  var fresh = cur4;
-  if (upscale) {
-    fresh = sample_exact(current, linear_sampler, (s + jitter) / vec2<f32>(size));
-  }
   let cur = cur4.rgb;
-  if (taa.params.x >= 1.0) { return fresh; }
 
   // Neighbourhood colour box (YCoCg), and the alpha's range.
   var lo = vec3<f32>(1e9);
@@ -181,7 +192,7 @@ fn resolve(in: VsOut, catmull_rom: bool, smaa: bool) -> vec4<f32> {
     let prev_uv = here - motion;
     if (any(prev_uv < vec2<f32>(0.0)) || any(prev_uv > vec2<f32>(1.0))) {
       // Disoccluded off the frame: no history.
-      return fresh;
+      return fresh(in);
     }
     if (catmull_rom) {
       hist4 = vec4<f32>(history_catmull_rom(prev_uv), sample_exact(history, linear_sampler, prev_uv).a);

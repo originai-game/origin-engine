@@ -281,6 +281,7 @@ impl FrameGraph {
         slot: usize,
         output: &wgpu::TextureView,
         gtao: bool,
+        taa_blend: bool,
     ) -> u32 {
         let cx = PostCx {
             graph: self,
@@ -289,6 +290,7 @@ impl FrameGraph {
             slot,
             output,
             gtao,
+            taa_blend,
         };
         let draws = self
             .bindings

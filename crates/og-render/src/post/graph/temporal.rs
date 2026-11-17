@@ -77,7 +77,15 @@ impl Temporal {
         Some(match pass {
             FramePass::Taa if passes.fsr.active() => passes.fsr.encode(encoder),
             FramePass::TaaSharpen if passes.fsr.active() => passes.fsr.encode_rcas(encoder),
-            FramePass::Taa => match (&passes.taa, &cx.persistent.history, &self.taa) {
+            FramePass::Taa => match (
+                if cx.taa_blend {
+                    &passes.taa
+                } else {
+                    &passes.taa_fresh
+                },
+                &cx.persistent.history,
+                &self.taa,
+            ) {
                 (Some(pipeline), Some(history), Some(groups)) => {
                     fullscreen_pass(
                         encoder,
