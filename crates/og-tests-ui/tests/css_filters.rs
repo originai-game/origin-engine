@@ -505,6 +505,10 @@ fn render_space(width: u32, height: u32) -> Rendered {
     let mut scene = RenderScene::new();
     let font = add_test_font(&mut scene);
     let mut ui = ui_with_font(font);
+    ui.set_part_css(&format!(
+        "{DEFAULT_CSS}\n:root {{ --glass-backdrop: auto; }}"
+    ))
+    .unwrap();
     ui.define_document(UiDocument::parse("ui/filter_space.svelte", SPACE).unwrap());
     ui.mount_document(
         reactive::SourceId::new("test", "filter-space"),
