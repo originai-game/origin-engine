@@ -1,0 +1,10 @@
+{
+  "fixed": [{
+    "member": "og.ui.overlaps",
+    "summary": "Reports painted descendants and unwrapped text overflowing across sibling flex or grid areas, including fractional intersections, without a result-count cap. Ancestor clips and invisible content remain excluded."
+  }],
+  "added": [{
+    "member": "UI document data-og-overlap",
+    "summary": "Marks intentional overlap with space-separated full probe paths (or * for all), covering each declared subtree without changing layout or paint."
+  }]
+}

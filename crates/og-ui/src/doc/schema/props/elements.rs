@@ -524,6 +524,11 @@ pub const CORE_PROPS: &[PropSpec] = &[
         "Extra pointer reach in CSS px (`data-hit-slop`), without changing layout or paint. Overlapping targets keep their existing hit priority."
     ),
     p!(
+        "dataOgOverlap",
+        Ty::Text,
+        "Space-separated full probe paths intentionally overlapped by this element or its descendants; * marks every overlap intentional. Diagnostic only."
+    ),
+    p!(
         "columns",
         Ty::Tracks,
         "A grid's column tracks (CSS `grid-template-columns`: sizes, `[line names]`, `repeat()`, `subgrid` or `masonry`)."

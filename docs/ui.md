@@ -2643,10 +2643,17 @@ missing required states and out-of-bounds references. `og ui check`
 reports contrast, layout and cost measurements; `og ui literals` reports
 suspect values; neither scores taste. Overlaps are measurements:
 `og.ui.overlaps` (and the check's overlap finding) lists every absolute,
-anchored or floating element over another's drawing and flow siblings
-over each other, leaving out only what the engine places on purpose (a
-badge on its item); whether one is meant is the author's call, and no
-style property hides one. Warnings never become automatic aesthetic
+anchored or floating element over another's drawing and content across
+sibling flow areas, including descendants overflowing a flex or grid cell.
+It uses visible boxes and emitted text bounds, respects ancestor clips and
+zero opacity, and applies no minimum-area threshold or result-count cap.
+Stacks and engine-declared overlays (a badge on its item) are intentional.
+A document can mark intentional overlap with
+`data-og-overlap="full/probe/path another/full/path"`; a path covers that
+element's descendants, declarations cover the declaring subtree, and `*`
+permits all overlaps for that subtree. This attribute only changes the
+diagnostic, never layout or paint. Other intersections remain facts for
+the author to judge. Warnings never become automatic aesthetic
 failures. Thresholds and the CPU cost bars live in the screens guide (§5)
 and the art-review guide, not here; `crates/og-ui/tests/perf.rs` and
 `scripts/perf.sh` measure the cost.

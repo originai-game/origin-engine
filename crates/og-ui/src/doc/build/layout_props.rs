@@ -497,7 +497,15 @@ impl Ui {
 
     /// Shared layout and presentation for document boxes and widget parts.
     pub(super) fn box_props(kind: &NodeKind, r: &Resolved) -> Props {
-        let mut p = Props::default();
+        let mut p = Props {
+            overlaps: r
+                .str("dataOgOverlap")
+                .unwrap_or_default()
+                .split_whitespace()
+                .map(str::to_string)
+                .collect(),
+            ..Default::default()
+        };
         let t = &mut p.transform;
         if let Some(v) = r.num("x") {
             t.x = v;

@@ -238,6 +238,84 @@ fn siblings_moved_over_each_other_in_a_flow_are_reported_in_order() {
 }
 
 #[test]
+fn overflowing_grid_descendants_are_overlap_facts() {
+    for (width, shift, clip, alpha, declaration, expected) in [
+        (250, 0.0, "visible", 1, "", 18.0),
+        (232, 0.125, "visible", 1, "", 0.125),
+        (232, 0.0, "visible", 1, "", 0.0),
+        (250, 0.0, "hidden", 1, "", 0.0),
+        (250, 0.0, "visible", 0, "", 0.0),
+        (250, 0.0, "visible", 1, "test:t/Grid/Right", 0.0),
+        (250, 0.0, "visible", 1, "test:t/Unrelated", 18.0),
+    ] {
+        let d = doc(&format!(
+            r#"<meta name="component" content="grid">
+<div><div id="Grid"><div id="Left"><div id="Combo" data-og-overlap="{declaration}"></div></div><div id="Right"><div id="Plate"></div></div></div></div>
+<style>
+#Grid {{ display:grid; width:464px; grid-template-columns:repeat(2,minmax(0,1fr)); }}
+#Left {{ overflow:{clip}; opacity:{alpha}; }}
+#Combo {{ width:{width}px; height:30px; background:red; translate:{shift}px 0; }}
+#Plate {{ width:232px; height:30px; background:blue; }}
+</style>"#
+        ));
+        let overlaps = d.ui.overlaps();
+        if expected == 0.0 {
+            assert!(overlaps.is_empty(), "{overlaps:?}");
+        } else {
+            assert_eq!(
+                overlaps.len(),
+                1,
+                "width={width} shift={shift} clip={clip} alpha={alpha} declaration={declaration}: {overlaps:?}"
+            );
+            let o = &overlaps[0];
+            assert!(
+                o.path.ends_with("/Plate") && o.other.ends_with("/Combo"),
+                "{o:?}"
+            );
+            assert!(o.in_flow);
+            assert!((o.rect.width - expected).abs() < 0.001, "{o:?}");
+            assert_eq!(o.rect.height, 30.0);
+        }
+    }
+
+    // The label's box fits its track, but its unwrapped drawing does not.
+    for (clip, visibility, child_visibility, expected) in [
+        ("visible", "visible", "inherit", 1),
+        ("hidden", "visible", "inherit", 0),
+        ("visible", "hidden", "inherit", 0),
+        ("visible", "hidden", "visible", 1),
+    ] {
+        let d = Doc::with_font(
+            &format!(
+                r#"<meta name="component" content="grid"><div id="Grid"><div id="Left"><p id="Combo">AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA</p></div><div id="Right"><div id="Plate"></div></div></div>
+<style>
+#Grid {{ display:grid; width:464px; grid-template-columns:repeat(2,minmax(0,1fr)); }}
+#Left {{ overflow:{clip}; visibility:{visibility}; }}
+#Combo {{ width:232px; margin:0; white-space:nowrap; font-size:24px; visibility:{child_visibility}; }}
+#Plate {{ width:232px; height:30px; background:blue; }}
+</style>"#
+            ),
+            &[],
+            crate::support::test_font(),
+        );
+        let overlaps = d.ui.overlaps();
+        assert_eq!(overlaps.len(), expected, "{overlaps:?}");
+    }
+
+    // Facts have neither a minimum-area threshold nor a result-count cap.
+    let tiles = (0..12)
+        .map(|i| format!("<div id=\"Tile{i}\"></div>"))
+        .collect::<String>();
+    let d = doc(&format!(
+        r#"<meta name="component" content="grid"><div id="Grid">{tiles}</div><style>
+#Grid {{ display:grid; }}
+#Grid > div {{ grid-column:1; grid-row:1; width:10px; height:10px; background:red; }}
+</style>"#
+    ));
+    assert_eq!(d.ui.overlaps().len(), 12 * 11 / 2);
+}
+
+#[test]
 fn a_badge_scrolled_out_of_its_list_overlaps_nothing_outside_it() {
     // A count badge low on a tall item: below the list's view when the
     // list is short, over the bar that follows the list.
