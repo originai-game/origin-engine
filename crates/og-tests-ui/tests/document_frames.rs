@@ -79,6 +79,11 @@ fn engine_documents_match_their_reference_frames() {
 // default fixture is an unchecked cell, not a successful geometry check.
 use og_ui::{DrawCmd, InputFrame, Rect, Ui, Viewport, style_pack::StylePack};
 
+// A wide world stage keeps metre-sized ground marks and the fixtures' nearby
+// units in view in portrait, while the camera stays within prompt range.
+// The GPU and CPU projections must use the identical field of view.
+const GEOMETRY_WORLD_FOV: f32 = 80.0;
+
 fn geometry_packs() -> Vec<(&'static str, Option<StylePack>)> {
     let root = engine_dir("").join("../../templates");
     let mut files = Vec::new();
@@ -155,11 +160,23 @@ fn lost_edges(bounds: Rect, steps: &[(Rect, [f32; 2], [f32; 2])]) -> Vec<String>
     .collect()
 }
 
-fn geometry_steps(ui: &Ui, node: usize) -> Vec<(Rect, [f32; 2], [f32; 2])> {
+fn geometry_steps(ui: &Ui, node: usize, travel: &[(u64, f32)]) -> Vec<(Rect, [f32; 2], [f32; 2])> {
     let nodes = ui.tree.nodes();
     let mut steps = Vec::new();
+    let movement = |key| {
+        travel
+            .iter()
+            .find(|(k, _)| *k == key)
+            .map(|(_, dy)| (Rect::new(-1e9, -1e9, 2e9, 2e9), [0.0; 2], [0.0, *dy]))
+    };
+    if let Some(step) = movement(nodes[node].key) {
+        steps.push(step);
+    }
     let mut at = nodes[node].parent;
     while let Some(n) = nodes.get(at) {
+        if let Some(step) = movement(n.key) {
+            steps.push(step);
+        }
         if n.scrolls() {
             let path = ui.tree.path_of(at);
             let state = ui.scroll_state(&path).expect("a laid out scroll node");
@@ -226,6 +243,10 @@ fn geometry_nodes(ui: &Ui) -> Vec<usize> {
 }
 
 fn document_geometry(ui: &Ui) -> (usize, Vec<String>) {
+    document_geometry_with_travel(ui, &[])
+}
+
+fn document_geometry_with_travel(ui: &Ui, travel: &[(u64, f32)]) -> (usize, Vec<String>) {
     let nodes = ui.tree.nodes();
     let active = geometry_nodes(ui);
     let mut failures = Vec::new();
@@ -242,15 +263,28 @@ fn document_geometry(ui: &Ui) -> (usize, Vec<String>) {
         // crop, mask, shadows or decorative part shapes.
         let picture =
             kind != "art" && (matches!(kind, "icon" | "image") || n.a11y.role == Some("image"));
-        if !text && !picture && !n.focusable && !n.el.interactive {
+        // Noninteractive progress indicators are content, not decorative art.
+        // Their semantic box covers the ring/bones even without a text label.
+        let indicator = matches!(n.a11y.role, Some("progressbar" | "meter"));
+        if !text && !picture && !indicator && !n.focusable && !n.el.interactive {
             continue;
         }
         let r = n.placed.screen;
-        if r.width <= 0.0 || r.height <= 0.0 {
+        if !r.x.is_finite()
+            || !r.y.is_finite()
+            || !r.width.is_finite()
+            || !r.height.is_finite()
+            || r.width <= 0.0
+            || r.height <= 0.0
+        {
+            failures.push(format!(
+                "{} ({kind}) has no finite positive content box: {r:?}",
+                ui.tree.path_of(i)
+            ));
             continue;
         }
         content += 1;
-        let lost = lost_edges(r, &geometry_steps(ui, i));
+        let lost = lost_edges(r, &geometry_steps(ui, i, travel));
         if !lost.is_empty() {
             failures.push(format!(
                 "{} ({kind}) {lost:?} unreachable: {r:?}",
@@ -332,6 +366,12 @@ fn document_geometry(ui: &Ui) -> (usize, Vec<String>) {
             ));
             continue;
         };
+        // Missing artwork draws a diagnostic path string, not player copy.
+        // Do not mistake that debug overlay for a clipped caption. Real text
+        // elements remain checked independently, including beside an art node.
+        if ui.tree.kinds()[i].0 == "art" {
+            continue;
+        }
         content += 1;
         let inherited = nodes[i].placed.clip;
         // Only add the line's *own* clipping here. Inherited screen/scroll
@@ -352,7 +392,7 @@ fn document_geometry(ui: &Ui) -> (usize, Vec<String>) {
             local.height = clip.bottom() - local.y;
         }
         let mut steps = vec![(local, [0.0; 2], [0.0; 2])];
-        steps.extend(geometry_steps(ui, i));
+        steps.extend(geometry_steps(ui, i, travel));
         let lost = lost_edges(bounds, &steps);
         if !lost.is_empty() {
             failures.push(format!(
@@ -362,6 +402,235 @@ fn document_geometry(ui: &Ui) -> (usize, Vec<String>) {
         }
     }
     (content, failures)
+}
+
+/// Reconstruct the mass shader's semantic quads from the actual instance,
+/// template timeline, camera and cooked glyph planes. A batch count alone
+/// says nothing about visibility or safe-area coverage.
+fn mass_geometry(ui: &Ui, scene: &RenderScene) -> (usize, Vec<String>) {
+    use og_core::glam::{Vec2, Vec3};
+    use og_draw::{GlyphKey, UiMassKind, UiMassSpace};
+    let viewport = ui.viewport();
+    let safe = Rect::new(
+        viewport.safe_area.left,
+        viewport.safe_area.top,
+        viewport.width - viewport.safe_area.horizontal(),
+        viewport.height - viewport.safe_area.vertical(),
+    );
+    let mut checked = 0;
+    let mut failures = Vec::new();
+    // A ground's composite rect is local to its panel. Its projected corners,
+    // not that local layout box, determine what can be seen on the phone.
+    let mut overlay = og_draw::Overlay::new(viewport.width, viewport.height, 1.0);
+    ui.frame().emit(&og_ui::EmitDesc::default(), &mut overlay);
+    let declared = ui.frame().items.iter().filter(|item| matches!(&item.cmd, DrawCmd::EndLayer { ground: Some(_), opacity, .. } if *opacity > 0.0)).count();
+    let projected = overlay
+        .ui
+        .layers
+        .iter()
+        .filter(|layer| layer.ground.is_some())
+        .count();
+    if declared > projected {
+        failures.push(format!(
+            "UNCHECKED: {} world/plane composites have no projected context",
+            declared - projected
+        ));
+    }
+    for (key, layer) in overlay.ui.layers.iter().enumerate() {
+        let Some(ground) = &layer.ground else {
+            continue;
+        };
+        if ground.plane {
+            continue;
+        }
+        let Some(corners) = ground.corners else {
+            failures.push(format!("ground {key}: composite crosses camera plane"));
+            continue;
+        };
+        let lo = corners
+            .iter()
+            .copied()
+            .fold(Vec2::splat(f32::INFINITY), Vec2::min);
+        let hi = corners
+            .iter()
+            .copied()
+            .fold(Vec2::splat(f32::NEG_INFINITY), Vec2::max);
+        let bounds = Rect::new(lo.x, lo.y, hi.x - lo.x, hi.y - lo.y);
+        if !lo.is_finite() || !hi.is_finite() || bounds.width <= 0.0 || bounds.height <= 0.0 {
+            failures.push(format!(
+                "ground {key}: invalid projected composite {corners:?}"
+            ));
+            continue;
+        }
+        checked += 1;
+        let lost = lost_edges(bounds, &[(safe, [0.0; 2], [0.0; 2])]);
+        if !lost.is_empty() {
+            failures.push(format!("ground {key}: {lost:?} unreachable: {bounds:?}"));
+        }
+    }
+    ui.world_frame().emit(0, &mut overlay);
+    for (b, batch) in overlay.ui.mass.iter().enumerate() {
+        let tpl = &batch.template;
+        for (j, instance) in batch.instances.iter().enumerate() {
+            let label = format!("mass batch:{b} instance:{j}");
+            let Some(age) = ui.world_frame().tick.checked_sub(instance.start) else {
+                continue;
+            };
+            let t = if tpl.lifetime == 0 {
+                0.0
+            } else {
+                age as f32 / tpl.lifetime as f32
+            };
+            if t > 1.0 {
+                continue;
+            }
+            let (mut offset, mut scale, alpha) = tpl.sample(t);
+            scale *= instance.scale;
+            if alpha * instance.color[3] <= 0.002 || scale <= 0.0 {
+                continue;
+            }
+            let travel = if tpl.drag { 1.0 - (1.0 - t).powi(2) } else { t };
+            offset += Vec2::new(instance.aux[0], instance.aux[1])
+                + Vec2::new(instance.velocity[0], instance.velocity[1]) * travel;
+            let hash = (og_core::hash::pcg(instance.seed) & 0xffff) as f32 / 65535.0;
+            offset.x += ((hash * 2.0 - 1.0) * tpl.drift + instance.aux[3]) * t;
+            offset.y += tpl.gravity * t * t;
+            let point = Vec3::from_array(instance.position);
+            let (mut at, distance_scale) = if batch.space == UiMassSpace::World {
+                let Some(view) = ui.world_view() else {
+                    failures.push(format!("{label}: UNCHECKED: no world camera"));
+                    continue;
+                };
+                let clip = view.view_proj * point.extend(1.0);
+                let Some((x, y, depth)) = view.project(point, viewport.width, viewport.height)
+                else {
+                    failures.push(format!("{label}: world point behind camera: {point:?}"));
+                    continue;
+                };
+                if !(0.0..=1.0).contains(&(clip.z / clip.w)) {
+                    failures.push(format!(
+                        "{label}: world point outside camera depth: {point:?}"
+                    ));
+                    continue;
+                }
+                let ds = if tpl.distance.x > 0.0 {
+                    (tpl.distance.x / depth.max(1e-4)).clamp(tpl.distance.y, tpl.distance.z)
+                } else {
+                    1.0
+                };
+                (Vec2::new(x, y), ds)
+            } else {
+                (point.truncate(), 1.0)
+            };
+            at += offset * distance_scale;
+            scale *= distance_scale;
+            let mut boxes = Vec::new();
+            match &tpl.kind {
+                UiMassKind::Bar { .. } => {
+                    let size = tpl.size * scale;
+                    boxes.push(Rect::new(
+                        at.x - tpl.pivot.x * size.x,
+                        at.y - tpl.pivot.y * size.y,
+                        size.x,
+                        size.y,
+                    ));
+                }
+                UiMassKind::Number { .. } | UiMassKind::Text { .. } => {
+                    let text = match &tpl.kind {
+                        UiMassKind::Number {
+                            decimals,
+                            plus,
+                            compact,
+                        } => og_draw::format_number(instance.value, *decimals, *plus, *compact),
+                        UiMassKind::Text { strings } => strings
+                            .get(instance.value.max(0.0) as usize)
+                            .map(|s| s.chars().take(og_draw::UI_MASS_QUADS as usize).collect())
+                            .unwrap_or_default(),
+                        _ => unreachable!(),
+                    };
+                    let Some(font) = tpl.font.and_then(|font| scene.font(font)) else {
+                        failures.push(format!("{label}: UNCHECKED: mass text has no cooked font"));
+                        continue;
+                    };
+                    let kerns = matches!(tpl.kind, UiMassKind::Text { .. });
+                    let mut pen = 0.0;
+                    let mut previous = None;
+                    let mut planes = Vec::new();
+                    for ch in text.chars() {
+                        if kerns && let Some(prev) = previous {
+                            pen += font
+                                .kerning
+                                .iter()
+                                .find(|k| k.left == prev && k.right == ch)
+                                .map_or(0.0, |k| k.adjust);
+                        }
+                        let Some(glyph) = font.glyphs.iter().find(|g| g.key == GlyphKey::Char(ch))
+                        else {
+                            failures.push(format!("{label}: UNCHECKED: missing glyph {ch:?}"));
+                            continue;
+                        };
+                        let [l, bottom, r, top] = glyph.plane_bounds;
+                        if r > l {
+                            planes.push((pen + l, bottom, pen + r, top));
+                        }
+                        pen += glyph.advance;
+                        previous = Some(ch);
+                    }
+                    let em = tpl.size.x * scale;
+                    let left = at.x - tpl.pivot.x * pen * em;
+                    let baseline = at.y - tpl.pivot.y * em + 0.8 * em;
+                    for (l, bottom, r, top) in planes {
+                        boxes.push(Rect::new(
+                            left + l * em,
+                            baseline - top * em,
+                            (r - l) * em,
+                            (top - bottom) * em,
+                        ));
+                    }
+                }
+                _ => {
+                    failures.push(format!(
+                        "{label}: UNCHECKED: unsupported mass kind {:?}",
+                        tpl.kind
+                    ));
+                    continue;
+                }
+            }
+            let mut steps = vec![(safe, [0.0; 2], [0.0; 2])];
+            if let Some(index) = batch.clip {
+                if let Some(&[x, y, w, h]) = overlay.clips.get(index as usize) {
+                    steps.insert(0, (Rect::new(x, y, w, h), [0.0; 2], [0.0; 2]));
+                } else {
+                    failures.push(format!(
+                        "{label}: UNCHECKED: missing emitted mass clip {index}"
+                    ));
+                }
+                if overlay.ui.clips.iter().any(|clip| clip.rect == index) {
+                    failures.push(format!("{label}: UNCHECKED: nonrectangular mass clip"));
+                }
+            }
+            if boxes.is_empty() {
+                failures.push(format!("{label}: UNCHECKED: no visible mass quads"));
+            }
+            for bounds in boxes {
+                if ![bounds.x, bounds.y, bounds.width, bounds.height]
+                    .into_iter()
+                    .all(f32::is_finite)
+                    || bounds.width <= 0.0
+                    || bounds.height <= 0.0
+                {
+                    failures.push(format!("{label}: invalid mass quad {bounds:?}"));
+                    continue;
+                }
+                checked += 1;
+                let lost = lost_edges(bounds, &steps);
+                if !lost.is_empty() {
+                    failures.push(format!("{label}: {lost:?} unreachable: {bounds:?}"));
+                }
+            }
+        }
+    }
+    (checked, failures)
 }
 
 #[test]
@@ -381,19 +650,25 @@ fn engine_documents_phone_geometry_layout() {
     phone_geometry_matrix(false, document.as_deref(), pack.as_deref());
 }
 
-fn geometry_positions(ui: &Ui) -> Vec<(String, Rect, Rect)> {
+fn geometry_positions(ui: &Ui) -> Vec<(String, Rect, Rect, String)> {
     geometry_nodes(ui)
         .into_iter()
         .map(|i| {
             let n = &ui.tree.nodes()[i];
-            (ui.tree.path_of(i), n.placed.screen, n.placed.clip)
+            (
+                ui.tree.path_of(i),
+                n.placed.screen,
+                n.placed.clip,
+                n.probe_text.clone(),
+            )
         })
         .collect()
 }
 
-/// Static fixtures need no half-second animation playback. Reduced motion
-/// removes their intros; require identical layout/visibility on ticks 2 and 3
-/// instead of assuming a settle count. A cell still moving is a named failure.
+/// Reduced motion removes CSS intros, but finite value animations (counter)
+/// still play. If ticks 2/3 disagree, sample at the end of a two-second window,
+/// not the first coincidental plateau (digits can have identical widths).
+/// Continuing motion remains a failure; no component names are exempted.
 fn settle_geometry(
     ui: &mut Ui,
     messages: &Messages,
@@ -401,25 +676,185 @@ fn settle_geometry(
 ) -> Result<bool, String> {
     viewport.reduced_motion = true;
     let mut previous = Vec::new();
-    for tick in 0..3 {
+    let last = 2 * ui.ticks_per_second() + 2;
+    for tick in 0..=last {
         ui.begin(InputFrame::default(), viewport);
         // Inside InteractionPrompt's default 6 m visibility distance.
         ui.set_world_view(Some(og_ui::WorldView::look_at(
-            og_core::glam::Vec3::new(0.0, 2.0, 4.0),
-            og_core::glam::Vec3::ZERO,
+            og_core::glam::Vec3::new(0.0, 3.0, 5.0),
+            og_core::glam::Vec3::new(0.0, 1.0, 0.0),
             og_core::glam::Vec3::Y,
-            50.0,
+            GEOMETRY_WORLD_FOV,
             viewport.width / viewport.height,
             0.1,
             100.0,
         )));
         ui.build_retained_documents(messages)?;
+        let poses: Vec<_> = ui
+            .world_entities()
+            .into_iter()
+            .map(|entity| (entity, og_core::math::Pose::default()))
+            .collect();
+        ui.set_world_poses(&poses);
         ui.end();
-        if tick == 1 {
-            previous = geometry_positions(ui);
+        let positions = geometry_positions(ui);
+        if tick == 2 && previous == positions {
+            return Ok(true);
         }
+        if tick == last {
+            if previous != positions {
+                for (a, b) in previous
+                    .iter()
+                    .zip(&positions)
+                    .filter(|(a, b)| a != b)
+                    .take(8)
+                {
+                    eprintln!("unsettled geometry tick {tick}: {a:?} -> {b:?}");
+                }
+            }
+            return Ok(previous == positions);
+        }
+        previous = positions;
     }
-    Ok(previous == geometry_positions(ui))
+    unreachable!()
+}
+
+/// A game-driven roll is not a scroller. Recognize the linear CSS binding,
+/// then prove its travel by changing the real mount value at two distances.
+/// No document/id/prop names are special; unsupported or non-linear state
+/// changes remain unchecked rather than granting hypothetical reachability.
+fn translation_travel(
+    ui: &mut Ui,
+    source: &str,
+    props: &serde_json::Value,
+    messages: &Messages,
+    viewport: Viewport,
+    mut inspect: impl FnMut(&Ui),
+) -> Result<Vec<(u64, f32)>, String> {
+    let compact: String = source.split_whitespace().collect();
+    let Some(after) = compact.split("translate:0bind(\"-").nth(1) else {
+        return Ok(Vec::new());
+    };
+    let Some((field, _)) = after.split_once("\")") else {
+        return Err("incomplete translation binding".into());
+    };
+    if !field.chars().all(|c| c.is_ascii_alphanumeric() || c == '_') {
+        return Err("unsupported translation expression".into());
+    }
+    let Some(value) = props.get(field).and_then(serde_json::Value::as_f64) else {
+        return Err("translation binding has no numeric fixture value".into());
+    };
+    let base: std::collections::BTreeMap<_, _> = geometry_nodes(ui)
+        .into_iter()
+        .map(|i| {
+            let n = &ui.tree.nodes()[i];
+            (n.key, (n.placed.screen, n.probe_text.clone()))
+        })
+        .collect();
+    let distance = base
+        .values()
+        .map(|(r, _)| r.bottom())
+        .fold(viewport.height, f32::max)
+        + viewport.height;
+    let mount = og_ui::reactive::SourceId::new("geometry", "fixture");
+    let result = (|| {
+        let mut roots = Vec::new();
+        for fraction in [1.0, 0.5] {
+            let mut values = props.clone();
+            values[field] = serde_json::json!(value + f64::from(distance * fraction));
+            ui.set_mount_values(&mount, &values)?;
+            if !settle_geometry(ui, messages, viewport)? {
+                return Err("translated fixture does not settle".into());
+            }
+            inspect(ui);
+            if geometry_nodes(ui).len() != base.len() {
+                return Err("translation changes visibility/topology".into());
+            }
+            let mut observed_roots = 0;
+            for i in geometry_nodes(ui) {
+                let n = &ui.tree.nodes()[i];
+                let Some((before, text)) = base.get(&n.key) else {
+                    return Err("translation changes element keys".into());
+                };
+                let now = n.placed.screen;
+                if (now.width - before.width).abs() > 0.5
+                    || (now.height - before.height).abs() > 0.5
+                    || (now.x - before.x).abs() > 0.5
+                    || *text != n.probe_text
+                {
+                    return Err("translation changes more than vertical position".into());
+                }
+                let dy = before.y - now.y;
+                let parent_dy = ui
+                    .tree
+                    .nodes()
+                    .get(n.parent)
+                    .and_then(|parent| {
+                        base.get(&parent.key)
+                            .map(|(r, _)| r.y - parent.placed.screen.y)
+                    })
+                    .unwrap_or(0.0);
+                if dy > 1.0 && parent_dy.abs() <= 0.5 {
+                    observed_roots += 1;
+                    if n.scrolls() || n.decor.as_ref().is_some_and(|d| d.clip) {
+                        return Err("moving clip needs its own state model".into());
+                    }
+                    if fraction == 1.0 {
+                        roots.push((n.key, dy));
+                    } else if !roots
+                        .iter()
+                        .any(|(key, full)| *key == n.key && (dy - full * 0.5).abs() <= 1.0)
+                    {
+                        return Err("translation is not linear at midpoint".into());
+                    }
+                } else if dy < -0.5 {
+                    return Err("translation moves content in the wrong direction".into());
+                } else if parent_dy > 1.0 && (dy - parent_dy).abs() > 0.5 {
+                    return Err("translation is not a rigid subtree movement".into());
+                }
+            }
+            if fraction == 0.5 && observed_roots != roots.len() {
+                return Err("translation roots differ at midpoint".into());
+            }
+        }
+        if roots.is_empty() {
+            return Err("translation binding produced no measured travel".into());
+        }
+        Ok(roots)
+    })();
+    ui.set_mount_values(&mount, props)?;
+    if !settle_geometry(ui, messages, viewport)? {
+        return Err("restored translation fixture does not settle".into());
+    }
+    if geometry_nodes(ui).into_iter().any(|i| {
+        let n = &ui.tree.nodes()[i];
+        base.get(&n.key)
+            .is_none_or(|(r, text)| *r != n.placed.screen || *text != n.probe_text)
+    }) {
+        return Err("translation fixture did not restore its original geometry".into());
+    }
+    result
+}
+
+fn render_geometry_frame(ui: &Ui, scene: &mut RenderScene, width: u32, height: u32) {
+    let mut overlay = og_draw::Overlay::new(width as f32, height as f32, 1.0);
+    ui.frame().emit(&og_ui::EmitDesc::default(), &mut overlay);
+    ui.world_frame().emit(0, &mut overlay);
+    scene.ui.overlay = Some(overlay);
+    on_backdrop(ui, scene);
+    let view = ui.world_view().expect("geometry camera");
+    scene.frame.camera = og_render::Camera {
+        position: view.eye,
+        target: view.eye + view.forward,
+        up: og_core::glam::Vec3::Y,
+        projection: og_render::Projection::Perspective {
+            fov_y_degrees: GEOMETRY_WORLD_FOV,
+        },
+        near: 0.1,
+        far: 100.0,
+        ..Default::default()
+    };
+    let _rendered = render_frame(scene, &sized(width, height));
 }
 
 fn phone_geometry_matrix(render: bool, document: Option<&str>, selected_pack: Option<&str>) {
@@ -432,7 +867,7 @@ fn phone_geometry_matrix(render: bool, document: Option<&str>, selected_pack: Op
         }
         let started = std::time::Instant::now();
         eprintln!(
-            "document geometry: pack {style}, {} documents; reduced-motion ticks 2/3 must agree",
+            "document geometry: pack {style}, {} documents; reduced-motion ticks 2/3 or final two ticks after 2s must agree",
             docs.len()
         );
         let mut parser = Ui::default();
@@ -522,21 +957,39 @@ fn phone_geometry_matrix(render: bool, document: Option<&str>, selected_pack: Op
                     if !settle_geometry(&mut ui, &messages, viewport)
                         .unwrap_or_else(|e| panic!("{cell}: build: {e}"))
                     {
-                        failures.push(format!("{cell}: UNSETTLED: geometry/visibility differs between reduced-motion ticks 2 and 3"));
+                        failures.push(format!("{cell}: UNSETTLED: geometry/visibility/text still differs after 2s reduced-motion playback"));
                     }
-                    let (content, found) = document_geometry(&ui);
+                    let travel = translation_travel(
+                        &mut ui,
+                        &doc.doc.text,
+                        &props,
+                        &messages,
+                        viewport,
+                        |ui| {
+                            if render {
+                                render_geometry_frame(ui, &mut scene, width, height);
+                            }
+                        },
+                    )
+                    .unwrap_or_else(|error| {
+                        failures.push(format!("{cell}: UNCHECKED: translated context: {error}"));
+                        Vec::new()
+                    });
+                    let (content, mut found) = document_geometry_with_travel(&ui, &travel);
+                    let (mass_content, mass_found) = mass_geometry(&ui, &scene);
+                    found.extend(mass_found);
                     // The default establishes that this document's context is
                     // supported. Explicit alternative states may legitimately
                     // hide all content (empty collections, closed dialogs).
                     // They still build, render and check every present element.
-                    if content == 0 && state == "default" {
-                        failures.push(format!("{cell}: UNCHECKED: default fixture produced no measurable text, pictures or controls; world mass batches: {} (GPU mass instances have no element/line bounds in the native geometry interfaces)", ui.world_frame().batches.len()));
+                    if content + mass_content == 0 && state == "default" {
+                        failures.push(format!("{cell}: UNCHECKED: default fixture produced no measurable text, semantic boxes or mass quads"));
                     }
                     failures.extend(found.into_iter().map(|f| format!("{cell}: {f}")));
                     // Exercise the same renderer/font atlas path as the frame
                     // tests, but never compare pixels or record references.
                     if render {
-                        let _rendered = render_ui(&ui, &mut scene, width, height);
+                        render_geometry_frame(&ui, &mut scene, width, height);
                     }
                 }
             }
@@ -660,5 +1113,279 @@ fn document_geometry_reduced_motion_radial_settles() {
     assert!(
         document_geometry(&ui).0 > 0,
         "settled RadialMenu must show content"
+    );
+}
+
+#[test]
+fn document_geometry_semantic_indicator_controls() {
+    for (left, expected) in [(0, false), (-20, true), (1200, true)] {
+        let source = format!(
+            r#"<meta name="component" content="IndicatorControl">
+<div role="progressbar" id="Indicator"></div>
+<style>#Indicator {{ position: absolute; left: {left}px; top: 0; width: 30px; height: 30px; }}</style>"#
+        );
+        let d = crate::support::Doc::new(&source, &[]);
+        let (checked, failures) = document_geometry(&d.ui);
+        assert_eq!(checked, 1, "a nontext progressbar is measured");
+        assert_eq!(!failures.is_empty(), expected, "{left}: {failures:?}");
+    }
+}
+
+#[test]
+fn document_geometry_results_counter_settles() {
+    let (docs, messages) = engine_documents(&["src/ui/components", "src/ui/screens"]);
+    let doc = docs
+        .iter()
+        .find(|d| d.path == "src/ui/screens/results.svelte")
+        .unwrap();
+    let mut scene = RenderScene::new();
+    let mut ui = ui_with_font(add_test_font(&mut scene));
+    for d in &docs {
+        ui.define_document(d.doc.clone());
+    }
+    ui.mount_with_values(
+        og_ui::reactive::SourceId::new("geometry", "results"),
+        &doc.doc.name,
+        &doc.props,
+    )
+    .unwrap();
+    let mut viewport = Viewport::new(390.0, 844.0);
+    viewport.reduced_motion = true;
+    let mut previous = Vec::new();
+    for tick in 0..=60 {
+        ui.begin(InputFrame::default(), viewport);
+        ui.build_retained_documents(&messages).unwrap();
+        ui.end();
+        if tick == 59 {
+            previous = geometry_positions(&ui);
+        }
+    }
+    assert_eq!(
+        previous,
+        geometry_positions(&ui),
+        "finite counter must stop"
+    );
+    assert!(
+        ui.tree.nodes().iter().any(|n| n.probe_text == "48,210"),
+        "check final stat, not merely a same-width digit plateau"
+    );
+    assert!(settle_geometry(&mut ui, &messages, viewport).unwrap());
+}
+
+#[test]
+fn document_geometry_world_mass_controls() {
+    use og_core::glam::{Vec2, Vec3};
+    use og_draw::{UiMassInstance, UiMassKind, UiMassSpace, UiMassTemplate};
+    for (point, valid) in [
+        (Vec3::ZERO, true),
+        (Vec3::new(100.0, 0.0, 0.0), false),
+        (Vec3::new(0.0, 0.0, 10.0), false),
+    ] {
+        let mut scene = RenderScene::new();
+        let mut ui = ui_with_font(add_test_font(&mut scene));
+        ui.begin(InputFrame::default(), Viewport::new(390.0, 844.0));
+        ui.set_world_view(Some(og_ui::WorldView::look_at(
+            Vec3::new(0.0, 0.0, 5.0),
+            Vec3::ZERO,
+            Vec3::Y,
+            50.0,
+            390.0 / 844.0,
+            0.1,
+            100.0,
+        )));
+        let handle = ui.define_mass(
+            "control",
+            UiMassTemplate {
+                kind: UiMassKind::Bar {
+                    back: [1.0; 4],
+                    ghost: [1.0; 4],
+                    radius: 0.0,
+                },
+                size: Vec2::new(40.0, 8.0),
+                ..Default::default()
+            },
+            UiMassSpace::World,
+        );
+        ui.push_mass(
+            handle,
+            UiMassInstance {
+                position: point.to_array(),
+                color: [1.0; 4],
+                scale: 1.0,
+                ..Default::default()
+            },
+        );
+        ui.end();
+        let (checked, failures) = mass_geometry(&ui, &scene);
+        assert_eq!(failures.is_empty(), valid, "{point:?}: {failures:?}");
+        if valid {
+            assert_eq!(checked, 1);
+        }
+    }
+}
+
+#[test]
+fn document_geometry_world_number_and_missing_font_controls() {
+    use og_draw::{UiMassInstance, UiMassKind, UiMassSpace, UiMassTemplate};
+    let mut scene = RenderScene::new();
+    let mut ui = ui_with_font(add_test_font(&mut scene));
+    ui.begin(InputFrame::default(), Viewport::new(390.0, 844.0));
+    let handle = ui.define_mass(
+        "number",
+        UiMassTemplate {
+            kind: UiMassKind::Number {
+                decimals: 0,
+                plus: false,
+                compact: false,
+            },
+            ..Default::default()
+        },
+        UiMassSpace::Screen,
+    );
+    ui.push_mass(
+        handle,
+        UiMassInstance {
+            position: [195.0, 422.0, 0.0],
+            value: 1240.0,
+            color: [1.0; 4],
+            scale: 1.0,
+            ..Default::default()
+        },
+    );
+    ui.end();
+    let (checked, failures) = mass_geometry(&ui, &scene);
+    assert_eq!(checked, 4, "measure every digit's cooked glyph plane");
+    assert!(failures.is_empty(), "{failures:?}");
+    let (checked, failures) = mass_geometry(&ui, &RenderScene::new());
+    assert_eq!(checked, 0, "missing font must not be declared measured");
+    assert!(
+        failures.iter().any(|f| f.contains("no cooked font")),
+        "{failures:?}"
+    );
+}
+
+#[test]
+fn document_geometry_ground_controls() {
+    for (at, valid) in [("0 0 0", true), ("100 0 0", false)] {
+        let source = format!(
+            r##"<meta name="component" content="GroundControl">
+<div id="Root"><ground id="Ground" at="{at}" size="1 1"><svg id="Mark" viewBox="0 0 100 100"><circle cx="50" cy="50" r="40" fill="#ffffff"></circle></svg></ground></div>
+<style>#Ground, #Mark {{ width: 100px; height: 100px; }}</style>"##
+        );
+        let mut d = crate::support::Doc::new(&source, &[]);
+        assert!(
+            settle_geometry(
+                &mut d.ui,
+                &Messages(Default::default()),
+                Viewport::new(390.0, 844.0)
+            )
+            .unwrap()
+        );
+        let (checked, failures) = mass_geometry(&d.ui, &RenderScene::new());
+        if valid {
+            assert!(checked > 0, "ground must really emit a projected composite");
+        }
+        assert_eq!(failures.is_empty(), valid, "{at}: {failures:?}");
+    }
+}
+
+#[test]
+fn document_geometry_continuing_counter_is_not_settled() {
+    let mut d = crate::support::Doc::new(
+        r#"<meta name="component" content="LongCounterControl"><og-counter value="100000" from="0" duration="10000"></og-counter>"#,
+        &[],
+    );
+    assert!(
+        !settle_geometry(
+            &mut d.ui,
+            &Messages(Default::default()),
+            Viewport::new(390.0, 844.0)
+        )
+        .unwrap(),
+        "continuing value/layout motion must remain a defect, not silently sample its first same-width plateau"
+    );
+}
+
+#[test]
+fn document_geometry_bound_translation_controls() {
+    for (left, reachable) in [(0, true), (120, false)] {
+        let source = format!(
+            r#"<meta name="component" content="TranslationControl">
+<meta name="prop:advance" content="number">
+<div id="Window"><div id="Moving"><button id="Content">Reach me</button></div></div>
+<style>
+#Window {{ position: relative; width: 100px; height: 100px; overflow: hidden; }}
+#Moving {{ position: relative; width: 100px; height: 500px; translate: 0 bind("-advance"); }}
+#Content {{ position: absolute; left: {left}px; top: 300px; width: 80px; height: 30px; padding: 0; }}
+</style>"#
+        );
+        let mut scene = RenderScene::new();
+        let mut ui = ui_with_font(add_test_font(&mut scene));
+        let doc = ui
+            .parse_document("translation.svelte", &source, Vec::new())
+            .unwrap();
+        let name = doc.name.clone();
+        ui.define_document(doc);
+        let props = serde_json::json!({"advance": 0});
+        ui.mount_with_values(
+            og_ui::reactive::SourceId::new("geometry", "fixture"),
+            &name,
+            &props,
+        )
+        .unwrap();
+        let viewport = Viewport::new(390.0, 844.0);
+        let messages = Messages(Default::default());
+        assert!(settle_geometry(&mut ui, &messages, viewport).unwrap());
+        assert!(
+            document_geometry(&ui)
+                .1
+                .iter()
+                .any(|f| f.contains("/Content (") && f.contains("bottom"))
+        );
+        let mut sampled = 0;
+        let travel = translation_travel(&mut ui, &source, &props, &messages, viewport, |_| {
+            sampled += 1
+        })
+        .unwrap();
+        assert_eq!(
+            sampled, 2,
+            "sample endpoint and midpoint through real mount values"
+        );
+        assert_eq!(travel.len(), 1);
+        let (_, failures) = document_geometry_with_travel(&ui, &travel);
+        assert_eq!(
+            !failures.iter().any(|f| f.contains("/Content (")),
+            reachable,
+            "{left}: {failures:?}"
+        );
+    }
+}
+
+#[test]
+fn document_geometry_art_diagnostic_is_not_player_copy() {
+    let mut scene = RenderScene::new();
+    let source = r#"<meta name="component" content="ArtControl">
+<div id="Window"><art id="VeryLongDiagnosticArtworkIdentifier" kind="logo"></art><p id="Copy">Actual player copy must still be checked</p></div>
+<style>
+#Window { width: 100px; height: 100px; overflow: hidden; }
+art { width: 30px; height: 30px; }
+#Copy { width: 500px; height: 30px; white-space: nowrap; }
+</style>"#;
+    let d = crate::support::Doc::with_font(source, &[], add_test_font(&mut scene));
+    assert!(og_ui::drawn_lines(d.ui.frame().items.iter().map(|i| &i.cmd)).into_iter().any(|cmd|
+        matches!(cmd, DrawCmd::Text { text, .. } if text.contains("VeryLongDiagnosticArtworkIdentifier"))),
+        "the control must really draw the synthetic missing-art caption");
+    let (_, failures) = document_geometry(&d.ui);
+    assert!(
+        !failures
+            .iter()
+            .any(|f| f.contains("VeryLongDiagnosticArtworkIdentifier")),
+        "{failures:?}"
+    );
+    assert!(
+        failures
+            .iter()
+            .any(|f| f.contains("/Copy") && f.contains("right")),
+        "actual clipped copy must not be excused: {failures:?}"
     );
 }
