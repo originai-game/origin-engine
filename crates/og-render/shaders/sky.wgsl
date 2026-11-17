@@ -159,12 +159,16 @@ fn sky_physical_look(d: vec3<f32>) -> vec3<f32> {
   // The legacy SkyLook uniforms bracket the authored radius at 0.8/1.2.
   let radius = 0.5 * (acos(clamp(frame.sky_sun.x, -1.0, 1.0)) + acos(clamp(frame.sky_sun.y, -1.0, 1.0)));
   let pixel_angle = max(max(length(dpdxFine(d)), length(dpdyFine(d))), 1e-7);
+  // A disc narrower than a pixel (the real sun's, 0.27°, on a capture
+  // face's texels or in a wide view) is drawn a pixel wide with its light
+  // spread over it: its light, and the glow bloom draws from it, stay.
+  let drawn = max(radius, pixel_angle);
   var disc = 0.0;
   if (radius > 0.0) {
-    disc = clamp((radius - angle) / pixel_angle + 0.5, 0.0, 1.0);
+    disc = clamp((drawn - angle) / pixel_angle + 0.5, 0.0, 1.0) * (radius / drawn) * (radius / drawn);
   }
   // How far from the centre to the physical limb, 0 to 1.
-  let edge = clamp(angle / max(radius, 1e-7), 0.0, 1.0);
+  let edge = clamp(angle / drawn, 0.0, 1.0);
   let limb = 0.75 + 0.25 * sqrt(max(1.0 - edge * edge, 0.0));
   var color = sky + light * through * max(frame.sky_sun.z, 0.0) * limb * disc;
   let moon = moon_at(d, up);

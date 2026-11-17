@@ -133,6 +133,15 @@ impl SkyLook {
         moon_direction: Vec3::ZERO,
         physical: None,
     };
+    /// The physical sky's sun disc: the sun's angular radius seen from the
+    /// Earth, its mean semi-diameter (16′), in degrees.
+    pub const PHYSICAL_SUN_SIZE: f32 = 0.2666;
+    /// The physical sky's disc brightness: the light (radiance times area)
+    /// the 0.8° disc it replaced drew at 40, which bloom spreads into the
+    /// glow round the sun; a disc a third as wide at 40 left it a speck
+    /// with none.
+    pub const PHYSICAL_SUN_INTENSITY: f32 = 360.0;
+
     /// The cosines of the sun disc's outer and inner edge.
     pub(crate) fn disc(&self) -> (f32, f32) {
         let r = self.sun_size.clamp(0.0, 20.0).to_radians();
@@ -382,7 +391,8 @@ impl DayNightLook {
         let through = air.sun_transmittance(air.altitude, self.sun_direction.y);
         self.sun_color = white;
         self.sky.physical = Some(*air);
-        self.sky.sun_intensity = 40.0;
+        self.sky.sun_size = SkyLook::PHYSICAL_SUN_SIZE;
+        self.sky.sun_intensity = SkyLook::PHYSICAL_SUN_INTENSITY;
         self.sky.glow = 0.0;
         // Brighter than the gradient's zenith blue with the default
         // exposure, as the gradient's brightness was.

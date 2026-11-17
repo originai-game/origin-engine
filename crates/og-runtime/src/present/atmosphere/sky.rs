@@ -140,7 +140,8 @@ pub(super) fn extract(
         let sun = Vec3::new(1.0, 0.97, 0.93);
         let look = SkyLook {
             physical: Some(air),
-            sun_size: 0.8,
+            sun_size: SkyLook::PHYSICAL_SUN_SIZE,
+            sun_intensity: SkyLook::PHYSICAL_SUN_INTENSITY,
             ..SkyLook::DEFAULT
         };
         scene.lighting.environment.sky = ProceduralSky {

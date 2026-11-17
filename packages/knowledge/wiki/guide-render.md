@@ -220,6 +220,13 @@ depth-normal prepass: the first one pays for it.
 
 - One StandardMaterialDesc covers PBR, stylised and physical shading; share
   materials, since instancing is per (geometry, material) (looks §5).
+- Under og.DayNight and og.PhysicalSky the daylight is physical: at 0 EV
+  the noon sun lights a grey card (0.18) to middle grey, so a base colour
+  (and a terrain layer's `color`) is the surface's albedo, linear. Grass is
+  about (0.1, 0.15, 0.045), soil 0.1 to 0.25, plaster and pale stone 0.5
+  to 0.75, fresh snow 0.8 to 0.9. A colour picked by eye on a screen is
+  often two or three times that: a meadow of (0.3, 0.42, 0.2) reads
+  washed out, pale and grey-green, under a summer noon.
 - Give metalnessMap and roughnessMap the same glTF texture. The
   metalness transform also places a physical material's other packed maps
   and aoMap.

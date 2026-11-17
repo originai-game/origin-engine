@@ -213,9 +213,6 @@ fn drawn_sun(
 /// Rec. 709 luminance.
 const LUMA: Vec3 = Vec3::new(0.2126, 0.7152, 0.0722);
 
-/// The sun's mean angular radius (degrees).
-const SUN_SEMI_DIAMETER: f32 = 0.2666;
-
 /// The angular radius of the god rays' sun: the circumsolar region a
 /// pyrheliometer takes in with the sun (WMO CIMO Guide, 2.5° either side),
 /// the bright part of the sky the shafts are cut from.
@@ -250,7 +247,7 @@ fn god_sun(sun: &DrawnSun, proj: glam::Mat4, height: u32) -> [[f32; 4]; 2] {
     let cover = (disc / disc.max(pixel)).powi(2);
     // The sun's own radiance, its irradiance over its own disc: what the
     // threshold judges it by.
-    let own = SUN_SEMI_DIAMETER.to_radians();
+    let own = SkyLook::PHYSICAL_SUN_SIZE.to_radians();
     let radiance = sun.irradiance.dot(LUMA) / (std::f32::consts::PI * own * own);
     [
         peak.extend(sun.disc * cover).to_array(),
