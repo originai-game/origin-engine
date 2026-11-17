@@ -67,6 +67,11 @@ it, and a world that never names it is unchanged.
   heading of due east, so a scene laid out for a sun rising over the sea
   keeps it there on the equinoxes, and the sunrise swings to the north of
   that in summer and to the south in winter (north of the equator).
+- Bearings are headings: south is the heading `azimuth` + 90, the way
+  `tilt` leans the path, and north is `azimuth` - 90. With the default
+  `azimuth` of 90, east is +X, south is -Z and west is -X, so north of
+  the tropics the noon sun stands towards -Z and a camera facing it sees
+  the sun rise on its right and set on its left.
 - Set the scene by the low sun, not the high one. At 47 the midwinter noon
   sun is under 20 degrees up: shadows are five times as long as in June,
   a valley or a street may get no sun all day, and the light is warm from
