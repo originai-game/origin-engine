@@ -262,7 +262,7 @@ pub(crate) fn clip(text: &str) -> Result<Option<(CssClip, GeoBox)>, String> {
             for (k, p) in points.iter().enumerate().skip(skip) {
                 let p = if k == 0 { first } else { p.as_slice() };
                 match p {
-                    [x, y] => out.push([pos(x)?, pos(y)?]),
+                    [x, y] => out.push([length(x)?, length(y)?]),
                     _ => return Err("polygon([<rule>,] <x> <y>, …)".into()),
                 }
             }

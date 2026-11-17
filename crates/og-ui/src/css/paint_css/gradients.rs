@@ -50,6 +50,18 @@ pub(super) fn pos(t: &Tok) -> Result<Pos, String> {
     }
 }
 
+/// A paint coordinate's computed length-percentage, retaining its box basis.
+pub(super) fn length(t: &Tok) -> Result<crate::Length, String> {
+    let [pct, px, em] = super::super::css::want_lin(t)?;
+    if em != 0.0 {
+        return Err("a paint coordinate needs resolved px and % lengths".into());
+    }
+    Ok(crate::Length {
+        pct: pct as f32,
+        px: px as f32,
+    })
+}
+
 pub(super) fn angle(t: &Tok) -> Result<f32, String> {
     match number(t)? {
         (v, "deg") => Ok(v.to_radians()),
@@ -231,14 +243,7 @@ fn gradient_of(kind: &str, repeating: bool, args: &[Vec<Tok>]) -> Result<CssGrad
                     px: 0.0,
                 })
             } else {
-                let [pct, px, em] = super::super::css::want_lin(t)?;
-                if em != 0.0 {
-                    return Err("a gradient stop needs resolved px and % lengths".into());
-                }
-                Ok(crate::Length {
-                    pct: pct as f32,
-                    px: px as f32,
-                })
+                length(t)
             }
         };
         match rest {

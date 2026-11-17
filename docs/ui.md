@@ -650,7 +650,10 @@ rules and limits:
   `mask-border` combine through og-render's Porter-Duff blends.
 - `clip-path` on a CSS box treats `fill-box` as the content box and
   `stroke-box`/`view-box` as the border box; `url(#id)` names an inline SVG
-  `<clipPath>`; clipping is by analytic path coverage.
+  `<clipPath>`; clipping is by analytic path coverage. `polygon()` points
+  accept mixed length-percentage math such as `calc(100% - 12px)`;
+  horizontal percentages use the reference box's used width, vertical
+  percentages its used height, and pixel offsets stay fixed on resize.
 - `filter` functions are layers in order; a run of colour functions is one
   matrix, split where a value can leave 0..1, so CSS's clamps hold.
   `url(#id)` names an inline SVG `<filter>` (below); a `url()` naming none

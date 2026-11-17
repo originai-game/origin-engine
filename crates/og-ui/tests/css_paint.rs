@@ -1182,10 +1182,47 @@ fn clip_of(d: &Doc, id: &str) -> Option<(Vec<[f32; 2]>, og_draw::UiFillRule)> {
                     points.push(q);
                 }
             }
+            // A straight closing segment and ClosePath describe the same polygon.
+            if points.len() > 1 && points.last() == points.first() {
+                points.pop();
+            }
             Some((points, p.fill_rule))
         }
         _ => None,
     })
+}
+
+#[test]
+fn polygon_math_keeps_each_coordinates_reference_axis_on_resize() {
+    let source = r#"<meta name="component" content="t">
+<div><div id="Shape" class:large={$large}></div></div>
+<style>
+#Shape { width: 160px; height: 80px; background: #ff0000;
+  clip-path: polygon(evenodd, calc(25% + 7px) calc(100% - 13px), calc(100% - 9px) 0, 100% 100%, calc(0% - 3px) 50%); }
+#Shape.large { width: 240px; height: 120px; }
+</style>"#;
+    let mut d = Doc::new(source, &[("large", serde_json::json!(false))]);
+    assert_eq!(
+        clip_of(&d, "Shape"),
+        Some((
+            vec![[47.0, 67.0], [151.0, 0.0], [160.0, 80.0], [-3.0, 40.0]],
+            og_draw::UiFillRule::EvenOdd
+        ))
+    );
+    d.set("large", serde_json::json!(true));
+    assert_eq!(
+        clip_of(&d, "Shape"),
+        Some((
+            vec![[67.0, 107.0], [231.0, 0.0], [240.0, 120.0], [-3.0, 60.0]],
+            og_draw::UiFillRule::EvenOdd
+        )),
+        "percentages follow each used axis; pixel offsets stay fixed"
+    );
+    assert!(
+        d.ui.frame().warnings.is_empty(),
+        "{:?}",
+        d.ui.frame().warnings
+    );
 }
 
 /// `opacity` (a number or, CSS Color 4 §5.2, a percentage), `outline`

@@ -308,7 +308,7 @@ impl CssClip {
             }
             CssClip::Polygon(fill, points) => {
                 // Straight cubics, so one path form carries every shape.
-                let p: Vec<[f32; 2]> = points.iter().map(|[x, y]| [x.at(w), y.at(h)]).collect();
+                let p: Vec<[f32; 2]> = points.iter().map(|[x, y]| [x.of(w), y.of(h)]).collect();
                 let mut pts = vec![p[0]];
                 for k in 1..=p.len() {
                     let (a, b) = (p[k - 1], p[k % p.len()]);

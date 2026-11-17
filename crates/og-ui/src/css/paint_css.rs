@@ -494,7 +494,7 @@ pub enum CssClip {
     /// `xywh()`: x, y, width, height and radius.
     Xywh([Pos; 4], f32),
     Ellipse([Option<Pos>; 2], bool, [Pos; 2]),
-    Polygon(FillRule, Vec<[Pos; 2]>),
+    Polygon(FillRule, Vec<[crate::Length; 2]>),
     Path(FillRule, Vec<(Vec<[f32; 2]>, bool)>),
     /// `shape()`: SVG path commands whose numbers are lengths over the box.
     Shape(FillRule, Vec<(char, Vec<Pos>)>),
