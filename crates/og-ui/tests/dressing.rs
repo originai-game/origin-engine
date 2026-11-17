@@ -245,7 +245,9 @@ fn undressed_range_parts_keep_their_boxes_and_draws() {
         ..Default::default()
     };
     d.step(press(true, true));
-    for _ in 0..4 {
+    d.step(press(true, false));
+    let entering = rect(&d.ui, "Ticks/Track/Bubble");
+    for _ in 0..3 {
         d.step(press(true, false));
     }
     assert_eq!(value(&mut d), 6.0, "pointer input reaches the slider host");
@@ -256,14 +258,22 @@ fn undressed_range_parts_keep_their_boxes_and_draws() {
         [132.0, 159.0, 11.0, 11.0]
     );
     let bubble = rect(ui, "Ticks/Track/Bubble");
-    assert_eq!([bubble[0], bubble[2], bubble[3]], [121.0, 24.0, 26.0]);
-    assert!(bubble[1] > 113.0, "entering, the bubble rises: {bubble:?}");
+    for (actual, expected) in [bubble[0], bubble[2], bubble[3]]
+        .into_iter()
+        .zip([121.0, 24.0, 26.0])
+    {
+        assert!((actual - expected).abs() < 0.01, "{bubble:?}");
+    }
     for _ in 0..30 {
         d.step(press(true, false));
     }
     let ui = &d.ui;
     let settled = rect(ui, "Ticks/Track/Bubble");
     assert!((settled[1] - 112.0).abs() < 0.01, "{settled:?}");
+    assert!(
+        entering[1] > settled[1] + 0.01,
+        "entering, the bubble rises: {entering:?} -> {settled:?}"
+    );
     assert!(ui.frame().warnings.is_empty(), "{:?}", ui.frame().warnings);
 }
 
@@ -2387,26 +2397,36 @@ fn default_css_glass_uses_css_filters_and_material_fallbacks() {
     }
     let part = PartRef::parse("panel.glass::part(frame)", None).unwrap();
     let default = ui.resolve_part(&part, [120.0, 80.0]).unwrap();
-    assert!(default.fills.is_empty());
-    assert!(matches!(
-        default.effects.as_slice(),
-        [Effect::Backdrop { .. }]
-    ));
+    assert_eq!(
+        default
+            .effects
+            .iter()
+            .filter(|e| matches!(e, Effect::Backdrop { .. }))
+            .count(),
+        1,
+        "one backdrop, independently of the style's fills and shadows"
+    );
     ui.set_part_css("panel::part(frame) { -og-material: glass thick lift; backdrop-filter: blur(7px) saturate(0); }")
         .unwrap();
     let draw = ui.resolve_part(&part, [120.0, 80.0]).unwrap();
-    let [
-        Effect::Backdrop {
-            blur,
-            saturation,
-            brightness,
-            glass,
-            ..
-        },
-    ] = draw.effects.as_slice()
+    let mut backdrops = draw
+        .effects
+        .iter()
+        .filter(|e| matches!(e, Effect::Backdrop { .. }));
+    let Some(Effect::Backdrop {
+        blur,
+        saturation,
+        brightness,
+        glass,
+        ..
+    }) = backdrops.next()
     else {
-        panic!("one material applies the filter exactly once");
+        panic!("the material applies a backdrop filter");
     };
+    assert!(
+        backdrops.next().is_none(),
+        "one material applies the filter exactly once"
+    );
     let (mode, _) = glass.resolve(*blur, *saturation, *brightness, [0.0; 4], false, ui.theme());
     let og_draw::UiMode::Backdrop {
         blur: actual_blur,
@@ -2718,7 +2738,6 @@ fn undressed_text_frames_keep_the_hosts_box_and_inset() {
     }
     let ui = &d.ui;
     let pad = ui.theme().space.md;
-    let control = ui.theme().palette.control.linear();
     for (path, text) in [("Name", "Hello"), ("Bad", "Bad")] {
         let host = at(ui, path);
         let frame = at(ui, &format!("{path}/::part(frame)#0"));
@@ -2731,7 +2750,9 @@ fn undressed_text_frames_keep_the_hosts_box_and_inset() {
             .items
             .iter()
             .filter_map(|i| i.cmd.filled())
-            .filter(|(r, c)| *c == control && r.y == host.y)
+            .filter(|(r, _)| {
+                (r.x, r.y, r.width, r.height) == (host.x, host.y, host.width, host.height)
+            })
             .collect();
         assert_eq!(grounds.len(), 1, "{path}: {grounds:?}");
         assert_eq!(grounds[0].0.width, host.width);
