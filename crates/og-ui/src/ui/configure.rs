@@ -642,8 +642,18 @@ impl Ui {
         let p = input.pointer;
         let hot = if input.pointer_inside {
             crate::ui::pick_hit(&self.interaction.state.hits, p.x, p.y, |h| {
+                // A fitting `overflow: auto` decoration must not take its
+                // parent's press. Keep its scroll hit for wheel handoff
+                // and overscroll; only a nonzero range can drag-scroll.
                 !h.has(HIT_OFFSCREEN)
-                    && h.has(HIT_POINTER | HIT_SCROLL | HIT_TEXT)
+                    && (h.has(HIT_POINTER | HIT_TEXT)
+                        || h.has(HIT_SCROLL)
+                            && self
+                                .interaction
+                                .state
+                                .scroll_info
+                                .get(&h.key)
+                                .is_some_and(|s| s.range.x > 0.0 || s.range.y > 0.0))
                     && (!h.has(crate::ui::HIT_SHAPE)
                         || self.tree.shape_hit(h, p.x, p.y, &self.paint))
             })

@@ -1226,6 +1226,12 @@ from the frame's orders, so a declared value costs nothing while idle.
 as the `inert` attribute does; a declared value wins over the attribute,
 as HTML's `[inert] { interactivity: inert }` rule has it.
 
+A scroll container with no scroll range on either axis does not take a
+press from a control around it. Its scroll-container membership remains
+for wheel handoff and overscroll boundaries. A container with overflow
+can still take a press to drag-scroll; its actionable children keep their
+own presses.
+
 #### Containment, resize and will-change
 
 `contain` and `content-visibility` follow Containment 2. A skipped
