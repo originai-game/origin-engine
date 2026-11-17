@@ -1544,12 +1544,28 @@ pub fn break_lines(
     features: Features,
     max_width: Option<f32>,
 ) -> Vec<Line> {
+    break_lines_with_overflow(text, m, size, tracking, features, max_width, true)
+}
+
+/// Break at UAX #14 opportunities, optionally allowing emergency breaks
+/// inside an overwide unit (`overflow-wrap: anywhere` / `break-word`).
+pub fn break_lines_with_overflow(
+    text: &str,
+    m: &FontMetrics,
+    size: f32,
+    tracking: f32,
+    features: Features,
+    max_width: Option<f32>,
+    emergency: bool,
+) -> Vec<Line> {
     #[cfg(feature = "shaping")]
-    if let Some(lines) = paragraph::discretionary(m, text, size, tracking, features, max_width) {
+    if let Some(lines) =
+        paragraph::discretionary(m, text, size, tracking, features, max_width, emergency)
+    {
         return lines;
     }
     #[cfg(feature = "shaping")]
-    if let Some(layout) = paragraph::layout(
+    if let Some(layout) = paragraph::layout_with_overflow(
         m,
         text,
         1.0,
@@ -1557,6 +1573,7 @@ pub fn break_lines(
         features,
         og_i18n::paragraph_direction(text, Direction::Ltr),
         max_width.map(|w| w / size),
+        emergency,
     ) {
         return layout
             .lines()
@@ -1572,11 +1589,12 @@ pub fn break_lines(
             })
             .collect();
     }
-    let mut lines = greedy_lines(
+    let mut lines = greedy_lines_with_overflow(
         text,
         max_width,
         &|t| m.measure_with(t, size, tracking, features),
         &|a, b| m.kern(a, b) * size,
+        emergency,
     );
     // A kerning font kerns across the units too, and a shaped run is shaped
     // whole: each line's width is its whole text measured (what is drawn),
@@ -1598,6 +1616,16 @@ pub fn greedy_lines(
     max_width: Option<f32>,
     measure: &dyn Fn(&str) -> f32,
     seam: &dyn Fn(char, char) -> f32,
+) -> Vec<Line> {
+    greedy_lines_with_overflow(text, max_width, measure, seam, true)
+}
+
+fn greedy_lines_with_overflow(
+    text: &str,
+    max_width: Option<f32>,
+    measure: &dyn Fn(&str) -> f32,
+    seam: &dyn Fn(char, char) -> f32,
+    emergency: bool,
 ) -> Vec<Line> {
     let mut lines = Vec::new();
     for paragraph in text.split('\n') {
@@ -1643,7 +1671,7 @@ pub fn greedy_lines(
             }
             spaces.clear();
             spaces_w = 0.0;
-            if line.is_empty() && w > max {
+            if emergency && line.is_empty() && w > max {
                 let bytes: Vec<_> = unit
                     .char_indices()
                     .map(|(b, _)| b)

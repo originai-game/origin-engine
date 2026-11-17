@@ -170,8 +170,9 @@ Native `<tabs>` scrolls a long set horizontally by default; `fill` makes
 its tabs equally wide, without cutting their labels. For a short set that
 must all be visible, write `<tabs fit items={$labels}>`: side padding
 compresses to `space.xs` first, then the tabs share the track in proportion
-to their contents. Labels wrap to at most two lines before ellipsizing;
-their full text remains the accessible name. `fit fill` keeps equal widths
+to their contents. Labels wrap at word boundaries to at most two lines;
+an overwide word ellipsizes on its own line instead of splitting, and the
+full text remains the accessible name. `fit fill` keeps equal widths
 when those fit and uses proportional widths when they do not. Give
 icon-only tabs `items={$emptyLabels} icons={$icons} aria-labels={$names}`:
 the parallel `aria-labels` string list supplies their accessible names.

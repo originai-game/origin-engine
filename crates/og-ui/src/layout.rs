@@ -44,7 +44,7 @@ use crate::FontMetrics;
 use crate::element::{LayoutMode, Patch, Query};
 use crate::motion::Fx;
 use crate::style::{Srgba, TypeStep};
-use crate::text::{Line, break_lines, is_cjk, longest_word, widest_line};
+use crate::text::{Line, is_cjk, longest_word, widest_line};
 use og_draw::TextureHandle;
 pub(crate) use og_ui_model::snap;
 pub use og_ui_model::{Insets, Rect};

@@ -83,7 +83,15 @@ pub(crate) fn text_lines(t: UsedText<'_>, m: &FontMetrics, width: Option<f32>) -
     let (size, tr, ft) = (t.step.size, t.tracking(), t.features());
     match t.vertical {
         Some(v) => crate::text::vertical::break_lines(&t.text, m, size, tr, ft, v, width),
-        None => break_lines(&t.text, m, size, tr, ft, width),
+        None => crate::text::break_lines_with_overflow(
+            &t.text,
+            m,
+            size,
+            tr,
+            ft,
+            width,
+            t.overflow_wrap != OverflowWrap::Normal,
+        ),
     }
 }
 

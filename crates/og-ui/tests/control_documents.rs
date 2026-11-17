@@ -112,6 +112,54 @@ fn fitted_tabs_keep_their_track_and_full_accessible_labels() {
 }
 
 #[test]
+fn fitted_tabs_ellipsize_overwide_words_without_splitting_them() {
+    let mut shaped = crate::features::font_at("templates/fonts/latin/NotoSans-Latin.ttf");
+    shaped.handle = test_font().handle;
+    for font in [test_font(), shaped] {
+        let mut d = Doc::mounted(
+            ui_with_font(font),
+            r#"<meta name="component" content="WordTabs">
+        <tabs items={$labels} fit fill style="width:150px" />"#,
+            &[(
+                "labels",
+                json!(["Scoreboard", "Campaignscoreboard Scoreboardcampaign"]),
+            )],
+        );
+        for _ in 0..16 {
+            d.step(InputFrame::default());
+        }
+        let texts: Vec<_> =
+            d.ui.frame()
+                .items
+                .iter()
+                .filter_map(|item| {
+                    if let DrawCmd::Text { text, .. } = &item.cmd {
+                        Some(text.as_str())
+                    } else {
+                        None
+                    }
+                })
+                .collect();
+        assert_eq!(
+            texts.len(),
+            3,
+            "one single-word line and two whole-word lines: {texts:?}"
+        );
+        assert!(
+            texts
+                .iter()
+                .all(|text| text.ends_with('…') || text.ends_with("...")),
+            "an overwide word must ellipsize on its own line, never continue on another: {texts:?}"
+        );
+        assert_eq!(d.a11y("Item#0").name, "Scoreboard");
+        assert_eq!(
+            d.a11y("Item#1").name,
+            "Campaignscoreboard Scoreboardcampaign"
+        );
+    }
+}
+
+#[test]
 fn icon_only_tabs_take_document_accessible_labels() {
     let mut d = Doc::new(
         r#"<meta name="component" content="IconTabs">

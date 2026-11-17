@@ -411,8 +411,8 @@ pub(crate) fn ellipsis_of(m: &FontMetrics) -> &'static str {
     if m.has('…') { "…" } else { "..." }
 }
 
-/// Ellipsis truncation: lines past `max_lines` go, and the last line kept
-/// (or a one-line text) wider than `width` loses characters from its end
+/// Ellipsis truncation: lines past `max_lines` go, and each overflowing line
+/// (and the last kept line when clamped) loses characters from its end
 /// until it fits with the ellipsis after it (a cut between words drops the
 /// space before the ellipsis).
 pub(super) fn truncate_lines(lines: &mut Vec<Line>, t: UsedText<'_>, m: &FontMetrics, width: f32) {
@@ -421,24 +421,24 @@ pub(super) fn truncate_lines(lines: &mut Vec<Line>, t: UsedText<'_>, m: &FontMet
     if cut {
         lines.truncate(t.max_lines as usize);
     }
-    let Some(last) = lines.last_mut() else {
-        return;
-    };
-    if !cut && last.width <= width {
-        return;
-    }
+    let last = lines.len().saturating_sub(1);
     let dots = t.cut.as_deref().unwrap_or_else(|| ellipsis_of(m));
-    let mut chars: Vec<char> = last.text.chars().collect();
-    loop {
-        let body: String = chars.iter().collect();
-        let text = format!("{}{dots}", body.trim_end());
-        let w = m.measure_with(&text, size, tracking, t.features());
-        if w <= width || chars.is_empty() {
-            last.text = text;
-            last.width = w;
-            return;
+    for (i, line) in lines.iter_mut().enumerate() {
+        if !(cut && i == last) && !(t.ellipsis && line.width > width) {
+            continue;
         }
-        chars.pop();
+        let mut chars: Vec<char> = line.text.chars().collect();
+        loop {
+            let body: String = chars.iter().collect();
+            let text = format!("{}{dots}", body.trim_end());
+            let w = m.measure_with(&text, size, tracking, t.features());
+            if w <= width || chars.is_empty() {
+                line.text = text;
+                line.width = w;
+                break;
+            }
+            chars.pop();
+        }
     }
 }
 

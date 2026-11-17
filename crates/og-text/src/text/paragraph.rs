@@ -257,6 +257,7 @@ pub fn discretionary(
     tracking: f32,
     features: Features,
     max: Option<f32>,
+    emergency: bool,
 ) -> Option<Vec<super::Line>> {
     if !text.contains('\u{ad}') {
         return None;
@@ -265,7 +266,9 @@ pub fn discretionary(
         return Some(
             text.split('\n')
                 .flat_map(|paragraph| {
-                    super::break_lines(paragraph, metrics, size, tracking, features, max)
+                    super::break_lines_with_overflow(
+                        paragraph, metrics, size, tracking, features, max, emergency,
+                    )
                 })
                 .collect(),
         );
@@ -317,11 +320,11 @@ pub fn discretionary(
             } else {
                 0.0
             };
-            if prefix[at] - prefix[start] + extra <= max {
+            if prefix[at] - prefix[start] + extra <= max || (!emergency && best == start) {
                 best = at;
             }
         }
-        if prefix[at + 1] - prefix[start] > max && at > start {
+        if prefix[at + 1] - prefix[start] > max && at > start && (emergency || best > start) {
             let mut end = if best > start { best } else { at };
             if best == start
                 && end > start + 1
@@ -373,6 +376,22 @@ pub fn layout(
     direction: Direction,
     width: Option<f32>,
 ) -> Option<Layout<Brush>> {
+    layout_with_overflow(
+        metrics, text, size, tracking, features, direction, width, true,
+    )
+}
+
+#[allow(clippy::too_many_arguments)]
+pub fn layout_with_overflow(
+    metrics: &FontMetrics,
+    text: &str,
+    size: f32,
+    tracking: f32,
+    features: Features,
+    direction: Direction,
+    width: Option<f32>,
+    emergency: bool,
+) -> Option<Layout<Brush>> {
     let runs = metrics.font_runs(text);
     // `tnum` on a face whose figures stay proportional under it (Meridian's
     // Chakra Petch has no `tnum`): the run path sets its digits on the
@@ -400,9 +419,12 @@ pub fn layout(
         for file in files {
             families.push(cx.family(file));
         }
-        let builder = styled(
+        let mut builder = styled(
             cx, text, size, tracking, features, direction, &runs, &families, metrics,
         );
+        if !emergency {
+            builder.push_default(StyleProperty::OverflowWrap(parley::OverflowWrap::Normal));
+        }
         let mut layout = builder.build(text);
         layout.break_all_lines(width);
         Some(layout)
