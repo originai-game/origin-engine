@@ -107,6 +107,7 @@ What every kind takes: its box, layout, paint, motion and input.
 | `inset-inline-end:` | `<n>px` | The inset from the end edge. |
 | `bottom:` | `<n>px` | The inset from the bottom. `insetBottom`: CSS `bottom` / `inset-block-end` as written (see insetTop). |
 | `data-hit-slop` | `number` | Extra pointer reach in CSS px (`data-hit-slop`), without changing layout or paint. Overlapping targets keep their existing hit priority. |
+| `data-og-overlap` | `text` | Space-separated full probe paths intentionally overlapped by this element or its descendants; * marks every overlap intentional. Diagnostic only. |
 | `grid-template-columns:` | `[name] 120px 1fr auto 25% minmax(min-content, 1fr) repeat(auto-fill, 200px) \| subgrid \| masonry` | A grid's column tracks (CSS `grid-template-columns`: sizes, `[line names]`, `repeat()`, `subgrid` or `masonry`). |
 | `grid-template-rows:` | `[name] 120px 1fr auto 25% minmax(min-content, 1fr) repeat(auto-fill, 200px) \| subgrid \| masonry` | A grid's row tracks (CSS `grid-template-rows`). |
 | `grid-template-areas:` | `"<a>" "<b>" …` | A grid's named areas, one string per row. |

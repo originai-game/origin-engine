@@ -285,7 +285,7 @@ pub struct Props {
     /// Paths of elements the engine places it over on purpose (a badge on
     /// its item; an ancestor path covers its subtree, `*` everything): any
     /// other overlap is reported ([`crate::UiFrame::overlaps`]). Documents
-    /// do not set it.
+    /// can declare intentional overlap with `data-og-overlap`.
     pub overlaps: Vec<String>,
     /// Its text and its subtree's are a dense HUD's readouts (docs/ui.md
     /// §15.2: strategy, MMO, simulation): `og ui check` holds them to 12 px

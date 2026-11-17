@@ -495,10 +495,10 @@ export function checkFrame(frame: UiFrameSnapshot, cell: UiCell, opts: CheckOpti
       rect: o.rect,
       value: r1(o.rect[2] * o.rect[3]),
       unit: "CSS px²",
-      measured: `${r1(o.rect[2])}×${r1(o.rect[3])} CSS px overlap at ${r1(o.rect[0])},${r1(o.rect[1])}${o.inFlow ? " (siblings in the flow)" : ""}${pseudo}`,
-      prop: o.inFlow ? `${o.path}: size, gap or wrap of its row` : `${o.path}: anchor, offset or insets`,
+      measured: `${r1(o.rect[2])}×${r1(o.rect[3])} CSS px overlap at ${r1(o.rect[0])},${r1(o.rect[1])}${o.inFlow ? " (content in sibling flow areas)" : ""}${pseudo}`,
+      prop: o.inFlow ? `${o.path}: size, gap, wrap or overflow of its layout` : `${o.path}: anchor, offset or insets`,
       fix: o.inFlow
-        ? `siblings in the flow never overlap: give their row room (wrap, a smaller step, grow) at ${v.breakpoint}`
+        ? `review the intersection at ${v.breakpoint}: give content room, clip deliberately, or declare intentional overlap with data-og-overlap`
         : `move ${o.path} off ${o.other} at ${v.breakpoint} (a breakpoint variant of its anchor or offset, or one group for both); an overlap the design means stays`,
     });
   }

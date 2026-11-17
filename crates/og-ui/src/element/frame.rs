@@ -37,10 +37,9 @@ impl crate::ui::Layout {
         paint: &crate::ui::Paint,
         tree: &crate::ui::Tree,
     ) -> Vec<Overlap> {
-        const MAX: usize = 64;
         let mut out: Vec<Overlap> = Vec::new();
         let mut seen: std::collections::BTreeSet<(usize, usize)> = Default::default();
-        let area = |r: &Rect| r.width > 0.5 && r.height > 0.5;
+        let area = |r: &Rect| r.width > 0.0 && r.height > 0.0;
         // Each node's declarations, with its ancestors' (a declaration on a
         // placed group covers what is inside it).
         let declared = |a: usize, b_path: &str| -> bool {
@@ -62,7 +61,7 @@ impl crate::ui::Layout {
         // transforms (a key cap scaled down to fit its corner covers its
         // scaled box, not the line it was laid out on); motion, which
         // comes later, is not part of the layout checked here.
-        let posed = |i: usize| -> Rect {
+        let posed = |i: usize, drawn: bool| -> Rect {
             let mut m = Affine::IDENTITY;
             let mut j = i;
             while j != NONE {
@@ -77,11 +76,28 @@ impl crate::ui::Layout {
                 }
                 j = n.parent;
             }
-            if m.is_identity() {
-                tree.nodes[i].placed.rect
-            } else {
-                m.map_rect(&tree.nodes[i].placed.rect)
+            let n = &tree.nodes[i];
+            let mut r = n.placed.rect;
+            // A nowrap line may draw past even its own box. Read the
+            // emitted line, including its explicit clip, not its source
+            // string or a second approximation of text layout.
+            if let Some((_, cmds, _)) = paint.cache.cmds.get(&n.key).filter(|_| drawn) {
+                for c in crate::drawn_lines(cmds) {
+                    if let crate::DrawCmd::Text { bounds, clip, .. } = c {
+                        let b = bounds.intersect(clip);
+                        if !b.is_empty() {
+                            let (x, y) = (r.x.min(b.x), r.y.min(b.y));
+                            r = Rect::new(
+                                x,
+                                y,
+                                r.right().max(b.right()) - x,
+                                r.bottom().max(b.bottom()) - y,
+                            );
+                        }
+                    }
+                }
             }
+            if m.is_identity() { r } else { m.map_rect(&r) }
         };
         // What of a node a scroll leaves in view: its rectangle cut by every
         // scrolling ancestor's (an element scrolled out of a list overlaps
@@ -106,12 +122,12 @@ impl crate::ui::Layout {
             if let Some(r) = shown_at.borrow()[i] {
                 return r;
             }
-            let mut r = posed(i);
+            let mut r = posed(i, true);
             let mut j = tree.nodes[i].parent;
             while j != NONE {
                 let n = &tree.nodes[j];
                 if n.el.scroll || n.el.scroll_x || clips(j) {
-                    r = r.intersect(&posed(j));
+                    r = r.intersect(&posed(j, false));
                 }
                 j = n.parent;
             }
@@ -128,7 +144,8 @@ impl crate::ui::Layout {
                 return s;
             }
             let mut j = i;
-            let mut s = true;
+            let mut s = tree.orders.hidden_of.get(i) != Some(&true)
+                && !tree.orders.skip_of.get(i).is_some_and(|&s| s != 0);
             while j != NONE {
                 if tree.nodes[j].opacity() <= 0.0 {
                     s = false;
@@ -190,7 +207,7 @@ impl crate::ui::Layout {
                         continue;
                     }
                     let pair = (a.min(o), a.max(o));
-                    if !seen.insert(pair) || out.len() >= MAX {
+                    if !seen.insert(pair) {
                         continue;
                     }
                     let (pa, po) = (tree.path_of(a), tree.path_of(o));
@@ -206,11 +223,12 @@ impl crate::ui::Layout {
                 }
             }
         }
-        // Siblings in the flow of a row or column (a stack overlays them on
-        // purpose; a grid's cells are its own).
+        // Compare the drawing in sibling areas, not just their layout
+        // roots: a descendant can overflow a nonoverlapping grid cell.
+        // A stack's children deliberately share their area.
         for &i in order {
             let n = &tree.nodes[i];
-            if n.layout_mode() != LayoutMode::Flex
+            if n.layout_mode() == LayoutMode::Stack
                 || n.children.len() < 2
                 || over_layers.contains(&i)
             {
@@ -228,12 +246,41 @@ impl crate::ui::Layout {
                     (r.x, r.x + r.width)
                 }
             };
-            let mut by_start: Vec<(usize, (f32, f32))> = n
+            let groups: Vec<Vec<usize>> = n
                 .children
                 .iter()
+                .map(|&c| {
+                    preorder(&tree.nodes, c)
+                        .into_iter()
+                        .filter(|&a| {
+                            if over_layers.contains(&a)
+                                || !painted(&tree.nodes[a])
+                                || !seen_at_all(a)
+                            {
+                                return false;
+                            }
+                            let mut j = a;
+                            while j != i && j != NONE {
+                                if tree.nodes[j].props.out_of_flow() {
+                                    return false;
+                                }
+                                j = tree.nodes[j].parent;
+                            }
+                            true
+                        })
+                        .collect()
+                })
+                .collect();
+            let mut by_start: Vec<(usize, (f32, f32))> = groups
+                .iter()
                 .enumerate()
-                .filter(|&(_, &c)| seen_at_all(c))
-                .map(|(k, &c)| (k, span(&shown(c))))
+                .filter_map(|(k, group)| {
+                    group
+                        .iter()
+                        .map(|&c| span(&shown(c)))
+                        .reduce(|a, b| (a.0.min(b.0), a.1.max(b.1)))
+                        .map(|range| (k, range))
+                })
                 .collect();
             by_start.sort_by(|x, y| x.1.0.total_cmp(&y.1.0).then(x.0.cmp(&y.0)));
             let mut pairs: Vec<(usize, usize)> = Vec::new();
@@ -247,22 +294,23 @@ impl crate::ui::Layout {
             }
             pairs.sort_unstable();
             for (ka, kb) in pairs {
-                let (a, b) = (n.children[ka], n.children[kb]);
-                {
-                    let r = shown(a).intersect(&shown(b));
-                    if !area(&r) || out.len() >= MAX {
-                        continue;
+                for &a in &groups[ka] {
+                    for &b in &groups[kb] {
+                        let r = shown(a).intersect(&shown(b));
+                        if !area(&r) || !seen.insert((a.min(b), a.max(b))) {
+                            continue;
+                        }
+                        let (pa, pb) = (tree.path_of(a), tree.path_of(b));
+                        if declared(a, &pb) || declared(b, &pa) {
+                            continue;
+                        }
+                        out.push(Overlap {
+                            path: pb,
+                            other: pa,
+                            rect: r,
+                            in_flow: true,
+                        });
                     }
-                    let (pa, pb) = (tree.path_of(a), tree.path_of(b));
-                    if declared(a, &pb) || declared(b, &pa) {
-                        continue;
-                    }
-                    out.push(Overlap {
-                        path: pb,
-                        other: pa,
-                        rect: r,
-                        in_flow: true,
-                    });
                 }
             }
         }

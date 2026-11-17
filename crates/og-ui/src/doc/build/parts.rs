@@ -446,7 +446,7 @@ impl Ui {
         }
         props.motion = props.motion.or(intrinsic.motion);
         props.layout_motion = props.layout_motion.or(intrinsic.layout_motion);
-        props.overlaps = intrinsic.overlaps;
+        props.overlaps.extend(intrinsic.overlaps);
         // A widget's presence (a value bubble that fades in) is its own.
         props.enter = props.enter.or(intrinsic.enter);
         props.exit = props.exit.or(intrinsic.exit);
