@@ -33,8 +33,32 @@ fn cloud_density_at(p: vec3<f32>, h: f32, detail: u32) -> f32 {
   let c = frame.clouds;
   let hf = (h - c[0].z) / max(c[0].w, 1.0);
   if (hf <= 0.0 || hf >= 1.0) { return 0.0; }
-  // (Less the offset: the wind carries the shapes along it.)
-  return cloud_density_of(vec3<f32>(p.x + c[10].x, h, p.z + c[10].y) - c[1].xyz, hf, detail);
+  let at = cloud_noise_at(p, h);
+  return cloud_density_of(at, hf, detail, cloud_map(at));
+}
+
+// cloud_density_at with the weather map's value `map` (cloud_map) read
+// already: the map changes over kilometres, so a point a few hundred
+// metres off shares it.
+fn cloud_density_mapped(p: vec3<f32>, h: f32, detail: u32, map: f32) -> f32 {
+  let c = frame.clouds;
+  let hf = (h - c[0].z) / max(c[0].w, 1.0);
+  if (hf <= 0.0 || hf >= 1.0) { return 0.0; }
+  return cloud_density_of(cloud_noise_at(p, h), hf, detail, map);
+}
+
+// `p`'s point in the noise, less the offset: the wind carries the shapes
+// along it.
+fn cloud_noise_at(p: vec3<f32>, h: f32) -> vec3<f32> {
+  let c = frame.clouds;
+  return vec3<f32>(p.x + c[10].x, h, p.z + c[10].y) - c[1].xyz;
+}
+
+// The weather map over the noise's point `at`: where clouds stand and how
+// much (cloud_density_of).
+fn cloud_map(at: vec3<f32>) -> f32 {
+  let uvw = at / frame.clouds[1].w;
+  return textureSampleLevel(cloud_noise, cloud_sampler, vec3<f32>(uvw.x * 0.25, uvw.z * 0.25, 0.5), 0.0).a;
 }
 
 // How much of the weather map stands in cloud for a cover of `c0`: the
@@ -66,15 +90,15 @@ fn cloud_stand(c0: f32) -> f32 {
 // samples, which are wider than it (its most, which the strides read,
 // cast every shadow wider than its cloud).
 fn cloud_density_in(at: vec3<f32>, hf: f32, cheap: bool) -> f32 {
-  return cloud_density_of(at, hf, select(1u, 0u, cheap));
+  return cloud_density_of(at, hf, select(1u, 0u, cheap), cloud_map(at));
 }
 
-// `detail`: 0 at its mean, 1 the detail read, 2 at its most.
-fn cloud_density_of(at: vec3<f32>, hf: f32, detail: u32) -> f32 {
+// `detail`: 0 at its mean, 1 the detail read, 2 at its most; `map` the
+// weather map's value there (cloud_map).
+fn cloud_density_of(at: vec3<f32>, hf: f32, detail: u32, map: f32) -> f32 {
   let c = frame.clouds;
   let uvw = at / c[1].w;
   let c0 = c[0].x;
-  let map = textureSampleLevel(cloud_noise, cloud_sampler, vec3<f32>(uvw.x * 0.25, uvw.z * 0.25, 0.5), 0.0).a;
   // A broken sky's clouds stop short of a solid mass, whose top would be
   // the layer's own plane; an overcast is one.
   let cover = clamp((map - 1.0 + cloud_stand(c0)) * 2.5, 0.0, 0.8 + 0.2 * smoothstep(0.7, 1.0, c0));

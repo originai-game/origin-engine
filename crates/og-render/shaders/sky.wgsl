@@ -301,10 +301,16 @@ fn clouds_over(d: vec3<f32>, pixel: vec2<f32>, grey: vec4<f32>) -> vec4<f32> {
 // own, and a bright washed-out band of them at the horizon. Scale its
 // light before fog, just as the background/probe capture does.
 fn cloud_view_fog(color: vec3<f32>, d: vec3<f32>, distance: f32) -> vec3<f32> {
-  let lit = color * (1.0 - frame.view_up.w);
-  if (frame.fog_color.w < 0.5) { return lit; }
+  let f = cloud_fog(d, distance);
+  return mix(color * (1.0 - frame.view_up.w), f.rgb, f.a);
+}
+
+// cloud_view_fog's fog at `distance` along `d`: its colour, and how much
+// of it the cloud's light is mixed towards (none with the fog off).
+fn cloud_fog(d: vec3<f32>, distance: f32) -> vec4<f32> {
+  if (frame.fog_color.w < 0.5) { return vec4<f32>(0.0); }
   let f = fog_amount(frame.view_pos.xyz + d * min(distance, 5000.0));
-  return mix(lit, f.rgb, f.a * frame.fog_height.w);
+  return vec4<f32>(f.rgb, f.a * frame.fog_height.w);
 }
 
 // Cloud light seen through the air in front of it (Hillaire 2020 §5.5,
@@ -322,7 +328,11 @@ fn cloud_view_fog(color: vec3<f32>, d: vec3<f32>, distance: f32) -> vec3<f32> {
 // overhead as an overcast's horizon is.
 fn cloud_air(color: vec4<f32>, scattered: vec3<f32>, transmittance: f32, at: f32, d: vec3<f32>, to_light: vec3<f32>) -> vec4<f32> {
   let c = frame.clouds;
-  let air = air_path(d, to_light, sky_viewer_km(), at * 0.001, 12u);
+  // Its samples by the path's length, 4 to 12 over 100 km (Hillaire 2020's
+  // sample count for the sky's rays): a cloud some kilometres off has as
+  // little air to integrate in front of it as it varies over.
+  let steps = u32(round(mix(4.0, 12.0, clamp(at * 1e-5, 0.0, 1.0))));
+  let air = air_path(d, to_light, sky_viewer_km(), at * 0.001, steps);
   // The deck's base as cloud_deck lights it (the clear sky's low light,
   // a fiftieth of the sun), its sun the one above the air that lights the
   // clouds (cloud_sun), not the scene's light: that is the clouds' own
@@ -467,13 +477,15 @@ fn clouds_march(d: vec3<f32>, pixel: vec2<f32>) -> vec4<f32> {
   }
   let far = 60000.0;
   // The far layer over the whole path, the fallback past the march's
-  // reach; else what lies past the march's reach, behind the march. One
-  // loop (one copy of far_clouds' code: DXC inlines every call).
+  // reach (only where the march starts past half of it: nearer, the march
+  // is drawn alone); else what lies past the march's reach, behind the
+  // march. One loop (one copy of far_clouds' code: DXC inlines every call).
   let full = end;
   end = min(end, start + far * 0.5);
   var fallback = vec4<f32>(0.0);
   var behind_far = vec4<f32>(0.0);
   for (var j = 0u; j < 2u; j++) {
+    if (j == 0u && start <= far * 0.5) { continue; }
     let layer = far_clouds(color, d, select(start, end, j == 1u), full, o, to_light, light, physical, phase, sky_top, sky_side);
     if (j == 1u) { behind_far = layer; break; }
     fallback = cloud_layer_mix(layer, deck, deck_cover);
@@ -509,9 +521,10 @@ fn clouds_march(d: vec3<f32>, pixel: vec2<f32>) -> vec4<f32> {
   var fine = 0u;
   var strode = true;
   // The fine samples lit so far, the far light samples' optical depth
-  // (read every other one) and the fine step the cloud was entered with.
+  // (their nearer and farther pair's, read by turns) and the fine step the
+  // cloud was entered with.
   var lit = 0u;
-  var far_od = 0.0;
+  var far_od = vec2<f32>(0.0);
   var dt0 = stride;
   var transmittance = 1.0;
   var scattered = vec3<f32>(0.0);
@@ -523,6 +536,19 @@ fn clouds_march(d: vec3<f32>, pixel: vec2<f32>) -> vec4<f32> {
   // (frame coordinates in [5].xyz, made planet-centred about the viewer).
   let flash = c[5];
   let flash_at = vec3<f32>(flash.x - frame.view_pos.x, radius + flash.y + frame.origin.y, flash.z - frame.view_pos.z);
+  // What lights a sample and what lies in front of it change over
+  // kilometres, not over a fine step, so neither is worked out at every
+  // sample: the sun at the samples'
+  // height (cloud_sun) is read at the march's two ends at the layer's base
+  // and top and interpolated between, and the fog, the same past 5 km
+  // (cloud_fog), is read once for all the samples past there.
+  let span = max(end - start, 1.0);
+  var sun_at: array<vec3<f32>, 4>;
+  for (var k = 0u; k < 4u; k++) {
+    let up = normalize(o + d * select(start, end, k >= 2u));
+    sun_at[k] = cloud_sun(up * select(bottom, top, k % 2u == 1u), radius, to_light, light, physical);
+  }
+  let fog_far = cloud_fog(d, 5000.0);
   for (var i = 0u; i < steps * CLOUD_FINE; i++) {
     if (t >= end) { break; }
     let p = o + d * t;
@@ -543,35 +569,50 @@ fn clouds_march(d: vec3<f32>, pixel: vec2<f32>) -> vec4<f32> {
       strode = false;
       continue;
     }
-    let sigma = cloud_density(p, h, false);
+    // (The weather map's value here serves the light's two near samples too.)
+    let map = cloud_map(cloud_noise_at(p, h));
+    let sigma = cloud_density_mapped(p, h, 1u, map);
     fine -= 1u;
     if (sigma > 0.0) {
       fine = u32(stride / dt) + 1u;
-      let sun_here = cloud_sun(p, radius, to_light, light, physical);
+      let hf = clamp((h - c[0].z) / c[0].w, 0.0, 1.0);
+      let along = clamp((t - start) / span, 0.0, 1.0);
+      let sun_here = mix(mix(sun_at[0], sun_at[1], hf), mix(sun_at[2], sun_at[3], hf), along);
       // The column towards the light: six steps, the first two through the
       // eroded cloud, each sample somewhere in its own step by the pixel's
       // jitter (at the steps' middles a cloud's shade fell in terraces, one
       // to a step). The four far ones (90 m to 1.4 km off: the cloud's own
       // shadow, which changes over hundreds of metres, not over a fine
-      // step) are read every other fine sample and held between: they were
-      // half the march's cost.
+      // step; read at every sample they were half the march's cost) are
+      // read two at a time by turns, the steps of 4 and 16 times the first
+      // step's length, then of 8 and 32, each pair held for the next sample
+      // (all four at the first): every sample reads two, the nearer (within
+      // 350 m) with the weather map's value here.
       var od = 0.0;
       var reach = light_step;
       for (var k = 0u; k < 2u; k++) {
         let q = p + to_light * (reach * (1.0 + jitter) - light_step);
-        od += cloud_density(q, length(q) - radius, false) * reach;
+        od += cloud_density_mapped(q, length(q) - radius, 1u, map) * reach;
         reach *= 2.0;
       }
-      if (lit % 2u == 0u) {
-        far_od = 0.0;
-        for (var k = 2u; k < 6u; k++) {
-          let q = p + to_light * (reach * (1.0 + jitter) - light_step);
-          far_od += cloud_density(q, length(q) - radius, true) * reach;
-          reach *= 2.0;
-        }
+      let turn = lit % 2u;
+      if (lit == 0u) {
+        far_od = vec2<f32>(0.0);
+      } else if (turn == 0u) {
+        far_od.x = 0.0;
+      } else {
+        far_od.y = 0.0;
+      }
+      for (var k = 0u; k < select(1u, 2u, lit == 0u); k++) {
+        let pair = (turn + k) % 2u;
+        let near = reach * select(1.0, 2.0, pair == 1u);
+        let q = p + to_light * (near * (1.0 + jitter) - light_step);
+        let q_far = p + to_light * (near * 4.0 * (1.0 + jitter) - light_step);
+        let s = cloud_density_mapped(q, length(q) - radius, 0u, map) * near + cloud_density(q_far, length(q_far) - radius, true) * near * 4.0;
+        far_od += select(vec2<f32>(s, 0.0), vec2<f32>(0.0, s), pair == 1u);
       }
       lit += 1u;
-      od += far_od;
+      od += far_od.x + far_od.y;
       // Four octaves of multiple scattering (Wrenninge 2013; Hillaire,
       // "Physically Based Sky, Atmosphere and Cloud Rendering in
       // Frostbite", 2016), the later ones reaching deep into the shadowed
@@ -594,7 +635,6 @@ fn clouds_march(d: vec3<f32>, pixel: vec2<f32>) -> vec4<f32> {
         let dist2 = dot(to, to);
         sun += vec3<f32>(0.75, 0.82, 1.0) * flash.w * (0.25 / PI) * exp(-sqrt(dist2) * c[0].y * 0.03) / (1.0 + dist2 / 3.6e5);
       }
-      let hf = clamp((h - c[0].z) / c[0].w, 0.0, 1.0);
       // The sky's light reaches a thin edge whole and a dense core through
       // the cloud round it: the body's own shade, which a flat ambient
       // term lacks.
@@ -603,7 +643,9 @@ fn clouds_march(d: vec3<f32>, pixel: vec2<f32>) -> vec4<f32> {
       // Under a cover of cloud the light between them is the clouds' own,
       // grey, not the clear sky's blue.
       ambient = mix(ambient, vec3<f32>(luma(ambient)), c[0].x * 0.7);
-      let s = cloud_view_fog((sun + ambient) * c[2].rgb, d, t) * sigma;
+      var fog = fog_far;
+      if (t < 5000.0) { fog = cloud_fog(d, t); }
+      let s = mix((sun + ambient) * c[2].rgb * (1.0 - frame.view_up.w), fog.rgb, fog.a) * sigma;
       // The step's light as the step itself dims it (Hillaire 2016, the
       // energy-conserving integration).
       let seg = exp(-sigma * dt);
@@ -633,7 +675,10 @@ fn clouds_march(d: vec3<f32>, pixel: vec2<f32>) -> vec4<f32> {
   let range_fade = 1.0 - smoothstep(far * 0.5, far, start);
   var marched = vec4<f32>(behind_far.rgb * transmittance + scattered, behind_far.a * transmittance);
   if (physical) {
-    marched = cloud_air(behind_far, scattered, transmittance, depth / max(1.0 - transmittance, 1e-4), d, to_light);
+    // (A march that met no cloud lets its background through as it is.)
+    if (transmittance < 1.0) {
+      marched = cloud_air(behind_far, scattered, transmittance, depth / max(1.0 - transmittance, 1e-4), d, to_light);
+    }
   } else {
     // The gradient sky has no air to integrate: fade into it over 27 km.
     let fade = exp(-start / (far * 0.45));
