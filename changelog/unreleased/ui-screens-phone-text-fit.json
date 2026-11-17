@@ -1,0 +1,8 @@
+{
+  "fixed": [
+    {
+      "member": "ui screens",
+      "summary": "Calendar, CreatorTools and Credits fit a phone at 150% text: the calendar's seven columns share its header's width and shrink with it, and a marked day wears the style's marked cell (--cell-marked-shadow); CreatorTools' tabs wrap inside the screen; Credits' Back button has its own bar above the roll instead of overlapping the logo."
+    }
+  ]
+}

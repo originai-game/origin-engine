@@ -23,13 +23,17 @@
 </section>
 
 <style>
-#Calendar { display: flex; flex-direction: column; gap: var(--space-sm); width: var(--measure-sm); }
+/* As wide as its container up to a measure, inset from its edges, so the
+   seven columns share the header's width on a phone at any text size. */
+#Calendar { display: flex; flex-direction: column; gap: var(--space-sm); box-sizing: border-box; inline-size: 100%; max-inline-size: var(--measure-md); padding: var(--space-sm); }
 #Head { display: flex; align-items: center; }
 #Month { flex: 1; text-align: center; }
-#Days { display: grid; grid-template-columns: repeat(7, 1fr); gap: var(--space-xxs); }
+/* Columns divide the width evenly and shrink below their content. */
+#Days { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: var(--space-xxs); }
 .weekday { text-align: center; }
-.day { width: stretch; }
+.day { inline-size: stretch; min-inline-size: 0; }
 /* A day of the next or last month is quieter in its ink, not faded. */
 .day.outside { color: var(--ink-muted); }
-.day.marked { outline: var(--stroke-regular) solid var(--accent); outline-offset: calc(var(--stroke-regular) * -1); }
+/* A marked day wears the style's marked cell (its token, so a pack restyles it). */
+.day.marked { --cell-shadow: var(--cell-marked-shadow); }
 </style>
