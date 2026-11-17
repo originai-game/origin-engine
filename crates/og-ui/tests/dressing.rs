@@ -1173,6 +1173,119 @@ fn scroll_bars_and_heading_flourishes_have_independent_dressings() {
     }
 }
 
+/// Flourishes belong to single-line headings, not the first line of a
+/// wrapped title. Exercise both ornament paths under the shipped packs;
+/// only command presence matters, not a pack's colours or dimensions.
+#[test]
+fn heading_flourishes_only_draw_for_single_line_titles() {
+    let mut failures = Vec::new();
+    for (pack_name, css) in [
+        ("default", ""),
+        (
+            "scifi",
+            include_str!("../../../templates/styles/scifi/base.css"),
+        ),
+        (
+            "cartoon",
+            include_str!("../../../templates/styles/cartoon/base.css"),
+        ),
+    ] {
+        let directory = format!("styles/{pack_name}");
+        let pack = og_ui::style_pack::StylePack::parse(
+            &directory,
+            vec![(format!("{directory}/base.css"), css.into())],
+        )
+        .unwrap();
+        for align in ["start", "center"] {
+            for ornament in ["atlas", "small-css", "none"] {
+                for wrapped in [false, true] {
+                    let mut handles = Handles::default();
+                    let mut ui = ui_with_font(handles.test_font());
+                    ui.set_style_pack(&pack).unwrap();
+                    if ornament == "atlas" {
+                        let mut theme = *ui.theme();
+                        theme.art.atlas = Some(handles.texture());
+                        theme.art.flourish = Some(og_ui::style_file::Ornament {
+                            uv: [0.0, 0.0, 1.0, 1.0],
+                            w: 10.0,
+                            h: 10.0,
+                            ink: og_ui::style_file::Ink::Authored,
+                            offset: 0.0,
+                        });
+                        ui.set_theme(theme);
+                    }
+                    let (size, flourish) = if ornament == "small-css" {
+                        (
+                            16,
+                            "h2::part(flourish) { width: 12px; height: 5px; background: #ff00ff; }",
+                        )
+                    } else {
+                        (32, "")
+                    };
+                    let width = if wrapped { 60 } else { 600 };
+                    let d = mounted(
+                        ui,
+                        &format!(
+                            r#"<h2 id="Title">Go Go Go Go</h2>
+<style>
+#Title {{ width: {width}px; margin: 100px; font-size: {size}px; text-align: {align}; text-shadow: none; }}
+{flourish}
+</style>"#
+                        ),
+                        &[],
+                        Viewport::new(1000.0, 600.0),
+                    );
+                    let case = format!("{pack_name}/{align}/{ornament}/wrapped={wrapped}");
+                    let commands: Vec<_> = d.ui.frame().items.iter().map(|i| &i.cmd).collect();
+                    // Synthetic weight may emit two copies on one baseline.
+                    let mut baselines: Vec<_> = commands
+                        .iter()
+                        .filter_map(|cmd| {
+                            let cmd = match cmd {
+                                DrawCmd::StyledText { text, .. } => text.as_ref(),
+                                cmd => cmd,
+                            };
+                            match cmd {
+                                DrawCmd::Text { text, baseline, .. } if !text.is_empty() => {
+                                    Some(*baseline)
+                                }
+                                _ => None,
+                            }
+                        })
+                        .collect();
+                    baselines.sort_by(f32::total_cmp);
+                    baselines.dedup();
+                    let lines = baselines.len();
+                    assert!(
+                        if wrapped { lines > 1 } else { lines == 1 },
+                        "{case}: {lines} text lines"
+                    );
+                    let flourishes = commands
+                        .iter()
+                        .filter(|cmd| {
+                            matches!(cmd, DrawCmd::Image { .. })
+                                || cmd
+                                    .filled()
+                                    .is_some_and(|(_, c)| c == Srgba::rgb(255, 0, 255).linear())
+                        })
+                        .count();
+                    let expected = if wrapped || ornament == "none" {
+                        0
+                    } else if align == "center" {
+                        2
+                    } else {
+                        1
+                    };
+                    if flourishes != expected {
+                        failures.push(format!("{case}: expected {expected} flourishes, got {flourishes} ({lines} lines)"));
+                    }
+                }
+            }
+        }
+    }
+    assert!(failures.is_empty(), "{}", failures.join("\n"));
+}
+
 /// `fill none` on a control's state clears the control's own fill: a quiet
 /// button's disabled state, dressed `fill none`, draws no box (it drew the
 /// control fill, louder than the clear quiet button at rest), while a

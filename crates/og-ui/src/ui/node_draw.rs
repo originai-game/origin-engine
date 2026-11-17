@@ -812,8 +812,9 @@ impl Ui {
                                 }
                             }
                         }
-                        // Explicit CSS dimensions opt smaller headings in.
-                        if n.heading && k == 0 {
+                        // Only single-line headings have side ornaments;
+                        // explicit CSS dimensions still opt smaller ones in.
+                        if n.heading && n.layout.lines.len() == 1 {
                             // The style's ornament, else the part's own CSS box
                             // (a pack's flourish), each beside the line as
                             // ::before and ::after boxes are.
