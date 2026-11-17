@@ -36,3 +36,8 @@ variant, the variant's name:
 (`preview/preview.json`) into the catalogue's previews. Nothing here is a
 preset: the cook reads only `templates/looks/*.ogt`,
 `variants/`, `assets/` and `moods/`, and `pack-template.ts` ships only those.
+
+A preview is one still frame, so it cannot show a trait that lives in
+motion. cartoon-2d's rubber-hose variant names gate weave among its intended
+traits (the catalogue's `intended`): its preview does not show it, and the
+engine has no gate-weave effect, so the variant layer sets none.
