@@ -147,7 +147,10 @@ fn fs_msdf(in: OverlayOut) -> @location(0) vec4<f32> {
       // An outline (UiTextOutline): the band from `inside` within the ink
       // to `outside` beyond it, each bounded by the field's reach. Drawn
       // under the fill (3: outside) or over it (4: inside or centred).
-      let outer = min(in.effect2.y, reach);
+      // Weight already moves the edge out into that reach. Leave room
+      // for it and the antialias fringe, so a saturated exterior sample
+      // has zero coverage rather than tinting the entire glyph quad.
+      let outer = min(in.effect2.y, max(reach - weight, 0.0));
       let inner = min(in.effect2.x, reach);
       let d = select(distance, true_distance, distance < 0.0);
       var a = clamp(d + outer + 0.5, 0.0, 1.0);
