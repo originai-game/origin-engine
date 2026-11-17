@@ -1,0 +1,8 @@
+cooked/
+dist/
+og-out/
+.og/
+node_modules/
+# Pinned in assets.json and fetched by `bun ../../scripts/showcase-assets.ts ensure .` (docs/ci.md, The model bucket).
+assets/models/*.glb
+assets/terrain/*.png

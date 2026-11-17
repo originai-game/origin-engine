@@ -1,0 +1,50 @@
+type terrain
+version 1
+---
+# The valley: 8 km square, a sample every 4 m. Its heights and control maps
+# are written by tools/terrain.ts from src/layout.ts.
+heightmap "valley-height.png"
+height -32 2016
+size 8192 8192
+control "valley-control-a.png" "valley-control-b.png"
+tile 128
+# 0 meadow
+layer {
+  color 0.2 0.33 0.1
+  roughness 0.95
+}
+# 1 rock
+layer {
+  color 0.32 0.3 0.27
+  roughness 0.9
+}
+# 2 shore and lake bed
+layer {
+  color 0.42 0.37 0.27
+  roughness 0.85
+}
+# 3 snow
+layer {
+  color 0.9 0.92 0.95
+  roughness 0.6
+}
+# 4 forest floor
+layer {
+  color 0.1 0.15 0.06
+  roughness 1
+}
+# 5 path
+layer {
+  color 0.38 0.29 0.19
+  roughness 0.95
+}
+# 6 field
+layer {
+  color 0.62 0.5 0.2
+  roughness 0.95
+}
+# 7 alpine
+layer {
+  color 0.3 0.33 0.18
+  roughness 0.95
+}

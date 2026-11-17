@@ -1,0 +1,40 @@
+type model
+version 1
+---
+# The shepherd's crook: a peeled ash shaft a little taller than the boy,
+# bent over at the top. Its foot is at the origin.
+material "ash" {
+  color 0.33 0.2 0.1
+  roughness 0.75
+}
+part "shaft" {
+  material "ash"
+  position 0 0.79 0
+  cylinderGeometry {
+    radiusTop 0.014
+    radiusBottom 0.019
+    height 1.58
+    radialSegments 10
+    heightSegments 4
+  }
+}
+part "crook" {
+  material "ash"
+  position -0.075 1.58 0
+  torusGeometry {
+    radius 0.075
+    tube 0.014
+    radialSegments 8
+    tubularSegments 28
+    arc 4.3
+  }
+}
+part "tip" {
+  material "ash"
+  position -0.102 1.512 0
+  sphereGeometry {
+    radius 0.017
+    widthSegments 8
+    heightSegments 6
+  }
+}

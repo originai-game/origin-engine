@@ -1,0 +1,11 @@
+type model
+version 1
+---
+plant "pine-tall" {
+  kind pine
+  seed 9
+  trunk {
+    length 14
+    radius 0.26
+  }
+}

@@ -1,0 +1,130 @@
+{
+  "files": [
+    {
+      "file": "assets/models/boat.glb",
+      "bytes": 405560,
+      "sha256": "b6a22155363407f675e1faadc874bfabf7c53fb7e51a9606573c74c363a13b56",
+      "key": "showcase/first-light/b6a22155363407f675e1faadc874bfabf7c53fb7e51a9606573c74c363a13b56.glb",
+      "url": "https://pub-6dc5404e2ae14e8497e4cee219da67b6.r2.dev/showcase/first-light/b6a22155363407f675e1faadc874bfabf7c53fb7e51a9606573c74c363a13b56.glb"
+    },
+    {
+      "file": "assets/models/boulder.glb",
+      "bytes": 905916,
+      "sha256": "a52e0be518b15fa840034298f8258084a5d353801eefc680da5f11b9879813e0",
+      "key": "showcase/first-light/a52e0be518b15fa840034298f8258084a5d353801eefc680da5f11b9879813e0.glb",
+      "url": "https://pub-6dc5404e2ae14e8497e4cee219da67b6.r2.dev/showcase/first-light/a52e0be518b15fa840034298f8258084a5d353801eefc680da5f11b9879813e0.glb"
+    },
+    {
+      "file": "assets/models/dog.glb",
+      "bytes": 2608860,
+      "sha256": "eed64e1beb73684c133d853d535fda5a7bf9133246240a012ae774883a30cad9",
+      "key": "showcase/first-light/eed64e1beb73684c133d853d535fda5a7bf9133246240a012ae774883a30cad9.glb",
+      "url": "https://pub-6dc5404e2ae14e8497e4cee219da67b6.r2.dev/showcase/first-light/eed64e1beb73684c133d853d535fda5a7bf9133246240a012ae774883a30cad9.glb"
+    },
+    {
+      "file": "assets/models/gate.glb",
+      "bytes": 257968,
+      "sha256": "4ae9634f0dfb6088a4e42eb2f0a6e55523f2249ba41af0f38ade6d90df58b1ec",
+      "key": "showcase/first-light/4ae9634f0dfb6088a4e42eb2f0a6e55523f2249ba41af0f38ade6d90df58b1ec.glb",
+      "url": "https://pub-6dc5404e2ae14e8497e4cee219da67b6.r2.dev/showcase/first-light/4ae9634f0dfb6088a4e42eb2f0a6e55523f2249ba41af0f38ade6d90df58b1ec.glb"
+    },
+    {
+      "file": "assets/models/house-a.glb",
+      "bytes": 1491444,
+      "sha256": "6585941270cb58b9ef240a421ab7992cb7bfc71198af918d153a4da209eeb7e9",
+      "key": "showcase/first-light/6585941270cb58b9ef240a421ab7992cb7bfc71198af918d153a4da209eeb7e9.glb",
+      "url": "https://pub-6dc5404e2ae14e8497e4cee219da67b6.r2.dev/showcase/first-light/6585941270cb58b9ef240a421ab7992cb7bfc71198af918d153a4da209eeb7e9.glb"
+    },
+    {
+      "file": "assets/models/house-b.glb",
+      "bytes": 1003224,
+      "sha256": "ad876711af4dabf5be67f713c8c0b9c28720d3fce6b2b1873c086852de984957",
+      "key": "showcase/first-light/ad876711af4dabf5be67f713c8c0b9c28720d3fce6b2b1873c086852de984957.glb",
+      "url": "https://pub-6dc5404e2ae14e8497e4cee219da67b6.r2.dev/showcase/first-light/ad876711af4dabf5be67f713c8c0b9c28720d3fce6b2b1873c086852de984957.glb"
+    },
+    {
+      "file": "assets/models/house-c.glb",
+      "bytes": 1355880,
+      "sha256": "ede8eafe275c092b16ee22521a3e3746fbd256622076e6a9d8ded1b44e264033",
+      "key": "showcase/first-light/ede8eafe275c092b16ee22521a3e3746fbd256622076e6a9d8ded1b44e264033.glb",
+      "url": "https://pub-6dc5404e2ae14e8497e4cee219da67b6.r2.dev/showcase/first-light/ede8eafe275c092b16ee22521a3e3746fbd256622076e6a9d8ded1b44e264033.glb"
+    },
+    {
+      "file": "assets/models/jetty.glb",
+      "bytes": 807112,
+      "sha256": "65538590757d35fa3bd8f52604b751a9e9eca53efbc7e07bd255e17e36894b02",
+      "key": "showcase/first-light/65538590757d35fa3bd8f52604b751a9e9eca53efbc7e07bd255e17e36894b02.glb",
+      "url": "https://pub-6dc5404e2ae14e8497e4cee219da67b6.r2.dev/showcase/first-light/65538590757d35fa3bd8f52604b751a9e9eca53efbc7e07bd255e17e36894b02.glb"
+    },
+    {
+      "file": "assets/models/mushrooms.glb",
+      "bytes": 493452,
+      "sha256": "f8ed076f330ea157370fb9aa076ae3af8a6b34581c4503dc381fd04874fab048",
+      "key": "showcase/first-light/f8ed076f330ea157370fb9aa076ae3af8a6b34581c4503dc381fd04874fab048.glb",
+      "url": "https://pub-6dc5404e2ae14e8497e4cee219da67b6.r2.dev/showcase/first-light/f8ed076f330ea157370fb9aa076ae3af8a6b34581c4503dc381fd04874fab048.glb"
+    },
+    {
+      "file": "assets/models/sheep-graze.glb",
+      "bytes": 608564,
+      "sha256": "2285e0ceee450923de25e366cd86228b9218a907090deae97418d17485100d31",
+      "key": "showcase/first-light/2285e0ceee450923de25e366cd86228b9218a907090deae97418d17485100d31.glb",
+      "url": "https://pub-6dc5404e2ae14e8497e4cee219da67b6.r2.dev/showcase/first-light/2285e0ceee450923de25e366cd86228b9218a907090deae97418d17485100d31.glb"
+    },
+    {
+      "file": "assets/models/sheep-stand.glb",
+      "bytes": 611840,
+      "sha256": "956f4677830ffd3a07657420a639d445325d94f840b066ba9e6b30a9de667636",
+      "key": "showcase/first-light/956f4677830ffd3a07657420a639d445325d94f840b066ba9e6b30a9de667636.glb",
+      "url": "https://pub-6dc5404e2ae14e8497e4cee219da67b6.r2.dev/showcase/first-light/956f4677830ffd3a07657420a639d445325d94f840b066ba9e6b30a9de667636.glb"
+    },
+    {
+      "file": "assets/models/shepherd.glb",
+      "bytes": 2217844,
+      "sha256": "ea8bfd4089d2e6bcbc34e89f759e19766b48cd313cb760412e2979d587567f82",
+      "key": "showcase/first-light/ea8bfd4089d2e6bcbc34e89f759e19766b48cd313cb760412e2979d587567f82.glb",
+      "url": "https://pub-6dc5404e2ae14e8497e4cee219da67b6.r2.dev/showcase/first-light/ea8bfd4089d2e6bcbc34e89f759e19766b48cd313cb760412e2979d587567f82.glb"
+    },
+    {
+      "file": "assets/models/wall.glb",
+      "bytes": 404224,
+      "sha256": "23fa2253938f537ae2a1719d77332122a3940ec70f152b086611ab741db9f816",
+      "key": "showcase/first-light/23fa2253938f537ae2a1719d77332122a3940ec70f152b086611ab741db9f816.glb",
+      "url": "https://pub-6dc5404e2ae14e8497e4cee219da67b6.r2.dev/showcase/first-light/23fa2253938f537ae2a1719d77332122a3940ec70f152b086611ab741db9f816.glb"
+    },
+    {
+      "file": "assets/models/windmill-sails.glb",
+      "bytes": 523284,
+      "sha256": "dba86705a2d60d05eb5360ff23ab5e3fef772c786281893f3ae6146a62ca9446",
+      "key": "showcase/first-light/dba86705a2d60d05eb5360ff23ab5e3fef772c786281893f3ae6146a62ca9446.glb",
+      "url": "https://pub-6dc5404e2ae14e8497e4cee219da67b6.r2.dev/showcase/first-light/dba86705a2d60d05eb5360ff23ab5e3fef772c786281893f3ae6146a62ca9446.glb"
+    },
+    {
+      "file": "assets/models/windmill-tower.glb",
+      "bytes": 1456832,
+      "sha256": "3cc9e2a123165728f495b7681f162f5a735500db1af35f449df044313d6dbdb0",
+      "key": "showcase/first-light/3cc9e2a123165728f495b7681f162f5a735500db1af35f449df044313d6dbdb0.glb",
+      "url": "https://pub-6dc5404e2ae14e8497e4cee219da67b6.r2.dev/showcase/first-light/3cc9e2a123165728f495b7681f162f5a735500db1af35f449df044313d6dbdb0.glb"
+    },
+    {
+      "file": "assets/terrain/valley-control-a.png",
+      "bytes": 2658513,
+      "sha256": "a0658d920c32b840e618be69574fe4b424e13354b47c89f610b0c412fc897aef",
+      "key": "showcase/first-light/a0658d920c32b840e618be69574fe4b424e13354b47c89f610b0c412fc897aef.png",
+      "url": "https://pub-6dc5404e2ae14e8497e4cee219da67b6.r2.dev/showcase/first-light/a0658d920c32b840e618be69574fe4b424e13354b47c89f610b0c412fc897aef.png"
+    },
+    {
+      "file": "assets/terrain/valley-control-b.png",
+      "bytes": 2957694,
+      "sha256": "b1bf4034282668dd0febe4ca03d601ac40e2dc8763d7df589351d693be6b368f",
+      "key": "showcase/first-light/b1bf4034282668dd0febe4ca03d601ac40e2dc8763d7df589351d693be6b368f.png",
+      "url": "https://pub-6dc5404e2ae14e8497e4cee219da67b6.r2.dev/showcase/first-light/b1bf4034282668dd0febe4ca03d601ac40e2dc8763d7df589351d693be6b368f.png"
+    },
+    {
+      "file": "assets/terrain/valley-height.png",
+      "bytes": 8002261,
+      "sha256": "8a0560f76a1eeb01ba2a323624d4c504199254125d128c31e32007f18c35a4f6",
+      "key": "showcase/first-light/8a0560f76a1eeb01ba2a323624d4c504199254125d128c31e32007f18c35a4f6.png",
+      "url": "https://pub-6dc5404e2ae14e8497e4cee219da67b6.r2.dev/showcase/first-light/8a0560f76a1eeb01ba2a323624d4c504199254125d128c31e32007f18c35a4f6.png"
+    }
+  ]
+}
