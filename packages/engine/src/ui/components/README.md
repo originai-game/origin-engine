@@ -115,7 +115,7 @@ and their pending L4 review are recorded explicitly in the world sheet.
 | Card hand, piles, collection, deck, rewards, run map (`card/README.md`) | `card/face`, `card/hand`, `card/piles`, `card/collection`, `card/deck-list`, `card/reward`, `card/run-map` |
 | Puzzle goals, boosters, level path, summary (`puzzle/README.md`) | `puzzle/goals`, `puzzle/boosters`, `puzzle/level-path`, `puzzle/summary` |
 | Idle resources, generators, purchases, prestige, offline summary (`idle/README.md`) | `idle/resources`, `idle/generators`, `idle/purchases`, `idle/prestige`, `idle/offline` |
-| Rhythm song and difficulty selection, score HUD, judgement, results (`rhythm/README.md`) | `rhythm/song-select`, `rhythm/difficulty`, `rhythm/score-hud`, `rhythm/judgement`, `rhythm/results` |
+| Rhythm song and difficulty selection, score HUD, judgement, results (`rhythm/README.md`) | `rhythm/song-select`, `rhythm/difficulty`, `rhythm/song-plate`, `rhythm/song-progress`, `rhythm/chain`, `rhythm/score-hud`, `rhythm/gauge`, `rhythm/judgement`, `rhythm/timing`, `rhythm/lane-keys`, `rhythm/results` |
 | Arena roster, draft, versus, lobby, round HUD, scoreboard (`arena/README.md`) | `arena/roster`, `arena/draft`, `arena/versus`, `arena/lobby`, `arena/round-hud`, `arena/scoreboard` |
 | Arena ready checks | `arena/ready` |
 | Arena map votes | `arena/vote` |

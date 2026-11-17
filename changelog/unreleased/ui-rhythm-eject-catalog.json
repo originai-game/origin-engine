@@ -1,0 +1,8 @@
+{
+  "fixed": [
+    {
+      "member": "og ui eject",
+      "summary": "List and eject the six new rhythm HUD components through the built-in component catalogue."
+    }
+  ]
+}
