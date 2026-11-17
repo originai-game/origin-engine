@@ -17182,7 +17182,7 @@ export interface Fog {
    */
   maxOpacity: number;
   /**
-   * How much of the fog covers the sky (0: the sky stays clear).
+   * How much of the fog covers the sky and the clouds in it (0: they stay clear, however far the fog hides the land).
    *
    * @default 1
    * @range 0..1

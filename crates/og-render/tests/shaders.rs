@@ -251,7 +251,6 @@ fn a_mechanisms_shader_code_is_written_once() {
             &["media.wgsl"],
             &[
                 "fn fog_amount(",
-                "fn fog_amount_scaled(",
                 "fn apply_fog(",
                 "fn fog_keep(",
                 "fn underwater_light(",
