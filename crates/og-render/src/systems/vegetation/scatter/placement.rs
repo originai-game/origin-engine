@@ -114,7 +114,7 @@ impl Terrain {
         if p.x > half.x || p.y > half.y {
             return Some(None);
         }
-        let weight = self.weights_on(g, p)?[s.layer as usize];
+        let weight = self.drawn_weights(self.weights_on(g, p)?)[s.layer as usize];
         if unit(h3) >= weight || g.hole(p)? {
             return Some(None);
         }

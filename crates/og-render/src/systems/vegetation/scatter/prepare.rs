@@ -343,8 +343,10 @@ impl ScatterRenderer {
                         l.altitude[0],
                         l.altitude[1],
                         l.altitude_fade,
+                        l.height_contrast,
                     ]
                 })
+                .chain([t.height_blend])
                 .map(f32::to_bits)
                 .collect();
             // Its chunks' shared key: the last frame's while it is the same.

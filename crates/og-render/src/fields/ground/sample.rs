@@ -172,4 +172,29 @@ impl Terrain {
         }
         Some(w.map(|x| x / sum))
     }
+
+    /// `w` (summing to 1) as the renderer's height blend shows the layers
+    /// where their heights are alike (terrain_layers.wgsl `blend_weights`
+    /// with every height equal): with `height_blend` above 0 a layer shows
+    /// only within its window under the strongest (narrower with its
+    /// `height_contrast`), so a copy grows only where its layer is drawn,
+    /// not on rock whose control channel still holds a little grass.
+    pub(crate) fn drawn_weights(&self, w: [f32; MAX_TERRAIN_LAYERS]) -> [f32; MAX_TERRAIN_LAYERS] {
+        if self.height_blend <= 0.0 {
+            return w;
+        }
+        let top = w.iter().copied().fold(0.0f32, f32::max);
+        let mut out = [0.0f32; MAX_TERRAIN_LAYERS];
+        for (i, l) in self.layers.iter().take(MAX_TERRAIN_LAYERS).enumerate() {
+            if w[i] > 1e-3 {
+                let window = 0.15 * (1.0 - 0.9 * l.height_contrast.clamp(0.0, 1.0));
+                out[i] = (w[i] - (top - window)).max(0.0);
+            }
+        }
+        let sum: f32 = out.iter().sum();
+        if sum < 1e-4 {
+            return w;
+        }
+        out.map(|x| x / sum)
+    }
 }

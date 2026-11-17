@@ -176,23 +176,42 @@ fn place_band(x: f32, lo: f32, hi: f32, fade: f32) -> f32 {
   return smoothstep(lo - f, lo, x) * (1.0 - smoothstep(hi, hi + f, x));
 }
 
-// scatter.rs Terrain::weights_on: layer `layer`'s weight at `p`, its
-// control channel times its slope and altitude rules over every layer's;
-// the first layer where none shows.
+// sample.rs Terrain::weights_on, then drawn_weights: layer `layer`'s
+// weight at `p`, its control channel times its slope and altitude rules
+// over every layer's (the first layer where none shows), then as the
+// height blend shows it at equal heights: within its window under the
+// strongest.
 fn place_weight(p: vec2<f32>, n: vec3<f32>, altitude: f32, layer: u32) -> f32 {
   let count = min(u32(terrain.origin.w), 16u);
   let angle = degrees(acos(clamp(n.y, -1.0, 1.0)));
+  var w: array<f32, 16>;
   var sum = 0.0;
-  var mine = 0.0;
   for (var i = 0u; i < count; i++) {
     let l = terrain.layers[i];
-    let w = place_control(p, i) * place_band(angle, l.slope.x, l.slope.y, l.slope.z)
+    w[i] = place_control(p, i) * place_band(angle, l.slope.x, l.slope.y, l.slope.z)
       * place_band(altitude, l.altitude.x, l.altitude.y, l.altitude.z);
-    sum += w;
-    if (i == layer) { mine = w; }
+    sum += w[i];
   }
   if (sum < 1e-4) { return select(0.0, 1.0, layer == 0u); }
-  return mine / sum;
+  if (layer >= count) { return 0.0; }
+  if (terrain.params.x <= 0.0) { return w[layer] / sum; }
+  var top = 0.0;
+  for (var i = 0u; i < count; i++) {
+    w[i] = w[i] / sum;
+    top = max(top, w[i]);
+  }
+  var drawn = 0.0;
+  var mine = 0.0;
+  for (var i = 0u; i < count; i++) {
+    if (w[i] > 1e-3) {
+      let window = 0.15 * (1.0 - 0.9 * clamp(terrain.layers[i].look.y, 0.0, 1.0));
+      let d = max(w[i] - (top - window), 0.0);
+      drawn += d;
+      if (i == layer) { mine = d; }
+    }
+  }
+  if (drawn < 1e-4) { return w[layer]; }
+  return mine / drawn;
 }
 
 // scatter.rs `cluster_noise`: value noise of three octaves turned off the

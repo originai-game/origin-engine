@@ -180,6 +180,60 @@ fn avoid_water_keeps_copies_above_the_water() {
     assert!(placed.iter().all(|c| c.1.w_axis.y >= 2.0));
 }
 
+/// With a height blend a copy grows only where its layer is drawn: on a
+/// flat 40 m terrain whose control map fades grass into rock along x, the
+/// renderer shows grass (at even heights) only where its weight is within
+/// 0.15 of rock's, past 0.425, so copies on the grass layer stop there;
+/// without the blend they thin out all the way to bare rock.
+#[test]
+fn a_height_blend_keeps_copies_on_the_ground_drawn_as_their_layer() {
+    let mut data = TerrainData::flat(Vec2::splat(40.0), 41, 41);
+    let rgba: Vec<u8> = (0..41 * 41)
+        .flat_map(|i| {
+            let grass = ((i % 41) as f32 / 40.0 * 255.0).round() as u8;
+            [grass, 255 - grass, 0, 0]
+        })
+        .collect();
+    data.control = Some(crate::TerrainControl {
+        width: 41,
+        height: 41,
+        rgba: rgba.into(),
+    });
+    let mut scene = crate::RenderScene::new();
+    let h = scene.add_terrain(data.clone());
+    let s = TerrainScatter {
+        density: 8.0,
+        distance: 60.0,
+        ..Default::default()
+    };
+    let grass_under = |t: &Terrain| -> Vec<f32> {
+        t.scatter(&data, &s, Vec3::ZERO)
+            .iter()
+            .map(|(_, m)| t.layer_weights(&data, horizontal(m))[0])
+            .collect()
+    };
+    let linear = Terrain {
+        layers: vec![Default::default(); 2],
+        ..Terrain::new(h)
+    };
+    let blended = Terrain {
+        height_blend: 0.5,
+        ..linear.clone()
+    };
+    let free = grass_under(&linear);
+    assert!(
+        free.iter().filter(|&&g| g < 0.3).count() > 200,
+        "copies on rock-heavy ground without the blend"
+    );
+    let drawn = grass_under(&blended);
+    let lowest = drawn.iter().copied().fold(1.0f32, f32::min);
+    assert!(lowest > 0.42, "a copy where grass weighs {lowest}");
+    assert!(
+        drawn.iter().filter(|&&g| g > 0.6).count() > free.iter().filter(|&&g| g > 0.6).count(),
+        "the grass the blend draws whole grows every copy"
+    );
+}
+
 /// A noise threshold gathers the copies into patches: at 0.5 it keeps
 /// part of the field, the same part every time, and a copy's
 /// neighbours are kept far more often than the field's average.
