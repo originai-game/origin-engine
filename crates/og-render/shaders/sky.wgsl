@@ -510,6 +510,11 @@ fn clouds_march(d: vec3<f32>, pixel: vec2<f32>) -> vec4<f32> {
     }
     t += dt;
   }
+  // The march stops with a hundredth of what is behind the cloud left, and
+  // an opaque cloud leaves none: the sun's disc, some thousand times the
+  // sky beside it, drew through a cloud that hid it as a circle on the
+  // cloud. What the march stops at is opaque.
+  transmittance = max(transmittance - 0.01, 0.0) / 0.99;
   // The air between the viewer and the clouds blends them into the sky (or, under an overcast, into the deck's own
   // mean colour along this ray, the fallback's where the ray found little cloud).
   // Fog controls atmospheric extinction, not the finite march's reach.
