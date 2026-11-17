@@ -1110,7 +1110,9 @@ All off by default: a scene that sets none of them draws no pass for them.
   its pipelines and textures, so regenerating it for a day-night step
   allocates nothing). `day_night(hours, tilt, azimuth)` gives the sun or
   moon light, the sky, the ambient and a fog tint as a pure function of
-  the clock. The physical sky and clouds: [Sky and weather](#sky-and-weather).
+  the clock. From sunset to sunrise the ambient is raised as the eye
+  adapts (`DayNightLook::adaptation`), so the land's shade holds at the
+  sunset's and a night reads under its moon instead of falling to black. The physical sky and clouds: [Sky and weather](#sky-and-weather).
 - **Weather** (`weather(kind, …)`, `src/weather.rs`): rain, snow, dust and
   mist as an emitter placed over the camera (`WeatherLook::origin`), a fog
   and a dimming of the light.

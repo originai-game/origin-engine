@@ -352,7 +352,8 @@ pub struct DayNightLook {
     /// The image-based light's intensity.
     pub ambient: f32,
     /// The part of `ambient` that is the eye's adaptation to the twilight's
-    /// shade, not the sky's light (`RenderScene::adaptation`): 1 by day.
+    /// and the night's shade, not the sky's light
+    /// (`RenderScene::adaptation`): 1 by day.
     pub adaptation: f32,
     /// A fog colour that matches the horizon.
     pub fog_color: Vec3,
@@ -389,6 +390,8 @@ impl DayNightLook {
             let k = (through.dot(Vec3::new(0.2126, 0.7152, 0.0722))).max(1e-4);
             self.light_color /= k;
             self.light_intensity = 3.0 * k;
+        } else {
+            self.light_intensity *= PHYSICAL_MOONLIGHT / MOONLIGHT;
         }
         // The image-based light at full strength by day, and up to four
         // times it as the sun sets: the eye's adaptation to the shade (as
@@ -478,6 +481,28 @@ fn ramp(e0: f32, e1: f32, x: f32) -> f32 {
     t * t * (3.0 - 2.0 * t)
 }
 
+/// The moon's light at full night, a third of the noon sun's: the night's
+/// key light, so moonlit stone and paths stand brighter than the sky
+/// behind them.
+const MOONLIGHT: f32 = 1.0;
+
+/// The moon's light under a physical sky ([`DayNightLook::with_atmosphere`]),
+/// whose nights are lit in the air's own scale and read through the
+/// camera's exposure.
+const PHYSICAL_MOONLIGHT: f32 = 0.45;
+
+/// The least light the gradient sky gives the land ([`sky_luminance`] times
+/// the image-based light's strength): about what it gives at sunset, a
+/// fifth of noon's. A night's shade holds here, in the night sky's blue,
+/// so stone out of the moon's light still reads.
+const SHADE_FLOOR: f32 = 0.12;
+
+/// The mean luminance of the gradient sky `look` draws, between its
+/// horizon and its zenith: what its image-based light gives the land.
+fn sky_luminance(look: &SkyLook) -> f32 {
+    ((look.zenith + look.horizon) * 0.5).dot(Vec3::new(0.2126, 0.7152, 0.0722)) * look.brightness
+}
+
 /// The look of `hours` (0..24; 6 sunrise, 12 noon, 18 sunset) for a sun
 /// that rises at the heading `azimuth` (degrees about +y from +z towards
 /// +x, `og_core::facing`'s: 90 rises in +x) and whose path is tilted `tilt`
@@ -533,7 +558,7 @@ pub fn day_night(hours: f32, tilt: f32, azimuth: f32) -> DayNightLook {
         (
             -sun,
             Vec3::new(0.55, 0.65, 1.0),
-            0.45 * ramp(0.5, 1.0, night),
+            MOONLIGHT * ramp(0.5, 1.0, night),
         )
     } else {
         (sun, sun_color, 3.0 * golden * (0.35 + 0.65 * day))
@@ -544,12 +569,22 @@ pub fn day_night(hours: f32, tilt: f32, azimuth: f32) -> DayNightLook {
         ground,
         sun_size: 1.8,
         sun_intensity: 40.0 * golden,
-        glow: 0.6 + 0.6 * (1.0 - day) * golden,
+        // Gone with the twilight: the glow is drawn about the sun wherever
+        // it is, and a sun deep under the horizon would shine up through
+        // the ground into the image-based light.
+        glow: (0.6 + 0.6 * (1.0 - day) * golden) * (1.0 - night),
         glow_power: 24.0 - 14.0 * (1.0 - day),
         stars: night,
         brightness: 1.1,
         ..SkyLook::DEFAULT
     };
+    // The sky's light on the land: the image-based light's strength by the
+    // clock, times the sky it is made from. From sunset on it would fall to
+    // a few thousandths of noon's, which the tone curve draws as black, so
+    // the eye adapts and holds it at the floor.
+    let sky_light = 0.12 + 0.88 * (0.25 * golden + 0.75 * day);
+    let shade = sky_light * sky_luminance(&sky);
+    let adaptation = (SHADE_FLOOR / shade.max(1e-6)).max(1.0);
     DayNightLook {
         sun_direction: sun,
         light_direction,
@@ -557,8 +592,8 @@ pub fn day_night(hours: f32, tilt: f32, azimuth: f32) -> DayNightLook {
         light_intensity,
         sky,
         sun_color,
-        ambient: 0.12 + 0.88 * (0.25 * golden + 0.75 * day),
-        adaptation: 1.0,
+        ambient: sky_light * adaptation,
+        adaptation,
         fog_color: horizon * (0.8 + 0.2 * day),
         fog_sun: None,
     }
@@ -646,6 +681,38 @@ mod tests {
         );
     }
 
+    /// A night under the gradient sky reads: the land's shade never falls
+    /// below the floor from sunset to sunrise (it fell to a fiftieth of the
+    /// sunset's), the lift is the look's adaptation and is none by day, the
+    /// moon is the night's key light, a third of the noon sun's, and a sun
+    /// deep under the horizon leaves no glow to light the land from below.
+    #[test]
+    fn the_gradient_night_keeps_the_land_in_shade_not_in_black() {
+        let shade = |look: &DayNightLook| look.ambient * sky_luminance(&look.sky);
+        for h in [18.0, 18.5, 19.0, 20.0, 22.0, 0.0, 3.0, 5.5, 6.0] {
+            let look = day_night(h, 25.0, 90.0);
+            assert!(
+                shade(&look) >= SHADE_FLOOR * 0.999,
+                "{h} h: {}",
+                shade(&look)
+            );
+            assert!(shade(&look) <= SHADE_FLOOR * 1.2, "{h} h: {}", shade(&look));
+        }
+        for h in [8.0, 12.0, 16.0] {
+            let look = day_night(h, 25.0, 90.0);
+            assert_eq!(look.adaptation, 1.0, "{h} h");
+        }
+        let (noon, midnight) = (day_night(12.0, 25.0, 90.0), day_night(0.0, 25.0, 90.0));
+        assert_eq!(noon.ambient, 1.0);
+        assert!(midnight.adaptation > 10.0, "{}", midnight.adaptation);
+        assert_eq!(midnight.light_direction, -midnight.sun_direction);
+        let moon = midnight.light_intensity / noon.light_intensity;
+        assert!((0.25..=0.4).contains(&moon), "{moon}");
+        assert_eq!(midnight.sky.glow, 0.0);
+        // Twilight keeps the glow on the horizon the sun set behind.
+        assert!(day_night(18.2, 25.0, 90.0).sky.glow > 0.5);
+    }
+
     /// The day-night look under the physical sky: the sun's light is the
     /// air's colour (warm and dimmer at 17:30 than at noon, none once it has
     /// set, the moon taking over later as before), the sky is drawn
@@ -662,6 +729,7 @@ mod tests {
         assert!(dusk.light_intensity < 0.5 * noon.light_intensity);
         assert!(set.light_intensity < 1e-3, "{}", set.light_intensity);
         assert_eq!(at(23.0).light_direction, -at(23.0).sun_direction);
+        assert_eq!(at(23.0).light_intensity, PHYSICAL_MOONLIGHT);
         assert!(lum(dusk.fog_color) < 0.5 * lum(noon.fog_color));
         assert!(noon.fog_color.z > noon.fog_color.x, "{}", noon.fog_color);
     }

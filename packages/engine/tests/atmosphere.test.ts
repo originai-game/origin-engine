@@ -79,11 +79,11 @@ test("get answers the sun og.DayNight drives as it is drawn, and og.Time whole",
   // og.Time as a system reads it: the clock, its rate and the time scale.
   expect([time!.rate, time!.scale, time!.hitStopTicks]).toEqual([60, 1, 0]);
   expect(time!.scaledDt).toBeCloseTo(1 / 60, 6);
-  // Midnight: the moon, cold and dim, opposite the sun.
+  // Midnight: the moon, cold and dimmer than half the noon sun, opposite the sun.
   // (a script's times count from when it is scheduled)
   expect(engine.advance(59).ok).toBeTrue();
   const [night] = read("0:set:og.DayNight.start=0;0:get:sun.og.DirectionalLight");
   expect((night!.toLight as number[])[1]).toBeGreaterThan(0);
-  expect(night!.intensity as number).toBeLessThan(0.5);
+  expect(night!.intensity as number).toBeLessThan(0.5 * (sun!.intensity as number));
   expect((night!.color as number[])[2]).toBeGreaterThan((night!.color as number[])[0]!);
 });

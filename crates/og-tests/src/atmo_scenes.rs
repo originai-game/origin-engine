@@ -151,6 +151,7 @@ pub fn day_night_scene(hours: f32, fog: bool) -> RenderScene {
         },
         ..Environment::default()
     };
+    scene.atmosphere.adaptation = look.adaptation;
     if fog {
         scene.atmosphere.fog = Some(Fog {
             color: look.fog_color,
