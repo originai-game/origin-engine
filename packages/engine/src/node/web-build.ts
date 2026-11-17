@@ -50,6 +50,7 @@ import { dirname, isAbsolute, join, relative, resolve, sep } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { availableParallelism } from "node:os";
 import { bundleGame, ENGINE_ROOT } from "./build.ts";
+import { frameHost } from "./frame-hosts.ts";
 import { unhashed } from "../sourcemap.ts";
 import { bootMark, engineMark, motionSubset, shellTokens, SHELL_MOTIONS, BRAND_DIR } from "../../shell/brand.ts";
 
@@ -908,7 +909,14 @@ export async function webBuild(project: string, entry: string, out: string, publ
   // directory, so a game without them downloads none of their code.
   const variant: BuildManifest["variant"] = publish ? settings.profile : "full";
   const frames = (settings.frames ?? []).length > 0 ? "-frames" : "";
-  const engineDir = join(ENGINE_ROOT, "dist", variant === "2d" ? `web-publish-2d${frames}` : publish ? `web-publish${frames}` : "web");
+  let engineDir = join(ENGINE_ROOT, "dist", variant === "2d" ? `web-publish-2d${frames}` : publish ? `web-publish${frames}` : "web");
+  if (publish && frames) {
+    try {
+      engineDir = await frameHost(ENGINE_ROOT, variant === "2d" ? "web-publish-2d-frames" : "web-publish-frames");
+    } catch (error) {
+      return fail(String(error));
+    }
+  }
   for (const f of ["origin-engine.js", "origin-engine_bg.wasm"]) {
     if (!existsSync(join(engineDir, f))) return fail(`${join(engineDir, f)} is missing: build the web host with \`bun run build\` in packages/engine (scripts/build.sh)${variant === "2d" ? "; a 2d game ships the 2D publish variant, dist/web-publish-2d" : ""}${frames && publish ? "; a game that lists `frames` ships the variant with remote <iframe>s" : ""}`);
   }

@@ -190,7 +190,7 @@ export function packArchive(dir: string, name: string): Uint8Array {
  * files and directories, every path `<name>/...` with no empty, `.` or `..`
  * component, no absolute path or backslash, no duplicate, within the caps.
  */
-export function unpackArchive(gz: Uint8Array, name: string, into: string): void {
+export function unpackArchive(gz: Uint8Array, name: string, into: string, required: readonly string[] = ["extension.json"]): void {
   let tar: Uint8Array;
   try {
     tar = gunzipSync(gz, { maxOutputLength: MAX_UNPACKED + MAX_ENTRIES * 1024 });
@@ -245,7 +245,7 @@ export function unpackArchive(gz: Uint8Array, name: string, into: string): void 
     }
     at += size + ((512 - (size % 512)) % 512);
   }
-  if (!existsSync(join(into, name, "extension.json"))) fail(`${archivePath(name)} has no ${name}/extension.json`);
+  for (const file of required) if (!existsSync(join(into, name, file))) fail(`${archivePath(name)} has no ${name}/${file}`);
 }
 
 // ---------------------------------------------------------------- the download

@@ -151,7 +151,7 @@ function install(step: Step, work: string): string {
   const build = (JSON.parse(readFileSync(join(dist, "origin-engine.json"), "utf8")) as { build: { version: string; target: string; triple: string; og: string } }).build;
   if (build.version !== VERSION || build.target !== PLATFORM || build.triple !== TRIPLE) step.fail(`origin-engine.json's build record: ${JSON.stringify(build)}`);
   if (sha256(join(dist, "bin", windows ? "og.exe" : "og")) !== build.og) step.fail("bin/og is not the build record's og");
-  for (const f of ["overlay/project.ogt", "create/template/project.ogt", "create/bin/create.ts", "engine/dist/web-publish/origin-engine_bg.wasm", "engine/dist/web-publish-2d/origin-engine_bg.wasm", "engine/dist/web-publish/origin-engine-lanes_bg.wasm", "engine/dist/web-publish-frames/origin-engine_bg.wasm", "engine/dist/web-publish-2d-frames/origin-engine_bg.wasm", "engine/shell", "engine/types/index.d.ts", "engine/schema/api.schema.json", `engine/native/origin-engine.${PLATFORM}.node`]) {
+  for (const f of ["overlay/project.ogt", "create/template/project.ogt", "create/bin/create.ts", "engine/dist/web-publish/origin-engine_bg.wasm", "engine/dist/web-publish-2d/origin-engine_bg.wasm", "engine/dist/web-publish/origin-engine-lanes_bg.wasm", "engine/dist/frame-hosts.json", "engine/shell", "engine/types/index.d.ts", "engine/schema/api.schema.json", `engine/native/origin-engine.${PLATFORM}.node`]) {
     if (!existsSync(join(dist, f))) step.fail(`the dist has no ${f}`);
   }
   const list = run(step, [...ogCmd, "engine", "list"], work);

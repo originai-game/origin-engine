@@ -47,6 +47,23 @@ in this document's version release notes. Build facts are computed after
 removing names. A future public symbols endpoint requires the platform's
 download filename allowlist to accept optional artifacts first.
 
+**Optional engine data.** The installed `engine/motion.json` pins motion
+weights, fetched only by cooks that use motion. The installed
+`engine/dist/frame-hosts.json` pins the two remote-frame publish archives,
+each holding its single-threaded and lanes modules. A publish build whose
+project settings declare `frames` fetches the matching profile automatically.
+Both caches live under `ORIGIN_ENGINE_CACHE` (default
+`~/.cache/origin-engine`), verify SHA256 before use, never modify the engine
+install, and report missing data offline as an error. A verified cache
+works offline. A game with neither feature downloads neither payload.
+
+Pack writes remote-frame archives under `dist/pack/frames/<sha256>.tar.gz`;
+publish them to the existing public model bucket at
+`engine/frames/<sha256>.tar.gz` and verify their hashes before releasing
+the engine that pins them. They are content-addressed, not target install
+manifest entries. Retain the matching named wasm modules in private symbols
+storage even for hosts omitted from default installs.
+
 **The dist** is one archive's root, assembled by `scripts/release-dist.ts`
 and run unpacked, with no npm and no `bun
 install`: `origin-engine.json` with the `build` record, `bin/og`,

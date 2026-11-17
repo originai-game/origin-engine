@@ -7,18 +7,80 @@
 // Fails when a frames feature leaks into the plain publish or lanes
 // modules (scripts/wasm-crates.txt) or og build picks the wrong directory.
 import { expect, test } from "bun:test";
-import { existsSync, readFileSync } from "node:fs";
+import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { settingsOf, webBuild } from "../src/node/web-build.ts";
 import { cookProject } from "./support/og-bin.ts";
 import { slow } from "./support/slow.ts";
+import { FRAME_HOSTS, packFrameHosts } from "../src/node/frame-hosts.ts";
+
+declare const Bun: {
+  serve(options: { port: number; fetch(request: Request): Response }): { port: number; stop(close: boolean): void };
+  spawn(command: string[], options: { env: Record<string, string | undefined>; stdout: "pipe"; stderr: "pipe" }): {
+    exited: Promise<number>; stdout: ReadableStream<Uint8Array>; stderr: ReadableStream<Uint8Array>;
+  };
+};
 
 const pkg = join(dirname(fileURLToPath(import.meta.url)), "..");
 const repo = join(pkg, "..", "..");
 // The gate's dev wasm has no publish modules (OG_WASM_VARIANTS=dev); the
 // full lane and release packing build them.
 const NO_FRAMES_WASM = !existsSync(join(pkg, "dist", "web-publish-frames", "origin-engine_bg.wasm"));
+
+test.skipIf(NO_FRAMES_WASM)("a frames project fetches its pinned host automatically, builds offline from cache, and refuses corrupt bytes", async () => {
+  const root = mkdtempSync(join(tmpdir(), "og-frame-install-"));
+  const engine = join(root, "engine");
+  const project = join(root, "game");
+  let requests = 0;
+  let corrupt = false;
+  const server = Bun.serve({ port: 0, fetch(request) {
+    requests++;
+    const file = join(root, "packs", new URL(request.url).pathname.slice(1));
+    const bytes = new Uint8Array(readFileSync(file));
+    if (corrupt) bytes[bytes.length - 1] ^= 1;
+    return new Response(bytes);
+  } });
+  try {
+    mkdirSync(engine, { recursive: true });
+    for (const entry of ["src", "shell", "types", "schema", "vendor", "package.json"]) cpSync(join(pkg, entry), join(engine, entry), { recursive: true });
+    for (const host of FRAME_HOSTS) cpSync(join(pkg, "dist", host), join(engine, "dist", host), { recursive: true });
+    packFrameHosts(join(engine, "dist"), join(root, "packs"), `http://127.0.0.1:${server.port}`);
+    for (const host of FRAME_HOSTS) rmSync(join(engine, "dist", host), { recursive: true });
+    cpSync(join(repo, "tests/fixtures/browser-host"), project, { recursive: true });
+    cookProject(project, repo);
+    const runner = join(root, "build.ts");
+    writeFileSync(runner, `import {webBuild,settingsOf} from ${JSON.stringify(join(engine, "src/node/web-build.ts"))};
+const result=await webBuild(${JSON.stringify(project)},${JSON.stringify(join(project, "src/main.ts"))},${JSON.stringify(join(root, "out"))},true,{...settingsOf(${JSON.stringify(project)}),frames:["https://events.example.com"]});
+console.log(JSON.stringify(result)); process.exit(result.ok ? 0 : 1);`);
+    const run = async (cache: string) => {
+      const child = Bun.spawn(["bun", runner], { env: { ...process.env, ORIGIN_ENGINE_CACHE: cache }, stdout: "pipe", stderr: "pipe" });
+      const [code, stdout, stderr] = await Promise.all([child.exited, new Response(child.stdout).text(), new Response(child.stderr).text()]);
+      return { code, stdout, stderr };
+    };
+    const cache = join(root, "cache");
+    const first = await run(cache);
+    expect(first.code, first.stderr + first.stdout).toBe(0);
+    expect(requests).toBe(1);
+    const manifest = JSON.parse(readFileSync(join(root, "out/og-build.json"), "utf8"));
+    expect(manifest.frames).toEqual(["https://events.example.com"]);
+    expect(readFileSync(join(root, "out", manifest.wasm))).toEqual(readFileSync(join(pkg, "dist", manifest.variant === "2d" ? "web-publish-2d-frames" : "web-publish-frames", "origin-engine_bg.wasm")));
+    corrupt = true;
+    const bad = await run(join(root, "empty-cache"));
+    expect(bad.code).toBe(1);
+    expect(bad.stdout).toContain("hash or length differs");
+    server.stop(true);
+    const cached = await run(cache);
+    expect(cached.code, cached.stderr + cached.stdout).toBe(0);
+    const offline = await run(join(root, "offline-cache"));
+    expect(offline.code).toBe(1);
+    expect(offline.stdout).toContain("offline or download refused");
+  } finally {
+    server.stop(true);
+    rmSync(root, { recursive: true, force: true });
+  }
+}, slow(180_000));
 
 test.skipIf(NO_FRAMES_WASM)("a game without `frames` ships an engine without remote <iframe>s, and one that lists them an engine with them", async () => {
   const project = join(repo, "tests", "fixtures", "browser-host");

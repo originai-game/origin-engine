@@ -151,6 +151,9 @@ tar -czf "$out/origingame-engine-wasm-symbols-$version.tgz" -C "$out/stage" wasm
 # dist/build-facts.json, so an install's first og build does not spend a
 # core-minute per module on it (docs/web-export.md §The og commands).
 bun "$here/src/node/web-build.ts" --engine-facts
+# The signed package carries only hashes, not the remote-frame wasm twins.
+# Upload these content-addressed optional packs before publishing the release.
+bun -e 'const {packFrameHosts} = await import(process.argv[1]); packFrameHosts(process.argv[2], process.argv[3])' "$here/src/node/frame-hosts.ts" "$here/dist" "$out/frames"
 # The main package: its files list leaves native/ and the test pages out.
 (cd "$here" && bun pm pack --destination "$out" --quiet --ignore-scripts >/dev/null)
 rm -rf "$out/stage"
