@@ -1682,18 +1682,22 @@ pub fn build(name: &str) -> Result<GfxScene, String> {
                 crate::terrain_scenes::displaced_scene(crate::terrain_scenes::DISPLACED_RELIEF);
             Ok(())
         },
-        // T3: a 300 m cliff the height field cannot make, drawn by a block
-        // of rock stamped over the step (og.TerrainStamp), its ground
-        // carved under it: grass on its top, rock on its face, its foot
-        // meeting the valley's grass with a hard edge (blend 0).
+        // T3: a 160 m cliff the height field cannot make: a wall of rock
+        // and crags stamped over the step (og.TerrainStamp), the ground
+        // carved under it, seen whole from the valley's meadow: rock on
+        // its faces and under its overhangs, a broken skyline over the
+        // pines, each stamp meeting the ground with a hard edge (blend 0).
         "terrain-cliff" => |g, _| {
-            g.scene = crate::terrain_scenes::cliff_scene(0.0);
+            g.scene = crate::terrain_scenes::cliff_scene(0.0, "wall");
+            as_played(g);
             Ok(())
         },
-        // T3: the same cliff with blend 1: the face's lowest metre takes the
-        // ground's grass and normal, so it meets the valley with no seam.
+        // T3: the same cliff with blend 1, from its foot: the lowest metre
+        // of the wall and of the blocks fallen from it takes the meadow's
+        // grass and normal, so rock meets ground with no seam.
         "terrain-cliff-blend" => |g, _| {
-            g.scene = crate::terrain_scenes::cliff_scene(1.0);
+            g.scene = crate::terrain_scenes::cliff_scene(1.0, "foot");
+            as_played(g);
             Ok(())
         },
         // R6: a ball red on its +x half and blue on its -x half, 2 m

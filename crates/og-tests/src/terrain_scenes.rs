@@ -1767,26 +1767,356 @@ pub fn horizon_scene(horizon: bool) -> RenderScene {
 }
 
 /// `cliff_scene`'s cliff: its height, the rock's half-width along x (its
-/// face towards +x at x = CLIFF_ROCK) and half-length along z.
-pub const CLIFF_HEIGHT: f32 = 300.0;
+/// face stands out from x = CLIFF_ROCK towards +x by up to
+/// [`CLIFF_RELIEF`]) and half-length along z (the terrain's).
+pub const CLIFF_HEIGHT: f32 = 160.0;
 pub const CLIFF_ROCK: f32 = 12.0;
-pub const CLIFF_LENGTH: f32 = 60.0;
-/// Where `cliff_scene`'s camera stands and what it looks at: the foot of
-/// the rock's face, where the stamp meets the valley's ground.
-pub const CLIFF_EYE: Vec3 = Vec3::new(CLIFF_ROCK + 22.0, 5.0, 9.0);
-pub const CLIFF_FOOT: Vec3 = Vec3::new(CLIFF_ROCK, 0.6, 0.0);
+pub const CLIFF_LENGTH: f32 = 512.0;
+pub const CLIFF_RELIEF: f32 = 30.0;
 
-/// T3: a 300 m cliff: a plateau for x < 0 over a valley at 0, one sample
-/// apart on a 1 m grid (a height field's sawtooth wall), with a block of
-/// rock 24 m across standing over the step as a terrain stamp, its foot
-/// at the valley floor and its top 2 m above the plateau. The ground
-/// under the block is carved as og.terrain.stamp carves it (to the
-/// block's underside less 0.25 m, on its edge to the underside). Two
-/// layers: grass up to 40° of slope, rock past it, biplanar past 45°.
-/// The stamp is shaded by those layers by its own normal (rock on its
-/// face, grass on its top) and, within
-/// `blend` metres above the ground it meets, takes the ground's look.
-pub fn cliff_scene(blend: f32) -> RenderScene {
+/// How far `cliff_rock`'s face stands out of its block at height `y` and
+/// `z` along it (4 to [`CLIFF_RELIEF`] m): the wall's line weaves in bays
+/// and headlands, buttresses stand out between gullies and thin out up
+/// the wall, and the rock breaks into blocks along joints 16 m apart.
+fn cliff_relief(y: f32, z: f32) -> f32 {
+    let bay = 10.0 * (fbm(z / 220.0, 0.2, 2, 129) + 0.5).clamp(0.0, 1.0);
+    let fin = ridged(z / 70.0, y / 300.0, 3, 131);
+    let buttress = 12.0 * fin * fin * (1.0 - 0.5 * y / CLIFF_HEIGHT);
+    let bed = (y / 30.0 + 0.9 * fbm(z / 110.0, 0.4, 2, 133)).floor();
+    let joint = (z / 16.0 + bed * 0.37).floor() as i32;
+    let block = 4.0 * hash2(joint, bed as i32, 139);
+    (4.0 + bay + buttress + block).clamp(0.0, CLIFF_RELIEF)
+}
+
+/// `cliff_scene`'s rock: a block 24 m thick, 1 km long and 163 m high
+/// (from 1 m under the valley), its two long faces standing out by
+/// [`cliff_relief`], the same on both, so the block is its own mirror
+/// image across x. Its top and its ends are flat.
+pub fn cliff_rock() -> MeshData {
+    let (columns, rows) = (256u32, 54u32);
+    let (low, high) = (-1.0, CLIFF_HEIGHT + 2.0);
+    let at = |side: f32, c: u32, r: u32| {
+        let z = -CLIFF_LENGTH + 2.0 * CLIFF_LENGTH * c as f32 / columns as f32;
+        let y = low + (high - low) * r as f32 / rows as f32;
+        Vec3::new(side * (CLIFF_ROCK + cliff_relief(y, z)), y, z)
+    };
+    let mut m = MeshData::default();
+    // A triangle wound to face `out`, its corners new vertices or shared.
+    let face = |m: &mut MeshData, ids: [u32; 3], out: Vec3| {
+        let p = ids.map(|i| Vec3::from(m.vertices[i as usize].position));
+        let n = (p[1] - p[0]).cross(p[2] - p[0]);
+        let ids = if n.dot(out) >= 0.0 {
+            ids
+        } else {
+            [ids[0], ids[2], ids[1]]
+        };
+        let n = n * n.dot(out).signum();
+        for i in ids {
+            let v = &mut m.vertices[i as usize];
+            v.normal = (Vec3::from(v.normal) + n).into();
+        }
+        m.indices.extend(ids);
+    };
+    let vertex = |p: Vec3| Vertex {
+        position: p.into(),
+        normal: [0.0; 3],
+        uv: [p.z / 8.0, p.y / 8.0],
+        color: [1.0; 4],
+        tangent: [0.0; 4],
+    };
+    for side in [1.0f32, -1.0] {
+        let first = m.vertices.len() as u32;
+        for r in 0..=rows {
+            for c in 0..=columns {
+                m.vertices.push(vertex(at(side, c, r)));
+            }
+        }
+        let id = |c: u32, r: u32| first + r * (columns + 1) + c;
+        for r in 0..rows {
+            for c in 0..columns {
+                let q = [id(c, r), id(c + 1, r), id(c + 1, r + 1), id(c, r + 1)];
+                face(&mut m, [q[0], q[1], q[2]], Vec3::X * side);
+                face(&mut m, [q[0], q[2], q[3]], Vec3::X * side);
+            }
+        }
+    }
+    // The top and the two ends: strips between the faces' edges.
+    let strip = |m: &mut MeshData, edge: &dyn Fn(u32) -> (Vec3, Vec3), n: u32, out: Vec3| {
+        let first = m.vertices.len() as u32;
+        for i in 0..=n {
+            let (a, b) = edge(i);
+            m.vertices.push(vertex(a));
+            m.vertices.push(vertex(b));
+        }
+        for i in 0..n {
+            let q = first + i * 2;
+            face(m, [q, q + 1, q + 3], out);
+            face(m, [q, q + 3, q + 2], out);
+        }
+    };
+    strip(
+        &mut m,
+        &|c| (at(1.0, c, rows), at(-1.0, c, rows)),
+        columns,
+        Vec3::Y,
+    );
+    strip(
+        &mut m,
+        &|r| (at(1.0, 0, r), at(-1.0, 0, r)),
+        rows,
+        Vec3::NEG_Z,
+    );
+    strip(
+        &mut m,
+        &|r| (at(1.0, columns, r), at(-1.0, columns, r)),
+        rows,
+        Vec3::Z,
+    );
+    for v in &mut m.vertices {
+        v.normal = Vec3::from(v.normal).normalize_or(Vec3::Y).into();
+    }
+    m
+}
+
+/// The scree's height against `cliff_scene`'s wall at `z`: fans up to
+/// 24 m in some bays, none in others.
+fn cliff_fan(z: f32) -> f32 {
+    (6.0 + 44.0 * fbm(z / 80.0, 3.1, 2, 143)).max(0.0)
+}
+
+/// `cliff_scene`'s ground: a plateau for x < 0 over a valley, one sample
+/// apart (a height field's sawtooth wall), scree fans falling at 32°
+/// from the rock's foot and the valley rolling a few metres past them.
+fn cliff_ground(x: f32, z: f32) -> f32 {
+    if x < 0.0 {
+        return CLIFF_HEIGHT;
+    }
+    let foot = CLIFF_ROCK + cliff_relief(0.0, z);
+    let scree = (cliff_fan(z) - 0.62 * (x - foot).max(0.0)).max(0.0);
+    let valley = 5.0 * fbm(x / 90.0, z / 90.0, 3, 141) * smooth(foot + 10.0, foot + 80.0, x);
+    scree + valley
+}
+
+/// T3: a 160 m cliff over a valley: a plateau above a meadow
+/// ([`cliff_ground`]), and standing over the step a wall of rock as
+/// terrain stamps: a block 24 m thick ([`cliff_rock`], stamp 0: bays,
+/// buttresses and jointed blocks, its foot in the valley floor and its top
+/// 2 m above the plateau) and crags of rock standing out of it, over its
+/// edge and at its foot, what a height field cannot make. The ground under
+/// the block is carved as og.terrain.stamp carves it (to the block's
+/// underside less 0.25 m, on its edge to the underside). Every stamp is
+/// shaded by the terrain's layers by its own normal (grass where it is
+/// flat, rock on its faces and under its overhangs, broken rock between)
+/// and, within `blend` metres above the ground it meets, takes the
+/// ground's look. Seen from `view`: `wall`, from the valley 300 m off, the
+/// whole height over the pines; `foot`, at eye height 30 m from where a
+/// crag meets the meadow.
+pub fn cliff_scene(blend: f32, view: &str) -> RenderScene {
+    use crate::kit;
+    let mut scene = RenderScene::new();
+    let (n, size) = (513u32, 1024.0f32);
+    let cell = size / (n - 1) as f32;
+    let mut heights = Vec::with_capacity((n * n) as usize);
+    for r in 0..n {
+        for c in 0..n {
+            let (x, z) = (c as f32 * cell - size * 0.5, r as f32 * cell - size * 0.5);
+            let ground = cliff_ground(x, z);
+            // As og.terrain.stamp carves: 0.25 m under the block's
+            // underside inside it, the underside itself on its edge.
+            heights.push(if x.abs() < CLIFF_ROCK {
+                ground.min(-0.25)
+            } else if x.abs() <= CLIFF_ROCK {
+                ground.min(0.0)
+            } else {
+                ground
+            });
+        }
+    }
+    let handle = scene.add_terrain(TerrainData {
+        size: Vec2::splat(size),
+        columns: n,
+        rows: n,
+        heights: Arc::from(heights),
+        control: None,
+        holes: None,
+    });
+    let (grass, grass_normal) = kit::layer_maps(&mut scene, "grass");
+    let (rock, rock_normal) = kit::layer_maps(&mut scene, "rock");
+    let stone = TerrainLayer {
+        albedo: Some(rock),
+        normal: Some(rock_normal),
+        roughness: 0.85,
+        anti_tiling: 0.6,
+        macro_variation: 0.5,
+        slope_fade: 6.0,
+        project_slope: 45.0,
+        ..Default::default()
+    };
+    scene.world.terrains.push(Terrain {
+        layers: vec![
+            TerrainLayer {
+                albedo: Some(grass),
+                normal: Some(grass_normal),
+                color: Vec3::new(0.72, 1.05, 0.5),
+                roughness: 0.95,
+                tile: 3.5,
+                anti_tiling: 0.5,
+                macro_variation: 0.5,
+                slope: [0.0, 26.0],
+                slope_fade: 6.0,
+                ..Default::default()
+            },
+            // The faces, and the undersides of what overhangs them (a
+            // face turned down is past 90° from flat).
+            TerrainLayer {
+                color: Vec3::new(0.9, 0.86, 0.82),
+                tile: 22.0,
+                slope: [44.0, 180.0],
+                ..stone
+            },
+            // The scree and the ledges' edges: the same rock broken small.
+            TerrainLayer {
+                color: Vec3::new(1.05, 1.0, 0.96),
+                tile: 5.0,
+                slope: [26.0, 44.0],
+                ..stone
+            },
+        ],
+        height_blend: 0.6,
+        ..Terrain::new(handle)
+    });
+    let wall = scene.add_mesh(cliff_rock());
+    scene
+        .world
+        .terrain_stamps
+        .push(og_render::TerrainStampDraw {
+            terrain: 0,
+            mesh: wall,
+            transform: Mat4::IDENTITY,
+            blend,
+            cast_shadows: true,
+        });
+    let ground = |x: f32, z: f32| Vec3::new(x, cliff_ground(x, z), z);
+    let boulder = kit::prop(&mut scene, "boulder");
+    let (rock_mesh, _) = boulder.parts()[0];
+    let unit = boulder.max - boulder.min;
+    let (mid, base) = ((boulder.min + boulder.max) * 0.5, boulder.min.y);
+    // Crags: the boulder's shape as a terrain stamp `size` metres along
+    // x, y and z, its flat base's middle at `at`, turned and tipped (by
+    // π: hanging from its base).
+    let crag = |scene: &mut RenderScene, at: Vec3, size: Vec3, yaw: f32, tip: f32| {
+        scene
+            .world
+            .terrain_stamps
+            .push(og_render::TerrainStampDraw {
+                terrain: 0,
+                mesh: rock_mesh,
+                transform: Mat4::from_translation(at)
+                    * Mat4::from_rotation_y(yaw)
+                    * Mat4::from_rotation_z(tip)
+                    * Mat4::from_scale(size / unit)
+                    * Mat4::from_translation(Vec3::new(-mid.x, -base, -mid.z)),
+                blend,
+                cast_shadows: true,
+            });
+    };
+    for k in 0..84 {
+        let h = |i: i32| hash2(k, i, 0xc1a6);
+        let z = -480.0 + 860.0 * (k as f32 + h(0)) / 84.0;
+        // A fifth crown the plateau's edge; the rest stand out of the
+        // wall, more of them low and the lower the larger.
+        let level = if k % 5 == 0 { 1.0 } else { 0.85 * h(1) * h(1) };
+        let across = 30.0 + 46.0 * h(2) * (1.0 - 0.5 * level);
+        let size = Vec3::new(across * 0.6, across * (0.7 + 0.9 * h(3)), across);
+        let y = level * CLIFF_HEIGHT;
+        // Its middle a tenth of its depth out of the wall. The boulder's
+        // base is flat: a crag is two of them base to base, the lower
+        // hanging, so it is rock all round.
+        let at = Vec3::new(CLIFF_ROCK + cliff_relief(y, z) + size.x * 0.1, y, z);
+        let (yaw, tip) = (6.3 * h(4), 0.5 * (h(5) - 0.5));
+        crag(&mut scene, at, size * Vec3::new(1.0, 0.6, 1.0), yaw, tip);
+        let hung = size * Vec3::new(1.0, 0.4, 1.0);
+        crag(&mut scene, at, hung, yaw, tip + std::f32::consts::PI);
+    }
+    // Where the camera stands: on the meadow, or by a crag's foot.
+    let (eye, target) = match view {
+        "foot" => (Vec2::new(77.0, -200.0), Vec3::new(40.0, 14.0, -290.0)),
+        _ => (Vec2::new(300.0, 190.0), Vec3::new(30.0, 78.0, -70.0)),
+    };
+    // Blocks fallen onto the fans and the meadow's edge, half sunk, and
+    // pines beyond them, clear of the camera.
+    let pine = kit::prop(&mut scene, "pine");
+    for k in 0..260 {
+        let h = |i: i32| hash2(k, i, 0xb10c);
+        let z = -470.0 + 800.0 * h(0);
+        let foot = CLIFF_ROCK + cliff_relief(0.0, z);
+        let fallen = k % 5 == 0;
+        let x = foot
+            + if fallen {
+                4.0 + 50.0 * h(1) * h(1)
+            } else {
+                cliff_fan(z) / 0.62 + 12.0 + 330.0 * h(1) * h(1)
+            };
+        if Vec2::new(x, z).distance(eye) < 16.0 {
+            continue;
+        }
+        if fallen {
+            let across = 3.0 + 9.0 * h(2) * h(2);
+            let size = Vec3::new(
+                across,
+                across * (0.6 + 0.5 * h(3)),
+                across * (0.8 + 0.5 * h(4)),
+            );
+            crag(
+                &mut scene,
+                ground(x, z) - Vec3::Y * size.y * 0.32,
+                size,
+                6.3 * h(5),
+                0.6 * (h(6) - 0.5),
+            );
+        } else {
+            pine.place(
+                &mut scene,
+                ground(x, z) - Vec3::Y * 0.3,
+                6.3 * h(3),
+                10.0 + 7.0 * h(2),
+            );
+        }
+    }
+    // The valley's meadow, up to the rock's foot.
+    scene.world.grass.push(og_render::GrassDraw {
+        terrain: 0,
+        grass: og_render::Grass {
+            cast_shadows: true,
+            ..Default::default()
+        },
+    });
+    // The sun over the camera's shoulder, raking the wall: each buttress
+    // and crag throws its shadow into the bay behind it.
+    afternoon(&mut scene);
+    scene.lighting.light.direction_to_light = Vec3::new(0.5, 0.5, 0.7).normalize();
+    scene.lighting.light.max_shadow_distance = 700.0;
+    fair_sky(&mut scene, 8.0);
+    scene.frame.camera = camera_at(ground(eye.x, eye.y) + Vec3::Y * 1.8, target);
+    scene
+}
+
+/// `cliff_block_scene`'s step and block: the plateau's height and the
+/// block's half-length along z (its half-width is [`CLIFF_ROCK`], its face
+/// towards +x flat at x = CLIFF_ROCK).
+pub const BLOCK_HEIGHT: f32 = 300.0;
+pub const BLOCK_LENGTH: f32 = 60.0;
+
+/// The stamp tests' fixture: a 300 m step (a plateau for x < 0 over a
+/// valley at 0, a height field's sawtooth wall) with a plain block 24 m
+/// across standing over it as a terrain stamp, its face flat at x =
+/// [`CLIFF_ROCK`], its foot at the valley floor and its top 2 m above the
+/// plateau, the ground under it carved as og.terrain.stamp carves it. Two
+/// flat-coloured layers: grass (0.16, 0.38, 0.08) to 40° of slope, rock
+/// (0.42, 0.4, 0.37) past it, biplanar past 45°. Within `blend` metres
+/// above the ground it meets the block takes the ground's look. No scene
+/// draws it: what a test reads off its face needs the face where it is.
+pub fn cliff_block_scene(blend: f32) -> RenderScene {
     let mut scene = RenderScene::new();
     let (n, size) = (513u32, 512.0f32);
     let cell = size / (n - 1) as f32;
@@ -1794,11 +2124,9 @@ pub fn cliff_scene(blend: f32) -> RenderScene {
     for r in 0..n {
         for c in 0..n {
             let (x, z) = (c as f32 * cell - size * 0.5, r as f32 * cell - size * 0.5);
-            let ground = if x < 0.0 { CLIFF_HEIGHT } else { 0.0 };
-            // As og.terrain.stamp carves: 0.25 m under the block's
-            // underside inside it, the underside itself on its edge.
-            let on = x.abs() <= CLIFF_ROCK && z.abs() <= CLIFF_LENGTH;
-            let inside = x.abs() < CLIFF_ROCK && z.abs() < CLIFF_LENGTH;
+            let ground = if x < 0.0 { BLOCK_HEIGHT } else { 0.0 };
+            let on = x.abs() <= CLIFF_ROCK && z.abs() <= BLOCK_LENGTH;
+            let inside = x.abs() < CLIFF_ROCK && z.abs() < BLOCK_LENGTH;
             heights.push(match (on, inside) {
                 (_, true) => ground.min(-0.25),
                 (true, false) => ground.min(0.0),
@@ -1836,8 +2164,8 @@ pub fn cliff_scene(blend: f32) -> RenderScene {
     });
     let rock = scene.add_mesh(shapes::cuboid(Vec3::new(
         CLIFF_ROCK * 2.0,
-        CLIFF_HEIGHT + 2.0,
-        CLIFF_LENGTH * 2.0,
+        BLOCK_HEIGHT + 2.0,
+        BLOCK_LENGTH * 2.0,
     )));
     scene
         .world
@@ -1845,7 +2173,7 @@ pub fn cliff_scene(blend: f32) -> RenderScene {
         .push(og_render::TerrainStampDraw {
             terrain: 0,
             mesh: rock,
-            transform: Mat4::from_translation(Vec3::new(0.0, (CLIFF_HEIGHT + 2.0) * 0.5, 0.0)),
+            transform: Mat4::from_translation(Vec3::new(0.0, (BLOCK_HEIGHT + 2.0) * 0.5, 0.0)),
             blend,
             cast_shadows: true,
         });
@@ -1853,7 +2181,10 @@ pub fn cliff_scene(blend: f32) -> RenderScene {
     // The sun from the valley's side, so the face and the ground are lit alike.
     scene.lighting.light.direction_to_light = Vec3::new(0.7, 0.65, 0.3).normalize();
     scene.lighting.environment.sky.sun_direction = scene.lighting.light.direction_to_light;
-    scene.frame.camera = camera_at(CLIFF_EYE, CLIFF_FOOT);
+    scene.frame.camera = camera_at(
+        Vec3::new(CLIFF_ROCK + 22.0, 5.0, 9.0),
+        Vec3::new(CLIFF_ROCK, 0.6, 0.0),
+    );
     scene
 }
 

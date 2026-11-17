@@ -14,8 +14,8 @@ use super::*;
 #[test]
 #[ignore = "requires GPU"]
 fn a_mirrored_stamp_draws_its_outside() {
-    let plain = ts::cliff_scene(0.0);
-    let mut mirrored = ts::cliff_scene(0.0);
+    let plain = ts::cliff_scene(0.0, "wall");
+    let mut mirrored = ts::cliff_scene(0.0, "wall");
     mirrored.world.terrain_stamps[0].transform *= Mat4::from_scale(Vec3::new(-1.0, 1.0, 1.0));
     let (a, _) = render(&plain);
     let (b, _) = render(&mirrored);
@@ -44,7 +44,7 @@ fn a_mirrored_stamp_draws_its_outside() {
 #[ignore = "requires GPU"]
 fn an_overhangs_underside_takes_the_steepest_rule() {
     const LIFT: f32 = 14.0;
-    let mut scene = ts::cliff_scene(0.0);
+    let mut scene = ts::cliff_block_scene(0.0);
     let stamp = &mut scene.world.terrain_stamps[0];
     stamp.transform = Mat4::from_translation(Vec3::Y * LIFT) * stamp.transform;
     let under = Vec3::new(ts::CLIFF_ROCK * 0.5, LIFT, 0.0);
@@ -76,7 +76,7 @@ fn an_overhangs_underside_takes_the_steepest_rule() {
 #[test]
 #[ignore = "requires GPU"]
 fn a_stamps_blend_lays_the_ground_on_its_own_face() {
-    let mut scene = ts::cliff_scene(6.0);
+    let mut scene = ts::cliff_block_scene(6.0);
     let stripes = scene.add_texture(og_tests::physical_scenes::stripes(64, 2.0, true));
     let grass = &mut scene.world.terrains[0].layers[0];
     grass.albedo = Some(stripes);
