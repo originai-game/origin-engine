@@ -393,6 +393,7 @@
     --tabs-tab-selected-shadow: var(--shadow-tab-selected);
     --tooltip-corner-shape: round;
     --tooltip-radius: var(--panel-radius);
+    --avatar-radius: var(--radius-capsule);
     --badge-corner-shape: round;
     --badge-fill: var(--control-strong);
     --badge-ink: var(--ink);

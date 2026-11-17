@@ -95,6 +95,56 @@ fn every_built_in_component_builds_with_no_props() {
     assert!(failures.is_empty(), "{}", failures.join("\n"));
 }
 
+/// A friend's avatar is round in the default style, as the base Avatar
+/// is (`--avatar-radius`): its well draws as a circle.
+///
+/// Ways it could fail: the avatar's radius left to the role it wears
+/// last (a well's control radius), so it draws as a rounded square.
+#[test]
+fn friends_avatars_are_round() {
+    let (docs, messages) = engine_documents(&["src/ui/components"]);
+    let doc = docs.iter().find(|d| d.doc.name == "Friends").unwrap();
+    let mut ui = ui_with_font(test_font_metrics());
+    ui.set_icons(icons(og_draw::TextureHandle::from_slot(1)));
+    preview(&mut ui, &docs, doc, &messages, 1280.0, 720.0);
+    let avatars: Vec<_> = ui
+        .probe_elements()
+        .into_iter()
+        .filter(|e| {
+            e.detail
+                .get("part")
+                .is_some_and(|p| p.to_string().contains("Friends.avatar"))
+        })
+        .collect();
+    assert!(!avatars.is_empty(), "the fixture shows avatars");
+    for a in &avatars {
+        let centre = og_core::glam::Vec2::new(a.x + a.width / 2.0, a.y + a.height / 2.0);
+        let radii = ui
+            .frame()
+            .items
+            .iter()
+            .find_map(|i| match &i.cmd {
+                DrawCmd::Shape { shape, .. } if (shape.center - centre).length() < 1.0 => {
+                    match shape.geometry {
+                        og_draw::UiGeometry::Rect { radii, .. } => Some(radii),
+                        _ => None,
+                    }
+                }
+                _ => None,
+            })
+            .unwrap_or_else(|| panic!("{} draws its well", a.path));
+        assert!(
+            radii
+                .iter()
+                .all(|&r| r >= a.width.min(a.height) / 2.0 - 0.5),
+            "{}: {radii:?} on {}x{}",
+            a.path,
+            a.width,
+            a.height
+        );
+    }
+}
+
 /// The ground marks drape over the scene (c8e4b7a8c): each document's
 /// `<ground>` reaches the renderer as layers carrying its one drape (its
 /// marks, and each of its labels on the same quad). Fails when a mark is

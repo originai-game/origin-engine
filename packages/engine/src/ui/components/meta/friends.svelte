@@ -80,7 +80,7 @@
 [part~="Friends.request"] { padding: var(--space-xs) var(--space-sm); }
 button[part="Friends.row"] { min-height: var(--size-touch); padding: var(--space-xs) var(--space-sm); justify-content: flex-start; }
 [part="Friends.row"] .face { width: stretch; }
-[part~="Friends.avatar"] { position: relative; flex: none; width: var(--size-lg); height: var(--size-lg); justify-content: center; }
+[part~="Friends.avatar"] { position: relative; flex: none; width: var(--size-lg); height: var(--size-lg); justify-content: center; --well-radius: var(--avatar-radius); --picture-radius: var(--avatar-radius); }
 .avatar-icon { width: var(--size-sm); height: var(--size-sm); }
 .presence { --dot-fill: currentColor; position: absolute; inset-inline-end: 0; bottom: 0; width: var(--space-md); height: var(--space-md); }
 .presence[data-status=offline] { --dot-fill: var(--ink-disabled); }

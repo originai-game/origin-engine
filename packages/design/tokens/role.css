@@ -280,6 +280,8 @@
   --role-glyph-width: 2px;
   /* A muted picture's opacity. */
   --role-picture-muted-opacity: var(--opacity-dim);
+  /* A player's avatar: its picture's corners (round; a pack squares it). */
+  --role-avatar-radius: var(--radius-capsule);
   --role-link-stroke: var(--line-strong);
   --role-link-width: 3px;
   --role-link-dash: 6 6;
