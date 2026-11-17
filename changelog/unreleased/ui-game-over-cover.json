@@ -1,0 +1,8 @@
+{
+  "fixed": [
+    {
+      "member": "ui.screens.gameOver",
+      "summary": "GameOver centres through the cover primitive, so a panel taller than the screen starts at the safe top and its title is never cut; on a phone on its side the line, the score and the stats sit beside the offer or the actions and the whole screen shows without scrolling."
+    }
+  ]
+}

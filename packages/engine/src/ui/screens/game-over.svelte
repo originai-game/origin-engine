@@ -11,7 +11,7 @@
 <meta name="action:confirm" content="Retry">
 <meta name="fixture:default" content="{&quot;best&quot;:24100,&quot;checkpoint&quot;:true,&quot;left&quot;:5,&quot;offer&quot;:true,&quot;price&quot;:&quot;50 gems&quot;,&quot;score&quot;:18420,&quot;title&quot;:&quot;You died&quot;}">
 
-<div id="GameOver">
+<div id="GameOver" data-layout="cover">
   <section id="Panel" part="game-over.frame" class="bare">
     <h1 id="Title" part="game-over.title">{title}</h1>
     <div id="Score">
@@ -38,9 +38,12 @@
 </div>
 
 <style>
-:root { display: flex; align-items: center; justify-content: center; block-size: stretch; padding: var(--space-xxl); }
+/* The cover centres the panel where it fits; a panel taller than the
+   screen starts at the safe top and scrolls, so its title is never cut. */
+:root { block-size: stretch; padding: var(--space-xxl); }
+#GameOver { inline-size: stretch; }
 p { margin: 0; }
-[part="game-over.frame"] { display: flex; flex-direction: column; align-items: center; gap: var(--space-lg); inline-size: 100%; max-inline-size: var(--measure-lg); }
+[part="game-over.frame"] { flex: none; display: flex; flex-direction: column; align-items: center; gap: var(--space-lg); inline-size: 100%; max-inline-size: var(--measure-lg); }
 [part="game-over.title"] { margin: 0; font-size: var(--type-xl5-size); text-align: center; color: var(--danger); animation: land var(--motion-named-ui-duration) var(--motion-easing-out) forwards; }
 @keyframes land {
   from { scale: 1.3; -og-sound: error; }
@@ -59,5 +62,14 @@ p { margin: 0; }
 @media (width < 600px), (height < 600px) {
   :root { padding: var(--space-lg); }
   [part="game-over.title"] { font-size: var(--type-xl3-size); }
+}
+/* A phone on its side: the line and the score beside the offer or the
+   actions, so the whole screen shows without scrolling. */
+@media (height < 500px) and (orientation: landscape) {
+  [part="game-over.frame"] { display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: 1fr auto auto auto 1fr; grid-template-areas: ". side" "title side" "score side" "stats side" ". side"; align-items: center; justify-items: center; column-gap: var(--space-xl); row-gap: var(--space-sm); max-inline-size: calc(var(--measure-lg) * 2); }
+  #Title { grid-area: title; }
+  #Score { grid-area: score; }
+  #Stats { grid-area: stats; }
+  #Offer, #Actions { grid-area: side; justify-self: stretch; }
 }
 </style>
