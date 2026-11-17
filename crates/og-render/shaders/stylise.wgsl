@@ -1297,13 +1297,12 @@ fn lines(in: VsOut) -> vec3<f32> {
       } else {
         // A tint already near the paper's lightness (a pale sky) is the
         // paper's own tint and keeps it.
-        // A weak tint thins out at twice the lift, so a lit floor's faint
-        // cast from the sky (lavender-grey on a cool day) goes to the paper
-        // while a saturated prop keeps all of its colour.
-        let pigment = mix(1.0, smoothstep(0.02, 0.14, length(lab.yz)), min(lift * 2.0, 1.0) * (1.0 - smoothstep(0.8, 0.92, lab.x)));
-        // The lightness of one-ink's ground (its mix towards white in
-        // linear light), so the wash is as light as that paper.
-        let paper = oklab_encode(mix(c, vec3<f32>(1.0), lift)).x;
+        // Relative chroma distinguishes diluted pigment from a saturated
+        // colour in shadow: uniform dimming scales all Oklab components.
+        let pigment = mix(1.0, smoothstep(0.02, 0.14, length(lab.yz) / max(lab.x, 1e-4)), min(lift * 2.0, 1.0) * (1.0 - smoothstep(0.8, 0.92, lab.x)));
+        // As for conformed art, lift perceptual lightness. Adding white
+        // in linear light compressed a night scene's shadows into paper.
+        let paper = mix(lab.x, 1.0, lift);
         wash = vec3<f32>(paper, lab.yz * (1.0 - lift * 0.5) * pigment);
       }
       // Laid on the paper: what the wash lets through, the paper reflects

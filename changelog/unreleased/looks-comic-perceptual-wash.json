@@ -1,0 +1,8 @@
+{
+  "fixed": [
+    {
+      "member": "Stylise.hatchingKeepColor",
+      "summary": "Colour hatching preserves shadow separation and saturated pigment on non-conformed materials, including inked-comic-3d's textured hero models and terrain. The paper wash lifts perceptual lightness rather than adding white in linear light, and distinguishes diluted pigment from colour in shadow using chroma relative to lightness. One-ink hatching, already-conformed art and looks with hatching disabled are unchanged."
+    }
+  ]
+}
