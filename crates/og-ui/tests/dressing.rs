@@ -2982,7 +2982,9 @@ fn shared_motions_are_the_styles_keyframes() {
 /// asks for one by meaning (`data-layout`) and a pack retunes it through
 /// its tokens. Each answers its own container: a switcher and a sidebar
 /// lie in one row in a wide container and stack in a narrow one, and a
-/// shell is a container a component's `@container` rule reads. Wrong: a
+/// shell is a container a component's `@container` rule reads; a ratio
+/// box is square unless it names its ratio (a portrait, a jacket, an
+/// icon's box). Wrong: a
 /// primitive unknown to a document, a pack unable to retune its tile or
 /// gap, a wrap read from the viewport, or a shell no query can read.
 #[test]
@@ -3008,6 +3010,7 @@ fn layout_primitives_are_the_styles_and_answer_their_container() {
   <div id="S" data-layout="sidebar" style="width: 300px"><div id="Side" data-side></div><div id="Main" data-fill></div></div>
   <div id="Sh" data-layout="shell" style="width: 300px; height: 60px"><div id="Q"></div><div id="Body" data-fill></div></div>
   <div id="O" data-layout="overlay" style="height: 80px"><div id="OS" data-layout="scroll"><div id="OI" style="height: 200px"></div></div><div id="Fade" part="t.fade" data-anchor="bottom-edge"></div></div>
+  <div id="R" data-layout="ratio" style="width: 120px"></div>
 </div>
 <style>#Root { display: flex; flex-direction: column; width: 600px; } #G > div, #T1, #W > div, #N > div, #S > div, #Q { height: 10px; }
 @container (width < 400px) { #Q { width: 50px; } }</style>"#,
@@ -3016,7 +3019,7 @@ fn layout_primitives_are_the_styles_and_answer_their_container() {
         );
         [
             "G1", "G2", "G3", "T1", "W1", "W2", "N1", "N2", "Side", "Main", "Q", "Body", "O",
-            "Fade", "OS",
+            "Fade", "OS", "R",
         ]
         .map(|p| at(&d.ui, p))
     };
@@ -3037,6 +3040,7 @@ fn layout_primitives_are_the_styles_and_answer_their_container() {
         o,
         fade,
         os,
+        r,
     ] = &e;
     assert!(
         g1.y == g2.y && g2.y == g3.y && (g2.x - g1.x - g1.width - 4.0).abs() < 0.5,
@@ -3059,6 +3063,11 @@ fn layout_primitives_are_the_styles_and_answer_their_container() {
         "a fade lies flush along its overlay's bottom, --fade-size tall: {fade:?} in {o:?}"
     );
     assert_eq!(os.height, 80.0, "an overlay bounds the scroller it stacks");
+    assert_eq!(
+        (r.width, r.height),
+        (120.0, 120.0),
+        "a ratio box with no --layout-ratio is square"
+    );
     let e = laid(Some(
         ":root { --layout-tile: 250px; --layout-gap-tight: 20px; }",
     ));

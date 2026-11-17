@@ -1597,7 +1597,7 @@ Layout is the style's as well. An element asks for a shape by meaning with
 one row while it is at least `--layout-switch-at` wide, stacked below), `grid` (tiles at least
 `--layout-tile` wide, `repeat(auto-fill, minmax(…, 1fr))`), `cover`
 (centred in its height, a `data-principal` child in the middle), `center`
-(kept to `--layout-measure`), `ratio` (an `--layout-ratio` frame its image
+(kept to `--layout-measure`), `ratio` (an `--layout-ratio` frame, square unless set, its image
 covers), `shell` (header, body, footer filling its container, which is an
 `inline-size` container), `scroll` (a column that scrolls, contained) and
 `overlay` (a stack whose `data-anchor` children, any element, are laid over it at `top-start`,

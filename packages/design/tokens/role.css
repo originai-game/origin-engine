@@ -308,7 +308,7 @@
   --role-layout-switch-at: 420px;
   --role-layout-tile: 140px;
   --role-layout-measure: var(--measure-lg);
-  --role-layout-ratio: 16 / 9;
+  --role-layout-ratio: 1;
   --role-layout-anchor-inset: var(--space-xs);
 
   /* Marks: small drawn signs a pack supplies as images (none by default,
