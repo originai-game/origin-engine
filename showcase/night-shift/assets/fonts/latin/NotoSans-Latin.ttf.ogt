@@ -1,0 +1,14 @@
+type import
+version 1
+---
+# Made by templates/fonts/make-packs.py: no atlas cooked (its space alone);
+# every character is drawn from the face's outlines when first shown, so
+# a game pays only for what it shows. px_range is a third of em_px, so a
+# 2 px outline reaches 16 px text.
+font {
+  charset
+  chars " 　"
+  em_px 48
+  px_range 16
+  runtime true
+}

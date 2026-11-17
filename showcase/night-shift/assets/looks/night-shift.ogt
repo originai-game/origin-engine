@@ -1,0 +1,21 @@
+type look
+version 1
+---
+extends "cinematic-realism"
+mood "dark"
+ui "default"
+RenderSettings {
+  # A night lit by signs: the exposure is held, never metered up to grey.
+  autoExposure false
+  exposure 1
+  bloom true
+  bloomIntensity 0.4
+  bloomThreshold 1.1
+  environmentIntensity 0.6
+}
+PostEffects {
+  ssr true
+  ssrMaxDistance 60
+  ao true
+  saturation 0.1
+}

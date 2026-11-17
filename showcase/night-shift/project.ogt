@@ -1,0 +1,28 @@
+type project
+version 1
+---
+name "Night Shift"
+id "night-shift"
+engine "0.7.7"
+entry "src/main.ts"
+tick 60
+seed 1
+publish {
+  probe player
+  out "dist"
+}
+
+look "looks/night-shift.ogt"
+
+create {
+  genre "open-world"
+  view "third-person-3d"
+  look "cinematic-realism"
+  mood "dark"
+  ui "default"
+  platform "desktop"
+  input "keyboard-mouse"
+  players "single"
+  lang "en"
+  music "electronic"
+}
