@@ -2452,7 +2452,7 @@ pub fn displaced_scene(displacement: f32) -> RenderScene {
 
 /// `terrain-snow-track`'s footprints: one pressed each tick (a tick a
 /// second), its frames.
-pub const SNOW_TRACK_STEPS: u32 = 12;
+pub const SNOW_TRACK_STEPS: u32 = 20;
 
 /// The snowfield's gentle swell (m).
 fn snowfield_height(x: f32, z: f32) -> f32 {
@@ -2460,18 +2460,23 @@ fn snowfield_height(x: f32, z: f32) -> f32 {
 }
 
 /// Where `terrain-snow-track`'s foot comes down on step `k`: left and right
-/// of a line along +x, 0.75 m a stride.
+/// of a line that weaves from the ruined gate towards the camera, 0.75 m a
+/// stride.
 fn snow_track_foot(k: u32) -> Vec3 {
-    let (x, z) = (-4.2 + 0.75 * k as f32, if k % 2 == 0 { 0.2 } else { -0.2 });
+    let z = -12.6 + 0.75 * k as f32;
+    let x = 0.5 * (z * 0.21).sin() + if k % 2 == 0 { 0.2 } else { -0.2 };
     Vec3::new(x, snowfield_height(x, z), z)
 }
 
 /// A snowfield under a low morning sun after a night's fall (lying snow,
-/// og.Weather's), a walker's footprints across it from left to right: an
-/// og.GrassPusher stepping once a tick ([`snow_track_update`]), each
-/// footprint packed darker with its sides shaded as a hollow, the first
-/// ones already filling in. A few rocks under the snow for scale.
+/// og.Weather's, on the ground, the stones, the ruin and the pines), and
+/// the walker's own footprints behind them: from a ruined gate to where
+/// the camera stands, an og.GrassPusher stepping once a tick
+/// ([`snow_track_update`]), each footprint packed darker with its sides
+/// shaded as a hollow, the first ones by the gate already filling in.
+/// A watchtower and snowed hills beyond.
 pub fn snow_track_scene() -> RenderScene {
+    use crate::kit;
     let (size, samples) = (512.0f32, 257u32);
     let cell = size / (samples - 1) as f32;
     let heights: Vec<f32> = (0..samples * samples)
@@ -2495,27 +2500,56 @@ pub fn snow_track_scene() -> RenderScene {
         fade_in: false,
         ..Terrain::new(h)
     });
-    let rock = scene.add_mesh(shapes::sphere(32, 24));
-    let stone = scene.add_material(Material {
-        base_color: [0.24, 0.23, 0.22, 1.0],
-        roughness: 0.8,
-        ..Default::default()
-    });
-    for (x, z, r) in [
-        (-2.6f32, -2.4f32, 0.6f32),
-        (3.4, -3.6, 0.9),
-        (1.6, 1.9, 0.35),
+    let ground = |x: f32, z: f32| Vec3::new(x, snowfield_height(x, z), z);
+    // Stones by the trail, half under the snow.
+    let boulder = kit::prop(&mut scene, "boulder");
+    for (x, z, height, yaw) in [
+        (-2.9f32, -1.6f32, 1.1f32, 0.4f32),
+        (3.7, -5.2, 1.7, 2.1),
+        (-5.6, -8.4, 2.3, 4.0),
+        (2.2, 2.4, 0.7, 5.2),
     ] {
-        scene.add_instance(
-            rock,
-            stone,
-            Mat4::from_scale_rotation_translation(
-                Vec3::new(r * 1.3, r * 0.7, r),
-                glam::Quat::from_rotation_y(x),
-                Vec3::new(x, snowfield_height(x, z) + r * 0.15, z),
-            ),
+        boulder.place(
+            &mut scene,
+            ground(x, z) - Vec3::Y * 0.25 * height,
+            yaw,
+            height,
         );
     }
+    // The ruined gate the trail comes through, and what is left of its
+    // colonnade.
+    let arch = kit::prop(&mut scene, "arch");
+    arch.place(&mut scene, ground(0.3, -16.0), std::f32::consts::PI, 6.5);
+    let column = kit::prop(&mut scene, "column");
+    let broken = kit::prop(&mut scene, "column_broken");
+    column.place(&mut scene, ground(-7.5, -18.5), 0.7, 5.2);
+    broken.place(&mut scene, ground(-4.6, -15.2), 1.9, 2.0);
+    broken.place(&mut scene, ground(6.2, -17.4), 3.3, 2.3);
+    column.place(&mut scene, ground(9.5, -20.0), 5.0, 5.2);
+    let tower = kit::prop(&mut scene, "watchtower");
+    tower.place(&mut scene, ground(34.0, -78.0) - Vec3::Y * 0.4, 2.2, 22.0);
+    // Pines either side of the trail's line and out to the hills.
+    let pine = kit::prop(&mut scene, "pine");
+    for k in 0..110 {
+        let h = |i: i32| hash2(k, i, 0x5a0e);
+        let (d, a) = (14.0 + 190.0 * h(0) * h(0), 6.3 * h(1));
+        let (x, z) = (d * a.cos(), -20.0 + d * a.sin());
+        // The trail's line and the view along it stay open, and so does
+        // the sun's side of it (the camera's right): the footprints lie
+        // in the light.
+        let open = x.abs() < 5.0 + 0.12 * z.abs() && z < 12.0;
+        let sunward = x > -4.0 && z > -14.0 && Vec2::new(x, z + 4.0).length() < 60.0;
+        if open || sunward {
+            continue;
+        }
+        pine.place(
+            &mut scene,
+            ground(x, z) - Vec3::Y * 0.3,
+            6.3 * h(2),
+            8.0 + 8.0 * h(3),
+        );
+    }
+    kit::hills(&mut scene, None);
     scene.atmosphere.surface_weather = Some(og_render::SurfaceWeather {
         snow: 1.0,
         snow_depth: 0.1,
@@ -2524,8 +2558,8 @@ pub fn snow_track_scene() -> RenderScene {
     });
     scene.frame.tick_rate = 1.0;
     scene.frame.camera = Camera {
-        position: Vec3::new(0.6, 3.8, 5.2),
-        target: Vec3::new(0.0, 0.0, -0.3),
+        position: ground(0.9, 4.8) + Vec3::Y * 1.55,
+        target: ground(0.0, -7.0) + Vec3::Y * 0.5,
         exposure: Exposure::Manual { ev: -0.3 },
         ..Default::default()
     };
