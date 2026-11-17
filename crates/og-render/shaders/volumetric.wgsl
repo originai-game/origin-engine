@@ -1,8 +1,14 @@
 // Volumetric fog (volumetric.rs), after frame.wgsl, the light tables,
 // lighting.wgsl and area.wgsl. The medium: `density` per metre plus height
 // fog (`height density` below `height`, thinning above it by `falloff`),
-// scattering `colour × scattering` of the light it is lit by with a
-// Henyey-Greenstein phase of `anisotropy`.
+// scattering `colour × scattering` of the sun's and the local lights' light
+// with a Henyey-Greenstein phase of `anisotropy`. The light that reaches it
+// from every side is what the plain fog's colour stands for: a depth of the
+// scene's fog nothing else lights tends to it (`own`), so the air of a night
+// scene is the plain fog's haze, not black. A fog
+// volume's colour is an albedo alone, so it takes that light from the
+// environment (`ambient_in`: the environment's, the probe GI's where it
+// reaches, the hemisphere light's), evenly.
 //
 // The froxel grid: `inject` lights every froxel (160 × 90 × 64 cells over the
 // view, slices quadratically deeper to `distance`) by the sun through its
@@ -13,7 +19,9 @@
 // marches each pixel's view ray in steps, lit by the sun and the first
 // RAYMARCH_LIGHTS lights of each step's cluster. Both
 // output (in-scattered light, transmittance), blended over the lit image
-// as colour × transmittance + light.
+// as colour × transmittance + light. Past `distance` the scene's fog goes
+// on to each pixel's depth without the grid (`far_air`): its own colour and
+// the unshadowed sun's light in it.
 //
 // Under water (`VOL_WATER`, volumetric.rs `Medium::Water`) the medium is the water the eye is in and the pass draws
 // the sun's own light in it (`water_in`): the light shafts. The frame's fog has already drawn the water's even light
@@ -37,7 +45,8 @@ struct Vol {
   medium: vec4<f32>,   // x: density, y: height, z: height density, w: falloff
   extent: vec4<f32>,   // x: distance, y: raymarch steps, zw: the target's size in pixels
   grid: vec4<f32>,     // xyz: froxels across, down and deep, w: the frame's noise seed
-  local: vec4<f32>,    // x: how many of `volumes` are set
+  local: vec4<f32>,    // x: how many of `volumes` are set, y: how much of the far air covers the sky
+  own: vec4<f32>,      // rgb: what a depth of the scene's fog lit by nothing else tends to (VolumetricFog::ambient)
   volumes: array<FogVolume, FOG_VOLUMES>,
 };
 
@@ -56,21 +65,30 @@ fn fog_volume_weight(v: FogVolume, p: vec3<f32>) -> f32 {
   return region_weight(outside, v.half.w);
 }
 
-// The medium at p: what it scatters of the light it is lit by per metre (rgb: colour × scattering × extinction) and
-// its extinction per metre (a). The scene's fog and, added to it, each fog volume that reaches p.
-fn vol_medium(p: vec3<f32>) -> vec4<f32> {
+// The medium at a point, per metre: the scene's fog and, added to it, each fog volume that reaches the point.
+struct MediumAt {
+  scatter: vec3<f32>,  // what it scatters of the sun's and the local lights' light (colour × scattering × extinction)
+  sigma: f32,          // its extinction
+  own: vec3<f32>,      // the scene fog's own light: the light from every side in it, as its colour holds it
+  local: vec3<f32>,    // the fog volumes' share of `scatter`, which scatters the environment's light (`ambient_in`) too
+};
+
+fn vol_medium(p: vec3<f32>) -> MediumAt {
   // The water's: its fog's, below its surface.
   if (VOL_WATER) {
     let sigma = select(0.0, max(frame.fog_distance.x, 1e-5), p.y < frame.fog_height.x);
-    return vec4<f32>(vol.scatter.rgb * sigma, sigma);
+    return MediumAt(vol.scatter.rgb * sigma, sigma, vec3<f32>(0.0), vec3<f32>(0.0));
   }
   let sigma = vol.medium.x + vol.medium.z * exp(-vol.medium.w * max(p.y - vol.medium.y, 0.0));
-  var m = vec4<f32>(vol.scatter.rgb * sigma, sigma);
+  var m = MediumAt(vol.scatter.rgb * sigma, sigma, vol.own.rgb * sigma, vec3<f32>(0.0));
   let count = min(u32(vol.local.x), FOG_VOLUMES);
   for (var i = 0u; i < count; i++) {
     let v = vol.volumes[i];
-    m += vec4<f32>(v.scatter.rgb, 1.0) * (v.scatter.w * fog_volume_weight(v, p));
+    let reach = v.scatter.w * fog_volume_weight(v, p);
+    m.sigma += reach;
+    m.local += v.scatter.rgb * reach;
   }
+  m.scatter += m.local;
   return m;
 }
 
@@ -119,10 +137,76 @@ fn water_in(p: vec3<f32>, dir: vec3<f32>, width: f32) -> vec3<f32> {
 }
 
 // The light scattered towards the eye at p (frag: its pixel; `most`: as `locals_in`), a sample `width` metres
-// across: the medium's.
+// across: the medium's, but for the light from every side (MediumAt's `own` and `local`).
 fn medium_in(p: vec3<f32>, dir: vec3<f32>, frag: vec2<f32>, most: u32, width: f32) -> vec3<f32> {
   if (VOL_WATER) { return water_in(p, dir, width); }
   return sun_in(p, dir) + locals_in(p, dir, frag, most);
+}
+
+// The environment's and the hemisphere light's light from every side about p, as an even phase scatters it
+// towards the eye: their mean radiance. The mean over every direction of an irradiance over π is the mean
+// radiance, and the six axes take that mean exactly for an irradiance's harmonics (bands 0 to 2: the first
+// band's terms cancel between opposite axes, the second's sum to zero over the six). The same light the lit
+// surfaces take along their normals (surface_shade.wgsl).
+fn env_in(p: vec3<f32>) -> vec3<f32> {
+  let x = vec3<f32>(1.0, 0.0, 0.0);
+  let y = vec3<f32>(0.0, 1.0, 0.0);
+  let z = vec3<f32>(0.0, 0.0, 1.0);
+  let env = ambient_light_level(x, p) + ambient_light_level(-x, p) + ambient_light_level(y, p)
+    + ambient_light_level(-y, p) + ambient_light_level(z, p) + ambient_light_level(-z, p);
+  return env * (frame.params.x / 6.0) + 0.5 * (frame.hemi_sky.rgb + frame.hemi_ground.rgb) * frame.hemi_sky.w;
+}
+
+// The light from every side at p that a fog volume scatters evenly towards the eye: `env` (`env_in`) and, where
+// the probe GI reaches, its light over the environment's as the lit surfaces take it (gi_probes.wgsl
+// `gi_ambient_from`): the probes' harmonics' even term, what the scene around p sends it with its sky occluded,
+// so the smoke in a closed room is as dark as the room. None in the water, whose even light the frame's fog draws.
+fn ambient_in(p: vec3<f32>, env: vec3<f32>) -> vec3<f32> {
+  if (VOL_WATER) { return vec3<f32>(0.0); }
+  if (!OG_GI || probe_data.v[GI_HEADER_AT].x < 0.5) { return env; }
+  // A point in the air has no surface: no normal to weigh the probes by and no bias off it.
+  let s = gi_gather(p, vec3<f32>(0.0), vec3<f32>(0.0), true);
+  if (s.w <= 0.0) { return env; }
+  let hemi = 0.5 * (frame.hemi_sky.rgb + frame.hemi_ground.rgb) * frame.hemi_sky.w;
+  return mix(env - hemi, max(vec3<f32>(s.r.w, s.g.w, s.b.w), vec3<f32>(0.0)), s.w) + hemi;
+}
+
+// The height fog's extinction summed over a stretch of ray `len` metres long between the heights `ya` and `yb`
+// above the height it is densest below (vol_medium's law: constant below it, thinning by `falloff` above).
+fn height_column(ya: f32, yb: f32, len: f32) -> f32 {
+  let k = vol.medium.w;
+  let lo = min(ya, yb);
+  let hi = max(ya, yb);
+  if (hi <= 0.0) { return vol.medium.z * len; }
+  // The share of the stretch above the height, from max(lo, 0) to hi.
+  let above = select(1.0, hi / max(hi - lo, 1e-6), lo < 0.0);
+  let a = max(lo, 0.0);
+  let rise = k * (hi - a);
+  var mean = exp(-k * a);
+  if (rise > 1e-4) { mean *= (1.0 - exp(-rise)) / rise; }
+  return vol.medium.z * len * (above * mean + (1.0 - above));
+}
+
+// The air past the grid along the view ray `dir` to the pixel's view depth `depth` (rgb: its in-scattered
+// light, a: its transmittance): the scene's fog going on from `distance`, its own colour and the unshadowed sun's
+// light in it (no cascade reaches there), summed in closed form. Behind the sky it is 5 km of it, as much as
+// the fog covers the sky (the frame's fog: sky.wgsl `sky_fog`). The fog volumes end inside the grid.
+fn far_air(dir: vec3<f32>, depth: f32) -> vec4<f32> {
+  if (VOL_WATER) { return vec4<f32>(0.0, 0.0, 0.0, 1.0); }
+  let sky = is_sky_depth(depth);
+  let stretch = 1.0 / max(dot(dir, frame.view_forward.xyz), 1e-3);
+  let t0 = vol.extent.x * stretch;
+  let t1 = select(depth * stretch, t0 + 5000.0, sky);
+  let len = t1 - t0;
+  if (len <= 0.0) { return vec4<f32>(0.0, 0.0, 0.0, 1.0); }
+  let y0 = frame.view_pos.y + dir.y * t0 - vol.medium.y;
+  let tau = vol.medium.x * len + height_column(y0, y0 + dir.y * len, len);
+  var hidden = 1.0 - exp(-tau);
+  if (sky) { hidden *= vol.local.y; }
+  if (hidden <= 0.0) { return vec4<f32>(0.0, 0.0, 0.0, 1.0); }
+  let l = normalize(frame.light_dir.xyz);
+  let sun = vol.scatter.rgb * frame.light_color.rgb * hg_phase(dot(dir, l), vol.scatter.w);
+  return vec4<f32>((sun + vol.own.rgb) * hidden, 1.0 - hidden);
 }
 
 // The cluster's lights scattered towards the eye at p (frag: its pixel),

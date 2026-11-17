@@ -56,10 +56,12 @@ pub(super) fn extract(
             }
         }
         // Fog.volumetric: the same medium lit (og-render's volumetric.rs),
-        // which replaces the plain fog where the renderer draws it.
+        // which replaces the plain fog where the renderer draws it. Where
+        // no sun or lamp lights it, it tends to the plain fog's colour.
         if v.volumetric {
             scene.atmosphere.volumetric_fog = Some(og_render::VolumetricFog {
                 color: fog.color,
+                ambient: fog.color,
                 density: fog.density,
                 height: fog.height,
                 height_density: fog.height_density,

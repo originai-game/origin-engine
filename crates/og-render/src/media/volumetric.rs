@@ -3,8 +3,19 @@
 //! [`crate::RenderScene::volumetric_fog`] replaces the frame's plain fog
 //! (`RenderScene::fog`) while it is set, for a perspective camera above
 //! water. The medium (volumetric.wgsl): a density per metre plus height
-//! fog, scattering its colour times `scattering` of the light it is lit by
-//! with a Henyey-Greenstein phase, out to `distance` metres of view depth.
+//! fog, scattering its colour times `scattering` of the sun's and the local
+//! lights' light with a Henyey-Greenstein phase, out to `distance` metres of
+//! view depth. The light that reaches the air from every side is what the
+//! plain fog's colour stands for, and the medium carries it as `ambient`:
+//! a depth of it that nothing else lights tends to that, so a scene that
+//! turns the volume on (og.Fog.volumetric) adds shafts and the lamps' glow
+//! to the plain fog's haze and never blackens it. Past `distance` the fog
+//! goes on to what the pixel shows without the grid (volumetric.wgsl
+//! `far_air`), its ambient light and the unshadowed sun's light in it, and
+//! over the sky as far as the scene's fog covers it ([`crate::Fog::sky`]).
+//! A [`FogVolume`]'s colour is an
+//! albedo alone: it takes the light from every side from the environment
+//! (the probe GI's where it reaches, the hemisphere light's), evenly.
 //!
 //! - [`VolumetricMethod::Froxel`] (the default): the graph pass `volumetric`
 //!   (two compute dispatches after the shadow passes) lights a 160 × 90 ×
@@ -40,6 +51,10 @@ use glam::Vec3;
 pub struct VolumetricFog {
     /// The medium's colour (its albedo's tint).
     pub color: Vec3,
+    /// The light from every side in it, as the plain fog's colour holds
+    /// it ([`crate::Fog::color`]): what a depth of it that the sun and the
+    /// local lights do not reach tends to. Black: it is lit by them alone.
+    pub ambient: Vec3,
     /// Extinction per metre everywhere.
     pub density: f32,
     /// The height below which the height fog is densest.
@@ -60,6 +75,7 @@ impl Default for VolumetricFog {
     fn default() -> Self {
         VolumetricFog {
             color: Vec3::ONE,
+            ambient: Vec3::ZERO,
             density: 0.02,
             height: 0.0,
             height_density: 0.0,
@@ -244,7 +260,9 @@ impl Medium {
         }
     }
 
-    fn uniform(&self) -> ([f32; 4], [f32; 4], f32) {
+    /// Its scattering and anisotropy, its densities, its reach, and what
+    /// a depth of it lit by nothing else tends to (volumetric.wgsl `Vol`).
+    fn uniform(&self) -> ([f32; 4], [f32; 4], f32, [f32; 4]) {
         match *self {
             Medium::Fog(fog) => (
                 (fog.color.max(Vec3::ZERO) * fog.scattering.max(0.0))
@@ -257,14 +275,26 @@ impl Medium {
                     fog.falloff.max(1e-4),
                 ],
                 fog.distance.max(1.0),
+                fog.ambient.max(Vec3::ZERO).extend(0.0).to_array(),
             ),
             Medium::Water { density } => (
                 [1.0, 1.0, 1.0, WATER_ANISOTROPY],
                 [0.0; 4],
                 (WATER_REACH / density.max(1e-3)).clamp(4.0, 96.0),
+                [0.0; 4],
             ),
         }
     }
+}
+
+/// What the froxels read of the light from every side (volumetric.wgsl
+/// `ambient_in`): the frame group's environment cubes and their sampler,
+/// and the light volumes' buffer the probe GI's probes are in.
+pub(crate) struct FroxelAmbient<'a> {
+    pub irradiance: &'a wgpu::TextureView,
+    pub prefiltered: &'a wgpu::TextureView,
+    pub sampler: &'a wgpu::Sampler,
+    pub probes: &'a wgpu::Buffer,
 }
 
 const FROXEL_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba16Float;
@@ -276,8 +306,12 @@ struct VolUniform {
     medium: [f32; 4],
     extent: [f32; 4],
     grid: [f32; 4],
-    /// x: how many of `volumes` are set.
+    /// x: how many of `volumes` are set, y: how much of the far air
+    /// covers the sky.
     local: [f32; 4],
+    /// rgb: what a depth of the scene's fog lit by nothing else tends to
+    /// ([`VolumetricFog::ambient`]).
+    own: [f32; 4],
     volumes: [[[f32; 4]; 4]; FOG_VOLUMES],
 }
 
@@ -390,9 +424,27 @@ impl Froxels {
                     compute,
                     texture_ty(wgpu::TextureViewDimension::D2Array, false),
                 ),
+                // The light from every side (volumetric.wgsl `ambient_in`):
+                // the environment's cubes and the probe GI's buffer.
+                entry(
+                    3,
+                    compute,
+                    texture_ty(wgpu::TextureViewDimension::Cube, true),
+                ),
+                entry(
+                    4,
+                    compute,
+                    texture_ty(wgpu::TextureViewDimension::Cube, true),
+                ),
+                entry(
+                    6,
+                    compute,
+                    wgpu::BindingType::Sampler(wgpu::SamplerBindingType::Filtering),
+                ),
                 entry(7, compute, table_ty),
                 entry(8, compute, table_ty),
                 entry(9, compute, table_ty),
+                entry(10, compute, table_ty),
                 // The water's light (caustics.wgsl `water_focus`).
                 entry(12, compute, uniform_ty()),
                 // The clouds' shadow (lighting.wgsl `cloud_shadow`).
@@ -681,8 +733,10 @@ impl Volumetric {
     }
 
     /// Writes the frame's medium, with the fog volumes of `local` nearest
-    /// `eye` in the scene's fog; `size`: the HDR target's. Another depth
-    /// of the froxel grid at `quality` makes its volumes again.
+    /// `eye` in the scene's fog; `sky`: how much of the air past the
+    /// volume covers the sky ([`crate::Fog::sky`]); `size`: the HDR
+    /// target's. Another depth of the froxel grid at `quality` makes its
+    /// volumes again.
     #[allow(clippy::too_many_arguments)]
     pub fn prepare(
         &mut self,
@@ -691,6 +745,7 @@ impl Volumetric {
         frame_layout: &wgpu::BindGroupLayout,
         medium: &Medium,
         (local, eye): (&[FogVolume], Vec3),
+        sky: f32,
         size: (u32, u32),
         tick: u64,
         quality: &crate::RenderQuality,
@@ -705,7 +760,7 @@ impl Volumetric {
             f.sum = froxel_volume(device, "froxel sum", slices);
             f.slices = slices;
         }
-        let (scatter, fog, distance) = medium.uniform();
+        let (scatter, fog, distance, own) = medium.uniform();
         // The water's medium is the water alone.
         let (near, dropped) = match medium {
             Medium::Fog(_) => nearest_volumes(local, eye, distance),
@@ -737,7 +792,8 @@ impl Volumetric {
                 slices as f32,
                 (tick % 64) as f32,
             ],
-            local: [near.len() as f32, 0.0, 0.0, 0.0],
+            local: [near.len() as f32, sky.clamp(0.0, 1.0), 0.0, 0.0],
+            own,
             volumes,
         };
         queue.write_buffer(&self.uniform, 0, bytemuck::bytes_of(&u));
@@ -754,6 +810,7 @@ impl Volumetric {
         cascades: &wgpu::TextureView,
         locals: &wgpu::TextureView,
         tables: [&wgpu::Buffer; 3],
+        ambient: &FroxelAmbient<'_>,
         (caustics, cloud_shadow): (&wgpu::Buffer, &wgpu::TextureView),
     ) {
         let Some(f) = &self.froxels else {
@@ -770,9 +827,13 @@ impl Volumetric {
                 (0, frame.as_entire_binding()),
                 (1, wgpu::BindingResource::TextureView(cascades)),
                 (2, wgpu::BindingResource::TextureView(locals)),
+                (3, wgpu::BindingResource::TextureView(ambient.irradiance)),
+                (4, wgpu::BindingResource::TextureView(ambient.prefiltered)),
+                (6, wgpu::BindingResource::Sampler(ambient.sampler)),
                 (7, tables[0].as_entire_binding()),
                 (8, tables[1].as_entire_binding()),
                 (9, tables[2].as_entire_binding()),
+                (10, ambient.probes.as_entire_binding()),
                 (12, caustics.as_entire_binding()),
                 (14, wgpu::BindingResource::TextureView(cloud_shadow)),
             ],

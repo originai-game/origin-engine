@@ -74,10 +74,10 @@ module atmosphere {
       unit ratio
       tunable true
     }
-    field volumetric bool "Light the fog as a medium within volumetricDistance: it (density, thickened below height) scatters the sun through its cascades and the point, spot and rect lights (up to RenderCapabilities.volumetricLights a sample), and dims what lies behind. Blended surfaces and sprites take the plain fog." {
+    field volumetric bool "Light the fog as a medium: unlit, it tends to color as the plain fog does; over that it (density, thickened below height) scatters the sun through its cascades and the point, spot and rect lights (up to RenderCapabilities.volumetricLights a sample). Blended surfaces and sprites take the plain fog." {
       guide "render §7"
     }
-    field scattering f32 "How much of the light the fog takes from a ray it scatters (its albedo, tinted by color): 0 dims without glowing, 1 sends all of it on, above 1 brightens the shafts for effect." {
+    field scattering f32 "How much of the sun's and the lamps' light the fog scatters (its albedo, tinted by color): 0 leaves the plain fog's haze without shafts or glow, 1 sends all of that light on, above 1 brightens the shafts for effect." {
       default 0.8
       min 0
       max 4
@@ -89,7 +89,7 @@ module atmosphere {
       max 0.95
       tunable true
     }
-    field volumetricDistance f32 "How far from the camera the volume reaches." {
+    field volumetricDistance f32 "How far from the camera the fog shows shafts and the local lights; past it the fog goes on in its colour, with the sun's light in it unshadowed." {
       default 48
       min 4
       max 400
@@ -99,7 +99,7 @@ module atmosphere {
 
   component FogVolume {
     aliases "local fog, fog in an area, ground mist in a hollow, smoke filling a room, fog bank, haze in a cave, steam, volumetric fog zone"
-    doc "Fog inside the og.Volume on its entity (none: everywhere), lit by the sun through its shadows and by the point, spot and rect lights: mist in a hollow, smoke in a room, the haze a light shaft shows in. It needs no og.Fog and adds to one. Drawn for a perspective camera where the device draws volumetric fog; the 16 nearest the camera."
+    doc "Fog inside the og.Volume on its entity (none: everywhere), lit by the sun through its shadows, by the point, spot and rect lights and by the sky's light: mist in a hollow, smoke in a room, the haze a light shaft shows in. It needs no og.Fog and adds to one. Drawn for a perspective camera where the device draws volumetric fog; the 16 nearest the camera."
     guide "render §7"
     field color Color "The fog's colour: what it tints the light it scatters." {
       default 1 1 1

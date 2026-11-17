@@ -36,6 +36,7 @@ impl Pass for VolumetricPass {
             &r.frame_layout,
             medium,
             (&scene.atmosphere.fog_volumes, scene.frame.camera.position),
+            scene.atmosphere.fog.map_or(1.0, |f| f.sky),
             (r.width, r.height),
             scene.frame.tick,
             &scene.frame.quality,
@@ -49,6 +50,7 @@ impl Pass for VolumetricPass {
 
     fn encode<'f>(st: &Self::State, _: &(), _: FramePass, cx: &mut EncodeCx<'_, 'f>) {
         let r = cx.ctx.r;
+        let ibl = r.lights.ibl.views();
         st.encode_froxels(
             &r.device,
             cx.encoder,
@@ -60,6 +62,12 @@ impl Pass for VolumetricPass {
                 &r.lights.light_buffers[1],
                 &r.lights.light_buffers[2],
             ],
+            &crate::volumetric::FroxelAmbient {
+                irradiance: &ibl.irradiance,
+                prefiltered: &ibl.prefiltered,
+                sampler: &ibl.sampler,
+                probes: &r.lights.lightmaps.probe_buffer,
+            },
             (&r.lights.caustic_grid, &r.sky.cloud_shadow.view),
         );
     }

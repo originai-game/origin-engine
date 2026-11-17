@@ -1,0 +1,16 @@
+{
+  "fixed": [
+    {
+      "member": "og.Fog.volumetric",
+      "summary": "Volumetric fog tends to Fog.color where no sun or lamp lights it, as the plain fog it replaces does, and adds the shafts and the lamps' glow over that. It was lit by the sun and the local lights alone, so a night scene's air was black and far things stood against black while the plain fog showed its haze. Frames with volumetric fog get the fog's colour in their unlit air."
+    },
+    {
+      "member": "og.Fog.volumetricDistance",
+      "summary": "Past volumetricDistance the fog goes on to the far scene and, by Fog.sky, over the sky, in its colour with the unshadowed sun's light in it, as the plain fog fades far things into its colour. It ended at the distance: what lay farther was dimmed by the volume's depth alone and the sky showed through it."
+    },
+    {
+      "member": "og.FogVolume",
+      "summary": "A fog volume also scatters the light that reaches it from every side, evenly: the environment's, og.Environment's hemisphere light and, where it reaches, the probe GI's. It was lit by the sun and the local lights alone."
+    }
+  ]
+}

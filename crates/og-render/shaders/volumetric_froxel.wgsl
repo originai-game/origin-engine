@@ -33,15 +33,23 @@ fn inject(@builtin(global_invocation_id) id: vec3<u32>) {
   let deep = (slice_depth(f32(id.z + 1u) / vol.grid.z) - slice_depth(f32(id.z) / vol.grid.z)) * stretch / f32(INJECT_TAPS);
   var sigma_sum = 0.0;
   var light_sum = vec3<f32>(0.0);
+  // The fog volumes' share of what the slice scatters, for the environment's light: that changes slowly, so the
+  // froxel takes it once, at its middle.
+  var local_sum = vec3<f32>(0.0);
   for (var t = 0u; t < INJECT_TAPS; t++) {
     let f = (f32(id.z) + (f32(t) + jitter) / f32(INJECT_TAPS)) / vol.grid.z;
     let p = frame.view_pos.xyz + dir * slice_depth(f) * stretch;
     let along = slice_depth(f) * stretch;
     let m = vol_medium(p);
-    sigma_sum += m.a;
-    if (m.a > 0.0) {
-      light_sum += m.rgb * medium_in(p, dir, uv * vol.extent.zw, 0xffffffffu, max(along * across, deep));
+    sigma_sum += m.sigma;
+    if (m.sigma > 0.0) {
+      local_sum += m.local;
+      light_sum += m.own + m.scatter * medium_in(p, dir, uv * vol.extent.zw, 0xffffffffu, max(along * across, deep));
     }
+  }
+  if (local_sum.x + local_sum.y + local_sum.z > 0.0) {
+    let middle = frame.view_pos.xyz + dir * slice_depth((f32(id.z) + 0.5) / vol.grid.z) * stretch;
+    light_sum += local_sum * ambient_in(middle, env_in(middle));
   }
   let n = f32(INJECT_TAPS);
   textureStore(froxel_out, id, vec4<f32>(light_sum / n, sigma_sum / n));
@@ -76,14 +84,18 @@ fn integrate(@builtin(global_invocation_id) id: vec3<u32>) {
 
 @fragment
 fn fs_froxel(in: VolOut) -> @location(0) vec4<f32> {
-  let d = min(pixel_depth(in.pos.xy), vol.extent.x);
+  let depth = pixel_depth(in.pos.xy);
+  let d = min(depth, vol.extent.x);
   let uv = in.pos.xy / vol.extent.zw;
   let f = sqrt(max(d, 0.0) / vol.extent.x);
   let z = f - 0.5 / vol.grid.z;
   let s = textureSampleLevel(froxel_tex, froxel_sampler, vec3<f32>(uv, max(z, 0.5 / vol.grid.z)), 0.0);
   // Nearer than the first slice's far edge: that slice's share of it.
   let k = clamp(f * vol.grid.z, 0.0, 1.0);
-  let o = mix(vec4<f32>(0.0, 0.0, 0.0, 1.0), s, k);
+  var o = mix(vec4<f32>(0.0, 0.0, 0.0, 1.0), s, k);
+  // The air past the grid, behind what the grid holds.
+  let far = far_air(view_ray(uv), depth);
+  o = vec4<f32>(o.rgb + o.a * far.rgb, o.a * far.a);
   // The water's fog has dimmed the scene already.
   return vec4<f32>(o.rgb, select(o.a, 1.0, VOL_WATER));
 }

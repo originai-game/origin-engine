@@ -369,6 +369,8 @@ pub fn volumetric_fog_scene() -> RenderScene {
     }];
     scene.atmosphere.volumetric_fog = Some(VolumetricFog {
         color: Vec3::new(0.9, 0.92, 0.96),
+        // A dark hall: the fog shows the sun's and the spot's light alone.
+        ambient: Vec3::ZERO,
         density: 0.06,
         height: 0.0,
         height_density: 0.04,
