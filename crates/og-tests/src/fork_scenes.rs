@@ -490,34 +490,7 @@ pub fn ao_screen_water_scene(water: bool) -> RenderScene {
     scene
 }
 
-/// A checker ground receding to the horizon (its far squares blurred by
-/// the mips) and a dark block, sharpened by CAS at strength 1.
-pub fn sharpen_scene() -> RenderScene {
-    let mut scene = RenderScene::new();
-    sky(&mut scene, Vec3::new(0.3, 0.8, 0.4), 2.5);
-    crate::scenes::ground(&mut scene, 80.0, 1.0, 0.8);
-    let block = scene.add_mesh(shapes::cuboid(Vec3::new(1.5, 1.5, 1.5)));
-    let dark = scene.add_standard_material(StandardMaterial {
-        color: Vec3::splat(0.05),
-        roughness: 0.6,
-        ..Default::default()
-    });
-    scene.add_instance(
-        block,
-        dark,
-        Mat4::from_translation(Vec3::new(0.0, 0.75, 0.0)),
-    );
-    scene.look.post.sharpen = Some(1.0);
-    scene.frame.camera = Camera {
-        position: Vec3::new(0.0, 1.6, 6.0),
-        target: Vec3::new(0.0, 0.8, -4.0),
-        exposure: Exposure::linear(0.9),
-        ..Default::default()
-    };
-    scene
-}
-
-/// The bloom scene's spheres (`bloom`) with UnrealBloomPass at radius 0.5
+/// The bloom scene (`bloom`) with UnrealBloomPass at radius 0.5
 /// and contrast 1, strength 0.2 (its halo squares the strength and spans the
 /// frame at the classic bloom's 0.8).
 pub fn bloom_unreal(mut scene: RenderScene) -> RenderScene {

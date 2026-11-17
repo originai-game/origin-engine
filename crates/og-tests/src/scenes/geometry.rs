@@ -339,49 +339,6 @@ pub fn thin_geometry() -> RenderScene {
     };
     scene
 }
-
-pub(super) fn emissive_spheres() -> RenderScene {
-    let mut scene = RenderScene::new();
-    ground(&mut scene, 30.0, 0.5, 0.6);
-    let sphere = scene.add_mesh(shapes::sphere(32, 24));
-    for (i, c) in [
-        [8.0, 2.0, 0.5],
-        [0.5, 3.0, 10.0],
-        [2.0, 9.0, 3.0],
-        [12.0, 12.0, 12.0],
-        [10.0, 0.5, 6.0],
-    ]
-    .iter()
-    .enumerate()
-    {
-        let m = scene.add_material(Material {
-            base_color: [0.0, 0.0, 0.0, 1.0],
-            emissive: *c,
-            ..Default::default()
-        });
-        let x = -4.0 + i as f32 * 2.0;
-        scene.add_instance(
-            sphere,
-            m,
-            Mat4::from_translation(Vec3::new(x, 0.6 + (i % 2) as f32 * 0.8, -(i as f32) * 0.7))
-                * Mat4::from_scale(Vec3::splat(0.8 + 0.2 * (i % 3) as f32)),
-        );
-    }
-    scene.lighting.light.intensity = 0.3;
-    scene.lighting.environment = Environment {
-        intensity: 0.08,
-        background: Background::Color(Vec3::new(0.01, 0.012, 0.02)),
-        ..Default::default()
-    };
-    scene.frame.camera = Camera {
-        position: Vec3::new(0.0, 3.0, 8.0),
-        target: Vec3::new(0.0, 0.8, -1.0),
-        exposure: Exposure::linear(1.0),
-        ..Default::default()
-    };
-    scene
-}
-
 /// A dusk scene lit `brightness` times: metered exposure brings it to middle grey.
 pub fn dim_scene(brightness: f32) -> RenderScene {
     let mut scene = RenderScene::new();

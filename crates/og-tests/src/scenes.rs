@@ -509,7 +509,7 @@ pub fn build(name: &str) -> Result<GfxScene, String> {
         },
         // Thin geometry after 16 frames of TAA (static camera, converged).
         "taa" => |g, _| {
-            g.scene = thin_geometry();
+            g.scene = crate::post_scenes::railings_scene();
             g.desc.antialias = Antialias::Tier;
             g.frames = 16;
             Ok(())
@@ -517,23 +517,23 @@ pub fn build(name: &str) -> Result<GfxScene, String> {
         // The same geometry with FXAA (what `Msaa4` draws without a
         // multisampled HDR target).
         "fxaa" => |g, _| {
-            g.scene = thin_geometry();
+            g.scene = crate::post_scenes::railings_scene();
             g.desc.antialias = Antialias::Fxaa;
             Ok(())
         },
         "smaa" => |g, _| {
-            g.scene = thin_geometry();
+            g.scene = crate::post_scenes::railings_scene();
             g.desc.antialias = Antialias::Smaa;
             Ok(())
         },
         "smaa-t2x" => |g, _| {
-            g.scene = thin_geometry();
+            g.scene = crate::post_scenes::railings_scene();
             g.desc.antialias = Antialias::SmaaT2x;
             g.frames = 2;
             Ok(())
         },
         "smaa-t2x-moving" => |g, _| {
-            g.scene = thin_geometry();
+            g.scene = crate::post_scenes::railings_scene();
             g.desc.antialias = Antialias::SmaaT2x;
             g.render_scale = 0.5;
             g.frames = 24;
@@ -548,7 +548,7 @@ pub fn build(name: &str) -> Result<GfxScene, String> {
         // under TAA and resolved by TAA to the output over the jitter's 32
         // phases (twice over).
         "taau" => |g, _| {
-            g.scene = thin_geometry();
+            g.scene = crate::post_scenes::railings_scene();
             g.desc.antialias = Antialias::Taa;
             g.render_scale = 0.5;
             g.frames = 64;
@@ -557,7 +557,7 @@ pub fn build(name: &str) -> Result<GfxScene, String> {
         // TAAU with the camera sliding and the sphere crossing the view
         // with its previous transforms (the prepass's motion vectors).
         "taau-moving" => |g, _| {
-            g.scene = thin_geometry();
+            g.scene = crate::post_scenes::railings_scene();
             g.desc.antialias = Antialias::Taa;
             g.render_scale = 0.5;
             g.frames = 24;
@@ -565,7 +565,7 @@ pub fn build(name: &str) -> Result<GfxScene, String> {
             Ok(())
         },
         "taa-sharp" => |g, _| {
-            g.scene = thin_geometry();
+            g.scene = crate::post_scenes::railings_scene();
             g.desc.antialias = Antialias::Taa;
             g.desc.taa_history = og_render::TaaHistory::CatmullRom;
             g.desc.taa_sharpen = 0.5;
@@ -602,13 +602,13 @@ pub fn build(name: &str) -> Result<GfxScene, String> {
             Ok(())
         },
         "aa-off" => |g, _| {
-            g.scene = thin_geometry();
+            g.scene = crate::post_scenes::railings_scene();
             Ok(())
         },
         // taa-sharp's moving camera with a bilinear history and no
         // sharpening (evidence only, no reference).
         "taa-motion" => |g, _| {
-            g.scene = thin_geometry();
+            g.scene = crate::post_scenes::railings_scene();
             g.desc.antialias = Antialias::Taa;
             g.frames = 16;
             g.update = Some(crate::shadow_scenes::pan_thin_geometry);
@@ -672,7 +672,7 @@ pub fn build(name: &str) -> Result<GfxScene, String> {
         },
         // Emissive spheres over a dark ground with bloom.
         "bloom" => |g, _| {
-            g.scene = emissive_spheres();
+            g.scene = crate::post_scenes::lantern_night_scene();
             g.scene.look.post.bloom = Some(Bloom {
                 threshold: 1.0,
                 knee: 0.5,
@@ -883,14 +883,14 @@ pub fn build(name: &str) -> Result<GfxScene, String> {
         },
         // The spike's scene through a teal-orange LUT, vignette, fringing and grain.
         "post-grade" => |g, _| {
-            g.scene = spike_gltf_scene()?;
+            g.scene = crate::post_scenes::square_golden();
             fx::grade(&mut g.scene);
             Ok(())
         },
         // The bloom scene's saturated emissive spheres through AgX instead
         // of ACES: the brightest cores go to white instead of skewing hue.
         "post-agx" => |g, _| {
-            g.scene = emissive_spheres();
+            g.scene = crate::post_scenes::lantern_night_scene();
             g.scene.look.post.bloom = Some(Bloom {
                 threshold: 1.0,
                 knee: 0.5,
@@ -1020,11 +1020,11 @@ pub fn build(name: &str) -> Result<GfxScene, String> {
             Ok(())
         },
         "dof-low" => |g, _| {
-            g.scene = fx::dof_scene(og_render::DofQuality::Low)?;
+            g.scene = crate::post_scenes::dof_market_scene(og_render::DofQuality::Low);
             Ok(())
         },
         "dof-high" => |g, _| {
-            g.scene = fx::dof_scene(og_render::DofQuality::High)?;
+            g.scene = crate::post_scenes::dof_market_scene(og_render::DofQuality::High);
             Ok(())
         },
         "god-rays" => |g, _| {
@@ -1047,9 +1047,9 @@ pub fn build(name: &str) -> Result<GfxScene, String> {
             Ok(())
         },
         "motion-blur" => |g, _| {
-            g.scene = fx::motion_blur_scene();
+            g.scene = crate::post_scenes::street_blur_scene();
             g.frames = 4;
-            g.update = Some(fx::move_blur);
+            g.update = Some(crate::post_scenes::move_street_blur);
             Ok(())
         },
         "stylised" => |g, _| {
@@ -1212,7 +1212,7 @@ pub fn build(name: &str) -> Result<GfxScene, String> {
         },
         // A custom post pass (`type post`): the room through a CRT curve.
         "post-crt" => |g, _| {
-            g.scene = crate::target_scenes::room();
+            g.scene = crate::post_scenes::square_dusk();
             let crt = g.scene.add_post(og_render::example_crt());
             g.scene.look.custom_post.push(crt);
             Ok(())
@@ -1555,7 +1555,7 @@ pub fn build(name: &str) -> Result<GfxScene, String> {
             Ok(())
         },
         "post-sharpen" => |g, _| {
-            g.scene = crate::fork_scenes::sharpen_scene();
+            g.scene = crate::post_scenes::sharpen_street_scene();
             Ok(())
         },
         "bloom-unreal" => |g, _| {
@@ -1600,7 +1600,7 @@ pub fn build(name: &str) -> Result<GfxScene, String> {
         // colour adjustments baked with it: warmer, more contrast and
         // vibrance, teal shadows and warm highlights.
         "post-adjust" => |g, _| {
-            g.scene = spike_gltf_scene()?;
+            g.scene = crate::post_scenes::square_golden();
             fx::adjust(&mut g.scene);
             Ok(())
         },
@@ -1608,7 +1608,7 @@ pub fn build(name: &str) -> Result<GfxScene, String> {
         // Neutral: the bodies keep their authored colour, which ACES darkens
         // and shifts, and the brightest cores roll to white.
         "post-neutral" => |g, _| {
-            g.scene = emissive_spheres();
+            g.scene = crate::post_scenes::lantern_night_scene();
             g.scene.look.post.bloom = Some(Bloom {
                 threshold: 1.0,
                 knee: 0.5,
@@ -1621,7 +1621,7 @@ pub fn build(name: &str) -> Result<GfxScene, String> {
         // checker floor's lines bow outwards, the frame fitted to its
         // corners.
         "post-lens" => |g, _| {
-            g.scene = spike_gltf_scene()?;
+            g.scene = crate::post_scenes::square_wide();
             g.scene.look.post.lens_distortion = Some(og_render::LensDistortion {
                 amount: 0.35,
                 ..Default::default()
@@ -1789,7 +1789,7 @@ pub fn build(name: &str) -> Result<GfxScene, String> {
         // along the lines to it, and bloom, after the blur, glows round the
         // streaks.
         "post-blur" => |g, _| {
-            g.scene = emissive_spheres();
+            g.scene = crate::post_scenes::lantern_night_scene();
             g.scene.look.post.bloom = Some(Bloom {
                 threshold: 1.0,
                 knee: 0.5,
