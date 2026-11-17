@@ -1,0 +1,21 @@
+{
+  "breaking": [
+    {
+      "member": "StatBar",
+      "change": "The StatBar.well part is gone: the track is the bar's well.",
+      "fix": "A style that dressed StatBar.well dresses StatBar.track."
+    }
+  ],
+  "added": [
+    {
+      "member": "--bar-skew",
+      "summary": "Role tokens for a meter over the scene: --bar-skew, --bar-well, --bar-rim, --bar-gloss, --bar-ghost, --bar-ghost-motion, --bar-pending, --bar-critical-rim, --bar-notch, --bar-shield, --bar-danger, --bar-figure-weight and --bar-figure-stretch. StatBar wears them: it leans forward in a dark well with one lit rim, a loss leaves a warm ghost that holds 450 ms and drains in 350 ms, healing on its way is striped, and under the critical mark the rim glows in danger and pulses."
+    }
+  ],
+  "fixed": [
+    {
+      "member": "StatBar",
+      "summary": "The shield lies along the top of the bar it guards and draws nothing when broken (an empty shield drew a dark strip above the bar), and the track grows with the text scale, so a value inside it is not cut at 150 % text."
+    }
+  ]
+}

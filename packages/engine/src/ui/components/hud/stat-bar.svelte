@@ -1,6 +1,6 @@
 <meta name="component" content="StatBar">
 <meta name="strings" content="./stat-bar.en.ogt">
-<meta name="parts" content="StatBar.shield StatBar.frame StatBar.label StatBar.track StatBar.fill StatBar.inside StatBar.figure StatBar.well StatBar.icon StatBar.tag StatBar.notch">
+<meta name="parts" content="StatBar.shield StatBar.frame StatBar.label StatBar.track StatBar.fill StatBar.inside StatBar.figure StatBar.icon StatBar.tag StatBar.notch">
 <meta name="prop:value" content="number" data-doc="The value.">
 <meta name="prop:max" content="number" data-default="1" data-doc="Its maximum.">
 <meta name="prop:kind" content="string" data-default="health" data-doc="What it measures (its colour): health, mana, stamina or xp; health turns warn and danger as it falls.">
@@ -21,15 +21,15 @@
 <meta name="fixture:default" content='{"value":72,"max":100,"kind":"health","segment":25,"shield":60,"shieldMax":100,"heal":12,"recoverable":0,"label":"HP","icon":"heart","showValue":true,"valueInside":false,"valueText":"","low":0.3,"critical":0.15,"bare":false,"name":""}'>
 
 <div id="StatBar" data-layout="stack" data-gap="hair" role="meter" aria-label={name || label || t("component.stat-bar.health")} aria-valuemin="0" aria-valuemax={max} aria-valuenow={value} aria-valuetext={valueText || t("component.stat-bar.value", { value: value, max: max })} class:mana={kind == 'mana'} class:stamina={kind == 'stamina'} class:xp={kind == 'xp'} class:low={kind == 'health' && value / max <= low && value / max > critical} class:critical={kind == 'health' && value / max <= critical} class:bare={bare}>
-  {#if shieldMax > 0}<div id="Shield" part="StatBar.shield StatBar.track" data-layout="overlay" style:--shield={shield / shieldMax}><div id="ShieldFill" part="StatBar.fill" data-anchor="top-start" data-tone="info"></div></div>{/if}
   <div id="Main" part="StatBar.frame" data-layout="row" class:hud={!bare} class:bare={bare}>
     {#if icon}<og-icon id="Icon" part="StatBar.icon" icon={icon}></og-icon>{/if}
     {#if label}<div part="StatBar.tag"><span id="Label" class="label" part="StatBar.label">{label}</span></div>{/if}
-    <div id="Track" part="StatBar.well StatBar.track" data-layout="overlay" data-fill="true" style:--value={value / max} style:--heal={heal / max} style:--recoverable={recoverable / max} style:--block={segment / max}>
+    <div id="Track" part="StatBar.track" data-layout="overlay" data-fill="true" style:--shield={shieldMax > 0 ? shield / shieldMax : 0} style:--value={value / max} style:--heal={heal / max} style:--recoverable={recoverable / max} style:--block={segment / max}>
       <div id="Recoverable" part="StatBar.fill" data-anchor="top-start"></div>
       <div id="Ghost" part="StatBar.fill" data-anchor="top-start" data-ghost="true"></div>
-      {#if heal > 0}<div id="Heal" part="StatBar.fill" data-anchor="top-start" data-motion="pulse"></div>{/if}
-      <div id="Fill" part="StatBar.fill" data-anchor="top-start" data-motion={kind == 'health' && value / max <= critical ? 'pulse' : null}></div>
+      {#if heal > 0}<div id="Heal" part="StatBar.fill" data-anchor="top-start"></div>{/if}
+      <div id="Fill" part="StatBar.fill" data-anchor="top-start"></div>
+      {#if shieldMax > 0 && shield > 0}<div id="Shield" part="StatBar.shield StatBar.fill" data-anchor="top-start"></div>{/if}
       {#if segment > 0}<div id="Blocks" part="StatBar.notch" data-anchor="fill"></div>{/if}
       {#if showValue && valueInside}<div id="Inside" part="StatBar.inside StatBar.tag" data-anchor="top-end"><span class="inside" part="StatBar.figure">{valueText || t("component.stat-bar.value", { value: value, max: max })}</span></div>{/if}
     </div>
@@ -44,21 +44,30 @@
 .stamina { --meter: var(--success); --fill-color: var(--meter); }
 .xp { --meter: var(--xp); --fill-color: var(--meter); }
 .low { --meter: var(--warn); --fill-color: var(--meter); }
-.critical { --meter: var(--danger); --fill-color: var(--meter); }
-/* The shield is a tab of the plate, on the straight run of its top edge. */
-#Shield { block-size: var(--space-xs); margin-inline: var(--plate-radius); overflow: hidden; --track-fill: var(--plate-fill); }
-#ShieldFill { inline-size: calc(var(--shield) * 100%); block-size: 100%; }
+.critical { --meter: var(--bar-danger); --fill-color: var(--meter); }
+#Main { align-items: center; }
 #Icon { width: var(--size-xs); height: var(--size-xs); }
 [part="StatBar.label"] { white-space: nowrap; }
-#Track { min-inline-size: 0; block-size: var(--space-lg); overflow: hidden; }
-#Recoverable, #Ghost, #Fill, #Heal { block-size: 100%; }
+/* The bar leans forward in a dark well with one lit rim; it grows with the
+   player's text scale, so a value set inside it keeps its room
+   (--font-step-px is one CSS px at 100 % text). */
+#Track { min-inline-size: 0; block-size: calc(18 * var(--font-step-px)); overflow: hidden; transform: skewX(var(--bar-skew)); border-radius: 0; background: var(--bar-well); box-shadow: var(--bar-rim); }
+.critical #Track { box-shadow: var(--bar-critical-rim); animation: var(--pulse-motion); }
+#Recoverable, #Ghost, #Fill, #Heal { block-size: 100%; --fill-gloss: var(--bar-gloss); }
 #Recoverable { inline-size: calc(var(--recoverable) * 100%); --fill-color: var(--ink-muted); }
-#Ghost { inline-size: calc(var(--value) * 100%); }
+/* A loss leaves a warm ghost that holds, then drains after the fill. */
+#Ghost { inline-size: calc(var(--value) * 100%); background: var(--bar-ghost); transition: var(--bar-ghost-motion); }
 #Fill { inline-size: calc(var(--value) * 100%); }
-#Heal { inline-size: calc((var(--value) + var(--heal)) * 100%); --fill-color: var(--tone-heal); }
-#Blocks { mask-image: repeating-linear-gradient(90deg, transparent 0% calc(var(--block) * 100% - 0.8%), #000 calc(var(--block) * 100% - 0.8%) calc(var(--block) * 100%)); }
+/* Healing on its way: striped past the fill. */
+#Heal { inline-size: calc((var(--value) + var(--heal)) * 100%); background: var(--bar-pending); }
+/* The shield lies along the top of the bar it guards, as long as its share
+   of its maximum; a broken shield draws nothing. */
+#Shield { inline-size: calc(var(--shield) * 100%); block-size: 34%; --fill-color: var(--bar-shield); --fill-gloss: none; }
+#Blocks { background: var(--bar-notch); mask-image: repeating-linear-gradient(90deg, transparent 0% calc(var(--block) * 100% - 0.8%), #000 calc(var(--block) * 100% - 0.8%) calc(var(--block) * 100%)); }
 :host(:dir(rtl)) #Blocks { scale: -1 1; }
-#Inside { padding-inline: var(--space-xs); }
-[part="StatBar.figure"] { --figure-size: var(--font-step-sm); white-space: nowrap; }
+/* The value inside stands upright in the leaning bar. */
+#Inside { display: flex; align-items: center; block-size: 100%; padding-inline: var(--space-sm); line-height: 1; transform: skewX(calc(-1 * var(--bar-skew))); }
+[part="StatBar.figure"] { --figure-size: var(--font-step-sm); --figure-weight: var(--bar-figure-weight); font-stretch: var(--bar-figure-stretch); white-space: nowrap; }
 .critical [part="StatBar.figure"] { --figure-ink: var(--tone-danger); }
+@media (prefers-reduced-motion: reduce) { .critical #Track { animation: none; } }
 </style>
