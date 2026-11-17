@@ -433,17 +433,34 @@ fn missing_art_slot_kinds_have_intentional_placeholders() {
             .frame()
             .items
             .iter()
-            .find_map(|item| match round_fill(&item.cmd) {
-                Some((rect, radius))
-                    if radius >= rect.width.min(rect.height) / 2.0
-                        && (rect.center().0 - cx).abs() <= 0.5
-                        && (rect.center().1 - cy).abs() <= 0.5 =>
-                {
-                    Some(rect)
-                }
-                _ => None,
+            .find_map(|item| {
+                // The engine's built-in silhouettes now work without an
+                // atlas; only an unknown silhouette falls back to a disc.
+                let mark = match &item.cmd {
+                    DrawCmd::Shape { shape, .. }
+                        if matches!(
+                            shape.geometry,
+                            og_draw::UiGeometry::Path(_) | og_draw::UiGeometry::Polyline { .. }
+                        ) =>
+                    {
+                        Some(Rect::new(
+                            shape.center.x - shape.half.x,
+                            shape.center.y - shape.half.y,
+                            shape.half.x * 2.0,
+                            shape.half.y * 2.0,
+                        ))
+                    }
+                    _ => round_fill(&item.cmd)
+                        .filter(|(r, radius)| *radius >= r.width.min(r.height) / 2.0)
+                        .map(|(r, _)| r),
+                };
+                mark.filter(|r| {
+                    (r.center().0 - cx).abs() <= 0.5 && (r.center().1 - cy).abs() <= 0.5
+                })
             })
-            .unwrap_or_else(|| panic!("no pixel-snapped centred disc in case {index}: {rect:?}"));
+            .unwrap_or_else(|| {
+                panic!("no pixel-snapped centred silhouette in case {index}: {rect:?}")
+            });
         assert_eq!(mark.width, mark.height);
         assert!(mark.width <= 32.0 && mark.width <= width.min(*height) * 0.36 + 0.01);
     }
