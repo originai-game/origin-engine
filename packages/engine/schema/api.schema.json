@@ -25948,21 +25948,26 @@
           "type": "integer",
           "minimum": 0,
           "maximum": 4294967295,
-          "description": "Colour bands by depth (2 to 8): the scene from depthBandsNear to depthBandsFar is cut into this many equal layers, the first in depthBandsNearColor, the last in depthBandsFarColor, those between stepping evenly from one to the other in lightness, chroma and hue (never through grey); 0 is off.\nSee `looks §11`.",
+          "description": "Colour bands by depth (2 to 8), interpolating depthBandsNearColor to depthBandsFarColor in lightness, chroma and hue. By default the layers divide depthBandsNear..depthBandsFar evenly; depthBandsFit instead fits logarithmic layers to visible geometry. 0 is off.\nSee `looks §11`.",
           "default": 0,
           "minimum": 0,
           "maximum": 8
         },
+        "depthBandsFit": {
+          "type": "boolean",
+          "description": "Fit logarithmic bands to the full visible non-sky depth range, measured each drawn frame. Nearer layers span less distance than farther ones. Ignores depthBandsNear and depthBandsFar; false keeps their absolute linear layers. The farthest layer still merges geometry within it.",
+          "default": false
+        },
         "depthBandsNear": {
           "type": "number",
-          "description": "Where the first band starts.",
+          "description": "Where the first band starts, unless depthBandsFit is true.",
           "default": 5,
           "minimum": 0,
           "x-og-unit": "m"
         },
         "depthBandsFar": {
           "type": "number",
-          "description": "Where the last band ends; the last band (the far colour) starts one band's depth before it, and everything beyond it is the far colour too.",
+          "description": "Where the last band ends; the far colour starts one band's depth before it and continues beyond it. Ignored when depthBandsFit is true.",
           "default": 60,
           "minimum": 0,
           "x-og-unit": "m"

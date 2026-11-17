@@ -180,6 +180,7 @@ pub(crate) struct PassDecisions<'a> {
     /// The main camera's clouds at half the frame's size.
     pub clouds: bool,
     pub depth_bands: bool,
+    pub depth_bands_fit: bool,
     pub fog_of_war: bool,
     pub glow: bool,
     pub outline: bool,
@@ -307,6 +308,11 @@ pub(crate) fn frame_passes(d: &PassDecisions<'_>, caps: Caps) -> Vec<FramePass> 
     }
     push(FramePass::Main);
     if d.depth_bands {
+        if d.depth_bands_fit {
+            for i in 0..3 {
+                push(FramePass::DepthRange(i));
+            }
+        }
         push(FramePass::DepthBands);
     }
     if d.fog_of_war {
@@ -476,6 +482,7 @@ mod tests {
             froxels: true,
             ssr: true,
             depth_bands: true,
+            depth_bands_fit: true,
             fog_of_war: true,
             glow: true,
             outline: true,

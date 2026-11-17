@@ -198,6 +198,7 @@ pub fn bands_scene() -> Result<RenderScene, String> {
     let mut scene = crate::fx_scenes::stylised_scene()?;
     scene.look.stylise.depth_bands = Some(DepthBands {
         count: 4,
+        fit: false,
         near: 4.0,
         far: 30.0,
         near_color: [0.03, 0.02, 0.06],
@@ -942,6 +943,7 @@ pub fn bands_tint_scene() -> RenderScene {
     }
     scene.look.stylise.depth_bands = Some(DepthBands {
         count: 5,
+        fit: false,
         near: 3.0,
         far: 40.0,
         near_color: [0.042, 0.012, 0.07],

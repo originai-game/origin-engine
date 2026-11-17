@@ -193,7 +193,12 @@ impl Renderer {
                 ]
             }),
             bands_near: depth_bands.map_or([0.0; 4], |b| {
-                [b.near_color[0], b.near_color[1], b.near_color[2], 1.0]
+                [
+                    b.near_color[0],
+                    b.near_color[1],
+                    b.near_color[2],
+                    f32::from(b.fit),
+                ]
             }),
             bands_far: depth_bands.map_or([0.0; 4], |b| {
                 [b.far_color[0], b.far_color[1], b.far_color[2], 1.0]

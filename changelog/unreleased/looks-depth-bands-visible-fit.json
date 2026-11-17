@@ -1,0 +1,14 @@
+{
+  "added": [
+    {
+      "member": "Stylise.depthBandsFit",
+      "summary": "Opt-in logarithmic depth bands fitted to the full visible non-sky depth range each drawn frame. A GPU min/max reduction covers every depth pixel; false preserves the existing absolute linear depthBandsNear/depthBandsFar fit without reduction passes."
+    }
+  ],
+  "fixed": [
+    {
+      "member": "looks: luminous-layers, layered-silhouette",
+      "summary": "Enable visible logarithmic depth fitting in painterly-3d's luminous-layers and minimal-geometric's layered-silhouette, replacing their fixed 60 m and 50 m endpoints so near and middle layers survive in differently scaled scenes. Far separation remains open: geometry in the farthest band still merges; this change does not promise a distinct layer for every distant object. Other banded looks retain their absolute fit."
+    }
+  ]
+}

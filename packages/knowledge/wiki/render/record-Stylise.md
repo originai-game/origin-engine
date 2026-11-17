@@ -85,9 +85,10 @@ Token `og.Stylise`, registered under the schema name `og.Stylise`; its value typ
 
 | Field | Type | Default | Range | Unit | Notes | Doc |
 |---|---|---|---|---|---|---|
-| `depthBands` | `number` | `0` | 0 … 8 | — | — | Colour bands by depth (2 to 8): the scene from depthBandsNear to depthBandsFar is cut into this many equal layers, the first in depthBandsNearColor, the last in depthBandsFarColor, those between stepping evenly from one to the other in lightness, chroma and hue (never through grey); 0 is off. See `looks §11`. |
-| `depthBandsNear` | `number` | `5` | ≥ 0 | `m` | — | Where the first band starts. |
-| `depthBandsFar` | `number` | `60` | ≥ 0 | `m` | — | Where the last band ends; the last band (the far colour) starts one band's depth before it, and everything beyond it is the far colour too. |
+| `depthBands` | `number` | `0` | 0 … 8 | — | — | Colour bands by depth (2 to 8), interpolating depthBandsNearColor to depthBandsFarColor in lightness, chroma and hue. By default the layers divide depthBandsNear..depthBandsFar evenly; depthBandsFit instead fits logarithmic layers to visible geometry. 0 is off. See `looks §11`. |
+| `depthBandsFit` | `boolean` | `false` | — | — | — | Fit logarithmic bands to the full visible non-sky depth range, measured each drawn frame. Nearer layers span less distance than farther ones. Ignores depthBandsNear and depthBandsFar; false keeps their absolute linear layers. The farthest layer still merges geometry within it. |
+| `depthBandsNear` | `number` | `5` | ≥ 0 | `m` | — | Where the first band starts, unless depthBandsFit is true. |
+| `depthBandsFar` | `number` | `60` | ≥ 0 | `m` | — | Where the last band ends; the far colour starts one band's depth before it and continues beyond it. Ignored when depthBandsFit is true. |
 | `depthBandsNearColor` | `Color` | `{ r: 0.02, g: 0.02, b: 0.03 }` | — | — | — | The nearest band's colour (linear, before exposure). |
 | `depthBandsFarColor` | `Color` | `{ r: 0.55, g: 0.6, b: 0.7 }` | — | — | — | The farthest band's colour (linear, before exposure). |
 | `depthBandsFlatten` | `number` | `1` | 0 … 1 | `ratio` | tunable | How far a band replaces the surfaces' own shading: 1 flat silhouettes in the band's colour; 0 a tint over the lit scene, its colours times the band's at unit luminance (a coloured filter: the shading, the value and the surfaces' own hues show through); between, a mix of the two. |
@@ -314,17 +315,18 @@ resource Stylise {
     max 2
   }
   group "Depth bands"
-  field depthBands u32 "Colour bands by depth (2 to 8): the scene from depthBandsNear to depthBandsFar is cut into this many equal layers, the first in depthBandsNearColor, the last in depthBandsFarColor, those between stepping evenly from one to the other in lightness, chroma and hue (never through grey); 0 is off." {
+  field depthBands u32 "Colour bands by depth (2 to 8), interpolating depthBandsNearColor to depthBandsFarColor in lightness, chroma and hue. By default the layers divide depthBandsNear..depthBandsFar evenly; depthBandsFit instead fits logarithmic layers to visible geometry. 0 is off." {
     min 0
     max 8
     guide "looks §11"
   }
-  field depthBandsNear f32 "Where the first band starts." {
+  field depthBandsFit bool "Fit logarithmic bands to the full visible non-sky depth range, measured each drawn frame. Nearer layers span less distance than farther ones. Ignores depthBandsNear and depthBandsFar; false keeps their absolute linear layers. The farthest layer still merges geometry within it."
+  field depthBandsNear f32 "Where the first band starts, unless depthBandsFit is true." {
     default 5
     min 0
     unit m
   }
-  field depthBandsFar f32 "Where the last band ends; the last band (the far colour) starts one band's depth before it, and everything beyond it is the far colour too." {
+  field depthBandsFar f32 "Where the last band ends; the far colour starts one band's depth before it and continues beyond it. Ignored when depthBandsFit is true." {
     default 60
     min 0
     unit m

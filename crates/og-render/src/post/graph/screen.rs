@@ -9,7 +9,17 @@ pub(super) fn groups(cx: &BindCx, pass: FramePass) -> Option<Pair> {
     let black = &cx.passes.black;
     let names = &cx.names;
     Some(match pass {
-        FramePass::DepthBands => cx.pair(|_| cx.fx(cx.view("hdr"), black)),
+        FramePass::DepthRange(0) => cx.pair(|_| cx.fx(cx.view("hdr"), black)),
+        FramePass::DepthRange(1) => cx.pair(|_| cx.fx(cx.view("depth.range0"), black)),
+        FramePass::DepthRange(2) => cx.pair(|_| cx.fx(cx.view("depth.range1"), black)),
+        FramePass::DepthBands => cx.pair(|_| {
+            let range = if cx.has(FramePass::DepthRange(2)) {
+                cx.view("depth.range2")
+            } else {
+                black
+            };
+            cx.fx(cx.view("hdr"), range)
+        }),
         FramePass::FogOfWar => cx.pair(|_| cx.fx(cx.view(names.banded), &cx.passes.sight.view)),
         FramePass::DofCoc => cx.pair(|slot| cx.fx_after(cx.stage(names.aa, slot), black)),
         FramePass::DofBlur => cx.pair(|_| cx.fx_after(cx.view("dof.coc"), black)),
@@ -29,6 +39,9 @@ pub(super) fn groups(cx: &BindCx, pass: FramePass) -> Option<Pair> {
 pub(super) fn draw(pass: FramePass) -> Option<fx::Draw> {
     Some(match pass {
         FramePass::DepthBands => ("fs_depth_bands", "hdr.bands"),
+        FramePass::DepthRange(0) => ("fs_depth_range", "depth.range0"),
+        FramePass::DepthRange(1) => ("fs_depth_range_reduce", "depth.range1"),
+        FramePass::DepthRange(2) => ("fs_depth_range_reduce", "depth.range2"),
         FramePass::FogOfWar => ("fs_sight", "hdr.sight"),
         FramePass::DofCoc => ("fs_dof_coc", "dof.coc"),
         FramePass::DofBlur => ("fs_dof_blur", "dof.blur"),

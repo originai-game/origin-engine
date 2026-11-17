@@ -610,6 +610,8 @@ const FX_PASSES: &[(&str, wgpu::TextureFormat)] = &[
     ("fs_godrays_mask", HDR_FORMAT),
     ("fs_godrays_blur", HDR_FORMAT),
     ("fs_depth_bands", HDR_FORMAT),
+    ("fs_depth_range", HDR_FORMAT),
+    ("fs_depth_range_reduce", HDR_FORMAT),
     ("fs_sight", HDR_FORMAT),
     ("fs_ssgi", crate::ssgi::GI_FORMAT),
     ("fs_gi_blur", crate::ssgi::GI_FORMAT),

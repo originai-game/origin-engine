@@ -133,6 +133,8 @@ pub(crate) enum FramePass {
     FlareBlurY,
     /// Flat colour bands by depth over the lit image (`stylise.rs`).
     DepthBands,
+    /// Full visible depth range, reduced once per view in three levels.
+    DepthRange(u32),
     /// Fog of war over the lit image (`sight.rs`), after the bands.
     FogOfWar,
     Tonemap,
@@ -350,6 +352,7 @@ impl FramePass {
             FramePass::FlareBlurY => "flare-blur-y".into(),
             FramePass::Tonemap => "tonemap".into(),
             FramePass::DepthBands => "depth-bands".into(),
+            FramePass::DepthRange(i) => format!("depth-range.{i}"),
             FramePass::FogOfWar => "fog-of-war".into(),
             FramePass::Paint => "paint".into(),
             FramePass::Watercolor => "watercolor".into(),

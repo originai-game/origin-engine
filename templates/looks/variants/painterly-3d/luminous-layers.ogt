@@ -8,8 +8,7 @@ name "Luminous layered environments"
 mood "cold"
 Stylise {
   depthBands 5
-  depthBandsNear 3
-  depthBandsFar 60
+  depthBandsFit true
   depthBandsNearColor "#1a1430"
   depthBandsFarColor "#ffd9a0"
   depthBandsFlatten 0.6

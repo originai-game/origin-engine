@@ -1,5 +1,28 @@
 use super::*;
 
+#[test]
+fn depth_bands_fit_is_opt_in_and_keeps_absolute_endpoints() {
+    let bands = |fit: Option<bool>| {
+        let mut value = serde_json::json!({
+            "depthBands": 5,
+            "depthBandsNear": 7.0,
+            "depthBandsFar": 93.0
+        });
+        if let Some(fit) = fit {
+            value["depthBandsFit"] = serde_json::json!(fit);
+        }
+        let resource = record::Stylise::from_json(&value).unwrap();
+        stylise(Some(&resource), None, &[], &[])
+            .depth_bands
+            .unwrap()
+    };
+    for fit in [None, Some(false), Some(true)] {
+        let result = bands(fit);
+        assert_eq!(result.fit, fit == Some(true));
+        assert_eq!((result.count, result.near, result.far), (5, 7.0, 93.0));
+    }
+}
+
 /// `kept_rows` answers what `rows` decodes, row for row, after each
 /// change it can see.
 fn kept_rows_decode(world: &World, layout: &Layout, kept: &[(u64, Arc<Value>)]) {
