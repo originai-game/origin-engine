@@ -38,6 +38,9 @@ export interface UiElementDump {
   role?: string;
   name?: string;
   states?: string[];
+  /** Authored engine policy, not inferred from clipping or animation. */
+  textOverflow?: "clip" | "ellipsis" | "-og-scroll";
+  textScrollActive?: boolean;
   x: number;
   y: number;
   width: number;
@@ -509,9 +512,16 @@ export function checkFrame(frame: UiFrameSnapshot, cell: UiCell, opts: CheckOpti
     const i = owner(f, t);
     const path = i >= 0 ? paths[i]! : `text "${t.text.slice(0, 24)}"`;
     const e = i >= 0 ? f.elements[i]! : undefined;
+    const policy = e?.textOverflow;
     const shown = intersect(t.bounds, t.clip);
     const cutX = w - Math.max(0, shown[2]);
     const cutY = h - Math.max(0, shown[3]);
+    // An inline overflow choice does not excuse a box cutting its height.
+    const ellipsis = /(…|\.\.\.)$/.test(t.text.trim());
+    const intentional = cutY <= h * 0.3 && (
+      ((policy === "clip" || policy === "ellipsis") && (cutX > 1 || ellipsis)) ||
+      (policy === "-og-scroll" && (e?.textScrollActive || f.viewport.reducedMotion))
+    );
     // A scroll container's edge (the probe marks the element clipped) cuts a
     // row at its top or bottom: the rest scrolls into view. A cut across the
     // line scrolls into view too inside a sideways scroller (a row of tabs or
@@ -520,8 +530,7 @@ export function checkFrame(frame: UiFrameSnapshot, cell: UiCell, opts: CheckOpti
     if (e?.clipped && (cutX <= 1 || inSideways(path))) continue;
     // What the cut took, along the axis it cut: never "0 px" for a line cut top or bottom.
     const cut = [cutX > 1 ? `${r1(cutX)} CSS px of its width` : "", cutY > h * 0.3 ? `${r1(cutY)} of its ${r1(h)} CSS px height` : ""].filter(Boolean).join(" and ");
-    const ellipsis = /(…|\.\.\.)$/.test(t.text.trim());
-    if (cutX > 1 || cutY > h * 0.3) {
+    if (!intentional && (cutX > 1 || cutY > h * 0.3)) {
       add("text-cut", {
         paths: [path],
         rect: t.bounds,
@@ -529,7 +538,7 @@ export function checkFrame(frame: UiFrameSnapshot, cell: UiCell, opts: CheckOpti
         prop: `${path}: text-overflow: ellipsis and line-clamp, or its box's width`,
         fix: "let the box grow with its text, wrap it, or cut it with an ellipsis and give it a tooltip",
       });
-    } else if (e && !PICTURES.has(e.kind ?? "") && w > e.width + 1.5 && (e.kind === "label" || e.kind === "button")) {
+    } else if (!intentional && e && !PICTURES.has(e.kind ?? "") && w > e.width + 1.5 && (e.kind === "label" || e.kind === "button")) {
       add("text-cut", {
         paths: [path],
         rect: t.bounds,
@@ -540,7 +549,7 @@ export function checkFrame(frame: UiFrameSnapshot, cell: UiCell, opts: CheckOpti
         fix: "no box is sized to its English text (§15.3): let it fit its text, or wrap",
       });
     }
-    if (ellipsis && e && !/(…|\.\.\.)$/.test(e.text.trim())) {
+    if (!intentional && ellipsis && e && !/(…|\.\.\.)$/.test(e.text.trim())) {
       add("text-truncated", {
         paths: [path],
         measured: `"${e.text.slice(0, 40)}" drawn as "${t.text.slice(0, 40)}"${pseudo}`,

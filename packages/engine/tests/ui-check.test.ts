@@ -72,6 +72,18 @@ test("text cut by its clip without an ellipsis is a finding; text that fits is n
   expect(rules(cut)).toContain("text-cut");
   const fits = frame({ elements: els, texts: [{ text: "Name", size: 14, bounds: [10, 110, 40, 20], clip: [0, 100, 100, 40], color: [1, 1, 1, 1] }] });
   expect(rules(fits)).not.toContain("text-cut");
+  // An intentional cut is authored evidence, never inferred from masking,
+  // movement, or the mere existence of a clip. Other elements still report.
+  for (const textOverflow of ["clip", "ellipsis", "-og-scroll"] as const) {
+    const intentional = frame({ ...cut, elements: els.map((e) => ({ ...e, textOverflow, textScrollActive: true })) });
+    expect(rules(intentional)).not.toContain("text-cut");
+    expect(rules({ ...intentional, elements: els })).toContain("text-cut");
+    expect(rules({ ...intentional, texts: cut.texts.map((t) => ({ ...t, clip: [0, 100, 100, 15] })) })).toContain("text-cut");
+  }
+  const inactive = frame({ ...cut, elements: els.map((e) => ({ ...e, textOverflow: "-og-scroll" as const, textScrollActive: false })) });
+  expect(rules(inactive)).toContain("text-cut");
+  const reduced = { ...inactive, viewport: { ...inactive.viewport, reducedMotion: true } };
+  expect(rules(reduced)).not.toContain("text-cut");
 });
 
 test("a row a scroll container cuts at its bottom edge is scrolling, not cut text; a line cut top or bottom says by how much", () => {

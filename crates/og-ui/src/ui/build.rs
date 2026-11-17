@@ -605,6 +605,7 @@ impl crate::ui::Tree {
             wrap: true,
             font: FontRole::Body,
             ellipsis: false,
+            overflow: None,
             max_lines: 0,
             emphasis: 0.0,
             fit: Vec::new(),

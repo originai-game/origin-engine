@@ -505,6 +505,7 @@ impl Ui {
                 text.color = ink;
             }
         }
+        self.tree.css_text_overflow(i, &r, self.still());
         self.inherit_part_text(i, &r);
         self.text_frame_box(i, &r);
     }

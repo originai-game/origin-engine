@@ -1115,9 +1115,10 @@ impl Ui {
                 } else {
                     self.apply_label(i, &text, desc);
                 }
-                self.tree.css_text_content(i, styled, &doc.sheet);
             }
         }
+        self.tree
+            .css_text_content(self.tree.last_closed, styled, &doc.sheet, self.still());
         Some((resp, generated))
     }
 

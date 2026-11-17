@@ -714,7 +714,6 @@ impl Ui {
                 } else {
                     let width = desc.width;
                     self.apply_label(i, &base.text, desc);
-                    self.tree.css_text_content(i, r, &doc.sheet);
                     // Path text aligns along its path, not in its box: it
                     // keeps the box its path gives (a `circle()` centres in
                     // it), never the column's width a centred line takes.
@@ -732,6 +731,7 @@ impl Ui {
                         self.tree.el_mut(i).width = width;
                     }
                 }
+                self.tree.css_text_content(i, r, &doc.sheet, self.still());
             }
             Some(Kind::Button) => {
                 self.apply_button(
@@ -744,7 +744,8 @@ impl Ui {
                 );
                 // The native label lives in the base part, not its host.
                 let label = self.tree.nodes[i].content_slot;
-                self.tree.css_text_content(label, r, &doc.sheet);
+                self.tree
+                    .css_text_content(label, r, &doc.sheet, self.still());
                 // Content and wrapping labels grow to fit, with the
                 // control height as their minimum, as an HTML button does.
                 if (!n.children.is_empty()
@@ -1504,6 +1505,37 @@ impl Ui {
 }
 
 impl crate::ui::Tree {
+    pub(super) fn css_text_overflow(&mut self, i: usize, r: &Resolved, still: bool) {
+        use crate::layout::{Content, TextOverflow};
+        let policy = r.str("textOverflow").and_then(|s| {
+            let words = s.split_whitespace().collect::<Vec<_>>();
+            match words.as_slice() {
+                ["clip"] => Some(TextOverflow::Clip),
+                ["ellipsis"] => Some(TextOverflow::Ellipsis),
+                ["scroll", travel, hold] => Some(TextOverflow::Scroll {
+                    travel_ms: travel
+                        .parse::<f32>()
+                        .ok()
+                        .filter(|v| v.is_finite() && *v > 0.0)?,
+                    hold_ms: hold
+                        .parse::<f32>()
+                        .ok()
+                        .filter(|v| v.is_finite() && *v >= 0.0)?,
+                }),
+                _ => None,
+            }
+        });
+        let (overflow, ellipsis) = match self.content_mut(i) {
+            Content::Text(t) => (&mut t.overflow, &mut t.ellipsis),
+            Content::Rich(t) => (&mut t.overflow, &mut t.ellipsis),
+            _ => return,
+        };
+        *overflow = policy;
+        if matches!(policy, Some(TextOverflow::Scroll { .. })) {
+            *ellipsis = still;
+        }
+    }
+
     /// A label's CSS `text-wrap-style`, `overflow-wrap`, `text-align-last`,
     /// `text-justify` and `text-overflow: <string>`.
     pub fn css_text_content(
@@ -1511,7 +1543,9 @@ impl crate::ui::Tree {
         i: usize,
         r: &Resolved,
         sheet: &crate::css::at_rules::Sheet,
+        still: bool,
     ) {
+        self.css_text_overflow(i, r, still);
         use crate::layout::WrapStyle;
         let style = match r.text.as_deref().and_then(|t| t.wrap_style.as_deref()) {
             Some("balance") => WrapStyle::Balance,

@@ -224,6 +224,7 @@ impl Ui {
             wrap: false,
             font: desc.font,
             ellipsis: false,
+            overflow: None,
             max_lines: 0,
             emphasis: 0.0,
             fit: Vec::new(),

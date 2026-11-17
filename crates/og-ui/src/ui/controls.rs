@@ -49,6 +49,7 @@ impl Ui {
             wrap: !desc.nowrap,
             font: desc.font,
             ellipsis: desc.ellipsis,
+            overflow: None,
             max_lines: desc.max_lines,
             emphasis: 0.0,
             fit,

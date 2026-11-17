@@ -101,7 +101,7 @@ pub(crate) fn text_lines(t: UsedText<'_>, m: &FontMetrics, width: Option<f32>) -
 pub(super) fn text_widths(t: UsedText<'_>, fonts: &dyn Metrics) -> (f32, f32) {
     let m = t.metrics(fonts);
     let pref = text_widest(t, m);
-    let min = if t.ellipsis {
+    let min = if t.ellipsis || matches!(t.overflow, Some(TextOverflow::Scroll { .. })) {
         // It can shrink to its ellipsis.
         text_measure(t, m, t.cut.as_deref().unwrap_or_else(|| ellipsis_of(m))).min(pref)
     } else if t.wrap && t.overflow_wrap == OverflowWrap::Anywhere {

@@ -190,6 +190,18 @@ impl FontRole {
     }
 }
 
+/// An explicitly authored overflow choice, separate from undeclared overflow.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub(crate) enum TextOverflow {
+    Clip,
+    Ellipsis,
+    /// A linear traversal in each direction, with a hold at both ends.
+    Scroll {
+        travel_ms: f32,
+        hold_ms: f32,
+    },
+}
+
 #[derive(Clone, Debug, PartialEq)]
 pub struct TextContent {
     pub text: String,
@@ -201,6 +213,7 @@ pub struct TextContent {
     /// Cut with "…" where it does not fit: a one-line text at its width, a
     /// wrapping one at its last line (`max_lines`).
     pub ellipsis: bool,
+    pub(crate) overflow: Option<TextOverflow>,
     /// The most lines a wrapping text shows (0: no limit).
     pub max_lines: u32,
     /// Extra faux-bold weight, em, over the style's own (a selected tab's

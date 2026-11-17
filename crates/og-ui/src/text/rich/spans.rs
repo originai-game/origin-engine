@@ -420,6 +420,7 @@ impl Ui {
             align: desc.align,
             wrap: !desc.nowrap,
             ellipsis: desc.ellipsis,
+            overflow: None,
             max_lines: desc.max_lines,
             cut: desc.cut,
             indent: desc.indent,

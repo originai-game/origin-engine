@@ -31,8 +31,8 @@ use node::truncate_lines;
 pub use node::{Changed, Content, GapSeg, InlineFrag, NONE, Shape};
 pub(crate) use node::{
     EditView, Media, Node, ObjectFit, OverflowWrap, PartBox, PartGeometry, Placement, Stagger,
-    TextContent, TextJustify, UsedText, Widget, WrapStyle, ellipsis_of, snap_pixel_text,
-    step_tracking, text_features,
+    TextContent, TextJustify, TextOverflow, UsedText, Widget, WrapStyle, ellipsis_of,
+    snap_pixel_text, step_tracking, text_features,
 };
 pub use node::{Family, FontRole};
 pub use reading::ReadingFlow;

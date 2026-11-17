@@ -31,6 +31,139 @@ fn face(path: &str) -> UiFont {
 const NOTO: &str = "templates/fonts/latin/NotoSans-Latin.ttf";
 
 #[test]
+fn scrolling_overflow_moves_retained_text_but_not_fitting_text() {
+    let mut d = doc(
+        "<p id=\"Long\">A deliberately long song title for scrolling</p><p id=\"Short\">Hi</p>",
+        ":root { --travel: 500ms; --hold: 100ms; }
+         p { width: 120px; font-size: 24px; white-space: nowrap;
+             text-overflow: -og-scroll var(--travel) var(--hold); }",
+    );
+    let first = lines(&d, "Long")[0].clone();
+    let short = lines(&d, "Short")[0].clone();
+    let x = |d: &Doc| {
+        d.ui.frame()
+            .items
+            .iter()
+            .find_map(|it| match text_of(&it.cmd) {
+                DrawCmd::Text { text, x, .. } if text == &first.text => Some(*x),
+                _ => None,
+            })
+            .expect("the whole source remains drawn")
+    };
+    assert!(first.width > 120.0);
+    for _ in 0..3 {
+        d.step(InputFrame::default());
+    }
+    assert_eq!(x(&d), first.x, "initial hold");
+    for _ in 0..15 {
+        d.step(InputFrame::default());
+    }
+    assert!(x(&d) < first.x - 10.0, "retained text must move");
+    assert_eq!(lines(&d, "Short")[0].x, short.x);
+    assert!(
+        d.ui.frame().items.iter().any(|it| matches!(
+            it.cmd,
+            DrawCmd::BeginLayer {
+                mask: Some(og_draw::UiMask::Gradient(_)),
+                ..
+            }
+        )),
+        "the edge fade must mask alpha, not cover it with a background colour"
+    );
+    let snapshot = d.ui.save_state();
+    for _ in 0..18 {
+        d.step(InputFrame::default());
+    }
+    let end = x(&d);
+    assert!(
+        (first.x - end - (first.width - 120.0)).abs() < 1.0,
+        "reach the end"
+    );
+    for _ in 0..3 {
+        d.step(InputFrame::default());
+    }
+    assert_eq!(x(&d), end, "end hold");
+    for _ in 0..12 {
+        d.step(InputFrame::default());
+    }
+    assert!(x(&d) > end + 10.0, "return toward the start");
+    d.ui.restore_state(&snapshot).unwrap();
+    for _ in 0..18 {
+        d.step(InputFrame::default());
+    }
+    assert_eq!(x(&d), end, "snapshot restores the exact phase");
+    let mut theme = *d.ui.theme();
+    theme.reduced_motion = true;
+    d.ui.set_theme(theme);
+    d.step(InputFrame::default());
+    let reduced = lines(&d, "Long");
+    assert!(reduced[0].text.ends_with('…'));
+    assert!(reduced[0].width <= 120.5);
+    assert_eq!(d.get("Long").text, first.text);
+    assert_eq!(
+        d.get("Long").detail.get("textOverflow"),
+        Some(&serde_json::json!("-og-scroll"))
+    );
+}
+
+#[test]
+fn scrolling_overflow_is_content_only_in_plain_rich_and_native_labels() {
+    for tag in ["text", "p", "button"] {
+        for rtl in [false, true] {
+            let text = if tag == "p" {
+                "<b>An overflowing title</b> with a readable end"
+            } else {
+                "An overflowing title with a readable end"
+            };
+            let body = format!("<{tag} id=\"Title\">{text}</{tag}>");
+            let mut d = doc(
+                &body,
+                &format!(
+                    "#Title {{ width: 120px; font-size: 24px; white-space: nowrap;
+                    direction: {}; text-overflow: -og-scroll 500ms 100ms; }}",
+                    if rtl { "rtl" } else { "ltr" }
+                ),
+            );
+            let rect = d.get("Title");
+            let marker =
+                d.ui.frame()
+                    .items
+                    .iter()
+                    .find_map(|it| match text_of(&it.cmd) {
+                        DrawCmd::Text { text, .. } => Some(text.clone()),
+                        _ => None,
+                    })
+                    .unwrap();
+            let text_x = |d: &Doc| {
+                d.ui.frame()
+                    .items
+                    .iter()
+                    .find_map(|it| match text_of(&it.cmd) {
+                        DrawCmd::Text { text, x, .. } if text == &marker => Some(*x),
+                        _ => None,
+                    })
+                    .unwrap()
+            };
+            let start = text_x(&d);
+            for _ in 0..18 {
+                d.step(InputFrame::default());
+            }
+            let delta = text_x(&d) - start;
+            assert!(
+                if rtl { delta > 10.0 } else { delta < -10.0 },
+                "{tag} rtl={rtl}: {delta}"
+            );
+            let after = d.get("Title");
+            assert_eq!(
+                (after.x, after.y, after.width, after.height),
+                (rect.x, rect.y, rect.width, rect.height),
+                "the control never moves"
+            );
+        }
+    }
+}
+
+#[test]
 fn nowrap_flex_text_cuts_at_its_shrunk_box() {
     const TEXT: &str = "Roster · éééééééééééééééééééééééééééééééé";
     for tag in ["h2", "p"] {

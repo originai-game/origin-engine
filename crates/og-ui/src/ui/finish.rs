@@ -133,6 +133,7 @@ impl Ui {
         }
         let (order, mapped) = self.place_frame(order, &seeds, &animated);
 
+        self.prepare_text_overflow(&order);
         let (cursor, cursor_images, selected) =
             self.update_interaction(&order, &seeds, &mapped, screen);
 

@@ -1079,7 +1079,11 @@ impl Ui {
             // Erase a frame-owned effect on the tick it disappears,
             // including when its subtree could otherwise be copied whole.
             let ended = self.paint.cache.volatile.contains(&i) && !own_volatile;
-            let kept = !early && !volatile.contains(&i) && !ended && !self.rich_moves(node);
+            let kept = !early
+                && !volatile.contains(&i)
+                && !ended
+                && !self.rich_moves(node)
+                && node.scrolling_text().is_none();
             let (painted, own) = if !kept {
                 (false, false)
             } else if written(i) {
@@ -1204,7 +1208,8 @@ impl Ui {
                 .as_ref()
                 .is_some_and(|d| d.fixed() || d.element_images())
             || node.el.resize != 0
-            || self.rich_moves(node);
+            || self.rich_moves(node)
+            || node.scrolling_text().is_some();
         let (framed, field_ring) = self.field_rings(i);
         let outline = self.env.theme.outline && (node.nav || node.focusable) && framed;
         (
@@ -1873,7 +1878,7 @@ fn shiftable(c: &DrawCmd) -> bool {
 
 /// Moves `c` by `(dx, dy)` in place, its clip where it was; `false`, with
 /// nothing moved, for what [`shiftable`] refuses.
-fn shift(c: &mut DrawCmd, dx: f32, dy: f32) -> bool {
+pub(super) fn shift(c: &mut DrawCmd, dx: f32, dy: f32) -> bool {
     if !shiftable(c) {
         return false;
     }

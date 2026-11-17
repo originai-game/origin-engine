@@ -1913,6 +1913,39 @@ on top of it. A selector that reads only the element and its ancestors is
 lowered to a reactive condition. The rest is matched on the mounted tree.
 And a dependency profile bounds what an edit restyles.
 
+**Scrolling text.** A single-line label or native control label can opt in
+to `text-overflow: -og-scroll <travel-time> <hold-time>`, for example:
+
+```css
+.song-title {
+  min-width: 0;
+  white-space: nowrap;
+  text-overflow: -og-scroll var(--motion-duration-orbit) var(--motion-duration-turn);
+}
+```
+
+This is an og extension: CSS Overflow 4 defines clipping, ellipses and
+fades, but no scrolling value. Both times accept CSS duration variables;
+travel must be positive and hold nonnegative. The first time is one
+end-to-end traversal, so speed is the measured overflow distance divided
+by that duration. A genuinely overflowing line holds at its reading
+start, moves linearly to its end, holds there, then returns linearly and
+repeats. Fitting text stays still. Only text content moves, not its
+control's face or hit box. A real alpha mask fades the edge where more
+text remains, over at most one em (CSS Overflow 4's fade suggestion), so
+arbitrary art behind the text remains visible. The UI tick and saved
+widget memory own the phase; changed text or content-box size restarts
+the initial hold. No host wall clock is read.
+
+Under reduced motion the same policy lays out an ellipsis instead.
+`text-overflow: clip`, `ellipsis` and string markers remain explicit
+choices to accept a cut; ordinary CSS overflow rules still apply to
+those values. The probe records authored `textOverflow` on the element,
+which lets review distinguish an intentional inline cut from undeclared
+overflow; it does not excuse a box cutting a horizontal line's height.
+Wrapping or multiline paragraphs, editable caret scrolling and text
+following a path do not acquire a marquee from this declaration.
+
 The default UI (`style: null` or a look's `ui "default"`) supplies Instrument
 Sans variable for body, display, numeric and rounded text when the game
 supplies no font. Its `wght` axis covers 400–700 and `wdth` 75–100 percent.

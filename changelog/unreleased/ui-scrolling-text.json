@@ -1,0 +1,8 @@
+{
+  "added": [
+    {
+      "member": "UI text overflow",
+      "summary": "Opt in to text-overflow: -og-scroll <travel-time> <hold-time> for overflowing single-line titles and native labels. Motion-token durations drive deterministic start/end holds and linear return, with alpha edge fades; fitting text stays still and reduced motion uses an ellipsis. Review distinguishes explicit overflow choices from undeclared cuts."
+    }
+  ]
+}

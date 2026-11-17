@@ -568,7 +568,40 @@ impl Ui {
                     y: visible.y,
                     width: visible.width,
                     height: visible.height,
-                    detail: Default::default(),
+                    detail: n
+                        .text_overflow()
+                        .or_else(|| {
+                            self.tree
+                                .nodes
+                                .get(n.content_slot)
+                                .and_then(Node::text_overflow)
+                        })
+                        .map(|p| {
+                            [
+                                (
+                                    "textOverflow".into(),
+                                    serde_json::json!(match p {
+                                        crate::layout::TextOverflow::Clip => "clip",
+                                        crate::layout::TextOverflow::Ellipsis => "ellipsis",
+                                        crate::layout::TextOverflow::Scroll { .. } => "-og-scroll",
+                                    }),
+                                ),
+                                (
+                                    "textScrollActive".into(),
+                                    serde_json::json!(
+                                        n.scrolling_text().is_some()
+                                            || self
+                                                .tree
+                                                .nodes
+                                                .get(n.content_slot)
+                                                .is_some_and(|n| n.scrolling_text().is_some())
+                                    ),
+                                ),
+                            ]
+                            .into_iter()
+                            .collect()
+                        })
+                        .unwrap_or_default(),
                 });
                 // A Rive frame's drawn objects: children for dump_ui, describe
                 // and pick, their source the artboard's id and the object.

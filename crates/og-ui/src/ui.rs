@@ -26,6 +26,7 @@ pub(crate) mod select;
 pub(crate) mod settlement;
 mod snapshot;
 mod text_controls;
+mod text_overflow;
 mod tree;
 pub(crate) mod visit;
 

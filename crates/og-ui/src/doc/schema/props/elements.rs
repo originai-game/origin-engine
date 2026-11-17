@@ -894,6 +894,12 @@ pub const CORE_PROPS: &[PropSpec] = &[
         "How its lines align."
     ),
     p!("nowrap", Ty::Bool, [Label], "One line."),
+    p!(
+        "textOverflow",
+        Ty::Text,
+        [Label],
+        "The explicitly authored CSS text-overflow policy."
+    ),
     p!("maxLines", Ty::Num, [Label], "The most lines it shows."),
     p!(
         "fitMin",

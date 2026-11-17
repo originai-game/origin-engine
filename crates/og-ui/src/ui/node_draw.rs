@@ -968,6 +968,7 @@ impl Ui {
         }
         // The highlight overlays, bottom first (CSS Pseudo-Elements 4 §3.6).
         self.highlight_commands(i, text_from, cmds);
+        self.scroll_text_commands(i, text_from, cmds);
         self.shape_commands(n, cmds);
     }
 }

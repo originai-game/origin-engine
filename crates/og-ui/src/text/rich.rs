@@ -246,6 +246,7 @@ pub struct RichContent {
     pub align: TextAlign,
     pub wrap: bool,
     pub ellipsis: bool,
+    pub(crate) overflow: Option<crate::layout::TextOverflow>,
     pub max_lines: u32,
     pub cut: Option<String>,
     pub indent: TextIndent,
@@ -600,7 +601,12 @@ pub(crate) fn rich_widths(
     v: Option<crate::layout::flow::VerticalText>,
 ) -> (f32, f32) {
     let least = |pref: f32, min: f32| {
-        if rc.ellipsis {
+        if rc.ellipsis
+            || matches!(
+                rc.overflow,
+                Some(crate::layout::TextOverflow::Scroll { .. })
+            )
+        {
             rc.spans
                 .iter()
                 .find(|s| s.atom.is_none())

@@ -491,6 +491,29 @@ fn lower_background_image(name: &str, value: &str) -> Result<Vec<Part>, String> 
 
 /// Lowers `"text-overflow" if !state`.
 fn lower_text_overflow(name: &str, t: Vec<Tok>) -> Result<Vec<Part>, String> {
+    if matches!(t.first(), Some(Tok::Ident(w)) if w == "-og-scroll") {
+        let time = |t: &Tok| match t {
+            Tok::Num(n, u) => super::super::motion::time(&format!("{n}{u}")),
+            _ => None,
+        };
+        if t.len() != 3 {
+            return Err("text-overflow: -og-scroll <travel-time> <hold-time>".into());
+        }
+        let travel = time(&t[1])
+            .filter(|ms| *ms > 0.0)
+            .ok_or("scroll travel time must be positive")?;
+        let hold = time(&t[2])
+            .filter(|ms| *ms >= 0.0)
+            .ok_or("scroll hold time must be nonnegative")?;
+        return Ok(vec![
+            e("ellipsis", vec![Value::Word("false".into())]),
+            e("ellipsisText", vec![Value::String(String::new())]),
+            e(
+                "textOverflow",
+                vec![Value::String(format!("scroll {travel} {hold}"))],
+            ),
+        ]);
+    }
     let (on, cut) = match one(&t, name)? {
         Tok::Ident(w) if w == "clip" => (false, String::new()),
         Tok::Ident(w) if w == "ellipsis" => (true, String::new()),
@@ -505,6 +528,10 @@ fn lower_text_overflow(name: &str, t: Vec<Tok>) -> Result<Vec<Part>, String> {
     Ok(vec![
         e("ellipsis", vec![Value::Word(on.to_string())]),
         e("ellipsisText", vec![Value::String(cut)]),
+        e(
+            "textOverflow",
+            vec![Value::String(if on { "ellipsis" } else { "clip" }.into())],
+        ),
     ])
 }
 

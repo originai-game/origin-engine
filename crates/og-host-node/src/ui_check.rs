@@ -138,7 +138,7 @@ fn frame(engine: u32) -> Value {
             "width": vp.width * u, "height": vp.height * u, "dpr": vp.dpr / u,
             "safeArea": [vp.safe_area.left * u, vp.safe_area.top * u, vp.safe_area.right * u, vp.safe_area.bottom * u],
             "coarsePointer": vp.coarse_pointer, "highContrast": vp.high_contrast,
-            "reducedMotion": vp.reduced_motion, "covered": ur(&vp.covered),
+            "reducedMotion": theme.reduced_motion, "covered": ur(&vp.covered),
             "breakpoint": vp.breakpoint().name(),
         },
         "style": ui.style_name(),
