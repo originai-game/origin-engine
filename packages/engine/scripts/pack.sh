@@ -21,7 +21,7 @@
 # publish directory with its profile's lanes variant) and their twins with
 # remote <iframe>s, dist/web-publish-frames and dist/web-publish-2d-frames, the player shell, the Basis
 # transcoder, the knowledge in knowledge/, the built-in UI styles in styles/,
-# og.motion's weights in motion/ (35 MB, f16); no native code: npm installs the platform package through
+# og.motion's verified download pin in motion.json; no native code: npm installs the platform package through
 # optionalDependencies). Prints each tarball with its size and sha256.
 set -eu
 here="$(cd "$(dirname "$0")/.." && pwd)"
@@ -139,9 +139,6 @@ mkdir -p "$here/ui-sheet"
 for part in assets src project.ogt; do
   cp -R "$here/sheets/style/$part" "$here/ui-sheet/$part"
 done
-# og.motion's weights (docs/design.md §2.7) ship in motion/, read by og's
-# cook (og-cook's motion.rs). Use the same pin check as development builds.
-bun "$here/scripts/motion-model.ts" ensure
 # Keep named bindgen modules for offline symbolication outside the install.
 # Do this before build-facts: their hashes and sizes describe the shipped bytes.
 symbols="$out/stage/wasm-symbols"

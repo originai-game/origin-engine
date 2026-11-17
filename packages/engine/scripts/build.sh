@@ -74,9 +74,9 @@ if [ "${OG_GATE:-}" != 1 ] && [ "${OG_RELEASE:-}" != 1 ] && [ "$linux_x64" != 1 
   echo "build.sh: the gate has built here, so this is the OG_GATE=1 build (dev addon and og, the gate's wasm); OG_RELEASE=1 sh scripts/build.sh builds release" >&2
   OG_GATE=1
 fi
-# A development cook needs the same pinned weights as a packaged engine.
-# Native-only release jobs ship only the platform binary, not engine assets.
-if [ "$native_only" != 1 ] || [ "${OG_GATE:-}" = 1 ]; then
+# Development fixtures use the pin locally; release installs fetch it only
+# when a project's cook uses motion, without writing into the engine install.
+if [ "${OG_GATE:-}" = 1 ]; then
   bun "$here/scripts/motion-model.ts" ensure
 fi
 platform="$(node -p 'process.platform + "-" + process.arch' 2>/dev/null || bun -e 'console.log(process.platform + "-" + process.arch)')"

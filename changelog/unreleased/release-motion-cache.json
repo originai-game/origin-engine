@@ -1,0 +1,8 @@
+{
+  "fixed": [
+    {
+      "member": "og cook",
+      "summary": "Install pinned motion weights only for projects using motion, in a SHA256-verified shared cache instead of every engine install. Cached cooks work offline; unavailable or corrupt required weights produce an explicit error, including incremental cooks. OG_MOTION_MODEL must match the engine's pin."
+    }
+  ]
+}

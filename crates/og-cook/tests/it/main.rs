@@ -50,6 +50,8 @@ mod lod;
 mod look_builtins;
 #[path = "../model_text.rs"]
 mod model_text;
+#[path = "../motion_cache.rs"]
+mod motion_cache;
 #[path = "../navmesh.rs"]
 mod navmesh;
 #[path = "../physical.rs"]

@@ -179,6 +179,12 @@ fn inputs(root: &Path) -> std::io::Result<BTreeMap<PathBuf, Stat>> {
     for path in super::assets::game_typescript(root).map_err(std::io::Error::other)? {
         files.insert(path.clone(), stat(&path)?);
     }
+    // The model is an input too, even though its verified cache is outside
+    // the project. Resolve the current pin before reusing a cooked checkpoint.
+    if super::motion::uses_motion(root) {
+        let path = super::motion::model_path().map_err(std::io::Error::other)?;
+        files.insert(path.clone(), stat(&path)?);
+    }
     Ok(files)
 }
 

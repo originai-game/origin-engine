@@ -64,7 +64,6 @@
     "!sheets/*/cooked",
     "!sheets/*/og-out",
     "!sheets/*/.og",
-    "motion",
     "motion.json",
     "changelog.json"
   ],
