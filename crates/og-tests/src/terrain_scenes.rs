@@ -1303,45 +1303,169 @@ fn plain_light(scene: &mut RenderScene) {
 
 /// The tile of the material v2 scenes' layer, in metres.
 pub const V2_TILE: f32 = 4.0;
-/// `tiling_scene`'s orthographic view: metres across its height.
-pub const TILING_VIEW: f32 = 64.0;
+/// The stony plateau's swell (m): level within 24 m of the ruin at its
+/// middle, rolling a few metres past it.
+fn plateau_height(x: f32, z: f32) -> f32 {
+    let r = (x * x + z * z).sqrt();
+    5.0 * fbm(x / 140.0, z / 140.0, 3, 171) * smooth(24.0, 90.0, r)
+}
 
-/// R7: a flat 256 m terrain of one layer, a high-contrast texture of
-/// dark blobs on pale ground repeating every 4 m, seen straight down
-/// through an orthographic camera 64 m tall: with `anti_tiling` 0 every
-/// 4 m shows the same blobs, with 1 hexagons of it turned and moved.
+/// R7: a stony plateau of one layer, the kit's rock repeating every 4 m,
+/// seen from 36 m up as a strategy game looks down on its map: the ruin
+/// of a round colonnade about a court of setts (a second layer, painted
+/// by the control map), a watchtower, fallen stones, pines and tussocks
+/// of dry grass, their shadows long across 150 m of ground. With `anti_tiling`
+/// 0 every 4 m shows the same cracks, a grid across the whole frame; with
+/// 1, hexagons of the rock turned and moved, and no period shows.
 pub fn tiling_scene(anti_tiling: f32) -> RenderScene {
+    use crate::kit;
     let mut scene = RenderScene::new();
-    let handle = scene.add_terrain(TerrainData::flat(Vec2::splat(256.0), 129, 129));
-    let blobs = scene.add_texture(texture(256, ColorSpace::Srgb, |u, v| {
-        // Both octaves lie in 0..1 (mean about 0.47): blobs over the
-        // upper part of their sum, a little under half the ground.
-        let n = tiling_fbm(u, v, 4, 51) + 0.35 * tiling_fbm(u, v, 16, 53);
-        let g = if n > 0.65 { 40 } else { 215 };
-        [g, g, g, 255]
-    }));
+    let (n, size) = (257u32, 768.0f32);
+    let cell = size / (n - 1) as f32;
+    let heights: Vec<f32> = (0..n * n)
+        .map(|i| {
+            let (c, r) = ((i % n) as f32, (i / n) as f32);
+            plateau_height(c * cell - size * 0.5, r * cell - size * 0.5)
+        })
+        .collect();
+    // The control map (0.75 m a texel): the court's setts (layer 1) in a
+    // ragged disc of 12.5 m about the middle, the rock everywhere else.
+    let m = 1024u32;
+    let mut rgba = Vec::with_capacity((m * m * 4) as usize);
+    for y in 0..m {
+        for x in 0..m {
+            let at = (Vec2::new(x as f32, y as f32) + 0.5) / m as f32 * size - size * 0.5;
+            let edge = at.length() + 1.6 * fbm(at.x / 3.0, at.y / 3.0, 2, 173);
+            let paved = ((1.0 - smooth(11.6, 13.2, edge)) * 255.0) as u8;
+            rgba.extend_from_slice(&[255 - paved, paved, 0, 0]);
+        }
+    }
+    let handle = scene.add_terrain(TerrainData {
+        heights: heights.into(),
+        control: Some(TerrainControl {
+            width: m,
+            height: m,
+            rgba: Arc::from(rgba),
+        }),
+        ..TerrainData::flat(Vec2::splat(size), n, n)
+    });
+    let (rock, rock_normal) = kit::layer_maps(&mut scene, "rock");
+    let (setts, setts_normal) = kit::layer_maps(&mut scene, "cobbles");
     scene.world.terrains.push(Terrain {
-        layers: vec![TerrainLayer {
-            albedo: Some(blobs),
-            color: Vec3::ONE,
-            roughness: 0.9,
-            tile: V2_TILE,
-            anti_tiling,
-            ..Default::default()
-        }],
+        layers: vec![
+            TerrainLayer {
+                albedo: Some(rock),
+                normal: Some(rock_normal),
+                // Sandstone.
+                color: Vec3::new(1.12, 0.98, 0.8),
+                roughness: 0.9,
+                tile: V2_TILE,
+                anti_tiling,
+                macro_variation: 0.5,
+                ..Default::default()
+            },
+            TerrainLayer {
+                albedo: Some(setts),
+                normal: Some(setts_normal),
+                color: Vec3::new(1.25, 1.1, 0.9),
+                roughness: 0.85,
+                tile: 3.5,
+                ..Default::default()
+            },
+        ],
+        height_blend: 0.5,
         ..Terrain::new(handle)
     });
-    plain_light(&mut scene);
-    scene.frame.camera = Camera {
-        position: Vec3::new(0.3, 150.0, 0.7),
-        target: Vec3::new(0.3, 0.0, 0.7),
-        up: Vec3::NEG_Z,
-        near: 1.0,
-        far: 400.0,
-        projection: Projection::Orthographic {
-            height: TILING_VIEW,
+    let ground = |x: f32, z: f32| Vec3::new(x, plateau_height(x, z), z);
+    // The court and its colonnade: an arch across from the camera, columns
+    // standing and broken round a circle of 15 m.
+    let arch = kit::prop(&mut scene, "arch");
+    arch.place(&mut scene, ground(0.0, -15.0), 0.0, 8.5);
+    let column = kit::prop(&mut scene, "column");
+    let broken = kit::prop(&mut scene, "column_broken");
+    for k in 1..12 {
+        let a = k as f32 / 12.0 * std::f32::consts::TAU;
+        let at = ground(15.0 * a.sin(), -15.0 * a.cos());
+        // Two in three still stand.
+        if hash2(k, 0, 0x7111) < 0.66 {
+            column.place(&mut scene, at, a, 6.5);
+        } else {
+            broken.place(&mut scene, at, 6.3 * hash2(k, 1, 0x7111), 2.4);
+        }
+    }
+    let tower = kit::prop(&mut scene, "watchtower");
+    tower.place(&mut scene, ground(-34.0, -30.0) - Vec3::Y * 0.4, 0.8, 19.0);
+    // Stones fallen about the plateau, the larger ones few.
+    let boulder = kit::prop(&mut scene, "boulder");
+    for k in 0..70 {
+        let h = |i: i32| hash2(k, i, 0x57a1);
+        let (d, a) = (20.0 + 90.0 * h(0), 6.3 * h(1));
+        let (x, z) = (d * a.sin(), -8.0 + d * a.cos());
+        let height = 0.5 + 3.0 * h(2) * h(2) * h(2);
+        boulder.place(
+            &mut scene,
+            ground(x, z) - Vec3::Y * 0.25 * height,
+            6.3 * h(3),
+            height,
+        );
+    }
+    // Stands of pines where the plateau begins to roll, and dry grass in
+    // patches between the stones.
+    let pine = kit::prop(&mut scene, "pine");
+    for (s, (x, z, count)) in [(-58.0f32, 6.0f32, 9), (52.0, -44.0, 11), (30.0, 34.0, 5)]
+        .into_iter()
+        .enumerate()
+    {
+        for k in 0..count {
+            let h = |i: i32| hash2(k, i, 0x91e5 + s as u32);
+            let (d, a) = (16.0 * h(0).sqrt(), 6.3 * h(1));
+            pine.place(
+                &mut scene,
+                ground(x + d * a.sin(), z + d * a.cos()) - Vec3::Y * 0.3,
+                6.3 * h(2),
+                8.0 + 7.0 * h(3),
+            );
+        }
+    }
+    let tuft = scene.add_mesh(grass_tuft());
+    let dry = scene.add_material(Material {
+        base_color: [0.5, 0.45, 0.19, 1.0],
+        roughness: 0.9,
+        ..Default::default()
+    });
+    scene.world.scatters.push(ScatterDraw {
+        terrain: 0,
+        mesh: tuft,
+        material: dry,
+        scatter: TerrainScatter {
+            layer: 0,
+            density: 5.0,
+            distance: 170.0,
+            fade: 0.2,
+            scale: [0.8, 1.6],
+            seed: 9,
+            sway: 0.0,
+            noise_scale: 14.0,
+            noise_threshold: 0.6,
+            ..Default::default()
         },
-        exposure: Exposure::linear(0.9),
+        cast_shadows: true,
+        impostor: None,
+        impostor_distance: 0.0,
+        with: None,
+        lods: [None; 2],
+    });
+    afternoon(&mut scene);
+    // A low sun from the camera's left: every stone's shadow lies long.
+    let sun = Vec3::new(-0.72, 0.42, 0.3).normalize();
+    scene.lighting.light.direction_to_light = sun;
+    scene.lighting.light.max_shadow_distance = 260.0;
+    scene.lighting.environment.sky.sun_direction = sun;
+    scene.frame.camera = Camera {
+        projection: Projection::Perspective {
+            fov_y_degrees: 42.0,
+        },
+        ..camera_at(Vec3::new(8.0, 36.0, 52.0), Vec3::new(-4.0, 1.0, -10.0))
     };
     scene
 }

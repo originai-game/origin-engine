@@ -1648,11 +1648,13 @@ pub fn build(name: &str) -> Result<GfxScene, String> {
             as_played(g);
             Ok(())
         },
-        // R7: a flat terrain of one high-contrast layer (dark blobs
-        // repeating every 4 m) seen straight down, its repeat broken by
-        // hex-tiling (antiTiling 1): no 4 m period shows.
+        // R7: a stony plateau of one layer (the kit's rock repeating
+        // every 4 m) under a ruined colonnade, seen from above as a
+        // strategy game's map, its repeat broken by hex-tiling
+        // (antiTiling 1): no 4 m period shows across 150 m of ground.
         "terrain-tiling" => |g, _| {
             g.scene = crate::terrain_scenes::tiling_scene(1.0);
+            as_played(g);
             Ok(())
         },
         // R7: a cliff round a valley seen along its foot (buttresses,
