@@ -1,0 +1,8 @@
+{
+  "fixed": [
+    {
+      "member": "Aurora",
+      "summary": "An aurora at the same tick renders identically regardless of GPU workgroup scheduling: equally near curtain segments use a stable tie-break, and crowded footprint tiles consider every segment rather than an arbitrary truncated subset."
+    }
+  ]
+}

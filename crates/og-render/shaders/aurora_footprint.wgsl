@@ -135,9 +135,17 @@ fn main(
   // Per curtain, its nearest segment: the signed distance across, the
   // strip's coordinate along, the brightness.
   var best = array<vec4<f32>, 6>();
-  for (var c = 0u; c < 6u; c++) { best[c] = vec4<f32>(1.0e9, 0.0, 0.0, 0.0); }
-  for (var k = 0u; k < min(count, MAX_NEAR); k++) {
-    let j = near[k];
+  var best_j = array<u32, 6>();
+  for (var c = 0u; c < 6u; c++) {
+    best[c] = vec4<f32>(1.0e9, 0.0, 0.0, 0.0);
+    best_j[c] = segments;
+  }
+  // Atomic insertion orders the near list arbitrarily. On overflow its
+  // retained subset is arbitrary too: scan every segment instead.
+  let candidates = select(segments, count, count <= MAX_NEAR);
+  for (var k = 0u; k < candidates; k++) {
+    var j = k;
+    if (count <= MAX_NEAR) { j = near[k]; }
     let c = j / (per - 1u);
     let i = c * per + j % (per - 1u);
     let a = params.points[i];
@@ -147,9 +155,13 @@ fn main(
     let off = x - a.xy - ab * h;
     let dist = length(off);
     nearest = min(nearest, dist);
-    if (dist < abs(best[c].x)) {
+    // At a shared endpoint both segments can be equally near but have
+    // different tangents. Always choose the lower index, not the first
+    // thread that happened to insert its segment.
+    if (dist < abs(best[c].x) || (dist == abs(best[c].x) && j < best_j[c])) {
       let side = select(-1.0, 1.0, ab.x * off.y - ab.y * off.x >= 0.0);
       best[c] = vec4<f32>(dist * side, mix(a.z, b.z, h), mix(a.w, b.w, h), atan2(ab.y, ab.x));
+      best_j[c] = j;
     }
   }
   // The texel's extent in the world (km): radially 2|q|R per texel of the

@@ -440,3 +440,31 @@ fn the_clouds_shade_the_ground_under_them() {
         }
     }
 }
+
+/// A fixed aurora and clock must not depend on the GPU workgroups' order,
+/// including when all six curtains lie close together.
+#[test]
+#[ignore = "requires GPU"]
+fn an_aurora_at_the_same_tick_has_identical_pixels() {
+    for (name, crowded) in [
+        ("aurora-arcs", false),
+        ("aurora-breakup", false),
+        ("aurora-arcs", true),
+    ] {
+        let mut built = scenes::build(name).expect("aurora scene");
+        if crowded {
+            let aurora = built.scene.atmosphere.aurora.as_mut().expect("aurora");
+            aurora.curtains = 6;
+            aurora.spread = 0.0;
+        }
+        let expected = og_tests::gfx::render_built(&mut built).expect("first render");
+        assert!(expected.image.pixels.chunks_exact(4).any(|p| p[1] > 32));
+        for repeat in 1..=4 {
+            let actual = og_tests::gfx::render_built(&mut built).expect("repeat render");
+            assert!(
+                actual.image.pixels == expected.image.pixels,
+                "{name}, crowded={crowded}, repeat {repeat}: a fixed tick changed pixels"
+            );
+        }
+    }
+}
