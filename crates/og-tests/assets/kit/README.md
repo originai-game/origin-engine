@@ -49,6 +49,8 @@ required.
 |---|---|---|---|
 | `ground/grass.{color,normal,orm}.jpg` | `grp_b9a4454916bfef3264` | Aerial Grass Rock | `1a2ddfa4652adbe00447b940c40019d46f4b88245bc1b341cdf622c2110b7bc5` |
 | `ground/cobbles.{color,normal,orm}.jpg` | `grp_776009be378c7de71b` | Cobblestone 01 | `c224786e89cae7e2835a8dfafa6473c47d4d6deac0cca1db358002b8b6c4877e` |
+| `ground/rock.{color,normal}.jpg` | `grp_28a4c1a58ffc4b45d1` | Rock Face 03 | `644ee79df7ffbf5f6afc330b64dd3f33794bab8820915fe61ffe0c88ecfd7ece` |
 
 `color` is the diffuse map, `normal` the OpenGL normal map, `orm` the
-occlusion (red), roughness (green) and metal (blue) map.
+occlusion (red), roughness (green) and metal (blue) map. The rock is a
+terrain layer only (`kit::layer_maps`), which takes no `orm`.

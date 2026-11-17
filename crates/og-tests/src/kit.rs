@@ -13,7 +13,8 @@ use crate::scenes::asset;
 use glam::{Mat4, Vec2, Vec3};
 use og_render::gltf::{GltfModel, ModelParts, load_glb};
 use og_render::{
-    ColorSpace, Material, MaterialHandle, MeshData, Mips, RenderScene, TextureData, Vertex,
+    ColorSpace, Material, MaterialHandle, MeshData, Mips, RenderScene, TextureData, TextureHandle,
+    Vertex,
 };
 use std::sync::{Arc, Mutex};
 
@@ -133,6 +134,19 @@ pub fn surface_tinted(scene: &mut RenderScene, name: &str, tint: [f32; 3]) -> Ma
     })
 }
 
+/// The kit surface `name` as a terrain layer's maps: its colour, with its
+/// brightness in the alpha as the layer's height (the tufts and stones
+/// stand out where layers blend by height), and its normal map.
+pub fn layer_maps(scene: &mut RenderScene, name: &str) -> (TextureHandle, TextureHandle) {
+    let mut color = (*image(&format!("kit/ground/{name}.color.jpg"), ColorSpace::Srgb)).clone();
+    for px in color.rgba.as_chunks_mut::<4>().0 {
+        let luma = (u32::from(px[0]) * 54 + u32::from(px[1]) * 183 + u32::from(px[2]) * 19) >> 8;
+        px[3] = (60 + luma.min(195)) as u8;
+    }
+    let normal = (*image(&format!("kit/ground/{name}.normal.jpg"), ColorSpace::Linear)).clone();
+    (scene.add_texture(color), scene.add_texture(normal))
+}
+
 /// A flat rectangle on the plane y = `y` from `min` to `max` (xz), its
 /// surface repeating every `tile` metres from the world's origin, so
 /// rectangles laid side by side continue each other's pattern.
@@ -153,6 +167,50 @@ pub fn slab(min: Vec2, max: Vec2, y: f32, tile: f32) -> MeshData {
         ],
         indices: vec![0, 2, 1, 0, 3, 2],
     }
+}
+
+/// A box from `min` to `max`, its surface repeating every `tile` metres
+/// from the world's origin on every face (walls, kerbs and plinths of a
+/// kit surface).
+pub fn block(min: Vec3, max: Vec3, tile: f32) -> MeshData {
+    let mut m = MeshData {
+        vertices: Vec::with_capacity(24),
+        indices: Vec::with_capacity(36),
+    };
+    // Each face: its axis, and the two axes across it in the order that
+    // winds it outwards on its positive side.
+    for (axis, u, v) in [(0, 2, 1), (1, 0, 2), (2, 1, 0)] {
+        for (side, at) in [(-1.0f32, min), (1.0, max)] {
+            let first = m.vertices.len() as u32;
+            for (a, b) in [
+                (min[u], min[v]),
+                (max[u], min[v]),
+                (max[u], max[v]),
+                (min[u], max[v]),
+            ] {
+                let mut position = [0.0; 3];
+                position[axis] = at[axis];
+                position[u] = a;
+                position[v] = b;
+                let mut normal = [0.0; 3];
+                normal[axis] = side;
+                m.vertices.push(Vertex {
+                    position,
+                    normal,
+                    uv: [a / tile, b / tile],
+                    color: [1.0; 4],
+                    tangent: [0.0; 4],
+                });
+            }
+            let quad: [u32; 6] = if side > 0.0 {
+                [0, 2, 1, 0, 3, 2]
+            } else {
+                [0, 1, 2, 0, 2, 3]
+            };
+            m.indices.extend(quad.map(|i| first + i));
+        }
+    }
+    m
 }
 
 /// The ground: `size` metres square about the origin at y = 0, of the kit
