@@ -218,7 +218,7 @@ echo 'ok   standalone dev builds refresh native outputs; gate consumers reuse th
 t="$scratch/milestone"
 mkdir -p "$t/repo/scripts" "$t/repo/.agents" "$t/bin"
 cp "$root/scripts/gpu-milestone.sh" "$t/repo/scripts/"
-printf 'export VK_ICD_FILENAMES=/dev/null CHROME=/bin/true\n' > "$t/repo/scripts/gpu-env.sh"
+printf 'export VK_ICD_FILENAMES=/dev/null CHROME=%q\n' "$(type -P true)" > "$t/repo/scripts/gpu-env.sh"
 : > "$t/repo/.agents/environment"
 printf 'og_gpu_acquire() { :; }\nog_gpu_acquire_all() { :; }\nog_lock_release() { :; }\n' > "$t/repo/scripts/lock.sh"
 printf '#!/bin/sh\nexit 0\n' > "$t/repo/scripts/clean-targets.sh"
