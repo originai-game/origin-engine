@@ -539,7 +539,11 @@ fn desert() -> RenderScene {
 /// deepen towards the hem, as a curtain or a cape (normals from the
 /// surface, uvs over the sheet).
 fn drape(w: f32, h: f32) -> MeshData {
-    let (nx, ny) = (96u32, 64u32);
+    drape_grid(w, h, 96, 64)
+}
+
+/// [`drape`] over `nx` by `ny` cells.
+fn drape_grid(w: f32, h: f32, nx: u32, ny: u32) -> MeshData {
     let at = |u: f32, v: f32| {
         // Broad, rounded folds a hand and a half apart, deepening towards
         // the hem, with a slower swell across them (a hung curtain).
@@ -576,6 +580,43 @@ fn drape(w: f32, h: f32) -> MeshData {
         }
     }
     MeshData { vertices, indices }
+}
+
+/// A market stall's valance: a strip of red and cream striped canvas
+/// `w` metres long, `h` deep, hung in folds from its top edge at its
+/// origin (stripes across it, 25 cm each).
+pub fn valance(
+    scene: &mut RenderScene,
+    w: f32,
+    h: f32,
+) -> (og_render::MeshHandle, og_render::MaterialHandle) {
+    let stripes = (w / 0.25).round().max(1.0);
+    let canvas = texture(256, ColorSpace::Srgb, |u, v| {
+        let weave = 0.92 + 0.08 * fbm(u, v, 32, 53);
+        let red = [0.62, 0.1, 0.08];
+        let cream = [0.86, 0.8, 0.66];
+        let c = if (u * 2.0).fract() < 0.5 { red } else { cream };
+        // The hem's band a shade darker.
+        let hem = if v > 0.82 { 0.8 } else { 1.0 };
+        c.map(|x| x * weave * hem)
+    });
+    let mut mesh = drape_grid(w, h, (stripes as u32) * 6, 8);
+    for v in &mut mesh.vertices {
+        v.uv[0] *= stripes / 2.0;
+    }
+    let mesh = scene.add_mesh(mesh);
+    let map = scene.add_texture(canvas).slot();
+    let material = scene.add_standard_material(StandardMaterial {
+        color: Vec3::ONE,
+        map,
+        roughness: 0.9,
+        sheen: 0.6,
+        sheenColor: Vec3::splat(0.12),
+        sheenRoughness: 0.8,
+        side: 2,
+        ..Default::default()
+    });
+    (mesh, material)
 }
 
 /// Crimson velvet: a dark, saturated base under a bright, soft sheen that
@@ -685,6 +726,16 @@ fn cobbles_wet() -> RenderScene {
         shelter: 0.0,
         ..SurfaceWeather::default()
     });
+    // The water in the joints mirrors the sky and the colonnade.
+    scene.look.post.ssr = Some(ScreenSpaceReflections::default());
+    // Standing on the way below the crest, looking down its rise: the
+    // joints between the setts read as lines of standing water.
+    {
+        use crate::terrain_scenes::displaced_height as h;
+        let camera = &mut scene.frame.camera;
+        camera.position = Vec3::new(0.0, h(-5.0) + 1.9, -5.0);
+        camera.target = Vec3::new(0.2, h(-9.5) - 0.1, -9.5);
+    }
     crate::atmo_scenes::add_weather(&mut scene, og_render::WEATHER_RAIN, 1.0, Vec3::ZERO, 18.0);
     scene
 }

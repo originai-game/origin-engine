@@ -6,9 +6,9 @@
 //! substorm behind broken cloud.
 
 use crate::atmo_scenes::{colonnade, colonnade_camera};
-use glam::{Mat4, Vec3};
+use glam::{Mat4, Quat, Vec3};
 use og_render::{
-    Aurora, Background, Bloom, Clouds, DirectionalLight, Environment, Exposure, Fog, Material,
+    Aurora, Background, Bloom, Clouds, DirectionalLight, Environment, Exposure, Fog,
     PhysicalAtmosphere, ProceduralSky, RenderScene, StandardMaterial, SurfaceWeather, day_night,
     shapes,
 };
@@ -217,13 +217,16 @@ fn raining(hours: f32, lying: SurfaceWeather, wind: Vec3) -> RenderScene {
     metered(scene)
 }
 
-/// A market stall's flat canopy 8 m wide (x -4 to 4) and 6 m deep (z -9
-/// to -3), its underside 3 m up, on four posts, crates and barrels by it:
-/// in front of the weathered camera, which sees the ground under it.
+/// A market stall: its flat plank roof 8 m wide (x -4 to 4) and 6 m deep
+/// (z -9 to -3), its underside 3 m up, on four posts, striped canvas
+/// hung from its edges, a counter of produce along its back, crates and
+/// barrels by it: in front of the weathered camera, which sees the
+/// ground under it.
 /// `clustered`: its slab and posts are clustered meshes, drawn through
 /// the meshlet path (one level, a cluster per 64 triangles).
 pub fn canopy(scene: &mut RenderScene, clustered: bool) {
-    let mut mesh = |data: og_render::MeshData| {
+    use crate::kit;
+    let mesh = |scene: &mut RenderScene, data: og_render::MeshData| {
         let clusters = clustered.then(|| one_level(&data));
         let m = scene.add_mesh(data);
         if clusters.is_some() {
@@ -231,26 +234,51 @@ pub fn canopy(scene: &mut RenderScene, clustered: bool) {
         }
         m
     };
-    let slab = mesh(shapes::cuboid(Vec3::new(8.0, 0.2, 6.0)));
-    let post = mesh(shapes::cuboid(Vec3::new(0.2, 3.0, 0.2)));
-    let wood = scene.add_material(Material {
-        base_color: [0.42, 0.3, 0.2, 1.0],
-        roughness: 0.8,
-        ..Default::default()
-    });
-    scene.add_instance(
-        slab,
-        wood,
-        Mat4::from_translation(Vec3::new(0.0, 3.1, -6.0)),
+    // A plank roof and posts (the kit's planks).
+    let wood = kit::surface(scene, "planks");
+    let slab = mesh(
+        scene,
+        kit::block(Vec3::new(-4.0, 3.0, -9.0), Vec3::new(4.0, 3.2, -3.0), 1.5),
     );
+    scene.add_instance(slab, wood, Mat4::IDENTITY);
     for x in [-3.8f32, 3.8] {
         for z in [-8.8f32, -3.2] {
-            scene.add_instance(post, wood, Mat4::from_translation(Vec3::new(x, 1.5, z)));
+            let post = mesh(
+                scene,
+                kit::block(
+                    Vec3::new(x - 0.1, 0.0, z - 0.1),
+                    Vec3::new(x + 0.1, 3.0, z + 0.1),
+                    1.5,
+                ),
+            );
+            scene.add_instance(post, wood, Mat4::IDENTITY);
         }
-    } // A market stall's wares round it: crates stacked by its posts and
-    // barrels beside them, outside its dry patch so the patch reads whole.
-    let crate_ = crate::kit::prop(scene, "crate");
-    let barrel = crate::kit::prop(scene, "barrel");
+    }
+    // Striped canvas hung under the roof's front and sides.
+    let (front, canvas) = crate::weather_scenes::valance(scene, 8.0, 0.55);
+    scene.add_instance(
+        front,
+        canvas,
+        Mat4::from_translation(Vec3::new(0.0, 2.45, -2.98)),
+    );
+    let (side, canvas) = crate::weather_scenes::valance(scene, 6.0, 0.55);
+    for x in [-3.98f32, 3.98] {
+        scene.add_instance(
+            side,
+            canvas,
+            Mat4::from_rotation_translation(
+                Quat::from_rotation_y(std::f32::consts::FRAC_PI_2),
+                Vec3::new(x, 2.45, -6.0),
+            ),
+        );
+    }
+    // The stall's counter of produce along its back, clear of the dry
+    // ground before it; crates stacked by its posts and barrels beside.
+    let counter = kit::prop(scene, "counter");
+    counter.place(scene, Vec3::new(-1.9, 0.0, -8.3), 0.0, 1.35);
+    counter.place(scene, Vec3::new(1.9, 0.0, -8.3), 0.08, 1.35);
+    let crate_ = kit::prop(scene, "crate");
+    let barrel = kit::prop(scene, "barrel");
     for (x, z, y, yaw) in [
         (-4.9f32, -4.0f32, 0.0f32, 0.2f32),
         (-4.95, -4.05, 0.55, 0.5),

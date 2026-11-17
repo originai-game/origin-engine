@@ -318,6 +318,10 @@ pub fn asset(rel: &str) -> Result<std::borrow::Cow<'static, [u8]>, String> {
             include_bytes!("../assets/kit/ground/cobbles.normal.jpg")
         }
         "kit/ground/cobbles.orm.jpg" => include_bytes!("../assets/kit/ground/cobbles.orm.jpg"),
+        "kit/ground/planks.color.jpg" => include_bytes!("../assets/kit/ground/planks.color.jpg"),
+        "kit/ground/planks.normal.jpg" => include_bytes!("../assets/kit/ground/planks.normal.jpg"),
+        "kit/ground/planks.orm.jpg" => include_bytes!("../assets/kit/ground/planks.orm.jpg"),
+        "kit/counter.glb" => include_bytes!("../assets/kit/counter.glb"),
         _ => {
             return Err(format!(
                 "{rel}: not compiled into the wasm harness (scenes::asset)"
