@@ -293,7 +293,9 @@ depth-normal prepass: the first one pays for it.
   volumetric fog shows the same haze without the shafts. Set the colour
   for the scene's light as for the plain fog (a night's haze dark, a
   city's glow in it); og.DayNight's `tintFog` and a cloud cover do that
-  for a cycle.
+  for a cycle. The price: the fog is not lit by the sky on its own, so a
+  dark room with bright shafts wants a dark `Fog.color`, which tints the
+  shafts dark too; raise `scattering` (up to 4) to brighten them.
 - An og.FogVolume's colour is an albedo alone: besides the sun and the
   lamps it scatters the sky's light evenly (the environment's,
   og.Environment's hemisphere light and, where it reaches, the probe
