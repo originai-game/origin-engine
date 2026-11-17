@@ -18,6 +18,8 @@ pub struct Context {
     pub high_contrast: bool,
     /// `prefers-reduced-transparency: reduce`.
     pub reduced_transparency: bool,
+    /// Effective UI backdrop opt-in (`-og-glass-backdrop: auto`).
+    pub glass_backdrop: bool,
     /// Device pixels per CSS pixel (`resolution`, in dppx).
     pub resolution: f32,
     /// The configured input mode is gamepad (`-og-input: pad`).
@@ -45,6 +47,7 @@ impl Default for Context {
             dark: false,
             high_contrast: false,
             reduced_transparency: false,
+            glass_backdrop: false,
             resolution: 1.0,
             pad: false,
             display: Display::default(),
@@ -53,7 +56,7 @@ impl Default for Context {
 }
 
 /// How many independent inputs a media query reads ([`Reads::axes`]).
-pub const AXES: usize = 11;
+pub const AXES: usize = 12;
 
 /// The media answers a cached cascade read, not the viewport that gave
 /// them. Lengths using viewport units still depend on exact dimensions.
@@ -113,6 +116,7 @@ impl Context {
             old.resolution != self.resolution,
             old.pad != self.pad,
             old.display != self.display,
+            old.glass_backdrop != self.glass_backdrop,
         ]
     }
 }
@@ -130,6 +134,7 @@ pub struct Reads {
     pub resolution: bool,
     pub pad: bool,
     pub display: bool,
+    pub glass_backdrop: bool,
 }
 
 impl Reads {
@@ -155,6 +160,7 @@ impl Reads {
             self.resolution,
             self.pad,
             self.display,
+            self.glass_backdrop,
         ]
     }
 
@@ -171,6 +177,7 @@ impl Reads {
             &mut self.resolution,
             &mut self.pad,
             &mut self.display,
+            &mut self.glass_backdrop,
         ]
         .into_iter()
         .nth(axis)
@@ -241,6 +248,7 @@ pub enum Feature {
     /// the boolean form, any preference.
     Contrast(Option<bool>),
     ReducedTransparency(bool),
+    GlassBackdrop(bool),
     /// `resolution` in dppx.
     Resolution(Comparison, f64),
     /// `(color-gamut: p3)`: the surface presents Display P3.
@@ -565,6 +573,10 @@ impl Context {
                 Feature::ReducedTransparency(value) => {
                     reads.transparency = true;
                     context.reduced_transparency == value
+                }
+                Feature::GlassBackdrop(value) => {
+                    reads.glass_backdrop = true;
+                    context.glass_backdrop == value
                 }
                 Feature::Resolution(cmp, value) => {
                     reads.resolution = true;
@@ -1083,6 +1095,7 @@ fn feature(input: &mut Parser<'_>, scope: Scope) -> Result<Query, Error> {
                 "prefers-reduced-transparency" => {
                     Ok(Query::Feature(Feature::ReducedTransparency(true)))
                 }
+                "-og-glass-backdrop" => Ok(Query::Feature(Feature::GlassBackdrop(true))),
                 "resolution" => Ok(Query::Feature(Feature::Resolution(
                     Comparison::Greater,
                     0.0,
@@ -1211,6 +1224,7 @@ fn keyword_feature(name: &str, input: &mut Parser<'_>) -> Result<Option<Feature>
         "prefers-color-scheme" => &["light", "dark"],
         "prefers-contrast" => &["no-preference", "more", "less", "custom"],
         "prefers-reduced-transparency" => &["no-preference", "reduce"],
+        "-og-glass-backdrop" => &["none", "auto"],
         "forced-colors" => &["none", "active"],
         "color-gamut" => &["srgb", "p3", "rec2020"],
         "dynamic-range" | "video-dynamic-range" => &["standard", "high"],
@@ -1247,6 +1261,7 @@ fn keyword_feature(name: &str, input: &mut Parser<'_>) -> Result<Option<Feature>
             _ => Feature::Fixed(false),
         },
         "prefers-reduced-transparency" => Feature::ReducedTransparency(word == "reduce"),
+        "-og-glass-backdrop" => Feature::GlassBackdrop(word == "auto"),
         // Every surface covers sRGB and standard range; P3 and high range
         // are what the renderer configured. Rec. 2020 is never presented.
         "color-gamut" if word == "p3" => Feature::WideGamut,
@@ -1409,6 +1424,9 @@ mod tests {
             ("(prefers-contrast: no-preference)", false, Some(6)),
             ("(prefers-contrast: less)", false, None),
             ("(prefers-reduced-transparency)", false, Some(7)),
+            ("(-og-glass-backdrop)", false, Some(11)),
+            ("(-og-glass-backdrop: none)", true, Some(11)),
+            ("(-og-glass-backdrop: auto)", false, Some(11)),
             (
                 "(prefers-reduced-transparency: no-preference)",
                 true,
@@ -1449,7 +1467,7 @@ mod tests {
         assert_eq!(
             light.changes(&context),
             [
-                false, false, false, false, false, true, false, false, false, false, false
+                false, false, false, false, false, true, false, false, false, false, false, false
             ]
         );
         let p3 = Context {

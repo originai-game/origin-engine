@@ -24945,6 +24945,13 @@ export type TextAlign = "start" | "center" | "end";
 export type Scheme = "dark" | "light";
 
 /**
+ * Whether glass surfaces may blur the frame behind them.
+ * - `"none"`: No backdrop blur.
+ * - `"auto"`: Enable backdrop blur where the style requests glass.
+ */
+export type GlassBackdrop = "none" | "auto";
+
+/**
  * Control sizes by the input the player holds: auto picks touch sizes on a coarse pointer or a play surface under 768 px, mouse sizes otherwise.
  * - `"auto"`: Touch sizes on a coarse pointer or a narrow surface, mouse sizes otherwise.
  * - `"mouse"`: A mouse and keyboard: the tightest controls.
@@ -25257,6 +25264,12 @@ export interface UiDesc {
    */
   readonly reducedTransparency?: boolean;
   /**
+   * Override the style's backdrop blur: auto enables it for glass surfaces, none disables it even when the style opts in. Omitted keeps the previous override; null clears it to inherit the style. Reduced transparency always disables backdrop blur.
+   *
+   * @default null
+   */
+  readonly glassBackdrop?: GlassBackdrop | null;
+  /**
    * The player's colour vision (a settings screen's colour-blind mode): the whole frame, the scene and the UI alike, is recoloured for it after every other effect (colorVisionFilter), and a document's CSS reads it as @media (-og-color-vision: protanopia) to add the cues it needs. none (the default) draws the frame as it is. Simulation uses Viénot 1999 for protanopia and deuteranopia and Brettel 1997 for tritanopia; correction is Fidaner 2005's daltonisation over them (docs/ui.md §3.2).
    *
    * @default "none"
@@ -25549,6 +25562,10 @@ export interface UiTheme {
    * Nothing is see-through: the scrim and the translucent fills of `palette` are already the opaque colours they make over panel (the scrim over backdrop) and glass is an opaque surface; the game asked for it or the page prefers reduced transparency. A game's own translucent overlays read it to draw opaque too.
    */
   readonly reducedTransparency: boolean;
+  /**
+   * The backdrop blur policy in effect, after the configured override and style; none when reduced transparency is active or neither opts in.
+   */
+  readonly glassBackdrop: GlassBackdrop;
   /**
    * The style's tokens (docs/ui.md §3.1), what a game's own drawing reads to match its UI: `typography` (each role, display title heading body label caption numeric button, at each breakpoint: size, lineHeight, trackingEm, weight, font, features), the `space`, `size`, `radius` and `stroke` scales by step, `elevation` (each level's shadows: dx, dy, blur, spread, color), `shape` (each element class's corner and radius: the shape language), `springs` (ui, enter, exit, emphasis, playful: durationMs, bounce), `staggerMs`, `overshoot`, the `rarity`, `team` and `series` colours, `cues` (each colour token's cue besides its hue, by name: `{ icon: <index in the style's icons> }`, `{ pattern: <name> }` or `{ pips: <n> }`; docs/ui.md §3.2), and `feedback` (each UI event's set: how many sounds, the volume and pitch ranges, the haptic's [startMs, ms, low, high] pulses).
    */

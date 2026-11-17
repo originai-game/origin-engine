@@ -2382,6 +2382,10 @@ fn default_css_glass_uses_css_filters_and_material_fallbacks() {
     use og_ui::dress::PartRef;
     use og_ui::paint::Effect;
     let mut ui = ui_with_font(test_font_metrics());
+    ui.set_theme(Theme {
+        glass_backdrop: Some(og_ui::GlassBackdrop::Auto),
+        ..*ui.theme()
+    });
     ui.set_part_css(DEFAULT_CSS).unwrap();
     for value in ["glass thick lift", "var(--author-material)"] {
         let css = format!("\npanel::part(frame) {{ -og-materail: {value}; }}");

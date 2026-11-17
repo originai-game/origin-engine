@@ -27,6 +27,7 @@ The style values the UI draws with, read-only.
 | `colorVisionFilter` | `ColorVisionFilter` | `"correct"` | — | — | — | Whether the frame is corrected or simulated for it. |
 | `colorVisionStrength` | `number` | `0` | — | — | — | Its severity, 0 to 1. |
 | `reducedTransparency` | `boolean` | `false` | — | — | — | Nothing is see-through: the scrim and the translucent fills of `palette` are already the opaque colours they make over panel (the scrim over backdrop) and glass is an opaque surface; the game asked for it or the page prefers reduced transparency. A game's own translucent overlays read it to draw opaque too. |
+| `glassBackdrop` | `GlassBackdrop` | `"none"` | — | — | — | The backdrop blur policy in effect, after the configured override and style; none when reduced transparency is active or neither opts in. |
 | `tokens` | `unknown` | `null` | — | — | — | The style's tokens (docs/ui.md §3.1), what a game's own drawing reads to match its UI: `typography` (each role, display title heading body label caption numeric button, at each breakpoint: size, lineHeight, trackingEm, weight, font, features), the `space`, `size`, `radius` and `stroke` scales by step, `elevation` (each level's shadows: dx, dy, blur, spread, color), `shape` (each element class's corner and radius: the shape language), `springs` (ui, enter, exit, emphasis, playful: durationMs, bounce), `staggerMs`, `overshoot`, the `rarity`, `team` and `series` colours, `cues` (each colour token's cue besides its hue, by name: `{ icon: <index in the style's icons> }`, `{ pattern: <name> }` or `{ pips: <n> }`; docs/ui.md §3.2), and `feedback` (each UI event's set: how many sounds, the volume and pitch ranges, the haptic's [startMs, ms, low, high] pulses). |
 
 ```ogt
@@ -49,8 +50,9 @@ struct UiTheme {
   field colorVisionFilter ColorVisionFilter "Whether the frame is corrected or simulated for it."
   field colorVisionStrength f32 "Its severity, 0 to 1."
   field reducedTransparency bool "Nothing is see-through: the scrim and the translucent fills of `palette` are already the opaque colours they make over panel (the scrim over backdrop) and glass is an opaque surface; the game asked for it or the page prefers reduced transparency. A game's own translucent overlays read it to draw opaque too."
+  field glassBackdrop GlassBackdrop "The backdrop blur policy in effect, after the configured override and style; none when reduced transparency is active or neither opts in."
   field tokens Json "The style's tokens (docs/ui.md §3.1), what a game's own drawing reads to match its UI: `typography` (each role, display title heading body label caption numeric button, at each breakpoint: size, lineHeight, trackingEm, weight, font, features), the `space`, `size`, `radius` and `stroke` scales by step, `elevation` (each level's shadows: dx, dy, blur, spread, color), `shape` (each element class's corner and radius: the shape language), `springs` (ui, enter, exit, emphasis, playful: durationMs, bounce), `staggerMs`, `overshoot`, the `rarity`, `team` and `series` colours, `cues` (each colour token's cue besides its hue, by name: `{ icon: <index in the style's icons> }`, `{ pattern: <name> }` or `{ pips: <n> }`; docs/ui.md §3.2), and `feedback` (each UI event's set: how many sounds, the volume and pitch ranges, the haptic's [startMs, ms, low, high] pulses)."
 }
 ```
 
-<sub>Module `ui` line 292</sub>
+<sub>Module `ui` line 299</sub>

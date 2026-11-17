@@ -28,6 +28,7 @@ module ui {
 |---|---|---|---|
 | [`TextAlign`](ui/type-TextAlign.md) | enum |  | How the lines of a label align. |
 | [`Scheme`](ui/type-Scheme.md) | enum |  | The palette: games run on a stage, so dark is the default. |
+| [`GlassBackdrop`](ui/type-GlassBackdrop.md) | enum |  | Whether glass surfaces may blur the frame behind them. |
 | [`DensityMode`](ui/type-DensityMode.md) | enum |  | Control sizes by the input the player holds: auto picks touch sizes on a coarse pointer or a play surface under 768 px, mouse sizes otherwise. |
 | [`ThemeColor`](ui/type-ThemeColor.md) | enum |  | A colour role of the UI style in effect (the game's style, or the default style before it picks one). |
 | [`TypeStepName`](ui/type-TypeStepName.md) | enum |  | A step of the style's type ramp. |
@@ -228,7 +229,7 @@ column VectorArt {
 }
 ```
 
-<sub>Module `ui` line 1345</sub>
+<sub>Module `ui` line 1353</sub>
 
 ```ogt
 column UiMaterial {
@@ -239,4 +240,4 @@ column UiMaterial {
 }
 ```
 
-<sub>Module `ui` line 1352</sub>
+<sub>Module `ui` line 1360</sub>

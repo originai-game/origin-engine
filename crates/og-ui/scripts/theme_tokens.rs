@@ -2,7 +2,8 @@
 //! into the tree the generators walk. A token is a custom property in a
 //! `:root` block, named by its path: `--motion-duration-fast` is
 //! `motion.duration.fast`. A `:root[data-scheme=dark]` block holds what
-//! the dark scheme changes.
+//! the dark scheme changes. Media-wrapped root tokens stay conditional
+//! CSS in `_media`, not unconditional Rust palette values.
 
 use serde_json::{Map, Number, Value};
 use std::path::Path;
@@ -212,7 +213,7 @@ fn insert(tree: &mut Map<String, Value>, path: &[String], leaf: Value) -> Result
 }
 
 /// One file's tokens into `tree`.
-fn read(file: &str, css: &str, tree: &mut Map<String, Value>) -> Result<(), String> {
+fn read(file: &str, css: &str, tree: &mut Map<String, Value>) -> Result<String, String> {
     let mut text = String::new();
     let mut rest = css;
     while let Some(open) = rest.find("/*") {
@@ -224,14 +225,28 @@ fn read(file: &str, css: &str, tree: &mut Map<String, Value>) -> Result<(), Stri
     }
     text.push_str(rest);
 
+    let mut normalized = String::new();
     let mut rest = text.as_str();
     while let Some(open) = rest.find('{') {
         let selector = rest[..open].trim();
-        let close = rest[open..]
-            .find('}')
-            .ok_or_else(|| format!("{file}: {selector} is not closed"))?;
+        let close =
+            block_end(&rest[open..]).ok_or_else(|| format!("{file}: {selector} is not closed"))?;
         let body = &rest[open + 1..open + close];
         rest = &rest[open + close + 1..];
+        if selector.starts_with("@media ") {
+            // Validate the same token grammar without merging conditional
+            // values into the unconditional Rust palette. Keep the CSS in
+            // source order for the runtime's media-aware root cascade.
+            let body = read(file, body, &mut Map::new())?;
+            let block = format!("{selector} {{{body}}}");
+            normalized.push_str(&block);
+            tree.entry("_media")
+                .or_insert_with(|| Value::Array(Vec::new()))
+                .as_array_mut()
+                .unwrap()
+                .push(Value::String(block));
+            continue;
+        }
         let dark = match selector {
             ":root" => false,
             ":root[data-scheme=dark]" => true,
@@ -241,6 +256,15 @@ fn read(file: &str, css: &str, tree: &mut Map<String, Value>) -> Result<(), Stri
                 ));
             }
         };
+        // The generated palette uses :root for dark and a more specific
+        // light selector. A conditional common token must override both;
+        // a dark override keeps its higher specificity, as in the input.
+        let selector = if dark {
+            selector
+        } else {
+            ":root, :root[data-scheme=light]"
+        };
+        normalized.push_str(&format!("{selector} {{{body}}}\n"));
         for declaration in body.split(';').map(str::trim).filter(|d| !d.is_empty()) {
             let (name, text) = declaration
                 .split_once(':')
@@ -266,7 +290,48 @@ fn read(file: &str, css: &str, tree: &mut Map<String, Value>) -> Result<(), Stri
     if !rest.trim().is_empty() {
         return Err(format!("{file}: text after the last block"));
     }
-    Ok(())
+    Ok(normalized)
+}
+
+// Balance blocks without treating braces or quotes in comments and
+// quoted token values as delimiters. `docs` keeps comments for notes.
+fn block_end(text: &str) -> Option<usize> {
+    let mut depth = 0;
+    let mut quote = None;
+    let mut escaped = false;
+    let mut chars = text.char_indices().peekable();
+    while let Some((i, ch)) = chars.next() {
+        if quote.is_none() && ch == '/' && chars.peek().is_some_and(|(_, c)| *c == '*') {
+            chars.next();
+            while let Some((_, ch)) = chars.next() {
+                if ch == '*' && chars.peek().is_some_and(|(_, c)| *c == '/') {
+                    chars.next();
+                    break;
+                }
+            }
+            continue;
+        }
+        if escaped {
+            escaped = false;
+        } else if ch == '\\' {
+            escaped = true;
+        } else if quote == Some(ch) {
+            quote = None;
+        } else if quote.is_none() {
+            match ch {
+                '\'' | '"' => quote = Some(ch),
+                '{' => depth += 1,
+                '}' => {
+                    depth -= 1;
+                    if depth == 0 {
+                        return Some(i);
+                    }
+                }
+                _ => {}
+            }
+        }
+    }
+    None
 }
 
 /// `tokens.json`, the same tokens as one tree for a client that reads
@@ -311,11 +376,14 @@ pub fn docs(dir: &Path) -> Result<Vec<(Vec<String>, String)>, String> {
         let mut rest = css.as_str();
         while let Some(open) = rest.find('{') {
             let selector = strip_comments(&rest[..open]);
-            let Some(close) = rest[open..].find('}') else {
+            let Some(close) = block_end(&rest[open..]) else {
                 break;
             };
             let body = &rest[open + 1..open + close];
             rest = &rest[open + close + 1..];
+            if selector.trim().starts_with("@media ") {
+                continue;
+            }
             let dark = selector.trim() == ":root[data-scheme=dark]";
             let mut note: Option<String> = None;
             let mut paths: Vec<Vec<String>> = Vec::new();

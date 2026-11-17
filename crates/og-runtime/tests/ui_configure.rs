@@ -52,6 +52,10 @@ fn project() -> &'static Path {
                 button::part(text) { font-family: Mini; }
                 .once { width: 61px; }"#,
         );
+        write(
+            "styles/backdrop/main.css",
+            br#":root { --glass-backdrop: auto; }"#,
+        );
         let font = repo().join("templates/styles/shared/Cinzel-Bold.ttf");
         write("styles/copied/Body.ttf", &std::fs::read(font).unwrap());
         write(
@@ -234,6 +238,65 @@ fn configure_keeps_the_fields_a_call_leaves_out() {
     )))
     .unwrap();
     assert_eq!(r["ok"], json!(false), "{r}");
+}
+
+#[test]
+fn configure_retains_clears_and_disables_the_glass_backdrop_override() {
+    let e = engine();
+    let style = value(og_runtime::host_impl::answer(og_load_style(
+        e,
+        "styles/backdrop".into(),
+    )));
+    configure(e, json!({ "style": style }));
+    assert_eq!(theme(e)["glassBackdrop"], json!("auto"), "style opt-in");
+
+    configure(e, json!({ "glassBackdrop": "none" }));
+    assert_eq!(
+        theme(e)["glassBackdrop"],
+        json!("none"),
+        "explicit off beats style"
+    );
+    configure(e, json!({ "reducedMotion": true }));
+    value(og_runtime::host_impl::answer(og_ui_configure(e, None)));
+    assert_eq!(
+        theme(e)["glassBackdrop"],
+        json!("none"),
+        "omission retains off"
+    );
+
+    configure(e, json!({ "glassBackdrop": null }));
+    assert_eq!(
+        theme(e)["glassBackdrop"],
+        json!("auto"),
+        "null inherits style"
+    );
+    configure(e, json!({ "glassBackdrop": "auto", "style": null }));
+    assert_eq!(theme(e)["glassBackdrop"], json!("auto"), "explicit opt-in");
+    configure(e, json!({ "reducedMotion": false }));
+    assert_eq!(
+        theme(e)["glassBackdrop"],
+        json!("auto"),
+        "omission retains auto"
+    );
+    configure(e, json!({ "reducedTransparency": true }));
+    assert_eq!(
+        theme(e)["glassBackdrop"],
+        json!("none"),
+        "accessibility wins"
+    );
+    configure(e, json!({ "reducedTransparency": false }));
+    assert_eq!(
+        theme(e)["glassBackdrop"],
+        json!("auto"),
+        "override survives accessibility"
+    );
+    configure(e, json!({ "glassBackdrop": null }));
+    assert_eq!(
+        theme(e)["glassBackdrop"],
+        json!("none"),
+        "no remaining opt-in"
+    );
+    assert!(og_runtime::og_engine_destroy(e));
 }
 
 #[test]

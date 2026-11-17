@@ -1,0 +1,10 @@
+{
+  "simulation": "unchanged",
+  "breaking": [
+    {
+      "member": "og.ui",
+      "change": "Backdrop sampling is off by default, including glass panels, tooltips, HUD frames and standalone backdrop-filter chains; floating surfaces keep readable near-opaque fills.",
+      "fix": "Opt in once with the style root --glass-backdrop: auto or UiDesc.glassBackdrop. Explicit none overrides the style and null inherits it. Use @media (-og-glass-backdrop: auto) for thinner on-state fills. Reduced transparency always disables sampling."
+    }
+  ]
+}

@@ -420,6 +420,10 @@ fn theme_wire(theme: Theme, sizes: og_ui::Density, style: &str) -> crate::host::
         },
         reduced_motion: theme.reduced_motion,
         reduced_transparency: theme.reduced_transparency,
+        glass_backdrop: match theme.glass_backdrop.unwrap_or(og_ui::GlassBackdrop::None) {
+            og_ui::GlassBackdrop::None => wire::GlassBackdrop::None,
+            og_ui::GlassBackdrop::Auto => wire::GlassBackdrop::Auto,
+        },
         color_vision: match theme.color_vision {
             og_render::ColorVision::Typical => wire::ColorVision::None,
             og_render::ColorVision::Protanopia => wire::ColorVision::Protanopia,

@@ -116,6 +116,10 @@ pub fn og_ui_configure(world: u32, desc: Option<String>) -> Result<(), String> {
         }
         theme.reduced_motion = u.reduced_motion;
         theme.reduced_transparency = u.reduced_transparency;
+        theme.glass_backdrop = u.glass_backdrop.map(|backdrop| match backdrop {
+            wire::GlassBackdrop::None => og_ui::GlassBackdrop::None,
+            wire::GlassBackdrop::Auto => og_ui::GlassBackdrop::Auto,
+        });
         theme.color_vision =
             og_render::ColorVision::from_name(u.color_vision.as_str()).unwrap_or_default();
         theme.color_vision_filter = match u.color_vision_filter {

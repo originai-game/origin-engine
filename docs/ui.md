@@ -638,7 +638,9 @@ rules and limits:
   ground's or 3D plane's layer), over the border box grown by three
   deviations of each blur and the shadows' reach, clamping reads at the
   capture's edge. Its blur is an exact Gaussian; the theme's
-  `-og-effect: backdrop` glass keeps the pyramid.
+  `-og-effect: backdrop` glass keeps the pyramid. Backdrop sampling is
+  opt-in for the whole UI (below); off submits no backdrop operation,
+  including standalone filter chains, rather than a zero-blur pass.
 - `mix-blend-mode`: `multiply` and `screen` are fixed-function blends in
   linear light (a few levels darker than a browser's mid-tones) and
   `plus-lighter` is fixed-function; every other mode reads the backdrop and
@@ -1500,6 +1502,33 @@ dressing `::part`s and supplying assets. A control token is
 `--<control>-<property>` and defaults to a semantic token or the control's
 number.
 
+Backdrop sampling defaults to off. A style pack opts in once with an
+unconditional `:root { --glass-backdrop: auto; }` (`none` disables it).
+`og.ui.configure({ glassBackdrop: "auto" })` overrides the style; explicit
+`"none"` beats a style opt-in, omission keeps the previous override, and
+`null` clears it to inherit. `og.ui.theme().glassBackdrop` reports the
+effective mode. Reduced transparency, from either the game or host,
+always forces `none`.
+
+`@media (-og-glass-backdrop: auto)` selects the effective on state. Put
+thinner on-state glass fills inside it, leaving near-opaque fills outside
+so the off state stays readable. The design-token generator preserves
+these media blocks, including `:root[data-scheme=dark]` overrides, as CSS
+instead of flattening them into the default palette. Keep the setting
+itself outside its own media query: the engine reads the style default
+with that condition off, resolves configuration and accessibility, then
+cascades the effective state's tokens in the same frame. Ordinary CSS
+specificity still applies to scheme-specific values.
+
+The opt-in restores the default panel.glass and tooltip Thick materials
+and the HUD frame's Regular material. It also permits author-defined
+frame/plate backdrop filters and glass materials. Off suppresses both
+material sampling and standalone `backdrop-filter` passes at paint;
+ordinary backgrounds, borders, shadows and foreground `filter` remain.
+The default floating surfaces retain their fill hooks, falling back to
+`--color-glass` when a HUD or tooltip fill is absent. An author-defined
+glass material without a CSS fill keeps its opaque material ground.
+
 | Token family | What it controls |
 |---|---|
 | `--seed-primary`, `--seed-accent`, `--seed-neutral`, `--seed-danger`, `--seed-warn`, `--seed-success`, `--seed-info`, `--seed-team` | The seed colours every colour below is derived from (below) |
@@ -1547,7 +1576,7 @@ inserts the variant (`--button-primary-hover-fill`).
 | Slider | `--slider-track-fill/rim/rim-width/shadow`, `--slider-fill/fill-shadow/tick-fill`, `--slider-knob-fill/rim/rim-width/shadow/hover-shadow/pressed-fill/disabled-fill/corner-shape`, `--slider-core-fill`, `--slider-bubble-fill/rim/shadow/radius` |
 | Field, select, stepper | `--field-fill/rim/rim-width/frame-shadow/hover-fill/hover-rim/focus-rim/focus-shadow/disabled-fill/disabled-rim/invalid-rim/ink/font/placeholder-ink/selection-fill/caret-fill/corner-shape`; `--dropdown-list-fill/rim/rim-width/radius`, `--dropdown-option-hover-fill/pressed-fill/selected-fill/selected-ink` (a group's label wears `--label-*`); `--stepper-button-fill/hover-fill/pressed-fill/disabled-fill/rim/hover-rim/ink`, which a number field's spin buttons take too |
 | Details | `--details-summary-fill/hover-fill/open-fill/ink/open-ink/border/rule/shadow/font` (by default `--label-font`), `--details-content-ink` |
-| Surfaces | `--panel-fill/rim/shadow/glass/corner-shape` (a panel and a dialog's panel; `panel.glass` blurs by default), `--dialog-backdrop`, `--tooltip-fill/rim/rim-width/radius/shadow/glass/corner-shape`, `--hud-fill/rim/rim-width/shadow/glass/corner-shape`; a `-glass` is the `backdrop-filter`, `none` a solid surface; `--popover-arrow-fill`, `--spotlight-edge` |
+| Surfaces | `--panel-fill/rim/shadow/glass/corner-shape` (a panel and a dialog's panel; `panel.glass` blurs only with the global backdrop opt-in), `--dialog-backdrop`, `--tooltip-fill/rim/rim-width/radius/shadow/glass/corner-shape`, `--hud-fill/rim/rim-width/shadow/glass/corner-shape`; a `-glass` is the `backdrop-filter`, `none` a solid surface; `--popover-arrow-fill`, `--spotlight-edge` |
 | Slot, badge, bars | `--slot-fill/rim/rim-width/shadow/hover-rim/hover-shadow/pressed-fill/selected-rim/selected-shadow/corner-shape` (`--slot-shadow` none by default); `--badge-<tone>-fill/ink` (neutral, primary, info, success, warn, danger), `--badge-rim/rim-width` (by default the badge's ink, its tone's), `--badge-font/tracking/transform`; `--meter-track-fill/rim/rim-width/shadow`, `--meter-fill/suboptimum-fill/poor-fill/health-fill/mana-fill`, `--progress-fill` |
 | Keyboard, touch | `--keyboard-panel-fill`, `--keyboard-key-fill/rim/hover-fill/hover-rim/pressed-fill/pressed-rim/shadow/ink/font` (its candidates too); `--touch-plate-fill/rim`, `--touch-knob-fill`, `--touch-active-fill` |
 | Text | `--heading-flourish` (h1–h3), `--scrollbar-fill/radius`, `--icon-secondary-ink` |

@@ -322,6 +322,25 @@ impl Ui {
     /// same media context, with the root inputs and the fonts unchanged,
     /// cascades nothing.
     pub fn read_theme_tokens(&mut self) {
+        use crate::GlassBackdrop;
+        let requested = self.env.configured.glass_backdrop;
+        let reduced = self.env.theme.reduced_transparency || self.env.viewport.reduced_transparency;
+        // A style's setting is read with its own on-state condition off:
+        // the unconditional setting chooses the media context, not vice
+        // versa. Each context has a cached root answer.
+        self.env.theme.glass_backdrop = Some(GlassBackdrop::None);
+        let backdrop = if reduced {
+            GlassBackdrop::None
+        } else if let Some(requested) = requested {
+            requested
+        } else {
+            let root = self.css_root_variables();
+            match root.get("--glass-backdrop").and_then(Option::as_deref) {
+                Some(value) if value.trim().eq_ignore_ascii_case("auto") => GlassBackdrop::Auto,
+                _ => GlassBackdrop::None,
+            }
+        };
+        self.env.theme.glass_backdrop = Some(backdrop);
         let source = ThemeSource {
             theme: self.env.theme,
             configured: self.env.configured,

@@ -16,6 +16,51 @@ fn tokens() -> serde_json::Value {
 }
 
 #[test]
+fn conditional_design_tokens_survive_generation_without_changing_defaults() {
+    let dir = std::env::temp_dir().join(format!("og-glass-token-test-{}", std::process::id()));
+    std::fs::create_dir_all(&dir).unwrap();
+    std::fs::write(
+        dir.join("glass.css"),
+        r#"
+:root { --glass-blur-thick: 13px; }
+@media (-og-glass-backdrop: auto) {
+  :root { --glass-blur-thick: 3px; }
+  :root[data-scheme=dark] { --glass-blur-thick: 5px; }
+}
+"#,
+    )
+    .unwrap();
+    let read = theme_codegen::load(&dir).unwrap();
+    std::fs::remove_dir_all(&dir).unwrap();
+    assert_eq!(read["glass"]["blur-thick"], "13px");
+    let mut t = tokens();
+    t["_media"] = read["_media"].clone();
+    let css = theme_codegen::generate_css(&t).unwrap();
+    for (scheme, expected) in [(og_ui::Scheme::Light, 3.0), (og_ui::Scheme::Dark, 5.0)] {
+        let mut ui = og_ui::Ui::new(Default::default());
+        ui.set_theme(og_ui::Theme {
+            scheme,
+            glass_backdrop: Some(og_ui::GlassBackdrop::Auto),
+            ..og_ui::Theme::dark()
+        });
+        ui.set_part_css(&css).unwrap();
+        let draw = ui
+            .resolve_part(
+                &PartRef::parse("panel.glass::part(frame)", None).unwrap(),
+                [100.0, 40.0],
+            )
+            .unwrap();
+        assert!(
+            draw.effects.iter().any(
+                |e| matches!(e, og_ui::paint::Effect::Backdrop { blur, .. } if *blur == expected * og_draw::ui::GLASS_BLUR_SCALE)
+            ),
+            "conditional {scheme:?}: {:?}",
+            draw.effects
+        );
+    }
+}
+
+#[test]
 fn theme_rs_is_generated_from_the_design_tokens() {
     let root = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
     let tokens = tokens();
@@ -178,7 +223,47 @@ fn the_tokens_glass_tints_are_og_renders_presets() {
 #[test]
 fn the_default_css_puts_glass_on_floating_chrome_only() {
     use og_ui::paint::Effect;
-    let ui = og_ui::Ui::new(Default::default());
+    for reduced in [false, true] {
+        let mut ui = og_ui::Ui::new(Default::default());
+        if reduced {
+            ui.set_theme(og_ui::Theme {
+                glass_backdrop: Some(og_ui::GlassBackdrop::Auto),
+                reduced_transparency: true,
+                ..og_ui::Theme::dark()
+            });
+        }
+        for s in [
+            "panel.glass::part(frame)",
+            "tooltip::part(frame)",
+            "hud::part(frame)",
+        ] {
+            let draw = ui
+                .resolve_part(&PartRef::parse(s, None).unwrap(), [100.0, 40.0])
+                .unwrap();
+            assert!(
+                !draw
+                    .effects
+                    .iter()
+                    .any(|e| matches!(e, Effect::Backdrop { .. } | Effect::BackdropFilter(_))),
+                "{s}: off has no sampling effect"
+            );
+            assert!(
+                !draw.fills.is_empty()
+                    || draw
+                        .boxes
+                        .as_ref()
+                        .is_some_and(|b| !b.backgrounds.is_empty()),
+                "{s}: off retains its ground"
+            );
+        }
+    }
+    let ui = og_ui::Ui::new(og_ui::UiDesc {
+        theme: og_ui::Theme {
+            glass_backdrop: Some(og_ui::GlassBackdrop::Auto),
+            ..og_ui::Theme::dark()
+        },
+        ..Default::default()
+    });
     let glass = |sel: &str| -> Option<og_draw::UiGlassWeight> {
         ui.resolve_part(&PartRef::parse(sel, None).unwrap(), [100.0, 40.0])
             .unwrap()

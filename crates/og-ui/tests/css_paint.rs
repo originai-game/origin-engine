@@ -2338,7 +2338,12 @@ fn glass_takes_any_backdrop_filter_chain() {
 #Fold { backdrop-filter: blur(4px) saturate(0); }
 #Chain { margin-top: 10px; backdrop-filter: saturate(0) blur(4px) drop-shadow(2px 3px 4px #000000); }
 </style>"#;
-    let d = Doc::with_font(text, &[], test_font_metrics());
+    let mut ui = ui_with_font(test_font_metrics());
+    ui.set_part_css(&format!(
+        "{DEFAULT_CSS}\n:root {{ --glass-backdrop: auto; }}"
+    ))
+    .unwrap();
+    let d = Doc::mounted(ui, text, &[]);
     assert!(
         d.ui.frame().warnings.is_empty(),
         "{:?}",
@@ -2432,6 +2437,83 @@ fn glass_takes_any_backdrop_filter_chain() {
         "{ops:?}"
     );
     assert_eq!(ops.len(), 7);
+}
+
+#[test]
+fn backdrop_sampling_is_opt_in_and_reduced_transparency_wins_live() {
+    let mut d = Doc::with_font(
+        r#"<meta name="component" content="t">
+<div><div id="Glass"></div><div id="Filter"></div></div>
+<style>
+#Glass, #Filter { width: 100px; height: 60px; }
+#Glass { -og-material: glass thick lift; }
+#Filter { backdrop-filter: saturate(0) blur(4px); background: #123456; }
+@media (-og-glass-backdrop: auto) { #Glass { width: 120px; } }
+</style>"#,
+        &[],
+        test_font_metrics(),
+    );
+    let sampling = |ui: &Ui| {
+        ui.frame()
+            .items
+            .iter()
+            .filter(|item| {
+                matches!(&item.cmd,
+        DrawCmd::Shape { shape, .. } if matches!(shape.mode, og_draw::UiMode::Backdrop { .. }))
+                    || matches!(
+                        &item.cmd,
+                        DrawCmd::BeginLayer {
+                            role: LayerRole::Backdrop,
+                            ..
+                        }
+                    )
+            })
+            .count()
+    };
+    assert_eq!(
+        sampling(&d.ui),
+        0,
+        "default off suppresses materials and standalone filters"
+    );
+    assert_eq!(d.get("Glass").width, 100.0);
+    assert!(
+        d.ui.frame().items.iter().any(|item| matches!(&item.cmd,
+        DrawCmd::Shape { shape, .. } if shape.center.y < 60.0
+            && matches!(shape.mode, og_draw::UiMode::Fill)
+            && matches!(shape.paint, og_draw::UiPaint::Solid(c) if c[3] >= 0.97))),
+        "material keeps its opaque ground"
+    );
+    for (reduced, enabled, width) in [
+        (false, true, 120.0),
+        (true, false, 100.0),
+        (false, true, 120.0),
+    ] {
+        d.ui.set_theme(Theme {
+            glass_backdrop: Some(GlassBackdrop::Auto),
+            reduced_transparency: reduced,
+            ..Theme::dark()
+        });
+        d.step(InputFrame::default());
+        assert_eq!(sampling(&d.ui) > 0, enabled);
+        assert_eq!(
+            d.get("Glass").width,
+            width,
+            "retained media refreshes immediately"
+        );
+    }
+    for reduced in [true, false] {
+        d.viewport.reduced_transparency = reduced;
+        d.step(InputFrame::default());
+        assert_eq!(sampling(&d.ui) > 0, !reduced, "host preference wins too");
+        assert_eq!(d.get("Glass").width, if reduced { 100.0 } else { 120.0 });
+    }
+    d.ui.set_theme(Theme {
+        glass_backdrop: Some(GlassBackdrop::None),
+        ..Theme::dark()
+    });
+    d.step(InputFrame::default());
+    assert_eq!(sampling(&d.ui), 0);
+    assert_eq!(d.get("Glass").width, 100.0);
 }
 
 /// CSS Color HDR 1 `dynamic-range-limit` on a document's root is the

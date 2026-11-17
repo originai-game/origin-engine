@@ -12100,6 +12100,7 @@
       "types": [
         "TextAlign",
         "Scheme",
+        "GlassBackdrop",
         "DensityMode",
         "ThemeColor",
         "TypeStepName",
@@ -45188,6 +45189,20 @@
         "light": "The light palette."
       }
     },
+    "GlassBackdrop": {
+      "x-og-kind": "enum",
+      "x-og-module": "ui",
+      "description": "Whether glass surfaces may blur the frame behind them.",
+      "type": "string",
+      "enum": [
+        "none",
+        "auto"
+      ],
+      "x-og-variants": {
+        "none": "No backdrop blur.",
+        "auto": "Enable backdrop blur where the style requests glass."
+      }
+    },
     "DensityMode": {
       "x-og-kind": "enum",
       "x-og-module": "ui",
@@ -45640,6 +45655,18 @@
           "type": "boolean",
           "description": "Nothing is see-through: glass parts (a style's glass line) are opaque surfaces (no blur of the frame under them, their frame whole), the scrim is the opaque colour it makes over backdrop and the translucent fills (control, controlStrong, primarySoft, hud) the opaque colours they make over panel. The page's prefers-reduced-transparency turns it on too (Viewport.reducedTransparency); UiTheme.reducedTransparency says it is on.",
           "default": false
+        },
+        "glassBackdrop": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/GlassBackdrop"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Override the style's backdrop blur: auto enables it for glass surfaces, none disables it even when the style opts in. Omitted keeps the previous override; null clears it to inherit the style. Reduced transparency always disables backdrop blur.",
+          "default": null
         },
         "colorVision": {
           "$ref": "#/$defs/ColorVision",
@@ -46113,6 +46140,10 @@
           "type": "boolean",
           "description": "Nothing is see-through: the scrim and the translucent fills of `palette` are already the opaque colours they make over panel (the scrim over backdrop) and glass is an opaque surface; the game asked for it or the page prefers reduced transparency. A game's own translucent overlays read it to draw opaque too."
         },
+        "glassBackdrop": {
+          "$ref": "#/$defs/GlassBackdrop",
+          "description": "The backdrop blur policy in effect, after the configured override and style; none when reduced transparency is active or neither opts in."
+        },
         "tokens": {
           "description": "The style's tokens (docs/ui.md §3.1), what a game's own drawing reads to match its UI: `typography` (each role, display title heading body label caption numeric button, at each breakpoint: size, lineHeight, trackingEm, weight, font, features), the `space`, `size`, `radius` and `stroke` scales by step, `elevation` (each level's shadows: dx, dy, blur, spread, color), `shape` (each element class's corner and radius: the shape language), `springs` (ui, enter, exit, emphasis, playful: durationMs, bounce), `staggerMs`, `overshoot`, the `rarity`, `team` and `series` colours, `cues` (each colour token's cue besides its hue, by name: `{ icon: <index in the style's icons> }`, `{ pattern: <name> }` or `{ pips: <n> }`; docs/ui.md §3.2), and `feedback` (each UI event's set: how many sounds, the volume and pitch ranges, the haptic's [startMs, ms, low, high] pulses)."
         }
@@ -46135,6 +46166,7 @@
         "colorVisionFilter",
         "colorVisionStrength",
         "reducedTransparency",
+        "glassBackdrop",
         "tokens"
       ],
       "additionalProperties": false

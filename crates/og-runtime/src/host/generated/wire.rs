@@ -16067,6 +16067,44 @@ impl ToJson for Scheme {
     }
 }
 
+/// `GlassBackdrop`: packages/knowledge/wiki/ui.md.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash, PartialOrd, Ord)]
+pub enum GlassBackdrop {
+    #[default]
+    None,
+    Auto,
+}
+
+impl GlassBackdrop {
+    /// The variants' IDL names, in index order.
+    pub const NAMES: &'static [&'static str] = &["none", "auto"];
+    /// Every variant, in index order.
+    pub const ALL: &'static [Self] = &[Self::None, Self::Auto];
+    /// The IDL name.
+    pub fn as_str(self) -> &'static str {
+        Self::NAMES[self as usize]
+    }
+    /// The variant named `s`, or a refusal naming them all.
+    pub fn parse(s: &str) -> Result<Self, String> {
+        match Self::NAMES.iter().position(|n| *n == s) {
+            Some(i) => Ok(Self::ALL[i]),
+            None => Err(unknown_variant("GlassBackdrop", s, Self::NAMES)),
+        }
+    }
+}
+
+impl FromJson for GlassBackdrop {
+    fn from_json(v: &Value) -> Result<Self, String> {
+        Self::parse(variant(v, "GlassBackdrop", Self::NAMES)?)
+    }
+}
+
+impl ToJson for GlassBackdrop {
+    fn to_json(&self) -> Value {
+        Value::String(self.as_str().into())
+    }
+}
+
 /// `DensityMode`: packages/knowledge/wiki/ui.md.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub enum DensityMode {
@@ -16404,6 +16442,7 @@ pub struct UiDesc {
     pub text_scale: f32,
     pub unit_scale: f32,
     pub reduced_transparency: bool,
+    pub glass_backdrop: Option<GlassBackdrop>,
     pub color_vision: ColorVision,
     pub color_vision_filter: ColorVisionFilter,
     pub color_vision_strength: f32,
@@ -16431,6 +16470,7 @@ impl Default for UiDesc {
             text_scale: 1.0_f32,
             unit_scale: 0.0_f32,
             reduced_transparency: Default::default(),
+            glass_backdrop: Default::default(),
             color_vision: Default::default(),
             color_vision_filter: Default::default(),
             color_vision_strength: 1.0_f32,
@@ -16464,6 +16504,7 @@ impl FromJson for UiDesc {
             text_scale: field(o, "textScale", d.text_scale)?,
             unit_scale: field(o, "unitScale", d.unit_scale)?,
             reduced_transparency: field(o, "reducedTransparency", d.reduced_transparency)?,
+            glass_backdrop: field(o, "glassBackdrop", d.glass_backdrop)?,
             color_vision: field(o, "colorVision", d.color_vision)?,
             color_vision_filter: field(o, "colorVisionFilter", d.color_vision_filter)?,
             color_vision_strength: field(o, "colorVisionStrength", d.color_vision_strength)?,
@@ -16493,6 +16534,7 @@ impl ToJson for UiDesc {
         o.insert("textScale".into(), self.text_scale.to_json());
         o.insert("unitScale".into(), self.unit_scale.to_json());
         o.insert("reducedTransparency".into(), self.reduced_transparency.to_json());
+        o.insert("glassBackdrop".into(), self.glass_backdrop.to_json());
         o.insert("colorVision".into(), self.color_vision.to_json());
         o.insert("colorVisionFilter".into(), self.color_vision_filter.to_json());
         o.insert("colorVisionStrength".into(), self.color_vision_strength.to_json());
@@ -16762,6 +16804,7 @@ pub struct UiTheme {
     pub color_vision_filter: ColorVisionFilter,
     pub color_vision_strength: f32,
     pub reduced_transparency: bool,
+    pub glass_backdrop: GlassBackdrop,
     pub tokens: Value,
 }
 
@@ -16785,6 +16828,7 @@ impl Default for UiTheme {
             color_vision_filter: Default::default(),
             color_vision_strength: Default::default(),
             reduced_transparency: Default::default(),
+            glass_backdrop: Default::default(),
             tokens: Default::default(),
         }
     }
@@ -16814,6 +16858,7 @@ impl FromJson for UiTheme {
             color_vision_filter: field(o, "colorVisionFilter", d.color_vision_filter)?,
             color_vision_strength: field(o, "colorVisionStrength", d.color_vision_strength)?,
             reduced_transparency: field(o, "reducedTransparency", d.reduced_transparency)?,
+            glass_backdrop: field(o, "glassBackdrop", d.glass_backdrop)?,
             tokens: field(o, "tokens", d.tokens)?,
         })
     }
@@ -16839,6 +16884,7 @@ impl ToJson for UiTheme {
         o.insert("colorVisionFilter".into(), self.color_vision_filter.to_json());
         o.insert("colorVisionStrength".into(), self.color_vision_strength.to_json());
         o.insert("reducedTransparency".into(), self.reduced_transparency.to_json());
+        o.insert("glassBackdrop".into(), self.glass_backdrop.to_json());
         o.insert("tokens".into(), self.tokens.to_json());
         Value::Object(o)
     }

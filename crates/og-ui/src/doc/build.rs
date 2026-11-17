@@ -810,6 +810,9 @@ impl Ui {
             dark: theme.scheme == crate::Scheme::Dark,
             high_contrast: theme.contrast == crate::Contrast::High,
             reduced_transparency: theme.reduced_transparency,
+            glass_backdrop: theme.glass_backdrop == Some(crate::GlassBackdrop::Auto)
+                && !theme.reduced_transparency
+                && !vp.reduced_transparency,
             resolution: vp.dpr,
             pad: theme.density == crate::DensityMode::Pad,
             display: super::media::Display {

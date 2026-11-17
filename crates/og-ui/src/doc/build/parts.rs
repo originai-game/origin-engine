@@ -697,23 +697,21 @@ impl Ui {
     /// Writing its inputs drops it through `Style::root_inputs_changed`.
     pub(crate) fn css_root_cascade(&self) -> Arc<cascade::Cascade> {
         let media = self.media_context();
+        let slot = usize::from(media.glass_backdrop);
         let context = RootContext {
             breakpoint: self.breakpoint(),
             density: self.env.theme.active_density(&self.viewport()).0,
             dark: media.dark,
             text_scale: self.css_text_scale(),
         };
-        if let Some((_, cascade)) = self
-            .style
-            .root_cascade
-            .borrow()
+        if let Some((_, cascade)) = self.style.root_cascade.borrow()[slot]
             .as_ref()
-            .filter(|(of, cascade)| *of == context && cascade.media.matches(media))
+            .filter(|(of, cascade)| *of == context && cascade.0.media.matches(media))
         {
-            return cascade.clone();
+            return cascade.0.clone();
         }
         let cascade = Arc::new(self.compute_root_cascade(&[]));
-        *self.style.root_cascade.borrow_mut() = Some((context, cascade.clone()));
+        self.style.root_cascade.borrow_mut()[slot] = Some((context, RootIdentity(cascade.clone())));
         cascade
     }
 

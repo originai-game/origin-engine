@@ -21,4 +21,4 @@ struct StateEvent {
 }
 ```
 
-<sub>Module `ui` line 1026</sub>
+<sub>Module `ui` line 1034</sub>

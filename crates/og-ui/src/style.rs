@@ -258,6 +258,14 @@ impl Seeds {
     }
 }
 
+/// Whether UI surfaces may sample the frame behind them.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub enum GlassBackdrop {
+    #[default]
+    None,
+    Auto,
+}
+
 /// Everything a widget reads its look from: a style's values and its art.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Theme {
@@ -299,6 +307,10 @@ pub struct Theme {
     /// ([`Theme::to_reduced_transparency`]). A game reads it to flatten
     /// its own (IDL `UiTheme.reducedTransparency`).
     pub reduced_transparency: bool,
+    /// Override `--glass-backdrop` (`None`: inherit the style, off without
+    /// an opt-in). The effective theme resolves this to `Some`; reduced
+    /// transparency always resolves it to [`GlassBackdrop::None`].
+    pub glass_backdrop: Option<GlassBackdrop>,
     /// The player's colour vision setting (docs/ui.md §3.2, IDL
     /// `UiDesc.colorVision`): the frame, scene and UI alike, goes through
     /// [`og_draw::ColorFilter`] for it, and document CSS reads it as
@@ -404,6 +416,7 @@ impl Theme {
             outline: false,
             reduced_motion: false,
             reduced_transparency: false,
+            glass_backdrop: None,
             color_vision: og_draw::ColorVision::Typical,
             color_vision_filter: og_draw::ColorVisionFilter::Correct,
             color_vision_strength: 1.0,
@@ -508,6 +521,7 @@ impl Theme {
             }
         }
         t.reduced_transparency = true;
+        t.glass_backdrop = Some(GlassBackdrop::None);
         t
     }
 

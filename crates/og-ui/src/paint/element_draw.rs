@@ -753,8 +753,12 @@ impl ElementDraw {
                 Blend::Normal,
             ));
         }
+        let backdrop_enabled =
+            theme.glass_backdrop == Some(crate::GlassBackdrop::Auto) && !theme.reduced_transparency;
         for e in &self.effects {
-            if let Effect::BackdropFilter(stages) = e {
+            if let Effect::BackdropFilter(stages) = e
+                && backdrop_enabled
+            {
                 out.extend(self.backdrop_filter(stages, theme, at, opacity));
             }
             if let Effect::Backdrop {
@@ -765,18 +769,35 @@ impl ElementDraw {
                 glass,
             } = e
             {
+                // Keep a material's ground when sampling is disabled. The
+                // solid material fallback supplies its readable tint, but
+                // must not submit even a zero-blur backdrop operation.
+                let solid_theme;
+                let material_theme = if backdrop_enabled {
+                    theme
+                } else {
+                    solid_theme = Theme {
+                        reduced_transparency: true,
+                        ..*theme
+                    };
+                    &solid_theme
+                };
                 let (mode, tint) = glass.resolve(
                     *blur,
                     *saturation,
                     *brightness,
                     tint.resolve(theme),
                     glass.own_tint,
-                    theme,
+                    material_theme,
                 );
                 out.push(self.shape(
                     at,
                     og_draw::UiPaint::Solid(tint),
-                    mode,
+                    if backdrop_enabled {
+                        mode
+                    } else {
+                        og_draw::UiMode::Fill
+                    },
                     opacity,
                     Blend::Normal,
                 ));

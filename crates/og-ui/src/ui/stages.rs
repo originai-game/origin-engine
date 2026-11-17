@@ -224,13 +224,14 @@ pub struct Style {
     pub(crate) part_sheet: std::sync::Arc<crate::css::at_rules::Sheet>,
     pub(crate) root_tokens: Vec<(String, String)>,
     pub(crate) root_type_tokens: [Vec<(String, String)>; 4],
-    /// The root cascade of the four inputs above for one set of media answers.
-    /// Derived from them alone: a write of any calls `root_inputs_changed`.
+    /// Root cascades for backdrop off/on. The off answer bootstraps the
+    /// style's setting before its on-state fills are cascaded; keeping both
+    /// avoids recascading twice on every frame of a style opt-in.
     pub(crate) root_cascade: std::cell::RefCell<
-        Option<(
+        [Option<(
             crate::doc::build::RootContext,
-            std::sync::Arc<crate::doc::build::cascade::Cascade>,
-        )>,
+            crate::doc::build::RootIdentity,
+        )>; 2],
     >,
     /// The palettes of the `accent-color`s drawn, each the root tokens
     /// read with the accent as `--seed-primary` ([`crate::Ui::accent_palette`]),
@@ -309,7 +310,7 @@ pub struct ThemeSource {
 impl Style {
     /// The part rules, their sheet or the root tokens were written.
     pub fn root_inputs_changed(&mut self) {
-        *self.root_cascade.get_mut() = None;
+        *self.root_cascade.get_mut() = Default::default();
         self.accent_palettes.get_mut().clear();
         self.theme_read = None;
         self.part_styles.get_mut().clear();

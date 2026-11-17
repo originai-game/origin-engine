@@ -2,6 +2,28 @@
 
 Per-element shader finishes for a game's UI: the foil, holo, burn and rarity presets of the `materials` resource pack, how to put one on a styled part or an element, how to tune it, and how to write a new one.
 
+## Backdrop glass is optional
+
+The default UI does not sample the scene behind glass. Keep its near-opaque
+fills for readable chrome without a backdrop pass. To use blur, opt in once
+in the style pack and put thinner fills under the effective on-state query:
+
+```css
+:root { --glass-backdrop: auto; }
+@media (-og-glass-backdrop: auto) {
+  :root { --hud-fill: rgb(20 25 30 / 0.65); }
+}
+```
+
+The same condition can override glass colours in design-token files; keep
+scheme-specific overrides under `:root[data-scheme=dark]` when needed.
+Keep the opt-in itself unconditional. The game can override a pack's choice
+through UI configuration, and reduced transparency always wins, so the
+off-state fills must stand on their own. Review both states over a busy
+scene on desktop and phone; a blur hidden behind an opaque fill still costs
+the pass. This setting does not disable foreground finishes such as foil
+or shine.
+
 `og ui add materials` installs the presets into
 `assets/materials/materials/` as ordinary `type ui-material` assets (an
 `.ogt` with `param` lines beside its WGSL), the game's own to edit, named

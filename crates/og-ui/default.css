@@ -10,7 +10,8 @@
 * elevation and accessibility solid fallback. Standard backdrop-filter
 * cannot express that material; it supplies blur/saturation, not a second
 * backdrop. The material owns its tint, border and elevation shadows.
-* All --* values below are ordinary CSS variables, not engine hooks.
+* --glass-backdrop: none | auto is the style's default sampling setting;
+* (-og-glass-backdrop: auto) reads its effective, accessibility-clamped state.
 * --well-rim is each scheme's 3:1 unchecked-mark rim (--color-well-rim).
 * --motion-ui-easing samples the existing UI spring at 60 Hz; CSS
 * transitions restart from the current value, not the old spring velocity.
@@ -1910,11 +1911,11 @@
   keyboard[data-player="2"]::part(focus):focus-visible { outline: var(--state-player-ring-width) solid var(--success); outline-offset: var(--state-player-ring-offset-2); }
   keyboard[data-player="3"]::part(focus):focus-visible { outline: var(--state-player-ring-width) solid var(--warn); outline-offset: var(--state-player-ring-offset-3); }
   /* Panel::frame */
-  panel.glass::part(frame) { background: var(--panel-fill, none); border: none; box-shadow: var(--panel-shadow, none); backdrop-filter: var(--panel-glass, blur(var(--glass-blur-thick)) saturate(var(--glass-saturation))); -og-material: glass thick lift; }
+  panel.glass::part(frame) { background: var(--panel-fill, var(--color-glass)); border: none; box-shadow: var(--panel-shadow, none); }
   /* Tooltip::frame */
-  tooltip::part(frame) { background: var(--tooltip-fill, none); border-width: var(--tooltip-rim-width, 0px); border-style: solid; border-color: var(--tooltip-rim, var(--line)); border-radius: var(--tooltip-radius); corner-shape: var(--tooltip-corner-shape); box-shadow: var(--tooltip-shadow, none); backdrop-filter: var(--tooltip-glass, blur(var(--glass-blur-thick)) saturate(var(--glass-saturation))); -og-material: glass thick float; }
+  tooltip::part(frame) { background: var(--tooltip-fill, var(--color-glass)); border-width: var(--tooltip-rim-width, 0px); border-style: solid; border-color: var(--tooltip-rim, var(--line)); border-radius: var(--tooltip-radius); corner-shape: var(--tooltip-corner-shape); box-shadow: var(--tooltip-shadow, none); }
   /* Hud::frame */
-  hud::part(frame) { background: var(--hud-fill, none); border-width: var(--hud-rim-width, 0px); border-style: solid; border-color: var(--hud-rim, var(--line-70)); box-shadow: var(--hud-shadow, none); backdrop-filter: var(--hud-glass, blur(var(--glass-blur-regular)) saturate(var(--glass-saturation))); -og-material: glass regular float; }
+  hud::part(frame) { background: var(--hud-fill, var(--color-glass)); border-width: var(--hud-rim-width, 0px); border-style: solid; border-color: var(--hud-rim, var(--line-70)); box-shadow: var(--hud-shadow, none); }
   /* Card::frame */
   panel::part(frame) { box-shadow: var(--panel-shadow, none); border-radius: var(--radius-card); }
   /* Button::base */
@@ -1953,6 +1954,12 @@
   input[type=radio]::part(chosen) { border-width: var(--stroke-regular); border-style: solid; border-color: var(--radio-chosen-rim); background: var(--radio-chosen-fill, revert-layer); }
   /* Tabs::tab:selected */
   tabs::part(tab):checked { background: var(--tabs-tab-selected-fill); box-shadow: var(--tabs-tab-selected-shadow); color: var(--tabs-tab-selected-ink, revert-layer); }
+
+  @media (-og-glass-backdrop: auto) {
+    panel.glass::part(frame) { backdrop-filter: var(--panel-glass, blur(var(--glass-blur-thick)) saturate(var(--glass-saturation))); -og-material: glass thick lift; }
+    tooltip::part(frame) { backdrop-filter: var(--tooltip-glass, blur(var(--glass-blur-thick)) saturate(var(--glass-saturation))); -og-material: glass thick float; }
+    hud::part(frame) { backdrop-filter: var(--hud-glass, blur(var(--glass-blur-regular)) saturate(var(--glass-saturation))); -og-material: glass regular float; }
+  }
   /* Roles: frame, plate, band, title, row, cell, card, badge, well, figure,
      label, heading, headline, caption, name, picture, dot, track, fill, tab. */
   /* A separator (`<hr>`) is a line of its own colour across its container;

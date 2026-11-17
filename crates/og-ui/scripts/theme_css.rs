@@ -538,12 +538,18 @@ const ROLE_RULES: &str = r#"  /* Roles: frame, plate, band, title, row, cell, ca
   }
 "#;
 
-// The material owns tint/edge/shadows as one shader operation. Repeating
-// these as a background or border would composite them twice.
-// A pack's `--*-fill` and `--*-glass` (`none`: a solid surface) replace them.
-const GLASS_LIFT: &str = "background: var(--panel-fill, none); border: none; box-shadow: var(--panel-shadow, none); backdrop-filter: var(--panel-glass, blur(var(--glass-blur-thick)) saturate(var(--glass-saturation))); -og-material: glass thick lift;";
-const GLASS_FLOAT: &str = "background: var(--tooltip-fill, none); border-width: var(--tooltip-rim-width, 0px); border-style: solid; border-color: var(--tooltip-rim, var(--line)); border-radius: var(--tooltip-radius); corner-shape: var(--tooltip-corner-shape); box-shadow: var(--tooltip-shadow, none); backdrop-filter: var(--tooltip-glass, blur(var(--glass-blur-thick)) saturate(var(--glass-saturation))); -og-material: glass thick float;";
-const GLASS_REGULAR: &str = "background: var(--hud-fill, none); border-width: var(--hud-rim-width, 0px); border-style: solid; border-color: var(--hud-rim, var(--line-70)); box-shadow: var(--hud-shadow, none); backdrop-filter: var(--hud-glass, blur(var(--glass-blur-regular)) saturate(var(--glass-saturation))); -og-material: glass regular float;";
+// Fills remain readable without backdrop sampling; packs can thin these
+// hooks under the effective on-state media condition.
+const GLASS_LIFT: &str = "background: var(--panel-fill, var(--color-glass)); border: none; box-shadow: var(--panel-shadow, none);";
+const GLASS_FLOAT: &str = "background: var(--tooltip-fill, var(--color-glass)); border-width: var(--tooltip-rim-width, 0px); border-style: solid; border-color: var(--tooltip-rim, var(--line)); border-radius: var(--tooltip-radius); corner-shape: var(--tooltip-corner-shape); box-shadow: var(--tooltip-shadow, none);";
+const GLASS_REGULAR: &str = "background: var(--hud-fill, var(--color-glass)); border-width: var(--hud-rim-width, 0px); border-style: solid; border-color: var(--hud-rim, var(--line-70)); box-shadow: var(--hud-shadow, none);";
+const GLASS_BACKDROPS: &str = r#"
+  @media (-og-glass-backdrop: auto) {
+    panel.glass::part(frame) { backdrop-filter: var(--panel-glass, blur(var(--glass-blur-thick)) saturate(var(--glass-saturation))); -og-material: glass thick lift; }
+    tooltip::part(frame) { backdrop-filter: var(--tooltip-glass, blur(var(--glass-blur-thick)) saturate(var(--glass-saturation))); -og-material: glass thick float; }
+    hud::part(frame) { backdrop-filter: var(--hud-glass, blur(var(--glass-blur-regular)) saturate(var(--glass-saturation))); -og-material: glass regular float; }
+  }
+"#;
 
 const HEAD: &str = "/* Generated from packages/design/tokens/*.css by crates/og-ui/scripts/gen-theme.sh.\n\
  * Do not edit: tests/theme.rs checks drift.\n\
@@ -557,7 +563,8 @@ const HEAD: &str = "/* Generated from packages/design/tokens/*.css by crates/og-
  * elevation and accessibility solid fallback. Standard backdrop-filter\n\
  * cannot express that material; it supplies blur/saturation, not a second\n\
  * backdrop. The material owns its tint, border and elevation shadows.\n\
- * All --* values below are ordinary CSS variables, not engine hooks.\n\
+ * --glass-backdrop: none | auto is the style's default sampling setting;\n\
+ * (-og-glass-backdrop: auto) reads its effective, accessibility-clamped state.\n\
  * --well-rim is each scheme's 3:1 unchecked-mark rim (--color-well-rim).\n\
  * --motion-ui-easing samples the existing UI spring at 60 Hz; CSS\n\
  * transitions restart from the current value, not the old spring velocity.\n\
@@ -865,7 +872,18 @@ pub fn generate(t: &Value) -> Result<String, String> {
     for (old, selector, declarations) in PART_RULES {
         writeln!(out, "  /* {old} */\n  {selector} {{ {declarations} }}").unwrap();
     }
+    out.push_str(GLASS_BACKDROPS);
     out.push_str(ROLE_RULES);
+    if let Some(conditions) = t["_media"].as_array() {
+        for condition in conditions {
+            writeln!(
+                out,
+                "  {}",
+                condition.as_str().ok_or("tokens: invalid media block")?
+            )
+            .unwrap();
+        }
+    }
     out.push_str("}\n");
     Ok(out)
 }
