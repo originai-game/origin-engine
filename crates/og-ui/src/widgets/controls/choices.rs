@@ -1133,12 +1133,23 @@ impl Ui {
                     }
                 },
             );
-            // Its own width: its parts' as laid out, never what a share squeezed it to.
+            // Natural widths cannot come from visible screen bounds: those
+            // are clipped and pixel-snapped, feeding the track's size back
+            // into its next measurement. Text keeps its preferred width even
+            // when flex layout squeezes it; other parts use local layout size.
             let parts: Vec<f32> = ["Icon", "Label", "Badge"]
                 .iter()
                 .filter_map(|c| {
-                    self.bounds_of(&format!("{}/{c}", built.path))
-                        .map(|b| b.width)
+                    let key = crate::id::key_of_path(&format!("{}/{c}", built.path));
+                    (0..self.tree.nodes.len())
+                        .filter_map(|i| self.tree.previous_node(i))
+                        .find(|n| n.key == key && !n.is_hidden())
+                        .map(|n| {
+                            n.text().map_or(n.layout.w, |text| {
+                                crate::layout::text_preferred(text, &self.env.fonts)
+                                    + n.layout.used.padding.horizontal()
+                            })
+                        })
                 })
                 .collect();
             if !parts.is_empty() {

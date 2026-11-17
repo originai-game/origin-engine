@@ -1,0 +1,8 @@
+{
+  "fixed": [
+    {
+      "member": "UI tabs",
+      "summary": "Moves frames: native equal-width tabs measure their natural text independently of clipping and pixel snapping, so narrow tab tracks settle instead of repeatedly growing and shrinking. Shorter labels can still shrink the track."
+    }
+  ]
+}

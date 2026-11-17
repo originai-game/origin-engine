@@ -37,6 +37,86 @@ use og_core::glam::Vec2;
 use og_ui::*;
 use serde_json::json;
 
+#[test]
+fn native_tabs_natural_width_settles_without_screen_feedback() {
+    for (name, css, width) in [
+        (
+            "scifi",
+            include_str!("../../../templates/styles/scifi/base.css"),
+            456,
+        ),
+        (
+            "cartoon",
+            include_str!("../../../templates/styles/cartoon/base.css"),
+            418,
+        ),
+    ] {
+        let directory = format!("styles/{name}");
+        let pack = og_ui::style_pack::StylePack::parse(
+            &directory,
+            vec![(format!("{directory}/base.css"), css.into())],
+        )
+        .unwrap();
+        let mut ui = ui_with_font(test_font_metrics());
+        let mut theme = *ui.theme();
+        theme.text_scale = 1.5;
+        ui.set_theme(theme);
+        ui.set_style_pack(&pack).unwrap();
+        let mut d = Doc::mounted(
+            ui,
+            &format!(
+                r#"
+            <meta name="component" content="TabsRegression">
+            <div id="Window"><tabs id="Tabs" items={{labels}} fill="true"></tabs></div>
+            <style>#Window {{ width: {width}px; height: 100px; }}</style>
+        "#
+            ),
+            &[("labels", json!(["Summary", "Graphs", "Scoreboard"]))],
+        );
+        d.viewport = Viewport::new(844.0, 390.0);
+        d.viewport.reduced_motion = true;
+        d.viewport.coarse_pointer = true;
+        let mut widths = Vec::new();
+        for tick in 0..132 {
+            d.step(InputFrame::default());
+            if tick >= 112 {
+                widths.push(
+                    d.ui.tree
+                        .nodes()
+                        .iter()
+                        .find(|n| n.id == "Track")
+                        .unwrap()
+                        .placed
+                        .screen
+                        .width,
+                );
+            }
+        }
+        assert!(
+            widths.iter().all(|w| (w - widths[0]).abs() < 0.01),
+            "{name}: {widths:?}"
+        );
+        let long = widths[0];
+        d.set("labels", json!(["A", "B", "C"]));
+        for _ in 0..12 {
+            d.step(InputFrame::default());
+        }
+        let short =
+            d.ui.tree
+                .nodes()
+                .iter()
+                .find(|n| n.id == "Track")
+                .unwrap()
+                .placed
+                .screen
+                .width;
+        assert!(
+            short < long,
+            "{name}: natural width must shrink after labels change: {long} -> {short}"
+        );
+    }
+}
+
 /// A UI with the library's control document `name` defined.
 fn with_control(name: &str) -> Ui {
     let mut ui = ui_with_font(test_font_metrics());
