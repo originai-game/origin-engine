@@ -400,7 +400,7 @@ mod tests {
         let mut direct = Ui::default();
         for (ui, styled) in [(&mut patched, true), (&mut direct, false)] {
             ui.begin(InputFrame::default(), Viewport::new(400.0, 300.0));
-            ui.rich_text_spans("words", "A🙂B", &attributes, rich, |_| {
+            ui.rich_text_spans("words", "A🙂B", &attributes, rich.clone(), |_| {
                 crate::TextSpanStyle {
                     bold: styled.then_some(true),
                     color: styled.then_some(crate::paint::ColorRef::Literal(Srgba::BLACK)),
@@ -422,10 +422,12 @@ mod tests {
                 // A query becomes true, then false again during settlement.
                 // Replacement must remove overrides instead of accumulating them.
                 for active in [true, false] {
-                    ui.apply_text_spans(1, "A🙂B", &attributes, rich, |_| crate::TextSpanStyle {
-                        bold: active.then_some(true),
-                        color: active.then_some(crate::paint::ColorRef::Literal(Srgba::BLACK)),
-                        ..Default::default()
+                    ui.apply_text_spans(1, "A🙂B", &attributes, rich.clone(), |_| {
+                        crate::TextSpanStyle {
+                            bold: active.then_some(true),
+                            color: active.then_some(crate::paint::ColorRef::Literal(Srgba::BLACK)),
+                            ..Default::default()
+                        }
                     });
                     ui.apply_image(
                         2,

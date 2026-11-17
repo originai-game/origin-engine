@@ -1804,6 +1804,12 @@ impl Resolved {
             color: desc.color,
             align: desc.align,
             nowrap: desc.nowrap,
+            ellipsis: desc.ellipsis,
+            max_lines: desc.max_lines,
+            cut: self
+                .str("ellipsisText")
+                .filter(|s| !s.is_empty())
+                .map(str::to_owned),
             width: desc.width,
             font: desc.font,
             indent,

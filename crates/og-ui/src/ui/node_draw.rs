@@ -485,11 +485,14 @@ impl Ui {
                     let drop = n.layout.wrap_lines.last().map_or(0.0, |w| w[1]) * sk;
                     let block = lh * n.layout.lines.len() as f32 + drop;
                     let top = inner.y + ((inner.height - block) / 2.0).max(0.0);
-                    // Text overflows its own box (a snapped edge must not eat a glyph)
-                    // except in a field, which scrolls its text and clips.
-                    let text_clip = match n.widget {
-                        Widget::Field { .. } => clip.intersect(&rect),
-                        _ => clip,
+                    // Visible overflow keeps glyph overhangs; an explicit
+                    // overflow cut applies to the leaf's own text too.
+                    let text_clip = if matches!(n.widget, Widget::Field { .. })
+                        || n.decor.as_ref().is_some_and(|d| d.clip)
+                    {
+                        clip.intersect(&rect)
+                    } else {
+                        clip
                     };
                     let field = match &n.widget {
                         Widget::Field(e) => Some(*e),

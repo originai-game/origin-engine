@@ -1110,7 +1110,8 @@ mod text {
                 let v = n.rich_vertical();
                 let (pref, min) = crate::rich::rich_widths(rc, fonts, v);
                 let w = fit(pref, min);
-                let lines = crate::rich::rich_lines(rc, fonts, rc.wrap.then_some(w + 0.5), v);
+                let mut lines = crate::rich::rich_lines(rc, fonts, rc.wrap.then_some(w + 0.5), v);
+                crate::rich::truncate_lines(&mut lines, rc, fonts, w + 0.5, v);
                 let h = lines.iter().map(|l| l.height).sum();
                 (size(w, h), Some(Lines::Rich(lines)))
             }

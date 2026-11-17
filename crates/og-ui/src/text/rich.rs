@@ -245,6 +245,9 @@ pub struct RichContent {
     pub base: (TypeStep, FontRole),
     pub align: TextAlign,
     pub wrap: bool,
+    pub ellipsis: bool,
+    pub max_lines: u32,
+    pub cut: Option<String>,
     pub indent: TextIndent,
     pub line_break: LineBreak,
     /// Its text's emphasis marks (CSS `text-emphasis`).
@@ -311,7 +314,7 @@ pub struct RichLine {
 }
 
 /// How rich text looks by default.
-#[derive(Clone, Copy, Debug, Default, PartialEq)]
+#[derive(Clone, Debug, Default, PartialEq)]
 pub struct RichTextDesc {
     /// `None`: `text-body`.
     pub step: Option<TypeStep>,
@@ -319,6 +322,9 @@ pub struct RichTextDesc {
     pub color: Option<Srgba>,
     pub align: TextAlign,
     pub nowrap: bool,
+    pub ellipsis: bool,
+    pub max_lines: u32,
+    pub cut: Option<String>,
     pub width: Size,
     pub font: FontRole,
     pub indent: TextIndent,
@@ -593,11 +599,30 @@ pub(crate) fn rich_widths(
     fonts: &dyn Metrics,
     v: Option<crate::layout::flow::VerticalText>,
 ) -> (f32, f32) {
+    let least = |pref: f32, min: f32| {
+        if rc.ellipsis {
+            rc.spans
+                .iter()
+                .find(|s| s.atom.is_none())
+                .map_or(pref, |s| {
+                    let m = fonts.metrics_styled(s.font, s.query(), &s.text);
+                    let dots = rc
+                        .cut
+                        .as_deref()
+                        .unwrap_or_else(|| crate::layout::ellipsis_of(m));
+                    span_advance(s, dots, fonts, v).min(pref)
+                })
+        } else if rc.wrap {
+            min
+        } else {
+            pref
+        }
+    };
     #[cfg(feature = "shaping")]
     if v.is_none()
         && let Some((_, widths)) = crate::text::paragraph::rich(rc, fonts, None)
     {
-        return (widths.0, if rc.wrap { widths.1 } else { widths.0 });
+        return (widths.0, least(widths.0, widths.1));
     }
     let mut pref = 0.0f32;
     let mut min = 0.0f32;
@@ -613,7 +638,65 @@ pub(crate) fn rich_widths(
             min = min.max(group);
         }
     }
-    (pref, if rc.wrap { min } else { pref })
+    (pref, least(pref, min))
+}
+
+/// Cut the final kept line at the content width, retaining its span styles.
+/// Cached shaped segments describe the uncut line, so a cut reshapes its
+/// surviving pieces rather than drawing those stale glyphs.
+pub(crate) fn truncate_lines(
+    lines: &mut Vec<RichLine>,
+    rc: &RichContent,
+    fonts: &dyn Metrics,
+    width: f32,
+    v: Option<crate::layout::flow::VerticalText>,
+) {
+    let cut = rc.max_lines > 0 && lines.len() > rc.max_lines as usize;
+    if cut {
+        lines.truncate(rc.max_lines as usize);
+    }
+    let Some(line) = lines.last_mut() else { return };
+    if !(cut || rc.ellipsis && line.width > width) {
+        return;
+    }
+    // An all-atomic line has no text style in which to draw a cut marker;
+    // keep its existing overflow rather than deleting the inline objects.
+    if !line.pieces.iter().any(|p| rc.spans[p.span].atom.is_none()) {
+        return;
+    }
+    line.shaped = None;
+    while let Some(last) = line.pieces.last() {
+        let s = &rc.spans[last.span];
+        if s.atom.is_some() {
+            line.pieces.pop();
+            continue;
+        }
+        let m = fonts.metrics_styled(s.font, s.query(), &last.text);
+        let dots = rc
+            .cut
+            .as_deref()
+            .unwrap_or_else(|| crate::layout::ellipsis_of(m));
+        let text = format!("{}{dots}", last.text.trim_end());
+        let advance = span_advance(s, &text, fonts, v);
+        let end = last.x + advance;
+        if end <= width || line.pieces.len() == 1 && last.text.is_empty() {
+            let last = line.pieces.last_mut().unwrap();
+            last.text = text;
+            last.width = advance;
+            line.width = end;
+            return;
+        }
+        if last.text.is_empty() {
+            line.pieces.pop();
+        } else {
+            // Do not cut a combining sequence or an emoji in half.
+            let keep = og_i18n::graphemes(&last.text).last().map_or(0, |g| g.0);
+            // The segmenter returns character indices; String needs bytes.
+            let byte = last.text.char_indices().nth(keep).map_or(0, |(b, _)| b);
+            line.pieces.last_mut().unwrap().text.truncate(byte);
+        }
+    }
+    line.width = 0.0;
 }
 
 /// Greedy lines at `max` (`None`: only at `\n`). Down a vertical line `v`
@@ -1373,7 +1456,11 @@ impl Ui {
         let alpha = n.placed.alpha;
         let dpr = self.env.viewport.dpr();
         let snap = |v: f32| crate::layout::snap(v, dpr);
-        let clip = self.paint_clip(n);
+        let clip = if n.decor.as_ref().is_some_and(|d| d.clip) {
+            self.paint_clip(n).intersect(&n.placed.rect)
+        } else {
+            self.paint_clip(n)
+        };
         let tick = self.interaction.state.tick as f32;
         let still = t.reduced_motion;
         self.inline_box_commands(i, cmds);

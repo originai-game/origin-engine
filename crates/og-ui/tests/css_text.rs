@@ -30,6 +30,61 @@ fn face(path: &str) -> UiFont {
 
 const NOTO: &str = "templates/fonts/latin/NotoSans-Latin.ttf";
 
+#[test]
+fn nowrap_flex_text_cuts_at_its_shrunk_box() {
+    const TEXT: &str = "Roster · éééééééééééééééééééééééééééééééé";
+    for tag in ["h2", "p"] {
+        for direction in ["row", "column"] {
+            // Trimmed CSS text takes the rich paragraph path even with
+            // no inline markup (as the built-in headings do).
+            for flex in [
+                "",
+                "flex: 1;",
+                "text-box: cap alphabetic;",
+                "flex: 1; text-box: cap alphabetic;",
+            ] {
+                let body = format!(
+                    "<div id=\"Cluster\"><{tag} id=\"Label\">{TEXT}</{tag}><div id=\"Badge\"></div></div>"
+                );
+                for overflow in ["text-overflow: ellipsis;", ""] {
+                    let d = doc(&body, &format!(
+                        "#Cluster {{ display: flex; flex-direction: {direction}; width: 240px; gap: 12px; }}
+                         #Badge {{ width: 48px; height: 20px; flex-shrink: 0; }}
+                         #Label {{ margin: 0; min-width: 0; font-size: 24px; line-height: 32px;
+                            white-space: nowrap; overflow: hidden; {overflow} {flex} }}"
+                    ));
+                    let r = d.get("Label");
+                    let width = if direction == "row" { 180.0 } else { 240.0 };
+                    assert!((r.width - width).abs() <= 0.5, "{r:?}");
+                    let drawn = lines(&d, "Label");
+                    assert_eq!(drawn.len(), 1, "{tag} {direction} {flex}");
+                    let line = &drawn[0];
+                    if !overflow.is_empty() {
+                        assert!(
+                            line.text.ends_with('…'),
+                            "{tag} {direction} {flex}: {line:?}, box {r:?}"
+                        );
+                        assert!(line.width <= r.width + 0.5, "{line:?}, box {r:?}");
+                    } else {
+                        assert_eq!(line.text, TEXT);
+                        assert!(line.width > r.width);
+                    }
+                    for it in &d.ui.frame().items {
+                        if let DrawCmd::Text { text, clip, .. } = text_of(&it.cmd)
+                            && text == &line.text
+                        {
+                            assert!(
+                                clip.x >= r.x - 0.5 && clip.right() <= r.x + r.width + 0.5,
+                                "{tag} {direction} {flex}: clip {clip:?}, box {r:?}"
+                            );
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
 /// A document of `body` under `css`, laid out 400 px wide in Noto Sans.
 fn doc(body: &str, css: &str) -> Doc {
     doc_in(NOTO, body, css)
