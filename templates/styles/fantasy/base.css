@@ -254,6 +254,15 @@
   --button-border-width: 0px;
   --button-radius: 0;
   --button-shadow: none;
+  /* The painted plate is the whole button: a box shadow or an inset ring
+     would draw the box's rectangle around the plate's pointed ends. */
+  --button-base-shadow: none;
+  --button-hover-shadow: none;
+  --button-base-pressed-shadow: none;
+  --button-primary-shadow: none;
+  --button-danger-shadow: none;
+  --button-selected-shadow: none;
+  --button-disabled-shadow: none;
   --button-fill: none;
   --button-hover-fill: none;
   --button-pressed-fill: none;
