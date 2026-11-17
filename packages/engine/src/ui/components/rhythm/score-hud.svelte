@@ -1,6 +1,6 @@
 <meta name="component" content="RhythmScoreHud">
 <meta name="strings" content="./rhythm.en.ogt">
-<meta name="parts" content="RhythmScoreHud.frame RhythmScoreHud.readout RhythmScoreHud.title RhythmScoreHud.figure RhythmScoreHud.row RhythmScoreHud.badge">
+<meta name="parts" content="RhythmScoreHud.frame RhythmScoreHud.readout RhythmScoreHud.title RhythmScoreHud.figure RhythmScoreHud.row RhythmScoreHud.badge RhythmScoreHud.caption RhythmScoreHud.well">
 <meta name="prop:score" content="number" data-doc="The score as the game counts it, shown with grouping.">
 <meta name="prop:accuracy" content="string" data-doc="The accuracy as the game words it (98.73%); empty hides it.">
 <meta name="prop:life" content="number" data-default="-1" data-doc="The life gauge, 0 to 1; negative hides it (a mode without one).">
@@ -18,48 +18,47 @@
   with Danger and Failed in words, and the song's progress. The game owns
   every figure; read only.
 -->
-<section id="RhythmScoreHud" part="RhythmScoreHud.frame" class="hud" aria-label={t("rhythm.hud.name")} data-danger={danger} data-failed={failed}>
-  <div class="cells">
-    <div part="RhythmScoreHud.readout RhythmScoreHud.figure" class="score" role="group" aria-label={t("rhythm.hud.score")}>
-      <span part="RhythmScoreHud.title" class="caption">{t("rhythm.hud.score")}</span>
+<section id="RhythmScoreHud" part="RhythmScoreHud.frame" class="hud" data-layout="stack" data-gap="loose" aria-label={t("rhythm.hud.name")} data-danger={danger} data-failed={failed}>
+  <div class="cells" data-layout="cluster" data-gap="wide">
+    <div part="RhythmScoreHud.readout RhythmScoreHud.figure" class="score" data-layout="stack" data-gap="none" data-fill role="group" aria-label={t("rhythm.hud.score")}>
+      <span part="RhythmScoreHud.title RhythmScoreHud.caption" class="caption">{t("rhythm.hud.score")}</span>
       <span part="RhythmScoreHud.figure" class="figure">{formatNumber(score)}</span>
     </div>
     {#if accuracy != ''}
-    <div part="RhythmScoreHud.readout RhythmScoreHud.figure" class="accuracy" role="group" aria-label={t("rhythm.hud.accuracy")}>
-      <span part="RhythmScoreHud.title" class="caption">{t("rhythm.hud.accuracy")}</span>
+    <div part="RhythmScoreHud.readout RhythmScoreHud.figure" class="accuracy" data-layout="stack" data-gap="none" role="group" aria-label={t("rhythm.hud.accuracy")}>
+      <span part="RhythmScoreHud.title RhythmScoreHud.caption" class="caption">{t("rhythm.hud.accuracy")}</span>
       <span part="RhythmScoreHud.figure" class="figure">{accuracy}</span>
     </div>
     {/if}
   </div>
   {#if life >= 0}
-  <div part="RhythmScoreHud.row" class="life" data-danger={danger} data-failed={failed}>
-    <div class="gauge"><ProgressBar value={life} buffer={0} label={t("rhythm.hud.life")} valueText="" showValue={false} indeterminate={false} tone={danger || failed ? 'danger' : 'success'} /></div>
+  <div part="RhythmScoreHud.row" class="life" data-layout="row" data-gap="tight" data-danger={danger} data-failed={failed}>
+    <div class="gauge" data-fill><ProgressBar value={life} buffer={0} label={t("rhythm.hud.life")} valueText="" showValue={false} indeterminate={false} tone={danger || failed ? 'danger' : 'success'} /></div>
     {#if danger && !failed}<span part="RhythmScoreHud.badge" data-tag="danger">{t("rhythm.hud.danger")}</span>{/if}
     {#if failed}<span part="RhythmScoreHud.badge" data-tag="failed">{t("rhythm.hud.failed")}</span>{/if}
   </div>
   {/if}
-  <div part="RhythmScoreHud.row" class="progress"><ProgressBar value={progress} buffer={0} label={t("rhythm.hud.progress")} valueText="" showValue={false} indeterminate={false} tone="info" /></div>
+  <div part="RhythmScoreHud.row RhythmScoreHud.well" class="progress" data-layout="row" data-gap="tight"><ProgressBar value={progress} buffer={0} label={t("rhythm.hud.progress")} valueText="" showValue={false} indeterminate={false} tone="info" /></div>
 </section>
 
 <style>
 /* Drawn over the scene: the style's tag halo holds its text there. */
 :host { text-shadow: var(--tag-halo); }
-:host { display: flex; flex-direction: column; min-inline-size: calc(var(--size-xxl) * 3.2); max-inline-size: stretch; gap: var(--space-md); padding: var(--space-md); }
-.caption { font: var(--text-sm); color: var(--ink-muted); }
-.score .figure { font: var(--text-xl3); font-weight: var(--font-weight-semibold); }
-.accuracy .figure { font: var(--text-xl); }
-.cells { display: flex; flex-wrap: wrap; width: stretch; gap: var(--space-xxs) var(--space-lg); align-items: flex-end; }
-[part="RhythmScoreHud.readout RhythmScoreHud.figure"] { display: flex; flex-direction: column; align-items: flex-start; }
+:host { min-inline-size: calc(var(--size-xxl) * 3.2); max-inline-size: stretch; padding: var(--space-md); }
+.score .figure { --figure-size: var(--type-xl3-size); --figure-weight: var(--font-weight-semibold); }
+.accuracy .figure { --figure-size: var(--type-xl-size); }
+.cells { width: stretch; align-items: flex-end; }
+[part="RhythmScoreHud.readout RhythmScoreHud.figure"] { align-items: flex-start; }
 [part="RhythmScoreHud.readout RhythmScoreHud.figure"].score { flex: 1; }
 [part="RhythmScoreHud.readout RhythmScoreHud.figure"].accuracy { flex: none; align-items: flex-end; }
 /* A figure is never cut: the frame grows with it (a score is read whole). */
-[part="RhythmScoreHud.figure"] { white-space: nowrap; font-variant-numeric: tabular-nums; }
-[part="RhythmScoreHud.row"] { display: flex; width: stretch; align-items: flex-end; gap: var(--space-xs); }
+[part="RhythmScoreHud.figure"] { white-space: nowrap; }
+[part~="RhythmScoreHud.row"] { width: stretch; align-items: flex-end; }
 .gauge { flex: 1; min-width: 0; }
 [part="RhythmScoreHud.badge"] { flex: none; white-space: nowrap; padding: 0 var(--space-xs); }
 @media (width < 600px) {
   :host { inline-size: stretch; min-inline-size: 0; padding: var(--space-sm); }
-  .cells { gap: var(--space-sm); }
-  .progress { flex: none; padding: var(--space-sm); background: var(--well); border-radius: var(--radius-control); }
+  .cells { --layout-gap-wide: var(--space-sm); }
+  .progress { flex: none; padding: var(--space-sm); }
 }
 </style>

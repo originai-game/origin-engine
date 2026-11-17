@@ -1,6 +1,6 @@
 <meta name="component" content="RhythmDifficulty">
 <meta name="strings" content="./rhythm.en.ogt">
-<meta name="parts" content="RhythmDifficulty.frame RhythmDifficulty.band RhythmDifficulty.title RhythmDifficulty.row RhythmDifficulty.name RhythmDifficulty.rating RhythmDifficulty.badge RhythmDifficulty.figure">
+<meta name="parts" content="RhythmDifficulty.frame RhythmDifficulty.band RhythmDifficulty.title RhythmDifficulty.row RhythmDifficulty.name RhythmDifficulty.rating RhythmDifficulty.badge RhythmDifficulty.figure RhythmDifficulty.headline RhythmDifficulty.caption">
 <meta name="prop:title" content="string" data-doc="The heading (the song's title); empty takes the kit's (Difficulty).">
 <meta name="prop:levels" content="list" data-doc="The song's charts in the game's order, keyed rows of { id, tier, label, rating, grade, score, locked }: tier the chart's family (easy, normal, hard, expert, master, special; on data-tier for the pack's colour, never alone); label its name as the game words it (Hard); rating its level number; grade the player's best grade on it (S, AA; empty unplayed); score the best score as the game formats it (981,200; empty Not played); locked it cannot be played yet (disabled).">
 <meta name="prop:selected" content="string" data-doc="The chart the game holds as chosen (selected, named Selected); empty is none.">
@@ -16,18 +16,18 @@
   reports choose with its key; a locked chart is disabled and reports
   nothing. The game owns the charts, unlocking, grades and scores.
 -->
-<section id="RhythmDifficulty" part="RhythmDifficulty.frame" aria-label={title != '' ? title : t("rhythm.difficulty.title")}>
-  <header part="RhythmDifficulty.band"><h2 part="RhythmDifficulty.title">{title != '' ? title : t("rhythm.difficulty.title")}</h2></header>
+<section id="RhythmDifficulty" part="RhythmDifficulty.frame" data-layout="stack" data-gap="loose" aria-label={title != '' ? title : t("rhythm.difficulty.title")}>
+  <header part="RhythmDifficulty.band" data-layout="row"><h2 part="RhythmDifficulty.title">{title != '' ? title : t("rhythm.difficulty.title")}</h2></header>
   {#if levels.length}
-    <div class="list">
-      <div class="tiles" role="listbox" aria-label={t("rhythm.difficulty.list")}>
+    <div class="list" data-layout="scroll" data-gap="none">
+      <div class="tiles" data-layout="cluster" role="listbox" aria-label={t("rhythm.difficulty.list")}>
         {#each levels as l (l.id)}
-          <button part="RhythmDifficulty.row" role="option" aria-selected={l.id == selected} aria-label={t("rhythm.difficulty.ratingName", { label: l.label, rating: l.rating })} disabled={l.locked} data-tier={l.tier} data-locked={l.locked} onclick={choose}><div class="face">
-            <span part="RhythmDifficulty.name" class="name">{l.label}</span>
+          <button part="RhythmDifficulty.row" role="option" aria-selected={l.id == selected} aria-label={t("rhythm.difficulty.ratingName", { label: l.label, rating: l.rating })} disabled={l.locked} data-tier={l.tier} data-locked={l.locked} onclick={choose}><div class="face" data-layout="stack" data-gap="tight">
+            <span part="RhythmDifficulty.name RhythmDifficulty.headline" class="name">{l.label}</span>
             <span part="RhythmDifficulty.rating RhythmDifficulty.figure" class="rating">{t("rhythm.difficulty.rating", { rating: l.rating })}</span>
-            <div class="best">
+            <div class="best" data-layout="row" data-gap="tight">
               {#if l.grade != ''}<span part="RhythmDifficulty.badge" class="grade" data-tag="grade">{l.grade}</span>{/if}
-              <span class="score">{l.score != '' ? l.score : t("rhythm.difficulty.unplayed")}</span>
+              <span class="score" part="RhythmDifficulty.caption">{l.score != '' ? l.score : t("rhythm.difficulty.unplayed")}</span>
             </div>
             {#if l.locked}<span part="RhythmDifficulty.badge" data-tag="locked">{t("rhythm.difficulty.locked")}</span>{/if}
             {#if l.id == selected}<span part="RhythmDifficulty.badge" data-tag="selected">{t("rhythm.difficulty.selected")}</span>{/if}
@@ -36,29 +36,29 @@
       </div>
     </div>
   {:else}
-    <p class="empty-text" role="status">{t("rhythm.difficulty.empty")}</p>
+    <p class="empty-text" part="RhythmDifficulty.caption" role="status">{t("rhythm.difficulty.empty")}</p>
   {/if}
 </section>
 
 <style>
-:host { display: flex; flex-direction: column; inline-size: stretch; min-inline-size: 0; gap: var(--space-md); }
-[part="RhythmDifficulty.band"] { display: flex; width: stretch; align-items: center; flex: none; }
+:host { inline-size: stretch; min-inline-size: 0; }
+[part="RhythmDifficulty.band"] { width: stretch; flex: none; }
 [part="RhythmDifficulty.title"] { margin: 0; white-space: nowrap; text-overflow: ellipsis; overflow: hidden; }
 .list { overflow-y: auto; min-height: 0; flex: 0 1 auto; }
-.tiles { display: flex; width: stretch; flex-wrap: wrap; gap: var(--space-sm); padding: var(--space-xxs); }
+.tiles { width: stretch; padding: var(--space-xxs); }
 [part="RhythmDifficulty.row"] { flex: 1; align-items: flex-start; justify-content: flex-start; min-width: calc(var(--size-xxl) * 1.6); max-width: calc(var(--size-xxl) * 2.6); min-height: var(--size-touch); padding: var(--space-sm); }
-.face { display: flex; flex-direction: column; width: stretch; block-size: stretch; align-items: flex-start; gap: var(--space-xs); }
-.name { max-width: stretch; font-weight: var(--font-weight-semibold); text-align: start; white-space: nowrap; text-overflow: ellipsis; overflow: hidden; }
-.rating { font: var(--text-xl2); align-self: flex-start; text-align: start; white-space: nowrap; font-variant-numeric: tabular-nums; }
-.best { display: flex; max-width: stretch; align-items: center; gap: var(--space-xs); }
-.score { min-width: 0; font: var(--text-sm); color: var(--ink-muted); white-space: nowrap; text-overflow: ellipsis; overflow: hidden; font-variant-numeric: tabular-nums; }
+.face { width: stretch; block-size: stretch; align-items: flex-start; }
+.name { max-width: stretch; text-align: start; white-space: nowrap; text-overflow: ellipsis; overflow: hidden; }
+.rating { --figure-size: var(--type-xl2-size); align-self: flex-start; text-align: start; white-space: nowrap; }
+.best { max-width: stretch; }
+.score { min-width: 0; white-space: nowrap; text-overflow: ellipsis; overflow: hidden; }
 [part="RhythmDifficulty.badge"] { flex: none; white-space: nowrap; padding: 0 var(--space-xs); }
-.empty-text { margin: 0; padding: var(--space-lg); text-align: center; color: var(--ink-muted); }
+.empty-text { margin: 0; padding: var(--space-lg); text-align: center; }
 /* A phone lists the charts one under another, each a full-width row. */
 @media (width < 600px) {
-  .tiles { flex-direction: column; flex-wrap: nowrap; gap: var(--space-xs); }
+  .tiles { flex-direction: column; flex-wrap: nowrap; --layout-gap: var(--space-xs); }
   [part="RhythmDifficulty.row"] { width: stretch; min-width: 0; max-width: none; padding: var(--space-xs) var(--space-sm); }
-  .face { flex-direction: row; flex-wrap: wrap; align-items: center; gap: var(--space-xxs) var(--space-sm); }
+  .face { flex-direction: row; flex-wrap: wrap; align-items: center; --layout-gap-tight: var(--space-sm); }
   .name { flex: 1 1 auto; min-width: calc(var(--size-xxl) * 1.2); }
   .rating { align-self: center; }
 }
