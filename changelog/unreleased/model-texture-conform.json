@@ -1,0 +1,8 @@
+{
+  "fixed": [
+    {
+      "member": "Quantized skinned model texture conform",
+      "summary": "Accept tiny, invertible skin dequantization binds using scale-relative axis independence. Cooked placement, scene bounds, shape budgets, LOD error, impostors and raw glTF rendering share the corrected bind. Texture density measures transformed UVs, including KHR_texture_transform scale. Atlas reduction keeps at least four texels across each island and two-texel dilated gutters; if that cannot fit, it retains the source resolution rather than mixing islands. Moves frames: the Night Shift courier keeps its jacket, straps and trousers instead of angular texture fragments. Face budgets and preset values are unchanged."
+    }
+  ]
+}

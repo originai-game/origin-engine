@@ -13,7 +13,7 @@ use og_blob::BlobWriter;
 use std::path::Path;
 
 mod blob;
-mod ext;
+pub(crate) mod ext;
 mod impostor;
 pub mod plain;
 mod primitive;
@@ -236,7 +236,7 @@ pub(crate) fn skin_binds(src: &GltfSource) -> std::collections::BTreeMap<usize, 
             .and_then(|mut m| m.next())
             .map_or(Mat4::IDENTITY, |m| Mat4::from_cols_array_2d(&m));
         let bind = world(joint.index()) * ibm;
-        if bind.is_finite() && bind.determinant().abs() > 1e-12 {
+        if og_render_data::skin::valid_bind(bind) {
             out.insert(node.index(), bind);
         }
     }
@@ -718,6 +718,9 @@ fn plan_model<'a>(
     let texture_desc = contract.map(|c| c.texture_desc()).unwrap_or_default();
     let with = |parts: &[&[u8]], desc: &str, extra: &[u8]| {
         let mut v: Vec<&[u8]> = parts.to_vec();
+        if g.doc.skins().len() > 0 {
+            v.push(b"scale-relative-skin-binds-v1");
+        }
         if !desc.is_empty() {
             v.push(desc.as_bytes());
             v.push(extra);
@@ -1070,15 +1073,10 @@ impl Job for GltfTextureJob<'_> {
                 .filter(|_| !conform_off(s, options))
             {
                 Some(c) => {
-                    // The span of the image's longest side, from the span of
-                    // a side of its square equivalent (the check's measure).
-                    let (w, h) = (img.width as f32, img.height as f32);
-                    let extent = conform::mesh::texel_span(g, *image).map_or_else(
-                        || conform::mesh::extent(g),
-                        |s| s * w.max(h) / (w * h).sqrt(),
-                    );
+                    let mapping =
+                        conform::mesh::TextureMapping::of(g, *image, img.width, img.height);
                     let (img, k, mips, note) =
-                        conform::mesh::texture(c, Some(extent), img, *k, t.mipmaps);
+                        conform::mesh::texture(c, Some(&mapping), img, *k, t.mipmaps);
                     t.mipmaps = mips;
                     notes.extend(note.map(|n| format!("{id}: {n}")));
                     (img, k)

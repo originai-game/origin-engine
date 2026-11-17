@@ -93,6 +93,7 @@ use glam::Vec3;
 use og_core::ogt::Value;
 use std::collections::{BTreeMap, BTreeSet};
 
+mod atlas;
 mod flat;
 mod geometry;
 
@@ -424,7 +425,7 @@ impl Conform {
             }
         });
         format!(
-            "conform-texture-v3 density {} maxSize {} filter {:?} mips {:?} maxColors {} rampSteps {} flat {} strict {} {}{paint}",
+            "conform-texture-v4 density {} maxSize {} filter {:?} mips {:?} maxColors {} rampSteps {} flat {} strict {} {}{paint}",
             self.density,
             self.max_size,
             self.filter,
@@ -814,8 +815,8 @@ pub(in crate::cook) fn scene_primitives(
 pub(in crate::cook) fn texel_span(src: &GltfSource, image: usize) -> Option<f32> {
     let mut spans: Vec<(f64, f64)> = Vec::new();
     for (p, world) in scene_primitives(src) {
-        if let Some(set) = uv_set(&p.material(), image) {
-            primitive_spans(src, &p, world, set, &mut spans);
+        if let Some((set, transform)) = uv_set(src, &p.material(), image) {
+            primitive_spans(src, &p, world, set, transform, &mut spans);
         }
     }
     spans.sort_by(|a, b| a.0.total_cmp(&b.0));
@@ -827,37 +828,35 @@ pub(in crate::cook) fn texel_span(src: &GltfSource, image: usize) -> Option<f32>
     })
 }
 
-/// The UV set through which `material` samples glTF image `image`, if any
-/// of its maps does.
-fn uv_set(material: &gltf::Material, image: usize) -> Option<u32> {
-    let pbr = material.pbr_metallic_roughness();
-    let is = |t: gltf::Texture| t.source().index() == image;
-    pbr.base_color_texture()
-        .filter(|i| is(i.texture()))
-        .map(|i| i.tex_coord())
-        .or_else(|| {
-            pbr.metallic_roughness_texture()
-                .filter(|i| is(i.texture()))
-                .map(|i| i.tex_coord())
-        })
-        .or_else(|| {
-            material
-                .normal_texture()
-                .filter(|i| is(i.texture()))
-                .map(|i| i.tex_coord())
-        })
-        .or_else(|| {
-            material
-                .occlusion_texture()
-                .filter(|i| is(i.texture()))
-                .map(|i| i.tex_coord())
-        })
-        .or_else(|| {
-            material
-                .emissive_texture()
-                .filter(|i| is(i.texture()))
-                .map(|i| i.tex_coord())
-        })
+/// The actual UV mapping through which `material` samples image `image`:
+/// quantized glTF UVs may carry their dequantization in the texture transform.
+fn uv_set(
+    src: &GltfSource,
+    material: &gltf::Material,
+    image: usize,
+) -> Option<(u32, og_render_data::UvTransform)> {
+    let material = &src.json["materials"][material.index()?];
+    [
+        "/pbrMetallicRoughness/baseColorTexture",
+        "/pbrMetallicRoughness/metallicRoughnessTexture",
+        "/normalTexture",
+        "/occlusionTexture",
+        "/emissiveTexture",
+    ]
+    .into_iter()
+    .find_map(|path| {
+        let info = material.pointer(path)?;
+        let index = info.get("index")?.as_u64()? as usize;
+        if src.doc.textures().nth(index)?.source().index() != image {
+            return None;
+        }
+        let (transform, set) = crate::cook::model::ext::transform(info);
+        Some((
+            set.or_else(|| info.get("texCoord").and_then(serde_json::Value::as_u64))
+                .unwrap_or(0) as u32,
+            transform,
+        ))
+    })
 }
 
 /// Each triangle of `p` (placed by `world`) with its span in metres per UV
@@ -867,6 +866,7 @@ fn primitive_spans(
     p: &gltf::Primitive,
     world: glam::Mat4,
     set: u32,
+    transform: og_render_data::UvTransform,
     out: &mut Vec<(f64, f64)>,
 ) {
     let reader = p.reader(|b| Some(&src.buffers[b.index()].0[..]));
@@ -874,7 +874,10 @@ fn primitive_spans(
         return;
     };
     let pos: Vec<Vec3> = pos.map(|q| world.transform_point3(Vec3::from(q))).collect();
-    let uv: Vec<glam::Vec2> = uv.into_f32().map(glam::Vec2::from).collect();
+    let uv: Vec<glam::Vec2> = uv
+        .into_f32()
+        .map(|v| glam::Vec2::from(transform.apply(v)))
+        .collect();
     let idx: Vec<u32> = match reader.read_indices() {
         Some(i) => i.into_u32().collect(),
         None => (0..pos.len() as u32).collect(),
@@ -976,14 +979,32 @@ fn resample(img: &Image, w: u32, h: u32, k: u32) -> Image {
     }
 }
 
+/// Surface scale and UV charts of a model texture, before conform changes geometry.
+pub(in crate::cook) struct TextureMapping {
+    span: f32,
+    atlas: Option<atlas::Atlas>,
+}
+
+impl TextureMapping {
+    pub(in crate::cook) fn of(src: &GltfSource, image: usize, w: u32, h: u32) -> Self {
+        Self {
+            span: texel_span(src, image).map_or_else(
+                || extent(src),
+                |s| s * w.max(h) as f32 / ((w as f32) * (h as f32)).sqrt(),
+            ),
+            atlas: atlas::Atlas::of(src, image),
+        }
+    }
+}
+
 /// A mesh's texture as the contract holds it: the image, the kind it cooks
 /// as, whether it has mips, and the report's line (`None`: the contract
-/// leaves textures as they are). `extent` is the size in metres of the
-/// meshes that use it (ArtTexels.density's), `None` when unknown: then
+/// leaves textures as they are). `mapping` measures its surface span and
+/// charts (ArtTexels.density's), `None` when unknown: then
 /// only ArtTexels.maxSize sizes it.
 pub(in crate::cook) fn texture(
     c: &Conform,
-    extent: Option<f32>,
+    mapping: Option<&TextureMapping>,
     img: Image,
     k: u32,
     mips: bool,
@@ -995,9 +1016,9 @@ pub(in crate::cook) fn texture(
     let longest = img.width.max(img.height);
     let mut target = longest;
     if c.density > 0.0
-        && let Some(size) = extent
+        && let Some(TextureMapping { span: size, .. }) = mapping
     {
-        let want = (c.density * size).max(4.0);
+        let want = (c.density * *size).max(4.0);
         let pow2 = 2f32.powf(want.log2().round()) as u32;
         if pow2 < target {
             target = pow2;
@@ -1012,6 +1033,21 @@ pub(in crate::cook) fn texture(
         what.push(format!("ArtTexels.maxSize {}", c.max_size));
     }
     let mut img = img;
+    let atlas = mapping.and_then(|m| m.atlas.as_ref());
+    let padding = if target < longest {
+        atlas.and_then(|a| {
+            let (safe, padding) = a.fit(target, img.width, img.height);
+            if safe > target {
+                what.push(format!(
+                    "UV atlas floor {safe}: four texels per island and two-texel gutters"
+                ));
+                target = safe;
+            }
+            padding
+        })
+    } else {
+        None
+    };
     if target < longest {
         let s = target as f64 / longest as f64;
         let (w, h) = (
@@ -1102,6 +1138,9 @@ pub(in crate::cook) fn texture(
     if c.mips == Mips::None && mips && k != kind::PIXEL {
         mips = false;
         what.push("mips none".into());
+    }
+    if let Some(padding) = padding {
+        padding.apply(&mut img);
     }
     let note = Some(if what.is_empty() {
         format!("conform: {UNCHANGED}")

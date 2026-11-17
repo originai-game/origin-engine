@@ -281,7 +281,7 @@ pub fn load_glb(bytes: &[u8]) -> Result<GltfModel, RenderError> {
                     .and_then(|mut m| m.next())
                     .map_or(Mat4::IDENTITY, |m| Mat4::from_cols_array_2d(&m));
                 let bind = rest[joint.index()] * ibm;
-                (bind.is_finite() && bind.determinant().abs() > 1e-12).then_some(bind)
+                og_render_data::skin::valid_bind(bind).then_some(bind)
             })
             .unwrap_or(world);
         if let Some(mesh) = node.mesh() {

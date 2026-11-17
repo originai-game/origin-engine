@@ -608,7 +608,7 @@ impl UncookedGltf {
                 None => Mat4::IDENTITY,
             };
             let bind = world[at[joint]] * ibm;
-            if bind.is_finite() && bind.determinant().abs() > 1e-12 {
+            if og_render_data::skin::valid_bind(bind) {
                 self.skin_binds.insert(at[old], bind);
             }
         }
