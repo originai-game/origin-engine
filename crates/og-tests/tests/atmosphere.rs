@@ -458,7 +458,15 @@ fn an_aurora_at_the_same_tick_has_identical_pixels() {
             aurora.spread = 0.0;
         }
         let expected = og_tests::gfx::render_built(&mut built).expect("first render");
-        assert!(expected.image.pixels.chunks_exact(4).any(|p| p[1] > 32));
+        assert!(
+            expected
+                .image
+                .pixels
+                .as_chunks::<4>()
+                .0
+                .iter()
+                .any(|p| p[1] > 32)
+        );
         for repeat in 1..=4 {
             let actual = og_tests::gfx::render_built(&mut built).expect("repeat render");
             assert!(
