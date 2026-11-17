@@ -115,6 +115,10 @@ fn glb_nodes(
         material["pbrMetallicRoughness"]["baseColorTexture"] = serde_json::json!({ "index": 0 });
     }
     json["materials"] = serde_json::json!([material]);
+    glb_bytes(&json, bin)
+}
+
+fn glb_bytes(json: &serde_json::Value, mut bin: Vec<u8>) -> Vec<u8> {
     let mut text = serde_json::to_vec(&json).unwrap();
     while !text.len().is_multiple_of(4) {
         text.push(b' ');
@@ -168,7 +172,9 @@ fn project(name: &str, files: &[(&str, Vec<u8>)]) -> PathBuf {
 }
 
 fn cook(root: &Path) -> og_cook::cook::Report {
-    let report = cook_project(root, &CookOptions::default()).unwrap();
+    let report =
+        og_cook::cook::cook_project_with_texture_cache(root, &CookOptions::default(), None)
+            .unwrap();
     assert!(report.ok(), "{:?}", report.errors());
     report
 }
@@ -240,6 +246,177 @@ fn triangles(root: &Path, id: &str) -> Vec<Vec<[og_render::Vertex; 3]>> {
 
 fn walker() -> Vec<u8> {
     std::fs::read(support::template_model("walker.glb")).unwrap()
+}
+
+/// gltfpack-style integer positions with a tiny dequantization bind. The
+/// skinned node's scale is deliberately 100x smaller: glTF ignores it.
+#[test]
+fn quantized_skin_bounds_and_texture_density_use_the_bind_and_uv_transform() {
+    use serde_json::json;
+    let mut bin = Vec::new();
+    let mut views = Vec::new();
+    let mut add = |bytes: Vec<u8>| {
+        while !bin.len().is_multiple_of(4) {
+            bin.push(0);
+        }
+        views.push(json!({"buffer": 0, "byteOffset": bin.len(), "byteLength": bytes.len()}));
+        bin.extend(bytes);
+        views.len() - 1
+    };
+    let pos = add([0u16, 0, 0, 32767, 0, 0, 0, 65534, 0]
+        .into_iter()
+        .flat_map(u16::to_le_bytes)
+        .collect());
+    let uv = add([0.0f32, 0.0, 0.25, 0.0, 0.0, 0.5]
+        .into_iter()
+        .flat_map(f32::to_le_bytes)
+        .collect());
+    let joints = add(vec![0; 12]);
+    let weights = add([1.0f32, 0.0, 0.0, 0.0]
+        .repeat(3)
+        .into_iter()
+        .flat_map(f32::to_le_bytes)
+        .collect());
+    let bind = add(glam::Mat4::from_scale(glam::Vec3::splat(1.82 / 65534.0))
+        .to_cols_array()
+        .into_iter()
+        .flat_map(f32::to_le_bytes)
+        .collect());
+    let image = add(png(1024));
+    let json = json!({
+        "asset": {"version": "2.0"},
+        "extensionsUsed": ["KHR_mesh_quantization", "KHR_texture_transform"],
+        "extensionsRequired": ["KHR_mesh_quantization"],
+        "buffers": [{"byteLength": bin.len()}], "bufferViews": views,
+        "accessors": [
+            {"bufferView": pos, "componentType": 5123, "count": 3, "type": "VEC3", "min": [0,0,0], "max": [32767,65534,0]},
+            {"bufferView": uv, "componentType": 5126, "count": 3, "type": "VEC2"},
+            {"bufferView": joints, "componentType": 5121, "count": 3, "type": "VEC4"},
+            {"bufferView": weights, "componentType": 5126, "count": 3, "type": "VEC4"},
+            {"bufferView": bind, "componentType": 5126, "count": 1, "type": "MAT4"}
+        ],
+        "meshes": [{"primitives": [{"attributes": {"POSITION": 0, "TEXCOORD_0": 1, "JOINTS_0": 2, "WEIGHTS_0": 3}, "material": 0}]}],
+        "nodes": [{"mesh": 0, "skin": 0, "scale": [0.0000002777142,0.0000002777142,0.0000002777142]}, {}],
+        "skins": [{"joints": [1], "inverseBindMatrices": 4}],
+        "scenes": [{"nodes": [0,1]}], "scene": 0,
+        "materials": [{"pbrMetallicRoughness": {"baseColorTexture": {"index": 0, "extensions": {"KHR_texture_transform": {"scale": [4,2]}}}}}],
+        "textures": [{"source": 0}], "images": [{"bufferView": image, "mimeType": "image/png"}]
+    });
+    let bytes = glb_bytes(&json, bin);
+    let raw = og_cook::runtime::UncookedGltf::read("courier.glb", &bytes).unwrap();
+    let primitives = (0..raw.primitive_count())
+        .map(|p| raw.primitive(p).unwrap())
+        .collect();
+    let raw = raw.finish(primitives);
+    assert!(
+        (raw.max.y - raw.min.y - 1.82).abs() < 1e-5,
+        "uncooked bounds {:?} {:?}",
+        raw.min,
+        raw.max
+    );
+    let root = project(
+        "quantized-skin-density",
+        &[
+            ("project.ogt", PROJECT.as_bytes().to_vec()),
+            (
+                "assets/looks/main.ogt",
+                look("ArtTexels {\n  density 128\n}\n").into_bytes(),
+            ),
+            ("assets/models/courier.glb", bytes),
+        ],
+    );
+    let report = cook(&root);
+    let bundle = Bundle::open(&root.join("cooked")).unwrap();
+    let model = bundle.load_model("models/courier.glb").unwrap();
+    let draws = model.node_draws(&model.node_world(), 0);
+    let p = &model.primitives[0];
+    let height = draws[0].transform_point3(p.max).y - draws[0].transform_point3(p.min).y;
+    assert!((height - 1.82).abs() < 1e-5, "height {height}");
+    assert!((model.max.y - model.min.y - 1.82).abs() < 1e-5);
+    // World area = .91*1.82/2, transformed UV area = 1*1/2.
+    // sqrt(area ratio) = 1.287 m, *128 rounds to 128, not 512 (UV ignored)
+    // or 4 (tiny bind rejected). The report also retains the physical measurement.
+    assert!(
+        notes(&report, "models/courier.glb")
+            .iter()
+            .any(|n| n.contains("1.29 m")),
+        "{:?}",
+        notes(&report, "models/courier.glb")
+    );
+    let texture = bundle.load_texture(&model.textures[0].id).unwrap();
+    assert_eq!((texture.meta.width, texture.meta.height), (128, 128));
+}
+
+#[test]
+fn atlas_reduction_keeps_small_islands_and_dilates_their_own_colours() {
+    let colour = |col: u32, row: u32| {
+        if (col + row).is_multiple_of(2) {
+            [240, 80, 20, 255]
+        } else {
+            [20, 180, 230, 255]
+        }
+    };
+    let image = image::RgbaImage::from_fn(256, 256, |x, y| {
+        image::Rgba(
+            if (9..25).contains(&(x % 64)) && (9..33).contains(&(y % 64)) {
+                colour(x / 64, y / 64)
+            } else {
+                [180, 0, 180, 255]
+            },
+        )
+    });
+    let mut png = std::io::Cursor::new(Vec::new());
+    image.write_to(&mut png, image::ImageFormat::Png).unwrap();
+    let mut mesh: Mesh = (Vec::new(), Vec::new(), Vec::new(), Vec::new());
+    for row in 0..4 {
+        for col in 0..4 {
+            let base = mesh.0.len() as u32;
+            for (x, y) in [(0.0, 0.0), (1.0, 0.0), (1.0, 1.0), (0.0, 1.0)] {
+                mesh.0.push([col as f32 + x, row as f32 + y, 0.0]);
+                mesh.1.push([0.0, 0.0, 1.0]);
+                mesh.2.push([
+                    (col as f32 * 64.0 + 9.0 + x * 16.0) / 256.0,
+                    (row as f32 * 64.0 + 9.0 + y * 24.0) / 256.0,
+                ]);
+            }
+            mesh.3
+                .extend([base, base + 1, base + 2, base, base + 2, base + 3]);
+        }
+    }
+    let root = project(
+        "many-island-atlas",
+        &[
+            ("project.ogt", PROJECT.as_bytes().to_vec()),
+            (
+                "assets/looks/main.ogt",
+                look("ArtTexels {\n  maxSize 8\n  filter nearest\n  mips none\n}\n").into_bytes(),
+            ),
+            (
+                "assets/models/atlas.glb",
+                glb(&mesh, 1, [1.0; 4], Some(png.get_ref())),
+            ),
+        ],
+    );
+    cook(&root);
+    let bundle = Bundle::open(&root.join("cooked")).unwrap();
+    let model = bundle.load_model("models/atlas.glb").unwrap();
+    let texture = bundle.load_texture(&model.textures[0].id).unwrap();
+    // A 16-texel source island needs four texels across: 256/4 = 64.
+    assert_eq!((texture.meta.width, texture.meta.height), (64, 64));
+    let texture = texture.to_texture_data().unwrap();
+    for row in 0..4 {
+        for col in 0..4 {
+            for (x, y) in [(1, 1), (1, 4), (2, 4), (3, 4), (6, 4)] {
+                // Diagonal/left gutters, fractional chart boundary, interior, right gutter.
+                let at = (((row * 16 + y) * 64 + col * 16 + x) * 4) as usize;
+                assert_eq!(
+                    &texture.rgba[at..at + 4],
+                    &colour(col, row),
+                    "island ({col},{row}), x {x}"
+                );
+            }
+        }
+    }
 }
 
 #[test]
