@@ -12,6 +12,7 @@ not a style.
 | `*.ogt` except `sfx-*.ogt` | CC0 1.0 | import settings written by the same script |
 | `sfx-*.ogt` | Engine licence | Original engine sound-synthesis presets, moved from the removed clean style; no recordings are bundled. |
 | `InstrumentSans-Regular.ttf` | SIL Open Font License 1.1 (`OFL.txt`) | Instrument Sans (github.com/Instrument/instrument-sans); unmodified. Copyright 2022 The Instrument Sans Project Authors (https://github.com/Instrument/instrument-sans) |
+| `InstrumentSans[wdth,wght].ttf` | SIL Open Font License 1.1 (`OFL.txt`) | Instrument Sans, the variable font (wdth 75–100, wght 400–700) from google/fonts `ofl/instrumentsans`; unmodified. The default UI face. Copyright 2022 The Instrument Sans Project Authors (https://github.com/Instrument/instrument-sans) |
 | `Newsreader-SemiBold.ttf` | SIL Open Font License 1.1 (`OFL.txt`) | Newsreader (github.com/productiontype/Newsreader); a static instance (wght 600, opsz 24) of the variable font, subset to Latin-1 with fontTools. Copyright 2020 The Newsreader Project Authors (http://github.com/productiontype/Newsreader) |
 | `PTMono-Regular.ttf` | SIL Open Font License 1.1 (`OFL.txt`) | PT Mono (ParaType); unmodified. Copyright © 2010 ParaType Inc., ParaType Ltd. All rights reserved. |
 | `ChakraPetch-BoldItalic.ttf` | SIL Open Font License 1.1 (`OFL.txt`) | Chakra Petch Bold Italic (github.com/m4rc1e/Chakra-Petch); unmodified. Copyright 2018 The Chakra Petch Project Authors (https://github.com/m4rc1e/Chakra-Petch.git) |

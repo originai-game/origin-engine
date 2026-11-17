@@ -1,0 +1,15 @@
+type import
+version 1
+---
+# The default UI face, variable (wdth 75–100, wght 400–700), so bold and
+# condensed are its own outlines, not synthesised. No atlas is cooked (its
+# space alone): every character is drawn from the outlines when first
+# shown, at the weight and width asked for, so a game pays only for the
+# file. px_range is a third of em_px, so a 2 px outline reaches 16 px text.
+font {
+  charset
+  chars " "
+  em_px 48
+  px_range 16
+  runtime true
+}
