@@ -73,7 +73,7 @@ impl Context {
 
     /// The CSS `font-variation-settings` of `family`'s file: an instance's
     /// location, empty for any other face.
-    fn variations(&self, family: &str) -> String {
+    pub fn variations(&self, family: &str) -> String {
         let file = family
             .strip_prefix("og-")
             .and_then(|i| i.parse::<usize>().ok())

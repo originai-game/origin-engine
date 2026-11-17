@@ -734,7 +734,14 @@ pub fn cook(
     };
 
     let page = s.page_size.max(64);
-    let field = shelf(&glyphs, page, true)?;
+    let mut field = shelf(&glyphs, page, true)?;
+    // A variable face with only spacing glyphs uses its outlines for every
+    // drawn instance. It needs no empty atlas; keep legacy/static cooks
+    // byte-for-byte unchanged.
+    if s.runtime && face.is_variable() && glyphs.iter().all(|g| g.plane.is_none()) {
+        field.count = 0;
+        field.pages.clear();
+    }
     let (width, height, page_count, last_height) =
         (field.width, field.height, field.count, field.last);
     let mut rows = Vec::with_capacity(glyphs.len());
@@ -1353,7 +1360,14 @@ fn plan_font<'a>(
             // forms (`vert`, `vrt2`) of its characters; "font 9": a glyph keyed
             // by code point and by id is one image in the atlas.
             // Older fonts re-cook.
-            let st = stamp(&[b"font 9", f.describe().as_bytes(), &hash]);
+            // Invalidate only outline-only variable faces: static fonts
+            // and existing atlas cooks retain their exact output stamps.
+            let outline_only = f.runtime
+                && f.charset.is_empty()
+                && f.chars.chars().all(char::is_whitespace)
+                && ttf_parser::Face::parse(&s.bytes, 0).is_ok_and(|face| face.is_variable());
+            let version: &[u8] = if outline_only { b"font 10" } else { b"font 9" };
+            let st = stamp(&[version, f.describe().as_bytes(), &hash]);
             outs.push((
                 s.rel.clone(),
                 format::Font::NAME,

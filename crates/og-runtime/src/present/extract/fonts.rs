@@ -28,6 +28,15 @@ pub(crate) fn add_font(
     // entry: its data, the blob page whose rows it draws, and its kind
     // (colour, foreground, silhouette).
     let (n, c) = (font.pages.len(), font.color_pages.len());
+    // Outline-only fonts carry no atlas bytes. A one-pixel, inkless head
+    // holds their advances and gives runtime instances a stable handle.
+    let empty = og_render::TextureData {
+        width: 1,
+        height: 1,
+        rgba: vec![0; 4],
+        color_space: og_render::ColorSpace::Linear,
+        mips: og_render::Mips::None,
+    };
     let fields = font
         .color_fields
         .iter()
@@ -44,6 +53,7 @@ pub(crate) fn add_font(
         .iter()
         .enumerate()
         .map(|(i, d)| (d, i, false, false, false))
+        .chain((n == 0 && font.ttf.is_some()).then_some((&empty, 0, false, false, false)))
         .chain(fields.map(|(d, p)| (d, p, false, false, true)))
         .chain(
             font.color_pages

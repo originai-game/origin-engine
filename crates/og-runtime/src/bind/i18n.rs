@@ -118,9 +118,9 @@ pub(crate) fn request(eng: &Engine, locale: &str) {
 
 /// Applies the active locale to the UI: its fonts first, then the other
 /// tables', each loaded from the bundle; and its direction.
-fn apply(eng: &Engine) -> Result<(), String> {
+pub(crate) fn apply(eng: &Engine) -> Result<(), String> {
     let locale = language(eng.id);
-    let (paths, direction) = with(eng.id, |s| {
+    let (mut paths, direction) = with(eng.id, |s| {
         let mut paths: Vec<String> = s
             .catalog
             .active()
@@ -152,6 +152,27 @@ fn apply(eng: &Engine) -> Result<(), String> {
         }
         (paths, s.catalog.direction())
     });
+    let default_roles = {
+        let state = eng.state.borrow();
+        let unset = |field| state.ui_desc.get(field).is_none_or(Value::is_null);
+        let default = unset("style") && unset("font");
+        [
+            default,
+            default && unset("displayFont"),
+            default && unset("monoFont"),
+            default && unset("roundedFont"),
+        ]
+    };
+    if default_roles[0]
+        && eng
+            .assets
+            .borrow()
+            .bundle_for(og_ui::DEFAULT_FONT_ASSET)
+            .is_ok_and(|(bundle, _)| bundle.output(og_ui::DEFAULT_FONT_ASSET).is_ok())
+    {
+        paths.insert(0, og_ui::DEFAULT_FONT_ASSET.to_string());
+    }
+    let mut default_font = None;
     let mut chain = Vec::with_capacity(paths.len());
     let mut pending = Vec::new();
     let mut drawn = Vec::with_capacity(paths.len());
@@ -163,18 +184,40 @@ fn apply(eng: &Engine) -> Result<(), String> {
         }
         drawn.push(p.clone());
         let i = crate::world::assets::load_font(eng, p).map_err(|e| format!("font '{p}': {e}"))?;
-        chain.push(crate::bind::modules::ui_font(
-            eng,
-            crate::world::assets::handle(i) as f64,
-        )?);
+        let font = crate::bind::modules::ui_font(eng, crate::world::assets::handle(i) as f64)?;
+        if p == og_ui::DEFAULT_FONT_ASSET {
+            default_font = Some(font);
+        } else {
+            chain.push(font);
+        }
     }
     if let Some(ui) = eng.state.borrow().ui.clone() {
         let mut ui = ui.lock();
-        let fonts = og_ui::Fonts {
+        let mut fonts = og_ui::Fonts {
             chain,
             cjk_locale: og_ui::CjkLocale::of_locale(&tag(eng.id)),
             ..ui.fonts().clone()
         };
+        if let Some(font) = default_font {
+            fonts.body = font.clone();
+            for (slot, use_default) in [&mut fonts.display, &mut fonts.mono, &mut fonts.rounded]
+                .into_iter()
+                .zip(&default_roles[1..])
+            {
+                if *use_default {
+                    *slot = Some(font.clone());
+                }
+            }
+            fonts.families.retain(|f| f.document != "@default");
+            fonts.families.push(og_ui::FamilyFace {
+                family: "Instrument Sans".into(),
+                document: "@default".into(),
+                weight: (400, 700),
+                stretch: (750, 1000),
+                font,
+                ..Default::default()
+            });
+        }
         ui.set_fonts(fonts);
         ui.set_direction(direction);
         ui.set_locale(&tag(eng.id));
@@ -266,9 +309,8 @@ pub(crate) fn ensure_packs(eng: &Engine) {
             note(eng.id, format!("font packs: {e}"));
         }
     }
-    let any = !packs.is_empty();
     with(eng.id, |s| s.packs = Some(packs));
-    if any && let Err(e) = apply(eng) {
+    if let Err(e) = apply(eng) {
         note(eng.id, format!("font packs: {e}"));
     }
 }

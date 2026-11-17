@@ -30,6 +30,10 @@
 /// The engine's default CSS, generated from the shared design tokens.
 pub const DEFAULT_CSS: &str = include_str!("../default.css");
 
+/// The default UI's runtime-outline face, bundled for games with UI documents
+/// and loaded only when no game font or style supplies the role.
+pub const DEFAULT_FONT_ASSET: &str = "@styles/shared/InstrumentSans[wdth,wght].ttf";
+
 mod default_icons;
 pub use default_icons::DEFAULT_ICON_NAMES;
 

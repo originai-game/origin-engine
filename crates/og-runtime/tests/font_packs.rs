@@ -65,6 +65,8 @@ fn cooked(name: &str, atlas: Option<&str>) -> PathBuf {
         let _ = std::fs::remove_dir_all(&root);
         let fonts = root.join("assets/fonts");
         std::fs::create_dir_all(&fonts).unwrap();
+        std::fs::create_dir_all(root.join("assets/ui")).unwrap();
+        std::fs::write(root.join("assets/ui/status.svelte"), STATUS).unwrap();
         let style = repo().join("templates/styles/shared");
         std::fs::copy(
             style.join("ChakraPetch-BoldItalic.ttf"),
@@ -340,6 +342,80 @@ fn chinese_locales_never_take_the_other_script() {
     step();
     step();
     assert_eq!(chain(engine), vec!["chinese-simplified"]);
+}
+
+#[test]
+fn default_ui_uses_instrument_outlines_before_locale_fallbacks() {
+    let bundle = og_cook::runtime::Bundle::open(&project().join("cooked")).unwrap();
+    let cooked = bundle
+        .load_font(og_ui::DEFAULT_FONT_ASSET)
+        .expect("a UI game bundles its default face");
+    assert!(
+        cooked.pages.is_empty(),
+        "the default ships outlines, not an atlas"
+    );
+    let source =
+        std::fs::read(repo().join("templates/styles/shared/InstrumentSans[wdth,wght].ttf"))
+            .unwrap();
+    assert_eq!(cooked.ttf.as_ref().unwrap(), &source);
+    let (engine, step) = start("ja-JP");
+    value(og_runtime::host_impl::answer(og_ui_configure(
+        engine,
+        Some(json!({"font": null, "style": null}).to_string()),
+    )));
+    show("Start");
+    step();
+    step();
+    let ui = shared_ui(engine).unwrap();
+    {
+        let ui = ui.lock();
+        for role in [
+            og_ui::FontRole::Body,
+            og_ui::FontRole::Display,
+            og_ui::FontRole::Mono,
+            og_ui::FontRole::Rounded,
+            og_ui::FontRole::Family(og_ui::Family::new("Instrument Sans", og_ui::FontRole::Body)),
+        ] {
+            let (face, synth) = ui.fonts().for_styled(
+                role,
+                og_ui::FontQuery::new(700, false).at_width(Some(75.0)),
+                "Victory",
+            );
+            let file = face.metrics.file.as_ref().expect("the default's outlines");
+            assert_eq!(file.bytes().as_slice(), source);
+            assert!(file.variations().contains(&(*b"wght", 700.0)));
+            assert!(file.variations().contains(&(*b"wdth", 75.0)));
+            assert!(!synth.bold, "the variable face supplies bold outlines");
+        }
+        let japanese = ui.fonts().for_text(og_ui::FontRole::Body, "はじめる");
+        assert_ne!(
+            japanese.metrics.file.as_ref().unwrap().bytes().as_slice(),
+            source
+        );
+    }
+    let face = value(og_runtime::host_impl::answer(og_load_font(
+        engine,
+        "fonts/Display.ttf".into(),
+    )));
+    value(og_runtime::host_impl::answer(og_ui_configure(
+        engine,
+        Some(json!({"font": face}).to_string()),
+    )));
+    step();
+    assert_ne!(
+        ui.lock()
+            .fonts()
+            .body
+            .metrics
+            .file
+            .as_ref()
+            .unwrap()
+            .bytes()
+            .as_slice(),
+        source,
+        "the game's explicit font still wins"
+    );
+    assert_eq!(warnings(engine), Vec::<String>::new());
 }
 
 #[test]

@@ -202,6 +202,20 @@ pub(crate) fn scan_with(
             game
         }
     };
+    // Documents can use the default UI without naming a font or a look.
+    // Keep its outline-only face separate and lazy like a font-pack face;
+    // projects with no UI documents do not carry it at all.
+    if files.iter().any(|(id, _)| ext(id) == "svelte")
+        || builtins.keys().any(|id| ext(id) == "svelte")
+    {
+        let settings = format!("{}.ogt", og_ui::DEFAULT_FONT_ASSET);
+        for f in look::styles()
+            .iter()
+            .filter(|f| f.id() == og_ui::DEFAULT_FONT_ASSET || f.id() == settings)
+        {
+            builtins.insert(f.id().to_string(), f.bytes());
+        }
+    }
     for id in builtins.keys() {
         files.push((id.clone(), assets_dir.join(id)));
     }

@@ -555,11 +555,14 @@ pub(crate) fn group(
     let (groups, group_of) = plan_groups(sources, known, early_errors, threads);
     // Font packs' faces (docs/ui.md §3.4): cooked as fonts by their own
     // settings, to `<id>.face.ogb`, which the web reads on demand.
-    let pack_faces: BTreeSet<String> = sources
+    let mut pack_faces: BTreeSet<String> = sources
         .iter()
         .filter(|s| s.kind == &font_pack::FONT_PACK)
         .flat_map(font_pack::faces)
         .collect();
+    if sources.iter().any(|s| s.rel == og_ui::DEFAULT_FONT_ASSET) {
+        pack_faces.insert(og_ui::DEFAULT_FONT_ASSET.to_string());
+    }
     Grouped {
         groups,
         group_of,

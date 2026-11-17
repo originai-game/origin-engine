@@ -733,14 +733,14 @@ impl Fonts {
     }
 
     /// The font a text of `role` is measured and drawn with: the role's when
-    /// its atlas has every character; else the first of `chain` (the
-    /// locale's faces, which set its strings whole) whose atlas does; else,
-    /// for a text the role's font draws in part (a Latin name beside CJK or
+    /// its atlas or runtime file has every character; else, for a text
+    /// the role's font draws in part (a Latin name beside CJK or
     /// Arabic), the role's font mixed with the others: each run from the
     /// first of the role's, `chain`, `fallbacks` and `fallback` that has it
     /// ([`FontMetrics::is_mixed`]; once [`Fonts::link`] made it, as
-    /// [`crate::Ui`] does); else the first of `fallbacks` whose atlas has
-    /// every character; else the style's `fallback` when it has a character
+    /// [`crate::Ui`] does); else the first of `chain` (the locale's faces)
+    /// whose atlas has every character, then the first of `fallbacks`
+    /// whose atlas has every character; else the style's `fallback` when it has a character
     /// the role's lacks; else the first font, in the same order, that can
     /// draw it with the characters its file renders at run time (`font {
     /// runtime true }`); else (no one font draws it all) the mixed font,
@@ -935,8 +935,9 @@ impl Fonts {
     ///
     /// A variable face is drawn at its instance at the query's axes
     /// ([`FontQuery::axes`]) with the weight and width it is drawn at (the
-    /// query's clamped to its declared ranges, CSS Fonts 4 §7.2): a face
-    /// declared 400 draws a 700 at `wght` 400, synthesised bold.
+    /// query's clamped to its declared ranges, CSS Fonts 4 §7.2): a named
+    /// face declared 400 draws a 700 at `wght` 400, synthesised bold.
+    /// Role faces instead use the file's weight range and requested width.
     pub fn for_styled(&self, role: FontRole, query: FontQuery, text: &str) -> (&UiFont, Synth) {
         let face = FontQuery {
             variations: crate::shape::Variations::NONE,
@@ -1104,7 +1105,7 @@ impl Fonts {
                                     std::iter::once(font)
                                         .chain(self.companion_styled(*role, weight))
                                         .collect(),
-                                    (got, FontQuery::NORMAL_WIDTH),
+                                    (got, query.stretch),
                                     slanted,
                                 )
                             }
@@ -1136,6 +1137,10 @@ impl Fonts {
                             .map(UiFont::alone),
                     );
                     let mut font = fonts.remove(0);
+                    // Preserve CSS family order when instancing clears a
+                    // variable face's default-location atlas. A later
+                    // cooked face must not displace its runtime glyphs.
+                    font.metrics.prefer = fonts.len();
                     font.metrics.runs = Some(fonts.into());
                     self.family_lists
                         .fonts
@@ -1178,7 +1183,7 @@ impl Fonts {
             ..Synth::default()
         };
         let face = self.resolve(f, self.companion_styled(role, weight), text, query.emoji);
-        (face, synth, (got, FontQuery::NORMAL_WIDTH))
+        (face, synth, (got, query.stretch))
     }
 
     /// The weight of the `i`-th face of body, display, mono, fallback, cjk
@@ -1215,16 +1220,29 @@ impl Fonts {
             return (base, own, false);
         }
         let want = if weight == 0 { own } else { weight };
+        // Role faces have no CSS descriptor restricting their weight:
+        // match each variable candidate at the weight its axis reaches.
+        // Keep the actual clamped weight for synthetic-bold detection.
+        let at_weight = |w, font: &UiFont| {
+            font.metrics
+                .file
+                .as_ref()
+                .and_then(|file| file.axes().iter().find(|a| a.tag == *b"wght"))
+                .map_or(w, |axis| {
+                    f32::from(want).clamp(axis.min, axis.max).round() as u16
+                })
+        };
         let faces = |it: bool| {
             self.faces
                 .iter()
                 .filter(move |f| !f.cjk && i.is_some() && f.role == slot && f.italic == it)
-                .map(|f| (f.weight, &f.font))
+                .map(|f| (at_weight(f.weight, &f.font), &f.font))
         };
         if italic && let Some((w, f)) = nearest(faces(true), want) {
             return (f, w, true);
         }
-        let (w, f) = nearest(faces(false).chain([(own, base)]), want).unwrap_or((own, base));
+        let (w, f) = nearest(faces(false).chain([(at_weight(own, base), base)]), want)
+            .unwrap_or((own, base));
         (f, w, false)
     }
 
@@ -1248,7 +1266,11 @@ impl Fonts {
             text.chars()
                 .all(|c| c.is_whitespace() || font.metrics.in_atlas(c))
         };
-        if cooked(f) {
+        let drawable = |font: &UiFont| {
+            text.chars()
+                .all(|c| c.is_whitespace() || font.metrics.has(c))
+        };
+        if drawable(f) {
             return f;
         }
         // The style's companion draws what the role's face lacks.
@@ -1256,20 +1278,18 @@ impl Fonts {
             && let Some(m) = f.metrics.mixed.as_deref()
             && text
                 .chars()
-                .any(|ch| !ch.is_whitespace() && !f.metrics.in_atlas(ch) && c.metrics.has(ch))
+                .any(|ch| !ch.is_whitespace() && !f.metrics.has(ch) && c.metrics.has(ch))
+        {
+            return m;
+        }
+        let mixed = f.metrics.mixed.as_deref();
+        if let Some(m) = mixed
+            && text.chars().any(|c| !c.is_whitespace() && f.metrics.has(c))
         {
             return m;
         }
         if let Some(c) = self.chain.iter().find(|c| cooked(c)) {
             return c;
-        }
-        let mixed = f.metrics.mixed.as_deref();
-        if let Some(m) = mixed
-            && text
-                .chars()
-                .any(|c| !c.is_whitespace() && f.metrics.in_atlas(c))
-        {
-            return m;
         }
         let others = || self.chain.iter().chain(&self.fallbacks);
         if let Some(c) = self.fallbacks.iter().find(|c| cooked(c)) {
@@ -1278,16 +1298,9 @@ impl Fonts {
         if let Some(fb) = &self.fallback
             && text
                 .chars()
-                .any(|c| !c.is_whitespace() && !f.metrics.in_atlas(c) && fb.metrics.has(c))
+                .any(|c| !c.is_whitespace() && !f.metrics.has(c) && fb.metrics.has(c))
         {
             return fb;
-        }
-        let drawable = |font: &UiFont| {
-            text.chars()
-                .all(|c| c.is_whitespace() || font.metrics.has(c))
-        };
-        if drawable(f) {
-            return f;
         }
         if let Some(c) = others().find(|c| drawable(c)) {
             return c;
@@ -1361,7 +1374,9 @@ impl Fonts {
             f.metrics.mixed = runs.as_ref().map(|o| {
                 let mut m = f.alone();
                 m.metrics.runs = Some(o.clone());
-                m.metrics.prefer = *prefer;
+                // The role's own runtime glyphs precede a later atlas,
+                // just as its cooked glyphs do; include its companion.
+                m.metrics.prefer = (*prefer).max(1);
                 std::sync::Arc::new(m)
             });
         }
@@ -1407,8 +1422,10 @@ impl Fonts {
                             .chain(last)
                             .collect();
                         let mut m = face.font.alone();
+                        // An explicit runtime family keeps its supported
+                        // glyphs ahead of the role and locale atlases too.
+                        m.metrics.prefer = set.len().max(1).min(all.len());
                         m.metrics.runs = Some(all.into());
-                        m.metrics.prefer = set.len();
                         let mut f = face.font.alone();
                         f.metrics.mixed = Some(std::sync::Arc::new(m));
                         f

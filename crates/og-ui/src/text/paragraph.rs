@@ -616,6 +616,7 @@ fn shaped<R>(
             .iter()
             .map(|(_, _, f)| cx.family(f.clone()))
             .collect();
+        let variations: Vec<_> = families.iter().map(|f| cx.variations(f)).collect();
         let strut = cx.family(strut);
         let mut builder = cx.layout.ranged_builder(&mut cx.fonts, &text, 1.0, false);
         builder.set_line_break_override(Some(&super::keep_katakana));
@@ -637,11 +638,19 @@ fn shaped<R>(
         builder.push_default(StyleProperty::LineHeight(parley::LineHeight::Absolute(
             base.line_height,
         )));
-        for ((range, brush, _), family) in selected.iter().zip(&families) {
+        for (((range, brush, _), family), variations) in
+            selected.iter().zip(&families).zip(&variations)
+        {
             builder.push(
                 StyleProperty::FontFamily(family.as_str().into()),
                 range.clone(),
             );
+            if !variations.is_empty() {
+                builder.push(
+                    StyleProperty::FontVariations(variations.as_str().into()),
+                    range.clone(),
+                );
+            }
             builder.push(StyleProperty::Brush(*brush), range.clone());
         }
         for (s, range) in content.spans.iter().zip(&ranges) {

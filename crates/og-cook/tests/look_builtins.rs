@@ -53,6 +53,10 @@ fn a_look_naming_built_ins_cooks_them_into_the_bundle() {
     // Only what a look names.
     assert!(!ids.contains(&"@canvas/linen.png"), "{ids:?}");
     assert!(!ids.contains(&"@palettes/1bit.hex"), "{ids:?}");
+    assert!(
+        !ids.contains(&og_ui::DEFAULT_FONT_ASSET),
+        "a project without UI carries no default face: {ids:?}"
+    );
 
     let tex = bundle.load_texture("@canvas/paper.png").unwrap();
     assert_eq!((tex.meta.width, tex.meta.height), (256, 256));

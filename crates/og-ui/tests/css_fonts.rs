@@ -477,6 +477,210 @@ fn a_variable_face_is_drawn_at_the_axes_css_sets() {
     assert_eq!(drawn(&d, "AFixed").len(), 2, "a synthesised bold");
 }
 
+/// Role fonts have no `@font-face` descriptor restricting their axes:
+/// weight and stretch reach the variable file through both a lone generic
+/// and a generic in an ordered family list, for every UI role.
+#[test]
+fn variable_role_faces_follow_weight_and_stretch() {
+    for generic in ["sans-serif", "fantasy", "monospace", "ui-rounded"] {
+        for list in [generic.to_owned(), format!("{generic}, \"Tail\"")] {
+            let axes = face(AXES, 7);
+            let file = axes.metrics.file.clone().unwrap();
+            let mut d = doc_in(
+                Fonts {
+                    body: axes.clone(),
+                    display: Some(axes.clone()),
+                    mono: Some(axes.clone()),
+                    rounded: Some(axes),
+                    ..Fonts::default()
+                },
+                vec![family("Tail", (400, 400), face(NOTO, 9))],
+                r#"<p id="A">A</p><p id="B">B</p><p id="Over">AB</p>"#,
+                &format!(
+                    r#"p {{ width: max-content; font-family: {list}; font-size: 50px;
+font-weight: 700; font-stretch: 75%; font-optical-sizing: none; }}
+#Over {{ font-variation-settings: "wght" 100, "wdth" 200; }}"#
+                ),
+            );
+            for (id, width) in [("A", 42.0), ("B", 22.5), ("Over", 70.0)] {
+                let got = d.get(id).width;
+                assert!(
+                    (got - width).abs() <= 0.5,
+                    "{list} #{id}: {got}, want {width}"
+                );
+            }
+            let made = file.take_instances();
+            assert!(!made.is_empty(), "{list}: instances made");
+            for (i, f) in made.iter().enumerate() {
+                f.set_handle(FontHandle::from_index(100 + i));
+            }
+            d.step(InputFrame::default());
+            for id in ["A", "B", "Over"] {
+                let t = drawn(&d, id);
+                assert_eq!(t.len(), 1, "{list} #{id}: no synthetic bold: {t:?}");
+                assert!(t[0].font.index() >= 100, "{list} #{id}: instance drawn");
+                assert_eq!(t[0].weight, TEXT_WEIGHT);
+            }
+        }
+    }
+}
+
+/// Rich paragraphs shape variable instances at their selected axes, not
+/// merely paint instance outlines over advances from the default face.
+#[test]
+fn instrument_rich_text_measures_at_its_weight_instance() {
+    let font = face("templates/styles/shared/InstrumentSans[wdth,wght].ttf", 7);
+    let d = doc_in(
+        Fonts {
+            body: font,
+            ..Fonts::default()
+        },
+        Vec::new(),
+        r#"<text id="Regular">Victory · Level 18</text><text id="Bold">Victory · Level 18</text>"#,
+        r#"text { width: max-content; font-size: 36px; letter-spacing: 0; font-weight: 400; }
+#Bold { font-weight: 700; }"#,
+    );
+    // Independent HarfBuzz advances at wdth 100, including kern pairs.
+    let regular = d.get("Regular").width;
+    let bold = d.get("Bold").width;
+    assert!((regular - 266.796).abs() < 0.5, "regular: {regular}");
+    assert!((bold - 277.848).abs() < 0.5, "bold: {bold}");
+}
+
+/// Role matching uses each candidate's reachable weight, but static
+/// faces keep their declared weights and a variable ending below 600
+/// still needs synthetic bold.
+#[test]
+fn role_face_matching_uses_variable_ranges_and_keeps_static_weights() {
+    let variable = face(AXES, 7);
+    let mut fonts = Fonts {
+        body: variable.clone(),
+        weights: [300, 0, 0, 0, 0, 0],
+        faces: vec![FontFace {
+            role: FontRole::Body,
+            weight: 700,
+            font: face(NOTO, 9),
+            ..FontFace::default()
+        }],
+        ..Fonts::default()
+    };
+    let (own, synth) = fonts.for_styled(FontRole::Body, FontQuery::default(), "A");
+    assert!((own.metrics.advance('A') - (0.5 + 0.1 * 2.0 / 3.0)).abs() < 0.001);
+    assert!(!synth.bold);
+    let (bold, synth) = fonts.for_styled(FontRole::Body, FontQuery::new(700, false), "A");
+    assert_eq!(
+        bold.handle,
+        Some(FontHandle::from_index(9)),
+        "real static bold"
+    );
+    assert!(!synth.bold);
+
+    // The same variable file can be a role's alternate italic face.
+    fonts.body = face(NOTO, 1);
+    fonts.faces = vec![FontFace {
+        role: FontRole::Body,
+        weight: 400,
+        italic: true,
+        font: variable.clone(),
+        ..FontFace::default()
+    }];
+    let (italic, synth) = fonts.for_styled(FontRole::Body, FontQuery::new(700, true), "A");
+    assert!((italic.metrics.advance('A') - 0.84).abs() < 0.001);
+    assert!(!synth.bold && !synth.italic);
+
+    // Limit only fvar's wght maximum in memory; keep the on-disk fixture
+    // unchanged. The axis still reaches 500, but not a real bold.
+    let mut bytes = variable
+        .metrics
+        .file
+        .as_ref()
+        .unwrap()
+        .bytes()
+        .as_ref()
+        .clone();
+    let parsed = ttf_parser::Face::parse(&bytes, 0).unwrap();
+    let fvar = parsed
+        .raw_face()
+        .table(ttf_parser::Tag::from_bytes(b"fvar"))
+        .unwrap();
+    let table = fvar.as_ptr() as usize - bytes.as_ptr() as usize;
+    let axes = usize::from(u16::from_be_bytes([fvar[4], fvar[5]]));
+    assert_eq!(&bytes[table + axes..table + axes + 4], b"wght");
+    bytes[table + axes + 12..table + axes + 16].copy_from_slice(&(500_i32 << 16).to_be_bytes());
+    let limited = UiFont {
+        metrics: variable
+            .metrics
+            .with_file(og_ui::shape::FontFile::new(std::sync::Arc::new(bytes))),
+        ..variable
+    };
+    let fonts = Fonts {
+        body: limited,
+        ..Fonts::default()
+    };
+    let (font, synth) = fonts.for_styled(FontRole::Body, FontQuery::new(700, false), "A");
+    assert!(
+        font.metrics
+            .file
+            .as_ref()
+            .unwrap()
+            .variations()
+            .contains(&(*b"wght", 500.0))
+    );
+    assert!(
+        synth.bold,
+        "a variable range below 600 needs synthetic bold"
+    );
+}
+
+/// A role's supported characters win over an atlas locale face whether
+/// the role has an atlas or only runtime outlines. Unsupported text still
+/// takes the locale whole, and a mixed string keeps the role's Latin.
+#[test]
+fn role_outlines_precede_atlas_locale_fallbacks() {
+    for outline in [false, true] {
+        let mut body = face(AXES, 7);
+        if outline {
+            body.metrics = body.metrics.at_instance(body.metrics.file.clone().unwrap());
+            assert!(!body.metrics.in_atlas('A') && body.metrics.has('A'));
+        }
+        let mut fonts = Fonts {
+            body: body.clone(),
+            families: vec![family("Game", (100, 900), body)],
+            chain: vec![face(NOTO, 9)],
+            ..Fonts::default()
+        };
+        fonts.link();
+        for role in [
+            FontRole::Body,
+            FontRole::Family(Family::new("Game", FontRole::Body)),
+        ] {
+            assert_eq!(
+                fonts.for_text(role, "A").handle,
+                Some(FontHandle::from_index(7))
+            );
+            assert_eq!(
+                fonts.for_text(role, "z").handle,
+                Some(FontHandle::from_index(9))
+            );
+            let mixed = fonts.for_text(role, "Az");
+            let handles: Vec<_> = mixed
+                .metrics
+                .visual("Az", og_i18n::Direction::Ltr, 0.0)
+                .iter()
+                .map(|g| mixed.handle_of(g.font))
+                .collect();
+            assert_eq!(
+                handles,
+                [
+                    Some(FontHandle::from_index(7)),
+                    Some(FontHandle::from_index(9))
+                ],
+                "outline={outline}, role={role:?}"
+            );
+        }
+    }
+}
+
 /// COLRv0 (OpenType 1.8's layers, each a glyph in one palette entry, the
 /// later on top) and COLRv1 (paint graphs: here a linear gradient between
 /// two palette entries, interpolated in sRGB as browsers paint it) draw a

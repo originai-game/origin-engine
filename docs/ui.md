@@ -1899,6 +1899,16 @@ on top of it. A selector that reads only the element and its ancestors is
 lowered to a reactive condition. The rest is matched on the mounted tree.
 And a dependency profile bounds what an edit restyles.
 
+The default UI (`style: null` or a look's `ui "default"`) supplies Instrument
+Sans variable for body, display, numeric and rounded text when the game
+supplies no font. Its `wght` axis covers 400–700 and `wdth` 75–100 percent.
+Games with UI documents carry the licensed outline file as a separate,
+on-demand font output, with no cooked atlas; games without UI documents
+carry none of it. A game's explicit font or style wins. The locale pack
+remains the fallback for characters the role's face lacks. The default
+also registers the named family `"Instrument Sans"`; token values stay the
+style's decision.
+
 `@font-face` (Fonts 4): the cook bundles each `url()` source, which must
 be a project font cooked by its own settings; `local()` names nothing (no
 system fonts). The runtime registers the first source the bundle has.
@@ -1924,7 +1934,9 @@ the face's declared range (an `@font-face` without the descriptor, or
 with `auto`, declares the font's axis range), `opsz` from the size in
 CSS px under `font-optical-sizing: auto` (the initial value), then
 `font-variation-settings`, which overrides them; an axis the face lacks
-is ignored. A bold is synthesised against the clamped weight. The
+is ignored. A role font supplied by `UiDesc` uses the file's own axis
+ranges for weight and width, as a family face with `auto` descriptors does.
+A bold is synthesised against the clamped weight. The
 instance is measured and shaped at its location, and the host renders its
 glyphs into pages of its own from the frame after it first appears (that
 first frame draws the text blank, never at the default location). A

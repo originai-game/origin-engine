@@ -281,7 +281,7 @@ pub fn og_ui_configure(world: u32, desc: Option<String>) -> Result<(), String> {
             ui.fonts().cjk_locale,
             ui.fonts().families.clone(),
         );
-        families.retain(|f| !f.document.starts_with("@pack:"));
+        families.retain(|f| !f.document.starts_with("@pack:") && f.document != "@default");
         if let Some((_, faces, _, _)) = &style {
             families.extend(faces.clone());
         }
@@ -338,7 +338,13 @@ pub fn og_ui_configure(world: u32, desc: Option<String>) -> Result<(), String> {
         }
         let mut st = eng.state.borrow_mut();
         st.ui_desc = d;
-        if fontless {
+        let default_available = style.is_none()
+            && eng
+                .assets
+                .borrow()
+                .bundle_for(og_ui::DEFAULT_FONT_ASSET)
+                .is_ok_and(|(bundle, _)| bundle.output(og_ui::DEFAULT_FONT_ASSET).is_ok());
+        if fontless && !default_available {
             let text = "og.ui.configure: the UI has no font now, so it draws no text (every label, button and field is blank): give `font` (og.load.font) or a `style` (og.load.style, whose fonts it brings), in this call or an earlier one; a field set to null is cleared, a field left out keeps its value".to_string();
             if st.ui_warned.insert(text.clone()) {
                 let tick = eng.world().map_or(0, |w| w.time().tick);
@@ -347,6 +353,7 @@ pub fn og_ui_configure(world: u32, desc: Option<String>) -> Result<(), String> {
             }
         }
         drop(st);
+        crate::bind::i18n::apply(&eng)?;
         if restyle {
             docs::restyle_loaded(&eng)?;
         }
