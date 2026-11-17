@@ -8,7 +8,8 @@ source "$root/scripts/gpu-env.sh"
 # shellcheck source=.agents/environment
 source "$root/.agents/environment"
 unset FORCE_ALL OG_GATE_LANE OG_GATE_THREADS OG_EVIDENCE_DIR CARGO_BUILD_JOBS GATE_LOGS OG_GFX_PIPELINE_CACHE OG_TARGET_DIR
-export GIT_CONFIG_COUNT=1 GIT_CONFIG_KEY_0=core.hooksPath GIT_CONFIG_VALUE_0=/dev/null
+# Disable only the runner's checkout hooks, not hooks in the gate's nested
+# test repositories. A process-wide GIT_CONFIG_* override leaks into them.
 # shellcheck source=scripts/lock.sh
 # shellcheck disable=SC1091
 source "$root/scripts/lock.sh"
@@ -25,7 +26,7 @@ gate="$(dirname "$root")/l4-gate"
 perf="$(dirname "$root")/l4-perf"
 for tree in "$gate" "$perf"; do
   if [[ ! -e $tree ]]; then
-    git -C "$root" worktree add --detach "$tree" "$head"
+    git -c core.hooksPath=/dev/null -C "$root" worktree add --detach "$tree" "$head"
   else
     [[ $(git -C "$tree" rev-parse --path-format=absolute --git-common-dir) == "$(git -C "$root" rev-parse --path-format=absolute --git-common-dir)" ]] || {
       echo "Not a worktree of this repository: $tree" >&2; exit 1;
@@ -33,7 +34,7 @@ for tree in "$gate" "$perf"; do
     [[ -z $(git -C "$tree" status --porcelain) ]] || {
       echo "Worktree has local changes: $tree" >&2; exit 1;
     }
-    git -C "$tree" checkout -q --detach "$head"
+    git -c core.hooksPath=/dev/null -C "$tree" checkout -q --detach "$head"
   fi
 done
 printf 'milestone head %s\nlogs %s\nartifacts %s\n' "$head" "$logs" "$art" | tee "$summary"
@@ -70,7 +71,7 @@ clean uiperf
 cd "$perf"
 og_gpu_acquire_all 'milestone UI perf'
 for rev in "$head" 2fb1c4819; do
-  git checkout -q --detach "$rev"
+  git -c core.hooksPath=/dev/null checkout -q --detach "$rev"
   record "UI perf $rev" "$logs/uiperf-$rev.log" cargo test -q -p og-ui --release --no-fail-fast -- --ignored perf --nocapture --test-threads=1 || true
 done
 og_lock_release
@@ -78,7 +79,7 @@ og_lock_release
 # 4. Release native town bench twice, final main against the last benched rev.
 clean town
 for rev in "$head" 6cc20b167; do
-  git checkout -q --detach "$rev"
+  git -c core.hooksPath=/dev/null checkout -q --detach "$rev"
   cd "$perf/packages/engine"
   if record "native build $rev" "$logs/native-$rev.log" env OG_RELEASE=1 sh scripts/build.sh --native; then
     og_gpu_acquire_all 'milestone town bench'
@@ -89,7 +90,7 @@ for rev in "$head" 6cc20b167; do
   fi
   cd "$perf"
 done
-git checkout -q --detach "$head"
+git -c core.hooksPath=/dev/null checkout -q --detach "$head"
 printf 'batch-done: failed=%s (frames still need visual review)\n' "$failed" | tee -a "$summary"
 # Keep the supervised one-off service available for log inspection.
 sleep infinity

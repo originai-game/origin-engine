@@ -213,5 +213,63 @@ PATH="$t/bin:$PATH" CARGO_TARGET_DIR="$t/target" OG_GATE=1 OG_GATE_RAN= OG_RELEA
   sh "$t/packages/engine/scripts/build.sh" --native && { echo 'FAIL native build error was ignored'; exit 1; }
 echo 'ok   standalone dev builds refresh native outputs; gate consumers reuse their completed rust-build'
 
+# The milestone may suppress its own checkout hooks, never the gate's:
+# nested landing fixtures use hooks to simulate outside writers and rejection.
+t="$scratch/milestone"
+mkdir -p "$t/repo/scripts" "$t/repo/.agents" "$t/bin"
+cp "$root/scripts/gpu-milestone.sh" "$t/repo/scripts/"
+printf 'export VK_ICD_FILENAMES=/dev/null CHROME=/bin/true\n' > "$t/repo/scripts/gpu-env.sh"
+: > "$t/repo/.agents/environment"
+printf 'og_gpu_acquire_all() { :; }\nog_lock_release() { :; }\n' > "$t/repo/scripts/lock.sh"
+printf '#!/bin/sh\nexit 0\n' > "$t/repo/scripts/clean-targets.sh"
+mkdir -p "$t/repo/packages/engine/scripts"
+printf '#!/bin/sh\nexit 1\n' > "$t/repo/packages/engine/scripts/build.sh"
+cat > "$t/repo/scripts/check.sh" <<'EOF'
+#!/usr/bin/env bash
+set -eu
+# A separate repository owns its own hook, just as test-landing.py does.
+git init -q "$MILESTONE_FIXTURE/nested"
+git -C "$MILESTONE_FIXTURE/nested" config user.name Test
+git -C "$MILESTONE_FIXTURE/nested" config user.email test@example.invalid
+git -C "$MILESTONE_FIXTURE/nested" config commit.gpgsign false
+git -C "$MILESTONE_FIXTURE/nested" config core.hooksPath "$MILESTONE_FIXTURE/nested-hooks"
+mkdir -p "$MILESTONE_FIXTURE/nested-hooks"
+printf '#!/bin/sh\ntouch "$MILESTONE_FIXTURE/hook-ran"\n' > "$MILESTONE_FIXTURE/nested-hooks/pre-commit"
+chmod +x "$MILESTONE_FIXTURE/nested-hooks/pre-commit"
+git -C "$MILESTONE_FIXTURE/nested" commit -q --allow-empty -m fixture
+EOF
+chmod +x "$t/repo/scripts/check.sh"
+git -C "$t/repo" init -q
+git -C "$t/repo" config user.name Test
+git -C "$t/repo" config user.email test@example.invalid
+git -C "$t/repo" -c core.hooksPath=/dev/null -c commit.gpgsign=false add .
+git -C "$t/repo" -c core.hooksPath=/dev/null -c commit.gpgsign=false commit -qm fixture
+head=$(git -C "$t/repo" rev-parse HEAD)
+git -C "$t/repo" update-ref refs/remotes/origin/main "$head"
+mkdir -p "$t/runner-hooks"
+printf '#!/bin/sh\necho unexpected-checkout-hook >&2\nexit 99\n' > "$t/runner-hooks/post-checkout"
+chmod +x "$t/runner-hooks/post-checkout"
+git -C "$t/repo" config core.hooksPath "$t/runner-hooks"
+# No network, historical builds, GPU work or infinite service sleep.
+MILESTONE_REAL_GIT="$(command -v git)"
+export MILESTONE_REAL_GIT MILESTONE_FIXTURE="$t"
+cat > "$t/bin/git" <<'EOF'
+#!/usr/bin/env bash
+for arg in "$@"; do
+  case "$arg" in fetch) exit 0 ;; 2fb1c4819|6cc20b167) exit 0 ;; esac
+done
+exec "$MILESTONE_REAL_GIT" "$@"
+EOF
+printf '#!/bin/sh\nexit 1\n' > "$t/bin/cargo"
+printf '#!/bin/sh\nexit 0\n' > "$t/bin/sleep"
+chmod +x "$t/bin/"*
+for run in new existing; do
+  rm -f "$t/hook-ran"
+  PATH="$t/bin:$PATH" bash "$t/repo/scripts/gpu-milestone.sh" > "$t/run.log" 2>&1 ||
+    { cat "$t/run.log"; echo "FAIL milestone with $run worktrees"; exit 1; }
+  [ -f "$t/hook-ran" ] || { echo 'FAIL milestone disabled nested gate hooks'; exit 1; }
+done
+echo 'ok   milestone suppresses checkout hooks only; nested gate hooks run'
+
 [ "$failures" -eq 0 ] || { echo "$failures case(s) failed"; exit 1; }
 echo "every case failed as it should"
