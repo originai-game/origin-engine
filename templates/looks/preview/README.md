@@ -57,6 +57,40 @@ subject and brought to the look's grid. The answers as generated stay under
 monochrome, coarse) is drawn unlit, because a light takes its pixels off the
 conformed palette and the frame's posterize steps them again.
 
+## The hero scenes in every look
+
+`heroes.ts` draws a showcase hero scene (`showcase/the-last-light`,
+`showcase/night-shift`) in every 3D look and variant: the game as it is,
+its set, camera, light and code, with only its look swapped. Each look gets
+a copy of the project under `target/look-previews/heroes/<hero>/` whose look
+file is the game's own with its `extends` line naming the preset (and a
+`variant` line after it), so the game's mood, exposure and grade lie over
+every preset, as they would for a game that changed its look; `game` is the
+hero's own look, unchanged. Nothing under `showcase/` is written, and no
+prop is rebuilt for a look: where a look's art is content (voxel, paper,
+neon line art, pixel sprites), the frame shows what the conform and frame
+layers alone do to the hero's models.
+
+```sh
+OG_NATIVE_ADDON=$PWD/target/look-previews/og-host.node OG_ENGINE_PACKAGE=$PWD/packages/engine \
+  bun templates/looks/preview/heroes.ts the-last-light --sheet [slug | slug:variant | game ...]
+```
+
+Frames go to `target/look-previews/heroes/<hero>/frames/`, with
+`sheet.jpg`, a labelled contact sheet of them (`--no-draw --sheet` makes it
+from the frames already there). The scene's own seconds are stepped without
+drawing and `--settle` seconds are drawn before the frame (1 s by default).
+On a software renderer a frame of these scenes takes minutes: pass
+`--settle 0.1` and an optimised `og` (`--og`), and take those frames as
+previews; the frames of record come from the GPU host. A look on a 240-line
+pixel grid (low-resolution-3d, pixel-3d-hybrid) fills 1280 x 720 whole;
+draw it at `--size 1280x720`.
+
+What a hero's own code writes each tick is the scene's, not the look's: The
+Last Light sets the exposure, the colour temperature and the saturation
+(`src/climate.ts`), and both set their fog and sky, so a preset's own Fog,
+Sky, exposure or saturation does not show in these frames.
+
 The sources: `sources/crate.jpg` and `sources/grass.jpg` are the textures
 the art samples' crate and ground carried, generated for them through
 `artBrief` (`tools/art-samples/make3d.py`, removed in 9665c6734); the 3D scene's hero, pine, lantern and hills are the
