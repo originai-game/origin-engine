@@ -211,8 +211,12 @@ impl Index {
         let options = cache::key(
             "index-v2",
             &[format!(
-                "{options:?} {:?}",
-                super::texture::encoder_name(&options.texture)
+                "{options:?} {:?} {}",
+                super::texture::encoder_name(&options.texture),
+                // Internal mesh algorithms move the per-output stamps
+                // without changing a user option. Do not bypass their
+                // comparison through the unchanged-project fast path.
+                options.mesh.describe()
             )
             .as_bytes()],
         );

@@ -33,9 +33,11 @@
 //!    draw it), never destroying it. A `type model` past it was built
 //!    again at fewer segments first (`model_text::to_glb_within`), so
 //!    only what its floors leave over is decimated here:
-//!    meshoptimizer's edge collapses with the topology kept (no sloppy
-//!    simplifier, open borders and so material seams locked, uv seams
-//!    held), the surface moved at most `ArtShape.silhouette`, else
+//!    meshoptimizer's edge collapses (no sloppy simplifier, open borders
+//!    and so material boundaries locked). When seams prevent the target,
+//!    permissive collapses account for normals, UVs and vertex colours
+//!    while retaining source corners and locking deformation seams. The
+//!    surface moves at most `ArtShape.silhouette`, else
 //!    [`SHAPE_ERROR`] of the model's bounding radius. Each primitive goes as
 //!    far as that bound lets it, and the budget's remainder is shared in
 //!    proportion to what each has left, so the model lands at the budget
@@ -365,7 +367,7 @@ impl Conform {
             return String::new();
         }
         format!(
-            "conform-mesh-v5 faces {} {} silhouette {} normals {:?} facets {} bevel {} voxel {} bakes {} {} line {:?}",
+            "conform-mesh-v6 faces {} {} silhouette {} normals {:?} facets {} bevel {} voxel {} bakes {} {} line {:?}",
             self.prop_faces,
             self.character_faces,
             self.silhouette,

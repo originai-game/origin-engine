@@ -252,7 +252,7 @@ fn foliage_locks(indices: &[u32], foliage: &[[f32; 8]]) -> Vec<bool> {
     lock
 }
 
-fn vertex_keys(src: &GltfSource, prim: &gltf::Primitive, count: usize) -> Vec<[u32; 2]> {
+pub(crate) fn vertex_keys(src: &GltfSource, prim: &gltf::Primitive, count: usize) -> Vec<[u32; 2]> {
     let reader = prim.reader(|b| Some(&src.buffers[b.index()].0[..]));
     let joints: Option<Vec<[u16; 4]>> = reader.read_joints(0).map(|j| j.into_u16().collect());
     let weights: Option<Vec<[f32; 4]>> = reader.read_weights(0).map(|w| w.into_f32().collect());
@@ -291,6 +291,76 @@ fn vertex_keys(src: &GltfSource, prim: &gltf::Primitive, count: usize) -> Vec<[u
 
 fn positions_adapter(pos: &[[f32; 3]]) -> meshopt::VertexDataAdapter<'_> {
     meshopt::VertexDataAdapter::new(bytemuck::cast_slice(pos), 12, 0).expect("12-byte positions")
+}
+
+/// Attribute-aware permissive edge collapses (meshoptimizer, MIT): seams
+/// may collapse only within the combined position/normal/UV/colour error.
+/// Never weld corners back by position: every index keeps its own source
+/// attributes and deformation data. Callers that rebuild normals give
+/// their normal weight as zero; UVs and colours have unit weight.
+pub(crate) fn simplify_attributes(
+    v: &[FVertex],
+    idx: &[u32],
+    target: usize,
+    error: f32,
+    options: meshopt::SimplifyOptions,
+    locks: &[bool],
+    normal_weight: f32,
+) -> (Vec<u32>, f32) {
+    let attributes: Vec<[f32; 9]> = v
+        .iter()
+        .map(|x| {
+            [
+                x.n[0], x.n[1], x.n[2], x.uv[0], x.uv[1], x.c[0], x.c[1], x.c[2], x.c[3],
+            ]
+        })
+        .collect();
+    let weights = [
+        normal_weight,
+        normal_weight,
+        normal_weight,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+    ];
+    let mut locked = vec![false; v.len()];
+    if !locks.is_empty() {
+        locked.copy_from_slice(locks);
+    }
+    // Corners at one position that deform differently stay separate. The
+    // caller may also lock branch boundaries or authored foliage seams.
+    let mut keys = std::collections::BTreeMap::new();
+    let mut split = std::collections::BTreeSet::new();
+    for &i in idx {
+        let x = &v[i as usize];
+        let p = x.p.map(|a| (a + 0.0).to_bits());
+        if *keys.entry(p).or_insert(x.key) != x.key {
+            split.insert(p);
+        }
+    }
+    for (i, x) in v.iter().enumerate() {
+        locked[i] |= split.contains(&x.p.map(|a| (a + 0.0).to_bits()));
+    }
+    let adapter =
+        meshopt::VertexDataAdapter::new(bytemuck::cast_slice(v), std::mem::size_of::<FVertex>(), 0)
+            .expect("positions lead the vertex");
+    let mut achieved_error = 0.0;
+    let indices = meshopt::simplify_with_attributes_and_locks(
+        idx,
+        &adapter,
+        bytemuck::cast_slice(&attributes),
+        &weights,
+        std::mem::size_of::<[f32; 9]>(),
+        &locked,
+        target,
+        error,
+        options | meshopt::SimplifyOptions::Permissive,
+        Some(&mut achieved_error),
+    );
+    (indices, achieved_error)
 }
 
 /// A meshopt vertex stream (codec v1) of `count` elements of `stride` bytes.
@@ -765,7 +835,12 @@ pub(crate) fn cook_primitive(
         })
         .collect();
     let flat_source = normals.is_none();
-    let (mut q, welded) = weld(&q, &indices, &mut sources);
+    let mut quantized_sources: Vec<u32> = (0..verts.len() as u32).collect();
+    let (mut q, welded) = weld(&q, &indices, &mut quantized_sources);
+    sources = quantized_sources
+        .iter()
+        .map(|&i| sources[i as usize])
+        .collect();
     let pos: Vec<[f32; 3]> = q
         .iter()
         .map(|v| {
@@ -794,16 +869,17 @@ pub(crate) fn cook_primitive(
             }
         }
     } else {
-        // A mesh whose corners are not shared (flat shading: no normals, or
-        // every face its own vertices) has every edge on a border, which
-        // meshoptimizer will not move: such a level is simplified over the
-        // vertices welded by position alone (a shadow index buffer) and
-        // given its own corners with face normals below.
-        let flat = flat_source || q.len() as f64 >= 0.9 * lod0.len() as f64;
-        // (the welded index buffer, each vertex's welded index, the welded
-        // positions, which of them are locked)
-        type Welded = (Vec<u32>, Vec<u32>, Vec<[f32; 3]>, Vec<bool>);
-        let mut shadow: Option<Welded> = None;
+        // Flat-shaded levels rebuild their face normals after simplifying.
+        // Permissive collapses keep the source corners' UVs and colours.
+        let flat = flat_source
+            || q.len() as f64 >= 0.9 * lod0.len() as f64
+            // Authored flat meshes can share corners within each plane
+            // (the skinned walker does). Their new faces need new normals,
+            // not a smooth-normal metric that pins every hard edge.
+            || lod0.as_chunks::<3>().0.iter().all(|&[a, b, c]| {
+                q[a as usize].n == q[b as usize].n && q[a as usize].n == q[c as usize].n
+            });
+        let mut lod_vertices = None;
         let mut refaceted: Vec<bool> = vec![false];
         // A foliage mesh's vertices by their welded index (`sources` maps
         // them back to the source's), and the ones its levels keep.
@@ -846,89 +922,45 @@ pub(crate) fn cook_primitive(
                     Some(&mut error),
                 ),
             };
-            let mut by_position = false;
-            if stalled(&simplified) {
-                // Over the distinct positions alone: vertices that share a
-                // position but no triangle would count as seams and lock it.
-                // A foliage mesh's vertices stay apart by their pivot and
-                // anchor too, and those that share a position with another
-                // branch's (or lie on a seam between two) are locked, so a
-                // level never moves a seam or joins two branches.
-                let (compact, back, compact_pos, compact_lock) = shadow.get_or_insert_with(|| {
-                    let at_foliage: Option<Vec<[f32; 8]>> = foliage
-                        .as_ref()
-                        .map(|f| sources.iter().map(|&s| f[s as usize]).collect());
-                    let key = |i: usize| {
-                        let p = pos[i].map(f32::to_bits);
-                        let f = at_foliage
-                            .as_ref()
-                            .map_or([0; 8], |f| f[i].map(f32::to_bits));
-                        (p, f)
-                    };
-                    let mut by_key = std::collections::HashMap::new();
-                    let mut by_pos: std::collections::HashMap<[u32; 3], u32> = Default::default();
-                    let (mut back, mut compact_pos, mut compact_lock) =
-                        (Vec::new(), Vec::new(), Vec::new());
-                    let compact: Vec<u32> = lod0
+            let mut refacet = false;
+            // A level that drops 9% still misses a requested 50% target.
+            // Try seam-aware simplification against this level's target,
+            // not only when it stalls against the previous level.
+            if simplified.len() > target || simplified.len() < 3 {
+                let vertices = lod_vertices.get_or_insert_with(|| {
+                    quantized_sources
                         .iter()
-                        .map(|&i| {
-                            let i = i as usize;
-                            let k = key(i);
-                            let c = *by_key.entry(k).or_insert_with(|| {
-                                back.push(i as u32);
-                                compact_pos.push(pos[i]);
-                                compact_lock.push(false);
-                                *by_pos.entry(k.0).or_insert(0) += 1;
-                                back.len() as u32 - 1
-                            });
-                            if let Some(l) = &foliage_locked {
-                                compact_lock[c as usize] |= l[i];
-                            }
-                            c
+                        .enumerate()
+                        .map(|(i, &s)| FVertex {
+                            p: pos[i],
+                            ..verts[s as usize]
                         })
-                        .collect();
-                    if foliage.is_some() {
-                        for (c, &i) in back.iter().enumerate() {
-                            compact_lock[c] |= by_pos[&key(i as usize).0] > 1;
-                        }
-                    }
-                    (compact, back, compact_pos, compact_lock)
+                        .collect::<Vec<_>>()
                 });
-                let compact_adapter = positions_adapter(compact_pos);
-                simplified = if foliage.is_some() {
-                    meshopt::simplify_with_locks(
-                        compact,
-                        &compact_adapter,
-                        compact_lock,
-                        target,
-                        opts.lod_max_error,
-                        meshopt::SimplifyOptions::None,
-                        Some(&mut error),
-                    )
-                } else {
-                    meshopt::simplify(
-                        compact,
-                        &compact_adapter,
-                        target,
-                        opts.lod_max_error,
-                        meshopt::SimplifyOptions::None,
-                        Some(&mut error),
-                    )
+                let (candidate, candidate_error) = simplify_attributes(
+                    vertices,
+                    &lod0,
+                    target,
+                    opts.lod_max_error,
+                    meshopt::SimplifyOptions::None,
+                    foliage_locked.as_deref().unwrap_or(&[]),
+                    if flat { 0.0 } else { 0.5 },
+                );
+                if candidate.len() >= 3
+                    && (simplified.len() < 3 || candidate.len() < simplified.len())
+                {
+                    simplified = candidate;
+                    error = candidate_error;
+                    refacet = flat;
                 }
-                .into_iter()
-                .map(|i| back[i as usize])
-                .collect();
-                by_position = flat;
             }
             if stalled(&simplified) {
                 break;
             }
             levels.push((simplified, error));
-            refaceted.push(by_position);
+            refaceted.push(refacet);
         }
-        // The levels simplified by position over a flat mesh: their own
-        // corners, each with its face's normal (the welded vertex's normal
-        // is some other face's).
+        // Flat levels keep their own corners with each new face's normal.
         for (l, r) in levels.iter_mut().zip(&refaceted) {
             if !*r {
                 continue;

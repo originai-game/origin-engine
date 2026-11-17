@@ -136,122 +136,52 @@ fn by_position(v: &[FVertex], idx: &[u32]) -> Vec<u32> {
 /// surface: this fraction of its bounding radius (half its longest side).
 pub const SHAPE_ERROR: f32 = 0.05;
 
-/// `idx` simplified towards `target` triangles (0: as far as `error`
-/// allows) with its topology kept: meshoptimizer's edge collapses, never
-/// its sloppy simplifier, the open borders (a primitive's edges against
-/// its neighbours of other materials) locked, the surface moved at most
-/// `error` (in the vertices' units). First over the vertices, so every
-/// attribute seam holds; then, when that stops above the target (a flat-
-/// shaded or seamed mesh splits every corner), welded by position with
-/// the uv seams of a `textured` mesh locked. The indices, and whether the
-/// second pass made them (its corners' normals no longer belong to them).
-fn simplified(
-    v: &[FVertex],
-    idx: &[u32],
-    target: usize,
-    error: f32,
-    textured: bool,
-) -> (Vec<u32>, bool) {
+/// Edge collapses towards `target` triangles (0: the error-bound floor).
+/// Open/material borders stay locked; seams may collapse within the
+/// attribute error instead of pinning every corner of a generated model.
+fn simplified(v: &[FVertex], idx: &[u32], target: usize, error: f32, normals: Normals) -> Vec<u32> {
     let want = target * 3;
     let a = adapter(v);
     let opts = meshopt::SimplifyOptions::LockBorder | meshopt::SimplifyOptions::ErrorAbsolute;
     let out = meshopt::simplify(idx, &a, want, error, opts, None);
     if out.len() <= want {
-        return (out, false);
+        return out;
     }
-    let shadow = by_position(v, idx);
-    // A position whose corners disagree on their uv is a seam.
-    let mut uv_at: BTreeMap<[u32; 3], [u32; 2]> = BTreeMap::new();
-    let mut seam = vec![false; v.len()];
-    if textured {
-        let mut split: BTreeSet<[u32; 3]> = BTreeSet::new();
-        for &i in idx {
-            let x = &v[i as usize];
-            let uv = x.uv.map(f32::to_bits);
-            if *uv_at.entry(pkey(x.p)).or_insert(uv) != uv {
-                split.insert(pkey(x.p));
-            }
-        }
-        for (i, x) in v.iter().enumerate() {
-            seam[i] = split.contains(&pkey(x.p));
-        }
+    let (permissive, _) = crate::cook::model::simplify_attributes(
+        v,
+        idx,
+        want,
+        error,
+        opts,
+        &[],
+        if normals == Normals::Any { 0.5 } else { 0.0 },
+    );
+    if permissive.len() < out.len() {
+        permissive
+    } else {
+        out
     }
-    let welded = meshopt::simplify_with_locks(&shadow, &a, &seam, want, error, opts, None);
-    if welded.len() >= out.len() {
-        return (out, false);
-    }
-    (reattach(v, idx, &shadow, &welded, &seam), true)
-}
-
-/// The corners of `welded` (over `shadow`, the first vertex at each
-/// position) given back their own vertices: a triangle the source has
-/// takes its corners; elsewhere a corner on a uv seam takes, of the
-/// vertices at its position, the one whose uv is nearest the triangle's
-/// other corners'.
-fn reattach(v: &[FVertex], idx: &[u32], shadow: &[u32], welded: &[u32], seam: &[bool]) -> Vec<u32> {
-    let mut source: BTreeMap<[u32; 3], [u32; 3]> = BTreeMap::new();
-    let mut at: BTreeMap<u32, Vec<u32>> = BTreeMap::new();
-    for (t, s) in idx.as_chunks::<3>().0.iter().zip(shadow.as_chunks::<3>().0) {
-        for k in 0..3 {
-            source
-                .entry([s[k], s[(k + 1) % 3], s[(k + 2) % 3]])
-                .or_insert([t[k], t[(k + 1) % 3], t[(k + 2) % 3]]);
-            let list = at.entry(s[k]).or_default();
-            if !list.contains(&t[k]) {
-                list.push(t[k]);
-            }
-        }
-    }
-    let uv = |i: u32| glam::Vec2::from(v[i as usize].uv);
-    let mut out = Vec::with_capacity(welded.len());
-    for t in welded.as_chunks::<3>().0 {
-        if let Some(o) = source.get(t) {
-            out.extend(o);
-            continue;
-        }
-        let plain: Vec<glam::Vec2> = t
-            .iter()
-            .filter(|&&r| !seam[r as usize])
-            .map(|&r| uv(r))
-            .collect();
-        for &r in t {
-            let pick = match (seam[r as usize], plain.is_empty()) {
-                (true, false) => {
-                    let mean = plain.iter().sum::<glam::Vec2>() / plain.len() as f32;
-                    at[&r]
-                        .iter()
-                        .copied()
-                        .min_by(|a, b| uv(*a).distance(mean).total_cmp(&uv(*b).distance(mean)))
-                        .unwrap_or(r)
-                }
-                _ => r,
-            };
-            out.push(pick);
-        }
-    }
-    out
 }
 
 /// Simplifies to at most `target` triangles where it can within `error`
-/// ([`simplified`]); whether the corners' normals must be made again.
+/// ([`simplified`]), keeping every surviving corner's source attributes.
 fn decimate(
     v: &mut Vec<FVertex>,
     idx: &mut Vec<u32>,
     src: &mut Vec<u32>,
     target: usize,
     error: f32,
-    textured: bool,
-) -> bool {
+    normals: Normals,
+) {
     if idx.len() / 3 <= target {
-        return false;
+        return;
     }
-    let (mut out, welded) = simplified(v, idx, target, error, textured);
+    let mut out = simplified(v, idx, target, error, normals);
     if out.len() < 3 || out.len() >= idx.len() {
-        return false;
+        return;
     }
     compact(v, &mut out, src);
     *idx = out;
-    welded
 }
 
 /// Which primitive a plan's target is for: its position and index
@@ -277,17 +207,6 @@ pub(crate) struct Plan {
     /// The triangles drawn at the error bound, when that is past the
     /// budget: then each primitive stops there.
     over: Option<usize>,
-}
-
-fn textured(p: &gltf::Primitive) -> bool {
-    let m = p.material();
-    m.pbr_metallic_roughness().base_color_texture().is_some()
-        || m.normal_texture().is_some()
-        || m.emissive_texture().is_some()
-        || m.occlusion_texture().is_some()
-        || m.pbr_metallic_roughness()
-            .metallic_roughness_texture()
-            .is_some()
 }
 
 /// A primitive's error bound in its own units: `metres` over the scale of
@@ -335,6 +254,7 @@ impl Plan {
         }
         // Per primitive: (times drawn, triangles, floor).
         let mut prims: BTreeMap<PrimKey, (usize, usize, usize)> = BTreeMap::new();
+        let uv_plan = crate::cook::model::uv_plan(src);
         for m in src.doc.meshes() {
             for p in m
                 .primitives()
@@ -353,16 +273,29 @@ impl Plan {
                     .read_tex_coords(0)
                     .map(|u| u.into_f32().collect())
                     .unwrap_or_default();
+                let normals: Vec<[f32; 3]> = reader
+                    .read_normals()
+                    .map(|n| n.collect())
+                    .unwrap_or_default();
+                let colors: Vec<[f32; 4]> = reader
+                    .read_colors(0)
+                    .map(|c| c.into_rgba_f32().collect())
+                    .unwrap_or_default();
+                let keys = crate::cook::model::vertex_keys(src, &p, pos.len());
+                let uv = uv_plan.bake.get(&(m.index(), p.index()));
                 let v: Vec<FVertex> = pos
                     .iter()
                     .enumerate()
                     .map(|(i, p)| FVertex {
                         p: *p,
-                        n: [0.0, 0.0, 1.0],
-                        uv: uvs.get(i).copied().unwrap_or([0.0; 2]),
-                        c: [1.0; 4],
+                        n: normals.get(i).copied().unwrap_or([0.0, 0.0, 1.0]),
+                        uv: {
+                            let u = uvs.get(i).copied().unwrap_or([0.0; 2]);
+                            uv.map_or(u, |t| t.apply(u))
+                        },
+                        c: colors.get(i).copied().unwrap_or([1.0; 4]),
                         t: [0.0; 4],
-                        key: [0, 0],
+                        key: keys[i],
                     })
                     .collect();
                 let mut idx: Vec<u32> = reader
@@ -374,8 +307,7 @@ impl Plan {
                     continue;
                 }
                 let tris = idx.len() / 3;
-                let (out, _) =
-                    simplified(&v, &idx, 0, local_error(src, &p, metres.0), textured(&p));
+                let out = simplified(&v, &idx, 0, local_error(src, &p, metres.0), c.normals);
                 let floor = if out.len() >= 3 {
                     (out.len() / 3).min(tris)
                 } else {
@@ -1005,8 +937,6 @@ pub(in crate::cook) fn primitive(
             .unwrap_or(usize::MAX)
     });
     let error = local_error(src, prim, plan.error.0);
-    let textured = textured(prim);
-    let mut reshade = false;
     if c.voxel > 0.0 && skinned {
         ch.skipped
             .push("not voxelised: it is skinned or morphed".into());
@@ -1101,7 +1031,7 @@ pub(in crate::cook) fn primitive(
             .push("not voxelised: wider than 256 voxels of 16 times the edge".into());
     }
     if let Some(t) = target.filter(|&t| t != usize::MAX) {
-        reshade |= decimate(v, idx, sources, t, error, textured);
+        decimate(v, idx, sources, t, error, c.normals);
     }
     if c.bevel > 0.0 {
         let hard = match c.normals {
@@ -1117,17 +1047,17 @@ pub(in crate::cook) fn primitive(
                 && idx.len() / 3 > t
             {
                 (*v, *idx, *sources) = before;
-                reshade |= decimate(
+                decimate(
                     v,
                     idx,
                     sources,
                     t.saturating_sub(b.1).max(t / 2),
                     error,
-                    textured,
+                    c.normals,
                 );
                 ch.bevel = bevel(v, idx, sources, c.bevel, hard);
                 if idx.len() / 3 > t {
-                    reshade |= decimate(v, idx, sources, t, error, textured);
+                    decimate(v, idx, sources, t, error, c.normals);
                     ch.skipped
                         .push("the chamfers were simplified to stay within the budget".into());
                 }
@@ -1188,11 +1118,6 @@ pub(in crate::cook) fn primitive(
                 x.n = normals[of[i / 3]].normalize_or(Vec3::Y).to_array();
             }
         }
-        ch.normals = true;
-    } else if reshade && !ch.normals {
-        // Simplified welded by position: the corners' normals are their
-        // position's first vertex's, so each face's are made again.
-        shade(v, idx, sources, Normals::Angle(30.0));
         ch.normals = true;
     }
     ch.faces.1 = idx.len() / 3;

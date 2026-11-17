@@ -243,6 +243,56 @@ fn walker() -> Vec<u8> {
 }
 
 #[test]
+fn face_budgets_simplify_uv_charts_without_losing_their_attributes() {
+    let original = sphere(1.0, [0.0; 3], 64, 32);
+    let mut mesh: Mesh = (Vec::new(), Vec::new(), Vec::new(), Vec::new());
+    // Eight adjacent texture charts: the same surface positions have
+    // different UVs on either side of each seam.
+    for tri in original.3.as_chunks::<3>().0 {
+        let chart =
+            (tri.iter().map(|&i| original.2[i as usize][0]).sum::<f32>() / 3.0 * 8.0).floor();
+        for &i in tri {
+            let i = i as usize;
+            mesh.3.push(mesh.0.len() as u32);
+            mesh.0.push(original.0[i]);
+            mesh.1.push(original.1[i]);
+            mesh.2
+                .push([original.2[i][0] * 8.0 - chart, original.2[i][1]]);
+        }
+    }
+    let root = project(
+        "seamed-budget",
+        &[
+            ("project.ogt", PROJECT.as_bytes().to_vec()),
+            (
+                "assets/looks/main.ogt",
+                look("ArtShape {\n propFaces 1000\n silhouette 0.05\n}\n").into_bytes(),
+            ),
+            (
+                "assets/models/ball.glb",
+                glb(&mesh, 1, [1.0; 4], Some(&png(32))),
+            ),
+        ],
+    );
+    cook(&root);
+    let tris = triangles(&root, "models/ball.glb");
+    assert!(tris[0].len() <= 1000, "{} triangles", tris[0].len());
+    for corner in tris[0].iter().flatten() {
+        let p = glam::Vec3::from(corner.position);
+        assert!((p.length() - 1.0).abs() < 0.001, "source surface retained");
+        // Surviving corners keep the UV of the source corner at this
+        // position, not an arbitrary corner welded across the chart.
+        assert!(
+            mesh.0.iter().zip(&mesh.2).any(|(&source, &uv)| {
+                glam::Vec3::from(source).distance(p) < 0.0001
+                    && glam::Vec2::from(uv).distance(glam::Vec2::from(corner.uv)) < 0.0001
+            }),
+            "source UV retained: {corner:?}"
+        );
+    }
+}
+
+#[test]
 fn conformed_output_is_deterministic() {
     let files = vec![
         ("project.ogt", PROJECT.as_bytes().to_vec()),

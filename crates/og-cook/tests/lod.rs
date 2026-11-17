@@ -118,6 +118,21 @@ fn levels(root: &Path, id: &str) -> Vec<usize> {
 }
 
 #[test]
+fn seamed_pine_lods_reach_each_levels_target() {
+    let bytes = std::fs::read(
+        Path::new(env!("CARGO_MANIFEST_DIR")).join("../og-tests/assets/kit/pine.glb"),
+    )
+    .unwrap();
+    let root = project("og-cook-lod-seamed-pine", &[("models/pine.glb", &bytes)]);
+    let tris = levels(&root, "models/pine.glb");
+    assert_eq!(tris.len(), 3, "the requested chain: {tris:?}");
+    for (level, &count) in tris.iter().enumerate().skip(1) {
+        let target = (tris[0] as f32 * 0.5f32.powi(level as i32)) as usize;
+        assert!(count <= target, "level {level}: {tris:?}, target {target}");
+    }
+}
+
+#[test]
 fn msft_lod_levels_are_kept_as_the_gltf_gives_them() {
     let (fine, coarse) = (grid(32), grid(6));
     let coarse_tris = coarse.1.len() / 3;
