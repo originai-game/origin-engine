@@ -32,8 +32,7 @@ function setStyle(world: World, name: string): void {
   const ink = must(og.load.texture(world, "icons/ink-icons.png"), "ink icons");
   const fallbackIcons = { texture: ink, columns: 8, rows: 4, names: INK_NAMES };
   if (name === "default") {
-    const font = must(og.load.font(world, "fonts/InstrumentSans-Regular.ttf"), "font");
-    og.ui.configure(world, { style: null, font, fallbackIcons });
+    og.ui.configure(world, { style: null, font: null, fallbackIcons });
   } else og.ui.configure(world, { style: must(og.load.style(world, `@styles/${name}`), name), font: null, fallbackIcons });
 }
 

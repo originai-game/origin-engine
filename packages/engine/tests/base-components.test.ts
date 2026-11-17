@@ -17,7 +17,6 @@ beforeAll(() => {
   loadNativeHost();
   root = mkdtempSync(join(tmpdir(), "og-base-components-"));
   mkdirSync(join(root, "assets/ui"), { recursive: true });
-  cpSync(fileURLToPath(new URL("../sheets/components/assets/fonts", import.meta.url)), join(root, "assets/fonts"), { recursive: true });
   writeFileSync(join(root, "project.ogt"), 'type project\nversion 1\n---\nname "Base components"\nid "base-components-test"\nentry "main.ts"\n');
   writeFileSync(join(root, "main.ts"), 'import { og } from "@origingame/engine"; export default og.game({});\n');
   writeFileSync(join(root, "assets/ui/host.svelte"), `<meta name="screen" content="BaseHost" data-layer="menu" data-input="menu">
@@ -37,9 +36,7 @@ function mount(kind: string, data: Record<string, unknown> = {}) {
   const result = createEngine(og.game({
     systems: [collect],
     start(world) {
-      const font = og.load.font(world, "fonts/InstrumentSans-Regular.ttf");
-      if (!font.ok) throw new Error(font.reason);
-      og.ui.configure(world, { font: font.value, reducedMotion: true });
+      og.ui.configure(world, { reducedMotion: true });
       const loaded = og.load.document(world, "ui/host.svelte");
       if (!loaded.ok) throw new Error(loaded.reason);
     },

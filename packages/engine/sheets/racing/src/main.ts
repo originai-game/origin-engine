@@ -40,8 +40,7 @@ const INK_NAMES = [
 function setStyle(world: World, name: string): void {
   const ink = must(og.load.texture(world, "icons/ink-icons.png"), "ink icons");
   const style = name === "default" ? null : must(og.load.style(world, `@styles/${name}`), name);
-  const font = name === "default" ? must(og.load.font(world, "fonts/InstrumentSans-Regular.ttf"), "font") : null;
-  og.ui.configure(world, { style, font, fallbackIcons: { texture: ink, columns: 8, rows: 4, names: INK_NAMES } });
+  og.ui.configure(world, { style, font: null, fallbackIcons: { texture: ink, columns: 8, rows: 4, names: INK_NAMES } });
 }
 
 /** Each fixture as a store of its scalars (`<member>_<state>`) and a keyed collection per list (`<member>_<state>_<prop>`). */

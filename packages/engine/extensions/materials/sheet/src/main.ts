@@ -13,12 +13,10 @@ export default og.game({
   start(world) {
     const camera = world.resource(og.Camera);
     if (camera.ok) camera.value.background = { r: 0.08, g: 0.09, b: 0.11 };
-    const font = og.load.font(world, "fonts/InstrumentSans-Regular.ttf");
     const icons = og.load.texture(world, "icons/ink-icons.png");
-    if (!font.ok) throw new Error(font.reason);
     if (!icons.ok) throw new Error(icons.reason);
     og.ui.configure(world, {
-      scheme: "light", font: font.value,
+      scheme: "light", font: null,
       icons: { texture: icons.value, columns: 8, rows: 4, names: [
         "heart", "star", "coin", "lock", "pause", "gear", "sword", "shield", "potion", "gem", "key",
         "map", "bolt", "clock", "trophy", "home", "plus", "close", "check", "play", "back", "bag",

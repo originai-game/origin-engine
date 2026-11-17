@@ -34,12 +34,11 @@ function must<T>(r: { ok: true; value: T } | { ok: false; reason: string }, what
 /** The style and both icon sets in one configure, so neither resets the other. */
 function setStyle(world: World, name: string): void {
   const style = name === "default" ? null : must(og.load.style(world, `@styles/${name}`), name);
-  const font = name === "default" ? must(og.load.font(world, "fonts/InstrumentSans-Regular.ttf"), "font") : null;
   const items = must(og.load.texture(world, "art/items.png"), "items");
   const ink = must(og.load.texture(world, "icons/ink-icons.png"), "ink icons");
   og.ui.configure(world, {
     style,
-    font,
+    font: null,
     icons: { texture: items, columns: 8, rows: 6, pictures: true, names: [...ITEM_NAMES.map((n) => `item-${n}`), ...SKILL_NAMES.map((n) => `skill-${n}`), ...CMD_NAMES.map((n) => `cmd-${n}`)] },
     fallbackIcons: { texture: ink, columns: 8, rows: 4, names: INK_NAMES },
   });

@@ -6,7 +6,6 @@ function must<T>(result: { ok: true; value: T } | { ok: false; reason: string })
 }
 
 function style(world: World): void {
-  const font = must(og.load.font(world, "fonts/InstrumentSans-Regular.ttf"));
   const texture = must(og.load.texture(world, "icons/ink-icons.png"));
   const names = [
     "heart", "star", "coin", "lock", "pause", "gear", "sword", "shield",
@@ -14,7 +13,7 @@ function style(world: World): void {
     "plus", "close", "check", "play", "back", "bag", "bomb", "crown",
     "flag", "apple", "leaf", "fire", "drop", "skull", "music", "person",
   ];
-  og.ui.configure(world, { style: null, font, fallbackIcons: { texture, columns: 8, rows: 4, names } });
+  og.ui.configure(world, { style: null, font: null, fallbackIcons: { texture, columns: 8, rows: 4, names } });
 }
 
 export default og.game({

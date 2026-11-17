@@ -51,14 +51,14 @@
     --font-cjk-line-height-display-sm: 38px;
     --font-cjk-line-height-display-xl: 60px;
     --font-cjk-line-height-xl: 30px;
-    --font-display: "Inter Variable", "Inter", "SF Pro Display", -apple-system, BlinkMacSystemFont, "Segoe UI Variable Display", "Segoe UI", system-ui, Roboto, "PingFang SC", "HarmonyOS Sans SC", "MiSans", "Noto Sans SC", "Microsoft YaHei", sans-serif;
+    --font-display: "Instrument Sans", "Inter Variable", "Inter", "SF Pro Display", -apple-system, BlinkMacSystemFont, "Segoe UI Variable Display", "Segoe UI", system-ui, Roboto, "PingFang SC", "HarmonyOS Sans SC", "MiSans", "Noto Sans SC", "Microsoft YaHei", sans-serif;
     --font-leading-flat: 1;
     --font-leading-normal: 1.45;
     --font-leading-snug: 1.3;
     --font-leading-tight: 1.12;
     --font-mono: "Geist Mono Variable", "Geist Mono", ui-monospace, "SF Mono", Menlo, monospace;
     --font-rounded: ui-rounded, "SF Pro Rounded", "Nunito Variable", "Nunito", "PingFang SC", "HarmonyOS Sans SC", "MiSans", "Noto Sans SC", "Microsoft YaHei", system-ui, sans-serif;
-    --font-sans: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI Variable Text", "Segoe UI", system-ui, Roboto, "PingFang SC", "HarmonyOS Sans SC", "MiSans", "Noto Sans SC", "Microsoft YaHei", "Helvetica Neue", Arial, sans-serif;
+    --font-sans: "Instrument Sans", -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI Variable Text", "Segoe UI", system-ui, Roboto, "PingFang SC", "HarmonyOS Sans SC", "MiSans", "Noto Sans SC", "Microsoft YaHei", "Helvetica Neue", Arial, sans-serif;
     --font-scale-2xl-letter-spacing: -0.015em;
     --font-scale-2xl-line-height: 28px;
     --font-scale-2xl-size: 22px;

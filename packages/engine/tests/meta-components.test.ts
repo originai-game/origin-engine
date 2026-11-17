@@ -17,7 +17,6 @@ beforeAll(() => {
   loadNativeHost();
   root = mkdtempSync(join(tmpdir(), "og-meta-components-"));
   mkdirSync(join(root, "assets/ui"), { recursive: true });
-  cpSync(fileURLToPath(new URL("../sheets/components/assets/fonts", import.meta.url)), join(root, "assets/fonts"), { recursive: true });
   writeFileSync(join(root, "project.ogt"), 'type project\nversion 1\n---\nname "Meta components"\nid "meta-components-test"\nentry "main.ts"\n');
   writeFileSync(join(root, "main.ts"), 'import { og } from "@origingame/engine"; export default og.game({});\n');
   for (const [name, file] of Object.entries({ PassTrack: "meta/pass-track", Reveal: "meta/reveal", Inbox: "meta/inbox", News: "meta/news", TooltipCard: "panels/tooltip-card" })) {
@@ -37,8 +36,7 @@ function mount(name: string, overrides: Record<string, unknown> = {}) {
   const events: Intent[] = [];
   const collect = defineSystem("MetaIntents", {}, (_q, _t, world) => events.push(...og.ui.docEvents(world) as unknown as Intent[]));
   const result = createEngine(og.game({ systems: [collect], start(world) {
-    const font = og.load.font(world, "fonts/InstrumentSans-Regular.ttf"); if (!font.ok) throw new Error(font.reason);
-    og.ui.configure(world, { font: font.value, reducedMotion: true });
+    og.ui.configure(world, { reducedMotion: true });
     const loaded = og.load.document(world, `ui/${name}.svelte`); if (!loaded.ok) throw new Error(loaded.reason);
   }, ui(world) {
     const scope = og.ui.scope(world, "test");

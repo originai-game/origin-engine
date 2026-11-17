@@ -37,12 +37,10 @@ const ForceStates = defineSystem("ForceStates", { reads: [] }, () => {
 export default og.game({
   systems: [ForceStates],
   start(world) {
-    const font = og.load.font(world, "fonts/InstrumentSans-Regular.ttf");
     const icons = og.load.texture(world, "icons/ink-icons.png");
-    if (!font.ok) throw new Error(font.reason);
     if (!icons.ok) throw new Error(icons.reason);
     og.ui.configure(world, {
-      font: font.value,
+      font: null,
       icons: { texture: icons.value, columns: 8, rows: 4, names: [
         "heart", "star", "coin", "lock", "pause", "gear", "sword", "shield", "potion", "gem", "key",
         "map", "bolt", "clock", "trophy", "home", "plus", "close", "check", "play", "back", "bag",

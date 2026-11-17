@@ -39,8 +39,8 @@ const INK_NAMES = [
 
 /**
  * The style and the fallback icons in one configure, so neither resets the
- * other. A pack brings its own fonts; the default style has none, so it is
- * given the sheet's font (without one the UI draws no text).
+ * other. A pack brings its own fonts; the default style draws in the
+ * engine's default face (Instrument Sans), as a game with no font does.
  */
 let styleName = "fantasy";
 let atlas = true;
@@ -49,8 +49,7 @@ function setStyle(world: World, name: string): void {
   styleName = name;
   const fallbackIcons = atlas ? { texture: must(og.load.texture(world, "icons/ink-icons.png"), "ink icons"), columns: 8, rows: 4, names: INK_NAMES } : null;
   if (name === "default") {
-    const font = must(og.load.font(world, "fonts/InstrumentSans-Regular.ttf"), "font");
-    og.ui.configure(world, { style: null, font, fallbackIcons });
+    og.ui.configure(world, { style: null, font: null, fallbackIcons });
   } else og.ui.configure(world, { style: must(og.load.style(world, `@styles/${name}`), name), font: null, fallbackIcons });
 }
 
