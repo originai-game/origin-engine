@@ -491,6 +491,9 @@ impl Ui {
         if let crate::layout::Content::Text(text) = self.tree.content_mut(i) {
             let style = text_style.unwrap();
             text.step = style.step(text.step);
+            if let Some(nowrap) = style.nowrap {
+                text.wrap = !nowrap;
+            }
             let role = style.font_role.unwrap_or(text.font);
             text.font = style
                 .family

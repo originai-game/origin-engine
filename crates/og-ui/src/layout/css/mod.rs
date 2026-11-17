@@ -677,6 +677,20 @@ impl<'a, 'm> Tree<'a, 'm> {
             &view,
             |p, b| calc_of(nodes, p, b),
             |known, avail| {
+                // Taffy's known dimensions are border-box sizes, while
+                // its available space already excludes padding, borders
+                // and scrollbars. Text must break at the content width
+                // during ComputeSize as it does during PerformLayout.
+                let known = tf::Size {
+                    width: known
+                        .width
+                        .and(avail.width.into_option())
+                        .map(|v| v.max(0.0)),
+                    height: known
+                        .height
+                        .and(avail.height.into_option())
+                        .map(|v| v.max(0.0)),
+                };
                 let (size, l) = text::content(nodes, i, measure, known, avail);
                 lines = l;
                 size

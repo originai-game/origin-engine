@@ -1661,6 +1661,45 @@ fn a_button_grows_to_hold_tall_content() {
     });
 }
 
+#[test]
+fn a_text_button_wraps_and_grows_when_white_space_is_normal() {
+    let source = r#"<meta name="component" content="t">
+<div>
+  <button id="Normal">Create a new expedition and invite your friends to join the adventure</button>
+  <button id="NoWrap">Create a new expedition and invite your friends to join the adventure</button>
+  <button id="Fixed">Create a new expedition and invite your friends to join the adventure</button>
+</div>
+<style>
+button { inline-size: 180px; white-space: normal; }
+#NoWrap { white-space: nowrap; }
+#Fixed { block-size: 32px; }
+</style>"#;
+    let mut d = Doc::with_font(source, &[], crate::support::test_font());
+    d.viewport = Viewport::new(390.0, 844.0);
+    d.step(InputFrame::default());
+    let (normal, nowrap) = (d.get("Normal"), d.get("NoWrap"));
+    assert!(normal.height > nowrap.height, "{normal:?} vs {nowrap:?}");
+    assert_eq!(normal.width, 180.0);
+    assert_eq!(d.get("Fixed").height, 32.0, "explicit heights still hold");
+    let last =
+        d.ui.frame()
+            .items
+            .iter()
+            .find_map(|item| match &item.cmd {
+                DrawCmd::Text { text, bounds, .. }
+                    if text.ends_with("adventure") && !text.starts_with("Create") =>
+                {
+                    Some(*bounds)
+                }
+                _ => None,
+            })
+            .expect("the last wrapped line is drawn");
+    assert!(
+        last.y >= normal.y && last.bottom() <= normal.y + normal.height + 0.5,
+        "the measured height holds its final drawn line: {last:?} in {normal:?}"
+    );
+}
+
 /// A declared action's handler on each `{#each}` row acts for the row
 /// holding the focus only, as a key event reaches the focused element and
 /// its ancestors; a handler outside the rows is the page's and acts

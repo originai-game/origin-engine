@@ -725,10 +725,10 @@ impl Ui {
                     base.amounts,
                     base.press,
                 );
-                // A button holding elements (a row of an icon, a name and
-                // its detail) grows to fit them, its control height the
-                // least it takes, as an HTML button does.
-                if !n.children.is_empty()
+                // Content and wrapping labels grow to fit, with the
+                // control height as their minimum, as an HTML button does.
+                if (!n.children.is_empty()
+                    || r.text.as_deref().and_then(|t| t.nowrap) == Some(false))
                     && let crate::layout::Size::Fixed(h) = self.tree.nodes[i].el.height
                 {
                     self.tree.el_mut(i).height = crate::layout::Size::Fit {
