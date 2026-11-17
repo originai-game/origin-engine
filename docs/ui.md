@@ -131,6 +131,11 @@ tick.
   and `draw` (an SVG shape's stroke, as Svelte's; `speed` is refused, give
   `duration`), with literal `duration` (default 400 ms), `delay` and
   `svelte/easing` names (elastic and bounce are springs).
+  Alternatively, `out:fade={{ motion: 'exit' }}` reads a style's whole
+  motion token (`ui`, `panel`, `emphasis`, `playful`, `enter`, `exit`) at
+  playback, including its duration and easing. `motion` cannot be mixed
+  with `duration` or `easing`; `delay` and the transition's geometry still
+  apply. `animate:flip={{ motion: 'panel' }}` uses the same tokens.
   `in:receive`/`out:send`/`transition:crossfade` with `{{ key }}` is the
   shared-element key (`match`).
 - `animate:flip` on a keyed `{#each}` child is its layout motion (default

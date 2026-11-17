@@ -45,6 +45,43 @@ fn rect(ui: &Ui, path: &str) -> [f32; 4] {
         .unwrap_or_else(|| panic!("no element {path}"));
     [e.x, e.y, e.width, e.height]
 }
+
+/// A directive keeps the style's motion token until playback, not the
+/// default token's duration baked in at parse time.
+#[test]
+fn transition_directives_follow_the_styles_motion_tokens() {
+    let mut d = Doc::new(
+        r#"<meta name="component" content="Test"><div id="Root">{#if $show}<div id="Hit" out:fade={{ motion: 'exit', delay: 100 }}></div>{/if}</div>
+        <style>#Root { width: 100px; height: 100px; } #Hit { width: 40px; height: 20px; background: red; }</style>"#,
+        &[("show", serde_json::json!(true))],
+    );
+    let mut theme = *d.ui.theme();
+    theme.motion.exit_ms = 600.0;
+    theme.motion.exit_ease = Ease::Linear;
+    d.ui.set_theme(theme);
+    for _ in 0..50 {
+        d.step(InputFrame::default());
+    }
+    d.put("show", serde_json::json!(false));
+    d.step(InputFrame::default());
+    for _ in 0..24 {
+        d.step(InputFrame::default());
+    }
+    // At 400 ms, 100 ms delay + half the style's 600 ms linear fade.
+    // A baked 300 ms fade would already be gone, or nearly gone with delay.
+    let alpha =
+        d.ui.frame()
+            .items
+            .iter()
+            .find_map(|i| i.cmd.filled().map(|(_, c)| c[3]))
+            .unwrap();
+    assert!((alpha - 0.5).abs() < 0.04, "half-faded: {alpha}");
+    for _ in 0..24 {
+        d.step(InputFrame::default());
+    }
+    assert!(d.ui.frame().items.is_empty(), "the finite exit must finish");
+}
+
 #[test]
 fn shared_curves_drive_ui_channels_and_survive_restore() {
     use og_tween::StepPosition::*;

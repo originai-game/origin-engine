@@ -347,6 +347,18 @@ fn rejects_wrong_syntax_and_reports_authored_locations() {
             "<div transition:fly={{ easing: wobble }}></div>",
             "svelte/easing",
         ),
+        (
+            "<div out:fade={{ motion: 'missing' }}></div>",
+            "not a motion token",
+        ),
+        (
+            "<div out:fade={{ motion: 'exit', duration: 300 }}></div>",
+            "not both",
+        ),
+        (
+            "<div out:fade={{ motion: 'exit', easing: linear }}></div>",
+            "not both",
+        ),
         ("<div style={$css}></div>", "literal CSS"),
         (
             "<div style='colour: red'></div>",

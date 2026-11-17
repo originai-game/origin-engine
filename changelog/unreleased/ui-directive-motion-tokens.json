@@ -1,0 +1,8 @@
+{
+  "added": [
+    {
+      "member": "Svelte transition and animate directives",
+      "summary": "transition:, in:, out: and animate:flip accept motion: 'ui' | 'panel' | 'emphasis' | 'playful' | 'enter' | 'exit' to use the style's duration and easing at playback instead of literal timing. Geometry and transition delays still apply; mixing a motion token with duration or easing is refused."
+    }
+  ]
+}

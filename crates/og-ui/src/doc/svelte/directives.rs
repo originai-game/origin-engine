@@ -121,6 +121,47 @@ pub(super) fn number(a: &Attr, key: &str, text: &str) -> Result<f32, Error> {
         .map_err(|_| (a.at, format!("{key} takes a literal number, not {text}")))
 }
 
+/// Preserve the token until playback so a pack's timing remains authoritative.
+fn timing(
+    a: &Attr,
+    ps: &[(String, String)],
+    duration: f32,
+    ease: &str,
+) -> Result<Transition, Error> {
+    if let Some((_, name)) = ps.iter().find(|(k, _)| k == "motion") {
+        if ps
+            .iter()
+            .any(|(k, _)| matches!(k.as_str(), "duration" | "easing"))
+        {
+            return Err((
+                a.at,
+                "motion owns duration and easing; give a motion token or literal timing, not both"
+                    .into(),
+            ));
+        }
+        return crate::motion::MotionToken::from_name(name.trim_matches(['\'', '"']))
+            .map(Transition::Token)
+            .ok_or_else(|| {
+                (
+                    a.at,
+                    format!(
+                        "{name} is not a motion token: ui, panel, emphasis, playful, enter, exit"
+                    ),
+                )
+            });
+    }
+    let mut duration = duration;
+    let mut ease = ease;
+    for (k, v) in ps {
+        match k.as_str() {
+            "duration" => duration = number(a, k, v)?,
+            "easing" => ease = v,
+            _ => {}
+        }
+    }
+    easing(ease, duration).map_err(|e| (a.at, e))
+}
+
 impl Parser {
     /// Handles `a` on element `i` (of kind `internal`) when it is a Svelte
     /// directive or the `style` attribute; `Ok(false)` otherwise.
@@ -321,14 +362,12 @@ impl Parser {
             ));
         };
         let ps = params(a)?;
-        let mut duration = 400.0;
         let mut delay = 0.0;
-        let mut ease = match name {
+        let ease = match name {
             "fade" => "linear",
             "draw" => "cubicInOut",
             _ => "cubicOut",
-        }
-        .to_string();
+        };
         let mut amount = 5.0;
         let mut values: Vec<(Prop, f32)> = Vec::new();
         let mut opacity = 0.0;
@@ -339,16 +378,15 @@ impl Parser {
                     "draw's speed reads the path's length, which a document does not know; give duration".into(),
                 ));
             }
-            if !allowed.contains(&k.as_str()) {
+            if k != "motion" && !allowed.contains(&k.as_str()) {
                 return Err((
                     a.at,
-                    format!("{name} takes {}, not {k}", allowed.join(", ")),
+                    format!("{name} takes motion, {}, not {k}", allowed.join(", ")),
                 ));
             }
             match k.as_str() {
-                "duration" => duration = number(a, k, v)?,
+                "duration" | "easing" | "motion" => {}
                 "delay" => delay = number(a, k, v)?,
-                "easing" => ease = v.clone(),
                 "opacity" => opacity = number(a, k, v)?,
                 "x" => values.push((Prop::X, number(a, k, v)?)),
                 "y" => values.push((Prop::Y, number(a, k, v)?)),
@@ -387,7 +425,7 @@ impl Parser {
             "draw" => values.push((Prop::Draw, 1.0)),
             _ => values.push((Prop::Opacity, opacity)),
         }
-        let transition = easing(&ease, duration).map_err(|e| (a.at, e))?;
+        let transition = timing(a, &ps, 400.0, ease)?;
         let spec = PresenceSpec {
             values,
             transition,
@@ -436,22 +474,25 @@ impl Parser {
                 "animate: sits on an element directly inside a keyed {#each}".into(),
             ));
         }
-        let mut duration = 300.0;
-        let mut ease = "cubicOut".to_string();
-        for (k, v) in params(a)? {
+        let ps = params(a)?;
+        for (k, _) in &ps {
             match k.as_str() {
-                "duration" => duration = number(a, &k, &v)?,
-                "easing" => ease = v,
+                "duration" | "easing" | "motion" => {}
                 "delay" => {
                     return Err((
                         a.at,
                         "flip starts with the change; it takes no delay".into(),
                     ));
                 }
-                _ => return Err((a.at, format!("flip takes duration and easing, not {k}"))),
+                _ => {
+                    return Err((
+                        a.at,
+                        format!("flip takes motion, duration and easing, not {k}"),
+                    ));
+                }
             }
         }
-        let transition = easing(&ease, duration).map_err(|e| (a.at, e))?;
+        let transition = timing(a, &ps, 300.0, "cubicOut")?;
         self.prop(
             i,
             internal,
