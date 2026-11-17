@@ -1,0 +1,6 @@
+{
+  "fixed": [{
+    "member": "GameDesc.ui",
+    "summary": "UI registration can read the initialized locale, translations and localized formatters on both hosts; loading string tables and changing the locale remain prohibited during registration."
+  }]
+}

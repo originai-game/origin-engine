@@ -14,7 +14,7 @@ import { loadNativeHost } from "../src/node/index.ts";
 import { createEngine, type Engine, type GameToken } from "../src/runtime.ts";
 import { cookProject, ogBin } from "./support/og-bin.ts";
 
-declare const Bun: { spawnSync(cmd: string[]): { exitCode: number; stderr: Uint8Array } };
+declare const Bun: { spawnSync(cmd: string[]): { exitCode: number; stdout: Uint8Array; stderr: Uint8Array } };
 
 const kit = join(dirname(fileURLToPath(import.meta.url)), "..", "..", "..", "tests", "fixtures", "ui-text");
 
@@ -35,6 +35,16 @@ function start(locale?: string): Engine {
 }
 
 type Info = { requested: string; active: string; direction: string; locales: string[]; fonts: string[] };
+
+for (const host of ["node", "web"]) {
+  test(`ui registration reads initialized i18n but refuses locale and table writes (${host})`, () => {
+    const result = Bun.spawnSync(["bun", fileURLToPath(new URL("./support/i18n-registration.ts", import.meta.url)), host, kit]);
+    if (result.exitCode !== 0) throw new Error(new TextDecoder().decode(result.stderr));
+    expect(JSON.parse(new TextDecoder().decode(result.stdout))).toEqual({
+      host, registered: true, refused: ["load", "setLocale"],
+    });
+  });
+}
 
 test("og.i18n: the host's locale picks the table, and t formats each language's plurals", () => {
   const e = start("ja-JP");

@@ -62,6 +62,9 @@ const uiRegistrationReads = new Set([
   "og_engine_component_id", "og_engine_component_layout", "og_engine_read_component",
   "og_world_resource", "og_world_get", "og_world_has", "og_world_find",
   "og_world_name_of", "og_world_alive", "og_world_get_tick",
+  "og_i18n_locale", "og_i18n_t", "og_i18n_has",
+  "og_i18n_format_number", "og_i18n_format_compact", "og_i18n_format_currency",
+  "og_i18n_format_date", "og_i18n_format_time", "og_i18n_format_duration",
 ]);
 const abiReturns = new Map(bindings.calls.filter(call => "symbol" in call)
   .map(call => [call.symbol, call.returns]));
