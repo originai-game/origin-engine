@@ -100,9 +100,15 @@ h1, p { margin: 0; }
   [part="results.title"] { font-size: var(--type-xl2-size); letter-spacing: var(--type-xl2-tracking); }
   [part="results.grade"] { font: var(--text-xl4); letter-spacing: var(--type-xl4-tracking); }
 }
+/* A short landscape phone: the result's line and its XP share a line and
+   the stats close up, so every stat shows before the page scrolls; the
+   rewards follow under a shorter fade. */
 @media (height < 600px) and (orientation: landscape) {
   [part="results.frame"] { flex-direction: row; }
-  #Page { gap: var(--space-sm); }
+  #Page { gap: var(--space-sm); -og-scroll-fade: var(--space-lg); }
+  #Text { flex-direction: row; flex-wrap: wrap; align-items: baseline; column-gap: var(--space-md); }
+  #Level { flex: 1 0 100%; }
+  #Stats { gap: var(--space-xs); }
   #Footer { flex-direction: column; flex-wrap: nowrap; }
 }
 </style>
