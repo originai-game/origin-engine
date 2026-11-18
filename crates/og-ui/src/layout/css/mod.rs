@@ -10,7 +10,7 @@ mod inline;
 mod run;
 mod style;
 
-pub(crate) use run::{Holder, auto_height, containing_block, layout, on_screen};
+pub(crate) use run::{Holder, auto_height, containing_block, content_height, layout, on_screen};
 
 use style::{GridView, View, calc_of, turns};
 pub(crate) use style::{Kind, kind};

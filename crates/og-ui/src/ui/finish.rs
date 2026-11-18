@@ -896,11 +896,23 @@ impl Ui {
                         }
                         onto.invert().map_or(r, |inv| inv.mul(&w).map_rect(&r))
                     };
+                    // Keep the anchor geometry separate from the mutable
+                    // layout measurements of each placement option.
+                    let default_box = point.or(default.map(drawn));
+                    let anchor_boxes: Vec<_> = named
+                        .iter()
+                        .filter(|(j, _)| !inside(*j))
+                        .map(|(j, name)| (name.clone(), drawn(*j)))
+                        .collect();
                     let anchor = |name: &str| {
                         if name.is_empty() {
-                            point.or(default.map(drawn))
+                            default_box
                         } else {
-                            by_name(name).map(drawn)
+                            anchor_boxes
+                                .iter()
+                                .rev()
+                                .find(|(n, _)| n == name)
+                                .map(|(_, r)| *r)
                         }
                     };
                     let n = &self.tree.nodes[i];
@@ -923,7 +935,17 @@ impl Ui {
                             (n.layout.pref_h, n.layout.min_h),
                         ],
                     };
-                    let (r, mut placed) = crate::anchor::resolve(&spec, &frame);
+                    let here = box_of(i);
+                    let mut height = |width| {
+                        crate::layout::content_height(
+                            &mut self.tree.nodes,
+                            i,
+                            width,
+                            cb,
+                            &mut measure,
+                        )
+                    };
+                    let (r, mut placed) = crate::anchor::resolve(&spec, &frame, Some(&mut height));
                     // `anchors-visible`: hidden while its default anchor is
                     // clipped out of view or hidden, besides what
                     // `anchors-valid` and `no-overflow` hide.
@@ -963,7 +985,6 @@ impl Ui {
                     if placed.hidden != self.tree.nodes[i].layout.anchor_placed.hidden {
                         self.layout.cache.anchor_toggled.push(i);
                     }
-                    let here = box_of(i);
                     self.tree.nodes[i].layout.anchor_placed = placed;
                     if r == here {
                         continue;

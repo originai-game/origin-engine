@@ -1,0 +1,8 @@
+{
+  "fixed": [
+    {
+      "member": "ui",
+      "summary": "Auto-height elements positioned by percentage, calculated or anchor insets measure their content at the resolved width, avoiding extra blank lines in wrapping columns and incorrect bottom placement."
+    }
+  ]
+}

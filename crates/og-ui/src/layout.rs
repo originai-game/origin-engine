@@ -24,7 +24,7 @@ pub(crate) use cache::{
     DrawSig, Invalidation, LayoutCache, Measure, Metrics, MotionCache, PaintCache, TextCache,
     draw_eq, input_changes, painted_eq,
 };
-pub(crate) use css::{Holder, auto_height, containing_block, layout, on_screen};
+pub(crate) use css::{Holder, auto_height, containing_block, content_height, layout, on_screen};
 pub use flow::{Bidi, Flow};
 pub use multicol::{ColumnSnap, Multicol};
 use node::truncate_lines;

@@ -600,6 +600,48 @@ fn a_fixed_boxs_auto_height_is_its_contents_at_its_width() {
     });
 }
 
+#[test]
+fn a_column_stack_measures_wrapped_labels_at_their_final_width() {
+    let source = r#"<meta name="component" content="t">
+<div><div id="Fight"><div id="Dealt"><section id="Stack">
+  <div class="hit" id="Hit"><span class="call" id="Call">Critical · Weak point</span><div class="line"><span class="amount">2,481</span></div></div>
+  <div class="hit"><div class="line"><span class="amount">642</span></div></div>
+  <div class="hit"><div class="line"><span class="amount">118</span><span class="word">burn</span></div></div>
+</section></div></div></div>
+<style>
+#Fight { position: relative; width: 366px; height: 135px; font-size: 21px; line-height: 1.45; }
+#Dealt { position: absolute; display: flex; left: calc(50% + 48px); right: 0; top: 0; }
+#Stack { display: flex; flex-direction: column; align-items: flex-start; max-inline-size: stretch; }
+.hit { display: flex; flex-direction: column; align-items: flex-start; max-inline-size: 100%; min-inline-size: 0; }
+.line { display: flex; gap: 6px; align-items: baseline; min-inline-size: 0; max-inline-size: 100%; }
+.call { max-inline-size: 100%; min-inline-size: 0; font-size: 18px; font-weight: 600; letter-spacing: normal; text-transform: uppercase; }
+.amount { flex: none; font-size: 45px; line-height: 1; font-weight: 700; font-stretch: 78%; font-variant-numeric: tabular-nums; font-style: italic; white-space: nowrap; }
+.word { font-size: 18px; white-space: nowrap; }
+.hit + .hit { display: none; }
+</style>"#;
+    let mut font =
+        crate::features::font_at("templates/styles/shared/InstrumentSans[wdth,wght].ttf");
+    font.handle = crate::support::test_font().handle;
+    for inset in ["top: 0;", "bottom: 0;"] {
+        let source = source.replace("top: 0;", inset);
+        let d = Doc::with_font(&source, &[], font.clone());
+        // Chromium with this font: two 26.1px call lines over the 45px figure.
+        for id in ["Call", "Hit", "Stack", "Dealt"] {
+            let expected = if id == "Call" { 52.2 } else { 97.2 };
+            assert!(
+                (d.get(id).height - expected).abs() < 1.0,
+                "{inset} {id}: {:?}, expected {expected}",
+                d.get(id)
+            );
+        }
+        if inset == "bottom: 0;" {
+            let dealt = d.get("Dealt");
+            let fight = d.get("Fight");
+            assert!((dealt.y + dealt.height - fight.y - fight.height).abs() < 1.0);
+        }
+    }
+}
+
 /// A block's `align-content` shifts its content as one in its block axis
 /// (CSS Box Alignment 3 §5.1.1), and a flow-root keeps its first line's
 /// baseline for its row to align by (CSS Display 3 §2.3).

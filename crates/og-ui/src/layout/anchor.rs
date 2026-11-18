@@ -655,7 +655,11 @@ pub(crate) struct Frame<'a> {
 }
 
 /// One option's box, and its inset-modified containing block.
-fn place(p: &Placement, f: &Frame<'_>) -> (Rect, Rect) {
+fn place(
+    p: &Placement,
+    f: &Frame<'_>,
+    mut height: Option<&mut dyn FnMut(f32) -> f32>,
+) -> (Rect, Rect) {
     let cb = f.cb;
     let start = [cb.x, cb.y];
     let len = [cb.width, cb.height];
@@ -782,6 +786,11 @@ fn place(p: &Placement, f: &Frame<'_>) -> (Rect, Rect) {
                 (scale * basis.of(pref, least, room, both) + add.of(len[axis])).clamp(lo_b, hi_b)
             }
             (None, Size::Grow { .. } | Size::Stretch { .. }) => room.clamp(lo_b, hi_b),
+            // Auto block size is content at this option's resolved width,
+            // not its intrinsic height measured at a different width.
+            (None, Size::Fit { .. }) if axis == 1 && !both && height.is_some() => {
+                height.as_mut().unwrap()(out[2]).clamp(lo_b, hi_b)
+            }
             // Auto between two insets fills them (CSS Position 3 §5.1),
             // else it shrinks to fit its room.
             (None, Size::Fit { .. }) if both => room.max(least).clamp(lo_b, hi_b),
@@ -829,7 +838,11 @@ fn place(p: &Placement, f: &Frame<'_>) -> (Rect, Rect) {
 /// The box that wins among `spec`'s options (CSS Anchor §5): its own
 /// placement, else the first fallback that does not overflow the
 /// containing block, else its own.
-pub(crate) fn resolve(spec: &AnchorSpec, f: &Frame<'_>) -> (Rect, Placed) {
+pub(crate) fn resolve(
+    spec: &AnchorSpec,
+    f: &Frame<'_>,
+    mut height: Option<&mut dyn FnMut(f32) -> f32>,
+) -> (Rect, Placed) {
     let tries = |name: &str| {
         spec.named
             .iter()
@@ -862,7 +875,13 @@ pub(crate) fn resolve(spec: &AnchorSpec, f: &Frame<'_>) -> (Rect, Placed) {
             },
         });
     }
-    let placed: Vec<(Rect, Rect)> = options.iter().map(|p| place(p, f)).collect();
+    let placed: Vec<(Rect, Rect)> = options
+        .iter()
+        .map(|p| match height.as_mut() {
+            Some(height) => place(p, f, Some(&mut **height)),
+            None => place(p, f, None),
+        })
+        .collect();
     let fits = |r: &Rect| {
         let cb = f.cb;
         r.x >= cb.x - 0.5
@@ -910,7 +929,7 @@ pub(crate) fn resolve(spec: &AnchorSpec, f: &Frame<'_>) -> (Rect, Placed) {
             anchor: &read,
             ..*f
         };
-        place(&options[k], &g);
+        place(&options[k], &g, None);
         missed.get()
     };
     let hidden = spec.visibility.no_overflow && won.is_none() || invalid;
@@ -955,7 +974,7 @@ mod tests {
             tries: parse_tries("flip-block").unwrap(),
             ..Default::default()
         };
-        let (r, placed) = resolve(&spec, &f);
+        let (r, placed) = resolve(&spec, &f, None);
         assert_eq!(r, Rect::new(100.0, 210.0, 50.0, 40.0));
         assert_eq!((placed.option, placed.side), (1, Some(PlacedSide::Top)));
         // `span-right` starts at the anchor's left edge; insets by anchor().
@@ -966,7 +985,7 @@ mod tests {
             },
             ..Default::default()
         };
-        assert_eq!(resolve(&spec, &f).0.x, 100.0);
+        assert_eq!(resolve(&spec, &f, None).0.x, 100.0);
         let spec = AnchorSpec {
             base: Placement {
                 insets: [
@@ -981,7 +1000,10 @@ mod tests {
             ..Default::default()
         };
         // bottom: 300 - 250 + 4 = 54 → its bottom at 246; left at 150.
-        assert_eq!(resolve(&spec, &f).0, Rect::new(150.0, 206.0, 50.0, 40.0));
+        assert_eq!(
+            resolve(&spec, &f, None).0,
+            Rect::new(150.0, 206.0, 50.0, 40.0)
+        );
         assert!(parse_area("top top").is_err() && parse_inset("anchor(--a)").is_err());
     }
 }

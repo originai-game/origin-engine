@@ -647,6 +647,37 @@ fn along(from: u8, at: f32, len: f32, size: [f32; 2]) -> (usize, f32) {
     }
 }
 
+/// An auto block size at a late placement's resolved width, before that
+/// placement fixes both dimensions. Intrinsic heights at other widths
+/// are not bounds on this size (CSS Position 3 §5.1).
+pub(crate) fn content_height(
+    nodes: &mut [Node],
+    root: usize,
+    width: f32,
+    cb: Rect,
+    measure: &mut Measure<'_>,
+) -> f32 {
+    let placement = nodes[root].layout.placement.take();
+    nodes[root].derive_used();
+    nodes[root].layout.css_cache.clear();
+    let height = Tree::new(nodes, measure)
+        .lay_physical(
+            root,
+            tf::RunMode::ComputeSize,
+            [Some(width), None],
+            [Some(cb.width), Some(cb.height)],
+            [
+                tf::AvailableSpace::Definite(width),
+                tf::AvailableSpace::MaxContent,
+            ],
+        )
+        .height;
+    nodes[root].layout.placement = placement;
+    nodes[root].derive_used();
+    nodes[root].layout.css_cache.clear();
+    height
+}
+
 /// Lays out the tree under `root` inside `area`. `scroll(key)` is a scroll
 /// container's offset; `dpr` snaps the final rectangles.
 #[allow(clippy::too_many_arguments)]
