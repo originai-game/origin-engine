@@ -1,0 +1,8 @@
+{
+  "fixed": [
+    {
+      "member": "og.load.gltf",
+      "summary": "A frame drawn for a script (`og run --commands`, `og render`) waits, natively, until the textures being prepared are, so a model loaded with og.load.gltf (or a scene) is drawn with its maps on the first frame instead of hidden for as long as the texture worker took, and two renders of one script draw the same frames. A display frame still never waits; a stream group's model still waits for its group."
+    }
+  ]
+}

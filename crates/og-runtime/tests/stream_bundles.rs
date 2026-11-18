@@ -2102,6 +2102,92 @@ fn a_cells_light_shines_up_with_its_models() {
     }
 }
 
+/// A script's frame (`og render`, `og run --commands`) waits for a loaded
+/// model's maps, so a slow decode never changes what it draws; a display
+/// frame never waits and hides the model meanwhile.
+#[test]
+fn a_scripted_frame_waits_for_model_textures_and_a_display_frame_does_not() {
+    let _lock = TEST_LOCK.lock().unwrap();
+    struct Slow;
+    impl Hooks for Slow {
+        fn dispatch(&self, _: &Dispatch) -> Result<String, String> {
+            Ok(String::new())
+        }
+        fn read_asset(&self, path: &str) -> Fetch<Vec<u8>> {
+            match std::fs::read(path) {
+                Ok(b) => Fetch::Ready(b),
+                Err(e) => Fetch::Failed(e.to_string()),
+            }
+        }
+        fn texture_work(
+            &self,
+            t: &og_bundle::runtime::CookedTexture,
+            f: Option<&og_render::TextureFormats>,
+        ) -> Option<TextureWork> {
+            let (t, f) = (t.clone(), f.cloned());
+            Some(Box::new(move || {
+                std::thread::sleep(std::time::Duration::from_millis(300));
+                t.to_texture_source(f.as_ref()).map_err(|e| e.to_string())
+            }))
+        }
+    }
+    let base = PathBuf::from(env!("CARGO_TARGET_TMPDIR"))
+        .join(format!("scripted-textures-{}", std::process::id()));
+    let root = base.join("game");
+    cook(&root, &[("world.ogt", b"type scene\nversion 1\n---\nentity \"player\" {\n Transform {\n  position 0 0 0\n }\n StreamAnchor {\n  reach 0\n }\n}\n".to_vec())]);
+    let path = base.join("plain");
+    parcel(&path, "parcel", "parcel", 100, false);
+    for scripted in [true, false] {
+        set_hooks(Rc::new(Slow));
+        og_host_begin_bundle();
+        let game = og_game_game(Some(r#"{"seed":1}"#.into()));
+        let engine = value(og_engine_create(game, json!({"root": root}).to_string()))
+            .as_u64()
+            .unwrap() as u32;
+        let held = Rc::new(Cell::new(Held::default()));
+        answer(set_render_backend(
+            engine,
+            Some(Box::new(Recorder(held.clone()))),
+        ));
+        set_scripted_frames(engine, scripted);
+        let g = Game { engine, held };
+        g.place("world.ogt");
+        g.open(&path);
+        g.place("parcel/place.ogt");
+        g.walk(100);
+        let mut frames = 0;
+        while !g.loaded("parcel") {
+            g.frame();
+            frames += 1;
+            assert!(frames < 64, "the parcel never loaded");
+        }
+        // The frame after the cell loaded draws its model.
+        g.frame();
+        if scripted {
+            assert!(
+                g.held.get().instances > 0,
+                "a script's frame waits for the maps"
+            );
+            // Loading then reaches idle: at once where the model draws
+            // whole, and where it fades in, once its 0.4 s fade is over.
+            for _ in 0..30 {
+                if og_loading_idle(engine) {
+                    break;
+                }
+                g.frame();
+            }
+            assert!(
+                og_loading_idle(engine),
+                "loading never reached idle after the model drew"
+            );
+        } else {
+            assert_eq!(g.held.get().instances, 0, "a display frame never waits");
+        }
+        assert!(og_engine_destroy(engine));
+    }
+    std::fs::remove_dir_all(base).unwrap();
+}
+
 /// Release-mode CPU profile of an independently cooked cell with four
 /// 1024-square material maps. The recorder consumes the real scene but
 /// does not upload it to a GPU; GPU frame budgets need a native GPU run too.

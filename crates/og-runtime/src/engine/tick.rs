@@ -380,6 +380,22 @@ fn text_entry(eng: &Engine) -> (Value, Option<String>) {
     (text, copy)
 }
 
+/// A script's frame waits until the textures being prepared are, so it
+/// draws the models and maps the world holds instead of hiding a model or
+/// drawing the placeholder for as long as the worker happened to take: two
+/// runs of one script then draw the same frames. Natively only; the web
+/// cannot wait for its Worker, and a display frame never waits. A model of
+/// a stream group still waits for its group's upgrade, as on display.
+fn settle_textures(eng: &Engine) {
+    #[cfg(not(target_arch = "wasm32"))]
+    while eng.render.borrow().decoded.preparing() {
+        std::thread::sleep(std::time::Duration::from_millis(1));
+        super::assets::retranscode(eng);
+    }
+    #[cfg(target_arch = "wasm32")]
+    let _ = eng;
+}
+
 /// Draws the frame, between the last two ticks at `alpha`
 /// (`super::interpolate`) or at the tick (`None`).
 fn render(eng: &Engine, alpha: Option<f32>) -> Result<bool, String> {
@@ -395,11 +411,13 @@ fn render(eng: &Engine, alpha: Option<f32>) -> Result<bool, String> {
     super::assets::retranscode(eng);
     // The tick this frame shows: its notes (and a missing glyph) are this tick's.
     let tick = eng.world().map(|w| w.time().tick).unwrap_or(0);
-    // A script's frame (`og run --commands`, `og render`) waits for
-    // og.motion's results due by its tick, as a probe capture does, so the
-    // characters drawn are the world's and its frames reproduce run to run;
-    // a display frame never waits for the model.
+    // A script's frame (`og run --commands`, `og render`) waits for the
+    // textures being prepared and for og.motion's results due by its tick,
+    // as a probe capture does, so the models and characters drawn are the
+    // world's and its frames reproduce run to run; a display frame never
+    // waits for either.
     if eng.render.borrow().display.scripted {
+        settle_textures(eng);
         crate::bind::motion::present::settle(eng);
     } else {
         crate::bind::motion::present::step(eng);
