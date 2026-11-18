@@ -106,6 +106,9 @@ impl Renderer {
                     water: !scene_water.is_empty() || fluids_3d || distortion,
                     water_ao: !scene_water.is_empty() && ao.is_some_and(|a| a.direct > 0.0),
                     transmission,
+                    zoom_blur: effects.screen_blur.is_some_and(|b| {
+                        b.kind == crate::ScreenBlurKind::Zoom && b.strength.abs() < 1.0
+                    }),
                     fluid_fields: fluids as u32,
                     reflection: [
                         reflections.first().map(|r| r.4),

@@ -89,10 +89,15 @@ pub(super) fn declare(g: &mut RenderGraph, cx: &PlanCx, p: FramePass) {
         // (`fx_group`); the screen blur alone does not ask for one.
         FramePass::ScreenBlur => {
             let after_mb = names.after_mb.unwrap_or("history-write");
-            if prepass {
-                g.pass(name, &[after_mb, "gbuffer", "lindepth"], &["hdr.blur"])
+            let outputs: &[&str] = if cfg.zoom_blur {
+                &["zoom.0", "zoom.1", "hdr.blur"]
             } else {
-                g.pass(name, &[after_mb], &["hdr.blur"])
+                &["hdr.blur"]
+            };
+            if prepass {
+                g.pass(name, &[after_mb, "gbuffer", "lindepth"], outputs)
+            } else {
+                g.pass(name, &[after_mb], outputs)
             }
         }
         FramePass::CustomPost(i) => {

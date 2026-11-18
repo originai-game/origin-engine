@@ -6876,7 +6876,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 unit: "",
                 worldspace: "",
                 label: "",
-                doc: doc!("Taps per pixel, each one a texture read. For zoom this is a minimum: the count follows the streak length at one tap per pixel, capped at 256; stable per-pixel jitter breaks up repeated highlights. Spin and directional use exactly this count."),
+                doc: doc!("Taps per pixel for spin and directional. Zoom exceeds this quality floor with three eight-tap stages (512 effective positions), or direct adaptive sampling when strength >= 1 crosses the centre. Both use stable per-pixel jitter."),
                 variants: &[],
                 capacity: 0,
                 list: 0,

@@ -313,6 +313,11 @@ fn effects(g: &mut RenderGraph, cx: &PlanCx) {
             g.transient(name, desc(tw, th, HDR_FORMAT, 1, usage));
         }
     }
+    if has(FramePass::ScreenBlur) && cfg.zoom_blur {
+        for name in ["zoom.0", "zoom.1"] {
+            g.transient(name, desc(pw, ph, HDR_FORMAT, 1, ATTACH_BIND));
+        }
+    }
     if has(FramePass::DofCoc) {
         g.transient("dof.coc", desc(phw, phh, HDR_FORMAT, 1, ATTACH_BIND))
             .transient("dof.blur", desc(phw, phh, HDR_FORMAT, 1, ATTACH_BIND));
