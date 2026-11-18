@@ -326,6 +326,13 @@ depth-normal prepass: the first one pays for it.
 - PhysicalSky gives blue overhead, red sunsets, a white glow round the sun
   and a blue twilight zenith; the sun's colour turns white, then orange,
   then red, gone below the horizon, and `get:og.DayNight` answers those.
+- By night the moon's light scatters through the same air: a full moon
+  high up gives a dim blue sky, brightest round the moon, and the land
+  under it the light of a dim day; a quarter moon about 0.38 of that, a
+  new moon none, leaving the black, starlit sky. `moonPhase` sets the
+  moonlight on the land under og.DayNight with either sky. A moonlit
+  night is a few stops under noon: open the camera's exposure for it as
+  for twilight.
 - Clouds: bright tops, dark bases, silver edges against the sun. A broken
   sky hides the sun a share of the time; an overcast deck leaves flat grey
   light on every surface. `steps` is their cost.

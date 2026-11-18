@@ -136,15 +136,24 @@ fn sky_rolloff(c: vec3<f32>, knee: f32, chroma: f32) -> vec3<f32> {
   return mix(c, hue * rolled, w);
 }
 
+// The moon's light above the air that the physical sky scatters
+// (SkyLook::moon_light): zero without a moon.
+fn sky_moon_light() -> vec3<f32> {
+  if (frame.sky_moon.w <= 0.0) { return vec3<f32>(0.0); }
+  return frame.sky_moon_look.rgb * frame.sky_sun_dir.w;
+}
+
 // The look drawn by the physical sky (sky_scatter.wgsl): the scattered
-// sunlight, the disc reddened by the air it crosses, the night's floor,
-// then the stars and the moon as sky_look draws them.
+// sunlight and moonlight, the disc reddened by the air it crosses, the
+// night's floor, then the stars and the moon as sky_look draws them.
 fn sky_physical_look(d: vec3<f32>) -> vec3<f32> {
   let sun = normalize(frame.sky_sun_dir.xyz);
   let h0 = sky_viewer_km();
   let up = clamp(d.y, -1.0, 1.0);
   let light = frame.sky_glow.yzw;
-  let sky = sky_rolloff((physical_sky(d, sun, h0, 24u) * light + frame.sky_scatter[5].rgb) * frame.sky_horizon.w, 0.6, 0.8);
+  let moon_light = sky_moon_light();
+  let moon_dir = select(sun, normalize(frame.sky_moon.xyz), frame.sky_moon.w > 0.0);
+  let sky = sky_rolloff((physical_sky_lit(d, sun, light, moon_dir, moon_light, h0, 24u) + frame.sky_scatter[5].rgb) * frame.sky_horizon.w, 0.6, 0.8);
   // Composite the solar radiance after atmospheric scattering, as in
   // Hillaire 2020 / UE SkyAtmosphere (third_party/hillaire-sky.md).
   // sun_intensity is radiance in the engine's scene-linear units, not a
@@ -171,7 +180,7 @@ fn sky_physical_look(d: vec3<f32>) -> vec3<f32> {
   let edge = clamp(angle / drawn, 0.0, 1.0);
   let limb = 0.75 + 0.25 * sqrt(max(1.0 - edge * edge, 0.0));
   var color = sky + light * through * max(frame.sky_sun.z, 0.0) * limb * disc;
-  let moon = moon_at(d, up);
+  let moon = moon_at(d, up, 0.0);
   if (frame.sky_ground.w > 0.0 && up > 0.0) {
     let g = d * 220.0;
     let cell = floor(g);

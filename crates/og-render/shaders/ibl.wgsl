@@ -20,6 +20,9 @@ struct Params {
   env: array<vec4<f32>, 8>,
   // The physical sky (sky_scatter.wgsl, appended to this module; [0].w 0: off).
   scatter: array<vec4<f32>, 38>,
+  // The moon the physical sky scatters: [0] xyz towards it, [1] rgb its
+  // light above the air (SkyLook::moon_light; zero: none).
+  moon: array<vec4<f32>, 2>,
 };
 @group(0) @binding(0) var<uniform> params: Params;
 @group(0) @binding(1) var source_cube: texture_cube<f32>;
@@ -47,9 +50,9 @@ fn looked_sky(d: vec3<f32>) -> vec3<f32> {
   let sun = normalize(params.sun_dir.xyz);
   if (scatter_on()) {
     // The physical sky from the look's altitude (sky.wgsl's sky_physical_look
-    // without the stars and the moon).
+    // without the stars and the moon's disc).
     let h0 = params.scatter[3].z;
-    let sky = physical_sky(d, sun, h0, 16u) * params.look[4].yzw + params.scatter[5].rgb;
+    let sky = physical_sky_lit(d, sun, params.look[4].yzw, params.moon[0].xyz, params.moon[1].rgb, h0, 16u) + params.scatter[5].rgb;
     let disc = smoothstep(params.look[3].x, params.look[3].y, dot(d, sun)) * params.look[3].z;
     return sky * params.look[1].w + params.look[4].yzw * physical_sun(d, h0) * disc;
   }

@@ -49,6 +49,9 @@ struct Params {
     /// The physical sky's block (`PhysicalAtmosphere::gpu`; zero: the
     /// gradient or the built-in sky).
     scatter: [[f32; 4]; crate::sky_physical::SCATTER_VEC4S],
+    /// The moon the physical sky scatters: towards it, then its light
+    /// (`SkyLook::moon_light`; zero: none).
+    moon: [[f32; 4]; 2],
 }
 
 const _: () = assert!(std::mem::size_of::<Params>() as u64 <= SLOT);
@@ -499,6 +502,12 @@ impl IblGenerator {
         let scatter = look
             .and_then(|l| l.physical.as_ref())
             .map_or([[0.0; 4]; crate::sky_physical::SCATTER_VEC4S], |p| p.gpu());
+        let moon = look.map_or([[0.0; 4]; 2], |l| {
+            [
+                l.moon_toward(sun_dir).extend(0.0).to_array(),
+                l.moon_light().extend(0.0).to_array(),
+            ]
+        });
         let look = look.map_or([[0.0; 4]; 5], |l| l.gpu(true, sun_color));
         let base = Params {
             face: 0,
@@ -510,6 +519,7 @@ impl IblGenerator {
             look,
             env: [[0.0; 4]; 8],
             scatter,
+            moon,
         };
         let lut = !self.lut_drawn;
         let all: Vec<&Pass> = self
@@ -646,6 +656,7 @@ impl IblGenerator {
                 look: [[0.0; 4]; 5],
                 env: crate::environment::env_params(rotation, scale, weight, irradiance),
                 scatter: [[0.0; 4]; crate::sky_physical::SCATTER_VEC4S],
+                moon: [[0.0; 4]; 2],
             };
             let at = i * SLOT as usize;
             bytes[at..at + std::mem::size_of::<Params>()]

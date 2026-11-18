@@ -102,6 +102,7 @@ impl IblGenerator {
             look: [[0.0; 4]; 5],
             env: [[0.0; 4]; 8],
             scatter: [[0.0; 4]; crate::sky_physical::SCATTER_VEC4S],
+            moon: [[0.0; 4]; 2],
         };
         let mut bytes = vec![0u8; SLOT as usize * count];
         let mut draws: Vec<(wgpu::TextureView, usize, wgpu::BindGroup)> = Vec::with_capacity(count);

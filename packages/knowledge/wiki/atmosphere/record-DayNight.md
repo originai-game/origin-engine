@@ -23,7 +23,7 @@ Token `og.DayNight`, registered under the schema name `og.DayNight`; its value t
 | `tintFog` | `boolean` | `true` | — | — | — | Turn the og.Fog colour towards the horizon's. |
 | `step` | `number` | `10` | 1 … 120 | — | tunable | Game minutes between steps of the sky's colours (the image-based light follows the sky as drawn). |
 | `moonSize` | `number` | `1.6` | 0 … 20 | `deg` | tunable | The moon disc's angular radius, opposite the sun so it rises as the sun sets (0: no moon). |
-| `moonPhase` | `number` | `0.5` | 0 … 1 | `ratio` | tunable | How much of the moon is lit: 0 new, 0.25 the first quarter, 0.5 full, 0.75 the last quarter. |
+| `moonPhase` | `number` | `0.5` | 0 … 1 | `ratio` | tunable | How much of the moon is lit: 0 new, 0.25 the first quarter, 0.5 full, 0.75 the last quarter. The moonlight follows it: a quarter moon gives about 0.38 of the full moon's light, a new moon none (Jensen et al. 2001). |
 
 ```ogt
 resource DayNight {
@@ -76,7 +76,7 @@ resource DayNight {
     unit deg
     tunable true
   }
-  field moonPhase f32 "How much of the moon is lit: 0 new, 0.25 the first quarter, 0.5 full, 0.75 the last quarter." {
+  field moonPhase f32 "How much of the moon is lit: 0 new, 0.25 the first quarter, 0.5 full, 0.75 the last quarter. The moonlight follows it: a quarter moon gives about 0.38 of the full moon's light, a new moon none (Jensen et al. 2001)." {
     default 0.5
     min 0
     max 1

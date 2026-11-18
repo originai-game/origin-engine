@@ -17459,7 +17459,7 @@ export interface DayNight {
    */
   moonSize: number;
   /**
-   * How much of the moon is lit: 0 new, 0.25 the first quarter, 0.5 full, 0.75 the last quarter.
+   * How much of the moon is lit: 0 new, 0.25 the first quarter, 0.5 full, 0.75 the last quarter. The moonlight follows it: a quarter moon gives about 0.38 of the full moon's light, a new moon none (Jensen et al. 2001).
    *
    * @default 0.5
    * @range 0..1
@@ -17557,7 +17557,7 @@ export interface Season {
 }
 
 /**
- * A physical sky: sunlight scattered by the air (Rayleigh) and haze (Mie), with ozone, in a spherical atmosphere of Earth's proportions with multiple scattering (Hillaire 2020). It replaces og.Sky's and og.DayNight's gradient, and the image-based light follows it. With og.DayNight it also gives the cycle its sun colour, ambient light and fog colour; with og.Sky, og.Sky's sun, disc, stars, moon and brightness are drawn through the air; alone it draws towards the first DirectionalLight. Visual only: drawn from the tick.
+ * A physical sky: sunlight, and by night moonlight by its phase, scattered by the air (Rayleigh) and haze (Mie), with ozone, in a spherical atmosphere of Earth's proportions with multiple scattering (Hillaire 2020). It replaces og.Sky's and og.DayNight's gradient, and the image-based light follows it. With og.DayNight it also gives the cycle its sun colour, ambient light and fog colour; with og.Sky, og.Sky's sun, disc, stars, moon and brightness are drawn through the air; alone it draws towards the first DirectionalLight. Visual only: drawn from the tick.
  * See `render §7`.
  *
  * The `PhysicalSky` resource (token `og.PhysicalSky`).
@@ -36238,7 +36238,7 @@ export declare namespace og {
    */
   const Season: ResourceType<{ readonly enabled: FieldSpec<"bool">; readonly start: FieldSpec<"f32">; readonly speed: FieldSpec<"f32">; readonly latitude: FieldSpec<"f32">; readonly change: FieldSpec<"f32">; readonly sun: FieldSpec<"bool">; readonly temperature: FieldSpec<"f32">; readonly temperatureRange: FieldSpec<"f32">; readonly dayRange: FieldSpec<"f32">; readonly day: FieldSpec<"f32"> }, Season>;
   /**
-   * A physical sky: sunlight scattered by the air (Rayleigh) and haze (Mie), with ozone, in a spherical atmosphere of Earth's proportions with multiple scattering (Hillaire 2020). It replaces og.Sky's and og.DayNight's gradient, and the image-based light follows it. With og.DayNight it also gives the cycle its sun colour, ambient light and fog colour; with og.Sky, og.Sky's sun, disc, stars, moon and brightness are drawn through the air; alone it draws towards the first DirectionalLight. Visual only: drawn from the tick.
+   * A physical sky: sunlight, and by night moonlight by its phase, scattered by the air (Rayleigh) and haze (Mie), with ozone, in a spherical atmosphere of Earth's proportions with multiple scattering (Hillaire 2020). It replaces og.Sky's and og.DayNight's gradient, and the image-based light follows it. With og.DayNight it also gives the cycle its sun colour, ambient light and fog colour; with og.Sky, og.Sky's sun, disc, stars, moon and brightness are drawn through the air; alone it draws towards the first DirectionalLight. Visual only: drawn from the tick.
    * See `render §7`.
    */
   const PhysicalSky: ResourceType<{ readonly enabled: FieldSpec<"bool">; readonly haze: FieldSpec<"f32">; readonly airDensity: FieldSpec<"f32">; readonly ozone: FieldSpec<"f32">; readonly groundAlbedo: FieldSpec<"Color">; readonly altitude: FieldSpec<"f32">; readonly night: FieldSpec<"Color"> }, PhysicalSky>;

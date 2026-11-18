@@ -142,6 +142,31 @@ impl SkyLook {
     /// with none.
     pub const PHYSICAL_SUN_INTENSITY: f32 = 360.0;
 
+    /// The moon's light above the air as the physical sky scatters it, in
+    /// the sky's units (the sun's is its colour at 1): the full moon's
+    /// share of the sun's, the share og.DayNight's moonlight has of its
+    /// sun, by its phase ([`moon_phase_light`]) and as bright as the drawn
+    /// moon against its default. Zero without a moon.
+    pub fn moon_light(&self) -> Vec3 {
+        if self.moon_size <= 0.0 {
+            return Vec3::ZERO;
+        }
+        self.moon_color.max(Vec3::ZERO) * self.moon_light_share()
+    }
+
+    /// [`SkyLook::moon_light`] over `moon_color`.
+    fn moon_light_share(&self) -> f32 {
+        PHYSICAL_MOONLIGHT / PHYSICAL_SUNLIGHT
+            * moon_phase_light(self.moon_phase)
+            * self.moon_intensity.max(0.0)
+            / SkyLook::DEFAULT.moon_intensity
+    }
+
+    /// Towards the moon: `moon_direction`, or opposite `sun`.
+    pub(crate) fn moon_toward(&self, sun: Vec3) -> Vec3 {
+        self.moon_direction.normalize_or(-sun.normalize_or(Vec3::Y))
+    }
+
     /// The cosines of the sun disc's outer and inner edge.
     pub(crate) fn disc(&self) -> (f32, f32) {
         let r = self.sun_size.clamp(0.0, 20.0).to_radians();
@@ -179,9 +204,10 @@ pub(crate) struct AtmosphereGpu {
     pub fog_sun: [f32; 4],
     /// zenith (w: 1 when the sky pass draws the look), horizon (w:
     /// brightness), ground (w: stars), disc (outer cos, inner cos,
-    /// intensity, glow), glow power and sun colour, then the sun direction,
-    /// the moon's direction (w: its angular radius in radians, 0 none) and
-    /// its lit colour (w: the phase).
+    /// intensity, glow), glow power and sun colour, then the sun direction
+    /// (w: the moon's light above the air over its lit colour,
+    /// SkyLook::moon_light), the moon's direction (w: its angular radius
+    /// in radians, 0 none) and its lit colour (w: the phase).
     pub sky: [[f32; 4]; 8],
     /// x: seconds (tick / rate), y: the tick, z: ticks per second.
     pub time: [f32; 4],
@@ -247,7 +273,10 @@ impl AtmosphereGpu {
             a.sky[5] = sun.extend(0.0).to_array();
             let size = look.moon_size.clamp(0.0, 20.0);
             if size > 0.0 {
-                let moon = look.moon_direction.normalize_or(-sun);
+                let moon = look.moon_toward(sun);
+                // w: the moon's light above the air over its lit colour
+                // (SkyLook::moon_light), which the physical sky scatters.
+                a.sky[5][3] = look.moon_light_share() / look.moon_intensity.max(1e-6);
                 a.sky[6] = moon.extend(size.to_radians()).to_array();
                 a.sky[7] = (look.moon_color * look.moon_intensity.max(0.0))
                     .extend(look.moon_phase.rem_euclid(1.0))
@@ -378,6 +407,20 @@ pub struct DayNightLook {
 }
 
 impl DayNightLook {
+    /// The moon `size` degrees in radius at `phase` (as [`SkyLook`]'s),
+    /// opposite the sun: drawn in the sky, scattered by the air under a
+    /// physical sky ([`SkyLook::moon_light`]), and by night the light's
+    /// strength by its phase ([`moon_phase_light`]: none at new moon). Before
+    /// [`DayNightLook::with_atmosphere`], whose fog takes it.
+    pub fn with_moon(mut self, size: f32, phase: f32) -> DayNightLook {
+        self.sky.moon_size = size;
+        self.sky.moon_phase = phase;
+        if self.light_direction != self.sun_direction {
+            self.light_intensity *= moon_phase_light(phase);
+        }
+        self
+    }
+
     /// The same time of day under a physical sky: the sky scattered
     /// through `air` (its sun disc reddened by it), the sun's light its
     /// colour after crossing the air to a viewer `air.altitude` up (gone
@@ -414,24 +457,42 @@ impl DayNightLook {
         // twilight sky keeps a deep blue-grey instead of falling into the
         // tone curve's toe (its scene light is already a few percent of
         // noon's; the curve maps that to black).
-        self.adaptation = 1.0 + 3.0 * (1.0 - ramp(-0.1, 0.15, self.sun_direction.y));
-        self.ambient = self.adaptation;
         // The fog's colour: the light the air scatters towards a point, the
         // sky's mean over the upper hemisphere (cosine-weighted, three
         // bearings at three heights), not its bright horizon.
         let s = self.sun_direction;
         let side = Vec3::new(-s.z, 0.0, s.x).normalize_or(Vec3::X);
         let toward = Vec3::new(s.x, 0.0, s.z).normalize_or(Vec3::Z);
-        let (mut sum, mut weight) = (Vec3::ZERO, 0.0);
+        // The moon's light scattered too, where it shines.
+        let (moon, moon_light) = (self.sky.moon_toward(s), self.sky.moon_light());
+        let (mut sum, mut moonlit, mut weight) = (Vec3::ZERO, Vec3::ZERO, 0.0);
         for bearing in [side, -side, toward] {
             for y in [0.1f32, 0.4, 0.8] {
                 let d = (bearing * (1.0 - y * y).sqrt() + Vec3::Y * y).normalize();
-                sum += air.radiance(air.altitude, d, s, 12) * y;
+                sum += air.radiance(air.altitude, d, s, 12) * white * y;
+                if moon_light != Vec3::ZERO {
+                    moonlit += air.radiance(air.altitude, d, moon, 12) * moon_light * y;
+                }
                 weight += y;
             }
         }
-        let horizon = sum / weight;
-        self.fog_color = (horizon * white * 1.1 + air.night).max(Vec3::splat(1e-4));
+        let horizon = (sum + moonlit) / weight;
+        // The image-based light at full strength by day, and up to four
+        // times it as the sun sets: the eye's adaptation to the shade (as
+        // an exposure opened for the land, not the sky), so land under a
+        // twilight sky keeps a deep blue-grey instead of falling into the
+        // tone curve's toe (its scene light is already a few percent of
+        // noon's; the curve maps that to black). The moon's light in the
+        // sky fills that shade: the eye adapts to what the sun and the
+        // night leave of it, less as the moonlit sky outshines them (a
+        // full moon high up, about none), so the land in the moon's shade
+        // stays below the land in its light.
+        let lum = |c: Vec3| c.dot(Vec3::new(0.2126, 0.7152, 0.0722));
+        let unlit = lum(sum / weight + air.night.max(Vec3::ZERO));
+        let shade = unlit / (unlit + lum(moonlit / weight)).max(1e-9);
+        self.adaptation = 1.0 + 3.0 * (1.0 - ramp(-0.1, 0.15, self.sun_direction.y)) * shade;
+        self.ambient = self.adaptation;
+        self.fog_color = (horizon * 1.1 + air.night).max(Vec3::splat(1e-4));
         // Looking into the sun the fog takes the sky's glow on the horizon
         // under it, not a fixed warm white: after sunset that is dim and
         // red, so the fog no longer shines over the darkened land.
@@ -443,11 +504,17 @@ impl DayNightLook {
 
 /// The clear sky's radiance along unit `d` as the sky pass draws it under
 /// `look` (sky_look.wgsl `sky_look`, sky.wgsl `sky_physical_look`) without the
-/// sun's disc, the stars or the moon: the gradient or the scattered air,
-/// times the look's brightness.
+/// sun's disc, the stars or the moon's disc: the gradient or the air's
+/// scattering of the sun and the moon, times the look's brightness.
 fn clear_sky(look: &SkyLook, sun: Vec3, color: Vec3, d: Vec3) -> Vec3 {
     if let Some(p) = &look.physical {
-        return (p.radiance(p.altitude, d, sun, 8) * color + p.night.max(Vec3::ZERO))
+        let moon = look.moon_light();
+        let moonlit = if moon == Vec3::ZERO {
+            Vec3::ZERO
+        } else {
+            p.radiance(p.altitude, d, look.moon_toward(sun), 8) * moon
+        };
+        return (p.radiance(p.altitude, d, sun, 8) * color + moonlit + p.night.max(Vec3::ZERO))
             * look.brightness;
     }
     let up = d.y.clamp(-1.0, 1.0);
@@ -505,6 +572,26 @@ const MOONLIGHT: f32 = 1.0;
 /// whose nights are lit in the air's own scale and read through the
 /// camera's exposure.
 const PHYSICAL_MOONLIGHT: f32 = 0.45;
+
+/// The sun's light at full strength under a physical sky
+/// ([`DayNightLook::with_atmosphere`]): the gradient's noon.
+const PHYSICAL_SUNLIGHT: f32 = 3.0;
+
+/// The moon's light at `phase` (0 new, 0.25 the first quarter, 0.5 full,
+/// 0.75 the last quarter) over the full moon's: the light a sphere of
+/// Lommel–Seeliger regolith sends back at the phase angle φ, 1 - sin(φ/2)
+/// tan(φ/2) ln(cot(φ/4)) (Jensen, Durand, Stark, Premože, Dorsey and
+/// Shirley, "A Physically-Based Night Sky Model", SIGGRAPH 2001, §4.1).
+/// About 0.38 at a quarter, 0 at new moon.
+pub fn moon_phase_light(phase: f32) -> f32 {
+    let phi = (std::f32::consts::TAU * (phase.rem_euclid(1.0) - 0.5).abs())
+        .min(std::f32::consts::PI - 1e-3);
+    if phi < 1e-4 {
+        return 1.0;
+    }
+    let h = 0.5 * phi;
+    (1.0 - h.sin() * h.tan() * (1.0 / (0.25 * phi).tan()).ln()).clamp(0.0, 1.0)
+}
 
 /// The least light the gradient sky gives the land ([`sky_luminance`] times
 /// the image-based light's strength): about what it gives at sunset, a
@@ -753,5 +840,52 @@ mod tests {
         assert_eq!(at(23.0).light_intensity, PHYSICAL_MOONLIGHT);
         assert!(lum(dusk.fog_color) < 0.5 * lum(noon.fog_color));
         assert!(noon.fog_color.z > noon.fog_color.x, "{}", noon.fog_color);
+    }
+
+    /// The moon lights the night by its phase (a Lommel–Seeliger sphere:
+    /// 1 - sin(π/4) ln(cot(π/8)) ≈ 0.377 at a quarter, symmetric about
+    /// full), and under the physical sky its light scatters: brightest
+    /// round the moon, and a new moon leaves the sky as no moon does.
+    #[test]
+    fn the_moon_lights_the_night_by_its_phase() {
+        assert_eq!(moon_phase_light(0.5), 1.0);
+        for q in [0.25, 0.75] {
+            assert!(
+                (moon_phase_light(q) - 0.377).abs() < 2e-3,
+                "{}",
+                moon_phase_light(q)
+            );
+        }
+        assert!(moon_phase_light(0.0) < 1e-3 && moon_phase_light(1.0) < 1e-3);
+        assert!(moon_phase_light(0.4) > moon_phase_light(0.3));
+        let air = crate::PhysicalAtmosphere::EARTH;
+        let moon = Vec3::new(0.2, 0.47, -0.86).normalize();
+        let at = |size: f32, phase: f32| {
+            day_night_under(-moon)
+                .with_moon(size, phase)
+                .with_atmosphere(&air)
+        };
+        let (full, quarter, new, none) = (at(1.6, 0.5), at(1.6, 0.25), at(1.6, 0.0), at(0.0, 0.5));
+        let lum = |c: Vec3| c.dot(Vec3::new(0.2126, 0.7152, 0.0722));
+        let sky =
+            |l: &DayNightLook, d: Vec3| lum(clear_sky(&l.sky, l.sun_direction, l.sun_color, d));
+        let away = Vec3::new(-moon.x, moon.y, -moon.z);
+        assert!(sky(&full, moon * 0.98 + Vec3::Y * 0.02) > 2.0 * sky(&full, away));
+        // The full moon's sky some times the starlit night's base.
+        assert!(sky(&full, Vec3::Y) > 3.0 * sky(&none, Vec3::Y));
+        // The moon's part of the quarter's sky over the full moon's.
+        let base = sky(&none, Vec3::Y);
+        let ratio = (sky(&quarter, Vec3::Y) - base) / (sky(&full, Vec3::Y) - base);
+        assert!((ratio - 0.377).abs() < 0.02, "{ratio}");
+        assert!((sky(&new, Vec3::Y) - sky(&none, Vec3::Y)).abs() < 1e-3 * sky(&full, Vec3::Y));
+        assert!((quarter.light_intensity / full.light_intensity - 0.377).abs() < 2e-3);
+        assert!(new.light_intensity < 1e-3 * full.light_intensity);
+        // The moonlit sky fills the land's shade: the eye opens less for it.
+        assert!(
+            full.adaptation < none.adaptation,
+            "{} {}",
+            full.adaptation,
+            none.adaptation
+        );
     }
 }

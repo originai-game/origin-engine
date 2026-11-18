@@ -12,8 +12,9 @@ fn moon_mare(q: vec2<f32>, c: vec2<f32>, r: f32) -> f32 {
 // The moon in direction `d`: rgb the light it adds, a its coverage (it
 // hides the stars behind it). A disc lit by its phase from the right
 // (waxing) or the left (waning), darker maria, a faint earthshine on the
-// dark side and a halo; set below the horizon.
-fn moon_at(d: vec3<f32>, up: f32) -> vec4<f32> {
+// dark side and, with `halo` 1, a halo (the physical sky scatters its
+// own, sky_scatter.wgsl `physical_sky_lit`); set below the horizon.
+fn moon_at(d: vec3<f32>, up: f32, halo_on: f32) -> vec4<f32> {
   let radius = frame.sky_moon.w;
   if (radius <= 0.0) { return vec4<f32>(0.0); }
   let m = normalize(frame.sky_moon.xyz);
@@ -32,7 +33,7 @@ fn moon_at(d: vec3<f32>, up: f32) -> vec4<f32> {
   let lit_fraction = 0.5 - 0.5 * cos(theta);
   // The halo: a few radii of scattered moonlight, as bright as the moon is
   // full, gone with the moon below the horizon.
-  let halo = exp(-max(r - 1.0, 0.0) * 1.5) * 0.012 * lit_fraction * above * smoothstep(-0.02, 0.02, m.y);
+  let halo = exp(-max(r - 1.0, 0.0) * 1.5) * 0.012 * lit_fraction * above * smoothstep(-0.02, 0.02, m.y) * halo_on;
   if (coverage <= 0.0) { return vec4<f32>(frame.sky_moon_look.rgb * halo, 0.0); }
   // The sphere facing the viewer, lit from (sin theta, 0, -cos theta).
   let n = vec3<f32>(q, sqrt(max(1.0 - dot(q, q), 0.0)));
@@ -97,7 +98,7 @@ fn sky_look(d: vec3<f32>) -> vec3<f32> {
   let glow = pow(max(cos_sun, 0.0), max(frame.sky_glow.x, 1.0)) * frame.sky_sun.w;
   let disc = smoothstep(frame.sky_sun.x, frame.sky_sun.y, cos_sun) * frame.sky_sun.z;
   var color = sky * frame.sky_horizon.w + frame.sky_glow.yzw * (glow + disc);
-  let moon = moon_at(d, up);
+  let moon = moon_at(d, up, 1.0);
   if (frame.sky_ground.w > 0.0 && up > 0.0) {
     // Stars: a hashed grid of points on the sky, dimmed by the sky's brightness.
     let g = d * 220.0;

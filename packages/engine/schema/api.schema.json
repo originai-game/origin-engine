@@ -35722,7 +35722,7 @@
         },
         "moonPhase": {
           "type": "number",
-          "description": "How much of the moon is lit: 0 new, 0.25 the first quarter, 0.5 full, 0.75 the last quarter.",
+          "description": "How much of the moon is lit: 0 new, 0.25 the first quarter, 0.5 full, 0.75 the last quarter. The moonlight follows it: a quarter moon gives about 0.38 of the full moon's light, a new moon none (Jensen et al. 2001).",
           "default": 0.5,
           "minimum": 0,
           "maximum": 1,
@@ -35817,7 +35817,7 @@
     "PhysicalSky": {
       "x-og-kind": "resource",
       "x-og-module": "atmosphere",
-      "description": "A physical sky: sunlight scattered by the air (Rayleigh) and haze (Mie), with ozone, in a spherical atmosphere of Earth's proportions with multiple scattering (Hillaire 2020). It replaces og.Sky's and og.DayNight's gradient, and the image-based light follows it. With og.DayNight it also gives the cycle its sun colour, ambient light and fog colour; with og.Sky, og.Sky's sun, disc, stars, moon and brightness are drawn through the air; alone it draws towards the first DirectionalLight. Visual only: drawn from the tick.\nSee `render §7`.",
+      "description": "A physical sky: sunlight, and by night moonlight by its phase, scattered by the air (Rayleigh) and haze (Mie), with ozone, in a spherical atmosphere of Earth's proportions with multiple scattering (Hillaire 2020). It replaces og.Sky's and og.DayNight's gradient, and the image-based light follows it. With og.DayNight it also gives the cycle its sun colour, ambient light and fog colour; with og.Sky, og.Sky's sun, disc, stars, moon and brightness are drawn through the air; alone it draws towards the first DirectionalLight. Visual only: drawn from the tick.\nSee `render §7`.",
       "type": "object",
       "properties": {
         "enabled": {

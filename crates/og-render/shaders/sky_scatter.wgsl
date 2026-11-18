@@ -125,7 +125,7 @@ fn scatter_at(p: vec3<f32>, sun: vec3<f32>, phases: vec2<f32>) -> ScatterSample 
 // The air between the eye `h0` km up and a point `t` km along unit `d`
 // (Hillaire 2020 §5.5, aerial perspective): the light it scatters towards
 // the eye (the sun along unit `sun` with illuminance 1, in the engine's
-// units, as physical_sky), of the sun and of the sky apart (clouds shade
+// units, as physical_sky_lit), of the sun and of the sky apart (clouds shade
 // them differently), and what it lets through from behind.
 struct AirPath { sun: vec3<f32>, sky: vec3<f32>, through: vec3<f32> };
 
@@ -150,10 +150,14 @@ fn air_path(d: vec3<f32>, sun: vec3<f32>, h0: f32, t: f32, steps: u32) -> AirPat
   return out;
 }
 
-// The sky's radiance along unit `d` from `h0` km up, the sun along unit
-// `sun` with illuminance 1, in the engine's units, at `steps` samples:
-// single and multiple scattering and the lit ground (no sun disc).
-fn physical_sky(d: vec3<f32>, sun: vec3<f32>, h0: f32, steps: u32) -> vec3<f32> {
+// The sky's radiance along unit `d` from `h0` km up at `steps` samples:
+// single and multiple scattering and the lit ground (no disc), in the
+// engine's units, of two lights above the air in one march: the sun along
+// unit `sun` with light `sun_light` (its colour at illuminance 1) and the
+// moon along unit `moon` with `moon_light` (zero: none). The moonlit sky is the same scattering of
+// the moon's light (Jensen et al., "A Physically-Based Night Sky Model",
+// 2001, §4): the day's blue, dim, brightest round the moon.
+fn physical_sky_lit(d: vec3<f32>, sun: vec3<f32>, sun_light: vec3<f32>, moon: vec3<f32>, moon_light: vec3<f32>, h0: f32, steps: u32) -> vec3<f32> {
   let bottom = SCATTER[3].x;
   let o = vec3<f32>(0.0, bottom + max(h0, 0.001), 0.0);
   let top = scatter_sphere(o, d, SCATTER[3].y);
@@ -163,7 +167,9 @@ fn physical_sky(d: vec3<f32>, sun: vec3<f32>, h0: f32, steps: u32) -> vec3<f32> 
   let start = max(top.x, 0.0);
   let end = select(top.y, ground.x, hits);
   if (end <= start) { return vec3<f32>(0.0); }
+  let moonlit = max(moon_light.r, max(moon_light.g, moon_light.b)) > 0.0;
   let phases = scatter_phases(dot(d, sun));
+  let moon_phases = scatter_phases(dot(d, moon));
   let len = end - start;
   let n = f32(steps);
   var l = vec3<f32>(0.0);
@@ -172,15 +178,27 @@ fn physical_sky(d: vec3<f32>, sun: vec3<f32>, h0: f32, steps: u32) -> vec3<f32> 
     let a = f32(i) / n;
     let b = f32(i + 1u) / n;
     let dt = (b * b - a * a) * len;
-    let x = scatter_at(o + d * (start + (a * a + b * b) * 0.5 * len), sun, phases);
+    let p = o + d * (start + (a * a + b * b) * 0.5 * len);
+    let x = scatter_at(p, sun, phases);
+    var scattered = (x.sun + x.sky) * sun_light;
+    if (moonlit) {
+      let y = scatter_at(p, moon, moon_phases);
+      scattered += (y.sun + y.sky) * moon_light;
+    }
     let seg = exp(-x.ext * dt);
-    l += t * (x.sun + x.sky) * (1.0 - seg) / x.ext;
+    l += t * scattered * (1.0 - seg) / x.ext;
     t *= seg;
   }
   if (hits) {
     let p = o + d * ground.x;
-    let mu = dot(p / length(p), sun);
-    l += t * scatter_sun_transmittance(bottom, mu) * max(mu, 0.0) * SCATTER[4].rgb / PI;
+    let up = p / length(p);
+    let mu = dot(up, sun);
+    var lit = scatter_sun_transmittance(bottom, mu) * max(mu, 0.0) * sun_light;
+    if (moonlit) {
+      let mu_moon = dot(up, moon);
+      lit += scatter_sun_transmittance(bottom, mu_moon) * max(mu_moon, 0.0) * moon_light;
+    }
+    l += t * lit * SCATTER[4].rgb / PI;
   }
   return l * SCATTER[3].w;
 }

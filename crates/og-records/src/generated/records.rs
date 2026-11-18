@@ -20084,7 +20084,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 unit: "ratio",
                 worldspace: "",
                 label: "",
-                doc: doc!("How much of the moon is lit: 0 new, 0.25 the first quarter, 0.5 full, 0.75 the last quarter."),
+                doc: doc!("How much of the moon is lit: 0 new, 0.25 the first quarter, 0.5 full, 0.75 the last quarter. The moonlight follows it: a quarter moon gives about 0.38 of the full moon's light, a new moon none (Jensen et al. 2001)."),
                 variants: &[],
                 capacity: 0,
                 list: 0,

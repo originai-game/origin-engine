@@ -134,7 +134,7 @@ impl PhysicalAtmosphere {
     /// up, the sun along unit `sun` with illuminance 1, in the engine's
     /// units (before `SkyLook::brightness`): single and multiple scattering
     /// and the lit ground, without the sun's disc or the night floor. The
-    /// CPU twin of `atmosphere.wgsl`'s `physical_sky`, at `steps` samples.
+    /// CPU twin of `sky_scatter.wgsl`'s `physical_sky_lit` for one light, at `steps` samples.
     pub fn radiance(&self, altitude: f32, dir: Vec3, sun: Vec3, steps: u32) -> Vec3 {
         let m = self.model();
         let ms = self.ms_cached();

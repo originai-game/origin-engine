@@ -95,7 +95,7 @@ fn leaf_calendar(
     })
 }
 
-/// The cycle's look at `hours`: under the date's sun at the latitude when
+/// The cycle's look at `hours`, with its moon: under the date's sun at the latitude when
 /// an og.Season sets the path, else along og.DayNight's own. Either way
 /// DayNight.azimuth is the heading of due east, and the noon sun of the
 /// north stands a quarter turn on from it (the heading azimuth + 90, the
@@ -105,14 +105,16 @@ fn look_at(
     season: Option<&SeasonNow>,
     hours: f32,
 ) -> og_render::DayNightLook {
-    match season {
+    let look = match season {
         Some(s) => {
             let [east, up, south] = s.sun(hours);
             let turn = glam::Quat::from_rotation_y((d.azimuth - 90.0).to_radians());
             og_render::day_night_under(turn * Vec3::new(east, up, -south))
         }
         None => og_render::day_night(hours, d.tilt, d.azimuth),
-    }
+    };
+    // The moon opposite the sun (moon_direction zero).
+    look.with_moon(d.moon_size, d.moon_phase)
 }
 
 /// An enabled og.PhysicalSky as the renderer's atmosphere.
@@ -236,9 +238,6 @@ pub(super) fn extract(
         if let Some(a) = &air {
             stepped = stepped.with_atmosphere(a);
         }
-        // The moon opposite the sun drawn this frame (moon_direction zero).
-        stepped.sky.moon_size = d.moon_size;
-        stepped.sky.moon_phase = d.moon_phase;
         scene.lighting.light.direction_to_light = look.light_direction;
         scene.lighting.light.color = look.light_color;
         scene.lighting.light.intensity = intensity;
