@@ -47,5 +47,6 @@ pub mod wind_scenes;
 pub mod skeleton_scenes;
 // Procedural reflection probes and SSR; cooked `lod-levels` is og-tests-cooked's.
 pub mod depth_render_scenes;
+pub mod effects_scenes;
 #[cfg(not(target_arch = "wasm32"))]
 pub mod probe_scenes;

@@ -822,7 +822,7 @@ pub fn build(name: &str) -> Result<GfxScene, String> {
         },
         // Night camp: GPU particles after 120 ticks.
         "particles" => |g, _| {
-            g.scene = fx::particles_scene();
+            g.scene = crate::effects_scenes::camp_night();
             g.frames = 120;
             g.update = Some(fx::tick_update);
             Ok(())
@@ -837,7 +837,7 @@ pub fn build(name: &str) -> Result<GfxScene, String> {
         },
         // The same simulated on the CPU path (no collision).
         "particles-cpu" => |g, _| {
-            g.scene = fx::particles_scene();
+            g.scene = crate::effects_scenes::camp_night();
             g.desc.particles = og_render::ParticleSimulation::Cpu;
             g.frames = 120;
             g.update = Some(fx::tick_update);
@@ -846,7 +846,7 @@ pub fn build(name: &str) -> Result<GfxScene, String> {
         // R7: lit smoke, lit mesh debris with collision dust (sub-emitters,
         // so the CPU path) and a heat haze bending a checker wall.
         "particles-lit" => |g, _| {
-            g.scene = fx::particles_lit_scene();
+            g.scene = crate::effects_scenes::forge_yard();
             g.frames = 90;
             g.update = Some(fx::tick_update);
             Ok(())
@@ -861,24 +861,24 @@ pub fn build(name: &str) -> Result<GfxScene, String> {
         // Effect materials (effect.rs) on billboards, effect meshes, a
         // trail, a beam and hooked puffs.
         "effect-materials" => |g, _| {
-            g.scene = fx::effect_materials_scene();
+            g.scene = crate::effects_scenes::spell_duel()?;
             g.frames = 60;
             g.update = Some(fx::effect_materials_update);
             Ok(())
         },
         "trails-beams" => |g, _| {
-            g.scene = fx::trails_scene();
+            g.scene = crate::effects_scenes::ritual_night();
             g.frames = 50;
-            g.update = Some(fx::move_wisps);
+            g.update = Some(crate::effects_scenes::move_ritual_wisps);
             Ok(())
         },
         "decals" => |g, _| {
-            g.scene = fx::decals_scene();
+            g.scene = crate::effects_scenes::square_after_fight();
             Ok(())
         },
         // 642 normal-mapped bullet holes on a wall and the ground (R7).
         "decals-many" => |g, _| {
-            g.scene = fx::decals_many_scene();
+            g.scene = crate::effects_scenes::firefight_wall();
             Ok(())
         },
         // The spike's scene through a teal-orange LUT, vignette, fringing and grain.
@@ -1110,7 +1110,7 @@ pub fn build(name: &str) -> Result<GfxScene, String> {
         },
         // Phase 2: 3D particle fluids as a screen-space surface (row 29).
         "fluid-3d" => |g, _| {
-            g.scene = crate::p2_scenes::fluid_3d_scene();
+            g.scene = crate::effects_scenes::alchemist_fountain();
             Ok(())
         },
         // Material shader hooks: dissolve by noise, wind-swayed grass.
