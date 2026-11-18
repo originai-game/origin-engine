@@ -4,8 +4,8 @@ import { FIXTURES, NAMES } from "./fixtures.ts";
 import { BASE_FIXTURES, BASE_NAMES } from "./base-fixtures.ts";
 import { META_FIXTURES, META_NAMES } from "./meta-fixtures.ts";
 
-const LISTS = ["items", "pages", "shots", "bars", "ticks", "columns", "rows", "entries", "stars", "buffs", "debuffs", "stats", "compareStats", "hints", "steps", "rewards", "messages", "attachments"];
-const MEMBERS = ["breadcrumbs", "carousel", "celebration", "chart", "dataGrid", "menu", "ribbon", "skeletonGroup", "spinner", "splitView", "starBar", "statusGrid", "tooltipCard", "actionHints", ...Object.keys(BASE_NAMES), ...Object.keys(META_NAMES)];
+const LISTS = ["items", "pages", "shots", "bars", "ticks", "columns", "rows", "entries", "stars", "buffs", "debuffs", "stats", "compareStats", "hints", "steps", "rewards", "messages", "attachments", "nodes", "links"];
+const MEMBERS = ["breadcrumbs", "carousel", "celebration", "chart", "dataGrid", "menu", "nodeGraph", "ribbon", "skeletonGroup", "spinner", "splitView", "starBar", "statusGrid", "tooltipCard", "actionHints", ...Object.keys(BASE_NAMES), ...Object.keys(META_NAMES)];
 
 export function sample(world: World, args: readonly string[]): void {
   const member = args[0] || "tooltipCard";

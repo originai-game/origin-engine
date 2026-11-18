@@ -16,6 +16,8 @@
       <DataGrid columns={$sample_columns} tracks={$sample.tracks} rows={$sample_rows} selected={$sample.selected} label={$sample.label} loading={$sample.loading} error={$sample.error} empty={$sample.empty} hint={$sample.hint} />
     {:else if $member == 'menu'}
       <Menu entries={$sample_entries} submenu={$sample.submenu} label={$sample.label} />
+    {:else if $member == 'nodeGraph'}
+      <NodeGraph nodes={$sample_nodes} links={$sample_links} view={$sample.view} zoom={$sample.zoom} panX={$sample.panX} panY={$sample.panY} selected={$sample.selected} name={$sample.name} />
     {:else if $member == 'ribbon'}
       <div class="host" part="Sheet.card" class:low={$sample.corner == 'bottomRight' || $sample.corner == 'bottomLeft'}><p class="host-name">Ember Blade</p><p class="host-note">Legendary sword</p><div class="pin" class:topLeft={$sample.corner == 'topLeft'} class:bottomRight={$sample.corner == 'bottomRight'} class:bottomLeft={$sample.corner == 'bottomLeft'} class:center={$sample.corner == 'center'}><Ribbon text={$sample.text} corner={$sample.corner} tone={$sample.tone} /></div></div>
     {:else if $member == 'skeletonGroup'}
