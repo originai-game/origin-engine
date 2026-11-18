@@ -21,6 +21,13 @@
       <li id="Controller" class="st" part="calibration.step" class:on={step == "controller"}><div class="num">{3}</div><p class="name">{t("screen.calibration.controller")}</p></li>
     </ol>
     <div id="Test" part="calibration.test">{@render test?.()}</div>
+    {#snippet test()}
+      {#if step == "brightness"}
+        <div id="Patch" class="patch" style:--level={brightness}>
+          <div class="mark faint"></div><div class="mark mid"></div><div class="mark clear"></div>
+        </div>
+      {/if}
+    {/snippet}
     {#if step == "brightness"}
       <div id="BrightnessStep" class="step">
         <p id="BrightnessHint">{t("screen.calibration.brightnessHint")}</p>
@@ -80,6 +87,13 @@ p { margin: 0; }
 [part="calibration.test"]:not(:empty) { min-block-size: calc(160 * var(--font-step-px)); box-shadow: var(--system-slot-empty-rim); }
 .step { display: flex; flex-direction: column; row-gap: var(--space-md); }
 .step > p { font-size: calc(16 * var(--font-step-px)); line-height: var(--font-leading-normal); color: var(--front-ink-dim); line-clamp: 3; }
+/* The brightness patch (the game's own test replaces it): three marks on
+   black, lifted as the slider moves, as the game's gamma will lift them. */
+.patch { display: flex; align-items: center; justify-content: space-evenly; block-size: calc(160 * var(--font-step-px)); background: var(--system-patch-ground); }
+.mark { inline-size: calc(64 * var(--font-step-px)); block-size: calc(64 * var(--font-step-px)); filter: brightness(calc(0.4 + var(--level) * 2.4)); }
+.faint { background: var(--system-patch-faint); }
+.mid { background: var(--system-patch-mid); }
+.clear { background: var(--system-patch-clear); }
 /* A control and what it reads, on one line. */
 .line { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-sm) var(--space-md); }
 .line input { flex: 1 1 calc(200 * var(--font-step-px)); min-inline-size: 0; }
@@ -99,6 +113,9 @@ button.lit { --button-primary-fill: var(--front-play-fill); --button-primary-hov
   [part="calibration.frame"] { row-gap: var(--space-md); padding: var(--space-lg); }
   .st:not(.on) .name { display: none; }
   .step > p { font-size: calc(14 * var(--font-step-px)); }
+  [part="calibration.test"]:not(:empty) { min-block-size: calc(112 * var(--font-step-px)); }
+  .patch { block-size: calc(112 * var(--font-step-px)); }
+  .mark { inline-size: calc(44 * var(--font-step-px)); block-size: calc(44 * var(--font-step-px)); }
   button.plate { flex: 1 1 0; min-inline-size: 0; }
   /* The track tightens so the lit step's name fits beside three numbers. */
   #Steps { column-gap: var(--space-xs); }

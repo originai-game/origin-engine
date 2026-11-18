@@ -1,6 +1,6 @@
 <meta name="screen" content="save-load" data-layer="menu" data-focus="Body/Slots/List" data-under="dim" data-input="menu" data-pause="false" data-capture="true" data-remember="true" data-back="pop">
 <meta name="strings" content="./save-load.en.ogt">
-<meta name="parts" content="save-load.frame save-load.band save-load.title save-load.row save-load.thumb save-load.name save-load.shade save-load.tag save-load.preview save-load.actions">
+<meta name="parts" content="save-load.frame save-load.band save-load.title save-load.row save-load.thumb save-load.name save-load.shade save-load.tag save-load.preview save-load.actions save-load.detail save-load.shot">
 <meta name="prop:mode" content="string" data-doc="save or load: the title and the main action.">
 <meta name="prop:slots" content="list" data-doc="The saves: { title, place, played (seconds), date (text), auto (bool), empty (bool), thumb (texture) }.">
 <meta name="prop:selected" content="string" data-doc="The stable collection key selected now.">
@@ -43,7 +43,22 @@
         {/each}
       </div>
     </div>
-    <aside id="Side">
+    <aside id="Side" part="save-load.detail">
+      {#each slots as s (s.id)}
+        {#if s.id == selected}
+          <art id="Shot" part="save-load.shot" kind="saveThumb" src={s.thumb}></art>
+          {#if s.empty}
+            <p id="ShotEmpty">{t("screen.save-load.empty")}</p>
+          {:else}
+            <p id="ShotName">{s.title}</p>
+            <div id="ShotMeta">
+              <p id="ShotPlace">{s.place}</p>
+              <p id="ShotPlayed">{t("screen.save-load.Played", { s_played: formatDuration(s.played) })}</p>
+              <p id="ShotDate">{s.date}</p>
+            </div>
+          {/if}
+        {/if}
+      {/each}
       <div id="Preview" part="save-load.preview">{@render preview?.()}</div>
       <div id="Actions" part="save-load.actions">
         <button id="Delete" variant="danger" class="plate" onclick={delete} ondetails={delete}>{t("screen.save-load.delete")}</button>
@@ -62,7 +77,9 @@
 /* Over the dimmed game: a veil; the band (Back, the title, a rule); the
    slots as cut glass strips (thumb, chapter, place, time and date, an Auto
    tag), the chosen one ringed and lit; the game's preview and the actions
-   beside them, the actions at the foot on a phone held upright. */
+   beside them on a cut plate: the chosen slot's shot, chapter, place, time
+   and date, the game's preview under them and the actions at the plate's
+   foot; on a phone held upright only the actions, at the screen's foot. */
 :root { position: relative; display: flex; flex-direction: column; row-gap: var(--space-xl); block-size: stretch; overflow: hidden; padding: var(--space-xxl) var(--space-3xl) var(--space-xl); color: var(--front-ink); }
 [part="save-load.shade"] { position: absolute; inset: 0; background: var(--system-veil); }
 [part="save-load.band"], #Body { position: relative; }
@@ -93,10 +110,20 @@ h1, p { margin: 0; }
 [part="save-load.row"]:has(#Empty) [part="save-load.thumb"] { display: none; }
 [part="save-load.row"]:has(#Empty) #Text { padding-inline-end: 0; }
 [part="save-load.tag"] { position: absolute; inset-block-start: var(--space-sm); inset-inline-end: var(--space-md); padding: var(--space-xxs) var(--space-sm); font-size: var(--hud-tag-size); font-weight: var(--font-weight-bold); letter-spacing: var(--hud-label-tracking); text-transform: uppercase; background: var(--hud-tag-fill); box-shadow: var(--hud-tag-rim); }
-#Side { min-block-size: 0; display: flex; flex-direction: column; row-gap: var(--space-lg); }
+[part="save-load.detail"] { min-block-size: 0; display: flex; flex-direction: column; row-gap: var(--space-sm); padding: var(--space-lg); overflow: hidden auto; background: var(--hud-plate-fill); box-shadow: var(--hud-plate-rim); clip-path: polygon(var(--front-cut) 0, 100% 0, 100% calc(100% - var(--front-cut)), calc(100% - var(--front-cut)) 100%, 0 100%, 0 var(--front-cut)); }
+/* No slot chosen: no plate, only the actions at the foot. */
+[part="save-load.detail"]:not(:has([part="save-load.shot"])) { background: none; box-shadow: none; }
+[part="save-load.shot"] { flex: none; inline-size: 100%; aspect-ratio: 1.78; block-size: auto; object-fit: cover; margin-block-end: var(--space-xs); box-shadow: var(--system-slot-empty-rim); }
+#ShotName { font-size: calc(24 * var(--font-step-px)); line-height: var(--font-leading-tight); font-weight: var(--font-weight-bold); line-clamp: 2; }
+#ShotEmpty { font-size: calc(18 * var(--font-step-px)); color: var(--front-ink-faint); }
+#ShotMeta { display: flex; flex-wrap: wrap; column-gap: var(--space-md); row-gap: var(--space-xxs); }
+#ShotMeta p { font-size: calc(14 * var(--font-step-px)); font-variant-numeric: tabular-nums; color: var(--front-ink-dim); }
+#ShotPlace { flex: 1 1 100%; min-inline-size: 0; color: var(--front-ink); line-clamp: 2; }
 [part="save-load.preview"] { flex: 0 1 auto; min-block-size: 0; }
-[part="save-load.actions"] { display: flex; flex-wrap: wrap; justify-content: end; gap: var(--space-sm) var(--space-md); margin-block-start: auto; }
-button.plate { --button-radius: 0; --button-focus-radius: 0; --button-border-width: 0; --button-font-size: calc(16 * var(--font-step-px)); --button-tracking: var(--font-tracking-md); --button-transform: uppercase; min-inline-size: calc(150 * var(--font-step-px)); }
+/* The actions share the plate's foot; when the plate is too narrow for
+   them all, the main one takes its own row under the others. */
+[part="save-load.actions"] { display: flex; flex-wrap: wrap; justify-content: end; gap: var(--space-sm); margin-block-start: auto; padding-block-start: var(--space-md); }
+button.plate { --button-radius: 0; --button-focus-radius: 0; --button-border-width: 0; --button-font-size: calc(16 * var(--font-step-px)); --button-tracking: var(--font-tracking-md); --button-transform: uppercase; flex: 1 1 calc(120 * var(--font-step-px)); min-inline-size: 0; }
 button.plate, button.plate::part(base) { block-size: var(--control-lg); }
 button.plate::part(base) { border-width: 0; clip-path: polygon(var(--front-cut) 0, 100% 0, 100% calc(100% - var(--front-cut)), calc(100% - var(--front-cut)) 100%, 0 100%, 0 var(--front-cut)); }
 button.lit { --button-primary-fill: var(--front-play-fill); --button-primary-hover-fill: var(--front-play-hover-fill); --button-primary-pressed-fill: var(--front-play-pressed-fill); --button-primary-ink: var(--front-play-ink); --button-primary-hover-ink: var(--front-play-ink); --button-primary-pressed-ink: var(--front-play-ink); --button-primary-shadow: none; --button-primary-rim: transparent; --button-primary-hover-rim: transparent; }
@@ -119,9 +146,11 @@ button.lit { --button-primary-fill: var(--front-play-fill); --button-primary-hov
   [part="save-load.title"] { flex: 1 0 100%; }
   #Rule { display: none; }
   #Body { grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(0, 1fr) auto; row-gap: var(--space-md); }
-  [part="save-load.preview"] { display: none; }
+  [part="save-load.detail"] { padding: 0; overflow: visible; background: none; box-shadow: none; clip-path: none; }
+  [part="save-load.shot"], #ShotName, #ShotEmpty, #ShotMeta, [part="save-load.preview"] { display: none; }
+  [part="save-load.actions"] { padding-block-start: 0; }
   /* The plates share the foot; at a large text size the primary one
      takes its own row rather than clip a label. */
-  button.plate { flex: 1 1 calc(100 * var(--font-step-px)); min-inline-size: 0; }
+  button.plate { flex-basis: calc(100 * var(--font-step-px)); }
 }
 </style>

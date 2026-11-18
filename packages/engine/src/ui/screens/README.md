@@ -105,7 +105,7 @@ focus-visible and disabled states (docs/ui.md §3.2).
 | `pagination` (`pagination.svelte`) | `frame`, `gap` |
 | `pause` (`pause.svelte`) | `frame`, `title`, `objective`, `shade`, `status`, `entry` (a button: `.minor` `.danger`) |
 | `results` (`results.svelte`) | `frame`, `title` (`.outcome-lost` `.outcome-won`), `grade`, `row`, `label`, `figure`, `cell` |
-| `save-load` (`save-load.svelte`) | `frame`, `band`, `title`, `row` (`.selection-off` `.selection-on`), `thumb`, `name`, `shade`, `tag`, `preview`, `actions` |
+| `save-load` (`save-load.svelte`) | `frame`, `band`, `title`, `row` (`.selection-off` `.selection-on`), `thumb`, `name`, `shade`, `tag`, `preview`, `actions`, `detail`, `shot` |
 | `settings` (`settings.svelte`) | `frame`, `band`, `title`, `row` (`:focus-within`), `shade`, `tabs`, `tab`, `description` |
 | `splash` (`splash.svelte`) | `frame`, `mark`, `dots`, `dot` (`.on`), `boot`, `track`, `fill`, `skip` |
 | `star-rating` (`star-rating.svelte`) | `frame` |

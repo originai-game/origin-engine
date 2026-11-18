@@ -1,0 +1,16 @@
+{
+  "added": [
+    {
+      "member": "SaveLoad",
+      "summary": "Beside the slots, a cut glass plate shows the chosen slot: its shot, chapter, place, time and date, the game's preview under them and the actions at the plate's foot (the main one on its own row when the plate is too narrow for all three). With no slot chosen there is no plate. A phone held upright keeps only the actions at the foot. New parts save-load.detail and save-load.shot."
+    },
+    {
+      "member": "Calibration",
+      "summary": "The brightness step draws its own test in the well: three marks on black, from one a well set screen barely shows to one it shows clearly, lifted as the slider moves. A game's test snippet replaces it."
+    },
+    {
+      "member": "Default style pause and settings tokens",
+      "summary": "--system-patch-ground, --system-patch-faint, --system-patch-mid and --system-patch-clear: the calibration brightness patch's black and its three marks."
+    }
+  ]
+}
