@@ -211,7 +211,9 @@ fn lit_fragment(in: VertexOut) -> vec4<f32> {
   // share of samples covered (three.js's ALPHA_TO_COVERAGE alpha test); it is cut only where nothing is covered.
   let a2c = (mode & 16u) != 0u && material.emissive.w >= 0.0;
   let coverage = clamp((base.a - material.emissive.w) / max(fwidthFine(base.a), 1e-4) + 0.5, 0.0, 1.0);
-  if (DISCARD && ((material.emissive.w >= 0.0 && select(base.a < material.emissive.w, coverage <= 0.0, a2c)) || dissolve.w > 0.5)) {
+  // An instance fading in is cut by the dither (instance.wgsl `reveal_cut`).
+  let hidden = reveal_cut(look_hidden(in.look), in.clip.xy, frame.time.x);
+  if (DISCARD && ((material.emissive.w >= 0.0 && select(base.a < material.emissive.w, coverage <= 0.0, a2c)) || dissolve.w > 0.5 || hidden)) {
     discard;
   }
   let dissolve_edge = dissolve.rgb;

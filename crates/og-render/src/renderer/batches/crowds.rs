@@ -67,6 +67,7 @@ impl Renderer {
                     shader: m.shader,
                     lean: false,
                     derivatives: m.flat,
+                    reveal: false,
                     compact: false,
                     array: m.array.is_some(),
                     foliage: false,

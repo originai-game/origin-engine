@@ -366,8 +366,13 @@ pub(crate) struct Batch {
     pub(crate) lean: bool,
     /// Its fragments take screen derivatives (flat shading, or the frame's
     /// decals): its lean pipelines keep the discard (`DISCARD` in
-    /// pbr_fs.wgsl), so the derivatives are the full pipeline's.
+    /// pbr_fs.wgsl), so the derivatives are the full pipeline's. A run
+    /// fading in keeps it too: the dither is that discard.
     pub(crate) derivatives: bool,
+    /// Its instances are fading in ([`crate::InstanceFx::reveal`]): cut by
+    /// the dither in the lit, prepass and shadow passes, and drawn off the
+    /// cluster path, whose rasteriser keeps one surface a pixel.
+    pub(crate) reveal: bool,
     /// Drawn from its mesh's compact vertices (lean, the mesh
     /// [`VertexEncoding::Compact`]): the instance transforms include the
     /// dequantisation (`compact.rs`).

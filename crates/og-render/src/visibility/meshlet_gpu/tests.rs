@@ -20,6 +20,7 @@ pub(crate) fn batch(mesh: usize, first: u32, count: u32) -> Batch {
         shader: None,
         lean: false,
         derivatives: false,
+        reveal: false,
         compact: false,
         array: false,
         foliage: false,

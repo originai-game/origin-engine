@@ -138,14 +138,18 @@ fn look_flash_amount(look: vec4<f32>) -> f32 {
 // The instance's outline group, 1 to 255, or 0 for none (its id then comes
 // from its transform: `object_id`).
 fn look_outline(look: vec4<f32>) -> u32 {
-  return u32(max(floor(look.y * 0.5), 0.0));
+  return u32(max(floor(look.y * 0.5), 0.0)) & 255u;
 }
 
 // An instance's id in the outline target: its group's, else its transform's.
+// Above it, in bits 16 to 23, how much of an instance fading in is hidden
+// (`look_hidden_steps`): the prepass has no look of its own to cut by
+// (pbr_prepass.wgsl `prepass_hidden`).
 fn outline_object(m0: vec3<f32>, m1: vec3<f32>, m2: vec3<f32>, m3: vec3<f32>, look: vec4<f32>) -> u32 {
+  let hidden = look_hidden_steps(look) << 16u;
   let group = look_outline(look);
-  if (group > 0u) { return group; }
-  return object_id(m0, m1, m2, m3);
+  if (group > 0u) { return group | hidden; }
+  return object_id(m0, m1, m2, m3) | hidden;
 }
 
 // Whether the instance is darkened by the shadow maps (look.x >= 0;
@@ -381,7 +385,7 @@ fn vs_prepass_skinned(@builtin(vertex_index) vi: u32, v: VertexIn, i: SkinnedIns
   // The instance's, not the skinned vertex's (its joints move it); bit 8
   // marks a skinned instance, a character, whose face and hands the
   // painterly filter keeps (Stylise.paintCharacterDetail, pbr_prepass.wgsl).
-  p.object = object_id(i.m0, i.m1, i.m2, i.m3) | 256u;
+  p.object = object_id(i.m0, i.m1, i.m2, i.m3) | 256u | (look_hidden_steps(i.look) << 16u);
   return p;
 }
 

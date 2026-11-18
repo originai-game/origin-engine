@@ -281,3 +281,128 @@ fn deformed_vertices_replace_the_mesh() {
     let mut r = Renderer::new_blocking(&desc).expect("renderer");
     assert!(r.render(&bad, &RenderTarget::Offscreen).is_err());
 }
+
+/// A model fading in (`InstanceFx::reveal`): a box over a lit ground, drawn
+/// through the lean pipelines (a plain material), the full ones (a
+/// textured one) and under GPU culling, at five amounts. It draws that
+/// share of its pixels, its shadow darkens by that share, the pattern
+/// turns with the tick, and at 0 the frame is the one without the box: no
+/// pass (lit, prepass, shadow, the culling's occluders) draws what the
+/// dither cut.
+#[test]
+#[ignore = "requires GPU"]
+fn a_model_fading_in_draws_its_share_of_pixels_and_of_its_shadow() {
+    let camera = Camera {
+        position: Vec3::new(0.0, 3.2, 6.5),
+        target: Vec3::new(-0.6, 0.5, 0.0),
+        ..Default::default()
+    };
+    let build = |textured: bool, reveal: Option<f32>, tick: u64| {
+        let mut scene = RenderScene::new();
+        let ground = scene.add_mesh(shapes::plane(14.0, 1.0));
+        let white = scene.add_material(Material::default());
+        scene.add_instance(ground, white, Mat4::IDENTITY);
+        let texture = textured.then(|| scene.add_texture(shapes::checker(64, 4)));
+        let red = scene.add_material(Material {
+            base_color: [0.9, 0.04, 0.04, 1.0],
+            base_color_texture: texture,
+            ..Default::default()
+        });
+        let mesh = scene.add_mesh(shapes::cuboid(Vec3::splat(1.6)));
+        if let Some(reveal) = reveal {
+            scene.add_instance(mesh, red, Mat4::from_translation(Vec3::new(0.0, 0.8, 0.0)));
+            scene.objects.instances.last_mut().expect("added").fx = og_render::InstanceFx {
+                reveal,
+                ..og_render::InstanceFx::NONE
+            };
+        }
+        scene.lighting.light.direction_to_light = Vec3::new(0.7, 0.6, 0.25).normalize();
+        scene.lighting.light.cast_shadows = true;
+        scene.frame.camera = camera;
+        scene.frame.tick = tick;
+        scene
+    };
+    let red = |p: [u8; 3]| p[0] as i32 > p[1] as i32 + 60;
+    let count = |img: &RgbaImage, keep: &dyn Fn(u32, u32) -> bool| {
+        let mut n = 0u32;
+        for y in 0..img.height {
+            for x in 0..img.width {
+                n += keep(x, y) as u32;
+            }
+        }
+        n
+    };
+    for (name, textured, culling) in [
+        ("lean", false, og_render::Culling::Auto),
+        ("textured", true, og_render::Culling::Auto),
+        ("gpu-cull", false, og_render::Culling::Gpu),
+    ] {
+        let desc = RenderDesc { culling, ..small() };
+        // Two frames each: GPU culling's occluders are the frame before's.
+        let shot = |reveal: Option<f32>, tick: u64| {
+            let mut scene = build(textured, reveal, tick);
+            run(&desc, &mut scene, 2, |_, _| {}).0
+        };
+        let (whole, empty) = (shot(Some(1.0), 7), shot(None, 7));
+        let boxed = count(&whole, &|x, y| red(px(&whole, x, y)));
+        assert!(boxed > 1500, "{name}: the box covers {boxed} pixels");
+        // Its shadow on the ground: darker with the box than without, and
+        // not the box itself.
+        let shaded = |x: u32, y: u32| {
+            !red(px(&whole, x, y)) && luma(px(&empty, x, y)) - luma(px(&whole, x, y)) > 25.0
+        };
+        let shadow = count(&whole, &shaded);
+        assert!(shadow > 400, "{name}: the shadow covers {shadow} pixels");
+        let shade = |img: &RgbaImage| {
+            let mut sum = 0.0;
+            for y in 0..img.height {
+                for x in 0..img.width {
+                    if shaded(x, y) {
+                        sum += luma(px(&empty, x, y)) - luma(px(img, x, y));
+                    }
+                }
+            }
+            sum / shadow as f32
+        };
+        let full_shade = shade(&whole);
+        let mut last = full_shade;
+        for reveal in [0.75, 0.5, 0.25] {
+            let img = shot(Some(reveal), 7);
+            save(&format!("reveal-{name}-{reveal}"), &img);
+            let drawn = count(&img, &|x, y| red(px(&img, x, y))) as f32 / boxed as f32;
+            assert!(
+                (drawn - reveal).abs() < 0.06,
+                "{name}: at reveal {reveal} it draws {drawn} of its pixels"
+            );
+            // Where it is cut the ground shows, never black or the clear colour.
+            let through = count(&img, &|x, y| {
+                red(px(&whole, x, y)) && !red(px(&img, x, y)) && luma(px(&img, x, y)) < 20.0
+            });
+            assert_eq!(through, 0, "{name}: {through} cut pixels are black");
+            let s = shade(&img);
+            // Lighter with every step, and neither whole nor gone: the
+            // frame is display-encoded, so the share is not the luma's.
+            assert!(
+                s < last - 2.0 && s > 0.1 * full_shade,
+                "{name}: at reveal {reveal} its shadow is {s} of {full_shade}, after {last}"
+            );
+            last = s;
+        }
+        // The pattern turns with the tick, the share drawn does not.
+        let (a, b) = (shot(Some(0.5), 7), shot(Some(0.5), 8));
+        let moved = count(&a, &|x, y| red(px(&a, x, y)) != red(px(&b, x, y)));
+        assert!(
+            moved > boxed / 4,
+            "{name}: {moved} of {boxed} pixels changed between two ticks"
+        );
+        // Nothing of it is left at 0, in any pass.
+        let gone = shot(Some(0.0), 7);
+        save(&format!("reveal-{name}-0"), &gone);
+        assert_eq!(
+            differing(&gone, &empty, 1.0),
+            0,
+            "{name}: at reveal 0 the frame is the one without the box"
+        );
+        save(&format!("reveal-{name}-1"), &whole);
+    }
+}

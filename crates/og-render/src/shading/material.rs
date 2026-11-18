@@ -362,7 +362,7 @@ pub(crate) fn array_lit_source(standard: &str) -> String {
 pub(crate) fn array_shadow_source(standard: &str) -> String {
     let mut s = standard.to_string();
     for signature in [
-        "vs(v: VertexIn, i: InstanceIn) -> VsOut {",
+        "vs(v: VertexIn, i: InstanceIn, @location(8) look: vec4<f32>) -> VsOut {",
         "vs_lean(@location(0) position: vec3<f32>, i: InstanceIn) -> LeanVsOut {",
     ] {
         let (name, rest) = signature.split_once('(').expect("a signature");

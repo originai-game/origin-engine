@@ -7,6 +7,33 @@ fn instance_matrix(c0: vec3<f32>, c1: vec3<f32>, c2: vec3<f32>, c3: vec3<f32>) -
   return mat4x4<f32>(vec4<f32>(c0, 0.0), vec4<f32>(c1, 0.0), vec4<f32>(c2, 0.0), vec4<f32>(c3, 1.0));
 }
 
+// How much of an instance fading in is still hidden, 0 to 1 (0: whole),
+// from its look's flash word: 512 a step above the outline group
+// (instances.rs `fx_bits`).
+fn look_hidden_steps(look: vec4<f32>) -> u32 {
+  return u32(max(floor(look.y / 512.0), 0.0)) & 255u;
+}
+
+fn look_hidden(look: vec4<f32>) -> f32 {
+  return f32(look_hidden_steps(look)) / 255.0;
+}
+
+// Whether the dither cuts a fragment of an instance fading in
+// (`InstanceFx::reveal`): `hidden` of its pixels are, picked by interleaved
+// gradient noise (Jimenez, "Next Generation Post Processing in Call of
+// Duty: Advanced Warfare", 2014) over the pass's pixels, turned every
+// sixtieth of a second of `seconds` so the frames (and a temporal resolve)
+// average to the share drawn. The lit pass and the prepass cut the same
+// pixels of a frame; a shadow pass cuts its map's texels, which the
+// shadow's filter averages to a lighter shadow. Callers fold it into their
+// entry point's one discard.
+fn reveal_cut(hidden: f32, pixel: vec2<f32>, seconds: f32) -> bool {
+  if (hidden <= 0.0) { return false; }
+  let turn = floor(seconds * 60.0) % 64.0;
+  let p = floor(pixel) + 5.588238 * turn;
+  return fract(52.9829189 * fract(dot(p, vec2<f32>(0.06711056, 0.00583715)))) < hidden;
+}
+
 // A normal's world direction: through the inverse transpose of the model's
 // upper 3x3 (its cofactor matrix, flipped for a mirroring transform), so a
 // non-uniform scale bends normals the right way. Every vertex stage takes

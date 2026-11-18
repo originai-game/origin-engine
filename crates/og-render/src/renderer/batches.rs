@@ -53,11 +53,15 @@ impl Renderer {
                     blend: m.blend,
                     physical: m.physical.is_some(),
                     transmissive: m.transmissive,
-                    dissolve: m.dissolve,
+                    // A run fading in is cut by the dither in every
+                    // pass: its casters draw the material's fragment,
+                    // and its lean pipelines keep the discard.
+                    dissolve: m.dissolve || r.reveal,
                     effects: m.effects,
                     shader: m.shader,
                     lean: m.lean,
-                    derivatives: m.flat,
+                    derivatives: m.flat || r.reveal,
+                    reveal: r.reveal,
                     compact: r.dequant.is_some(),
                     array: r.array,
                     foliage: scene.mesh_foliage_all()[r.mesh].is_some(),
