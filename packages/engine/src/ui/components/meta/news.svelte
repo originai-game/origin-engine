@@ -21,7 +21,7 @@
   {#if loading}<div class="wait" data-layout="row" role="status"><Spinner name={t("meta.loading")} /><span>{t("meta.loading")}</span></div>
   {:else if error}<ErrorState body={error} />
   {:else if !entries.length}<EmptyState title={t("meta.news.empty")} icon="flag" />
-  {:else}<ul part="News.list" class="list" data-layout="stack" data-gap="loose">
+  {:else}<div class="feed" data-layout="scroll"><ul part="News.list" class="list" data-layout="stack" data-gap="loose">
     {#each entries as entry (entry.id)}<li><article part="News.article News.card" class="article" data-layout="stack" data-unread={entry.unread} data-pinned={entry.pinned}>
       <div class="meta" data-layout="cluster"><span part="News.kind News.caption" class="kind">{entry.kind}</span><span part="News.date News.caption" class="date">{entry.date}</span>{#if entry.pinned}<span part="News.badge" class="badge">{t("meta.news.pinned")}</span>{/if}{#if entry.unread}<span part="News.badge" class="badge">{t("meta.news.unread")}</span>{/if}</div>
       <div part="News.heading" role="heading" aria-level="3"><button part="News.toggle" class="toggle" variant="quiet" aria-expanded={entry.id == selected} aria-label={entry.title} disabled={disabled} onclick={choose}><span part="News.headline" class="headline">{entry.title}</span></button></div>
@@ -32,13 +32,16 @@
         {#if entry.actionLabel}<button part="News.action" class="action" disabled={disabled} onclick={open}>{entry.actionLabel}</button>{/if}
       {/if}
     </article></li>{/each}
-  </ul>{/if}
+  </ul></div>{/if}
 </section>
 
 <style>
-:host { inline-size: stretch; }
+/* The panel takes its articles' height up to its host's; past that the
+   feed scrolls under the heading. */
+:host { inline-size: stretch; max-block-size: 100%; min-block-size: 0; }
 h2, h3, p { margin: 0; overflow-wrap: anywhere; }
-.list { margin: 0; padding: 0; list-style: none; }
+.feed { flex: 0 1 auto; min-block-size: 0; overflow-y: auto; -og-scroll-fade: var(--space-xl); }
+.list { inline-size: stretch; margin: 0; padding: 0; list-style: none; }
 /* An article: a card with two corners cut; a pinned one carries the gold
    rail, the open one a gold keyline. */
 .article { align-items: start; padding: var(--space-md) var(--space-lg); background: var(--quest-entry-fill); box-shadow: var(--quest-entry-rim); clip-path: polygon(var(--quest-cut) 0, 100% 0, 100% calc(100% - var(--quest-cut)), calc(100% - var(--quest-cut)) 100%, 0 100%, 0 var(--quest-cut)); }

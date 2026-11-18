@@ -128,7 +128,9 @@ defaults; collections carry stable `id` keys and intents return those keys.
 Free/premium, rarity, unread/read, claimed/expired and progress states are
 worded as well as exposed through declared parts or `data-*` attributes.
 Buttons keep shared hover/focus/press/disabled states. PassTrack scrolls
-horizontally; Inbox is side-by-side on desktop and stacked on a phone.
+horizontally; Inbox is side-by-side on desktop and stacked on a phone;
+News takes its articles' height up to its host's, then scrolls them under
+its heading.
 List subjects use a whole-line ellipsis with a title tooltip, and the
 selected reader shows the full subject. Loading composes shared Spinner.
 These are ordinary lists, not virtualised lists.
