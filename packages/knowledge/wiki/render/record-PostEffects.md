@@ -65,7 +65,7 @@ Token `og.PostEffects`, registered under the schema name `og.PostEffects`; its v
 | `screenBlurStrength` | `number` | `0` | ≥ 0 | — | tunable | How far it reaches each way: for zoom the fraction of the way to the centre, for spin radians, for directional pixels at 720 lines; 0 is off. |
 | `screenBlurCenter` | `Vector2` | `{ x: 0.5, y: 0.5 }` | — | — | tunable, worldspace `none` | Zoom's and spin's centre, in fractions of the frame from the top left. |
 | `screenBlurAngle` | `number` | `0` | — | `deg` | tunable | Directional's direction, counter-clockwise from the right (90 is vertical). |
-| `screenBlurSamples` | `number` | `16` | 4 … 64 | — | — | Taps per pixel: more is smoother on long blurs, each one a texture read. |
+| `screenBlurSamples` | `number` | `16` | 4 … 64 | — | — | Taps per pixel, each one a texture read. For zoom this is a minimum: the count follows the streak length at one tap per pixel, capped at 256; stable per-pixel jitter breaks up repeated highlights. Spin and directional use exactly this count. |
 
 #### God rays
 
@@ -288,7 +288,7 @@ resource PostEffects {
     unit deg
     tunable true
   }
-  field screenBlurSamples u32 "Taps per pixel: more is smoother on long blurs, each one a texture read." {
+  field screenBlurSamples u32 "Taps per pixel, each one a texture read. For zoom this is a minimum: the count follows the streak length at one tap per pixel, capped at 256; stable per-pixel jitter breaks up repeated highlights. Spin and directional use exactly this count." {
     default 16
     min 4
     max 64

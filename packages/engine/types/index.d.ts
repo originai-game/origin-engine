@@ -7911,7 +7911,7 @@ export interface PostEffects {
    */
   screenBlurAngle: number;
   /**
-   * Taps per pixel: more is smoother on long blurs, each one a texture read.
+   * Taps per pixel, each one a texture read. For zoom this is a minimum: the count follows the streak length at one tap per pixel, capped at 256; stable per-pixel jitter breaks up repeated highlights. Spin and directional use exactly this count.
    *
    * @default 16
    * @range 4..64
