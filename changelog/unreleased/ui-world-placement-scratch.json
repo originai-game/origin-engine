@@ -1,0 +1,5 @@
+{
+  "fixed": [
+    "World UI reuses anchor wrapper and transformed-bounds traversal buffers across frames without changing placement or drawing."
+  ]
+}
