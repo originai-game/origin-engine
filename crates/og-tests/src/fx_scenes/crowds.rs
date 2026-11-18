@@ -339,6 +339,49 @@ pub fn walk_crowd(scene: &mut RenderScene, frame: u32) {
 pub fn crowd_lods_scene() -> RenderScene {
     let mut scene = RenderScene::new();
     terrain(&mut scene, 400.0);
+    lod_crowd(&mut scene);
+    let stone = scene.add_material(Material {
+        base_color: [0.62, 0.58, 0.52, 1.0],
+        roughness: 0.85,
+        ..Default::default()
+    });
+    let block = scene.add_mesh(shapes::cuboid(Vec3::new(10.0, 16.0, 18.0)));
+    for k in 0..9 {
+        let z = -6.0 - k as f32 * 19.0;
+        for x in [-21.0, 21.0] {
+            scene.add_instance(block, stone, Mat4::from_translation(Vec3::new(x, 8.0, z)));
+        }
+    }
+    // The gate: two piers and a lintel across the avenue.
+    let pier = scene.add_mesh(shapes::cuboid(Vec3::new(9.0, 12.0, 2.0)));
+    let lintel = scene.add_mesh(shapes::cuboid(Vec3::new(32.0, 3.0, 2.0)));
+    for x in [-11.5, 11.5] {
+        scene.add_instance(
+            pier,
+            stone,
+            Mat4::from_translation(Vec3::new(x, 6.0, -60.0)),
+        );
+    }
+    scene.add_instance(
+        lintel,
+        stone,
+        Mat4::from_translation(Vec3::new(0.0, 13.5, -60.0)),
+    );
+    scene.lighting.light.direction_to_light = Vec3::new(0.8, 0.45, 0.25);
+    scene.lighting.light.cast_shadows = true;
+    scene.frame.camera = Camera {
+        position: Vec3::new(2.0, 7.0, 4.0),
+        target: Vec3::new(0.0, 0.0, -60.0),
+        exposure: Exposure::linear(0.9),
+        ..Default::default()
+    };
+    scene
+}
+
+/// `crowd-lods`'s crowd: about 2,100 walkers in twelve outfits on a
+/// 24 x 100 grid down the avenue from z -4 (1.3 m by 1.6 m cells), each
+/// crowd at three mesh levels and walking cards past about 37 m.
+pub fn lod_crowd(scene: &mut RenderScene) {
     // The walker in three pieces (trousers: hips and legs; shirt: chest
     // and upper arms; skin: head and forearms), each at three levels, so
     // an outfit colours them by its materials.
@@ -382,13 +425,13 @@ pub fn crowd_lods_scene() -> RenderScene {
         [0.26, 0.22, 0.20],
     ];
     let skins = [[0.86, 0.66, 0.52], [0.52, 0.36, 0.26]];
-    let skin: Vec<_> = skins.iter().map(|&c| cloth(&mut scene, c, 0.6)).collect();
+    let skin: Vec<_> = skins.iter().map(|&c| cloth(scene, c, 0.6)).collect();
     let outfits: Vec<og_render::Crowd> = (0..shirts.len() * skins.len())
         .map(|k| {
             let (o, t) = (k % shirts.len(), k / shirts.len());
             let materials = [
-                cloth(&mut scene, trousers[o], 0.85),
-                cloth(&mut scene, shirts[o], 0.75),
+                cloth(scene, trousers[o], 0.85),
+                cloth(scene, shirts[o], 0.75),
                 skin[t],
             ];
             og_render::Crowd {
@@ -417,33 +460,6 @@ pub fn crowd_lods_scene() -> RenderScene {
         })
         .collect();
     scene.objects.crowds = outfits;
-    let stone = scene.add_material(Material {
-        base_color: [0.62, 0.58, 0.52, 1.0],
-        roughness: 0.85,
-        ..Default::default()
-    });
-    let block = scene.add_mesh(shapes::cuboid(Vec3::new(10.0, 16.0, 18.0)));
-    for k in 0..9 {
-        let z = -6.0 - k as f32 * 19.0;
-        for x in [-21.0, 21.0] {
-            scene.add_instance(block, stone, Mat4::from_translation(Vec3::new(x, 8.0, z)));
-        }
-    }
-    // The gate: two piers and a lintel across the avenue.
-    let pier = scene.add_mesh(shapes::cuboid(Vec3::new(9.0, 12.0, 2.0)));
-    let lintel = scene.add_mesh(shapes::cuboid(Vec3::new(32.0, 3.0, 2.0)));
-    for x in [-11.5, 11.5] {
-        scene.add_instance(
-            pier,
-            stone,
-            Mat4::from_translation(Vec3::new(x, 6.0, -60.0)),
-        );
-    }
-    scene.add_instance(
-        lintel,
-        stone,
-        Mat4::from_translation(Vec3::new(0.0, 13.5, -60.0)),
-    );
     // People on a loose grid with gaps: a cell in eight empty, each off
     // its cell's centre by up to 0.45 of a cell. Most walk along the
     // avenue (either way, within 25 degrees of it), the rest anyhow; each
@@ -480,13 +496,4 @@ pub fn crowd_lods_scene() -> RenderScene {
         let outfit = ((unit(i, 11) * outfits as f32) as u32).min(outfits - 1);
         scene.objects.crowds[outfit as usize].members.push(member);
     }
-    scene.lighting.light.direction_to_light = Vec3::new(0.8, 0.45, 0.25);
-    scene.lighting.light.cast_shadows = true;
-    scene.frame.camera = Camera {
-        position: Vec3::new(2.0, 7.0, 4.0),
-        target: Vec3::new(0.0, 0.0, -60.0),
-        exposure: Exposure::linear(0.9),
-        ..Default::default()
-    };
-    scene
 }
