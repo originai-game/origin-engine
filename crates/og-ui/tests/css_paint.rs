@@ -216,6 +216,66 @@ fn image_sets_reselect_on_density_changes() {
 }
 
 #[test]
+fn overflow_clips_filter_source_not_its_output() {
+    for clip in ["overflow: hidden", "overflow: clip", "overflow: auto"] {
+        let d = Doc::new(
+            &format!(
+                r##"<meta name="component" content="t" />
+<div id="Parent"><div id="Filtered"><div id="Content"></div></div></div>
+<style>
+#Parent {{ width: 168px; height: 80px; overflow: hidden; }}
+#Filtered {{ width: 160px; height: 32px; {clip}; scrollbar-width: none; filter: drop-shadow(24px 0 0 #ff0000); }}
+#Content {{ width: 200px; height: 32px; background: white; }}
+</style>"##
+            ),
+            &[],
+        );
+        assert!(
+            d.ui.frame().warnings.is_empty(),
+            "{:?}",
+            d.ui.frame().warnings
+        );
+        let items = &d.ui.frame().items;
+        let start = items
+            .iter()
+            .position(|i| {
+                matches!(&i.cmd,
+                    DrawCmd::BeginLayer { material, .. }
+                    if *material == og_draw::UiMaterial::Builtin(og_draw::UiBuiltin::DropShadow)
+                )
+            })
+            .expect("filter source layer");
+        let end = items[start..]
+            .iter()
+            .find_map(|i| match &i.cmd {
+                DrawCmd::EndLayer { geometry, .. } => Some(geometry),
+                _ => None,
+            })
+            .expect("filter output");
+        assert!(
+            end.is_none(),
+            "{clip}: overflow must not reshape filter output"
+        );
+        assert!(
+            items[..start].iter().any(|i| matches!(&i.cmd,
+                DrawCmd::PushClip { half, .. } if half.0 == 84.0 && half.1 == 40.0
+            )),
+            "the ancestor still clips the result"
+        );
+        assert!(
+            items[start..].iter().any(|i| match &i.cmd {
+                DrawCmd::PushClip { half, .. } => half.0 == 80.0 && half.1 == 16.0,
+                DrawCmd::Shape { clip, .. } | DrawCmd::Quad { clip, .. } => {
+                    clip.width <= 160.0 && clip.height <= 32.0
+                }
+                _ => false,
+            }),
+            "{clip}: oversized source content is still clipped"
+        );
+    }
+}
+
+#[test]
 fn a_css_filter_function_list_filters_an_svg_shape() {
     // The `filter` property a rule sets on an SVG shape is the one its
     // attribute presents: a function list draws as a box's does.

@@ -1046,10 +1046,9 @@ impl ElementDraw {
                     ground: None,
                 });
             }
-            // The composite covers the layer; a mask or a material clips
-            // to the element's shape only when it clips, and to its CSS cut.
+            // Overflow clips the source in `children`, before filtering.
+            // Only clip-path cuts the resulting filter image back to a shape.
             let geometry = match &self.clip {
-                Clip::Shape => Some(self.geometry(&self.shape, at)),
                 Clip::Cut(shape) => Some(self.geometry(shape, at)),
                 _ => None,
             };
@@ -1069,13 +1068,7 @@ impl ElementDraw {
             out.push(plain_layer(None));
             out.extend(self.box_layers(&b.masks, theme, at, 1.0, |l| l.blend));
             out.push(end_layer(None, at, 1.0, Blend::DestinationIn));
-            let shaped = matches!(self.clip, Clip::Shape);
-            out.push(end_layer(
-                shaped.then(|| self.geometry(&self.shape, at)),
-                at,
-                self.opacity,
-                self.blend,
-            ));
+            out.push(end_layer(None, at, self.opacity, self.blend));
         }
         out
     }
