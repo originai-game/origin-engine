@@ -254,6 +254,7 @@ pub(crate) fn preparation(name: &str, start: f64) {
 
 /// A completed native texture job, timed on its worker, then moved onto
 /// the engine clock using the enqueue instant (no host call off-thread).
+#[cfg(not(target_arch = "wasm32"))]
 pub(crate) fn texture_work(id: &str, start: f64, offset: f64, ms: f64) {
     if !on() || start == 0.0 {
         return;
