@@ -147,7 +147,7 @@ pub fn weather(
                     ]),
                     gravity: drifting(fall, 1.0),
                     drag: 1.0,
-                    blend: ParticleBlend::Alpha,
+                    blend: Some(ParticleBlend::Alpha),
                     space: SimulationSpace::World,
                     align: ParticleAlign::Velocity { stretch: 0.045 },
                     render,
@@ -200,7 +200,7 @@ pub fn weather(
                     },
                     rotation_degrees: [0.0, 360.0],
                     angular_velocity_degrees: [-60.0, 60.0],
-                    blend: ParticleBlend::Alpha,
+                    blend: Some(ParticleBlend::Alpha),
                     space: SimulationSpace::World,
                     render,
                     ..ParticleEmitter::default()
@@ -248,7 +248,7 @@ pub fn weather(
                     scroll: 0.4,
                 },
                 rotation_degrees: [0.0, 360.0],
-                blend: ParticleBlend::Alpha,
+                blend: Some(ParticleBlend::Alpha),
                 space: SimulationSpace::World,
                 render,
                 ..ParticleEmitter::default()

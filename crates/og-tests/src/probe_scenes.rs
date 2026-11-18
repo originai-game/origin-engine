@@ -713,7 +713,7 @@ pub fn probe_effects_scene(on: bool) -> RenderScene {
             size: [1.2, 1.5],
             gravity: Vec3::ZERO,
             color: [0.1, 0.95, 0.15, 1.0],
-            blend: og_render::ParticleBlend::Alpha,
+            blend: Some(og_render::ParticleBlend::Alpha),
             ..Default::default()
         });
         scene.effects.particles.push(og_render::ParticleSystem::new(
@@ -832,7 +832,7 @@ pub fn add_floor_particles(scene: &mut RenderScene, soft: bool) {
         size: [1.2, 1.2],
         gravity: Vec3::ZERO,
         color: [0.1, 0.95, 0.15, 1.0],
-        blend: og_render::ParticleBlend::Alpha,
+        blend: Some(og_render::ParticleBlend::Alpha),
         soft_distance: if soft { 2.0 } else { 0.0 },
         ..Default::default()
     });

@@ -683,7 +683,7 @@ pub fn sprite_array_fx_scene() -> RenderScene {
             mode: SheetMode::Random,
             ..Default::default()
         },
-        blend: ParticleBlend::Additive,
+        blend: Some(ParticleBlend::Additive),
         render: ParticleRender::Sprite { layer: 2 },
         glow: 0.6,
         ..Default::default()
@@ -713,7 +713,7 @@ pub fn sprite_array_fx_scene() -> RenderScene {
             mode: SheetMode::OverLife { cycles: 1.0 },
             ..Default::default()
         },
-        blend: ParticleBlend::Alpha,
+        blend: Some(ParticleBlend::Alpha),
         render: ParticleRender::Sprite { layer: 2 },
         ..Default::default()
     });

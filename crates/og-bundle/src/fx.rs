@@ -30,7 +30,7 @@ use og_core::ogt::{Document, Entry, Value};
 use og_render_data::{Attractor, MAX_ATTRACTORS, MAX_SPLINE_POINTS, VectorField};
 use og_render_data::{
     Burst, CollisionTarget, ColorCurve, ColorLut, Curve, EmitterHandle, EmitterShape,
-    MAX_CURVE_KEYS, MAX_SUB_EMITTERS, MeshHandle, ParticleAlign, ParticleBlend, ParticleCollision,
+    MAX_CURVE_KEYS, MAX_SUB_EMITTERS, MeshHandle, ParticleAlign, ParticleCollision,
     ParticleEmitter, ParticleEventKind, ParticleRender, SheetMode, SimulationSpace, SubEmitter,
     SubTrigger, TextureArrayHandle, TextureHandle,
 };
@@ -1127,13 +1127,7 @@ pub fn parse_emitter_linked(
         }
     }
     em.bursts = bursts;
-    // Unsaid, a lit mesh is a solid thing (a chip, a shard, a splinter)
-    // and blends alpha: added onto what is behind it, a lit grey chip
-    // glows white. Light (sparks, glows, unlit or billboard) adds.
-    em.blend = blend.unwrap_or(match em.render {
-        ParticleRender::Mesh { .. } if em.lit => ParticleBlend::Alpha,
-        _ => ParticleBlend::Additive,
-    });
+    em.blend = blend;
     em.validate()?;
     Ok(em)
 }

@@ -48,7 +48,7 @@ pub fn campfire(scene: &mut RenderScene) -> Campfire {
             mode: SheetMode::OverLife { cycles: 1.0 },
             blend: false,
         },
-        blend: ParticleBlend::Additive,
+        blend: Some(ParticleBlend::Additive),
         soft_distance: 0.3,
         ..Default::default()
     });
@@ -79,7 +79,7 @@ pub fn campfire(scene: &mut RenderScene) -> Campfire {
             scroll: 0.3,
         },
         texture: Some(smoke_tex),
-        blend: ParticleBlend::Alpha,
+        blend: Some(ParticleBlend::Alpha),
         soft_distance: 0.6,
         ..Default::default()
     });
@@ -115,7 +115,7 @@ pub fn campfire(scene: &mut RenderScene) -> Campfire {
             scroll: 1.0,
         },
         texture: Some(spark),
-        blend: ParticleBlend::Additive,
+        blend: Some(ParticleBlend::Additive),
         align: ParticleAlign::Velocity { stretch: 0.04 },
         collision: Some(ParticleCollision {
             bounce: 0.35,
@@ -425,7 +425,7 @@ pub fn particles_lit_scene() -> RenderScene {
         gravity: Vec3::new(0.0, 0.3, 0.0),
         drag: 0.4,
         texture: Some(smoke_tex),
-        blend: ParticleBlend::Alpha,
+        blend: Some(ParticleBlend::Alpha),
         lit: true,
         ..Default::default()
     });
@@ -453,7 +453,7 @@ pub fn particles_lit_scene() -> RenderScene {
         color: [0.26, 0.19, 0.12, 1.0],
         gravity: Vec3::new(0.0, 0.2, 0.0),
         texture: Some(smoke_tex),
-        blend: ParticleBlend::Alpha,
+        blend: Some(ParticleBlend::Alpha),
         lit: true,
         ..Default::default()
     });

@@ -352,7 +352,7 @@ impl ParticleRenderer {
                 material,
                 material.and_then(|m| m.shader).map(|h| h.index()),
             );
-            let blend = material.and_then(|m| m.blend).unwrap_or(e.blend);
+            let blend = material.and_then(|m| m.blend).unwrap_or_else(|| e.blend());
             out.distortion |= kind == DrawKind::Distort;
             let mesh = match e.render {
                 ParticleRender::Mesh { mesh } => Some(mesh),
@@ -520,7 +520,7 @@ impl ParticleRenderer {
                         draw_entry: first_entry + steps.len() as u32,
                         layer,
                         layers,
-                        blend: match e.blend {
+                        blend: match e.blend() {
                             ParticleBlend::Additive => crate::SpriteBlend::Additive,
                             // Sprite mode takes no other (validate).
                             _ => crate::SpriteBlend::Alpha,
@@ -653,7 +653,7 @@ impl ParticleRenderer {
                     reset: false,
                     shift: None,
                     gpu: false,
-                    blend: material.and_then(|m| m.blend).unwrap_or(ce.blend),
+                    blend: material.and_then(|m| m.blend).unwrap_or_else(|| ce.blend()),
                     texture: ce.texture,
                     depth,
                     layers,
@@ -941,7 +941,7 @@ fn push_sprites(
 ) {
     let columns = e.sheet.columns.max(1);
     let rows = e.sheet.rows.max(1);
-    let blend = match e.blend {
+    let blend = match e.blend() {
         ParticleBlend::Additive => crate::SpriteBlend::Additive,
         // Sprite mode takes no other (validate).
         _ => crate::SpriteBlend::Alpha,

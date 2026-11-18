@@ -593,7 +593,9 @@ pub struct ParticleEmitter {
     /// its texture or array layer.
     pub round: bool,
     pub sheet: SpriteSheet,
-    pub blend: ParticleBlend,
+    /// None chooses alpha for a lit mesh and additive otherwise.
+    /// Some preserves an explicit blend, including additive lit meshes.
+    pub blend: Option<ParticleBlend>,
     pub space: SimulationSpace,
     pub align: ParticleAlign,
     /// Soft particles: fade where the quad comes within this distance of the
@@ -703,7 +705,7 @@ impl Default for ParticleEmitter {
             array: None,
             round: false,
             sheet: SpriteSheet::default(),
-            blend: ParticleBlend::Additive,
+            blend: None,
             space: SimulationSpace::World,
             align: ParticleAlign::Camera,
             soft_distance: 0.0,
@@ -729,6 +731,15 @@ impl Default for ParticleEmitter {
 }
 
 impl ParticleEmitter {
+    /// The authored blend, or the shared per-kind default: lit mesh
+    /// particles are solid chips; everything else is added light.
+    pub fn blend(&self) -> ParticleBlend {
+        self.blend.unwrap_or(match self.render {
+            ParticleRender::Mesh { .. } if self.lit => ParticleBlend::Alpha,
+            _ => ParticleBlend::Additive,
+        })
+    }
+
     /// The longest a particle lives, in seconds.
     pub fn max_lifetime(&self) -> f32 {
         self.lifetime[0].max(self.lifetime[1]).max(0.0)
@@ -816,7 +827,7 @@ impl ParticleEmitter {
             }
         }
         if matches!(
-            self.blend,
+            self.blend(),
             ParticleBlend::Subtractive | ParticleBlend::Multiply
         ) && matches!(self.render, ParticleRender::Sprite { .. })
         {

@@ -319,7 +319,7 @@ fn add_view_kind(scene: &mut RenderScene, kind: ViewKind) {
                 size: [0.45, 0.6],
                 gravity: Vec3::ZERO,
                 color: [0.1, 0.85, 0.15, 1.0],
-                blend: og_render::ParticleBlend::Alpha,
+                blend: Some(og_render::ParticleBlend::Alpha),
                 ..Default::default()
             });
             scene.effects.particles.push(og_render::ParticleSystem::new(
@@ -576,7 +576,7 @@ pub fn view_fx_scene(fx: ViewFx, on: bool) -> RenderScene {
                     size: [1.2, 1.4],
                     gravity: Vec3::ZERO,
                     color: [0.2, 0.9, 0.3, 0.9],
-                    blend: og_render::ParticleBlend::Alpha,
+                    blend: Some(og_render::ParticleBlend::Alpha),
                     soft_distance: if fx == ViewFx::SoftParticles {
                         0.8
                     } else {

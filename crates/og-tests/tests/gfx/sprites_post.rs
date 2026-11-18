@@ -146,7 +146,7 @@ fn array_particles_take_their_layers_by_age_or_at_random() {
                 mode,
                 ..Default::default()
             },
-            blend: og_render::ParticleBlend::Alpha,
+            blend: Some(og_render::ParticleBlend::Alpha),
             render: if billboard {
                 ParticleRender::Billboard
             } else {

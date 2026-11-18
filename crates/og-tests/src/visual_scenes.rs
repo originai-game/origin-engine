@@ -910,7 +910,7 @@ pub fn visual_particles_scene() -> RenderScene {
         gravity: Vec3::new(0.0, -9.8, 0.0),
         drag: 0.35,
         texture: Some(spark),
-        blend: ParticleBlend::Additive,
+        blend: Some(ParticleBlend::Additive),
         align: ParticleAlign::Velocity { stretch: 0.035 },
         collision: Some(ParticleCollision {
             bounce: 0.45,

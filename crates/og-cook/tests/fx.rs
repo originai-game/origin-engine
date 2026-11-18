@@ -157,7 +157,7 @@ fn a_cube_and_an_emitter_cook_and_load() {
         (4, 2, 8)
     );
     assert_eq!(em.sheet.mode, SheetMode::OverLife { cycles: 2.0 });
-    assert_eq!(em.blend, ParticleBlend::Alpha);
+    assert_eq!(em.blend(), ParticleBlend::Alpha);
     assert_eq!(em.space, SimulationSpace::Local);
     assert_eq!(em.align, ParticleAlign::Velocity { stretch: 0.1 });
     assert_eq!(em.soft_distance, 0.3);
@@ -251,10 +251,20 @@ fn mesh_lit_distorting_emitters_with_events_and_sub_emitters() {
     // Unsaid, a lit mesh blends alpha (a solid chip, added, glows white);
     // light adds: an unlit mesh, a lit billboard, and a blend line said
     // before `lit` still wins.
-    assert_eq!(em.blend, ParticleBlend::Alpha);
+    assert_eq!(em.blend(), ParticleBlend::Alpha);
+    let rust = og_render::ParticleEmitter {
+        render: em.render,
+        lit: true,
+        ..Default::default()
+    };
+    assert_eq!(
+        rust.blend(),
+        em.blend(),
+        "Rust and cooked per-kind defaults differ"
+    );
     let blend = |body: &str| {
         let text = format!("type particles\nversion 1\n---\n{body}");
-        parse_emitter(&text, &mut |_| Ok(None)).unwrap().blend
+        parse_emitter(&text, &mut |_| Ok(None)).unwrap().blend()
     };
     assert_eq!(blend("render mesh box\n"), ParticleBlend::Additive);
     assert_eq!(blend("lit true\n"), ParticleBlend::Additive);

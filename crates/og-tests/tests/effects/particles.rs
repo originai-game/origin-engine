@@ -7,6 +7,62 @@ use og_render::{ParticleAlign, SheetMode, SpriteSheet};
 // Particles.
 // ---------------------------------------------------------------------------
 
+/// Omitted blend on a lit mesh must draw the same solid chip as explicit
+/// alpha, on both simulation paths; explicit additive remains available.
+#[test]
+#[ignore = "requires GPU"]
+fn lit_mesh_particles_default_to_alpha_on_both_simulation_paths() {
+    use og_render::ParticleBlend;
+    for particles in [ParticleSimulation::Auto, ParticleSimulation::Cpu] {
+        let capture = |blend| {
+            let mut scene = RenderScene::new();
+            scene.lighting.environment.background = Background::Color(Vec3::splat(0.3));
+            scene.frame.camera = Camera {
+                position: Vec3::new(0.0, 0.0, 4.0),
+                target: Vec3::ZERO,
+                ..Default::default()
+            };
+            let mesh = scene.add_mesh(shapes::cuboid(Vec3::splat(1.0)));
+            let emitter = scene.add_emitter(ParticleEmitter {
+                max_particles: 1,
+                shape: EmitterShape::Point,
+                rate: 0.0,
+                bursts: vec![og_render::Burst::once(0.0, 1)],
+                lifetime: [10.0; 2],
+                speed: [0.0; 2],
+                size: [1.0; 2],
+                gravity: Vec3::ZERO,
+                color: [0.15, 0.3, 0.08, 1.0],
+                color_over_life: og_render::ColorCurve::constant([1.0; 4]),
+                render: ParticleRender::Mesh { mesh },
+                lit: true,
+                blend,
+                ..Default::default()
+            });
+            scene
+                .effects
+                .particles
+                .push(ParticleSystem::new(1, emitter, Mat4::IDENTITY, 7, 1));
+            let desc = RenderDesc {
+                particles,
+                ..small()
+            };
+            run(&desc, &mut scene, 2, |s, f| fx::tick_all(s, f as u64 + 1)).0
+        };
+        let default = capture(None);
+        let alpha = capture(Some(ParticleBlend::Alpha));
+        let additive = capture(Some(ParticleBlend::Additive));
+        assert_eq!(
+            default.pixels, alpha.pixels,
+            "{particles:?}: default is not alpha"
+        );
+        assert_ne!(
+            default.pixels, additive.pixels,
+            "{particles:?}: blend control draws nothing"
+        );
+    }
+}
+
 /// A finite light source must not bleach the smoke crossing its centre.
 /// Exercise both point and spot sources through the public renderer, with
 /// the same particles and intensity: only the source radius changes.
@@ -48,7 +104,7 @@ fn a_source_radius_keeps_nearby_lit_smoke_from_burning_white() {
                 size: [1.4; 2],
                 size_over_life: og_render::Curve::constant(1.0),
                 texture: Some(texture),
-                blend: og_render::ParticleBlend::Alpha,
+                blend: Some(og_render::ParticleBlend::Alpha),
                 lit: true,
                 ..Default::default()
             });
@@ -677,7 +733,7 @@ fn an_effect_material_given_another_texture_draws_it() {
             size: [1.0, 1.0],
             gravity: Vec3::ZERO,
             // Stacked, they keep the texture's colour.
-            blend: og_render::ParticleBlend::Alpha,
+            blend: Some(og_render::ParticleBlend::Alpha),
             effect: Some(m),
             ..Default::default()
         });
@@ -805,7 +861,7 @@ fn tall_scene(height: bool, degrees: f32, align: ParticleAlign, eye: Vec3) -> Re
         color: [4.0, 4.0, 4.0, 1.0],
         rotation_degrees: [degrees, degrees],
         gravity: Vec3::ZERO,
-        blend: og_render::ParticleBlend::Additive,
+        blend: Some(og_render::ParticleBlend::Additive),
         align,
         ..Default::default()
     });
@@ -1015,7 +1071,7 @@ fn a_second_colour_curve_gives_each_particle_its_own_colour_between() {
             color_over_life: og_render::ColorCurve::constant([1.0, 0.0, 0.0, 1.0]),
             random_color_over_life: Some(og_render::ColorCurve::constant([0.0, 0.0, 1.0, 1.0])),
             gravity: Vec3::ZERO,
-            blend: og_render::ParticleBlend::Alpha,
+            blend: Some(og_render::ParticleBlend::Alpha),
             ..Default::default()
         });
         scene.effects.particles.push(ParticleSystem::new(
@@ -1082,7 +1138,7 @@ fn trailing_scene(trail: Option<og_render::ParticleTrail>) -> RenderScene {
         color_over_life: og_render::ColorCurve::constant([1.0; 4]),
         color: [4.0, 4.0, 4.0, 1.0],
         gravity: Vec3::ZERO,
-        blend: og_render::ParticleBlend::Additive,
+        blend: Some(og_render::ParticleBlend::Additive),
         trail,
         ..Default::default()
     });
@@ -1214,7 +1270,7 @@ fn subtractive_and_multiply_particles_change_what_is_behind() {
             color: [0.5, 0.1, 0.1, 1.0],
             gravity: Vec3::ZERO,
             texture: None,
-            blend,
+            blend: Some(blend),
             ..Default::default()
         });
         scene.effects.particles.push(ParticleSystem::new(
@@ -1453,7 +1509,7 @@ fn a_blended_sheet_fades_into_the_next_frame_and_holds_the_last() {
                 mode: SheetMode::OverLife { cycles: 1.0 },
                 blend,
             },
-            blend: og_render::ParticleBlend::Alpha,
+            blend: Some(og_render::ParticleBlend::Alpha),
             ..Default::default()
         });
         scene.effects.particles.push(ParticleSystem::new(

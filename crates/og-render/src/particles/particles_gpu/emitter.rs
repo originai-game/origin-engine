@@ -165,7 +165,7 @@ pub(super) fn emitter_gpu(
             align,
             stretch,
             soft,
-            match e.blend {
+            match e.blend() {
                 ParticleBlend::Additive => 0.0,
                 ParticleBlend::Alpha => 1.0,
                 ParticleBlend::Subtractive => 2.0,
