@@ -114,14 +114,14 @@ fn fs(in: ScatterOut, @builtin(front_facing) front: bool) -> @location(0) vec4<f
     discard;
   }
   let out_a = select(1.0, coverage, a2c);
-  if (frame.light_color.w > 2.5 && frame.light_color.w < 3.5) { return vec4<f32>(base.rgb, out_a); }
   if (frame.light_color.w > 1.5 && frame.light_color.w < 2.5) {
     let ao = textureSampleLevel(ssao_tex, fx_sampler, in.clip.xy * fx.screen.zw, 0.0).r;
     return vec4<f32>(vec3<f32>(select(1.0, ao, fx.ao.x > 0.5)), out_a);
   }
-  if (frame.light_color.w > 0.5 && (frame.light_color.w < 3.5 || frame.light_color.w > 6.5)) { return debug_unsupported(in.clip.xy); }
+  if (frame.light_color.w > 0.5 && (frame.light_color.w < 1.5 || frame.light_color.w > 6.5)) { return debug_unsupported(in.clip.xy); }
   let emissive = surface_emissive(h, shader_params(), material.emissive.rgb * textureSample(emissive_tex, material_sampler, material_uv(UV_EMISSIVE, in.uv)).rgb);
   if ((mode & 2u) != 0u) {
+    if (frame.light_color.w > 2.5 && frame.light_color.w < 3.5) { return vec4<f32>(base.rgb, out_a); }
     return vec4<f32>(apply_fog(base.rgb + emissive, in.world), out_a);
   }
   var s: Surface;
@@ -145,6 +145,14 @@ fn fs(in: ScatterOut, @builtin(front_facing) front: bool) -> @location(0) vec4<f
   let weathered = weather_surface_at(decaled.s, decaled.n, n_geo, in.world, scatter_cavity(in.uv), material.uv[3].w, WEATHER_STANDS);
   s = weathered.s;
   n = weathered.n;
+  let styled = (mode & 8u) == 0u;
+  var made = StyledSurface(s, n, 0.0, vec3<f32>(1.0));
+  if (styled) {
+    made = styled_surface(s, n, in.local, dpx, dpy, dpdxFine(in.local), dpdyFine(in.local));
+    s = made.s;
+    n = made.n;
+  }
+  if (frame.light_color.w > 2.5 && frame.light_color.w < 3.5) { return vec4<f32>(s.albedo, out_a); }
   let l = normalize(frame.light_dir.xyz);
   let n_dot_l = max(dot(n, l), 0.0);
   var shadow = 1.0;
@@ -158,12 +166,14 @@ fn fs(in: ScatterOut, @builtin(front_facing) front: bool) -> @location(0) vec4<f
   // The sun under the frame's material style (lighting.wgsl style_sun: its
   // toon bands, shadow darkness and tint), as every lit surface's, unless
   // the material is unstyled (mode 8, as pbr_fs.wgsl).
-  let styled = (mode & 8u) == 0u;
   let band_aa = style_edge(n_dot_l * shadow);
   var sun: StyleSun;
   sun.direct = brdf(s, n, v, l) * frame.light_color.rgb * shadow;
   sun.keep = 1.0;
-  if (styled) { sun = style_sun(s, n, v, l, shadow, band_aa); }
+  if (styled) {
+    sun = style_sun(s, n, v, l, shadow, band_aa);
+    sun.direct += styled_wrap(made, l, shadow);
+  }
   // What the material's AO map keeps of the light around the copy.
   var keep = 1.0;
   if (material.flags.y >= 0.0) {

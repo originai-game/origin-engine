@@ -618,6 +618,11 @@ fn terrain_shade(clip: vec2<f32>, p: vec3<f32>, reads: Resident, ground: f32, gr
     s.albedo *= 1.0 - 0.25 * track.z;
     n = normalize(n + vec3<f32>(track.x, 0.0, track.y));
   }
+  let local = transpose(terrain.normal) * (p - terrain.model[3].xyz);
+  let made = styled_surface(s, style_face_normal(n, dpx, dpy), local,
+    dpx, dpy, transpose(terrain.normal) * dpx, transpose(terrain.normal) * dpy);
+  s = made.s;
+  n = made.n;
   if (frame.light_color.w > 1.5 && frame.light_color.w < 2.5) {
     // Debug (DebugView::AmbientOcclusion): the screen occlusion here.
     let ao = textureSampleLevel(ssao_tex, fx_sampler, clip * fx.screen.zw, 0.0).r;
@@ -663,7 +668,7 @@ fn terrain_shade(clip: vec2<f32>, p: vec3<f32>, reads: Resident, ground: f32, gr
   // the BRDF, or the toon bands, matte; its shadow darkness and tint. The
   // band edges smoothed over the ramp's own change, cast shadows' too.
   var sun = style_sun(s, n, v, l, shadow, style_edge(n_dot_l * shadow));
-  sun.direct += through;
+  sun.direct += through + styled_wrap(made, l, shadow);
   // The caustics, the local lights and the light around the ground, as
   // every lit surface's (surface_shade.wgsl): under the sky its horizon
   // and the far grass leave, with what the decals on it emit, and the

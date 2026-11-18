@@ -187,7 +187,7 @@ impl Renderer {
             toon: [
                 scene.look.stylise.material.toon_softness.clamp(0.0, 4.0),
                 scene.look.stylise.material.toon_ambient.clamp(0.0, 1.0),
-                0.0,
+                f32::from(u8::from(scene.look.stylise.material.flat_shading)),
                 0.0,
             ],
             ssr: ssr::ScreenSpaceReflections::frame_row(ssr),

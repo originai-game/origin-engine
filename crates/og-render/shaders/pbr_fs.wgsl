@@ -21,9 +21,6 @@ override DISCARD: bool = true;
 // rasteriser computed for the pixel (`analytic_*`, set by the resolve).
 override ANALYTIC: bool = false;
 
-// Whether a pipeline has MaterialStyle's made surfaces (clay, paper,
-// plastic: pipeline_features.rs).
-override OG_SURFACE: bool = true;
 // d(uv)/dx and d(uv)/dy, d(world)/dx and d(world)/dy, and d(local)/dx
 // and d(local)/dy (the material style's surface, set when it is on).
 var<private> analytic_uv: vec4<f32>;

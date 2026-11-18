@@ -104,7 +104,8 @@ pub(crate) struct FrameUniform {
     pub foliage_wind: [crate::foliage::FoliageWind; 2],
     /// `MaterialStyle`'s toon model: x the band edges' softness in pixels
     /// (`toon_softness`, 0: hard steps), y how smooth a toon material's
-    /// ambient light stays (`toon_ambient`), zw unused.
+    /// ambient light stays (`toon_ambient`), z flat normals for generated
+    /// surfaces without a material, w unused.
     pub toon: [f32; 4],
     /// Screen-space reflections (`ssr.rs`): x 1 when the frame group's
     /// `ssr_tex` holds this camera's reflections (the main camera's; 0 for

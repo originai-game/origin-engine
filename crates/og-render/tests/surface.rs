@@ -143,6 +143,104 @@ fn a_made_surface_keeps_the_normal_where_it_lies_in_the_face() {
     }
 }
 
+/// Generated ground, blades and placed copies take the same made material
+/// as models; setting its strength to zero leaves each renderer alone.
+#[test]
+#[ignore = "requires GPU"]
+fn generated_surfaces_take_the_made_material_and_keep_the_zero_strength_frame() {
+    use glam::Vec2;
+    use og_render::{Grass, GrassDraw, ScatterDraw, Terrain, TerrainData, TerrainScatter};
+
+    let desc = RenderDesc {
+        width: 128,
+        height: 96,
+        ..Default::default()
+    };
+    for path in ["terrain", "grass", "scatter"] {
+        let scene = |surface, strength| {
+            let mut scene = RenderScene::new();
+            let ground = scene.add_terrain(TerrainData::flat(Vec2::splat(8.0), 9, 9));
+            let mut terrain = Terrain::new(ground);
+            terrain.layers[0].color = Vec3::new(0.7, 0.45, 0.3);
+            terrain.visible = path != "scatter";
+            scene.world.terrains.push(terrain);
+            scene.frame.debug = og_render::DebugView::Albedo;
+            scene.frame.camera = Camera {
+                position: Vec3::new(0.0, 1.4, 2.4),
+                target: Vec3::ZERO,
+                ..Default::default()
+            };
+            if path == "grass" {
+                scene.world.grass.push(GrassDraw {
+                    terrain: 0,
+                    grass: Grass {
+                        density: 30.0,
+                        width: 0.12,
+                        height: 0.7,
+                        far_tint: false,
+                        ..Default::default()
+                    },
+                });
+            } else if path == "scatter" {
+                let mesh = scene.add_mesh(shapes::sphere(12, 8));
+                let material = scene.add_material(Material {
+                    base_color: [0.7, 0.45, 0.3, 1.0],
+                    ..Default::default()
+                });
+                scene.world.scatters.push(ScatterDraw {
+                    terrain: 0,
+                    mesh,
+                    material,
+                    lod_materials: [None; 2],
+                    scatter: TerrainScatter {
+                        density: 1.5,
+                        scale: [0.3, 0.3],
+                        sway: 0.0,
+                        ..Default::default()
+                    },
+                    cast_shadows: false,
+                    impostor: None,
+                    impostor_distance: 0.0,
+                    with: None,
+                    lods: [None; 2],
+                });
+            }
+            scene.look.stylise.material = MaterialStyle {
+                surface,
+                surface_strength: strength,
+                surface_scale: 0.5,
+                ..Default::default()
+            };
+            scene
+        };
+        let plain = render_to_rgba(&desc, &scene(MaterialSurface::None, 0.0)).expect("GPU renders");
+        let zero = render_to_rgba(&desc, &scene(MaterialSurface::Clay, 0.0)).expect("GPU renders");
+        assert_eq!(
+            plain.pixels, zero.pixels,
+            "{path}: zero strength changed the surface"
+        );
+        let made = render_to_rgba(&desc, &scene(MaterialSurface::Clay, 1.0)).expect("GPU renders");
+        // Only blade-coloured pixels count for grass: a ground-only hook
+        // must not pass by changing the terrain underneath the blades.
+        let changed = plain
+            .pixels
+            .as_chunks::<4>()
+            .0
+            .iter()
+            .zip(made.pixels.as_chunks::<4>().0)
+            .any(|(a, b)| a != b && (path != "grass" || (a[1] > a[0] && a[1] > a[2])));
+        assert!(changed, "{path}: ignored the made material");
+        assert!(
+            made.pixels
+                .as_chunks::<4>()
+                .0
+                .iter()
+                .any(|p| p[0] > 40 && p[1] > 20),
+            "{path}: the made surface lost its light"
+        );
+    }
+}
+
 /// A smooth front face can have a shading normal just past the silhouette.
 /// It must keep receiving light from above, not be flipped into the ground.
 /// Turning the triangle over on a double-sided leaf must still flip its normal.

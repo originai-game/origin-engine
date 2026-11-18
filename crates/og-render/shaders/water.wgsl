@@ -480,6 +480,25 @@ if (rippled() && !is_sea()) {
     }
   }
   var n = normalize(base - tangent_x * slope.x - tangent_z * slope.y);
+  // Style the weathered interface, not the medium: the water below still
+  // absorbs, refracts and scatters, and its waves and foam still move.
+  // As for generated land, the pattern is anchored to the surface frame.
+  let dx = dpdxFine(in.world);
+  let dy = dpdyFine(in.world);
+  let local = vec3<f32>(in.local.x, 0.0, in.local.y);
+  let slope_roughness = sqrt(sqrt(select(detail.cov.x + detail.cov.y, sea_cov.x + sea_cov.y, is_sea())));
+  let water_surface = Surface(water.deep.rgb, 0.0, slope_roughness,
+    vec3<f32>(water.extra.z), 0.0, 0.0, n, 0.0);
+  let made = styled_surface(water_surface, style_face_normal(n, dx, dy), local,
+    dx, dy, vec3<f32>(dlx.x, 0.0, dlx.y), vec3<f32>(dly.x, 0.0, dly.y));
+  n = made.n;
+  let deep_albedo = made.s.albedo;
+  var foam_surface = water_surface;
+  foam_surface.albedo = water.foam.rgb;
+  foam_surface.roughness = 1.0;
+  let made_foam = styled_surface(foam_surface, n, local,
+    dx, dy, vec3<f32>(dlx.x, 0.0, dlx.y), vec3<f32>(dly.x, 0.0, dly.y));
+  let foam_albedo = made_foam.s.albedo;
   let v = toward_eye(in.world);
   // Seen from below: the camera is under the surface.
   let below_view = dot(in.normal, v) < 0.0;
@@ -558,7 +577,7 @@ if (rippled() && !is_sea()) {
   // sky it lies beneath, as a real sea's does (its water-leaving light is a few percent of the sky's).
   let daylight_k = min(luma(light_in) / 1.5, 1.0);
   let daylight = daylight_k * daylight_k;
-  var deep = water.deep.rgb * mix(0.4, 1.0, sun) * daylight;
+  var deep = deep_albedo * mix(0.4, 1.0, sun) * daylight;
   let sea = is_sea();
   // The sky's light on the sea from above and along its normal (web-ocean's skyUp and skyN).
   let amb_up = surface_irradiance(at_flat, in.normal, gi);
@@ -593,7 +612,7 @@ if (sea) {
     // scatter = max(N·V, 0) · waterColor (the deep colour), sunColor = the light × glint / 2 (glint = spec 2 × sunColor
     // over the light). The ripples shade it, as they do the original's.
     let sc = frame.light_color.rgb * water.under.w * 0.5;
-    deep = (sc * sc * 0.15 * max(dot(l, n), 0.0) + water.deep.rgb * max(dot(n, v), 0.0)) * sun;
+    deep = (sc * sc * 0.15 * max(dot(l, n), 0.0) + deep_albedo * max(dot(n, v), 0.0)) * sun;
   }
   var color = mix(below * water.shallow.rgb, deep, clamp(absorb * water.deep.w, 0.0, 1.0));
   if (water.optics[0].w > 0.5) {
@@ -607,7 +626,7 @@ if (sea) {
     color = below * o.through + body;
     // A sea's crests and foam scatter their light on top, as `deep` carries for the colour model.
     if (OG_SEA) {
-if (sea) { color += (deep - water.deep.rgb * mix(0.4, 1.0, sun) * daylight) * o.opacity; }
+if (sea) { color += (deep - deep_albedo * mix(0.4, 1.0, sun) * daylight) * o.opacity; }
   }
   }
 
@@ -615,7 +634,7 @@ if (sea) { color += (deep - water.deep.rgb * mix(0.4, 1.0, sun) * daylight) * o.
   var glitter = vec3<f32>(0.0);
   // Reflection with Schlick's Fresnel.
   var r = reflect(-v, n);
-  let f0 = water.extra.z;
+  let f0 = made.s.f0.x;
   var fresnel = (f0 + (1.0 - f0) * pow(1.0 - saturate(dot(n, v)), 5.0)) * water.look.x;
   // The detail's slopes a pixel leaves out (LEAN, wave_slope) blur the mirrored sky as a sea's facets blur it.
   // The surface's roughness, from those slopes' spread.
@@ -640,6 +659,12 @@ if (sea) {
     rough = sqrt(sqrt(sea_cov.x + sea_cov.y));
     mip = max(rough * frame.params.y, 0.5);
   }
+  }
+  // The made material changes the interface's lobe, not its wave spectrum.
+  // Keep the physical roughness (including the sea's variance) when off.
+  if (OG_SURFACE && frame.material_surface.x > 0.5 && frame.material_surface.y > 0.0) {
+    rough = made.s.roughness;
+    mip = max(rough * frame.params.y, 0.5);
   }
   // The environment, or the reflection probe holding the surface (probes.rs), as bright as the sky is drawn: without the
   // twilight's adaptation (water.ao.w), which lifts the light on surfaces but not the sky they mirror. Under a cloud
@@ -789,7 +814,7 @@ if (flowing) {
   let amount = clamp(ripple_foam, 0.0, 1.0);
   let lumpy = smoothstep(1.0 - amount, 1.12 - amount, lumps) * (0.5 + 0.5 * amount);
   let foam = clamp(band + crest * noise + lumpy, 0.0, 1.0);
-  color = mix(color, water.foam.rgb * white_water_light(in.normal, l, sun), foam * step(0.001, water.foam.w));
+  color = mix(color, foam_albedo * white_water_light(in.normal, l, sun), foam * step(0.001, water.foam.w));
   if (water.waterline.w > 0.5) {
     // W5: a river. Below a fall its pool churns white (the flow map's b: 1 at the fall's foot, fading over some one and
     // a half widths), in patches carried down by the current in two phases as the bank foam; and where the ribbon hangs (its
@@ -811,7 +836,7 @@ if (flowing) {
     let fall_white = hang * white_water;
     let river_white = clamp(max(churned, fall_white), 0.0, 1.0);
     let white_lit = white_water_light(in.normal, l, sun) * mix(0.85, 1.0, white_water);
-    color = mix(color, water.foam.rgb * white_lit, river_white);
+    color = mix(color, foam_albedo * white_lit, river_white);
   }
   if (OG_SEA) {
 if (sea) {
@@ -825,7 +850,7 @@ if (sea) {
     // (The lace's bubbles are too fine to see apart: their mean, so a thin thread is not drawn as a chain of beads.)
     // A patch's thin rim is a single layer of bubbles over the dark water, its body a pile that scatters all the
     // light back: the rim three quarters as bright (a flat albedo drew each patch as a cut-out).
-    let alb = water.foam.rgb * (0.78 + 0.3 * mix(sea_f.bubbles, 0.5, wet)) * mix(1.0, 0.65, wet)
+    let alb = foam_albedo * (0.78 + 0.3 * mix(sea_f.bubbles, 0.5, wet)) * mix(1.0, 0.65, wet)
       * mix(0.75, 1.0, sea_f.thick);
     let amb = amb_up + amb_n * 0.3;
     let amb_grey = mix(amb, vec3<f32>(luma(amb)), 0.85);
@@ -845,8 +870,8 @@ if (sea) {
   // slopes a pixel leaves out, the body scatters them back where it is deep enough to show its own colour, and the
   // foam where it lies takes them as the matte layer it is.
   let cover = clamp(max(foam * step(0.001, water.foam.w), sea_f.mask), 0.0, 1.0);
-  let body = water.deep.rgb * clamp(absorb * water.deep.w, 0.0, 1.0);
-  let lit = Surface(mix(body, water.foam.rgb, cover), 0.0, clamp(mix(rough, 1.0, cover), 0.09, 1.0),
+  let body = deep_albedo * clamp(absorb * water.deep.w, 0.0, 1.0);
+  let lit = Surface(mix(body, foam_albedo, cover), 0.0, clamp(mix(rough, 1.0, cover), 0.09, 1.0),
     vec3<f32>(f0 * water.look.x), 0.0, 0.0, n, 0.0);
   color += local_lights_on(px, lit, in.world, n, v, false);
   return vec4<f32>(apply_fog(color, in.world), 1.0);

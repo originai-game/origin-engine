@@ -1,3 +1,6 @@
+// Whether this pipeline draws made materials (pipeline_features.rs).
+override OG_SURFACE: bool = true;
+
 // A made surface: what it does to the shading surface, the height that
 // bends its normal (in units of the pattern's scale) and its wrapped light.
 struct MadeSurface {
@@ -51,4 +54,57 @@ fn material_surface(kind: u32, k: f32, p: vec3<f32>, surface: Surface, detail: f
     o.tint = vec3<f32>(1.0, 0.9, 0.82);
   }
   return o;
+}
+
+// A generated surface has no StandardMaterial to carry a flat-normal bit.
+// Keep its existing orientation (including the back of a two-sided blade).
+fn style_face_normal(n: vec3<f32>, dx: vec3<f32>, dy: vec3<f32>) -> vec3<f32> {
+  if (frame.toon.z <= 0.5) { return n; }
+  let face = cross(dx, dy);
+  if (dot(face, face) <= 1e-20) { return n; }
+  return normalize(face) * select(-1.0, 1.0, dot(face, n) >= 0.0);
+}
+
+struct StyledSurface {
+  s: Surface,
+  n: vec3<f32>,
+  wrap: f32,
+  tint: vec3<f32>,
+};
+
+// The same made material on a generated or instanced surface. Its owner
+// supplies anchored pattern coordinates and their derivatives; world-space
+// derivatives turn the pattern's height into a shading-normal perturbation.
+// Called after weathering, without changing geometry or its shadow normal.
+fn styled_surface(s: Surface, n: vec3<f32>, p: vec3<f32>, dx: vec3<f32>, dy: vec3<f32>, local_dx: vec3<f32>, local_dy: vec3<f32>) -> StyledSurface {
+  var o = StyledSurface(s, n, 0.0, vec3<f32>(1.0));
+  let ms = frame.material_surface;
+  if (OG_SURFACE && ms.x > 0.5 && ms.y > 0.0) {
+    let footprint = max(length(local_dx), length(local_dy));
+    let fade = clamp((ms.z / max(footprint, 1e-6) - 3.0) / 6.0, 0.0, 1.0);
+    let made = material_surface(u32(ms.x + 0.5), ms.y, p / ms.z, s, fade);
+    o.s = made.s;
+    o.wrap = made.wrap;
+    o.tint = made.tint;
+    let height = made.height * ms.z;
+    let r1 = cross(dy, n);
+    let r2 = cross(n, dx);
+    let det = dot(dx, r1);
+    let grad = sign(det) * (dpdxFine(height) * r1 + dpdyFine(height) * r2);
+    let facing = abs(det) / max(length(cross(dx, dy)), 1e-20);
+    let bumped = abs(det) * n - grad * smoothstep(0.02, 0.1, facing);
+    o.n = select(n, normalize(bumped), dot(bumped, bumped) > 1e-30);
+    o.s.f0 = mix(vec3<f32>(0.04), o.s.albedo, o.s.metallic);
+  }
+  return o;
+}
+
+// The energy-conserving wrapped diffuse lobe already used by model
+// materials: share it with generated surfaces without changing toon bands.
+fn styled_wrap(made: StyledSurface, l: vec3<f32>, shadow: f32) -> vec3<f32> {
+  let raw = dot(made.n, l);
+  let wrapped = max(raw + made.wrap, 0.0) / ((1.0 + made.wrap) * (1.0 + made.wrap));
+  let extra = wrapped - max(raw, 0.0);
+  let gain = max(extra, 0.0) * made.tint + vec3<f32>(min(extra, 0.0));
+  return made.s.albedo / PI * (1.0 - made.s.metallic) * gain * frame.light_color.rgb * select(1.0, shadow, raw > 0.0);
 }

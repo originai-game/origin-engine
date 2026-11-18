@@ -34,6 +34,7 @@ struct GrassOut {
   // and the sun's through its blades (grass_common.wgsl grass_mean's sun,
   // sky and through), a far blade's.
   @location(6) mean: vec3<f32>,
+  @location(7) local: vec3<f32>,
 };
 
 // What the prepass takes of a blade: its lit draw needs no motion, and
@@ -85,6 +86,7 @@ fn vs(@builtin(vertex_index) vi: u32, @builtin(instance_index) ii: u32) -> Grass
   o.color = mix(grass_color(r.blade, v.t), average, 0.6 * o.far) * grass_gust_sheen(grass.wind, r.blade.root.xz + grass.wind.time.zw, GRASS_GUST_SHEEN);
   o.shading = vec3<f32>(grass_occlusion(max(v.world.y - r.blade.root.y, 0.0)), grass_sheen(v.t), v.t);
   o.above = max(v.world.y - r.blade.root.y, 0.0);
+  o.local = v.world - r.blade.root;
   return o;
 }
 
@@ -154,13 +156,10 @@ fn fs(in: GrassOut, @builtin(front_facing) front: bool) -> @location(0) vec4<f32
     let ao = textureSampleLevel(ssao_tex, fx_sampler, in.clip.xy * fx.screen.zw, 0.0).r;
     return vec4<f32>(vec3<f32>(select(1.0, ao, fx.ao.x > 0.5)), 1.0);
   }
-  if (view == 3u) { return vec4<f32>(in.color, 1.0); }
   // Two-sided: the back face is lit with the flipped normal.
-  let n0 = normalize(mix(normalize(in.normal) * select(-1.0, 1.0, front), vec3<f32>(0.0, 1.0, 0.0), 0.85 * in.far));
+  var n0 = normalize(mix(normalize(in.normal) * select(-1.0, 1.0, front), vec3<f32>(0.0, 1.0, 0.0), 0.85 * in.far));
   let v = toward_eye(p);
   let l = normalize(frame.light_dir.xyz);
-  let backlit = dot(n0, l) < 0.0;
-  let n = select(n0, -n0, backlit);
   // Specular anti-aliasing: a blade narrower than a pixel cannot show
   // its gloss as a highlight (it sparkles); its gloss spreads instead
   // (rougher, dimmer), as Ghost of Tsushima's grass does far off.
@@ -180,6 +179,15 @@ fn fs(in: GrassOut, @builtin(front_facing) front: bool) -> @location(0) vec4<f32
   // Rain, snow and dust on the blades (weather_surface.wgsl): wet blades
   // darken and gloss, snow lies on their upper sides, dust dulls them.
   s = weather_grass(decaled.s, n0, p, in.shading.z).s;
+  let dx = dpdxFine(p);
+  let dy = dpdyFine(p);
+  let made = styled_surface(s, style_face_normal(n0, dx, dy), in.local,
+    dx, dy, dpdxFine(in.local), dpdyFine(in.local));
+  s = made.s;
+  n0 = made.n;
+  if (view == 3u) { return vec4<f32>(s.albedo, 1.0); }
+  let backlit = dot(n0, l) < 0.0;
+  let n = select(n0, -n0, backlit);
   let n_dot_l = max(dot(n, l), 0.0);
   var shadow = 1.0;
   if (frame.light_dir.w > 0.5 && n_dot_l > 0.0) {
@@ -205,6 +213,7 @@ fn fs(in: GrassOut, @builtin(front_facing) front: bool) -> @location(0) vec4<f32
   let through = grass.base_color.w * min(s.albedo * 2.0, vec3<f32>(1.0));
   var own = sun;
   own.direct = sun.direct * select(vec3<f32>(1.0), through, backlit);
+  own.direct += styled_wrap(StyledSurface(s, n, made.wrap, made.tint), l, shadow);
   // A far blade takes the field's mean glow for its own lobe below.
   own.direct += in.far * in.mean.z * pow(max(s.albedo, vec3<f32>(1e-4)), vec3<f32>(0.85)) * frame.light_color.rgb * sunlit;
   // Looking into the sun through a blade, the light it scatters forward
