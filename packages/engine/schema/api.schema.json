@@ -24909,7 +24909,7 @@
         },
         "godRays": {
           "type": "boolean",
-          "description": "Screen-space light shafts from the DirectionalLight (the sun must be in front of the camera).",
+          "description": "Screen-space light shafts from the DirectionalLight (the sun must be in front of the camera). The sun casts them with its own light, as a source of a fixed angular size whatever size its disc is drawn, dimmed by the clouds over it; the bright sky around it adds its own.",
           "default": false
         },
         "godRaysIntensity": {
@@ -24952,7 +24952,7 @@
         },
         "godRaysThreshold": {
           "type": "number",
-          "description": "Sky brightness (linear, before exposure) below which the sky carries no rays.",
+          "description": "Brightness (linear, before exposure) below which the sky and the sun carry no rays: only what is brighter casts shafts.",
           "default": 2,
           "minimum": 0
         },

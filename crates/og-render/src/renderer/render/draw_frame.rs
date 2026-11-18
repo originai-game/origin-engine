@@ -775,6 +775,7 @@ impl Renderer {
                 sun_ndc: sun.sun_ndc,
                 god_visible: sun.god_visible,
                 sun_fade: sun.sun_fade,
+                god_sun: sun.god_sun,
                 depth_bands: effects.depth_bands,
                 screen_blur: effects.screen_blur,
                 contact: lights_frame.contact_rows,

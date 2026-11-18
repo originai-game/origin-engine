@@ -303,7 +303,7 @@
       max 64
     }
     group "God rays"
-    field godRays bool "Screen-space light shafts from the DirectionalLight (the sun must be in front of the camera)."
+    field godRays bool "Screen-space light shafts from the DirectionalLight (the sun must be in front of the camera). The sun casts them with its own light, as a source of a fixed angular size whatever size its disc is drawn, dimmed by the clouds over it; the bright sky around it adds its own."
     field godRaysIntensity f32 "How bright the shafts are." {
       default 0.5
       min 0
@@ -326,7 +326,7 @@
       min 8
       max 128
     }
-    field godRaysThreshold f32 "Sky brightness (linear, before exposure) below which the sky carries no rays." {
+    field godRaysThreshold f32 "Brightness (linear, before exposure) below which the sky and the sun carry no rays: only what is brighter casts shafts." {
       default 2
       min 0
     }

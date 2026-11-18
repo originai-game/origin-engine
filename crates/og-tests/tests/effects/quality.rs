@@ -40,9 +40,12 @@ fn an_empty_god_rays_mask_adds_no_light() {
 /// Independently recorded, unjittered 1536-tap integrals of this fixture:
 /// subdivide each original tap's centred interval into 32 midpoint taps,
 /// retaining its decay weight and the march extent, with no spatial resolve.
-/// Doubling 768 to 1536 moved these means by less than 0.003/255.
-/// Fixed 48-tap rays undersample the sun here: their corner means are
-/// 6 to 10/255 too dark, even though their whole-frame means look close.
+/// Doubling 768 to 1536 moved these means by less than 0.005/255.
+/// Recorded on lavapipe (where the NVIDIA set before it agreed to
+/// 0.03/255 on the whole frame), on the mask that carries the sun as a
+/// source of a fixed angular size. Fixed 48-tap rays undersample it:
+/// their corner means are 0.95/255 too dark, the shipped interleaved rays
+/// 0.18/255.
 #[test]
 #[ignore = "requires GPU"]
 fn god_rays_match_a_converged_radial_integral() {
@@ -62,17 +65,17 @@ fn god_rays_match_a_converged_radial_integral() {
         (
             2.0,
             [
-                [171.103183, 148.288516, 115.668623],
-                [126.938958, 115.172500, 112.688021],
-                [126.925729, 115.164688, 112.683854],
+                [135.818117, 116.381551, 92.272339],
+                [90.053646, 89.056458, 99.705104],
+                [90.053646, 89.056250, 99.705312],
             ],
         ),
         (
             10.0,
             [
-                [136.725448, 117.172923, 93.168024],
-                [94.580938, 92.688021, 102.019271],
-                [94.565729, 92.677083, 102.017083],
+                [135.798436, 116.365036, 92.262376],
+                [90.039167, 89.046250, 99.700938],
+                [90.037812, 89.045729, 99.701875],
             ],
         ),
     ] {
@@ -90,7 +93,7 @@ fn god_rays_match_a_converged_radial_integral() {
                 actual
                     .into_iter()
                     .zip(reference)
-                    .all(|(a, b)| (a - b).abs() < 1.0),
+                    .all(|(a, b)| (a - b).abs() < 0.5),
                 "threshold {threshold}, {rect:?}: {actual:?} differs from the converged {reference:?}"
             );
         }

@@ -71,13 +71,13 @@ Token `og.PostEffects`, registered under the schema name `og.PostEffects`; its v
 
 | Field | Type | Default | Range | Unit | Notes | Doc |
 |---|---|---|---|---|---|---|
-| `godRays` | `boolean` | `false` | — | — | — | Screen-space light shafts from the DirectionalLight (the sun must be in front of the camera). |
+| `godRays` | `boolean` | `false` | — | — | — | Screen-space light shafts from the DirectionalLight (the sun must be in front of the camera). The sun casts them with its own light, as a source of a fixed angular size whatever size its disc is drawn, dimmed by the clouds over it; the bright sky around it adds its own. |
 | `godRaysIntensity` | `number` | `0.5` | ≥ 0 | — | tunable | How bright the shafts are. |
 | `godRaysDecay` | `number` | `0.965` | 0.5 … 1 | — | — | How fast the rays fade along their length. |
 | `godRaysDensity` | `number` | `1` | ≥ 0 | — | — | How far towards the sun each ray samples (a fraction of the distance). |
 | `godRaysTint` | `Color` | `{ r: 1, g: 1, b: 1 }` | — | — | — | A linear tint on the light the rays carry. |
 | `godRaysSamples` | `number` | `48` | 8 … 128 | — | — | Taps per ray. |
-| `godRaysThreshold` | `number` | `2` | ≥ 0 | — | — | Sky brightness (linear, before exposure) below which the sky carries no rays. |
+| `godRaysThreshold` | `number` | `2` | ≥ 0 | — | — | Brightness (linear, before exposure) below which the sky and the sun carry no rays: only what is brighter casts shafts. |
 
 #### 2D glow
 
@@ -294,7 +294,7 @@ resource PostEffects {
     max 64
   }
   group "God rays"
-  field godRays bool "Screen-space light shafts from the DirectionalLight (the sun must be in front of the camera)."
+  field godRays bool "Screen-space light shafts from the DirectionalLight (the sun must be in front of the camera). The sun casts them with its own light, as a source of a fixed angular size whatever size its disc is drawn, dimmed by the clouds over it; the bright sky around it adds its own."
   field godRaysIntensity f32 "How bright the shafts are." {
     default 0.5
     min 0
@@ -317,7 +317,7 @@ resource PostEffects {
     min 8
     max 128
   }
-  field godRaysThreshold f32 "Sky brightness (linear, before exposure) below which the sky carries no rays." {
+  field godRaysThreshold f32 "Brightness (linear, before exposure) below which the sky and the sun carry no rays: only what is brighter casts shafts." {
     default 2
     min 0
   }

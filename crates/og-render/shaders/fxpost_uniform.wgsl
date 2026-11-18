@@ -17,6 +17,9 @@ struct FxPost {
   god: vec4<f32>,             // xy: sun uv, z: decay, w: density
   god2: vec4<f32>,            // x: samples, y: 1 when the sun is in front, z: intensity, w: sky threshold
   god_tint: vec4<f32>,
+  // The god rays' sun (sun_and_post.rs god_sun): [0] its radiance at its middle (rgb, unexposed) and the drawn
+  // disc's luminance there (w, 0: not read off the frame); [1] x its radius, y the drawn disc's (height units; 0: none), z the sun's own radiance (luminance).
+  god_sun: array<vec4<f32>, 2>,
   bands: vec4<f32>,           // x: depth bands (0: none), y: near, z: far, w: flatten
   bands_near: vec4<f32>,      // the nearest band's colour (linear)
   bands_far: vec4<f32>,       // the farthest band's colour (linear)

@@ -23,6 +23,7 @@ pub(super) struct WriteFramePostUniformsInputs<'a> {
     pub(super) sun_ndc: Vec2,
     pub(super) god_visible: bool,
     pub(super) sun_fade: f32,
+    pub(super) god_sun: [[f32; 4]; 2],
     pub(super) depth_bands: Option<DepthBands>,
     pub(super) screen_blur: Option<ScreenBlur>,
     /// Contact shadows' rows (`FxPostUniform::contact`).
@@ -55,6 +56,7 @@ impl Renderer {
             sun_ndc,
             god_visible,
             sun_fade,
+            god_sun,
             depth_bands,
             screen_blur,
             contact,
@@ -184,6 +186,7 @@ impl Renderer {
                 .map_or(Vec3::ONE, |g| g.tint)
                 .extend(1.0)
                 .to_array(),
+            god_sun,
             bands: depth_bands.map_or([0.0; 4], |b| {
                 [
                     b.count.clamp(2, 8) as f32,

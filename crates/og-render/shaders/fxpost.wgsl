@@ -899,19 +899,71 @@ fn fs_screen_blur(in: VsOut) -> @location(0) vec4<f32> {
   return vec4<f32>(sum / max(total, 1e-6), textureLoad(tex_a, vec2<i32>(in.pos.xy), 0).a);
 }
 
-// Half resolution: the sky's light around the sun (geometry masks it out).
+// How much of the sun the clouds let through: what the frame shows of the
+// drawn disc over what it is drawn as (fxp.god_sun[0].w; 0: no clouds,
+// all of it), at its centre and four points half its radius out, where the
+// limb has not darkened it (a disc under two pixels across: its centre
+// only), those the geometry hides not counted (it masks the rays itself),
+// as the lens flare reads it (lens_flare.wgsl fs_flare_occlusion).
+fn god_sun_through() -> f32 {
+  let disc = fxp.god_sun[0].w;
+  if (disc <= 0.0) { return 1.0; }
+  let full = fxp.screen.xy;
+  let half_radius = 0.5 * fxp.god_sun[1].y;
+  let r = select(0.0, half_radius, half_radius * full.y >= 1.0);
+  let offsets = array<vec2<f32>, 5>(
+    vec2<f32>(0.0, 0.0), vec2<f32>(1.0, 0.0), vec2<f32>(-1.0, 0.0),
+    vec2<f32>(0.0, 1.0), vec2<f32>(0.0, -1.0));
+  var seen = 0.0;
+  var samples = 0.0;
+  for (var k = 0; k < 5; k++) {
+    let uv = fxp.god.xy + offsets[k] * r / vec2<f32>(full.x / full.y, 1.0);
+    if (any(uv < vec2<f32>(0.0)) || any(uv >= vec2<f32>(1.0))) { continue; }
+    if (!is_sky(depth_at(vec2<i32>(uv * full)))) { continue; }
+    let c = textureLoad(tex_a, vec2<i32>(uv * vec2<f32>(textureDimensions(tex_a))), 0).rgb;
+    seen += clamp(dot(c, LUMA) / disc, 0.0, 1.0);
+    samples += 1.0;
+  }
+  return select(seen / samples, 1.0, samples == 0.0);
+}
+
+// Half resolution: the light around the sun that carries rays, geometry
+// masked out. The sky brighter than the threshold carries its own, capped
+// a texel; the sun carries its light (fxp.god_sun), as a source of a fixed
+// angular size whatever size its disc is drawn: read off the frame, a disc
+// the sun's own size (0.27°) is a few pixels across and under the cap cast
+// almost no rays, and one 1.8° across cast them from the width of its
+// disc, not from its light. Inside the drawn disc the sky is read just
+// past its rim, so the disc is not counted twice.
 @fragment
 fn fs_godrays_mask(in: VsOut) -> @location(0) vec4<f32> {
   let full = vec2<i32>(in.pos.xy) * 2;
   if (!is_sky(depth_at(full))) { return vec4<f32>(0.0, 0.0, 0.0, 1.0); }
-  let aspect = fxp.screen.x * fxp.screen.w;
-  let to_sun = (in.uv - fxp.god.xy) * vec2<f32>(aspect, 1.0);
-  let fall = clamp(1.0 - length(to_sun) / 0.5, 0.0, 1.0);
-  // Only the sky brighter than its surroundings carries rays: the sun and its glow.
-  let c = sample_exact(tex_a, fx_linear, in.uv).rgb;
+  let aspect = vec2<f32>(fxp.screen.x * fxp.screen.w, 1.0);
+  let to_sun = (in.uv - fxp.god.xy) * aspect;
+  let dist = length(to_sun);
+  let fall = clamp(1.0 - dist / 0.5, 0.0, 1.0);
+  let disc = fxp.god_sun[1].y;
+  var uv = in.uv;
+  let rim = disc + 1.5 * fxp.screen.w;
+  if (disc > 0.0 && dist < rim) {
+    let away = select(to_sun / dist, vec2<f32>(1.0, 0.0), dist < 1e-6);
+    uv = fxp.god.xy + away * rim / aspect;
+  }
+  // Only light brighter than the threshold carries rays: the sun and its glow.
+  let c = sample_exact(tex_a, fx_linear, uv).rgb;
   let lum = dot(c, LUMA);
-  let bright = max(lum - fxp.god2.w, 0.0) / max(lum, 1e-4);
-  return vec4<f32>(min(c * bright, vec3<f32>(32.0)) * pow(fall, 3.0), 1.0);
+  var rays = min(c * max(lum - fxp.god2.w, 0.0) / max(lum, 1e-4), vec3<f32>(32.0));
+  // The threshold judges the sun whole, by its own radiance
+  // (fxp.god_sun[1].z): it shapes the sky around the sun, not the sun.
+  let radius = fxp.god_sun[1].x;
+  if (disc > 0.0 && dist < radius) {
+    let x = dist / radius;
+    let own = fxp.god_sun[1].z;
+    let kept = max(own - fxp.god2.w, 0.0) / max(own, 1e-4);
+    rays += fxp.god_sun[0].rgb * kept * (1.0 - x * x) * (1.0 - x * x) * god_sun_through();
+  }
+  return vec4<f32>(rays * pow(fall, 3.0), 1.0);
 }
 
 // Half resolution: the mask (tex_b) blurred radially towards the sun.

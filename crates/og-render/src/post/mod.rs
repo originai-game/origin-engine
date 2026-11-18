@@ -174,6 +174,8 @@ pub(crate) struct FxPostUniform {
     pub god: [f32; 4],
     pub god2: [f32; 4],
     pub god_tint: [f32; 4],
+    /// The god rays' sun (`sun_and_post.rs` `god_sun`).
+    pub god_sun: [[f32; 4]; 2],
     /// Depth bands (`stylise.rs`): x: count (0: none), y: near, z: far,
     /// w: flatten.
     pub bands: [f32; 4],

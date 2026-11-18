@@ -1,0 +1,8 @@
+{
+  "fixed": [
+    {
+      "member": "rendering: og.PostEffects.godRays",
+      "summary": "God rays come from the sun's own light, as a source 2.5° across its radius whatever size its disc is drawn, dimmed by the clouds over it, and no longer from the drawn disc's pixels: a disc the sun's own size cast almost none, and a large one cast them from its width. godRaysThreshold gates the sun's light as it gates the sky's; the sky brighter than it still adds its own rays."
+    }
+  ]
+}

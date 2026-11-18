@@ -7901,7 +7901,7 @@ export interface PostEffects {
   screenBlurSamples: number;
   // ── God rays ──
   /**
-   * Screen-space light shafts from the DirectionalLight (the sun must be in front of the camera).
+   * Screen-space light shafts from the DirectionalLight (the sun must be in front of the camera). The sun casts them with its own light, as a source of a fixed angular size whatever size its disc is drawn, dimmed by the clouds over it; the bright sky around it adds its own.
    */
   godRays: boolean;
   /**
@@ -7940,7 +7940,7 @@ export interface PostEffects {
    */
   godRaysSamples: number;
   /**
-   * Sky brightness (linear, before exposure) below which the sky carries no rays.
+   * Brightness (linear, before exposure) below which the sky and the sun carry no rays: only what is brighter casts shafts.
    *
    * @default 2
    * @range 0..
