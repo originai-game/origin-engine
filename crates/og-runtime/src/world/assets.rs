@@ -54,6 +54,8 @@ pub(crate) enum Payload {
         dir: String,
     },
     Scene(Box<LoadedScene>),
+    /// A cooked scene whose ungrouped blob is being fetched by the host.
+    ScenePending,
     /// A sub-scene whose blob is in a cell group's pack (G3-3), not yet
     /// landed: its handle exists (a cell names it), its scene once the
     /// pack's bytes are in ([`crate::world::stream::resolve_scenes`]).
@@ -293,6 +295,24 @@ impl Assets {
                 && matches!(self.entries[i].payload, Payload::None)
             {
                 self.poll_bundle(i);
+            } else if matches!(self.entries[i].payload, Payload::ScenePending) {
+                let entry = &self.entries[i];
+                let decoded = decode_scene(
+                    self,
+                    &entry.path,
+                    entry.bundle.expect("cooked scene's bundle"),
+                );
+                match decoded {
+                    Ok(Some(scene)) => {
+                        self.entries[i].payload = Payload::Scene(Box::new(scene));
+                        self.entries[i].status = Status::Ready;
+                    }
+                    Ok(None) => {}
+                    Err(e) => {
+                        self.entries[i].payload = Payload::None;
+                        self.entries[i].status = Status::Failed(e);
+                    }
+                }
             }
         }
     }
@@ -356,22 +376,31 @@ impl Assets {
         id: &str,
         owner: Option<usize>,
     ) -> Result<(og_blob_bytes::Aligned, &Bundle), String> {
+        self.fetch_blob_from(id, owner)?
+            .ok_or_else(|| format!("{id} is still being fetched; load it once its bundle is ready"))
+    }
+
+    /// A pending fetch is not a rejected blob: asynchronous scene loads
+    /// keep their handle and retry only the pending read at a tick boundary.
+    fn fetch_blob_from(
+        &self,
+        id: &str,
+        owner: Option<usize>,
+    ) -> Result<Option<(og_blob_bytes::Aligned, &Bundle)>, String> {
         let (bundle, dir) = self.bundle_from(id, owner)?;
         let out = bundle.output(id).map_err(|e| e.to_string())?;
         if let Some(group) = &out.group {
             // A streamed output is read from its group's pack, once resident.
-            return Ok((aligned(self.stream.file(group, &out.file)?), bundle));
+            return Ok(Some((aligned(self.stream.file(group, &out.file)?), bundle)));
         }
         let path = format!("{dir}/{}", out.file);
         let start = crate::author::trace::start();
         match read(&path) {
             Fetch::Ready(bytes) => {
                 crate::author::trace::load(id, start, bytes.len());
-                Ok((og_blob_bytes::Aligned::new(bytes), bundle))
+                Ok(Some((og_blob_bytes::Aligned::new(bytes), bundle)))
             }
-            Fetch::Pending => Err(format!(
-                "{path} is still being fetched; load it once its bundle is ready"
-            )),
+            Fetch::Pending => Ok(None),
             Fetch::Failed(e) => Err(format!("{path}: {e}")),
         }
     }
@@ -580,20 +609,30 @@ pub(crate) fn load_scene_from(
     }
     let scene = decode_scene(&eng.assets.borrow(), &id, bundle)?;
     let mut assets = eng.assets.borrow_mut();
-    let index = assets.push(&id, Status::Ready, Payload::Scene(Box::new(scene)));
+    let (status, payload) = match scene {
+        Some(scene) => (Status::Ready, Payload::Scene(Box::new(scene))),
+        None => (Status::Pending, Payload::ScenePending),
+    };
+    let index = assets.push(&id, status, payload);
     assets.entries[index].bundle = Some(bundle);
     assets.by_path.insert(key, index);
     Ok(index)
 }
 
 /// A cooked scene's blob decoded (from its group's pack when it streams).
-pub(crate) fn decode_scene(assets: &Assets, id: &str, owner: usize) -> Result<LoadedScene, String> {
-    let (bytes, bundle) = assets.blob_from(id, Some(owner))?;
+pub(crate) fn decode_scene(
+    assets: &Assets,
+    id: &str,
+    owner: usize,
+) -> Result<Option<LoadedScene>, String> {
+    let Some((bytes, bundle)) = assets.fetch_blob_from(id, Some(owner))? else {
+        return Ok(None);
+    };
     let desc = bundle.scene(id, bytes.bytes()).map_err(|e| e.to_string())?;
-    Ok(LoadedScene {
+    Ok(Some(LoadedScene {
         bundle: owner,
         desc,
-    })
+    }))
 }
 
 pub(crate) fn load_font(eng: &Engine, path: &str) -> Result<usize, String> {

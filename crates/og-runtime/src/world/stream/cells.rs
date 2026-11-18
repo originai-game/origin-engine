@@ -512,7 +512,7 @@ fn waiting_scene(eng: &Engine, scene: u64) -> bool {
     let a = eng.assets.borrow();
     assets::index_of(scene as f64)
         .and_then(|i| a.entries.get(i))
-        .is_some_and(|e| matches!(e.payload, Payload::SceneWaiting { .. }))
+        .is_some_and(|e| matches!(e.status, assets::Status::Pending))
 }
 
 /// One tick of a cell's load: starts it (from its kept rows when it

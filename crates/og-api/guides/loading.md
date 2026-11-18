@@ -8,11 +8,12 @@ Asset queries, publish pruning and the cook cache are in assets.
 ## 1. The bundle
 
 - The game's bundle (`cooked`) is open before the first tick, and
-  GameDesc.scene is spawned then. Loads from an open bundle complete at
-  once on both hosts, because the web host fetches the bundle's files
-  before the engine starts.
-- Only og.load.bundle of another bundle can be pending. It completes at
-  a tick boundary.
+  GameDesc.scene is spawned then. The web host fetches its files before
+  the engine starts.
+- A runtime bundle's manifest or scene blob can still be fetching.
+  og.load.scene answers a stable pending handle once its bundle is open;
+  keep that handle and query og.load.status before instantiating. Pending
+  loads complete at tick boundaries; og.load.error gives a failed load's reason.
 - Every cooked loader answers the same handle for the same path. Load
   once in GameDesc.start and keep the handle.
 - An asset in a streaming group's pack loads once its group is

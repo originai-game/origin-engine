@@ -1,7 +1,7 @@
 module load {
   doc "Asset loading from cooked output: `og cook` turns assets/ into cooked/ (.ogb blobs and the manifest cooked/.cook.ogt), and the runtime reads only cooked/."
   doc "Paths are asset ids: the path under assets/ (`models/ship.glb`, `scenes/main.ogt`); an `assets/` prefix is accepted. Every blob is checked against the manifest's type, schema version and cook stamp."
-  doc "The game's bundle (`cooked`) is open before the first tick, when GameDesc.scene is spawned. Loads from an open bundle complete at once on both hosts; only og.load.bundle of another bundle can be pending, completing at a tick boundary."
+  doc "The game's bundle (`cooked`) opens before GameDesc.scene spawns. Runtime manifests and scene blobs may still be fetching: keep the pending handle and query status before instantiating. Pending loads complete at tick boundaries."
   guide "loading §1"
   core gltf font emitter texture document animation rig flipbook tilemap vfx
 
@@ -243,7 +243,7 @@ module load {
     doc "Load a cooked scene (.ogt). world.instantiate spawns its entities: depth first, parents before children, each component table matched to a registered component by its reflected name (`Transform` is og.Transform) and migrated field by field; a field the scene lacks keeps its default, one the component lacks is dropped with a warning."
     param world World "The world that owns the asset."
     param path String "The scene's asset id, such as `scenes/main.ogt`."
-    returns Result.Asset
+    returns Result.Asset "The stable handle, pending while its blob is fetched. Query status; error gives a failed load's reason."
   }
 
   fn prefab {

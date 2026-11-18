@@ -6446,7 +6446,7 @@
     },
     {
       "name": "load",
-      "doc": "Asset loading from cooked output: `og cook` turns assets/ into cooked/ (.ogb blobs and the manifest cooked/.cook.ogt), and the runtime reads only cooked/.\nPaths are asset ids: the path under assets/ (`models/ship.glb`, `scenes/main.ogt`); an `assets/` prefix is accepted. Every blob is checked against the manifest's type, schema version and cook stamp.\nThe game's bundle (`cooked`) is open before the first tick, when GameDesc.scene is spawned. Loads from an open bundle complete at once on both hosts; only og.load.bundle of another bundle can be pending, completing at a tick boundary.\nSee `loading §1`.",
+      "doc": "Asset loading from cooked output: `og cook` turns assets/ into cooked/ (.ogb blobs and the manifest cooked/.cook.ogt), and the runtime reads only cooked/.\nPaths are asset ids: the path under assets/ (`models/ship.glb`, `scenes/main.ogt`); an `assets/` prefix is accepted. Every blob is checked against the manifest's type, schema version and cook stamp.\nThe game's bundle (`cooked`) opens before GameDesc.scene spawns. Runtime manifests and scene blobs may still be fetching: keep the pending handle and query status before instantiating. Pending loads complete at tick boundaries.\nSee `loading §1`.",
       "place": "namespace",
       "publish": true,
       "types": [
@@ -6608,6 +6608,7 @@
             }
           ],
           "returns": "Result<Asset>",
+          "returnsDoc": "The stable handle, pending while its blob is fetched. Query status; error gives a failed load's reason.",
           "publish": true
         },
         {
