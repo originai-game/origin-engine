@@ -30570,7 +30570,7 @@ export interface StreamStatus {
   /** Where it is. */
   readonly state: StreamState;
   /**
-   * Presentation only, nondeterministic: its model textures have finished preparing. False until resident and decoded. Not saved or hashed; never use this worker-progress value to drive gameplay, ticks or simulation state. Read it only for presentation/loading screens.
+   * Presentation only, nondeterministic. True when resident and all model/proxy textures are prepared; cell groups include shared-group models and ordinary sub-scenes, not nested cells. Not saved or hashed. Never drive gameplay, ticks or simulation with this value.
    */
   readonly ready: boolean;
   /** Whether its trigger or a request wants it now. */

@@ -317,11 +317,13 @@ fn debug_color(level: u32) -> Vec3 {
 }
 
 /// What [`draw`] reads of one place besides the models' rows.
-#[derive(Clone, Copy, PartialEq)]
+#[derive(Clone, PartialEq)]
 pub(crate) struct PlaceIn {
     alive: bool,
     /// Whether its cell is loaded (true for a place of no cell).
     loaded: bool,
+    /// Pending proxies must invalidate kept draws when their maps arrive.
+    pending: Vec<u64>,
     /// Its root's world matrix, bit for bit.
     root: [u32; 16],
 }
@@ -342,6 +344,13 @@ pub(crate) fn inputs(world: &World, rs: &RenderState, h: &mut Hierarchy) -> Vec<
         PlaceIn {
             alive,
             loaded,
+            pending: p
+                .tree
+                .proxies
+                .iter()
+                .filter(|h| rs.decoded.hidden_models.contains_key(h))
+                .copied()
+                .collect(),
             root,
         }
     });
@@ -374,6 +383,20 @@ pub(crate) struct View<'a> {
     pub view_height: f32,
     pub bias: f32,
     pub debug: bool,
+}
+
+/// A scene's proxy maps are presentation resources, just like its models'.
+pub(crate) fn scene_ready(rs: &RenderState, bundle: usize, scene: &str) -> bool {
+    rs.hlod
+        .trees
+        .get(&(bundle, scene.to_string()))
+        .is_none_or(|tree| {
+            tree.as_ref().is_none_or(|t| {
+                t.proxies
+                    .iter()
+                    .all(|h| !rs.decoded.hidden_models.contains_key(h))
+            })
+        })
 }
 
 /// Draws the proxies of this frame and answers the models they stand in
@@ -429,7 +452,10 @@ pub(crate) fn draw(
         stack.reverse();
         while let Some(n) = stack.pop() {
             let node = &nodes[n];
-            let parts = view.models.get(&tree.proxies[n]);
+            let parts = view
+                .models
+                .get(&tree.proxies[n])
+                .filter(|_| !rs.decoded.hidden_models.contains_key(&tree.proxies[n]));
             // Every member under it: its children's, then its own.
             let under = node.members.0..node.members.1;
             let children: Vec<usize> = tree.hlod.children(Some(n)).collect();

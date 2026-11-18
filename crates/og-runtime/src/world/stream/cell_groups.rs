@@ -34,6 +34,69 @@ pub(crate) const PREFETCH_SECONDS: f32 = 2.0;
 /// The holds `dump_stream` lists.
 const MAX_HOLDS: usize = 64;
 
+/// A cell's presentation includes models owned by other groups. Neither
+/// this query nor the hidden-model set changes the deterministic hold gate.
+pub(super) fn ready(
+    a: &crate::world::assets::Assets,
+    rs: &crate::present::extract::RenderState,
+    group: &str,
+) -> bool {
+    fn scene_ready(
+        a: &crate::world::assets::Assets,
+        rs: &crate::present::extract::RenderState,
+        index: usize,
+    ) -> bool {
+        let Payload::Scene(scene) = &a.entries[index].payload else {
+            return false;
+        };
+        if !crate::present::hlod::scene_ready(rs, scene.bundle, &scene.id) {
+            return false;
+        }
+        scene.entities.iter().enumerate().all(|(row, entity)| {
+            let model_ready = entity.instance.as_ref().is_none_or(|id| {
+                if let Some(group) = a.group_from(id, Some(scene.bundle)) {
+                    let Some(i) = a.stream.find(&group) else {
+                        return false;
+                    };
+                    let g = &a.stream.groups[i];
+                    if g.state != super::State::Resident || !g.ready {
+                        return false;
+                    }
+                }
+                a.by_path
+                    .get(&format!("gltf:{}:{id}", scene.bundle))
+                    .is_some_and(|&i| {
+                        !rs.decoded
+                            .hidden_models
+                            .contains_key(&super::assets::handle(i))
+                    })
+            });
+            // Nested cells have their own readiness. Ordinary sub-scenes
+            // are part of this cell's presentation, including shared models.
+            let subscene_ready = entity.subscene.as_ref().is_none_or(|id| {
+                if scene
+                    .components
+                    .iter()
+                    .any(|c| c.name == "og.StreamCell" && c.rows.iter().any(|(i, _)| *i == row))
+                {
+                    return true;
+                }
+                let Some(&i) = a.by_path.get(&format!("scene:{}:{id}", scene.bundle)) else {
+                    return false;
+                };
+                scene_ready(a, rs, i)
+            });
+            model_ready && subscene_ready
+        })
+    }
+    a.stream
+        .scenes
+        .get(group)
+        .into_iter()
+        .flatten()
+        .all(|&i| scene_ready(a, rs, i))
+}
+
 /// A tick held for a cell group's pack.
 #[derive(Clone, Debug)]
 pub(crate) struct Hold {

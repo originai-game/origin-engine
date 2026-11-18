@@ -539,12 +539,15 @@ pub(crate) fn received(g: &Group) -> f64 {
 }
 
 /// A group's status, with the bytes it keeps for the frame.
-fn group_status(s: &Streams, g: &Group) -> StreamStatus {
+fn group_status(eng: &Engine, a: &assets::Assets, g: &Group) -> StreamStatus {
+    let s = &a.stream;
     StreamStatus {
         name: g.desc.name.clone(),
         scene: g.desc.scene.clone(),
         state: g.state.wire(),
-        ready: g.state == State::Resident && g.ready,
+        ready: g.state == State::Resident
+            && g.ready
+            && cell_groups::ready(a, &eng.render.borrow(), &g.desc.name),
         wanted: g.wanted,
         requested: g.requested,
         priority: g.desc.priority,
@@ -568,13 +571,14 @@ fn group_status(s: &Streams, g: &Group) -> StreamStatus {
     }
 }
 
-fn stream_budget(s: &Streams) -> StreamBudget {
+fn stream_budget(eng: &Engine, a: &assets::Assets) -> StreamBudget {
+    let s = &a.stream;
     StreamBudget {
         budget: s.budget() as f64,
         used: s.used() as f64,
         kept: s.kept() as f64,
         peak: s.peak as f64,
-        groups: s.groups.iter().map(|g| group_status(s, g)).collect(),
+        groups: s.groups.iter().map(|g| group_status(eng, a, g)).collect(),
     }
 }
 
@@ -597,12 +601,12 @@ pub(crate) fn dump(engine_id: u32) -> Value {
     };
     let a = eng.assets.borrow();
     let s = &a.stream;
-    let mut v = stream_budget(s).to_json();
+    let mut v = stream_budget(&eng, &a).to_json();
     v["groups"] = json!(
         s.groups
             .iter()
             .map(|g| {
-                let mut j = group_status(s, g).to_json();
+                let mut j = group_status(&eng, &a, g).to_json();
                 j["trigger"] = trigger_json(&g.desc.trigger);
                 j["file"] = json!(g.desc.file);
                 j["slots"] = json!(s.slots.get(&g.desc.name).map_or(0, Vec::len));
@@ -634,7 +638,7 @@ pub(crate) fn dump(engine_id: u32) -> Value {
 fn with_group<T>(
     world: u32,
     group: &str,
-    f: impl FnOnce(&Engine, &mut Streams, usize) -> T,
+    f: impl FnOnce(&Engine, &mut assets::Assets, usize) -> T,
 ) -> Result<T, String> {
     let eng = engine(world)?;
     let mut a = eng.assets.borrow_mut();
@@ -647,7 +651,7 @@ fn with_group<T>(
             format!("no streaming group '{group}'; the open bundles declare {}", names.join(", "))
         }
     })?;
-    Ok(f(&eng, s, i))
+    Ok(f(&eng, &mut a, i))
 }
 
 /// The status of every group scene `scene` (an asset id) declares, by name.
@@ -657,7 +661,7 @@ pub(crate) fn scene_groups(eng: &Engine, scene: &str) -> Vec<StreamStatus> {
     s.groups
         .iter()
         .filter(|g| og_bundle::runtime::asset_id(&g.desc.scene) == scene)
-        .map(|g| group_status(s, g))
+        .map(|g| group_status(eng, &a, g))
         .collect()
 }
 
@@ -666,13 +670,15 @@ pub fn og_stream_status(
     world: u32,
     group: String,
 ) -> Result<crate::host::wire::StreamStatus, String> {
-    with_group(world, &group, |_, s, i| group_status(s, &s.groups[i]))
+    with_group(world, &group, |eng, a, i| {
+        group_status(eng, a, &a.stream.groups[i])
+    })
 }
 
 /// `og.stream.request`: wanted until released (loaded at the next tick
 /// boundary, within the budget).
 pub fn og_stream_request(world: u32, group: String) -> Result<(), String> {
-    match with_group(world, &group, |_, s, i| s.groups[i].requested = true) {
+    match with_group(world, &group, |_, a, i| a.stream.groups[i].requested = true) {
         Ok(()) => Ok(()),
         Err(e) => Err(e),
     }
@@ -680,7 +686,9 @@ pub fn og_stream_request(world: u32, group: String) -> Result<(), String> {
 
 /// `og.stream.release`: no longer asked for (its trigger may still want it).
 pub fn og_stream_release(world: u32, group: String) -> Result<(), String> {
-    match with_group(world, &group, |_, s, i| s.groups[i].requested = false) {
+    match with_group(world, &group, |_, a, i| {
+        a.stream.groups[i].requested = false
+    }) {
         Ok(()) => Ok(()),
         Err(e) => Err(e),
     }
@@ -689,7 +697,7 @@ pub fn og_stream_release(world: u32, group: String) -> Result<(), String> {
 /// `og.stream.budget`.
 pub fn og_stream_budget(world: u32) -> Result<crate::host::wire::StreamBudget, String> {
     match engine(world) {
-        Ok(eng) => Ok(stream_budget(&eng.assets.borrow().stream)),
+        Ok(eng) => Ok(stream_budget(&eng, &eng.assets.borrow())),
         Err(e) => Err(e),
     }
 }

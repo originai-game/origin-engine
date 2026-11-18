@@ -741,12 +741,16 @@ fn pending_model_textures_hide_only_presentation_and_preserve_128_tick_hashes() 
     struct Pending {
         ready: Arc<AtomicBool>,
         native: bool,
+        pack: Option<Rc<Cell<bool>>>,
     }
     impl Hooks for Pending {
         fn dispatch(&self, _: &Dispatch) -> Result<String, String> {
             Ok(String::new())
         }
         fn read_asset(&self, path: &str) -> Fetch<Vec<u8>> {
+            if path.ends_with("/shared.ogb") && self.pack.as_ref().is_some_and(|p| !p.get()) {
+                return Fetch::Pending;
+            }
             match std::fs::read(path) {
                 Ok(b) => Fetch::Ready(b),
                 Err(e) => Fetch::Failed(e.to_string()),
@@ -795,6 +799,7 @@ fn pending_model_textures_hide_only_presentation_and_preserve_128_tick_hashes() 
             set_hooks(Rc::new(Pending {
                 ready: ready.clone(),
                 native,
+                pack: None,
             }));
             og_host_begin_bundle();
             let game = og_game_game(Some(r#"{"seed":1}"#.into()));
@@ -853,6 +858,150 @@ fn pending_model_textures_hide_only_presentation_and_preserve_128_tick_hashes() 
             assert!(og_engine_destroy(engine));
         }
     }
+    // A cell's own pack can be ready before the distance group of a model
+    // it places. Presentation waits for both, never drawing either a model
+    // stand-in or an HLOD proxy with pending maps.
+    for hlod in [false, true] {
+        let path = base.join(format!("shared-{hlod}"));
+        parcel(&path, "parcel", "parcel", 100, true);
+        let content = format!(
+            "type scene\nversion 1\n---\n{}stream \"parcel\" {{\n cell\n asset \"parcel/own.ogt\"\n}}\nstream \"shared\" {{\n asset \"parcel/model.ogt\"\n distance 100 0 0 10000\n}}\nentity \"house-parcel\" {{\n model \"parcel/model.ogt\"\n static true\n Transform {{\n    position 0 0 0\n }}\n}}\nentity \"house-second\" {{\n model \"parcel/model.ogt\"\n static true\n Transform {{\n position 4 0 0\n }}\n}}\n",
+            if hlod {
+                "hlod {\n size 32\n error 0.25\n texels 64\n}\n"
+            } else {
+                ""
+            }
+        );
+        cook(&path, &[
+            ("parcel/content.ogt", content.into_bytes()),
+            ("parcel/own.ogt", b"type model\nversion 1\n---\npart \"unused\" {\n boxGeometry {\n width 1\n height 1\n depth 1\n }\n}\n".to_vec()),
+        ]);
+        let mut baseline = Vec::new();
+        for (hold_pack, delayed, native) in [
+            (false, false, false),
+            (false, true, false),
+            (false, true, true),
+            (true, true, false),
+        ] {
+            let ready = Arc::new(AtomicBool::new(!delayed));
+            let pack = Rc::new(Cell::new(!hold_pack));
+            set_hooks(Rc::new(Pending {
+                ready: ready.clone(),
+                native,
+                pack: Some(pack.clone()),
+            }));
+            og_host_begin_bundle();
+            let game = og_game_game(Some(r#"{"seed":1}"#.into()));
+            let engine = value(og_engine_create(game, json!({"root": root}).to_string()))
+                .as_u64()
+                .unwrap() as u32;
+            let held = Rc::new(Cell::new(Held::default()));
+            answer(set_render_backend(
+                engine,
+                Some(Box::new(Recorder(held.clone()))),
+            ));
+            let g = Game { engine, held };
+            g.place("world.ogt");
+            g.open(&path);
+            g.place("parcel/place.ogt");
+            if !hlod {
+                g.walk(100);
+            }
+            value(og_engine_write_resource(
+                engine,
+                "og.Camera".into(),
+                json!({"position": {"x":100,"y":0,"z":3000}, "fov":50}).to_string(),
+            ));
+            let mut hashes = Vec::new();
+            for tick in 0..128 {
+                if tick == 16 {
+                    pack.set(true);
+                }
+                if hlod && tick == 96 {
+                    g.walk(100);
+                }
+                if tick == 64 {
+                    ready.store(true, Ordering::Release);
+                }
+                g.frame();
+                hashes.push(g.dump()["hash"].clone());
+                if delayed && (tick == 8 || tick == 40) {
+                    if hlod {
+                        assert!(!g.loaded("parcel"), "also exercise unloaded-cell HLOD");
+                    } else {
+                        assert!(g.loaded("parcel"));
+                        assert_eq!(g.state("parcel"), "resident");
+                    }
+                    assert!(
+                        !og_stream_status(engine, "parcel".into()).unwrap().ready,
+                        "shared group or its texture still pending; hlod={hlod}"
+                    );
+                    assert!(
+                        !og_stream_budget(engine)
+                            .unwrap()
+                            .groups
+                            .iter()
+                            .find(|g| g.name == "parcel")
+                            .unwrap()
+                            .ready
+                    );
+                    assert_eq!(
+                        g.held.get().instances,
+                        0,
+                        "pending proxies must not draw; hlod={hlod}"
+                    );
+                }
+                if hlod && !native && tick == 80 {
+                    assert!(!g.loaded("parcel"));
+                    assert!(
+                        g.held.get().instances > 0,
+                        "prepared unloaded-cell proxies must invalidate kept draws"
+                    );
+                }
+            }
+            if !hold_pack {
+                if delayed {
+                    assert_eq!(hashes, baseline, "shared decode timing changed hashes");
+                } else {
+                    baseline = hashes;
+                }
+            }
+            for _ in 0..2000 {
+                g.frame();
+                if og_loading_idle(engine) {
+                    break;
+                }
+                std::thread::sleep(std::time::Duration::from_millis(1));
+            }
+            assert!(og_loading_idle(engine));
+            assert!(og_stream_status(engine, "parcel".into()).unwrap().ready);
+            assert!(
+                g.held.get().instances > 0,
+                "ready models/proxies must become visible"
+            );
+            if hlod {
+                let _ = og_engine_take_outputs(engine);
+                let _: Value =
+                    serde_json::from_str(&og_engine_probe_commands(engine, "0:dump_render".into()))
+                        .unwrap();
+                g.frame();
+                let outputs: Value = serde_json::from_str(&og_engine_take_outputs(engine)).unwrap();
+                let output = outputs
+                    .as_array()
+                    .unwrap()
+                    .iter()
+                    .rev()
+                    .find(|o| o["kind"] == "json")
+                    .unwrap();
+                let render: Value = serde_json::from_str(output["data"].as_str().unwrap()).unwrap();
+                assert!(
+                    render["hlod"]["proxies"].as_u64().unwrap() > 0,
+                    "far fixture must exercise HLOD: {render}"
+                );
+            }
+            assert!(og_engine_destroy(engine));
+        }
+    }
     // Equal cooked ids in two runtime bundles must prepare independently.
     // Otherwise each poll cancels the other bundle's texture job forever.
     for grouped in [false, true] {
@@ -864,6 +1013,7 @@ fn pending_model_textures_hide_only_presentation_and_preserve_128_tick_hashes() 
         set_hooks(Rc::new(Pending {
             ready: ready.clone(),
             native: true,
+            pack: None,
         }));
         og_host_begin_bundle();
         let game = og_game_game(Some(r#"{"seed":1}"#.into()));

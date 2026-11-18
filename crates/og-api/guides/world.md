@@ -259,7 +259,10 @@ from og.load.scene) is a cell.
 - `loaded` and CellEvent describe entity/physics readiness, not texture
   readiness: colliders can already be live while their models are hidden.
   Give a cell's assets a cell group and read `og.stream.status(...).ready`
-  only from presentation code; use `og.loading.idle` when
+  only from presentation code. It includes the models the cell places from
+  other groups (for example a shared distance group), ordinary nested
+  sub-scenes and HLOD proxy textures; nested cells have their own readiness.
+  Pending proxies stay hidden too. Use `og.loading.idle` when
   waiting for all pending presentation work at startup. Never use worker
   completion to decide simulation changes. Set the load distance far
   enough outside the visible area to cover measured fetch, transcode and
