@@ -2,6 +2,7 @@
 //!
 //!   og-gfx SCENE...|--all [--out frame.png] [--frames N]
 //!   og-gfx --all --capture DIR [--frames N]   frames to DIR/<tier>/<scene>.png, stats to DIR/report.txt
+//!   og-gfx SCENE --sequence DIR [--length N]  N frames (120) after the settled one to DIR/NNNN.png
 //!   og-gfx --costs [--frames N]               the feature-cost table (markdown)
 //!   og-gfx --costs-e5 [--frames N]            the E5 rows alone (slow tiers: lavapipe)
 //!   og-gfx --costs-p2 [--frames N]            the phase 2 rows alone (terrain, water, 3D fluid)
@@ -13,6 +14,10 @@
 //! it, with its parts: making the renderer, the first frame's submit (its
 //! compiles are waited for there) and the GPU's wait.
 //! Frame times run the scene's per-frame update (moving sprites) each frame.
+//! `--sequence` records the scene in motion for a clip: from its settled
+//! frame, with the same camera and settings, each frame one tick on (the
+//! scene's update for the frame after, else `frame.tick` advanced by one),
+//! deterministic as the scene is; frame 0000 is the settled frame.
 //! `OG_GFX_DEBUG_CASCADES=1` draws the cascade debug view instead.
 //! `OG_GFX_AO_HALF=1` runs the scene's ambient occlusion at half resolution
 //! (`AoResolution::Half`).
@@ -64,6 +69,7 @@ fn main() {
     let (mut names, mut out, mut frames, mut capture, mut costs) =
         (Vec::new(), None, 0u32, None, false);
     let mut only: Option<&str> = None;
+    let (mut sequence, mut length) = (None::<PathBuf>, 120u32);
     while let Some(a) = args.next() {
         match a.as_str() {
             "--all" => names.extend(
@@ -75,6 +81,13 @@ fn main() {
             "--out" => out = Some(args.next().expect("--out PATH")),
             "--capture" => capture = Some(PathBuf::from(args.next().expect("--capture DIR"))),
             "--costs" => costs = true,
+            "--sequence" => sequence = Some(PathBuf::from(args.next().expect("--sequence DIR"))),
+            "--length" => {
+                length = args
+                    .next()
+                    .and_then(|v| v.parse().ok())
+                    .expect("--length N")
+            }
             "--costs-e5" => {
                 costs = true;
                 only = Some("E5");
@@ -91,7 +104,7 @@ fn main() {
             }
             "-h" | "--help" => {
                 println!(
-                    "og-gfx SCENE...|--all [--out frame.png] [--frames N] [--capture DIR]\nog-gfx --costs [--frames N]\nscenes: {}",
+                    "og-gfx SCENE...|--all [--out frame.png] [--frames N] [--capture DIR]\nog-gfx SCENE --sequence DIR [--length N]\nog-gfx --costs [--frames N]\nscenes: {}",
                     scenes::SCENES.join(", ")
                 );
                 return;
@@ -120,6 +133,17 @@ fn main() {
             scenes::SCENES.join(", ")
         );
         std::process::exit(2);
+    }
+    if let Some(dir) = sequence {
+        let [name] = names.as_slice() else {
+            eprintln!("og-gfx --sequence: name one scene");
+            std::process::exit(2);
+        };
+        if let Err(e) = record(name, &dir, length) {
+            eprintln!("og-gfx {name}: {e}");
+            std::process::exit(1);
+        }
+        return;
     }
     let mut failed = false;
     let mut report = String::new();
@@ -436,6 +460,38 @@ fn run(
         compile_list(&mut line, "after it", after);
     }
     Ok(line)
+}
+
+/// Records `length` frames of `name` in motion to `dir` (`--sequence`):
+/// the settled frame as 0000, then each frame one tick on.
+fn record(name: &str, dir: &Path, length: u32) -> Result<(), String> {
+    let mut built = scenes::build(name)?;
+    let mut renderer = Renderer::new_blocking(&built.desc).map_err(|e| e.to_string())?;
+    let settled = built.frames.max(1);
+    for f in 0..settled + length {
+        if f >= settled {
+            let tick = built.scene.frame.tick;
+            if let Some(update) = built.update {
+                update(&mut built.scene, f);
+            }
+            if built.scene.frame.tick == tick {
+                built.scene.frame.tick += 1;
+            }
+        } else if let Some(update) = built.update {
+            update(&mut built.scene, f);
+        }
+        renderer
+            .render(&built.scene, &RenderTarget::Offscreen)
+            .map_err(|e| e.to_string())?;
+        if f + 1 >= settled {
+            renderer.wait_idle().map_err(|e| e.to_string())?;
+            let image = renderer.read_offscreen().map_err(|e| e.to_string())?;
+            let path = dir.join(format!("{:04}.png", f + 1 - settled));
+            gfx::save_png(&path, &image)?;
+        }
+    }
+    println!("{name}: {} frames -> {}", length + 1, dir.display());
+    Ok(())
 }
 
 /// Whether `OG_GFX_COMPILES` asks for each pipeline's compile time.
