@@ -217,153 +217,260 @@ fn wake(scene: &mut RenderScene, lake: bool) {
     wake_update(scene, 0);
 }
 
-/// `water-river`'s course: along a terrace 4 m up, over its edge in a
-/// 4 m fall, then on across the plain below (frame xz and the water's level).
-pub const RIVER_COURSE: [Vec3; 6] = [
-    Vec3::new(-40.0, 4.0, -38.0),
-    Vec3::new(-18.0, 4.0, -20.0),
-    Vec3::new(-0.5, 4.0, -8.0),
-    Vec3::new(0.5, 0.0, -7.5),
-    Vec3::new(14.0, 0.0, 4.0),
-    Vec3::new(40.0, 0.0, 16.0),
+/// `water-river`'s course: down an upland valley at 4 m, over a rock
+/// ledge in a 4 m fall into a gorge, then meandering on across the lower
+/// valley (frame xz and the water's level).
+pub const RIVER_COURSE: [Vec3; 14] = [
+    Vec3::new(-90.0, 4.0, -80.0),
+    Vec3::new(-62.0, 4.0, -58.0),
+    Vec3::new(-44.0, 4.0, -52.0),
+    Vec3::new(-28.0, 4.0, -38.0),
+    Vec3::new(-16.0, 4.0, -24.0),
+    Vec3::new(-6.0, 4.0, -15.0),
+    Vec3::new(-5.0, 0.0, -13.6),
+    Vec3::new(2.0, 0.0, -7.0),
+    Vec3::new(8.0, 0.0, 3.0),
+    Vec3::new(8.0, 0.0, 14.0),
+    Vec3::new(16.0, 0.0, 26.0),
+    Vec3::new(34.0, 0.0, 34.0),
+    Vec3::new(60.0, 0.0, 38.0),
+    Vec3::new(110.0, 0.0, 44.0),
 ];
 pub const RIVER_WIDTH: f32 = 7.0;
 pub const RIVER_SPEED: f32 = 1.8;
 
-/// The ground of `water-river`'s valley at frame point `p` (xz): the
-/// river's bed 1.2 m under its level mid-stream, its banks rising to half a
-/// metre over it a couple of metres past its edge, and the level of the
-/// course's nearest point beyond (the terrace and the plain, a cliff where
-/// the river falls).
-fn river_ground(course: &og_env::river::River, p: Vec2) -> f32 {
-    let Some(at) = course.at(p) else {
-        return -1.0;
+/// The fall's foot, where the pool is scoured deepest (frame xz).
+const RIVER_FOOT: Vec2 = Vec2::new(-3.5, -12.0);
+
+/// `water-river`'s valley: the land's height at frame point `p` (xz).
+/// `wide` is the course run on 300 m past either end, 800 m wide, so every
+/// point has a nearest place on it; `fall` is how far along it the fall is.
+/// The channel's bed lies 1.4 m under the water mid-stream, rising to banks
+/// half a metre over it; the pool below the fall is scoured 1.6 m deeper.
+/// Away from the river the land is the upland's (4 m) above the fall and
+/// for 40 m below it, easing down to the lower valley's after: the river
+/// cuts its own gorge below the ledge, its walls steep near the fall and
+/// opening downstream, and the valley's sides rise to hills 40 m and more
+/// up some hundreds of metres out. Where it falls the river cuts through
+/// a band of rock standing over the upland, its walls sheer and up to 6 m
+/// tall about the fall.
+fn river_height(wide: &og_env::river::River, fall: f64, p: Vec2) -> f32 {
+    use crate::fx_scenes::{noise2, smooth};
+    let Some(at) = wide.at(p) else {
+        return 0.0;
     };
-    let s = at.across.abs() * 100.0;
+    let d = at.across.abs() * wide.width * 0.5;
     let half = RIVER_WIDTH * 0.5;
-    let bank = (s - (half - 1.5)) / 3.5;
-    let t = bank.clamp(0.0, 1.0);
-    let rise = t * t * (3.0 - 2.0 * t);
-    let hills =
-        0.4 * ((p.x * 0.11).sin() * (p.y * 0.07).cos()) * ((s - half - 3.0) / 10.0).clamp(0.0, 1.0);
-    at.level - 1.2 + 1.7 * rise + hills
+    let below = (at.along - fall) as f32;
+    // 1 at the fall's lip and above, 0 from 40 m below it.
+    let gorge = 1.0 - smooth(0.0, 40.0, below);
+    let upland = 4.0 * gorge;
+    let rise = smooth(half - 1.5, half + 2.5, d);
+    let scour = 1.6 * (-(p - RIVER_FOOT).length_squared() / 25.0).exp();
+    let channel = at.level - 1.4 + 1.9 * rise - scour;
+    let hills = 2.5 * (noise2(p.x / 60.0 + 3.0, p.y / 60.0 + 7.0, 0x91) - 0.5)
+        + 6.0 * (noise2(p.x / 180.0, p.y / 180.0, 0x92) - 0.5);
+    let side = smooth(20.0, 120.0, d);
+    // The band of rock the river cuts through at the fall: 6 m over the
+    // upland at its crest, just above the lip, across some 50 m of
+    // the valley (an outcrop, not a step across it).
+    let band = 6.0 * (-((below + 3.0) / 12.0).powi(2)).exp() * (1.0 - smooth(25.0, 60.0, d));
+    let land = upland
+        + band
+        + 0.6
+        + hills * smooth(8.0, 40.0, d)
+        + 14.0 * side
+        + 30.0 * smooth(150.0, 450.0, d);
+    // Sheer (the gorge's rock walls) through the band, wide banks after.
+    let sheer = band / 6.0;
+    let banks = 2.0 + (1.0 - gorge) * 12.0;
+    let reach = half + 2.5 + banks + (1.2 - banks) * sheer;
+    let m = smooth(half + 2.5, reach, d);
+    channel + (land - channel) * m
 }
 
-/// A river down a terrace into a waterfall and on across the plain
-/// (`water-river`): its current turning with its course, slowing to its
-/// banks, the fall's sheet and the white water of its pool, pines on the
-/// grassy terrace and plain and boulders along its banks and in its pool.
+/// A river down an upland valley over a rock ledge into a gorge and on
+/// across the lower valley (`water-river`): its current turning with its
+/// course, slowing to its banks, the fall's sheet and the white water of
+/// its pool clearing downstream. The land is a terrain 1 km across, grass
+/// on its slopes and rock where they steepen (the ledge and the gorge's
+/// walls), pines in the meadows and boulders on the banks and in the pool.
 fn river(scene: &mut RenderScene) {
-    // Mid-morning: the sun in the east, on the fall's face (it falls east).
+    use crate::fx_scenes::hash2;
+    use og_render::{Terrain, TerrainData, TerrainLayer};
+    use std::sync::Arc;
+    // Mid-morning: the sun in the east, on the fall's face.
     physical_light(scene, 10.0, PhysicalAtmosphere::EARTH);
+    scene.lighting.light.cast_shadows = true;
     let course =
         og_env::river::River::new(&RIVER_COURSE, RIVER_WIDTH, RIVER_SPEED).expect("a river");
-    // The valley: a grid 120 m square at half a metre, its heights the ground's.
-    // (The course run on 100 m past either end, so the ground there follows its nearest level too.)
     let mut long = RIVER_COURSE.to_vec();
+    let flat = Vec3::new(1.0, 0.0, 1.0);
     let (a, b) = (RIVER_COURSE[0], RIVER_COURSE[1]);
-    long.insert(
-        0,
-        a + (a - b).normalize() * 100.0 * Vec3::new(1.0, 0.0, 1.0),
-    );
-    let (y, z) = (
-        RIVER_COURSE[RIVER_COURSE.len() - 1],
-        RIVER_COURSE[RIVER_COURSE.len() - 2],
-    );
-    long.push(y + (y - z).normalize() * 100.0 * Vec3::new(1.0, 0.0, 1.0));
-    let wide = og_env::river::River::new(&long, 200.0, 0.0).expect("a course");
-    let (n, size) = (241usize, 120.0f32);
+    long.insert(0, a + (a - b).normalize() * 300.0 * flat);
+    let (y, z) = (RIVER_COURSE[13], RIVER_COURSE[12]);
+    long.push(y + (y - z).normalize() * 300.0 * flat);
+    let wide = og_env::river::River::new(&long, 800.0, 0.0).expect("a course");
+    let fall = wide.at(Vec2::new(-5.5, -14.3)).map_or(0.0, |at| at.along);
+    let h = |p: Vec2| river_height(&wide, fall, p);
+    // The valley: 1 km square at a metre.
+    let (n, size) = (1025u32, 1024.0f32);
     let cell = size / (n - 1) as f32;
-    let height = |i: usize, j: usize| {
-        river_ground(
-            &wide,
-            Vec2::new(-size * 0.5 + i as f32 * cell, -size * 0.5 + j as f32 * cell),
-        )
-    };
-    let mut vertices = Vec::with_capacity(n * n);
-    for j in 0..n {
-        for i in 0..n {
-            let (l, r) = (
-                height(i.saturating_sub(1), j),
-                height((i + 1).min(n - 1), j),
-            );
-            let (d, u) = (
-                height(i, j.saturating_sub(1)),
-                height(i, (j + 1).min(n - 1)),
-            );
-            let normal = Vec3::new(l - r, 2.0 * cell, d - u).normalize();
-            vertices.push(og_render::Vertex {
-                position: [
-                    -size * 0.5 + i as f32 * cell,
-                    height(i, j),
-                    -size * 0.5 + j as f32 * cell,
-                ],
-                normal: normal.to_array(),
-                uv: [i as f32 * cell * 0.25, j as f32 * cell * 0.25],
-                color: [1.0; 4],
-                tangent: [0.0; 4],
-            });
-        }
-    }
-    let mut indices = Vec::with_capacity(6 * (n - 1) * (n - 1));
-    for j in 0..(n - 1) as u32 {
-        for i in 0..(n - 1) as u32 {
-            let a = j * n as u32 + i;
-            let (b, c, d) = (a + 1, a + n as u32, a + n as u32 + 1);
-            indices.extend_from_slice(&[a, c, b, b, c, d]);
-        }
-    }
-    let ground = scene.add_mesh(og_render::MeshData { vertices, indices });
-    let earth = crate::kit::surface_tinted(scene, "grass", [0.8, 0.92, 0.66]);
-    scene.add_instance(ground, earth, Mat4::IDENTITY);
-    // Pines on the terrace and the plain, clear of the banks, and boulders
-    // at the water's edge and under the fall.
+    let heights: Vec<f32> = (0..n * n)
+        .map(|i| {
+            h(Vec2::new(
+                -size * 0.5 + (i % n) as f32 * cell,
+                -size * 0.5 + (i / n) as f32 * cell,
+            ))
+        })
+        .collect();
+    let handle = scene.add_terrain(TerrainData {
+        size: Vec2::splat(size),
+        columns: n,
+        rows: n,
+        heights: Arc::from(heights),
+        control: None,
+        holes: None,
+    });
+    let (grass, grass_n) = crate::kit::layer_maps(scene, "grass");
+    let (rock, rock_n) = crate::kit::layer_maps(scene, "rock");
+    scene.world.terrains.push(Terrain {
+        layers: vec![
+            TerrainLayer {
+                albedo: Some(grass),
+                normal: Some(grass_n),
+                color: Vec3::new(0.85, 0.95, 0.7),
+                roughness: 0.95,
+                tile: 3.0,
+                slope: [0.0, 32.0],
+                slope_fade: 6.0,
+                altitude: [-1.0e6, 1.0e6],
+                anti_tiling: 1.0,
+                macro_variation: 0.9,
+                height_contrast: 0.4,
+                ..Default::default()
+            },
+            TerrainLayer {
+                albedo: Some(rock),
+                normal: Some(rock_n),
+                // Greyed: weathered stone, not the earth of the banks.
+                color: Vec3::new(0.82, 0.84, 0.9),
+                roughness: 0.85,
+                tile: 5.0,
+                // Biplanar from 20° up: the walls are sampled from the
+                // side, never smeared down them from above.
+                project_slope: 20.0,
+                slope: [28.0, 90.0],
+                slope_fade: 6.0,
+                altitude: [-1.0e6, 1.0e6],
+                anti_tiling: 0.5,
+                macro_variation: 0.4,
+                ..Default::default()
+            },
+        ],
+        height_blend: 0.6,
+        ..Terrain::new(handle)
+    });
+    // Turf on the grass: the kit's tufts, 6 a square metre within 60 m.
+    let tuft = scene.add_mesh(crate::terrain_scenes::grass_tuft());
+    let blades = scene.add_material(og_render::Material {
+        base_color: [0.24, 0.42, 0.1, 1.0],
+        roughness: 0.85,
+        ..Default::default()
+    });
+    scene.world.scatters.push(og_render::ScatterDraw {
+        terrain: 0,
+        mesh: tuft,
+        material: blades,
+        lod_materials: [None; 2],
+        scatter: crate::terrain_scenes::grass_scatter(),
+        cast_shadows: true,
+        impostor: None,
+        impostor_distance: 0.0,
+        with: None,
+        lods: [None; 2],
+    });
+    // Pines in the meadows, clear of the banks and of the view of the
+    // fall; boulders on the banks, in the pool, along the gorge's walls
+    // and in a ledge across the lip, the water pouring over it.
     let pine = crate::kit::prop(scene, "pine");
     let boulder = crate::kit::prop(scene, "boulder");
-    for j in 0..12 {
-        for i in 0..12 {
-            let n = crate::fx_scenes::hash2(i, j, 0x71);
-            let p = Vec2::new(-50.0 + i as f32 * 8.0, -56.0 + j as f32 * 7.0)
-                + Vec2::new(crate::fx_scenes::hash2(i, j, 0x72), n) * 5.0;
-            let s = course.at(p).map_or(f32::MAX, |at| at.across.abs() * 100.0);
-            let y = river_ground(&wide, p);
-            // Nothing tall between the camera and the fall.
-            let sight = {
-                let (eye, fall) = (Vec2::new(18.0, 14.0), Vec2::new(-4.0, -12.0));
-                let t = ((p - eye).dot(fall - eye) / (fall - eye).length_squared()).clamp(0.0, 1.0);
-                p.distance(eye + (fall - eye) * t)
-            };
-            if s > RIVER_WIDTH * 0.5 + 6.0 && n < 0.35 && sight > 14.0 {
-                pine.place(scene, Vec3::new(p.x, y, p.y), n * 20.0, 7.0 + n * 8.0);
-            } else if (RIVER_WIDTH * 0.5 - 0.5..RIVER_WIDTH * 0.5 + 1.5).contains(&s) && n < 0.3 {
-                boulder.place(scene, Vec3::new(p.x, y - 0.3, p.y), n * 30.0, 1.2 + n * 2.0);
+    let (eye, target) = (Vec2::new(26.0, 10.0), Vec2::new(-8.0, -18.0));
+    for j in 0..40 {
+        for i in 0..40 {
+            let n = hash2(i, j, 0x71);
+            let p = Vec2::new(-120.0 + i as f32 * 6.0, -140.0 + j as f32 * 6.0)
+                + Vec2::new(hash2(i, j, 0x72), hash2(i, j, 0x73)) * 4.0;
+            let d = wide.at(p).map_or(f32::MAX, |at| at.across.abs() * 400.0);
+            let slope =
+                (h(p + Vec2::X) - h(p - Vec2::X)).abs() + (h(p + Vec2::Y) - h(p - Vec2::Y)).abs();
+            let t = ((p - eye).dot(target - eye) / (target - eye).length_squared()).clamp(0.0, 1.2);
+            let sight = p.distance(eye + (target - eye) * t);
+            let y = h(p);
+            if d > RIVER_WIDTH * 0.5 + 7.0 && n < 0.3 && slope < 1.0 && sight > 10.0 {
+                pine.place(
+                    scene,
+                    Vec3::new(p.x, y - 0.1, p.y),
+                    n * 20.0,
+                    8.0 + n * 14.0,
+                );
+            } else if d > RIVER_WIDTH * 0.5 - 0.5 && d < RIVER_WIDTH * 0.5 + 2.0 && n < 0.18 {
+                boulder.place(scene, Vec3::new(p.x, y - 0.3, p.y), n * 30.0, 1.0 + n * 6.0);
             }
         }
     }
-    for (x, z, h) in [
-        (-2.5f32, -5.0f32, 2.2f32),
-        (3.0, -4.5, 1.8),
-        (-3.5, -9.5, 2.6),
+    let lip = Vec2::new(-6.0, -15.0);
+    let down = (Vec2::new(-5.0, -13.6) - lip).normalize();
+    let across = Vec2::new(-down.y, down.x);
+    let yaw = (-down.y).atan2(down.x);
+    // The ledge: stones under the lip, their tops just under the reach's
+    // surface, the outer ones standing out of it at the banks.
+    for k in -2i32..=2 {
+        let p = lip - down * 1.0 + across * (k as f32 * 1.8);
+        let tall = if k.abs() == 2 { 2.8 } else { 1.7 };
+        boulder.place(scene, Vec3::new(p.x, 2.2, p.y), yaw + k as f32, tall);
+    }
+    for k in 0..12 {
+        let along = -8.0 + (k / 2) as f32 * 3.6;
+        let side = if k % 2 == 0 { 1.0 } else { -1.0 };
+        let out = if (k / 2) % 2 == 0 { 2.8 } else { 5.0 };
+        let p = lip + down * along + across * side * (RIVER_WIDTH * 0.5 + out);
+        let s = 2.2 + (k % 3) as f32 * 0.6 + out * 0.2;
+        boulder.place(
+            scene,
+            Vec3::new(p.x, h(p) - s * 0.45, p.y),
+            k as f32 * 1.3,
+            s,
+        );
+    }
+    for (x, z, s) in [
+        (-1.0f32, -11.0f32, 1.6f32),
+        (-6.5, -10.5, 2.2),
+        (-9.5, -16.0, 2.8),
+        (-1.5, -17.0, 2.4),
+        (3.5, -5.5, 1.3),
+        (1.4, 5.8, 3.4),
+        (13.3, 1.5, 3.0),
     ] {
-        let y = river_ground(&wide, Vec2::new(x, z));
-        boulder.place(scene, Vec3::new(x, y - 0.4, z), x, h);
+        boulder.place(scene, Vec3::new(x, h(Vec2::new(x, z)) - 0.4, z), x, s);
     }
     // A clear upland river: green-brown over its bed, dark where deep.
     scene.world.water.push(Water {
-        size: Vec2::splat(size),
+        size: Vec2::splat(400.0),
         shallow: Vec3::new(0.22, 0.32, 0.24),
         deep: Vec3::new(0.03, 0.08, 0.07),
         foam_width: 0.6,
         depth_fade: 2.5,
-        river: Some(std::sync::Arc::new(course)),
+        river: Some(Arc::new(course)),
         ..Default::default()
     });
-    // From the plain below the fall, high enough to see the reach above it.
+    // From the lower reach's bank, up the gorge to the fall and the reach
+    // above it.
     scene.frame.camera = Camera {
-        position: Vec3::new(18.0, 10.0, 14.0),
-        target: Vec3::new(-6.0, 2.5, -12.0),
-        far: 2000.0,
-        exposure: Exposure::linear(0.8),
+        position: Vec3::new(eye.x, 9.0, eye.y),
+        target: Vec3::new(target.x, 3.0, target.y),
+        far: 3000.0,
+        exposure: Exposure::Manual { ev: 0.0 },
         ..Default::default()
     };
 }
