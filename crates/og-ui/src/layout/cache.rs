@@ -231,6 +231,11 @@ impl<V> Sweep for std::collections::HashMap<String, Vec<Kept<V>>> {
 pub struct LayoutCache {
     /// Reused traversal storage; each walk appends to its caller's order.
     walk_stack: Vec<usize>,
+    /// CSS placement scratch, reused across roots and frames. Child lists
+    /// are consumed before the next node is placed; placement is iterative.
+    pub(super) place_stack: Vec<usize>,
+    pub(super) place_flow: Vec<usize>,
+    pub(super) place_out: Vec<usize>,
     /// Per node: its own layout inputs and child size contributions are unchanged.
     pub clean: Vec<bool>,
     /// Nodes laid out this frame (the rest kept their layout).

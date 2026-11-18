@@ -847,8 +847,9 @@ fn place(
             (clip.intersect(&p.layout.laid_clip), p.placed.clip_src)
         }
     });
-    let mut stack = vec![root];
-    while let Some(i) = stack.pop() {
+    kept.place_stack.clear();
+    kept.place_stack.push(root);
+    while let Some(i) = kept.place_stack.pop() {
         content_extent(nodes, i);
         let n = &nodes[i];
         let rect = Rect::new(n.layout.x, n.layout.y, n.layout.w, n.layout.h);
@@ -899,9 +900,9 @@ fn place(
         if !open || nodes[i].layout.cv_skip {
             continue;
         }
-        place_children(nodes, i, scroll);
-        let kids: Vec<usize> = nodes[i].ordered_children.clone();
-        stack.extend(kids.into_iter().rev());
+        place_children(nodes, i, scroll, &mut kept.place_flow, &mut kept.place_out);
+        kept.place_stack
+            .extend(nodes[i].ordered_children.iter().rev().copied());
     }
 }
 
@@ -924,7 +925,13 @@ fn content_extent(nodes: &mut [Node], i: usize) {
 /// Node `i`'s children placed from its rectangle: their layouts in its
 /// frame turned into layout space, its scroll offset, a right-to-left
 /// mirror, columns, table parts, and relative and sticky moves.
-fn place_children(nodes: &mut [Node], i: usize, scroll: &dyn Fn(u64) -> (f32, f32)) {
+fn place_children(
+    nodes: &mut [Node],
+    i: usize,
+    scroll: &dyn Fn(u64) -> (f32, f32),
+    flow: &mut Vec<usize>,
+    out: &mut Vec<usize>,
+) {
     let n = &nodes[i];
     let s: Sides = frame_of(nodes, i);
     let size = [n.layout.w, n.layout.h];
@@ -947,15 +954,17 @@ fn place_children(nodes: &mut [Node], i: usize, scroll: &dyn Fn(u64) -> (f32, f3
         }
     };
     let (x0, y0) = (n.layout.x, n.layout.y);
-    let flow: Vec<usize> = n
-        .children
-        .iter()
-        .chain(&n.floats)
-        .copied()
-        .filter(|&c| !nodes[c].props.out_of_flow())
-        .collect();
-    let out = n.out.clone();
-    for &c in &flow {
+    flow.clear();
+    flow.extend(
+        n.children
+            .iter()
+            .chain(&n.floats)
+            .copied()
+            .filter(|&c| !nodes[c].props.out_of_flow()),
+    );
+    out.clear();
+    out.extend_from_slice(&n.out);
+    for &c in flow.iter() {
         let l = nodes[c].layout.css;
         let (mut w, mut h) = (l.size.width, l.size.height);
         if turns(s) {
@@ -975,7 +984,7 @@ fn place_children(nodes: &mut [Node], i: usize, scroll: &dyn Fn(u64) -> (f32, f3
         k.margin_x = [l.margin.left, l.margin.right];
     }
     // Out of the flow: placed against its box in layout space.
-    for &c in &out {
+    for &c in out.iter() {
         let l = nodes[c].layout.css;
         let z = nodes[c].layout.used.zoom_factor();
         let k = &mut nodes[c].layout;
@@ -998,9 +1007,11 @@ fn place_children(nodes: &mut [Node], i: usize, scroll: &dyn Fn(u64) -> (f32, f3
         // stack's and multi-column box's children, a vertical box's
         // block axis, and out-of-flow boxes at their static position.
         let own = matches!(kind(nodes, i), Kind::Stack | Kind::Multicol) || turns(s);
-        mirror(nodes, i, sx, if own { &flow } else { &[] }, &out);
+        mirror(nodes, i, sx, if own { flow } else { &[] }, out);
     }
-    relative(nodes, i, &flow, scroll, (sx, sy));
+    relative(nodes, i, flow, scroll, (sx, sy));
+    flow.clear();
+    out.clear();
 }
 
 /// A wrapping row's lines as Taffy broke them: ranges of `children`.
