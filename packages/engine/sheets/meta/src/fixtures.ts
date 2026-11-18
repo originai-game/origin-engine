@@ -98,6 +98,25 @@ export const PROGRESS = {
   ],
 };
 
+/** The rewards page: the family's other states (hidden, claimed and locked first, so a phone shows them; long names; a fortnight). */
+export const REWARDS = {
+  achLateSummary: "38 / 120",
+  achLateDone: 0.32,
+  achLate: [
+    achievement("secret", "The Truth Beneath", "Find what lies under the abbey.", "skull", "locked", { hidden: true, rarity: "0.4%", tier: "epic" }),
+    achievement("pet", "Best Friends", "Pet the dog.", "heart", "unlocked", { date: "3 Nov 2026", rarity: "71.0%", claimed: true }),
+    achievement("rich", "Tycoon", "Hold a million gold at once.", "coin", "locked", { rarity: "1.2%", tier: "legendary" }),
+    achievement("long", "An Achievement With an Exceptionally Long Name That Wraps", "A description long enough to wrap onto a second line.", "trophy", "progress", { progress: 0.33, progressText: "3,333 / 10,000", rarity: "0.01%", tier: "legendary" }),
+  ],
+  questsLongTitle: "Daily Challenges of the Adventurers Guild",
+  questsLongRefresh: "Resets in 0h 01m, hurry before the next rotation",
+  questsLong: [
+    { id: "q1", name: "Defeat twenty-five elite guardians in the Sunken Cathedral without healing", icon: "sword", progress: 0.2, progressText: "5 / 25", reward: "1,000,000 gold and a chest", rewardIcon: "coin", state: "active" },
+    { id: "q3", name: "Fish", icon: "drop", progress: 1, progressText: "10 / 10", reward: "20", rewardIcon: "gem", state: "done" },
+  ],
+  rewardsFortnight: Array.from({ length: 14 }, (_, i) => ({ id: `f${i + 1}`, label: `Day ${i + 1}`, icon: ["coin", "potion", "gem", "key", "crown", "apple", "trophy"][i % 7]!, amount: i === 9 ? "Legend chest" : `x${(i + 1) * 50}`, state: i < 5 ? "claimed" : i === 5 ? "missed" : i === 6 ? "today" : "upcoming", milestone: i === 4 || i === 9 || i === 13 })),
+};
+
 const msg = (id: string, kind: string, sender: string, time: string, text: string) => ({ id, kind, sender, time, text });
 
 export const SOCIAL = {

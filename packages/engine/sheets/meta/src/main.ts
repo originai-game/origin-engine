@@ -5,13 +5,13 @@
 // style pack. The pages use the built-in components by name, as a game
 // does, with fixture stores; loading a page loads them.
 //
-// Commands: style:<fantasy>, page:<store|progress|social|states>,
+// Commands: style:<fantasy>, page:<store|progress|social|states|rewards>,
 // reduced:<on|off>.
 
 import { og, type World } from "@origingame/engine";
-import { INK_NAMES, PROGRESS, SOCIAL, STATES, STORE } from "./fixtures.ts";
+import { INK_NAMES, PROGRESS, REWARDS, SOCIAL, STATES, STORE } from "./fixtures.ts";
 
-const PAGES = ["store", "progress", "social", "states"] as const;
+const PAGES = ["store", "progress", "social", "states", "rewards"] as const;
 const STYLES = ["fantasy", "scifi", "cartoon", "default"] as const;
 
 const DOCUMENTS = [
@@ -19,6 +19,7 @@ const DOCUMENTS = [
   "ui/progress.svelte",
   "ui/social.svelte",
   "ui/states.svelte",
+  "ui/rewards.svelte",
   "ui/sheet.svelte",
 ];
 
@@ -39,7 +40,7 @@ function setStyle(world: World, name: string): void {
 /** Mounts the sheet, its stores the fixtures and the page shown. */
 function show(world: World): void {
   const scope = og.ui.scope(world, "sheet");
-  const data = { ...STORE, ...PROGRESS, ...SOCIAL, ...STATES, page: "store" };
+  const data = { ...STORE, ...PROGRESS, ...SOCIAL, ...STATES, ...REWARDS, page: "store" };
   const stores = Object.fromEntries(Object.entries(data).map(([k, v]) =>
     [k, Array.isArray(v) ? scope.collection(k, v as { id: string }[], { key: "id" }) : scope.writable(k, v)]));
   must(scope.mount("sheet", "GeneralSheet", stores), "mount");

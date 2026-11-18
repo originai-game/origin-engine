@@ -157,6 +157,7 @@ export const JOURNAL = (p: Pictures) => ({
     { id: "relic", icon: "crown", label: "The Abbey Bell", detail: "Unique relic" },
   ],
   questScenery: p.abbey,
+  questLabel: "Main quest",
 
   mapTexture: p.map,
   mapMarkers: [

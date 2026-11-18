@@ -5,6 +5,8 @@
     <GeneralProgressPage />
   {:else if $page == 'social'}
     <GeneralSocialPage />
+  {:else if $page == 'rewards'}
+    <GeneralRewardsPage />
   {:else if $page == 'states'}
     <GeneralStatesPage />
   {:else}

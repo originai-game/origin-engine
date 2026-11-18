@@ -13,7 +13,7 @@
     <div id="Place"><RpgPlaceCard name={$placeName} about={$placeAbout} picture={$placePicture} marked={false} canTravel={true} /></div>
   </div>
   <div id="Log"><RpgQuestLog title={$logTitle} groups={$logGroups} quests={$logQuests} selected={$logSelected} /></div>
-  <div id="Detail"><RpgQuestDetail name={$questName} summary={$questSummary} objectives={$questObjectives} rewards={$questRewards} scenery={$questScenery} /></div>
+  <div id="Detail"><RpgQuestDetail name={$questName} summary={$questSummary} objectives={$questObjectives} rewards={$questRewards} scenery={$questScenery} label={$questLabel} tracked={true} canTrack={true} canLocate={true} /></div>
   <div id="Talk"><RpgConversation speaker={$talkSpeaker} portrait={$talkPortrait} line={$talkLine} replies={$talkReplies} selected={$talkSelected} /></div>
   <div id="Fade" class="rpg-fold"></div>
 </div>
