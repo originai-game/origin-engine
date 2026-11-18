@@ -18,11 +18,11 @@
 :root { --surface-saturation: 120%; position: relative; block-size: stretch; }
 @media (prefers-color-scheme: light) { :root { --surface-saturation: 200%; } }
 p { margin: 0; }
-/* The hint over the top and the game's editor dock at the foot, each
-   centred on glass. */
+/* The hint over the top on a cut glass plate, like the pause menu's
+   status, and the game's editor dock at the foot, each centred. */
 #Hint, [part="hud-editor.dock"] { position: absolute; inset-inline: 0; margin-inline: auto; inline-size: max-content; max-inline-size: 100%; }
-#Hint { inset-block-start: var(--space-xl); padding: var(--space-md); border-radius: var(--radius-button); backdrop-filter: blur(var(--glass-blur-regular)) saturate(var(--surface-saturation)); -og-material: glass regular float; }
-[part="hud-editor.hint"] { text-align: center; line-clamp: 2; }
+#Hint { inset-block-start: var(--space-xl); max-inline-size: calc(100% - 2 * var(--space-lg)); padding: var(--space-md) var(--space-xl); background: var(--hud-plate-fill); box-shadow: var(--hud-plate-rim); backdrop-filter: blur(var(--glass-blur-regular)) saturate(var(--surface-saturation)); clip-path: polygon(var(--front-cut) 0, 100% 0, 100% calc(100% - var(--front-cut)), calc(100% - var(--front-cut)) 100%, 0 100%, 0 var(--front-cut)); }
+[part="hud-editor.hint"] { text-align: center; line-clamp: 2; font-size: calc(15 * var(--font-step-px)); font-weight: var(--font-weight-semibold); color: var(--front-ink); }
 [part="hud-editor.dock"] { inset-block-end: var(--space-xl); }
 @media (width < 600px), (height < 600px) {
   #Hint { inset-block-start: var(--space-3xl); }

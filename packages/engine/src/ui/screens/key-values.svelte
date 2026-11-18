@@ -15,9 +15,11 @@
 
 <style>
 #KeyValues { list-style: none; padding: 0; margin: 0; width: stretch; }
-.row { display: flex; align-items: center; gap: var(--space-sm); padding: var(--space-xs) 0; border-bottom: var(--stroke-hairline) solid var(--line); }
-.key { flex: 1; min-width: 0; margin: 0; }
-.value { margin: 0; }
+/* Name on the left in dim ink, the value in front ink and tabular
+   figures, hairline rules between, as the settings rows read. */
+.row { display: flex; align-items: center; gap: var(--space-sm); min-block-size: calc(36 * var(--font-step-px)); padding: var(--space-xs) 0; border-bottom: var(--stroke-hairline) solid var(--system-tabs-rule); }
+.key { flex: 1; min-width: 0; margin: 0; color: var(--front-ink-dim); }
+.value { margin: 0; font-weight: var(--font-weight-semibold); font-variant-numeric: tabular-nums; color: var(--front-ink); }
 .delta { margin: 0; width: var(--size-lg); text-align: end; color: var(--trend-down); }
 .delta.up { color: var(--trend-up); }
 </style>

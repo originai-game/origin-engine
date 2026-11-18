@@ -1,0 +1,47 @@
+{
+  "added": [
+    {
+      "member": "Default style pause and settings tokens",
+      "summary": "--system-* roles for the pause, settings, save and load and calibration screens: the shade over the paused game and the veil under the full screens, their title and entry type steps (with phone steps), a disabled and a dangerous entry's ink, a settings row and its lit state, the page tabs' rule and lit bar, a save slot's lit rim and an empty slot's well, and the calibration steps' rings. A style pack restyles these screens by setting them."
+    },
+    {
+      "member": "Pause",
+      "summary": "The game stays in view under a shade from the leading side; the menu is a column of type down that side, washed in the accent from a lit edge when pointed at or focused, Quit to menu and Quit game smaller under a divider (Quit game in red). The objective and the time played sit in a cut glass plate. Every entry keeps a 44 px target. New parts pause.shade, pause.status and pause.entry; new string screen.pause.objectiveLabel."
+    },
+    {
+      "member": "Settings",
+      "summary": "Over a veil: the pages are a strip of type tabs with a lit bar under the chosen one, which scrolls sideways and fades at its edges when the pages outrun it (the keys that change page shown at its ends on a desktop). The settings are glass strips, the focused one lit; its description shows in a plate beside the list on a wide screen and under its row on a narrow one. Revert and Apply are cut plates. New parts settings.shade, settings.tabs, settings.tab and settings.description."
+    },
+    {
+      "member": "SaveLoad",
+      "summary": "Slots are cut glass strips (thumb, chapter, place, time and date, an Auto tag), the chosen one ringed and lit; an empty slot is a well. The preview and the actions sit beside them, the actions at the foot on a phone held upright, as cut plates; on a phone the Auto tag sits on the thumb. New parts save-load.shade, save-load.tag, save-load.preview and save-load.actions."
+    },
+    {
+      "member": "Calibration",
+      "summary": "One cut glass plate: the steps as a numbered track, the current one lit and the finished ones filled; the game's test in a well; the hint and the control; Back and Next as cut plates. New parts calibration.step and calibration.test."
+    },
+    {
+      "member": "HudEditor, KeyValues",
+      "summary": "HudEditor's hint sits on a cut glass plate like the pause menu's status. KeyValues reads names in dim ink and values in front ink with tabular figures."
+    }
+  ],
+  "breaking": [
+    {
+      "member": "Pause",
+      "change": "The menu entries are no longer framed buttons: Resume is no longer the primary variant, Quit to menu is no longer quiet and Quit game no longer the danger variant (all are part pause.entry). The panel is bare, not a glass frame. screen.pause.Played now reads \"Played {played}\".",
+      "fix": "A style that dressed the menu's buttons dresses ::part(pause.entry); one that dressed the panel dresses ::part(pause.status) or sets --system-pause-shade.",
+      "find": [
+        "Pause"
+      ]
+    },
+    {
+      "member": "SaveLoad, Calibration",
+      "change": "SaveLoad's Auto tag is a <span part=\"save-load.tag\">, not a <badge>. Calibration's steps are a list of part calibration.step (classes on and done), not three badges.",
+      "fix": "A style that dressed those badges dresses ::part(save-load.tag) or ::part(calibration.step).",
+      "find": [
+        "SaveLoad",
+        "Calibration"
+      ]
+    }
+  ]
+}

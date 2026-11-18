@@ -83,7 +83,7 @@ focus-visible and disabled states (docs/ui.md §3.2).
 | --- | --- |
 | `banner` (`banner.svelte`) | `frame`, `title`, `subtitle` |
 | `calendar` (`calendar.svelte`) | `frame`, `band`, `title`, `heading`, `cell` (a button: `.marked` `.outside` `[aria-current]`) |
-| `calibration` (`calibration.svelte`) | `frame`, `label` |
+| `calibration` (`calibration.svelte`) | `frame`, `label`, `step` (`.on` `.done`), `test` |
 | `card` (`card.svelte`) | `frame`, `image`, `title`, `body` |
 | `confirm` (`confirm.svelte`) | `title`, `body`, `actions` |
 | `creator-tools` (`creator-tools.svelte`) | `frame` (`.chosen`), `label`, `title` |
@@ -103,10 +103,10 @@ focus-visible and disabled states (docs/ui.md §3.2).
 | `notifications` (`notifications.svelte`) | `frame` (`.danger` `.leaving` `.success` `.warn`), `body` |
 | `objective-tracker` (`objective-tracker.svelte`) | `frame`, `title`, `row` (`.done`), `well`, `fill` |
 | `pagination` (`pagination.svelte`) | `frame`, `gap` |
-| `pause` (`pause.svelte`) | `frame`, `title`, `objective` |
+| `pause` (`pause.svelte`) | `frame`, `title`, `objective`, `shade`, `status`, `entry` (a button: `.minor` `.danger`) |
 | `results` (`results.svelte`) | `frame`, `title` (`.outcome-lost` `.outcome-won`), `grade`, `row`, `label`, `figure`, `cell` |
-| `save-load` (`save-load.svelte`) | `frame`, `band`, `title`, `row` (`.selection-off` `.selection-on`), `thumb`, `name` |
-| `settings` (`settings.svelte`) | `frame`, `band`, `title`, `row` |
+| `save-load` (`save-load.svelte`) | `frame`, `band`, `title`, `row` (`.selection-off` `.selection-on`), `thumb`, `name`, `shade`, `tag`, `preview`, `actions` |
+| `settings` (`settings.svelte`) | `frame`, `band`, `title`, `row` (`:focus-within`), `shade`, `tabs`, `tab`, `description` |
 | `splash` (`splash.svelte`) | `frame`, `mark`, `dots`, `dot` (`.on`), `boot`, `track`, `fill`, `skip` |
 | `star-rating` (`star-rating.svelte`) | `frame` |
 | `subtitles` (`subtitles.svelte`) | `frame`, `line`, `speaker` |

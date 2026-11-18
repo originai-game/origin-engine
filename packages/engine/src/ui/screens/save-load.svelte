@@ -1,6 +1,6 @@
 <meta name="screen" content="save-load" data-layer="menu" data-focus="Body/Slots/List" data-under="dim" data-input="menu" data-pause="false" data-capture="true" data-remember="true" data-back="pop">
 <meta name="strings" content="./save-load.en.ogt">
-<meta name="parts" content="save-load.frame save-load.band save-load.title save-load.row save-load.thumb save-load.name">
+<meta name="parts" content="save-load.frame save-load.band save-load.title save-load.row save-load.thumb save-load.name save-load.shade save-load.tag save-load.preview save-load.actions">
 <meta name="prop:mode" content="string" data-doc="save or load: the title and the main action.">
 <meta name="prop:slots" content="list" data-doc="The saves: { title, place, played (seconds), date (text), auto (bool), empty (bool), thumb (texture) }.">
 <meta name="prop:selected" content="string" data-doc="The stable collection key selected now.">
@@ -10,13 +10,15 @@
 <meta name="fixture:default" content="{&quot;mode&quot;:&quot;load&quot;,&quot;selected&quot;:&quot;item-0&quot;,&quot;slots&quot;:[{&quot;auto&quot;:true,&quot;date&quot;:&quot;Today 18:42&quot;,&quot;empty&quot;:false,&quot;id&quot;:&quot;item-0&quot;,&quot;place&quot;:&quot;Old mill&quot;,&quot;played&quot;:15120,&quot;thumb&quot;:0,&quot;title&quot;:&quot;Chapter 3&quot;},{&quot;auto&quot;:false,&quot;date&quot;:&quot;Yesterday&quot;,&quot;empty&quot;:false,&quot;id&quot;:&quot;item-1&quot;,&quot;place&quot;:&quot;Harbour&quot;,&quot;played&quot;:9800,&quot;thumb&quot;:0,&quot;title&quot;:&quot;Chapter 2&quot;},{&quot;auto&quot;:false,&quot;date&quot;:&quot;&quot;,&quot;empty&quot;:true,&quot;id&quot;:&quot;item-2&quot;,&quot;place&quot;:&quot;&quot;,&quot;played&quot;:0,&quot;thumb&quot;:0,&quot;title&quot;:&quot;&quot;}]}">
 
 <div id="Screen" part="save-load.frame" class="bare">
+  <div id="Veil" part="save-load.shade"></div>
   <header id="Header" part="save-load.band">
-    <button id="Back" variant="quiet" onclick={back}>{t("screen.common.back")}</button>
+    <button id="Back" variant="quiet" onclick={back}><div class="back"><og-icon class="chevron" icon="chevronLeft"></og-icon><span>{t("screen.common.back")}</span></div></button>
     {#if mode == "save"}
       <h1 id="SaveTitle" part="save-load.title">{t("screen.save-load.saveTitle")}</h1>
     {:else}
       <h1 id="LoadTitle" part="save-load.title">{t("screen.save-load.loadTitle")}</h1>
     {/if}
+    <hr id="Rule">
   </header>
   <div id="Body">
     <div id="Slots">
@@ -36,20 +38,20 @@
                 </div>
               {/if}
             </div>
-            {#if s.auto}<badge id="Auto" tone="info">{t("screen.save-load.auto")}</badge>{/if}
+            {#if s.auto}<span id="Auto" part="save-load.tag">{t("screen.save-load.auto")}</span>{/if}
           </div>
         {/each}
       </div>
     </div>
     <aside id="Side">
-      <div id="Preview">{@render preview?.()}</div>
-      <div id="Actions" data-layout="cluster">
-        <button id="Delete" variant="danger" onclick={delete} ondetails={delete}>{t("screen.save-load.delete")}</button>
+      <div id="Preview" part="save-load.preview">{@render preview?.()}</div>
+      <div id="Actions" part="save-load.actions">
+        <button id="Delete" variant="danger" class="plate" onclick={delete} ondetails={delete}>{t("screen.save-load.delete")}</button>
         {#if mode == "save"}
-          <button id="New" onclick={newSlot}>{t("screen.save-load.new")}</button>
-          <button id="Save" variant="primary" onclick={save}>{t("screen.save-load.save")}</button>
+          <button id="New" class="plate" onclick={newSlot}>{t("screen.save-load.new")}</button>
+          <button id="Save" variant="primary" class="plate lit" onclick={save}>{t("screen.save-load.save")}</button>
         {:else if slots.length > 0}
-          <button id="Load" variant="primary" onclick={load}>{t("screen.save-load.load")}</button>
+          <button id="Load" variant="primary" class="plate lit" onclick={load}>{t("screen.save-load.load")}</button>
         {/if}
       </div>
     </aside>
@@ -57,35 +59,69 @@
 </div>
 
 <style>
-:root { display: flex; flex-direction: column; gap: var(--space-lg); block-size: stretch; padding: var(--space-xxl); }
+/* Over the dimmed game: a veil; the band (Back, the title, a rule); the
+   slots as cut glass strips (thumb, chapter, place, time and date, an Auto
+   tag), the chosen one ringed and lit; the game's preview and the actions
+   beside them, the actions at the foot on a phone held upright. */
+:root { position: relative; display: flex; flex-direction: column; row-gap: var(--space-xl); block-size: stretch; overflow: hidden; padding: var(--space-xxl) var(--space-3xl) var(--space-xl); color: var(--front-ink); }
+[part="save-load.shade"] { position: absolute; inset: 0; background: var(--system-veil); }
+[part="save-load.band"], #Body { position: relative; }
 h1, p { margin: 0; }
-[part="save-load.band"] { display: flex; align-items: center; gap: var(--space-md); }
-[part="save-load.title"] { font-size: var(--type-xl2-size); letter-spacing: var(--type-xl2-tracking); }
-/* The slots beside the preview; stacked on a portrait phone. */
-#Body { flex: 1; min-block-size: 0; display: grid; grid-template-columns: 3fr 2fr; grid-template-rows: 1fr; gap: var(--space-xl); }
-#Slots { overflow-y: auto; }
-#List { display: flex; flex-direction: column; gap: var(--space-sm); }
-[part="save-load.row"] { display: flex; align-items: center; gap: var(--space-md); padding: var(--space-md); }
-[part="save-load.row"]:hover, [part="save-load.row"]:focus-visible { scale: 1.01; }
-[part="save-load.row"]:active { scale: 0.99; }
-/* An unselected slot dims its picture; its words keep their ink. */
-.selection-off [part="save-load.thumb"] { opacity: 0.8; }
-.selection-on { background: var(--row-selected-fill); }
-[part="save-load.thumb"] { inline-size: var(--size-4xl); aspect-ratio: 1.78; }
-#Text { flex: 1; min-inline-size: 0; display: flex; flex-direction: column; gap: var(--space-xxs); }
-#Empty, [part="save-load.name"] { font: var(--text-lg); letter-spacing: var(--type-lg-tracking); }
+[part="save-load.band"] { display: flex; align-items: center; column-gap: var(--space-lg); }
+#Back { --button-ink: var(--front-ink-dim); --button-quiet-ink: var(--front-ink-dim); --button-quiet-hover-ink: var(--front-ink); }
+.back { display: flex; align-items: center; column-gap: var(--space-xs); }
+.back .chevron { inline-size: var(--size-xs); block-size: var(--size-xs); }
+.chevron:dir(rtl) { scale: -1 1; }
+[part="save-load.title"] { flex: 0 1 auto; min-inline-size: 0; font-size: var(--front-title-size); line-height: var(--font-leading-tight); font-weight: var(--font-weight-bold); font-stretch: var(--front-stretch); letter-spacing: var(--font-tracking-xs); text-shadow: var(--front-shadow); }
+#Rule { flex: 1 1 0; min-inline-size: 0; block-size: var(--stroke-hairline); margin: 0; border: 0; background: var(--front-divider); }
+#Body { flex: 1; min-block-size: 0; display: grid; grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); grid-template-rows: minmax(0, 1fr); column-gap: var(--space-3xl); }
+#Slots { min-block-size: 0; overflow: hidden auto; margin: calc(var(--space-xs) * -1); padding: var(--space-xs); }
+#List { display: flex; flex-direction: column; row-gap: var(--space-sm); }
+[part="save-load.row"] { position: relative; display: flex; align-items: center; column-gap: var(--space-lg); padding: var(--space-sm); border: 0; border-radius: 0; background: var(--system-row-fill); box-shadow: var(--system-row-rim); clip-path: polygon(var(--front-cut) 0, 100% 0, 100% calc(100% - var(--front-cut)), calc(100% - var(--front-cut)) 100%, 0 100%, 0 var(--front-cut)); }
+[part="save-load.row"]:hover, [part="save-load.row"]:focus-visible { background: var(--system-row-on-fill); }
+.selection-on { background: var(--system-row-on-fill); box-shadow: var(--system-slot-on-rim); }
+[part="save-load.thumb"] { flex: none; inline-size: calc(150 * var(--font-step-px)); aspect-ratio: 1.78; block-size: auto; object-fit: cover; }
+.selection-off [part="save-load.thumb"] { filter: var(--front-art-off); }
+#Text { flex: 1; min-inline-size: 0; display: flex; flex-direction: column; row-gap: var(--space-xxs); padding-inline-end: var(--space-3xl); }
+[part="save-load.name"] { font-size: calc(20 * var(--font-step-px)); line-height: var(--font-leading-tight); font-weight: var(--font-weight-bold); }
+#Empty { font-size: calc(16 * var(--font-step-px)); color: var(--front-ink-faint); text-align: center; }
 [part="save-load.name"], #Place { line-clamp: 1; text-overflow: ellipsis; }
-#Place { color: var(--ink-muted); }
-#Meta { display: flex; gap: var(--space-sm); }
-#Meta p { font: var(--text-caption); letter-spacing: var(--type-caption-tracking); color: var(--ink-muted); }
-#Side { display: flex; flex-direction: column; gap: var(--space-md); }
-#Actions { justify-content: end; gap: var(--space-sm); }
+#Place { font-size: calc(14 * var(--font-step-px)); color: var(--front-ink-dim); }
+#Meta { display: flex; flex-wrap: wrap; column-gap: var(--space-md); }
+#Meta p { font-size: calc(13 * var(--font-step-px)); font-variant-numeric: tabular-nums; color: var(--front-ink-faint); }
+[part="save-load.row"]:has(#Empty) { justify-content: center; min-block-size: calc(104 * var(--font-step-px)); background: none; box-shadow: var(--system-slot-empty-rim); }
+[part="save-load.row"]:has(#Empty) [part="save-load.thumb"] { display: none; }
+[part="save-load.row"]:has(#Empty) #Text { padding-inline-end: 0; }
+[part="save-load.tag"] { position: absolute; inset-block-start: var(--space-sm); inset-inline-end: var(--space-md); padding: var(--space-xxs) var(--space-sm); font-size: var(--hud-tag-size); font-weight: var(--font-weight-bold); letter-spacing: var(--hud-label-tracking); text-transform: uppercase; background: var(--hud-tag-fill); box-shadow: var(--hud-tag-rim); }
+#Side { min-block-size: 0; display: flex; flex-direction: column; row-gap: var(--space-lg); }
+[part="save-load.preview"] { flex: 0 1 auto; min-block-size: 0; }
+[part="save-load.actions"] { display: flex; flex-wrap: wrap; justify-content: end; gap: var(--space-sm) var(--space-md); margin-block-start: auto; }
+button.plate { --button-radius: 0; --button-focus-radius: 0; --button-border-width: 0; --button-font-size: calc(16 * var(--font-step-px)); --button-tracking: var(--font-tracking-md); --button-transform: uppercase; min-inline-size: calc(150 * var(--font-step-px)); }
+button.plate, button.plate::part(base) { block-size: var(--control-lg); }
+button.plate::part(base) { border-width: 0; clip-path: polygon(var(--front-cut) 0, 100% 0, 100% calc(100% - var(--front-cut)), calc(100% - var(--front-cut)) 100%, 0 100%, 0 var(--front-cut)); }
+button.lit { --button-primary-fill: var(--front-play-fill); --button-primary-hover-fill: var(--front-play-hover-fill); --button-primary-pressed-fill: var(--front-play-pressed-fill); --button-primary-ink: var(--front-play-ink); --button-primary-hover-ink: var(--front-play-ink); --button-primary-pressed-ink: var(--front-play-ink); --button-primary-shadow: none; --button-primary-rim: transparent; --button-primary-hover-rim: transparent; }
+#New { --button-fill: var(--hud-plate-fill); --button-hover-fill: var(--hud-plate-fill); --button-base-shadow: var(--system-plate-edge); --button-hover-shadow: var(--system-plate-lit-edge); --button-rim: transparent; --button-hover-rim: transparent; --button-ink: var(--front-ink); --button-hover-ink: var(--front-ink); }
 @media (width < 600px), (height < 600px) {
-  :root { padding: var(--space-lg); gap: var(--space-md); }
-  [part="save-load.title"] { font-size: var(--type-xl-size); letter-spacing: var(--type-xl-tracking); }
-  [part="save-load.thumb"] { inline-size: var(--size-xxl); }
+  :root { row-gap: var(--space-md); padding: var(--space-lg) var(--space-lg) var(--space-md); }
+  [part="save-load.title"] { font-size: var(--front-title-size-compact); }
+  [part="save-load.thumb"] { inline-size: calc(96 * var(--font-step-px)); }
+  [part="save-load.name"] { font-size: calc(17 * var(--font-step-px)); }
+  #Text { padding-inline-end: 0; }
+  /* The tag moves onto the thumb's corner, leaving the chapter its row. */
+  [part="save-load.tag"] { inset-inline: var(--space-sm) auto; }
+  #Meta p { white-space: nowrap; }
 }
+/* A phone held upright: the title on its own row under Back; the slots
+   scroll; the actions share the foot. */
 @media (width < 600px) and (orientation: portrait) {
-  #Body { grid-template-columns: 1fr; grid-template-rows: 1fr auto; gap: var(--space-md); }
+  [part="save-load.band"] { flex-wrap: wrap; row-gap: var(--space-xs); }
+  #Back { margin-inline-start: calc(var(--space-sm) * -1); }
+  [part="save-load.title"] { flex: 1 0 100%; }
+  #Rule { display: none; }
+  #Body { grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(0, 1fr) auto; row-gap: var(--space-md); }
+  [part="save-load.preview"] { display: none; }
+  /* The plates share the foot; at a large text size the primary one
+     takes its own row rather than clip a label. */
+  button.plate { flex: 1 1 calc(100 * var(--font-step-px)); min-inline-size: 0; }
 }
 </style>
