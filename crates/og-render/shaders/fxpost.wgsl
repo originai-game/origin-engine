@@ -865,11 +865,54 @@ fn fs_motion_blur(in: VsOut) -> @location(0) vec4<f32> {
   return vec4<f32>(sum / f32(n + 1u), c.a);
 }
 
-// The screen blur (effects.rs ScreenBlur): taps of the lit image at t in
-// -1..1, tent-weighted for zoom (towards the centre by the strength's
-// fraction of the way) and spin (turned about the centre by strength × t
-// radians, in pixels so it follows circles on any aspect), Gaussian for
-// directional (a fixed offset).
+// Three eight-tap radial stages cover 8^3 positions using 24 reads. In logarithmic radius
+// the three strides are exactly 1, 8, 64: composing scales adds offsets,
+// without changing the requested 1-strength .. 1+strength footprint.
+fn zoom_jitter(pixel: vec2<f32>) -> f32 {
+  let p = vec2<u32>(pixel);
+  var h = p.x * 1664525u + p.y * 1013904223u;
+  h = (h ^ (h >> 16u)) * 2246822519u;
+  h = (h ^ (h >> 13u)) * 3266489917u;
+  return (f32((h ^ (h >> 16u)) >> 8u) + 0.5) / 16777216.0;
+}
+
+fn zoom_stage(in: VsOut, stride: f32, coarse: bool) -> vec4<f32> {
+  let strength = abs(fxp.blur.y);
+  let low = log(max(1.0 - strength, 1e-4));
+  let high = log(1.0 + strength);
+  let step = (high - low) * stride / 512.0;
+  let centre = select(0.0, (low + high) * 0.5, coarse);
+  // Stratify the fine stages independently. The coarse stage integrates
+  // their contiguous intervals at their centres: jittering entire intervals
+  // by a coarse stride turns the fading tip into large stochastic cells.
+  let jitter = zoom_jitter(in.uv * fxp.screen.xy + vec2<f32>(stride * 73.0, stride * 151.0));
+  let offset = select(jitter, 0.5, coarse);
+  var factor = exp(centre + step * (offset - 4.0));
+  let ratio = exp(step);
+  var sum = vec3<f32>(0.0);
+  var total = 0.0;
+  for (var i = 0u; i < 8u; i++) {
+    let uv = fxp.blur.zw + (in.uv - fxp.blur.zw) * factor;
+    let t = (factor - 1.0) / max(strength, 1e-4);
+    let weight = select(1.0, max(1.0 - abs(t), 0.0), coarse);
+    sum += textureSampleLevel(tex_a, fx_linear, uv, 0.0).rgb * weight;
+    total += weight;
+    factor *= ratio;
+  }
+  var alpha = 1.0;
+  if (coarse) { alpha = textureLoad(tex_b, vec2<i32>(in.pos.xy), 0).a; }
+  return vec4<f32>(sum / max(total, 1e-6), alpha);
+}
+
+@fragment
+fn fs_zoom_fine(in: VsOut) -> @location(0) vec4<f32> { return zoom_stage(in, 1.0, false); }
+@fragment
+fn fs_zoom_middle(in: VsOut) -> @location(0) vec4<f32> { return zoom_stage(in, 8.0, false); }
+@fragment
+fn fs_zoom_coarse(in: VsOut) -> @location(0) vec4<f32> { return zoom_stage(in, 64.0, true); }
+// Spin and directional keep their original single-pass sampling. A zoom
+// of strength >= 1 crosses the centre (negative radius); retain direct
+// stratified integration there, which cannot be factored in log radius.
 @fragment
 fn fs_screen_blur(in: VsOut) -> @location(0) vec4<f32> {
   let kind = u32(fxp.blur.x);
@@ -879,18 +922,8 @@ fn fs_screen_blur(in: VsOut) -> @location(0) vec4<f32> {
   let rel = (in.uv - c) * to_px;
   var offset = 0.5;
   if (kind == 1u) {
-    // Cover the whole streak, not just sixteen separated copies of a
-    // highlight. Keep the requested quality floor, with at most 256 reads.
-    let reach = 2.0 * abs(fxp.blur.y) * length(rel);
-    n = max(n, u32(clamp(ceil(reach), 1.0, 256.0)));
-    // Stratify independently per pixel, stable across frames and backends:
-    // integer hashing avoids sin's backend-dependent rounding. Long rays
-    // at the cap leave noise rather than coherent dotted spokes.
-    let p = vec2<u32>(in.pos.xy);
-    var h = p.x * 1664525u + p.y * 1013904223u;
-    h = (h ^ (h >> 16u)) * 2246822519u;
-    h = (h ^ (h >> 13u)) * 3266489917u;
-    offset = (f32((h ^ (h >> 16u)) >> 8u) + 0.5) / 16777216.0;
+    n = max(n, u32(clamp(ceil(2.0 * abs(fxp.blur.y) * length(rel)), 1.0, 256.0)));
+    offset = zoom_jitter(in.pos.xy);
   }
   var sum = vec3<f32>(0.0);
   var total = 0.0;

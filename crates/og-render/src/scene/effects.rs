@@ -392,9 +392,10 @@ pub struct ScreenBlur {
     /// Directional's direction (radians, counter-clockwise from the
     /// right).
     pub angle: f32,
-    /// Taps per pixel (4 to 64). For zoom this is a minimum: sampling
-    /// follows the streak's length at one tap per pixel, capped at 256,
-    /// with a stable per-pixel jitter to break up repeated highlights.
+    /// Taps per pixel (4 to 64) for spin and directional. Zoom exceeds
+    /// this quality floor with three eight-tap stages (512 effective
+    /// positions), or direct adaptive sampling when strength >= 1 crosses
+    /// the centre. Both use stable per-pixel jitter.
     pub samples: u32,
 }
 

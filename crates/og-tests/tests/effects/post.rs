@@ -44,6 +44,17 @@ fn zoom_blur_keeps_a_thin_highlight_continuous() {
         zero.pixels, off.pixels,
         "zero strength leaves the frame alone"
     );
+    // Strength is not capped at one: the footprint then crosses the
+    // centre. A log-radius factorization alone would silently lose this.
+    scene.look.post.screen_blur = Some(og_render::ScreenBlur {
+        strength: 3.2,
+        ..Default::default()
+    });
+    let (crossed, _) = frame(&small(), &scene);
+    assert!(
+        region(&crossed, (80, 80, 81, 100)) > 5.0,
+        "the highlight crosses the centre"
+    );
 }
 
 /// Lens distortion moves a marker on each axis of a 16:9 frame to where

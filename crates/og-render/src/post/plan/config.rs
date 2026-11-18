@@ -44,6 +44,8 @@ pub(crate) struct GraphConfig {
     /// The main pass copies the opaque scene for transmissive materials
     /// (into the renderer's own mip-chained target, not a graph target).
     pub transmission: bool,
+    /// Iterated zoom (other screen blurs stay one pass).
+    pub zoom_blur: bool,
     /// Metaball field targets the frame's fluids need (1 to
     /// `metaballs::FIELDS` when it draws any).
     pub fluid_fields: u32,

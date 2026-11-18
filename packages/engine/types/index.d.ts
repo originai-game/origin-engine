@@ -7911,7 +7911,7 @@ export interface PostEffects {
    */
   screenBlurAngle: number;
   /**
-   * Taps per pixel, each one a texture read. For zoom this is a minimum: the count follows the streak length at one tap per pixel, capped at 256; stable per-pixel jitter breaks up repeated highlights. Spin and directional use exactly this count.
+   * Taps per pixel for spin and directional. Zoom exceeds this quality floor with three eight-tap stages (512 effective positions), or direct adaptive sampling when strength >= 1 crosses the centre. Both use stable per-pixel jitter.
    *
    * @default 16
    * @range 4..64

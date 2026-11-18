@@ -59,6 +59,7 @@ pub(super) type Draw = (&'static str, &'static str);
 /// The effect passes' bind groups.
 pub(super) struct Fx {
     groups: HashMap<FramePass, Pair>,
+    zoom: Option<[Pair; 2]>,
 }
 
 impl Fx {
@@ -73,7 +74,13 @@ impl Fx {
                 Some((p, groups))
             })
             .collect();
-        Fx { groups }
+        let zoom = (cx.has(FramePass::ScreenBlur) && cx.cfg.zoom_blur).then(|| {
+            [
+                cx.pair(|_| cx.fx_after(cx.view("zoom.0"), &cx.passes.black)),
+                cx.pair(|slot| cx.fx_after(cx.view("zoom.1"), cx.stage(cx.names.after_mb, slot))),
+            ]
+        });
+        Fx { groups, zoom }
     }
 
     /// Records `pass` when it is an effect pass; its draws.
@@ -83,6 +90,27 @@ impl Fx {
         cx: &PostCx,
         pass: FramePass,
     ) -> Option<u32> {
+        // One logical/timed pass includes all three stages, so the
+        // screen-blur GPU cost cannot hide auxiliary work.
+        if pass == FramePass::ScreenBlur
+            && let Some(zoom) = &self.zoom
+        {
+            for (entry, target, group) in [
+                ("fs_zoom_fine", "zoom.0", &self.groups[&pass][cx.slot]),
+                ("fs_zoom_middle", "zoom.1", &zoom[0][cx.slot]),
+                ("fs_zoom_coarse", "hdr.blur", &zoom[1][cx.slot]),
+            ] {
+                fullscreen_pass(
+                    encoder,
+                    entry,
+                    cx.graph.view(target),
+                    CLEAR,
+                    &cx.passes.fx[entry],
+                    group,
+                );
+            }
+            return Some(3);
+        }
         let (entry, target) = ao::draw(cx, pass)
             .or_else(|| outline::draw(pass))
             .or_else(|| screen::draw(pass))?;
