@@ -1,0 +1,42 @@
+{
+  "added": [
+    {
+      "member": "Default style inventory tokens",
+      "summary": "--inv-* roles for the inventory family (bags, loot, crafting and trade): the frame's cut corners and lit edge, the kicker over a title, the purse chip and its coin, the tab strip's line, counts and fade, an item tile's cut, hover and selected rims, its rarity bar's glow, the selected tile's corner brackets, the corner tags (stack, Equipped, Locked, New) and Broken's ink, a row's glass, hover and chosen fills, a short ingredient's tint and the alert strip; inv-accent is the HUD's accent unless a pack names another. A style pack sets them to restyle the family."
+    },
+    {
+      "member": "RpgBackpack",
+      "summary": "New props kicker (a small line over the title) and capacity (how full the bag is, as the game words it); a tab row may carry a count, shown beside its label above 0. New parts RpgBackpack.kicker, .purse, .count, .capacity, .state and .bracket. Overburdened (load above 1) is also said in words under the bar."
+    },
+    {
+      "member": "RpgLoot, RpgCrafting and RpgTrade rows",
+      "summary": "An item row may carry rarity (common to mythic): its leading edge, its icon's socket and its name take the rarity's colour. RpgCrafting recipes may carry held (how many of the result the player holds); RpgTrade goods may carry was (a struck price before a discount) and after (the balance once paid). New parts: RpgLoot.band, .kicker, .socket; RpgCrafting.band, .kicker, .socket, .hero, .result, .held; RpgTrade.band, .kicker, .socket, .former, .total, .after."
+    }
+  ],
+  "breaking": [
+    {
+      "member": "RpgBackpack",
+      "change": "The bag is redrawn: its frame is cut at two corners with a lit top edge, the title sits under a kicker beside the purse chip, the tabs are an underline strip between the category actions' key caps that scrolls and fades before the next cap, and the carried weight is a leaning bar across the footer (the bag icon and the purse beside it are gone). An item cell no longer paints itself: it holds a tile cut at two corners that wears the rarity's cell fill and rim with a lit bar along its foot, its stack, Equipped (E), Locked and New in its corners and, when selected, corner brackets. Broken is now said on the tile (Broken). Equipped is RpgBackpack.state, not .badge; the locked mark has no part.",
+      "fix": "A style that dressed RpgBackpack.cell's background or rim sets --cell-<rarity>-fill and --cell-<rarity>-shadow, or the --inv-slot-* tokens. A style that dressed the equipped badge through RpgBackpack.badge dresses RpgBackpack.state. Pass kicker and capacity, and a count per tab, to show them.",
+      "find": ["RpgBackpack"]
+    },
+    {
+      "member": "RpgLoot",
+      "change": "Each row is a glass row with the item's rarity on its leading edge and its icon in a socket; the count sits on the name's line and the reason a row is refused replaces its description, in red. The band reads Loot · n items over the title, and Close carries the back action's key cap. RpgLoot.name no longer also wears the headline role: the RpgLoot.headline part is gone.",
+      "fix": "A style that dressed RpgLoot.headline dresses RpgLoot.name. Pass rarity on each item to colour it.",
+      "find": ["RpgLoot.headline"]
+    },
+    {
+      "member": "RpgCrafting",
+      "change": "The station is two columns: the recipes as rows (rarity edge, socket, name, why it cannot be made), and the selected recipe with its art large over a glow of its rarity, its name, what it does and how many the player holds, the ingredients as have / need chips (a short one tinted and named Missing ingredients), then the batch stepper with the cost and Craft. The batch and Craft sit at the foot of the selected recipe, under what scrolls, so Craft is always in view; on a narrow panel the recipes sit over it. The selected recipe is no longer a well, and the quantity reads as a figure between − and +. The RpgCrafting.headline part is gone (the ingredients' heading is a kicker).",
+      "fix": "A style that dressed RpgCrafting.headline dresses RpgCrafting.ingredientsTitle; one that dressed the detail's well dresses RpgCrafting.detail. Pass rarity and held on each recipe to show them.",
+      "find": ["RpgCrafting.headline"]
+    },
+    {
+      "member": "RpgTrade",
+      "change": "The merchant's band holds the title under a kicker, a Buy / Sell switch (RpgTrade.mode, role switch, checked on the sell side) and the purse. Each good's row shows its price, a discount struck before it; the selected good's total, the balance after and Buy or Sell sit in a footer under the list instead of a well. The mode button no longer reads Browse goods to buy / Browse items to sell: those words are its accessible name.",
+      "fix": "A style that dressed RpgTrade.detail's well dresses RpgTrade.detail; one that dressed the price in the detail dresses RpgTrade.total. Pass was, after and rarity on each good to show them.",
+      "find": ["RpgTrade"]
+    }
+  ]
+}
