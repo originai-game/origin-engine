@@ -10,7 +10,7 @@ const calibration_default = {"brightness":0.5,"deadZone":0.12,"offset":24,"step"
 const card_default = {"title":"Ember Blade","body":"Burns on hit. Two-handed.","image":"","badge":"New"};
 const confirm_default = {"open":true,"title":"Quit to the menu?","body":"Progress since the last save is lost.","confirm":"Quit","cancel":"Keep playing","danger":true};
 const creatorTools_default = {"dirty":true,"panel":"inspector","playing":false,"selected":"Lantern_03","tool":"move"};
-const credits_default = {"offset":0,"sections":[{"id":"item-0","names":[{"id":"item-0","name":"Ada Lin","role":""}],"title":"Directed by"},{"id":"item-1","names":[{"id":"item-0","name":"Tomas Reyes","role":"Lead artist"},{"id":"item-1","name":"Mira Okafor","role":"Environment"}],"title":"Art"},{"id":"item-2","names":[{"id":"item-0","name":"Jun Sato","role":"Composer"}],"title":"Music"}]};
+const credits_default = {"keyArt":0,"logo":0,"offset":0,"sections":[{"id":"item-0","names":[{"id":"item-0","name":"Ada Lin","role":""}],"title":"Directed by"},{"id":"item-1","names":[{"id":"item-0","name":"Tomas Reyes","role":"Lead artist"},{"id":"item-1","name":"Mira Okafor","role":"Environment"}],"title":"Art"},{"id":"item-2","names":[{"id":"item-0","name":"Jun Sato","role":"Composer"}],"title":"Music"}]};
 const dataList_default = {"loading":false,"empty":"Nothing here yet","busy":"Loading…","rows":[{"id":"a","title":"Copper ore","detail":"Mined in the north pit","value":"×12"},{"id":"b","title":"Silk","detail":"Bought in Harrow","value":"×3"}]};
 const filmChapters_default = {"selected":"c2","chapters":[{"id":"c1","title":"1 · The kitchen","thumb":0,"locked":false},{"id":"c2","title":"2 · The hall","thumb":0,"locked":false},{"id":"c3","title":"3 · The stairs","thumb":0,"locked":true},{"id":"c4","title":"4 · Dawn","thumb":0,"locked":true}]};
 const filmChoices_default = {"open":true,"left":0.6,"locked":false,"hotspots":[{"id":"0","x":0.58,"y":0.3,"width":0.14,"height":0.22,"label":"Take the knife"}],"choices":[{"id":"0","text":"Take the knife","enabled":true,"chosen":false,"progress":-1},{"id":"1","text":"Open the door","enabled":true,"chosen":true,"progress":-1},{"id":"2","text":"Hold to dodge","enabled":true,"chosen":false,"progress":0.45},{"id":"3","text":"Wait in the dark","enabled":false,"chosen":false,"progress":-1}]};
@@ -21,8 +21,8 @@ const hudEditor_default = {"showHint":true};
 const keyValues_default = {"rows":[{"id":"atk","key":"Attack","value":"42","delta":"+6"},{"id":"def","key":"Defence","value":"18","delta":"-2"},{"id":"wt","key":"Weight","value":"3.5 kg","delta":""}]};
 const leaderboard_default = {"league":{"demote":25,"ends":259200,"name":"Gold league","promote":10},"me":{"name":"You","rank":1284,"score":402110},"period":"This week","rows":[{"id":"item-0","name":"Nyx","rank":1,"score":982140,"texture":0,"you":false},{"id":"item-1","name":"Ferro","rank":2,"score":951300,"texture":0,"you":false},{"id":"item-2","name":"Lumen","rank":3,"score":948020,"texture":0,"you":false},{"id":"item-3","name":"Quill","rank":4,"score":902210,"texture":0,"you":false}],"selected":-1,"tab":"global"};
 const loading_default = {"place":"The Sunken Archive","progress":0.62,"ready":false,"tip":"Dodging through an attack at the last moment slows time for a breath.","waits":true};
-const mainMenu_default = {"canContinue":true,"news":"Season 2 is live","saveLine":"Chapter 3 · 4h 12m","version":"1.0.0"};
-const modeSelect_default = {"modes":[{"id":"item-0","line":"The campaign, alone or with a friend.","locked":false,"name":"Story","reason":"","tag":"","texture":0},{"id":"item-1","line":"Ranked fights, one life.","locked":false,"name":"Arena","reason":"","tag":"Ranked","texture":0},{"id":"item-2","line":"Hard challenges for the brave.","locked":true,"name":"Trials","reason":"Finish chapter 2","tag":"New","texture":0}],"selected":"item-0"};
+const mainMenu_default = {"canContinue":true,"keyArt":0,"logo":0,"name":"Lantern Coast","news":"Season 2 is live","saveLine":"Chapter 3 · 4h 12m","version":"1.0.0"};
+const modeSelect_default = {"keyArt":0,"modes":[{"id":"item-0","line":"The campaign, alone or with a friend.","locked":false,"name":"Story","reason":"","tag":"","texture":0},{"id":"item-1","line":"Ranked fights, one life.","locked":false,"name":"Arena","reason":"","tag":"Ranked","texture":0},{"id":"item-2","line":"Hard challenges for the brave.","locked":true,"name":"Trials","reason":"Finish chapter 2","tag":"New","texture":0}],"selected":"item-0"};
 const notifications_default = {"items":[{"id":"1","title":"Achievement","body":"First blood","tone":"success"}]};
 const objectiveTracker_default = {"title":"The Lighthouse","objectives":[{"id":"a","label":"Find the keeper","progress":1,"done":true,"steps":0},{"id":"b","label":"Light the lamps 2/5","progress":0.4,"done":false,"steps":5}]};
 const pagination_default = {"label":"Pages","atStart":false,"atEnd":false,"pages":[{"id":"1","label":"1","current":false},{"id":"2","label":"2","current":true},{"id":"3","label":"3","current":false},{"id":"gap","label":"…","gap":true},{"id":"9","label":"9","current":false}]};
@@ -34,7 +34,7 @@ const splash_default = {"mark":"item-0","marks":[{"id":"item-0","name":"Studio",
 const starRating_default = {"label":"2 of 3 stars","stars":[{"id":"1","index":0,"lit":true},{"id":"2","index":1,"lit":true},{"id":"3","index":2,"lit":false}]};
 const subtitles_default = {"lines":[{"id":"1","speaker":"Keeper","text":"The lamps went dark three nights ago."}]};
 const table_default = {"label":"Standings","columns":[{"id":"n","label":"Team"},{"id":"w","label":"Won"},{"id":"p","label":"Points"}],"cells":[{"id":"r.n","row":"r","text":"Ravens"},{"id":"r.w","row":"r","text":"9"},{"id":"r.p","row":"r","text":"27"},{"id":"g.n","row":"g","text":"Gulls"},{"id":"g.w","row":"g","text":"7"},{"id":"g.p","row":"g","text":"21"}]};
-const title_default = {"legal":"© Studio. All rights reserved.","version":"1.0.0"};
+const title_default = {"keyArt":0,"legal":"© Studio. All rights reserved.","logo":0,"name":"Lantern Coast","version":"1.0.0"};
 const tree_default = {"label":"Scene","rows":[{"id":"w","label":"World","depth":0,"open":true,"selected":false},{"id":"p","label":"Player","depth":1,"open":null,"selected":true},{"id":"c","label":"Camera","depth":1,"open":false,"selected":false}]};
 const tutorial_default = {"step":2,"steps":5,"target":"","text":"Press the dodge button just before an attack lands to slip past it.","texture":0,"title":"Dodge","waits":false,"x":64,"y":120};
 
@@ -65,6 +65,7 @@ export const FIXTURES: Record<string, Record<string, Record<string, unknown>>> =
   },
   credits: {
     default: credits_default,
+    art: { ...credits_default, "keyArt": "art:key", "logo": "art:logo" },
     overflow: { ...credits_default, "sections": [{"id":"s0","title":"Directed by","names":[{"id":"n0","name":"Ada Lin","role":""},{"id":"n1","name":"Maximilian Vandenberghe-Okonkwo","role":"Lead artist"}]},{"id":"s1","title":"Art","names":[{"id":"n0","name":"Ada Lin","role":""},{"id":"n1","name":"Maximilian Vandenberghe-Okonkwo","role":"Lead artist"},{"id":"n2","name":"Mira Okafor","role":"Environment"},{"id":"n3","name":"Jun Sato","role":"Composer"}]},{"id":"s2","title":"Music","names":[{"id":"n0","name":"Ada Lin","role":""},{"id":"n1","name":"Maximilian Vandenberghe-Okonkwo","role":"Lead artist"},{"id":"n2","name":"Mira Okafor","role":"Environment"},{"id":"n3","name":"Jun Sato","role":"Composer"},{"id":"n4","name":"Abernathy-Whitcombe","role":"Principal engineer, rendering and tools"},{"id":"n5","name":"Ada Lin","role":""}]},{"id":"s3","title":"Engineering of the Ninefold Gate","names":[{"id":"n0","name":"Ada Lin","role":""},{"id":"n1","name":"Maximilian Vandenberghe-Okonkwo","role":"Lead artist"},{"id":"n2","name":"Mira Okafor","role":"Environment"},{"id":"n3","name":"Jun Sato","role":"Composer"},{"id":"n4","name":"Abernathy-Whitcombe","role":"Principal engineer, rendering and tools"},{"id":"n5","name":"Ada Lin","role":""},{"id":"n6","name":"Maximilian Vandenberghe-Okonkwo","role":"Lead artist"},{"id":"n7","name":"Mira Okafor","role":"Environment"}]},{"id":"s4","title":"Quality assurance","names":[{"id":"n0","name":"Ada Lin","role":""},{"id":"n1","name":"Maximilian Vandenberghe-Okonkwo","role":"Lead artist"},{"id":"n2","name":"Mira Okafor","role":"Environment"},{"id":"n3","name":"Jun Sato","role":"Composer"},{"id":"n4","name":"Abernathy-Whitcombe","role":"Principal engineer, rendering and tools"},{"id":"n5","name":"Ada Lin","role":""},{"id":"n6","name":"Maximilian Vandenberghe-Okonkwo","role":"Lead artist"},{"id":"n7","name":"Mira Okafor","role":"Environment"},{"id":"n8","name":"Jun Sato","role":"Composer"},{"id":"n9","name":"Abernathy-Whitcombe","role":"Principal engineer, rendering and tools"}]},{"id":"s5","title":"Special thanks","names":[{"id":"n0","name":"Ada Lin","role":""},{"id":"n1","name":"Maximilian Vandenberghe-Okonkwo","role":"Lead artist"},{"id":"n2","name":"Mira Okafor","role":"Environment"},{"id":"n3","name":"Jun Sato","role":"Composer"},{"id":"n4","name":"Abernathy-Whitcombe","role":"Principal engineer, rendering and tools"},{"id":"n5","name":"Ada Lin","role":""},{"id":"n6","name":"Maximilian Vandenberghe-Okonkwo","role":"Lead artist"},{"id":"n7","name":"Mira Okafor","role":"Environment"},{"id":"n8","name":"Jun Sato","role":"Composer"},{"id":"n9","name":"Abernathy-Whitcombe","role":"Principal engineer, rendering and tools"},{"id":"n10","name":"Ada Lin","role":""},{"id":"n11","name":"Maximilian Vandenberghe-Okonkwo","role":"Lead artist"}]}] },
   },
   dataList: {
@@ -116,11 +117,13 @@ export const FIXTURES: Record<string, Record<string, Record<string, unknown>>> =
   },
   mainMenu: {
     default: mainMenu_default,
+    art: { ...mainMenu_default, "keyArt": "art:key", "logo": "art:logo" },
     newPlayer: { ...mainMenu_default, "canContinue": false, "saveLine": "", "news": "" },
     overflow: { ...mainMenu_default, "saveLine": "Chapter 7 · The Ninefold Gate · 61h 12m", "news": "Season 2 is live: the Ninefold Gate expansion, three new companions and a new ending" },
   },
   modeSelect: {
     default: modeSelect_default,
+    art: { ...modeSelect_default, "keyArt": "art:key", "modes": modeSelect_default.modes.map((m, i) => ({ ...m, "texture": ["art:mode-story", "art:mode-arena", "art:mode-trials"][i] })) },
     overflow: { ...modeSelect_default, "modes": [{"id":"m0","line":"The campaign, alone or with a friend, through every chapter and every ending.","locked":false,"name":"Story","reason":"","tag":"","texture":0},{"id":"m1","line":"Ranked fights, one life.","locked":false,"name":"Arena","reason":"","tag":"Ranked","texture":0},{"id":"m2","line":"The campaign, alone or with a friend, through every chapter and every ending.","locked":true,"name":"Trials","reason":"Finish chapter 2 of the campaign first","tag":"New","texture":0},{"id":"m3","line":"The campaign, alone or with a friend.","locked":false,"name":"Siege of the Ninefold Gate","reason":"","tag":"","texture":0},{"id":"m4","line":"The campaign, alone or with a friend, through every chapter and every ending.","locked":false,"name":"Co-op","reason":"","tag":"Ranked","texture":0},{"id":"m5","line":"Hard challenges for the brave.","locked":true,"name":"Custom","reason":"Finish chapter 2 of the campaign first","tag":"New","texture":0}] },
   },
   notifications: {
@@ -160,6 +163,8 @@ export const FIXTURES: Record<string, Record<string, Record<string, unknown>>> =
   splash: {
     default: splash_default,
     done: { ...splash_default, "progress": 1, "status": "" },
+    art: { ...splash_default, "marks": [{"id":"item-0","name":"Ember & Tide","texture":"art:studio"},{"id":"item-1","name":"Engine","texture":0}] },
+    overflow: { ...splash_default, "progress": 0.87, "status": "Compiling the pipeline caches for the Ninefold Gate's far districts" },
   },
   starRating: {
     default: starRating_default,
@@ -177,6 +182,8 @@ export const FIXTURES: Record<string, Record<string, Record<string, unknown>>> =
   },
   title: {
     default: title_default,
+    art: { ...title_default, "keyArt": "art:key", "logo": "art:logo" },
+    overflow: { ...title_default, "name": "The Lighthouse of the Northern Reach", "legal": "© 2026 Ember & Tide Studio. Lantern Coast and the lighthouse mark are trademarks of Ember & Tide. All rights reserved.", "version": "1.12.4 (build 20261118.3)" },
   },
   tree: {
     default: tree_default,

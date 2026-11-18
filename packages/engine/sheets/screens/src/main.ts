@@ -92,10 +92,25 @@ function setStyle(world: World, name: string): void {
 /** The page shown and its state. */
 let shown = { screen: "", state: "default" };
 
+/**
+ * The front end's sample art under assets/art (front-<name>; sheet only,
+ * never installed), loaded in start. A fixture names one as "art:<name>".
+ */
+const FRONT_ART = ["key.jpg", "logo.png", "studio.png", "mode-story.jpg", "mode-arena.jpg", "mode-trials.jpg"] as const;
+let frontArt: Record<string, number> = {};
+
+/** A fixture with each "art:<name>" replaced by that art's texture handle. */
+function withArt(value: unknown): unknown {
+  if (typeof value === "string" && value.startsWith("art:")) return frontArt[value.slice(4)] ?? 0;
+  if (Array.isArray(value)) return value.map(withArt);
+  if (value && typeof value === "object") return Object.fromEntries(Object.entries(value).map(([k, v]) => [k, withArt(v)]));
+  return value;
+}
+
 /** The fixture of a screen's state (its default where it declares no such state). */
 const fixture = (screen: string, state: string) => {
   const states = FIXTURES[MEMBERS.get(screen)!]!;
-  return states[state] ?? states.default!;
+  return withArt(states[state] ?? states.default!) as Record<string, unknown>;
 };
 
 /** A component screen's state as its stores: a writable per scalar prop, a keyed collection per list. */
@@ -131,6 +146,7 @@ export default og.game({
     // The screens' strings in the review's right-to-left locale, as a game
     // ships them (English comes with the engine).
     must(og.i18n.load(world, "strings/ar.ogt"), "ar");
+    frontArt = Object.fromEntries(FRONT_ART.map((f) => [f.replace(/\.\w+$/, ""), must(og.load.texture(world, `art/front-${f}`), f) as number]));
     for (const path of DOCUMENTS) must(og.load.document(world, path), path);
   },
   commands: {
