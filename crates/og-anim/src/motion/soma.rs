@@ -250,8 +250,9 @@ impl Planter {
             .filter_map(|(l, p)| p.anchor.map(|a| (l, a)))
     }
 
-    /// Lowers the hips (the thighs' parent) as far as a planted foot
-    /// needs to reach where it stands within soft IK's easy reach, at most
+    /// Lowers the hips (the thighs' parent) as far as a planted or stepping
+    /// foot needs to reach its place (where it stands, comes down or left)
+    /// within soft IK's easy reach, at most
     /// [`MAX_DROP`] of the leg's length, easing there and back at
     /// [`DROP_SPEED`] leg lengths a second: a wide or turned stance bends
     /// the knees instead of leaving a foot hanging over the ground.
@@ -271,7 +272,10 @@ impl Planter {
             let l = (model[knee].translation - model[hip].translation).length()
                 + (model[ankle].translation - model[knee].translation).length();
             length = length.max(l);
-            let Some(at) = plant.anchor.filter(|_| !plant.stepping()) else {
+            // A step that has not yet aimed keeps the hips down for the
+            // place it left: easing up and down again each step, they never
+            // reach a foot the pose holds up, which then steps again and again.
+            let Some(at) = plant.anchor.or(plant.stepping().then_some(plant.last)) else {
                 continue;
             };
             let reach = l * (1.0 - SOFT_REACH);
@@ -454,11 +458,15 @@ impl Planter {
             };
             plant.drawn = Some(target);
             let foot = model[ankle].rotation;
-            // A foot standing where it touched down, or coming down where its
-            // step has aimed, peels past its reach: its heel lifts over that
-            // place. A foot not bound to a place eases towards the hip.
-            let anchored = down && plant.anchor.is_some();
-            let reach = if anchored { peel } else { soft_reach };
+            // A foot standing where it touched down, or stepping from or to
+            // a place, peels past its reach: its heel lifts over that place,
+            // so a step sets off from where the peeled foot was drawn. A
+            // swinging foot eases towards the hip.
+            let reach = if in_step || (down && plant.anchor.is_some()) {
+                peel
+            } else {
+                soft_reach
+            };
             let target = reach(a, to_model.transform_point(target), length);
             let pole = plant.bend.map(|d| a + to_model.rotation * d);
             two_bone(skeleton, pose, &leg.chain, target, pole, 1.0, &[]);

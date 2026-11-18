@@ -440,7 +440,9 @@ fn standing() -> Skeleton {
 fn a_planted_foot_out_of_reach_peels_instead_of_sliding() {
     // Ways this could fail: soft IK easing the anchored ankle towards the
     // hip along the ground (the slide), the foot let go into a step while
-    // the other is stepping (both feet stepping at once).
+    // the other is stepping (both feet stepping at once), a peeled foot's
+    // step setting off from soft IK's eased place instead of where the foot
+    // was drawn (a jump across as the step begins).
     let asset = standing().asset();
     let map = HumanoidMap::detect(&asset);
     let at_rest = asset.model_space(&asset.rest_pose());
@@ -451,9 +453,7 @@ fn a_planted_foot_out_of_reach_peels_instead_of_sliding() {
             contact,
             rest: at_rest[map.nodes[b + 2] as usize].translation.y,
         })
-        .collect();
-    let rest_y = legs[0].rest;
-    let ankles = legs.iter().map(|l| l.chain[2] as usize).collect::<Vec<_>>();
+        .collect::<Vec<_>>();
     // Knees bent low and the body carried at a brisk 1.5 m/s: the
     // anchors fall far behind the hips, and one foot's stretch step leaves
     // the other planted out of reach.
@@ -462,35 +462,64 @@ fn a_planted_foot_out_of_reach_peels_instead_of_sliding() {
         pose[hip].rotation = glam::Quat::from_rotation_x(-0.8);
         pose[knee].rotation = glam::Quat::from_rotation_x(1.6);
     }
-    let mut planter = Planter::new(legs);
+    // The same walk again, the peeling foot's contact ending while its heel
+    // is up: the step it lifts into starts where the foot was drawn.
+    for lift in [false, true] {
+        let (fastest, start) = brisk_walk(&asset, &legs, &pose, lift);
+        assert!(
+            fastest <= 0.3,
+            "a foot on the ground moved across at {fastest} m/s (lifted {lift})"
+        );
+        // A step's first frame across is a pop, not a set-off, past 1 m/s.
+        assert!(
+            start <= 1.0,
+            "a standing foot set off across at {start} m/s (lifted {lift})"
+        );
+    }
+}
+
+/// [`a_planted_foot_out_of_reach_peels_instead_of_sliding`]'s walk: the
+/// fastest a drawn ankle on the ground moved across, and the fastest one
+/// standing still set off across, m/s. With `lift`, the left foot's contact
+/// ends while its heel is peeled up and the right foot is stepping.
+fn brisk_walk(asset: &SkeletonAsset, legs: &[Leg], pose: &[Trs], lift: bool) -> (f32, f32) {
+    let rest_y = legs[0].rest;
+    let ankles = legs.iter().map(|l| l.chain[2] as usize).collect::<Vec<_>>();
+    let mut planter = Planter::new(legs.to_vec());
     let dt = 1.0 / 60.0;
     let mut root = Trs::IDENTITY;
     let mut last: Option<Vec<Vec3>> = None;
     let mut fastest = 0.0f32;
+    let mut contacts = [1.0; 4];
+    let (mut still, mut start) = ([false; 2], 0.0f32);
     for frame in 0..60 {
         root.translation.x = 0.025 * frame as f32;
-        let mut nodes = pose.clone();
-        planter.step(&asset, &mut nodes, &root, &[1.0; 4], Some(0.0), dt);
+        let mut nodes = pose.to_vec();
+        planter.step(asset, &mut nodes, &root, &contacts, Some(0.0), dt);
         let m = asset.model_space(&nodes);
         let now: Vec<Vec3> = ankles
             .iter()
             .map(|&a| root.transform_point(m[a].translation))
             .collect();
         if let Some(last) = &last {
-            for (w, l) in now.iter().zip(last) {
+            for (k, (w, l)) in now.iter().zip(last).enumerate() {
                 let on_ground = w.y - rest_y < 0.03 && l.y - rest_y < 0.03;
                 let speed = Vec3::new(w.x - l.x, 0.0, w.z - l.z).length() / dt;
                 if on_ground {
                     fastest = fastest.max(speed);
                 }
+                if still[k] {
+                    start = start.max(speed);
+                }
+                still[k] = speed < 0.05;
             }
+        }
+        if lift && now[0].y - rest_y > 0.016 && now[1].y - rest_y > 0.03 {
+            contacts[0] = 0.0;
         }
         last = Some(now);
     }
-    assert!(
-        fastest <= 0.3,
-        "a foot on the ground moved across at {fastest} m/s"
-    );
+    (fastest, start)
 }
 
 /// Planted feet outrank an authored reaction: a reaction that lowers and
