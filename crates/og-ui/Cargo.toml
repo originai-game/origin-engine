@@ -72,6 +72,8 @@ accesskit = { version = "=0.25.2", features = ["serde"] }
 [dev-dependencies]
 # Font files the tests read directly (the version og-text reads them with).
 ttf-parser = { version = "0.25.1", default-features = false, features = ["std"] }
+# The lossless, captured world-placement replay (test data only).
+miniz_oxide = "0.8.9"
 
 
 # The default style's generator (scripts/gen-theme.sh runs it).

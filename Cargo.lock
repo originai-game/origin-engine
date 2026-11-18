@@ -3464,6 +3464,7 @@ dependencies = [
  "color",
  "cssparser",
  "elsa",
+ "miniz_oxide 0.8.9",
  "og-core",
  "og-css",
  "og-draw",

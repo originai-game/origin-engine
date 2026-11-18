@@ -164,6 +164,266 @@ fn ground_text(
     out
 }
 
+/// Collision counts over sorted candidate coordinates. In bounded sweeps,
+/// each bit plane holds one binary digit of 64 independent counters: a range
+/// update advances whole words rather than walking individual coordinates.
+/// Large domains retain the logarithmic range-update tree.
+enum Coverage {
+    Bits {
+        len: usize,
+        blocks: Vec<CoverageBlock>,
+        free_blocks: u64,
+    },
+    Tree(CoverageTree),
+}
+
+struct CoverageBlock {
+    planes: [u64; 32],
+    used: usize,
+    free: u64,
+}
+
+fn low_bits(len: usize) -> u64 {
+    if len == 64 {
+        u64::MAX
+    } else {
+        (1u64 << len) - 1
+    }
+}
+
+impl Coverage {
+    fn new(len: usize) -> Self {
+        if len > 4096 {
+            return Self::Tree(CoverageTree::new(len));
+        }
+        let blocks = (0..len.div_ceil(64))
+            .map(|b| CoverageBlock {
+                planes: [0; 32],
+                used: 1,
+                free: low_bits((len - b * 64).min(64)),
+            })
+            .collect();
+        Self::Bits {
+            len,
+            blocks,
+            free_blocks: low_bits(len.div_ceil(64)),
+        }
+    }
+
+    fn add(&mut self, range: (usize, usize), delta: i32) {
+        let (blocks, free_blocks) = match self {
+            Self::Bits {
+                blocks,
+                free_blocks,
+                ..
+            } => (blocks, free_blocks),
+            Self::Tree(tree) => return tree.add(range, delta),
+        };
+        debug_assert!(delta == 1 || delta == -1);
+        if range.0 >= range.1 {
+            return;
+        }
+        let first = range.0 / 64;
+        for (offset, block) in blocks[first..=(range.1 - 1) / 64].iter_mut().enumerate() {
+            let b = first + offset;
+            let mask =
+                low_bits((range.1 - b * 64).min(64)) & !low_bits(range.0.saturating_sub(b * 64));
+            let mut carry = mask;
+            let mut plane = 0;
+            while carry != 0 {
+                let old = block.planes[plane];
+                block.planes[plane] ^= carry;
+                carry &= if delta > 0 { old } else { !old };
+                plane += 1;
+            }
+            block.used = block.used.max(plane);
+            if delta > 0 {
+                block.free &= !mask;
+            } else {
+                let occupied = block.planes[..block.used].iter().fold(0, |a, p| a | p);
+                block.free |= mask & !occupied;
+            }
+            if block.free == 0 {
+                *free_blocks &= !(1u64 << b);
+            } else {
+                *free_blocks |= 1u64 << b;
+            }
+        }
+    }
+
+    fn first(&self, range: (usize, usize), reverse: bool) -> Option<usize> {
+        let (len, blocks, free_blocks) = match self {
+            Self::Bits {
+                len,
+                blocks,
+                free_blocks,
+            } => (*len, blocks, *free_blocks),
+            Self::Tree(tree) => return tree.first(range, reverse),
+        };
+        let (lo, hi) = (range.0.min(len), range.1.min(len));
+        if lo >= hi {
+            return None;
+        }
+        let mut available = free_blocks & low_bits((hi - 1) / 64 + 1) & !low_bits(lo / 64);
+        while available != 0 {
+            let b = if reverse {
+                63 - available.leading_zeros() as usize
+            } else {
+                available.trailing_zeros() as usize
+            };
+            let free = blocks[b].free
+                & low_bits((hi - b * 64).min(64))
+                & !low_bits(lo.saturating_sub(b * 64));
+            if free != 0 {
+                let bit = if reverse {
+                    63 - free.leading_zeros()
+                } else {
+                    free.trailing_zeros()
+                };
+                return Some(b * 64 + bit as usize);
+            }
+            available &= !(1u64 << b);
+        }
+        None
+    }
+
+    fn gaps(&self, out: &mut Vec<(usize, usize)>) {
+        let (blocks, mut available) = match self {
+            Self::Bits {
+                blocks,
+                free_blocks,
+                ..
+            } => (blocks, *free_blocks),
+            Self::Tree(tree) => return tree.gaps(out),
+        };
+        out.clear();
+        while available != 0 {
+            let b = available.trailing_zeros() as usize;
+            let mut free = blocks[b].free;
+            while free != 0 {
+                let start = free.trailing_zeros() as usize;
+                let end = start + (free >> start).trailing_ones() as usize;
+                let span = (b * 64 + start, b * 64 + end);
+                if let Some(last) = out.last_mut().filter(|last| last.1 == span.0) {
+                    last.1 = span.1;
+                } else {
+                    out.push(span);
+                }
+                free &= !low_bits(end);
+            }
+            available &= available - 1;
+        }
+    }
+}
+
+struct CoverageTree {
+    len: usize,
+    minimum: Vec<i32>,
+    maximum: Vec<i32>,
+    lazy: Vec<i32>,
+}
+
+impl CoverageTree {
+    fn new(len: usize) -> Self {
+        Self {
+            len,
+            minimum: vec![0; len * 4],
+            maximum: vec![0; len * 4],
+            lazy: vec![0; len * 4],
+        }
+    }
+
+    fn add(&mut self, range: (usize, usize), delta: i32) {
+        fn apply(
+            tree: &mut CoverageTree,
+            node: usize,
+            span: (usize, usize),
+            range: (usize, usize),
+            delta: i32,
+        ) {
+            if span.0 >= range.1 || span.1 <= range.0 {
+                return;
+            }
+            if range.0 <= span.0 && span.1 <= range.1 {
+                tree.minimum[node] += delta;
+                tree.maximum[node] += delta;
+                tree.lazy[node] += delta;
+                return;
+            }
+            let mid = (span.0 + span.1) / 2;
+            apply(tree, node * 2, (span.0, mid), range, delta);
+            apply(tree, node * 2 + 1, (mid, span.1), range, delta);
+            tree.minimum[node] =
+                tree.lazy[node] + tree.minimum[node * 2].min(tree.minimum[node * 2 + 1]);
+            tree.maximum[node] =
+                tree.lazy[node] + tree.maximum[node * 2].max(tree.maximum[node * 2 + 1]);
+        }
+        apply(self, 1, (0, self.len), range, delta);
+    }
+
+    fn first(&self, range: (usize, usize), reverse: bool) -> Option<usize> {
+        fn find(
+            tree: &CoverageTree,
+            node: usize,
+            span: (usize, usize),
+            range: (usize, usize),
+            reverse: bool,
+            inherited: i32,
+        ) -> Option<usize> {
+            if span.0 >= range.1 || span.1 <= range.0 || tree.minimum[node] + inherited > 0 {
+                return None;
+            }
+            if span.1 - span.0 == 1 {
+                return Some(span.0);
+            }
+            let mid = (span.0 + span.1) / 2;
+            let mut children = [(node * 2, (span.0, mid)), (node * 2 + 1, (mid, span.1))];
+            if reverse {
+                children.swap(0, 1);
+            }
+            children.into_iter().find_map(|(child, span)| {
+                find(
+                    tree,
+                    child,
+                    span,
+                    range,
+                    reverse,
+                    inherited + tree.lazy[node],
+                )
+            })
+        }
+        find(self, 1, (0, self.len), range, reverse, 0)
+    }
+
+    fn gaps(&self, out: &mut Vec<(usize, usize)>) {
+        fn visit(
+            tree: &CoverageTree,
+            node: usize,
+            span: (usize, usize),
+            inherited: i32,
+            out: &mut Vec<(usize, usize)>,
+        ) {
+            if tree.minimum[node] + inherited > 0 {
+                return;
+            }
+            if tree.maximum[node] + inherited == 0 {
+                if let Some(last) = out.last_mut().filter(|last| last.1 == span.0) {
+                    last.1 = span.1;
+                } else {
+                    out.push(span);
+                }
+                return;
+            }
+            let mid = (span.0 + span.1) / 2;
+            let inherited = inherited + tree.lazy[node];
+            visit(tree, node * 2, (span.0, mid), inherited, out);
+            visit(tree, node * 2 + 1, (mid, span.1), inherited, out);
+        }
+        out.clear();
+        visit(self, 1, (0, self.len), 0, out);
+    }
+}
+
 /// The spot nearest `b`'s own that is clear of `placed`, as the move
 /// there, or `None`: nothing fits and it is hidden. As map labels are
 /// placed (MapLibre's collision index): by rank, each in the first of its
@@ -181,6 +441,7 @@ fn declutter(
     gap: f32,
     reach: f32,
     inside: Rect,
+    available: Option<&[[f32; 4]]>,
 ) -> Option<Vec2> {
     // Clear: a gap from every placed box (touching is not clear).
     let clear = |r: &Rect| {
@@ -194,34 +455,35 @@ fn declutter(
         return None;
     }
     let moved = |d: Vec2| Rect::new(b.x + d.x, b.y + d.y, b.width, b.height);
-    let (mut xs, mut ys) = (vec![0.0], vec![0.0]);
+    let mut ys = Vec::with_capacity(placed.len() * 2 + 1);
+    ys.push(0.0);
     let nearby = b.outset(reach);
     for p in placed.iter().filter(|p| p.overlaps(&nearby)) {
-        xs.extend([p.x - gap - b.right(), p.right() + gap - b.x]);
         ys.extend([p.y - gap - b.bottom(), p.bottom() + gap - b.y]);
     }
     // Keep the same coordinates, but sweep their free y intervals instead
     // of materialising and sorting the Cartesian product. Each obstacle
     // excludes one contiguous interval of sorted candidate ordinates.
-    xs.retain(|&x| {
-        Vec2::new(x, 0.0).length() <= reach
-            && b.x + x >= inside.x - 0.5
-            && b.x + x + b.width <= inside.right() + 0.5
-    });
     ys.retain(|&y| {
         Vec2::new(0.0, y).length() <= reach
             && b.y + y >= inside.y - 0.5
             && b.y + y + b.height <= inside.bottom() + 0.5
+            && available
+                .is_none_or(|holes| holes.iter().any(|h| b.y + y >= h[1] && b.y + y <= h[3]))
     });
     // Coordinates are deduplicated, and equal-start intervals commute:
     // these sorts have no meaningful tie order to preserve.
     ys.sort_unstable_by(f32::total_cmp);
     ys.dedup();
-    if xs.is_empty() || ys.is_empty() {
+    if ys.is_empty() {
         return None;
     }
     let zero = ys.partition_point(|&y| y < 0.0);
-    if mode == Declutter::Stack && xs.contains(&0.0) {
+    if mode == Declutter::Stack
+        && 0.0 <= reach
+        && b.x + 0.0 >= inside.x - 0.5
+        && b.x + 0.0 + b.width <= inside.right() + 0.5
+    {
         // Stacks usually have room on their own vertical. Test it before
         // building the two-dimensional collision index. A collision rules
         // out a whole run of ordinates, not just the one tested.
@@ -253,6 +515,24 @@ fn declutter(
             }
         }
     }
+    // A successful vertical stack needs no horizontal candidates. Keep every
+    // original ordinate above: even a non-crossing obstacle can supply the
+    // winning f32 coordinate.
+    let mut xs = Vec::with_capacity(placed.len() * 2 + 1);
+    xs.push(0.0);
+    for p in placed.iter().filter(|p| p.overlaps(&nearby)) {
+        xs.extend([p.x - gap - b.right(), p.right() + gap - b.x]);
+    }
+    xs.retain(|&x| {
+        Vec2::new(x, 0.0).length() <= reach
+            && b.x + x >= inside.x - 0.5
+            && b.x + x + b.width <= inside.right() + 0.5
+            && available
+                .is_none_or(|holes| holes.iter().any(|h| b.x + x >= h[0] && b.x + x <= h[2]))
+    });
+    if xs.is_empty() {
+        return None;
+    }
     xs.sort_unstable_by(f32::total_cmp);
     xs.dedup();
     let leftmost = moved(Vec2::new(xs[0], 0.0)).outset(gap - 0.01).x;
@@ -268,61 +548,135 @@ fn declutter(
         .collect();
     let topmost = edges[0].0;
     let bottommost = edges[edges.len() - 1].1;
-    let mut blocked = Vec::new();
+    let x_edges: Vec<_> = xs
+        .iter()
+        .map(|&x| {
+            let r = moved(Vec2::new(x, 0.0)).outset(gap - 0.01);
+            (r.x, r.right())
+        })
+        .collect();
+    // Horizontal bit runs make wide, shallow labels cheap to mark. Prepare
+    // each obstacle's mask once; the row union is a contiguous bitwise loop.
+    let words = xs.len().div_ceil(64);
+    if ys.len().saturating_mul(words) <= 4096 {
+        let mut blocked = vec![0u64; ys.len() * words];
+        let mut mask = vec![0u64; words];
+        for p in placed {
+            if p.x >= rightmost
+                || p.right() <= leftmost
+                || p.y >= bottommost
+                || p.bottom() <= topmost
+            {
+                continue;
+            }
+            let top = edges.partition_point(|&(_, bottom)| bottom <= p.y);
+            let bottom = edges.partition_point(|&(top, _)| top < p.bottom());
+            let left = x_edges.partition_point(|&(_, right)| right <= p.x);
+            let right = x_edges.partition_point(|&(left, _)| left < p.right());
+            if top >= bottom || left >= right {
+                continue;
+            }
+            let first = left / 64;
+            let last = (right - 1) / 64;
+            let head = u64::MAX << (left % 64);
+            let tail = u64::MAX >> (63 - (right - 1) % 64);
+            mask.fill(0);
+            if first == last {
+                mask[first] = head & tail;
+            } else {
+                mask[first] = head;
+                mask[first + 1..last].fill(u64::MAX);
+                mask[last] = tail;
+            }
+            for row in blocked[top * words..bottom * words].chunks_exact_mut(words) {
+                for (cell, bits) in row.iter_mut().zip(&mask) {
+                    *cell |= bits;
+                }
+            }
+        }
+        let free = |row: &[u64], lo: usize, hi: usize, reverse: bool| -> Option<usize> {
+            if lo >= hi {
+                return None;
+            }
+            let mut words = lo / 64..=(hi - 1) / 64;
+            while let Some(word) = if reverse {
+                words.next_back()
+            } else {
+                words.next()
+            } {
+                let start = lo.saturating_sub(word * 64);
+                let end = (hi - word * 64).min(64);
+                let bits = !row[word] & (u64::MAX << start) & (u64::MAX >> (64 - end));
+                if bits != 0 {
+                    let bit = if reverse {
+                        63 - bits.leading_zeros()
+                    } else {
+                        bits.trailing_zeros()
+                    };
+                    return Some(word * 64 + bit as usize);
+                }
+            }
+            None
+        };
+        let order = |d: Vec2| (d.length(), d.x.abs(), d.y, d.x);
+        let mut best: Option<Vec2> = None;
+        let zero = xs.partition_point(|&x| x < 0.0);
+        for (y, row) in ys.iter().copied().zip(blocked.chunks_exact(words)) {
+            if best.is_some_and(|d| Vec2::new(0.0, y).length() > d.length()) {
+                continue;
+            }
+            // At fixed y, the nearest free x on either side wins even when
+            // lengths round equal: absolute x is the next ordering key.
+            let left = free(row, 0, zero, true);
+            let right = free(row, zero, xs.len(), false);
+            for at in left.into_iter().chain(right) {
+                let d = Vec2::new(xs[at], y);
+                if d.length() <= reach && best.is_none_or(|old| order(d) < order(old)) {
+                    best = Some(d);
+                }
+            }
+        }
+        return best;
+    }
+    let mut events = vec![Vec::new(); xs.len() + 1];
     for p in placed {
         if p.x >= rightmost || p.right() <= leftmost || p.y >= bottommost || p.bottom() <= topmost {
             continue;
         }
         let top = edges.partition_point(|&(_, bottom)| bottom <= p.y);
         let bottom = edges.partition_point(|&(top, _)| top < p.bottom());
-        if top < bottom {
-            blocked.push((p.x, p.right(), top, bottom));
+        let left = x_edges.partition_point(|&(_, right)| right <= p.x);
+        let right = x_edges.partition_point(|&(left, _)| left < p.right());
+        if top < bottom && left < right {
+            events[left].push((top, bottom, 1));
+            events[right].push((top, bottom, -1));
         }
     }
-    blocked.sort_unstable_by_key(|(_, _, top, _)| *top);
-    xs.sort_unstable_by(|a, c| a.abs().total_cmp(&c.abs()).then(a.total_cmp(c)));
+    let mut coverage = Coverage::new(ys.len());
     let order = |d: Vec2| (d.length(), d.x.abs(), d.y, d.x);
     let mut best: Option<Vec2> = None;
-    for x in xs {
-        // No y can make this or a farther x nearer than the best spot.
+    for (column, x) in xs.into_iter().enumerate() {
+        for &(top, bottom, delta) in &events[column] {
+            coverage.add((top, bottom), delta);
+        }
+        // The sweep still updates coverage where no y can improve best.
         if best.is_some_and(|d| Vec2::new(x, 0.0).length() > d.length()) {
-            break;
+            continue;
         }
-        let mut free = |lo: usize, hi: usize| {
-            if lo >= hi {
-                return;
-            }
-            for at in [
-                zero.clamp(lo, hi - 1),
-                zero.saturating_sub(1).clamp(lo, hi - 1),
-            ] {
-                let length = Vec2::new(x, ys[at]).length();
-                // Preserve the old up-first tie when lengths round equal.
-                let at = if ys[at] < 0.0 {
-                    lo + ys[lo..=at].partition_point(|&y| Vec2::new(x, y).length() > length)
-                } else {
-                    at
-                };
-                let d = Vec2::new(x, ys[at]);
-                if d.length() <= reach && best.is_none_or(|old| order(d) < order(old)) {
-                    best = Some(d);
-                }
-            }
-        };
-        let r = moved(Vec2::new(x, 0.0)).outset(gap - 0.01);
-        let (left, right) = (r.x, r.right());
-        let mut start = 0;
-        for &(obstacle_left, obstacle_right, lo, hi) in &blocked {
-            if hi <= start || obstacle_left >= right || obstacle_right <= left {
-                continue;
-            }
-            free(start, lo);
-            start = start.max(hi);
-            if start >= ys.len() {
-                break;
+        let above = coverage.first((0, zero), true).map(|at| {
+            let length = Vec2::new(x, ys[at]).length();
+            // Preserve the up-first tie when f32 lengths round equal,
+            // even across separate free intervals.
+            let lo = ys[..=at].partition_point(|&y| Vec2::new(x, y).length() > length);
+            coverage.first((lo, at + 1), false).unwrap()
+        });
+        let below = coverage.first((zero, ys.len()), false);
+        for at in above.into_iter().chain(below) {
+            let d = Vec2::new(x, ys[at]);
+            if d.length() <= reach && best.is_none_or(|old| order(d) < order(old)) {
+                best = Some(d);
             }
         }
-        free(start, ys.len());
     }
     best
 }
@@ -330,6 +684,208 @@ fn declutter(
 /// The most numbers a template lays apart on one tick; the rest stand on
 /// their points.
 const SPAWNED_PLACED: usize = 64;
+
+/// A conservative continuous free-space certificate for one spawn batch.
+/// Unlike a failed discrete search, an empty reachable region remains empty
+/// when another obstacle is added. Possible positions still use `declutter`
+/// unchanged, including its candidate order and floating-point ties.
+struct Vacancies {
+    holes: Vec<[f32; 4]>,
+    scratch: Vec<[f32; 4]>,
+    size: Vec2,
+    pad: f32,
+    active: bool,
+}
+
+impl Vacancies {
+    fn new(pending: &[(usize, Rect)], taken: &[Rect], gap: f32) -> Self {
+        let mut bounds = [
+            f32::INFINITY,
+            f32::INFINITY,
+            f32::NEG_INFINITY,
+            f32::NEG_INFINITY,
+        ];
+        let mut size = Vec2::splat(f32::INFINITY);
+        let mut scale = gap.abs().max(1.0);
+        for &(_, b) in pending {
+            size = size.min(Vec2::new(b.width, b.height));
+            scale = scale.max(b.width.abs()).max(b.height.abs());
+            let reach = 3.0 * b.height.max(b.width.min(160.0));
+            bounds[0] = bounds[0].min(b.x - reach);
+            bounds[1] = bounds[1].min(b.y - reach);
+            bounds[2] = bounds[2].max(b.x + reach);
+            bounds[3] = bounds[3].max(b.y + reach);
+        }
+        for p in taken {
+            scale = scale
+                .max(p.x.abs())
+                .max(p.y.abs())
+                .max(p.width.abs())
+                .max(p.height.abs());
+        }
+        for v in bounds {
+            scale = scale.max(v.abs());
+        }
+        // Shrink blockers and enlarge query domains: roundoff can only leave
+        // extra possible space, never turn a valid placement into a rejection.
+        let pad = scale * f32::EPSILON * 32.0;
+        bounds[0] -= pad;
+        bounds[1] -= pad;
+        bounds[2] += pad;
+        bounds[3] += pad;
+        let mut space = Self {
+            holes: Vec::new(),
+            scratch: Vec::new(),
+            size,
+            pad,
+            active: true,
+        };
+        // Build the initial union by a sweep, rather than repeatedly splitting
+        // every free rectangle for every older number in the pool.
+        let mut xs = vec![bounds[0], bounds[2]];
+        let covers: Vec<_> = taken
+            .iter()
+            .filter_map(|&p| {
+                let c = space.cover(p, gap);
+                let c = [
+                    c[0].max(bounds[0]),
+                    c[1].max(bounds[1]),
+                    c[2].min(bounds[2]),
+                    c[3].min(bounds[3]),
+                ];
+                if c[0] >= c[2] || c[1] >= c[3] {
+                    None
+                } else {
+                    xs.extend([c[0], c[2]]);
+                    Some(c)
+                }
+            })
+            .collect();
+        xs.sort_unstable_by(f32::total_cmp);
+        xs.dedup();
+        let mut events = Vec::with_capacity(covers.len() * 2 + 1);
+        for c in covers {
+            let range = (
+                xs.partition_point(|&x| x < c[0]),
+                xs.partition_point(|&x| x < c[2]),
+            );
+            events.extend([(c[1], range, 1), (c[3], range, -1)]);
+        }
+        events.sort_unstable_by(|a, b| a.0.total_cmp(&b.0));
+        events.push((bounds[3], (0, 0), 0));
+        let mut coverage = Coverage::new(xs.len() - 1);
+        let mut last = bounds[1];
+        let mut gaps = Vec::new();
+        let mut previous: Vec<usize> = Vec::new();
+        let mut next = Vec::new();
+        for (y, range, delta) in events {
+            if y > last {
+                coverage.gaps(&mut gaps);
+                next.clear();
+                let mut old = 0;
+                for &(a, b) in &gaps {
+                    while old < previous.len() && space.holes[previous[old]][0] < xs[a] {
+                        old += 1;
+                    }
+                    if old < previous.len()
+                        && space.holes[previous[old]][0] == xs[a]
+                        && space.holes[previous[old]][2] == xs[b]
+                    {
+                        let index = previous[old];
+                        space.holes[index][3] = y;
+                        next.push(index);
+                    } else {
+                        next.push(space.holes.len());
+                        space.holes.push([xs[a], last, xs[b], y]);
+                    }
+                }
+                std::mem::swap(&mut previous, &mut next);
+                if space.holes.len() > 512 {
+                    space.active = false;
+                    break;
+                }
+                last = y;
+            }
+            if delta != 0 {
+                coverage.add(range, delta);
+            }
+        }
+        space
+    }
+
+    fn cover(&self, p: Rect, gap: f32) -> [f32; 4] {
+        let g = gap - 0.01;
+        [
+            p.x - self.size.x - g + self.pad,
+            p.y - self.size.y - g + self.pad,
+            p.right() + g - self.pad,
+            p.bottom() + g - self.pad,
+        ]
+    }
+
+    fn block(&mut self, p: Rect, gap: f32) {
+        if !self.active {
+            return;
+        }
+        let cover = self.cover(p, gap);
+        if cover[0] >= cover[2] || cover[1] >= cover[3] {
+            return;
+        }
+        self.scratch.clear();
+        for h in self.holes.drain(..) {
+            let a = [
+                h[0].max(cover[0]),
+                h[1].max(cover[1]),
+                h[2].min(cover[2]),
+                h[3].min(cover[3]),
+            ];
+            if a[0] >= a[2] || a[1] >= a[3] {
+                self.scratch.push(h);
+                continue;
+            }
+            if h[0] < a[0] {
+                self.scratch.push([h[0], h[1], a[0], h[3]]);
+            }
+            if a[2] < h[2] {
+                self.scratch.push([a[2], h[1], h[2], h[3]]);
+            }
+            if h[1] < a[1] {
+                self.scratch.push([a[0], h[1], a[2], a[1]]);
+            }
+            if a[3] < h[3] {
+                self.scratch.push([a[0], a[3], a[2], h[3]]);
+            }
+        }
+        // Bound certificate work in fragmented scenes; the exact search is
+        // always available and has its own bounded bitset fast path.
+        if self.scratch.len() > 512 {
+            self.active = false;
+        }
+        std::mem::swap(&mut self.holes, &mut self.scratch);
+    }
+
+    fn reachable(&self, b: Rect, reach: f32, inside: Rect) -> Option<Vec<[f32; 4]>> {
+        if !self.active {
+            return None;
+        }
+        let mut reachable = Vec::new();
+        for h in &self.holes {
+            let x0 = h[0].max(inside.x - 0.5 - self.pad);
+            let y0 = h[1].max(inside.y - 0.5 - self.pad);
+            let x1 = h[2].min(inside.right() + 0.5 - b.width + self.pad);
+            let y1 = h[3].min(inside.bottom() + 0.5 - b.height + self.pad);
+            if x0 > x1 || y0 > y1 {
+                continue;
+            }
+            let dx = b.x.clamp(x0, x1) - b.x;
+            let dy = b.y.clamp(y0, y1) - b.y;
+            if Vec2::new(dx, dy).length() <= reach + self.pad * 2.0 {
+                reachable.push([x0, y0, x1, y1]);
+            }
+        }
+        Some(reachable)
+    }
+}
 
 impl crate::world::WorldUi {
     /// Lays the numbers and texts spawned in the world this tick (damage
@@ -363,10 +919,20 @@ impl crate::world::WorldUi {
             let Some(pool) = self.state.pools.get_mut(&(k as u32)) else {
                 continue;
             };
-            // Its box on the screen at `age` (a fraction of its life), as
-            // the shader draws it at rest size: projected, offset by its
-            // key and its own move, the pivot on the point.
-            let boxed = |i: &UiMassInstance, age: f32| -> Option<Rect> {
+            // Timeline stops belong to the template, not each instance.
+            let stops: Vec<_> = t
+                .keys_drawn()
+                .iter()
+                .map(|k| k.t)
+                .chain((1..=8).map(|k| k as f32 / 8.0))
+                .filter_map(|age| {
+                    let (offset, scale, alpha) = t.sample(age);
+                    (alpha >= 0.5).then_some((age, offset, scale))
+                })
+                .collect();
+            // Its remaining rise: project and measure once, then union the
+            // current box with the still-visible future timeline samples.
+            let swept = |i: &UiMassInstance, age: f32| -> Option<Rect> {
                 let text = match &t.kind {
                     UiMassKind::Number {
                         decimals,
@@ -382,42 +948,24 @@ impl crate::world::WorldUi {
                 } else {
                     1.0
                 };
+                let width = metrics.measure(&text, 1.0);
+                let boxed = |off: Vec2, scale: f32| {
+                    let em = t.size.x * i.scale * scale.min(1.0) * d;
+                    let w = width * em;
+                    let at = Vec2::new(x, y) + (off + Vec2::new(i.aux[0], i.aux[1]) / unit) * d;
+                    Rect::new(at.x - t.pivot.x * w, at.y - t.pivot.y * em, w, em)
+                };
                 let (off, scale, _) = t.sample(age);
-                let em = t.size.x * i.scale * scale.min(1.0) * d;
-                let w = metrics.measure(&text, em);
-                let at = Vec2::new(x, y) + (off + Vec2::new(i.aux[0], i.aux[1]) / unit) * d;
-                Some(Rect::new(
-                    at.x - t.pivot.x * w,
-                    at.y - t.pivot.y * em,
-                    w,
-                    em,
-                ))
-            };
-            // The path it rises along from `age` while it still shows
-            // (at its keys and each eighth of its life, while half visible or
-            // more): what it
-            // covers until it fades, not only where it starts.
-            let stops: Vec<f32> = t
-                .keys_drawn()
-                .iter()
-                .map(|k| k.t)
-                .chain((1..=8).map(|k| k as f32 / 8.0))
-                .collect();
-            let swept = |i: &UiMassInstance, age: f32| -> Option<Rect> {
-                let mut r = boxed(i, age)?;
-                for &at in stops
-                    .iter()
-                    .filter(|&&at| at > age && t.sample(at).2 >= 0.5)
-                {
-                    if let Some(b) = boxed(i, at) {
-                        let (x, y) = (r.x.min(b.x), r.y.min(b.y));
-                        r = Rect::new(
-                            x,
-                            y,
-                            r.right().max(b.right()) - x,
-                            r.bottom().max(b.bottom()) - y,
-                        );
-                    }
+                let mut r = boxed(off, scale);
+                for &(_, off, scale) in stops.iter().filter(|&&(at, _, _)| at > age) {
+                    let b = boxed(off, scale);
+                    let (x, y) = (r.x.min(b.x), r.y.min(b.y));
+                    r = Rect::new(
+                        x,
+                        y,
+                        r.right().max(b.right()) - x,
+                        r.bottom().max(b.bottom()) - y,
+                    );
                 }
                 Some(r)
             };
@@ -426,14 +974,19 @@ impl crate::world::WorldUi {
                 let age = tick.wrapping_sub(i.start) as f32 / t.lifetime as f32;
                 taken.extend(swept(i, age));
             }
-            for i in pool
-                .iter_mut()
-                .filter(|i| i.start == tick)
+            let pending: Vec<_> = pool
+                .iter()
+                .enumerate()
+                .filter(|(_, i)| i.start == tick)
                 .take(SPAWNED_PLACED)
-            {
-                let Some(b) = swept(i, 0.0) else {
-                    continue;
-                };
+                .filter_map(|(index, i)| swept(i, 0.0).map(|b| (index, b)))
+                .collect();
+            if pending.is_empty() {
+                continue;
+            }
+            let mut vacancies = Vacancies::new(&pending, &taken, gap);
+            for (index, b) in pending {
+                let i = &mut pool[index];
                 let reach = 3.0 * b.height.max(b.width.min(160.0));
                 let (x, y) = (safe.x.min(b.x), safe.y.min(b.y));
                 let inside = Rect::new(
@@ -442,11 +995,26 @@ impl crate::world::WorldUi {
                     safe.right().max(b.right()) - x,
                     safe.bottom().max(b.bottom()) - y,
                 );
-                match declutter(Declutter::Stack, b, &taken, gap, reach, inside) {
+                let available = vacancies.reachable(b, reach, inside);
+                if available.as_ref().is_some_and(Vec::is_empty) {
+                    i.color[3] = 0.0;
+                    continue;
+                }
+                match declutter(
+                    Declutter::Stack,
+                    b,
+                    &taken,
+                    gap,
+                    reach,
+                    inside,
+                    available.as_deref(),
+                ) {
                     Some(d) => {
                         i.aux[0] += d.x * unit;
                         i.aux[1] += d.y * unit;
-                        taken.push(Rect::new(b.x + d.x, b.y + d.y, b.width, b.height));
+                        let placed = Rect::new(b.x + d.x, b.y + d.y, b.width, b.height);
+                        taken.push(placed);
+                        vacancies.block(placed, gap);
                     }
                     None => i.color[3] = 0.0,
                 }
@@ -481,6 +1049,16 @@ impl Ui {
         }
         self.world.declared.metas = metas;
     }
+}
+
+/// Only the pure placement solution is retained. Projection, drawn bounds,
+/// priority order, pinned labels and fading are still evaluated every tick.
+/// The key contains every solver input as bits, not a lossy hash.
+#[derive(Clone, Debug, Default)]
+pub(super) struct AnchorCache {
+    key: Vec<u32>,
+    moves: Vec<(Vec2, f32)>,
+    taken: Vec<Rect>,
 }
 
 impl crate::ui::Layout {
@@ -679,17 +1257,17 @@ impl crate::ui::Layout {
         // The grounds' text first: pinned, it never moves for a tag.
         let mut taken = ground_text(world, &tree.nodes, Vec2::new(vp.width, vp.height));
         let mut moves = vec![(Vec2::ZERO, 1.0f32); placed.len()];
+        let mut requests = Vec::with_capacity(by_rank.len());
+        let mut key = vec![gap.to_bits(), placed.len() as u32, taken.len() as u32];
+        for r in &taken {
+            key.extend([r.x, r.y, r.width, r.height].map(f32::to_bits));
+        }
         for &k in &by_rank {
             let pl = &placed[k];
             if pl.alpha <= 0.0 || pl.drawn.is_empty() {
                 continue;
             }
             let mode = anchors[pl.entry].desc.declutter;
-            if mode == Declutter::None {
-                taken.push(pl.drawn);
-                continue;
-            }
-            let reach = 3.0 * pl.drawn.height.max(pl.drawn.width.min(160.0));
             let a = &anchors[pl.entry].desc;
             // A move never takes it off the safe area, nor further off
             // than its own spot is (a tag at the edge stays where it is).
@@ -705,14 +1283,34 @@ impl crate::ui::Layout {
                     safe.bottom().max(b.bottom()) - y,
                 )
             };
-            match declutter(mode, b, &taken, gap, reach, inside) {
-                Some(d) => {
-                    let r = pl.drawn;
-                    taken.push(Rect::new(r.x + d.x, r.y + d.y, r.width, r.height));
-                    moves[k] = (d, 1.0);
-                }
-                None => moves[k] = (Vec2::ZERO, 0.0),
+            key.extend([k as u32, mode as u32]);
+            for r in [b, inside] {
+                key.extend([r.x, r.y, r.width, r.height].map(f32::to_bits));
             }
+            requests.push((k, mode, b, inside));
+        }
+        let cache = &mut world.placement.anchor_cache;
+        if cache.key == key {
+            moves.clone_from(&cache.moves);
+            taken.clone_from(&cache.taken);
+        } else {
+            for (k, mode, b, inside) in requests {
+                if mode == Declutter::None {
+                    taken.push(b);
+                    continue;
+                }
+                let reach = 3.0 * b.height.max(b.width.min(160.0));
+                match declutter(mode, b, &taken, gap, reach, inside, None) {
+                    Some(d) => {
+                        taken.push(Rect::new(b.x + d.x, b.y + d.y, b.width, b.height));
+                        moves[k] = (d, 1.0);
+                    }
+                    None => moves[k] = (Vec2::ZERO, 0.0),
+                }
+            }
+            cache.key = key;
+            cache.moves.clone_from(&moves);
+            cache.taken.clone_from(&taken);
         }
         // Eased toward this tick's values (world state), applied.
         let mut seen = Vec::new();
@@ -1155,6 +1753,133 @@ mod tests {
     use super::*;
 
     #[test]
+    fn captured_world_placements_keep_their_exact_results() {
+        struct Query {
+            mass: bool,
+            mode: Declutter,
+            b: Rect,
+            gap: f32,
+            reach: f32,
+            inside: Rect,
+            placed: Vec<Rect>,
+            expected: Option<[u32; 2]>,
+        }
+        fn word(bytes: &mut &[u8]) -> u32 {
+            let n = u32::from_le_bytes(bytes[..4].try_into().unwrap());
+            *bytes = &bytes[4..];
+            n
+        }
+        fn number(bytes: &mut &[u8]) -> f32 {
+            f32::from_bits(word(bytes))
+        }
+        fn rect(bytes: &mut &[u8]) -> Rect {
+            Rect::new(number(bytes), number(bytes), number(bytes), number(bytes))
+        }
+        let decoded = miniz_oxide::inflate::decompress_to_vec_zlib(include_bytes!(
+            "../../tests/fixtures/world-placement.zlib"
+        ))
+        .unwrap();
+        let mut bytes = decoded.as_slice();
+        let mut queries = Vec::new();
+        while !bytes.is_empty() {
+            let tag = bytes[0];
+            bytes = &bytes[1..];
+            let mode = [
+                Declutter::None,
+                Declutter::Shift,
+                Declutter::Stack,
+                Declutter::Hide,
+            ][(tag & 15) as usize];
+            let b = rect(&mut bytes);
+            let gap = number(&mut bytes);
+            let reach = number(&mut bytes);
+            let inside = rect(&mut bytes);
+            let placed: Vec<_> = (0..word(&mut bytes)).map(|_| rect(&mut bytes)).collect();
+            let present = bytes[0];
+            bytes = &bytes[1..];
+            let expected = (present != 0).then(|| [word(&mut bytes), word(&mut bytes)]);
+            let actual = declutter(mode, b, &placed, gap, reach, inside, None)
+                .map(|v| [v.x.to_bits(), v.y.to_bits()]);
+            assert_eq!(actual, expected, "captured query {}", queries.len() + 6000);
+            queries.push(Query {
+                mass: tag & 16 != 0,
+                mode,
+                b,
+                gap,
+                reach,
+                inside,
+                placed,
+                expected,
+            });
+        }
+        assert_eq!(queries.len(), 12000);
+        // Replay append-only mass batches too: continuous certificates must
+        // never reject a position the discrete solver would have accepted.
+        let mut start = 0;
+        while start < queries.len() {
+            if !queries[start].mass {
+                start += 1;
+                continue;
+            }
+            let end = start + queries[start..].iter().take_while(|q| q.mass).count();
+            let batch = &queries[start..end];
+            let pending: Vec<_> = batch.iter().enumerate().map(|(i, q)| (i, q.b)).collect();
+            let mut vacancies = Vacancies::new(&pending, &batch[0].placed, batch[0].gap);
+            let mut previous: &[Rect] = &batch[0].placed;
+            for q in batch {
+                assert_eq!(q.mode, Declutter::Stack);
+                assert!(q.placed.starts_with(previous));
+                for &p in &q.placed[previous.len()..] {
+                    vacancies.block(p, q.gap);
+                }
+                previous = &q.placed;
+                let available = vacancies.reachable(q.b, q.reach, q.inside);
+                let actual = if available.as_ref().is_some_and(Vec::is_empty) {
+                    None
+                } else {
+                    declutter(
+                        q.mode,
+                        q.b,
+                        &q.placed,
+                        q.gap,
+                        q.reach,
+                        q.inside,
+                        available.as_deref(),
+                    )
+                    .map(|v| [v.x.to_bits(), v.y.to_bits()])
+                };
+                assert_eq!(
+                    actual,
+                    q.expected,
+                    "certified batch query at {b:?}",
+                    b = q.b
+                );
+            }
+            start = end;
+        }
+    }
+
+    #[test]
+    fn free_space_certificates_preserve_zero_gap_clearance() {
+        let b = Rect::new(0.0, 0.0, 1.0, 1.0);
+        let blockers = [
+            Rect::new(-100.0, -100.0, 100.005, 200.0),
+            Rect::new(0.995, -100.0, 100.0, 200.0),
+            Rect::new(-100.0, -100.0, 200.0, 100.005),
+            Rect::new(-100.0, 0.995, 200.0, 100.0),
+        ];
+        let mut vacancies = Vacancies::new(&[(0, b)], &blockers, 0.0);
+        for p in blockers {
+            vacancies.block(p, 0.0);
+        }
+        assert_eq!(
+            declutter(Declutter::Stack, b, &blockers, 0.0, 3.0, b, None),
+            Some(Vec2::ZERO)
+        );
+        assert!(!vacancies.reachable(b, 3.0, b).unwrap().is_empty());
+    }
+
+    #[test]
     fn edge_clamp_meets_the_side_its_direction_points_to() {
         let area = Rect::new(0.0, 0.0, 200.0, 100.0);
         // Right: x at the right edge less the half width.
@@ -1182,26 +1907,29 @@ mod tests {
         // Overlapping a by 4 px at its bottom: down by 4 + gap is shortest.
         let b = Rect::new(0.0, 16.0, 100.0, 20.0);
         assert_eq!(
-            declutter(Declutter::Shift, b, &[a], 2.0, 100.0, ANY),
+            declutter(Declutter::Shift, b, &[a], 2.0, 100.0, ANY, None),
             Some(Vec2::new(0.0, 6.0))
         );
         // Stack: always above.
         assert_eq!(
-            declutter(Declutter::Stack, b, &[a], 2.0, 100.0, ANY),
+            declutter(Declutter::Stack, b, &[a], 2.0, 100.0, ANY, None),
             Some(Vec2::new(0.0, -38.0))
         );
-        assert_eq!(declutter(Declutter::Hide, b, &[a], 2.0, 100.0, ANY), None);
+        assert_eq!(
+            declutter(Declutter::Hide, b, &[a], 2.0, 100.0, ANY, None),
+            None
+        );
         // Touching a's bottom is not clear: it keeps a gap (a bubble's
         // tail on a cast bar).
         let t = Rect::new(0.0, 20.0, 100.0, 20.0);
         assert_eq!(
-            declutter(Declutter::Shift, t, &[a], 2.0, 100.0, ANY),
+            declutter(Declutter::Shift, t, &[a], 2.0, 100.0, ANY, None),
             Some(Vec2::new(0.0, 2.0))
         );
         // Clear: no move.
         let c = Rect::new(0.0, 40.0, 100.0, 20.0);
         assert_eq!(
-            declutter(Declutter::Hide, c, &[a], 2.0, 100.0, ANY),
+            declutter(Declutter::Hide, c, &[a], 2.0, 100.0, ANY, None),
             Some(Vec2::ZERO)
         );
         // Stacking up would leave the area: it stacks down under instead,
@@ -1216,15 +1944,19 @@ mod tests {
                 &[a],
                 2.0,
                 100.0,
-                Rect::new(0.0, 0.0, 100.0, 100.0)
+                Rect::new(0.0, 0.0, 100.0, 100.0),
+                None
             ),
             Some(Vec2::new(0.0, 16.0))
         );
-        assert_eq!(declutter(Declutter::Stack, b, &[a], 2.0, 100.0, top), None);
+        assert_eq!(
+            declutter(Declutter::Stack, b, &[a], 2.0, 100.0, top, None),
+            None
+        );
         // With no room above or below but room beside, it goes beside.
         let wide = Rect::new(0.0, 0.0, 300.0, 40.0);
         assert_eq!(
-            declutter(Declutter::Stack, b, &[a], 2.0, 120.0, wide),
+            declutter(Declutter::Stack, b, &[a], 2.0, 120.0, wide, None),
             Some(Vec2::new(102.0, 0.0))
         );
     }

@@ -614,6 +614,7 @@ pub struct WorldDeclared {
 #[derive(Clone, Debug, Default)]
 pub struct WorldPlacement {
     last_panels: Vec<PanelHit>,
+    anchor_cache: placement::AnchorCache,
     /// The panel the pointer is on this tick.
     pub pointed: Option<(u64, PanelInfo)>,
     pub marks: BTreeMap<u64, Marks>,
