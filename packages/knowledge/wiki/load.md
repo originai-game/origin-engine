@@ -6,7 +6,7 @@ Asset loading from cooked output: `og cook` turns assets/ into cooked/ (.ogb blo
 
 Paths are asset ids: the path under assets/ (`models/ship.glb`, `scenes/main.ogt`); an `assets/` prefix is accepted. Every blob is checked against the manifest's type, schema version and cook stamp.
 
-The game's bundle (`cooked`) is open before the first tick, when GameDesc.scene is spawned. Loads from an open bundle complete at once on both hosts; only og.load.bundle of another bundle can be pending, completing at a tick boundary.
+The game's bundle (`cooked`) opens before GameDesc.scene spawns. Runtime manifests and scene blobs may still be fetching: keep the pending handle and query status before instantiating. Pending loads complete at tick boundaries.
 
 See `loading §1`.
 
@@ -19,7 +19,7 @@ See `loading §1`.
 module load {
   doc "Asset loading from cooked output: `og cook` turns assets/ into cooked/ (.ogb blobs and the manifest cooked/.cook.ogt), and the runtime reads only cooked/."
   doc "Paths are asset ids: the path under assets/ (`models/ship.glb`, `scenes/main.ogt`); an `assets/` prefix is accepted. Every blob is checked against the manifest's type, schema version and cook stamp."
-  doc "The game's bundle (`cooked`) is open before the first tick, when GameDesc.scene is spawned. Loads from an open bundle complete at once on both hosts; only og.load.bundle of another bundle can be pending, completing at a tick boundary."
+  doc "The game's bundle (`cooked`) opens before GameDesc.scene spawns. Runtime manifests and scene blobs may still be fetching: keep the pending handle and query status before instantiating. Pending loads complete at tick boundaries."
   # declarations follow, each on its own page
 ```
 

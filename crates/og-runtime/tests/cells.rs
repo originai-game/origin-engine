@@ -247,6 +247,58 @@ fn loaded(e: u32, cell: &str) -> bool {
     get(e, cell, "og.StreamCell")["loaded"] == json!(true)
 }
 
+#[test]
+fn a_runtime_scene_returns_one_pending_handle_until_its_blob_arrives() {
+    struct PendingScene {
+        path: String,
+        ready: std::cell::Cell<bool>,
+    }
+    impl Hooks for PendingScene {
+        fn dispatch(&self, _: &Dispatch) -> Result<String, String> {
+            Ok(String::new())
+        }
+        fn read_asset(&self, path: &str) -> Fetch<Vec<u8>> {
+            if path == self.path && !self.ready.get() {
+                Fetch::Pending
+            } else {
+                Disk.read_asset(path)
+            }
+        }
+    }
+    let root = project("pending-scene-boot", WORLD);
+    let parcel = project("pending-scene-runtime", WORLD);
+    let id = "scenes/runtime.ogt";
+    std::fs::write(parcel.join("assets").join(id), FARM).unwrap();
+    cook(&parcel);
+    let bundle = og_bundle::runtime::Bundle::open(&parcel.join("cooked")).unwrap();
+    let host = Rc::new(PendingScene {
+        path: parcel
+            .join("cooked")
+            .join(&bundle.output(id).unwrap().file)
+            .to_str()
+            .unwrap()
+            .into(),
+        ready: std::cell::Cell::new(false),
+    });
+    let e = engine_on(&root, host.clone());
+    og_runtime::og_load_bundle(e, parcel.join("cooked").to_str().unwrap().into()).unwrap();
+    let scene = og_load_scene(e, id.into()).expect("a pending blob still answers a handle");
+    let handle = scene.as_f64().unwrap();
+    assert_eq!(og_runtime::og_load_status(e, handle), "pending");
+    assert!(og_runtime::og_load_error(e, handle).is_none());
+    assert!(og_world_instantiate(e, handle, None).is_err());
+    step(e, 3);
+    assert_eq!(og_load_scene(e, id.into()).unwrap(), scene);
+    assert_eq!(og_runtime::og_load_status(e, handle), "pending");
+    host.ready.set(true);
+    step(e, 1);
+    assert_eq!(og_runtime::og_load_status(e, handle), "ready");
+    assert_eq!(og_load_scene(e, id.into()).unwrap(), scene);
+    og_world_instantiate(e, handle, None).unwrap();
+    assert!(find(e, "barn").is_some());
+    og_runtime::og_engine_destroy(e);
+}
+
 /// One scripted walk past both cells: the hash after every tick, and the
 /// village well's entity id while it is loaded.
 fn walk_script(e: u32, from: u32, out: &mut Vec<(Value, Option<f64>)>) {

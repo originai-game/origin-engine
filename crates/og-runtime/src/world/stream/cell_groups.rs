@@ -110,10 +110,11 @@ pub(crate) fn resolve_scenes(eng: &Engine, group: Option<&str>) {
         };
         let mut a = eng.assets.borrow_mut();
         match decoded {
-            Ok(scene) => {
+            Ok(Some(scene)) => {
                 a.entries[i].payload = Payload::Scene(Box::new(scene));
                 a.entries[i].status = Status::Ready;
             }
+            Ok(None) => {}
             // Tried again once the group loads again; a cell of it warns
             // and stays unloaded meanwhile, never holding the tick.
             Err(e) => {
