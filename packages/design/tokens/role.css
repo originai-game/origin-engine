@@ -947,6 +947,105 @@
   --role-inv-alert-fill: rgb(from var(--danger) r g b / 0.12);
   --role-inv-alert-rim: inset var(--stroke-thick) 0 0 var(--danger);
 
+  /* Results and leaderboard (family 16): the screens after a match or a
+     level. A verdict set large in a lit fill (gold for a win, red for a
+     loss) over a dimmed scene, a rule with a lit diamond under it, figures
+     on cut HUD plates, the top three places on gold, silver and bronze, the
+     player's own row lit white, and a league's promote and demote edges.
+     Sizes are in font steps, so they follow the player's text scale. */
+  --role-result-scrim: linear-gradient(90deg, rgb(4 6 12 / 0.9), rgb(4 6 12 / 0.62) 55%, rgb(4 6 12 / 0.8));
+  --role-result-won-fill: linear-gradient(180deg, rgb(255 255 255) 18%, rgb(255 236 170) 52%, rgb(255 181 71));
+  --role-result-won-glow: drop-shadow(0 0 calc(22 * var(--font-step-px)) rgb(255 196 70 / 0.55));
+  --role-result-lost-fill: linear-gradient(180deg, rgb(255 255 255) 10%, rgb(255 160 166) 48%, rgb(222 38 52));
+  --role-result-lost-glow: drop-shadow(0 0 calc(22 * var(--font-step-px)) rgb(222 38 52 / 0.6));
+  --role-result-rule: linear-gradient(90deg, transparent, rgb(255 255 255 / 0.65) 20%, rgb(255 255 255 / 0.65) 80%, transparent);
+  --role-result-gold: rgb(255 207 90);
+  --role-result-silver: rgb(208 218 236);
+  --role-result-bronze: rgb(230 150 98);
+  --role-result-row-fill: linear-gradient(90deg, rgb(24 31 48 / 0.78), rgb(12 16 28 / 0.55));
+  --role-result-row-lit: linear-gradient(90deg, rgb(255 255 255 / 0.95), rgb(220 228 245 / 0.82));
+  --role-result-row-lit-ink: rgb(11 15 24);
+  --role-result-promote: rgb(85 227 154);
+  --role-result-demote: rgb(255 77 94);
+  --role-result-grade-fill: linear-gradient(180deg, rgb(255 255 255) 25%, rgb(140 245 255) 60%, var(--hud-accent));
+  --role-result-grade-face: radial-gradient(circle at 50% 30%, rgb(30 60 80), rgb(6 12 22));
+  --role-result-size-hero: calc(132 * var(--font-step-px));
+  --role-result-size-hero-compact: calc(62 * var(--font-step-px));
+  --role-result-size-grade: calc(110 * var(--font-step-px));
+  --role-result-size-grade-compact: calc(50 * var(--font-step-px));
+  --role-result-size-figure: calc(72 * var(--font-step-px));
+  --role-result-size-figure-compact: calc(30 * var(--font-step-px));
+  /* The lit diamond on the verdict's rule, the level's octagon, the
+     grade's glow, a best stat's gold rim. */
+  --role-result-diamond-glow: 0 0 calc(10 * var(--font-step-px)) var(--hud-accent);
+  --role-result-level-fill: linear-gradient(180deg, rgb(70 52 130), rgb(28 20 58));
+  --role-result-grade-glow: drop-shadow(0 0 calc(30 * var(--font-step-px)) rgb(56 232 255 / 0.45));
+  --role-result-best-rim: inset 0 0 0 var(--stroke-hairline) rgb(255 207 90 / 0.5), inset 0 calc(2 * var(--stroke-hairline)) 0 rgb(255 207 90);
+  /* The results' tabs: a rule under them, the chosen tab washed up from
+     its foot and underlined in the accent with a glow. */
+  --role-result-tab-rule: rgb(255 255 255 / 0.16);
+  --role-result-tab-hover: rgb(255 255 255 / 0.06);
+  --role-result-tab-selected: linear-gradient(0deg, rgb(from var(--hud-accent) r g b / 0.16), transparent);
+  --role-result-tab-mark: inset 0 calc(-3 * var(--stroke-hairline)) 0 var(--hud-accent), 0 calc(4 * var(--stroke-hairline)) calc(12 * var(--font-step-px)) calc(-6 * var(--font-step-px)) var(--hud-accent);
+  --role-result-tab-tracking: 0.12em;
+  --role-result-tab-tracking-compact: 0.04em;
+  --role-result-tab-size-compact: var(--hud-label-size);
+  /* A board's title; a row under a pointer; the ink on a medal's box; the
+     rank box on the player's lit row. */
+  --role-result-size-title: calc(46 * var(--font-step-px));
+  --role-result-size-title-compact: calc(28 * var(--font-step-px));
+  --role-result-row-hover: linear-gradient(90deg, rgb(44 54 80 / 0.9), rgb(24 31 48 / 0.7));
+  --role-result-row-hover-rim: inset 0 0 0 var(--stroke-hairline) rgb(255 255 255 / 0.3);
+  --role-result-medal-ink: rgb(30 22 4);
+  --role-result-me-rank-fill: rgb(0 0 0 / 0.14);
+  /* A score held to a share of its plate's width (a size container), so
+     it never runs out of the plate at a large text scale; a title's
+     tracking. */
+  --role-result-size-score: min(calc(72 * var(--font-step-px)), 22cqi);
+  --role-result-size-score-compact: min(calc(30 * var(--font-step-px)), 22cqi);
+  --role-result-title-tracking: 0.04em;
+  --role-result-verdict-tracking: 0.02em;
+  --role-result-defeat-tracking: 0.06em;
+  /* A results card that stands over any key art: smoked glass dense enough
+     to hold white body text at 4.5:1 or better over the brightest ground. */
+  --role-result-card-fill: linear-gradient(180deg, rgb(16 21 34 / 0.93), rgb(9 12 22 / 0.95));
+  /* A level's end: its card's cut corners, the stars' sizes (the middle
+     one raised), and Next's green face. */
+  --role-result-card-cut: calc(14 * var(--font-step-px));
+  --role-result-size-star: calc(78 * var(--font-step-px));
+  --role-result-size-star-lead: calc(100 * var(--font-step-px));
+  --role-result-size-star-compact: calc(52 * var(--font-step-px));
+  --role-result-size-star-lead-compact: calc(68 * var(--font-step-px));
+  --role-result-next-fill: linear-gradient(180deg, rgb(200 255 220), rgb(85 227 154));
+  --role-result-next-ink: rgb(2 30 14);
+  --role-result-next-glow: 0 0 calc(22 * var(--font-step-px)) rgb(85 227 154 / 0.45);
+  /* Each earned star pops after the one before it (`--i`, its index);
+     a rule over a total. */
+  --role-result-star-delay: calc(var(--i, 0) * var(--motion-duration-base));
+  --role-result-divider: var(--stroke-hairline) solid rgb(255 255 255 / 0.16);
+  /* A team on a scoreboard (`--team`, set to the team's colour on its
+     table): its ink and glow, the rule under its head, its rows washed in
+     it from a lit edge. */
+  --role-result-team-a-ink: var(--team1);
+  --role-result-team-a-glow: drop-shadow(0 0 calc(14 * var(--font-step-px)) rgb(from var(--team1) r g b / 0.5));
+  --role-result-team-a-rule: inset 0 calc(-2 * var(--stroke-hairline)) 0 var(--team1);
+  --role-result-team-a-row: linear-gradient(90deg, rgb(from var(--team1) r g b / 0.16), rgb(12 16 28 / 0.72) 40%);
+  --role-result-team-a-edge: inset calc(3 * var(--stroke-hairline)) 0 0 var(--team1);
+  --role-result-team-b-ink: var(--team2);
+  --role-result-team-b-glow: drop-shadow(0 0 calc(14 * var(--font-step-px)) rgb(from var(--team2) r g b / 0.5));
+  --role-result-team-b-rule: inset 0 calc(-2 * var(--stroke-hairline)) 0 var(--team2);
+  --role-result-team-b-row: linear-gradient(90deg, rgb(from var(--team2) r g b / 0.16), rgb(12 16 28 / 0.72) 40%);
+  --role-result-team-b-edge: inset calc(3 * var(--stroke-hairline)) 0 0 var(--team2);
+  /* Game over: the scene dimmed to a red-black vignette, the defeat's
+     size, the diamond's red glow, the time left's gold ring and the
+     revive's gold face. */
+  --role-result-defeat-scrim: radial-gradient(ellipse at 50% 45%, rgb(60 0 6 / 0.45), rgb(4 0 2 / 0.92) 75%);
+  --role-result-size-defeat: calc(150 * var(--font-step-px));
+  --role-result-defeat-diamond-glow: 0 0 calc(10 * var(--font-step-px)) rgb(255 77 94);
+  --role-result-ring: inset 0 0 0 calc(5 * var(--font-step-px)) rgb(255 207 90), inset 0 0 0 calc(7 * var(--font-step-px)) rgb(6 9 16 / 0.8);
+  --role-result-revive-fill: linear-gradient(180deg, rgb(255 242 196), rgb(255 207 90));
+  --role-result-revive-glow: 0 0 calc(26 * var(--font-step-px)) rgb(255 196 70 / 0.45);
+
   /* Label: a caption or column heading, opened a little so it sits back
      from the values it names. */
   --role-label-font: var(--type-label-font);
