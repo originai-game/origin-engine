@@ -501,10 +501,9 @@ pub fn build(name: &str) -> Result<GfxScene, String> {
             g.scene = crate::lighting_scenes::cascades_scene();
             Ok(())
         },
-        // The high street at night: seven point and spot lights, the first
-        // two shadowed.
+        // Night: seven point and spot lights, the first two shadowed.
         "point-spot-lights" => |g, _| {
-            g.scene = crate::lighting_scenes::point_spot_scene();
+            g.scene = point_spot_lights();
             Ok(())
         },
         // Thin geometry after 16 frames of TAA (static camera, converged).
@@ -588,7 +587,7 @@ pub fn build(name: &str) -> Result<GfxScene, String> {
         // and shadows-local-8 with each point shadow storage forced, and the
         // thin geometry without antialiasing.
         "point-shadows-cube" => |g, _| {
-            g.scene = crate::lighting_scenes::point_spot_scene();
+            g.scene = point_spot_lights();
             g.desc.point_shadows = og_render::PointShadows::Cube;
             Ok(())
         },
@@ -617,7 +616,7 @@ pub fn build(name: &str) -> Result<GfxScene, String> {
         // point-spot-lights with the point light's shadow in two paraboloid
         // hemispheres instead of six cube faces (`PointShadows::Paraboloid`).
         "point-shadows-paraboloid" => |g, _| {
-            g.scene = crate::lighting_scenes::point_spot_scene();
+            g.scene = point_spot_lights();
             g.desc.point_shadows = og_render::PointShadows::Paraboloid;
             Ok(())
         },
@@ -1118,10 +1117,9 @@ pub fn build(name: &str) -> Result<GfxScene, String> {
             g.scene = crate::atmo_scenes::hooks_scene(45);
             Ok(())
         },
-        // 256 point and spot lights over a festival night in the square
-        // (Forward+).
+        // Phase 2: 256 point and spot lights over a night plaza (Forward+).
         "lights-256" => |g, _| {
-            g.scene = crate::lighting_scenes::festival_scene();
+            g.scene = crate::p2_scenes::many_lights(256);
             Ok(())
         },
         // Phase 2: the night colonnade with a waxing gibbous moon in view.
