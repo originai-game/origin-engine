@@ -1161,6 +1161,12 @@ pub fn og_render_snap_camera(env: Env, world: u32) {
     <Host as RenderApi>::og_render_snap_camera(&Host, world)
 }
 
+#[napi(js_name = "og_render_reveal")]
+pub fn og_render_reveal(env: Env, world: u32, entity: f64, seconds: f64) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as RenderApi>::og_render_reveal(&Host, world, entity, seconds)
+}
+
 #[napi(js_name = "og_render_ribbon")]
 pub fn og_render_ribbon(env: Env, world: u32, desc: Option<String>) -> String {
     let _env = crate::EnvScope::enter(&env);

@@ -45,6 +45,8 @@ struct Checkpoint {
     objects: crate::present::fx::MotionCheckpoint,
     /// The streamed terrains' tiles: requested, decoded and held.
     terrain: crate::bind::terrain::TerrainCheckpoint,
+    /// The models fading in and what their last step saw.
+    reveal: crate::present::reveal::Reveal,
 }
 
 /// Portable UI presentation state, carried beside the simulation snapshot.
@@ -114,6 +116,7 @@ pub(crate) fn save(rs: &mut RenderState) -> u64 {
             record: rs.geo.record_checkpoint(),
             objects: rs.fx.motion_checkpoint(),
             terrain,
+            reveal: rs.reveal.clone(),
         },
     ));
     while c.kept.len() > KEPT {
@@ -155,6 +158,7 @@ pub(crate) fn restore(rs: &mut RenderState, id: u64) {
             rs.geo.restore_record(&c.record);
             rs.fx.restore_motion(&c.objects);
             crate::bind::terrain::restore(rs, &c.terrain);
+            rs.reveal = c.reveal.clone();
             rs.checkpoints.kept.insert(at, (k, c));
         }
         None => {
@@ -165,12 +169,14 @@ pub(crate) fn restore(rs: &mut RenderState, id: u64) {
             }
             rs.interp.forget();
             rs.fx.restore_motion(&Default::default());
+            rs.reveal.forget();
         }
     }
 }
 
 /// The presentation hash: FNV-1a over the state a checkpoint keeps that the
-/// CPU holds (og.motion's, then each particle system's ticks, in id order). Equal hashes on
+/// CPU holds (og.motion's, then each particle system's ticks, in id order, the
+/// UI's and the models fading in). Equal hashes on
 /// one host and backend mean the same frames from the same world.
 pub(crate) fn hash(rs: &RenderState) -> u64 {
     let mut h = rs.motion.hash();
@@ -199,6 +205,7 @@ pub(crate) fn hash(rs: &RenderState) -> u64 {
         put(&saved.state);
         put(&saved.world);
     }
+    rs.reveal.hash(&mut put);
     h
 }
 
@@ -211,6 +218,9 @@ pub(crate) fn before_tick(rs: &mut RenderState, world: &World) {
         return;
     }
     let tick = world.time().tick;
+    // The models that appeared in the world the last tick left start
+    // fading in, unless a frame of it saw them first.
+    crate::present::reveal::step(rs, world);
     let mut h = std::mem::take(&mut rs.hierarchy);
     h.refresh(world);
     // The systems a frame at this tick would draw: og.ParticleSystem and

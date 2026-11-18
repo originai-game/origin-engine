@@ -13,7 +13,7 @@ One streaming group.
 | `name` | `string` | `""` | — | — | — | Its name. |
 | `scene` | `string` | `""` | — | — | — | The scene that declares it. |
 | `state` | `StreamState` | `"unloaded"` | — | — | — | Where it is. |
-| `ready` | `boolean` | `false` | — | — | — | Presentation only, nondeterministic. True when resident and all model/proxy textures are prepared; cell groups include shared-group models and ordinary sub-scenes, not nested cells. Not saved or hashed. Never drive gameplay, ticks or simulation with this value. |
+| `ready` | `boolean` | `false` | — | — | — | Presentation only, nondeterministic. True when resident, all model/proxy textures are prepared and their fade-in has finished; cell groups include shared-group models and ordinary sub-scenes, not nested cells. Not saved or hashed. Never drive gameplay, ticks or simulation with this value. |
 | `wanted` | `boolean` | `false` | — | — | — | Whether its trigger or a request wants it now. |
 | `requested` | `boolean` | `false` | — | — | — | Whether og.stream.request asked for it (until og.stream.release). |
 | `priority` | `number` | `0` | — | — | — | Higher loads first and is evicted last. |
@@ -34,7 +34,7 @@ struct StreamStatus {
   field name String "Its name."
   field scene String "The scene that declares it."
   field state StreamState "Where it is."
-  field ready bool "Presentation only, nondeterministic. True when resident and all model/proxy textures are prepared; cell groups include shared-group models and ordinary sub-scenes, not nested cells. Not saved or hashed. Never drive gameplay, ticks or simulation with this value."
+  field ready bool "Presentation only, nondeterministic. True when resident, all model/proxy textures are prepared and their fade-in has finished; cell groups include shared-group models and ordinary sub-scenes, not nested cells. Not saved or hashed. Never drive gameplay, ticks or simulation with this value."
   field wanted bool "Whether its trigger or a request wants it now."
   field requested bool "Whether og.stream.request asked for it (until og.stream.release)."
   field priority i32 "Higher loads first and is evicted last."
