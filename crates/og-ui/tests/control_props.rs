@@ -2341,6 +2341,97 @@ fn hold_fill_width(d: &Doc) -> f32 {
         .unwrap_or(0.0)
 }
 
+/// A hold's progress paints above the button plate, below its words, and
+/// covers the plate's width rather than the 44px minimum control size.
+#[test]
+fn hold_progress_is_visible_over_the_button_plate() {
+    for (width, label) in [
+        (180.0, "Text button"),
+        (300.0, "<span>Content button</span>"),
+    ] {
+        let source = format!(
+            r#"<meta name="component" content="t">
+<div><button id="Hold" data-hold="1200" onhold={{confirm}}>{label}</button></div>
+<style>
+#Hold {{ width: {width}px; height: 44px; }}
+#Hold::part(base) {{ background: #0000ff; border: 0; border-radius: 0; }}
+#Hold::-og-hold {{ background: #ff0000; }}
+</style>"#
+        );
+        let mut d = Doc::with_font(&source, &[], crate::support::test_font());
+        let button = d.get("Hold");
+        let pointer = Vec2::new(
+            button.x + button.width / 2.0,
+            button.y + button.height / 2.0,
+        );
+        // Sample away from text, corners and focus rings. The last opaque
+        // fill at the point is the visible colour, not merely an emitted
+        // fill that a later background hides.
+        let colour = |d: &Doc, x: f32| {
+            d.ui.frame()
+                .items
+                .iter()
+                .filter_map(|item| match &item.cmd {
+                    DrawCmd::Quad { rect, color, .. }
+                        if rect.contains(button.x + x, button.y + 4.0) && color[3] > 0.99 =>
+                    {
+                        Some(*color)
+                    }
+                    DrawCmd::Shape { shape, .. }
+                        if shape.mode == og_draw::UiMode::Fill
+                            && (shape.center.x - (button.x + x)).abs() < shape.half.x
+                            && (shape.center.y - (button.y + 4.0)).abs() < shape.half.y =>
+                    {
+                        match shape.paint {
+                            og_draw::UiPaint::Solid(c) if c[3] > 0.99 => Some(c),
+                            _ => None,
+                        }
+                    }
+                    _ => None,
+                })
+                .next_back()
+                .expect("a painted plate")
+        };
+        for tick in 0..80 {
+            d.step(InputFrame {
+                pointer,
+                pointer_inside: true,
+                down: true,
+                pressed: tick == 0,
+                ..InputFrame::default()
+            });
+            if tick == 35 {
+                assert_eq!(
+                    colour(&d, width * 0.25),
+                    [1.0, 0.0, 0.0, 1.0],
+                    "half hold fills the start"
+                );
+                assert_eq!(
+                    colour(&d, width * 0.75),
+                    [0.0, 0.0, 1.0, 1.0],
+                    "half hold leaves the end"
+                );
+            }
+        }
+        assert_eq!(
+            colour(&d, width - 4.0),
+            [1.0, 0.0, 0.0, 1.0],
+            "a full hold fills the plate"
+        );
+        d.step(InputFrame {
+            pointer,
+            pointer_inside: true,
+            released: true,
+            ..InputFrame::default()
+        });
+        assert_eq!(
+            colour(&d, width * 0.25),
+            [0.0, 0.0, 1.0, 1.0],
+            "release removes the fill"
+        );
+    }
+}
+
 /// HTML's core controls beyond the switch: a plain checkbox is a box with a
 /// check (`indeterminate` a dash), radios share a `bind:group`, a number
 /// input stays editable while its buttons step, `<menu>` holds menu items, and

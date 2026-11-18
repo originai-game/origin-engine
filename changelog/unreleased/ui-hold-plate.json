@@ -1,0 +1,8 @@
+{
+  "fixed": [
+    {
+      "member": "ui",
+      "summary": "Hold progress paints over the button's base rather than behind its opaque plate, filling the actual control width while keeping its label visible."
+    }
+  ]
+}

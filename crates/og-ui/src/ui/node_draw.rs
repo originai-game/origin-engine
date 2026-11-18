@@ -455,6 +455,14 @@ impl Ui {
         if matches!(n.widget, Widget::TextArea { .. }) {
             self.text_area_commands(i, rect, clip, cmds);
         }
+        // A button's base owns its progress overlay; its words (or its
+        // slotted document content) must remain above that overlay.
+        let under_content = n.part_box.as_ref().is_some_and(|part| {
+            matches!(self.tree.nodes[part.owner].widget, Widget::Button { .. })
+        });
+        if under_content {
+            self.shape_commands(n, cmds);
+        }
         let text_from = cmds.len();
         match &*n.content {
             Content::Text(_) if matches!(n.widget, Widget::TextArea { .. }) => {}
@@ -971,7 +979,9 @@ impl Ui {
         // The highlight overlays, bottom first (CSS Pseudo-Elements 4 §3.6).
         self.highlight_commands(i, text_from, cmds);
         self.scroll_text_commands(i, text_from, cmds);
-        self.shape_commands(n, cmds);
+        if !under_content {
+            self.shape_commands(n, cmds);
+        }
     }
 }
 

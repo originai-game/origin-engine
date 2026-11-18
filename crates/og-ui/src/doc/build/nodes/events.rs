@@ -146,6 +146,11 @@ impl Ui {
         } else {
             crate::layout::Frame::left(0.0, frac)
         };
+        // A control's base is a child with its own opaque background.
+        // Paint progress on that plate, after its background and before
+        // its content, rather than underneath it on the semantic host.
+        let slot = self.tree.nodes()[at].content_slot;
+        let at = if slot == NONE { at } else { slot };
         let radius = self.tree.nodes()[at].el.radius;
         self.tree.shapes_mut(at).push(crate::layout::Shape::Rect {
             frame,
