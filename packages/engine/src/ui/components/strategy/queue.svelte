@@ -29,7 +29,7 @@
       <button part="StrategyQueue.slot" class="slot" aria-label={t("strategy.queue.cancel", { name: q.name })} aria-description={q.reason != '' ? q.reason : q.timeText} data-state={q.state} onclick={cancel}><div class="face">
         {#if q.picture}<img part="StrategyQueue.art" class="art" src={q.picture} alt="">{:else}<div part="StrategyQueue.art" class="blank-art"><og-icon class="mark" icon={q.icon}></og-icon></div>{/if}
         {#if q.state != 'waiting'}<div part="StrategyQueue.sweep" class="sweep" style:--done={q.progress <= 0 ? 0 : q.progress >= 1 ? 1 : q.progress}></div>{/if}
-        {#if q.state != 'waiting' && q.timeText != ''}<span part="StrategyQueue.time" class="time">{q.timeText}</span>{/if}
+        {#if q.state != 'waiting' && q.timeText != ''}<div class="run" style:--chars={q.timeText.length}><span part="StrategyQueue.time" class="time">{q.timeText}</span></div>{/if}
         {#if q.count > 1}<span part="StrategyQueue.badge" class="stack">{t("strategy.queue.stack", { count: q.count })}</span>{/if}
       </div></button>
     {/each}
@@ -62,7 +62,11 @@
 .slot[data-state=blocked] .art { filter: var(--hud-unready); }
 /* What is still to run: a dark sweep turning clockwise from the top. */
 .sweep { position: absolute; left: 0; top: 0; inline-size: 100%; block-size: 100%; background: var(--hud-sweep); mask-image: conic-gradient(transparent calc(var(--done) * 360deg), #000 0); }
-.time { position: absolute; left: 0; right: 0; top: 50%; transform: translateY(-50%); text-align: center; font-size: var(--hud-size-cooldown); line-height: 1; font-weight: var(--hud-figure-weight); font-stretch: var(--hud-figure-stretch); font-variant-numeric: var(--hud-figure-numeric); white-space: nowrap; overflow: hidden; text-shadow: var(--hud-shadow); -webkit-text-stroke-width: var(--hud-stroke-width); -webkit-text-stroke-color: var(--hud-stroke-color); paint-order: stroke fill; }
+/* The time on the tile: the cooldown's size, a share of its container,
+   here a box narrowed by the figure's length (four characters take the
+   tile), so 0:08 and 10:00:00 both stay whole on it. */
+.run { container-type: inline-size; position: absolute; left: 50%; top: 0; bottom: 0; inline-size: min(100%, calc(400% / var(--chars))); translate: -50% 0; display: flex; align-items: center; justify-content: center; }
+.time { flex: none; font-size: var(--hud-size-cooldown); line-height: 1; font-weight: var(--hud-figure-weight); font-stretch: var(--hud-figure-stretch); font-variant-numeric: var(--hud-figure-numeric); white-space: nowrap; text-shadow: var(--hud-shadow); -webkit-text-stroke-width: var(--hud-stroke-width); -webkit-text-stroke-color: var(--hud-stroke-color); paint-order: stroke fill; }
 .stack { position: absolute; right: 0; top: 0; padding: 0 calc(2 * var(--font-step-px)); font-size: var(--hud-size-label-compact); line-height: 1.2; font-weight: var(--hud-figure-weight); font-stretch: var(--hud-figure-stretch); white-space: nowrap; background: var(--hud-tag-fill); }
 /* The free places: empty tiles, one per place, drawn as one strip. */
 .open { flex: none; inline-size: calc(var(--open) * (var(--tile) + var(--gap)) - var(--gap)); block-size: var(--tile); background: var(--hud-slot-empty); mask-image: repeating-linear-gradient(90deg, #000 0 var(--tile), transparent var(--tile) calc(var(--tile) + var(--gap))); }
