@@ -173,11 +173,18 @@ fn particles_are_deterministic(path: ParticleSimulation) {
     // function lookups), and the walk segfaults on the freed entry
     // (the former test sample fixed upstream in
     // 1.4.345). Each renderer is dropped before the next is made.
-    let (a, sa, _) = run(&desc, &mut fx::particles_scene(), 601, stepped);
-    let (b, _, _) = run(&desc, &mut fx::particles_scene(), 601, stepped);
-    let (c, _, _) = run(&desc, &mut fx::particles_scene(), 1, |s, _| {
-        fx::tick_all(s, 600)
-    });
+    // Display frames may switch lit shader variants as they compile.
+    // Compare captures, whose full variants do not depend on that timing.
+    let capture = |scene: &mut RenderScene, frames, update: fn(&mut RenderScene, u32)| {
+        let (_, _, mut renderer) = run(&desc, scene, frames, update);
+        let stats = renderer
+            .render_capture(scene, &RenderTarget::Offscreen)
+            .expect("render capture");
+        (renderer.read_offscreen().expect("capture"), stats)
+    };
+    let (a, sa) = capture(&mut fx::particles_scene(), 601, stepped);
+    let (b, _) = capture(&mut fx::particles_scene(), 601, stepped);
+    let (c, _) = capture(&mut fx::particles_scene(), 1, |s, _| fx::tick_all(s, 600));
     save(&format!("particles-600-{path:?}"), &a);
     assert!(sa.particle_systems >= 6, "{} systems", sa.particle_systems);
     let lit = a
