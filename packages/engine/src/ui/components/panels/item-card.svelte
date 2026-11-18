@@ -1,11 +1,12 @@
 <meta name="component" content="RpgItemCard">
 <meta name="strings" content="./item-card.en.ogt">
-<meta name="parts" content="RpgItemCard.frame RpgItemCard.name RpgItemCard.lead RpgItemCard.row RpgItemCard.title RpgItemCard.caption RpgItemCard.figure RpgItemCard.well">
+<meta name="parts" content="RpgItemCard.frame RpgItemCard.hero RpgItemCard.band RpgItemCard.kicker RpgItemCard.name RpgItemCard.line RpgItemCard.lead RpgItemCard.delta RpgItemCard.current RpgItemCard.stats RpgItemCard.row RpgItemCard.lore RpgItemCard.actions RpgItemCard.reason RpgItemCard.caption RpgItemCard.figure">
 <meta name="prop:name" content="string" data-doc="The item's name.">
 <meta name="prop:icon" content="string" data-doc="Its icon in the style's or the game's atlas, drawn large at the top.">
 <meta name="prop:art" content="number" data-doc="A painted picture of the item (og.load.texture) shown large in place of its icon; 0 shows the icon.">
 <meta name="prop:rarity" content="string" data-doc="common, uncommon, rare, epic, legendary or mythic; the name and the art take its ink.">
-<meta name="prop:kind" content="string" data-doc="The rarity and kind line as the game words it (Legendary · Longsword).">
+<meta name="prop:kind" content="string" data-doc="The rarity and kind line as the game words it (Legendary · Longsword), a kicker over the name in the rarity's ink.">
+<meta name="prop:line" content="string" data-default="" data-doc="A line under the name as the game words it (One-handed · Item level 60); empty hides it.">
 <meta name="prop:lead" content="list" data-doc="The headline figure, zero or one row of { id, icon, label, value, delta, trend, current }: trend is up, down or none; delta and current are text, empty hides them.">
 <meta name="prop:stats" content="list" data-doc="The other figures, keyed rows of { id, icon, label, value, delta, trend, current }.">
 <meta name="prop:lore" content="string" data-doc="The flavour text; empty hides it.">
@@ -13,85 +14,151 @@
 <meta name="prop:secondary" content="string" data-doc="The second button's text (Drop, Sell); empty hides it.">
 <meta name="prop:canPrimary" content="bool" data-doc="The main button is enabled.">
 <meta name="prop:canSecondary" content="bool" data-doc="The second button is enabled.">
+<meta name="prop:reason" content="string" data-default="" data-doc="Why the main button is refused, as the game words it (Requires level 40); shown in red over the buttons while canPrimary is false.">
 <meta name="action:details" content="Equip">
-<meta name="fixture:default" content='{"name":"Emberwake Blade","icon":"sword","art":0,"rarity":"legendary","kind":"Legendary · Longsword","lead":[{"id":"dmg","icon":"sword","label":"Damage","value":"12–20","delta":"+4","trend":"up","current":"8–16"}],"stats":[{"id":"crit","icon":"star","label":"Critical chance","value":"12%","delta":"+4%","trend":"up","current":"8%"},{"id":"res","icon":"shield","label":"Spell resistance","value":"+10%","delta":"−5%","trend":"down","current":"+15%"}],"lore":"Forged in a dying star.","primary":"Equip","secondary":"Drop","canPrimary":true,"canSecondary":true}'>
+<meta name="fixture:default" content='{"name":"Emberwake Blade","icon":"sword","art":0,"rarity":"legendary","kind":"Legendary · Longsword","lead":[{"id":"dmg","icon":"sword","label":"Damage","value":"12–20","delta":"+4","trend":"up","current":"8–16"}],"stats":[{"id":"crit","icon":"star","label":"Critical chance","value":"12%","delta":"+4%","trend":"up","current":"8%"},{"id":"res","icon":"shield","label":"Spell resistance","value":"+10%","delta":"−5%","trend":"down","current":"+15%"}],"line":"One-handed · Item level 60","lore":"Forged in a dying star.","primary":"Equip","secondary":"Drop","canPrimary":true,"canSecondary":true}'>
 <meta name="fixture:plain" content='{"name":"Bread","icon":"apple","art":0,"rarity":"common","kind":"Common · Food","lead":[],"stats":[],"lore":"","primary":"Use","secondary":"","canPrimary":true,"canSecondary":false}'>
+<meta name="fixture:refused" content='{"name":"Staff of the Drowned Choir and the Last Hymn","icon":"drop","art":0,"rarity":"epic","kind":"Epic · Staff","line":"Two-handed","lead":[{"id":"sp","icon":"star","label":"Spell power","value":"38","delta":"−6","trend":"down","current":"44"}],"stats":[{"id":"int","icon":"star","label":"Intellect","value":"+18","delta":"+2","trend":"up","current":"+16"}],"lore":"","primary":"Equip","secondary":"Drop","canPrimary":false,"canSecondary":true,"reason":"Requires level 40"}'>
 
 <!--
-  One item in detail: its art, name and kind, a headline figure with its
-  change against what is worn now, the other figures as rows, a line of
-  lore and up to two buttons. The game words every figure and decides the
-  trend; the card reports equip (the main button, X or pad Y) and
-  discard (the second button). It fills the height it is given: the
-  figures and the lore scroll when needed; the buttons follow the content.
+  One item in detail: its art large over a glow of its rarity, the rarity
+  and kind as a kicker in the rarity's ink over the name, the headline
+  figure large with its change against what is equipped, the other figures
+  as rows (this, change, now), the lore under a rule of the rarity, and up
+  to two buttons, with the reason the main one is refused in words. The
+  game words every figure and decides the trend; the card reports equip
+  (the main button, X or pad Y) and discard (the second button). It fills
+  the height it is given: the figures and the lore scroll when needed; the
+  buttons stay at its foot; the art and the name scroll with the figures. Narrow, the art sits in a socket beside the
+  name and the rows drop the equipped column.
 -->
-<article id="RpgItemCard" part="RpgItemCard.frame" data-layout="shell" data-rarity={rarity} aria-label={name} ondetails={equip}>
-  <div class="hero" data-layout="row" data-gap="none"><div class="hero-glow"></div>{#if art}<img class="hero-picture" src={art} alt="">{:else}<og-icon class="hero-art" icon={icon}></og-icon>{/if}</div>
-  <header class="head" data-layout="stack" data-gap="hair">
-    <h2 part="RpgItemCard.name RpgItemCard.title">{name}</h2>
-    <p part="RpgItemCard.caption" class="item-kind">{kind}</p>
-  </header>
-  <div class="rpg-rule" role="separator"></div>
-  <div class="body" data-layout="scroll">
+<article id="RpgItemCard" part="RpgItemCard.frame" data-layout="shell" data-rarity={rarity || 'common'} aria-label={name} ondetails={equip}>
+  <div class="lit"></div>
+  <div class="body" data-layout="scroll" data-gap="tight">
+    <div class="top" data-layout="stack" data-gap="none">
+      <div part="RpgItemCard.hero" class="hero" data-layout="cover">{#if art}<img class="hero-art picture" src={art} alt="">{:else}<og-icon class="hero-art" icon={icon}></og-icon>{/if}</div>
+      <header part="RpgItemCard.band" class="band" data-layout="stack" data-gap="hair">
+        {#if kind}<span part="RpgItemCard.kicker" class="kicker" aria-label={kind}>{kind}</span>{/if}
+        <h2 part="RpgItemCard.name" class="name" aria-label={name}>{name}</h2>
+        {#if line}<p part="RpgItemCard.line RpgItemCard.caption" class="line" aria-label={line}>{line}</p>{/if}
+      </header>
+    </div>
     {#each lead as s (s.id)}
-      <div part="RpgItemCard.lead" data-layout="cluster" aria-label={s.label}>
-        <og-icon class="stat-mark" icon={s.icon}></og-icon>
+      <div part="RpgItemCard.lead" class="lead" data-layout="row" aria-label={s.label}>
         <div class="lead-main" data-layout="stack" data-gap="hair" data-fill>
-          <span part="RpgItemCard.caption" class="caption">{s.label}</span>
-          <div class="lead-figures" data-layout="row"><span part="RpgItemCard.figure" class="lead-value">{s.value}</span>{#if s.delta}<span class="delta" data-trend={s.trend}>{s.delta}</span>{/if}</div>
+          <span class="kicker">{s.label}</span>
+          <div class="lead-figures" data-layout="row" data-gap="tight"><span part="RpgItemCard.figure" class="big">{s.value}</span>{#if s.delta}<div part="RpgItemCard.delta" class="delta" data-layout="row" data-gap="hair" data-trend={s.trend}><div class="arrow"></div><span>{s.delta}</span></div>{/if}</div>
         </div>
-        {#if s.current}<div class="lead-current" data-layout="stack" data-gap="hair">
-          <span part="RpgItemCard.caption" class="caption">{t("rpg.card.current")}</span>
-          <span part="RpgItemCard.figure" class="current-value">{s.current}</span>
+        {#if s.current}<div part="RpgItemCard.current" class="lead-current" data-layout="stack" data-gap="hair">
+          <span class="kicker">{t("rpg.card.current")}</span>
+          <span part="RpgItemCard.figure" class="now">{s.current}</span>
         </div>{/if}
       </div>
     {/each}
-    <div class="stats" role="table">
+    {#if stats.length}<div part="RpgItemCard.stats" class="stats" role="table" aria-label={name}>
+      <div class="head-row" data-layout="row" role="row"><span class="kicker label" role="columnheader" aria-label={t("rpg.card.stat")}></span><div class="figs" data-layout="row"><span class="kicker value" role="columnheader">{t("rpg.card.this")}</span><div class="change"></div><span class="kicker was wide" role="columnheader">{t("rpg.card.current")}</span></div></div>
       {#each stats as s (s.id)}
-        <div part="RpgItemCard.row" data-layout="grid" role="row">
-          <og-icon class="stat-mark" icon={s.icon}></og-icon>
-          <span class="stat-label" role="rowheader">{s.label}</span>
-          <span part="RpgItemCard.figure" class="stat-value" role="cell">{s.value}</span>
-          <span class="delta" role="cell" data-trend={s.trend}>{s.delta}</span>
-          <span part="RpgItemCard.figure" class="stat-current" role="cell">{s.current}</span>
+        <div part="RpgItemCard.row" class="row" data-layout="row" role="row">
+          <div class="label" data-layout="row" data-gap="tight"><og-icon class="mark" icon={s.icon}></og-icon><span role="rowheader">{s.label}</span></div>
+          <div class="figs" data-layout="row">
+          <span part="RpgItemCard.figure" class="value" role="cell">{s.value}</span>
+          <div class="change" data-layout="row" role="cell">{#if s.delta}<div part="RpgItemCard.delta" class="delta" data-layout="row" data-gap="hair" data-trend={s.trend}><div class="arrow"></div><span>{s.delta}</span></div>{/if}</div>
+          <span part="RpgItemCard.figure" class="was wide" role="cell">{s.current}</span>
+          </div>
         </div>
       {/each}
-    </div>
-    {#if lore}<p part="RpgItemCard.well RpgItemCard.caption" class="lore">{lore}</p>{/if}
+    </div>{/if}
+    {#if lore}<div part="RpgItemCard.lore" class="lore" data-layout="stack"><p part="RpgItemCard.caption" class="lore-text">{lore}</p></div>{/if}
   </div>
-  {#if primary || secondary}<div class="rpg-rule" role="separator"></div>
-  <footer class="actions" data-layout="stack">
-    {#if primary}<button id="Primary" class="primary act" data-fill disabled={!canPrimary} onclick={equip}>{primary}</button>{/if}
-    {#if secondary}<button id="Secondary" class="secondary act" data-fill disabled={!canSecondary} onclick={discard}>{secondary}</button>{/if}
+  {#if primary || secondary}<footer part="RpgItemCard.actions" class="actions" data-layout="stack" data-gap="tight">
+    {#if primary && !canPrimary && reason}<p part="RpgItemCard.reason" class="reason" role="status">{reason}</p>{/if}
+    <div class="buttons" data-layout="row" data-gap="tight">
+      {#if primary}<button id="Primary" class="primary act main" disabled={!canPrimary} aria-label={primary} onclick={equip}><kbd class="cap" data-action="details"></kbd><span>{primary}</span></button>{/if}
+      {#if secondary}<button id="Secondary" class="secondary act" disabled={!canSecondary} onclick={discard}>{secondary}</button>{/if}
+    </div>
   </footer>{/if}
 </article>
 
 <style>
-.hero { position: relative; width: stretch; height: calc(var(--size-xxl) * 1.25); flex: none; justify-content: center; }
-.hero-glow { position: absolute; inset-inline-start: 6%; top: 0; bottom: 0; inline-size: 88%; }
-.hero-picture { position: relative; width: stretch; height: stretch; object-fit: contain; }
-.hero-art { position: relative; width: calc(var(--size-xxl) * 1.8); height: calc(var(--size-xxl) * 1.8); }
-.head { width: stretch; align-items: center; text-align: center; }
-[part~="RpgItemCard.name"], .item-kind { margin: 0; }
-.body { flex: 0 1 auto; }
-[part="RpgItemCard.lead"] { width: stretch; padding: 0 0 var(--space-xxs); }
-.lead-figures { align-items: baseline; }
-.lead-value { --figure-size: var(--font-step-xl); --figure-weight: var(--font-weight-bold); }
-.lead-current { flex: none; padding-inline-start: var(--space-md); align-items: flex-start; }
-.stat-mark { width: var(--size-sm); height: var(--size-sm); flex: none; }
-.stats { width: stretch; }
-[part="RpgItemCard.row"] { grid-template-columns: var(--size-sm) 1fr auto var(--size-xl) var(--size-lg); align-items: center; width: stretch; padding: var(--space-xxs) 0; }
-.stat-value, .delta, .stat-current, .lead-value, .current-value { white-space: nowrap; }
-.stat-value, .stat-current { text-align: end; }
-.lore { margin: 0; padding: var(--space-sm); flex: none; }
-@media (width < 600px), (height < 500px) { .lore { display: none; } }
-.actions { width: stretch; flex: none; }
-.act { align-self: stretch; min-height: calc(var(--size-touch) * 1.25); }
+/* The frame: two corners cut, a lit top edge; the rarity tints the hero's
+   glow, the kicker, the name and the lore's rule. */
+[part="RpgItemCard.frame"] { --inv-rarity: var(--common); position: relative; min-block-size: 0; clip-path: polygon(var(--inv-frame-cut) 0, 100% 0, 100% calc(100% - var(--inv-frame-cut)), calc(100% - var(--inv-frame-cut)) 100%, 0 100%, 0 var(--inv-frame-cut)); }
+[part="RpgItemCard.frame"][data-rarity=uncommon] { --inv-rarity: var(--uncommon); --inv-socket-fill: var(--cell-uncommon-fill); --inv-socket-rim: var(--cell-uncommon-shadow); }
+[part="RpgItemCard.frame"][data-rarity=rare] { --inv-rarity: var(--rare); --inv-socket-fill: var(--cell-rare-fill); --inv-socket-rim: var(--cell-rare-shadow); }
+[part="RpgItemCard.frame"][data-rarity=epic] { --inv-rarity: var(--epic); --inv-socket-fill: var(--cell-epic-fill); --inv-socket-rim: var(--cell-epic-shadow); }
+[part="RpgItemCard.frame"][data-rarity=legendary] { --inv-rarity: var(--legendary); --inv-socket-fill: var(--cell-legendary-fill); --inv-socket-rim: var(--cell-legendary-shadow); }
+[part="RpgItemCard.frame"][data-rarity=mythic] { --inv-rarity: var(--mythic); --inv-socket-fill: var(--cell-mythic-fill); --inv-socket-rim: var(--cell-mythic-shadow); }
+.lit { position: absolute; inset-inline: var(--inv-frame-cut) 30%; top: 0; block-size: var(--stroke-hairline); background: var(--inv-lit-edge); pointer-events: none; }
+h2, p { margin: 0; }
+.top { flex: none; width: stretch; }
+.hero { position: relative; flex: none; width: stretch; block-size: var(--icard-hero-size); color: var(--inv-rarity); border-block-end: var(--icard-hero-rule); }
+.hero::before { content: ""; position: absolute; inset: 0; background: var(--inv-hero-glow); opacity: 0.4; }
+.hero-art { position: relative; inline-size: var(--icard-art-size); block-size: var(--icard-art-size); filter: var(--inv-slot-art-shadow); }
+.picture { object-fit: contain; }
+.band { width: stretch; padding-block-start: var(--space-sm); }
+.kicker { font-size: var(--inv-kicker-size); font-weight: var(--inv-name-weight); letter-spacing: var(--inv-kicker-tracking); text-transform: var(--inv-kicker-transform); color: var(--inv-kicker-ink); }
+.band > .kicker { color: var(--inv-rarity); overflow-wrap: anywhere; }
+.name { font-size: var(--inv-figure-xl-size); color: var(--inv-rarity); text-shadow: var(--icard-name-glow); overflow-wrap: anywhere; }
+[data-rarity=common] .name { color: var(--ink-bright); text-shadow: none; }
+/* The art and the name scroll with the figures, so a long name at large
+   text never leaves the figures without room. */
+.body { flex: 0 1 auto; min-block-size: 0; width: stretch; }
+/* The headline figure, large, with its change; what is equipped beside it. */
+.lead { flex: none; flex-wrap: wrap; align-items: flex-end; column-gap: var(--space-md); row-gap: var(--space-xxs); padding: var(--space-sm) var(--space-md); background: var(--inv-row-fill); box-shadow: var(--inv-row-rim); clip-path: polygon(var(--inv-slot-cut) 0, 100% 0, 100% calc(100% - var(--inv-slot-cut)), calc(100% - var(--inv-slot-cut)) 100%, 0 100%, 0 var(--inv-slot-cut)); }
+.lead-main { flex: 1 0 auto; }
+.lead-figures { align-items: center; flex-wrap: wrap; }
+.big { font-size: var(--icard-lead-size); line-height: 1; font-weight: var(--inv-figure-weight); font-stretch: var(--inv-figure-stretch); font-variant-numeric: var(--hud-figure-numeric); white-space: nowrap; }
+.lead-current { flex: none; margin-inline-start: auto; align-items: flex-end; text-align: end; }
+.now { font-size: var(--inv-figure-lg-size); font-weight: var(--inv-figure-weight); font-stretch: var(--inv-figure-stretch); color: var(--ink-label); white-space: nowrap; }
+/* A change: a chip in the trend's colour with an arrow. */
+.delta { flex: none; align-items: center; padding: 0 var(--space-xs); font-weight: var(--inv-figure-weight); font-stretch: var(--inv-figure-stretch); white-space: nowrap; color: var(--ink-label); clip-path: polygon(var(--inv-tag-cut) 0, 100% 0, 100% calc(100% - var(--inv-tag-cut)), calc(100% - var(--inv-tag-cut)) 100%, 0 100%, 0 var(--inv-tag-cut)); }
+.delta[data-trend=up] { color: var(--icard-up-ink); background: var(--icard-up-fill); }
+.delta[data-trend=down] { color: var(--icard-down-ink); background: var(--icard-down-fill); }
+.arrow { display: none; flex: none; inline-size: var(--icard-arrow-size); block-size: var(--icard-arrow-size); background: currentColor; }
+.delta[data-trend=up] .arrow { display: flex; clip-path: polygon(50% 10%, 100% 90%, 0 90%); }
+.delta[data-trend=down] .arrow { display: flex; clip-path: polygon(0 10%, 100% 10%, 50% 90%); }
+/* The other figures: this, its change and what is equipped now, in
+   columns of fixed width at the line's end; when the line is too short
+   for the label beside them, they drop under it. */
+.stats { flex: none; }
+.head-row, .row { flex-wrap: wrap; align-items: center; column-gap: var(--space-xs); row-gap: var(--space-xxs); }
+/* The header names only the figure columns, on one line over them even
+   when a row's figures drop under its label. */
+.head-row { flex-wrap: nowrap; padding-block: var(--space-xxs); }
+.head-row > .label { flex: 1 1 0; }
+.row { min-block-size: calc(40 * var(--font-step-px)); padding-block: var(--space-xxs); border-block-start: var(--inv-rule); }
+.label { flex: 1 1 var(--icard-label-col); min-width: 0; align-items: center; color: var(--ink-label); overflow-wrap: anywhere; }
+.head-row > .label { padding-inline-start: calc(var(--size-sm) + var(--space-xs)); }
+.mark { flex: none; width: var(--size-sm); height: var(--size-sm); }
+.figs { flex: none; margin-inline-start: auto; align-items: center; gap: var(--space-xs); }
+.value { inline-size: var(--icard-value-col); font-weight: var(--inv-figure-weight); font-stretch: var(--inv-figure-stretch); text-align: end; white-space: nowrap; }
+.change { inline-size: var(--icard-change-col); }
+.was { inline-size: var(--icard-now-col); color: var(--ink-label); text-align: end; white-space: nowrap; }
+.lore { flex: none; padding-inline-start: var(--space-sm); border-inline-start: var(--icard-lore-rule); border-inline-start-color: var(--inv-rarity); }
+.lore-text { font-style: var(--icard-lore-style); }
+/* The buttons at the foot, the refusal in words over them. */
+.actions { flex: none; width: stretch; padding-block-start: var(--space-sm); border-block-start: var(--inv-rule); }
+.reason { color: var(--inv-broken-ink); overflow-wrap: anywhere; }
+.buttons { width: stretch; }
+.act { flex: 1 1 0; min-width: 0; min-block-size: calc(var(--size-touch) * 1.15); gap: var(--space-xs); }
+.main { flex-grow: 1.4; }
+.cap { flex: none; }
 @media (width < 600px), (height < 500px) {
-  .hero { height: calc(var(--size-xxl) * 0.55); }
-  .hero-art { width: calc(var(--size-xxl) * 0.6); height: calc(var(--size-xxl) * 0.6); }
-  .actions { flex-direction: row; }
-  .act { min-height: var(--size-touch); }
+  /* Narrow or short: the art in a socket beside the name, no lore, the
+     rows without the equipped column. */
+  .top { flex-direction: row; align-items: center; gap: var(--space-sm); }
+  .hero { inline-size: var(--icard-socket-size); block-size: var(--icard-socket-size); width: auto; flex: none; border: none; background: var(--inv-socket-fill); box-shadow: var(--inv-socket-rim); clip-path: polygon(var(--inv-slot-cut) 0, 100% 0, 100% calc(100% - var(--inv-slot-cut)), calc(100% - var(--inv-slot-cut)) 100%, 0 100%, 0 var(--inv-slot-cut)); }
+  .hero::before { display: none; }
+  .hero-art { inline-size: 80%; block-size: 80%; }
+  .band { min-width: 0; flex: 1 1 0; padding: 0; }
+  /* The kicker and the line keep one line each, so the figures keep the
+     card's height at large text. */
+  .band > .kicker, .line { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .name { font-size: var(--inv-figure-lg-size); line-clamp: 2; overflow: hidden; }
+  .big { font-size: var(--inv-figure-xl-size); }
+  .head-row { display: none; }
+  .wide { display: none; }
+  .lore { display: none; }
+  .act { min-block-size: var(--size-touch); }
 }
-@container (width < 360px) { [part="RpgItemCard.row"] { grid-template-columns: var(--size-sm) 1fr auto var(--size-xl); } .stat-current { display: none; } }
 </style>

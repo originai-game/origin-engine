@@ -1046,6 +1046,33 @@
   --role-result-revive-fill: linear-gradient(180deg, rgb(255 242 196), rgb(255 207 90));
   --role-result-revive-glow: 0 0 calc(26 * var(--font-step-px)) rgb(255 196 70 / 0.45);
 
+  /* Item cards (family 12): one item in detail. The hero's art over its
+     rarity's glow (`inv-hero-glow`) closes on a hairline, the name glows
+     faintly in its rarity, the headline figure is large, a change is a
+     chip in its trend's colour with an arrow, and the lore hangs from a
+     rule in the rarity. The family otherwise wears the inventory's roles. */
+  --role-icard-hero-rule: var(--stroke-hairline) solid var(--color-rim-soft);
+  --role-icard-name-glow: 0 0 calc(18 * var(--font-step-px)) rgb(from var(--inv-rarity) r g b / 0.35);
+  /* The hero follows the screen and gives way to the text: at 150 % text
+     it is half as tall, so the figures keep the card's height. */
+  --role-icard-hero-size: max(64px, calc(min(136px, 19vh) - 136 * (var(--font-step-px) - 1px)));
+  --role-icard-art-size: max(56px, calc(min(116px, 16vh) - 116 * (var(--font-step-px) - 1px)));
+  /* On a phone the art sits in a socket beside the name, sized to the
+     screen so larger text does not crowd out the figures. */
+  --role-icard-socket-size: min(76px, 9vh);
+  --role-icard-lead-size: calc(40 * var(--font-step-px));
+  --role-icard-up-ink: var(--success);
+  --role-icard-up-fill: rgb(from var(--success) r g b / 0.14);
+  --role-icard-down-ink: var(--danger);
+  --role-icard-down-fill: rgb(from var(--danger) r g b / 0.14);
+  --role-icard-arrow-size: calc(8 * var(--font-step-px));
+  --role-icard-label-col: calc(80 * var(--font-step-px));
+  --role-icard-value-col: calc(44 * var(--font-step-px));
+  --role-icard-change-col: calc(64 * var(--font-step-px));
+  --role-icard-now-col: calc(48 * var(--font-step-px));
+  --role-icard-lore-rule: var(--stroke-thin) solid transparent;
+  --role-icard-lore-style: italic;
+
   /* Label: a caption or column heading, opened a little so it sits back
      from the values it names. */
   --role-label-font: var(--type-label-font);
