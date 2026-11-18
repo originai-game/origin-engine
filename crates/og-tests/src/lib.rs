@@ -6,6 +6,7 @@
 
 pub mod atmo_scenes;
 pub mod blocks;
+pub mod characters_scenes;
 pub mod compare;
 pub mod culling_scenes;
 pub mod fork_scenes;
