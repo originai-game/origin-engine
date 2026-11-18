@@ -57,6 +57,21 @@ fn scene(name: &str, remove: bool) -> RenderScene {
             "decals" => s.effects.decals.clear(),
             "sky-only" => s.lighting.environment.background = Background::Color(Vec3::ZERO),
             "impostors" => s.objects.impostors.clear(),
+            // The showroom round the physical materials is standard
+            // geometry, which draws the lighting terms: the subject is
+            // the instances the physical path shades.
+            "materials-physical" => {
+                s.objects.instances = s
+                    .objects
+                    .instances
+                    .iter()
+                    .filter(|i| {
+                        !s.standard_material(i.material)
+                            .is_some_and(|m| m.is_physical())
+                    })
+                    .copied()
+                    .collect();
+            }
             _ => {
                 s.objects.instances.clear();
                 s.objects.skinned_instances.clear();
