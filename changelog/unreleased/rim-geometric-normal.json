@@ -1,0 +1,8 @@
+{
+  "fixed": [
+    {
+      "member": "MaterialStyle.rimIntensity",
+      "summary": "Silhouette rim light now follows the underlying vertex or flat face normal on standard and physical materials, rather than lighting normal-map creases and procedural bumps inside the silhouette. Clay no longer paints bright curls across cloth and packs; preset values and physical Fresnel are unchanged."
+    }
+  ]
+}

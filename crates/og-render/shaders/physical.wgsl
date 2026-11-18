@@ -682,7 +682,10 @@ fn physical_fragment(in: PhysicalOut) -> vec4<f32> {
   if (EFFECTS && abs(fx.decal_info.x) > 0.5) { color += decal_emissive; }
   if (EFFECTS && material.rim.w > 0.0) { color += dissolve.rgb; }
   if (EFFECTS && material.toon.y > 0.0) {
-    color += material.rim.rgb * material.toon.y * pow(1.0 - n_dot_v, material.toon.z);
+    // The artistic silhouette rim, unlike physical Fresnel, uses the
+    // underlying surface normal before its normal maps and weathering.
+    let rim_dot_v = clamp(dot(n_vertex * face, v), 0.0, 1.0);
+    color += material.rim.rgb * material.toon.y * pow(1.0 - rim_dot_v, material.toon.z);
   }
   if (EFFECTS && material.toon.w > 0.0) {
     color = mix(color, material.flash.rgb, material.toon.w);

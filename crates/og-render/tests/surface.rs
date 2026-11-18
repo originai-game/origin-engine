@@ -346,3 +346,86 @@ fn triangle_facing_not_the_shading_normal_selects_the_lit_side() {
         assert!(flat > 100, "flat face back={back}: {flat}");
     }
 }
+
+/// A silhouette rim belongs to the underlying surface, not the wrinkles
+/// of a normal map or a procedural material. With all other light off,
+/// a front-facing plane stays dark; a grazing vertex normal keeps its rim.
+#[test]
+#[ignore = "requires GPU"]
+fn rim_light_ignores_normal_maps_and_procedural_bumps() {
+    use og_render::{ColorSpace, Mips, StandardMaterial, TextureData, Tonemap};
+    let render = |physical: bool, mapped: bool, surface: MaterialSurface, grazing: bool| {
+        let mut scene = RenderScene::new();
+        let mut quad = shapes::plane_xy(2.0, 2.0);
+        for vertex in &mut quad.vertices {
+            vertex.normal = if grazing {
+                Vec3::new(0.98, 0.0, 0.2).normalize().to_array()
+            } else {
+                Vec3::Z.to_array()
+            };
+            vertex.tangent = [1.0, 0.0, 0.0, 1.0];
+        }
+        let mesh = scene.add_mesh(quad);
+        let normal = scene.add_texture(TextureData {
+            width: 1,
+            height: 1,
+            rgba: vec![252, 128, 154, 255],
+            color_space: ColorSpace::Linear,
+            mips: Mips::Generate,
+        });
+        let material = scene.add_standard_material(StandardMaterial {
+            color: Vec3::ZERO,
+            roughness: 1.0,
+            normalMap: if mapped { normal.slot() } else { 0 },
+            clearcoat: if physical { 0.5 } else { 0.0 },
+            rimColor: Vec3::ONE,
+            rimIntensity: 1.0,
+            rimPower: 2.0,
+            ..Default::default()
+        });
+        scene.add_instance(mesh, material, Mat4::IDENTITY);
+        scene.frame.camera = Camera {
+            position: Vec3::Z * 3.0,
+            target: Vec3::ZERO,
+            ..Default::default()
+        };
+        scene.look.stylise.material = MaterialStyle {
+            surface,
+            surface_strength: 1.0,
+            ..Default::default()
+        };
+        scene.look.post.tonemap = Tonemap::None;
+        scene.lighting.light.intensity = 0.0;
+        scene.lighting.environment.intensity = 0.0;
+        let image = render_to_rgba(
+            &RenderDesc {
+                width: 64,
+                height: 64,
+                ..Default::default()
+            },
+            &scene,
+        )
+        .expect("GPU renders");
+        (28..36)
+            .flat_map(|y| (28..36).map(move |x| (y * 64 + x) * 4))
+            .map(|i| image.pixels[i])
+            .max()
+            .expect("interior pixels")
+    };
+    for physical in [false, true] {
+        for (mapped, surface) in [
+            (false, MaterialSurface::None),
+            (true, MaterialSurface::None),
+            (false, MaterialSurface::Clay),
+            (true, MaterialSurface::Clay),
+        ] {
+            let interior = render(physical, mapped, surface, false);
+            assert!(
+                interior < 8,
+                "physical={physical}, mapped={mapped}, {surface:?}: interior rim {interior}"
+            );
+        }
+        let edge = render(physical, false, MaterialSurface::None, true);
+        assert!(edge > 128, "physical={physical}: grazing rim lost ({edge})");
+    }
+}
