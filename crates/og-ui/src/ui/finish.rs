@@ -2094,9 +2094,18 @@ impl crate::ui::Layout {
         }
         let same_tail = tail.len() == paint.cache.last_tail.len();
         let mut fresh = Vec::new();
-        let mut next = Vec::with_capacity(trees.len() + tail.len());
-        for (p, (c, m)) in trees.iter().enumerate() {
-            next.push(match from[p] {
+        // Feed commands straight into levelling: a kept entry carries only
+        // its old index, not a large empty DrawCmd slot in a temporary list.
+        let next = trees.iter().chain(tail).enumerate().map(|(p, entry)| {
+            let (c, m) = entry;
+            let previous = if p < trees.len() {
+                from[p]
+            } else {
+                let k = p - trees.len();
+                (same_tail && *entry == paint.cache.last_tail[k])
+                    .then_some((paint.cache.prev_len + k, (0.0, 0.0)))
+            };
+            match previous {
                 Some((was, (0.0, 0.0))) => crate::draw::Spliced {
                     from: Some(was),
                     delta: (0.0, 0.0),
@@ -2120,27 +2129,8 @@ impl crate::ui::Layout {
                         cmd: Some(baked),
                     }
                 }
-            });
-        }
-        for (k, c) in tail.iter().enumerate() {
-            next.push(if same_tail && *c == paint.cache.last_tail[k] {
-                crate::draw::Spliced {
-                    from: Some(paint.cache.prev_len + k),
-                    delta: (0.0, 0.0),
-                    cmd: None,
-                }
-            } else {
-                let baked = bake(c.0.clone(), c.1);
-                if matches!(baked.0, DrawCmd::Text { .. } | DrawCmd::StyledText { .. }) {
-                    fresh.push(baked.clone());
-                }
-                crate::draw::Spliced {
-                    from: None,
-                    delta: (0.0, 0.0),
-                    cmd: Some(baked),
-                }
-            });
-        }
+            }
+        });
         let old = std::mem::take(&mut out.frame.items);
         let items = levels.splice(old, next, env.unit);
         if items.is_none() {

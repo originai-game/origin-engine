@@ -307,7 +307,7 @@ fn splicing_a_scroll_matches_levelling_afresh() {
     let fractions = (0..60).map(|i| [0.1, 0.7, -0.3][i % 3] * (1.0 + i as f32 / 7.0));
     for step in steps.into_iter().chain(fractions) {
         let now = frame(off + step);
-        let next = now
+        let next: Vec<Spliced> = now
             .iter()
             .map(|(id, c)| {
                 let from = was.iter().position(|(w, _)| w == id);
