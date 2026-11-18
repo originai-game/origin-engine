@@ -1,9 +1,8 @@
 // The strategy components' review sheet (docs/ui.md §6.2): the field page
-// (selection, command card and production queue under the wave readout,
-// over a bright meadow and a dark forest), the defence page (an endless wave,
-// an overflowing queue and a high-tier tower) and the states page (every
-// member in every fixture state it declares), dressed by a style pack or the
-// default style. The pages use the built-in components by name, as a game
+// (the RTS HUD laid out as its approved mockup over sample battlefield art),
+// the defence page (an endless wave, an overflowing queue and a high-tier
+// tower over the same scene) and the states page (every member in every
+// fixture state it declares), dressed by a style pack or the default style. The pages use the built-in components by name, as a game
 // does, with fixture stores.
 //
 // Commands: style:<fantasy|default>, page:<field|defence|states>.
@@ -20,6 +19,31 @@ const DOCUMENTS = ["ui/field.svelte", "ui/defence.svelte", "ui/states.svelte", "
 const ACTIONS: [string, string, string][] = [
   ["cmdMove", "KeyM", "pad.a"], ["cmdStop", "KeyS", "pad.b"], ["cmdHold", "KeyH", "pad.x"], ["cmdAttack", "KeyA", "pad.y"],
 ];
+
+/** The field page's sample art under assets/art (hud-<name>.jpg; sheet only, never installed), loaded in start. */
+const HUD_ART = ["field", "map", ...[0, 1, 2, 3, 4, 5, 6, 7].map((i) => `rts-${i}`), ...[0, 1, 2, 3, 4, 5].map((i) => `res-${i}`)];
+let hudArt: Record<string, number> = {};
+
+/** The field page's members: each default fixture with the sample art in place of the atlas icons, as a game's stores would carry its textures. */
+function fieldFixtures(): Record<string, Record<string, unknown>> {
+  const art = (name: string) => hudArt[name] ?? 0;
+  const res: Record<string, string> = { gold: "res-0", wood: "res-1", food: "res-2", crystal: "res-3", pop: "res-4" };
+  const cmd: Record<string, string> = { attack: "rts-4", hold: "rts-5", rally: "rts-7", upgrade: "rts-6", barracks: "rts-0", tower: "rts-3", archer: "rts-2" };
+  const rows = (member: string, prop: string) => FIXTURES[member]!.default![prop] as Record<string, unknown>[];
+  const d = (member: string) => FIXTURES[member]!.default!;
+  const unit = (id: string) => art(id.startsWith("a") ? "rts-2" : "rts-1");
+  return {
+    resources: { ...d("resources"), resources: rows("resources", "resources").map((r) => ({ ...r, icon: art(res[r.id as string] ?? "") })) },
+    clock: d("clock"),
+    wave: { ...d("wave"), icon: art("res-5") },
+    alerts: d("alerts"),
+    groups: d("groups"),
+    minimap: { ...d("minimap"), map: art("map") },
+    selection: { ...d("selection"), portrait: art("rts-1"), units: rows("selection", "units").map((u) => ({ ...u, portrait: unit(u.id as string) })) },
+    queue: { ...d("queue"), items: rows("queue", "items").map((q) => ({ ...q, picture: unit(q.id === "o1" ? "m" : "a") })) },
+    commands: { ...d("commands"), commands: rows("commands", "commands").map((c) => ({ ...c, icon: art(cmd[c.id as string] ?? ""), costIcon: c.cost !== "" ? art(c.id === "tower" ? "res-3" : "res-0") : 0 })) },
+  };
+}
 
 function must<T>(r: { ok: true; value: T } | { ok: false; reason: string }, what: string): T {
   if (!r.ok) throw new Error(`${what}: ${r.reason}`);
@@ -46,7 +70,14 @@ function setStyle(world: World, name: string): void {
 /** Each fixture as a store of its scalars (`<member>_<state>`) and a keyed collection per list (`<member>_<state>_<prop>`). */
 function stores(world: World): Record<string, UiReadable<unknown>> {
   const scope = og.ui.scope(world, "sheet");
-  const out: Record<string, UiReadable<unknown>> = { page: scope.writable("page", "field") };
+  const out: Record<string, UiReadable<unknown>> = { page: scope.writable("page", "field"), hudField: scope.writable("hudField", hudArt.field ?? 0) };
+  for (const [member, fixture] of Object.entries(fieldFixtures())) {
+    const name = `field_${member}`;
+    out[name] = scope.writable(name, fixture);
+    for (const [prop, value] of Object.entries(fixture)) {
+      if (Array.isArray(value)) out[`${name}_${prop}`] = scope.collection(`${name}_${prop}`, value as { id: string }[], { key: "id" });
+    }
+  }
   const captions: Record<string, string> = {};
   for (const [member, states] of Object.entries(FIXTURES)) {
     for (const [state, fixture] of Object.entries(states)) {
@@ -77,6 +108,7 @@ export default og.game({
     if (camera.ok) camera.value.background = { r: 0.05, g: 0.05, b: 0.06 };
     for (const [name, key, pad] of ACTIONS) og.input.defineAction(world, { name, kind: "button", bindings: [{ control: key }, { control: pad }] });
     setStyle(world, "fantasy");
+    hudArt = Object.fromEntries(HUD_ART.map((p) => [p, must(og.load.texture(world, `art/hud-${p}.jpg`), p) as number]));
     for (const path of DOCUMENTS) must(og.load.document(world, path), path);
   },
   ui: show,
