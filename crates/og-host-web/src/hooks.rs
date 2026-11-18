@@ -149,10 +149,15 @@ impl Hooks for WebHooks {
         }
         match texture.to_texture_data() {
             Ok(t) => Fetch::Ready(og_render::TextureSource::Rgba(t)),
-            Err(_) => Fetch::Failed(format!(
-                "{}: not transcoded; the Worker transcodes a bundle's Basis textures (src/web/basis.ts) before the engine starts",
-                texture.id
-            )),
+            // One the boot and the packs did not transcode (an ungrouped
+            // texture of a bundle og.load.bundle opened): the Worker's
+            // transcoder, as after a device loss; pending until it answers.
+            Err(_) => retranscode(texture, formats).unwrap_or_else(|| {
+                Fetch::Failed(format!(
+                    "{}: not transcoded; the Worker transcodes a bundle's Basis textures (src/web/basis.ts) before the engine starts",
+                    texture.id
+                ))
+            }),
         }
     }
 
