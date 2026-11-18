@@ -6,6 +6,63 @@ use crate::support;
 use og_ui::*;
 use support::*;
 
+/// An intervening overflow box does not clip an absolute descendant
+/// whose containing block is outside it. A real containing block and a
+/// clip-path still cut that descendant, including after retained reuse.
+#[test]
+#[ignore = "requires GPU"]
+fn absolute_descendants_escape_only_ineligible_overflow_clips() {
+    use og_render::*;
+    let mut scene = RenderScene::new();
+    scene.lighting.environment.background = Background::Color(og_core::glam::Vec3::ZERO);
+    scene.look.post.tonemap = Tonemap::None;
+    for (list, row, visible) in [
+        ("overflow: hidden auto;", "", true),
+        ("overflow: hidden; border-radius: 16px;", "", true),
+        ("overflow: hidden auto;", "opacity: 0.5;", true),
+        ("overflow: hidden auto;", "clip-path: inset(0);", false),
+        ("overflow: hidden auto; position: relative;", "", false),
+        ("overflow: hidden auto; clip-path: inset(0);", "", false),
+    ] {
+        let text = format!(
+            r#"<meta name="component" content="t">
+<div id="Body"><ul id="List"><li id="Row"><p id="Plate" style:left={{$left}}>Side plate</p><div id="Flow"></div></li></ul></div>
+<style>
+#Body {{ position: relative; display: grid; grid-template-columns: 1fr 1fr; width: 400px; height: 300px; background: black; }}
+#List {{ min-width: 0; margin: 0; padding: 0; list-style: none; {list} }}
+#Row {{ {row} }}
+#Plate {{ position: absolute; top: 0; width: 80px; height: 40px; margin: 0; background: #ff00ff; }}
+#Flow {{ width: 350px; height: 80px; background: lime; }}
+</style>"#
+        );
+        let mut d = Doc::new(&text, &[("left", serde_json::json!("220px"))]);
+        for frame in 0..4 {
+            if frame == 2 {
+                d.set("left", serde_json::json!("250px"));
+            } else if frame > 0 {
+                d.step(InputFrame::default());
+            }
+            let mut overlay = Overlay::new(400.0, 300.0, 1.0);
+            d.ui.frame().emit(&EmitDesc::default(), &mut overlay);
+            scene.ui.overlay = Some(overlay);
+            let image = render_frame(&scene, &sized(400, 300)).image;
+            let x = if frame < 2 { 240 } else { 270 };
+            let pixel = &image.pixels[(20 * 400 + x) * 4..][..3];
+            assert_eq!(
+                pixel[0] > pixel[1].saturating_add(40) && pixel[2] > pixel[1].saturating_add(40),
+                visible,
+                "{list} {row}, frame={frame}: {pixel:?}"
+            );
+            let flow = &image.pixels[(60 * 400 + 240) * 4..][..3];
+            assert_eq!(
+                flow,
+                &[0, 0, 0],
+                "flow must stay clipped: {list} {row}, frame={frame}"
+            );
+        }
+    }
+}
+
 /// A text-clipped background must clear the rest of a wide block, not
 /// just the rectangle occupied by its glyphs.
 #[test]

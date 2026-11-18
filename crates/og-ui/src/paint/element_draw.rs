@@ -927,7 +927,7 @@ impl ElementDraw {
     }
 
     /// Its CSS cut, unless a layer's composite cuts it.
-    fn cut(&self, at: &Placed) -> Option<DrawCmd> {
+    pub(crate) fn cut(&self, at: &Placed) -> Option<DrawCmd> {
         match &self.clip {
             Clip::Cut(shape) if !self.layered() => Some(self.clip_to(shape, at)),
             _ => None,

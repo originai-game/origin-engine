@@ -316,6 +316,8 @@ impl Ui {
         let mut k = 0;
         while k < order.len() {
             let i = order[k];
+            let parent = open.last().map_or(NONE, |o| o.0);
+            self.positioned_clips(&open, parent, i, i, &mut cmds);
             // Where its subtree's commands began in last frame's list.
             let up = open.last().map(|o| o.3);
             let at_last = match self.paint.cache.ranges.get(&self.tree.nodes[i].key) {
@@ -396,6 +398,7 @@ impl Ui {
                     .insert(self.tree.nodes[i].key, (start - base, len, count));
                 self.paint
                     .clip_child(open.last().map(|o| o.0), self.tree.nodes[i].key);
+                self.positioned_clips(&open, i, parent, i, &mut cmds);
                 k = ends[k];
                 self.close_subtrees(
                     &mut open,
@@ -935,8 +938,81 @@ impl Ui {
                 );
                 self.paint
                     .clip_child(open.last().map(|o| o.0), self.tree.nodes[j].key);
+                let parent = open.last().map_or(NONE, |o| o.0);
+                self.positioned_clips(open, j, parent, j, cmds);
             }
         }
+    }
+
+    /// Overflow follows the containing-block chain, unlike a clip-path or
+    /// native part's cut. Switch only the intervening overflow brackets
+    /// while a CSS positioned subtree draws; restore them outside its
+    /// cached range so reused subtrees see the same enclosing clip stack.
+    fn positioned_clips(
+        &self,
+        open: &[(usize, usize, usize, Option<usize>, usize)],
+        from: usize,
+        to: usize,
+        positioned: usize,
+        cmds: &mut Vec<(DrawCmd, Affine)>,
+    ) {
+        use crate::element::Position;
+        use crate::layout::{Holder, containing_block};
+        let n = &self.tree.nodes[positioned];
+        if !n.props.css_position
+            || !matches!(n.props.position, Position::Absolute | Position::Screen)
+            || !open
+                .iter()
+                .any(|&(i, ..)| self.tree.nodes[i].decor.as_ref().is_some_and(|d| d.clip))
+        {
+            return;
+        }
+        let clips = |target: usize| {
+            let mut chain = Vec::new();
+            for &(i, ..) in open {
+                let n = &self.tree.nodes[i];
+                let Some(d) = self.paint.draw_of(i, &self.tree) else {
+                    continue;
+                };
+                if d.element_image.is_some() {
+                    continue;
+                }
+                let at = crate::paint::Placed {
+                    rect: part_rect(n, self.env.theme.press_scale),
+                    radius: n.style.sampled.radius,
+                    clip: n.placed.clip,
+                    alpha: n.placed.alpha,
+                };
+                let world = n.placed.plane.as_ref().map_or(n.placed.world, |p| p.draw());
+                chain.extend(d.cut(&at).map(|c| (c, world)));
+                let overflow = n.decor.as_ref().is_some_and(|d| d.clip);
+                let mut at_node = target;
+                while overflow && at_node != NONE && at_node != i {
+                    let child = &self.tree.nodes[at_node];
+                    at_node = if child.props.css_position {
+                        match containing_block(&self.tree.nodes, at_node) {
+                            Holder::Node(holder) => holder,
+                            Holder::Own if child.props.position == Position::Screen => NONE,
+                            Holder::Own => child.parent,
+                        }
+                    } else {
+                        child.parent
+                    };
+                }
+                if !overflow || at_node == i {
+                    chain.extend(d.children(&at).into_iter().map(|c| (c, world)));
+                }
+            }
+            chain
+        };
+        let (before, after) = (clips(from), clips(to));
+        let shared = before
+            .iter()
+            .zip(&after)
+            .take_while(|(a, b)| a == b)
+            .count();
+        cmds.extend((shared..before.len()).map(|_| (DrawCmd::PopClip, Affine::IDENTITY)));
+        cmds.extend(after.into_iter().skip(shared));
     }
 
     /// Which nodes paint as last frame (`same`: their own commands and
