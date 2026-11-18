@@ -44,6 +44,7 @@ pub(crate) const PASSES: &[PassDesc] = &[
     GiProbesPass::DESC,
     CascadePass::DESC,
     ShelterPass::DESC,
+    GroundHeightsPass::DESC,
     LocalFacePass::DESC,
     PrepassPass::DESC,
     PassDesc {
@@ -162,6 +163,8 @@ pub(crate) struct PassDecisions<'a> {
     pub gi_probes: bool,
     pub cascades: u32,
     pub shelter: bool,
+    /// The grounded ground's height map is drawn again (ground_heights.rs).
+    pub ground_heights: bool,
     /// The shadowed local lights: a pass per face, from each one's layer.
     pub local_shadows: &'a [frame::LocalShadow],
     pub prepass: bool,
@@ -258,6 +261,9 @@ pub(crate) fn frame_passes(d: &PassDecisions<'_>, caps: Caps) -> Vec<FramePass> 
     }
     if d.shelter {
         push(FramePass::Shelter);
+    }
+    if d.ground_heights {
+        push(FramePass::GroundHeights);
     }
     for ls in d.local_shadows {
         for face in 0..ls.faces.len() {
@@ -474,6 +480,7 @@ mod tests {
             gi_probes: true,
             cascades: 3,
             shelter: true,
+            ground_heights: true,
             local_shadows,
             prepass: true,
             ao: Some(AoResolution::Half),

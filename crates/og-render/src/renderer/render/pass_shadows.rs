@@ -439,20 +439,20 @@ impl Pass for CascadePass {
     }
 }
 
-/// A frame's shelter map: its casters when it is drawn again, and its
-/// meshlet view (0: none).
+/// A frame's shelter map or ground height map: its casters when it is
+/// drawn again, and its meshlet view (0: none).
 #[derive(Default)]
 pub(super) struct ShelterFrame {
     pub list: Option<[DrawList; 2]>,
     pub view: u32,
 }
 
-/// The shelter map's view, frustum and key, and whether it is drawn
-/// again (shadow_inputs.rs).
+/// The shelter map's (or the ground height map's) view, frustum and key,
+/// and whether it is drawn again (shadow_inputs.rs).
 type Shelter = Option<(Mat4, Frustum, u64, bool)>;
 
-/// What the shelter map's encode reads: its frustum and casters, when
-/// redrawn.
+/// What the shelter map's (or the ground height map's) encode reads: its
+/// frustum and casters, when redrawn.
 pub(super) struct ShelterPlan<'f> {
     pub frustum: &'f Frustum,
     pub list: &'f [DrawList; 2],
@@ -460,6 +460,19 @@ pub(super) struct ShelterPlan<'f> {
 }
 
 pub(super) struct ShelterPass;
+
+impl ShelterPass {
+    /// A drawn map's plan: its frustum, casters and meshlet view.
+    fn bind_map<'f>(frame: &'f mut ShelterFrame, map: &'f Shelter) -> Option<ShelterPlan<'f>> {
+        map.as_ref()
+            .zip(frame.list.as_ref())
+            .map(|(s, list)| ShelterPlan {
+                frustum: &s.1,
+                list,
+                view: frame.view,
+            })
+    }
+}
 
 impl Pass for ShelterPass {
     const DESC: PassDesc = PassDesc {
@@ -479,40 +492,10 @@ impl Pass for ShelterPass {
         &r.shadows.cascade_map
     }
 
-    /// The weather occlusion map's casters (not the skinned or the
-    /// scattered copies: see `shadow_pass`), when it is drawn again: its
-    /// clustered casters through a shadow view of the meshlet dispatch,
-    /// as a cascade's (its own planes, no cone or occlusion, the
-    /// camera's level per model), and its meshlet view (0: none).
+    /// The weather occlusion map's casters when it is drawn again
+    /// ([`map_casters`]).
     fn plan(r: &mut Renderer, (cull, casters, shelter): Self::PlanIn<'_>) -> ShelterFrame {
-        let mut view = 0;
-        let list = shelter.as_ref().filter(|s| s.3).map(|s| {
-            let list = if casters.seen.gpu_cull {
-                let meshlet_gpu = r.visibility.meshlet.as_ref();
-                let batches = casters.seen.batches;
-                let g = cull
-                    .vis
-                    .gpu_pass(cull_gpu::PassKind::Shadow, &s.1, None, None);
-                view = cull
-                    .vis
-                    .shadow_view(meshlet_gpu, batches, casters.meshlet_casters, &s.1);
-                casters.caster_list(g, &s.1, view, &|_| true)
-            } else {
-                r.cull(
-                    casters.seen.batches,
-                    casters.seen.spheres,
-                    &mut cull.transforms,
-                    &mut cull.origins,
-                    &mut cull.cull_inside,
-                    &s.1,
-                    true,
-                    |b| b.cast,
-                )
-                .0
-            };
-            [list, DrawList::default()]
-        });
-        ShelterFrame { list, view }
+        map_casters(r, cull, casters, shelter)
     }
 
     fn bind<'f>(
@@ -520,14 +503,7 @@ impl Pass for ShelterPass {
         frame: &'f mut ShelterFrame,
         shelter: &'f Shelter,
     ) -> Option<ShelterPlan<'f>> {
-        shelter
-            .as_ref()
-            .zip(frame.list.as_ref())
-            .map(|(s, list)| ShelterPlan {
-                frustum: &s.1,
-                list,
-                view: frame.view,
-            })
+        ShelterPass::bind_map(frame, shelter)
     }
 
     fn encode<'f>(
@@ -551,6 +527,109 @@ impl Pass for ShelterPass {
             &[ShadowTarget::Cascade],
             f32::INFINITY,
         );
+    }
+}
+
+/// A map's casters (the shelter map's, the ground's height map's; not the
+/// skinned or the scattered copies: see `shadow_pass`), when it is drawn
+/// again: its clustered casters through a shadow view of the meshlet
+/// dispatch, as a cascade's (its own planes, no cone or occlusion, the
+/// camera's level per model), and its meshlet view (0: none).
+fn map_casters(
+    r: &mut Renderer,
+    cull: &mut FrameCulling,
+    casters: &Casters<'_>,
+    map: &Shelter,
+) -> ShelterFrame {
+    let mut view = 0;
+    let list = map.as_ref().filter(|s| s.3).map(|s| {
+        let list = if casters.seen.gpu_cull {
+            let meshlet_gpu = r.visibility.meshlet.as_ref();
+            let batches = casters.seen.batches;
+            let g = cull
+                .vis
+                .gpu_pass(cull_gpu::PassKind::Shadow, &s.1, None, None);
+            view = cull
+                .vis
+                .shadow_view(meshlet_gpu, batches, casters.meshlet_casters, &s.1);
+            casters.caster_list(g, &s.1, view, &|_| true)
+        } else {
+            r.cull(
+                casters.seen.batches,
+                casters.seen.spheres,
+                &mut cull.transforms,
+                &mut cull.origins,
+                &mut cull.cull_inside,
+                &s.1,
+                true,
+                |b| b.cast,
+            )
+            .0
+        };
+        [list, DrawList::default()]
+    });
+    ShelterFrame { list, view }
+}
+
+/// The grounded ground's height map's pass (ground_heights.rs): its casters into
+/// its layer of the cascade array, when it is drawn again.
+pub(super) struct GroundHeightsPass;
+
+impl Pass for GroundHeightsPass {
+    const DESC: PassDesc = PassDesc {
+        pass: FramePass::GroundHeights,
+        name: "ground-heights",
+        needs: Caps::NONE,
+    };
+    type State = ground_heights::GroundCatcher;
+    type Frame = ShelterFrame;
+    /// The frame's culling, its casters and the ground's map.
+    type PlanIn<'a> = (&'a mut FrameCulling, &'a Casters<'a>, &'a Shelter);
+    type UploadIn<'a> = ();
+    type BindIn<'f> = &'f Shelter;
+    type Plan<'f> = ShelterPlan<'f>;
+
+    fn state(r: &Renderer) -> &Self::State {
+        &r.sky.ground
+    }
+
+    fn plan(r: &mut Renderer, (cull, casters, ground): Self::PlanIn<'_>) -> ShelterFrame {
+        map_casters(r, cull, casters, ground)
+    }
+
+    fn bind<'f>(
+        _: &'f Renderer,
+        frame: &'f mut ShelterFrame,
+        ground: &'f Shelter,
+    ) -> Option<ShelterPlan<'f>> {
+        ShelterPass::bind_map(frame, ground)
+    }
+
+    fn encode<'f>(
+        st: &Self::State,
+        plan: &ShelterPlan<'f>,
+        _: FramePass,
+        cx: &mut EncodeCx<'_, 'f>,
+    ) {
+        let Some(maps) = &st.maps else { return };
+        let h = &maps.heights;
+        cx.ctx.shadow_pass(
+            cx.encoder,
+            &h.layers[0],
+            &h.depth,
+            (&h.texture, 0, &h.depth_texture),
+            GROUND_SLOT,
+            plan.list,
+            crate::shadow_cache::Plan::ALL,
+            plan.frustum,
+            plan.view,
+            cx.stats,
+            false,
+            &[ShadowTarget::Cascade],
+            f32::INFINITY,
+        );
+        // The openness, from the heights just drawn (ground_open.wgsl).
+        st.bake(cx.encoder);
     }
 }
 

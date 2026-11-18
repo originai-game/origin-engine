@@ -16,6 +16,8 @@ pub(crate) mod weather;
 /// label and its WGSL.
 pub(crate) fn shader_sources(add: &mut dyn FnMut(&str, String)) {
     add("sky", crate::sky_source());
+    add("sky ground", crate::sky_ground_source());
+    add("ground open", crate::ground_heights::open_source());
     add(
         "aurora footprint",
         crate::aurora::FOOTPRINT_WGSL.to_string(),

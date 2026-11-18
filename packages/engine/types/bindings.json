@@ -9932,6 +9932,11 @@
           }
         },
         {
+          "name": "groundShadows",
+          "column": "f32",
+          "default": 1
+        },
+        {
           "name": "blendTo",
           "column": "EnvironmentMap",
           "default": 0

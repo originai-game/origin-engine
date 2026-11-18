@@ -231,6 +231,11 @@ impl Renderer {
         {
             use crate::deferred::Start;
             match scene.lighting.environment.background {
+                Background::Sky
+                    if self.sky.ground.maps.is_some() && ground_heights::wanted(scene) =>
+                {
+                    self.sky.ground.pipeline.start()
+                }
                 Background::Sky => self.sky.sky_pipeline.start(),
                 Background::Procedural { .. } if scene.atmosphere.clouds.is_some() => {
                     if effects.prepass {
@@ -451,6 +456,7 @@ impl Renderer {
             view_plans: &view_plans,
             reflection,
             shelter_redraw: shadow_inputs.shelter_redraw,
+            ground_redraw: shadow_inputs.ground_redraw,
             sorted,
             skinned_n,
             crowd_gpu,
@@ -613,6 +619,8 @@ impl Renderer {
         );
         frames.shelter =
             ShelterPass::plan(self, (&mut frame_cull, &casters, &shadow_inputs.shelter));
+        frames.ground_heights =
+            GroundHeightsPass::plan(self, (&mut frame_cull, &casters, &shadow_inputs.ground));
         frames.local_face = LocalFacePass::plan(
             self,
             (
@@ -712,6 +720,7 @@ impl Renderer {
             cascade_anchor: frames.cascade.anchor,
             local_shadows: &lights_frame.local_shadows,
             shelter: &shadow_inputs.shelter,
+            ground: &shadow_inputs.ground,
             probe_frame: &probe_frame,
             active_probes: &active_probes,
             probe_faces: &probe_faces,
@@ -797,6 +806,9 @@ impl Renderer {
             _ => true,
         };
         self.shadows.shelter_key = shadow_inputs.shelter.as_ref().map(|s| s.2);
+        if let Some(m) = &mut self.sky.ground.maps {
+            m.key = shadow_inputs.ground.as_ref().map(|s| s.2);
+        }
         let lens = post_fx.lens_distortion.filter(|l| l.amount != 0.0);
         // The bind steps of the passes whose plans hold nothing of the
         // frame's: the pass list reads them.
@@ -827,6 +839,7 @@ impl Renderer {
             froxels: plans.volumetric.is_some(),
             cascades: frames.cascade.cascades.len() as u32,
             shelter_redraw: shadow_inputs.shelter_redraw,
+            ground_redraw: shadow_inputs.ground_redraw,
             local_shadows: &lights_frame.local_shadows,
             probes: !probe_frame.due.is_empty(),
             reflections: reflections.len() as u8,
@@ -1212,6 +1225,8 @@ impl Renderer {
         // The bind steps of the other passes, in frame order.
         plans.cascade = CascadePass::bind(self, &mut frames.cascade, ());
         plans.shelter = ShelterPass::bind(self, &mut frames.shelter, &shadow_inputs.shelter);
+        plans.ground_heights =
+            GroundHeightsPass::bind(self, &mut frames.ground_heights, &shadow_inputs.ground);
         plans.local_face = LocalFacePass::bind(self, &mut frames.local_face, ());
         plans.particles = ParticlesPass::bind(
             self,

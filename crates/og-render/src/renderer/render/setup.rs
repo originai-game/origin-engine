@@ -47,6 +47,7 @@ impl Renderer {
         self.warn_without(scene);
         self.grow_local_shadows(scene);
         self.fit_shelter_layer(scene);
+        self.sky.ground.fit(&self.device, scene);
         self.prepare_gi_probes(scene);
         // The reflections' targets (ssr.rs), before the frame groups that
         // bind them: new ones make the groups again.

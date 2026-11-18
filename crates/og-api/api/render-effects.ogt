@@ -67,6 +67,11 @@
       worldspace world
       unit m
     }
+    field groundShadows f32 "How dark the grounded ground (groundHeight above 0) takes the shadows of what stands on it, the sun's (a DirectionalLight with castShadow) and the map's light they hide, so props sit on it: 1 as dark as a real floor, 0 none (the ground as photographed)." {
+      default 1
+      min 0
+      max 1
+    }
     field blendTo EnvironmentMap "A second map from og.load.environment that the light and the background blend towards (indoor to outdoor); 0 is none. Both maps turn by rotation and the background is scaled by backgroundIntensity."
     field blendWeight f32 "How far the blend has gone: 0 the map, 1 blendTo, in between a mix of both maps' light (every GGX level and the harmonics) and background. Drive it from the tick (a tween or a system), never from a clock, so a replay blends alike; it is drawn in 128 steps, each regenerating the light once." {
       default 0

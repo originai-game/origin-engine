@@ -33,4 +33,4 @@ struct BakedScene {
 }
 ```
 
-<sub>Module `render` line 4309</sub>
+<sub>Module `render` line 4314</sub>

@@ -153,7 +153,7 @@ impl SkyState {
             Sampled<wgpu::RenderPipeline>,
             Sampled<wgpu::RenderPipeline>,
         ),
-        clouds_low: clouds::CloudsLow,
+        (clouds_low, ground): (clouds::CloudsLow, ground_heights::GroundCatcher),
         (cloud_noise, cloud_shadow): (clouds::CloudNoise, clouds::CloudShadow),
         sky_params: wgpu::Buffer,
         aurora_map: aurora::AuroraMap,
@@ -167,6 +167,7 @@ impl SkyState {
             sky_pipeline,
             sky_look_pipeline,
             clouds_low,
+            ground,
             sky_capture: None,
         }
     }

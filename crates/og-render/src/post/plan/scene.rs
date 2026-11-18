@@ -35,7 +35,9 @@ pub(super) fn declare(g: &mut RenderGraph, cx: &PlanCx, p: FramePass) {
         | FramePass::UiLayers
         | FramePass::Overlay
         | FramePass::HdrOutput => g.pass(name, &[], &["output"]),
-        FramePass::Cascade(_) | FramePass::Shelter => g.pass(name, &[], &["cascades"]),
+        FramePass::Cascade(_) | FramePass::Shelter | FramePass::GroundHeights => {
+            g.pass(name, &[], &["cascades"])
+        }
         FramePass::LocalFace(_) => g.pass(name, &[], &["local-shadows"]),
         FramePass::Prepass => {
             let mut writes = vec!["pre-depth", "gbuffer", "lindepth", "outline-id"];

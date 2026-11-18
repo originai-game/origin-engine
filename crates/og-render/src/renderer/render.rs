@@ -76,7 +76,9 @@ pub(crate) use pass_particles::Particles;
 use pass_particles::{ParticlesPass, ParticlesPlan};
 mod pass_shadows;
 mod pre_graph;
-use pass_shadows::{CascadeIn, CascadePass, Casters, LocalFacePass, ShelterPass};
+use pass_shadows::{
+    CascadeIn, CascadePass, Casters, GroundHeightsPass, LocalFacePass, ShelterPass,
+};
 mod pass_glow;
 use pass_glow::GlowPass;
 mod pass_custom_post;

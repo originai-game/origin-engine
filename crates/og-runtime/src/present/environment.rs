@@ -115,6 +115,7 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState) {
             height,
             radius: v.ground_radius,
             center: v.ground_center,
+            shadows: v.ground_shadows.clamp(0.0, 1.0),
         });
     }
     let hi = v.hemi_intensity.max(0.0);

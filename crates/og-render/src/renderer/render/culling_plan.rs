@@ -12,6 +12,7 @@ pub(super) struct PlanCullingInputs<'a> {
     pub view_plans: &'a [views::ViewPlan],
     pub reflection: Option<&'a camera::PlanarReflection>,
     pub shelter_redraw: bool,
+    pub ground_redraw: bool,
     pub sorted: u32,
     pub skinned_n: u32,
     pub crowd_gpu: bool,
@@ -50,6 +51,7 @@ impl Renderer {
             view_plans,
             reflection,
             shelter_redraw,
+            ground_redraw,
             sorted,
             skinned_n,
             crowd_gpu,
@@ -69,6 +71,7 @@ impl Renderer {
         let max_passes = 2
             + view_plans.len()
             + shelter_redraw as usize
+            + ground_redraw as usize
             + reflection.is_some() as usize
             + if scene.lighting.light.cast_shadows {
                 self.frame_cascades(scene) as usize

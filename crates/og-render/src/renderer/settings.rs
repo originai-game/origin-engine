@@ -184,6 +184,7 @@ impl Renderer {
             &self.sky.sky_pipeline,
             &self.sky.sky_look_pipeline,
             &self.sky.clouds_low.sky,
+            &self.sky.ground.pipeline,
             &self.sprite.sprite_pipeline,
             &self.sprite.sprite_additive_pipeline,
             &self.sprite.sprite_untonemapped_pipeline,

@@ -21,6 +21,7 @@ Token `og.Environment`, registered under the schema name `og.Environment`; its v
 | `groundHeight` | `number` | `0` | ≥ 0 | `m` | tunable | Draws the sky on a dome with a flat ground under it, as three.js GroundedSkybox: how far above the ground the map was photographed (metres). Objects stand on the map's ground, and the environment's reflections show it too. 0 (the default) draws the sky at infinity. See `render §4`. |
 | `groundRadius` | `number` | `100` | ≥ 0 | `m` | tunable | The grounded dome's radius (metres, larger than groundHeight), as GroundedSkybox's radius: the ground looks flat out to about this distance. |
 | `groundCenter` | `Vector3` | `{ x: 0, y: 0, z: 0 }` | — | `m` | worldspace `world` | The ground point under where the map was photographed: the dome's centre is groundHeight above it. |
+| `groundShadows` | `number` | `1` | 0 … 1 | — | — | How dark the grounded ground (groundHeight above 0) takes the shadows of what stands on it, the sun's (a DirectionalLight with castShadow) and the map's light they hide, so props sit on it: 1 as dark as a real floor, 0 none (the ground as photographed). |
 | `blendTo` | `EnvironmentMap` | `0` | — | — | — | A second map from og.load.environment that the light and the background blend towards (indoor to outdoor); 0 is none. Both maps turn by rotation and the background is scaled by backgroundIntensity. |
 | `blendWeight` | `number` | `0` | 0 … 1 | — | tunable | How far the blend has gone: 0 the map, 1 blendTo, in between a mix of both maps' light (every GGX level and the harmonics) and background. Drive it from the tick (a tween or a system), never from a clock, so a replay blends alike; it is drawn in 128 steps, each regenerating the light once. |
 | `hemiSky` | `Color` | `{ r: 1, g: 1, b: 1 }` | — | — | — | A hemisphere light's sky colour (linear), as three.js HemisphereLight.color: diffuse-only ambient light mix(hemiGround, hemiSky, 0.5 n.y + 0.5) * hemiIntensity, darkened by ambient occlusion like the map's light. Unlike light baked into the map it adds no reflection. |
@@ -68,6 +69,11 @@ resource Environment {
   field groundCenter Vector3 "The ground point under where the map was photographed: the dome's centre is groundHeight above it." {
     worldspace world
     unit m
+  }
+  field groundShadows f32 "How dark the grounded ground (groundHeight above 0) takes the shadows of what stands on it, the sun's (a DirectionalLight with castShadow) and the map's light they hide, so props sit on it: 1 as dark as a real floor, 0 none (the ground as photographed)." {
+    default 1
+    min 0
+    max 1
   }
   field blendTo EnvironmentMap "A second map from og.load.environment that the light and the background blend towards (indoor to outdoor); 0 is none. Both maps turn by rotation and the background is scaled by backgroundIntensity."
   field blendWeight f32 "How far the blend has gone: 0 the map, 1 blendTo, in between a mix of both maps' light (every GGX level and the harmonics) and background. Drive it from the tick (a tween or a system), never from a clock, so a replay blends alike; it is drawn in 128 steps, each regenerating the light once." {
