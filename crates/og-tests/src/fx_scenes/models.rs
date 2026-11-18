@@ -6,7 +6,7 @@ use super::*;
 // The stylised look: toon, outlines, rim light, dissolve, flash.
 // ---------------------------------------------------------------------------
 
-fn torus(major: f32, minor: f32, segments: u32, sides: u32) -> MeshData {
+pub(crate) fn torus(major: f32, minor: f32, segments: u32, sides: u32) -> MeshData {
     let mut vertices = Vec::new();
     let mut indices = Vec::new();
     for i in 0..=segments {
@@ -34,7 +34,7 @@ fn torus(major: f32, minor: f32, segments: u32, sides: u32) -> MeshData {
     MeshData { vertices, indices }
 }
 
-fn ramp_texture(scene: &mut RenderScene) -> TextureHandle {
+pub(crate) fn ramp_texture(scene: &mut RenderScene) -> TextureHandle {
     // Four hard bands, cool shadow to warm light.
     let rgba: Vec<u8> = (0..8)
         .flat_map(|i| {
@@ -49,115 +49,6 @@ fn ramp_texture(scene: &mut RenderScene) -> TextureHandle {
         color_space: ColorSpace::Linear,
         mips: Mips::None,
     })
-}
-
-/// A cel-shaded toy box: toon spheres and a torus with outlines and rim
-/// light, a trickster dissolving with a glowing edge, one hit-flashed.
-pub fn stylised_scene() -> Result<RenderScene, String> {
-    let mut scene = RenderScene::new();
-    let ramp = ramp_texture(&mut scene);
-    let floor = scene.add_mesh(shapes::plane(40.0, 1.0));
-    let floor_m = scene.add_standard_material(StandardMaterial {
-        color: Vec3::new(0.55, 0.75, 0.55),
-        toon: 1,
-        gradientMap: ramp.slot(),
-        ..Default::default()
-    });
-    scene.add_instance(floor, floor_m, Mat4::IDENTITY);
-    let sphere = scene.add_mesh(shapes::sphere(48, 32));
-    let ring = scene.add_mesh(torus(0.7, 0.25, 64, 24));
-    let toon = |color: Vec3, outline: f32| StandardMaterial {
-        color,
-        roughness: 0.4,
-        toon: 1,
-        gradientMap: ramp.slot(),
-        rimColor: Vec3::new(1.0, 0.95, 0.9),
-        rimIntensity: 0.6,
-        rimPower: 3.5,
-        outlineColor: Vec3::new(0.05, 0.04, 0.08),
-        outlineWidth: outline,
-        ..Default::default()
-    };
-    let red = scene.add_standard_material(toon(Vec3::new(0.9, 0.25, 0.2), 3.0));
-    let blue = scene.add_standard_material(toon(Vec3::new(0.2, 0.45, 0.95), 2.0));
-    let gold = scene.add_standard_material(StandardMaterial {
-        metalness: 0.0,
-        ..toon(Vec3::new(1.0, 0.75, 0.2), 4.0)
-    });
-    let flashed = scene.add_standard_material(StandardMaterial {
-        flash: 0.65,
-        flashColor: Vec3::new(1.0, 1.0, 1.0),
-        ..toon(Vec3::new(0.3, 0.8, 0.4), 3.0)
-    });
-    scene.add_instance(
-        sphere,
-        red,
-        Mat4::from_translation(Vec3::new(-2.0, 0.6, 0.0)) * Mat4::from_scale(Vec3::splat(1.2)),
-    );
-    scene.add_instance(
-        sphere,
-        blue,
-        Mat4::from_translation(Vec3::new(2.1, 0.5, 0.6)),
-    );
-    scene.add_instance(
-        sphere,
-        flashed,
-        Mat4::from_translation(Vec3::new(0.9, 0.35, 2.0)) * Mat4::from_scale(Vec3::splat(0.7)),
-    );
-    scene.add_instance(
-        ring,
-        gold,
-        Mat4::from_translation(Vec3::new(0.0, 1.0, -1.2)) * Mat4::from_rotation_x(1.1),
-    );
-    // A trickster half dissolved.
-    let model = load("trickster.glb")?;
-    let parts = model.add_to(&mut scene);
-    for &(_, mat) in &parts.parts {
-        let mut m = *scene.standard_material(mat).expect("a material");
-        m.dissolve = 0.45;
-        m.dissolveScale = 6.0;
-        m.dissolveEdgeColor = Vec3::new(1.0, 3.0, 6.0);
-        m.dissolveEdgeWidth = 0.08;
-        m.rimIntensity = 0.4;
-        m.outlineWidth = 2.0;
-        m.outlineColor = Vec3::new(0.05, 0.04, 0.08);
-        scene.set_standard_material(mat, m);
-    }
-    let scale = 2.2 / (model.max - model.min).max_element().max(1e-3);
-    parts.instance(
-        &mut scene,
-        Mat4::from_translation(Vec3::new(-0.4, -model.min.y * scale, 0.6))
-            * Mat4::from_rotation_y(crate::scenes::TRICKSTER_TO_Z + 0.5)
-            * Mat4::from_scale(Vec3::splat(scale)),
-    );
-    let sun = Vec3::new(0.5, 0.8, 0.4);
-    scene.lighting.light = DirectionalLight {
-        direction_to_light: sun,
-        intensity: 2.6,
-        ..Default::default()
-    };
-    scene.lighting.environment = Environment {
-        sky: ProceduralSky {
-            sun_direction: sun,
-            sun_color: Vec3::ONE,
-            look: None,
-        },
-        intensity: 0.3,
-        background: Background::Color(Vec3::new(0.35, 0.55, 0.85)),
-        ..Environment::default()
-    };
-    scene.look.post.outline = Some(Outline {
-        width: 1.5,
-        ..Default::default()
-    });
-    scene.look.post.bloom = Some(Bloom::default());
-    scene.frame.camera = Camera {
-        position: Vec3::new(0.0, 3.2, 7.0),
-        target: Vec3::new(0.0, 0.7, 0.0),
-        exposure: Exposure::linear(1.0),
-        ..Default::default()
-    };
-    Ok(scene)
 }
 
 // ---------------------------------------------------------------------------
