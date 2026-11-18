@@ -183,6 +183,8 @@ test("RhythmSongSelect: a row chooses by key, Preview reports the selected song'
     expect(option(e, "skyline").states).toContain("selected");
     tap(e, option(e, "ember"));
     tap(e, option(e, "vault"));
+    // Its name is its words; the key cap in it does not join it.
+    expect(find(e, /\/Preview(#[^/]+)?$/)!.name).toBe("Preview");
     tap(e, find(e, /\/Preview(#[^/]+)?$/)!);
     expect(intents(events, ["choose", "preview"])).toEqual(["choose:ember", "preview:skyline"]);
     expect(option(e, "vault").disabled).toBeTrue();

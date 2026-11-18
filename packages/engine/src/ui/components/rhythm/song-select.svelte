@@ -72,7 +72,7 @@
                     <div class="facts" data-layout="cluster" data-gap="tight">
                       <div part="RhythmSongSelect.fact RhythmSongSelect.label" class="fact" data-layout="stack" data-gap="none"><span class="label">{t("rhythm.songs.bpmLabel")}</span><span class="value" part="RhythmSongSelect.figure">{s.bpm}</span></div>
                       <div part="RhythmSongSelect.fact RhythmSongSelect.label" class="fact" data-layout="stack" data-gap="none"><span class="label">{t("rhythm.songs.lengthLabel")}</span><span class="value" part="RhythmSongSelect.figure">{s.length}</span></div>
-                      <button id="Preview" class="act" variant="ghost" aria-pressed={s.id == previewing} disabled={s.locked} onclick={preview}><kbd class="key" data-action="details"></kbd>{#if s.id == previewing}<div class="eq" data-layout="row" data-gap="none"><div class="bar"></div><div class="bar"></div><div class="bar"></div></div>{/if}<span>{s.id == previewing ? t("rhythm.songs.previewing") : t("rhythm.songs.preview")}</span></button>
+                      <button id="Preview" class="act" variant="ghost" aria-label={s.id == previewing ? t("rhythm.songs.previewing") : t("rhythm.songs.preview")} aria-pressed={s.id == previewing} disabled={s.locked} onclick={preview}><kbd class="key" data-action="details"></kbd>{#if s.id == previewing}<div class="eq" data-layout="row" data-gap="none"><div class="bar"></div><div class="bar"></div><div class="bar"></div></div>{/if}<span>{s.id == previewing ? t("rhythm.songs.previewing") : t("rhythm.songs.preview")}</span></button>
                     </div>
                   </div>
                 </div>
