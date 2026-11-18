@@ -647,6 +647,34 @@
   --role-quest-ink-faint: var(--ink-faint);
   --role-quest-weight: var(--font-weight-bold);
   --role-quest-stamp-radius: var(--radius-capsule);
+  /* A strategy HUD. A plate whose edge is lit in danger (the wave on its
+     way); an empty slot in a production queue or a command card; a unit's
+     health on its card and under the portrait, green, gold when hurt and
+     red when low, each with the bars' sheen; the minimap's camera frame,
+     the HUD's ink over a dark keyline. */
+  --role-hud-plate-alert-rim: inset 0 0 0 var(--stroke-hairline) rgb(255 77 94 / 0.45), inset 0 calc(2 * var(--stroke-hairline)) 0 rgb(255 77 94);
+  /* A surface that wears nothing over the scene (a bare hotkey on a
+     command tile, the tower's band). */
+  --role-hud-bare-fill: transparent;
+  --role-hud-slot-empty: rgb(255 255 255 / 0.12);
+  --role-hud-unit-fill: linear-gradient(180deg, rgb(255 255 255 / 0.45), transparent 50%), rgb(85 227 154);
+  --role-hud-unit-hurt-fill: linear-gradient(180deg, rgb(255 255 255 / 0.45), transparent 50%), rgb(255 207 90);
+  --role-hud-unit-low-fill: linear-gradient(180deg, rgb(255 255 255 / 0.4), transparent 50%), rgb(255 77 94);
+  /* An alert on the minimap: a red ring with a glow. */
+  --role-hud-ping-ring: inset 0 0 0 calc(2 * var(--font-step-px)) rgb(255 77 94), 0 0 calc(8 * var(--font-step-px)) rgb(255 77 94 / 0.9);
+  --role-hud-frustum-rim: inset 0 0 0 calc(2 * var(--stroke-hairline)) rgb(255 255 255), 0 0 0 var(--stroke-hairline) rgb(0 0 0 / 0.6);
+  /* The strategy HUD's type steps: a resource's, a clock's and a
+     countdown's figures, and the selected unit's name; `-compact` is the
+     same on a phone. */
+  --role-hud-size-readout: calc(18 * var(--font-step-px));
+  --role-hud-size-readout-compact: calc(15 * var(--font-step-px));
+  --role-hud-size-unit: calc(20 * var(--font-step-px));
+  --role-hud-size-unit-compact: calc(16 * var(--font-step-px));
+  /* A cooldown's seconds on a command tile, held to a share of the tile
+     (its size container), so at a large text scale they stay on it; the
+     tile's key cap in its corner, a smaller share, clear of the seconds. */
+  --role-hud-size-cooldown: min(calc(24 * var(--font-step-px)), 38cqi);
+  --role-hud-size-keycap: min(calc(12 * var(--font-step-px)), 22cqi);
 
   /* Song and level select (family 8): a pick list that stands over the
      game's own art with no panel behind it. A song is a cut plate of dark
