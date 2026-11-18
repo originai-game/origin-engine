@@ -1,6 +1,6 @@
 <meta name="component" content="Chat">
 <meta name="strings" content="./general.en.ogt">
-<meta name="parts" content="Chat.frame Chat.tab Chat.unread Chat.log Chat.message Chat.sender Chat.time Chat.text Chat.notice Chat.compose Chat.plate Chat.well Chat.label Chat.figure Chat.badge Chat.caption">
+<meta name="parts" content="Chat.frame Chat.tab Chat.unread Chat.log Chat.message Chat.sender Chat.time Chat.text Chat.notice Chat.compose Chat.well Chat.label Chat.figure Chat.badge Chat.caption">
 <meta name="prop:channels" content="list" data-doc="The channels, keyed rows of { id, label, unread }: unread the count the game keeps, 0 hides its badge. Empty shows no tab row.">
 <meta name="prop:channel" content="string" data-doc="The channel shown.">
 <meta name="prop:messages" content="list" data-doc="The shown channel's messages, oldest first: keyed rows of { id, kind, sender, time, text }: kind player, own (the player's) or system; time as the game formats it; text wraps, and a long word breaks.">
@@ -33,7 +33,7 @@
       </div>
     </div>
   </div>{/if}
-  <div part="Chat.log Chat.plate Chat.well" data-layout="scroll" data-from="end" data-gap="none" data-fill role="log" aria-label={t("general.chat.messages")} aria-live="polite">
+  <div part="Chat.well" class="well" data-layout="stack" data-gap="none" data-fill><div part="Chat.log" data-layout="scroll" data-from="end" data-gap="none" data-fill role="log" aria-label={t("general.chat.messages")} aria-live="polite">
     {#if messages.length}
       <ol class="messages" data-layout="stack" data-gap="tight">
         {#each messages as m (m.id)}
@@ -53,7 +53,7 @@
     {:else}
       <p class="empty" role="status">{t("general.chat.empty")}</p>
     {/if}
-  </div>
+  </div></div>
   {#if notice}<p part="Chat.notice Chat.label" role="status">{notice}</p>{/if}
   <form part="Chat.compose" data-layout="row" data-gap="tight" onsubmit={send}>
     <input id="Draft" data-fill type="text" aria-label={t("general.chat.placeholder")} placeholder={t("general.chat.placeholder")} maxlength={maxLength} disabled={!canSend} bind:value={draft}>
@@ -62,25 +62,34 @@
 </section>
 
 <style>
-.tabs { width: stretch; flex: none; }
+.tabs { width: stretch; flex: none; padding-block-end: var(--space-xxs); }
 .tabs-scroll { width: stretch; overflow-x: auto; overflow-y: hidden; min-width: 0; }
-[part="Chat.tab"] { flex: none; min-height: var(--size-touch); padding: 0 var(--space-sm); }
-.tab-label { white-space: nowrap; max-width: calc(var(--size-xxl) * 2.5); overflow: hidden; text-overflow: ellipsis; }
-[part~="Chat.unread"] { margin: 0; min-width: var(--size-xs); text-align: center; }
-[part~="Chat.log"] { width: stretch; }
-.messages { width: stretch; margin: 0; padding: var(--space-xs); list-style: none; }
-[part="Chat.message"] { width: stretch; padding: var(--space-xs) var(--space-sm); }
+/* A channel: a cut tab; the one shown washed and lit gold along its foot. */
+[part="Chat.tab"] { flex: none; min-height: var(--size-touch); padding: 0 var(--space-md); border-radius: 0; color: var(--quest-ink-quiet); clip-path: polygon(var(--quest-cut-sm) 0, 100% 0, 100% calc(100% - var(--quest-cut-sm)), calc(100% - var(--quest-cut-sm)) 100%, 0 100%, 0 var(--quest-cut-sm)); }
+[part="Chat.tab"][aria-selected=true] { color: var(--ink-bright); background: var(--social-tab-on-fill); box-shadow: var(--social-tab-on-rim); }
+.tab-label { white-space: nowrap; max-width: calc(var(--size-xxl) * 2.5); overflow: hidden; text-overflow: ellipsis; font-weight: var(--quest-weight); }
+/* Unread: a gold cut chip with a dark figure. */
+[part~="Chat.unread"] { margin: 0; min-width: var(--size-xs); padding: 0 var(--space-xxs); text-align: center; border-radius: 0; color: var(--quest-gold-ink); background: var(--quest-gold); font-weight: var(--hud-figure-weight); font-variant-numeric: var(--hud-figure-numeric); clip-path: polygon(var(--quest-cut-sm) 0, 100% 0, 100% calc(100% - var(--quest-cut-sm)), calc(100% - var(--quest-cut-sm)) 100%, 0 100%, 0 var(--quest-cut-sm)); }
+/* The log in a dark cut well; the log scrolls inside the well's rim. */
+[part="Chat.log"] { width: stretch; }
+.well { width: stretch; min-height: 0; padding: var(--space-xs) var(--stroke-thin); border-radius: 0; background: var(--quest-well-fill); box-shadow: var(--quest-well-rim); clip-path: polygon(var(--quest-cut) 0, 100% 0, 100% calc(100% - var(--quest-cut)), calc(100% - var(--quest-cut)) 100%, 0 100%, 0 var(--quest-cut)); }
+.messages { width: stretch; margin: 0; padding: var(--space-sm); list-style: none; }
+[part="Chat.message"] { width: stretch; padding: var(--space-xxs) 0; }
 [part="Chat.message"][data-kind=own] { align-items: flex-end; }
-.head { width: stretch; }
+.head { width: stretch; align-items: baseline; }
 [part="Chat.message"][data-kind=own] .head { justify-content: flex-end; }
-[part="Chat.sender Chat.label"] { min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-[part~="Chat.time"] { margin: 0; flex: none; white-space: nowrap; }
-.mark { width: var(--size-xs); height: var(--size-xs); flex: none; }
-[part="Chat.text"] { margin: 0; max-width: stretch; text-align: start; overflow-wrap: anywhere; }
-[part="Chat.sender Chat.label"] { margin: 0; }
-[part="Chat.message"][data-kind=own] [part="Chat.text"] { text-align: end; }
-.empty { margin: 0; padding: var(--space-lg); text-align: center; }
-[part="Chat.notice Chat.label"] { margin: 0; flex: none; }
+[part="Chat.sender Chat.label"] { margin: 0; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-weight: var(--quest-weight); color: var(--social-sender-ink); }
+[part="Chat.sender Chat.label"][data-kind=own] { color: var(--quest-gold); }
+[part="Chat.sender Chat.label"][data-kind=system] { color: var(--quest-ink-quiet); }
+[part~="Chat.time"] { margin: 0; flex: none; white-space: nowrap; color: var(--quest-ink-faint); font-variant-numeric: var(--hud-figure-numeric); }
+.mark { width: var(--size-xs); height: var(--size-xs); flex: none; color: var(--quest-gold); }
+/* A line on a cut chip; the player's own washed gold at the far side; a system line bare and quiet. */
+[part="Chat.text"] { margin: 0; text-align: start; overflow-wrap: anywhere; color: var(--ink-bright); }
+[part="Chat.text"]:not([data-kind=system]) { max-width: 88%; padding: var(--space-xs) var(--space-sm); background: var(--social-line-fill); clip-path: polygon(var(--quest-cut-sm) 0, 100% 0, 100% calc(100% - var(--quest-cut-sm)), calc(100% - var(--quest-cut-sm)) 100%, 0 100%, 0 var(--quest-cut-sm)); }
+[part="Chat.message"][data-kind=own] [part="Chat.text"] { text-align: end; background: var(--social-own-fill); box-shadow: var(--social-own-rim); }
+[part="Chat.message"][data-kind=system] [part="Chat.text"] { max-width: stretch; padding: 0; color: var(--quest-ink-quiet); }
+.empty { margin: 0; padding: var(--space-lg); text-align: center; color: var(--quest-ink-quiet); }
+[part="Chat.notice Chat.label"] { margin: 0; flex: none; color: var(--alert-warn); }
 [part="Chat.compose"] { width: stretch; align-items: stretch; flex: none; }
 #Draft { min-height: var(--size-touch); }
 #Send { flex: none; min-height: var(--size-touch); min-width: var(--size-touch); }

@@ -61,11 +61,11 @@
 
 .level .stage { position: relative; display: flex; flex-direction: column; width: var(--measure-lg); max-width: 100%; min-height: var(--size-7xl); align-items: center; justify-content: center; animation-name: stage; animation-duration: var(--motion-duration-fanfare); animation-timing-function: linear; animation-fill-mode: both; }
 .rays polygon { fill: var(--hud-gold); fill-opacity: var(--opacity-wash); }
-.rays { position: absolute; width: var(--measure-lg); height: var(--measure-lg); animation-name: rays; animation-duration: var(--motion-duration-fanfare); animation-timing-function: linear; animation-fill-mode: both; }
+.rays { position: absolute; width: calc(var(--alert-size-level) * 3.8); height: calc(var(--alert-size-level) * 3.8); animation-name: rays; animation-duration: var(--motion-duration-fanfare); animation-timing-function: linear; animation-fill-mode: both; }
 /* A ring of light that settles round the level and stays lit. */
-.halo { position: absolute; width: calc(var(--alert-size-level) * 2.2); height: calc(var(--alert-size-level) * 2.2); border-radius: var(--radius-capsule); border: var(--stroke-thick) solid var(--hud-gold); box-shadow: var(--alert-rule-glow), inset var(--alert-rule-glow); animation-name: halo; animation-duration: var(--motion-duration-turn); animation-timing-function: var(--motion-easing-out); animation-fill-mode: both; }
+.halo { position: absolute; width: calc(var(--alert-size-level) * 2.2); height: calc(var(--alert-size-level) * 2.2); border-radius: var(--radius-capsule); background: var(--alert-level-shade); border: var(--stroke-thick) solid var(--hud-gold); box-shadow: var(--alert-rule-glow), inset var(--alert-rule-glow); animation-name: halo; animation-duration: var(--motion-duration-turn); animation-timing-function: var(--motion-easing-out); animation-fill-mode: both; }
 /* The word in gold small capitals, the level a large white figure lit gold. */
-.title { position: relative; max-width: 100%; font-size: var(--alert-size-said); font-weight: var(--alert-weight); letter-spacing: var(--hud-label-tracking); text-transform: var(--hud-label-transform); text-align: center; text-wrap: balance; overflow-wrap: anywhere; color: var(--hud-gold); animation-name: title; animation-duration: var(--motion-duration-spring); animation-timing-function: var(--motion-easing-bounce); animation-fill-mode: both; }
+.title { position: relative; max-width: 100%; margin-block-end: var(--space-md); font-size: var(--alert-size-said); font-weight: var(--alert-weight); letter-spacing: var(--hud-label-tracking); text-transform: var(--hud-label-transform); text-align: center; text-wrap: balance; overflow-wrap: anywhere; color: var(--hud-gold); animation-name: title; animation-duration: var(--motion-duration-spring); animation-timing-function: var(--motion-easing-bounce); animation-fill-mode: both; }
 .value { position: relative; font-size: var(--alert-size-level); font-weight: var(--hud-figure-weight); font-stretch: var(--hud-figure-stretch); font-variant-numeric: var(--hud-figure-numeric); line-height: var(--font-leading-flat); white-space: nowrap; color: var(--hud-ink); text-shadow: var(--alert-rule-glow); animation-name: value; animation-duration: var(--motion-duration-base); animation-timing-function: var(--motion-easing-out); animation-delay: var(--motion-duration-base); animation-fill-mode: both; }
 .rise { position: absolute; bottom: var(--space-xxl); width: var(--measure-sm); height: var(--space-xs); }
 
@@ -83,5 +83,5 @@
   .rays { display: none; }
   .halo, .title, .value { animation: none; }
 }
-@media (width < 600px) { .value { font-size: var(--alert-size-level-compact); } .halo { width: calc(var(--alert-size-level-compact) * 2.2); height: calc(var(--alert-size-level-compact) * 2.2); } }
+@media (width < 600px) { .value { font-size: var(--alert-size-level-compact); } .halo { width: calc(var(--alert-size-level-compact) * 2.2); height: calc(var(--alert-size-level-compact) * 2.2); } .rays { width: calc(var(--alert-size-level-compact) * 3.8); height: calc(var(--alert-size-level-compact) * 3.8); } }
 </style>

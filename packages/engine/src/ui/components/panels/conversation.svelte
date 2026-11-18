@@ -52,24 +52,36 @@
 
 <style>
 :host { flex-flow: row wrap; overflow-y: auto; }
+/* The band: cut glass lit gold along its top. */
+[part="RpgConversation.frame"] { border-radius: 0; background: var(--social-band-fill); box-shadow: var(--social-band-rim); clip-path: polygon(var(--quest-cut) 0, 100% 0, 100% calc(100% - var(--quest-cut)), calc(100% - var(--quest-cut)) 100%, 0 100%, 0 var(--quest-cut)); }
 .portrait { width: calc(var(--size-xxl) * 1.9); height: stretch; object-fit: cover; object-position: center top; flex: none; }
 .said { width: 42%; padding: var(--space-md) 0; flex: none; }
-[part~="RpgConversation.name"], .line { margin: 0; }
-.line { display: block; }
+/* The speaker on a gold plate, its far end cut. */
+[part~="RpgConversation.name"] { margin: 0; align-self: flex-start; max-width: stretch; padding: var(--space-xxs) var(--space-lg) var(--space-xxs) var(--space-sm); overflow-wrap: anywhere; font-weight: var(--quest-weight); font-variant-caps: var(--alert-speaker-caps); letter-spacing: var(--hud-label-tracking); color: var(--quest-gold-ink); background: var(--social-nameplate-fill); clip-path: polygon(0 0, 100% 0, calc(100% - var(--quest-cut)) 100%, 0 100%); }
+.line { display: block; margin: 0; font-size: var(--social-size-line); font-weight: var(--quest-weight); color: var(--ink-bright); }
 [part="RpgConversation.controls"] button { min-block-size: var(--size-touch); }
-.replies { margin: 0; padding: var(--space-md) 0; list-style: none; }
+[part="RpgConversation.auto"][aria-pressed=true] { color: var(--quest-gold); box-shadow: var(--quest-ready-rim); }
+.replies { margin: 0; padding: var(--space-md) 0; list-style: none; justify-content: center; }
 .reply-item { width: stretch; }
-[part="RpgConversation.row"] { width: stretch; min-height: var(--size-touch); justify-content: flex-start; padding: var(--space-xs) var(--space-md); }
-[part="RpgConversation.row"] .face { width: stretch; }
-.reply-number { flex: none; }
-.reply-text { text-align: start; }
-.reply-mark { width: var(--space-lg); height: var(--space-lg); flex: none; visibility: hidden; }
+/* A reply: a cut row, its key in a gold keyline; the one in focus washed
+   gold with its key filled; a reply used grey with a faint key. */
+[part="RpgConversation.row"] { width: stretch; min-height: var(--size-touch); justify-content: flex-start; padding: var(--space-xs) var(--space-md); border-radius: 0; background: var(--social-line-fill); box-shadow: var(--quest-entry-rim); clip-path: polygon(var(--quest-cut) 0, 100% 0, 100% calc(100% - var(--quest-cut)), calc(100% - var(--quest-cut)) 100%, 0 100%, 0 var(--quest-cut)); }
+[part="RpgConversation.row"]:hover { background: var(--quest-entry-fill); }
+[part="RpgConversation.row"][aria-selected=true] { background: var(--quest-selected-fill); box-shadow: var(--quest-selected-rim); }
+[part="RpgConversation.row"] .face { width: stretch; align-items: center; }
+.reply-number { flex: none; min-inline-size: var(--size-sm); padding: 0 var(--space-xxs); text-align: center; font-weight: var(--hud-figure-weight); font-variant-numeric: var(--hud-figure-numeric); color: var(--quest-gold); background: var(--quest-chip-fill); box-shadow: var(--social-key-rim); }
+[part="RpgConversation.row"][aria-selected=true] .reply-number { color: var(--quest-gold-ink); background: var(--quest-gold); }
+[part="RpgConversation.row"][data-used=true] { color: var(--quest-ink-faint); }
+[part="RpgConversation.row"][data-used=true] .reply-number { color: var(--quest-ink-faint); }
+.reply-text { text-align: start; overflow-wrap: anywhere; }
+.reply-mark { width: var(--space-sm); height: var(--space-sm); flex: none; visibility: hidden; rotate: 45deg; background: var(--quest-gold); box-shadow: var(--quest-mark-lit); }
 [part="RpgConversation.row"][aria-selected=true] .reply-mark { visibility: visible; }
 @media (pointer: fine) and (width >= 600px) { [part="RpgConversation.row"] { min-height: calc(var(--size-touch) * 0.8); } .replies { padding: var(--space-sm) 0; } }
 .go { align-items: flex-end; justify-content: flex-end; padding: var(--space-md); }
 @container (width < 720px) {
   .portrait { width: var(--size-xxl); height: var(--size-xxl); }
   .said { width: stretch; flex: 1; padding: 0; }
+  .line { font-size: var(--social-size-line-compact); }
   .replies, .go { padding: 0; flex-basis: 100%; }
 }
 </style>

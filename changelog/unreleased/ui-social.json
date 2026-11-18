@@ -1,0 +1,26 @@
+{
+  "added": [
+    {
+      "member": "Chat",
+      "summary": "Channels are cut tabs, the one shown washed and lit gold along its foot, an unread count a gold cut chip; the log sits in a dark cut well (Chat.plate and Chat.well now name the well around the scrolling Chat.log, so a scrolled line clips inside its rim); each line is a cut chip, the player's own washed gold at the far side, another player's name in the info colour, a system line bare and quiet beside a gold bolt; the notice reads in the warn amber."
+    },
+    {
+      "member": "Friends",
+      "summary": "Section headings are gold small capitals; a request is a cut card washed gold with its avatar in a gold socket and Accept on the reward's gold face; a friend is a cut row, the chosen one washed gold with a gold bar; presence is a diamond in its tone at the avatar's foot and the status reads in that tone. Away and offline dim the avatar and its mark, never the name. The title keeps its words whole and Add friend wraps under it when both do not fit."
+    },
+    {
+      "member": "RpgConversation",
+      "summary": "The band is cut glass lit gold along its top; the speaker sits on a gold plate in small capitals over the line in a larger white type step (a phone step under 720 px); each reply is a cut row with its number in a gold keyline, the one in focus washed gold with its number filled and a lit gold diamond, a used reply grey; Auto when on is lit gold. The reply number no longer carries a trailing full stop."
+    },
+    {
+      "member": "RpgConversationBacklog",
+      "summary": "Lines are cut cards with the speaker in gold small capitals, narration quiet and in italics, and the line replaying washed gold with a gold bar; the title keeps its words whole and Close wraps under it when both do not fit."
+    }
+  ],
+  "fixed": [
+    {
+      "member": "Celebration",
+      "summary": "A level up's rays stop at the ring: an opaque shade fills the ring, so the word and the figure read on clear ground, and the word stands clear of the figure."
+    }
+  ]
+}

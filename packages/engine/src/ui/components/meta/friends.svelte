@@ -50,7 +50,7 @@
           {#each friends as f (f.id)}
             <li class="friend" data-layout="row">
               <button part="Friends.row" data-fill data-status={f.status} data-selected={f.id == selected} aria-current={f.id == selected ? 'true' : 'false'} aria-label={f.name} onclick={choose}><div class="face" data-layout="row">
-                <div part="Friends.avatar Friends.picture Friends.well" data-layout="row" data-gap="none" data-status={f.status}><og-icon class="avatar-icon" icon={f.avatar}></og-icon><div part="Friends.presence Friends.well Friends.dot" class="presence" data-tone={f.status == 'online' ? 'success' : f.status == 'ingame' ? 'info' : f.status == 'away' ? 'warn' : ''} data-status={f.status}></div></div>
+                <div class="avatar-wrap" data-status={f.status}><div part="Friends.avatar Friends.picture Friends.well" data-layout="row" data-gap="none" data-status={f.status}><og-icon class="avatar-icon" icon={f.avatar}></og-icon></div><div part="Friends.presence Friends.well Friends.dot" class="presence" data-tone={f.status == 'online' ? 'success' : f.status == 'ingame' ? 'info' : f.status == 'away' ? 'warn' : ''} data-status={f.status}></div></div>
                 <div class="who" data-layout="stack" data-gap="none" data-fill>
                   <p part="Friends.name Friends.headline">{f.name}</p>
                   <div class="line" data-layout="row"><p part="Friends.status Friends.label" data-status={f.status}>{f.status == 'ingame' ? t("general.friends.ingame") : f.status == 'online' ? t("general.friends.online") : f.status == 'away' ? t("general.friends.away") : t("general.friends.offline")}</p>{#if f.activity}<span part="Friends.caption" class="activity">{f.activity}</span>{/if}</div>
@@ -70,27 +70,46 @@
 <style>
 :host p { margin: 0; }
 [part="Friends.band"] { width: stretch; flex: none; }
-[part="Friends.title"] { margin: 0; }
-#Add { flex: none; margin-inline-start: auto; min-height: var(--size-touch); }
+/* The title keeps its words whole and takes its own width first: Add
+   friend wraps under it when both do not fit. */
+[part="Friends.title"] { margin: 0; flex: 1 1 auto; }
+#Add { flex: none; min-height: var(--size-touch); }
 .mark { width: var(--size-xs); height: var(--size-xs); flex: none; }
 .section { width: stretch; }
-[part="Friends.heading"] { margin: 0; padding: var(--space-xxs) var(--space-sm); }
+/* A section's heading: gold small capitals after a short gold rule. */
+[part="Friends.heading"] { margin: 0; padding: var(--space-xxs) var(--space-xs); font: var(--caption-text); font-weight: var(--quest-weight); letter-spacing: var(--hud-label-tracking); text-transform: var(--hud-label-transform); color: var(--quest-gold); }
 .rows { width: stretch; margin: 0; padding: 0; list-style: none; }
 [part~="Friends.request"], .friend { width: stretch; }
-[part~="Friends.request"] { padding: var(--space-xs) var(--space-sm); }
-button[part="Friends.row"] { min-height: var(--size-touch); padding: var(--space-xs) var(--space-sm); justify-content: flex-start; }
+/* A request: a cut card washed gold, Accept on the reward's gold face. */
+[part~="Friends.request"] { padding: var(--space-xs) var(--space-sm); background: var(--quest-ready-fill); box-shadow: var(--quest-ready-rim); clip-path: polygon(var(--quest-cut) 0, 100% 0, 100% calc(100% - var(--quest-cut)), calc(100% - var(--quest-cut)) 100%, 0 100%, 0 var(--quest-cut)); }
+#Accept { --button-primary-fill: var(--quest-claim-fill); --button-primary-hover-fill: var(--quest-claim-hover-fill); --button-primary-pressed-fill: var(--quest-claim-fill); --button-primary-ink: var(--quest-gold-ink); --button-primary-shadow: var(--quest-claim-shadow); }
+/* A friend: a cut row; the one chosen washed gold with a gold bar. */
+button[part="Friends.row"] { min-height: var(--size-touch); padding: var(--space-xs) var(--space-sm); justify-content: flex-start; border-radius: 0; background: none; box-shadow: none; clip-path: polygon(var(--quest-cut) 0, 100% 0, 100% calc(100% - var(--quest-cut)), calc(100% - var(--quest-cut)) 100%, 0 100%, 0 var(--quest-cut)); }
+button[part="Friends.row"]:hover { background: var(--quest-entry-fill); }
+button[part="Friends.row"][data-selected=true] { background: var(--quest-selected-fill); box-shadow: var(--quest-selected-rim); }
 [part="Friends.row"] .face { width: stretch; }
-[part~="Friends.avatar"] { position: relative; flex: none; width: var(--size-lg); height: var(--size-lg); justify-content: center; --well-radius: var(--avatar-radius); --picture-radius: var(--avatar-radius); }
+/* The avatar in a round socket with a lit edge (a pack squares it through
+   its avatar radius); gold on a request. */
+[part~="Friends.avatar"] { flex: none; width: var(--size-lg); height: var(--size-lg); justify-content: center; background: var(--quest-socket-fill); box-shadow: var(--quest-well-rim); --well-radius: var(--avatar-radius); --picture-radius: var(--avatar-radius); color: var(--ink-bright); }
+[part~="Friends.request"] [part~="Friends.avatar"] { background: var(--quest-socket-gold-fill); box-shadow: var(--quest-well-ready-rim); color: var(--quest-gold); }
 .avatar-icon { width: var(--size-sm); height: var(--size-sm); }
-.presence { --dot-fill: currentColor; position: absolute; inset-inline-end: 0; bottom: 0; width: var(--space-md); height: var(--space-md); }
+.avatar-wrap { position: relative; flex: none; }
+/* Presence: a diamond in its tone at the socket's foot. */
+.presence { position: absolute; inset-inline-end: calc(-1 * var(--stroke-thin)); bottom: calc(-1 * var(--stroke-thin)); width: var(--space-sm); height: var(--space-sm); border-radius: 0; rotate: 45deg; --dot-fill: currentColor; box-shadow: var(--quest-well-rim); }
 .presence[data-status=offline] { --dot-fill: var(--ink-disabled); }
-[part~="Friends.name"] { text-align: start; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+/* Away or offline: the avatar and its mark dim; the name keeps its ink. */
+.avatar-wrap[data-status=away] [part~="Friends.avatar"], .avatar-wrap[data-status=offline] [part~="Friends.avatar"], .avatar-wrap[data-status=offline] .presence { opacity: var(--social-off-opacity); }
+[part~="Friends.name"] { text-align: start; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--ink-bright); }
 .line { width: stretch; align-items: baseline; }
-[part="Friends.status Friends.label"] { flex: none; white-space: nowrap; }
-.activity, .note { min-width: 0; text-align: start; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+[part="Friends.status Friends.label"] { flex: none; white-space: nowrap; font-weight: var(--quest-weight); }
+[part="Friends.status Friends.label"][data-status=online] { color: var(--tone-success); }
+[part="Friends.status Friends.label"][data-status=ingame] { color: var(--tone-info); }
+[part="Friends.status Friends.label"][data-status=away] { color: var(--alert-warn); }
+[part="Friends.status Friends.label"][data-status=offline] { color: var(--quest-ink-quiet); }
+.activity, .note { min-width: 0; text-align: start; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--quest-ink-quiet); }
 .actions { flex: none; margin-inline-start: auto; }
 .actions button, #Invite { flex: none; min-height: var(--size-touch); min-width: var(--size-touch); }
-.empty { width: stretch; align-items: center; padding: var(--space-xl) 0; }
+.empty { width: stretch; align-items: center; padding: var(--space-xl) 0; color: var(--quest-ink-quiet); }
 .empty-mark { width: var(--size-lg); height: var(--size-lg); }
 .empty-text { margin: 0; }
 @container (width < 400px) { .action-label { display: none; } }

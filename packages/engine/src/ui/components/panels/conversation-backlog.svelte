@@ -18,8 +18,8 @@
   <div part="RpgConversationBacklog.lines" data-layout="scroll" data-gap="loose" data-fill role="log" aria-label={t("rpg.talk.history")}>
     {#if hasOlder}<button part="RpgConversationBacklog.older" disabled={loading} onclick={older}>{t("rpg.talk.older")}</button>{/if}
     {#each lines as entry (entry.id)}<article part="RpgConversationBacklog.row" data-layout="stack" data-selected={entry.id == playing} data-playing={entry.id == playing}>
-      <h3 part="RpgConversationBacklog.speaker RpgConversationBacklog.headline">{entry.speaker || t("rpg.talk.narration")}</h3>
-      <p part="RpgConversationBacklog.text">{entry.text}</p>
+      <h3 part="RpgConversationBacklog.speaker RpgConversationBacklog.headline" data-narration={!entry.speaker}>{entry.speaker || t("rpg.talk.narration")}</h3>
+      <p part="RpgConversationBacklog.text" data-narration={!entry.speaker}>{entry.text}</p>
       {#if entry.id == playing}<button part="RpgConversationBacklog.stop" onclick={stop}>{t("rpg.talk.stop")}</button>
       {:else if entry.canReplay}<button part="RpgConversationBacklog.replay" disabled={loading} onclick={replay}>{t("rpg.talk.replay", { speaker: entry.speaker || t("rpg.talk.narration") })}</button>{/if}
     </article>{/each}
@@ -31,7 +31,17 @@
 :host { inline-size: stretch; block-size: stretch; }
 h2, h3, p { margin: 0; }
 [part="RpgConversationBacklog.header"] { flex: none; }
-[part="RpgConversationBacklog.row"] { flex: none; padding: var(--space-md); }
+[part="RpgConversationBacklog.title"] { flex: 1 1 auto; }
+/* A line: a cut card; the speaker in gold small capitals, narration
+   quiet and in italics; the line replaying washed gold with a gold bar. */
+[part="RpgConversationBacklog.row"] { flex: none; padding: var(--space-sm) var(--space-md); background: var(--quest-entry-fill); box-shadow: var(--quest-entry-rim); clip-path: polygon(var(--quest-cut) 0, 100% 0, 100% calc(100% - var(--quest-cut)), calc(100% - var(--quest-cut)) 100%, 0 100%, 0 var(--quest-cut)); }
+[part="RpgConversationBacklog.row"][data-playing=true] { background: var(--quest-ready-fill); box-shadow: var(--quest-ready-rim); }
+[part~="RpgConversationBacklog.speaker"] { overflow-wrap: anywhere; font: var(--caption-text); font-weight: var(--quest-weight); font-variant-caps: var(--alert-speaker-caps); letter-spacing: var(--hud-label-tracking); color: var(--quest-gold); }
+[part~="RpgConversationBacklog.speaker"][data-narration=true] { color: var(--quest-ink-quiet); }
+[part="RpgConversationBacklog.text"] { overflow-wrap: anywhere; color: var(--ink-bright); }
+[part="RpgConversationBacklog.text"][data-narration=true] { font-style: var(--social-narration-style); color: var(--quest-ink-quiet); }
 button { min-block-size: var(--size-touch); }
 [part="RpgConversationBacklog.replay"], [part="RpgConversationBacklog.stop"] { align-self: flex-start; }
+[part="RpgConversationBacklog.older"] { flex: none; align-self: center; }
+[part~="RpgConversationBacklog.empty"] { padding: var(--space-lg); text-align: center; color: var(--quest-ink-quiet); }
 </style>
