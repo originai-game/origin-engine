@@ -1984,8 +1984,14 @@ that suits them: `system-ui` and `ui-sans-serif` the style's body face,
 first, over it the wider), then `font-style`, then `font-weight`, and per
 character the last-declared face whose `unicode-range` has it. After the list come the role's face, the CJK
 companion, the locale's and the game's fonts. A missing weight or slant is
-synthesised: a computed weight of 600 or more whose face is lighter than
-600 is thickened and drawn again one device pixel right, in place of the
+synthesised per face, not per family list: a real bold or italic Latin
+face does not suppress synthesis in a regular CJK fallback, and a regular
+Latin face does not add synthesis to a fallback that supplies it. A
+computed weight of 600 or more whose face is lighter than
+600 is thickened with FreeType/Skia's 1/24-em synthetic growth and drawn
+again one device pixel right. As in Skia, synthesis grows the ink, not
+glyph advances or tracking, so wrapping uses the regular face's advances.
+It takes the place of the
 style's `textWeight` (a style that wants its own sets
 `font-synthesis-weight: none`). A variable face (one whose file has
 `fvar` and renders at run time) is drawn at an instance (Fonts 4 §7.2):

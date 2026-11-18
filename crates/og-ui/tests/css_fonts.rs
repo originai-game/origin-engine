@@ -288,6 +288,119 @@ fn font_weight_picks_the_face_and_synthesises_a_missing_bold() {
     assert!(!synthesised("Snone"), "font-synthesis-weight: none");
 }
 
+/// A real bold Latin face must not suppress synthesis in a regular CJK
+/// fallback, nor may a regular Latin face embolden a real bold fallback.
+/// This applies per run, not once for the first family in the CSS list.
+#[test]
+fn font_synthesis_uses_each_fallback_faces_weight() {
+    let d = doc(
+        vec![
+            family("LatinBold", (700, 700), face(NOTO, 2)),
+            family("CjkRegular", (400, 400), face(CJK, 3)),
+            family("LatinRegular", (400, 400), face(NOTO, 4)),
+            family("CjkBold", (700, 700), face(CJK, 5)),
+        ],
+        r#"<p id="Cjk">水</p><p id="Mixed">A水</p><p id="Rich">水A</p>
+<p id="None">A水</p><p id="Regular">A水</p><p id="Reverse">A水</p>
+<p id="Width">任务完成！</p><p id="WidthBase">任务完成！</p>"#,
+        r#"#Root { font-family: "LatinBold", "CjkRegular"; font-weight: 700; }
+p { font-size: 48px; }
+#Rich { text-decoration: underline; }
+#None { font-synthesis: none; } #Regular { font-weight: 400; }
+#Reverse { font-family: "LatinRegular", "CjkBold"; }
+#Width, #WidthBase { width: max-content; letter-spacing: 2px; }
+#WidthBase { font-weight: 400; }"#,
+    );
+    for (id, regular, bold) in [
+        ("Cjk", Some(3), None),
+        ("Mixed", Some(3), Some(2)),
+        ("Rich", Some(3), Some(2)),
+        ("None", None, Some(2)),
+        ("Regular", None, Some(2)),
+        ("Reverse", Some(4), Some(5)),
+    ] {
+        let commands = drawn(&d, id);
+        for slot in [2, 3, 4, 5] {
+            let run: Vec<_> = commands
+                .iter()
+                .filter(|c| c.font == FontHandle::from_index(slot))
+                .collect();
+            if regular == Some(slot) {
+                assert_eq!(run.len(), 2, "#{id}: missing fallback bold: {commands:?}");
+                // FreeType's 1/24 em growth is 2px here; the 1px copy
+                // leaves 0.5px on each side of the SDF, not a real-bold
+                // face's larger stem difference that closes CJK counters.
+                assert!((run[0].weight - 0.5).abs() < 1e-3, "#{id}: {run:?}");
+                assert_eq!(run[0].weight, run[1].weight);
+            } else if bold == Some(slot) || slot == 3 && matches!(id, "None" | "Regular") {
+                assert_eq!(run.len(), 1, "#{id}: real face drawn once: {commands:?}");
+            } else {
+                assert!(run.is_empty(), "#{id}: wrong face: {commands:?}");
+            }
+        }
+    }
+    // Skia emboldens ink, not advances. Authored spacing remains, but
+    // neither synthetic tracking nor an extra trailing advance is added.
+    assert!(
+        (d.get("Width").width - d.get("WidthBase").width).abs() < 1e-3,
+        "synthetic bold width {} differs from regular {}",
+        d.get("Width").width,
+        d.get("WidthBase").width,
+    );
+
+    let d = doc(
+        vec![
+            FamilyFace {
+                style: FaceStyle::Italic,
+                ..family("LatinItalic", (400, 400), face(NOTO, 2))
+            },
+            family("CjkRegular", (400, 400), face(CJK, 3)),
+        ],
+        r#"<p id="Slant">A水</p><p id="Off">A水</p>"#,
+        r#"#Root { font-family: "LatinItalic", "CjkRegular"; font-style: italic; }
+#Off { font-synthesis-style: none; }"#,
+    );
+    for (id, slanted) in [("Slant", true), ("Off", false)] {
+        let r = d.get(id);
+        let commands: Vec<_> = d
+            .ui
+            .frame()
+            .items
+            .iter()
+            .filter_map(|it| {
+                let (cmd, shear) = match &it.cmd {
+                    DrawCmd::StyledText { text, effects } => (&**text, effects.transform[2]),
+                    cmd => (cmd, 0.0),
+                };
+                match cmd {
+                    DrawCmd::Text { font, bounds, .. }
+                        if (r.y..r.y + r.height).contains(&(bounds.y + bounds.height / 2.0)) =>
+                    {
+                        Some((*font, shear))
+                    }
+                    _ => None,
+                }
+            })
+            .collect();
+        assert!(
+            commands
+                .iter()
+                .any(|&(f, shear)| f == FontHandle::from_index(3) && (shear != 0.0) == slanted),
+            "#{id}: {commands:?}"
+        );
+        assert!(
+            commands
+                .iter()
+                .any(|(f, _)| *f == FontHandle::from_index(2))
+                && commands
+                    .iter()
+                    .filter(|(f, _)| *f == FontHandle::from_index(2))
+                    .all(|(_, shear)| *shear == 0.0),
+            "#{id}: no double-slanted Latin face"
+        );
+    }
+}
+
 /// CSS Fonts 4 §5.2 step 4a: a face whose width range holds the text's
 /// width; else, at or under 100 %, the narrower faces nearest first and
 /// then the wider; over 100 %, the wider then the narrower. `font-width`

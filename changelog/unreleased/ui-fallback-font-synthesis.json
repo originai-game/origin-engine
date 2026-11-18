@@ -1,0 +1,6 @@
+{
+  "fixed": [{
+    "member": "UI font-synthesis",
+    "summary": "Font-family lists synthesize missing bold and oblique per fallback face, so a real bold or italic Latin font no longer leaves regular CJK text underweight or upright. Synthetic bold uses FreeType/Skia's 1/24-em growth to preserve small counters without changing glyph advances or adding tracking. Mixed text preserves real styled faces and font-synthesis opt-outs."
+  }]
+}

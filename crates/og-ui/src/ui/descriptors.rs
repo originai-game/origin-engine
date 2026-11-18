@@ -298,9 +298,14 @@ pub struct Fonts {
 
 type FamilySelection = (u32, usize, FontQuery);
 
-/// A family list's face for a query, what it synthesises, and the weight
-/// and width it is drawn at.
-type ResolvedFamily = (UiFont, Synth, (u16, u16));
+/// A family list for a query, each face's synthesis, and the primary
+/// face's matched weight and width.
+#[derive(Clone, Debug, PartialEq)]
+struct ResolvedFamily {
+    font: UiFont,
+    synthesis: Vec<Synth>,
+    at: (u16, u16),
+}
 
 /// One entry in an ordered CSS font-family list. Quoted generic names are named families.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -1085,7 +1090,6 @@ impl Fonts {
                 let key = (family.id(), family.fallback_index(), query);
                 let resolved = self.family_lists.fonts.get(&key).unwrap_or_else(|| {
                     let mut fonts = Vec::new();
-                    let mut synth = Synth::default();
                     let mut at = (0, FontQuery::NORMAL_WIDTH);
                     let mut rendered = false;
                     for name in names {
@@ -1112,19 +1116,24 @@ impl Fonts {
                         };
                         let renders = set.iter().any(|f| f.handle.is_some());
                         if fonts.is_empty() || (!rendered && renders) {
-                            synth = Synth {
-                                bold: needs_bold(weight, got),
-                                italic: italic && !slanted,
-                                ..Synth::default()
-                            };
                             at = (got, width);
                         }
                         rendered |= renders;
-                        fonts.extend(set.into_iter().map(UiFont::alone));
+                        fonts.extend(set.into_iter().map(|font| {
+                            let synth = match name {
+                                FontFamily::Named(_) => Synth {
+                                    bold: needs_bold(weight, got),
+                                    italic: italic && !slanted,
+                                    ..Synth::default()
+                                },
+                                _ => self.fallback_synthesis(font, query),
+                            };
+                            (font.alone(), synth)
+                        }));
                     }
                     let generic = family.fallback();
                     if rendered {
-                        fonts.retain(|f| f.handle.is_some());
+                        fonts.retain(|(f, _)| f.handle.is_some());
                     }
                     fonts.extend(
                         std::iter::once(self.latin(generic, weight, italic).0)
@@ -1134,19 +1143,31 @@ impl Fonts {
                             .chain(self.fallback.as_ref())
                             .chain(std::iter::once(&self.body))
                             .filter(|f| !rendered || f.handle.is_some())
-                            .map(UiFont::alone),
+                            .map(|f| (f.alone(), self.fallback_synthesis(f, query))),
                     );
-                    let mut font = fonts.remove(0);
+                    let synthesis = fonts.iter().map(|(_, s)| *s).collect();
+                    let mut font = fonts.remove(0).0;
                     // Preserve CSS family order when instancing clears a
                     // variable face's default-location atlas. A later
                     // cooked face must not displace its runtime glyphs.
                     font.metrics.prefer = fonts.len();
-                    font.metrics.runs = Some(fonts.into());
-                    self.family_lists
-                        .fonts
-                        .insert(key, Box::new((font, synth, at)))
+                    font.metrics.runs = Some(fonts.into_iter().map(|(f, _)| f).collect());
+                    self.family_lists.fonts.insert(
+                        key,
+                        Box::new(ResolvedFamily {
+                            font,
+                            synthesis,
+                            at,
+                        }),
+                    )
                 });
-                return (&resolved.0, resolved.1, resolved.2);
+                let k = resolved
+                    .font
+                    .metrics
+                    .font_runs(text)
+                    .first()
+                    .map_or(0, |(_, k)| *k);
+                return (&resolved.font, resolved.synthesis[k], resolved.at);
             }
             let (set, (got, width), slanted) = self.family_set(family, query);
             let Some(first) = set.first() else {
@@ -1184,6 +1205,50 @@ impl Fonts {
         };
         let face = self.resolve(f, self.companion_styled(role, weight), text, query.emoji);
         (face, synth, (got, query.stretch))
+    }
+
+    /// Synthesis for a role, locale or fallback face appended to a CSS
+    /// family list. Named families retain their matched descriptors above;
+    /// these faces instead use the style's registered weights.
+    fn fallback_synthesis(&self, font: &UiFont, query: FontQuery) -> Synth {
+        let same = |f: &UiFont| std::ptr::eq(f, font);
+        let (weight, slanted) = self
+            .faces
+            .iter()
+            .find(|f| same(&f.font))
+            .map(|f| (f.weight, f.italic))
+            .unwrap_or_else(|| {
+                let slot = [
+                    Some(&self.body),
+                    self.display.as_ref(),
+                    self.mono.as_ref(),
+                    None,
+                    self.cjk.as_ref(),
+                    self.cjk_display.as_ref(),
+                ]
+                .iter()
+                .position(|f| f.is_some_and(same));
+                (slot.map_or(400, |i| self.weight(i)), false)
+            });
+        let weight = font
+            .metrics
+            .file
+            .as_ref()
+            .and_then(|file| file.axes().iter().find(|axis| axis.tag == *b"wght"))
+            .map_or(weight, |axis| {
+                f32::from(if query.weight == 0 {
+                    weight
+                } else {
+                    query.weight
+                })
+                .clamp(axis.min, axis.max)
+                .round() as u16
+            });
+        Synth {
+            bold: needs_bold(query.weight, weight),
+            italic: query.italic && !slanted,
+            ..Synth::default()
+        }
     }
 
     /// The weight of the `i`-th face of body, display, mono, fallback, cjk

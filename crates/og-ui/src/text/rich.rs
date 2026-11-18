@@ -428,38 +428,20 @@ pub(crate) fn span_width(s: &RichSpan, text: &str, fonts: &dyn Metrics) -> f32 {
         None => {}
     }
     let m = fonts.metrics_styled(s.font, s.query(), text);
-    m.measure_tracked(text, s.step.size, span_tracking(s, text)) + bold_overhang(s, text)
+    m.measure_tracked(text, s.step.size, span_tracking(s, text))
 }
 
-/// A span's tracking (em): its step's, and for a bold run [`BOLD_GROWTH`]
-/// more per glyph, as a bold face's advance grows by about its added stem: its letters stay apart without reading letter-spaced. A
-/// shaped run takes none (its joins would break). Either keeps
-/// [`bold_overhang`] after it.
+/// Authored tracking (em). Synthetic bold grows ink only, as Skia does:
+/// it must not add advances, tracking or trailing room to the run.
 pub(crate) fn span_tracking(s: &RichSpan, text: &str) -> f32 {
-    let step = crate::layout::step_tracking(&s.step, text);
-    if s.synth.bold && !text.chars().any(og_i18n::needs_shaping) {
-        step + BOLD_GROWTH
-    } else {
-        step
-    }
+    crate::layout::step_tracking(&s.step, text)
 }
 
-/// How far a bold span's ink reaches past its advance (CSS px): the
-/// shader's thickening ([`bold_weight`]) and the second copy, one device
-/// pixel to the right (at most 1 px). Reserved after each bold run, so the
-/// space after it does not close up.
-fn bold_overhang(s: &RichSpan, text: &str) -> f32 {
-    if s.synth.bold && !text.trim().is_empty() {
-        bold_weight(s.step.size, 1.0) + 1.0
-    } else {
-        0.0
-    }
-}
-
-/// How much wider a bold face's stems are than its regular's, em (Noto
-/// Sans: 0.092 em to 0.148 em). A faux bold heavier than that closes the
-/// counters of an `a` or an `A`.
-const BOLD_GROWTH: f32 = 0.056;
+/// Synthetic outline growth in em, as in FreeType's
+/// FT_GlyphSlot_Embolden and Skia's SkScalerContext_FreeType::emboldenIfNeeded
+/// (src/ports/SkFontHost_FreeType.cpp, BSD-3-Clause). Using the difference
+/// between a real bold and regular face instead overfills small counters.
+const BOLD_GROWTH: f32 = 1.0 / 24.0;
 
 /// A bold span's thickening at `size`, each side, when its second copy is
 /// `smear` to the right (both in the text's units): together they grow its
@@ -1055,8 +1037,7 @@ fn visual_segments(
             }
             let mut glyphs = m.run(piece_text, rtl, tracking, 0);
             glyphs.retain(|g| !og_i18n::is_bidi_control(g.ch));
-            let width = glyphs.iter().map(|g| g.advance).sum::<f32>() * s.step.size
-                + bold_overhang(s, piece_text);
+            let width = glyphs.iter().map(|g| g.advance).sum::<f32>() * s.step.size;
             out.push(Segment {
                 span: p.span,
                 text: piece_text.to_string(),

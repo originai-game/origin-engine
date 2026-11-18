@@ -468,7 +468,7 @@ impl Ui {
             }
             Content::Text(tc) => {
                 let tc = n.used_text(tc);
-                let (font, synth) = self.env.fonts.for_styled(tc.font, tc.query(), &tc.text);
+                let (font, _) = self.env.fonts.for_styled(tc.font, tc.query(), &tc.text);
                 if font.handle.is_some() {
                     let m = &font.metrics;
                     let sk = n.placed.scale;
@@ -647,7 +647,6 @@ impl Ui {
                         let bounds = Rect::new(x, ly, line.width * sk, lh);
                         let role = tc.font.effect_index();
                         let tracking = tc.tracking();
-                        let (weight, smear) = self.plain_weight(&tc, synth, sk, true);
                         // A style's text glow: the font's distance field, under the glyphs.
                         let glow = t.art.text_glows[role].map(|g| {
                             let c = g
@@ -663,36 +662,38 @@ impl Ui {
                                     glow,
                                     text_clip: Rect,
                                     cmds: &mut Vec<DrawCmd>| {
-                            let copies = if smear > 0.0 {
-                                &[smear, 0.0][..]
-                            } else {
-                                &[0.0][..]
-                            };
-                            for (pc, &sx) in pieces
-                                .iter()
-                                .flat_map(|pc| copies.iter().map(move |sx| (pc, sx)))
-                            {
+                            for pc in &pieces {
                                 let Some(font) = pc.font else { continue };
-                                let ox = pc.dx * size + sx;
-                                cmds.push(DrawCmd::Text {
-                                    x: snap(x + dx) + ox,
-                                    baseline: snap(baseline + dy),
-                                    size: size * pc.scale,
-                                    text: pc.text.clone(),
-                                    color: color.fade(alpha).linear(),
-                                    font,
-                                    bounds: Rect::new(
-                                        bounds.x + dx + ox,
-                                        bounds.y + dy,
-                                        if one { bounds.width } else { pc.width * size },
-                                        bounds.height,
-                                    ),
-                                    clip: text_clip,
-                                    tracking: tracking / pc.scale,
-                                    weight,
-                                    glow,
-                                    placements: pc.placements.clone(),
-                                });
+                                let (_, synth) =
+                                    self.env.fonts.for_styled(tc.font, tc.query(), &pc.text);
+                                let (weight, smear) = self.plain_weight(&tc, synth, sk, true);
+                                let copies = if smear > 0.0 {
+                                    &[smear, 0.0][..]
+                                } else {
+                                    &[0.0][..]
+                                };
+                                for &sx in copies {
+                                    let ox = pc.dx * size + sx;
+                                    cmds.push(DrawCmd::Text {
+                                        x: snap(x + dx) + ox,
+                                        baseline: snap(baseline + dy),
+                                        size: size * pc.scale,
+                                        text: pc.text.clone(),
+                                        color: color.fade(alpha).linear(),
+                                        font,
+                                        bounds: Rect::new(
+                                            bounds.x + dx + ox,
+                                            bounds.y + dy,
+                                            if one { bounds.width } else { pc.width * size },
+                                            bounds.height,
+                                        ),
+                                        clip: text_clip,
+                                        tracking: tracking / pc.scale,
+                                        weight,
+                                        glow,
+                                        placements: pc.placements.clone(),
+                                    });
+                                }
                             }
                         };
                         // The style's drop for the role, unless the element

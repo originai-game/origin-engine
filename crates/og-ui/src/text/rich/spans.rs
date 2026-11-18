@@ -369,17 +369,50 @@ impl Ui {
                 .filter_map(|(_, _, style)| style.synthesis)
                 .next_back()
                 .unwrap_or(crate::Synth::ALL);
-            let (font, synth) = self.env.fonts.for_styled(s.font, s.query(), &s.text);
-            s.synth = crate::Synth {
-                bold: synth.bold && allow.bold,
-                italic: synth.italic && allow.italic,
-                ..crate::Synth::default()
+            let (font, _) = self.env.fonts.for_styled(s.font, s.query(), &s.text);
+            // A fallback face can need bold or oblique even when the
+            // preceding Latin face supplies it. Keep each face's synthesis
+            // on its own span, for measurement as well as painting.
+            let faces = if s.atom.is_none() {
+                font.metrics.font_runs(&s.text)
+            } else {
+                vec![(0..s.text.len(), 0)]
             };
-            let parts = match s.atom {
-                None => synthetic(&s.text, s.step.features, font, allow),
-                Some(_) => Vec::new(),
-            };
-            push_synthetic(&mut runs, s, &parts);
+            let mut synthesis: Vec<(std::ops::Range<usize>, crate::Synth)> = Vec::new();
+            for (range, _) in faces {
+                let (_, synth) =
+                    self.env
+                        .fonts
+                        .for_styled(s.font, s.query(), &s.text[range.clone()]);
+                let synth = crate::Synth {
+                    bold: synth.bold && allow.bold,
+                    italic: synth.italic && allow.italic,
+                    ..crate::Synth::default()
+                };
+                match synthesis.last_mut() {
+                    Some((previous, style)) if *style == synth => previous.end = range.end,
+                    _ => synthesis.push((range, synth)),
+                }
+            }
+            let last = synthesis.len().saturating_sub(1);
+            for (k, (range, synth)) in synthesis.into_iter().enumerate() {
+                let mut part = s.clone();
+                part.text = s.text[range].to_owned();
+                for edge in &mut part.edges {
+                    edge.opens &= k == 0;
+                    edge.closes &= k == last;
+                }
+                let (font, _) = self
+                    .env
+                    .fonts
+                    .for_styled(part.font, part.query(), &part.text);
+                part.synth = synth;
+                let parts = match part.atom {
+                    None => synthetic(&part.text, part.step.features, font, allow),
+                    Some(_) => Vec::new(),
+                };
+                push_synthetic(&mut runs, part, &parts);
+            }
         }
         // Each ruby hangs over what is beside it as `ruby-overhang` lets
         // it: any text but another ruby, or under `spaces` a space only.
