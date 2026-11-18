@@ -119,6 +119,9 @@ pub fn palette_scene() -> Result<RenderScene, String> {
 
 pub fn print_scene() -> RenderScene {
     let mut scene = curio_stall();
+    // Opened up so the lit faces read as bare paper and the hatching
+    // carries only the shade.
+    scene.frame.camera.exposure = Exposure::Manual { ev: 0.8 };
     scene.look.stylise.hatching = Some(Hatching {
         strength: 0.9,
         scale: 6.0,
@@ -225,6 +228,9 @@ pub fn retro_scene() -> RenderScene {
 
 pub fn material_scene() -> RenderScene {
     let mut scene = curio_stall();
+    // Toon shading flattens the sun's falloff: a stop and a bit down,
+    // so the court keeps its colour.
+    scene.frame.camera.exposure = Exposure::Manual { ev: -1.2 };
     scene.look.stylise.material = MaterialStyle {
         toon: true,
         gradient_map: None,
@@ -1216,18 +1222,18 @@ pub fn toon_square() -> Result<RenderScene, String> {
 }
 
 /// The physical-materials set (print, paint, retro, material): a curio
-/// seller's stall in the market square, close up. On a linen cloth
+/// seller's table in the shrine court, close up. On a linen cloth
 /// (sheen) stand clear, frosted and amber glass orbs, a cut gem of high
 /// `ior` and a lantern of striped glass (`transmissionMap`), a black
 /// pearl and a polished orb under a thin film (iridescence) on a pink
-/// velvet cushion, and a brushed silver urn (anisotropy); behind it the
-/// seller's lacquered car (clearcoat). The stall's planks, the crates and
-/// the town round it are plain lit materials.
+/// velvet cushion, a brushed silver urn (anisotropy) and a lacquered
+/// box (clearcoat); behind it the court's torii. The table's planks and
+/// the court are plain lit materials.
 pub fn curio_stall() -> RenderScene {
     use crate::physical_scenes::{ramp, stripes};
     let mut scene = RenderScene::new();
-    crate::lighting_scenes::market_square(&mut scene);
-    crate::lighting_scenes::wares(&mut scene, Vec3::new(-3.6, 0.0, -1.0), 0.3);
+    crate::shadow_scenes::court(&mut scene);
+    crate::kit::prop(&mut scene, "torii").place(&mut scene, Vec3::new(-0.6, 0.0, -6.5), 0.0, 4.2);
     let planks = crate::kit::surface(&mut scene, "planks");
     let table = scene.add_mesh(crate::kit::block(
         Vec3::new(-1.5, 0.0, -0.55),
@@ -1378,16 +1384,26 @@ pub fn curio_stall() -> RenderScene {
         Mat4::from_translation(Vec3::new(1.15, 1.18, -0.15))
             * Mat4::from_scale(Vec3::new(0.36, 0.56, 0.36)),
     );
-    // The seller's car, its paint lacquered.
-    prop_styled(&mut scene, "car", |m| {
-        m.clearcoat = 1.0;
-        m.clearcoatRoughness = 0.05;
-    })
-    .place(&mut scene, Vec3::new(2.4, 0.0, -5.2), -0.45, 1.45);
-    crate::sky_scenes::physical_light_under(&mut scene, Vec3::new(-0.45, 0.5, 0.75));
+    // A lacquered box, vermilion under a clear coat.
+    put(
+        &mut scene,
+        cube,
+        StandardMaterial {
+            color: Vec3::new(0.55, 0.05, 0.03),
+            roughness: 0.45,
+            clearcoat: 1.0,
+            clearcoatRoughness: 0.05,
+            ..Default::default()
+        },
+        Mat4::from_translation(Vec3::new(0.45, 0.99, -0.35))
+            * Mat4::from_rotation_y(0.4)
+            * Mat4::from_scale(Vec3::new(0.32, 0.18, 0.22)),
+    );
+    // Late afternoon: the sun 18° up from the left, raking the wares.
+    crate::sky_scenes::physical_light_under(&mut scene, Vec3::new(-0.75, 0.32, 0.58));
     scene.frame.camera = Camera {
-        position: Vec3::new(0.1, 2.1, 1.85),
-        target: Vec3::new(0.0, 1.0, -0.6),
+        position: Vec3::new(0.2, 1.75, 2.5),
+        target: Vec3::new(0.0, 1.45, -1.0),
         far: 2500.0,
         exposure: Exposure::Manual { ev: 0.0 },
         ..Default::default()
