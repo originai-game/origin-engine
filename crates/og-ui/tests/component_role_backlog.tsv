@@ -15,8 +15,6 @@ arena/vote.svelte	ArenaVote.name ArenaVote.headline	1
 card/face.svelte	CardFace.name CardFace.headline	1
 card/face.svelte	CardFace.type CardFace.label CardFace.caption	1
 card/piles.svelte	CardPiles.count CardPiles.figure CardPiles.badge	1
-card/run-map.svelte	CardRunMap.floor CardRunMap.label CardRunMap.figure	1
-card/run-map.svelte	CardRunMap.legend CardRunMap.plate CardRunMap.well	1
 hud/ability-bar.svelte	AbilityBar.label AbilityBar.badge	1
 hud/ability-slot.svelte	AbilitySlot.label AbilitySlot.badge	1
 hud/ability-slot.svelte	AbilitySlot.well AbilitySlot.track	1
@@ -61,15 +59,12 @@ puzzle/summary.svelte	PuzzleSummary.record PuzzleSummary.label PuzzleSummary.bad
 puzzle/summary.svelte	PuzzleSummary.total PuzzleSummary.label PuzzleSummary.row	1
 racing/results.svelte	RacingResults.place RacingResults.label RacingResults.figure	1
 rpg/enemy-info.svelte	RpgEnemyInfo.name RpgEnemyInfo.headline	1
-rpg/place-card.svelte	RpgPlaceCard.name RpgPlaceCard.headline	1
 rpg/turn-order.svelte	RpgTurnOrder.title RpgTurnOrder.badge	1
-rpg/world-map.svelte	RpgWorldMap.plate RpgWorldMap.frame	2
 shooter/combat-hud.svelte	CombatHud.vitals CombatHud.plate CombatHud.frame	1
 strategy/tower.svelte	StrategyTower.name StrategyTower.headline	1
 world/interaction-prompt.svelte	InteractionPrompt.name InteractionPrompt.caption	1
 world/interaction-prompt.svelte	InteractionPrompt.reason InteractionPrompt.label InteractionPrompt.caption	1
 world/loot-label.svelte	LootLabel.tag LootLabel.cell	1
-world/minimap-view.svelte	MinimapView.marker MinimapView.cell MinimapView.dot	1
 world/minimap.svelte	Minimap.label Minimap.tag	1
 world/minimap.svelte	Minimap.marker Minimap.cell Minimap.dot	1
 world/nameplate.svelte	Nameplate.well Nameplate.track	2

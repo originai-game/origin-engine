@@ -102,7 +102,7 @@ pressed, focus-visible and disabled states (docs/ui.md §3.2).
 | `RpgItemCard` (`../panels/item-card.svelte`) | `frame` (`[data-rarity]`), `hero`, `band`, `kicker`, `name`, `line`, `lead`, `delta` (`[data-trend]`), `current`, `stats`, `row`, `lore`, `actions`, `reason` |
 | `RpgMenuBar` (`menu-bar.svelte`) | `frame`, `tab` (a button: `[aria-selected]`) |
 | `RpgParty` (`party.svelte`) | `frame`, `cell` (a button: `[aria-selected]` `[data-down]`) |
-| `RpgPlaceCard` (`place-card.svelte`) | `frame`, `name` |
+| `RpgPlaceCard` (`place-card.svelte`) | `frame`, `name`, `caption` |
 | `RpgQuestDetail` (`quest-detail.svelte`) | `frame`, `band`, `title`, `row` (`[data-done]` `[data-optional]` `[data-step]`), `reward`, `scenery` |
 | `RpgQuestLog` (`../panels/quest-log.svelte`) | `frame`, `band`, `title`, `heading`, `row` (a button: `[aria-selected]` `[data-done]` `[data-fresh]` `[data-tracked]`) |
 | `RpgQuestTracker` (`../hud/quest-tracker.svelte`) | `frame`, `legend`, `quest`, `distance`, `step` (`[data-done]` `[data-current]`), `marker`, `text`, `progress` |
@@ -121,7 +121,7 @@ pressed, focus-visible and disabled states (docs/ui.md §3.2).
 | `RpgSkills` (`skills.svelte`) | `frame`, `skill` (`[data-kind]` `[data-ready]` `[data-unaffordable]`), `slot`, `art`, `cooldown`, `edge`, `time`, `reason`, `count`, `charges`, `pip`, `ring`, `key` |
 | `RpgHints` (`hints.svelte`) | `frame`, `hint`, `key`, `action` |
 | `RpgExperience` (`experience.svelte`) | `frame`, `reading`, `line`, `lit` |
-| `RpgWorldMap` (`world-map.svelte`) | `frame`, `marker` (a button: `[aria-selected]` `[data-kind]` `:disabled`), `row` (`[data-kind]`) |
+| `RpgWorldMap` (`world-map.svelte`) | `frame`, `marker` (a button: `[aria-selected]` `[data-kind]` `:disabled`), `row` (`[data-kind]`), `plate` (a marker's name), `caption` |
 
 Every member carries a `fixture:default` the sheet and the tests mount it
 from. Phone layouts come from the members' own media and container queries:
