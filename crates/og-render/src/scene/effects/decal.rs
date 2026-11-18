@@ -36,6 +36,10 @@ pub struct Decal {
     pub emissive: Vec3,
     /// Surface roughness under the decal (negative: keep the surface's).
     pub roughness: f32,
+    /// Wet coverage: multiply the receiver's albedo and replace its normal
+    /// toward the decal's normal (flat without a normal map), by opacity.
+    /// The default keeps the existing colour mix and additive normal bend.
+    pub wet: bool,
     /// Surfaces facing away from the projection direction by more than this
     /// angle (degrees) are not covered; the last 15° fade.
     pub angle_fade_degrees: f32,
@@ -56,6 +60,7 @@ impl Default for Decal {
             color: [1.0; 4],
             emissive: Vec3::ZERO,
             roughness: -1.0,
+            wet: false,
             angle_fade_degrees: 75.0,
             normal_rect: [0.0; 4],
             normal_scale: 1.0,

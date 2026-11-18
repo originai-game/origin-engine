@@ -131,7 +131,7 @@ impl ScatterRenderer {
             ScatterPass::Prepass => {
                 device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
                     label: Some("scatter prepass"),
-                    layout: Some(&self.lit_layout),
+                    layout: Some(&self.lit_fx_layout),
                     vertex: wgpu::VertexState {
                         module: lit_module,
                         entry_point: Some("vs"),
@@ -251,7 +251,7 @@ impl ScatterRenderer {
                 );
             }
             ScatterPass::Prepass => (
-                &self.lit_layout,
+                &self.lit_fx_layout,
                 &self.lit_module,
                 "vs_impostor",
                 "fs_impostor_prepass",
@@ -349,7 +349,7 @@ impl ScatterRenderer {
                 );
             }
             ScatterPass::Prepass => (
-                &self.lit_layout,
+                &self.lit_fx_layout,
                 &self.lit_module,
                 "vs_crowd_card",
                 "fs_crowd_card_prepass",

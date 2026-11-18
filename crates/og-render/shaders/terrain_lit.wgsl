@@ -685,10 +685,11 @@ struct TerrainPrepass {
 // `layers` its roughness and height (terrain_roughness). Wet ground,
 // puddles and their ripples as the lit pass shades them
 // (weather_surface.wgsl weather_gloss), so reflections see them.
-fn terrain_prepass_out(p: vec3<f32>, n: vec3<f32>, n_geo: vec3<f32>, layers: vec2<f32>, cur_clip: vec4<f32>, prev_clip: vec4<f32>) -> TerrainPrepass {
+fn terrain_prepass_out(frag: vec2<f32>, p: vec3<f32>, n: vec3<f32>, n_geo: vec3<f32>, layers: vec2<f32>, cur_clip: vec4<f32>, prev_clip: vec4<f32>) -> TerrainPrepass {
   let cur = cur_clip.xy / cur_clip.w;
   let prev = prev_clip.xy / max(prev_clip.w, 1e-6);
-  let g = weather_gloss(clamp(layers.x, 0.04, 1.0), 0.0, n, n_geo, p, terrain_cavity(layers.y), 1.0, WEATHER_GROUND);
+  let wet = wet_decal_gloss(frag, p, n, n_geo, clamp(layers.x, 0.04, 1.0));
+  let g = weather_gloss(wet.w, 0.0, wet.xyz, n_geo, p, terrain_cavity(layers.y), 1.0, WEATHER_GROUND);
   var o: TerrainPrepass;
   o.gbuffer = vec4<f32>(oct_encode(g.n), (cur - prev) * vec2<f32>(0.5, -0.5));
   let reflectivity = reflectivity_bits(g.s.roughness, g.s.metallic);
@@ -711,7 +712,7 @@ fn fs_prepass(in: TerrainOut) -> TerrainPrepass {
   // reflections (a terrain is never metal): their weights alone.
   let layers = terrain_roughness(in.world, point.normal, ground_lay(point.normal), point.control, dpdxFine(in.world), dpdyFine(in.world));
   let roughness = toksvig_roughness(layers.x, point.variance);
-  return terrain_prepass_out(in.world, terrain_tilt(point, point.normal, in.relief.xy), point.normal, vec2<f32>(roughness, layers.y), in.cur_clip, in.prev_clip);
+  return terrain_prepass_out(in.clip.xy, in.world, terrain_tilt(point, point.normal, in.relief.xy), point.normal, vec2<f32>(roughness, layers.y), in.cur_clip, in.prev_clip);
 }
 
 // ── Terrain stamps ──────────────────────────────────────────────────────
@@ -818,5 +819,5 @@ fn fs_stamp_prepass(in: StampOut) -> TerrainPrepass {
   let p = in.world;
   let g = stamp_ground(p, normalize(in.normal));
   let roughness = terrain_roughness(p, g.normal, stamp_lay(in.normal), g.control, dpdxFine(p), dpdyFine(p));
-  return terrain_prepass_out(p, g.normal, g.normal, roughness, in.cur_clip, in.prev_clip);
+  return terrain_prepass_out(in.clip.xy, p, g.normal, g.normal, roughness, in.cur_clip, in.prev_clip);
 }

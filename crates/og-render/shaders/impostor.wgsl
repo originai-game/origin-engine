@@ -358,8 +358,15 @@ fn fs_impostor_prepass(in: ImpostorOut) -> ImpostorPrepass {
   let cur = in.cur_clip.xy / in.cur_clip.w;
   let prev = in.prev_clip.xy / max(in.prev_clip.w, 1e-6);
   var o: ImpostorPrepass;
+  let unlit = (u32(material.flags.w) & 2u) != 0u;
+  var roughness = clamp(material.mr.y, 0.04, 1.0);
+  if (!unlit) {
+    let wet = wet_decal_gloss(in.clip.xy, surface.world, n, n, roughness);
+    n = wet.xyz;
+    roughness = wet.w;
+  }
   o.gbuffer = vec4<f32>(oct_encode(n), (cur - prev) * vec2<f32>(0.5, -0.5));
-  let reflectivity = select(reflectivity_bits(clamp(material.mr.y, 0.04, 1.0), material.mr.x), 0.0, (u32(material.flags.w) & 2u) != 0u);
+  let reflectivity = select(reflectivity_bits(roughness, material.mr.x), 0.0, unlit);
   o.depth = vec4<f32>(dot(surface.world - frame.view_pos.xyz, frame.view_forward.xyz), reflectivity, 0.0, 1.0);
   // The copy's outline as its mesh writes it (scatter.wgsl fs_prepass).
   var width = material.outline.w;

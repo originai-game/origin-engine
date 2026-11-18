@@ -467,6 +467,7 @@ pub(crate) fn components(world: &World, rs: &mut RenderState, h: &mut Hierarchy,
             color: [c.r, c.g, c.b, v.opacity],
             emissive: rgb(&v.emissive),
             roughness: v.roughness,
+            wet: v.wet,
             angle_fade_degrees: v.angle_fade,
             normal_rect: {
                 let (lo, hi) = (v.normal_min, v.normal_max);

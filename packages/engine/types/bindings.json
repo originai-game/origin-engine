@@ -1637,6 +1637,11 @@
           "default": -1
         },
         {
+          "name": "wet",
+          "column": "bool",
+          "default": false
+        },
+        {
           "name": "angleFade",
           "column": "f32",
           "default": 75

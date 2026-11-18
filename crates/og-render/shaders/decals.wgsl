@@ -15,6 +15,7 @@ struct DecalResult {
   roughness: f32,
   emissive: vec3<f32>,
   normal: vec4<f32>,
+  coverage: f32,
 };
 
 fn frame_decals(frag: vec2<f32>, p: vec3<f32>) -> vec2<u32> {
@@ -62,29 +63,49 @@ struct Decaled {
 fn surface_decals(s_in: Surface, n: vec3<f32>, facing: vec3<f32>, frag: vec2<f32>, p: vec3<f32>, dpx: vec3<f32>, dpy: vec3<f32>) -> Decaled {
   var o = Decaled(s_in, n, vec3<f32>(0.0));
   if (abs(fx.decal_info.x) < 0.5) { return o; }
-  let d = apply_decals(frag, p, facing, s_in.albedo, s_in.roughness, dpx, dpy);
+  let d = apply_decals(frag, p, facing, s_in.albedo, s_in.roughness, dpx, dpy, false);
   o.s.albedo = d.albedo;
   o.s.roughness = clamp(d.roughness, 0.04, 1.0);
   o.s.f0 = s_in.f0 + s_in.metallic * (d.albedo - s_in.albedo);
   o.emissive = d.emissive;
-  if (d.normal.w > 0.0) { o.n = normalize(n + d.normal.xyz); }
+  o.n = decal_shading_normal(n, d.normal, d.coverage);
   return o;
 }
 
-fn apply_decals(frag: vec2<f32>, p: vec3<f32>, n: vec3<f32>, albedo: vec3<f32>, roughness: f32, dpx: vec3<f32>, dpy: vec3<f32>) -> DecalResult {
+// Normal composition is affine until the final normalization. A wet
+// layer covers earlier bends and receiver detail; mix layers keep the
+// original additive bend, including its exact zero-coverage arithmetic.
+fn decal_shading_normal(n: vec3<f32>, bend: vec4<f32>, coverage: f32) -> vec3<f32> {
+  if (coverage > 0.0) { return normalize(n * (1.0 - coverage) + bend.xyz); }
+  if (bend.w > 0.0) { return normalize(n + bend.xyz); }
+  return n;
+}
+
+// The prepass must see a wet decal's mirror too. Ordinary mix decals
+// keep their existing prepass behavior so existing scenes do not move.
+// xyz: shading normal, w: roughness.
+fn wet_decal_gloss(frag: vec2<f32>, p: vec3<f32>, n: vec3<f32>, facing: vec3<f32>, roughness: f32) -> vec4<f32> {
+  let d = apply_decals(frag, p, facing, vec3<f32>(1.0), roughness, dpdxFine(p), dpdyFine(p), true);
+  return vec4<f32>(decal_shading_normal(n, d.normal, d.coverage), d.roughness);
+}
+
+fn apply_decals(frag: vec2<f32>, p: vec3<f32>, n: vec3<f32>, albedo: vec3<f32>, roughness: f32, dpx: vec3<f32>, dpy: vec3<f32>, wet_only: bool) -> DecalResult {
   var r: DecalResult;
   r.albedo = albedo;
   r.roughness = roughness;
   r.emissive = vec3<f32>(0.0);
   // xyz: the decals' normal maps' bend of `n`, summed; w: their reach.
   r.normal = vec4<f32>(0.0);
-  if (!OG_DECALS) { return r; }
+  r.coverage = 0.0;
+  if (!OG_DECALS || abs(fx.decal_info.x) < 0.5) { return r; }
   let range = frame_decals(frag, p);
   let cells = CLUSTER_X * CLUSTER_Y * CLUSTER_Z;
   for (var k = 0u; k < range.y; k++) {
     var i = k;
     if (range.x != NO_CLUSTER) { i = decal_cells[cells + range.x + k]; }
     let d = decal_list[i];
+    let wet = d.normal.y > 0.5;
+    if (wet_only && !wet) { continue; }
     let local = (d.inv * vec4<f32>(p, 1.0)).xyz;
     if (any(abs(local) > vec3<f32>(0.5))) { continue; }
     let facing = dot(n, d.axis.xyz);
@@ -99,9 +120,14 @@ fn apply_decals(frag: vec2<f32>, p: vec3<f32>, n: vec3<f32>, albedo: vec3<f32>, 
     }
     let c = d.color * texel;
     let a = clamp(c.a * fade, 0.0, 1.0);
-    r.albedo = mix(r.albedo, c.rgb, a);
+    if (wet) {
+      r.albedo *= mix(vec3<f32>(1.0), c.rgb, a);
+    } else {
+      r.albedo = mix(r.albedo, c.rgb, a);
+    }
     if (d.emissive.w >= 0.0) { r.roughness = mix(r.roughness, d.emissive.w, a); }
     r.emissive += d.emissive.rgb * texel.rgb * a;
+    var target_normal = n;
     if (d.normal.x != 0.0 && fx.decal_info.y > 0.5) {
       var m = decal_sample(d.normal_rect, t, gx, gy).xyz;
       if (fx.decal_info.y > 1.5) { m = srgb_encode(m); }
@@ -112,11 +138,16 @@ fn apply_decals(frag: vec2<f32>, p: vec3<f32>, n: vec3<f32>, albedo: vec3<f32>, 
         tu = normalize(tu);
         let tv = cross(n, tu);
         let bent = normalize(tu * ts.x + tv * ts.y + n * ts.z);
+        target_normal = bent;
         let w = clamp(fade, 0.0, 1.0);
         // The bend alone (0 where the map is flat), so the surface's own
         // normal map shows through the decal's flat margin.
-        r.normal = vec4<f32>(r.normal.xyz + (bent - n) * w, max(r.normal.w, w));
+        if (!wet) { r.normal = vec4<f32>(r.normal.xyz + (bent - n) * w, max(r.normal.w, w)); }
       }
+    }
+    if (wet) {
+      r.normal = vec4<f32>(mix(r.normal.xyz, target_normal, a), max(r.normal.w, a));
+      r.coverage = mix(r.coverage, 1.0, a);
     }
   }
   return r;

@@ -258,12 +258,14 @@ fn lit_fragment(in: VertexOut) -> vec4<f32> {
   n = n * face;
   var decal_emissive = vec3<f32>(0.0);
   var decal_normal = vec4<f32>(0.0);
+  var decal_coverage = 0.0;
   if (EFFECTS && abs(fx.decal_info.x) > 0.5) {
-    let d = apply_decals(in.clip.xy, in.world_pos, n, s.albedo, s.roughness, dpx, dpy);
+    let d = apply_decals(in.clip.xy, in.world_pos, n, s.albedo, s.roughness, dpx, dpy, false);
     s.albedo = d.albedo;
     s.roughness = clamp(d.roughness, 0.04, 1.0);
     decal_emissive = d.emissive;
     decal_normal = d.normal;
+    decal_coverage = d.coverage;
   }
   s.f0 = mix(vec3<f32>(0.04), s.albedo, s.metallic);
   let normal_uv = material_uv(UV_NORMAL, uv);
@@ -294,7 +296,7 @@ fn lit_fragment(in: VertexOut) -> vec4<f32> {
   }
   n = surface_normal(hook, params, n);
   // The decals' normal maps over the surface's own (apply_decals).
-  if (decal_normal.w > 0.0) { n = normalize(n + decal_normal.xyz); }
+  n = decal_shading_normal(n, decal_normal, decal_coverage);
   // The material style's made surface (MaterialStyle.surface, frame.wgsl
   // material_surface), in the mesh's own space; a material with styled
   // false (mode 8) keeps its own. The branch is on uniforms only, so the

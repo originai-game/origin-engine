@@ -84,10 +84,6 @@ impl ScatterRenderer {
                 immediate_size: 0,
             })
         };
-        let lit_layout = pl(
-            "scatter",
-            &[p.frame_layout, p.material_layout, &uniform_layout],
-        );
         let lit_fx_layout = pl(
             "scatter lit",
             &[
@@ -132,7 +128,6 @@ impl ScatterRenderer {
             4,
         );
         ScatterRenderer {
-            lit_layout,
             lit_fx_layout,
             shadow_layout,
             lit_module,

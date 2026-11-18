@@ -175,6 +175,7 @@ impl Renderer {
             main_list.indirect,
         );
         if let Some(indices) = terrain_indices {
+            p.set_bind_group(3, self.world.terrain.fx.group(true), &[]);
             let prepass = terrain::TerrainPass::Prepass;
             let (n, _) =
                 terrain::draw_levels(&mut p, terrain_draws, indices, prepass, view_frustum, None);
@@ -188,7 +189,7 @@ impl Renderer {
             |m| ctx.scatter_mesh(m),
             |c, r| view_frustum.intersects_sphere(c, r),
             None,
-            None,
+            Some(fx_group),
             true,
             cards,
             ShadowTarget::Cascade,
@@ -198,7 +199,7 @@ impl Renderer {
             &mut p,
             grass::GrassPass::Prepass,
             grass_frame,
-            None,
+            Some(fx_group),
             f32::INFINITY,
         );
         stats.draw_calls += stats.prepass_draws;

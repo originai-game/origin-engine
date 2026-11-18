@@ -147,9 +147,10 @@ fn fs_crowd_card_prepass(in: CardOut) -> CardPrepass {
   let cur = in.cur_clip.xy / in.cur_clip.w;
   let prev = in.prev_clip.xy / max(in.prev_clip.w, 1e-6);
   var o: CardPrepass;
-  o.gbuffer = vec4<f32>(oct_encode(n), (cur - prev) * vec2<f32>(0.5, -0.5));
   let part = card_part(s.part);
-  o.depth = vec4<f32>(dot(world - frame.view_pos.xyz, frame.view_forward.xyz), reflectivity_bits(clamp(part.a, 0.04, 1.0), 0.0), 0.0, 1.0);
+  let wet = wet_decal_gloss(in.clip.xy, world, n, n, clamp(part.a, 0.04, 1.0));
+  o.gbuffer = vec4<f32>(oct_encode(wet.xyz), (cur - prev) * vec2<f32>(0.5, -0.5));
+  o.depth = vec4<f32>(dot(world - frame.view_pos.xyz, frame.view_forward.xyz), reflectivity_bits(wet.w, 0.0), 0.0, 1.0);
   o.outline = vec4<f32>(0.0);
   o.frag_depth = card_depth(world);
   return o;

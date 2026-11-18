@@ -58,7 +58,7 @@ impl GrassRenderer {
             let f = &self.fields[field.slot];
             pass.set_pipeline(&pipelines[kind as usize]);
             pass.set_bind_group(1, &f.draw_group, &[]);
-            if kind == GrassPass::Lit
+            if kind != GrassPass::Shadow
                 && let Some(fx) = fx
             {
                 pass.set_bind_group(2, fx, &[]);
