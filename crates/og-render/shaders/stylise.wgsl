@@ -1008,7 +1008,10 @@ fn depth_edge_at(px: vec2<i32>, r: f32) -> f32 {
       if (clump_edge(t, d0, q, d)) { return 1.0; }
       continue;
     }
-    if (d > d0 * (1.0 + st.ink_depth.y)) { return 1.0; }
+    // The silhouette test is contour_at's: inverse depth is affine across
+    // a plane, so a floor receding to the horizon never counts however far
+    // its neighbours step.
+    if (d0 / d + d0 / view_depth(2 * px - q) - 2.0 < -st.ink_depth.y) { return 1.0; }
     if (abs(d - d0) < d0 * st.ink_depth.y * 4.0 && 1.0 - dot(normal_at(q), n0) > st.ink_depth.z) {
       return 1.0;
     }
