@@ -196,13 +196,98 @@ fn a_lake_draws_the_wake_of_the_boat_that_cuts_it() {
     );
 }
 
+/// The rings the rain stands on the near water, per square metre of it:
+/// over the frame's lower half where a pixel holds at least half the rings
+/// (its footprint on the level water under 8 mm, as weather_ripples_held
+/// reads it; beyond, the rings fade into their slopes' spread, which moves
+/// the glints without a ring), the distinct crests the rain draws (pixels
+/// where `rained` differs from `dry` by more than 8 in a channel, those
+/// within 3 px of each other one crest, so a packet's neighbouring crests
+/// count once) against that water's area. Returns the density, the count and
+/// the area in square metres.
+fn rings_per_square_metre(
+    dry: &RgbaImage,
+    rained: &RgbaImage,
+    camera: &og_render::Camera,
+    level: f32,
+) -> (f32, usize, f32) {
+    let og_render::Projection::Perspective { fov_y_degrees } = camera.projection else {
+        panic!("the lake's camera is a perspective one");
+    };
+    let (w, h) = (dry.width as usize, dry.height as usize);
+    let forward = (camera.target - camera.position).normalize();
+    let right = forward.cross(camera.up).normalize();
+    let up = right.cross(forward);
+    let tan = (fov_y_degrees.to_radians() * 0.5).tan();
+    // Where pixel (x, y)'s centre ray meets the level water.
+    let hit = |x: f32, y: f32| {
+        let nx = (x + 0.5) / w as f32 * 2.0 - 1.0;
+        let ny = 1.0 - (y + 0.5) / h as f32 * 2.0;
+        let ray = forward + right * (nx * tan * w as f32 / h as f32) + up * (ny * tan);
+        (ray.y < 0.0).then(|| camera.position + ray * ((level - camera.position.y) / ray.y))
+    };
+    let mut area = 0.0f64;
+    let mut crest = vec![false; w * h];
+    for y in h / 2..h {
+        for x in 0..w {
+            let (xf, yf) = (x as f32, y as f32);
+            let (Some(p), Some(px), Some(py)) = (hit(xf, yf), hit(xf + 1.0, yf), hit(xf, yf + 1.0))
+            else {
+                continue;
+            };
+            let (dx, dy) = (px - p, py - p);
+            if (dx.abs() + dy.abs()).length() >= 0.008 {
+                continue;
+            }
+            area += f64::from(dx.cross(dy).length());
+            let i = y * w + x;
+            crest[i] = (0..3).any(|c| dry.pixels[i * 4 + c].abs_diff(rained.pixels[i * 4 + c]) > 8);
+        }
+    }
+    let mut rings = 0;
+    let mut stack = Vec::new();
+    for start in 0..w * h {
+        if !crest[start] {
+            continue;
+        }
+        rings += 1;
+        crest[start] = false;
+        stack.push(start);
+        while let Some(i) = stack.pop() {
+            let (x, y) = ((i % w) as isize, (i / w) as isize);
+            for ny in y - 3..=y + 3 {
+                for nx in x - 3..=x + 3 {
+                    if nx < 0 || ny < 0 || nx >= w as isize || ny >= h as isize {
+                        continue;
+                    }
+                    let j = ny as usize * w + nx as usize;
+                    if crest[j] {
+                        crest[j] = false;
+                        stack.push(j);
+                    }
+                }
+            }
+        }
+    }
+    let area = area as f32;
+    (rings as f32 / area.max(1e-6), rings, area)
+}
+
 /// The rain rings a lake as it rings a puddle (weather_rain.wgsl): seen
-/// from the bank, the windless lake under SurfaceWeather's rain differs
-/// from the same lake dry over its near water, where a pixel holds the
-/// rings; seen from 16 m up, where none does, their slopes' spread still
-/// dulls its mirror. A renderer made without the weather draws either as
-/// the dry lake. The water took the rain's sky and light alone before,
-/// its surface untouched.
+/// from the bank, the windless lake under SurfaceWeather's rain stands as
+/// many rings on its near water as the rain's drops make. The rain drops
+/// 67 a square metre a second on standing water (a drop every half second
+/// in each 30 cm cell of three offset grids), and each ring stands some
+/// 0.4 s before it fades (its front reaching 7 to 10 cm at 20 cm/s): 27
+/// rings a square metre at any instant. A ring reads as about one and a
+/// half crests (its packet breaks into arcs where the sky it mirrors is
+/// even), so 41 crests a square metre; the floor is 36, nine tenths of
+/// that. (On lavapipe the model reads 44.3; the model before it, a drop a
+/// second in each 33 cm cell of two grids, stood 18 rings and read 27.3;
+/// without the rings, 0.6.) Seen
+/// from 16 m up, where no pixel holds a ring, their slopes' spread still
+/// dulls the lake's mirror. A renderer made without the weather draws
+/// either as the dry lake.
 #[test]
 #[ignore = "requires GPU"]
 fn the_rain_rings_a_lake() {
@@ -233,11 +318,16 @@ fn the_rain_rings_a_lake() {
         renderer
             .render_capture(&scene, &RenderTarget::Offscreen)
             .expect("render");
-        renderer.read_offscreen().expect("capture")
+        let level = scene.world.water[0].transform.w_axis.y;
+        (
+            renderer.read_offscreen().expect("capture"),
+            scene.frame.camera,
+            level,
+        )
     };
-    for (bank, least) in [(true, 1.0), (false, 0.3)] {
-        let dry = draw(bank, 0.0, LitFeatures::NONE);
-        let rained = draw(bank, 1.0, LitFeatures::NONE);
+    for bank in [true, false] {
+        let (dry, camera, level) = draw(bank, 0.0, LitFeatures::NONE);
+        let (rained, ..) = draw(bank, 1.0, LitFeatures::NONE);
         if let Ok(dir) = std::env::var("OG_RAIN_LAKE_OUT") {
             for (image, name) in [(&dry, "dry"), (&rained, "rain")] {
                 og_tests::gfx::save_png(
@@ -247,19 +337,33 @@ fn the_rain_rings_a_lake() {
                 .expect("save");
             }
         }
-        // The water: the frame's lower half.
-        let half = dry.pixels.len() / 2;
-        let lower = |image: &RgbaImage| RgbaImage {
-            width: image.width,
-            height: image.height / 2,
-            pixels: image.pixels[half..].to_vec(),
-        };
-        let rings = difference(&lower(&dry), &lower(&rained));
-        let left_out = difference(&dry, &draw(bank, 1.0, LitFeatures::SURFACE_WEATHER));
-        println!(
-            "a lake in the rain against the same lake dry (from the bank: {bank}): mean difference {rings}; made without the weather {left_out}"
-        );
-        assert!(rings > least, "the rain left the lake as it was ({rings})");
+        let left_out = difference(&dry, &draw(bank, 1.0, LitFeatures::SURFACE_WEATHER).0);
+        if bank {
+            let (density, rings, area) = rings_per_square_metre(&dry, &rained, &camera, level);
+            println!(
+                "a lake in the rain from the bank: {rings} rings on {area} m² of near water, {density} a square metre; made without the weather {left_out}"
+            );
+            assert!(
+                density > 36.0,
+                "the rain stood {density} ring crests a square metre on the lake, where its drops stand 41"
+            );
+        } else {
+            // The water: the frame's lower half.
+            let half = dry.pixels.len() / 2;
+            let lower = |image: &RgbaImage| RgbaImage {
+                width: image.width,
+                height: image.height / 2,
+                pixels: image.pixels[half..].to_vec(),
+            };
+            let dulled = difference(&lower(&dry), &lower(&rained));
+            println!(
+                "a lake in the rain from 16 m up against the same lake dry: mean difference {dulled}; made without the weather {left_out}"
+            );
+            assert!(
+                dulled > 0.3,
+                "the rain left the far lake as it was ({dulled})"
+            );
+        }
         assert!(
             left_out == 0.0,
             "a renderer made without the weather still rains on the lake ({left_out})"
