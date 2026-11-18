@@ -71,7 +71,11 @@
    (they wrap only when it cannot). */
 @media (width < 600px) {
   :host { flex-direction: row; flex-wrap: wrap; inline-size: stretch; column-gap: var(--space-md); row-gap: var(--space-sm); }
-  .member { flex: 1 1 calc(70 * var(--font-step-px)); grid-template-columns: minmax(0, 1fr); grid-template-areas: "who" "health" "mana"; row-gap: calc(3 * var(--font-step-px)); }
+  /* The rows start at the plate's top and keep their own heights (the row
+     stretches every plate to the tallest one's height; stretched rows
+     would move a fallen plate's bar, whose tag row is taller than a mana
+     bar), so every bar sits directly under its name. */
+  .member { flex: 1 1 calc(70 * var(--font-step-px)); grid-template-columns: minmax(0, 1fr); grid-template-areas: "who" "health" "mana"; row-gap: calc(3 * var(--font-step-px)); align-content: start; }
   .portrait { display: none; }
   .name { font-size: var(--hud-size-xs); }
   /* A fallen companion has no mana bar: its tag stands in that row. */
