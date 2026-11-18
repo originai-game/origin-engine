@@ -251,6 +251,7 @@ pub fn world(
         instances,
         layer: 10,
         clip: None,
+        depth_sort: None,
     });
     // Nameplates.
     let names = Arc::new(UiMassTemplate {
@@ -281,6 +282,7 @@ pub fn world(
         ],
         layer: 11,
         clip: None,
+        depth_sort: None,
     });
     // Overhead bars, in screen space.
     let bars = Arc::new(UiMassTemplate {
@@ -311,6 +313,7 @@ pub fn world(
         ],
         layer: 12,
         clip: None,
+        depth_sort: None,
     });
     // Icons.
     let icons = Arc::new(UiMassTemplate {
@@ -341,6 +344,7 @@ pub fn world(
             .collect(),
         layer: 12,
         clip: None,
+        depth_sort: None,
     });
     // A compact score.
     let score = Arc::new(UiMassTemplate {
@@ -367,6 +371,7 @@ pub fn world(
         }],
         layer: 12,
         clip: None,
+        depth_sort: None,
     });
     // A confetti burst in screen space, half way through its life.
     let confetti = Arc::new(UiMassTemplate {
@@ -412,6 +417,7 @@ pub fn world(
             .collect(),
         layer: 12,
         clip: None,
+        depth_sort: None,
     });
     // Occluded panels.
     for (x, depth) in [(320.0, 20.0), (640.0, 20.0)] {

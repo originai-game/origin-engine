@@ -662,7 +662,10 @@ impl Ui {
         path: &str,
         key: u64,
     ) {
-        use og_draw::{UiMassInstance, UiMassKey, UiMassKind, UiMassSpace, UiMassTemplate};
+        use og_draw::{
+            UiMassBarStyle, UiMassInstance, UiMassKey, UiMassKind, UiMassSpace, UiMassTemplate,
+            UiOcclusion,
+        };
         let target = match (r.num("entity"), r.str("worldAt")) {
             (Some(e), _) => WorldTarget::Entity(e as u64),
             (None, Some(p)) => match vec3(p) {
@@ -687,6 +690,33 @@ impl Ui {
         let em = self.style.em_of(r, &self.env);
         let value = r.num("massValue").unwrap_or(0.0);
         let max = r.num("massMax");
+        let variable = |name: &str| {
+            let computed = &r.cascade.computed;
+            let value = computed.get(name)?.as_ref()?;
+            crate::doc::variables::Value::parse(value)
+                .ok()?
+                .substitute(&mut |name| computed.get(name).cloned().flatten())
+                .ok()
+        };
+        let ink = |name: &str, default: [f32; 4]| {
+            variable(name)
+                .and_then(|v| crate::style::css_color::parse_str(&v).ok())
+                .map_or(default, |c| {
+                    c.linear(&crate::style::css_color::Context::of(&self.env.theme))
+                })
+        };
+        let ghost = r.has("barGhost") && !matches!(r.str("barGhost"), Some("false" | "none"));
+        let bar = max.map(|_| UiMassBarStyle {
+            rim: ink("--bar-rim", [0.0; 4]),
+            shield: ink("--bar-shield", crate::Srgba::rgb(127, 224, 255).linear()),
+            resource: ink("--bar-resource", crate::Srgba::rgb(110, 168, 255).linear()),
+            low: ink("--bar-low", crate::Srgba::rgb(255, 77, 94).linear()),
+            low_at: variable("--bar-low-at")
+                .and_then(|v| v.parse::<f32>().ok())
+                .unwrap_or(0.25)
+                .clamp(0.0, 1.0),
+            min_size: og_core::glam::Vec2::new(30.0, 3.0),
+        });
         let px = |s: Option<Size>, d: f32| match s {
             Some(Size::Fixed(v)) => v,
             _ => d,
@@ -694,11 +724,16 @@ impl Ui {
         let (kind, size, shown) = match max {
             Some(m) => (
                 UiMassKind::Bar {
-                    back: [0.0, 0.0, 0.0, 0.6],
-                    ghost: r
-                        .color("barGhost")
-                        .map_or([1.0, 1.0, 1.0, 0.7], |c| c.linear()),
-                    radius: 2.0,
+                    back: ink("--bar-back", [0.0, 0.0, 0.0, 0.6]),
+                    ghost: ink(
+                        "--bar-ghost",
+                        r.str("barGhost")
+                            .and_then(|v| crate::style::css_color::parse_str(v).ok())
+                            .map_or([1.0, 1.0, 1.0, 0.7], |c| {
+                                c.linear(&crate::style::css_color::Context::of(&self.env.theme))
+                            }),
+                    ),
+                    radius: r.num("radius").unwrap_or(2.0).max(0.0),
                 },
                 og_core::glam::Vec2::new(px(r.size("width"), 60.0), px(r.size("height"), 6.0)),
                 if m > 0.0 {
@@ -843,6 +878,13 @@ impl Ui {
                     r.num("worldScaleMin").unwrap_or(0.25).max(0.0),
                     r.num("worldScaleMax").unwrap_or(4.0).max(0.0),
                 ),
+                occlusion: match r.str("occlusion") {
+                    Some("fade") => UiOcclusion::Fade { alpha: 0.35 },
+                    Some("hide") => UiOcclusion::Hide,
+                    _ => UiOcclusion::None,
+                },
+                max_distance: r.num("maxDistance").unwrap_or(0.0).max(0.0),
+                bar,
                 ..UiMassTemplate::default()
             },
             UiMassSpace::World,
@@ -874,9 +916,26 @@ impl Ui {
                     color,
                     scale: 1.0,
                     seed: key as u32,
+                    aux: [
+                        0.0,
+                        0.0,
+                        shown,
+                        max.filter(|m| *m > 0.0).map_or(0.0, |m| {
+                            (r.num("shield").unwrap_or(0.0) / m).clamp(0.0, 1.0)
+                        }),
+                    ],
+                    velocity: [
+                        0.0,
+                        0.0,
+                        r.num("segments").unwrap_or(0.0).max(0.0).floor(),
+                        r.num("resourceMax").filter(|m| *m > 0.0).map_or(-1.0, |m| {
+                            (r.num("resource").unwrap_or(0.0) / m).clamp(0.0, 1.0)
+                        }),
+                    ],
                     ..UiMassInstance::default()
                 },
                 owner,
+                ghost: max.is_some() && ghost,
             },
         );
     }

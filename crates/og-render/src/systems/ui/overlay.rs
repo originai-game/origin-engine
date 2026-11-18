@@ -443,12 +443,19 @@ pub(crate) fn build<'a>(
             mass_eases,
         ));
         if !b.instances.is_empty() && k < crate::ui::UI_MASS_BATCHES {
-            keyed.push((
-                target_of(b.layer, layers),
-                b.layer,
-                OverlaySource::Mass(k as u32),
-                k as u32,
-            ));
+            let count = if b.depth_sort.is_some() {
+                b.instances.len()
+            } else {
+                1
+            };
+            for index in 0..count {
+                keyed.push((
+                    target_of(b.layer, layers),
+                    b.layer,
+                    OverlaySource::Mass(k as u32),
+                    index as u32,
+                ));
+            }
         }
     }
     mass_eases.end_frame();
@@ -776,12 +783,33 @@ pub(crate) fn build<'a>(
     });
     // CSS text-shadow composites precede the glyph fill on the same
     // painter level. og-ui gives shadowed text its own overlap boundary.
-    og_core::sort::sort_by_key(&mut keyed, |(t, layer, source, _)| {
+    let depth = |source: OverlaySource, index: u32| {
+        let OverlaySource::Mass(k) = source else {
+            return None;
+        };
+        let batch = &ui.mass[k as usize];
+        batch.depth_sort.map(|axis| {
+            axis.dot(glam::Vec3::from_array(
+                batch.instances[index as usize].position,
+            ))
+        })
+    };
+    let level = |t, layer, source| {
         let shadow = matches!(
             source,
             OverlaySource::Ui(ShapeSource::Composite(_, ShapePipe::SrgbOver))
         );
-        (*t, *layer, !shadow, *source)
+        (t, layer, !shadow)
+    };
+    og_core::sort::sort_by(&mut keyed, |a, b| {
+        level(a.0, a.1, a.2)
+            .cmp(&level(b.0, b.1, b.2))
+            .then_with(|| match (depth(a.2, a.3), depth(b.2, b.3)) {
+                (Some(x), Some(y)) => y.total_cmp(&x).then(a.2.cmp(&b.2)).then(a.3.cmp(&b.3)),
+                (Some(_), None) => std::cmp::Ordering::Less,
+                (None, Some(_)) => std::cmp::Ordering::Greater,
+                (None, None) => a.2.cmp(&b.2),
+            })
     });
     let mut runs: Vec<OverlayRun> = Vec::new();
     let mut instances = Vec::with_capacity(ov.len());
@@ -790,17 +818,27 @@ pub(crate) fn build<'a>(
     for (t, _, source, index) in keyed {
         if let OverlaySource::Mass(k) = source {
             let first = mass_instances.len() as u32;
-            mass_instances.extend(ui.mass[k as usize].instances.iter().map(|i| {
+            let batch = &ui.mass[k as usize];
+            let instances = if batch.depth_sort.is_some() {
+                &batch.instances[index as usize..index as usize + 1]
+            } else {
+                &batch.instances
+            };
+            mass_instances.extend(instances.iter().map(|i| {
                 let mut i = *i;
                 i.batch = k;
                 i
             }));
-            runs.push(OverlayRun {
-                target: t,
-                source,
-                first,
-                count: mass_instances.len() as u32 - first,
-            });
+            let count = mass_instances.len() as u32 - first;
+            match runs.last_mut() {
+                Some(run) if run.source == source && run.target == t => run.count += count,
+                _ => runs.push(OverlayRun {
+                    target: t,
+                    source,
+                    first,
+                    count,
+                }),
+            }
             continue;
         }
         let first = if source.is_ui() {

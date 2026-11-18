@@ -38235,7 +38235,7 @@ export declare namespace og {
      */
     function actionBar(world: World): readonly UiActionHint[];
     /**
-     * Reflected document kinds, attributes and writeback (docs/ui.md §2.1). Anchors expose distance scaling, clamp/containment, LOD, text-floor, reserved HUD/player boxes and opt-in danger avoidance, with placement feedback on their root. stack-group/stack-max/stack-gap form bounded keyed loot columns; a stack-more row's bind:hidden writes ranked overflow keys into a string-list signal. Mass bars accept bar-ghost ink. See guide components for attribute types and details.
+     * Reflected document kinds, attributes and writeback (docs/ui.md §2.1). Anchors expose distance scaling, clamp/containment, LOD, text-floor, reserved HUD/player boxes and opt-in danger avoidance, with placement feedback on their root. stack-group/stack-max/stack-gap form bounded keyed loot columns; a stack-more row's bind:hidden writes ranked overflow keys into a string-list signal. Mass bars expose shield, segments, resource/resource-max and a timed bar-ghost trail, styled through --bar-* inks, with a 30×3 health floor and scene occlusion. See guide components for attribute types and details.
      */
     function documentSchema(): unknown;
     /**

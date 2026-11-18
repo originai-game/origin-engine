@@ -49,6 +49,12 @@ struct MassTemplate {
   keys: array<vec4<f32>, 8>,
   // offset x, y.
   offsets: array<vec4<f32>, 8>,
+  bar_rim: vec4<f32>,
+  bar_shield: vec4<f32>,
+  bar_resource: vec4<f32>,
+  bar_low: vec4<f32>,
+  // Minimum health size, low threshold, maximum distance.
+  bar: vec4<f32>,
 };
 // The table texture: each batch's template (32 texels, integers as exact
 // floats), then the glyphs (uv, plane, advance), strings' runs (start,
@@ -82,6 +88,11 @@ fn mass_template(b: u32) -> MassTemplate {
     t.keys[i] = texel(at + 11u + i);
     t.offsets[i] = texel(at + 19u + i);
   }
+  t.bar_rim = texel(at + 27u);
+  t.bar_shield = texel(at + 28u);
+  t.bar_resource = texel(at + 29u);
+  t.bar_low = texel(at + 30u);
+  t.bar = texel(at + 31u);
   return t;
 }
 
@@ -125,6 +136,8 @@ struct MassOut {
   @location(2) local: vec2<f32>,
   @location(3) half: vec2<f32>,
   @location(4) @interpolate(flat) batch: u32,
+  // Quad, segment count and drawn scale (bars only).
+  @location(5) @interpolate(flat) bar: vec3<f32>,
 };
 
 fn ease_lut(base: u32, k: f32) -> f32 {
@@ -266,6 +279,7 @@ fn hidden() -> MassOut {
   o.local = vec2<f32>(0.0);
   o.half = vec2<f32>(1.0);
   o.batch = 0u;
+  o.bar = vec3<f32>(0.0);
   return o;
 }
 
@@ -297,7 +311,7 @@ fn vs_mass(@builtin(vertex_index) vi: u32, m: MassInstance) -> MassOut {
     travel = 1.0 - (1.0 - t) * (1.0 - t);
   }
   var offset = key.xy + m.aux.xy + m.velocity.xy * travel;
-  offset.x += ((hash01(m.start_seed.y) * 2.0 - 1.0) * tp.dist.w + m.aux.w) * t;
+  offset.x += ((hash01(m.start_seed.y) * 2.0 - 1.0) * tp.dist.w + select(m.aux.w, 0.0, kind == KIND_BAR && tp.head.y == 6u)) * t;
   offset.y += tp.occl.w * t * t;
   var scale = key.z * m.scale;
   var alpha = key.w * m.color.a;
@@ -316,6 +330,9 @@ fn vs_mass(@builtin(vertex_index) vi: u32, m: MassInstance) -> MassOut {
     }
     at = vec2<f32>((ndc.x + 1.0) * 0.5 * camera.css.x, (1.0 - ndc.y) * 0.5 * camera.css.y);
     let depth = dot(m.position_value.xyz - camera.eye.xyz, camera.forward.xyz);
+    if (tp.bar.w > 0.0) {
+      alpha *= clamp((tp.bar.w - depth) / (tp.bar.w * 0.1), 0.0, 1.0);
+    }
     if ((flags & FLAG_DISTANCE) != 0u && tp.dist.x > 0.0) {
       dscale = clamp(tp.dist.x / max(depth, 1e-4), tp.dist.y, tp.dist.z);
       scale *= dscale;
@@ -335,6 +352,7 @@ fn vs_mass(@builtin(vertex_index) vi: u32, m: MassInstance) -> MassOut {
   let em = tp.size.x * scale;
   var o: MassOut;
   o.batch = m.batch;
+  o.bar = vec3<f32>(0.0);
   o.color = vec4<f32>(m.color.rgb, alpha);
   o.local = vec2<f32>(0.0);
   o.half = vec2<f32>(1.0);
@@ -382,20 +400,37 @@ fn vs_mass(@builtin(vertex_index) vi: u32, m: MassInstance) -> MassOut {
     rect = vec4<f32>(left + (pen + plane.x) * em, baseline - plane.w * em,
                      left + (pen + plane.z) * em, baseline - plane.y * em);
   } else if (kind == KIND_BAR) {
-    if (q >= 3u) {
+    if (q >= tp.head.y) {
       return hidden();
     }
-    let size = tp.size.xy * scale;
+    var size = max(tp.size.xy * scale, tp.bar.xy);
+    let track_scale = size.y / max(tp.size.y, 1e-4);
     let x0 = at.x - tp.size.z * size.x;
-    let y0 = at.y - tp.size.w * size.y;
+    var y0 = at.y - tp.size.w * size.y;
     var frac = 1.0;
     if (q == 1u) {
       frac = clamp(max(m.aux.z, m.position_value.w), 0.0, 1.0);
       o.color = vec4<f32>(tp.ghost.rgb, tp.ghost.a * alpha);
     } else if (q == 2u) {
       frac = clamp(m.position_value.w, 0.0, 1.0);
-    } else {
+    } else if (q == 0u) {
       o.color = vec4<f32>(tp.back.rgb, tp.back.a * alpha);
+    } else if (q == 3u) {
+      frac = clamp(m.aux.w, 0.0, 1.0);
+      size.y = max(1.0, round(tp.size.y * 0.4) * track_scale);
+      y0 -= size.y + scale;
+      o.color = vec4<f32>(tp.bar_shield.rgb, tp.bar_shield.a * alpha);
+    } else if (q == 4u) {
+      if (m.velocity.w < 0.0) { return hidden(); }
+      frac = clamp(m.velocity.w, 0.0, 1.0);
+      y0 += size.y + scale;
+      size *= vec2<f32>(0.8, 0.0);
+      size.y = max(1.0, round(tp.size.y * 0.6) * track_scale);
+      o.color = vec4<f32>(tp.bar_resource.rgb, tp.bar_resource.a * alpha);
+    } else {
+      var rim = tp.bar_rim;
+      if (m.position_value.w <= tp.bar.z) { rim = tp.bar_low; }
+      o.color = vec4<f32>(rim.rgb, rim.a * alpha);
     }
     if (frac <= 0.0) {
       return hidden();
@@ -404,6 +439,7 @@ fn vs_mass(@builtin(vertex_index) vi: u32, m: MassInstance) -> MassOut {
     o.half = 0.5 * size;
     // The position from the whole bar's centre (every quad shares its ends).
     o.local = (vec2<f32>(mix(rect.x, rect.z, c.x), mix(rect.y, rect.w, c.y)) - vec2<f32>(x0, y0)) - o.half;
+    o.bar = vec3<f32>(f32(q), m.velocity.z, scale);
   } else {
     // An icon or a particle: one quad about its pivot, turned.
     let i = u32(max(m.position_value.w, 0.0));
@@ -473,10 +509,25 @@ fn fs_mass(in: MassOut) -> @location(0) vec4<f32> {
     }
   } else if (kind == KIND_BAR) {
     // The whole bar's rounded rectangle.
-    let r = min(tp.misc.y, min(in.half.x, in.half.y));
+    let r = min(tp.misc.y * select(1.0, in.bar.z, tp.head.y == 6u), min(in.half.x, in.half.y));
     let qd = abs(in.local) - (in.half - vec2<f32>(r));
     let sd = length(max(qd, vec2<f32>(0.0))) + min(max(qd.x, qd.y), 0.0) - r;
-    a *= clamp(0.5 - sd * frame.output.z, 0.0, 1.0);
+    var coverage = clamp(0.5 - sd * frame.output.z, 0.0, 1.0);
+    if (in.bar.x == 5.0) {
+      let half = max(in.half - vec2<f32>(1.0), vec2<f32>(0.0));
+      let radius = max(r - 1.0, 0.0);
+      let p = abs(in.local) - (half - vec2<f32>(radius));
+      let inner = length(max(p, vec2<f32>(0.0))) + min(max(p.x, p.y), 0.0) - radius;
+      coverage -= clamp(0.5 - inner * frame.output.z, 0.0, 1.0);
+    }
+    let count = in.bar.y;
+    let width = in.half.x * 2.0;
+    if ((in.bar.x == 1.0 || in.bar.x == 2.0) && count >= 2.0 && (width - (count - 1.0)) / count >= 3.0) {
+      let x = in.local.x + in.half.x;
+      let boundary = round(x * count / width);
+      if (boundary >= 1.0 && boundary < count && abs(x - boundary * width / count) < 0.5) { discard; }
+    }
+    a *= max(coverage, 0.0);
   } else if (kind == KIND_PARTICLE) {
     let shape = u32(tp.misc.z + 0.5);
     var sd = 0.0;

@@ -1190,8 +1190,29 @@ None of these has a web standard; each is named for what it does.
   changes reuse the existing shift easing and fade_ticks; a row leaving
   its group fades at its old column point before returning to its own.
   Hover transforms change ink, not the column's widths or row slots.
-  Column transition state is included in world snapshots (version 2,
-  which still reads version 1 snapshots).
+  Column transition and mass hit-trail state are included in world snapshots
+  (version 3, which still reads version 1 and 2 snapshots).
+  A mass `<anchor mass="overhead" value={hp} max={hpMax} shield={shield}
+  segments="5" resource={mana} resource-max={manaMax} bar-ghost>` draws
+  health, optional shield above and resource below in one GPU instance.
+  CSS width/height define health, distance-scaled but floored at 30×3 CSS
+  px independently of user text scale. Shield is `shield/max` of the same
+  width, height `max(1px, round(designed height × 0.4) × drawn/designed height)`;
+  zero shield draws no track or gap and never moves health. Resource is
+  `resource/resource-max` of 80% width, height using 0.6 instead of 0.4;
+  zero/omitted resource-max hides it. Track gaps scale from 1 CSS px.
+  `color` is health ink; `--bar-back`, `--bar-rim`, `--bar-shield`,
+  `--bar-resource`, `--bar-ghost` and `--bar-low` supply CSS colors.
+  At or below `--bar-low-at` (default 0.25), the 1px border uses low ink.
+  `segments` cuts health/ghost into equal parts with 1px back-ink gaps;
+  cuts disappear when the remaining segment width would be under 3px.
+  Bare `bar-ghost` enables a 400ms hold and 300ms linear drain after damage;
+  `false`/`none` disables it, and a legacy color value also enables it and
+  sets ink unless `--bar-ghost` overrides it. Keyed rebuilds and snapshots
+  preserve the trail. Mass bars support `occlusion="fade|hide"` (fade alpha
+  0.35), max-distance's last-tenth fade and the normal scale bounds.
+  World bars paint far-to-near across templates, beneath all text anchors;
+  they do not declutter or become placement obstacles.
   `clamp="edge"` pins off-screen and behind-camera points with an arrow;
   `clamp-margin` (default 24) and `arrow-size` (default 14, zero disables it)
   are CSS px multiplied by user text scale. `arrow-color` sets its ink.

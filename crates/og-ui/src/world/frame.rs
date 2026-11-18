@@ -146,6 +146,9 @@ impl Ui {
         // Mass elements: standing ones pushed where their target is now,
         // one-shots forgotten once their row leaves.
         let mut kept = std::mem::take(&mut self.world.declared.kept_mass);
+        let tick = self.interaction.state.tick;
+        let hold = (self.env.ticks_per_second() as f32 * 0.4).round() as u64;
+        let drain = (self.env.ticks_per_second() as f32 * 0.3).round().max(1.0);
         kept.retain(|key, m| {
             if !self.world.declared.mass_built.contains(key) && !self.docs.mount_owns(m.owner) {
                 return false;
@@ -153,14 +156,36 @@ impl Ui {
             self.world.want(m.target);
             if let Some((p, _)) = self.world.pose_of(m.target) {
                 let p = p + m.offset;
-                let instance = UiMassInstance {
+                let mut instance = UiMassInstance {
                     position: [p.x, p.y, p.z],
                     ..m.instance
                 };
+                if m.ghost {
+                    let g = self.world.state.bar_ghosts.entry(*key).or_insert(BarGhost {
+                        value: instance.value,
+                        from: instance.value,
+                        at: tick,
+                    });
+                    let progress =
+                        (tick.saturating_sub(g.at).saturating_sub(hold) as f32 / drain).min(1.0);
+                    let previous = g.from + (g.value - g.from) * progress;
+                    if instance.value < g.value {
+                        g.from = previous.max(g.value);
+                        g.at = tick;
+                    }
+                    g.value = instance.value;
+                    let progress =
+                        (tick.saturating_sub(g.at).saturating_sub(hold) as f32 / drain).min(1.0);
+                    instance.aux[2] = (g.from + (g.value - g.from) * progress).max(g.value);
+                }
                 self.push_mass(m.handle, instance);
             }
             true
         });
+        self.world
+            .state
+            .bar_ghosts
+            .retain(|key, _| kept.get(key).is_some_and(|m| m.ghost));
         self.world.declared.kept_mass = kept;
         let mut spawned = std::mem::take(&mut self.world.declared.mass_spawned);
         spawned.retain(|k| self.world.declared.mass_built.contains(k) || self.docs.mount_owns(*k));
@@ -429,6 +454,10 @@ impl crate::ui::Tree {
                 instances,
                 layer: 0,
                 clip: None,
+                depth_sort: (*space == UiMassSpace::World
+                    && matches!(t.kind, og_draw::UiMassKind::Bar { .. }))
+                .then(|| world.declared.view.map(|v| v.forward))
+                .flatten(),
             };
             // Drawn in CSS px like the frame's commands (the og-ui unit).
             crate::draw::zoom_mass(&mut b, env.unit);
@@ -566,7 +595,7 @@ impl Ui {
         let mut out = Vec::new();
         let mut w = ByteWriter::new(&mut out);
         w.bytes(b"OGUW");
-        w.u32(2);
+        w.u32(3);
         w.u64(s.pools.len() as u64);
         for (k, pool) in &s.pools {
             w.u64(u64::from(*k));
@@ -588,6 +617,13 @@ impl Ui {
             for f in [v.stack_at.x, v.stack_at.y, v.stack_scale] {
                 w.f32(f);
             }
+        }
+        w.u64(s.bar_ghosts.len() as u64);
+        for (key, g) in &s.bar_ghosts {
+            w.u64(*key);
+            w.f32(g.value);
+            w.f32(g.from);
+            w.u64(g.at);
         }
         out
     }
@@ -632,8 +668,8 @@ fn decode_world(bytes: &[u8]) -> og_core::Result<WorldState> {
         return Err(r.error("not world state bytes"));
     }
     let version = r.u32()?;
-    if !(1..=2).contains(&version) {
-        return Err(r.error("not version 1 or 2 world state bytes"));
+    if !(1..=3).contains(&version) {
+        return Err(r.error("not version 1, 2 or 3 world state bytes"));
     }
     for _ in 0..r.u64()? {
         let k = r.u64()? as u32;
@@ -661,6 +697,19 @@ fn decode_world(bytes: &[u8]) -> og_core::Result<WorldState> {
                 stack_scale: if version >= 2 { r.f32()? } else { 1.0 },
             },
         );
+    }
+    if version >= 3 {
+        for _ in 0..r.u64()? {
+            let key = r.u64()?;
+            s.bar_ghosts.insert(
+                key,
+                BarGhost {
+                    value: r.f32()?,
+                    from: r.f32()?,
+                    at: r.u64()?,
+                },
+            );
+        }
     }
     r.finish()?;
     Ok(s)

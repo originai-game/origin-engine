@@ -136,6 +136,12 @@ pub(crate) struct TemplateGpu {
     clip_head: [u32; 4],
     keys: [[f32; 4]; UI_MASS_KEYS],
     offsets: [[f32; 4]; UI_MASS_KEYS],
+    bar_rim: [f32; 4],
+    bar_shield: [f32; 4],
+    bar_resource: [f32; 4],
+    bar_low: [f32; 4],
+    // Minimum health size, low threshold and maximum world distance.
+    bar: [f32; 4],
 }
 
 /// Texels of the table texture one template takes (`ui_mass.wgsl`'s
@@ -163,6 +169,13 @@ impl TemplateGpu {
         out[..rows.len()].copy_from_slice(&rows);
         out[11..11 + UI_MASS_KEYS].copy_from_slice(&self.keys);
         out[11 + UI_MASS_KEYS..11 + 2 * UI_MASS_KEYS].copy_from_slice(&self.offsets);
+        out[27..32].copy_from_slice(&[
+            self.bar_rim,
+            self.bar_shield,
+            self.bar_resource,
+            self.bar_low,
+            self.bar,
+        ]);
         out
     }
 }
@@ -333,6 +346,14 @@ pub(crate) fn template_gpu(
         g.ghost = *ghost;
         g.misc[1] = *radius;
     }
+    g.bar[3] = t.max_distance;
+    if let Some(bar) = &t.bar {
+        g.bar_rim = bar.rim;
+        g.bar_shield = bar.shield;
+        g.bar_resource = bar.resource;
+        g.bar_low = bar.low;
+        g.bar[..3].copy_from_slice(&[bar.min_size.x, bar.min_size.y, bar.low_at]);
+    }
     if let UiMassKind::Particle { shape } = &t.kind {
         g.misc[2] = match shape {
             UiParticleShape::Square => 0.0,
@@ -443,6 +464,7 @@ mod tests {
                 instances: vec![],
                 layer: 0,
                 clip: None,
+                depth_sort: None,
             };
             texels
                 .extend(template_gpu(&batch, ([0.0; 4], 0), None, &mut table, &mut cache).texels());

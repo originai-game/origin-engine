@@ -510,6 +510,7 @@ pub struct KeptMass {
     pub offset: Vec3,
     pub instance: UiMassInstance,
     pub owner: u64,
+    pub ghost: bool,
 }
 
 /// A world panel the UI draws itself, as seen this tick: its layout `rect`
@@ -624,6 +625,15 @@ pub struct WorldState {
     pub pools: BTreeMap<u32, Vec<UiMassInstance>>,
     pub particles: BTreeMap<u64, crate::particles::EmitterState>,
     pub smooth: BTreeMap<u64, Smooth>,
+    pub bar_ghosts: BTreeMap<u64, BarGhost>,
+}
+
+/// A document bar's deterministic hit trail, retained across row rebuilds.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct BarGhost {
+    pub value: f32,
+    pub from: f32,
+    pub at: u64,
 }
 
 /// What the frame declares in the world: the view and poses, anchors,
