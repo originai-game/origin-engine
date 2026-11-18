@@ -1,0 +1,52 @@
+{
+  "added": [
+    {
+      "member": "Title",
+      "summary": "New props keyArt, logo and name: the key art under a vignette, the game's logo (or its name set as a wordmark when there is no logo) and the call between two lit rules, breathing unless motion is reduced. On a touch screen the call reads Tap to start. New parts title.shade, title.rule and title.name."
+    },
+    {
+      "member": "MainMenu",
+      "summary": "New props keyArt, logo and name. The entries are type on the key art: dim until pointed at or focused, then washed in the accent from a lit leading edge with a chevron; Credits and Quit are smaller under a divider. News is a cut glass plate in the far corner (above the entries on a phone). New parts main-menu.shade, main-menu.entry, main-menu.news and main-menu.name."
+    },
+    {
+      "member": "ModeSelect",
+      "summary": "New prop keyArt. The modes are full-art cards with two cut corners: the chosen one has a lit rim and glow, the others are dimmed, a locked one is grey and dark with its reason on a lock line. Play is a lit cut plate. On a phone held upright the title takes its own row under Back and the cards are one column that fades at its foot. New parts mode-select.plate (the cut plate inside a card, which carries the rim), mode-select.shade, mode-select.foot, mode-select.tag and mode-select.lock."
+    },
+    {
+      "member": "Splash",
+      "summary": "The marks are paged with dots, the boot bar is a slanted lit track with the status and a percentage over it, and a skip hint shows the key on a desktop and Tap to skip on a touch screen. New parts splash.dots, splash.dot, splash.boot, splash.track, splash.fill and splash.skip."
+    },
+    {
+      "member": "Credits",
+      "summary": "New props keyArt and logo: the roll runs over the key art under a veil, its window fading at both edges; headings sit between lit rules, roles under names, and a key hint says how to roll faster. New parts credits.shade, credits.rule and credits.role."
+    }
+  ],
+  "breaking": [
+    {
+      "member": "MainMenu",
+      "change": "The entries are no longer framed buttons: Continue is no longer the primary variant, the .large class is gone, and the save line is inside the Continue entry. The menu's first focus is MenuMenu/Entries/Continue (was Menu/Continue). The key art draws only when keyArt is set; without it the screen is the style's dark ground.",
+      "fix": "Pass keyArt (og.load.texture) for the key art and logo or name for the mark. A style that dressed the buttons dresses ::part(main-menu.entry); a style that sized .large sets --front-entry-size.",
+      "find": [
+        "MainMenu",
+        "Menu/Continue"
+      ]
+    },
+    {
+      "member": "ModeSelect",
+      "change": "A mode's tag is a <span part=\"mode-select.tag\"> on the card's art, not a <badge>; a locked mode's reason is a lock line (part mode-select.lock). Play is a lit cut plate rather than the primary button's face. The card's cut corners and rim moved from mode-select.cell to the new mode-select.plate inside it; the cell carries the lift and the chosen card's glow.",
+      "fix": "A style that dressed the badge dresses ::part(mode-select.tag); one that dressed Play's base sets the --front-play-* tokens. A style that cut or ringed ::part(mode-select.cell) does so on ::part(mode-select.plate).",
+      "find": [
+        "ModeSelect"
+      ]
+    },
+    {
+      "member": "Title, Credits",
+      "change": "The key art draws only when keyArt is set; without it the screen is the style's dark ground. The logo comes from the logo prop.",
+      "fix": "Pass keyArt and logo (og.load.texture handles) on Title and Credits, or name on Title for a wordmark.",
+      "find": [
+        "Title",
+        "Credits"
+      ]
+    }
+  ]
+}

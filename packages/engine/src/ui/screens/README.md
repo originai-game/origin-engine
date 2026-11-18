@@ -87,7 +87,7 @@ focus-visible and disabled states (docs/ui.md §3.2).
 | `card` (`card.svelte`) | `frame`, `image`, `title`, `body` |
 | `confirm` (`confirm.svelte`) | `title`, `body`, `actions` |
 | `creator-tools` (`creator-tools.svelte`) | `frame` (`.chosen`), `label`, `title` |
-| `credits` (`credits.svelte`) | `frame`, `heading`, `name` |
+| `credits` (`credits.svelte`) | `frame`, `heading`, `name`, `shade`, `rule` (`.end`), `role` |
 | `data-list` (`data-list.svelte`) | `frame`, `row` (a button), `label`, `figure`, `note` |
 | `film-chapters` (`film-chapters.svelte`) | `frame`, `band`, `title`, `card` (`.locked` `.selected` `[aria-disabled]` `:disabled`), `thumb`, `name` |
 | `film-choices` (`film-choices.svelte`) | `frame`, `timer`, `choice` (a button: `.chosen` `[aria-current]` `:disabled`), `hotspot` (a button: `:disabled`), `qte` |
@@ -98,8 +98,8 @@ focus-visible and disabled states (docs/ui.md §3.2).
 | `key-values` (`key-values.svelte`) | `frame`, `row`, `label`, `figure`, `delta` (`.up`) |
 | `leaderboard` (`leaderboard.svelte`) | `frame`, `band`, `title`, `league`, `row` (`.mine-other` `.mine-you`), `rank`, `figure`, `me` |
 | `loading` (`loading.svelte`) | `scrim`, `frame` (the tip plate), `title`, `eyebrow`, `label`, `next` (a button), `bar` (`[data-ready]`), `fill`, `figure` (`[data-ready]`), `status` |
-| `main-menu` (`main-menu.svelte`) | `frame`, `logo`, `version` |
-| `mode-select` (`mode-select.svelte`) | `frame`, `band`, `title`, `cell` (`.lock-locked` `.lock-open` `.selection-off` `.selection-on`), `name` |
+| `main-menu` (`main-menu.svelte`) | `frame`, `logo`, `version`, `shade`, `entry` (a button: `.minor`), `news`, `name` |
+| `mode-select` (`mode-select.svelte`) | `frame`, `band`, `title`, `cell` (`.lock-locked` `.lock-open` `.selection-off` `.selection-on`), `plate`, `name`, `shade`, `foot`, `tag` (`.fresh`), `lock` |
 | `notifications` (`notifications.svelte`) | `frame` (`.danger` `.leaving` `.success` `.warn`), `body` |
 | `objective-tracker` (`objective-tracker.svelte`) | `frame`, `title`, `row` (`.done`), `well`, `fill` |
 | `pagination` (`pagination.svelte`) | `frame`, `gap` |
@@ -107,10 +107,10 @@ focus-visible and disabled states (docs/ui.md §3.2).
 | `results` (`results.svelte`) | `frame`, `title` (`.outcome-lost` `.outcome-won`), `grade`, `row`, `label`, `figure`, `cell` |
 | `save-load` (`save-load.svelte`) | `frame`, `band`, `title`, `row` (`.selection-off` `.selection-on`), `thumb`, `name` |
 | `settings` (`settings.svelte`) | `frame`, `band`, `title`, `row` |
-| `splash` (`splash.svelte`) | `frame`, `mark` |
+| `splash` (`splash.svelte`) | `frame`, `mark`, `dots`, `dot` (`.on`), `boot`, `track`, `fill`, `skip` |
 | `star-rating` (`star-rating.svelte`) | `frame` |
 | `subtitles` (`subtitles.svelte`) | `frame`, `line`, `speaker` |
 | `table` (`table.svelte`) | `frame`, `band`, `heading`, `entry` (a button) |
-| `title` (`title.svelte`) | `frame`, `logo`, `prompt` |
+| `title` (`title.svelte`) | `frame`, `logo`, `prompt`, `shade`, `rule` (`.end`), `name` |
 | `tree` (`tree.svelte`) | `row` (`[aria-expanded]` `[aria-selected]`) |
 | `tutorial` (`tutorial.svelte`) | `frame`, `title`, `text`, `step` |

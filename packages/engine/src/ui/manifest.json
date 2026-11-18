@@ -2243,9 +2243,7 @@
     "id": "@ui/screens/splash.svelte",
     "screen": true,
     "control": null,
-    "uses": [
-      "control:progress"
-    ],
+    "uses": [],
     "files": [
       "@ui/screens/splash.en.ogt",
       "@ui/screens/splash.svelte"
