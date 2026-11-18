@@ -585,7 +585,8 @@ fn lake(scene: &mut RenderScene, w: Water) {
 }
 
 /// The lake from its south shore: the mountains and the sky mirrored by
-/// the planar reflection (half resolution), posts at the water's edge.
+/// the planar reflection (half resolution), a plank jetty running out
+/// over the water from the western shallows.
 pub fn water_planar_scene() -> RenderScene {
     let mut scene = island_scene();
     lake(
@@ -596,7 +597,7 @@ pub fn water_planar_scene() -> RenderScene {
             ..Default::default()
         },
     );
-    posts(&mut scene);
+    jetty(&mut scene);
     let eye = Vec3::new(LAKE.x - 20.0, LAKE_LEVEL + 3.0, LAKE.y + 150.0);
     scene.frame.camera = camera_at(
         eye,
@@ -622,6 +623,55 @@ fn posts(scene: &mut RenderScene) {
             Mat4::from_translation(Vec3::new(x, LAKE_LEVEL + 1.5, z)),
         );
     }
+}
+
+/// The lake's jetty: a plank deck 2.6 m wide running 80 m out from the
+/// western shallows along the line of [`posts`], 1 m over the water on
+/// piles in pairs, a lamp at its end with crates and barrels by it.
+fn jetty(scene: &mut RenderScene) {
+    use crate::kit;
+    let (from, to) = (
+        Vec2::new(LAKE.x - 60.0, LAKE.y + 110.0),
+        Vec2::new(LAKE.x + 10.0, LAKE.y + 80.0),
+    );
+    let d = (to - from).normalize();
+    let frame = Mat4::from_translation(Vec3::new(from.x, 0.0, from.y))
+        * Mat4::from_rotation_y((-d.y).atan2(d.x));
+    let at = |x: f32, z: f32| frame.transform_point3(Vec3::new(x, 0.0, z));
+    let yaw = (-d.y).atan2(d.x);
+    let planks = kit::surface_tinted(scene, "planks", [0.72, 0.6, 0.48]);
+    let top = LAKE_LEVEL + 1.1;
+    let deck = scene.add_mesh(kit::block(
+        Vec3::new(-14.0, top - 0.2, -1.3),
+        Vec3::new(80.0, top, 1.3),
+        2.0,
+    ));
+    scene.add_instance(deck, planks, frame);
+    let piles = kit::surface_tinted(scene, "planks", [0.45, 0.36, 0.28]);
+    for i in -1..7 {
+        let x = i as f32 * 76.0 / 6.0;
+        for z in [-1.15f32, 1.15] {
+            let pile = scene.add_mesh(kit::block(
+                Vec3::new(x - 0.16, LAKE_LEVEL - 6.0, z - 0.16),
+                Vec3::new(x + 0.16, top + 0.9, z + 0.16),
+                1.0,
+            ));
+            scene.add_instance(pile, piles, frame);
+        }
+    }
+    kit::prop(scene, "streetlamp").place(scene, at(78.5, -0.9) + Vec3::Y * top, yaw, 3.6);
+    let crate_ = kit::prop(scene, "crate");
+    crate_.place(scene, at(72.0, 0.6) + Vec3::Y * top, yaw + 0.3, 0.8);
+    crate_.place(scene, at(73.0, 0.5) + Vec3::Y * top, yaw - 0.2, 0.8);
+    crate_.place(
+        scene,
+        at(72.5, 0.55) + Vec3::Y * (top + 0.8),
+        yaw + 0.6,
+        0.8,
+    );
+    let barrel = kit::prop(scene, "barrel");
+    barrel.place(scene, at(75.0, -0.6) + Vec3::Y * top, 0.0, 1.0);
+    barrel.place(scene, at(40.0, 0.7) + Vec3::Y * top, 0.0, 1.0);
 }
 
 /// The lake under a low sun from the west: the posts' and the shore's
@@ -686,9 +736,21 @@ pub fn water_underwater_scene() -> RenderScene {
 
 /// Under the lake, looking up towards the sun: its light coming down in
 /// shafts from the bright side of Snell's window, the water darker below
-/// them than above, the caustics where they reach the bed.
+/// them than above, the caustics where they reach the bed, the jetty's
+/// piles standing down into it.
 pub fn water_underwater_shafts_scene() -> RenderScene {
-    let mut scene = water_underwater_scene();
+    let mut scene = island_scene();
+    lake(
+        &mut scene,
+        Water {
+            caustics: 1.0,
+            caustics_scale: 0.7,
+            underwater_density: 0.06,
+            ..Default::default()
+        },
+    );
+    jetty(&mut scene);
+    scene.frame.tick = 90;
     let sun = scene.lighting.light.direction_to_light.normalize();
     let eye = Vec3::new(LAKE.x - 40.0, LAKE_LEVEL - 3.2, LAKE.y + 70.0);
     scene.frame.camera = camera_at(

@@ -104,6 +104,32 @@ fn metered(eye: Vec3, compensation: f32) -> Camera {
     }
 }
 
+/// The coast set's rocky islet at `at` (xz; the sea at y = 0): boulders
+/// heaped `size` metres across rising out of the water, a watchtower on
+/// the top of the heap and pines on its shoulders. `water-shore`,
+/// `water-ocean-sunset` and `water-ocean-gale` share it.
+fn islet(scene: &mut RenderScene, at: Vec2, size: f32) {
+    use crate::kit;
+    let foot = |x: f32, y: f32, z: f32| Vec3::new(at.x + x * size, y * size, at.y + z * size);
+    let boulder = kit::prop(scene, "boulder");
+    boulder.place(scene, foot(0.0, -0.2, 0.0), 0.4, size * 0.55);
+    for k in 0..7 {
+        let a = k as f32 * std::f32::consts::TAU / 7.0 + 0.3;
+        let r = 0.3 + 0.08 * ((k * 5 % 3) as f32);
+        boulder.place(
+            scene,
+            foot(a.cos() * r, -0.12, a.sin() * r),
+            a * 2.3,
+            size * (0.24 + 0.05 * ((k * 3 % 4) as f32)),
+        );
+    }
+    kit::prop(scene, "watchtower").place(scene, foot(0.02, 0.26, 0.0), 0.6, size * 0.42);
+    let pine = kit::prop(scene, "pine");
+    for (x, z, h) in [(-0.28, 0.12, 0.2), (0.24, -0.16, 0.24), (0.3, 0.14, 0.17)] {
+        pine.place(scene, foot(x, 0.12, z), x * 9.0, size * h);
+    }
+}
+
 /// `water-wake`'s boat: its half extents (m; a 2.4 by 6 m hull, 1 m
 /// deep), its draft, its speed along -z (m/s) and the frames it runs (one
 /// tick each: 5 s).
@@ -225,7 +251,8 @@ fn river_ground(course: &og_env::river::River, p: Vec2) -> f32 {
 
 /// A river down a terrace into a waterfall and on across the plain
 /// (`water-river`): its current turning with its course, slowing to its
-/// banks, the fall's sheet and the white water of its pool.
+/// banks, the fall's sheet and the white water of its pool, pines on the
+/// grassy terrace and plain and boulders along its banks and in its pool.
 fn river(scene: &mut RenderScene) {
     // Mid-morning: the sun in the east, on the fall's face (it falls east).
     physical_light(scene, 10.0, PhysicalAtmosphere::EARTH);
@@ -287,12 +314,40 @@ fn river(scene: &mut RenderScene) {
         }
     }
     let ground = scene.add_mesh(og_render::MeshData { vertices, indices });
-    let earth = scene.add_standard_material(StandardMaterial {
-        color: Vec3::new(0.26, 0.3, 0.16),
-        roughness: 0.92,
-        ..Default::default()
-    });
+    let earth = crate::kit::surface_tinted(scene, "grass", [0.8, 0.92, 0.66]);
     scene.add_instance(ground, earth, Mat4::IDENTITY);
+    // Pines on the terrace and the plain, clear of the banks, and boulders
+    // at the water's edge and under the fall.
+    let pine = crate::kit::prop(scene, "pine");
+    let boulder = crate::kit::prop(scene, "boulder");
+    for j in 0..12 {
+        for i in 0..12 {
+            let n = crate::fx_scenes::hash2(i, j, 0x71);
+            let p = Vec2::new(-50.0 + i as f32 * 8.0, -56.0 + j as f32 * 7.0)
+                + Vec2::new(crate::fx_scenes::hash2(i, j, 0x72), n) * 5.0;
+            let s = course.at(p).map_or(f32::MAX, |at| at.across.abs() * 100.0);
+            let y = river_ground(&wide, p);
+            // Nothing tall between the camera and the fall.
+            let sight = {
+                let (eye, fall) = (Vec2::new(18.0, 14.0), Vec2::new(-4.0, -12.0));
+                let t = ((p - eye).dot(fall - eye) / (fall - eye).length_squared()).clamp(0.0, 1.0);
+                p.distance(eye + (fall - eye) * t)
+            };
+            if s > RIVER_WIDTH * 0.5 + 6.0 && n < 0.35 && sight > 14.0 {
+                pine.place(scene, Vec3::new(p.x, y, p.y), n * 20.0, 7.0 + n * 8.0);
+            } else if (RIVER_WIDTH * 0.5 - 0.5..RIVER_WIDTH * 0.5 + 1.5).contains(&s) && n < 0.3 {
+                boulder.place(scene, Vec3::new(p.x, y - 0.3, p.y), n * 30.0, 1.2 + n * 2.0);
+            }
+        }
+    }
+    for (x, z, h) in [
+        (-2.5f32, -5.0f32, 2.2f32),
+        (3.0, -4.5, 1.8),
+        (-3.5, -9.5, 2.6),
+    ] {
+        let y = river_ground(&wide, Vec2::new(x, z));
+        boulder.place(scene, Vec3::new(x, y - 0.4, z), x, h);
+    }
     // A clear upland river: green-brown over its bed, dark where deep.
     scene.world.water.push(Water {
         size: Vec2::splat(size),
@@ -386,11 +441,13 @@ pub fn ocean_scene(name: &str) -> RenderScene {
         }
         // The same sea, afternoon and settings in a gale (20 m/s: waves
         // some 330 m long, a significant height near 9 m), from 10 m up,
-        // above every crest. Only the wind differs from `water-ocean`.
+        // above every crest, the coast's islet standing in it. Only the
+        // wind and the islet differ from `water-ocean`.
         "water-ocean-gale" => {
             physical_light(&mut scene, 15.0, earth);
             scene.world.water.push(sea(GALE, 0.6));
             sea_haze(&mut scene);
+            islet(&mut scene, Vec2::new(-95.0, -240.0), 48.0);
             scene.frame.camera = gale_camera();
         }
         // The gale under the world's rain on the same wind, as a game's
@@ -411,13 +468,18 @@ pub fn ocean_scene(name: &str) -> RenderScene {
             );
         }
         // A light breeze (6 m/s) at sunset, looking into the low sun: the
-        // glitter path of the sun's highlight on every wave facing it.
+        // glitter path of the sun's highlight on every wave facing it, the
+        // coast's islet in silhouette beside it.
         "water-ocean-sunset" => {
             let look = physical_light(&mut scene, 17.85, earth);
             scene.world.water.push(sea(Vec2::new(4.0, -4.5), 0.5));
             sea_haze(&mut scene);
             let s = look.sun_direction;
             let bearing = Vec3::new(s.x, 0.0, s.z).normalize_or(Vec3::NEG_Z);
+            // The coast's islet off the glitter path, against the glow.
+            let side = Vec3::new(-bearing.z, 0.0, bearing.x);
+            let rock = bearing * 520.0 + side * 150.0;
+            islet(&mut scene, Vec2::new(rock.x, rock.z), 70.0);
             scene.frame.camera = Camera {
                 position: Vec3::new(0.0, 3.0, 0.0),
                 target: Vec3::new(0.0, 3.0, 0.0) + bearing * 60.0 + Vec3::Y * 2.5,
@@ -450,11 +512,14 @@ pub fn ocean_scene(name: &str) -> RenderScene {
         }
         // W1: a breeze's sea rolling in on a 1:20 sandy beach, seen from
         // the water 160 m out: the swell fading in the shallows, the shore
-        // trains breaking parallel to the beach into surf.
+        // trains breaking parallel to the beach into surf, palms along the
+        // strand, a watchtower behind it and the coast's islet off the cove.
         "water-shore" => {
             physical_light(&mut scene, 15.0, earth);
             beach(&mut scene, sea(Vec2::new(1.5, -8.0), 0.6), 1.0);
             sea_haze(&mut scene);
+            strand(&mut scene);
+            islet(&mut scene, Vec2::new(62.0, -52.0), 40.0);
             scene.frame.camera = Camera {
                 position: Vec3::new(0.0, 6.0, 60.0),
                 target: Vec3::new(0.0, 0.0, -100.0),
@@ -617,6 +682,25 @@ pub fn beach_shore() -> og_env::ocean::Shore {
         })
         .collect();
     og_env::ocean::Shore::new(Vec2::splat(-BEACH * 0.5), cell, n, n, &depth).expect("a shore")
+}
+
+/// Palms along `water-shore`'s strand above the waterline and a
+/// watchtower on the dunes behind them.
+fn strand(scene: &mut RenderScene) {
+    use crate::kit;
+    let palm = kit::prop(scene, "palm");
+    for k in 0..11 {
+        let x = -130.0 + k as f32 * 24.0 + 7.0 * ((k * 7 % 5) as f32 - 2.0);
+        let z = -122.0 - 6.0 * ((k * 3 % 4) as f32);
+        palm.place(
+            scene,
+            Vec3::new(x, beach_height(x, z), z),
+            k as f32 * 1.7,
+            9.0 + ((k * 5 % 4) as f32),
+        );
+    }
+    let (x, z) = (-55.0, -150.0);
+    kit::prop(scene, "watchtower").place(scene, Vec3::new(x, beach_height(x, z), z), 0.4, 16.0);
 }
 
 /// The beach in `scene` (its terrain, sand and rock by slope) under the sea
