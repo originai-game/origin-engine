@@ -293,8 +293,8 @@ pub fn bullet_hole_atlas(scene: &mut RenderScene) -> TextureHandle {
 /// A plastered court wall and the flags before it peppered with 640
 /// bullet holes (more than the 32 decals a frame drew before R7), each with
 /// the atlas's normal map, and two large ones that show the normal map's
-/// relief under the low sun: their rims lit on the sun's side, shadowed on
-/// the other.
+/// relief under the afternoon sun: their rims lit on the sun's side,
+/// shadowed on the other.
 pub fn decals_many_scene() -> RenderScene {
     use crate::kit;
     let mut scene = RenderScene::new();
@@ -364,15 +364,17 @@ pub fn decals_many_scene() -> RenderScene {
             decals.push(hole(Vec3::new(x, 0.0, z), Vec3::Y, size, rot));
         }
     }
-    // Two large ones, under the low sun, where the relief reads.
+    // Two large ones on the flags, where the relief reads.
     decals.push(hole(Vec3::new(-1.4, 0.0, -0.7), Vec3::Y, 1.6, 0.0));
     decals.push(Decal {
         normal_scale: 2.0,
         ..hole(Vec3::new(1.4, 0.0, -0.7), Vec3::Y, 1.6, 0.0)
     });
     scene.effects.decals = decals;
-    // Late afternoon: the sun 12° up from the left, raking the wall.
-    crate::sky_scenes::physical_light_under(&mut scene, Vec3::new(-0.92, 0.21, 0.33));
+    // Afternoon: the sun 30° up from the left and in front, so the
+    // plaster's relief stays soft and the bursts of holes read first,
+    // while the two large holes on the flags still show lit and shaded rims.
+    crate::sky_scenes::physical_light_under(&mut scene, Vec3::new(-0.62, 0.5, 0.6));
     scene.lighting.light.cast_shadows = true;
     scene.frame.camera = Camera {
         position: Vec3::new(0.4, 1.7, 5.2),

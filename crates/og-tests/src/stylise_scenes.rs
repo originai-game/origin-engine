@@ -1395,12 +1395,14 @@ pub fn curio_stall() -> RenderScene {
             clearcoatRoughness: 0.05,
             ..Default::default()
         },
-        Mat4::from_translation(Vec3::new(0.45, 0.99, -0.35))
-            * Mat4::from_rotation_y(0.4)
+        Mat4::from_translation(Vec3::new(-0.92, 0.99, 0.4))
+            * Mat4::from_rotation_y(0.25)
             * Mat4::from_scale(Vec3::new(0.32, 0.18, 0.22)),
     );
-    // Late afternoon: the sun 18° up from the left, raking the wares.
-    crate::sky_scenes::physical_light_under(&mut scene, Vec3::new(-0.75, 0.32, 0.58));
+    // Afternoon: the sun 30° up from the left and in front, over the
+    // wares and onto the court and the hills behind them, so the flags
+    // and the hills read in light and not as grazing sky reflection.
+    crate::sky_scenes::physical_light_under(&mut scene, Vec3::new(-0.62, 0.55, 0.56));
     scene.frame.camera = Camera {
         position: Vec3::new(0.2, 1.75, 2.5),
         target: Vec3::new(0.0, 1.45, -1.0),
