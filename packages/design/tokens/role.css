@@ -728,6 +728,68 @@
   --role-mark-travel: none;
   --role-mark-close: none;
 
+  /* Front end (title and main menu: title, splash, main-menu, mode-select,
+     credits). The key art lies under a shade that keeps the menu's words
+     readable (`shade` darkens from the menu's side, `vignette` rings the
+     title); a call to act (Press any button) sits between two lit rules
+     and breathes. A menu entry is type, not a box: dim until it is the
+     one, then the accent washes it from its leading edge, which carries a
+     lit bar, and a chevron points on. A mode card is full art with two
+     cut corners, the chosen one ringed and lit in the accent, a locked
+     one grey and darkened. The roll's headings are tracked accent
+     capitals. */
+  --role-front-ground: radial-gradient(60% 50% at 50% 45%, rgb(13 20 38), rgb(4 6 12) 70%);
+  --role-front-shade: linear-gradient(90deg, rgb(3 6 14 / 0.92), rgb(3 6 14 / 0.72) 26%, rgb(3 6 14 / 0.12) 52%, transparent 70%), linear-gradient(180deg, transparent 70%, rgb(3 6 14 / 0.7));
+  --role-front-shade-compact: linear-gradient(180deg, rgb(3 6 14 / 0.5), transparent 30%, rgb(3 6 14 / 0.55) 48%, rgb(3 6 14 / 0.94) 70%);
+  --role-front-vignette: radial-gradient(120% 80% at 50% 38%, transparent 40%, rgb(2 4 10 / 0.55)), linear-gradient(180deg, rgb(2 4 10 / 0.35), transparent 30%, transparent 55%, rgb(2 4 10 / 0.88));
+  --role-front-veil: linear-gradient(180deg, rgb(3 6 14 / 0.86), rgb(3 6 14 / 0.7) 40%, rgb(3 6 14 / 0.92));
+  --role-front-roll-veil: linear-gradient(90deg, rgb(3 6 14 / 0.3), rgb(3 6 14 / 0.88) 30%, rgb(3 6 14 / 0.88) 70%, rgb(3 6 14 / 0.3));
+  --role-front-accent: var(--hud-accent);
+  --role-front-ink: rgb(255 255 255);
+  --role-front-ink-dim: rgb(255 255 255 / 0.74);
+  --role-front-ink-faint: rgb(255 255 255 / 0.56);
+  --role-front-shadow: 0 calc(2 * var(--font-step-px)) calc(8 * var(--font-step-px)) rgb(0 0 0 / 0.6);
+  --role-front-logo-lift: drop-shadow(0 calc(8 * var(--font-step-px)) calc(30 * var(--font-step-px)) rgb(0 0 0 / 0.6));
+  --role-front-call-glow: 0 0 calc(18 * var(--font-step-px)) rgb(from var(--hud-accent) r g b / 0.55), 0 calc(2 * var(--font-step-px)) calc(6 * var(--font-step-px)) rgb(0 0 0 / 0.8);
+  --role-front-call-tracking: 0.28em;
+  --role-front-call-weight: var(--font-weight-semibold);
+  --role-front-rule: linear-gradient(90deg, transparent, rgb(from var(--hud-accent) r g b / 0.9));
+  --role-front-rule-glow: 0 0 calc(10 * var(--font-step-px)) var(--hud-accent);
+  --role-front-divider: linear-gradient(90deg, rgb(255 255 255 / 0.28), transparent 80%);
+  --role-front-entry-size: calc(26 * var(--font-step-px));
+  --role-front-entry-size-compact: calc(21 * var(--font-step-px));
+  --role-front-entry-quiet-size: calc(18 * var(--font-step-px));
+  --role-front-entry-weight: var(--font-weight-semibold);
+  --role-front-entry-on-fill: linear-gradient(90deg, rgb(from var(--hud-accent) r g b / 0.24), rgb(from var(--hud-accent) r g b / 0.08) 55%, transparent);
+  --role-front-entry-on-edge: inset calc(3 * var(--font-step-px)) 0 0 var(--hud-accent), inset 0 var(--stroke-hairline) 0 rgb(255 255 255 / 0.18);
+  --role-front-entry-press-fill: linear-gradient(90deg, rgb(from var(--hud-accent) r g b / 0.34), rgb(from var(--hud-accent) r g b / 0.12) 55%, transparent);
+  --role-front-title-size: calc(40 * var(--font-step-px));
+  --role-front-title-size-compact: calc(26 * var(--font-step-px));
+  --role-front-name-size: calc(44 * var(--font-step-px));
+  --role-front-name-size-compact: calc(28 * var(--font-step-px));
+  --role-front-stretch: 87.5%;
+  --role-front-cut: calc(16 * var(--font-step-px));
+  --role-front-card-rim: inset 0 0 0 var(--stroke-hairline) rgb(255 255 255 / 0.16), inset 0 var(--stroke-hairline) 0 rgb(255 255 255 / 0.55);
+  --role-front-card-on-rim: inset 0 0 0 calc(2 * var(--font-step-px)) var(--hud-accent), inset 0 calc(3 * var(--font-step-px)) 0 rgb(255 255 255), inset 0 calc(-4 * var(--font-step-px)) 0 var(--hud-accent);
+  --role-front-card-on-glow: drop-shadow(0 0 calc(20 * var(--font-step-px)) rgb(from var(--hud-accent) r g b / 0.4));
+  --role-front-card-foot: linear-gradient(180deg, transparent 35%, rgb(3 6 14 / 0.55) 60%, rgb(3 6 14 / 0.96));
+  --role-front-art-off: saturate(0.75) brightness(0.82);
+  --role-front-art-locked: grayscale(1) brightness(0.38);
+  --role-front-lock-ink: rgb(255 179 92);
+  --role-front-tag-on-fill: var(--hud-accent);
+  --role-front-tag-on-ink: rgb(7 16 24);
+  --role-front-heading-tracking: 0.24em;
+  --role-front-boot-fill: linear-gradient(90deg, rgb(from var(--hud-accent) r g b / 0.6), rgb(255 255 255));
+  --role-front-boot-glow: 0 0 calc(12 * var(--font-step-px)) var(--hud-accent);
+  --role-front-boot-well: rgb(255 255 255 / 0.1);
+  --role-front-dot: rgb(255 255 255 / 0.2);
+  --role-front-dot-on: rgb(255 255 255);
+  --role-front-play-fill: linear-gradient(180deg, rgb(255 255 255 / 0.42), transparent 48%), var(--hud-accent);
+  --role-front-play-hover-fill: linear-gradient(180deg, rgb(255 255 255 / 0.62), rgb(255 255 255 / 0.14) 60%), var(--hud-accent);
+  --role-front-play-pressed-fill: linear-gradient(180deg, rgb(0 0 0 / 0.16), transparent 60%), var(--hud-accent);
+  --role-front-play-ink: rgb(7 16 24);
+  --role-front-play-glow: drop-shadow(0 0 calc(16 * var(--font-step-px)) rgb(from var(--hud-accent) r g b / 0.5));
+
   /* Sounds a pack supplies for a press (none by default). */
   --role-sfx-tap: none;
   --role-sfx-tap2: none;
