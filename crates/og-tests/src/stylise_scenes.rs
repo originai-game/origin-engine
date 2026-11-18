@@ -15,8 +15,9 @@
 //!   luminance and depth edges: a comic print given depth.
 //! - `stylise-paint`: painterly smoothing, edge darkening and bleed over the
 //!   physical materials scene.
-//! - `stylise-bands`: four flat depth bands over the toon scene (layered
-//!   silhouettes); `stylise-bands-tint`: five as a tint down a street.
+//! - `stylise-bands`: five flat depth bands fitted to the toon scene's
+//!   depths (layered silhouettes); `stylise-bands-tint`: five linear ones
+//!   as a tint down a street.
 //! - `stylise-retro`: vertex snapping, affine textures and 12-bit depth
 //!   over the physical materials scene.
 //! - `stylise-material`: the material style alone: a warm shadow tint, a
@@ -199,9 +200,13 @@ pub fn paint_scene() -> RenderScene {
 
 pub fn bands_scene() -> Result<RenderScene, String> {
     let mut scene = toon_square()?;
+    // Layers fitted to the square's own depths (logarithmic), so the
+    // wares, the lamp and the trickster each stand in a band of their own
+    // in front of the floor's, as a papercut theatre's flats do;
+    // `stylise-bands-tint` keeps the linear split.
     scene.look.stylise.depth_bands = Some(DepthBands {
-        count: 4,
-        fit: false,
+        count: 5,
+        fit: true,
         near: 4.0,
         far: 30.0,
         near_color: [0.03, 0.02, 0.06],
