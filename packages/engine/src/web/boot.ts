@@ -509,13 +509,30 @@ export function installFetcher(glue: WebExtras, basis: { js: string; wasm: strin
   glue.og_web_set_transcoder?.((id, ktx2, target) => {
     transcode(id, ktx2, target).catch((e: unknown) => glue.og_web_fail_texture?.(id, e instanceof Error ? e.message : String(e)));
   });
+  // Each bundle og.load.bundle opened, by its directory: its files'
+  // integrity, from its manifest as the engine fetches it (before any of
+  // its files).
+  const opened = new Map<string, Readonly<Record<string, string>>>();
+  const sriOf = (path: string): string | undefined => {
+    for (let dir = path.slice(0, Math.max(0, path.lastIndexOf("/"))); dir; dir = dir.slice(0, Math.max(0, dir.lastIndexOf("/")))) {
+      const listed = opened.get(dir);
+      if (listed) return listed[path.slice(dir.length + 1)];
+    }
+    // A package from an asset base: its file under cooked/ against the manifest's integrity.
+    return integrity ? integrity[path.slice(path.lastIndexOf("/cooked/") + "/cooked/".length)] : undefined;
+  };
   glue.og_web_set_fetcher((path: string) => {
     // Its bytes as they arrive, for og.stream.status's and og.load.progress's `received`.
     const got = glue.og_web_file_progress ? new Received(0, true) : undefined;
-    // A package from an asset base: its file under cooked/ against the manifest's integrity.
-    const sri = integrity ? integrity[path.slice(path.lastIndexOf("/cooked/") + "/cooked/".length)] : undefined;
-    bytesOf(path, got, got ? () => glue.og_web_file_progress!(path, got.loaded, got.total) : undefined, sri)
-      .then((bytes) => put(path, bytes))
+    bytesOf(path, got, got ? () => glue.og_web_file_progress!(path, got.loaded, got.total) : undefined, sriOf(path))
+      .then((bytes) => {
+        if (path.endsWith("/.cook.ogt")) {
+          const listed = JSON.parse(glue.og_web_bundle_integrity(new TextDecoder().decode(bytes))) as Record<string, string>;
+          // One that does not parse fails its bundle in the engine.
+          if (typeof listed["error"] !== "string") opened.set(path.slice(0, -"/.cook.ogt".length), listed);
+        }
+        return put(path, bytes);
+      })
       .catch((e: unknown) => {
         tellLoadFailure(path, e);
         glue.og_web_fail_file(path, `cannot fetch ${path} (${e instanceof Error ? e.message : String(e)})`);

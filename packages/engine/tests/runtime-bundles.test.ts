@@ -16,9 +16,12 @@
 // another bundle's group, or stays up after its cell unloads; the two
 // hosts disagree on any of it; on the web, a Basis texture of a runtime
 // bundle in no group (a-v1's sign) is not transcoded at all, as neither
-// the boot nor a pack holds it, so its model does not load.
+// the boot nor a pack holds it, so its model does not load; a runtime
+// bundle's files are fetched without its manifest's integrity, so a
+// changed byte loads as if intact (or against another bundle's, so intact
+// bytes are refused).
 import { beforeAll, expect, test } from "bun:test";
-import { mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { cpSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { encodePng } from "../src/node/png.ts";
@@ -155,8 +158,8 @@ beforeAll(() => {
 
 type Run = { host: string; stops: Array<{ at: string; group?: { state: string; reason: string; ready: boolean }; used: number }> };
 
-function run<T = Run>(host: string, flags: string[] = []): T {
-  const r = Bun.spawnSync(["bun", "tests/support/runtime-bundles.ts", "--host", host, "--dir", staged, ...flags], { cwd: pkg });
+function run<T = Run>(host: string, flags: string[] = [], dir = staged): T {
+  const r = Bun.spawnSync(["bun", "tests/support/runtime-bundles.ts", "--host", host, "--dir", dir, ...flags], { cwd: pkg });
   const out = new TextDecoder().decode(r.stdout);
   if (r.exitCode !== 0) throw new Error(`${host} host: ${new TextDecoder().decode(r.stderr)}${out}`);
   return JSON.parse(out.trim().split("\n").pop()!) as T;
@@ -184,4 +187,16 @@ test("on the web host each bundle's pack has its Basis textures transcoded again
 
 test("a runtime bundle's Basis texture in no group loads on both hosts: on the web the Worker transcodes it once asked, and its model waits for it", () => {
   for (const host of ["node", "web"]) expect(run<{ host: string; sign: unknown }>(host, ["--sign"])).toEqual({ host, sign: { loaded: true, prepared: true } });
+}, 120_000);
+
+test("on the web host a runtime bundle's file whose bytes differ from its manifest's integrity fails its load, naming the integrity", () => {
+  const tampered = `${staged}-tampered`;
+  rmSync(tampered, { recursive: true, force: true });
+  cpSync(staged, tampered, { recursive: true });
+  // One byte of a-v1's place, in its scene's name: unchecked, it loads as if intact.
+  const file = join(tampered, "game", "parcels", "a-v1", "cooked", "a-v1", "place.ogt.ogb");
+  const bytes = new Uint8Array(readFileSync(file));
+  bytes[new TextDecoder("latin1").decode(bytes).indexOf("a-v1 place") + "a-v1 plac".length] ^= 1;
+  writeFileSync(file, bytes);
+  expect(() => run("web", [], tampered)).toThrow(/cannot fetch game\/parcels\/a-v1\/cooked\/a-v1\/place\.ogt\.ogb \(refused: the network, CORS or its integrity \(sha384-/);
 }, 120_000);
