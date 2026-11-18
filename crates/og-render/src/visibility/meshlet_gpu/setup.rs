@@ -170,6 +170,7 @@ impl MeshletGpu {
             ),
             views: buffer(device, "meshlet views", 0, storage_usage()),
             batches: buffer(device, "meshlet batches", 0, storage_usage()),
+            held: Default::default(),
             items: buffer(device, "meshlet items", 0, storage_usage()),
             draws: buffer(device, "meshlet draws", 0, Self::draws_usage()),
             no_pyramid,

@@ -93,13 +93,15 @@ impl MeshletGpu {
         let slots = rows
             .last()
             .map_or(0, |r| r.first_item + r.instances * r.most);
-        grow(
+        if grow(
             device,
             &mut self.batches,
             "meshlet batches",
             (rows.len() * 32) as u64,
             storage_usage(),
-        );
+        ) {
+            self.held.batches.invalidate();
+        }
         // A draw binds a window of `items` from its batch's first item,
         // as wide as the largest batch's items: the buffer holds the last
         // batch's whole window.
@@ -158,15 +160,27 @@ impl MeshletGpu {
         if picked {
             planes.extend(level_rows(levels));
         }
-        grow(
+        if grow(
             device,
             &mut self.views,
             "meshlet views",
             (planes.len() * 16) as u64,
             storage_usage(),
+        ) {
+            self.held.views.invalidate();
+        }
+        write_held(
+            queue,
+            &self.views,
+            &mut self.held.views,
+            bytemuck::cast_slice(&planes),
         );
-        queue.write_buffer(&self.views, 0, bytemuck::cast_slice(&planes));
-        queue.write_buffer(&self.batches, 0, bytemuck::cast_slice(&rows));
+        write_held(
+            queue,
+            &self.batches,
+            &mut self.held.batches,
+            bytemuck::cast_slice(&rows),
+        );
         let draw_args: Vec<[u32; 4]> = rows
             .iter()
             .map(|_| [(CLUSTER_TRIANGLES * 3) as u32, 0, 0, 0])
@@ -195,15 +209,15 @@ impl MeshletGpu {
             },
         };
         let (first, second) = if depth.is_some() { (1, 2) } else { (0, 0) };
-        queue.write_buffer(&self.params, 0, bytemuck::bytes_of(&params(first)));
-        queue.write_buffer(
-            &self.params,
-            PARAMS_SLOT,
-            bytemuck::bytes_of(&params(second)),
-        );
-        queue.write_buffer(
+        // Both phases' parameters, at their slots.
+        let mut both = vec![0u8; PARAMS_SLOT as usize + std::mem::size_of::<Params>()];
+        both[..std::mem::size_of::<Params>()].copy_from_slice(bytemuck::bytes_of(&params(first)));
+        both[PARAMS_SLOT as usize..].copy_from_slice(bytemuck::bytes_of(&params(second)));
+        write_held(queue, &self.params, &mut self.held.params, &both);
+        write_held(
+            queue,
             &self.draw_params,
-            0,
+            &mut self.held.draw_params,
             bytemuck::bytes_of(&DrawParams {
                 flags: [scene.objects.lod_debug as u32, 0, 0, 0],
                 wind: winds.1,

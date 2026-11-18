@@ -353,6 +353,10 @@ pub(crate) struct MeshletGpu {
     depth_pipelines: HashMap<(Faces, u32), wgpu::RenderPipeline>,
     draw_params: wgpu::Buffer,
     batches: wgpu::Buffer,
+    /// What `params`, `views`, `draw_params` and `batches` hold, written
+    /// by changes only (the passes only read them): a frame whose camera
+    /// and batches stand still sends none of them.
+    held: HeldTables,
     items: wgpu::Buffer,
     draws: wgpu::Buffer,
     no_pyramid: wgpu::TextureView,
@@ -424,6 +428,31 @@ fn storage_usage() -> wgpu::BufferUsages {
 }
 
 /// Grows `buf` to hold `size` bytes; whether it was replaced.
+/// What [`MeshletGpu`]'s tables hold as last written.
+#[derive(Default)]
+struct HeldTables {
+    params: crate::upload::DirtyUpload,
+    views: crate::upload::DirtyUpload,
+    draw_params: crate::upload::DirtyUpload,
+    batches: crate::upload::DirtyUpload,
+}
+
+/// Writes `bytes` to `buffer` from its start where they differ from what
+/// `held` says it holds.
+fn write_held(
+    queue: &wgpu::Queue,
+    buffer: &wgpu::Buffer,
+    held: &mut crate::upload::DirtyUpload,
+    bytes: &[u8],
+) {
+    held.write(
+        queue,
+        buffer,
+        bytes,
+        std::slice::from_ref(&(0..bytes.len())),
+    );
+}
+
 fn grow(
     device: &wgpu::Device,
     buf: &mut wgpu::Buffer,

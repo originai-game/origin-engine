@@ -143,6 +143,7 @@ impl GpuCulling {
                 Self::instance_usage(),
             ),
             previous_upload: Default::default(),
+            held: Default::default(),
             uploaded: 0,
             batches: buffer(device, "cull batches", 0, Self::storage_usage()),
             scan: buffer(device, "cull scan", 0, Self::storage_usage()),

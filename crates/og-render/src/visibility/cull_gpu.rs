@@ -385,6 +385,16 @@ struct Pyramid {
     level_sizes: Vec<(u32, u32)>,
 }
 
+/// What [`GpuCulling`]'s tables hold as last written (`view`, `params`,
+/// `passes` and `batches`, which the cull only reads).
+#[derive(Default)]
+struct HeldTables {
+    view: crate::upload::DirtyUpload,
+    params: [crate::upload::DirtyUpload; 2],
+    passes: crate::upload::DirtyUpload,
+    batches: crate::upload::DirtyUpload,
+}
+
 pub(crate) struct GpuCulling {
     layout: wgpu::BindGroupLayout,
     stages: CullStages,
@@ -423,6 +433,9 @@ pub(crate) struct GpuCulling {
     /// path read them). A placeholder while no frame had object motion.
     pub previous: wgpu::Buffer,
     previous_upload: crate::upload::DirtyUpload,
+    /// What the tables hold, written by changes only: a frame whose
+    /// camera and batches stand still sends none of them.
+    held: HeldTables,
     /// Bytes of transforms the last `encode` wrote.
     pub uploaded: u64,
     batches: wgpu::Buffer,

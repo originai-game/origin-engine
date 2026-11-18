@@ -76,6 +76,23 @@ impl GpuCulling {
         grown
     }
 
+    /// Writes `data` to `buffer` where it differs from what `held` says
+    /// the buffer holds (a table the cull only reads).
+    fn write_held<T: bytemuck::Pod>(
+        queue: &wgpu::Queue,
+        buffer: &wgpu::Buffer,
+        held: &mut crate::upload::DirtyUpload,
+        data: &[T],
+    ) {
+        let bytes: &[u8] = bytemuck::cast_slice(data);
+        held.write(
+            queue,
+            buffer,
+            bytes,
+            std::slice::from_ref(&(0..bytes.len())),
+        );
+    }
+
     /// The frame's culling: uploads the sorted `transforms` and the batch
     /// table, and encodes both stages, the occluders' depth and the
     /// pyramid. Without an `Occluders` pass (see [`Self::primed`]) the
@@ -215,7 +232,7 @@ impl GpuCulling {
             self.previous_upload.invalidate();
             0
         };
-        Self::grow(
+        if Self::grow(
             device,
             &mut self.batches,
             &mut self.groups,
@@ -223,7 +240,9 @@ impl GpuCulling {
             b as u64 * std::mem::size_of::<BatchGpu>() as u64,
             self.max_binding,
             Self::storage_usage(),
-        );
+        ) {
+            self.held.batches.invalidate();
+        }
         let scan_replaced = Self::grow(
             device,
             &mut self.scan,
@@ -334,11 +353,12 @@ impl GpuCulling {
                 }
             })
             .collect();
-        queue.write_buffer(&self.batches, 0, bytemuck::cast_slice(&table));
-        queue.write_buffer(
+        Self::write_held(queue, &self.batches, &mut self.held.batches, &table);
+        Self::write_held(
+            queue,
             &self.view,
-            0,
-            bytemuck::cast_slice(&view_proj.to_cols_array()),
+            &mut self.held.view,
+            &view_proj.to_cols_array(),
         );
         self.occlusion = occlusion;
         let pyramid = self.pyramid.as_ref().filter(|_| occlusion);
@@ -366,7 +386,7 @@ impl GpuCulling {
                 gpu
             })
             .collect();
-        Self::grow(
+        if Self::grow(
             device,
             &mut self.passes,
             &mut self.groups,
@@ -374,11 +394,14 @@ impl GpuCulling {
             std::mem::size_of_val(table.as_slice()) as u64,
             self.max_binding,
             Self::storage_usage(),
-        );
-        queue.write_buffer(&self.passes, 0, bytemuck::cast_slice(&table));
-        for (buffer, (which, base)) in self
+        ) {
+            self.held.passes.invalidate();
+        }
+        Self::write_held(queue, &self.passes, &mut self.held.passes, &table);
+        for ((buffer, held), (which, base)) in self
             .params
             .iter()
+            .zip(&mut self.held.params)
             .zip([(&others, 0), (&main, others.len())])
         {
             if !which.is_empty() {
@@ -393,7 +416,7 @@ impl GpuCulling {
                     ],
                     view_proj: view_proj.to_cols_array_2d(),
                 };
-                queue.write_buffer(buffer, 0, bytemuck::bytes_of(&params));
+                Self::write_held(queue, buffer, held, std::slice::from_ref(&params));
             }
         }
         if self.groups.is_none() {

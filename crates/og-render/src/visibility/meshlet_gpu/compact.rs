@@ -96,7 +96,6 @@ impl Compact {
             u64::from(slots.div_ceil(WG) + 1) * 8,
             storage_usage(),
         );
-        queue.write_buffer(&self.params, 0, bytemuck::bytes_of(&params));
         let bound = vec![
             buffers[0].clone(),
             buffers[1].clone(),
@@ -106,6 +105,8 @@ impl Compact {
             buffers[3].clone(),
             self.block_sums.clone(),
         ];
+        // The group was made when `params` were last written: the same
+        // ones are what the buffer holds.
         if self
             .group
             .as_ref()
@@ -113,6 +114,7 @@ impl Compact {
         {
             return;
         }
+        queue.write_buffer(&self.params, 0, bytemuck::bytes_of(&params));
         let mut entries = vec![entry(0, &self.params)];
         for (i, buf) in bound.iter().enumerate() {
             // Power-of-two buffer growth may exceed the binding limit;

@@ -1,0 +1,8 @@
+{
+  "fixed": [
+    {
+      "member": "og.Model",
+      "summary": "A frame that culls on the GPU (any scene drawing cooked foliage, or a large one) sends its culling tables and parameters to the GPU only when they change: a still view of one cooked tree spends about a fifth less CPU time setting up its culling each frame. Nothing drawn changes."
+    }
+  ]
+}
