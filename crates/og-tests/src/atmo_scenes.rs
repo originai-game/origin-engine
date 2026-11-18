@@ -394,10 +394,75 @@ pub fn fluid_2d_particles(seed: u32) -> (Vec<Vec2>, Vec<Vec2>) {
     (water, lava)
 }
 
+/// A painted backdrop (`rel` in the assets) filling a 2D camera's view
+/// `height` units tall about `center` (16:9), tinted `tint`, in the layer
+/// behind everything.
+pub(crate) fn backdrop(
+    scene: &mut RenderScene,
+    rel: &str,
+    center: Vec2,
+    height: f32,
+    tint: [f32; 4],
+) {
+    let texture = kit::picture(scene, rel, false);
+    scene.add_sprite(Sprite {
+        texture: Some(texture),
+        position: center.extend(0.0),
+        size: Vec2::new(height * 16.0 / 9.0, height),
+        color: tint,
+        layer: -10,
+        ..Default::default()
+    });
+}
+
+/// The box from `min` to `max` built of square `texture` blocks about
+/// `block` units across (stretched a little so whole blocks fill it),
+/// tinted `tint`.
+pub(crate) fn blocks(
+    scene: &mut RenderScene,
+    texture: og_render::TextureHandle,
+    min: Vec2,
+    max: Vec2,
+    block: f32,
+    tint: [f32; 4],
+    layer: i32,
+) {
+    let span = max - min;
+    let (nx, ny) = (
+        (span.x / block).round().max(1.0),
+        (span.y / block).round().max(1.0),
+    );
+    let size = Vec2::new(span.x / nx, span.y / ny);
+    for j in 0..ny as i32 {
+        for i in 0..nx as i32 {
+            scene.add_sprite(Sprite {
+                texture: Some(texture),
+                position: (min + size * (Vec2::new(i as f32, j as f32) + 0.5)).extend(0.0),
+                size,
+                color: tint,
+                layer,
+                ..Default::default()
+            });
+        }
+    }
+}
+
+/// A flooded cistern in a 2D game: water at rest in a stone basin, a blob
+/// of it falling from a rusted pipe with a few drops, and an orange molten
+/// fluid in a second basin by the torches (a second fluid in its own
+/// layer), before the painted chamber.
 pub fn fluid_2d_scene() -> RenderScene {
     let mut scene = RenderScene::new();
     let (water, lava) = fluid_2d_particles(7);
-    let stone = [0.32, 0.3, 0.34, 1.0];
+    let center = Vec2::new(-0.6, -1.5);
+    backdrop(
+        &mut scene,
+        "sprites2d/cistern.jpg",
+        center,
+        9.0,
+        [0.72, 0.78, 0.82, 1.0],
+    );
+    let stone = kit::picture(&mut scene, "sprites2d/stone-block.png", true);
     for (p, size) in [
         (Vec2::new(-8.3, -2.0), Vec2::new(0.6, 6.0)),
         (Vec2::new(1.8, -2.0), Vec2::new(0.6, 6.0)),
@@ -405,17 +470,31 @@ pub fn fluid_2d_scene() -> RenderScene {
         (Vec2::new(6.9, -2.0), Vec2::new(0.6, 6.0)),
         (Vec2::new(4.6, -5.2), Vec2::new(5.2, 0.6)),
     ] {
-        scene.add_sprite(Sprite {
-            position: p.extend(0.0),
-            size,
-            color: stone,
-            layer: 2,
-            ..Default::default()
-        });
+        blocks(
+            &mut scene,
+            stone,
+            p - size * 0.5,
+            p + size * 0.5,
+            0.6,
+            [0.56, 0.62, 0.62, 1.0],
+            2,
+        );
     }
+    // The pipe the blob falls from, coming down from above the frame.
+    let pipe = kit::picture(&mut scene, "sprites2d/pipe.png", true);
+    scene.add_sprite(Sprite {
+        texture: Some(pipe),
+        position: Vec3::new(-2.45, 3.35, 0.0),
+        size: Vec2::new(1.06, 2.4),
+        color: [0.8, 0.8, 0.8, 1.0],
+        layer: 3,
+        ..Default::default()
+    });
     scene.sprite.metaballs.push(Metaballs {
         particles: Arc::from(water),
         radius: 0.26,
+        color: Vec4::new(0.06, 0.34, 0.55, 0.85),
+        rim: Vec3::new(0.62, 0.95, 1.0),
         ..Default::default()
     });
     scene.sprite.metaballs.push(Metaballs {
@@ -426,7 +505,7 @@ pub fn fluid_2d_scene() -> RenderScene {
         layer: 1,
         ..Default::default()
     });
-    scene.frame.camera = Camera::orthographic_2d(Vec2::new(-0.6, -1.5), 9.0);
+    scene.frame.camera = Camera::orthographic_2d(center, 9.0);
     scene.lighting.environment.background = Background::Color(Vec3::new(0.08, 0.08, 0.1));
     scene.look.post.tonemap = Tonemap::None;
     scene
@@ -455,8 +534,9 @@ fn disc(centre: Vec2, radius: f32, spacing: f32, seed: u32) -> Vec<Vec2> {
     out
 }
 
-/// Ten fluids in one frame (phase 2: more than four, packed four channels
-/// to a field): six lone pools in a row, each its own colour; a group of two
+/// An alchemist's workbench at night with ten fluids in one frame (phase
+/// 2: more than four, packed four channels to a field): six lone potions in
+/// flasks on the shelf, each its own colour; a group of two
 /// (blue water and orange oil) drawn as one surface, a band where their
 /// particles are half and half blended between them; and a group of two
 /// unmixed (green over purple), layered with a sharp colour boundary.
@@ -557,7 +637,20 @@ pub fn fluid_groups_scene() -> RenderScene {
             ..Default::default()
         });
     }
-    let stone = [0.32, 0.3, 0.34, 1.0];
+    // Each lone fluid is a potion in a corked flask on the shelf, the
+    // glass drawn over it.
+    let flask = kit::picture(&mut scene, "sprites2d/flask.png", true);
+    for i in 0..6 {
+        scene.add_sprite(Sprite {
+            texture: Some(flask),
+            position: Vec3::new(-5.0 + i as f32 * 2.0, 2.85, 0.0),
+            size: Vec2::new(1.9, 2.85),
+            layer: 2,
+            ..Default::default()
+        });
+    }
+    // The mixing and the layering lie in oak trays on the bench.
+    let oak = [0.07, 0.035, 0.02, 1.0];
     for (p, size) in [
         (Vec2::new(-1.0, -2.1), Vec2::new(11.6, 0.4)),
         (Vec2::new(5.4, -2.1), Vec2::new(1.0, 0.4)),
@@ -565,12 +658,19 @@ pub fn fluid_groups_scene() -> RenderScene {
         scene.add_sprite(Sprite {
             position: p.extend(0.0),
             size,
-            color: stone,
+            color: oak,
             layer: 2,
             ..Default::default()
         });
     }
-    scene.frame.camera = Camera::orthographic_2d(Vec2::new(-0.4, 0.4), 7.0);
+    backdrop(
+        &mut scene,
+        "sprites2d/workshop.jpg",
+        Vec2::new(-0.4, 0.9),
+        7.0,
+        [0.8, 0.78, 0.78, 1.0],
+    );
+    scene.frame.camera = Camera::orthographic_2d(Vec2::new(-0.4, 0.9), 7.0);
     scene.lighting.environment.background = Background::Color(Vec3::new(0.08, 0.08, 0.1));
     scene.look.post.tonemap = Tonemap::None;
     scene
