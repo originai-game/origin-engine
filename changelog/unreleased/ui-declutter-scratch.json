@@ -1,0 +1,6 @@
+{
+  "fixed": [{
+    "member": "UI world placement",
+    "summary": "World anchor and mass-label placement reuse coordinate and collision working storage across queries and frames while preserving exact placement results."
+  }]
+}
