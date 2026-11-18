@@ -1030,9 +1030,7 @@ impl crate::world::WorldUi {
         );
         let gap = env.theme.space.xs;
         let metrics = &env.fonts.body.metrics;
-        let widths = &self.placement.mass_widths;
-        let next_widths = &mut self.placement.next_mass_widths;
-        next_widths.clear();
+        let widths = &mut self.placement.mass_widths;
         for (k, (_, t, space)) in self.declared.templates.iter().enumerate() {
             let words = matches!(t.kind, UiMassKind::Number { .. } | UiMassKind::Text { .. });
             if *space != UiMassSpace::World || t.lifetime == 0 || !words {
@@ -1056,9 +1054,12 @@ impl crate::world::WorldUi {
             // current box with the still-visible future timeline samples.
             let mut swept = |i: &UiMassInstance, age: f32| -> Option<Rect> {
                 let key = (k as u32, i.value.to_bits());
-                let width = match next_widths.get(&key).or_else(|| widths.get(&key)) {
-                    Some(&width) => width,
-                    None => {
+                let width = match widths.entry(key) {
+                    std::collections::hash_map::Entry::Occupied(mut entry) => {
+                        entry.get_mut().1 = tick;
+                        entry.get().0
+                    }
+                    std::collections::hash_map::Entry::Vacant(entry) => {
                         let text = match &t.kind {
                             UiMassKind::Number {
                                 decimals,
@@ -1070,10 +1071,11 @@ impl crate::world::WorldUi {
                             }
                             _ => return None,
                         };
-                        metrics.measure(&text, 1.0)
+                        let width = metrics.measure(&text, 1.0);
+                        entry.insert((width, tick));
+                        width
                     }
                 };
-                next_widths.insert(key, width);
                 let (x, y, depth) = view.project(Vec3::from(i.position), vp.width, vp.height)?;
                 let d = if t.distance.x > 0.0 {
                     (t.distance.x / depth.max(1e-4)).clamp(t.distance.y, t.distance.z)
@@ -1152,10 +1154,7 @@ impl crate::world::WorldUi {
                 }
             }
         }
-        std::mem::swap(
-            &mut self.placement.mass_widths,
-            &mut self.placement.next_mass_widths,
-        );
+        widths.retain(|_, &mut (_, used)| used == tick);
     }
 }
 
