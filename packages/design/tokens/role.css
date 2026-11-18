@@ -758,6 +758,92 @@
   --role-select-meter-glow: 0 0 calc(10 * var(--font-step-px)) rgb(255 207 90 / 0.7);
   --role-select-meter-well: rgb(255 255 255 / 0.14);
 
+  /* Inventory and backpack (family 11): bags, loot, crafting and trade.
+     The frame is cut at two corners (`inv-frame-cut`) with a lit top edge;
+     a small tracked kicker sits over its title and the purse is a chip. An
+     item's tile is cut at two corners and wears its rarity's cell fill and
+     rim (`--cell-<rarity>-fill`, `-shadow`) with a lit bar along its foot; small states are solid tags in its corners; the selected
+     tile wears corner brackets. A row (a recipe, a good, a loot line)
+     carries its item's rarity as a bar on its leading edge and its icon in
+     a socket. `inv-accent` is the family's light (the active tab, the load,
+     a fresh mark): the HUD's accent unless a pack names another. */
+  --role-inv-accent: var(--hud-accent);
+  /* A row's or a tile's rarity colour and its socket's fill and rim: the
+     common ones here; a component sets them per `data-rarity` from the
+     rarity colours and the cell roles (`--cell-<rarity>-fill`, `-shadow`). */
+  --role-inv-rarity: var(--common);
+  --role-inv-socket-fill: var(--cell-common-fill);
+  --role-inv-socket-rim: var(--cell-common-shadow);
+  /* A row's rarity edge, the rules between a band, a list and a footer,
+     a chip's and a switch's corners, a name's weight, figure steps, the
+     glow of a recipe's art (in its rarity, through currentColor) and a load
+     bar's fill. */
+  --role-inv-edge: var(--stroke-thick) solid transparent;
+  --role-inv-rule: var(--stroke-hairline) solid var(--color-rim-soft);
+  --role-inv-chip-radius: var(--radius-capsule);
+  --role-inv-seg-radius: var(--radius-control);
+  --role-inv-name-weight: var(--font-weight-semibold);
+  --role-inv-figure-lg-size: var(--font-step-lg);
+  --role-inv-figure-xl-size: var(--font-step-xl);
+  --role-inv-hero-glow: radial-gradient(60% 70% at 50% 60%, currentColor, transparent 70%);
+  /* A recipe's art and its glow follow the screen, not the text: art is
+     not text. Compact is a narrow panel's. */
+  --role-inv-hero-size: min(150px, 21vh);
+  --role-inv-hero-art-size: min(120px, 17vh);
+  --role-inv-hero-compact-size: min(80px, 10vh);
+  --role-inv-hero-compact-art-size: min(64px, 8vh);
+  --role-inv-load-fill: var(--bar-gloss), var(--inv-accent);
+  --role-inv-load-over-fill: var(--bar-gloss), var(--warn);
+  --role-inv-accent-ink: rgb(4 16 22);
+  --role-inv-frame-cut: calc(14 * var(--font-step-px));
+  --role-inv-lit-edge: linear-gradient(90deg, rgb(255 255 255 / 0.55), transparent 70%);
+  --role-inv-kicker-size: calc(12 * var(--font-step-px));
+  --role-inv-kicker-tracking: 0.18em;
+  --role-inv-kicker-transform: uppercase;
+  --role-inv-kicker-ink: var(--ink-faint);
+  --role-inv-chip-fill: rgb(4 6 12 / 0.55);
+  --role-inv-chip-rim: inset 0 0 0 var(--stroke-hairline) var(--color-rim);
+  --role-inv-coin: radial-gradient(circle at 40% 35%, rgb(255 243 184), rgb(255 207 90) 45%, rgb(166 107 18));
+  --role-inv-tab-ink: var(--ink-muted);
+  --role-inv-tab-on-ink: var(--ink);
+  --role-inv-tab-line: var(--inv-accent);
+  --role-inv-tab-glow: 0 0 calc(10 * var(--font-step-px)) var(--inv-accent);
+  --role-inv-tab-count-fill: rgb(255 255 255 / 0.08);
+  --role-inv-tab-count-on-fill: var(--inv-accent);
+  --role-inv-tab-rule: var(--color-rim-soft);
+  --role-inv-tab-fade: linear-gradient(90deg, rgb(0 0 0) calc(100% - var(--size-lg)), transparent);
+  --role-inv-slot-cut: calc(8 * var(--font-step-px));
+  --role-inv-slot-hover-rim: inset 0 0 0 var(--stroke-thin) var(--color-rim-strong);
+  --role-inv-slot-selected-rim: inset 0 0 0 var(--stroke-thin) var(--ink);
+  --role-inv-slot-bar-glow: 0 0 calc(8 * var(--font-step-px)) currentColor;
+  --role-inv-slot-art-shadow: drop-shadow(0 calc(4 * var(--font-step-px)) calc(6 * var(--font-step-px)) rgb(0 0 0 / 0.6));
+  --role-inv-slot-broken-art: grayscale(1) brightness(0.6);
+  --role-inv-well-fill: rgb(4 6 12 / 0.55);
+  --role-inv-well-rim: inset 0 0 0 var(--stroke-hairline) rgb(255 255 255 / 0.06);
+  --role-inv-bracket: linear-gradient(var(--ink), var(--ink)) 0 0 / var(--space-md) var(--stroke-thin) no-repeat, linear-gradient(var(--ink), var(--ink)) 0 0 / var(--stroke-thin) var(--space-md) no-repeat, linear-gradient(var(--ink), var(--ink)) 100% 0 / var(--space-md) var(--stroke-thin) no-repeat, linear-gradient(var(--ink), var(--ink)) 100% 0 / var(--stroke-thin) var(--space-md) no-repeat, linear-gradient(var(--ink), var(--ink)) 0 100% / var(--space-md) var(--stroke-thin) no-repeat, linear-gradient(var(--ink), var(--ink)) 0 100% / var(--stroke-thin) var(--space-md) no-repeat, linear-gradient(var(--ink), var(--ink)) 100% 100% / var(--space-md) var(--stroke-thin) no-repeat, linear-gradient(var(--ink), var(--ink)) 100% 100% / var(--stroke-thin) var(--space-md) no-repeat;
+  --role-inv-bracket-glow: drop-shadow(0 0 calc(4 * var(--font-step-px)) var(--inv-accent));
+  --role-inv-tag-fill: rgb(6 9 16 / 0.88);
+  --role-inv-tag-rim: inset 0 var(--stroke-hairline) 0 rgb(255 255 255 / 0.2);
+  --role-inv-tag-cut: calc(4 * var(--font-step-px));
+  --role-inv-tag-size: calc(12 * var(--font-step-px));
+  --role-inv-bare-fill: transparent;
+  --role-inv-equipped-fill: var(--success);
+  --role-inv-equipped-ink: rgb(4 16 10);
+  --role-inv-broken-ink: var(--danger);
+  --role-inv-fresh-glow: 0 0 calc(8 * var(--font-step-px)) var(--inv-accent), 0 0 0 var(--stroke-thin) rgb(6 9 16 / 0.9);
+  --role-inv-figure-weight: var(--font-weight-bold);
+  --role-inv-figure-stretch: 87.5%;
+  --role-inv-load-over-rim: 0 0 0 var(--stroke-hairline) var(--warn), 0 0 calc(12 * var(--font-step-px)) rgb(from var(--warn) r g b / 0.6);
+  --role-inv-row-fill: rgb(10 14 26 / 0.55);
+  --role-inv-row-rim: inset 0 0 0 var(--stroke-hairline) var(--color-rim-soft);
+  --role-inv-row-hover-fill: rgb(22 30 50 / 0.7);
+  --role-inv-row-on-fill: linear-gradient(90deg, rgb(from var(--inv-accent) r g b / 0.07), rgb(10 14 26 / 0.55) 70%);
+  --role-inv-row-on-rim: inset 0 0 0 var(--stroke-hairline) rgb(from var(--inv-accent) r g b / 0.6);
+  --role-inv-short-fill: rgb(from var(--danger) r g b / 0.1);
+  --role-inv-short-rim: inset 0 0 0 var(--stroke-hairline) rgb(from var(--danger) r g b / 0.55);
+  --role-inv-alert-fill: rgb(from var(--danger) r g b / 0.12);
+  --role-inv-alert-rim: inset var(--stroke-thick) 0 0 var(--danger);
+
   /* Label: a caption or column heading, opened a little so it sits back
      from the values it names. */
   --role-label-font: var(--type-label-font);

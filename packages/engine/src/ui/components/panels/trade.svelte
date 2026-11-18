@@ -1,46 +1,111 @@
 <meta name="component" content="RpgTrade">
 <meta name="strings" content="./economy.en.ogt">
-<meta name="parts" content="RpgTrade.frame RpgTrade.title RpgTrade.wallet RpgTrade.mode RpgTrade.goods RpgTrade.row RpgTrade.face RpgTrade.icon RpgTrade.name RpgTrade.stock RpgTrade.reason RpgTrade.detail RpgTrade.description RpgTrade.price RpgTrade.buy RpgTrade.sell RpgTrade.status RpgTrade.empty RpgTrade.figure RpgTrade.caption RpgTrade.well">
+<meta name="parts" content="RpgTrade.frame RpgTrade.band RpgTrade.kicker RpgTrade.title RpgTrade.wallet RpgTrade.mode RpgTrade.goods RpgTrade.row RpgTrade.face RpgTrade.socket RpgTrade.icon RpgTrade.name RpgTrade.stock RpgTrade.reason RpgTrade.price RpgTrade.former RpgTrade.detail RpgTrade.description RpgTrade.total RpgTrade.after RpgTrade.buy RpgTrade.sell RpgTrade.status RpgTrade.empty RpgTrade.figure RpgTrade.caption RpgTrade.well">
 <meta name="prop:title" content="string" data-default="" data-doc="The merchant or trade title; empty uses Trade.">
 <meta name="prop:mode" content="string" data-default="buy" data-doc="buy or sell. The game changes this in response to switchMode and supplies that side's goods and prices.">
 <meta name="prop:wallet" content="string" data-default="" data-doc="The player's balance as the game words it; empty hides it.">
-<meta name="prop:goods" content="list" data-default="[]" data-doc="Keyed { id, name, icon, stock, description, price, available, reason }. stock and the total price are game-formatted strings; available includes balance, capacity, quantity and legality checks.">
+<meta name="prop:goods" content="list" data-default="[]" data-doc="Keyed { id, name, icon, stock, description, price, was, after, available, reason, rarity }. stock, price (the total), was (the struck price before a discount, empty none) and after (the balance once paid, empty hides it) are game-formatted strings; available includes balance, capacity, quantity and legality checks; rarity (common … mythic, empty common) colours the row's edge, the socket and the name.">
 <meta name="prop:selected" content="string" data-default="" data-doc="The inspected good's id. Unavailable goods remain selectable so their restriction can be read.">
 <meta name="prop:loading" content="bool" data-default="false" data-doc="Goods are loading; selection and transactions are disabled.">
 <meta name="prop:busy" content="bool" data-default="false" data-doc="A transaction is pending; selection, mode switching and transactions are disabled.">
 <meta name="prop:error" content="string" data-default="" data-doc="The game's transaction failure, kept visible alongside the selection.">
-<meta name="fixture:default" content='{"title":"Mira’s supplies","wallet":"120 gold","mode":"buy","goods":[{"id":"potion","name":"Healing draught ×2","icon":"potion","stock":"8 in stock","description":"Two draughts for the road.","price":"20 gold","available":true,"reason":""},{"id":"gem","name":"Storm crystal","icon":"gem","stock":"1 in stock","description":"A charged crafting catalyst.","price":"240 gold","available":false,"reason":"Not enough gold"}],"selected":"potion","loading":false,"busy":false,"error":""}'>
+<meta name="fixture:default" content='{"title":"Mira’s supplies","wallet":"120 gold","mode":"buy","goods":[{"id":"potion","name":"Healing draught ×2","icon":"potion","stock":"8 in stock","description":"Two draughts for the road.","price":"20 gold","was":"","after":"120 → 100","available":true,"reason":"","rarity":"uncommon"},{"id":"lamp","name":"Hooded lantern","icon":"fire","stock":"2 in stock","description":"Burns through the night.","price":"45 gold","was":"60 gold","after":"120 → 75","available":true,"reason":"","rarity":"rare"},{"id":"gem","name":"Storm crystal","icon":"gem","stock":"1 in stock","description":"A charged crafting catalyst.","price":"240 gold","was":"","after":"","available":false,"reason":"Not enough gold","rarity":"epic"}],"selected":"potion","loading":false,"busy":false,"error":""}'>
 <meta name="fixture:empty" content='{}'>
 <meta name="fixture:loading" content='{"loading":true}'>
-<meta name="fixture:sell" content='{"mode":"sell","wallet":"120 gold","selected":"gem","goods":[{"id":"gem","name":"Storm crystal","icon":"gem","stock":"3 owned","description":"Sell one crystal.","price":"80 gold","available":true,"reason":""}]}'>
-<meta name="fixture:unavailable" content='{"selected":"gem","goods":[{"id":"gem","name":"Storm crystal","icon":"gem","stock":"1 in stock","description":"A charged crafting catalyst.","price":"240 gold","available":false,"reason":"Not enough gold"}],"error":"The price changed. Review it before trying again."}'>
+<meta name="fixture:sell" content='{"mode":"sell","wallet":"120 gold","selected":"gem","goods":[{"id":"gem","name":"Storm crystal","icon":"gem","stock":"3 owned","description":"Sell one crystal.","price":"80 gold","was":"","after":"120 → 200","available":true,"reason":"","rarity":"epic"}]}'>
+<meta name="fixture:unavailable" content='{"selected":"gem","goods":[{"id":"gem","name":"Storm crystal","icon":"gem","stock":"1 in stock","description":"A charged crafting catalyst.","price":"240 gold","was":"","after":"","available":false,"reason":"Not enough gold","rarity":"epic"}],"error":"The price changed. Review it before trying again."}'>
 
-<section id="RpgTrade" part="RpgTrade.frame" data-layout="scroll" data-gap="loose" aria-label={title || t("rpg.trade.title")} aria-busy={loading || busy}>
-  <h2 part="RpgTrade.title">{title || t("rpg.trade.title")}</h2>
-  {#if wallet}<p part="RpgTrade.wallet RpgTrade.figure">{wallet}</p>{/if}
-  <button part="RpgTrade.mode" disabled={loading || busy} onclick={switchMode}>{mode == 'sell' ? t("rpg.trade.toBuy") : t("rpg.trade.toSell")}</button>
-  {#if error}<p part="RpgTrade.status RpgTrade.well" data-tone="danger" role="alert">{error}</p>{/if}
-  {#if loading || busy}<div part="RpgTrade.status RpgTrade.well" data-layout="row" role="status"><Spinner name={busy ? t("rpg.economy.busy") : t("rpg.economy.loading")} /><span>{busy ? t("rpg.economy.busy") : t("rpg.economy.loading")}</span></div>{/if}
-  {#if goods.length}<div part="RpgTrade.goods" data-layout="stack" data-gap="tight" role="listbox" aria-label={mode == 'sell' ? t("rpg.trade.sell") : t("rpg.trade.buy")}>
-    {#each goods as good (good.id)}<button part="RpgTrade.row" role="option" aria-selected={good.id == selected} disabled={loading || busy} onclick={choose}><div part="RpgTrade.face" data-layout="cluster"><og-icon part="RpgTrade.icon" icon={good.icon}></og-icon><div part="RpgTrade.name" data-fill>{good.name}</div><div part="RpgTrade.stock RpgTrade.caption">{good.stock}</div></div></button>{/each}
-  </div>
-  {#if !selected}<p part="RpgTrade.empty RpgTrade.caption">{t("rpg.trade.choose")}</p>{/if}
-  {#each goods as good (good.id)}{#if good.id == selected}<section part="RpgTrade.detail RpgTrade.well" data-layout="stack" aria-label={good.name}>
-    {#if good.description}<p part="RpgTrade.description">{good.description}</p>{/if}
-    <p part="RpgTrade.price RpgTrade.figure">{t("rpg.trade.price", { price: good.price })}</p>
-    {#if !good.available}<p part="RpgTrade.reason RpgTrade.caption">{good.reason || t("rpg.economy.unavailable")}</p>{/if}
-    {#if mode == 'sell'}<button part="RpgTrade.sell" class="primary" disabled={!good.available || loading || busy} onclick={sell}>{t("rpg.trade.sell")}</button>{:else}<button part="RpgTrade.buy" class="primary" disabled={!good.available || loading || busy} onclick={buy}>{t("rpg.trade.buy")}</button>{/if}
-  </section>{/if}{/each}
-  {:else if !loading}<p part="RpgTrade.empty RpgTrade.caption" role="status">{t("rpg.trade.empty")}</p>{/if}
+<!--
+  A merchant: a band with the merchant's name, the Buy / Sell switch and
+  the purse; an alert when a deal failed; the goods as rows (the item's
+  icon in a socket, its rarity on the row's edge and in its name, its stock
+  or why it cannot be had, and its price, a discount struck before it);
+  and at the foot the selected good with its total, the balance after, and
+  Buy or Sell. The game decides every price and verdict; the panel reports
+  choose, switchMode, buy and sell, each with the good's key.
+-->
+<section id="RpgTrade" part="RpgTrade.frame" data-layout="shell" data-gap="loose" aria-label={title || t("rpg.trade.title")} aria-busy={loading || busy}>
+  <div class="lit"></div>
+  <header part="RpgTrade.band" class="band" data-layout="cluster" data-gap="loose">
+    <div class="heading" data-layout="stack" data-gap="hair" data-fill><span part="RpgTrade.kicker" class="kicker">{t("rpg.trade.kicker")}</span><h2 part="RpgTrade.title">{title || t("rpg.trade.title")}</h2></div>
+    <button part="RpgTrade.mode" class="mode" role="switch" aria-checked={mode == 'sell'} aria-label={mode == 'sell' ? t("rpg.trade.toBuy") : t("rpg.trade.toSell")} disabled={loading || busy} onclick={switchMode}><span class="seg" class:on={mode != 'sell'}>{t("rpg.trade.buy")}</span><span class="seg" class:on={mode == 'sell'}>{t("rpg.trade.sell")}</span></button>
+    {#if wallet}<div part="RpgTrade.wallet RpgTrade.figure" class="purse" data-layout="row" data-gap="tight"><span class="coin"></span><span>{wallet}</span></div>{/if}
+  </header>
+  {#if error}<p part="RpgTrade.status" class="alert" data-tone="danger" role="alert">{error}</p>{/if}
+  {#if loading || busy}<div part="RpgTrade.status RpgTrade.well" class="wait" data-layout="row" role="status"><Spinner name={busy ? t("rpg.economy.busy") : t("rpg.economy.loading")} /><span>{busy ? t("rpg.economy.busy") : t("rpg.economy.loading")}</span></div>{/if}
+  {#if goods.length}
+    <div part="RpgTrade.goods" class="goods" data-layout="scroll" data-fill role="listbox" aria-label={mode == 'sell' ? t("rpg.trade.sell") : t("rpg.trade.buy")}>
+      {#each goods as good (good.id)}<button part="RpgTrade.row" class="row" role="option" data-rarity={good.rarity || 'common'} data-available={good.available} aria-selected={good.id == selected} disabled={loading || busy} onclick={choose}><div part="RpgTrade.face" class="face">
+        <div part="RpgTrade.socket" class="socket" data-layout="cover"><og-icon part="RpgTrade.icon" icon={good.icon}></og-icon></div>
+        <div class="words" data-layout="stack" data-gap="hair"><span part="RpgTrade.name" class="name">{good.name}</span>{#if !good.available}<span part="RpgTrade.reason" class="reason">{good.reason || t("rpg.economy.unavailable")}</span>{:else}<span part="RpgTrade.stock RpgTrade.caption">{good.stock}</span>{/if}</div>
+        <div part="RpgTrade.price RpgTrade.figure" class="price">{#if good.was}<span part="RpgTrade.former" class="was" aria-label={t("rpg.trade.was", { price: good.was })}>{good.was}</span>{/if}<span>{good.price}</span></div>
+      </div></button>{/each}
+    </div>
+    {#if !selected}<p part="RpgTrade.empty RpgTrade.caption" class="guide">{t("rpg.trade.choose")}</p>{/if}
+    {#each goods as good (good.id)}{#if good.id == selected}<footer part="RpgTrade.detail" class="detail" data-rarity={good.rarity || 'common'} aria-label={good.name}>
+      <div class="summary">
+        <div class="socket big" data-layout="cover"><og-icon icon={good.icon}></og-icon></div>
+        <div class="words" data-layout="stack" data-gap="hair"><span class="name">{good.name}</span>{#if !good.available}<span class="reason">{good.reason || t("rpg.economy.unavailable")}</span>{:else if good.description}<span part="RpgTrade.description RpgTrade.caption">{good.description}</span>{/if}</div>
+        <div class="sum" data-layout="stack" data-gap="hair"><span class="kicker">{t("rpg.trade.total")}</span><span part="RpgTrade.total RpgTrade.figure" class="total" aria-label={t("rpg.trade.price", { price: good.price })}>{good.price}</span>{#if good.after}<span part="RpgTrade.after RpgTrade.caption" class="after">{good.after}</span>{/if}</div>
+      </div>
+      {#if mode == 'sell'}<button part="RpgTrade.sell" class="primary deal" disabled={!good.available || loading || busy} aria-label={t("rpg.trade.sell")} onclick={sell}><kbd class="cap" data-action="details"></kbd><span>{t("rpg.trade.sell")}</span></button>{:else}<button part="RpgTrade.buy" class="primary deal" disabled={!good.available || loading || busy} aria-label={t("rpg.trade.buy")} onclick={buy}><kbd class="cap" data-action="details"></kbd><span>{t("rpg.trade.buy")}</span></button>{/if}
+    </footer>{/if}{/each}
+  {:else if !loading}<p part="RpgTrade.empty RpgTrade.caption" class="guide" role="status">{t("rpg.trade.empty")}</p>{/if}
 </section>
 
 <style>
-:host { inline-size: stretch; max-block-size: stretch; }
+[part="RpgTrade.frame"] { position: relative; inline-size: stretch; max-block-size: stretch; min-block-size: 0; clip-path: polygon(var(--inv-frame-cut) 0, 100% 0, 100% calc(100% - var(--inv-frame-cut)), calc(100% - var(--inv-frame-cut)) 100%, 0 100%, 0 var(--inv-frame-cut)); }
+.lit { position: absolute; inset-inline: var(--inv-frame-cut) 30%; top: 0; block-size: var(--stroke-hairline); background: var(--inv-lit-edge); pointer-events: none; }
 h2, p { margin: 0; }
-[part="RpgTrade.row"] { min-block-size: var(--size-touch); padding: var(--space-sm); --row-fill: var(--well); }
-[part="RpgTrade.icon"] { inline-size: var(--size-sm); block-size: var(--size-sm); flex: none; }
-[part="RpgTrade.name"] { text-align: start; }
-[part~="RpgTrade.detail"] { padding: var(--space-md); }
-[part="RpgTrade.mode"], [part="RpgTrade.buy"], [part="RpgTrade.sell"] { min-block-size: var(--size-touch); }
-[part~="RpgTrade.status"] { padding: var(--space-sm); }
+.band { flex: none; width: stretch; align-items: flex-end; }
+.heading { min-width: 0; }
+.kicker { font-size: var(--inv-kicker-size); font-weight: var(--inv-name-weight); letter-spacing: var(--inv-kicker-tracking); text-transform: var(--inv-kicker-transform); color: var(--inv-kicker-ink); white-space: nowrap; }
+[part="RpgTrade.title"] { overflow-wrap: anywhere; }
+/* The switch: Buy and Sell as two segments in a well, the side shown lit. */
+.mode { flex: none; min-block-size: var(--size-touch); padding: var(--space-xxs); gap: var(--space-xxs); border-radius: var(--inv-seg-radius); background: var(--inv-chip-fill); box-shadow: var(--inv-chip-rim); }
+.seg { padding: var(--space-xs) var(--space-sm); border-radius: var(--inv-seg-radius); color: var(--inv-tab-ink); }
+.seg.on { color: var(--inv-tab-on-ink); background: var(--inv-tab-count-fill); box-shadow: var(--inv-tag-rim); }
+.purse { flex: none; align-items: center; padding: var(--space-xxs) var(--space-sm) var(--space-xxs) var(--space-xxs); border-radius: var(--inv-chip-radius); background: var(--inv-chip-fill); box-shadow: var(--inv-chip-rim); white-space: nowrap; font-weight: var(--inv-figure-weight); font-stretch: var(--inv-figure-stretch); }
+.coin { flex: none; inline-size: calc(22 * var(--font-step-px)); block-size: calc(22 * var(--font-step-px)); border-radius: var(--inv-chip-radius); background: var(--inv-coin); }
+.alert { flex: none; padding: var(--space-xs) var(--space-sm); background: var(--inv-alert-fill); box-shadow: var(--inv-alert-rim); }
+.wait { flex: none; padding: var(--space-sm); }
+.goods { gap: var(--space-xs); min-block-size: 0; }
+.row { --inv-rarity: var(--common); --inv-socket-fill: var(--cell-common-fill); --inv-socket-rim: var(--cell-common-shadow); flex: none; width: stretch; min-block-size: var(--size-touch); padding: var(--space-xs) var(--space-sm) var(--space-xs) var(--space-md); justify-content: flex-start; border: none; border-radius: 0; background: var(--inv-row-fill); box-shadow: var(--inv-row-rim); border-inline-start: var(--inv-edge); border-inline-start-color: var(--inv-rarity); clip-path: polygon(var(--inv-tag-cut) 0, 100% 0, 100% calc(100% - var(--inv-tag-cut)), calc(100% - var(--inv-tag-cut)) 100%, 0 100%, 0 var(--inv-tag-cut)); }
+.row:hover { background: var(--inv-row-hover-fill); }
+.row[aria-selected=true] { background: var(--inv-row-on-fill); box-shadow: var(--inv-row-on-rim); }
+:is(.row, .detail)[data-rarity=uncommon] { --inv-rarity: var(--uncommon); --inv-socket-fill: var(--cell-uncommon-fill); --inv-socket-rim: var(--cell-uncommon-shadow); }
+:is(.row, .detail)[data-rarity=rare] { --inv-rarity: var(--rare); --inv-socket-fill: var(--cell-rare-fill); --inv-socket-rim: var(--cell-rare-shadow); }
+:is(.row, .detail)[data-rarity=epic] { --inv-rarity: var(--epic); --inv-socket-fill: var(--cell-epic-fill); --inv-socket-rim: var(--cell-epic-shadow); }
+:is(.row, .detail)[data-rarity=legendary] { --inv-rarity: var(--legendary); --inv-socket-fill: var(--cell-legendary-fill); --inv-socket-rim: var(--cell-legendary-shadow); }
+:is(.row, .detail)[data-rarity=mythic] { --inv-rarity: var(--mythic); --inv-socket-fill: var(--cell-mythic-fill); --inv-socket-rim: var(--cell-mythic-shadow); }
+.face { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; column-gap: var(--space-sm); row-gap: var(--space-xxs); width: stretch; min-width: 0; }
+.summary { display: flex; align-items: center; gap: var(--space-sm); width: stretch; min-width: 0; }
+.socket { flex: none; inline-size: calc(44 * var(--font-step-px)); block-size: calc(44 * var(--font-step-px)); background: var(--inv-socket-fill); box-shadow: var(--inv-socket-rim); clip-path: polygon(var(--inv-tag-cut) 0, 100% 0, 100% calc(100% - var(--inv-tag-cut)), calc(100% - var(--inv-tag-cut)) 100%, 0 100%, 0 var(--inv-tag-cut)); }
+.socket og-icon { inline-size: 74%; block-size: 74%; filter: var(--inv-slot-art-shadow); }
+.socket.big { inline-size: calc(60 * var(--font-step-px)); block-size: calc(60 * var(--font-step-px)); }
+.row[data-available=false] .socket { opacity: var(--disabled-content-opacity); }
+.words { flex: 1 1 0; min-width: 0; align-items: flex-start; text-align: start; }
+.name { overflow-wrap: anywhere; font-weight: var(--inv-name-weight); color: var(--inv-rarity); }
+:is(.row, .detail)[data-rarity=common] .name { color: var(--ink-bright); }
+.reason { color: var(--inv-broken-ink); overflow-wrap: anywhere; }
+.price { flex: none; display: flex; align-items: baseline; gap: var(--space-xs); white-space: nowrap; font-weight: var(--inv-figure-weight); font-stretch: var(--inv-figure-stretch); font-variant-numeric: var(--hud-figure-numeric); }
+.row[data-available=false] .price { color: var(--inv-broken-ink); }
+.was { font-weight: var(--inv-name-weight); }
+.guide { padding: var(--space-lg); text-align: center; }
+/* The deal at the foot: the good, its total and the balance after, then Buy or Sell. */
+.detail { flex: none; display: flex; flex-direction: column; gap: var(--space-sm); width: stretch; padding-block-start: var(--space-sm); border-block-start: var(--inv-rule); }
+.sum { flex: none; align-items: flex-end; text-align: end; }
+.total { font-size: var(--inv-figure-xl-size); font-weight: var(--inv-figure-weight); font-stretch: var(--inv-figure-stretch); white-space: nowrap; }
+.after { white-space: nowrap; }
+.deal { width: stretch; min-block-size: calc(var(--size-touch) * 1.15); gap: var(--space-xs); }
+.cap { flex: none; }
+/* Narrow: the switch and the purse go under the title. */
+@container (width < 480px) {
+  .heading { flex-basis: 100%; }
+  /* The price goes under the name, so a struck price never squeezes it. */
+  .face .socket { grid-row: span 2; }
+  .price { grid-column: 2; justify-self: start; }
+  .summary { flex-wrap: wrap; }
+  .sum { flex-basis: 100%; flex-direction: row; justify-content: flex-end; align-items: baseline; gap: var(--space-sm); }
+}
 </style>

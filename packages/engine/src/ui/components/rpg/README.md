@@ -54,8 +54,8 @@ on skills; `data-done`, `data-tracked` and `data-fresh` on quests.
 
 | Document | Inputs (props) | Intents |
 | --- | --- | --- |
-| `RpgBackpack` | `title`, `tabs` keyed `{ id, label }`, `tab`, `items` keyed `{ id, name, icon, count, rarity, equipped, fresh, locked, broken }`, `selected`, `weight`, `load` 0–1, `gold` | `choose` (cell), `move` with `{ dragged, target }` (a cell dropped on another; a locked one does not drag), `choosetab` (tab), `tabNext`/`tabPrev` (E/Q, bumpers) |
 | `RpgItemCard` | `name`, `icon`, `art` (texture), `rarity`, `kind`, `lead` and `stats` keyed `{ id, icon, label, value, delta, trend, current }`, `lore`, `primary`, `secondary`, `canPrimary`, `canSecondary` | `equip`, `discard` |
+| `RpgBackpack` | `title`, `kicker`, `capacity`, `tabs` keyed `{ id, label, count }`, `tab`, `items` keyed `{ id, name, icon, count, rarity, equipped, fresh, locked, broken }`, `selected`, `weight`, `load` 0–1 (above 1 is overburdened), `gold` | `choose` (cell), `move` with `{ dragged, target }` (a cell dropped on another; a locked one does not drag), `choosetab` (tab), `tabNext`/`tabPrev` (E/Q, bumpers) |
 | `RpgCharacter` | `title` (a heading band; empty shows the name header), `name`, `line`, `portrait`, `figure`, `slots` keyed `{ id, side (start, end), label, icon, rarity }`, `selected`, `attributes` keyed `{ id, group (a, b), icon, label, value }` | `choose` (slot), `unequip` (details: X, pad Y) |
 | `RpgStats` | `title`, `groups` keyed `{ id, column (a, b) }`, `rows` keyed `{ id, group, icon, label, value }` | none |
 | `RpgMenuBar` | `tabs` keyed `{ id, label }`, `tab` | `choosetab`, `tabNext`/`tabPrev`, `close` (button, Escape, B) |
@@ -93,7 +93,7 @@ pressed, focus-visible and disabled states (docs/ui.md §3.2).
 
 | Component (document) | Parts |
 | --- | --- |
-| `RpgBackpack` (`../panels/backpack.svelte`) | `frame`, `band`, `title`, `tab` (a button: `[aria-selected]`), `cell` (a button: `[aria-selected]` `[data-broken]` `[data-equipped]` `[data-fresh]` `[data-locked]` `[data-rarity]`) |
+| `RpgBackpack` (`../panels/backpack.svelte`) | `frame`, `band`, `kicker`, `title`, `purse`, `tab` (a button: `[aria-selected]`), `count`, `capacity`, `cell` (a button: `[aria-selected]` `[data-broken]` `[data-equipped]` `[data-fresh]` `[data-locked]` `[data-rarity]`), `state`, `bracket`, `track`, `fill` |
 | `RpgCharacter` (`character.svelte`) | `frame`, `band`, `title`, `name`, `cell` (a button: `[aria-selected]` `[data-empty]` `[data-rarity]`), `row` |
 | `RpgCombatLog` (`../hud/combat-log.svelte`) | `frame`, `band`, `title`, `row` (`[data-tone]`), `fade` |
 | `RpgCommands` (`commands.svelte`) | `frame`, `band`, `title`, `cell` (a button: `.primary` `[aria-selected]` `:disabled`) |
