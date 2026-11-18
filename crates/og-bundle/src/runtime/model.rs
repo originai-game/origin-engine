@@ -1007,7 +1007,10 @@ impl CookedModel {
         for (p, _) in foliage().filter(|(_, f)| f.1) {
             let full = p.lods[0];
             let at = |i: u32| Vec3::from_array(p.vertices[i as usize].position);
-            for [i, j, k] in p.indices[full.first..full.first + full.count].as_chunks::<3>().0 {
+            for [i, j, k] in p.indices[full.first..full.first + full.count]
+                .as_chunks::<3>()
+                .0
+            {
                 let (a, b, c) = (at(*i), at(*j), at(*k));
                 area += 0.5 * (b - a).cross(c - a).length();
                 for v in [a, b, c] {
@@ -1016,7 +1019,11 @@ impl CookedModel {
             }
         }
         let volume = 4.0 / 3.0 * std::f32::consts::PI * crown.x * crown.y * crown.z;
-        let extinction = if volume > 0.0 { 0.5 * area / volume } else { 0.0 };
+        let extinction = if volume > 0.0 {
+            0.5 * area / volume
+        } else {
+            0.0
+        };
         Some(og_render_data::meshlet::MeshFoliage {
             vertices: vertices.clone(),
             top,

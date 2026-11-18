@@ -396,7 +396,11 @@ impl MeshletGpu {
                     stylise: crate::Retro3d::uniform(scene.look.stylise.retro, width, height),
                     wind: winds.1,
                     leaf_year: crate::foliage::LeafCalendar::gpu(scene.atmosphere.leaves),
-                    sun: scene.lighting.light.direction_to_light.normalize_or(glam::Vec3::Y),
+                    sun: scene
+                        .lighting
+                        .light
+                        .direction_to_light
+                        .normalize_or(glam::Vec3::Y),
                     extra: scene.look.stylise.material.surface_on() || !pools.foliage.is_empty(),
                     max_binding: self.max_binding,
                 },
