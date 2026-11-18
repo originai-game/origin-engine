@@ -2180,7 +2180,7 @@ impl TextCss {
             Some(LineHeight::Normal) => step.line_height = step.size * normal.unwrap_or(1.2),
             None => {}
         }
-        if let Some(LineHeight::Factor(_) | LineHeight::Px(_)) = self.line_height {
+        if self.line_height.is_some() {
             step.cjk_line_height = step.line_height;
         }
         if let Some(l) = self.letter_spacing {

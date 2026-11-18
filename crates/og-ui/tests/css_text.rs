@@ -879,6 +879,39 @@ fn line_height_and_letter_spacing_compute_as_css_does() {
     );
 }
 
+/// Explicit `normal` uses its resolved leading for CJK too, not the type
+/// ramp's extra CJK spacing. Pin this face's normal leading to 1.2 so
+/// this checks that override, independently of font-metric selection.
+#[test]
+fn normal_line_height_does_not_keep_the_type_ramps_extra_cjk_leading() {
+    for leading in ["normal", "1.2"] {
+        let mut font = face("tests/fixtures/ui-text/assets/fonts/NotoSansSC-Regular-subset.ttf");
+        font.metrics.normal_line = Some(1.2);
+        let ui = Ui::new(UiDesc {
+            fonts: Fonts {
+                body: font,
+                ..Fonts::default()
+            },
+            ..UiDesc::default()
+        });
+        let d = Doc::mounted(
+            ui,
+            &format!(
+                r#"<meta name="component" content="t"><div id="Tabs">
+                <div id="Heading">机库</div><div id="Subtitle">选择你的战机</div></div>
+                <style>#Tabs {{ position: fixed; left: 16px; top: 12px;
+                width: 300px; height: 62px; padding: 10px 16px; box-sizing: border-box;
+                display: flex; flex-direction: column; gap: 4px; line-height: {leading}; }}
+                #Heading {{ font-size: 18px; }} #Subtitle {{ font-size: 12px; }}</style>"#
+            ),
+            &[],
+        );
+        let (heading, subtitle) = (d.get("Heading"), d.get("Subtitle"));
+        assert_eq!((heading.y, heading.height), (22.0, 22.0), "{leading}");
+        assert_eq!((subtitle.y, subtitle.height), (48.0, 14.0), "{leading}");
+    }
+}
+
 /// The thickening and shear each text command of `id` is drawn with:
 /// its synthesised weight (0: none) and its effects' transform.
 fn synthesised(d: &Doc, id: &str) -> Vec<(f32, [f32; 4])> {
