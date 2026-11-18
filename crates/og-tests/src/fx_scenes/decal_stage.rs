@@ -3,8 +3,10 @@
 //! every mark on them is a projected decal: an impact crater in the wall
 //! with cracks running out of it (colour and a normal map, so the raking
 //! light catches its rim), a scorch blast on the flags beneath, a rune
-//! circle glowing blue (emissive, with a small light of its own over it)
-//! and a moss stain projected diagonally into the corner, covering the wall's
+//! circle glowing blue (emissive, with a small light of its own over it),
+//! a rain puddle (a wet decal: the flags darkened and flattened under it,
+//! glossy enough that it mirrors the lit stone lantern through SSR) and a
+//! moss stain projected diagonally into the corner, covering the wall's
 //! foot and the ground at once (the angle fade). The measured fixture is
 //! [`super::decals_scene`].
 
@@ -139,14 +141,14 @@ fn atlas(scene: &mut RenderScene) -> og_render::TextureHandle {
                     (al * 255.0) as u8,
                 ]
             }
-            // Puddle: a dark wet blob with a soft, wandering shore. Unused
-            // until decals have a wet mode (a mix cannot darken or flatten).
+            // Puddle: a wet tint (multiplied: the flags at about half their
+            // brightness) with a soft, wandering shore.
             (0, 3) => {
                 let shore = 0.36 + (fbm(x * 4.0, y * 4.0, 53) - 0.5) * 0.22;
                 // Standing water over the core, a damp fringe at the shore.
                 let al = (1.0 - smooth(shore - 0.1, shore - 0.04, r)) * 0.55
                     + (1.0 - smooth(shore - 0.04, shore, r)) * 0.45;
-                [20, 22, 26, (al * 255.0) as u8]
+                [180, 182, 188, (al * 255.0) as u8]
             }
             // Moss: green blotches thinning out from the middle.
             (1, 0) => {
@@ -196,11 +198,21 @@ pub fn decals_stage_scene() -> RenderScene {
         1.6,
     ));
     scene.add_instance(end, rubble, Mat4::IDENTITY);
-    kit::prop(&mut scene, "toro").place(&mut scene, Vec3::new(-3.9, 0.0, -1.6), 0.4, 1.7);
+    let toro = kit::prop(&mut scene, "toro");
+    let fire = crate::shadow_scenes::toro(&mut scene, &toro, Vec3::new(-3.9, 0.0, -1.6), 0.4, 1.7);
+    // The lantern lit for the evening: the puddle mirrors it.
+    scene.lighting.lights.push(Light {
+        position: fire,
+        color: Vec3::new(1.0, 0.6, 0.3),
+        intensity: 4.0,
+        range: 5.0,
+        radius: 0.12,
+        ..Default::default()
+    });
     let atlas = atlas(&mut scene);
     scene.effects.decal_atlas = Some(atlas);
     let up = Vec3::Y;
-    let rune_at = Vec3::new(-1.3, 0.0, 0.3);
+    let rune_at = Vec3::new(1.0, 0.0, 0.7);
     scene.effects.decals = vec![
         // The crater in the wall, its cracks running out over the plaster.
         Decal {
@@ -238,6 +250,13 @@ pub fn decals_stage_scene() -> RenderScene {
             roughness: 0.3,
             ..Decal::on_surface(rune_at, up, Vec2::splat(2.2), 0.4, 0.2)
         },
+        // A rain puddle where the lantern's reflection meets the lens.
+        Decal {
+            uv_rect: cell(3, 0),
+            roughness: 0.04,
+            wet: true,
+            ..Decal::on_surface(Vec3::new(-1.1, 0.0, 1.5), up, Vec2::new(2.0, 1.4), 0.4, 0.3)
+        },
         // Moss projected diagonally into the corner: on the wall's foot
         // and the flags at once.
         Decal {
@@ -265,9 +284,11 @@ pub fn decals_stage_scene() -> RenderScene {
     crate::sky_scenes::physical_light_under(&mut scene, Vec3::new(0.9, 0.09, 0.42));
     scene.lighting.light.cast_shadows = true;
     scene.look.post.bloom = Some(Bloom::default());
+    // The puddle's gloss reflects the lantern and the wall.
+    scene.look.post.ssr = Some(og_render::ScreenSpaceReflections::default());
     scene.frame.camera = Camera {
-        position: Vec3::new(0.9, 0.75, 3.6),
-        target: Vec3::new(-0.1, 1.05, -3.0),
+        position: Vec3::new(0.5, 0.75, 3.7),
+        target: Vec3::new(-0.6, 0.8, -3.0),
         far: 2500.0,
         exposure: Exposure::Manual { ev: -0.2 },
         ..Default::default()

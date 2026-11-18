@@ -891,7 +891,7 @@ pub fn build(name: &str) -> Result<GfxScene, String> {
             Ok(())
         },
         // A struck corner of the shrine court at dusk: crater, scorch,
-        // rune and moss, every mark a decal.
+        // rune, a wet puddle and moss, every mark a decal.
         "decals" => |g, _| {
             g.scene = fx::decals_stage_scene();
             Ok(())
