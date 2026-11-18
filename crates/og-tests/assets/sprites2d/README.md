@@ -33,6 +33,7 @@ sources (the gateway's PNGs) are in the `origin-generated-assets` bucket
 | `cave-tiles.png` | `ea371d6dbf0365e14f0fc510fd851170`, `b65ddf48da64fa5d0040200b8bb50b7d`, `b1ea1f5e28c53058fef4d773d0c947ba`, `0ba8038e130d48e95329ee5bc3716a8a` | `fd2704be257eb17ce7f3127755287c78929706619f3c584be6c31d09f4c8788b`, `a6015e5c8bbf51341a338fe68b8bd4858cc8e1dd1bb335f208cb4a4352eb9456`, `13c924bc5f473ddde80de5285d4a14b2ef8a6ea11d0dbd97c625727afe02f04c`, `ffb6274e3b1982a0bfea19ec2c05ee75446faa47a80ca595d58de8f945926d7c` | four tiles (rock, mossy rock, brick, sky) each 40×40 side by side; the rock's colour matrix (1.03, 1.16, 1.27) to the mossy rock's grey; the sky's stars kept by taking each block's brightest pixel where it is above 0.85 luma over the mean of its dim pixels |
 | `torch.png` | `76583f42572152fdf95ccb394f3c655c` | `aa0fdd42ef18077570be73b6618667e1a07ea419cda21dfee13db340811b65d9` | hard key, cropped, 128 px tall |
 | `crystal.png` | `13c7f12f197d451e9f090d2ac8f1f457` | `c587e71901d932f5a37a73a1511fa82c15ba837839de4ac29e10528fdd6d455f` | hard key, cropped, 128 px tall |
+| `rooftops.jpg` | `35e5fab45a7fe517e6f9040ba3b60f70` | `81f0152e37898191eaf6e4c6da9cee506b54267ba43e00b51d677b241895118c` | cover-crop to 1280×720 |
 
 Prompts: a pixel-art cistern chamber (mossy arches, a rusted pipe, a light
 shaft from a grate, torches) with an empty lower third; an alchemist's
@@ -51,3 +52,5 @@ the same way, came back on the key. The cave tiles: seamless pixel-art
 cave rock, the same rock under a band of moss, an old red-brick wall and
 a starry night sky; a wall torch; a cluster of pale-blue crystals on a
 rock.
+The rooftops: a moonlit old town seen from its roofs, a clock tower and
+warm windows in the mist, the near roofs in dark silhouette.
