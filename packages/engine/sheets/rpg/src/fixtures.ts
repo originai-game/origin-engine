@@ -207,12 +207,6 @@ export const JOURNAL = (p: Pictures) => ({
   partySelected: "brenna",
 
   exploreScene: p.scene,
-  trackName: "The Sunken Bell",
-  trackSteps: [
-    { id: "s1", text: "Speak with the oarsman", done: true },
-    { id: "s2", text: "Find the sunken belfry", done: false },
-  ],
-  trackDistance: "312 m",
 
   turnRound: 3,
   turns: [
@@ -221,33 +215,6 @@ export const JOURNAL = (p: Pictures) => ({
     { id: "t-maren", name: "Maren", portrait: p.maren, side: "ally", acting: false, down: true },
     { id: "t-sela", name: "Sela", portrait: p.sela, side: "ally", acting: false, down: false },
     { id: "t-lurker", name: "The Lurker", portrait: p.lurker, side: "enemy", acting: false, down: false },
-  ],
-
-  playerName: "Brenna Vale",
-  playerPortrait: p.brenna,
-  playerLevel: 12,
-  playerHealth: 286,
-  playerHealthMax: 340,
-  playerMana: 128,
-  playerManaMax: 180,
-  skills: [
-    { id: "k1", icon: "skill-fire", name: "Ember Slash", action: "", hotkey: "1", cooldown: 0, cooldownMax: 10, cost: "", unaffordable: false, locked: false, active: false, count: 0 },
-    { id: "k2", icon: "skill-shield", name: "Sun Ward", action: "", hotkey: "2", cooldown: 0, cooldownMax: 10, cost: "", unaffordable: false, locked: false, active: false, count: 0 },
-    { id: "k3", icon: "skill-arcane", name: "Arcane Burst", action: "", hotkey: "3", cooldown: 6, cooldownMax: 10, cost: "", unaffordable: false, locked: false, active: false, count: 0 },
-    { id: "k4", icon: "skill-nature", name: "Thornbind", action: "", hotkey: "4", cooldown: 0, cooldownMax: 10, cost: "", unaffordable: false, locked: false, active: false, count: 0 },
-    { id: "k5", icon: "skill-blood", name: "Blood Strike", action: "", hotkey: "5", cooldown: 0, cooldownMax: 10, cost: "", unaffordable: false, locked: false, active: false, count: 0 },
-    { id: "k6", icon: "skill-dash", name: "Dash", action: "", hotkey: "6", cooldown: 0, cooldownMax: 10, cost: "", unaffordable: false, locked: false, active: false, count: 0 },
-  ],
-  quickItems: [
-    { id: "q1", icon: "cmd-health", name: "Healing Draught", action: "", hotkey: "Q", cooldown: 0, cooldownMax: 10, cost: "", unaffordable: false, locked: false, active: false, count: 9 },
-    { id: "q2", icon: "cmd-mana", name: "Moonwater Vial", action: "", hotkey: "E", cooldown: 0, cooldownMax: 10, cost: "", unaffordable: false, locked: false, active: false, count: 7 },
-    { id: "q3", icon: "item-scroll", name: "Scroll of Return", action: "", hotkey: "R", cooldown: 0, cooldownMax: 10, cost: "", unaffordable: false, locked: false, active: false, count: 3 },
-  ],
-  minimapMarkers: [
-    { id: "me", x: 0.5, y: 0.5, tone: "neutral", player: true },
-    { id: "q", x: 0.48, y: 0.12, tone: "warn", player: false },
-    { id: "d", x: 0.82, y: 0.3, tone: "danger", player: false },
-    { id: "w", x: 0.2, y: 0.72, tone: "info", player: false },
   ],
 
   logLines: [
@@ -354,3 +321,80 @@ export function localized<T extends Record<string, unknown>>(data: T, tr: (key: 
   }
   return out as T;
 }
+
+// EXPLORE is the action HUD mid-fight, laid out as the approved mockup: the
+// leader's vitals and effects over the companions, the boss's bar, the
+// minimap with the place and the tracked quest, the lock-on with the damage
+// dealt and a heal, the combo, the loot feed, the finisher prompt over the
+// skill bar, the input hints and the experience line. A field naming sample
+// art (portrait, icon, map) holds its file under assets/art (hud-<name>.jpg),
+// which main.ts loads and replaces with the texture. It is sheet data, kept
+// in English (it does not go through the string tables).
+export const EXPLORE = {
+  leader: { name: "Ysolde", level: 42, portrait: "ysolde", health: 2184, healthMax: 3420, ghost: 2668, mana: 72, manaMax: 100, stamina: 5, staminaMax: 8, segment: 1, low: 0.25 },
+  effects: [
+    { id: "fury", name: "Fury", icon: "fury", glyph: "bolt", remaining: 0.7, label: "0:12", harmful: false },
+    { id: "ward", name: "Rune ward", icon: "ward", glyph: "shield", remaining: 0.42, label: "×3", harmful: false },
+    { id: "hex", name: "Hex", icon: "hex", glyph: "skull", remaining: 0.3, label: "4.2", harmful: true },
+  ],
+  companions: [
+    { id: "brannoch", name: "Brannoch", portrait: "brannoch", health: 91, healthMax: 100, ghost: 0, mana: 40, manaMax: 100, key: "2", fallen: false },
+    { id: "sylvenne", name: "Sylvenne", portrait: "sylvenne", health: 18, healthMax: 100, ghost: 44, mana: 88, manaMax: 100, key: "3", fallen: false },
+    { id: "caelum", name: "Caelum", portrait: "caelum", health: 0, healthMax: 100, ghost: 0, mana: 0, manaMax: 100, key: "4", fallen: true },
+  ],
+  boss: { name: "Ashen Colossus", epithet: "Warden of the Ninefold Gate", value: 5800, max: 10000, ghost: 7100, phase: "storm", stagger: 0.7, staggerCells: 10 },
+  bossPhases: [
+    { id: "shell", label: "Shell", complete: true },
+    { id: "storm", label: "Storm", complete: false },
+    { id: "core", label: "Core", complete: false },
+  ],
+  weaknesses: [
+    { id: "fire", name: "Fire", icon: "fire", glyph: "fire" },
+    { id: "frost", name: "Frost", icon: "ice", glyph: "drop" },
+  ],
+  minimap: { map: "map", centerX: 0.5, centerY: 0.5, zoom: 0.5, heading: 0, place: "Ashen Vale", clock: "06:40" },
+  blips: [
+    { id: "boss", kind: "boss", x: 0.56, y: 0.4, label: "Ashen Colossus" },
+    { id: "gate", kind: "objective", x: 0.44, y: 0.37, label: "The Ninefold Gate" },
+    { id: "brannoch", kind: "ally", x: 0.46, y: 0.55, label: "Brannoch" },
+    { id: "sylvenne", kind: "ally", x: 0.53, y: 0.57, label: "Sylvenne" },
+  ],
+  quest: { label: "", name: "The Ninefold Gate", distance: "" },
+  questSteps: [
+    { id: "ruins", text: "Reach the highland ruins", done: true, tag: "" },
+    { id: "guard", text: "Break the Colossus’s guard", done: false, tag: "1 / 3" },
+    { id: "pillars", text: "Light the three rune pillars", done: false, tag: "" },
+  ],
+  target: "Ashen Colossus",
+  hits: [
+    { id: "h3", amount: 2481, kind: "critical", call: "Critical · Weak point", word: "" },
+    { id: "h2", amount: 642, kind: "normal", call: "", word: "" },
+    { id: "h1", amount: 118, kind: "burn", call: "", word: "burn" },
+  ],
+  heals: [{ id: "r1", amount: 320, kind: "heal", call: "", word: "" }],
+  combo: { count: 27, word: "", remaining: 0.6, multiplier: 1.6 },
+  loot: [
+    { id: "blade", name: "Ember Blade", icon: "slash", glyph: "sword", rarity: "epic", label: "Epic", quantity: 0, currency: false, fading: false },
+    { id: "gold", name: "Gold", icon: "gold", glyph: "coin", rarity: "legendary", label: "", quantity: 1240, currency: true, fading: false },
+    { id: "shard", name: "Rune shard", icon: "shard", glyph: "gem", rarity: "common", label: "", quantity: 3, currency: false, fading: true },
+  ],
+  prompt: { key: "F", text: "Finisher: Sunder the guard", disabled: false, reason: "" },
+  slots: [
+    { id: "tonic", name: "Healing tonic", icon: "tonic", glyph: "potion", key: "Z", kind: "item", cooldown: 0, time: "", count: 5, ready: false, unaffordable: false, reason: "", charges: 0, chargesMax: 0, charge: 0 },
+    { id: "ether", name: "Ether", icon: "ether", glyph: "drop", key: "X", kind: "item", cooldown: 0, time: "", count: 2, ready: false, unaffordable: false, reason: "", charges: 0, chargesMax: 0, charge: 0 },
+    { id: "slash", name: "Ember slash", icon: "slash", glyph: "sword", key: "1", kind: "skill", cooldown: 0, time: "", count: 0, ready: true, unaffordable: false, reason: "", charges: 0, chargesMax: 0, charge: 0 },
+    { id: "frost", name: "Frost lance", icon: "frost", glyph: "bolt", key: "2", kind: "skill", cooldown: 0.65, time: "8", count: 0, ready: false, unaffordable: false, reason: "", charges: 0, chargesMax: 0, charge: 0 },
+    { id: "arc", name: "Arc step", icon: "arc", glyph: "star", key: "3", kind: "skill", cooldown: 0, time: "", count: 0, ready: false, unaffordable: false, reason: "", charges: 2, chargesMax: 3, charge: 0 },
+    { id: "radiance", name: "Radiance", icon: "radiance", glyph: "star", key: "4", kind: "skill", cooldown: 0, time: "", count: 0, ready: false, unaffordable: true, reason: "No mana", charges: 0, chargesMax: 0, charge: 0 },
+    { id: "gale", name: "Gale", icon: "gale", glyph: "map", key: "Q", kind: "skill", cooldown: 0.18, time: "2", count: 0, ready: false, unaffordable: false, reason: "", charges: 0, chargesMax: 0, charge: 0 },
+    { id: "meteor", name: "Cataclysm", icon: "meteor", glyph: "fire", key: "R", kind: "ultimate", cooldown: 0, time: "", count: 0, ready: false, unaffordable: false, reason: "", charges: 0, chargesMax: 0, charge: 1 },
+  ],
+  hints: [
+    { id: "target", key: "Tab", label: "Target" },
+    { id: "dodge", key: "Space", label: "Dodge" },
+  ],
+  xp: { level: 42, value: 0.62 },
+};
+
+/** The explore page's sample art under assets/art (hud-<name>.jpg; sheet only, never installed). */
+export const HUD_ART = ["stage", "map", "ysolde", "brannoch", "sylvenne", "caelum", "slash", "frost", "arc", "radiance", "gale", "meteor", "fury", "ward", "hex", "fire", "ice", "tonic", "ether", "gold", "shard"] as const;

@@ -8,7 +8,7 @@
 // reduced:<on|off>.
 
 import { og, type World } from "@origingame/engine";
-import { CMD_NAMES, EQUIPMENT, localized, ITEM_NAMES, SKILL_NAMES, INK_NAMES, INVENTORY, JOURNAL, PICTURES } from "./fixtures.ts";
+import { CMD_NAMES, EQUIPMENT, EXPLORE, HUD_ART, localized, ITEM_NAMES, SKILL_NAMES, INK_NAMES, INVENTORY, JOURNAL, PICTURES } from "./fixtures.ts";
 import { ECONOMY } from "./economy.ts";
 
 const PAGES = ["inventory", "journal", "equipment", "explore", "combat", "primitives", "crafting", "trade", "loot", "dialogue"] as const;
@@ -44,6 +44,19 @@ function setStyle(world: World, name: string): void {
   });
 }
 
+/** The explore page's sample art by name, loaded in start (sheet only, never installed). */
+let hudArt: Record<string, number> = {};
+
+/** A fixture with each field that names sample art (portrait, icon, map) given its texture. */
+function withArt<T>(value: T): T {
+  if (Array.isArray(value)) return value.map(withArt) as T;
+  if (value && typeof value === "object") {
+    return Object.fromEntries(Object.entries(value).map(([k, v]) =>
+      [k, ["portrait", "icon", "map"].includes(k) && typeof v === "string" ? (hudArt[v] ?? 0) : withArt(v)])) as T;
+  }
+  return value;
+}
+
 /** Mounts the sheet, its stores the fixtures and the page shown. */
 /** The pictures, loaded in start (ui only reads); handles are stable per world. */
 let pictures: Record<string, number> = {};
@@ -53,7 +66,7 @@ let fixtures: Record<string, unknown> = {};
 function show(world: World): void {
   const scope = og.ui.scope(world, "sheet");
   const data = {
-    ...fixtures, page: "inventory", scenario: "default",
+    ...fixtures, ...withArt(EXPLORE), hudStage: hudArt.stage ?? 0, page: "inventory", scenario: "default",
     shownRecipes: ECONOMY.craftRecipes,
     shownIngredients: ECONOMY.craftIngredients,
     shownGoods: ECONOMY.tradeGoods,
@@ -76,6 +89,7 @@ export default og.game({
     if (camera.ok) camera.value.background = { r: 0.04, g: 0.03, b: 0.02 };
     setStyle(world, "fantasy");
     pictures = Object.fromEntries(PICTURES.map((p) => [p, must(og.load.texture(world, `art/${p}.png`), p) as number]));
+    hudArt = Object.fromEntries(HUD_ART.map((p) => [p, must(og.load.texture(world, `art/hud-${p}.jpg`), p) as number]));
     // The kit's strings in the review's locales, as a game ships them (the
     // kit's English comes with the kit), and the sheet's own fixture text.
     for (const locale of ["en", "ja", "zh-CN", "ar"]) must(og.i18n.load(world, `strings/${locale}.ogt`), locale);
