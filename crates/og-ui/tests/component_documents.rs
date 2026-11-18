@@ -653,7 +653,8 @@ fn an_ability_slot_grows_with_the_text_and_keeps_its_readouts_apart() {
 
 /// The default style marks a table's current row: the arena scoreboard
 /// fills the local player's row (`aria-current`) with the row role's
-/// selected fill, whatever corner shape a style gives rows. Ways it could
+/// selected gradient, whatever corner shape a style gives rows. The teams
+/// may sit side by side and nonlocal rows have their own fills. Ways it could
 /// fail: a role's `corner-shape: round` beside its radius taken for a
 /// CSS-corner box, or a table's rows (which the table draws, not its row
 /// groups) left out of the tree's orders, so a shaped row's fill, drawn
@@ -665,22 +666,59 @@ fn the_scoreboard_marks_the_local_players_row() {
         .iter()
         .find(|d| d.path.ends_with("arena/scoreboard.svelte"))
         .expect("the arena scoreboard");
-    for shape in ["round", "bevel", "scoop", "notch", "squircle", "square"] {
-        let mut ui = ui_with_font(test_font_metrics());
-        ui.set_part_css(&format!(
-            "{}\n:root {{ --row-corner-shape: {shape}; --row-radius: 6px; }}",
-            og_ui::DEFAULT_CSS
-        ))
-        .unwrap();
-        preview(&mut ui, &docs, doc, &messages, 1280.0, 720.0);
-        let rows = ui
-            .frame()
-            .items
-            .iter()
-            .filter_map(|i| i.cmd.filled())
-            .filter(|(r, c)| r.width > 1000.0 && (10.0..60.0).contains(&r.height) && c[3] > 0.0)
-            .count();
-        assert_eq!(rows, 1, "{shape}: one marked row");
+    // Mark a player on either team, and no player. A generic row wash
+    // must not count as the local highlight in any of those cases.
+    for local in ["you", "rook", ""] {
+        let mut props = doc.props.clone();
+        for row in props["rows"].as_array_mut().unwrap() {
+            row["local"] = serde_json::json!(row["id"] == local);
+        }
+        let doc = EngineDocument {
+            path: doc.path.clone(),
+            doc: doc.doc.clone(),
+            props,
+        };
+        for shape in ["round", "bevel", "scoop", "notch", "squircle", "square"] {
+            let mut ui = ui_with_font(test_font_metrics());
+            ui.set_part_css(&format!(
+                "{}\n:root {{ --row-corner-shape: {shape}; --row-radius: 6px; }}",
+                og_ui::DEFAULT_CSS
+            ))
+            .unwrap();
+            preview(&mut ui, &docs, &doc, &messages, 1280.0, 720.0);
+            let rows = ui
+                .frame()
+                .items
+                .iter()
+                .filter(|i| {
+                    let DrawCmd::Shape { shape, .. } = &i.cmd else {
+                        return false;
+                    };
+                    let stops = match &shape.paint {
+                        og_draw::UiPaint::Gradient(g) => &g.stops,
+                        og_draw::UiPaint::GradientImage(g) => &g.gradient.stops,
+                        _ => return false,
+                    };
+                    // The default local-row role starts at 95% white; team
+                    // washes do not. Check its drawn fill, not a style flag.
+                    shape.mode == og_draw::UiMode::Fill
+                        && shape.opacity > 0.0
+                        && shape.half.x > 0.0
+                        && shape.half.y > 0.0
+                        && stops.first().is_some_and(|s| {
+                            s.color
+                                .iter()
+                                .zip([1.0, 1.0, 1.0, 0.95])
+                                .all(|(a, b)| (a - b).abs() < 0.001)
+                        })
+                })
+                .count();
+            assert_eq!(
+                rows,
+                usize::from(!local.is_empty()),
+                "{shape}, local={local}: local highlight count"
+            );
+        }
     }
 }
 
