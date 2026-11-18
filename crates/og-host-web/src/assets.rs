@@ -41,10 +41,12 @@ pub(crate) fn is_model(path: &str) -> bool {
     path.ends_with(".gltf.ogb") || path.ends_with(".glb.ogb")
 }
 
-/// Hands a Basis texture to the Worker's transcoder for `formats` (a
-/// device made again after a loss that does not take the encoding it was
-/// transcoded to): `Pending` until the Worker answers. `None` without a
-/// transcoder or for a texture that is not Basis-coded.
+/// Hands a Basis texture to the Worker's transcoder for `formats` (one
+/// neither the boot nor a pack transcoded, such as an ungrouped texture of
+/// a bundle og.load.bundle opened, or a device made again after a loss
+/// that does not take the encoding it was transcoded to): `Pending` until
+/// the Worker answers. `None` without a transcoder or for a texture that
+/// is not Basis-coded.
 pub(crate) fn retranscode(
     texture: &og_bundle::runtime::CookedTexture,
     formats: Option<&og_render::TextureFormats>,

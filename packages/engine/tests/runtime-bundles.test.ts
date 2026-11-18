@@ -14,7 +14,9 @@
 // is looked up in a parcel's manifest after a parcel's pack was handled
 // (the packs of three bundles are fetched in turn); a group's budget holds
 // another bundle's group, or stays up after its cell unloads; the two
-// hosts disagree on any of it.
+// hosts disagree on any of it; on the web, a Basis texture of a runtime
+// bundle in no group (a-v1's sign) is not transcoded at all, as neither
+// the boot nor a pack holds it, so its model does not load.
 import { beforeAll, expect, test } from "bun:test";
 import { mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
@@ -145,17 +147,19 @@ beforeAll(() => {
   const world = `type scene\nversion 1\n---\nname "World"\nentity "player" {\n  Transform {\n    position 0 0 0\n  }\n  StreamAnchor {\n    reach 0\n  }\n}\n${cell("home", -100)}`;
   cook(game, "runtime-bundles-game", { "scenes/world.ogt": world, "home/content.ogt": content("home"), "home/house.glb": texturedGlb(noise(1)) });
   for (const [id, x, seed] of [["a-v1", 100, 2], ["a-v2", 300, 3]] as const) {
-    cook(join(game, "parcels", id), `runtime-bundles-${id}`, { [`${id}/content.ogt`]: content(id), [`${id}/house.glb`]: texturedGlb(noise(seed)), [`${id}/place.ogt`]: `type scene\nversion 1\n---\nname "${id} place"\n${cell(id, x)}` });
+    // a-v1 also holds a sign in no group: fetched and decoded when loaded, as a bundle's first group is.
+    const sign = id === "a-v1" ? { "a-v1/sign.glb": texturedGlb(noise(4)) } : {};
+    cook(join(game, "parcels", id), `runtime-bundles-${id}`, { [`${id}/content.ogt`]: content(id), [`${id}/house.glb`]: texturedGlb(noise(seed)), [`${id}/place.ogt`]: `type scene\nversion 1\n---\nname "${id} place"\n${cell(id, x)}`, ...sign });
   }
 }, 120_000);
 
 type Run = { host: string; stops: Array<{ at: string; group?: { state: string; reason: string; ready: boolean }; used: number }> };
 
-function run(host: string): Run {
-  const r = Bun.spawnSync(["bun", "tests/support/runtime-bundles.ts", "--host", host, "--dir", staged], { cwd: pkg });
+function run<T = Run>(host: string, flags: string[] = []): T {
+  const r = Bun.spawnSync(["bun", "tests/support/runtime-bundles.ts", "--host", host, "--dir", staged, ...flags], { cwd: pkg });
   const out = new TextDecoder().decode(r.stdout);
   if (r.exitCode !== 0) throw new Error(`${host} host: ${new TextDecoder().decode(r.stderr)}${out}`);
-  return JSON.parse(out.trim().split("\n").pop()!) as Run;
+  return JSON.parse(out.trim().split("\n").pop()!) as T;
 }
 
 /** What each stop must find: its own group resident, alone in the budget; nothing away from every cell. */
@@ -176,4 +180,8 @@ test("a runtime bundle's cell group streams on the native host: resident with it
 
 test("on the web host each bundle's pack has its Basis textures transcoded against its own manifest, so its group is resident as natively", () => {
   expect(run("web")).toEqual(expected("web"));
+}, 120_000);
+
+test("a runtime bundle's Basis texture in no group loads on both hosts: on the web the Worker transcodes it once asked, and its model waits for it", () => {
+  for (const host of ["node", "web"]) expect(run<{ host: string; sign: unknown }>(host, ["--sign"])).toEqual({ host, sign: { loaded: true, prepared: true } });
 }, 120_000);

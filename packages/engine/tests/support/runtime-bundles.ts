@@ -6,9 +6,11 @@
 // transcodeBundle) and its fetcher (installFetcher) fetches the rest,
 // transcoding the Basis textures of a streaming group's pack on the way.
 // Prints JSON for runtime-bundles.test.ts: at each stop, the cell's group
-// (its state and reason) and the budget's `used`.
+// (its state and reason) and the budget's `used`. With --sign it walks
+// nowhere: it loads a-v1's sign, a model in no group of its bundle, and
+// prints whether it loaded and whether its texture arrived (og.loading.idle).
 //
-//   bun tests/support/runtime-bundles.ts --host node|web --dir <staged>
+//   bun tests/support/runtime-bundles.ts --host node|web --dir <staged> [--sign]
 //
 // <staged>/game is the game's project; its parcels are projects of their
 // own under <staged>/game/parcels/<id> (runtime-bundles.test.ts stages and
@@ -98,9 +100,18 @@ async function loaded(asset: Asset, what: string): Promise<void> {
 for (const [id] of PARCELS) await loaded(must(og.load.bundle(world, `parcels/${id}/cooked`)), `parcels/${id}`);
 /** On the web a runtime bundle's files are fetched on demand: the first load starts the fetch and says so, a later one finds it. */
 async function fetchedLoad(what: string, load: () => ReturnType<typeof og.load.scene>): Promise<Asset> {
+  return must(await fetching(what, load));
+}
+async function fetching(what: string, load: () => ReturnType<typeof og.load.scene>): Promise<ReturnType<typeof og.load.scene>> {
   let r = load();
   if (!r.ok && /still being fetched/.test(r.reason)) await until(`${what} is fetched`, () => (r = load()).ok || !/still being fetched/.test(r.reason));
-  return must(r);
+  return r;
+}
+if (argv.includes("--sign")) {
+  const r = await fetching("a-v1/sign.glb", () => og.load.gltf(world, "a-v1/sign.glb"));
+  const sign = r.ok ? { loaded: true, prepared: await until("a-v1/sign.glb's texture arrives", () => og.loading.idle(world)) } : { loaded: false, reason: r.reason };
+  console.log(JSON.stringify({ host: which, sign }));
+  process.exit(0);
 }
 for (const [id] of PARCELS) must(world.instantiate(await fetchedLoad(`${id}/place.ogt`, () => og.load.scene(world, `${id}/place.ogt`))));
 // Each house is loaded (its proxy drawn) before its cell is near, so the
