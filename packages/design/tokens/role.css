@@ -776,6 +776,10 @@
   --role-select-node-current-size: calc(84 * var(--font-step-px));
   --role-select-size-node: calc(30 * var(--font-step-px));
   --role-select-size-node-current: calc(40 * var(--font-step-px));
+  /* A level number of four or five figures (1,016; 10,016) steps down
+     to a share of its disc's width, so it stays inside the ring. */
+  --role-select-size-node-long: min(calc(30 * var(--font-step-px)), 28cqi);
+  --role-select-size-node-longer: min(calc(30 * var(--font-step-px)), 22cqi);
   --role-select-road-lit: linear-gradient(90deg, rgb(255 236 160), rgb(255 214 102));
   --role-select-road-ahead: rgb(236 240 250);
   --role-select-road-shadow: 0 0 0 calc(3 * var(--font-step-px)) rgb(4 6 12 / 0.38), 0 calc(3 * var(--font-step-px)) calc(6 * var(--font-step-px)) rgb(0 0 0 / 0.35);

@@ -1176,6 +1176,8 @@
     --select-size-name-on: calc(26 * var(--font-step-px));
     --select-size-node: calc(30 * var(--font-step-px));
     --select-size-node-current: calc(40 * var(--font-step-px));
+    --select-size-node-long: min(calc(30 * var(--font-step-px)), 28cqi);
+    --select-size-node-longer: min(calc(30 * var(--font-step-px)), 22cqi);
     --select-size-title: calc(40 * var(--font-step-px));
     --select-size-title-compact: calc(24 * var(--font-step-px));
     --select-special-ink: rgb(255 122 176);

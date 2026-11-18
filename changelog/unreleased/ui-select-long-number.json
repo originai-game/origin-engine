@@ -1,0 +1,8 @@
+{
+  "fixed": [
+    {
+      "member": "PuzzleLevelPath",
+      "summary": "A level number of four or more figures (1,016) steps down to a share of its disc's width, so it stays inside the disc's ring at any text size."
+    }
+  ]
+}

@@ -55,7 +55,7 @@
                   <div class="lead"></div>
                   <div class="stop" data-layout="center">
                     <button part="PuzzleLevelPath.node" class="node" role="option" data-state={l.state} aria-selected={l.id == selected} disabled={l.state == 'locked'} aria-label={l.state == 'locked' ? t("puzzle.path.levelLocked", { number: l.number }) : l.state == 'done' ? t("puzzle.path.levelDone", { number: l.number, stars: l.stars, max: l.maxStars }) : l.state == 'current' ? t("puzzle.path.levelCurrent", { number: l.number }) : t("puzzle.path.levelOpen", { number: l.number })} onclick={choose} ondetails={details}><div class="face" data-layout="center">
-                      {#if l.state == 'locked'}<og-icon class="lock" icon="lock"></og-icon>{:else}<span part="PuzzleLevelPath.number" class="number">{formatNumber(l.number)}</span>{/if}
+                      {#if l.state == 'locked'}<og-icon class="lock" icon="lock"></og-icon>{:else}<span part="PuzzleLevelPath.number" class="number" data-length={l.number >= 10000 ? 'longer' : l.number >= 1000 ? 'long' : null}>{formatNumber(l.number)}</span>{/if}
                     </div></button>
                     {#if l.state == 'done'}<div part="PuzzleLevelPath.stars" class="stars" data-layout="row" data-gap="none" data-state={l.state}>
                       <svg class="star" data-lit={l.stars >= 1} viewBox="0 0 24 24"><path d="M12 2.5l2.9 6.1 6.6.8-4.9 4.6 1.3 6.6L12 17.3l-5.9 3.3 1.3-6.6-4.9-4.6 6.6-.8z"></path></svg>
@@ -116,9 +116,13 @@
 .node[aria-selected=true] { box-shadow: var(--select-node-selected-rim); }
 .node:focus-visible { box-shadow: var(--select-node-focus-rim); }
 /* The number sits in the disc's middle both ways. */
-.face { inline-size: 100%; block-size: 100%; justify-content: safe center; }
+.face { inline-size: 100%; block-size: 100%; justify-content: safe center; container-type: inline-size; }
 .number { font-size: var(--select-size-node); line-height: 1; font-weight: var(--hud-figure-weight); font-stretch: var(--hud-figure-stretch); font-variant-numeric: var(--hud-figure-numeric); white-space: nowrap; text-shadow: var(--hud-shadow); }
 .node[data-state=current] .number { font-size: var(--select-size-node-current); text-shadow: none; }
+/* A long number takes a share of its disc (the face is its container),
+   at any state and text size. */
+.number[data-length=long], .node[data-state=current] .number[data-length=long] { font-size: var(--select-size-node-long); }
+.number[data-length=longer], .node[data-state=current] .number[data-length=longer] { font-size: var(--select-size-node-longer); }
 .lock { inline-size: 38%; block-size: 38%; }
 /* A done level's stars, on a dark capsule across its disc's foot. */
 .stars { position: absolute; inset-block-start: calc(50% + var(--node) / 2 - var(--space-md)); inset-inline-start: 50%; translate: -50% 0; align-items: flex-end; padding: calc(2 * var(--font-step-px)) var(--space-xs); border-radius: var(--select-node-radius); background: var(--select-capsule-fill); box-shadow: var(--select-capsule-rim); }
