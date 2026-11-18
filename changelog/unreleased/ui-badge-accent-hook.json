@@ -1,0 +1,8 @@
+{
+  "fixed": [
+    {
+      "member": "ui",
+      "summary": "Badges with tone=accent now read the existing --badge-primary-fill and --badge-primary-ink hooks from the default stylesheet."
+    }
+  ]
+}

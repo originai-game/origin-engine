@@ -1817,6 +1817,34 @@ fn a_pack_restyles_core_controls_through_their_tokens_alone() {
     );
 }
 
+#[test]
+fn an_accent_badge_reads_its_primary_tokens() {
+    let mut ui = ui_with_font(test_font());
+    ui.set_part_css(DEFAULT_CSS).unwrap();
+    let d = mounted(
+        ui,
+        r#"<column><badge id="Accent" tone="accent">Accent</badge><badge id="Info" tone="info">Info</badge></column><style>:root { --badge-primary-fill: #ff00ff; --badge-primary-ink: #112233; }</style>"#,
+        &[],
+        Viewport::new(400.0, 300.0),
+    );
+    let magenta = og_ui::style_file::parse_color("#ff00ff").unwrap();
+    for (id, expected) in [("Accent", true), ("Info", false)] {
+        let e = at(&d.ui, id);
+        let found = fills_in(&d.ui, Rect::new(e.x, e.y, e.width, e.height))
+            .iter()
+            .any(|c| near(*c, magenta));
+        assert_eq!(found, expected, "{id}: only accent consumes primary fill");
+    }
+    let ink = og_ui::style_file::parse_color("#112233").unwrap();
+    assert!(d.ui.frame().items.iter().any(|item| {
+        let text = match &item.cmd {
+            DrawCmd::StyledText { text, .. } => text.as_ref(),
+            other => other,
+        };
+        matches!(text, DrawCmd::Text { text, color, .. } if text == "Accent" && near(*color, ink))
+    }), "accent also consumes primary ink");
+}
+
 /// A document button's variant (`variant="primary"`) is one of its classes
 /// for the pack's host rules as for its parts' (docs/ui.md §3.2):
 /// `button.primary` inks the label as `button.primary::part(base)` fills

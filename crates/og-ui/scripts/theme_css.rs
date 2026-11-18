@@ -1326,7 +1326,7 @@ const FALLBACKS: &str = r#"
     background: var(--badge-neutral-fill, revert-layer);
     color: var(--badge-neutral-ink, revert-layer);
   }
-  badge[tone=primary]::part(base) {
+  badge[tone=primary]::part(base), badge[tone=accent]::part(base) {
     background: var(--badge-primary-fill, revert-layer);
     color: var(--badge-primary-ink, revert-layer);
   }
