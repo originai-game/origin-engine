@@ -1033,6 +1033,9 @@ impl crate::world::WorldUi {
         );
         let gap = env.theme.space.xs;
         let metrics = &env.fonts.body.metrics;
+        let widths = &self.placement.mass_widths;
+        let next_widths = &mut self.placement.next_mass_widths;
+        next_widths.clear();
         for (k, (_, t, space)) in self.declared.templates.iter().enumerate() {
             let words = matches!(t.kind, UiMassKind::Number { .. } | UiMassKind::Text { .. });
             if *space != UiMassSpace::World || t.lifetime == 0 || !words {
@@ -1054,23 +1057,32 @@ impl crate::world::WorldUi {
                 .collect();
             // Its remaining rise: project and measure once, then union the
             // current box with the still-visible future timeline samples.
-            let swept = |i: &UiMassInstance, age: f32| -> Option<Rect> {
-                let text = match &t.kind {
-                    UiMassKind::Number {
-                        decimals,
-                        plus,
-                        compact,
-                    } => og_draw::format_number(i.value, *decimals, *plus, *compact),
-                    UiMassKind::Text { strings } => strings.get(i.value.max(0.0) as usize)?.clone(),
-                    _ => return None,
+            let mut swept = |i: &UiMassInstance, age: f32| -> Option<Rect> {
+                let key = (k as u32, i.value.to_bits());
+                let width = match next_widths.get(&key).or_else(|| widths.get(&key)) {
+                    Some(&width) => width,
+                    None => {
+                        let text = match &t.kind {
+                            UiMassKind::Number {
+                                decimals,
+                                plus,
+                                compact,
+                            } => og_draw::format_number(i.value, *decimals, *plus, *compact),
+                            UiMassKind::Text { strings } => {
+                                strings.get(i.value.max(0.0) as usize)?.clone()
+                            }
+                            _ => return None,
+                        };
+                        metrics.measure(&text, 1.0)
+                    }
                 };
+                next_widths.insert(key, width);
                 let (x, y, depth) = view.project(Vec3::from(i.position), vp.width, vp.height)?;
                 let d = if t.distance.x > 0.0 {
                     (t.distance.x / depth.max(1e-4)).clamp(t.distance.y, t.distance.z)
                 } else {
                     1.0
                 };
-                let width = metrics.measure(&text, 1.0);
                 let boxed = |off: Vec2, scale: f32| {
                     let em = t.size.x * i.scale * scale.min(1.0) * d;
                     let w = width * em;
@@ -1142,6 +1154,10 @@ impl crate::world::WorldUi {
                 }
             }
         }
+        std::mem::swap(
+            &mut self.placement.mass_widths,
+            &mut self.placement.next_mass_widths,
+        );
     }
 }
 
