@@ -10,7 +10,7 @@ use og_render::{
 };
 
 /// Tiling greyscale noise (erosion, flow, smoke shapes), linear.
-fn noise_texture(scene: &mut RenderScene, period: i32, seed: u32) -> TextureHandle {
+pub(super) fn noise_texture(scene: &mut RenderScene, period: i32, seed: u32) -> TextureHandle {
     let mut t = texture(128, ColorSpace::Linear, |u, v| {
         let n = tiling_fbm(u, v, period, seed);
         let g = ((n - 0.15) / 0.7).clamp(0.0, 1.0);

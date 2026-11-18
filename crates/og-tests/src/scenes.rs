@@ -829,7 +829,7 @@ pub fn build(name: &str) -> Result<GfxScene, String> {
         },
         // Night camp: GPU particles after 120 ticks.
         "particles" => |g, _| {
-            g.scene = fx::particles_scene();
+            g.scene = fx::fire_scene()?;
             g.frames = 120;
             g.update = Some(fx::tick_update);
             Ok(())
