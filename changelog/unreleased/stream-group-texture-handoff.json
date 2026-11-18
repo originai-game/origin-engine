@@ -1,0 +1,8 @@
+{
+  "fixed": [
+    {
+      "member": "stream.status",
+      "summary": "A stream group's prepared textures are handed to its models without being copied on the tick that loads a cell, and a group waiting for its last texture no longer copies the ready ones at every tick boundary: natively, a cell of 14 models with one 1024x1024 map each took 35 to 60 ms on its worst load frame in the engine's CPU timing fixture and takes 7 ms. A model whose textures are ready is shown while another of its group still waits. Presentation only: entities, StreamEvent, readiness rules and hashes are unchanged."
+    }
+  ]
+}

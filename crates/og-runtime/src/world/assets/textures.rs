@@ -35,6 +35,66 @@ pub(crate) fn prepare_texture_with(
     answer
 }
 
+/// Whether `texture` is still being prepared, its work started if it had
+/// none. Unlike [`prepare_texture`] it copies no prepared source.
+pub(crate) fn texture_pending(
+    eng: &Engine,
+    texture: &og_bundle::runtime::CookedTexture,
+    formats: Option<&og_render::TextureFormats>,
+) -> bool {
+    let Some(host) = hooks() else {
+        return false;
+    };
+    #[cfg(not(target_arch = "wasm32"))]
+    let pending = (eng.render.borrow_mut().decoded.native).pending(host.as_ref(), texture, formats);
+    #[cfg(target_arch = "wasm32")]
+    let pending = {
+        let _ = eng;
+        matches!(host.texture(texture, formats), Fetch::Pending)
+    };
+    pending
+}
+
+/// The prepared sources of `textures`, for a caller that puts them in
+/// place and asks no more, or `Pending` with none consumed while any is
+/// being prepared. Natively each is moved out of the cache, not copied (a
+/// 1024² chain is megabytes a copy, on the tick that loads a cell), unless
+/// its flag says another user wants it after this one; a host that
+/// prepares textures itself answers as [`prepare_texture`] does.
+pub(crate) fn take_textures(
+    eng: &Engine,
+    textures: &[(&og_bundle::runtime::CookedTexture, bool)],
+    formats: Option<&og_render::TextureFormats>,
+) -> Fetch<Vec<og_render::TextureSource>> {
+    let Some(host) = hooks() else {
+        return Fetch::Failed("no host is installed to decode textures".into());
+    };
+    let start = crate::author::trace::start();
+    #[cfg(not(target_arch = "wasm32"))]
+    let answer = (eng.render.borrow_mut().decoded.native).take(host.as_ref(), textures, formats);
+    #[cfg(target_arch = "wasm32")]
+    let answer = {
+        let _ = eng;
+        let mut out = Vec::with_capacity(textures.len());
+        let mut answer = None;
+        for (t, _) in textures {
+            match host.texture(t, formats) {
+                Fetch::Ready(source) => out.push(source),
+                Fetch::Pending => answer = answer.or(Some(Fetch::Pending)),
+                Fetch::Failed(e) => {
+                    answer = Some(Fetch::Failed(format!("{}: {e}", t.id)));
+                    break;
+                }
+            }
+        }
+        answer.unwrap_or(Fetch::Ready(out))
+    };
+    if let Some((first, _)) = textures.first() {
+        crate::author::trace::preparation(&first.id, start);
+    }
+    answer
+}
+
 pub(crate) fn forget_prepared(eng: &Engine, ids: &[String]) {
     eng.render.borrow_mut().decoded.forget_prepared(ids);
 }

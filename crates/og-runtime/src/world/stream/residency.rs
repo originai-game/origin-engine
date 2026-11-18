@@ -28,33 +28,63 @@ pub(crate) fn replace_texture(
     };
 }
 
-fn decode_texture(
-    eng: &Engine,
+/// What a slot's upgrade reads from its group's pack, before any prepared
+/// texture is taken for it.
+enum Plan {
+    Model(
+        Box<og_bundle::runtime::CookedModel>,
+        Vec<og_bundle::runtime::CookedTexture>,
+    ),
+    Texture(og_bundle::runtime::CookedTexture),
+    Sound(Box<CookedSound>),
+}
+
+/// `group`'s cooked texture `id` out of its pack.
+fn cooked_texture(
     bundle: &og_bundle::runtime::Bundle,
     files: &Streams,
     group: &str,
     id: &str,
-    formats: Option<&og_render::TextureFormats>,
-) -> Result<Option<(TextureSource, bool, og_render::UiOrientation)>, String> {
+) -> Result<og_bundle::runtime::CookedTexture, String> {
     let out = bundle.output(id).map_err(|e| e.to_string())?;
     let bytes = super::assets::aligned(files.file(group, &out.file)?);
-    let tex = bundle
-        .texture(id, bytes.bytes())
-        .map_err(|e| e.to_string())?;
-    let pixel = tex.is_pixel_art();
-    let orientation = og_render::UiOrientation::from_exif(tex.orientation);
-    match super::assets::prepare_texture(eng, &tex, formats) {
-        super::assets::Fetch::Ready(d) => Ok(Some((d, pixel, orientation))),
+    bundle.texture(id, bytes.bytes()).map_err(|e| e.to_string())
+}
+
+/// A slot's prepared textures, or none while one of them is being
+/// prepared (no ready one is consumed for a slot that cannot take them
+/// all). `uses`: how many of this upgrade's slots still want each
+/// texture; only a texture's last user takes it without a copy.
+fn take_textures(
+    eng: &Engine,
+    textures: &[og_bundle::runtime::CookedTexture],
+    uses: &mut BTreeMap<String, usize>,
+    formats: Option<&og_render::TextureFormats>,
+) -> Result<Option<Vec<TextureSource>>, String> {
+    let wanted: Vec<_> = textures
+        .iter()
+        .map(|t| (t, uses.get(&t.id).is_some_and(|&n| n > 1)))
+        .collect();
+    match super::assets::take_textures(eng, &wanted, formats) {
+        super::assets::Fetch::Ready(sources) => {
+            for t in textures {
+                if let Some(n) = uses.get_mut(&t.id) {
+                    *n = n.saturating_sub(1);
+                }
+            }
+            Ok(Some(sources))
+        }
         super::assets::Fetch::Pending => Ok(None),
-        super::assets::Fetch::Failed(e) => Err(format!("{id}: {e}")),
+        super::assets::Fetch::Failed(e) => Err(e),
     }
 }
 
 /// Puts a resident group's assets in place of their stand-ins. `Ok(false)`:
-/// a texture is still being transcoded (nothing changed yet).
+/// a texture is still being transcoded; a slot waiting for one keeps its
+/// stand-in, and the others are put in place.
 pub(super) fn upgrade(eng: &Engine, group: &str) -> Result<bool, String> {
     let formats = super::assets::texture_formats(eng);
-    let fulls: Vec<(usize, Full)> = {
+    let (fulls, mut uses, waiting) = {
         let a = eng.assets.borrow();
         let Some(i) = a.stream.find(group).map(|i| a.stream.groups[i].bundle) else {
             return Ok(true);
@@ -74,50 +104,83 @@ pub(super) fn upgrade(eng: &Engine, group: &str) -> Result<bool, String> {
                 && !o.id.ends_with("#mips")
                 && s.find(group).is_some_and(|i| !s.groups[i].ready)
         }) {
-            pending |=
-                decode_texture(eng, bundle, s, group, &output.id, formats.as_ref())?.is_none();
+            let texture = cooked_texture(bundle, s, group, &output.id)?;
+            pending |= super::assets::texture_pending(eng, &texture, formats.as_ref());
         }
         if pending {
             return Ok(false);
         }
-        let mut out = Vec::new();
+        // What each slot reads from the pack, and how many slots want
+        // each texture: a prepared source is moved into its last user.
+        let mut plans = Vec::new();
+        let mut uses: BTreeMap<String, usize> = BTreeMap::new();
         for (k, (slot, up)) in s.slots.get(group).into_iter().flatten().enumerate() {
             if *up {
                 continue;
             }
             let id = slot.id();
-            let out_file = &bundle.output(id).map_err(|e| e.to_string())?.file;
-            let bytes = super::assets::aligned(s.file(group, out_file)?);
-            let full = match slot {
-                Slot::Model { .. } => {
-                    let model = bundle.model(id, bytes.bytes()).map_err(|e| e.to_string())?;
-                    let mut textures = Vec::with_capacity(model.textures.len());
-                    for t in &model.textures {
-                        match decode_texture(eng, bundle, s, group, &t.id, formats.as_ref())? {
-                            Some((d, ..)) => textures.push(d),
-                            None => return Ok(false),
+            let plan = match slot {
+                Slot::Texture { .. } => Plan::Texture(cooked_texture(bundle, s, group, id)?),
+                Slot::Model { .. } | Slot::Sound { .. } => {
+                    let out_file = &bundle.output(id).map_err(|e| e.to_string())?.file;
+                    let bytes = super::assets::aligned(s.file(group, out_file)?);
+                    if matches!(slot, Slot::Sound { .. }) {
+                        let sound = bundle.sound(id, bytes.bytes()).map_err(|e| e.to_string())?;
+                        Plan::Sound(Box::new(sound))
+                    } else {
+                        let model = bundle.model(id, bytes.bytes()).map_err(|e| e.to_string())?;
+                        let mut textures = Vec::with_capacity(model.textures.len());
+                        for t in &model.textures {
+                            textures.push(cooked_texture(bundle, s, group, &t.id)?);
+                        }
+                        Plan::Model(Box::new(model), textures)
+                    }
+                }
+            };
+            let wanted: &[og_bundle::runtime::CookedTexture] = match &plan {
+                Plan::Model(_, textures) => textures,
+                Plan::Texture(texture) => std::slice::from_ref(texture),
+                Plan::Sound(_) => &[],
+            };
+            for t in wanted {
+                *uses.entry(t.id.clone()).or_default() += 1;
+            }
+            plans.push((k, plan));
+        }
+        let mut out = Vec::new();
+        let mut waiting = false;
+        for (k, plan) in plans {
+            let full = match plan {
+                Plan::Model(model, textures) => {
+                    match take_textures(eng, &textures, &mut uses, formats.as_ref())? {
+                        Some(textures) => Full::Model {
+                            meshes: model.primitives.iter().map(|p| p.mesh(0)).collect(),
+                            model,
+                            textures,
+                        },
+                        None => {
+                            waiting = true;
+                            continue;
                         }
                     }
-                    Full::Model {
-                        meshes: model.primitives.iter().map(|p| p.mesh(0)).collect(),
-                        model: Box::new(model),
-                        textures,
+                }
+                Plan::Texture(texture) => {
+                    let pixel = texture.is_pixel_art();
+                    let orientation = og_render::UiOrientation::from_exif(texture.orientation);
+                    let one = std::slice::from_ref(&texture);
+                    match take_textures(eng, one, &mut uses, formats.as_ref())? {
+                        Some(mut d) => Full::Texture(d.remove(0), pixel, orientation),
+                        None => {
+                            waiting = true;
+                            continue;
+                        }
                     }
                 }
-                Slot::Texture { .. } => {
-                    match decode_texture(eng, bundle, s, group, id, formats.as_ref())? {
-                        Some((d, pixel, o)) => Full::Texture(d, pixel, o),
-                        None => return Ok(false),
-                    }
-                }
-                Slot::Sound { .. } => {
-                    let sound = bundle.sound(id, bytes.bytes()).map_err(|e| e.to_string())?;
-                    Full::Sound(Box::new(sound))
-                }
+                Plan::Sound(sound) => Full::Sound(sound),
             };
             out.push((k, full));
         }
-        out
+        (out, uses, waiting)
     };
     let link = og_audio::link(eng.id);
     let mut a = eng.assets.borrow_mut();
@@ -244,8 +307,11 @@ pub(super) fn upgrade(eng: &Engine, group: &str) -> Result<bool, String> {
     }
     drop(rs);
     drop(a);
+    // A slot still waiting keeps what is prepared for it.
+    uses.retain(|_, n| *n > 0);
+    prepared.retain(|id| !uses.contains_key(id));
     super::assets::forget_prepared(eng, &prepared);
-    Ok(true)
+    Ok(!waiting)
 }
 
 /// The 1x1 a streamed texture shows until its group is resident.

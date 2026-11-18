@@ -111,6 +111,89 @@ impl Textures {
         }
     }
 
+    /// Whether `texture` is still being prepared, its work started if it
+    /// had none. It copies no prepared source: [`Self::prepare`] answers
+    /// a ready one with a copy of its whole chain. A host that prepares
+    /// textures itself is asked.
+    pub(super) fn pending(
+        &mut self,
+        host: &dyn Hooks,
+        texture: &CookedTexture,
+        formats: Option<&TextureFormats>,
+    ) -> bool {
+        let key = key(texture, formats);
+        match self.start(host, texture, formats, &key) {
+            Started::Entry => !self.entries.get_mut(&key).unwrap().poll(&texture.id),
+            Started::Host => matches!(host.texture(texture, formats), super::Fetch::Pending),
+            Started::Failed(_) => false,
+        }
+    }
+
+    /// The prepared sources of `textures`, for a caller that puts them in
+    /// place and asks no more: each is moved out of the cache with its
+    /// entry, not copied, unless its flag says another user wants it after
+    /// this one. All or none: while any is being prepared the answer is
+    /// `Pending` and no ready one is taken, and a failure takes none.
+    pub(super) fn take(
+        &mut self,
+        host: &dyn Hooks,
+        textures: &[(&CookedTexture, bool)],
+        formats: Option<&TextureFormats>,
+    ) -> super::Fetch<Vec<TextureSource>> {
+        use super::Fetch;
+        let failed = |t: &CookedTexture, e: &str| Fetch::Failed(format!("{}: {e}", t.id));
+        let keys: Vec<_> = textures.iter().map(|(t, _)| key(t, formats)).collect();
+        let mut hosted = false;
+        for ((t, _), key) in textures.iter().zip(&keys) {
+            match self.start(host, t, formats, key) {
+                Started::Entry => {}
+                Started::Host => hosted = true,
+                Started::Failed(e) => return failed(t, &e),
+            }
+        }
+        if hosted {
+            // The host's own: it keeps what it made.
+            let mut out = Vec::with_capacity(textures.len());
+            for (t, _) in textures {
+                match host.texture(t, formats) {
+                    Fetch::Ready(source) => out.push(source),
+                    Fetch::Pending => return Fetch::Pending,
+                    Fetch::Failed(e) => return failed(t, &e),
+                }
+            }
+            return Fetch::Ready(out);
+        }
+        let mut pending = false;
+        for ((t, _), key) in textures.iter().zip(&keys) {
+            pending |= !self.entries.get_mut(key).unwrap().poll(&t.id);
+        }
+        if pending {
+            return Fetch::Pending;
+        }
+        for ((t, _), key) in textures.iter().zip(&keys) {
+            if let Some(Err(e)) = &self.entries[key].ready {
+                return failed(t, e);
+            }
+        }
+        let mut out: Vec<TextureSource> = Vec::with_capacity(textures.len());
+        for (i, ((_, keep), key)) in textures.iter().zip(&keys).enumerate() {
+            // Named twice: taken once, and a copy for the other.
+            if let Some(first) = keys[..i].iter().position(|k| k == key) {
+                out.push(out[first].clone());
+                continue;
+            }
+            let ready = match keep {
+                true => self.entries[key].ready.clone(),
+                false => self.entries.remove(key).and_then(|mut e| e.ready.take()),
+            };
+            match ready {
+                Some(Ok(source)) => out.push(source),
+                _ => unreachable!("every answer arrived and none failed"),
+            }
+        }
+        Fetch::Ready(out)
+    }
+
     /// Queues `texture`'s work on the worker unless it has an entry.
     fn start(
         &mut self,
@@ -188,4 +271,118 @@ fn key(texture: &CookedTexture, formats: Option<&TextureFormats>) -> (String, u6
     ]
     .hash(&mut hash);
     (texture.id.clone(), hash.finish())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::{Dispatch, Fetch};
+    use std::sync::atomic::AtomicUsize;
+
+    /// A host whose worker makes texture "b" only once the gate opens,
+    /// and counts what it made.
+    struct Gated {
+        open: Arc<AtomicBool>,
+        made: Arc<AtomicUsize>,
+    }
+    impl Hooks for Gated {
+        fn dispatch(&self, _: &Dispatch) -> Result<String, String> {
+            Ok(String::new())
+        }
+        fn texture_work(
+            &self,
+            texture: &CookedTexture,
+            _: Option<&TextureFormats>,
+        ) -> Option<TextureWork> {
+            let (open, made, held) = (self.open.clone(), self.made.clone(), texture.id == "b");
+            let side = texture.meta.width;
+            Some(Box::new(move || {
+                while held && !open.load(Ordering::Acquire) {
+                    std::thread::sleep(std::time::Duration::from_millis(1));
+                }
+                made.fetch_add(1, Ordering::AcqRel);
+                Ok(TextureSource::Rgba(og_render::TextureData {
+                    width: side,
+                    height: side,
+                    rgba: vec![7; (side * side * 4) as usize],
+                    color_space: og_render::ColorSpace::Srgb,
+                    mips: og_render::Mips::None,
+                }))
+            }))
+        }
+    }
+
+    fn cooked(id: &str, side: u32) -> CookedTexture {
+        CookedTexture {
+            id: id.into(),
+            meta: og_bundle::format::TextureMeta {
+                width: side,
+                height: side,
+                levels: 1,
+                kind: og_bundle::format::kind::COLOR,
+                codec: og_bundle::format::codec::RGBA8,
+                color_space: 1,
+                has_alpha: 1,
+                supercompression: 0,
+            },
+            ktx2: vec![side as u8],
+            mips: None,
+            orientation: 1,
+        }
+    }
+
+    /// A model's textures are taken together or not at all: while one is
+    /// being prepared the ready ones stay in the cache (made once, never
+    /// again), and once all are ready each is moved out with its entry
+    /// unless a later user is named for it.
+    #[test]
+    fn taking_waits_for_every_texture_and_consumes_none_before() {
+        let (open, made) = (
+            Arc::new(AtomicBool::new(false)),
+            Arc::new(AtomicUsize::new(0)),
+        );
+        let host = Gated {
+            open: open.clone(),
+            made: made.clone(),
+        };
+        let (a, b) = (cooked("a", 2), cooked("b", 4));
+        let mut textures = Textures::default();
+        let wait = |textures: &mut Textures, t: &CookedTexture| {
+            for _ in 0..5000 {
+                if !textures.pending(&host, t, None) {
+                    return;
+                }
+                std::thread::sleep(std::time::Duration::from_millis(1));
+            }
+            panic!("{} was never prepared", t.id);
+        };
+        assert!(matches!(
+            textures.take(&host, &[(&a, false), (&b, false)], None),
+            Fetch::Pending
+        ));
+        wait(&mut textures, &a);
+        for _ in 0..3 {
+            let both = textures.take(&host, &[(&a, false), (&b, false)], None);
+            assert!(matches!(both, Fetch::Pending), "b is still gated");
+            assert!(textures.pending(&host, &b, None));
+        }
+        let mut ids = textures.ids();
+        ids.sort();
+        assert_eq!(ids, ["a", "b"], "a's ready source was not consumed");
+        assert_eq!(made.load(Ordering::Acquire), 1);
+        open.store(true, Ordering::Release);
+        wait(&mut textures, &b);
+        // Another user wants b after this one: it stays, a goes.
+        let Fetch::Ready(sources) = textures.take(&host, &[(&a, false), (&b, true)], None) else {
+            panic!("both are ready");
+        };
+        let sides: Vec<u32> = sources.iter().map(|s| s.size().0).collect();
+        assert_eq!((sides, textures.ids()), (vec![2, 4], vec!["b".to_string()]));
+        // Named twice by its last user: taken once and copied.
+        let Fetch::Ready(sources) = textures.take(&host, &[(&b, false), (&b, false)], None) else {
+            panic!("b is ready");
+        };
+        assert_eq!((sources.len(), textures.ids().len()), (2, 0));
+        assert_eq!(made.load(Ordering::Acquire), 2, "each was made once");
+    }
 }
