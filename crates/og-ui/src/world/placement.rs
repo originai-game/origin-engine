@@ -446,6 +446,27 @@ pub(super) struct DeclutterScratch {
     mask: Vec<u64>,
 }
 
+/// The reversible IEEE total-order key, computed once per coordinate
+/// rather than by every comparison. No coordinate bits are discarded.
+fn sort_coords(coords: &mut [f32]) {
+    let keys: &mut [u32] = bytemuck::cast_slice_mut(coords);
+    for key in keys.iter_mut() {
+        *key = if *key >> 31 != 0 {
+            !*key
+        } else {
+            *key ^ 0x80000000
+        };
+    }
+    keys.sort_unstable();
+    for key in keys {
+        *key = if *key >> 31 != 0 {
+            *key ^ 0x80000000
+        } else {
+            !*key
+        };
+    }
+}
+
 /// The spot nearest `b`'s own that is clear of `placed`, as the move
 /// there, or `None`: nothing fits and it is hidden. As map labels are
 /// placed (MapLibre's collision index): by rank, each in the first of its
@@ -505,7 +526,7 @@ fn declutter(
     });
     // Coordinates are deduplicated, and equal-start intervals commute:
     // these sorts have no meaningful tie order to preserve.
-    ys.sort_unstable_by(f32::total_cmp);
+    sort_coords(ys);
     ys.dedup();
     if ys.is_empty() {
         return None;
@@ -565,7 +586,7 @@ fn declutter(
     if xs.is_empty() {
         return None;
     }
-    xs.sort_unstable_by(f32::total_cmp);
+    sort_coords(xs);
     xs.dedup();
     let leftmost = moved(Vec2::new(xs[0], 0.0)).outset(gap - 0.01).x;
     let rightmost = moved(Vec2::new(xs[xs.len() - 1], 0.0))
