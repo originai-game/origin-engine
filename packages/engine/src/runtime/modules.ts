@@ -42,6 +42,7 @@ export const render = Object.freeze({
   display: (world: WorldImpl) => parse(abi().og_render_display(world.id)),
   look: (world: WorldImpl) => parse(abi().og_render_look(world.id)),
   snap: (world: WorldImpl, entity: number) => parse(abi().og_render_snap(world.id, entity)),
+  reveal: (world: WorldImpl, entity: number, seconds: number) => parse(abi().og_render_reveal(world.id, entity, seconds)),
   snapCamera: (world: WorldImpl) => abi().og_render_snap_camera(world.id),
   text: (world: WorldImpl, desc?: unknown) => parse(abi().og_render_text(world.id, json(desc))),
   sprite: (world: WorldImpl, desc?: unknown) => parse(abi().og_render_sprite(world.id, json(desc))),

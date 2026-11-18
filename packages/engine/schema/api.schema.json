@@ -4893,6 +4893,33 @@
           "publish": true
         },
         {
+          "name": "reveal",
+          "doc": "Set the fade-in of entity's og.Model when streaming brings it into view. By default an entity a cell spawned, and a model or HLOD proxy hidden while its textures were prepared, is dithered in over 0.4 s. seconds is the fade's length; 0 draws it whole at once. On a cell (og.StreamCell) it sets everything the cell spawns that has no setting of its own, and the cell's proxies. Presentation only, as og.render.snap: never in the world, world_hash or a snapshot; it lasts while the entity lives.\nSee `world §5`.",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world whose renderer draws it."
+            },
+            {
+              "name": "entity",
+              "type": "Entity",
+              "optional": false,
+              "doc": "The entity with the og.Model, or the cell."
+            },
+            {
+              "name": "seconds",
+              "type": "f32",
+              "optional": false,
+              "doc": "The fade's length in seconds; 0 draws the model whole at once."
+            }
+          ],
+          "returns": "Result<Void>",
+          "returnsDoc": "Refused for a dead entity, or a negative or non-finite length.",
+          "publish": true
+        },
+        {
           "name": "ribbon",
           "doc": "Draw a ribbon this frame. Systems and commands may call it; the list is cleared at every tick.",
           "params": [
@@ -17164,7 +17191,7 @@
         },
         {
           "name": "idle",
-          "doc": "Whether the renderer has nothing left that would make a frame draw less than the scene: no pipelines compiling, no textures waiting to upload, no font faces fetched for the locale. True on a host that makes them at once (natively, and without a renderer).",
+          "doc": "Whether the renderer has nothing left that would make a frame draw less than the scene: no pipelines compiling, no textures waiting to upload, no font faces fetched for the locale, no streamed model still fading in (og.render.reveal). True on a host that makes them at once (natively, and without a renderer).",
           "params": [
             {
               "name": "world",
@@ -54245,7 +54272,7 @@
         },
         "ready": {
           "type": "boolean",
-          "description": "Presentation only, nondeterministic. True when resident and all model/proxy textures are prepared; cell groups include shared-group models and ordinary sub-scenes, not nested cells. Not saved or hashed. Never drive gameplay, ticks or simulation with this value."
+          "description": "Presentation only, nondeterministic. True when resident, all model/proxy textures are prepared and their fade-in has finished; cell groups include shared-group models and ordinary sub-scenes, not nested cells. Not saved or hashed. Never drive gameplay, ticks or simulation with this value."
         },
         "wanted": {
           "type": "boolean",

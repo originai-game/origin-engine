@@ -149,6 +149,8 @@ pub(crate) struct RenderState {
     pub lod_drawn: IdMap<u64, u8>,
     /// The last frame's models, copied by a frame where they hold (`kept.rs`).
     pub kept_models: KeptModels,
+    /// The models and proxies fading in (`crate::present::reveal`).
+    pub reveal: crate::present::reveal::Reveal,
     /// The models' wind (og.Model.sway): their tops and the wind copies
     /// of their materials (`wind.rs`).
     pub wind: wind::WindModels,
@@ -291,6 +293,7 @@ impl RenderState {
             shared: Default::default(),
             lod_drawn: IdMap::new(),
             kept_models: KeptModels::default(),
+            reveal: Default::default(),
             wind: Default::default(),
             probe_bakes: Default::default(),
             fonts: Vec::new(),

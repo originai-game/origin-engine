@@ -4,7 +4,8 @@
 //! parts walked, its meshes asked whether the cluster path draws them).
 //! So a frame where little moves builds only what moved.
 //!
-//! A row is copied when, bit for bit, its entity, model, look, bias,
+//! A row is copied when, bit for bit, its entity, model, look (so not
+//! while it fades in), bias,
 //! sway, the parts it draws from and its drawn world matrix are the last
 //! frame's, it is replaced by a proxy or not as then, its level was
 //! settled (the hysteresis kept the level it found) and it was neither
@@ -92,7 +93,7 @@ impl RowIn {
                 [f.flash.to_bits(), r.bias.to_bits(), r.sway.to_bits()],
                 c(f.flash_color),
                 c(f.tint),
-                (f.outline, r.look.cast, r.look.receive),
+                (f.outline, r.look.cast, r.look.receive, f.reveal.to_bits()),
             )
         };
         let m = |r: &RowIn| r.matrix.to_cols_array().map(f32::to_bits);

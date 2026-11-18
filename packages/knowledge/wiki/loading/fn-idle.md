@@ -6,7 +6,7 @@ Module [`loading`](../loading.md) · [index](../index.md)
 
 ### `og.loading.idle`
 
-Whether the renderer has nothing left that would make a frame draw less than the scene: no pipelines compiling, no textures waiting to upload, no font faces fetched for the locale. True on a host that makes them at once (natively, and without a renderer).
+Whether the renderer has nothing left that would make a frame draw less than the scene: no pipelines compiling, no textures waiting to upload, no font faces fetched for the locale, no streamed model still fading in (og.render.reveal). True on a host that makes them at once (natively, and without a renderer).
 
 ```ts
 og.loading.idle(world: World): boolean
@@ -22,7 +22,7 @@ Binding symbol `og_loading_idle` · publish builds: kept
 
 ```ogt
 fn idle {
-  doc "Whether the renderer has nothing left that would make a frame draw less than the scene: no pipelines compiling, no textures waiting to upload, no font faces fetched for the locale. True on a host that makes them at once (natively, and without a renderer)."
+  doc "Whether the renderer has nothing left that would make a frame draw less than the scene: no pipelines compiling, no textures waiting to upload, no font faces fetched for the locale, no streamed model still fading in (og.render.reveal). True on a host that makes them at once (natively, and without a renderer)."
   param world World "The world."
   returns bool
 }

@@ -118,6 +118,8 @@ struct Held {
     sixteen: usize,
     thirty_two: usize,
     radius: f32,
+    /// The least of any instance drawn (og.render.reveal); 1 with none.
+    reveal: f32,
 }
 struct Recorder(Rc<Cell<Held>>);
 impl RenderBackend for Recorder {
@@ -162,6 +164,12 @@ impl RenderBackend for Recorder {
             sixteen: count(16),
             thirty_two: count(32),
             radius,
+            reveal: scene
+                .objects
+                .instances
+                .iter()
+                .map(|i| i.fx.reveal)
+                .fold(1.0, f32::min),
         });
         Ok(())
     }
@@ -1224,7 +1232,13 @@ fn pending_model_textures_hide_only_presentation_and_preserve_128_tick_hashes() 
         let path = base.join(if grouped { "grouped" } else { "plain" });
         parcel(&path, "parcel", "parcel", 100, grouped);
         let mut baseline = Vec::new();
-        for (delayed, native) in [(false, false), (true, false), (true, true)] {
+        // `whole`: og.render.reveal on the cell turns its fade off.
+        for (delayed, native, whole) in [
+            (false, false, false),
+            (true, false, false),
+            (true, true, false),
+            (true, true, true),
+        ] {
             let ready = Arc::new(AtomicBool::new(!delayed));
             set_hooks(Rc::new(Pending {
                 ready: ready.clone(),
@@ -1245,14 +1259,22 @@ fn pending_model_textures_hide_only_presentation_and_preserve_128_tick_hashes() 
             g.place("world.ogt");
             g.open(&path);
             g.place("parcel/place.ogt");
+            if whole {
+                answer(og_render_reveal(engine, g.find("cell-parcel"), 0.0));
+            }
             g.walk(100);
             let mut hashes = Vec::new();
+            // How much of the model its first frame drew.
+            let mut first = None;
             for tick in 0..128 {
                 if tick == 64 {
                     ready.store(true, Ordering::Release);
                 }
                 g.frame();
                 hashes.push(g.dump()["hash"].clone());
+                if first.is_none() && g.held.get().instances > 0 {
+                    first = Some(g.held.get().reveal);
+                }
                 if delayed && tick == 8 {
                     assert!(
                         g.loaded("parcel"),
@@ -1281,6 +1303,12 @@ fn pending_model_textures_hide_only_presentation_and_preserve_128_tick_hashes() 
             assert!(og_loading_idle(engine));
             assert!(g.held.get().instances > 0, "prepared model is revealed");
             assert!(g.held.get().textures >= u64::from(SIDE * SIDE * 4));
+            // It fades in, on whichever frame its textures let it show, and
+            // is whole once nothing is pending; with the fade off its first
+            // frame is whole. The hashes above are the same either way.
+            let first = first.expect("the model drew within the run");
+            assert_eq!(first < 1.0, !whole, "first frame drew {first}");
+            assert_eq!(g.held.get().reveal, 1.0, "idle with a fade running");
             if grouped {
                 assert_eq!(g.state("parcel"), "resident");
                 assert!(og_stream_status(engine, "parcel".into()).unwrap().ready);

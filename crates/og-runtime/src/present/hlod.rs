@@ -93,6 +93,61 @@ pub(crate) struct HlodState {
     pub settled: bool,
 }
 
+impl HlodState {
+    /// The entities of the places a proxy was showing (`showing`: its
+    /// handle is neither hidden nor fading in): where a cell's models
+    /// start being drawn there, they were already shown, so they never
+    /// fade in (`crate::present::reveal`).
+    pub(crate) fn stood(&self, showing: impl Fn(u64) -> bool) -> IdMap<u64, ()> {
+        let mut stood = IdMap::new();
+        for place in self.places.iter().filter(|p| !p.members.is_empty()) {
+            if place.tree.proxies.iter().any(|&h| showing(h)) {
+                stood.extend(place.members.iter().map(|&(e, _)| (e, ())));
+            }
+        }
+        stood
+    }
+
+    /// Of `shown` (the handles that stopped being hidden, ascending), the
+    /// proxies with nothing drawn in their place before, each with the
+    /// cell it stands for: none of its tree's proxies was showing, and its
+    /// cell was not loaded or the models of its members were hidden too
+    /// (`was_hidden`). Those fade in (`crate::present::reveal`); a proxy
+    /// that takes over from what was drawn does not.
+    pub(crate) fn fresh(
+        &self,
+        world: &World,
+        shown: &[u64],
+        was_hidden: impl Fn(u64) -> bool,
+    ) -> Vec<(u64, Option<u64>)> {
+        let mut fresh = Vec::new();
+        if shown.is_empty() {
+            return fresh;
+        }
+        for place in &self.places {
+            let proxies = &place.tree.proxies;
+            if !proxies.iter().any(|h| shown.binary_search(h).is_ok())
+                || proxies.iter().any(|&h| !was_hidden(h))
+            {
+                continue;
+            }
+            let loaded = match (place.cell, place.root) {
+                (true, Some(cell)) => cell_loaded(world, cell).unwrap_or(false),
+                _ => true,
+            };
+            // A loaded cell draws its models, unless they were hidden.
+            let models = &place.members;
+            if loaded && (models.is_empty() || models.iter().any(|&(_, m)| !was_hidden(m))) {
+                continue;
+            }
+            let cell = place.root.filter(|_| place.cell);
+            let shown = proxies.iter().filter(|h| shown.binary_search(h).is_ok());
+            fresh.extend(shown.map(|&h| (h, cell)));
+        }
+        fresh
+    }
+}
+
 /// The tree of scene `id`, loaded with its proxies the first time.
 fn tree(eng: &Engine, id: &str, owner: usize) -> Option<Arc<Tree>> {
     let key = (owner, id.to_string());
@@ -353,6 +408,9 @@ pub(crate) struct PlaceIn {
     loaded: bool,
     /// Pending proxies must invalidate kept draws when their maps arrive.
     pending: Vec<u64>,
+    /// Its proxies fading in and how much of each is drawn
+    /// (`crate::present::reveal`): they are built again while they fade.
+    fading: Vec<(u64, u32)>,
     /// Its root's world matrix, bit for bit.
     root: [u32; 16],
 }
@@ -380,6 +438,7 @@ pub(crate) fn inputs(world: &World, rs: &RenderState, h: &mut Hierarchy) -> Vec<
                 .filter(|h| rs.decoded.hidden_models.contains_key(h))
                 .copied()
                 .collect(),
+            fading: rs.reveal.proxy_bits(&p.tree.proxies),
             root,
         }
     });
@@ -415,15 +474,17 @@ pub(crate) struct View<'a> {
 }
 
 /// A scene's proxy maps are presentation resources, just like its models'.
-pub(crate) fn scene_ready(rs: &RenderState, bundle: usize, scene: &str) -> bool {
+/// `now`: the world's tick.
+pub(crate) fn scene_ready(rs: &RenderState, bundle: usize, scene: &str, now: f64) -> bool {
     rs.hlod
         .trees
         .get(&(bundle, scene.to_string()))
         .is_none_or(|tree| {
             tree.as_ref().is_none_or(|t| {
-                t.proxies
-                    .iter()
-                    .all(|h| !rs.decoded.hidden_models.contains_key(h))
+                // Shown, and no longer fading in (`crate::present::reveal`).
+                t.proxies.iter().all(|h| {
+                    !rs.decoded.hidden_models.contains_key(h) && !rs.reveal.pending(*h, now)
+                })
             })
         })
 }
@@ -521,6 +582,10 @@ pub(crate) fn draw(
             };
             settled &= place.drew[n + 1..node.end].iter().all(Option::is_none);
             place.drew[n + 1..node.end].fill(None);
+            // Fading in, when its maps arrived with nothing drawn in its
+            // place (`crate::present::reveal`).
+            let reveal = rs.reveal.proxy(tree.proxies[n]);
+            settled &= reveal == 1.0;
             drawn.proxies += 1;
             if loaded {
                 for k in under {
@@ -533,9 +598,13 @@ pub(crate) fn draw(
                 true => og_render::InstanceFx {
                     flash: 0.8,
                     flash_color: debug_color(node.level),
+                    reveal,
                     ..og_render::InstanceFx::NONE
                 },
-                false => og_render::InstanceFx::NONE,
+                false => og_render::InstanceFx {
+                    reveal,
+                    ..og_render::InstanceFx::NONE
+                },
             };
             let key = (1 << 63) | (place.serial << 24) | n as u64;
             for (k, &(mesh, material, local)) in parts.iter().enumerate() {

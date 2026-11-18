@@ -969,6 +969,11 @@ pub fn og_render_snap_camera(world: u32) {
 }
 
 #[wasm_bindgen]
+pub fn og_render_reveal(world: u32, entity: f64, seconds: f64) -> String {
+    <Host as RenderApi>::og_render_reveal(&Host, world, entity, seconds)
+}
+
+#[wasm_bindgen]
 pub fn og_render_ribbon(world: u32, desc: Option<String>) -> String {
     <Host as RenderApi>::og_render_ribbon(&Host, world, desc)
 }

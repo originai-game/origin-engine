@@ -288,6 +288,35 @@ from og.load.scene) is a cell.
   upload latency at the anchor's maximum speed; the entity-spawn budget
   does not bound texture work. Measure the worst load frame, including
   the first initialization, not just an average tick.
+- A model streaming brings into view fades in, dithered over 0.4 s in the
+  lit and shadow passes: every entity a cell spawned, and a model or HLOD
+  proxy that was hidden while its textures were prepared. A model taking
+  over from its proxy does not fade; the proxy was already showing it.
+  `og.render.reveal(world, entity, seconds)` sets the length for one
+  entity, or on the cell's entity for everything the cell spawns and its
+  proxies; 0 draws them whole at once (a cell loaded behind a loading
+  screen or a camera cut). Systems, commands and start may call it, also
+  in the tick the entity spawned; the setting lasts while the entity
+  lives and is not saved, so set it again after a restore in a new
+  process. A model the game spawns or shows itself (`Model.visible`)
+  draws whole. The fade is the renderer's alone: the entities,
+  their colliders and the hash are the same with it or without, so do not
+  add an entrance of the game's own (a Transform scale or a tint is world
+  state, and returns an HLOD node to its models).
+- A loading overlay at the start or over a teleport may read `ready`:
+  a system reads `og.stream.status(world, group).ready` (or
+  `og.loading.idle` for everything) and only writes a UI store, mounts or
+  unmounts the overlay's screen, or pushes and pops its layer. Stores,
+  mounts and the layer stack are kept beside the world, outside the hash,
+  so a replay or a peer whose textures arrive on other frames reaches the
+  same hashes with the overlay gone at another time. `ready` includes the
+  fades, so the overlay lifts on a finished world. It stops being safe the
+  moment the value reaches the world: never write it to a component, a
+  resource, an event or an intent, branch a system's world writes on it,
+  or let the overlay's presence pause the game, gate input or show touch
+  controls. To hold the player until the world is there, hold on world
+  state instead: `StreamCell.loaded`, CellEvent and StreamEvent are the
+  same on every run.
 - `persist` keeps what happened in a cell (moved, damaged, opened; every
   component and name) in the world's cells state when it unloads,
   carried by snapshots, saves and the hash; it comes back as it was
