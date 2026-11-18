@@ -8,7 +8,9 @@
 //!
 //! A colour texture given as normalMap or clearcoatNormalMap (Star Focus
 //! ENGINE-ISSUES #5: a PNG without `texture { kind normal }`) is a warning
-//! in the engine log, once a texture; a `kind normal` one is none.
+//! in the engine log, once a texture; a `kind normal` one is none, also
+//! while the host is still transcoding it and the sRGB placeholder stands
+//! in for it.
 //!
 //! Ways this could fail: the desc's array fields are dropped (no slot), a
 //! mesh's layer is lost on its way to the instance, or -1 reaches the
@@ -90,6 +92,26 @@ impl Hooks for Disk {
     }
 }
 
+/// A host whose transcoder has not answered yet (the native texture worker
+/// or the web Worker mid-job): every cooked texture is still pending.
+struct Transcoding;
+
+impl Hooks for Transcoding {
+    fn dispatch(&self, call: &Dispatch) -> Result<String, String> {
+        Disk.dispatch(call)
+    }
+    fn read_asset(&self, path: &str) -> Fetch<Vec<u8>> {
+        Disk.read_asset(path)
+    }
+    fn texture(
+        &self,
+        _: &og_bundle::runtime::CookedTexture,
+        _: Option<&og_render::TextureFormats>,
+    ) -> Fetch<og_render::TextureSource> {
+        Fetch::Pending
+    }
+}
+
 /// What the last frame's scene named: per instance its layer and its
 /// material's array slots and layers.
 #[derive(Default)]
@@ -136,8 +158,12 @@ fn value(text: String) -> Value {
 }
 
 fn engine() -> (u32, Rc<RefCell<Seen>>) {
+    engine_on(Rc::new(Disk))
+}
+
+fn engine_on(hooks: Rc<dyn Hooks>) -> (u32, Rc<RefCell<Seen>>) {
     let root = project();
-    set_hooks(Rc::new(Disk));
+    set_hooks(hooks);
     og_host_begin_bundle();
     let game = og_game_game(Some(r#"{"seed":1}"#.into()));
     let options = json!({ "root": root.to_str().unwrap() }).to_string();
@@ -406,4 +432,30 @@ fn a_colour_texture_as_a_normal_map_is_a_warning_once() {
         Some(json!({ "clearcoatNormalMap": colour }).to_string()),
     )));
     assert_eq!(warnings(), Vec::<String>::new());
+}
+
+#[test]
+fn a_normal_map_still_transcoding_is_no_warning() {
+    let (engine, _) = engine_on(Rc::new(Transcoding));
+    let texture = |path: &str| {
+        value(og_runtime::host_impl::answer(og_load_texture(
+            engine,
+            path.into(),
+        )))
+    };
+    let (colour, normal) = (texture("tex/a.png"), texture("tex/n.png"));
+    og_engine_take_log(engine);
+    let warned = |desc: Value| {
+        value(og_runtime::host_impl::answer(og_render_standard_material(
+            engine,
+            Some(desc.to_string()),
+        )));
+        let log: Value = serde_json::from_str(&og_engine_take_log(engine)).unwrap();
+        let lines = log.as_array().or(log["value"].as_array()).unwrap().clone();
+        lines.iter().any(|l| l["warning"] == json!(true))
+    };
+    // Drawn as the sRGB placeholder for now, but cooked as a normal map.
+    assert!(!warned(json!({ "normalMap": normal })));
+    // A colour texture is still named while it transcodes.
+    assert!(warned(json!({ "normalMap": colour })));
 }
