@@ -38,43 +38,91 @@ impl Renderer {
         let batches = sorted
             .runs
             .iter()
-            .map(|r| {
-                let m = &self.cache.materials[r.material];
-                Batch {
-                    mesh: r.mesh,
-                    material: r.material,
-                    first: r.first,
-                    count: r.count,
-                    faces: Faces {
-                        side: m.side,
-                        mirrored: r.mirrored,
-                    },
-                    transparent: m.transparent,
-                    blend: m.blend,
-                    physical: m.physical.is_some(),
-                    transmissive: m.transmissive,
-                    // A run fading in is cut by the dither in every
-                    // pass: its casters draw the material's fragment,
-                    // and its lean pipelines keep the discard.
-                    dissolve: m.dissolve || r.reveal,
-                    effects: m.effects,
-                    shader: m.shader,
-                    lean: m.lean,
-                    derivatives: m.flat || r.reveal,
-                    reveal: r.reveal,
-                    compact: r.dequant.is_some(),
-                    array: r.array,
-                    foliage: scene.mesh_foliage_all()[r.mesh].is_some(),
-                    simulated: scene.mesh_surfaces[r.mesh].is_some(),
-                    cast: r.cast,
-                    layers: r.layers,
-                    probe: r.probe,
-                    reach: r.reach,
-                    crowd: None,
-                }
-            })
+            .map(|r| self.batch_of(scene, r))
             .collect();
         Ok((batches, sorted))
+    }
+
+    /// The batch of one run of the sorted instances.
+    fn batch_of(&self, scene: &RenderScene, r: &instances::Run) -> Batch {
+        let m = &self.cache.materials[r.material];
+        Batch {
+            mesh: r.mesh,
+            material: r.material,
+            first: r.first,
+            count: r.count,
+            faces: Faces {
+                side: m.side,
+                mirrored: r.mirrored,
+            },
+            transparent: m.transparent,
+            blend: m.blend,
+            physical: m.physical.is_some(),
+            transmissive: m.transmissive,
+            // A run fading in is cut by the dither in every
+            // pass: its casters draw the material's fragment,
+            // and its lean pipelines keep the discard.
+            dissolve: m.dissolve || r.reveal,
+            effects: m.effects,
+            shader: m.shader,
+            lean: m.lean,
+            derivatives: m.flat || r.reveal,
+            reveal: r.reveal,
+            compact: r.dequant.is_some(),
+            array: r.array,
+            foliage: scene.mesh_foliage_all()[r.mesh].is_some(),
+            simulated: scene.mesh_surfaces[r.mesh].is_some(),
+            cast: r.cast,
+            layers: r.layers,
+            probe: r.probe,
+            reach: r.reach,
+            crowd: None,
+        }
+    }
+
+    /// The batches a frame makes pipelines for without drawing them: of
+    /// each still hidden instance (`ahead`), its run fading in and its run
+    /// whole, and of each run fading in now, its run whole, which it
+    /// joins when its fade ends (other pipelines: no discard, the compact
+    /// shadow's). So neither the frame that first draws a model streamed
+    /// in nor the one that ends its fade waits for a compile
+    /// ([`Renderer::ensure_ahead`]).
+    pub(crate) fn ahead_batches(
+        &self,
+        scene: &RenderScene,
+        batches: &[Batch],
+        ahead: &[instances::Ahead],
+    ) -> Vec<Batch> {
+        let (meshes, materials) = (&self.cache.meshes, &self.cache.materials);
+        let run = |a: instances::Ahead, reveal: bool| instances::Run {
+            mesh: a.mesh,
+            material: a.material,
+            cast: a.cast,
+            reveal,
+            layers: 1,
+            first: 0,
+            count: 0,
+            dequant: match reveal {
+                true => None,
+                false => Self::dequant(meshes, materials, a.mesh, a.material),
+            },
+            array: materials[a.material].array.is_some(),
+            probe: crate::probe_select::NONE,
+            mirrored: a.mirrored,
+            reach: None,
+        };
+        let hidden = ahead.iter().flat_map(|&a| [run(a, true), run(a, false)]);
+        let fading = batches.iter().filter(|b| b.reveal).map(|b| {
+            let a = instances::Ahead {
+                mesh: b.mesh,
+                material: b.material,
+                cast: b.cast,
+                mirrored: b.faces.mirrored,
+            };
+            run(a, false)
+        });
+        let runs: Vec<instances::Run> = hidden.chain(fading).collect();
+        runs.iter().map(|r| self.batch_of(scene, r)).collect()
     }
 
     /// How a (mesh, material) run undoes its vertices' quantisation
@@ -278,6 +326,9 @@ pub(crate) struct InstanceRecords {
     /// The sorted instances' update `previous_sway` was written at
     /// ([`instances::Sorted::serial`]); `None` after a restore.
     pub(crate) sway_serial: Option<u64>,
+    /// The frame made pipelines ahead of instances still hidden
+    /// ([`Renderer::ensure_ahead`]): its stats say whether they compile.
+    pub(crate) ahead: bool,
     /// The debris layer's bodies (`debris.rs`).
     pub(crate) debris: debris::DebrisLayer,
 }

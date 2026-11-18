@@ -448,6 +448,14 @@ impl<C: Cell> Variants<C> {
         }
     }
 
+    /// Whether what a frame with `features` draws with is made, without
+    /// waiting for it ([`Variants::get`] would not wait either).
+    pub(crate) fn ready(&self, features: Features) -> bool {
+        self.full.ready().is_some()
+            || (self.wanted(features) != Features::ALL
+                && self.lean.get().is_some_and(|(_, c)| c.ready().is_some()))
+    }
+
     /// The full variant (what [`Renderer::warm`](crate::Renderer::warm)
     /// and the cells' sample counts reach).
     pub(crate) fn full(&self) -> &C {

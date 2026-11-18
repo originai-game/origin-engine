@@ -623,6 +623,11 @@ pub struct FrameStats {
     /// thread (0 on the web, where the browser compiles them). A lit
     /// feature turned on after the first frame never costs one.
     pub compile_wait_us: u32,
+    /// A pipeline made ahead of an instance still hidden
+    /// ([`InstanceFx::reveal`] 0) is compiling on a worker thread: the
+    /// frame that first drew the instance now would wait for it, so its
+    /// producer keeps it hidden while this holds. Never on the web.
+    pub compiling_ahead: bool,
     /// Tile quads drawn this frame (after culling) and the chunks they came from.
     pub tiles: u32,
     pub tile_chunks: u32,
