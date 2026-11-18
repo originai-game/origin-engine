@@ -53,7 +53,7 @@ pub(crate) enum Payload {
         bundle: Box<Bundle>,
         dir: String,
     },
-    Scene(Box<SceneDesc>),
+    Scene(Box<LoadedScene>),
     /// A sub-scene whose blob is in a cell group's pack (G3-3), not yet
     /// landed: its handle exists (a cell names it), its scene once the
     /// pack's bytes are in ([`crate::world::stream::resolve_scenes`]).
@@ -90,8 +90,24 @@ pub(crate) enum Payload {
 
 pub(crate) struct Entry {
     pub path: String,
+    /// The cooked bundle this load resolved to (none for uncooked loads).
+    pub bundle: Option<usize>,
     pub status: Status,
     pub payload: Payload,
+}
+
+/// A decoded scene keeps its source for every dependency it places.
+#[derive(Clone)]
+pub(crate) struct LoadedScene {
+    pub bundle: usize,
+    pub desc: SceneDesc,
+}
+
+impl std::ops::Deref for LoadedScene {
+    type Target = SceneDesc;
+    fn deref(&self) -> &SceneDesc {
+        &self.desc
+    }
 }
 
 pub(crate) struct LoadedFont {
@@ -224,6 +240,7 @@ impl Assets {
     fn push(&mut self, path: &str, status: Status, payload: Payload) -> usize {
         self.entries.push(Entry {
             path: path.to_string(),
+            bundle: None,
             status,
             payload,
         });
@@ -280,15 +297,18 @@ impl Assets {
         }
     }
 
-    /// The ready bundle holding `id` (the default bundle first).
-    pub(crate) fn bundle_for(&self, id: &str) -> Result<(&Bundle, &str), String> {
-        let order = self.default_bundle.into_iter().chain(0..self.entries.len());
+    /// The requester's bundle first, then the boot bundle and open order.
+    pub(crate) fn source(&self, id: &str, owner: Option<usize>) -> Result<usize, String> {
+        let order = owner
+            .into_iter()
+            .chain(self.default_bundle)
+            .chain(0..self.entries.len());
         let mut open = 0;
         for i in order {
-            if let Payload::Bundle { bundle, dir } = &self.entries[i].payload {
+            if let Payload::Bundle { bundle, .. } = &self.entries[i].payload {
                 open += 1;
                 if bundle.output(id).is_ok() {
-                    return Ok((bundle, dir));
+                    return Ok(i);
                 }
             }
         }
@@ -309,9 +329,34 @@ impl Assets {
         ))
     }
 
+    pub(crate) fn bundle_from(
+        &self,
+        id: &str,
+        owner: Option<usize>,
+    ) -> Result<(&Bundle, &str), String> {
+        let i = self.source(id, owner)?;
+        let Payload::Bundle { bundle, dir } = &self.entries[i].payload else {
+            unreachable!()
+        };
+        Ok((bundle, dir))
+    }
+
+    /// A direct load has no requester: boot first, then open order.
+    pub(crate) fn bundle_for(&self, id: &str) -> Result<(&Bundle, &str), String> {
+        self.bundle_from(id, None)
+    }
+
     /// The bytes of a cooked output, 16-aligned.
     pub(crate) fn blob(&self, id: &str) -> Result<(og_blob_bytes::Aligned, &Bundle), String> {
-        let (bundle, dir) = self.bundle_for(id)?;
+        self.blob_from(id, None)
+    }
+
+    pub(crate) fn blob_from(
+        &self,
+        id: &str,
+        owner: Option<usize>,
+    ) -> Result<(og_blob_bytes::Aligned, &Bundle), String> {
+        let (bundle, dir) = self.bundle_from(id, owner)?;
         let out = bundle.output(id).map_err(|e| e.to_string())?;
         if let Some(group) = &out.group {
             // A streamed output is read from its group's pack, once resident.
@@ -347,7 +392,11 @@ impl Assets {
 
     /// The streaming group of a cooked output (`None`: loaded at boot).
     pub(crate) fn group_of(&self, id: &str) -> Option<String> {
-        let (bundle, _) = self.bundle_for(id).ok()?;
+        self.group_from(id, None)
+    }
+
+    pub(crate) fn group_from(&self, id: &str, owner: Option<usize>) -> Option<String> {
+        let (bundle, _) = self.bundle_from(id, owner).ok()?;
         bundle.output(id).ok()?.group.clone()
     }
 }
@@ -390,8 +439,8 @@ pub(crate) mod og_blob_bytes {
 /// A manifest the host cannot read at once (a web fetch in flight) keeps its
 /// bundle as it was. Answers the ids loaded again, and why any failed.
 pub(crate) fn refresh(eng: &Engine) -> (Vec<String>, Vec<String>) {
-    fn outputs(assets: &Assets, id: &str) -> Vec<u64> {
-        let Ok((bundle, _)) = assets.bundle_for(id) else {
+    fn outputs(assets: &Assets, id: &str, owner: usize) -> Vec<u64> {
+        let Ok((bundle, _)) = assets.bundle_from(id, Some(owner)) else {
             return Vec::new();
         };
         bundle
@@ -406,25 +455,35 @@ pub(crate) fn refresh(eng: &Engine) -> (Vec<String>, Vec<String>) {
             .map(|o| o.hash)
             .collect()
     }
-    let models: Vec<(usize, String, Vec<u64>)> = {
+    let models: Vec<(usize, usize, String, Vec<u64>)> = {
         let assets = eng.assets.borrow();
         assets
             .by_path
             .iter()
             .filter_map(|(key, &i)| {
-                let id = key.strip_prefix("gltf:")?;
-                Some((i, id.to_string(), outputs(&assets, id)))
+                if !key.starts_with("gltf:") {
+                    return None;
+                }
+                let entry = &assets.entries[i];
+                let owner = entry.bundle?;
+                Some((
+                    i,
+                    owner,
+                    entry.path.clone(),
+                    outputs(&assets, &entry.path, owner),
+                ))
             })
             .collect()
     };
     // The textures models share (assets the models name, not their own
     // `#` outputs): decoded again in place when theirs changed, so every
     // model naming one draws the edit.
-    let shared: Vec<(og_render::TextureHandle, String, Vec<u64>)> = {
+    let shared: Vec<(og_render::TextureHandle, usize, String, Vec<u64>)> = {
         let (rs, assets) = (eng.render.borrow(), eng.assets.borrow());
         rs.shared
-            .textures()
-            .map(|(id, h)| (h, id.to_string(), outputs(&assets, id)))
+            .iter()
+            .flat_map(|(&owner, shared)| shared.textures().map(move |(id, h)| (owner, id, h)))
+            .map(|(owner, id, h)| (h, owner, id.to_string(), outputs(&assets, id, owner)))
             .collect()
     };
     // Every manifest is read again, models or not: timelines and the
@@ -445,11 +504,11 @@ pub(crate) fn refresh(eng: &Engine) -> (Vec<String>, Vec<String>) {
         }
     }
     let (mut loaded, mut failed) = (Vec::new(), Vec::new());
-    for (h, id, before) in shared {
-        if outputs(&eng.assets.borrow(), &id) == before {
+    for (h, owner, id, before) in shared {
+        if outputs(&eng.assets.borrow(), &id, owner) == before {
             continue;
         }
-        let decoded = decode(eng, &id);
+        let decoded = decode_from(eng, &id, Some(owner));
         let mut rs = eng.render.borrow_mut();
         match decoded {
             Fetch::Ready((source, ..)) => {
@@ -464,12 +523,12 @@ pub(crate) fn refresh(eng: &Engine) -> (Vec<String>, Vec<String>) {
         drop(rs);
         crate::world::stream::mips::reset(eng, h);
     }
-    for (index, id, before) in models {
-        let now = outputs(&eng.assets.borrow(), &id);
+    for (index, owner, id, before) in models {
+        let now = outputs(&eng.assets.borrow(), &id, owner);
         if now.is_empty() || now == before {
             continue;
         }
-        match add_gltf(eng, &id, Some(index)) {
+        match add_gltf(eng, &id, owner, Some(index)) {
             Ok(_) => loaded.push(id),
             Err(e) => failed.push(format!("{id}: {e}")),
         }
@@ -479,11 +538,21 @@ pub(crate) fn refresh(eng: &Engine) -> (Vec<String>, Vec<String>) {
 
 /// `og.load.scene`: decoded and kept; `instantiate` spawns it.
 pub(crate) fn load_scene(eng: &Engine, path: &str) -> Result<usize, String> {
+    load_scene_from(eng, path, None)
+}
+
+pub(crate) fn load_scene_from(
+    eng: &Engine,
+    path: &str,
+    owner: Option<usize>,
+) -> Result<usize, String> {
     let id = og_bundle::runtime::asset_id(path).to_string();
-    if let Some(&i) = eng.assets.borrow().by_path.get(&format!("scene:{id}")) {
+    let bundle = eng.assets.borrow().source(&id, owner)?;
+    let key = format!("scene:{bundle}:{id}");
+    if let Some(&i) = eng.assets.borrow().by_path.get(&key) {
         return Ok(i);
     }
-    let group = eng.assets.borrow().group_of(&id);
+    let group = eng.assets.borrow().group_from(&id, Some(bundle));
     // A cell group's sub-scene: its handle now, its scene once its pack
     // has landed (at once when it has).
     if let Some(group) = group {
@@ -495,23 +564,29 @@ pub(crate) fn load_scene(eng: &Engine, path: &str) -> Result<usize, String> {
                 group: group.clone(),
             },
         );
-        assets.by_path.insert(format!("scene:{id}"), index);
+        assets.entries[index].bundle = Some(bundle);
+        assets.by_path.insert(key, index);
         assets.stream.add_scene(&group, index);
         drop(assets);
         crate::world::stream::resolve_scenes(eng, Some(&group));
         return Ok(index);
     }
-    let scene = decode_scene(&eng.assets.borrow(), &id)?;
+    let scene = decode_scene(&eng.assets.borrow(), &id, bundle)?;
     let mut assets = eng.assets.borrow_mut();
     let index = assets.push(&id, Status::Ready, Payload::Scene(Box::new(scene)));
-    assets.by_path.insert(format!("scene:{id}"), index);
+    assets.entries[index].bundle = Some(bundle);
+    assets.by_path.insert(key, index);
     Ok(index)
 }
 
 /// A cooked scene's blob decoded (from its group's pack when it streams).
-pub(crate) fn decode_scene(assets: &Assets, id: &str) -> Result<SceneDesc, String> {
-    let (bytes, bundle) = assets.blob(id)?;
-    bundle.scene(id, bytes.bytes()).map_err(|e| e.to_string())
+pub(crate) fn decode_scene(assets: &Assets, id: &str, owner: usize) -> Result<LoadedScene, String> {
+    let (bytes, bundle) = assets.blob_from(id, Some(owner))?;
+    let desc = bundle.scene(id, bytes.bytes()).map_err(|e| e.to_string())?;
+    Ok(LoadedScene {
+        bundle: owner,
+        desc,
+    })
 }
 
 pub(crate) fn load_font(eng: &Engine, path: &str) -> Result<usize, String> {

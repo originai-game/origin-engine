@@ -118,10 +118,18 @@ pub(super) fn decode(
     eng: &Engine,
     id: &str,
 ) -> Fetch<(og_render::TextureSource, bool, og_render::UiOrientation)> {
+    decode_from(eng, id, None)
+}
+
+pub(super) fn decode_from(
+    eng: &Engine,
+    id: &str,
+    owner: Option<usize>,
+) -> Fetch<(og_render::TextureSource, bool, og_render::UiOrientation)> {
     let formats = texture_formats(eng);
     let assets = eng.assets.borrow();
     let tex = match assets
-        .blob(id)
+        .blob_from(id, owner)
         .and_then(|(bytes, bundle)| bundle.texture(id, bytes.bytes()).map_err(|e| e.to_string()))
     {
         Ok(t) => t,
@@ -147,6 +155,8 @@ pub(super) fn decode(
 pub(crate) struct Decoded {
     /// Each scene texture decoded from a cooked texture, with its asset id.
     pub ids: HashMap<og_render::TextureHandle, String>,
+    /// Model textures retain their bundle through device recovery and mip streaming.
+    pub bundles: HashMap<og_render::TextureHandle, usize>,
     /// Colour textures a material was given as a normal map, each warned
     /// about once (`api::render`).
     pub color_normals: std::collections::HashSet<og_render::TextureHandle>,
@@ -186,6 +196,7 @@ pub(crate) fn retranscode(eng: &Engine) {
             rs.decoded.formats = Some(formats.clone());
             let scene = &rs.scene;
             rs.decoded.ids.retain(|h, _| scene.contains_texture(*h));
+            rs.decoded.bundles.retain(|h, _| scene.contains_texture(*h));
             stale.extend(
                 rs.decoded
                     .ids
@@ -207,7 +218,8 @@ pub(crate) fn retranscode(eng: &Engine) {
     };
     let mut pending = Vec::new();
     for (h, id) in stale {
-        let decoded = decode(eng, &id);
+        let bundle = eng.render.borrow().decoded.bundles.get(&h).copied();
+        let decoded = decode_from(eng, &id, bundle);
         let mut rs = eng.render.borrow_mut();
         match decoded {
             Fetch::Ready((source, ..)) => {

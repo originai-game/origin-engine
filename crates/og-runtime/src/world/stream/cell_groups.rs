@@ -104,7 +104,10 @@ pub(crate) fn resolve_scenes(eng: &Engine, group: Option<&str>) {
             .collect()
     };
     for (i, id) in waiting {
-        let decoded = decode_scene(&eng.assets.borrow(), &id);
+        let decoded = {
+            let a = eng.assets.borrow();
+            decode_scene(&a, &id, a.entries[i].bundle.expect("cooked scene's bundle"))
+        };
         let mut a = eng.assets.borrow_mut();
         match decoded {
             Ok(scene) => {

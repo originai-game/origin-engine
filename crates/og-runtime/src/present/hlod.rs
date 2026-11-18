@@ -18,7 +18,7 @@
 //! own model and look. One destroyed, hidden, moved, tinted or flashing
 //! house returns its node, and every node above it, to their models.
 //!
-//! **World cells.** A cell's sub-scene has its own tree, kept in the boot
+//! **World cells.** A cell's sub-scene has its own tree, kept in its declaring
 //! bundle. While the cell is unloaded its proxies draw at the cell's pose
 //! with nothing behind them, so the far world is there before it streams:
 //! per branch the finest proxy that still shows every model of it.
@@ -26,10 +26,10 @@
 
 use crate::engine::Engine;
 use crate::present::extract::{Hierarchy, Parts, RenderState};
-use crate::world::assets::{Placement, handle, load_gltf};
+use crate::world::assets::LoadedScene;
+use crate::world::assets::{Placement, handle};
 use glam::{Mat4, Vec3};
 use og_bundle::hlod::Hlod;
-use og_bundle::runtime::SceneDesc;
 use og_core::IdMap;
 use og_ecs::{Entity, World};
 use std::collections::BTreeMap;
@@ -74,8 +74,8 @@ pub(crate) struct Drawn {
 
 #[derive(Default)]
 pub(crate) struct HlodState {
-    /// By scene id: its tree, or none when it has none.
-    trees: BTreeMap<String, Option<Arc<Tree>>>,
+    /// By bundle and scene id: its tree, or none when it has none.
+    trees: BTreeMap<(usize, String), Option<Arc<Tree>>>,
     places: Vec<Place>,
     serial: u64,
     pub drawn: Drawn,
@@ -92,28 +92,33 @@ pub(crate) struct HlodState {
 }
 
 /// The tree of scene `id`, loaded with its proxies the first time.
-fn tree(eng: &Engine, id: &str) -> Option<Arc<Tree>> {
-    if let Some(t) = eng.render.borrow().hlod.trees.get(id) {
+fn tree(eng: &Engine, id: &str, owner: usize) -> Option<Arc<Tree>> {
+    let key = (owner, id.to_string());
+    if let Some(t) = eng.render.borrow().hlod.trees.get(&key) {
         return t.clone();
     }
     let hlod_id = og_bundle::hlod::hlod_id(id);
     let loaded = (|| -> Result<Option<Tree>, String> {
         let hlod = {
             let assets = eng.assets.borrow();
-            let Ok((bundle, _)) = assets.bundle_for(&hlod_id) else {
+            let Ok((bundle, _)) = assets.bundle_from(&hlod_id, Some(owner)) else {
                 return Ok(None);
             };
             if bundle.output(&hlod_id).is_err() {
                 return Ok(None);
             }
-            let (bytes, bundle) = assets.blob(&hlod_id)?;
+            let (bytes, bundle) = assets.blob_from(&hlod_id, Some(owner))?;
             bundle
                 .hlod(&hlod_id, bytes.bytes())
                 .map_err(|e| e.to_string())?
         };
         let mut proxies = Vec::with_capacity(hlod.nodes.len());
         for n in 0..hlod.nodes.len() {
-            let index = load_gltf(eng, &og_bundle::hlod::node_id(id, n))?;
+            let index = crate::world::assets::load_gltf_from(
+                eng,
+                &og_bundle::hlod::node_id(id, n),
+                Some(owner),
+            )?;
             proxies.push(handle(index));
         }
         Ok(Some(Tree { hlod, proxies }))
@@ -129,18 +134,19 @@ fn tree(eng: &Engine, id: &str) -> Option<Arc<Tree>> {
             None
         }
     };
-    eng.render
-        .borrow_mut()
-        .hlod
-        .trees
-        .insert(id.to_string(), tree.clone());
+    eng.render.borrow_mut().hlod.trees.insert(key, tree.clone());
     tree
 }
 
 /// A cell was given sub-scene `scene`: its proxies draw while it is not
 /// loaded.
-pub(crate) fn cell_placed(eng: &Engine, cell: Entity, scene: &str) {
-    let Some(tree) = tree(eng, og_bundle::runtime::asset_id(scene)) else {
+pub(crate) fn cell_placed(eng: &Engine, cell: Entity, index: usize) {
+    let (scene, bundle) = {
+        let a = eng.assets.borrow();
+        let e = &a.entries[index];
+        (e.path.clone(), e.bundle.expect("cooked scene's bundle"))
+    };
+    let Some(tree) = tree(eng, &scene, bundle) else {
         return;
     };
     let mut rs = eng.render.borrow_mut();
@@ -148,7 +154,7 @@ pub(crate) fn cell_placed(eng: &Engine, cell: Entity, scene: &str) {
     state.serial += 1;
     state.changes += 1;
     state.places.push(Place {
-        scene: og_bundle::runtime::asset_id(scene).to_string(),
+        scene,
         drew: vec![None; tree.hlod.nodes.len()],
         tree,
         root: Some(cell.to_bits()),
@@ -162,11 +168,11 @@ pub(crate) fn cell_placed(eng: &Engine, cell: Entity, scene: &str) {
 /// order).
 pub(crate) fn scene_spawned(
     eng: &Engine,
-    scene: &SceneDesc,
+    scene: &LoadedScene,
     placement: Placement,
     spawned: &[Entity],
 ) {
-    let Some(tree) = tree(eng, &scene.id) else {
+    let Some(tree) = tree(eng, &scene.id, scene.bundle) else {
         return;
     };
     let mut members = Vec::with_capacity(tree.hlod.members.len());
@@ -176,7 +182,9 @@ pub(crate) fn scene_spawned(
             .entities
             .get(m.entity)
             .and_then(|e| e.instance.as_deref())
-            .and_then(|model| load_gltf(eng, model).ok())
+            .and_then(|model| {
+                crate::world::assets::load_gltf_from(eng, model, Some(scene.bundle)).ok()
+            })
             .map_or(0, handle);
         members.push((entity, asset));
     }

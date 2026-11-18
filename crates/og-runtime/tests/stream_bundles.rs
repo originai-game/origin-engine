@@ -95,6 +95,9 @@ impl Hooks for Disk {
 struct Held {
     textures: u64,
     meshes: u64,
+    sixteen: usize,
+    thirty_two: usize,
+    radius: f32,
 }
 struct Recorder(Rc<Cell<Held>>);
 impl RenderBackend for Recorder {
@@ -117,7 +120,28 @@ impl RenderBackend for Recorder {
             .filter_map(|i| scene.mesh_handle(i).and_then(|h| scene.mesh(h)))
             .map(|m| (size_of_val(&m.vertices[..]) + size_of_val(&m.indices[..])) as u64)
             .sum();
-        self.0.set(Held { textures, meshes });
+        let count = |side| {
+            (0..scene.texture_count())
+                .map(TextureHandle::from_index)
+                .filter(|&h| {
+                    scene
+                        .texture(h)
+                        .is_some_and(|t| t.width == side && t.height == side)
+                })
+                .count()
+        };
+        let radius = (0..scene.mesh_count())
+            .filter_map(|i| scene.mesh_handle(i).and_then(|h| scene.mesh(h)))
+            .flat_map(|m| &m.vertices)
+            .map(|v| v.position[0].abs())
+            .fold(0.0, f32::max);
+        self.0.set(Held {
+            textures,
+            meshes,
+            sixteen: count(16),
+            thirty_two: count(32),
+            radius,
+        });
         Ok(())
     }
     fn capture(&mut self, _: &RenderScene, _: u32, _: u32) -> Option<og_render::RgbaImage> {
@@ -326,5 +350,209 @@ fn runtime_bundles_stream_without_freezing_or_changing_the_world() {
         grouped, delayed,
         "pending pack reads must not change simulation hashes"
     );
+    std::fs::remove_dir_all(base).unwrap();
+}
+
+/// Deliberately identical cooked ids, but different cell names, geometry,
+/// texture sizes and group names. The unique placing scene selects a bundle;
+/// its same-path dependencies must keep that source through load and reload.
+fn version(root: &Path, v: usize, grouped: bool) {
+    let side = 16 * v as u32;
+    let image = image::RgbaImage::from_pixel(side, side, image::Rgba([40, 80, 160, 255]));
+    let mut png = std::io::Cursor::new(Vec::new());
+    image.write_to(&mut png, image::ImageFormat::Png).unwrap();
+    let stream = if grouped {
+        format!("stream \"v{v}\" {{\n  cell\n  asset \"model.ogt\"\n}}\n")
+    } else {
+        String::new()
+    };
+    cook(root, &[
+        (&format!("v{v}/place.ogt"), format!(
+            "type scene\nversion 1\n---\nentity \"cell-v{v}\" {{\n  scene \"content.ogt\"\n  Transform {{\n    position {} 0 0\n  }}\n  Volume {{\n    size 20 10 20\n  }}\n  StreamCell {{\n    load 10\n  }}\n}}\n", v * 100).into_bytes()),
+        ("content.ogt", format!("type scene\nversion 1\n---\n{stream}entity \"house-v{v}\" {{\n  model \"model.ogt\"\n}}\n").into_bytes()),
+        ("model.ogt", format!("type model\nversion 1\n---\nmaterial \"paint\" {{\n  map \"tex.png\"\n}}\npart \"ball\" {{\n  material \"paint\"\n  sphereGeometry {{\n    radius {v}\n    widthSegments 16\n    heightSegments 12\n  }}\n}}\n").into_bytes()),
+        ("tex.png", png.into_inner()),
+    ]);
+}
+
+#[test]
+fn same_path_versions_keep_their_own_scenes_models_textures_and_budget() {
+    let base = PathBuf::from(env!("CARGO_TARGET_TMPDIR"))
+        .join(format!("og-runtime-bundle-versions-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&base);
+    for grouped in [true, false] {
+        for resident in [false, true] {
+            let root = base.join(format!("{grouped}-{resident}"));
+            let boot = root.join("boot");
+            cook(&boot, &[("world.ogt", b"type scene\nversion 1\n---\nentity \"player\" {\n  StreamAnchor {\n    reach 0\n  }\n}\n".to_vec())]);
+            for v in 1..=2 {
+                version(&root.join(format!("v{v}")), v, grouped);
+            }
+            set_hooks(Rc::new(Disk {
+                delayed: true,
+                reads: RefCell::default(),
+            }));
+            og_host_begin_bundle();
+            let game = og_game_game(Some(r#"{"seed":1}"#.into()));
+            let engine = value(og_engine_create(game, json!({"root": boot}).to_string()))
+                .as_u64()
+                .unwrap() as u32;
+            let held = Rc::new(Cell::new(Held::default()));
+            answer(set_render_backend(
+                engine,
+                Some(Box::new(Recorder(held.clone()))),
+            ));
+            let g = Game { engine, held };
+            g.place("world.ogt");
+            assert_eq!(og_load_status(engine, g.open(&root.join("v1"))), "ready");
+            g.place("v1/place.ogt");
+            g.walk(100);
+            for _ in 0..4 {
+                g.frame();
+            }
+            assert!(g.loaded("v1"));
+            let model = |name| {
+                value(host_impl::answer(og_world_get(
+                    engine,
+                    g.find(name),
+                    "og.Model".into(),
+                )))["asset"]
+                    .as_f64()
+                    .unwrap()
+            };
+            let v1 = model("house-v1");
+            assert_eq!(g.held.get().sixteen, 1);
+            let v1_full = g.held.get();
+            if !resident {
+                g.walk(0);
+                for _ in 0..4 {
+                    g.frame();
+                }
+                assert!(!g.loaded("v1"));
+                if grouped {
+                    assert_eq!(g.used(), 0.0);
+                }
+            }
+            // Open v2 either while v1 is resident or after its unload. In
+            // both cases v1 remains open, listing every same-path id.
+            assert_eq!(og_load_status(engine, g.open(&root.join("v2"))), "ready");
+            g.place("v2/place.ogt");
+            g.walk(200);
+            for _ in 0..4 {
+                g.frame();
+            }
+            assert!(g.loaded("v2"));
+            assert!(!g.loaded("v1"));
+            let v2 = model("house-v2");
+            assert_ne!(
+                v1, v2,
+                "same paths in different bundles must not share load slots"
+            );
+            assert_eq!(g.held.get().thirty_two, 1, "v2 must decode its own texture");
+            assert!(
+                (g.held.get().radius - 2.0).abs() < 0.01,
+                "v2 must decode its own geometry"
+            );
+            if grouped {
+                assert_eq!(g.state("v1"), "unloaded");
+                assert_eq!(g.state("v2"), "resident");
+                let v2_bytes =
+                    value(host_impl::answer(og_stream_status(engine, "v2".into())))["memory"]
+                        .as_f64()
+                        .unwrap();
+                assert_eq!(g.used(), v2_bytes, "only v2 counts in the shared budget");
+                assert_eq!(g.held.get().sixteen, 0, "v1 texture was released");
+            }
+            // A direct load intentionally keeps boot-first / open-order
+            // lookup, not the most recently placed scene's context.
+            let direct = value(host_impl::answer(og_load_gltf(
+                engine,
+                "model.ogt".into(),
+                None,
+            )))
+            .as_f64()
+            .unwrap();
+            assert_eq!(direct, v1);
+            g.walk(100);
+            for _ in 0..4 {
+                g.frame();
+            }
+            assert!(g.loaded("v1"));
+            assert_eq!(model("house-v1"), v1);
+            if grouped {
+                assert_eq!(g.state("v2"), "unloaded");
+                assert_eq!(g.held.get().thirty_two, 0);
+                assert!(
+                    g.held.get().textures <= v1_full.textures + 4,
+                    "only v2's 1x1 proxy may remain"
+                );
+                assert_eq!(g.held.get().sixteen, 1);
+            }
+            assert!(og_engine_destroy(engine));
+        }
+    }
+    std::fs::remove_dir_all(base).unwrap();
+}
+
+#[test]
+fn missing_scene_dependencies_fall_back_to_boot_then_open_order() {
+    let base = PathBuf::from(env!("CARGO_TARGET_TMPDIR"))
+        .join(format!("og-runtime-bundle-fallback-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&base);
+    for boot_has_scene in [true, false] {
+        let root = base.join(boot_has_scene.to_string());
+        for v in 1..=4 {
+            version(&root.join(format!("v{v}")), v, false);
+        }
+        let boot = root.join("v1");
+        cook(&boot, &[("world.ogt", b"type scene\nversion 1\n---\nentity \"player\" {\n  StreamAnchor {\n    reach 0\n  }\n}\n".to_vec())]);
+        // A bundle can omit an externally supplied dependency from its
+        // manifest. Keep the placing scene's reference, not a broken blob.
+        for v in [1, 3] {
+            if v == 1 && boot_has_scene {
+                continue;
+            }
+            let manifest = root.join(format!("v{v}/cooked/.cook.ogt"));
+            let mut m =
+                og_bundle::runtime::Manifest::parse(&std::fs::read_to_string(&manifest).unwrap())
+                    .unwrap();
+            m.assets.retain(|a| a.source != "content.ogt");
+            std::fs::write(manifest, m.to_text()).unwrap();
+        }
+        set_hooks(Rc::new(Disk {
+            delayed: false,
+            reads: RefCell::default(),
+        }));
+        og_host_begin_bundle();
+        let game = og_game_game(Some(r#"{"seed":1}"#.into()));
+        let engine = value(og_engine_create(game, json!({"root": boot}).to_string()))
+            .as_u64()
+            .unwrap() as u32;
+        let held = Rc::new(Cell::new(Held::default()));
+        answer(set_render_backend(
+            engine,
+            Some(Box::new(Recorder(held.clone()))),
+        ));
+        let g = Game { engine, held };
+        g.place("world.ogt");
+        for v in [2, 4, 3] {
+            assert_eq!(
+                og_load_status(engine, g.open(&root.join(format!("v{v}")))),
+                "ready"
+            );
+        }
+        g.place("v3/place.ogt");
+        g.walk(300);
+        for _ in 0..4 {
+            g.frame();
+        }
+        assert!(g.loaded("v3"));
+        let selected = if boot_has_scene { 1 } else { 2 };
+        g.find(&format!("house-v{selected}"));
+        assert!((g.held.get().radius - selected as f32).abs() < 0.01);
+        assert_eq!(g.held.get().sixteen, usize::from(boot_has_scene));
+        assert_eq!(g.held.get().thirty_two, usize::from(!boot_has_scene));
+        assert!(og_engine_destroy(engine));
+    }
     std::fs::remove_dir_all(base).unwrap();
 }

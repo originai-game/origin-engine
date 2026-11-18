@@ -7,7 +7,7 @@ use super::*;
 pub(super) fn instantiable(
     eng: &Engine,
     asset: f64,
-) -> Result<(usize, Option<og_bundle::runtime::SceneDesc>), String> {
+) -> Result<(usize, Option<assets::LoadedScene>), String> {
     let i = index_of(asset).ok_or_else(|| format!("{asset} is not an asset handle"))?;
     let a = eng.assets.borrow();
     let entry = a
@@ -34,7 +34,7 @@ pub(super) fn fill_instance(
     root: Entity,
     asset: f64,
     index: usize,
-    scene: Option<&og_bundle::runtime::SceneDesc>,
+    scene: Option<&assets::LoadedScene>,
 ) -> Result<(), String> {
     let filled = (|| match scene {
         Some(s) => assets::spawn_scene(eng, s, Some(root)).map(|_| ()),

@@ -107,6 +107,7 @@ fn queue(
     let entry = assets.entries.len();
     assets.entries.push(Entry {
         path: name.to_string(),
+        bundle: None,
         status: Status::Pending,
         payload: Payload::Uncooked,
     });

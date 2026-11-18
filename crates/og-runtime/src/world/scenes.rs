@@ -242,10 +242,7 @@ fn ask(eng: &Engine, world: &mut World, id: &str) -> Result<(), String> {
 
 /// Scene `id` loaded, with its handle: `None` for a cell's sub-scene (its
 /// blob is in a streaming group's pack, which a cell loads).
-fn loaded(
-    eng: &Engine,
-    id: &str,
-) -> Result<Option<(u64, Box<og_bundle::runtime::SceneDesc>)>, String> {
+fn loaded(eng: &Engine, id: &str) -> Result<Option<(u64, Box<assets::LoadedScene>)>, String> {
     let i = assets::load_scene(eng, id)?;
     Ok(match &eng.assets.borrow().entries[i].payload {
         Payload::Scene(d) => Some((handle(i), d.clone())),

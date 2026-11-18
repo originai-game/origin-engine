@@ -10,14 +10,15 @@ pub(crate) fn load_asset(eng: &Engine, id: &str, index: usize) -> Result<(), Str
     let blob = format!("{id}#fracture");
     let bytes = {
         let assets = eng.assets.borrow();
+        let owner = assets.entries[index].bundle;
         let has = assets
-            .bundle_for(id)
+            .bundle_from(id, owner)
             .is_ok_and(|(b, _)| b.output(&blob).is_ok());
         if !has {
             lock(&eng.modules.destruction.assets).remove(&handle);
             return Ok(());
         }
-        let (bytes, bundle) = assets.blob(&blob)?;
+        let (bytes, bundle) = assets.blob_from(&blob, owner)?;
         bundle
             .fracture(&blob, bytes.bytes())
             .map_err(|e| e.to_string())?

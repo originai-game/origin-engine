@@ -28,8 +28,12 @@ pub(crate) fn register(eng: &Engine, world: &mut World) -> Result<SchemaId, Stri
 /// entities all link to it), decoded and kept; one asset per prefab,
 /// shared with the links that name it.
 pub(crate) fn load(eng: &Engine, path: &str) -> Result<usize, String> {
+    load_from(eng, path, None)
+}
+
+pub(crate) fn load_from(eng: &Engine, path: &str, owner: Option<usize>) -> Result<usize, String> {
     let id = og_bundle::runtime::asset_id(path).to_string();
-    let index = crate::world::assets::load_scene(eng, &id)?;
+    let index = crate::world::assets::load_scene_from(eng, &id, owner)?;
     let a = eng.assets.borrow();
     match a.entries.get(index).map(|e| &e.payload) {
         Some(crate::world::assets::Payload::Scene(s)) if s.prefabs.first() == Some(&id) => {

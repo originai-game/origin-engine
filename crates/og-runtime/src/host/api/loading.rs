@@ -301,12 +301,16 @@ pub fn og_load_error(world: u32, asset: f64) -> Option<String> {
 
 /// A model's clip names from its `#anim` blob, in glTF order; none when the
 /// cook wrote no `#anim` (no skins, clips or morph targets).
-fn clip_names(a: &assets::Assets, model: &str) -> Result<Vec<String>, String> {
+fn clip_names(
+    a: &assets::Assets,
+    model: &str,
+    owner: Option<usize>,
+) -> Result<Vec<String>, String> {
     let id = og_bundle::runtime::anim_id(model);
-    if a.bundle_for(&id).is_err() {
+    if a.bundle_from(&id, owner).is_err() {
         return Ok(Vec::new());
     }
-    let (bytes, bundle) = a.blob(&id)?;
+    let (bytes, bundle) = a.blob_from(&id, owner)?;
     bundle
         .clip_names(&id, bytes.bytes())
         .map_err(|e| e.to_string())
@@ -356,7 +360,7 @@ pub fn og_load_gltf_info(world: u32, asset: f64) -> Result<crate::host::wire::Gl
                     geometries: geometries.clone(),
                     parts,
                     materials: materials.clone(),
-                    animations: clip_names(&a, &e.path)?,
+                    animations: clip_names(&a, &e.path, e.bundle)?,
                 })
             }
             // An uncooked load (og.load.gltfData) on its way, or failed.

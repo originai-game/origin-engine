@@ -119,7 +119,7 @@ pub(crate) enum Placement {
 /// scene is refused before anything spawns when a name is taken.
 pub(crate) fn spawn_scene(
     eng: &Engine,
-    scene: &SceneDesc,
+    scene: &LoadedScene,
     root: Option<Entity>,
 ) -> Result<Vec<Entity>, String> {
     spawn_placed(eng, scene, Placement::Under(root))
@@ -168,7 +168,7 @@ pub(crate) fn names_free(
 /// cell to load.
 pub(crate) fn spawn_placed(
     eng: &Engine,
-    scene: &SceneDesc,
+    scene: &LoadedScene,
     placement: Placement,
 ) -> Result<Vec<Entity>, String> {
     let mut spawned = Vec::with_capacity(scene.entities.len());
@@ -185,7 +185,7 @@ pub(crate) fn spawn_placed(
 /// what spawned before the refusal.
 pub(crate) fn spawn_part(
     eng: &Engine,
-    scene: &SceneDesc,
+    scene: &LoadedScene,
     placement: Placement,
     spawned: &mut Vec<Entity>,
     end: usize,
@@ -227,9 +227,10 @@ pub(crate) fn spawn_part(
     let mut prefab_assets = Vec::with_capacity(scene.prefabs.len());
     for id in &scene.prefabs {
         prefab_assets.push(if *id == scene.id {
-            load_scene(eng, id)?
+            load_scene_from(eng, id, Some(scene.bundle))?
         } else {
-            crate::world::prefab::load(eng, id).map_err(|r| format!("{}: {r}", scene.id))?
+            crate::world::prefab::load_from(eng, id, Some(scene.bundle))
+                .map_err(|r| format!("{}: {r}", scene.id))?
         });
     }
     let link = if scene.prefabs.is_empty() {
@@ -332,7 +333,7 @@ pub(crate) fn spawn_part(
             ));
         }
         if let Some(model) = &e.instance {
-            let index = load_gltf(eng, model)
+            let index = load_gltf_from(eng, model, Some(scene.bundle))
                 .map_err(|r| format!("{}: entity '{}': {r}", scene.id, e.name))?;
             match &model_layout {
                 Some(ml) => {
@@ -376,7 +377,7 @@ pub(crate) fn spawn_part(
         }
         spawned.push(entity);
         if let Some(model) = &e.instance {
-            let index = load_gltf(eng, model)?;
+            let index = load_gltf_from(eng, model, Some(scene.bundle))?;
             spawn_lights(eng, index, entity)
                 .map_err(|r| format!("{}: entity '{}': {r}", scene.id, e.name))?;
         }
@@ -392,11 +393,11 @@ pub(crate) fn spawn_part(
         let is_cell = tables.iter().any(|(t, l)| {
             t.get(i).is_some() && cell_layout.as_ref().is_some_and(|cl| cl.schema == l.schema)
         });
-        let index =
-            load_scene(eng, sub).map_err(|r| format!("{}: sub-scene {sub}: {r}", scene.id))?;
+        let index = load_scene_from(eng, sub, Some(scene.bundle))
+            .map_err(|r| format!("{}: sub-scene {sub}: {r}", scene.id))?;
         if is_cell {
             crate::world::stream::cells::set_scene(eng, entity, handle(index))?;
-            crate::present::hlod::cell_placed(eng, entity, sub);
+            crate::present::hlod::cell_placed(eng, entity, index);
             continue;
         }
         // Whether its pack has landed or not: only a cell loads a cell
