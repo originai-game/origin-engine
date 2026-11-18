@@ -215,7 +215,83 @@ pub fn preview(
         serde_json::json!({"op": "mount", "mount": mount, "document": name, "inputs": inputs}),
     );
     let mut warnings: Vec<String> = Vec::new();
-    for _ in 0..PREVIEW_FRAMES {
+    let mut world_subject = None;
+    for frame in 0..PREVIEW_FRAMES {
+        if frame == 1 && doc.path.contains("/world/") {
+            // Read the authored anchor, not a component-name-specific camera
+            // offset. Edge fixtures keep the point off screen deliberately.
+            let anchors = ui.world_anchor_points();
+            if !anchors.iter().any(|a| a.clamped) {
+                let pivot = anchors.iter().find_map(|a| match a.target {
+                    WorldTarget::Point(p) => Some(p + a.offset),
+                    WorldTarget::Entity(_) => None,
+                });
+                let ground = !ui.frame().grounds.is_empty();
+                let at = doc.props.get("at").and_then(Value::as_str).and_then(|s| {
+                    let p: Vec<f32> = s
+                        .split_whitespace()
+                        .map(str::parse)
+                        .collect::<Result<_, _>>()
+                        .ok()?;
+                    (p.len() == 3).then(|| Vec3::new(p[0], p[1], p[2]))
+                });
+                if let Some(pivot) = pivot.or(at.filter(|_| ground)) {
+                    world_subject = Some(pivot);
+                    let aspect = width / height;
+                    let offset = if ground {
+                        let extent = ui
+                            .frame()
+                            .grounds
+                            .iter()
+                            .map(|g| {
+                                (g.rect.width * g.drape.scale.x)
+                                    .max(g.rect.height * g.drape.scale.y)
+                            })
+                            .fold(0.0_f32, f32::max);
+                        let distance = (extent / (2.0 * 25.0_f32.to_radians().tan())
+                            * (1.0 / aspect).max(1.0)
+                            * 1.4)
+                            .max(12.0);
+                        let pitch = 35.0_f32.to_radians();
+                        Vec3::new(0.0, pitch.sin() * distance, pitch.cos() * distance)
+                    } else {
+                        Vec3::new(0.0, 0.0, 6.0)
+                    };
+                    ui.set_world_view(Some(WorldView::look_at(
+                        pivot + offset,
+                        pivot,
+                        Vec3::Y,
+                        50.0,
+                        aspect,
+                        0.1,
+                        100.0,
+                    )));
+                }
+            }
+        } else if frame > 1
+            && let Some(pivot) = world_subject
+            && let Some(view) = ui.world_view()
+            && ui.frame().grounds.iter().any(|g| {
+                let pad = 24.0 * ui.theme().text_scale;
+                g.bounds.x < pad
+                    || g.bounds.y < pad
+                    || g.bounds.right() > width - pad
+                    || g.bounds.bottom() > height - pad
+            })
+        {
+            // Ground descendants may paint beyond the authored square (a
+            // path's endpoint badge does). Keep their full projected bounds,
+            // not just the square's corners, clear of the preview padding.
+            ui.set_world_view(Some(WorldView::look_at(
+                pivot + (view.eye - pivot) * 1.15,
+                pivot,
+                Vec3::Y,
+                50.0,
+                width / height,
+                0.1,
+                100.0,
+            )));
+        }
         ui.begin(InputFrame::default(), Viewport::new(width, height));
         ui.build_retained_documents(messages)
             .unwrap_or_else(|e| panic!("{}: {e}", doc.path));
