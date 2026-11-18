@@ -422,7 +422,7 @@ fn rfilter(r: &mut R) -> Option<(crate::layout::Rect, UiFilter)> {
     Some((region, UiFilter { primitives, space }))
 }
 
-const BLENDS: [UiBlend; 21] = [
+const BLENDS: [UiBlend; 22] = [
     UiBlend::Normal,
     UiBlend::Multiply,
     UiBlend::Screen,
@@ -444,6 +444,7 @@ const BLENDS: [UiBlend; 21] = [
     UiBlend::SourceOut,
     UiBlend::DestinationIn,
     UiBlend::Xor,
+    UiBlend::SrgbOver,
 ];
 const REPEATS: [UiRepeat; 4] = [
     UiRepeat::Repeat,

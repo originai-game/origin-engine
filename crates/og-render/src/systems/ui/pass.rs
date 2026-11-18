@@ -48,6 +48,8 @@ pub(crate) struct UiPipelines {
     screen: Deferred<wgpu::RenderPipeline>,
     add: Deferred<wgpu::RenderPipeline>,
     destination: Deferred<wgpu::RenderPipeline>,
+    srgb_over: Deferred<wgpu::RenderPipeline>,
+    composite_srgb_over: Deferred<wgpu::RenderPipeline>,
     /// The Porter-Duff operators, for shapes and for composites, in
     /// [`OPERATORS`]' order.
     operators: [Deferred<wgpu::RenderPipeline>; 4],

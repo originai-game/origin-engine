@@ -38,6 +38,15 @@ fn blend_over(rgb: vec3<f32>, a: f32, mode: u32, position: vec2<f32>) -> vec4<f3
   if (backdrop.params.x > 0.5) {
     b = decode(b);
   }
+  if (mode == 21u) {
+    // CSS source-over blends coverage in encoded space, not just the
+    // blend function's colours. This pipeline replaces the destination:
+    // return the complete result, premultiplied only for layer targets.
+    let alpha = a + ab * (1.0 - a);
+    let encoded = (encode(rgb) * a + encode(b) * ab * (1.0 - a)) / max(alpha, 1e-6);
+    let premul = select(1.0, alpha, backdrop.params.y > 0.5);
+    return finish_color(decode(encoded) * premul, alpha);
+  }
   if (mode == 3u) {
     return finish_color(b * ab + rgb, a);
   }

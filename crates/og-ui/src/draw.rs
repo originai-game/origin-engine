@@ -108,8 +108,8 @@ pub enum DrawCmd {
         /// character of `text`; empty: the font's advances and kerning.
         placements: Vec<og_draw::GlyphPlacement>,
     },
-    /// A [`DrawCmd::Text`] with effects drawn from its font's distance
-    /// field: shadows, an outline, a gradient fill (§5.6).
+    /// A [`DrawCmd::Text`] with silhouette shadows, a distance-field
+    /// outline and a gradient fill (§5.6).
     StyledText {
         text: Box<DrawCmd>,
         effects: Box<og_draw::UiTextEffects>,
@@ -227,6 +227,8 @@ enum Batch {
     Ui(u8, Option<TextureHandle>),
     Backdrop,
     Font(FontHandle),
+    /// A text's offscreen shadows followed by its glyphs.
+    ShadowFont,
     Vector(UiVectorHandle),
     /// A layer's composite (each its own).
     Composite(u32),
@@ -236,6 +238,9 @@ enum Batch {
 
 impl Batch {
     fn step_after(self, earlier: Self) -> i32 {
+        if matches!(self, Self::ShadowFont) || matches!(earlier, Self::ShadowFont) {
+            return 1;
+        }
         // OverlaySource::Font sorts before every UI ShapeSource, including
         // backdrop and composite shapes. Keep ambiguous shape/pipeline
         // crossings conservative: their exact source depends on the target.
@@ -531,7 +536,13 @@ impl DrawCmd {
                 texture: Some(t), ..
             } => Batch::Ui(0, Some(*t)),
             DrawCmd::Text { font, .. } => Batch::Font(*font),
-            DrawCmd::StyledText { text, .. } => text.batch(),
+            DrawCmd::StyledText { text, effects } => {
+                if effects.shadows.is_empty() {
+                    text.batch()
+                } else {
+                    Batch::ShadowFont
+                }
+            }
             DrawCmd::Shape { shape, .. } => {
                 if matches!(shape.mode, UiMode::Backdrop { .. }) {
                     return Batch::Backdrop;
@@ -560,15 +571,24 @@ impl DrawCmd {
             | DrawCmd::Vector { rect, clip, .. } => rect.intersect(clip),
             DrawCmd::Text { bounds, clip, .. } => bounds.intersect(clip),
             DrawCmd::StyledText { text, effects } => {
-                let DrawCmd::Text { bounds, clip, .. } = &**text else {
+                let DrawCmd::Text {
+                    bounds, size, clip, ..
+                } = &**text
+                else {
                     return text.bounds();
                 };
                 let mut b = *bounds;
                 let reach = effects.outline.map_or(0.0, |o| o.width);
                 b = b.outset(reach);
+                let ink = bounds.outset(*size);
                 for s in &effects.shadows {
-                    let moved = Rect::new(b.x + s.offset.x, b.y + s.offset.y, b.width, b.height)
-                        .outset(s.blur.max(0.0));
+                    let moved = Rect::new(
+                        ink.x + s.offset.x,
+                        ink.y + s.offset.y,
+                        ink.width,
+                        ink.height,
+                    )
+                    .outset(1.5 * s.blur.max(0.0));
                     b = union(&b, &moved);
                 }
                 b.intersect(clip)

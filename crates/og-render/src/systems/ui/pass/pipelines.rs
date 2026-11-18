@@ -107,6 +107,7 @@ pub(super) fn blend_state(pipe: Option<ShapePipe>) -> wgpu::BlendState {
         Some(ShapePipe::SourceOut) => op(F::OneMinusDstAlpha, F::Zero),
         Some(ShapePipe::DestinationIn) => op(F::Zero, F::SrcAlpha),
         Some(ShapePipe::Xor) => op(F::OneMinusDstAlpha, F::OneMinusSrcAlpha),
+        Some(ShapePipe::SrgbOver) => wgpu::BlendState::REPLACE,
         _ => wgpu::BlendState::ALPHA_BLENDING,
     }
 }

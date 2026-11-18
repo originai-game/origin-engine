@@ -129,6 +129,22 @@ impl UiRenderer {
                 screen: p("ui screen", "fs_shape", Some(ShapePipe::Screen)),
                 add: p("ui add", "fs_shape", Some(ShapePipe::Add)),
                 destination: p("ui blends", "fs_shape_dst", None),
+                srgb_over: p(
+                    "ui encoded source-over",
+                    "fs_shape_dst",
+                    Some(ShapePipe::SrgbOver),
+                ),
+                composite_srgb_over: pipeline(
+                    device,
+                    "ui encoded composite",
+                    &composite_layout,
+                    &builtin,
+                    "vs_shape",
+                    "fs_layer",
+                    format,
+                    wgpu::BlendState::REPLACE,
+                    false,
+                ),
                 operators: OPERATORS.map(|o| p("ui operator", "fs_shape", Some(o))),
                 composite_operators: OPERATORS.map(|o| {
                     pipeline(

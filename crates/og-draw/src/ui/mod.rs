@@ -1053,6 +1053,9 @@ pub enum UiBlend {
     SourceOut,
     DestinationIn,
     Xor,
+    /// Source-over in sRGB-encoded space, including coverage. Used for
+    /// CSS text shadows; unlike normal linear blending it reads the target.
+    SrgbOver,
 }
 
 impl UiBlend {

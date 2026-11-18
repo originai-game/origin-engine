@@ -103,6 +103,7 @@ impl Renderer {
                         ShapePipe::Screen => &ui.screen,
                         ShapePipe::Add => &ui.add,
                         ShapePipe::Destination => &ui.destination,
+                        ShapePipe::SrgbOver => &ui.srgb_over,
                         op => &ui.operators[operator(op)],
                     });
                     pass.set_bind_group(1, sprite_group(t), &[]);
@@ -123,6 +124,7 @@ impl Renderer {
                         // A blend reads the copy in the shader and lays the
                         // result over as the normal composite does.
                         ShapePipe::Normal | ShapePipe::Destination => &ui.composite,
+                        ShapePipe::SrgbOver => &ui.composite_srgb_over,
                         op => &ui.composite_operators[operator(op)],
                     };
                     let pipeline = match materials

@@ -6,6 +6,127 @@ use crate::support;
 use og_ui::*;
 use support::*;
 
+/// A CSS shadow is the Gaussian convolution of the ink, including pixels
+/// outside the atlas quads. Wide shadows must not become solid glyph boxes.
+#[test]
+#[ignore = "requires GPU"]
+fn text_shadow_blurs_the_ink_beyond_the_glyph_quads() {
+    use og_render::*;
+    let mut scene = RenderScene::new();
+    let font = add_test_font(&mut scene);
+    scene.lighting.environment.background = Background::Color(og_core::glam::Vec3::ZERO);
+    scene.look.post.tonemap = Tonemap::None;
+    let draw = |scene: &mut RenderScene, shadow: Option<f32>, colored: bool| {
+        let mut ui = ui_with_font(font.clone());
+        let ink = if shadow.is_some() { "black" } else { "white" };
+        let ground = if colored { "#204060" } else { "black" };
+        let shadow = shadow.map_or("none".into(), |r| {
+            if colored {
+                format!("7px -3px {r}px rgb(204 128 51 / 60%)")
+            } else {
+                format!("0 0 {r}px white")
+            }
+        });
+        ui.define_document(UiDocument::parse("shadow.svelte", &format!(
+            "<meta name=\"component\" content=\"shadow\"><div><p>1-1</p></div><style>div {{ position: fixed; inset: 0; background: {ground}; }} p {{ position: fixed; left: 100px; top: 85px; margin: 0; font-size: 52px; font-weight: 400; line-height: 1; color: {ink}; text-shadow: {shadow}; }}</style>"
+        )).unwrap());
+        ui.mount_document(
+            reactive::SourceId::new("test", "shadow"),
+            "shadow",
+            Default::default(),
+            Default::default(),
+            &bind::NoEnv,
+        )
+        .unwrap();
+        ui.begin(InputFrame::default(), Viewport::new(320.0, 240.0));
+        ui.build_retained_documents(&bind::NoEnv).unwrap();
+        ui.end();
+        let mut overlay = Overlay::new(320.0, 240.0, 1.0);
+        ui.frame().emit(&EmitDesc::default(), &mut overlay);
+        scene.ui.overlay = Some(overlay);
+        render_frame(scene, &sized(320, 240)).image
+    };
+    let linear = |v: u8| {
+        let v = f64::from(v) / 255.0;
+        if v <= 0.04045 {
+            v / 12.92
+        } else {
+            ((v + 0.055) / 1.055).powf(2.4)
+        }
+    };
+    let mask = draw(&mut scene, None, false);
+    let ink: Vec<_> = mask
+        .pixels
+        .as_chunks::<4>()
+        .0
+        .iter()
+        .enumerate()
+        .filter(|(_, p)| p[0] > 0)
+        .map(|(i, p)| ((i % 320) as f64, (i / 320) as f64, linear(p[0])))
+        .collect();
+    assert!(!ink.is_empty());
+    let top = ink.iter().map(|p| p.1 as u32).min().unwrap();
+    for (radius, colored) in [(8.0, false), (22.0, false), (48.0, false), (22.0, true)] {
+        let image = draw(&mut scene, Some(radius), colored);
+        let sigma = f64::from(radius) / 2.0;
+        let mut checked = 0;
+        // Only outside the ink: the black foreground cannot cover these
+        // samples. Derive expectations from a separately rendered mask,
+        // not the implementation's atlas range or filter parameters.
+        for dy in [4, 8, 16, 24] {
+            let y = top - dy;
+            for x in (100..185).step_by(7) {
+                let coverage: f64 = ink
+                    .iter()
+                    .map(|&(ix, iy, a)| {
+                        let (dx, dy) = if colored { (7.0, -3.0) } else { (0.0, 0.0) };
+                        let d2 =
+                            (ix + dx - f64::from(x)).powi(2) + (iy + dy - f64::from(y)).powi(2);
+                        a * (-d2 / (2.0 * sigma * sigma)).exp()
+                            / (2.0 * std::f64::consts::PI * sigma * sigma)
+                    })
+                    .sum();
+                if coverage < 0.004 {
+                    continue;
+                }
+                // CSS source-over of white over black has encoded output
+                // equal to coverage. Linear-light compositing would encode
+                // that coverage again and make the halo much brighter.
+                for channel in 0..3 {
+                    let expected = if colored {
+                        let ground = [32.0, 64.0, 96.0][channel] / 255.0;
+                        let source = [204.0, 128.0, 51.0][channel] / 255.0;
+                        ground + (source - ground) * coverage * 0.6
+                    } else {
+                        coverage
+                    };
+                    let actual =
+                        f64::from(image.pixels[((y * 320 + x) * 4) as usize + channel]) / 255.0;
+                    assert!(
+                        (actual - expected).abs() < 0.008 + coverage * 0.12,
+                        "radius {radius}, colored {colored}, ({x},{y}) channel {channel}: {actual}, Gaussian source-over {expected}"
+                    );
+                }
+                checked += 1;
+            }
+        }
+        assert!(checked > 5, "radius {radius}: no meaningful halo samples");
+        // Shadows belong below opaque foreground ink, not over it.
+        let opaque = mask
+            .pixels
+            .as_chunks::<4>()
+            .0
+            .iter()
+            .position(|p| p[0] == 255)
+            .unwrap();
+        assert!(
+            image.pixels[opaque * 4..opaque * 4 + 3]
+                .iter()
+                .all(|c| *c <= 1)
+        );
+    }
+}
+
 #[test]
 #[ignore = "requires GPU"]
 fn image_sets_render_density_correct_backgrounds_masks_and_borders() {

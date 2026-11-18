@@ -66,6 +66,8 @@ pub(crate) enum ShapePipe {
     Add,
     /// The blends that read the destination.
     Destination,
+    /// Encoded source-over replaces the target with the complete result.
+    SrgbOver,
     /// The Porter-Duff operators ([`UiBlend::SourceIn`] …).
     SourceIn,
     SourceOut,
@@ -624,6 +626,7 @@ pub(crate) fn shape(
         UiBlend::SourceOut => 18,
         UiBlend::DestinationIn => 19,
         UiBlend::Xor => 20,
+        UiBlend::SrgbOver => 21,
     };
     g.kinds[2] = mode_word | blend << 4;
     let mut texture = None;
@@ -701,6 +704,7 @@ pub(crate) fn shape(
         g.kinds[1] |= (first + 1) << 8;
     }
     let op = match s.blend {
+        UiBlend::SrgbOver => Some(ShapePipe::SrgbOver),
         UiBlend::SourceIn => Some(ShapePipe::SourceIn),
         UiBlend::SourceOut => Some(ShapePipe::SourceOut),
         UiBlend::DestinationIn => Some(ShapePipe::DestinationIn),
@@ -723,7 +727,7 @@ pub(crate) fn shape(
             ShapeSource::Backdrop
         }
     } else if s.blend.reads_destination() {
-        ShapeSource::Shape(ShapePipe::Destination, texture)
+        ShapeSource::Shape(op.unwrap_or(ShapePipe::Destination), texture)
     } else {
         let pipe = match s.blend {
             _ if op.is_some() => op.unwrap(),

@@ -88,8 +88,8 @@ impl OverlaySource {
         matches!(
             self,
             OverlaySource::Ui(
-                ShapeSource::Shape(ShapePipe::Destination, _)
-                    | ShapeSource::Composite(_, ShapePipe::Destination)
+                ShapeSource::Shape(ShapePipe::Destination | ShapePipe::SrgbOver, _)
+                    | ShapeSource::Composite(_, ShapePipe::Destination | ShapePipe::SrgbOver)
             )
         )
     }
@@ -774,7 +774,15 @@ pub(crate) fn build<'a>(
         let target_ok = *t == 0 || drawn.contains(&(*t - 1));
         in_layer_ok && composite_ok && target_ok
     });
-    og_core::sort::sort_by_key(&mut keyed, |(t, layer, source, _)| (*t, *layer, *source));
+    // CSS text-shadow composites precede the glyph fill on the same
+    // painter level. og-ui gives shadowed text its own overlap boundary.
+    og_core::sort::sort_by_key(&mut keyed, |(t, layer, source, _)| {
+        let shadow = matches!(
+            source,
+            OverlaySource::Ui(ShapeSource::Composite(_, ShapePipe::SrgbOver))
+        );
+        (*t, *layer, !shadow, *source)
+    });
     let mut runs: Vec<OverlayRun> = Vec::new();
     let mut instances = Vec::with_capacity(ov.len());
     let mut ui_instances = Vec::with_capacity(uv.len());

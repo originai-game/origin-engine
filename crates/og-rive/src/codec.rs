@@ -72,6 +72,7 @@ fn blend(b: UiBlend) -> u8 {
         UiBlend::SourceOut => 18,
         UiBlend::DestinationIn => 19,
         UiBlend::Xor => 20,
+        UiBlend::SrgbOver => 21,
     }
 }
 
@@ -98,6 +99,7 @@ fn rblend(v: u8) -> Option<UiBlend> {
         18 => UiBlend::SourceOut,
         19 => UiBlend::DestinationIn,
         20 => UiBlend::Xor,
+        21 => UiBlend::SrgbOver,
         _ => return None,
     })
 }

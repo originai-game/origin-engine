@@ -770,6 +770,125 @@ pub(crate) fn emit(
                         fx.fill_box = [b.x, b.y, b.width, b.height];
                         map_text(overlay, at, m);
                     }
+                    // CSS shadows blur the whole glyph mask, not the
+                    // atlas's finite distance field. In particular a wide
+                    // halo must survive past every glyph quad's edge.
+                    if let DrawCmd::Text {
+                        bounds, size, clip, ..
+                    } = &**text
+                    {
+                        for shadow in effects.shadows.iter().rev() {
+                            if shadow.color[3] <= 0.0 {
+                                continue;
+                            }
+                            let k = overlay.ui.layers.len() as u32;
+                            if k >= MAX_LAYERS {
+                                break;
+                            }
+                            let sigma = shadow.blur.max(0.0) / 2.0;
+                            // Include overhangs as well as the Gaussian's
+                            // 3-sigma support and the displaced silhouette.
+                            let region = bounds
+                                .outset(*size + 3.0 * sigma + shadow.offset.abs().max_element());
+                            let mut filter = og_draw::UiFilter {
+                                primitives: vec![
+                                    og_draw::UiFilterPrimitive {
+                                        op: og_draw::UiFilterOp::Blur {
+                                            std_dev: [sigma; 2],
+                                        },
+                                        inputs: [og_draw::UiFilterInput::Source; 2],
+                                        subregion: [
+                                            region.x,
+                                            region.y,
+                                            region.width,
+                                            region.height,
+                                        ],
+                                        srgb: false,
+                                    },
+                                    og_draw::UiFilterPrimitive {
+                                        op: og_draw::UiFilterOp::Offset {
+                                            d: shadow.offset.to_array(),
+                                        },
+                                        inputs: [og_draw::UiFilterInput::Result(0); 2],
+                                        subregion: [
+                                            region.x,
+                                            region.y,
+                                            region.width,
+                                            region.height,
+                                        ],
+                                        srgb: false,
+                                    },
+                                    og_draw::UiFilterPrimitive {
+                                        op: og_draw::UiFilterOp::ColorMatrix([
+                                            0.0,
+                                            0.0,
+                                            0.0,
+                                            0.0,
+                                            shadow.color[0],
+                                            0.0,
+                                            0.0,
+                                            0.0,
+                                            0.0,
+                                            shadow.color[1],
+                                            0.0,
+                                            0.0,
+                                            0.0,
+                                            0.0,
+                                            shadow.color[2],
+                                            0.0,
+                                            0.0,
+                                            0.0,
+                                            shadow.color[3],
+                                            0.0,
+                                        ]),
+                                        inputs: [og_draw::UiFilterInput::Result(1); 2],
+                                        subregion: [
+                                            region.x,
+                                            region.y,
+                                            region.width,
+                                            region.height,
+                                        ],
+                                        srgb: false,
+                                    },
+                                ],
+                                ..Default::default()
+                            };
+                            crate::svg::filter::map(&mut filter, m);
+                            let region = m.map_rect(&region);
+                            let base = desc.layer + LAYER_BASE + k as i32 * LAYER_SPAN;
+                            overlay.ui.layers.push(og_draw::UiLayer {
+                                capture: [base, base + LAYER_SPAN - 1],
+                                rect: [region.x, region.y, region.width, region.height],
+                                material: UiMaterial::Plain,
+                                params: [[0.0; 4]; og_draw::UI_MATERIAL_PARAMS],
+                                mask: None,
+                                target: None,
+                                ground: None,
+                                filter: Some(filter),
+                                backdrop: false,
+                            });
+                            let mut silhouette = overlay.texts[at as usize].clone();
+                            silhouette.layer = base;
+                            silhouette.clip = None;
+                            // Rasterize coverage independently of the shadow
+                            // colour (dark ink has a legibility correction).
+                            silhouette.color = [1.0, 1.0, 1.0, silhouette.color[3]];
+                            silhouette.glow = None;
+                            let source = overlay.texts.len() as u32;
+                            overlay.texts.push(silhouette);
+                            overlay.ui.text_effects.push(og_draw::UiTextEffects {
+                                text: source,
+                                transform: fx.transform,
+                                ..Default::default()
+                            });
+                            let c = clips.index(overlay, clip);
+                            let mut composite = rect_shape(region, 0.0, [1.0; 4]);
+                            composite.paint = UiPaint::Layer(k);
+                            composite.blend = og_draw::UiBlend::SrgbOver;
+                            overlay.ui.shapes.push(placed(composite, layer, c));
+                        }
+                    }
+                    fx.shadows.clear();
                     overlay.ui.text_effects.push(fx);
                 }
             }

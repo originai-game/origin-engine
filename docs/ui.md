@@ -2334,6 +2334,16 @@ frame per face), so steady frames cost what an atlas font's do. A glyph
 is blank until the frame after it arrives, never warned of; a probe
 capture waits for every requested glyph. Glyphs are presentation only.
 
+CSS `text-shadow` rasterizes the complete line's glyph silhouette into an
+offscreen layer, then uses the filter graph's Gaussian blur with standard
+deviation `blur-radius / 2`. Its paint and raster bounds include glyph
+overhang, the offset and three standard deviations, independently of the
+line height and the atlas distance range. Shadows draw back to front below
+the foreground ink and composite source-over in sRGB-encoded space, as in
+CSS; ordinary UI paint keeps its existing blending. An authored overflow
+clip still cuts the final shadow. The distance-field glow and outline
+effects remain separate from CSS text shadows.
+
 Colour emoji are a font feature. The `emoji` pack is Noto Color Emoji's
 COLRv1 face (SIL OFL 1.1; script `Zsye`, no language, tried after every
 text pack), declared `color true` with `runtime true`: COLR v0 and v1
