@@ -273,6 +273,82 @@ fn a_screen_cooks_in_the_built_in_components_it_uses() {
 }
 
 #[test]
+fn manifest_only_edits_update_a_cached_builtin_documents_dependencies() {
+    let root = project(
+        "manifest-dependencies",
+        &[(
+            "ui/page.svelte",
+            "<meta name='screen' content='page'><Container/>",
+        )],
+    );
+    let package = root.join("engine");
+    let ui = package.join("src/ui");
+    std::fs::create_dir_all(ui.join("components")).unwrap();
+    for (name, text) in [
+        (
+            "container",
+            "<meta name='component' content='Container'><Spinner/>",
+        ),
+        (
+            "spinner",
+            "<meta name='component' content='Spinner'><div>Ready</div>",
+        ),
+    ] {
+        std::fs::write(ui.join(format!("components/{name}.svelte")), text).unwrap();
+    }
+    let manifest = |include_spinner: bool| {
+        std::fs::write(
+            ui.join("manifest.json"),
+            serde_json::json!({
+                "Container": {
+                    "id": "@ui/components/container.svelte", "screen": false, "control": null,
+                    "uses": if include_spinner { vec!["Spinner"] } else { vec![] },
+                    "files": ["@ui/components/container.svelte"], "imports": []
+                },
+                "Spinner": {
+                    "id": "@ui/components/spinner.svelte", "screen": false, "control": null,
+                    "uses": [], "files": ["@ui/components/spinner.svelte"], "imports": []
+                }
+            })
+            .to_string(),
+        )
+        .unwrap();
+    };
+    // Each invocation reads the package as a new user-facing cook does;
+    // neither the documents nor the project's cooked cache are replaced.
+    let cook = || {
+        let output = std::process::Command::new(env!("CARGO_BIN_EXE_og-cook"))
+            .arg(&root)
+            .env("OG_ENGINE_PACKAGE", &package)
+            .output()
+            .unwrap();
+        assert!(
+            output.status.success(),
+            "{}",
+            String::from_utf8_lossy(&output.stderr)
+        );
+        Bundle::open(&root.join("cooked")).unwrap()
+    };
+    let container = "@ui/components/container.svelte";
+    let spinner = "@ui/components/spinner.svelte";
+    manifest(false);
+    assert!(cook().output(spinner).is_err());
+    assert!(uses(&root, container).is_empty());
+    manifest(true);
+    assert!(
+        cook().output(spinner).is_ok(),
+        "manifest-only addition must join the cached bundle"
+    );
+    assert_eq!(uses(&root, container), [spinner]);
+    manifest(false);
+    assert!(
+        cook().output(spinner).is_err(),
+        "manifest-only removal must leave the bundle"
+    );
+    assert!(uses(&root, container).is_empty());
+}
+
+#[test]
 fn lowercase_library_components_cook_by_their_declared_names() {
     let source = r#"<meta name="component" content="results-card">
 <column>
