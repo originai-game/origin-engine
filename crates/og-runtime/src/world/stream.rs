@@ -149,6 +149,11 @@ pub(crate) struct Group {
     /// A distance trigger's camera is within reach (kept until past unload).
     near: bool,
     wanted: bool,
+    /// Device-priced reservation, learned from the pack before admission.
+    /// Kept across unloads; reading a pack does not make its assets resident.
+    memory: Option<u64>,
+    /// Its measured assets have a reservation; metadata reads have none.
+    reserved: bool,
     /// The pack's files while resident: path under `cooked/` to bytes.
     files: BTreeMap<String, Vec<u8>>,
     reason: String,
@@ -361,6 +366,8 @@ impl Streams {
                 requested: false,
                 near: false,
                 wanted: false,
+                memory: None,
+                reserved: false,
                 files: BTreeMap::new(),
                 reason: String::new(),
                 since: 0,
@@ -381,8 +388,8 @@ impl Streams {
     fn used(&self) -> u64 {
         self.groups
             .iter()
-            .filter(|g| matches!(g.state, State::Loading | State::Resident))
-            .map(|g| g.desc.memory)
+            .filter(|g| g.reserved)
+            .map(|g| g.memory.unwrap_or(g.desc.memory))
             .sum::<u64>()
             + self.kept()
     }
@@ -453,6 +460,9 @@ fn set_state(
     reason: &str,
 ) {
     let g = &mut s.groups[i];
+    if !matches!(state, State::Loading | State::Resident) {
+        g.reserved = false;
+    }
     if g.state == state {
         // The same state for another reason: no change to send.
         if g.reason != reason {
@@ -555,7 +565,7 @@ fn group_status(eng: &Engine, a: &assets::Assets, g: &Group) -> StreamStatus {
             .as_str()
             .unwrap_or_default()
             .to_string(),
-        memory: g.desc.memory as f64,
+        memory: g.memory.unwrap_or(g.desc.memory) as f64,
         bytes: g.desc.bytes as f64,
         received: received(g),
         progress: if g.state == State::Resident || g.desc.bytes == 0 {
