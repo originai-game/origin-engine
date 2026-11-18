@@ -138,7 +138,7 @@ pub(crate) fn features(n: &Node) -> u32 {
 #[derive(Clone, Debug, Default)]
 pub(crate) struct Orders {
     /// The trees' shape (`TreeIndex::shape`) the preorder was made for.
-    shape: Option<u64>,
+    pub(super) shape: Option<u64>,
     /// Every node in the trees, the screen's tree first and then each
     /// layer's, parents before children.
     pub pre: Vec<usize>,

@@ -193,6 +193,11 @@ impl UiMassTemplate {
     /// The timeline at life fraction `t`: (offset, scale, alpha), as the
     /// shader samples it.
     pub fn sample(&self, t: f32) -> (Vec2, f32, f32) {
+        // A constant timeline has no ordering or interpolation to prepare.
+        if self.keys.len() <= 1 {
+            let key = self.keys.first().copied().unwrap_or_default();
+            return (key.offset, key.scale, key.alpha);
+        }
         sample_keys(&self.keys_drawn(), t)
     }
 
@@ -243,6 +248,8 @@ pub(crate) fn sample_keys(keys: &[UiMassKey], t: f32) -> (Vec2, f32, f32) {
 /// The symbols of a [`UiMassKind::Number`]'s value, as the shader writes
 /// them: digits `0`–`9`, `+`, `-`, `.`, `k`, `M`.
 pub fn format_number(value: f32, decimals: u32, plus: bool, compact: bool) -> String {
+    use std::fmt::Write;
+
     let mut a = value.abs();
     let mut dec = decimals.min(3);
     let mut suffix = "";
@@ -265,10 +272,10 @@ pub fn format_number(value: f32, decimals: u32, plus: bool, compact: bool) -> St
     } else if plus && fixed > 0 {
         s.push('+');
     }
-    s.push_str(&int.to_string());
+    write!(s, "{int}").unwrap();
     if dec > 0 {
         s.push('.');
-        s.push_str(&format!("{frac:0width$}", width = dec as usize));
+        write!(s, "{frac:0width$}", width = dec as usize).unwrap();
     }
     s.push_str(suffix);
     s

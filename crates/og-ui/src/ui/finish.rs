@@ -767,10 +767,15 @@ impl Ui {
             // Elements placed on the screen (Position::Screen): laid out again in
             // the whole surface, under the safe area their layer keeps clear,
             // and clipped by nothing but the surface.
-            let mut placed_order = preorder(&self.tree.nodes, 0);
-            for &f in &self.tree.floating {
-                placed_order.extend(preorder(&self.tree.nodes, f));
-            }
+            let placed_order = if self.tree.orders.shape == Some(self.tree.index.shape) {
+                self.tree.orders.pre.clone()
+            } else {
+                let mut order = preorder(&self.tree.nodes, 0);
+                for &f in &self.tree.floating {
+                    order.extend(preorder(&self.tree.nodes, f));
+                }
+                order
+            };
             // A document's absolute or fixed element whose containing block
             // is an ancestor's box (CSS Position 3 §2.1, Transforms 1 §3,
             // Containment 2 §3.2) is placed against that box the same way.
@@ -2139,7 +2144,11 @@ impl crate::ui::Layout {
                 },
                 None => {
                     let baked = bake(c.clone(), *m);
-                    fresh.push(baked.clone());
+                    // Only text contributes missing glyphs. In particular,
+                    // world wrappers need no second owned copy for this scan.
+                    if matches!(baked.0, DrawCmd::Text { .. } | DrawCmd::StyledText { .. }) {
+                        fresh.push(baked.clone());
+                    }
                     crate::draw::Spliced {
                         from: None,
                         delta: (0.0, 0.0),
@@ -2157,7 +2166,9 @@ impl crate::ui::Layout {
                 }
             } else {
                 let baked = bake(c.0.clone(), c.1);
-                fresh.push(baked.clone());
+                if matches!(baked.0, DrawCmd::Text { .. } | DrawCmd::StyledText { .. }) {
+                    fresh.push(baked.clone());
+                }
                 crate::draw::Spliced {
                     from: None,
                     delta: (0.0, 0.0),
