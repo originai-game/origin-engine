@@ -18141,7 +18141,7 @@ export interface Weather {
    */
   wind: Vector3;
   /**
-   * The size of the region around the camera the particles fill.
+   * The size of the region around the camera the particles fill. Rain's streaks fill at most its nearest 10 m: farther drops are thinner than a pixel, and its fog draws them.
    *
    * @default 18
    * @range 1..200

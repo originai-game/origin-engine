@@ -36463,7 +36463,7 @@
         },
         "radius": {
           "type": "number",
-          "description": "The size of the region around the camera the particles fill.",
+          "description": "The size of the region around the camera the particles fill. Rain's streaks fill at most its nearest 10 m: farther drops are thinner than a pixel, and its fog draws them.",
           "default": 18,
           "minimum": 1,
           "maximum": 200,

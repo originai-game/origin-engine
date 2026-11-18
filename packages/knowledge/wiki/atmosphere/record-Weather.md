@@ -21,7 +21,7 @@ Token `og.Weather`, registered under the schema name `og.Weather`; its value typ
 | `fadingIntensity` | `number` | `0` | — | — | read only | How much of fadingKind is still drawn (written by the tick). |
 | `settling` | `number` | `0` | — | `s` | read only | Seconds the faded kind's last particles still fall once fadingIntensity reaches 0 (written by the tick). |
 | `wind` | `Vector3` | `{ x: 0, y: 0, z: 0 }` | — | `mps` | tunable | A wind of the weather's own on the particles, added to og.Wind's. |
-| `radius` | `number` | `18` | 1 … 200 | `m` | tunable | The size of the region around the camera the particles fill. |
+| `radius` | `number` | `18` | 1 … 200 | `m` | tunable | The size of the region around the camera the particles fill. Rain's streaks fill at most its nearest 10 m: farther drops are thinner than a pixel, and its fog draws them. |
 | `tint` | `Color` | `{ r: 1, g: 1, b: 1 }` | — | — | — | Multiplies the particles' colour. |
 | `dim` | `number` | `1` | 0 … 1 | `ratio` | tunable | How much of the preset's cloud cover and dimming of the sunlight applies. |
 | `layer` | `number` | `50` | — | — | — | With an orthographic camera (2D), the sprite layer the particles draw in. |
@@ -69,7 +69,7 @@ resource Weather {
     unit mps
     tunable true
   }
-  field radius f32 "The size of the region around the camera the particles fill." {
+  field radius f32 "The size of the region around the camera the particles fill. Rain's streaks fill at most its nearest 10 m: farther drops are thinner than a pixel, and its fog draws them." {
     default 18
     min 1
     max 200

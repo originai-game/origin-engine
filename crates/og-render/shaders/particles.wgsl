@@ -120,12 +120,24 @@ fn vs(@builtin(vertex_index) vi: u32, p: ParticleIn) -> ParticleOut {
   let v2 = vec2<f32>(dot(vel, right), dot(vel, up));
   let speed = length(v2);
   let align = particle_align();
+  // What of a pixel's width a streak covers: 1 for one a pixel wide or
+  // more (below).
+  var coverage = 1.0;
   if (align == 1u && speed > 1e-4) {
     let axis = v2 / speed;
     let len = size.y + speed * emitter.render.y;
     let along = right * axis.x + up * axis.y;
     let across = right * -axis.y + up * axis.x;
-    offset = along * (c.y * len) + across * (c.x * size.x);
+    // A streak narrower than a pixel (a raindrop, a far spark) is drawn a
+    // pixel wide at the share of it it covers (Persson's phone-wire
+    // anti-aliasing, 2011): thinner than that it would fall between the
+    // pixel centres and flicker in and out along its length.
+    let at = view.view_proj * vec4<f32>(center, 1.0);
+    let per_unit = abs((view.view_proj * vec4<f32>(up, 0.0)).y) * view.screen.y;
+    let pixel = 2.0 * max(at.w, 1e-4) / max(per_unit, 1e-6);
+    let width = max(size.x, pixel);
+    coverage = size.x / width;
+    offset = along * (c.y * len) + across * (c.x * width);
   } else {
     if (align >= 2u) {
       let b = particle_basis(align, center);
@@ -162,20 +174,26 @@ fn vs(@builtin(vertex_index) vi: u32, p: ParticleIn) -> ParticleOut {
     if (mode == 1u && played >= ceil(emitter.sheet2.x) * frames - 1.0) { fade = 0.0; }
   }
   o.uv_next = vec3<f32>(sheet_uv((f + 1.0) % frames, c, columns, rows), fade);
-  o.local = c;
+  // A streak drawn wider than it is keeps its own width's place across
+  // it (its round fall-off across a pixel-wide quad left it dashed), and
+  // along it: a drop crossing the exposure at its speed is as bright all
+  // along its streak, its ends rounded over its own width, which is under
+  // a pixel (the dot's fall-off along it drew a short dash).
+  o.local = c * coverage;
   o.shape_uv = vec2<f32>(c.x + 0.5, 0.5 - c.y);
   particle_effect(&o, t, p.misc.w);
   o.color = color_curve(t, p.misc.w) * emitter.color;
+  o.color.a *= coverage;
   o.depth = dot(world - view.cam_pos.xyz, view.cam_forward.xyz);
   o.world = world;
   o.normal = -view.cam_forward.xyz;
   return o;
 }
 
-// The light a particle at `p` with normal `n` receives (emitter.look.x):
-// the sun with its cascades, the image-based light, the cluster's local
-// lights, on a rough white surface.
-fn particle_light(frag: vec2<f32>, p: vec3<f32>, n: vec3<f32>) -> vec3<f32> {
+// The light a particle at `p` with normal `n` receives (emitter.look.x),
+// sent out along `v`: the sun with its cascades, the image-based light,
+// the cluster's local lights, on a rough white surface.
+fn particle_light(frag: vec2<f32>, p: vec3<f32>, n: vec3<f32>, v: vec3<f32>) -> vec3<f32> {
   var s: Surface;
   s.albedo = vec3<f32>(1.0);
   s.metallic = 0.0;
@@ -184,7 +202,6 @@ fn particle_light(frag: vec2<f32>, p: vec3<f32>, n: vec3<f32>) -> vec3<f32> {
   s.coat = 0.0;
   s.coat_roughness = 1.0;
   s.coat_normal = n;
-  let v = toward_eye(p);
   let l = normalize(frame.light_dir.xyz);
   let n_dot_l = max(dot(n, l), 0.0);
   var shadow = 1.0;
@@ -219,7 +236,7 @@ fn particle_gloss(frag: vec2<f32>, p: vec3<f32>, n: vec3<f32>, c: vec4<f32>, rou
   let at = ShadeAt(p, n, v, frag, false, false, false);
   let lit = surface_shade(s, at, StyleSun(brdf(s, n, v, l) * frame.light_color.rgb * shadow, 1.0), n_dot_l * shadow, vec3<f32>(0.0), 1.0, 1.0);
   let spec = lit.direct + lit.specular;
-  let body = c.rgb * particle_light(frag, p, n) * c.a;
+  let body = c.rgb * particle_light(frag, p, n, toward_eye(p)) * c.a;
   let a = clamp(c.a + max(spec.r, max(spec.g, spec.b)), 0.0, 1.0);
   if (a <= 0.0) { return vec4<f32>(0.0); }
   return vec4<f32>((body + spec) / a, a);
@@ -479,7 +496,7 @@ fn fs_mesh(in: ParticleOut) -> @location(0) vec4<f32> {
   if (emitter.look.x > 0.5 && emitter.look.w < 1.0) {
     c = particle_gloss(in.clip.xy, in.world, normalize(in.normal), c, emitter.look.w);
   } else if (emitter.look.x > 0.5) {
-    c = vec4<f32>(c.rgb * particle_light(in.clip.xy, in.world, normalize(in.normal)), c.a);
+    c = vec4<f32>(c.rgb * particle_light(in.clip.xy, in.world, normalize(in.normal), toward_eye(in.world)), c.a);
   }
   c = particle_fog(c, in.world);
   if (c.a <= 0.0) { discard; }
@@ -577,7 +594,20 @@ fn particle_fragment(in: ParticleOut) -> vec4<f32> {
   }
   c = particle_hue(c);
   if (emitter.look.x > 0.5) {
-    c = vec4<f32>(c.rgb * particle_light(in.clip.xy, in.world, ball_normal(in.facing)), c.a);
+    // A streak along its velocity is a drop drawn through the exposure: a
+    // lens that shows the eye what lies beyond it, the light of the wide
+    // field behind it (Garg and Nayar, 2006), so it takes the light of the
+    // hemisphere facing away from the eye as that light leaves it, along
+    // its normal. (Graded towards the eye it would be a surface seen from
+    // behind, and Fresnel's grazing term would turn away the very light
+    // behind it: the sun and the lamps it passes.)
+    var n = ball_normal(in.facing);
+    var v = toward_eye(in.world);
+    if (particle_align() == 1u) {
+      n = -v;
+      v = n;
+    }
+    c = vec4<f32>(c.rgb * particle_light(in.clip.xy, in.world, n, v), c.a);
   }
   c.a *= particle_soft(in);
   c.a *= fog_keep(in.world);

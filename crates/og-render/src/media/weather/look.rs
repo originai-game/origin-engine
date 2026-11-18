@@ -54,10 +54,24 @@ pub struct WeatherLook {
 /// ([`ParticleEmitter::emission`]).
 const FULL: f32 = 2.0;
 
-/// The most particles of each preset in the air.
+/// The most particles of each preset in the air (rain's in 2D: its 3D
+/// streaks' column is bounded by [`RAIN_STREAKS`]).
 const RAIN_CAPACITY: f32 = 40_000.0;
 const SNOW_CAPACITY: f32 = 56_000.0;
 const DUST_CAPACITY: f32 = 8_000.0;
+
+/// How far round the camera 3D rain draws its streaks (m): a 2 mm drop
+/// still covers a fifth of a pixel there (a 1080p frame, a 60 degree
+/// view). Farther drops are thinner than that and as bright as the veil
+/// behind them, which the rain's fog draws.
+const RAIN_STREAKS: f32 = 10.0;
+
+/// 3D rain's streaks a cubic metre at intensity 1. Each stands for many
+/// drops and carries their cross-section (a streak 2.25 mm wide, 0.23 m
+/// long, about two thirds of it opaque: 3.4 cm²), so together they carry
+/// a heavy rain's: 25 mm/h, about 14 cm² a cubic metre in Marshall and
+/// Palmer's drop sizes (1948).
+const RAIN_STREAKS_PER_M3: f32 = 4.0;
 
 /// An emitter's rate and capacity for `rate` particles a second living
 /// `life` seconds with at most `most` in the air: a region wider than
@@ -124,8 +138,19 @@ pub fn weather(
     match kind {
         WEATHER_RAIN => {
             let fall = 11.0;
+            // In 3D the streaks fill only the near part of the region,
+            // where they can be seen, and fill it densely.
+            let r = if two_d { r } else { r.min(RAIN_STREAKS) };
+            let ahead = if two_d { 0.0 } else { r * 0.6 };
             let height = r * 1.2;
-            let (rate, max_particles) = schedule(r * r * 28.0 * FULL, height / fall, RAIN_CAPACITY);
+            // The column (2r by 2r) refills as fast as it falls through.
+            let per_area = if two_d {
+                28.0
+            } else {
+                4.0 * fall * RAIN_STREAKS_PER_M3
+            };
+            let most = if two_d { RAIN_CAPACITY } else { f32::INFINITY };
+            let (rate, max_particles) = schedule(r * r * per_area * FULL, height / fall, most);
             WeatherLook {
                 emitter: Some(ParticleEmitter {
                     max_particles,
@@ -137,8 +162,19 @@ pub fn weather(
                     rate,
                     lifetime: [height / fall * 0.9, height / fall],
                     speed: [-fall, -fall * 0.9],
-                    size: if two_d { [0.03, 0.04] } else { [0.012, 0.018] },
-                    color: tinted([0.72, 0.78, 0.9, 0.5]),
+                    // A drop's width (1.5 to 3 mm; a streak narrower than a
+                    // pixel is drawn a pixel wide, as faint as it covers).
+                    size: if two_d { [0.03, 0.04] } else { [0.0015, 0.003] },
+                    // A drop is a lens onto everything round it: it shines
+                    // with the light it stands in (Garg and Nayar, 2006), so
+                    // it is lit as a white ball, faint against a bright sky,
+                    // clear against dark ground, and coloured by the lamps
+                    // it passes at night. (2D draws it at its colour.)
+                    color: tinted(if two_d {
+                        [0.72, 0.78, 0.9, 0.5]
+                    } else {
+                        [0.85, 0.88, 0.95, 1.0]
+                    }),
                     color_over_life: ColorCurve::new(&[
                         (0.0, [1.0, 1.0, 1.0, 0.0]),
                         (0.08, [1.0, 1.0, 1.0, 1.0]),
@@ -149,7 +185,13 @@ pub fn weather(
                     drag: 1.0,
                     blend: Some(ParticleBlend::Alpha),
                     space: SimulationSpace::World,
-                    align: ParticleAlign::Velocity { stretch: 0.045 },
+                    // The streak a drop draws in a film camera's exposure
+                    // (a 180 degree shutter at 24 frames a second, 1/48 s):
+                    // a quarter metre at the fall's 11 m/s.
+                    align: ParticleAlign::Velocity {
+                        stretch: if two_d { 0.045 } else { 1.0 / 48.0 },
+                    },
+                    lit: !two_d,
                     render,
                     ..ParticleEmitter::default()
                 }),

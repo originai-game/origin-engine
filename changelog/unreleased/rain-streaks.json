@@ -1,0 +1,12 @@
+{
+  "fixed": [
+    {
+      "member": "rendering: og.Weather",
+      "summary": "Rain falls as fine streaks: each a drop's width (1.5 to 3 mm) and the length it travels in a film camera's 1/48 s exposure (a quarter metre at the fall's speed), lit as drops are: by the light beyond them, so they show against dark ground, fade into a bright sky and take the colour of the lamps they pass. They fill the nearest 10 m of the region densely, where they can be seen (4 a cubic metre at intensity 1, carrying a heavy rain's drops); farther, the rain is its fog. Streaks were 1.2 to 1.8 cm wide, half a metre long and drawn at a fixed pale colour, so a wide shot drew thick bright bars across the frame, at night too. 2D rain is unchanged."
+    },
+    {
+      "member": "rendering: ParticleEmitter.align velocity",
+      "summary": "A streak narrower than a pixel is drawn a pixel wide at the share of the pixel it covers, as bright all along its length as a drop crossing the exposure is, instead of falling between pixel centres, breaking up along its length or fading to a short dash; one a pixel wide or more draws as before. A lit streak takes the light of the hemisphere beyond it (a drop shows what lies behind it), not of the side facing the camera, at full strength: the sun or a lamp behind it lights it."
+    }
+  ]
+}
