@@ -67,7 +67,7 @@ fn surface_decals(s_in: Surface, n: vec3<f32>, facing: vec3<f32>, frag: vec2<f32
   o.s.roughness = clamp(d.roughness, 0.04, 1.0);
   o.s.f0 = s_in.f0 + s_in.metallic * (d.albedo - s_in.albedo);
   o.emissive = d.emissive;
-  if (d.normal.w > 0.0) { o.n = normalize(mix(n, d.normal.xyz, d.normal.w)); }
+  if (d.normal.w > 0.0) { o.n = normalize(n + d.normal.xyz); }
   return o;
 }
 
@@ -76,7 +76,8 @@ fn apply_decals(frag: vec2<f32>, p: vec3<f32>, n: vec3<f32>, albedo: vec3<f32>, 
   r.albedo = albedo;
   r.roughness = roughness;
   r.emissive = vec3<f32>(0.0);
-  r.normal = vec4<f32>(n, 0.0);
+  // xyz: the decals' normal maps' bend of `n`, summed; w: their reach.
+  r.normal = vec4<f32>(0.0);
   if (!OG_DECALS) { return r; }
   let range = frame_decals(frag, p);
   let cells = CLUSTER_X * CLUSTER_Y * CLUSTER_Z;
@@ -112,7 +113,9 @@ fn apply_decals(frag: vec2<f32>, p: vec3<f32>, n: vec3<f32>, albedo: vec3<f32>, 
         let tv = cross(n, tu);
         let bent = normalize(tu * ts.x + tv * ts.y + n * ts.z);
         let w = clamp(fade, 0.0, 1.0);
-        r.normal = vec4<f32>(normalize(mix(r.normal.xyz, bent, w)), max(r.normal.w, w));
+        // The bend alone (0 where the map is flat), so the surface's own
+        // normal map shows through the decal's flat margin.
+        r.normal = vec4<f32>(r.normal.xyz + (bent - n) * w, max(r.normal.w, w));
       }
     }
   }

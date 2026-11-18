@@ -256,7 +256,7 @@ fn lit_fragment(in: VertexOut) -> vec4<f32> {
   }
   n = surface_normal(hook, params, n);
   // The decals' normal maps over the surface's own (apply_decals).
-  if (decal_normal.w > 0.0) { n = normalize(mix(n, decal_normal.xyz, decal_normal.w)); }
+  if (decal_normal.w > 0.0) { n = normalize(n + decal_normal.xyz); }
   // The material style's made surface (MaterialStyle.surface, frame.wgsl
   // material_surface), in the mesh's own space; a material with styled
   // false (mode 8) keeps its own. The branch is on uniforms only, so the
