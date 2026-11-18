@@ -74,6 +74,7 @@ impl Renderer {
         // camera visibility (its visible occluders); without them the
         // occluders' depth, the pyramid and the occlusion test are skipped.
         let occlusion = gpu_cull
+            && !self.visibility.foliage_only
             && self
                 .visibility
                 .gpu_cull

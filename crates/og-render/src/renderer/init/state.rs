@@ -15,6 +15,7 @@ impl Visibility {
             gpu_cull: None,
             meshlet: None,
             culling_counts: false,
+            foliage_only: false,
         }
     }
 }

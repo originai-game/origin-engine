@@ -293,4 +293,11 @@ pub(crate) struct Visibility {
     /// Whether the next frame's GPU culling counts are read back
     /// ([`Renderer::request_culling_counts`]).
     pub(crate) culling_counts: bool,
+    /// This frame culls on the GPU for its foliage alone (below the
+    /// instance count `Culling::Auto` culls there from, and no crowd): the
+    /// meshlet pulls sway and age its leaves, and the stages that pay off
+    /// only with many instances, occlusion and the visibility buffer's
+    /// software rasteriser, are left out (each costs the frame's pixels
+    /// whatever it draws).
+    pub(crate) foliage_only: bool,
 }
