@@ -361,8 +361,8 @@ fn exposed(mut scene: RenderScene, ev: f32) -> RenderScene {
     scene
 }
 
-/// The wet colonnade in the rain at night, 0.03 s after a strike 1.5 km
-/// ahead (`strike`), or the same night without it.
+/// The wet colonnade in the rain at night, 0.03 s after a strike 300 m
+/// down the way (`strike`), or the same night without it.
 pub fn storm(strike: bool) -> RenderScene {
     let mut scene = raining(
         22.5,
@@ -375,9 +375,12 @@ pub fn storm(strike: bool) -> RenderScene {
     );
     scene.frame.camera.target = Vec3::new(-1.0, 8.0, -30.0);
     if strike {
-        // 1.5 km out, so the bolt's root in the deck (35° up) is in frame
-        // and the glow about it reads.
-        let at = Vec3::new(-150.0, 0.0, -1500.0);
+        // 300 m down the way, over the arch at its end: near enough that
+        // the flash's light (its point light hangs over the root with a
+        // 600 m reach) falls on the colonnade's faces towards the camera,
+        // so the stone reads in the flash, and the bolt stands in the
+        // vista between the rows.
+        let at = Vec3::new(-20.0, 0.0, -300.0);
         // The bolt is a ribbon in the scene: past the default 1 km far
         // plane it would be clipped.
         scene.frame.camera.far = 4000.0;
