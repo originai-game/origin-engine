@@ -81,6 +81,7 @@ impl Hooks for Disk {
 #[derive(Default)]
 struct Seen {
     frames: Vec<(u32, (u32, u32))>,
+    skip_read: bool,
 }
 
 struct Recorder(Rc<RefCell<Seen>>);
@@ -93,6 +94,9 @@ impl RenderBackend for Recorder {
         (320, 180)
     }
     fn render(&mut self, scene: &RenderScene) -> Result<(), String> {
+        if self.0.borrow().skip_read {
+            return Ok(());
+        }
         let t = scene
             .objects
             .instances
@@ -104,6 +108,9 @@ impl RenderBackend for Recorder {
         let size = scene.texture_size(t).unwrap();
         self.0.borrow_mut().frames.push((held, size));
         Ok(())
+    }
+    fn texture_uploaded(&self, _: &RenderScene, _: og_render::TextureHandle) -> bool {
+        true
     }
     fn capture(&mut self, _: &RenderScene, _: u32, _: u32) -> Option<og_render::RgbaImage> {
         None
@@ -284,4 +291,22 @@ fn native_mip_swaps_keep_the_bound_chain_while_the_worker_is_pending() {
     );
     println!("MIP_SWAP max_frame_ms={max_ms:.3}");
     assert!(og_runtime::og_engine_destroy(g.engine));
+}
+
+#[test]
+fn an_uploaded_mip_chain_recovers_the_displayed_levels_after_its_cpu_copy_goes() {
+    let g = Game::new();
+    assert_eq!(g.frames(4), 1024);
+    // No CPU reader pins the decoded copy. An acknowledged upload may
+    // release it, but recovery must use #mips, not the default tail id.
+    g.seen.borrow_mut().skip_read = true;
+    g.frames(3);
+    g.seen.borrow_mut().skip_read = false;
+    assert_eq!(g.frames(1), 1024, "recover the whole chain, not its tail");
+    g.camera(400.0);
+    assert_eq!(g.frames(181), 256);
+    g.seen.borrow_mut().skip_read = true;
+    g.frames(3);
+    g.seen.borrow_mut().skip_read = false;
+    assert_eq!(g.frames(1), 256, "a completed swap recovers its tail");
 }

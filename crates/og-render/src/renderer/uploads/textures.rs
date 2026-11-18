@@ -58,16 +58,16 @@ impl Renderer {
         scene: &crate::RenderScene,
         index: usize,
         encoder: &mut crate::Encoder,
-    ) -> GpuTexture {
+    ) -> Result<GpuTexture, RenderError> {
         if scene.texture_live(index) {
-            return self.upload_source(&scene.textures()[index], encoder);
+            return Ok(self.upload_source(scene.texture_source(index)?, encoder));
         }
-        GpuTexture {
+        Ok(GpuTexture {
             view: self.default_white.clone(),
             format: TextureFormat::Rgba8,
             bytes: 0,
             target: false,
-        }
+        })
     }
 
     /// Fork s63: a deferred texture's 1x1 stand-in until a later frame

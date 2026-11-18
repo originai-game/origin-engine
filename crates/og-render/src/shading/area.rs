@@ -143,7 +143,7 @@ pub fn cookie_layers(scene: &RenderScene) -> CookieLayers {
         let Some(need) = faces(scene, c) else {
             continue;
         };
-        if c.texture.index() >= scene.textures().len() {
+        if c.texture.index() >= scene.texture_count() {
             continue;
         }
         let point = need == 6;

@@ -46,6 +46,11 @@ pub trait RenderBackend {
     }
     /// Draw one frame of the scene to the display target.
     fn render(&mut self, scene: &RenderScene) -> Result<(), String>;
+    /// Acknowledges the current texture revision reached the GPU (not an
+    /// upload-budget stand-in). Only then may its recoverable CPU copy go.
+    fn texture_uploaded(&self, _scene: &RenderScene, _texture: og_render::TextureHandle) -> bool {
+        false
+    }
     /// Times each render-graph pass's encoding with `clock` (og-render's
     /// `Renderer::set_clock`); a backend without passes ignores it.
     fn set_clock(&mut self, _clock: Option<fn() -> f64>) {}

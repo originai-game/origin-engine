@@ -473,7 +473,7 @@ impl Streams {
         })
     }
 
-    fn resident(&self, group: &str) -> bool {
+    pub(crate) fn resident(&self, group: &str) -> bool {
         self.find(group)
             .is_some_and(|i| self.groups[i].state == State::Resident)
     }

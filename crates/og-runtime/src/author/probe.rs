@@ -156,6 +156,9 @@ impl Capture for RuntimeCapture {
         let rs = &mut *rs;
         let t0 = now_ms();
         let image = rs.backend.as_mut()?.capture(&rs.scene, width, height);
+        if let Ok(eng) = engine(self.engine) {
+            crate::world::assets::release_uploaded_textures(&eng, rs);
+        }
         let frame = image.map(|image| Frame {
             width: image.width,
             height: image.height,

@@ -11,6 +11,7 @@
 pub(crate) mod effects;
 mod environment;
 mod groups;
+mod recovery;
 mod resources;
 mod sprites;
 mod store;
@@ -31,6 +32,7 @@ use crate::skin::{JointPalette, MorphTargets, SkinData, SkinnedInstance};
 use crate::texture::TextureUpload;
 use glam::{Mat4, Vec3};
 pub use og_render_data::scene::*;
+use recovery::Texture;
 use std::sync::atomic::{AtomicU64, Ordering};
 
 static NEXT_SCENE_ID: AtomicU64 = AtomicU64::new(1);
@@ -62,7 +64,7 @@ pub struct RenderScene {
     /// deformed vertices, impostors, debris, and how meshes are drawn (meshlets,
     /// LOD bias and debug, visibility buffer, cloth subdivisions).
     pub objects: SceneObjects,
-    textures: Vec<TextureSource>,
+    textures: Vec<Texture>,
     /// Per texture: how many times [`RenderScene::set_texture`] replaced it.
     texture_revisions: Vec<u64>,
     /// What every material draws as.
