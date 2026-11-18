@@ -14,8 +14,15 @@ pub(crate) enum Reached<'a> {
 }
 
 impl Resolved {
-    pub(crate) fn part_type(&self, theme: &crate::Theme, step: crate::TypeStep) -> crate::TypeStep {
-        self.part_text(theme, step, &|_| false).step(step)
+    pub(crate) fn part_type(
+        &self,
+        theme: &crate::Theme,
+        step: crate::TypeStep,
+        fonts: &crate::Fonts,
+        font: crate::FontRole,
+    ) -> crate::TypeStep {
+        self.part_text(theme, step, &|_| false)
+            .step_for(step, fonts, font)
     }
 
     /// [`Resolved::part_text`] with the families documents declare, for
@@ -490,7 +497,6 @@ impl Ui {
         };
         if let crate::layout::Content::Text(text) = self.tree.content_mut(i) {
             let style = text_style.unwrap();
-            text.step = style.step(text.step);
             if let Some(nowrap) = style.nowrap {
                 text.wrap = !nowrap;
             }
@@ -499,6 +505,7 @@ impl Ui {
                 .family
                 .as_deref()
                 .map_or(role, |names| self.env.fonts.family_list(names, role));
+            text.step = style.step_for(text.step, &self.env.fonts, text.font);
             if let Some(ink) = r.color("color")
                 && !shows_placeholder
             {
@@ -614,16 +621,16 @@ impl Ui {
         let (mut step, mut font, mut color) = (text.step, text.font, text.color);
         for (r, carried) in chain {
             let style = r.kept_part_text(&self.env.theme, step, &self.style, &self.env);
-            step = carried.mask(&style).step(step);
-            if carried.transform && style.transform.is_none() {
-                step.uppercase = false;
-            }
             if carried.family {
                 let role = style.font_role.unwrap_or(font);
                 font = style
                     .family
                     .as_deref()
                     .map_or(role, |names| self.env.fonts.family_list(names, role));
+            }
+            step = carried.mask(&style).step_for(step, &self.env.fonts, font);
+            if carried.transform && style.transform.is_none() {
+                step.uppercase = false;
             }
             if carried.color
                 && let Some(ink) = r.color("color")

@@ -157,7 +157,8 @@ pub struct FontMetrics {
     pub scale: f32,
     /// `line-height: normal` in it, em of the text's size, when its
     /// `@font-face` overrides its line metrics (`ascent-override`,
-    /// `descent-override`, `line-gap-override`); `None`: the UI's 1.2.
+    /// `descent-override`, `line-gap-override`); `None`: its font file's
+    /// metrics, or 1.2 when it has no usable metrics.
     pub normal_line: Option<f32>,
 }
 
@@ -612,6 +613,20 @@ impl FontMetrics {
     /// without its file).
     pub fn x_height(&self) -> f32 {
         self.file.as_ref().map_or(0.5, |f| f.x_height()) * self.scale
+    }
+
+    /// CSS normal leading at `size`: an authored override, else the
+    /// font's browser-selected metrics, else the UI's 1.2 fallback.
+    pub fn normal_line_height(&self, size: f32) -> f32 {
+        self.normal_line.map_or_else(
+            || {
+                self.file
+                    .as_ref()
+                    .and_then(|f| f.normal_line_height(size * self.scale))
+                    .unwrap_or(size * 1.2)
+            },
+            |normal| normal * size,
+        )
     }
 
     /// This font drawn `k` times its size ([`FontMetrics::scale`]): its

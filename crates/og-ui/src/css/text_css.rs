@@ -2164,8 +2164,28 @@ impl TextCss {
         self.step_in(step, None)
     }
 
-    /// [`TextCss::step`] in a face whose `line-height: normal` is `normal`
-    /// em ([`crate::text::FontMetrics::normal_line`]; `None`: 1.2).
+    /// The same step in its selected face, for labels and widget parts.
+    pub fn step_for(
+        &self,
+        step: TypeStep,
+        fonts: &crate::Fonts,
+        font: crate::FontRole,
+    ) -> TypeStep {
+        let query = crate::FontQuery::new(
+            self.weight.unwrap_or(step.weight),
+            self.italic == Some(true),
+        );
+        let size = self.size.unwrap_or(step.size);
+        let normal = fonts
+            .for_styled(font, query, "")
+            .0
+            .metrics
+            .normal_line_height(size);
+        self.step_in(step, Some(normal / size.max(1e-3)))
+    }
+
+    /// [`TextCss::step`] in a face whose resolved normal leading is
+    /// `normal` em (`None`: the UI's 1.2 fallback).
     pub fn step_in(&self, mut step: TypeStep, normal: Option<f32>) -> TypeStep {
         let ratio = step.line_height / step.size.max(1e-3);
         if let Some(s) = self.size {

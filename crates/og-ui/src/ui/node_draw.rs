@@ -1147,7 +1147,7 @@ impl Ui {
                     let values = self.part_values(part, Some(n.key));
                     let color = values.color("color").unwrap_or(*color);
                     let alpha = alpha * values.num("opacity").unwrap_or(1.0);
-                    let step = &values.part_type(t, *step);
+                    let step = &values.part_type(t, *step, &self.env.fonts, *font);
                     let clip = clip.intersect(&within.resolve(&n.placed.rect));
                     let f = self.env.fonts.for_text(*font, text);
                     if f.handle.is_none() {

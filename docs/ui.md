@@ -2440,8 +2440,13 @@ matches the adjusted face. `ascent-override` and `descent-override`
 box. With `line-gap-override`, any of the three sets `line-height:
 normal` in the face to their sum, the font's own ascent and descent
 (`hhea`) standing in for one not given and no gap for a gap not given; a
-face without them keeps the UI's 1.2. `size-adjust` scales the overrides
-too.
+face without overrides uses its font's selected vertical metrics for
+`normal`: OS/2 typo metrics when USE_TYPO_METRICS is set, otherwise hhea,
+falling back to nonzero OS/2 typo metrics and then win metrics when hhea
+is empty (the Chromium/FreeType selection). Ascent, descent and line gap
+are rounded separately at the used font size, then added. Only a face
+without usable metrics keeps the UI's 1.2. Numeric and length line heights
+remain authored values. `size-adjust` scales the metrics and overrides too.
 
 Where a face has no small-capital form of a lowercase letter
 (`font-variant-caps: small-caps`, Fonts 4 §6.3), or under `all-small-caps`

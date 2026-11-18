@@ -754,7 +754,7 @@ impl Ui {
                     .family
                     .as_deref()
                     .map_or(role, |names| self.env.fonts.family_list(names, role));
-                (style.step(text.step), Some(font))
+                (style.step_for(text.step, &self.env.fonts, font), Some(font))
             }
             _ => (self.env.theme.type_ramp.body, None),
         };

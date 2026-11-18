@@ -445,6 +445,7 @@ pub struct FontFile {
     /// em (the line metrics', positive; 0 where the font gives none).
     ascent: f32,
     descent: f32,
+    line_gap: f32,
     /// The underline it suggests (`post`): its top's distance below the
     /// baseline and its thickness, em.
     underline: Option<(f32, f32)>,
@@ -513,6 +514,7 @@ impl FontFile {
             .map_or(0.0, |x| x / units_per_em.max(1.0));
         let ascent = (metrics.ascent / units_per_em.max(1.0)).max(0.0);
         let descent = (-metrics.descent / units_per_em.max(1.0)).max(0.0);
+        let line_gap = metrics.leading / units_per_em.max(1.0);
         let underline = metrics.underline.filter(|u| u.thickness > 0.0).map(|u| {
             (
                 -u.offset / units_per_em.max(1.0),
@@ -558,6 +560,7 @@ impl FontFile {
             cap_height,
             ascent,
             descent,
+            line_gap,
             underline,
             #[cfg(feature = "shaping")]
             shaper,
@@ -817,6 +820,17 @@ impl FontFile {
     /// How far its ascent reaches above the baseline, em (0: none given).
     pub fn ascent(&self) -> f32 {
         self.ascent
+    }
+
+    /// Browser normal leading at `size`: FreeType's hhea/OS2 selection
+    /// (Skrifa's metrics), each extent and the line gap rounded separately.
+    /// No usable vertical metrics: the caller supplies its fallback.
+    pub(crate) fn normal_line_height(&self, size: f32) -> Option<f32> {
+        (self.ascent + self.descent > 0.0).then(|| {
+            (self.ascent * size).round()
+                + (self.descent * size).round()
+                + (self.line_gap * size).round()
+        })
     }
 
     /// The underline it suggests: its top's distance below the baseline

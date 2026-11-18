@@ -1360,8 +1360,8 @@ fn font_face_metric_overrides_set_the_faces_size_and_line_metrics() {
     // From Noto Sans's tables (fontTools): hhea ascent 1069 and descent
     // 293, "x" 529 and OS/2 sxHeight 536 of 1000.
     let (asc, desc, x_adv, x_height) = (1.069, 0.293, 0.529, 0.536);
-    // line-height: normal is the UI's 1.2 in a face without overrides.
-    assert!(near(d.get("Plain").height, 24.0), "{:?}", d.get("Plain"));
+    // Without overrides: round(20 * 1.069) + round(20 * 0.293).
+    assert!(near(d.get("Plain").height, 27.0), "{:?}", d.get("Plain"));
     // 90 % + 30 % + 20 % of 20 px; the baseline 2 px of half-leading and
     // 18 px of ascent down.
     let over = d.get("Over");

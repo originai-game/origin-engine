@@ -188,10 +188,11 @@ impl Ui {
                 .map_or(Ink::Role(fallback), |color| Ink::C(C::of(color)))
         };
         let step = |fallback| {
-            inherited
-                .as_ref()
-                .map_or(fallback, |r| r.part_type(&t, fallback))
+            inherited.as_ref().map_or(fallback, |r| {
+                r.part_type(&t, fallback, &self.env.fonts, FontRole::Body)
+            })
         };
+        let (label_step, description_step) = (step(t.type_ramp.body), step(t.type_ramp.sm));
         self.open(
             "Text",
             Element {
@@ -207,7 +208,7 @@ impl Ui {
                 label,
                 Text {
                     color: ink(if disabled { "inkFaint" } else { "ink" }),
-                    step: Some(step(t.type_ramp.body)),
+                    step: Some(label_step),
                     width: Some(Size::grow()),
                     ..Text::default()
                 },
@@ -218,7 +219,7 @@ impl Ui {
                 "Description",
                 description,
                 Text {
-                    step: Some(step(t.type_ramp.sm)),
+                    step: Some(description_step),
                     color: ink(if disabled { "inkFaint" } else { "inkMuted" }),
                     width: Some(Size::grow()),
                     ..Text::default()

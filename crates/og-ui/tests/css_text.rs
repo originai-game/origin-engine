@@ -912,6 +912,45 @@ fn normal_line_height_does_not_keep_the_type_ramps_extra_cjk_leading() {
     }
 }
 
+/// Normal leading uses the face's selected metrics, not a fixed ratio
+/// or a single rounding of their sum. Numeric leading remains authored.
+#[test]
+fn normal_line_height_uses_the_faces_metrics_and_rounds_extents_separately() {
+    // Chromium: hhea ascent/descent 1069/-293 and 1160/-288, gap 0,
+    // per 1000 em. At 18px Noto's rounded sum is 24, not round(24.516).
+    for (path, heights) in [
+        (NOTO, [17.0, 24.0, 27.0]),
+        (
+            "tests/fixtures/ui-text/assets/fonts/NotoSansSC-Regular-subset.ttf",
+            [17.0, 26.0, 29.0],
+        ),
+    ] {
+        for (size, height) in [12, 18, 20].into_iter().zip(heights) {
+            let d = Doc::mounted(
+                Ui::new(UiDesc {
+                    fonts: Fonts {
+                        body: face(path),
+                        ..Fonts::default()
+                    },
+                    ..UiDesc::default()
+                }),
+                &format!(
+                    r#"<meta name="component" content="t"><div>
+                    <p id="Plain">机库 Ag</p><button><span id="Label">机库 Ag</span></button>
+                    <p id="Numeric" style="line-height:1.2">机库 Ag</p></div>
+                    <style>div {{ display:flex; flex-direction:column; font-size:{size}px;
+                    line-height:normal; }} p {{ margin:0; }} button {{ padding:0; border:0; }}</style>"#
+                ),
+                &[],
+            );
+            for id in ["Plain", "Label"] {
+                assert_eq!(d.get(id).height, height, "{path}, {size}px, {id}");
+            }
+            assert!((d.get("Numeric").height - size as f32 * 1.2).abs() <= 0.5);
+        }
+    }
+}
+
 /// The thickening and shear each text command of `id` is drawn with:
 /// its synthesised weight (0: none) and its effects' transform.
 fn synthesised(d: &Doc, id: &str) -> Vec<(f32, [f32; 4])> {

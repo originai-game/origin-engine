@@ -1001,10 +1001,10 @@ impl Ui {
             self.part_values(&p, None)
         };
         let (text, hint) = (of("text"), of("placeholder"));
-        let step = text.part_type(t, t.type_ramp.body);
+        let step = text.part_type(t, t.type_ramp.body, &self.env.fonts, FontRole::Body);
         FieldInk {
             step,
-            placeholder_step: hint.part_type(t, step),
+            placeholder_step: hint.part_type(t, step, &self.env.fonts, FontRole::Body),
             ink: text.color("color").unwrap_or(t.palette.ink),
             placeholder: self
                 .docs

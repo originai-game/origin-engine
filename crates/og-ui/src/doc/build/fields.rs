@@ -1817,11 +1817,9 @@ impl Resolved {
         };
         let step = match css {
             Some(t) => {
-                // `line-height: normal` in a face whose @font-face sets its
-                // line metrics is theirs.
-                let query = crate::FontQuery::new(t.weight.unwrap_or(0), t.italic == Some(true));
-                let normal = fonts.for_styled(font, query, "").0.metrics.normal_line;
-                Some(t.step_in(step.unwrap_or(theme.type_ramp.body), normal))
+                // Normal leading uses the selected face's metrics at the
+                // label's size, not a fixed em ratio.
+                Some(t.step_for(step.unwrap_or(theme.type_ramp.body), fonts, font))
             }
             None => step,
         };
