@@ -1,0 +1,5 @@
+{
+  "fixed": [
+    "UI layout reuses CSS placement traversal and child-list buffers across roots and frames, reducing temporary allocations without changing placement."
+  ]
+}
