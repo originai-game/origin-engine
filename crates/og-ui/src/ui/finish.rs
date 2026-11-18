@@ -371,8 +371,10 @@ impl Ui {
             });
             // Items that only moved in CSS `order` keep their children as
             // built, yet the trees' walk (`layout::preorder`) moves with
-            // them: its shape changed.
-            if self.tree.nodes[i].children != flow {
+            // them: its shape changed. A rewritten node starts with no
+            // derived children; compare against its previous flow instead.
+            let previous = self.tree.replaced.get(&i).unwrap_or(&self.tree.nodes[i]);
+            if previous.children != flow {
                 self.tree.index.shape += 1;
             }
             let n = &mut self.tree.nodes[i];
