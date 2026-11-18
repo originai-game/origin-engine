@@ -833,6 +833,33 @@
   /* A subtitle's speaker in small capitals drawn from its own letters, so
      the name reads as written. */
   --role-alert-speaker-caps: all-small-caps;
+  /* A level up: a dark shade fills the ring over the rays, so the rays
+     run from its edge and the word and figure read on clear ground. */
+  --role-alert-level-shade: radial-gradient(closest-side, rgb(4 6 12), rgb(4 6 12) 92%, rgb(4 6 12 / 0));
+
+  /* Social (family 20: chat, friends, a conversation and its history).
+     A chat line on a cut chip, the player's own washed gold; the channel
+     shown lit gold along its foot; another player's name in the info
+     colour. */
+  --role-social-line-fill: linear-gradient(180deg, rgb(48 57 80 / 0.9), rgb(36 43 60 / 0.9));
+  --role-social-own-fill: linear-gradient(180deg, rgb(255 207 90 / 0.1), rgb(255 207 90 / 0.03)), rgb(36 43 60 / 0.9);
+  --role-social-own-rim: inset 0 0 0 var(--stroke-hairline) rgb(255 207 90 / 0.35);
+  --role-social-tab-on-fill: linear-gradient(180deg, rgb(255 207 90 / 0.18), rgb(255 207 90 / 0.04));
+  --role-social-tab-on-rim: inset 0 calc(-2 * var(--font-step-px)) 0 var(--hud-gold);
+  --role-social-sender-ink: var(--info);
+  /* A friend away or offline: the avatar and its mark dim to this, the
+     name keeps its ink. */
+  --role-social-off-opacity: 0.45;
+  /* A conversation: a cut glass band lit gold along its top, the
+     speaker's name on a gold plate, a reply's key in a gold keyline. */
+  --role-social-band-fill: linear-gradient(180deg, rgb(20 25 37 / 0.92), rgb(12 15 24 / 0.97));
+  --role-social-band-rim: inset 0 0 0 var(--stroke-hairline) rgb(255 255 255 / 0.12), inset 0 var(--stroke-hairline) 0 rgb(255 207 90 / 0.5);
+  --role-social-nameplate-fill: linear-gradient(180deg, rgb(255 233 166), var(--hud-gold));
+  --role-social-key-rim: inset 0 0 0 calc(1.5 * var(--font-step-px)) currentColor;
+  --role-social-size-line: calc(22 * var(--font-step-px));
+  --role-social-size-line-compact: calc(18 * var(--font-step-px));
+  /* Narration in a conversation's history: set in italics. */
+  --role-social-narration-style: italic;
 
   /* Inventory and backpack (family 11): bags, loot, crafting and trade.
      The frame is cut at two corners (`inv-frame-cut`) with a lit top edge;
