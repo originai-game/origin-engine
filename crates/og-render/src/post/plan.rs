@@ -96,6 +96,8 @@ pub(crate) fn build_graph(passes: &[FramePass], cfg: &GraphConfig) -> RenderGrap
             FramePass::Tonemap
             | FramePass::Paint
             | FramePass::Watercolor
+            | FramePass::PrintToneX
+            | FramePass::PrintToneY
             | FramePass::Lines
             | FramePass::Lens
             | FramePass::Quantize

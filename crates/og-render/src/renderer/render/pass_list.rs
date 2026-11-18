@@ -117,6 +117,7 @@ impl Renderer {
                 smaa_t2x,
                 paint: st.paint.is_some_and(|p| p.paints()),
                 watercolor: st.paint.is_some_and(|p| p.watercolor.active()),
+                print_tone: st.hatching.is_some() || st.ink.is_some(),
                 lines: st.hatching.is_some() || st.halftone.is_some() || st.ink.is_some(),
                 lens: lens.is_some(),
                 quantize: st.quantize.is_some(),

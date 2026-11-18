@@ -176,6 +176,8 @@ impl Chain {
             }
             FramePass::Paint
             | FramePass::Watercolor
+            | FramePass::PrintToneX
+            | FramePass::PrintToneY
             | FramePass::Lines
             | FramePass::Lens
             | FramePass::Quantize

@@ -149,6 +149,9 @@ pub(crate) enum FramePass {
     /// The watercolour wash over the painted frame (stylise.wgsl
     /// `watercolor`).
     Watercolor,
+    /// Separable print-tone smoothing, keeping the source RGB intact.
+    PrintToneX,
+    PrintToneY,
     Lines,
     Lens,
     Quantize,
@@ -191,6 +194,8 @@ pub(crate) fn chain_passes(passes: &[FramePass]) -> Vec<FramePass> {
         FramePass::SmaaResolve,
         FramePass::Paint,
         FramePass::Watercolor,
+        FramePass::PrintToneX,
+        FramePass::PrintToneY,
         FramePass::Lines,
         FramePass::Lens,
         FramePass::Quantize,
@@ -280,6 +285,8 @@ impl FramePass {
                 | FramePass::Tonemap
                 | FramePass::Paint
                 | FramePass::Watercolor
+                | FramePass::PrintToneX
+                | FramePass::PrintToneY
                 | FramePass::Lines
                 | FramePass::Lens
                 | FramePass::Quantize
@@ -359,6 +366,8 @@ impl FramePass {
             FramePass::FogOfWar => "fog-of-war".into(),
             FramePass::Paint => "paint".into(),
             FramePass::Watercolor => "watercolor".into(),
+            FramePass::PrintToneX => "print-tone-x".into(),
+            FramePass::PrintToneY => "print-tone-y".into(),
             FramePass::Lines => "lines".into(),
             FramePass::Lens => "lens".into(),
             FramePass::Quantize => "quantize".into(),

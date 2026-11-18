@@ -218,10 +218,14 @@ and the dither cells.
 - Ink without inkDepth draws on luminance edges over every surface,
   sprite and texture alike, and needs no prepass. Add inkDepth for
   contours round flat colours that luminance alone misses.
-- A luminance edge is inked only where it runs on along itself for six
-  pixels on at least one side. A dark speck or mottle in a texture curls
-  round within a few pixels and draws no ink; a long edge, a crease's
-  step or a thin line keeps its line to its end.
+- Hatching and luminance ink read a smoothed displayed tone. Fine albedo
+  grain no longer selects strokes or becomes black speckles. The wash
+  keeps the original colour. Smoothing follows half the hatch spacing,
+  bounded to 2–4 logical pixels, or 2 pixels without hatching.
+- Luminance ink keeps local gradient peaks, so smoothed shadow edges
+  remain lines rather than broad bands. An edge must run along itself
+  for six pixels on at least one side. Depth and normal contours use
+  the prepass directly, without tone smoothing.
 - With a prepass (an outline, inkDepth, hatchingDepth or a surface
   space), scattered copies, impostors, grass and terrain are masses: ink
   keeps to their silhouettes and their hatching is laid on the screen,

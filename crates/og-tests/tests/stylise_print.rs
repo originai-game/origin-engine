@@ -85,6 +85,119 @@ fn frame(renderer: &mut Renderer, scene: &RenderScene) -> Vec<u8> {
     renderer.read_offscreen().expect("capture").pixels
 }
 
+/// Fine albedo stripes must not become ink lines, but a broad tone step
+/// on that same surface must: it represents a light/shadow boundary, not
+/// a depth or normal contour that could mask a broken luminance path.
+#[test]
+#[ignore = "requires GPU"]
+fn print_ignores_texture_grain_but_keeps_light_edges() {
+    use glam::Mat4;
+    use og_render::{
+        ColorSpace, Hatching, Ink, Mips, Projection, StandardMaterial, TextureData, shapes,
+    };
+    let mut renderer = Renderer::new_blocking(&desc()).expect("renderer");
+    let mut scene = field([255; 3]);
+    scene.frame.camera = Camera {
+        position: Vec3::ZERO,
+        target: Vec3::NEG_Z,
+        projection: Projection::Orthographic { height: 2.0 },
+        exposure: Exposure::linear(1.0),
+        ..Default::default()
+    };
+    let mut texture = TextureData {
+        width: W as u32,
+        height: H as u32,
+        rgba: (0..H)
+            .flat_map(|y| {
+                (0..W).flat_map(move |x| {
+                    let c = if x >= W / 2 {
+                        240
+                    } else if (if y < H / 2 { x } else { y }) % 4 < 2 {
+                        80
+                    } else {
+                        220
+                    };
+                    [c, c, c, 255]
+                })
+            })
+            .collect(),
+        color_space: ColorSpace::Srgb,
+        mips: Mips::None,
+    };
+    let map = scene.add_texture(texture.clone());
+    let material = scene.add_standard_material(StandardMaterial {
+        map: map.slot(),
+        unlit: 1,
+        ..Default::default()
+    });
+    let mesh = scene.add_mesh(shapes::cuboid(Vec3::new(
+        2.0 * W as f32 / H as f32,
+        2.0,
+        0.1,
+    )));
+    scene.add_instance(
+        mesh,
+        material,
+        Mat4::from_translation(Vec3::new(0.0, 0.0, -2.0)),
+    );
+    scene.look.stylise.ink = Some(Ink {
+        threshold: 0.12,
+        width: 1.0,
+        color: [0.0; 3],
+        depth: 0.0,
+        ..Default::default()
+    });
+    let printed = frame(&mut renderer, &scene);
+    let dark = |x: usize, y: usize| printed[(y * W + x) * 4] < 40;
+    let grain = (40..140)
+        .flat_map(|y| {
+            (40..W - 40)
+                .filter(move |&x| x.abs_diff(W / 2) > 16)
+                .map(move |x| (x, y))
+        })
+        .filter(|&(x, y)| dark(x, y))
+        .count();
+    let edge = (40..140)
+        .filter(|&y| (W / 2 - 8..W / 2 + 8).any(|x| dark(x, y)))
+        .count();
+    assert!(grain < 100, "texture grain was inked: {grain} pixels");
+    assert!(edge > 90, "the light/shadow edge lost its ink: {edge} rows");
+    // Hatching must also agree with the texture's mean displayed tone,
+    // independently of ink. Keep the original RGB wash: only stroke
+    // selection is filtered, not the image itself.
+    scene.look.stylise.ink = None;
+    scene.look.stylise.hatching = Some(Hatching {
+        strength: 1.0,
+        scale: 6.0,
+        levels: 4,
+        angle_degrees: 0.0,
+        color: [0.0; 3],
+        paper: [1.0; 3],
+        space: StyliseSpace::Screen,
+        depth: 0.0,
+        distance: 0.0,
+        keep_color: false,
+    });
+    let hatched = frame(&mut renderer, &scene);
+    for y in 0..H {
+        for x in 0..W / 2 {
+            texture.rgba[(y * W + x) * 4..][..3].fill(150);
+        }
+    }
+    assert!(scene.set_texture(map, texture));
+    let mean = frame(&mut renderer, &scene);
+    let error = (40..140)
+        .flat_map(|y| (40..128).map(move |x| (y * W + x) * 4))
+        .map(|i| f32::from(hatched[i].abs_diff(mean[i])))
+        .sum::<f32>()
+        / 8800.0;
+    println!("grain ink {grain}, light edge {edge} rows, hatch mean error {error:.2}/255");
+    assert!(
+        error < 8.0,
+        "hatching follows individual texels, not their mean tone: {error}"
+    );
+}
+
 /// Equal-tone near and far panels must not receive equal ink when aerial
 /// perspective is enabled. No fog or lighting can explain the reduction.
 #[test]

@@ -84,6 +84,58 @@ fn tone(c: vec3<f32>) -> f32 {
   return luma(srgb_encode(c));
 }
 
+// Print follows tone at the scale of a stroke, not individual albedo
+// texels. Two separable Gaussian passes carry that tone in spare alpha;
+// RGB remains the original image for the wash and every other primitive.
+fn print_sigma() -> f32 {
+  return clamp(st.hatching.y * 0.5, 2.0, 4.0);
+}
+
+fn print_tone(px: vec2<i32>) -> f32 {
+  let size = vec2<i32>(textureDimensions(source));
+  return textureLoad(source, clamp(px, vec2<i32>(0), size - 1), 0).a;
+}
+
+fn print_filter(in: VsOut, vertical: bool) -> vec4<f32> {
+  let px = vec2<i32>(in.pos.xy);
+  let size = vec2<i32>(textureDimensions(source));
+  let sigma = print_sigma();
+  let radius = min(i32(ceil(3.0 * sigma)), 12);
+  var sum = 0.0;
+  var weights = 0.0;
+  for (var i = -radius; i <= radius; i++) {
+    let offset = select(vec2<i32>(i, 0), vec2<i32>(0, i), vertical);
+    let tap = textureLoad(source, clamp(px + offset, vec2<i32>(0), size - 1), 0);
+    let d = f32(i) / sigma;
+    let weight = exp(-0.5 * d * d);
+    sum += select(tone(clamp(tap.rgb, vec3<f32>(0.0), vec3<f32>(1.0))), tap.a, vertical) * weight;
+    weights += weight;
+  }
+  return vec4<f32>(textureLoad(source, px, 0).rgb, sum / weights);
+}
+
+@fragment
+fn fs_print_tone_x(in: VsOut) -> @location(0) vec4<f32> {
+  return print_filter(in, false);
+}
+
+@fragment
+fn fs_print_tone_y(in: VsOut) -> @location(0) vec4<f32> {
+  return print_filter(in, true);
+}
+
+@fragment
+fn fs_print_tone_x_srgb(in: VsOut) -> @location(0) vec4<f32> {
+  let c = print_filter(in, false);
+  return vec4<f32>(srgb_encode(clamp(c.rgb, vec3<f32>(0.0), vec3<f32>(1.0))), c.a);
+}
+
+@fragment
+fn fs_print_tone_y_srgb(in: VsOut) -> @location(0) vec4<f32> {
+  let c = print_filter(in, true);
+  return vec4<f32>(srgb_encode(clamp(c.rgb, vec3<f32>(0.0), vec3<f32>(1.0))), c.a);
+}
+
 // --- surfaces -------------------------------------------------------------
 
 // The prepass texel under logical pixel `px` (`st.screen`): the same, or
@@ -273,16 +325,16 @@ fn octave(pixels: f32, pixel: f32) -> vec2<f32> {
 
 // --- paint ---------------------------------------------------------------
 
-// The image gradient at `px` (Sobel over the encoded luminance).
+// The ink gradient at `px` (Sobel over the low-passed displayed tone).
 fn gradient(px: vec2<i32>) -> vec2<f32> {
-  let tl = tone(load(px + vec2<i32>(-1, -1)));
-  let t = tone(load(px + vec2<i32>(0, -1)));
-  let tr = tone(load(px + vec2<i32>(1, -1)));
-  let l = tone(load(px + vec2<i32>(-1, 0)));
-  let r = tone(load(px + vec2<i32>(1, 0)));
-  let bl = tone(load(px + vec2<i32>(-1, 1)));
-  let b = tone(load(px + vec2<i32>(0, 1)));
-  let br = tone(load(px + vec2<i32>(1, 1)));
+  let tl = print_tone(px + vec2<i32>(-1, -1));
+  let t = print_tone(px + vec2<i32>(0, -1));
+  let tr = print_tone(px + vec2<i32>(1, -1));
+  let l = print_tone(px + vec2<i32>(-1, 0));
+  let r = print_tone(px + vec2<i32>(1, 0));
+  let bl = print_tone(px + vec2<i32>(-1, 1));
+  let b = print_tone(px + vec2<i32>(0, 1));
+  let br = print_tone(px + vec2<i32>(1, 1));
   return vec2<f32>((tr + 2.0 * r + br) - (tl + 2.0 * l + bl), (bl + 2.0 * b + br) - (tl + 2.0 * t + tr));
 }
 
@@ -1223,6 +1275,11 @@ fn ink_edge(px: vec2<i32>) -> f32 {
   let m = length(g);
   if (m <= 1e-4) { return 0.0; }
   let n = g / m;
+  // Canny's non-maximum suppression keeps a smoothed light edge a line,
+  // not a dark band. Scale-normalised derivatives retain its contrast as
+  // the smoothing footprint grows, without bringing back texture grain.
+  let across = vec2<i32>(round(n));
+  if (m < length(gradient(px - across)) || m < length(gradient(px + across))) { return 0.0; }
   let t = vec2<f32>(-n.y, n.x);
   var run = 0.0;
   for (var side = -1.0; side <= 1.0; side += 2.0) {
@@ -1236,7 +1293,7 @@ fn ink_edge(px: vec2<i32>) -> f32 {
     }
     run = max(run, held);
   }
-  return run;
+  return run * print_sigma();
 }
 
 fn lines(in: VsOut) -> vec3<f32> {
@@ -1262,9 +1319,9 @@ fn lines(in: VsOut) -> vec3<f32> {
     // Darker tones add stroke sets, each turned a little further, over a
     // ground lifted towards the paper (hatchingPaper); with hatchingDepth silhouettes and creases
     // darken the tone the strokes follow.
-    var th = t;
+    var th = print_tone(px);
     if (st.ink_depth.w > 0.0) {
-      th = max(t - st.ink_depth.w * depth_band(px), 0.0);
+      th = max(th - st.ink_depth.w * depth_band(px), 0.0);
     }
     // Aerial perspective is independent of TAM tone and pattern space:
     // thin each stroke and its ink smoothly, never brighten the wash or

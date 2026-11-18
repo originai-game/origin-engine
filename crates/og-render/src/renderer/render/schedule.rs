@@ -203,6 +203,7 @@ pub(crate) struct PassDecisions<'a> {
     pub smaa_t2x: bool,
     pub paint: bool,
     pub watercolor: bool,
+    pub print_tone: bool,
     pub lines: bool,
     pub lens: bool,
     pub quantize: bool,
@@ -404,6 +405,10 @@ pub(crate) fn frame_passes(d: &PassDecisions<'_>, caps: Caps) -> Vec<FramePass> 
     if d.watercolor {
         push(FramePass::Watercolor);
     }
+    if d.print_tone {
+        push(FramePass::PrintToneX);
+        push(FramePass::PrintToneY);
+    }
     if d.lines {
         push(FramePass::Lines);
     }
@@ -504,6 +509,7 @@ mod tests {
             smaa_t2x: false,
             paint: true,
             watercolor: true,
+            print_tone: true,
             lines: true,
             lens: true,
             quantize: true,

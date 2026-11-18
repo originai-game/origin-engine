@@ -1,0 +1,8 @@
+{
+  "fixed": [
+    {
+      "member": "Stylise",
+      "summary": "Hatching and luminance ink share a low-passed displayed tone, so fine albedo grain no longer breaks strokes or becomes black speckles. Scale-normalised gradients and non-maximum suppression keep light/shadow edges thin, while the original colour wash and depth/normal contours remain unchanged."
+    }
+  ]
+}

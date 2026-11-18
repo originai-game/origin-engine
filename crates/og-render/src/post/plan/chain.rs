@@ -58,6 +58,8 @@ pub(super) fn declare(g: &mut RenderGraph, cx: &PlanCx, p: FramePass) {
         }
         FramePass::Paint
         | FramePass::Watercolor
+        | FramePass::PrintToneX
+        | FramePass::PrintToneY
         | FramePass::Lines
         | FramePass::Lens
         | FramePass::Quantize
