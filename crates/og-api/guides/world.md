@@ -266,6 +266,12 @@ from og.load.scene) is a cell.
   instead of one long one; `loaded` turns true, and CellEvent is sent, in
   the tick its last entity spawns. A cell that stops being wanted before
   then despawns what it spawned and sends nothing.
+- A grouped cell cannot report loaded before its group is resident. A
+  queued or failed group does not hold the world's tick: its cell stays
+  unloaded, logs the reason once, and StreamEvent plus StreamStatus expose
+  the budget refusal. Raising the budget can admit it later. Evicting a
+  loaded cell's group also unloads its members and clears `loaded`; the
+  frame never draws those members over missing group assets.
 - `loaded` and CellEvent describe entity/physics readiness, not texture
   readiness: colliders can already be live while their models are hidden.
   Give a cell's assets a cell group and read `og.stream.status(...).ready`
