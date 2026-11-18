@@ -5529,7 +5529,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 unit: "",
                 worldspace: "",
                 label: "",
-                doc: doc!("The strength of the image-based ambient light from the sky; og.Environment.intensity takes its place while an environment map is set."),
+                doc: doc!("The strength of the image-based ambient light from the sky on surfaces; og.Environment.intensity takes its place while an environment map is set. The sky and its clouds are drawn as they are whatever it is."),
                 variants: &[],
                 capacity: 0,
                 list: 0,

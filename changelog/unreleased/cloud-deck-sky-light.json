@@ -1,0 +1,8 @@
+{
+  "fixed": [
+    {
+      "member": "rendering: og.Clouds",
+      "summary": "Clouds are lit by the sky as it is drawn, not by the image-based light's strength: a scene that lowered RenderSettings.environmentIntensity (or og.Environment.intensity) drew a charcoal deck in front of a bright clear sky, and og.DayNight's twilight lift drew the clouds brighter than the sky round them. The live sky's capture held those clouds, so the land under them took the strength twice (a night storm's colonnade lit as by day). The intensity now lights surfaces only."
+    }
+  ]
+}

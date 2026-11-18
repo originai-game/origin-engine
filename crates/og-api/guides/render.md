@@ -336,7 +336,10 @@ depth-normal prepass: the first one pays for it.
   for twilight.
 - Clouds: bright tops, dark bases, silver edges against the sun. A broken
   sky hides the sun a share of the time; an overcast deck leaves flat grey
-  light on every surface. `steps` is their cost.
+  light on every surface. `steps` is their cost. Clouds are part of the
+  sky: they are lit as bright as the sky behind them is drawn, so
+  `environmentIntensity` (and og.DayNight's twilight lift) brightens or
+  darkens the land under them, never the deck against the clear sky.
 - Cloud shadows: the cumulus shades the world under it, along the sun's
   ray: the ground, the water, the grass, particles and the volumetric
   fog's shafts take it, in every camera, out to the horizon. A cloud is

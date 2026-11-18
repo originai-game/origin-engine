@@ -7195,7 +7195,7 @@ export declare function QualityPreset(value?: QualityPreset, options?: FieldOpti
 export interface RenderSettings {
   // ── Sky light ──
   /**
-   * The strength of the image-based ambient light from the sky; og.Environment.intensity takes its place while an environment map is set.
+   * The strength of the image-based ambient light from the sky on surfaces; og.Environment.intensity takes its place while an environment map is set. The sky and its clouds are drawn as they are whatever it is.
    *
    * @default 0.55
    * @range 0..

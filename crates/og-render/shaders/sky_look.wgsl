@@ -69,11 +69,10 @@ fn clear_sky_light(n: vec3<f32>) -> vec3<f32> {
 fn cloud_deck(d: vec3<f32>) -> vec4<f32> {
   let c = frame.clouds;
   if (c[3].w < 0.5 || c[0].w <= 0.0 || c[0].y <= 0.0) { return vec4<f32>(0.0); }
-  let sky_scale = frame.params.x / max(c[4].z, 0.05);
   let to_light = normalize(frame.light_dir.xyz);
   let sun_side = clear_sky_light(normalize(vec3<f32>(to_light.x, 0.0, to_light.z) + vec3<f32>(0.0, 1e-3, 0.0)));
   let view_side = clear_sky_light(normalize(vec3<f32>(d.x, 0.0, d.z) + vec3<f32>(0.0, 1e-3, 0.0)));
-  let side = dot(mix(view_side, sun_side, 0.5), LUMA) * sky_scale;
+  let side = dot(mix(view_side, sun_side, 0.5), LUMA);
   let light = dot(frame.light_color.rgb, LUMA) / max(c[4].y, 9.1e-4);
   return vec4<f32>(vec3<f32>(side * 0.21 + light * 0.02) * c[2].rgb * 2.0, smoothstep(0.6, 0.95, c[0].x));
 }

@@ -316,7 +316,6 @@ fn cloud_air(color: vec4<f32>, scattered: vec3<f32>, transmittance: f32, at: f32
   // clouds (cloud_sun), not the scene's light: that is the clouds' own
   // dimming of it only where the scene was lit by Clouds::light_scene,
   // and a lightning flash turns it towards the bolt.
-  let sky_scale = frame.params.x / max(c[4].z, 0.05);
   let sun_dir = normalize(frame.sky_sun_dir.xyz);
   let sun_side = clear_sky_light(normalize(vec3<f32>(sun_dir.x, 0.0, sun_dir.z) + vec3<f32>(0.0, 1e-3, 0.0)));
   let view_side = clear_sky_light(normalize(vec3<f32>(d.x, 0.0, d.z) + vec3<f32>(0.0, 1e-3, 0.0)));
@@ -324,7 +323,7 @@ fn cloud_air(color: vec4<f32>, scattered: vec3<f32>, transmittance: f32, at: f32
   // In the hue of the light falling on it (a dusk's lavender, warmer
   // towards the glow), greyed by the cover as the march greys a cloud's
   // ambient: a cloud scatters every wavelength alike.
-  let lit_base = (mix(view_side, sun_side, 0.5) * sky_scale * 0.21 + above * 0.02) * c[2].rgb * 2.0;
+  let lit_base = (mix(view_side, sun_side, 0.5) * 0.21 + above * 0.02) * c[2].rgb * 2.0;
   let base = mix(lit_base, vec3<f32>(dot(lit_base, LUMA)), c[0].x * 0.7);
   let cover = cloud_deck(vec3<f32>(0.0, 1.0, 0.0)).a;
   let scale = frame.sky_glow.yzw * frame.sky_horizon.w;
@@ -393,7 +392,7 @@ fn clouds_march(d: vec3<f32>, pixel: vec2<f32>) -> vec4<f32> {
   // they stay lit a while after the ground's sunset; never the scene's
   // directional light, which a lightning flash turns towards the bolt.
   // Otherwise the scene's sun, whose dimming by the clouds' own cover
-  // (Clouds::light, [4].yz) is undone: they are lit from above it.
+  // (Clouds::light, [4].y) is undone: they are lit from above it.
   let physical = scatter_on();
   var to_light = normalize(frame.light_dir.xyz);
   if (physical) { to_light = normalize(frame.sky_sun_dir.xyz); }
@@ -401,14 +400,15 @@ fn clouds_march(d: vec3<f32>, pixel: vec2<f32>) -> vec4<f32> {
   let cos_t = dot(d, to_light);
   let phase = mix(hg_phase(cos_t, 0.6), hg_phase(cos_t, -0.25), 0.35);
   // The clear sky's light from above and from the horizon (sky_look.wgsl clear_sky_light: never the image-based light,
-  // which the live sky fills with these clouds).
-  let sky_scale = frame.params.x / max(c[4].z, 0.05);
-  let sky_top = clear_sky_light(vec3<f32>(0.0, 1.0, 0.0)) * sky_scale;
+  // which the live sky fills with these clouds). As bright as the sky is drawn: the clouds are part of it, so neither
+  // the image-based light's strength (Environment::intensity, a light on surfaces, and a twilight's adaptation with
+  // it) nor the cover's dimming of it lights them.
+  let sky_top = clear_sky_light(vec3<f32>(0.0, 1.0, 0.0));
   // The bases see the sky's low light, half of it from the horizon under
   // the sun (its glow: the orange of a sunset's cloud bases).
   let sun_side = clear_sky_light(normalize(vec3<f32>(to_light.x, 0.0, to_light.z) + vec3<f32>(0.0, 1e-3, 0.0)));
   let view_side = clear_sky_light(normalize(vec3<f32>(d.x, 0.0, d.z) + vec3<f32>(0.0, 1e-3, 0.0)));
-  let sky_side = mix(view_side, sun_side, 0.5) * sky_scale;
+  let sky_side = mix(view_side, sun_side, 0.5);
   var color = vec4<f32>(0.0, 0.0, 0.0, 1.0);
   // Under an overcast the distance fades the deck into more deck, not into the clear sky behind it: a bright clear
   // band at the horizon under a storm. The deck's base far off: its grey ambient (as the march lights a base, below)

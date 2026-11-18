@@ -308,14 +308,10 @@ impl AtmosphereGpu {
                     a.clouds[row + i] = e.extend(0.0).to_array();
                 }
                 // A live sky holds the deck in the image-based light, which the
-                // scene then leaves undimmed (RenderScene::sky_captured): none
-                // of the sky light's dimming for the clouds to undo.
-                // The sea's foam takes that captured light, not the analytical
+                // scene then leaves undimmed (RenderScene::sky_captured). The
+                // sea's foam takes that captured light, not the analytical
                 // deck over it (water.wgsl).
                 a.clouds[4][3] = f32::from(live);
-                if live {
-                    a.clouds[4][2] = 1.0;
-                }
             }
             if let Some(au) = aurora {
                 a.aurora = au.gpu(radius * 0.001);

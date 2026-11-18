@@ -131,13 +131,11 @@ impl Clouds {
                 self.steps.clamp(8, 256) as f32,
                 1.0,
             ],
-            {
-                // How much the scene's sun and sky light were dimmed by
-                // this cover (the runtime applies Clouds::light to them);
-                // the clouds' own lighting undoes it.
-                let (sun, sky) = self.light();
-                [radius, sun, sky, 0.0]
-            },
+            // How much the scene's sun was dimmed by this cover (the
+            // runtime applies Clouds::light to it); the clouds' own
+            // lighting undoes it. Their sky light is the sky's as drawn,
+            // which no cover dims.
+            [radius, self.light().0, 0.0, 0.0],
             self.flash.to_array(),
             // The clear sky's light, filled by AtmosphereGpu::new.
             [0.0; 4],
