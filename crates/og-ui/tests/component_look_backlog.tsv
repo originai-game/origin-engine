@@ -3,7 +3,7 @@
 # (docs/ui.md §3.1). It only shrinks: convert a document and lower or drop
 # its line.
 hud/action-button.svelte	9
-hud/celebration.svelte	61
+hud/celebration.svelte	54
 hud/hero-button.svelte	12
 hud/orb-meter.svelte	7
 world/nameplate.svelte	4

@@ -40,8 +40,8 @@
 </div>
 
 <style>
-/* Drawn over the scene: the style's tag halo holds its text there. */
-:host { text-shadow: var(--tag-halo); }
+/* HUD type over the scene: one stroke under the fill and one soft shadow. */
+:host { color: var(--hud-ink); text-shadow: var(--hud-shadow); -webkit-text-stroke-width: var(--hud-stroke-width); -webkit-text-stroke-color: var(--hud-stroke-color); paint-order: stroke fill; }
 :host { position: absolute; inset: 0; }
 .play { display: flex; flex-direction: column; position: absolute; top: 0; bottom: 0; inset-inline-start: 0; inset-inline-end: 0; align-items: center; justify-content: center; animation-name: cheer; animation-duration: var(--motion-duration-instant); animation-fill-mode: both; }
 .level, .fireworks { animation-name: reward; }
@@ -59,12 +59,14 @@
 .shell.four { margin-top: var(--space-xxl); animation-delay: calc(var(--motion-duration-base) * 2); }
 .shell.five { margin-top: calc(var(--space-3xl) + var(--space-xl)); animation-delay: calc(var(--motion-duration-base) * 3); }
 
-.level .stage { position: relative; display: flex; flex-direction: column; width: var(--measure-lg); max-width: 100%; height: var(--size-7xl); align-items: center; justify-content: center; animation-name: stage; animation-duration: var(--motion-duration-fanfare); animation-timing-function: linear; animation-fill-mode: both; }
-.rays polygon { fill: var(--gold); fill-opacity: var(--opacity-wash); }
+.level .stage { position: relative; display: flex; flex-direction: column; width: var(--measure-lg); max-width: 100%; min-height: var(--size-7xl); align-items: center; justify-content: center; animation-name: stage; animation-duration: var(--motion-duration-fanfare); animation-timing-function: linear; animation-fill-mode: both; }
+.rays polygon { fill: var(--hud-gold); fill-opacity: var(--opacity-wash); }
 .rays { position: absolute; width: var(--measure-lg); height: var(--measure-lg); animation-name: rays; animation-duration: var(--motion-duration-fanfare); animation-timing-function: linear; animation-fill-mode: both; }
-.halo { position: absolute; width: var(--size-5xl); height: var(--size-5xl); border-radius: var(--radius-capsule); border: var(--stroke-thick) solid var(--gold); box-shadow: 0 0 var(--space-lg) var(--gold); animation-name: halo; animation-duration: var(--motion-duration-turn); animation-timing-function: var(--motion-easing-out); animation-fill-mode: both; }
-.title { font: var(--text-xl5); text-transform: uppercase; white-space: nowrap; color: var(--gold); text-shadow: 0 0 var(--stroke-regular) var(--scene-shadow), 0 var(--stroke-regular) 0 var(--scene-shadow); animation-name: title; animation-duration: var(--motion-duration-spring); animation-timing-function: var(--motion-easing-bounce); animation-fill-mode: both; }
-.value { font: var(--text-xl4); white-space: nowrap; color: var(--gold); text-shadow: 0 0 var(--stroke-regular) var(--scene-shadow), 0 var(--stroke-regular) 0 var(--scene-shadow); animation-name: value; animation-duration: var(--motion-duration-base); animation-timing-function: var(--motion-easing-out); animation-delay: var(--motion-duration-base); animation-fill-mode: both; }
+/* A ring of light that settles round the level and stays lit. */
+.halo { position: absolute; width: calc(var(--alert-size-level) * 2.2); height: calc(var(--alert-size-level) * 2.2); border-radius: var(--radius-capsule); border: var(--stroke-thick) solid var(--hud-gold); box-shadow: var(--alert-rule-glow), inset var(--alert-rule-glow); animation-name: halo; animation-duration: var(--motion-duration-turn); animation-timing-function: var(--motion-easing-out); animation-fill-mode: both; }
+/* The word in gold small capitals, the level a large white figure lit gold. */
+.title { position: relative; max-width: 100%; font-size: var(--alert-size-said); font-weight: var(--alert-weight); letter-spacing: var(--hud-label-tracking); text-transform: var(--hud-label-transform); text-align: center; text-wrap: balance; overflow-wrap: anywhere; color: var(--hud-gold); animation-name: title; animation-duration: var(--motion-duration-spring); animation-timing-function: var(--motion-easing-bounce); animation-fill-mode: both; }
+.value { position: relative; font-size: var(--alert-size-level); font-weight: var(--hud-figure-weight); font-stretch: var(--hud-figure-stretch); font-variant-numeric: var(--hud-figure-numeric); line-height: var(--font-leading-flat); white-space: nowrap; color: var(--hud-ink); text-shadow: var(--alert-rule-glow); animation-name: value; animation-duration: var(--motion-duration-base); animation-timing-function: var(--motion-easing-out); animation-delay: var(--motion-duration-base); animation-fill-mode: both; }
 .rise { position: absolute; bottom: var(--space-xxl); width: var(--measure-sm); height: var(--space-xs); }
 
 @keyframes cheer { from { -og-sound: success; } }
@@ -73,12 +75,13 @@
 @keyframes shell { 0% { opacity: 1; scale: 1; -og-burst: 21 var(--size-4xl) var(--gold) var(--motion-duration-breathe); } 20% { opacity: 0; scale: 4; } 100% { opacity: 0; } }
 @keyframes stage { 0% { opacity: 1; } 83% { opacity: 1; } 100% { opacity: 0; } }
 @keyframes rays { from { rotate: 0deg; scale: 0.6; opacity: 0; } 17% { scale: 1; opacity: 0.9; } to { rotate: 90deg; scale: 1; opacity: 0.9; } }
-@keyframes halo { from { scale: 0.3; opacity: 1; } to { scale: 2.2; opacity: 0; } }
+@keyframes halo { from { scale: 0.3; opacity: 0; } to { scale: 1; opacity: 1; } }
 @keyframes title { from { scale: 0.4; } to { scale: 1; } }
 @keyframes value { from { translate: 0 var(--space-xl); opacity: 0; } to { translate: 0 0; opacity: 1; } }
 
 @media (prefers-reduced-motion) {
-  .rays, .halo { display: none; }
-  .title { animation: none; }
+  .rays { display: none; }
+  .halo, .title, .value { animation: none; }
 }
+@media (width < 600px) { .value { font-size: var(--alert-size-level-compact); } .halo { width: calc(var(--alert-size-level-compact) * 2.2); height: calc(var(--alert-size-level-compact) * 2.2); } }
 </style>

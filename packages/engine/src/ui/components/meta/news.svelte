@@ -24,7 +24,7 @@
   {:else}<ul part="News.list" class="list" data-layout="stack" data-gap="loose">
     {#each entries as entry (entry.id)}<li><article part="News.article News.card" class="article" data-layout="stack" data-unread={entry.unread} data-pinned={entry.pinned}>
       <div class="meta" data-layout="cluster"><span part="News.kind News.caption" class="kind">{entry.kind}</span><span part="News.date News.caption" class="date">{entry.date}</span>{#if entry.pinned}<span part="News.badge" class="badge">{t("meta.news.pinned")}</span>{/if}{#if entry.unread}<span part="News.badge" class="badge">{t("meta.news.unread")}</span>{/if}</div>
-      <div part="News.heading" role="heading" aria-level="3"><button part="News.toggle" class="toggle" aria-expanded={entry.id == selected} aria-label={entry.title} disabled={disabled} onclick={choose}><span part="News.headline" class="headline">{entry.title}</span></button></div>
+      <div part="News.heading" role="heading" aria-level="3"><button part="News.toggle" class="toggle" variant="quiet" aria-expanded={entry.id == selected} aria-label={entry.title} disabled={disabled} onclick={choose}><span part="News.headline" class="headline">{entry.title}</span></button></div>
       {#if entry.summary}<p part="News.summary News.caption" class="summary">{entry.summary}</p>{/if}
       {#if entry.id == selected}
         {#if entry.image}<img part="News.picture" class="picture" src={entry.image} alt="">{/if}
@@ -39,12 +39,21 @@
 :host { inline-size: stretch; }
 h2, h3, p { margin: 0; overflow-wrap: anywhere; }
 .list { margin: 0; padding: 0; list-style: none; }
-.article { align-items: start; }
+/* An article: a card with two corners cut; a pinned one carries the gold
+   rail, the open one a gold keyline. */
+.article { align-items: start; padding: var(--space-md) var(--space-lg); background: var(--quest-entry-fill); box-shadow: var(--quest-entry-rim); clip-path: polygon(var(--quest-cut) 0, 100% 0, 100% calc(100% - var(--quest-cut)), calc(100% - var(--quest-cut)) 100%, 0 100%, 0 var(--quest-cut)); }
+.article[data-pinned=true] { box-shadow: var(--quest-selected-rim); }
+.meta { inline-size: stretch; align-items: center; }
+/* The kind as a chip in the info hue; the date quiet; Pinned and Unread as gold tags. */
+.kind { padding: 0 var(--space-xs); font: var(--caption-text); font-weight: var(--quest-weight); letter-spacing: var(--hud-label-tracking); text-transform: var(--hud-label-transform); color: var(--alert-info); background: var(--quest-chip-fill); box-shadow: var(--quest-chip-rim); border-radius: var(--quest-stamp-radius); }
+.date { color: var(--quest-ink-faint); }
+.badge { padding: 0 var(--space-xs); font: var(--caption-text); font-weight: var(--quest-weight); letter-spacing: var(--hud-label-tracking); text-transform: var(--hud-label-transform); color: var(--quest-gold-ink); background: var(--quest-gold); clip-path: polygon(var(--quest-cut-sm) 0, 100% 0, 100% calc(100% - var(--quest-cut-sm)), calc(100% - var(--quest-cut-sm)) 100%, 0 100%, 0 var(--quest-cut-sm)); }
 [part="News.heading"] { inline-size: stretch; }
-.toggle { display: block; inline-size: stretch; min-block-size: var(--touch-target); text-align: start; white-space: normal; overflow-wrap: anywhere; }
-.headline { display: block; inline-size: stretch; white-space: normal; overflow-wrap: anywhere; }
-.picture { inline-size: 100%; max-block-size: var(--size-6xl); aspect-ratio: 2; object-fit: cover; }
-.body { white-space: pre-wrap; }
+.toggle { display: block; inline-size: stretch; min-block-size: var(--touch-target); padding-inline: 0; text-align: start; white-space: normal; overflow-wrap: anywhere; }
+.headline { display: block; inline-size: stretch; white-space: normal; overflow-wrap: anywhere; font-size: var(--quest-size-figure); font-weight: var(--quest-weight); color: var(--ink-bright); }
+.summary { color: var(--quest-ink-quiet); }
+.picture { inline-size: 100%; max-block-size: var(--size-6xl); aspect-ratio: 2; object-fit: cover; clip-path: polygon(var(--quest-cut-sm) 0, 100% 0, 100% calc(100% - var(--quest-cut-sm)), calc(100% - var(--quest-cut-sm)) 100%, 0 100%, 0 var(--quest-cut-sm)); }
+.body { white-space: pre-wrap; color: var(--quest-ink-quiet); }
 .action { max-inline-size: 100%; min-block-size: var(--touch-target); white-space: normal; }
 .wait { padding: var(--space-lg); }
 </style>

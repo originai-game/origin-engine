@@ -1,0 +1,28 @@
+{
+  "added": [
+    {
+      "member": "notifications",
+      "summary": "A notification is a glass plate with two corners cut, a rail and a wash in its tone, the tone's mark in an octagon socket, its title in small capitals of the tone and its body in white; each tone has its own hue. A toast is the compact plate with the tone's mark before its words. Under reduced motion they fade in place instead of sliding. New parts notifications.title, notifications.mark and notifications.toast."
+    },
+    {
+      "member": "banner",
+      "summary": "HUD type over the scene with no plate: the headline large and balanced over a lit gold rule, the line under it in gold small capitals, with a near-opaque stroke so it holds over a bright sky; a phone type step; it fades in place under reduced motion. New part banner.rule."
+    },
+    {
+      "member": "subtitles",
+      "summary": "HUD type at the foot of the screen inside the HUD's safe edges: the speaker in gold small capitals over the words in white with a near-opaque stroke, on a soft dark shade that holds them over the brightest sky. Lines wrap balanced, so no word is left alone; an older line steps back smaller."
+    },
+    {
+      "member": "Celebration",
+      "summary": "The level up is HUD type: the word in gold small capitals, the level a large white figure lit gold inside a ring of light that settles and stays lit; it no longer draws the style's tag halo of stacked shadows. Under reduced motion the ring, word and figure appear in place."
+    },
+    {
+      "member": "Inbox",
+      "summary": "Messages are cut cards, an unread one with a gold rail and the open one washed gold; the count sits on a dark cut tag; the open message is in a sunken reader; attachments are dark cut chips with their amount as a gold figure; Claim is the reward's gold face; an expired state reads in the danger colour, a claimed one in the success colour. On a narrow inbox the list sits over the reader in one column."
+    },
+    {
+      "member": "News",
+      "summary": "Articles are cut cards, a pinned one with a gold rail; the kind is a chip in the info hue, Pinned and Unread gold tags; the headline is a figure-sized title on a quiet toggle; the picture is cut to match."
+    }
+  ]
+}
