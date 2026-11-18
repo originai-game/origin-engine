@@ -476,7 +476,7 @@ impl Levels {
     pub(crate) fn splice(
         &mut self,
         old: Vec<DrawItem>,
-        next: Vec<Spliced>,
+        next: impl IntoIterator<Item = Spliced>,
         unit: f32,
     ) -> Option<Vec<DrawItem>> {
         // One entry per command: no layer or panel gathers several.
@@ -485,11 +485,13 @@ impl Levels {
         }
         let gone = (Rect::default(), Batch::Ui(0, None));
         let mut old: Vec<Option<DrawItem>> = old.into_iter().map(Some).collect();
-        let n = next.len();
+        let next = next.into_iter();
+        let n = next.size_hint().0;
         let mut keyed = Vec::with_capacity(n);
         let mut levels = Vec::with_capacity(n);
         let mut at = Vec::with_capacity(n);
-        let mut out: Vec<Option<DrawItem>> = Vec::with_capacity(n);
+        let mut items = Vec::with_capacity(n);
+        let mut spans = Vec::with_capacity(n);
         // Per entry: last frame's, when its overlaps there hold here.
         let mut kept: Vec<Option<u32>> = Vec::with_capacity(n);
         let mut moved: Vec<bool> = Vec::with_capacity(n);
@@ -498,7 +500,7 @@ impl Levels {
         let mut offset = None::<(f32, f32)>;
         // The moved commands' extent, over where they were and are.
         let (mut x0, mut y0, mut x1, mut y1) = (f32::MAX, f32::MAX, f32::MIN, f32::MIN);
-        for (e, s) in next.into_iter().enumerate() {
+        for (e, s) in next.enumerate() {
             if let Some(o) = s.from {
                 if last.is_some_and(|l| o <= l) || o >= self.at.len() {
                     return None;
@@ -518,7 +520,14 @@ impl Levels {
                 } else {
                     e as u32
                 });
-                out.push(self.items[o].and_then(|(i, _)| old[i as usize].take()));
+                spans.push(
+                    self.items[o]
+                        .and_then(|(i, _)| old[i as usize].take())
+                        .map(|item| {
+                            items.push(item);
+                            (items.len() as u32 - 1, items.len() as u32 - 1)
+                        }),
+                );
                 kept.push(Some(o as u32));
                 moved.push(false);
                 carried[o] = e as u32;
@@ -540,14 +549,15 @@ impl Levels {
                 (mapped_bounds(&cmd, &m, self.pixel_width), cmd.batch())
             };
             let shown = bracket || !key.0.is_empty() || unmeasured_text(&cmd);
-            let item = shown.then(|| {
+            let span = shown.then(|| {
                 let mut item = DrawItem {
                     level: 0,
                     cmd,
                     transform: m,
                 };
                 zoom_item(&mut item, unit);
-                item
+                items.push(item);
+                (items.len() as u32 - 1, items.len() as u32 - 1)
             });
             // Moved as one with the others, exactly (`exact`).
             let same = s.from.filter(|&o| {
@@ -579,8 +589,9 @@ impl Levels {
             kept.push(same.map(|o| o as u32));
             keyed.push(key);
             at.push(if bracket { u32::MAX } else { e as u32 });
-            out.push(item);
+            spans.push(span);
         }
+        let n = keyed.len();
         let bounds: Vec<Rect> = keyed.iter().map(|(r, _)| *r).collect();
         let grid = Grid::over(&bounds);
         let mut cells: Vec<Vec<u32>> = vec![Vec::new(); grid.cols * grid.rows];
@@ -667,14 +678,10 @@ impl Levels {
                 }
             }
         }
-        let mut items = Vec::with_capacity(n);
-        let mut spans = Vec::with_capacity(n);
-        for (e, item) in out.into_iter().enumerate() {
-            spans.push(item.map(|mut item| {
-                item.level = levels[e].unwrap_or(0);
-                items.push(item);
-                (items.len() as u32 - 1, items.len() as u32 - 1)
-            }));
+        for (e, span) in spans.iter().enumerate() {
+            if let Some((i, _)) = span {
+                items[*i as usize].level = levels[e].unwrap_or(0);
+            }
         }
         *self = Levels {
             pixel_width: self.pixel_width,
