@@ -163,6 +163,8 @@ pub(crate) struct GpuMaterial {
     pub(crate) blend: bool,
     /// Refracts the copy of the opaque scene.
     pub(crate) transmissive: bool,
+    /// Positive thickness marks a volume; thin walls need no exit capture.
+    pub(crate) volumetric: bool,
     /// Discards pixels (shadows draw it with the material).
     pub(crate) dissolve: bool,
     /// Has its own outline (turns the outline pass on).

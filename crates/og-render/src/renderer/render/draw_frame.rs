@@ -204,7 +204,7 @@ impl Renderer {
             )?;
         }
         // The frame's effects and its depth prepass (effects.rs).
-        let mut effects = self.decide_effects(DecideEffectsInputs {
+        let effects = self.decide_effects(DecideEffectsInputs {
             scene,
             cam: &cam,
             batches: &batches,
@@ -218,17 +218,8 @@ impl Renderer {
             scene_water,
             objects_moved,
         });
-        // Decide depth before pipeline preparation, using the same sphere
-        // and layer tests as the transparent draw list. Off-camera materials
-        // must not enable the auxiliary transmission passes.
-        let visible_transmission = batches.iter().any(|b| {
-            b.transmissive
-                && b.layers & scene.frame.camera_layers != 0
-                && spheres[b.first as usize..(b.first + b.count) as usize]
-                    .iter()
-                    .any(|&(c, r)| view_frustum.intersects_sphere(c, r))
-        }) || skinned_visible.iter().any(|b| b.transmissive);
-        effects.prepass |= visible_transmission;
+        // Transmission reads the stored opaque main depth at its split;
+        // it does not require a separate geometry prepass.
         plans.ssr = SsrPass::bind(self, &mut frames.ssr, effects.ssr);
         // What the frame will draw with beyond its batches starts compiling
         // on worker threads before the batches' pipelines (deferred.rs):
@@ -502,9 +493,10 @@ impl Renderer {
             oit_frame: oit.oit_frame,
             oit_candidates: oit.oit_candidates,
         });
-        // Only drawn transmission prepares the exit targets and pipelines.
-        let transmission = visible_transmission
-            && self.prepare_transmission(&batches, &camera_lists.blended_list, &skinned_visible);
+        // Thin walls need the scene copy, but only drawn volumes prepare
+        // exit targets and pipelines.
+        let transmission =
+            self.prepare_transmission(&batches, &camera_lists.blended_list, &skinned_visible);
         // The frame's culling as the passes after the main camera extend
         // it, and what they cull against (pass.rs).
         let mut frame_cull = FrameCulling {

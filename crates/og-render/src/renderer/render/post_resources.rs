@@ -69,26 +69,32 @@ impl Renderer {
                 let chain = self.mips.chain(&self.device, &texture);
                 self.transmission = Some((texture, view, chain));
             }
-            let stale = self.transmission_volume.as_ref().is_none_or(|v| {
-                let t = v.exits.texture();
-                (t.width(), t.height()) != (self.width, self.height)
-            });
-            if stale {
-                self.transmission_volume = Some(physical::volume::Volume::new(
-                    &self.device,
-                    self.width,
-                    self.height,
-                ));
-            }
-            let physical = self.lit.physical.as_ref().expect("a transmissive material");
-            let volume = self.transmission_volume.as_mut().expect("made above");
-            for (batch, skinned) in blended_list
+            let mut volumes = blended_list
                 .ranges
                 .iter()
                 .map(|r| (&batches[r.0 as usize], false))
                 .chain(skinned_visible.iter().map(|b| (b, true)))
-                .filter(|(b, _)| b.transmissive)
-            {
+                .filter(|(b, _)| self.cache.materials[b.material].volumetric)
+                .peekable();
+            if volumes.peek().is_none() {
+                return transmission;
+            }
+            let stale = self.transmission_volume.as_ref().is_none_or(|v| {
+                let t = v.exits.texture();
+                (t.width(), t.height()) != (self.width, self.height) || v.samples != self.samples
+            });
+            if stale {
+                self.transmission_volume = Some(physical::volume::Volume::new(
+                    &self.device,
+                    &self.frame_layout,
+                    self.width,
+                    self.height,
+                    self.samples,
+                ));
+            }
+            let physical = self.lit.physical.as_ref().expect("a transmissive material");
+            let volume = self.transmission_volume.as_mut().expect("made above");
+            for (batch, skinned) in volumes {
                 let module = batch
                     .shader
                     .map_or(&physical.module, |sh| &self.cache.physical_shaders[&sh]);

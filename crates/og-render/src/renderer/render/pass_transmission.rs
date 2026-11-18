@@ -10,11 +10,33 @@ impl Renderer {
         encoder: &mut crate::Encoder,
         stats: &mut FrameStats,
     ) {
+        // The visible draw list already instances compatible neighbours.
+        // Thin walls retain their scene copy but need no geometric exits.
+        let mut ranges = plan
+            .blended_list
+            .ranges
+            .iter()
+            .copied()
+            .filter(|&(b, _, _)| self.cache.materials[plan.batches[b as usize].material].volumetric)
+            .peekable();
+        if ranges.peek().is_none()
+            && !plan
+                .skinned_visible
+                .iter()
+                .any(|b| self.cache.materials[b.material].volumetric && b.crowd.is_none())
+        {
+            return;
+        }
         let volume = self
             .transmission_volume
             .as_ref()
             .expect("visible transmission");
-        volume.seed_depth(&self.device, encoder, self.graph.view("lindepth"));
+        volume.seed_depth(
+            &self.device,
+            encoder,
+            self.graph.view("depth"),
+            plan.frame_bind_group,
+        );
         stats.draw_calls += 1;
         let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
             label: Some("transmission exits"),
@@ -42,11 +64,8 @@ impl Renderer {
         pass.set_bind_group(0, plan.frame_bind_group, &[]);
         pass.set_bind_group(2, plan.backface_fx.expect("exit capture group"), &[]);
         pass.set_vertex_buffer(1, self.instances.instance_buffer.slice(..));
-        for &(b, first, count) in &plan.blended_list.ranges {
+        for (b, first, count) in ranges {
             let batch = &plan.batches[b as usize];
-            if !batch.transmissive {
-                continue;
-            }
             let key = (batch.shader, batch.faces, false, batch.effects);
             pass.set_pipeline(&volume.pipelines[&key]);
             pass.set_bind_group(
@@ -69,11 +88,10 @@ impl Renderer {
                 .indirect
                 .filter(|_| ctx.skinned_gpu)
                 .zip(ctx.culled_gpu);
-            for (k, batch) in plan
-                .skinned_visible
-                .iter()
-                .enumerate()
-                .filter(|(_, b)| b.transmissive && b.crowd.is_none())
+            for (k, batch) in
+                plan.skinned_visible.iter().enumerate().filter(|(_, b)| {
+                    self.cache.materials[b.material].volumetric && b.crowd.is_none()
+                })
             {
                 let key = (batch.shader, batch.faces, true, batch.effects);
                 pass.set_pipeline(&volume.pipelines[&key]);

@@ -1,0 +1,8 @@
+{
+  "fixed": [
+    {
+      "member": "render.StandardMaterialDesc.transmission",
+      "summary": "Geometric transmission reuses the opaque main depth instead of redrawing its geometry in a prepass, skips exit capture for thin walls, and reuses Newton samples without reducing capture resolution or search quality."
+    }
+  ]
+}

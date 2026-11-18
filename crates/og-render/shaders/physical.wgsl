@@ -475,10 +475,10 @@ fn transmission_hit(origin: vec3<f32>, direction: vec3<f32>, seed: vec3<f32>, vo
   var hit: TransmissionHit;
   var point = seed;
   let texel = 1.0 / vec2<f32>(textureDimensions(volume_tex));
+  let projected = transmission_uv(point);
+  if (!transmission_on_screen(projected)) { return hit; }
+  var surface = transmission_surface(projected.xy, volume);
   for (var i = 0u; i < 6u; i++) {
-    let projected = transmission_uv(point);
-    if (!transmission_on_screen(projected)) { return hit; }
-    let surface = transmission_surface(projected.xy, volume);
     if (surface.confidence == 0.0) { return hit; }
     let normal = surface.normal;
     let denominator = dot(normal, direction);
@@ -506,6 +506,10 @@ fn transmission_hit(origin: vec3<f32>, direction: vec3<f32>, seed: vec3<f32>, vo
       hit.confidence = confidence;
     }
     if (residual < 0.25) { return hit; }
+    // The validation sampled this exact next iterate. Reuse its four
+    // texels, reconstructed points and normal instead of repeating the
+    // same bilinear surface query at the start of the next Newton step.
+    surface = measured;
   }
   return hit;
 }
@@ -817,12 +821,8 @@ fn physical_fragment(in: PhysicalOut) -> vec4<f32> {
     let width = f32(textureDimensions(transmission_tex).x);
     let lod = log2(width) * s.roughness * clamp(ior * 2.0 - 2.0, 0.0, 1.0);
     var path = length(ray);
-    var behind = scene_behind(uv, lod);
-    var fallback = behind;
+    let fallback_path = path;
     let absorption = max(physical.attenuation.rgb, vec3<f32>(1e-4));
-    if (physical.transmission.w > 0.0) {
-      fallback *= pow(absorption, vec3<f32>(path / physical.transmission.w));
-    }
     var confidence = 0.0;
     var opaque_uv = uv;
     var opaque_confidence = 0.0;
@@ -834,10 +834,8 @@ fn physical_fragment(in: PhysicalOut) -> vec4<f32> {
         confidence = back.confidence;
         path = length(back.point - in.world_pos);
         let outgoing = refract(direction, -back.normal, ior);
-        behind = vec3<f32>(0.0);
         if (dot(outgoing, outgoing) > 0.0) {
           let opaque_hit = transmission_hit(back.point, outgoing, back.point, 0u);
-          behind = reflected_light(outgoing, back.point, s.roughness * frame.params.y) * ibl_scale;
           confidence *= opaque_hit.confidence;
           if (opaque_hit.confidence > 0.0) {
             opaque_uv = opaque_hit.uv;
@@ -846,16 +844,28 @@ fn physical_fragment(in: PhysicalOut) -> vec4<f32> {
         }
       }
     }
-    if (opaque_confidence > 0.0) { behind = scene_behind(opaque_uv, lod); }
-    var absorbed = vec3<f32>(1.0);
-    if (physical.transmission.w > 0.0) {
-      absorbed = pow(absorption, vec3<f32>(path / physical.transmission.w));
-    }
     // Unreliable exits use the complete authored approximation, including
     // its absorption path, rather than retaining a frayed geometric sliver.
     confidence = smoothstep(0.5, 0.9, confidence);
+    var radiance = vec3<f32>(0.0);
+    if (confidence > 0.0 && opaque_confidence > 0.0) {
+      radiance = scene_behind(opaque_uv, lod);
+      if (physical.transmission.w > 0.0) {
+        radiance *= pow(absorption, vec3<f32>(path / physical.transmission.w));
+      }
+    }
+    // A confident geometric result replaces the authored approximation
+    // completely. Only sample that second bicubic footprint in its blend
+    // region or where the measured exit/opaque scene is unavailable.
+    if (confidence < 1.0) {
+      var fallback = scene_behind(uv, lod);
+      if (physical.transmission.w > 0.0) {
+        fallback *= pow(absorption, vec3<f32>(fallback_path / physical.transmission.w));
+      }
+      radiance = mix(fallback, radiance, confidence);
+    }
     let transmitted = (vec3<f32>(1.0) - env_brdf) * s.albedo * (1.0 - s.metallic)
-                    * mix(fallback, absorbed * behind, confidence);
+                    * radiance;
     diffuse = mix(diffuse, transmitted * sheen_keep * coat_keep, amount);
   }
   var color = diffuse + specular;

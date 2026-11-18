@@ -596,6 +596,7 @@ impl Renderer {
                 transparent: material.is_transparent() || transmissive,
                 blend: material.is_transparent(),
                 transmissive,
+                volumetric: transmissive && material.thickness > 0.0,
                 // Also alpha-tested materials: they cast through the shadow
                 // pass that reads the material (fs_dissolve), cut by alpha.
                 dissolve: material.dissolves() || material.alphaTest > 0.0,

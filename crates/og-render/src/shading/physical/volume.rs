@@ -11,13 +11,20 @@ pub(crate) const FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba32Uint;
 pub(crate) struct Volume {
     pub exits: wgpu::TextureView,
     pub depth: wgpu::TextureView,
+    pub samples: u32,
     pub pipelines: HashMap<Key, wgpu::RenderPipeline>,
     depth_layout: wgpu::BindGroupLayout,
     depth_pipeline: wgpu::RenderPipeline,
 }
 
 impl Volume {
-    pub fn new(device: &wgpu::Device, width: u32, height: u32) -> Self {
+    pub fn new(
+        device: &wgpu::Device,
+        frame_layout: &wgpu::BindGroupLayout,
+        width: u32,
+        height: u32,
+        samples: u32,
+    ) -> Self {
         let view = |label, format| {
             device
                 .create_texture(&wgpu::TextureDescriptor {
@@ -43,22 +50,42 @@ impl Volume {
                 binding: 0,
                 visibility: wgpu::ShaderStages::FRAGMENT,
                 ty: wgpu::BindingType::Texture {
-                    sample_type: wgpu::TextureSampleType::Float { filterable: false },
+                    sample_type: wgpu::TextureSampleType::Depth,
                     view_dimension: wgpu::TextureViewDimension::D2,
-                    multisampled: false,
+                    multisampled: samples > 1,
                 },
                 count: None,
             }],
         });
         let layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
             label: Some("transmission opaque depth"),
-            bind_group_layouts: &[Some(&depth_layout)],
+            bind_group_layouts: &[Some(frame_layout), Some(&depth_layout)],
             immediate_size: 0,
         });
+        let depth_source = if samples > 1 {
+            "@group(1) @binding(0) var opaque_depth: texture_depth_multisampled_2d;
+             fn opaque_depth_at(px: vec2<i32>) -> f32 {
+               var z = 1.0;
+               for (var i = 0u; i < textureNumSamples(opaque_depth); i++) {
+                 z = min(z, textureLoad(opaque_depth, px, i32(i)));
+               }
+               return z;
+             }"
+        } else {
+            "@group(1) @binding(0) var opaque_depth: texture_depth_2d;
+             fn opaque_depth_at(px: vec2<i32>) -> f32 {
+               return textureLoad(opaque_depth, px, 0);
+             }"
+        };
         let module = crate::shader(
             device,
             "transmission depth",
-            wgsl_library!("transmission_depth.wgsl").to_owned(),
+            [
+                crate::FRAME_WGSL,
+                depth_source,
+                wgsl!("transmission_depth.wgsl"),
+            ]
+            .concat(),
         );
         let depth_pipeline = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
             label: Some("transmission opaque depth"),
@@ -88,6 +115,7 @@ impl Volume {
         Self {
             exits: view("transmission exits", FORMAT),
             depth: view("transmission exit depth", crate::DEPTH_FORMAT),
+            samples,
             pipelines: HashMap::new(),
             depth_layout,
             depth_pipeline,
@@ -99,6 +127,7 @@ impl Volume {
         device: &wgpu::Device,
         encoder: &mut crate::Encoder,
         opaque: &wgpu::TextureView,
+        frame: &wgpu::BindGroup,
     ) {
         let group = device.create_bind_group(&wgpu::BindGroupDescriptor {
             label: Some("transmission opaque depth"),
@@ -125,7 +154,8 @@ impl Volume {
             multiview_mask: None,
         });
         pass.set_pipeline(&self.depth_pipeline);
-        pass.set_bind_group(0, &group, &[]);
+        pass.set_bind_group(0, frame, &[]);
+        pass.set_bind_group(1, &group, &[]);
         pass.draw(0..3, 0..1);
     }
 

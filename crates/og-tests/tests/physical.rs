@@ -167,7 +167,7 @@ fn transmission_refracts_the_scene_behind() {
 #[test]
 #[ignore = "requires GPU"]
 fn transmission_absorbs_over_the_geometric_path_or_authored_fallback() {
-    let make = |closed: bool, thickness: f32, skinned: bool| {
+    let make = |closed: bool, thickness: f32, skinned: bool, msaa: bool| {
         let mut scene = studio();
         scene.look.post.tonemap = og_render::Tonemap::None;
         let wall = scene.add_mesh(shapes::plane_xy(20.0, 20.0));
@@ -227,13 +227,22 @@ fn transmission_absorbs_over_the_geometric_path_or_authored_fallback() {
         } else {
             let mesh = scene.add_mesh(data);
             scene.add_instance(mesh, glass, Mat4::from_scale(Vec3::splat(4.0)));
-            frame(&scene)
+            let mut desc = scenes::base_desc();
+            if msaa {
+                desc.antialias = og_render::Antialias::Msaa4;
+            }
+            let mut renderer = Renderer::new_blocking(&desc).expect("volume renderer");
+            renderer
+                .render(&scene, &RenderTarget::Offscreen)
+                .expect("volume");
+            renderer.read_offscreen().expect("volume capture")
         }
     };
-    let closed = make(true, 0.5, false);
-    let open = make(false, 0.5, false);
-    let thin = make(true, 0.0, false);
-    let skinned = make(true, 0.5, true);
+    let closed = make(true, 0.5, false, false);
+    let open = make(false, 0.5, false, false);
+    let thin = make(true, 0.0, false, false);
+    let skinned = make(true, 0.5, true, false);
+    let msaa = make(true, 0.5, false, true);
     // Linear 0.25^(4/4) and 0.25^(2/4), encoded as sRGB. The central
     // pixels are essentially a diameter; no expectation comes from the
     // renderer's refraction or depth buffers.
@@ -242,6 +251,7 @@ fn transmission_absorbs_over_the_geometric_path_or_authored_fallback() {
         ("open", &open, 188.0),
         ("thin", &thin, 255.0),
         ("GPU skinned", &skinned, 137.0),
+        ("MSAA", &msaa, 137.0),
     ] {
         let actual = mean(image, area(638, 642, 358, 362));
         println!("{name} transmission: {actual:?}, expected {expected}");
@@ -277,6 +287,28 @@ fn transmission_only_runs_for_visible_materials() {
     assert!(
         visible.draw_calls > bare.draw_calls,
         "visible glass draws its volume"
+    );
+    scene.set_standard_material(
+        glass,
+        StandardMaterial {
+            transmission: 1.0,
+            ..Default::default()
+        },
+    );
+    let thin = renderer
+        .render(&scene, &RenderTarget::Offscreen)
+        .expect("thin wall after volume");
+    assert!(
+        thin.draw_calls < visible.draw_calls,
+        "thin walls must not retain the cached exit capture"
+    );
+    scene.set_standard_material(
+        glass,
+        StandardMaterial {
+            transmission: 1.0,
+            thickness: 1.0,
+            ..Default::default()
+        },
     );
     // Moving the camera leaves the glass behind it without changing the
     // solid black background or any other geometry in this empty studio.

@@ -81,11 +81,12 @@ fn frame(g: &mut RenderGraph, cx: &PlanCx) {
             ),
         );
     }
-    let depth_usage = if ((cfg.taa || smaa_t2x) && !msaa) || cfg.oit == Some(true) {
-        ATTACH_BIND
-    } else {
-        wgpu::TextureUsages::RENDER_ATTACHMENT
-    };
+    let depth_usage =
+        if ((cfg.taa || smaa_t2x) && !msaa) || cfg.oit == Some(true) || cfg.transmission {
+            ATTACH_BIND
+        } else {
+            wgpu::TextureUsages::RENDER_ATTACHMENT
+        };
     if cfg.oit.is_some() {
         g.transient(
             "oit.accum",
