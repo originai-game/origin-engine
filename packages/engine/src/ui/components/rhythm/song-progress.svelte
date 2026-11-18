@@ -21,7 +21,6 @@
   </div>
   {#if elapsed != ''}
   <div class="under" data-layout="row" data-gap="none">
-  <div class="lead"></div>
   <div class="clock" data-layout="row" data-gap="hair">
     <span part="RhythmSongProgress.time" class="elapsed">{elapsed}</span>
     {#if length != ''}<span part="RhythmSongProgress.time" class="length">{t("rhythm.progress.length", { length: length })}</span>{/if}
@@ -34,11 +33,11 @@
 :host { inline-size: stretch; color: var(--hud-ink); text-shadow: var(--hud-shadow); -webkit-text-stroke-width: var(--hud-stroke-width); -webkit-text-stroke-color: var(--hud-stroke-color); paint-order: stroke fill; --layout-anchor-inset: 0; }
 #Line { inline-size: stretch; block-size: calc(5 * var(--font-step-px)); background: var(--hud-line-well); }
 #Played { inline-size: calc(var(--value) * 100%); block-size: 100%; background: var(--hud-line-fill); box-shadow: var(--hud-line-glow); }
-/* The time rides under the played end of the line: a lead as long as the
-   part played pushes it along and gives way at the screen's end. */
+/* The time rides under the played end of the line, held inside the
+   line's ends: its start margin is the part played, clamped so the
+   label never leaves the screen at either end. */
 .under { inline-size: stretch; margin-block-start: var(--space-xs); padding-inline: var(--space-md); }
-.lead { flex: 0 1 calc(var(--value) * 100%); min-inline-size: 0; }
-.clock { flex: none; align-items: baseline; }
+.clock { flex: none; align-items: baseline; font-size: var(--hud-size-xs); margin-inline-start: clamp(0px, calc(var(--value) * 100% - var(--select-time-lead)), calc(100% - var(--select-time-room))); }
 .elapsed { font-size: var(--hud-size-xs); font-weight: var(--hud-figure-weight); font-stretch: var(--hud-figure-stretch); font-variant-numeric: var(--hud-figure-numeric); white-space: nowrap; }
 .length { font-size: var(--hud-size-xs); font-weight: var(--hud-figure-weight); font-stretch: var(--hud-figure-stretch); font-variant-numeric: var(--hud-figure-numeric); color: var(--hud-ink-dim); white-space: nowrap; }
 </style>

@@ -67,8 +67,11 @@ error states are. Narrow layouts come from the members' own queries:
 RhythmSongSelect and RhythmResults ask their own width (container queries,
 so a side column on a wide screen narrows them too), the song select
 putting the selected song's details over the list and the results stacking
-in one column with the actions sharing the width; RhythmDifficulty (one
-chart per row) and RhythmScoreHud follow a phone's viewport.
+in one column with the actions sharing the width; RhythmDifficulty (its
+tiles as many to a row as fit) and RhythmScoreHud follow a phone's viewport.
+The song select and the difficulty stand over the game's art with no panel
+(`--select-*` tokens); long titles scroll, and the list opens scrolled to
+the selection.
 
 Every member carries a `fixture:default` and the states that apply (song
 select: selected, disabled, empty, loading, error, overflow; difficulty:

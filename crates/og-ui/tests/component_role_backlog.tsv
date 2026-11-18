@@ -58,15 +58,12 @@ puzzle/boosters.svelte	PuzzleBoosters.state PuzzleBoosters.label PuzzleBoosters.
 puzzle/goals.svelte	PuzzleGoals.figure PuzzleGoals.headline	1
 puzzle/goals.svelte	PuzzleGoals.label PuzzleGoals.caption	1
 puzzle/goals.svelte	PuzzleGoals.warning PuzzleGoals.plate PuzzleGoals.caption	1
-puzzle/level-path.svelte	PuzzleLevelPath.frame PuzzleLevelPath.card	1
 puzzle/summary.svelte	PuzzleSummary.earned PuzzleSummary.label PuzzleSummary.caption	1
 puzzle/summary.svelte	PuzzleSummary.frame PuzzleSummary.card	1
 puzzle/summary.svelte	PuzzleSummary.level PuzzleSummary.label PuzzleSummary.caption	1
 puzzle/summary.svelte	PuzzleSummary.record PuzzleSummary.label PuzzleSummary.badge	1
 puzzle/summary.svelte	PuzzleSummary.total PuzzleSummary.label PuzzleSummary.row	1
 racing/results.svelte	RacingResults.place RacingResults.label RacingResults.figure	1
-rhythm/difficulty.svelte	RhythmDifficulty.name RhythmDifficulty.headline	1
-rhythm/song-select.svelte	RhythmSongSelect.name RhythmSongSelect.headline	1
 rpg/enemy-info.svelte	RpgEnemyInfo.name RpgEnemyInfo.headline	1
 rpg/place-card.svelte	RpgPlaceCard.name RpgPlaceCard.headline	1
 rpg/turn-order.svelte	RpgTurnOrder.title RpgTurnOrder.badge	1

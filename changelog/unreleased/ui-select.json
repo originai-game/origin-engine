@@ -1,0 +1,38 @@
+{
+  "added": [
+    {
+      "member": "Default style song and level select tokens",
+      "summary": "--select-* roles for the song list's cut plates (rest, hover, chosen and focus), its tags and buttons, a difficulty tile's lean, tier strip, chosen fill and rim and each tier's ink, the select's type steps, and the level path's discs (done, open, current, locked, chosen, focus), road, star capsule and chapter meter, which a style pack sets to restyle song and level select."
+    }
+  ],
+  "breaking": [
+    {
+      "member": "RhythmSongSelect",
+      "change": "RhythmSongSelect stands bare over the game's art with no panel: each song a cut plate with its jacket in an octagon, the chosen one washed in the HUD's accent and stepped in, its details a large jacket with a lit edge, the title, the artist, BPM and length on figure plates and Preview as a lit plate. Long titles and artists scroll (text-overflow: -og-scroll); the list opens scrolled to the selection. The part RhythmSongSelect.well is gone, and the row's name is RhythmSongSelect.name alone (no longer also .headline).",
+      "fix": "A style that dressed RhythmSongSelect.well dresses RhythmSongSelect.detail; one that dressed the row's name through .headline dresses RhythmSongSelect.name. Set the --select-row-*, --select-button-* and --select-size-* tokens for the list's look.",
+      "find": ["RhythmSongSelect.well"]
+    },
+    {
+      "member": "RhythmDifficulty",
+      "change": "RhythmDifficulty's charts are leaning tiles with their tier's colour along the top, the tier's name in it, the level as a large figure and the grade on a tag beside the best score; the chosen tile fills with its tier and is ringed in it. The parts RhythmDifficulty.figure and RhythmDifficulty.headline are gone.",
+      "fix": "A style that dressed RhythmDifficulty.figure dresses RhythmDifficulty.rating; one that dressed .headline dresses RhythmDifficulty.name. Set the --select-tile-* and --select-<tier>-ink tokens for the tiles.",
+      "find": ["RhythmDifficulty.figure", "RhythmDifficulty.headline"]
+    },
+    {
+      "member": "PuzzleLevelPath",
+      "change": "PuzzleLevelPath draws no panel over the game's map art: only each chapter's header is glass, with a gold meter of its stars (new part PuzzleLevelPath.meter). Levels are discs on a road lit gold up to the level to play; a done level's stars sit on a dark capsule at its foot, the chosen level says Selected and an open one Open (new strings puzzle.path.selected and puzzle.path.open). The path fills the height it is given and opens scrolled to the level to play. The parts PuzzleLevelPath.well, .cell, .card and .band are gone.",
+      "fix": "A style that dressed PuzzleLevelPath.cell dresses PuzzleLevelPath.node, .well dresses .trail, .band dresses .chapter, and .card dresses .frame. Set the --select-node-*, --select-road-* and --select-capsule-* tokens for the path's look.",
+      "find": ["PuzzleLevelPath.well", "PuzzleLevelPath.cell", "PuzzleLevelPath.card", "PuzzleLevelPath.band"]
+    }
+  ],
+  "fixed": [
+    {
+      "member": "RhythmSongProgress",
+      "summary": "The time label rides under the played end of the line through a clamp() margin, held inside the line's ends at the start and the end of the song."
+    },
+    {
+      "member": "RhythmSongPlate",
+      "summary": "A title or byline too long for the plate scrolls instead of ending in an ellipsis."
+    }
+  ]
+}
