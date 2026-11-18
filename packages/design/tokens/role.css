@@ -790,6 +790,46 @@
   --role-select-meter-glow: 0 0 calc(10 * var(--font-step-px)) rgb(255 207 90 / 0.7);
   --role-select-meter-well: rgb(255 255 255 / 0.14);
 
+  /* Notifications and toasts (the notification stack, a banner over the
+     scene, a level up, subtitles, the inbox and the news). A toast is a
+     cut glass plate with a rail and a socket in its tone; each tone has
+     its own hue, warn a deep amber well apart from a reward's gold.
+     Words over the scene are HUD type between lit gold rules. */
+  --role-alert-plate-fill: linear-gradient(180deg, rgb(40 48 68 / 0.95), rgb(20 25 37 / 0.95));
+  --role-alert-plate-rim: inset 0 0 0 var(--stroke-hairline) rgb(255 255 255 / 0.12), inset 0 var(--stroke-hairline) 0 rgb(255 255 255 / 0.18);
+  --role-alert-rail: calc(4 * var(--font-step-px));
+  --role-alert-success: var(--success);
+  --role-alert-info: var(--info);
+  --role-alert-warn: rgb(255 138 46);
+  --role-alert-danger: var(--danger);
+  --role-alert-success-wash: linear-gradient(90deg, rgb(from var(--success) r g b / 0.2), transparent 46%);
+  --role-alert-info-wash: linear-gradient(90deg, rgb(from var(--info) r g b / 0.2), transparent 46%);
+  --role-alert-warn-wash: linear-gradient(90deg, rgb(255 138 46 / 0.22), transparent 46%);
+  --role-alert-danger-wash: linear-gradient(90deg, rgb(from var(--danger) r g b / 0.22), transparent 46%);
+  /* The open message in the inbox (a gold wash over the card) and the
+     sunken reader beside the list. */
+  --role-alert-open-fill: linear-gradient(90deg, rgb(255 207 90 / 0.16), rgb(255 255 255 / 0.04) 70%), var(--color-card);
+  --role-alert-reader-radius: var(--radius-card);
+  /* The rule under a banner's title and its glow. */
+  --role-alert-rule: linear-gradient(90deg, transparent, var(--hud-gold) 30%, rgb(255 246 216) 50%, var(--hud-gold) 70%, transparent);
+  --role-alert-rule-glow: 0 0 calc(12 * var(--font-step-px)) rgb(255 207 90 / 0.6);
+  /* What holds subtitles and a banner over the brightest sky: a soft dark
+     band under the lines, and a near-opaque stroke under every word. */
+  --role-alert-subtitle-shade: radial-gradient(farthest-side, rgb(3 5 10 / 0.92), rgb(3 5 10 / 0.86) 72%, transparent);
+  --role-alert-stroke-color: rgb(4 6 12 / 0.92);
+  /* The family's type steps: a banner's title, a level's figure and a
+     subtitle's line, each with a phone step. */
+  --role-alert-size-banner: calc(54 * var(--font-step-px));
+  --role-alert-size-banner-compact: calc(34 * var(--font-step-px));
+  --role-alert-size-level: calc(120 * var(--font-step-px));
+  --role-alert-size-level-compact: calc(84 * var(--font-step-px));
+  --role-alert-size-said: calc(24 * var(--font-step-px));
+  --role-alert-size-said-compact: calc(18 * var(--font-step-px));
+  --role-alert-weight: var(--font-weight-bold);
+  /* A subtitle's speaker in small capitals drawn from its own letters, so
+     the name reads as written. */
+  --role-alert-speaker-caps: all-small-caps;
+
   /* Label: a caption or column heading, opened a little so it sits back
      from the values it names. */
   --role-label-font: var(--type-label-font);
