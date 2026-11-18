@@ -29,6 +29,34 @@ impl Drop for Entry {
     }
 }
 
+impl Entry {
+    /// Whether texture `id`'s answer has arrived, without copying it.
+    fn poll(&mut self, id: &str) -> bool {
+        if self.ready.is_none() {
+            match self.receiver.try_recv() {
+                Ok((answer, offset, ms)) => {
+                    crate::author::trace::texture_work(id, self.start, offset, ms);
+                    self.ready = Some(answer);
+                }
+                Err(TryRecvError::Empty) => return false,
+                Err(TryRecvError::Disconnected) => {
+                    self.ready = Some(Err("texture worker stopped".into()));
+                }
+            }
+        }
+        true
+    }
+}
+
+/// What [`Textures::start`] found or made for a texture.
+enum Started {
+    /// Its entry is in the cache, its work queued or done.
+    Entry,
+    /// The host prepares it itself (`Hooks::texture`): no worker, no entry.
+    Host,
+    Failed(String),
+}
+
 #[derive(Default)]
 pub(super) struct Textures {
     worker: Option<Sender<Job>>,
@@ -68,9 +96,32 @@ impl Textures {
         // Runtime bundles may use the same id for different maps at once.
         // They must not continually cancel each other's preparation.
         let key = key(texture, formats);
-        if !self.entries.contains_key(&key) {
+        match self.start(host, texture, formats, &key) {
+            Started::Entry => {}
+            Started::Host => return host.texture(texture, formats),
+            Started::Failed(e) => return Fetch::Failed(e),
+        }
+        let entry = self.entries.get_mut(&key).unwrap();
+        if !entry.poll(&texture.id) {
+            return Fetch::Pending;
+        }
+        match entry.ready.as_ref().unwrap() {
+            Ok(source) => Fetch::Ready(source.clone()),
+            Err(e) => Fetch::Failed(e.clone()),
+        }
+    }
+
+    /// Queues `texture`'s work on the worker unless it has an entry.
+    fn start(
+        &mut self,
+        host: &dyn Hooks,
+        texture: &CookedTexture,
+        formats: Option<&TextureFormats>,
+        key: &(String, u64),
+    ) -> Started {
+        if !self.entries.contains_key(key) {
             let Some(work): Option<TextureWork> = host.texture_work(texture, formats) else {
-                return host.texture(texture, formats);
+                return Started::Host;
             };
             if self.worker.is_none() {
                 let (send, receive) = mpsc::channel::<Job>();
@@ -82,7 +133,7 @@ impl Textures {
                         }
                     }) {
                     Ok(_) => self.worker = Some(send),
-                    Err(e) => return Fetch::Failed(format!("texture worker: {e}")),
+                    Err(e) => return Started::Failed(format!("texture worker: {e}")),
                 }
             }
             let (send, receiver) = mpsc::channel();
@@ -104,7 +155,7 @@ impl Textures {
             });
             if self.worker.as_ref().unwrap().send(job).is_err() {
                 self.worker = None;
-                return Fetch::Failed("texture worker stopped".into());
+                return Started::Failed("texture worker stopped".into());
             }
             self.entries.insert(
                 key.clone(),
@@ -116,23 +167,7 @@ impl Textures {
                 },
             );
         }
-        let entry = self.entries.get_mut(&key).unwrap();
-        if entry.ready.is_none() {
-            match entry.receiver.try_recv() {
-                Ok((answer, offset, ms)) => {
-                    crate::author::trace::texture_work(&texture.id, entry.start, offset, ms);
-                    entry.ready = Some(answer);
-                }
-                Err(TryRecvError::Empty) => return Fetch::Pending,
-                Err(TryRecvError::Disconnected) => {
-                    entry.ready = Some(Err("texture worker stopped".into()));
-                }
-            }
-        }
-        match entry.ready.as_ref().unwrap() {
-            Ok(source) => Fetch::Ready(source.clone()),
-            Err(e) => Fetch::Failed(e.clone()),
-        }
+        Started::Entry
     }
 }
 
