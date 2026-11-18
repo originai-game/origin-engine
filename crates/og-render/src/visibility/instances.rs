@@ -58,8 +58,13 @@ pub(crate) fn fx_bits(fx: &crate::InstanceFx) -> [f32; 3] {
         0 => 0.0,
         g => (1 + g % 255) as f32,
     };
+    // How much of a model fading in is still hidden rides above the group,
+    // 512 a step (pbr.wgsl `look_hidden`): a whole instance carries what it
+    // did before, and the word stays below 2^18, so the flash keeps six
+    // bits of its fraction while the instance fades.
+    let hidden = fx.hidden_steps() as f32;
     [
-        flash + 2.0 * group,
+        flash + 2.0 * group + 512.0 * hidden,
         color,
         pack(Vec3::ONE - fx.tint.clamp(Vec3::ZERO, Vec3::ONE)),
     ]
@@ -105,6 +110,11 @@ pub(crate) struct Run {
     /// Its instances cast shadows ([`Instance::cast_shadows`]): a run that
     /// does not is left out of the shadow passes.
     pub cast: bool,
+    /// Its instances are fading in ([`crate::InstanceFx::reveal`] below
+    /// 1): the run's fragments are cut by the dither in every pass, so it
+    /// draws with the pipelines that keep the discard and off the cluster
+    /// path (`batches.rs`). Whole instances never share a run with them.
+    pub reveal: bool,
     /// Its instances' three.js layer mask ([`RenderScene::instance_layers`]):
     /// a camera draws the run when the masks share a bit (`views.rs`).
     pub layers: u32,
@@ -169,9 +179,9 @@ fn run_layer(inst: &Instance, run: &Run) -> f32 {
 pub(crate) struct SortedInstances {
     /// The scene they came from (a cache is per scene).
     scene: u64,
-    /// Per submitted instance, its (mesh, material) indices, caster flag
-    /// and layer mask.
-    keys: Vec<(u32, u32, bool, u32)>,
+    /// Per submitted instance, its (mesh, material) indices, its caster
+    /// and fading flags ([`run_flags`]) and layer mask.
+    keys: Vec<(u32, u32, u8, u32)>,
     /// Per drawn mesh the runs were built with: its index, local bounds
     /// and whether it was empty (an empty mesh's instances are dropped).
     meshes: Vec<(usize, MeshInfo)>,
@@ -320,6 +330,33 @@ pub(crate) fn reaches(reach: Option<(Vec3, Vec3)>, planes: &[glam::Vec4]) -> boo
     })
 }
 
+/// A run's [`Run::dequant`]: none for one fading in, which draws its
+/// mesh's f32 vertices (the compact shadow pipeline has no fragment to
+/// cut).
+fn run_dequant(
+    dequant: &impl Fn(usize, usize) -> Option<Mat4>,
+    mesh: usize,
+    material: usize,
+    reveal: bool,
+) -> Option<Mat4> {
+    if reveal {
+        None
+    } else {
+        dequant(mesh, material)
+    }
+}
+
+/// Whether an instance is fading in ([`Run::reveal`]).
+fn revealing(inst: &Instance) -> bool {
+    inst.fx.hidden_steps() != 0
+}
+
+/// What an instance's key holds of its flags: bit 0 that it casts
+/// shadows, bit 1 that it is fading in.
+fn run_flags(inst: &Instance) -> u8 {
+    u8::from(inst.cast_shadows) | (u8::from(revealing(inst)) << 1)
+}
+
 /// An instance's own material and its sway (as bits): what the static
 /// shadow cache hashes of it besides its GPU transform and mesh.
 fn look(inst: &Instance) -> (u32, u32) {
@@ -352,6 +389,7 @@ fn same_fx(a: &crate::InstanceFx, b: &crate::InstanceFx) -> bool {
             f.tint.y.to_bits(),
             f.tint.z.to_bits(),
             f.outline,
+            f.reveal.to_bits(),
         ]
     };
     fx(a) == fx(b)
@@ -473,7 +511,7 @@ impl SortedInstances {
         };
         // The submission's keys against the last frame's (and kept for the
         // next), each checked against the scene's resources on the way.
-        self.keys.resize(n, (u32::MAX, u32::MAX, true, 1));
+        self.keys.resize(n, (u32::MAX, u32::MAX, 1, 1));
         for &i in check {
             let i = i as usize;
             let (key, inst) = (&mut self.keys[i], &instances[i]);
@@ -492,7 +530,7 @@ impl SortedInstances {
             let k = (
                 k.0 as u32,
                 table[k.1],
-                inst.cast_shadows,
+                run_flags(inst),
                 crate::views::layer_of(layers, i),
             );
             if *key != k {
@@ -507,7 +545,10 @@ impl SortedInstances {
         same = same
             && self.meshes.iter().all(|&(m, info)| mesh(m) == info)
             && self.runs.iter().all(|r| {
-                same_dequant(r.dequant, dequant(r.mesh, r.material)) && r.array == array(r.material)
+                same_dequant(
+                    r.dequant,
+                    run_dequant(&dequant, r.mesh, r.material, r.reveal),
+                ) && r.array == array(r.material)
             })
             && self.transforms.len() == self.order.len()
             && self.spheres.len() == self.order.len();
@@ -589,6 +630,7 @@ impl SortedInstances {
                 inst.mesh,
                 drawn(scene, &self.params_moved, inst.material.index()),
                 !inst.cast_shadows,
+                revealing(inst),
                 layers(i),
                 probe_of(i),
                 mirrors(&inst.transform),
@@ -607,10 +649,11 @@ impl SortedInstances {
         self.slots.resize(instances.len(), u32::MAX);
         for &i in &order {
             let inst = &instances[i];
-            let (mesh, material, cast, mask, probe, mirrored) = (
+            let (mesh, material, cast, reveal, mask, probe, mirrored) = (
                 inst.mesh.index(),
                 drawn(scene, &self.params_moved, inst.material.index()),
                 inst.cast_shadows,
+                revealing(inst),
                 layers(i),
                 probe_of(i),
                 mirrors(&inst.transform),
@@ -628,6 +671,7 @@ impl SortedInstances {
                     if r.mesh == mesh
                         && r.material == material
                         && r.cast == cast
+                        && r.reveal == reveal
                         && r.layers == mask
                         && r.probe == probe
                         && r.mirrored == mirrored =>
@@ -638,10 +682,11 @@ impl SortedInstances {
                     mesh,
                     material,
                     cast,
+                    reveal,
                     layers: mask,
                     first: self.order.len() as u32,
                     count: 1,
-                    dequant: dequant(mesh, material),
+                    dequant: run_dequant(dequant, mesh, material, reveal),
                     array: array(material),
                     probe,
                     mirrored,

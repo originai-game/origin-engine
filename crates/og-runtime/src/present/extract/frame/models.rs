@@ -86,6 +86,7 @@ pub(super) fn models(
                             flash_color: rgb(&flash_color),
                             tint: rgb(&tint),
                             outline: 0,
+                            reveal: 1.0,
                         },
                         cast: on(&cast, true),
                         receive: on(&receive, true),

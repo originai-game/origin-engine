@@ -3,7 +3,9 @@
 use super::*;
 
 /// Whether `b` draws through the meshlet path, given the scene and what
-/// only the renderer knows about its mesh (`lightmapped`).
+/// only the renderer knows about its mesh (`lightmapped`). A run fading in
+/// does not: the rasteriser keeps one surface a pixel, and the dither
+/// shows what is behind the pixels it cuts.
 pub(crate) fn takes(scene: &RenderScene, b: &Batch, clustered: bool, lightmapped: bool) -> bool {
     scene.objects.meshlets
         && clustered
@@ -12,6 +14,7 @@ pub(crate) fn takes(scene: &RenderScene, b: &Batch, clustered: bool, lightmapped
         && !b.physical
         && !b.array
         && !b.compact
+        && !b.reveal
         && !lightmapped
 }
 
