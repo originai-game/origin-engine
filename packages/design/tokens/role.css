@@ -1217,4 +1217,33 @@
   --role-data-divider-fill: rgb(255 255 255 / 0.05);
   --role-data-grip: var(--hud-accent);
   --role-data-grip-glow: 0 0 calc(8 * var(--font-step-px)) var(--hud-accent);
+
+  /* Pause and settings (family 9): pause, settings, save and load,
+     calibration. They share the front end's inks, entries, cut and Play
+     plate; these are their own: the shade over the paused game and the
+     veil under the full screens, the system type steps, a dimmed or
+     dangerous entry, a settings row and its lit state, the page tabs'
+     lit bar, a slot's lit rim and an empty slot's well. */
+  --role-system-pause-shade: linear-gradient(90deg, rgb(3 6 14 / 0.94), rgb(3 6 14 / 0.8) 30%, rgb(3 6 14 / 0.35) 60%, rgb(3 6 14 / 0.2));
+  --role-system-pause-shade-compact: linear-gradient(180deg, rgb(3 6 14 / 0.7), rgb(3 6 14 / 0.86) 40%, rgb(3 6 14 / 0.96));
+  --role-system-veil: linear-gradient(180deg, rgb(3 6 14 / 0.9), rgb(3 6 14 / 0.82) 40%, rgb(3 6 14 / 0.94));
+  --role-system-title-size: calc(56 * var(--font-step-px));
+  --role-system-title-size-compact: calc(40 * var(--font-step-px));
+  --role-system-entry-size: calc(24 * var(--font-step-px));
+  --role-system-entry-size-compact: calc(20 * var(--font-step-px));
+  --role-system-ink-off: rgb(255 255 255 / 0.32);
+  --role-system-danger-ink: rgb(255 128 118);
+  --role-system-row-fill: linear-gradient(90deg, rgb(22 29 46 / 0.72), rgb(12 16 28 / 0.5));
+  --role-system-row-rim: inset 0 0 0 var(--stroke-hairline) rgb(255 255 255 / 0.07);
+  --role-system-row-on-fill: linear-gradient(90deg, rgb(from var(--hud-accent) r g b / 0.22), rgb(from var(--hud-accent) r g b / 0.06) 60%, rgb(22 29 46 / 0.6));
+  --role-system-row-on-edge: inset calc(3 * var(--font-step-px)) 0 0 var(--hud-accent), inset 0 var(--stroke-hairline) 0 rgb(255 255 255 / 0.18);
+  --role-system-tabs-rule: rgb(255 255 255 / 0.14);
+  --role-system-tab-bar: var(--hud-accent);
+  --role-system-tab-glow: 0 0 calc(12 * var(--font-step-px)) var(--hud-accent);
+  --role-system-slot-on-rim: inset 0 0 0 calc(2 * var(--font-step-px)) var(--hud-accent), inset 0 calc(3 * var(--font-step-px)) 0 rgb(255 255 255);
+  --role-system-slot-empty-rim: inset 0 0 0 var(--stroke-hairline) rgb(255 255 255 / 0.12);
+  --role-system-plate-edge: inset 0 var(--stroke-hairline) 0 rgb(255 255 255 / 0.45);
+  --role-system-plate-lit-edge: inset 0 calc(2 * var(--stroke-hairline)) 0 var(--hud-accent);
+  --role-system-step-rim: rgb(255 255 255 / 0.3);
+  --role-system-step-done-fill: rgb(70 80 100);
 }
