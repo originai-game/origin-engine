@@ -251,6 +251,12 @@ from og.load.scene) is a cell.
   filters see its entities arrive. `dump_stream`'s `cells` lists every cell:
   its entity, sub-scene, state, entities and the ticks it last loaded and
   unloaded.
+- A rejected sub-scene blob keeps a failed load handle; og.load.error and
+  the cell's one-time log warning give the rejection. It is not downloaded
+  again. A cell whose entities cannot spawn retries after 2, 4, 8, 16, 32,
+  64 and 128 ticks, then stops after eight attempts. The retry count and
+  next tick survive snapshots and restores. Assigning a different sub-scene
+  starts a new retry sequence; a failed cell never reports loaded.
 - An og.StreamCell loads a sub-scene's entities near og.StreamAnchor
   entities. A cell's `budget` spreads a large cell over consecutive ticks
   instead of one long one; `loaded` turns true, and CellEvent is sent, in

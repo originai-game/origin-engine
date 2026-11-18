@@ -368,6 +368,161 @@ fn a_runtime_scene_returns_one_pending_handle_until_its_blob_arrives() {
     og_runtime::og_engine_destroy(e);
 }
 
+#[test]
+fn a_rejected_subscene_keeps_its_failure_without_redownloading() {
+    struct Rejected {
+        reads: std::cell::Cell<u32>,
+    }
+    impl Hooks for Rejected {
+        fn dispatch(&self, _: &Dispatch) -> Result<String, String> {
+            Ok(String::new())
+        }
+        fn read_asset(&self, path: &str) -> Fetch<Vec<u8>> {
+            if path.ends_with("scenes/village.ogt.ogb") {
+                self.reads.set(self.reads.get() + 1);
+                return Fetch::Ready(vec![0; 64]);
+            }
+            Disk.read_asset(path)
+        }
+    }
+    let root = project("rejected-scene", WORLD);
+    let host = Rc::new(Rejected {
+        reads: std::cell::Cell::new(0),
+    });
+    let e = engine_on(&root, host.clone());
+    let scene = og_load_scene(e, "scenes/village.ogt".into())
+        .unwrap()
+        .as_f64()
+        .unwrap();
+    assert_eq!(og_runtime::og_load_status(e, scene), "failed");
+    let error = og_runtime::og_load_error(e, scene).expect("rejected blob's diagnostic");
+    assert!(!error.is_empty());
+    let world = og_load_scene(e, "scenes/world.ogt".into())
+        .unwrap()
+        .as_f64()
+        .unwrap();
+    og_world_instantiate(e, world, None).unwrap();
+    walk(e, 100.0);
+    step(e, 1);
+    let log: Value = serde_json::from_str(&og_runtime::og_engine_take_log(e)).unwrap();
+    assert_eq!(
+        log.as_array()
+            .unwrap()
+            .iter()
+            .filter(|l| l["text"].as_str().is_some_and(|t| t.contains(&error)))
+            .count(),
+        1,
+        "{log}"
+    );
+    assert!(!loaded(e, "village"));
+    for _ in 0..1000 {
+        assert_eq!(
+            og_load_scene(e, "scenes/village.ogt".into())
+                .unwrap()
+                .as_f64(),
+            Some(scene)
+        );
+        step(e, 1);
+    }
+    assert_eq!(
+        host.reads.get(),
+        1,
+        "a rejected blob is terminal, not pending"
+    );
+    assert!(
+        serde_json::from_str::<Value>(&og_runtime::og_engine_take_log(e))
+            .unwrap()
+            .as_array()
+            .unwrap()
+            .is_empty()
+    );
+    assert_eq!(
+        og_runtime::og_load_error(e, scene).as_deref(),
+        Some(error.as_str())
+    );
+    assert_eq!(find(e, "well"), None);
+    walk(e, 130.0);
+    step(e, 1);
+    assert!(loaded(e, "farm"));
+    og_runtime::og_engine_destroy(e);
+}
+
+#[test]
+fn a_cell_with_a_rejected_model_retries_with_bounded_snapshot_safe_backoff() {
+    struct RejectedModel {
+        tick: std::cell::Cell<u32>,
+        reads: std::cell::RefCell<Vec<u32>>,
+    }
+    impl Hooks for RejectedModel {
+        fn dispatch(&self, _: &Dispatch) -> Result<String, String> {
+            Ok(String::new())
+        }
+        fn read_asset(&self, path: &str) -> Fetch<Vec<u8>> {
+            if path.ends_with("models/bad.ogt.ogb") {
+                self.reads.borrow_mut().push(self.tick.get());
+                return Fetch::Ready(vec![0; 64]);
+            }
+            Disk.read_asset(path)
+        }
+    }
+    let root = project("rejected-model", WORLD);
+    std::fs::create_dir_all(root.join("assets/models")).unwrap();
+    std::fs::write(
+        root.join("assets/models/bad.ogt"),
+        "type model\nversion 1\n---\npart \"body\" {\n boxGeometry {\n width 1\n height 1\n depth 1\n }\n}\n",
+    )
+    .unwrap();
+    std::fs::write(
+        root.join("assets/scenes/village.ogt"),
+        "type scene\nversion 1\n---\nentity \"broken\" {\n model \"models/bad.ogt\"\n}\n",
+    )
+    .unwrap();
+    cook(&root);
+    let host = Rc::new(RejectedModel {
+        tick: std::cell::Cell::new(0),
+        reads: Default::default(),
+    });
+    let e = engine_on(&root, host.clone());
+    let world = og_load_scene(e, "scenes/world.ogt".into())
+        .unwrap()
+        .as_f64()
+        .unwrap();
+    og_world_instantiate(e, world, None).unwrap();
+    walk(e, 100.0);
+    step(e, 1);
+    let save = value(og_runtime::host_impl::answer(og_world_snapshot(e, None)));
+    for restore in [false, true] {
+        if restore {
+            value(og_runtime::host_impl::answer(og_world_restore(
+                e,
+                save.as_str().unwrap().into(),
+                None,
+            )));
+        }
+        host.reads.borrow_mut().clear();
+        for tick in 1..1000 {
+            host.tick.set(tick);
+            step(e, 1);
+            assert!(!loaded(e, "village"));
+            assert_eq!(find(e, "broken"), None);
+        }
+        assert_eq!(*host.reads.borrow(), [2, 6, 14, 30, 62, 126, 254]);
+    }
+    let log: Value = serde_json::from_str(&og_runtime::og_engine_take_log(e)).unwrap();
+    assert_eq!(
+        log.as_array()
+            .unwrap()
+            .iter()
+            .filter(|l| l["text"]
+                .as_str()
+                .is_some_and(|t| t.contains("bad.ogt.ogb")))
+            .count(),
+        1,
+        "{log}"
+    );
+    og_runtime::og_engine_destroy(e);
+}
+
 /// One scripted walk past both cells: the hash after every tick, and the
 /// village well's entity id while it is loaded.
 fn walk_script(e: u32, from: u32, out: &mut Vec<(Value, Option<f64>)>) {

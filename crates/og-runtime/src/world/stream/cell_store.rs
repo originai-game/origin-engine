@@ -57,6 +57,14 @@ pub(crate) struct Loading {
     pub spawned: Vec<u64>,
 }
 
+/// Failed spawns retry on fixed ticks, at most eight times per scene.
+#[derive(Clone, Debug, PartialEq)]
+pub(crate) struct Retry {
+    pub scene: u64,
+    pub attempts: u32,
+    pub next: u64,
+}
+
 /// What the block holds.
 #[derive(Clone, Debug, Default, PartialEq)]
 pub(crate) struct Store {
@@ -64,6 +72,7 @@ pub(crate) struct Store {
     pub kept: BTreeMap<u64, Vec<Row>>,
     /// Loads in progress, by cell (bits).
     pub loading: BTreeMap<u64, Loading>,
+    pub retries: BTreeMap<u64, Retry>,
 }
 
 pub(crate) type Shared = Arc<Mutex<Store>>;
@@ -101,6 +110,17 @@ impl Store {
             w.u32(l.spawned.len() as u32);
             for e in &l.spawned {
                 w.u64(*e);
+            }
+        }
+        // Keep the bytes (and hashes) of error-free worlds unchanged.
+        if !self.retries.is_empty() {
+            w.u32(0x52545259); // RTRY: optional extension of version 1.
+            w.u32(self.retries.len() as u32);
+            for (cell, retry) in &self.retries {
+                w.u64(*cell);
+                w.u64(retry.scene);
+                w.u32(retry.attempts);
+                w.u64(retry.next);
             }
         }
     }
@@ -147,6 +167,22 @@ impl Store {
                 spawned.push(r.u64()?);
             }
             s.loading.insert(cell, Loading { source, spawned });
+        }
+        if !r.is_done() {
+            if r.u32()? != 0x52545259 {
+                return Err(bad("has an unknown extension"));
+            }
+            for _ in 0..r.u32()? {
+                let cell = r.u64()?;
+                s.retries.insert(
+                    cell,
+                    Retry {
+                        scene: r.u64()?,
+                        attempts: r.u32()?,
+                        next: r.u64()?,
+                    },
+                );
+            }
         }
         if !r.is_done() {
             return Err(bad("has bytes after its end"));
