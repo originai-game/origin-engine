@@ -461,7 +461,8 @@ pub(crate) fn refresh(eng: &Engine) -> (Vec<String>, Vec<String>) {
             .by_path
             .iter()
             .filter_map(|(key, &i)| {
-                if !key.starts_with("gltf:") {
+                if !key.starts_with("gltf:") || !eng.render.borrow().models.contains_key(&handle(i))
+                {
                     return None;
                 }
                 let entry = &assets.entries[i];
@@ -528,7 +529,13 @@ pub(crate) fn refresh(eng: &Engine) -> (Vec<String>, Vec<String>) {
         if now.is_empty() || now == before {
             continue;
         }
-        match add_gltf(eng, &id, owner, Some(index)) {
+        let shared = !eng
+            .render
+            .borrow()
+            .hlod
+            .proxies
+            .contains_key(&handle(index));
+        match add_gltf(eng, &id, owner, Some(index), shared) {
             Ok(_) => loaded.push(id),
             Err(e) => failed.push(format!("{id}: {e}")),
         }

@@ -124,7 +124,20 @@ pub(crate) fn load_gltf_from(
     {
         return Ok(i);
     }
-    add_gltf(eng, &id, bundle, None)
+    add_gltf(eng, &id, bundle, None, true)
+}
+
+/// HLOD proxies belong to their placements, not the public model cache.
+/// Reserve their asset indices across reloads, but do not share their
+/// renderer resources with models whose lifetime is the bundle's.
+pub(crate) fn load_hlod_proxy(eng: &Engine, id: &str, owner: usize) -> Result<usize, String> {
+    let into = eng
+        .assets
+        .borrow()
+        .by_path
+        .get(&format!("gltf:{owner}:{id}"))
+        .copied();
+    add_gltf(eng, id, owner, into, false)
 }
 
 /// Adds glTF `id` to the renderer as a new asset, or `into` an existing
@@ -134,6 +147,7 @@ pub(super) fn add_gltf(
     id: &str,
     owner: usize,
     into: Option<usize>,
+    shared: bool,
 ) -> Result<usize, String> {
     let id = id.to_string();
     // A streamed model draws its proxy until its group is resident.
@@ -163,7 +177,8 @@ pub(super) fn add_gltf(
         for t in &model.textures {
             // A texture another unstreamed model loaded (the cook writes one
             // per image and use, under one id) is shared, not decoded again.
-            if group.is_none()
+            if shared
+                && group.is_none()
                 && eng
                     .render
                     .borrow()
@@ -191,7 +206,10 @@ pub(super) fn add_gltf(
         };
         (model, textures, impostor)
     };
-    let (index, _) = insert_model(
+    if !shared && let Some(index) = into {
+        crate::present::hlod::release_proxy(&mut eng.render.borrow_mut(), handle(index));
+    }
+    let (index, textures) = insert_model(
         eng,
         &id,
         group,
@@ -200,7 +218,15 @@ pub(super) fn add_gltf(
         impostor,
         into,
         Some(owner),
+        shared,
     )?;
+    if !shared {
+        eng.render
+            .borrow_mut()
+            .hlod
+            .proxies
+            .insert(handle(index), textures);
+    }
     // A prefractured model's chunks (`fracture { }`): og.destruction's.
     crate::bind::destruction::load_asset(eng, &id, index)?;
     Ok(index)
@@ -307,6 +333,7 @@ pub(crate) fn insert_model(
     )>,
     into: Option<usize>,
     bundle: Option<usize>,
+    shared: bool,
 ) -> Result<(usize, Vec<og_render::TextureHandle>), String> {
     let id = id.to_string();
     let source = match &group {
@@ -330,6 +357,7 @@ pub(crate) fn insert_model(
     let (parts, prim_meshes) = {
         let rs = &mut *rs;
         let shared = bundle
+            .filter(|_| shared)
             .filter(|_| group.is_none())
             .map(|b| rs.shared.entry(b).or_default());
         model.add_to_shared(&mut rs.scene, textures, shared)
@@ -361,7 +389,7 @@ pub(crate) fn insert_model(
     let lods = match group {
         Some(_) => None,
         None => {
-            let levels = match bundle {
+            let levels = match bundle.filter(|_| shared) {
                 Some(bundle) => {
                     let rs = &mut *rs;
                     model.add_lod_levels_shared(
@@ -469,7 +497,7 @@ pub(crate) fn insert_model(
     let stand_in = group.as_ref().map(|_| {
         let meshes: Vec<_> = prim_meshes
             .iter()
-            .filter_map(|&h| Some((h, rs.scene.mesh(h)?.clone())))
+            .map(|&h| (h, og_render::MeshData::default()))
             .collect();
         let materials: Vec<_> = rs
             .scene

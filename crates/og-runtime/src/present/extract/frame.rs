@@ -48,6 +48,7 @@ struct View {
 /// frame's end (queued sprites, lines, motion, views, the UI, the render
 /// origin).
 pub(crate) fn extract(world: &World, rs: &mut RenderState) {
+    crate::present::hlod::collect(world, rs);
     let mut h = std::mem::take(&mut rs.hierarchy);
     let b = begin(world, rs, &mut h);
     let view = camera(rs, &b);
