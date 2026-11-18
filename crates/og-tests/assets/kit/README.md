@@ -23,6 +23,9 @@ prompt, IDs and checksums) are in the `origin-generated-assets` bucket
 | `boulder.glb` | 4,077 | `meshy/model/showcase-kit-boulder-v1/` | `c6943d632184979e4b114e65c4d6403e9515bb04375f2064bcb43d4379e06e3e` |
 | `pine.glb` | 9,037 | `meshy/model/showcase-kit-pine-v1/` | `3b7220f86ca3e135e07d2b87f0fd621afbc8512b2d30b611b8db73c275fbacac` |
 | `townhouse.glb` | 13,285 | `meshy/model/showcase-weather-townhouse-v1/` | `e5b8117dbbc225d4d6d82dae29b55c4b0c7cacf5250b7eb04e066e5639cb10d5` |
+| `torii.glb` | 7,394 | `meshy/model/showcase-shadows-torii-v3/` | `2afccbe818735ffd528590662f0b6ddbe5df563e38942fc882bcba346e0f96cc` |
+| `toro.glb` | 7,088 | `meshy/model/showcase-shadows-toro-v1/` | `ad620780579b0753bf44166609f116561481f88faac942fe3870c6c50898aca9` |
+| `stone_bench.glb` | 8,000 | `meshy/model/showcase-shadows-stone_bench-v1/` | `730a185c72cd0f01f9e7bc3f0c0ce762a9115d53c0ea7a58abc6d516b2f69989` |
 | `streetlamp.glb` | 3,000 | `meshy/model/showcase-weather-streetlamp-v1/` | `c5a2dd3a0f1544790517fb9d05ff35b8e41c79f3caab72421a86abca1f29c018` |
 | `car.glb` | 11,598 | `meshy/model/showcase-weather-car-v1/` | `7f83959ae7d1156128d96488a07582525e38789557fa1136be694487fa6c8413` |
 | `adobe.glb` | 8,941 | `meshy/model/showcase-weather-adobe-v2/` | `34c3eb207e6c69df6b34a465724b1dffd092bd487d407c4ea597433d07611782` |
@@ -43,6 +46,13 @@ The lighting set's oak wine barrel is Meshy text-to-3D the same way
 (`text_preview` at 4,000 triangles, then `text_refine` with PBR; 30
 credits), its textures at 512 px: the market's and the cellar's barrels,
 where the yard's blue steel drum (`barrel.glb`) would not belong.
+
+The shrine set (torii, stone lantern, granite bench) is Meshy text-to-3D
+the same way, its textures at 512 px: the lighting and shadows scenes'
+court and avenue. The torii is a second version: the first came out with
+four posts (a gazebo, not a gate) and stays in the bucket under `…-v1/`;
+this one, from a reworded prompt, has two round posts, a kasagi
+with upturned ends and a nuki.
 
 The two columns are a second version: their first concepts were marbled in
 large orange and grey patches, which read as camouflage on the shafts, so

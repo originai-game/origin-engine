@@ -314,6 +314,9 @@ pub fn asset(rel: &str) -> Result<std::borrow::Cow<'static, [u8]>, String> {
 
         "kit/winebarrel.glb" => include_bytes!("../assets/kit/winebarrel.glb"),
         "kit/palm.glb" => include_bytes!("../assets/kit/palm.glb"),
+        "kit/torii.glb" => include_bytes!("../assets/kit/torii.glb"),
+        "kit/stone_bench.glb" => include_bytes!("../assets/kit/stone_bench.glb"),
+        "kit/toro.glb" => include_bytes!("../assets/kit/toro.glb"),
         "kit/ground/grass.color.jpg" => include_bytes!("../assets/kit/ground/grass.color.jpg"),
         "kit/ground/grass.normal.jpg" => include_bytes!("../assets/kit/ground/grass.normal.jpg"),
         "kit/ground/grass.orm.jpg" => include_bytes!("../assets/kit/ground/grass.orm.jpg"),

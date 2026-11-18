@@ -36,6 +36,9 @@ pub const MODELS: &[&str] = &[
     "barrel",
     "palm",
     "winebarrel",
+    "torii",
+    "stone_bench",
+    "toro",
 ];
 /// The kit's surfaces (`assets/kit/ground/<name>.{color,normal,orm}.jpg`).
 pub const SURFACES: &[&str] = &["grass", "cobbles", "planks", "stone"];
