@@ -112,7 +112,7 @@ and their pending L4 review are recorded explicitly in the world sheet.
 | Shooter HUD: aim, ammunition, damage direction, killfeed (`shooter/README.md`) | `hud/crosshair`, `hud/ammo-counter`, `hud/damage-direction`, `hud/killfeed`, `shooter/combat-hud` |
 | Shooter HUD: squad, objectives, radar, round, pickups, damage dealt, prompt, effects, vitals, abilities | `shooter/squad`, `shooter/objectives`, `shooter/radar`, `shooter/round`, `shooter/pickups`, `shooter/damage`, `shooter/prompt`, `shooter/effects`, `shooter/vitals`, `shooter/abilities` |
 | Shooter loadout | `shooter/loadout` |
-| Strategy selection, commands, production queue, waves, tower upgrades (`strategy/README.md`) | `strategy/selection`, `strategy/queue`, `strategy/wave`, `strategy/tower` |
+| Strategy resources, clock, waves, alerts, control groups, minimap, selection, production queue, commands, tower upgrades (`strategy/README.md`) | `strategy/resources`, `strategy/clock`, `strategy/wave`, `strategy/alerts`, `strategy/groups`, `strategy/minimap`, `strategy/selection`, `strategy/queue`, `strategy/commands`, `strategy/tower` |
 | Racing telemetry, laps, standings, banner, track map, boost, pedals, car, bonus, garage, results (`racing/README.md`) | `racing/telemetry`, `racing/lap-hud`, `racing/standings`, `racing/banner`, `racing/track-map`, `racing/boost`, `racing/pedals`, `racing/car`, `racing/bonus`, `racing/garage`, `racing/results` |
 | Card hand, piles, collection, deck, rewards, run map (`card/README.md`) | `card/face`, `card/hand`, `card/piles`, `card/collection`, `card/deck-list`, `card/reward`, `card/run-map` |
 | Puzzle goals, boosters, level path, summary (`puzzle/README.md`) | `puzzle/goals`, `puzzle/boosters`, `puzzle/level-path`, `puzzle/summary` |

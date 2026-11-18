@@ -69,11 +69,7 @@ rpg/place-card.svelte	RpgPlaceCard.name RpgPlaceCard.headline	1
 rpg/turn-order.svelte	RpgTurnOrder.title RpgTurnOrder.badge	1
 rpg/world-map.svelte	RpgWorldMap.plate RpgWorldMap.frame	2
 shooter/combat-hud.svelte	CombatHud.vitals CombatHud.plate CombatHud.frame	1
-strategy/queue.svelte	StrategyQueue.name StrategyQueue.headline	1
-strategy/selection.svelte	StrategySelection.meter StrategySelection.well StrategySelection.track	1
-strategy/selection.svelte	StrategySelection.name StrategySelection.headline	1
 strategy/tower.svelte	StrategyTower.name StrategyTower.headline	1
-strategy/wave.svelte	StrategyWave.title StrategyWave.caption	2
 world/interaction-prompt.svelte	InteractionPrompt.name InteractionPrompt.caption	1
 world/interaction-prompt.svelte	InteractionPrompt.reason InteractionPrompt.label InteractionPrompt.caption	1
 world/loot-label.svelte	LootLabel.tag LootLabel.cell	1

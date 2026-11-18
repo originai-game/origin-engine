@@ -68,17 +68,18 @@
 [part="StrategyTower.portrait StrategyTower.picture"] { flex: none; width: var(--size-lg); height: var(--size-lg); overflow: hidden; }
 .art { width: stretch; height: stretch; object-fit: cover; }
 .mark { width: 70%; height: 70%; }
-[part="StrategyTower.title"] { margin: 0; flex: 1; min-width: 0; white-space: nowrap; text-overflow: ellipsis; overflow: hidden; }
+[part="StrategyTower.title"] { margin: 0; flex: 1; min-width: 0; white-space: nowrap; text-overflow: -og-scroll var(--motion-duration-orbit) var(--motion-duration-turn); overflow: hidden; }
 .level { flex: none; white-space: nowrap; padding: 0 var(--space-xs); }
 .stats { padding: var(--space-sm); }
 [part="StrategyTower.row"] { width: stretch; align-items: baseline; }
-.label { min-width: 0; white-space: nowrap; text-overflow: ellipsis; overflow: hidden; }
+.label { min-width: 0; white-space: nowrap; text-overflow: -og-scroll var(--motion-duration-orbit) var(--motion-duration-turn); overflow: hidden; }
 .value, .next { flex: none; white-space: nowrap; }
 .paths { min-block-size: 0; }
 [part~="StrategyTower.path"] { padding: var(--space-sm); }
 .path-mark { flex: none; width: var(--size-md); height: var(--size-md); }
 .path-main { min-width: 0; overflow: hidden; }
-.path-name, .detail { overflow-wrap: anywhere; }
+.path-name { min-width: 0; white-space: nowrap; text-overflow: -og-scroll var(--motion-duration-orbit) var(--motion-duration-turn); overflow: hidden; }
+.detail { overflow-wrap: anywhere; }
 /* A reason wraps: it is the one line that says why, so it is never cut. */
 .reason { white-space: normal; }
 .pips { width: stretch; }
@@ -96,6 +97,43 @@
 #Sell { min-height: var(--size-touch); gap: var(--space-xs); max-width: stretch; }
 .refund { white-space: nowrap; text-overflow: ellipsis; overflow: hidden; min-width: 0; }
 .empty-text { margin: 0; padding: var(--space-md); text-align: center; }
+/* Smoked glass and lit edges, as the strategy HUD's other plates: the
+   tower's portrait in a lit tile, its name large, its stats on a dark
+   well, each path a feed row edged by its state, the buy plates and Sell
+   on glass, an affordable one lit in the accent. */
+:host { padding: calc(12 * var(--font-step-px)) calc(14 * var(--font-step-px)); border: 0; border-radius: 0; color: var(--hud-ink); background: var(--hud-plate-fill); box-shadow: var(--hud-plate-rim); clip-path: polygon(var(--hud-plate-cut) 0, 100% 0, 100% calc(100% - var(--hud-plate-cut)), calc(100% - var(--hud-plate-cut)) 100%, 0 100%, 0 var(--hud-plate-cut)); }
+[part="StrategyTower.band"] { align-items: center; column-gap: calc(10 * var(--font-step-px)); min-height: 0; padding: 0; border-bottom: 0; background: var(--hud-bare-fill); box-shadow: none; }
+[part="StrategyTower.portrait StrategyTower.picture"] { display: flex; align-items: center; justify-content: center; box-sizing: border-box; padding: calc(2 * var(--font-step-px)); background: var(--hud-ready-edge); clip-path: polygon(var(--hud-tag-cut) 0, 100% 0, 100% calc(100% - var(--hud-tag-cut)), calc(100% - var(--hud-tag-cut)) 100%, 0 100%, 0 var(--hud-tag-cut)); }
+.mark { color: var(--hud-glyph); filter: var(--hud-glyph-shadow); }
+[part="StrategyTower.title"] { font-family: inherit; font-size: var(--hud-size-unit); line-height: 1.15; font-weight: var(--hud-figure-weight); color: var(--hud-ink); text-shadow: var(--hud-shadow); }
+.level, .state { font-size: var(--hud-tag-size); line-height: 1.6; font-weight: var(--hud-figure-weight); font-stretch: var(--hud-figure-stretch); font-variant-numeric: var(--hud-figure-numeric); color: var(--hud-ink); background: var(--hud-tag-fill); box-shadow: var(--hud-tag-rim); border: 0; border-radius: 0; clip-path: polygon(var(--hud-tag-cut) 0, 100% 0, 100% calc(100% - var(--hud-tag-cut)), calc(100% - var(--hud-tag-cut)) 100%, 0 100%, 0 var(--hud-tag-cut)); }
+.level { color: var(--hud-gold); }
+.stats { border-radius: 0; background: var(--hud-tag-fill); box-shadow: var(--hud-tag-rim); }
+.label { font: inherit; font-size: var(--hud-label-size); font-weight: var(--hud-label-weight); letter-spacing: var(--hud-label-tracking); text-transform: var(--hud-label-transform); color: var(--hud-label-ink); }
+.value, .next { font-family: inherit; font-size: var(--hud-size-sm); font-weight: var(--hud-figure-weight); font-stretch: var(--hud-figure-stretch); font-variant-numeric: var(--hud-figure-numeric); color: var(--hud-ink); }
+.next { color: var(--hud-boon); }
+[part~="StrategyTower.path"] { column-gap: calc(10 * var(--font-step-px)); border: 0; border-radius: 0; background: var(--hud-feed-fill-start); box-shadow: none; }
+.path-mark { color: var(--hud-glyph); }
+[data-state=affordable] > .path-mark { color: var(--hud-accent); }
+[data-state=unaffordable] > .path-mark { color: var(--hud-harm); }
+[data-state=maxed] > .path-mark { color: var(--hud-gold); }
+.path-name { font: inherit; font-size: var(--hud-size-name); font-weight: var(--hud-figure-weight); color: var(--hud-ink); }
+.detail, .reason { font: inherit; font-size: var(--hud-size-xs); line-height: 1.3; color: var(--hud-ink-dim); }
+.reason { font-weight: var(--hud-label-weight); color: var(--hud-harm); }
+.tier { font-family: inherit; font-size: var(--hud-tag-size); font-weight: var(--hud-figure-weight); font-stretch: var(--hud-figure-stretch); font-variant-numeric: var(--hud-figure-numeric); color: var(--hud-ink-dim); }
+.track { border-radius: 0; transform: skewX(var(--bar-skew)); background: var(--bar-well); box-shadow: var(--bar-rim); }
+.fill { background: var(--hud-accent-fill); }
+[data-state=maxed] .fill { background: var(--hud-stagger-fill); }
+.buy, #Sell { color: var(--hud-ink); }
+.buy::part(base), #Sell::part(base) { border: 0; border-radius: 0; background: var(--hud-plate-fill); box-shadow: var(--hud-plate-rim); clip-path: polygon(var(--hud-plate-cut) 0, 100% 0, 100% calc(100% - var(--hud-plate-cut)), calc(100% - var(--hud-plate-cut)) 100%, 0 100%, 0 var(--hud-plate-cut)); }
+.buy[data-state=affordable]::part(base) { box-shadow: var(--hud-plate-lit-rim); }
+.cost { font-family: inherit; font-size: var(--hud-size-sm); font-weight: var(--hud-figure-weight); font-stretch: var(--hud-figure-stretch); font-variant-numeric: var(--hud-figure-numeric); color: var(--hud-ink); }
+.cost[data-state=unaffordable] { color: var(--hud-harm); }
+.state[data-state=maxed] { color: var(--hud-gold); }
+.state[data-state=unaffordable], .state[data-state=locked] { color: var(--hud-harm); }
+#Sell { font-size: var(--hud-label-size); font-weight: var(--hud-figure-weight); letter-spacing: var(--hud-label-tracking); text-transform: var(--hud-label-transform); }
+.refund { color: var(--hud-gold); letter-spacing: normal; text-transform: none; }
+.empty-text { font-size: var(--hud-label-size); font-weight: var(--hud-label-weight); letter-spacing: var(--hud-label-tracking); text-transform: var(--hud-label-transform); color: var(--hud-label-ink); }
 @container (width < 600px) {
   [part~="StrategyTower.path"] { display: grid; grid-template-columns: auto minmax(0, 1fr); padding: var(--space-sm); }
   .buy { grid-column: 2; min-width: 0; max-width: none; padding: var(--space-xs) var(--space-sm); }

@@ -81,7 +81,7 @@ type View = { width: number; height: number; dpr: number; safeArea: { left: numb
 const DESKTOP: View = { width: 1280, height: 720, dpr: 1.5, safeArea: { left: 0, top: 0, right: 0, bottom: 0 }, coarsePointer: false, breakpoint: "desktopHd" };
 const PHONE: View = { width: 390, height: 844, dpr: 2, safeArea: { left: 0, top: 47, right: 0, bottom: 34 }, coarsePointer: true, breakpoint: "phonePortrait" };
 
-function engine(component: string, stores: Record<string, unknown>, o: { events?: Event[]; view?: View; textScale?: number; pack?: Pack } = {}): Engine {
+function engine(component: string, stores: Record<string, unknown>, o: { events?: Event[]; view?: View; textScale?: number; pack?: Pack | false } = {}): Engine {
   const events = o.events ?? [];
   const Collect = defineSystem("StrategyKitEvents", {}, (_q, _t, world) => {
     for (const e of og.ui.docEvents(world)) events.push(e as unknown as Event);
@@ -89,9 +89,13 @@ function engine(component: string, stores: Record<string, unknown>, o: { events?
   const r = createEngine(og.game({
     systems: [Collect],
     start(world) {
-      const style = og.load.style(world, `@styles/${o.pack ?? PACKS[0]}`);
-      if (!style.ok) throw new Error(style.reason);
-      og.ui.configure(world, { style: style.value, textScale: o.textScale ?? 1 });
+      // pack false: the default style the HUD pages are drawn in.
+      if (o.pack === false) og.ui.configure(world, { style: null, textScale: o.textScale ?? 1 });
+      else {
+        const style = og.load.style(world, `@styles/${o.pack ?? PACKS[0]}`);
+        if (!style.ok) throw new Error(style.reason);
+        og.ui.configure(world, { style: style.value, textScale: o.textScale ?? 1 });
+      }
       for (const path of DOCUMENTS(component)) {
         const loaded = og.load.document(world, path);
         if (!loaded.ok) throw new Error(`${path}: ${loaded.reason}`);
@@ -135,9 +139,11 @@ const texts = (e: Engine): string[] => elements(e).filter((x) => x.width > 0).ma
 /** The button of a keyed row: the row's own (its path ends in #key) or the one inside it (under #key/). */
 const rowButton = (e: Engine, k: string): El => elements(e).find((x) => x.role === "button" && (x.path.endsWith(`#${k}`) || x.path.includes(`#${k}/`)) && x.width > 0)!;
 
+const ALL = ["resources", "clock", "wave", "alerts", "groups", "minimap", "selection", "queue", "commands", "tower"];
+
 // One test per pack, member and view: each fixture boots its own engine.
 for (const pack of PACKS) for (const [view, viewport] of [["desktop", DESKTOP], ["phone", PHONE]] as const) {
-  for (const name of ["selection", "queue", "wave", "tower"]) {
+  for (const name of ALL) {
     test(`${name} mounts from every fixture on a ${view} in ${pack} without errors, inside the screen's width`, () => {
       for (const fixture of Object.keys(MEMBERS[name]!.fixtures)) {
         run(member(name, fixture, { view: viewport, pack }), (e) => {
@@ -145,6 +151,23 @@ for (const pack of PACKS) for (const [view, viewport] of [["desktop", DESKTOP], 
           expect(`${name}/${fixture}: ${unresolved(e).join("; ")}`).toBe(`${name}/${fixture}: `);
           const frame = find(e, /^t:page\/Root\/node1$/)!;
           expect(`${name}/${fixture} ${frame.x >= -0.5 && frame.x + frame.width <= viewport.width + 0.5}`).toBe(`${name}/${fixture} true`);
+        });
+      }
+    }, 180_000);
+  }
+}
+
+// The HUD's members in the default style the field page is drawn in, at
+// 100 % and 150 % text: nothing drawn spills past the screen's sides.
+for (const [view, viewport] of [["desktop", DESKTOP], ["phone", PHONE]] as const) for (const textScale of [1, 1.5]) {
+  for (const name of ALL) {
+    test(`${name} mounts from every fixture on a ${view} at ${textScale * 100} % in the default style without errors, inside the screen's width`, () => {
+      for (const fixture of Object.keys(MEMBERS[name]!.fixtures)) {
+        run(member(name, fixture, { view: viewport, pack: false, textScale }), (e) => {
+          expect(`${name}/${fixture}: ${errors(e).join("; ")}`).toBe(`${name}/${fixture}: `);
+          expect(`${name}/${fixture}: ${unresolved(e).join("; ")}`).toBe(`${name}/${fixture}: `);
+          const spill = elements(e).filter((x) => x.width > 0 && !x.clipped && (x.x < -0.5 || x.x + x.width > viewport.width + 0.5)).map((x) => `${x.path} [${x.x}, ${x.x + x.width}]`);
+          expect(`${name}/${fixture}: ${spill.join(", ")}`).toBe(`${name}/${fixture}: `);
         });
       }
     }, 180_000);
@@ -162,50 +185,42 @@ test("every member names its frame first and only its own parts", () => {
   }
 });
 
-test("StrategySelection: a cell chooses by key, a command reports its key, a disabled one is silent and says why", () => {
+test("StrategySelection: a card chooses by key; the name, count, line, stats and health are shown; a lone unit draws no cards", () => {
   const events: Event[] = [];
   run(member("selection", "default", { events }), (e) => {
-    expect(elements(e).find((x) => x.role === "option" && x.path.endsWith("#spear"))!.states).toContain("selected");
-    tap(e, elements(e).find((x) => x.role === "option" && x.path.endsWith("#archer"))!);
-    tap(e, rowButton(e, "stop"));
-    tap(e, rowButton(e, "rally"));
-    tap(e, rowButton(e, "charge"));
-    expect(intents(events, ["choose", "command"])).toEqual(["choose:archer", "command:stop"]);
-    expect(rowButton(e, "rally").disabled).toBeTrue();
-    // The reason and the cooldown are words, not colours; a toggle that is on says On.
-    expect(texts(e)).toContain("needs the banner");
-    expect(texts(e)).toContain("12s");
-    expect(texts(e)).toContain("on");
-    expect(texts(e)).toContain("×6");
-    expect(texts(e)).toContain("spearmen");
+    expect(elements(e).find((x) => x.role === "option" && x.path.endsWith("#m1"))!.states).toContain("selected");
+    tap(e, elements(e).find((x) => x.role === "option" && x.path.endsWith("#a3"))!);
+    expect(intents(events, ["choose"])).toEqual(["choose:a3"]);
+    for (const want of ["men-at-arms", "×12", "heavy infantry · veteran ii", "atk 12", "arm 4", "spd 3.2", "1,476", "/ 1,800"]) expect(texts(e)).toContain(want);
+    expect(elements(e).filter((x) => x.role === "option" && x.width > 0).length).toBe(12);
   });
-  run(member("selection", "disabled"), (e) => {
-    for (const k of ["build", "repair", "burrow"]) expect(rowButton(e, k).disabled).toBeTrue();
-    expect(texts(e)).toContain("no space here");
-    expect(texts(e)).toContain("nothing damaged");
+  run(member("selection", "single"), (e) => {
+    expect(texts(e)).toContain("training");
+    expect(elements(e).filter((x) => x.role === "option").length).toBe(0);
   });
   run(member("selection", "empty"), (e) => expect(texts(e)).toContain("nothing selected"));
 });
 
-test("StrategySelection: unit tray fallback icons stay square and centered at desktop and phone sizes", () => {
-  for (const pack of PACKS) for (const view of [DESKTOP, PHONE]) {
-    run(member("selection", "default", { pack, view }), (e) => {
-      const drawn = elements(e);
-      for (const cell of drawn.filter((x) => x.role === "option")) {
-        const icon = drawn.find((x) => x.role === "image" && x.path.startsWith(`${cell.path}/`))!;
-        expect(icon.width).toBeGreaterThan(cell.width / 2);
-        expect(Math.abs(icon.width - icon.height)).toBeLessThanOrEqual(1);
-        expect(Math.abs(icon.x + icon.width / 2 - cell.x - cell.width / 2)).toBeLessThanOrEqual(1);
-        expect(Math.abs(icon.y + icon.height / 2 - cell.y - cell.width / 2)).toBeLessThanOrEqual(1);
-      }
-    });
-  }
+test("StrategySelection: a phone shows the first four cards whole and a +n tile counting the rest", () => {
+  run(member("selection", "default", { view: PHONE }), (e) => {
+    const cards = elements(e).filter((x) => x.role === "option" && x.width > 0);
+    expect(cards.length).toBe(4);
+    const count = elements(e).find((x) => x.text === "+8" && x.width > 0)!;
+    expect(count).toBeDefined();
+    const more = elements(e).find((x) => x.path === count.path.slice(0, count.path.lastIndexOf("/")))!;
+    const frame = elements(e).find((x) => x.role === "listbox" && x.width > 0)!;
+    for (const tile of [...cards, more]) {
+      expect(Math.abs(tile.width - cards[0]!.width)).toBeLessThanOrEqual(1);
+      expect(tile.x + tile.width).toBeLessThanOrEqual(frame.x + frame.width + 0.5);
+    }
+  });
+  run(member("selection", "groups", { view: PHONE }), (e) => expect(elements(e).some((x) => /^\+\d+$/.test(x.text) && x.width > 0)).toBeFalse());
 });
 
-test("StrategySelection: the chosen subgroup keeps its key through a reorder", () => {
+test("StrategySelection: the chosen card keeps its key through a reorder", () => {
   const events: Event[] = [];
-  run(member("selection", "default", { events }), (e) => {
-    const units = og.ui.scope(e.world, "t").collection("units", MEMBERS.selection!.fixtures.default!.units as { id: string }[], { key: "id" });
+  run(member("selection", "groups", { events }), (e) => {
+    const units = og.ui.scope(e.world, "t").collection("units", MEMBERS.selection!.fixtures.groups!.units as { id: string }[], { key: "id" });
     units.move("captain", "spear");
     e.advance(3);
     expect(elements(e).find((x) => x.role === "option" && x.path.endsWith("#spear"))!.states).toContain("selected");
@@ -214,34 +229,68 @@ test("StrategySelection: the chosen subgroup keeps its key through a reorder", (
   });
 });
 
-test("StrategyQueue: cancel reports the order's key; count over limit, Queue full and each state are words", () => {
+test("StrategyCommands: a tile reports its key; a disabled, an unaffordable and an empty tile send nothing; cost, cooldown and the info card are words", () => {
+  const events: Event[] = [];
+  run(member("commands", "default", { events }), (e) => {
+    tap(e, rowButton(e, "hold"));
+    tap(e, rowButton(e, "tower"));
+    expect(intents(events, ["command"])).toEqual(["command:hold"]);
+    expect(rowButton(e, "tower").disabled).toBeTrue();
+    for (const want of ["rally banner", "18", "200", "250", "cooldown 45 s", "ready in 18 s"]) expect(texts(e)).toContain(want);
+    expect(elements(e).filter((x) => x.role === "button" && x.width > 0).length).toBe(7);
+  });
+  run(member("commands", "unaffordable"), (e) => {
+    expect(rowButton(e, "castle").disabled).toBeTrue();
+    expect(rowButton(e, "age").disabled).toBeTrue();
+    expect(texts(e)).toContain("need 650 stone");
+  });
+  run(member("commands", "cooling"), (e) => {
+    expect(rowButton(e, "charge").disabled).toBeTrue();
+    expect(texts(e)).toContain("57");
+    expect(texts(e)).toContain("ready in 57 s");
+  });
+});
+
+test("StrategyCommands: on a phone the grid fits the width and no info card stands over it", () => {
+  for (const textScale of [1, 1.5]) run(member("commands", "overflow", { view: PHONE, pack: false, textScale }), (e) => {
+    for (const c of MEMBERS.commands!.fixtures.overflow!.commands as { id: string }[]) {
+      const b = rowButton(e, c.id);
+      expect(`${textScale} ${c.id} ${b.x >= -0.5 && b.x + b.width <= PHONE.width + 0.5}`).toBe(`${textScale} ${c.id} true`);
+    }
+    expect(elements(e).some((x) => x.role === "tooltip" && x.width > 0)).toBeFalse();
+  });
+});
+
+test("StrategyQueue: a tile cancels by key; the count over the limit, Queue full, Paused and Blocked with its reason are words", () => {
   const events: Event[] = [];
   run(member("queue", "default", { events }), (e) => {
     tap(e, rowButton(e, "o2"));
-    tap(e, rowButton(e, "o3"));
-    expect(intents(events, ["cancel"])).toEqual(["cancel:o2", "cancel:o3"]);
-    for (const want of ["4/5", "waiting", "blocked", "need 3 supply", "×2", "0:07"]) expect(texts(e)).toContain(want);
-    expect(texts(e)).not.toContain("queue full");
+    expect(intents(events, ["cancel"])).toEqual(["cancel:o2"]);
+    for (const want of ["barracks queue", "3 / 5", "0:08"]) expect(texts(e)).toContain(want);
   });
-  run(member("queue", "full"), (e) => {
-    expect(texts(e)).toContain("queue full");
-    expect(texts(e)).toContain("5/5");
-  });
+  run(member("queue", "full"), (e) => expect(texts(e)).toContain("queue full 5 / 5"));
   run(member("queue", "paused"), (e) => expect(texts(e)).toContain("paused"));
+  run(member("queue", "blocked"), (e) => {
+    expect(texts(e)).toContain("blocked");
+    expect(texts(e)).toContain("need 3 supply");
+  });
   run(member("queue", "empty"), (e) => expect(texts(e)).toContain("nothing in production"));
 });
 
-test("StrategyWave: wave n of m, the countdown, the enemies by kind, and Call early once and only when allowed", () => {
+test("StrategyWave: the wave and its name, the countdown, the enemies by kind, and Call early once and only when allowed", () => {
+  run(member("wave", "default"), (e) => {
+    for (const want of ["wave 7 · siege", "0:42"]) expect(texts(e)).toContain(want);
+    expect(find(e, /\/CallEarly$/)?.width ?? 0).toBe(0);
+  });
   const events: Event[] = [];
-  run(member("wave", "default", { events }), (e) => {
-    for (const want of ["6", "/20", "goblin", "×18", "warg rider", "get ready"]) expect(texts(e)).toContain(want);
+  run(member("wave", "incoming", { events }), (e) => {
+    for (const want of ["wave 6 of 20", "goblin", "×18", "warg rider", "+35 gold"]) expect(texts(e)).toContain(want);
     expect(elements(e).some((x) => x.role === "timer" && x.width > 0)).toBeTrue();
     tap(e, find(e, /\/CallEarly$/)!);
     expect(intents(events, ["callEarly"])).toEqual(["callEarly:"]);
   });
   run(member("wave", "active"), (e) => {
     expect(texts(e)).toContain("under attack");
-    expect(find(e, /\/CallEarly$/)?.width ?? 0).toBe(0);
     expect(elements(e).some((x) => x.role === "timer" && x.width > 0)).toBeFalse();
   });
   run(member("wave", "final"), (e) => {
@@ -250,16 +299,16 @@ test("StrategyWave: wave n of m, the countdown, the enemies by kind, and Call ea
   run(member("wave", "done"), (e) => expect(texts(e)).toContain("all waves cleared"));
 });
 
-test("StrategyWave: a long phone reward wraps without splitting Call early", () => {
-  for (const pack of ["default", ...PACKS] as const) {
+test("StrategyWave: a long phone reward scrolls in its line without splitting Call early", () => {
+  for (const pack of [false, ...PACKS] as const) {
     let labelHeight = 0;
-    for (const fixture of ["default", "overflow"]) run(member("wave", fixture, { view: PHONE, ...(pack === "default" ? {} : { pack }) }), (e) => {
-      if (pack === "default") { og.ui.configure(e.world, { style: null }); e.advance(3); }
+    for (const fixture of ["incoming", "overflow"]) run(member("wave", fixture, { view: PHONE, pack }), (e) => {
       const button = find(e, /\/CallEarly$/)!;
       const label = elements(e).find((x) => x.path.startsWith(`${button.path}/`) && x.text.toLowerCase() === "call early")!;
       expect(label).toBeDefined();
-      if (fixture === "default") labelHeight = label.height;
-      else expect(label.height).toBe(labelHeight);
+      if (fixture === "incoming") labelHeight = label.height;
+      // One line in both: a split label would double its height.
+      else expect(Math.abs(label.height - labelHeight)).toBeLessThanOrEqual(1);
       for (const text of elements(e).filter((x) => x.path.startsWith(`${button.path}/`) && x.text)) {
         expect(text.clipped).not.toBeTrue();
         expect(text.x).toBeGreaterThanOrEqual(button.x);
@@ -270,44 +319,58 @@ test("StrategyWave: a long phone reward wraps without splitting Call early", () 
   }
 });
 
+test("StrategyResources, StrategyClock, StrategyAlerts, StrategyGroups and StrategyMinimap show what the game told them, in words as well as colour", () => {
+  run(member("resources", "default"), (e) => {
+    for (const want of ["1,250", "+12/s", "−2/s", "47", "/ 50", "near cap"]) expect(texts(e)).toContain(want);
+  });
+  run(member("resources", "tier"), (e) => expect(texts(e)).toContain("castle age"));
+  run(member("clock", "default"), (e) => {
+    for (const want of ["day 3", "12:34", "×1"]) expect(texts(e)).toContain(want);
+  });
+  run(member("clock", "paused"), (e) => expect(texts(e)).toContain("paused"));
+  run(member("alerts", "default"), (e) => {
+    expect(texts(e)).toContain("the east tower is under attack");
+    expect(texts(e)).toContain("space");
+  });
+  const events: Event[] = [];
+  run(member("groups", "default", { events }), (e) => {
+    tap(e, rowButton(e, "g2"));
+    expect(intents(events, ["pick"])).toEqual(["pick:g2"]);
+    for (const want of ["1", "12", "6"]) expect(texts(e)).toContain(want);
+  });
+  run(member("minimap", "default"), (e) => {
+    expect(elements(e).filter((x) => x.name === "Raiders").length).toBe(2);
+    expect(elements(e).some((x) => x.name === "The east tower is under attack")).toBeTrue();
+  });
+});
+
 for (const pack of PACKS) for (const textScale of [1, 1.5]) {
-  test(`on a phone at ${textScale * 100} % text in ${pack}, long names and reasons keep every row's or command's button reachable inside its panel`, () => {
-    for (const [name, list] of [["queue", "items"], ["tower", "paths"], ["selection", "commands"]] as const) {
-      run(member(name, "overflow", { view: PHONE, textScale, pack }), (e) => {
-        for (const { id } of MEMBERS[name]!.fixtures.overflow![list] as { id: string }[]) {
-          let b = rowButton(e, id);
-          if (name === "tower") {
-            // Wrapped descriptions may need more than one screen. Scroll even
-            // disabled paths into view, then check their whole buy button.
-            const paths = elements(e).find((x) => x.role === "list" && x.name === "Upgrades")!;
-            expect(paths).toBeDefined();
-            for (let step = 0; step < 24 && (!b || b.clipped); step++) {
-              e.probe.commands(`0:touch_move:${centre(paths)};0.02:scroll:0,64`);
-              e.advance(12);
-              b = rowButton(e, id);
-            }
-            expect(b).toBeDefined();
-            expect(b.clipped).toBeFalse();
-            expect(b.x).toBeGreaterThanOrEqual(paths.x - 0.5);
-            expect(b.x + b.width).toBeLessThanOrEqual(paths.x + paths.width + 0.5);
-          }
-          expect(`${textScale} ${name} ${id} ${!!b && b.x >= -0.5 && b.x + b.width <= PHONE.width + 0.5}`).toBe(`${textScale} ${name} ${id} true`);
+  test(`on a phone at ${textScale * 100} % text in ${pack}, a long tower keeps every path's buy button reachable inside its panel`, () => {
+    run(member("tower", "overflow", { view: PHONE, textScale, pack }), (e) => {
+      for (const { id } of MEMBERS.tower!.fixtures.overflow!.paths as { id: string }[]) {
+        let b = rowButton(e, id);
+        // Wrapped descriptions may need more than one screen. Scroll even
+        // disabled paths into view, then check their whole buy button.
+        const paths = elements(e).find((x) => x.role === "list" && x.name === "Upgrades")!;
+        expect(paths).toBeDefined();
+        for (let step = 0; step < 24 && (!b || b.clipped); step++) {
+          e.probe.commands(`0:touch_move:${centre(paths)};0.02:scroll:0,64`);
+          e.advance(12);
+          b = rowButton(e, id);
         }
-        // Command plates keep to their grid tracks: none overlaps the next.
-        const plates = list === "commands" ? (MEMBERS.selection!.fixtures.overflow!.commands as { id: string }[]).map((c) => rowButton(e, c.id)).filter(Boolean) : [];
-        for (const [i, a] of plates.entries()) for (const b of plates.slice(i + 1)) {
-          const apart = a.x + a.width <= b.x + 0.5 || b.x + b.width <= a.x + 0.5 || a.y + a.height <= b.y + 0.5 || b.y + b.height <= a.y + 0.5;
-          expect(`${textScale} ${a.path.split("#").pop()}/${b.path.split("#").pop()} ${apart}`).toBe(`${textScale} ${a.path.split("#").pop()}/${b.path.split("#").pop()} true`);
-        }
-      });
-    }
+        expect(b).toBeDefined();
+        expect(b.clipped).toBeFalse();
+        expect(b.x).toBeGreaterThanOrEqual(paths.x - 0.5);
+        expect(b.x + b.width).toBeLessThanOrEqual(paths.x + paths.width + 0.5);
+      }
+    });
   }, 120_000);
 }
 
 test("StrategyWave and StrategyTower: the keyboard reaches Call early and Sell and confirms them", () => {
-  for (const [name, target, intent] of [["wave", /\/CallEarly$/, "callEarly:"], ["tower", /\/Sell$/, "sell:"]] as const) {
+  for (const [name, fixture, target, intent] of [["wave", "incoming", /\/CallEarly$/, "callEarly:"], ["tower", "default", /\/Sell$/, "sell:"]] as const) {
     const events: Event[] = [];
-    run(member(name, "default", { events }), (e) => {
+    run(member(name, fixture, { events }), (e) => {
       const focused = () => elements(e).find((x) => x.states?.includes("focused"))?.path ?? "";
       for (let i = 0; i < 8 && !target.test(focused()); i++) {
         e.probe.commands("0:key_down:Tab;0.05:key_up:Tab");
@@ -320,7 +383,6 @@ test("StrategyWave and StrategyTower: the keyboard reaches Call early and Sell a
     });
   }
 });
-
 test("StrategyTower: only an affordable path upgrades, with its key; each state is a word; Sell reports and a refused sale is silent", () => {
   const events: Event[] = [];
   run(member("tower", "default", { events }), (e) => {

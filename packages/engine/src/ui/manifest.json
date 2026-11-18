@@ -1840,15 +1840,79 @@
     ],
     "imports": []
   },
+  "StrategyAlerts": {
+    "id": "@ui/components/strategy/alerts.svelte",
+    "screen": false,
+    "control": null,
+    "uses": [],
+    "files": [
+      "@ui/components/strategy/alerts.svelte",
+      "@ui/components/strategy/strategy.en.ogt"
+    ],
+    "imports": []
+  },
+  "StrategyClock": {
+    "id": "@ui/components/strategy/clock.svelte",
+    "screen": false,
+    "control": null,
+    "uses": [],
+    "files": [
+      "@ui/components/strategy/clock.svelte",
+      "@ui/components/strategy/strategy.en.ogt"
+    ],
+    "imports": []
+  },
+  "StrategyCommands": {
+    "id": "@ui/components/strategy/commands.svelte",
+    "screen": false,
+    "control": null,
+    "uses": [],
+    "files": [
+      "@ui/components/strategy/commands.svelte",
+      "@ui/components/strategy/strategy.en.ogt"
+    ],
+    "imports": []
+  },
+  "StrategyGroups": {
+    "id": "@ui/components/strategy/groups.svelte",
+    "screen": false,
+    "control": null,
+    "uses": [],
+    "files": [
+      "@ui/components/strategy/groups.svelte",
+      "@ui/components/strategy/strategy.en.ogt"
+    ],
+    "imports": []
+  },
+  "StrategyMinimap": {
+    "id": "@ui/components/strategy/minimap.svelte",
+    "screen": false,
+    "control": null,
+    "uses": [],
+    "files": [
+      "@ui/components/strategy/minimap.svelte",
+      "@ui/components/strategy/strategy.en.ogt"
+    ],
+    "imports": []
+  },
   "StrategyQueue": {
     "id": "@ui/components/strategy/queue.svelte",
     "screen": false,
     "control": null,
-    "uses": [
-      "ProgressBar"
-    ],
+    "uses": [],
     "files": [
       "@ui/components/strategy/queue.svelte",
+      "@ui/components/strategy/strategy.en.ogt"
+    ],
+    "imports": []
+  },
+  "StrategyResources": {
+    "id": "@ui/components/strategy/resources.svelte",
+    "screen": false,
+    "control": null,
+    "uses": [],
+    "files": [
+      "@ui/components/strategy/resources.svelte",
       "@ui/components/strategy/strategy.en.ogt"
     ],
     "imports": []
@@ -1857,9 +1921,7 @@
     "id": "@ui/components/strategy/selection.svelte",
     "screen": false,
     "control": null,
-    "uses": [
-      "StatBar"
-    ],
+    "uses": [],
     "files": [
       "@ui/components/strategy/selection.svelte",
       "@ui/components/strategy/strategy.en.ogt"
@@ -1881,9 +1943,7 @@
     "id": "@ui/components/strategy/wave.svelte",
     "screen": false,
     "control": null,
-    "uses": [
-      "HudTimer"
-    ],
+    "uses": [],
     "files": [
       "@ui/components/strategy/strategy.en.ogt",
       "@ui/components/strategy/wave.svelte"
