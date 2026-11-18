@@ -171,6 +171,18 @@ looks and colour LUTs (`.cube`).
   directory again keeps its groups. Ungrouped assets stay resident; unloading
   a cell alone does not evict them. Group unloads keep model proxies and
   bundle manifests, not the full meshes, textures or cell-scene blobs.
+- To discard a runtime parcel's remaining proxies and model caches, unload
+  its groups, despawn its placements and clear its handles from components,
+  resources and persisted cells, then call `og.load.release` on its bundle.
+  Inside a system this queues a close at the next tick boundary; status is
+  `pending` until the engine checks liveness. Between ticks it can finish
+  immediately. A refused close leaves the bundle open: status is `failed`
+  and `og.load.error` starts with `bundle release refused:` and names the
+  reference to remove. Retry release after removing it. A successful close
+  also answers `failed`, with an error naming the release; reopening creates
+  fresh asset handles. This changes memory and presentation only, never
+  world hashes, events or the load completion journal. The boot bundle
+  cannot close.
 - A scene, sub-scene or model resolves its dependencies from its own bundle
   first. Loads are cached by bundle as well as asset path, so v1 and v2 can
   use the same paths without drawing each other's models or textures.

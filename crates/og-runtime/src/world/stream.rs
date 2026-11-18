@@ -200,6 +200,40 @@ impl Slot {
     }
 }
 
+/// A bundle can close only after every group has unloaded, including assets
+/// still retained by the frame. Validation is separate so refusal is atomic.
+pub(crate) fn check_bundle_release(eng: &Engine, bundle: usize) -> Result<(), String> {
+    let a = eng.assets.borrow();
+    for g in a.stream.groups.iter().filter(|g| g.bundle == bundle) {
+        if !matches!(g.state, State::Unloaded | State::Failed)
+            || a.stream.retained.iter().any(|r| r.group == g.desc.name)
+        {
+            return Err(format!(
+                "group '{}' is still {}; unload it before releasing its bundle",
+                g.desc.name,
+                g.state.name()
+            ));
+        }
+    }
+    Ok(())
+}
+
+pub(crate) fn forget_bundle(eng: &Engine, bundle: usize) {
+    let mut a = eng.assets.borrow_mut();
+    let s = &mut a.stream;
+    let names: Vec<_> = s
+        .groups
+        .iter()
+        .filter(|g| g.bundle == bundle)
+        .map(|g| g.desc.name.clone())
+        .collect();
+    for name in &names {
+        s.slots.remove(name);
+        s.scenes.remove(name);
+    }
+    s.groups.retain(|g| g.bundle != bundle);
+}
+
 /// What a streaming read is for.
 #[derive(Clone, Debug, PartialEq)]
 enum Need {

@@ -299,6 +299,14 @@ fn apply(eng: &Engine, job: Job, recorded_failure: bool) -> bool {
 /// world state and stay. Releasing again is a no-op.
 pub(crate) fn release(eng: &Engine, index: Option<usize>) -> Result<(), String> {
     let i = index.ok_or("not an asset handle")?;
+    if eng.assets.borrow().entries.get(i).is_some_and(|e| {
+        matches!(e.payload, Payload::Bundle { .. })
+            || (e.bundle.is_none()
+                && e.status == Status::Pending
+                && matches!(e.payload, Payload::None))
+    }) {
+        return crate::world::assets::release_bundle(eng, i);
+    }
     let mut a = eng.assets.borrow_mut();
     let path = a.entries.get(i).ok_or("not an asset handle")?.path.clone();
     let released = format!("{path} was released (og.load.release)");

@@ -414,6 +414,16 @@ on the CPU; the probe's memory report and `dump_memory` show both. What
 still names its handles draws nothing and nothing breaks. Physics shapes
 built from its geometries are world state and stay.
 
+For runtime bundles, release closes the bundle only when no live component,
+resource, persisted cell or HLOD placement references it and its groups are
+unloaded. Inside a system the check runs at the next tick boundary (`pending`
+until then); between ticks it can finish immediately. Poll `og.load.error`:
+`bundle release refused:` means the bundle remains open and can be retried
+after removing the named references; an error naming the release means it
+closed. Both outcomes use status `failed`, without events or hash changes.
+The boot bundle and individual cooked assets cannot be released this way.
+See **world §4** for parcel lifetime and streaming.
+
 <a id="guide-loading-11"></a>
 ### `loading §11` Composed effects
 

@@ -428,8 +428,12 @@ fn hlod_parcels_release_full_bvhs_and_dead_placement_proxies() {
     ));
     let g = Game { engine, held };
     g.place("world.ogt");
+    let mut bundles = Vec::new();
     for i in 0..PARCELS {
-        assert_eq!(og_load_status(engine, g.open(&base.join(id(i)))), "ready");
+        let bundle = g.open(&base.join(id(i)));
+        assert_eq!(og_load_status(engine, bundle), "ready");
+        assert_eq!(g.open(&base.join(id(i))), bundle);
+        bundles.push(bundle);
         g.place(&format!("{}/place.ogt", id(i)));
     }
     g.frame();
@@ -442,6 +446,13 @@ fn hlod_parcels_release_full_bvhs_and_dead_placement_proxies() {
     assert!(
         placed.textures > PARCELS as u64 * 32 * 1024,
         "no HLOD atlases: {placed:?}"
+    );
+    value(host_impl::answer(og_load_release(engine, bundles[0])));
+    assert_eq!(og_load_status(engine, bundles[0]), "failed");
+    assert!(
+        og_load_error(engine, bundles[0])
+            .unwrap()
+            .starts_with("bundle release refused:")
     );
     let start = og_core::alloc::heap().unwrap().live;
     for i in 0..PARCELS {
@@ -518,12 +529,301 @@ fn hlod_parcels_release_full_bvhs_and_dead_placement_proxies() {
             < PARCELS * 1024 * 1024,
         "visited parcels retain >1 MiB of heap + mesh upload payload each: {start} -> {end}, {placed:?} -> {visited:?}"
     );
+    let before_close = og_core::alloc::heap().unwrap().live;
+    for (i, &bundle) in bundles.iter().enumerate() {
+        let hash = g.dump()["hash"].clone();
+        value(host_impl::answer(og_load_release(engine, bundle)));
+        value(host_impl::answer(og_load_release(engine, bundle)));
+        assert_eq!(og_load_status(engine, bundle), "failed");
+        assert_eq!(
+            g.dump()["hash"],
+            hash,
+            "closing assets must not change world state"
+        );
+        g.frame();
+        println!(
+            "HLOD_CURVE phase=closed parcels={} heap={} textures={} meshes={}",
+            i + 1,
+            og_core::alloc::heap().unwrap().live,
+            g.held.get().textures,
+            g.held.get().meshes
+        );
+    }
+    assert_eq!(
+        g.held.get().meshes,
+        0,
+        "cached proxy meshes survived bundle release"
+    );
+    assert!(
+        og_core::alloc::heap().unwrap().live < before_close,
+        "closing bundles retained their CPU model caches"
+    );
     // Reload must rebuild resources rather than returning an empty cached model.
+    assert_eq!(og_load_status(engine, g.open(&base.join("a-v1"))), "ready");
     g.place("a-v1/place.ogt");
     g.frame();
     assert!(g.held.get().instances > 0 && g.held.get().textures > away.textures + 16 * 1024);
     assert!(og_engine_destroy(engine));
     std::fs::remove_dir_all(base).unwrap();
+}
+
+#[test]
+fn bundle_close_from_system_is_pending_then_refused_or_released_at_boundary() {
+    let _lock = TEST_LOCK.lock().unwrap();
+    struct Close {
+        disk: Disk,
+        requested: Cell<Option<f64>>,
+        pending_manifest: Cell<bool>,
+    }
+    impl Hooks for Close {
+        fn read_asset(&self, path: &str) -> Fetch<Vec<u8>> {
+            if self.pending_manifest.get() {
+                return Fetch::Pending;
+            }
+            self.disk.read_asset(path)
+        }
+        fn dispatch(&self, call: &Dispatch) -> Result<String, String> {
+            if call.kind == 0
+                && let Some(bundle) = self.requested.take()
+            {
+                value(host_impl::answer(og_load_release(call.engine, bundle)));
+                assert_eq!(og_load_status(call.engine, bundle), "pending");
+                assert_eq!(og_load_error(call.engine, bundle), None);
+            }
+            Ok(String::new())
+        }
+    }
+    let root = PathBuf::from(env!("CARGO_TARGET_TMPDIR"))
+        .join(format!("og-runtime-close-system-{}", std::process::id()));
+    cook(
+        &root,
+        &[(
+            "world.ogt",
+            b"type scene\nversion 1\n---\nentity \"kept\" {\n}\n".to_vec(),
+        )],
+    );
+    let hooks = Rc::new(Close {
+        disk: Disk {
+            delayed: false,
+            reads: RefCell::default(),
+        },
+        requested: Cell::new(None),
+        pending_manifest: Cell::new(false),
+    });
+    set_hooks(hooks.clone());
+    og_host_begin_bundle();
+    value(host_impl::answer(og_reflect_define_resource(
+        "Kept".into(),
+        json!([{"name":"scene", "kind":"Asset", "default":0}]).to_string(),
+    )));
+    let system = og_system_define_system("Close".into(), "{}".into(), 1);
+    let game = og_game_game(Some(json!({"systems":[system]}).to_string()));
+    let engine = value(og_engine_create(game, "{}".into())).as_u64().unwrap() as u32;
+    let control = value(og_engine_create(game, "{}".into())).as_u64().unwrap() as u32;
+    let bundle = value(host_impl::answer(og_load_bundle(
+        engine,
+        root.join("cooked").to_string_lossy().into(),
+    )))
+    .as_f64()
+    .unwrap();
+    let scene = value(host_impl::answer(og_load_scene(engine, "world.ogt".into())));
+    value(og_engine_write_resource(
+        engine,
+        "Kept".into(),
+        json!({"scene":scene}).to_string(),
+    ));
+    hooks.requested.set(Some(bundle));
+    value(og_engine_advance(engine, 1));
+    assert_eq!(og_load_status(engine, bundle), "pending");
+    value(og_engine_advance(engine, 1));
+    assert_eq!(og_load_status(engine, bundle), "failed");
+    let refused = og_load_error(engine, bundle).unwrap();
+    assert!(
+        refused.starts_with("bundle release refused:") && refused.contains("Kept"),
+        "{refused}"
+    );
+    assert_eq!(og_load_status(engine, scene.as_f64().unwrap()), "ready");
+    value(og_engine_write_resource(
+        engine,
+        "Kept".into(),
+        json!({"scene":0}).to_string(),
+    ));
+    hooks.requested.set(Some(bundle));
+    value(og_engine_advance(engine, 1));
+    assert_eq!(og_load_status(engine, bundle), "pending");
+    value(og_engine_advance(engine, 1));
+    assert!(
+        og_load_error(engine, bundle)
+            .unwrap()
+            .contains("was released")
+    );
+    assert!(
+        og_load_error(engine, scene.as_f64().unwrap())
+            .unwrap()
+            .contains("was released")
+    );
+    value(og_engine_advance(control, 4));
+    let dump = |e| serde_json::from_str::<Value>(&og_engine_probe_dump(e, None)).unwrap();
+    assert_eq!(dump(engine)["hash"], dump(control)["hash"]);
+    assert_eq!(og_load_completions(engine), og_load_completions(control));
+    hooks.pending_manifest.set(true);
+    let pending = value(host_impl::answer(og_load_bundle(
+        engine,
+        root.join("cooked").to_string_lossy().into(),
+    )))
+    .as_f64()
+    .unwrap();
+    hooks.requested.set(Some(pending));
+    value(og_engine_advance(engine, 2));
+    assert!(
+        og_load_error(engine, pending)
+            .unwrap()
+            .contains("was released")
+    );
+    assert!(og_engine_destroy(control));
+    assert!(og_engine_destroy(engine));
+    std::fs::remove_dir_all(root).unwrap();
+}
+
+#[test]
+fn closing_a_bundle_preserves_another_bundles_pending_hlod_sources() {
+    use std::hash::{Hash, Hasher};
+    use std::sync::{
+        Arc,
+        atomic::{AtomicBool, Ordering},
+    };
+    let _lock = TEST_LOCK.lock().unwrap();
+    struct Worker {
+        ready: Arc<AtomicBool>,
+        accepted: RefCell<BTreeSet<(String, u64)>>,
+    }
+    impl Hooks for Worker {
+        fn dispatch(&self, _: &Dispatch) -> Result<String, String> {
+            Ok(String::new())
+        }
+        fn read_asset(&self, path: &str) -> Fetch<Vec<u8>> {
+            match std::fs::read(path) {
+                Ok(b) => Fetch::Ready(b),
+                Err(e) => Fetch::Failed(e.to_string()),
+            }
+        }
+        fn texture_work(
+            &self,
+            t: &og_bundle::runtime::CookedTexture,
+            _: Option<&og_render::TextureFormats>,
+        ) -> Option<TextureWork> {
+            let mut hash = std::collections::hash_map::DefaultHasher::new();
+            t.ktx2.hash(&mut hash);
+            // Once a host accepts a preparation, closing another bundle
+            // must not cancel it and demand a replacement operation.
+            if !self
+                .accepted
+                .borrow_mut()
+                .insert((t.id.clone(), hash.finish()))
+            {
+                return Some(Box::new(|| {
+                    Err("an accepted texture preparation was cancelled".into())
+                }));
+            }
+            let t = t.clone();
+            let ready = self.ready.clone();
+            Some(Box::new(move || {
+                while !ready.load(Ordering::Acquire) {
+                    std::thread::sleep(std::time::Duration::from_millis(1));
+                }
+                t.to_texture_source(None).map_err(|e| e.to_string())
+            }))
+        }
+    }
+    let root = PathBuf::from(env!("CARGO_TARGET_TMPDIR"))
+        .join(format!("og-runtime-close-pending-{}", std::process::id()));
+    for v in 1..=2 {
+        let dir = root.join(format!("v{v}"));
+        version(&dir, v, false);
+        let content = format!(
+            "type scene\nversion 1\n---\nhlod {{\n  size 32\n  error 0.25\n  texels 64\n}}\nentity \"house-v{v}\" {{\n  model \"model.ogt\"\n  static true\n}}\nentity \"neighbor-v{v}\" {{\n  model \"model.ogt\"\n  static true\n  Transform {{\n    position 8 0 0\n  }}\n}}\n"
+        );
+        let model = std::fs::read_to_string(dir.join("assets/model.ogt"))
+            .unwrap()
+            .replace("widthSegments 16", "widthSegments 128")
+            .replace("heightSegments 12", "heightSegments 96");
+        cook(
+            &dir,
+            &[
+                ("content.ogt", content.into_bytes()),
+                ("model.ogt", model.into_bytes()),
+            ],
+        );
+    }
+    let ready = Arc::new(AtomicBool::new(false));
+    set_hooks(Rc::new(Worker {
+        ready: ready.clone(),
+        accepted: RefCell::default(),
+    }));
+    og_host_begin_bundle();
+    let game = og_game_game(None);
+    let engine = value(og_engine_create(game, "{}".into())).as_u64().unwrap() as u32;
+    let held = Rc::new(Cell::new(Held::default()));
+    answer(set_render_backend(
+        engine,
+        Some(Box::new(Recorder(held.clone()))),
+    ));
+    let g = Game { engine, held };
+    let closed = g.open(&root.join("v1"));
+    g.place("v1/place.ogt");
+    let kept = g.open(&root.join("v2"));
+    g.place("v2/place.ogt");
+    value(og_engine_write_resource(
+        engine,
+        "og.Camera".into(),
+        json!({"position": {"x":200,"y":0,"z":3000}, "fov":50}).to_string(),
+    ));
+    g.frame();
+    assert_eq!(
+        g.held.get().instances,
+        0,
+        "pending HLOD proxies must stay hidden"
+    );
+    value(host_impl::answer(og_world_despawn(
+        engine,
+        g.find("cell-v1"),
+    )));
+    let hash = g.dump()["hash"].clone();
+    value(host_impl::answer(og_load_release(engine, closed)));
+    assert_eq!(
+        hash,
+        g.dump()["hash"],
+        "bundle close changed the world hash"
+    );
+    assert!(
+        og_load_error(engine, closed)
+            .unwrap()
+            .contains("was released")
+    );
+    assert_eq!(og_load_status(engine, kept), "ready");
+    g.frame();
+    assert_eq!(
+        g.held.get().instances,
+        0,
+        "closing v1 revealed v2's pending proxies"
+    );
+    ready.store(true, Ordering::Release);
+    for _ in 0..200 {
+        g.frame();
+        if g.held.get().instances > 0 {
+            break;
+        }
+        std::thread::sleep(std::time::Duration::from_millis(1));
+    }
+    assert!(
+        g.held.get().instances > 0,
+        "v2 never revealed its completed HLOD proxies: {:?}, outputs: {}",
+        g.held.get(),
+        og_engine_take_outputs(engine)
+    );
+    assert_eq!(og_load_status(engine, kept), "ready");
+    assert!(og_engine_destroy(engine));
+    std::fs::remove_dir_all(root).unwrap();
 }
 
 /// Deliberately identical cooked ids, but different cell names, geometry,

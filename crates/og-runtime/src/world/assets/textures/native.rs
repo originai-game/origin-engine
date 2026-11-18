@@ -40,6 +40,24 @@ impl Textures {
         self.entries.retain(|(id, _), _| !ids.contains(id));
     }
 
+    pub(super) fn ids(&self) -> Vec<String> {
+        self.entries.keys().map(|(id, _)| id.clone()).collect()
+    }
+
+    pub(super) fn forget_sources(
+        &mut self,
+        closed: &[CookedTexture],
+        kept: &[CookedTexture],
+        formats: Option<&TextureFormats>,
+    ) {
+        let mut removed: std::collections::HashSet<_> =
+            closed.iter().map(|t| key(t, formats)).collect();
+        for texture in kept {
+            removed.remove(&key(texture, formats));
+        }
+        self.entries.retain(|key, _| !removed.contains(key));
+    }
+
     pub(super) fn prepare(
         &mut self,
         host: &dyn Hooks,
@@ -47,25 +65,9 @@ impl Textures {
         formats: Option<&TextureFormats>,
     ) -> super::Fetch<TextureSource> {
         use super::Fetch;
-        let mut hash = std::collections::hash_map::DefaultHasher::new();
-        texture.ktx2.hash(&mut hash);
-        texture.target_format(formats).hash(&mut hash);
-        let m = &texture.meta;
-        [
-            m.width,
-            m.height,
-            m.levels,
-            m.kind,
-            m.codec,
-            m.color_space,
-            m.has_alpha,
-            m.supercompression,
-        ]
-        .hash(&mut hash);
-        let signature = hash.finish();
         // Runtime bundles may use the same id for different maps at once.
         // They must not continually cancel each other's preparation.
-        let key = (texture.id.clone(), signature);
+        let key = key(texture, formats);
         if !self.entries.contains_key(&key) {
             let Some(work): Option<TextureWork> = host.texture_work(texture, formats) else {
                 return host.texture(texture, formats);
@@ -132,4 +134,23 @@ impl Textures {
             Err(e) => Fetch::Failed(e.clone()),
         }
     }
+}
+
+fn key(texture: &CookedTexture, formats: Option<&TextureFormats>) -> (String, u64) {
+    let mut hash = std::collections::hash_map::DefaultHasher::new();
+    texture.ktx2.hash(&mut hash);
+    texture.target_format(formats).hash(&mut hash);
+    let m = &texture.meta;
+    [
+        m.width,
+        m.height,
+        m.levels,
+        m.kind,
+        m.codec,
+        m.color_space,
+        m.has_alpha,
+        m.supercompression,
+    ]
+    .hash(&mut hash);
+    (texture.id.clone(), hash.finish())
 }

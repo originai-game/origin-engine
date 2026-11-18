@@ -430,7 +430,7 @@ fn reach_of(v: &record::StreamCell, held: bool) -> f32 {
 pub(crate) struct ModuleState(std::cell::RefCell<Option<cell_store::Shared>>);
 
 /// The world's og.cells store (added with the cell's records).
-fn store(eng: &Engine) -> Option<cell_store::Shared> {
+pub(crate) fn store(eng: &Engine) -> Option<cell_store::Shared> {
     eng.modules.cells.0.borrow().clone()
 }
 

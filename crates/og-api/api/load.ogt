@@ -638,11 +638,11 @@ module load {
   }
 
   fn release {
-    doc "Free an uncooked asset (og.load.imageData, og.load.gltfData, og.load.environmentData): a pending load is dropped (it never completes, so it is never journaled), and a ready one's textures and meshes are emptied under their handles. An og.Model of a released model draws nothing; a sprite or material of a released texture draws one clear texel; an Environment naming a released map is lit by the sky. The handle then answers failed, naming the release. Releasing again does nothing."
+    doc "Free an uncooked load's memory, cancelling it if pending; its handle then answers failed, naming the release. Releasing again does nothing. Close an unused runtime bundle after its groups unload and live references are gone. In a system the close is pending until the next tick boundary; between ticks it can finish immediately. Refusal leaves it open with status failed and error starting 'bundle release refused:'; remove the references and retry. Success answers failed, naming the release. Closing changes no world hash, events or completion journal. The boot bundle cannot close."
     guide "loading §10"
     param world World "The world that owns the asset."
-    param asset Asset "A handle og.load.imageData, og.load.gltfData or og.load.environmentData answered."
-    returns Result.Void "Refused for a cooked asset, which stays with its bundle (a streamed one with its group)."
+    param asset Asset "An uncooked asset handle or a runtime bundle handle."
+    returns Result.Void "Accepts a bundle close request; poll status and error for its outcome. Refused for an individual cooked asset, which stays with its bundle (a streamed one with its group)."
   }
 
   fn imageInfo {
