@@ -1,0 +1,8 @@
+{
+  "added": [
+    {
+      "member": "og.ui.documentSchema",
+      "summary": "World anchors can opt into text-floor: a user-scaled text legibility floor capped at each run's designed size, with layout and em/ch measures growing around the text while pixel-sized bars and icons keep distance scaling."
+    }
+  ]
+}

@@ -1459,6 +1459,9 @@ impl Ui {
             );
             r.text = (text != Default::default()).then(|| Arc::new(text));
         }
+        if matches!(n.kind, NodeKind::Element(Kind::Anchor | Kind::Ground)) {
+            self.anchor_text_scope(&mut r);
+        }
         r.part_host = n.selector_tag.as_ref().map(|tag| {
             let mut computed = (*r.cascade.computed).clone();
             computed.properties.extend(

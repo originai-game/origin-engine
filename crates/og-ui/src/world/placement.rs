@@ -6,7 +6,7 @@ pub(super) fn lod_of(lod: &[f32], distance: f32) -> u32 {
 }
 
 /// The scale an anchor takes at `distance`.
-fn scale_of(s: AnchorScale, distance: f32, ortho: bool) -> f32 {
+pub(super) fn scale_of(s: AnchorScale, distance: f32, ortho: bool) -> f32 {
     match s {
         AnchorScale::Constant => 1.0,
         AnchorScale::Distance { .. } if ortho => 1.0,

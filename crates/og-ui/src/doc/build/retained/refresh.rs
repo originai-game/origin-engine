@@ -683,6 +683,25 @@ impl RetainedHost {
             let Some(element) = self.elements.get_mut(node) else {
                 continue;
             };
+            if let Some(resolved) = &element.resolved
+                && resolved
+                    .values
+                    .num("textFloor")
+                    .is_some_and(|floor| floor > 0.0)
+                && let Some((desc, _)) = ui.world.declared.kept.get(key)
+            {
+                let scale = ui.world.anchor_scale(desc);
+                let previous = resolved
+                    .values
+                    .cascade
+                    .computed
+                    .get(crate::doc::text_css::WORLD_SCALE)
+                    .and_then(|v| v.as_deref())
+                    .and_then(|v| v.parse::<f32>().ok());
+                if previous != Some(scale) {
+                    self.dirty.insert(node.clone());
+                }
+            }
             let feedback = (
                 info.edge,
                 info.lod,

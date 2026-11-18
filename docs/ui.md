@@ -1137,6 +1137,17 @@ None of these has a web standard; each is named for what it does.
   out while none is.
   `scale-at="12" scale-min="0.72" scale-max="1"` scales the whole box by
   distance, never above its designed size; omitted bounds remain 0.5–2.
+  Opt into `text-floor="11"` to keep text legible: its drawn size is the
+  smaller of its designed size and the larger of its distance-scaled size
+  and 11 px times user text scale. Omit it or use zero to disable. Each run
+  has its own designed-size cap, including an `em` child; a title designed
+  below the floor keeps its size rather than growing to the floor. Text's
+  `em`/`ch` measures and em tracking follow its floored size. Pixel measures,
+  padding, icons and bars still scale with distance; the plate grows only
+  around the text it now measures, before decluttering. A 150 px scrolling
+  name measure still draws 108 px wide at scale 0.72; use an em measure if
+  its width should follow the text instead. Ground text and mass bars do
+  not take the floor.
   `clamp="edge"` pins off-screen and behind-camera points with an arrow;
   `clamp-margin` (default 24) and `arrow-size` (default 14, zero disables it)
   are CSS px multiplied by user text scale. `arrow-color` sets its ink.

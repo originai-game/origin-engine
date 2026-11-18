@@ -847,6 +847,34 @@ impl Ui {
         );
     }
 
+    pub(super) fn anchor_text_scope(&self, r: &mut Resolved) {
+        use crate::doc::text_css::{DESIGNED_SIZE, WORLD_FLOOR, WORLD_SCALE};
+        let computed = Arc::make_mut(&mut r.cascade.computed);
+        // A nested anchor has its own distance and opts in independently.
+        if let Some(size) = computed.remove(DESIGNED_SIZE) {
+            computed.insert(crate::doc::text_css::key("font-size"), size);
+        }
+        for key in [WORLD_FLOOR, WORLD_SCALE] {
+            computed.remove(key);
+        }
+        let floor = r.num("textFloor").unwrap_or(0.0);
+        if floor <= 0.0 || r.str("mass").is_some() {
+            return;
+        }
+        if let Ok(desc) = anchor_desc(r, Element::default()) {
+            let scale = self.world.anchor_scale(&desc);
+            let computed = Arc::make_mut(&mut r.cascade.computed);
+            computed.insert(
+                WORLD_FLOOR.into(),
+                Some((floor * self.css_text_scale()).to_string()),
+            );
+            computed.insert(WORLD_SCALE.into(), Some(scale.to_string()));
+            r.cascade
+                .local_names
+                .extend([WORLD_FLOOR.into(), WORLD_SCALE.into()]);
+        }
+    }
+
     /// An `<anchor>`: opened as the native anchor, kept for placement while
     /// its subtree is not built again.
     #[allow(clippy::too_many_arguments)]
