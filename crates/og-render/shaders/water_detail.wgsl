@@ -283,6 +283,12 @@ fn bank_patches(q: vec2<f32>) -> f32 {
   return smoothstep(0.55, 0.75, foam_noise(q * 0.9) * 0.7 + foam_noise(q * 3.3) * 0.3);
 }
 
+// A river pool's churn at point q (its drift taken out): the bank patches' noise before their cut (0 to 1), which
+// the pool's churn thresholds lower the nearer the fall.
+fn churn_noise(q: vec2<f32>) -> f32 {
+  return foam_noise(q * 0.9) * 0.7 + foam_noise(q * 3.3) * 0.3;
+}
+
 // The water's value noise for breaking up the foam (its own lattice layer).
 fn foam_noise(p: vec2<f32>) -> f32 {
   return value_noise2(p, 3);

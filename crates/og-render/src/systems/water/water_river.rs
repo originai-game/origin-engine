@@ -7,8 +7,8 @@
 //!
 //! Where the course drops steeper than 45 degrees the ribbon hangs: the
 //! water falls there, drawn as a sheet of falling water (water.wgsl), and
-//! the pool below churns white, fading over some one and a half widths downstream
-//! (the flow map's b).
+//! the pool below churns white: wholly at the fall's foot, fading to clear
+//! water by [`churn_length`] downstream (the flow map's b).
 
 use crate::Vertex;
 use glam::{Mat4, Vec2, Vec3, Vec3Swizzles};
@@ -23,6 +23,18 @@ const MAX_ROWS: usize = 4096;
 const STEP: f32 = 1.0;
 /// A drop over a run steeper than this is a fall (1: 45 degrees).
 const FALL_SLOPE: f32 = 1.0;
+
+/// How far below a fall of `drop` metres a river `width` across churns
+/// white (m). The plunging jet carries air down into its pool and the
+/// bubbles rise and clear over a reach that grows with the jet's speed at
+/// impact, so with the fall's height (Chanson, *Air Bubble Entrainment in
+/// Free-Surface Turbulent Shear Flows*, 1997, ch. 6: the aerated region of
+/// a plunging jet lengthens with its impact velocity): three drops here,
+/// and never less than one width (a low step still roils the channel
+/// across).
+pub(crate) fn churn_length(drop: f32, width: f32) -> f32 {
+    (3.0 * drop).max(width)
+}
 
 /// A ribbon's geometry and flow map ([`ribbon`]).
 #[derive(Debug, PartialEq)]
@@ -71,18 +83,35 @@ pub(crate) fn ribbon(river: &River, inverse: Mat4) -> Ribbon {
     };
     let half = river.width * 0.5;
     // How churned the water is at each point: 1 at the foot of a fall,
-    // fading over one and a half widths downstream.
+    // easing to none [`churn_length`] of the whole fall's drop downstream.
     let mut churn = vec![0.0f32; n];
-    let mut since: Option<f32> = None;
+    // Past the last fall's foot: how far (m) and how far it dropped.
+    let mut since: Option<(f32, f32)> = None;
+    let mut falling = false;
     for i in 1..n {
         let (a, b) = (course[i - 1], course[i]);
         let run = a.xz().distance(b.xz());
         if a.y - b.y > FALL_SLOPE * run {
-            since = Some(0.0);
-        } else if let Some(d) = since.as_mut() {
-            *d += run;
+            // A fall over several points drops their sum.
+            let above = if falling {
+                since.map_or(0.0, |s| s.1)
+            } else {
+                0.0
+            };
+            since = Some((0.0, above + (a.y - b.y)));
+            falling = true;
+        } else {
+            falling = false;
+            if let Some(s) = since.as_mut() {
+                s.0 += run;
+            }
         }
-        churn[i] = since.map_or(0.0, |d| (-d / (1.5 * river.width)).exp());
+        churn[i] = since.map_or(0.0, |(d, drop)| {
+            // Thinning fast past the foot and easing out: (1 - t)², no
+            // slope where it ends.
+            let t = (d / churn_length(drop, river.width)).clamp(0.0, 1.0);
+            (1.0 - t) * (1.0 - t)
+        });
     }
     let mut vertices = Vec::with_capacity(2 * n);
     let mut flow = vec![[128u8, 128, 0, 255]; ACROSS as usize * n];
@@ -263,9 +292,73 @@ mod tests {
             assert!(fall[0] > 0.5 && fall[1] < 0.8, "{i}: {fall:?}");
         }
         assert!((r.vertices[2 * 9].normal[1] - 1.0).abs() < 1e-6);
-        // Churned white at the fall's foot (point 11), calmer 10 m on (the mouth), none above it.
+        // Churned white at the fall's foot (point 11), calmer 5 m on, clear by
+        // the mouth (10 m on: past the 4 m fall's 12), none above it.
         assert_eq!(r.flow[row(11) + mid][2], 255);
-        assert!(mouth[2] > 0 && mouth[2] < 120, "{mouth:?}");
+        let on = r.flow[row(16) + mid][2];
+        assert!(on > 60 && on < 230, "{on}");
+        assert!(mouth[2] < 25, "{mouth:?}");
         assert_eq!(source[2], 0);
+    }
+
+    /// The churn below a fall reaches clear water within its length, and a
+    /// tall fall churns further down its river than a low step.
+    #[test]
+    fn a_taller_fall_churns_further_and_the_water_clears() {
+        let churn_at = |drop: f32, past: usize| {
+            let river = River::new(
+                &[
+                    Vec3::new(0.0, drop, 0.0),
+                    Vec3::new(10.0, drop, 0.0),
+                    Vec3::new(10.5, 0.0, 0.0),
+                    Vec3::new(60.0, 0.0, 0.0),
+                ],
+                4.0,
+                2.0,
+            )
+            .expect("a river");
+            let r = ribbon(&river, Mat4::IDENTITY);
+            let n = r.rows as usize;
+            // The foot is the 12th point (10 m, then half a metre down the fall).
+            let i = 11 + past;
+            r.flow[(n - 1 - i) * ACROSS as usize + (ACROSS / 2) as usize][2]
+        };
+        // 1 m step: a width (4 m); 6 m fall: 18 m.
+        assert_eq!(churn_at(1.0, 0), 255);
+        assert_eq!(churn_at(1.0, 5), 0, "past a low step's 4 m");
+        assert!(churn_at(6.0, 10) > 30, "{}", churn_at(6.0, 10));
+        assert!(churn_at(6.0, 10) > churn_at(1.0, 10));
+        assert_eq!(churn_at(6.0, 19), 0, "past a 6 m fall's 18 m");
+    }
+
+    /// The churn below a fall thins with no step: it never rises down the
+    /// river, never drops more than its own easing allows in a metre, and
+    /// is all but gone a metre before it ends (no line of white across the
+    /// river where it stops).
+    #[test]
+    fn the_churn_below_a_fall_eases_out_without_a_step() {
+        let river = River::new(
+            &[
+                Vec3::new(0.0, 6.0, 0.0),
+                Vec3::new(10.0, 6.0, 0.0),
+                Vec3::new(10.5, 0.0, 0.0),
+                Vec3::new(60.0, 0.0, 0.0),
+            ],
+            4.0,
+            2.0,
+        )
+        .expect("a river");
+        let r = ribbon(&river, Mat4::IDENTITY);
+        let n = r.rows as usize;
+        let b =
+            |i: usize| f32::from(r.flow[(n - 1 - i) * ACROSS as usize + (ACROSS / 2) as usize][2]);
+        let length = churn_length(6.0, 4.0);
+        // Below the foot (the 12th point), a metre apart.
+        let tail: Vec<f32> = (11..11 + length as usize + 3).map(b).collect();
+        for w in tail.windows(2) {
+            assert!(w[1] <= w[0], "{tail:?}");
+            assert!(w[0] - w[1] <= 255.0 * 2.2 / length, "a step: {tail:?}");
+        }
+        assert!(tail[length as usize - 1] <= 3.0, "{tail:?}");
     }
 }

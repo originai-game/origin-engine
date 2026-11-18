@@ -816,17 +816,29 @@ if (flowing) {
   let foam = clamp(band + crest * noise + lumpy, 0.0, 1.0);
   color = mix(color, foam_albedo * white_water_light(in.normal, l, sun), foam * step(0.001, water.foam.w));
   if (water.waterline.w > 0.5) {
-    // W5: a river. Below a fall its pool churns white (the flow map's b: 1 at the fall's foot, fading over some one and
-    // a half widths), in patches carried down by the current in two phases as the bank foam; and where the ribbon hangs (its
+    // W5: a river. Below a fall its pool churns white (the flow map's b: 1 at the fall's foot, none a fall's churn
+    // length on), in patches carried down by the current in two phases as the bank foam: the patches cover the water
+    // as b grows, closing up at the foot and thinning to scattered flecks over the water's own colour (a floor of
+    // white under every patch drew the whole reach as one grey sheet); and where the ribbon hangs (its
     // normal more than some 40 degrees off up: the course falls there) the water is a sheet falling some 7 m/s,
     // streaked along its fall.
     let ft = flow_texel(in.uv);
     let current = (ft.rg * 2.0 - 1.0) * length(water.normals.yz);
     let ph0 = fract(water.spray.w / 8.0);
     let ph1 = fract(water.spray.w / 8.0 + 0.5);
-    let pa = bank_patches(in.local * 1.7 - current * (ph0 * 8.0));
-    let pb = bank_patches(in.local * 1.7 - current * (ph1 * 8.0) + vec2<f32>(5.3, 11.7));
-    let churned = ft.b * (0.3 + 0.7 * mix(pa, pb, abs(ph0 - 0.5) * 2.0));
+    // The patches drawn out along the current as the churn thins (down to a fifth across their length at its
+    // end): the tail's flecks are streaks drifting downstream, not blots.
+    let along = normalize(current + vec2<f32>(1e-5, 0.0));
+    let squeeze = mix(0.2, 1.0, ft.b);
+    let q = vec2<f32>(dot(in.local, along) * squeeze, dot(in.local, vec2<f32>(-along.y, along.x)));
+    let drift = vec2<f32>(length(current) * squeeze, 0.0);
+    let pa = churn_noise(q * 1.7 - drift * (ph0 * 8.0));
+    let pb = churn_noise(q * 1.7 - drift * (ph1 * 8.0) + vec2<f32>(5.3, 11.7));
+    // The noise's middle half spread over 0 to 1 (its sum of octaves gathers about one half), so every cover from
+    // a closed sheet to a few flecks shows over the churn's length; and the flecks fade as well as thin (thinned
+    // alone, the last of them stopped at full white along a line across the river).
+    let lumps = clamp((mix(pa, pb, abs(ph0 - 0.5) * 2.0) - 0.25) * 2.0, 0.0, 1.0);
+    let churned = smoothstep(1.0 - ft.b, 1.2 - ft.b, lumps) * smoothstep(0.0, 1.0, ft.b);
     let hang = 1.0 - smoothstep(0.62, 0.8, in.normal.y);
     let fall = water.spray.w * 7.0;
     let streak = foam_noise(vec2<f32>(in.uv.x * 40.0, in.world.y * 0.9 + fall * 0.9)) * 0.65
