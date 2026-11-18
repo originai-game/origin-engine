@@ -729,13 +729,14 @@ fn cobbles_wet() -> RenderScene {
     });
     // The water in the joints mirrors the sky and the colonnade.
     scene.look.post.ssr = Some(ScreenSpaceReflections::default());
-    // Standing on the way below the crest, looking down its rise: the
-    // joints between the setts read as lines of standing water.
+    // On the level crest, looking along the way: water stands only where
+    // the ground is level (on the rise it runs off), so the crest's joints
+    // fill and mirror the sky between the setts.
     {
         use crate::terrain_scenes::displaced_height as h;
         let camera = &mut scene.frame.camera;
-        camera.position = Vec3::new(0.0, h(-5.0) + 1.9, -5.0);
-        camera.target = Vec3::new(0.2, h(-9.5) - 0.1, -9.5);
+        camera.position = Vec3::new(0.3, h(-9.6) + 1.6, -9.6);
+        camera.target = Vec3::new(-0.2, h(-12.6) - 0.5, -12.6);
     }
     crate::atmo_scenes::add_weather(&mut scene, og_render::WEATHER_RAIN, 1.0, Vec3::ZERO, 18.0);
     scene
