@@ -145,6 +145,16 @@ fn pixel_figure(tunic: [u8; 3]) -> TextureData {
     t
 }
 
+/// The painted pixel-art sprite `sprites2d/{name}.png` (nearest
+/// filtered) and its width over its height.
+fn painted(scene: &mut RenderScene, name: &str) -> (og_render::TextureHandle, f32) {
+    let rel = format!("sprites2d/{name}.png");
+    let t = crate::kit::picture(scene, &rel, true);
+    let img = image::load_from_memory(&crate::scenes::asset(&rel).expect("2D sprite"))
+        .expect("2D sprite");
+    (t, img.width() as f32 / img.height() as f32)
+}
+
 /// The `sprites-shadow` scene (see [`build`]): an HD-2D party in the
 /// shrine court in the late afternoon. Three painted heroes (the knight,
 /// the mage, the ranger) stand on the flags with drop shadows along the
@@ -161,16 +171,9 @@ pub fn sprites_shadow_scene() -> RenderScene {
     kit::prop(&mut scene, "column").place(&mut scene, Vec3::new(3.2, 0.0, -2.0), 0.3, 3.4);
     kit::prop(&mut scene, "crate").place(&mut scene, Vec3::new(-2.9, 0.0, 0.2), 0.4, 0.9);
     // Each hero at its painting's aspect, 1.7 m tall.
-    let hero = |scene: &mut RenderScene, name: &str| {
-        let rel = format!("sprites2d/hero-{name}.png");
-        let t = kit::picture(scene, &rel, true);
-        let img = image::load_from_memory(&crate::scenes::asset(&rel).expect("hero sprite"))
-            .expect("hero sprite");
-        (t, img.width() as f32 / img.height() as f32)
-    };
-    let knight = hero(&mut scene, "knight");
-    let mage = hero(&mut scene, "mage");
-    let ranger = hero(&mut scene, "ranger");
+    let knight = painted(&mut scene, "hero-knight");
+    let mage = painted(&mut scene, "hero-mage");
+    let ranger = painted(&mut scene, "hero-ranger");
     let wheel = scene
         .add_texture_array(TextureArrayData {
             layers: (0..8)
@@ -234,66 +237,40 @@ pub fn sprites_shadow_scene() -> RenderScene {
     scene
 }
 
-/// The `sprites-billboard` scene (see [`build`]).
+/// The `sprites-billboard` scene (see [`build`]): the HD-2D party's
+/// shrine court seen from above and to the side. A knight flat in the xy
+/// plane for comparison (sheared by the camera's angle); upright (cameraY)
+/// oaks and the mage casting sun-facing drop shadows; a heraldic shield
+/// sign facing the camera, turned in its plane; two translucent spirit
+/// puffs facing the camera, sorted back to front though submitted near
+/// first; one oak behind the camera culled; the ranger 2D-lit by a warm
+/// lantern glow; and a picture-in-picture view from the side that every
+/// billboard faces too.
 pub fn billboard_scene() -> RenderScene {
+    use crate::kit;
     use og_render::{
-        Light2d, Lighting2d, SpriteFacing, SpriteShadow, TextureFilter, View, ViewTarget,
+        Light2d, Lighting2d, ShadowGround, SpriteFacing, SpriteShadow, View, ViewTarget,
     };
+    // The flags' top, which the cards stand on and the shadows lie on.
+    const FLAGS: f32 = 0.01;
     let mut scene = RenderScene::new();
-    ground(&mut scene, 40.0, 1.0, 0.9);
-    let stone = scene.add_material(Material {
-        base_color: [0.72, 0.7, 0.66, 1.0],
-        roughness: 0.8,
-        ..Default::default()
-    });
-    let crate_mesh = scene.add_mesh(shapes::cuboid(Vec3::splat(0.9)));
-    scene.add_instance(
-        crate_mesh,
-        stone,
-        Mat4::from_translation(Vec3::new(-1.6, 0.45, 2.2)) * Mat4::from_rotation_y(0.5),
-    );
-    // A pixel tree: a round crown over a trunk, clear round it.
-    let tree = scene.add_texture(texture(32, ColorSpace::Srgb, |u, v| {
-        let crown = Vec2::new(u - 0.5, v - 0.36).length() < 0.34;
-        let trunk = (u - 0.5).abs() < 0.08 && v > 0.6;
-        match (crown, trunk) {
-            (true, _) => {
-                let shade = if u + v < 0.75 { 40 } else { 0 };
-                [50 + shade, 140 + shade, 60, 255]
-            }
-            (false, true) => [110, 70, 40, 255],
-            _ => [0, 0, 0, 0],
-        }
-    }));
-    scene.set_texture_filter(tree, TextureFilter::Nearest);
-    // A sign: a red ring round a white disc with a bar across it, so its
-    // in-plane turn shows.
-    let sign = scene.add_texture(texture(64, ColorSpace::Srgb, |u, v| {
-        let d = Vec2::new(u - 0.5, v - 0.5).length();
-        if d > 0.48 {
-            [0, 0, 0, 0]
-        } else if d > 0.36 {
-            [210, 40, 40, 255]
-        } else if (v - 0.5).abs() < 0.08 {
-            [30, 30, 40, 255]
-        } else {
-            [240, 240, 235, 255]
-        }
-    }));
+    crate::shadow_scenes::court(&mut scene);
+    kit::prop(&mut scene, "crate").place(&mut scene, Vec3::new(-1.6, 0.0, 2.2), 0.5, 0.9);
+    let toro = kit::prop(&mut scene, "toro");
+    toro.place(&mut scene, Vec3::new(-6.3, 0.0, -0.6), 0.3, 1.6);
+    let (oak, oak_aspect) = painted(&mut scene, "tree-oak");
+    let (sign, sign_aspect) = painted(&mut scene, "sign-shield");
     // A soft puff (white; the sprite's colour tints it).
     let puff = scene.add_texture(texture(64, ColorSpace::Srgb, |u, v| {
         let d = (Vec2::new(u - 0.5, v - 0.5).length() * 2.0).min(1.0);
         [255, 255, 255, ((1.0 - d * d) * 255.0) as u8]
     }));
-    let figure = scene.add_texture(pixel_figure([200, 60, 60]));
-    let figure_blue = scene.add_texture(pixel_figure([60, 120, 210]));
-    let figure_green = scene.add_texture(pixel_figure([80, 170, 90]));
-    for t in [figure, figure_blue, figure_green] {
-        scene.set_texture_filter(t, TextureFilter::Nearest);
-    }
+    let (knight, knight_aspect) = painted(&mut scene, "hero-knight");
+    let (mage, mage_aspect) = painted(&mut scene, "hero-mage");
+    let (ranger, ranger_aspect) = painted(&mut scene, "hero-ranger");
     let stand = |texture, x: f32, z: f32, size: Vec2| Sprite {
         texture: Some(texture),
-        position: Vec3::new(x, 0.0, z),
+        position: Vec3::new(x, FLAGS, z),
         size,
         anchor: Vec2::new(0.5, 0.0),
         ..Default::default()
@@ -307,35 +284,39 @@ pub fn billboard_scene() -> RenderScene {
             scene.sprite.sprite_shadows.push(SpriteShadow {
                 sprite: i as u32,
                 opacity: shadow,
-                ..Default::default()
+                ground: ShadowGround {
+                    height: FLAGS,
+                    ..Default::default()
+                },
             });
         }
     };
+    let hero = |aspect: f32| Vec2::new(1.7 * aspect, 1.7);
     // In the xy plane (for comparison): sheared by the camera's angle.
     add(
         &mut scene,
-        stand(figure, -3.4, -0.4, Vec2::splat(1.6)),
+        stand(knight, -3.4, -0.4, hero(knight_aspect)),
         SpriteFacing::None,
         0.0,
     );
-    // Upright, turned about y: two trees and a figure, with drop shadows
+    // Upright, turned about y: two oaks and the mage, with drop shadows
     // cast by their sun-facing cards.
-    let tree_size = Vec2::new(2.0, 2.6);
+    let oak_size = Vec2::new(3.0 * oak_aspect, 3.0);
     add(
         &mut scene,
-        stand(tree, -1.2, -1.6, tree_size),
+        stand(oak, -1.2, -1.6, oak_size),
         SpriteFacing::CameraY,
         0.6,
     );
     add(
         &mut scene,
-        stand(tree, 3.6, -3.0, tree_size),
+        stand(oak, 3.6, -3.0, oak_size),
         SpriteFacing::CameraY,
         0.6,
     );
     add(
         &mut scene,
-        stand(figure_blue, 0.6, 0.4, Vec2::splat(1.4)),
+        stand(mage, 0.6, 0.4, hero(mage_aspect)),
         SpriteFacing::CameraY,
         0.5,
     );
@@ -345,20 +326,20 @@ pub fn billboard_scene() -> RenderScene {
         Sprite {
             texture: Some(sign),
             position: Vec3::new(2.6, 1.9, -0.6),
-            size: Vec2::splat(1.1),
+            size: Vec2::new(1.1 * sign_aspect, 1.1),
             rotation: 0.35,
             ..Default::default()
         },
         SpriteFacing::Camera,
         0.0,
     );
-    // Two translucent puffs facing the camera, submitted near first: the
-    // far red one must draw first, the near blue one over it.
+    // Two translucent spirit puffs facing the camera, submitted near
+    // first: the far red one must draw first, the near blue one over it.
     add(
         &mut scene,
         Sprite {
             texture: Some(puff),
-            position: Vec3::new(3.7, 2.3, 3.1),
+            position: Vec3::new(3.7, 3.4, 3.1),
             size: Vec2::splat(1.2),
             color: [0.3, 0.55, 1.0, 0.6],
             ..Default::default()
@@ -370,7 +351,7 @@ pub fn billboard_scene() -> RenderScene {
         &mut scene,
         Sprite {
             texture: Some(puff),
-            position: Vec3::new(2.4, 1.3, 1.2),
+            position: Vec3::new(2.4, 2.6, 1.2),
             size: Vec2::splat(1.7),
             color: [1.0, 0.35, 0.25, 0.6],
             ..Default::default()
@@ -381,17 +362,17 @@ pub fn billboard_scene() -> RenderScene {
     // Behind the camera: culled by its bounds (FrameStats::sprites_culled).
     add(
         &mut scene,
-        stand(tree, 0.0, 30.0, tree_size),
+        stand(oak, 0.0, 30.0, oak_size),
         SpriteFacing::CameraY,
         0.0,
     );
-    // 2D-lit (layer 1 is the lit range): an upright figure by a warm
-    // light, darkened to the ambient away from it.
+    // 2D-lit (layer 1 is the lit range): the ranger by the lantern's warm
+    // glow, darkened to the ambient away from it.
     add(
         &mut scene,
         Sprite {
             layer: 1,
-            ..stand(figure_green, -5.0, 0.0, Vec2::splat(1.5))
+            ..stand(ranger, -5.0, 0.0, hero(ranger_aspect))
         },
         SpriteFacing::CameraY,
         0.0,
@@ -411,24 +392,24 @@ pub fn billboard_scene() -> RenderScene {
         cast_shadows: false,
         ..Default::default()
     });
-    scene.lighting.light = DirectionalLight {
-        direction_to_light: Vec3::new(0.7, 0.75, 0.35),
-        intensity: 3.0,
-        ..Default::default()
-    };
-    let exposure = Exposure::linear(0.9);
+    // Afternoon: the sun 40° up, over the camera's right shoulder.
+    crate::sky_scenes::physical_light_under(&mut scene, Vec3::new(0.7, 0.75, 0.35));
+    scene.lighting.light.cast_shadows = true;
+    let exposure = Exposure::Manual { ev: 0.0 };
     scene.frame.camera = Camera {
-        position: Vec3::new(7.5, 5.5, 7.0),
-        target: Vec3::new(0.0, 0.8, -0.8),
+        position: Vec3::new(6.2, 3.9, 6.0),
+        target: Vec3::new(-0.4, 1.0, -0.9),
+        far: 2500.0,
         exposure,
         ..Default::default()
     };
     // From the side: every billboard turns to this camera too (the flat
-    // figure is seen nearly edge on).
+    // knight is seen nearly edge on).
     scene.frame.views.push(View {
         camera: Camera {
             position: Vec3::new(-10.0, 2.2, -0.8),
             target: Vec3::new(0.0, 1.0, -0.8),
+            far: 2500.0,
             exposure,
             ..Default::default()
         },
