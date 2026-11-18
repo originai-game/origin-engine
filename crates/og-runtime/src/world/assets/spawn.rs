@@ -150,7 +150,10 @@ pub(crate) fn names_free(
                 scene.id, e.name
             ));
         }
-        if st.names.contains_key(&e.name) || st.held_names.contains(&e.name) || e.name == root {
+        let taken = crate::host::api::name_taken(eng, &e.name, |e| {
+            crate::host::api::og_world_alive(eng.id, e.to_bits() as f64)
+        });
+        if taken || st.held_names.contains(&e.name) || e.name == root {
             // A root does not scope names: world.find has one entity per
             // name, so a second instance clashes wherever it is placed.
             return Err(format!(

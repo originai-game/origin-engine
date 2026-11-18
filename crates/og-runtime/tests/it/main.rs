@@ -188,6 +188,8 @@ mod weather_switch;
 mod web_findings;
 #[path = "../wire.rs"]
 mod wire;
+#[path = "../world_names.rs"]
+mod world_names;
 #[path = "../world_origin.rs"]
 mod world_origin;
 #[path = "../world_ui.rs"]

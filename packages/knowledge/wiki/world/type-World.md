@@ -69,7 +69,7 @@ fn spawn {
 
 #### `World.despawn`
 
-Despawn an entity and its descendants.
+Despawn an entity and its descendants. Its name is free again once the despawn applies: at once between ticks; inside a system when the system returns, so a later system of the same tick may spawn the name again but the despawning system itself may not.
 
 Also known as: destroy entity, delete object, Unity Destroy, Godot queue_free
 
@@ -87,7 +87,7 @@ Binding symbol `og_world_despawn` · publish builds: kept
 
 ```ogt
 fn despawn {
-  doc "Despawn an entity and its descendants."
+  doc "Despawn an entity and its descendants. Its name is free again once the despawn applies: at once between ticks; inside a system when the system returns, so a later system of the same tick may spawn the name again but the despawning system itself may not."
   aliases "destroy entity, delete object, Unity Destroy, Godot queue_free"
   param entity Entity "The entity."
   returns Result.Void "Refused for a dead entity."

@@ -1798,7 +1798,7 @@ export interface World {
    */
   spawn(desc?: SpawnDesc): Result<Entity>;
   /**
-   * Despawn an entity and its descendants.
+   * Despawn an entity and its descendants. Its name is free again once the despawn applies: at once between ticks; inside a system when the system returns, so a later system of the same tick may spawn the name again but the despawning system itself may not.
    *
    * @param entity The entity.
    * @returns Refused for a dead entity.

@@ -338,6 +338,13 @@ pub(crate) fn flush_names(eng: &Engine) {
             }
         }
     }
+    // The names of entities despawned without world.despawn between ticks
+    // (inside a system, by a hook or a cell) leave the runtime's table.
+    let mut st = eng.state.borrow_mut();
+    st.names
+        .retain(|_, b| world.is_alive(Entity::from_bits(*b)));
+    st.name_of
+        .retain(|b, _| world.is_alive(Entity::from_bits(*b)));
 }
 
 /// After a call that may have restored a snapshot, the runtime's names are

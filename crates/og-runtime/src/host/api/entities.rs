@@ -27,6 +27,15 @@ pub(super) fn runtime_name(eng: &Engine, e: Entity, name: &str) {
     st.name_of.insert(e.to_bits(), name.to_string());
 }
 
+/// Whether `name` is taken: the runtime's table gives it to an entity that
+/// `alive` says is alive. A name leaves with its entity however it went (a
+/// despawn inside a system when that system returns, a hook's, a cell's
+/// unload), not when the table is next brought in line with the world.
+pub(crate) fn name_taken(eng: &Engine, name: &str, alive: impl Fn(Entity) -> bool) -> bool {
+    let bits = eng.state.borrow().names.get(name).copied();
+    bits.is_some_and(|b| alive(Entity::from_bits(b)))
+}
+
 pub(crate) fn forget_name(eng: &Engine, e: Entity) {
     let mut st = eng.state.borrow_mut();
     if let Some(name) = st.name_of.remove(&e.to_bits()) {
@@ -81,7 +90,7 @@ pub(crate) fn spawn(eng: &Engine, call: &str, desc: &Value) -> Result<Entity, St
     let d = spawn_desc(call, desc)?;
     let name = d.name;
     if !name.is_empty() {
-        if eng.state.borrow().names.contains_key(&name) {
+        if name_taken(eng, &name, |e| eng.world().is_ok_and(|w| w.is_alive(e))) {
             return Err(format!("an entity named '{name}' already exists"));
         }
         if name.starts_with('#') || name.chars().any(|c| c.is_whitespace() || ":;=".contains(c)) {
@@ -135,11 +144,12 @@ pub(super) fn spawn_in_system(
 ) -> Result<Entity, String> {
     let d = spawn_desc(call, desc)?;
     let name = d.name;
-    if !name.is_empty() {
-        let st = eng.state.borrow();
-        if st.names.contains_key(&name) || st.held_names.contains(&name) {
-            return Err(format!("an entity named '{name}' already exists"));
-        }
+    // SAFETY: the frame is published while its system runs.
+    if !name.is_empty()
+        && (name_taken(eng, &name, |e| unsafe { f.ctx() }.is_alive(e))
+            || eng.state.borrow().held_names.contains(&name))
+    {
+        return Err(format!("an entity named '{name}' already exists"));
     }
     let mut components = Vec::new();
     if !d.bare {

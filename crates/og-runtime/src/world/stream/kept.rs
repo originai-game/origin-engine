@@ -122,7 +122,9 @@ pub(crate) fn spawn(
             components.push((id, bytes));
         }
         let e = world.spawn_bytes(components).map_err(err)?;
-        if !row.name.is_empty() && !eng.state.borrow().names.contains_key(&row.name) {
+        if !row.name.is_empty()
+            && !crate::host::api::name_taken(eng, &row.name, |e| world.is_alive(e))
+        {
             crate::host::api::set_name(eng, e, &row.name);
         }
         map.insert(row.id, e.to_bits());

@@ -382,7 +382,11 @@ fn place(eng: &Engine, world: &mut World) {
         desc.entities
             .iter()
             .filter(|e| !e.name.is_empty())
-            .find(|e| st.names.get(&e.name).is_some_and(|b| !going.contains(b)))
+            .find(|e| {
+                st.names.get(&e.name).is_some_and(|&b| {
+                    !going.contains(&b) && world.is_alive(og_ecs::Entity::from_bits(b))
+                })
+            })
             .map(|e| e.name.clone())
     };
     if let Some(name) = clash {
