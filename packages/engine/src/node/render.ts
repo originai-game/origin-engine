@@ -179,6 +179,9 @@ const warmTick = (i: number): number => Math.max(0, tickOf(i) - warmup * step);
 const attached = attachRenderer(engine.id, size.width, size.height);
 if (!attached.ok) fail(attached.reason);
 const tier = attached.value;
+// The frames are a script's: drawn at the configured quality and with
+// og.motion settled at each frame's tick, so two runs draw the same frames.
+extras.og_node_scripted_frames(engine.id, true);
 if (tier === "none" && !leader) fail("no renderer (OG_RENDERER=none): og render needs a headless renderer (og doctor)");
 const started = engine.advance(0);
 if (!started.ok) fail(started.reason);
