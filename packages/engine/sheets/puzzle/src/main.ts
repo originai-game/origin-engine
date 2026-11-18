@@ -14,6 +14,9 @@ import { FIXTURES, NAMES } from "./fixtures.ts";
 const PAGES = ["play", "map", "states"] as const;
 const STYLES = ["fantasy", "scifi", "cartoon", "default"] as const;
 
+/** The map page's sample level map art (sheet only, never installed). */
+let meadow = 0;
+
 const DOCUMENTS = ["ui/play.svelte", "ui/map.svelte", "ui/states.svelte", "ui/sheet.svelte"];
 
 function must<T>(r: { ok: true; value: T } | { ok: false; reason: string }, what: string): T {
@@ -39,7 +42,7 @@ function setStyle(world: World, name: string): void {
 /** Each fixture as a store of its scalars (`<member>_<state>`) and a keyed collection per list (`<member>_<state>_<prop>`). */
 function stores(world: World): Record<string, UiReadable<unknown>> {
   const scope = og.ui.scope(world, "sheet");
-  const out: Record<string, UiReadable<unknown>> = { page: scope.writable("page", "play"), member: scope.writable("member", "") };
+  const out: Record<string, UiReadable<unknown>> = { page: scope.writable("page", "play"), member: scope.writable("member", ""), meadow: scope.writable("meadow", meadow) };
   const captions: Record<string, string> = {};
   for (const [member, states] of Object.entries(FIXTURES)) {
     for (const [state, fixture] of Object.entries(states)) {
@@ -68,6 +71,7 @@ export default og.game({
   start(world) {
     const camera = world.resource(og.Camera);
     if (camera.ok) camera.value.background = { r: 0.05, g: 0.04, b: 0.05 };
+    meadow = must(og.load.texture(world, "art/meadow.jpg"), "meadow") as number;
     setStyle(world, "fantasy");
     // The kit's strings in the review's CJK and right-to-left locales, as a
     // game ships them (English comes with the kit).
