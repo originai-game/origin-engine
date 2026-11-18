@@ -274,7 +274,8 @@ fn run(
     match std::env::var("OG_GFX_CULLING").as_deref() {
         Ok("cpu") => built.desc.culling = og_render::Culling::Cpu,
         Ok("gpu") => built.desc.culling = og_render::Culling::Gpu,
-        Ok("auto") | Err(_) => {}
+        Ok("auto") => built.desc.culling = og_render::Culling::Auto,
+        Err(_) => {}
         Ok(other) => return Err(format!("OG_GFX_CULLING={other}: cpu, gpu or auto")),
     }
     if std::env::var_os("OG_GFX_DEBUG_CASCADES").is_some() {
