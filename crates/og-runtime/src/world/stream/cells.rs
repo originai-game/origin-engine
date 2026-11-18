@@ -444,6 +444,33 @@ pub(crate) fn attach(mount: crate::engine::Mount<'_>, world: &mut World) -> Resu
         Box::new(cell_store::Block(shared.clone())),
     ) {
         Ok(()) => {
+            let id = mount.id;
+            let kept = shared.clone();
+            world
+                .add_hook(
+                    og_ecs::HookDesc {
+                        name: "og.cells.retire".into(),
+                        component: CELL.into(),
+                        on: og_ecs::HookEvent::Remove,
+                        ..Default::default()
+                    },
+                    move |ctx, cell| {
+                        let kept = kept.clone();
+                        ctx.defer(move |world| {
+                            {
+                                let mut s = lock(&kept);
+                                s.kept.remove(&cell.to_bits());
+                                s.loading.remove(&cell.to_bits());
+                            }
+                            let eng = crate::engine::engine(id)
+                                .map_err(|e| og_core::Error::new(og_core::ErrorKind::Invalid, e))?;
+                            despawn_members(&eng, world, cell);
+                            Ok(())
+                        });
+                        Ok(())
+                    },
+                )
+                .map_err(|e| e.reason().to_string())?;
             *mount.modules.cells.0.borrow_mut() = Some(shared);
             Ok(())
         }
