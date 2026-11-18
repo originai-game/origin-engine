@@ -1,0 +1,6 @@
+{
+  "fixed": [{
+    "member": "load.bundle",
+    "summary": "Unloading a streaming group frees its full meshes' cached raycast BVHs and keeps only one copy of each stand-in mesh. HLOD proxies keep their meshes and textures only while a scene or cell placement needs them; removing the last placement releases those resources, and placing it again reloads them."
+  }]
+}

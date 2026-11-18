@@ -16,6 +16,9 @@ static ALLOC: og_core::alloc::Counting<std::alloc::System> =
 
 const PARCELS: usize = 16;
 const SIDE: u32 = 256;
+// cargo test shares this allocator across its test threads; nextest runs
+// them in separate processes. Keep heap samples isolated in either runner.
+static TEST_LOCK: std::sync::Mutex<()> = std::sync::Mutex::new(());
 
 fn cook(root: &Path, files: &[(&str, Vec<u8>)]) {
     for (name, data) in files {
@@ -27,6 +30,22 @@ fn cook(root: &Path, files: &[(&str, Vec<u8>)]) {
         root,
         &og_cook::CookOptions {
             threads: 1,
+            schemas: vec![og_core::Schema {
+                name: "Model".into(),
+                version: 1,
+                doc: String::new(),
+                fields: [("static", 0.0), ("visible", 1.0)]
+                    .into_iter()
+                    .map(|(name, on)| {
+                        let mut f = og_core::reflect::FieldSchema::new(
+                            name,
+                            og_core::reflect::FieldType::Bool,
+                        );
+                        f.default = Some(vec![on]);
+                        f
+                    })
+                    .collect(),
+            }],
             ..Default::default()
         },
     )
@@ -95,6 +114,7 @@ impl Hooks for Disk {
 struct Held {
     textures: u64,
     meshes: u64,
+    instances: usize,
     sixteen: usize,
     thirty_two: usize,
     radius: f32,
@@ -138,6 +158,7 @@ impl RenderBackend for Recorder {
         self.0.set(Held {
             textures,
             meshes,
+            instances: scene.objects.instances.len(),
             sixteen: count(16),
             thirty_two: count(32),
             radius,
@@ -339,6 +360,7 @@ fn route(base: &Path, grouped: bool, delayed: bool) -> Vec<Value> {
 
 #[test]
 fn runtime_bundles_stream_without_freezing_or_changing_the_world() {
+    let _lock = TEST_LOCK.lock().unwrap();
     let base = PathBuf::from(env!("CARGO_TARGET_TMPDIR"))
         .join(format!("og-runtime-stream-bundles-{}", std::process::id()));
     let _ = std::fs::remove_dir_all(&base);
@@ -350,6 +372,157 @@ fn runtime_bundles_stream_without_freezing_or_changing_the_world() {
         grouped, delayed,
         "pending pack reads must not change simulation hashes"
     );
+    std::fs::remove_dir_all(base).unwrap();
+}
+
+/// Full meshes must not leave their cooked raycast BVHs behind. HLOD's
+/// baked atlases and proxies live as long as their placements, not forever
+/// in the model cache. Keep all bundles open throughout this route.
+#[test]
+fn hlod_parcels_release_full_bvhs_and_dead_placement_proxies() {
+    let _lock = TEST_LOCK.lock().unwrap();
+    let base = PathBuf::from(env!("CARGO_TARGET_TMPDIR"))
+        .join(format!("og-runtime-hlod-parcels-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&base);
+    let root = base.join("game");
+    cook(&root, &[("world.ogt", b"type scene\nversion 1\n---\nentity \"player\" {\n  Transform {\n    position 0 0 0\n  }\n  StreamAnchor {\n    reach 0\n  }\n}\n".to_vec())]);
+    for i in 0..PARCELS {
+        let id = id(i);
+        let parcel_root = base.join(&id);
+        parcel(&parcel_root, &id, &id, (i + 1) * 100, true);
+        let mut content = format!(
+            "type scene\nversion 1\n---\nhlod {{\n  size 32\n  error 0.25\n  texels 256\n}}\nstream \"{id}\" {{\n  cell\n  asset \"{id}/model.ogt\"\n}}\n"
+        );
+        for n in 0..4 {
+            content.push_str(&format!("entity \"house-{id}-{n}\" {{\n  model \"{id}/model.ogt\"\n  static true\n  Transform {{\n    position {} 0 0\n  }}\n}}\n", n * 12));
+        }
+        let model = std::fs::read_to_string(parcel_root.join(format!("assets/{id}/model.ogt")))
+            .unwrap()
+            .replace("widthSegments 32", "widthSegments 128")
+            .replace("heightSegments 24", "heightSegments 96");
+        let duplicate = std::fs::read_to_string(parcel_root.join(format!("assets/{id}/place.ogt")))
+            .unwrap()
+            .replace(&format!("cell-{id}"), "cell-copy");
+        cook(
+            &parcel_root,
+            &[
+                (&format!("{id}/content.ogt"), content.into_bytes()),
+                (&format!("{id}/model.ogt"), model.into_bytes()),
+                (&format!("{id}/duplicate.ogt"), duplicate.into_bytes()),
+            ],
+        );
+    }
+    set_hooks(Rc::new(Disk {
+        delayed: false,
+        reads: RefCell::default(),
+    }));
+    og_host_begin_bundle();
+    let game = og_game_game(Some(r#"{"seed":1}"#.into()));
+    let engine = value(og_engine_create(game, json!({"root": root}).to_string()))
+        .as_u64()
+        .unwrap() as u32;
+    let held = Rc::new(Cell::new(Held::default()));
+    answer(set_render_backend(
+        engine,
+        Some(Box::new(Recorder(held.clone()))),
+    ));
+    let g = Game { engine, held };
+    g.place("world.ogt");
+    for i in 0..PARCELS {
+        assert_eq!(og_load_status(engine, g.open(&base.join(id(i)))), "ready");
+        g.place(&format!("{}/place.ogt", id(i)));
+    }
+    g.frame();
+    g.frame();
+    let placed = g.held.get();
+    assert!(
+        placed.instances >= PARCELS,
+        "no distant HLOD proxies: {placed:?}"
+    );
+    assert!(
+        placed.textures > PARCELS as u64 * 32 * 1024,
+        "no HLOD atlases: {placed:?}"
+    );
+    let start = og_core::alloc::heap().unwrap().live;
+    for i in 0..PARCELS {
+        g.walk((i + 1) * 100);
+        for _ in 0..4 {
+            g.frame();
+        }
+        assert!(g.loaded(&id(i)));
+        assert_eq!(g.state(&id(i)), "resident");
+        let full = g.held.get();
+        assert!(full.textures >= placed.textures + u64::from(SIDE * SIDE * 4));
+        g.walk(0);
+        for _ in 0..4 {
+            g.frame();
+        }
+        assert!(!g.loaded(&id(i)));
+        assert_eq!(g.used(), 0.0);
+        let live = og_core::alloc::heap().unwrap().live;
+        let held = g.held.get();
+        assert!(held.meshes < full.meshes);
+        assert!(held.textures <= placed.textures + 4);
+        println!(
+            "HLOD_CURVE phase=visited parcels={} heap={live} textures={} meshes={}",
+            i + 1,
+            held.textures,
+            held.meshes
+        );
+        println!("HLOD_HASH visited={} {}", i + 1, g.dump()["hash"]);
+    }
+    let end = og_core::alloc::heap().unwrap().live;
+    let visited = g.held.get();
+    // Two placements share a tree: the first removal must not free the
+    // survivor's proxies, but the last removal must release them.
+    let first = g.find("cell-a-v1");
+    g.place("a-v1/duplicate.ogt");
+    g.frame();
+    let twice = g.held.get();
+    value(host_impl::answer(og_world_despawn(engine, first)));
+    g.frame();
+    assert_eq!(g.held.get().textures, twice.textures);
+    for i in 0..PARCELS {
+        value(host_impl::answer(og_world_despawn(
+            engine,
+            g.find(&if i == 0 {
+                "cell-copy".into()
+            } else {
+                format!("cell-{}", id(i))
+            }),
+        )));
+        g.frame();
+        let held = g.held.get();
+        println!(
+            "HLOD_CURVE phase=unplaced parcels={} heap={} textures={} meshes={}",
+            i + 1,
+            og_core::alloc::heap().unwrap().live,
+            held.textures,
+            held.meshes
+        );
+        println!("HLOD_HASH unplaced={} {}", i + 1, g.dump()["hash"]);
+    }
+    let away = g.held.get();
+    assert_eq!(away.instances, 0, "dead placements still draw: {away:?}");
+    // Removed renderer slots keep one clear texel, not their atlases.
+    assert!(
+        away.textures < 1024,
+        "HLOD atlases outlive their placements: {away:?}"
+    );
+    assert!(
+        away.meshes < visited.meshes,
+        "HLOD meshes outlive their placements: {away:?}"
+    );
+    assert!(
+        end.saturating_sub(start) + (visited.meshes.saturating_sub(placed.meshes) as usize)
+            < PARCELS * 1024 * 1024,
+        "visited parcels retain >1 MiB of heap + mesh upload payload each: {start} -> {end}, {placed:?} -> {visited:?}"
+    );
+    // Reload must rebuild resources rather than returning an empty cached model.
+    g.place("a-v1/place.ogt");
+    g.frame();
+    assert!(g.held.get().instances > 0 && g.held.get().textures > away.textures + 16 * 1024);
+    assert!(og_engine_destroy(engine));
     std::fs::remove_dir_all(base).unwrap();
 }
 
@@ -377,6 +550,7 @@ fn version(root: &Path, v: usize, grouped: bool) {
 
 #[test]
 fn same_path_versions_keep_their_own_scenes_models_textures_and_budget() {
+    let _lock = TEST_LOCK.lock().unwrap();
     let base = PathBuf::from(env!("CARGO_TARGET_TMPDIR"))
         .join(format!("og-runtime-bundle-versions-{}", std::process::id()));
     let _ = std::fs::remove_dir_all(&base);
@@ -496,6 +670,7 @@ fn same_path_versions_keep_their_own_scenes_models_textures_and_budget() {
 
 #[test]
 fn missing_scene_dependencies_fall_back_to_boot_then_open_order() {
+    let _lock = TEST_LOCK.lock().unwrap();
     let base = PathBuf::from(env!("CARGO_TARGET_TMPDIR"))
         .join(format!("og-runtime-bundle-fallback-{}", std::process::id()));
     let _ = std::fs::remove_dir_all(&base);

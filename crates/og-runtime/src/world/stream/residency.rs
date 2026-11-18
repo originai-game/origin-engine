@@ -144,7 +144,9 @@ pub(super) fn upgrade(eng: &Engine, group: &str) -> Result<bool, String> {
                     rs.decoded.ids.insert(*h, t.id.clone());
                     rs.decoded.bundles.insert(*h, owner);
                 }
-                for (((h, _), m), prim) in meshes.iter().zip(full).zip(&model.primitives) {
+                for (((h, stand_in), m), prim) in meshes.iter_mut().zip(full).zip(&model.primitives)
+                {
+                    *stand_in = rs.scene.mesh(*h).expect("streamed model's proxy").clone();
                     rs.scene.set_mesh(*h, m);
                     // The full model's cooked BVH replaces the proxy's.
                     super::geometry::adopt_cooked_bvh(&mut rs, *h, prim)?;
@@ -281,8 +283,11 @@ fn put_stand_ins_back(eng: &Engine, group: &str) {
                 textures,
                 ..
             } => {
-                for (h, m) in meshes.iter() {
-                    rs.scene.set_mesh(*h, m.clone());
+                for (h, m) in meshes.iter_mut() {
+                    rs.scene.set_mesh(*h, std::mem::take(m));
+                    // The full mesh's BVH can dwarf its stand-in. A later
+                    // raycast builds the stand-in's, not the evicted mesh's.
+                    crate::present::geometry::forget_mesh(&mut rs, *h);
                 }
                 for (h, m) in materials.iter() {
                     rs.scene.set_standard_material(*h, *m);

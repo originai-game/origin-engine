@@ -159,7 +159,8 @@ pub(crate) struct Group {
 enum Slot {
     Model {
         id: String,
-        /// Per primitive, the proxy's mesh handle and geometry.
+        /// Per primitive, the proxy's mesh handle and (while upgraded)
+        /// saved geometry. When unloaded the scene owns the only copy.
         meshes: Vec<(MeshHandle, MeshData)>,
         /// Per material, the proxy's handle and material (as drawn: a
         /// physical material has no glTF shape).

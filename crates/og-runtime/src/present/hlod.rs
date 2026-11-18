@@ -76,6 +76,8 @@ pub(crate) struct Drawn {
 pub(crate) struct HlodState {
     /// By bundle and scene id: its tree, or none when it has none.
     trees: BTreeMap<(usize, String), Option<Arc<Tree>>>,
+    /// Unshared model resources owned by trees, also across a hot reload.
+    pub proxies: IdMap<u64, Vec<og_render::TextureHandle>>,
     places: Vec<Place>,
     serial: u64,
     pub drawn: Drawn,
@@ -112,16 +114,22 @@ fn tree(eng: &Engine, id: &str, owner: usize) -> Option<Arc<Tree>> {
                 .hlod(&hlod_id, bytes.bytes())
                 .map_err(|e| e.to_string())?
         };
-        let mut proxies = Vec::with_capacity(hlod.nodes.len());
-        for n in 0..hlod.nodes.len() {
-            let index = crate::world::assets::load_gltf_from(
-                eng,
-                &og_bundle::hlod::node_id(id, n),
-                Some(owner),
-            )?;
-            proxies.push(handle(index));
+        let mut tree = Tree {
+            hlod,
+            proxies: Vec::new(),
+        };
+        for n in 0..tree.hlod.nodes.len() {
+            let loaded =
+                crate::world::assets::load_hlod_proxy(eng, &og_bundle::hlod::node_id(id, n), owner);
+            match loaded {
+                Ok(index) => tree.proxies.push(handle(index)),
+                Err(e) => {
+                    release_tree(&mut eng.render.borrow_mut(), &tree);
+                    return Err(e);
+                }
+            }
         }
-        Ok(Some(Tree { hlod, proxies }))
+        Ok(Some(tree))
     })();
     let tree = match loaded {
         Ok(t) => t.map(Arc::new),
@@ -136,6 +144,66 @@ fn tree(eng: &Engine, id: &str, owner: usize) -> Option<Arc<Tree>> {
     };
     eng.render.borrow_mut().hlod.trees.insert(key, tree.clone());
     tree
+}
+
+/// Dead placements no longer own their trees or their decoded proxies.
+/// A cell unloading is not a dead placement: its distant proxies must stay.
+pub(crate) fn collect(world: &World, rs: &mut RenderState) {
+    let before = rs.hlod.places.len();
+    rs.hlod.places.retain(|p| match p.root {
+        Some(root) => world.is_alive(Entity::from_bits(root)),
+        None => p
+            .members
+            .iter()
+            .any(|&(e, _)| world.is_alive(Entity::from_bits(e))),
+    });
+    if rs.hlod.places.len() == before {
+        return;
+    }
+    rs.hlod.changes += 1;
+    rs.kept_models.forget();
+    let mut trees = std::mem::take(&mut rs.hlod.trees);
+    trees.retain(|_, tree| {
+        let Some(tree) = tree else { return true };
+        if Arc::strong_count(tree) != 1 {
+            return true;
+        }
+        release_tree(rs, tree);
+        false
+    });
+    rs.hlod.trees = trees;
+}
+
+fn release_tree(rs: &mut RenderState, tree: &Tree) {
+    for &key in &tree.proxies {
+        release_proxy(rs, key);
+    }
+}
+
+pub(crate) fn release_proxy(rs: &mut RenderState, key: u64) {
+    if let Some(textures) = rs.hlod.proxies.remove(&key) {
+        // Cooked HLOD nodes have one mesh level and no impostor. Unlike
+        // ordinary models, their resources are not shared with the bundle.
+        rs.models.remove(&key);
+        rs.model_lods.remove(&key);
+        rs.wind.tops.remove(&key);
+        if let Some(model) = rs.fx.models.remove(&key) {
+            for mesh in model.meshes {
+                crate::present::geometry::forget_mesh(rs, mesh);
+                rs.scene.remove_mesh(mesh);
+            }
+        }
+        if let Some(materials) = rs.fx.model_materials.remove(&key) {
+            for material in materials {
+                rs.scene.remove_material(material);
+            }
+        }
+        for texture in textures {
+            rs.scene.remove_texture(texture);
+            rs.decoded.ids.remove(&texture);
+            rs.decoded.bundles.remove(&texture);
+        }
+    }
 }
 
 /// A cell was given sub-scene `scene`: its proxies draw while it is not
@@ -331,6 +399,9 @@ pub(crate) fn draw(
             (true, Some(cell)) => cell_loaded(world, cell).unwrap_or(false),
             _ => true,
         };
+        if !loaded {
+            place.members.clear();
+        }
         // A loaded cell whose models this place does not know (brought
         // back from what it kept) draws its models.
         if loaded && place.members.is_empty() {
