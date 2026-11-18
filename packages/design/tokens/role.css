@@ -432,6 +432,71 @@
   --role-combo-glow: drop-shadow(0 0 calc(18 * var(--font-step-px)) rgb(from var(--hud-accent) r g b / 0.55));
   --role-combo-burst: radial-gradient(closest-side, rgb(255 255 255 / 0.9) 0 8%, rgb(from var(--hud-accent) r g b / 0.7) 22%, transparent 70%);
 
+  /* An action RPG's HUD. The vitals' fills, each lit along its top with
+     one soft glow: health in red, mana in blue, stamina in gold, a fill
+     in danger when low; the boss's health in a burning orange; the
+     stagger gauge in gold; the experience line in violet. A fill in the
+     HUD's accent (a combo's decay). */
+  --role-hud-life-fill: linear-gradient(180deg, rgb(255 255 255 / 0.55), transparent 42%), rgb(255 93 108);
+  --role-hud-life-glow: calc(2 * var(--font-step-px)) 0 calc(10 * var(--font-step-px)) rgb(255 93 108 / 0.75);
+  --role-hud-mana-fill: linear-gradient(180deg, rgb(255 255 255 / 0.55), transparent 42%), rgb(91 157 255);
+  --role-hud-mana-glow: calc(2 * var(--font-step-px)) 0 calc(10 * var(--font-step-px)) rgb(91 157 255 / 0.75);
+  --role-hud-mana-ink: rgb(120 178 255);
+  --role-hud-stamina-fill: linear-gradient(180deg, rgb(255 255 255 / 0.55), transparent 42%), rgb(255 210 74);
+  --role-hud-stamina-glow: calc(2 * var(--font-step-px)) 0 calc(10 * var(--font-step-px)) rgb(255 210 74 / 0.7);
+  --role-hud-boss-fill: linear-gradient(180deg, rgb(255 255 255 / 0.5), transparent 42%), linear-gradient(90deg, rgb(255 110 40), rgb(255 154 72));
+  --role-hud-boss-glow: calc(2 * var(--font-step-px)) 0 calc(12 * var(--font-step-px)) rgb(255 138 61 / 0.8);
+  --role-hud-stagger-fill: linear-gradient(180deg, rgb(255 255 255 / 0.5), transparent 42%), rgb(255 207 90);
+  --role-hud-stagger-glow: calc(2 * var(--font-step-px)) 0 calc(10 * var(--font-step-px)) rgb(255 207 90 / 0.7);
+  --role-hud-xp-fill: linear-gradient(90deg, rgb(138 107 255), rgb(215 184 255));
+  --role-hud-xp-glow: 0 0 calc(10 * var(--font-step-px)) rgb(169 139 255);
+  --role-hud-accent-fill: linear-gradient(180deg, rgb(255 255 255 / 0.55), transparent 42%), var(--hud-accent);
+  --role-hud-accent-glow: calc(2 * var(--font-step-px)) 0 calc(10 * var(--font-step-px)) rgb(from var(--hud-accent) r g b / 0.75);
+  /* A hexagon (the ultimate's slot) beside the octagon. */
+  /* A slot's or a tile's lift off the scene (a filter: it follows the cut
+     shape), a ready slot's lit edge and glow, a spent one's grey. */
+  /* A cooldown or a timer: the dark sweep over the art for the time still
+     to run, and a charge ring's well; a veil over a slot that cannot be
+     used (no mana), and the sweep's lit leading edge. */
+  --role-hud-veil: rgb(6 9 16 / 0.5);
+  --role-hud-sweep-edge: rgb(255 255 255 / 0.95);
+  /* The ultimate: a gold ring with a glow and its gold key cap. */
+  --role-hud-gold-glow: drop-shadow(0 0 calc(8 * var(--font-step-px)) rgb(255 207 90));
+  --role-hud-key-gold-fill: linear-gradient(180deg, rgb(255 242 196), rgb(255 207 90));
+  /* An effect's tile edge: a boon green, a harm red. */
+  /* A feed row (a kill, a pickup): a dark glass that fades toward the
+     screen's middle, an edge at the screen's side. */
+  /* An epic item's name, a lighter violet that reads as text. */
+  --role-hud-epic-ink: rgb(220 184 255);
+  /* The two sides' inks (the player's side in shield blue, the other in
+     danger red) for blips. */
+  /* A glyph over art: white with one soft shadow. */
+  /* The round map: a dark round well with a dark and a lit ring, its
+     sweep, its range rings and a vignette; a blip's dark rim. */
+  /* The lock-on reticle round a target: four lit arcs with a glow in the
+     HUD's accent. */
+  --role-hud-lock-ring: conic-gradient(rgb(255 255 255) 0 20deg, transparent 0 70deg, rgb(255 255 255) 0 110deg, transparent 0 160deg, rgb(255 255 255) 0 200deg, transparent 0 250deg, rgb(255 255 255) 0 290deg, transparent 0 340deg, rgb(255 255 255) 0);
+  --role-hud-lock-glow: drop-shadow(0 0 calc(6 * var(--font-step-px)) var(--hud-accent));
+  /* Damage figures: a critical hit's slant, a damage over time's ember. */
+  --role-hud-figure-slant: italic;
+  --role-hud-burn-ink: rgb(255 162 74);
+  /* A quest step's marker: a hollow gold diamond's rim; a done step's line. */
+  --role-hud-step-rim: inset 0 0 0 calc(2 * var(--font-step-px)) var(--hud-gold);
+  --role-hud-done-line: line-through;
+  /* The action HUD's type steps: a name, a feed row, a title, the boss's
+     name, a critical hit and the combo; `-compact` is the same on a phone. */
+  --role-hud-size-title: calc(17 * var(--font-step-px));
+  --role-hud-size-boss: calc(22 * var(--font-step-px));
+  --role-hud-size-boss-compact: calc(15 * var(--font-step-px));
+  --role-hud-size-crit: calc(50 * var(--font-step-px));
+  --role-hud-size-crit-compact: calc(30 * var(--font-step-px));
+  --role-hud-size-combo: calc(62 * var(--font-step-px));
+  --role-hud-size-combo-compact: calc(30 * var(--font-step-px));
+  /* A word on a slot (No mana): the tag's size, held to a share of the
+     slot it stands on (a size container), so it fits a phone's slot at any
+     text scale. */
+  --role-hud-size-reason: min(calc(12 * var(--font-step-px)), 26cqi);
+
   /* Label: a caption or column heading, opened a little so it sits back
      from the values it names. */
   --role-label-font: var(--type-label-font);
