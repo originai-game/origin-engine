@@ -458,7 +458,7 @@ pub fn build(name: &str) -> Result<GfxScene, String> {
         // of about 2,100 people in twelve outfits from 4 m to 160 m, a
         // gate across it.
         "crowd-lods" => |g, _| {
-            g.scene = fx::crowd_lods_scene();
+            g.scene = crate::characters_scenes::festival_avenue();
             g.desc.antialias = Antialias::Tier;
             g.frames = 12;
             Ok(())

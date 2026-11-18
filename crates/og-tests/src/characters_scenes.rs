@@ -17,6 +17,11 @@
 //!   front two rows walking before it and three more behind it (hidden by
 //!   the occlusion test), and a guard whose palette carries him 12 m from
 //!   where his bind pose stands.
+//! - `crowd-lods`: a festival day on the old town's avenue: the same
+//!   2,100 walkers in twelve outfits (full mesh near, both coarser levels,
+//!   walking cards past 37 m) between rows of townhouses and lamps, the
+//!   stone gate 60 m down hiding the crowd behind it, a low sun from the
+//!   right casting long shadows across them.
 
 use crate::atmo_scenes::colonnade;
 use crate::fx_scenes::{
@@ -426,6 +431,81 @@ pub fn wall_queue() -> RenderScene {
     scene.frame.camera = Camera {
         position: Vec3::new(0.0, 2.6, 8.0),
         target: Vec3::new(0.0, 1.4, -2.0),
+        far: 2500.0,
+        exposure: Exposure::Manual { ev: 0.0 },
+        ..Default::default()
+    };
+    scene
+}
+
+/// `crowd-lods` (module docs): [`crate::fx_scenes::lod_crowd`] down the
+/// old town's avenue, seen from 7 m up as the fixture is.
+pub fn festival_avenue() -> RenderScene {
+    let mut scene = RenderScene::new();
+    crate::shadow_scenes::meadow(&mut scene, None);
+    let cobbles = kit::surface(&mut scene, "cobbles");
+    let avenue = scene.add_mesh(kit::slab(
+        Vec2::new(-26.0, -200.0),
+        Vec2::new(26.0, 20.0),
+        0.01,
+        2.4,
+    ));
+    scene.add_instance(avenue, cobbles, Mat4::IDENTITY);
+    crate::fx_scenes::lod_crowd(&mut scene);
+    // Townhouses facing the avenue down both sides, every 19 m.
+    let house = kit::prop(&mut scene, "townhouse");
+    for k in 0..9 {
+        let z = -6.0 - k as f32 * 19.0;
+        house.place(
+            &mut scene,
+            Vec3::new(-21.0, 0.0, z),
+            std::f32::consts::FRAC_PI_2,
+            16.0,
+        );
+        house.place(
+            &mut scene,
+            Vec3::new(21.0, 0.0, z),
+            -std::f32::consts::FRAC_PI_2,
+            16.0,
+        );
+    }
+    let lamp = kit::prop(&mut scene, "streetlamp");
+    for k in 0..12 {
+        let z = -2.0 - k as f32 * 12.0;
+        lamp.place(&mut scene, Vec3::new(-16.2, 0.0, z), 0.0, 4.2);
+        lamp.place(&mut scene, Vec3::new(16.2, 0.0, z), 0.0, 4.2);
+    }
+    // The gate across the avenue at 60 m: two piers and a lintel of
+    // dressed stone, a red banner on each pier.
+    let stone = kit::surface_tinted(&mut scene, "stone", [0.92, 0.88, 0.8]);
+    for (min, max) in [
+        (Vec3::new(-16.0, 0.0, -61.0), Vec3::new(-7.0, 12.0, -59.0)),
+        (Vec3::new(7.0, 0.0, -61.0), Vec3::new(16.0, 12.0, -59.0)),
+        (Vec3::new(-16.0, 12.0, -61.0), Vec3::new(16.0, 15.0, -59.0)),
+    ] {
+        let block = scene.add_mesh(kit::block(min, max, 2.6));
+        scene.add_instance(block, stone, Mat4::IDENTITY);
+    }
+    let cloth = scene.add_standard_material(StandardMaterial {
+        color: Vec3::new(0.5, 0.06, 0.05),
+        roughness: 0.85,
+        sheen: 0.6,
+        sheenColor: Vec3::new(0.9, 0.5, 0.4),
+        ..Default::default()
+    });
+    let banner = scene.add_mesh(shapes::cuboid(Vec3::new(2.4, 7.0, 0.06)));
+    for x in [-11.5f32, 11.5] {
+        scene.add_instance(
+            banner,
+            cloth,
+            Mat4::from_translation(Vec3::new(x, 7.0, -58.95)),
+        );
+    }
+    physical_light_under(&mut scene, Vec3::new(0.8, 0.45, 0.25));
+    scene.lighting.light.cast_shadows = true;
+    scene.frame.camera = Camera {
+        position: Vec3::new(2.0, 7.0, 4.0),
+        target: Vec3::new(0.0, 0.0, -60.0),
         far: 2500.0,
         exposure: Exposure::Manual { ev: 0.0 },
         ..Default::default()
