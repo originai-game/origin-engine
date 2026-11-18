@@ -1547,6 +1547,7 @@ impl Ui {
                     let size = em * CAP_TEXT;
                     let w = font.metrics.measure_tracked(label, size, 0.0);
                     cmds.push(DrawCmd::Text {
+                        source: 0,
                         x: snap(r.x + m + pad),
                         baseline: snap(baseline - em * 0.02),
                         size,
@@ -1580,6 +1581,7 @@ impl Ui {
                         // An icon set's glyph: its em square where a cell would be.
                         let (x, top) = (r.x + side * 0.05, baseline - side * 0.85);
                         cmds.push(DrawCmd::Text {
+                            source: 0,
                             x,
                             baseline: top + side,
                             size: side,
@@ -1692,6 +1694,7 @@ impl Ui {
                          w: f32| {
                 crate::text::unscale(&mut placements, scale);
                 DrawCmd::Text {
+                    source: 0,
                     x: snap(x),
                     baseline: snap(baseline + dy),
                     size: size * scale,
@@ -1745,6 +1748,7 @@ impl Ui {
                     };
                     for &dx in copies {
                         cmds.push(DrawCmd::Text {
+                            source: 0,
                             x: snap(x + dx),
                             baseline: snap(baseline + dy),
                             size: size * scale,
@@ -1774,6 +1778,7 @@ impl Ui {
                     };
                     for &dx in copies {
                         cmds.push(DrawCmd::Text {
+                            source: 0,
                             x: snap(r.x + dx) + pc.dx * size,
                             baseline: snap(baseline),
                             size: size * pc.scale,
@@ -2250,6 +2255,7 @@ impl Ui {
                             ))
                         }
                         crate::ui::IconCell::Glyph(font, ch) => cmds.push(DrawCmd::Text {
+                            source: 0,
                             x: b.x,
                             baseline: b.y + em * 0.85,
                             size: em,
@@ -2342,6 +2348,7 @@ impl Ui {
                             return;
                         };
                         let cmd = DrawCmd::Text {
+                            source: 0,
                             x,
                             baseline,
                             size,

@@ -288,6 +288,50 @@ fn nowrap_flex_text_cuts_at_its_shrunk_box() {
     }
 }
 
+#[test]
+fn equal_nearby_labels_keep_their_draw_sources_through_retained_frames() {
+    let mut d = doc(
+        r#"<span id="A">Repeat</span><span id="B">Repeat</span>
+        <div id="Clip"><span id="Hidden">Offscreen</span></div>"#,
+        "#Root { position: relative; width: 50vw; height: 100px; }
+         #A, #B { position: absolute; left: 10%; top: 10px; width: 100px;
+         font-size: 20px; line-height: 1; text-shadow: 0 0 2px #000; }
+         #B { left: calc(10% + 1px); }
+         #Clip { position: absolute; top: 60px; width: 100px; height: 30px; overflow: auto; }
+         #Hidden { position: absolute; top: -25px; width: 100px; height: 20px;
+         font-size: 20px; line-height: 1; text-shadow: 0 0 2px #000; }",
+    );
+    for width in [800.0, 800.0, 390.0, 390.0] {
+        d.viewport = Viewport::new(width, 900.0);
+        d.step(InputFrame::default());
+        let lines = drawn_lines(d.ui.frame().items.iter().map(|i| &i.cmd));
+        let mut sources = lines
+            .iter()
+            .filter_map(|c| match c {
+                DrawCmd::Text { source, text, .. } if text == "Repeat" => d.ui.draw_source(*source),
+                _ => None,
+            })
+            .collect::<Vec<_>>();
+        sources.sort();
+        let mut expected = vec![(d.get("A").path, false), (d.get("B").path, false)];
+        expected.sort();
+        assert_eq!(sources, expected);
+        // Its shadow reaches the viewport, so the command remains, but
+        // its line and element box are wholly above the scroller. Shaping
+        // also combines "ff": attribution must not match the drawn string.
+        let hidden = lines
+            .iter()
+            .filter_map(|c| match c {
+                DrawCmd::Text { source, .. } => d.ui.draw_source(*source),
+                _ => None,
+            })
+            .find(|(path, _)| path.ends_with("/Clip/Hidden"))
+            .expect("the clipped line has a source");
+        assert!(hidden.1);
+        assert!(d.el("Hidden").is_none());
+    }
+}
+
 /// A document of `body` under `css`, laid out 400 px wide in Noto Sans.
 fn doc(body: &str, css: &str) -> Doc {
     doc_in(NOTO, body, css)

@@ -1,0 +1,5 @@
+{
+  "fixed": [
+    "UI geometry reports now attribute text to its emitting element instead of guessing from overlapping boxes. Fully scrolled-out text no longer produces sheet-level clipping findings, and identical overlapping labels keep separate clips."
+  ]
+}

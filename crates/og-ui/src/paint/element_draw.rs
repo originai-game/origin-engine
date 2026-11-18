@@ -1153,6 +1153,7 @@ fn rive_cmd(d: crate::rive::Drawn, clip: Rect) -> DrawCmd {
         Drawn::Text(t) => {
             let [bx, by, bw, bh] = t.bounds;
             let text = DrawCmd::Text {
+                source: 0,
                 x: t.pen.x,
                 baseline: t.pen.y,
                 size: t.size,

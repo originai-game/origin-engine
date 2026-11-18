@@ -110,16 +110,27 @@ fn frame(engine: u32) -> Value {
         .into_iter()
         .filter_map(|c| match c {
             DrawCmd::Text {
+                source,
                 text,
                 size,
                 bounds,
                 clip,
                 color,
                 ..
-            } => Some(json!({
-                "text": text, "size": size, "bounds": rect(bounds), "clip": rect(clip),
-                "color": color,
-            })),
+            } => {
+                let mut line = json!({
+                    "text": text, "size": size, "bounds": rect(bounds), "clip": rect(clip),
+                    "color": color,
+                });
+                if *source != 0 {
+                    let node = ui.draw_source(*source);
+                    line["source"] = json!({
+                        "path": node.as_ref().map(|(p, _)| p),
+                        "clipped": node.is_some_and(|(_, c)| c),
+                    });
+                }
+                Some(line)
+            }
             _ => None,
         })
         .collect();

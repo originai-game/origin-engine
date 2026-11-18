@@ -94,6 +94,22 @@ impl Ui {
         &self.inspected_elements().0
     }
 
+    /// The element that emitted a text command, including an element
+    /// scrolled completely out of the visible element list: its probe
+    /// path and whether an ancestor clips its box. A leaving element
+    /// whose node no longer exists has no current source.
+    pub fn draw_source(&self, key: u64) -> Option<(String, bool)> {
+        let ui = self.finished();
+        let i = ui.tree.index.find(key)?;
+        let n = &ui.tree.nodes[i];
+        let r = &n.placed.screen;
+        let visible = r.intersect(&n.placed.clip);
+        Some((
+            ui.tree.probe_path(i),
+            visible.width + 0.01 < r.width || visible.height + 0.01 < r.height,
+        ))
+    }
+
     /// The style part each of [`Ui::elements`] is drawn as
     /// (`Button.base[primary]`, its variant and state flags as of the last
     /// frame), index for index; `None` for one no style dresses.

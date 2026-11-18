@@ -1075,7 +1075,7 @@ fn emit_text(cmd: &DrawCmd, layer: i32, clips: &mut Clips, overlay: &mut Overlay
 /// reads a line's ink (`og ui check`) reads the line, never its drop: a
 /// blue "Lv. 125" over its black drop measured 1:1.
 pub fn drawn_lines<'a>(cmds: impl IntoIterator<Item = &'a DrawCmd>) -> Vec<&'a DrawCmd> {
-    let lines: Vec<(&DrawCmd, &String, f32, Rect, Rect)> = cmds
+    let lines: Vec<(&DrawCmd, u64, &String, f32, Rect, Rect)> = cmds
         .into_iter()
         .map(|c| match c {
             DrawCmd::StyledText { text, .. } => &**text,
@@ -1083,23 +1083,25 @@ pub fn drawn_lines<'a>(cmds: impl IntoIterator<Item = &'a DrawCmd>) -> Vec<&'a D
         })
         .filter_map(|c| match c {
             DrawCmd::Text {
+                source,
                 text,
                 size,
                 bounds,
                 clip,
                 ..
-            } => Some((c, text, *size, *bounds, *clip)),
+            } => Some((c, *source, text, *size, *bounds, *clip)),
             _ => None,
         })
         .collect();
     lines
         .iter()
         .enumerate()
-        .filter(|&(i, &(_, text, size, b, clip))| {
+        .filter(|&(i, &(_, source, text, size, b, clip))| {
             let reach = (size * 0.2).max(2.0);
-            !lines[i + 1..].iter().any(|&(_, t, s, o, c)| {
+            !lines[i + 1..].iter().any(|&(_, node, t, s, o, c)| {
                 let (dx, dy) = (b.x - o.x, b.y - o.y);
-                t == text
+                node == source
+                    && t == text
                     && s == size
                     && c == clip
                     && o.height == b.height

@@ -213,6 +213,7 @@ fn levelling_again_what_changed_matches_levelling_afresh() {
 #[test]
 fn only_a_text_that_measured_no_width_goes_on_without_bounds() {
     let text = |bounds: Rect, clip: Rect| DrawCmd::Text {
+        source: 0,
         x: bounds.x,
         baseline: bounds.y + 12.0,
         size: 16.0,

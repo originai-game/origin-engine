@@ -154,6 +154,7 @@ impl MotionWrite for W<'_> {
                 self.rect(clip);
             }
             DrawCmd::Text {
+                source,
                 x,
                 baseline,
                 size,
@@ -167,7 +168,10 @@ impl MotionWrite for W<'_> {
                 glow,
                 placements,
             } => {
-                self.u8(5);
+                self.u8(if *source == 0 { 5 } else { 8 });
+                if *source != 0 {
+                    self.u64(*source);
+                }
                 self.f32(*x);
                 self.f32(*baseline);
                 self.f32(*size);
@@ -547,7 +551,8 @@ impl MotionRead for R<'_> {
                 color: self.color4()?,
                 clip: self.rect()?,
             },
-            5 => {
+            tag @ (5 | 8) => {
+                let source = if tag == 8 { self.u64()? } else { 0 };
                 let x = self.f32()?;
                 let baseline = self.f32()?;
                 let size = self.f32()?;
@@ -595,6 +600,7 @@ impl MotionRead for R<'_> {
                         .collect();
                 }
                 DrawCmd::Text {
+                    source,
                     x,
                     baseline,
                     size,
@@ -792,6 +798,7 @@ mod tests {
     #[test]
     fn shaped_forms_read_as_glyph_ids_now_and_from_before_19() {
         let text = |text: &str, glyphs: [Option<u16>; 3]| DrawCmd::Text {
+            source: 0,
             x: 1.0,
             baseline: 2.0,
             size: 16.0,
@@ -819,10 +826,15 @@ mod tests {
             }
             .cmd()
         };
-        let now = text("a\u{F0105}b", [None, Some(0x7), None]);
-        let mut bytes = Vec::new();
-        W(&mut bytes).cmd(&now);
-        assert_eq!(read(&bytes, false), Some(now));
+        for source in [0, 0x1234] {
+            let mut now = text("a\u{F0105}b", [None, Some(0x7), None]);
+            if let DrawCmd::Text { source: s, .. } = &mut now {
+                *s = source;
+            }
+            let mut bytes = Vec::new();
+            W(&mut bytes).cmd(&now);
+            assert_eq!(read(&bytes, false), Some(now));
+        }
         // Before 19: 12 bytes a placement (no id) at the command's end.
         let old = text("a\u{F0105}b", [None; 3]);
         let mut bytes = Vec::new();

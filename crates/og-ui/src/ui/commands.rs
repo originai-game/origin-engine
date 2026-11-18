@@ -770,6 +770,15 @@ impl Ui {
                     self.paint.ctx = None;
                     self.tree.nodes[i].placed.alpha = alpha;
                     let key = self.tree.nodes[i].key;
+                    for c in &mut local {
+                        let text = match c {
+                            DrawCmd::StyledText { text, .. } => text.as_mut(),
+                            c => c,
+                        };
+                        if let DrawCmd::Text { source, .. } = text {
+                            *source = key;
+                        }
+                    }
                     self.paint
                         .cache
                         .cmds
@@ -2351,6 +2360,7 @@ pub(crate) fn bake(c: DrawCmd, m: Affine) -> (DrawCmd, Affine) {
             clip: r(&clip),
         },
         DrawCmd::Text {
+            source,
             x,
             baseline,
             size,
@@ -2366,6 +2376,7 @@ pub(crate) fn bake(c: DrawCmd, m: Affine) -> (DrawCmd, Affine) {
         } => {
             let (x, baseline) = p(x, baseline);
             DrawCmd::Text {
+                source,
                 x,
                 baseline,
                 size: size * sy,

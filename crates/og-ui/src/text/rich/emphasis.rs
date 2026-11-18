@@ -95,6 +95,7 @@ pub(crate) fn marks(
         let (a, d) = super::ruby::content_edges(m, &text);
         for &(x, y) in centres {
             cmds.push(crate::draw::DrawCmd::Text {
+                source: 0,
                 x: x - w / 2.0,
                 baseline: y + (a - d) / 2.0 * b,
                 size: b,

@@ -89,6 +89,9 @@ pub enum DrawCmd {
     },
     /// One line of text: `x` the pen start, `baseline` its baseline.
     Text {
+        /// The emitting UI node's key, for inspection; zero for drawing
+        /// without an element. Kept with the line through paint reuse.
+        source: u64,
         x: f32,
         baseline: f32,
         size: f32,

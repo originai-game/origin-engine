@@ -675,6 +675,7 @@ impl Ui {
                                 for &sx in copies {
                                     let ox = pc.dx * size + sx;
                                     cmds.push(DrawCmd::Text {
+                                        source: 0,
                                         x: snap(x + dx) + ox,
                                         baseline: snap(baseline + dy),
                                         size: size * pc.scale,
@@ -1171,6 +1172,7 @@ impl Ui {
                         let Some(handle) = pc.font else { continue };
                         let ox = pc.dx * size;
                         cmds.push(DrawCmd::Text {
+                            source: 0,
                             x: snap(x) + ox,
                             baseline: snap(baseline),
                             size: size * pc.scale,
@@ -1229,6 +1231,7 @@ impl Ui {
                     // The em square: ascender 1, descender 0 (cook::icons).
                     let (x, top) = (r.x + (r.width - size) / 2.0, r.y + (r.height - size) / 2.0);
                     cmds.push(DrawCmd::Text {
+                        source: 0,
                         x,
                         baseline: top + size,
                         size,
@@ -1439,6 +1442,7 @@ impl Ui {
                         let (c0, c1) =
                             (across * tf[0] + down * tf[1], across * tf[2] + down * tf[3]);
                         let text = DrawCmd::Text {
+                            source: 0,
                             x: pen.x,
                             baseline: pen.y,
                             size,
@@ -1505,6 +1509,7 @@ impl Ui {
                 let ox = pc.dx * size;
                 let pen = pen + Vec2::new(cos, sin) * ox;
                 let text = DrawCmd::Text {
+                    source: 0,
                     x: pen.x,
                     baseline: pen.y,
                     size: size * pc.scale,
@@ -1619,6 +1624,7 @@ impl Ui {
                 return;
             };
             let cmd = DrawCmd::Text {
+                source: 0,
                 x,
                 baseline,
                 size,

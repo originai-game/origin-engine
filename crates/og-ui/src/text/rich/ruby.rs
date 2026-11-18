@@ -1128,6 +1128,7 @@ impl Ui {
          -> Option<crate::draw::DrawCmd> {
             let font = font.filter(|_| !text.is_empty())?;
             let cmd = crate::draw::DrawCmd::Text {
+                source: 0,
                 x,
                 baseline,
                 size,

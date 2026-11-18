@@ -107,6 +107,32 @@ test("a row a scroll container cuts at its bottom edge is scrolling, not cut tex
   expect(rules({ ...tabs, sideways: [] })).toContain("text-cut");
 });
 
+test("draw provenance keeps scrolled-out and overlapping labels with their emitting elements", () => {
+  const sheet = { ...el("sheet:sheet", "", "panel", "", [0, 0, 1280, 720]), path: "sheet:sheet" };
+  // The initial-scroll map's 13 is fully above the scroller, so it is
+  // absent from elements. Overlap used to assign it to the sheet instead.
+  const offscreen = {
+    text: "13", size: 30, bounds: [265.49, -23, 31.02, 30] as Rect4,
+    clip: [108, 24, 555, 672] as Rect4, color: [1, 1, 1, 1],
+    source: { path: "sheet:sheet/Map/Level#13", clipped: true },
+  };
+  expect(rules(frame({ elements: [sheet], texts: [offscreen] }))).not.toContain("text-cut");
+
+  const a = { ...el("Name", "Missing", "label", "text", [20, 100, 70, 20], { text: "Repeat" }), path: "Left/Missing/Name" };
+  const b = { ...a, path: "Right/Missing/Name" };
+  const line = { text: "Repeat", size: 16, bounds: [20, 100, 70, 20] as Rect4, clip: [20, 100, 40, 20] as Rect4, color: [1, 1, 1, 1] };
+  const f = frame({ elements: [a, b], texts: [
+    { ...line, source: { path: a.path, clipped: false } },
+    { ...line, clip: [0, 0, 390, 844], source: { path: b.path, clipped: false } },
+  ] });
+  expect(elementPaths(f)).toEqual([a.path, b.path]);
+  // Identical ink and bounds from different nodes must not merge their
+  // clips and hide the first label's genuine cut.
+  expect(checkFrame(f, cell).filter((x) => x.rule === "text-cut").map((x) => x.paths)).toEqual([[a.path]]);
+  const wider = frame({ elements: [{ ...a, width: 30 }, b], texts: [{ ...line, clip: [0, 0, 390, 844], source: { path: a.path, clipped: false } }] });
+  expect(checkFrame(wider, cell).find((x) => x.rule === "text-cut")?.paths).toEqual([a.path]);
+});
+
 test("text drawn wider than its own box (sized to English) is a finding", () => {
   const f = frame({ elements: [el("Go", "", "label", "text", [10, 100, 40, 20], { text: "[Gó fórwárd ñów]" })], texts: [{ text: "[Gó fórwárd ñów]", size: 14, bounds: [10, 100, 110, 20], clip: [0, 0, 390, 844], color: [1, 1, 1, 1] }] });
   expect(rules(f, { ...cell, locale: "pseudo" })).toContain("text-cut");

@@ -31,6 +31,8 @@ export type Rect4 = [number, number, number, number];
 export interface UiElementDump {
   id: string;
   parent: string;
+  /** The probe's exact path; older dumps omit it. */
+  path?: string;
   kind?: string;
   disabled?: boolean;
   clipped?: boolean;
@@ -90,7 +92,11 @@ export interface UiFrameSnapshot {
   stats: { elements: number; rebuilt: number; laidOut: number; keptCommands: number };
   draws: number;
   /** Every drawn line of text: the string as drawn, its size and line box, and its clip. */
-  texts: Array<{ text: string; size: number; bounds: Rect4; clip: Rect4; color: number[] }>;
+  texts: Array<{
+    text: string; size: number; bounds: Rect4; clip: Rect4; color: number[];
+    /** Emitting node, including nodes scrolled out of elements. Null path: a departed node. Older frames omit source. */
+    source?: { path: string | null; clipped: boolean };
+  }>;
   /** Solid and image fills of at least 8×8 CSS px, linear RGBA. */
   fills: Array<{ rect: Rect4; color: number[] }>;
   /**
@@ -253,13 +259,16 @@ const sameRect = (a: Rect4, b: Rect4) => a.every((v, i) => Math.abs(v - b[i]!) <
 const within = (path: string, anc: string) => path === anc || path.startsWith(anc + "/");
 
 /**
- * Each element's path: the accessibility tree's where it names one (by role
- * and bounds), else its parent's path and its id (the nearest earlier
- * element with the parent's id: ids repeat, as every toast's `Text` does).
+ * Each element's probe path. Older dumps reconstruct it from the
+ * accessibility tree, or its parent's path and id.
  */
 export function elementPaths(f: Pick<UiFrameSnapshot, "elements" | "a11y">): string[] {
   const out: string[] = [];
   for (const [i, e] of f.elements.entries()) {
+    if (e.path !== undefined) {
+      out.push(e.path);
+      continue;
+    }
     const node = e.role ? f.a11y.nodes.find((n) => n.role === e.role && sameRect(n.rect, rectOf(e)) && n.path.endsWith(e.id)) : undefined;
     if (node) {
       out.push(node.path);
@@ -279,13 +288,14 @@ export function elementPaths(f: Pick<UiFrameSnapshot, "elements" | "a11y">): str
 const stem = (t: string) => t.trim().replace(/(…|\.\.\.)$/, "");
 
 /**
- * The element that drew a line of text: among the elements with text whose
+ * The element that emitted the line. Only older frames guess among elements whose
  * box touches the line's box, the one showing the same text (or the text
  * the line is a piece of: a wrapped line, an ellipsis), else the smallest.
  * An element's box is its visible part (a scroll container cuts it), so a
  * point of the line (its centre) may lie outside it while the line is its.
  */
-function owner(f: UiFrameSnapshot, line: { text: string; bounds: Rect4 }): number {
+function owner(f: UiFrameSnapshot, line: UiFrameSnapshot["texts"][number], paths: string[]): number {
+  if (line.source !== undefined) return line.source.path === null ? -1 : paths.indexOf(line.source.path);
   const [x, y, w, h] = line.bounds;
   const want = stem(line.text).toLocaleUpperCase();
   let best = -1, bestScore = Infinity;
@@ -446,7 +456,11 @@ export interface MeasureOptions {
 function drawnTexts(f: UiFrameSnapshot): UiFrameSnapshot["texts"] {
   const by = new Map<string, UiFrameSnapshot["texts"][number]>();
   for (const t of f.texts) {
-    const k = `${t.text}\u0000${t.size}\u0000${t.bounds.join(",")}`;
+    // An ancestor cut the entire element out of view, not its text out of
+    // its own box. Keep it in the raw dump, but do not measure invisible ink.
+    const shown = intersect(t.bounds, t.clip);
+    if (t.source?.clipped && (shown[2] <= 0 || shown[3] <= 0)) continue;
+    const k = `${t.source?.path ?? ""}\u0000${t.text}\u0000${t.size}\u0000${t.bounds.join(",")}`;
     const had = by.get(k);
     if (!had) {
       by.set(k, { ...t, clip: [...t.clip] as Rect4 });
@@ -509,8 +523,8 @@ export function checkFrame(frame: UiFrameSnapshot, cell: UiCell, opts: CheckOpti
   for (const t of f.texts) {
     if (!/[\p{L}\p{N}]/u.test(t.text)) continue;
     const [, , w, h] = t.bounds;
-    const i = owner(f, t);
-    const path = i >= 0 ? paths[i]! : `text "${t.text.slice(0, 24)}"`;
+    const i = owner(f, t, paths);
+    const path = t.source?.path ?? (i >= 0 ? paths[i]! : `text "${t.text.slice(0, 24)}"`);
     const e = i >= 0 ? f.elements[i]! : undefined;
     const policy = e?.textOverflow;
     const shown = intersect(t.bounds, t.clip);
@@ -527,7 +541,7 @@ export function checkFrame(frame: UiFrameSnapshot, cell: UiCell, opts: CheckOpti
     // line scrolls into view too inside a sideways scroller (a row of tabs or
     // chips); elsewhere (a right-to-left line past its box's start, the kit's
     // gallery in Arabic) it stays.
-    if (e?.clipped && (cutX <= 1 || inSideways(path))) continue;
+    if ((t.source?.clipped ?? e?.clipped) && (cutX <= 1 || inSideways(path))) continue;
     // What the cut took, along the axis it cut: never "0 px" for a line cut top or bottom.
     const cut = [cutX > 1 ? `${r1(cutX)} CSS px of its width` : "", cutY > h * 0.3 ? `${r1(cutY)} of its ${r1(h)} CSS px height` : ""].filter(Boolean).join(" and ");
     if (!intentional && (cutX > 1 || cutY > h * 0.3)) {
@@ -726,8 +740,8 @@ export function measureFrame(frame: UiFrameSnapshot, cell: UiCell, opts: Measure
   const isDense = (path: string) => dense.some((d) => path === d || path.startsWith(`${d}/`));
   for (const t of f.texts) {
     if (!/[\p{L}\p{N}]/u.test(t.text)) continue;
-    const i = owner(f, t);
-    const path = i >= 0 ? paths[i]! : `text "${t.text.slice(0, 24)}"`;
+    const i = owner(f, t, paths);
+    const path = t.source?.path ?? (i >= 0 ? paths[i]! : `text "${t.text.slice(0, 24)}"`);
     add("text-size", {
       paths: [path],
       rect: t.bounds,
@@ -813,8 +827,8 @@ export function measureLayout(frame: UiFrameSnapshot, cell: UiCell, grid = 4): U
   const add = (measure: string, m: Omit<UiMeasure, "measure" | "cell">) => out.push({ ...m, measure, cell: where, rect: m.rect && (m.rect.map(r1) as Rect4) });
   for (const t of f.texts) {
     if (!/[\p{L}\p{N}]/u.test(t.text)) continue;
-    const i = owner(f, t);
-    const path = i >= 0 ? paths[i]! : `text "${t.text.slice(0, 24)}"`;
+    const i = owner(f, t, paths);
+    const path = t.source?.path ?? (i >= 0 ? paths[i]! : `text "${t.text.slice(0, 24)}"`);
     const e = i >= 0 ? f.elements[i]! : undefined;
     const [x, , w, h] = t.bounds;
     if (e) {
@@ -901,8 +915,9 @@ export function measureScale(baseFrame: UiFrameSnapshot, scaledFrame: UiFrameSna
   // longer shows (scrolled or windowed out) has nothing to compare.
   const basePaths = elementPaths(base), scaledPaths = elementPaths(scaled);
   const keyOf = (f: typeof base, paths: string[], t: (typeof base.texts)[number]) => {
-    const i = owner(f, t);
-    return { key: `${i >= 0 ? paths[i]! : ""}\u0000${t.text}`, path: i >= 0 ? paths[i]! : "" };
+    const i = owner(f, t, paths);
+    const path = t.source?.path ?? (i >= 0 ? paths[i]! : "");
+    return { key: `${path}\u0000${t.text}`, path };
   };
   const left = new Map<string, number[]>();
   for (const t of scaled.texts) {

@@ -53,6 +53,12 @@ export default og.game({start(world){if(++starts!==1)throw new Error("cell state
     expect([shown(0, "Play"), shown(0, "Quit")]).toEqual(["Play", "Quit"]);
     expect(shown(1, "Play")).toStartWith("[Pláý ");
     expect(shown(1, "Quit")).toStartWith("[Qüít ");
+    for (const f of frames) {
+      const element = f.elements.find((e: { id: string }) => e.id === "Quit");
+      const line = f.texts.find((t: { text: string }) => t.text === element.text);
+      expect(line, JSON.stringify(f.texts)).toBeDefined();
+      expect(line.source).toEqual({ path: element.path, clipped: false });
+    }
     return { pid: pids[0], result, frames };
   };
   try {

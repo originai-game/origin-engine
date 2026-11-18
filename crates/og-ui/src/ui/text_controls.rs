@@ -1296,6 +1296,7 @@ impl Ui {
                 };
                 let ox = pc.dx * size;
                 cmds.push(DrawCmd::Text {
+                    source: 0,
                     x: snap(x) + ox,
                     baseline: snap(baseline),
                     size: size * pc.scale,
