@@ -60,7 +60,7 @@
         {#each items as i (i.id)}
           <button part="RpgBackpack.cell" data-rarity={i.rarity} data-equipped={i.equipped} data-fresh={i.fresh} data-locked={i.locked} data-broken={i.broken} role="gridcell" aria-selected={i.id == selected} aria-label={i.name} draggable={!i.locked} data-drag-type="item" data-accept="item" onclick={choose} ondrop={move}>
             <div class="tile" data-layout="cover" data-gap="none"><og-icon class="art" icon={i.icon}></og-icon><div class="bar"></div>{#if i.broken}<span part="RpgBackpack.state" class="broken">{t("rpg.backpack.broken")}</span>{/if}</div>
-            {#if i.count > 1}<span part="RpgBackpack.badge" class="tag stack">{formatNumber(i.count)}</span>{/if}
+            {#if i.count > 1}<span part="RpgBackpack.badge" class="tag stack" aria-label={formatNumber(i.count)}>{formatCompact(i.count)}</span>{/if}
             {#if i.equipped}<span part="RpgBackpack.state" class="tag equipped" aria-label={t("rpg.backpack.equipped")}>{t("rpg.backpack.equippedMark")}</span>{/if}
             {#if i.locked}<div class="tag locked" data-layout="cover" aria-label={t("rpg.backpack.locked")}><og-icon icon="lock"></og-icon></div>{/if}
             {#if i.fresh}<div part="RpgBackpack.dot" class="fresh" data-locked={i.locked} aria-label={t("rpg.backpack.new")}></div>{/if}
