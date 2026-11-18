@@ -613,7 +613,8 @@
     "control": null,
     "uses": [],
     "files": [
-      "@ui/components/world/interaction-prompt.svelte"
+      "@ui/components/world/interaction-prompt.svelte",
+      "@ui/components/world/world.en.ogt"
     ],
     "imports": []
   },
@@ -671,7 +672,8 @@
     "control": null,
     "uses": [],
     "files": [
-      "@ui/components/world/loot-label.svelte"
+      "@ui/components/world/loot-label.svelte",
+      "@ui/components/world/world.en.ogt"
     ],
     "imports": []
   },
@@ -713,7 +715,8 @@
     "control": null,
     "uses": [],
     "files": [
-      "@ui/components/world/nameplate.svelte"
+      "@ui/components/world/nameplate.svelte",
+      "@ui/components/world/world.en.ogt"
     ],
     "imports": []
   },
@@ -1770,7 +1773,8 @@
     "control": null,
     "uses": [],
     "files": [
-      "@ui/components/world/speech-bubble.svelte"
+      "@ui/components/world/speech-bubble.svelte",
+      "@ui/components/world/world.en.ogt"
     ],
     "imports": []
   },
@@ -1990,7 +1994,8 @@
     "control": null,
     "uses": [],
     "files": [
-      "@ui/components/world/waypoint.svelte"
+      "@ui/components/world/waypoint.svelte",
+      "@ui/components/world/world.en.ogt"
     ],
     "imports": []
   },

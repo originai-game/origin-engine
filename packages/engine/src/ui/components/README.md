@@ -70,9 +70,9 @@ The HUD sheet mounts `HudSheet`; its review command is
 | Pass rewards, reveals, inbox and news | `sheets/components`: `sample:passTrack`, `sample:reveal`, `sample:inbox`, `sample:news` with named fixtures (`meta/README.md`) |
 | Tooltip comparison presence and long names | `sheets/components`: `sample:tooltipCard:comparison`, desktop side-by-side and phone stacked; signed deltas, added/removed stats |
 
-Shooter and racing keep their own group READMEs and sheets. World
-components keep anchor, ground and mass primitives; missing world captures
-and their pending L4 review are recorded explicitly in the world sheet.
+Shooter, racing, strategy and world keep their own group READMEs and
+sheets. World components keep anchor, ground and mass primitives; the world
+sheet's `scene`, `topdown` and `states` pages review them.
 
 | Purpose | Documents |
 |---|---|
@@ -102,7 +102,7 @@ and their pending L4 review are recorded explicitly in the world sheet.
 | Data views (inventories, level selects) | `panels/data-grid` |
 | Buttons and badges (hero button, touch action, hold to confirm, action bar, ribbon) | `hud/hero-button`, `hud/action-button`, `hud/hold-button`, `hud/action-hints`, `base/ribbon` |
 | Touch controls (a stick or d-pad and the action buttons, shown under a finger) | `hud/touch-controls` |
-| World tags over units and items | `world/nameplate`, `world/waypoint`, `world/loot-label`, `world/speech-bubble`, `world/interaction-prompt` |
+| World tags over units and items (`world/README.md`) | `world/nameplate`, `world/waypoint`, `world/loot-label`, `world/speech-bubble`, `world/interaction-prompt` |
 | Ground marks (selection, telegraphs, paths, placement) | `world/selection-ring`, `world/telegraph`, `world/path-line`, `world/placement-ghost` |
 | Mass world elements (overhead bars, damage numbers) | `world/overhead-bars`, `hud/damage-numbers` |
 | RPG inventory, character and equipment (`rpg/README.md`) | `panels/backpack`, `panels/item-card`, `rpg/character`, `rpg/stats`, `rpg/menu-bar` |

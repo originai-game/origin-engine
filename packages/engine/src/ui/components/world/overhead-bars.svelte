@@ -1,17 +1,29 @@
 <meta name="component" content="OverheadBars">
-<meta name="parts" content="OverheadBars.bar OverheadBars.fill">
-<meta name="prop:bars" content="list" data-doc="The units' bars: each { id, entity, at, value, max, color }, entity the unit by its bits (0: at, a world point x y z), value its health out of max, color #rrggbb (empty is the health colour). Thousands are fine: each is a GPU mass element.">
+<meta name="parts" content="OverheadBars.frame OverheadBars.bar OverheadBars.resource">
+<meta name="prop:bars" content="list" data-doc="The units' bars, keyed rows of { id, entity, at, value, max, side, resource, resourceMax }: entity the unit by its bits (0: at, a world point x y z); value its health out of max; side whose it is, own (green), ally (blue), enemy (red) or neutral (yellow); resource out of resourceMax a thin line under the health (mana, energy), resourceMax 0 draws none. Thousands are fine: each bar is a GPU mass element of a fixed size (never under 30 × 3 px) that keeps the ghost of a hit.">
 <meta name="prop:height" content="number" data-doc="World units over each unit's point (its head).">
-<meta name="fixture:default" content='{"height":2,"bars":[{"id":"a","entity":0,"at":"-1 0 0","value":72,"max":100,"color":""},{"id":"b","entity":0,"at":"1 0 0","value":30,"max":100,"color":"#e5484d"}]}'>
+<meta name="fixture:default" content='{"height":2,"bars":[{"id":"a","entity":0,"at":"-1 0 0","value":90,"max":100,"side":"own","resource":70,"resourceMax":100},{"id":"b","entity":0,"at":"1 0 0","value":24,"max":100,"side":"ally","resource":35,"resourceMax":100}]}'>
+<meta name="fixture:sides" content='{"height":2,"bars":[{"id":"o","entity":0,"at":"-3 0 0","value":100,"max":100,"side":"own","resource":0,"resourceMax":0},{"id":"a","entity":0,"at":"-1 0 0","value":70,"max":100,"side":"ally","resource":0,"resourceMax":0},{"id":"e","entity":0,"at":"1 0 0","value":45,"max":100,"side":"enemy","resource":0,"resourceMax":0},{"id":"n","entity":0,"at":"3 0 0","value":88,"max":100,"side":"neutral","resource":0,"resourceMax":0}]}'>
+<meta name="fixture:low" content='{"height":2,"bars":[{"id":"l","entity":0,"at":"0 0 0","value":12,"max":100,"side":"enemy","resource":0,"resourceMax":0}]}'>
+<meta name="fixture:empty" content='{"height":2,"bars":[]}'>
 
-<div id="OverheadBars">
+<!--
+  A health bar over every unit in the side's colour, a thin resource line
+  under it: one GPU mass element per bar, so a battle's thousands cost
+  nothing to place. Read only.
+-->
+<div id="OverheadBars" part="OverheadBars.frame" class="bare" role="group" aria-label={t("world.bars.name")}>
   {#each bars as bar (bar.id)}
-    <anchor class="bar" class:tinted={!!bar.color} part="OverheadBars.bar OverheadBars.fill" entity={bar.entity || null} at={bar.at} offset={"0 " + height + " 0"} mass="overhead" value={bar.value} max={bar.max} style:--tint={bar.color}></anchor>
+    <anchor class="bar" part="OverheadBars.bar" data-side={bar.side} entity={bar.entity || null} at={bar.at} offset={"0 " + height + " 0"} mass="overhead" value={bar.value} max={bar.max}></anchor>
+    {#if bar.resourceMax > 0}<anchor class="resource" part="OverheadBars.resource" entity={bar.entity || null} at={bar.at} offset={"0 " + (height - 0.12) + " 0"} mass="overheadResource" value={bar.resource} max={bar.resourceMax}></anchor>{/if}
   {/each}
 </div>
 
 <style>
-:host { text-shadow: var(--tag-halo); }
-.bar { --fill-color: var(--health); width: var(--size-xl); height: var(--space-xs); }
-.bar.tinted { --fill-color: var(--tint); }
+/* A bar's size is fixed in pixels, its colour the side's. */
+.bar { width: var(--world-overhead-width); height: var(--world-overhead-height); color: var(--world-friendly-ink); }
+.bar[data-side=ally] { color: var(--world-ally-ink); }
+.bar[data-side=enemy] { color: var(--hud-foe); }
+.bar[data-side=neutral] { color: var(--world-neutral-ink); }
+.resource { width: var(--world-resource-width); height: var(--world-resource-height); color: var(--hud-mana-ink); }
 </style>

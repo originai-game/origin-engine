@@ -62,9 +62,5 @@ rpg/enemy-info.svelte	RpgEnemyInfo.name RpgEnemyInfo.headline	1
 rpg/turn-order.svelte	RpgTurnOrder.title RpgTurnOrder.badge	1
 shooter/combat-hud.svelte	CombatHud.vitals CombatHud.plate CombatHud.frame	1
 strategy/tower.svelte	StrategyTower.name StrategyTower.headline	1
-world/interaction-prompt.svelte	InteractionPrompt.name InteractionPrompt.caption	1
-world/interaction-prompt.svelte	InteractionPrompt.reason InteractionPrompt.label InteractionPrompt.caption	1
-world/loot-label.svelte	LootLabel.tag LootLabel.cell	1
 world/minimap.svelte	Minimap.label Minimap.tag	1
 world/minimap.svelte	Minimap.marker Minimap.cell Minimap.dot	1
-world/nameplate.svelte	Nameplate.well Nameplate.track	2
