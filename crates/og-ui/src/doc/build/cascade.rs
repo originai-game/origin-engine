@@ -42,6 +42,208 @@ pub struct Cascade {
     /// Containers whose scroll state (`scroll-state()`) the matched rules
     /// depend on.
     pub scroll_reads: BTreeSet<u64>,
+    /// Unsubstituted inputs, including on idle inheritance bridges.
+    replay: Option<Arc<Recipe>>,
+    /// Animation effects cannot override important custom declarations.
+    pub(super) important_custom: BTreeSet<String>,
+}
+
+/// A previous cascade's evaluated inputs, independent of selector/query graphs.
+/// Rules remain parsed at runtime; only snapshot restoration parses their values.
+#[derive(Clone, Debug, PartialEq, serde::Serialize, serde::Deserialize)]
+pub(crate) struct Recipe {
+    #[serde(with = "matched_rules")]
+    rules: Vec<StyleRule>,
+    inline: Vec<(String, String)>,
+    inherited: variables::Computed,
+    attributes: Option<BTreeMap<String, String>>,
+    basis: Option<crate::doc::calc::Basis>,
+    carry: bool,
+    text_scale: f32,
+    media: Option<crate::doc::media::Context>,
+}
+
+/// Only inputs read after matching belong in a recipe. Preserve rule boundaries
+/// and all candidates: `revert-rule` and substituted `revert-layer` need them.
+mod matched_rules {
+    use super::*;
+
+    #[derive(serde::Serialize, serde::Deserialize)]
+    struct MatchedRule {
+        inline: bool,
+        context: TreeContext,
+        depth: i8,
+        layer: u32,
+        starting: bool,
+        reduced_motion: bool,
+        declarations: Vec<crate::doc::StyleDeclaration>,
+        line: usize,
+    }
+
+    impl From<&StyleRule> for MatchedRule {
+        fn from(rule: &StyleRule) -> Self {
+            Self {
+                inline: rule.inline,
+                context: rule.context,
+                depth: rule.depth,
+                layer: rule.layer,
+                starting: rule.starting,
+                reduced_motion: names_reduced_motion(&rule.query.media),
+                declarations: rule.declarations.clone(),
+                line: rule.line,
+            }
+        }
+    }
+
+    impl From<MatchedRule> for StyleRule {
+        fn from(rule: MatchedRule) -> Self {
+            // Matching is already settled. Only this query fact is read by
+            // values_effects after matching, to honor authored reduced motion.
+            let media = if rule.reduced_motion {
+                static REDUCED: std::sync::OnceLock<crate::doc::media::Query> =
+                    std::sync::OnceLock::new();
+                REDUCED
+                    .get_or_init(|| {
+                        crate::doc::media::Query::parse("(prefers-reduced-motion: reduce)")
+                            .expect("a reduced-motion query")
+                    })
+                    .clone()
+            } else {
+                Default::default()
+            };
+            Self {
+                inline: rule.inline,
+                context: rule.context,
+                depth: rule.depth,
+                layer: rule.layer,
+                starting: rule.starting,
+                declarations: rule.declarations,
+                line: rule.line,
+                query: crate::doc::AtQuery {
+                    media,
+                    ..Default::default()
+                },
+                condition: None,
+                structure: None,
+                instance_states: Vec::new(),
+                props: Vec::new(),
+            }
+        }
+    }
+
+    pub(super) fn retain(rule: &StyleRule) -> StyleRule {
+        MatchedRule::from(rule).into()
+    }
+
+    pub(super) fn serialize<S: serde::Serializer>(
+        rules: &[StyleRule],
+        serializer: S,
+    ) -> Result<S::Ok, S::Error> {
+        let matched: Vec<_> = rules.iter().map(MatchedRule::from).collect();
+        serde::Serialize::serialize(&matched, serializer)
+    }
+
+    pub(super) fn deserialize<'de, D: serde::Deserializer<'de>>(
+        deserializer: D,
+    ) -> Result<Vec<StyleRule>, D::Error> {
+        let matched = <Vec<MatchedRule> as serde::Deserialize>::deserialize(deserializer)?;
+        Ok(matched.into_iter().map(StyleRule::from).collect())
+    }
+}
+
+impl Recipe {
+    pub(crate) fn inherited(&self) -> &variables::Computed {
+        &self.inherited
+    }
+
+    pub(crate) fn attribute(&self, name: &str) -> Option<String> {
+        self.attributes.as_ref()?.get(name).cloned()
+    }
+
+    pub(crate) fn basis(&self) -> Option<crate::doc::calc::Basis> {
+        self.basis
+    }
+
+    /// Replay the old declarations with the parent's current before-change
+    /// inheritance. Attributes, units and other environmental inputs stay old.
+    pub(crate) fn cascade(
+        &self,
+        inherited: &variables::Computed,
+        sheet: Option<&crate::doc::at_rules::Sheet>,
+    ) -> Cascade {
+        let mut result = values_effects(
+            &self.rules.iter().collect::<Vec<_>>(),
+            &Options {
+                inline: &self.inline,
+                inherited,
+                basis: self.basis,
+                attr: &|name| self.attribute(name),
+                sheet,
+                starting: false,
+                carry: self.carry,
+                text_scale: self.text_scale,
+                media: self.media,
+            },
+            &mut |_| true,
+            None,
+        );
+        let mut recipe = self.clone();
+        recipe.inherited = inherited.clone();
+        result.replay = Some(Arc::new(recipe));
+        result
+    }
+}
+
+impl Cascade {
+    /// Capture complete evaluated attributes alongside the already-matched
+    /// cascade inputs; no attribute callback is retained in snapshot state.
+    pub(crate) fn recipe_with_attributes(
+        &self,
+        attributes: &BTreeMap<String, String>,
+    ) -> Arc<Recipe> {
+        let mut recipe = self.replay.clone().expect("cascade retains its inputs");
+        if recipe.attributes.as_ref() != Some(attributes) {
+            Arc::make_mut(&mut recipe).attributes = Some(attributes.clone());
+        }
+        recipe
+    }
+
+    /// Recompute aliases and ordinary candidates against sampled custom values.
+    /// Cached cascades remain immutable; the caller routes the fresh result once.
+    pub(super) fn with_custom_effects(
+        &self,
+        effects: &BTreeMap<String, String>,
+        attr: &dyn Fn(&str) -> Option<String>,
+        sheet: Option<&crate::doc::at_rules::Sheet>,
+    ) -> Self {
+        let input = self.replay.as_ref().expect("motion retains cascade inputs");
+        let attr = |name: &str| match &input.attributes {
+            Some(attributes) => attributes.get(name).cloned(),
+            None => attr(name),
+        };
+        let mut result = values_effects(
+            &input.rules.iter().collect::<Vec<_>>(),
+            &Options {
+                inline: &input.inline,
+                inherited: &input.inherited,
+                basis: input.basis,
+                attr: &attr,
+                sheet,
+                starting: false,
+                carry: input.carry,
+                text_scale: input.text_scale,
+                media: input.media,
+            },
+            &mut |_| true,
+            Some(effects),
+        );
+        result.replay = self.replay.clone();
+        result.media.extend(&self.media);
+        result.viewport_reads.extend(self.viewport_reads);
+        result.container_reads.extend(&self.container_reads);
+        result.scroll_reads.extend(&self.scroll_reads);
+        result
+    }
 }
 
 /// An element's last cascades, by everything [`values_with`] read for
@@ -363,6 +565,20 @@ pub(crate) fn values_with<'r>(
     o: &Options<'_>,
     mut applies: impl FnMut(&StyleRule) -> bool,
 ) -> Cascade {
+    values_effects(
+        &rules.into_iter().collect::<Vec<_>>(),
+        o,
+        &mut applies,
+        None,
+    )
+}
+
+fn values_effects(
+    rules: &[&StyleRule],
+    o: &Options<'_>,
+    applies: &mut dyn FnMut(&StyleRule) -> bool,
+    effects: Option<&BTreeMap<String, String>>,
+) -> Cascade {
     let (inline, inherited, basis, attr) = (o.inline, o.inherited, o.basis, o.attr);
     let mut out = Cascade::default();
     /// A declaration's rank, its fields in the order they compare.
@@ -387,7 +603,6 @@ pub(crate) fn values_with<'r>(
     // line, layer).
     type Candidate<'a> = (Priority, &'a crate::doc::StyleDeclaration, usize, u32);
     let mut candidates: BTreeMap<&str, Vec<Candidate<'_>>> = BTreeMap::new();
-    let rules: Vec<&StyleRule> = rules.into_iter().collect();
     for (order, rule) in rules.iter().enumerate() {
         if (rule.starting && !o.starting) || !applies(rule) {
             continue;
@@ -484,6 +699,11 @@ pub(crate) fn values_with<'r>(
             Winner::Unset => (name.to_string(), unset.clone()),
         })
         .collect();
+    out.important_custom = winners
+        .iter()
+        .filter(|(_, (priority, ..))| priority.important)
+        .map(|(name, _)| name.to_string())
+        .collect();
     for (name, value) in inline {
         if winners
             .get(name.as_str())
@@ -513,6 +733,15 @@ pub(crate) fn values_with<'r>(
             }
         }
     }
+    let local_names = specified.keys().cloned().collect();
+    if let Some(effects) = effects {
+        for (name, value) in effects {
+            specified.insert(
+                name.clone(),
+                variables::Value::parse(value).expect("a computed custom value"),
+            );
+        }
+    }
     // Registered custom properties (`@property`): one that does not
     // inherit starts from its initial value, as does one that is unset.
     let registered: Vec<_> = o
@@ -525,7 +754,12 @@ pub(crate) fn values_with<'r>(
     } else {
         let mut map = inherited.clone();
         for (name, p) in &registered {
-            if !p.inherits || !map.contains_key(name.as_str()) {
+            let explicit_inherit = specified.get(name.as_str()).is_some_and(|v| {
+                !v.has_variables()
+                    && v.substitute(&mut |_| None)
+                        .is_ok_and(|v| v.trim().eq_ignore_ascii_case("inherit"))
+            });
+            if (!p.inherits && !explicit_inherit) || !map.contains_key(name.as_str()) {
                 map.insert(name.clone(), p.initial.clone());
             }
         }
@@ -534,6 +768,35 @@ pub(crate) fn values_with<'r>(
     };
     let (mut computed, diagnostics, inherited_reads) =
         variables::compute(inherited, &specified, &mut |_| None);
+    for name in specified.keys() {
+        computed.animation_tainted.remove(name);
+    }
+    if let Some(sheet) = o.sheet {
+        computed
+            .animation_tainted
+            .extend(sheet.keyframes.iter().flat_map(|(_, k)| {
+                k.styles
+                    .iter()
+                    .filter(|t| t.property.starts_with("--"))
+                    .map(|t| t.property.clone())
+            }));
+    }
+    while !computed.animation_tainted.is_empty() {
+        let mut added = false;
+        for (name, value) in &specified {
+            let mut dependencies = BTreeSet::new();
+            value.dependencies(&mut dependencies);
+            if dependencies
+                .iter()
+                .any(|n| computed.animation_tainted.contains(n))
+            {
+                added |= computed.animation_tainted.insert(name.clone());
+            }
+        }
+        if !added {
+            break;
+        }
+    }
     for (name, p) in &registered {
         let value = computed.get(name.as_str()).cloned().flatten();
         // Properties and Values API 1 §2.4: a typed property's math
@@ -636,7 +899,7 @@ pub(crate) fn values_with<'r>(
             .cloned(),
     );
     out.reads.extend(style_reads);
-    out.local_names = specified.keys().cloned().collect();
+    out.local_names = local_names;
     // A property's winner, once its custom properties are known: a `var()`
     // whose value is `revert` or `revert-layer` rolls the cascade back as
     // the keyword written would (CSS Cascade 5 §7.3, CSS Variables 2 §3:
@@ -833,16 +1096,23 @@ pub(crate) fn values_with<'r>(
                     None => continue,
                 }
             }
-            (None, Winner::Declared(declaration)) => declaration.value.substitute(&mut |name| {
-                out.reads.insert(name.into());
-                if !specified.contains_key(name) {
-                    out.inherited_reads.insert(name.into());
-                }
-                match out.computed.get(name) {
-                    Some(value) => value.clone(),
-                    None => None,
-                }
-            }),
+            (None, Winner::Declared(declaration)) => {
+                declaration.value.substitute(&mut |variable| {
+                    out.reads.insert(variable.into());
+                    if !specified.contains_key(variable) {
+                        out.inherited_reads.insert(variable.into());
+                    }
+                    if !crate::motion::interpolate::animatable(name)
+                        && out.computed.animation_tainted.contains(variable)
+                    {
+                        return None;
+                    }
+                    match out.computed.get(variable) {
+                        Some(value) => value.clone(),
+                        None => None,
+                    }
+                })
+            }
             (None, Winner::Unset) => unreachable!("unset is a keyword"),
         };
         // An `if()` takes the branch its tests pick on this element.
@@ -998,6 +1268,23 @@ pub(crate) fn values_with<'r>(
         for (name, value, _) in &out.values {
             computed.properties.insert(name.clone(), value.clone());
         }
+    }
+    if effects.is_none() {
+        let matched: BTreeSet<_> = candidates
+            .values()
+            .flat_map(|list| list.iter().map(|(priority, ..)| priority.order))
+            .collect();
+        let matched: Vec<_> = matched.iter().map(|&index| rules[index]).collect();
+        out.replay = Some(Arc::new(Recipe {
+            rules: matched.into_iter().map(matched_rules::retain).collect(),
+            inline: inline.to_vec(),
+            inherited: o.inherited.clone(),
+            attributes: None,
+            basis: o.basis,
+            carry: o.carry,
+            text_scale: o.text_scale,
+            media: o.media,
+        }));
     }
     out
 }

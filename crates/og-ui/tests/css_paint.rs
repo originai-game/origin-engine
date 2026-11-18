@@ -857,6 +857,254 @@ fn conic_stops_compute_fraction_math_and_registered_percentages() {
     }
 }
 
+#[test]
+fn registered_percentage_transition_moves_the_gradient_stop() {
+    let text = r#"<meta name="component" content="t">
+<div><div id="Sweep" class={$mode}></div><div id="Plain" class={$mode}></div>
+<div id="Step" class={$mode}></div></div>
+<style>
+@property --sweep { syntax: "<percentage>"; inherits: false; initial-value: 0%; }
+#Sweep { width: 100px; height: 100px; --sweep: 20%; transition: --sweep 600ms linear;
+  background: conic-gradient(#000 var(--sweep), transparent 0); }
+#Sweep.on { --sweep: 80%; }
+#Sweep.other { --sweep: 55%; }
+#Plain, #Step { width: 100px; height: 60px; --plain: 20%;
+  background: conic-gradient(#000 var(--plain), transparent 0); }
+#Plain { transition: --plain 600ms linear; }
+#Step { transition: --plain 600ms linear allow-discrete; }
+#Plain.on, #Step.on { --plain: 80%; }
+</style>"#;
+    let mut d = Doc::new(text, &[("mode", serde_json::json!("off"))]);
+    d.put("mode", serde_json::json!("on"));
+    d.step(InputFrame::default());
+    assert!(
+        (gradient_offset(&d, "Plain") - 0.8).abs() < 0.002,
+        "unregistered values jump"
+    );
+    assert!(
+        (gradient_offset(&d, "Step") - 0.2).abs() < 0.002,
+        "allow-discrete waits for half time"
+    );
+    for _ in 0..18 {
+        d.step(InputFrame::default());
+    }
+    let offset =
+        d.ui.frame()
+            .items
+            .iter()
+            .find_map(|item| match &item.cmd {
+                DrawCmd::Shape { shape, .. } => match &shape.paint {
+                    og_draw::UiPaint::GradientImage(g) => Some(g.gradient.stops[0].offset),
+                    _ => None,
+                },
+                _ => None,
+            })
+            .expect("the sweep draws");
+    assert!(
+        (offset - 0.5).abs() < 0.02,
+        "halfway from 20% to 80%: {offset}"
+    );
+    assert!((gradient_offset(&d, "Step") - 0.8).abs() < 0.002);
+    // Interrupt at the next tick: start from 51 2/3%, not the old 80%
+    // target. After nine more ticks, a quarter of the new run has elapsed.
+    d.put("mode", serde_json::json!("other"));
+    d.step(InputFrame::default());
+    assert!((gradient_offset(&d, "Sweep") - 0.5166667).abs() < 0.002);
+    for _ in 0..9 {
+        d.step(InputFrame::default());
+    }
+    assert!((gradient_offset(&d, "Sweep") - 0.525).abs() < 0.002);
+    for _ in 0..27 {
+        d.step(InputFrame::default());
+    }
+    assert!((gradient_offset(&d, "Sweep") - 0.55).abs() < 0.002);
+
+    let mut d = Doc::new(text, &[("mode", serde_json::json!("off"))]);
+    d.put("mode", serde_json::json!("on"));
+    d.step(InputFrame::default());
+    for _ in 0..17 {
+        d.step(InputFrame::default());
+    }
+    // Reverse halfway through: the return takes only half the duration.
+    d.put("mode", serde_json::json!("off"));
+    d.step(InputFrame::default());
+    assert!((gradient_offset(&d, "Sweep") - 0.5).abs() < 0.002);
+    for _ in 0..9 {
+        d.step(InputFrame::default());
+    }
+    assert!((gradient_offset(&d, "Sweep") - 0.35).abs() < 0.002);
+    for _ in 0..9 {
+        d.step(InputFrame::default());
+    }
+    assert!((gradient_offset(&d, "Sweep") - 0.2).abs() < 0.002);
+}
+
+#[test]
+fn registered_percentage_keyframes_settle_aliases_and_inheritance_before_paint() {
+    let mut d = Doc::new(
+        r#"<meta name="component" content="t">
+<section><section id="Parent"><section id="Bridge"><div id="Child"></div><div id="Private"></div>
+<div id="Override"></div><div id="Explicit"></div></section></section>
+<div id="Important"></div><div id="Discrete"></div><div id="Universal"></div>
+<div id="Integer"></div><div id="Control"></div></section>
+<style>
+@property --sweep { syntax: "<percentage>"; inherits: true; initial-value: 20%; }
+@property --private { syntax: "<percentage>"; inherits: false; initial-value: 10%; }
+@property --universal { syntax: "*"; inherits: false; initial-value: 20%; }
+@property --count { syntax: "<integer>"; inherits: false; initial-value: 1; }
+@keyframes sweep { to { --sweep: 80%; --private: 80%; } }
+@keyframes discrete { from { --plain: 20%; --universal: 20%; } to { --plain: 80%; --universal: 80%; } }
+@keyframes count { to { --count: 4; } }
+@keyframes unused { to { --tempo: 200ms; } }
+@keyframes control { from { width: 20px; } to { width: 80px; } }
+div { width: 100px; height: 60px; background: conic-gradient(#000 var(--sweep), transparent 0); }
+#Parent, #Important { animation: sweep 600ms linear forwards; --alias: var(--sweep); }
+#Parent { width: 400px; }
+#Bridge { --private: inherit; }
+#Child { --stop: calc(var(--sweep) + 5%); background: conic-gradient(#000 var(--stop), transparent 0);
+  width: calc(var(--sweep) + 10px); transition: width 900ms linear; }
+#Private { background: conic-gradient(#000 var(--private), transparent 0); }
+#Override { --sweep: 90%; background: conic-gradient(#000 var(--alias), transparent 0); }
+#Explicit { --private: inherit; background: conic-gradient(#000 var(--private), transparent 0); }
+#Important { --sweep: 35% !important; }
+#Discrete { animation: discrete 600ms linear forwards; background: conic-gradient(#000 var(--plain), transparent 0); }
+#Universal { animation: discrete 600ms linear forwards; background: conic-gradient(#000 var(--universal), transparent 0); }
+#Integer { animation: count 600ms linear forwards; width: calc(var(--count) * 10px); }
+#Control { --tempo: 100ms; --alias: var(--tempo); animation: control var(--alias, 600ms) linear forwards; }
+</style>"#,
+        &[],
+    );
+    for (ticks, sweep, discrete, integer) in [
+        (0, 0.2, 0.2, 10.0),
+        (12, 0.4, 0.2, 20.0),
+        (6, 0.5, 0.8, 30.0),
+        (6, 0.6, 0.8, 30.0),
+        (12, 0.8, 0.8, 40.0),
+    ] {
+        for _ in 0..ticks {
+            d.step(InputFrame::default());
+        }
+        assert!(
+            (d.get("Integer").width - integer).abs() < 0.01,
+            "integer rounds at half"
+        );
+        assert!(
+            (d.get("Control").width - (100.0 * sweep)).abs() < 0.01,
+            "animation-tainted aliases take the non-animatable property's fallback"
+        );
+        assert!(
+            (d.get("Child").width - (400.0 * sweep + 10.0)).abs() < 0.01,
+            "a dependent width must not start its own transition: {}",
+            d.get("Child").width
+        );
+        for (id, expected) in [
+            ("Child", sweep + 0.05),
+            ("Private", 0.1),
+            ("Override", sweep),
+            ("Explicit", 0.1 + (sweep - 0.2) / 0.6 * 0.7),
+            ("Important", 0.35),
+            ("Discrete", discrete),
+            ("Universal", discrete),
+        ] {
+            let actual = gradient_offset(&d, id);
+            assert!(
+                (actual - expected).abs() < 0.002,
+                "{id}: {actual}, want {expected}"
+            );
+        }
+        assert!(
+            d.ui.frame().warnings.is_empty(),
+            "{:?}",
+            d.ui.frame().warnings
+        );
+    }
+}
+
+#[test]
+fn registered_inherited_motion_samples_old_width_at_change_tick() {
+    let text = r#"<meta name="component" content="t">
+<div><div id="Parent"><div><div id="Child" class={$mode}></div></div></div></div>
+<style>
+@property --sweep { syntax: "<length>"; inherits: true; initial-value: 20px; }
+@keyframes sweep { to { --sweep: 80px; } }
+#Parent { animation: sweep 600ms linear forwards; }
+#Child { width: calc(var(--sweep) + 10px); height: 10px; transition: width 900ms linear; }
+#Child.changed { width: calc(var(--sweep) + 50px); }
+</style>"#;
+    let mut d = Doc::new(text, &[("mode", serde_json::json!("off"))]);
+    for _ in 0..17 {
+        d.step(InputFrame::default());
+    }
+    assert!((d.get("Child").width - 58.333332).abs() < 0.01,
+        "animation alone must not start a dependent transition: {}", d.get("Child").width);
+    let saved = d.ui.save_state();
+    d.put("mode", serde_json::json!("changed"));
+    d.step(InputFrame::default());
+    assert!(
+        (d.get("Child").width - 60.0).abs() < 0.01,
+        "start from the old expression sampled now, not last frame: {}",
+        d.get("Child").width
+    );
+    d.ui.restore_state(&saved).unwrap();
+    d.put("mode", serde_json::json!("changed"));
+    d.step(InputFrame::default());
+    assert!((d.get("Child").width - 60.0).abs() < 0.01);
+}
+
+#[test]
+fn registered_custom_motion_reaches_cached_native_parts() {
+    let mut d = Doc::new(
+        r#"<meta name="component" content="t">
+<div id="Root"><button id="Local">Local</button><button id="Inherited">Inherited</button></div>
+<style>
+@property --sweep { syntax: "<percentage>"; inherits: true; initial-value: 20%; }
+@keyframes sweep { to { --sweep: 80%; } }
+#Root { animation: sweep 600ms linear forwards; }
+button { width: 120px; height: 60px; }
+button::part(base) { background: conic-gradient(#000 var(--sweep), transparent 0); }
+#Local::part(base) { --sweep: 20%; animation: sweep 600ms linear forwards; }
+</style>"#,
+        &[],
+    );
+    for (ticks, expected) in [(0, 0.2), (18, 0.5), (18, 0.8), (8, 0.8)] {
+        for _ in 0..ticks {
+            d.step(InputFrame::default());
+        }
+        for id in ["Local", "Inherited"] {
+            let actual = gradient_offset(&d, id);
+            assert!(
+                (actual - expected).abs() < 0.002,
+                "{id}: {actual}, want {expected}"
+            );
+        }
+        assert!(
+            d.ui.frame().warnings.is_empty(),
+            "{:?}",
+            d.ui.frame().warnings
+        );
+    }
+}
+
+fn gradient_offset(d: &Doc, id: &str) -> f32 {
+    let e = d.get(id);
+    d.ui.frame()
+        .items
+        .iter()
+        .find_map(|item| match &item.cmd {
+            DrawCmd::Shape { shape, .. }
+                if (e.x..e.x + e.width).contains(&shape.center.x)
+                    && (e.y..e.y + e.height).contains(&shape.center.y) =>
+            {
+                match &shape.paint {
+                    og_draw::UiPaint::GradientImage(g) => Some(g.gradient.stops[0].offset),
+                    _ => None,
+                }
+            }
+            _ => None,
+        })
+        .expect("the gradient draws")
+}
+
 /// The first drawn gradient's stop colours inside `id`, as sRGB.
 fn gradient_stops(d: &Doc, id: &str) -> Vec<Srgba> {
     let e = d.get(id);

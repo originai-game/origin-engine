@@ -213,6 +213,7 @@ pub(crate) struct CascadedPart {
     animations: Vec<crate::motion::css::CssAnimation>,
     /// What the part inherits: its flow reads it.
     inherited: super::super::variables::Computed,
+    attributes: BTreeMap<String, String>,
     /// Its document's part rules merged into the global ones; none: the
     /// global sheet.
     merged: Option<Arc<crate::ui::MergedPartRules>>,
@@ -288,6 +289,27 @@ struct PartStyle {
 const PART_VARIANTS: usize = 8;
 
 impl PartStyles {
+    /// Native parts are painted after document settlement. Their evaluated
+    /// custom-property reads belong to their host's retained dependencies.
+    pub(super) fn inherited_reads(&self) -> BTreeMap<u64, BTreeSet<String>> {
+        let mut reads = BTreeMap::<u64, BTreeSet<String>>::new();
+        for ((key, _), kept) in &self.cascades {
+            let Some(key) = key else { continue };
+            for entry in kept {
+                reads.entry(*key).or_default().extend(
+                    entry
+                        .cascaded
+                        .values
+                        .inherited_reads
+                        .iter()
+                        .filter(|name| entry.host.as_ref().is_none_or(|h| !h.own.contains(*name)))
+                        .cloned(),
+                );
+            }
+        }
+        reads
+    }
+
     /// Starts tick `tick` under `context`: a new context keeps nothing,
     /// and a new tick drops the styles of nodes no longer in the tree.
     /// Within a tick the theme and media context change only with the
@@ -1362,6 +1384,11 @@ impl Ui {
                 transitions,
                 animations,
                 inherited,
+                attributes: facts
+                    .attributes
+                    .iter()
+                    .map(|(n, v)| (n.clone(), crate::bind::text(v)))
+                    .collect(),
                 merged: merged.clone(),
             }
         })
@@ -1386,6 +1413,9 @@ impl Ui {
                 &c.animations,
                 self.part_basis(),
                 Some(sheet),
+                &|name| c.attributes.get(name).cloned(),
+                &c.attributes,
+                "",
             )
         });
         if let (Some(key), Some(commit)) = (key, &style) {

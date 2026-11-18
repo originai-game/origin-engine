@@ -29,7 +29,7 @@ impl CssTransition {
     /// Whether it times `property`'s computed value.
     pub fn covers(&self, property: &str) -> bool {
         self.property == property
-            || self.property == "all"
+            || (self.property == "all" && !property.starts_with("--"))
             || crate::css::boxes::longhands(&self.property)
                 .iter()
                 .any(|p| crate::css::values::css_name(p) == Some(property))
@@ -222,6 +222,7 @@ impl CssAnimation {
     /// `active_ms`, each over `underlying` (the property's value below
     /// this animation, `None` when it has none), with `compute` turning a
     /// keyframe's declaration into the element's computed text.
+    #[allow(clippy::too_many_arguments)]
     pub(crate) fn sample_styles(
         &self,
         keyframes: &Keyframes,
@@ -229,6 +230,8 @@ impl CssAnimation {
         reduced: bool,
         underlying: &dyn Fn(&str) -> Option<String>,
         compute: &dyn Fn(&str, &str) -> Option<String>,
+        custom: bool,
+        properties: &[(String, crate::css::at_rules::Property)],
     ) -> Vec<(String, String)> {
         let Some(t) = self.local_ms(active_ms, reduced) else {
             return Vec::new();
@@ -237,6 +240,9 @@ impl CssAnimation {
         let mut out = Vec::new();
         for track in &keyframes.styles {
             let property = track.property.as_str();
+            if property.starts_with("--") != custom {
+                continue;
+            }
             let under = underlying(property);
             let mut keys: Vec<(f32, String, Option<Ease>)> = Vec::new();
             if let Some(u) = &under
@@ -249,6 +255,11 @@ impl CssAnimation {
                     continue;
                 };
                 let v = match (&under, k.composite.unwrap_or(self.composite)) {
+                    (Some(u), op) if custom => properties
+                        .iter()
+                        .rev()
+                        .find(|(n, _)| n == property)
+                        .map_or_else(|| v.clone(), |(_, p)| p.compose(u, &v, op)),
                     (Some(u), op) => interpolate::compose(property, u, &v, op),
                     (None, _) => v,
                 };
@@ -274,8 +285,17 @@ impl CssAnimation {
                         } else {
                             1.0
                         };
-                        value =
-                            interpolate::mix(property, a, b, ease.unwrap_or(self.ease).apply(k));
+                        let p = ease.unwrap_or(self.ease).apply(k);
+                        value = if custom {
+                            properties
+                                .iter()
+                                .rev()
+                                .find(|(n, _)| n == property)
+                                .and_then(|(_, r)| r.interpolate(a, b, p))
+                                .unwrap_or_else(|| if p < 0.5 { a.clone() } else { b.clone() })
+                        } else {
+                            interpolate::mix(property, a, b, p)
+                        };
                         break;
                     }
                 }
@@ -469,6 +489,9 @@ pub struct StyleRun {
     pub start: u64,
     pub delay_ms: f32,
     pub duration_ms: f32,
+    /// A running transition keeps its original easing when CSS changes.
+    #[serde(with = "run_timing")]
+    pub timing: Transition,
     /// Its reversing-adjusted start value and shortening factor.
     pub reversing_from: String,
     pub factor: f32,
@@ -479,12 +502,66 @@ pub struct StyleRun {
 #[derive(Clone, Debug, Default, PartialEq, serde::Serialize, serde::Deserialize)]
 pub struct StyleState {
     pub after: std::collections::BTreeMap<String, String>,
+    /// Last style inputs, replayed at the current effect time before a
+    /// changed rule starts a transition. Recipes do not schedule frames.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub(crate) recipe: Option<std::sync::Arc<crate::doc::build::cascade::Recipe>>,
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub(crate) scope: String,
+    /// Qualified names include the conditional keyframe definition selected
+    /// by the old style, not a newly selected definition of the same name.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub(crate) names: Vec<String>,
     pub runs: Vec<StyleRun>,
     #[serde(default)]
     pub animations: Vec<CssRun>,
     /// Finished animation runs remain for fill and replay, but need no repaint.
     #[serde(default)]
     pub running: bool,
+}
+
+mod run_timing {
+    use super::*;
+    use serde::{Deserialize, Deserializer, Serialize, Serializer};
+
+    #[derive(Serialize, Deserialize)]
+    enum Timing {
+        Instant,
+        Spring { duration_ms: f32, bounce: f32 },
+        Tween { duration_ms: f32, ease: String },
+    }
+
+    pub fn serialize<S: Serializer>(value: &Transition, serializer: S) -> Result<S::Ok, S::Error> {
+        let value = match *value {
+            Transition::Instant => Timing::Instant,
+            Transition::Spring(s) => Timing::Spring {
+                duration_ms: s.duration_ms,
+                bounce: s.bounce,
+            },
+            Transition::Tween { duration_ms, ease } => Timing::Tween {
+                duration_ms,
+                ease: ease.to_text(),
+            },
+            Transition::Token(_) => {
+                return Err(serde::ser::Error::custom("unresolved transition timing"));
+            }
+        };
+        value.serialize(serializer)
+    }
+
+    pub fn deserialize<'de, D: Deserializer<'de>>(deserializer: D) -> Result<Transition, D::Error> {
+        Ok(match Timing::deserialize(deserializer)? {
+            Timing::Instant => Transition::Instant,
+            Timing::Spring {
+                duration_ms,
+                bounce,
+            } => Transition::Spring(super::super::SpringSpec::new(duration_ms, bounce)),
+            Timing::Tween { duration_ms, ease } => Transition::Tween {
+                duration_ms,
+                ease: Ease::parse_text(&ease).map_err(serde::de::Error::custom)?,
+            },
+        })
+    }
 }
 
 #[cfg(test)]

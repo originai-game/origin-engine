@@ -172,6 +172,25 @@ pub struct Property {
     pub initial: Option<String>,
 }
 
+impl Property {
+    /// Interpolate computed values by the type they parsed as (Properties
+    /// and Values API §2.5). `None` means the entire pair is discrete.
+    pub fn interpolate(&self, from: &str, to: &str, progress: f32) -> Option<String> {
+        crate::motion::interpolate::registered_interpolate(&self.syntax, from, to, progress)
+    }
+
+    /// Combine computed values by their registered type; unsupported or
+    /// discrete pairs replace the underlying value.
+    pub fn compose(
+        &self,
+        underlying: &str,
+        value: &str,
+        op: crate::motion::interpolate::Composite,
+    ) -> String {
+        crate::motion::interpolate::registered_compose(&self.syntax, underlying, value, op)
+    }
+}
+
 /// One `@counter-style` (CSS Counter Styles 3).
 #[derive(Clone, Debug, PartialEq)]
 pub struct CounterStyle {

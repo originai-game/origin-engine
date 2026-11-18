@@ -3024,6 +3024,7 @@ version = "0.7.7"
 dependencies = [
  "color",
  "og-core",
+ "serde",
 ]
 
 [[package]]

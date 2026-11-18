@@ -1172,7 +1172,13 @@ impl Ui {
             &r.transitions,
             &r.animations,
             basis,
-            None,
+            Some(&b.doc.sheet),
+            &attr,
+            &n.selector_attrs
+                .iter()
+                .filter_map(|(name, _)| attr(name).map(|value| (name.clone(), value)))
+                .collect(),
+            &b.doc.name,
         );
         let dir = attr("dir");
         r.flow = cascade::flow(

@@ -1085,10 +1085,13 @@ pub(crate) fn keyframes(frames: &[(String, String)]) -> Result<Keyframes, String
                 .filter(|text| !text.contains("var("))
                 .and_then(|text| channel_values(&name, text));
             {
-                if !interpolate::animatable(&name) || name.starts_with("--") {
+                if !interpolate::animatable(&name) {
                     return Err(format!("{name} cannot be animated in @keyframes"));
                 }
-                if !text.contains("var(") && !super::build::cascade::known(&name, &text) {
+                if !name.starts_with("--")
+                    && !text.contains("var(")
+                    && !super::build::cascade::known(&name, &text)
+                {
                     return Err(format!(
                         "@keyframes: `{name}: {text}` is not a declaration document CSS takes"
                     ));
