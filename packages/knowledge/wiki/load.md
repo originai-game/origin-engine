@@ -97,15 +97,15 @@ module load {
 | [`EnvironmentDataDesc`](load/type-EnvironmentDataDesc.md) | desc struct |  | How og.load.environmentData reads an HDR environment. |
 | [`EnvironmentInfo`](load/type-EnvironmentInfo.md) | struct |  | What a ready uncooked environment holds. |
 | [`ImageInfo`](load/type-ImageInfo.md) | struct |  | What a ready uncooked image holds. |
-| [`LoadCompletion`](load/type-LoadCompletion.md) | struct |  | When an uncooked load was put in place: the journal a replay applies again (og.load.completions). |
+| [`LoadCompletion`](load/type-LoadCompletion.md) | struct |  | When a host-timed load finished: an uncooked load put in place or a runtime bundle opened. |
 | [`og.load.imageData`](load/fn-imageData.md) | function | `(world: World, name: string, bytes: Uint8Array, desc?: ImageDataDesc): Result<Asset>` | Load an image from bytes, uncooked, at run time: a PNG or JPEG a player drew, uploaded or a generator made. |
 | [`og.load.gltfData`](load/fn-gltfData.md) | function | `(world: World, name: string, bytes: Uint8Array, desc?: GltfDataDesc): Result<Asset>` | Load a glTF 2.0 model from bytes, uncooked, at run time: a .glb, or a .gltf whose buffers and images are data: URIs. |
 | [`og.load.environmentData`](load/fn-environmentData.md) | function | `(world: World, name: string, bytes: Uint8Array, desc?: EnvironmentDataDesc): Result<Asset>` | Load an HDR environment from bytes, uncooked, at run time, for Environment.map: an equirectangular Radiance .hdr (or .exr where RenderCapabilities.exrDecode is true), twice as wide as tall. |
 | [`og.load.environmentInfo`](load/fn-environmentInfo.md) | function | `(world: World, asset: Asset): Result<EnvironmentInfo>` | A ready uncooked environment's map and sizes. |
 | [`og.load.release`](load/fn-release.md) | function | `(world: World, asset: Asset): Result<void>` | Free an uncooked asset (og.load.imageData, og.load.gltfData, og.load.environmentData): a pending load is dropped (it never completes, so it is never journaled), and a ready one's textures and meshes … |
 | [`og.load.imageInfo`](load/fn-imageInfo.md) | function | `(world: World, asset: Asset): Result<ImageInfo>` | A ready uncooked image's texture and size. |
-| [`og.load.completions`](load/fn-completions.md) | function | `(world: World): readonly LoadCompletion[]` | The world's journal of uncooked loads put in place, oldest first: what a replay hands og.load.replayCompletions to put each in place at the same tick. |
-| [`og.load.replayCompletions`](load/fn-replayCompletions.md) | function | `(world: World, completions: readonly LoadCompletion[]): Result<void>` | Put this world's uncooked loads in place at the ticks a recorded run did (its og.load.completions), not when this host finishes them: a load is held back until its tick, and at its tick the engine wa… |
+| [`og.load.completions`](load/fn-completions.md) | function | `(world: World): readonly LoadCompletion[]` | The world's journal of host-timed loads, oldest first: uncooked loads put in place and runtime bundles opened, each with its tick. |
+| [`og.load.replayCompletions`](load/fn-replayCompletions.md) | function | `(world: World, completions: readonly LoadCompletion[]): Result<void>` | Finish this world's host-timed loads at the ticks a recorded run did (its og.load.completions), not when this host finishes them: a load is held back until its tick, and at its tick the engine waits … |
 | [`og.AssetReady`](load/record-AssetReady.md) | event |  | A load completed. |
 | [`og.AssetFailed`](load/record-AssetFailed.md) | event |  | A load failed. |
 

@@ -6,18 +6,20 @@ Module [`load`](../load.md) · [index](../index.md)
 
 ### `LoadCompletion` (struct)
 
-When an uncooked load was put in place: the journal a replay applies again (og.load.completions).
+When a host-timed load finished: an uncooked load put in place or a runtime bundle opened. The journal a replay applies again (og.load.completions).
 
 | Field | Type | Default | Range | Unit | Notes | Doc |
 |---|---|---|---|---|---|---|
-| `request` | `number` | `0` | — | — | — | The load's number: 0 for the world's first uncooked load, then one more for each. |
+| `kind` | `string` | `""` | — | — | — | `uncooked` (og.load.imageData, gltfData, environmentData) or `bundle` (og.load.bundle of another bundle). A journal without kinds holds uncooked loads. |
+| `request` | `number` | `0` | — | — | — | The load's number within its kind: 0 for the world's first, then one more for each. |
 | `tick` | `number` | `0` | — | `ticks` | — | The world's tick (world.tick) at the boundary it was put in place: the systems of that tick and every later one see og.load.status ready or failed. |
 | `ok` | `boolean` | `false` | — | — | — | Whether it was ready (else failed). |
 
 ```ogt
 struct LoadCompletion {
-  doc "When an uncooked load was put in place: the journal a replay applies again (og.load.completions)."
-  field request u32 "The load's number: 0 for the world's first uncooked load, then one more for each."
+  doc "When a host-timed load finished: an uncooked load put in place or a runtime bundle opened. The journal a replay applies again (og.load.completions)."
+  field kind String "`uncooked` (og.load.imageData, gltfData, environmentData) or `bundle` (og.load.bundle of another bundle). A journal without kinds holds uncooked loads."
+  field request u32 "The load's number within its kind: 0 for the world's first, then one more for each."
   field tick f64 "The world's tick (world.tick) at the boundary it was put in place: the systems of that tick and every later one see og.load.status ready or failed." {
     unit ticks
   }

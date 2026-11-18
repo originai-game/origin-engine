@@ -13645,10 +13645,14 @@ export interface ImageInfo {
 }
 
 /**
- * When an uncooked load was put in place: the journal a replay applies again (og.load.completions).
+ * When a host-timed load finished: an uncooked load put in place or a runtime bundle opened. The journal a replay applies again (og.load.completions).
  */
 export interface LoadCompletion {
-  /** The load's number: 0 for the world's first uncooked load, then one more for each. */
+  /**
+   * `uncooked` (og.load.imageData, gltfData, environmentData) or `bundle` (og.load.bundle of another bundle). A journal without kinds holds uncooked loads.
+   */
+  readonly kind: string;
+  /** The load's number within its kind: 0 for the world's first, then one more for each. */
   readonly request: number;
   /**
    * The world's tick (world.tick) at the boundary it was put in place: the systems of that tick and every later one see og.load.status ready or failed.
@@ -35588,7 +35592,7 @@ export declare namespace og {
      *
      * @param world The world that owns the asset.
      * @param path The cooked directory, relative to the project (or the page), such as `dlc/cooked`.
-     * @returns The bundle's handle: pending until its manifest is read, then ready or failed.
+     * @returns The bundle's handle: ready or failed at the call when the host has its manifest (natively always), else pending until a tick boundary. og.load.completions journals the tick, so a replay opens it at the same one.
      */
     function bundle(world: World, path: string): Result<Asset>;
     /**
@@ -35975,13 +35979,13 @@ export declare namespace og {
      */
     function imageInfo(world: World, asset: Asset): Result<ImageInfo>;
     /**
-     * The world's journal of uncooked loads put in place, oldest first: what a replay hands og.load.replayCompletions to put each in place at the same tick. og replay --record keeps it in the trace.
+     * The world's journal of host-timed loads, oldest first: uncooked loads put in place and runtime bundles opened, each with its tick. What a replay hands og.load.replayCompletions to finish each at the same tick. og replay --record keeps it in the trace.
      *
      * @param world The world.
      */
     function completions(world: World): readonly LoadCompletion[];
     /**
-     * Put this world's uncooked loads in place at the ticks a recorded run did (its og.load.completions), not when this host finishes them: a load is held back until its tick, and at its tick the engine waits for it. Call it before the first tick; og replay --compare does. A load the journal names as failed fails at its tick whatever this host made of it.
+     * Finish this world's host-timed loads at the ticks a recorded run did (its og.load.completions), not when this host finishes them: a load is held back until its tick, and at its tick the engine waits for it; a bundle the run opened at the call opens at the call. Call it before the first tick; og replay --compare does. A load the journal names as failed fails at its tick whatever this host made of it; one it never finished never finishes.
      *
      * @param world The world.
      * @param completions A recorded journal.

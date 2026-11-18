@@ -14,8 +14,9 @@ fn asset_value(i: usize) -> Value {
 
 pub fn og_load_bundle(world: u32, path: String) -> Result<Value, String> {
     (|| {
+        let tick = crate::host::platform::tick_now(world)?;
         let eng = engine(world)?;
-        let i = eng.assets.borrow_mut().open_bundle(&path);
+        let i = eng.assets.borrow_mut().open_runtime_bundle(&path, tick);
         Ok(asset_value(i))
     })()
 }
