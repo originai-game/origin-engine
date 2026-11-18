@@ -278,59 +278,11 @@ pub fn fx_2d_scene() -> Result<RenderScene, String> {
 // A lit tilemap.
 // ---------------------------------------------------------------------------
 
-/// The four 16 px tiles of the lit cave: rock, rock with a mossy top, a
-/// brick back wall and a starry night sky (64 x 16, nearest).
+/// The cave's tile atlas (`sprites2d/cave-tiles.png`, nearest): four
+/// 40 px pixel-art tiles side by side: rock, rock with a mossy top, the
+/// brick back wall and the night sky.
 fn cave_tiles(scene: &mut RenderScene) -> TextureHandle {
-    let mut rgba = Vec::with_capacity(64 * 16 * 4);
-    for y in 0..16i32 {
-        for x in 0..64i32 {
-            let (tile, u) = (x / 16, x % 16);
-            let n = hash2(u, y, tile as u32 * 7 + 1);
-            let c: [f32; 3] = match tile {
-                // Rock: grey-brown speckle, a darker crack on the diagonal.
-                0 | 1 => {
-                    let crack = (u + y) % 11 == 0 && n > 0.3;
-                    let k = if crack { 0.55 } else { 0.85 + 0.3 * n };
-                    if tile == 1 && y < 3 + (u % 3 == 0) as i32 {
-                        [0.30 + 0.15 * n, 0.55 + 0.2 * n, 0.22]
-                    } else {
-                        [0.52 * k, 0.46 * k, 0.40 * k]
-                    }
-                }
-                // Bricks: offset courses of 8 x 4 with dark mortar.
-                2 => {
-                    let course = y / 4;
-                    let mortar = y % 4 == 3 || (u + course % 2 * 4) % 8 == 7;
-                    if mortar {
-                        [0.16, 0.12, 0.11]
-                    } else {
-                        let k = 0.85 + 0.25 * n;
-                        [0.50 * k, 0.30 * k, 0.24 * k]
-                    }
-                }
-                // The night sky through a window: blue, a few stars.
-                _ => {
-                    if n > 0.985 {
-                        [0.95, 0.95, 0.85]
-                    } else {
-                        let t = y as f32 / 15.0;
-                        [0.10 + 0.08 * t, 0.16 + 0.12 * t, 0.42 + 0.15 * t]
-                    }
-                }
-            };
-            rgba.extend(c.iter().map(|v| (v.clamp(0.0, 1.0) * 255.0).round() as u8));
-            rgba.push(255);
-        }
-    }
-    let t = scene.add_texture(TextureData {
-        width: 64,
-        height: 16,
-        rgba,
-        color_space: ColorSpace::Srgb,
-        mips: Mips::None,
-    });
-    scene.set_texture_filter(t, og_render::TextureFilter::Nearest);
-    t
+    crate::kit::picture(scene, "sprites2d/cave-tiles.png", true)
 }
 
 /// One tile layer of 1-unit cells: `cell(x, y)` (x right, y up from the
@@ -379,8 +331,10 @@ fn cave_layer(
 /// ledge, both casting shadows: the pillar's occluder throws the torch's
 /// shadow across the back wall to its right, the ledge's the crystal's
 /// below it. A window shows a night sky through the wall: its layer is in
-/// the lit range but `lit` false, so it keeps its authored colour. A figure
-/// on the floor is a lit sprite of the same range.
+/// the lit range but `lit` false, so it keeps its authored colour. The
+/// ranger on the floor, the torch and the crystal are lit sprites of the
+/// same range. The tiles, the ranger and the props are painted pixel art
+/// (`assets/sprites2d`).
 pub fn tilemap_lit_scene() -> RenderScene {
     let mut scene = RenderScene::new();
     let tiles = cave_tiles(&mut scene);
@@ -412,15 +366,23 @@ pub fn tilemap_lit_scene() -> RenderScene {
         .push(cave_layer(tiles, -19, true, |x, y| {
             rock(x, y).then(|| if rock(x, y + 1) || y >= 15 { 0 } else { 1 })
         }));
-    // A figure on the floor, lit as the tiles are.
-    scene.add_sprite(Sprite {
-        position: Vec3::new(-5.0, -6.0, 0.0),
-        size: Vec2::new(0.8, 1.6),
-        anchor: Vec2::new(0.5, 0.0),
-        color: [0.85, 0.82, 0.75, 1.0],
-        layer: -18,
-        ..Default::default()
-    });
+    // The ranger on the floor, the torch on the wall by its light and the
+    // crystal on the ledge under its own: lit sprites of the same range.
+    for (name, foot, height) in [
+        ("hero-ranger", Vec2::new(-5.0, -6.0), 1.7),
+        ("torch", Vec2::new(-10.0, -5.2), 1.5),
+        ("crystal", Vec2::new(8.5, -1.0), 1.2),
+    ] {
+        let (texture, aspect) = crate::scenes::painted(&mut scene, name);
+        scene.add_sprite(Sprite {
+            texture: Some(texture),
+            position: foot.extend(0.0),
+            size: Vec2::new(height * aspect, height),
+            anchor: Vec2::new(0.5, 0.0),
+            layer: -18,
+            ..Default::default()
+        });
+    }
     scene.sprite.lighting_2d = Some(Lighting2d {
         ambient: Vec3::splat(0.04),
         min_layer: -30,
@@ -466,7 +428,9 @@ pub fn tilemap_lit_scene() -> RenderScene {
             ..Default::default()
         },
     ];
-    scene.frame.camera = Camera::orthographic_2d(Vec2::ZERO, 18.0);
+    // Framed on the two lights, the pillar and the ledge, the cave's
+    // ceiling just out of view.
+    scene.frame.camera = Camera::orthographic_2d(Vec2::new(-0.5, -1.4), 13.5);
     scene.lighting.environment.background = Background::Color(Vec3::ZERO);
     scene.look.post.tonemap = Tonemap::None;
     scene
