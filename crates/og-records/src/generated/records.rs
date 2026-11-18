@@ -31333,7 +31333,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 unit: "",
                 worldspace: "",
                 label: "",
-                doc: doc!("Written by the engine: true while the sub-scene's entities are in the world (from the tick it loaded until the tick it unloaded)."),
+                doc: doc!("Written by the engine: true while the sub-scene's entities are in the world and its asset group is resident. A queued or failed group leaves the cell unloaded, logs the reason once and never holds the world's tick."),
                 variants: &[],
                 capacity: 0,
                 list: 0,

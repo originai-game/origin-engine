@@ -96,7 +96,7 @@ pub(crate) fn resolve_scenes(eng: &Engine, group: Option<&str>) {
             .filter(|(g, _)| {
                 a.stream
                     .find(g)
-                    .is_some_and(|i| !a.stream.groups[i].files.is_empty())
+                    .is_some_and(|i| a.stream.groups[i].state == super::State::Resident)
             })
             .flat_map(|(_, list)| list.iter().copied())
             .filter(|&i| matches!(a.entries[i].payload, Payload::SceneWaiting { .. }))

@@ -1,0 +1,5 @@
+{
+  "fixed": [
+    { "member": "og.StreamCell", "summary": "Keep budget-blocked cells unloaded with a one-time diagnostic instead of holding the world forever, and retire their members if their streaming group is evicted. Cells report loaded only while their group is resident." }
+  ]
+}

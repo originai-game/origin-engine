@@ -278,6 +278,113 @@ fn the_stream_budget_prices_device_blocks_and_exact_mips_before_admission() {
     std::fs::remove_dir_all(root).unwrap();
 }
 
+#[test]
+fn over_budget_cells_report_the_problem_without_freezing_or_drawing_unloaded_members() {
+    let _lock = TEST_LOCK.lock().unwrap();
+    let root = PathBuf::from(env!("CARGO_TARGET_TMPDIR"))
+        .join(format!("stream-budget-cells-{}", std::process::id()));
+    let boot = root.join("boot");
+    cook(&boot, &[("world.ogt", b"type scene\nversion 1\n---\nentity \"player\" {\n Transform {\n  position 100 0 0\n }\n StreamAnchor {\n  reach 0\n }\n}\n".to_vec())]);
+    for id in ["p1", "p2"] {
+        parcel(&root.join(id), id, id, 100, true);
+    }
+    let estimate = og_bundle::runtime::Bundle::open(&root.join("p1/cooked"))
+        .unwrap()
+        .streams()[0]
+        .memory;
+    for fits_one in [false, true] {
+        set_hooks(Rc::new(Disk {
+            delayed: false,
+            reads: RefCell::default(),
+        }));
+        og_host_begin_bundle();
+        let game = og_game_game(Some(r#"{"seed":1}"#.into()));
+        let engine = value(og_engine_create(game, json!({"root": boot}).to_string()))
+            .as_u64()
+            .unwrap() as u32;
+        let held = Rc::new(Cell::new(Held::default()));
+        answer(set_render_backend(
+            engine,
+            Some(Box::new(Recorder(held.clone()))),
+        ));
+        let g = Game { engine, held };
+        g.place("world.ogt");
+        answer(og_stream_set_budget(
+            engine,
+            if fits_one {
+                (estimate * 3 / 2) as f64
+            } else {
+                1.0
+            },
+        ));
+        for id in ["p1", "p2"] {
+            g.open(&root.join(id));
+            g.place(&format!("{id}/place.ogt"));
+        }
+        for _ in 0..20 {
+            g.frame();
+        }
+        assert!(
+            g.dump()["tick"].as_u64().unwrap() >= 19,
+            "budget pressure must not hold the world: {}",
+            g.dump()
+        );
+        assert_eq!(g.loaded("p1"), fits_one);
+        assert!(!g.loaded("p2"));
+        assert_eq!(
+            g.held.get().instances,
+            usize::from(fits_one),
+            "the submitted frame contains only resident cell members"
+        );
+        assert_eq!(g.state("p1"), if fits_one { "resident" } else { "failed" });
+        assert_eq!(g.state("p2"), if fits_one { "queued" } else { "failed" });
+        let log: Value = serde_json::from_str(&og_engine_take_log(engine)).unwrap();
+        let warnings = log
+            .as_array()
+            .unwrap()
+            .iter()
+            .filter(|v| {
+                v["text"]
+                    .as_str()
+                    .is_some_and(|s| s.contains("budget") && s.contains("cell"))
+            })
+            .count();
+        assert_eq!(
+            warnings,
+            if fits_one { 1 } else { 2 },
+            "each blocked cell reports the budget problem once: {log}"
+        );
+        for _ in 0..20 {
+            g.frame();
+        }
+        let log: Value = serde_json::from_str(&og_engine_take_log(engine)).unwrap();
+        assert!(
+            !log.as_array().unwrap().iter().any(|v| v["text"]
+                .as_str()
+                .is_some_and(|s| s.contains("budget") && s.contains("cell"))),
+            "no repeated budget warning: {log}"
+        );
+        answer(og_stream_set_budget(engine, (estimate * 3) as f64));
+        for _ in 0..8 {
+            g.frame();
+        }
+        assert!(
+            g.loaded("p1") && g.loaded("p2"),
+            "a larger budget recovers both cells"
+        );
+        assert_eq!(g.held.get().instances, 2);
+        // A later eviction must retire the loaded flag and its members too.
+        answer(og_stream_set_budget(engine, 1.0));
+        for _ in 0..3 {
+            g.frame();
+        }
+        assert!(!g.loaded("p1") && !g.loaded("p2"));
+        assert_eq!(g.held.get().instances, 0);
+        assert!(og_engine_destroy(engine));
+    }
+    std::fs::remove_dir_all(root).unwrap();
+}
+
 struct Game {
     engine: u32,
     held: Rc<Cell<Held>>,

@@ -20,7 +20,7 @@ Token `og.StreamCell`, registered under the schema name `og.StreamCell`; its val
 | `pin` | `boolean` | `false` | — | — | — | Loaded whatever the anchors while true (a cell game code needs, such as a quest's destination); set it false and the anchors decide again. |
 | `persist` | `boolean` | `false` | — | — | — | Keep what happened in it: on unload its entities as they are are kept in the world's og.cells state (in snapshots, saves and the hash) and come back so when it loads again. False: it loads as authored every time. See `world §5`. |
 | `budget` | `number` | `0` | — | — | — | The most of its entities spawned per tick while it loads (0: all in one tick). `loaded` turns true, and CellEvent is sent, in the tick its last entity spawns; a cell unwanted before then despawns what it spawned and sends nothing. See `world §5`. |
-| `loaded` | `boolean` | `false` | — | — | read only | Written by the engine: true while the sub-scene's entities are in the world (from the tick it loaded until the tick it unloaded). |
+| `loaded` | `boolean` | `false` | — | — | read only | Written by the engine: true while the sub-scene's entities are in the world and its asset group is resident. A queued or failed group leaves the cell unloaded, logs the reason once and never holds the world's tick. |
 
 ```ogt
 component StreamCell {
@@ -42,7 +42,7 @@ component StreamCell {
   field budget u32 "The most of its entities spawned per tick while it loads (0: all in one tick). `loaded` turns true, and CellEvent is sent, in the tick its last entity spawns; a cell unwanted before then despawns what it spawned and sends nothing." {
     guide "world §5"
   }
-  field loaded bool "Written by the engine: true while the sub-scene's entities are in the world (from the tick it loaded until the tick it unloaded)." {
+  field loaded bool "Written by the engine: true while the sub-scene's entities are in the world and its asset group is resident. A queued or failed group leaves the cell unloaded, logs the reason once and never holds the world's tick." {
     readonly true
   }
 }
