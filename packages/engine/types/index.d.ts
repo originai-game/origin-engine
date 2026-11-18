@@ -17218,7 +17218,7 @@ export interface Fog {
    */
   maxOpacity: number;
   /**
-   * How much of the fog covers the sky and the clouds in it (0: they stay clear, however far the fog hides the land).
+   * How much of the fog covers the sky and the clouds in it (0: they stay clear, however far the fog hides the land). What the sky draws under the horizon stands for land: the fog hides it as it hides land as far off.
    *
    * @default 1
    * @range 0..1

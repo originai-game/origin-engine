@@ -112,6 +112,25 @@ fn sky_fog(color: vec3<f32>, dir: vec3<f32>) -> vec3<f32> {
   return mix(color, f.rgb, f.a * frame.fog_height.w);
 }
 
+// What the procedural sky draws under the horizon (its ground, or an
+// overcast's strip: clouds_over) stands for land, which the fog hides
+// whatever it leaves of the sky (og.Fog `sky`): over the horizon's first 3°
+// the rest of the fog 5 km out that sky_fog and cloud_view_fog left, so it
+// takes the whole amount as land drawn as far off does. At the sky's share,
+// where the world's own land left the view open the overcast's strip read
+// as a flat band under the fogged hills. Not in a cube face (the live sky's
+// capture, a probe): its sky under the horizon stands for the ground round
+// the point, whose light the surfaces take from below.
+fn land_fog(color: vec3<f32>, dir: vec3<f32>) -> vec3<f32> {
+  let below = smoothstep(0.0, 0.05, -dir.y);
+  if (frame.fog_color.w < 0.5 || frame.drawn.z != 0u || below <= 0.0) { return color; }
+  let f = fog_amount(frame.view_pos.xyz + dir * 5000.0);
+  // Fogged by f.a s already; the rest t takes it to f.a: (1 - f.a) = (1 - f.a s)(1 - t).
+  let shown = f.a * frame.fog_height.w;
+  let rest = (f.a - shown) / max(1.0 - shown, 1e-4);
+  return mix(color, f.rgb, rest * below);
+}
+
 // The viewer's height for the physical sky, in km: the look's altitude
 // plus the camera's height in the world.
 fn sky_viewer_km() -> f32 {
@@ -678,7 +697,7 @@ fn fs_sky_look(in: SkyOut) -> @location(0) vec4<f32> {
   if (frame.light_color.w > 0.5) { return debug_unsupported(in.pos.xy); }
   let dir = view_dir(in.ndc);
   let clouds = clouds_over(dir, in.pos.xy, in.grey);
-  return sky_stored(cloud_layer_over(clouds, sky_look_behind(dir, in.pos.xy)));
+  return sky_stored(land_fog(cloud_layer_over(clouds, sky_look_behind(dir, in.pos.xy)), dir));
 }
 
 // The main camera's clouds, marched at half the frame's size each way (the cloud pass, pass_clouds.rs: a march is
@@ -759,5 +778,5 @@ fn fs_sky_look_low(in: SkyOut) -> @location(0) vec4<f32> {
     let uv = vec2<f32>(0.5 + 0.5 * in.ndc.x, 0.5 - 0.5 * in.ndc.y);
     clouds = textureSampleLevel(clouds_low, ibl_sampler, uv, 0.0);
   }
-  return sky_stored(cloud_layer_over(clouds, sky_look_behind(dir, in.pos.xy)));
+  return sky_stored(land_fog(cloud_layer_over(clouds, sky_look_behind(dir, in.pos.xy)), dir));
 }

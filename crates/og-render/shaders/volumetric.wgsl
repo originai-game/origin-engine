@@ -192,7 +192,8 @@ fn height_column(ya: f32, yb: f32, len: f32) -> f32 {
 // The air past the grid along the view ray `dir` to the pixel's view depth `depth` (rgb: its in-scattered
 // light, a: its transmittance): the scene's fog going on from `distance`, its own colour and the unshadowed sun's
 // light in it (no cascade reaches there), summed in closed form. Behind the sky it is 5 km of it, as much as
-// the fog covers the sky (the frame's fog: sky.wgsl `sky_fog`). The fog volumes end inside the grid.
+// the fog covers the sky, and all of it under the horizon, which stands for land (the frame's fog: sky.wgsl
+// `sky_fog`). The fog volumes end inside the grid.
 fn far_air(dir: vec3<f32>, depth: f32) -> vec4<f32> {
   if (VOL_WATER) { return vec4<f32>(0.0, 0.0, 0.0, 1.0); }
   let sky = is_sky_depth(depth);
@@ -204,7 +205,7 @@ fn far_air(dir: vec3<f32>, depth: f32) -> vec4<f32> {
   let y0 = frame.view_pos.y + dir.y * t0 - vol.medium.y;
   let tau = vol.medium.x * len + height_column(y0, y0 + dir.y * len, len);
   var hidden = 1.0 - exp(-tau);
-  if (sky) { hidden *= vol.local.y; }
+  if (sky) { hidden *= mix(vol.local.y, 1.0, smoothstep(0.0, 0.05, -dir.y)); }
   if (hidden <= 0.0) { return vec4<f32>(0.0, 0.0, 0.0, 1.0); }
   let l = normalize(frame.light_dir.xyz);
   let sun = vol.scatter.rgb * frame.light_color.rgb * hg_phase(dot(dir, l), vol.scatter.w);

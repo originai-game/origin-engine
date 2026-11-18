@@ -631,6 +631,9 @@ pub(crate) fn face_uniform(
     // already). The shaders then take the capture as it is (the probe's
     // and the light volumes' intensity over params.x).
     u.view_up[3] = 1.0 - base.params[0].max(0.0);
+    // Its sky under the horizon is the light of the ground round the
+    // point, which the fog 5 km out does not hide (sky.wgsl `land_fog`).
+    u.drawn[2] = 1;
     u.cluster = [0.0; 4];
     u.caustics = [[0.0; 4]; 6];
     u.stylise = [0.0; 4];

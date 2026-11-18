@@ -114,7 +114,10 @@ pub(crate) struct FrameUniform {
     /// x: the frames the renderer drew before this one (its frame index as
     /// u32, which counts on while the clock is paused), which a material's
     /// shader parameters compare their stamp with (frame.wgsl
-    /// `params_moved`); yzw unused.
+    /// `params_moved`); y: 1 when a view tints clustered instances by level
+    /// (`View::lod_debug`); z: 1 in a cube face (probes.rs `face_uniform`),
+    /// whose sky under the horizon is the ground's light round the point,
+    /// not land far off (sky.wgsl `land_fog`); w unused.
     pub drawn: [u32; 4],
     /// The year the seasonal leaves are drawn in (meshlet_foliage.wgsl
     /// `LeafYear`, `LeafCalendar::gpu`; zero: as modelled).

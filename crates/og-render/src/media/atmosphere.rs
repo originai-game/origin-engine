@@ -44,7 +44,8 @@ pub struct Fog {
     pub sun_power: f32,
     /// The most the fog hides (1: completely at distance).
     pub max_opacity: f32,
-    /// How much of the fog covers the sky (0: the sky stays clear).
+    /// How much of the fog covers the sky (0: the sky stays clear). What
+    /// the sky draws under the horizon stands for land and takes all of it.
     pub sky: f32,
 }
 

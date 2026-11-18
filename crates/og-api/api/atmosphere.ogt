@@ -67,7 +67,7 @@ module atmosphere {
       unit ratio
       tunable true
     }
-    field sky f32 "How much of the fog covers the sky and the clouds in it (0: they stay clear, however far the fog hides the land)." {
+    field sky f32 "How much of the fog covers the sky and the clouds in it (0: they stay clear, however far the fog hides the land). What the sky draws under the horizon stands for land: the fog hides it as it hides land as far off." {
       default 1
       min 0
       max 1

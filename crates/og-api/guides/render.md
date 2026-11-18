@@ -301,9 +301,12 @@ depth-normal prepass: the first one pays for it.
   a closed room with GI as dark as the room.
 - Past `volumetricDistance` the fog goes on to the far scene and, by
   `Fog.sky`, over the sky, in its colour with the unshadowed sun's light
-  in it: far towers fade into the haze as in the plain fog. It has no
-  shafts and no lamps' glow there, so set the distance past the last
-  lamp whose glow should show (the froxels grow with it).
+  in it: far towers fade into the haze as in the plain fog. Under the
+  horizon a procedural sky stands for land, and both fogs hide it whole
+  whatever `Fog.sky` is, so a gap in the world's ground reads as land
+  lost in the haze, not as a band of sky. It has no shafts and no lamps'
+  glow there, so set the distance past the last lamp whose glow should
+  show (the froxels grow with it).
 - Local fog: og.FogVolume beside an og.Volume fills that box or sphere
   with fog (mist in a hollow, smoke in a room, haze for a lamp's shaft),
   lit as volumetric fog is. It needs no og.Fog: alone it lies over the

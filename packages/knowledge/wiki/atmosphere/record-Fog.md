@@ -25,7 +25,7 @@ Token `og.Fog`, registered under the schema name `og.Fog`; its value type is `Fo
 | `sunColor` | `Color` | `{ r: 1, g: 0.86, b: 0.62 }` | — | — | — | The fog's colour looking into the sun (forward scattering). |
 | `sunPower` | `number` | `8` | 0 … 256 | — | tunable | How tight the sun's glow in the fog is (higher: smaller). |
 | `maxOpacity` | `number` | `1` | 0 … 1 | `ratio` | tunable | The most the fog hides. |
-| `sky` | `number` | `1` | 0 … 1 | `ratio` | tunable | How much of the fog covers the sky and the clouds in it (0: they stay clear, however far the fog hides the land). |
+| `sky` | `number` | `1` | 0 … 1 | `ratio` | tunable | How much of the fog covers the sky and the clouds in it (0: they stay clear, however far the fog hides the land). What the sky draws under the horizon stands for land: the fog hides it as it hides land as far off. |
 | `volumetric` | `boolean` | `false` | — | — | — | Light the fog as a medium: unlit, it tends to color as the plain fog does; over that it (density, thickened below height) scatters the sun through its cascades and the point, spot and rect lights (up to RenderCapabilities.volumetricLights a sample). Blended surfaces and sprites take the plain fog. See `render §7`. |
 | `scattering` | `number` | `0.8` | 0 … 4 | — | tunable | How much of the sun's and the lamps' light the fog scatters (its albedo, tinted by color): 0 leaves the plain fog's haze without shafts or glow, 1 sends all of that light on, above 1 brightens the shafts for effect. |
 | `anisotropy` | `number` | `0.6` | -0.95 … 0.95 | — | tunable | Which way the fog scatters (Henyey–Greenstein g): 0 evenly, towards 1 forward (bright looking into the light: shafts against the sun), below 0 back towards the light. |
@@ -87,7 +87,7 @@ resource Fog {
     unit ratio
     tunable true
   }
-  field sky f32 "How much of the fog covers the sky and the clouds in it (0: they stay clear, however far the fog hides the land)." {
+  field sky f32 "How much of the fog covers the sky and the clouds in it (0: they stay clear, however far the fog hides the land). What the sky draws under the horizon stands for land: the fog hides it as it hides land as far off." {
     default 1
     min 0
     max 1
