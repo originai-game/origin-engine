@@ -6876,7 +6876,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 unit: "",
                 worldspace: "",
                 label: "",
-                doc: doc!("Taps per pixel: more is smoother on long blurs, each one a texture read."),
+                doc: doc!("Taps per pixel, each one a texture read. For zoom this is a minimum: the count follows the streak length at one tap per pixel, capped at 256; stable per-pixel jitter breaks up repeated highlights. Spin and directional use exactly this count."),
                 variants: &[],
                 capacity: 0,
                 list: 0,

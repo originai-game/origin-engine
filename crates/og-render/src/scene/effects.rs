@@ -367,7 +367,7 @@ pub enum ScreenBlurKind {
 
 /// A blur of the whole lit frame (RedGPU's zoom, radial and directional
 /// blurs, with the spin and the directional blur measured in pixels on
-/// any aspect): each pixel averages `samples` taps of the image at `t` in
+/// any aspect): each pixel averages taps of the image at `t` in
 /// -1..1, weighted by a tent for zoom and spin and a Gaussian for
 /// directional, at
 ///
@@ -392,7 +392,9 @@ pub struct ScreenBlur {
     /// Directional's direction (radians, counter-clockwise from the
     /// right).
     pub angle: f32,
-    /// Taps per pixel (4 to 64).
+    /// Taps per pixel (4 to 64). For zoom this is a minimum: sampling
+    /// follows the streak's length at one tap per pixel, capped at 256,
+    /// with a stable per-pixel jitter to break up repeated highlights.
     pub samples: u32,
 }
 

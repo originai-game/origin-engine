@@ -297,7 +297,7 @@
       unit deg
       tunable true
     }
-    field screenBlurSamples u32 "Taps per pixel: more is smoother on long blurs, each one a texture read." {
+    field screenBlurSamples u32 "Taps per pixel, each one a texture read. For zoom this is a minimum: the count follows the streak length at one tap per pixel, capped at 256; stable per-pixel jitter breaks up repeated highlights. Spin and directional use exactly this count." {
       default 16
       min 4
       max 64

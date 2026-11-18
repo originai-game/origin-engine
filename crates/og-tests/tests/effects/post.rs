@@ -2,6 +2,50 @@
 
 use super::*;
 
+/// A thin highlight must streak continuously, not repeat as sixteen
+/// separated copies. The source is at x=240; zoom samples x + (160-x)t/2,
+/// so every pixel from 230 to 310 sees it strictly inside the tent.
+#[test]
+#[ignore = "requires GPU"]
+fn zoom_blur_keeps_a_thin_highlight_continuous() {
+    let mut scene = RenderScene::new();
+    scene.frame.camera = Camera::orthographic_2d(Vec2::ZERO, 10.0);
+    scene.lighting.environment.background = Background::Color(Vec3::ZERO);
+    scene.look.post.tonemap = Tonemap::None;
+    scene.add_sprite(Sprite {
+        position: Vec3::new(80.0 / 18.0, 0.0, 0.0),
+        size: Vec2::new(0.08, 10.0),
+        color: [1.0; 4],
+        ..Default::default()
+    });
+    scene.look.post.screen_blur = Some(og_render::ScreenBlur {
+        strength: 0.5,
+        ..Default::default()
+    });
+    let (image, _) = frame(&small(), &scene);
+    for x in 230..310 {
+        let brightness = region(&image, (x, 80, x + 1, 100));
+        assert!(
+            brightness > 5.0,
+            "gap in the highlight at x={x}: {brightness}"
+        );
+    }
+    assert_eq!(px(&image, 190, 90), [0; 3], "outside the streak");
+    let (again, _) = frame(&small(), &scene);
+    assert_eq!(
+        image.pixels, again.pixels,
+        "jitter is stable between frames"
+    );
+    scene.look.post.screen_blur.as_mut().unwrap().strength = 0.0;
+    let (zero, _) = frame(&small(), &scene);
+    scene.look.post.screen_blur = None;
+    let (off, _) = frame(&small(), &scene);
+    assert_eq!(
+        zero.pixels, off.pixels,
+        "zero strength leaves the frame alone"
+    );
+}
+
 /// Lens distortion moves a marker on each axis of a 16:9 frame to where
 /// its formula, solved here, puts it: out from the centre under a fitted
 /// barrel and under a pincushion, by amounts that differ between the axes

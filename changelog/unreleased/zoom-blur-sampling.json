@@ -1,0 +1,8 @@
+{
+  "fixed": [
+    {
+      "member": "PostEffects.screenBlur",
+      "summary": "Keep zoom-blur highlights continuous with a streak-length-dependent tap count and stable per-pixel jitter instead of repeated dotted copies."
+    }
+  ]
+}

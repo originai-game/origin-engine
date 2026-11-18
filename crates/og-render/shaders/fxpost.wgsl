@@ -873,14 +873,29 @@ fn fs_motion_blur(in: VsOut) -> @location(0) vec4<f32> {
 @fragment
 fn fs_screen_blur(in: VsOut) -> @location(0) vec4<f32> {
   let kind = u32(fxp.blur.x);
-  let n = max(u32(fxp.blur2.x), 1u);
+  var n = max(u32(fxp.blur2.x), 1u);
   let c = fxp.blur.zw;
   let to_px = fxp.screen.xy;
   let rel = (in.uv - c) * to_px;
+  var offset = 0.5;
+  if (kind == 1u) {
+    // Cover the whole streak, not just sixteen separated copies of a
+    // highlight. Keep the requested quality floor, with at most 256 reads.
+    let reach = 2.0 * abs(fxp.blur.y) * length(rel);
+    n = max(n, u32(clamp(ceil(reach), 1.0, 256.0)));
+    // Stratify independently per pixel, stable across frames and backends:
+    // integer hashing avoids sin's backend-dependent rounding. Long rays
+    // at the cap leave noise rather than coherent dotted spokes.
+    let p = vec2<u32>(in.pos.xy);
+    var h = p.x * 1664525u + p.y * 1013904223u;
+    h = (h ^ (h >> 16u)) * 2246822519u;
+    h = (h ^ (h >> 13u)) * 3266489917u;
+    offset = (f32((h ^ (h >> 16u)) >> 8u) + 0.5) / 16777216.0;
+  }
   var sum = vec3<f32>(0.0);
   var total = 0.0;
   for (var i = 0u; i < n; i++) {
-    let t = (f32(i) + 0.5) / f32(n) * 2.0 - 1.0;
+    let t = (f32(i) + offset) / f32(n) * 2.0 - 1.0;
     var uv = in.uv;
     var w = 1.0 - abs(t);
     if (kind == 1u) {
