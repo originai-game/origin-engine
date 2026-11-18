@@ -1,0 +1,8 @@
+{
+  "fixed": [
+    {
+      "member": "og.MotionAgent",
+      "summary": "A foot whose heel has peeled up starts its next step from where it is drawn, and a stepping foot keeps the hips lowered for its place as a planted one does. Before, a step's first frame drew the foot at soft IK's eased place, nearer the hips, so it jumped across the ground as it lifted (up to 0.48 m/s in a walk, 0.32 m/s in a held pose's shuffle), and the hips rose again during each step, so a foot a held pose keeps up stepped over and over above the ground."
+    }
+  ]
+}
