@@ -5,12 +5,13 @@ use super::*;
 
 /// The forest's level-of-detail inset (`meshlet_scenes::INSET`, the
 /// plantation from 30 m up, `View::lod_debug`) holds the full mesh's tint
-/// and level 1's, the coarser one farther: the near rows stand low in the
-/// inset, so green's mean row is below yellow's. A GPU that drew every
-/// pine at level 0 shows only green, one that inverted the choice puts
-/// yellow lowest, and a view that ignored its own tint shows neither. The
-/// main shot outside the inset is untinted. Lit, the tints read green
-/// (77, 211, 99) and yellow (215, 211, 77): told apart by hue.
+/// and level 1's, the coarser one farther (level 2's orange stands behind
+/// it): the near rows stand low in the inset, so green's mean row is below
+/// yellow's. A GPU that drew every pine at level 0 shows only green, one
+/// that inverted the choice puts yellow lowest, and a view that ignored
+/// its own tint shows neither. The main shot outside the inset is
+/// untinted. Lit, the tints read green (77, 211, 99) and yellow
+/// (215, 211, 77): told apart by hue.
 #[test]
 #[ignore = "requires GPU"]
 fn meshlet_forest_tints_coarser_levels_farther() {

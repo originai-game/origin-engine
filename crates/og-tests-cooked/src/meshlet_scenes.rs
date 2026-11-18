@@ -9,10 +9,10 @@
 //!
 //! - `meshlet-forest`: 132 pines 8 to 12 m tall, 11 rows across and 12
 //!   deep from 6 m to 116 m, seen from the lane's end at the walled plot's
-//!   gate; the inset looks down the same rows from 30 m up, its near rows
-//!   green (the full mesh) and its far rows yellow (level 1), no tree
-//!   missing or cut open (a cluster culled wrongly shows as a hole in a
-//!   crown).
+//!   gate; the inset looks down the same rows from 30 m up at a LOD bias
+//!   of 0.4, its near rows green (the full mesh), the next rows level 1's
+//!   yellow and its far rows level 2's orange, no tree missing or cut
+//!   open (a cluster culled wrongly shows as a hole in a crown).
 //! - `meshlet-occlusion`: the plantation behind its old curtain wall, run
 //!   at a slant across the left of the view to a broken end, three frames
 //!   so the second and third cull in two phases (the clusters visible
@@ -263,6 +263,12 @@ pub fn forest_scene() -> Result<RenderScene, String> {
         ..scene.frame.camera
     };
     lod_inset(&mut scene, camera);
+    // The pine's level 1 (half its triangles) stands 0.092 of its units
+    // from the full mesh, under a pixel only where a pine is 21 px tall,
+    // which in the inset is past the last row. At a bias of 0.4, a lower
+    // quality setting's, the rows switch from 44 m, where the inset's
+    // pines are 50 px tall and a level's tint is thousands of pixels.
+    scene.objects.lod_bias = 0.4;
     Ok(scene)
 }
 
