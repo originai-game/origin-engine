@@ -995,6 +995,8 @@ Its own props, beside every element's:
 | `world-offset` | `text` | `offset="0 2 0"`: added to the point, world units (over a head). |
 | `occlusion` | `none \| fade \| hide` | What the scene in front of its point does to it: faded or hidden. |
 | `declutter` | `none \| shift \| stack \| hide` | How it resolves overlapping an anchor of higher priority. |
+| `lod` | `text` | Ascending world distances (`lod="25 45"`): levels 0, 1, 2. Read last tick's `[data-lod]` on the anchor root. Edge clamp reports `[data-clamped]`, `[data-edge="top\|right\|bottom\|left"]` and inherited `--anchor-angle` (clockwise degrees from +x). |
+| `lod-lock` | `bool` | `lod-lock={targeted \|\| casting}` forces level 0 only; distance scaling, fading, clamping and declutter are unchanged. |
 | `world-clamp` | `none \| edge \| contain` | `clamp="edge"`: held on the safe edge with an arrow; `contain`: push the whole box inside, fading as its point leaves the safe area. |
 | `contain-fade` | `edge \| none` | `contain-fade="none"`: keep a contained label fully readable even when its point leaves the safe area; default `edge` fades near the edge. Distance, occlusion and declutter fades are unchanged. |
 | `clamp-margin` | `number` | `clamp-margin`: safe-edge inset in CSS px times user text scale; default 24 for edge, theme small spacing for contain. |

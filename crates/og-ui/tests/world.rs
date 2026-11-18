@@ -138,6 +138,92 @@ fn document_world_distance_bounds_edge_controls_and_mass_settings() {
     assert!((contained.x + contained.width - (W - 18.0)).abs() < 0.1);
 }
 
+/// Last-tick placement feedback reaches the ordinary retained CSS cascade.
+#[test]
+fn document_anchor_feedback_styles_clamped_edges_angle_and_locked_lod() {
+    let mut ui = ui();
+    ui.define_document(
+        UiDocument::parse(
+            "feedback.svelte",
+            r#"
+<meta name="component" content="feedback">
+<div>
+<anchor id="Plate" at="0 0 0" lod="8 15" lod-lock={$locked}><div id="Body" /></anchor>
+<anchor id="Bubble" at={$at} clamp="edge" arrow-size="0"><div id="Tail" /></anchor>
+</div>
+<style>
+#Body { width: 100px; height: 20px; }
+#Plate[data-lod="1"] #Body { width: 70px; }
+#Plate[data-lod="2"] #Body { width: 40px; }
+#Tail { width: 10px; height: 4px; background: white; }
+#Bubble[data-clamped] #Tail { rotate: var(--anchor-angle); }
+#Bubble[data-edge="left"] #Tail { width: 30px; }
+</style>"#,
+        )
+        .unwrap(),
+    );
+    mount_stores(
+        &mut ui,
+        source("feedback"),
+        "feedback",
+        &[
+            ("locked", serde_json::json!(false)),
+            ("at", serde_json::json!("0 0 0")),
+        ],
+    );
+    run(&mut ui, 10, |_| {});
+    assert_eq!(rect(&ui, "test:feedback/Plate/Body").2, 100.0);
+    for _ in 0..10 {
+        ui.begin(InputFrame::default(), vp());
+        ui.set_world_view(Some(WorldView::look_at(
+            Vec3::new(0.0, 0.0, 10.0),
+            Vec3::ZERO,
+            Vec3::Y,
+            50.0,
+            W / H,
+            0.1,
+            100.0,
+        )));
+        ui.end();
+    }
+    assert_eq!(rect(&ui, "test:feedback/Plate/Body").2, 70.0);
+    let far_view = WorldView::look_at(
+        Vec3::new(0.0, 0.0, 25.0),
+        Vec3::ZERO,
+        Vec3::Y,
+        50.0,
+        W / H,
+        0.1,
+        100.0,
+    );
+    let far = |ui: &mut Ui| {
+        for _ in 0..10 {
+            ui.begin(InputFrame::default(), vp());
+            ui.set_world_view(Some(far_view));
+            ui.end();
+        }
+    };
+    far(&mut ui);
+    assert_eq!(rect(&ui, "test:feedback/Plate/Body").2, 40.0);
+    set_store(&mut ui, "locked", serde_json::json!(true));
+    far(&mut ui);
+    assert_eq!(rect(&ui, "test:feedback/Plate/Body").2, 100.0);
+    set_store(&mut ui, "locked", serde_json::json!(false));
+    far(&mut ui);
+    assert_eq!(rect(&ui, "test:feedback/Plate/Body").2, 40.0);
+    set_store(&mut ui, "at", serde_json::json!("-30 0 0"));
+    run(&mut ui, 10, |_| {});
+    assert!((rect(&ui, "test:feedback/Bubble/Tail").2 - 30.0).abs() < 0.1);
+    set_store(&mut ui, "at", serde_json::json!("0 30 0"));
+    run(&mut ui, 10, |_| {});
+    let (_, _, w, h) = rect(&ui, "test:feedback/Bubble/Tail");
+    assert!((w - 4.0).abs() < 0.1 && (h - 10.0).abs() < 0.1, "{w} × {h}");
+    set_store(&mut ui, "at", serde_json::json!("0 0 0"));
+    run(&mut ui, 10, |_| {});
+    assert_eq!(rect(&ui, "test:feedback/Bubble/Tail").2, 10.0);
+    assert!(ui.frame().warnings.is_empty(), "{:?}", ui.frame().warnings);
+}
+
 #[test]
 fn document_containment_can_keep_an_offscreen_boss_readable() {
     let mut ui = ui();

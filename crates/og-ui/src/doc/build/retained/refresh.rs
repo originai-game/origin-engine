@@ -198,6 +198,7 @@ impl RetainedHost {
                 }
             }
         }
+        self.sync_anchor_feedback(ui)?;
         for key in std::mem::take(&mut ui.docs.state_mut().edited) {
             let Some(node) = self.by_key.get(&key).cloned() else {
                 continue;
@@ -682,6 +683,39 @@ impl RetainedHost {
         Ok(out)
     }
 
+    fn sync_anchor_feedback(&mut self, ui: &Ui) -> Result<(), String> {
+        for (key, info) in &ui.world.placement.last {
+            let Some(node) = self.by_key.get(key) else {
+                continue;
+            };
+            let Some(element) = self.elements.get_mut(node) else {
+                continue;
+            };
+            let feedback = (
+                info.edge,
+                info.lod,
+                if info.clamped { info.angle } else { 0.0 },
+            );
+            if element.anchor_feedback == Some(feedback) {
+                continue;
+            }
+            let previous = element.anchor_feedback.replace(feedback);
+            self.topology.set_attribute(
+                node,
+                "data-clamped",
+                info.clamped.then_some(json!(true)),
+            )?;
+            self.topology
+                .set_attribute(node, "data-edge", info.edge.map(|edge| json!(edge)))?;
+            self.topology
+                .set_attribute(node, "data-lod", Some(json!(info.lod.to_string())))?;
+            if previous.is_none_or(|p| (p.0, p.2) != (feedback.0, feedback.2)) {
+                self.dirty.insert(node.clone());
+            }
+        }
+        Ok(())
+    }
+
     pub(crate) fn resolve(
         &mut self,
         ui: &mut Ui,
@@ -817,6 +851,12 @@ impl RetainedHost {
         // box around it set them: its own rules and `style:` win. Null (or
         // a list) leaves the property as inherited.
         let mut inherited = inherited;
+        if let Some((Some(_), _, angle)) = e.anchor_feedback {
+            Arc::make_mut(&mut inherited).insert(
+                "--anchor-angle".to_owned(),
+                Some(format!("{}deg", angle.to_degrees())),
+            );
+        }
         if e.index == e.document.root {
             for (name, _) in super::content::style_props(&e.context) {
                 let text = match e.cached.expression(&Expr::Path(name.clone())) {

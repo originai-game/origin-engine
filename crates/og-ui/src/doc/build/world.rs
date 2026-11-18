@@ -73,6 +73,24 @@ pub(super) fn anchor_desc(r: &Resolved, el: Element) -> Result<WorldAnchorDesc, 
         },
         _ => AnchorScale::Constant,
     };
+    let mut lod = Vec::new();
+    if let Some(text) = r.str("lod") {
+        for word in text.split_whitespace() {
+            let distance: f32 = word
+                .parse()
+                .map_err(|_| "lod takes ascending positive distances")?;
+            if !distance.is_finite()
+                || distance <= 0.0
+                || lod.last().is_some_and(|last| *last >= distance)
+            {
+                return Err("lod takes ascending positive distances".into());
+            }
+            lod.push(distance);
+        }
+    }
+    if r.flag("lodLock") {
+        lod.clear();
+    }
     Ok(WorldAnchorDesc {
         target,
         offset,
@@ -83,6 +101,7 @@ pub(super) fn anchor_desc(r: &Resolved, el: Element) -> Result<WorldAnchorDesc, 
         contain: r.str("worldClamp") == Some("contain"),
         contain_margin: r.num("clampMargin").map(|v| v.max(0.0)),
         contain_fade: r.str("containFade") != Some("none"),
+        lod,
         scale,
         priority: r.num("priority").unwrap_or(0.0) as i32,
         max_distance: r.num("maxDistance").unwrap_or(0.0).max(0.0),

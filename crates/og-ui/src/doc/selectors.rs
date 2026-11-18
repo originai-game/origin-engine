@@ -777,6 +777,13 @@ pub(crate) fn reflects_open(tag: &str) -> bool {
 
 /// Whether a component needs the instantiated sibling order or children.
 pub fn structural_component(c: &Component) -> bool {
+    // Placement feedback exists only on the instantiated anchor, not in
+    // authored markup, so these selectors must read the retained tree.
+    if attribute(c)
+        .is_some_and(|(name, _)| matches!(name, "data-clamped" | "data-edge" | "data-lod"))
+    {
+        return true;
+    }
     match c {
         Component::Nth(_)
         | Component::NthOf(_)
