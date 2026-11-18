@@ -163,6 +163,7 @@ impl Renderer {
                 s.mesh,
                 s.material,
                 !s.cast_shadows,
+                s.fx.hidden_steps() != 0,
                 views::layer_of(&scene.objects.skinned_layers, i),
                 probe_of[i],
                 mirrors(&s.transform),
@@ -180,6 +181,9 @@ impl Renderer {
         for &i in &order {
             let s = &scene.objects.skinned_instances[i];
             let (mesh, material, cast) = (s.mesh.index(), s.material.index(), s.cast_shadows);
+            // Fading in (`InstanceFx::reveal`): a batch of its own, whose
+            // casters draw the fragment the dither cuts.
+            let reveal = s.fx.hidden_steps() != 0;
             let layers = views::layer_of(&scene.objects.skinned_layers, i);
             let probe = probe_of[i];
             let mirrored = mirrors(&s.transform);
@@ -191,6 +195,7 @@ impl Renderer {
                     if b.mesh == mesh
                         && b.material == material
                         && b.cast == cast
+                        && b.reveal == reveal
                         && b.layers == layers
                         && b.probe == probe
                         && b.faces.mirrored == mirrored =>
@@ -213,11 +218,12 @@ impl Renderer {
                         blend: m.blend,
                         physical: m.physical.is_some(),
                         transmissive: m.transmissive,
-                        dissolve: m.dissolve,
+                        dissolve: m.dissolve || reveal,
                         effects: m.effects,
                         shader: m.shader,
                         lean: false,
                         derivatives: m.flat,
+                        reveal,
                         compact: false,
                         array: m.array.is_some(),
                         foliage: false,

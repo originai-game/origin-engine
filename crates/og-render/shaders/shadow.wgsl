@@ -31,6 +31,7 @@ struct SkinnedInstanceIn {
   @location(8) palette: vec4<f32>,
   @location(11) morph0: vec4<f32>,  // x: first weight slot + 1, y: first deformed slot + 1 (skin.rs)
   @location(12) morph1: vec4<f32>,  // a baked clip's previous frame (skin.rs)
+  @location(13) look: vec4<f32>,    // the instance's look (pbr.wgsl), read for `look_hidden`
 };
 struct SkinIn {
   @location(9) joints: vec4<u32>,
@@ -43,6 +44,9 @@ struct VsOut {
   @location(2) local_pos: vec3<f32>,
   @location(3) normal: vec3<f32>,
   @location(4) color: vec4<f32>,
+  // How much of an instance fading in is hidden (instance.wgsl
+  // `look_hidden`; 0: whole): `fs_dissolve` cuts that share of its texels.
+  @location(5) @interpolate(flat) hidden: f32,
 };
 
 fn shadow_vertex(model: mat4x4<f32>, v: VertexIn) -> VsOut {
@@ -54,12 +58,17 @@ fn shadow_vertex(model: mat4x4<f32>, v: VertexIn) -> VsOut {
   o.local_pos = v.position;
   o.normal = vec3<f32>(0.0, 1.0, 0.0);
   o.color = v.color;
+  o.hidden = 0.0;
   return o;
 }
 
+// `look`: the instance's look (pbr.wgsl `InstanceFxIn`), read for how much
+// of an instance fading in is hidden.
 @vertex
-fn vs(v: VertexIn, i: InstanceIn) -> VsOut {
-  return shadow_vertex(instance_matrix(i.m0, i.m1, i.m2, i.m3), v);
+fn vs(v: VertexIn, i: InstanceIn, @location(8) look: vec4<f32>) -> VsOut {
+  var o = shadow_vertex(instance_matrix(i.m0, i.m1, i.m2, i.m3), v);
+  o.hidden = look_hidden(look);
+  return o;
 }
 
 // Casters whose shadow needs nothing of their material (not skinned, no
@@ -117,8 +126,10 @@ fn shadow_vertex_hooked(model: mat4x4<f32>, v: VertexIn) -> VsOut {
 }
 
 @vertex
-fn vs_hooked(v: VertexIn, i: InstanceIn) -> VsOut {
-  return shadow_vertex_hooked(instance_matrix(i.m0, i.m1, i.m2, i.m3), v);
+fn vs_hooked(v: VertexIn, i: InstanceIn, @location(8) look: vec4<f32>) -> VsOut {
+  var o = shadow_vertex_hooked(instance_matrix(i.m0, i.m1, i.m2, i.m3), v);
+  o.hidden = look_hidden(look);
+  return o;
 }
 
 @vertex
@@ -126,7 +137,9 @@ fn vs_skinned(@builtin(vertex_index) vi: u32, v: VertexIn, i: SkinnedInstanceIn,
   let m = morphed(v.position, v.normal, vi, i.palette, i.morph0.x, i.morph0.y);
   var mv = v;
   mv.position = m.position;
-  return shadow_vertex(instance_matrix(i.m0, i.m1, i.m2, i.m3) * skin_matrix(s.joints, s.weights, i.palette), mv);
+  var o = shadow_vertex(instance_matrix(i.m0, i.m1, i.m2, i.m3) * skin_matrix(s.joints, s.weights, i.palette), mv);
+  o.hidden = look_hidden(i.look);
+  return o;
 }
 
 @vertex
@@ -135,7 +148,9 @@ fn vs_skinned_hooked(@builtin(vertex_index) vi: u32, v: VertexIn, i: SkinnedInst
   var mv = v;
   mv.position = m.position;
   mv.normal = m.normal;
-  return shadow_vertex_hooked(instance_matrix(i.m0, i.m1, i.m2, i.m3) * skin_matrix(s.joints, s.weights, i.palette), mv);
+  var o = shadow_vertex_hooked(instance_matrix(i.m0, i.m1, i.m2, i.m3) * skin_matrix(s.joints, s.weights, i.palette), mv);
+  o.hidden = look_hidden(i.look);
+  return o;
 }
 
 // `dx`, `dy`: the world position's derivatives, taken first (before any
@@ -166,7 +181,7 @@ fn fs_dissolve(in: VsOut, @builtin(front_facing) front: bool) -> @location(0) ve
   let dy = dpdyFine(in.world);
   let base_uv = material_uv(UV_MAP, in.uv);
   let alpha = material.base_color.a * textureSample(base_color_tex, material_sampler, base_uv).a * in.color.a;
-  if (dissolve_at(in.uv, in.local_pos).w > 0.5) { discard; }
+  if (dissolve_at(in.uv, in.local_pos).w > 0.5 || reveal_cut(in.hidden, in.clip.xy, shadow_pass.time.x)) { discard; }
   if (material.emissive.w >= 0.0 && alpha < material.emissive.w) { discard; }
   return shadow_value(in, dx, dy, front);
 }
@@ -179,7 +194,7 @@ fn fs_hooked(in: VsOut, @builtin(front_facing) front: bool) -> @location(0) vec4
   let dy = dpdyFine(in.world);
   let base_uv = material_uv(UV_MAP, in.uv);
   let base = surface_color(shadow_hook(in), shader_params(), material.base_color * textureSample(base_color_tex, material_sampler, base_uv) * in.color);
-  let dissolved = dissolve_at(in.uv, in.local_pos).w > 0.5;
+  let dissolved = dissolve_at(in.uv, in.local_pos).w > 0.5 || reveal_cut(in.hidden, in.clip.xy, shadow_pass.time.x);
   if ((material.emissive.w >= 0.0 && base.a < material.emissive.w) || dissolved) { discard; }
   return shadow_value(in, dx, dy, front);
 }

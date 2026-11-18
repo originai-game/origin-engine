@@ -169,7 +169,7 @@ impl GpuCulling {
             let occluder_kinds: Vec<(Faces, bool)> = {
                 let mut s: Vec<(Faces, bool)> = batches
                     .iter()
-                    .filter(|x| x.first < base && materials[x.material].occluder)
+                    .filter(|x| x.first < base && materials[x.material].occluder && !x.reveal)
                     .map(|x| (x.faces, x.compact))
                     .collect();
                 og_core::sort::sort(&mut s);
@@ -344,7 +344,8 @@ impl GpuCulling {
                     count: x.count,
                     index_count: meshes[x.mesh].index_count,
                     flags: (x.transparent as u32 * TRANSPARENT)
-                        | (m.occluder as u32 * OCCLUDER)
+                        // A run fading in hides nothing behind it yet.
+                        | ((m.occluder && !x.reveal) as u32 * OCCLUDER)
                         | (x.shader.is_none() as u32 * OCCLUDABLE)
                         | (x.foliage as u32 * FOLIAGE),
                     bounds: [c.x, c.y, c.z, r],
@@ -525,7 +526,11 @@ impl GpuCulling {
                     for (i, x) in batches.iter().enumerate() {
                         // An occluder out of the camera's view has none of
                         // its instances kept: its draw would draw nothing.
-                        if skinned_batch(i) || !materials[x.material].occluder || !x.reaches(seen) {
+                        if skinned_batch(i)
+                            || !materials[x.material].occluder
+                            || x.reveal
+                            || !x.reaches(seen)
+                        {
                             continue;
                         }
                         if kind != Some((x.faces, x.compact)) {

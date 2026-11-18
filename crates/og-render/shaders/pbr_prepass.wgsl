@@ -42,7 +42,10 @@ fn prepass_targets(in: PrepassOut) -> PrepassTargets {
   hook.wind = frame.foliage_wind[0][0];
   let base = surface_color(hook, shader_params(), material.base_color * base_sample * in.color);
   let dissolved = dissolve_at(in.uv, in.local_pos).w > 0.5;
-  if (DISCARD && ((material.emissive.w >= 0.0 && base.a < material.emissive.w) || dissolved)) {
+  // An instance fading in: the pixels the lit pass cuts (instance.wgsl
+  // `reveal_cut`), from the bits `outline_object` put above its id.
+  let hidden = reveal_cut(f32((in.object >> 16u) & 255u) / 255.0, in.clip.xy, frame.time.x);
+  if (DISCARD && ((material.emissive.w >= 0.0 && base.a < material.emissive.w) || dissolved || hidden)) {
     discard;
   }
   var n = normalize(in.normal);

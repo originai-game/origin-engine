@@ -47,8 +47,10 @@ pub struct Instance {
 /// read by the lit shaders on every backend (pbr_fs.wgsl, physical.wgsl):
 /// the hit flash mixes the lit colour towards `flash_color`, the tint
 /// multiplies the material's base colour. Colours travel as 8 bits a
-/// channel. [`InstanceFx::NONE`] (the default) shades exactly as the
-/// material does.
+/// channel. `reveal` fades the instance in: the share of its pixels drawn,
+/// picked by a screen-space dither in every pass that draws it (lit,
+/// prepass and shadow), in 255 steps. [`InstanceFx::NONE`] (the default)
+/// shades exactly as the material does.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct InstanceFx {
     /// The hit flash, 0 to 1: the lit colour mixed towards `flash_color` by
@@ -65,6 +67,11 @@ pub struct InstanceFx {
     /// between them (a fractured prop's chunks still bonded into one
     /// island). Folded to 255 ids, as transforms are.
     pub outline: u32,
+    /// How much of it is drawn, 0 to 1 (1: whole, the default): a model
+    /// fading in draws this share of its pixels, dithered in screen space
+    /// (pbr.wgsl `reveal_cut`), and its shadow the same share of its
+    /// texels. Presentation only: the simulation never reads it.
+    pub reveal: f32,
 }
 
 impl InstanceFx {
@@ -74,7 +81,19 @@ impl InstanceFx {
         flash_color: Vec3::ONE,
         tint: Vec3::ONE,
         outline: 0,
+        reveal: 1.0,
     };
+
+    /// [`Self::reveal`] as the GPU reads it: how much is hidden, in 255
+    /// steps (0: whole). A model that is not whole is drawn apart from
+    /// those that are (`instances.rs`: its run keeps the discard).
+    pub(crate) fn hidden_steps(&self) -> u32 {
+        if self.reveal.is_finite() {
+            ((1.0 - self.reveal.clamp(0.0, 1.0)) * 255.0 + 0.5) as u32
+        } else {
+            0
+        }
+    }
 }
 
 impl Default for InstanceFx {
