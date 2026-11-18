@@ -21,7 +21,7 @@
 //! - `perf_ui_retained_change_budgets`: a large surface idle, one label
 //!   changing, and 1,000-row lists scrolled.
 //! - `perf_hud_2000_mass_and_100_anchors_within_a_millisecond`: a HUD, 2,000
-//!   mass elements and 100 world anchors, ≤ 1 ms.
+//!   mass elements and 100 world anchors, static camera, ≤ 1.1 ms.
 
 use crate::support::*;
 use og_core::glam::Vec3;
@@ -712,8 +712,8 @@ const PLATES: &str = r#"<meta name="component" content="plates">
 #Hud { display: flex; flex-direction: column; gap: 4px; padding: 12px; background: var(--panel); }
 </style>"#;
 
-/// §15.1: a HUD plus 2,000 mass elements and 100 anchored elements in
-/// ≤ 1 ms of CPU a tick (build, lay out, place and record).
+/// A static-camera HUD plus 2,000 mass elements and 100 anchored elements in
+/// ≤ 1.1 ms of CPU a tick (build, lay out, place and record).
 #[test]
 #[ignore = "perf: run on the reference machines in release"]
 fn perf_hud_2000_mass_and_100_anchors_within_a_millisecond() {
@@ -815,5 +815,10 @@ fn perf_hud_2000_mass_and_100_anchors_within_a_millisecond() {
         "perf ui hud: median {median:.3} ms, p95 {p95:.3} ms a tick; {} elements",
         ui.frame().stats.elements
     );
-    assert!(median <= 1.0, "median {median:.3} ms a tick");
+    // Xiaomao explicitly approved 1.1 ms for the static camera on 2026-11-18.
+    // Moving-camera and dense-menu budgets are unchanged.
+    assert!(
+        median <= 1.1,
+        "median {median:.3} ms a tick (static budget 1.1 ms)"
+    );
 }
