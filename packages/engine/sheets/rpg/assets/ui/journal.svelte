@@ -24,7 +24,7 @@
 #Log { grid-area: log; height: stretch; min-height: 0; }
 #Middle { grid-area: middle; display: flex; flex-direction: column; height: stretch; min-height: 0; gap: var(--space-sm); }
 #Map { width: stretch; flex: 1; min-height: 0; }
-#Place { width: stretch; height: 30%; flex: none; }
+#Place { width: stretch; height: auto; flex: none; }
 #Detail { grid-area: detail; height: stretch; min-height: 0; }
 #Talk { grid-area: talk; height: stretch; min-height: 0; }
 #Party, #Turns, #Fade { display: none; }
@@ -43,5 +43,4 @@
   #Compass, #Talk { display: none; }
   #Place { height: 56%; }
 }
-@media (600px <= width) and (500px <= height < 800px) { #Place { height: 40%; } }
 </style>

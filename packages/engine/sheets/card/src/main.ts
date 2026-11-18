@@ -13,6 +13,8 @@ import { BUILDER, INK_NAMES, RUN, TABLE } from "./fixtures.ts";
 const PAGES = ["table", "builder", "run"] as const;
 const STYLES = ["fantasy", "scifi", "cartoon", "default"] as const;
 
+let runArt = 0;
+
 const DOCUMENTS = [
   "ui/table.svelte",
   "ui/builder.svelte",
@@ -37,7 +39,7 @@ function setStyle(world: World, name: string): void {
 /** Mounts the sheet, its stores the fixtures and the page shown. */
 function show(world: World): void {
   const scope = og.ui.scope(world, "sheet");
-  const stores = Object.fromEntries(Object.entries({ ...TABLE, ...BUILDER, ...RUN, page: "table" }).map(([k, v]) =>
+  const stores = Object.fromEntries(Object.entries({ ...TABLE, ...BUILDER, ...RUN, runArt, page: "table" }).map(([k, v]) =>
     [k, Array.isArray(v) ? scope.collection(k, v as { id: string }[], { key: "id" }) : scope.writable(k, v)]));
   must(scope.mount("sheet", "CardSheet", stores), "mount");
   const errors = scope.takeErrors();
@@ -50,6 +52,7 @@ export default og.game({
   start(world) {
     const camera = world.resource(og.Camera);
     if (camera.ok) camera.value.background = { r: 0.04, g: 0.03, b: 0.02 };
+    runArt = must(og.load.texture(world, "art/runmap.jpg"), "run art") as number;
     setStyle(world, "fantasy");
     // The kit's strings in the review's CJK and right-to-left locales, as a
     // game ships them (English comes with the kit).
