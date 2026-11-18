@@ -1,0 +1,5 @@
+{
+  "fixed": [
+    "og run's paced loop (--realtime, --port, --watch, a room outside lockstep) lands each frame on its deadline: it sleeps to a margin before it, learnt from how late the timer wakes, and spins the rest. It slept the whole remainder, and bun's timer waking 3 to 10 ms late on macOS made a 16.67 ms frame 19 to 25 ms. --json's frames summary adds each frame's own time and the interval between frame starts (workMedianMs, workP95Ms, workMaxMs, intervalMedianMs, intervalP95Ms, intervalMaxMs). Pacing is host-side: ticks and hashes are unchanged."
+  ]
+}

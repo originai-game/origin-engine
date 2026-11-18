@@ -522,6 +522,10 @@ export async function run(argv: string[], output: RunOutput = hostProcess, contr
     const systemsBefore = asJson ? systemTimes() : [];
     const stepTimes: number[] = [];
     const renderTimes: number[] = [];
+    // Each frame's own time (its frame call to the end of its work, before any pacing wait) and the time between
+    // the starts of consecutive frames: what a paced run's frames actually took.
+    const workTimes: number[] = [];
+    const intervals: number[] = [];
     let framesSeen = 0;
     const t0 = performance.now();
     let frameFailed: string | null = null;
@@ -577,6 +581,25 @@ export async function run(argv: string[], output: RunOutput = hostProcess, contr
       // responding to this line must not lose its first change.
       if (listening !== undefined) process.stdout.write(`probe: ws://127.0.0.1:${listening}/probe\n`);
       const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+      // Waits until `deadline` (performance.now() time) and lands on it: a timer wakes late, by up to a few
+      // milliseconds (bun on macOS: 3 to 10 ms), which a frame sleeping out its rest would add to every frame. The
+      // timer sleeps to `early` milliseconds before the deadline, yielding to the watcher and sockets, and the rest
+      // is spun. `early` learns the timer's lateness: one millisecond more than the latest seen, decaying back toward
+      // two milliseconds while the timer keeps time. Host pacing only: elapsed is still measured, so ticks and
+      // hashes are the same.
+      let early = 2;
+      const paceTo = async (deadline: number) => {
+        const sleepFor = deadline - early - performance.now();
+        if (sleepFor > 0) {
+          const due = performance.now() + sleepFor;
+          await sleep(sleepFor);
+          const late = performance.now() - due;
+          early = Math.min(tickMs, Math.max(2, late + 1, early * 0.95));
+        }
+        while (performance.now() < deadline) {
+          // spin
+        }
+      };
       let last = performance.now();
       // The world's tick and the time its clock holds toward the next one, after the last frame.
       let at = { tick: worldTick(), behind: 0 };
@@ -624,7 +647,9 @@ export async function run(argv: string[], output: RunOutput = hostProcess, contr
         const wall = realtime ? performance.now() - last : tickMs;
         const elapsed = ticks !== undefined && at.tick < ticks ? Math.min(wall, (ticks - at.tick) * tickMs - at.behind + 1e-6) : wall;
         cancelled();
-        last = performance.now();
+        const started = performance.now();
+        if (asJson && framesSeen > 5) intervals.push(started - last);
+        last = started;
         if (room !== undefined) extras.og_node_room_pump(engine.id);
         const answer = engine.frame(elapsed);
         if (room !== undefined) extras.og_node_room_pump(engine.id);
@@ -643,6 +668,7 @@ export async function run(argv: string[], output: RunOutput = hostProcess, contr
         const tick = answer.tick ?? 0;
         at = { tick, behind: answer.behind ?? 0 };
         if (forks > 0) atTick(tick, answer.pending ?? 0);
+        if (asJson && framesSeen > 5) workTimes.push(performance.now() - last);
         if (control.signal && tick % 16 === 0) await sleep(0);
         if (answer.quit) {
           quit = true;
@@ -658,13 +684,13 @@ export async function run(argv: string[], output: RunOutput = hostProcess, contr
         // the tick its last step was scheduled for is no end (brasswick #13).
         const left = answer.pending ?? (tick > untilTick ? 0 : 1);
         if (ticks === undefined && commands !== undefined && listening === undefined && !watchFile && left === 0) break;
-        if (realtime || listening !== undefined || watchFile) await sleep(Math.max(0, tickMs - (performance.now() - last)));
+        if (realtime || listening !== undefined || watchFile) await paceTo(last + tickMs);
         // In a room a frame that took no tick waits for the other players' inputs,
         // and outside lockstep (its lobby, or a game that leaves it off) the run
         // keeps the tick's pace with the other peers: an unpaced lobby would
         // spend the run's --ticks before they arrive.
         else if (room !== undefined && (answer.ticks ?? 0) === 0) await sleep(1);
-        else if (room !== undefined && !netStatus().running) await sleep(Math.max(0, tickMs - (performance.now() - last)));
+        else if (room !== undefined && !netStatus().running) await paceTo(last + tickMs);
       }
     }
     const ms = performance.now() - t0;
@@ -758,6 +784,14 @@ export async function run(argv: string[], output: RunOutput = hostProcess, contr
       renderMaxMs: r3(Math.max(0, ...renderTimes)),
       stepped: stepTimes.length,
       rendered: renderTimes.length,
+      // Each frame's own time and the time from one frame's start to the next (paced runs: the pace's tick, unless
+      // a frame's work took longer); the first five frames are left out, as above.
+      workMedianMs: r3(percentile(workTimes, 0.5)),
+      workP95Ms: r3(percentile(workTimes, 0.95)),
+      workMaxMs: r3(Math.max(0, ...workTimes)),
+      intervalMedianMs: r3(percentile(intervals, 0.5)),
+      intervalP95Ms: r3(percentile(intervals, 0.95)),
+      intervalMaxMs: r3(Math.max(0, ...intervals)),
     };
     // Each system's mean milliseconds a run over this run, slowest first.
     const systems = (dump.systems ?? [])
