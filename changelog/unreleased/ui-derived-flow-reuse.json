@@ -1,0 +1,6 @@
+{
+  "fixed": [{
+    "member": "UI retained drawing order",
+    "summary": "Compare rewritten elements with their previous derived children so an unchanged screen does not rebuild tree and drawing orders every frame; real child and CSS order changes still invalidate them."
+  }]
+}
