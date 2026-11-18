@@ -722,6 +722,8 @@ pub fn build(name: &str) -> Result<GfxScene, String> {
         // plain textured sprite; one draw per array and blend.
         "sprites-array" => |g, _| {
             g.scene = sprite_array_scene();
+            // The coins spin after the frame (og-gfx --sequence).
+            g.update = Some(spin_coins);
             // Nearest texels whose edges fall on pixel centres: each backend
             // breaks the tie its own way (references/dx12); WebGPU on
             // D3D12 against Metal's frame: RMSE 0.0205, 0.136 % outliers.
@@ -1355,6 +1357,8 @@ pub fn build(name: &str) -> Result<GfxScene, String> {
         #[cfg(not(target_arch = "wasm32"))]
         "skeleton-2d" => |g, _| {
             g.scene = crate::skeleton_scenes::skeleton_scene(true)?;
+            // The keepers walk after the frame (og-gfx --sequence).
+            g.update = Some(crate::skeleton_scenes::walk_keepers);
             Ok(())
         },
         // Render-lod (depth S6; depth_render_scenes.rs): a cooked tree at

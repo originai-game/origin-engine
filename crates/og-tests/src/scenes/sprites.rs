@@ -864,6 +864,21 @@ pub fn sprite_array_scene() -> RenderScene {
     scene
 }
 
+/// Ticks each frame of the coin flipbook holds when it spins (12 a second).
+const COIN_TICKS: u32 = 5;
+
+/// `sprites-array`'s frames after its own (og-gfx --sequence): every coin
+/// spins through the flipbook from the frame it shows, a turn in eight
+/// frames of 5 ticks (two seconds hold three turns, so a clip of them
+/// loops). The scene's own frame is as built.
+pub fn spin_coins(scene: &mut RenderScene, frame: u32) {
+    let turn = frame / COIN_TICKS;
+    // The two rows' sixteen coins come first.
+    for (j, a) in scene.sprite.sprite_arrays.iter_mut().take(16).enumerate() {
+        a.layer = (j as u32 + turn) % 8;
+    }
+}
+
 /// Moves every sprite along the spiral (`frame` 0 is the reference frame).
 pub fn move_sprites(scene: &mut RenderScene, frame: u32) {
     let n = scene.sprite.sprites.len();
