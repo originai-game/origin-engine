@@ -209,7 +209,7 @@ impl MeshOptions {
 
     pub(crate) fn describe(&self) -> String {
         format!(
-            "lods {} ratio {} error {} overdraw {} tangents {} (bitangent up the image) quantize 16/oct16/uv16/rgba8 codec meshopt-v1 attribute-aware permissive flat levels (S8){}",
+            "lods {} ratio {} error {} overdraw {} tangents {} (bitangent up the image) quantize 16/oct16/uv16/rgba8 codec meshopt-v1 sparse paired UV seams, protected boundary fans and scale-correct baked fallback (S17){}",
             self.lod_levels,
             self.lod_ratio,
             self.lod_max_error,

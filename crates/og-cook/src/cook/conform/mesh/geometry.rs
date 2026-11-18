@@ -118,11 +118,6 @@ fn compact(v: &mut Vec<FVertex>, idx: &mut [u32], src: &mut Vec<u32>) {
     *src = ns;
 }
 
-fn adapter(v: &[FVertex]) -> meshopt::VertexDataAdapter<'_> {
-    meshopt::VertexDataAdapter::new(bytemuck::cast_slice(v), std::mem::size_of::<FVertex>(), 0)
-        .expect("positions lead the vertex")
-}
-
 /// `idx` over the first vertex at each position.
 fn by_position(v: &[FVertex], idx: &[u32]) -> Vec<u32> {
     let mut first: BTreeMap<[u32; 3], u32> = BTreeMap::new();
@@ -141,13 +136,8 @@ pub const SHAPE_ERROR: f32 = 0.05;
 /// attribute error instead of pinning every corner of a generated model.
 fn simplified(v: &[FVertex], idx: &[u32], target: usize, error: f32, normals: Normals) -> Vec<u32> {
     let want = target * 3;
-    let a = adapter(v);
     let opts = meshopt::SimplifyOptions::LockBorder | meshopt::SimplifyOptions::ErrorAbsolute;
-    let out = meshopt::simplify(idx, &a, want, error, opts, None);
-    if out.len() <= want {
-        return out;
-    }
-    let (permissive, _) = crate::cook::model::simplify_attributes(
+    crate::cook::model::simplify_attributes(
         v,
         idx,
         want,
@@ -155,12 +145,8 @@ fn simplified(v: &[FVertex], idx: &[u32], target: usize, error: f32, normals: No
         opts,
         &[],
         if normals == Normals::Any { 0.5 } else { 0.0 },
-    );
-    if permissive.len() < out.len() {
-        permissive
-    } else {
-        out
-    }
+    )
+    .0
 }
 
 /// Simplifies to at most `target` triangles where it can within `error`
@@ -575,27 +561,34 @@ pub(super) fn bevel(
     Some((hard_edges.len(), added))
 }
 
-/// Drops the triangles (of unwelded corners) thinner than one step of the
-/// grid the cook stores positions on (65,535 steps over the primitive's
-/// widest extent): such a face has no normal to keep. It draws nothing,
-/// and quantising its corners turns it any way (a lathe's pole triangle,
-/// two corners at the pole, decodes as a sliver whose face is not the
-/// normal the cook gave it).
+/// Drops only faces that collapse or reverse on the stored position grid.
+/// A face thinner than a grid step can still round to a nonzero triangle;
+/// removing it would open an otherwise closed surface.
 fn drop_degenerate(v: &mut Vec<FVertex>, idx: &mut Vec<u32>, src: &mut Vec<u32>) {
     let (mut lo, mut hi) = (Vec3::splat(f32::MAX), Vec3::splat(f32::MIN));
     for x in v.iter() {
         lo = lo.min(pos(x));
         hi = hi.max(pos(x));
     }
-    let step = (hi - lo).max_element() / 65535.0;
+    let scale = hi - lo;
+    let quantized = |p: Vec3| {
+        Vec3::from_array(std::array::from_fn(|a| {
+            if scale[a] > 0.0 {
+                lo[a] + (((p[a] - lo[a]) / scale[a]) * 65535.0).round() / 65535.0 * scale[a]
+            } else {
+                lo[a]
+            }
+        }))
+    };
     let keep: Vec<bool> = v
         .as_chunks::<3>()
         .0
         .iter()
         .map(|t| {
             let [a, b, c] = t.each_ref().map(pos);
-            let longest = a.distance(b).max(b.distance(c)).max(c.distance(a));
-            (b - a).cross(c - a).length() > step * longest
+            let [qa, qb, qc] = [a, b, c].map(|p| quantized(p).as_dvec3());
+            let [a, b, c] = [a, b, c].map(|p| p.as_dvec3());
+            (qb - qa).cross(qc - qa).dot((b - a).cross(c - a)) > 0.0
         })
         .collect();
     if keep.iter().all(|&k| k) {

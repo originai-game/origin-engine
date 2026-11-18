@@ -423,6 +423,7 @@ fn atlas_reduction_keeps_small_islands_and_dilates_their_own_colours() {
 fn face_budgets_simplify_uv_charts_without_losing_their_attributes() {
     let original = sphere(1.0, [0.0; 3], 64, 32);
     let mut mesh: Mesh = (Vec::new(), Vec::new(), Vec::new(), Vec::new());
+    let mut chart_of = Vec::new();
     // Eight adjacent texture charts: the same surface positions have
     // different UVs on either side of each seam.
     for tri in original.3.as_chunks::<3>().0 {
@@ -435,38 +436,123 @@ fn face_budgets_simplify_uv_charts_without_losing_their_attributes() {
             mesh.1.push(original.1[i]);
             mesh.2
                 .push([original.2[i][0] * 8.0 - chart, original.2[i][1]]);
+            chart_of.push(1u32 << chart as u32);
         }
     }
+    for (name, shape, limit) in [
+        (
+            "seamed-budget",
+            "ArtShape {\n propFaces 1000\n silhouette 0.05\n}\n",
+            1000,
+        ),
+        (
+            "seamed-flat-budget",
+            "ArtShape {\n propFaces 100\n silhouette 0.5\n normals flat\n}\n",
+            original.3.len() / 3 - 1,
+        ),
+    ] {
+        let root = project(
+            name,
+            &[
+                ("project.ogt", PROJECT.as_bytes().to_vec()),
+                ("assets/looks/main.ogt", look(shape).into_bytes()),
+                (
+                    "assets/models/ball.glb",
+                    glb(&mesh, 1, [1.0; 4], Some(&png(32))),
+                ),
+            ],
+        );
+        cook(&root);
+        let tris = triangles(&root, "models/ball.glb");
+        assert!(
+            tris[0].len() <= limit,
+            "{name}: {} triangles",
+            tris[0].len()
+        );
+        for (primitive, triangles) in tris.iter().enumerate() {
+            let mut edges = BTreeMap::new();
+            for tri in triangles {
+                let p = tri.map(|v| v.position.map(|x| (x * 10000.0).round() as i32));
+                for k in 0..3 {
+                    let mut edge = [p[k], p[(k + 1) % 3]];
+                    edge.sort();
+                    *edges.entry(edge).or_insert(0) += 1;
+                }
+            }
+            assert!(
+                edges.values().all(|&n| n == 2),
+                "primitive {primitive} opened a closed surface"
+            );
+            for tri in triangles {
+                let common = tri.iter().fold(0xff, |common, corner| {
+                    let p = glam::Vec3::from(corner.position);
+                    let uv = glam::Vec2::from(corner.uv);
+                    let charts = mesh.0.iter().zip(&mesh.2).zip(&chart_of).fold(
+                        0,
+                        |charts, ((&source, &source_uv), &chart)| {
+                            if glam::Vec3::from(source).distance(p) < 0.0001
+                                && glam::Vec2::from(source_uv).distance(uv) < 0.0001
+                            {
+                                charts | chart
+                            } else {
+                                charts
+                            }
+                        },
+                    );
+                    common & charts
+                });
+                assert_ne!(
+                    common, 0,
+                    "primitive {primitive} triangle crosses authored UV charts: {tri:?}"
+                );
+            }
+        }
+        for corner in tris[0].iter().flatten() {
+            let p = glam::Vec3::from(corner.position);
+            assert!((p.length() - 1.0).abs() < 0.001, "source surface retained");
+            // Surviving corners keep the UV of the source corner at this
+            // position, not an arbitrary corner welded across the chart.
+            assert!(
+                mesh.0.iter().zip(&mesh.2).any(|(&source, &uv)| {
+                    glam::Vec3::from(source).distance(p) < 0.0001
+                        && glam::Vec2::from(uv).distance(glam::Vec2::from(corner.uv)) < 0.0001
+                }),
+                "source UV retained: {corner:?}"
+            );
+        }
+    }
+}
+
+#[test]
+fn flat_shading_keeps_thin_faces_that_survive_position_quantisation() {
+    let mesh = (
+        vec![
+            [0.0, 0.0, 0.0],
+            [1.0, 0.0, 0.0],
+            [0.5, 0.00001, 0.0],
+            [0.5, 0.5, 1.0],
+        ],
+        vec![[0.0, 0.0, 1.0]; 4],
+        vec![[0.0, 0.0]; 4],
+        vec![0, 2, 1, 0, 1, 3, 1, 2, 3, 2, 0, 3],
+    );
     let root = project(
-        "seamed-budget",
+        "thin-closed-facets",
         &[
             ("project.ogt", PROJECT.as_bytes().to_vec()),
             (
                 "assets/looks/main.ogt",
-                look("ArtShape {\n propFaces 1000\n silhouette 0.05\n}\n").into_bytes(),
+                look("ArtShape {\n normals flat\n}\n").into_bytes(),
             ),
-            (
-                "assets/models/ball.glb",
-                glb(&mesh, 1, [1.0; 4], Some(&png(32))),
-            ),
+            ("assets/models/ball.glb", glb(&mesh, 1, [1.0; 4], None)),
         ],
     );
     cook(&root);
-    let tris = triangles(&root, "models/ball.glb");
-    assert!(tris[0].len() <= 1000, "{} triangles", tris[0].len());
-    for corner in tris[0].iter().flatten() {
-        let p = glam::Vec3::from(corner.position);
-        assert!((p.length() - 1.0).abs() < 0.001, "source surface retained");
-        // Surviving corners keep the UV of the source corner at this
-        // position, not an arbitrary corner welded across the chart.
-        assert!(
-            mesh.0.iter().zip(&mesh.2).any(|(&source, &uv)| {
-                glam::Vec3::from(source).distance(p) < 0.0001
-                    && glam::Vec2::from(uv).distance(glam::Vec2::from(corner.uv)) < 0.0001
-            }),
-            "source UV retained: {corner:?}"
-        );
-    }
+    assert_eq!(
+        triangles(&root, "models/ball.glb")[0].len(),
+        4,
+        "a nonzero face must not open the tetrahedron"
+    );
 }
 
 #[test]

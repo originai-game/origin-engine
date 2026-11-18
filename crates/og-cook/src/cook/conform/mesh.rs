@@ -368,7 +368,7 @@ impl Conform {
             return String::new();
         }
         format!(
-            "conform-mesh-v6 faces {} {} silhouette {} normals {:?} facets {} bevel {} voxel {} bakes {} {} line {:?}",
+            "conform-mesh-v8 faces {} {} silhouette {} normals {:?} facets {} bevel {} voxel {} bakes {} {} line {:?}",
             self.prop_faces,
             self.character_faces,
             self.silhouette,
