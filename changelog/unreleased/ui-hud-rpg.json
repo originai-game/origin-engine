@@ -1,0 +1,70 @@
+{
+  "added": [
+    {
+      "member": "RpgLeader",
+      "summary": "The party leader's vitals at a top corner: a large octagon portrait, name and level, health as a figure over its most, a fat health bar with a warm ghost that turns to danger when low, a mana bar and a stamina bar cut into cells."
+    },
+    {
+      "member": "RpgEffects",
+      "summary": "Buffs and debuffs as cut tiles under the leader, green for a boon and red for a harm, the time left as a dark radial sweep over the art and the time or stacks on a tag."
+    },
+    {
+      "member": "RpgCompanions",
+      "summary": "The companions' plates: an octagon portrait, the name, a thin health bar with its ghost over a thinner mana bar and the key that switches to them; a fallen companion dims with a Fallen tag. Side by side on a phone."
+    },
+    {
+      "member": "RpgMinimap",
+      "summary": "A round minimap over a map texture with a lit ring, a sweep and range rings: allies, foes, a boss and the objective as blips of their own shape and colour, the player's arrow turned to the heading, N on its top, and the place with its time of day on a tag under it."
+    },
+    {
+      "member": "RpgLockOn",
+      "summary": "The lock-on reticle a page centres on the locked target: four lit arcs with a glow in the HUD's accent."
+    },
+    {
+      "member": "RpgHits",
+      "summary": "Damage and healing figures beside the fight: a critical largest, gold and slanted under its call, older figures stepping down and away, a burn in an ember ink with its word, a heal in green with a plus."
+    },
+    {
+      "member": "RpgCombo",
+      "summary": "The combo counter: the hits as a large slanted figure with its word, the chain's window as a decay bar and the damage multiplier it gives."
+    },
+    {
+      "member": "RpgLootFeed",
+      "summary": "The loot feed: icon, name, the rarity on a tag and the count gained on a fading glass row with an edge tinted by rarity; old rows fade; a phone shows the newest."
+    },
+    {
+      "member": "RpgPrompt",
+      "summary": "What the player can do now over the ability bar (a finisher): a key cap and the action in words, dimmed with its reason when it cannot be done."
+    },
+    {
+      "member": "RpgSkills",
+      "summary": "The action RPG's ability bar: consumables in smaller octagons with their counts, skills in octagons with a radial cooldown sweep, a lit leading edge and the seconds left, a No mana state, charge pips over a slot and the ultimate in a hexagon inside a gold ring; key caps under every slot. A phone drops the consumables."
+    },
+    {
+      "member": "RpgHints",
+      "summary": "Input hints at the screen's foot: a key cap and what it does in small capitals; hidden under a touch screen."
+    },
+    {
+      "member": "RpgExperience",
+      "summary": "The experience line across the screen's foot, lit violet to the share of the way to the next level, with the level and that share over its start."
+    }
+  ],
+  "breaking": [
+    {
+      "member": "BossBar",
+      "change": "BossBar stands bare over the scene as the action HUD mockup draws it: a Boss tag, the name and a new epithet; a long leaning bar in a burning orange with a warm ghost (new prop ghost) and a diamond at each phase boundary; under it a stagger gauge cut into cells (new props stagger, negative hides it, and staggerCells), the elements the boss is weak to (new prop weaknesses, keyed rows of { id, name, icon, glyph }) and health's share in figures. The health figure (value / max) is now the meter's spoken value only, and the list of phase chips is gone (phases are diamonds on the bar). Its parts are BossBar.frame, .kind, .boss, .epithet, .health, .ghost, .threshold, .stagger, .weakness, .share and .state; .figure, .fill, .notch, .phases, .phase, .label, .headline, .card, .caption and .dot are gone.",
+      "fix": "A style that dressed BossBar.headline dresses BossBar.boss; .fill dresses .health (its fill is the --hud-boss-fill token) or .ghost; .notch and .phase dress .threshold; .caption on a state dresses .state. Set --hud-boss-fill for the bar's colour. A game that showed the phase names words them itself.",
+      "find": [
+        "BossBar"
+      ]
+    },
+    {
+      "member": "RpgQuestTracker",
+      "change": "The tracker stands bare over the scene: a heading in gold (new prop label; empty is Main quest), the quest's name with the distance on a tag, then each step with a diamond, the done ones struck through, the first not done lit as the one in play and the rest dim; a step's new field tag shows its progress on a tag (1 / 3). A phone shows the step in play alone. Its parts are RpgQuestTracker.frame, .legend, .quest, .distance, .step, .marker, .text and .progress; .title, .row, .caption and .figure are gone, and a step no longer draws a check or flag icon.",
+      "fix": "Give each step a tag field (empty for none). A style that dressed RpgQuestTracker.title dresses .quest, .row dresses .step (still on data-done), and .caption or .figure dresses .distance.",
+      "find": [
+        "RpgQuestTracker"
+      ]
+    }
+  ]
+}

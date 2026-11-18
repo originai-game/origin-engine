@@ -114,14 +114,15 @@ test("resource displays distinguish fractional/empty units, phases and game-supp
   check("Pips", "default", (e) => expect(elements(e).filter((x) => x.role === "meter").map((x) => x.value)).toEqual(["100%", "50%", "0%"]));
   check("Pips", "empty", (e) => expect(words(e)).toContain("No units"));
   check("BossBar", "default", (e) => {
-    expect(words(e)).toContain("7,200 / 10,000");
-    expect(words(e)).toContain("Current");
-    expect(words(e)).toContain("Complete");
+    expect(words(e)).toContain("58%");
+    expect(words(e)).toContain("WARDEN OF THE NINEFOLD GATE");
+    expect(elements(e).find((x) => x.role === "meter" && x.name === "Boss health")!.value).toBe("5,800 / 10,000");
   });
   check("BossBar", "default", (e) => {
-    expect(words(e)).toContain("0 / 0");
+    expect(words(e)).toContain("0%");
     expect(words(e)).not.toContain("Defeated");
   }, { max: 0 });
+  check("BossBar", "critical", (e) => expect(words(e)).not.toContain("Stagger"), { stagger: -1 });
   check("Combo", "default", (e) => {
     expect(words(e)).toContain("17");
     expect(words(e)).toContain("×2.5");

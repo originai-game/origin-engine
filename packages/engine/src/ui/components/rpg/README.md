@@ -61,7 +61,7 @@ on skills; `data-done`, `data-tracked` and `data-fresh` on quests.
 | `RpgMenuBar` | `tabs` keyed `{ id, label }`, `tab` | `choosetab`, `tabNext`/`tabPrev`, `close` (button, Escape, B) |
 | `RpgQuestLog` | `title`, `groups` keyed `{ id, label, done }`, `quests` keyed `{ id, group, name, tracked, fresh }`, `selected` | `choose`, `track` (details) |
 | `RpgQuestDetail` | `name`, `summary`, `objectives` keyed `{ id, text, done, optional, step }`, `rewards` keyed `{ id, icon, label, detail }`, `scenery` | none |
-| `RpgQuestTracker` | `name`, `steps` keyed `{ id, text, done }`, `distance` (empty hides it) | none |
+| `RpgQuestTracker` | `label` (empty: Main quest), `name`, `steps` keyed `{ id, text, done, tag }` (the first not done is the step in play), `distance` (empty hides it) | none |
 | `RpgWorldMap` | `map` (texture), `markers` keyed `{ id, kind, x, y, label }`, `selected`, `zoom` (1 fits the box), `panX`, `panY` (CSS px), `legend` keyed `{ id, kind, label }`, `here` | `choose` (marker; the player's own is not a target), `zoom` (wheel, `deltaY`), `pinch` (`scale`), `grab`, `pan`, `release` (a press, its moves and its end, `x` and `y` in the map's box); the game keeps the zoom and the pan |
 | `RpgPlaceCard` | `name`, `about`, `picture`, `marked`, `canTravel` | `mark`, `travel` |
 | `RpgConversation` | `speaker`, `portrait`, `line`, `rate` (characters a second; 0 shows the line at once), `replies` keyed `{ id, number, text, used }`, `selected`, `showControls`, `canBacklog`, `canSkip`, `canAuto`, `auto` | `reply` (row key), `next` (Continue when there are no replies), `revealed` (a line shown at a rate is whole), `backlog`, `skip`, `toggleAuto` |
@@ -71,6 +71,18 @@ on skills; `data-done`, `data-tracked` and `data-fresh` on quests.
 | `RpgCombatLog` | `lines` keyed `{ id, text, tone, detail }`, oldest first | none |
 | `RpgEnemyInfo` | `name`, `portrait`, `level`, `health`, `healthMax`, `effects` keyed `{ id, icon, label, tone }` | none |
 | `RpgCommands` | `commands` keyed `{ id, label, icon, enabled }`, `selected` | `choose` (row key; a disabled command sends nothing) |
+| `RpgLeader` | `name`, `level`, `portrait`, `health`, `healthMax`, `ghost`, `mana`, `manaMax`, `stamina`, `staminaMax`, `segment` (stamina per cell), `low` | none |
+| `RpgEffects` | `effects` keyed `{ id, name, icon, glyph, remaining, label, harmful }` | none |
+| `RpgCompanions` | `members` keyed `{ id, name, portrait, health, healthMax, ghost, mana, manaMax, key, fallen }`, `low` | none |
+| `RpgMinimap` | `map` (texture), `centerX`, `centerY`, `zoom`, `heading`, `blips` keyed `{ id, kind (ally, foe, boss, objective), x, y, label }`, `place`, `clock` | none |
+| `RpgLockOn` | `target` (empty: nothing locked) | none |
+| `RpgHits` | `hits` keyed `{ id, amount, kind (normal, critical, burn, heal, miss), call, word }`, newest first | none |
+| `RpgCombo` | `count`, `word`, `remaining` (the chain's window, 0–1), `multiplier` | none |
+| `RpgLootFeed` | `items` keyed `{ id, name, icon, glyph, rarity, label, quantity, currency, fading }`, newest first | none |
+| `RpgPrompt` | `key`, `text`, `disabled`, `reason` | none |
+| `RpgSkills` | `slots` keyed `{ id, name, icon, glyph, key, kind (skill, item, ultimate), cooldown, time, count, ready, unaffordable, reason, charges, chargesMax, charge }` | none |
+| `RpgHints` | `hints` keyed `{ id, key, label }` | none |
+| `RpgExperience` | `level`, `value` (0–1 to the next level) | none |
 
 ## Parts
 
@@ -93,17 +105,33 @@ pressed, focus-visible and disabled states (docs/ui.md §3.2).
 | `RpgPlaceCard` (`place-card.svelte`) | `frame`, `name` |
 | `RpgQuestDetail` (`quest-detail.svelte`) | `frame`, `band`, `title`, `row` (`[data-done]` `[data-optional]` `[data-step]`), `reward`, `scenery` |
 | `RpgQuestLog` (`../panels/quest-log.svelte`) | `frame`, `band`, `title`, `heading`, `row` (a button: `[aria-selected]` `[data-done]` `[data-fresh]` `[data-tracked]`) |
-| `RpgQuestTracker` (`../hud/quest-tracker.svelte`) | `frame`, `title`, `row` (`[data-done]`) |
+| `RpgQuestTracker` (`../hud/quest-tracker.svelte`) | `frame`, `legend`, `quest`, `distance`, `step` (`[data-done]` `[data-current]`), `marker`, `text`, `progress` |
 | `RpgStats` (`stats.svelte`) | `frame`, `band`, `title`, `row` |
 | `RpgTurnOrder` (`turn-order.svelte`) | `frame`, `cell` (`[aria-current]` `[data-acting]` `[data-down]` `[data-side]`), `title` |
 | `RpgVitals` (`vitals.svelte`) | `frame` (`[data-down]` `[data-plate]`) |
+| `RpgLeader` (`leader.svelte`) | `frame` (`.low`), `portrait`, `face`, `hero`, `level`, `value`, `max`, `health`, `ghost`, `mana`, `stamina` |
+| `RpgEffects` (`effects.svelte`) | `frame`, `effect` (`[data-harmful]`), `tile`, `art`, `timer`, `time` |
+| `RpgCompanions` (`companions.svelte`) | `frame`, `member` (`[data-fallen]` `.low`), `portrait`, `face`, `callsign`, `fallen`, `health`, `ghost`, `mana`, `key` |
+| `RpgMinimap` (`minimap.svelte`) | `frame`, `scope`, `map`, `blip` (`[data-kind]`), `self`, `north`, `place`, `clock` |
+| `RpgLockOn` (`lock-on.svelte`) | `frame` (`[data-locked]`), `ring` |
+| `RpgHits` (`hits.svelte`) | `frame`, `hit` (`[data-kind]`), `call`, `amount`, `kind` |
+| `RpgCombo` (`combo.svelte`) | `frame`, `count`, `word`, `decay`, `lit`, `bonus` |
+| `RpgLootFeed` (`loot-feed.svelte`) | `frame`, `entry` (`[data-rarity]` `[data-fading]`), `art`, `item`, `rarity`, `count` |
+| `RpgPrompt` (`prompt.svelte`) | `frame` (`.disabled`), `key`, `action`, `reason` |
+| `RpgSkills` (`skills.svelte`) | `frame`, `skill` (`[data-kind]` `[data-ready]` `[data-unaffordable]`), `slot`, `art`, `cooldown`, `edge`, `time`, `reason`, `count`, `charges`, `pip`, `ring`, `key` |
+| `RpgHints` (`hints.svelte`) | `frame`, `hint`, `key`, `action` |
+| `RpgExperience` (`experience.svelte`) | `frame`, `reading`, `line`, `lit` |
 | `RpgWorldMap` (`world-map.svelte`) | `frame`, `marker` (a button: `[aria-selected]` `[data-kind]` `:disabled`), `row` (`[data-kind]`) |
 
 Every member carries a `fixture:default` the sheet and the tests mount it
 from. Phone layouts come from the members' own media and container queries:
 the backpack's and menu bar's tabs scroll, the item card
 shrinks its hero so two stat rows show, the commands take two rows of three
-and the enemy info drops its portrait.
+and the enemy info drops its portrait. The action HUD's members (leader to
+experience above) stand bare over the scene on the `--hud-*` roles; on a
+phone the companions stand side by side, the quest tracker shows the step
+in play, the skills drop their consumables and the loot feed its older
+rows, and under a touch screen the key caps and hints are hidden.
 
 ## Review sheet and tests
 
@@ -113,7 +141,9 @@ default style (the fantasy pack is also available), with
 ja, zh-CN and ar string tables for the locale cells. The sheet's painted
 art (portraits, figure, item and skill icons, scene, map) was generated for
 it with gpt-image-2.6 through the OriginGame gateway and is sheet fixture
-data, not part of the components.
+data, not part of the components. The explore page lays out the action HUD as its approved
+mockup does, over the HUD art direction's sample stage, map, portraits and
+icons (`assets/art/hud-*.jpg`, sheet only).
 `og ui review rpg --style scifi` (or `--style cartoon`) renders the same
 pages in that pack, dressed by its tokens
 (`templates/styles/<pack>/base.css`).

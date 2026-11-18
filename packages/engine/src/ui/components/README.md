@@ -108,6 +108,7 @@ and their pending L4 review are recorded explicitly in the world sheet.
 | RPG inventory, character and equipment (`rpg/README.md`) | `panels/backpack`, `panels/item-card`, `rpg/character`, `rpg/stats`, `rpg/menu-bar` |
 | RPG quests, world map and conversation | `panels/quest-log`, `rpg/quest-detail`, `hud/quest-tracker`, `rpg/world-map`, `rpg/place-card`, `panels/conversation` |
 | RPG party, turn order and combat HUD | `rpg/vitals`, `rpg/party`, `rpg/turn-order`, `hud/combat-log`, `rpg/enemy-info`, `rpg/commands` |
+| RPG action HUD: leader, effects, companions, minimap, lock-on, damage figures, combo, loot feed, prompt, skills, hints, experience | `rpg/leader`, `rpg/effects`, `rpg/companions`, `rpg/minimap`, `rpg/lock-on`, `rpg/hits`, `rpg/combo`, `rpg/loot-feed`, `rpg/prompt`, `rpg/skills`, `rpg/hints`, `rpg/experience` |
 | Shooter HUD: aim, ammunition, damage direction, killfeed (`shooter/README.md`) | `hud/crosshair`, `hud/ammo-counter`, `hud/damage-direction`, `hud/killfeed`, `shooter/combat-hud` |
 | Shooter HUD: squad, objectives, radar, round, pickups, damage dealt, prompt, effects, vitals, abilities | `shooter/squad`, `shooter/objectives`, `shooter/radar`, `shooter/round`, `shooter/pickups`, `shooter/damage`, `shooter/prompt`, `shooter/effects`, `shooter/vitals`, `shooter/abilities` |
 | Shooter loadout | `shooter/loadout` |

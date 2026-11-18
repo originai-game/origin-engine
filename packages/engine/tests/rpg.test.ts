@@ -45,7 +45,7 @@ let root = "";
 let styles = "";
 
 /** Each member's component name and its fixture:default, read from its document as a game's tooling reads them. */
-const MEMBERS: Record<string, { component: string; fixture: Record<string, unknown> }> = {};
+const MEMBERS: Record<string, { component: string; fixture: Record<string, unknown>; fixtures: Record<string, Record<string, unknown>> }> = {};
 
 // The backpack's grid padding (`.grid { padding: var(--space-xs) }`) and a
 // pack rule of equal specificity on it: the pack's must win.
@@ -69,14 +69,15 @@ beforeAll(() => {
     const component = /<meta name="component" content="([^"]+)">/.exec(text)![1]!;
     const fixture = /<meta name="fixture:default" content='([^']*)'>/.exec(text);
     const name = f.replace(".svelte", "");
-    MEMBERS[name] = { component, fixture: fixture ? JSON.parse(fixture[1]!) : {} };
+    const fixtures = Object.fromEntries([...text.matchAll(/<meta name="fixture:([^"]+)" content='([^']*)'>/g)].map((m) => [m[1]!, JSON.parse(m[2]!) as Record<string, unknown>]));
+    MEMBERS[name] = { component, fixture: fixture ? JSON.parse(fixture[1]!) : {}, fixtures };
     // A game mounts its own page, which uses the member by name: one host page per member, its props from stores.
     const props = Object.keys(MEMBERS[name]!.fixture).map((k) => `${k}={$${k}}`).join(" ");
     writeFileSync(join(root, `assets/ui/host-${name}.svelte`), `<meta name="screen" content="Host_${component}" data-layer="menu" data-input="menu">\n<div style="width: stretch; height: stretch; padding: 16px"><${component} ${props} /></div>\n`);
   }
   // A page written before the map could zoom passes none of zoom, panX and panY.
   const { zoom: _zoom, panX: _panX, panY: _panY, ...before } = MEMBERS["world-map"]!.fixture;
-  MEMBERS["world-map-before"] = { component: "RpgWorldMapBefore", fixture: before };
+  MEMBERS["world-map-before"] = { component: "RpgWorldMapBefore", fixture: before, fixtures: {} };
   writeFileSync(join(root, "assets/ui/host-world-map-before.svelte"), `<meta name="screen" content="Host_RpgWorldMapBefore" data-layer="menu" data-input="menu">\n<div style="width: stretch; height: stretch; padding: 16px"><RpgWorldMap ${Object.keys(before).map((k) => `${k}={$${k}}`).join(" ")} /></div>\n`);
   // og cook bundles the pack from OG_STYLES_DIR: the copy holding the probe sheet.
   const cook = Bun.spawnSync([ogBin(), "cook", root], { cwd: root, env: { ...process.env, OG_STYLES_DIR: styles }, stdout: "ignore", stderr: "pipe" });
@@ -421,4 +422,51 @@ test("keyboard and pad focus walk the commands in order and confirm the focused 
     key(e, "Enter");
     expect(intents(events, ["choose"])).toEqual(["choose:spells", "choose:spells"]);
   });
+});
+
+// The action HUD's members the explore page lays out, each mounted from every
+// fixture its document declares in the default style, as a game's tooling
+// reads them: no errors, no unresolved value, every box inside the screen.
+const HUD = ["leader", "effects", "companions", "minimap", "lock-on", "hits", "combo", "loot-feed", "prompt", "skills", "hints", "experience", "quest-tracker"];
+for (const [view, viewport] of [["desktop", DESKTOP], ["phone", PHONE]] as const) {
+  for (const name of HUD) {
+    test(`${MEMBERS[name]?.component ?? name} mounts from every fixture on a ${view} in the default style, inside the screen's width`, () => {
+      for (const [fixture, values] of Object.entries(MEMBERS[name]!.fixtures)) {
+        run(member(name, values, { view: viewport, pack: false }), (e) => {
+          expect(`${fixture}: ${errors(e).join("; ")}`).toBe(`${fixture}: `);
+          expect(`${fixture}: ${unresolved(e).join("; ")}`).toBe(`${fixture}: `);
+          const spill = elements(e).filter((x) => x.width > 0 && (x.x < -0.5 || x.x + x.width > viewport.width + 0.5)).map((x) => `${x.path} [${x.x}, ${x.x + x.width}]`);
+          expect(`${fixture}: ${spill.join(", ")}`).toBe(`${fixture}: `);
+        });
+      }
+    }, 120_000);
+  }
+}
+
+test("The action HUD's members show what the game told them, in words as well as colour", () => {
+  const texts = (e: Engine): string[] => elements(e).filter((x) => x.width > 0).map((x) => x.text.toLowerCase());
+  const check = (name: string, fixture: string, want: string[], not: string[] = [], view: View = DESKTOP) => {
+    run(member(name, MEMBERS[name]!.fixtures[fixture], { view, pack: false }), (e) => {
+      for (const w of want) expect(`${name}.${fixture} ${texts(e).includes(w)} ${w}`).toBe(`${name}.${fixture} true ${w}`);
+      for (const w of not) expect(`${name}.${fixture} ${texts(e).includes(w)} ${w}`).toBe(`${name}.${fixture} false ${w}`);
+    });
+  };
+  check("leader", "default", ["ysolde", "lv 42", "2,184", "/ 3,420"]);
+  check("leader", "empty", [], ["lv 0", "/ 0"]);
+  check("companions", "default", ["brannoch", "sylvenne", "caelum", "fallen", "2"]);
+  check("effects", "default", ["0:12", "×3", "4.2"]);
+  check("minimap", "default", ["ashen vale", "06:40", "n"]);
+  check("hits", "default", ["critical · weak point", "2,481", "642", "118", "burn"]);
+  check("hits", "heal", ["+320"]);
+  check("combo", "default", ["27", "hits", "damage ×1.6"]);
+  check("combo", "empty", [], ["0", "hits"]);
+  check("loot-feed", "default", ["ember blade", "epic", "+1,240", "×3"]);
+  check("prompt", "disabled", ["f", "guard holds"]);
+  check("skills", "default", ["no mana", "8", "×5", "r"]);
+  check("skills", "default", ["no mana"], ["×5", "z"], PHONE);
+  check("hints", "default", ["tab", "target"]);
+  check("hints", "default", [], ["tab", "target"], PHONE);
+  check("experience", "default", ["lv 42 · 62% to next"]);
+  check("quest-tracker", "default", ["main quest", "the ninefold gate", "1 / 3", "light the three rune pillars"]);
+  check("quest-tracker", "default", ["break the colossus’s guard"], ["main quest", "reach the highland ruins"], PHONE);
 });

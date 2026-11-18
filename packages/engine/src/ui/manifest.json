@@ -1218,6 +1218,17 @@
     ],
     "imports": []
   },
+  "RpgCombo": {
+    "id": "@ui/components/rpg/combo.svelte",
+    "screen": false,
+    "control": null,
+    "uses": [],
+    "files": [
+      "@ui/components/rpg/combo.svelte",
+      "@ui/components/rpg/rpg.en.ogt"
+    ],
+    "imports": []
+  },
   "RpgCommands": {
     "id": "@ui/components/rpg/commands.svelte",
     "screen": false,
@@ -1225,6 +1236,17 @@
     "uses": [],
     "files": [
       "@ui/components/rpg/commands.svelte",
+      "@ui/components/rpg/rpg.en.ogt"
+    ],
+    "imports": []
+  },
+  "RpgCompanions": {
+    "id": "@ui/components/rpg/companions.svelte",
+    "screen": false,
+    "control": null,
+    "uses": [],
+    "files": [
+      "@ui/components/rpg/companions.svelte",
       "@ui/components/rpg/rpg.en.ogt"
     ],
     "imports": []
@@ -1266,6 +1288,17 @@
     ],
     "imports": []
   },
+  "RpgEffects": {
+    "id": "@ui/components/rpg/effects.svelte",
+    "screen": false,
+    "control": null,
+    "uses": [],
+    "files": [
+      "@ui/components/rpg/effects.svelte",
+      "@ui/components/rpg/rpg.en.ogt"
+    ],
+    "imports": []
+  },
   "RpgEnemyInfo": {
     "id": "@ui/components/rpg/enemy-info.svelte",
     "screen": false,
@@ -1273,6 +1306,39 @@
     "uses": [],
     "files": [
       "@ui/components/rpg/enemy-info.svelte",
+      "@ui/components/rpg/rpg.en.ogt"
+    ],
+    "imports": []
+  },
+  "RpgExperience": {
+    "id": "@ui/components/rpg/experience.svelte",
+    "screen": false,
+    "control": null,
+    "uses": [],
+    "files": [
+      "@ui/components/rpg/experience.svelte",
+      "@ui/components/rpg/rpg.en.ogt"
+    ],
+    "imports": []
+  },
+  "RpgHints": {
+    "id": "@ui/components/rpg/hints.svelte",
+    "screen": false,
+    "control": null,
+    "uses": [],
+    "files": [
+      "@ui/components/rpg/hints.svelte",
+      "@ui/components/rpg/rpg.en.ogt"
+    ],
+    "imports": []
+  },
+  "RpgHits": {
+    "id": "@ui/components/rpg/hits.svelte",
+    "screen": false,
+    "control": null,
+    "uses": [],
+    "files": [
+      "@ui/components/rpg/hits.svelte",
       "@ui/components/rpg/rpg.en.ogt"
     ],
     "imports": []
@@ -1285,6 +1351,28 @@
     "files": [
       "@ui/components/panels/item-card.en.ogt",
       "@ui/components/panels/item-card.svelte"
+    ],
+    "imports": []
+  },
+  "RpgLeader": {
+    "id": "@ui/components/rpg/leader.svelte",
+    "screen": false,
+    "control": null,
+    "uses": [],
+    "files": [
+      "@ui/components/rpg/leader.svelte",
+      "@ui/components/rpg/rpg.en.ogt"
+    ],
+    "imports": []
+  },
+  "RpgLockOn": {
+    "id": "@ui/components/rpg/lock-on.svelte",
+    "screen": false,
+    "control": null,
+    "uses": [],
+    "files": [
+      "@ui/components/rpg/lock-on.svelte",
+      "@ui/components/rpg/rpg.en.ogt"
     ],
     "imports": []
   },
@@ -1301,6 +1389,17 @@
     ],
     "imports": []
   },
+  "RpgLootFeed": {
+    "id": "@ui/components/rpg/loot-feed.svelte",
+    "screen": false,
+    "control": null,
+    "uses": [],
+    "files": [
+      "@ui/components/rpg/loot-feed.svelte",
+      "@ui/components/rpg/rpg.en.ogt"
+    ],
+    "imports": []
+  },
   "RpgMenuBar": {
     "id": "@ui/components/rpg/menu-bar.svelte",
     "screen": false,
@@ -1308,6 +1407,17 @@
     "uses": [],
     "files": [
       "@ui/components/rpg/menu-bar.svelte",
+      "@ui/components/rpg/rpg.en.ogt"
+    ],
+    "imports": []
+  },
+  "RpgMinimap": {
+    "id": "@ui/components/rpg/minimap.svelte",
+    "screen": false,
+    "control": null,
+    "uses": [],
+    "files": [
+      "@ui/components/rpg/minimap.svelte",
       "@ui/components/rpg/rpg.en.ogt"
     ],
     "imports": []
@@ -1330,6 +1440,17 @@
     "uses": [],
     "files": [
       "@ui/components/rpg/place-card.svelte",
+      "@ui/components/rpg/rpg.en.ogt"
+    ],
+    "imports": []
+  },
+  "RpgPrompt": {
+    "id": "@ui/components/rpg/prompt.svelte",
+    "screen": false,
+    "control": null,
+    "uses": [],
+    "files": [
+      "@ui/components/rpg/prompt.svelte",
       "@ui/components/rpg/rpg.en.ogt"
     ],
     "imports": []
@@ -1364,6 +1485,17 @@
     "files": [
       "@ui/components/hud/quest-tracker.en.ogt",
       "@ui/components/hud/quest-tracker.svelte"
+    ],
+    "imports": []
+  },
+  "RpgSkills": {
+    "id": "@ui/components/rpg/skills.svelte",
+    "screen": false,
+    "control": null,
+    "uses": [],
+    "files": [
+      "@ui/components/rpg/rpg.en.ogt",
+      "@ui/components/rpg/skills.svelte"
     ],
     "imports": []
   },

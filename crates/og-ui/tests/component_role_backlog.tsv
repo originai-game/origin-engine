@@ -25,7 +25,6 @@ hud/orb-meter.svelte	OrbMeter.label OrbMeter.tag	1
 hud/overlay-bar.svelte	OverlayBar.label OverlayBar.caption	2
 hud/perf-readout.svelte	PerfReadout.label PerfReadout.caption	4
 hud/qte-prompt.svelte	QtePrompt.label QtePrompt.headline	1
-hud/quest-tracker.svelte	RpgQuestTracker.caption RpgQuestTracker.figure	1
 hud/star-bar.svelte	StarBar.well StarBar.track	1
 hud/status-grid.svelte	StatusGrid.badge StatusGrid.tag	2
 idle/generators.svelte	IdleGenerators.name IdleGenerators.headline	1
