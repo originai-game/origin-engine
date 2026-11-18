@@ -6,7 +6,7 @@ Module [`stream`](../stream.md) · [index](../index.md)
 
 ### `og.stream.status`
 
-One streaming group's state.
+One streaming group's state. Its ready field is a nondeterministic presentation query: worker progress, not simulation state. Never drive gameplay from ready; Resident and StreamEvent describe pack readiness, not texture completion.
 
 ```ts
 og.stream.status(world: World, group: string): Result<StreamStatus>
@@ -23,11 +23,11 @@ Binding symbol `og_stream_status` · publish builds: kept
 
 ```ogt
 fn status {
-  doc "One streaming group's state."
+  doc "One streaming group's state. Its ready field is a nondeterministic presentation query: worker progress, not simulation state. Never drive gameplay from ready; Resident and StreamEvent describe pack readiness, not texture completion."
   param world World "The world."
   param group String "The group's name, as its scene declares it."
   returns Result.StreamStatus "Refused for a group no scene declares."
 }
 ```
 
-<sub>Module `stream` line 127</sub>
+<sub>Module `stream` line 128</sub>

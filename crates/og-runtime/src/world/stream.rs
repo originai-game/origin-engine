@@ -142,6 +142,8 @@ pub(crate) struct Group {
     /// The bundle directory its pack is under.
     dir: String,
     state: State,
+    /// Presentation only: worker completion never changes state or events.
+    ready: bool,
     /// og.stream.request asked for it (until og.stream.release).
     requested: bool,
     /// A distance trigger's camera is within reach (kept until past unload).
@@ -355,6 +357,7 @@ impl Streams {
                 bundle: index,
                 dir: dir.to_string(),
                 state: State::Unloaded,
+                ready: false,
                 requested: false,
                 near: false,
                 wanted: false,
@@ -541,6 +544,7 @@ fn group_status(s: &Streams, g: &Group) -> StreamStatus {
         name: g.desc.name.clone(),
         scene: g.desc.scene.clone(),
         state: g.state.wire(),
+        ready: g.state == State::Resident && g.ready,
         wanted: g.wanted,
         requested: g.requested,
         priority: g.desc.priority,

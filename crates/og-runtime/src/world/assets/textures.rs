@@ -2,6 +2,43 @@
 
 use super::*;
 
+#[cfg(not(target_arch = "wasm32"))]
+mod native;
+
+/// A texture prepared without waiting for a native or web worker. This
+/// state belongs to presentation, never to the world's snapshot or hash.
+pub(crate) fn prepare_texture(
+    eng: &Engine,
+    texture: &og_bundle::runtime::CookedTexture,
+    formats: Option<&og_render::TextureFormats>,
+) -> Fetch<og_render::TextureSource> {
+    prepare_texture_with(&mut eng.render.borrow_mut().decoded, texture, formats)
+}
+
+pub(crate) fn prepare_texture_with(
+    decoded: &mut Decoded,
+    texture: &og_bundle::runtime::CookedTexture,
+    formats: Option<&og_render::TextureFormats>,
+) -> Fetch<og_render::TextureSource> {
+    let Some(host) = hooks() else {
+        return Fetch::Failed("no host is installed to decode textures".into());
+    };
+    let start = crate::author::trace::start();
+    #[cfg(not(target_arch = "wasm32"))]
+    let answer = decoded.native.prepare(host.as_ref(), texture, formats);
+    #[cfg(target_arch = "wasm32")]
+    let answer = {
+        let _ = decoded;
+        host.texture(texture, formats)
+    };
+    crate::author::trace::preparation(&texture.id, start);
+    answer
+}
+
+pub(crate) fn forget_prepared(eng: &Engine, ids: &[String]) {
+    eng.render.borrow_mut().decoded.forget_prepared(ids);
+}
+
 /// The encodings the attached renderer takes (`None` before one is attached:
 /// textures then load as RGBA8).
 pub(crate) fn texture_formats(eng: &Engine) -> Option<og_render::TextureFormats> {
@@ -34,11 +71,14 @@ pub(crate) fn load_texture(eng: &Engine, path: &str) -> Result<usize, String> {
         crate::world::stream::add_texture(eng, &group, &id, handle);
         return Ok(i);
     }
-    let (data, pixel, orientation) = decode_texture(eng, &id)?;
+    let (data, pixel, orientation, pending) = decode_texture(eng, &id)?;
     let mut rs = eng.render.borrow_mut();
     let handle = rs.scene.add_texture_source(data);
     rs.scene.set_texture_orientation(handle, orientation);
     rs.decoded.ids.insert(handle, id.clone());
+    if pending {
+        rs.decoded.pending.push((handle, id.clone()));
+    }
     if pixel {
         rs.scene
             .set_texture_filter(handle, og_render::TextureFilter::Nearest);
@@ -87,8 +127,11 @@ fn link_normal(eng: &Engine, id: &str, texture: og_render::TextureHandle) {
     let decoded = decode_texture(eng, &name);
     let mut rs = eng.render.borrow_mut();
     match decoded {
-        Ok((data, ..)) => {
+        Ok((data, _, _, pending)) => {
             let h = rs.scene.add_texture_source(data);
+            if pending {
+                rs.decoded.pending.push((h, name.clone()));
+            }
             rs.decoded.ids.insert(h, name);
             rs.scene.set_texture_normal(texture, Some(h));
         }
@@ -103,10 +146,30 @@ fn link_normal(eng: &Engine, id: &str, texture: og_render::TextureHandle) {
 fn decode_texture(
     eng: &Engine,
     id: &str,
-) -> Result<(og_render::TextureSource, bool, og_render::UiOrientation), String> {
+) -> Result<
+    (
+        og_render::TextureSource,
+        bool,
+        og_render::UiOrientation,
+        bool,
+    ),
+    String,
+> {
     match decode(eng, id) {
-        Fetch::Ready(d) => Ok(d),
-        Fetch::Pending => Err(format!("{id}: the texture is still being transcoded")),
+        Fetch::Ready((data, pixel, orientation)) => Ok((data, pixel, orientation, false)),
+        Fetch::Pending => {
+            let assets = eng.assets.borrow();
+            let (bytes, bundle) = assets.blob(id)?;
+            let tex = bundle
+                .texture(id, bytes.bytes())
+                .map_err(|e| e.to_string())?;
+            Ok((
+                og_render::TextureSource::Rgba(crate::world::stream::placeholder()),
+                tex.is_pixel_art(),
+                og_render::UiOrientation::from_exif(tex.orientation),
+                true,
+            ))
+        }
         Fetch::Failed(e) => Err(e),
     }
 }
@@ -137,11 +200,10 @@ pub(super) fn decode_from(
     };
     let pixel = tex.is_pixel_art();
     let orientation = og_render::UiOrientation::from_exif(tex.orientation);
-    match hooks().map(|h| h.texture(&tex, formats.as_ref())) {
-        Some(Fetch::Ready(d)) => Fetch::Ready((d, pixel, orientation)),
-        Some(Fetch::Pending) => Fetch::Pending,
-        Some(Fetch::Failed(e)) => Fetch::Failed(format!("{id}: {e}")),
-        None => Fetch::Failed("no host is installed to decode textures".into()),
+    match prepare_texture(eng, &tex, formats.as_ref()) {
+        Fetch::Ready(d) => Fetch::Ready((d, pixel, orientation)),
+        Fetch::Pending => Fetch::Pending,
+        Fetch::Failed(e) => Fetch::Failed(format!("{id}: {e}")),
     }
 }
 
@@ -153,6 +215,11 @@ pub(super) fn decode_from(
 /// old device's encoding.
 #[derive(Default)]
 pub(crate) struct Decoded {
+    #[cfg(not(target_arch = "wasm32"))]
+    native: native::Textures,
+    /// Models with textures still being prepared. Only extraction reads it:
+    /// entities, collision, asset handles and world hashes are unchanged.
+    pub hidden_models: IdMap<u64, Option<Vec<og_render::TextureHandle>>>,
     /// Each scene texture decoded from a cooked texture, with its asset id.
     pub ids: HashMap<og_render::TextureHandle, String>,
     /// Model textures retain their bundle through device recovery and mip streaming.
@@ -170,19 +237,33 @@ pub(crate) struct Decoded {
     arrays_pending: Vec<usize>,
 }
 
+impl Decoded {
+    pub(crate) fn preparing(&self) -> bool {
+        !self.pending.is_empty() || !self.arrays_pending.is_empty()
+    }
+
+    pub(crate) fn forget_prepared(&mut self, ids: &[String]) {
+        #[cfg(not(target_arch = "wasm32"))]
+        self.native.forget(ids);
+        #[cfg(target_arch = "wasm32")]
+        let _ = ids;
+    }
+}
+
 /// Before a frame, after the backend recovered from a lost device: when
 /// the device's texture encodings changed since the last frame, every
 /// cooked texture and texture array the renderer holds in an encoding the
 /// device does not take is decoded again from the bundle through the
-/// host's texture hook, for the new encodings. Natively the hook
-/// transcodes at once, so the frame draws as it did before the loss; the
-/// web host's Worker transcodes in the background, and those textures
-/// draw as the placeholder (arrays not at all) until they land.
+/// host's texture hook, for the new encodings. Both hosts prepare textures
+/// in the background. An unsupported old encoding is replaced by the
+/// placeholder (arrays not at all) until the replacement lands.
 pub(crate) fn retranscode(eng: &Engine) {
-    let Some(formats) = texture_formats(eng) else {
-        return;
+    let formats = texture_formats(eng);
+    let takes_upload = |u: &og_render::TextureUpload| {
+        formats
+            .as_ref()
+            .is_some_and(|f| f.supported.contains(&u.desc.format))
     };
-    let takes_upload = |u: &og_render::TextureUpload| formats.supported.contains(&u.desc.format);
     let takes = |s: &og_render::TextureSource| match s {
         og_render::TextureSource::Encoded(u) => takes_upload(u),
         _ => true,
@@ -192,8 +273,8 @@ pub(crate) fn retranscode(eng: &Engine) {
         let rs = &mut *rs;
         let mut stale = std::mem::take(&mut rs.decoded.pending);
         let mut arrays = std::mem::take(&mut rs.decoded.arrays_pending);
-        if rs.decoded.formats.as_ref() != Some(&formats) {
-            rs.decoded.formats = Some(formats.clone());
+        if rs.decoded.formats != formats {
+            rs.decoded.formats = formats.clone();
             let scene = &rs.scene;
             rs.decoded.ids.retain(|h, _| scene.contains_texture(*h));
             rs.decoded.bundles.retain(|h, _| scene.contains_texture(*h));
@@ -217,16 +298,32 @@ pub(crate) fn retranscode(eng: &Engine) {
         (stale, arrays)
     };
     let mut pending = Vec::new();
+    let mut finished = Vec::new();
     for (h, id) in stale {
         let bundle = eng.render.borrow().decoded.bundles.get(&h).copied();
         let decoded = decode_from(eng, &id, bundle);
         let mut rs = eng.render.borrow_mut();
         match decoded {
             Fetch::Ready((source, ..)) => {
+                for sway in rs.feel.sway.values_mut().filter(|s| s.texture == h) {
+                    let (w, ht) = source.size();
+                    sway.atlas = [w, ht];
+                }
                 crate::world::stream::replace_texture(&mut rs.scene, h, source);
+                for textures in rs
+                    .decoded
+                    .hidden_models
+                    .values_mut()
+                    .filter_map(Option::as_mut)
+                {
+                    textures.retain(|t| *t != h);
+                }
+                finished.push(id);
             }
             Fetch::Pending => {
-                rs.scene.set_texture(h, crate::world::stream::placeholder());
+                if rs.scene.texture_upload(h).is_some_and(|u| !takes_upload(u)) {
+                    rs.scene.set_texture(h, crate::world::stream::placeholder());
+                }
                 pending.push((h, id));
             }
             Fetch::Failed(e) => {
@@ -272,7 +369,15 @@ pub(crate) fn retranscode(eng: &Engine) {
     }
     let mut rs = eng.render.borrow_mut();
     rs.decoded.pending = pending;
+    // Grouped models have no texture handles until their upgrade; only
+    // upgrade may reveal those. Here reveal models whose last pending
+    // texture just arrived.
+    rs.decoded
+        .hidden_models
+        .retain(|_, textures| textures.as_ref().is_none_or(|t| !t.is_empty()));
     rs.decoded.arrays_pending = arrays_pending;
+    drop(rs);
+    forget_prepared(eng, &finished);
 }
 
 /// A 2D plant's wind parts: the cook's `<id>#sway` beside the texture (a
@@ -291,9 +396,12 @@ fn link_sway(eng: &Engine, id: &str, texture: og_render::TextureHandle) {
     let decoded = decode_texture(eng, &name);
     let mut rs = eng.render.borrow_mut();
     match (parts, decoded) {
-        (Ok(Some(parts)), Ok((data, pixel, _))) => {
+        (Ok(Some(parts)), Ok((data, pixel, _, pending))) => {
             let (w, h) = data.size();
             let added = rs.scene.add_texture_source(data);
+            if pending {
+                rs.decoded.pending.push((added, name.clone()));
+            }
             if pixel {
                 rs.scene
                     .set_texture_filter(added, og_render::TextureFilter::Nearest);
@@ -330,9 +438,12 @@ fn link_index(eng: &Engine, id: &str, texture: og_render::TextureHandle) {
         let name = format!("{id}#index");
         let known = eng.assets.borrow().blob(&name).is_ok();
         match known.then(|| decode_texture(eng, &name)) {
-            Some(Ok((data, pixel, _))) => {
+            Some(Ok((data, pixel, _, pending))) => {
                 let mut rs = eng.render.borrow_mut();
                 let h = rs.scene.add_texture_source(data);
+                if pending {
+                    rs.decoded.pending.push((h, name.clone()));
+                }
                 if pixel {
                     rs.scene
                         .set_texture_filter(h, og_render::TextureFilter::Nearest);

@@ -58,6 +58,11 @@ use std::rc::Rc;
 
 // ── host hooks ──────────────────────────────────────────────────────────────
 
+/// Owned texture preparation that may run off the engine thread. The job
+/// touches no engine, world or host state; only its answer returns to a frame.
+pub type TextureWork =
+    Box<dyn FnOnce() -> Result<og_render::TextureSource, String> + Send + 'static>;
+
 /// One call into game code.
 #[derive(Clone, Debug)]
 pub struct Dispatch {
@@ -191,6 +196,17 @@ pub trait Hooks {
             Ok(t) => Fetch::Ready(t),
             Err(e) => Fetch::Failed(e.to_string()),
         }
+    }
+    /// An owned native decode/transcode job. The runtime queues it on its
+    /// engine's texture worker and polls without waiting. `None` uses
+    /// [`Hooks::texture`] (the web host already queues its Worker there).
+    fn texture_work(
+        &self,
+        texture: &og_bundle::runtime::CookedTexture,
+        formats: Option<&og_render::TextureFormats>,
+    ) -> Option<TextureWork> {
+        let _ = (texture, formats);
+        None
     }
     /// Starts inflating zlib bytes away from the engine's thread (the web
     /// host's DecompressionStream), answered later by

@@ -215,3 +215,73 @@ fn the_budget_holds_it_on_its_tail_and_resident_mode_makes_it_whole() {
     g.probe("mip_stream:stream");
     assert_eq!(g.frames(1), 256, "streamed again, within 1 MiB: its tail");
 }
+
+#[test]
+fn native_mip_swaps_keep_the_bound_chain_while_the_worker_is_pending() {
+    use std::sync::{
+        Arc,
+        atomic::{AtomicBool, Ordering},
+    };
+    struct Worker(Arc<AtomicBool>);
+    impl Hooks for Worker {
+        fn dispatch(&self, _: &Dispatch) -> Result<String, String> {
+            Ok(String::new())
+        }
+        fn read_asset(&self, path: &str) -> Fetch<Vec<u8>> {
+            Disk.read_asset(path)
+        }
+        fn texture_work(
+            &self,
+            t: &og_bundle::runtime::CookedTexture,
+            f: Option<&og_render::TextureFormats>,
+        ) -> Option<og_runtime::TextureWork> {
+            let (ready, t, f) = (self.0.clone(), t.clone(), f.cloned());
+            Some(Box::new(move || {
+                while !ready.load(Ordering::Acquire) {
+                    std::thread::sleep(std::time::Duration::from_millis(1));
+                }
+                t.to_texture_source(f.as_ref()).map_err(|e| e.to_string())
+            }))
+        }
+    }
+    let g = Game::new();
+    let ready = Arc::new(AtomicBool::new(false));
+    set_hooks(Rc::new(Worker(ready.clone())));
+    assert_eq!(
+        g.frames(8),
+        256,
+        "keep the tail while the whole chain decodes"
+    );
+    let mut max_ms: f64 = 0.0;
+    for target in [1024, 256] {
+        ready.store(true, Ordering::Release);
+        for _ in 0..2000 {
+            let start = std::time::Instant::now();
+            let held = g.frames(1);
+            max_ms = max_ms.max(start.elapsed().as_secs_f64() * 1000.0);
+            if held == target {
+                break;
+            }
+            std::thread::sleep(std::time::Duration::from_millis(1));
+        }
+        assert_eq!(g.held(), target);
+        if target == 1024 {
+            ready.store(false, Ordering::Release);
+            g.camera(400.0);
+            assert_eq!(
+                g.frames(180),
+                1024,
+                "keep the whole chain while its tail decodes"
+            );
+        }
+    }
+    assert!(
+        g.seen
+            .borrow()
+            .frames
+            .iter()
+            .all(|(held, size)| [256, 1024].contains(held) && *size == (1024, 1024))
+    );
+    println!("MIP_SWAP max_frame_ms={max_ms:.3}");
+    assert!(og_runtime::og_engine_destroy(g.engine));
+}

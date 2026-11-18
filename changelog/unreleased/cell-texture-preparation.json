@@ -1,0 +1,8 @@
+{
+  "fixed": [
+    {
+      "member": "StreamCell",
+      "summary": "Native model textures decode and transcode on a per-engine worker instead of blocking cell-load ticks. Models accept pending textures on both hosts and stay hidden until prepared; the presentation-only StreamStatus.ready reports texture readiness without changing simulation events or hashes. Mip swaps keep the previous chain while preparing the replacement. Traces include tick-boundary, model-preparation and native texture-worker spans."
+    }
+  ]
+}

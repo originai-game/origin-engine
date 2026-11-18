@@ -149,28 +149,34 @@ pub(super) fn add_gltf(
     into: Option<usize>,
     shared: bool,
 ) -> Result<usize, String> {
+    let start = crate::author::trace::start();
     let id = id.to_string();
-    // A streamed model draws its proxy until its group is resident.
+    // A streamed model keeps its proxy for physics, hidden until its maps arrive.
     let group = eng.assets.borrow().group_from(&id, Some(owner));
     let source = match &group {
         Some(_) => format!("{id}#proxy"),
         None => id.clone(),
     };
     let formats = texture_formats(eng);
+    let mut pending = std::collections::BTreeSet::new();
     let (model, textures, impostor) = {
         let assets = eng.assets.borrow();
         let (bytes, bundle) = assets.blob_from(&source, Some(owner))?;
         let model = bundle
             .model(&source, bytes.bytes())
             .map_err(|e| e.to_string())?;
-        let texture = |id: &str| {
+        let mut texture = |id: &str| {
             let (tb, bundle) = assets.blob_from(id, Some(owner))?;
             let tex = bundle.texture(id, tb.bytes()).map_err(|e| e.to_string())?;
-            match hooks().map(|h| h.texture(&tex, formats.as_ref())) {
-                Some(Fetch::Ready(d)) => Ok(d),
-                Some(Fetch::Pending) => Err(format!("{id}: the texture is still being transcoded")),
-                Some(Fetch::Failed(e)) => Err(format!("{id}: {e}")),
-                None => Err("no host is installed to decode textures".to_string()),
+            match prepare_texture(eng, &tex, formats.as_ref()) {
+                Fetch::Ready(d) => Ok(d),
+                Fetch::Pending => {
+                    pending.insert(id.to_string());
+                    Ok(og_render::TextureSource::Rgba(
+                        crate::world::stream::placeholder(),
+                    ))
+                }
+                Fetch::Failed(e) => Err(format!("{id}: {e}")),
             }
         };
         let mut textures = Vec::with_capacity(model.textures.len());
@@ -209,7 +215,18 @@ pub(super) fn add_gltf(
     if !shared && let Some(index) = into {
         crate::present::hlod::release_proxy(&mut eng.render.borrow_mut(), handle(index));
     }
-    let (index, textures) = insert_model(
+    let prepared: Vec<_> = if group.is_none() {
+        model
+            .textures
+            .iter()
+            .map(|t| &t.id)
+            .filter(|id| !pending.contains(*id))
+            .cloned()
+            .collect()
+    } else {
+        Vec::new()
+    };
+    let (index, handles) = insert_model(
         eng,
         &id,
         group,
@@ -225,10 +242,39 @@ pub(super) fn add_gltf(
             .borrow_mut()
             .hlod
             .proxies
-            .insert(handle(index), textures);
+            .insert(handle(index), handles.clone());
+    }
+    {
+        let mut rs = eng.render.borrow_mut();
+        let awaiting: Vec<_> = rs
+            .decoded
+            .ids
+            .iter()
+            .filter(|(_, id)| pending.contains(*id))
+            .map(|(&h, id)| (h, id.clone()))
+            .collect();
+        for item in awaiting {
+            if !rs.decoded.pending.contains(&item) {
+                rs.decoded.pending.push(item);
+            }
+        }
+        let waiting: Vec<_> = rs
+            .decoded
+            .pending
+            .iter()
+            .filter(|(h, _)| handles.contains(h) || pending.contains(&rs.decoded.ids[h]))
+            .map(|(h, _)| *h)
+            .collect();
+        if !waiting.is_empty() {
+            rs.decoded
+                .hidden_models
+                .insert(handle(index), Some(waiting));
+        }
     }
     // A prefractured model's chunks (`fracture { }`): og.destruction's.
     crate::bind::destruction::load_asset(eng, &id, index)?;
+    forget_prepared(eng, &prepared);
+    crate::author::trace::preparation(&format!("model {id}"), start);
     Ok(index)
 }
 
@@ -452,6 +498,16 @@ pub(crate) fn insert_model(
                     let albedo = rs.scene.add_texture_source(albedo);
                     let normal = rs.scene.add_texture_source(normal);
                     let atlas = atlas.map(|a| rs.scene.add_texture_source(a));
+                    rs.decoded.ids.insert(albedo, i.albedo.clone());
+                    rs.decoded.ids.insert(normal, i.normal.clone());
+                    if let (Some(h), Some(id)) = (atlas, &i.material) {
+                        rs.decoded.ids.insert(h, id.clone());
+                    }
+                    if let Some(bundle) = bundle {
+                        for h in [Some(albedo), Some(normal), atlas].into_iter().flatten() {
+                            rs.decoded.bundles.insert(h, bundle);
+                        }
+                    }
                     let material = rs.scene.add_standard_material(og_render::StandardMaterial {
                         map: albedo.slot(),
                         normalMap: normal.slot(),
@@ -575,6 +631,9 @@ pub(crate) fn insert_model(
         },
     );
     rs.fx.model_materials.insert(handle(index), parts.materials);
+    if group.is_some() {
+        rs.decoded.hidden_models.insert(handle(index), None);
+    }
     assets.entries[index].bundle = bundle;
     if let Some(bundle) = bundle {
         assets.by_path.insert(format!("gltf:{bundle}:{id}"), index);

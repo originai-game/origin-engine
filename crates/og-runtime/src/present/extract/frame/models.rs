@@ -74,6 +74,12 @@ pub(super) fn models(
                     }
                     let bias = num(&lod_bias, 1.0).max(0.0);
                     let asset = v.num(&asset).unwrap_or(0.0) as u64;
+                    // Texture readiness is presentation only. Never expose
+                    // a streamed model's untextured stand-in while its
+                    // entities and colliders are already live in the world.
+                    if rs.decoded.hidden_models.contains_key(&asset) {
+                        return None;
+                    }
                     let look = super::fx::ModelLook {
                         fx: og_render::InstanceFx {
                             flash: num(&flash, 0.0),

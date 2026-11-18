@@ -168,10 +168,10 @@ pub use bind::vfx::{og_load_vfx, og_vfx_info, og_vfx_spawn};
 pub use bind::video::{og_load_video, og_load_video_info, og_video_capabilities};
 pub use engine::invariants::og_assert_record;
 pub use engine::{
-    ColumnPtr, Dispatch, Hooks, RenderBackend, VideoDecoder, advance, answer_call, antialias_name,
-    begin_bundle, call_rpc, command, create, destroy, frame, point_shadows_name, render_desc,
-    render_options, set_render_backend, take_log, take_outputs, transparency_name, view_columns,
-    view_entities, warm_renderer, write_resource,
+    ColumnPtr, Dispatch, Hooks, RenderBackend, TextureWork, VideoDecoder, advance, answer_call,
+    antialias_name, begin_bundle, call_rpc, command, create, destroy, frame, point_shadows_name,
+    render_desc, render_options, set_render_backend, take_log, take_outputs, transparency_name,
+    view_columns, view_entities, warm_renderer, write_resource,
 };
 pub use host::api::*;
 pub use host::codec::{Kind, Layout, RecordKind};

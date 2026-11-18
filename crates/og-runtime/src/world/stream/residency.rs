@@ -29,6 +29,7 @@ pub(crate) fn replace_texture(
 }
 
 fn decode_texture(
+    eng: &Engine,
     bundle: &og_bundle::runtime::Bundle,
     files: &Streams,
     group: &str,
@@ -42,11 +43,10 @@ fn decode_texture(
         .map_err(|e| e.to_string())?;
     let pixel = tex.is_pixel_art();
     let orientation = og_render::UiOrientation::from_exif(tex.orientation);
-    match hooks().map(|h| h.texture(&tex, formats)) {
-        Some(super::assets::Fetch::Ready(d)) => Ok(Some((d, pixel, orientation))),
-        Some(super::assets::Fetch::Pending) => Ok(None),
-        Some(super::assets::Fetch::Failed(e)) => Err(format!("{id}: {e}")),
-        None => Err("no host is installed to decode textures".into()),
+    match super::assets::prepare_texture(eng, &tex, formats) {
+        super::assets::Fetch::Ready(d) => Ok(Some((d, pixel, orientation))),
+        super::assets::Fetch::Pending => Ok(None),
+        super::assets::Fetch::Failed(e) => Err(format!("{id}: {e}")),
     }
 }
 
@@ -63,6 +63,23 @@ pub(super) fn upgrade(eng: &Engine, group: &str) -> Result<bool, String> {
             return Ok(true);
         };
         let s = &a.stream;
+        // Queue every map, including those of models not instantiated yet.
+        // No group reports presentation-ready merely because its scene has
+        // not made render slots yet. Scene/physics readiness depends only on
+        // the pack, never on completion of these presentation jobs.
+        let mut pending = false;
+        for output in bundle.manifest().outputs().filter(|o| {
+            o.group.as_deref() == Some(group)
+                && o.ty == "og.Texture"
+                && !o.id.ends_with("#mips")
+                && s.find(group).is_some_and(|i| !s.groups[i].ready)
+        }) {
+            pending |=
+                decode_texture(eng, bundle, s, group, &output.id, formats.as_ref())?.is_none();
+        }
+        if pending {
+            return Ok(false);
+        }
         let mut out = Vec::new();
         for (k, (slot, up)) in s.slots.get(group).into_iter().flatten().enumerate() {
             if *up {
@@ -76,7 +93,7 @@ pub(super) fn upgrade(eng: &Engine, group: &str) -> Result<bool, String> {
                     let model = bundle.model(id, bytes.bytes()).map_err(|e| e.to_string())?;
                     let mut textures = Vec::with_capacity(model.textures.len());
                     for t in &model.textures {
-                        match decode_texture(bundle, s, group, &t.id, formats.as_ref())? {
+                        match decode_texture(eng, bundle, s, group, &t.id, formats.as_ref())? {
                             Some((d, ..)) => textures.push(d),
                             None => return Ok(false),
                         }
@@ -88,7 +105,7 @@ pub(super) fn upgrade(eng: &Engine, group: &str) -> Result<bool, String> {
                     }
                 }
                 Slot::Texture { .. } => {
-                    match decode_texture(bundle, s, group, id, formats.as_ref())? {
+                    match decode_texture(eng, bundle, s, group, id, formats.as_ref())? {
                         Some((d, pixel, o)) => Full::Texture(d, pixel, o),
                         None => return Ok(false),
                     }
@@ -113,6 +130,7 @@ pub(super) fn upgrade(eng: &Engine, group: &str) -> Result<bool, String> {
     // Sounds cooked in chunks put in place: their stand-in's entry learns
     // its chunks (the playheads ask for them from now on), after the loop.
     let mut chunked: Vec<CookedSound> = Vec::new();
+    let mut prepared = Vec::new();
     let Some(slots) = a.stream.slots.get_mut(group) else {
         return Ok(true);
     };
@@ -143,6 +161,7 @@ pub(super) fn upgrade(eng: &Engine, group: &str) -> Result<bool, String> {
                 for (h, t) in textures.iter().zip(&model.textures) {
                     rs.decoded.ids.insert(*h, t.id.clone());
                     rs.decoded.bundles.insert(*h, owner);
+                    prepared.push(t.id.clone());
                 }
                 for (((h, stand_in), m), prim) in meshes.iter_mut().zip(full).zip(&model.primitives)
                 {
@@ -159,8 +178,19 @@ pub(super) fn upgrade(eng: &Engine, group: &str) -> Result<bool, String> {
                             .set_standard_material(*h, model.standard_material(i, textures));
                     }
                 }
+                let shown: Vec<_> = rs
+                    .fx
+                    .models
+                    .iter()
+                    .filter(|(_, m)| m.id == model.id)
+                    .map(|(&h, _)| h)
+                    .collect();
+                for h in shown {
+                    rs.decoded.hidden_models.remove(&h);
+                }
             }
             (Slot::Texture { id, handle }, Full::Texture(d, pixel, orientation)) => {
+                prepared.push(id.clone());
                 replace_texture(&mut rs.scene, *handle, d);
                 rs.scene.set_texture_orientation(*handle, orientation);
                 rs.decoded.ids.insert(*handle, id.clone());
@@ -212,6 +242,9 @@ pub(super) fn upgrade(eng: &Engine, group: &str) -> Result<bool, String> {
             *entry = sound;
         }
     }
+    drop(rs);
+    drop(a);
+    super::assets::forget_prepared(eng, &prepared);
     Ok(true)
 }
 
@@ -253,6 +286,7 @@ pub(super) fn release(eng: &Engine, group: &str) {
     };
     // The host drops it when it lands; its slot is free now.
     eng.assets.borrow_mut().stream.fetch.in_flight.remove(&pack);
+    super::assets::forget_prepared(eng, &textures);
     h.release_stream(&pack, &textures);
 }
 
@@ -270,8 +304,30 @@ fn put_stand_ins_back(eng: &Engine, group: &str) {
     let mut a = eng.assets.borrow_mut();
     if let Some(i) = a.stream.find(group) {
         a.stream.groups[i].files.clear();
+        a.stream.groups[i].ready = false;
     }
     let mut rs = eng.render.borrow_mut();
+    let hidden: Vec<_> = a
+        .stream
+        .slots
+        .get(group)
+        .into_iter()
+        .flatten()
+        .filter_map(|(s, _)| match s {
+            Slot::Model { id, .. } => Some(id),
+            _ => None,
+        })
+        .flat_map(|id| {
+            rs.fx
+                .models
+                .iter()
+                .filter(move |(_, m)| &m.id == id)
+                .map(|(&h, _)| h)
+        })
+        .collect();
+    for h in hidden {
+        rs.decoded.hidden_models.insert(h, None);
+    }
     for (slot, up) in a.stream.slots.get_mut(group).into_iter().flatten() {
         if !*up {
             continue;

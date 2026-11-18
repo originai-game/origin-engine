@@ -2,6 +2,14 @@
 
 use super::*;
 
+impl Streams {
+    pub(crate) fn preparing(&self) -> bool {
+        self.groups
+            .iter()
+            .any(|g| g.state == State::Loading || g.state == State::Resident && !g.ready)
+    }
+}
+
 /// At every tick boundary: what is wanted, what is admitted, what loads and
 /// unloads.
 pub(crate) fn update(eng: &Engine) {
@@ -210,26 +218,14 @@ pub(crate) fn update(eng: &Engine) {
             .map(|g| g.desc.name.clone())
     };
     if let Some(name) = ready {
-        match upgrade(eng, &name) {
-            Ok(true) => {
-                let mut a = eng.assets.borrow_mut();
-                let s = &mut a.stream;
-                if let Some(i) = s.find(&name) {
-                    s.groups[i].loads += 1;
-                    set_state(s, &eng.modules.stream, i, State::Resident, tick, "");
-                }
-            }
-            // A texture still being transcoded: the next update finishes it.
-            Ok(false) => {}
-            Err(e) => {
-                downgrade(eng, &name);
-                let mut a = eng.assets.borrow_mut();
-                let s = &mut a.stream;
-                if let Some(i) = s.find(&name) {
-                    s.groups[i].files.clear();
-                    set_state(s, &eng.modules.stream, i, State::Failed, tick, &e);
-                }
-            }
+        // Pack/scene readiness drives simulation events. Texture worker
+        // completion is presentation state and must never move those events.
+        let mut a = eng.assets.borrow_mut();
+        let s = &mut a.stream;
+        if let Some(i) = s.find(&name) {
+            s.groups[i].loads += 1;
+            s.groups[i].ready = false;
+            set_state(s, &eng.modules.stream, i, State::Resident, tick, "");
         }
     }
     refresh(eng);
@@ -241,14 +237,33 @@ pub(crate) fn refresh(eng: &Engine) {
     let names: Vec<String> = {
         let a = eng.assets.borrow();
         a.stream
-            .slots
+            .groups
             .iter()
-            .filter(|(g, slots)| a.stream.resident(g) && slots.iter().any(|(_, up)| !up))
-            .map(|(g, _)| g.clone())
+            .filter(|g| {
+                g.state == State::Resident
+                    && (!g.ready
+                        || a.stream
+                            .slots
+                            .get(&g.desc.name)
+                            .is_some_and(|slots| slots.iter().any(|(_, up)| !up)))
+            })
+            .map(|g| g.desc.name.clone())
             .collect()
     };
     for name in names {
-        let _ = upgrade(eng, &name);
+        let start = crate::author::trace::start();
+        let answer = upgrade(eng, &name);
+        crate::author::trace::preparation(&format!("stream group {name}"), start);
+        if let Err(e) = &answer {
+            eng.render
+                .borrow_mut()
+                .notes
+                .push(format!("{name}: texture preparation failed: {e}"));
+        }
+        let mut a = eng.assets.borrow_mut();
+        if let Some(i) = a.stream.find(&name) {
+            a.stream.groups[i].ready = matches!(answer, Ok(true));
+        }
     }
 }
 

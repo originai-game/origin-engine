@@ -183,10 +183,14 @@ looks and colour LUTs (`.cube`).
   evicting lower-priority groups for a higher one, and puts at most one
   group's assets in place per boundary. A group that cannot fit waits; one
   larger than the whole budget fails.
-- Until its group is resident a model draws its proxy (its coarsest LOD,
-  untextured), a texture is a 1x1 grey placeholder and a sound plays as
-  silence of its own length; then the real ones take over the same
-  handles. Physics always collides with the proxy's meshes and a sound's
+- Until its group's model textures are decoded, models stay hidden rather
+  than exposing an untextured proxy. Texture decode and transcode run away
+  from the tick. Resident and StreamEvent describe pack readiness; the
+  presentation-only `StreamStatus.ready` becomes true after preparation.
+  A directly loaded texture may draw its 1x1 grey placeholder meanwhile;
+  use the loading screen when that pop would be visible. A sound plays as
+  silence of its own length until its samples arrive; the real assets take
+  over the same handles. Physics always collides with the proxy's meshes and a sound's
   length never changes, so the hash is the same streamed or not.
 - Texture arrays, flipbooks, environment maps, palettes, looks and LUTs
   have no stand-in: while their group is out the sky lights the scene,
@@ -237,8 +241,8 @@ from og.load.scene) is a cell.
 - A sub-scene's blob is in its declaring bundle unless the sub-scene declares a
   cell group (`stream "<name>" { cell; asset ... }`): then it is in that
   group's pack with the assets it names, fetched ahead of the anchors, and
-  its models and textures draw their stand-ins until the group is
-  resident. A tick that would load a cell whose blob has not landed is
+  its models stay hidden until their textures are prepared. A tick that
+  would load a cell whose blob has not landed is
   held, never skipped or reordered: frames go on drawing, the engine log
   records each hold and its length, and `dump_stream`'s `hold` says what
   the tick waits for. Natively a read completes at once, so a native run
@@ -252,6 +256,16 @@ from og.load.scene) is a cell.
   instead of one long one; `loaded` turns true, and CellEvent is sent, in
   the tick its last entity spawns. A cell that stops being wanted before
   then despawns what it spawned and sends nothing.
+- `loaded` and CellEvent describe entity/physics readiness, not texture
+  readiness: colliders can already be live while their models are hidden.
+  Give a cell's assets a cell group and read `og.stream.status(...).ready`
+  only from presentation code; use `og.loading.idle` when
+  waiting for all pending presentation work at startup. Never use worker
+  completion to decide simulation changes. Set the load distance far
+  enough outside the visible area to cover measured fetch, transcode and
+  upload latency at the anchor's maximum speed; the entity-spawn budget
+  does not bound texture work. Measure the worst load frame, including
+  the first initialization, not just an average tick.
 - `persist` keeps what happened in a cell (moved, damaged, opened; every
   component and name) in the world's cells state when it unloads,
   carried by snapshots, saves and the hash; it comes back as it was

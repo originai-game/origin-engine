@@ -731,3 +731,331 @@ fn missing_scene_dependencies_fall_back_to_boot_then_open_order() {
     }
     std::fs::remove_dir_all(base).unwrap();
 }
+#[test]
+fn pending_model_textures_hide_only_presentation_and_preserve_128_tick_hashes() {
+    let _lock = TEST_LOCK.lock().unwrap();
+    use std::sync::{
+        Arc,
+        atomic::{AtomicBool, Ordering},
+    };
+    struct Pending {
+        ready: Arc<AtomicBool>,
+        native: bool,
+    }
+    impl Hooks for Pending {
+        fn dispatch(&self, _: &Dispatch) -> Result<String, String> {
+            Ok(String::new())
+        }
+        fn read_asset(&self, path: &str) -> Fetch<Vec<u8>> {
+            match std::fs::read(path) {
+                Ok(b) => Fetch::Ready(b),
+                Err(e) => Fetch::Failed(e.to_string()),
+            }
+        }
+        fn texture(
+            &self,
+            t: &og_bundle::runtime::CookedTexture,
+            f: Option<&og_render::TextureFormats>,
+        ) -> Fetch<og_render::TextureSource> {
+            if !self.ready.load(Ordering::Acquire) {
+                return Fetch::Pending;
+            }
+            match t.to_texture_source(f) {
+                Ok(t) => Fetch::Ready(t),
+                Err(e) => Fetch::Failed(e.to_string()),
+            }
+        }
+        fn texture_work(
+            &self,
+            t: &og_bundle::runtime::CookedTexture,
+            f: Option<&og_render::TextureFormats>,
+        ) -> Option<TextureWork> {
+            if !self.native {
+                return None;
+            }
+            let (ready, t, f) = (self.ready.clone(), t.clone(), f.cloned());
+            Some(Box::new(move || {
+                while !ready.load(Ordering::Acquire) {
+                    std::thread::sleep(std::time::Duration::from_millis(1));
+                }
+                t.to_texture_source(f.as_ref()).map_err(|e| e.to_string())
+            }))
+        }
+    }
+    let base = PathBuf::from(env!("CARGO_TARGET_TMPDIR"))
+        .join(format!("texture-ready-{}", std::process::id()));
+    let root = base.join("game");
+    cook(&root, &[("world.ogt", b"type scene\nversion 1\n---\nentity \"player\" {\n Transform {\n  position 0 0 0\n }\n StreamAnchor {\n  reach 0\n }\n}\n".to_vec())]);
+    for grouped in [false, true] {
+        let path = base.join(if grouped { "grouped" } else { "plain" });
+        parcel(&path, "parcel", "parcel", 100, grouped);
+        let mut baseline = Vec::new();
+        for (delayed, native) in [(false, false), (true, false), (true, true)] {
+            let ready = Arc::new(AtomicBool::new(!delayed));
+            set_hooks(Rc::new(Pending {
+                ready: ready.clone(),
+                native,
+            }));
+            og_host_begin_bundle();
+            let game = og_game_game(Some(r#"{"seed":1}"#.into()));
+            let engine = value(og_engine_create(game, json!({"root": root}).to_string()))
+                .as_u64()
+                .unwrap() as u32;
+            let held = Rc::new(Cell::new(Held::default()));
+            answer(set_render_backend(
+                engine,
+                Some(Box::new(Recorder(held.clone()))),
+            ));
+            let g = Game { engine, held };
+            g.place("world.ogt");
+            g.open(&path);
+            g.place("parcel/place.ogt");
+            g.walk(100);
+            let mut hashes = Vec::new();
+            for tick in 0..128 {
+                if tick == 64 {
+                    ready.store(true, Ordering::Release);
+                }
+                g.frame();
+                hashes.push(g.dump()["hash"].clone());
+                if delayed && tick == 8 {
+                    assert!(
+                        g.loaded("parcel"),
+                        "entities load independently of textures"
+                    );
+                    assert_eq!(g.held.get().instances, 0, "never draw an untextured model");
+                    assert!(!og_loading_idle(engine));
+                    if grouped {
+                        assert_eq!(g.state("parcel"), "resident");
+                        assert!(!og_stream_status(engine, "parcel".into()).unwrap().ready);
+                    }
+                }
+            }
+            if delayed {
+                assert_eq!(hashes, baseline, "worker timing changed world hashes");
+            } else {
+                baseline = hashes;
+            }
+            for _ in 0..2000 {
+                g.frame();
+                if og_loading_idle(engine) {
+                    break;
+                }
+                std::thread::sleep(std::time::Duration::from_millis(1));
+            }
+            assert!(og_loading_idle(engine));
+            assert!(g.held.get().instances > 0, "prepared model is revealed");
+            assert!(g.held.get().textures >= u64::from(SIDE * SIDE * 4));
+            if grouped {
+                assert_eq!(g.state("parcel"), "resident");
+                assert!(og_stream_status(engine, "parcel".into()).unwrap().ready);
+            }
+            assert!(og_engine_destroy(engine));
+        }
+    }
+    // Equal cooked ids in two runtime bundles must prepare independently.
+    // Otherwise each poll cancels the other bundle's texture job forever.
+    for grouped in [false, true] {
+        let versions = base.join(format!("versions-{grouped}"));
+        for v in 1..=2 {
+            version(&versions.join(format!("v{v}")), v, grouped);
+        }
+        let ready = Arc::new(AtomicBool::new(false));
+        set_hooks(Rc::new(Pending {
+            ready: ready.clone(),
+            native: true,
+        }));
+        og_host_begin_bundle();
+        let game = og_game_game(Some(r#"{"seed":1}"#.into()));
+        let engine = value(og_engine_create(game, json!({"root": root}).to_string()))
+            .as_u64()
+            .unwrap() as u32;
+        let held = Rc::new(Cell::new(Held::default()));
+        answer(set_render_backend(
+            engine,
+            Some(Box::new(Recorder(held.clone()))),
+        ));
+        let g = Game { engine, held };
+        g.place("world.ogt");
+        for v in 1..=2 {
+            g.open(&versions.join(format!("v{v}")));
+            g.place(&format!("v{v}/place.ogt"));
+        }
+        value(host_impl::answer(og_world_set(
+            engine,
+            g.find("player"),
+            "og.StreamAnchor".into(),
+            json!({"reach":200}).to_string(),
+        )));
+        g.walk(150);
+        for _ in 0..8 {
+            g.frame();
+        }
+        assert!(g.loaded("v1") && g.loaded("v2"));
+        assert_eq!(g.held.get().instances, 0);
+        ready.store(true, Ordering::Release);
+        for _ in 0..2000 {
+            g.frame();
+            if og_loading_idle(engine) {
+                break;
+            }
+            std::thread::sleep(std::time::Duration::from_millis(1));
+        }
+        assert!(og_loading_idle(engine));
+        assert_eq!(g.held.get().sixteen, 1);
+        assert_eq!(g.held.get().thirty_two, 1);
+        assert!(g.held.get().instances >= 2);
+        assert!(og_engine_destroy(engine));
+    }
+    std::fs::remove_dir_all(base).unwrap();
+}
+
+/// Release-mode CPU profile of an independently cooked cell with four
+/// 1024-square material maps. The recorder consumes the real scene but
+/// does not upload it to a GPU; GPU frame budgets need a native GPU run too.
+#[test]
+#[ignore = "release timing repro; cooks four material maps"]
+fn cell_load_timing() {
+    let _lock = TEST_LOCK.lock().unwrap();
+    use std::time::Instant;
+    struct Profile;
+    thread_local! {
+        static DECODE: Cell<f64> = const { Cell::new(0.0) };
+    }
+    impl Hooks for Profile {
+        fn dispatch(&self, _: &Dispatch) -> Result<String, String> {
+            Ok(String::new())
+        }
+        fn now_ms(&self) -> f64 {
+            thread_local! { static START: Instant = Instant::now(); }
+            START.with(|s| s.elapsed().as_secs_f64() * 1000.0)
+        }
+        fn read_asset(&self, path: &str) -> Fetch<Vec<u8>> {
+            match std::fs::read(path) {
+                Ok(b) => Fetch::Ready(b),
+                Err(e) => Fetch::Failed(e.to_string()),
+            }
+        }
+        fn texture_work(
+            &self,
+            t: &og_bundle::runtime::CookedTexture,
+            f: Option<&og_render::TextureFormats>,
+        ) -> Option<TextureWork> {
+            if std::env::var("OG_CELL_SYNC").is_ok() {
+                return None;
+            }
+            let t = t.clone();
+            let f = f.cloned();
+            Some(Box::new(move || {
+                t.to_texture_source(f.as_ref()).map_err(|e| e.to_string())
+            }))
+        }
+        fn texture(
+            &self,
+            t: &og_bundle::runtime::CookedTexture,
+            f: Option<&og_render::TextureFormats>,
+        ) -> Fetch<og_render::TextureSource> {
+            let start = Instant::now();
+            let result = t.to_texture_source(f);
+            DECODE.with(|d| d.set(d.get() + start.elapsed().as_secs_f64() * 1000.0));
+            match result {
+                Ok(t) => Fetch::Ready(t),
+                Err(e) => Fetch::Failed(e.to_string()),
+            }
+        }
+    }
+    let base = PathBuf::from(env!("CARGO_TARGET_TMPDIR")).join("cell-load-timing");
+    let root = base.join("game");
+    cook(&root, &[("world.ogt", b"type scene\nversion 1\n---\nentity \"player\" {\n  Transform {\n    position 0 0 0\n  }\n  StreamAnchor {\n    reach 0\n  }\n}\n".to_vec())]);
+    let count: u32 = std::env::var("OG_CELL_TEXTURES")
+        .ok()
+        .map(|s| s.parse().unwrap())
+        .unwrap_or(4);
+    for (id, grouped, control) in [
+        ("plain", false, false),
+        ("grouped", true, false),
+        ("control", false, true),
+    ] {
+        let parcel_root = base.join(id);
+        parcel(&parcel_root, id, id, 100, grouped);
+        let mut files = Vec::new();
+        let mut model = "type model\nversion 1\n---\n".to_string();
+        for n in 0..count {
+            let mut seed = n + 1u32;
+            let image = image::RgbaImage::from_fn(1024, 1024, |x, y| {
+                seed ^= seed << 13;
+                seed ^= seed >> 17;
+                seed ^= seed << 5;
+                let mortar = y % 64 < 3 || (x + (y / 64 % 2) * 64) % 128 < 3;
+                let v = if mortar { 70 } else { 120 + (seed % 60) as u8 };
+                image::Rgba([v, v / 2, v / 3, 255])
+            });
+            let mut png = std::io::Cursor::new(Vec::new());
+            image.write_to(&mut png, image::ImageFormat::Png).unwrap();
+            files.push((format!("{id}/map{n}.png"), png.into_inner()));
+            model.push_str(&format!("material \"m{n}\" {{\n map \"map{n}.png\"\n}}\npart \"p{n}\" {{\n material \"m{n}\"\n sphereGeometry {{\n radius 1\n widthSegments 32\n heightSegments 24\n }}\n}}\n"));
+        }
+        files.push((format!("{id}/model.ogt"), model.into_bytes()));
+        let files: Vec<_> = files.iter().map(|(n, b)| (n.as_str(), b.clone())).collect();
+        cook(&parcel_root, &files);
+        for run in 0..5 {
+            set_hooks(Rc::new(Profile));
+            og_host_begin_bundle();
+            let game = og_game_game(Some(r#"{"seed":1}"#.into()));
+            let engine = value(og_engine_create(game, json!({"root": root}).to_string()))
+                .as_u64()
+                .unwrap() as u32;
+            let held = Rc::new(Cell::new(Held::default()));
+            answer(set_render_backend(
+                engine,
+                Some(Box::new(Recorder(held.clone()))),
+            ));
+            let g = Game { engine, held };
+            g.place("world.ogt");
+            g.open(&parcel_root);
+            g.place(&format!(
+                "{id}/{}",
+                if control { "content.ogt" } else { "place.ogt" }
+            ));
+            g.frame();
+            if control {
+                for _ in 0..1000 {
+                    g.frame();
+                    if og_loading_idle(engine) {
+                        break;
+                    }
+                    std::thread::sleep(std::time::Duration::from_millis(1));
+                }
+                assert!(og_loading_idle(engine));
+            }
+            trace_set(engine, true);
+            g.walk(100);
+            let mut max: f64 = 0.0;
+            DECODE.with(|d| d.set(0.0));
+            for _ in 0..600 {
+                let start = Instant::now();
+                g.frame();
+                max = max.max(start.elapsed().as_secs_f64() * 1000.0);
+                std::thread::sleep(std::time::Duration::from_millis(1));
+            }
+            assert!(control || g.loaded(id));
+            assert_eq!(g.held.get().textures, u64::from(count * 1024 * 1024 * 4));
+            let trace: Value = serde_json::from_str(&trace_take(engine, false)).unwrap();
+            let worker_ms: f64 = trace["events"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .filter(|s| s["cat"] == "texture transcode")
+                .map(|s| s["dur"].as_f64().unwrap() / 1000.0)
+                .sum();
+            trace_set(engine, false);
+            println!(
+                "CELL_TIMING count={count} grouped={grouped} control={control} run={run} max_ms={max:.3} decode_ms={:.3} worker_ms={worker_ms:.3} textures={}",
+                DECODE.with(Cell::get),
+                g.held.get().textures
+            );
+            assert!(og_engine_destroy(engine));
+        }
+    }
+    std::fs::remove_dir_all(base).unwrap();
+}
