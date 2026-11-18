@@ -1,0 +1,8 @@
+{
+  "fixed": [
+    {
+      "member": "og.ui",
+      "summary": "World component reference previews now frame their subject instead of an empty stage, with level label cameras, 35° ground views, padded paint bounds and faint metre-grid/subject-post context. Deliberately edge-clamped fixtures retain their original camera and full frame."
+    }
+  ]
+}

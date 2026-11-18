@@ -9,6 +9,85 @@ use og_ui::*;
 use support::*;
 
 #[test]
+fn world_previews_aim_at_the_subject_without_recentering_edge_fixtures() {
+    use og_core::glam::Vec3;
+    let (docs, messages) = engine_documents(&["src/ui/components"]);
+    for (w, h) in [(1280.0, 720.0), (390.0, 844.0)] {
+        for scale in [1.0, 1.5] {
+            let mut ui = ui_with_font(test_font_metrics());
+            ui.set_theme(Theme {
+                text_scale: scale,
+                ..*ui.theme()
+            });
+            let doc = docs
+                .iter()
+                .find(|d| d.path.ends_with("world/nameplate.svelte"))
+                .unwrap();
+            preview(&mut ui, &docs, doc, &messages, w, h);
+            let view = ui.world_view().unwrap();
+            let anchor = ui.world_anchor_points()[0];
+            let WorldTarget::Point(at) = anchor.target else {
+                panic!("point fixture")
+            };
+            let pivot = at + anchor.offset;
+            assert_eq!(view.forward, Vec3::NEG_Z, "level label preview");
+            assert!((view.eye - pivot - Vec3::Z * 6.0).length() < 0.001);
+            let (x, y, _) = view.project(pivot, w, h).unwrap();
+            assert!((x - w / 2.0).abs() < 0.01 && (y - h / 2.0).abs() < 0.01);
+
+            let mut ui = ui_with_font(test_font_metrics());
+            let doc = docs
+                .iter()
+                .find(|d| d.path.ends_with("world/telegraph.svelte"))
+                .unwrap();
+            preview(&mut ui, &docs, doc, &messages, w, h);
+            assert!(
+                (ui.world_view().unwrap().forward.y + 35.0_f32.to_radians().sin()).abs() < 0.001
+            );
+            assert!(ui.frame().grounds.iter().all(|g| g.corners.is_some()));
+
+            let doc = docs
+                .iter()
+                .find(|d| d.path.ends_with("world/path-line.svelte"))
+                .unwrap();
+            let mut ui = ui_with_font(test_font_metrics());
+            ui.set_theme(Theme {
+                text_scale: scale,
+                ..*ui.theme()
+            });
+            preview(&mut ui, &docs, doc, &messages, w, h);
+            let pad = 24.0 * scale;
+            assert!(!ui.frame().grounds.is_empty());
+            assert!(
+                ui.frame().grounds.iter().all(|g| {
+                    g.bounds.x >= pad
+                        && g.bounds.y >= pad
+                        && g.bounds.right() <= w - pad
+                        && g.bounds.bottom() <= h - pad
+                }),
+                "endpoint badges must fit beyond the ground square"
+            );
+
+            let doc = docs
+                .iter()
+                .find(|d| d.path.ends_with("world/waypoint.svelte"))
+                .unwrap();
+            let mut props = doc.props.clone();
+            props["at"] = serde_json::json!("200 0 0");
+            let edge = EngineDocument {
+                path: doc.path.clone(),
+                doc: doc.doc.clone(),
+                props,
+            };
+            let mut ui = ui_with_font(test_font_metrics());
+            preview(&mut ui, &docs, &edge, &messages, w, h);
+            assert_eq!(ui.world_view(), Some(support::view(w, h)));
+            assert!(ui.world_anchor_points().iter().any(|a| a.clamped));
+        }
+    }
+}
+
+#[test]
 fn document_preview_camera_keeps_the_ground_in_frame_on_a_phone() {
     for (w, h) in [(1280.0, 720.0), (390.0, 844.0)] {
         for x in [-6.0, 6.0] {

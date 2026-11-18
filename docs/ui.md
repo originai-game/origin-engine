@@ -2853,8 +2853,14 @@ unchecked, never passed.
 Document previews supply game-owned sample textures and an icon atlas; empty
 texture handles in a source fixture still mean no art in a game. Film overlays
 are reviewed over a sample still. The preview ground paints below world UI,
-not as an opaque screen panel over it, and the camera keeps the same horizontal
-world coverage on a phone. Missing art paints a neutral mark, never a slot path;
+not as an opaque screen panel over it. World document previews aim at the
+authored subject: labels use a level camera 6 m behind their anchor pivot;
+ground marks use a 35° downward view fitted to their world extent. Their
+reference frame crops actual paint plus the subject post with 24 px padding
+(36 at 150%). Edge-clamped fixtures keep their original camera and full frame.
+A faint metre grid, stronger every fifth line and fading by 30 m, and a 1.8 m
+subject post are renderer-only context below the component, not findings.
+World frames use the dark HUD ground `rgb(5 7 12)`. Missing art paints a neutral mark, never a slot path;
 its slot identifier remains in `art_slots` and probe detail, not visible text.
 
 ### 6.3 Acceptance and art sign-off
