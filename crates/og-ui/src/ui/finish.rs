@@ -456,13 +456,6 @@ impl Ui {
                 &mut self.layout.cache,
                 &mut self.layout.queries,
             );
-            // A new scroll container's `scroll-initial-target`: lay out
-            // again at its offset, so its first frame draws there.
-            if !self.interaction.state.initial_targets.is_empty()
-                && self.interaction.apply_initial_targets(&self.tree)
-            {
-                continue;
-            }
             // A `#id` link, followed this tick: its element scrolled into
             // view in the boxes just laid out, laid out again there.
             if std::mem::take(&mut self.docs.state_mut().scroll_to_target)
@@ -1014,6 +1007,14 @@ impl Ui {
             match self.settle_layout_queries(&mut settlement, &mut *resolve) {
                 Ok(true) => {}
                 Ok(false) => {
+                    // Initial targets need the final boxes, including screen
+                    // layers and positioned elements outside the flow tree.
+                    // Lay out again at the offset before drawing frame one.
+                    if !self.interaction.state.initial_targets.is_empty()
+                        && self.interaction.apply_initial_targets(&self.tree)
+                    {
+                        continue;
+                    }
                     // Scroll markers and buttons: the presses scroll, laid
                     // out again where they moved; the current marker follows.
                     if self.docs.library.scroll_controls && self.settle_scroll_controls() {

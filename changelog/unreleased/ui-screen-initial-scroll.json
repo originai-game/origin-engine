@@ -1,0 +1,5 @@
+{
+  "fixed": [
+    "New scroll containers in screen layers now honor scroll-initial-target on their first frame, after their viewport and content have been laid out."
+  ]
+}

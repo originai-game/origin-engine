@@ -1237,21 +1237,44 @@ fn a_scroller_starts_at_its_initial_target() {
 #Later { scroll-padding-top: 0; }
 #Added { scroll-margin-top: -40px; }
 </style>"#;
-    let mut d = crate::support::Doc::new(text, &[("more", serde_json::json!(false))]);
-    let offset = |d: &crate::support::Doc, id: &str| {
-        let path = d.get(id).path;
-        d.ui.scroll_state(&path)
-            .expect("a scroll container")
-            .offset_y
-    };
-    // The first frame Doc::new built.
-    let (list, six) = (d.get("List"), d.get("Six"));
-    assert_eq!(offset(&d, "List"), 185.0);
-    assert_eq!(six.y - list.y, 15.0, "drawn there on its first frame");
-    assert_eq!(offset(&d, "Tail"), 300.0, "clamped to its range");
-    assert_eq!(offset(&d, "Later"), 0.0);
-    d.set("more", serde_json::json!(true));
-    d.step(InputFrame::default());
-    assert!(d.el("Added").is_some());
-    assert_eq!(offset(&d, "Later"), 0.0, "only an initial position");
+    let text = text
+        .replace("<div id=\"Page\">", "<div>{#if $show}<div id=\"Page\">")
+        .replace("<style>", "{/if}</div><style>");
+    for (screen, later) in [(false, false), (true, false), (true, true)] {
+        let text = if screen {
+            text.replace(
+                "name=\"component\" content=\"t\"",
+                "name=\"screen\" content=\"t\" data-layer=\"menu\"",
+            )
+        } else {
+            text.to_owned()
+        };
+        let mut d = crate::support::Doc::new(
+            &text,
+            &[
+                ("more", serde_json::json!(false)),
+                ("show", serde_json::json!(!later)),
+            ],
+        );
+        if later {
+            d.put("show", serde_json::json!(true));
+            d.step(InputFrame::default());
+        }
+        let offset = |d: &crate::support::Doc, id: &str| {
+            let path = d.get(id).path;
+            d.ui.scroll_state(&path)
+                .expect("a scroll container")
+                .offset_y
+        };
+        // The first frame shown, in flow or in a screen layer.
+        assert_eq!(offset(&d, "List"), 185.0, "screen={screen}, later={later}");
+        let (list, six) = (d.get("List"), d.get("Six"));
+        assert_eq!(six.y - list.y, 15.0, "drawn there on its first frame");
+        assert_eq!(offset(&d, "Tail"), 300.0, "clamped to its range");
+        assert_eq!(offset(&d, "Later"), 0.0);
+        d.set("more", serde_json::json!(true));
+        d.step(InputFrame::default());
+        assert!(d.el("Added").is_some());
+        assert_eq!(offset(&d, "Later"), 0.0, "only an initial position");
+    }
 }
