@@ -57,6 +57,8 @@ string "rpg.menu.close" "閉じる"
 string "rpg.objective.name" "目的"
 # ── The sheet's fixture text (src/fixtures.ts `localized`).
 string "sheet.bagTitle" "バックパック"
+string "sheet.bagKicker" "インベントリ"
+string "sheet.bagCapacity" "36 / 48 枠"
 string "sheet.bagTabs.all.label" "すべて"
 string "sheet.bagTabs.weapons.label" "武器"
 string "sheet.bagTabs.armour.label" "防具"
