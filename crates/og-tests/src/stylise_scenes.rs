@@ -79,7 +79,7 @@ fn dusk_palette() -> Palette {
 }
 
 pub fn pixel_scene() -> Result<RenderScene, String> {
-    let mut scene = crate::fx_scenes::stylised_scene()?;
+    let mut scene = toon_square()?;
     scene.look.stylise.pixel = Some(PixelScale {
         height: 180,
         upscale: 0,
@@ -98,7 +98,7 @@ pub fn pixel_scene() -> Result<RenderScene, String> {
 }
 
 pub fn palette_scene() -> Result<RenderScene, String> {
-    let mut scene = crate::fx_scenes::stylised_scene()?;
+    let mut scene = toon_square()?;
     let palette = scene.add_palette(dusk_palette());
     scene.look.stylise.pixel = Some(PixelScale {
         height: 240,
@@ -118,7 +118,7 @@ pub fn palette_scene() -> Result<RenderScene, String> {
 }
 
 pub fn print_scene() -> RenderScene {
-    let mut scene = crate::physical_scenes::physical_scene();
+    let mut scene = curio_stall();
     scene.look.stylise.hatching = Some(Hatching {
         strength: 0.9,
         scale: 6.0,
@@ -141,7 +141,7 @@ pub fn print_scene() -> RenderScene {
 }
 
 pub fn halftone_scene() -> Result<RenderScene, String> {
-    let mut scene = crate::fx_scenes::stylised_scene()?;
+    let mut scene = toon_square()?;
     scene.look.stylise.halftone = Some(Halftone {
         strength: 1.0,
         size: 7.0,
@@ -156,7 +156,7 @@ pub fn halftone_scene() -> Result<RenderScene, String> {
 }
 
 pub fn halftone_surface_scene() -> Result<RenderScene, String> {
-    let mut scene = crate::fx_scenes::stylised_scene()?;
+    let mut scene = toon_square()?;
     scene.look.stylise.halftone = Some(Halftone {
         strength: 1.0,
         size: 9.0,
@@ -178,7 +178,7 @@ pub fn halftone_surface_scene() -> Result<RenderScene, String> {
 }
 
 pub fn paint_scene() -> RenderScene {
-    let mut scene = crate::physical_scenes::physical_scene();
+    let mut scene = curio_stall();
     scene.look.stylise.paint = Some(Paint {
         radius: 4.0,
         anisotropy: 0.6,
@@ -195,7 +195,7 @@ pub fn paint_scene() -> RenderScene {
 }
 
 pub fn bands_scene() -> Result<RenderScene, String> {
-    let mut scene = crate::fx_scenes::stylised_scene()?;
+    let mut scene = toon_square()?;
     scene.look.stylise.depth_bands = Some(DepthBands {
         count: 4,
         near: 4.0,
@@ -208,7 +208,7 @@ pub fn bands_scene() -> Result<RenderScene, String> {
 }
 
 pub fn retro_scene() -> RenderScene {
-    let mut scene = crate::physical_scenes::physical_scene();
+    let mut scene = curio_stall();
     scene.look.stylise.pixel = Some(PixelScale {
         height: 240,
         upscale: 0,
@@ -223,7 +223,7 @@ pub fn retro_scene() -> RenderScene {
 }
 
 pub fn material_scene() -> RenderScene {
-    let mut scene = crate::physical_scenes::physical_scene();
+    let mut scene = curio_stall();
     scene.look.stylise.material = MaterialStyle {
         toon: true,
         gradient_map: None,
@@ -244,40 +244,18 @@ pub fn material_scene() -> RenderScene {
 
 pub fn ink_depth_scene() -> RenderScene {
     let mut scene = RenderScene::new();
-    // One flat colour everywhere (unlit), so the tone has no edge to ink.
-    let flat = scene.add_standard_material(StandardMaterial::basic(Vec3::new(0.85, 0.62, 0.38)));
-    let floor = scene.add_mesh(shapes::plane(40.0, 1.0));
+    // A papercut of the ruins: one flat colour everywhere (unlit), the
+    // ground and the sky the same, so the tone has no edge to ink.
+    let paper = Vec3::new(0.85, 0.62, 0.38);
+    let floor = scene.add_mesh(shapes::plane(400.0, 1.0));
+    let flat = scene.add_standard_material(StandardMaterial::basic(paper));
     scene.add_instance(floor, flat, Mat4::IDENTITY);
-    let sphere = scene.add_mesh(shapes::sphere(48, 32));
-    let cube = scene.add_mesh(shapes::cuboid(Vec3::splat(1.2)));
-    // Silhouettes: a sphere in front of a larger one, both on the floor.
-    scene.add_instance(
-        sphere,
-        flat,
-        Mat4::from_translation(Vec3::new(-1.9, 0.8, -0.4)) * Mat4::from_scale(Vec3::splat(1.6)),
-    );
-    scene.add_instance(
-        sphere,
-        flat,
-        Mat4::from_translation(Vec3::new(-1.0, 0.5, 1.1)),
-    );
-    // Creases: two turned boxes, one on the other.
-    scene.add_instance(
-        cube,
-        flat,
-        Mat4::from_translation(Vec3::new(1.6, 0.6, -0.2)) * Mat4::from_rotation_y(0.6),
-    );
-    scene.add_instance(
-        cube,
-        flat,
-        Mat4::from_translation(Vec3::new(1.6, 1.62, -0.2))
-            * Mat4::from_rotation_y(1.25)
-            * Mat4::from_scale(Vec3::splat(0.7)),
-    );
-    scene.lighting.environment.background = Background::Color(Vec3::new(0.85, 0.62, 0.38));
+    ruins(&mut scene);
+    restyle_all(&mut scene, |m| *m = StandardMaterial::basic(paper));
+    scene.lighting.environment.background = Background::Color(paper);
     scene.frame.camera = Camera {
-        position: Vec3::new(0.0, 3.0, 7.0),
-        target: Vec3::new(0.0, 0.6, 0.0),
+        position: Vec3::new(1.2, 1.7, 6.5),
+        target: Vec3::new(-0.3, 2.4, -8.0),
         exposure: Exposure::linear(1.0),
         ..Default::default()
     };
@@ -321,47 +299,39 @@ fn paper_grain() -> og_render::TextureData {
 }
 
 pub fn surface_scene() -> RenderScene {
+    use crate::kit::prop;
     let mut scene = RenderScene::new();
-    let clay = scene.add_standard_material(StandardMaterial {
-        color: Vec3::new(0.8, 0.78, 0.74),
-        roughness: 0.9,
-        ..Default::default()
-    });
-    let floor = scene.add_mesh(shapes::plane(60.0, 1.0));
-    scene.add_instance(floor, clay, Mat4::IDENTITY);
-    let sphere = scene.add_mesh(shapes::sphere(64, 48));
-    let cube = scene.add_mesh(shapes::cuboid(Vec3::ONE));
-    // A large sphere, a turned box near the camera, a small sphere on a
-    // block, and a far sphere: strokes on round and flat forms at several
-    // distances.
-    scene.add_instance(
-        sphere,
-        clay,
-        Mat4::from_translation(Vec3::new(-1.6, 1.3, -0.6)) * Mat4::from_scale(Vec3::splat(2.6)),
-    );
-    scene.add_instance(
-        cube,
-        clay,
-        Mat4::from_translation(Vec3::new(1.7, 0.6, 1.4))
-            * Mat4::from_rotation_y(0.55)
-            * Mat4::from_scale(Vec3::splat(1.2)),
-    );
-    scene.add_instance(
-        cube,
-        clay,
-        Mat4::from_translation(Vec3::new(2.4, 0.5, -2.2))
-            * Mat4::from_scale(Vec3::new(1.4, 1.0, 1.4)),
-    );
-    scene.add_instance(
-        sphere,
-        clay,
-        Mat4::from_translation(Vec3::new(2.4, 1.55, -2.2)),
-    );
-    scene.add_instance(
-        sphere,
-        clay,
-        Mat4::from_translation(Vec3::new(-5.0, 1.5, -12.0)) * Mat4::from_scale(Vec3::splat(3.0)),
-    );
+    // A pencil study of a market corner: a row of houses, a stall's wares,
+    // a column and a boulder by the camera, pines and the watchtower far
+    // off, all of one clay (the drawing's tone is the light's).
+    let floor = scene.add_mesh(shapes::plane(240.0, 1.0));
+    let ground = scene.add_standard_material(StandardMaterial::default());
+    scene.add_instance(floor, ground, Mat4::IDENTITY);
+    let house = prop(&mut scene, "townhouse");
+    for (k, x) in [-8.6f32, -0.8, 7.0].into_iter().enumerate() {
+        house.place(
+            &mut scene,
+            Vec3::new(x, 0.0, -8.0),
+            0.0,
+            11.0 + 1.5 * k as f32,
+        );
+    }
+    crate::lighting_scenes::wares(&mut scene, Vec3::new(1.6, 0.0, -2.0), -0.35);
+    prop(&mut scene, "column").place(&mut scene, Vec3::new(-2.8, 0.0, 1.2), 0.3, 3.4);
+    prop(&mut scene, "boulder").place(&mut scene, Vec3::new(-1.2, 0.0, 3.0), 0.8, 0.9);
+    prop(&mut scene, "streetlamp").place(&mut scene, Vec3::new(4.6, 0.0, -0.5), 0.0, 4.2);
+    let pine = prop(&mut scene, "pine");
+    for k in 0..6 {
+        let h = |n: i32| crate::fx_scenes::hash2(k, n, 0x3c9);
+        let at = Vec3::new(
+            -30.0 + 12.0 * k as f32 + h(0) * 4.0,
+            0.0,
+            -34.0 - h(1) * 8.0,
+        );
+        pine.place(&mut scene, at, h(2) * 6.0, 11.0 + h(3) * 5.0);
+    }
+    prop(&mut scene, "watchtower").place(&mut scene, Vec3::new(-16.0, 0.0, -48.0), 1.1, 22.0);
+    restyle_all(&mut scene, clay);
     let paper = scene.add_texture(paper_grain());
     scene.lighting.light = DirectionalLight {
         direction_to_light: Vec3::new(0.5, 0.7, 0.45),
@@ -370,8 +340,8 @@ pub fn surface_scene() -> RenderScene {
     };
     scene.lighting.environment.background = Background::Color(Vec3::new(0.86, 0.84, 0.78));
     scene.frame.camera = Camera {
-        position: Vec3::new(0.5, 3.2, 7.5),
-        target: Vec3::new(0.0, 0.9, -1.0),
+        position: Vec3::new(0.6, 2.4, 8.5),
+        target: Vec3::new(-0.2, 2.2, -4.0),
         exposure: Exposure::linear(0.9),
         ..Default::default()
     };
@@ -409,11 +379,33 @@ pub fn surface_scene() -> RenderScene {
     scene
 }
 
+/// A drawing's clay: the material's own shape (its normals) in one pale
+/// colour, no albedo map, no metal, no glow.
+fn clay(m: &mut StandardMaterial) {
+    m.color = Vec3::new(0.8, 0.78, 0.74);
+    m.map = 0;
+    m.metalness = 0.0;
+    m.metalnessMap = 0;
+    m.emissive = Vec3::ZERO;
+}
+
 /// `stylise-object`: [`surface_scene`] in object space with a tilted box
 /// and a scaled beam.
 pub fn object_scene() -> RenderScene {
     let mut scene = surface_scene();
-    let clay = scene.add_standard_material(StandardMaterial {
+    // A crate fallen off the stack, tilted on two axes against the
+    // boulder, and a beam (a unit box scaled 4 x 0.4 x 0.5) laid across
+    // the setts.
+    let crate_ = prop_styled(&mut scene, "crate", clay);
+    crate_.place_by(
+        &mut scene,
+        Mat4::from_scale_rotation_translation(
+            Vec3::ONE,
+            Quat::from_rotation_y(-0.5) * Quat::from_rotation_x(0.45) * Quat::from_rotation_z(0.3),
+            Vec3::new(0.4, 0.45, 2.4),
+        ) * crate_.transform(Vec3::new(0.0, -0.35, 0.0), 0.0, 0.7),
+    );
+    let beam = scene.add_standard_material(StandardMaterial {
         color: Vec3::new(0.8, 0.78, 0.74),
         roughness: 0.9,
         ..Default::default()
@@ -421,20 +413,11 @@ pub fn object_scene() -> RenderScene {
     let cube = scene.add_mesh(shapes::cuboid(Vec3::ONE));
     scene.add_instance(
         cube,
-        clay,
-        Mat4::from_scale_rotation_translation(
-            Vec3::splat(1.1),
-            Quat::from_rotation_y(-0.5) * Quat::from_rotation_x(0.45) * Quat::from_rotation_z(0.3),
-            Vec3::new(-0.6, 0.85, 2.6),
-        ),
-    );
-    scene.add_instance(
-        cube,
-        clay,
+        beam,
         Mat4::from_scale_rotation_translation(
             Vec3::new(4.0, 0.4, 0.5),
-            Quat::from_rotation_y(0.35),
-            Vec3::new(-3.6, 0.2, 1.4),
+            Quat::from_rotation_y(-0.4),
+            Vec3::new(2.8, 0.2, 3.0),
         ),
     );
     for space in [
@@ -546,14 +529,56 @@ pub fn outline_voxels_scene() -> RenderScene {
         roughness: 0.85,
         ..Default::default()
     });
-    let ground = scene.add_standard_material(StandardMaterial {
-        color: Vec3::new(0.32, 0.46, 0.28),
-        roughness: 1.0,
+    // The sea round the island.
+    let sea = scene.add_standard_material(StandardMaterial {
+        color: Vec3::new(0.02, 0.17, 0.3),
+        roughness: 0.5,
         ..Default::default()
     });
-    let floor = scene.add_mesh(shapes::plane(40.0, 1.0));
-    scene.add_instance(floor, ground, Mat4::IDENTITY);
-    // The tree: a trunk two voxels wide, a canopy of 9 x 7 x 9 rounded and
+    let water = scene.add_mesh(shapes::plane(200.0, 1.0));
+    scene.add_instance(water, sea, Mat4::from_translation(Vec3::Y * 0.3));
+    // The island: columns of 0.4 m voxels in terraces one to four high,
+    // sand at the shore, grass on top, earth down the steps.
+    const V: f32 = 0.4;
+    const ISLAND: [i32; 3] = [36, 4, 28];
+    let height = |x: i32, z: i32| {
+        let dx = (x as f32 + 0.5 - 18.0) / 18.0;
+        let dz = (z as f32 + 0.5 - 14.0) / 14.0;
+        let r = (dx * dx + dz * dz).sqrt() + (cell_hash(x / 2, 7, z / 2) - 0.5) * 0.12;
+        match r {
+            r if r < 0.42 => 4,
+            r if r < 0.66 => 3,
+            r if r < 0.84 => 2,
+            r if r < 1.0 => 1,
+            _ => 0,
+        }
+    };
+    let island = scene.add_mesh(voxel_mesh(
+        ISLAND,
+        V,
+        |x, y, z| y < height(x, z),
+        |x, y, z| {
+            let s = 0.85 + 0.15 * cell_hash(x, y, z);
+            let h = height(x, z);
+            if y + 1 < h {
+                [0.42 * s, 0.27 * s, 0.15 * s, 1.0]
+            } else if h == 1 {
+                [0.8 * s, 0.66 * s, 0.4 * s, 1.0]
+            } else {
+                [0.22 * s, 0.52 * s, 0.16 * s, 1.0]
+            }
+        },
+    ));
+    scene.add_instance(island, lit, Mat4::IDENTITY);
+    // Where a thing stands on the island at world (x, z).
+    let on = |x: f32, z: f32| {
+        let (cx, cz) = (
+            (x / V + ISLAND[0] as f32 * 0.5).floor() as i32,
+            (z / V + ISLAND[2] as f32 * 0.5).floor() as i32,
+        );
+        Vec3::new(x, height(cx, cz) as f32 * V, z)
+    };
+    // The trees: a trunk two voxels wide, a canopy of 9 x 7 x 9 rounded and
     // ragged by the hash.
     let tree = scene.add_mesh(voxel_mesh(
         [9, 14, 9],
@@ -576,12 +601,21 @@ pub fn outline_voxels_scene() -> RenderScene {
             }
         },
     ));
-    scene.add_instance(
-        tree,
-        lit,
-        Mat4::from_translation(Vec3::new(-1.6, 0.0, -0.4)) * Mat4::from_rotation_y(0.4),
-    );
-    // A slime-like mound of 0.15 m voxels.
+    for (x, z, yaw, s) in [
+        (-2.2, -1.6, 0.4, 1.0),
+        (-3.6, 0.6, 1.3, 0.8),
+        (1.0, -2.8, 2.1, 1.15),
+        (4.2, -1.0, 0.9, 0.85),
+    ] {
+        scene.add_instance(
+            tree,
+            lit,
+            Mat4::from_translation(on(x, z))
+                * Mat4::from_rotation_y(yaw)
+                * Mat4::from_scale(Vec3::splat(s)),
+        );
+    }
+    // Slime-like mounds of 0.15 m voxels.
     let slime = scene.add_mesh(voxel_mesh(
         [7, 5, 7],
         0.15,
@@ -591,12 +625,14 @@ pub fn outline_voxels_scene() -> RenderScene {
         },
         |_, y, _| [0.35 + 0.05 * y as f32, 0.75, 0.42, 1.0],
     ));
-    scene.add_instance(
-        slime,
-        lit,
-        Mat4::from_translation(Vec3::new(0.2, 0.0, 1.2)) * Mat4::from_rotation_y(-0.3),
-    );
-    // A stepped block of 0.4 m cubes: a staircase three high.
+    for (x, z, yaw) in [(0.2, 1.4, -0.3), (2.0, 2.4, 0.6)] {
+        scene.add_instance(
+            slime,
+            lit,
+            Mat4::from_translation(on(x, z)) * Mat4::from_rotation_y(yaw),
+        );
+    }
+    // Stone steps of 0.4 m cubes, three high, up the terrace's face.
     let steps = scene.add_mesh(voxel_mesh(
         [3, 3, 2],
         0.4,
@@ -609,9 +645,9 @@ pub fn outline_voxels_scene() -> RenderScene {
     scene.add_instance(
         steps,
         lit,
-        Mat4::from_translation(Vec3::new(1.9, 0.0, -0.6)) * Mat4::from_rotation_y(-0.5),
+        Mat4::from_translation(on(3.4, 1.8)) * Mat4::from_rotation_y(-0.5),
     );
-    // A smooth sphere for comparison.
+    // A smooth (welded) orb on the top terrace for comparison.
     let sphere = scene.add_mesh(shapes::sphere(48, 32));
     let clay = scene.add_standard_material(StandardMaterial {
         color: Vec3::new(0.8, 0.5, 0.35),
@@ -621,7 +657,7 @@ pub fn outline_voxels_scene() -> RenderScene {
     scene.add_instance(
         sphere,
         clay,
-        Mat4::from_translation(Vec3::new(1.4, 0.45, 1.5)) * Mat4::from_scale(Vec3::splat(0.9)),
+        Mat4::from_translation(on(-0.6, 0.2) + Vec3::Y * 0.45) * Mat4::from_scale(Vec3::splat(0.9)),
     );
     scene.look.stylise.material = MaterialStyle {
         toon: true,
@@ -640,8 +676,8 @@ pub fn outline_voxels_scene() -> RenderScene {
     scene.lighting.environment.intensity = 0.8;
     scene.lighting.environment.background = Background::Color(Vec3::new(0.55, 0.68, 0.82));
     scene.frame.camera = Camera {
-        position: Vec3::new(0.0, 4.2, 5.6),
-        target: Vec3::new(0.0, 0.8, 0.0),
+        position: Vec3::new(1.5, 7.8, 9.8),
+        target: Vec3::new(0.0, 1.0, -0.2),
         exposure: Exposure::linear(0.8),
         ..Default::default()
     };
@@ -659,26 +695,46 @@ pub fn outline_voxels_scene() -> RenderScene {
 /// depth prepass) (lantern-vale FINDINGS #16).
 pub fn toon_physical_scene() -> RenderScene {
     let mut scene = RenderScene::new();
-    let floor_material = scene.add_standard_material(StandardMaterial {
-        color: Vec3::new(0.55, 0.55, 0.6),
-        roughness: 0.9,
-        ..Default::default()
-    });
-    let floor = scene.add_mesh(shapes::plane(40.0, 1.0));
-    scene.add_instance(floor, floor_material, Mat4::IDENTITY);
-    // A striped panel behind the jelly, so its refraction shows.
-    let stripes = scene.add_texture(crate::physical_scenes::stripes(128, 8.0, false));
+    // A fairground booth in the market square: a plank deck, two posts and
+    // an awning, and a striped canvas behind the four prize balls.
+    crate::lighting_scenes::market_square(&mut scene);
+    crate::lighting_scenes::wares(&mut scene, Vec3::new(-6.0, 0.0, 0.5), 0.6);
+    crate::kit::prop(&mut scene, "streetlamp").place(
+        &mut scene,
+        Vec3::new(-4.9, 0.0, -2.6),
+        0.0,
+        4.2,
+    );
+    let planks = crate::kit::surface(&mut scene, "planks");
+    const DECK: f32 = 0.12;
+    for (min, max) in [
+        (Vec3::new(-3.8, 0.0, -1.6), Vec3::new(3.8, DECK, 1.4)),
+        (Vec3::new(-3.6, DECK, -1.45), Vec3::new(-3.35, 3.1, -1.2)),
+        (Vec3::new(3.35, DECK, -1.45), Vec3::new(3.6, 3.1, -1.2)),
+        (Vec3::new(-3.8, 3.1, -1.7), Vec3::new(3.8, 3.3, 0.4)),
+    ] {
+        let mesh = scene.add_mesh(crate::kit::block(min, max, 1.0));
+        scene.add_instance(mesh, planks, Mat4::IDENTITY);
+    }
+    // The canvas behind the jelly, red and cream stripes, so its
+    // refraction shows.
+    let stripes = scene.add_texture(crate::scenes::texture(128, ColorSpace::Srgb, |u, _| {
+        if (u * 8.0).fract() < 0.5 {
+            [196, 38, 34, 255]
+        } else {
+            [240, 228, 200, 255]
+        }
+    }));
     let panel_material = scene.add_standard_material(StandardMaterial {
-        color: Vec3::new(0.9, 0.85, 0.7),
         map: stripes.slot(),
         roughness: 0.8,
         ..Default::default()
     });
-    let panel = scene.add_mesh(shapes::cuboid(Vec3::new(6.4, 1.6, 0.1)));
+    let panel = scene.add_mesh(shapes::cuboid(Vec3::new(6.7, 2.98, 0.1)));
     scene.add_instance(
         panel,
         panel_material,
-        Mat4::from_translation(Vec3::new(0.0, 0.8, -1.2)),
+        Mat4::from_translation(Vec3::new(0.0, DECK + 1.49, -1.3)),
     );
     let sphere = scene.add_mesh(shapes::sphere(64, 48));
     let red = Vec3::new(0.7, 0.08, 0.06);
@@ -717,7 +773,7 @@ pub fn toon_physical_scene() -> RenderScene {
         scene.add_instance(
             sphere,
             material,
-            Mat4::from_translation(Vec3::new(-2.4 + 1.6 * i as f32, 0.6, 0.0))
+            Mat4::from_translation(Vec3::new(-2.4 + 1.6 * i as f32, DECK + 0.6, 0.0))
                 * Mat4::from_scale(Vec3::splat(1.2)),
         );
     }
@@ -733,18 +789,12 @@ pub fn toon_physical_scene() -> RenderScene {
         outline_width: 2.0,
         ..Default::default()
     };
-    let sun = Vec3::new(-0.5, 0.75, 0.45);
-    scene.lighting.light = DirectionalLight {
-        direction_to_light: sun,
-        intensity: 3.0,
-        ..Default::default()
-    };
-    scene.lighting.environment.sky.sun_direction = sun;
-    scene.lighting.environment.intensity = 0.9;
+    crate::sky_scenes::physical_light_under(&mut scene, Vec3::new(-0.5, 0.75, 0.45));
     scene.frame.camera = Camera {
-        position: Vec3::new(0.0, 2.0, 5.4),
-        target: Vec3::new(0.0, 0.6, 0.0),
-        exposure: Exposure::linear(0.7),
+        position: Vec3::new(0.4, 1.9, 6.2),
+        target: Vec3::new(0.0, 1.2, 0.0),
+        far: 2500.0,
+        exposure: Exposure::Manual { ev: 0.0 },
         ..Default::default()
     };
     scene
@@ -904,42 +954,11 @@ pub fn untonemapped_sprites_scene() -> RenderScene {
 /// through rose and amber to gold, never grey (lantern-vale FINDINGS #19).
 pub fn bands_tint_scene() -> RenderScene {
     let mut scene = RenderScene::new();
-    let ground = scene.add_standard_material(StandardMaterial {
-        color: Vec3::new(0.6, 0.6, 0.58),
-        roughness: 0.9,
-        ..Default::default()
-    });
-    let floor = scene.add_mesh(shapes::plane(120.0, 1.0));
-    scene.add_instance(floor, ground, Mat4::IDENTITY);
-    let cube = scene.add_mesh(shapes::cuboid(Vec3::ONE));
-    let hues = [
-        Vec3::new(0.75, 0.2, 0.15),
-        Vec3::new(0.2, 0.55, 0.25),
-        Vec3::new(0.2, 0.35, 0.8),
-        Vec3::new(0.85, 0.75, 0.3),
-    ];
-    let materials: Vec<_> = hues
-        .iter()
-        .map(|&color| {
-            scene.add_standard_material(StandardMaterial {
-                color,
-                roughness: 0.7,
-                ..Default::default()
-            })
-        })
-        .collect();
-    // Two rows of blocks along -z, every 4 m, alternating heights.
-    for k in 0..10 {
-        for (side, x) in [(0, -3.0f32), (1, 3.0)] {
-            let h = 1.5 + ((k + side) % 3) as f32;
-            scene.add_instance(
-                cube,
-                materials[(k + side * 2) % materials.len()],
-                Mat4::from_translation(Vec3::new(x, h * 0.5, 2.0 - 4.0 * k as f32))
-                    * Mat4::from_scale(Vec3::new(2.0, h, 2.0)),
-            );
-        }
-    }
+    // The old town's high street on a summer morning, a stall at the
+    // camera's feet, the houses and lamps receding to the watchtower.
+    crate::lighting_scenes::high_street(&mut scene, 120.0);
+    crate::lighting_scenes::wares(&mut scene, Vec3::new(-2.0, 0.0, 4.5), 0.4);
+    crate::lighting_scenes::wares(&mut scene, Vec3::new(2.4, 0.0, -14.0), -0.3);
     scene.look.stylise.depth_bands = Some(DepthBands {
         count: 5,
         near: 3.0,
@@ -948,18 +967,12 @@ pub fn bands_tint_scene() -> RenderScene {
         far_color: [1.0, 0.62, 0.24],
         flatten: 0.0,
     });
-    let sun = Vec3::new(-0.6, 0.6, 0.5);
-    scene.lighting.light = DirectionalLight {
-        direction_to_light: sun,
-        intensity: 3.0,
-        ..Default::default()
-    };
-    scene.lighting.environment.sky.sun_direction = sun;
-    scene.lighting.environment.intensity = 0.8;
+    crate::sky_scenes::physical_light_under(&mut scene, Vec3::new(-0.6, 0.6, 0.5));
     scene.frame.camera = Camera {
-        position: Vec3::new(0.0, 3.0, 8.0),
-        target: Vec3::new(0.0, 1.2, -10.0),
-        exposure: Exposure::linear(0.8),
+        position: Vec3::new(0.8, 2.6, 10.0),
+        target: Vec3::new(-0.6, 3.0, -30.0),
+        far: 2500.0,
+        exposure: Exposure::Manual { ev: 0.0 },
         ..Default::default()
     };
     scene
@@ -994,6 +1007,57 @@ pub fn outline_ground_scene(width: f32, distance: f32) -> RenderScene {
             Mat4::from_translation(Vec3::new(5.0, 0.45, z)),
         );
     }
+    // The rival's car ahead in the right lane, its tail lamps lit.
+    let car = crate::kit::prop(&mut scene, "car");
+    car.place(
+        &mut scene,
+        Vec3::new(2.0, 0.0, -10.0),
+        std::f32::consts::FRAC_PI_2,
+        1.45,
+    );
+    let lamp = scene.add_mesh(shapes::cuboid(Vec3::new(0.35, 0.1, 0.04)));
+    let tail = scene.add_standard_material(StandardMaterial {
+        color: Vec3::ZERO,
+        emissive: Vec3::new(1.0, 0.08, 0.2),
+        emissiveIntensity: 6.0,
+        ..Default::default()
+    });
+    for x in [1.45, 2.55] {
+        scene.add_instance(
+            lamp,
+            tail,
+            Mat4::from_translation(Vec3::new(x, 0.78, -8.44)),
+        );
+    }
+    // Pylons past the barriers, and the city's towers beyond the right
+    // side: the left half stays the ground alone to its far edge.
+    let pylon = scene.add_mesh(shapes::cuboid(Vec3::new(0.3, 7.0, 0.3)));
+    let head = scene.add_mesh(shapes::cuboid(Vec3::new(1.6, 0.12, 0.3)));
+    let neon = scene.add_standard_material(StandardMaterial {
+        color: Vec3::ZERO,
+        emissive: Vec3::new(1.0, 0.25, 0.85),
+        emissiveIntensity: 5.0,
+        ..Default::default()
+    });
+    for k in 0..8 {
+        let z = -10.0 - 16.0 * k as f32;
+        scene.add_instance(pylon, wall, Mat4::from_translation(Vec3::new(6.4, 3.5, z)));
+        scene.add_instance(head, neon, Mat4::from_translation(Vec3::new(5.8, 7.0, z)));
+    }
+    let tower = scene.add_mesh(shapes::cuboid(Vec3::ONE));
+    for k in 0..14 {
+        let h = |n: i32| crate::fx_scenes::hash2(k, n, 0x9e1);
+        let (w, tall) = (20.0 + h(0) * 30.0, 40.0 + h(1) * 140.0);
+        scene.add_instance(
+            tower,
+            wall,
+            Mat4::from_translation(Vec3::new(
+                40.0 + 45.0 * k as f32 + h(2) * 20.0,
+                tall * 0.5,
+                -260.0 - h(3) * 300.0,
+            )) * Mat4::from_scale(Vec3::new(w, tall, w)),
+        );
+    }
     scene.look.stylise.material = MaterialStyle {
         outline_color: [0.25, 0.94, 1.0],
         outline_width: width,
@@ -1016,4 +1080,353 @@ pub fn outline_ground_scene(width: f32, distance: f32) -> RenderScene {
         ..Default::default()
     };
     scene
+}
+
+// ---------------------------------------------------------------------------
+// The sets the stylisation primitives are drawn over. Each is a place a
+// stylised game would show; the primitive's settings are the scene's own.
+// ---------------------------------------------------------------------------
+
+/// Every material of `scene` so far, changed by `f` (a set given one look:
+/// toon, one flat colour, clay).
+fn restyle_all(scene: &mut RenderScene, f: impl Fn(&mut StandardMaterial)) {
+    for h in scene.material_handles() {
+        let mut m = *scene.standard_material(h).expect("a live material");
+        f(&mut m);
+        scene.set_standard_material(h, m);
+    }
+}
+
+/// The kit prop `name`, its materials changed by `f`.
+fn prop_styled(
+    scene: &mut RenderScene,
+    name: &str,
+    f: impl Fn(&mut StandardMaterial),
+) -> crate::kit::Prop {
+    let p = crate::kit::prop(scene, name);
+    for &(_, h) in p.parts() {
+        let mut m = *scene.standard_material(h).expect("a kit material");
+        f(&mut m);
+        scene.set_standard_material(h, m);
+    }
+    p
+}
+
+/// `stylised` and the screen primitives' set (pixel, palette, halftone,
+/// halftone-surface, bands): a cel-shaded corner of the old town's market
+/// square on a bright afternoon. Every material is toon through a
+/// four-band ramp with a rim and a hull outline; the trickster is half
+/// gone through a glowing dissolve, as when it teleports, a barrel by the
+/// stall flashes white from a hit, and a gold ring pickup turns over the
+/// setts. A screen outline and bloom finish the look.
+pub fn toon_square() -> Result<RenderScene, String> {
+    use crate::lighting_scenes::{market_square, wares};
+    let mut scene = RenderScene::new();
+    market_square(&mut scene);
+    wares(&mut scene, Vec3::new(4.2, 0.0, -1.5), -0.5);
+    wares(&mut scene, Vec3::new(-9.0, 0.0, -11.0), 0.4);
+    let lamp = crate::kit::prop(&mut scene, "streetlamp");
+    lamp.place(&mut scene, Vec3::new(-4.6, 0.0, -2.5), 0.4, 4.2);
+    lamp.place(&mut scene, Vec3::new(9.0, 0.0, -14.0), 0.0, 4.2);
+    let barrel = crate::kit::prop(&mut scene, "winebarrel");
+    barrel.place(&mut scene, Vec3::new(1.4, 0.0, 2.2), 0.7, 1.0);
+    let ramp = crate::fx_scenes::ramp_texture(&mut scene);
+    let outline = Vec3::new(0.05, 0.04, 0.08);
+    restyle_all(&mut scene, |m| {
+        m.toon = 1;
+        m.gradientMap = ramp.slot();
+        m.rimColor = Vec3::new(1.0, 0.95, 0.9);
+        m.rimIntensity = 0.35;
+        m.rimPower = 3.5;
+        m.outlineColor = outline;
+        m.outlineWidth = 2.0;
+    });
+    // The hit barrel: the same toon, flashed.
+    let flashed = prop_styled(&mut scene, "winebarrel", |m| {
+        m.toon = 1;
+        m.gradientMap = ramp.slot();
+        m.outlineColor = outline;
+        m.outlineWidth = 3.0;
+        m.flash = 0.65;
+        m.flashColor = Vec3::ONE;
+    });
+    flashed.place(&mut scene, Vec3::new(2.5, 0.0, 1.4), -0.4, 1.0);
+    // The ring pickup, upright and a little turned.
+    let ring = scene.add_mesh(crate::fx_scenes::torus(0.45, 0.12, 64, 24));
+    let gold = scene.add_standard_material(StandardMaterial {
+        color: Vec3::new(1.0, 0.75, 0.2),
+        roughness: 0.4,
+        toon: 1,
+        gradientMap: ramp.slot(),
+        rimColor: Vec3::new(1.0, 0.95, 0.9),
+        rimIntensity: 0.6,
+        rimPower: 3.5,
+        emissive: Vec3::new(1.0, 0.7, 0.2),
+        emissiveIntensity: 0.4,
+        outlineColor: outline,
+        outlineWidth: 3.0,
+        ..Default::default()
+    });
+    scene.add_instance(
+        ring,
+        gold,
+        Mat4::from_translation(Vec3::new(-2.6, 1.3, 2.4))
+            * Mat4::from_rotation_y(0.5)
+            * Mat4::from_rotation_x(std::f32::consts::FRAC_PI_2),
+    );
+    // The trickster, half dissolved.
+    let model = crate::scenes::load("trickster.glb")?;
+    let parts = model.add_to(&mut scene);
+    for &(_, mat) in &parts.parts {
+        let mut m = *scene.standard_material(mat).expect("a material");
+        m.toon = 1;
+        m.gradientMap = ramp.slot();
+        m.dissolve = 0.45;
+        m.dissolveScale = 6.0;
+        m.dissolveEdgeColor = Vec3::new(1.0, 3.0, 6.0);
+        m.dissolveEdgeWidth = 0.08;
+        m.rimIntensity = 0.4;
+        m.outlineWidth = 2.0;
+        m.outlineColor = outline;
+        scene.set_standard_material(mat, m);
+    }
+    let scale = 1.8 / (model.max - model.min).max_element().max(1e-3);
+    parts.instance(
+        &mut scene,
+        Mat4::from_translation(Vec3::new(-0.6, -model.min.y * scale, 1.2))
+            * Mat4::from_rotation_y(crate::scenes::TRICKSTER_TO_Z + 0.35)
+            * Mat4::from_scale(Vec3::splat(scale)),
+    );
+    crate::sky_scenes::physical_light_under(&mut scene, Vec3::new(0.55, 0.7, 0.45));
+    scene.look.post.outline = Some(og_render::Outline {
+        width: 1.5,
+        ..Default::default()
+    });
+    scene.look.post.bloom = Some(og_render::Bloom::default());
+    scene.frame.camera = Camera {
+        position: Vec3::new(1.2, 1.6, 6.5),
+        target: Vec3::new(-0.6, 1.3, -4.0),
+        far: 2500.0,
+        exposure: Exposure::Manual { ev: 0.0 },
+        ..Default::default()
+    };
+    Ok(scene)
+}
+
+/// The physical-materials set (print, paint, retro, material): a curio
+/// seller's stall in the market square, close up. On a linen cloth
+/// (sheen) stand clear, frosted and amber glass orbs, a cut gem of high
+/// `ior` and a lantern of striped glass (`transmissionMap`), a black
+/// pearl and a polished orb under a thin film (iridescence) on a pink
+/// velvet cushion, and a brushed silver urn (anisotropy); behind it the
+/// seller's lacquered car (clearcoat). The stall's planks, the crates and
+/// the town round it are plain lit materials.
+pub fn curio_stall() -> RenderScene {
+    use crate::physical_scenes::{ramp, stripes};
+    let mut scene = RenderScene::new();
+    crate::lighting_scenes::market_square(&mut scene);
+    crate::lighting_scenes::wares(&mut scene, Vec3::new(-3.6, 0.0, -1.0), 0.3);
+    let planks = crate::kit::surface(&mut scene, "planks");
+    let table = scene.add_mesh(crate::kit::block(
+        Vec3::new(-1.5, 0.0, -0.55),
+        Vec3::new(1.5, 0.88, 0.55),
+        1.0,
+    ));
+    scene.add_instance(table, planks, Mat4::IDENTITY);
+    let put = |scene: &mut RenderScene, mesh, m: StandardMaterial, t: Mat4| {
+        let h = scene.add_standard_material(m);
+        scene.add_instance(mesh, h, t);
+    };
+    // The cloth over the table and down its front.
+    let cloth = StandardMaterial {
+        color: Vec3::new(0.72, 0.64, 0.5),
+        roughness: 0.9,
+        sheen: 0.6,
+        sheenColor: Vec3::new(1.0, 0.92, 0.8),
+        sheenRoughness: 0.5,
+        ..Default::default()
+    };
+    let top = scene.add_mesh(crate::kit::block(
+        Vec3::new(-1.56, 0.88, -0.6),
+        Vec3::new(1.56, 0.9, 0.6),
+        1.0,
+    ));
+    put(&mut scene, top, cloth, Mat4::IDENTITY);
+    let drape = scene.add_mesh(crate::kit::block(
+        Vec3::new(-1.56, 0.3, 0.6),
+        Vec3::new(1.56, 0.9, 0.62),
+        1.0,
+    ));
+    put(&mut scene, drape, cloth, Mat4::IDENTITY);
+    let sphere = scene.add_mesh(shapes::sphere(64, 48));
+    let on = |x: f32, z: f32, r: f32| {
+        Mat4::from_translation(Vec3::new(x, 0.9 + r, z)) * Mat4::from_scale(Vec3::splat(r * 2.0))
+    };
+    let glass = StandardMaterial {
+        color: Vec3::ONE,
+        roughness: 0.02,
+        transmission: 1.0,
+        thickness: 0.3,
+        ior: 1.5,
+        ..Default::default()
+    };
+    put(&mut scene, sphere, glass, on(-1.1, 0.05, 0.17));
+    put(
+        &mut scene,
+        sphere,
+        StandardMaterial {
+            roughness: 0.35,
+            ..glass
+        },
+        on(-0.62, -0.2, 0.13),
+    );
+    put(
+        &mut scene,
+        sphere,
+        StandardMaterial {
+            attenuationColor: Vec3::new(1.0, 0.55, 0.1),
+            attenuationDistance: 0.15,
+            ..glass
+        },
+        on(-0.5, 0.25, 0.12),
+    );
+    // The gem: a faceted (low-poly) sphere of high ior.
+    let facets = scene.add_mesh(shapes::sphere(8, 5));
+    put(
+        &mut scene,
+        facets,
+        StandardMaterial {
+            ior: 2.4,
+            attenuationColor: Vec3::new(0.5, 0.75, 1.0),
+            attenuationDistance: 0.3,
+            ..glass
+        },
+        on(-0.1, 0.3, 0.07),
+    );
+    // The lantern of striped glass.
+    let striped = scene.add_texture(stripes(256, 6.0, false));
+    let cube = scene.add_mesh(shapes::cuboid(Vec3::ONE));
+    put(
+        &mut scene,
+        cube,
+        StandardMaterial {
+            transmissionMap: striped.slot(),
+            ..glass
+        },
+        Mat4::from_translation(Vec3::new(-0.05, 1.06, -0.25))
+            * Mat4::from_rotation_y(0.5)
+            * Mat4::from_scale(Vec3::new(0.24, 0.32, 0.24)),
+    );
+    // The cushion, the pearl and the filmed orb.
+    let film = scene.add_texture(ramp(64));
+    put(
+        &mut scene,
+        cube,
+        StandardMaterial {
+            color: Vec3::new(0.03, 0.04, 0.18),
+            roughness: 0.9,
+            sheen: 1.0,
+            sheenColor: Vec3::new(1.0, 0.45, 0.7),
+            sheenRoughness: 0.35,
+            ..Default::default()
+        },
+        Mat4::from_translation(Vec3::new(0.55, 0.94, 0.0))
+            * Mat4::from_rotation_y(-0.2)
+            * Mat4::from_scale(Vec3::new(0.62, 0.08, 0.42)),
+    );
+    put(
+        &mut scene,
+        sphere,
+        StandardMaterial {
+            color: Vec3::splat(0.02),
+            roughness: 0.15,
+            iridescence: 1.0,
+            iridescenceIOR: 1.3,
+            iridescenceThicknessRange: glam::Vec2::new(200.0, 1200.0),
+            iridescenceThicknessMap: film.slot(),
+            ..Default::default()
+        },
+        Mat4::from_translation(Vec3::new(0.38, 1.1, 0.02)) * Mat4::from_scale(Vec3::splat(0.2)),
+    );
+    put(
+        &mut scene,
+        sphere,
+        StandardMaterial {
+            color: Vec3::new(0.8, 0.8, 0.85),
+            metalness: 1.0,
+            roughness: 0.25,
+            iridescence: 1.0,
+            iridescenceIOR: 1.8,
+            iridescenceThicknessRange: glam::Vec2::new(250.0, 450.0),
+            ..Default::default()
+        },
+        Mat4::from_translation(Vec3::new(0.7, 1.12, -0.05)) * Mat4::from_scale(Vec3::splat(0.24)),
+    );
+    // The urn: a tall brushed-silver orb on the cloth.
+    put(
+        &mut scene,
+        sphere,
+        StandardMaterial {
+            color: Vec3::new(0.9, 0.9, 0.92),
+            metalness: 1.0,
+            roughness: 0.35,
+            anisotropy: 0.9,
+            ..Default::default()
+        },
+        Mat4::from_translation(Vec3::new(1.15, 1.18, -0.15))
+            * Mat4::from_scale(Vec3::new(0.36, 0.56, 0.36)),
+    );
+    // The seller's car, its paint lacquered.
+    prop_styled(&mut scene, "car", |m| {
+        m.clearcoat = 1.0;
+        m.clearcoatRoughness = 0.05;
+    })
+    .place(&mut scene, Vec3::new(2.4, 0.0, -5.2), -0.45, 1.45);
+    crate::sky_scenes::physical_light_under(&mut scene, Vec3::new(-0.45, 0.5, 0.75));
+    scene.frame.camera = Camera {
+        position: Vec3::new(0.1, 2.1, 1.85),
+        target: Vec3::new(0.0, 1.0, -0.6),
+        far: 2500.0,
+        exposure: Exposure::Manual { ev: 0.0 },
+        ..Default::default()
+    };
+    scene
+}
+
+/// The kit's ruins for a drawn set: an arch over a way between two
+/// colonnades (some fallen), boulders by the camera, a stand of pines and
+/// the watchtower behind.
+fn ruins(scene: &mut RenderScene) {
+    use crate::kit::prop;
+    let arch = prop(scene, "arch");
+    arch.place(scene, Vec3::new(0.0, 0.0, -7.0), 0.0, 5.5);
+    let column = prop(scene, "column");
+    let broken = prop(scene, "column_broken");
+    for k in 0..5 {
+        let z = -1.5 - 3.2 * k as f32;
+        for side in [-1.0f32, 1.0] {
+            let whole = (k + (side > 0.0) as i32) % 3 != 1;
+            let p = if whole { &column } else { &broken };
+            let h = if whole {
+                4.2
+            } else {
+                1.6 + 0.6 * (k % 2) as f32
+            };
+            p.place(scene, Vec3::new(side * 4.0, 0.0, z), 0.4 * k as f32, h);
+        }
+    }
+    let boulder = prop(scene, "boulder");
+    boulder.place(scene, Vec3::new(-2.4, 0.0, 2.0), 0.6, 1.1);
+    boulder.place(scene, Vec3::new(2.8, 0.0, -0.5), 2.1, 0.7);
+    let pine = prop(scene, "pine");
+    for k in 0..9 {
+        let h = |n: i32| crate::fx_scenes::hash2(k, n, 0x71e);
+        let at = Vec3::new(
+            -18.0 + 4.5 * k as f32 + h(0) * 2.0,
+            0.0,
+            -24.0 - h(1) * 10.0,
+        );
+        pine.place(scene, at, h(2) * 6.0, 9.0 + h(3) * 6.0);
+    }
+    prop(scene, "watchtower").place(scene, Vec3::new(11.0, 0.0, -38.0), 2.2, 20.0);
 }

@@ -12,11 +12,10 @@ use og_render::{
     ColorAdjust, ColorCurve, ColorGrading, ColorLut, ColorSpace, Curve, Decal, DepthOfField,
     DirectionalLight, DofQuality, EmitterHandle, EmitterShape, Environment, Exposure, FilmGrain,
     Glow, Instance, InstanceFx, JointPalette, Light, Light2d, LightKind, Lighting2d, Material,
-    MeshData, Mips, Occluder2d, Outline, ParticleAlign, ParticleBlend, ParticleCollision,
-    ParticleEmitter, ParticleNoise, ParticleRender, ParticleSystem, ProceduralSky, RenderScene,
-    Ribbon, RibbonPoint, RibbonUv, SheetMode, SimulationSpace, SkinData, SkinnedInstance, Sprite,
-    SpriteFx, SpriteSheet, StandardMaterial, Text, TextureData, TextureHandle, Tonemap, Trail,
-    TrailStyle, Vertex, Vignette, shapes,
+    MeshData, Mips, Occluder2d, ParticleAlign, ParticleBlend, ParticleCollision, ParticleEmitter,
+    ParticleNoise, ParticleRender, ParticleSystem, ProceduralSky, RenderScene, Ribbon, RibbonPoint,
+    RibbonUv, SheetMode, SimulationSpace, SkinData, SkinnedInstance, Sprite, SpriteFx, SpriteSheet,
+    Text, TextureData, TextureHandle, Tonemap, Trail, TrailStyle, Vertex, Vignette, shapes,
 };
 
 mod crowds;

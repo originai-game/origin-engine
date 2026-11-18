@@ -1053,7 +1053,7 @@ pub fn build(name: &str) -> Result<GfxScene, String> {
             Ok(())
         },
         "stylised" => |g, _| {
-            g.scene = fx::stylised_scene()?;
+            g.scene = crate::stylise_scenes::toon_square()?;
             Ok(())
         },
         "crowd-culling" => |g, _| {
