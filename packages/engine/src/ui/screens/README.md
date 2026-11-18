@@ -97,7 +97,7 @@ focus-visible and disabled states (docs/ui.md §3.2).
 | `hud-editor` (`hud-editor.svelte`) | `hint`, `dock` |
 | `key-values` (`key-values.svelte`) | `frame`, `row`, `label`, `figure`, `delta` (`.up`) |
 | `leaderboard` (`leaderboard.svelte`) | `frame`, `band`, `title`, `league`, `row` (`.mine-other` `.mine-you`), `rank`, `figure`, `me` |
-| `loading` (`loading.svelte`) | `scrim`, `frame`, `title` |
+| `loading` (`loading.svelte`) | `scrim`, `frame` (the tip plate), `title`, `eyebrow`, `label`, `next` (a button), `bar` (`[data-ready]`), `fill`, `figure` (`[data-ready]`), `status` |
 | `main-menu` (`main-menu.svelte`) | `frame`, `logo`, `version` |
 | `mode-select` (`mode-select.svelte`) | `frame`, `band`, `title`, `cell` (`.lock-locked` `.lock-open` `.selection-off` `.selection-on`), `name` |
 | `notifications` (`notifications.svelte`) | `frame` (`.danger` `.leaving` `.success` `.warn`), `body` |

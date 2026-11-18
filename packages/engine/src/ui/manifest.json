@@ -2133,7 +2133,7 @@
     "screen": true,
     "control": null,
     "uses": [
-      "control:progress"
+      "Spinner"
     ],
     "files": [
       "@ui/screens/loading.en.ogt",
