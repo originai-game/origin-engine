@@ -185,7 +185,10 @@ looks and colour LUTs (`.cube`).
   metadata alone does not upload or admit the assets. Mesh and audio costs
   retain the cook's measurements. It then admits groups by priority,
   evicting lower-priority groups for a higher one, and puts at most one
-  group's assets in place per tick. A probe call and a frame that takes no
+  ordinary group's assets in place per tick. A cell's hold gate also admits
+  the group it waits for, even if another group was placed in that tick:
+  the cell's loading tick never waits for a later tick's placement quota.
+  A probe call and a frame that takes no
   tick run a boundary too, and a frame that catches up runs one per tick,
   so natively the tick a group becomes resident follows from ticks alone:
   `og run`, `og run --json`, `og test` and a published build agree. A

@@ -227,21 +227,25 @@ pub(crate) fn update(eng: &Engine) {
         downgrade(eng, &name);
     }
     // Loading groups read their packs (after the sound chunks a playhead
-    // needs); one group is put in place per tick. A probe call or a frame
+    // needs); one ordinary group is put in place per tick. A probe call or a frame
     // that takes no tick runs a boundary too: counted per boundary, they
-    // would move the tick a group becomes resident.
+    // would move the tick a group becomes resident. The cell hold gate
+    // must still admit its group: waiting for another tick's quota while
+    // holding this tick would deadlock and make cell timing host-dependent.
     fetch(eng);
     let ready: Option<String> = {
         let a = eng.assets.borrow();
-        (a.stream.placed != Some(tick))
-            .then(|| {
-                a.stream
-                    .groups
-                    .iter()
-                    .find(|g| g.state == State::Loading && g.reserved && !g.files.is_empty())
-                    .map(|g| g.desc.name.clone())
+        a.stream
+            .groups
+            .iter()
+            .find(|g| {
+                g.state == State::Loading
+                    && g.reserved
+                    && !g.files.is_empty()
+                    && (a.stream.placed != Some(tick)
+                        || a.stream.held_group() == Some(g.desc.name.as_str()))
             })
-            .flatten()
+            .map(|g| g.desc.name.clone())
     };
     if let Some(name) = ready {
         // Pack/scene readiness drives simulation events. Texture worker

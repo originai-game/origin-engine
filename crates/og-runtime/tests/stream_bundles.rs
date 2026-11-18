@@ -385,6 +385,80 @@ fn over_budget_cells_report_the_problem_without_freezing_or_drawing_unloaded_mem
     std::fs::remove_dir_all(root).unwrap();
 }
 
+/// Two cells needed by the same tick must not wait on that tick's ordinary
+/// placement quota. Pack arrival and extra host boundaries cannot choose
+/// which cell loads or change the world hash.
+#[test]
+fn simultaneous_cell_groups_keep_their_load_tick_across_host_boundaries() {
+    let _lock = TEST_LOCK.lock().unwrap();
+    let root = PathBuf::from(env!("CARGO_TARGET_TMPDIR"))
+        .join(format!("stream-held-groups-{}", std::process::id()));
+    let boot = root.join("boot");
+    cook(&boot, &[("world.ogt", b"type scene\nversion 1\n---\nentity \"player\" {\n Transform {\n  position 100 0 0\n }\n StreamAnchor {\n  reach 0\n }\n}\n".to_vec())]);
+    for id in ["p1", "p2"] {
+        parcel(&root.join(id), id, id, 100, true);
+    }
+    let mut baseline = None;
+    for delayed in [false, true] {
+        for pattern in ["plain", "probed", "idle", "catch-up"] {
+            set_hooks(Rc::new(Disk {
+                delayed,
+                reads: RefCell::default(),
+            }));
+            og_host_begin_bundle();
+            let game = og_game_game(Some(r#"{"seed":1}"#.into()));
+            let engine = value(og_engine_create(game, json!({"root": boot}).to_string()))
+                .as_u64()
+                .unwrap() as u32;
+            let g = Game {
+                engine,
+                held: Rc::default(),
+            };
+            g.place("world.ogt");
+            for id in ["p1", "p2"] {
+                g.open(&root.join(id));
+                g.place(&format!("{id}/place.ogt"));
+            }
+            let mut tick = 0;
+            for _ in 0..16 {
+                match pattern {
+                    "probed" => {
+                        og_engine_probe_assertion_events(engine);
+                    }
+                    "idle" => {
+                        value(og_engine_frame(engine, 0.0));
+                    }
+                    _ => {}
+                }
+                let steps = if pattern == "catch-up" { 2 } else { 1 }.min(2 - tick);
+                value(og_engine_frame(engine, f64::from(steps) * 1000.0 / 60.0));
+                tick = g.dump()["tick"].as_u64().unwrap() as u32;
+                if tick > 0 {
+                    assert!(
+                        g.loaded("p1") && g.loaded("p2"),
+                        "both cells must load in the first completed tick: {delayed}/{pattern}"
+                    );
+                }
+                if tick == 2 {
+                    break;
+                }
+            }
+            assert_eq!(tick, 2, "held tick froze: {delayed}/{pattern}");
+            let hash = g.dump()["hash"].clone();
+            if let Some(expected) = &baseline {
+                assert_eq!(
+                    &hash, expected,
+                    "cell load timing moved: {delayed}/{pattern}"
+                );
+            } else {
+                baseline = Some(hash);
+            }
+            assert!(og_engine_destroy(engine));
+        }
+    }
+    std::fs::remove_dir_all(root).unwrap();
+}
+
 struct Game {
     engine: u32,
     held: Rc<Cell<Held>>,

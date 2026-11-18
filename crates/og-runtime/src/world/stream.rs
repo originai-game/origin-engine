@@ -317,8 +317,9 @@ pub(crate) struct Streams {
     holds: cell_groups::Holds,
     /// The textures streamed by their mips.
     mips: mips::Mips,
-    /// The world tick whose boundary last put a group in place: one per
-    /// tick, however many boundaries the host runs before it.
+    /// The world tick whose boundary last put a group in place. Ordinary
+    /// placement is limited to one per tick; a cell hold may admit its
+    /// group too so it never waits for the tick it is holding to advance.
     placed: Option<u64>,
 }
 
