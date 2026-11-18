@@ -7,8 +7,8 @@
 
 use crate::id::Id;
 use crate::layout::{
-    Align, Content, Cross, Direction, Element, Float, FontRole, Frame, Insets, NONE, Shape, Size,
-    TextAlign, Widget,
+    Align, Content, Cross, Direction, Element, Float, Frame, Insets, NONE, Shape, Size, TextAlign,
+    Widget,
 };
 use crate::motion::{TransitionKind, fx};
 use crate::style::{READABLE, Srgba};

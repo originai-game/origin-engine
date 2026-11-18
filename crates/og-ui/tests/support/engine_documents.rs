@@ -111,15 +111,23 @@ pub fn icons(texture: Option<og_draw::TextureHandle>) -> IconAtlas {
     }
 }
 
-/// A camera 6 m back and 3 m up looking at the origin: world tags and
-/// ground shapes at `at` points near it are on screen.
+/// A camera 12 m back and 6 m up looking at the origin. On portrait
+/// surfaces widen its lens, not its distance: preserve horizontal world
+/// coverage without fading anchors past their authored distance limits.
 pub fn view(width: f32, height: f32) -> WorldView {
+    let aspect = width / height;
+    // Preserve coverage inside the stage's 24px inset, which takes a
+    // larger fraction of a phone's width than of the desktop reference.
+    let stage_aspect = (width - 48.0) / (height - 48.0);
+    let desktop_aspect = (1280.0 - 48.0) / (720.0 - 48.0);
+    let lens = (desktop_aspect / stage_aspect).max(1.0);
+    let fov = 2.0 * (25.0_f32.to_radians().tan() * lens).atan().to_degrees();
     WorldView::look_at(
-        Vec3::new(0.0, 3.0, 6.0),
+        Vec3::new(0.0, 6.0, 12.0),
         Vec3::ZERO,
         Vec3::Y,
-        50.0,
-        width / height,
+        fov,
+        aspect,
         0.1,
         100.0,
     )
@@ -132,8 +140,9 @@ const PREVIEW_FRAMES: usize = 30;
 
 /// `doc` mounted as `test:preview` with its `props` as its stores, in a UI
 /// that knows every document of `all`, [`PREVIEW_FRAMES`] frames (its
-/// intros settled), at `width` × `height`, inside a 24px stage over the
-/// theme's panel ground. Answers the warnings of those frames,
+/// intros settled), at `width` × `height`, inside a transparent 24px stage.
+/// The renderer supplies the scene ground, below world-anchored paint.
+/// Answers the warnings of those frames,
 /// each once (an element's hold in every frame). A document that
 /// does not mount or build from its props fails the test, named by its
 /// path.
@@ -141,7 +150,7 @@ pub fn preview(
     ui: &mut Ui,
     all: &[EngineDocument],
     doc: &EngineDocument,
-    messages: &Messages,
+    messages: &dyn bind::Env,
     width: f32,
     height: f32,
 ) -> Vec<String> {
@@ -173,7 +182,7 @@ pub fn preview(
 <ui:{name} id="{root}"/>
 </div></div>
 <style>
-#PreviewStage {{ display: flex; flex-direction: column; width: stretch; height: stretch; padding: 24px; background: var(--panel); }}
+#PreviewStage {{ display: flex; flex-direction: column; width: stretch; height: stretch; padding: 24px; }}
 #PreviewBody {{ width: stretch; height: stretch; min-width: 0; min-height: 0; contain: layout; }}
 </style>"#,
         name = doc.doc.name,

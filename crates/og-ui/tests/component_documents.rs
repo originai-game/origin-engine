@@ -9,6 +9,125 @@ use og_ui::*;
 use support::*;
 
 #[test]
+fn document_preview_camera_keeps_the_ground_in_frame_on_a_phone() {
+    for (w, h) in [(1280.0, 720.0), (390.0, 844.0)] {
+        for x in [-6.0, 6.0] {
+            for z in [-6.0, 6.0] {
+                let (sx, sy, _) = view(w, h)
+                    .project(og_core::glam::Vec3::new(x, 0.0, z), w, h)
+                    .unwrap();
+                assert!(
+                    (24.0..=w - 24.0).contains(&sx) && (24.0..=h - 24.0).contains(&sy),
+                    "{w}x{h}: world ground cut at {sx},{sy}"
+                );
+            }
+        }
+    }
+}
+
+#[test]
+fn loot_preview_stays_visible_with_its_authored_distance_limit_on_a_phone() {
+    let (docs, messages) = engine_documents(&["src/ui/components"]);
+    let doc = docs
+        .iter()
+        .find(|d| d.path.ends_with("world/loot-label.svelte"))
+        .unwrap();
+    for (w, h) in [(1280.0, 720.0), (390.0, 844.0)] {
+        let mut ui = ui_with_font(test_font());
+        preview(&mut ui, &docs, doc, &messages, w, h);
+        assert!(ui.frame().items.iter().any(|item| {
+            let cmd = match &item.cmd {
+                DrawCmd::StyledText { text, .. } => &**text,
+                cmd => cmd,
+            };
+            matches!(cmd, DrawCmd::Text { text, color, .. } if text == "Ember Blade" && color[3] > 0.5)
+        }), "{w}: camera must not fade the loot label out of the preview");
+    }
+}
+
+#[test]
+fn world_document_previews_do_not_cover_the_projected_scene() {
+    let (docs, messages) = engine_documents(&["src/ui/components"]);
+    for name in [
+        "loot-label",
+        "nameplate",
+        "path-line",
+        "placement-ghost",
+        "selection-ring",
+        "speech-bubble",
+        "telegraph",
+        "waypoint",
+    ] {
+        let doc = docs
+            .iter()
+            .find(|d| d.path.ends_with(&format!("world/{name}.svelte")))
+            .unwrap();
+        let mut ui = ui_with_font(test_font_metrics());
+        preview(&mut ui, &docs, doc, &messages, 1280.0, 720.0);
+        assert!(
+            !ui.frame().grounds.is_empty()
+                || ui
+                    .frame()
+                    .items
+                    .iter()
+                    .any(|item| matches!(item.cmd, DrawCmd::World(_))),
+            "{name}: no projected paint"
+        );
+        assert!(
+            fills_in(&ui, Rect::new(0.0, 0.0, 1280.0, 720.0)).is_empty(),
+            "{name}: an opaque screen-sized preview panel covers the world layer"
+        );
+    }
+}
+
+#[test]
+fn spectator_rows_and_party_seals_keep_their_content_inside_the_frame() {
+    let (docs, messages) = engine_documents(&["src/ui/components"]);
+    for (w, h) in [(1280.0, 720.0), (390.0, 844.0)] {
+        let mut ui = ui_with_font(test_font_metrics());
+        let doc = docs
+            .iter()
+            .find(|d| d.path.ends_with("arena/spectator.svelte"))
+            .unwrap();
+        preview(&mut ui, &docs, doc, &messages, w, h);
+        let watching = ui
+            .probe_elements()
+            .into_iter()
+            .find(|e| e.text == "Watching")
+            .unwrap();
+        let row = ui.elements().iter().find(|e| e.id == "Follow#kai").unwrap();
+        assert!(
+            watching.y + watching.height <= row.y + row.height - ui.theme().space.xs,
+            "{w}: Watching needs block padding"
+        );
+        let mut ui = ui_with_font(test_font_metrics());
+        let doc = docs
+            .iter()
+            .find(|d| d.path.ends_with("rpg/party.svelte"))
+            .unwrap();
+        preview(&mut ui, &docs, doc, &messages, w, h);
+        let elements = ui.probe_elements();
+        let seal = elements.iter().find(|e| e.name == "Level 8").unwrap();
+        let level = elements
+            .iter()
+            .find(|e| e.text == "8" && e.path.starts_with(&format!("{}/", seal.path)))
+            .unwrap();
+        let label = elements
+            .iter()
+            .find(|e| e.text == "Lv" && e.path.starts_with(&format!("{}/", seal.path)))
+            .unwrap();
+        assert!(
+            !level.clipped && level.y + level.height <= seal.y + seal.height,
+            "{w}: level must fit without a scrollbar: {level:?}"
+        );
+        assert!(
+            seal.height <= label.height + level.height + ui.theme().space.sm,
+            "{w}: the seal must fit its text, not stretch over the portrait"
+        );
+    }
+}
+
+#[test]
 fn document_preview_stage_preserves_fixtures_and_contains_fixed_roots() {
     use serde_json::json;
     let messages = Messages(Default::default());
@@ -57,7 +176,11 @@ fn document_preview_stage_preserves_fixtures_and_contains_fixed_roots() {
             ] {
                 assert!((got - expected).abs() < 0.1, "{kind}: {root:?}");
             }
-            assert!(!fills_in(&ui, Rect::new(0.0, 0.0, width, height)).is_empty());
+            assert_eq!(
+                fills_in(&ui, Rect::new(0.0, 0.0, width, height)).is_empty(),
+                kind == "component",
+                "{kind}: only a screen's own scrim covers the viewport"
+            );
             assert!(
                 !fills_in(&ui, Rect::new(24.0, 24.0, width - 48.0, height - 48.0)).is_empty(),
                 "the original :host still paints its root"

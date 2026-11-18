@@ -16,7 +16,7 @@
 <section id="RpgEnemyInfo" part="RpgEnemyInfo.frame" class="hud" data-layout="stack" aria-label={name}>
   <header class="small" part="RpgEnemyInfo.band" data-layout="row"><h3 part="RpgEnemyInfo.title">{t("rpg.enemy.name")}</h3></header>
   <p part="RpgEnemyInfo.name RpgEnemyInfo.headline">{name}</p>
-  <div class="picture">{#if portrait}<img class="portrait" src={portrait} alt="">{/if}</div>
+  {#if portrait}<div class="picture"><img class="portrait" src={portrait} alt=""></div>{/if}
   <p class="enemy-level" part="RpgEnemyInfo.caption">{t("rpg.party.level", { level: level })}</p>
   <div class="bar" part="RpgEnemyInfo.track" data-layout="row" role="meter" aria-label={t("rpg.party.health")} style:--fill={healthMax > 0 ? health / healthMax : 0}><div class="bar-fill" part="RpgEnemyInfo.fill"></div><div class="bar-figure" part="RpgEnemyInfo.badge"><span>{t("rpg.party.figure", { now: health, max: healthMax })}</span></div></div>
   {#if effects.length}<ul class="effects" data-layout="cluster" data-gap="tight">
@@ -32,7 +32,7 @@
 :host { inline-size: stretch; align-items: center; }
 [part="RpgEnemyInfo.band"] { width: stretch; justify-content: center; flex: none; }
 [part~="RpgEnemyInfo.name"], .enemy-level { margin: 0; text-align: center; }
-.picture { width: 46%; aspect-ratio: 1; overflow: hidden; }
+.picture { width: min(46%, var(--size-5xl)); aspect-ratio: 1; overflow: hidden; }
 .portrait { width: stretch; height: stretch; object-fit: cover; object-position: center top; }
 .bar { position: relative; align-self: stretch; height: calc(var(--space-md) * 1.4); min-block-size: var(--size-sm); justify-content: center; overflow: hidden; --fill-color: var(--health); }
 .bar-fill { position: absolute; inset-inline-start: 0; top: 0; bottom: 0; inline-size: calc(var(--fill) * 100%); }

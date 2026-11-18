@@ -1,0 +1,16 @@
+{
+  "fixed": [
+    {
+      "member": "CardHand",
+      "summary": "Cap cards at the built-in art size and reserve room for the fan and selected-card lift, keeping end cards and picked-up cards inside wide, phone and short hosts."
+    },
+    {
+      "member": "RpgEnemyInfo",
+      "summary": "Omit the portrait body when no portrait is supplied and cap supplied portraits at the built-in art size so health and status effects stay visible in wide hosts."
+    },
+    {
+      "member": "settings",
+      "summary": "The default preview fixture now supplies an active settings page and toggle, range, select and key-binding rows instead of showing only the header."
+    }
+  ]
+}

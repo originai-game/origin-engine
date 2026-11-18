@@ -13,6 +13,7 @@
 mod shared;
 // `scenes` reaches `super::screens`, as it does in og-tests-web.
 use shared as screens;
+pub(crate) mod documents;
 mod scenes;
 
 use og_render::{RenderDesc, RenderInfo, RenderScene, RenderTarget, Renderer, RgbaImage};

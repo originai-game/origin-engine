@@ -53,10 +53,10 @@
 :host { --card-fill: var(--panel-raised); justify-content: center; container-type: size; }
 /* A card is the frame's height less the room the picked-up card rises
    into and the room the fan's end cards dip into, and 0.7 of that wide
-   (a card's proportion), but at most 0.36 of the frame's width, so a
-   tall hand on a narrow screen keeps every card in reach. The row keeps
-   room at its ends for the fan's outer cards to lean into. */
-.cards { --card-width: min(calc((100cqh - var(--space-xl) * 2 - var(--space-md)) * 0.7), 36cqw); --card-height: calc(var(--card-width) / 0.7); width: stretch; height: stretch; align-items: flex-end; justify-content: center; padding: 0 var(--space-xl) var(--space-xl); }
+   (a card's proportion), capped at an art size and 0.36 of the frame's
+   width. Fan room grows with its angle: a fixed inset cannot contain
+   the end cards' rotation. The lift is reserved even in short hosts. */
+.cards { --fan-room: max(var(--space-xl), calc(max(var(--fan, 0), calc(var(--fan, 0) * -1)) * var(--space-sm))); --card-width: min(calc((100cqh - var(--size-touch) - var(--space-xs) - var(--fan-room)) * 0.7), 36cqw, var(--size-5xl)); --card-height: calc(var(--card-width) / 0.7); width: stretch; height: stretch; align-items: flex-end; justify-content: center; padding: 0 var(--fan-room) var(--fan-room); }
 /* A slot is the card's share of the row: a card's width while there is
    room, less as the hand grows, so the next card overlaps it. The last
    slot keeps the whole card. */

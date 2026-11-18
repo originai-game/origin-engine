@@ -12,6 +12,63 @@
 use og_ui::slot::{Aspect, Fit, ITEM_CELLS, Mask, SlotAspect, SlotKind, SlotSpec};
 
 #[test]
+fn missing_document_images_keep_names_out_of_the_drawing() {
+    use og_ui::*;
+    for style in ["", "placeholder-test"] {
+        for source in ["", "src={999999}"] {
+            let mut ui = crate::support::ui_with_font(crate::support::test_font());
+            ui.set_style_name(style);
+            let mut d = crate::support::Doc::with_ui(
+                ui,
+                &format!(
+                    r#"<meta name="component" content="t">
+<div id="PreviewStage"><div id="PreviewBody">
+  <art id="Unnamed" kind="portrait" {source}></art>
+  <art id="Named" kind="portrait" name="Hero portrait" {source}></art>
+  <img id="Image" alt="Hero image" {source} />
+</div></div>
+<style>art, img {{ width: 120px; height: 120px; }}</style>"#
+                ),
+            );
+            for _ in 0..2 {
+                d.step(InputFrame::default());
+                assert_eq!(d.a11y("Named").name, "Hero portrait");
+                assert_eq!(d.a11y("Image").name, "Hero image");
+                assert_eq!(d.get("Named").text, "Hero portrait");
+                assert_eq!(d.get("Image").text, "Hero image");
+                let unnamed = d.get("Unnamed");
+                assert_eq!(unnamed.text, "");
+                assert!(
+                    d.ui.a11y()
+                        .nodes
+                        .iter()
+                        .all(|node| { node.path != unnamed.path || node.name.is_empty() })
+                );
+                assert!(
+                    d.ui.art_slots()
+                        .iter()
+                        .any(|(path, spec)| { path == &unnamed.path && spec.name == unnamed.path })
+                );
+                assert_eq!(unnamed.detail["slot"]["name"], unnamed.path);
+                assert!(unnamed.detail.contains_key("source"));
+                assert!(d.ui.elements().iter().all(|element| {
+                    !["test:preview/", "PreviewStage/", "PreviewBody/"]
+                        .iter()
+                        .any(|path| element.text.contains(path))
+                }));
+                assert!(
+                    !d.ui.frame().items.iter().any(|item| matches!(
+                        item.cmd,
+                        DrawCmd::Text { .. } | DrawCmd::StyledText { .. }
+                    )),
+                    "missing art must draw no path or alternative text ({style:?}, {source:?})"
+                );
+            }
+        }
+    }
+}
+
+#[test]
 fn missing_art_marks_stay_small_and_square_in_every_slot_kind() {
     use og_ui::*;
     for &kind in SlotKind::ALL {

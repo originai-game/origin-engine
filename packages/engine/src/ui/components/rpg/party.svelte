@@ -39,7 +39,7 @@
 .picture { width: stretch; aspect-ratio: 1.15; overflow: hidden; }
 @media (width >= 600px) and (height >= 500px) { .picture { aspect-ratio: 1.5; } }
 .portrait { width: stretch; height: stretch; object-fit: cover; object-position: center top; }
-.seal { position: absolute; inset-inline-start: var(--space-xs); top: var(--space-xs); width: var(--size-md); height: var(--size-md); }
+.seal { position: absolute; inset-inline-start: var(--space-xs); top: var(--space-xs); width: var(--size-md); height: max-content; min-height: var(--size-md); }
 .seal og-icon { width: var(--size-xs); height: var(--size-xs); }
 .member-name { padding: var(--space-xxs) var(--space-xs); text-align: center; white-space: nowrap; text-overflow: ellipsis; overflow: hidden; }
 .bar { position: relative; height: calc(var(--space-md) * 1.25); min-block-size: var(--size-sm); justify-content: center; overflow: hidden; --fill-color: var(--health); }

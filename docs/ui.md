@@ -2698,6 +2698,13 @@ host (NVIDIA L4, Vulkan; docs/ci.md §The GPU host); other GPU backends are
 compatibility checks under the cross-platform tolerance. A missing GPU is
 unchecked, never passed.
 
+Document previews supply game-owned sample textures and an icon atlas; empty
+texture handles in a source fixture still mean no art in a game. Film overlays
+are reviewed over a sample still. The preview ground paints below world UI,
+not as an opaque screen panel over it, and the camera keeps the same horizontal
+world coverage on a phone. Missing art paints a neutral mark, never a slot path;
+its slot identifier remains in `art_slots` and probe detail, not visible text.
+
 ### 6.3 Acceptance and art sign-off
 
 Technical checks reject parse failures, missing resources, wrong intents,

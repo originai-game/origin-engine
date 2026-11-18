@@ -53,7 +53,7 @@
 [part="ArenaSpectator.title"], [part~="ArenaSpectator.detail"], [part~="ArenaSpectator.mode"], [part="ArenaSpectator.actions"] { flex: none; }
 .scroll-area { position: relative; min-block-size: 0; }
 [part="ArenaSpectator.targets"] { min-block-size: 0; padding-block-end: var(--space-lg); }
-[part="ArenaSpectator.target"] { flex: none; min-block-size: var(--size-touch); text-align: start; }
+[part="ArenaSpectator.target"] { flex: none; min-block-size: var(--size-touch); text-align: start; padding-block: var(--space-xs); }
 .target-body { inline-size: stretch; }
 [part~="ArenaSpectator.name"], [part~="ArenaSpectator.team"], [part~="ArenaSpectator.state"] { overflow-wrap: anywhere; }
 [part="ArenaSpectator.actions"] button { flex: 1 1 auto; min-block-size: var(--size-touch); }

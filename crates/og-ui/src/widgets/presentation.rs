@@ -148,8 +148,8 @@ impl Ui {
     /// (cover around the focal point, contain, a nine-slice…), cut to its
     /// mask, with the style's treatments (a vignette, a frame, a rarity
     /// glow); until the art is there, a quiet surface and a small centred
-    /// mark from the kind's icon set, with the slot's name in the default
-    /// style only. The mark never stretches with the slot. With a
+    /// mark from the kind's icon set. Names stay in accessibility and
+    /// probe metadata, never in the drawing. The mark never stretches. With a
     /// height left to fit it takes the slot's aspect.
     pub(crate) fn art(&mut self, id: impl Into<Id>, desc: &ArtDesc) {
         let i = self.leaf("art", id.into(), Element::default());
@@ -279,13 +279,11 @@ impl Ui {
         }
         self.tree.draws.insert(i, std::sync::Arc::new(d));
         if desc.texture.is_none() {
-            // The kind's silhouette, a third of the shorter side, centred
-            // (a little high when the slot's name sits under it).
-            let named = self.env.style_name.is_empty();
+            // The kind's silhouette, a third of the shorter side, centred.
             let k = 0.36;
             let frame = Frame {
                 fx: 0.5 - k / 2.0,
-                fy: if named { 0.4 - k / 2.0 } else { 0.5 - k / 2.0 },
+                fy: 0.5 - k / 2.0,
                 fw: k,
                 fh: k,
                 square_max: Some(32.0),
@@ -307,29 +305,11 @@ impl Ui {
                     color: ink.fade(0.5),
                 }),
             }
-            if named {
-                let step = self.type_step(crate::tokens::TypeRole::Caption);
-                self.tree.shapes_mut(i).push(Shape::Text {
-                    part: crate::dress::PartRef::of("ArtSlot", "label", None),
-                    frame: Frame {
-                        fy: 0.72,
-                        fh: 0.2,
-                        ..Frame::FULL
-                    },
-                    text: spec.name.clone(),
-                    step,
-                    color: ink,
-                    font: FontRole::Mono,
-                    clip: Frame::FULL,
-                });
-            }
         }
         let n = &mut self.tree.nodes[i];
-        n.probe_text = if desc.label.is_empty() {
-            spec.name.clone()
-        } else {
-            desc.label.clone()
-        };
+        // The spec's name identifies the slot in art_slots/probe detail;
+        // only an authored label belongs in user-facing text and names.
+        n.probe_text = desc.label.clone();
         n.a11y.role = Some("image");
         n.a11y.name = Some(n.probe_text.clone());
     }

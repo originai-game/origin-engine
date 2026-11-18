@@ -1,0 +1,12 @@
+{
+  "fixed": [
+    {
+      "member": "ArenaSpectator",
+      "summary": "Multiline target rows reserve vertical padding so the Watching caption stays clear of the button rim."
+    },
+    {
+      "member": "RpgParty",
+      "summary": "Level seals fit their label and level instead of scrolling two lines inside a fixed-height badge."
+    }
+  ]
+}

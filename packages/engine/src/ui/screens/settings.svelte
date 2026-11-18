@@ -10,7 +10,7 @@
 <meta name="action:back" content="Back">
 <meta name="action:tabNext" content="Next page">
 <meta name="action:tabPrev" content="Previous page">
-<meta name="fixture:default" content="{&quot;note&quot;:&quot;&quot;}">
+<meta name="fixture:default" content='{"note":"Some changes apply after a restart.","pages":[{"id":"general","name":"General"}],"page":"general","pending":true,"entries":[{"id":"subtitles","page":"general","name":"Subtitles","description":"Show dialogue captions.","kind":"toggle","value":true},{"id":"volume","page":"general","name":"Master volume","description":"Adjust all game audio.","kind":"range","value":75,"min":0,"max":100,"step":5},{"id":"quality","page":"general","name":"Quality","description":"Choose the rendering quality.","kind":"select","value":"High","options":["Low","High"]},{"id":"interact","page":"general","name":"Interact","description":"Choose the interaction key.","kind":"binding","value":"E","action":"interact"}]}'>
 
 <div id="Screen" part="settings.frame" class="bare">
   <header id="Header" part="settings.band">
