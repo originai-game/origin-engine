@@ -242,6 +242,35 @@ impl Decoded {
         !self.pending.is_empty() || !self.arrays_pending.is_empty()
     }
 
+    /// Removed textures cannot keep their former model or proxy hidden.
+    pub(crate) fn forget_textures(&mut self, textures: &[og_render::TextureHandle]) {
+        self.pending.retain(|(h, _)| !textures.contains(h));
+        for waiting in self.hidden_models.values_mut().flatten() {
+            waiting.retain(|h| !textures.contains(h));
+        }
+    }
+
+    pub(crate) fn prepared_ids(&self) -> Vec<String> {
+        #[cfg(not(target_arch = "wasm32"))]
+        {
+            self.native.ids()
+        }
+        #[cfg(target_arch = "wasm32")]
+        Vec::new()
+    }
+
+    pub(crate) fn forget_sources(
+        &mut self,
+        closed: &[og_bundle::runtime::CookedTexture],
+        kept: &[og_bundle::runtime::CookedTexture],
+        formats: Option<&og_render::TextureFormats>,
+    ) {
+        #[cfg(not(target_arch = "wasm32"))]
+        self.native.forget_sources(closed, kept, formats);
+        #[cfg(target_arch = "wasm32")]
+        let _ = (closed, kept, formats);
+    }
+
     pub(crate) fn forget_prepared(&mut self, ids: &[String]) {
         #[cfg(not(target_arch = "wasm32"))]
         self.native.forget(ids);
