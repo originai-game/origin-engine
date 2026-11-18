@@ -420,7 +420,7 @@ test("dump_stream lists the budget, the peak, every group and the events; og.str
   expect(dump.events.length).toBe(2);
   const r = og.stream.status(engine.world, "nowhere") as unknown as { ok: boolean; reason: string };
   expect(r.ok).toBeFalse();
-  expect(r.reason).toContain("the scenes declare cave, meadow, tower");
+  expect(r.reason).toBe("no streaming group 'nowhere'; the open bundles declare cave, meadow, tower");
 });
 
 test("what is resident never changes the simulation: the same flight hashes the same with no budget at all", () => {
