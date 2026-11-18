@@ -243,6 +243,7 @@ impl RenderScene {
                 adaptation: 1.0,
                 surface_weather: None,
                 wind: None,
+                leaves: None,
                 wind_motors: Vec::new(),
                 grass_pushers: Vec::new(),
             },

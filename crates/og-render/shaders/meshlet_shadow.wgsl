@@ -48,6 +48,9 @@ fn meshlet_corner(vi: u32, ii: u32) -> MeshletCorner {
   if (c.w != 0u) {
     let at = meshlet_sway_row(c.w, r.index);
     let sway = foliage_sway(meshlet_instances[item.x * 4u + 3u].x);
+    // A leaf's shadow grows and falls with it.
+    let leaf = meshlet_leaf(meshlet_foliage[c.w], meshlet_foliage[at + 1u], r.model, meshlet_draw.wind[0].origin.xyz, meshlet_draw.leaf_year);
+    r.position = meshlet_grown(r.position, meshlet_foliage[at + 1u], leaf.leaf.kept);
     r.position += meshlet_sway(r.position, meshlet_foliage[c.w - 1u], meshlet_foliage[at], meshlet_foliage[at + 1u], r.model, meshlet_draw.wind[0], sway, false);
   }
   return r;

@@ -76,6 +76,10 @@ pub struct SceneAtmosphere {
     /// The wind that sways the scattered copies (`None` or strength 0:
     /// still).
     pub wind: Option<crate::Wind>,
+    /// The year the seasonal leaves live (og.Season; `None`: every leaf as
+    /// modelled): each leaf of a species that follows it grows, turns and
+    /// falls on its own day (`foliage::LeafCalendar`).
+    pub leaves: Option<crate::foliage::LeafCalendar>,
     /// Local pushes on the simulated wind field (og.WindMotor,
     /// `wind_field.rs`): the nearest [`crate::wind_field::MAX_MOTORS`] drive it.
     pub wind_motors: Vec<crate::WindMotor>,

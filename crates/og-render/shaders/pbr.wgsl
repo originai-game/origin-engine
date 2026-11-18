@@ -89,7 +89,20 @@ struct VertexOut {
   // Order-independent transparency's key of the draw and primitive
   // (oit.wgsl `oit_key`; the linked lists' equal-depth order).
   @location(9) @interpolate(flat) oit_key: vec2<u32>,
+  // A seasonal leaf's autumn colour (meshlet_foliage.wgsl
+  // `season_leaf_color`: rgb, and a, how far it replaces the leaf's own;
+  // zero: its own), set by the meshlet path's foliage.
+  @location(10) season: vec4<f32>,
 };
+
+// The surface's own colour, the material's base colour times the vertex
+// colour, with a seasonal leaf's autumn colour in its place by `season`'s
+// a (`VertexOut::season`), times the base texture's `sample`.
+fn season_base(sample: vec4<f32>, color: vec4<f32>, season: vec4<f32>) -> vec4<f32> {
+  if (season.a <= 0.0) { return material.base_color * sample * color; }
+  let own = material.base_color * color;
+  return vec4<f32>(mix(own.rgb, season.rgb, season.a), own.a) * sample;
+}
 
 // A colour packed 8:8:8 in an exact integer (instances.rs `fx_bits`; flat,
 // so it arrives exact: no rounding, which at 2^24 - 1 would carry).

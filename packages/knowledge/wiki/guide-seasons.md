@@ -86,3 +86,38 @@ it, and a world that never names it is unchanged.
   then changes the temperature and what follows it, never the light.
 - At an equinox with `latitude` equal to `DayNight.tilt`, the path is the
   one og.DayNight draws without a season.
+
+<a id="guide-seasons-4"></a>
+### `seasons §4` Leaves
+
+- A deciduous plant's leaves follow og.Season by themselves: each leaf
+  grows from its bud in spring, turns to its autumn colour, browns and
+  drops on its own day, and the wood stays. Its shadow grows and falls
+  with it. A world without og.Season, or with it off, draws every leaf as
+  modelled.
+- A species sets how in its leaves' material: a plant's `leaves` block,
+  a model text's `material` block or glTF `extras.ogFoliage`, with
+  `season` (0 evergreen, 1 deciduous; between, a share of the leaves
+  drops), `autumnColor` and `autumnColor2` (each leaf turns to a colour
+  between the two, linear RGB) and `seasonShift` (days the species runs
+  late; negative, early). The built-in oak, birch, willow, shrub, fern
+  and reed have `season` 1.
+- They are the model's, cooked with its leaves, not a material's at run
+  time: og.render's StandardMaterial has no season fields. A leaf's
+  shadow and depth are drawn without its material, and they must grow
+  and fall with it, so the values travel with the leaves themselves. To
+  give a tree another year, cook another model.
+- The climate sets the days: og.atmosphere.season's `leafOut`, `leafTurn`
+  and `leafFall` are the mean tree's year, and the share of a crown drawn
+  is `leafOut` times what has not fallen. Trees of one species stand
+  about 10 days apart, by where they stand, and the leaves of one tree
+  about a week, by where they hang. A tree shows its first bare twigs a
+  few days after `leafFall` passes 0 and is bare when it reaches 1.
+- An autumn colour reads as autumn when it is warm and dark: a linear
+  red or orange under 0.5 with blue under 0.05. A bright one (above 0.6)
+  glows against a winter sky.
+- The leaves follow the year on the GPU's meshlet path, which takes any
+  model with cooked foliage. A device without compute or indirect draws
+  (RenderCapabilities.caps.compute and `.indirect`, the GL tier) draws
+  them as modelled and does not sway them. Scattered copies
+  (og.TerrainScatter) and impostor cards are drawn as modelled for now.

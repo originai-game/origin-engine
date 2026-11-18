@@ -77,6 +77,24 @@ fn season_sun(world: &World, layout: Option<&Layout>) -> Option<SeasonNow> {
     Some(SeasonNow::of(&s, time.tick, time.dt)).filter(|s| s.sun)
 }
 
+/// The year an enabled og.Season draws the seasonal leaves in, at the
+/// world's tick: its climate's and the date as the place lives it.
+fn leaf_calendar(
+    world: &World,
+    layout: Option<&Layout>,
+) -> Option<og_render::foliage::LeafCalendar> {
+    let s = record::Season::from_json(&*resource(world, layout)?).ok()?;
+    if !s.enabled {
+        return None;
+    }
+    let time = world.time();
+    let now = SeasonNow::of(&s, time.tick, time.dt);
+    Some(og_render::foliage::LeafCalendar {
+        year: og_env::season::leaf_year(&now.climate),
+        day: og_env::season::local(now.day, now.latitude),
+    })
+}
+
 /// The cycle's look at `hours`: under the date's sun at the latitude when
 /// an og.Season sets the path, else along og.DayNight's own. Either way
 /// DayNight.azimuth is the heading of due east, and the noon sun of the
@@ -129,6 +147,7 @@ pub(super) fn extract(
 ) -> FogTint {
     // No twilight adaptation unless the day-night cycle sets one below.
     scene.atmosphere.adaptation = 1.0;
+    scene.atmosphere.leaves = leaf_calendar(world, layouts.season.as_ref());
     // The physical sky: alone, towards the first directional light.
     let air = physical_air(world, layouts.physical_sky.as_ref());
     if let Some(air) = air {

@@ -488,3 +488,157 @@ fn depth_contract(@builtin(local_invocation_index) lane: u32) {
         }
     }
 }
+
+/// The leaves' year on the GPU is the CPU's: meshlet_foliage.wgsl's
+/// `leaf_order_pick` draws each anchor the lot `og_render_data::foliage`'s
+/// does, to the bit (a cooked impostor's leaf atlas and the mesh it
+/// stands for drop the same leaves), and over a tree's leaves
+/// `season_leaf` keeps the share og.atmosphere.season answers (its
+/// leafOut times what has not fallen) on any day of the year.
+#[test]
+#[ignore = "requires GPU"]
+fn the_leaves_year_on_the_gpu_is_the_cpus() {
+    use og_render::foliage::{LeafCalendar, leaf_order_pick};
+    use og_render::wgpu;
+    let renderer = og_render::Renderer::new_blocking(&og_render::RenderDesc {
+        width: 16,
+        height: 16,
+        ..Default::default()
+    })
+    .expect("renderer");
+    let (device, queue) = (renderer.device(), renderer.queue());
+    // Anchors over a crown, both signs, and half-millimetre ties.
+    let anchors: Vec<[f32; 4]> = (0..256)
+        .map(|i| {
+            let f = i as f32;
+            let tie = (i as f32 + 0.5) / 1000.0;
+            match i % 4 {
+                0 => [tie, -tie, 3.0 + tie, 0.0],
+                _ => [
+                    (f * 0.731).sin() * 2.3,
+                    1.0 + f * 0.0217,
+                    -(f * 1.37).cos() * 1.9,
+                    0.0,
+                ],
+            }
+        })
+        .collect();
+    let climate = og_env::season::Climate {
+        mean: 10.0,
+        range: 20.0,
+        day_range: 8.0,
+    };
+    let year = og_env::season::leaf_year(&climate);
+    let days: Vec<f32> = (0..64).map(|i| i as f32 * 365.0 / 64.0 + 0.3).collect();
+    let years: Vec<[[f32; 4]; 2]> = days
+        .iter()
+        .map(|&day| LeafCalendar::gpu(Some(LeafCalendar { year, day })))
+        .collect();
+    let source = format!(
+        "{}\n{}\n{}\n{}",
+        og_render_data::LIBRARY_WGSL,
+        og_render::foliage::WIND_WGSL,
+        og_render::foliage::WGSL,
+        r#"
+@group(0) @binding(0) var<storage, read> anchors: array<vec4f>;
+@group(0) @binding(1) var<storage, read> years: array<vec4f>;
+@group(0) @binding(2) var<storage, read_write> results: array<vec4f>;
+@compute @workgroup_size(64)
+fn year_contract(@builtin(local_invocation_index) lane: u32) {
+  for (var k = 0u; k < 4u; k++) {
+    let i = lane * 4u + k;
+    results[i] = vec4f(leaf_order_pick(anchors[i].xyz), 0.0, 0.0);
+  }
+  let y = LeafYear(years[lane * 2u], years[lane * 2u + 1u]);
+  var kept = 0.0;
+  for (var j = 0u; j < 1000u; j++) {
+    kept += season_leaf((f32(j) + 0.5) / 1000.0, 0.5, 1.0, 0.0, y).kept;
+  }
+  results[256u + lane] = vec4f(kept / 1000.0, 0.0, 0.0, 0.0);
+}
+"#
+    );
+    let module = device.create_shader_module(wgpu::ShaderModuleDescriptor {
+        label: Some("leaf year contract"),
+        source: wgpu::ShaderSource::Wgsl(source.into()),
+    });
+    let pipeline = device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
+        label: None,
+        layout: None,
+        module: &module,
+        entry_point: Some("year_contract"),
+        compilation_options: Default::default(),
+        cache: None,
+    });
+    let input = |data: &[u8]| {
+        let b = device.create_buffer(&wgpu::BufferDescriptor {
+            label: None,
+            size: data.len() as u64,
+            usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_DST,
+            mapped_at_creation: false,
+        });
+        queue.write_buffer(&b, 0, data);
+        b
+    };
+    let anchor_buffer = input(bytemuck::cast_slice(&anchors));
+    let year_buffer = input(bytemuck::cast_slice(&years));
+    let output = device.create_buffer(&wgpu::BufferDescriptor {
+        label: None,
+        size: (256 + 64) * 16,
+        usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_SRC,
+        mapped_at_creation: false,
+    });
+    let read = device.create_buffer(&wgpu::BufferDescriptor {
+        label: None,
+        size: output.size(),
+        usage: wgpu::BufferUsages::COPY_DST | wgpu::BufferUsages::MAP_READ,
+        mapped_at_creation: false,
+    });
+    let group = device.create_bind_group(&wgpu::BindGroupDescriptor {
+        label: None,
+        layout: &pipeline.get_bind_group_layout(0),
+        entries: &[
+            wgpu::BindGroupEntry {
+                binding: 0,
+                resource: anchor_buffer.as_entire_binding(),
+            },
+            wgpu::BindGroupEntry {
+                binding: 1,
+                resource: year_buffer.as_entire_binding(),
+            },
+            wgpu::BindGroupEntry {
+                binding: 2,
+                resource: output.as_entire_binding(),
+            },
+        ],
+    });
+    let mut encoder = device.create_command_encoder(&Default::default());
+    {
+        let mut pass = encoder.begin_compute_pass(&Default::default());
+        pass.set_pipeline(&pipeline);
+        pass.set_bind_group(0, &group, &[]);
+        pass.dispatch_workgroups(1, 1, 1);
+    }
+    encoder.copy_buffer_to_buffer(&output, 0, &read, 0, output.size());
+    queue.submit([encoder.finish()]);
+    read.slice(..).map_async(wgpu::MapMode::Read, |_| {});
+    device.poll(wgpu::PollType::wait_indefinitely()).unwrap();
+    let mapped = read.slice(..).get_mapped_range().unwrap();
+    let values: &[[f32; 4]] = bytemuck::cast_slice(&mapped);
+    for (i, a) in anchors.iter().enumerate() {
+        let (order, pick) = leaf_order_pick(glam::Vec3::new(a[0], a[1], a[2]));
+        assert_eq!(
+            [values[i][0].to_bits(), values[i][1].to_bits()],
+            [order.to_bits(), pick.to_bits()],
+            "anchor {a:?}"
+        );
+    }
+    for (k, &day) in days.iter().enumerate() {
+        let canopy = year.at(day).canopy();
+        let drawn = values[256 + k][0];
+        assert!(
+            (drawn - canopy).abs() < 0.02,
+            "day {day}: the tree keeps {drawn} of its leaves, og.Season says {canopy}"
+        );
+    }
+}

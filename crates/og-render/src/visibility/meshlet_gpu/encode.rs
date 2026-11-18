@@ -207,6 +207,7 @@ impl MeshletGpu {
             bytemuck::bytes_of(&DrawParams {
                 flags: [scene.objects.lod_debug as u32, 0, 0, 0],
                 wind: winds.1,
+                leaf_year: crate::foliage::LeafCalendar::gpu(scene.atmosphere.leaves),
             }),
         );
         // Each foliage mesh's deformation bound at this frame's wind and
@@ -394,6 +395,7 @@ impl MeshletGpu {
                     lod_debug: scene.objects.lod_debug,
                     stylise: crate::Retro3d::uniform(scene.look.stylise.retro, width, height),
                     wind: winds.1,
+                    leaf_year: crate::foliage::LeafCalendar::gpu(scene.atmosphere.leaves),
                     extra: scene.look.stylise.material.surface_on() || !pools.foliage.is_empty(),
                     max_binding: self.max_binding,
                 },

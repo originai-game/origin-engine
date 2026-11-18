@@ -970,7 +970,8 @@ impl CookedModel {
     /// the model's foliage shares, so its bark and leaves bend as one tree
     /// (every foliage primitive in one space, the model's: its top is the
     /// highest their full meshes reach, its canopy centre the centre of the box
-    /// of the leaf cards' anchors, of every anchor without leaf cards).
+    /// of the leaf cards' anchors, of every anchor without leaf cards), and
+    /// the year its material's leaves follow.
     pub fn mesh_foliage(&self, i: usize) -> Option<og_render_data::meshlet::MeshFoliage> {
         let (vertices, leaves) = self.primitives.get(i)?.foliage.as_ref()?;
         let foliage = || {
@@ -1002,6 +1003,10 @@ impl CookedModel {
             top,
             canopy_center: (lo + hi) * 0.5,
             leaves: *leaves,
+            season: self
+                .materials
+                .get(self.primitives[i].material)
+                .map_or_else(Default::default, |m| m.season),
         })
     }
 

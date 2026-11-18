@@ -114,6 +114,9 @@ pub(crate) struct FrameUniform {
     /// shader parameters compare their stamp with (frame.wgsl
     /// `params_moved`); yzw unused.
     pub drawn: [u32; 4],
+    /// The year the seasonal leaves are drawn in (meshlet_foliage.wgsl
+    /// `LeafYear`, `LeafCalendar::gpu`; zero: as modelled).
+    pub leaf_year: [[f32; 4]; 2],
 }
 
 /// The camera's matrices for one frame.

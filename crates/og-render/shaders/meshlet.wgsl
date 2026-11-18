@@ -35,8 +35,11 @@ struct MeshletVertex {
   // Its foliage region plus one (0: none) and the vertex's own index.
   region: u32,
   index: u32,
-  // Where the vertex rests (the swayed position is v.position).
+  // Where the vertex rests, as its leaf's year has grown it (the swayed
+  // position is v.position).
   rest: vec3<f32>,
+  // Its leaf in its year (meshlet_sway.wgsl `meshlet_leaf`).
+  leaf: MeshletLeaf,
 };
 
 // The vertex's foliage rows (meshlet_sway.wgsl).
@@ -85,9 +88,12 @@ fn meshlet_vertex(vi: u32, ii: u32) -> MeshletVertex {
   r.region = c.w;
   r.index = index;
   r.rest = r.v.position;
+  r.leaf = MeshletLeaf(SeasonLeaf(1.0, 0.0, 0.0), 0.0);
   if (c.w != 0u) {
     let f = meshlet_rows(c.w, index);
-    r.v.position += meshlet_sway(r.rest, f[0], f[1], f[2], r.model, meshlet_draw.wind[0], foliage_sway(r.look.x), false);
+    r.leaf = meshlet_leaf(meshlet_foliage[c.w], f[2], r.model, meshlet_draw.wind[0].origin.xyz, meshlet_draw.leaf_year);
+    r.rest = meshlet_grown(r.rest, f[2], r.leaf.leaf.kept);
+    r.v.position = r.rest + meshlet_sway(r.rest, f[0], f[1], f[2], r.model, meshlet_draw.wind[0], foliage_sway(r.look.x), false);
   }
   // The scene's tint, or the view's own (frame.drawn.y, View::lod_debug).
   if (meshlet_draw.flags.x != 0u || frame.drawn.y != 0u) {
@@ -114,6 +120,10 @@ fn vs_meshlet(@builtin(vertex_index) vi: u32, @builtin(instance_index) ii: u32) 
   }
   var o = lit_vertex(p.model, v);
   o.look = p.look;
+  if (p.region != 0u) {
+    // Its autumn colour, which the fragment puts in place of its own.
+    o.season = meshlet_leaf_color(meshlet_foliage[p.region + 1u], meshlet_foliage[p.region + 2u], p.leaf);
+  }
   return o;
 }
 
@@ -129,7 +139,7 @@ fn vs_prepass_meshlet(@builtin(vertex_index) vi: u32, @builtin(instance_index) i
   let q = p.slot * 4u;
   let prev = meshlet_transform(meshlet_previous[q], meshlet_previous[q + 1u], meshlet_previous[q + 2u]);
   // A foliage vertex was where the last drawn frame's wind and sway (the
-  // previous record's layer word) put it.
+  // previous record's layer word) put it, its leaf grown as now.
   var before = p.rest;
   if (p.region != 0u) {
     let f = meshlet_rows(p.region, p.index);
@@ -227,6 +237,10 @@ fn meshlet_record(pos: vec4<f32>, row: u32) -> MeshletRecord {
     if (d.y != 0u && material.coat.w > 0.0) {
       r.v.normal = normalize(mix(normalize(r.v.normal), oct_decode(unpack2x16snorm(d.x)), clamp(material.coat.w, 0.0, 1.0)));
     }
+    // Its leaf's autumn colour (meshlet_raster.wgsl `setup`: rgb square
+    // roots, then how far it replaces the leaf's own).
+    let season = unpack4x8unorm(d.z);
+    r.v.season = vec4<f32>(season.rgb * season.rgb, season.a);
   }
   r.object = c.w;
   return r;

@@ -165,7 +165,7 @@ fn lit_fragment(in: VertexOut) -> vec4<f32> {
   hook.front = hook_front;
   hook.wind = frame.foliage_wind[0][0];
   let params = shader_params();
-  let base = surface_color(hook, params, look_tint(material.base_color * base_sample * in.color, in.look));
+  let base = surface_color(hook, params, look_tint(season_base(base_sample, in.color, in.season), in.look));
   var dissolve = vec4<f32>(0.0);
   if (EFFECTS) { dissolve = dissolve_at(uv, in.local_pos); }
   // One discard for the alpha cut-off and the dissolve (see dissolve_at);
@@ -280,7 +280,7 @@ fn lit_fragment(in: VertexOut) -> vec4<f32> {
         } else {
           coarse_sample = textureSampleBias(base_color_tex, material_sampler, base_uv, 6.0);
         }
-        let coarse = look_tint(material.base_color * coarse_sample * in.color, in.look).rgb;
+        let coarse = look_tint(season_base(coarse_sample, in.color, in.season), in.look).rgb;
         s.albedo = mix(s.albedo, coarse, select(0.5, 0.7, kind == 3u) * ms.y);
       }
       // The pattern fades where it spans fewer than about four pixels, so a

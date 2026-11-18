@@ -173,12 +173,18 @@ pub struct MeshFoliage {
     pub canopy_center: Vec3,
     /// Its triangles are leaf cards (glTF `extras.ogFoliage.leaves`).
     pub leaves: bool,
+    /// How its leaves follow the year: its material's
+    /// ([`crate::foliage::LeafSeason`]; evergreen: never). Every pass reads
+    /// it here, the ones that bind no material too, so a leaf's shadow
+    /// grows and falls with it.
+    pub season: crate::foliage::LeafSeason,
 }
 
 /// vec4 rows of a foliage mesh's header in the vertex pool (meshlet_gpu.rs
 /// `pool_foliage`), before its two rows per vertex: (canopy centre, top),
-/// (flags: 1 leaves, 0, 0, 0).
-pub const FOLIAGE_HEADER_ROWS: u32 = 2;
+/// (flags: 1 leaves, its season, its season shift, 0), (autumn colour, 0),
+/// (the second autumn colour, 0).
+pub const FOLIAGE_HEADER_ROWS: u32 = 4;
 
 impl MeshFoliage {
     /// Whether it describes a mesh of `vertex_count` vertices: one entry a
@@ -193,6 +199,14 @@ impl MeshFoliage {
         }
         if !(self.top.is_finite() && self.top > 0.0) || !self.canopy_center.is_finite() {
             return Err("its top and canopy centre must be finite, the top positive".into());
+        }
+        let s = &self.season;
+        let colours = s.autumn_color.iter().chain(&s.autumn_color2);
+        if !(s.season.is_finite()
+            && s.shift.is_finite()
+            && colours.into_iter().all(|x| x.is_finite()))
+        {
+            return Err(format!("its season must be finite: {s:?}"));
         }
         for (i, v) in self.vertices.iter().enumerate() {
             let finite = v.branch.iter().chain(&v.leaf).all(|x| x.is_finite());
@@ -209,7 +223,17 @@ impl MeshFoliage {
         let c = self.canopy_center;
         let mut rows = Vec::with_capacity(FOLIAGE_HEADER_ROWS as usize + self.vertices.len() * 2);
         rows.push([c.x, c.y, c.z, self.top]);
-        rows.push([self.leaves as u32 as f32, 0.0, 0.0, 0.0]);
+        let s = &self.season;
+        rows.push([
+            self.leaves as u32 as f32,
+            s.season.clamp(0.0, 1.0),
+            s.shift,
+            0.0,
+        ]);
+        let [r, g, b] = s.autumn_color;
+        rows.push([r, g, b, 0.0]);
+        let [r, g, b] = s.autumn_color2;
+        rows.push([r, g, b, 0.0]);
         for v in &self.vertices {
             rows.push(v.branch);
             rows.push(v.leaf);

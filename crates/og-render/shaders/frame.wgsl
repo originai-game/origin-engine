@@ -116,6 +116,9 @@ struct Frame {
   toon: vec4<f32>,
   ssr: vec4<f32>,             // screen-space reflections (ssr.rs): x 1 when ssr_tex holds this camera's, y intensity
   drawn: vec4<u32>,           // x: the renderer's frames drawn before this one (it counts on while the clock is paused), y: 1 when a view tints clustered instances by level (View::lod_debug), zw unused
+  // The year the seasonal leaves are drawn in: meshlet_foliage.wgsl's
+  // LeafYear (foliage.rs LeafCalendar::gpu; zero: every leaf as modelled).
+  leaf_year: array<vec4<f32>, 2>,
 };
 
 // The unit direction from the surface point `p` towards the eye: towards

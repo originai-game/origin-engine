@@ -152,6 +152,8 @@ struct RasterParams {
     stylise: [f32; 4],
     /// This frame's wind and the last drawn frame's (`foliage::foliage_winds`).
     wind: [crate::foliage::FoliageWind; 2],
+    /// The leaves' year (`foliage::LeafCalendar::gpu`).
+    leaf_year: [[f32; 4]; 2],
 }
 
 /// `struct MeshletDraw` in meshlet_sway.wgsl.
@@ -160,6 +162,8 @@ struct RasterParams {
 struct DrawParams {
     flags: [u32; 4],
     wind: [crate::foliage::FoliageWind; 2],
+    /// The leaves' year (`foliage::LeafCalendar::gpu`).
+    leaf_year: [[f32; 4]; 2],
 }
 
 /// vec4 rows per visibility-buffer record (meshlet_raster.wgsl `setup`).

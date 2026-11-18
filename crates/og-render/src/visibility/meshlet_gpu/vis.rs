@@ -79,6 +79,8 @@ pub(crate) struct VisFrame<'a> {
     /// The foliage's wind this frame and the last drawn
     /// (`foliage::foliage_winds`).
     pub wind: [crate::foliage::FoliageWind; 2],
+    /// The leaves' year (`foliage::LeafCalendar::gpu`).
+    pub leaf_year: [[f32; 4]; 2],
     /// The material style's surface is on (the records carry the local
     /// position's gradients its pattern reads, pbr_fs.wgsl) or a foliage
     /// mesh is in the pools (its canopy dome).
@@ -257,6 +259,7 @@ impl VisBuffer {
             soft: [f.list.0, f.list.1, 0, rows as u32],
             stylise: f.stylise,
             wind: f.wind,
+            leaf_year: f.leaf_year,
         };
         queue.write_buffer(&self.params, 0, bytemuck::bytes_of(&params));
         // The cull's count into `soft.z`.

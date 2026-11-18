@@ -8,18 +8,54 @@
 // A foliage mesh's cluster rows carry its region in their first row's w
 // (meshlet_gpu.rs `pool_foliage`: the region's first vec4 of the vertex
 // pool plus one, 0 for none). The region is (canopy centre, top), (flags:
-// 1 leaves, 0, 0, 0), then per vertex of the mesh (its own index) the
-// branch pivot and stiffness, the leaf anchor and flutter.
+// 1 leaves, its season, its season shift, 0), (autumn colour, 0), (the
+// second autumn colour, 0), then per vertex of the mesh (its own index)
+// the branch pivot and stiffness, the leaf anchor and flutter. So the
+// region's second row is at the cluster row's w itself.
 
 // The draw uniform (meshlet_gpu.rs `DrawParams`): x of flags 1 colours
-// each instance by its level; this frame's wind and the last drawn's.
+// each instance by its level; this frame's wind and the last drawn's;
+// the leaves' year (meshlet_foliage.wgsl `LeafYear`).
 struct MeshletDraw {
   flags: vec4<u32>,
   wind: array<FoliageWind, 2>,
+  leaf_year: LeafYear,
 };
 
 // meshlet.rs FOLIAGE_HEADER_ROWS.
-const SWAY_HEADER_ROWS: u32 = 2u;
+const SWAY_HEADER_ROWS: u32 = 4u;
+
+// A vertex's leaf in its year (meshlet_foliage.wgsl `season_leaf`) and
+// its colour lot: `h1` the region's second row (its season and shift),
+// `f1` the vertex's anchor row, `model` its instance now and `origin`
+// the render origin, so every pass and both frames of a motion vector
+// draw the leaf at one size.
+struct MeshletLeaf {
+  leaf: SeasonLeaf,
+  pick: f32,
+};
+
+fn meshlet_leaf(h1: vec4<f32>, f1: vec4<f32>, model: mat4x4<f32>, origin: vec3<f32>, year: LeafYear) -> MeshletLeaf {
+  var l = MeshletLeaf(SeasonLeaf(1.0, 0.0, 0.0), 0.0);
+  if (h1.y <= 0.0 || year.fall.w < 0.5) { return l; }
+  let lot = leaf_order_pick(f1.xyz);
+  l.leaf = season_leaf(lot.x, foliage_tree(model[3].xyz + origin), h1.y, h1.z, year);
+  l.pick = lot.y;
+  return l;
+}
+
+// Where the leaf's year puts a vertex resting at `p`: drawn in to its
+// anchor as the leaf is less than whole (a bud, a dropped leaf).
+fn meshlet_grown(p: vec3<f32>, f1: vec4<f32>, kept: f32) -> vec3<f32> {
+  if (kept >= 1.0) { return p; }
+  return f1.xyz + (p - f1.xyz) * kept;
+}
+
+// The vertex's turned colour (meshlet_foliage.wgsl `season_leaf_color`),
+// from the region's third and fourth rows.
+fn meshlet_leaf_color(h2: vec4<f32>, h3: vec4<f32>, l: MeshletLeaf) -> vec4<f32> {
+  return season_leaf_color(h2.xyz, h3.xyz, l.pick, l.leaf);
+}
 
 // The first vec4 of vertex `index`'s two rows in the region `region`
 // (the cluster row's w, which is the region plus one).

@@ -132,7 +132,7 @@ pub fn sun_times(latitude: f32, declination: f32) -> SunTimes {
 
 /// The date as the place lives it: the same day is the opposite season
 /// south of the equator.
-fn local(day: f32, latitude: f32) -> f32 {
+pub fn local(day: f32, latitude: f32) -> f32 {
     if latitude < 0.0 {
         wrap(day + YEAR * 0.5)
     } else {

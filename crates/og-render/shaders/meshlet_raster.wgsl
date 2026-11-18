@@ -26,6 +26,8 @@ struct RasterParams {
   stylise: vec4<f32>,
   // The foliage's wind this frame and the last drawn (meshlet_sway.wgsl).
   wind: array<FoliageWind, 2>,
+  // The leaves' year (meshlet_foliage.wgsl `LeafYear`).
+  leaf_year: LeafYear,
 };
 
 @group(0) @binding(0) var<uniform> raster: RasterParams;
@@ -71,15 +73,24 @@ fn raster_retro(clip: vec4<f32>) -> vec4<f32> {
   return c;
 }
 
+// The leaf of vertex `local` of a foliage cluster whose first row's w is
+// `region`, on the instance at `now` (meshlet_sway.wgsl `meshlet_leaf`).
+fn raster_leaf(local: u32, region: u32, now: mat4x4<f32>) -> MeshletLeaf {
+  let at = meshlet_sway_row(region, local);
+  return meshlet_leaf(vertices[region], vertices[at + 1u], now, raster.wind[0].origin.xyz, raster.leaf_year);
+}
+
 // Vertex `local` (the mesh's own index) of a cluster whose first row's w
 // is `region` (meshlet_sway.wgsl; 0: no foliage), in a mesh at `base` of
 // the pool: where instance slot `inst` puts it in the mesh's own space,
-// swayed by this frame's wind, or the last drawn frame's at `model` (the
-// previous transform) with `from_previous`.
-fn raster_position(base: u32, local: u32, region: u32, inst: u32, model: mat4x4<f32>, from_previous: bool) -> vec3<f32> {
-  let p = vertices[(base + local) * 4u].xyz;
+// its leaf grown as on the instance `now`, swayed by this frame's wind,
+// or the last drawn frame's at `model` (the previous transform) with
+// `from_previous`.
+fn raster_position(base: u32, local: u32, region: u32, inst: u32, now: mat4x4<f32>, model: mat4x4<f32>, from_previous: bool) -> vec3<f32> {
+  var p = vertices[(base + local) * 4u].xyz;
   if (region == 0u) { return p; }
   let at = meshlet_sway_row(region, local);
+  p = meshlet_grown(p, vertices[at + 1u], raster_leaf(local, region, now).leaf.kept);
   var layer = instances[inst * 4u + 3u].x;
   var wind = raster.wind[0];
   if (from_previous) {
@@ -130,7 +141,7 @@ fn triangle(k: u32, tri: u32) -> Tri {
   let size = vec2<f32>(raster.size.xy);
   for (var j = 0u; j < 3u; j++) {
     let local = indices[c.x + tri * 3u + j];
-    let world = model * vec4<f32>(raster_position(f.y, local, c.w, e.x, model, false), 1.0);
+    let world = model * vec4<f32>(raster_position(f.y, local, c.w, e.x, model, model, false), 1.0);
     let clip = raster_retro(mul_point(raster.view_proj, world));
     // Never for a soft cluster (it lies past the near plane): skipped.
     if (clip.w <= 1e-6 || clip.z < 0.0) { return t; }
@@ -281,7 +292,8 @@ fn raster_bary(clip: array<vec4<f32>, 3>, l: vec3<f32>) -> vec3<f32> {
 // (`raster.soft.w` 12) then (d(local)/dx, affine u), (d(local)/dy,
 // affine v), (d(lit uv)/dx, d(lit uv)/dy), the lit uv being pbr.wgsl
 // `stylised_uv`'s mix of the two, and (the canopy dome's oct, 1 with
-// one, 0, 0). A foliage mesh's corners are swayed (`raster_position`):
+// one, a seasonal leaf's autumn colour packed 8:8:8:8, its rgb square
+// roots and how far it replaces the leaf's own, 0). A foliage mesh's corners are swayed (`raster_position`):
 // now for the pixel, at the last drawn frame for last frame's world. The gradients are the differences to
 // the next pixel right and down on the same triangle's plane, which the
 // hardware's quads take and the resolve's full-screen quads cannot
@@ -314,8 +326,8 @@ fn setup(@builtin(global_invocation_id) gid: vec3<u32>) {
   for (var j = 0u; j < 3u; j++) {
     let local = indices[c.x + tri * 3u + j];
     vi[j] = f.y + local;
-    at[j] = raster_position(f.y, local, c.w, e.x, model, false);
-    was[j] = raster_position(f.y, local, c.w, e.x, prev, true);
+    at[j] = raster_position(f.y, local, c.w, e.x, model, model, false);
+    was[j] = raster_position(f.y, local, c.w, e.x, model, prev, true);
     clip[j] = raster_retro(mul_point(raster.view_proj, model * vec4<f32>(at[j], 1.0)));
   }
   let l = raster_screen(clip, ndc);
@@ -341,6 +353,9 @@ fn setup(@builtin(global_invocation_id) gid: vec3<u32>) {
   // A foliage mesh's canopy dome (meshlet_foliage.wgsl `foliage_normal` at
   // full strength), which the resolve blends in by its material's.
   var dome = vec3<f32>(0.0);
+  // A seasonal leaf's autumn colour (meshlet_sway.wgsl
+  // `meshlet_leaf_color`), which the resolve puts in place of its own.
+  var season = vec4<f32>(0.0);
   for (var j = 0u; j < 3u; j++) {
     let a = vertices[vi[j] * 4u];
     let v = vertices[vi[j] * 4u + 1u];
@@ -350,6 +365,7 @@ fn setup(@builtin(global_invocation_id) gid: vec3<u32>) {
     if (c.w != 0u) {
       let k = meshlet_sway_row(c.w, vi[j] - f.y);
       dome += foliage_normal(vec3<f32>(a.w, v.xy), vertices[k + 1u].xyz, vertices[c.w - 1u].xyz, 1.0) * b[j];
+      season += meshlet_leaf_color(vertices[c.w + 1u], vertices[c.w + 2u], raster_leaf(vi[j] - f.y, c.w, model)) * b[j];
     }
     duv_x += v.zw * (bx[j] - b[j]);
     duv_y += v.zw * (by[j] - b[j]);
@@ -419,7 +435,7 @@ fn setup(@builtin(global_invocation_id) gid: vec3<u32>) {
       bitcast<vec4<u32>>(vec4<f32>(dpos_x, affine.x)),
       bitcast<vec4<u32>>(vec4<f32>(dpos_y, affine.y)),
       bitcast<vec4<u32>>(vec4<f32>(mix(duv_x, daff_x, k), mix(duv_y, daff_y, k))),
-      vec4<u32>(dome_world, u32(c.w != 0u), 0u, 0u),
+      vec4<u32>(dome_world, u32(c.w != 0u), pack4x8unorm(vec4<f32>(sqrt(max(season.rgb, vec3<f32>(0.0))), season.a)), 0u),
     );
     for (var i = 0u; i < 4u; i++) {
       for (var j = 0u; j < 4u; j++) { attrs[r + (8u + i) * 4u + j] = more[i][j]; }

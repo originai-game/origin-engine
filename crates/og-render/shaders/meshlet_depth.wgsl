@@ -35,6 +35,8 @@ fn vs_depth(@builtin(vertex_index) vi: u32, @builtin(instance_index) ii: u32) ->
   if (c.w != 0u) {
     let at = meshlet_sway_row(c.w, index);
     let sway = foliage_sway(meshlet_instances[item.x * 4u + 3u].x);
+    let leaf = meshlet_leaf(meshlet_foliage[c.w], meshlet_foliage[at + 1u], model, meshlet_draw.wind[0].origin.xyz, meshlet_draw.leaf_year);
+    position = meshlet_grown(position, meshlet_foliage[at + 1u], leaf.leaf.kept);
     position += meshlet_sway(position, meshlet_foliage[c.w - 1u], meshlet_foliage[at], meshlet_foliage[at + 1u], model, meshlet_draw.wind[0], sway, false);
   }
   let world = model * vec4<f32>(position, 1.0);

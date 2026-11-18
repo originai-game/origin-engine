@@ -94,6 +94,53 @@ impl Default for LeafSeason {
     }
 }
 
+/// The year a frame draws the seasonal leaves in (og.Season): its
+/// climate's leaf year and the date as the place lives it
+/// (`og_env::season::local`). Each leaf of a species with
+/// [`LeafSeason::season`] above 0 then grows, turns and falls on its own
+/// day (meshlet_foliage.wgsl `season_leaf`); without a calendar every leaf
+/// is drawn as modelled.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct LeafCalendar {
+    pub year: og_env::season::LeafYear,
+    pub day: f32,
+}
+
+impl LeafCalendar {
+    /// meshlet_foliage.wgsl's `LeafYear`: (the bud's day, the days growing,
+    /// opening and turning), (the days after the turn starts that the
+    /// first and the last leaf fall, the day, the kind: 0 every leaf as
+    /// modelled, 1 a seasonal year, 2 bare all year).
+    pub fn gpu(calendar: Option<LeafCalendar>) -> [[f32; 4]; 2] {
+        use og_env::season::LeafYear;
+        match calendar {
+            None
+            | Some(LeafCalendar {
+                year: LeafYear::Evergreen,
+                ..
+            }) => [[0.0; 4]; 2],
+            Some(LeafCalendar {
+                year: LeafYear::Bare,
+                day,
+            }) => [[0.0; 4], [0.0, 0.0, day, 2.0]],
+            Some(LeafCalendar {
+                year:
+                    LeafYear::Seasonal {
+                        bud,
+                        growing,
+                        opening,
+                        turning,
+                        fall,
+                    },
+                day,
+            }) => [
+                [bud, growing, opening, turning],
+                [fall[0], fall[1], day, 1.0],
+            ],
+        }
+    }
+}
+
 /// A leaf's lot in its tree's year, from the point it hangs from
 /// ([`FoliageVertex::leaf`], `_OG_ANCHOR`, in model space): `order`, when
 /// it turns and falls among its tree's leaves (0 first), and `pick`, where

@@ -448,6 +448,7 @@ fn give_foliage(scene: &mut RenderScene, parts: &[(MeshHandle, MaterialHandle, M
             top,
             canopy_center: Vec3::new(0.0, top * 0.7, 0.0),
             leaves: false,
+            ..Default::default()
         };
         assert!(scene.set_mesh_foliage(m, Some(f)), "foliage refused");
     }

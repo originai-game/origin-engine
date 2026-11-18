@@ -194,6 +194,7 @@ impl Renderer {
             // The stamp a material's shader parameter change carries in
             // this frame (`sync_assets`; engine s100).
             drawn: [self.frame_index as u32, 0, 0, 0],
+            leaf_year: crate::foliage::LeafCalendar::gpu(scene.atmosphere.leaves),
         };
         if let Some(light) = underwater {
             uniform.atmosphere.underwater(light);
