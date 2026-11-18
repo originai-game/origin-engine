@@ -103,9 +103,12 @@ async function loaded(asset: Asset, what: string): Promise<void> {
 }
 
 for (const [id] of PARCELS) await loaded(must(og.load.bundle(world, `parcels/${id}/cooked`)), `parcels/${id}`);
-/** On the web a runtime bundle's files are fetched on demand: the first load starts the fetch and says so, a later one finds it. */
+/** On the web a runtime bundle's files are fetched on demand: the first load starts the fetch and says so, a later one finds it,
+ * and a scene's answers a pending handle that is ready (or failed, with the reason) at a later tick. */
 async function fetchedLoad(what: string, load: () => ReturnType<typeof og.load.scene>): Promise<Asset> {
-  return must(await fetching(what, load));
+  const asset = must(await fetching(what, load));
+  await loaded(asset, what);
+  return asset;
 }
 async function fetching(what: string, load: () => ReturnType<typeof og.load.scene>): Promise<ReturnType<typeof og.load.scene>> {
   let r = load();
