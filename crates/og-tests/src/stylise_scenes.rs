@@ -834,38 +834,45 @@ fn bubble_texture() -> og_render::TextureData {
     t
 }
 
-/// `sprites-untonemapped`: cream pixel speech bubbles over a bright dusk
-/// set (exposure 1.8, AgX, bloom from 1.0, TAA): the left bubble (from a
-/// texture array, a layer below) tone mapped as before, blown towards
-/// white and blooming; the next one
-/// `SpriteFx::tone_mapped` false, its cream and red as authored and no
-/// glow round it, a tone-mapped blue marker drawn over its corner (a
-/// higher layer) still curved; a third untonemapped bubble half behind
-/// the crate (still depth tested); a fourth drawn from a texture array,
-/// untonemapped (lantern-vale FINDINGS #17).
+/// `sprites-untonemapped`: an HD-2D village square on a bright evening
+/// (exposure 1.8, AgX, bloom from 1.0, TAA), quest givers with cream
+/// pixel "!" bubbles over their heads. The knight's bubble on the left
+/// (from a texture array, a layer below) is tone mapped as before, blown
+/// towards white and blooming; the mage's is `SpriteFx::tone_mapped`
+/// false, its cream and red as authored and no glow round it, a
+/// tone-mapped blue marker drawn over its corner (a higher layer) still
+/// curved; the ranger's, untonemapped, is half behind a column (still
+/// depth tested); a fourth over a loot crate is drawn from a texture
+/// array, untonemapped (lantern-vale FINDINGS #17).
 pub fn untonemapped_sprites_scene() -> RenderScene {
+    use crate::kit;
     use og_render::{
         Bloom, SpriteArray, SpriteFx, TextureArrayData, TextureFilter, TextureSource, Tonemap,
     };
+    // The flags' top, which the party stands on.
+    const FLAGS: f32 = 0.01;
     let mut scene = RenderScene::new();
-    let ground = scene.add_standard_material(StandardMaterial {
-        color: Vec3::new(0.5, 0.55, 0.42),
-        roughness: 1.0,
-        ..Default::default()
-    });
-    let floor = scene.add_mesh(shapes::plane(40.0, 1.0));
-    scene.add_instance(floor, ground, Mat4::IDENTITY);
-    let wood = scene.add_standard_material(StandardMaterial {
-        color: Vec3::new(0.6, 0.4, 0.22),
-        roughness: 0.8,
-        ..Default::default()
-    });
-    let cube = scene.add_mesh(shapes::cuboid(Vec3::splat(1.0)));
-    scene.add_instance(
-        cube,
-        wood,
-        Mat4::from_translation(Vec3::new(1.9, 0.5, 0.6)) * Mat4::from_rotation_y(0.3),
-    );
+    crate::shadow_scenes::court(&mut scene);
+    kit::prop(&mut scene, "townhouse").place(&mut scene, Vec3::new(-1.5, 0.0, -8.0), 0.0, 7.5);
+    kit::prop(&mut scene, "column").place(&mut scene, Vec3::new(2.2, 0.0, -0.2), 0.0, 3.0);
+    kit::prop(&mut scene, "crate").place(&mut scene, Vec3::new(0.7, 0.0, -1.6), 0.3, 0.9);
+    kit::prop(&mut scene, "barrel").place(&mut scene, Vec3::new(-3.6, 0.0, -1.2), 0.0, 1.0);
+    kit::prop(&mut scene, "streetlamp").place(&mut scene, Vec3::new(4.4, 0.0, -2.8), 0.0, 3.6);
+    for (name, x, z) in [
+        ("hero-knight", -2.2, -0.2),
+        ("hero-mage", -0.6, 0.0),
+        ("hero-ranger", 2.85, -0.6),
+    ] {
+        let (texture, aspect) = crate::scenes::painted(&mut scene, name);
+        scene.add_sprite(og_render::Sprite {
+            texture: Some(texture),
+            position: Vec3::new(x, FLAGS, z),
+            size: glam::Vec2::new(1.7 * aspect, 1.7),
+            anchor: glam::Vec2::new(0.5, 0.0),
+            layer: -2,
+            ..Default::default()
+        });
+    }
     let bubble = scene.add_texture(bubble_texture());
     scene.set_texture_filter(bubble, TextureFilter::Nearest);
     let bubbles = scene
@@ -877,7 +884,7 @@ pub fn untonemapped_sprites_scene() -> RenderScene {
     let at = |x: f32, y: f32, z: f32| og_render::Sprite {
         texture: Some(bubble),
         position: Vec3::new(x, y, z),
-        size: glam::Vec2::splat(1.2),
+        size: glam::Vec2::splat(0.8),
         ..Default::default()
     };
     let add = |scene: &mut RenderScene, sprite: og_render::Sprite, tone_mapped: bool| {
@@ -900,7 +907,7 @@ pub fn untonemapped_sprites_scene() -> RenderScene {
         og_render::Sprite {
             texture: None,
             layer: -1,
-            ..at(-2.2, 1.6, 0.0)
+            ..at(-2.05, 2.25, -0.2)
         },
         true,
     );
@@ -909,14 +916,14 @@ pub fn untonemapped_sprites_scene() -> RenderScene {
         array: bubbles,
         layer: 0,
     });
-    add(&mut scene, at(-0.6, 1.6, 0.0), false);
-    // Behind the crate: its lower right is hidden.
-    add(&mut scene, at(2.3, 0.9, -0.4), false);
+    add(&mut scene, at(-0.45, 2.25, 0.0), false);
+    // Behind the column: its left half is hidden.
+    add(&mut scene, at(2.85, 2.25, -0.6), false);
     let a = add(
         &mut scene,
         og_render::Sprite {
             texture: None,
-            ..at(0.9, 2.3, -0.6)
+            ..at(0.7, 1.4, -1.6)
         },
         false,
     );
@@ -929,8 +936,8 @@ pub fn untonemapped_sprites_scene() -> RenderScene {
     add(
         &mut scene,
         og_render::Sprite {
-            position: Vec3::new(-0.1, 2.1, 0.05),
-            size: glam::Vec2::splat(0.35),
+            position: Vec3::new(-0.12, 2.58, 0.05),
+            size: glam::Vec2::splat(0.24),
             color: [0.2, 0.45, 1.6, 1.0],
             layer: 1,
             ..Default::default()
@@ -942,6 +949,7 @@ pub fn untonemapped_sprites_scene() -> RenderScene {
         direction_to_light: sun,
         intensity: 3.0,
         color: Vec3::new(1.0, 0.7, 0.45),
+        cast_shadows: true,
         ..Default::default()
     };
     scene.lighting.environment.sky.sun_direction = sun;
@@ -953,8 +961,9 @@ pub fn untonemapped_sprites_scene() -> RenderScene {
         intensity: 0.8,
     });
     scene.frame.camera = Camera {
-        position: Vec3::new(0.0, 2.2, 6.0),
-        target: Vec3::new(0.0, 1.0, 0.0),
+        position: Vec3::new(0.1, 1.9, 4.7),
+        target: Vec3::new(0.2, 1.45, -0.6),
+        far: 2500.0,
         exposure: Exposure::linear(1.8),
         ..Default::default()
     };

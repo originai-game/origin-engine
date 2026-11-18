@@ -117,7 +117,7 @@ pub fn flipbook_frame(frame: u32) -> TextureData {
 
 /// The painted pixel-art sprite `sprites2d/{name}.png` (nearest
 /// filtered) and its width over its height.
-fn painted(scene: &mut RenderScene, name: &str) -> (og_render::TextureHandle, f32) {
+pub(crate) fn painted(scene: &mut RenderScene, name: &str) -> (og_render::TextureHandle, f32) {
     let rel = format!("sprites2d/{name}.png");
     let t = crate::kit::picture(scene, &rel, true);
     let img = image::load_from_memory(&crate::scenes::asset(&rel).expect("2D sprite"))
