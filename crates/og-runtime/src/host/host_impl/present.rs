@@ -213,6 +213,9 @@ macro_rules! __og_host_bindings_present {
             fn og_render_snap(&self, world: u32, entity: f64) -> String {
                 $crate::host_impl::answer($crate::og_render_snap(world, entity))
             }
+            fn og_render_reveal(&self, world: u32, entity: f64, seconds: f64) -> String {
+                $crate::host_impl::answer($crate::og_render_reveal(world, entity, seconds as f32))
+            }
             fn og_render_snap_camera(&self, world: u32) {
                 $crate::og_render_snap_camera(world)
             }

@@ -7453,6 +7453,7 @@ export interface Interpolation {
 
 
 
+
 /**
  * A colour lookup table for PostEffects.lut, from og.load.lut (a `.cube` file).
  *
@@ -30591,7 +30592,7 @@ export interface StreamStatus {
   /** Where it is. */
   readonly state: StreamState;
   /**
-   * Presentation only, nondeterministic. True when resident and all model/proxy textures are prepared; cell groups include shared-group models and ordinary sub-scenes, not nested cells. Not saved or hashed. Never drive gameplay, ticks or simulation with this value.
+   * Presentation only, nondeterministic. True when resident, all model/proxy textures are prepared and their fade-in has finished; cell groups include shared-group models and ordinary sub-scenes, not nested cells. Not saved or hashed. Never drive gameplay, ticks or simulation with this value.
    */
   readonly ready: boolean;
   /** Whether its trigger or a request wants it now. */
@@ -35172,6 +35173,16 @@ export declare namespace og {
      */
     function snapCamera(world: World): void;
     /**
+     * Set the fade-in of entity's og.Model when streaming brings it into view. By default an entity a cell spawned, and a model or HLOD proxy hidden while its textures were prepared, is dithered in over 0.4 s. seconds is the fade's length; 0 draws it whole at once. On a cell (og.StreamCell) it sets everything the cell spawns that has no setting of its own, and the cell's proxies. Presentation only, as og.render.snap: never in the world, world_hash or a snapshot; it lasts while the entity lives.
+     * See `world §5`.
+     *
+     * @param world The world whose renderer draws it.
+     * @param entity The entity with the og.Model, or the cell.
+     * @param seconds The fade's length in seconds; 0 draws the model whole at once.
+     * @returns Refused for a dead entity, or a negative or non-finite length.
+     */
+    function reveal(world: World, entity: Entity, seconds: number): Result<void>;
+    /**
      * Draw a ribbon this frame. Systems and commands may call it; the list is cleared at every tick.
      *
      * @param world The world whose renderer draws it.
@@ -39492,7 +39503,7 @@ export declare namespace og {
      */
     function done(world: World): Result<void>;
     /**
-     * Whether the renderer has nothing left that would make a frame draw less than the scene: no pipelines compiling, no textures waiting to upload, no font faces fetched for the locale. True on a host that makes them at once (natively, and without a renderer).
+     * Whether the renderer has nothing left that would make a frame draw less than the scene: no pipelines compiling, no textures waiting to upload, no font faces fetched for the locale, no streamed model still fading in (og.render.reveal). True on a host that makes them at once (natively, and without a renderer).
      *
      * @param world The world.
      */

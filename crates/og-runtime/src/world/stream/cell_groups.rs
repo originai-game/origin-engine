@@ -36,20 +36,24 @@ const MAX_HOLDS: usize = 64;
 
 /// A cell's presentation includes models owned by other groups. Neither
 /// this query nor the hidden-model set changes the deterministic hold gate.
+/// `now`: the world's tick, for the models still fading in
+/// (`crate::present::reveal`).
 pub(super) fn ready(
     a: &crate::world::assets::Assets,
     rs: &crate::present::extract::RenderState,
     group: &str,
+    now: f64,
 ) -> bool {
     fn scene_ready(
         a: &crate::world::assets::Assets,
         rs: &crate::present::extract::RenderState,
         index: usize,
+        now: f64,
     ) -> bool {
         let Payload::Scene(scene) = &a.entries[index].payload else {
             return false;
         };
-        if !crate::present::hlod::scene_ready(rs, scene.bundle, &scene.id) {
+        if !crate::present::hlod::scene_ready(rs, scene.bundle, &scene.id, now) {
             return false;
         }
         scene.entities.iter().enumerate().all(|(row, entity)| {
@@ -63,12 +67,13 @@ pub(super) fn ready(
                         return false;
                     }
                 }
+                // Shown, and no longer fading in (`crate::present::reveal`).
                 a.by_path
                     .get(&format!("gltf:{}:{id}", scene.bundle))
                     .is_some_and(|&i| {
-                        !rs.decoded
-                            .hidden_models
-                            .contains_key(&super::assets::handle(i))
+                        let model = super::assets::handle(i);
+                        !rs.decoded.hidden_models.contains_key(&model)
+                            && !rs.reveal.pending(model, now)
                     })
             });
             // Nested cells have their own readiness. Ordinary sub-scenes
@@ -84,7 +89,7 @@ pub(super) fn ready(
                 let Some(&i) = a.by_path.get(&format!("scene:{}:{id}", scene.bundle)) else {
                     return false;
                 };
-                scene_ready(a, rs, i)
+                scene_ready(a, rs, i, now)
             });
             model_ready && subscene_ready
         })
@@ -94,7 +99,7 @@ pub(super) fn ready(
         .get(group)
         .into_iter()
         .flatten()
-        .all(|&i| scene_ready(a, rs, i))
+        .all(|&i| scene_ready(a, rs, i, now))
 }
 
 /// A tick held for a cell group's pack.

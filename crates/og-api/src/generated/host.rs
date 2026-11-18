@@ -455,6 +455,8 @@ pub trait RenderApi: Wire {
     fn og_render_snap(&self, world: u32, entity: f64) -> String;
     /// `og.render.snapCamera`
     fn og_render_snap_camera(&self, world: u32);
+    /// `og.render.reveal`
+    fn og_render_reveal(&self, world: u32, entity: f64, seconds: f64) -> String;
     /// `og.render.ribbon`
     fn og_render_ribbon(&self, world: u32, desc: Option<String>) -> String;
     /// `og.render.sprite`
@@ -1719,6 +1721,7 @@ pub const SYMBOLS: &[&str] = &[
     "og_camera_kick",
     "og_render_snap",
     "og_render_snap_camera",
+    "og_render_reveal",
     "og_render_ribbon",
     "og_render_sprite",
     "og_render_floating_text",

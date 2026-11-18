@@ -522,6 +522,12 @@ impl Hierarchy {
         self.blend.take().map(|b| b.prev)
     }
 
+    /// How far the frame is from the tick before the world's towards it,
+    /// 0 to 1; `None` on a frame at the tick.
+    pub(crate) fn frame_alpha(&self) -> Option<f32> {
+        self.blend.as_ref().map(|b| b.alpha)
+    }
+
     /// The alpha what is drawn on `e` (its pose, its anchored UI) blends
     /// at: `None` on a frame at the tick, or when `e` is held there
     /// (og.Interpolation.off, og.render.snap) or was spawned in the tick.

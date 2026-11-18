@@ -1,0 +1,8 @@
+{
+  "added": [
+    {
+      "member": "render.reveal",
+      "summary": "A streamed model fades in instead of appearing whole: every entity a cell spawned (og.CellMember), and a model or HLOD proxy that was hidden while its textures were prepared, is dithered in over 0.4 s in the lit, prepass and shadow passes, on both hosts. og.render.reveal(world, entity, seconds) sets the length for one entity or for everything a cell spawns; 0 draws it whole at once. A model taking over from its HLOD proxy never fades. Presentation only: no world state, event or hash changes. StreamStatus.ready and og.loading.idle stay false until the fades have finished."
+    }
+  ]
+}

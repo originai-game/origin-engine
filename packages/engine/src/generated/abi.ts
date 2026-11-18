@@ -392,6 +392,8 @@ export interface HostAbi<A, V> {
   og_render_snap(world: number, entity: number): string;
   /** `og.render.snapCamera` */
   og_render_snap_camera(world: number): void;
+  /** `og.render.reveal` */
+  og_render_reveal(world: number, entity: number, seconds: number): string;
   /** `og.render.ribbon` */
   og_render_ribbon(world: number, desc: string | undefined): string;
   /** `og.render.sprite` */
@@ -1531,6 +1533,7 @@ export const SYMBOLS: readonly string[] = [
   "og_camera_kick",
   "og_render_snap",
   "og_render_snap_camera",
+  "og_render_reveal",
   "og_render_ribbon",
   "og_render_sprite",
   "og_render_floating_text",
@@ -2113,6 +2116,10 @@ export function checkEntities<A, V>(abi: HostAbi<A, V>): HostAbi<A, V> {
     og_render_snap(world: number, entity: number) {
       if (typeof entity !== "number") notEntity("og.render.snap", "entity", entity);
       return abi.og_render_snap(world, entity);
+    },
+    og_render_reveal(world: number, entity: number, seconds: number) {
+      if (typeof entity !== "number") notEntity("og.render.reveal", "entity", entity);
+      return abi.og_render_reveal(world, entity, seconds);
     },
     og_physics_water_height(world: number, entity: number, x: number, z: number) {
       if (typeof entity !== "number") notEntity("og.physics.waterHeight", "entity", entity);

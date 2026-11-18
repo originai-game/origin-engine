@@ -589,13 +589,14 @@ pub(crate) fn received(g: &Group) -> f64 {
 /// A group's status, with the bytes it keeps for the frame.
 fn group_status(eng: &Engine, a: &assets::Assets, g: &Group) -> StreamStatus {
     let s = &a.stream;
+    let now = crate::present::reveal::tick(eng);
     StreamStatus {
         name: g.desc.name.clone(),
         scene: g.desc.scene.clone(),
         state: g.state.wire(),
         ready: g.state == State::Resident
             && g.ready
-            && cell_groups::ready(a, &eng.render.borrow(), &g.desc.name),
+            && cell_groups::ready(a, &eng.render.borrow(), &g.desc.name, now),
         wanted: g.wanted,
         requested: g.requested,
         priority: g.desc.priority,

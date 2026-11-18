@@ -40,7 +40,13 @@ fn screen(eng: &Engine) -> LoadingScreen {
 }
 
 fn idle(eng: &Engine) -> bool {
-    !eng.render.borrow().decoded.preparing()
+    // A model still fading in is presentation work too.
+    let now = crate::present::reveal::tick(eng);
+    let drawing = {
+        let rs = eng.render.borrow();
+        rs.decoded.preparing() || rs.reveal.active(now)
+    };
+    !drawing
         && !eng.assets.borrow().stream.preparing()
         && !crate::world::remote::pending(eng)
         && hooks().is_none_or(|h| h.loading_idle(eng.id))

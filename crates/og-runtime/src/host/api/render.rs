@@ -413,6 +413,31 @@ pub fn og_render_snap(world: u32, entity: f64) -> Result<(), String> {
     })()
 }
 
+/// `og.render.reveal`.
+pub fn og_render_reveal(world: u32, entity: f64, seconds: f32) -> Result<(), String> {
+    (|| {
+        if !seconds.is_finite() || seconds < 0.0 {
+            return Err(format!(
+                "render.reveal: seconds must be 0 or more, got {seconds}"
+            ));
+        }
+        let eng = engine(world)?;
+        let e = match running(world) {
+            Some(f) => {
+                // SAFETY: the frame is published while its system runs.
+                let ctx = unsafe { f.ctx() };
+                live(&eng, "render.reveal", entity, |e| Ok(ctx.is_alive(e)))?
+            }
+            None => {
+                let w = eng.world()?;
+                live(&eng, "render.reveal", entity, |e| Ok(w.is_alive(e)))?
+            }
+        };
+        eng.render.borrow_mut().reveal.set(e.to_bits(), seconds);
+        Ok(())
+    })()
+}
+
 /// `og.render.snapCamera`.
 pub fn og_render_snap_camera(world: u32) {
     if let Ok(eng) = engine(world) {

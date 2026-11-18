@@ -48,4 +48,4 @@ component Afterimage {
 }
 ```
 
-<sub>Module `render` line 2732</sub>
+<sub>Module `render` line 2741</sub>

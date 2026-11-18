@@ -14,6 +14,13 @@ pub(super) fn models(
     keys: &mut Vec<(u64, u32)>,
 ) {
     let settings = b.settings.as_ref();
+    // The models fading in (`crate::present::reveal`): what appeared in
+    // the world this tick left, unless the tick's own step saw it already,
+    // and the frame's place among the ticks.
+    crate::present::reveal::step(rs, world);
+    let tick = world.time().tick as f64;
+    rs.reveal
+        .frame(tick - h.frame_alpha().map_or(0.0, |a| 1.0 - f64::from(a)));
     // Baked lighting (RenderSettings.bakedLighting, on by default).
     let baked = settings.is_none_or(|s| s.baked_lighting);
     super::baked::apply(world, &mut rs.scene, &mut rs.baked, baked);
@@ -284,6 +291,13 @@ pub(super) fn models(
             (parts, r)
         })
         .unzip();
+    // The rows still fading in carry how much of them is drawn.
+    let mut rows = rows;
+    if rs.reveal.fading() {
+        for r in &mut rows {
+            r.look.fx.reveal = rs.reveal.entity(r.entity);
+        }
+    }
     let view = kept::ModelsView::of(rs, view_height, settings_bias, debug_lod, baked);
     let mut build = std::mem::take(&mut rs.kept_models).begin(view, rows);
     // HLOD (`crate::present::hlod`): the proxies of this frame, and the
@@ -394,6 +408,9 @@ pub(super) fn models(
         if let Some(crowd) = crowds.get(&e) {
             let seconds = crowd_time(h.blend_alpha(e));
             let lods = model_lods.get(&asset);
+            // A crowd draws whole: its cards read the look's flash word as is.
+            let mut look = look;
+            look.fx.reveal = 1.0;
             if super::fx::crowd_model(rs, e, asset, m, seconds, crowd, &parts, lods, look, keys) {
                 continue;
             }
