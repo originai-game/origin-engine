@@ -146,6 +146,33 @@ fn tree(eng: &Engine, id: &str, owner: usize) -> Option<Arc<Tree>> {
     tree
 }
 
+/// A bundle's tree is still owned by a live placement, including an
+/// unloaded cell whose proxies draw the distant world.
+pub(crate) fn bundle_in_use(world: &World, rs: &RenderState, bundle: usize) -> bool {
+    rs.hlod.trees.iter().any(|((owner, _), tree)| {
+        *owner == bundle
+            && tree.as_ref().is_some_and(|tree| {
+                rs.hlod.places.iter().any(|p| {
+                    Arc::ptr_eq(&p.tree, tree)
+                        && match p.root {
+                            Some(root) => world.is_alive(Entity::from_bits(root)),
+                            None => p
+                                .members
+                                .iter()
+                                .any(|&(e, _)| world.is_alive(Entity::from_bits(e))),
+                        }
+                })
+            })
+    })
+}
+
+/// A released bundle has no live placement. Collect its dead placements
+/// before forgetting even the negative tree lookups.
+pub(crate) fn release_bundle(world: &World, rs: &mut RenderState, bundle: usize) {
+    collect(world, rs);
+    rs.hlod.trees.retain(|(owner, _), _| *owner != bundle);
+}
+
 /// Dead placements no longer own their trees or their decoded proxies.
 /// A cell unloading is not a dead placement: its distant proxies must stay.
 pub(crate) fn collect(world: &World, rs: &mut RenderState) {
@@ -182,6 +209,8 @@ fn release_tree(rs: &mut RenderState, tree: &Tree) {
 
 pub(crate) fn release_proxy(rs: &mut RenderState, key: u64) {
     if let Some(textures) = rs.hlod.proxies.remove(&key) {
+        rs.decoded.hidden_models.remove(&key);
+        rs.decoded.forget_textures(&textures);
         // Cooked HLOD nodes have one mesh level and no impostor. Unlike
         // ordinary models, their resources are not shared with the bundle.
         rs.models.remove(&key);

@@ -1,0 +1,8 @@
+{
+  "added": [
+    {
+      "member": "og.load.release",
+      "summary": "Close an unused runtime bundle and reclaim its cached models, proxies and BVHs. Calls inside systems wait for the next boundary; status/error distinguish refused closes from completed releases without changing world state or events."
+    }
+  ]
+}

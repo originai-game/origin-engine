@@ -18,14 +18,17 @@ use og_core::IdMap;
 use og_core::reflect::{FieldType, Schema};
 use og_ecs::Entity;
 use serde_json::{Map, Value, json};
-use std::collections::{BTreeMap, HashMap};
+use std::collections::{BTreeMap, BTreeSet, HashMap};
 
 mod models;
+mod release;
 mod sound;
 mod spawn;
 mod textures;
 
 pub(crate) use models::*;
+pub(crate) use release::release_bundle;
+pub(crate) use release::resolve_releases;
 pub(crate) use sound::*;
 pub(crate) use spawn::*;
 pub(crate) use textures::*;
@@ -133,6 +136,8 @@ pub(crate) struct Assets {
     /// The project directory (native) or URL base (web); empty: none.
     pub root: String,
     pub entries: Vec<Entry>,
+    /// Bundle closes requested while systems hold the world.
+    pub pending_releases: BTreeSet<usize>,
     /// The game's own bundle (`cooked`).
     pub default_bundle: Option<usize>,
     pub by_path: BTreeMap<String, usize>,
@@ -283,6 +288,13 @@ impl Assets {
 
     /// Opens a bundle directory (relative to the root).
     pub fn open_bundle(&mut self, path: &str) -> usize {
+        let dir = join(&self.root, path);
+        if let Some(i) = self.entries.iter().position(|e| {
+            matches!(&e.payload, Payload::Bundle { dir: opened, .. } if opened == &dir)
+                || (e.path == path && e.status == Status::Pending)
+        }) {
+            return i;
+        }
         let i = self.push(path, Status::Pending, Payload::None);
         self.poll_bundle(i);
         i
