@@ -12,17 +12,25 @@
 //! world-space particles, trails) is invisible: the frames match the ones
 //! drawn without the move.
 //!
+//! The render origin lies on a grid, so a camera is up to 5.8 km from it.
+//! What a shader reads along the pixel's ray (the lit fog's march, what
+//! glass refracts) is there what it is at the render origin.
+//!
 //! Ways this could fail: `rebase` misses a kind of position (the lights,
 //! the fog's height, the decals, the particle systems: the frame differs
 //! from the one at zero), the shadow cascades snap to a texel grid through
-//! the render origin instead of the world's zero, or the renderer keeps
+//! the render origin instead of the world's zero, the renderer keeps
 //! the history of the old origin (the particles jump 8 km away and vanish,
-//! the trails streak, TAA reprojects from the wrong place).
+//! the trails streak, TAA reprojects from the wrong place), or a shader
+//! builds its ray or a depth from a point unprojected through
+//! `inv_view_proj`, rounded at the camera's distance from the render origin,
+//! instead of frame.wgsl's `pixel_ray` (the fog's shafts and what the glass
+//! refracts drift with the camera's place).
 
 use glam::Vec3;
 use og_render::{RenderDesc, RenderScene, RenderTarget, Renderer, RgbaImage};
 use og_tests::compare::{Comparison, Tolerance, compare};
-use og_tests::{atmo_scenes, fx_scenes, scenes, shadow_scenes};
+use og_tests::{atmo_scenes, fx_scenes, light_scenes, physical_scenes, scenes, shadow_scenes};
 
 /// A scene's builder, and what moves it to a frame.
 type Build = fn() -> RenderScene;
@@ -183,6 +191,46 @@ fn moving_the_render_origin_keeps_the_history_in_place() {
                      frame is the one drawn without the move: {e}"
                 );
             }
+        }
+    }
+}
+
+/// The farthest a camera gets from its render origin in og-runtime: half
+/// the grid on x and on z, 5.8 km.
+const EDGE: Vec3 = Vec3::new(4096.0, 0.0, 4096.0);
+/// The rmse the lit fog's frame may differ by there: lavapipe measured
+/// 0.00214, and 0.01008 with the march's ray unprojected through
+/// `inv_view_proj`.
+const EDGE_FOG: f64 = 0.0045;
+/// The rmse the physical materials' frame may differ by there: lavapipe
+/// measured 0.00419, and 0.01968 with the refraction's ray and the opaque
+/// depth unprojected through `inv_view_proj`.
+const EDGE_GLASS: f64 = 0.009;
+
+#[test]
+#[ignore = "requires GPU"]
+fn a_view_at_the_grids_edge_draws_as_at_the_render_origin() {
+    let builds: [(&str, Build, f64); 2] = [
+        ("fog", light_scenes::volumetric_fog_scene, EDGE_FOG),
+        ("glass", physical_scenes::physical_scene, EDGE_GLASS),
+    ];
+    for (name, build, rmse) in builds {
+        // Placed at the edge and drawn as it is, the render origin 5.8 km
+        // from the camera.
+        let mut scene = build();
+        place(&mut scene, EDGE);
+        let mut r = renderer();
+        let at_the_edge = draw(&mut r, &scene);
+        // The same world drawn from a render origin at its place.
+        scene.rebase(EDGE);
+        let mut r = renderer();
+        let at_the_origin = draw(&mut r, &scene);
+        let d = diff(&at_the_edge, &at_the_origin);
+        if let Err(e) = within(&d, rmse) {
+            panic!(
+                "{name}: 5.8 km from the render origin the frame is the one \
+                 drawn at it: {e}"
+            );
         }
     }
 }
