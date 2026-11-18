@@ -526,18 +526,32 @@ pub fn og_web_texture_ktx2(manifest: String, id: String, bytes: Vec<u8>) -> Vec<
     }
 }
 
-/// The Basis-coded textures of a streaming group's pack, for the Worker's
-/// transcoder before it hands the pack to the engine: `[id, ktx2, target,
-/// ...]` (triples; `target` is [`og_web_texture_target`]'s answer for
-/// `engine`'s renderer, `rgba8` without one). Empty for a pack or manifest
-/// that does not read (the runtime then fails the group with the reason)
-/// and for RGBA8-coded textures.
+/// The Basis-coded textures of the streaming group's pack at `path`
+/// (`<bundle>/stream/<group>.ogb`), for the Worker's transcoder before it
+/// hands the pack to the engine: `[id, ktx2, target, ...]` (triples;
+/// `target` is [`og_web_texture_target`]'s answer for `engine`'s renderer,
+/// `rgba8` without one). The textures are those its own bundle's manifest
+/// lists (`<bundle>/.cook.ogt`, which the engine read when the bundle
+/// opened: the game's, or one og.load.bundle opened). Empty for a pack or
+/// manifest that does not read (the runtime then fails the group with the
+/// reason) and for RGBA8-coded textures.
 #[wasm_bindgen]
-pub fn og_web_pack_ktx2(engine: Option<u32>, manifest: String, pack: Vec<u8>) -> js_sys::Array {
+pub fn og_web_pack_ktx2(engine: Option<u32>, path: String, pack: Vec<u8>) -> js_sys::Array {
     let out = js_sys::Array::new();
     let formats = engine.and_then(|e| FORMATS.with(|f| f.borrow().get(&e).cloned()));
-    let (Some(bundle), Ok(files)) = (bundle_of(&manifest), og_bundle::runtime::unpack(&pack))
-    else {
+    let manifest = path
+        .rsplit_once('/')
+        .and_then(|(dir, _)| dir.strip_suffix("/stream"))
+        .and_then(|dir| {
+            FILES.with(|f| match f.borrow().get(&format!("{dir}/.cook.ogt")) {
+                Some(Ok(bytes)) => String::from_utf8(bytes.clone()).ok(),
+                _ => None,
+            })
+        });
+    let (Some(bundle), Ok(files)) = (
+        manifest.as_deref().and_then(bundle_of),
+        og_bundle::runtime::unpack(&pack),
+    ) else {
         return out;
     };
     for (file, bytes) in files {
