@@ -1147,6 +1147,17 @@ None of these has a web standard; each is named for what it does.
   boss's contained plate fully readable; distance, occlusion and declutter
   still fade normally. The default is `contain-fade="edge"`.
   To pin a speech bubble without an arrow use `clamp="edge" arrow-size="0"`.
+  Placement feedback reaches the anchor root on the next tick:
+  `[data-clamped]` and `[data-edge="top|right|bottom|left"]` while edge-pinned,
+  and inherited `--anchor-angle` in degrees clockwise from +x. Containment
+  does not set clamped feedback. A behind-camera target follows the direction
+  the player would turn, meeting the first safe edge rather than always bottom.
+  `lod="25 45"` supplies strictly ascending positive world distances: level 0
+  before 25, 1 from 25, 2 from 45, read as `[data-lod="0|1|2"]`. A bound
+  `lod-lock={targeted || casting}` forces level 0 without changing scale,
+  clamp, fade or declutter. LOD is distance-only; crowd fallback is not implied.
+  Style child details from these facts; placement itself does not animate on
+  a feedback change (an authored child opacity transition is independent).
 - `<panel world entity|at size rotation src>` lays a box out at its CSS
   size into the render target `src`, which the game shows on a quad of
   `size` world units; pointer rays meeting the quad reach its controls

@@ -95,6 +95,20 @@ pub const PROPS: &[PropSpec] = &[
         doc: "How it resolves overlapping an anchor of higher priority.",
     },
     PropSpec {
+        name: "lod",
+        ty: Ty::Text,
+        on: On::Kinds(&[Kind::Anchor]),
+        two_way: false,
+        doc: "Ascending world distances (`lod=\"25 45\"`): levels 0, 1, 2. Read last tick's `[data-lod]` on the anchor root. Edge clamp reports `[data-clamped]`, `[data-edge=\"top|right|bottom|left\"]` and inherited `--anchor-angle` (clockwise degrees from +x).",
+    },
+    PropSpec {
+        name: "lodLock",
+        ty: Ty::Bool,
+        on: On::Kinds(&[Kind::Anchor]),
+        two_way: false,
+        doc: "`lod-lock={targeted || casting}` forces level 0 only; distance scaling, fading, clamping and declutter are unchanged.",
+    },
+    PropSpec {
         name: "worldClamp",
         ty: Ty::Word(&["none", "edge", "contain"]),
         on: On::Kinds(&[Kind::Anchor]),

@@ -299,6 +299,8 @@ pub struct AnchorInfo {
     pub on_screen: bool,
     /// Held on the screen's edge.
     pub clamped: bool,
+    /// The safe edge hit by its direction ray: top, right, bottom or left.
+    pub edge: Option<&'static str>,
     pub lod: u32,
     /// From the eye, world units.
     pub distance: f32,
@@ -624,7 +626,7 @@ pub struct WorldPlacement {
     /// The panel the pointer is on this tick.
     pub pointed: Option<(u64, PanelInfo)>,
     pub marks: BTreeMap<u64, Marks>,
-    last: BTreeMap<u64, AnchorInfo>,
+    pub(crate) last: BTreeMap<u64, AnchorInfo>,
     /// This tick's anchored elements as placed.
     pub placed: Vec<AnchorPoint>,
     pub frame: WorldFrame,

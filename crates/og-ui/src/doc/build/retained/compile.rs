@@ -137,6 +137,7 @@ impl RetainedHost {
             cascades: Default::default(),
             style_dirty: true,
             theme_epoch: self.theme_epoch,
+            anchor_feedback: None,
             children: Default::default(),
             control: None,
             images: Vec::new(),

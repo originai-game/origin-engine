@@ -1165,6 +1165,18 @@ impl crate::ui::Layout {
                     pivot = (0.5, 0.5);
                     info.clamped = true;
                     info.angle = og_core::math::atan2(dir.y, dir.x);
+                    let room =
+                        (Vec2::new(area.width, area.height) / 2.0 - half - Vec2::splat(reach))
+                            .max(Vec2::ZERO);
+                    // The first edge the ray hits, not its dominant axis:
+                    // a portrait surface can hit a side even on a steep ray.
+                    info.edge = Some(if room.x * dir.y.abs() <= room.y * dir.x.abs() {
+                        if dir.x < 0.0 { "left" } else { "right" }
+                    } else if dir.y < 0.0 {
+                        "top"
+                    } else {
+                        "bottom"
+                    });
                     if let Some(color) = c.arrow {
                         arrow = Some((info.angle, color, c.arrow_size));
                     }
