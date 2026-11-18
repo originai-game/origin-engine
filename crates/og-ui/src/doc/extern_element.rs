@@ -278,6 +278,8 @@ pub fn property(kind: Kind, attr: &str) -> Option<String> {
             "offset" => "worldOffset",
             "clamp" => "worldClamp",
             "scale-at" => "worldScaleAt",
+            "scale-min" => "worldScaleMin",
+            "scale-max" => "worldScaleMax",
             "value" => "massValue",
             "max" => "massMax",
             _ => return None,

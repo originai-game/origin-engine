@@ -1146,13 +1146,22 @@ None of these has a web standard; each is named for what it does.
   built-in `TouchControls` lays a stick or d-pad and its action buttons
   out this way.
 - `<anchor entity|at offset occlusion declutter clamp priority
-  max-distance scale-at>` holds a column over a world point, placed every
+  max-distance scale-at scale-min scale-max>` holds a column over a world point, placed every
   tick; a moving camera builds nothing. Decluttered by rank (priority,
   then nearness), each takes the nearest spot a gap clear of all those
   placed before it draw (their scaled and overflowing parts included) and
   of the grounds' text, on the screen and within its reach (`stack`
   straight above, then below, then any way; `shift` any way), and fades
   out while none is.
+  `scale-at="12" scale-min="0.72" scale-max="1"` scales the whole box by
+  distance, never above its designed size; omitted bounds remain 0.5–2.
+  `clamp="edge"` pins off-screen and behind-camera points with an arrow;
+  `clamp-margin` (default 24) and `arrow-size` (default 14, zero disables it)
+  are CSS px multiplied by user text scale. `arrow-color` sets its ink.
+  `clamp="contain"` pushes the whole box into the safe area, inset by
+  `clamp-margin` (default theme small spacing), and fades it as its point
+  leaves the edge; it does not pin arbitrarily distant off-screen points.
+  To pin a speech bubble without an arrow use `clamp="edge" arrow-size="0"`.
 - `<panel world entity|at size rotation src>` lays a box out at its CSS
   size into the render target `src`, which the game shows on a quad of
   `size` world units; pointer rays meeting the quad reach its controls
@@ -1163,6 +1172,9 @@ None of these has a web standard; each is named for what it does.
   keys are the template's timeline: a row with one spawns one instance when
   it appears (a damage number); one without stands with its row (an
   overhead bar), pushed every tick with nothing built.
+  The same `scale-at`, `scale-min`, and `scale-max` configure its native
+  distance scaling (mass defaults: constant size, bounds 0.25–4).
+  `bar-ghost` sets the ghost track's ink, not a hold/drain animation.
   Numbers and texts spawned in the world on one tick are laid apart as a
   stack, clear of the tags and of those still rising (a target's hits
   stand one over another, never on each other); one with no room in
