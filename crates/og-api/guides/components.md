@@ -959,6 +959,7 @@ Its own props, beside every element's:
 | `occlusion` | `none \| fade \| hide` | What the scene in front of its point does to it: faded or hidden. |
 | `declutter` | `none \| shift \| stack \| hide` | How it resolves overlapping an anchor of higher priority. |
 | `world-clamp` | `none \| edge \| contain` | `clamp="edge"`: held on the safe edge with an arrow; `contain`: push the whole box inside, fading as its point leaves the safe area. |
+| `contain-fade` | `edge \| none` | `contain-fade="none"`: keep a contained label fully readable even when its point leaves the safe area; default `edge` fades near the edge. Distance, occlusion and declutter fades are unchanged. |
 | `clamp-margin` | `number` | `clamp-margin`: safe-edge inset in CSS px times user text scale; default 24 for edge, theme small spacing for contain. |
 | `arrow-size` | `number` | `arrow-size`: edge arrow length in CSS px times user text scale (default 14); zero draws no arrow. |
 | `arrow-color` | `paint` | `arrow-color`: edge arrow ink (default white). |

@@ -1186,7 +1186,9 @@ impl crate::ui::Layout {
                     .min(safe.bottom() - y);
                 let band = half.x.max(16.0);
                 let k = ((inside_by + band) / (2.0 * band)).clamp(0.0, 1.0);
-                alpha *= k * k * (3.0 - 2.0 * k);
+                if d.contain_fade {
+                    alpha *= k * k * (3.0 - 2.0 * k);
+                }
                 let g = d.contain_margin.unwrap_or(env.theme.space.sm);
                 let safe = Rect::new(
                     safe.x + g,

@@ -261,6 +261,8 @@ pub struct WorldAnchorDesc {
     pub contain: bool,
     /// Safe-edge inset for containment, CSS px; `None` uses theme small spacing.
     pub contain_margin: Option<f32>,
+    /// Fade as the point leaves the safe area; false keeps contained bosses readable.
+    pub contain_fade: bool,
 }
 
 impl Default for WorldAnchorDesc {
@@ -281,6 +283,7 @@ impl Default for WorldAnchorDesc {
             fade_ticks: 0,
             contain: false,
             contain_margin: None,
+            contain_fade: true,
         }
     }
 }

@@ -38235,7 +38235,7 @@ export declare namespace og {
      */
     function actionBar(world: World): readonly UiActionHint[];
     /**
-     * The reflected schema documents are validated against (docs/ui.md §2.1): every element kind and prop, its type, applicable kinds and writeback. World anchors share scale-at/scale-min/scale-max with mass anchors. clamp accepts none, edge or contain; clamp-margin and arrow-size are CSS px times user text scale, arrow-color is ink. Mass bars accept bar-ghost ink.
+     * The reflected schema documents are validated against (docs/ui.md §2.1): every element kind and prop, its type, applicable kinds and writeback. World anchors share scale-at/scale-min/scale-max with mass anchors. clamp accepts none, edge or contain; clamp-margin and arrow-size are CSS px times user text scale, arrow-color is ink. contain-fade=none disables containment's default edge fade without changing other fades. Mass bars accept bar-ghost ink.
      */
     function documentSchema(): unknown;
     /**
