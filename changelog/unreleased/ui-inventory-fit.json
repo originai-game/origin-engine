@@ -1,0 +1,12 @@
+{
+  "fixed": [
+    {
+      "member": "RpgBackpack",
+      "summary": "A long title keeps two lines and ends in an ellipsis (its full text stays its name), so on a phone at large text sizes the grid always shows at least one whole row of items."
+    },
+    {
+      "member": "RpgLoot",
+      "summary": "An item's name keeps two lines and ends in an ellipsis (its full text stays its name). In a narrow loot window, Take sits at the row's foot so the name has the row's width, and the description keeps two lines, so more than one item shows at large text sizes."
+    }
+  ]
+}

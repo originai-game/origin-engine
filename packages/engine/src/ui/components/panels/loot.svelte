@@ -35,8 +35,8 @@
     {#each items as item (item.id)}<li part="RpgLoot.row" class="row" data-rarity={item.rarity || 'common'} data-available={item.available}>
       <div part="RpgLoot.socket" class="socket" data-layout="cover"><og-icon part="RpgLoot.icon" icon={item.icon}></og-icon></div>
       <div part="RpgLoot.detail" class="detail" data-layout="stack" data-gap="hair" data-fill>
-        <div class="line" data-layout="row"><h3 part="RpgLoot.name" class="name" data-fill>{item.name}</h3><span part="RpgLoot.count RpgLoot.figure" class="count">{t("rpg.loot.count", { count: formatNumber(item.count) })}</span></div>
-        {#if !item.available}<p part="RpgLoot.reason" class="reason" data-tone="danger">{item.reason || t("rpg.economy.unavailable")}</p>{:else if item.description}<p part="RpgLoot.description RpgLoot.caption">{item.description}</p>{/if}
+        <div class="line" data-layout="row"><h3 part="RpgLoot.name" class="name" data-fill aria-label={item.name}>{item.name}</h3><span part="RpgLoot.count RpgLoot.figure" class="count">{t("rpg.loot.count", { count: formatNumber(item.count) })}</span></div>
+        {#if !item.available}<p part="RpgLoot.reason" class="reason" data-tone="danger">{item.reason || t("rpg.economy.unavailable")}</p>{:else if item.description}<p part="RpgLoot.description RpgLoot.caption" class="description">{item.description}</p>{/if}
       </div>
       <button part="RpgLoot.take" class="take" disabled={!item.available || loading || busy} aria-label={t("rpg.loot.takeItem", { name: item.name })} onclick={take}>{t("rpg.loot.take")}</button>
     </li>{/each}
@@ -70,7 +70,7 @@ h2, h3, p { margin: 0; }
 .detail { min-width: 0; }
 /* The count sits on the name's line, whatever the lines under it wrap to. */
 .line { align-items: baseline; min-width: 0; }
-.name { flex: 1 1 0; min-width: 0; overflow-wrap: anywhere; color: var(--inv-rarity); }
+.name { flex: 1 1 0; min-width: 0; overflow-wrap: anywhere; line-clamp: 2; overflow: hidden; color: var(--inv-rarity); }
 .row[data-rarity=common] .name { color: var(--ink-bright); }
 .count { flex: none; white-space: nowrap; font-weight: var(--inv-figure-weight); font-stretch: var(--inv-figure-stretch); font-variant-numeric: var(--hud-figure-numeric); }
 .reason { color: var(--inv-broken-ink); }
@@ -80,10 +80,12 @@ h2, h3, p { margin: 0; }
 .act { flex: 1; min-block-size: var(--size-touch); gap: var(--space-xs); }
 .all { flex: 1.4; }
 .cap { flex: none; }
-/* Narrow: Take goes under the row's words, at the row's end; the socket
-   keeps its column beside them. */
-@container (width < 360px) {
+/* Narrow: Take goes under the row's words, at the row's
+   end, so the name keeps the row's width, and the description keeps two
+   lines, so more than one item shows; the socket keeps its column. */
+@container (width < 520px) {
   .socket { grid-row: span 2; }
   .take { grid-column: 2 / 4; justify-self: end; }
+  .description { line-clamp: 2; overflow: hidden; }
 }
 </style>

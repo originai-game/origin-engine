@@ -38,7 +38,7 @@
   <header part="RpgBackpack.band" data-layout="cluster" data-gap="loose">
     <div class="heading" data-layout="stack" data-gap="hair" data-fill>
       {#if kicker}<span part="RpgBackpack.kicker" class="kicker">{kicker}</span>{/if}
-      <h2 part="RpgBackpack.title">{title}</h2>
+      <h2 part="RpgBackpack.title" aria-label={title}>{title}</h2>
     </div>
     {#if gold}<div part="RpgBackpack.purse" class="purse" data-layout="row" data-gap="tight" aria-label={t("rpg.backpack.gold", { gold })}><span class="coin"></span><span part="RpgBackpack.figure" class="figure">{gold}</span></div>{/if}
   </header>
@@ -86,7 +86,7 @@
 [part="RpgBackpack.band"] { width: stretch; flex: none; align-items: flex-end; }
 .heading { min-width: 0; flex-basis: calc(120 * var(--font-step-px)); }
 .kicker { font-size: var(--inv-kicker-size); font-weight: var(--inv-name-weight); letter-spacing: var(--inv-kicker-tracking); text-transform: var(--inv-kicker-transform); color: var(--inv-kicker-ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-[part="RpgBackpack.title"] { margin: 0; min-width: 0; overflow-wrap: anywhere; }
+[part="RpgBackpack.title"] { margin: 0; min-width: 0; overflow-wrap: anywhere; line-clamp: 2; overflow: hidden; }
 .purse { flex: none; align-items: center; padding: var(--space-xxs) var(--space-sm) var(--space-xxs) var(--space-xxs); border-radius: var(--inv-chip-radius); background: var(--inv-chip-fill); box-shadow: var(--inv-chip-rim); }
 .coin { flex: none; inline-size: calc(22 * var(--font-step-px)); block-size: calc(22 * var(--font-step-px)); border-radius: var(--inv-chip-radius); background: var(--inv-coin); }
 .figure { white-space: nowrap; font-weight: var(--inv-figure-weight); font-stretch: var(--inv-figure-stretch); font-variant-numeric: var(--hud-figure-numeric); }
