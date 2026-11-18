@@ -295,35 +295,37 @@ fn coarse_cell(c: vec2<f32>) -> Coarse {
   return o;
 }
 
-// The coarser level's surface over clamped grid point `m` in its cell:
-// on the triangle of the cell's split under it.
-fn coarse_height(k: Coarse, m: vec2<f32>) -> f32 {
-  let span = k.hi - k.lo;
-  let f = select(vec2<f32>(0.0), (m - k.lo) / max(span, vec2<f32>(1e-6)), span > vec2<f32>(0.0));
-  return split_height(k.h, f);
-}
-
 // Corner `g` of the level's grid (whole numbers, 0 to n) in grid units.
 fn grid_corner(g: vec2<f32>) -> vec2<f32> {
   return level.center.xy + (g - level.grid.x * 0.5) * level.center.z;
 }
 
-// A corner's height after the morph, its own height `h` given: towards
-// the coarser level's surface under it (an even corner, the coarser
-// level's own corner as that level reads it).
-fn morphed(c: vec2<f32>, m: vec2<f32>, h: f32, k: Coarse) -> f32 {
+// Collapse odd corners onto the coarser lattice in all three dimensions.
+// Height-only morphing leaves T-junctions: collinear world-space edges
+// need not rasterize identically after projection and subpixel rounding.
+fn morphed(c: vec2<f32>, h: f32, k: Coarse) -> f32 {
   let a = morph_alpha(c);
   if (a <= 0.0) { return h; }
-  return mix(h, coarse_height(k, m), a);
+  let s2 = 2.0 * level.center.z;
+  let hi = grid_clamp(floor(c / s2) * s2) == k.hi;
+  let coarse_h = select(select(k.h.x, k.h.y, hi.x), select(k.h.z, k.h.w, hi.x), hi.y);
+  if (a >= 1.0) { return coarse_h; }
+  return mix(h, coarse_h, a);
+}
+
+fn morphed_grid(c: vec2<f32>) -> vec2<f32> {
+  let a = morph_alpha(c);
+  let s2 = 2.0 * level.center.z;
+  return grid_clamp(mix(c, floor(c / s2) * s2, a));
 }
 
 // Grid corner `g` in the terrain's space.
 fn terrain_grid_corner(g: vec2<f32>) -> vec3<f32> {
   let c = grid_corner(g);
-  let m = grid_clamp(c);
+  let m = morphed_grid(c);
   var h = own_height(g);
   if (morph_alpha(c) > 0.0) {
-    h = morphed(c, m, h, coarse_cell(c));
+    h = morphed(c, h, coarse_cell(c));
   }
   let xz = terrain_min() + m * level.camera.z;
   return vec3<f32>(xz.x, h, xz.y);
@@ -352,7 +354,7 @@ fn terrain_cell_centre(g: vec2<f32>) -> vec3<f32> {
     let k = coarse_cell(c00 + 0.5 * s);
     var mh: vec4<f32>;
     for (var i = 0u; i < 4u; i++) {
-      mh[i] = morphed(cs[i], grid_clamp(cs[i]), own[i], k);
+      mh[i] = morphed(cs[i], own[i], k);
     }
     let main_mid = (mh.x + mh.w) * 0.5;
     let cross_mid = (mh.y + mh.z) * 0.5;
@@ -360,7 +362,7 @@ fn terrain_cell_centre(g: vec2<f32>) -> vec3<f32> {
     let theirs = select(main_mid, cross_mid, zigzag(k.h.x, k.h.y, k.h.z, k.h.w));
     h = mix(mine, theirs, morph_alpha(c00 + 0.5 * s));
   }
-  let m = (grid_clamp(cs[0]) + grid_clamp(cs[3])) * 0.5;
+  let m = 0.25 * (morphed_grid(cs[0]) + morphed_grid(cs[1]) + morphed_grid(cs[2]) + morphed_grid(cs[3]));
   let xz = terrain_min() + m * level.camera.z;
   return vec3<f32>(xz.x, h, xz.y);
 }
