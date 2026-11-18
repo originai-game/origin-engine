@@ -1,31 +1,52 @@
 <meta name="component" content="PlacementGhost">
-<meta name="parts" content="PlacementGhost.reach PlacementGhost.footprint PlacementGhost.badge PlacementGhost.zone PlacementGhost.gridline PlacementGhost.fill">
+<meta name="parts" content="PlacementGhost.reach PlacementGhost.footprint PlacementGhost.cell PlacementGhost.badge">
 <meta name="prop:at" content="string" data-default="0 0 0" data-doc="Its footprint's centre on the ground (x y z).">
 <meta name="prop:width" content="number" data-default="1" data-doc="Its width along x before rotation, world units.">
 <meta name="prop:depth" content="number" data-default="1" data-doc="Its depth along z, world units.">
 <meta name="prop:rotation" content="number" data-doc="Its turn about y in degrees, clockwise from above.">
-<meta name="prop:cells" content="number" data-doc="Grid cells across its width, drawn on the footprint (0: none).">
-<meta name="prop:valid" content="bool" data-doc="It can be placed here (success); false is danger with hatching.">
-<meta name="prop:label" content="string" data-doc="Its cost or why not (Blocked); empty is none.">
-<meta name="prop:range" content="number" data-doc="A range ring round it as a multiple of its width (a tower's reach); 0 is none.">
-<meta name="fixture:default" content='{"at":"0 0 0","width":3,"depth":3,"rotation":0,"cells":3,"valid":false,"label":"Blocked","range":0}'>
+<meta name="prop:cells" content="list" data-doc="Its grid's cells in rows, keyed rows of { id, blocked }; columns cells across. Empty draws no grid.">
+<meta name="prop:columns" content="number" data-default="1" data-doc="Grid cells across its width.">
+<meta name="prop:valid" content="bool" data-doc="It can be placed here: green and lit; false is red. Blocked cells hatch: all of them when every cell is blocked, only the bad ones when partly.">
+<meta name="prop:label" content="string" data-doc="Its name and cost (Watchtower 120), or why not (Blocked · water), on a dark badge; empty is none.">
+<meta name="prop:range" content="number" data-doc="A dashed reach ring round it as a multiple of its width (a tower's reach); 0 is none.">
+<meta name="fixture:default" content='{"at":"0 0 0","width":3,"depth":3,"rotation":45,"columns":3,"cells":[{"id":"0","blocked":false},{"id":"1","blocked":false},{"id":"2","blocked":false},{"id":"3","blocked":false},{"id":"4","blocked":false},{"id":"5","blocked":false},{"id":"6","blocked":false},{"id":"7","blocked":false},{"id":"8","blocked":false}],"valid":true,"label":"Watchtower · 120","range":2.8}'>
+<meta name="fixture:blocked" content='{"valid":false,"label":"Blocked · water","range":0,"cells":[{"id":"0","blocked":true},{"id":"1","blocked":true},{"id":"2","blocked":true},{"id":"3","blocked":true},{"id":"4","blocked":true},{"id":"5","blocked":true},{"id":"6","blocked":true},{"id":"7","blocked":true},{"id":"8","blocked":true}]}'>
+<meta name="fixture:partial" content='{"valid":false,"label":"3 cells on rock","range":0,"cells":[{"id":"0","blocked":true},{"id":"1","blocked":true},{"id":"2","blocked":false},{"id":"3","blocked":true},{"id":"4","blocked":false},{"id":"5","blocked":false},{"id":"6","blocked":false},{"id":"7","blocked":false},{"id":"8","blocked":false}]}'>
 
-<ground id="PlacementGhost" at={at} size={(width * (range > 1 ? range : 1)) + " " + (depth * (range > 1 ? range : 1))} rotation={"0 " + rotation + " 0"}>
-  <div id="Room" data-layout="overlay" class:invalid={!valid}>
-    {#if range > 1}<svg id="Reach" part="PlacementGhost.reach" data-anchor="fill" viewBox="0 0 200 200"><circle part="PlacementGhost.fill" data-tone={valid ? 'success' : 'danger'} cx="100" cy="100" r="98" fill="none" stroke-width="2" stroke-dasharray="8 6"></circle></svg>{/if}
-    <div id="Footprint" part="PlacementGhost.footprint PlacementGhost.zone" data-tone={valid ? 'success' : 'danger'} data-layout="overlay" data-anchor="center" style:--cells={cells || 1} style:--k={range > 1 ? 1 / range : 1}>
-      {#if cells > 0}<div id="Grid" part="PlacementGhost.gridline" data-anchor="fill"></div>{/if}
-      {#if label}<span id="Label" class="label" part="PlacementGhost.badge" data-anchor="center">{label}</span>{/if}
+<!--
+  Where a building would stand: its footprint and grid, green when it can
+  be placed with a dashed reach ring and its cost; red and hatched when it
+  cannot, with why (only the bad cells hatch when it is partly blocked).
+  Read only; the game decides what is valid.
+-->
+<div id="PlacementGhost" class="bare">
+<ground class="plane" at={at} size={(width * (range > 1 ? range : 1)) + " " + (depth * (range > 1 ? range : 1))} rotation={"0 " + rotation + " 0"}>
+  <div id="Room" data-valid={valid} style:--k={range > 1 ? 1 / range : 1} style:--n={columns > 0 ? columns : 1}>
+    {#if range > 1}<div part="PlacementGhost.reach" class="reach"></div>{/if}
+    <div part="PlacementGhost.footprint" class="footprint">
+      {#each cells as c (c.id)}<div part="PlacementGhost.cell" class="cell" data-blocked={c.blocked}></div>{/each}
     </div>
   </div>
 </ground>
+{#if label != ''}
+  <!-- The badge stands upright under the footprint: it hangs from a point past the footprint's near edge, so it grows away from it. -->
+  <anchor id="Badge" at={at} offset={"0 0 " + (depth * 0.75)} declutter="none" priority="5">
+    <span part="PlacementGhost.badge" class="badge" data-valid={valid}>{label}</span>
+  </anchor>
+{/if}
+</div>
 
 <style>
-:host { width: var(--measure-xs); height: var(--measure-xs); text-shadow: var(--tag-halo); }
-#Room { width: var(--measure-xs); height: var(--measure-xs); --layout-anchor-inset: 0; }
-[part="PlacementGhost.reach"] { width: var(--measure-xs); height: var(--measure-xs); }
-[part~="PlacementGhost.footprint"] { width: calc(var(--k) * var(--measure-xs)); height: calc(var(--k) * var(--measure-xs)); }
-#Grid { --cell: calc(100% / var(--cells)); mask-image: repeating-linear-gradient(0deg, #000 0 var(--stroke-hairline), transparent 0 var(--cell)), repeating-linear-gradient(90deg, #000 0 var(--stroke-hairline), transparent 0 var(--cell)); }
-/* In the world, over any ground: the badge takes the scene's plate. */
-[part="PlacementGhost.badge"] { white-space: nowrap; --badge-fill: var(--scene-plate); --badge-ink: var(--zone-color); }
+.plane { inline-size: var(--measure-xs); block-size: var(--measure-xs); }
+#Room { position: relative; display: flex; align-items: center; justify-content: center; inline-size: var(--measure-xs); block-size: var(--measure-xs); }
+.reach { position: absolute; inset: 0; box-sizing: border-box; border-radius: var(--world-round); border: var(--world-reach-border); background: var(--world-reach-fill); }
+.footprint { display: grid; grid-template-columns: repeat(var(--n), 1fr); inline-size: calc(var(--k) * 100%); block-size: calc(var(--k) * 100%); box-sizing: border-box; border: var(--world-valid-border); background: var(--world-valid-wash); box-shadow: var(--world-valid-glow); }
+[data-valid=false] .footprint { border: var(--world-blocked-border); background: var(--world-blocked-faint); box-shadow: var(--world-blocked-glow); }
+.cell { border: var(--world-valid-cell-border); background: var(--world-valid-cell-fill); }
+[data-valid=false] .cell { border: var(--world-blocked-cell-border); background: var(--world-blocked-cell-fill); }
+[data-valid=false] .cell[data-blocked=true] { background: var(--world-blocked-cell); }
+/* The badge under the footprint: a dark tag, upright, a text box,
+   hanging below its point. */
+.badge { display: block; translate: 0 100%; padding: calc(2 * var(--font-step-px)) calc(8 * var(--font-step-px)); font-size: var(--world-size-badge); line-height: 1.2; font-weight: var(--hud-figure-weight); font-stretch: var(--world-caps-stretch); letter-spacing: var(--world-caps-tracking); text-transform: var(--hud-label-transform); white-space: nowrap; color: var(--world-friendly-ink); background: var(--hud-tag-fill); box-shadow: var(--hud-tag-rim); clip-path: polygon(var(--hud-tag-cut) 0, 100% 0, 100% calc(100% - var(--hud-tag-cut)), calc(100% - var(--hud-tag-cut)) 100%, 0 100%, 0 var(--hud-tag-cut)); }
+.badge[data-valid=false] { color: var(--world-hostile-ink); }
 </style>

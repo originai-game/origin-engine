@@ -785,8 +785,9 @@ fn interaction_prompts_over_one_spot_stand_apart() {
 }
 
 /// A pack's tokens reach the parts that read them: the tag tokens the
-/// text a status grid, a nameplate and a waypoint draw over the scene,
-/// `--ink-on-warn` the spell over a cast's fill. Fails when a component
+/// text a status grid draws over the scene, the HUD's stroke the text a
+/// nameplate and a waypoint draw over it, the elite chip's fill, the
+/// waypoint's distance tag, `--world-cast-ink` a nameplate's spell. Fails when a component
 /// writes its own value over the token (the status grid's figures kept
 /// their own halo whatever a pack set).
 #[test]
@@ -809,11 +810,11 @@ fn packs_dress_text_over_the_scene_through_its_tokens() {
     for (name, token, a, b) in [
         ("StatusGrid", "--tag-halo", "none", "0 0 4px #ff0000"),
         ("StatusGrid", "--tag-fill", "none", "#ff0000"),
-        ("Nameplate", "--tag-halo", "none", "0 0 4px #ff0000"),
-        ("Nameplate", "--tag-fill", "none", "#ff0000"),
-        ("Nameplate", "--ink-on-warn", "#000000", "#00ff00"),
-        ("Waypoint", "--tag-halo", "none", "0 0 4px #ff0000"),
-        ("Waypoint", "--tag-fill", "none", "#ff0000"),
+        ("Nameplate", "--hud-stroke-color", "#000000", "#ff0000"),
+        ("Nameplate", "--world-elite-chip-fill", "none", "#ff0000"),
+        ("Nameplate", "--world-cast-ink", "#000000", "#00ff00"),
+        ("Waypoint", "--hud-stroke-color", "#000000", "#ff0000"),
+        ("Waypoint", "--hud-tag-fill", "none", "#ff0000"),
     ] {
         assert_ne!(
             drawn(name, format!("{token}: {a};")),
