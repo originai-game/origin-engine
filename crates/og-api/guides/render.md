@@ -329,7 +329,8 @@ depth-normal prepass: the first one pays for it.
 - By night the moon's light scatters through the same air: a full moon
   high up gives a dim blue sky, brightest round the moon, and the land
   under it the light of a dim day; a quarter moon about 0.38 of that, a
-  new moon none, leaving the black, starlit sky. `moonPhase` sets the
+  new moon none, leaving the black, starlit sky. Stars show by their
+  contrast with the sky: a full moon leaves only the brighter, none near it. `moonPhase` sets the
   moonlight on the land under og.DayNight with either sky. A moonlit
   night is a few stops under noon: open the camera's exposure for it as
   for twilight.

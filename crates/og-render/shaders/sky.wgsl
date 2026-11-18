@@ -186,9 +186,15 @@ fn sky_physical_look(d: vec3<f32>) -> vec3<f32> {
     let cell = floor(g);
     let h = lattice3(vec3<i32>(cell), 0u);
     let f = fract(g) - 0.5;
-    let star = smoothstep(0.985, 1.0, h) * smoothstep(0.32, 0.0, length(f));
-    let dark = 1.0 - clamp(luma(sky) * 4.0, 0.0, 1.0);
-    color += vec3<f32>(star * frame.sky_ground.w * dark * 3.0) * smoothstep(0.0, 0.15, up) * (1.0 - moon.a) * star_veil();
+    let bright = smoothstep(0.985, 1.0, h);
+    let star = bright * smoothstep(0.32, 0.0, length(f));
+    // A star shows by its contrast with the sky round it: its radiance is
+    // fixed and the eye's threshold rises with the background (Blackwell
+    // 1946, "Contrast thresholds of the human eye"). Under a moonless sky
+    // all of them show, under a full moon's only the brighter, fewer still
+    // near the moon, and none by day. `bright` is the star's magnitude.
+    let seen = smoothstep(24.0, 96.0, 3.0 * bright / max(luma(sky), 1e-6));
+    color += vec3<f32>(star * frame.sky_ground.w * seen * 3.0) * smoothstep(0.0, 0.15, up) * (1.0 - moon.a) * star_veil();
   }
   return color + moon.rgb;
 }
