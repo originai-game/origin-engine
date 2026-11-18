@@ -19,8 +19,11 @@ pub(super) fn models(
     // and the frame's place among the ticks.
     crate::present::reveal::step(rs, world);
     let tick = world.time().tick as f64;
-    rs.reveal
-        .frame(tick - h.frame_alpha().map_or(0.0, |a| 1.0 - f64::from(a)));
+    let display = rs.interp.display;
+    rs.reveal.frame(
+        tick - h.frame_alpha().map_or(0.0, |a| 1.0 - f64::from(a)),
+        display,
+    );
     // Baked lighting (RenderSettings.bakedLighting, on by default).
     let baked = settings.is_none_or(|s| s.baked_lighting);
     super::baked::apply(world, &mut rs.scene, &mut rs.baked, baked);

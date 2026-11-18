@@ -19,6 +19,16 @@
 //! are; no component is read or written for them, nothing is hashed or
 //! saved, no event is sent, and what a tick does never depends on it.
 //!
+//! The frames hold a fade at nothing until the renderer has the
+//! pipelines its model draws with. An instance drawn for the first time
+//! stops its frame while they compile, so a frame draws nothing of a held
+//! one and the renderer makes its pipelines on the side
+//! (`og_render::FrameStats::compiling_ahead`); the frames then draw the
+//! fade as many ticks late as it was held. Usually that is none. The hold
+//! is the frames' alone: how long a first compile takes is the device's,
+//! so a capture, which waits for what it draws, reads the fade by its
+//! ticks, and neither the hold nor the delay is hashed.
+//!
 //! Stepped by the tick, never by the frames: [`step`] compares the world
 //! each tick left with the one before it, as the next tick starts
 //! (`crate::present::presentation::before_tick`) or when a frame is drawn
@@ -46,10 +56,29 @@ struct Fade {
     start: f64,
     ticks: f64,
     model: u64,
+    /// The frames hold it at nothing until one has been drawn since
+    /// `Reveal::drawn` counted this many and no pipeline made ahead is
+    /// compiling ([`Reveal::drawn`]); none once they draw it, or without
+    /// a renderer.
+    held: Option<u64>,
+    /// The ticks the frames draw it late by, for having held it.
+    late: f64,
 }
 
 impl Fade {
-    /// How much is drawn at `now`, 0 to 1, eased at both ends.
+    /// A fade from tick `start`, held by the frames since `held`.
+    fn new(start: f64, ticks: f64, model: u64, held: Option<u64>) -> Fade {
+        Fade {
+            start,
+            ticks,
+            model,
+            held,
+            late: 0.0,
+        }
+    }
+
+    /// How much is drawn at `now` by its ticks, 0 to 1, eased at both
+    /// ends: what a capture shows.
     fn at(&self, now: f64) -> f32 {
         let t = ((now - self.start) / self.ticks.max(1e-6)).clamp(0.0, 1.0) as f32;
         t * t * (3.0 - 2.0 * t)
@@ -58,6 +87,38 @@ impl Fade {
     /// Whether it runs at tick `now`.
     fn runs(&self, now: f64) -> bool {
         now >= self.start && now - self.start < self.ticks
+    }
+
+    /// How much a frame at `now` draws: nothing while held, then the fade
+    /// as late as it was held.
+    fn shown(&self, now: f64) -> f32 {
+        match self.held {
+            Some(_) => 0.0,
+            None => self.at(now - self.late),
+        }
+    }
+
+    /// Whether the frames have yet to finish it at tick `now`, `drawn`
+    /// frames in: it runs by its ticks, its late end is still to come, or
+    /// a frame has seen it and its pipelines compile. One no frame has
+    /// seen waits for none past its own ticks (a world stepped without
+    /// frames).
+    fn busy(&self, now: f64, drawn: u64) -> bool {
+        self.runs(now)
+            || match self.held {
+                Some(since) => since != drawn,
+                None => now >= self.start && now - self.start - self.late < self.ticks,
+            }
+    }
+
+    /// As a tick starts, `drawn` frames in: the frames stop holding it
+    /// once one has seen it and no pipeline made ahead of it is
+    /// `compiling`, and draw it from where a fade one tick old is.
+    fn release(&mut self, now: f64, drawn: u64, compiling: bool) {
+        if self.held.is_some_and(|since| since != drawn) && !compiling {
+            self.held = None;
+            self.late = (now - self.start - 1.0).max(0.0);
+        }
     }
 }
 
@@ -78,8 +139,14 @@ pub(crate) struct Reveal {
     proxies: IdMap<u64, Fade>,
     /// og.render.reveal's lengths in seconds, by entity (0: no fade).
     settings: IdMap<u64, f32>,
-    /// The time of the frame being read, in ticks.
+    /// The time of the frame being read, in ticks, and whether it is a
+    /// frame for the display (else a capture, which reads no hold).
     frame: f64,
+    display: bool,
+    /// The frames the renderer has drawn, and whether the last left a
+    /// pipeline made ahead compiling ([`Reveal::drawn`]).
+    drawn: u64,
+    compiling: bool,
 }
 
 /// Compares the world as its tick left it with the last step's: starts the
@@ -93,10 +160,15 @@ pub(crate) fn step(rs: &mut RenderState, world: &World) {
     // appeared: after a restore or a jump the sets are another world's.
     let continuous = r.tick.is_some_and(|t| now == t || now == t + 1);
     if r.tick != Some(now) {
-        // A fade from a tick the world went back before never happened.
-        let at = now as f64;
-        r.entities.retain(|_, f| f.runs(at));
-        r.proxies.retain(|_, f| f.runs(at));
+        // A fade from a tick the world went back before never happened,
+        // and one the frames have finished is over.
+        let (at, drawn, compiling) = (now as f64, r.drawn, r.compiling);
+        for fades in [&mut r.entities, &mut r.proxies] {
+            fades.retain(|_, f| {
+                f.release(at, drawn, compiling);
+                at >= f.start && f.busy(at, drawn)
+            });
+        }
     }
     r.tick = Some(now);
     let mut hidden: Vec<u64> = rs.decoded.hidden_models.keys().copied().collect();
@@ -181,11 +253,11 @@ pub(crate) fn step(rs: &mut RenderState, world: &World) {
             }
         }
     }
-    let fade = |seconds: f32, model: u64| Fade {
-        start: now as f64,
-        ticks: f64::from(seconds) * rate,
-        model,
-    };
+    // Held until a frame has made its pipelines; with no renderer there
+    // is none to wait for.
+    let held = rs.backend.is_some().then_some(r.drawn);
+    let fade =
+        |seconds: f32, model: u64| Fade::new(now as f64, f64::from(seconds) * rate, model, held);
     if !appeared.is_empty() {
         // Where a proxy was showing a cell's models, they do not fade.
         let stood = rs
@@ -244,9 +316,28 @@ impl Reveal {
         (seconds != 0.0).then_some(seconds)
     }
 
-    /// The frame being read is drawn at `now`, in ticks.
-    pub(crate) fn frame(&mut self, now: f64) {
+    /// The frame being read is drawn at `now`, in ticks, for the
+    /// `display` or as a capture.
+    pub(crate) fn frame(&mut self, now: f64, display: bool) {
         self.frame = now;
+        self.display = display;
+    }
+
+    /// How much of `fade` the frame being read draws.
+    fn part(&self, fade: &Fade) -> f32 {
+        match self.display {
+            true => fade.shown(self.frame),
+            false => fade.at(self.frame),
+        }
+    }
+
+    /// The renderer drew a frame; `compiling`: a pipeline it made ahead of
+    /// an instance still hidden is not made yet
+    /// (`og_render::FrameStats::compiling_ahead`). The next step starts
+    /// the held fades when none is.
+    pub(crate) fn drawn(&mut self, compiling: bool) {
+        self.drawn = self.drawn.wrapping_add(1);
+        self.compiling = compiling;
     }
 
     /// Whether any entity is fading in: the rows then ask [`Self::entity`].
@@ -256,12 +347,12 @@ impl Reveal {
 
     /// How much of `entity`'s model is drawn on this frame, 0 to 1.
     pub(crate) fn entity(&self, entity: u64) -> f32 {
-        self.entities.get(&entity).map_or(1.0, |f| f.at(self.frame))
+        self.entities.get(&entity).map_or(1.0, |f| self.part(f))
     }
 
     /// How much of the proxy `handle` is drawn on this frame, 0 to 1.
     pub(crate) fn proxy(&self, handle: u64) -> f32 {
-        self.proxies.get(&handle).map_or(1.0, |f| f.at(self.frame))
+        self.proxies.get(&handle).map_or(1.0, |f| self.part(f))
     }
 
     /// Of `handles`, the proxies fading in and how much of each is drawn,
@@ -271,7 +362,7 @@ impl Reveal {
         if self.proxies.is_empty() {
             return Vec::new();
         }
-        let drawn = |h: &u64| Some((*h, self.proxies.get(h)?.at(self.frame).to_bits()));
+        let drawn = |h: &u64| Some((*h, self.part(self.proxies.get(h)?).to_bits()));
         handles.iter().filter_map(drawn).collect()
     }
 
@@ -282,18 +373,17 @@ impl Reveal {
     /// true once the steps stopped (a world without a renderer).
     pub(crate) fn pending(&self, handle: u64, now: f64) -> bool {
         let stepping = self.tick.is_some_and(|t| now <= t as f64 + 1.0);
-        self.proxies.get(&handle).is_some_and(|f| f.runs(now))
-            || self
-                .entities
-                .values()
-                .any(|f| f.model == handle && f.runs(now))
+        let busy = |f: &Fade| f.busy(now, self.drawn);
+        self.proxies.get(&handle).is_some_and(busy)
+            || self.entities.values().any(|f| f.model == handle && busy(f))
             || (stepping && self.hidden.binary_search(&handle).is_ok())
     }
 
     /// Whether anything is fading in at tick `now` (og.loading.idle waits
     /// for it).
     pub(crate) fn active(&self, now: f64) -> bool {
-        self.entities.values().any(|f| f.runs(now)) || self.proxies.values().any(|f| f.runs(now))
+        let busy = |f: &Fade| f.busy(now, self.drawn);
+        self.entities.values().any(busy) || self.proxies.values().any(busy)
     }
 
     /// After a restore without this state's checkpoint: nothing fades, and
@@ -325,12 +415,38 @@ mod tests {
     use super::*;
 
     #[test]
+    fn the_frames_hold_a_fade_while_its_pipelines_compile_and_a_capture_does_not() {
+        // It appeared at tick 10 with 3 frames drawn.
+        let mut f = Fade::new(10.0, 24.0, 7, Some(3));
+        assert_eq!((f.shown(16.0), f.at(22.0)), (0.0, 0.5));
+        // No frame has seen it: nothing to release it for.
+        f.release(11.0, 3, false);
+        assert_eq!(f.held, Some(3));
+        // Frames saw it, and its pipelines compile until tick 15.
+        for tick in [12.0, 13.0, 14.0] {
+            f.release(tick, 5, true);
+            assert!(f.shown(tick) == 0.0 && f.busy(tick, 5));
+        }
+        f.release(15.0, 6, false);
+        // The frames go on from a fade one tick old, 4 ticks late; the
+        // capture's fade is where its ticks put it.
+        assert_eq!((f.held, f.late), (None, 4.0));
+        assert_eq!((f.shown(15.0), f.shown(26.0)), (f.at(11.0), 0.5));
+        assert!(f.shown(15.0) < 0.01 && f.at(22.0) == 0.5);
+        // Its group is ready when the frames have finished it.
+        assert!(f.busy(37.0, 9) && !f.runs(34.0) && !f.busy(38.0, 9));
+        // Released by the first frame, it is not late at all.
+        let mut g = Fade::new(10.0, 24.0, 7, Some(3));
+        g.release(11.0, 4, false);
+        assert_eq!((g.late, g.shown(22.0)), (0.0, 0.5));
+        // A world stepped without frames waits for no hold past its ticks.
+        let h = Fade::new(10.0, 24.0, 7, Some(3));
+        assert!(h.busy(33.0, 3) && !h.busy(34.0, 3));
+    }
+
+    #[test]
     fn a_fade_eases_from_nothing_to_whole_over_its_ticks() {
-        let f = Fade {
-            start: 10.0,
-            ticks: 24.0,
-            model: 7,
-        };
+        let f = Fade::new(10.0, 24.0, 7, None);
         // Before its tick (a frame blended towards it) nothing is drawn.
         assert_eq!((f.at(9.5), f.at(10.0)), (0.0, 0.0));
         assert_eq!((f.at(22.0), f.at(34.0), f.at(90.0)), (0.5, 1.0, 1.0));
@@ -367,14 +483,7 @@ mod tests {
         // The steps stopped: nothing will fade it, so nothing waits.
         assert!(!r.pending(7, 13.0));
         r.hidden.clear();
-        r.proxies.insert(
-            7,
-            Fade {
-                start: 11.0,
-                ticks: 24.0,
-                model: 7,
-            },
-        );
+        r.proxies.insert(7, Fade::new(11.0, 24.0, 7, None));
         assert!(r.pending(7, 11.0) && r.pending(7, 34.0) && r.active(34.0));
         assert!(!r.pending(7, 35.0) && !r.active(35.0));
     }

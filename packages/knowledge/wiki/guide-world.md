@@ -337,7 +337,10 @@ from og.load.scene) is a cell.
   in the tick the entity spawned; the setting lasts while the entity
   lives and is not saved, so set it again after a restore in a new
   process. A model the game spawns or shows itself (`Model.visible`)
-  draws whole. The fade is the renderer's alone: the entities,
+  draws whole. While a fade is at nothing its model's pipelines compile
+  away from the frame, and the frames start it once they are made, so the
+  first model of a kind stops no frame; with the fade off it compiles on
+  the frame that first draws it. The fade is the renderer's alone: the entities,
   their colliders and the hash are the same with it or without, so do not
   add an entrance of the game's own (a Transform scale or a tint is world
   state, and returns an HLOD node to its models).
