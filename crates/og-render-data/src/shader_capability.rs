@@ -289,6 +289,7 @@ impl Shading {
         use crate::shader_source as s;
         let mut out = crate::clusters::wgsl();
         out.push_str(s::LIGHTING_WGSL);
+        out.push_str(s::MATERIAL_SURFACE_WGSL);
         if self.rain {
             out.push_str(s::WEATHER_RAIN_WGSL);
         }

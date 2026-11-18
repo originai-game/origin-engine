@@ -36,6 +36,7 @@ const PBR_WGSL: &str = wgsl!("pbr.wgsl");
 /// Projected decals on a surface (decals.wgsl), over the effect group's
 /// decal bindings or a module's own ([`Shading::decals`]).
 pub const DECALS_WGSL: &str = wgsl!("decals.wgsl");
+pub(crate) const MATERIAL_SURFACE_WGSL: &str = wgsl!("material_surface.wgsl");
 const PBR_FS_WGSL: &str = wgsl!("pbr_fs.wgsl");
 const PBR_PREPASS_WGSL: &str = wgsl!("pbr_prepass.wgsl");
 /// The lean entry points plain materials draw through ([`GpuMaterial::lean`]).
