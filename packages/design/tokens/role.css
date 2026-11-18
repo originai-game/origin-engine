@@ -1246,4 +1246,10 @@
   --role-system-plate-lit-edge: inset 0 calc(2 * var(--stroke-hairline)) 0 var(--hud-accent);
   --role-system-step-rim: rgb(255 255 255 / 0.3);
   --role-system-step-done-fill: rgb(70 80 100);
+  /* Calibration's brightness patch: three marks on black, from one that a
+     well set screen barely shows to one it shows clearly. */
+  --role-system-patch-ground: rgb(0 0 0);
+  --role-system-patch-faint: rgb(4 4 4);
+  --role-system-patch-mid: rgb(12 12 12);
+  --role-system-patch-clear: rgb(26 26 26);
 }

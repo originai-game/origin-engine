@@ -1235,6 +1235,10 @@
     --system-entry-size: calc(24 * var(--font-step-px));
     --system-entry-size-compact: calc(20 * var(--font-step-px));
     --system-ink-off: rgb(255 255 255 / 0.32);
+    --system-patch-clear: rgb(26 26 26);
+    --system-patch-faint: rgb(4 4 4);
+    --system-patch-ground: rgb(0 0 0);
+    --system-patch-mid: rgb(12 12 12);
     --system-pause-shade: linear-gradient(90deg, rgb(3 6 14 / 0.94), rgb(3 6 14 / 0.8) 30%, rgb(3 6 14 / 0.35) 60%, rgb(3 6 14 / 0.2));
     --system-pause-shade-compact: linear-gradient(180deg, rgb(3 6 14 / 0.7), rgb(3 6 14 / 0.86) 40%, rgb(3 6 14 / 0.96));
     --system-plate-edge: inset 0 var(--stroke-hairline) 0 rgb(255 255 255 / 0.45);
