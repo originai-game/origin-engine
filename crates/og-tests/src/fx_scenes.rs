@@ -22,6 +22,8 @@ mod crowds;
 mod decal_stage;
 mod effect_materials;
 mod fire;
+mod fluid_stage;
+mod lit_stage;
 mod models;
 mod particles;
 mod post;
@@ -33,6 +35,8 @@ pub use crowds::*;
 pub use decal_stage::*;
 pub use effect_materials::*;
 pub use fire::*;
+pub use fluid_stage::*;
+pub use lit_stage::*;
 pub use models::*;
 pub use particles::*;
 pub use post::*;
@@ -286,25 +290,40 @@ pub fn bullet_hole_atlas(scene: &mut RenderScene) -> TextureHandle {
     }))
 }
 
-/// A wall and the ground before it peppered with 640 bullet holes (more
-/// than the 32 decals a frame drew before R7), each with the atlas's normal
-/// map, and two large ones that show the normal map's relief under the low
-/// sun: their rims lit on the sun's side, shadowed on the other.
+/// A plastered court wall and the flags before it peppered with 640
+/// bullet holes (more than the 32 decals a frame drew before R7), each with
+/// the atlas's normal map, and two large ones that show the normal map's
+/// relief under the low sun: their rims lit on the sun's side, shadowed on
+/// the other.
 pub fn decals_many_scene() -> RenderScene {
+    use crate::kit;
     let mut scene = RenderScene::new();
-    terrain(&mut scene, 40.0);
+    let rubble = crate::shadow_scenes::court(&mut scene);
     scene.effects.decal_atlas = Some(bullet_hole_atlas(&mut scene));
-    let wall = scene.add_mesh(shapes::cuboid(Vec3::new(8.0, 3.0, 0.4)));
-    let plaster = scene.add_material(Material {
-        base_color: [0.82, 0.78, 0.7, 1.0],
-        roughness: 0.9,
-        ..Default::default()
-    });
-    scene.add_instance(
-        wall,
-        plaster,
-        Mat4::from_translation(Vec3::new(0.0, 1.5, -2.2)),
-    );
+    // The wall's face at z = -2.0, 8 m wide and 3 m high, under a plank
+    // coping, between rubble piers.
+    let plaster = kit::plaster(&mut scene, [0.66, 0.6, 0.52]);
+    let wall = scene.add_mesh(kit::block(
+        Vec3::new(-4.0, 0.0, -2.4),
+        Vec3::new(4.0, 3.0, -2.0),
+        2.0,
+    ));
+    scene.add_instance(wall, plaster, Mat4::IDENTITY);
+    let planks = kit::surface_tinted(&mut scene, "planks", [0.42, 0.36, 0.3]);
+    let coping = scene.add_mesh(kit::block(
+        Vec3::new(-4.1, 3.0, -2.55),
+        Vec3::new(4.1, 3.16, -1.85),
+        1.2,
+    ));
+    scene.add_instance(coping, planks, Mat4::IDENTITY);
+    for x in [-4.6f32, 4.6] {
+        let pier = scene.add_mesh(kit::block(
+            Vec3::new(x - 0.6, 0.0, -2.6),
+            Vec3::new(x + 0.6, 3.4, -1.8),
+            1.5,
+        ));
+        scene.add_instance(pier, rubble, Mat4::IDENTITY);
+    }
     let hole = |p: Vec3, n: Vec3, size: f32, rot: f32| Decal {
         uv_rect: [0.0, 0.0, 0.5, 1.0],
         normal_rect: [0.5, 0.0, 1.0, 1.0],
@@ -343,17 +362,14 @@ pub fn decals_many_scene() -> RenderScene {
         ..hole(Vec3::new(1.5, 0.0, 1.0), Vec3::Y, 1.6, 0.0)
     });
     scene.effects.decals = decals;
-    let sun = Vec3::new(-0.8, 0.45, 0.4);
-    scene.lighting.light = DirectionalLight {
-        direction_to_light: sun,
-        intensity: 3.0,
-        ..Default::default()
-    };
-    scene.lighting.environment.sky.sun_direction = sun;
+    // Afternoon: the sun from the left, raking along the wall.
+    crate::sky_scenes::physical_light_under(&mut scene, Vec3::new(-0.9, 0.45, 0.25));
+    scene.lighting.light.cast_shadows = true;
     scene.frame.camera = Camera {
-        position: Vec3::new(0.0, 3.0, 5.6),
-        target: Vec3::new(0.0, 0.6, -0.8),
-        exposure: Exposure::linear(0.9),
+        position: Vec3::new(0.4, 1.9, 5.0),
+        target: Vec3::new(0.0, 0.9, -1.0),
+        far: 2500.0,
+        exposure: Exposure::Manual { ev: 0.0 },
         ..Default::default()
     };
     scene

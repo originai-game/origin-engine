@@ -842,9 +842,9 @@ pub fn build(name: &str) -> Result<GfxScene, String> {
             g.update = Some(fx::tick_update);
             Ok(())
         },
-        // The same simulated on the CPU path (no collision).
+        // The same fire simulated on the CPU path (no collision).
         "particles-cpu" => |g, _| {
-            g.scene = fx::particles_scene();
+            g.scene = fx::fire_scene()?;
             g.desc.particles = og_render::ParticleSimulation::Cpu;
             g.frames = 120;
             g.update = Some(fx::tick_update);
@@ -853,8 +853,9 @@ pub fn build(name: &str) -> Result<GfxScene, String> {
         // R7: lit smoke, lit mesh debris with collision dust (sub-emitters,
         // so the CPU path) and a heat haze bending a checker wall.
         "particles-lit" => |g, _| {
-            g.scene = fx::particles_lit_scene();
-            g.frames = 90;
+            g.scene = fx::particles_lit_stage_scene();
+            // Four seconds: the smoke grown into its full column.
+            g.frames = 240;
             g.update = Some(fx::tick_update);
             Ok(())
         },
@@ -1119,7 +1120,7 @@ pub fn build(name: &str) -> Result<GfxScene, String> {
         },
         // Phase 2: 3D particle fluids as a screen-space surface (row 29).
         "fluid-3d" => |g, _| {
-            g.scene = crate::p2_scenes::fluid_3d_scene();
+            g.scene = fx::fluid_stage_scene();
             Ok(())
         },
         // Material shader hooks: dissolve by noise, wind-swayed grass.

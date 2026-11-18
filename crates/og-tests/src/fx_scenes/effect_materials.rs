@@ -108,16 +108,46 @@ fn banded_hook() -> MaterialShader {
     }
 }
 
-/// Seven effect surfaces in a row under a night sky, each using one part
-/// of the material: dissolving puffs (erosion over life, a ramp), a portal
-/// (polar coordinates, a turning flow map), a shield (fresnel rim and
-/// scrolling noise), a slash (a mask and erosion along an arc), a trail
-/// (scrolling noise along it), a beam (a scrolling noise core) and puffs
-/// banded by a material hook from their custom data.
+/// Seven effect surfaces about the shrine gate at nightfall, each using
+/// one part of the material: dissolving fire puffs over a brazier (erosion
+/// over life, a ramp), a portal filling the gate (polar coordinates, a
+/// turning flow map), a shield over the stone lantern (fresnel rim and
+/// scrolling noise), a slash before the gate (a mask and erosion along an
+/// arc), a trail looping beside it (scrolling noise along it), a beam
+/// rising from a plinth (a scrolling noise core; the frame's one green
+/// thing, `effect_beam.rs`) and puffs banded by a material hook from their
+/// custom data.
 pub fn effect_materials_scene() -> RenderScene {
+    use crate::kit;
     let mut scene = RenderScene::new();
-    terrain(&mut scene, 40.0);
-    night_sky(&mut scene);
+    let rubble = crate::shadow_scenes::court(&mut scene);
+    kit::prop(&mut scene, "torii").place(&mut scene, Vec3::new(0.0, 0.0, -2.0), 0.0, 4.2);
+    kit::prop(&mut scene, "toro").place(&mut scene, LANTERN, 0.5, 1.7);
+    // The brazier the fire puffs rise from and the beam's plinth.
+    for (at, half) in [(BRAZIER, 0.4), (BEAM_FOOT, 0.3)] {
+        let block = scene.add_mesh(kit::block(
+            at - Vec3::new(half, 0.0, half),
+            at + Vec3::new(half, 0.5, half),
+            1.0,
+        ));
+        scene.add_instance(block, rubble, Mat4::IDENTITY);
+    }
+    // Nightfall: the sun just under the horizon ahead of the gate.
+    crate::sky_scenes::physical_light_under(&mut scene, Vec3::new(-0.25, -0.012, -0.97));
+    // The effects' own light on the court: fire, portal and shield.
+    for (at, color, intensity) in [
+        (BRAZIER + Vec3::Y * 1.0, Vec3::new(1.0, 0.45, 0.12), 8.0),
+        (Vec3::new(0.0, 1.9, -1.6), Vec3::new(0.55, 0.25, 1.0), 10.0),
+        (LANTERN + Vec3::Y * 0.9, Vec3::new(0.3, 0.75, 1.0), 6.0),
+    ] {
+        scene.lighting.lights.push(Light {
+            position: at,
+            color,
+            intensity,
+            range: 6.0,
+            ..Default::default()
+        });
+    }
     let noise = noise_texture(&mut scene, 4, 3);
     let fine = noise_texture(&mut scene, 8, 11);
     let flow = swirl_flow(&mut scene);
@@ -181,7 +211,7 @@ pub fn effect_materials_scene() -> RenderScene {
     scene.effects.particles.push(ParticleSystem::new(
         1,
         puff_emitter,
-        Mat4::from_translation(Vec3::new(-5.4, 0.6, 0.0)),
+        Mat4::from_translation(BRAZIER + Vec3::Y * 0.9),
         5,
         0,
     ));
@@ -228,8 +258,8 @@ pub fn effect_materials_scene() -> RenderScene {
         id: 2,
         mesh: disc,
         material: portal,
-        transform: Mat4::from_translation(Vec3::new(-3.2, 1.3, 0.0))
-            * Mat4::from_scale(Vec3::splat(1.0)),
+        transform: Mat4::from_translation(Vec3::new(0.0, 1.75, -2.0))
+            * Mat4::from_scale(Vec3::splat(1.55)),
         life: 0.5,
         seed: 2,
         color: [1.0; 4],
@@ -256,8 +286,7 @@ pub fn effect_materials_scene() -> RenderScene {
         id: 3,
         mesh: dome,
         material: shield,
-        transform: Mat4::from_translation(Vec3::new(-0.9, 0.0, 0.0))
-            * Mat4::from_scale(Vec3::splat(2.2)),
+        transform: Mat4::from_translation(LANTERN) * Mat4::from_scale(Vec3::splat(2.4)),
         life: 0.5,
         seed: 3,
         color: [1.0; 4],
@@ -295,7 +324,7 @@ pub fn effect_materials_scene() -> RenderScene {
         id: 4,
         mesh: arc,
         material: slash,
-        transform: Mat4::from_translation(Vec3::new(1.4, 1.2, 0.0))
+        transform: Mat4::from_translation(Vec3::new(-2.5, 1.5, 1.0))
             * Mat4::from_rotation_z(-0.4)
             * Mat4::from_scale(Vec3::new(1.0, 1.0, 0.25)),
         life: 0.5,
@@ -346,8 +375,8 @@ pub fn effect_materials_scene() -> RenderScene {
         ..Default::default()
     });
     scene.effects.beams.push(Beam {
-        start: Vec3::new(4.6, 0.3, 0.0),
-        end: Vec3::new(4.6, 2.8, 0.0),
+        start: BEAM_FOOT + Vec3::Y * 0.5,
+        end: BEAM_FOOT + Vec3::Y * 3.4,
         width: 0.5,
         uv: RibbonUv::Tile { length: 1.0 },
         segments: 8,
@@ -390,44 +419,31 @@ pub fn effect_materials_scene() -> RenderScene {
     scene.effects.particles.push(ParticleSystem::new(
         7,
         banded_emitter,
-        Mat4::from_translation(Vec3::new(6.6, 1.4, 0.0)),
+        Mat4::from_translation(Vec3::new(1.6, 3.9, -3.2)),
         7,
         0,
     ));
     scene.look.post.bloom = Some(Bloom::default());
     scene.frame.camera = Camera {
-        position: Vec3::new(0.6, 2.4, 9.5),
-        target: Vec3::new(0.6, 1.1, 0.0),
-        exposure: Exposure::linear(1.0),
+        position: Vec3::new(0.2, 1.8, 10.5),
+        target: Vec3::new(0.2, 1.9, -1.0),
+        far: 2500.0,
+        exposure: Exposure::Manual { ev: -0.9 },
         ..Default::default()
     };
     scene
 }
 
-fn night_sky(scene: &mut RenderScene) {
-    let moon = Vec3::new(-0.3, 0.6, -0.6);
-    scene.lighting.light = DirectionalLight {
-        direction_to_light: moon,
-        color: Vec3::new(0.5, 0.6, 1.0),
-        intensity: 0.3,
-        ..Default::default()
-    };
-    scene.lighting.environment = Environment {
-        sky: ProceduralSky {
-            sun_direction: moon,
-            sun_color: Vec3::new(0.3, 0.35, 0.5),
-            look: None,
-        },
-        intensity: 0.08,
-        background: Background::Color(Vec3::new(0.01, 0.012, 0.026)),
-        ..Environment::default()
-    };
-}
+/// Where the stone lantern under the shield, the brazier and the beam's
+/// plinth stand.
+const LANTERN: Vec3 = Vec3::new(-4.6, 0.0, -0.4);
+const BRAZIER: Vec3 = Vec3::new(3.1, 0.0, 1.4);
+const BEAM_FOOT: Vec3 = Vec3::new(5.0, 0.0, -0.8);
 
 /// Where the effect trail's head is at `tick`: a figure of eight.
 fn effect_trail_at(tick: u64) -> Vec3 {
     let t = tick as f32 / 60.0 * 2.2;
-    Vec3::new(3.0 + t.sin() * 0.7, 1.3 + (t * 2.0).sin() * 0.6, 0.3)
+    Vec3::new(2.6 + t.sin() * 0.7, 2.6 + (t * 2.0).sin() * 0.5, 0.2)
 }
 
 /// Steps the scene's clocks and moves the trail's head.
