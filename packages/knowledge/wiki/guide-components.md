@@ -497,9 +497,9 @@ Its own props, beside every element's:
 | `-og-scroll-fade-into:` | `var(--<role>) \| #rrggbb[aa]` | The colour its fade runs into: the ground it sits on (default panel). |
 
 <a id="guide-components-8"></a>
-### `components §8` `<list>` (`list`): A virtualised list: its `for` builds only the rows in view, each a selectable row
+### `components §8` `<list>` (`list`): A virtualised list: its keyed each builds only the rows in view. Plain-content rows are selectable options. When a row supplies its own focusable controls, its wrapper is structural, with no focus target, option role or padding; the authored controls own focus and selection
 
-A virtualised list: its `for` builds only the rows in view, each a selectable row. A container with nested children: `<list id="Name">…</list>`.
+A virtualised list: its keyed each builds only the rows in view. Plain-content rows are selectable options. When a row supplies its own focusable controls, its wrapper is structural, with no focus target, option role or padding; the authored controls own focus and selection. A container with nested children: `<list id="Name">…</list>`.
 
 Its own props, beside every element's:
 
@@ -508,9 +508,9 @@ Its own props, beside every element's:
 | `row-height` | `number` | Every row's height, CSS px. |
 
 <a id="guide-components-9"></a>
-### `components §9` `<cells>` (`cells`): A virtualised grid of equal cells: its `for` builds only the cells in view
+### `components §9` `<cells>` (`cells`): A virtualised grid of equal cells: its keyed each builds only the cells in view. Plain-content cells are selectable options. When a cell supplies its own focusable controls, its wrapper is structural, with no focus target, option role or padding; the authored controls own focus and selection
 
-A virtualised grid of equal cells: its `for` builds only the cells in view. A container with nested children: `<cells id="Name">…</cells>`.
+A virtualised grid of equal cells: its keyed each builds only the cells in view. Plain-content cells are selectable options. When a cell supplies its own focusable controls, its wrapper is structural, with no focus target, option role or padding; the authored controls own focus and selection. A container with nested children: `<cells id="Name">…</cells>`.
 
 Its own props, beside every element's:
 
