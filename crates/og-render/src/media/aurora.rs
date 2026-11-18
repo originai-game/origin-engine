@@ -158,9 +158,11 @@ const EFFICIENCY_1PG: f32 = 0.35;
 const EFFICIENCY_6300: f32 = 5.0;
 
 impl Aurora {
-    /// The half-width of the curtains' sheet, km: wider as curls grow.
+    /// The half-width of the curtains' sheet, km: wider as curls grow,
+    /// and wider again in a breakup, whose surges fill the sky.
     fn half_width(&self) -> f32 {
-        5.0 + 7.0 * self.activity.clamp(0.0, 1.0)
+        let a = self.activity.clamp(0.0, 1.0);
+        5.0 + 7.0 * a + 8.0 * smooth(0.75, 1.0, f64::from(a)) as f32
     }
 
     /// The frame uniform's block on a planet of `radius_km`: [0] the
@@ -219,15 +221,31 @@ impl Aurora {
         let viewer = glam::DVec2::new(f64::from(viewer.x), f64::from(viewer.y));
         let mut rng = SplitMix(u64::from(self.seed).wrapping_mul(0x9e37_79b9) ^ 0x0a17_02a5);
         // The oval's curvature (km) and the folds' wavelengths (km), speeds
-        // (km/s) and amplitudes (km, at full activity).
+        // (km/s), amplitudes (km) and how they grow with activity: a
+        // quiet arc bends only on the large scale (a homogeneous arc,
+        // Davis 1978); the folds of an active one grow first, and the
+        // small scales last (a curtain folding into the 20 to 300 km
+        // "folds" and "spirals" of Hallinan & Davis 1970; Partamies et
+        // al. 2001), steep enough to fold over in perspective at 0.5.
         let oval = 2600.0;
+        let a = f64::from(activity);
         let folds = [
-            (1100.0, 0.9, 60.0),
-            (520.0, 1.6, 30.0),
-            (230.0, 2.4, 14.0),
-            (110.0, 3.5, 6.0),
+            (1100.0, 0.9, 60.0 * (0.3 + 0.9 * a)),
+            (520.0, 1.6, 45.0 * (0.1 + 1.1 * smooth(0.0, 0.6, a))),
+            (230.0, 2.4, 30.0 * smooth(0.15, 0.7, a)),
+            (110.0, 3.5, 14.0 * smooth(0.3, 0.9, a)),
         ];
-        let amp = 0.15 + 1.1 * f64::from(activity);
+        // The breakup's curls: the sheet rolls up on itself (Kelvin-Helmholtz
+        // vortices of 50 to 150 km in a substorm's surge: Hallinan 1976),
+        // a displacement along the arc as well as across it, so the curve
+        // loops where its radius outgrows the curl's (a trochoid).
+        let curl = smooth(0.6, 1.0, a);
+        // The breakup itself (Akasofu 1964's expansion phase): the
+        // brightest, most sky-filling stage of a substorm, its arcs
+        // surging bright where they curl and broken between the surges.
+        // Fading, scattered fragments are the recovery after it, not
+        // more activity: above 0.75 the light only grows.
+        let surge = smooth(0.75, 1.0, a);
         // The strip's period along the curtain keeps its cells square.
         let period = f64::from(hw) * 2.0 * (STRIP_X / STRIP_Y) as f64;
         let span = 2.0 * f64::from(FOOTPRINT_RADIUS) + 600.0;
@@ -243,13 +261,16 @@ impl Aurora {
             let drift = (0.6 + 0.8 * rng.unit()) * (0.2 + f64::from(activity)) * 3.0 * direction;
             let offset = rng.unit();
             let energy = f64::from(self.energy.max(0.1)) * (0.8 + 0.5 * rng.unit());
-            let bright = 1.0 / (1.0 + 0.45 * c as f64);
+            // The arcs behind dim (farther, lower in the sky); in a breakup
+            // the whole oval brightens and they nearly match the first.
+            let bright = 1.0 / (1.0 + 0.45 * c as f64 * (1.0 - 0.6 * surge));
             let pulse = (40.0 + 50.0 * rng.unit(), rng.unit() * std::f64::consts::TAU);
             let noise_seed = rng.next();
-            // Rays: none on a quiet arc, most on an active one, fewer
-            // where the curls of a breakup take over.
-            let a = f64::from(activity);
-            let rays = 0.65 * smooth(0.0, 0.15, a) * (1.0 - 0.6 * smooth(0.5, 1.0, a));
+            let curls = (90.0 + 60.0 * rng.unit(), rng.unit() * std::f64::consts::TAU);
+            // Rays: none on a quiet arc, a faint striation as it brightens,
+            // the rayed band of an active display by 0.5; the breakup's
+            // curls carry them on.
+            let rays = 0.75 * smooth(0.1, 0.55, a);
             p.curtain[c] = [
                 energy as f32,
                 (noise_seed & 0xffff) as f32,
@@ -269,9 +290,28 @@ impl Aurora {
                 let mut y = 0.0;
                 for (k, &(lambda, speed, height)) in folds.iter().enumerate() {
                     let w = std::f64::consts::TAU / lambda;
-                    y += height * amp * (w * a + phases[k] - w * speed * t).sin();
+                    y += height * (w * a + phases[k] - w * speed * t).sin();
                 }
-                let at = centre + normal * (oval + y);
+                let tangent = toward * phi.sin() + side * phi.cos();
+                let mut along = 0.0;
+                if curl > 0.0 {
+                    // A curl's radius 0.25 of its wavelength (just over the
+                    // 1 / 2 pi that loops it), where a slow patch rolls up.
+                    let (lambda, phase) = curls;
+                    let w = std::f64::consts::TAU / lambda;
+                    let roll = curl
+                        * 0.25
+                        * lambda
+                        * smooth(
+                            0.35,
+                            0.65,
+                            value_noise(noise_seed ^ 0xc0, a / 600.0 + t * 0.002),
+                        );
+                    let turn = w * a + phase - w * 4.0 * t;
+                    y += roll * turn.sin();
+                    along = roll * turn.cos();
+                }
+                let at = centre + normal * (oval + y) + tangent * along;
                 u += last.map_or(0.0, |l| (at - l).length());
                 last = Some(at);
                 let local = at - viewer;
@@ -281,7 +321,17 @@ impl Aurora {
                     * (0.55 + 0.45 * value_noise(noise_seed ^ 0x5bd1, a / 45.0 - t * 0.02));
                 let breathe = 0.8 + 0.2 * (std::f64::consts::TAU * t / pulse.0 + pulse.1).sin();
                 let ends = 1.0 - smooth(0.85, 1.0, s.abs());
-                let w = bright * (0.35 + 0.65 * patch) * breathe * ends;
+                // The breakup breaks the arcs into bright surges: the
+                // stretches between them keep at least the light they had
+                // at 0.75 (and a little more), the surges reach nearly
+                // three times it.
+                let pieces = smooth(
+                    0.3,
+                    0.55,
+                    value_noise(noise_seed ^ 0xf7, a / 260.0 - t * 0.01),
+                );
+                let whole = 1.0 + surge * (0.3 + 1.5 * pieces);
+                let w = bright * (0.35 + 0.65 * patch) * breathe * ends * whole;
                 // The sheet's flow varies along the arc: its curls and rays
                 // bunch and spread (a slow warp of the strip's coordinate).
                 let warp =
