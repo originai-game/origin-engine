@@ -2,7 +2,7 @@
 //!
 //!   og-gfx SCENE...|--all [--out frame.png] [--frames N]
 //!   og-gfx --all --capture DIR [--frames N]   frames to DIR/<tier>/<scene>.png, stats to DIR/report.txt
-//!   og-gfx SCENE --sequence DIR [--length N]  N frames (120) after the settled one to DIR/NNNN.png
+//!   og-gfx SCENE --sequence DIR [--length N] [--step S]  N frames (120) after the settled one, S ticks (1) apart, to DIR/NNNN.png
 //!   og-gfx --costs [--frames N]               the feature-cost table (markdown)
 //!   og-gfx --costs-e5 [--frames N]            the E5 rows alone (slow tiers: lavapipe)
 //!   og-gfx --costs-p2 [--frames N]            the phase 2 rows alone (terrain, water, 3D fluid)
@@ -18,6 +18,8 @@
 //! frame, with the same camera and settings, each frame one tick on (the
 //! scene's update for the frame after, else `frame.tick` advanced by one),
 //! deterministic as the scene is; frame 0000 is the settled frame.
+//! `--step S` draws every S-th tick for a time-lapse (each tick between
+//! still runs; a frame's history is the drawn frame S ticks before).
 //! `OG_GFX_DEBUG_CASCADES=1` draws the cascade debug view instead.
 //! `OG_GFX_AO_HALF=1` runs the scene's ambient occlusion at half resolution
 //! (`AoResolution::Half`).
@@ -69,7 +71,7 @@ fn main() {
     let (mut names, mut out, mut frames, mut capture, mut costs) =
         (Vec::new(), None, 0u32, None, false);
     let mut only: Option<&str> = None;
-    let (mut sequence, mut length) = (None::<PathBuf>, 120u32);
+    let (mut sequence, mut length, mut step) = (None::<PathBuf>, 120u32, 1u32);
     while let Some(a) = args.next() {
         match a.as_str() {
             "--all" => names.extend(
@@ -82,6 +84,7 @@ fn main() {
             "--capture" => capture = Some(PathBuf::from(args.next().expect("--capture DIR"))),
             "--costs" => costs = true,
             "--sequence" => sequence = Some(PathBuf::from(args.next().expect("--sequence DIR"))),
+            "--step" => step = args.next().and_then(|v| v.parse().ok()).expect("--step N"),
             "--length" => {
                 length = args
                     .next()
@@ -104,7 +107,7 @@ fn main() {
             }
             "-h" | "--help" => {
                 println!(
-                    "og-gfx SCENE...|--all [--out frame.png] [--frames N] [--capture DIR]\nog-gfx SCENE --sequence DIR [--length N]\nog-gfx --costs [--frames N]\nscenes: {}",
+                    "og-gfx SCENE...|--all [--out frame.png] [--frames N] [--capture DIR]\nog-gfx SCENE --sequence DIR [--length N] [--step N]\nog-gfx --costs [--frames N]\nscenes: {}",
                     scenes::SCENES.join(", ")
                 );
                 return;
@@ -139,7 +142,7 @@ fn main() {
             eprintln!("og-gfx --sequence: name one scene");
             std::process::exit(2);
         };
-        if let Err(e) = record(name, &dir, length) {
+        if let Err(e) = record(name, &dir, length, step) {
             eprintln!("og-gfx {name}: {e}");
             std::process::exit(1);
         }
@@ -463,13 +466,29 @@ fn run(
 }
 
 /// Records `length` frames of `name` in motion to `dir` (`--sequence`):
-/// the settled frame as 0000, then each frame one tick on.
-fn record(name: &str, dir: &Path, length: u32) -> Result<(), String> {
+/// the settled frame as 0000, then each frame `step` ticks on (a
+/// time-lapse past 1), every tick between run but only the last drawn.
+fn record(name: &str, dir: &Path, length: u32, step: u32) -> Result<(), String> {
     let mut built = scenes::build(name)?;
     let mut renderer = Renderer::new_blocking(&built.desc).map_err(|e| e.to_string())?;
     let settled = built.frames.max(1);
-    for f in 0..settled + length {
-        if f >= settled {
+    let save = |renderer: &mut Renderer, n: u32| -> Result<(), String> {
+        renderer.wait_idle().map_err(|e| e.to_string())?;
+        let image = renderer.read_offscreen().map_err(|e| e.to_string())?;
+        gfx::save_png(&dir.join(format!("{n:04}.png")), &image)
+    };
+    for f in 0..settled {
+        if let Some(update) = built.update {
+            update(&mut built.scene, f);
+        }
+        renderer
+            .render(&built.scene, &RenderTarget::Offscreen)
+            .map_err(|e| e.to_string())?;
+    }
+    save(&mut renderer, 0)?;
+    let mut f = settled;
+    for n in 1..=length {
+        for _ in 0..step.max(1) {
             let tick = built.scene.frame.tick;
             if let Some(update) = built.update {
                 update(&mut built.scene, f);
@@ -477,20 +496,19 @@ fn record(name: &str, dir: &Path, length: u32) -> Result<(), String> {
             if built.scene.frame.tick == tick {
                 built.scene.frame.tick += 1;
             }
-        } else if let Some(update) = built.update {
-            update(&mut built.scene, f);
+            f += 1;
         }
         renderer
             .render(&built.scene, &RenderTarget::Offscreen)
             .map_err(|e| e.to_string())?;
-        if f + 1 >= settled {
-            renderer.wait_idle().map_err(|e| e.to_string())?;
-            let image = renderer.read_offscreen().map_err(|e| e.to_string())?;
-            let path = dir.join(format!("{:04}.png", f + 1 - settled));
-            gfx::save_png(&path, &image)?;
-        }
+        save(&mut renderer, n)?;
     }
-    println!("{name}: {} frames -> {}", length + 1, dir.display());
+    println!(
+        "{name}: {} frames, {} ticks apart -> {}",
+        length + 1,
+        step.max(1),
+        dir.display()
+    );
     Ok(())
 }
 
