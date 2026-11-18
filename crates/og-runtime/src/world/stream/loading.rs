@@ -117,6 +117,10 @@ pub(crate) fn update(eng: &Engine) {
     for name in std::mem::take(&mut unload) {
         downgrade(eng, &name);
     }
+    // Read metadata before admission. In particular, an old manifest's
+    // RGBA estimate must not refuse a pack that fits in BC/ASTC/ETC memory.
+    // No texture conversion or GPU allocation happens in this read.
+    fetch(eng);
     {
         let mut a = eng.assets.borrow_mut();
         let s = &mut a.stream;
@@ -135,8 +139,7 @@ pub(crate) fn update(eng: &Engine) {
                 .then(gy.desc.priority.cmp(&gx.desc.priority))
                 .then(gx.desc.name.cmp(&gy.desc.name))
         });
-        let admitted =
-            |s: &Streams, i: usize| matches!(s.groups[i].state, State::Loading | State::Resident);
+        let admitted = |s: &Streams, i: usize| s.groups[i].reserved;
         // A lowered budget evicts the lowest admitted groups first.
         for &i in order.iter().rev() {
             if s.used() <= budget {
@@ -162,10 +165,23 @@ pub(crate) fn update(eng: &Engine) {
             if s.groups[i].state == State::Failed && !s.groups[i].reason.starts_with("needs ") {
                 continue;
             }
-            let need = s.groups[i].desc.memory;
+            let Some(need) = s.groups[i].memory else {
+                set_state(
+                    s,
+                    &eng.modules.stream,
+                    i,
+                    State::Loading,
+                    tick,
+                    "reading pack metadata",
+                );
+                continue;
+            };
             if need > budget {
                 let why = format!("needs {need} B, more than the budget of {budget} B");
                 set_state(s, &eng.modules.stream, i, State::Failed, tick, &why);
+                if !s.groups[i].files.is_empty() {
+                    unload.push(s.groups[i].desc.name.clone());
+                }
                 continue;
             }
             // Room is made from the lowest-priority admitted groups below it.
@@ -178,7 +194,7 @@ pub(crate) fn update(eng: &Engine) {
                 let below = s.groups[j].desc.priority < s.groups[i].desc.priority
                     || (is_held(s, i) && !is_held(s, j));
                 if admitted(s, j) && below {
-                    free += s.groups[j].desc.memory;
+                    free += s.groups[j].memory.expect("admitted group's reservation");
                     evict.push(j);
                 }
             }
@@ -191,6 +207,9 @@ pub(crate) fn update(eng: &Engine) {
                     tick,
                     "waiting for room in the budget",
                 );
+                if !s.groups[i].files.is_empty() {
+                    unload.push(s.groups[i].desc.name.clone());
+                }
                 continue;
             }
             for j in evict {
@@ -199,6 +218,7 @@ pub(crate) fn update(eng: &Engine) {
                 set_state(s, &eng.modules.stream, j, State::Queued, tick, &why);
             }
             set_state(s, &eng.modules.stream, i, State::Loading, tick, "");
+            s.groups[i].reserved = true;
             let used = s.used();
             s.peak = s.peak.max(used);
         }
@@ -218,7 +238,7 @@ pub(crate) fn update(eng: &Engine) {
                 a.stream
                     .groups
                     .iter()
-                    .find(|g| g.state == State::Loading && !g.files.is_empty())
+                    .find(|g| g.state == State::Loading && g.reserved && !g.files.is_empty())
                     .map(|g| g.desc.name.clone())
             })
             .flatten()
@@ -357,7 +377,11 @@ pub(crate) fn fetch(eng: &Engine) {
             .stream
             .groups
             .iter()
-            .filter(|g| g.state == State::Loading && g.files.is_empty())
+            .filter(|g| {
+                g.files.is_empty()
+                    && (g.state == State::Loading
+                        || g.wanted && g.memory.is_none() && g.state != State::Failed)
+            })
             .collect();
         og_core::sort::sort_by(&mut packs, |x, y| {
             y.desc
@@ -472,22 +496,36 @@ fn deliver(eng: &Engine, w: &Wanted, bytes: Result<Vec<u8>, String>) {
         Need::Video { video, n, .. } => crate::bind::video::deliver_chunk(eng, *video, *n, bytes),
         Need::Pack { group, .. } => {
             let tick = tick_of(eng);
+            let formats = super::assets::texture_formats(eng);
             {
                 let mut a = eng.assets.borrow_mut();
-                let s = &mut a.stream;
-                let Some(i) = s.find(group) else { return };
+                let Some(i) = a.stream.find(group) else {
+                    return;
+                };
                 // Let go of while it was fetched: the host dropped it.
-                if s.groups[i].state != State::Loading {
+                if !a.stream.groups[i].wanted {
                     return;
                 }
-                match bytes.and_then(|b| og_bundle::runtime::unpack(&b).map_err(|e| e.to_string()))
-                {
-                    Ok(files) => {
-                        s.groups[i].files = files.into_iter().collect();
+                match bytes
+                    .and_then(|b| og_bundle::runtime::unpack(&b).map_err(|e| e.to_string()))
+                    .and_then(|files| {
+                        let files: BTreeMap<_, _> = files.into_iter().collect();
+                        let g = &a.stream.groups[i];
+                        let super::assets::Payload::Bundle { bundle, .. } =
+                            &a.entries[g.bundle].payload
+                        else {
+                            return Err("streaming group's bundle is not open".into());
+                        };
+                        let memory = pack_memory(bundle, g, &files, formats.as_ref())?;
+                        Ok((files, memory))
+                    }) {
+                    Ok((files, memory)) => {
+                        a.stream.groups[i].files = files;
+                        a.stream.groups[i].memory = Some(memory);
                         return;
                     }
                     Err(e) => set_state(
-                        s,
+                        &mut a.stream,
                         &eng.modules.stream,
                         i,
                         State::Failed,
@@ -500,6 +538,49 @@ fn deliver(eng: &Engine, w: &Wanted, bytes: Result<Vec<u8>, String>) {
             release(eng, group);
         }
     }
+}
+
+/// Replace the cook's conservative texture estimates with the exact
+/// device allocation. Other assets retain their cooked mesh/audio costs.
+fn pack_memory(
+    bundle: &og_bundle::runtime::Bundle,
+    group: &Group,
+    files: &BTreeMap<String, Vec<u8>>,
+    formats: Option<&og_render::TextureFormats>,
+) -> Result<u64, String> {
+    let mut estimated = 0;
+    let mut actual = 0;
+    for output in bundle
+        .manifest()
+        .outputs()
+        .filter(|o| o.group.as_deref() == Some(&group.desc.name) && o.ty == "og.Texture")
+    {
+        let bytes = files
+            .get(&output.file)
+            .ok_or_else(|| format!("{} is missing from the pack", output.file))?;
+        let aligned = super::assets::aligned(bytes);
+        let tex = bundle
+            .texture(&output.id, aligned.bytes())
+            .map_err(|e| e.to_string())?;
+        estimated += u64::from(tex.meta.width) * u64::from(tex.meta.height) * 4 * 4 / 3;
+        // The whole streamed chain is a separate mip-budget allocation;
+        // only the tail is resident with its group.
+        if output.id.ends_with("#mips") {
+            continue;
+        }
+        let format = tex.target_format(formats);
+        let levels = if tex.is_pixel_art() {
+            1
+        } else if format == og_render::TextureFormat::Rgba8 {
+            u32::BITS - tex.meta.width.max(tex.meta.height).leading_zeros()
+        } else {
+            tex.meta.levels
+        };
+        actual += (0..levels)
+            .map(|level| format.level_bytes(tex.meta.width, tex.meta.height, level) as u64)
+            .sum::<u64>();
+    }
+    Ok(group.desc.memory.saturating_sub(estimated) + actual)
 }
 
 /// `dump_stream`'s `fetch`: the slots, what is in flight and what waits.

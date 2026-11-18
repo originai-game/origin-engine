@@ -179,7 +179,11 @@ looks and colour LUTs (`.cube`).
   have no requesting bundle and use that fallback order.
 - At every tick boundary the engine picks the wanted groups, admits them by
   priority (then name) within the memory budget (256 MiB by default: GPU
-  textures and meshes and decoded audio, as the cook measured them),
+  textures and meshes and decoded audio). The engine reads each wanted
+  pack's metadata before admission: textures reserve their actual device
+  format's block sizes and mip levels, not an RGBA8 approximation. Reading
+  metadata alone does not upload or admit the assets. Mesh and audio costs
+  retain the cook's measurements. It then admits groups by priority,
   evicting lower-priority groups for a higher one, and puts at most one
   group's assets in place per tick. A probe call and a frame that takes no
   tick run a boundary too, and a frame that catches up runs one per tick,
