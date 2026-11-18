@@ -42,21 +42,25 @@ fn clamp_to_edge(area: Rect, half: Vec2, dir: Vec2) -> Vec2 {
 /// its box and every shown box under it, out-of-flow ones included, each
 /// mapped by its own transform and those between it and `i` (a targeted
 /// nameplate's frame scaled up), as it is drawn.
-fn drawn_box(nodes: &[crate::layout::Node], i: usize) -> (Vec2, Vec2, Option<Rect>) {
+fn drawn_box(
+    nodes: &[crate::layout::Node],
+    i: usize,
+    stack: &mut Vec<(usize, Affine, Option<Rect>)>,
+) -> (Vec2, Vec2, Option<Rect>) {
     let r = nodes[i].placed.rect;
     let (mut lo, mut hi) = (Vec2::new(r.x, r.y), Vec2::new(r.right(), r.bottom()));
     let mut placement = nodes[i].el.placement_box.then_some(r);
-    let kids = |n: &crate::layout::Node, m: Affine, clip: Option<Rect>| {
-        n.children
-            .iter()
-            .chain(&n.out)
-            .map(|&j| (j, m, clip))
-            .collect::<Vec<_>>()
-    };
     let clips = |n: &crate::layout::Node| {
         n.decor.as_ref().is_some_and(|d| d.clip) || n.layout.used.scroll || n.layout.used.scroll_x
     };
-    let mut stack = kids(&nodes[i], Affine::IDENTITY, clips(&nodes[i]).then_some(r));
+    stack.clear();
+    stack.extend(
+        nodes[i]
+            .children
+            .iter()
+            .chain(&nodes[i].out)
+            .map(|&j| (j, Affine::IDENTITY, clips(&nodes[i]).then_some(r))),
+    );
     while let Some((j, m, clip)) = stack.pop() {
         let b = nodes[j].placed.rect;
         let t = nodes[j].style.sampled.transform;
@@ -88,7 +92,13 @@ fn drawn_box(nodes: &[crate::layout::Node], i: usize) -> (Vec2, Vec2, Option<Rec
         } else {
             clip
         };
-        stack.extend(kids(&nodes[j], m, clip));
+        stack.extend(
+            nodes[j]
+                .children
+                .iter()
+                .chain(&nodes[j].out)
+                .map(|&k| (k, m, clip)),
+        );
     }
     (lo, hi, placement)
 }
@@ -251,10 +261,11 @@ fn ground_bounds(
     quad: (Vec3, Quat, Vec2),
     view: WorldView,
     screen: Rect,
+    stack: &mut Vec<(usize, Affine, Option<Rect>)>,
 ) -> Option<Rect> {
     let (center, rotation, size) = quad;
     let r = nodes[node].placed.rect;
-    let (lo, hi, _) = drawn_box(nodes, node);
+    let (lo, hi, _) = drawn_box(nodes, node, stack);
     let reach = 0.25 * size.x.min(size.y);
     let mut points = [Vec3::ZERO; 8];
     for (i, (x, y)) in [(lo.x, lo.y), (hi.x, lo.y), (hi.x, hi.y), (lo.x, hi.y)]
@@ -273,6 +284,7 @@ fn danger_bounds(world: &WorldUi, nodes: &[crate::layout::Node], screen: Rect) -
     let Some(view) = world.declared.view else {
         return Vec::new();
     };
+    let mut stack = Vec::new();
     world
         .declared
         .panels
@@ -281,7 +293,14 @@ fn danger_bounds(world: &WorldUi, nodes: &[crate::layout::Node], screen: Rect) -
         .filter_map(|p| {
             let (target, rotation, size) = p.desc.quad?;
             let (center, q) = world.pose_of(target)?;
-            ground_bounds(nodes, p.node, (center, q * rotation, size), view, screen)
+            ground_bounds(
+                nodes,
+                p.node,
+                (center, q * rotation, size),
+                view,
+                screen,
+                &mut stack,
+            )
         })
         .collect()
 }
@@ -1373,7 +1392,16 @@ fn solve_anchor(
     let offset = |base: Rect| Vec2::new(base.x - b.x, base.y - b.y);
     let mut best_edge: Option<AnchorMove> = None;
     for &(edge, base, room) in &edges {
-        if let Some(local) = declutter(Declutter::Shift, base, &all, gap, f32::MAX, room, None, scratch) {
+        if let Some(local) = declutter(
+            Declutter::Shift,
+            base,
+            &all,
+            gap,
+            f32::MAX,
+            room,
+            None,
+            scratch,
+        ) {
             let shift = offset(base) + local;
             if best_edge.is_none_or(|best| shift.length_squared() < best.shift.length_squared()) {
                 best_edge = Some(AnchorMove {
@@ -1606,7 +1634,7 @@ impl crate::ui::Layout {
             info.scale = scale;
             let projected = view.project(p, vp.width, vp.height);
             let half = Vec2::new(r.width, r.height) * scale / 2.0;
-            let (lo, hi, placement) = drawn_box(&tree.nodes, a.node);
+            let (lo, hi, placement) = drawn_box(&tree.nodes, a.node, &mut world.placement.drawn_stack);
             let mut pivot = d.pivot.fractions();
             let mut arrow = None;
             let (at, depth) = match projected {
@@ -2088,7 +2116,9 @@ impl crate::ui::Layout {
             world.placement.last.insert(pl.key, info);
             // Bracketed by its key, so a frame drawn between ticks moves it
             // with its point (`UiFrame::emit_shifted`).
-            let mut marks = Marks::default();
+            let mut marks = world.placement.mark_scratch.pop().unwrap_or_default();
+            marks.enter.clear();
+            marks.leave.clear();
             marks
                 .enter
                 .push(DrawCmd::World(WorldCmd::Anchor { key: pl.key }));
@@ -2242,9 +2272,15 @@ impl crate::ui::Layout {
                     // plane: terrain under a 2 m ring rises and falls 0.5 m.
                     let reach = 0.25 * size.x.min(size.y);
                     let screen = Rect::new(0.0, 0.0, vp.width * unit, vp.height * unit);
-                    let bounds =
-                        ground_bounds(&tree.nodes, p.node, (center, q, size), view, screen)
-                            .unwrap_or_default();
+                    let bounds = ground_bounds(
+                        &tree.nodes,
+                        p.node,
+                        (center, q, size),
+                        view,
+                        screen,
+                        &mut ui_world.placement.drawn_stack,
+                    )
+                    .unwrap_or_default();
                     let drape = og_draw::UiDrape::new(
                         view.view_proj,
                         view.eye,

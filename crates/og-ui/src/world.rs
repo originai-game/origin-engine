@@ -684,6 +684,8 @@ pub struct WorldPlacement {
     last_panels: Vec<PanelHit>,
     anchor_cache: placement::AnchorCache,
     declutter_scratch: placement::DeclutterScratch,
+    drawn_stack: Vec<(usize, Affine, Option<Rect>)>,
+    mark_scratch: Vec<Marks>,
     /// Em widths and last-used ticks of visible mass values.
     /// Template replacement or changed font inputs invalidate these widths.
     mass_widths: std::collections::HashMap<(u32, u32), (f32, u32)>,
