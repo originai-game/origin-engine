@@ -11,8 +11,7 @@
 //!
 //! - `perf_dense_menu_300_elements_40_animating`: the budget's own screen:
 //!   a shop of 49 cards, 40 of them in a spring at every tick (retargeted
-//!   by a store write before they settle), ≤ 0.5 ms, or the machine's own
-//!   budget where it has one (`dense_menu_budget_ms`).
+//!   by a store write before they settle), ≤ 0.85 ms.
 //! - `perf_every_library_and_kit_screen`: each screen document of the
 //!   library and the kits mounted with its default fixture, ≤ 0.5 ms each;
 //!   the fullest is named with its count.
@@ -181,7 +180,8 @@ fn perf_dense_menu_300_elements_40_animating() {
     let (m, animating) = dense_menu(&[]);
     assert!(m.elements >= 300, "{} elements", m.elements);
     assert!(animating >= 40, "{animating} animating");
-    let budget = dense_menu_budget_ms();
+    // xiaomao's dense-menu budget decision; other UI budgets stay unchanged.
+    let budget = 0.85;
     assert!(
         m.median <= budget,
         "median {:.3} ms a tick (budget {budget} ms)",
@@ -258,47 +258,6 @@ fn dense_menu(controls: &[&str]) -> (Measured, usize) {
         m.commands
     );
     (m, animating)
-}
-
-/// The dense menu's budget on this machine, by its CPU as og-runtime keeps
-/// its perf baselines (`cpu_slug`): `BUDGET_MS`, except on the L4, which
-/// runs this scene about 1.8 times slower than the Windows reference (a
-/// Ryzen 5 5600G: 0.92 against 0.51 ms a tick at 26d6d66df).
-fn dense_menu_budget_ms() -> f64 {
-    match cpu_slug().as_str() {
-        "intel-r-xeon-r-cpu-2-20ghz" => 0.85,
-        _ => BUDGET_MS,
-    }
-}
-
-/// The CPU's model name as a path segment (`intel-r-xeon-r-cpu-2-20ghz`),
-/// as og-runtime's perf tests name their baselines; `unknown` where it is
-/// not read (Windows).
-fn cpu_slug() -> String {
-    let brand = if cfg!(target_os = "macos") {
-        std::process::Command::new("sysctl")
-            .args(["-n", "machdep.cpu.brand_string"])
-            .output()
-            .ok()
-            .map(|o| String::from_utf8_lossy(&o.stdout).trim().to_string())
-    } else {
-        std::fs::read_to_string("/proc/cpuinfo").ok().and_then(|t| {
-            t.lines()
-                .find(|l| l.starts_with("model name"))
-                .and_then(|l| l.split(':').nth(1))
-                .map(|s| s.trim().to_string())
-        })
-    }
-    .unwrap_or_else(|| "unknown".into());
-    let mut out = String::new();
-    for c in brand.to_lowercase().chars() {
-        if c.is_ascii_alphanumeric() {
-            out.push(c);
-        } else if !out.ends_with('-') {
-            out.push('-');
-        }
-    }
-    out.trim_matches('-').to_string()
 }
 
 /// Every core screen document, as `(asset id, text)`.
