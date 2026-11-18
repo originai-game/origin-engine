@@ -2,7 +2,8 @@
 //! lamp keeper) posed by og-anim and drawn through the sprite batch's
 //! triangles (`RenderScene::sprite_meshes`), lit by 2D lighting.
 //!
-//! Three keepers stand on three planks, flat, rising 20° and falling 20°,
+//! Three keepers stand on three planks on posts over a moonlit town's
+//! roofs (a painted backdrop below the lit layers), flat, rising 20° and falling 20°,
 //! at idle-clip times 0, 0.5 and 1 (the third mirrored by flipX): each leg
 //! is a two-bone IK chain whose target is the plank's top under the foot,
 //! and the cape is a weighted mesh over the hip and two cape bones, bent
@@ -52,8 +53,32 @@ pub fn skeleton_scene(skinned: bool) -> Result<RenderScene, String> {
     scene.set_texture_filter(texture, TextureFilter::Nearest);
     let leg = |name: &str| rig.iks.iter().position(|k| k.name == name).unwrap() as u32;
     let (front, back) = (leg("leg-f"), leg("leg-b"));
+    // The moonlit roofs behind, below the lit layers: unlit.
+    crate::atmo_scenes::backdrop(
+        &mut scene,
+        "sprites2d/rooftops.jpg",
+        Vec2::ZERO,
+        6.0,
+        [0.8, 0.82, 0.9, 1.0],
+    );
     for (x, top, slope, time, flip) in STANDS {
         let ground = |gx: f32| top + slope * (gx - x);
+        // Two posts under each plank's ends, down past the frame: the
+        // plank's region of the keeper's texture, stood on end.
+        for end in [-1.25f32, 1.25] {
+            let px = x + end * slope.atan().cos();
+            let (from, to) = (ground(px) - 0.25, -3.2);
+            scene.add_sprite(Sprite {
+                texture: Some(texture),
+                position: Vec3::new(px, (from + to) * 0.5, 0.0),
+                size: Vec2::new(from - to, 0.18),
+                rotation: std::f32::consts::FRAC_PI_2,
+                uv_rect: [0.375, 0.5, 1.0, 0.625],
+                color: [0.7, 0.62, 0.55, 1.0],
+                layer: 0,
+                ..Default::default()
+            });
+        }
         // The plank: a region of the keeper's texture (pixels 24..64 x 32..40).
         let angle = slope.atan();
         scene.add_sprite(Sprite {
