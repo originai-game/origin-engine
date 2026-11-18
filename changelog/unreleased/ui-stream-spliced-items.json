@@ -1,0 +1,3 @@
+{
+  "fixed": ["Retained UI frames stream command splices into their final item list, avoiding large temporary command and item buffers without changing draw order or levels."]
+}
