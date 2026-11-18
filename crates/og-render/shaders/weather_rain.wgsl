@@ -16,39 +16,63 @@ fn weather_fbm(p: vec2<f32>) -> f32 {
   return weather_noise(p) * 0.57 + weather_noise(p * 2.03 + 17.1) * 0.29 + weather_noise(p * 4.07 + 3.3) * 0.14;
 }
 
-// How much of the rings a pixel that covers `footprint` metres holds. A
-// ring's crests are about 4 cm apart: where a pixel covers a centimetre
-// they alias into stripes, so they fade out first.
+// A raindrop's ring on standing water: the capillary wave packet its
+// impact sends out (Lagarde's "Water drop" series, 2012-13, draws its
+// rings), a few crests 2.5 cm apart under an envelope that broadens as the
+// packet disperses, travelling at some 20 cm/s, steepest (about 0.3) near
+// the impact and weakening as the ring spreads, gone 8 to 10 cm out.
+const RIPPLE_CELL: f32 = 0.3;
+const RIPPLE_PERIOD: f32 = 0.5;
+const RIPPLE_SPEED: f32 = 0.2;
+const RIPPLE_WAVE: f32 = 0.025;
+const RIPPLE_SLOPE: f32 = 1.0;
+
+// How much of the rings a pixel that covers `footprint` metres holds: all
+// of them where it covers a sixth of their crests' spacing, none where it
+// covers half of it (they alias into stripes there).
 fn weather_ripples_held(footprint: f32) -> f32 {
   return 1.0 - smoothstep(0.004, 0.012, footprint);
 }
 
 // The mean square of weather_ripples' tilt along one axis at the rain's
-// full strength, over a cell and a cycle (summed numerically from the
-// function below: 0.0041 a layer, two layers, times 0.35 squared): what
-// the rings a pixel cannot hold add to a surface's slope variance.
-const WEATHER_RIPPLES_SPREAD: f32 = 0.001;
+// full strength, over a cell and a cycle (integrated numerically from the
+// function below, all three layers): what the rings a pixel cannot hold
+// add to a lake's slope variance (water.wgsl).
+const WEATHER_RIPPLES_SPREAD: f32 = 8.9e-4;
 
-// Raindrop rings on standing water: a drop per cell, each at its own time
-// in a one-second cycle, its ring widening and fading. The normal's
-// horizontal tilt.
+// Raindrop rings on standing water: in each of three offset grids of 30 cm
+// cells a drop falls every half second, at its own time and each time at a
+// new place (67 drops a square metre a second), and its ring dies before it
+// reaches the cell's edge. The normal's horizontal tilt, the height's
+// slope. (A drop a second in each of two grids of 33 cm cells, each ring
+// living a whole second and growing to 15 cm, drew a few sharp ellipses a
+// hand across where a camera near the water caught a lamp in them.)
 fn weather_ripples(p: vec2<f32>, t: f32, footprint: f32) -> vec2<f32> {
   let fade = weather_ripples_held(footprint);
   if (fade <= 0.0) { return vec2<f32>(0.0); }
   var tilt = vec2<f32>(0.0);
-  for (var k = 0; k < 2; k++) {
-    let q = p * 3.0 + vec2<f32>(f32(k) * 0.37, f32(k) * 0.71);
+  for (var k = 0; k < 3; k++) {
+    let q = p / RIPPLE_CELL + vec2<f32>(f32(k) / 3.0, f32(k) * 0.61);
     let c = floor(q);
     let ci = vec2<i32>(c);
-    let centre = c + vec2<f32>(lattice3(vec3<i32>(ci, 21 + k), 0u), lattice3(vec3<i32>(ci, 31 + k), 0u)) * 0.6 + 0.2;
-    let phase = fract(t + lattice3(vec3<i32>(ci, 41 + k), 0u));
-    let to = q - centre;
+    let cycle = t / RIPPLE_PERIOD + lattice3(vec3<i32>(ci, 41 + k), 0u);
+    let n = i32(floor(cycle));
+    let age = fract(cycle) * RIPPLE_PERIOD;
+    let drop = vec3<i32>(ci, n * 3 + k);
+    let centre = c + 0.4 + 0.2 * vec2<f32>(lattice3(drop, 21u), lattice3(drop, 31u));
+    let to = (q - centre) * RIPPLE_CELL;
     let r = length(to);
-    let ring = r - phase * 0.45;
-    let wave = sin(ring * 50.0) * exp(-ring * ring * 300.0) * (1.0 - phase);
-    tilt += to / max(r, 1e-3) * wave;
+    let front = 0.004 + RIPPLE_SPEED * age;
+    let width = 0.004 + 0.02 * age;
+    // Spreading thins it; it is gone before its envelope reaches the cell's
+    // edge, 9 cm out at the nearest.
+    let strength = RIPPLE_SLOPE * 0.015 / (0.015 + front) * (1.0 - smoothstep(0.07, 0.1, front));
+    let x = r - front;
+    let slope = strength * exp(-(x * x) / (width * width)) * sin(x * (2.0 * PI / RIPPLE_WAVE));
+    // (No direction at the drop's own point: never a puncture there.)
+    tilt += to / max(r, 1e-4) * slope * smoothstep(0.0, 0.003, r);
   }
-  return tilt * 0.35 * fade;
+  return tilt * fade;
 }
 
 // How open `p` (frame coordinates) is to the rain and snow, 0 under a roof

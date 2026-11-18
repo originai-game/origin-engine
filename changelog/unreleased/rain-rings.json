@@ -1,0 +1,8 @@
+{
+  "fixed": [
+    {
+      "member": "rendering: og.Weather",
+      "summary": "Raindrop rings on puddles and lakes are denser, smaller and short-lived, as a drop's ripples are: 67 drops a square metre a second, each ring a few crests 2.5 cm apart that spread under 10 cm and die within half a second, each drop at a new place. Rings were sparse (18 a square metre a second), lived a whole second and grew to 15 cm, so from a camera near the ground a lamp mirrored in them read as a few sharp ellipses a hand across."
+    }
+  ]
+}
