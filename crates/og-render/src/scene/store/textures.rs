@@ -128,7 +128,9 @@ impl RenderScene {
             self.remove_texture(made);
         }
         let rgba = |t: TextureHandle| -> Result<(u32, u32, &[u8], ColorSpace), crate::RenderError> {
-            match &self.textures[t.index()] {
+            match self.textures[t.index()].cpu_source().ok_or_else(|| {
+                crate::RenderError::InvalidData("texture source could not be recovered".into())
+            })? {
                 TextureSource::Rgba(d) => Ok((d.width, d.height, &d.rgba[..], d.color_space)),
                 TextureSource::Encoded(u) if u.desc.format == crate::TextureFormat::Rgba8 => Ok((
                     u.desc.width,
@@ -326,7 +328,7 @@ impl RenderScene {
         if !self.texture_slots.live(i, handle.generation()) {
             return false;
         }
-        self.textures[i] = source;
+        self.textures[i] = Texture::new(source);
         self.texture_revisions[i] += 1;
         true
     }
@@ -346,7 +348,7 @@ impl RenderScene {
     pub fn add_texture_source(&mut self, source: TextureSource) -> TextureHandle {
         let (i, generation, reused) = self.texture_slots.take(self.textures.len(), true);
         if reused {
-            self.textures[i] = source;
+            self.textures[i] = Texture::new(source);
             self.texture_revisions[i] += 1;
             if let Some(f) = self.texture_filters.get_mut(i) {
                 *f = TextureFilter::Linear;
@@ -358,7 +360,7 @@ impl RenderScene {
                 *n = None;
             }
         } else {
-            self.textures.push(source);
+            self.textures.push(Texture::new(source));
             self.texture_revisions.push(0);
         }
         TextureHandle::from_parts(i, generation)
@@ -383,13 +385,13 @@ impl RenderScene {
         if let Some(f) = self.stream_external.get_mut().remove(&i) {
             f.close();
         }
-        self.textures[i] = TextureSource::Rgba(TextureData {
+        self.textures[i] = Texture::new(TextureSource::Rgba(TextureData {
             width: 1,
             height: 1,
             rgba: vec![0; 4],
             color_space: ColorSpace::Srgb,
             mips: Mips::None,
-        });
+        }));
         self.texture_revisions[i] += 1;
         if let Some(f) = self.texture_filters.get_mut(i) {
             *f = TextureFilter::Linear;

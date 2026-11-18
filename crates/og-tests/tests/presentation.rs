@@ -87,10 +87,24 @@ fn a_resident_renderer_restarts_without_previous_run_state() {
 #[test]
 #[ignore = "requires GPU"]
 fn a_renderer_made_again_after_a_lost_device_draws_the_same_frame() {
-    let g = scenes::build("materials").expect("scene");
+    let mut g = scenes::build("materials").expect("scene");
     let mut renderer = Renderer::new_blocking(&g.desc).expect("renderer");
     let before = draw(&mut renderer, &g.scene, g.frames);
     assert!(renderer.lost().is_none());
+
+    let texture = og_render::TextureHandle::from_index(0);
+    let source = g.scene.texture(texture).expect("material texture").clone();
+    let recovered = std::sync::Arc::new(std::sync::atomic::AtomicUsize::new(0));
+    assert!(renderer.texture_uploaded(&g.scene, texture));
+    let reads = recovered.clone();
+    g.scene.release_texture_source(texture, move || {
+        reads.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+        Ok(og_render::TextureSource::Rgba(source.clone()))
+    });
+    // The preceding CPU inspection pins it for one frame. No further CPU
+    // reads: the second release must leave only its reload source.
+    g.scene
+        .release_texture_source(texture, || unreachable!("reload already registered"));
 
     renderer.lose_device();
     let why = renderer.lost().expect("the device-lost callback ran");
@@ -104,6 +118,7 @@ fn a_renderer_made_again_after_a_lost_device_draws_the_same_frame() {
     drop(renderer);
     assert!(again.lost().is_none());
     let after = draw(&mut again, &g.scene, g.frames);
+    assert_eq!(recovered.load(std::sync::atomic::Ordering::Relaxed), 1);
     assert_eq!((after.width, after.height), (before.width, before.height));
     assert!(
         after.pixels == before.pixels,

@@ -270,11 +270,9 @@ fn placed(scene: &crate::RenderScene, gi: &mut GiScene, eye: Vec3) -> Vec<Placed
     let mut out = Vec::with_capacity(scene.objects.instances.len() + scene.world.terrains.len());
     let mean = |gi: &mut GiScene, slot: u32| {
         crate::TextureHandle::from_slot(slot).map_or(Vec3::ONE, |t| {
-            gi.texture_mean(
-                t.index(),
-                scene.texture_revision(t.index()),
-                scene.texture(t),
-            )
+            gi.texture_mean(t.index(), scene.texture_revision(t.index()), || {
+                scene.texture(t)
+            })
         })
     };
     for inst in &scene.objects.instances {
@@ -307,11 +305,9 @@ fn placed(scene: &crate::RenderScene, gi: &mut GiScene, eye: Vec3) -> Vec<Placed
         let albedo = t.layers.first().map_or(Vec3::splat(0.5), |l| {
             l.color
                 * l.albedo.map_or(Vec3::ONE, |h| {
-                    gi.texture_mean(
-                        h.index(),
-                        scene.texture_revision(h.index()),
-                        scene.texture(h),
-                    )
+                    gi.texture_mean(h.index(), scene.texture_revision(h.index()), || {
+                        scene.texture(h)
+                    })
                 })
         });
         let index = t.terrain.index();

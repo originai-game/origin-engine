@@ -404,6 +404,7 @@ fn render(eng: &Engine, alpha: Option<f32>) -> Result<bool, String> {
             gpu = b.gpu_timings(false);
             frame = b.frame_stats();
         }
+        super::assets::release_uploaded_textures(eng, rs);
         std::mem::take(&mut rs.notes)
     };
     let mut st = eng.state.borrow_mut();

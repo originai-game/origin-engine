@@ -21,12 +21,14 @@ use serde_json::{Map, Value, json};
 use std::collections::{BTreeMap, BTreeSet, HashMap};
 
 mod models;
+mod recovery;
 mod release;
 mod sound;
 mod spawn;
 mod textures;
 
 pub(crate) use models::*;
+pub(crate) use recovery::release_uploaded_textures;
 pub(crate) use release::release_bundle;
 pub(crate) use release::resolve_releases;
 pub(crate) use sound::*;

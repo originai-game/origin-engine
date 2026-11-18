@@ -76,6 +76,13 @@ impl Drop for OffscreenBackend {
 }
 
 impl RenderBackend for OffscreenBackend {
+    fn texture_uploaded(
+        &self,
+        scene: &og_render::RenderScene,
+        texture: og_render::TextureHandle,
+    ) -> bool {
+        self.renderer.texture_uploaded(scene, texture)
+    }
     fn tier(&self) -> String {
         self.tier.clone()
     }

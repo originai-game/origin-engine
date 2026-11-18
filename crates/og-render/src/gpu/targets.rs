@@ -107,7 +107,7 @@ impl RenderScene {
         if !self.contains_texture(texture) {
             return None;
         }
-        match self.textures().get(texture.index())? {
+        match self.texture_source(texture.index()).ok()? {
             TextureSource::Target(t) => Some(*t),
             _ => None,
         }
