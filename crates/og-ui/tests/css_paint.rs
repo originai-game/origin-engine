@@ -857,6 +857,45 @@ fn conic_stops_compute_fraction_math_and_registered_percentages() {
     }
 }
 
+#[test]
+fn registered_percentage_transition_moves_the_gradient_stop() {
+    let text = r#"<meta name="component" content="t">
+<div id="Sweep" class={$mode}></div>
+<style>
+@property --sweep { syntax: "<percentage>"; inherits: false; initial-value: 0%; }
+#Sweep { width: 100px; height: 100px; --sweep: 20%; transition: --sweep 600ms linear;
+  background: conic-gradient(#000 var(--sweep), transparent 0); }
+#Sweep.on { --sweep: 80%; }
+</style>"#;
+    let mut d = Doc::new(text, &[("mode", serde_json::json!("off"))]);
+    d.put("mode", serde_json::json!("on"));
+    d.step(InputFrame::default());
+    for _ in 0..18 {
+        d.step(InputFrame::default());
+    }
+    let offset = d.ui.frame().items.iter().find_map(|item| match &item.cmd {
+        DrawCmd::Shape { shape, .. } => match &shape.paint {
+            og_draw::UiPaint::GradientImage(g) => Some(g.gradient.stops[0].offset),
+            _ => None,
+        },
+        _ => None,
+    }).expect("the sweep draws");
+    assert!((offset - 0.5).abs() < 0.02, "halfway from20% to80%: {offset}");
+}
+
+#[test]
+fn registered_percentage_keyframes_are_accepted() {
+    let result = UiDocument::parse("ui/sweep.svelte", r#"<meta name="component" content="t">
+<div id="Sweep"></div>
+<style>
+@property --sweep { syntax: "<percentage>"; inherits: false; initial-value: 0%; }
+@keyframes sweep { from { --sweep: 20%; } to { --sweep: 80%; } }
+#Sweep { width: 100px; height: 100px; animation: sweep 600ms linear forwards;
+  background: conic-gradient(#000 var(--sweep), transparent 0); }
+</style>"#);
+    assert!(result.is_ok(), "{:?}", result.err());
+}
+
 /// The first drawn gradient's stop colours inside `id`, as sRGB.
 fn gradient_stops(d: &Doc, id: &str) -> Vec<Srgba> {
     let e = d.get(id);
