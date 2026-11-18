@@ -18075,13 +18075,55 @@ export interface Weather {
    */
   kind: number;
   /**
-   * How heavy: the share of the particles born, the fog, the cover and the dimming. A change keeps the particles in the air: ramp it to build or clear a weather.
+   * How heavy: the share of the particles born, the fog, the cover and the dimming. The weather drawn follows it over `change`, keeping the particles in the air.
    *
    * @default 1
    * @range 0..2
    * @tunable
    */
   intensity: number;
+  /**
+   * How long the weather takes to follow a change of kind or intensity: the drawn intensity moves by 1 in this many seconds, a new kind building as the one before thins out. The first tick takes the weather as it is; 0 switches at once.
+   * See `render §7`.
+   *
+   * @default 20
+   * @range 0..600
+   * @unit s (seconds of simulation time)
+   * @tunable
+   */
+  change: number;
+  /**
+   * The kind drawn now, which follows `kind` (written by the tick).
+   *
+   * @readonly written by the engine
+   */
+  readonly drawnKind: number;
+  /**
+   * The intensity drawn now, which follows `intensity` over `change`; -1 before the first tick (written by the tick).
+   *
+   * @default -1
+   * @readonly written by the engine
+   */
+  readonly drawnIntensity: number;
+  /**
+   * The kind thinning out after a switch, 0 when none is (written by the tick).
+   *
+   * @readonly written by the engine
+   */
+  readonly fadingKind: number;
+  /**
+   * How much of fadingKind is still drawn (written by the tick).
+   *
+   * @readonly written by the engine
+   */
+  readonly fadingIntensity: number;
+  /**
+   * Seconds the faded kind's last particles still fall once fadingIntensity reaches 0 (written by the tick).
+   *
+   * @unit s (seconds of simulation time)
+   * @readonly written by the engine
+   */
+  readonly settling: number;
   /**
    * A wind of the weather's own on the particles, added to og.Wind's.
    *
@@ -36297,7 +36339,7 @@ export declare namespace og {
   /**
    * A weather preset around the camera: particles (rain, snow, dust), its fog (unless og.Fog is enabled, which takes precedence), the cloud cover rain and snow fall from (og.Clouds closed to it, or a deck of the weather's own under a procedural sky) and the light under it, dimmed once. Particles are simulated by the renderer from the tick, so they look the same on every run; they never touch the simulation.
    */
-  const Weather: ResourceType<{ readonly kind: FieldSpec<"u32">; readonly intensity: FieldSpec<"f32">; readonly wind: FieldSpec<"Vector3">; readonly radius: FieldSpec<"f32">; readonly tint: FieldSpec<"Color">; readonly dim: FieldSpec<"f32">; readonly layer: FieldSpec<"i32"> }, Weather>;
+  const Weather: ResourceType<{ readonly kind: FieldSpec<"u32">; readonly intensity: FieldSpec<"f32">; readonly change: FieldSpec<"f32">; readonly drawnKind: FieldSpec<"u32">; readonly drawnIntensity: FieldSpec<"f32">; readonly fadingKind: FieldSpec<"u32">; readonly fadingIntensity: FieldSpec<"f32">; readonly settling: FieldSpec<"f32">; readonly wind: FieldSpec<"Vector3">; readonly radius: FieldSpec<"f32">; readonly tint: FieldSpec<"Color">; readonly dim: FieldSpec<"f32">; readonly layer: FieldSpec<"i32"> }, Weather>;
   /**
    * The world's wind: where the air moves and how fast. Everything in the air moves in it and adds its own `wind`: vegetation leans downwind and sways in gusts (og.TerrainScatter, og.Grass, trees, og.Model with a sway: 0.05 of its height per m/s), og.Clouds drift, og.Weather slants, and the tick pushes og.Rope, og.Cloth, og.Garment and bodies with RigidBody.airDrag. Material shader hooks read it as `h.wind` (xyz where it blows, w the lean). Where RenderCapabilities.compute allows, vegetation reads one simulated field that carries og.WindMotor pushes. An og.Water's sea keeps its own wind.
    * See `render §8`.

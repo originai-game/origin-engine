@@ -70,7 +70,7 @@ column WindMotorKind {
 }
 ```
 
-<sub>Module `atmosphere` line 705</sub>
+<sub>Module `atmosphere` line 730</sub>
 
 ## Constants
 

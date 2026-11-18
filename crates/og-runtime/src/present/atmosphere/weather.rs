@@ -12,7 +12,8 @@ use glam::{Mat4, Vec3};
 use og_ecs::World;
 use og_render::{Fog, ParticleSystem, Projection};
 
-/// The particle system id of the weather (no entity has it).
+/// The particle system id of the weather, less its kind (no entity has
+/// it).
 const WEATHER_ID: u64 = u64::MAX - 0x5745;
 
 /// Fog and weather into `scene`, over the sky already there.
@@ -82,18 +83,23 @@ pub(super) fn extract(
     }
     let mut falling = None;
     if let Some(w) = weather {
-        let kind = w.kind;
+        // The weather drawn (og.Weather's drawn fields): after a switch,
+        // the new kind building and the one before thinning out.
+        let drawn = crate::bind::weather::drawn(&w);
         let layer = orthographic.then_some(w.layer);
         let wind = w.wind + world_wind.velocity;
-        let look = og_render::weather(
-            kind,
-            w.intensity,
-            wind,
-            w.radius,
-            rgb(&w.tint),
-            w.dim,
-            layer,
-        );
+        let look_of = |kind: u32, intensity: f32| {
+            og_render::weather(kind, intensity, wind, w.radius, rgb(&w.tint), w.dim, layer)
+        };
+        let building = look_of(drawn.kind, drawn.intensity);
+        let fading = look_of(drawn.fading_kind, drawn.fading_intensity);
+        let both = drawn.intensity + drawn.fading_intensity;
+        let share = if both > 0.0 {
+            drawn.fading_intensity / both
+        } else {
+            0.0
+        };
+        let look = building.clone().and(&fading, share);
         // The sky closes to the weather's cover and the light dims once;
         // a deck the weather brought drifts on the world's wind.
         let declared = scene.atmosphere.clouds.is_some();
@@ -112,13 +118,20 @@ pub(super) fn extract(
             }
             scene.atmosphere.fog = Some(fog);
         }
-        if let Some(emitter) = &look.emitter {
+        // Each kind's particles from its own emitter, so the ones in the
+        // air stay through a switch and the faded kind's fall out.
+        for (kind, intensity, l) in [
+            (drawn.kind, drawn.intensity, &building),
+            (drawn.fading_kind, drawn.fading_intensity, &fading),
+        ] {
+            let Some(emitter) = &l.emitter else {
+                continue;
+            };
             // The emitter is set again only when its inputs change (its
             // intensity changes its emission alone, so the particles in
             // the air stay).
             let key: Vec<u32> = [
-                kind as f32,
-                w.intensity,
+                intensity,
                 wind.x,
                 wind.y,
                 wind.z,
@@ -129,28 +142,29 @@ pub(super) fn extract(
             .map(|x| x.to_bits())
             .chain([w.tint.r.to_bits(), w.tint.g.to_bits(), w.tint.b.to_bits()])
             .collect();
-            let handle = match atmo.weather.as_ref().map(|(k, h)| (k == &key, *h)) {
-                Some((true, handle)) => handle,
-                Some((false, handle)) => {
-                    scene.set_emitter(handle, emitter.clone());
-                    atmo.weather = Some((key, handle));
-                    handle
+            let handle = match atmo.weather.iter_mut().find(|(k, ..)| *k == kind) {
+                Some((_, was, handle)) => {
+                    if *was != key {
+                        scene.set_emitter(*handle, emitter.clone());
+                        *was = key;
+                    }
+                    *handle
                 }
                 None => {
                     let handle = scene.add_emitter(emitter.clone());
-                    atmo.weather = Some((key, handle));
+                    atmo.weather.push((kind, key, handle));
                     handle
                 }
             };
             let cam = &scene.frame.camera;
-            let at = look.origin(cam.position, cam.target - cam.position);
+            let at = l.origin(cam.position, cam.target - cam.position);
             let at = if orthographic {
-                Vec3::new(cam.position.x, cam.position.y + look.offset.y, 0.0)
+                Vec3::new(cam.position.x, cam.position.y + l.offset.y, 0.0)
             } else {
                 at
             };
             scene.effects.particles.push(ParticleSystem::new(
-                WEATHER_ID,
+                WEATHER_ID - u64::from(kind),
                 handle,
                 Mat4::from_translation(at),
                 1,

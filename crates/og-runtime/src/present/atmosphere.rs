@@ -102,11 +102,11 @@ impl AtmoLayouts {
     }
 }
 
-/// What this module keeps between frames: the weather's emitter, the
+/// What this module keeps between frames: the weather's emitters by kind, the
 /// cloths' meshes, the loaded shaders and the shader materials.
 #[derive(Default)]
 pub(crate) struct AtmoState {
-    weather: Option<(Vec<u32>, og_render::EmitterHandle)>,
+    weather: Vec<(u32, Vec<u32>, og_render::EmitterHandle)>,
     cloths: IdMap<u64, MeshHandle>,
     cloth_material: Option<MaterialHandle>,
     softs: IdMap<u64, MeshHandle>,

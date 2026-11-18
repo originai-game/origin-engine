@@ -343,6 +343,43 @@ impl WeatherLook {
         scene.lighting.environment.intensity *= ((0.5 + 0.5 * self.light) / sky).min(1.0);
     }
 
+    /// This weather with `fading`, one thinning out as this one builds (a
+    /// switch of og.Weather's kind): the sky closes to the greater cover,
+    /// the light takes the deeper dimming, the rain is both's, and their
+    /// fogs are one medium (their densities add; colour, glow and shape
+    /// are each's by its share of the density). What falls settles as the
+    /// two together, `share` being the fading one's part of the falling
+    /// (0..1). The particles stay each's own: this keeps its emitter.
+    pub fn and(mut self, fading: &WeatherLook, share: f32) -> WeatherLook {
+        let share = share.clamp(0.0, 1.0);
+        self.cover = self.cover.max(fading.cover);
+        self.light = self.light.min(fading.light);
+        self.rain += fading.rain;
+        self.fall = self.fall.lerp(fading.fall, share);
+        self.fog = match (self.fog, fading.fog) {
+            (Some(a), Some(b)) => {
+                let (wa, wb) = (a.density + a.height_density, b.density + b.height_density);
+                let t = if wa + wb > 0.0 { wb / (wa + wb) } else { 0.5 };
+                let mix = |x: f32, y: f32| x + (y - x) * t;
+                Some(Fog {
+                    color: a.color.lerp(b.color, t),
+                    density: a.density + b.density,
+                    start: mix(a.start, b.start),
+                    end: mix(a.end, b.end),
+                    height_density: a.height_density + b.height_density,
+                    height: mix(a.height, b.height),
+                    falloff: mix(a.falloff, b.falloff),
+                    sun_color: a.sun_color.lerp(b.sun_color, t),
+                    sun_power: mix(a.sun_power, b.sun_power),
+                    max_opacity: mix(a.max_opacity, b.max_opacity),
+                    sky: mix(a.sky, b.sky),
+                })
+            }
+            (a, b) => a.or(b),
+        };
+        self
+    }
+
     /// Where the emitter goes for a camera at `position` looking along
     /// `forward`.
     pub fn origin(&self, position: Vec3, forward: Vec3) -> Vec3 {

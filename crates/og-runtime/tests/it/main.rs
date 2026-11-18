@@ -184,6 +184,8 @@ mod vfx;
 mod video_rendition;
 #[path = "../virtual_cameras.rs"]
 mod virtual_cameras;
+#[path = "../weather_switch.rs"]
+mod weather_switch;
 #[path = "../web_findings.rs"]
 mod web_findings;
 #[path = "../wire.rs"]

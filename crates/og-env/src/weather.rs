@@ -40,24 +40,101 @@ pub struct Rates {
     pub wash_time: f32,
 }
 
+/// How long a faded weather's last particles keep falling after it thins to
+/// nothing, in seconds: the longest-lived, the snow's 7 s, reach the ground.
+pub const SETTLE: f32 = 8.0;
+
+/// The weather drawn and simulated (og.Weather's readonly fields): the one
+/// following the game's kind and intensity, and the one it replaced,
+/// thinning out at the same rate, then its last particles falling for
+/// [`SETTLE`] seconds.
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
+pub struct Falling {
+    pub kind: u32,
+    pub intensity: f32,
+    pub fading_kind: u32,
+    pub fading_intensity: f32,
+    pub settling: f32,
+}
+
+impl Falling {
+    /// `kind` at `intensity` at once, nothing fading.
+    pub fn now(kind: u32, intensity: f32) -> Falling {
+        Falling {
+            kind,
+            intensity: if kind == NONE {
+                0.0
+            } else {
+                intensity.clamp(0.0, 2.0)
+            },
+            ..Falling::default()
+        }
+    }
+
+    /// One tick of `dt` towards the game's `kind` at `intensity`, the
+    /// intensity moving by 1 every `change` seconds (0: at once). A new
+    /// kind starts from nothing and the one drawn so far thins out; a
+    /// return to the kind thinning out takes it back where it is. A third
+    /// kind while two are drawn drops the fainter of them.
+    pub fn follow(self, kind: u32, intensity: f32, change: f32, dt: f32) -> Falling {
+        if change <= 0.0 {
+            return Falling::now(kind, intensity);
+        }
+        let target = Falling::now(kind, intensity).intensity;
+        let mut f = self;
+        if kind != f.kind {
+            if kind == f.fading_kind {
+                (f.kind, f.fading_kind) = (f.fading_kind, f.kind);
+                (f.intensity, f.fading_intensity) = (f.fading_intensity, f.intensity);
+                f.settling = SETTLE;
+            } else {
+                if f.kind != NONE && (f.fading_kind == NONE || f.intensity >= f.fading_intensity) {
+                    f.fading_kind = f.kind;
+                    f.fading_intensity = f.intensity;
+                    f.settling = SETTLE;
+                }
+                f.kind = kind;
+                f.intensity = 0.0;
+            }
+        }
+        let by = dt / change;
+        f.intensity = if f.intensity < target {
+            (f.intensity + by).min(target)
+        } else {
+            (f.intensity - by).max(target)
+        };
+        if f.fading_kind == NONE {
+            f.settling = 0.0;
+        } else if f.fading_intensity > 0.0 {
+            f.fading_intensity = (f.fading_intensity - by).max(0.0);
+        } else {
+            f.settling -= dt;
+            if f.settling <= 0.0 {
+                f.fading_kind = NONE;
+                f.settling = 0.0;
+            }
+        }
+        f
+    }
+
+    /// How much of `kind` falls, of both weathers drawn.
+    pub fn of(&self, kind: u32) -> f32 {
+        let at = |k: u32, i: f32| if k == kind { i } else { 0.0 };
+        at(self.kind, self.intensity) + at(self.fading_kind, self.fading_intensity)
+    }
+}
+
 /// The rules: rain soaks the ground over soakTime and, once it is more than
 /// half soaked, fills the puddles over puddleTime; without rain both dry
 /// (dryTime, drainTime). Snow settles at snowfall per minute and melts at
 /// melt per minute when none falls, three times as fast in rain; snow
 /// keeps the ground under it from drying no faster than it would. A dust
 /// storm settles dust over dustTime; it stays until rain washes it off
-/// over washTime.
-pub fn step(s: Ground, rates: &Rates, kind: u32, intensity: f32, dt: f32) -> Ground {
-    let rain = if kind == RAIN {
-        intensity.clamp(0.0, 2.0)
-    } else {
-        0.0
-    };
-    let snowing = if kind == SNOW {
-        intensity.clamp(0.0, 2.0)
-    } else {
-        0.0
-    };
+/// over washTime. What falls is both weathers drawn ([`Falling::of`]).
+pub fn step(s: Ground, rates: &Rates, falling: &Falling, dt: f32) -> Ground {
+    let rain = falling.of(RAIN).clamp(0.0, 2.0);
+    let snowing = falling.of(SNOW).clamp(0.0, 2.0);
+    let dusting = falling.of(DUST).clamp(0.0, 2.0);
     let mut o = s;
     if rain > 0.0 {
         o.wetness += dt * rain / rates.soak_time.max(0.1);
@@ -73,9 +150,7 @@ pub fn step(s: Ground, rates: &Rates, kind: u32, intensity: f32, dt: f32) -> Gro
     } else {
         o.snow_depth -= dt * rates.melt.max(0.0) / 60.0 * (1.0 + 2.0 * rain);
     }
-    if kind == DUST {
-        o.dust += dt * intensity.clamp(0.0, 2.0) / rates.dust_time.max(0.1);
-    }
+    o.dust += dt * dusting / rates.dust_time.max(0.1);
     o.dust -= dt * rain / rates.wash_time.max(0.1);
     o.dust = o.dust.clamp(0.0, 1.0);
     o.wetness = o.wetness.clamp(0.0, 1.0);

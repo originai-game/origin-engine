@@ -13,7 +13,13 @@ Token `og.Weather`, registered under the schema name `og.Weather`; its value typ
 | Field | Type | Default | Range | Unit | Notes | Doc |
 |---|---|---|---|---|---|---|
 | `kind` | `number` | `0` | 0 … 4 | — | label “Kind” | WEATHER_NONE 0, WEATHER_RAIN 1, WEATHER_SNOW 2, WEATHER_DUST 3, WEATHER_MIST 4. |
-| `intensity` | `number` | `1` | 0 … 2 | — | tunable | How heavy: the share of the particles born, the fog, the cover and the dimming. A change keeps the particles in the air: ramp it to build or clear a weather. |
+| `intensity` | `number` | `1` | 0 … 2 | — | tunable | How heavy: the share of the particles born, the fog, the cover and the dimming. The weather drawn follows it over `change`, keeping the particles in the air. |
+| `change` | `number` | `20` | 0 … 600 | `s` | tunable | How long the weather takes to follow a change of kind or intensity: the drawn intensity moves by 1 in this many seconds, a new kind building as the one before thins out. The first tick takes the weather as it is; 0 switches at once. See `render §7`. |
+| `drawnKind` | `number` | `0` | — | — | read only | The kind drawn now, which follows `kind` (written by the tick). |
+| `drawnIntensity` | `number` | `-1` | — | — | read only | The intensity drawn now, which follows `intensity` over `change`; -1 before the first tick (written by the tick). |
+| `fadingKind` | `number` | `0` | — | — | read only | The kind thinning out after a switch, 0 when none is (written by the tick). |
+| `fadingIntensity` | `number` | `0` | — | — | read only | How much of fadingKind is still drawn (written by the tick). |
+| `settling` | `number` | `0` | — | `s` | read only | Seconds the faded kind's last particles still fall once fadingIntensity reaches 0 (written by the tick). |
 | `wind` | `Vector3` | `{ x: 0, y: 0, z: 0 }` | — | `mps` | tunable | A wind of the weather's own on the particles, added to og.Wind's. |
 | `radius` | `number` | `18` | 1 … 200 | `m` | tunable | The size of the region around the camera the particles fill. |
 | `tint` | `Color` | `{ r: 1, g: 1, b: 1 }` | — | — | — | Multiplies the particles' colour. |
@@ -28,11 +34,36 @@ resource Weather {
     max 4
     label "Kind"
   }
-  field intensity f32 "How heavy: the share of the particles born, the fog, the cover and the dimming. A change keeps the particles in the air: ramp it to build or clear a weather." {
+  field intensity f32 "How heavy: the share of the particles born, the fog, the cover and the dimming. The weather drawn follows it over `change`, keeping the particles in the air." {
     default 1
     min 0
     max 2
     tunable true
+  }
+  field change f32 "How long the weather takes to follow a change of kind or intensity: the drawn intensity moves by 1 in this many seconds, a new kind building as the one before thins out. The first tick takes the weather as it is; 0 switches at once." {
+    guide "render §7"
+    default 20
+    min 0
+    max 600
+    unit s
+    tunable true
+  }
+  field drawnKind u32 "The kind drawn now, which follows `kind` (written by the tick)." {
+    readonly true
+  }
+  field drawnIntensity f32 "The intensity drawn now, which follows `intensity` over `change`; -1 before the first tick (written by the tick)." {
+    default -1
+    readonly true
+  }
+  field fadingKind u32 "The kind thinning out after a switch, 0 when none is (written by the tick)." {
+    readonly true
+  }
+  field fadingIntensity f32 "How much of fadingKind is still drawn (written by the tick)." {
+    readonly true
+  }
+  field settling f32 "Seconds the faded kind's last particles still fall once fadingIntensity reaches 0 (written by the tick)." {
+    readonly true
+    unit s
   }
   field wind Vector3 "A wind of the weather's own on the particles, added to og.Wind's." {
     unit mps

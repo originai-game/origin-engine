@@ -1,0 +1,17 @@
+{
+  "simulation": "changed",
+  "added": [
+    {
+      "member": "atmosphere: og.Weather.change",
+      "summary": "The weather drawn follows og.Weather's kind and intensity over `change` seconds (20 by default; 0 switches at once): a new kind builds as the one before thins out, the sky's cover, the light, the fog and the particles blending through, and the faded kind's last particles fall to the ground. The readonly drawnKind, drawnIntensity, fadingKind, fadingIntensity and settling say what is drawn. The first tick takes the weather as it is set."
+    }
+  ],
+  "breaking": [
+    {
+      "member": "atmosphere: og.Weather",
+      "change": "A change of kind or intensity is no longer drawn the next frame: it ramps over the new `change` (20 s by default), and og.WeatherState's ground follows the weather drawn, both kinds while one thins out.",
+      "fix": "Leave `change` at its default and write the weather wanted; a game that ramps the weather itself sets `change` to 0 to keep its own ramp.",
+      "find": ["og.Weather"]
+    }
+  ]
+}

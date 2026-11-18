@@ -358,10 +358,14 @@ depth-normal prepass: the first one pays for it.
   sky as they build (og.Clouds' cover raised to theirs over the first
   half of `intensity`, or a deck of the weather's own under a procedural
   sky), and the light is dimmed once, by the darker of clouds and
-  weather, so nothing is sunlit under heavy rain. Ramp `intensity` over
-  seconds to build or clear it: the particles in the air stay. The deck
-  costs what og.Clouds costs; `dim: 0` keeps the sky and the light as
-  they are.
+  weather, so nothing is sunlit under heavy rain. Write `kind` and
+  `intensity` and the weather drawn follows them over `change` (20 s by
+  default): a new kind builds while the one before thins out, the sky,
+  light, fog and particles blending through, and the ground (wetness,
+  puddles, snow, dust) follows what falls. 10 to 30 s reads as weather
+  turning in front of the player; 0 switches at once, right for loading a
+  level. The deck costs what og.Clouds costs; `dim: 0` keeps the sky and
+  the light as they are.
 - Aurora: hard electrons give a low aurora with a pink-violet border, soft
   ones a high red-topped one; the air dims it near the horizon.
 - Weather on surfaces: porous surfaces darken when wet and smooth ones

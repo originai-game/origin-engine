@@ -11995,6 +11995,42 @@
           "tunable": true
         },
         {
+          "name": "change",
+          "column": "f32",
+          "default": 20,
+          "tunable": true
+        },
+        {
+          "name": "drawnKind",
+          "column": "u32",
+          "default": 0,
+          "readonly": true
+        },
+        {
+          "name": "drawnIntensity",
+          "column": "f32",
+          "default": -1,
+          "readonly": true
+        },
+        {
+          "name": "fadingKind",
+          "column": "u32",
+          "default": 0,
+          "readonly": true
+        },
+        {
+          "name": "fadingIntensity",
+          "column": "f32",
+          "default": 0,
+          "readonly": true
+        },
+        {
+          "name": "settling",
+          "column": "f32",
+          "default": 0,
+          "readonly": true
+        },
+        {
           "name": "wind",
           "column": "Vector3",
           "default": {

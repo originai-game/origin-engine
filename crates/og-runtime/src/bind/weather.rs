@@ -1,17 +1,21 @@
-//! og.weather (the R4 round): og.WeatherState simulated in the tick from
-//! og.Weather — wetness, puddles and lying snow, and lightning strikes at
-//! random ticks from a stream forked from og.Rng and kept in the state, so
-//! a replay, a restore and every host strike alike. og.WeatherState and
-//! og.LightningStrike are lazy (crate::engine::lazy): until a game names one, this
-//! system finds nothing to do and the world keeps its type table and hash.
-//! Plain f32 arithmetic only (no transcendental functions), so every host
-//! computes the same bits.
+//! og.weather (the R4 round): og.Weather drawn and og.WeatherState
+//! simulated in the tick. The weather drawn (og.Weather's readonly fields,
+//! `og_env::weather::Falling`) follows the game's kind and intensity over
+//! og.Weather.change, so a switch builds the new weather as the old one
+//! thins out; the ground (wetness, puddles, lying snow and dust) follows
+//! the weather drawn, and lightning strikes at random ticks from a stream
+//! forked from og.Rng and kept in the state, so a replay, a restore and
+//! every host strike alike. og.WeatherState and og.LightningStrike are lazy
+//! (crate::engine::lazy): until a game names one, this system draws the
+//! weather alone and the world keeps its type table. Plain f32 arithmetic
+//! only (no transcendental functions), so every host computes the same
+//! bits.
 
 use crate::host::codec::Layout;
 use crate::host::wire::{FromJson, record};
 use glam::Vec3;
 use og_ecs::{SchemaId, SystemContext, SystemDesc, World};
-use og_env::weather::{Ground, Rates, disc, step};
+use og_env::weather::{Falling, Ground, Rates, disc, step};
 use serde_json::json;
 use std::collections::BTreeMap;
 
@@ -36,9 +40,11 @@ fn rates(state: &record::WeatherState) -> Rates {
     }
 }
 
-/// Schedules og.weather (early in the tick, before the game's systems, so
-/// they read this tick's state and strikes). It is granted og.WeatherState
-/// and og.LightningStrike when a game names them ([`enable`]).
+/// Schedules og.weather, after the game's systems (it is added after
+/// them): the weather they set this tick is drawn from it, the first tick
+/// taking it as it is, and they read the state and strikes it left. It
+/// writes og.Weather's drawn fields, and is granted og.WeatherState and
+/// og.LightningStrike when a game names them ([`enable`]).
 pub(crate) fn install(world: &mut World, layouts: &BTreeMap<String, Layout>) -> Result<(), String> {
     let (Some(state), Some(strike), Some(weather)) = (
         layouts.get(STATE).cloned(),
@@ -47,16 +53,20 @@ pub(crate) fn install(world: &mut World, layouts: &BTreeMap<String, Layout>) -> 
     ) else {
         return Ok(());
     };
-    // A world without og.Weather (or og.Rng) has no weather to simulate.
-    let rng = <og_core::Rng as og_core::Reflect>::NAME;
-    let (Ok(weather_id), Ok(_)) = (world.id_by_name(WEATHER), world.id_by_name(rng)) else {
+    // A world without og.Weather has no weather to draw.
+    let Ok(weather_id) = world.id_by_name(WEATHER) else {
         return Ok(());
     };
+    let rng = <og_core::Rng as og_core::Reflect>::NAME;
+    let reads = world
+        .id_by_name(rng)
+        .map_or(vec![], |_| vec![rng.to_string()]);
     world
         .add_system(
             SystemDesc {
                 name: SYSTEM.into(),
-                reads: vec![WEATHER.into(), rng.into()],
+                reads,
+                writes: vec![WEATHER.into()],
                 ..Default::default()
             },
             move |ctx| run(ctx, &state, &strike, (weather_id, &weather)),
@@ -69,24 +79,65 @@ pub(crate) fn enable(world: &mut World, name: &str) -> og_core::Result<()> {
     world.grant(SYSTEM, &[name])
 }
 
+/// The weather og.Weather draws: its readonly fields, or before the first
+/// tick wrote them, the game's weather as it is.
+pub(crate) fn drawn(w: &record::Weather) -> Falling {
+    if w.drawn_intensity < 0.0 {
+        return Falling::now(w.kind, w.intensity);
+    }
+    Falling {
+        kind: w.drawn_kind,
+        intensity: w.drawn_intensity,
+        fading_kind: w.fading_kind,
+        fading_intensity: w.fading_intensity,
+        settling: w.settling,
+    }
+}
+
+/// One tick of og.Weather's drawn weather towards the game's: written back
+/// only when it moved.
+fn draw(
+    ctx: &mut SystemContext<'_>,
+    (id, layout): (SchemaId, &Layout),
+    dt: f32,
+) -> Result<Falling, String> {
+    let bytes = ctx.resource_bytes(id).map_err(|e| e.to_string())?;
+    let w: record::Weather = layout.read(&bytes)?;
+    let next = if w.drawn_intensity < 0.0 {
+        drawn(&w)
+    } else {
+        drawn(&w).follow(w.kind, w.intensity, w.change, dt)
+    };
+    if w.drawn_intensity >= 0.0 && next == drawn(&w) {
+        return Ok(next);
+    }
+    let mut s = layout.decode(&bytes);
+    s["drawnKind"] = json!(next.kind);
+    s["drawnIntensity"] = json!(next.intensity);
+    s["fadingKind"] = json!(next.fading_kind);
+    s["fadingIntensity"] = json!(next.fading_intensity);
+    s["settling"] = json!(next.settling);
+    let out = layout.encode(Some(&bytes), Some(&s))?;
+    ctx.set_resource_bytes(id, &out)
+        .map_err(|e| e.to_string())?;
+    Ok(next)
+}
+
 fn run(
     ctx: &mut SystemContext<'_>,
     state: &Layout,
     strike: &Layout,
     weather: (SchemaId, &Layout),
 ) -> og_core::Result<()> {
+    let invalid = |e: String| og_core::Error::new(og_core::ErrorKind::Invalid, e);
+    let time = ctx.time();
+    let falling = draw(ctx, weather, time.dt).map_err(invalid)?;
     let Ok(id) = ctx.id_by_name(STATE) else {
         return Ok(());
     };
-    let invalid = |e: String| og_core::Error::new(og_core::ErrorKind::Invalid, e);
     let bytes = ctx.resource_bytes(id)?;
     let mut s = state.decode(&bytes);
     let row = record::WeatherState::from_json(&s).map_err(invalid)?;
-    let w: record::Weather = weather
-        .1
-        .read(&ctx.resource_bytes(weather.0)?)
-        .map_err(invalid)?;
-    let time = ctx.time();
     let next = step(
         Ground {
             wetness: row.wetness,
@@ -95,8 +146,7 @@ fn run(
             dust: row.dust,
         },
         &rates(&row),
-        w.kind,
-        w.intensity,
+        &falling,
         time.dt,
     );
     s["wetness"] = json!(next.wetness);
@@ -144,7 +194,8 @@ mod tests {
     /// The ground under og.WeatherState's default settings.
     fn run_for(s: Ground, kind: u32, intensity: f32, seconds: u32) -> Ground {
         let rates = rates(&record::WeatherState::default());
-        (0..seconds * 60).fold(s, |s, _| step(s, &rates, kind, intensity, 1.0 / 60.0))
+        let falling = Falling::now(kind, intensity);
+        (0..seconds * 60).fold(s, |s, _| step(s, &rates, &falling, 1.0 / 60.0))
     }
 
     /// A minute of rain soaks the ground; the puddles wait for it to be
@@ -173,6 +224,63 @@ mod tests {
         assert!((thawed.snow_depth - 0.012).abs() < 1e-4, "{thawed:?}");
         let rained = run_for(snow, RAIN, 1.0, 120);
         assert!(rained.snow_depth < 1e-4);
+    }
+
+    /// The weather drawn over `seconds` from `from`, the game's weather
+    /// `kind` at `intensity`, at og.Weather's default change (20 s).
+    fn follow_for(from: Falling, kind: u32, intensity: f32, seconds: f32) -> Falling {
+        let ticks = (seconds * 60.0).round() as u32;
+        (0..ticks).fold(from, |f, _| f.follow(kind, intensity, 20.0, 1.0 / 60.0))
+    }
+
+    /// A switch from rain to snow at 20 s a unit: half way the rain has
+    /// thinned to 0.5 as the snow built to 0.5 (never a cut, nor both at
+    /// once); just past 20 s the snow is full and the rain gone, its last drops
+    /// still falling, and 8 s on it is dropped. Turning back half way takes
+    /// the rain back where it was; a third kind drops the fainter; change 0
+    /// switches at once. The ground soaks only as the rain still falls: half
+    /// way through a switch from rain, it soaks at half the rate.
+    #[test]
+    fn a_switch_thins_one_weather_out_as_the_next_builds() {
+        let rain = Falling::now(RAIN, 1.0);
+        let half = follow_for(rain, SNOW, 1.0, 10.0);
+        assert!(
+            half.kind == SNOW
+                && half.fading_kind == RAIN
+                && (half.intensity - 0.5).abs() < 1e-3
+                && (half.fading_intensity - 0.5).abs() < 1e-3,
+            "{half:?}"
+        );
+        let snow = follow_for(rain, SNOW, 1.0, 20.1);
+        assert!(
+            (snow.intensity - 1.0).abs() < 1e-3
+                && snow.fading_kind == RAIN
+                && snow.fading_intensity == 0.0,
+            "{snow:?}"
+        );
+        let settled = follow_for(snow, SNOW, 1.0, 8.5);
+        assert_eq!(settled, Falling::now(SNOW, 1.0));
+        let back = follow_for(half, RAIN, 1.0, 5.0);
+        assert!(
+            back.kind == RAIN
+                && (back.intensity - 0.75).abs() < 1e-3
+                && back.fading_kind == SNOW
+                && (back.fading_intensity - 0.25).abs() < 1e-3,
+            "{back:?}"
+        );
+        let early = follow_for(rain, SNOW, 1.0, 4.0);
+        let third = follow_for(early, DUST, 1.0, 1.0);
+        assert!(
+            third.kind == DUST && third.fading_kind == RAIN,
+            "the fainter snow is dropped: {third:?}"
+        );
+        assert_eq!(
+            rain.follow(SNOW, 2.0, 0.0, 1.0 / 60.0),
+            Falling::now(SNOW, 2.0)
+        );
+        let rates = rates(&record::WeatherState::default());
+        let soaked = |f: &Falling| step(Ground::default(), &rates, f, 1.0).wetness;
+        assert!((soaked(&half) - soaked(&rain) * 0.5).abs() < 1e-6);
     }
 
     /// A dust storm covers the ground in ten minutes (five at intensity 2)
