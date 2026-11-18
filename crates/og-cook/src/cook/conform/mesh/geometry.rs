@@ -134,7 +134,14 @@ pub const SHAPE_ERROR: f32 = 0.05;
 /// Edge collapses towards `target` triangles (0: the error-bound floor).
 /// Open/material borders stay locked; seams may collapse within the
 /// attribute error instead of pinning every corner of a generated model.
-fn simplified(v: &[FVertex], idx: &[u32], target: usize, error: f32, normals: Normals) -> Vec<u32> {
+fn simplified(
+    v: &[FVertex],
+    idx: &[u32],
+    target: usize,
+    error: f32,
+    normals: Normals,
+    locks: &[bool],
+) -> Vec<u32> {
     let want = target * 3;
     let opts = meshopt::SimplifyOptions::LockBorder | meshopt::SimplifyOptions::ErrorAbsolute;
     crate::cook::model::simplify_attributes(
@@ -143,7 +150,7 @@ fn simplified(v: &[FVertex], idx: &[u32], target: usize, error: f32, normals: No
         want,
         error,
         opts,
-        &[],
+        locks,
         if normals == Normals::Any { 0.5 } else { 0.0 },
     )
     .0
@@ -158,11 +165,23 @@ fn decimate(
     target: usize,
     error: f32,
     normals: Normals,
+    foliage: Option<&[[f32; 8]]>,
 ) {
     if idx.len() / 3 <= target {
         return;
     }
-    let mut out = simplified(v, idx, target, error, normals);
+    let locks = foliage.map(|f| {
+        let at: Vec<_> = src.iter().map(|&s| f[s as usize]).collect();
+        crate::cook::model::foliage_locks(idx, &at)
+    });
+    let mut out = simplified(
+        v,
+        idx,
+        target,
+        error,
+        normals,
+        locks.as_deref().unwrap_or(&[]),
+    );
     if out.len() < 3 || out.len() >= idx.len() {
         return;
     }
@@ -293,7 +312,26 @@ impl Plan {
                     continue;
                 }
                 let tris = idx.len() / 3;
-                let out = simplified(&v, &idx, 0, local_error(src, &p, metres.0), c.normals);
+                let foliage = crate::cook::model::read_foliage(src, &p, v.len())
+                    .ok()
+                    .flatten();
+                let locks = foliage
+                    .as_ref()
+                    .map(|f| crate::cook::model::foliage_locks(&idx, f));
+                // As in the LOD builder, leaf cards are indivisible. Their
+                // coverage thins by whole leaves, never by edge collapse.
+                let out = if crate::cook::model::leaf_cards(&p) {
+                    idx.clone()
+                } else {
+                    simplified(
+                        &v,
+                        &idx,
+                        0,
+                        local_error(src, &p, metres.0),
+                        c.normals,
+                        locks.as_deref().unwrap_or(&[]),
+                    )
+                };
                 let floor = if out.len() >= 3 {
                     (out.len() / 3).min(tris)
                 } else {
@@ -930,6 +968,10 @@ pub(in crate::cook) fn primitive(
             .unwrap_or(usize::MAX)
     });
     let error = local_error(src, prim, plan.error.0);
+    let foliage = crate::cook::model::read_foliage(src, prim, v.len())
+        .ok()
+        .flatten();
+    let target = target.filter(|_| !crate::cook::model::leaf_cards(prim));
     if c.voxel > 0.0 && skinned {
         ch.skipped
             .push("not voxelised: it is skinned or morphed".into());
@@ -1024,7 +1066,7 @@ pub(in crate::cook) fn primitive(
             .push("not voxelised: wider than 256 voxels of 16 times the edge".into());
     }
     if let Some(t) = target.filter(|&t| t != usize::MAX) {
-        decimate(v, idx, sources, t, error, c.normals);
+        decimate(v, idx, sources, t, error, c.normals, foliage.as_deref());
     }
     if c.bevel > 0.0 {
         let hard = match c.normals {
@@ -1047,10 +1089,11 @@ pub(in crate::cook) fn primitive(
                     t.saturating_sub(b.1).max(t / 2),
                     error,
                     c.normals,
+                    foliage.as_deref(),
                 );
                 ch.bevel = bevel(v, idx, sources, c.bevel, hard);
                 if idx.len() / 3 > t {
-                    decimate(v, idx, sources, t, error, c.normals);
+                    decimate(v, idx, sources, t, error, c.normals, foliage.as_deref());
                     ch.skipped
                         .push("the chamfers were simplified to stay within the budget".into());
                 }

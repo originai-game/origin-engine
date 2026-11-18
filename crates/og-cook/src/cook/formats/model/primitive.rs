@@ -104,7 +104,7 @@ pub(super) fn weld<T: bytemuck::Pod>(
 /// vertex's `_OG_PIVOT` (branch pivot, stiffness) and `_OG_ANCHOR` (leaf
 /// anchor, flutter), VEC4 floats in the mesh's own space. `None` without
 /// them; both or neither, stiffness and flutter within 0..1.
-pub(super) fn read_foliage(
+pub(in crate::cook) fn read_foliage(
     src: &GltfSource,
     prim: &gltf::Primitive,
     count: usize,
@@ -145,7 +145,7 @@ pub(super) fn read_foliage(
 
 /// Whether a primitive's triangles are leaf cards: its glTF `extras`
 /// `{ "ogFoliage": { "leaves": true } }`.
-pub(super) fn leaf_cards(prim: &gltf::Primitive) -> bool {
+pub(in crate::cook) fn leaf_cards(prim: &gltf::Primitive) -> bool {
     prim.extras()
         .as_ref()
         .and_then(|e| serde_json::from_str::<serde_json::Value>(e.get()).ok())
@@ -237,7 +237,7 @@ fn thin_leaves(
 /// The vertices a foliage mesh's simplification keeps in place: those on
 /// an edge between two pivots or two anchors (`foliage` per vertex), so a
 /// coarser level never joins two branches (or two leaves) that sway apart.
-fn foliage_locks(indices: &[u32], foliage: &[[f32; 8]]) -> Vec<bool> {
+pub(in crate::cook) fn foliage_locks(indices: &[u32], foliage: &[[f32; 8]]) -> Vec<bool> {
     let mut lock = vec![false; foliage.len()];
     for tri in indices.as_chunks::<3>().0 {
         for k in 0..3 {

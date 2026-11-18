@@ -14,6 +14,55 @@ use std::path::PathBuf;
 
 const N: u32 = 24;
 
+#[test]
+fn conform_keeps_foliage_branch_boundaries_and_whole_leaf_cards() {
+    let root = PathBuf::from(env!("CARGO_TARGET_TMPDIR")).join("foliage-conform");
+    let _ = std::fs::remove_dir_all(&root);
+    std::fs::create_dir_all(root.join("assets/models")).unwrap();
+    std::fs::create_dir_all(root.join("assets/looks")).unwrap();
+    std::fs::write(root.join("assets/models/tree.glb"), glb()).unwrap();
+    std::fs::write(
+        root.join("project.ogt"),
+        "type project\nversion 1\n---\nlook \"looks/main.ogt\"\n",
+    )
+    .unwrap();
+    std::fs::write(
+        root.join("assets/looks/main.ogt"),
+        "type look\nversion 1\n---\nArtShape {\n propFaces 12\n silhouette 0.5\n normals flat\n}\n",
+    )
+    .unwrap();
+    let report = cook_project(&root, &CookOptions::default()).unwrap();
+    assert!(report.ok(), "{:?}", report.errors());
+    let bundle = Bundle::open(&root.join("cooked")).unwrap();
+    let model = bundle.load_model("models/tree.glb").unwrap();
+    let bark = model.primitives[0].mesh(0);
+    for p in grid().0 {
+        if p[0] == (N / 2 - 1) as f32 / N as f32 || p[0] == 0.5 {
+            assert!(
+                bark.indices.iter().any(|&i| {
+                    glam::Vec3::from(bark.vertices[i as usize].position)
+                        .distance(glam::Vec3::from(p))
+                        < 1e-4
+                }),
+                "conform moved the branch boundary {p:?}"
+            );
+        }
+    }
+    let leaves = model.primitives[1].mesh(0);
+    assert_eq!(
+        leaves.indices.len(),
+        12,
+        "both complete source cards survive"
+    );
+    for tri in leaves.indices.as_chunks::<3>().0 {
+        let p = tri.map(|i| glam::Vec3::from(leaves.vertices[i as usize].position));
+        assert!(
+            (p[1] - p[0]).cross(p[2] - p[0]).length() <= 0.0401,
+            "a leaf grew or joined another card"
+        );
+    }
+}
+
 /// A waved `N` × `N` grid over the unit square in xz: the "bark".
 fn grid() -> (Vec<[f32; 3]>, Vec<u32>) {
     let mut p = Vec::new();

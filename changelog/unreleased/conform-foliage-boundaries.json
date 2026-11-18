@@ -1,0 +1,8 @@
+{
+  "fixed": [
+    {
+      "member": "ArtShape.propFaces",
+      "summary": "Art conformance now preserves foliage branch and leaf-anchor boundaries, just as model LODs do, and keeps leaf cards whole rather than edge-collapsing their coverage."
+    }
+  ]
+}
