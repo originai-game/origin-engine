@@ -1,0 +1,6 @@
+{
+  "simulation": "changed",
+  "fixed": [
+    "Rejected scene blobs keep a failed handle and their original diagnostic without being downloaded again. Cells log the rejection once; failed entity spawns use eight-attempt exponential tick backoff carried through snapshots and restores."
+  ]
+}

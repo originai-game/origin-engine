@@ -330,6 +330,9 @@ pub(crate) fn before_tick(eng: &Engine, world: &mut World) {
     let Some(store) = store(eng) else {
         return;
     };
+    lock(&store)
+        .retries
+        .retain(|&bits, _| world.is_alive(Entity::from_bits(bits)));
     let tick = world.time().tick;
     let list = match seen(eng, world, &store, 0.0) {
         None => return,
@@ -502,6 +505,16 @@ fn step_load(
     tick: u64,
 ) {
     let bits = cell.to_bits();
+    {
+        let mut s = lock(store);
+        if let Some(retry) = s.retries.get(&bits) {
+            if retry.scene != v.scene {
+                s.retries.remove(&bits);
+            } else if retry.attempts >= 8 || tick < retry.next {
+                return;
+            }
+        }
+    }
     let budget = match v.budget {
         0 => usize::MAX,
         n => n as usize,
@@ -557,12 +570,14 @@ fn step_load(
                 if waiting_scene(eng, scene) {
                     return;
                 }
-                warn_once(
-                    eng,
-                    Some(cell),
-                    tick,
-                    format!("cell {cell}: StreamCell.scene {scene} is not a loaded scene"),
-                );
+                let reason = assets::index_of(scene as f64)
+                    .and_then(|i| eng.assets.borrow().entries.get(i).map(|e| e.status.clone()))
+                    .and_then(|s| match s {
+                        assets::Status::Failed(e) => Some(e),
+                        _ => None,
+                    })
+                    .unwrap_or_else(|| format!("StreamCell.scene {scene} is not a loaded scene"));
+                warn_once(eng, Some(cell), tick, format!("cell {cell}: {reason}"));
                 return;
             };
             let end = spawned.len().saturating_add(budget);
@@ -586,9 +601,19 @@ fn step_load(
     };
     if let Err(e) = result {
         // Whatever spawned before the refusal goes again: the cell stays
-        // unloaded and tries again next tick.
+        // unloaded. Bound retries and keep their timing in snapshot state.
         despawn_members(eng, world, cell);
-        lock(store).loading.remove(&bits);
+        {
+            let mut s = lock(store);
+            s.loading.remove(&bits);
+            let retry = s.retries.entry(bits).or_insert(cell_store::Retry {
+                scene: v.scene,
+                attempts: 0,
+                next: tick,
+            });
+            retry.attempts += 1;
+            retry.next = tick.saturating_add(1 << retry.attempts);
+        }
         warn_once(eng, Some(cell), tick, e);
         return;
     }
@@ -600,6 +625,7 @@ fn step_load(
     {
         let mut s = lock(store);
         s.loading.remove(&bits);
+        s.retries.remove(&bits);
         if progress.source == Source::Kept {
             s.kept.remove(&bits);
         }
