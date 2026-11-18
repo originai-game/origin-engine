@@ -690,8 +690,7 @@ pub(crate) struct ScatterPipelines<'a> {
 
 /// Draws [`ScatterDraw`]s from cached chunks.
 pub(crate) struct ScatterRenderer {
-    lit_layout: wgpu::PipelineLayout,
-    /// The lit pass's: `lit_layout` plus the effect group (SSAO).
+    /// Shared by lit and prepass shading, including projected wet gloss.
     lit_fx_layout: wgpu::PipelineLayout,
     shadow_layout: wgpu::PipelineLayout,
     lit_module: wgpu::ShaderModule,

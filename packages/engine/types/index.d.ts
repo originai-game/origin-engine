@@ -9504,6 +9504,12 @@ export interface Decal {
    */
   roughness: number;
   /**
+   * Multiply the receiver's albedo by the decal colour and blend its normal toward the decal's normal (flat without a map), using opacity as coverage. Set roughness low for standing water. False keeps the colour mix and additive normal bend.
+   *
+   * @default false
+   */
+  wet: boolean;
+  /**
    * Surfaces turned further than this from the projection direction are not covered (the last 15 degrees fade).
    *
    * @default 75
@@ -34970,7 +34976,7 @@ export declare namespace og {
    * A projected decal (scorch marks, blood, posters, bullet holes): the entity's unit box (-0.5 to 0.5 on each axis, scaled by its Transform) projected along its local -Z onto every lit opaque surface inside it, shaded with the surface. Its image is the uvMin to uvMax region of RenderSettings.decalAtlas (a solid colour without one); a normalMin to normalMax region of the same atlas is a tangent-space normal map. Later decals blend over earlier ones; at most 255 overlap at one place (the newest are kept).
    * See `looks §14`.
    */
-  const Decal: ComponentType<{ readonly color: FieldSpec<"Color">; readonly opacity: FieldSpec<"f32">; readonly uvMin: FieldSpec<"Vector2">; readonly uvMax: FieldSpec<"Vector2">; readonly emissive: FieldSpec<"Color">; readonly roughness: FieldSpec<"f32">; readonly angleFade: FieldSpec<"f32">; readonly normalMin: FieldSpec<"Vector2">; readonly normalMax: FieldSpec<"Vector2">; readonly normalScale: FieldSpec<"f32">; readonly visible: FieldSpec<"bool"> }, Decal>;
+  const Decal: ComponentType<{ readonly color: FieldSpec<"Color">; readonly opacity: FieldSpec<"f32">; readonly uvMin: FieldSpec<"Vector2">; readonly uvMax: FieldSpec<"Vector2">; readonly emissive: FieldSpec<"Color">; readonly roughness: FieldSpec<"f32">; readonly wet: FieldSpec<"bool">; readonly angleFade: FieldSpec<"f32">; readonly normalMin: FieldSpec<"Vector2">; readonly normalMax: FieldSpec<"Vector2">; readonly normalScale: FieldSpec<"f32">; readonly visible: FieldSpec<"bool"> }, Decal>;
   /**
    * Emits particles from an og.load.emitter asset at the entity's MatrixWorld. The renderer simulates them from (seed, startTick, the tick), so they are deterministic and replay, and they never feed back into the simulation; with og.TimeGroup they run at the group's scale, read as the frame is drawn. An emitter's `collision` line bounces them off the drawn depth or the scene's colliders. An emitter with an `events` line is simulated in the tick once the game names og.ParticleEvent, so gameplay reads the particles shown, and snapshots carry them.
    * See `looks §14`.

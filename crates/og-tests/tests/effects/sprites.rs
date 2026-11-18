@@ -6,6 +6,133 @@ use super::*;
 // Decals.
 // ---------------------------------------------------------------------------
 
+/// Wet coverage keeps the receiver's colour detail and replaces, rather
+/// than adds to, its own normal map. Partial coverage must still retain
+/// some receiver detail; fully covered stone shades as flat wet stone.
+#[test]
+#[ignore = "requires GPU"]
+fn wet_decals_multiply_colour_and_cover_receiver_normals() {
+    let capture = |wet, opacity, mapped: bool, reference, albedo_view| {
+        let mut scene = RenderScene::new();
+        scene.lighting.environment.intensity = 0.0;
+        scene.lighting.light.direction_to_light = Vec3::Y;
+        scene.lighting.light.intensity = 1.0;
+        scene.frame.camera = Camera {
+            position: Vec3::new(0.0, 3.0, 0.01),
+            target: Vec3::ZERO,
+            exposure: og_render::Exposure::linear(1.0),
+            ..Default::default()
+        };
+        if albedo_view {
+            scene.frame.debug = og_render::DebugView::Albedo;
+        }
+        let normal = scene.add_texture(og_render::TextureData {
+            width: 4,
+            height: 4,
+            rgba: [240, 128, 180, 255].repeat(16),
+            color_space: og_render::ColorSpace::Linear,
+            mips: og_render::Mips::None,
+        });
+        let material = scene.add_material(Material {
+            base_color: if reference {
+                [0.4, 0.125, 0.05, 1.0]
+            } else {
+                [0.8, 0.25, 0.1, 1.0]
+            },
+            metallic: 0.0,
+            roughness: if reference { 0.04 } else { 0.8 },
+            normal_texture: mapped.then_some(normal),
+            ..Default::default()
+        });
+        let plane = scene.add_mesh(shapes::plane(3.0, 3.0));
+        scene.add_instance(plane, material, Mat4::IDENTITY);
+        if !reference {
+            scene.effects.decals.push(Decal {
+                wet,
+                color: [0.5, 0.5, 0.5, opacity],
+                roughness: 0.04,
+                ..Decal::on_surface(Vec3::ZERO, Vec3::Y, Vec2::splat(4.0), 0.4, 0.0)
+            });
+        }
+        frame(&small(), &scene).0
+    };
+    let full = capture(true, 1.0, true, false, false);
+    let flat = capture(false, 1.0, false, true, false);
+    let mix = capture(false, 1.0, true, false, false);
+    let partial = capture(true, 0.5, true, false, false);
+    let centre = |image: &RgbaImage| region(image, (150, 80, 170, 100));
+    assert!(
+        (centre(&full) - centre(&flat)).abs() < 1.0,
+        "wet coverage did not flatten the receiver"
+    );
+    assert!(
+        centre(&full) > centre(&mix) + 20.0,
+        "control must show the receiver's tilted normal"
+    );
+    assert!(
+        centre(&partial) < centre(&full) - 5.0,
+        "partial coverage erased the whole normal"
+    );
+    let multiplied = capture(true, 1.0, true, false, true);
+    let expected = capture(false, 1.0, false, true, true);
+    assert_eq!(
+        px(&multiplied, 160, 90),
+        px(&expected, 160, 90),
+        "wet albedo is not receiver × tint"
+    );
+    save("wet-decal-full", &full);
+    save("wet-decal-mix", &mix);
+    save("wet-decal-partial", &partial);
+}
+
+/// A rough floor covered with a white wet decal must reflect the scene
+/// exactly as the same floor authored mirror-smooth. This catches a
+/// beauty-only change that leaves SSR reading the receiver's old gloss.
+#[test]
+#[ignore = "requires GPU"]
+fn wet_decals_carry_their_gloss_into_screen_space_reflections() {
+    let capture = |decal| {
+        let mut scene = og_tests::depth_render_scenes::ssr_scene(true);
+        if decal {
+            let floor = scene.objects.instances[0].material;
+            scene.set_standard_material(
+                floor,
+                og_render::StandardMaterial {
+                    color: Vec3::splat(0.04),
+                    roughness: 0.8,
+                    ..Default::default()
+                },
+            );
+            scene.effects.decals.push(Decal {
+                wet: true,
+                roughness: 0.04,
+                ..Decal::on_surface(Vec3::ZERO, Vec3::Y, Vec2::splat(20.0), 0.1, 0.0)
+            });
+        }
+        run(
+            &small(),
+            &mut scene,
+            og_tests::depth_render_scenes::SSR_FRAMES,
+            |_, _| {},
+        )
+        .0
+    };
+    let reference = capture(false);
+    let wet = capture(true);
+    save("wet-decal-ssr-reference", &reference);
+    save("wet-decal-ssr", &wet);
+    let red = px(&reference, 120, 140);
+    assert!(red[0] > red[1] + 10, "control must reflect the red sphere");
+    assert!(
+        px(&reference, 202, 140)[0] > 120,
+        "control must reflect the bright panel"
+    );
+    assert_eq!(
+        wet.pixels, reference.pixels,
+        "wet floor's reflection differs from a mirror floor"
+    );
+}
+
 #[test]
 #[ignore = "requires GPU"]
 fn decals_project_onto_surfaces_past_the_old_cap() {

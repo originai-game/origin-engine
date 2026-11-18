@@ -17,7 +17,7 @@ pub(crate) struct DecalGpu {
     color: [f32; 4],
     emissive: [f32; 4],
     normal_rect: [f32; 4],
-    /// x: the normal map's scale (0 without one).
+    /// x: the normal map's scale (0 without one), y: wet coverage mode.
     normal: [f32; 4],
 }
 
@@ -45,7 +45,12 @@ pub(crate) fn pack_decals(
             color: d.color,
             emissive: d.emissive.extend(d.roughness).to_array(),
             normal_rect: d.normal_rect,
-            normal: [if mapped { d.normal_scale } else { 0.0 }, 0.0, 0.0, 0.0],
+            normal: [
+                if mapped { d.normal_scale } else { 0.0 },
+                f32::from(d.wet),
+                0.0,
+                0.0,
+            ],
         });
         // The box's half diagonal around its centre.
         let half = 0.5

@@ -665,6 +665,9 @@
       min -1
       max 1
     }
+    field wet bool "Multiply the receiver's albedo by the decal colour and blend its normal toward the decal's normal (flat without a map), using opacity as coverage. Set roughness low for standing water. False keeps the colour mix and additive normal bend." {
+      default false
+    }
     field angleFade f32 "Surfaces turned further than this from the projection direction are not covered (the last 15 degrees fade)." {
       default 75
       min 0

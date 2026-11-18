@@ -194,7 +194,8 @@ fn fs_prepass(in: CustomPrepassOut, @builtin(front_facing) front: bool) -> Custo
   var reflectivity = 0.0;
   if (CUSTOM_LIT) {
     let n_geo = normalize(in.normal) * face;
-    let g = weather_gloss(clamp(out.roughness, 0.04, 1.0), clamp(out.metallic, 0.0, 1.0), n, n_geo, in.world, 0.5, material.uv[3].w, WEATHER_STANDS);
+    let wet = wet_decal_gloss(in.clip.xy, in.world, n, n_geo, clamp(out.roughness, 0.04, 1.0));
+    let g = weather_gloss(wet.w, clamp(out.metallic, 0.0, 1.0), wet.xyz, n_geo, in.world, 0.5, material.uv[3].w, WEATHER_STANDS);
     n = g.n;
     reflectivity = reflectivity_bits(g.s.roughness, g.s.metallic);
   }

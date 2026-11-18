@@ -194,7 +194,10 @@ impl GrassRenderer {
         let tile: Vec<[f32; 2]> = blue_noise_tile().iter().map(|p| p.to_array()).collect();
         GrassRenderer {
             lit_layout: pl("grass lit", &[p.frame_layout, &draw_layout, p.fx_layout]),
-            prepass_layout: pl("grass prepass", &[p.frame_layout, &draw_layout]),
+            prepass_layout: pl(
+                "grass prepass",
+                &[p.frame_layout, &draw_layout, p.fx_layout],
+            ),
             shadow_layout: pl("grass shadow", &[p.shadow_layout, &draw_layout]),
             gen_layout,
             maps_layout,

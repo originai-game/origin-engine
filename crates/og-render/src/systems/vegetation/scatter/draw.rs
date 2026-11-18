@@ -89,7 +89,7 @@ impl ScatterRenderer {
         let bind_rest = |pass: &mut wgpu::RenderPass, group, offset| {
             pass.set_bind_group(1, group, &[]);
             pass.set_bind_group(2, &self.group, &[offset]);
-            if kind == ScatterPass::Lit
+            if kind != ScatterPass::Shadow
                 && let Some(fx) = fx_group
             {
                 pass.set_bind_group(3, fx, &[]);

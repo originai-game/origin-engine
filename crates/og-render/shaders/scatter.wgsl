@@ -209,7 +209,8 @@ fn fs_prepass(in: ScatterOut, @builtin(front_facing) front: bool) -> ScatterPrep
   // (weather_surface.wgsl weather_gloss), so reflections see them.
   let unlit = (u32(material.flags.w) & 2u) != 0u;
   if (!unlit) {
-    let g = weather_gloss(roughness, metalness, n, n, in.world, scatter_cavity(in.uv), material.uv[3].w, WEATHER_STANDS);
+    let wet = wet_decal_gloss(in.clip.xy, in.world, n, n, roughness);
+    let g = weather_gloss(wet.w, metalness, wet.xyz, n, in.world, scatter_cavity(in.uv), material.uv[3].w, WEATHER_STANDS);
     roughness = g.s.roughness;
     metalness = g.s.metallic;
     o.gbuffer = vec4<f32>(oct_encode(g.n), (cur - prev) * vec2<f32>(0.5, -0.5));

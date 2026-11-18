@@ -509,6 +509,7 @@ impl<'f> DrawCtx<'f> {
             &mut pass, &opaque, false, 1, 3, &pipelines, None, None, None,
         );
         if let Some(indices) = terrain_indices {
+            pass.set_bind_group(3, r.world.terrain.fx.group(false), &[]);
             draws += terrain::draw_levels(
                 &mut pass,
                 terrain_draws,
@@ -531,7 +532,7 @@ impl<'f> DrawCtx<'f> {
                     |m| self.scatter_mesh(m),
                     keep,
                     None,
-                    None,
+                    Some(groups.1),
                     false,
                     self.card_source(None),
                     ShadowTarget::Cascade,
