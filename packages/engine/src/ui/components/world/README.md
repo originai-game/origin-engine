@@ -33,7 +33,12 @@ still state under reduced motion.
 Placement uses only what `<anchor>` offers: `priority` (a targeted plate
 1100, a waypoint 500, a boss or casting plate 400, a prompt 300, speech
 200, a plate 100, loot 10), `declutter`, `clamp="edge"` (waypoints),
-`max-distance`. Hooks for a pack: `data-reaction`, `data-elite`,
+`max-distance`. Waypoints avoid explicit player reserves and draw only
+their component chevron (`arrow-size="0"`). Prompts avoid danger bounds;
+telegraphs register those bounds, including their rim. Nameplates cap
+their drawn width inside the viewport, including the targeted scale, and
+reserve the level chip's width before the name's scrolling window.
+Hooks for a pack: `data-reaction`, `data-elite`,
 `data-boss`, `data-targeted`, `data-low`, `data-dead`, `data-compact` on
 the plate and `data-state` (casting, locked, interrupted) on its cast;
 `data-side` on bars and rings; `data-rarity` and `data-hovered` on loot;

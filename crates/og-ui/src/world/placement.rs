@@ -1131,6 +1131,7 @@ impl crate::ui::Layout {
             info.scale = scale;
             let projected = view.project(p, vp.width, vp.height);
             let half = Vec2::new(r.width, r.height) * scale / 2.0;
+            let (lo, hi) = drawn_box(&tree.nodes, a.node);
             let mut pivot = d.pivot.fractions();
             let mut arrow = None;
             let (at, depth) = match projected {
@@ -1209,10 +1210,10 @@ impl crate::ui::Layout {
                     (safe.height - 2.0 * g).max(0.0),
                 );
                 let b = Rect::new(
-                    at.x - pivot.0 * half.x * 2.0,
-                    at.y - pivot.1 * half.y * 2.0,
-                    half.x * 2.0,
-                    half.y * 2.0,
+                    at.x + (lo.x - r.x - pivot.0 * r.width) * scale,
+                    at.y + (lo.y - r.y - pivot.1 * r.height) * scale,
+                    (hi.x - lo.x) * scale,
+                    (hi.y - lo.y) * scale,
                 );
                 let into = |lo: f32, len: f32, min: f32, room: f32| {
                     if len >= room || lo < min {
@@ -1235,7 +1236,6 @@ impl crate::ui::Layout {
                     alpha = 0.0;
                 }
             }
-            let (lo, hi) = drawn_box(&tree.nodes, a.node);
             let (px, py) = (r.x + pivot.0 * r.width, r.y + pivot.1 * r.height);
             let drawn = Rect::new(
                 at.x + (lo.x - px) * scale,

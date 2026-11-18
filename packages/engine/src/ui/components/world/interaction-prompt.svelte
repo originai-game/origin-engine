@@ -29,7 +29,7 @@
   a hold's ring round the cap. It rises in when in range. The game decides
   when it shows and what the input does; read only.
 -->
-<anchor id="InteractionPrompt" entity={entity || null} at={at} offset={"0 " + height + " 0"} declutter="shift" occlusion="none" priority="300" max-distance={maxDistance}>
+<anchor id="InteractionPrompt" entity={entity || null} at={at} offset={"0 " + height + " 0"} declutter="shift" avoid="danger" occlusion="none" priority="300" max-distance={maxDistance}>
   <div id="Prompt" part="InteractionPrompt.frame" class="bare" role="status" aria-disabled={disabled} data-pressed={pressed} data-done={hold >= 1} data-disabled={disabled} data-pad={pad}>
     <div part="InteractionPrompt.cap" class="cap">
       {#if hold >= 0}<svg part="InteractionPrompt.ring" class="ring" viewBox="0 0 36 36" role="meter" aria-label={t("world.prompt.hold")} aria-valuemin="0" aria-valuemax="1" aria-valuenow={hold}><circle class="disc" cx="18" cy="18" r="18"></circle><circle class="sweep" cx="18" cy="18" r="16" pathLength="100" style:--hold={hold >= 1 ? 1 : hold}></circle></svg>{/if}

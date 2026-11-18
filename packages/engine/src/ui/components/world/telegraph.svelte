@@ -23,7 +23,7 @@
   wash and a fill sweeping out from the caster with a pale leading edge.
   Read only; the game owns the timing and the hit.
 -->
-<ground id="Telegraph" entity={entity || null} at={at} size={(radius * 2) + " " + (radius * 2)} rotation={"0 " + direction + " 0"}>
+<ground id="Telegraph" danger entity={entity || null} at={at} size={(radius * 2) + " " + (radius * 2)} rotation={"0 " + direction + " 0"}>
   <div id="Area" part="Telegraph.area" data-shape={shape == '' ? 'circle' : shape} data-friendly={friendly} data-hit={hit} style:--p={progress <= 0 ? 0 : (progress >= 1 ? 1 : progress)} style:--a={angle} style:--w={width} style:--inner={inner}>
     <div part="Telegraph.wash" class="wash"></div>
     <div part="Telegraph.sweep" class="sweep"></div>

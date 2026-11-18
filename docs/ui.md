@@ -2524,6 +2524,18 @@ component groups below, each a directory of
 optional resource pack for UI shader finishes, neither a component group
 nor a style. VFX and unrelated extensions are outside this catalogue.
 
+World components use the same placement solver as authored anchors:
+`Waypoint` opts into `avoid="player"` and disables the native arrow with
+`arrow-size="0"`, retaining its own chevron. `InteractionPrompt` opts into
+`avoid="danger"`, and `Telegraph` declares its projected bounds as danger.
+Games still author their player reserve; the world sheet's painted player
+has an explicit silhouette proxy in its fixture data, not an inferred entity.
+`Nameplate` uses `clamp="contain"` with a text-scaled 24 px inset and caps its plate's
+width to that area, accounting for the targeted scale. Containment uses
+drawn bounds, including descendant transforms. Its name scrolls inside the
+remaining header width after the nonshrinking level chip and icon, with
+the usual edge fade; the subtitle and cast row share the plate's width limit.
+
 | Component group | Required presentation |
 | --- | --- |
 | `rpg` | Inventory and equipment, journal and tracker, dialogue, party and turn order, world map |

@@ -44,7 +44,7 @@
   the cast row (the spell and its time over a thin bar). Read only; the
   game owns every figure and state.
 -->
-<anchor id="Nameplate" entity={entity || null} at={at} offset={"0 " + height + " 0"} occlusion="fade" declutter="stack" priority={targeted ? 1100 : (boss || castName != '' ? 400 : 100)} max-distance={maxDistance}>
+<anchor id="Nameplate" entity={entity || null} at={at} offset={"0 " + height + " 0"} occlusion="fade" clamp="contain" clamp-margin="24" declutter="stack" priority={targeted ? 1100 : (boss || castName != '' ? 400 : 100)} max-distance={maxDistance}>
   <div id="Plate" part="Nameplate.frame" class="bare" aria-label={name} data-reaction={reaction == '' ? 'neutral' : reaction} data-elite={elite || boss} data-boss={boss} data-targeted={targeted} data-low={health >= 0 && health <= 0.25 && !dead} data-dead={dead} data-compact={compact}>
     {#if !compact}
       <div class="head">
@@ -87,12 +87,12 @@
 
 <style>
 /* Over the scene: one stroke under the fill and one soft shadow. */
-#Plate { --bw: var(--world-bar-width); --bh: var(--world-bar-height); display: flex; flex-direction: column; align-items: center; row-gap: calc(2 * var(--font-step-px)); color: var(--hud-ink); line-height: 1.12; }
+#Plate { --bw: var(--world-bar-width); --bh: var(--world-bar-height); display: flex; flex-direction: column; align-items: center; row-gap: calc(2 * var(--font-step-px)); inline-size: max-content; max-inline-size: calc(100vw - 48 * var(--font-step-px)); color: var(--hud-ink); line-height: 1.12; }
 .name, .subtitle, .state, .percent, .spell-line { text-shadow: var(--hud-shadow); -webkit-text-stroke-width: var(--hud-stroke-width); -webkit-text-stroke-color: var(--hud-stroke-color); paint-order: stroke fill; }
 #Plate[data-boss=true] { --bw: var(--world-boss-bar-width); --bh: var(--world-boss-bar-height); }
 #Plate[data-compact=true] { --bw: var(--world-compact-bar-width); --bh: var(--world-compact-bar-height); }
-#Plate[data-targeted=true] { scale: var(--world-target-scale); }
-.head { display: flex; align-items: center; justify-content: center; column-gap: calc(4 * var(--font-step-px)); max-inline-size: calc(var(--bw) + 120 * var(--font-step-px)); min-inline-size: 0; }
+#Plate[data-targeted=true] { scale: var(--world-target-scale); max-inline-size: calc((100vw - 48 * var(--font-step-px)) / var(--world-target-scale)); }
+.head { display: flex; align-items: center; justify-content: center; column-gap: calc(4 * var(--font-step-px)); max-inline-size: 100%; min-inline-size: 0; }
 /* The level chip: a dark tag; an elite's or a boss's gold. */
 .level { flex: none; display: flex; align-items: center; justify-content: center; min-inline-size: calc(19 * var(--font-step-px)); block-size: calc(16 * var(--font-step-px)); padding: 0 calc(4 * var(--font-step-px)); box-sizing: border-box; font-size: var(--world-size-level); line-height: 1; font-weight: var(--hud-figure-weight); font-stretch: var(--hud-figure-stretch); font-variant-numeric: var(--hud-figure-numeric); color: var(--hud-ink); background: var(--hud-tag-fill); box-shadow: var(--hud-tag-rim); text-shadow: none; -webkit-text-stroke-width: 0; clip-path: polygon(var(--hud-tag-cut) 0, 100% 0, 100% calc(100% - var(--hud-tag-cut)), calc(100% - var(--hud-tag-cut)) 100%, 0 100%, 0 var(--hud-tag-cut)); }
 [data-elite=true] .level { color: var(--world-elite-chip-ink); background: var(--world-elite-chip-fill); box-shadow: none; }
@@ -108,7 +108,7 @@
 [data-boss=true] .name { max-inline-size: calc(200 * var(--font-step-px)); font-size: var(--world-size-boss); font-weight: var(--hud-figure-weight); font-stretch: var(--world-caps-stretch); letter-spacing: var(--world-caps-tracking); text-transform: var(--hud-label-transform); }
 [data-targeted=true] .name { color: var(--hud-ink); }
 [data-dead=true] .name { color: var(--world-dead-ink); }
-.subtitle { min-inline-size: 0; max-inline-size: calc(190 * var(--font-step-px)); font-size: var(--world-size-title); font-weight: var(--hud-label-weight); letter-spacing: var(--world-title-tracking); text-transform: var(--hud-label-transform); color: var(--hud-label-ink); white-space: nowrap; text-overflow: -og-scroll var(--motion-duration-orbit) var(--motion-duration-turn); overflow: hidden; }
+.subtitle { min-inline-size: 0; max-inline-size: min(100%, calc(190 * var(--font-step-px))); font-size: var(--world-size-title); font-weight: var(--hud-label-weight); letter-spacing: var(--world-title-tracking); text-transform: var(--hud-label-transform); color: var(--hud-label-ink); white-space: nowrap; text-overflow: -og-scroll var(--motion-duration-orbit) var(--motion-duration-turn); overflow: hidden; }
 [data-dead=true] .subtitle { color: var(--world-dead-ink); }
 .state { font-size: var(--world-size-title); font-weight: var(--hud-figure-weight); letter-spacing: var(--world-title-tracking); text-transform: var(--hud-label-transform); color: var(--hud-gold); white-space: nowrap; }
 /* The health: a skewed well with its rim; inside it the ghost, the fill,
@@ -140,7 +140,7 @@
 .bracket.end { scale: -1 1; }
 /* The cast row: the spell and its time over a thin bar, at least the
    health bar's width; a long spell scrolls. */
-.cast { display: flex; flex-direction: column; row-gap: calc(1 * var(--font-step-px)); min-inline-size: calc(var(--bw) + var(--space-xs) + var(--space-xxs)); max-inline-size: calc(var(--bw) + 140 * var(--font-step-px)); margin-top: calc(1 * var(--font-step-px)); }
+.cast { display: flex; flex-direction: column; row-gap: calc(1 * var(--font-step-px)); min-inline-size: calc(var(--bw) + var(--space-xs) + var(--space-xxs)); max-inline-size: min(100%, calc(var(--bw) + 140 * var(--font-step-px))); margin-top: calc(1 * var(--font-step-px)); }
 .spell-line { display: flex; align-items: center; column-gap: calc(6 * var(--font-step-px)); min-inline-size: 0; font-size: var(--world-size-caps); line-height: 1.1; font-weight: var(--hud-figure-weight); font-stretch: var(--hud-figure-stretch); letter-spacing: var(--world-caps-tracking); text-transform: var(--hud-label-transform); color: var(--world-cast-ink); white-space: nowrap; }
 .mark { flex: none; inline-size: var(--world-mark-size); block-size: var(--world-mark-size); margin-inline-end: calc(-3 * var(--font-step-px)); }
 .spell { flex: 1 1 auto; min-inline-size: 0; max-inline-size: calc(170 * var(--font-step-px)); white-space: nowrap; text-overflow: -og-scroll var(--motion-duration-orbit) var(--motion-duration-turn); overflow: hidden; }
