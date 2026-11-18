@@ -179,6 +179,105 @@ fn answer<T>(result: Result<T, String>) -> T {
     result.unwrap_or_else(|e| panic!("{e}"))
 }
 
+#[test]
+fn the_stream_budget_prices_device_blocks_and_exact_mips_before_admission() {
+    let _lock = TEST_LOCK.lock().unwrap();
+    use og_render::{TextureFormat as F, TextureFormats};
+    struct Device(F, Rc<Cell<u64>>);
+    impl RenderBackend for Device {
+        fn tier(&self) -> String {
+            "none".into()
+        }
+        fn size(&self) -> (u32, u32) {
+            (320, 180)
+        }
+        fn texture_formats(&self) -> Option<TextureFormats> {
+            Some(TextureFormats {
+                color: self.0,
+                normal: self.0,
+                data: self.0,
+                supported: vec![F::Rgba8, self.0],
+            })
+        }
+        fn render(&mut self, scene: &RenderScene) -> Result<(), String> {
+            let h = TextureHandle::from_index(0);
+            if let Some(u) = scene.texture_upload(h) {
+                assert_eq!(u.desc.format, self.0);
+                self.1.set(u.levels.iter().map(|l| l.len() as u64).sum());
+            } else if let Some(t) = scene.texture(h)
+                && t.width == 20
+            {
+                self.1.set(t.rgba.len() as u64);
+            }
+            Ok(())
+        }
+        fn capture(&mut self, _: &RenderScene, _: u32, _: u32) -> Option<og_render::RgbaImage> {
+            None
+        }
+    }
+    let root = PathBuf::from(env!("CARGO_TARGET_TMPDIR"))
+        .join(format!("stream-device-bytes-{}", std::process::id()));
+    let image = image::RgbaImage::from_fn(20, 12, |x, y| {
+        image::Rgba([(x * 11) as u8, (y * 19) as u8, 150, 255])
+    });
+    let mut png = std::io::Cursor::new(Vec::new());
+    image.write_to(&mut png, image::ImageFormat::Png).unwrap();
+    cook(
+        &root,
+        &[
+            ("tex.png", png.into_inner()),
+            (
+                "world.ogt",
+                b"type scene\nversion 1\n---\nstream \"zone\" {\n asset \"tex.png\"\n}\n".to_vec(),
+            ),
+        ],
+    );
+    for format in [F::Bc7, F::Astc4x4, F::Etc2Rgba8, F::Rgba8] {
+        set_hooks(Rc::new(Disk {
+            delayed: false,
+            reads: RefCell::default(),
+        }));
+        og_host_begin_bundle();
+        let game = og_game_game(Some(r#"{"seed":1}"#.into()));
+        let engine = value(og_engine_create(game, json!({"root": root}).to_string()))
+            .as_u64()
+            .unwrap() as u32;
+        let seen = Rc::new(Cell::new(0));
+        answer(set_render_backend(
+            engine,
+            Some(Box::new(Device(format, seen.clone()))),
+        ));
+        // 20x12, 10x6, 5x3, 2x1, 1x1: blocks round up at every level.
+        let (expected, budget) = if format == F::Rgba8 {
+            (1272, 1400)
+        } else {
+            (400, 400)
+        };
+        answer(og_stream_set_budget(engine, budget as f64));
+        answer(og_load_texture(engine, "tex.png".into()));
+        answer(og_stream_request(engine, "zone".into()));
+        for _ in 0..8 {
+            value(og_engine_frame(engine, 1000.0 / 60.0));
+        }
+        let status = value(host_impl::answer(og_stream_status(engine, "zone".into())));
+        assert_eq!(status["state"], "resident", "{format:?}: {status}");
+        assert_eq!(status["memory"], expected as f64);
+        assert_eq!(
+            value(host_impl::answer(og_stream_budget(engine)))["used"],
+            expected as f64
+        );
+        assert_eq!(seen.get(), if format == F::Rgba8 { 960 } else { 400 });
+        answer(og_stream_release(engine, "zone".into()));
+        value(og_engine_frame(engine, 1000.0 / 60.0));
+        assert_eq!(
+            value(host_impl::answer(og_stream_budget(engine)))["used"],
+            0.0
+        );
+        assert!(og_engine_destroy(engine));
+    }
+    std::fs::remove_dir_all(root).unwrap();
+}
+
 struct Game {
     engine: u32,
     held: Rc<Cell<Held>>,
