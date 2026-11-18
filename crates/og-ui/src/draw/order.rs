@@ -37,25 +37,22 @@ fn collect(
     while let Some((cmd, m)) = cmds.next() {
         match cmd {
             DrawCmd::PushClip { .. } | DrawCmd::PopClip => entries.push(Entry::Bracket(cmd, m)),
-            DrawCmd::World(ref w) if matches!(**w, WorldCmd::BeginPanel { .. }) => {
+            DrawCmd::World(ref w) if matches!(w, WorldCmd::BeginPanel { .. }) => {
                 // A world panel: its own space of levels, off the screen
                 // (it levels nothing there).
                 let (inner, end) = collect(cmds, layers);
                 let items = levelled(inner, layers, None, None);
-                let end = end.unwrap_or((
-                    DrawCmd::World(Box::new(WorldCmd::EndPanel)),
-                    Affine::IDENTITY,
-                ));
+                let end = end.unwrap_or((DrawCmd::World(WorldCmd::EndPanel), Affine::IDENTITY));
                 entries.push(Entry::Panel {
                     begin: Box::new((cmd, m)),
                     items,
                     end: Box::new(end),
                 });
             }
-            DrawCmd::World(ref w) if matches!(**w, WorldCmd::EndPanel) => {
+            DrawCmd::World(ref w) if matches!(w, WorldCmd::EndPanel) => {
                 return (entries, Some((cmd, m)));
             }
-            DrawCmd::World(ref w) if !matches!(**w, WorldCmd::Mass { .. }) => {
+            DrawCmd::World(ref w) if !matches!(w, WorldCmd::Mass { .. }) => {
                 entries.push(Entry::Bracket(cmd, m))
             }
             DrawCmd::BeginLayer { .. } => {
@@ -529,7 +526,7 @@ impl Levels {
             };
             let bracket = match &cmd {
                 DrawCmd::BeginLayer { .. } | DrawCmd::EndLayer { .. } => return None,
-                DrawCmd::World(w) => match &**w {
+                DrawCmd::World(w) => match w {
                     WorldCmd::BeginPanel { .. } | WorldCmd::EndPanel => return None,
                     WorldCmd::Mass { .. } => false,
                     _ => true,
@@ -724,7 +721,7 @@ fn top_entries(cmds: &[(DrawCmd, Affine)]) -> Vec<u32> {
                 DrawCmd::BeginLayer { .. } => (true, false, false),
                 DrawCmd::EndLayer { .. } => (false, true, false),
                 DrawCmd::PushClip { .. } | DrawCmd::PopClip => (false, false, false),
-                DrawCmd::World(w) => match &**w {
+                DrawCmd::World(w) => match w {
                     WorldCmd::BeginPanel { .. } => (true, false, false),
                     WorldCmd::EndPanel => (false, true, false),
                     WorldCmd::Mass { .. } => (false, false, true),

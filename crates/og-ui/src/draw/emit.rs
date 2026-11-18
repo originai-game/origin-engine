@@ -322,7 +322,7 @@ pub(crate) fn zoom_item(item: &mut DrawItem, unit: f32) {
                     crate::svg::filter::map(&mut f.1, &s);
                 }
             }
-            DrawCmd::World(w) => match &mut **w {
+            DrawCmd::World(w) => match w {
                 WorldCmd::Occlude { at, .. } => *at = (at.0 * unit, at.1 * unit),
                 WorldCmd::Mass { batch, bounds, .. } => {
                     *bounds = s.map_rect(bounds);
@@ -365,7 +365,7 @@ fn shifted(item: &DrawItem, d: Vec2) -> DrawItem {
         c.y += d.y;
     }
     if let DrawCmd::World(w) = &mut out.cmd
-        && let WorldCmd::Occlude { at, .. } = &mut **w
+        && let WorldCmd::Occlude { at, .. } = w
     {
         *at = (at.0 + d.x, at.1 + d.y);
     }
@@ -444,7 +444,7 @@ pub(crate) fn emit(
     let mut spaces = vec![Space::new(desc.layer, None)];
     for item in items {
         if let DrawCmd::World(w) = &item.cmd {
-            match **w {
+            match *w {
                 WorldCmd::Anchor { key } => {
                     let outer = anchors.last().copied().unwrap_or(Vec2::ZERO);
                     anchors.push(outer + shift(key).unwrap_or(Vec2::ZERO));
@@ -498,7 +498,7 @@ pub(crate) fn emit(
             DrawCmd::PopClip => {
                 clips.cuts.pop();
             }
-            DrawCmd::World(w) => match &**w {
+            DrawCmd::World(w) => match w {
                 WorldCmd::Occlude { at, depth, alpha } => {
                     clips.next_cut += 1;
                     let id = clips.next_cut;

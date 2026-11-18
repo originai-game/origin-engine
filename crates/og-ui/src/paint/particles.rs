@@ -436,11 +436,11 @@ impl crate::ui::Paint {
             };
             let key = tree.nodes[e.node].key;
             ui_world.placement.marks.entry(key).or_default().leave.push(
-                crate::draw::DrawCmd::World(Box::new(WorldCmd::Mass {
+                crate::draw::DrawCmd::World(WorldCmd::Mass {
                     batch: Box::new(batch),
                     bounds,
                     clip,
-                })),
+                }),
             );
         }
         // Emitters not built this tick keep their particles flying (over
@@ -473,11 +473,11 @@ impl crate::ui::Paint {
             let cmds = orphans
                 .into_iter()
                 .map(|b| {
-                    crate::draw::DrawCmd::World(Box::new(WorldCmd::Mass {
+                    crate::draw::DrawCmd::World(WorldCmd::Mass {
                         batch: Box::new(b),
                         bounds: screen,
                         clip: screen,
-                    }))
+                    })
                 })
                 .collect::<Vec<_>>();
             // On the root, after everything.
