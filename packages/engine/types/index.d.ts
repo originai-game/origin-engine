@@ -17898,6 +17898,15 @@ export interface WeatherState {
    * @tunable
    */
   drainTime: number;
+  /**
+   * The most the puddles fill: steady rain fills them to here and no further, the ground draining what more falls (a street holds water in its joints and hollows, never one sheet). Set below the fill, they drain down to it at drainTime's rate. 1: until full.
+   *
+   * @default 1
+   * @range 0..1
+   * @unit ratio (a fraction between 0 and 1)
+   * @tunable
+   */
+  puddleLimit: number;
   // ── Snow ──
   /**
    * How much snow settles per minute of snowfall at intensity 1.
@@ -36331,7 +36340,7 @@ export declare namespace og {
    * The weather's effect on the world, simulated in the tick from og.Weather so gameplay can read it: how wet the ground is, how much standing water, snow and dust lie on it, and the lightning strikes, drawn from a stream forked from og.Rng (`fork("og.weather")`) and kept here, so replays, restores and every host strike alike. Registered the first time a game names it: a world that never does keeps its type table and hash. The renderer draws the same values on every lit surface (StandardMaterialDesc.weathering opts a material out); rendering never writes it.
    * See `render §7`.
    */
-  const WeatherState: ResourceType<{ readonly soakTime: FieldSpec<"f32">; readonly dryTime: FieldSpec<"f32">; readonly puddleTime: FieldSpec<"f32">; readonly drainTime: FieldSpec<"f32">; readonly snowfall: FieldSpec<"f32">; readonly melt: FieldSpec<"f32">; readonly snowCover: FieldSpec<"f32">; readonly dustTime: FieldSpec<"f32">; readonly washTime: FieldSpec<"f32">; readonly dustColor: FieldSpec<"Color">; readonly lightning: FieldSpec<"f32">; readonly lightningCenter: FieldSpec<"Vector3">; readonly lightningRadius: FieldSpec<"f32">; readonly shelterSize: FieldSpec<"f32">; readonly wetness: FieldSpec<"f32">; readonly puddles: FieldSpec<"f32">; readonly dust: FieldSpec<"f32">; readonly snowDepth: FieldSpec<"f32">; readonly strikes: FieldSpec<"u32">; readonly lastStrike: FieldSpec<"u32">; readonly strikePosition: FieldSpec<"Vector3">; readonly stream: FieldSpec<"u32"> }, WeatherState>;
+  const WeatherState: ResourceType<{ readonly soakTime: FieldSpec<"f32">; readonly dryTime: FieldSpec<"f32">; readonly puddleTime: FieldSpec<"f32">; readonly drainTime: FieldSpec<"f32">; readonly puddleLimit: FieldSpec<"f32">; readonly snowfall: FieldSpec<"f32">; readonly melt: FieldSpec<"f32">; readonly snowCover: FieldSpec<"f32">; readonly dustTime: FieldSpec<"f32">; readonly washTime: FieldSpec<"f32">; readonly dustColor: FieldSpec<"Color">; readonly lightning: FieldSpec<"f32">; readonly lightningCenter: FieldSpec<"Vector3">; readonly lightningRadius: FieldSpec<"f32">; readonly shelterSize: FieldSpec<"f32">; readonly wetness: FieldSpec<"f32">; readonly puddles: FieldSpec<"f32">; readonly dust: FieldSpec<"f32">; readonly snowDepth: FieldSpec<"f32">; readonly strikes: FieldSpec<"u32">; readonly lastStrike: FieldSpec<"u32">; readonly strikePosition: FieldSpec<"Vector3">; readonly stream: FieldSpec<"u32"> }, WeatherState>;
   /**
    * Lightning struck, in the tick og.weather drew it (og.WeatherState.lightning): read in the systems after og.weather that tick, or the next tick's first.
    */

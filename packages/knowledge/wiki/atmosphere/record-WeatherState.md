@@ -20,6 +20,7 @@ Token `og.WeatherState`, registered under the schema name `og.WeatherState`; its
 | `dryTime` | `number` | `300` | ≥ 0.1 | `s` | tunable | Seconds for soaked ground to dry once the rain stops. |
 | `puddleTime` | `number` | `120` | ≥ 0.1 | `s` | tunable | Seconds of rain at intensity 1 on soaked ground to fill the puddles (puddles 0 to 1). |
 | `drainTime` | `number` | `600` | ≥ 0.1 | `s` | tunable | Seconds for full puddles to drain once the rain stops. |
+| `puddleLimit` | `number` | `1` | 0 … 1 | `ratio` | tunable | The most the puddles fill: steady rain fills them to here and no further, the ground draining what more falls (a street holds water in its joints and hollows, never one sheet). Set below the fill, they drain down to it at drainTime's rate. 1: until full. |
 
 #### Snow
 
@@ -93,6 +94,13 @@ resource WeatherState {
     default 600
     min 0.1
     unit s
+    tunable true
+  }
+  field puddleLimit f32 "The most the puddles fill: steady rain fills them to here and no further, the ground draining what more falls (a street holds water in its joints and hollows, never one sheet). Set below the fill, they drain down to it at drainTime's rate. 1: until full." {
+    default 1
+    min 0
+    max 1
+    unit ratio
     tunable true
   }
   group "Snow"

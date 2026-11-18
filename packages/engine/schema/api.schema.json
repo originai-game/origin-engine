@@ -36180,6 +36180,15 @@
           "x-og-unit": "s",
           "x-og-tunable": true
         },
+        "puddleLimit": {
+          "type": "number",
+          "description": "The most the puddles fill: steady rain fills them to here and no further, the ground draining what more falls (a street holds water in its joints and hollows, never one sheet). Set below the fill, they drain down to it at drainTime's rate. 1: until full.",
+          "default": 1,
+          "minimum": 0,
+          "maximum": 1,
+          "x-og-unit": "ratio",
+          "x-og-tunable": true
+        },
         "snowfall": {
           "type": "number",
           "description": "How much snow settles per minute of snowfall at intensity 1.",

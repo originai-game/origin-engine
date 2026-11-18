@@ -518,6 +518,13 @@ module atmosphere {
       unit s
       tunable true
     }
+    field puddleLimit f32 "The most the puddles fill: steady rain fills them to here and no further, the ground draining what more falls (a street holds water in its joints and hollows, never one sheet). Set below the fill, they drain down to it at drainTime's rate. 1: until full." {
+      default 1
+      min 0
+      max 1
+      unit ratio
+      tunable true
+    }
     group "Snow"
     field snowfall f32 "How much snow settles per minute of snowfall at intensity 1." {
       default 0.01

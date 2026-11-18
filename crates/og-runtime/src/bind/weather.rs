@@ -33,6 +33,7 @@ fn rates(state: &record::WeatherState) -> Rates {
         puddle_time: state.puddle_time,
         dry_time: state.dry_time,
         drain_time: state.drain_time,
+        puddle_limit: state.puddle_limit,
         snowfall: state.snowfall,
         melt: state.melt,
         dust_time: state.dust_time,
@@ -224,6 +225,27 @@ mod tests {
         assert!((thawed.snow_depth - 0.012).abs() < 1e-4, "{thawed:?}");
         let rained = run_for(snow, RAIN, 1.0, 120);
         assert!(rained.snow_depth < 1e-4);
+    }
+
+    /// A street that drains: with puddleLimit 0.45, three minutes of steady
+    /// rain fill the puddles to 0.45 and no further; the limit lowered to
+    /// 0.2 in the rain drains them down to it at drainTime's rate (0.15 in
+    /// 90 s of the default 600 s), never below it.
+    #[test]
+    fn steady_rain_fills_the_puddles_to_their_limit() {
+        let mut rates = rates(&record::WeatherState::default());
+        rates.puddle_limit = 0.45;
+        let rain = Falling::now(RAIN, 1.0);
+        let run = |s: Ground, rates: &Rates, seconds: u32| {
+            (0..seconds * 60).fold(s, |s, _| step(s, rates, &rain, 1.0 / 60.0))
+        };
+        let full = run(Ground::default(), &rates, 180);
+        assert!((full.puddles - 0.45).abs() < 1e-6, "{full:?}");
+        rates.puddle_limit = 0.2;
+        let draining = run(full, &rates, 90);
+        assert!((draining.puddles - 0.3).abs() < 1e-3, "{draining:?}");
+        let drained = run(full, &rates, 300);
+        assert!((drained.puddles - 0.2).abs() < 1e-6, "{drained:?}");
     }
 
     /// The weather drawn over `seconds` from `from`, the game's weather

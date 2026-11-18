@@ -34,6 +34,7 @@ pub struct Rates {
     pub puddle_time: f32,
     pub dry_time: f32,
     pub drain_time: f32,
+    pub puddle_limit: f32,
     pub snowfall: f32,
     pub melt: f32,
     pub dust_time: f32,
@@ -125,7 +126,8 @@ impl Falling {
 }
 
 /// The rules: rain soaks the ground over soakTime and, once it is more than
-/// half soaked, fills the puddles over puddleTime; without rain both dry
+/// half soaked, fills the puddles over puddleTime up to puddleLimit (above
+/// it they drain down to it over drainTime); without rain both dry
 /// (dryTime, drainTime). Snow settles at snowfall per minute and melts at
 /// melt per minute when none falls, three times as fast in rain; snow
 /// keeps the ground under it from drying no faster than it would. A dust
@@ -138,8 +140,11 @@ pub fn step(s: Ground, rates: &Rates, falling: &Falling, dt: f32) -> Ground {
     let mut o = s;
     if rain > 0.0 {
         o.wetness += dt * rain / rates.soak_time.max(0.1);
-        if s.wetness > 0.5 {
-            o.puddles += dt * rain / rates.puddle_time.max(0.1);
+        let limit = rates.puddle_limit.clamp(0.0, 1.0);
+        if s.puddles > limit {
+            o.puddles = (s.puddles - dt / rates.drain_time.max(0.1)).max(limit);
+        } else if s.wetness > 0.5 {
+            o.puddles = (s.puddles + dt * rain / rates.puddle_time.max(0.1)).min(limit);
         }
     } else {
         o.wetness -= dt / rates.dry_time.max(0.1);

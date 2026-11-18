@@ -379,7 +379,9 @@ depth-normal prepass: the first one pays for it.
   ones a high red-topped one; the air dims it near the horizon.
 - Weather on surfaces: porous surfaces darken when wet and smooth ones
   gloss, drying in patches from high spots; rain streaks down walls;
-  puddles fill level hollows (a terrain's layer heights first) and ripple;
+  puddles fill level hollows (a terrain's layer heights first) and ripple,
+  up to og.WeatherState.puddleLimit (a draining street: 0.3 to 0.5 keeps
+  the water in the joints and hollows; raise it for a storm);
   on a terrain the joints and cracks of its layers' relief fill first, to
   just under the relief's middle (a layer's height 0.5) by half `puddles`,
   the drawn ground rising flat to the water so it mirrors the sky between
