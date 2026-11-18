@@ -332,42 +332,51 @@ pub fn decals_many_scene() -> RenderScene {
         ..Decal::on_surface(p, n, Vec2::splat(size), 0.3, rot)
     };
     let mut decals = Vec::new();
+    // Bursts of fire: each hole lands round one of a few impact points,
+    // thick at its middle and thinning out, as a spray of rounds does.
+    let burst = |k: u32, centres: &[(f32, f32)], reach: f32| {
+        let (cx, cy) = centres[(k as usize) % centres.len()];
+        let r = reach * hash2(k as i32, 5, 77).powf(0.7);
+        let a = hash2(k as i32, 6, 77) * std::f32::consts::TAU;
+        (cx + a.cos() * r, cy + a.sin() * r * 0.8)
+    };
+    const WALL: [(f32, f32); 7] = [
+        (-2.7, 1.9),
+        (-1.4, 0.9),
+        (-0.2, 2.1),
+        (0.9, 1.2),
+        (2.2, 2.0),
+        (2.9, 0.7),
+        (-3.2, 0.6),
+    ];
+    const GROUND: [(f32, f32); 4] = [(-3.0, -1.4), (-0.1, -1.5), (2.8, -1.3), (0.2, 0.4)];
     for k in 0..640u32 {
-        let (i, j) = ((k % 32) as f32, (k / 32) as f32);
-        let jitter = |s: u32| hash2(k as i32, s as i32, 77) - 0.5;
         let rot = hash2(k as i32, 9, 77) * std::f32::consts::TAU;
         let size = 0.12 + 0.1 * hash2(k as i32, 3, 77);
         if k < 400 {
-            // The wall's face (z = -2.0), 32 × 12 holes.
-            let p = Vec3::new(
-                -3.8 + i * 0.245 + jitter(1) * 0.1,
-                0.2 + j * 0.22 + jitter(2) * 0.1,
-                -2.0,
-            );
+            // The wall's face (z = -2.0): seven bursts of holes.
+            let (x, y) = burst(k, &WALL, 0.75);
+            let p = Vec3::new(x.clamp(-3.85, 3.85), y.clamp(0.15, 2.85), -2.0);
             decals.push(hole(p, Vec3::Z, size, rot));
         } else {
-            // The ground before it, 32 × 8 more.
-            let p = Vec3::new(
-                -3.8 + i * 0.245 + jitter(1) * 0.1,
-                0.0,
-                -1.6 + (j - 12.5) * 0.3 + jitter(2) * 0.1,
-            );
-            decals.push(hole(p, Vec3::Y, size, rot));
+            // The flags at its foot: four more.
+            let (x, z) = burst(k, &GROUND, 0.7);
+            decals.push(hole(Vec3::new(x, 0.0, z), Vec3::Y, size, rot));
         }
     }
     // Two large ones, under the low sun, where the relief reads.
-    decals.push(hole(Vec3::new(-1.5, 0.0, 1.0), Vec3::Y, 1.6, 0.0));
+    decals.push(hole(Vec3::new(-1.4, 0.0, -0.7), Vec3::Y, 1.6, 0.0));
     decals.push(Decal {
         normal_scale: 2.0,
-        ..hole(Vec3::new(1.5, 0.0, 1.0), Vec3::Y, 1.6, 0.0)
+        ..hole(Vec3::new(1.4, 0.0, -0.7), Vec3::Y, 1.6, 0.0)
     });
     scene.effects.decals = decals;
-    // Afternoon: the sun from the left, raking along the wall.
-    crate::sky_scenes::physical_light_under(&mut scene, Vec3::new(-0.9, 0.45, 0.25));
+    // Late afternoon: the sun 12° up from the left, raking the wall.
+    crate::sky_scenes::physical_light_under(&mut scene, Vec3::new(-0.92, 0.21, 0.33));
     scene.lighting.light.cast_shadows = true;
     scene.frame.camera = Camera {
-        position: Vec3::new(0.4, 1.9, 5.0),
-        target: Vec3::new(0.0, 0.9, -1.0),
+        position: Vec3::new(0.4, 1.7, 5.2),
+        target: Vec3::new(0.0, 0.6, -1.2),
         far: 2500.0,
         exposure: Exposure::Manual { ev: 0.0 },
         ..Default::default()

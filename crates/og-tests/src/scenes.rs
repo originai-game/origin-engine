@@ -842,9 +842,18 @@ pub fn build(name: &str) -> Result<GfxScene, String> {
             g.update = Some(fx::tick_update);
             Ok(())
         },
-        // The same fire simulated on the CPU path (no collision).
+        // The same fire simulated on the CPU path.
         "particles-cpu" => |g, _| {
             g.scene = fx::fire_scene()?;
+            // The CPU path's embers bounce off the scene's colliders (its
+            // stand-in for the depth buffer the compute path reads).
+            g.scene
+                .world
+                .colliders
+                .push(og_render::SceneCollider::Plane {
+                    normal: glam::Vec3::Y,
+                    offset: 0.01,
+                });
             g.desc.particles = og_render::ParticleSimulation::Cpu;
             g.frames = 120;
             g.update = Some(fx::tick_update);
@@ -854,8 +863,9 @@ pub fn build(name: &str) -> Result<GfxScene, String> {
         // so the CPU path) and a heat haze bending a checker wall.
         "particles-lit" => |g, _| {
             g.scene = fx::particles_lit_stage_scene();
-            // Four seconds: the smoke grown into its full column.
-            g.frames = 240;
+            // 4.4 s: the smoke grown into its full column, the shards'
+            // latest burst at the top of its arc.
+            g.frames = 264;
             g.update = Some(fx::tick_update);
             Ok(())
         },

@@ -1,16 +1,17 @@
-//! `particles-lit`: lit particles in the shrine court under a low
-//! afternoon sun. Smoke rises from a smouldering offering pit, its sun
-//! side bright and its far side in its own shade; stone shards burst from
-//! a crater in the flags, tumble lit, bounce and kick a dust puff at each
-//! bounce (a collision sub-emitter, so the CPU path); a heat haze over a
-//! glowing brazier bends the torii behind it. The measured fixture is
-//! [`super::particles_lit_scene`].
+//! `particles-lit`: lit smoke in the shrine court under a low sun. A
+//! column rises from a smouldering offering pit with the sun behind and to
+//! its right, so its sun edge glows and its side to the lens lies in its
+//! own shade; stone shards burst from the flags beside it, at the top of
+//! their arc, tumbling lit, and kick a dust puff where they bounce (a
+//! collision sub-emitter, so the CPU path); a heat haze over a glowing
+//! brazier bends the torii post's straight edge behind it. The measured
+//! fixture is [`super::particles_lit_scene`].
 
 use super::*;
 
-const PIT: Vec3 = Vec3::new(-2.8, 0.0, -0.4);
-const CRATER: Vec3 = Vec3::new(0.2, 0.02, 0.6);
-const BRAZIER: Vec3 = Vec3::new(2.6, 0.0, -0.6);
+const PIT: Vec3 = Vec3::new(-1.7, 0.0, -0.8);
+const CRATER: Vec3 = Vec3::new(-0.3, 0.02, -0.1);
+const BRAZIER: Vec3 = Vec3::new(1.45, 0.0, -0.1);
 
 pub fn particles_lit_stage_scene() -> RenderScene {
     use crate::kit;
@@ -55,21 +56,27 @@ pub fn particles_lit_stage_scene() -> RenderScene {
             angle_degrees: 10.0,
             radius: 0.35,
         },
-        rate: 32.0,
+        rate: 48.0,
         lifetime: [3.6, 4.6],
         speed: [0.8, 1.1],
-        size: [0.7, 1.0],
-        size_over_life: Curve::new(&[(0.0, 0.5), (1.0, 1.9)]),
+        size: [0.55, 0.8],
+        size_over_life: Curve::new(&[(0.0, 0.6), (1.0, 2.6)]),
         color_over_life: ColorCurve::new(&[
             (0.0, [1.0, 1.0, 1.0, 0.0]),
-            (0.15, [1.0, 1.0, 1.0, 0.6]),
+            (0.12, [1.0, 1.0, 1.0, 0.55]),
+            (0.6, [1.0, 1.0, 1.0, 0.35]),
             (1.0, [1.0, 1.0, 1.0, 0.0]),
         ]),
-        color: [0.32, 0.31, 0.3, 1.0],
+        color: [0.5, 0.49, 0.47, 1.0],
         rotation_degrees: [0.0, 360.0],
         angular_velocity_degrees: [-20.0, 20.0],
-        gravity: Vec3::new(0.15, 0.3, 0.0),
+        gravity: Vec3::new(-0.2, 0.3, 0.0),
         drag: 0.4,
+        noise: ParticleNoise {
+            strength: 0.5,
+            frequency: 0.7,
+            scroll: 0.3,
+        },
         texture: Some(smoke_tex),
         blend: ParticleBlend::Alpha,
         lit: true,
@@ -111,12 +118,12 @@ pub fn particles_lit_stage_scene() -> RenderScene {
         rate: 0.0,
         bursts: vec![Burst::once(0.0, 40)],
         duration: 1.0,
-        lifetime: [1.6, 2.0],
+        lifetime: [1.0, 1.2],
         speed: [3.5, 5.0],
-        size: [0.12, 0.22],
+        size: [0.2, 0.32],
         color_over_life: ColorCurve::new(&[(0.0, [1.0; 4]), (1.0, [1.0; 4])]),
         // Linear: the flags' stone.
-        color: [0.1, 0.085, 0.07, 1.0],
+        color: [0.24, 0.2, 0.16, 1.0],
         rotation_degrees: [0.0, 360.0],
         angular_velocity_degrees: [-540.0, 540.0],
         gravity: Vec3::new(0.0, -9.8, 0.0),
@@ -126,6 +133,9 @@ pub fn particles_lit_stage_scene() -> RenderScene {
             ..Default::default()
         }),
         render: ParticleRender::Mesh { mesh: shard },
+        // Solid stone chips: alpha at full opacity (an additive lit mesh
+        // glows pale and see-through).
+        blend: ParticleBlend::Alpha,
         lit: true,
         sub_emitters: vec![og_render::SubEmitter {
             trigger: og_render::SubTrigger::Event(og_render::ParticleEventKind::Collision),
@@ -164,7 +174,7 @@ pub fn particles_lit_stage_scene() -> RenderScene {
         ]),
         rotation_degrees: [0.0, 360.0],
         gravity: Vec3::ZERO,
-        distortion: 0.008,
+        distortion: 0.012,
         ..Default::default()
     });
     scene.effects.particles.push(ParticleSystem::new(
@@ -174,12 +184,13 @@ pub fn particles_lit_stage_scene() -> RenderScene {
         31,
         0,
     ));
-    // A low sun from the right, 20° up.
-    crate::sky_scenes::physical_light_under(&mut scene, Vec3::new(0.85, 0.36, 0.38));
+    // A low sun from the right and behind the smoke, 11° up: the column's
+    // sun edge bright, its side to the lens in its own shade.
+    crate::sky_scenes::physical_light_under(&mut scene, Vec3::new(0.8, 0.2, -0.56));
     scene.lighting.light.cast_shadows = true;
     scene.frame.camera = Camera {
-        position: Vec3::new(-0.2, 1.7, 6.6),
-        target: Vec3::new(0.0, 1.3, -0.8),
+        position: Vec3::new(-1.2, 1.3, 4.2),
+        target: Vec3::new(-0.6, 1.5, -1.0),
         far: 2500.0,
         exposure: Exposure::Manual { ev: 0.0 },
         ..Default::default()

@@ -11,7 +11,7 @@ use crate::p2_scenes::{fluid_3d_drop, fluid_3d_pool};
 pub fn fluid_stage_scene() -> RenderScene {
     use crate::kit;
     let mut scene = RenderScene::new();
-    crate::shadow_scenes::court(&mut scene);
+    let rubble = crate::shadow_scenes::court(&mut scene);
     let coping = kit::surface_tinted(&mut scene, "stone", [0.62, 0.58, 0.52]);
     // The basin: a raised rim round the pool (the pool spans x ±1.5,
     // z ±0.9).
@@ -19,7 +19,7 @@ pub fn fluid_stage_scene() -> RenderScene {
         (Vec3::new(-1.9, 0.0, -1.3), Vec3::new(1.9, 0.6, -0.95)),
         (Vec3::new(-1.9, 0.0, -0.95), Vec3::new(-1.55, 0.6, 0.95)),
         (Vec3::new(1.55, 0.0, -0.95), Vec3::new(1.9, 0.6, 0.95)),
-        (Vec3::new(-1.9, 0.0, 0.95), Vec3::new(1.9, 0.5, 1.3)),
+        (Vec3::new(-1.9, 0.0, 0.95), Vec3::new(1.9, 0.3, 1.3)),
     ] {
         let wall = scene.add_mesh(kit::block(min, max, 1.0));
         scene.add_instance(wall, coping, Mat4::IDENTITY);
@@ -90,12 +90,19 @@ pub fn fluid_stage_scene() -> RenderScene {
         range: 5.0,
         ..Default::default()
     });
+    // A low rubble wall behind the basin, closing the view.
+    let back = scene.add_mesh(kit::block(
+        Vec3::new(-4.5, 0.0, -2.6),
+        Vec3::new(4.5, 1.1, -2.2),
+        1.5,
+    ));
+    scene.add_instance(back, rubble, Mat4::IDENTITY);
     // Afternoon: the sun 35° up over the left shoulder.
     crate::sky_scenes::physical_light_under(&mut scene, Vec3::new(-0.45, 0.6, 0.65));
     scene.lighting.light.cast_shadows = true;
     scene.frame.camera = Camera {
-        position: Vec3::new(0.6, 2.7, 3.0),
-        target: Vec3::new(0.0, 0.35, -0.25),
+        position: Vec3::new(0.5, 1.9, 2.9),
+        target: Vec3::new(0.05, 0.5, -0.4),
         far: 2500.0,
         exposure: Exposure::Manual { ev: 0.0 },
         ..Default::default()
