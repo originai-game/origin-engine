@@ -244,7 +244,6 @@ impl Ui {
     /// Opens row `index` of the open list (`Row#index`): a selectable,
     /// focusable row; its content follows until [`Ui::close`].
     pub(crate) fn list_item(&mut self, index: u32, selected: bool) -> Response {
-        let t = self.env.theme;
         let list = self.tree.parent();
         let h = self.tree.nodes[list].aux[0];
         let keyed = self
@@ -266,15 +265,22 @@ impl Ui {
                 direction: Direction::Row,
                 width: Size::grow(),
                 height,
-                padding: Insets::xy(t.space.md, 0.0),
-                gap: t.space.sm,
                 cross: Cross::Center,
-                interactive: true,
-                radius: t.radius.control,
                 ..Element::default()
             },
         );
         self.tree.stack.push(i);
+        self.list_option(i, index, selected)
+    }
+
+    fn list_option(&mut self, i: usize, index: u32, selected: bool) -> Response {
+        let t = self.env.theme;
+        let list = self.tree.nodes[i].parent;
+        let el = self.tree.el_mut(i);
+        el.padding = Insets::xy(t.space.md, 0.0);
+        el.gap = t.space.sm;
+        el.interactive = true;
+        el.radius = t.radius.control;
         self.tree.nodes[i].a11y.role = Some("option");
         self.tree.nodes[i].a11y.selected = Some(selected);
         let mut r = self.nav_target(i, false);
@@ -293,6 +299,53 @@ impl Ui {
             [p.control_strong, strong],
         );
         r
+    }
+
+    /// A virtual row is an option only while its content supplies no
+    /// focus target of its own. Rechecked after retained child updates too.
+    pub(crate) fn virtual_item_controls(&mut self, i: usize) -> bool {
+        let mut pending = self.tree.nodes[i].built_children.clone();
+        let mut controls = false;
+        while let Some(child) = pending.pop() {
+            let n = &self.tree.nodes[child];
+            if n.nav
+                || matches!(&*n.content, Content::Rich(r) if r.spans.iter().any(|s| s.link.is_some()))
+            {
+                controls = true;
+                break;
+            }
+            pending.extend_from_slice(&n.built_children);
+        }
+        if controls && self.tree.nodes[i].nav {
+            let el = self.tree.el_mut(i);
+            el.interactive = false;
+            el.padding = Insets::default();
+            el.gap = 0.0;
+            el.radius = 0.0;
+            el.background = None;
+            el.part = None;
+            *self.tree.props_mut(i) = Default::default();
+            let n = &mut self.tree.nodes[i];
+            n.nav = false;
+            n.a11y = Default::default();
+            n.marks.ring = false;
+            n.marks.pad_rings = 0;
+        } else if !controls && !self.tree.nodes[i].nav {
+            let parent = self.tree.nodes[i].parent;
+            let list = &self.interaction.state.virtual_lists[&self.tree.nodes[parent].key];
+            let grid = list.grid;
+            let index =
+                list.keys
+                    .iter()
+                    .position(|k| crate::virtualize::item_id(k, grid) == self.tree.nodes[i].id)
+                    .expect("a retained virtual row has its collection key") as u32;
+            if grid {
+                self.grid_option(i, index, false);
+            } else {
+                self.list_option(i, index, false);
+            }
+        }
+        controls
     }
 
     /// An option's (a list row's, a grid cell's) background through §7.3
@@ -513,7 +566,6 @@ impl Ui {
     /// underline), focusable; its
     /// content follows until [`Ui::close`].
     pub(crate) fn grid_item(&mut self, index: u32, selected: bool) -> Response {
-        let t = self.env.theme;
         let grid = self.tree.parent();
         let [cw, ch, _] = self.tree.nodes[grid].aux;
         let keyed = self
@@ -537,17 +589,24 @@ impl Ui {
                 height,
                 align: Align::Center,
                 cross: Cross::Center,
-                padding: Insets::all(t.space.xs),
-                interactive: true,
-                radius: t.radius.small,
-                part: Some(
-                    crate::dress::PartRef::new("Slot", "frame", crate::tokens::ElementClass::Slot)
-                        .flag_if(selected, "selected"),
-                ),
                 ..Element::default()
             },
         );
         self.tree.stack.push(i);
+        self.grid_option(i, index, selected)
+    }
+
+    fn grid_option(&mut self, i: usize, index: u32, selected: bool) -> Response {
+        let t = self.env.theme;
+        let grid = self.tree.nodes[i].parent;
+        let el = self.tree.el_mut(i);
+        el.padding = Insets::all(t.space.xs);
+        el.interactive = true;
+        el.radius = t.radius.small;
+        el.part = Some(
+            crate::dress::PartRef::new("Slot", "frame", crate::tokens::ElementClass::Slot)
+                .flag_if(selected, "selected"),
+        );
         self.tree.nodes[i].a11y.role = Some("option");
         self.tree.nodes[i].a11y.selected = Some(selected);
         let mut r = self.nav_target(i, false);

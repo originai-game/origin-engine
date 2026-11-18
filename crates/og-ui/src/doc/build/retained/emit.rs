@@ -533,6 +533,25 @@ impl RetainedHost {
             }
             (ui.docs.state_mut().accepts, ui.docs.state_mut().building) = outer;
             result?;
+            // A branch or control updated in place can change who owns
+            // a virtual row's focus without rebuilding its list.
+            let mut at = parent;
+            while at != NONE {
+                let above = ui.tree.nodes()[at].parent;
+                if above != NONE
+                    && let Some(list) = ui
+                        .interaction
+                        .state()
+                        .virtual_lists
+                        .get(&ui.tree.nodes()[above].key)
+                    && ui.tree.nodes()[at]
+                        .id
+                        .starts_with(if list.grid { "Cell#" } else { "Row#" })
+                {
+                    ui.virtual_item_controls(at);
+                }
+                at = above;
+            }
         }
         Ok(())
     }

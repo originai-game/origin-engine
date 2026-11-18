@@ -24,6 +24,160 @@ fn built(d: &Doc, list: &str, item: &str) -> Vec<UiElement> {
 }
 
 #[test]
+fn virtual_rows_leave_focus_selection_and_padding_to_their_controls() {
+    let rows = json!([
+        {"id":"a", "name":"Ember Blade"},
+        {"id":"b", "name":"Health Potion"},
+        {"id":"c", "name":"Iron Shield"}
+    ]);
+    let text = r#"<meta name="component" content="t">
+<div id="Root" role="grid">
+  <div id="Head"><text id="Heading">Item</text></div>
+  <list id="Rows" row-height="32" height="120">
+    {#each $rows as r (r.id)}
+      <div id="Content">{#if $controls}<button id="Row" role="row" aria-selected={r.id == "b"} onclick={choose}><div id="Name">{r.name}</div></button>{:else}<text>{r.name}</text>{/if}</div>
+    {/each}
+  </list>
+</div>
+<style>
+#Root { width: 240px; }
+#Head, #Row { width: stretch; height: 32px; padding: 0 12px; border: 0; box-sizing: border-box; }
+#Head { display: flex; align-items: center; }
+#Row::part(base) { justify-content: start; padding: 0 12px; }
+#Rows, #Content { width: stretch; }
+</style>"#;
+    for (tag, prefix) in [("list", "Row"), ("cells", "Cell")] {
+        let text = text
+            .replace("<list ", &format!("<{tag} "))
+            .replace("</list>", &format!("</{tag}>"));
+        let text = if tag == "cells" {
+            text.replace(
+                "row-height=\"32\"",
+                "cell-height=\"32\" cell-width=\"240\" cell-columns=\"1\"",
+            )
+        } else {
+            text
+        };
+        let mut d = mount(&text, &[("rows", rows.clone()), ("controls", json!(true))]);
+        let a = format!("Rows/{prefix}#a/Content#a/Row");
+        let b = format!("Rows/{prefix}#b/Content#b/Row");
+        let c = format!("Rows/{prefix}#c/Content#c/Row");
+        assert_eq!(
+            d.ui.a11y().focus_order,
+            [&a, &b, &c].map(|p| format!("test:t/{p}")),
+            "only authored controls enter the focus order ({tag})"
+        );
+        assert_eq!(
+            d.get(&format!("{a}/Name")).x,
+            d.get("Heading").x,
+            "cells align with the heading"
+        );
+        assert!(d.ui.a11y().nodes.iter().all(|n| n.role != "option"));
+        assert!(d.a11y(&b).states.contains(&"selected".to_string()));
+        d.ui.navigate(Nav::Next);
+        idle(&mut d, 1);
+        assert_eq!(focus(&d, 0), a);
+        d.step(InputFrame {
+            keys: vec![UiKey::Down],
+            ..Default::default()
+        });
+        assert_eq!(focus(&d, 0), b);
+        d.step(InputFrame {
+            gamepad: GamepadFrame {
+                pressed: GamepadFrame::DOWN,
+                ..Default::default()
+            },
+            ..Default::default()
+        });
+        assert_eq!(focus(&d, 0), c);
+        let events = d.click(&b);
+        assert!(events.iter().any(|e| e.name == "choose"));
+        assert!(
+            events.iter().all(|e| e.kind != "select"),
+            "no generated option selection"
+        );
+        d.edit("rows", json!({"op":"move", "key":"b", "before":"a"}));
+        assert_eq!(
+            focus(&d, 0),
+            b,
+            "focus remains on the authored keyed control"
+        );
+        assert!(d.get(&b).y < d.get(&a).y);
+        d.set("controls", json!(false));
+        assert_eq!(
+            d.ui.a11y().focus_order,
+            ["b", "a", "c"].map(|key| format!("test:t/Rows/{prefix}#{key}")),
+            "plain content restores the selectable wrapper"
+        );
+        assert_eq!(d.a11y(&format!("Rows/{prefix}#b")).role, "option");
+        d.set("controls", json!(true));
+        assert_eq!(
+            d.ui.a11y().focus_order,
+            [&b, &a, &c].map(|p| format!("test:t/{p}")),
+            "retained control insertion removes the wrapper focus again"
+        );
+        assert_eq!(d.get(&format!("{a}/Name")).x, d.get("Heading").x);
+        for index in 0..12 {
+            d.edit(
+                "rows",
+                json!({"op":"insert", "row":{"id":format!("tail{index}"), "name":"More"}}),
+            );
+        }
+        d.focus = Some(format!("test:t/{b}"));
+        idle(&mut d, 1);
+        for key in ["a".to_string(), "c".to_string()]
+            .into_iter()
+            .chain((0..12).map(|i| format!("tail{i}")))
+        {
+            d.step(InputFrame {
+                keys: vec![UiKey::Down],
+                ..Default::default()
+            });
+            assert_eq!(
+                focus(&d, 0),
+                format!("Rows/{prefix}#{key}/Content#{key}/Row")
+            );
+        }
+        let at = center(&d, "Rows");
+        d.step(InputFrame {
+            wheel: Vec2::new(0.0, 5000.0),
+            ..InputFrame::hover(at.x, at.y)
+        });
+        idle(&mut d, 2);
+        let last = d.get(&format!("Rows/{prefix}#tail11/Content#tail11/Row"));
+        let viewport = d.get("Rows");
+        assert!((last.y + last.height - viewport.y - viewport.height).abs() < 0.5);
+        assert!(d.ui.a11y().nodes.iter().all(|n| n.role != "option"));
+        d.step(InputFrame {
+            wheel: Vec2::new(0.0, -5000.0),
+            ..InputFrame::hover(at.x, at.y)
+        });
+        idle(&mut d, 2);
+        let start = d.get(&b).y;
+        let pointer = center(&d, &a);
+        d.events.clear();
+        let mut fingers = Fingers::new();
+        d.step(fingers.at(&[(0, pointer)]));
+        d.step(fingers.at(&[(0, pointer), (1, pointer + Vec2::new(40.0, 0.0))]));
+        for k in 1..=3 {
+            let moved = pointer - Vec2::new(0.0, 12.0 * k as f32);
+            d.step(fingers.at(&[(0, moved), (1, moved + Vec2::new(40.0, 0.0))]));
+        }
+        d.step(fingers.lift(1));
+        d.step(fingers.lift(0));
+        assert!(
+            d.el(&b).is_none_or(|row| row.y < start),
+            "two fingers scroll the authored controls ({tag})"
+        );
+        assert!(
+            d.events
+                .iter()
+                .all(|e| e.name != "choose" && e.kind != "select")
+        );
+    }
+}
+
+#[test]
 fn keyed_rows_measure_anchor_navigate_and_restore() {
     let keys: Vec<String> = (0..100).map(|n| format!("item{n}")).collect();
     let rows: Vec<Value> = keys.iter().map(|k| row(k)).collect();

@@ -67,9 +67,9 @@ kinds! {
     Scroll children "scroll"
         "A column that scrolls its content.";
     List children "list"
-        "A virtualised list: its `for` builds only the rows in view, each a selectable row.";
+        "A virtualised list: its keyed each builds only the rows in view. Plain-content rows are selectable options. When a row supplies its own focusable controls, its wrapper is structural, with no focus target, option role or padding; the authored controls own focus and selection.";
     Cells children "cells"
-        "A virtualised grid of equal cells: its `for` builds only the cells in view.";
+        "A virtualised grid of equal cells: its keyed each builds only the cells in view. Plain-content cells are selectable options. When a cell supplies its own focusable controls, its wrapper is structural, with no focus target, option role or padding; the authored controls own focus and selection.";
     Label leaf "label"
         "A text.";
     Inline children "inline"

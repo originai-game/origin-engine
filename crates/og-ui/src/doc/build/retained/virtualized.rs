@@ -167,7 +167,16 @@ impl RetainedHost {
                 } else {
                     ui.list_item(index, false)
                 };
-                if response.clicked {
+                let row = ui.tree.parent();
+                let outer = self.materializing.replace(materialization);
+                let result = children
+                    .iter()
+                    .try_for_each(|child| self.emit(ui, child, env, events, writes));
+                self.materializing = outer;
+                let controls = ui.virtual_item_controls(row);
+                ui.close();
+                result?;
+                if response.clicked && !controls {
                     let path = format!(
                         "{}/{}",
                         element.path,
@@ -175,13 +184,6 @@ impl RetainedHost {
                     );
                     build.event(&path, "select", &element.id, json!(key));
                 }
-                let outer = self.materializing.replace(materialization);
-                let result = children
-                    .iter()
-                    .try_for_each(|child| self.emit(ui, child, env, events, writes));
-                self.materializing = outer;
-                ui.close();
-                result?;
             }
             Ok(())
         })();
