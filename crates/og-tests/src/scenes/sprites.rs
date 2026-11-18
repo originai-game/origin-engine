@@ -145,37 +145,32 @@ fn pixel_figure(tunic: [u8; 3]) -> TextureData {
     t
 }
 
-/// The `sprites-shadow` scene (see [`build`]).
+/// The `sprites-shadow` scene (see [`build`]): an HD-2D party in the
+/// shrine court in the late afternoon. Three painted heroes (the knight,
+/// the mage, the ranger) stand on the flags with drop shadows along the
+/// sun, the ranger's darker; a second knight by the column has none;
+/// a spinning rune token drawn from a texture array casts one too; the
+/// column and a crate cast their own.
 pub fn sprites_shadow_scene() -> RenderScene {
+    use crate::kit;
     use og_render::{SpriteArray, SpriteShadow, TextureArrayData, TextureFilter, TextureSource};
+    // The flags' top, which the party stands on and the drop shadows lie on.
+    const FLAGS: f32 = 0.01;
     let mut scene = RenderScene::new();
-    ground(&mut scene, 40.0, 1.0, 0.9);
-    // The set: a pillar and a crate casting their own shadows.
-    let stone = scene.add_material(Material {
-        base_color: [0.72, 0.7, 0.66, 1.0],
-        roughness: 0.8,
-        ..Default::default()
-    });
-    let pillar = scene.add_mesh(shapes::cuboid(Vec3::new(0.8, 2.6, 0.8)));
-    let crate_mesh = scene.add_mesh(shapes::cuboid(Vec3::splat(0.9)));
-    scene.add_instance(
-        pillar,
-        stone,
-        Mat4::from_translation(Vec3::new(3.2, 1.3, -2.0)),
-    );
-    scene.add_instance(
-        crate_mesh,
-        stone,
-        Mat4::from_translation(Vec3::new(-3.4, 0.45, 0.4)) * Mat4::from_rotation_y(0.4),
-    );
-    let figures: Vec<_> = [[200, 60, 60], [60, 120, 210], [80, 170, 90]]
-        .into_iter()
-        .map(|tunic| {
-            let t = scene.add_texture(pixel_figure(tunic));
-            scene.set_texture_filter(t, TextureFilter::Nearest);
-            t
-        })
-        .collect();
+    crate::shadow_scenes::court(&mut scene);
+    kit::prop(&mut scene, "column").place(&mut scene, Vec3::new(3.2, 0.0, -2.0), 0.3, 3.4);
+    kit::prop(&mut scene, "crate").place(&mut scene, Vec3::new(-2.9, 0.0, 0.2), 0.4, 0.9);
+    // Each hero at its painting's aspect, 1.7 m tall.
+    let hero = |scene: &mut RenderScene, name: &str| {
+        let rel = format!("sprites2d/hero-{name}.png");
+        let t = kit::picture(scene, &rel, true);
+        let img = image::load_from_memory(&crate::scenes::asset(&rel).expect("hero sprite"))
+            .expect("hero sprite");
+        (t, img.width() as f32 / img.height() as f32)
+    };
+    let knight = hero(&mut scene, "knight");
+    let mage = hero(&mut scene, "mage");
+    let ranger = hero(&mut scene, "ranger");
     let wheel = scene
         .add_texture_array(TextureArrayData {
             layers: (0..8)
@@ -184,14 +179,13 @@ pub fn sprites_shadow_scene() -> RenderScene {
         })
         .expect("eight frames of one size");
     scene.set_texture_array_filter(wheel, TextureFilter::Nearest);
-    let stand = |x: f32, z: f32, size: f32| Sprite {
-        position: Vec3::new(x, 0.0, z),
-        size: Vec2::splat(size),
+    let stand = |x: f32, z: f32, (t, aspect): (og_render::TextureHandle, f32)| Sprite {
+        texture: Some(t),
+        position: Vec3::new(x, FLAGS, z),
+        size: Vec2::new(1.7 * aspect, 1.7),
         anchor: Vec2::new(0.5, 0.0),
         ..Default::default()
     };
-    // Three figures with drop shadows, the third darker; a fourth without
-    // one beside the pillar; a wheel drawn from the texture array with one.
     let add = |scene: &mut RenderScene, sprite: Sprite, shadow: f32| {
         let i = scene.sprite.sprites.len() as u32;
         scene.add_sprite(sprite);
@@ -199,58 +193,42 @@ pub fn sprites_shadow_scene() -> RenderScene {
             scene.sprite.sprite_shadows.push(SpriteShadow {
                 sprite: i,
                 opacity: shadow,
-                ..Default::default()
+                ground: og_render::ShadowGround {
+                    height: FLAGS,
+                    ..Default::default()
+                },
             });
         }
         i
     };
-    add(
+    add(&mut scene, stand(-1.6, 0.6, knight), 0.5);
+    add(&mut scene, stand(0.2, -0.4, mage), 0.5);
+    add(&mut scene, stand(1.4, 1.2, ranger), 0.8);
+    add(&mut scene, stand(2.6, -1.0, knight), 0.0);
+    let w = add(
         &mut scene,
         Sprite {
-            texture: Some(figures[0]),
-            ..stand(-1.6, 0.6, 1.4)
+            position: Vec3::new(-0.6, FLAGS, -2.2),
+            size: Vec2::splat(1.2),
+            anchor: Vec2::new(0.5, 0.0),
+            ..Default::default()
         },
-        0.5,
+        0.6,
     );
-    add(
-        &mut scene,
-        Sprite {
-            texture: Some(figures[1]),
-            ..stand(0.2, -0.4, 1.4)
-        },
-        0.5,
-    );
-    add(
-        &mut scene,
-        Sprite {
-            texture: Some(figures[2]),
-            ..stand(1.4, 1.2, 1.4)
-        },
-        0.8,
-    );
-    add(
-        &mut scene,
-        Sprite {
-            texture: Some(figures[1]),
-            ..stand(2.2, -1.6, 1.4)
-        },
-        0.0,
-    );
-    let w = add(&mut scene, stand(-0.6, -2.2, 1.2), 0.6);
     scene.sprite.sprite_arrays.push(SpriteArray {
         sprite: w,
         array: wheel,
         layer: 3,
     });
-    scene.lighting.light = DirectionalLight {
-        direction_to_light: Vec3::new(0.6, 0.8, 0.5),
-        intensity: 3.0,
-        ..Default::default()
-    };
+    // Late afternoon: the sun 22° up in front of the party to the right,
+    // so the shadows run long back and to the left across the flags.
+    crate::sky_scenes::physical_light_under(&mut scene, Vec3::new(0.72, 0.4, 0.57));
+    scene.lighting.light.cast_shadows = true;
     scene.frame.camera = Camera {
-        position: Vec3::new(0.0, 3.6, 7.5),
-        target: Vec3::new(0.0, 0.6, -0.4),
-        exposure: Exposure::linear(0.9),
+        position: Vec3::new(-0.2, 2.3, 6.2),
+        target: Vec3::new(0.2, 0.9, -0.6),
+        far: 2500.0,
+        exposure: Exposure::Manual { ev: 0.0 },
         ..Default::default()
     };
     scene
