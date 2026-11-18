@@ -3,7 +3,7 @@
 //! holds a store, in a scope of its own that goes with it, for each field
 //! of the values and for each name its document reads that they leave
 //! out: a prop's default, else nothing (null, or no rows where the
-//! document iterates it). A list of rows, each an object with its own key
+//! document iterates it). A nonempty list of rows, each an object with its own key
 //! (the field the document's `{#each}` keys it by, else `id`), is a
 //! collection keyed by it, anything else a writable store, which the
 //! document's two-way bindings write and [`Ui::mount_values`] reads back.
@@ -132,7 +132,7 @@ impl Ui {
             let source = SourceId::new(&scope, &name);
             let key = names.get(&name).cloned().flatten().unwrap_or("id".into());
             let command = match value.as_array().map(|items| rows(items, &key)) {
-                Some(Some(items)) => Command::Collection {
+                Some(Some(items)) if !items.is_empty() => Command::Collection {
                     source: source.clone(),
                     key,
                     items,

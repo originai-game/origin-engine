@@ -249,12 +249,29 @@ impl RetainedHost {
             ));
         };
         let item_key = match key {
+            Expr::Path(key) if key == var => Some(""),
             Expr::Path(key) => key
                 .strip_prefix(var.as_str())
                 .and_then(|key| key.strip_prefix('.')),
             _ => None,
         };
-        let list = super::content::collection(&context, path, item_key)?;
+        let mut list = super::content::collection(&context, path, item_key)?;
+        if let ListRef::Collection(source) = &list
+            && ui
+                .docs
+                .state()
+                .memory
+                .reactive
+                .sources
+                .keyed(source)
+                .is_err()
+            && ui.docs.state().memory.reactive.sources.read(source).is_ok()
+        {
+            list = ListRef::Value {
+                source: source.clone(),
+                key: item_key.unwrap_or("id").into(),
+            };
+        }
         let read = Expr::Path(path.clone());
         context.node.key = crate::id::child_key(parent.key, &format!("$each:{id}"));
         let identity = context.node.clone();
@@ -277,7 +294,8 @@ impl RetainedHost {
                 })?;
                 (collection.keys().to_vec(), collection.revision(), None)
             }
-            ListRef::Nested { key, .. } => {
+            ListRef::Strings(items) => (items.as_ref().clone(), 0, None),
+            ListRef::Value { key, .. } | ListRef::Nested { key, .. } => {
                 let (topology, pseudo) = (&self.topology, &self.pseudo_nodes);
                 let binding = self.bindings.insert(
                     &mut ui.docs.state_mut().memory.reactive,
@@ -289,7 +307,13 @@ impl RetainedHost {
                 self.inputs
                     .insert(binding, (identity.clone(), Input::Structure));
                 let value = self.bindings.value(binding).map_err(Clone::clone)?;
-                (nested_keys(value, key)?, 0, Some(binding))
+                let keys = nested_keys(value, key).map_err(|error| {
+                    if matches!(list, ListRef::Value { .. }) && !key.is_empty() {
+                        format!("{}:{}: each over '{path}' needs a keyed list; give each of its rows a unique string {key}",
+                            doc.source, doc.nodes[index].line)
+                    } else { error }
+                })?;
+                (keys, 0, Some(binding))
             }
         };
         let mut each = EachInstance {
@@ -702,7 +726,7 @@ impl RetainedHost {
         value: &Value,
         env: &dyn Env,
     ) -> Result<(), String> {
-        let ListRef::Nested { key, .. } = &self.each[id].list else {
+        let (ListRef::Nested { key, .. } | ListRef::Value { key, .. }) = &self.each[id].list else {
             unreachable!("a collection's each has no list binding")
         };
         let order = nested_keys(value, key)?;

@@ -1,0 +1,6 @@
+{
+  "added": [{
+    "member": "UI string-list iteration",
+    "summary": "Document each blocks can iterate string-list props, writable values and literal defaults using the string itself as the stable key. Distinct nonempty strings retain their controls and focus across reorder; duplicate and empty strings are rejected. Repeated labels still use object rows with distinct keys."
+  }]
+}

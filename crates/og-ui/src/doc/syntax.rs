@@ -222,7 +222,7 @@ impl Parser<'_> {
                         key.split(|c: char| !c.is_alphanumeric() && c != '_' && c != '$')
                             .any(|word| word == i)
                     });
-                    if key.trim() == item || key.contains("$index") || positional {
+                    if key.contains("$index") || positional {
                         return self
                             .fail("key each rows by a stable string field, such as item.id");
                     }

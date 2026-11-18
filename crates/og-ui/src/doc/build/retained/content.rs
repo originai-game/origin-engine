@@ -7,7 +7,9 @@
 
 use super::*;
 use crate::doc::Lit;
-use crate::reactive::bindings::{BindingExpression, ContentRef, Lexical, ListRef, PropRef};
+use crate::reactive::bindings::{
+    BindingExpression, ContentRef, Lexical, ListRef, PropRef, nested_keys,
+};
 
 impl RetainedHost {
     /// `<Card title={item.name}>{#snippet body()}…{/snippet}<p>…</p></Card>`:
@@ -784,6 +786,9 @@ pub(super) fn collection(
         && rest.is_empty()
     {
         return match value {
+            Value::Array(_) if key == Some("") => {
+                Ok(ListRef::Strings(Arc::new(nested_keys(value, "")?)))
+            }
             Value::Array(items) if items.is_empty() => {
                 Ok(ListRef::Collection(crate::doc::NO_ROWS.clone()))
             }
@@ -798,7 +803,9 @@ pub(super) fn collection(
             path: rest.into(),
             key: key
                 .ok_or_else(|| {
-                    format!("each over '{path}' is keyed by a field of its items, as (item.id)")
+                    format!(
+                        "each over '{path}' is keyed by a string item (item) or its field (item.id)"
+                    )
                 })?
                 .into(),
         }),

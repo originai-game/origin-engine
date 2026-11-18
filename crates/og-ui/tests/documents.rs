@@ -1365,6 +1365,138 @@ fn keyed_document_rows_keep_identity_after_reorder_and_build_the_empty_branch() 
 }
 
 #[test]
+fn string_list_each_keeps_value_identity_through_component_props() {
+    let words = r#"<meta name="component" content="Words">
+<meta name="prop:labels" content="list" data-default='["Default","Other"]'>
+<div id="Words">{#each labels as label, i (label)}
+  <button id="Choice" onclick={choose}>{i}: {label}</button>
+{:else}<p id="Empty">No choices</p>{/each}</div>"#;
+    let root = r#"<meta name="component" content="Root">
+<meta name="prop:labels" content="list"><div id="Root">
+<Words id="Live" labels={labels}/><Words id="Defaults"/>
+</div>"#;
+    let mut d = Doc::with_components(&[words], root, &[("labels", json!(["Alpha", "Beta"]))]);
+    let beta = d.get("Choice#Beta").path;
+    assert_eq!(d.get("Choice#Default").text, "0: Default");
+    d.focus = Some(beta.clone());
+    d.step(InputFrame::default());
+    d.set("labels", json!(["New", "Alpha", "Beta"]));
+    assert_eq!(d.ui.focus_path(0), beta);
+    assert_eq!(d.get("Choice#Alpha").text, "1: Alpha");
+    let events = d.click("Choice#Beta");
+    assert!(
+        events
+            .iter()
+            .any(|e| e.name == "choose" && e.row_key == "Beta")
+    );
+    d.set("labels", json!(["Beta"]));
+    assert!(d.el("Choice#Alpha").is_none());
+    assert_eq!(d.get("Choice#Beta").path, beta);
+    assert_eq!(d.get("Choice#Beta").text, "0: Beta");
+    d.set("labels", json!([]));
+    assert_eq!(d.get("Empty").text, "No choices");
+    d.set("labels", json!(["Back"]));
+    assert_eq!(d.get("Choice#Back").text, "0: Back");
+
+    // A rejected update must not destroy the valid mounted rows.
+    for (labels, diagnostic) in [
+        (
+            json!(["Back", "Back"]),
+            "each key 'Back' is in its list twice",
+        ),
+        (json!([""]), "nonempty string"),
+    ] {
+        d.put("labels", labels);
+        d.ui.begin(InputFrame::default(), d.viewport);
+        let error = d.ui.build_retained_documents(&bind::NoEnv).unwrap_err();
+        d.ui.end();
+        assert!(error.contains(diagnostic), "{error}");
+        d.put("labels", json!(["Back"]));
+        d.step(InputFrame::default());
+        assert_eq!(d.get("Choice#Back").text, "0: Back");
+    }
+
+    // Empty pushed values must not be mistaken for an object collection:
+    // its nested component still receives strings when it gains choices.
+    let mut ui = ui_with_font(test_font_metrics());
+    for source in [words, root] {
+        ui.define_document(UiDocument::parse("words.svelte", source).unwrap());
+    }
+    let mount = SourceId::new("test", "words");
+    ui.mount_with_values(mount.clone(), "Root", &json!({"labels": []}))
+        .unwrap();
+    tick(&mut ui, InputFrame::default());
+    ui.set_mount_values(&mount, &json!({"labels": ["A/#%海", "Beta"]}))
+        .unwrap();
+    tick(&mut ui, InputFrame::default());
+    assert!(ui.probe_elements().iter().any(|e| e.text == "0: A/#%海"));
+    assert_eq!(
+        ui.mount_values(&mount).unwrap()["labels"],
+        json!(["A/#%海", "Beta"])
+    );
+}
+
+#[test]
+fn initially_empty_value_lists_keep_nested_reads_and_object_field_writes() {
+    let mut ui = ui_with_font(test_font_metrics());
+    ui.define_document(
+        UiDocument::parse(
+            "nested.svelte",
+            r#"<meta name="component" content="Nested">
+<meta name="prop:rows" content="list"><div id="Root">
+{#each rows as row (row.id)}<div id="Row">
+<input type="checkbox" id="Toggle" bind:checked={row.on}>
+{#each row.tags as tag, i (tag)}<p id="Tag">{i}: {tag}</p>{/each}
+</div>{/each}</div>"#,
+        )
+        .unwrap(),
+    );
+    let mount = SourceId::new("test", "nested");
+    ui.mount_with_values(mount.clone(), "Nested", &json!({"rows": []}))
+        .unwrap();
+    tick(&mut ui, InputFrame::default());
+    ui.set_mount_values(
+        &mount,
+        &json!({"rows": [{"id":"a", "on":false, "tags":["fire", "ice"]}]}),
+    )
+    .unwrap();
+    tick(&mut ui, InputFrame::default());
+    let toggle = ui
+        .probe_elements()
+        .into_iter()
+        .find(|e| e.path.ends_with("Toggle"))
+        .unwrap();
+    for (pressed, released) in [(true, false), (false, true)] {
+        tick(
+            &mut ui,
+            InputFrame {
+                pointer: og_core::glam::Vec2::new(
+                    toggle.x + toggle.width / 2.0,
+                    toggle.y + toggle.height / 2.0,
+                ),
+                pointer_inside: true,
+                down: pressed,
+                pressed,
+                released,
+                ..InputFrame::default()
+            },
+        );
+    }
+    let mut values = ui.mount_values(&mount).unwrap();
+    assert_eq!(values["rows"][0]["on"], true);
+    values["rows"][0]["tags"] = json!(["ice", "fire"]);
+    ui.set_mount_values(&mount, &values).unwrap();
+    tick(&mut ui, InputFrame::default());
+    let tags: Vec<_> = ui
+        .probe_elements()
+        .into_iter()
+        .filter(|e| e.id.starts_with("Tag"))
+        .map(|e| e.text)
+        .collect();
+    assert_eq!(tags, ["0: ice", "1: fire"]);
+}
+
+#[test]
 fn length_tokens_follow_the_active_style_in_layout_and_states() {
     let source = r#"<meta name="screen" content="tokens" data-layer="hud">
 <column id="Root">

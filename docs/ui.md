@@ -67,6 +67,13 @@ syntax. A document must meet these requirements:
   0, in the list's order, following a move, insert or remove. It is for
   display (a rank, a slot number); a key that uses it is refused, since a
   row keeps its identity when the list reorders.
+- `{#each labels as label, i (label)}` iterates a string-list prop or
+  writable value, keyed by each string itself. Strings must be nonempty
+  and unique; repeated labels need object rows with distinct keys, not
+  index keys. Literal string-list defaults work too. Reordering preserves
+  the kept strings' controls, focus and state; changing a string removes
+  its old row and creates a new one. Strings remain strings when read or
+  passed to another component, and cannot be written through the row alias.
 - `{#each row.cells as cell, i (cell.id)}` inside an each reads a list held
   in a row: an array of objects, each with a nonempty string key field,
   none twice. Its rows follow the list as the holding field is patched

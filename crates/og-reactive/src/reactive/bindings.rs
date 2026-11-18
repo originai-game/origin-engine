@@ -16,6 +16,10 @@ use std::sync::Arc;
 pub enum ListRef {
     /// A keyed collection store.
     Collection(SourceId),
+    /// An array held by a value store; an empty key names the string item itself.
+    Value { source: SourceId, key: String },
+    /// Immutable string-list component defaults.
+    Strings(Arc<Vec<String>>),
     /// A list held in a row (`{#each r.cells as c (c.id)}`): the field
     /// path of `row` holding it, and the path in each item of its key.
     Nested {
@@ -55,6 +59,9 @@ pub fn nested_keys(list: &Value, key: &str) -> Result<Vec<String>, String> {
 impl RowRef {
     /// The collection row field a nested row's list is held in.
     fn held_in(&self) -> Option<Dependency> {
+        if let ListRef::Value { source, .. } = &self.list {
+            return Some(Dependency::Value(source.clone()));
+        }
         let ListRef::Nested { row, path, .. } = &self.list else {
             return None;
         };
@@ -73,19 +80,43 @@ impl RowRef {
 
     /// The collection row this row is, or is held in, and the field path
     /// from that row to `rest` of this one.
-    fn locate(&self, session: &Session, rest: &str) -> Result<(&SourceId, &str, String), String> {
+    fn locate(
+        &self,
+        session: &Session,
+        rest: &str,
+    ) -> Result<(&SourceId, Option<&str>, String), String> {
         match &self.list {
-            ListRef::Collection(source) => Ok((source, &self.key, rest.to_owned())),
+            ListRef::Collection(source) => Ok((source, Some(&self.key), rest.to_owned())),
+            ListRef::Value { source, key } => {
+                let at = nested_keys(session.read_value(source)?, key)?
+                    .iter()
+                    .position(|key| *key == self.key)
+                    .ok_or_else(|| source.error(&format!("item '{}' was removed", self.key)))?;
+                Ok((
+                    source,
+                    None,
+                    if rest.is_empty() {
+                        at.to_string()
+                    } else {
+                        format!("{at}.{rest}")
+                    },
+                ))
+            }
+            ListRef::Strings(_) => Err("literal string-list items are read only".into()),
             ListRef::Nested { row, path, key } => {
                 let (source, root, path) = row.locate(session, path)?;
                 let (field, tail) = path.split_once('.').unwrap_or((&path, ""));
-                let list = session
-                    .sources
-                    .keyed(source)?
-                    .row(root)
-                    .ok_or_else(|| source.error(&format!("row '{root}' was removed")))?
-                    .get(field)
-                    .and_then(|value| get_path(value, tail));
+                let list = if let Some(root) = root {
+                    session
+                        .sources
+                        .keyed(source)?
+                        .row(root)
+                        .ok_or_else(|| source.error(&format!("row '{root}' was removed")))?
+                        .get(field)
+                        .and_then(|value| get_path(value, tail))
+                } else {
+                    get_path(session.read_value(source)?, &path)
+                };
                 let at = nested_keys(list.as_deref().unwrap_or(&Value::Null), key)?
                     .iter()
                     .position(|key| *key == self.key)
@@ -192,6 +223,9 @@ impl BindingContext {
                 return Err(format!("model '{path}' must name a row field"));
             }
             let (source, key, field_path) = row.locate(session, rest)?;
+            let Some(key) = key else {
+                return session.write_model(source, &field_path, value);
+            };
             let (source, key) = (source.clone(), key.to_owned());
             let (field, tail) = field_path.split_once('.').unwrap_or((&field_path, ""));
             let record = session
@@ -433,6 +467,18 @@ impl Tracked<'_, '_> {
         }
         if let Some(row) = self.source.rows.get(root) {
             let session = self.source.session;
+            if let ListRef::Strings(items) = &row.list {
+                let at = items
+                    .iter()
+                    .position(|key| *key == row.key)
+                    .ok_or_else(|| format!("item '{}' was removed", row.key))?;
+                return Ok(if row.position {
+                    Value::from(at)
+                } else {
+                    get_path(&Value::String(row.key.clone()), rest)
+                        .map_or(Value::Null, |value| value.into_owned())
+                });
+            }
             // A nested row's reads are those of the collection row holding
             // it: its list changing is what moves, changes or retires it.
             if let Some(held) = row.held_in() {
@@ -454,7 +500,7 @@ impl Tracked<'_, '_> {
                             .map(Value::from)
                             .ok_or_else(|| source.error(&format!("row '{}' was removed", row.key)))
                     }
-                    ListRef::Nested { .. } => {
+                    ListRef::Value { .. } | ListRef::Nested { .. } => {
                         let (_, _, path) = row.locate(session, "")?;
                         let at = path
                             .rsplit('.')
@@ -462,9 +508,17 @@ impl Tracked<'_, '_> {
                             .and_then(|at| at.parse::<usize>().ok());
                         Ok(Value::from(at.expect("an item's path ends in its index")))
                     }
+                    ListRef::Strings(_) => unreachable!("literal strings handled above"),
                 };
             }
             let (source, key, path) = row.locate(session, rest)?;
+            let Some(key) = key else {
+                self.reads
+                    .borrow_mut()
+                    .insert(Dependency::Value(source.clone()));
+                return Ok(get_path(session.read_value(source)?, &path)
+                    .map_or(Value::Null, |value| value.into_owned()));
+            };
             let (field, tail) = path.split_once('.').unwrap_or((&path, ""));
             self.reads.borrow_mut().insert(if field.is_empty() {
                 Dependency::Row(source.clone(), key.into())
