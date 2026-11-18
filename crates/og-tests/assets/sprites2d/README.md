@@ -24,6 +24,8 @@ sources (the gateway's PNGs) are in the `origin-generated-assets` bucket
 | `hero-knight.png` | `290173466e9314b710430e9534aecb36` | `9b0ad4ab53b7451925365c5054f198e5d0341073dcb4e2d251e3ae64753a8017` | hard key, cropped, 256 px tall |
 | `hero-mage.png` | `2aa0f10784e88477b0b49f6c19ff441c` | `29bc40710c1af6cadf09c9e997f3a1e58ff91bc610becc253855d1ecd46675f1` | hard key, cropped, 256 px tall |
 | `hero-ranger.png` | `5162cb4778ad132ac8934a3827afc7df` | `2634d69313c0924de7d430c5dc1c03a5c89eb5612bd3c9360ea68f8cefe63d18` | hard key, cropped, 256 px tall |
+| `tree-oak.png` | `e464a2b21dbef178276e319e6dc3f59a` | `daa38937c45818767c0f2140625be2dcd773b252921333669758564bef487bb3` | hard key, cropped, 256 px tall |
+| `sign-shield.png` | `c465908610d57a08185e3baf840df7b8` | `cffed06b09bc40623f385a267b28530f16782d41cc3c9e3a9b4af80c26e35cc5` | hard key, cropped, 128 px |
 
 Prompts: a pixel-art cistern chamber (mossy arches, a rusted pipe, a light
 shaft from a grate, torches) with an empty lower third; an alchemist's
@@ -31,4 +33,5 @@ workshop at night (shelves of jars, a furnace, a moonlit window) over an
 empty workbench; a rusted riveted pipe ending in a flanged outlet; an empty
 corked round-bottomed flask; one mossy teal cistern stone block; three HD-2D pixel-art RPG
 heroes (a knight in a red tabard, a mage in a blue hooded robe, a ranger in a
-green cloak), full body, three-quarter front view, on a magenta key.
+green cloak), full body, three-quarter front view, on a magenta key; a round leafy oak; a
+round heraldic shield with a red rim and a dark diagonal bar.

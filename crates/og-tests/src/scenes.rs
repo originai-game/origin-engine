@@ -340,6 +340,8 @@ pub fn asset(rel: &str) -> Result<std::borrow::Cow<'static, [u8]>, String> {
         "sprites2d/hero-knight.png" => include_bytes!("../assets/sprites2d/hero-knight.png"),
         "sprites2d/hero-mage.png" => include_bytes!("../assets/sprites2d/hero-mage.png"),
         "sprites2d/hero-ranger.png" => include_bytes!("../assets/sprites2d/hero-ranger.png"),
+        "sprites2d/tree-oak.png" => include_bytes!("../assets/sprites2d/tree-oak.png"),
+        "sprites2d/sign-shield.png" => include_bytes!("../assets/sprites2d/sign-shield.png"),
         "kit/ground/stone.normal.jpg" => include_bytes!("../assets/kit/ground/stone.normal.jpg"),
         "kit/ground/stone.orm.jpg" => include_bytes!("../assets/kit/ground/stone.orm.jpg"),
         "kit/counter.glb" => include_bytes!("../assets/kit/counter.glb"),
