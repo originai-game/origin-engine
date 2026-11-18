@@ -110,6 +110,9 @@ macro_rules! __og_host_bindings_platform {
             fn og_platform_info(&self, world: u32) -> String {
                 $crate::host_impl::json($crate::og_platform_info(world))
             }
+            fn og_platform_journal(&self, world: u32) -> String {
+                $crate::host_impl::json($crate::og_platform_journal(world))
+            }
             fn og_platform_now(&self, world: u32) -> f64 {
                 $crate::og_platform_now(world)
             }

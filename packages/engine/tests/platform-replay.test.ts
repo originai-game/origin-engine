@@ -46,3 +46,43 @@ test("og replay feeds the platform's recorded answers and notices back at their 
     rmSync(dir, { recursive: true, force: true });
   }
 }, 300_000);
+
+// A web session's answers arrive when the page delivers them, so their ticks
+// are the session's alone: og replay record --platform-journal hands back the
+// session's og.platform.journal at its ticks, as the engine took it (the
+// Player's time and clock included), and compare does the same. Here the
+// purchase's cancellation reached the session at tick 40 and a notice at 45,
+// far later than the native fake answers.
+test("og replay hands a session's og.platform.journal back at its ticks", () => {
+  const dir = mkdtempSync(join(tmpdir(), "og-platform-journal-"));
+  try {
+    const og = (...args: string[]) => Bun.spawnSync([ogBin(), "replay", ...args], { cwd: project });
+    const handed = [
+      { tick: 0, kind: "host", request: 0, value: { host: "player", capabilities: ["purchase.buy"], time: 1767225600000, clock: "player" } },
+      { tick: 40, kind: "answer", request: 1, value: { ok: false, error: { code: "cancelled", message: "closed", retryable: false }, time: 1767225601000, clock: "player" } },
+      { tick: 45, kind: "notice", request: 0, value: { kind: "entitlements", data: { entitlements: [] }, time: 1767225601100, clock: "player" } },
+    ];
+    const journal = join(dir, "journal.json");
+    writeFileSync(journal, JSON.stringify(handed));
+    const trace = join(dir, "trace.json");
+    const rec = og("record", project, "--commands", "1:wait", "--ticks", "60", "--platform-journal", journal, "--out", trace, "--json");
+    expect(rec.exitCode, new TextDecoder().decode(rec.stderr)).toBe(0);
+    const t = JSON.parse(readFileSync(trace, "utf8")) as { platform: { handed?: unknown } };
+    expect(t.platform.handed).toEqual(handed);
+
+    const same = og("compare", trace, project, "--json");
+    const report = JSON.parse(new TextDecoder().decode(same.stdout)) as { same: boolean; firstDivergentTick: number | null };
+    expect([same.exitCode, report.same, report.firstDivergentTick]).toEqual([0, true, null]);
+
+    // Without the journal the cancellation never comes: the replay parts at the tick after it applied.
+    const stripped = JSON.parse(readFileSync(trace, "utf8"));
+    stripped.platform = { host: "none", capabilities: [], entries: [] };
+    const bare = join(dir, "bare.json");
+    writeFileSync(bare, JSON.stringify(stripped));
+    const diverged = og("compare", bare, project, "--json");
+    const r2 = JSON.parse(new TextDecoder().decode(diverged.stdout)) as { same: boolean; firstDivergentTick: number | null };
+    expect([diverged.exitCode, r2.same, r2.firstDivergentTick]).toEqual([3, false, 42]);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+}, 300_000);

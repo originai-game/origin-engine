@@ -4,7 +4,8 @@
 //
 //   bun src/node/replay.ts --entry <game.native.js> [--root <project>] [--project-entry <rel>]
 //       --record <trace.json> --commands "t:action[:args];..." [--ticks N] [--seed S]
-//       [--clock <UTC ms>] [--locale <tag>] [--platform-fake <file.json>] [--keyframe-every K] [--loads <journal.json>] [--json]
+//       [--clock <UTC ms>] [--locale <tag>] [--platform-fake <file.json> | --platform-journal <journal.json>]
+//       [--keyframe-every K] [--loads <journal.json>] [--json]
 //   bun src/node/replay.ts --entry <game.native.js> [--root <project>] --compare <trace.json> [--json]
 //
 // Both run the game as `og run --no-render --commands` does (headless, no
@@ -31,6 +32,12 @@
 //   tick each og.load.imageData was put in place); `--loads` records a run
 //   with a given journal (one a web session reported, where the browser's
 //   decode time chose the ticks) put in place at its ticks.
+//   `--platform-journal` records a run with a given og.platform.journal (what
+//   a session's host handed the engine and the tick each was handed at: on
+//   the web the page's answers, which arrive when the page delivers them),
+//   each handed back at its tick as the engine took it, time and clock
+//   included; the trace keeps it as `platform.handed`, which --compare
+//   hands back the same way.
 // - --compare replays the trace's script, seed, clock, locale and loads and hashes
 //   each tick within the trace's table, so what a newer engine added is left
 //   out and what it removed differs. At the first keyframe at or after the
@@ -51,7 +58,7 @@ import { openAudio } from "./audio.ts";
 import { bundleHash } from "./bundle-hash.ts";
 import { nativePlatform, readFake } from "./platform.ts";
 import type { PlatformAnswer, PlatformHost, PlatformLink, PlatformNotice } from "../platform-local.ts";
-import { createEngine, fixedClock, type Engine, type GameToken } from "../runtime.ts";
+import { boundHost, createEngine, fixedClock, type Engine, type GameToken } from "../runtime.ts";
 import { og } from "../index.ts";
 import type { World } from "../../types/index.d.ts";
 
@@ -83,6 +90,16 @@ export interface PlatformJournal {
   host: string;
   capabilities: string[];
   entries: Array<{ tick: number; request: number; answer: PlatformAnswer } | { tick: number; notice: PlatformNotice }>;
+  /** A session's og.platform.journal (--platform-journal): handed back as the engine took it, instead of `entries`. */
+  handed?: PlatformHanded[];
+}
+
+/** An entry of og.platform.journal. */
+export interface PlatformHanded {
+  tick: number;
+  kind: "host" | "answer" | "notice";
+  request: number;
+  value: unknown;
 }
 
 const argv = process.argv.slice(2);
@@ -98,6 +115,7 @@ let clock: number | undefined;
 let loadsPath: string | undefined;
 let locale: string | undefined;
 let platformFake: string | undefined;
+let platformJournal: string | undefined;
 let keyframeEvery = 30;
 let asJson = false;
 for (let i = 0; i < argv.length; i++) {
@@ -120,6 +138,7 @@ for (let i = 0; i < argv.length; i++) {
   else if (a === "--locale") locale = next();
   else if (a === "--keyframe-every") keyframeEvery = Number(next());
   else if (a === "--platform-fake") platformFake = resolve(next());
+  else if (a === "--platform-journal") platformJournal = resolve(next());
   else if (a === "--json") asJson = true;
   else usage(`unknown argument '${a}'`);
 }
@@ -154,6 +173,7 @@ if (comparePath) {
   if (commands === undefined) usage("og replay record needs --commands or --commands-file");
   if (ticks !== undefined && (!Number.isInteger(ticks) || ticks <= 0)) usage("--ticks takes a whole number of fixed steps");
   if (!Number.isInteger(keyframeEvery) || keyframeEvery <= 0) usage("--keyframe-every takes a whole number of ticks");
+  if (platformFake !== undefined && platformJournal !== undefined) usage("--platform-fake scripts a live platform and --platform-journal replays a recorded one: pass one");
 }
 if (seed !== undefined && (!Number.isInteger(seed) || seed < 0)) usage("--seed takes a whole number");
 if (clock !== undefined && !(Number.isFinite(clock) && clock > 0)) usage("--clock takes UTC milliseconds since 1970, such as 1767225600000");
@@ -256,13 +276,54 @@ function journalHost(j: PlatformJournal): PlatformHost {
   };
 }
 
+/**
+ * A session's og.platform.journal as the host: each entry handed to the engine at its tick as the engine took it
+ * (an answer once its call was made), past Engine's timing, so the host's clock and its time reach the world as they
+ * did in the session.
+ */
+function handedHost(list: readonly PlatformHanded[]): PlatformHost {
+  const asked = new Set<number>();
+  let at = 0;
+  return {
+    host: "journal",
+    capabilities: [],
+    handle(calls) {
+      for (const c of calls) asked.add(c.request);
+    },
+    poll(link) {
+      const abi = boundHost()!.abi;
+      while (at < list.length) {
+        const e = list[at]!;
+        if (e.tick > link.tick || (e.kind === "answer" && !asked.has(e.request))) return;
+        const value = JSON.stringify(e.value);
+        if (e.kind === "host") abi.og_platform_set_host(engine.id, value);
+        else if (e.kind === "answer") abi.og_platform_answer(engine.id, e.request, value);
+        else abi.og_platform_notify(engine.id, value);
+        at++;
+      }
+    },
+  };
+}
+
+let handed: PlatformHanded[] | undefined = trace?.platform?.handed;
+if (platformJournal !== undefined) {
+  try {
+    handed = JSON.parse(readFileSync(platformJournal, "utf8")) as PlatformHanded[];
+  } catch (e) {
+    fail(`--platform-journal ${platformJournal}: ${e instanceof Error ? e.message : String(e)}`);
+  }
+  if (!Array.isArray(handed)) fail(`--platform-journal ${platformJournal}: expected og.platform.journal's list`);
+}
+
 // Uncooked loads put in place at the ticks the recorded run did (og.load.replayCompletions).
 const loadsJournal = trace?.loads ?? (loadsPath ? (JSON.parse(readFileSync(loadsPath, "utf8")) as ReplayTrace["loads"]) : undefined);
 if (loadsJournal) {
   const r = og.load.replayCompletions(engine.world as unknown as World, loadsJournal);
   if (!r.ok) fail(`the loads journal: ${r.reason}`);
 }
-engine.attachPlatform(trace?.platform ? journalHost(trace.platform) : recording(nativePlatform(undefined, fakeOf())));
+engine.attachPlatform(
+  handed ? handedHost(handed) : trace?.platform ? journalHost(trace.platform) : recording(nativePlatform(undefined, fakeOf())),
+);
 const opened = openAudio(engine.id, "null");
 if (!opened.ok) fail(`audio: ${opened.reason}`);
 const sink = opened.value;
@@ -365,7 +426,7 @@ if (!trace) {
     table,
     hashes,
     keyframes,
-    platform: journal,
+    platform: handed ? { host: "journal", capabilities: [], entries: [], handed } : journal,
     loads: [...og.load.completions(engine.world as unknown as World)],
   };
   mkdirSync(dirname(recordPath!), { recursive: true });

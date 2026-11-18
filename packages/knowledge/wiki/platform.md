@@ -8,7 +8,7 @@ See `saves §7`.
 
 - **TypeScript**: functions are the namespace `og.platform`; components, resources and events are tokens on `og`.
 - **Publish builds**: kept (members may override).
-- **Core** (what most games use): `PlatformResult`, `og.platform.storeGet`, `og.platform.result`, `QuickPlayDesc`, `og.platform.quickPlay`; 70 more are advanced (`og api show platform --all`).
+- **Core** (what most games use): `PlatformResult`, `og.platform.storeGet`, `og.platform.result`, `QuickPlayDesc`, `og.platform.quickPlay`; 72 more are advanced (`og api show platform --all`).
 - **Index**: [every module and guide](index.md).
 
 ```ogt
@@ -80,6 +80,8 @@ module platform {
 | [`og.platform.notice`](platform/fn-notice.md) | function | `(world: World, notice: number): PlatformNoticeData \| null` | A notice og.PlatformNotice announced. |
 | [`og.platform.result`](platform/fn-result.md) | function | `(world: World, request: number): PlatformResult \| null` | The answer to a call, once it arrived. |
 | [`og.platform.info`](platform/fn-info.md) | function | `(world: World): PlatformInfo` | What answers platform calls here, and what it answers. |
+| [`PlatformHanded`](platform/type-PlatformHanded.md) | struct |  | One thing the host handed the engine, as the engine took it: an entry of og.platform.journal. |
+| [`og.platform.journal`](platform/fn-journal.md) | function | `(world: World): readonly PlatformHanded[]` | Everything the host handed this engine, oldest first, with the tick it was handed at: platform answers are host input, and `og replay record --platform-journal` hands these back at the same ticks, so… |
 | [`og.platform.now`](platform/fn-now.md) | function | `(world: World): number` | The host's wall-clock time, UTC milliseconds since 1970, as of this tick: what the host last told the engine (when it attached, and with every answer, applied at a tick's start like the answers) move… |
 | [`RoomDesc`](platform/type-RoomDesc.md) | desc struct |  | A room to create. |
 | [`QuickPlayDesc`](platform/type-QuickPlayDesc.md) | desc struct |  | Quick play: what this engine waits to be matched for (og.platform.quickPlay). |

@@ -113,6 +113,7 @@ export const platform = Object.freeze({
   notice: (world: W, notice: number) => parse(abi().og_platform_notice(world.id, notice)),
   result: (world: W, request: number) => parse(abi().og_platform_result(world.id, request)),
   info: (world: W) => parse(abi().og_platform_info(world.id)),
+  journal: (world: W) => parse(abi().og_platform_journal(world.id)),
   now: (world: W) => abi().og_platform_now(world.id),
   roomCreate: (world: W, desc?: unknown) => parse(abi().og_platform_room_create(world.id, json(desc))),
   roomJoin: (world: W, room: string) => parse(abi().og_platform_room_join(world.id, room)),

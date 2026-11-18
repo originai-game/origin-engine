@@ -15550,6 +15550,52 @@ impl ToJson for ShareDesc {
     }
 }
 
+/// `PlatformHanded`: packages/knowledge/wiki/platform.md.
+#[derive(Clone, Debug, PartialEq)]
+pub struct PlatformHanded {
+    pub tick: f64,
+    pub kind: String,
+    pub request: u32,
+    pub value: Value,
+}
+
+impl Default for PlatformHanded {
+    fn default() -> Self {
+        Self {
+            tick: Default::default(),
+            kind: Default::default(),
+            request: Default::default(),
+            value: Default::default(),
+        }
+    }
+}
+
+impl FromJson for PlatformHanded {
+    fn from_json(v: &Value) -> Result<Self, String> {
+        Self::from_json_over(v, Self::default())
+    }
+    fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
+        let o = object(v)?;
+        Ok(Self {
+            tick: field(o, "tick", d.tick)?,
+            kind: field(o, "kind", d.kind)?,
+            request: field(o, "request", d.request)?,
+            value: field(o, "value", d.value)?,
+        })
+    }
+}
+
+impl ToJson for PlatformHanded {
+    fn to_json(&self) -> Value {
+        let mut o = Map::new();
+        o.insert("tick".into(), self.tick.to_json());
+        o.insert("kind".into(), self.kind.to_json());
+        o.insert("request".into(), self.request.to_json());
+        o.insert("value".into(), self.value.to_json());
+        Value::Object(o)
+    }
+}
+
 /// `RoomDesc`: packages/knowledge/wiki/platform.md.
 #[derive(Clone, Debug, PartialEq)]
 pub struct RoomDesc {

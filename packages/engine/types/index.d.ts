@@ -24912,6 +24912,27 @@ export interface ShareDesc {
 
 
 
+/**
+ * One thing the host handed the engine, as the engine took it: an entry of og.platform.journal.
+ */
+export interface PlatformHanded {
+  /**
+   * The world's tick (world.tick) when it was handed; it applies at the next tick's start.
+   *
+   * @unit ticks (fixed simulation steps)
+   */
+  readonly tick: number;
+  /** `host` (what answers was attached, or its clock told), `answer` or `notice`. */
+  readonly kind: string;
+  /** The call an answer answers; 0 for the others. */
+  readonly request: number;
+  /**
+   * What was handed, with the time the host gave it: the host's info, the answer or the notice.
+   */
+  readonly value: unknown;
+}
+
+
 
 /**
  * A room to create.
@@ -37649,6 +37670,13 @@ export declare namespace og {
      * @param world The world.
      */
     function info(world: World): PlatformInfo;
+    /**
+     * Everything the host handed this engine, oldest first, with the tick it was handed at: platform answers are host input, and `og replay record --platform-journal` hands these back at the same ticks, so a web session, whose answers come when the page delivers them, replays natively. A publish build keeps none.
+     * See `saves §7`.
+     *
+     * @param world The world.
+     */
+    function journal(world: World): readonly PlatformHanded[];
     /**
      * The host's wall-clock time, UTC milliseconds since 1970, as of this tick: what the host last told the engine (when it attached, and with every answer, applied at a tick's start like the answers) moved on by the ticks since. The one wall-clock read game code may make: it is host input, so a replay with the same answers gives the same values.
      * See `saves §7`.

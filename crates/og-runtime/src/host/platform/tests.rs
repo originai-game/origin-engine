@@ -543,3 +543,54 @@ fn a_purchase_is_granted_once_across_a_restore_and_a_replayed_notice() {
     .unwrap();
     assert_eq!(bad["ok"], json!(false));
 }
+
+/// og.platform.journal keeps what the host handed as the engine took it,
+/// with the tick it was handed at (it applies at the next tick's start):
+/// what `og replay record --platform-journal` hands back at that tick. A
+/// refused answer was never taken, so it is not journaled.
+#[test]
+fn the_journal_keeps_what_the_host_handed_at_its_tick() {
+    let e = engine_at_60();
+    host(e, 1_000.0, "player");
+    advance(e, 3);
+    let id = value(&og_platform_store_get(e, "k".into()))
+        .as_u64()
+        .unwrap() as u32;
+    advance(e, 4);
+    let answer = json!({ "ok": true, "data": "v", "time": 2_000.0, "clock": "player" });
+    assert!(og_platform_answer(e, id, answer.to_string()));
+    assert!(
+        !og_platform_answer(e, id, answer.to_string()),
+        "answered twice"
+    );
+    let notice = json!({ "kind": "entitlements", "data": { "entitlements": [] }, "time": 2_100.0 });
+    assert!(og_platform_notify(e, notice.to_string()));
+    let journal = og_platform_journal(e);
+    let entries: Vec<_> = journal
+        .as_array()
+        .unwrap()
+        .iter()
+        .filter(|h| h["kind"] != "host" || h["value"]["host"] == "test")
+        .map(|h| {
+            (
+                h["tick"].clone(),
+                h["kind"].clone(),
+                h["request"].clone(),
+                h["value"].clone(),
+            )
+        })
+        .collect();
+    assert_eq!(
+        entries,
+        [
+            (
+                json!(0),
+                json!("host"),
+                json!(0),
+                json!({ "host": "test", "capabilities": ["store"], "time": 1_000.0, "clock": "player" })
+            ),
+            (json!(7), json!("answer"), json!(id), answer),
+            (json!(7), json!("notice"), json!(0), notice),
+        ]
+    );
+}

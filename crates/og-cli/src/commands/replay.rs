@@ -1,10 +1,14 @@
 //! `og replay record [project] --commands "<script>" | --commands-file <f>
 //! [--ticks N] [--seed S] [--clock <UTC ms>] [--locale <tag>]
-//! [--platform-fake <file.json>] [--keyframe-every K] [--loads <journal.json>] --out <trace.json> [--json]`
+//! [--platform-fake <file.json> | --platform-journal <journal.json>] [--keyframe-every K]
+//! [--loads <journal.json>] --out <trace.json> [--json]`
 //!
 //! `--loads` records with a journal of uncooked loads (og.load.completions,
 //! as a web session reported it) put in place at its ticks; the trace keeps
-//! the run's journal as `loads`, and compare replays it.
+//! the run's journal as `loads`, and compare replays it. `--platform-journal`
+//! records with a session's og.platform.journal (on the web, when the page's
+//! answers and notices arrived), each handed back at its tick; the trace
+//! keeps it, and compare hands it back the same way.
 //!
 //! `og replay compare <trace.json> [project] [--json]`
 //!
@@ -27,7 +31,7 @@ use crate::project::{self, Project};
 use std::path::{Path, PathBuf};
 use std::process::ExitCode;
 
-const USAGE: &str = "usage: og replay record [project] --commands \"t:action[:args];...\" | --commands-file <f> [--ticks N] [--seed S] [--clock <UTC ms>] [--locale <tag>] [--platform-fake <file.json>] [--keyframe-every K] [--loads <journal.json>] --out <trace.json> [--json]\n       og replay compare <trace.json> [project] [--json]";
+const USAGE: &str = "usage: og replay record [project] --commands \"t:action[:args];...\" | --commands-file <f> [--ticks N] [--seed S] [--clock <UTC ms>] [--locale <tag>] [--platform-fake <file.json> | --platform-journal <journal.json>] [--keyframe-every K] [--loads <journal.json>] --out <trace.json> [--json]\n       og replay compare <trace.json> [project] [--json]";
 
 /// What `og replay` was asked.
 struct Args {
@@ -58,7 +62,8 @@ fn parse(args: &[&str]) -> Result<Args, String> {
         match rest[i] {
             "--json" => a.forward.push("--json".into()),
             flag @ ("--commands" | "--commands-file" | "--ticks" | "--seed" | "--clock"
-            | "--locale" | "--keyframe-every" | "--loads" | "--out" | "--platform-fake")
+            | "--locale" | "--keyframe-every" | "--loads" | "--out" | "--platform-fake"
+            | "--platform-journal")
                 if record =>
             {
                 let Some(v) = rest.get(i + 1) else {
@@ -68,9 +73,9 @@ fn parse(args: &[&str]) -> Result<Args, String> {
                     "--out" => {
                         a.out = Some(std::path::absolute(v).map_err(|e| format!("--out {v}: {e}"))?)
                     }
-                    "--platform-fake" => {
-                        let path = std::path::absolute(v)
-                            .map_err(|e| format!("--platform-fake {v}: {e}"))?;
+                    "--platform-fake" | "--platform-journal" => {
+                        let path =
+                            std::path::absolute(v).map_err(|e| format!("{flag} {v}: {e}"))?;
                         a.forward
                             .extend([flag.to_string(), path.display().to_string()]);
                     }

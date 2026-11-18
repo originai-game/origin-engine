@@ -28,4 +28,4 @@ struct RoomDesc {
 }
 ```
 
-<sub>Module `platform` line 475</sub>
+<sub>Module `platform` line 492</sub>

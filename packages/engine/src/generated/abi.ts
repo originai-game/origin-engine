@@ -904,6 +904,8 @@ export interface HostAbi<A, V> {
   og_platform_result(world: number, request: number): string;
   /** `og.platform.info` */
   og_platform_info(world: number): string;
+  /** `og.platform.journal` */
+  og_platform_journal(world: number): string;
   /** `og.platform.now` */
   og_platform_now(world: number): number;
   /** `og.platform.roomCreate` */
@@ -1785,6 +1787,7 @@ export const SYMBOLS: readonly string[] = [
   "og_platform_notice",
   "og_platform_result",
   "og_platform_info",
+  "og_platform_journal",
   "og_platform_now",
   "og_platform_room_create",
   "og_platform_room_join",

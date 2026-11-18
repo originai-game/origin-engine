@@ -85,6 +85,17 @@ pub fn og_platform_result(world: u32, request: u32) -> Option<PlatformResult> {
     })
 }
 
+/// `og.platform.journal`: `[{ tick, kind, request, value }]`, oldest first.
+pub fn og_platform_journal(world: u32) -> Value {
+    #[cfg(not(feature = "publish"))]
+    return with(world, |p| Value::Array(p.journal.clone()));
+    #[cfg(feature = "publish")]
+    {
+        let _ = world;
+        Value::Array(Vec::new())
+    }
+}
+
 pub fn og_platform_info(world: u32) -> PlatformInfo {
     with(world, |p| PlatformInfo {
         host: p.host.clone().unwrap_or_else(|| "none".into()),

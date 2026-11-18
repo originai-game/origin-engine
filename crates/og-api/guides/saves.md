@@ -238,6 +238,15 @@ presses: the probe's `dump_platform` lists every call, its arguments, its
 answer and the ticks, and a replay with the same answers gives the same
 world.
 
+- og.platform.journal keeps everything the host handed the engine (its
+  attach and clock, every answer, every notice) with the tick it was
+  handed at, on every host but a publish build. On the web an answer
+  arrives when the page delivers it, so its tick is the session's own:
+  report the journal with og.load.completions' and record the session
+  with `og replay record --platform-journal <journal.json> --loads
+  <loads.json>`. The trace keeps both, and `og replay compare` hands each
+  answer back at its tick, natively the same world as the browser's.
+
 - Game code names a method and its arguments, never a credential, a URL or
   a cookie. The host owns them and attaches the player's game-scoped
   credential. Every id it hands back (the player, a friend, a purchase, an

@@ -18,7 +18,11 @@ pub fn og_platform_notify(engine: u32, notice: String) -> bool {
     {
         return false;
     }
-    with(engine, |p| p.notices_in.push(v));
+    let tick = tick_now(engine).unwrap_or(0);
+    with(engine, |p| {
+        p.handed(tick, "notice", 0, &v);
+        p.notices_in.push(v);
+    });
     true
 }
 
@@ -57,6 +61,7 @@ pub fn og_platform_answer(engine: u32, request: u32, answer: String) -> bool {
     if v["ok"].as_bool().is_none() {
         return false;
     }
+    let tick = tick_now(engine).unwrap_or(0);
     with(engine, |p| {
         let open = p
             .log
@@ -64,6 +69,7 @@ pub fn og_platform_answer(engine: u32, request: u32, answer: String) -> bool {
             .is_some_and(|r| r.answer.is_none() && !r.oneway && !r.internal)
             && !p.inbox.iter().any(|(id, _)| *id == request);
         if open {
+            p.handed(tick, "answer", request, &v);
             p.inbox.push((request, v));
         }
         open
@@ -78,6 +84,7 @@ pub fn og_platform_set_host(engine: u32, info: String) {
     let tick = tick_now(engine).unwrap_or(0);
     let ms = tick_ms(engine);
     with(engine, |p| {
+        p.handed(tick, "host", 0, &v);
         if let Some(t) = time_of(&v) {
             rebase(p, t, tick, v["clock"].as_str(), ms);
         }

@@ -1011,6 +1011,8 @@ pub trait PlatformApi: Wire {
     fn og_platform_result(&self, world: u32, request: u32) -> String;
     /// `og.platform.info`
     fn og_platform_info(&self, world: u32) -> String;
+    /// `og.platform.journal`
+    fn og_platform_journal(&self, world: u32) -> String;
     /// `og.platform.now`
     fn og_platform_now(&self, world: u32) -> f64;
     /// `og.platform.roomCreate`
@@ -1973,6 +1975,7 @@ pub const SYMBOLS: &[&str] = &[
     "og_platform_notice",
     "og_platform_result",
     "og_platform_info",
+    "og_platform_journal",
     "og_platform_now",
     "og_platform_room_create",
     "og_platform_room_join",

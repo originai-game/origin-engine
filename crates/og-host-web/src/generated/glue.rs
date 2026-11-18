@@ -2249,6 +2249,11 @@ pub fn og_platform_info(world: u32) -> String {
 }
 
 #[wasm_bindgen]
+pub fn og_platform_journal(world: u32) -> String {
+    <Host as PlatformApi>::og_platform_journal(&Host, world)
+}
+
+#[wasm_bindgen]
 pub fn og_platform_now(world: u32) -> f64 {
     <Host as PlatformApi>::og_platform_now(&Host, world)
 }

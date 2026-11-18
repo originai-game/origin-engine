@@ -169,6 +169,22 @@ pub(crate) struct Platform {
     /// Applied notices by number (the last [`KEEP_NOTICES`]).
     notices: BTreeMap<u32, Notice>,
     next_notice: u32,
+    /// og.platform.journal: what the host handed, with the tick it was
+    /// handed at (none in a publish build).
+    #[cfg(not(feature = "publish"))]
+    journal: Vec<Value>,
+}
+
+impl Platform {
+    /// Journals what the host handed at `tick`: `kind` host, answer or
+    /// notice (og.platform.journal).
+    fn handed(&mut self, tick: u64, kind: &str, request: u32, value: &Value) {
+        #[cfg(not(feature = "publish"))]
+        self.journal
+            .push(json!({ "tick": tick, "kind": kind, "request": request, "value": value }));
+        #[cfg(feature = "publish")]
+        let _ = (tick, kind, request, value);
+    }
 }
 
 /// og.platform on one engine: its calls, answers and notices.
