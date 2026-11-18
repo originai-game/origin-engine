@@ -278,19 +278,30 @@ impl Catalog {
         out
     }
 
-    /// The message for `key` in the active locale (through the fallback
-    /// chain), formatted; `None` when no table has it.
-    pub fn t(&self, key: &str, args: &BTreeMap<String, Arg>) -> Option<String> {
+    fn entry(&self, key: &str) -> Option<(&str, &(String, Message))> {
         for t in self.chain() {
-            if let Some((_, m)) = t
+            if let Some(entry) = t
                 .entries
                 .get(key)
                 .or_else(|| self.authored.get(&t.locale)?.get(key))
             {
-                return Some(m.format(&t.locale, args));
+                return Some((&t.locale, entry));
             }
         }
         None
+    }
+
+    /// The unformatted message source, through the same locale fallback
+    /// chain as `t`. A document supplies its arguments after this lookup.
+    pub fn source(&self, key: &str) -> Option<&str> {
+        self.entry(key).map(|(_, (source, _))| source.as_str())
+    }
+
+    /// The message for `key` in the active locale (through the fallback
+    /// chain), formatted; `None` when no table has it.
+    pub fn t(&self, key: &str, args: &BTreeMap<String, Arg>) -> Option<String> {
+        let (locale, (_, message)) = self.entry(key)?;
+        Some(message.format(locale, args))
     }
 
     /// Whether the active locale itself (not a fallback) has `key`.

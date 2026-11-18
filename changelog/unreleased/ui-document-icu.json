@@ -1,0 +1,8 @@
+{
+  "fixed": [
+    {
+      "member": "ui",
+      "summary": "Document t() keeps ICU plural and select branches until its arguments are supplied, restoring plural labels, selected suffixes such as Results' Accuracy percent sign, and quoted literal braces."
+    }
+  ]
+}

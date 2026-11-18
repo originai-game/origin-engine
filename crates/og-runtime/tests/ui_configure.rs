@@ -93,6 +93,28 @@ fn project() -> &'static Path {
             br#"<meta name="screen" content="Vitals" />
 <div id="Vitals"><StatBar value={50} max={100} kind="health" segment={0} shield={0} shieldMax={0} heal={0} recoverable={0} label="" icon="" showValue={false} valueInside={false} valueText="" low={0.3} critical={0.15} bare={false} name="" /></div>"#,
         );
+        write("ui/icu.en.ogt", br#"type strings
+version 1
+---
+locale "en"
+string "icu.select" "{format, select, percent {{value, number}%} other {{value, number}}}"
+string "icu.plural" "{value, plural, one {# lap} other {# laps}}"
+string "icu.quoted" "'{value}' {value}"
+"#);
+        write("ui/icu-value.svelte", br#"<meta name="component" content="IcuValue" />
+<meta name="strings" content="./icu.en.ogt" />
+<meta name="prop:format" content="string" />
+<meta name="prop:value" content="number" />
+<div>
+<p>{t("icu.select", {format: format, value: value})}</p>
+<p>{t("icu.plural", {value: value})}</p>
+<p>{t("icu.select", {format: 'percent', value: 62})}</p>
+<p>{t("icu.quoted", {value: value})}</p>
+</div>"#);
+        write("ui/icu.svelte", br#"<meta name="screen" content="Icu" />
+<meta name="prop:format" content="string" />
+<meta name="prop:value" content="number" />
+<div><IcuValue format={format} value={value} /></div>"#);
         for name in ["Once", "Twice"] {
             let text = format!(
                 "<meta name=\"screen\" content=\"{name}\" />\n<div><div id=\"{name}Box\" class=\"once\"></div></div>\n<style>#{name}Box {{ height: 9px; }}</style>"
@@ -154,6 +176,52 @@ fn configure(engine: u32, desc: Value) {
 
 fn theme(engine: u32) -> Value {
     serde_json::from_str(&og_runtime::host_impl::json(og_ui_theme(engine))).unwrap()
+}
+
+#[test]
+fn cooked_component_translations_keep_icu_branches_until_arguments_arrive() {
+    let e = engine();
+    let style = value(og_runtime::host_impl::answer(og_load_style(
+        e,
+        "styles/mini".into(),
+    )));
+    let font = value(og_runtime::host_impl::answer(og_runtime::og_load_font(
+        e,
+        "styles/mini/Body.ttf".into(),
+    )));
+    configure(e, json!({"style": style, "font": font}));
+    value(og_runtime::host_impl::answer(og_runtime::og_load_document(
+        e,
+        "ui/icu.svelte".into(),
+    )));
+    for (format, number, expected) in [
+        ("percent", 62, vec!["62%", "62 laps", "62%", "{value} 62"]),
+        ("number", 1, vec!["1", "1 lap", "62%", "{value} 1"]),
+    ] {
+        value(og_runtime::host_impl::answer(og_runtime::og_ui_replace(
+            e,
+            "Icu".into(),
+            Some(json!({"format": format, "value": number}).to_string()),
+        )));
+        og_runtime::og_engine_frame(e, 1000.0 / 60.0);
+        let ui = og_runtime::shared_ui(e).unwrap();
+        let ui = ui.lock();
+        let text: Vec<_> = ui
+            .frame()
+            .items
+            .iter()
+            .filter_map(|item| match &item.cmd {
+                og_ui::DrawCmd::Text { text, .. } => Some(text.as_str()),
+                _ => None,
+            })
+            .collect();
+        assert_eq!(
+            text,
+            expected,
+            "{format}/{number}: {:?}",
+            ui.frame().warnings
+        );
+    }
 }
 
 /// The warnings logged since the last call.

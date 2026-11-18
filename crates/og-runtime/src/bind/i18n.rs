@@ -103,10 +103,10 @@ fn tag(engine: u32) -> String {
     })
 }
 
-/// A key's message in the active locale with no arguments, `None` when no
-/// table has it (a document's `key` prop).
+/// A document's unformatted message. Its binding supplies arguments and
+/// formats once; formatting here would discard plural/select branches.
 pub(crate) fn message(engine: u32, key: &str) -> Option<String> {
-    with(engine, |s| s.catalog.t(key, &BTreeMap::new()))
+    with(engine, |s| s.catalog.source(key).map(str::to_string))
 }
 
 /// The host's locale at creation (`og run --locale`, the browser's language).
