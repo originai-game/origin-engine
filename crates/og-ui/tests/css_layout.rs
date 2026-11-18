@@ -76,6 +76,27 @@ use crate::support::{Doc, with_doc};
 use og_core::glam::Vec2;
 use og_ui::{ImageAlpha, InputFrame, UiKey};
 
+#[test]
+fn absolute_percentage_max_block_size_uses_containing_block() {
+    let text = r#"<meta name="component" content="t">
+<div id="Slot" class={$size}><span id="Reason">NO MANA</span></div>
+<style>
+#Slot { position: relative; width: 52px; height: 51px; }
+#Slot.short { height: 20px; }
+#Reason { position: absolute; top: 50%; left: 50%; translate: -50% -50%; max-inline-size: 100%; max-block-size: 84%; font-size: 12px; line-height: 1; font-weight: 700; font-stretch: 78%; text-align: center; overflow: hidden; }
+</style>"#;
+    with_doc(text, &[("size", serde_json::json!(""))], |d| {
+        let reason = d.get("Reason");
+        assert_eq!(reason.height, 24.0, "{reason:?}");
+        // A genuinely limiting percentage still clips: 84% of 20px,
+        // snapped to the test viewport's device pixel, is 17px.
+        d.set("size", serde_json::json!("short"));
+        assert_eq!(d.get("Reason").height, 17.0);
+        d.set("size", serde_json::json!(""));
+        assert_eq!(d.get("Reason").height, 24.0);
+    });
+}
+
 /// Re-laying out an absolutely positioned overlay must not replace the
 /// scroller's inherited paint clip with the whole surface.
 #[test]

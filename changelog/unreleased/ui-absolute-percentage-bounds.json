@@ -1,0 +1,8 @@
+{
+  "fixed": [
+    {
+      "member": "ui",
+      "summary": "Absolutely positioned auto-height labels resolve percentage block-size bounds against their containing block, not their own provisional height; final placement does not apply those bounds a second time."
+    }
+  ]
+}

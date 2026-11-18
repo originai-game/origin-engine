@@ -775,19 +775,15 @@ impl Ui {
                 let mut r = crate::layout::on_screen(&self.tree.nodes, i, &cb, &offset, None);
                 if crate::layout::auto_height(&self.tree.nodes[i]) {
                     // Its height is its content's at its width: laid out at
-                    // that width first, then placed by that height.
-                    layout(
+                    // that width against the containing block, not its
+                    // own provisional rectangle's height.
+                    let h = crate::layout::content_height(
                         &mut self.tree.nodes,
                         i,
-                        r,
+                        r.width,
+                        cb,
                         &mut measure,
-                        &offset,
-                        dpr,
-                        clip,
-                        &mut self.layout.cache,
-                        &mut self.layout.queries,
                     );
-                    let h = self.tree.nodes[i].layout.css.size.height;
                     r = crate::layout::on_screen(&self.tree.nodes, i, &cb, &offset, Some(h));
                 }
                 place_box(

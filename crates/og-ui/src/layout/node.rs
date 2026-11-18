@@ -1237,6 +1237,10 @@ impl Node {
         if let Some(p) = self.layout.placement.filter(|_| placed) {
             u.width = Size::Fixed(p.size[0]);
             u.height = Size::Fixed(p.size[1]);
+            // Placement already applied the bounds against its containing
+            // block. This layout runs inside the resulting rectangle:
+            // resolving percentage bounds again would use the box itself.
+            u.bounds = [[None; 2]; 2];
             u.padding = u.padding.add(&p.padding);
         }
         if let Some(w) = self.layout.query_w {
