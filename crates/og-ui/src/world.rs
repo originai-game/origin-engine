@@ -260,6 +260,16 @@ pub struct WorldAnchorDesc {
     pub declutter: Declutter,
     /// Higher keeps its place; equal priorities favour the nearer.
     pub priority: i32,
+    /// A keyed loot column. Empty leaves ordinary independent placement.
+    pub stack_group: String,
+    /// Maximum item rows (zero: unlimited); the representative supplies it.
+    pub stack_max: usize,
+    /// This row is the group's optional overflow chip, not an item.
+    pub stack_more: bool,
+    /// Gap between rows, CSS px before distance scaling.
+    pub stack_gap: f32,
+    /// Stable item key returned to the overflow chip, a document each key.
+    pub stack_key: String,
     /// Reserve this upright world volume instead of drawing a label.
     pub reserve: Option<PlayerReserve>,
     /// Opt into the player volumes or projected danger grounds.
@@ -295,6 +305,11 @@ impl Default for WorldAnchorDesc {
             max_distance: 0.0,
             declutter: Declutter::None,
             priority: 0,
+            stack_group: String::new(),
+            stack_max: 0,
+            stack_more: false,
+            stack_gap: 3.0,
+            stack_key: String::new(),
             reserve: None,
             avoid_player: false,
             avoid_danger: false,
@@ -595,6 +610,11 @@ pub struct Smooth {
     pub alpha: f32,
     pub dx: f32,
     pub dy: f32,
+    /// Column membership and last drawn pivot; a departing row fades here
+    /// before returning to ordinary placement at its own world point.
+    pub stack_group: u64,
+    pub stack_at: Vec2,
+    pub stack_scale: f32,
 }
 
 /// What replays: spawned mass elements by template, emitters' particles,
@@ -652,6 +672,8 @@ pub struct WorldPlacement {
     pub pointed: Option<(u64, PanelInfo)>,
     pub marks: BTreeMap<u64, Marks>,
     pub(crate) last: BTreeMap<u64, AnchorInfo>,
+    /// Hidden item keys for each bounded stack's overflow row.
+    pub(crate) stack_hidden: BTreeMap<u64, Vec<String>>,
     /// This tick's anchored elements as placed.
     pub placed: Vec<AnchorPoint>,
     pub frame: WorldFrame,
@@ -674,10 +696,98 @@ pub struct WorldUi {
     pub state: WorldState,
 }
 
+/// One ranked column, shared by layout's equal-width rows and placement's
+/// single collision box. Indices refer to render nodes, not document ids.
+pub(crate) struct AnchorStack {
+    pub leader: usize,
+    pub rows: Vec<usize>,
+    pub hidden: Vec<usize>,
+    pub more: Vec<usize>,
+}
+
 impl WorldUi {
+    pub(crate) fn anchor_stacks(&self) -> Vec<AnchorStack> {
+        let mut ranked: Vec<_> = self
+            .declared
+            .anchors
+            .iter()
+            .filter(|a| !a.desc.stack_group.is_empty() && a.desc.reserve.is_none())
+            .collect();
+        ranked.sort_by(|a, b| {
+            b.desc
+                .priority
+                .cmp(&a.desc.priority)
+                .then(
+                    self.anchor_distance(&a.desc)
+                        .total_cmp(&self.anchor_distance(&b.desc)),
+                )
+                // Retained registrations arrive in key order, not build
+                // order. Node allocation preserves the latter across ticks.
+                .then(a.node.cmp(&b.node))
+        });
+        let mut groups: BTreeMap<&str, Vec<&AnchorEntry>> = BTreeMap::new();
+        for a in ranked {
+            groups.entry(&a.desc.stack_group).or_default().push(a);
+        }
+        groups
+            .into_values()
+            .map(|members| {
+                let more: Vec<_> = members
+                    .iter()
+                    .filter(|a| a.desc.stack_more)
+                    .map(|a| a.node)
+                    .collect();
+                let items: Vec<_> = members.iter().filter(|a| !a.desc.stack_more).collect();
+                let leader = items.first().map_or(NONE, |a| a.node);
+                let max = items.first().map_or(0, |a| a.desc.stack_max);
+                let visible = if max == 0 {
+                    items.len()
+                } else {
+                    max.min(items.len())
+                };
+                let hidden: Vec<_> = items[visible..].iter().map(|a| a.node).collect();
+                let mut rows: Vec<_> = items[..visible].iter().map(|a| a.node).collect();
+                if !hidden.is_empty() {
+                    rows.extend(more.first().copied());
+                }
+                AnchorStack {
+                    leader,
+                    rows,
+                    hidden,
+                    more,
+                }
+            })
+            .collect()
+    }
+
+    fn anchor_distance(&self, desc: &WorldAnchorDesc) -> f32 {
+        self.declared
+            .view
+            .zip(self.pose_of(desc.target))
+            .map_or(f32::INFINITY, |(view, (p, _))| {
+                (p + desc.offset - view.eye).length()
+            })
+    }
+
     /// The current placement scale, also used before layout to measure an
     /// opted-in document anchor's legible text.
     pub(crate) fn anchor_scale(&self, desc: &WorldAnchorDesc) -> f32 {
+        let desc = if desc.stack_group.is_empty() {
+            desc
+        } else {
+            self.declared
+                .kept
+                .values()
+                .map(|(a, _)| a)
+                .chain(std::iter::once(desc))
+                .filter(|a| a.stack_group == desc.stack_group && !a.stack_more)
+                .min_by(|a, b| {
+                    b.priority
+                        .cmp(&a.priority)
+                        .then(self.anchor_distance(a).total_cmp(&self.anchor_distance(b)))
+                })
+                .unwrap_or(desc)
+        };
         match (self.declared.view, self.pose_of(desc.target)) {
             (Some(view), Some((point, _))) => placement::scale_of(
                 desc.scale,

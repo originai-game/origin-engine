@@ -4,6 +4,41 @@ use super::super::{Kind, On, PropSpec, Ty};
 
 pub const PROPS: &[PropSpec] = &[
     PropSpec {
+        name: "stackGroup",
+        ty: Ty::Name,
+        on: On::Kinds(&[Kind::Anchor]),
+        two_way: false,
+        doc: "A keyed loot column, ranked by priority, distance, then build order. The highest item supplies its world point, distance settings and avoidance; the whole column declutters as one stack. Empty keeps independent placement.",
+    },
+    PropSpec {
+        name: "stackMax",
+        ty: Ty::Num,
+        on: On::Kinds(&[Kind::Anchor]),
+        two_way: false,
+        doc: "Maximum visible item rows in a stack-group (0: unlimited), from its highest-ranked item. Does not count the optional stack-more row. Overflow items fade and take no hits or obstacle space.",
+    },
+    PropSpec {
+        name: "stackMore",
+        ty: Ty::Bool,
+        on: On::Kinds(&[Kind::Anchor]),
+        two_way: false,
+        doc: "The group's optional topmost overflow row, visible only while items exceed stack-max. bind:hidden reads those items' each keys in rank order, one tick after placement.",
+    },
+    PropSpec {
+        name: "stackGap",
+        ty: Ty::Num,
+        on: On::Kinds(&[Kind::Anchor]),
+        two_way: false,
+        doc: "Gap between stack rows in CSS px (default 3), before distance scaling; the highest-ranked item supplies it.",
+    },
+    PropSpec {
+        name: "hidden",
+        ty: Ty::Names,
+        on: On::Kinds(&[Kind::Anchor]),
+        two_way: true,
+        doc: "On a stack-more anchor, bind:hidden writes the overflow items' stable each keys as a string list, in rank order. Render its length as +n and look up rarity dots in game data. It is not element visibility.",
+    },
+    PropSpec {
         name: "reserve",
         ty: Ty::Word(&["none", "hud", "player"]),
         on: On::All,

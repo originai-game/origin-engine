@@ -1,0 +1,8 @@
+{
+  "added": [
+    {
+      "member": "og.ui.documentSchema",
+      "summary": "Keyed loot anchors form bounded, equal-width stack-group columns with stack-max and stack-gap. An optional stack-more row reads ranked overflow keys through bind:hidden, while pickup and reordering retain shift/fade motion. The whole column uses its best item's world point and distance and declutters as one box."
+    }
+  ]
+}

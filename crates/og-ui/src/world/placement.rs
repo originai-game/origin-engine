@@ -1401,7 +1401,38 @@ impl crate::ui::Layout {
             vp.width - vp.safe_area.horizontal(),
             vp.height - vp.safe_area.vertical(),
         );
-        let anchors = std::mem::take(&mut world.declared.anchors);
+        let stacks = world.anchor_stacks();
+        let mut anchors = std::mem::take(&mut world.declared.anchors);
+        let original: Vec<_> = if stacks.is_empty() {
+            Vec::new()
+        } else {
+            anchors.iter().map(|a| a.desc.clone()).collect()
+        };
+        let entries: BTreeMap<_, _> = if stacks.is_empty() {
+            BTreeMap::new()
+        } else {
+            anchors
+                .iter()
+                .enumerate()
+                .map(|(i, a)| (a.node, i))
+                .collect()
+        };
+        for stack in &stacks {
+            if stack.leader == NONE {
+                continue;
+            }
+            let representative = anchors[entries[&stack.leader]].desc.clone();
+            for node in stack.rows.iter().chain(&stack.hidden).chain(&stack.more) {
+                let a = &mut anchors[entries[node]].desc;
+                let mut desc = representative.clone();
+                desc.element = a.element;
+                desc.stack_key = a.stack_key.clone();
+                desc.stack_more = a.stack_more;
+                desc.fade_ticks = a.fade_ticks;
+                desc.declutter = Declutter::Stack;
+                *a = desc;
+            }
+        }
         world.placement.placed.clear();
         let mut obstacles = Obstacles {
             hud: hud_reserves(&tree.nodes, screen),
@@ -1629,6 +1660,91 @@ impl crate::ui::Layout {
                 arrow,
             });
         }
+        // A keyed column contributes one collision box. Row offsets go
+        // through the same keyed shift easing as ordinary decluttering.
+        let mut column = vec![None; placed.len()];
+        let mut row_offsets = vec![Vec2::ZERO; placed.len()];
+        let mut overflow = vec![false; placed.len()];
+        let placed_nodes: BTreeMap<_, _> = if stacks.is_empty() {
+            BTreeMap::new()
+        } else {
+            placed
+                .iter()
+                .enumerate()
+                .map(|(k, p)| (anchors[p.entry].node, k))
+                .collect()
+        };
+        world.placement.stack_hidden.clear();
+        for stack in &stacks {
+            let hidden: Vec<_> = stack
+                .hidden
+                .iter()
+                .map(|node| {
+                    let a = &anchors[entries[node]];
+                    if a.desc.stack_key.is_empty() {
+                        tree.nodes[*node].id.clone()
+                    } else {
+                        a.desc.stack_key.clone()
+                    }
+                })
+                .collect();
+            for &node in &stack.more {
+                world
+                    .placement
+                    .stack_hidden
+                    .insert(tree.nodes[node].key, hidden.clone());
+            }
+            for &node in stack.hidden.iter().chain(&stack.more) {
+                overflow[placed_nodes[&node]] = true;
+            }
+            if stack.leader == NONE {
+                continue;
+            }
+            let leader = placed_nodes[&stack.leader];
+            let (at, scale, alpha, depth, info) = {
+                let p = &placed[leader];
+                (p.at, p.scale, p.alpha, p.depth, p.info)
+            };
+            let gap = anchors[placed[leader].entry].desc.stack_gap * scale;
+            let mut height = 0.0;
+            let width = tree.nodes[stack.leader].placed.rect.width * scale;
+            for &node in &stack.rows {
+                let k = placed_nodes[&node];
+                let p = &mut placed[k];
+                p.at = at;
+                p.scale = scale;
+                p.alpha = alpha;
+                p.depth = depth;
+                p.info = info;
+                p.pivot = (0.5, 1.0);
+                p.arrow = None;
+                row_offsets[k].y = -height;
+                height += tree.nodes[node].placed.rect.height * scale + gap;
+                column[k] = Some(leader);
+                overflow[k] = false;
+            }
+            height = (height - gap).max(0.0);
+            let b = Rect::new(at.x - width / 2.0, at.y - height, width, height);
+            let margin = anchors[placed[leader].entry]
+                .desc
+                .contain_margin
+                .unwrap_or(env.theme.space.sm);
+            let room = Rect::new(
+                safe.x + margin,
+                safe.y + margin,
+                (safe.width - 2.0 * margin).max(0.0),
+                (safe.height - 2.0 * margin).max(0.0),
+            );
+            let correction = Vec2::new(
+                b.x.clamp(room.x, (room.right() - b.width).max(room.x)) - b.x,
+                b.y.clamp(room.y, (room.bottom() - b.height).max(room.y)) - b.y,
+            );
+            for &node in &stack.rows {
+                row_offsets[placed_nodes[&node]] += correction;
+            }
+            placed[leader].drawn =
+                Rect::new(b.x + correction.x, b.y + correction.y, b.width, b.height);
+        }
         // Declutter by priority, then nearness, then build order.
         let mut by_rank: Vec<usize> = (0..placed.len()).collect();
         by_rank.sort_by(|&x, &y| {
@@ -1663,7 +1779,11 @@ impl crate::ui::Layout {
         }
         for &k in &by_rank {
             let pl = &placed[k];
-            if pl.alpha <= 0.0 || pl.drawn.is_empty() {
+            if overflow[k]
+                || column[k].is_some_and(|leader| leader != k)
+                || pl.alpha <= 0.0
+                || pl.drawn.is_empty()
+            {
                 continue;
             }
             let mode = anchors[pl.entry].desc.declutter;
@@ -1746,15 +1866,47 @@ impl crate::ui::Layout {
             cache.moves.clone_from(&moves);
             cache.taken.clone_from(&taken);
         }
+        for k in 0..placed.len() {
+            if overflow[k] {
+                moves[k].keep = false;
+            } else if let Some(leader) = column[k] {
+                let mut movement = cache.moves[leader];
+                movement.shift += row_offsets[k];
+                moves[k] = movement;
+            }
+        }
+        // New rows fade into their slot after gliding retained rows clear it,
+        // rather than passing through the chip or another label.
+        let mut column_rows = vec![Vec::new(); placed.len()];
+        for (k, pl) in placed.iter().enumerate() {
+            if let Some(leader) = column[k]
+                && let Some(s) = world.state.smooth.get(&pl.key)
+                && s.alpha > 0.0
+            {
+                let bottom = s.dy + (moves[k].shift.y - s.dy) * 0.34;
+                let height = tree.nodes[anchors[pl.entry].node].placed.rect.height * pl.scale;
+                column_rows[leader].push((k, bottom - height, bottom));
+            }
+        }
         // Eased toward this tick's values (world state), applied.
         let mut seen = Vec::new();
         for (k, pl) in placed.iter().enumerate() {
             let d = &anchors[pl.entry].desc;
             let movement = moves[k];
             let shift = movement.shift;
-            let target_alpha = if movement.keep { pl.alpha } else { 0.0 };
+            let mut target_alpha = if movement.keep { pl.alpha } else { 0.0 };
             let fresh = !world.state.smooth.contains_key(&pl.key);
             let s = world.state.smooth.entry(pl.key).or_default();
+            let group = if d.stack_group.is_empty() {
+                0
+            } else {
+                crate::id::child_key(1, &d.stack_group)
+            };
+            let leaving = !fresh && s.stack_group != 0 && s.stack_group != group;
+            let fading_row = !fresh && s.stack_group != 0 && (leaving || overflow[k]);
+            if leaving {
+                target_alpha = 0.0;
+            }
             let step = if d.fade_ticks == 0 {
                 1.0 / 6.0
             } else {
@@ -1764,6 +1916,20 @@ impl crate::ui::Layout {
                 s.dx = shift.x;
                 s.dy = shift.y;
                 s.alpha = 0.0;
+            }
+            if s.alpha == 0.0
+                && let Some(leader) = column[k]
+            {
+                s.dx = shift.x;
+                s.dy = shift.y;
+                let top =
+                    shift.y - tree.nodes[anchors[pl.entry].node].placed.rect.height * pl.scale;
+                if column_rows[leader]
+                    .iter()
+                    .any(|&(other, a, b)| other != k && top < b && a < shift.y)
+                {
+                    target_alpha = 0.0;
+                }
             }
             s.alpha = if s.alpha < target_alpha {
                 (s.alpha + step).min(target_alpha)
@@ -1779,25 +1945,52 @@ impl crate::ui::Layout {
             if (shift.y - s.dy).abs() < 0.05 {
                 s.dy = shift.y;
             }
+            let at = if fading_row {
+                s.stack_at
+            } else {
+                pl.at + Vec2::new(s.dx, s.dy)
+            };
+            let scale = if fading_row { s.stack_scale } else { pl.scale };
+            if leaving && s.alpha == 0.0 {
+                s.dx = shift.x;
+                s.dy = shift.y;
+                s.stack_group = group;
+            } else if !leaving {
+                s.stack_group = group;
+            }
+            s.stack_at = at;
+            s.stack_scale = scale;
             let s = *s;
             seen.push(pl.key);
             let node = anchors[pl.entry].node;
             let r = tree.nodes[node].placed.rect;
             let px = r.x + pl.pivot.0 * r.width;
             let py = r.y + pl.pivot.1 * r.height;
-            let at = pl.at + Vec2::new(s.dx, s.dy);
             let n = &mut tree.nodes[node];
+            let authored = n.style.sampled.transform;
+            let (ox, oy) = n.props.space3d.as_ref().map_or(
+                (
+                    r.x + authored.pivot_x * r.width,
+                    r.y + authored.pivot_y * r.height,
+                ),
+                |space| {
+                    let (x, y, _) = space.origin_at(&r, (authored.pivot_x, authored.pivot_y));
+                    (x, y)
+                },
+            );
+            // Distance scaling pivots on the world point; an authored
+            // hover scale still pivots on its own transform-origin.
             n.style.sampled.transform = Transform {
-                x: at.x - px,
-                y: at.y - py,
-                scale_x: pl.scale,
-                scale_y: pl.scale,
-                pivot_x: pl.pivot.0,
-                pivot_y: pl.pivot.1,
+                x: at.x - px + (scale - 1.0) * (ox - px) + scale * authored.x,
+                y: at.y - py + (scale - 1.0) * (oy - py) + scale * authored.y,
+                scale_x: scale * authored.scale_x,
+                scale_y: scale * authored.scale_y,
+                pivot_x: (ox - r.x) / r.width.max(1e-6),
+                pivot_y: (oy - r.y) / r.height.max(1e-6),
                 ..n.style.sampled.transform
             };
             n.style.sampled.opacity *= s.alpha;
-            if s.alpha < 0.05 {
+            if s.alpha < 0.05 || overflow[k] || leaving {
                 n.style.sampled.inert = true;
             }
             let mut info = pl.info;
@@ -1891,6 +2084,9 @@ impl crate::ui::Layout {
         }
         world.state.smooth.retain(|k, _| seen.contains(k));
         world.placement.last.retain(|k, _| seen.contains(k));
+        for (a, desc) in anchors.iter_mut().zip(original) {
+            a.desc = desc;
+        }
         world.declared.anchors = anchors;
         taken
     }

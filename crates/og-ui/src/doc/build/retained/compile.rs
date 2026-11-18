@@ -138,6 +138,7 @@ impl RetainedHost {
             style_dirty: true,
             theme_epoch: self.theme_epoch,
             anchor_feedback: None,
+            stack_hidden: None,
             children: Default::default(),
             control: None,
             images: Vec::new(),

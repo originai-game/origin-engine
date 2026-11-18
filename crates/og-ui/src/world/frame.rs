@@ -566,7 +566,7 @@ impl Ui {
         let mut out = Vec::new();
         let mut w = ByteWriter::new(&mut out);
         w.bytes(b"OGUW");
-        w.u32(1);
+        w.u32(2);
         w.u64(s.pools.len() as u64);
         for (k, pool) in &s.pools {
             w.u64(u64::from(*k));
@@ -582,6 +582,10 @@ impl Ui {
         for (k, v) in &s.smooth {
             w.u64(*k);
             for f in [v.alpha, v.dx, v.dy] {
+                w.f32(f);
+            }
+            w.u64(v.stack_group);
+            for f in [v.stack_at.x, v.stack_at.y, v.stack_scale] {
                 w.f32(f);
             }
         }
@@ -624,8 +628,12 @@ fn decode_world(bytes: &[u8]) -> og_core::Result<WorldState> {
         return Ok(s);
     }
     let mut r = ByteReader::new(bytes, "og.ui world state");
-    if r.take(4)? != b"OGUW" || r.u32()? != 1 {
-        return Err(r.error("not version 1 world state bytes"));
+    if r.take(4)? != b"OGUW" {
+        return Err(r.error("not world state bytes"));
+    }
+    let version = r.u32()?;
+    if !(1..=2).contains(&version) {
+        return Err(r.error("not version 1 or 2 world state bytes"));
     }
     for _ in 0..r.u64()? {
         let k = r.u64()? as u32;
@@ -644,6 +652,13 @@ fn decode_world(bytes: &[u8]) -> og_core::Result<WorldState> {
                 alpha: r.f32()?,
                 dx: r.f32()?,
                 dy: r.f32()?,
+                stack_group: if version >= 2 { r.u64()? } else { 0 },
+                stack_at: if version >= 2 {
+                    Vec2::new(r.f32()?, r.f32()?)
+                } else {
+                    Vec2::ZERO
+                },
+                stack_scale: if version >= 2 { r.f32()? } else { 1.0 },
             },
         );
     }

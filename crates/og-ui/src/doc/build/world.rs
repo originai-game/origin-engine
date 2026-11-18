@@ -33,6 +33,10 @@ pub(super) fn anchor_desc(r: &Resolved, el: Element) -> Result<WorldAnchorDesc, 
         (None, Some(p)) => WorldTarget::Point(
             vec3(p).ok_or_else(|| format!("at=\"{p}\" is three numbers, x y z"))?,
         ),
+        (None, None) if r.flag("stackMore") && r.str("stackGroup").is_some() => {
+            // The overflow row borrows the group's representative point.
+            WorldTarget::Point(Vec3::ZERO)
+        }
         (None, None) => return Err("an <anchor> takes entity={…} or at=\"x y z\"".into()),
     };
     let offset = match r.str("worldOffset") {
@@ -122,6 +126,10 @@ pub(super) fn anchor_desc(r: &Resolved, el: Element) -> Result<WorldAnchorDesc, 
         avoid_player,
         avoid_danger,
         keep_visible: r.flag("keepVisible"),
+        stack_group: r.str("stackGroup").unwrap_or_default().to_owned(),
+        stack_max: r.num("stackMax").unwrap_or(0.0).max(0.0) as usize,
+        stack_more: r.flag("stackMore"),
+        stack_gap: r.num("stackGap").unwrap_or(3.0).max(0.0),
         clamp,
         contain: r.str("worldClamp") == Some("contain"),
         contain_margin: r.num("clampMargin").map(|v| v.max(0.0)),
@@ -938,6 +946,7 @@ impl Ui {
                 return None;
             }
         };
+        desc.stack_key = b.row_key.clone();
         let text_scale = self.css_text_scale();
         if let Some(clamp) = &mut desc.clamp {
             clamp.margin *= text_scale;

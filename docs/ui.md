@@ -1170,6 +1170,28 @@ None of these has a web standard; each is named for what it does.
   name measure still draws 108 px wide at scale 0.72; use an em measure if
   its width should follow the text instead. Ground text and mass bars do
   not take the floor.
+  Keyed loot anchors with the same `stack-group="pile-12"` form one
+  column. Rank is priority, then distance, then stable build order; the
+  highest-ranked item supplies the point, scale, text floor's distance,
+  max-distance, occlusion and avoidance for the whole column. Its
+  `stack-max="5"` bounds visible item rows (0 means unlimited); the game
+  can pass 1 on a phone. Best is at the bottom, growing upward with
+  `stack-gap="3"` CSS px before distance scaling. Rows share the widest
+  visible item's natural width; author a max-width/measure on each item.
+  An optional `<anchor stack-group="pile-12" stack-more
+  bind:hidden={$hidden}>…</anchor>` borrows that point without `at` or
+  `entity`, and occupies the top row only while there is overflow. Its
+  two-way binding writes hidden members' each keys, ranked, into a
+  **string-list signal** on the next tick: render `+{$hidden.length}` and
+  look up rarity dots in game data. `hidden` without `bind:` keeps its
+  ordinary HTML visibility meaning. Without a stack-more row overflow
+  simply fades out; hidden rows take neither hits nor obstacle space.
+  The entire column declutters as one box. Keyed pickup, insert and rank
+  changes reuse the existing shift easing and fade_ticks; a row leaving
+  its group fades at its old column point before returning to its own.
+  Hover transforms change ink, not the column's widths or row slots.
+  Column transition state is included in world snapshots (version 2,
+  which still reads version 1 snapshots).
   `clamp="edge"` pins off-screen and behind-camera points with an arrow;
   `clamp-margin` (default 24) and `arrow-size` (default 14, zero disables it)
   are CSS px multiplied by user text scale. `arrow-color` sets its ink.

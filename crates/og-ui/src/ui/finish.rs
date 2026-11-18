@@ -18,6 +18,11 @@ fn place_box(
     if n.layout.placement.is_none() {
         placed.push(i);
     }
+    if [n.placed.rect.width, n.placed.rect.height] != size {
+        // The available space can stay unchanged while placement changes
+        // the used size (for example, a loot column losing its widest row).
+        n.layout.css_cache.clear();
+    }
     n.layout.placement = Some(crate::layout::Placement { size, padding });
     n.derive_used();
 }
@@ -726,6 +731,38 @@ impl Ui {
                     &mut self.layout.cache,
                     &mut self.layout.queries,
                 );
+            }
+            // Loot rows share the widest visible item's used width. Like
+            // other placed boxes, release this override before next layout;
+            // removing the widest item must let the column shrink again.
+            for stack in self.world.anchor_stacks() {
+                let width = stack
+                    .rows
+                    .iter()
+                    .filter(|i| !stack.more.contains(i))
+                    .map(|&i| self.tree.nodes[i].placed.rect.width)
+                    .fold(0.0, f32::max);
+                for i in stack.rows {
+                    let height = self.tree.nodes[i].placed.rect.height;
+                    place_box(
+                        &mut self.tree.nodes,
+                        &mut self.layout.placed,
+                        i,
+                        [width, height],
+                        Insets::default(),
+                    );
+                    layout(
+                        &mut self.tree.nodes,
+                        i,
+                        screen,
+                        &mut measure,
+                        &offset,
+                        dpr,
+                        screen,
+                        &mut self.layout.cache,
+                        &mut self.layout.queries,
+                    );
+                }
             }
             // Elements placed on the screen (Position::Screen): laid out again in
             // the whole surface, under the safe area their layer keeps clear,
