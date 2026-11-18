@@ -38,7 +38,9 @@
    the whole view (and a node's half beyond each edge) in the well, and it
    stands in the middle. The nodes keep their size; only where they stand,
    and the links between them, scale. It zooms about that middle. */
-:host { position: relative; inline-size: stretch; block-size: stretch; min-block-size: var(--size-6xl); overflow: hidden; container-type: size; min-inline-size: 0; }
+:host { position: relative; inline-size: stretch; block-size: stretch; min-block-size: var(--size-6xl); overflow: hidden; container-type: size; min-inline-size: 0; --well-fill: var(--data-well); --link-stroke: var(--data-guide); --link-done-stroke: var(--hud-accent); --link-active-stroke: var(--hud-accent); --cell-fill: var(--data-well); --cell-rim: var(--data-guide); --cell-done-rim: var(--success); --cell-active-rim: var(--hud-accent); --cell-active-shadow: var(--data-grip-glow); --badge-fill: var(--hud-tag-fill); }
+/* The well: the HUD's smoked glass under a faint dot grid. */
+#NodeGraph { background: var(--data-graph-fill); box-shadow: var(--hud-plate-rim); }
 #Canvas { --fit: min((100cqw - var(--size-lg) * 2) / var(--vw), (100cqh - var(--size-lg) * 2) / var(--vh)); position: absolute; inset: 0; margin: auto; width: calc(var(--vw) * var(--fit)); height: calc(var(--vh) * var(--fit)); translate: var(--pan-x) var(--pan-y); scale: var(--zoom); transform-origin: 50% 50%; }
 #Links { position: absolute; inset: 0; inline-size: 100%; block-size: 100%; }
 [part="NodeGraph.node NodeGraph.cell"] { position: absolute; top: calc((var(--y) - var(--vy)) / var(--vh) * 100% - var(--size-lg) / 2); left: calc((var(--x) - var(--vx)) / var(--vw) * 100% - var(--size-lg) / 2); width: var(--size-lg); height: var(--size-lg); padding: 0; }
@@ -49,7 +51,7 @@
 .node.diamond { --cell-radius: var(--radius-field); rotate: 45deg; }
 .node.diamond .icon { rotate: -45deg; }
 .node.diamond .caption { rotate: -45deg; transform-origin: 0 calc(var(--size-lg) / -2 - var(--space-xs)); }
-.node.current { --cell-rim: var(--highlight); }
+.node.current { --cell-rim: var(--hud-accent); --cell-shadow: var(--data-grip-glow); }
 /* A locked node is disabled, so its plate takes the disabled dress; its
    icon dims and its caption takes the muted ink. Opacity on the whole node
    would also thin its caption's chip, and a path would show through it. */
@@ -59,5 +61,6 @@
 [part="NodeGraph.icon"] { width: var(--size-sm); height: var(--size-sm); }
 /* A caption is centred under its node (a transform, so a diamond's turn
    back takes it with it) on a chip of the well, so a path runs under it. */
-[part~="NodeGraph.label"] { --badge-fill: var(--well-fill); position: absolute; top: calc(var(--size-lg) + var(--space-xs)); left: 50%; transform: translateX(-50%); white-space: nowrap; }
+[part~="NodeGraph.label"] { position: absolute; top: calc(var(--size-lg) + var(--space-xs)); left: 50%; transform: translateX(-50%); white-space: nowrap; font-size: var(--hud-tag-size); font-weight: var(--hud-label-weight); font-stretch: var(--hud-figure-stretch); color: var(--hud-ink); }
+.node.locked [part~="NodeGraph.label"] { color: var(--hud-ink-dim); }
 </style>

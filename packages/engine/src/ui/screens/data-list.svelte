@@ -7,6 +7,7 @@
 <meta name="action:choose" content="Open">
 <meta name="fixture:default" content="{&quot;loading&quot;:false,&quot;empty&quot;:&quot;Nothing here yet&quot;,&quot;busy&quot;:&quot;Loading…&quot;,&quot;rows&quot;:[{&quot;id&quot;:&quot;a&quot;,&quot;title&quot;:&quot;Copper ore&quot;,&quot;detail&quot;:&quot;Mined in the north pit&quot;,&quot;value&quot;:&quot;×12&quot;},{&quot;id&quot;:&quot;b&quot;,&quot;title&quot;:&quot;Silk&quot;,&quot;detail&quot;:&quot;Bought in Harrow&quot;,&quot;value&quot;:&quot;×3&quot;}]}">
 
+<!-- A HUD plate of rows: a name, its detail and its figure. -->
 <section id="DataList" part="data-list.frame" class="bare" aria-busy={loading}>
   <list id="Rows">
     {#each rows as r (r.id)}
@@ -23,11 +24,16 @@
 </section>
 
 <style>
-#DataList { width: stretch; height: stretch; }
-#Rows { width: stretch; height: stretch; gap: var(--space-xs); }
-.row { width: stretch; padding: var(--space-sm) var(--space-md); min-width: 0; }
-.face { display: flex; align-items: center; gap: var(--space-md); width: stretch; min-width: 0; }
-.text { flex: 1; min-width: 0; gap: var(--space-xxs); }
+/* The HUD plate: each row a name over its detail, its figure at the end
+   condensed and tabular, a faint rule under it. */
+#DataList { width: stretch; height: stretch; background: var(--hud-plate-fill); box-shadow: var(--hud-plate-rim); clip-path: polygon(calc(2 * var(--hud-plate-cut)) 0, 100% 0, 100% calc(100% - 2 * var(--hud-plate-cut)), calc(100% - 2 * var(--hud-plate-cut)) 100%, 0 100%, 0 calc(2 * var(--hud-plate-cut))); color: var(--hud-ink); --row-fill: none; --row-hover-fill: var(--data-row-hover-fill); --row-pressed-fill: var(--data-row-pressed-fill); --row-selected-fill: var(--data-row-selected-fill); --row-selected-edge: var(--data-row-selected-edge); --row-radius: 0px; }
+#Rows { width: stretch; height: stretch; }
+.row { width: stretch; padding: var(--space-sm) var(--space-md); min-width: 0; border-block-end: var(--data-rule-line); }
+.face { display: flex; align-items: center; justify-content: start; gap: var(--space-md); width: stretch; min-width: 0; text-align: start; }
+.text { display: flex; flex-direction: column; flex: 1; min-width: 0; gap: var(--space-xxs); align-items: start; }
 .title, .value { margin: 0; }
-.note { color: var(--ink-muted); margin: var(--space-lg) 0; text-align: center; width: stretch; }
+.title { color: var(--hud-ink); font-weight: var(--data-name-weight); text-align: start; overflow-wrap: anywhere; }
+.detail { color: var(--hud-ink-dim); text-align: start; overflow-wrap: anywhere; }
+.value { flex: none; color: var(--hud-ink); font-size: var(--hud-size-sm); font-weight: var(--hud-figure-weight); font-stretch: var(--hud-figure-stretch); font-variant-numeric: var(--hud-figure-numeric); white-space: nowrap; }
+.note { font-size: var(--hud-label-size); font-weight: var(--hud-label-weight); letter-spacing: var(--hud-label-tracking); text-transform: var(--hud-label-transform); color: var(--data-head-ink); margin: var(--space-xl) 0; text-align: center; width: stretch; }
 </style>

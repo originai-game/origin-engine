@@ -7,6 +7,8 @@
 <meta name="action:resize" content="Resize">
 <meta name="fixture:default" content='{"ratio":0.35,"column":false,"label":""}'>
 
+<!-- Two panes on the HUD plate, the divider between them a faint groove
+     with its grip lit in the accent. -->
 <div id="SplitView" part="SplitView.frame" data-layout="row" data-gap="none" class:column={column} style:--ratio={ratio}>
   <div id="Start" part="SplitView.start SplitView.well">{@render start?.()}</div>
   <div id="Divider" part="SplitView.divider" data-layout="cover" data-gap="none" role="separator" aria-label={label || t("component.split-view.name")} aria-valuenow={ratio * 100} aria-valuemin="0" aria-valuemax="100" onpointerdown={resize} onpointermove={resize}>
@@ -25,4 +27,6 @@
 .column [part="SplitView.divider"] { width: stretch; height: var(--space-sm); cursor: ns-resize; }
 [part="SplitView.grip"] { width: var(--stroke-regular); height: var(--size-sm); }
 .column [part="SplitView.grip"] { width: var(--size-sm); height: var(--stroke-regular); }
+#SplitView { --divider-fill: var(--data-divider-fill); --divider-hover-fill: var(--data-row-pressed-fill); --grip-fill: var(--data-grip); }
+[part="SplitView.grip"] { box-shadow: var(--data-grip-glow); }
 </style>

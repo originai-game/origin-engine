@@ -8,7 +8,10 @@
 <meta name="action:next" content="Next">
 <meta name="fixture:default" content='{"index":1,"label":"Season pass","pages":[{"id":"a","title":"Ember Knight","body":"A blade forged in the first fire.","image":0},{"id":"b","title":"Frost Warden","body":"Holds the northern gate.","image":0},{"id":"c","title":"Storm Caller","body":"Lightning answers her.","image":0}]}'>
 
-<div id="Carousel" part="Carousel.frame" data-layout="stack" class="bare" role="region" aria-label={label || t("component.carousel.name")} style:--index={index}>
+<!-- Pages of art on the HUD plate: the current one ringed in the accent,
+     its neighbours set back; the place is a row of leaning pips between
+     cut arrow keys. -->
+<div id="Carousel" part="Carousel.frame" data-layout="stack" class="bare" role="region" aria-label={label || t("component.carousel.name")} style:--index={index} style:--count={pages.length}>
   <div id="Viewport" data-layout="row" data-gap="loose">
     {#if !pages.length}<p class="empty body" part="Carousel.body Carousel.caption" role="status">{t("component.carousel.empty")}</p>{/if}
     {#each pages as page (page.id)}
@@ -24,7 +27,7 @@
     <button id="Prev" part="Carousel.prev" aria-label={t("component.carousel.prev")} disabled={pages.length < 2} onclick={prev}><og-icon icon="back"></og-icon></button>
     <div id="Dots" data-layout="row">
       {#each pages as page (page.id)}<div part="Carousel.dot" class="dot"></div>{/each}
-      {#if pages.length}<div id="Lit" part="Carousel.lit Carousel.dot" data-motion="change"></div>{/if}
+      {#if pages.length}<div id="Lit" part="Carousel.lit Carousel.dot" data-motion="change" data-og-overlap="*"></div>{/if}
     </div>
     <button id="Next" part="Carousel.next" aria-label={t("component.carousel.next")} disabled={pages.length < 2} onclick={next}><og-icon id="NextIcon" icon="back"></og-icon></button>
   </div>
@@ -32,13 +35,19 @@
 
 <style>
 :host { inline-size: var(--measure-md); max-inline-size: 100%; align-items: center; }
-#Viewport { inline-size: 100%; overflow-x: auto; scroll-snap-type: x mandatory; }
-.page { flex: none; inline-size: var(--measure-sm); max-inline-size: 100%; padding: var(--space-md); scroll-snap-align: center; }
-.art, .well { height: var(--size-3xl); }
+#Carousel { padding: var(--space-md); background: var(--hud-plate-fill); box-shadow: var(--hud-plate-rim); clip-path: polygon(calc(2 * var(--hud-plate-cut)) 0, 100% 0, 100% calc(100% - 2 * var(--hud-plate-cut)), calc(100% - 2 * var(--hud-plate-cut)) 100%, 0 100%, 0 calc(2 * var(--hud-plate-cut))); color: var(--hud-ink); }
+/* One page fills the window; the next waits beyond its edge, scrolled to. */
+#Viewport { inline-size: 100%; overflow-x: auto; scrollbar-width: none; scroll-snap-type: x mandatory; }
+.page { flex: none; inline-size: 100%; min-inline-size: 0; padding: 0; scroll-snap-align: center; --cell-radius: var(--hud-plate-cut); --cell-corner-shape: bevel; }
+.art { object-fit: cover; }
+.art, .well { inline-size: stretch; height: var(--size-3xl); clip-path: polygon(var(--hud-plate-cut) 0, 100% 0, 100% calc(100% - var(--hud-plate-cut)), calc(100% - var(--hud-plate-cut)) 100%, 0 100%, 0 var(--hud-plate-cut)); --well-fill: var(--loading-placeholder); }
+.title { font-size: var(--hud-size-sm); font-weight: var(--data-title-weight); color: var(--hud-ink); overflow-wrap: anywhere; }
+.body { color: var(--hud-ink-dim); overflow-wrap: anywhere; }
 .empty { margin: 0; padding: var(--space-md); }
-#Prev, #Next { width: var(--control-lg); height: var(--control-lg); padding: 0; }
+#Controls { inline-size: 100%; align-items: center; margin-block-start: var(--space-sm); }
+#Prev, #Next { flex: none; width: var(--touch-target); height: var(--touch-target); padding: 0; --button-radius: var(--hud-plate-cut); --button-corner-shape: bevel; }
 #NextIcon { rotate: 180deg; }
-#Dots { position: relative; }
-.dot { width: var(--space-sm); height: var(--space-sm); }
-#Lit { --dot-fill: var(--primary); position: absolute; top: 0; inset-inline-start: calc(var(--index) * (var(--space-sm) + var(--layout-gap))); width: var(--space-sm); height: var(--space-sm); }
+#Dots { position: relative; flex: 1 1 auto; justify-content: center; --layout-gap: var(--space-xs); }
+.dot { width: var(--space-lg); height: var(--space-xxs); transform: skewX(var(--bar-skew)); --dot-fill: var(--hud-pip-off); --dot-radius: 0px; --dot-rim-width: 0px; }
+#Lit { --dot-fill: var(--hud-pip-on); --dot-radius: 0px; --dot-rim-width: 0px; position: absolute; top: 0; inset-inline-start: calc(50% - var(--count) * (var(--space-lg) + var(--space-xs)) / 2 + var(--space-xs) / 2 + var(--index) * (var(--space-lg) + var(--space-xs))); width: var(--space-lg); height: var(--space-xxs); transform: skewX(var(--bar-skew)); box-shadow: var(--hud-pip-glow); }
 </style>

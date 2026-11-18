@@ -9,6 +9,7 @@
 <meta name="action:page" content="Go to page">
 <meta name="fixture:default" content="{&quot;label&quot;:&quot;Pages&quot;,&quot;atStart&quot;:false,&quot;atEnd&quot;:false,&quot;pages&quot;:[{&quot;id&quot;:&quot;1&quot;,&quot;label&quot;:&quot;1&quot;,&quot;current&quot;:false},{&quot;id&quot;:&quot;2&quot;,&quot;label&quot;:&quot;2&quot;,&quot;current&quot;:true},{&quot;id&quot;:&quot;3&quot;,&quot;label&quot;:&quot;3&quot;,&quot;current&quot;:false},{&quot;id&quot;:&quot;gap&quot;,&quot;label&quot;:&quot;…&quot;,&quot;gap&quot;:true},{&quot;id&quot;:&quot;9&quot;,&quot;label&quot;:&quot;9&quot;,&quot;current&quot;:false}]}">
 
+<!-- A row of cut keys, the current page lit. -->
 <nav id="Pagination" part="pagination.frame" class="bare" data-layout="row" aria-label={label}>
   <button id="Prev" variant="quiet" disabled={atStart} onclick={previous} aria-label={label}><og-icon icon="chevronLeft"/></button>
   <ol id="Pages" data-layout="cluster">
@@ -23,10 +24,16 @@
 </nav>
 
 <style>
-/* The arrows keep their ends; the pages between them wrap onto more lines
-   where the row is too narrow for them all. */
-#Pagination { max-inline-size: 100%; gap: var(--space-xs); }
-#Prev, #Next { flex: none; }
+/* Cut keys: the pages in condensed tabular figures, the current one lit in
+   the accent. The arrows keep their ends; the pages between them wrap onto
+   more lines where the row is too narrow for them all. */
+#Pagination { max-inline-size: 100%; gap: var(--space-xs); align-items: center; }
+#Prev, #Next { flex: none; min-inline-size: var(--touch-target); min-block-size: var(--touch-target); --button-radius: var(--hud-tag-cut); --button-corner-shape: bevel; --button-quiet-ink: var(--hud-ink); }
+#Prev::part(base), #Next::part(base) { padding-inline: 0; }
 #Pages { flex: 0 1 auto; min-inline-size: 0; justify-content: center; list-style: none; padding: 0; margin: 0; gap: var(--space-xs); }
-.gap { color: var(--ink-muted); padding: 0 var(--space-xs); }
+#Page { min-inline-size: var(--touch-target); min-block-size: var(--touch-target); --button-radius: var(--hud-tag-cut); --button-corner-shape: bevel; font-weight: var(--hud-figure-weight); font-stretch: var(--hud-figure-stretch); font-variant-numeric: var(--hud-figure-numeric); --button-quiet-ink: var(--hud-ink); }
+#Page[variant="quiet"] { background: var(--data-well); box-shadow: var(--data-well-rim); }
+#Page[variant="primary"] { --button-primary-fill: var(--hud-key-lit-fill); --button-primary-hover-fill: var(--hud-key-lit-fill); --button-primary-pressed-fill: var(--hud-key-lit-fill); --button-primary-ink: var(--hud-key-ink); }
+#Page[variant="primary"]::part(base) { color: var(--hud-key-ink); }
+.gap { font-size: var(--hud-label-size); font-weight: var(--hud-label-weight); letter-spacing: var(--hud-label-tracking); text-transform: var(--hud-label-transform); color: var(--data-head-ink); padding: 0 var(--space-xs); }
 </style>

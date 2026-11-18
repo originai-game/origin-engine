@@ -22,12 +22,14 @@
 </article>
 
 <style>
-#Card { display: flex; flex-direction: column; width: var(--measure-sm); gap: var(--space-sm); }
-.hit { padding: var(--space-md); width: stretch; }
+#Card { display: flex; flex-direction: column; width: var(--measure-sm); max-inline-size: 100%; gap: var(--space-sm); }
+/* The card is a HUD plate the player presses; its words wrap, never cut. */
+.hit { padding: var(--space-md); width: stretch; white-space: normal; text-align: start; background: var(--hud-plate-fill); box-shadow: var(--hud-plate-rim); clip-path: polygon(calc(2 * var(--hud-plate-cut)) 0, 100% 0, 100% calc(100% - 2 * var(--hud-plate-cut)), calc(100% - 2 * var(--hud-plate-cut)) 100%, 0 100%, 0 calc(2 * var(--hud-plate-cut))); color: var(--hud-ink); --button-radius: 0px; }
 #Face { display: flex; flex-direction: column; gap: var(--space-sm); width: stretch; min-width: 0; }
-#Image { width: stretch; aspect-ratio: 1.778; border-radius: var(--radius-control); }
-#Head { display: flex; align-items: center; gap: var(--space-sm); }
-#Title { flex: 1; min-width: 0; }
-#Body { margin: 0; color: var(--ink-muted); line-clamp: 3; }
+#Image { width: stretch; aspect-ratio: 1.778; clip-path: polygon(var(--hud-plate-cut) 0, 100% 0, 100% calc(100% - var(--hud-plate-cut)), calc(100% - var(--hud-plate-cut)) 100%, 0 100%, 0 var(--hud-plate-cut)); }
+#Head { display: flex; flex-wrap: wrap; align-items: start; gap: var(--space-xs) var(--space-sm); }
+#Title { flex: 1 1 calc(var(--measure-xs) * 0.6); min-width: 0; margin: 0; font-size: var(--hud-size-sm); font-weight: var(--data-title-weight); color: var(--hud-ink); text-align: start; overflow-wrap: break-word; }
+#Badge { flex: none; font-size: var(--hud-tag-size); font-weight: var(--hud-figure-weight); letter-spacing: var(--hud-label-tracking); text-transform: var(--hud-label-transform); --badge-fill: var(--hud-tag-fill); --badge-ink: var(--hud-gold); --badge-shadow: inset 0 0 0 var(--stroke-hairline) rgb(from var(--hud-gold) r g b / 0.45); --badge-radius: 0px; }
+#Body { margin: 0; color: var(--hud-ink-dim); text-align: start; overflow-wrap: anywhere; }
 #Actions { justify-content: end; gap: var(--space-sm); }
 </style>
