@@ -190,11 +190,14 @@ impl RetainedHost {
         self.restore_instances(ui, env)?;
         self.refresh_collections(ui, env)?;
         self.sync_interaction(ui)?;
-        self.part_reads = ui.style.part_styles.borrow().inherited_reads();
-        for (key, names) in self.part_reads.clone() {
-            if let Some(node) = self.by_key.get(&key).cloned() {
-                for name in names {
-                    self.read_through(node.clone(), &name);
+        let reads = ui.style.part_styles.borrow_mut().inherited_reads();
+        if !Arc::ptr_eq(&self.part_reads, &reads) {
+            self.part_reads = reads.clone();
+            for (key, names) in &*reads {
+                if let Some(node) = self.by_key.get(key).cloned() {
+                    for name in names {
+                        self.read_through(node.clone(), name);
+                    }
                 }
             }
         }

@@ -210,6 +210,8 @@ pub(crate) struct PartStyles {
     /// whose transition runs is moved from its kept cascade each tick
     /// instead of cascaded again.
     cascades: std::collections::HashMap<(Option<u64>, &'static str), Vec<KeptCascade>>,
+    /// The dependency snapshot changes only with its source cascades.
+    reads: Option<Arc<BTreeMap<u64, BTreeSet<String>>>>,
     /// Sibling controls with identical inputs share their class-change
     /// proof within a tick, not one scan of the root tokens per control.
     retargets: Vec<PartRetarget>,
@@ -309,7 +311,10 @@ const PART_VARIANTS: usize = 8;
 impl PartStyles {
     /// Native parts are painted after document settlement. Their evaluated
     /// custom-property reads belong to their host's retained dependencies.
-    pub(super) fn inherited_reads(&self) -> BTreeMap<u64, BTreeSet<String>> {
+    pub(super) fn inherited_reads(&mut self) -> Arc<BTreeMap<u64, BTreeSet<String>>> {
+        if let Some(reads) = &self.reads {
+            return reads.clone();
+        }
         let mut reads = BTreeMap::<u64, BTreeSet<String>>::new();
         for ((key, _), kept) in &self.cascades {
             let Some(key) = key else { continue };
@@ -325,6 +330,8 @@ impl PartStyles {
                 );
             }
         }
+        let reads = Arc::new(reads);
+        self.reads = Some(reads.clone());
         reads
     }
 
@@ -357,7 +364,11 @@ impl PartStyles {
             };
         } else if self.tick != tick {
             self.styles.retain(|(key, _), _| key.is_none_or(&alive));
+            let count = self.cascades.len();
             self.cascades.retain(|(key, _), _| key.is_none_or(&alive));
+            if self.cascades.len() != count {
+                self.reads = None;
+            }
             self.retargets.clear();
             self.tick = tick;
         }
@@ -390,6 +401,7 @@ impl PartStyles {
     }
 
     fn keep_cascade(&mut self, slot: (Option<u64>, &'static str), cascade: KeptCascade) {
+        self.reads = None;
         let kept = self.cascades.entry(slot).or_default();
         if kept.len() == PART_VARIANTS {
             kept.remove(0);

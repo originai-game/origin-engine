@@ -278,21 +278,8 @@ impl Computed {
     /// and `other`, in order. The custom maps both share (an element's,
     /// carried from its parent unchanged) are not walked.
     pub fn changed<'a>(&'a self, other: &'a Computed) -> Vec<&'a String> {
-        let properties = self.properties.keys().chain(other.properties.keys());
-        let mut names: BTreeSet<&String> = if self.shares(other) {
-            properties.collect()
-        } else if Arc::ptr_eq(&self.base, &other.base) {
-            self.layer
-                .keys()
-                .chain(other.layer.keys())
-                .chain(properties)
-                .collect()
-        } else {
-            self.dependency_names()
-                .chain(other.dependency_names())
-                .collect()
-        };
         let contexts = [
+            (self, other),
             (
                 self.before.as_deref().unwrap_or(self),
                 other.before.as_deref().unwrap_or(other),
@@ -302,16 +289,31 @@ impl Computed {
                 other.after.as_deref().unwrap_or(other),
             ),
         ];
+        let mut names: BTreeSet<&String> = self
+            .animation_tainted
+            .symmetric_difference(&other.animation_tainted)
+            .collect();
         for (a, b) in contexts {
-            names.extend(a.dependency_names().chain(b.dependency_names()));
+            if a.properties != b.properties {
+                names.extend(a.properties.keys().chain(b.properties.keys()));
+            }
+            // Before/after inheritance shares the root token maps too.
+            // Inspect only the overlays where those maps have changed.
+            if a.shares(b) {
+                continue;
+            }
+            if Arc::ptr_eq(&a.base, &b.base) {
+                names.extend(a.layer.keys().chain(b.layer.keys()));
+            } else {
+                names.extend(a.keys().chain(b.keys()));
+            }
         }
         names
             .into_iter()
             .filter(|name| {
-                self.dependency(name) != other.dependency(name)
-                    || contexts
-                        .iter()
-                        .any(|(a, b)| a.dependency(name) != b.dependency(name))
+                contexts
+                    .iter()
+                    .any(|(a, b)| a.dependency(name) != b.dependency(name))
                     || self.animation_tainted.contains(*name)
                         != other.animation_tainted.contains(*name)
             })

@@ -637,6 +637,9 @@ impl RetainedHost {
         let Some(element) = self.elements.get_mut(identity) else {
             return;
         };
+        // A remount may reuse cached part cascades, but its dependency
+        // registrations belonged to the retired element.
+        self.part_reads = Arc::default();
         let owned = std::mem::take(&mut element.owned);
         let keys = std::mem::take(&mut element.keys);
         let memories = std::mem::take(&mut element.memories);
