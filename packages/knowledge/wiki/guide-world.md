@@ -195,6 +195,13 @@ looks and colour LUTs (`.cube`).
   Only an id absent from the requesting bundle falls back to the boot
   bundle, then other ready bundles in open order. Direct `og.load` calls
   have no requesting bundle and use that fallback order.
+- Native rendering can discard a cooked texture's decoded CPU upload copy
+  after the current revision reaches the GPU, recovering texels from its
+  declaring bundle for a later CPU read or device recovery. Deferred uploads,
+  active CPU readers and pending mip swaps keep the data they need; a
+  streamed texture recovers the tail or full chain currently displayed.
+  Mesh buffers needed by simulation or compact-pipeline fallback remain on
+  the CPU; GPU memory and process heap are not interchangeable budgets.
 - At every tick boundary the engine picks the wanted groups, admits them by
   priority (then name) within the memory budget (256 MiB by default: GPU
   textures and meshes and decoded audio). The engine reads each wanted

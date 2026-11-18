@@ -141,6 +141,16 @@ impl Mips {
     }
 }
 
+/// The cooked source currently displayed, not the chain waiting to replace it.
+pub(crate) fn recovery_id(a: &super::assets::Assets, handle: TextureHandle) -> Option<String> {
+    let e = a.stream.mips.entries.iter().find(|e| e.handle == handle)?;
+    Some(if e.state == State::Whole {
+        mips_id(&e.id)
+    } else {
+        e.id.clone()
+    })
+}
+
 /// The encodings the attached renderer takes (`None`: RGBA8).
 fn formats(rs: &extract::RenderState) -> Option<og_render::TextureFormats> {
     rs.backend.as_ref().and_then(|b| b.texture_formats())

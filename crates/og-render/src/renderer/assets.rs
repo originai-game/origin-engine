@@ -3,6 +3,15 @@
 use super::*;
 
 impl Renderer {
+    /// Whether this scene texture's current revision reached the GPU,
+    /// rather than its upload being deferred behind the frame budget.
+    pub fn texture_uploaded(&self, scene: &RenderScene, texture: TextureHandle) -> bool {
+        self.cache.scene_id == scene.id()
+            && scene.contains_texture(texture)
+            && self.cache.texture_revisions.get(texture.index())
+                == Some(&scene.texture_revision(texture.index()))
+    }
+
     /// The environment maps, texture arrays and palettes the scene added,
     /// refilled or removed since the last frame: each slot whose revision
     /// moved is uploaded again, or freed when the scene removed it.
@@ -329,12 +338,12 @@ impl Renderer {
         }
         let upload_budget = UPLOAD_BUDGET.load(std::sync::atomic::Ordering::Relaxed);
         let mut uploaded = 0u64;
-        if self.cache.textures.len() < scene.textures().len() {
+        if self.cache.textures.len() < scene.texture_count() {
             // Every texture is checked before any is recorded: an error
             // never drops an encoder holding earlier textures' mip passes.
-            for index in self.cache.textures.len()..scene.textures().len() {
+            for index in self.cache.textures.len()..scene.texture_count() {
                 if scene.texture_live(index) {
-                    self.check_texture(index, &scene.textures()[index])?;
+                    self.check_texture(index, scene.texture_source(index)?)?;
                 }
             }
             let mut encoder = Encoder::untimed(self.device.create_command_encoder(
@@ -342,10 +351,10 @@ impl Renderer {
                     label: Some("texture upload"),
                 },
             ));
-            for index in self.cache.textures.len()..scene.textures().len() {
+            for index in self.cache.textures.len()..scene.texture_count() {
                 // Fork s63: past the frame's budget, a stand-in now and the
                 // texture later.
-                let source = &scene.textures()[index];
+                let source = scene.texture_source(index)?;
                 let bytes = if scene.texture_live(index) {
                     source_upload_bytes(source)
                 } else {
@@ -360,7 +369,7 @@ impl Renderer {
                 } else {
                     uploaded += bytes;
                     (
-                        self.texture_for(scene, index, &mut encoder),
+                        self.texture_for(scene, index, &mut encoder)?,
                         scene.texture_revisions()[index],
                     )
                 };
@@ -383,7 +392,7 @@ impl Renderer {
             let mut kept = Vec::with_capacity(replaced.len());
             for i in replaced {
                 let bytes = if scene.texture_live(i) {
-                    source_upload_bytes(&scene.textures()[i])
+                    source_upload_bytes(scene.texture_source(i)?)
                 } else {
                     0
                 };
@@ -406,7 +415,7 @@ impl Renderer {
         if !replaced.is_empty() {
             for &index in &replaced {
                 if scene.texture_live(index) {
-                    self.check_texture(index, &scene.textures()[index])?;
+                    self.check_texture(index, scene.texture_source(index)?)?;
                 }
             }
             let mut encoder = Encoder::untimed(self.device.create_command_encoder(
@@ -415,7 +424,7 @@ impl Renderer {
                 },
             ));
             for &index in &replaced {
-                let gpu = self.texture_for(scene, index, &mut encoder);
+                let gpu = self.texture_for(scene, index, &mut encoder)?;
                 self.cache.textures[index] = gpu;
                 self.cache.texture_revisions[index] = scene.texture_revisions()[index];
                 self.cache.sprite_groups[index] = None;
@@ -434,7 +443,7 @@ impl Renderer {
             if self.cache.stream_serials.get(&index) == Some(serial) {
                 continue;
             }
-            let Some(TextureSource::Target(t)) = scene.textures().get(index) else {
+            let Ok(TextureSource::Target(t)) = scene.texture_source(index) else {
                 continue;
             };
             let Some(gpu) = self.cache.textures.get(index) else {
@@ -672,7 +681,7 @@ impl Renderer {
             let atlas = font.atlas.index();
             let (Some(gpu), Some((w, h))) = (
                 self.cache.textures.get(atlas),
-                scene.textures().get(atlas).map(TextureSource::size),
+                scene.texture_source(atlas).ok().map(TextureSource::size),
             ) else {
                 return Err(RenderError::InvalidHandle(format!(
                     "font {index}: atlas texture {atlas}"
@@ -715,7 +724,7 @@ impl Renderer {
     fn copy_stream_frames(&mut self, scene: &RenderScene) {
         let frames = std::mem::take(&mut *scene.stream_external_cell().borrow_mut());
         for (index, frame) in frames {
-            let Some(TextureSource::Target(t)) = scene.textures().get(index) else {
+            let Ok(TextureSource::Target(t)) = scene.texture_source(index) else {
                 frame.close();
                 continue;
             };

@@ -40,7 +40,7 @@ impl RenderScene {
     /// not a live stream texture or rows of another size.
     pub fn write_stream_texture(&mut self, handle: TextureHandle, rgba: Arc<Vec<u8>>) -> bool {
         let i = handle.index();
-        let Some(TextureSource::Target(t)) = self.textures().get(i) else {
+        let Ok(TextureSource::Target(t)) = self.texture_source(i) else {
             return false;
         };
         if t.kind != TargetKind::Stream
@@ -67,7 +67,7 @@ impl RenderScene {
         frame: wgpu::web_sys::VideoFrame,
     ) -> bool {
         let i = handle.index();
-        let ok = matches!(self.textures().get(i), Some(TextureSource::Target(t)) if t.kind == TargetKind::Stream)
+        let ok = matches!(self.texture_source(i), Ok(TextureSource::Target(t)) if t.kind == TargetKind::Stream)
             && self.texture_live(i);
         if !ok {
             frame.close();
@@ -201,7 +201,9 @@ mod tests {
         assert_eq!(rev(&scene), r0);
         assert!(v.show(&mut scene, 3));
         assert_eq!(rev(&scene), r0 + 1);
-        assert!(matches!(&scene.textures()[i], TextureSource::Rgba(t) if t.rgba[0] == 150));
+        assert!(
+            matches!(scene.texture_source(i).unwrap(), TextureSource::Rgba(t) if t.rgba[0] == 150)
+        );
         assert!(!v.show(&mut scene, 3));
         // Past the last frame: the last.
         assert!(v.show(&mut scene, 99));
@@ -211,7 +213,7 @@ mod tests {
         let mut w = v.view(&mut scene);
         assert_ne!(w.texture(), v.texture());
         assert!(w.show(&mut scene, 2));
-        let at = |s: &RenderScene, t: TextureHandle| match &s.textures()[t.index()] {
+        let at = |s: &RenderScene, t: TextureHandle| match s.texture_source(t.index()).unwrap() {
             TextureSource::Rgba(d) => d.rgba[0],
             _ => 0,
         };

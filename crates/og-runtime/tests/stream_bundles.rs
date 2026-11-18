@@ -1106,6 +1106,136 @@ fn closing_a_bundle_preserves_another_bundles_pending_hlod_sources() {
     std::fs::remove_dir_all(root).unwrap();
 }
 
+#[test]
+fn uploaded_cooked_texture_drops_its_copy_and_recovers_from_its_own_bundle() {
+    let _lock = TEST_LOCK.lock().unwrap();
+    #[derive(Default)]
+    struct Upload {
+        ready: Cell<bool>,
+        read: Cell<bool>,
+        pixels: RefCell<Vec<Vec<u8>>>,
+    }
+    struct Backend(Rc<Upload>);
+    impl RenderBackend for Backend {
+        fn tier(&self) -> String {
+            "none".into()
+        }
+        fn size(&self) -> (u32, u32) {
+            (320, 180)
+        }
+        fn render(&mut self, scene: &RenderScene) -> Result<(), String> {
+            if self.0.read.replace(false) {
+                let mut pixels = Vec::new();
+                for i in 0..scene.texture_count() {
+                    let h = TextureHandle::from_index(i);
+                    if matches!(scene.texture_size(h), Some((16 | 32, 16 | 32))) {
+                        pixels.push(scene.texture(h).unwrap().rgba.clone());
+                    }
+                }
+                let mut previous = self.0.pixels.borrow_mut();
+                if previous.is_empty() {
+                    assert_eq!(
+                        pixels.iter().map(Vec::len).collect::<Vec<_>>(),
+                        [16 * 16 * 4, 32 * 32 * 4]
+                    );
+                    *previous = pixels;
+                } else {
+                    assert_eq!(
+                        *previous, pixels,
+                        "recovery used another bundle's same-path image"
+                    );
+                }
+            }
+            Ok(())
+        }
+        fn texture_uploaded(&self, _: &RenderScene, _: TextureHandle) -> bool {
+            self.0.ready.get()
+        }
+        fn capture(&mut self, _: &RenderScene, _: u32, _: u32) -> Option<og_render::RgbaImage> {
+            None
+        }
+    }
+    let base = PathBuf::from(env!("CARGO_TARGET_TMPDIR"))
+        .join(format!("og-runtime-upload-recovery-{}", std::process::id()));
+    for v in 1..=2 {
+        version(&base.join(format!("v{v}")), v, false);
+    }
+    set_hooks(Rc::new(Disk {
+        delayed: false,
+        reads: RefCell::default(),
+    }));
+    og_host_begin_bundle();
+    let game = og_game_game(None);
+    let engine = value(og_engine_create(game, "{}".into())).as_u64().unwrap() as u32;
+    let state = Rc::new(Upload::default());
+    answer(set_render_backend(
+        engine,
+        Some(Box::new(Backend(state.clone()))),
+    ));
+    let g = Game {
+        engine,
+        held: Rc::default(),
+    };
+    for v in 1..=2 {
+        g.open(&base.join(format!("v{v}")));
+        // The unique placing scene selects its same-path dependencies.
+        g.place(&format!("v{v}/place.ogt"));
+    }
+    // Load the two content scenes through their cells at different positions.
+    // Once loaded, their ungrouped model textures remain cached.
+    let anchor = value(host_impl::answer(og_world_spawn(
+        engine,
+        Some(
+            json!({
+                "name":"player"
+            })
+            .to_string(),
+        ),
+    )))
+    .as_f64()
+    .unwrap();
+    value(host_impl::answer(og_world_insert(
+        engine,
+        anchor,
+        "og.StreamAnchor".into(),
+        Some(json!({"reach":0}).to_string()),
+    )));
+    g.walk(100);
+    for _ in 0..4 {
+        g.frame();
+    }
+    assert!(g.loaded("v1"));
+    g.walk(200);
+    for _ in 0..4 {
+        g.frame();
+    }
+    assert!(g.loaded("v2"));
+    state.read.set(true);
+    g.frame();
+    let before = og_core::alloc::heap().unwrap().live;
+    // A deferred upload cannot lose its source.
+    g.frame();
+    let deferred = og_core::alloc::heap().unwrap().live;
+    assert!(deferred + 1024 >= before);
+    state.ready.set(true);
+    for _ in 0..3 {
+        g.frame();
+    }
+    let freed = og_core::alloc::heap().unwrap().live;
+    // Allow the two small reload closures, but not even the smaller
+    // texture's 1024-byte decoded copy to remain resident.
+    assert!(
+        before.saturating_sub(freed) >= (16 * 16 + 32 * 32) * 4 - 512,
+        "uploaded texture copies were retained: {before} -> {freed}"
+    );
+    // A CPU reader needs valid texels even though no decoded copy is resident.
+    state.read.set(true);
+    g.frame();
+    assert!(og_core::alloc::heap().unwrap().live >= freed + (16 * 16 + 32 * 32) * 4);
+    assert!(og_engine_destroy(engine));
+    std::fs::remove_dir_all(base).unwrap();
+}
+
 /// Deliberately identical cooked ids, but different cell names, geometry,
 /// texture sizes and group names. The unique placing scene selects a bundle;
 /// its same-path dependencies must keep that source through load and reload.

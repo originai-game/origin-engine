@@ -470,17 +470,17 @@ impl GiScene {
 
     /// The mean colour of an sRGB texture's texels (linear), cached by its
     /// index and revision; white for one with no texels on the CPU.
-    pub fn texture_mean(
+    pub fn texture_mean<'a>(
         &mut self,
         index: usize,
         revision: u64,
-        data: Option<&crate::TextureData>,
+        data: impl FnOnce() -> Option<&'a crate::TextureData>,
     ) -> Vec3 {
         *self
             .texture_means
             .entry((index, revision))
             .or_insert_with(|| {
-                let Some(t) = data.filter(|t| !t.rgba.is_empty()) else {
+                let Some(t) = data().filter(|t| !t.rgba.is_empty()) else {
                     return Vec3::ONE;
                 };
                 let srgb = t.color_space == crate::ColorSpace::Srgb;

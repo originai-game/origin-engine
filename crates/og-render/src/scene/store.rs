@@ -425,7 +425,7 @@ impl RenderScene {
 
     /// An RGBA8 texture (`None` for a [`TextureUpload`] or a foreign handle).
     pub fn texture(&self, handle: TextureHandle) -> Option<&TextureData> {
-        match self.textures.get(handle.index())? {
+        match self.textures.get(handle.index())?.cpu_source()? {
             TextureSource::Rgba(t) => Some(t),
             TextureSource::Encoded(_) | TextureSource::Target(_) => None,
         }
@@ -434,16 +434,12 @@ impl RenderScene {
     /// How a texture's texels are sampled: decoded from sRGB or as stored
     /// (a render target's are linear); `None` for a foreign handle.
     pub fn texture_color_space(&self, handle: TextureHandle) -> Option<ColorSpace> {
-        Some(match self.textures.get(handle.index())? {
-            TextureSource::Rgba(t) => t.color_space,
-            TextureSource::Encoded(u) => u.desc.color_space,
-            TextureSource::Target(_) => ColorSpace::Linear,
-        })
+        Some(self.textures.get(handle.index())?.color_space)
     }
 
     /// A pre-encoded texture (`None` for an RGBA8 one or a foreign handle).
     pub fn texture_upload(&self, handle: TextureHandle) -> Option<&TextureUpload> {
-        match self.textures.get(handle.index())? {
+        match self.textures.get(handle.index())?.cpu_source()? {
             TextureSource::Encoded(t) => Some(t),
             TextureSource::Rgba(_) | TextureSource::Target(_) => None,
         }
@@ -452,7 +448,7 @@ impl RenderScene {
     /// Width and height of any texture (a streamed one's whole chain's,
     /// [`RenderScene::set_texture_size`], whatever it holds now).
     pub fn texture_size(&self, handle: TextureHandle) -> Option<(u32, u32)> {
-        let size = self.textures.get(handle.index()).map(TextureSource::size)?;
+        let size = self.textures.get(handle.index())?.size;
         Some(self.texture_sizes.get(&handle).copied().unwrap_or(size))
     }
 
@@ -639,10 +635,6 @@ impl RenderScene {
 
     pub(crate) fn fonts(&self) -> &[MsdfFont] {
         &self.fonts
-    }
-
-    pub(crate) fn textures(&self) -> &[TextureSource] {
-        &self.textures
     }
 
     /// [`RenderScene::material_serial`]'s count of material changes.
