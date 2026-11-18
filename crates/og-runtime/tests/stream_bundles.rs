@@ -1619,6 +1619,125 @@ fn pending_model_textures_hide_only_presentation_and_preserve_128_tick_hashes() 
     std::fs::remove_dir_all(base).unwrap();
 }
 
+/// A cell loads near the camera while its models' textures are prepared:
+/// the models are hidden until then, and the proxy that showed the cell
+/// while it was unloaded goes on showing it, so the cell never leaves the
+/// frame between the two.
+#[test]
+fn a_loaded_cells_proxy_shows_its_models_until_their_textures_are_prepared() {
+    let _lock = TEST_LOCK.lock().unwrap();
+    use std::sync::{
+        Arc,
+        atomic::{AtomicBool, Ordering},
+    };
+    /// The models' textures wait for `ready`; the proxies' maps never wait.
+    struct Models(Arc<AtomicBool>);
+    impl Hooks for Models {
+        fn dispatch(&self, _: &Dispatch) -> Result<String, String> {
+            Ok(String::new())
+        }
+        fn read_asset(&self, path: &str) -> Fetch<Vec<u8>> {
+            match std::fs::read(path) {
+                Ok(b) => Fetch::Ready(b),
+                Err(e) => Fetch::Failed(e.to_string()),
+            }
+        }
+        fn texture(
+            &self,
+            t: &og_bundle::runtime::CookedTexture,
+            f: Option<&og_render::TextureFormats>,
+        ) -> Fetch<og_render::TextureSource> {
+            if !t.id.contains("#hlod") && !self.0.load(Ordering::Acquire) {
+                return Fetch::Pending;
+            }
+            match t.to_texture_source(f) {
+                Ok(t) => Fetch::Ready(t),
+                Err(e) => Fetch::Failed(e.to_string()),
+            }
+        }
+    }
+    let base = PathBuf::from(env!("CARGO_TARGET_TMPDIR"))
+        .join(format!("hlod-waiting-{}", std::process::id()));
+    let root = base.join("game");
+    cook(&root, &[("world.ogt", b"type scene\nversion 1\n---\nentity \"player\" {\n Transform {\n  position 0 0 0\n }\n StreamAnchor {\n  reach 0\n }\n}\n".to_vec())]);
+    let path = base.join("parcel");
+    parcel(&path, "parcel", "parcel", 100, false);
+    cook(&path, &[(
+        "parcel/content.ogt",
+        b"type scene\nversion 1\n---\nhlod {\n size 32\n error 0.25\n texels 64\n}\nentity \"house-parcel\" {\n model \"parcel/model.ogt\"\n static true\n}\nentity \"house-second\" {\n model \"parcel/model.ogt\"\n static true\n Transform {\n  position 4 0 0\n }\n}\n".to_vec(),
+    )]);
+    let ready = Arc::new(AtomicBool::new(false));
+    set_hooks(Rc::new(Models(ready.clone())));
+    og_host_begin_bundle();
+    let game = og_game_game(Some(r#"{"seed":1}"#.into()));
+    let engine = value(og_engine_create(game, json!({"root": root}).to_string()))
+        .as_u64()
+        .unwrap() as u32;
+    let held = Rc::new(Cell::new(Held::default()));
+    answer(set_render_backend(
+        engine,
+        Some(Box::new(Recorder(held.clone()))),
+    ));
+    let g = Game { engine, held };
+    g.place("world.ogt");
+    g.open(&path);
+    g.place("parcel/place.ogt");
+    // 20 m from the houses: their proxy's 0.25 m projects over a pixel,
+    // so once they can draw, the houses draw themselves.
+    value(og_engine_write_resource(
+        engine,
+        "og.Camera".into(),
+        json!({"position": {"x": 102, "y": 2, "z": 20}, "fov": 50}).to_string(),
+    ));
+    for _ in 0..8 {
+        g.frame();
+    }
+    assert!(!g.loaded("parcel"));
+    assert!(
+        g.held.get().instances > 0,
+        "the unloaded cell's proxy draws"
+    );
+    g.walk(100);
+    for tick in 0..32 {
+        g.frame();
+        assert!(
+            g.held.get().instances > 0,
+            "tick {tick}: the cell left the frame while its models' textures were prepared"
+        );
+    }
+    assert!(g.loaded("parcel"));
+    assert!(
+        !og_loading_idle(engine),
+        "the models' textures are still pending"
+    );
+    ready.store(true, Ordering::Release);
+    for _ in 0..2000 {
+        g.frame();
+        if og_loading_idle(engine) {
+            break;
+        }
+    }
+    assert!(og_loading_idle(engine));
+    let _ = og_engine_take_outputs(engine);
+    let _: Value =
+        serde_json::from_str(&og_engine_probe_commands(engine, "0:dump_render".into())).unwrap();
+    g.frame();
+    let outputs: Value = serde_json::from_str(&og_engine_take_outputs(engine)).unwrap();
+    let output = outputs
+        .as_array()
+        .unwrap()
+        .iter()
+        .rev()
+        .find(|o| o["kind"] == "json");
+    let render: Value = serde_json::from_str(output.unwrap()["data"].as_str().unwrap()).unwrap();
+    assert_eq!(
+        (render["hlod"]["proxies"].as_u64(), g.held.get().instances),
+        (Some(0), 2),
+        "near, the prepared houses draw themselves: {render}"
+    );
+    assert!(og_engine_destroy(engine));
+}
+
 /// Release-mode CPU profile of an independently cooked cell with four
 /// 1024-square material maps. The recorder consumes the real scene but
 /// does not upload it to a GPU; GPU frame budgets need a native GPU run too.

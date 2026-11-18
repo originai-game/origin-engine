@@ -22,9 +22,13 @@
 //! bundle. While the cell is unloaded its proxies draw at the cell's pose
 //! with nothing behind them, so the far world is there before it streams:
 //! per branch the finest proxy that still shows every model of it.
-//! (A `persist` cell's kept changes are not in its proxies.)
+//! (A `persist` cell's kept changes are not in its proxies.) Once it has
+//! loaded, a model hidden while its textures are prepared
+//! (`crate::world::assets::Decoded::hidden_models`) is still shown by its
+//! node's proxy, at any distance, until it can draw itself.
 
 use crate::engine::Engine;
+use crate::host::wire::record;
 use crate::present::extract::{Hierarchy, Parts, RenderState};
 use crate::world::assets::LoadedScene;
 use crate::world::assets::{Placement, handle};
@@ -463,6 +467,18 @@ pub(crate) struct Row {
     pub plain: bool,
 }
 
+/// How a member of a loaded place stands to what the cook read.
+#[derive(Clone, Copy, PartialEq)]
+enum Member {
+    /// Drawn as the cook read it: the proxy may stand in for it.
+    Intact,
+    /// As the cook read it, but not drawn while its model's textures are
+    /// prepared: only the proxy shows it.
+    Waiting,
+    /// Gone, hidden, moved or given a look of its own.
+    Changed,
+}
+
 /// What [`draw`] reads of the frame.
 pub(crate) struct View<'a> {
     pub models: &'a IdMap<u64, Parts>,
@@ -506,6 +522,11 @@ pub(crate) fn draw(
     places.retain(|p| !p.cell || p.root.is_some_and(|c| world.is_alive(Entity::from_bits(c))));
     let mut settled = places.len() == before;
     let rows = (!places.is_empty()).then(|| (view.rows)());
+    let model = rs
+        .draw
+        .model
+        .as_ref()
+        .and_then(|layout| Some((layout, world.id_by_name(&layout.schema).ok()?)));
     for place in &mut places {
         let Some(rows) = &rows else { break };
         let loaded = match (place.cell, place.root) {
@@ -529,13 +550,29 @@ pub(crate) fn draw(
         let scale = root.to_scale_rotation_translation().0.abs().max_element();
         let tree = place.tree.clone();
         let nodes = &tree.hlod.nodes;
-        // Per member, whether it is as the cook read it; asked once.
-        let mut intact: Vec<Option<bool>> = vec![None; place.members.len()];
-        let mut member_intact = |k: usize, h: &mut Hierarchy| -> bool {
-            *intact[k].get_or_insert_with(|| {
+        // Per member, how it stands to the cook's; asked once.
+        let mut members: Vec<Option<Member>> = vec![None; place.members.len()];
+        let mut member = |k: usize, h: &mut Hierarchy| -> Member {
+            *members[k].get_or_insert_with(|| {
                 let (e, asset) = place.members[k];
-                rows.get(&e).is_some_and(|r| r.plain && r.asset == asset)
-                    && same_place(&h.world_of(e), &(root * tree.hlod.members[k].matrix))
+                let mut cooked =
+                    || same_place(&h.world_of(e), &(root * tree.hlod.members[k].matrix));
+                // The frame leaves out a row whose model's textures are
+                // being prepared: it is waiting when it is visible with its
+                // cooked model, at its cooked place.
+                let waiting = || {
+                    rs.decoded.hidden_models.contains_key(&asset)
+                        && model.is_some_and(|(layout, id)| {
+                            let row = world.get_bytes(Entity::from_bits(e), id).ok();
+                            let row = row.and_then(|b| layout.read::<record::Model>(&b).ok());
+                            row.is_some_and(|m| m.visible && m.asset == asset)
+                        })
+                };
+                match rows.get(&e) {
+                    Some(r) if r.plain && r.asset == asset && cooked() => Member::Intact,
+                    None if waiting() && cooked() => Member::Waiting,
+                    _ => Member::Changed,
+                }
             })
         };
         let mut stack: Vec<usize> = tree.hlod.children(None).collect();
@@ -569,7 +606,12 @@ pub(crate) fn draw(
             // A node whose proxy is not loaded hands on to its children.
             let proxy = match parts {
                 None => false,
-                Some(_) if loaded => !near && under.clone().all(|k| member_intact(k, h)),
+                // Near, it still stands in while a model it holds itself
+                // waits (its children's wait under their own proxies).
+                Some(_) if loaded => {
+                    under.clone().all(|k| member(k, h) != Member::Changed)
+                        && (!near || (own..node.members.1).any(|k| member(k, h) == Member::Waiting))
+                }
                 // Nothing else shows the models a node holds itself (a
                 // leaf's are all its own).
                 Some(_) => !near || own < node.members.1,
