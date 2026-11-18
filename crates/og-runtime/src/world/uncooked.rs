@@ -71,12 +71,45 @@ struct Job {
     work: Work,
 }
 
+/// What a journaled load is (`LoadCompletion.kind`); each kind numbers its
+/// requests from 0.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
+pub(crate) enum Kind {
+    /// og.load.imageData, og.load.gltfData, og.load.environmentData.
+    Uncooked,
+    /// og.load.bundle of a bundle other than the game's own.
+    Bundle,
+}
+
+impl Kind {
+    fn name(self) -> &'static str {
+        match self {
+            Kind::Uncooked => "uncooked",
+            Kind::Bundle => "bundle",
+        }
+    }
+}
+
 /// One load put in place (`LoadCompletion`).
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(crate) struct Completion {
+    pub kind: Kind,
     pub request: u32,
     pub tick: u64,
     pub ok: bool,
+}
+
+/// When a replay lets a runtime bundle open complete.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(crate) enum Due {
+    /// No replay, or a journal with no bundle opens (recorded before they
+    /// were journaled): as this host reads it.
+    Free,
+    /// At the first moment the world is at this tick, ready or failed as
+    /// recorded.
+    At(u64, bool),
+    /// Never: the recorded run never finished it.
+    Never,
 }
 
 /// Every uncooked load of an engine.
@@ -87,8 +120,11 @@ pub(crate) struct Uncooked {
     next_key: u64,
     /// What was put in place, oldest first (og.load.completions).
     pub journal: Vec<Completion>,
-    /// A recorded journal to replay (og.load.replayCompletions), by request.
-    schedule: Option<BTreeMap<u32, Completion>>,
+    /// A recorded journal to replay (og.load.replayCompletions), by kind
+    /// and request.
+    schedule: Option<BTreeMap<(Kind, u32), Completion>>,
+    /// The next runtime bundle open's request number.
+    pub next_bundle: u32,
     /// The entries uncooked loads made and not released (og.load.release
     /// frees these alone), with a ready glTF's textures in the scene.
     owned: BTreeMap<usize, Vec<og_render::TextureHandle>>,
@@ -201,7 +237,7 @@ pub(crate) fn poll(eng: &Engine, tick: u64) {
     let mut kept = Vec::new();
     for mut job in jobs.drain(..) {
         let due = match &schedule {
-            Some(s) => match s.get(&job.request) {
+            Some(s) => match s.get(&(Kind::Uncooked, job.request)) {
                 Some(c) if c.tick <= tick => Some(Some(c.ok)),
                 _ => None,
             },
@@ -220,11 +256,12 @@ pub(crate) fn poll(eng: &Engine, tick: u64) {
         }
         let request = job.request;
         let ok = apply(eng, job, recorded == Some(false));
-        eng.assets
-            .borrow_mut()
-            .uncooked
-            .journal
-            .push(Completion { request, tick, ok });
+        eng.assets.borrow_mut().uncooked.journal.push(Completion {
+            kind: Kind::Uncooked,
+            request,
+            tick,
+            ok,
+        });
         clock.worked = true;
     }
     eng.assets.borrow_mut().uncooked.jobs.extend(kept);
@@ -394,9 +431,27 @@ pub(crate) fn completions(eng: &Engine) -> Value {
             .uncooked
             .journal
             .iter()
-            .map(|c| json!({ "request": c.request, "tick": c.tick as f64, "ok": c.ok }))
+            .map(|c| {
+                json!({ "kind": c.kind.name(), "request": c.request, "tick": c.tick as f64, "ok": c.ok })
+            })
             .collect(),
     )
+}
+
+impl Uncooked {
+    /// When a replay lets runtime bundle open `request` complete.
+    pub(crate) fn bundle_due(&self, request: u32) -> Due {
+        let Some(s) = &self.schedule else {
+            return Due::Free;
+        };
+        if !s.keys().any(|(kind, _)| *kind == Kind::Bundle) {
+            return Due::Free;
+        }
+        match s.get(&(Kind::Bundle, request)) {
+            Some(c) => Due::At(c.tick, c.ok),
+            None => Due::Never,
+        }
+    }
 }
 
 /// `og.load.replayCompletions`: refused once a tick has run.
@@ -408,7 +463,7 @@ pub(crate) fn replay(eng: &Engine, tick: u64, list: &Value) -> Result<(), String
     }
     let items = list
         .as_array()
-        .ok_or("completions is a list of { request, tick, ok }")?;
+        .ok_or("completions is a list of { kind, request, tick, ok }")?;
     let mut schedule = BTreeMap::new();
     for (i, c) in items.iter().enumerate() {
         let num = |k: &str| {
@@ -421,7 +476,25 @@ pub(crate) fn replay(eng: &Engine, tick: u64, list: &Value) -> Result<(), String
         let ok = c["ok"]
             .as_bool()
             .ok_or_else(|| format!("completions[{i}].ok is a boolean"))?;
-        schedule.insert(request, Completion { request, tick, ok });
+        // A journal from before loads had kinds holds uncooked loads alone.
+        let kind = match c.get("kind").and_then(Value::as_str) {
+            None | Some("uncooked") => Kind::Uncooked,
+            Some("bundle") => Kind::Bundle,
+            Some(k) => {
+                return Err(format!(
+                    "completions[{i}].kind is `uncooked` or `bundle`, not `{k}`"
+                ));
+            }
+        };
+        schedule.insert(
+            (kind, request),
+            Completion {
+                kind,
+                request,
+                tick,
+                ok,
+            },
+        );
     }
     eng.assets.borrow_mut().uncooked.schedule = Some(schedule);
     Ok(())

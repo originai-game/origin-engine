@@ -199,7 +199,7 @@ fn with<T>(engine: u32, f: impl FnOnce(&mut Platform) -> T) -> T {
 }
 
 /// The tick a call is made at: the running system's, or the world's.
-fn tick_now(world: u32) -> Result<u64, String> {
+pub(crate) fn tick_now(world: u32) -> Result<u64, String> {
     if let Some(f) = running(world) {
         // SAFETY: the frame is published while its system runs.
         return Ok(unsafe { f.ctx() }.time().tick);

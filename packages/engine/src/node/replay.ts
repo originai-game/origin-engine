@@ -60,7 +60,7 @@ import { nativePlatform, readFake } from "./platform.ts";
 import type { PlatformAnswer, PlatformHost, PlatformLink, PlatformNotice } from "../platform-local.ts";
 import { boundHost, createEngine, fixedClock, type Engine, type GameToken } from "../runtime.ts";
 import { og } from "../index.ts";
-import type { World } from "../../types/index.d.ts";
+import type { LoadCompletion, World } from "../../types/index.d.ts";
 
 /** Fields of a type the hash reads, by type name. */
 type Table = Record<string, string[]>;
@@ -79,8 +79,8 @@ export interface ReplayTrace {
   table: Table;
   hashes: string[];
   keyframes: { tick: number; save: string }[];
-  /** The journal of uncooked loads (og.load.completions); absent in traces before G3-4. */
-  loads?: { request: number; tick: number; ok: boolean }[];
+  /** The journal of host-timed loads (og.load.completions); absent in traces before G3-4, and without kinds before runtime bundle opens were journaled. */
+  loads?: LoadCompletion[];
   /** The platform's journal; absent in traces from before it. */
   platform?: PlatformJournal;
 }

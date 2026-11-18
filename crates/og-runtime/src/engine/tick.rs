@@ -8,8 +8,8 @@ use super::*;
 fn tick_boundary(eng: &Engine) -> Result<(), String> {
     let start = trace::start();
     crate::world::assets::resolve_releases(eng);
-    eng.assets.borrow_mut().poll();
     let tick = eng.world().map(|w| w.time().tick).unwrap_or(0);
+    eng.assets.borrow_mut().poll(tick);
     crate::world::uncooked::poll(eng, tick);
     crate::world::scenes::before_boundary(eng);
     super::stream::update(eng);

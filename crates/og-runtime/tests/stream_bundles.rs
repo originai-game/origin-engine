@@ -1054,7 +1054,17 @@ fn bundle_close_from_system_is_pending_then_refused_or_released_at_boundary() {
     value(og_engine_advance(control, 4));
     let dump = |e| serde_json::from_str::<Value>(&og_engine_probe_dump(e, None)).unwrap();
     assert_eq!(dump(engine)["hash"], dump(control)["hash"]);
-    assert_eq!(og_load_completions(engine), og_load_completions(control));
+    // The open is journaled host input; the close adds nothing to the journal.
+    let journal = og_load_completions(engine);
+    let (opens, rest): (Vec<_>, Vec<_>) = journal
+        .as_array()
+        .unwrap()
+        .iter()
+        .cloned()
+        .partition(|c| c["kind"] == "bundle");
+    assert_eq!(json!(rest), og_load_completions(control));
+    assert_eq!(opens.len(), 1, "{journal}");
+    assert_eq!(opens[0]["ok"], true, "{journal}");
     hooks.pending_manifest.set(true);
     let pending = value(host_impl::answer(og_load_bundle(
         engine,
@@ -2046,5 +2056,152 @@ fn cell_load_timing() {
             assert!(og_engine_destroy(engine));
         }
     }
+    std::fs::remove_dir_all(base).unwrap();
+}
+
+/// Answers a parcel bundle's manifest `Fetch::Pending` for its first
+/// `waits` reads, as the web host does until the network brings it.
+struct LateManifest {
+    waits: Cell<u32>,
+}
+impl Hooks for LateManifest {
+    fn dispatch(&self, _: &Dispatch) -> Result<String, String> {
+        Ok(String::new())
+    }
+    fn read_asset(&self, path: &str) -> Fetch<Vec<u8>> {
+        if path.contains("/late/") && path.ends_with(".cook.ogt") && self.waits.get() > 0 {
+            self.waits.set(self.waits.get() - 1);
+            return Fetch::Pending;
+        }
+        match std::fs::read(path) {
+            Ok(bytes) => Fetch::Ready(bytes),
+            Err(e) => Fetch::Failed(format!("{path}: {e}")),
+        }
+    }
+}
+
+/// A run that opens a bundle and places its scene once the open is ready,
+/// its manifest arriving after `waits` reads: each tick's world hash and
+/// og.load.completions. With `replay`, that journal is handed back first.
+fn late_open(base: &Path, waits: u32, replay: Option<&Value>) -> (Vec<Value>, Value) {
+    let root = base.join("game");
+    set_hooks(Rc::new(LateManifest {
+        waits: Cell::new(waits),
+    }));
+    og_host_begin_bundle();
+    let game = og_game_game(Some(r#"{"seed":1}"#.into()));
+    let engine = value(og_engine_create(game, json!({"root": root}).to_string()))
+        .as_u64()
+        .unwrap() as u32;
+    let g = Game {
+        engine,
+        held: Rc::default(),
+    };
+    if let Some(journal) = replay {
+        answer(og_load_replay_completions(engine, journal.to_string()));
+    }
+    g.place("world.ogt");
+    let mut hashes = Vec::new();
+    let mut bundle = None;
+    let mut placed = false;
+    for tick in 0..12 {
+        if tick == 3 {
+            bundle = Some(g.open(&base.join("late")));
+        }
+        // Game code acting on the open's status, as a kit system does.
+        if let Some(h) = bundle
+            && !placed
+            && og_load_status(engine, h) == "ready"
+        {
+            g.place("late/place.ogt");
+            placed = true;
+        }
+        g.frame();
+        // Not the probe's dump: a probe call runs a tick boundary of its own.
+        hashes.push(json!(og_net_hash(engine)));
+    }
+    assert!(placed, "the bundle never opened");
+    let journal = og_load_completions(engine);
+    assert!(og_engine_destroy(engine));
+    (hashes, journal)
+}
+
+/// On the web a runtime bundle opens when its manifest arrives, a tick the
+/// network picks. That tick is journaled, and a replay whose host reads the
+/// manifest at once (natively) still opens it there, so a world that acts
+/// on the open replays tick for tick.
+#[test]
+fn a_runtime_bundle_opens_at_its_journaled_tick_in_a_replay() {
+    let _lock = TEST_LOCK.lock().unwrap();
+    let base = PathBuf::from(env!("CARGO_TARGET_TMPDIR")).join(format!(
+        "og-runtime-bundle-open-journal-{}",
+        std::process::id()
+    ));
+    let _ = std::fs::remove_dir_all(&base);
+    cook(&base.join("game"), &[("world.ogt", b"type scene\nversion 1\n---\nentity \"player\" {\n  Transform {\n    position 0 0 0\n  }\n  StreamAnchor {\n    reach 0\n  }\n}\n".to_vec())]);
+    parcel(&base.join("late"), "late", "late", 100, false);
+
+    let (web, journal) = late_open(&base, 3, None);
+    let bundles: Vec<&Value> = journal
+        .as_array()
+        .unwrap()
+        .iter()
+        .filter(|c| c["kind"] == "bundle")
+        .collect();
+    assert_eq!(bundles.len(), 1, "{journal}");
+    assert_eq!(bundles[0]["request"], 0, "{journal}");
+    assert_eq!(bundles[0]["ok"], true, "{journal}");
+    let opened = bundles[0]["tick"].as_f64().unwrap();
+    assert!(
+        opened > 3.0,
+        "opened at {opened}, pending since tick 3: {journal}"
+    );
+
+    let (native, native_journal) = late_open(&base, 0, None);
+    assert_ne!(
+        web, native,
+        "the late open must change the world for this test to see anything"
+    );
+    assert_eq!(
+        native_journal[0]["tick"].as_f64(),
+        Some(3.0),
+        "{native_journal}"
+    );
+
+    let (replayed, replay_journal) = late_open(&base, 0, Some(&journal));
+    assert_eq!(
+        replayed, web,
+        "the replay must open the bundle at its recorded tick"
+    );
+    assert_eq!(replay_journal, journal);
+
+    // Released while its manifest is on the way: it stays released when the
+    // manifest lands, and an open that never finished is not journaled.
+    set_hooks(Rc::new(LateManifest {
+        waits: Cell::new(3),
+    }));
+    og_host_begin_bundle();
+    let game = og_game_game(Some(r#"{"seed":1}"#.into()));
+    let engine = value(og_engine_create(
+        game,
+        json!({"root": base.join("game")}).to_string(),
+    ))
+    .as_u64()
+    .unwrap() as u32;
+    let g = Game {
+        engine,
+        held: Rc::default(),
+    };
+    let h = g.open(&base.join("late"));
+    assert_eq!(og_load_status(engine, h), "pending");
+    answer(og_load_release(engine, h));
+    for _ in 0..6 {
+        g.frame();
+    }
+    assert_eq!(og_load_status(engine, h), "failed");
+    let why = og_load_error(engine, h).unwrap();
+    assert!(why.contains("released"), "{why}");
+    assert_eq!(og_load_completions(engine), json!([]));
+    assert!(og_engine_destroy(engine));
     std::fs::remove_dir_all(base).unwrap();
 }

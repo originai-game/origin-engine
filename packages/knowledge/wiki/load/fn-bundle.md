@@ -21,7 +21,7 @@ og.load.bundle(world: World, path: string): Result<Asset>
 | `world` | `World` | no | The world that owns the asset. |
 | `path` | `string` | no | The cooked directory, relative to the project (or the page), such as `dlc/cooked`. |
 
-**Returns** `Result<Asset>`: The bundle's handle: pending until its manifest is read, then ready or failed.
+**Returns** `Result<Asset>`: The bundle's handle: ready or failed at the call when the host has its manifest (natively always), else pending until a tick boundary. og.load.completions journals the tick, so a replay opens it at the same one.
 
 Binding symbol `og_load_bundle` · publish builds: kept
 
@@ -32,7 +32,7 @@ fn bundle {
   guide "world §4"
   param world World "The world that owns the asset."
   param path String "The cooked directory, relative to the project (or the page), such as `dlc/cooked`."
-  returns Result.Asset "The bundle's handle: pending until its manifest is read, then ready or failed."
+  returns Result.Asset "The bundle's handle: ready or failed at the call when the host has its manifest (natively always), else pending until a tick boundary. og.load.completions journals the tick, so a replay opens it at the same one."
 }
 ```
 
