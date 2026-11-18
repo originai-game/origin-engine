@@ -26,6 +26,10 @@ sources (the gateway's PNGs) are in the `origin-generated-assets` bucket
 | `hero-ranger.png` | `5162cb4778ad132ac8934a3827afc7df` | `2634d69313c0924de7d430c5dc1c03a5c89eb5612bd3c9360ea68f8cefe63d18` | hard key, cropped, 256 px tall |
 | `tree-oak.png` | `e464a2b21dbef178276e319e6dc3f59a` | `daa38937c45818767c0f2140625be2dcd773b252921333669758564bef487bb3` | hard key, cropped, 256 px tall |
 | `sign-shield.png` | `c465908610d57a08185e3baf840df7b8` | `cffed06b09bc40623f385a267b28530f16782d41cc3c9e3a9b4af80c26e35cc5` | hard key, cropped, 128 px |
+| `vault.jpg` | `42da3ce7e8ef3df71e1dae523d63b35f` | `87cfeac3b371911fe71897a33c8e86d8076e5a63f38e5f25af54cc977eea4907` | cover-crop to 1280×720 |
+| `chest.png` | `5f6741bf4e0f500ad70d798162412860` | `5b0bea46c39bb105c7a0ccb8182fe68d15fa41e213758a556e15290407a50de8` | its own alpha, cropped, 256 px tall |
+| `cauldron.png` | `cc20609e10c71db9f964573d9e548ff2` | `3ae5c638ce04e71f4e54baa962c294297686333d5e84a622743e9380d026b709` | its own alpha, cropped, 256 px tall |
+| `vault-block.png` | `e3c5cead3ac83c0bbdaf259f37afd265` | `581898f822c90b6c3674f6ff21fa8912f96e99613557f9a933de1cf6b18a1aa9` | 128×128 |
 
 Prompts: a pixel-art cistern chamber (mossy arches, a rusted pipe, a light
 shaft from a grate, torches) with an empty lower third; an alchemist's
@@ -34,4 +38,9 @@ empty workbench; a rusted riveted pipe ending in a flanged outlet; an empty
 corked round-bottomed flask; one mossy teal cistern stone block; three HD-2D pixel-art RPG
 heroes (a knight in a red tabard, a mage in a blue hooded robe, a ranger in a
 green cloak), full body, three-quarter front view, on a magenta key; a round leafy oak; a
-round heraldic shield with a red rim and a dark diagonal bar.
+round heraldic shield with a red rim and a dark diagonal bar; a dwarven
+treasure vault (torch-lit pillars, iron doors, hoards in the corners) over
+an empty floor; an open treasure chest full of gold; an iron cauldron of
+teal brew on embers; one carved slate dwarven block with a gold knotwork
+band. The chest and the cauldron came from the gateway with straight alpha
+(`transparent`), so they needed no key.
