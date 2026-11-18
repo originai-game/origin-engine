@@ -155,6 +155,47 @@ fn property_animation_keeps_fresh_paint_after_retargeting_and_invalidation() {
     }
 }
 
+/// Synthetic bold's ink and one-device-pixel second copy must be
+/// repainted at the current scale, including an inherited animated scale.
+#[test]
+fn synthetic_bold_tracks_animated_device_scale() {
+    let text = r#"<meta name="component" content="Test">
+<div id="Page" data-state={$pose}><span>Buy now</span></div>
+<style>
+#Page { width: 240px; height: 120px; transition: scale 300ms linear; }
+#Page[data-state=on] { scale: 1.37; }
+span { font-size: 18px; font-weight: 700; color: #f4e6c6b8; }
+</style>"#;
+    let font = crate::support::Handles::default().test_font();
+    let stores = [("pose", serde_json::json!("rest"))];
+    let mut retained = Doc::with_font(text, &stores, font.clone());
+    let mut fresh = Doc::with_font(text, &stores, font);
+    for tick in 0..24 {
+        if tick == 2 || tick == 12 {
+            let pose = serde_json::json!(if tick == 2 { "on" } else { "rest" });
+            retained.put("pose", pose.clone());
+            fresh.put("pose", pose);
+        }
+        fresh.ui.reset_part_css();
+        retained.step(InputFrame::default());
+        fresh.step(InputFrame::default());
+        assert!(
+            retained
+                .ui
+                .frame()
+                .items
+                .iter()
+                .any(|i| matches!(&i.cmd, DrawCmd::Text { weight, .. } if *weight > 0.0)),
+            "synthetic bold control"
+        );
+        assert_eq!(
+            retained.ui.frame().items,
+            fresh.ui.frame().items,
+            "tick {tick}"
+        );
+    }
+}
+
 /// Repeated class-driven scalar targets keep the control, but a class
 /// changing real styles or its shadow parts still rebuilds. The reference
 /// invalidates styles each tick and must agree in paint and hit geometry.

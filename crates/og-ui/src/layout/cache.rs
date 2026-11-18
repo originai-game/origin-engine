@@ -389,6 +389,7 @@ pub(crate) struct DrawSig {
     ring: bool,
     pad_rings: u8,
     scale: f32,
+    text_paint_scale: f32,
     sampled: crate::layout::node::SampledStyle,
     selected: Option<(u32, u32)>,
     /// Its custom-highlight marks, hashed (they are lists).
@@ -473,6 +474,7 @@ impl DrawSig {
             ring: n.marks.ring,
             pad_rings: n.marks.pad_rings,
             scale: n.placed.scale,
+            text_paint_scale: text_paint_scale(n),
             sampled: n.style.sampled,
             selected: n.marks.selected,
             highlights: n
@@ -487,6 +489,18 @@ impl DrawSig {
                     (h ^ (u64::from(a) << 32 | u64::from(b))).wrapping_mul(0x0100_0000_01b3)
                 }),
         }
+    }
+}
+
+/// Synthetic rich bold places a second copy one device pixel away and
+/// computes its ink growth at that scale. These are paint inputs, not
+/// merely the transform applied to unchanged commands.
+fn text_paint_scale(n: &Node) -> f32 {
+    if matches!(&*n.content, Content::Rich(rc) if rc.spans.iter().any(|s| s.synth.bold)) {
+        let w = &n.placed.world;
+        (w.a * w.d - w.b * w.c).abs().sqrt().max(1e-3)
+    } else {
+        1.0
     }
 }
 
@@ -515,6 +529,7 @@ pub(crate) fn painted_eq(a: &Node, b: &Node) -> bool {
         && a.heading == b.heading
         && a.disabled == b.disabled
         && a.placed.scale == b.placed.scale
+        && text_paint_scale(a) == text_paint_scale(b)
         && unplaced(a) == unplaced(b)
         && a.layout.used == b.layout.used
         && a.content == b.content

@@ -34,7 +34,7 @@ fn retained_property_animation_matches_fresh_pixels() {
 .Ink { width: 80px; height: 80px; border-radius: 50%; background: linear-gradient(135deg, #fff5d1, #cf984b); opacity: 0.8; }
 @media (max-width: 600px) { #Cards { flex-direction: column; } }
 </style>"#;
-    for class_targets in [false, true] {
+    for (class_targets, with_text) in [(false, false), (true, false), (false, true), (true, true)] {
         let text = if class_targets {
             text.replace("data-state={$pose}", "")
                 .replace("<button id=", "<button class:on={$pose == 'on'} id=")
@@ -46,16 +46,22 @@ fn retained_property_animation_matches_fresh_pixels() {
         } else {
             text.to_owned()
         };
-        let name = if class_targets {
-            "retarget"
+        let text = if with_text {
+            text.replace("</div></button>", "</div><span>Buy now</span></button>")
+                .replace(
+                    "</style>",
+                    "span { font-size: 18px; font-weight: 700; color: #f4e6c6b8; }</style>",
+                )
         } else {
-            "retained-properties"
+            text
+        };
+        let name = match (class_targets, with_text) {
+            (false, false) => "retained-properties",
+            (true, false) => "retarget",
+            (false, true) => "retained-synthetic-bold",
+            (true, true) => "retarget-synthetic-bold",
         };
         for (width, height) in [(1920, 1080), (390, 844)] {
-            let mut retained = Doc::new(&text, &[("pose", serde_json::json!("rest"))]);
-            let mut fresh = Doc::new(&text, &[("pose", serde_json::json!("rest"))]);
-            retained.viewport = Viewport::new(width as f32, height as f32);
-            fresh.viewport = retained.viewport;
             let desc = RenderDesc {
                 width,
                 height,
@@ -66,6 +72,12 @@ fn retained_property_animation_matches_fresh_pixels() {
             let mut scene = RenderScene::new();
             scene.lighting.environment.background = Background::Color(Vec3::ZERO);
             scene.look.post.tonemap = Tonemap::None;
+            let font = add_test_font(&mut scene);
+            let stores = [("pose", serde_json::json!("rest"))];
+            let mut retained = Doc::with_font(&text, &stores, font.clone());
+            let mut fresh = Doc::with_font(&text, &stores, font);
+            retained.viewport = Viewport::new(width as f32, height as f32);
+            fresh.viewport = retained.viewport;
             for tick in 0..37 {
                 if [2, 12, 24].contains(&tick) {
                     let pose = serde_json::json!(if tick == 12 { "rest" } else { "on" });
@@ -88,6 +100,11 @@ fn retained_property_animation_matches_fresh_pixels() {
                 if ![0, 7, 23, 35].contains(&tick) {
                     continue;
                 }
+                assert_eq!(
+                    retained.ui.frame().items,
+                    fresh.ui.frame().items,
+                    "{name}, tick {tick}: items"
+                );
                 scene.ui.overlay = Some(overlay);
                 renderer.render(&scene, &RenderTarget::Offscreen).unwrap();
                 let actual = renderer.read_offscreen().unwrap().pixels;
@@ -96,10 +113,9 @@ fn retained_property_animation_matches_fresh_pixels() {
                 scene.ui.overlay = Some(overlay);
                 let mut control = Renderer::new_blocking(&desc).expect("fresh renderer");
                 control.render(&scene, &RenderTarget::Offscreen).unwrap();
-                assert_eq!(
-                    actual,
-                    control.read_offscreen().unwrap().pixels,
-                    "{width}x{height}, tick {tick}"
+                assert!(
+                    actual == control.read_offscreen().unwrap().pixels,
+                    "{name}, {width}x{height}, tick {tick}: pixels"
                 );
                 image::save_buffer(
                     out_dir().join(format!("{name}-{width}-{tick}.png")),
