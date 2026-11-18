@@ -78,7 +78,7 @@ pub fn particles_lit_stage_scene() -> RenderScene {
             scroll: 0.3,
         },
         texture: Some(smoke_tex),
-        blend: ParticleBlend::Alpha,
+        blend: Some(ParticleBlend::Alpha),
         lit: true,
         ..Default::default()
     });
@@ -106,7 +106,7 @@ pub fn particles_lit_stage_scene() -> RenderScene {
         color: [0.2, 0.17, 0.13, 1.0],
         gravity: Vec3::new(0.0, 0.2, 0.0),
         texture: Some(smoke_tex),
-        blend: ParticleBlend::Alpha,
+        blend: Some(ParticleBlend::Alpha),
         lit: true,
         ..Default::default()
     });
@@ -135,7 +135,7 @@ pub fn particles_lit_stage_scene() -> RenderScene {
         render: ParticleRender::Mesh { mesh: shard },
         // Solid stone chips: alpha at full opacity (an additive lit mesh
         // glows pale and see-through).
-        blend: ParticleBlend::Alpha,
+        blend: Some(ParticleBlend::Alpha),
         lit: true,
         sub_emitters: vec![og_render::SubEmitter {
             trigger: og_render::SubTrigger::Event(og_render::ParticleEventKind::Collision),

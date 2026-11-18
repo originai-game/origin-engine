@@ -58,7 +58,7 @@ pub fn fire_scene() -> Result<RenderScene, String> {
                     frequency: 1.6,
                     scroll: 0.9,
                 },
-                blend: ParticleBlend::Additive,
+                blend: Some(ParticleBlend::Additive),
                 align: ParticleAlign::Upright { axis: Vec3::Y },
                 sheet: SpriteSheet {
                     columns: 4,
