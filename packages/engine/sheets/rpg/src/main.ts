@@ -9,7 +9,7 @@
 
 import { og, type World } from "@origingame/engine";
 import { CMD_NAMES, EQUIPMENT, EXPLORE, HUD_ART, localized, ITEM_NAMES, SKILL_NAMES, INK_NAMES, INVENTORY, JOURNAL, PICTURES } from "./fixtures.ts";
-import { ECONOMY } from "./economy.ts";
+import { BAGS, ECONOMY } from "./economy.ts";
 
 const PAGES = ["inventory", "journal", "equipment", "explore", "combat", "primitives", "crafting", "trade", "loot", "dialogue"] as const;
 const STYLES = ["fantasy", "scifi", "cartoon", "default"] as const;
@@ -114,6 +114,11 @@ export default og.game({
         shownHistory: scenario === "empty" ? [] : scenario === "overflow" ? ECONOMY.historyOverflow : ECONOMY.historyLines,
         shownReplies: scenario === "empty" ? [] : fixtures.talkReplies as { id: string }[],
       };
+      const bag = BAGS[scenario];
+      if (bag) {
+        Object.assign(collections, { bagItems: bag.items, bagTabs: bag.tabs });
+        for (const [k, v] of Object.entries({ bagTitle: bag.title, bagTab: bag.tab, bagWeight: bag.weight, bagLoad: bag.load, bagGold: bag.gold, bagCapacity: bag.capacity, bagSelected: bag.selected })) scope.writable(k, v).set(v);
+      }
       for (const [name, rows] of Object.entries(collections)) {
         const collection = scope.collection(name, [] as { id: string }[], { key: "id" });
         for (const key of collection.keys()) collection.remove(key);
@@ -125,7 +130,7 @@ export default og.game({
   commandHelp: {
     style: { usage: `<${STYLES.join("|")}>`, doc: "The style pack the pages are dressed in." },
     page: { usage: `<${PAGES.join("|")}>`, doc: "A review page of the rpg kit." },
-    scenario: { usage: "<default|missing|busy|loading|empty|overflow|sell|playing>", doc: "Economy and history state; legality, prices and playback are game-owned fixture data." },
+    scenario: { usage: "<default|missing|busy|loading|empty|over|overflow|sell|playing>", doc: "Economy, history and backpack state; legality, prices and playback are game-owned fixture data." },
     reduced: { usage: "<on|off>", doc: "Reduced motion on or off." },
   },
 });

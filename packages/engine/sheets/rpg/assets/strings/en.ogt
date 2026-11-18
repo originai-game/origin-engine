@@ -5,6 +5,8 @@ version 1
 # carry it (the kit's English comes with the kit, rpg.en.ogt).
 locale "en"
 string "sheet.bagTitle" "Backpack"
+string "sheet.bagKicker" "Inventory"
+string "sheet.bagCapacity" "36 / 48 slots"
 string "sheet.bagTabs.all.label" "All"
 string "sheet.bagTabs.weapons.label" "Weapons"
 string "sheet.bagTabs.armour.label" "Armour"

@@ -28,10 +28,12 @@ const item = (id: string, name: string, icon: string, rarity: string, count = 1,
 
 export const INVENTORY = (p: Pictures) => ({
   bagTitle: "Backpack",
+  bagKicker: "Inventory",
+  bagCapacity: "36 / 48 slots",
   bagTab: "all",
   bagTabs: [
-    { id: "all", label: "All" }, { id: "weapons", label: "Weapons" }, { id: "armour", label: "Armour" },
-    { id: "trinkets", label: "Accessories" }, { id: "use", label: "Consumables" }, { id: "craft", label: "Materials" },
+    { id: "all", label: "All", count: 36 }, { id: "weapons", label: "Weapons", count: 7 }, { id: "armour", label: "Armour", count: 7 },
+    { id: "trinkets", label: "Accessories", count: 4 }, { id: "use", label: "Consumables", count: 11 }, { id: "craft", label: "Materials" },
   ],
   bagItems: [
     item("emberwake", "Emberwake Blade", "blade", "legendary", 1, { equipped: true }),

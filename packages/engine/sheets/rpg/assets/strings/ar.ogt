@@ -57,6 +57,8 @@ string "rpg.menu.close" "إغلاق"
 string "rpg.objective.name" "الهدف"
 # ── The sheet's fixture text (src/fixtures.ts `localized`).
 string "sheet.bagTitle" "الحقيبة"
+string "sheet.bagKicker" "المخزون"
+string "sheet.bagCapacity" "36 / 48 خانة"
 string "sheet.bagTabs.all.label" "الكل"
 string "sheet.bagTabs.weapons.label" "الأسلحة"
 string "sheet.bagTabs.armour.label" "الدروع"

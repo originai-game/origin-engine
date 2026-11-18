@@ -13,7 +13,9 @@ OG_ENGINE_PACKAGE="$PWD/packages/engine" OG_STYLES_DIR="$PWD/templates/styles" \
 ```
 
 Each preview needs its `page` command. Append `;scenario:missing`, `busy`,
-`loading`, `empty`, `overflow`, `sell`, or `playing` to inspect those states.
+`loading`, `empty`, `over`, `overflow`, `sell`, or `playing` to inspect those
+states. On the inventory page `empty`, `over` (overburdened) and `overflow`
+(long names, huge counts, every corner mark on one tile) swap the backpack.
 `sell` is the merchant's other side; `playing` is an active history replay.
 `overflow` supplies long loot descriptions and a long history. The sample
 game owns all prices, quantity limits, requirements and legality; components

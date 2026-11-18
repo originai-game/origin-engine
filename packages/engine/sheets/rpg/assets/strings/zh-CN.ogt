@@ -57,6 +57,8 @@ string "rpg.menu.close" "关闭"
 string "rpg.objective.name" "目标"
 # ── The sheet's fixture text (src/fixtures.ts `localized`).
 string "sheet.bagTitle" "背包"
+string "sheet.bagKicker" "物品栏"
+string "sheet.bagCapacity" "36 / 48 格"
 string "sheet.bagTabs.all.label" "全部"
 string "sheet.bagTabs.weapons.label" "武器"
 string "sheet.bagTabs.armour.label" "护甲"
