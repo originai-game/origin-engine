@@ -6,7 +6,7 @@ Module [`ui`](../ui.md) · [index](../index.md)
 
 ### `og.ui.documentSchema`
 
-The reflected schema documents are validated against (docs/ui.md §2.1): every element kind and prop, its type, applicable kinds and writeback. World anchors share scale-at/scale-min/scale-max with mass anchors. clamp accepts none, edge or contain; clamp-margin and arrow-size are CSS px times user text scale, arrow-color is ink. Mass bars accept bar-ghost ink.
+The reflected schema documents are validated against (docs/ui.md §2.1): every element kind and prop, its type, applicable kinds and writeback. World anchors share scale-at/scale-min/scale-max with mass anchors. clamp accepts none, edge or contain; clamp-margin and arrow-size are CSS px times user text scale, arrow-color is ink. contain-fade=none disables containment's default edge fade without changing other fades. Mass bars accept bar-ghost ink.
 
 ```ts
 og.ui.documentSchema(): unknown
@@ -18,7 +18,7 @@ Binding symbol `og_ui_document_schema` · publish builds: kept
 
 ```ogt
 fn documentSchema {
-  doc "The reflected schema documents are validated against (docs/ui.md §2.1): every element kind and prop, its type, applicable kinds and writeback. World anchors share scale-at/scale-min/scale-max with mass anchors. clamp accepts none, edge or contain; clamp-margin and arrow-size are CSS px times user text scale, arrow-color is ink. Mass bars accept bar-ghost ink."
+  doc "The reflected schema documents are validated against (docs/ui.md §2.1): every element kind and prop, its type, applicable kinds and writeback. World anchors share scale-at/scale-min/scale-max with mass anchors. clamp accepts none, edge or contain; clamp-margin and arrow-size are CSS px times user text scale, arrow-color is ink. contain-fade=none disables containment's default edge fade without changing other fades. Mass bars accept bar-ghost ink."
   returns Json
 }
 ```

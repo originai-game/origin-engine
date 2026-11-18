@@ -139,6 +139,45 @@ fn document_world_distance_bounds_edge_controls_and_mass_settings() {
 }
 
 #[test]
+fn document_containment_can_keep_an_offscreen_boss_readable() {
+    let mut ui = ui();
+    ui.define_document(UiDocument::parse("boss.svelte", r##"
+<meta name="component" content="boss">
+<div>
+<anchor id="Boss" at="0 30 0" clamp="contain" clamp-margin="12" contain-fade="none"><div style="width:280px;height:30px;background:#ff0000" /></anchor>
+<anchor id="Default" at="0 30 0" clamp="contain"><div style="width:280px;height:30px;background:#00ff00" /></anchor>
+</div>"##).unwrap());
+    ui.mount_document(
+        source("boss"),
+        "boss",
+        Default::default(),
+        Default::default(),
+        &bind::NoEnv,
+    )
+    .unwrap();
+    run(&mut ui, 40, |_| {});
+    assert!(ui.frame().warnings.is_empty(), "{:?}", ui.frame().warnings);
+    let boss = ui.element("test:boss/Boss").unwrap();
+    assert!((boss.y - 12.0).abs() < 0.1, "{boss:?}");
+    let mut overlay = Overlay::new(W, H, 1.0);
+    ui.frame().emit(&EmitDesc::default(), &mut overlay);
+    assert!(
+        overlay
+            .ui
+            .shapes
+            .iter()
+            .any(|s| s.paint == og_draw::UiPaint::Solid([1.0, 0.0, 0.0, 1.0]))
+    );
+    assert!(
+        !overlay
+            .ui
+            .shapes
+            .iter()
+            .any(|s| matches!(s.paint, og_draw::UiPaint::Solid([0.0, 1.0, 0.0, a]) if a > 0.01))
+    );
+}
+
+#[test]
 fn mass_elements_pool_age_out_and_replay() {
     let mut ui = ui();
     let h = ui.define_mass("damage", numbers(), UiMassSpace::World);

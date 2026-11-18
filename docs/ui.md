@@ -1143,6 +1143,9 @@ None of these has a web standard; each is named for what it does.
   `clamp="contain"` pushes the whole box into the safe area, inset by
   `clamp-margin` (default theme small spacing), and fades it as its point
   leaves the edge; it does not pin arbitrarily distant off-screen points.
+  `contain-fade="none"` disables only that edge fade, keeping an off-screen
+  boss's contained plate fully readable; distance, occlusion and declutter
+  still fade normally. The default is `contain-fade="edge"`.
   To pin a speech bubble without an arrow use `clamp="edge" arrow-size="0"`.
 - `<panel world entity|at size rotation src>` lays a box out at its CSS
   size into the render target `src`, which the game shows on a quad of

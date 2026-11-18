@@ -102,6 +102,13 @@ pub const PROPS: &[PropSpec] = &[
         doc: "`clamp=\"edge\"`: held on the safe edge with an arrow; `contain`: push the whole box inside, fading as its point leaves the safe area.",
     },
     PropSpec {
+        name: "containFade",
+        ty: Ty::Word(&["edge", "none"]),
+        on: On::Kinds(&[Kind::Anchor]),
+        two_way: false,
+        doc: "`contain-fade=\"none\"`: keep a contained label fully readable even when its point leaves the safe area; default `edge` fades near the edge. Distance, occlusion and declutter fades are unchanged.",
+    },
+    PropSpec {
         name: "clampMargin",
         ty: Ty::Num,
         on: On::Kinds(&[Kind::Anchor]),
