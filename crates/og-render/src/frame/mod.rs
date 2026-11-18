@@ -122,6 +122,27 @@ pub(crate) struct FrameUniform {
     /// The year the seasonal leaves are drawn in (meshlet_foliage.wgsl
     /// `LeafYear`, `LeafCalendar::gpu`; zero: as modelled).
     pub leaf_year: [[f32; 4]; 2],
+    /// The view ray through a pixel ([`view_rays`], frame.wgsl `pixel_ray`).
+    pub view_rays: [[f32; 4]; 3],
+}
+
+/// The frame uniform's `view_rays` for `view_proj`: the world direction of
+/// the view ray through ndc (x, y) is along `[0] * x + [1] * y + [2]`
+/// (frame.wgsl `pixel_ray`). A direction `v` reaches the pixel where its
+/// clip x and y are x and y times its clip w, and the view-projection's
+/// rows give that without its translation: `v` is across both
+/// `row 0 - x row 3` and `row 1 - y row 3`. So the ray is exact however
+/// far from the frame's zero the camera stands, where the difference of a
+/// near and a far point unprojected through the inverse is not. It points
+/// in front of a perspective camera and along an orthographic one's view
+/// (towards growing depth).
+pub(crate) fn view_rays(view_proj: Mat4) -> [[f32; 4]; 3] {
+    let row = |i| view_proj.row(i).truncate().as_dvec3();
+    let (x, y, depth, w) = (row(0), row(1), row(2), row(3));
+    let middle = x.cross(y);
+    let ahead = if w.length_squared() > 1e-12 { w } else { depth };
+    let scale = middle.dot(ahead).signum() / middle.length().max(1e-300);
+    [y.cross(w), w.cross(x), middle].map(|d| (d * scale).as_vec3().extend(0.0).to_array())
 }
 
 /// The camera's matrices for one frame.
@@ -576,6 +597,39 @@ pub(crate) fn local_lights(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// [`view_rays`] gives the ray through a pixel that unprojecting its
+    /// near and far points gives at the frame's zero, and the same ray
+    /// from a camera 14 km out, where that unprojection is a degree off;
+    /// an orthographic view's rays all run along it.
+    #[test]
+    fn a_pixels_ray_does_not_depend_on_where_the_camera_stands() {
+        let ray = |view_proj: Mat4, ndc: Vec2| {
+            let r = view_rays(view_proj).map(|v| Vec3::new(v[0], v[1], v[2]));
+            (r[0] * ndc.x + r[1] * ndc.y + r[2]).normalize()
+        };
+        // The unprojection, in f64 from a camera at the zero.
+        let unprojected = |view_proj: Mat4, ndc: Vec2| {
+            let inv = view_proj.as_dmat4().inverse();
+            let at = |z: f64| inv.project_point3(ndc.as_dvec2().extend(z));
+            (at(1.0) - at(0.0)).normalize().as_vec3()
+        };
+        let look = Vec3::new(0.4, 0.6, -0.7).normalize();
+        // (Turned at the zero, then moved: a target `eye + look` is rounded out there.)
+        let turn = glam::camera::rh::view::look_at_mat4(Vec3::ZERO, look, Vec3::Y);
+        let view = |eye: Vec3| turn * Mat4::from_translation(-eye);
+        let proj = og_core::math::perspective(8f32.to_radians(), 16.0 / 9.0, 0.1, 1000.0);
+        let ndc = Vec2::new(0.3, -0.7);
+        let want = unprojected(proj * view(Vec3::ZERO), ndc);
+        assert!(want.dot(look) > 0.99, "{want}");
+        for eye in [Vec3::ZERO, Vec3::new(11400.0, 2.0, 7800.0)] {
+            let got = ray(proj * view(eye), ndc);
+            assert!(got.distance(want) < 2e-6, "from {eye}: {got}, {want}");
+        }
+        let ortho = og_core::math::orthographic(80.0, 40.0, 0.1, 500.0);
+        let got = ray(ortho * view(Vec3::new(11400.0, 2.0, 7800.0)), ndc);
+        assert!(got.distance(look) < 2e-6, "orthographic: {got}, {look}");
+    }
 
     /// frame.wgsl's `Frame` is laid out as [`FrameUniform`]: the same size,
     /// so a field the Rust side grows (more cascades, more local layers)

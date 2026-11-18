@@ -195,6 +195,7 @@ impl Renderer {
             // this frame (`sync_assets`; engine s100).
             drawn: [self.frame_index as u32, 0, 0, 0],
             leaf_year: crate::foliage::LeafCalendar::gpu(scene.atmosphere.leaves),
+            view_rays: frame::view_rays(cam.jittered_view_proj),
         };
         if let Some(light) = underwater {
             uniform.atmosphere.underwater(light);
@@ -305,6 +306,7 @@ impl Renderer {
             // The sky's view rays: the mirrored camera's own projection
             // (the oblique one tilts its far plane through the sky).
             u.inv_view_proj = f.view_proj.inverse().to_cols_array_2d();
+            u.view_rays = frame::view_rays(f.view_proj);
             u.view_pos = mirrored.position.extend(0.0).to_array();
             u.view_forward = f.forward.extend(u.view_forward[3]).to_array();
             (u.view_right, u.view_up) = f.axes();

@@ -126,7 +126,17 @@ struct Frame {
   // The year the seasonal leaves are drawn in: meshlet_foliage.wgsl's
   // LeafYear (foliage.rs LeafCalendar::gpu; zero: every leaf as modelled).
   leaf_year: array<vec4<f32>, 2>,
+  // The view ray through a pixel (frame/mod.rs `view_rays`, `pixel_ray` below): its world direction at ndc (x, y) is
+  // along [0].xyz * x + [1].xyz * y + [2].xyz.
+  view_rays: array<vec4<f32>, 3>,
 };
+
+// The unit world direction of the view ray through `ndc` (the view's own in orthographic). From the view's rotation
+// and projection alone: unprojecting a near and a far point through inv_view_proj rounds both at the camera's
+// distance from the frame's zero, and their difference turned the sky by a degree 14 km out.
+fn pixel_ray(ndc: vec2<f32>) -> vec3<f32> {
+  return normalize(frame.view_rays[0].xyz * ndc.x + frame.view_rays[1].xyz * ndc.y + frame.view_rays[2].xyz);
+}
 
 // The unit direction from the surface point `p` towards the eye: towards
 // the camera in perspective, against the view's forward in orthographic

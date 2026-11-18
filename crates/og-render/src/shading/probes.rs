@@ -622,6 +622,7 @@ pub(crate) fn face_uniform(
     u.light_color[3] = 0.0;
     u.view_proj = f.view_proj.to_cols_array_2d();
     u.inv_view_proj = f.view_proj.inverse().to_cols_array_2d();
+    u.view_rays = crate::frame::view_rays(f.view_proj);
     u.view_pos = at.extend(0.0).to_array();
     u.view_forward = f.forward.extend(base.view_forward[3]).to_array();
     (u.view_right, u.view_up) = f.axes();

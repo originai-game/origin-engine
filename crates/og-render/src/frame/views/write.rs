@@ -103,6 +103,7 @@ impl Views {
             let mut u = *uniform;
             u.view_proj = vp;
             u.inv_view_proj = p.frame.view_proj.inverse().to_cols_array_2d();
+            u.view_rays = crate::frame::view_rays(p.frame.view_proj);
             u.view_pos = p
                 .position
                 .extend(p.frame.orthographic as u32 as f32)

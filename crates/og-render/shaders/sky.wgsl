@@ -68,11 +68,10 @@ fn vs_sky_look(@builtin(vertex_index) i: u32) -> SkyOut {
 @fragment
 fn fs_sky(in: SkyOut) -> @location(0) vec4<f32> {
   if (frame.light_color.w > 0.5) { return debug_unsupported(in.pos.xy); }
-  // The view ray through the pixel: near point to far point (perspective and orthographic).
+  // The view ray through the pixel: from its near point (perspective and orthographic).
   let near = frame.inv_view_proj * vec4<f32>(in.ndc, 0.0, 1.0);
-  let far = frame.inv_view_proj * vec4<f32>(in.ndc, 1.0, 1.0);
   let eye = near.xyz / near.w;
-  let dir = normalize(far.xyz / far.w - eye);
+  let dir = pixel_ray(in.ndc);
   return vec4<f32>(sky_fog(sky_background(eye, dir) * (1.0 - frame.view_up.w), dir), 1.0);
 }
 
@@ -96,12 +95,6 @@ fn sky_background(eye: vec3<f32>, dir: vec3<f32>) -> vec3<f32> {
     return col * sky_params.look.z;
   }
   return textureSampleLevel(sky_map, ibl_sampler, d, 0.0).rgb;
-}
-
-fn view_dir(ndc: vec2<f32>) -> vec3<f32> {
-  let near = frame.inv_view_proj * vec4<f32>(ndc, 0.0, 1.0);
-  let far = frame.inv_view_proj * vec4<f32>(ndc, 1.0, 1.0);
-  return normalize(far.xyz / far.w - near.xyz / near.w);
 }
 
 // The fog over the sky: what the fog hides 5 km out along the view, times
@@ -695,7 +688,7 @@ fn sky_stored(color: vec3<f32>) -> vec4<f32> {
 @fragment
 fn fs_sky_look(in: SkyOut) -> @location(0) vec4<f32> {
   if (frame.light_color.w > 0.5) { return debug_unsupported(in.pos.xy); }
-  let dir = view_dir(in.ndc);
+  let dir = pixel_ray(in.ndc);
   let clouds = clouds_over(dir, in.pos.xy, in.grey);
   return sky_stored(land_fog(cloud_layer_over(clouds, sky_look_behind(dir, in.pos.xy)), dir));
 }
@@ -739,14 +732,14 @@ fn cloud_grounded(d: vec3<f32>) -> bool {
 
 // The cloud target's texel: `texel` is a texel in NDC.
 fn clouds_low_texel(in: SkyOut, texel: vec2<f32>) -> vec4<f32> {
-  var d = view_dir(in.ndc);
+  var d = pixel_ray(in.ndc);
   // The horizon is an edge in the clouds (a ray that meets the ground sees none, one just over it the farthest)
   // and the sky's draw reads this target between its texels: a texel under the horizon beside one over it marches
   // that one's ray, so a pixel over the horizon reads only clouds over it. A pixel under it reads none
   // (fs_sky_look_low).
   if (cloud_grounded(d)) {
     for (var k = 0u; k < 9u; k++) {
-      let near = view_dir(in.ndc + (vec2<f32>(f32(k % 3u), f32(k / 3u)) - 1.0) * texel);
+      let near = pixel_ray(in.ndc + (vec2<f32>(f32(k % 3u), f32(k / 3u)) - 1.0) * texel);
       if (near.y > d.y) { d = near; }
     }
   }
@@ -771,7 +764,7 @@ fn fs_clouds_low_depth(in: SkyOut) -> @location(0) vec4<f32> {
 @fragment
 fn fs_sky_look_low(in: SkyOut) -> @location(0) vec4<f32> {
   if (frame.light_color.w > 0.5) { return debug_unsupported(in.pos.xy); }
-  let dir = view_dir(in.ndc);
+  let dir = pixel_ray(in.ndc);
   // Under the horizon there are no clouds but an overcast's strip (clouds_over), which has no edge there.
   var clouds = vec4<f32>(0.0, 0.0, 0.0, 1.0);
   if (!cloud_grounded(dir) || cloud_deck(dir).a > 0.0) {
