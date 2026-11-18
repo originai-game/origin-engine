@@ -1,16 +1,13 @@
-# In-world components
+# World labels
 
-The field and crowd pages exercise anchors, ground projections, occlusion
-and decluttering in a 3D scene. Their final frame review runs on the L4;
-the orb's software renderer does not supply an established world baseline.
+The scene, topdown, states and marks pages show the world labels over the
+approved mockup's sample art (`assets/art`, sheet only): the camera looks
+down over an empty ground with the art on an unlit plane far behind, each
+label anchored at the point along the ray through its pixel in the mockup's
+frame and each ground mark where that ray meets the ground
+(`src/fixtures.ts`, `src/main.ts`). The phones take the mockup's phone
+layouts on the scene page and the middle of the desktop layout elsewhere.
 
-The HTML-with-CSS conversion keeps the existing ids, parts and semantic
-anchors. Nameplate bars contain their fills, placement previews contain
-their grid and range, and optional text and shapes use conditional markup.
-DamageNumbers and OverheadBars keep their mass rendering paths; SelectionRing,
-Telegraph, PathLine and PlacementGhost keep their ground projection.
-
-For the 2D controls, the HUD sheet's `tactics-default` page reviews radial
-commands and selected/unselected map layers at desktop and phone widths.
-The world documents are also covered by the built-in component fixture
-and mounting tests. Those checks do not replace the L4's world frame review.
+The camera looks down at 40°, so a telegraph, ring or ghost lies at that
+tilt, not the mockup's flatter one. The components' own fixtures and
+mounting are covered by `tests/ui-world.test.ts`.
