@@ -99,7 +99,7 @@ fn custom_fragment(in: CustomOut, front: bool) -> vec4<f32> {
     n = decaled.n;
     emissive += decaled.emissive;
   }
-  let weathered = weather_surface_at(s, n, n_geo, in.world, 0.5, material.uv[3].w, WEATHER_STANDS);
+  let weathered = weather_surface_at(s, n, n_geo, in.world, 0.5, material.uv[3].w, select(WEATHER_STANDS, WEATHER_MOVES, in.moves != 0u));
   s = weathered.s;
   n = weathered.n;
   s.coat_normal = n;
@@ -129,6 +129,7 @@ struct CustomPrepassOut {
   @location(5) data: vec4<f32>,
   @location(6) cur_clip: vec4<f32>,
   @location(7) prev_clip: vec4<f32>,
+  @location(8) @interpolate(flat) moves: u32,
 };
 
 struct CustomPrevIn {
@@ -147,6 +148,7 @@ fn custom_prepass(o: CustomOut, prev_world: vec3<f32>) -> CustomPrepassOut {
   p.color = o.color;
   p.local = o.local;
   p.data = o.data;
+  p.moves = o.moves;
   p.cur_clip = fx.view_proj_unjittered * vec4<f32>(o.world, 1.0);
   p.prev_clip = fx.prev_view_proj * vec4<f32>(prev_world, 1.0);
   return p;
@@ -183,6 +185,7 @@ fn fs_prepass(in: CustomPrepassOut, @builtin(front_facing) front: bool) -> Custo
   o.color = in.color;
   o.local = in.local;
   o.data = in.data;
+  o.moves = in.moves;
   let v = toward_eye(in.world);
   let out = custom_surface(o, v);
   if (custom_cut(out)) { discard; }
@@ -195,7 +198,7 @@ fn fs_prepass(in: CustomPrepassOut, @builtin(front_facing) front: bool) -> Custo
   if (CUSTOM_LIT) {
     let n_geo = normalize(in.normal) * face;
     let wet = wet_decal_gloss(in.clip.xy, in.world, n, n_geo, clamp(out.roughness, 0.04, 1.0));
-    let g = weather_gloss(wet.w, clamp(out.metallic, 0.0, 1.0), wet.xyz, n_geo, in.world, 0.5, material.uv[3].w, WEATHER_STANDS);
+    let g = weather_gloss(wet.w, clamp(out.metallic, 0.0, 1.0), wet.xyz, n_geo, in.world, 0.5, material.uv[3].w, select(WEATHER_STANDS, WEATHER_MOVES, in.moves != 0u));
     n = g.n;
     reflectivity = reflectivity_bits(g.s.roughness, g.s.metallic);
   }

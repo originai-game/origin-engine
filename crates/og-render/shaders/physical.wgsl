@@ -32,6 +32,8 @@ struct PhysicalOut {
   // pbr.wgsl VertexOut's.
   @location(9) @interpolate(flat) oit_key: vec2<u32>,
   @location(10) @interpolate(flat) volume_id: u32,
+  // pbr.wgsl VertexOut's.
+  @location(11) @interpolate(flat) moves: u32,
 };
 
 fn physical_vertex(model: mat4x4<f32>, v: VertexIn) -> PhysicalOut {
@@ -65,6 +67,7 @@ fn vs_physical_skinned(@builtin(vertex_index) vi: u32, v: VertexIn, i: SkinnedIn
   var p = physical_vertex(model, morph_vertex(v, vi, i));
   p.look = i.look;
   p.volume_id = u32(i.morph0.w) * 2u;
+  p.moves = 1u;
   return p;
 }
 
@@ -648,7 +651,7 @@ fn physical_fragment(in: PhysicalOut) -> vec4<f32> {
   n = surface_normal(hook, params, n);
   // The decals' normal maps over the surface's own (apply_decals).
   n = decal_shading_normal(n, decal_normal, decal_coverage);
-  let weathered = weather_surface_at(s, n, normalize(n_vertex * face), in.world_pos, select(0.2 + 0.6 * maps.b, 0.5, material.flags.y < 0.0), material.uv[3].w, WEATHER_STANDS);
+  let weathered = weather_surface_at(s, n, normalize(n_vertex * face), in.world_pos, select(0.2 + 0.6 * maps.b, 0.5, material.flags.y < 0.0), material.uv[3].w, select(WEATHER_STANDS, WEATHER_MOVES, in.moves != 0u));
   s = weathered.s;
   n = weathered.n;
   s.coat = material.coat.x * coat_maps.r;

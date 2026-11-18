@@ -156,6 +156,8 @@ struct CustomOut {
   @location(5) data: vec4<f32>,
   // oit.wgsl `oit_key` (the linked lists' equal-depth order).
   @location(6) @interpolate(flat) oit_key: vec2<u32>,
+  // 1 for a skinned instance (pbr.wgsl VertexOut's `moves`).
+  @location(7) @interpolate(flat) moves: u32,
 };
 
 fn custom_input(v: CustomVertexIn) -> VertexInput {
@@ -190,7 +192,9 @@ fn custom_plain(v: CustomVertexIn, i: CustomInstanceIn) -> CustomOut {
 
 fn custom_skinned(vi: u32, v: CustomVertexIn, i: CustomSkinnedIn, s: CustomSkinIn) -> CustomOut {
   let model = instance_matrix(i.m0, i.m1, i.m2, i.m3) * skin_matrix(s.joints, s.weights, i.palette);
-  return custom_place(custom_morph(custom_input(v), vi, i.palette, i.morph0), model);
+  var o = custom_place(custom_morph(custom_input(v), vi, i.palette, i.morph0), model);
+  o.moves = 1u;
+  return o;
 }
 
 // The fragment entry's input and the shader's surface there.

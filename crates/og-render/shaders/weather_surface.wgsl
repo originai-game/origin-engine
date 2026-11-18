@@ -26,6 +26,13 @@
 const WEATHER_RUNS_OFF: f32 = 0.0;
 const WEATHER_STANDS: f32 = 1.0;
 const WEATHER_GROUND: f32 = 2.0;
+// Or the surface moves (a skinned mesh, a garment: a walking figure, a
+// cloak in the wind): the water runs off it, and no snow builds a layer on
+// it; the snow falling catches on what faces up as a dusting, thicker the
+// more level the face (the shoulders, a hood, a pack's top), not as the
+// ground's cover, whose edge would cut a flat-shaded mesh into facets and
+// lay a sheet on a cloak swinging level.
+const WEATHER_MOVES: f32 = -1.0;
 
 // How high standing water fills a ground's relief (0 its hollows' floor,
 // 1 its crests; the layers' heights, 0.5 their middle) with the weather's
@@ -125,7 +132,7 @@ fn weather_splashes(p: vec2<f32>, t: f32, footprint: f32) -> vec2<f32> {
 // (0 a hollow, 1 a crest, 0.5 none known: a terrain's blended layer
 // height), `amount` how much of the weather reaches it (its material's
 // weathering), `standing` how water lies on it (WEATHER_RUNS_OFF,
-// WEATHER_STANDS, WEATHER_GROUND).
+// WEATHER_STANDS, WEATHER_GROUND, WEATHER_MOVES).
 fn weather_surface_at(s_in: Surface, n_in: vec3<f32>, geo: vec3<f32>, p_frame: vec3<f32>, cavity: f32, amount: f32, standing: f32) -> Weathered {
   var o: Weathered;
   o.s = s_in;
@@ -184,7 +191,9 @@ fn weather_surface_at(s_in: Surface, n_in: vec3<f32>, geo: vec3<f32>, p_frame: v
   // and the hollows filling first; the noise breaks its edge. Snow keeps
   // the surface under it dry.
   var snow = 0.0;
-  if (w.z > 0.0) {
+  if (w.z > 0.0 && standing < -0.5) {
+    snow = 0.7 * w.z * smoothstep(0.25, 1.0, up);
+  } else if (w.z > 0.0) {
     let reach = mix(1.05, 0.15, w.z);
     snow = smoothstep(reach, reach + 0.04, up + (cover - 0.5) * 0.7 * (1.0 - w.z * 0.5) + low * 0.25);
     snow *= smoothstep(0.0, 0.08, w.z);

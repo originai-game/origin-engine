@@ -72,6 +72,7 @@ const OIT_STUB: &str = "const oit_pass: bool = false;\n";
 pub const WEATHER_SURFACE_STUB: &str = "const WEATHER_RUNS_OFF: f32 = 0.0;
 const WEATHER_STANDS: f32 = 1.0;
 const WEATHER_GROUND: f32 = 2.0;
+const WEATHER_MOVES: f32 = -1.0;
 struct Weathered {
   s: Surface,
   n: vec3<f32>,

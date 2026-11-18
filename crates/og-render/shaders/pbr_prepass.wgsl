@@ -66,7 +66,7 @@ fn prepass_targets(in: PrepassOut) -> PrepassTargets {
   // mirrors and their ripples, and the normal is the water's.
   if (!unlit) {
     let wet = wet_decal_gloss(in.clip.xy, in.world_pos, n, n, clamp(roughness, 0.04, 1.0));
-    let g = weather_gloss(wet.w, metalness, wet.xyz, n, in.world_pos, weather_cavity(in.uv), material.uv[3].w, WEATHER_STANDS);
+    let g = weather_gloss(wet.w, metalness, wet.xyz, n, in.world_pos, weather_cavity(in.uv), material.uv[3].w, select(WEATHER_STANDS, WEATHER_MOVES, (in.object & 256u) != 0u));
     roughness = g.s.roughness;
     metalness = g.s.metallic;
     o.gbuffer = vec4<f32>(oct_encode(g.n), velocity);

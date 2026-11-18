@@ -97,6 +97,9 @@ struct VertexOut {
   // none, every surface but a tree's): x of the light around it, y of the
   // sun.
   @location(11) crown: vec2<f32>,
+  // 1 for a surface that moves (a skinned instance, a garment), whose
+  // weather is a dusting (weather_surface.wgsl WEATHER_MOVES).
+  @location(12) @interpolate(flat) moves: u32,
 };
 
 // The surface's own colour, the material's base colour times the vertex
@@ -288,6 +291,7 @@ fn vs_skinned(@builtin(vertex_index) vi: u32, v: VertexIn, i: SkinnedInstanceIn,
   let model = instance_matrix(i.m0, i.m1, i.m2, i.m3) * skin_matrix(s.joints, s.weights, i.palette);
   var o = lit_vertex(model, morph_vertex(v, vi, i));
   o.look = i.look;
+  o.moves = 1u;
   return o;
 }
 
