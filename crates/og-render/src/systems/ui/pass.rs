@@ -163,6 +163,8 @@ pub(crate) struct UiRenderer {
     gradients: wgpu::Buffer,
     clips: wgpu::Buffer,
     points: wgpu::Buffer,
+    /// Snapshots in instance, gradient, clip, point order.
+    table_uploads: [crate::gpu::buffers::RetainedUpload; 4],
     uniforms: Vec<wgpu::Buffer>,
     layer_params: Vec<wgpu::Buffer>,
     mass_layout: wgpu::BindGroupLayout,
@@ -183,22 +185,6 @@ fn storage_buffer(device: &wgpu::Device, label: &str, size: u64) -> wgpu::Buffer
         usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_DST,
         mapped_at_creation: false,
     })
-}
-
-/// Writes `bytes` (at least one element's worth: a binding is never empty).
-fn write_storage(
-    device: &wgpu::Device,
-    queue: &wgpu::Queue,
-    buffer: &mut wgpu::Buffer,
-    label: &str,
-    bytes: &[u8],
-) {
-    if bytes.len() as u64 > buffer.size() {
-        *buffer = storage_buffer(device, label, (bytes.len() as u64).next_power_of_two());
-    }
-    if !bytes.is_empty() {
-        queue.write_buffer(buffer, 0, bytes);
-    }
 }
 
 fn uniform_buffer(device: &wgpu::Device, label: &str, size: u64) -> wgpu::Buffer {

@@ -114,7 +114,8 @@ pub use actions::{ActionDesc, ActionHint, ActionTrigger, Device, Glyph};
 pub use doc::UiDocument;
 pub use doc::build::DocEvent;
 pub use draw::{
-    DrawCmd, DrawItem, EmitDesc, LAYER_BASE, LAYER_SPAN, LayerRole, MAX_LAYERS, drawn_lines,
+    DrawCmd, DrawItem, EmitDesc, LAYER_BASE, LAYER_SPAN, LayerRole, MAX_LAYERS, RetainedEmission,
+    drawn_lines,
 };
 pub use element::transform3d;
 pub use element::{

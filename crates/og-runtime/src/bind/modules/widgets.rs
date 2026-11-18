@@ -40,16 +40,17 @@ pub(crate) fn emit(rs: &mut super::extract::RenderState, shifts: &og_core::IdMap
     let first_text = overlay.texts.len();
     let first_sprite = overlay.sprites.len();
     let first_shape = overlay.ui.shapes.len();
-    frame.emit_shifted(
-        &og_ui::EmitDesc {
-            // Over the game's screen layers up to og_render::UI_LAYER, under
-            // those above it (og_render::screen_layer).
-            layer: og_render::UI_OVERLAY_LAYER,
-            time: ui.seconds() as f32,
-        },
-        overlay,
-        &|key| shifts.get(&key).copied(),
-    );
+    let desc = og_ui::EmitDesc {
+        // Over the game's screen layers up to og_render::UI_LAYER, under
+        // those above it (og_render::screen_layer).
+        layer: og_render::UI_OVERLAY_LAYER,
+        time: ui.seconds() as f32,
+    };
+    if alone && shifts.is_empty() && rs.art.frame.strict.is_empty() {
+        frame.emit_retained(&desc, overlay, &mut rs.ui_emission);
+    } else {
+        frame.emit_shifted(&desc, overlay, &|key| shifts.get(&key).copied());
+    }
     // Mass elements no element owns (docs/ui.md §1), under the UI.
     world_frame.emit(og_render::UI_OVERLAY_LAYER, overlay);
     crate::present::extract::draw_other_pages(overlay, first_text, &rs.ui_pages);

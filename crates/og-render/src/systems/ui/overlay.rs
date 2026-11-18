@@ -280,9 +280,9 @@ pub(crate) fn build<'a>(
     let layers = &ui.layers;
     // (target, layer, source, index into `ov` or `uv`)
     let mut keyed: Vec<(u32, i32, OverlaySource, u32)> =
-        Vec::with_capacity(overlay.sprites.len() + overlay.texts.len() * 8 + ui.shapes.len());
+        Vec::with_capacity(overlay.sprites.len() + overlay.texts.len() * 8 + ui.shape_count());
     let mut ov: Vec<OverlayInstance> = Vec::with_capacity(overlay.sprites.len());
-    let mut uv: Vec<UiGpu> = Vec::with_capacity(ui.shapes.len());
+    let mut uv: Vec<UiGpu> = Vec::with_capacity(ui.shape_count());
     let mut push_ov = |keyed: &mut Vec<_>, layer: i32, source, inst: OverlayInstance| {
         keyed.push((target_of(layer, layers), layer, source, ov.len() as u32));
         ov.push(inst);
@@ -366,7 +366,7 @@ pub(crate) fn build<'a>(
         uv.push(g);
         Ok(())
     };
-    for (i, s) in ui.shapes.iter().enumerate() {
+    for (i, s) in ui.shapes().enumerate() {
         add_shape(&mut keyed, &mut uv, &mut tables, i, s, None)?;
     }
     for (i, d) in ui.vectors.iter().enumerate() {
@@ -865,6 +865,7 @@ pub(crate) struct OverlayRenderer {
     pub output_format: wgpu::TextureFormat,
     pub linear_format: Option<wgpu::TextureFormat>,
     pub buffer: wgpu::Buffer,
+    pub upload: crate::gpu::buffers::RetainedUpload,
     pub mass_eases: crate::ui::mass::EaseTables,
     /// The last frame's overlay as built, and what it was built from: an
     /// overlay with the same [`Overlay::key`] at the same target is not
@@ -1005,6 +1006,7 @@ impl OverlayRenderer {
             output_format,
             linear_format,
             buffer,
+            upload: Default::default(),
             mass_eases: Default::default(),
             kept: None,
         }

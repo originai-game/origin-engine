@@ -198,6 +198,8 @@ pub(crate) struct RenderState {
     pub cover: Option<og_ui::Rect>,
     /// The engine's UI, drawn over every frame.
     pub ui: Option<og_ui::SharedUi>,
+    /// Emitted local shape ranges retained between presentation frames.
+    pub ui_emission: og_ui::RetainedEmission,
     /// A UI font's first atlas page → every page, so text is drawn per page.
     pub ui_pages: BTreeMap<FontHandle, Vec<FontHandle>>,
     /// Fonts (by index into `fonts`) that render missing characters at run
@@ -311,6 +313,7 @@ impl RenderState {
             preview: None,
             cover: None,
             ui: None,
+            ui_emission: Default::default(),
             ui_pages: BTreeMap::new(),
             runtime_fonts: IdMap::new(),
             notes: Vec::new(),

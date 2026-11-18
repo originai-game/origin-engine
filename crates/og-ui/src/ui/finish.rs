@@ -161,6 +161,16 @@ impl Ui {
             events: std::mem::take(&mut self.out.events),
             grounds: std::mem::take(&mut self.world.placement.grounds),
             generation: self.paint.cache.generation,
+            properties: self
+                .paint
+                .cache
+                .composite
+                .as_mut()
+                .filter(|_| self.paint.cache.composited)
+                .map(|c| crate::draw::PropertyUpdate {
+                    base: c.base,
+                    items: std::mem::take(&mut c.updated),
+                }),
             stats: LayoutStats {
                 laid_out: self.layout.cache.laid_out,
                 ..self.out.stats
@@ -1540,7 +1550,7 @@ impl Ui {
                 .commit_styles(&commit, &mut self.interaction, &mut self.tree);
         }
         #[cfg(debug_assertions)]
-        if bounded::checking() {
+        if bounded::checking() && !self.paint.cache.composited {
             for &i in &order {
                 let n = &self.tree.nodes[i];
                 assert_eq!(
@@ -1596,7 +1606,16 @@ impl Ui {
             && self.paint.cache.reused_all
             && tail == self.paint.cache.last_tail
             && self.out.frame.unit == self.env.unit;
-        if !kept_items || self.paint.cache.generation == 0 {
+        if !kept_items
+            || self.paint.cache.generation == 0
+            || (self.paint.cache.composited
+                && self
+                    .paint
+                    .cache
+                    .composite
+                    .as_ref()
+                    .is_some_and(|c| c.changed))
+        {
             static GENERATION: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(1);
             self.paint.cache.generation =
                 GENERATION.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
@@ -1663,6 +1682,10 @@ impl Ui {
             )
         };
         self.paint.cache.prev_cmds = Vec::new();
+        if !self.paint.cache.composited {
+            self.paint.cache.composite =
+                super::commands::Composite::new(self, &order, &trees, &items);
+        }
         self.paint.cache.last_cmds = trees;
         self.paint.cache.last_tail = tail;
         (order, items, missing_glyphs)

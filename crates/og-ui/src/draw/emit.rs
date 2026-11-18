@@ -18,6 +18,109 @@ pub struct EmitDesc {
     pub time: f32,
 }
 
+#[derive(Clone, Debug, PartialEq)]
+pub(crate) struct PropertyUpdate {
+    pub base: u64,
+    pub items: Vec<usize>,
+}
+
+/// A host's retained CPU display list, independent of the renderer's GPU
+/// cache. Keep one per UI; replacing it or missing a frame is safe.
+#[derive(Debug, Default)]
+pub struct RetainedEmission {
+    generation: u64,
+    layer: i32,
+    overlay: Option<Overlay>,
+}
+
+impl RetainedEmission {
+    pub(crate) fn emit(&mut self, frame: &crate::UiFrame, desc: &EmitDesc, out: &mut Overlay) {
+        // An appended writer needs the current clip/table offsets. The
+        // ordinary emitter handles that; no cached indices escape here.
+        if !out.sprites.is_empty()
+            || !out.sprite_arrays.is_empty()
+            || !out.texts.is_empty()
+            || !out.glass.is_empty()
+            || !out.clips.is_empty()
+            || !out.ui.is_empty()
+            || !out.ui.clips.is_empty()
+            || !out.ui.layers.is_empty()
+            || !out.ui.text_effects.is_empty()
+            || !out.ui.occluders.is_empty()
+            || frame.generation == 0
+        {
+            frame.emit(desc, out);
+            return;
+        }
+        if self.layer != desc.layer {
+            self.overlay = None;
+        }
+        if self.generation != frame.generation {
+            let patch = frame
+                .properties
+                .as_ref()
+                .filter(|p| p.base == self.generation);
+            if let (Some(patch), Some(kept)) = (patch, self.overlay.as_mut()) {
+                let shapes = std::sync::Arc::make_mut(
+                    kept.ui.retained_shapes.as_mut().expect("retained shapes"),
+                );
+                for &i in &patch.items {
+                    let item = &frame.items[i];
+                    let DrawCmd::Shape { shape, .. } = &item.cmd else {
+                        unreachable!("property shape")
+                    };
+                    let emitted = &mut shapes[i];
+                    let (x, y) = item.transform.apply(shape.center.x, shape.center.y);
+                    emitted.center = Vec2::new(x, y);
+                    emitted.transform = mul2(linear(&item.transform), shape.transform);
+                    emitted.opacity = shape.opacity;
+                }
+            } else {
+                self.overlay = None;
+            }
+        }
+        if let Some(kept) = &self.overlay {
+            let (width, height, scale, key) = (out.width, out.height, out.scale, out.key);
+            let (tick, fraction) = (out.ui.tick, out.ui.tick_fraction);
+            *out = kept.clone();
+            (out.width, out.height, out.scale, out.key) = (width, height, scale, key);
+            (out.ui.tick, out.ui.tick_fraction) = (tick, fraction);
+        } else {
+            frame.emit(desc, out);
+            let eligible = frame.grounds.is_empty()
+                && out.ui.shapes.len() == frame.items.len()
+                && out.sprites.is_empty()
+                && out.texts.is_empty()
+                && out.glass.is_empty()
+                && out.ui.layers.is_empty()
+                && out.ui.clips.is_empty()
+                && out.ui.vectors.is_empty()
+                && out.ui.mass.is_empty()
+                && out.ui.occluders.is_empty()
+                && frame.items.iter().all(|i| {
+                    i.level == 0
+                        && match &i.cmd {
+                            DrawCmd::Quad { .. } => true,
+                            DrawCmd::Shape { shape, .. } => {
+                                shape.blend == og_draw::UiBlend::Normal
+                                    && !matches!(shape.paint, UiPaint::Image(_))
+                                    && !matches!(shape.mode, UiMode::Backdrop { .. })
+                            }
+                            _ => false,
+                        }
+                });
+            if !eligible {
+                return;
+            }
+            out.ui.retained_shapes = Some(std::sync::Arc::new(std::mem::take(&mut out.ui.shapes)));
+            self.overlay = Some(out.clone());
+        }
+        out.ui.time = desc.time;
+        self.layer = desc.layer;
+        self.generation = frame.generation;
+    }
+}
+
 /// Past the main levels: where the UI's offscreen layers take their
 /// overlay layers.
 pub const LAYER_BASE: i32 = 1 << 19;

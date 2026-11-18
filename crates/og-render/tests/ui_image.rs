@@ -45,6 +45,72 @@ fn at(px: &[u8], x: u32, y: u32) -> [u8; 4] {
     px[((y * W + x) * 4) as usize..][..4].try_into().unwrap()
 }
 
+/// Retained streams must render the current values after property edits,
+/// shrinking/regrowing and allocation growth, not bytes from an older frame.
+#[test]
+#[ignore = "requires GPU"]
+fn retained_shape_edits_match_fresh_rendering() {
+    let desc = RenderDesc {
+        width: W,
+        height: W,
+        ..Default::default()
+    };
+    let mut retained = Renderer::new_blocking(&desc).expect("retained renderer");
+    let mut scene = RenderScene::new();
+    scene.lighting.environment.background = Background::Color(Vec3::ZERO);
+    scene.look.post.tonemap = Tonemap::None;
+    for (step, count) in [3, 3, 1, 3, 90, 3].into_iter().enumerate() {
+        let mut overlay = Overlay::new(W as f32, W as f32, 1.0);
+        let shapes: Vec<_> = (0..count)
+            .map(|i| {
+                let mut shape = UiShape::rect(
+                    [
+                        8.0 + (i % 5) as f32 * 23.0,
+                        15.0 + (i / 5) as f32 * 5.0,
+                        13.0,
+                        19.0,
+                    ],
+                    2.0,
+                    [0.8, 0.3, 0.1, 1.0],
+                );
+                if step % 2 == 1 && i == 1 {
+                    shape.center.y += 29.0;
+                    shape.transform = [0.7, 0.0, 0.0, 1.2];
+                    shape.opacity = 0.35;
+                }
+                shape
+            })
+            .collect();
+        overlay.ui.retained_shapes = Some(std::sync::Arc::new(shapes.clone()));
+        overlay.key = Some(step as u64);
+        scene.ui.overlay = Some(overlay);
+        retained
+            .render(&scene, &RenderTarget::Offscreen)
+            .expect("retained render");
+        let actual = retained.read_offscreen().expect("retained pixels").pixels;
+        // Repeat the identical key: this also exercises the existing
+        // no-upload route immediately after a partial upload.
+        retained
+            .render(&scene, &RenderTarget::Offscreen)
+            .expect("kept render");
+        assert_eq!(
+            retained.read_offscreen().expect("kept pixels").pixels,
+            actual
+        );
+        // An ordinary stream on a new allocation is the independent
+        // control, with no retained snapshot or shared-shape storage.
+        let mut control = Overlay::new(W as f32, W as f32, 1.0);
+        control.ui.shapes = shapes;
+        scene.ui.overlay = Some(control);
+        let mut fresh = Renderer::new_blocking(&desc).expect("fresh renderer");
+        fresh
+            .render(&scene, &RenderTarget::Offscreen)
+            .expect("control render");
+        let expected = fresh.read_offscreen().expect("control pixels").pixels;
+        assert_eq!(actual, expected, "step {step}, count {count}");
+    }
+}
+
 /// A `w`×`h` texture: white in its left half, black in its right.
 fn halves(scene: &mut RenderScene, w: u32, h: u32) -> og_render::TextureHandle {
     let rgba = (0..w * h)

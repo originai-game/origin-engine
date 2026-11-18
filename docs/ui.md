@@ -789,6 +789,25 @@ runtime or compiler runs in the game. Data authoring is function calls;
 structure stays in templates. There are no async primitives, Promises,
 resources, Suspense, or async transitions.
 
+Flat, single-batch, normal-blended shape paints retain local geometry and
+submission order while only positive axis-aligned transforms or opacity
+change. These ticks update the retained items' properties without rebuilding
+commands or painter levels. Paint, topology, clip, viewport and unsupported
+pipeline changes return to ordinary painting; they do not reuse the old
+placed command list. Text, images, offscreen layers, backdrops and world
+placement are outside this property-only path.
+
+The shared runtime on both hosts keeps a caller-owned `RetainedEmission`
+for an otherwise empty, unshifted UI overlay without strict-palette
+processing. It shares emitted shapes and patches properties only against
+the exact preceding generation; missed generations rebuild. Ordinary
+emission remains the fallback for other content and mixed writers. Renderer
+streams compare whole instances and upload adjacent changed ranges, fully
+initializing replacement buffers and regrown tails. Rendering, live clocks,
+resource validation and renderer metadata construction still run. This is
+not a general compositing layer or a promise that all CSS transform and
+opacity animations skip painting.
+
 Gameplay initialization belongs in `og.game({ start(world) { … } })`; UI
 registration in its `ui(world)` callback, which runs once after `start`
 and again after a hot-reload restore, never per tick. Registration creates

@@ -39,8 +39,8 @@ pub(crate) mod draw_codec;
 mod emit;
 mod order;
 
-pub use emit::{EmitDesc, LAYER_BASE, LAYER_SPAN, MAX_LAYERS, drawn_lines};
-pub(crate) use emit::{emit, scale_effects, zoom_item, zoom_items, zoom_mass};
+pub use emit::{EmitDesc, LAYER_BASE, LAYER_SPAN, MAX_LAYERS, RetainedEmission, drawn_lines};
+pub(crate) use emit::{PropertyUpdate, emit, scale_effects, zoom_item, zoom_items, zoom_mass};
 pub(crate) use order::{Levels, Spliced, assign_levels_kept};
 
 /// One thing to draw, in CSS pixels.
@@ -383,7 +383,7 @@ fn mapped_shape(mut s: UiShape, m: &Affine) -> UiShape {
 /// A command's bounds on the screen under its map. Only the top-level
 /// overlay supplies its local device-pixel width; other targets keep the
 /// broad bounds, since their independent raster scale is not known here.
-fn mapped_bounds(c: &DrawCmd, m: &Affine, pixel_width: Option<f32>) -> Rect {
+pub(crate) fn mapped_bounds(c: &DrawCmd, m: &Affine, pixel_width: Option<f32>) -> Rect {
     match c {
         DrawCmd::Shape { shape, clip } => {
             let mapped;

@@ -38,14 +38,15 @@ fn vp() -> Viewport {
     Viewport::new(1920.0, 1080.0)
 }
 
-fn record(ui: &Ui, seconds: f32) -> usize {
+fn record(ui: &Ui, seconds: f32, emission: &mut RetainedEmission) -> usize {
     let mut o = Overlay::new(1920.0, 1080.0, 1.0);
-    ui.frame().emit(
+    ui.frame().emit_retained(
         &EmitDesc {
             layer: 1000,
             time: seconds,
         },
         &mut o,
+        emission,
     );
     std::hint::black_box(&o);
     ui.frame().items.len()
@@ -65,6 +66,7 @@ struct Measured {
 /// (`write`, before `begin`) to the recorded overlay.
 fn measure(ui: &mut Ui, mut write: impl FnMut(&mut Ui, u32)) -> Measured {
     let mut times = Vec::new();
+    let mut emission = RetainedEmission::default();
     let mut parts: [Vec<f64>; 3] = Default::default();
     let mut commands = 0;
     let ms = |t: std::time::Instant| t.elapsed().as_secs_f64() * 1000.0;
@@ -78,7 +80,7 @@ fn measure(ui: &mut Ui, mut write: impl FnMut(&mut Ui, u32)) -> Measured {
         ui.end();
         let ended = ms(t);
         let t = std::time::Instant::now();
-        commands = record(ui, tick as f32 / 60.0);
+        commands = record(ui, tick as f32 / 60.0, &mut emission);
         let recorded = ms(t);
         if tick >= WARM {
             times.push(ms(start));

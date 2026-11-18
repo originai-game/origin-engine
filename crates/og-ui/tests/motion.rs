@@ -46,6 +46,115 @@ fn rect(ui: &Ui, path: &str) -> [f32; 4] {
     [e.x, e.y, e.width, e.height]
 }
 
+/// A retained transform/opacity run must render like fresh paint, also
+/// when retargeted through zero alpha or interrupted by paint, clipping,
+/// viewport and topology changes. The control invalidates its style each
+/// frame rather than depending on the retained painter's implementation.
+#[test]
+fn property_animation_keeps_fresh_paint_after_retargeting_and_invalidation() {
+    let text = r#"<meta name="component" content="Test">
+<div id="Page"><button id="A" data-state={$pose}></button>
+{#if $extra}<button id="B"></button>{/if}</div>
+<style>
+#Page { width: 300px; height: 240px; padding: 17px; background: #192533; }
+#A, #B { width: 113px; height: 61px; }
+#A { opacity: 0.9; transition: scale 300ms linear, opacity 300ms linear; }
+#A[data-state=on] { scale: 1.17; opacity: 0.3; }
+#A[data-state=off] { opacity: 0; }
+#A[data-state=paint] { background: #b92743; }
+#A[data-state=cut] { clip-path: inset(3px 7px 9px 2px); }
+#A[data-state=turn] { transform: rotate(13deg); }
+</style>"#;
+    let stores = [
+        ("pose", serde_json::json!("rest")),
+        ("extra", serde_json::json!(false)),
+    ];
+    let mut retained = Doc::new(text, &stores);
+    let mut fresh = Doc::new(text, &stores);
+    let mut emission = RetainedEmission::default();
+    let mut held = None::<(og_draw::Overlay, Vec<og_draw::UiShape>)>;
+    for tick in 0..150 {
+        if let Some(state) = match tick {
+            2 | 31 | 101 => Some("on"),
+            13 | 63 => Some("off"),
+            24 | 91 | 132 => Some("rest"),
+            44 => Some("paint"),
+            75 => Some("cut"),
+            117 => Some("turn"),
+            _ => None,
+        } {
+            retained.put("pose", serde_json::json!(state));
+            fresh.put("pose", serde_json::json!(state));
+        }
+        if tick == 53 || tick == 85 {
+            let extra = tick == 53;
+            retained.put("extra", serde_json::json!(extra));
+            fresh.put("extra", serde_json::json!(extra));
+        }
+        if tick == 97 {
+            retained.viewport = Viewport::new(390.0, 844.0);
+            fresh.viewport = retained.viewport;
+        }
+        fresh.ui.reset_part_css();
+        retained.step(InputFrame::default());
+        fresh.step(InputFrame::default());
+        assert_eq!(
+            retained.ui.frame().items,
+            fresh.ui.frame().items,
+            "tick {tick}"
+        );
+        assert_eq!(
+            retained.get("A"),
+            fresh.get("A"),
+            "tick {tick}: hit geometry"
+        );
+        let overlay = |d: &Doc| {
+            let mut o = og_draw::Overlay::new(d.viewport.width, d.viewport.height, 1.0);
+            d.ui.frame().emit(&EmitDesc::default(), &mut o);
+            o
+        };
+        assert_eq!(overlay(&retained), overlay(&fresh), "tick {tick}: emission");
+        // Skipped presentation frames must not apply a delta to the wrong
+        // base. Holding an old output also exercises copy-on-write ownership.
+        if tick % 17 != 0 {
+            let mut cached =
+                og_draw::Overlay::new(retained.viewport.width, retained.viewport.height, 1.0);
+            let mut expected = cached.clone();
+            cached.ui.tick = tick;
+            expected.ui.tick = tick;
+            let desc = EmitDesc {
+                layer: 73,
+                time: tick as f32 / 60.0,
+            };
+            if tick % 29 == 0 {
+                let shape =
+                    og_draw::UiShape::rect([19.0, 31.0, 5.0, 7.0], 0.0, [0.2, 0.4, 0.6, 1.0]);
+                cached.ui.shapes.push(shape.clone());
+                expected.ui.shapes.push(shape);
+            }
+            retained
+                .ui
+                .frame()
+                .emit_retained(&desc, &mut cached, &mut emission);
+            fresh.ui.frame().emit(&desc, &mut expected);
+            let shapes: Vec<_> = cached.ui.shapes().cloned().collect();
+            if tick == 6 {
+                held = Some((cached.clone(), shapes.clone()));
+            }
+            cached.ui.retained_shapes = None;
+            cached.ui.shapes = shapes;
+            assert_eq!(cached, expected, "tick {tick}: retained emission");
+        }
+        if let Some((old, shapes)) = &held {
+            assert_eq!(
+                old.ui.shapes().cloned().collect::<Vec<_>>(),
+                *shapes,
+                "old frame changed"
+            );
+        }
+    }
+}
+
 /// A directive keeps the style's motion token until playback, not the
 /// default token's duration baked in at parse time.
 #[test]

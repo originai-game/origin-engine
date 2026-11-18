@@ -1731,6 +1731,8 @@ pub struct UiFrame {
     /// the process. A host keeps what it made from a generation (the
     /// renderer's overlay) until it changes.
     pub generation: u64,
+    /// A property transaction against exactly the preceding paint frame.
+    pub(crate) properties: Option<crate::draw::PropertyUpdate>,
 }
 
 /// What [`Ui::edit_marks`] draws a text control's marks from.
@@ -1797,6 +1799,19 @@ impl UiFrame {
     /// size and `dpr` (`og_draw::Overlay::new(vp.width, vp.height, vp.dpr)`).
     pub fn emit(&self, desc: &EmitDesc, overlay: &mut Overlay) {
         emit(&self.items, desc, overlay, &|_| None, &self.grounds);
+    }
+
+    /// Emits through a caller-owned retained display list. Flat shape
+    /// paints share their emitted geometry and patch property-only ranges;
+    /// unsupported paints and mixed writers use [`Self::emit`]. A missed
+    /// generation rebuilds the list rather than applying an incomplete delta.
+    pub fn emit_retained(
+        &self,
+        desc: &EmitDesc,
+        overlay: &mut Overlay,
+        cache: &mut crate::RetainedEmission,
+    ) {
+        cache.emit(self, desc, overlay);
     }
 
     /// [`UiFrame::emit`] with each anchored element ([`crate::WorldCmd::Anchor`])

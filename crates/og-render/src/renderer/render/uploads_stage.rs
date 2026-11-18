@@ -84,12 +84,12 @@ impl Renderer {
         let mut ui_uniform = None;
         if let (Some(of), Some(o)) = (overlay_frame, &scene.ui.overlay) {
             if overlay_fresh {
-                grow_and_write(
+                self.overlay.upload.write(
                     &self.device,
                     &self.queue,
                     &mut self.overlay.buffer,
                     "overlay instances",
-                    bytemuck::cast_slice(&of.instances),
+                    &of.instances,
                 );
             }
             let u = overlay::OverlayRenderer::uniform(

@@ -6,33 +6,33 @@ use super::*;
 impl UiRenderer {
     /// Writes the frame's shape instances, gradients, clips and points.
     fn write_tables(&mut self, device: &wgpu::Device, queue: &wgpu::Queue, frame: &OverlayFrame) {
-        write_storage(
+        self.table_uploads[0].write(
             device,
             queue,
             &mut self.instances,
             "ui instances",
-            bytemuck::cast_slice(&frame.ui_instances),
+            &frame.ui_instances,
         );
-        write_storage(
+        self.table_uploads[1].write(
             device,
             queue,
             &mut self.gradients,
             "ui gradients",
-            bytemuck::cast_slice(&frame.tables.gradients),
+            &frame.tables.gradients,
         );
-        write_storage(
+        self.table_uploads[2].write(
             device,
             queue,
             &mut self.clips,
             "ui clips",
-            bytemuck::cast_slice(&frame.tables.clips),
+            &frame.tables.clips,
         );
-        write_storage(
+        self.table_uploads[3].write(
             device,
             queue,
             &mut self.points,
             "ui points",
-            bytemuck::cast_slice(&frame.tables.points),
+            &frame.tables.points,
         );
     }
 

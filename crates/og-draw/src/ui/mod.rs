@@ -1488,6 +1488,9 @@ pub struct UiVectorDraw {
 /// The UI pass's content of one overlay. See the module documentation.
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct UiList {
+    /// Shared shapes drawn before the ordinary `shapes`, without cloning
+    /// their geometry when this list is cloned.
+    pub retained_shapes: Option<std::sync::Arc<Vec<UiShape>>>,
     pub shapes: Vec<UiShape>,
     pub clips: Vec<UiClip>,
     pub layers: Vec<UiLayer>,
@@ -1504,8 +1507,23 @@ pub struct UiList {
 }
 
 impl UiList {
+    /// All shapes in submission order: retained first, then ordinary.
+    pub fn shapes(&self) -> impl Iterator<Item = &UiShape> {
+        self.retained_shapes
+            .iter()
+            .flat_map(|shapes| shapes.iter())
+            .chain(self.shapes.iter())
+    }
+
+    pub fn shape_count(&self) -> usize {
+        self.retained_shapes
+            .as_ref()
+            .map_or(0, |shapes| shapes.len())
+            + self.shapes.len()
+    }
+
     pub fn is_empty(&self) -> bool {
-        self.shapes.is_empty() && self.vectors.is_empty() && self.mass.is_empty()
+        self.shape_count() == 0 && self.vectors.is_empty() && self.mass.is_empty()
     }
 
     /// Whether it reads the frame's depth (occluders, mass elements the

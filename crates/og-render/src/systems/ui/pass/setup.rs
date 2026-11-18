@@ -247,6 +247,7 @@ impl UiRenderer {
             gradients: storage_buffer(device, "ui gradients", 256),
             clips: storage_buffer(device, "ui clips", 256),
             points: storage_buffer(device, "ui points", 256),
+            table_uploads: Default::default(),
             uniforms: Vec::new(),
             layer_params: Vec::new(),
             mass_camera: uniform_buffer(

@@ -1,5 +1,209 @@
 use super::*;
 
+/// Property-only updates of a flat, single-batch retained paint. Such a
+/// paint has one submission order regardless of overlap; moving its shapes
+/// cannot change painter levels. Other paints keep the normal paint path.
+#[derive(Clone, Debug)]
+pub(crate) struct Composite {
+    nodes: Vec<(usize, u64, Affine, f32)>,
+    clips: Vec<Rect>,
+    unclipped: Vec<bool>,
+    owned: Vec<Vec<(usize, f32)>>,
+    skipped: Vec<Vec<DrawCmd>>,
+    pub(super) changed: bool,
+    pub(super) base: u64,
+    pub(super) updated: Vec<usize>,
+}
+
+impl Composite {
+    pub(super) fn new(
+        ui: &Ui,
+        order: &[usize],
+        trees: &[(DrawCmd, Affine)],
+        items: &[DrawItem],
+    ) -> Option<Self> {
+        if trees.is_empty()
+            || !ui.paint.cache.last_tail.is_empty()
+            || !ui.paint.cache.volatile.is_empty()
+            || items.iter().any(|i| {
+                i.level != 0
+                    || match &i.cmd {
+                        DrawCmd::Quad { .. } => false,
+                        DrawCmd::Shape { shape, .. } => {
+                            shape.blend != og_draw::UiBlend::Normal
+                                || matches!(shape.paint, og_draw::UiPaint::Image(_))
+                                || matches!(shape.mode, og_draw::UiMode::Backdrop { .. })
+                        }
+                        _ => true,
+                    }
+            })
+        {
+            return None;
+        }
+        let mapped = ui.paint.cache.levels.as_ref()?.single_items()?;
+        if mapped.len() != trees.len() {
+            return None;
+        }
+        let mut owners = vec![usize::MAX; trees.len()];
+        let mut starts = crate::id::KeyMap::default();
+        let mut nodes = Vec::with_capacity(order.len());
+        let mut clips = Vec::with_capacity(order.len());
+        for (k, &i) in order.iter().enumerate() {
+            let n = &ui.tree.nodes[i];
+            let &(relative, len, _) = ui.paint.cache.ranges.get(&n.key)?;
+            let base = if n.parent == NONE {
+                0
+            } else {
+                *starts.get(&ui.tree.nodes[n.parent].key)?
+            };
+            let start = base + relative;
+            owners.get_mut(start..start + len)?.fill(k);
+            starts.insert(n.key, start);
+            nodes.push((i, n.key, n.placed.world, n.placed.alpha));
+            clips.push(n.placed.clip);
+        }
+        let mut owned = vec![Vec::new(); nodes.len()];
+        let mut unclipped = vec![true; nodes.len()];
+        let mut skipped = vec![Vec::new(); nodes.len()];
+        for (p, k) in owners.into_iter().enumerate() {
+            let &(i, _, _, alpha) = nodes.get(k)?;
+            let Some(item) = mapped[p] else {
+                skipped[k].push(trees[p].0.clone());
+                continue;
+            };
+            if alpha <= 0.0 {
+                return None;
+            }
+            let opacity = match &items[item].cmd {
+                DrawCmd::Shape { shape, .. } if alpha > 0.0 => shape.opacity / alpha,
+                // A non-shape may stay, but is not property-updated.
+                _ => 0.0,
+            };
+            if *trees[p].0.clip() != ui.tree.nodes[i].placed.clip {
+                unclipped[k] = false;
+            }
+            owned[k].push((item, opacity));
+        }
+        Some(Self {
+            nodes,
+            clips,
+            unclipped,
+            owned,
+            skipped,
+            changed: false,
+            base: 0,
+            updated: Vec::new(),
+        })
+    }
+
+    fn update(&mut self, ui: &mut Ui, order: &[usize], reuse: &Reuse) -> bool {
+        if order.len() != self.nodes.len()
+            || ui.out.frame.unit != ui.env.unit
+            || ui.out.frame.viewport != ui.env.viewport
+            || !ui.paint.cache.last_tail.is_empty()
+            || ui.front.cover.is_some()
+            || ui.interaction.state.view_transition.is_some()
+            || !ui.interaction.state.scoped_view_transitions.is_empty()
+            || !ui.interaction.state.motion.frozen.is_empty()
+            || !ui.paint.cache.volatile.is_empty()
+        {
+            return false;
+        }
+        let mut over = Vec::new();
+        ui.hud_edit_commands(&mut over);
+        ui.interaction.virtual_cursor_commands(&mut over, &ui.env);
+        if !over.is_empty() {
+            return false;
+        }
+        // Validate the entire property transaction before changing any item.
+        for (k, (&i, &(slot, key, world, alpha))) in order.iter().zip(&self.nodes).enumerate() {
+            let n = &ui.tree.nodes[i];
+            if i != slot
+                || n.key != key
+                || !reuse.painted(i)
+                || n.placed.plane.is_some()
+                || !n.placed.world.is_axis_aligned()
+                || n.placed.world.a <= 0.0
+                || n.placed.world.d <= 0.0
+                || n.placed.clip != self.clips[k]
+            {
+                return false;
+            }
+            let now = crate::layout::DrawSig::of_slot(&ui.tree, &ui.interaction, i);
+            if ui
+                .paint
+                .cache
+                .sigs
+                .get(i)
+                .copied()
+                .flatten()
+                .is_none_or(|(key, old)| key != n.key || old.painted() != now.painted())
+            {
+                return false;
+            }
+            if (world != n.placed.world || alpha != n.placed.alpha)
+                && (!self.unclipped[k]
+                    || self.owned[k]
+                        .iter()
+                        .any(|&(p, _)| !matches!(ui.out.frame.items[p].cmd, DrawCmd::Shape { .. })))
+            {
+                return false;
+            }
+            if world != n.placed.world
+                && self.skipped[k].iter().any(|c| {
+                    let mut c = c.clone();
+                    let screen = matches!(c, DrawCmd::Shape { .. });
+                    if let Some(clip) = c.clip_mut() {
+                        *clip = if screen {
+                            n.placed.clip
+                        } else {
+                            n.placed
+                                .world
+                                .invert()
+                                .expect("positive scale")
+                                .map_rect(&n.placed.clip)
+                        };
+                    }
+                    let (c, m) = bake(c, n.placed.world);
+                    !crate::draw::mapped_bounds(
+                        &c,
+                        &m,
+                        ui.paint.cache.levels.as_ref().and_then(|l| l.pixel_width),
+                    )
+                    .is_empty()
+                })
+            {
+                return false;
+            }
+        }
+        self.changed = false;
+        self.base = ui.out.frame.generation;
+        self.updated.clear();
+        for (k, (i, _, world, alpha)) in self.nodes.iter_mut().enumerate() {
+            let n = &ui.tree.nodes[*i];
+            if *world == n.placed.world && *alpha == n.placed.alpha {
+                continue;
+            }
+            let clip = Affine::scale(ui.env.unit, ui.env.unit).map_rect(&n.placed.clip);
+            for &(p, opacity) in &self.owned[k] {
+                let item = &mut ui.out.frame.items[p];
+                let DrawCmd::Shape { shape, clip: cut } = &mut item.cmd else {
+                    unreachable!()
+                };
+                *cut = clip;
+                shape.opacity = opacity * n.placed.alpha;
+                item.transform = Affine::scale(ui.env.unit, ui.env.unit).mul(&n.placed.world);
+                self.updated.push(p);
+            }
+            *world = n.placed.world;
+            *alpha = n.placed.alpha;
+            self.changed = true;
+        }
+        self.changed = !self.updated.is_empty();
+        true
+    }
+}
+
 impl Ui {
     /// Each element's map onto the screen (docs/ui.md §2): its layout
     /// animation, its drag and pinch, its transition's movement and its own
@@ -293,7 +497,31 @@ impl Ui {
         let prev_kinds = std::mem::take(&mut self.tree.prev_kinds);
         self.paint.kept_spans.clear();
         self.paint.text_clips.clear();
-        let reuse = self.paint_reuse(order, &ends, changed, &ghosts, &prev_kinds);
+        let mut reuse = self.paint_reuse(order, &ends, changed, &ghosts, &prev_kinds);
+        self.paint.cache.composited = false;
+        if let Some(mut composite) = self.paint.cache.composite.take() {
+            let kept = ghosts.is_empty() && composite.update(self, order, &reuse);
+            if kept {
+                self.paint.cache.composite = Some(composite);
+                self.paint.cache.composited = true;
+                self.paint.cache.reused_all = true;
+                self.paint.cache.repainted = reuse.repainted.clone();
+                self.paint.cache.reuse = reuse;
+                self.tree.replaced.clear();
+                self.tree.orders.ends = ends;
+                self.interaction.state.motion.ghosts = ghosts;
+                self.out.stats.kept_commands += order.len() as u32;
+                return last;
+            }
+            // Its last raw commands still describe the original local
+            // paint; the property-updated items are not the grid's base.
+            self.paint.cache.levels = None;
+            // Even unchanged nodes must be placed again: the raw list
+            // predates every property-only tick since capture.
+            for &i in order {
+                reuse.unclean(i);
+            }
+        }
         // The frame has compared every written node with the one it
         // replaced: the last frame's nodes are let go.
         self.tree.replaced.clear();
@@ -556,7 +784,7 @@ impl Ui {
                     };
                     let unplaced = unplaced_clip(n);
                     for c in &mut local {
-                        place(c, n.placed.alpha, unplaced, clip, &world);
+                        place(c, n.placed.alpha, unplaced, clip, draw_clip, &world);
                     }
                 }
                 if let Some(d) = &draw {
@@ -1737,7 +1965,14 @@ fn unplaced_clip(n: &crate::layout::Node) -> Rect {
 /// layer's composite keeps its own: what it composites is faded) and cut
 /// to `clip`, its clip in its layout box. A UI-pass command's clip is the
 /// screen's ([`bake`] leaves it), so it is taken through its map `world`.
-fn place(c: &mut DrawCmd, alpha: f32, unplaced: Rect, clip: Rect, world: &Affine) {
+fn place(
+    c: &mut DrawCmd,
+    alpha: f32,
+    unplaced: Rect,
+    clip: Rect,
+    screen_clip: Rect,
+    world: &Affine,
+) {
     if alpha != 1.0 && !matches!(c, DrawCmd::EndLayer { .. }) {
         fade_cmd(c, alpha);
     }
@@ -1749,6 +1984,13 @@ fn place(c: &mut DrawCmd, alpha: f32, unplaced: Rect, clip: Rect, world: &Affine
             | DrawCmd::World(_)
     );
     if let Some(own) = c.clip_mut() {
+        // An uncut command uses the established screen clip directly.
+        // Taking it through inverse/world every animation tick introduces
+        // roundoff, making an unchanged clip appear dirty.
+        if screen && *own == unplaced {
+            *own = screen_clip;
+            return;
+        }
         let cut = if *own == unplaced {
             clip
         } else {

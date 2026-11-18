@@ -14,6 +14,84 @@ use og_ui::*;
 use std::path::PathBuf;
 use support::*;
 
+/// Property-only display-list patches must have the same native pixels as
+/// fresh paint, including nested opacity, shadows and interrupted motion.
+#[test]
+#[ignore = "requires GPU"]
+fn retained_property_animation_matches_fresh_pixels() {
+    let text = r#"<meta name="component" content="Test">
+<div id="Scene"><div id="Cards" data-state={$pose}>
+<button id="A"><div class="Ink"></div></button>
+<button id="B"><div class="Ink"></div></button>
+<button id="C"><div class="Ink"></div></button>
+</div></div>
+<style>
+#Scene { width: 100vw; height: 100vh; display: flex; align-items: center; justify-content: center; background: #142231; }
+#Cards { display: flex; gap: 24px; transition: scale 300ms linear, opacity 300ms linear; }
+#Cards[data-state=on] { scale: 1.13; opacity: 0.4; }
+#A, #B, #C { width: 180px; height: 160px; padding: 28px; border-radius: 20px; }
+#A { background: #8c6338; } #B { background: #246976; } #C { background: #65508b; }
+.Ink { width: 80px; height: 80px; border-radius: 50%; background: linear-gradient(135deg, #fff5d1, #cf984b); opacity: 0.8; }
+@media (max-width: 600px) { #Cards { flex-direction: column; } }
+</style>"#;
+    for (width, height) in [(1920, 1080), (390, 844)] {
+        let mut retained = Doc::new(text, &[("pose", serde_json::json!("rest"))]);
+        let mut fresh = Doc::new(text, &[("pose", serde_json::json!("rest"))]);
+        retained.viewport = Viewport::new(width as f32, height as f32);
+        fresh.viewport = retained.viewport;
+        let desc = RenderDesc {
+            width,
+            height,
+            ..Default::default()
+        };
+        let mut renderer = Renderer::new_blocking(&desc).expect("retained renderer");
+        let mut emission = RetainedEmission::default();
+        let mut scene = RenderScene::new();
+        scene.lighting.environment.background = Background::Color(Vec3::ZERO);
+        scene.look.post.tonemap = Tonemap::None;
+        for tick in 0..25 {
+            if tick == 2 || tick == 12 {
+                let pose = serde_json::json!(if tick == 2 { "on" } else { "rest" });
+                retained.put("pose", pose.clone());
+                fresh.put("pose", pose);
+            }
+            fresh.ui.reset_part_css();
+            retained.step(InputFrame::default());
+            fresh.step(InputFrame::default());
+            let mut overlay = og_render::Overlay::new(width as f32, height as f32, 1.0);
+            retained
+                .ui
+                .frame()
+                .emit_retained(&EmitDesc::default(), &mut overlay, &mut emission);
+            overlay.key = Some(retained.ui.frame().generation);
+            if ![0, 7, 23].contains(&tick) {
+                continue;
+            }
+            scene.ui.overlay = Some(overlay);
+            renderer.render(&scene, &RenderTarget::Offscreen).unwrap();
+            let actual = renderer.read_offscreen().unwrap().pixels;
+            let mut overlay = og_render::Overlay::new(width as f32, height as f32, 1.0);
+            fresh.ui.frame().emit(&EmitDesc::default(), &mut overlay);
+            scene.ui.overlay = Some(overlay);
+            let mut control = Renderer::new_blocking(&desc).expect("fresh renderer");
+            control.render(&scene, &RenderTarget::Offscreen).unwrap();
+            assert_eq!(
+                actual,
+                control.read_offscreen().unwrap().pixels,
+                "{width}x{height}, tick {tick}"
+            );
+            image::save_buffer(
+                out_dir().join(format!("retained-properties-{width}-{tick}.png")),
+                &actual,
+                width,
+                height,
+                image::ColorType::Rgba8,
+            )
+            .unwrap();
+        }
+    }
+}
+
 #[test]
 #[ignore = "requires GPU"]
 fn mounted_documents_keep_their_pixels_through_updates_and_restore() {

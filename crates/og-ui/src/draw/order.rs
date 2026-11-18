@@ -362,6 +362,27 @@ pub(crate) struct Levels {
 }
 
 impl Levels {
+    /// Submitted commands' single retained items, including commands
+    /// culled by their clip. Layers/panels are not single-item ranges.
+    pub(crate) fn single_items(&self) -> Option<Vec<Option<usize>>> {
+        if self.keyed.len() != self.at.len() {
+            return None;
+        }
+        self.at
+            .iter()
+            .map(|&e| {
+                if e == u32::MAX {
+                    return None;
+                }
+                match self.items[e as usize] {
+                    Some((first, last)) if first == last => Some(Some(first as usize)),
+                    None => Some(None),
+                    _ => None,
+                }
+            })
+            .collect()
+    }
+
     /// Replaces the items of the commands at `changed` (submitted
     /// position, baked command and map) and levels again what they
     /// overlapped or now overlap, as [`assign_levels`] would. `false`,
