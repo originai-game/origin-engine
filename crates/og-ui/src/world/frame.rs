@@ -474,7 +474,10 @@ impl crate::world::WorldUi {
         w.declared.emitters.clear();
         w.declared.metas.clear();
         w.declared.immediate.clear();
-        w.placement.marks.clear();
+        w.placement.mark_scratch.clear();
+        w.placement
+            .mark_scratch
+            .extend(std::mem::take(&mut w.placement.marks).into_values());
         w.placement.grounds.clear();
         w.declared.mass_built.clear();
         w.placement.pointed = None;
