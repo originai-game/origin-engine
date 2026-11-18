@@ -169,7 +169,7 @@ pub enum DrawCmd {
     },
     /// World-space UI's commands (`crate::world`): occlusion brackets,
     /// mass elements and particles, a world panel's target.
-    World(Box<crate::world::WorldCmd>),
+    World(crate::world::WorldCmd),
 }
 
 /// What a [`DrawCmd::BeginLayer`] is for.
@@ -492,7 +492,7 @@ impl DrawCmd {
             | DrawCmd::Vector { clip, .. }
             | DrawCmd::EndLayer { clip, .. } => clip,
             DrawCmd::StyledText { text, .. } => text.clip(),
-            DrawCmd::World(w) => match &**w {
+            DrawCmd::World(w) => match w {
                 WorldCmd::Mass { clip, .. } => clip,
                 _ => &ALL,
             },
@@ -512,7 +512,7 @@ impl DrawCmd {
             | DrawCmd::Vector { clip, .. }
             | DrawCmd::EndLayer { clip, .. } => Some(clip),
             DrawCmd::StyledText { text, .. } => text.clip_mut(),
-            DrawCmd::World(w) => match &mut **w {
+            DrawCmd::World(w) => match w {
                 WorldCmd::Mass { clip, .. } => Some(clip),
                 _ => None,
             },
@@ -597,7 +597,7 @@ impl DrawCmd {
                 b.intersect(clip)
             }
             DrawCmd::Shape { shape, clip } => shape_bounds(shape).intersect(clip),
-            DrawCmd::World(w) => match &**w {
+            DrawCmd::World(w) => match w {
                 WorldCmd::Mass { bounds, clip, .. } => bounds.intersect(clip),
                 _ => Rect::default(),
             },
