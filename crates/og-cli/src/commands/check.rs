@@ -47,6 +47,8 @@ use std::path::{Path, PathBuf};
 use std::process::{Command, ExitCode, Stdio};
 use std::time::Instant;
 
+mod fields;
+
 /// The TypeScript (tsgo) version tsrs is held to
 /// (`scripts/tsrs-diff.sh` reads it here) and the fallback where tsrs has
 /// no package (Windows, Intel macOS).
@@ -937,6 +939,7 @@ pub fn gate(p: &Project, package: &Path, json: bool) -> Result<Report, String> {
     let mut report = checker.check(&target, default_checkers())?;
     untyped_documents(&target, &mut report);
     module_state(p, &mut report);
+    fields::check(p, &mut report);
     if json {
         println!("{}", report.json());
     } else {
@@ -1373,6 +1376,7 @@ pub fn run(args: &[&str]) -> ExitCode {
     untyped_documents(&target, &mut report);
     if let Some(p) = &project {
         module_state(p, &mut report);
+        fields::check(p, &mut report);
     }
     if json {
         println!("{}", report.json());

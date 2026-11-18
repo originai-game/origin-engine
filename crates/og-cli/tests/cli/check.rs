@@ -20,6 +20,62 @@ const TS2322: &str =
     "src/main.ts(1,7): error TS2322: Type 'string' is not assignable to type 'number'.\n";
 
 #[test]
+fn check_reports_oversized_string_fields_at_their_declaration() {
+    let (dir, game) = check_project();
+    std::fs::write(
+        game.join("tsconfig.json"),
+        include_str!("../../../../packages/create/template/tsconfig.json"),
+    )
+    .unwrap();
+    std::fs::write(game.join("src/main.ts"), "export * from './fields';").unwrap();
+    let fields = game.join("src/fields.ts");
+    let source = r#"import { defineComponent, str as text } from '@origingame/engine';
+import * as engine from '@origingame/engine';
+const CAPACITY = 4 * 2048;
+export const Log = defineComponent('Log', { message: text(CAPACITY) });
+export const Note = engine.defineResource('Note', { label: engine.str(4097) });
+export function unrelated(str: (capacity: number) => unknown) { return str(8192); }
+"#;
+    std::fs::write(&fields, source).unwrap();
+    let check = || {
+        og().args(["check", "--json"])
+            .arg(&game)
+            .env("OG_SESSION", "0")
+            .env("OG_ENGINE_PACKAGE", repo().join("packages/engine"))
+            .output()
+            .unwrap()
+    };
+    let out = check();
+    assert!(!out.status.success(), "{}", text(&out));
+    let report: serde_json::Value = serde_json::from_slice(&out.stdout).unwrap();
+    let diagnostics = report["diagnostics"].as_array().unwrap();
+    assert_eq!(diagnostics.len(), 2, "{}", text(&out));
+    for (diagnostic, field, capacity, line) in [
+        (&diagnostics[0], "message", "8192", 4),
+        (&diagnostics[1], "label", "4097", 5),
+    ] {
+        assert_eq!(diagnostic["file"], "src/fields.ts");
+        assert_eq!(diagnostic["line"], line);
+        let message = diagnostic["message"].as_str().unwrap();
+        assert!(
+            message.contains(field) && message.contains(capacity) && message.contains("4096"),
+            "{message}"
+        );
+    }
+    // Both ends of the valid range pass; the unrelated shadowed factory stays untouched.
+    std::fs::write(
+        &fields,
+        source
+            .replace("4 * 2048", "2 * 2048")
+            .replace("engine.str(4097)", "engine.str(1)"),
+    )
+    .unwrap();
+    let out = check();
+    assert!(out.status.success(), "{}", text(&out));
+    std::fs::remove_dir_all(dir).unwrap();
+}
+
+#[test]
 fn warm_checks_match_cold_after_dependency_and_resolution_changes() {
     let (dir, game) = check_project();
     std::fs::write(
