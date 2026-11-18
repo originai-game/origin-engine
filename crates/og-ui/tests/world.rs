@@ -69,6 +69,62 @@ fn rect(ui: &Ui, path: &str) -> (f32, f32, f32, f32) {
     (e.x, e.y, e.width, e.height)
 }
 
+#[test]
+fn moving_anchors_reuse_local_paint_with_fresh_world_wrappers() {
+    let mut cached = ui();
+    cached.define_document(
+        UiDocument::parse(
+            "markers.svelte",
+            r##"
+<meta name="component" content="markers">
+<div>
+<anchor at="0 0 0" occlusion="fade"><p>Occluded name</p></anchor>
+<anchor at="30 0 0" clamp="edge"><p>Edge name</p></anchor>
+<anchor at="-1 0 0"><p>Plain name</p></anchor>
+</div>
+<style>p { width: 140px; height: 32px; background: #314151; }</style>
+"##,
+        )
+        .unwrap(),
+    );
+    cached
+        .mount_document(
+            reactive::SourceId::new("test", "markers"),
+            "markers",
+            Default::default(),
+            Default::default(),
+            &bind::NoEnv,
+        )
+        .unwrap();
+    run(&mut cached, 40, |_| {});
+    let mut fresh = cached.clone();
+    for x in [0.2, -0.4, 0.7, 0.0] {
+        let v = WorldView::look_at(
+            Vec3::new(x, 0.0, 5.0),
+            Vec3::new(x, 0.0, 0.0),
+            Vec3::Y,
+            50.0,
+            W / H,
+            0.1,
+            100.0,
+        );
+        fresh.reset_part_css();
+        for ui in [&mut cached, &mut fresh] {
+            ui.begin(InputFrame::default(), vp());
+            ui.set_world_view(Some(v));
+            ui.end();
+        }
+        assert!(fresh.frame().stats.painted > 0, "control paints afresh");
+        assert_eq!(cached.frame().items, fresh.frame().items);
+        assert_eq!(
+            cached.frame().stats.painted,
+            0,
+            "{:?}",
+            cached.frame().stats
+        );
+    }
+}
+
 fn numbers() -> UiMassTemplate {
     UiMassTemplate {
         kind: UiMassKind::Number {
