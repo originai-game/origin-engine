@@ -165,5 +165,6 @@ impl Renderer {
             crate::deferred::release_background();
         }
         stats.compile_wait_us = crate::deferred::take_waited_us().min(u64::from(u32::MAX)) as u32;
+        stats.compiling_ahead = self.instances.ahead && self.pipelines_compiling();
     }
 }
