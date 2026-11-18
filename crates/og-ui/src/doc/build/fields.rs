@@ -650,6 +650,7 @@ impl Ui {
     ) {
         let i = base.index;
         *self.tree.el_mut(i) = base.element;
+        self.tree.el_mut(i).reserve = r.str("reserve") == Some("hud");
         if let Some(host) = self.tree.nodes.iter_mut().rfind(|n| n.key == base.host_key)
             && host.part_host.as_deref() != r.part_host.as_deref()
         {

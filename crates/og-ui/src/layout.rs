@@ -761,6 +761,8 @@ pub enum TextAlign {
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
 pub struct Element {
     pub direction: Direction,
+    /// Its screen-space border box reserves room during world placement.
+    pub reserve: bool,
     pub width: Size,
     pub height: Size,
     pub padding: Insets,

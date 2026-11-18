@@ -1289,3 +1289,191 @@ fn a_grounds_child_placed_by_percent_insets_stays_in_it() {
         "{footprint:?}"
     );
 }
+
+/// Reserves, opt-in danger, priority and visible fallbacks share one solve;
+/// changing a retained HUD box must invalidate its placement certificate.
+#[test]
+fn document_world_obstacles_respect_opt_in_priority_edges_and_visible_fallbacks() {
+    let scenarios = [
+        (
+            "hud",
+            r#"<div id="Hud" reserve="hud" style:left={$left} style="position:absolute;top:320px;width:200px;height:80px;background:black" />
+<anchor id="Boss" at="0 0 0" priority="400" declutter="stack" class="tag"><text>Boss</text></anchor>
+<anchor id="Loot" at="0 0 0" priority="10" declutter="stack" class="tag"><text>Loot</text></anchor>"#,
+        ),
+        (
+            "player",
+            r#"<anchor id="Player" reserve="player" at="0 0 0" reserve-radius="0.6" reserve-height="1.9" />
+<anchor id="Boss" at="0 0.4 0" priority="400" declutter="stack" keep-visible class="tag"><text>Boss</text></anchor>
+<anchor id="Bubble" at="0 0.4 0" priority="200" declutter="shift" avoid="player" clamp="edge" arrow-size="0" class="tag"><text>Bubble</text></anchor>"#,
+        ),
+        (
+            "player-edge",
+            r#"<anchor id="Player" reserve="player" at="0 -1.2 0" reserve-radius="1.7" reserve-height="2.4" />
+<anchor id="Bubble" at="0 0 0" declutter="shift" avoid="player" clamp="edge" clamp-margin="12" arrow-size="0" class="tag"><text>Bubble</text></anchor>"#,
+        ),
+        (
+            "danger",
+            r#"<ground id="Danger" at="0 0 0" size="4 4" danger style="width:200px;height:200px;background:red" />
+<anchor id="Boss" at="0 0 0" priority="400" declutter="stack" class="tag"><text>Boss</text></anchor>
+<anchor id="Prompt" at="0 0 0" priority="300" declutter="shift" avoid="danger" class="tag"><text>Prompt</text></anchor>"#,
+        ),
+        (
+            "blocked",
+            r#"<ground id="Danger" at="0 0 0" size="100 100" danger style="width:200px;height:200px;background:red" />
+<anchor id="Prompt" at="0 0 0" declutter="shift" avoid="danger" class="tag"><div id="Badge" /></anchor>"#,
+        ),
+        (
+            "covered",
+            r#"<div reserve="hud" style="position:absolute;left:0;top:0;width:1280px;height:720px;background:black" />
+<anchor at="0 0 0" declutter="stack" keep-visible class="tag"><text>Locked</text></anchor>
+<anchor at="2 0 0" declutter="stack" class="tag"><text>Unlocked</text></anchor>"#,
+        ),
+        (
+            "edge",
+            r#"<div id="Hud" reserve="hud" style="position:absolute;left:0;top:300px;width:220px;height:220px;background:black" />
+<anchor id="Waypoint" at="-100 0 0" priority="500" declutter="shift" clamp="edge" arrow-size="0" clamp-margin="24" class="tag"><text>Waypoint</text></anchor>"#,
+        ),
+    ];
+    let overlaps = |a: (f32, f32, f32, f32), b: (f32, f32, f32, f32)| {
+        a.0 < b.0 + b.2 && b.0 < a.0 + a.2 && a.1 < b.1 + b.3 && b.1 < a.1 + a.3
+    };
+    for (scenario, body) in scenarios {
+        let mut ui = ui_with_font(test_font());
+        let doc = format!(
+            r#"<meta name="component" content="obstacles"><div>{body}</div>
+<style>.tag {{ width:80px;height:24px;color:white;font-size:14px; }} #Badge {{ width:16px;height:4px;background:white; }} #Prompt[data-blocked] #Badge {{ width:32px; }}</style>"#
+        );
+        ui.define_document(UiDocument::parse("obstacles.svelte", &doc).unwrap());
+        mount_stores(
+            &mut ui,
+            source("obstacles"),
+            "obstacles",
+            &[("left", serde_json::json!("540px"))],
+        );
+        let camera = if matches!(scenario, "danger" | "blocked") {
+            WorldView::look_at(
+                Vec3::new(0.0, 4.0, 8.0),
+                Vec3::ZERO,
+                Vec3::Y,
+                50.0,
+                W / H,
+                0.1,
+                100.0,
+            )
+        } else {
+            view()
+        };
+        let step = |ui: &mut Ui| {
+            for _ in 0..30 {
+                ui.begin(InputFrame::default(), vp());
+                ui.set_world_view(Some(camera));
+                ui.end();
+            }
+        };
+        step(&mut ui);
+        assert!(
+            ui.frame().warnings.is_empty(),
+            "{scenario}: {:?}",
+            ui.frame().warnings
+        );
+        let get = |ui: &Ui, id: &str| rect(ui, &format!("test:obstacles/{id}"));
+        match scenario {
+            "hud" => {
+                let hud = get(&ui, "Hud");
+                for id in ["Boss", "Loot"] {
+                    let tag = get(&ui, id);
+                    assert!(!overlaps(tag, hud), "{id} clears HUD");
+                    assert!(tag.1 + tag.3 <= hud.1, "{id} stacks upward");
+                }
+                assert!(!overlaps(get(&ui, "Boss"), get(&ui, "Loot")));
+                set_store(&mut ui, "left", serde_json::json!("0px"));
+                step(&mut ui);
+                assert!(
+                    (get(&ui, "Boss").1 - 336.0).abs() < 0.1,
+                    "HUD layout changes release the original point"
+                );
+            }
+            "player" => {
+                let player = get(&ui, "Player");
+                assert!(
+                    overlaps(get(&ui, "Boss"), player),
+                    "non-opted plate stays on the unit"
+                );
+                assert!(
+                    !overlaps(get(&ui, "Bubble"), player),
+                    "bubble clears player"
+                );
+            }
+            "player-edge" => {
+                let bubble = get(&ui, "Bubble");
+                assert!(!overlaps(bubble, get(&ui, "Player")));
+                assert!((bubble.1 - 12.0).abs() < 0.1, "nearest clear safe edge");
+                assert!(
+                    336.0 - bubble.1 > 240.0,
+                    "only edge fallback can reach here"
+                );
+            }
+            "danger" => {
+                let ground = ui.frame().grounds[0].bounds;
+                let danger = (ground.x, ground.y, ground.width, ground.height);
+                assert!(
+                    overlaps(get(&ui, "Boss"), danger),
+                    "non-opted plate stays on the unit"
+                );
+                assert!(
+                    !overlaps(get(&ui, "Prompt"), danger),
+                    "prompt {:?} clears whole telegraph {:?} (corners {:?})",
+                    get(&ui, "Prompt"),
+                    danger,
+                    ui.frame().grounds[0].corners
+                );
+                assert!(
+                    !overlaps(get(&ui, "Prompt"), get(&ui, "Boss")),
+                    "prompt yields to boss too"
+                );
+            }
+            "blocked" => {
+                assert_eq!(
+                    get(&ui, "Prompt/Badge").2,
+                    32.0,
+                    "forced visible fallback reports blocked"
+                );
+                assert!(
+                    ui.frame()
+                        .items
+                        .iter()
+                        .any(|i| i.cmd.filled().is_some_and(|(_, color)| color[3] > 0.99
+                            && color[0] > 0.9
+                            && color[1] > 0.9)),
+                    "blocked fallback remains opaque"
+                );
+            }
+            "covered" => {
+                let mut overlay = Overlay::new(W, H, 1.0);
+                ui.frame().emit(&EmitDesc::default(), &mut overlay);
+                assert!(
+                    overlay
+                        .texts
+                        .iter()
+                        .any(|t| t.text == "Locked" && t.color[3] > 0.99)
+                );
+                assert!(
+                    !overlay
+                        .texts
+                        .iter()
+                        .any(|t| t.text == "Unlocked" && t.color[3] > 0.01)
+                );
+            }
+            "edge" => {
+                let tag = get(&ui, "Waypoint");
+                assert!((tag.0 - 24.0).abs() < 0.1, "waypoint stays on its edge");
+                assert!(
+                    !overlaps(tag, get(&ui, "Hud")),
+                    "waypoint slides past minimap"
+                );
+            }
+            _ => unreachable!(),
+        }
+    }
+}

@@ -6,7 +6,7 @@ Module [`ui`](../ui.md) · [index](../index.md)
 
 ### `og.ui.documentSchema`
 
-The reflected document schema (docs/ui.md §2.1): kinds, props, types and writeback. World/mass anchors share scale-at/scale-min/scale-max. clamp: none, edge, contain; clamp-margin/arrow-size follow text scale, arrow-color sets ink, contain-fade=none disables edge fade. Root CSS reads data-clamped/data-edge/--anchor-angle/data-lod; lod sets distance thresholds, lod-lock forces level 0 only. text-floor opts into a text-only legibility floor capped per run's designed size. Mass bars accept bar-ghost ink.
+Reflected document kinds, attributes and writeback (docs/ui.md §2.1). Anchors share scale-at/scale-min/scale-max; clamp/contain-fade, arrow-size/color and clamp-margin control edges. Root feedback: data-clamped/data-edge/--anchor-angle/data-lod/data-blocked. lod-lock and text-floor protect detail and text. reserve=hud marks screen boxes; reserve=player uses reserve-radius and reserve-height world units. avoid=player/danger opts into volumes or ground danger bounds; keep-visible preserves an unplaceable plate. Mass bars accept bar-ghost ink.
 
 ```ts
 og.ui.documentSchema(): unknown
@@ -18,7 +18,7 @@ Binding symbol `og_ui_document_schema` · publish builds: kept
 
 ```ogt
 fn documentSchema {
-  doc "The reflected document schema (docs/ui.md §2.1): kinds, props, types and writeback. World/mass anchors share scale-at/scale-min/scale-max. clamp: none, edge, contain; clamp-margin/arrow-size follow text scale, arrow-color sets ink, contain-fade=none disables edge fade. Root CSS reads data-clamped/data-edge/--anchor-angle/data-lod; lod sets distance thresholds, lod-lock forces level 0 only. text-floor opts into a text-only legibility floor capped per run's designed size. Mass bars accept bar-ghost ink."
+  doc "Reflected document kinds, attributes and writeback (docs/ui.md §2.1). Anchors share scale-at/scale-min/scale-max; clamp/contain-fade, arrow-size/color and clamp-margin control edges. Root feedback: data-clamped/data-edge/--anchor-angle/data-lod/data-blocked. lod-lock and text-floor protect detail and text. reserve=hud marks screen boxes; reserve=player uses reserve-radius and reserve-height world units. avoid=player/danger opts into volumes or ground danger bounds; keep-visible preserves an unplaceable plate. Mass bars accept bar-ghost ink."
   returns Json
 }
 ```

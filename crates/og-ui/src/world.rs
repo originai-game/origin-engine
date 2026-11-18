@@ -230,6 +230,14 @@ impl Default for EdgeClamp {
     }
 }
 
+/// A player-sized upright volume, based at the anchor's world point.
+/// Its projected bounds reserve room for anchors that avoid the player.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct PlayerReserve {
+    pub radius: f32,
+    pub height: f32,
+}
+
 /// An anchored element ([`Ui::world_anchor`]).
 #[derive(Clone, Debug, PartialEq)]
 pub struct WorldAnchorDesc {
@@ -252,6 +260,14 @@ pub struct WorldAnchorDesc {
     pub declutter: Declutter,
     /// Higher keeps its place; equal priorities favour the nearer.
     pub priority: i32,
+    /// Reserve this upright world volume instead of drawing a label.
+    pub reserve: Option<PlayerReserve>,
+    /// Opt into the player volumes or projected danger grounds.
+    pub avoid_player: bool,
+    pub avoid_danger: bool,
+    /// If decluttering cannot fit, keep the tag at its own point rather
+    /// than fading. Distance and occlusion remain independent.
+    pub keep_visible: bool,
     pub clamp: Option<EdgeClamp>,
     /// Ticks a fade (declutter, distance, entering) takes (0: 6).
     pub fade_ticks: u32,
@@ -279,6 +295,10 @@ impl Default for WorldAnchorDesc {
             max_distance: 0.0,
             declutter: Declutter::None,
             priority: 0,
+            reserve: None,
+            avoid_player: false,
+            avoid_danger: false,
+            keep_visible: false,
             clamp: None,
             fade_ticks: 0,
             contain: false,
@@ -299,6 +319,8 @@ pub struct AnchorInfo {
     pub on_screen: bool,
     /// Held on the screen's edge.
     pub clamped: bool,
+    /// No fully clear position fit; the visible fallback is in use.
+    pub blocked: bool,
     /// The safe edge hit by its direction ray: top, right, bottom or left.
     pub edge: Option<&'static str>,
     pub lod: u32,
@@ -334,6 +356,8 @@ pub struct WorldPanelDesc {
     /// its controls take no focus. Laid over the scene's surface as a
     /// decal ([`og_draw::UiGround`]).
     pub projected: bool,
+    /// Its projected bounds obstruct only anchors that avoid danger.
+    pub danger: bool,
 }
 
 impl Default for WorldPanelDesc {
@@ -345,6 +369,7 @@ impl Default for WorldPanelDesc {
             quad: None,
             element: Element::column(),
             projected: false,
+            danger: false,
         }
     }
 }

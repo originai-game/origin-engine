@@ -164,6 +164,106 @@ fn ground_text(
     out
 }
 
+/// Conservative visible bounds of a world volume or ground quad. A shape
+/// crossing the eye plane can cover the viewport; never discard that hazard
+/// just because one corner is behind the camera.
+fn projected_bounds(view: WorldView, points: &[Vec3], screen: Rect) -> Option<Rect> {
+    let projected: Vec<_> = points
+        .iter()
+        .filter_map(|&p| view.project(p, screen.width, screen.height))
+        .collect();
+    if projected.is_empty() {
+        return None;
+    }
+    if projected.len() != points.len() {
+        return Some(screen);
+    }
+    let mut lo = Vec2::splat(f32::INFINITY);
+    let mut hi = Vec2::splat(f32::NEG_INFINITY);
+    for (x, y, _) in projected {
+        lo = lo.min(Vec2::new(x, y));
+        hi = hi.max(Vec2::new(x, y));
+    }
+    let bounds = Rect::new(lo.x, lo.y, hi.x - lo.x, hi.y - lo.y).intersect(&screen);
+    (!bounds.is_empty()).then_some(bounds)
+}
+
+fn hud_reserves(nodes: &[crate::layout::Node], screen: Rect) -> Vec<Rect> {
+    let mut out = Vec::new();
+    for (i, n) in nodes.iter().enumerate().filter(|(_, n)| n.el.reserve) {
+        let mut m = Affine::IDENTITY;
+        let mut j = i;
+        let mut shown = true;
+        while j != NONE {
+            let parent = &nodes[j];
+            if parent.is_hidden()
+                || parent.style.sampled.opacity <= 0.0
+                || parent.float == Float::World
+            {
+                shown = false;
+                break;
+            }
+            m = parent
+                .style
+                .sampled
+                .transform
+                .matrix(&parent.placed.rect)
+                .mul(&m);
+            j = parent.parent;
+        }
+        if shown {
+            let bounds = m.map_rect(&n.placed.rect).intersect(&screen);
+            if !bounds.is_empty() {
+                out.push(bounds);
+            }
+        }
+    }
+    out
+}
+
+/// A ground's obstacle includes overflowing decoration and the terrain reach
+/// of its rendered decal, not just its flat quad at nominal ground height.
+fn ground_bounds(
+    nodes: &[crate::layout::Node],
+    node: usize,
+    quad: (Vec3, Quat, Vec2),
+    view: WorldView,
+    screen: Rect,
+) -> Option<Rect> {
+    let (center, rotation, size) = quad;
+    let r = nodes[node].placed.rect;
+    let (lo, hi) = drawn_box(nodes, node);
+    let reach = 0.25 * size.x.min(size.y);
+    let mut points = [Vec3::ZERO; 8];
+    for (i, (x, y)) in [(lo.x, lo.y), (hi.x, lo.y), (hi.x, hi.y), (lo.x, hi.y)]
+        .into_iter()
+        .enumerate()
+    {
+        let x = (x - r.x) / r.width.max(1e-6) * size.x - size.x / 2.0;
+        let y = size.y / 2.0 - (y - r.y) / r.height.max(1e-6) * size.y;
+        points[2 * i] = center + rotation * Vec3::new(x, y, -reach);
+        points[2 * i + 1] = center + rotation * Vec3::new(x, y, reach);
+    }
+    projected_bounds(view, &points, screen).map(|b| b.outset(1.0).intersect(&screen))
+}
+
+fn danger_bounds(world: &WorldUi, nodes: &[crate::layout::Node], screen: Rect) -> Vec<Rect> {
+    let Some(view) = world.declared.view else {
+        return Vec::new();
+    };
+    world
+        .declared
+        .panels
+        .iter()
+        .filter(|p| p.desc.projected && p.desc.danger && !nodes[p.node].is_hidden())
+        .filter_map(|p| {
+            let (target, rotation, size) = p.desc.quad?;
+            let (center, q) = world.pose_of(target)?;
+            ground_bounds(nodes, p.node, (center, q * rotation, size), view, screen)
+        })
+        .collect()
+}
+
 /// Collision counts over sorted candidate coordinates. In bounded sweeps,
 /// each bit plane holds one binary digit of 64 independent counters: a range
 /// update advances whole words rather than walking individual coordinates.
@@ -1051,13 +1151,238 @@ impl Ui {
     }
 }
 
+/// A failed clear-space search still has a finite set of boundary candidates.
+/// Visible danger fallbacks choose the one with least danger overlap, then
+/// least tag overlap, while respecting HUD/player reserves and normal reach.
+fn least_overlap(
+    b: Rect,
+    hard: &[Rect],
+    danger: &[Rect],
+    tags: &[Rect],
+    gap: f32,
+    reach: f32,
+    inside: Rect,
+) -> Option<Vec2> {
+    let mut xs = vec![0.0, inside.x - b.x, inside.right() - b.right()];
+    let mut ys = vec![0.0, inside.y - b.y, inside.bottom() - b.bottom()];
+    for p in hard.iter().chain(danger).chain(tags) {
+        xs.extend([p.x - gap - b.right(), p.right() + gap - b.x]);
+        ys.extend([p.y - gap - b.bottom(), p.bottom() + gap - b.y]);
+    }
+    let area = |r: Rect, obstacles: &[Rect]| {
+        obstacles
+            .iter()
+            .map(|p| {
+                let i = r.intersect(p);
+                i.width * i.height
+            })
+            .sum::<f32>()
+    };
+    let mut best: Option<((f32, f32, f32), Vec2)> = None;
+    for y in ys {
+        for &x in &xs {
+            let d = Vec2::new(x, y);
+            let r = Rect::new(b.x + x, b.y + y, b.width, b.height);
+            if d.length() > reach
+                || r.x < inside.x - 0.01
+                || r.y < inside.y - 0.01
+                || r.right() > inside.right() + 0.01
+                || r.bottom() > inside.bottom() + 0.01
+                || hard.iter().any(|p| p.overlaps(&r.outset(gap - 0.01)))
+            {
+                continue;
+            }
+            let score = (area(r, danger), area(r, tags), d.length_squared());
+            if best.as_ref().is_none_or(|(s, _)| score < *s) {
+                best = Some((score, d));
+            }
+        }
+    }
+    best.map(|(_, d)| d)
+}
+
+#[derive(Clone, Copy, Debug)]
+struct AnchorMove {
+    shift: Vec2,
+    keep: bool,
+    blocked: bool,
+    edge: Option<&'static str>,
+}
+
+impl Default for AnchorMove {
+    fn default() -> Self {
+        Self {
+            shift: Vec2::ZERO,
+            keep: true,
+            blocked: false,
+            edge: None,
+        }
+    }
+}
+
+struct Obstacles {
+    hud: Vec<Rect>,
+    players: Vec<Rect>,
+    danger: Vec<Rect>,
+}
+
+fn solve_anchor(
+    a: &WorldAnchorDesc,
+    b: Rect,
+    inside: Rect,
+    safe: Rect,
+    taken: &[Rect],
+    obstacles: &Obstacles,
+    gap: f32,
+) -> AnchorMove {
+    let mut hard = obstacles.hud.clone();
+    if a.avoid_player {
+        hard.extend_from_slice(&obstacles.players);
+    }
+    let danger = if a.avoid_danger {
+        &obstacles.danger[..]
+    } else {
+        &[]
+    };
+    if a.declutter == Declutter::None && hard.is_empty() && danger.is_empty() {
+        return AnchorMove::default();
+    }
+    let mut all = std::borrow::Cow::Borrowed(if a.declutter == Declutter::None {
+        hard.as_slice()
+    } else {
+        taken
+    });
+    if a.declutter != Declutter::None && a.avoid_player && !obstacles.players.is_empty() {
+        all.to_mut().extend_from_slice(&obstacles.players);
+    }
+    if !danger.is_empty() {
+        all.to_mut().extend_from_slice(danger);
+    }
+    let reach = if matches!(a.declutter, Declutter::Shift | Declutter::Stack) {
+        3.0 * b.height.max(b.width.min(160.0))
+    } else {
+        0.0
+    };
+    if let Some(shift) = declutter(a.declutter, b, &all, gap, reach, inside, None) {
+        return AnchorMove {
+            shift,
+            ..Default::default()
+        };
+    }
+    // A bubble that cannot clear the player within reach may use its
+    // explicitly enabled edge clamp. Search along edges, never through HUD.
+    let edge_allowed = a.avoid_player && a.clamp.is_some();
+    let mut edges = Vec::new();
+    if let Some(clamp) = a.clamp.filter(|_| edge_allowed) {
+        let margin = clamp.margin + clamp.arrow.map_or(0.0, |_| clamp.arrow_size);
+        let area = Rect::new(
+            safe.x + margin,
+            safe.y + margin,
+            safe.width - 2.0 * margin,
+            safe.height - 2.0 * margin,
+        );
+        if area.width >= b.width && area.height >= b.height {
+            let x = b.x.clamp(area.x, area.right() - b.width);
+            let y = b.y.clamp(area.y, area.bottom() - b.height);
+            for (edge, base, room) in [
+                (
+                    "left",
+                    Rect::new(area.x, y, b.width, b.height),
+                    Rect::new(area.x, area.y, b.width, area.height),
+                ),
+                (
+                    "right",
+                    Rect::new(area.right() - b.width, y, b.width, b.height),
+                    Rect::new(area.right() - b.width, area.y, b.width, area.height),
+                ),
+                (
+                    "top",
+                    Rect::new(x, area.y, b.width, b.height),
+                    Rect::new(area.x, area.y, area.width, b.height),
+                ),
+                (
+                    "bottom",
+                    Rect::new(x, area.bottom() - b.height, b.width, b.height),
+                    Rect::new(area.x, area.bottom() - b.height, area.width, b.height),
+                ),
+            ] {
+                edges.push((edge, base, room));
+            }
+        }
+    }
+    let offset = |base: Rect| Vec2::new(base.x - b.x, base.y - b.y);
+    let mut best_edge: Option<AnchorMove> = None;
+    for &(edge, base, room) in &edges {
+        if let Some(local) = declutter(Declutter::Shift, base, &all, gap, f32::MAX, room, None) {
+            let shift = offset(base) + local;
+            if best_edge.is_none_or(|best| shift.length_squared() < best.shift.length_squared()) {
+                best_edge = Some(AnchorMove {
+                    shift,
+                    edge: Some(edge),
+                    ..Default::default()
+                });
+            }
+        }
+    }
+    if let Some(best) = best_edge {
+        return best;
+    }
+    if a.avoid_danger {
+        let mut best =
+            least_overlap(b, &hard, danger, taken, gap, reach, inside).map(|shift| AnchorMove {
+                shift,
+                blocked: true,
+                ..Default::default()
+            });
+        let score = |movement: AnchorMove| {
+            let r = Rect::new(
+                b.x + movement.shift.x,
+                b.y + movement.shift.y,
+                b.width,
+                b.height,
+            );
+            let area = |obstacles: &[Rect]| {
+                obstacles
+                    .iter()
+                    .map(|p| {
+                        let i = r.intersect(p);
+                        i.width * i.height
+                    })
+                    .sum::<f32>()
+            };
+            (area(danger), area(taken), movement.shift.length_squared())
+        };
+        for (edge, base, room) in edges {
+            if let Some(local) = least_overlap(base, &hard, danger, taken, gap, f32::MAX, room) {
+                let candidate = AnchorMove {
+                    shift: offset(base) + local,
+                    blocked: true,
+                    edge: Some(edge),
+                    ..Default::default()
+                };
+                if best.is_none_or(|best| score(candidate) < score(best)) {
+                    best = Some(candidate);
+                }
+            }
+        }
+        if let Some(best) = best {
+            return best;
+        }
+    }
+    AnchorMove {
+        keep: a.keep_visible,
+        blocked: a.keep_visible,
+        ..Default::default()
+    }
+}
+
 /// Only the pure placement solution is retained. Projection, drawn bounds,
 /// priority order, pinned labels and fading are still evaluated every tick.
 /// The key contains every solver input as bits, not a lossy hash.
 #[derive(Clone, Debug, Default)]
 pub(super) struct AnchorCache {
     key: Vec<u32>,
-    moves: Vec<(Vec2, f32)>,
+    moves: Vec<AnchorMove>,
     taken: Vec<Rect>,
 }
 
@@ -1078,6 +1403,51 @@ impl crate::ui::Layout {
         );
         let anchors = std::mem::take(&mut world.declared.anchors);
         world.placement.placed.clear();
+        let mut obstacles = Obstacles {
+            hud: hud_reserves(&tree.nodes, screen),
+            danger: danger_bounds(world, &tree.nodes, screen),
+            players: Vec::new(),
+        };
+        for a in &anchors {
+            let Some(volume) = a.desc.reserve else {
+                continue;
+            };
+            let bounds = world
+                .declared
+                .view
+                .zip(world.pose_of(a.desc.target))
+                .and_then(|(view, (point, _))| {
+                    let base = point + a.desc.offset;
+                    let mut corners = [Vec3::ZERO; 8];
+                    for (i, corner) in corners.iter_mut().enumerate() {
+                        *corner = base
+                            + Vec3::new(
+                                if i & 1 == 0 {
+                                    -volume.radius
+                                } else {
+                                    volume.radius
+                                },
+                                if i & 2 == 0 { 0.0 } else { volume.height },
+                                if i & 4 == 0 {
+                                    -volume.radius
+                                } else {
+                                    volume.radius
+                                },
+                            );
+                    }
+                    projected_bounds(view, &corners, screen)
+                });
+            if let Some(bounds) = bounds {
+                obstacles.players.push(bounds);
+            }
+            // Keep the projected reserve observable as an inert anchor box
+            // in frame facts, but draw no player-volume decoration.
+            let n = &mut tree.nodes[a.node];
+            n.placed.rect = bounds.unwrap_or_default();
+            n.style.sampled.transform = Transform::default();
+            n.style.sampled.opacity = 0.0;
+            n.style.sampled.inert = true;
+        }
         // Where each lands before decluttering.
         struct Placed {
             entry: usize,
@@ -1095,6 +1465,9 @@ impl crate::ui::Layout {
         let mut placed: Vec<Placed> = Vec::new();
         let view = world.declared.view;
         for (e, a) in anchors.iter().enumerate() {
+            if a.desc.reserve.is_some() {
+                continue;
+            }
             let n = &tree.nodes[a.node];
             let key = n.key;
             let r = n.placed.rect;
@@ -1268,13 +1641,25 @@ impl crate::ui::Layout {
                 .then(x.cmp(&y))
         });
         let gap = env.theme.space.xs;
-        // The grounds' text first: pinned, it never moves for a tag.
-        let mut taken = ground_text(world, &tree.nodes, Vec2::new(vp.width, vp.height));
-        let mut moves = vec![(Vec2::ZERO, 1.0f32); placed.len()];
+        // HUD reserves and grounds' text are pinned before ranked tags.
+        let mut taken = obstacles.hud.clone();
+        taken.extend(ground_text(
+            world,
+            &tree.nodes,
+            Vec2::new(vp.width, vp.height),
+        ));
+        let mut moves = vec![AnchorMove::default(); placed.len()];
         let mut requests = Vec::with_capacity(by_rank.len());
         let mut key = vec![gap.to_bits(), placed.len() as u32, taken.len() as u32];
+        key.extend([safe.x, safe.y, safe.width, safe.height].map(f32::to_bits));
         for r in &taken {
             key.extend([r.x, r.y, r.width, r.height].map(f32::to_bits));
+        }
+        for category in [&obstacles.hud, &obstacles.players, &obstacles.danger] {
+            key.push(category.len() as u32);
+            for r in category {
+                key.extend([r.x, r.y, r.width, r.height].map(f32::to_bits));
+            }
         }
         for &k in &by_rank {
             let pl = &placed[k];
@@ -1286,7 +1671,7 @@ impl crate::ui::Layout {
             // A move never takes it off the safe area, nor further off
             // than its own spot is (a tag at the edge stays where it is).
             let b = pl.drawn;
-            let inside = if a.contain && a.clamp.is_none() {
+            let mut inside = if a.contain && a.clamp.is_none() {
                 safe
             } else {
                 let (x, y) = (safe.x.min(b.x), safe.y.min(b.y));
@@ -1297,7 +1682,36 @@ impl crate::ui::Layout {
                     safe.bottom().max(b.bottom()) - y,
                 )
             };
-            key.extend([k as u32, mode as u32]);
+            // An edge-clamped tag may slide along its edge, not into the
+            // screen interior to escape an obstacle such as a minimap.
+            match pl.info.edge {
+                Some("left" | "right") => {
+                    inside.x = b.x;
+                    inside.width = b.width;
+                }
+                Some("top" | "bottom") => {
+                    inside.y = b.y;
+                    inside.height = b.height;
+                }
+                _ => {}
+            }
+            key.extend([
+                k as u32,
+                mode as u32,
+                a.avoid_player as u32,
+                a.avoid_danger as u32,
+                a.keep_visible as u32,
+                a.clamp.is_some() as u32,
+            ]);
+            if let Some(clamp) = a.clamp {
+                key.extend([
+                    clamp.margin.to_bits(),
+                    clamp.arrow_size.to_bits(),
+                    clamp.arrow.is_some() as u32,
+                ]);
+            } else {
+                key.extend([0, 0, 0]);
+            }
             for r in [b, inside] {
                 key.extend([r.x, r.y, r.width, r.height].map(f32::to_bits));
             }
@@ -1308,19 +1722,25 @@ impl crate::ui::Layout {
             moves.clone_from(&cache.moves);
             taken.clone_from(&cache.taken);
         } else {
-            for (k, mode, b, inside) in requests {
-                if mode == Declutter::None {
-                    taken.push(b);
-                    continue;
+            for (k, _, b, inside) in requests {
+                let movement = solve_anchor(
+                    &anchors[placed[k].entry].desc,
+                    b,
+                    inside,
+                    safe,
+                    &taken,
+                    &obstacles,
+                    gap,
+                );
+                if movement.keep {
+                    taken.push(Rect::new(
+                        b.x + movement.shift.x,
+                        b.y + movement.shift.y,
+                        b.width,
+                        b.height,
+                    ));
                 }
-                let reach = 3.0 * b.height.max(b.width.min(160.0));
-                match declutter(mode, b, &taken, gap, reach, inside, None) {
-                    Some(d) => {
-                        taken.push(Rect::new(b.x + d.x, b.y + d.y, b.width, b.height));
-                        moves[k] = (d, 1.0);
-                    }
-                    None => moves[k] = (Vec2::ZERO, 0.0),
-                }
+                moves[k] = movement;
             }
             cache.key = key;
             cache.moves.clone_from(&moves);
@@ -1330,8 +1750,9 @@ impl crate::ui::Layout {
         let mut seen = Vec::new();
         for (k, pl) in placed.iter().enumerate() {
             let d = &anchors[pl.entry].desc;
-            let (shift, keep) = moves[k];
-            let target_alpha = pl.alpha * keep;
+            let movement = moves[k];
+            let shift = movement.shift;
+            let target_alpha = if movement.keep { pl.alpha } else { 0.0 };
             let fresh = !world.state.smooth.contains_key(&pl.key);
             let s = world.state.smooth.entry(pl.key).or_default();
             let step = if d.fade_ticks == 0 {
@@ -1380,6 +1801,20 @@ impl crate::ui::Layout {
                 n.style.sampled.inert = true;
             }
             let mut info = pl.info;
+            info.blocked = movement.blocked;
+            let mut arrow = pl.arrow;
+            if let Some(edge) = movement.edge {
+                info.clamped = true;
+                info.edge = Some(edge);
+                let (cx, cy) = pl.drawn.center();
+                let dir = pl.at - Vec2::new(cx, cy) - movement.shift;
+                info.angle = og_core::math::atan2(dir.y, dir.x);
+                if let Some(clamp) = d.clamp {
+                    arrow = clamp
+                        .arrow
+                        .map(|color| (info.angle, color, clamp.arrow_size));
+                }
+            }
             info.x = at.x;
             info.y = at.y;
             info.alpha = s.alpha;
@@ -1394,11 +1829,11 @@ impl crate::ui::Layout {
                 key: pl.key,
                 target: d.target,
                 offset: d.offset,
-                clamped: pl.info.clamped,
+                clamped: info.clamped,
             });
             if let Some(view) = world.declared.view
                 && d.occlusion != WorldOcclusion::None
-                && !pl.info.clamped
+                && !info.clamped
                 && pl.depth > 0.0
             {
                 let _ = view;
@@ -1415,7 +1850,7 @@ impl crate::ui::Layout {
                     .leave
                     .push(DrawCmd::World(Box::new(WorldCmd::EndOcclude)));
             }
-            if let Some((angle, color, size)) = pl.arrow
+            if let Some((angle, color, size)) = arrow
                 && s.alpha > 0.0
             {
                 // On the box's edge toward the point, pointing out.
@@ -1541,38 +1976,9 @@ impl crate::ui::Layout {
                     // plane: terrain under a 2 m ring rises and falls 0.5 m.
                     let reach = 0.25 * size.x.min(size.y);
                     let screen = Rect::new(0.0, 0.0, vp.width * unit, vp.height * unit);
-                    // What it draws (its box and what overflows it, such as
-                    // a badge past a path's end), on its plane.
-                    let (lo, hi) = drawn_box(&tree.nodes, p.node);
-                    let on_plane = |x: f32, y: f32| {
-                        (
-                            (x - r.x) / r.width.max(1e-6) * size.x - hx,
-                            hy - (y - r.y) / r.height.max(1e-6) * size.y,
-                        )
-                    };
-                    let drawn = [(lo.x, lo.y), (hi.x, lo.y), (hi.x, hi.y), (lo.x, hi.y)]
-                        .map(|(x, y)| on_plane(x, y));
-                    // What that covers on the screen, `reach` either side
-                    // of the plane; all of it while a corner is behind the eye.
-                    let boxed: Vec<Option<Vec2>> = drawn
-                        .iter()
-                        .flat_map(|&(x, y)| [world(x, y, -reach), world(x, y, reach)])
-                        .map(seen)
-                        .collect();
-                    let bounds = if boxed.iter().all(Option::is_none) {
-                        // Wholly behind the eye: nothing to draw.
-                        Rect::default()
-                    } else if boxed.iter().any(Option::is_none) {
-                        screen
-                    } else {
-                        let b: Vec<Vec2> = boxed.into_iter().flatten().collect();
-                        let (lo, hi) = b
-                            .iter()
-                            .fold((b[0], b[0]), |(lo, hi), p| (lo.min(*p), hi.max(*p)));
-                        Rect::new(lo.x, lo.y, hi.x - lo.x, hi.y - lo.y)
-                            .outset(1.0)
-                            .intersect(&screen)
-                    };
+                    let bounds =
+                        ground_bounds(&tree.nodes, p.node, (center, q, size), view, screen)
+                            .unwrap_or_default();
                     let drape = og_draw::UiDrape::new(
                         view.view_proj,
                         view.eye,

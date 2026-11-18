@@ -9,7 +9,8 @@ use super::nodes::Inner;
 use super::*;
 use crate::doc::schema::Kind;
 use crate::world::{
-    AnchorScale, Declutter, EdgeClamp, WorldAnchorDesc, WorldOcclusion, WorldPanelDesc, WorldTarget,
+    AnchorScale, Declutter, EdgeClamp, PlayerReserve, WorldAnchorDesc, WorldOcclusion,
+    WorldPanelDesc, WorldTarget,
 };
 use og_core::glam::Vec3;
 
@@ -91,12 +92,36 @@ pub(super) fn anchor_desc(r: &Resolved, el: Element) -> Result<WorldAnchorDesc, 
     if r.flag("lodLock") {
         lod.clear();
     }
+    let mut avoid_player = false;
+    let mut avoid_danger = false;
+    for word in r.str("avoid").unwrap_or("").split_whitespace() {
+        match word {
+            "player" => avoid_player = true,
+            "danger" => avoid_danger = true,
+            "none" => {}
+            _ => return Err("avoid takes player and/or danger".into()),
+        }
+    }
+    let reserve = if r.str("reserve") == Some("player") {
+        let radius = r.num("reserveRadius").unwrap_or(0.6);
+        let height = r.num("reserveHeight").unwrap_or(1.9);
+        if radius <= 0.0 || height <= 0.0 {
+            return Err("reserve-radius and reserve-height must be positive".into());
+        }
+        Some(PlayerReserve { radius, height })
+    } else {
+        None
+    };
     Ok(WorldAnchorDesc {
         target,
         offset,
         element: el,
         occlusion,
         declutter,
+        reserve,
+        avoid_player,
+        avoid_danger,
+        keep_visible: r.flag("keepVisible"),
         clamp,
         contain: r.str("worldClamp") == Some("contain"),
         contain_margin: r.num("clampMargin").map(|v| v.max(0.0)),
@@ -175,6 +200,7 @@ pub(super) fn panel_desc(
         quad: target.map(|t| (t, rotation, size)),
         element: el,
         projected: ground,
+        danger: ground && r.flag("danger"),
     })
 }
 

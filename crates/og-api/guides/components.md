@@ -175,6 +175,7 @@ What every kind takes: its box, layout, paint, motion and input.
 | `vertical-align:` | `baseline \| top \| middle \| bottom \| text-top \| text-bottom \| sub \| super` | CSS `vertical-align`: where an inline-level element sits in its line, and a table cell's content in its row (`middle` by default). |
 | `caption-side:` | `top \| bottom` | CSS `caption-side`: a table caption above (default) or below its table. |
 | `list-style-image:` | `none \| url(<image>)` | CSS `list-style-image`: an inherited image URL replacing a list item's marker, or none. Only list items draw the image. |
+| `reserve` | `none \| hud \| player` | `reserve="hud"` reserves a screen element's border box for world placement. An empty `<anchor reserve="player" entity={player}>` instead reserves an upright world volume; only `avoid="player"` tags yield to it. |
 | `draggable` | `bool` | HTML `draggable`: a drag that starts on it moves it with the pointer and returns it home on release, firing `ondragstart`, `ondragend`, and `ondragover`/`ondrop` on the element it is over (any element with one of those handlers takes drops). |
 | `data-drag-type` | `text` | What a draggable element is to drop targets (`data-drag-type="weapon"`), as a drag's data type is in HTML. |
 | `data-accept` | `text` | The drag types a drop target takes, space-separated (`data-accept="weapon shield"`; default any). |
@@ -950,6 +951,10 @@ Its own props, beside every element's:
 
 | Write | Value | What |
 |---|---|---|
+| `reserve-radius` | `number` | Player reserve radius in world units (default 0.6). |
+| `reserve-height` | `number` | Player reserve height above its world point, in world units (default 1.9). |
+| `avoid` | `text` | Space-separated `player` and/or `danger` opts into player reserves or danger grounds. Danger-avoiding tags stay visible at the least-overlap reachable position when no clear spot fits; read `[data-blocked]`. HUD reserves always apply. |
+| `keep-visible` | `bool` | `keep-visible` keeps an unplaceable tag at its own point instead of declutter fading. Independent of lod-lock, distance and occlusion; intended for targeted or casting plates. |
 | `mass` | `text` | `<anchor entity={h.entity} mass="damage" value={h.amount}>`: a mass element of the template `mass` instead of a box (thousands per frame, drawn on the GPU). With a CSS `animation`, each row spawns one that plays its `@keyframes` (translate, scale, opacity) over the animation's duration; without one it stays while its row does. `value` is the number shown, or with `max` a bar filled to value/max; `color` tints it. |
 | `mass-value` | `number` | A mass element's value: the number it shows, or its bar's fill with `max`. |
 | `mass-max` | `number` | A mass element's bar: drawn as a bar filled to value/max (an overhead health bar). |
@@ -981,6 +986,7 @@ Its own props, beside every element's:
 
 | Write | Value | What |
 |---|---|---|
+| `danger` | `bool` | Its whole projected ground bounds, rim included, obstruct anchors with `avoid="danger"` (but not other tags). |
 | `world-size` | `text` | A world panel's quad, `width height` world units (default 1 1). |
 | `world-rotation` | `text` | A world panel's turn, degrees about x, y and z (`0 30 0`); facing +z unturned. |
 | `entity` | `number` | The entity it follows, by its bits (`entity={u.entity}`): its world pose as the host hands it in. |
