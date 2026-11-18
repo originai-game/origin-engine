@@ -499,7 +499,8 @@ pub fn build(name: &str) -> Result<GfxScene, String> {
             g.update = Some(crate::visual_scenes::next_tick);
             Ok(())
         },
-        // The high street on a morning, 200 m of it: shadows in every cascade.
+        // An avenue of torii on a morning, 200 m of it: shadows in every
+        // cascade.
         "cascades-200m" => |g, _| {
             g.scene = crate::lighting_scenes::cascades_scene();
             Ok(())
@@ -653,16 +654,16 @@ pub fn build(name: &str) -> Result<GfxScene, String> {
         },
         // Eight shadowed lights (six point, two spot) and two more far
         // behind whose shadows are left out (the default quality's eight).
-        // A cellar lit by one shadowed spot: the crate's shadow starts at
+        // A gallery lit by one shadowed spot: the block's shadow starts at
         // its base (no lit line), its edges soft and straight (the tent
         // PCF).
         "shadows-local-contact" => |g, _| {
             g.scene = crate::lighting_scenes::cellar_scene();
             Ok(())
         },
-        // The same street under four cascades (the high preset's count):
-        // the near wares' shadows finer than three cascades give over the
-        // same distance.
+        // The same avenue under four cascades (the high preset's count):
+        // the near lanterns' shadows finer than three cascades give over
+        // the same distance.
         "shadows-cascades-4" => |g, _| {
             g.scene = crate::lighting_scenes::cascades_scene();
             g.scene.frame.quality.shadow_cascades = 4;
@@ -682,7 +683,8 @@ pub fn build(name: &str) -> Result<GfxScene, String> {
             });
             Ok(())
         },
-        // The street at deep dusk brought to middle grey by metered exposure.
+        // The shrine court at deep dusk, its exposure metered (a stop under
+        // middle grey).
         "exposure" => |g, _| {
             g.scene = crate::lighting_scenes::exposure_scene();
             Ok(())
@@ -1033,9 +1035,9 @@ pub fn build(name: &str) -> Result<GfxScene, String> {
             g.scene = crate::lighting_scenes::god_rays_scene();
             Ok(())
         },
-        // Lens flare: a sun almost overhead seen past the roofs, a low sun
-        // half behind the watchtower's edge, and lamps at night (one half behind a
-        // pillar, a spot aimed at the camera).
+        // Lens flare: a sun almost overhead seen past a torii's lintel, a
+        // low sun half behind a far torii's lintel, and stone lanterns at
+        // night (one half behind a post, a spot aimed at the camera).
         "flare-noon" => |g, _| {
             g.scene = crate::lighting_scenes::flare_noon_scene();
             Ok(())

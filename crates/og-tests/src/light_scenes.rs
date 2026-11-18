@@ -116,70 +116,132 @@ fn fixture(scene: &mut RenderScene, light: &Light) {
     put(scene, shapes::cuboid(size), glow(light.color, 2.0), basis);
 }
 
-/// A night market in the old town's square after rain, lit by three rect
-/// lights over the wet setts: a warm one-sided strip lamp under the
-/// stall's roof facing down (its highlight on the setts is its rectangle
-/// stretched toward the camera), a cyan two-sided lantern sign standing
-/// upright beside the stall (it lights the stall's side behind it and the
-/// setts before it), and a magenta one-sided panel at the back of a booth
-/// facing left (nothing lit to its right).
+/// Area lights in a dark gallery: a warm strip overhead and two tall
+/// panels, teal on the left and magenta on the right, over a polished
+/// stone floor that draws their long reflections; a black glass ball, a
+/// copper ball and a marble plinth with a white ball take their light,
+/// each showing the rectangles' shapes in its highlights (linearly
+/// transformed cosines). The panels are drawn where the lights are.
 pub fn rect_lights_scene() -> RenderScene {
     let mut scene = RenderScene::new();
-    crate::lighting_scenes::market_square(&mut scene);
-    crate::lighting_scenes::night(&mut scene);
-    crate::sky_scenes::canopy(&mut scene, false);
-    crate::lighting_scenes::wares(&mut scene, Vec3::new(9.5, 0.0, -4.5), -1.4);
-    scene.atmosphere.surface_weather = Some(og_render::SurfaceWeather {
-        wetness: 0.8,
-        ..og_render::SurfaceWeather::default()
+    dark(&mut scene, 0.02);
+    // Polished dark concrete.
+    let floor = scene.add_standard_material(StandardMaterial {
+        color: Vec3::splat(0.06),
+        roughness: 0.22,
+        ..Default::default()
     });
-    scene.look.post.ssr = Some(og_render::ScreenSpaceReflections::default());
-    // The booth's back board, the magenta panel's housing.
+    let mesh = scene.add_mesh(crate::kit::slab(
+        glam::Vec2::new(-10.0, -8.0),
+        glam::Vec2::new(10.0, 10.0),
+        0.0,
+        2.0,
+    ));
+    scene.add_instance(mesh, floor, Mat4::IDENTITY);
+    let wall = crate::kit::plaster(&mut scene, [0.11, 0.11, 0.12]);
+    let mesh = scene.add_mesh(crate::kit::block(
+        Vec3::new(-8.0, 0.0, -3.4),
+        Vec3::new(8.0, 5.0, -3.0),
+        2.0,
+    ));
+    scene.add_instance(mesh, wall, Mat4::IDENTITY);
+    // A ball of radius `r` at `at` (shapes::sphere is 1 m across).
+    let ball = |r: f32, at: Vec3| {
+        Mat4::from_scale_rotation_translation(Vec3::splat(2.0 * r), Quat::IDENTITY, at)
+    };
     put(
         &mut scene,
-        shapes::cuboid(Vec3::new(0.15, 2.4, 2.6)),
-        matte(Vec3::new(0.25, 0.18, 0.12), 0.7),
-        Mat4::from_translation(Vec3::new(8.3, 1.2, -4.6)),
+        shapes::sphere(48, 32),
+        StandardMaterial {
+            color: Vec3::splat(0.015),
+            roughness: 0.1,
+            ..Default::default()
+        },
+        ball(0.55, Vec3::new(-1.0, 0.55, 0.1)),
+    );
+    put(
+        &mut scene,
+        shapes::sphere(48, 32),
+        StandardMaterial {
+            color: Vec3::new(0.95, 0.64, 0.54),
+            metalness: 1.0,
+            roughness: 0.28,
+            ..Default::default()
+        },
+        ball(0.38, Vec3::new(1.05, 0.38, 0.7)),
+    );
+    // The plinth in white marble: grey veins wandering through it.
+    let mut veins = crate::scenes::texture(512, ColorSpace::Srgb, |u, v| {
+        // Thin veins where a warped diagonal band crosses zero.
+        let warp = crate::fx_scenes::tiling_fbm(u, v, 3, 0x6a) * 2.5;
+        let band = ((u * 1.0 + v * 2.0 + warp) * std::f32::consts::PI)
+            .sin()
+            .abs();
+        let vein = 1.0 - crate::fx_scenes::smooth(0.0, 0.08, band);
+        let cloud = crate::fx_scenes::tiling_fbm(u * 2.0, v * 2.0, 6, 0x6b);
+        let g = 0.92 - 0.55 * vein - 0.1 * cloud;
+        [(g * 250.0) as u8, (g * 247.0) as u8, (g * 240.0) as u8, 255]
+    });
+    veins.mips = Mips::Generate;
+    let veins = scene.add_texture(veins);
+    let marble = scene.add_material(og_render::Material {
+        base_color: [1.0; 4],
+        base_color_texture: Some(veins),
+        roughness: 0.28,
+        ..Default::default()
+    });
+    let plinth = scene.add_mesh(shapes::cuboid(Vec3::new(0.7, 1.1, 0.7)));
+    scene.add_instance(
+        plinth,
+        marble,
+        Mat4::from_rotation_translation(Quat::from_rotation_y(0.4), Vec3::new(0.25, 0.55, -1.3)),
+    );
+    put(
+        &mut scene,
+        shapes::sphere(48, 32),
+        matte(Vec3::splat(0.85), 0.3),
+        ball(0.24, Vec3::new(0.25, 1.34, -1.3)),
     );
     scene.lighting.lights = vec![
-        // Facing down: right × up = +y, so up is -z.
+        // Overhead, facing down: right × up = +y, so up is -z.
         rect(
-            Vec3::new(0.0, 2.9, -6.6),
+            Vec3::new(0.0, 3.0, -0.5),
             Vec3::X,
             Vec3::NEG_Z,
-            (5.0, 0.35),
-            Vec3::new(1.0, 0.75, 0.45),
-            40.0,
+            (3.6, 0.3),
+            Vec3::new(1.0, 0.78, 0.52),
+            8.0,
             false,
         ),
+        // Left, facing +x: right × up = -x.
         rect(
-            Vec3::new(5.2, 1.2, -3.0),
-            Vec3::X,
+            Vec3::new(-2.7, 1.3, -0.3),
+            Vec3::Z,
             Vec3::Y,
-            (0.45, 2.0),
-            Vec3::new(0.3, 0.85, 1.0),
-            28.0,
-            true,
+            (0.3, 2.3),
+            Vec3::new(0.25, 0.8, 1.0),
+            14.0,
+            false,
         ),
-        // Facing -x: right × up = +x.
+        // Right, facing -x: right × up = +x.
         rect(
-            Vec3::new(8.2, 1.4, -4.6),
+            Vec3::new(2.7, 1.3, -0.3),
             Vec3::NEG_Z,
             Vec3::Y,
-            (2.0, 1.4),
-            Vec3::new(1.0, 0.25, 0.8),
-            28.0,
+            (0.3, 2.3),
+            Vec3::new(1.0, 0.25, 0.65),
+            14.0,
             false,
         ),
     ];
     for l in scene.lighting.lights.clone() {
         fixture(&mut scene, &l);
     }
+    scene.look.post.bloom = Some(og_render::Bloom::default());
     scene.frame.camera = Camera {
-        position: Vec3::new(-1.0, 1.9, 3.5),
-        target: Vec3::new(3.0, 1.0, -5.0),
-        far: 2500.0,
-        exposure: Exposure::Manual { ev: -0.6 },
+        position: Vec3::new(0.0, 1.2, 5.2),
+        target: Vec3::new(0.0, 0.85, -0.6),
+        exposure: Exposure::linear(1.0),
         ..Default::default()
     };
     scene
