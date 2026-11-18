@@ -607,11 +607,12 @@ pub(crate) fn load_scene_from(
         crate::world::stream::resolve_scenes(eng, Some(&group));
         return Ok(index);
     }
-    let scene = decode_scene(&eng.assets.borrow(), &id, bundle)?;
+    let scene = decode_scene(&eng.assets.borrow(), &id, bundle);
     let mut assets = eng.assets.borrow_mut();
     let (status, payload) = match scene {
-        Some(scene) => (Status::Ready, Payload::Scene(Box::new(scene))),
-        None => (Status::Pending, Payload::ScenePending),
+        Ok(Some(scene)) => (Status::Ready, Payload::Scene(Box::new(scene))),
+        Ok(None) => (Status::Pending, Payload::ScenePending),
+        Err(e) => (Status::Failed(e), Payload::None),
     };
     let index = assets.push(&id, status, payload);
     assets.entries[index].bundle = Some(bundle);
