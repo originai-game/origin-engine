@@ -259,6 +259,9 @@ fn core_documents_preserve_screen_pixels() {
     }
     let directory =
         PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../packages/engine/src/ui/screens");
+    // The built-in components a screen uses load with it (the manifest's
+    // `uses`), with their strings.
+    let (components, shared) = engine_documents(&["src/ui/components"]);
     let mut failures = Vec::new();
     for name in [
         "calibration",
@@ -318,11 +321,21 @@ fn core_documents_preserve_screen_pixels() {
                 continue;
             }
         };
-        let messages: std::collections::BTreeMap<_, _> = table
-            .entries
-            .into_iter()
-            .map(|(k, (v, _))| (k, v))
-            .collect();
+        let mut uses: Vec<&EngineDocument> = Vec::new();
+        let mut within = vec![&new];
+        while let Some(document) = within.pop() {
+            for node in &document.nodes {
+                if let doc::NodeKind::Use(used) = &node.kind
+                    && uses.iter().all(|c| &c.doc.name != used)
+                    && let Some(component) = components.iter().find(|c| &c.doc.name == used)
+                {
+                    uses.push(component);
+                    within.push(&component.doc);
+                }
+            }
+        }
+        let mut messages = shared.0.clone();
+        messages.extend(table.entries.into_iter().map(|(k, (v, _))| (k, v)));
         let base = new
             .fixtures
             .first()
@@ -356,6 +369,9 @@ fn core_documents_preserve_screen_pixels() {
                 });
                 let mut ui = ui_with_font(font);
                 ui.set_style_name("conversion");
+                for component in &uses {
+                    ui.define_document(component.doc.clone());
+                }
                 ui.define_document(new.clone());
                 ui.push_screen(name, vm.clone()).unwrap();
                 let env = Env {
@@ -371,6 +387,12 @@ fn core_documents_preserve_screen_pixels() {
                     ui.begin(InputFrame::default(), viewport);
                     ui.build_layers(&env);
                     ui.end();
+                }
+                // A screen that did not build draws nothing: its frame is
+                // the empty scene, not a moved reference.
+                if !ui.frame().warnings.is_empty() {
+                    failures.push(format!("{name}/{case}/{width}: {:?}", ui.frame().warnings));
+                    continue;
                 }
                 let mut overlay = og_render::Overlay::new(width as f32, height as f32, 1.0);
                 ui.frame().emit(&EmitDesc::default(), &mut overlay);
