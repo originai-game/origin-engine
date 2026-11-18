@@ -65,8 +65,10 @@
 .tick[data-red=true] { background: var(--hud-redline-lit); }
 .mark { --r: calc(var(--side) * 0.35); left: calc(50% + sin(var(--a)) * var(--r)); top: calc(50% - cos(var(--a)) * var(--r)); transform: translate(-50%, -50%); font-size: var(--hud-label-size); line-height: 1; font-weight: var(--hud-figure-weight); font-stretch: var(--hud-figure-stretch); font-variant-numeric: var(--hud-figure-numeric); white-space: nowrap; text-shadow: var(--hud-shadow); -webkit-text-stroke-width: var(--hud-stroke-width); -webkit-text-stroke-color: var(--hud-stroke-color); paint-order: stroke fill; }
 .mark[data-red=true] { color: var(--hud-redline-lit); }
-/* The face: dark glass with a lit top edge, the readout on it. */
-#Face { inline-size: calc(var(--side) * 0.6); block-size: calc(var(--side) * 0.6); align-items: center; justify-content: center; row-gap: calc(3 * var(--font-step-px)); padding: calc(6 * var(--font-step-px)); border-radius: var(--hud-radar-radius); background: var(--hud-dial-face); box-shadow: var(--hud-dial-rim); }
+/* The face: dark glass with a lit top edge, the readout on it. The face is
+   the speed's size container: the speed's type step is held to a share of
+   its width, so the figure stays inside the face at any text scale. */
+#Face { container-type: inline-size; inline-size: calc(var(--side) * 0.6); block-size: calc(var(--side) * 0.6); align-items: center; justify-content: center; row-gap: calc(3 * var(--font-step-px)); padding: calc(6 * var(--font-step-px)); border-radius: var(--hud-radar-radius); background: var(--hud-dial-face); box-shadow: var(--hud-dial-rim); }
 /* Seven leaning cells, lit from the left in a green to red ramp. */
 #Lights { --cells: 7; flex: none; inline-size: calc(var(--side) * 0.4); block-size: calc(6 * var(--font-step-px)); margin-block-end: calc(2 * var(--font-step-px)); transform: skewX(var(--bar-skew)); mask-image: repeating-linear-gradient(90deg, #000 0 calc(100% / var(--cells) - 3 * var(--font-step-px)), transparent calc(100% / var(--cells) - 3 * var(--font-step-px)) calc(100% / var(--cells))); --layout-anchor-inset: 0; }
 .off { background: var(--hud-pip-off); }
@@ -84,11 +86,13 @@
   .tick { block-size: calc(5 * var(--font-step-px)); }
   #Face { row-gap: calc(1 * var(--font-step-px)); padding: calc(3 * var(--font-step-px)); }
   #Lights { block-size: calc(4 * var(--font-step-px)); }
-  .speed { font-size: var(--hud-size-speed-compact); }
-  .units, .mode, .shift { letter-spacing: normal; }
+  .speed { font-size: var(--hud-size-speed-compact); line-height: 1; }
+  .units, .mode, .shift { letter-spacing: normal; line-height: 1; }
   /* The gearbox's mode goes; the gear and the Shift word stay. */
   .mode { display: none; }
   .gear { font-size: var(--hud-size-xs); }
-  #Box { margin-block-start: 0; column-gap: calc(5 * var(--font-step-px)); }
+  /* The gear stands in the arc's opening under the face, so the face
+     holds only the lights, the speed and its units. */
+  #Box { position: absolute; top: 100%; left: 0; right: 0; margin-block-start: calc(2 * var(--font-step-px)); column-gap: calc(5 * var(--font-step-px)); }
 }
 </style>

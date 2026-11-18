@@ -536,13 +536,17 @@
   /* A call across the screen (Final lap) and a meter's word, widely set. */
   --role-hud-banner-tracking: 0.22em;
   /* The racing HUD's type steps: the place, its total, the lap time
-     running and the speed; `-compact` is the same on a phone. */
+     running and the speed; `-compact` is the same on a phone. The speed
+     is held to half its dial face's width (the face is its size
+     container), the share it has on a desktop, so where the dial is held
+     to a share of a phone's width a large text scale cannot push the
+     figure past the face to the arc. */
   --role-hud-size-place: calc(84 * var(--font-step-px));
   --role-hud-size-place-compact: calc(44 * var(--font-step-px));
   --role-hud-size-place-of: calc(30 * var(--font-step-px));
   --role-hud-size-time: calc(24 * var(--font-step-px));
-  --role-hud-size-speed: calc(64 * var(--font-step-px));
-  --role-hud-size-speed-compact: calc(36 * var(--font-step-px));
+  --role-hud-size-speed: min(calc(64 * var(--font-step-px)), 50cqi);
+  --role-hud-size-speed-compact: min(calc(36 * var(--font-step-px)), 50cqi);
   /* On a phone the tachometer's and the track map's sides, held to a
      share of the screen's width, so at a large text scale they leave the
      tower, the call and the road their room. */

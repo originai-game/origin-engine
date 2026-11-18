@@ -76,12 +76,14 @@ frame). The HUD members lay out by the screen: on a phone (narrower than
 600 px) the tower keeps the player's row and the rows either side of it,
 the lap HUD leaves out the last lap and sets the best lap and the delta on
 one line, the tachometer shrinks and leaves out its figures and the
-gearbox's mode, the track map shrinks without its name line, the bonus is
+gearbox's mode and sets the gear in the arc's opening under its face, the
+track map shrinks without its name line, the bonus is
 one compact row, and key caps hide under a touch screen. A page may give the tower a height as a size
 container (`container-type: size`): when that height is short of the
 rows (at a large text scale) the tower keeps the leader and the rows
 either side of the player, then the leader and the player, so no row is
-cut.
+cut. The speed is held to half the dial face's width (the face is its
+size container), so at any text scale it stays inside the face.
 
 Every member carries a `fixture:default` and the states that apply
 (telemetry: redline, pit, reverse, idle, overflow; lap HUD: leading, last,
