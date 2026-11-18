@@ -9,7 +9,7 @@
 <meta name="prop:waits" content="bool" data-doc="The game waits for a press once ready.">
 <meta name="prop:status" content="string" data-default="" data-doc="What the wait is for, beside the figure while it is not ready (Waiting for the server); empty: none.">
 <meta name="action:confirm" content="Continue">
-<meta name="fixture:default" content="{&quot;place&quot;:&quot;The Sunken Archive&quot;,&quot;progress&quot;:0.62,&quot;ready&quot;:false,&quot;tip&quot;:&quot;Dodging through an attack at the last moment slows time for a breath.&quot;,&quot;waits&quot;:true}">
+<meta name="fixture:default" content="{&quot;keyArt&quot;:0,&quot;place&quot;:&quot;The Sunken Archive&quot;,&quot;progress&quot;:0.62,&quot;ready&quot;:false,&quot;tip&quot;:&quot;Dodging through an attack at the last moment slows time for a breath.&quot;,&quot;waits&quot;:true}">
 
 <!--
   The key art fills the screen. At its foot, over a shade that grows with

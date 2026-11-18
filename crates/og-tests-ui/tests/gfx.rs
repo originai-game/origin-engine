@@ -253,8 +253,12 @@ fn core_documents_preserve_screen_pixels() {
         fn translate(&self, key: &str) -> Option<String> {
             self.messages.get(key).cloned()
         }
+        // Handles as a game holds them: 0 is no texture.
         fn texture(&self, handle: f64) -> Option<og_render::TextureHandle> {
-            self.art.get(handle as usize).copied()
+            (handle as usize)
+                .checked_sub(1)
+                .and_then(|i| self.art.get(i))
+                .copied()
         }
     }
     let directory =
@@ -301,11 +305,11 @@ fn core_documents_preserve_screen_pixels() {
             .collect();
         for (i, logo) in art_nodes {
             let handle = if logo {
-                "1"
-            } else if matches!(name, "results" | "leaderboard") {
                 "2"
+            } else if matches!(name, "results" | "leaderboard") {
+                "3"
             } else {
-                "0"
+                "1"
             };
             new.set_prop(i, "texture", handle).unwrap();
             if logo {
@@ -336,11 +340,18 @@ fn core_documents_preserve_screen_pixels() {
         }
         let mut messages = shared.0.clone();
         messages.extend(table.entries.into_iter().map(|(k, (v, _))| (k, v)));
-        let base = new
+        let mut base = new
             .fixtures
             .first()
             .map(|(_, v)| v.clone())
             .unwrap_or_default();
+        // A screen shows its key art and logo only when the game passes
+        // their textures: the props a fixture declares empty take them.
+        for (prop, handle) in [("keyArt", 1), ("logo", 2)] {
+            if base.get(prop).and_then(serde_json::Value::as_u64) == Some(0) {
+                base[prop] = handle.into();
+            }
+        }
         let cases: Vec<_> = if name == "calibration" {
             ["brightness", "offset", "controller"]
                 .into_iter()

@@ -1,0 +1,8 @@
+{
+  "fixed": [
+    {
+      "member": "loading",
+      "summary": "The default preview fixture declares the screen's key art prop (keyArt 0), as the title, main menu, credits and mode select fixtures do, so a preview that supplies sample art shows the screen over it instead of the style's placeholder; the screens sheet gains an art state for it."
+    }
+  ]
+}

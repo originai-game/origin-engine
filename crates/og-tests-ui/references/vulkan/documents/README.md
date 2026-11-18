@@ -4,6 +4,9 @@
 screen at tick 30, at 1280 × 720 and 390 × 844. Calibration renders all three
 steps. `set_style_name("conversion")` disables art-slot debug path labels on
 both versions, because unique document IDs and stable row keys change paths.
+A screen is drawn with the built-in components it uses, and the key art and
+logo props its fixture declares take the sample textures, as a game passes
+them; a screen that does not build fails the test.
 
 The 34 unchanged images were captured from the legacy documents before their
 reader was removed. The converted documents produced exactly the same pixels.

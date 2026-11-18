@@ -20,7 +20,7 @@ const gameOver_default = {"best":24100,"checkpoint":true,"left":5,"offer":true,"
 const hudEditor_default = {"showHint":true};
 const keyValues_default = {"rows":[{"id":"atk","key":"Attack","value":"42","delta":"+6"},{"id":"def","key":"Defence","value":"18","delta":"-2"},{"id":"wt","key":"Weight","value":"3.5 kg","delta":""}]};
 const leaderboard_default = {"league":{"demote":25,"ends":259200,"name":"Gold league","promote":10},"me":{"name":"You","rank":1284,"score":402110},"period":"This week","rows":[{"id":"item-0","name":"Nyx","rank":1,"score":982140,"texture":0,"you":false},{"id":"item-1","name":"Ferro","rank":2,"score":951300,"texture":0,"you":false},{"id":"item-2","name":"Lumen","rank":3,"score":948020,"texture":0,"you":false},{"id":"item-3","name":"Quill","rank":4,"score":902210,"texture":0,"you":false}],"selected":-1,"tab":"global"};
-const loading_default = {"place":"The Sunken Archive","progress":0.62,"ready":false,"tip":"Dodging through an attack at the last moment slows time for a breath.","waits":true};
+const loading_default = {"keyArt":0,"place":"The Sunken Archive","progress":0.62,"ready":false,"tip":"Dodging through an attack at the last moment slows time for a breath.","waits":true};
 const mainMenu_default = {"canContinue":true,"keyArt":0,"logo":0,"name":"Lantern Coast","news":"Season 2 is live","saveLine":"Chapter 3 · 4h 12m","version":"1.0.0"};
 const modeSelect_default = {"keyArt":0,"modes":[{"id":"item-0","line":"The campaign, alone or with a friend.","locked":false,"name":"Story","reason":"","tag":"","texture":0},{"id":"item-1","line":"Ranked fights, one life.","locked":false,"name":"Arena","reason":"","tag":"Ranked","texture":0},{"id":"item-2","line":"Hard challenges for the brave.","locked":true,"name":"Trials","reason":"Finish chapter 2","tag":"New","texture":0}],"selected":"item-0"};
 const notifications_default = {"items":[{"id":"1","title":"Achievement","body":"First blood","tone":"success"}]};
@@ -114,6 +114,7 @@ export const FIXTURES: Record<string, Record<string, Record<string, unknown>>> =
   },
   loading: {
     default: loading_default,
+    art: { ...loading_default, "keyArt": "art:key" },
     ready: { ...loading_default, "progress": 1, "ready": true },
     overflow: { ...loading_default, "place": "The Lighthouse of the Northern Reach, beyond the Ninefold Gate", "tip": "Dodging through an attack at the last moment slows time for a breath, long enough to step behind the attacker and strike before it turns; it works on every enemy but the largest bosses." },
   },
