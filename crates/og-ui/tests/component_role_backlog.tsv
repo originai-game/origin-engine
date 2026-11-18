@@ -32,10 +32,8 @@ idle/generators.svelte	IdleGenerators.rate IdleGenerators.label IdleGenerators.c
 idle/offline.svelte	IdleOffline.summary IdleOffline.label IdleOffline.caption	1
 idle/purchases.svelte	IdlePurchases.name IdlePurchases.headline	1
 idle/resources.svelte	IdleResources.name IdleResources.caption	1
-meta/achievements.svelte	Achievements.name Achievements.headline	1
 meta/chat.svelte	Chat.log Chat.plate Chat.well	1
 meta/chat.svelte	Chat.time Chat.figure Chat.caption	2
-meta/daily-quests.svelte	DailyQuests.name DailyQuests.headline	1
 meta/friends.svelte	Friends.avatar Friends.picture Friends.well	2
 meta/friends.svelte	Friends.name Friends.headline	2
 meta/friends.svelte	Friends.presence Friends.well Friends.dot	1

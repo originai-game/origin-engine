@@ -384,6 +384,27 @@ test("RpgPlaceCard: Mark reports, and Fast travel refused is silent", () => {
   });
 });
 
+test("RpgQuestDetail: Track and Show on map report track and locate; a tracked quest offers Stop tracking; neither allowed shows no action", () => {
+  const events: Event[] = [];
+  run(member("quest-detail", {}, { events }), (e) => {
+    expect(find(e, /\/Untrack$/)).toBeUndefined();
+    tap(e, find(e, /\/Track$/)!);
+    tap(e, find(e, /\/Locate$/)!);
+    expect(intents(events, ["track", "locate"])).toEqual(["track:", "locate:"]);
+    expect(elements(e).some((x) => x.text.toLowerCase() === "main quest")).toBeTrue();
+  });
+  const tracked: Event[] = [];
+  run(member("quest-detail", { tracked: true }, { events: tracked }), (e) => {
+    expect(find(e, /\/Track$/)).toBeUndefined();
+    expect(find(e, /\/Untrack$/)!.text).toContain("Stop tracking");
+    tap(e, find(e, /\/Untrack$/)!);
+    expect(intents(tracked, ["track"])).toEqual(["track:"]);
+  });
+  run(member("quest-detail", { canTrack: false, canLocate: false }), (e) => {
+    expect(find(e, /\/(Track|Untrack|Locate)$/)).toBeUndefined();
+  });
+});
+
 test("RpgQuestTracker shows its distance only when the game gives one", () => {
   run(member("quest-tracker"), (e) => expect(elements(e).some((x) => x.text === "312 m")).toBeTrue());
   run(member("quest-tracker", { distance: "" }), (e) => expect(elements(e).some((x) => /\bm$/.test(x.text))).toBeFalse());

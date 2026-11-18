@@ -253,7 +253,10 @@ test("Achievements: Claim reports its key; a hidden one shows as hidden; states,
     expect(row(e, "secret").name).toBe("Hidden achievement");
     expect(elements(e).some((x) => /truth|beneath/i.test(x.name ?? ""))).toBeFalse();
     // The tier is a word, not a colour alone.
-    expect(said(e, ["Unlocked 12 Nov 2026", "Locked", "64 / 100", "18.4% of players", "Keep playing to reveal it.", "Rare", "Legendary"])).toEqual([]);
+    expect(said(e, ["Unlocked 12 Nov 2026", "Locked", "64 / 100", "18.4%", "of players", "Keep playing to reveal it.", "Rare", "Legendary"])).toEqual([]);
+    // The rarity reads whole to a screen reader, and stands on every row, a locked one's too.
+    expect(elements(e).some((x) => x.name === "18.4% of players")).toBeTrue();
+    expect(has(e, "1.2%")).toBeTrue();
     // One Claim only: the reward waiting on First Steps.
     expect(elements(e).filter((x) => /\/Claim(#[^/]*)?$/.test(x.path)).length).toBe(1);
   });
