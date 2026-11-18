@@ -1,0 +1,8 @@
+{
+  "fixed": [
+    {
+      "member": "StreamCell",
+      "summary": "A cell with HLOD proxies no longer vanishes from the frame when it loads near the camera while its models' textures are still being prepared: the proxy that showed it while unloaded goes on standing in, near or far, until the models can draw themselves, and they then replace it without a fade. Presentation only: world state and hashes are unchanged."
+    }
+  ]
+}

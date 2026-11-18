@@ -328,7 +328,9 @@ from og.load.scene) is a cell.
 - A model streaming brings into view fades in, dithered over 0.4 s in the
   lit and shadow passes: every entity a cell spawned, and a model or HLOD
   proxy that was hidden while its textures were prepared. A model taking
-  over from its proxy does not fade; the proxy was already showing it.
+  over from its proxy does not fade; the proxy was already showing it,
+  and goes on showing it, near or far, until the model's textures are
+  prepared.
   `og.render.reveal(world, entity, seconds)` sets the length for one
   entity, or on the cell's entity for everything the cell spawns and its
   proxies; 0 draws them whole at once (a cell loaded behind a loading
