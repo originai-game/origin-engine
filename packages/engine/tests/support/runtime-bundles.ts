@@ -49,15 +49,20 @@ if (which === "node") {
   const { loadWebHost } = await import("../../src/web/host.ts");
   const glue = (await import(join(pkg, "dist", "web", "origin-engine.js"))) as never;
   await loadWebHost(glue, readFileSync(join(pkg, "dist", "web", "origin-engine_bg.wasm")));
-  // The page: the staged directory served as is, the game at /game.
+  // The page: the staged directory served as is, the game at /game. A
+  // request's `integrity` is checked as a browser does: bytes whose hash
+  // differs are refused with a TypeError.
   root = "game";
-  globalThis.fetch = (async (input: string | URL | Request) => {
+  globalThis.fetch = (async (input: string | URL | Request, init?: RequestInit) => {
     const path = decodeURIComponent(String(input));
+    let bytes: Uint8Array<ArrayBuffer>;
     try {
-      return new Response(new Uint8Array(readFileSync(join(staged, path))));
+      bytes = new Uint8Array(readFileSync(join(staged, path)));
     } catch {
       return new Response(null, { status: 404 });
     }
+    if (init?.integrity && init.integrity !== `sha384-${btoa(String.fromCharCode(...new Uint8Array(await crypto.subtle.digest("SHA-384", bytes))))}`) throw new TypeError("Failed to fetch");
+    return new Response(bytes);
   }) as typeof fetch;
   const boot = await import("../../src/web/boot.ts");
   const fetched = await boot.preloadBundle(glue, root, () => {});
