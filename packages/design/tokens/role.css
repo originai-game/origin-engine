@@ -1171,6 +1171,223 @@
   --role-map-path-width: calc(5 * var(--font-step-px));
   --role-map-path-dash: calc(2 * var(--font-step-px)) calc(9 * var(--font-step-px));
 
+  /* World labels: the tags and marks a game anchors over its scene
+     (nameplates, overhead bars, loot, prompts, speech, waypoints) and lays
+     on its ground (telegraphs, selection rings, placement ghosts, paths).
+     They take the HUD's glass, tags, keys, stroke and shadow; what is
+     theirs is below.
+
+     A unit's reaction: its name's ink and its health's fill (with the
+     bars' sheen), hostile red, neutral yellow, friendly green, the
+     player's cyan, an ally's blue; a dead unit's name greyed. */
+  --role-world-hostile-ink: rgb(255 93 108);
+  --role-world-neutral-ink: rgb(255 210 74);
+  --role-world-friendly-ink: rgb(95 227 155);
+  --role-world-player-ink: rgb(127 224 255);
+  --role-world-ally-ink: rgb(110 168 255);
+  --role-world-dead-ink: rgb(255 255 255 / 0.46);
+  --role-world-hostile-fill: linear-gradient(180deg, rgb(255 255 255 / 0.55), transparent 50%), rgb(255 77 94);
+  --role-world-neutral-fill: linear-gradient(180deg, rgb(255 255 255 / 0.55), transparent 50%), rgb(255 210 74);
+  --role-world-friendly-fill: linear-gradient(180deg, rgb(255 255 255 / 0.55), transparent 50%), rgb(95 227 155);
+  --role-world-player-fill: linear-gradient(180deg, rgb(255 255 255 / 0.55), transparent 50%), rgb(127 224 255);
+  --role-world-ally-fill: linear-gradient(180deg, rgb(255 255 255 / 0.55), transparent 50%), rgb(110 168 255);
+  /* A nameplate's health: a skewed well cut in quarters (the cuts over
+     the fills), the cream ghost of what a hit took (it holds, then
+     drains), its rim (white for the player's target, gold for an elite
+     or a boss, both on a targeted boss, danger at low health), and its
+     sizes: a unit's, a boss's longer and taller one, a compact one (only
+     the bar) and the thin cast bar. Bars are art: they keep their size at
+     any text scale. */
+  --role-world-ghost: rgb(255 236 200 / 0.82);
+  --role-world-ghost-motion: inline-size 300ms var(--motion-easing-exit) 400ms;
+  --role-world-quarters: repeating-linear-gradient(90deg, transparent 0 calc(25% - 1px), rgb(4 6 12 / 0.75) calc(25% - 1px) 25%);
+  --role-world-bar-rim: 0 0 0 var(--stroke-hairline) rgb(255 255 255 / 0.28), 0 var(--space-xxs) calc(6 * var(--font-step-px)) rgb(0 0 0 / 0.5);
+  --role-world-elite-rim: 0 0 0 var(--stroke-hairline) rgb(255 207 90), 0 var(--space-xxs) calc(6 * var(--font-step-px)) rgb(0 0 0 / 0.5);
+  --role-world-target-rim: 0 0 0 var(--stroke-thin) rgb(255 255 255), 0 0 calc(10 * var(--font-step-px)) rgb(255 255 255 / 0.35);
+  --role-world-target-elite-rim: 0 0 0 var(--stroke-thin) rgb(255 255 255), 0 0 0 var(--stroke-thick) rgb(255 207 90 / 0.7);
+  --role-world-low-rim: 0 0 0 var(--stroke-hairline) rgb(255 77 94), 0 0 calc(12 * var(--font-step-px)) rgb(255 77 94 / 0.85);
+  --role-world-low-motion: og-pulse 1100ms var(--motion-easing-in-out) infinite alternate;
+  --role-world-bar-width: 116px;
+  --role-world-bar-height: 7px;
+  --role-world-boss-bar-width: 200px;
+  --role-world-boss-bar-height: 10px;
+  --role-world-compact-bar-width: 58px;
+  --role-world-compact-bar-height: 6px;
+  --role-world-cast-height: 5px;
+  --role-world-overhead-width: 46px;
+  --role-world-overhead-height: 5px;
+  --role-world-resource-width: 37px;
+  --role-world-resource-height: 3px;
+  /* On a phone the labels are a little denser. */
+  --role-world-density-compact: 0.86;
+  /* The level chip; an elite's or a boss's is gold, its ink dark. The
+     gold wings at an elite's bar ends and the target's white brackets
+     take one soft shadow. */
+  --role-world-elite-chip-fill: linear-gradient(180deg, rgb(255 241 194), rgb(255 207 90) 60%, rgb(185 138 34));
+  --role-world-elite-chip-ink: rgb(26 18 6);
+  --role-world-mark-shadow: drop-shadow(0 0 calc(3 * var(--font-step-px)) rgb(0 0 0 / 0.85));
+  /* The brackets close on a new target; the plate swells. */
+  --role-world-target-scale: 1.14;
+  --role-world-bracket-motion: og-beat var(--motion-duration-instant) var(--motion-easing-out);
+  /* The cast row: the spell in amber over a thin amber bar with a bright
+     head; steel grey when it cannot be interrupted; a red hatch when it
+     was. */
+  --role-world-cast-ink: rgb(255 181 71);
+  --role-world-cast-rim: 0 0 0 var(--stroke-hairline) rgb(255 181 71 / 0.55);
+  --role-world-cast-fill: linear-gradient(90deg, rgb(255 181 71 / 0.45), rgb(255 181 71) 80%, rgb(255 255 255));
+  --role-world-cast-glow: 0 0 calc(8 * var(--font-step-px)) rgb(255 181 71);
+  --role-world-locked-ink: rgb(168 178 198);
+  --role-world-locked-rim: 0 0 0 var(--stroke-hairline) rgb(168 178 198 / 0.6);
+  --role-world-locked-fill: linear-gradient(90deg, rgb(168 178 198 / 0.35), rgb(215 220 235) 85%, rgb(255 255 255));
+  --role-world-interrupted-rim: 0 0 0 var(--stroke-hairline) rgb(255 77 94), 0 0 calc(10 * var(--font-step-px)) rgb(255 77 94 / 0.8);
+  --role-world-interrupted-fill: repeating-linear-gradient(115deg, rgb(255 77 94) 0 5px, rgb(184 32 47) 5px 9px);
+  /* World type: a name, a boss's name in tracked capitals, a title or an
+     object in small tracked capitals, the cast's and a waypoint's
+     capitals, a loot name, a line of speech and its measure, a distance,
+     a ground badge; names a little condensed, capitals more. */
+  --role-world-size-name: calc(15 * var(--font-step-px));
+  --role-world-size-boss: calc(17 * var(--font-step-px));
+  --role-world-size-title: calc(10.5 * var(--font-step-px));
+  --role-world-size-level: calc(11 * var(--font-step-px));
+  --role-world-size-caps: calc(11.5 * var(--font-step-px));
+  --role-world-size-loot: calc(13.5 * var(--font-step-px));
+  --role-world-size-speech: calc(14.5 * var(--font-step-px));
+  --role-world-size-distance: calc(13 * var(--font-step-px));
+  --role-world-size-badge: calc(12.5 * var(--font-step-px));
+  --role-world-name-stretch: 92%;
+  --role-world-caps-stretch: 85%;
+  --role-world-title-tracking: 0.13em;
+  --role-world-caps-tracking: 0.07em;
+  --role-world-speech-measure: 27ch;
+  /* Loot: a dark chip, a strip of the tier on its leading edge, the name
+     in the tier's ink. A legendary wears a gold wash and a gold rim all
+     round; a hovered chip lifts and fills with the rim all round. On the
+     ground a glow of the tier; epic and legendary raise a beam. */
+  --role-world-common: rgb(230 233 240 / 0.45);
+  --role-world-common-ink: rgb(230 233 240 / 0.9);
+  --role-world-uncommon: rgb(111 224 142);
+  --role-world-legendary-fill: linear-gradient(180deg, rgb(64 48 14 / 0.9), rgb(12 10 8 / 0.9));
+  --role-world-loot-hover-fill: linear-gradient(180deg, rgb(36 46 70 / 0.96), rgb(16 21 34 / 0.96));
+  --role-world-loot-border: var(--stroke-thin) solid transparent;
+  --role-world-loot-strip: calc(3 * var(--font-step-px));
+  --role-world-hover-scale: 1.06;
+  --role-world-loot-motion: og-pop-in 280ms var(--motion-easing-spring) both;
+  --role-world-shimmer-motion: og-shimmer var(--motion-duration-drift) var(--motion-easing-in-out) infinite;
+  --role-world-sheen: linear-gradient(100deg, transparent, rgb(255 236 170 / 0.45), transparent);
+  --role-world-glow-opacity: 0.75;
+  --role-world-common-glow: radial-gradient(closest-side, rgb(230 233 240 / 0.7), transparent);
+  --role-world-uncommon-glow: radial-gradient(closest-side, rgb(111 224 142), transparent);
+  --role-world-rare-glow: radial-gradient(closest-side, rgb(79 216 255), transparent);
+  --role-world-epic-glow: radial-gradient(closest-side, rgb(190 120 255), transparent);
+  --role-world-legendary-glow: radial-gradient(closest-side, rgb(255 207 90), transparent);
+  --role-world-epic-beam: linear-gradient(0deg, rgb(255 255 255), rgb(190 120 255) 12%, transparent);
+  --role-world-legendary-beam: linear-gradient(0deg, rgb(255 255 255), rgb(255 207 90) 12%, transparent);
+  --role-world-epic-beam-glow: 0 0 calc(16 * var(--font-step-px)) rgb(190 120 255);
+  --role-world-legendary-beam-glow: 0 0 calc(16 * var(--font-step-px)) rgb(255 207 90);
+  --role-world-beam-height: 44px;
+  --role-world-dot-size: calc(7 * var(--font-step-px));
+  /* A prompt enters rising and fading; its plate is the HUD's glass. A
+     hold's ring is white on a dark disc; released, it drains. */
+  --role-world-prompt-motion: og-rise-in 160ms var(--motion-easing-out) both;
+  --role-world-hold-disc: rgb(6 9 16 / 0.78);
+  --role-world-hold-ring: rgb(255 255 255);
+  --role-world-hold-glow: drop-shadow(0 0 calc(4 * var(--font-step-px)) rgb(56 232 255));
+  --role-world-hold-drain: stroke-dashoffset 200ms var(--motion-easing-exit);
+  --role-world-key-off-fill: linear-gradient(180deg, rgb(139 147 165), rgb(95 103 121));
+  --role-world-key-off-ink: rgb(29 34 48);
+  --role-world-pad-fill: radial-gradient(circle at 40% 30%, rgb(74 81 99), rgb(26 30 41));
+  --role-world-pad-ink: rgb(111 224 142);
+  --role-world-pad-rim: 0 0 0 var(--stroke-thin) rgb(255 255 255 / 0.6), 0 var(--space-xxs) 0 rgb(0 0 0 / 0.6);
+  /* Speech: the HUD's glass with a cut corner, a shout's warm rim, the
+     timer's line; it pops from its tail. */
+  --role-world-shout-rim: inset 0 0 0 var(--stroke-thin) rgb(255 181 71), inset 0 calc(2 * var(--stroke-hairline)) 0 rgb(255 181 71);
+  --role-world-speech-shadow: drop-shadow(0 calc(6 * var(--font-step-px)) calc(14 * var(--font-step-px)) rgb(0 0 0 / 0.55));
+  --role-world-speech-motion: og-pop-in var(--motion-duration-fast) var(--motion-easing-spring) both;
+  --role-world-timer-well: rgb(255 255 255 / 0.12);
+  --role-world-timer-fill: rgb(255 255 255 / 0.55);
+  /* A waypoint: a lit diamond with a dark core, a soft halo near. */
+  --role-world-pin-rim: 0 0 0 var(--stroke-regular) rgb(6 9 16 / 0.85), 0 0 calc(12 * var(--font-step-px)) currentColor;
+  --role-world-pin-near-rim: 0 0 0 var(--stroke-regular) rgb(6 9 16 / 0.85), 0 0 0 calc(7 * var(--font-step-px)) rgb(255 207 90 / 0.22), 0 0 calc(18 * var(--font-step-px)) currentColor;
+  --role-world-pin-core: rgb(6 9 16 / 0.78);
+  --role-world-pin-glow: drop-shadow(0 0 calc(4 * var(--font-step-px)) currentColor);
+  --role-world-far-opacity: 0.82;
+  --role-world-ping-motion: og-ping 600ms var(--motion-easing-out) infinite;
+  --role-world-size-units: 0.78em;
+  /* Ground marks: a telegraph's rim, faint wash and hatch, the fill that
+     sweeps from the caster and its pale leading edge, red for an enemy's
+     and cyan without a hatch for an ally's; the impact's flash, then the
+     fade. */
+  --role-world-telegraph: rgb(255 77 94);
+  --role-world-telegraph-ally: rgb(79 216 255);
+  --role-world-round: 50%;
+  --role-world-telegraph-wash-fill: repeating-linear-gradient(45deg, rgb(255 77 94 / 0.3) 0 3px, transparent 3px 10px), rgb(255 77 94 / 0.07);
+  --role-world-telegraph-ally-wash-fill: rgb(79 216 255 / 0.07);
+  --role-world-telegraph-sweep-fill: rgb(255 77 94 / 0.24);
+  --role-world-telegraph-ally-sweep-fill: rgb(79 216 255 / 0.24);
+  --role-world-telegraph-hit-fill: rgb(255 77 94 / 0.62);
+  --role-world-telegraph-lead-border: var(--stroke-thin) solid rgb(255 211 216);
+  --role-world-telegraph-ally-lead-border: var(--stroke-thin) solid rgb(214 246 255);
+  --role-world-telegraph-rim-border: var(--stroke-thick) solid rgb(255 77 94);
+  --role-world-telegraph-ally-rim-border: var(--stroke-thick) solid rgb(79 216 255);
+  --role-world-telegraph-hit-border: var(--stroke-thick) solid rgb(255 255 255);
+  --role-world-telegraph-glow: drop-shadow(0 0 calc(6 * var(--font-step-px)) rgb(255 77 94 / 0.55));
+  --role-world-telegraph-ally-glow: drop-shadow(0 0 calc(6 * var(--font-step-px)) rgb(79 216 255 / 0.5));
+  --role-world-telegraph-hit-glow: drop-shadow(0 0 calc(12 * var(--font-step-px)) rgb(255 140 150 / 0.95));
+  --role-world-impact-motion: og-fade-out 200ms var(--motion-easing-exit) 120ms both;
+  /* Selection rings: own green, ally blue, an enemy target red and
+     segmented, neutral yellow, hover thin; they pop in, a target turns. */
+  --role-world-ring-glow: 0.26;
+  --role-world-ring-motion: og-beat 140ms var(--motion-easing-out);
+  --role-world-target-ring-motion: og-beat 140ms var(--motion-easing-out), og-spin 8000ms linear infinite;
+  /* Placement: the footprint green and lit, its reach dashed; blocked red
+     and hatched (only the bad cells when partly blocked). */
+  --role-world-valid: rgb(95 227 155);
+  --role-world-blocked: rgb(255 77 94);
+  --role-world-valid-wash: rgb(95 227 155 / 0.18);
+  --role-world-valid-border: var(--stroke-regular) solid rgb(95 227 155);
+  --role-world-blocked-border: var(--stroke-regular) solid rgb(255 77 94);
+  --role-world-valid-cell-border: var(--stroke-hairline) solid rgb(95 227 155 / 0.55);
+  --role-world-valid-cell-fill: rgb(95 227 155 / 0.08);
+  --role-world-blocked-cell-fill: rgb(255 77 94 / 0.08);
+  --role-world-blocked-cell-border: var(--stroke-hairline) solid rgb(255 77 94 / 0.9);
+  --role-world-reach-border: var(--stroke-regular) dashed rgb(95 227 155 / 0.8);
+  --role-world-reach-fill: radial-gradient(closest-side, transparent 80%, rgb(95 227 155 / 0.14));
+  --role-world-valid-glow: 0 0 calc(14 * var(--font-step-px)) rgb(95 227 155 / 0.55), inset 0 0 calc(18 * var(--font-step-px)) rgb(95 227 155 / 0.35);
+  --role-world-blocked-cell: repeating-linear-gradient(45deg, rgb(255 77 94 / 0.7) 0 3px, transparent 3px 8px), rgb(255 77 94 / 0.25);
+  --role-world-blocked-faint: rgb(255 77 94 / 0.07);
+  --role-world-blocked-glow: 0 0 calc(14 * var(--font-step-px)) rgb(255 77 94 / 0.55), inset 0 0 calc(18 * var(--font-step-px)) rgb(255 77 94 / 0.35);
+  /* A path: white dashes over a dark under-stroke, numbered stops, the
+     part past this turn's reach red; the end ringed. */
+  --role-world-path-under: rgb(4 6 12 / 0.62);
+  --role-world-path-ink: rgb(255 255 255);
+  --role-world-path-glow: drop-shadow(0 0 calc(4 * var(--font-step-px)) rgb(127 224 255 / 0.9));
+  --role-world-path-stop-ink: rgb(11 15 24);
+  /* The marks' sizes: art, they keep their size at any text scale; an
+     inline mark is one em. */
+  --role-world-mark-size: 1em;
+  --role-world-wing-width: 7px;
+  --role-world-wing-height: 12px;
+  --role-world-boss-wing-width: 9px;
+  --role-world-boss-wing-height: 15px;
+  --role-world-bracket-width: 9px;
+  --role-world-bracket-height: 16px;
+  --role-world-bracket-reach: 16px;
+  --role-world-glow-width: 140px;
+  --role-world-glow-height: 50px;
+  --role-world-pin-size: 17px;
+  --role-world-chevron-width: 10px;
+  --role-world-chevron-height: 16px;
+  --role-world-tail-width: 18px;
+  --role-world-tail-height: 10px;
+  --role-world-badge-lift: 10px;
+  /* A bubble's widest line, inside the screen's edges; on a phone it
+     leaves the player's centre column clear. */
+  --role-world-speech-room: calc(100vw - 24px);
+  --role-world-speech-room-phone: calc(100vw - 96px);
+  /* On a short screen (a phone held sideways) the bubble keeps to under a
+     third of the width, wrapping sooner as the text grows. */
+  --role-world-speech-room-short: 30vw;
+
   /* Label: a caption or column heading, opened a little so it sits back
      from the values it names. */
   --role-label-font: var(--type-label-font);
