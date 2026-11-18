@@ -1,0 +1,8 @@
+{
+  "fixed": [
+    {
+      "member": "og.MotionAgent",
+      "summary": "A planted foot that the body carries past its leg's reach while the other foot is stepping lifts its heel over where it stands, instead of sliding towards the hips along the ground. Characters whose ankle joint sits behind the knee, as on Meshy's auto-rig, glided a trailing foot at up to 0.5 m/s in a brisk walk."
+    }
+  ]
+}

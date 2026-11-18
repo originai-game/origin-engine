@@ -454,11 +454,12 @@ impl Planter {
             };
             plant.drawn = Some(target);
             let foot = model[ankle].rotation;
-            let target = soft_reach(
-                a,
-                to_model.transform_point(target),
-                thigh + (c - b).length(),
-            );
+            // A foot standing where it touched down, or coming down where its
+            // step has aimed, peels past its reach: its heel lifts over that
+            // place. A foot not bound to a place eases towards the hip.
+            let anchored = down && plant.anchor.is_some();
+            let reach = if anchored { peel } else { soft_reach };
+            let target = reach(a, to_model.transform_point(target), length);
             let pole = plant.bend.map(|d| a + to_model.rotation * d);
             two_bone(skeleton, pose, &leg.chain, target, pole, 1.0, &[]);
             let shin = skeleton.model_space(pose)[leg.chain[1] as usize].rotation;
@@ -526,6 +527,26 @@ fn soft_reach(hip: GVec3, target: GVec3, length: f32) -> GVec3 {
     }
     let eased = start + room * (1.0 - og_core::math::exp(-(d - start) / room));
     hip + (target - hip) * (eased / d)
+}
+
+/// `target`, an ankle bound to a place on the ground (planted, or a step
+/// coming down there), in model space (y up): held over that place and
+/// raised until a leg of `length` from `hip` reaches it with soft IK
+/// ([`soft_reach`]'s eased distance). A trailing foot the body has carried
+/// past its reach peels off the ground heel first, as a foot does before it
+/// steps, and a step lands heel up, instead of either being dragged towards
+/// the hip across the ground (a planted foot cannot step while the other
+/// foot is stepping). A target whose distance across alone is past that
+/// reach eases towards the hip as [`soft_reach`] does.
+fn peel(hip: GVec3, target: GVec3, length: f32) -> GVec3 {
+    let eased = soft_reach(hip, target, length);
+    let reach = (eased - hip).length();
+    let across = GVec3::new(target.x - hip.x, 0.0, target.z - hip.z).length_squared();
+    if eased == target || across >= reach * reach {
+        return eased;
+    }
+    let below = (reach * reach - across).sqrt();
+    GVec3::new(target.x, (hip.y - below).max(target.y), target.z)
 }
 
 /// A run of local poses (consecutive frames at 30 Hz) as a clip of the

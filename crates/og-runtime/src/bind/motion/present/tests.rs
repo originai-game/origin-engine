@@ -430,6 +430,69 @@ fn standing() -> Skeleton {
     }
 }
 
+/// A planted foot the body pulls past its leg's reach while the other foot
+/// is stepping (it cannot step itself: one foot at a time) lifts its heel
+/// over where it stands, as a trailing foot peels off the ground, instead
+/// of being dragged across it (`og api show animation` §2.1: no foot on
+/// the ground faster than 0.3 m/s outside a takeoff). A rig whose ankle
+/// sits behind its knee reaches there in a plain walk.
+#[test]
+fn a_planted_foot_out_of_reach_peels_instead_of_sliding() {
+    // Ways this could fail: soft IK easing the anchored ankle towards the
+    // hip along the ground (the slide), the foot let go into a step while
+    // the other is stepping (both feet stepping at once).
+    let asset = standing().asset();
+    let map = HumanoidMap::detect(&asset);
+    let at_rest = asset.model_space(&asset.rest_pose());
+    let legs: Vec<Leg> = [(14usize, 0usize), (18, 2)]
+        .iter()
+        .map(|&(b, contact)| Leg {
+            chain: [map.nodes[b], map.nodes[b + 1], map.nodes[b + 2]],
+            contact,
+            rest: at_rest[map.nodes[b + 2] as usize].translation.y,
+        })
+        .collect();
+    let rest_y = legs[0].rest;
+    let ankles = legs.iter().map(|l| l.chain[2] as usize).collect::<Vec<_>>();
+    // Knees bent low and the body carried at a brisk 1.5 m/s: the
+    // anchors fall far behind the hips, and one foot's stretch step leaves
+    // the other planted out of reach.
+    let mut pose = asset.rest_pose();
+    for (hip, knee) in [(22, 23), (26, 27)] {
+        pose[hip].rotation = glam::Quat::from_rotation_x(-0.8);
+        pose[knee].rotation = glam::Quat::from_rotation_x(1.6);
+    }
+    let mut planter = Planter::new(legs);
+    let dt = 1.0 / 60.0;
+    let mut root = Trs::IDENTITY;
+    let mut last: Option<Vec<Vec3>> = None;
+    let mut fastest = 0.0f32;
+    for frame in 0..60 {
+        root.translation.x = 0.025 * frame as f32;
+        let mut nodes = pose.clone();
+        planter.step(&asset, &mut nodes, &root, &[1.0; 4], Some(0.0), dt);
+        let m = asset.model_space(&nodes);
+        let now: Vec<Vec3> = ankles
+            .iter()
+            .map(|&a| root.transform_point(m[a].translation))
+            .collect();
+        if let Some(last) = &last {
+            for (w, l) in now.iter().zip(last) {
+                let on_ground = w.y - rest_y < 0.03 && l.y - rest_y < 0.03;
+                let speed = Vec3::new(w.x - l.x, 0.0, w.z - l.z).length() / dt;
+                if on_ground {
+                    fastest = fastest.max(speed);
+                }
+            }
+        }
+        last = Some(now);
+    }
+    assert!(
+        fastest <= 0.3,
+        "a foot on the ground moved across at {fastest} m/s"
+    );
+}
+
 /// Planted feet outrank an authored reaction: a reaction that lowers and
 /// pitches the hips leaves both planted ankles on their anchors, one
 /// whose clip steps the left foot moves that foot only, and one turned
