@@ -226,7 +226,7 @@
   }
 
   fn documentSchema {
-    doc "Reflected document kinds, attributes and writeback (docs/ui.md §2.1). Anchors share scale-at/scale-min/scale-max; clamp/contain-fade, arrow-size/color and clamp-margin control edges. Root feedback: data-clamped/data-edge/--anchor-angle/data-lod/data-blocked. lod-lock and text-floor protect detail and text. reserve=hud marks screen boxes; reserve=player uses reserve-radius and reserve-height world units. avoid=player/danger opts into volumes or ground danger bounds; keep-visible preserves an unplaceable plate. Mass bars accept bar-ghost ink."
+    doc "Reflected document kinds, attributes and writeback (docs/ui.md §2.1). Anchors expose distance scaling, clamp/containment, LOD, text-floor, reserved HUD/player boxes and opt-in danger avoidance, with placement feedback on their root. stack-group/stack-max/stack-gap form bounded keyed loot columns; a stack-more row's bind:hidden writes ranked overflow keys into a string-list signal. Mass bars accept bar-ghost ink. See guide components for attribute types and details."
     returns Json
   }
 

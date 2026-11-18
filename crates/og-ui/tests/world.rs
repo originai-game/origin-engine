@@ -1477,3 +1477,249 @@ fn document_world_obstacles_respect_opt_in_priority_edges_and_visible_fallbacks(
         }
     }
 }
+
+/// Bounded columns rank keyed items, fold overflow back into the document,
+/// and replace/remove rows without interleaving neighbouring piles.
+#[test]
+fn keyed_loot_columns_bound_rank_reflow_and_write_hidden_keys() {
+    use serde_json::json;
+    let mut ui = ui_with_font(test_font());
+    ui.define_document(UiDocument::parse("loot.svelte", r#"
+<meta name="component" content="loot">
+<div>
+{#each $items as it (it.id)}
+<anchor id="Item" at={it.at} stack-group={it.group} stack-max={$max} stack-gap="3" priority={it.rank} scale-at="12" scale-min="0.72" scale-max="1" text-floor="11" max-distance="30" style:width={it.width} class="row" class:grown={$hover && it.id == 'i0'}><text>{it.id}</text></anchor>
+{/each}
+<anchor id="More" stack-group="pile" stack-more bind:hidden={$hidden} class="row"><text>+{$hidden.length}</text></anchor>
+</div>
+<style>.row { height:24px; background:#202020; color:white; font-size:15px; } .grown { scale:1.06; transform-origin:center; }</style>
+"#).unwrap());
+    let items: Vec<_> = [50, 40, 30, 30, 20, 20, 10, 10, 10]
+        .into_iter()
+        .enumerate()
+        .map(|(i, rank)| {
+            json!({
+                "id":format!("i{i}"), "rank":rank, "group":"pile",
+                "at": if i==0 {"0 0 0"} else {"1.5 0 -15"},
+                "width":format!("{}px",if i==1 {160} else {100+i*3})
+            })
+        })
+        .collect();
+    mount_stores(
+        &mut ui,
+        source("loot"),
+        "loot",
+        &[
+            ("items", json!(items)),
+            ("max", json!(5)),
+            ("hover", json!(false)),
+            // A string-list signal, not the test helper's empty keyed collection.
+            ("hidden", json!(["stale"])),
+        ],
+    );
+    let row = |ui: &Ui, id: &str| {
+        ui.probe_elements()
+            .into_iter()
+            .find(|e| e.kind == "world" && e.path.ends_with(&format!("Item#{id}")))
+            .unwrap_or_else(|| panic!("row {id}: {:?}", ui.probe_elements()))
+    };
+    let drawn = |ui: &Ui| {
+        let mut overlay = Overlay::new(W, H, 1.0);
+        ui.frame().emit(&EmitDesc::default(), &mut overlay);
+        overlay
+            .texts
+            .into_iter()
+            .filter(|t| t.color[3] > 0.99)
+            .map(|t| t.text)
+            .collect::<Vec<_>>()
+    };
+    run(&mut ui, 40, |_| {});
+    assert!(ui.frame().warnings.is_empty(), "{:?}", ui.frame().warnings);
+    assert_eq!(
+        read_store(&mut ui, "hidden"),
+        json!(["i5", "i6", "i7", "i8"]),
+        "{:?}",
+        ui.probe_elements()
+    );
+    assert!(drawn(&ui).contains(&"+4".into()));
+    for i in 0..5 {
+        let r = row(&ui, &format!("i{i}"));
+        assert!((r.width - 160.0).abs() < 0.1, "equal widest width: {r:?}");
+        assert!(
+            (r.x - 560.0).abs() < 0.1,
+            "representative point, not scattered member: {r:?}"
+        );
+        assert!(
+            (r.y - (336.0 - 27.0 * i as f32)).abs() < 0.1,
+            "best at bottom: {r:?}"
+        );
+    }
+    assert!(!drawn(&ui).contains(&"i5".into()));
+    let unhovered = row(&ui, "i0");
+    let neighbour = row(&ui, "i1");
+    set_store(&mut ui, "hover", json!(true));
+    run(&mut ui, 20, |_| {});
+    let hovered = row(&ui, "i0");
+    assert!((hovered.width / unhovered.width - 1.06).abs() < 0.001);
+    assert!((hovered.x + hovered.width / 2.0 - unhovered.x - unhovered.width / 2.0).abs() < 0.1);
+    assert!(
+        (hovered.y + hovered.height / 2.0 - unhovered.y - unhovered.height / 2.0).abs() < 0.1,
+        "hover centre: before {unhovered:?}, after {hovered:?}"
+    );
+    assert_eq!(
+        (row(&ui, "i1").x, row(&ui, "i1").y, row(&ui, "i1").width),
+        (neighbour.x, neighbour.y, neighbour.width),
+        "hover never reflows the column"
+    );
+    set_store(&mut ui, "hover", json!(false));
+    run(&mut ui, 20, |_| {});
+    set_store(&mut ui, "max", json!(1));
+    run(&mut ui, 40, |_| {});
+    assert_eq!(
+        read_store(&mut ui, "hidden"),
+        json!(["i1", "i2", "i3", "i4", "i5", "i6", "i7", "i8"])
+    );
+    assert!(drawn(&ui).contains(&"+8".into()));
+    assert!(
+        (row(&ui, "i0").width - 100.0).abs() < 0.1,
+        "column shrinks when widest row leaves"
+    );
+    set_store(&mut ui, "max", json!(5));
+    run(&mut ui, 40, |_| {});
+    let before = row(&ui, "i2").y;
+    edit_store(&mut ui, "items", json!({"op":"remove","key":"i1"}));
+    run(&mut ui, 1, |_| {});
+    let gliding = row(&ui, "i2").y;
+    assert!(
+        gliding > before && gliding < before + 27.0,
+        "keyed row glides, not remounts"
+    );
+    for _ in 0..12 {
+        let entering = row(&ui, "i5");
+        let previous_top = row(&ui, "i4");
+        let mut overlay = Overlay::new(W, H, 1.0);
+        ui.frame().emit(&EmitDesc::default(), &mut overlay);
+        let visible = overlay
+            .texts
+            .iter()
+            .any(|t| t.text == "i5" && t.color[3] > 0.0);
+        assert!(
+            !visible || entering.y + entering.height <= previous_top.y,
+            "incoming row must not cross the retained top row"
+        );
+        run(&mut ui, 1, |_| {});
+    }
+    run(&mut ui, 40, |_| {});
+    assert_eq!(read_store(&mut ui, "hidden"), json!(["i6", "i7", "i8"]));
+    assert!(drawn(&ui).contains(&"i5".into()));
+    assert!(
+        (row(&ui, "i2").width - 115.0).abs() < 0.1,
+        "widest removed item releases width: {:?}",
+        row(&ui, "i2")
+    );
+    edit_store(
+        &mut ui,
+        "items",
+        json!({"op":"patch","key":"i8","fields":{"rank":45}}),
+    );
+    run(&mut ui, 40, |_| {});
+    assert_eq!(read_store(&mut ui, "hidden"), json!(["i5", "i6", "i7"]));
+    assert!(
+        row(&ui, "i8").y > row(&ui, "i2").y,
+        "priority change reorders same keys"
+    );
+    set_store(&mut ui, "max", json!(0));
+    run(&mut ui, 40, |_| {});
+    assert_eq!(read_store(&mut ui, "hidden"), json!([]));
+    assert!(!drawn(&ui).iter().any(|t| t.starts_with('+')));
+    assert_eq!(drawn(&ui).iter().filter(|t| t.starts_with('i')).count(), 8);
+
+    set_store(&mut ui, "max", json!(5));
+    edit_store(
+        &mut ui,
+        "items",
+        json!({"op":"insert", "row":{
+            "id":"new", "rank":35, "group":"pile", "at":"2 0 -15", "width":"110px"
+        }}),
+    );
+    run(&mut ui, 40, |_| {});
+    assert_eq!(
+        read_store(&mut ui, "hidden"),
+        json!(["i4", "i5", "i6", "i7"])
+    );
+    assert!(row(&ui, "new").y > row(&ui, "i2").y);
+
+    // Departure fades at the old column pivot before returning to its
+    // own scattered point. Replaying mid-fade must preserve that pivot.
+    let before = row(&ui, "new");
+    edit_store(
+        &mut ui,
+        "items",
+        json!({"op":"patch","key":"new","fields":{"group":""}}),
+    );
+    run(&mut ui, 1, |_| {});
+    let leaving = row(&ui, "new");
+    assert!((leaving.x + leaving.width / 2.0 - before.x - before.width / 2.0).abs() < 0.1);
+    assert!((leaving.y - before.y).abs() < 0.1);
+    let saved = ui.save_world_state();
+    run(&mut ui, 1, |_| {});
+    let replay = ui.save_world_state();
+    ui.restore_world_state(&saved).unwrap();
+    run(&mut ui, 1, |_| {});
+    assert_eq!(ui.save_world_state(), replay);
+    run(&mut ui, 40, |_| {});
+    assert!(
+        row(&ui, "new").x > before.x + 40.0,
+        "returns to its own world point"
+    );
+
+    edit_store(&mut ui, "items", json!({"op":"remove","key":"new"}));
+    for i in 0..3 {
+        edit_store(
+            &mut ui,
+            "items",
+            json!({"op":"insert", "row":{
+                "id":format!("b{i}"), "rank":50-i, "group":"other",
+                "at":"0.26 0 0", "width":"100px"
+            }}),
+        );
+    }
+    run(&mut ui, 40, |_| {});
+    let first = row(&ui, "i0");
+    let second = row(&ui, "b0");
+    for i in 0..3 {
+        let b = row(&ui, &format!("b{i}"));
+        assert!(
+            (b.x - second.x).abs() < 0.1,
+            "other column never interleaves"
+        );
+        assert!((b.y - second.y + i as f32 * 27.0).abs() < 0.1);
+        for id in ["i0", "i8", "i2", "i3", "i4"] {
+            let a = row(&ui, id);
+            assert!(
+                a.x + a.width <= b.x
+                    || b.x + b.width <= a.x
+                    || a.y + a.height <= b.y
+                    || b.y + b.height <= a.y,
+                "neighbouring columns clear: {a:?} {b:?}"
+            );
+        }
+    }
+    assert!((first.x - 578.0).abs() < 1.0, "representative stayed put");
+    edit_store(
+        &mut ui,
+        "items",
+        json!({"op":"patch","key":"i0","fields":{"at":"0 0 -40"}}),
+    );
+    run(&mut ui, 40, |_| {});
+    assert!(
+        !drawn(&ui)
+            .iter()
+            .any(|t| t.starts_with('i') || t.starts_with('+')),
+        "whole group follows representative max-distance, not members' own points"
+    );
+    assert!(
+        drawn(&ui).contains(&"b0".into()),
+        "other group is independent"
+    );
+}

@@ -951,6 +951,11 @@ Its own props, beside every element's:
 
 | Write | Value | What |
 |---|---|---|
+| `stack-group` | `name` | A keyed loot column, ranked by priority, distance, then build order. The highest item supplies its world point, distance settings and avoidance; the whole column declutters as one stack. Empty keeps independent placement. |
+| `stack-max` | `number` | Maximum visible item rows in a stack-group (0: unlimited), from its highest-ranked item. Does not count the optional stack-more row. Overflow items fade and take no hits or obstacle space. |
+| `stack-more` | `bool` | The group's optional topmost overflow row, visible only while items exceed stack-max. bind:hidden reads those items' each keys in rank order, one tick after placement. |
+| `stack-gap` | `number` | Gap between stack rows in CSS px (default 3), before distance scaling; the highest-ranked item supplies it. |
+| `hidden` | `names` | On a stack-more anchor, bind:hidden writes the overflow items' stable each keys as a string list, in rank order. Render its length as +n and look up rarity dots in game data. It is not element visibility. Two-way only with an explicit bind: attribute. |
 | `reserve-radius` | `number` | Player reserve radius in world units (default 0.6). |
 | `reserve-height` | `number` | Player reserve height above its world point, in world units (default 1.9). |
 | `avoid` | `text` | Space-separated `player` and/or `danger` opts into player reserves or danger grounds. Danger-avoiding tags stay visible at the least-overlap reachable position when no clear spot fits; read `[data-blocked]`. HUD reserves always apply. |

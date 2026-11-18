@@ -686,7 +686,33 @@ impl RetainedHost {
         Ok(out)
     }
 
-    fn sync_anchor_feedback(&mut self, ui: &Ui) -> Result<(), String> {
+    fn sync_anchor_feedback(&mut self, ui: &mut Ui) -> Result<(), String> {
+        let mut writes = Vec::new();
+        for (key, hidden) in &ui.world.placement.stack_hidden {
+            let Some(node) = self.by_key.get(key) else {
+                continue;
+            };
+            let Some(element) = self.elements.get_mut(node) else {
+                continue;
+            };
+            if element.stack_hidden.as_ref() == Some(hidden) {
+                continue;
+            }
+            element.stack_hidden = Some(hidden.clone());
+            if let Some(prop) = element.document.nodes[element.index]
+                .props
+                .iter()
+                .rev()
+                .find(|p| p.name() == "hidden")
+                && let PropValue::Model(path) | PropValue::Bind(crate::bind::Expr::Path(path), _) =
+                    &prop.value
+            {
+                writes.push((element.context.clone(), path.clone(), json!(hidden)));
+            }
+        }
+        for (context, path, value) in writes {
+            context.write_model(&mut ui.docs.state_mut().memory.reactive, &path, value)?;
+        }
         for (key, info) in &ui.world.placement.last {
             let Some(node) = self.by_key.get(key) else {
                 continue;

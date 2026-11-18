@@ -67,6 +67,7 @@ pub struct ElementInstance {
     pub theme_epoch: u64,
     /// Last placement facts applied to this anchor's selector root and cascade.
     pub anchor_feedback: Option<(Option<&'static str>, u32, f32, bool)>,
+    pub stack_hidden: Option<Vec<String>>,
     /// Shared with an emit's copy of the element.
     pub children: Arc<Vec<Child>>,
     /// For a control's host: the root of the control document
