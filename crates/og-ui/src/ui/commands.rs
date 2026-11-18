@@ -1310,26 +1310,19 @@ impl Ui {
             .chain(&p.awaiting)
             .copied()
             .collect();
-        let keyed = ghosts
-            .iter()
-            .map(|g| g.frozen.parent)
-            .chain(
-                self.world
-                    .placement
-                    .marks
-                    .keys()
-                    .chain(self.world.placement.previous_marks.keys())
-                    .copied()
-                    .filter(|&key| self.world.world_marks_changed(key)),
-            )
-            .chain(self.interaction.state.motion.part_styles.iter().filter_map(
-                |(&key, styles)| {
+        let keyed = ghosts.iter().map(|g| g.frozen.parent).chain(
+            self.interaction
+                .state
+                .motion
+                .part_styles
+                .iter()
+                .filter_map(|(&key, styles)| {
                     styles
                         .values()
                         .any(|s| s.running || !s.runs.is_empty())
                         .then_some(key)
-                },
-            ));
+                }),
+        );
         for key in keyed {
             if let Some(&i) = self.tree.index.by_key.get(&key) {
                 volatile.insert(i);
@@ -1362,6 +1355,16 @@ impl Ui {
             .chain(&volatile)
             .chain(&p.volatile)
             .chain(&p.ringed)
+            // Changed wrappers need judging, not fresh local paint.
+            .chain(
+                self.world
+                    .placement
+                    .marks
+                    .keys()
+                    .chain(self.world.placement.previous_marks.keys())
+                    .filter(|&&key| self.world.world_marks_changed(key))
+                    .filter_map(|key| self.tree.index.by_key.get(key)),
+            )
             // Lifted out of its parent's run by a stacking context: no
             // cover below a changed parent reaches it.
             .chain(&o.lifted)
@@ -1516,6 +1519,9 @@ impl Ui {
     /// ring or outline is drawn over it.
     fn paints_alone(&self, i: usize) -> (bool, bool) {
         let node = &self.tree.nodes[i];
+        // World wrappers are regenerated around the cached local commands.
+        // They prevent whole-subtree copying, not reuse of local paint:
+        // projection, occlusion and arrows do not change its paint inputs.
         let volatile = self.world.world_marks_changed(node.key)
             || node.props.exit.is_some()
             || !node.props.match_key.is_empty()
