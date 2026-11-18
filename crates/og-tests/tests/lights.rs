@@ -49,6 +49,63 @@ fn changed(a: &RgbaImage, b: &RgbaImage) -> usize {
         .outliers
 }
 
+/// Source size widens a polished surface's highlight, rather than merely
+/// dimming the punctual highlight through its softened inverse square.
+#[test]
+#[ignore = "requires GPU"]
+fn a_spherical_source_widens_specular_without_changing_roughness() {
+    let desc = RenderDesc {
+        width: 320,
+        height: 240,
+        ..scenes::base_desc()
+    };
+    let mut scene = RenderScene::new();
+    scene.lighting.light.intensity = 0.0;
+    scene.lighting.environment.intensity = 0.0;
+    scene.lighting.environment.background = og_render::Background::Color(Vec3::ZERO);
+    scene.frame.camera = Camera {
+        position: Vec3::new(0.0, 0.0, 4.0),
+        target: Vec3::ZERO,
+        projection: Projection::Orthographic { height: 3.0 },
+        ..Default::default()
+    };
+    let mesh = scene.add_mesh(og_render::shapes::plane(4.0, 4.0));
+    let material = scene.add_standard_material(og_render::StandardMaterial {
+        color: Vec3::splat(0.8),
+        metalness: 1.0,
+        roughness: 0.1,
+        ..Default::default()
+    });
+    scene.add_instance(
+        mesh,
+        material,
+        glam::Mat4::from_rotation_x(std::f32::consts::FRAC_PI_2),
+    );
+    scene.lighting.lights.push(Light {
+        position: Vec3::new(0.3, 0.0, 2.0),
+        intensity: 2.0,
+        ..Default::default()
+    });
+    let (point, _) = frame(&desc, &scene);
+    scene.lighting.lights[0].radius = 0.5;
+    let (sphere, _) = frame(&desc, &scene);
+    // Measure the bright core, not the long, dim GGX tails. Half-maximum
+    // isolates width from the source-size energy normalization.
+    let lit = |image: &RgbaImage| {
+        let pixels = image.pixels.as_chunks::<4>().0;
+        let peak = pixels.iter().map(|p| p[0]).max().unwrap();
+        pixels.iter().filter(|p| p[0] > peak / 2).count()
+    };
+    println!("highlight pixels: {} -> {}", lit(&point), lit(&sphere));
+    gfx::save_png(&out_dir().join("source-point-specular.png"), &point).unwrap();
+    gfx::save_png(&out_dir().join("source-sphere-specular.png"), &sphere).unwrap();
+    assert!(lit(&point) > 0, "punctual control must have a highlight");
+    assert!(
+        lit(&sphere) > lit(&point) * 2,
+        "a finite source must widen the specular lobe"
+    );
+}
+
 /// The depth slices follow the camera's near and far planes, so moving them
 /// moves every light into other clusters while the picture stays the same:
 /// a light a slice lost would change the cluster's pixels. Only a few

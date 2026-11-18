@@ -377,17 +377,20 @@ pub enum LightKind {
 }
 
 /// A point or spot light. Its radiance at distance `d` is
-/// `color * intensity / d²`, faded smoothly to zero at `range`.
+/// `color * intensity / (d² + radius²)`, faded smoothly to zero at `range`.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Light {
     pub kind: LightKind,
     pub position: Vec3,
     /// Linear colour.
     pub color: Vec3,
-    /// Luminous intensity (candela-like: the radiance at 1 m).
+    /// Luminous intensity (candela-like: the radiance at 1 m for radius zero).
     pub intensity: f32,
     /// The distance at which the light reaches zero.
     pub range: f32,
+    /// Spherical source radius in metres. Zero preserves a punctual source.
+    /// Falloff is softened by radius²; specular uses a representative point.
+    pub radius: f32,
     /// Shadows from this light (cube faces or two paraboloid hemispheres for
     /// a point light, [`crate::PointShadows`]; one map for a spot). Of the
     /// shadowed lights in view, the [`crate::RenderInfo::shadowed_lights`]
@@ -405,6 +408,7 @@ impl Default for Light {
             color: Vec3::ONE,
             intensity: 10.0,
             range: 10.0,
+            radius: 0.0,
             cast_shadows: false,
         }
     }

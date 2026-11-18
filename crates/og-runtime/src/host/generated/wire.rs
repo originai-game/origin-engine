@@ -29633,6 +29633,7 @@ pub mod record {
         pub color: Color,
         pub intensity: f32,
         pub distance: f32,
+        pub radius: f32,
         pub cast_shadow: bool,
         pub cookie: u64,
     }
@@ -29643,6 +29644,7 @@ pub mod record {
                 color: Color { r: 1.0_f32, g: 1.0_f32, b: 1.0_f32 },
                 intensity: 10.0_f32,
                 distance: 10.0_f32,
+                radius: 0.0_f32,
                 cast_shadow: Default::default(),
                 cookie: Default::default(),
             }
@@ -29659,6 +29661,7 @@ pub mod record {
                 color: field(o, "color", d.color)?,
                 intensity: field(o, "intensity", d.intensity)?,
                 distance: field(o, "distance", d.distance)?,
+                radius: field(o, "radius", d.radius)?,
                 cast_shadow: field(o, "castShadow", d.cast_shadow)?,
                 cookie: field(o, "cookie", d.cookie)?,
             })
@@ -29671,6 +29674,7 @@ pub mod record {
         pub color: Color,
         pub intensity: f32,
         pub distance: f32,
+        pub radius: f32,
         pub angle: f32,
         pub penumbra: f32,
         pub cast_shadow: bool,
@@ -29683,6 +29687,7 @@ pub mod record {
                 color: Color { r: 1.0_f32, g: 1.0_f32, b: 1.0_f32 },
                 intensity: 10.0_f32,
                 distance: 10.0_f32,
+                radius: 0.0_f32,
                 angle: 0.5236_f32,
                 penumbra: Default::default(),
                 cast_shadow: Default::default(),
@@ -29701,6 +29706,7 @@ pub mod record {
                 color: field(o, "color", d.color)?,
                 intensity: field(o, "intensity", d.intensity)?,
                 distance: field(o, "distance", d.distance)?,
+                radius: field(o, "radius", d.radius)?,
                 angle: field(o, "angle", d.angle)?,
                 penumbra: field(o, "penumbra", d.penumbra)?,
                 cast_shadow: field(o, "castShadow", d.cast_shadow)?,

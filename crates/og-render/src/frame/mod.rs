@@ -26,6 +26,7 @@ pub(crate) struct LightGpu {
     pub color_kind: [f32; 4],
     pub direction_slot: [f32; 4],
     pub cone: [f32; 4],
+    pub source: [f32; 4],
 }
 
 /// `struct Frame` in frame.wgsl: only vec4 and mat4 members, so the Rust and
@@ -562,6 +563,7 @@ pub(crate) fn local_lights(
             color_kind: radiance.extend(kind).to_array(),
             direction_slot: direction.extend(slot).to_array(),
             cone: [cone[0], cone[1], normal_offset, depth_bias],
+            source: [light.radius.max(0.0), 0.0, 0.0, 0.0],
         });
     }
     (gpu, shadows, dropped)

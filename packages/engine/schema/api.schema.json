@@ -24051,7 +24051,7 @@
     "PointLight": {
       "x-og-kind": "component",
       "x-og-module": "render",
-      "description": "A light shining in every direction from the entity's position, as three.js PointLight. Its radiance at distance d is color * intensity / d^2, faded smoothly to zero at distance.\nLights are clustered (Forward+): each pixel shades only the lights whose distance reaches it. Up to MAX_LIGHTS in view are drawn (MAX_CLUSTER_LIGHTS a screen cluster), the brightest at the camera kept; RenderSettings.shadowedLights chooses how many with castShadow get shadows, the brightest first.\nSee `render §3`.",
+      "description": "A light shining in every direction from the entity's position, as three.js PointLight. Its radiance at distance d is color * intensity / (d^2 + radius^2), faded smoothly to zero at distance.\nLights are clustered (Forward+): each pixel shades only the lights whose distance reaches it. Up to MAX_LIGHTS in view are drawn (MAX_CLUSTER_LIGHTS a screen cluster), the brightest at the camera kept; RenderSettings.shadowedLights chooses how many with castShadow get shadows, the brightest first.\nSee `render §3`.",
       "type": "object",
       "properties": {
         "color": {
@@ -24065,7 +24065,7 @@
         },
         "intensity": {
           "type": "number",
-          "description": "The radiance at one metre.",
+          "description": "Luminous intensity: the radiance at one metre for a zero-radius source, before the distance fade.",
           "default": 10,
           "minimum": 0,
           "x-og-tunable": true
@@ -24075,6 +24075,14 @@
           "description": "Where the light reaches zero, as three.js PointLight.distance (never infinite here).",
           "default": 10,
           "minimum": 0.01,
+          "x-og-unit": "m",
+          "x-og-tunable": true
+        },
+        "radius": {
+          "type": "number",
+          "description": "The spherical source radius: softens near-source falloff and widens specular highlights. Zero keeps a point source; independent of distance and shadow softness.",
+          "default": 0,
+          "minimum": 0,
           "x-og-unit": "m",
           "x-og-tunable": true
         },
@@ -24108,7 +24116,7 @@
         },
         "intensity": {
           "type": "number",
-          "description": "The radiance at one metre on the axis.",
+          "description": "Luminous intensity on the axis: the radiance at one metre for a zero-radius source, before the distance fade.",
           "default": 10,
           "minimum": 0,
           "x-og-tunable": true
@@ -24118,6 +24126,14 @@
           "description": "Where the light reaches zero.",
           "default": 10,
           "minimum": 0.01,
+          "x-og-unit": "m",
+          "x-og-tunable": true
+        },
+        "radius": {
+          "type": "number",
+          "description": "The spherical source radius: softens near-source falloff and widens specular highlights. Zero keeps a point source; independent of distance and shadow softness.",
+          "default": 0,
+          "minimum": 0,
           "x-og-unit": "m",
           "x-og-tunable": true
         },

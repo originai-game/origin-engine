@@ -297,7 +297,7 @@ fn local_reach(light: LocalLight, translucency: f32, p: vec3<f32>, n: vec3<f32>)
   o.lit = false;
   let to_light = light.position_range.xyz - p;
   let d2 = max(dot(to_light, to_light), 1e-4);
-  var atten = range_window(light, d2) / d2;
+  var atten = local_falloff(light, d2);
   o.l = to_light * inverseSqrt(d2);
   if (light.color_kind.w > 0.5) { atten *= spot_cone(light, o.l); }
   if (atten <= 0.0 || (dot(n, o.l) <= 0.0 && translucency <= 0.0)) { return o; }
@@ -319,7 +319,7 @@ fn surface_local_light(light: LocalLight, s: Surface, p: vec3<f32>, n: vec3<f32>
   if (!r.lit) { return vec3<f32>(0.0); }
   let shadow = local_shadow(light, p, leaf_shadow_normal(s, n, r.l));
   if (styled) { return style_local(s, n, v, r.l, shadow) * r.radiance; }
-  return brdf(s, n, v, r.l) * r.radiance * shadow;
+  return source_brdf(s, n, v, r.l, light.position_range.xyz - p, light.source.x) * r.radiance * shadow;
 }
 
 // Every point, spot and rect light on a surface for those shaders: the

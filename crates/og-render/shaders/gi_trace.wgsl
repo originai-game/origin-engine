@@ -188,7 +188,7 @@ fn gi_shade(p: vec3<f32>, n: vec3<f32>, d: vec3<f32>, record: u32, seed: u32) ->
     let light = light_at(pcg(seed) % lights);
     let to_light = light.position_range.xyz - q;
     let d2 = max(dot(to_light, to_light), 1e-4);
-    var atten = range_window(light, d2) / d2;
+    var atten = local_falloff(light, d2);
     let lv = to_light * inverseSqrt(d2);
     if (light.color_kind.w > 0.5) { atten *= spot_cone(light, lv); }
     let ndl = dot(n, lv);

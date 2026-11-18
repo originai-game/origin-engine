@@ -91,6 +91,7 @@ fn rect(
         color,
         intensity,
         range: 12.0,
+        radius: 0.0,
         cast_shadows: false,
     }
 }
@@ -344,6 +345,7 @@ pub fn light_cookies_scene() -> RenderScene {
             color: Vec3::new(0.9, 0.92, 1.0),
             intensity: 90.0,
             range: 14.0,
+            radius: 0.0,
             cast_shadows: false,
         },
         Light {
@@ -352,6 +354,7 @@ pub fn light_cookies_scene() -> RenderScene {
             color: Vec3::new(1.0, 0.75, 0.45),
             intensity: 10.0,
             range: 8.0,
+            radius: 0.0,
             cast_shadows: false,
         },
     ];
@@ -433,6 +436,7 @@ pub fn volumetric_fog_scene() -> RenderScene {
         color: Vec3::new(1.0, 0.6, 0.3),
         intensity: 60.0,
         range: 10.0,
+        radius: 0.0,
         cast_shadows: true,
     }];
     put(
@@ -677,6 +681,7 @@ pub fn baked_cellar_scene(batches: bool) -> Result<RenderScene, String> {
         color: Vec3::new(1.0, 0.78, 0.5),
         intensity: 16.0,
         range: 8.0,
+        radius: 0.0,
         cast_shadows: true,
     };
     scene.lighting.lights.push(spot);
@@ -894,6 +899,7 @@ fn cornell_box(
         color: Vec3::new(1.0, 0.95, 0.88),
         intensity: 7.0,
         range: 5.0,
+        radius: 0.0,
         cast_shadows: true,
     };
     // Centre and radius: resting on the floor.

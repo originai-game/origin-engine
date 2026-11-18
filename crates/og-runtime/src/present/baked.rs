@@ -108,6 +108,7 @@ pub(crate) fn rect_light(m: Mat4, v: &crate::host::wire::record::RectLight) -> o
         range: reach
             .max((half_width + half_height).length() * 2.0)
             .max(0.1),
+        radius: 0.0,
         cast_shadows: v.cast_shadow,
     }
 }

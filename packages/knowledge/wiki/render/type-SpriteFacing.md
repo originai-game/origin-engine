@@ -28,4 +28,4 @@ enum SpriteFacing {
 }
 ```
 
-<sub>Module `render` line 1036</sub>
+<sub>Module `render` line 1047</sub>

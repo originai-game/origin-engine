@@ -48,6 +48,7 @@ pub fn many_lights_list(count: u32) -> Vec<Light> {
                     color,
                     intensity: 14.0,
                     range: 6.0,
+                    radius: 0.0,
                     cast_shadows: false,
                 }
             } else {

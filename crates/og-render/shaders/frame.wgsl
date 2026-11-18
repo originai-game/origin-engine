@@ -21,6 +21,7 @@ struct LocalLight {
   color_kind: vec4<f32>,      // rgb: color * intensity, w: 0 point, 1 spot
   direction_slot: vec4<f32>,  // xyz: spot axis (away from the light), w: first shadow layer (-1: none)
   cone: vec4<f32>,            // x: cos outer, y: 1 / (cos inner - cos outer), z: normal offset per metre, w: depth bias
+  source: vec4<f32>,          // x: spherical source radius in metres; yzw unused
 };
 
 // How much of a local light's intensity reaches `d2` (the squared distance
@@ -31,6 +32,12 @@ fn range_window(light: LocalLight, d2: f32) -> f32 {
   let ratio = d2 / (range * range);
   let window = clamp(1.0 - ratio * ratio, 0.0, 1.0);
   return window * window;
+}
+
+// Radius zero retains the punctual source's exact falloff, including its
+// near-distance floor. Shared by surfaces, participating media and probe GI.
+fn local_falloff(light: LocalLight, d2: f32) -> f32 {
+  return range_window(light, d2) / (d2 + light.source.x * light.source.x);
 }
 
 // How much of a spot light's cone the direction `l` (towards the light)

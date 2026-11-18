@@ -594,6 +594,7 @@ pub fn light_volume_scene(realtime: bool, colour: Vec3, mirror: Option<f32>) -> 
         color: colour,
         intensity: 14.0,
         range: 9.0,
+        radius: 0.0,
         cast_shadows: true,
     });
     scene.lighting.environment = Environment {

@@ -209,6 +209,7 @@ pub fn two_rooms_scene(probes: bool) -> RenderScene {
             color: Vec3::new(1.0, 0.95, 0.85),
             intensity: 25.0,
             range: 9.0,
+            radius: 0.0,
             cast_shadows: false,
         });
         if probes {
@@ -325,6 +326,7 @@ pub fn two_shops_scene() -> RenderScene {
             color: Vec3::new(1.0, 0.85, 0.65),
             intensity: 25.0,
             range: 9.0,
+            radius: 0.0,
             cast_shadows: false,
         });
         let mut p = ReflectionProbe::new(1 + k as u64, at(0.0, 1.6, 0.0), Vec3::new(6.0, 4.2, 6.0));

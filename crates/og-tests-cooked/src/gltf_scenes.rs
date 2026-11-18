@@ -571,6 +571,7 @@ pub fn model_lights(model: &CookedModel, scene: &mut RenderScene) {
             color,
             intensity: l.intensity,
             range,
+            radius: 0.0,
             cast_shadows: false,
         });
     }

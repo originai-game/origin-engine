@@ -37,4 +37,4 @@ component Occluder2D {
 }
 ```
 
-<sub>Module `render` line 2163</sub>
+<sub>Module `render` line 2174</sub>

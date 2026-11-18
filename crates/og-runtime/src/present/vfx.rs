@@ -258,6 +258,7 @@ pub(crate) fn extract(
                         color,
                         intensity,
                         range,
+                        radius: 0.0,
                         cast_shadows: false,
                     });
                 }

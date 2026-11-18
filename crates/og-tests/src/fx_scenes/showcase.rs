@@ -23,6 +23,7 @@ pub fn showcase_effects(scene: &mut RenderScene) {
         color: Vec3::new(1.0, 0.55, 0.25),
         intensity: 5.0,
         range: 7.0,
+        radius: 0.0,
         cast_shadows: false,
     });
     let atlas = decal_atlas(scene);

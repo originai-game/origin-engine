@@ -591,28 +591,67 @@ fn leaf_shadow_normal(s: Surface, n: vec3f, to_light: vec3f) -> vec3f {
   return select(n, -n, s.translucency > 0.0 && dot(n, to_light) < 0.0);
 }
 
-fn brdf(s: Surface, n: vec3<f32>, v: vec3<f32>, l: vec3<f32>) -> vec3<f32> {
-  let h = normalize(v + l);
+// Karis 2013, equations 10, 11 and 14: closest point on the spherical
+// source to the reflection ray, with the widened GGX lobe's normalization.
+// Keep the original roughness: broadening D itself makes polished metal dull.
+fn sphere_direction(to_light: vec3<f32>, n: vec3<f32>, v: vec3<f32>, radius: f32) -> vec3<f32> {
+  let ray = reflect(-v, n);
+  let to_ray = max(dot(to_light, ray), 0.0) * ray - to_light;
+  let closest = to_light + to_ray * min(radius / max(length(to_ray), 1e-6), 1.0);
+  return closest / max(length(closest), 1e-6);
+}
+
+fn sphere_energy(roughness: f32, radius: f32, distance: f32) -> f32 {
+  let a = roughness * roughness;
+  let widened = min(a + radius / (2.0 * max(distance, 1e-4)), 1.0);
+  let ratio = a / max(widened, 1e-6);
+  return ratio * ratio;
+}
+
+fn source_brdf(s: Surface, n: vec3<f32>, v: vec3<f32>, l: vec3<f32>, to_light: vec3<f32>, radius: f32) -> vec3<f32> {
+  var ls = l;
+  var energy = 1.0;
+  if (radius > 0.0) {
+    ls = sphere_direction(to_light, n, v, radius);
+    energy = sphere_energy(s.roughness, radius, length(to_light));
+  }
+  let h = normalize(v + ls);
   let n_dot_l = max(dot(n, l), 0.0);
+  let n_dot_ls = max(dot(n, ls), 0.0);
   let n_dot_v = max(dot(n, v), 1e-4);
   let n_dot_h = max(dot(n, h), 0.0);
   let h_dot_v = max(dot(h, v), 0.0);
   let a = s.roughness * s.roughness;
   let d = d_ggx(n_dot_h, a);
   let f = f_schlick(h_dot_v, s.f0);
-  let spec = d * v_ggx(n_dot_v, n_dot_l, a) * f;
+  let spec = d * v_ggx(n_dot_v, n_dot_ls, a) * f * energy;
   let kd = (vec3<f32>(1.0) - f) * (1.0 - s.metallic);
-  let base = (kd * s.albedo / PI + spec) * n_dot_l + leaf_transmission(s, n, v, l);
+  var base = (kd * s.albedo / PI + spec) * n_dot_l + leaf_transmission(s, n, v, l);
+  if (radius > 0.0) {
+    base = kd * s.albedo / PI * n_dot_l + spec * n_dot_ls + leaf_transmission(s, n, v, l);
+  }
   if (s.coat <= 0.0) { return base; }
   // The coat (Filament's clear coat): GGX with a fixed 4 % reflectance and
   // Kelemen's visibility; what it reflects never reaches the base.
   let nc = s.coat_normal;
-  let c_dot_l = max(dot(nc, l), 0.0);
+  var lc = l;
+  var coat_energy = 1.0;
+  if (radius > 0.0) {
+    lc = sphere_direction(to_light, nc, v, radius);
+    coat_energy = sphere_energy(s.coat_roughness, radius, length(to_light));
+  }
+  let hc = normalize(v + lc);
+  let hc_dot_v = max(dot(hc, v), 0.0);
+  let c_dot_l = max(dot(nc, lc), 0.0);
   let ac = s.coat_roughness * s.coat_roughness;
-  let fc = f_schlick(h_dot_v, vec3<f32>(0.04)).x * s.coat;
-  let dc = d_ggx(max(dot(nc, h), 0.0), ac);
-  let vc = 0.25 / max(h_dot_v * h_dot_v, 1e-4);
-  return base * (1.0 - fc) + vec3<f32>(dc * vc * fc * c_dot_l);
+  let fc = f_schlick(hc_dot_v, vec3<f32>(0.04)).x * s.coat;
+  let dc = d_ggx(max(dot(nc, hc), 0.0), ac);
+  let vc = 0.25 / max(hc_dot_v * hc_dot_v, 1e-4);
+  return base * (1.0 - fc) + vec3<f32>(dc * vc * fc * c_dot_l * coat_energy);
+}
+
+fn brdf(s: Surface, n: vec3<f32>, v: vec3<f32>, l: vec3<f32>) -> vec3<f32> {
+  return source_brdf(s, n, v, l, l, 0.0);
 }
 
 // The frame's material style (og.MaterialStyle; frame.toon,

@@ -7011,7 +7011,7 @@ export interface DirectionalLight {
 }
 
 /**
- * A light shining in every direction from the entity's position, as three.js PointLight. Its radiance at distance d is color * intensity / d^2, faded smoothly to zero at distance.
+ * A light shining in every direction from the entity's position, as three.js PointLight. Its radiance at distance d is color * intensity / (d^2 + radius^2), faded smoothly to zero at distance.
  * Lights are clustered (Forward+): each pixel shades only the lights whose distance reaches it. Up to MAX_LIGHTS in view are drawn (MAX_CLUSTER_LIGHTS a screen cluster), the brightest at the camera kept; RenderSettings.shadowedLights chooses how many with castShadow get shadows, the brightest first.
  * See `render §3`.
  *
@@ -7025,7 +7025,7 @@ export interface PointLight {
    */
   color: Color;
   /**
-   * The radiance at one metre.
+   * Luminous intensity: the radiance at one metre for a zero-radius source, before the distance fade.
    *
    * @default 10
    * @range 0..
@@ -7041,6 +7041,15 @@ export interface PointLight {
    * @tunable
    */
   distance: number;
+  /**
+   * The spherical source radius: softens near-source falloff and widens specular highlights. Zero keeps a point source; independent of distance and shadow softness.
+   *
+   * @default 0
+   * @range 0..
+   * @unit m (metres)
+   * @tunable
+   */
+  radius: number;
   /**
    * Cast shadows: six cube faces or two paraboloid hemispheres (RenderOptions.pointShadows).
    */
@@ -7065,7 +7074,7 @@ export interface SpotLight {
    */
   color: Color;
   /**
-   * The radiance at one metre on the axis.
+   * Luminous intensity on the axis: the radiance at one metre for a zero-radius source, before the distance fade.
    *
    * @default 10
    * @range 0..
@@ -7081,6 +7090,15 @@ export interface SpotLight {
    * @tunable
    */
   distance: number;
+  /**
+   * The spherical source radius: softens near-source falloff and widens specular highlights. Zero keeps a point source; independent of distance and shadow softness.
+   *
+   * @default 0
+   * @range 0..
+   * @unit m (metres)
+   * @tunable
+   */
+  radius: number;
   /**
    * The half-angle of the outer cone, as three.js SpotLight.angle.
    *
@@ -34901,13 +34919,13 @@ export declare namespace og {
    */
   const DirectionalLight: ComponentType<{ readonly color: FieldSpec<"Color">; readonly intensity: FieldSpec<"f32">; readonly castShadow: FieldSpec<"bool">; readonly shadowDistance: FieldSpec<"f32">; readonly shadowSoftness: FieldSpec<"f32">; readonly shadowBox: FieldSpec<"f32">; readonly shadowFocus: FieldSpec<"f32">; readonly shadowFocusDrop: FieldSpec<"f32">; readonly shadowBias: FieldSpec<"f32">; readonly shadowNormalBias: FieldSpec<"f32">; readonly cascadeBlend: FieldSpec<"f32"> }, DirectionalLight>;
   /**
-   * A light shining in every direction from the entity's position, as three.js PointLight. Its radiance at distance d is color * intensity / d^2, faded smoothly to zero at distance.
+   * A light shining in every direction from the entity's position, as three.js PointLight. Its radiance at distance d is color * intensity / (d^2 + radius^2), faded smoothly to zero at distance.
    * Lights are clustered (Forward+): each pixel shades only the lights whose distance reaches it. Up to MAX_LIGHTS in view are drawn (MAX_CLUSTER_LIGHTS a screen cluster), the brightest at the camera kept; RenderSettings.shadowedLights chooses how many with castShadow get shadows, the brightest first.
    * See `render §3`.
    */
-  const PointLight: ComponentType<{ readonly color: FieldSpec<"Color">; readonly intensity: FieldSpec<"f32">; readonly distance: FieldSpec<"f32">; readonly castShadow: FieldSpec<"bool">; readonly cookie: FieldSpec<"Texture"> }, PointLight>;
+  const PointLight: ComponentType<{ readonly color: FieldSpec<"Color">; readonly intensity: FieldSpec<"f32">; readonly distance: FieldSpec<"f32">; readonly radius: FieldSpec<"f32">; readonly castShadow: FieldSpec<"bool">; readonly cookie: FieldSpec<"Texture"> }, PointLight>;
   /** A cone of light along the entity's local -Z, as three.js SpotLight. */
-  const SpotLight: ComponentType<{ readonly color: FieldSpec<"Color">; readonly intensity: FieldSpec<"f32">; readonly distance: FieldSpec<"f32">; readonly angle: FieldSpec<"f32">; readonly penumbra: FieldSpec<"f32">; readonly castShadow: FieldSpec<"bool">; readonly cookie: FieldSpec<"Texture"> }, SpotLight>;
+  const SpotLight: ComponentType<{ readonly color: FieldSpec<"Color">; readonly intensity: FieldSpec<"f32">; readonly distance: FieldSpec<"f32">; readonly radius: FieldSpec<"f32">; readonly angle: FieldSpec<"f32">; readonly penumbra: FieldSpec<"f32">; readonly castShadow: FieldSpec<"bool">; readonly cookie: FieldSpec<"Texture"> }, SpotLight>;
   /**
    * The frame's look after lighting: environment light, sky, bloom, exposure metering and tone mapping, and what the frame may cost: the quality fields (rectShadows to upscaler) that og.render.applyQuality sets from a graphics preset. Read after each tick; it never feeds back into the simulation. Camera.exposure is the manual exposure.
    * See `render §5`.

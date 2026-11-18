@@ -481,6 +481,7 @@ fn local_lights(g: &mut GfxScene, shadowed: bool) {
             color: glam::Vec3::ONE,
             intensity: 20.0,
             range: 12.0,
+            radius: 0.0,
             cast_shadows: shadowed && i < 2,
         });
     }

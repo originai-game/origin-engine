@@ -75,6 +75,7 @@ pub(super) fn showcase() -> Result<RenderScene, String> {
             color: Vec3::new(1.0, 0.9, 0.75),
             intensity: 120.0,
             range: 20.0,
+            radius: 0.0,
             cast_shadows: true,
         },
         Light {

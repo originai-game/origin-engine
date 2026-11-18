@@ -219,6 +219,7 @@ pub fn lantern_night_scene() -> RenderScene {
             color: c / c.max_element(),
             intensity: 12.0,
             range: 10.0,
+            radius: 0.0,
             cast_shadows: false,
         });
     }

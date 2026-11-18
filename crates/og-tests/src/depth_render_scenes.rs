@@ -171,6 +171,7 @@ pub fn probe_scene(probe: bool) -> RenderScene {
             color: c,
             intensity: i,
             range: 12.0,
+            radius: 0.0,
             cast_shadows: false,
         });
     }

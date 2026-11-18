@@ -212,6 +212,7 @@ fn street() -> RenderScene {
                 color: Vec3::new(1.0, 0.72, 0.45),
                 intensity: 40.0,
                 range: 18.0,
+                radius: 0.0,
                 cast_shadows: false,
             });
         }

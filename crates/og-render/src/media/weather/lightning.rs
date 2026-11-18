@@ -148,6 +148,7 @@ pub fn add_lightning(
         color: Vec3::new(0.75, 0.82, 1.0),
         intensity: 2.0e4 * flash,
         range: 600.0,
+        radius: 0.0,
         cast_shadows: false,
     });
     if seconds < 0.35 {

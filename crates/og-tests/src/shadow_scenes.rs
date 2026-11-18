@@ -238,6 +238,7 @@ pub fn many_shadowed_lights(extra: bool) -> RenderScene {
                 color: Vec3::new(1.0, 0.85, 0.66),
                 intensity: 60.0,
                 range: 9.0,
+                radius: 0.0,
                 cast_shadows: true,
             },
         );
@@ -639,6 +640,7 @@ fn contact_room(point: bool, shadows: bool) -> RenderScene {
         color: Vec3::new(1.0, 0.95, 0.88),
         intensity: 30.0,
         range: 12.0,
+        radius: 0.0,
         cast_shadows: shadows,
     });
     scene.lighting.light = DirectionalLight {

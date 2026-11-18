@@ -409,6 +409,7 @@ pub(crate) fn rect_record(
             .to_array(),
         direction_slot: half_width.extend(slot).to_array(),
         cone: half_height.extend(0.0).to_array(),
+        source: [0.0; 4],
     }
 }
 
@@ -445,6 +446,7 @@ mod tests {
             color: glam::Vec3::ONE,
             intensity: 1.0,
             range: 5.0,
+            radius: 0.0,
             cast_shadows: false,
         };
         let point = || light(LightKind::Point);

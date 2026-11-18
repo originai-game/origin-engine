@@ -132,6 +132,7 @@ pub(crate) fn light_lanterns(
             color: Vec3::new(1.0, 0.72, 0.45),
             intensity,
             range: 16.0,
+            radius: 0.0,
             cast_shadows: i < shadowed,
         });
     }
@@ -414,6 +415,7 @@ pub(crate) fn car_with_headlights(
             color: Vec3::new(1.0, 0.95, 0.85),
             intensity,
             range: 30.0,
+            radius: 0.0,
             cast_shadows: false,
         });
     }
@@ -448,6 +450,7 @@ pub fn point_spot_scene() -> RenderScene {
         color: Vec3::new(1.0, 0.82, 0.6),
         intensity: 60.0,
         range: 10.0,
+        radius: 0.0,
         cast_shadows: false,
     });
     scene.frame.camera = Camera {
@@ -523,6 +526,7 @@ pub fn flare_lights_scene() -> RenderScene {
         color: Vec3::new(1.0, 0.92, 0.8),
         intensity: 400.0,
         range: 70.0,
+        radius: 0.0,
         cast_shadows: false,
     });
     // The eye slid sideways so the near gate's left post (x = -2.0 at
@@ -606,6 +610,7 @@ pub fn festival_scene() -> RenderScene {
                 color: c,
                 intensity: 9.0,
                 range: 8.0,
+                radius: 0.0,
                 cast_shadows: false,
             });
         }
@@ -634,6 +639,7 @@ pub fn festival_scene() -> RenderScene {
             color: Vec3::new(1.0, 0.78, 0.55),
             intensity: 40.0,
             range: 14.0,
+            radius: 0.0,
             cast_shadows: false,
         });
     }
@@ -712,6 +718,7 @@ pub fn cellar_scene() -> RenderScene {
         color: Vec3::new(1.0, 0.84, 0.64),
         intensity: 90.0,
         range: 12.0,
+        radius: 0.0,
         cast_shadows: true,
     });
     scene.lighting.light.intensity = 0.0;

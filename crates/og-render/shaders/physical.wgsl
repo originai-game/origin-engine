@@ -214,9 +214,16 @@ fn schlick_to_f0(f: vec3<f32>, cos_theta: f32) -> vec3<f32> {
 // One light's shading: the GGX lobe (anisotropic, with the film's Fresnel)
 // and the diffuse base, or hair's lobes in their place, the sheen over
 // them and the coat over all.
-fn physical_brdf(s: Surface, k: Lobes, n: vec3<f32>, v: vec3<f32>, l: vec3<f32>) -> Shade {
-  let h = normalize(v + l);
+fn physical_source_brdf(s: Surface, k: Lobes, n: vec3<f32>, v: vec3<f32>, l: vec3<f32>, to_light: vec3<f32>, radius: f32) -> Shade {
+  var ls = l;
+  var energy = 1.0;
+  if (radius > 0.0) {
+    ls = sphere_direction(to_light, n, v, radius);
+    energy = sphere_energy(s.roughness, radius, length(to_light));
+  }
+  let h = normalize(v + ls);
   let n_dot_l = max(dot(n, l), 0.0);
+  let n_dot_ls = max(dot(n, ls), 0.0);
   let n_dot_v = clamp(dot(n, v), 1e-4, 1.0);
   let n_dot_h = max(dot(n, h), 0.0);
   let h_dot_v = max(dot(h, v), 0.0);
@@ -226,11 +233,11 @@ fn physical_brdf(s: Surface, k: Lobes, n: vec3<f32>, v: vec3<f32>, l: vec3<f32>)
   if (k.anisotropy > 0.0) {
     let ab = s.roughness * s.roughness;
     let d = d_ggx_aniso(k.alpha_t, ab, n_dot_h, dot(k.aniso_t, h), dot(k.aniso_b, h));
-    let vis = v_ggx_aniso(k.alpha_t, ab, dot(k.aniso_t, v), dot(k.aniso_b, v), dot(k.aniso_t, l), dot(k.aniso_b, l), n_dot_v, n_dot_l);
+    let vis = v_ggx_aniso(k.alpha_t, ab, dot(k.aniso_t, v), dot(k.aniso_b, v), dot(k.aniso_t, ls), dot(k.aniso_b, ls), n_dot_v, n_dot_ls);
     spec = f * d * vis;
   } else {
     let a = s.roughness * s.roughness;
-    spec = f * d_ggx(n_dot_h, a) * v_ggx(n_dot_v, n_dot_l, a);
+    spec = f * d_ggx(n_dot_h, a) * v_ggx(n_dot_v, n_dot_ls, a);
   }
   var o: Shade;
   // The light's falloff: the cosine, spread past the terminator where the
@@ -240,7 +247,7 @@ fn physical_brdf(s: Surface, k: Lobes, n: vec3<f32>, v: vec3<f32>, l: vec3<f32>)
     falloff = mix(falloff, subsurface_cosine(dot(n, l), k.curvature, k.scatter), k.subsurface);
   }
   o.diffuse = (vec3<f32>(1.0) - f) * (1.0 - s.metallic) * s.albedo / PI * falloff + leaf_transmission(s, n, v, l);
-  o.specular = spec * n_dot_l;
+  o.specular = spec * n_dot_ls * energy;
   o.through = vec3<f32>(0.0);
   o.enters = k.thickness + subsurface_reach(k);
   if (k.subsurface > 0.0 && k.thickness > 0.0) { o.through = subsurface_transmitted(s, k, n, l); }
@@ -267,15 +274,27 @@ fn physical_brdf(s: Surface, k: Lobes, n: vec3<f32>, v: vec3<f32>, l: vec3<f32>)
   if (s.coat > 0.0) {
     // The coat, as lighting.wgsl's brdf: what it reflects never reaches the base.
     let nc = s.coat_normal;
-    let c_dot_l = max(dot(nc, l), 0.0);
+    var lc = l;
+    var coat_energy = 1.0;
+    if (radius > 0.0) {
+      lc = sphere_direction(to_light, nc, v, radius);
+      coat_energy = sphere_energy(s.coat_roughness, radius, length(to_light));
+    }
+    let hc = normalize(v + lc);
+    let hc_dot_v = max(dot(hc, v), 0.0);
+    let c_dot_l = max(dot(nc, lc), 0.0);
     let ac = s.coat_roughness * s.coat_roughness;
-    let fc = f_schlick(h_dot_v, vec3<f32>(0.04)).x * s.coat;
-    let dc = d_ggx(max(dot(nc, h), 0.0), ac);
-    let vc = 0.25 / max(h_dot_v * h_dot_v, 1e-4);
+    let fc = f_schlick(hc_dot_v, vec3<f32>(0.04)).x * s.coat;
+    let dc = d_ggx(max(dot(nc, hc), 0.0), ac);
+    let vc = 0.25 / max(hc_dot_v * hc_dot_v, 1e-4);
     o.diffuse *= 1.0 - fc;
-    o.specular = o.specular * (1.0 - fc) + vec3<f32>(dc * vc * fc * c_dot_l);
+    o.specular = o.specular * (1.0 - fc) + vec3<f32>(dc * vc * fc * c_dot_l * coat_energy);
   }
   return o;
+}
+
+fn physical_brdf(s: Surface, k: Lobes, n: vec3<f32>, v: vec3<f32>, l: vec3<f32>) -> Shade {
+  return physical_source_brdf(s, k, n, v, l, l, 0.0);
 }
 
 // A point or spot light, as pbr.wgsl's local_light.
@@ -299,7 +318,7 @@ fn physical_local(light: LocalLight, s: Surface, k: Lobes, p: vec3<f32>, n: vec3
     // The screen's contact shadow is the surface's own past the terminator.
     if (max(k.subsurface, k.hair) <= 0.0 || dot(n, r.l) > 0.0) { radiance *= contact_shadow(light, p); }
   }
-  let b = physical_brdf(s, k, n, v, r.l);
+  let b = physical_source_brdf(s, k, n, v, r.l, light.position_range.xyz - p, light.source.x);
   o.diffuse = b.diffuse * radiance;
   o.specular = b.specular * radiance;
   if (any(b.through > vec3<f32>(0.0))) {

@@ -7,6 +7,99 @@ use og_render::{ParticleAlign, SheetMode, SpriteSheet};
 // Particles.
 // ---------------------------------------------------------------------------
 
+/// A finite light source must not bleach the smoke crossing its centre.
+/// Exercise both point and spot sources through the public renderer, with
+/// the same particles and intensity: only the source radius changes.
+#[test]
+#[ignore = "requires GPU"]
+fn a_source_radius_keeps_nearby_lit_smoke_from_burning_white() {
+    let desc = RenderDesc {
+        width: 640,
+        height: 360,
+        ..small()
+    };
+    for spot in [false, true] {
+        let scene = |radius| {
+            let mut scene = RenderScene::new();
+            scene.frame.camera = Camera {
+                position: Vec3::new(0.0, 0.0, 0.7),
+                target: Vec3::ZERO,
+                ..Default::default()
+            };
+            scene.lighting.environment.background = Background::Color(Vec3::ZERO);
+            scene.lighting.environment.intensity = 0.0;
+            scene.lighting.light.intensity = 0.0;
+            // A little ambient fill keeps the smoke's unlit outline visible.
+            scene.lighting.hemisphere = ([0.06; 3], [0.06; 3], 0.5);
+            let texture = fx::smoke_texture(&mut scene);
+            let emitter = scene.add_emitter(ParticleEmitter {
+                max_particles: 1,
+                shape: EmitterShape::Point,
+                rate: 0.0,
+                bursts: vec![og_render::Burst {
+                    time: 0.0,
+                    count: 1,
+                    cycles: 1,
+                    interval: 0.0,
+                }],
+                lifetime: [10.0; 2],
+                speed: [0.0; 2],
+                gravity: Vec3::ZERO,
+                size: [1.4; 2],
+                size_over_life: og_render::Curve::constant(1.0),
+                texture: Some(texture),
+                blend: og_render::ParticleBlend::Alpha,
+                lit: true,
+                ..Default::default()
+            });
+            scene
+                .effects
+                .particles
+                .push(ParticleSystem::new(1, emitter, Mat4::IDENTITY, 7, 0));
+            scene.lighting.lights.push(og_render::Light {
+                position: Vec3::new(0.0, 0.0, 0.03),
+                intensity: 2.0,
+                color: Vec3::new(1.0, 0.35, 0.08),
+                radius,
+                kind: if spot {
+                    og_render::LightKind::Spot {
+                        direction: Vec3::NEG_Z,
+                        angle_degrees: 80.0,
+                        penumbra: 0.1,
+                    }
+                } else {
+                    og_render::LightKind::Point
+                },
+                ..Default::default()
+            });
+            scene
+        };
+        let capture = |radius| run(&desc, &mut scene(radius), 2, |s, _| fx::tick_all(s, 1)).0;
+        let before = capture(0.0);
+        let after = capture(0.75);
+        save(&format!("source-radius-{spot}-point"), &before);
+        save(&format!("source-radius-{spot}-sphere"), &after);
+        let centre = |image: &RgbaImage| region(image, (312, 172, 328, 188));
+        println!(
+            "spot={spot}: centre {} -> {}",
+            centre(&before),
+            centre(&after)
+        );
+        assert!(
+            centre(&before) > 180.0,
+            "punctual control must reproduce the hot spot"
+        );
+        assert!(
+            centre(&after) > 5.0,
+            "finite source must still light the smoke"
+        );
+        assert!(
+            centre(&after) < centre(&before) * 0.7,
+            "source radius did not bound illumination"
+        );
+    }
+}
+
 /// The 600-tick determinism run for one simulation path: two identical
 /// runs give byte-identical frames, and jumping straight to tick 600 (a
 /// replay of the last lifetime) gives the same frame as stepping every tick.

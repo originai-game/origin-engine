@@ -486,5 +486,5 @@ fn local_light(light: LocalLight, s: Surface, p: vec3<f32>, n: vec3<f32>, v: vec
   if (EFFECTS && OG_TOON && material.toon.x > 0.5) {
     return toon_light(s, n, v, r.l, shadow) * r.radiance;
   }
-  return brdf(s, n, v, r.l) * r.radiance * shadow;
+  return source_brdf(s, n, v, r.l, light.position_range.xyz - p, light.source.x) * r.radiance * shadow;
 }

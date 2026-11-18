@@ -1388,6 +1388,12 @@
           "tunable": true
         },
         {
+          "name": "radius",
+          "column": "f32",
+          "default": 0,
+          "tunable": true
+        },
+        {
           "name": "castShadow",
           "column": "bool",
           "default": false
@@ -1424,6 +1430,12 @@
           "name": "distance",
           "column": "f32",
           "default": 10,
+          "tunable": true
+        },
+        {
+          "name": "radius",
+          "column": "f32",
+          "default": 0,
           "tunable": true
         },
         {

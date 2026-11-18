@@ -224,6 +224,7 @@ pub fn point_spot_lights() -> RenderScene {
             color: Vec3::new(1.0, 0.95, 0.85),
             intensity: 90.0,
             range: 20.0,
+            radius: 0.0,
             cast_shadows: true,
         },
         Light {
@@ -272,6 +273,7 @@ pub fn point_spot_lights() -> RenderScene {
             color: Vec3::new(0.3, 1.0, 1.0),
             intensity: 60.0,
             range: 18.0,
+            radius: 0.0,
             cast_shadows: false,
         },
     ];

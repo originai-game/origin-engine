@@ -347,6 +347,7 @@ pub fn shadow_scene(meshlets: bool) -> Result<RenderScene, String> {
         color: Vec3::new(1.0, 0.85, 0.7),
         intensity: 120.0,
         range: 25.0,
+        radius: 0.0,
         cast_shadows: true,
     });
     scene.frame.camera.position = Vec3::new(0.0, 9.0, 2.0);

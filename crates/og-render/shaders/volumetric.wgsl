@@ -258,7 +258,7 @@ fn local_in(light: LocalLight, p: vec3<f32>, dir: vec3<f32>) -> vec3<f32> {
   let kind = light.color_kind.w;
   let to_light = light.position_range.xyz - p;
   let d2 = max(dot(to_light, to_light), 1e-4);
-  var atten = range_window(light, d2) / d2;
+  var atten = local_falloff(light, d2);
   let l = to_light * inverseSqrt(d2);
   if (kind < -0.5) {
     // A rect light as a small panel: its area, facing p.
