@@ -7,26 +7,14 @@ pub fn og_world_has(world: u32, entity_id: f64, comp: String) -> bool {
         return false;
     };
     let Ok(eng) = engine(world) else { return false };
-    if running(world).is_some() {
-        // Inside a system: answered from the system's own views.
-        let st = eng.state.borrow();
-        let Some(id) = st.names_by_id.iter().position(|n| *n == comp) else {
-            return false;
-        };
-        return HANDLES.with(|t| {
-            let t = t.borrow();
-            let has = |(start, n): (u32, u32)| {
-                t.view_types[start as usize..(start + n) as usize].contains(&(id as u32))
-            };
-            t.views.items.iter().any(|(owner, rec)| {
-                *owner == world && has(rec.types) && {
-                    // SAFETY: the views are live while the system runs.
-                    let ents =
-                        unsafe { std::slice::from_raw_parts(rec.entities, rec.count as usize) };
-                    ents.contains(&e)
-                }
-            })
-        });
+    if let Some(f) = running(world) {
+        // Inside a system or a hook: the entity's archetype, as world.get
+        // reads it, whatever the caller's query holds (a hook has none).
+        // SAFETY: the frame is published while its system runs.
+        let ctx = unsafe { f.ctx() };
+        return ctx
+            .id_by_name(&comp)
+            .is_ok_and(|id| ctx.components_of(e).is_ok_and(|c| c.contains(&id)));
     }
     let Ok(w) = eng.world() else { return false };
     match w.id_by_name(&comp) {

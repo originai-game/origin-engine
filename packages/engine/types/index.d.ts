@@ -1811,7 +1811,7 @@ export interface World {
    */
   alive(entity: Entity): boolean;
   /**
-   * Whether an entity has a component.
+   * Whether an entity has a component: what its archetype holds, as world.get reads it. Inside a system or hook too, whatever the caller's query declares (a hook has none); a structural change the caller made is seen once it applies, when the caller returns.
    *
    * @param entity The entity.
    * @param component The component token.

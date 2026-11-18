@@ -128,7 +128,7 @@ fn alive {
 
 #### `World.has`
 
-Whether an entity has a component.
+Whether an entity has a component: what its archetype holds, as world.get reads it. Inside a system or hook too, whatever the caller's query declares (a hook has none); a structural change the caller made is seen once it applies, when the caller returns.
 
 ```ts
 World.has<C extends AnyComponent>(entity: Entity, component: C): boolean
@@ -145,7 +145,7 @@ Binding symbol `og_world_has` · publish builds: kept
 
 ```ogt
 fn has {
-  doc "Whether an entity has a component."
+  doc "Whether an entity has a component: what its archetype holds, as world.get reads it. Inside a system or hook too, whatever the caller's query declares (a hook has none); a structural change the caller made is seen once it applies, when the caller returns."
   generic C AnyComponent
   param entity Entity "The entity."
   param component C "The component token."
