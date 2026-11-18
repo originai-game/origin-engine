@@ -18,10 +18,10 @@ use serde_json::Value;
 /// indents and markers, and the block margins (`margin: 0` resets them).
 /// Headings and small text inherit their family's face and line height:
 /// a `font` shorthand here would reset an author's inherited typography.
-/// A `<button>` centres its label, as HTML's sheet has it, so it does not
-/// inherit its parent's `text-align`, and a figure on it (a cost) takes the
-/// plate's ink: `--figure-ink` is the button's colour inside it, under any
-/// style's own rule for a button. A `<menu>` is a menu (its buttons
+/// A `<button>` centres its label and gives its descendants the button
+/// type role's weight, when supplied by the style. A figure on it (a cost)
+/// takes the plate's ink: `--figure-ink` is the button's colour inside it,
+/// under any style's own rule for a button. A `<menu>` is a menu (its buttons
 /// are menu items): each item spans the menu, so its items are as wide as
 /// each other, with their labels at the start, as a desktop's and a game's
 /// menus are. Emphasis marks take their side from the content language
@@ -46,7 +46,7 @@ h5 { font-size: var(--type-sm-size); font-weight: var(--type-sm-weight); margin-
 h6 { font-size: var(--type-xs-size); font-weight: var(--type-xs-weight); margin-block: 2.33em; }
 small { font-size: var(--type-sm-size); }
 iframe { overflow: clip; }
-button { text-align: center; --figure-ink: currentColor; }
+button { text-align: center; font-weight: var(--type-button-weight, inherit); --figure-ink: currentColor; }
 menu > button { width: stretch; text-align: start; }
 table { display: table; }
 caption { display: table-caption; text-align: center; }

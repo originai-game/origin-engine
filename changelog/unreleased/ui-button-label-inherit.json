@@ -1,0 +1,8 @@
+{
+  "fixed": [
+    {
+      "member": "ui",
+      "summary": "Text inside content buttons inherits the button type role's label weight, just like a plain button label; explicit button and descendant font weights still override the default."
+    }
+  ]
+}

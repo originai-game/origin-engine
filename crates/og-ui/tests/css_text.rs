@@ -71,6 +71,36 @@ fn html_type_defaults_preserve_inherited_typography() {
 }
 
 #[test]
+fn button_descendants_inherit_its_label_weight_unless_overridden() {
+    let d = doc(
+        r#"<button id="Plain">Plain</button>
+<button><og-icon name="lock"/><span id="Nested">Nested</span></button>
+<button><span id="Regular">Regular</span></button>
+<button id="Light"><og-icon name="lock"/><span id="Inherited">Inherited</span></button>"#,
+        "#Root { display: flex; flex-direction: column; align-items: start; gap: 12px; } #Regular, #Light { font-weight: 400; }",
+    );
+    let weight = |id| {
+        let draws = synthesised(&d, id);
+        assert!(!draws.is_empty(), "{id} draws");
+        draws[0].0
+    };
+    assert!(
+        weight("Plain") > weight("Regular"),
+        "the button label is heavier than body text"
+    );
+    assert_eq!(
+        weight("Nested"),
+        weight("Plain"),
+        "an unstyled span takes its button's label weight"
+    );
+    assert_eq!(
+        weight("Inherited"),
+        weight("Regular"),
+        "an authored button weight inherits too"
+    );
+}
+
+#[test]
 fn scrolling_overflow_moves_retained_text_but_not_fitting_text() {
     let mut d = doc(
         "<p id=\"Long\">A deliberately long song title for scrolling</p><p id=\"Short\">Hi</p>",
