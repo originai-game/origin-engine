@@ -325,6 +325,8 @@ test("RacingLapHud: the place over the field, the lap and the places gained, bla
     for (const want of ["3", "/8", "lap", "2", "/ 3", "up 2 places", "1:24.618", "1:57.790", "1:58.204", "sector 2", "−0.412"]) expect(all).toContain(want);
   });
   run(member("lap-hud", "last"), (e) => expect(texts(e)).toContain("down 3 places"));
+  run(member("lap-hud", "default", { gained: 1 }), (e) => expect(texts(e)).toContain("up 1 place"));
+  run(member("lap-hud", "default", { gained: -1 }), (e) => expect(texts(e)).toContain("down 1 place"));
   run(member("lap-hud", "grid"), (e) => {
     expect(texts(e).filter((x) => x === "–:––.–––").length).toBe(3);
     expect(texts(e).some((x) => /places?$/.test(x))).toBeFalse();

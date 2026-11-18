@@ -41,7 +41,7 @@
         <span class="caption">{finalLap ? t("racing.lap.finalLap") : t("racing.lap.lap")}</span>
         <span class="now">{lap > 0 ? formatNumber(lap) : t("racing.lap.pending")}</span>{#if laps > 0}<span class="total">{t("racing.lap.ofSpaced", { total: laps })}</span>{/if}
       </div>{/if}
-      {#if gained != 0}<div part="RacingLapHud.gained" class="gained" data-layout="row" data-trend={gained > 0 ? 'up' : 'down'}><span class="arrow"></span><span class="moved">{gained == 1 ? t("racing.lap.upOne") : gained > 0 ? t("racing.lap.up", { n: gained }) : gained == -1 ? t("racing.lap.downOne") : t("racing.lap.down", { n: -gained })}</span></div>{/if}
+      {#if gained != 0}<div part="RacingLapHud.gained" class="gained" data-layout="row" data-trend={gained > 0 ? 'up' : 'down'}><span class="arrow"></span><span class="moved">{gained > 0 ? t("racing.lap.up", { n: gained }) : t("racing.lap.down", { n: -gained })}</span></div>{/if}
     </div>
   </div>
   <div part="RacingLapHud.times" id="Times" role="list" aria-label={t("racing.lap.times")}>

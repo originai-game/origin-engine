@@ -1,0 +1,10 @@
+{
+  "breaking": [
+    {
+      "member": "RacingLapHud",
+      "change": "The places gained are named by one plural string each: racing.lap.up and racing.lap.down are now ICU plurals ({n, plural, one {Up # place} other {Up # places}}), and the racing.lap.upOne and racing.lap.downOne strings are removed.",
+      "fix": "A game that overrode racing.lap.upOne or racing.lap.downOne puts its one-place wording into the one branch of its racing.lap.up or racing.lap.down plural instead.",
+      "find": ["racing.lap.upOne", "racing.lap.downOne"]
+    }
+  ]
+}
