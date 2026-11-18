@@ -326,40 +326,125 @@ pub(crate) fn simplify_attributes(
         1.0,
         1.0,
     ];
-    let mut locked = vec![false; v.len()];
+    let mut locked = vec![0u8; v.len()];
     if !locks.is_empty() {
-        locked.copy_from_slice(locks);
+        for (flag, &lock) in locked.iter_mut().zip(locks) {
+            *flag = u8::from(lock);
+        }
     }
-    // Corners at one position that deform differently stay separate. The
-    // caller may also lock branch boundaries or authored foliage seams.
+    // Protect UV wedges so meshoptimizer collapses both sides together;
+    // unlike a lock this still allows simplification along the seam.
+    // Deformation discontinuities must remain immovable.
     let mut keys = std::collections::BTreeMap::new();
-    let mut split = std::collections::BTreeSet::new();
+    let mut split = std::collections::BTreeMap::new();
     for &i in idx {
         let x = &v[i as usize];
         let p = x.p.map(|a| (a + 0.0).to_bits());
-        if *keys.entry(p).or_insert(x.key) != x.key {
-            split.insert(p);
+        let identity = (x.key, x.uv.map(|a| (a + 0.0).to_bits()));
+        let first = *keys.entry(p).or_insert(identity);
+        if first != identity {
+            *split.entry(p).or_insert(0) |= if first.0 != identity.0 { 1 } else { 2 };
         }
     }
     for (i, x) in v.iter().enumerate() {
-        locked[i] |= split.contains(&x.p.map(|a| (a + 0.0).to_bits()));
+        locked[i] |= split
+            .get(&x.p.map(|a| (a + 0.0).to_bits()))
+            .copied()
+            .unwrap_or(0);
+    }
+    // Flat normals are rebuilt by the caller. Their duplicated corners
+    // are not additional UV wedges: share equivalent corners before
+    // meshoptimizer classifies manifold edges and paired seam edges.
+    // Sparse excludes the unused duplicates from that classification.
+    let mut corners = std::collections::BTreeMap::new();
+    let remapped: Vec<u32> = idx
+        .iter()
+        .map(|&i| {
+            let x = &v[i as usize];
+            let key = (
+                x.p.map(|a| (a + 0.0).to_bits()),
+                x.uv.map(|a| (a + 0.0).to_bits()),
+                x.c.map(|a| (a + 0.0).to_bits()),
+                if normal_weight == 0.0 {
+                    [0; 3]
+                } else {
+                    x.n.map(|a| (a + 0.0).to_bits())
+                },
+                x.key,
+            );
+            let first = *corners.entry(key).or_insert(i);
+            locked[first as usize] |= locked[i as usize];
+            first
+        })
+        .collect();
+    // LockBorder classifies simple border loops upstream. Generated meshes
+    // also contain non-manifold junctions; permissive classification can
+    // treat these as complex/interior vertices. Preserve their boundaries
+    // rather than letting an ambiguous wedge collapse open a surface.
+    if options.contains(meshopt::SimplifyOptions::LockBorder) {
+        let mut edges = std::collections::BTreeMap::new();
+        for tri in remapped.as_chunks::<3>().0 {
+            let p = tri.map(|i| v[i as usize].p.map(|a| (a + 0.0).to_bits()));
+            for k in 0..3 {
+                let mut edge = [p[k], p[(k + 1) % 3]];
+                let forward = edge[0] <= edge[1];
+                edge.sort();
+                let entry = edges.entry(edge).or_insert((0u32, 0i32));
+                entry.0 += 1;
+                entry.1 += if forward { 1 } else { -1 };
+            }
+        }
+        let boundary: std::collections::BTreeSet<_> = edges
+            .into_iter()
+            .filter(|(_, (count, balance))| *count != 2 || *balance != 0)
+            .flat_map(|(edge, _)| edge)
+            .collect();
+        // Keep the whole incident fan. Locking just the junction allows
+        // an adjacent manifold corner to collapse into it and delete one
+        // side of an ambiguous edge (meshoptimizer's link test assumes a
+        // manifold neighbourhood).
+        let mut protected = boundary.clone();
+        for tri in remapped.as_chunks::<3>().0 {
+            let p = tri.map(|i| v[i as usize].p.map(|a| (a + 0.0).to_bits()));
+            if p.iter().any(|p| boundary.contains(p)) {
+                protected.extend(p);
+            }
+        }
+        for (i, vertex) in v.iter().enumerate() {
+            if protected.contains(&vertex.p.map(|a| (a + 0.0).to_bits())) {
+                locked[i] |= 1;
+            }
+        }
     }
     let adapter =
         meshopt::VertexDataAdapter::new(bytemuck::cast_slice(v), std::mem::size_of::<FVertex>(), 0)
             .expect("positions lead the vertex");
     let mut achieved_error = 0.0;
-    let indices = meshopt::simplify_with_attributes_and_locks(
-        idx,
-        &adapter,
-        bytemuck::cast_slice(&attributes),
-        &weights,
-        std::mem::size_of::<[f32; 9]>(),
-        &locked,
-        target,
-        error,
-        options | meshopt::SimplifyOptions::Permissive,
-        Some(&mut achieved_error),
-    );
+    let mut indices = vec![0; idx.len()];
+    // SAFETY: output has room for every input index; positions, attributes
+    // and byte flags have one entry per vertex. The Rust wrapper accepts
+    // bool locks only and cannot express meshopt_SimplifyVertex_Protect (2).
+    let count = unsafe {
+        meshopt::ffi::meshopt_simplifyWithAttributes(
+            indices.as_mut_ptr(),
+            remapped.as_ptr(),
+            idx.len(),
+            adapter.pos_ptr(),
+            v.len(),
+            std::mem::size_of::<FVertex>(),
+            attributes.as_ptr().cast(),
+            std::mem::size_of::<[f32; 9]>(),
+            weights.as_ptr(),
+            weights.len(),
+            locked.as_ptr(),
+            target,
+            error,
+            (options | meshopt::SimplifyOptions::Permissive | meshopt::SimplifyOptions::Sparse)
+                .bits(),
+            &mut achieved_error,
+        )
+    };
+    indices.truncate(count);
     (indices, achieved_error)
 }
 
