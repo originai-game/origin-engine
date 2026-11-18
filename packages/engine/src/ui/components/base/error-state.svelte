@@ -42,5 +42,4 @@
 .code { align-self: center; inline-size: fit-content; margin: var(--space-xs) 0 0; max-inline-size: 100%; overflow-wrap: anywhere; --badge-radius: var(--radius-control); }
 .actions { justify-content: center; }
 .actions button { min-block-size: var(--touch-target); max-inline-size: 100%; white-space: normal; }
-.retry { font-weight: var(--headline-weight); }
 </style>
