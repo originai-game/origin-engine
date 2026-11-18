@@ -3,12 +3,14 @@
 //! it has set, and on a hazy afternoon; clouds; wet ground with puddles,
 //! lying snow and a lightning strike; a canopy keeping the snow and the
 //! rain off the ground under it; the aurora on a clear night, and in a
-//! substorm behind broken cloud.
+//! substorm behind broken cloud; a moonlit night at full and half moon,
+//! and without one.
 
 use crate::atmo_scenes::{colonnade, colonnade_camera};
-use glam::{Mat4, Quat, Vec3};
+use crate::kit;
+use glam::{Mat4, Quat, Vec2, Vec3};
 use og_render::{
-    Aurora, Background, Bloom, Clouds, DirectionalLight, Environment, Exposure, Fog,
+    Aurora, Background, Bloom, Camera, Clouds, DirectionalLight, Environment, Exposure, Fog,
     PhysicalAtmosphere, ProceduralSky, RenderScene, StandardMaterial, SurfaceWeather, day_night,
     shapes,
 };
@@ -19,6 +21,9 @@ pub const SKY_SCENES: &[&str] = &[
     "sky-physical-sunset",
     "sky-physical-twilight",
     "sky-physical-hazy",
+    "sky-physical-moon-full",
+    "sky-physical-moon-half",
+    "sky-physical-moon-none",
     "clouds-fair",
     "clouds-overcast",
     "clouds-sunset",
@@ -399,6 +404,41 @@ fn auroral(aurora: Aurora) -> RenderScene {
     scene
 }
 
+/// `sky-physical-moon-*`: grass out to the kit's hills on a clear night
+/// under the physical sky, the sun 28° below the horizon and a moon of
+/// `size` degrees (0: none) at `phase` 28° up opposite it, a little right
+/// of the camera's view along -z, tilted 14° up so the hills lie low in
+/// the frame, opened 1.5 stops for the night (more makes a full moon's sky
+/// read as evening). A new moon gives no light. The moon lights the land and
+/// its light scatters in the air as the sun's does (Jensen et al. 2001):
+/// a dim blue sky, brightest round the moon, against the hills' line.
+pub fn moon_sky_scene(size: f32, phase: f32) -> RenderScene {
+    let mut scene = RenderScene::new();
+    let grass = kit::surface_tinted(&mut scene, "grass", [0.86, 1.0, 0.72]);
+    let ground = scene.add_mesh(kit::slab(Vec2::splat(-260.0), Vec2::splat(260.0), 0.0, 7.0));
+    scene.add_instance(ground, grass, Mat4::IDENTITY);
+    kit::hills(&mut scene, None);
+    let (elevation, bearing) = (28f32.to_radians(), 12f32.to_radians());
+    let moon = Vec3::new(
+        bearing.sin() * elevation.cos(),
+        elevation.sin(),
+        -bearing.cos() * elevation.cos(),
+    );
+    let look = og_render::day_night_under(-moon)
+        .with_moon(size, phase)
+        .with_atmosphere(&PhysicalAtmosphere::EARTH);
+    physical_look(&mut scene, look);
+    let eye = Vec3::new(0.0, 1.7, 0.0);
+    scene.frame.camera = Camera {
+        position: eye,
+        target: eye + Vec3::new(0.0, 40.0 * 14f32.to_radians().tan(), -40.0),
+        far: 3000.0,
+        exposure: Exposure::linear(0.8),
+        ..Default::default()
+    };
+    exposed(scene, 1.5)
+}
+
 /// The scene called `name` of [`SKY_SCENES`].
 pub fn sky_scene(name: &str) -> RenderScene {
     let earth = PhysicalAtmosphere::EARTH;
@@ -539,6 +579,9 @@ pub fn sky_scene(name: &str) -> RenderScene {
             },
         ),
         "sky-physical-noon" => physical_sky_scene(12.5, earth, false),
+        "sky-physical-moon-full" => moon_sky_scene(1.6, 0.5),
+        "sky-physical-moon-half" => moon_sky_scene(1.6, 0.25),
+        "sky-physical-moon-none" => moon_sky_scene(0.0, 0.0),
         // A camera opens up for the low light as an eye adapts: half a stop
         // into the setting sun (more bleaches its glow yellow-white), 3.5
         // in twilight (the sky's light is ten stops below noon: opened

@@ -216,6 +216,9 @@ pub const SCENES: &[&str] = &[
     "sky-physical-sunset",
     "sky-physical-twilight",
     "sky-physical-hazy",
+    "sky-physical-moon-full",
+    "sky-physical-moon-half",
+    "sky-physical-moon-none",
     "clouds-fair",
     "clouds-overcast",
     "clouds-sunset",
@@ -1386,11 +1389,15 @@ pub fn build(name: &str) -> Result<GfxScene, String> {
             Ok(())
         },
         // Weather presets over the colonnade: particles, fog, dimmed light.
-        // R4: the physical sky at noon, sunset, twilight and in haze.
+        // R4: the physical sky at noon, sunset, twilight and in haze, and
+        // by night under a full, a half and no moon.
         "sky-physical-noon"
         | "sky-physical-sunset"
         | "sky-physical-twilight"
         | "sky-physical-hazy"
+        | "sky-physical-moon-full"
+        | "sky-physical-moon-half"
+        | "sky-physical-moon-none"
         | "clouds-fair"
         | "clouds-overcast"
         | "clouds-sunset"
