@@ -49,8 +49,8 @@ fn unorm16(v: f32, lo: f32, scale: f32) -> u16 {
     }
 }
 
-struct Tangents<'a> {
-    v: &'a mut [FVertex],
+pub(super) struct Tangents<'a> {
+    pub(super) v: &'a mut [FVertex],
 }
 
 impl mikktspace::Geometry for Tangents<'_> {
@@ -80,7 +80,7 @@ impl mikktspace::Geometry for Tangents<'_> {
 
 /// Welds identical vertices; `sources` (the source vertex of each input
 /// vertex) follows the vertices.
-fn weld<T: bytemuck::Pod>(
+pub(super) fn weld<T: bytemuck::Pod>(
     vertices: &[T],
     indices: &[u32],
     sources: &mut Vec<u32>,
@@ -395,6 +395,7 @@ pub(crate) fn encode_vertices(
 pub(crate) struct CookedPrimitive {
     pub(super) row: PrimitiveRow,
     pub(super) lods: Vec<LodRow>,
+    pub(super) baked_levels: Vec<(usize, og_bake::transfer::Pages)>,
     /// Every level's clusters, `index_first` relative to the primitive's
     /// cluster indices; each [`LodRow`] names its range of them (relative here,
     /// made absolute when the blob's table is written).
@@ -791,7 +792,7 @@ pub(crate) fn cook_primitive(
         }
     }
     let scale = hi - lo;
-    let uvscale = [uvhi[0] - uvlo[0], uvhi[1] - uvlo[1]];
+    let mut uvscale = [uvhi[0] - uvlo[0], uvhi[1] - uvlo[1]];
     let mut attributes = attr::NORMAL;
     if uvs.is_some() {
         attributes |= attr::UV;
@@ -823,7 +824,9 @@ pub(crate) fn cook_primitive(
             c: if attributes & attr::COLOR != 0 {
                 v.c.map(|c| (c.clamp(0.0, 1.0) * 255.0).round() as u8)
             } else {
-                [0; 4]
+                // A recharted level may add a colour stream later. Its
+                // white vertices must not turn uncoloured LOD0 black.
+                [255; 4]
             },
             t: if attributes & attr::TANGENT != 0 {
                 let o = oct_encode(Vec3::new(v.t[0], v.t[1], v.t[2]));
@@ -857,6 +860,8 @@ pub(crate) fn cook_primitive(
     lod0 = meshopt::optimize_vertex_cache(&lod0, q.len());
     meshopt::optimize_overdraw_in_place(&mut lod0, &adapter, opts.overdraw_threshold);
     let mut levels: Vec<(Vec<u32>, f32)> = vec![(lod0.clone(), 0.0)];
+    let mut baked_levels = Vec::new();
+    let mut texture_errors = std::collections::BTreeMap::new();
     if given.len() > 1 {
         // MSFT_lod: the glTF's own levels, kept as they are (and leaf
         // cards' thinned ones).
@@ -954,6 +959,82 @@ pub(crate) fn cook_primitive(
                     refacet = flat;
                 }
             }
+            // Chart topology must not set a geometric LOD's cost. When
+            // preserving it misses the target, this level gets new UVs
+            // and its own surface transferred directly from LOD0.
+            let bakeable = uvs.is_some()
+                && !coarsest
+                && og_render_data::gltf::physical_extensions(&src.doc, &prim.material(), |_, _| 0)
+                    .present
+                    == 0
+                && src
+                    .json
+                    .pointer("/extensions/KHR_materials_variants")
+                    .is_none()
+                && !opts
+                    .conform
+                    .as_ref()
+                    .is_some_and(|c| c.bakes() && c.applies(src));
+            if simplified.len() > target && bakeable {
+                let vertices = lod_vertices.as_ref().expect("target miss tried attributes");
+                let reduced = super::lod_bake::simplify_geometry(
+                    vertices,
+                    &lod0,
+                    target,
+                    opts.lod_max_error,
+                    foliage_locked.as_deref().unwrap_or(&[]),
+                    if flat { 0.0 } else { 0.5 },
+                );
+                if reduced.len() >= 3 && reduced.len() <= target {
+                    let measured = level_error(&pos, &lod0, &reduced);
+                    let baked = super::lod_bake::bake(
+                        src,
+                        prim,
+                        vertices,
+                        &lod0,
+                        &reduced,
+                        measured,
+                        levels.len(),
+                    )?;
+                    let old_lo = uvlo;
+                    let old_scale = uvscale;
+                    for a in 0..2 {
+                        uvlo[a] = uvlo[a].min(0.0);
+                        uvhi[a] = uvhi[a].max(1.0);
+                        uvscale[a] = uvhi[a] - uvlo[a];
+                    }
+                    if uvlo != old_lo || uvscale != old_scale {
+                        for vertex in &mut q {
+                            for a in 0..2 {
+                                let u = old_lo[a] + vertex.uv[a] as f32 / 65535.0 * old_scale[a];
+                                vertex.uv[a] = unorm16(u, uvlo[a], uvscale[a]);
+                            }
+                        }
+                    }
+                    let first = q.len() as u32;
+                    for (v, &source) in baked.vertices.iter().zip(&baked.sources) {
+                        let mut vertex = q[source as usize];
+                        vertex.uv = [0, 1].map(|a| unorm16(v.uv[a], uvlo[a], uvscale[a]));
+                        vertex.c = [255; 4];
+                        vertex.n = oct_encode(Vec3::from(v.n));
+                        let tangent = oct_encode(Vec3::new(v.t[0], v.t[1], v.t[2]));
+                        vertex.t = [
+                            tangent[0],
+                            tangent[1],
+                            if v.t[3] < 0.0 { -32767 } else { 32767 },
+                            0,
+                        ];
+                        q.push(vertex);
+                        sources.push(sources[source as usize]);
+                    }
+                    simplified = baked.indices.iter().map(|&i| first + i).collect();
+                    texture_errors.insert(levels.len(), baked.texel);
+                    baked_levels.push((levels.len(), baked.pages));
+                    attributes |= attr::UV | attr::TANGENT | attr::COLOR;
+                    error = measured;
+                    refacet = false;
+                }
+            }
             if stalled(&simplified) {
                 break;
             }
@@ -1000,7 +1081,8 @@ pub(crate) fn cook_primitive(
         l.1 = match thinned.get(k - 1) {
             Some(&moved) => moved,
             None => level_error(&pos_all, &lod0, &l.0),
-        };
+        }
+        .max(texture_errors.get(&k).copied().unwrap_or(0.0));
     }
     // A streaming proxy keeps only the coarsest level (and the vertices it uses).
     if coarsest && let Some((last, _)) = levels.pop() {
@@ -1059,6 +1141,7 @@ pub(crate) fn cook_primitive(
             error: *error,
             cluster_first: clusters.len() as u32,
             cluster_count: cut.len() as u32,
+            material: NONE,
         });
         clusters.extend(cut);
         all.extend_from_slice(l);
@@ -1173,6 +1256,7 @@ pub(crate) fn cook_primitive(
             ..Default::default()
         },
         lods,
+        baked_levels,
         clusters,
         vertices,
         indices: index_bytes,

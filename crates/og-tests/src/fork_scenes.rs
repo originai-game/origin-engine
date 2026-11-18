@@ -1164,6 +1164,7 @@ pub fn viaduct_scene(visible: bool) -> RenderScene {
             terrain: 0,
             mesh,
             material,
+            lod_materials: [None; 2],
             scatter: grown(scatter),
             cast_shadows: true,
             impostor: None,

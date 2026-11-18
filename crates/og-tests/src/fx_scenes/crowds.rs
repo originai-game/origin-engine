@@ -285,6 +285,7 @@ pub fn crowd_scene(count: u32) -> RenderScene {
         parts: vec![og_render::CrowdPart {
             levels,
             material: cloth,
+            level_materials: Vec::new(),
         }],
         errors: vec![0.0, 0.02, 0.06],
         center: Vec3::new(0.0, 0.9, 0.0),
@@ -397,6 +398,7 @@ pub fn crowd_lods_scene() -> RenderScene {
                     .map(|(levels, material)| og_render::CrowdPart {
                         levels: levels.clone(),
                         material,
+                        level_materials: Vec::new(),
                     })
                     .collect(),
                 errors: vec![0.0, 0.02, 0.06],

@@ -16,15 +16,15 @@
 //! whose texels are as large as the step between two of those points, so a
 //! brick wall drawn at four texels a metre is its mean colour, not noise.
 //!
-//! Texels no triangle covers take their covered neighbours' values
-//! ([`crate::lightmap::dilate`]), then the pages' mean, so neither
-//! filtering nor a mip level reads a value that was never written.
+//! Texels no triangle covers copy the nearest covered texel outward,
+//! with the same donor for every map. No unused page area is filled with
+//! an unrelated mean colour or neutral normal.
 //!
 //! One thread, in a fixed order: the same input gives the same pages.
 
 use crate::bvh::Bvh;
 use crate::scene::{Image, Mesh};
-use glam::{Vec2, Vec3};
+use glam::{Mat3, Vec2, Vec3};
 
 /// An image and its box-filtered levels down to one texel.
 #[derive(Clone, Debug, PartialEq)]
@@ -110,6 +110,17 @@ pub struct Surface {
     pub metallic_roughness_map: Option<usize>,
     pub emissive: Vec3,
     pub emissive_map: Option<usize>,
+    /// Tangent-space normal and glTF's normal scale.
+    pub normal_map: Option<usize>,
+    pub normal_scale: f32,
+    /// Occlusion is the red channel, mixed with white by its strength.
+    pub occlusion_map: Option<usize>,
+    pub occlusion_strength: f32,
+    /// Base colour factor's alpha.
+    pub opacity: f32,
+    /// Affine UV transforms: base, metallic/roughness, normal, emissive,
+    /// occlusion. Each map keeps its own KHR_texture_transform.
+    pub uv_transforms: [Mat3; 5],
 }
 
 impl Default for Surface {
@@ -122,6 +133,12 @@ impl Default for Surface {
             metallic_roughness_map: None,
             emissive: Vec3::ZERO,
             emissive_map: None,
+            normal_map: None,
+            normal_scale: 1.0,
+            occlusion_map: None,
+            occlusion_strength: 1.0,
+            opacity: 1.0,
+            uv_transforms: [Mat3::IDENTITY; 5],
         }
     }
 }
@@ -141,6 +158,8 @@ pub struct Source<'a> {
 pub struct Target<'a> {
     pub positions: &'a [Vec3],
     pub normals: &'a [Vec3],
+    /// MikkTSpace tangents for the new UVs (empty derives face frames).
+    pub tangents: &'a [glam::Vec4],
     pub uvs: &'a [Vec2],
     pub indices: &'a [u32],
 }
@@ -162,18 +181,23 @@ pub struct TransferSettings {
 }
 
 /// The pages: `width × height` texels each, rows top to bottom. A texel's
-/// alpha is 1 where a triangle covers it, 0.5 where it was filled from its
-/// neighbours and 0.25 where from the pages' mean.
+/// alpha is 1 where a triangle covers it, 0.5 within eight dilation steps
+/// and 0.25 farther into the unused page area.
 #[derive(Clone, Debug, PartialEq)]
 pub struct Pages {
     pub width: u32,
     pub height: u32,
     /// Linear base colour.
     pub base: Vec<[f32; 4]>,
-    /// Roughness in red, metalness in green.
+    /// Roughness in red, metalness in green, occlusion in blue.
     pub surface: Vec<[f32; 4]>,
     /// Linear emitted radiance.
     pub emissive: Vec<[f32; 4]>,
+    /// Tangent-space normal, encoded as 0..1 RGB.
+    pub normal: Vec<[f32; 4]>,
+    /// Opacity in red. Kept separately because page alpha records coverage,
+    /// including dilation, rather than material transparency.
+    pub opacity: Vec<[f32; 4]>,
     /// How many texels a triangle covers.
     pub covered: usize,
 }
@@ -185,6 +209,32 @@ struct Shown {
     roughness: f32,
     metallic: f32,
     emissive: Vec3,
+    normal: Vec3,
+    occlusion: f32,
+    opacity: f32,
+}
+
+/// A triangle's UV frame, orthonormal at the shading normal. Mirrored UVs
+/// keep the bitangent sign; degenerate UVs use a geometric frame.
+fn frame(p: [Vec3; 3], uv: [Vec2; 3], n: Vec3, tangent: glam::Vec4) -> Mat3 {
+    if tangent.truncate().length_squared() > 1e-20 {
+        let t = tangent.truncate();
+        let t = (t - n * n.dot(t)).normalize_or(n.any_orthonormal_vector());
+        return Mat3::from_cols(t, n.cross(t) * tangent.w.signum(), n);
+    }
+    // The engine's MikkTSpace convention has its bitangent up the image.
+    let uv = uv.map(|u| Vec2::new(u.x, -u.y));
+    let (e1, e2) = (p[1] - p[0], p[2] - p[0]);
+    let (u1, u2) = (uv[1] - uv[0], uv[2] - uv[0]);
+    let det = u1.perp_dot(u2);
+    let (t, b) = if det.abs() > 1e-20 {
+        ((e1 * u2.y - e2 * u1.y) / det, (e2 * u1.x - e1 * u2.x) / det)
+    } else {
+        let t = n.any_orthonormal_vector();
+        (t, n.cross(t))
+    };
+    let t = (t - n * n.dot(t)).normalize_or(n.any_orthonormal_vector());
+    Mat3::from_cols(t, n.cross(t) * n.cross(t).dot(b).signum(), n)
 }
 
 struct Reader<'a> {
@@ -270,26 +320,60 @@ impl Reader<'_> {
         } else {
             0.0
         };
-        let read = |map: Option<usize>| -> Option<[f32; 4]> {
+        let read = |map: Option<usize>, slot: usize| -> Option<[f32; 4]> {
             let image = self.source.images.get(map?)?;
+            let transform = surface.uv_transforms[slot];
+            let rate = rate * transform.determinant().abs().sqrt();
             let level = (rate * image.side() as f32 * self.step).max(1.0).log2();
-            Some(image.sample(uv, level))
+            Some(image.sample((transform * uv.extend(1.0)).truncate(), level))
         };
+        let face = (c[1] - c[0]).cross(c[2] - c[0]).normalize_or(Vec3::Z);
+        let normal = idx
+            .iter()
+            .zip(w)
+            .map(|(&i, w)| mesh.normals.get(i).copied().unwrap_or(face) * w)
+            .sum::<Vec3>()
+            .normalize_or(face);
         let mut out = Shown {
             base: surface.base_color * color,
             roughness: surface.roughness,
             metallic: surface.metallic,
             emissive: surface.emissive,
+            normal,
+            occlusion: 1.0,
+            opacity: surface.opacity
+                * idx
+                    .iter()
+                    .zip(w)
+                    .map(|(&i, w)| mesh.opacity.get(i).copied().unwrap_or(1.0) * w)
+                    .sum::<f32>(),
         };
-        if let Some(t) = read(surface.base_map) {
+        if let Some(t) = read(surface.base_map, 0) {
             out.base *= Vec3::new(t[0], t[1], t[2]);
+            out.opacity *= t[3];
         }
-        if let Some(t) = read(surface.metallic_roughness_map) {
+        if let Some(t) = read(surface.metallic_roughness_map, 1) {
             out.roughness *= t[1];
             out.metallic *= t[2];
         }
+        if let Some(t) = read(surface.normal_map, 2) {
+            let mapped = Vec3::new(
+                (t[0] * 2.0 - 1.0) * surface.normal_scale,
+                (t[1] * 2.0 - 1.0) * surface.normal_scale,
+                t[2] * 2.0 - 1.0,
+            );
+            let tangent = idx
+                .iter()
+                .zip(w)
+                .map(|(&i, w)| mesh.tangents.get(i).copied().unwrap_or(glam::Vec4::ZERO) * w)
+                .sum();
+            out.normal = (frame(*c, uvs, normal, tangent) * mapped).normalize_or(normal);
+        }
+        if let Some(t) = read(surface.occlusion_map, 4) {
+            out.occlusion = 1.0 + surface.occlusion_strength * (t[0] - 1.0);
+        }
         if out.emissive != Vec3::ZERO
-            && let Some(t) = read(surface.emissive_map)
+            && let Some(t) = read(surface.emissive_map, 3)
         {
             out.emissive *= Vec3::new(t[0], t[1], t[2]);
         }
@@ -318,12 +402,16 @@ pub fn transfer(source: Source, target: Target, settings: &TransferSettings) -> 
         t.roughness += s.roughness;
         t.metallic += s.metallic;
         t.emissive += s.emissive;
+        t.normal += s.normal;
+        t.occlusion += s.occlusion;
+        t.opacity += s.opacity;
         counts[i] += 1;
     }
     struct Tri {
         uv: [Vec2; 3],
         p: [Vec3; 3],
         n: [Vec3; 3],
+        t: [glam::Vec4; 3],
         face: Vec3,
         area: f32,
     }
@@ -342,6 +430,7 @@ pub fn transfer(source: Source, target: Target, settings: &TransferSettings) -> 
                 uv,
                 p,
                 n: i.map(|i| target.normals.get(i).copied().unwrap_or(face)),
+                t: i.map(|i| target.tangents.get(i).copied().unwrap_or(glam::Vec4::ZERO)),
                 face,
                 area,
             })
@@ -358,7 +447,7 @@ pub fn transfer(source: Source, target: Target, settings: &TransferSettings) -> 
         if n.dot(t.face) < 0.0 {
             n = t.face;
         }
-        (p, n)
+        (p, n, t.t[0] * b.x + t.t[1] * b.y + t.t[2] * b.z)
     };
     let bounds = |t: &Tri, margin: f32| {
         let min = t.uv[0].min(t.uv[1]).min(t.uv[2]);
@@ -385,8 +474,9 @@ pub fn transfer(source: Source, target: Target, settings: &TransferSettings) -> 
                         if b.min_element() < -1e-4 {
                             continue;
                         }
-                        let (p, n) = point(t, b);
-                        if let Some(s) = reader.at(p, n) {
+                        let (p, n, tangent) = point(t, b);
+                        if let Some(mut s) = reader.at(p, n) {
+                            s.normal = frame(t.p, t.uv, n, tangent).transpose() * s.normal;
                             add(&mut sums, &mut counts, y * w + x, s);
                         }
                     }
@@ -409,8 +499,9 @@ pub fn transfer(source: Source, target: Target, settings: &TransferSettings) -> 
                     continue;
                 }
                 let centre = (t.uv[0] + t.uv[1] + t.uv[2]) / 3.0;
-                let (p, n) = point(t, bary(t, q + (centre - q) * 0.01));
-                if let Some(s) = reader.at(p, n) {
+                let (p, n, tangent) = point(t, bary(t, q + (centre - q) * 0.01));
+                if let Some(mut s) = reader.at(p, n) {
+                    s.normal = frame(t.p, t.uv, n, tangent).transpose() * s.normal;
                     add(&mut sums, &mut counts, y * w + x, s);
                 }
             }
@@ -422,9 +513,10 @@ pub fn transfer(source: Source, target: Target, settings: &TransferSettings) -> 
         base: vec![[0.0; 4]; w * h],
         surface: vec![[0.0; 4]; w * h],
         emissive: vec![[0.0; 4]; w * h],
+        normal: vec![[0.0; 4]; w * h],
+        opacity: vec![[0.0; 4]; w * h],
         covered: 0,
     };
-    let mut mean = Shown::default();
     for (i, (s, &n)) in sums.iter().zip(&counts).enumerate() {
         if n == 0 {
             continue;
@@ -432,32 +524,47 @@ pub fn transfer(source: Source, target: Target, settings: &TransferSettings) -> 
         let k = 1.0 / n as f32;
         let (b, e) = (s.base * k, s.emissive * k);
         pages.base[i] = [b.x, b.y, b.z, 1.0];
-        pages.surface[i] = [s.roughness * k, s.metallic * k, 0.0, 1.0];
+        pages.surface[i] = [s.roughness * k, s.metallic * k, s.occlusion * k, 1.0];
         pages.emissive[i] = [e.x, e.y, e.z, 1.0];
+        let normal = s.normal.normalize_or(Vec3::Z) * 0.5 + Vec3::splat(0.5);
+        pages.normal[i] = [normal.x, normal.y, normal.z, 1.0];
+        pages.opacity[i] = [s.opacity * k, 0.0, 0.0, 1.0];
         pages.covered += 1;
-        mean.base += b;
-        mean.roughness += s.roughness * k;
-        mean.metallic += s.metallic * k;
-        mean.emissive += e;
     }
-    let k = 1.0 / pages.covered.max(1) as f32;
-    let fill = [
-        [mean.base.x * k, mean.base.y * k, mean.base.z * k, 0.25],
-        [mean.roughness * k, mean.metallic * k, 0.0, 0.25],
-        [
-            mean.emissive.x * k,
-            mean.emissive.y * k,
-            mean.emissive.z * k,
-            0.25,
-        ],
-    ];
-    for (page, fill) in [&mut pages.base, &mut pages.surface, &mut pages.emissive]
-        .into_iter()
-        .zip(fill)
-    {
-        crate::lightmap::dilate(page, w, h, 8);
-        for t in page.iter_mut().filter(|t| t[3] <= 0.0) {
-            *t = fill;
+    // One multi-source flood for every map: no additional pack space and
+    // linear work even when most of the page is unused. Stable row-major
+    // seeds resolve ties identically on every host.
+    let mut distance = vec![usize::MAX; w * h];
+    let mut queue = std::collections::VecDeque::new();
+    for (i, &n) in counts.iter().enumerate() {
+        if n > 0 {
+            distance[i] = 0;
+            queue.push_back(i);
+        }
+    }
+    while let Some(i) = queue.pop_front() {
+        let (x, y) = (i % w, i / w);
+        for (dx, dy) in [(-1, 0), (1, 0), (0, -1), (0, 1)] {
+            let (xx, yy) = (x as isize + dx, y as isize + dy);
+            if xx < 0 || yy < 0 || xx >= w as isize || yy >= h as isize {
+                continue;
+            }
+            let j = yy as usize * w + xx as usize;
+            if distance[j] != usize::MAX {
+                continue;
+            }
+            distance[j] = distance[i] + 1;
+            for page in [
+                &mut pages.base,
+                &mut pages.surface,
+                &mut pages.emissive,
+                &mut pages.normal,
+                &mut pages.opacity,
+            ] {
+                page[j] = page[i];
+                page[j][3] = if distance[j] <= 8 { 0.5 } else { 0.25 };
+            }
+            queue.push_back(j);
         }
     }
     pages
@@ -502,6 +609,7 @@ mod tests {
             indices: vec![0, 1, 2, 0, 2, 3],
             material,
             lightmapped: false,
+            ..Default::default()
         }
     }
 
@@ -520,6 +628,138 @@ mod tests {
         let m = quad(0.0, 4.0, 0);
         let uvs = m.uvs.iter().map(|u| *u * side as f32).collect();
         (m.positions, m.normals, uvs, m.indices)
+    }
+
+    #[test]
+    fn recharted_pages_keep_normals_orm_opacity_and_dilate_all_maps_together() {
+        let image = |t| {
+            Mips::new(Image {
+                width: 1,
+                height: 1,
+                texels: vec![t],
+            })
+        };
+        let base = image([0.8, 0.3, 0.1, 0.6]);
+        let normal = image([0.8, 0.5, 0.9, 1.0]);
+        let orm = image([0.2, 0.6, 0.7, 1.0]);
+        let source = [quad(0.1, 4.0, 0)];
+        let surfaces = [Surface {
+            base_map: Some(0),
+            normal_map: Some(1),
+            normal_scale: 0.5,
+            metallic_roughness_map: Some(2),
+            roughness: 0.5,
+            metallic: 0.8,
+            occlusion_map: Some(2),
+            occlusion_strength: 0.75,
+            opacity: 0.5,
+            ..Default::default()
+        }];
+        let target = quad(0.0, 4.0, 0);
+        // The target UV frame is rotated 90 degrees, inside a mostly empty
+        // page. Copying encoded source normals or filling the rest with a
+        // neutral normal would both give a different answer.
+        let uv: Vec<_> = target
+            .uvs
+            .iter()
+            .map(|u| Vec2::new(14.0 + u.y * 4.0, 18.0 - u.x * 4.0))
+            .collect();
+        let pages = transfer(
+            Source {
+                meshes: &source,
+                surfaces: &surfaces,
+                images: &[&base, &normal, &orm],
+            },
+            Target {
+                positions: &target.positions,
+                normals: &target.normals,
+                tangents: &[],
+                uvs: &uv,
+                indices: &target.indices,
+            },
+            &settings(32),
+        );
+        let z = 0.8 / 0.8544004;
+        // Green points up the image in the engine's MikkTSpace frame.
+        let y = 0.3 / 0.8544004;
+        for i in 0..32 * 32 {
+            assert!((pages.base[i][0] - 0.8).abs() < 1e-5);
+            assert!((pages.opacity[i][0] - 0.3).abs() < 1e-5);
+            for (channel, expected) in [0.3, 0.56, 0.4].into_iter().enumerate() {
+                assert!((pages.surface[i][channel] - expected).abs() < 1e-5);
+            }
+            for (channel, expected) in [0.5, y * 0.5 + 0.5, z * 0.5 + 0.5].into_iter().enumerate() {
+                assert!(
+                    (pages.normal[i][channel] - expected).abs() < 1e-5,
+                    "texel {i}: {:?}",
+                    pages.normal[i]
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn transfer_uses_authored_tangents_vertex_opacity_and_each_maps_transform() {
+        let base = Mips::new(Image {
+            width: 4,
+            height: 1,
+            texels: vec![
+                [1.0, 0.0, 0.0, 0.8],
+                [1.0, 0.0, 0.0, 0.8],
+                [0.0, 0.0, 1.0, 0.8],
+                [0.0, 0.0, 1.0, 0.8],
+            ],
+        });
+        let normal = Mips::new(Image {
+            width: 1,
+            height: 1,
+            texels: vec![[0.8, 0.5, 0.9, 1.0]],
+        });
+        let mut mesh = quad(0.1, 4.0, 0);
+        mesh.opacity = vec![0.7; 4];
+        // Deliberately not the frame derived from this quad's UVs.
+        mesh.tangents = vec![glam::Vec4::new(0.0, 1.0, 0.0, 1.0); 4];
+        let mut surface = Surface {
+            base_map: Some(0),
+            normal_map: Some(1),
+            opacity: 0.5,
+            ..Default::default()
+        };
+        surface.uv_transforms[0] = Mat3::from_cols(
+            Vec3::new(0.25, 0.0, 0.0),
+            Vec3::new(0.0, 0.25, 0.0),
+            Vec3::new(0.625, 0.25, 1.0),
+        );
+        let (p, n, uv, i) = page(4);
+        let target_tangents = vec![glam::Vec4::new(1.0, 0.0, 0.0, -1.0); 4];
+        let pages = transfer(
+            Source {
+                meshes: &[mesh],
+                surfaces: &[surface],
+                images: &[&base, &normal],
+            },
+            Target {
+                positions: &p,
+                normals: &n,
+                tangents: &target_tangents,
+                uvs: &uv,
+                indices: &i,
+            },
+            &settings(4),
+        );
+        for i in 0..16 {
+            assert_eq!(&pages.base[i][..3], &[0.0, 0.0, 1.0]);
+            assert!((pages.opacity[i][0] - 0.28).abs() < 1e-5);
+            // Source tangent +Y maps red's +0.6 there; target's -Y
+            // bitangent must encode it as green -0.6, not copy red.
+            for (channel, expected) in [0.5, 0.2, 0.9].into_iter().enumerate() {
+                assert!(
+                    (pages.normal[i][channel] - expected).abs() < 1e-5,
+                    "{:?}",
+                    pages.normal[i]
+                );
+            }
+        }
     }
 
     #[test]
@@ -549,6 +789,7 @@ mod tests {
             Target {
                 positions: &p,
                 normals: &n,
+                tangents: &[],
                 uvs: &uv,
                 indices: &i,
             },
@@ -579,6 +820,7 @@ mod tests {
             Target {
                 positions: &p,
                 normals: &n,
+                tangents: &[],
                 uvs: &uv,
                 indices: &i,
             },
@@ -625,6 +867,7 @@ mod tests {
             Target {
                 positions: &p,
                 normals: &n,
+                tangents: &[],
                 uvs: &uv,
                 indices: &i,
             },
@@ -647,6 +890,7 @@ mod tests {
             Target {
                 positions: &p,
                 normals: &n,
+                tangents: &[],
                 uvs: &uv,
                 indices: &i,
             },
@@ -660,7 +904,7 @@ mod tests {
     }
 
     #[test]
-    fn texels_no_triangle_covers_take_their_neighbours_then_the_mean() {
+    fn texels_no_triangle_covers_are_dilated_through_the_unused_page() {
         // The target's page is 32 texels, its one quad on the first 4.
         let meshes = [quad(0.0, 4.0, 0)];
         let surfaces = [Surface {
@@ -679,6 +923,7 @@ mod tests {
             Target {
                 positions: &p,
                 normals: &n,
+                tangents: &[],
                 uvs: &uv,
                 indices: &i,
             },
@@ -724,6 +969,7 @@ mod tests {
             Target {
                 positions: &p,
                 normals: &n,
+                tangents: &[],
                 uvs: &uv,
                 indices: &i,
             },

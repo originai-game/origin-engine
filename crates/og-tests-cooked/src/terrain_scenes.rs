@@ -175,6 +175,7 @@ pub fn generated_scene() -> Result<RenderScene, String> {
         impostor_distance: 0.0,
         with: None,
         lods: [None; 2],
+        lod_materials: [None; 2],
     });
     scene.world.water.push(Water {
         transform: Mat4::from_translation(Vec3::new(0.0, sea, 0.0)),

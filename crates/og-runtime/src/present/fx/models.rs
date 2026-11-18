@@ -419,7 +419,8 @@ pub(crate) fn crowd_model(
     let most = og_render::MAX_CROWD_LEVELS;
     let skinned: Vec<og_render::CrowdPart> = parts
         .iter()
-        .filter_map(|&(mesh, material, _)| {
+        .enumerate()
+        .filter_map(|(part, &(mesh, material, _))| {
             let p = info.primitive(mesh);
             let coarser = skin.levels.get(p).map_or(&[][..], |l| l.as_slice());
             meshes
@@ -432,6 +433,10 @@ pub(crate) fn crowd_model(
                         .take(if lods.is_some() { most } else { 1 })
                         .collect(),
                     material,
+                    level_materials: (0..=coarser.len())
+                        .take(if lods.is_some() { most } else { 1 })
+                        .map(|k| lods.map_or(material, |l| l.material(part, k, material)))
+                        .collect(),
                 })
         })
         .collect();

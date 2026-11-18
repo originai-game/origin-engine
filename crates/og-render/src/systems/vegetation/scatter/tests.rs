@@ -108,6 +108,7 @@ fn a_models_further_part_is_placed_as_its_first() {
         terrain: 0,
         mesh,
         material,
+        lod_materials: [None; 2],
         scatter,
         cast_shadows: true,
         impostor: None,

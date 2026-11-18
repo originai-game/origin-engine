@@ -342,6 +342,7 @@ pub fn impostor_scatter_scene(impostor_distance: f32) -> RenderScene {
         terrain: 0,
         mesh: ball,
         material: white,
+        lod_materials: [None; 2],
         scatter: TerrainScatter {
             density: 0.08,
             distance: 80.0,
@@ -604,6 +605,7 @@ pub fn heath_scene(impostor_distance: f32) -> RenderScene {
         terrain: 0,
         mesh: bush,
         material,
+        lod_materials: [None; 2],
         scatter: TerrainScatter {
             density: 0.045,
             distance: 120.0,

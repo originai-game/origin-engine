@@ -358,6 +358,7 @@ fn scattered_copies_take_the_decals_and_the_weather() {
         impostor_distance: 0.0,
         with: None,
         lods: [None; 2],
+        lod_materials: [None; 2],
     });
     scene.atmosphere.fog = None;
     scene.look.post.tonemap = Tonemap::None;
@@ -482,6 +483,7 @@ fn a_turned_clearing_keeps_copies_and_grass_off_a_slab() {
                     impostor_distance: 0.0,
                     with: None,
                     lods: [None; 2],
+                    lod_materials: [None; 2],
                 });
             }
             None => scene.world.grass.push(GrassDraw {

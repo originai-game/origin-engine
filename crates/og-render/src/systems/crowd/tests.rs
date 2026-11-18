@@ -17,6 +17,7 @@ fn crowd_of(members: Vec<CrowdMember>, levels: usize) -> Crowd {
         parts: vec![CrowdPart {
             levels: (0..levels).map(MeshHandle::from_index).collect(),
             material: MaterialHandle::from_index(0),
+            level_materials: Vec::new(),
         }],
         errors: [0.0, 0.02, 0.08][..levels].to_vec(),
         center: Vec3::new(0.0, 1.0, 0.0),

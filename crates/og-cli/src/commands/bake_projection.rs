@@ -246,6 +246,7 @@ pub fn unwrap_level(level: &Level, size: u32) -> Result<Level, String> {
             texels_per_unit: tpu,
             max_size: size,
             padding,
+            ..Default::default()
         };
         let a = unwrap(std::slice::from_ref(&mesh), &settings)?;
         if a.pages == 1 && a.width <= size && a.height <= size {

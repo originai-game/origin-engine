@@ -50,6 +50,7 @@ fn scattered_copies_are_drawn_from_chunks_and_shrink_over_the_fade() {
         impostor_distance: 0.0,
         with: None,
         lods: [None; 2],
+        lod_materials: [None; 2],
     });
     scene.atmosphere.fog = None;
     scene.look.post.tonemap = Tonemap::None;
@@ -241,6 +242,7 @@ fn scatter_chunks_are_built_again_only_when_what_placed_them_changes() {
         impostor_distance: 0.0,
         with: None,
         lods: [None; 2],
+        lod_materials: [None; 2],
     });
     scene.lighting.light.cast_shadows = false;
     scene.frame.camera = Camera {
@@ -324,6 +326,7 @@ fn wind_sways_scattered_copies_downwind() {
         impostor_distance: 0.0,
         with: None,
         lods: [None; 2],
+        lod_materials: [None; 2],
     });
     scene.atmosphere.fog = None;
     scene.look.post.tonemap = Tonemap::None;

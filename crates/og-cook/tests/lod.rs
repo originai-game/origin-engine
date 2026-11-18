@@ -36,7 +36,7 @@ fn grid(n: u32) -> (Vec<[f32; 3]>, Vec<u32>) {
 
 /// A glb of one mesh per grid; node 0 draws mesh 0 and, with `lod`, names
 /// node 1 (mesh 1, outside the scene) as its MSFT_lod level.
-fn glb(grids: &[(Vec<[f32; 3]>, Vec<u32>)], lod: bool) -> Vec<u8> {
+fn glb(grids: &[(Vec<[f32; 3]>, Vec<u32>)], lod: bool, tangled_uvs: bool) -> Vec<u8> {
     let mut bin: Vec<u8> = Vec::new();
     let mut views = Vec::new();
     let mut accessors = Vec::new();
@@ -62,13 +62,32 @@ fn glb(grids: &[(Vec<[f32; 3]>, Vec<u32>)], lod: bool) -> Vec<u8> {
         );
         accessors.push(serde_json::json!({ "bufferView": views.len() - 1, "componentType": 5125, "count": idx.len(), "type": "SCALAR" }));
         meshes.push(serde_json::json!({ "primitives": [{ "attributes": { "POSITION": accessors.len() - 2 }, "indices": accessors.len() - 1 }] }));
+        if tangled_uvs {
+            let at = bin.len();
+            let uv: Vec<[f32; 2]> = (0..p.len())
+                .map(|i| {
+                    [
+                        ((i * 17) % 43) as f32 * 100.0,
+                        ((i * 29) % 47) as f32 * 100.0,
+                    ]
+                })
+                .collect();
+            bin.extend(uv.iter().flatten().flat_map(|x| x.to_le_bytes()));
+            views.push(
+                serde_json::json!({"buffer": 0, "byteOffset": at, "byteLength": uv.len() * 8}),
+            );
+            accessors.push(serde_json::json!({"bufferView": views.len() - 1, "componentType": 5126, "count": p.len(), "type": "VEC2"}));
+            let primitive = &mut meshes.last_mut().unwrap()["primitives"][0];
+            primitive["attributes"]["TEXCOORD_0"] = serde_json::json!(accessors.len() - 1);
+            primitive["material"] = serde_json::json!(0);
+        }
     }
     let mut nodes = vec![serde_json::json!({ "mesh": 0 })];
     if lod {
         nodes[0]["extensions"] = serde_json::json!({ "MSFT_lod": { "ids": [1] } });
         nodes.push(serde_json::json!({ "mesh": 1 }));
     }
-    let json = serde_json::json!({
+    let mut json = serde_json::json!({
         "asset": { "version": "2.0" },
         "extensionsUsed": if lod { vec!["MSFT_lod"] } else { vec![] },
         "buffers": [{ "byteLength": bin.len() }],
@@ -79,6 +98,26 @@ fn glb(grids: &[(Vec<[f32; 3]>, Vec<u32>)], lod: bool) -> Vec<u8> {
         "scenes": [{ "nodes": [0] }],
         "scene": 0,
     });
+    if tangled_uvs {
+        let mut png = Vec::new();
+        image::RgbaImage::from_pixel(4, 4, image::Rgba([40, 120, 200, 255]))
+            .write_to(&mut std::io::Cursor::new(&mut png), image::ImageFormat::Png)
+            .unwrap();
+        let at = bin.len();
+        let length = png.len();
+        bin.extend(png);
+        while !bin.len().is_multiple_of(4) {
+            bin.push(0);
+        }
+        let views = json["bufferViews"].as_array_mut().unwrap();
+        views.push(serde_json::json!({"buffer": 0, "byteOffset": at, "byteLength": length}));
+        json["images"] =
+            serde_json::json!([{"bufferView": views.len() - 1, "mimeType": "image/png"}]);
+        json["textures"] = serde_json::json!([{"source": 0}]);
+        json["materials"] =
+            serde_json::json!([{"pbrMetallicRoughness": {"baseColorTexture": {"index": 0}}}]);
+        json["buffers"][0]["byteLength"] = serde_json::json!(bin.len());
+    }
     let mut text = serde_json::to_vec(&json).unwrap();
     while !text.len().is_multiple_of(4) {
         text.push(b' ');
@@ -118,6 +157,55 @@ fn levels(root: &Path, id: &str) -> Vec<usize> {
 }
 
 #[test]
+fn a_lod_that_cannot_keep_source_uvs_loads_its_own_surface() {
+    let root = project(
+        "og-cook-lod-recharted",
+        &[("models/grid.glb", &glb(&[grid(32)], false, true))],
+    );
+    let options = CookOptions::default();
+    let run = || {
+        let report = og_cook::cook::cook_project_with_texture_cache(&root, &options, None).unwrap();
+        assert!(report.ok(), "{:?}", report.errors());
+        let bundle = Bundle::open(&root.join("cooked")).unwrap();
+        let (model, textures) = bundle.load_model_with_textures("models/grid.glb").unwrap();
+        let p = &model.primitives[0];
+        assert_eq!(p.lods.len(), 3);
+        assert!(
+            p.vertices.iter().all(|v| v.color == [1.0; 4]),
+            "adding a baked level must preserve uncoloured LOD0"
+        );
+        for (i, lod) in p.lods.iter().enumerate().skip(1) {
+            assert!(p.triangle_count(i) <= p.triangle_count(0) / (1 << i));
+            let material = &model.materials[lod.material.expect("recharted surface")];
+            let texture = &textures[material.base_color_texture.unwrap()];
+            assert!(texture.width <= 512 && texture.height <= 512);
+            for pixel in texture.rgba.as_chunks::<4>().0 {
+                for (actual, expected) in pixel.iter().zip([40u8, 120, 200, 255]) {
+                    assert!(actual.abs_diff(expected) <= 4, "surface colour: {pixel:?}");
+                }
+            }
+        }
+        model
+            .textures
+            .into_iter()
+            .filter(|t| t.id.contains("#lod"))
+            .map(|t| t.id)
+            .collect::<Vec<_>>()
+    };
+    let ids = run();
+    assert!(!ids.is_empty());
+    assert_eq!(run(), ids, "warm cook keeps derived texture outputs");
+    let bundle = Bundle::open(&root.join("cooked")).unwrap();
+    let missing = bundle
+        .manifest()
+        .outputs()
+        .find(|o| o.id == ids[0])
+        .unwrap();
+    std::fs::remove_file(root.join("cooked").join(&missing.file)).unwrap();
+    assert_eq!(run(), ids, "missing derived output is rebuilt");
+}
+
+#[test]
 fn seamed_pine_lods_reach_each_levels_target() {
     let bytes = std::fs::read(
         Path::new(env!("CARGO_MANIFEST_DIR")).join("../og-tests/assets/kit/pine.glb"),
@@ -140,7 +228,7 @@ fn msft_lod_levels_are_kept_as_the_gltf_gives_them() {
         "og-cook-lod-msft",
         &[(
             "models/rock.glb",
-            &glb(&[fine.clone(), coarse.clone()], true),
+            &glb(&[fine.clone(), coarse.clone()], true, false),
         )],
     );
     let tris = levels(&root, "models/rock.glb");
@@ -215,7 +303,7 @@ fn every_level_is_cut_into_clusters_that_bound_and_face_their_triangles() {
     let full = s.1.len() / 3;
     let root = project(
         "og-cook-lod-clusters",
-        &[("models/ball.glb", &glb(&[s], false))],
+        &[("models/ball.glb", &glb(&[s], false, false))],
     );
     let report = cook_project(&root, &CookOptions::default()).unwrap();
     assert!(report.ok(), "{:?}", report.errors());
@@ -330,7 +418,10 @@ fn every_level_is_cut_into_clusters_that_bound_and_face_their_triangles() {
 #[test]
 fn a_model_cooked_without_clusters_loads_with_none() {
     let cook = |name: &str, clusters: bool| {
-        let root = project(name, &[("models/ball.glb", &glb(&[sphere(96)], false))]);
+        let root = project(
+            name,
+            &[("models/ball.glb", &glb(&[sphere(96)], false, false))],
+        );
         let options = CookOptions {
             mesh: og_cook::cook::MeshOptions {
                 clusters,

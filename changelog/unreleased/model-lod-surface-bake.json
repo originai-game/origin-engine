@@ -1,0 +1,8 @@
+{
+  "added": [
+    {
+      "member": "cook: per-LOD surfaces",
+      "summary": "A model LOD whose source charts prevent its triangle target can receive an xatlas parameterisation and a small surface projected from LOD0, with aligned albedo, tangent-space normal, occlusion, roughness, metalness, opacity and emission maps and dilated gutters. Runtime instances, crowds and terrain scatter select its material with its geometry; levels that reach their target retain source UVs. Physical-extension and material-variant surfaces retain their existing path."
+    }
+  ]
+}

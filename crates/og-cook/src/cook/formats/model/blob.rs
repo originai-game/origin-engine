@@ -76,11 +76,20 @@ pub struct ModelNotes {
     pub vertices: usize,
 }
 
+pub struct LodTexture {
+    pub id: String,
+    pub kind: u32,
+    pub image: texture::Image,
+    pub cutout: Option<u8>,
+}
+
 /// Cooks a parsed glTF into a model blob. `texture_ids` are the asset ids
 /// of [`GltfSource::textures`], in order. A `proxy` (a streaming group's
 /// stand-in, `#proxy`) keeps each primitive's coarsest LOD and no textures.
 /// `id` is the model's asset id: with `opts.impostor`, its impostor's
 /// atlases are `<id>#impostor` and `<id>#impostor-normal` ([`impostor_ids`]).
+/// `derived` receives the recharted LOD surfaces; the caller must cook
+/// these images as ordinary texture assets alongside the model blob.
 pub fn cook(
     src: &GltfSource,
     texture_ids: &[String],
@@ -88,6 +97,7 @@ pub fn cook(
     stamp: u64,
     proxy: bool,
     id: &str,
+    derived: &mut Vec<LodTexture>,
 ) -> Result<(Vec<u8>, ModelNotes), CookError> {
     let doc = &src.doc;
     let mut notes = src.warnings.clone();
@@ -297,6 +307,92 @@ pub fn cook(
                 .map_err(|e| CookError(format!("{what}: {e}")))?
             {
                 Some(mut c) => {
+                    for (level, pages) in c.baked_levels.drain(..) {
+                        let first_texture = src.textures.len() as u32 + derived.len() as u32;
+                        let mut row = materials[material as usize];
+                        row.base_r = 1.0;
+                        row.base_g = 1.0;
+                        row.base_b = 1.0;
+                        row.base_a = 1.0;
+                        row.metallic = 1.0;
+                        row.roughness = 1.0;
+                        row.normal_scale = 1.0;
+                        row.occlusion_strength = 1.0;
+                        row.base_color_texture = first_texture;
+                        row.normal_texture = first_texture + 1;
+                        row.metallic_roughness_texture = first_texture + 2;
+                        row.occlusion_texture = first_texture + 2;
+                        let emission = pages
+                            .emissive
+                            .iter()
+                            .flat_map(|p| p[..3].iter())
+                            .copied()
+                            .fold(0.0f32, f32::max);
+                        row.emissive_r = emission;
+                        row.emissive_g = emission;
+                        row.emissive_b = emission;
+                        row.emissive_texture = if emission > 0.0 {
+                            first_texture + 3
+                        } else {
+                            NONE
+                        };
+                        set_uv(&mut row, &[og_render_data::UvTransform::IDENTITY; 5]);
+                        c.lods[level].material = materials.len() as u32;
+                        materials.push(row);
+                        let byte = |v: f32| (v.clamp(0.0, 1.0) * 255.0).round() as u8;
+                        for (slot, kind) in [kind::COLOR, kind::NORMAL, kind::LINEAR, kind::COLOR]
+                            .into_iter()
+                            .enumerate()
+                            .take(if emission > 0.0 { 4 } else { 3 })
+                        {
+                            let rgba = (0..pages.base.len())
+                                .flat_map(|i| match slot {
+                                    0 => [
+                                        og_core::color::linear_to_srgb8(pages.base[i][0]),
+                                        og_core::color::linear_to_srgb8(pages.base[i][1]),
+                                        og_core::color::linear_to_srgb8(pages.base[i][2]),
+                                        byte(pages.opacity[i][0]),
+                                    ],
+                                    1 => [
+                                        byte(pages.normal[i][0]),
+                                        byte(pages.normal[i][1]),
+                                        byte(pages.normal[i][2]),
+                                        255,
+                                    ],
+                                    2 => [
+                                        byte(pages.surface[i][2]),
+                                        byte(pages.surface[i][0]),
+                                        byte(pages.surface[i][1]),
+                                        255,
+                                    ],
+                                    _ => [
+                                        og_core::color::linear_to_srgb8(
+                                            pages.emissive[i][0] / emission,
+                                        ),
+                                        og_core::color::linear_to_srgb8(
+                                            pages.emissive[i][1] / emission,
+                                        ),
+                                        og_core::color::linear_to_srgb8(
+                                            pages.emissive[i][2] / emission,
+                                        ),
+                                        255,
+                                    ],
+                                })
+                                .collect();
+                            derived.push(LodTexture {
+                                id: format!("{id}#lod{}-{pi}-{level}-{slot}", mesh.index()),
+                                kind,
+                                image: texture::Image {
+                                    width: pages.width,
+                                    height: pages.height,
+                                    rgba,
+                                },
+                                cutout: (slot == 0 && row.alpha_mode == alpha::MASK)
+                                    .then(|| byte(row.alpha_cutoff).max(1)),
+                            });
+                        }
+                        notes.push(format!("{what}: LOD {level} recharted and transferred from LOD 0: {}x{}, {} covered texels", pages.width, pages.height, pages.covered));
+                    }
                     while !vertices.len().is_multiple_of(4) {
                         vertices.push(0);
                     }
@@ -514,6 +610,14 @@ pub fn cook(
             } else {
                 u.kind
             },
+        });
+    }
+    for output in derived.iter() {
+        let (id_offset, id_len) = strings.add(&output.id);
+        texture_refs.push(TextureRefRow {
+            id_offset,
+            id_len,
+            kind: output.kind,
         });
     }
     // The impostor: its atlases' ids and the sphere they cover (the

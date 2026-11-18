@@ -49,6 +49,8 @@ pub(crate) struct ModelLods {
     /// Per part, its coarser levels' meshes with their errors in the
     /// model's units (og-cook's `Lod::error`, the part's node scale in).
     pub parts: Vec<Vec<(MeshHandle, f32)>>,
+    /// Per part and coarse level, the reparameterised surface, if any.
+    pub materials: Vec<Vec<Option<MaterialHandle>>>,
     pub center: Vec3,
     pub radius: f32,
     /// Raw primitive meshes paired with their placed, model-space scatter
@@ -62,6 +64,21 @@ pub(crate) struct ModelLods {
 }
 
 impl ModelLods {
+    pub(crate) fn material(
+        &self,
+        part: usize,
+        level: usize,
+        source: MaterialHandle,
+    ) -> MaterialHandle {
+        let Some(levels) = self.materials.get(part).filter(|p| !p.is_empty()) else {
+            return source;
+        };
+        level
+            .checked_sub(1)
+            .and_then(|k| levels[k.min(levels.len() - 1)])
+            .unwrap_or(source)
+    }
+
     /// The model's error per level, level 0 first (0): the largest of its
     /// parts' at that level, a part with fewer levels standing at its
     /// coarsest; then its impostor's, when it has one. The impostor

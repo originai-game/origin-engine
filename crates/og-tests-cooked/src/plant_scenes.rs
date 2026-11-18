@@ -104,6 +104,7 @@ struct Plant {
     /// Per part, its mesh's coarser levels ([`ScatterDraw::lods`]): the
     /// cook's thinned leaves and simplified wood.
     levels: Vec<Levels>,
+    level_materials: Vec<[Option<MaterialHandle>; 2]>,
     impostor: Option<Impostor>,
 }
 
@@ -126,6 +127,21 @@ fn plant(scene: &mut RenderScene, bundle: &Bundle, name: &str) -> Result<Plant, 
     let sources: Vec<_> = textures.into_iter().map(TextureSource::Rgba).collect();
     let (added, meshes) = model.add_to_shared(scene, &sources, None);
     let parts = added.parts;
+    let level_materials = parts
+        .iter()
+        .map(|&(mesh, ..)| {
+            let mut materials = [None; 2];
+            if let Some(p) = meshes.iter().position(|&m| m == mesh) {
+                for (to, level) in materials
+                    .iter_mut()
+                    .zip(model.primitives[p].lods.iter().skip(1))
+                {
+                    *to = level.material.map(|m| added.materials[m]);
+                }
+            }
+            materials
+        })
+        .collect();
     // Each part's own levels, as og-runtime gives a scattered model whose
     // parts stand as made (terrain.rs `extract`).
     let coarser = model.add_lod_levels(scene);
@@ -172,6 +188,7 @@ fn plant(scene: &mut RenderScene, bundle: &Bundle, name: &str) -> Result<Plant, 
     Ok(Plant {
         parts,
         levels,
+        level_materials,
         impostor,
     })
 }
@@ -577,6 +594,7 @@ pub fn scatter_scene() -> Result<RenderScene, String> {
                 impostor_distance: p.impostor.map_or(0.0, card_distance),
                 with: (k > 0).then_some(first),
                 lods: p.levels[k],
+                lod_materials: p.level_materials[k],
             });
         }
     }
@@ -726,6 +744,7 @@ pub fn switch_scene() -> Result<RenderScene, String> {
                 impostor_distance: p.impostor.map_or(0.0, card_distance),
                 with: (k > 0).then_some(first),
                 lods: p.levels[k],
+                lod_materials: p.level_materials[k],
             });
         }
     }

@@ -13,6 +13,8 @@ pub struct Lod {
     /// Its range of [`CookedPrimitive::clusters`] (count 0: none).
     pub cluster_first: usize,
     pub cluster_count: usize,
+    /// A reparameterised level's own material, otherwise the primitive's.
+    pub material: Option<usize>,
 }
 
 /// A decoded mesh primitive: every LOD shares the vertices.
@@ -476,12 +478,16 @@ impl CookedModel {
                 if (l.cluster_first + l.cluster_count) as usize > cluster_rows.len() {
                     return Err(bad(format!("primitive {i}: clusters out of range")));
                 }
+                if l.material != NONE && l.material as usize >= materials.len() {
+                    return Err(bad(format!("primitive {i}: LOD material out of range")));
+                }
                 prim_lods.push(Lod {
                     first: l.index_first as usize,
                     count: l.index_count as usize,
                     error: l.error,
                     cluster_first: prim_clusters.len(),
                     cluster_count: l.cluster_count as usize,
+                    material: opt(l.material),
                 });
                 prim_clusters.extend(
                     cluster_rows

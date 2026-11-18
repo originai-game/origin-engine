@@ -264,7 +264,7 @@ row!(
 
 row!(
     /// One level of detail: a range of a primitive's decoded indices.
-    LodRow, "og.ModelLod", 3 {
+    LodRow, "og.ModelLod", 4 {
         index_first: u32,
         index_count: u32,
         /// The level's largest distance from the full mesh, both ways, in
@@ -275,6 +275,9 @@ row!(
         /// cover its index range in order (og-render's `meshlet`).
         cluster_first: u32,
         cluster_count: u32,
+        /// The reparameterised level's material; NONE keeps the
+        /// primitive's material and source UVs.
+        material: u32,
     }
 );
 
