@@ -5,8 +5,8 @@
 //! A query container publishes its content box through the settlement hook
 //! (`Ui::watch_layout_container`); conditions read the last settled box of
 //! the nearest eligible ancestor, so the first frame and every resize settle
-//! before paint. A container does not apply size containment: a query whose
-//! styles keep changing its container's size fails as a settlement cycle.
+//! before paint. Size containers apply containment on their queried axes,
+//! so descendant queries and container units cannot feed back into that size.
 use super::media::{Context, Feature, Query, Reads};
 use super::{StyleDeclaration, variables};
 use std::collections::{BTreeMap, BTreeSet};

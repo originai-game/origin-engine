@@ -210,6 +210,30 @@ impl Ui {
         {
             el.contain = crate::doc::contain_css::contain(|p| r.str(p).map(str::to_owned));
         }
+        // CSS Conditional 5 §5.1: query containers size independently of
+        // their descendants on the queried axes. Otherwise container units
+        // in a flex item's contents feed back into its own flex basis.
+        if let Some((ty, _)) =
+            crate::doc::container::declared(&r.cascade.container, &mut Vec::new())
+        {
+            use crate::doc::container::Kind;
+            use crate::layout::Contain;
+            if ty.size != Kind::Normal {
+                el.bfc = true;
+            }
+            el.contain.bits |= match ty.size {
+                Kind::Normal => 0,
+                Kind::Size => Contain::SIZE_W | Contain::SIZE_H | Contain::STYLE,
+                Kind::InlineSize => {
+                    let axis = if r.flow.mode.vertical() {
+                        Contain::SIZE_H
+                    } else {
+                        Contain::SIZE_W
+                    };
+                    axis | Contain::STYLE
+                }
+            };
+        }
         if el
             .contain
             .has(crate::layout::Contain::LAYOUT | crate::layout::Contain::PAINT)

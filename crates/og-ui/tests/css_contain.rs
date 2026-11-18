@@ -26,6 +26,32 @@ use og_core::glam::Vec2;
 use og_ui::{DrawCmd, InputFrame};
 use serde_json::json;
 
+/// A content-based flex basis must not read the container's descendants.
+/// Chromium gives Cell its 36px padding plus half the remaining 322px;
+/// without containment the cqi-sized text makes its basis grow each pass.
+#[test]
+fn inline_size_container_in_content_sized_flex_item() {
+    let text = r#"<meta name="component" content="t">
+<div id="Root"><div id="Top"><div id="Cell"><span id="Score">1234567</span></div><div id="Rank">Rank</div></div></div>
+<style>
+#Root { width: 358px; container-type: inline-size; }
+#Top { display: flex; }
+#Rank { flex: 1 1 0; min-width: 0; }
+#Cell { container-type: inline-size; flex: 1 1 auto; max-width: stretch; min-width: 0; padding: 12px 18px; }
+#Score { --score-size: min(72px, 22cqi); font-size: var(--score-size); white-space: nowrap; }
+@container (width < 560px) { #Score { --score-size: min(64px, 20cqi); } }
+</style>"#;
+    with_doc(text, &[], |d| {
+        for _ in 0..3 {
+            d.step(InputFrame::default());
+            let cell = d.get("Cell");
+            let score = d.get("Score");
+            assert_eq!(cell.width, 197.0, "{cell:?}");
+            assert!(score.height > 0.0 && score.height < 100.0, "{score:?}");
+        }
+    });
+}
+
 #[test]
 fn size_containment_sizes_as_if_empty() {
     let text = r#"<meta name="component" content="t">
