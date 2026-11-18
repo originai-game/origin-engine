@@ -189,6 +189,7 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState, h: &mut Hierarchy) ->
             og_render::MeshHandle,
             og_render::MaterialHandle,
             crate::present::extract::ScatterLods,
+            [Option<og_render::MaterialHandle>; 2],
         )> = Vec::new();
         let impostor = if whole != 0 {
             let Some(model) = rs.models.get(&whole) else {
@@ -220,7 +221,14 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState, h: &mut Hierarchy) ->
                         })
                     });
                 match placed {
-                    Some((m, levels)) => parts.push((m, material, levels)),
+                    Some((m, levels)) => parts.push((
+                        m,
+                        material,
+                        levels,
+                        std::array::from_fn(|level| {
+                            lods.map(|l| l.material(k, level + 1, material))
+                        }),
+                    )),
                     None => by_nodes = true,
                 }
             }
@@ -244,6 +252,13 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState, h: &mut Hierarchy) ->
             };
             let model = v.impostor;
             let lods = rs.model_lods.get(&model);
+            let part = rs
+                .models
+                .get(&model)
+                .and_then(|p| p.iter().position(|p| p.0 == mesh));
+            let lod_materials = std::array::from_fn(|level| {
+                part.and_then(|p| lods.map(|l| l.material(p, level + 1, material)))
+            });
             let impostor = lods.and_then(|l| l.impostor.map(|i| i.0));
             let (mesh, levels) = lods
                 .and_then(|l| l.scatter_meshes.iter().find(|p| p.0 == mesh))
@@ -269,7 +284,7 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState, h: &mut Hierarchy) ->
                     continue;
                 }
             }
-            parts.push((mesh, material, levels));
+            parts.push((mesh, material, levels, lod_materials));
             impostor
         };
         let scatter = og_render::TerrainScatter {
@@ -293,7 +308,7 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState, h: &mut Hierarchy) ->
         // A model's parts are one copy: the first places it, the rest
         // draw with it.
         let first = rs.scene.world.scatters.len();
-        for (k, (mesh, material, lods)) in parts.into_iter().enumerate() {
+        for (k, (mesh, material, lods, lod_materials)) in parts.into_iter().enumerate() {
             rs.scene.world.scatters.push(og_render::ScatterDraw {
                 terrain,
                 mesh,
@@ -304,6 +319,7 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState, h: &mut Hierarchy) ->
                 impostor_distance: v.impostor_distance,
                 with: (k > 0).then_some(first),
                 lods,
+                lod_materials,
             });
         }
     }

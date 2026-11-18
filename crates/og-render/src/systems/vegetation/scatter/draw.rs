@@ -110,11 +110,18 @@ impl ScatterRenderer {
             if mesh(b.mesh).is_none() {
                 continue;
             }
-            let mut bound = false;
             // The mesh, then its coarser levels: each draws its region of
             // the chunks' lists (a chunk drawn whole draws the mesh).
             let levels = std::iter::once(Some(b.mesh)).chain(b.lods).map_while(|m| m);
             for (l, m) in levels.enumerate() {
+                let group = match l.checked_sub(1).and_then(|k| b.lod_materials[k]) {
+                    Some(material) => match material_group(material) {
+                        Some(g) => g,
+                        None => continue,
+                    },
+                    None => group,
+                };
+                let mut bound = false;
                 let Some((vertices, indices, count)) = mesh(m) else {
                     continue;
                 };

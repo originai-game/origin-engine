@@ -6,5 +6,5 @@ https://github.com/jpcy/xatlas at commit
 `xatlas.h`, `xatlas_c.h`). `crates/og-bake/build.rs` compiles it with its C
 API (`XATLAS_C_API=1`) and single-threaded (`XA_MULTITHREADED=0`), so a
 lightmap's charts and their packing are the same on every run whatever the
-machine's thread count. og-bake (`src/atlas.rs`) is its only user: the
-lightmap UVs of `og bake lightmaps`.
+machine's thread count. og-bake (`src/atlas.rs`) wraps the C API for
+lightmap UVs, HLOD proxies and independently baked model LOD surfaces.

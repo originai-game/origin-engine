@@ -411,6 +411,18 @@ pub(super) fn models(
             if shown.is_some_and(|s| !s[k]) {
                 continue;
             }
+            let mut selected_material = model_lods
+                .get(&asset)
+                .map_or(material, |l| l.material(k, level, material));
+            if selected_material != material
+                && sway > 0.0
+                && let Some(&top) = rs.wind.tops.get(&asset)
+            {
+                selected_material = rs
+                    .wind
+                    .material(&mut rs.scene, selected_material, sway, top);
+            }
+            let material = selected_material;
             // A part with fewer levels than the model draws its coarsest.
             // One the meshlet path draws keeps level 0's mesh and is told
             // the level (`RenderScene::instance_levels`): its clusters

@@ -362,6 +362,8 @@ pub struct ScatterDraw {
     /// whose error is under [`crate::scatter_cull::LOD_PIXELS`] on screen;
     /// elsewhere the mesh. A level after a `None` is not drawn.
     pub lods: [Option<(MeshHandle, f32)>; crate::scatter_cull::SCATTER_LEVELS - 1],
+    /// Reparameterised levels' materials, otherwise `material`.
+    pub lod_materials: [Option<MaterialHandle>; crate::scatter_cull::SCATTER_LEVELS - 1],
 }
 
 impl ScatterDraw {
@@ -574,6 +576,7 @@ pub(crate) struct ScatterBatch {
     chunks: Vec<ChunkKey>,
     /// The mesh's coarser levels (`ScatterDraw::lods`): the scene's meshes.
     lods: [Option<usize>; crate::scatter_cull::SCATTER_LEVELS - 1],
+    lod_materials: [Option<usize>; crate::scatter_cull::SCATTER_LEVELS - 1],
     /// Per chunk, where the GPU cull listed its copies (`None`: drawn
     /// whole).
     culled: Vec<Option<crate::scatter_cull::Culled>>,

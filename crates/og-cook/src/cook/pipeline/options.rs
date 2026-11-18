@@ -238,6 +238,9 @@ pub struct TextureOptions {
     /// bark and stone detail). Off by default; project.ogt's `cook { color_textures uastc }` turns it on and
     /// `publish { color_textures etc1s }` off again for the web export (og-cli's `cook::texture_options`).
     pub color_uastc: bool,
+    /// ETC1S for derived material and normal maps. Source maps stay UASTC.
+    /// Normal maps use RGB = X, alpha = Y.
+    pub data_etc1s: bool,
     /// This texture is a cut-out, the base colour of an alpha-tested material (a glTF material's `alphaMode`
     /// `MASK`), and the least alpha byte the material keeps: its mips are texture.rs `cutout_mips` and
     /// `keep_coverage`, so each level keeps at least the share of texels at or above the cut-off that the
@@ -257,15 +260,24 @@ impl Default for TextureOptions {
             mipmaps: true,
             force_toktx: false,
             color_uastc: false,
+            data_etc1s: false,
             cutout: None,
         }
     }
 }
 
 impl TextureOptions {
+    pub(crate) fn uastc(&self, kind: u32) -> bool {
+        if kind == crate::format::kind::COLOR {
+            self.color_uastc
+        } else {
+            !self.data_etc1s
+        }
+    }
+
     pub(crate) fn describe(&self) -> String {
         format!(
-            "etc1s {} uastc {} rdo {} zstd {} mips {} normal y in alpha{}",
+            "etc1s {} uastc {} rdo {} zstd {} mips {} normal y in alpha{}{}",
             self.etc1s_quality,
             self.uastc_level,
             self.uastc_rdo.map_or("off".to_string(), |r| r.to_string()),
@@ -273,6 +285,11 @@ impl TextureOptions {
             self.mipmaps,
             if self.color_uastc {
                 " colour uastc"
+            } else {
+                ""
+            },
+            if self.data_etc1s {
+                " data etc1s xyra"
             } else {
                 ""
             }

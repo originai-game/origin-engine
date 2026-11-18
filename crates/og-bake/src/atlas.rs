@@ -27,6 +27,9 @@ pub struct PackSettings {
     pub max_size: u32,
     /// Empty texels around each chart (bilinear filtering and dilation).
     pub padding: u32,
+    /// Chart growth/merge iterations after greedy seeding. Zero keeps
+    /// greedy charts, avoiding iterative merging for small LOD surfaces.
+    pub chart_iterations: u32,
 }
 
 impl Default for PackSettings {
@@ -35,6 +38,7 @@ impl Default for PackSettings {
             texels_per_unit: 16.0,
             max_size: 1024,
             padding: 2,
+            chart_iterations: 1,
         }
     }
 }
@@ -238,10 +242,11 @@ fn generate(
         }
         let mut chart = std::mem::zeroed::<XChartOptions>();
         xatlasChartOptionsInit(&mut chart);
+        chart.max_iterations = settings.chart_iterations;
         let mut pack = std::mem::zeroed::<XPackOptions>();
         xatlasPackOptionsInit(&mut pack);
         pack.padding = settings.padding;
-        pack.texels_per_unit = settings.texels_per_unit.max(1e-3);
+        pack.texels_per_unit = settings.texels_per_unit;
         pack.resolution = resolution;
         pack.bilinear = true;
         pack.block_align = false;
@@ -349,12 +354,35 @@ mod tests {
     }
 
     #[test]
+    fn chart_density_respects_the_mesh_unit_scale() {
+        let metres = unwrap(&[cube(1.0)], &PackSettings::default()).unwrap();
+        let integer_units = unwrap(
+            &[cube(65535.0)],
+            &PackSettings {
+                texels_per_unit: 16.0 / 65535.0,
+                ..Default::default()
+            },
+        )
+        .unwrap();
+        assert_eq!(
+            (
+                integer_units.width,
+                integer_units.height,
+                integer_units.pages
+            ),
+            (metres.width, metres.height, metres.pages),
+            "the same surface at the same density, before a quantisation node transform"
+        );
+    }
+
+    #[test]
     fn charts_past_the_largest_page_spill_into_more_pages() {
         let meshes = [cube(8.0)];
         let s = PackSettings {
             texels_per_unit: 16.0,
             max_size: 128,
             padding: 2,
+            ..Default::default()
         };
         let a = unwrap(&meshes, &s).unwrap();
         assert_eq!((a.width, a.height), (128, 128));

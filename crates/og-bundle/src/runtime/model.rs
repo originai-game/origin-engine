@@ -13,6 +13,8 @@ pub struct Lod {
     /// Its range of [`CookedPrimitive::clusters`] (count 0: none).
     pub cluster_first: usize,
     pub cluster_count: usize,
+    /// A reparameterised level's own material, otherwise the primitive's.
+    pub material: Option<usize>,
 }
 
 /// A decoded mesh primitive: every LOD shares the vertices.
@@ -439,12 +441,21 @@ impl CookedModel {
         for (i, p) in prims.iter().enumerate() {
             let vb = &vertices[range(vertices, p.vertex_offset, p.vertex_size, "vertex stream")?];
             let ib = &indices[range(indices, p.index_offset, p.index_size, "index stream")?];
-            let raw = meshopt_codec::decode_vertex_buffer(
-                vb,
-                p.vertex_count as usize,
-                p.vertex_stride as usize,
-            )
-            .map_err(|e| bad(format!("primitive {i}: {e}")))?;
+            let (vb, base_count, uv_refs) = if p.attributes & attr::LOD_UV_REFS != 0 {
+                let header = vb
+                    .get(..8)
+                    .ok_or_else(|| bad(format!("primitive {i}: UV reference header")))?;
+                let count = u32::from_le_bytes(header[..4].try_into().expect("4 bytes")) as usize;
+                let size = u32::from_le_bytes(header[4..].try_into().expect("4 bytes")) as usize;
+                if count == 0 || count >= p.vertex_count as usize || size > vb.len() - 8 {
+                    return Err(bad(format!("primitive {i}: UV reference range")));
+                }
+                (&vb[8..8 + size], count, Some(&vb[8 + size..]))
+            } else {
+                (vb, p.vertex_count as usize, None)
+            };
+            let raw = meshopt_codec::decode_vertex_buffer(vb, base_count, p.vertex_stride as usize)
+                .map_err(|e| bad(format!("primitive {i}: {e}")))?;
             let idx = meshopt_codec::decode_index_buffer(ib, p.index_count as usize)
                 .map_err(|e| bad(format!("primitive {i}: {e}")))?;
             // None for a model cooked without clusters (`cook { clusters false }`).
@@ -463,7 +474,31 @@ impl CookedModel {
             if idx.iter().chain(&cluster_idx).any(|&v| v >= p.vertex_count) {
                 return Err(bad(format!("primitive {i}: index out of range")));
             }
-            let (verts, tangents) = dequantize(p, &raw);
+            let (mut verts, mut tangents) = dequantize(p, &raw);
+            if let Some(refs) = uv_refs {
+                let refs = meshopt_codec::decode_vertex_buffer(
+                    refs,
+                    p.vertex_count as usize - base_count,
+                    8,
+                )
+                .map_err(|e| bad(format!("primitive {i}: UV references: {e}")))?;
+                for row in refs.as_chunks::<8>().0 {
+                    let source = u32::from_le_bytes(row[..4].try_into().expect("4 bytes")) as usize;
+                    if source >= base_count {
+                        return Err(bad(format!("primitive {i}: UV source vertex out of range")));
+                    }
+                    let mut vertex = verts[source];
+                    vertex.uv = [
+                        u16::from_le_bytes([row[4], row[5]]) as f32 / 65535.0,
+                        u16::from_le_bytes([row[6], row[7]]) as f32 / 65535.0,
+                    ];
+                    vertex.color = [1.0; 4];
+                    if p.attributes & attr::TANGENT != 0 {
+                        tangents.push(vertex.tangent);
+                    }
+                    verts.push(vertex);
+                }
+            }
             let lod_rows = lods
                 .get(p.lod_first as usize..(p.lod_first + p.lod_count) as usize)
                 .ok_or_else(|| bad(format!("primitive {i}: LOD range out of range")))?;
@@ -476,12 +511,16 @@ impl CookedModel {
                 if (l.cluster_first + l.cluster_count) as usize > cluster_rows.len() {
                     return Err(bad(format!("primitive {i}: clusters out of range")));
                 }
+                if l.material != NONE && l.material as usize >= materials.len() {
+                    return Err(bad(format!("primitive {i}: LOD material out of range")));
+                }
                 prim_lods.push(Lod {
                     first: l.index_first as usize,
                     count: l.index_count as usize,
                     error: l.error,
                     cluster_first: prim_clusters.len(),
                     cluster_count: l.cluster_count as usize,
+                    material: opt(l.material),
                 });
                 prim_clusters.extend(
                     cluster_rows

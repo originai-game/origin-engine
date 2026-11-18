@@ -2,11 +2,22 @@
 //! and decoded bytes, video frames, and the bundle the texture calls read.
 
 use crate::{
-    BUNDLE, DECODED_IMAGES, FETCHER, FILES, FORMATS, IMAGE_DECODER, INFLATED, INFLATER, ORPHANED,
-    REQUESTED, TEXTURES, TRANSCODER, TRANSCODING, UNTRANSCODED, VIDEO,
+    BUNDLE, DECODED_IMAGES, FETCHER, FILES, FORMATS, IMAGE_DECODER, INFLATED, INFLATER,
+    NORMAL_XYRA, ORPHANED, REQUESTED, TEXTURES, TRANSCODER, TRANSCODING, UNTRANSCODED, VIDEO,
 };
 use og_runtime::Fetch;
 use wasm_bindgen::prelude::*;
+
+fn normal_layout(texture: &og_bundle::runtime::CookedTexture) {
+    NORMAL_XYRA.with(|set| {
+        let mut set = set.borrow_mut();
+        if texture.normal_xyra() {
+            set.insert(texture.id.clone());
+        } else {
+            set.remove(&texture.id);
+        }
+    });
+}
 
 /// `cooked/stream/<name>.ogb`, as the Worker's fetcher tells a pack
 /// (`/\/stream\/[^/]+\.ogb$/`).
@@ -45,6 +56,7 @@ pub(crate) fn retranscode(
         let transcode = f.borrow();
         let transcode = transcode.as_ref()?;
         let target = texture.target_format(formats).name();
+        normal_layout(texture);
         let called = transcode.call3(
             &JsValue::NULL,
             &JsValue::from_str(&texture.id),
@@ -76,6 +88,12 @@ pub fn og_web_fail_texture(id: String, reason: String) {
 }
 
 pub(crate) fn drop_textures(ids: &[String]) {
+    NORMAL_XYRA.with(|t| {
+        let mut t = t.borrow_mut();
+        for id in ids {
+            t.remove(id);
+        }
+    });
     TEXTURES.with(|t| {
         let mut t = t.borrow_mut();
         for id in ids {
@@ -130,7 +148,10 @@ pub fn og_web_fail_file(path: String, reason: String) {
 
 /// A texture the Worker transcoded to RGBA8 (level 0, rows top to bottom).
 #[wasm_bindgen]
-pub fn og_web_put_texture(id: String, width: u32, height: u32, rgba: Vec<u8>, srgb: bool) {
+pub fn og_web_put_texture(id: String, width: u32, height: u32, mut rgba: Vec<u8>, srgb: bool) {
+    if NORMAL_XYRA.with(|t| t.borrow().contains(&id)) {
+        og_bundle::runtime::decode_normal_xyra(&mut rgba);
+    }
     let data = og_render::TextureData {
         width,
         height,
@@ -174,6 +195,11 @@ pub fn og_web_put_texture_encoded(
         split.push(levels[at..end].to_vec());
         at = end;
         level += 1;
+    }
+    if format == og_render::TextureFormat::Rgba8 && NORMAL_XYRA.with(|t| t.borrow().contains(&id)) {
+        for mip in &mut split {
+            og_bundle::runtime::decode_normal_xyra(mip);
+        }
     }
     let color_space = if srgb && !format.two_channel() {
         og_render::ColorSpace::Srgb
@@ -220,7 +246,10 @@ pub fn og_web_texture_target(engine: u32, manifest: String, id: String, bytes: V
     let view = unsafe { std::slice::from_raw_parts(words.as_ptr().cast::<u8>(), bytes.len()) };
     let formats = FORMATS.with(|f| f.borrow().get(&engine).cloned());
     match bundle.texture(&id, view) {
-        Ok(t) => t.target_format(formats.as_ref()).name().into(),
+        Ok(t) => {
+            normal_layout(&t);
+            t.target_format(formats.as_ref()).name().into()
+        }
         Err(_) => "rgba8".into(),
     }
 }
@@ -489,7 +518,10 @@ pub fn og_web_texture_ktx2(manifest: String, id: String, bytes: Vec<u8>) -> Vec<
     // SAFETY: the words hold `bytes.len()` initialised bytes.
     let view = unsafe { std::slice::from_raw_parts(words.as_ptr().cast::<u8>(), bytes.len()) };
     match bundle.texture(&id, view) {
-        Ok(t) if t.meta.codec != og_bundle::format::codec::RGBA8 => t.ktx2,
+        Ok(t) if t.meta.codec != og_bundle::format::codec::RGBA8 => {
+            normal_layout(&t);
+            t.ktx2
+        }
         _ => Vec::new(),
     }
 }
@@ -522,10 +554,79 @@ pub fn og_web_pack_ktx2(engine: Option<u32>, manifest: String, pack: Vec<u8>) ->
         if let Ok(t) = bundle.texture(&o.id, view)
             && t.meta.codec != og_bundle::format::codec::RGBA8
         {
+            normal_layout(&t);
             out.push(&JsValue::from_str(&o.id));
             out.push(&js_sys::Uint8Array::from(t.ktx2.as_slice()));
             out.push(&JsValue::from_str(t.target_format(formats.as_ref()).name()));
         }
     }
     out
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn rgba_normal_fallback_restores_xy_and_z() {
+        let texture = og_bundle::runtime::CookedTexture {
+            id: "normal-fallback-test".into(),
+            meta: og_bundle::format::TextureMeta {
+                width: 1,
+                height: 1,
+                levels: 1,
+                kind: og_bundle::format::kind::NORMAL,
+                codec: og_bundle::format::codec::ETC1S,
+                color_space: 1,
+                has_alpha: 1,
+                supercompression: 1,
+            },
+            ktx2: Vec::new(),
+            mips: None,
+            orientation: 1,
+        };
+        normal_layout(&texture);
+        for encoded in [false, true] {
+            let rgba = vec![179, 179, 179, 64];
+            if encoded {
+                assert_eq!(
+                    og_web_put_texture_encoded(
+                        texture.id.clone(),
+                        "rgba8".into(),
+                        1,
+                        1,
+                        false,
+                        rgba
+                    ),
+                    ""
+                );
+            } else {
+                og_web_put_texture(texture.id.clone(), 1, 1, rgba, false);
+            }
+            TEXTURES.with(|t| {
+                let t = t.borrow();
+                let data = match &t[&texture.id] {
+                    og_render::TextureSource::Rgba(t) => &t.rgba,
+                    og_render::TextureSource::Encoded(t) => &t.levels[0],
+                    _ => panic!("fallback was not uploaded"),
+                };
+                assert_eq!(&data[..2], &[179, 64]);
+                assert!((224..=228).contains(&data[2]));
+            });
+        }
+        drop_textures(std::slice::from_ref(&texture.id));
+        og_web_put_texture(texture.id.clone(), 1, 1, vec![179, 179, 179, 64], false);
+        TEXTURES.with(|t| {
+            let t = t.borrow();
+            let og_render::TextureSource::Rgba(data) = &t[&texture.id] else {
+                panic!("RGBA upload");
+            };
+            assert_eq!(
+                data.rgba,
+                [179, 179, 179, 64],
+                "reused id is no longer a normal"
+            );
+        });
+        drop_textures(&[texture.id]);
+    }
 }

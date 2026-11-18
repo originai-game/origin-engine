@@ -63,6 +63,8 @@ thread_local! {
     static FILES: RefCell<BTreeMap<String, Result<Vec<u8>, String>>> = const { RefCell::new(BTreeMap::new()) };
     /// Transcoded textures the Worker handed over, by asset id.
     static TEXTURES: RefCell<BTreeMap<String, og_render::TextureSource>> = const { RefCell::new(BTreeMap::new()) };
+    /// ETC1S normal-mode textures whose RGBA fallback needs XYZ restored.
+    static NORMAL_XYRA: RefCell<std::collections::BTreeSet<String>> = const { RefCell::new(std::collections::BTreeSet::new()) };
     /// The encodings each engine's attached renderer takes.
     static FORMATS: RefCell<IdMap<u32, og_render::TextureFormats>> = const { RefCell::new(IdMap::new()) };
     /// The device each engine's attached renderer runs on, as `og_web_gpu` answers it.

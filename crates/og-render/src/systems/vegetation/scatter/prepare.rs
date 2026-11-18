@@ -724,6 +724,7 @@ impl ScatterRenderer {
             batches.push(ScatterBatch {
                 culled: Vec::new(),
                 lods: lods.map(|l| l.map(|(mesh, ..)| mesh)),
+                lod_materials: d.lod_materials.map(|m| m.map(|m| m.index())),
                 mesh: d.mesh.index(),
                 material: d.material.index(),
                 shader,

@@ -170,6 +170,13 @@ impl MipChain {
 }
 
 impl CookedTexture {
+    /// ETC1S normal-mode texels store X in RGB and Y in alpha.
+    pub fn normal_xyra(&self) -> bool {
+        self.meta.kind == crate::format::kind::NORMAL
+            && self.meta.codec == codec::ETC1S
+            && self.meta.has_alpha != 0
+    }
+
     /// A `kind pixel` texture: drawn without mips and sampled nearest.
     pub fn is_pixel_art(&self) -> bool {
         self.meta.kind == crate::format::kind::PIXEL
@@ -188,10 +195,13 @@ impl CookedTexture {
         } else {
             ColorSpace::Linear
         };
-        let (width, height, rgba) = match self.meta.codec {
+        let (width, height, mut rgba) = match self.meta.codec {
             codec::RGBA8 => ktx2::decode_rgba8(&self.ktx2, 0).map_err(bad)?,
             _ => self.transcode_basis().map_err(bad)?,
         };
+        if self.normal_xyra() {
+            decode_normal_xyra(&mut rgba);
+        }
         if self.is_pixel_art() {
             return Ok(TextureData {
                 width,
@@ -222,6 +232,14 @@ impl CookedTexture {
         let blocks = self.meta.width.is_multiple_of(4) && self.meta.height.is_multiple_of(4);
         if lossless || !blocks {
             return TextureFormat::Rgba8;
+        }
+        if self.normal_xyra() {
+            // BC5/EAC move alpha to green; their sampler rebuilds Z. A
+            // device without either needs decoded XYZ, not xxx/y in ASTC.
+            return [f.normal, TextureFormat::EacRg11, TextureFormat::Bc5]
+                .into_iter()
+                .find(|t| t.two_channel() && f.supported.contains(t))
+                .unwrap_or(TextureFormat::Rgba8);
         }
         match self.meta.kind {
             // A two-channel format takes y from alpha: cooks before phase 2
@@ -342,6 +360,17 @@ impl CookedTexture {
     #[cfg(not(feature = "transcode"))]
     fn transcode_basis(&self) -> Result<(u32, u32, Vec<u8>), String> {
         Err("a Basis Universal texture needs a transcoder: the host's (web) or og-cook's `transcode` feature (native)".into())
+    }
+}
+
+/// Restore the XYZ channels of an ETC1S normal-mode RGBA decode. Native
+/// fallback uploads and the web host use the same reconstruction.
+pub fn decode_normal_xyra(rgba: &mut [u8]) {
+    for p in rgba.as_chunks_mut::<4>().0 {
+        let x = f32::from(p[0]) / 127.5 - 1.0;
+        let y = f32::from(p[3]) / 127.5 - 1.0;
+        p[1] = p[3];
+        p[2] = ((1.0 - x * x - y * y).max(0.0).sqrt() * 127.5 + 127.5).round() as u8;
     }
 }
 

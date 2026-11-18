@@ -437,7 +437,7 @@ fn encode_basisu(img: &Image, k: u32, opts: &TextureOptions) -> Result<Vec<u8>, 
     use basis_universal::{BasisTextureFormat, ColorSpace, Compressor, CompressorParams};
     let mut params = CompressorParams::new();
     params.set_print_status_to_stdout(false);
-    let uastc = k != kind::COLOR || opts.color_uastc;
+    let uastc = opts.uastc(k);
     params.set_basis_format(if uastc {
         BasisTextureFormat::UASTC4x4
     } else {
@@ -509,7 +509,7 @@ fn encode_toktx(img: &Image, k: u32, opts: &TextureOptions) -> Result<Vec<u8>, S
     .map_err(|e| e.to_string())?;
     let mut cmd = std::process::Command::new("toktx");
     cmd.arg("--t2");
-    if k == kind::COLOR && !opts.color_uastc {
+    if !opts.uastc(k) {
         cmd.args([
             "--encode",
             "etc1s",
@@ -518,7 +518,6 @@ fn encode_toktx(img: &Image, k: u32, opts: &TextureOptions) -> Result<Vec<u8>, S
             "--qlevel",
             &opts.etc1s_quality.to_string(),
         ]);
-        cmd.args(["--assign_oetf", "srgb"]);
     } else {
         cmd.args([
             "--encode",
@@ -532,13 +531,12 @@ fn encode_toktx(img: &Image, k: u32, opts: &TextureOptions) -> Result<Vec<u8>, S
         if opts.zstd {
             cmd.args(["--zcmp", "3"]);
         }
-        // Not --normal_mode, which would keep only x (in RGB) and y (in
-        // alpha): `cook` has already copied y into alpha and kept xyz.
-        cmd.args([
-            "--assign_oetf",
-            if k == kind::COLOR { "srgb" } else { "linear" },
-        ]);
     }
+    // `cook` supplies either xyz/y or the ETC1S normal-mode xxx/y layout.
+    cmd.args([
+        "--assign_oetf",
+        if k == kind::COLOR { "srgb" } else { "linear" },
+    ]);
     if opts.mipmaps {
         cmd.arg("--genmipmap");
     }
@@ -626,6 +624,10 @@ pub fn cook_oriented(
         let mut rgba = img.rgba.clone();
         for p in rgba.as_chunks_mut::<4>().0 {
             p[3] = p[1];
+            if opts.data_etc1s {
+                p[1] = p[0];
+                p[2] = p[0];
+            }
         }
         normal = Image {
             width: img.width,
@@ -667,7 +669,7 @@ pub fn cook_oriented(
         height: img.height,
         levels: info.levels.len() as u32,
         kind: k,
-        codec: if k == kind::COLOR && !opts.color_uastc {
+        codec: if !opts.uastc(k) {
             codec::ETC1S
         } else {
             codec::UASTC
@@ -1004,6 +1006,79 @@ pub(crate) fn split_texture(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[cfg(feature = "basis")]
+    #[test]
+    fn derived_etc1s_normals_preserve_xy_and_restore_z() {
+        use og_render::{TextureFormat as F, TextureFormats};
+        // X and Y have opposite signs and differ on both sides of a block
+        // boundary: reading RGB instead of alpha cannot pass this control.
+        let image = Image {
+            width: 8,
+            height: 4,
+            rgba: (0..32)
+                .flat_map(|i| {
+                    if i % 8 < 4 {
+                        [179, 64, 225, 255]
+                    } else {
+                        [90, 203, 223, 255]
+                    }
+                })
+                .collect(),
+        };
+        for derived in [false, true] {
+            let options = TextureOptions {
+                data_etc1s: derived,
+                ..Default::default()
+            };
+            let bytes = cook(&image, kind::NORMAL, &options, 1).unwrap();
+            let blob = og_blob::Blob::parse(&bytes, "normal").unwrap();
+            let meta = blob
+                .table::<TextureMeta>("meta", row_hash::<TextureMeta>())
+                .unwrap()[0];
+            assert_eq!(
+                meta.codec,
+                if derived { codec::ETC1S } else { codec::UASTC }
+            );
+            let texture = crate::runtime::CookedTexture {
+                id: "normal".into(),
+                meta,
+                ktx2: blob.raw("ktx2").unwrap().to_vec(),
+                mips: None,
+                orientation: 1,
+            };
+            let decoded = texture.to_texture_data().unwrap();
+            for (actual, expected) in decoded
+                .rgba
+                .as_chunks::<4>()
+                .0
+                .iter()
+                .zip(image.rgba.as_chunks::<4>().0)
+            {
+                for channel in 0..3 {
+                    assert!(
+                        actual[channel].abs_diff(expected[channel]) <= 12,
+                        "normal {actual:?}, expected {expected:?}"
+                    );
+                }
+            }
+            let mut formats = TextureFormats {
+                color: F::Astc4x4,
+                normal: F::Astc4x4,
+                data: F::Astc4x4,
+                supported: vec![F::Rgba8, F::Astc4x4],
+            };
+            assert_eq!(
+                texture.target_format(Some(&formats)),
+                if derived { F::Rgba8 } else { F::Astc4x4 }
+            );
+            formats.supported.push(F::EacRg11);
+            assert_eq!(
+                texture.target_format(Some(&formats)),
+                if derived { F::EacRg11 } else { F::Astc4x4 }
+            );
+        }
+    }
 
     #[test]
     fn transparent_texels_take_their_nearest_visible_colour() {

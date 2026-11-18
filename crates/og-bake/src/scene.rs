@@ -79,10 +79,15 @@ impl Default for Material {
 pub struct Mesh {
     pub positions: Vec<Vec3>,
     pub normals: Vec<Vec3>,
+    /// Authored/MikkTSpace tangent and handedness; empty derives a frame
+    /// from the triangle's UVs, with the bitangent up the image.
+    pub tangents: Vec<glam::Vec4>,
     /// The material's uvs (empty: none).
     pub uvs: Vec<Vec2>,
     /// Linear vertex colours (empty: white).
     pub colors: Vec<Vec3>,
+    /// Vertex colour alpha (empty: opaque).
+    pub opacity: Vec<f32>,
     pub indices: Vec<u32>,
     pub material: usize,
     /// Whether the mesh receives a lightmap (a static entity's part); every

@@ -764,6 +764,7 @@ pub fn grass_scene() -> RenderScene {
         terrain: 0,
         mesh: tuft,
         material: grass,
+        lod_materials: [None; 2],
         scatter: grass_scatter(),
         cast_shadows: true,
         impostor: None,
@@ -1218,6 +1219,7 @@ pub fn layers_scene(painted: bool) -> RenderScene {
             terrain: 0,
             mesh,
             material: bloom,
+            lod_materials: [None; 2],
             scatter: TerrainScatter {
                 layer,
                 density: 7.0,
@@ -1437,6 +1439,7 @@ pub fn tiling_scene(anti_tiling: f32) -> RenderScene {
         terrain: 0,
         mesh: tuft,
         material: dry,
+        lod_materials: [None; 2],
         scatter: TerrainScatter {
             layer: 0,
             density: 5.0,
@@ -1690,6 +1693,7 @@ pub fn steep_scene(project_slope: f32) -> RenderScene {
         terrain: 0,
         mesh: rock_mesh,
         material: rock_material,
+        lod_materials: [None; 2],
         scatter: TerrainScatter {
             layer: 2,
             density: 0.3,
@@ -2810,6 +2814,7 @@ pub fn evening_meadow_scene(cast_shadows: bool) -> RenderScene {
             terrain: 0,
             mesh,
             material,
+            lod_materials: [None; 2],
             scatter: TerrainScatter {
                 layer: 0,
                 density,

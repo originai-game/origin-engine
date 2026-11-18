@@ -405,6 +405,7 @@ fn bake_scene(
                 indices: data.indices.clone(),
                 material: scene.materials.len() - 1,
                 lightmapped,
+                ..Default::default()
             });
             entry.push((scene.meshes.len() - 1, data.vertices.len()));
         }

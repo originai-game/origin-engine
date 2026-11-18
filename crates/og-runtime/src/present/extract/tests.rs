@@ -84,6 +84,7 @@ fn the_impostor_ends_the_level_chain() {
     let lods = ModelLods {
         // One part with levels 3 cm and 12 cm off, another with one.
         parts: vec![vec![(mesh, 0.03), (mesh, 0.12)], vec![(mesh, 0.02)]],
+        materials: Vec::new(),
         center: Vec3::ZERO,
         radius: 1.0,
         #[cfg(not(feature = "profile2d"))]

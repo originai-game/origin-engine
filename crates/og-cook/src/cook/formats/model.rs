@@ -15,6 +15,7 @@ use std::path::Path;
 mod blob;
 pub(crate) mod ext;
 mod impostor;
+mod lod_bake;
 pub mod plain;
 mod primitive;
 pub(crate) mod skin_report;
@@ -835,13 +836,81 @@ fn plan_model<'a>(
             &[],
         )
     };
+    let st = stamp(&[b"lod-surface-v6-etc1s-normal", &st.to_le_bytes()]);
+    let prepared = std::sync::Arc::new(PreparedModel {
+        source: s,
+        ids,
+        stamp: st,
+        data: Default::default(),
+    });
+    let cached = (|| {
+        let old = cx
+            .old_outputs
+            .get(s.rel.as_str())
+            .filter(|o| o.stamp == st)?;
+        let bytes = std::fs::read(cx.cooked_dir.join(&old.file)).ok()?;
+        if hash_bytes(&bytes) != old.hash {
+            return None;
+        }
+        let blob = og_blob::Blob::parse(&bytes, &old.file).ok()?;
+        if blob.header().schema_version != format::Model::schema_version() {
+            return None;
+        }
+        let refs = blob
+            .table::<TextureRefRow>("textures", row_hash::<TextureRefRow>())
+            .ok()?;
+        let strings = blob.raw("strings").ok()?;
+        let prefix = format!("{}#lod", s.rel);
+        refs.iter()
+            .map(|t| {
+                let start = t.id_offset as usize;
+                std::str::from_utf8(strings.get(start..start + t.id_len as usize)?)
+                    .ok()
+                    .map(str::to_owned)
+            })
+            .collect::<Option<Vec<_>>>()
+            .map(|ids| {
+                ids.into_iter()
+                    .filter(|id| id.starts_with(&prefix))
+                    .collect()
+            })
+    })();
+    let derived: Vec<String> = if let Some(ids) = cached {
+        ids
+    } else {
+        match prepared.get(options) {
+            Ok(data) => data.textures.iter().map(|t| t.id.clone()).collect(),
+            Err(e) => {
+                early_errors.push((s.rel.clone(), "model", e.to_string()));
+                return;
+            }
+        }
+    };
+    for id in derived {
+        parsed_refs
+            .entry(s.rel.clone())
+            .or_default()
+            .insert(id.clone());
+        let texture_stamp = stamp(&[
+            b"lod-surface-v6-etc1s-normal",
+            &st.to_le_bytes(),
+            tex_desc.as_bytes(),
+            id.as_bytes(),
+        ]);
+        outs.push((
+            id,
+            format::Texture::NAME,
+            texture_stamp,
+            Box::new(LodTextureJob(prepared.clone())),
+        ));
+    }
     outs.insert(
         0,
         (
             s.rel.clone(),
             format::Model::NAME,
             st,
-            Box::new(ModelJob(s, ids)),
+            Box::new(ModelJob(prepared)),
         ),
     );
     if s.fracture.is_some() {
@@ -947,17 +1016,55 @@ fn plan_model<'a>(
 }
 
 /// A model's one blob: its meshes, materials and skeleton.
-struct ModelJob<'a>(&'a Source, Vec<String>);
+struct ModelJob<'a>(std::sync::Arc<PreparedModel<'a>>);
+
+struct PreparedModel<'a> {
+    source: &'a Source,
+    ids: Vec<String>,
+    stamp: u64,
+    data: std::sync::OnceLock<Result<ModelOutput, CookError>>,
+}
+
+struct ModelOutput {
+    blob: Vec<u8>,
+    notes: ModelNotes,
+    textures: Vec<blob::LodTexture>,
+}
+
+impl PreparedModel<'_> {
+    fn get(&self, options: &super::CookOptions) -> Result<&ModelOutput, CookError> {
+        self.data
+            .get_or_init(|| {
+                let mesh = mesh_for(self.source, options)?;
+                let src = self.source.gltf.as_ref().expect("loaded");
+                let mut textures = Vec::new();
+                let (blob, notes) = blob::cook(
+                    src,
+                    &self.ids,
+                    &mesh,
+                    self.stamp,
+                    false,
+                    &self.source.rel,
+                    &mut textures,
+                )?;
+                Ok(ModelOutput {
+                    blob,
+                    notes,
+                    textures,
+                })
+            })
+            .as_ref()
+            .map_err(Clone::clone)
+    }
+}
 
 impl Job for ModelJob<'_> {
-    fn cook(&self, p: &Planned, ex: &Exec) -> Result<(Vec<u8>, Vec<String>), CookError> {
-        let ModelJob(s, ids) = self;
-        let Exec {
-            options, budgets, ..
-        } = ex;
-        let g = s.gltf.as_ref().expect("loaded");
-        let mesh = mesh_for(s, options)?;
-        let (blob, mut n) = cook(g, ids, &mesh, p.stamp, false, &s.rel)?;
+    fn cook(&self, _: &Planned, ex: &Exec) -> Result<(Vec<u8>, Vec<String>), CookError> {
+        let s = self.0.source;
+        let data = self.0.get(ex.options)?;
+        let prepared = &data.notes;
+        let budgets = ex.budgets;
+        let mut notes = prepared.notes.clone();
         // A model written as text past the project's budgets is cooked
         // and flagged: the budgets are reported numbers, never a reason
         // a model is not made (indices are u32; nothing breaks past them).
@@ -965,20 +1072,43 @@ impl Job for ModelJob<'_> {
             for (what, value, limit, key) in [
                 (
                     "LOD 0 triangles",
-                    n.triangles,
+                    prepared.triangles,
                     budgets.triangles,
                     "triangles",
                 ),
-                ("vertices", n.vertices, budgets.vertices, "vertices"),
+                ("vertices", prepared.vertices, budgets.vertices, "vertices"),
             ] {
                 if value as u64 > limit {
-                    n.notes.push(format!(
+                    notes.push(format!(
                             "warning: over budget: {what}: {value} is over the {key} budget of {limit} (project.ogt's budgets.{key}); cooked as written"
                         ));
                 }
             }
         }
-        Ok((blob, n.notes))
+        Ok((data.blob.clone(), notes))
+    }
+}
+
+struct LodTextureJob<'a>(std::sync::Arc<PreparedModel<'a>>);
+
+impl Job for LodTextureJob<'_> {
+    fn cook(&self, p: &Planned, ex: &Exec) -> Result<(Vec<u8>, Vec<String>), CookError> {
+        let data = self.0.get(ex.options)?;
+        let output = data.textures.iter().find(|t| t.id == p.id).ok_or_else(|| {
+            CookError(format!("{}: LOD output no longer in prepared model", p.id))
+        })?;
+        let mut options = ex.options.texture.clone();
+        options.cutout = output.cutout;
+        options.data_etc1s = true;
+        texture::cook(&output.image, output.kind, &options, p.stamp).map(|bytes| {
+            (
+                bytes,
+                vec![format!(
+                    "{}: {}x{} LOD surface",
+                    p.id, output.image.width, output.image.height
+                )],
+            )
+        })
     }
 }
 
@@ -991,7 +1121,7 @@ impl Job for ProxyJob<'_> {
         let Exec { options, .. } = ex;
         let g = s.gltf.as_ref().expect("loaded");
         let mesh = mesh_for(s, options)?;
-        cook(g, &[], &mesh, p.stamp, true, &s.rel).map(|(b, mut n)| {
+        cook(g, &[], &mesh, p.stamp, true, &s.rel, &mut Vec::new()).map(|(b, mut n)| {
             n.notes.retain(|x| x.contains("triangles"));
             (
                 b,

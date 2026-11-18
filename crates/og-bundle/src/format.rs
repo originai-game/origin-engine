@@ -199,6 +199,10 @@ pub mod attr {
     pub const UV: u32 = 2;
     pub const COLOR: u32 = 4;
     pub const TANGENT: u32 = 8;
+    /// Vertex stream: u32 base count, u32 base byte length, the encoded
+    /// base vertices, then encoded [source vertex u32, atlas UV u16 x 2]
+    /// records. Atlas UVs use [0,1], independently of the source UV range.
+    pub const LOD_UV_REFS: u32 = 16;
 }
 
 row!(
@@ -208,7 +212,7 @@ row!(
     /// `i16 x 2` (snorm octahedral), then when present uv `u16 x 2` (unorm over
     /// the uv range), colour `u8 x 4` (unorm), tangent `i16 x 4` (snorm
     /// octahedral `xy`, `z` the bitangent sign as +-32767, `w` zero).
-    PrimitiveRow, "og.ModelPrimitive", 3 {
+    PrimitiveRow, "og.ModelPrimitive", 4 {
         material: u32,
         attributes: u32,
         vertex_count: u32,
@@ -264,7 +268,7 @@ row!(
 
 row!(
     /// One level of detail: a range of a primitive's decoded indices.
-    LodRow, "og.ModelLod", 3 {
+    LodRow, "og.ModelLod", 4 {
         index_first: u32,
         index_count: u32,
         /// The level's largest distance from the full mesh, both ways, in
@@ -275,6 +279,9 @@ row!(
         /// cover its index range in order (og-render's `meshlet`).
         cluster_first: u32,
         cluster_count: u32,
+        /// The reparameterised level's material; NONE keeps the
+        /// primitive's material and source UVs.
+        material: u32,
     }
 );
 

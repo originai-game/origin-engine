@@ -347,6 +347,21 @@ pub(crate) fn insert_model(
             // Each part's levels with their errors in the model's units: a
             // part's node scale is folded in.
             let model_parts = &parts.parts;
+            let lod_materials = model_parts
+                .iter()
+                .map(|&(mesh, _, _)| {
+                    prim_of(mesh)
+                        .map(|p| {
+                            model.primitives[p]
+                                .lods
+                                .iter()
+                                .skip(1)
+                                .map(|l| l.material.map(|m| parts.materials[m]))
+                                .collect()
+                        })
+                        .unwrap_or_default()
+                })
+                .collect();
             let parts: Vec<Vec<(og_render::MeshHandle, f32)>> = model_parts
                 .iter()
                 .map(|&(mesh, _, local)| {
@@ -397,6 +412,7 @@ pub(crate) fn insert_model(
             (parts.iter().any(|l| !l.is_empty()) || impostor.is_some()).then(|| {
                 crate::present::extract::ModelLods {
                     parts,
+                    materials: lod_materials,
                     center: (model.min + model.max) * 0.5,
                     radius: ((model.max - model.min) * 0.5).length().max(1e-3),
                     #[cfg(not(feature = "profile2d"))]

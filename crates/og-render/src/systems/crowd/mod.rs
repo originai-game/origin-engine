@@ -138,6 +138,8 @@ impl CrowdImpostor {
 pub struct CrowdPart {
     pub levels: Vec<MeshHandle>,
     pub material: MaterialHandle,
+    /// Optional per-level surfaces; empty keeps `material` at every level.
+    pub level_materials: Vec<MaterialHandle>,
 }
 
 /// One member of a crowd: where it stands and the baked frame it shows.
@@ -482,10 +484,16 @@ pub(crate) fn build<'m>(
         let draw_base = f.draws.len() as u32;
         for level in 0..mesh_levels {
             for (pi, p) in c.parts.iter().enumerate() {
-                if p.material.index() >= materials {
+                let material = p
+                    .level_materials
+                    .get(level)
+                    .or(p.level_materials.last())
+                    .copied()
+                    .unwrap_or(p.material);
+                if material.index() >= materials {
                     return Err(RenderError::InvalidHandle(format!(
                         "crowd {ci} part {pi}: material {}",
-                        p.material.index()
+                        material.index()
                     )));
                 }
                 let Some(&m) = p.levels.get(level).or(p.levels.last()) else {
@@ -504,7 +512,7 @@ pub(crate) fn build<'m>(
                     part: pi as u32,
                     level: level as u32,
                     mesh: m.index(),
-                    material: p.material.index(),
+                    material: material.index(),
                     index_count: info.index_count,
                 });
             }

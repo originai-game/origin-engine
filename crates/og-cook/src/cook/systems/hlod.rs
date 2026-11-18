@@ -85,7 +85,7 @@ use std::collections::BTreeMap;
 use std::sync::{Arc, Mutex, OnceLock};
 
 /// In every HLOD stamp: a change to what a proxy is cooks them again.
-const VERSION: u8 = 1;
+const VERSION: u8 = 2;
 /// The levels above the leaves a tree may have (a root 1024 leaves wide).
 const MAX_LEVELS: u32 = 10;
 /// The most triangles a proxy keeps; past it the simplification stops
@@ -522,6 +522,7 @@ fn flatten(g: &GltfSource) -> Result<Flat, String> {
                     .map(|t| image(t.texture())),
                 emissive: e,
                 emissive_map: m.emissive_texture().map(|t| image(t.texture())),
+                ..Default::default()
             }
         })
         .collect();
@@ -633,6 +634,7 @@ fn flatten(g: &GltfSource) -> Result<Flat, String> {
                 indices,
                 material: surface,
                 lightmapped: false,
+                ..Default::default()
             });
         }
     }
@@ -1019,6 +1021,7 @@ impl<'a> Shared<'a> {
                     texels_per_unit: density,
                     max_size: cap,
                     padding: 2,
+                    ..Default::default()
                 },
             )
             .map_err(|e| format!("charting: {e}"))?;
@@ -1066,6 +1069,7 @@ impl<'a> Shared<'a> {
             Target {
                 positions: &positions,
                 normals: &normals,
+                tangents: &[],
                 uvs: &page_uvs,
                 indices: &indices,
             },
@@ -1701,7 +1705,9 @@ impl Job for ProxyJob<'_> {
             lods: Some(vec![1.0]),
             ..ex.options.mesh.clone()
         };
-        let (blob, _) = model::cook(&src, &ids, &options, p.stamp, false, &p.id)?;
+        let mut derived = Vec::new();
+        let (blob, _) = model::cook(&src, &ids, &options, p.stamp, false, &p.id, &mut derived)?;
+        debug_assert!(derived.is_empty(), "an HLOD proxy has only LOD0");
         Ok((
             blob,
             vec![format!(

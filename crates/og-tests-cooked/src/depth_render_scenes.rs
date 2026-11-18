@@ -233,10 +233,13 @@ pub fn lod_scene() -> Result<LodScene, String> {
         ..lod_camera()
     };
     let base = scene.mesh_count();
-    let parts = model.add_to(&mut scene, &textures).parts;
+    let added = model.add_to(&mut scene, &textures);
+    let parts = added.parts;
     let levels = model.add_lod_levels(&mut scene);
-    let prim_of =
-        |mesh| (0..model.primitives.len()).find(|&p| scene.mesh_handle(base + p) == Some(mesh));
+    let primitive_meshes: Vec<_> = (0..model.primitives.len())
+        .map(|p| scene.mesh_handle(base + p))
+        .collect();
+    let prim_of = |mesh| primitive_meshes.iter().position(|&m| m == Some(mesh));
     let part_levels: Vec<Vec<(og_render::MeshHandle, f32)>> = parts
         .iter()
         .map(|&(m, _, _)| prim_of(m).map(|p| levels[p].clone()).unwrap_or_default())
@@ -275,6 +278,12 @@ pub fn lod_scene() -> Result<LodScene, String> {
     let mut drawn = 0;
     let place = |scene: &mut RenderScene, at: Mat4, level: usize, fx: InstanceFx| {
         for (k, &(mesh, material, local)) in parts.iter().enumerate() {
+            let material = prim_of(mesh)
+                .and_then(|p| {
+                    let lods = &model.primitives[p].lods;
+                    lods[level.min(lods.len() - 1)].material
+                })
+                .map_or(material, |m| added.materials[m]);
             let mesh = match part_levels.get(k) {
                 Some(l) if level > 0 && !l.is_empty() => l[(level - 1).min(l.len() - 1)].0,
                 _ => mesh,
