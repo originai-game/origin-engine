@@ -1,7 +1,7 @@
 // The racing components' review sheet (docs/ui.md §6.2): the race page
-// (telemetry, lap and position, standings and the start banner over a bright
-// sky and a dark track), the garage page (a ten-car garage and a fourteen-row
-// classification) and the states page (every member in every fixture state
+// (the HUD laid out as its approved mockup over sample stage art), the
+// garage page (a ten-car garage and a fourteen-row classification) and the
+// states page (every member in every fixture state
 // it declares), dressed by a style pack or the default style. The pages use
 // the built-in components by name, as a game does, with fixture stores.
 //
@@ -20,8 +20,13 @@ const DOCUMENTS = ["ui/race.svelte", "ui/garage.svelte", "ui/states.svelte", "ui
 
 const NAMES: Record<string, string> = {
   telemetry: "RacingTelemetry", lapHud: "RacingLapHud", standings: "RacingStandings",
-  banner: "RacingBanner", garage: "RacingGarage", results: "RacingResults",
+  banner: "RacingBanner", trackMap: "RacingTrackMap", boost: "RacingBoost", pedals: "RacingPedals",
+  car: "RacingCar", bonus: "RacingBonus", garage: "RacingGarage", results: "RacingResults",
 };
+
+/** The race page's sample art under assets/art (hud-<name>.jpg; sheet only, never installed), loaded in start. */
+const HUD_ART = ["stage", "nitro"] as const;
+let hudArt: Record<string, number> = {};
 
 function must<T>(r: { ok: true; value: T } | { ok: false; reason: string }, what: string): T {
   if (!r.ok) throw new Error(`${what}: ${r.reason}`);
@@ -46,7 +51,11 @@ function setStyle(world: World, name: string): void {
 /** Each fixture as a store of its scalars (`<member>_<state>`) and a keyed collection per list (`<member>_<state>_<prop>`). */
 function stores(world: World): Record<string, UiReadable<unknown>> {
   const scope = og.ui.scope(world, "sheet");
-  const out: Record<string, UiReadable<unknown>> = { page: scope.writable("page", "race") };
+  const out: Record<string, UiReadable<unknown>> = {
+    page: scope.writable("page", "race"),
+    hudStage: scope.writable("hudStage", hudArt.stage ?? 0),
+    hudNitro: scope.writable("hudNitro", hudArt.nitro ?? 0),
+  };
   const captions: Record<string, string> = {};
   for (const [member, states] of Object.entries(FIXTURES)) {
     for (const [state, fixture] of Object.entries(states)) {
@@ -76,6 +85,7 @@ export default og.game({
     const camera = world.resource(og.Camera);
     if (camera.ok) camera.value.background = { r: 0.05, g: 0.05, b: 0.06 };
     setStyle(world, "fantasy");
+    hudArt = Object.fromEntries(HUD_ART.map((p) => [p, must(og.load.texture(world, `art/hud-${p}.jpg`), p) as number]));
     for (const path of DOCUMENTS) must(og.load.document(world, path), path);
   },
   ui: show,
