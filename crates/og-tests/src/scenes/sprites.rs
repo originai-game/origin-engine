@@ -514,67 +514,148 @@ pub fn sprites_shadow_terrain_scene() -> RenderScene {
     scene
 }
 
-/// Layer `k` of the `sprites-array` smooth array: a soft disc, orange,
-/// green or blue.
+/// Layer `k` of the `sprites-array` smooth array: a wisp's soft glow,
+/// orange, green or blue, fading out from a white-hot core.
 fn glow_layer(k: usize) -> og_render::TextureSource {
     og_render::TextureSource::Rgba(texture(64, ColorSpace::Srgb, |u, v| {
         let d = ((u - 0.5).powi(2) + (v - 0.5).powi(2)).sqrt() * 2.0;
-        let a = ((1.0 - d) * 2.0).clamp(0.0, 1.0);
-        let rgb = [[255, 120, 60], [80, 255, 140], [90, 140, 255]][k];
+        let a = ((1.0 - d) * 1.5).clamp(0.0, 1.0).powf(1.3);
+        let core = ((0.3 - d) / 0.3).clamp(0.0, 1.0) * 0.85;
+        let rgb = [[255, 120, 60], [80, 255, 140], [90, 140, 255]][k]
+            .map(|c: u8| (c as f32 + (255.0 - c as f32) * core) as u8);
         [rgb[0], rgb[1], rgb[2], (a * 255.0) as u8]
     }))
 }
 
+/// One layer of the vault's coin flipbook: a 32 x 32 pixel-art gold coin
+/// `frame` eighths of a turn about its upright axis (0 face on, 2 and 6
+/// edge on, 4 its back). The face carries a crescent opening to the right
+/// and a shine on its upper left, so a coin drawn flipped reads mirrored.
+pub fn coin_frame(frame: u32) -> TextureData {
+    let turn = frame as f32 * std::f32::consts::TAU / 8.0;
+    let (squash, front) = (turn.cos().abs().max(0.14), turn.cos() > 0.01);
+    let mut t = texture(32, ColorSpace::Srgb, |u, v| {
+        // The coin's face coordinates: unit circle, y up.
+        let (x, y) = ((u - 0.5) / (0.44 * squash), (0.5 - v) / 0.44);
+        let r = (x * x + y * y).sqrt();
+        if r > 1.0 {
+            return [0, 0, 0, 0];
+        }
+        if squash < 0.2 {
+            // Edge on: the milled rim, lit from the left.
+            return if x < -0.2 {
+                [255, 236, 150, 255]
+            } else if ((y * 9.0).floor() as i32).rem_euclid(2) == 0 {
+                [196, 132, 30, 255]
+            } else {
+                [168, 104, 22, 255]
+            };
+        }
+        let rim = r > 0.8;
+        let shine = x < -0.25 && y > 0.25 && (0.55..0.8).contains(&r);
+        let emblem = if front {
+            let inner = ((x + 0.12).powi(2) + y.powi(2)).sqrt() < 0.5;
+            let bite = ((x - 0.1).powi(2) + (y - 0.08).powi(2)).sqrt() < 0.42;
+            inner && !bite
+        } else {
+            x.abs() + y.abs() < 0.38
+        };
+        let face = if front {
+            [250, 200, 64]
+        } else {
+            [222, 162, 44]
+        };
+        let c = if rim {
+            if x < 0.0 && y > 0.0 {
+                [255, 226, 120]
+            } else {
+                [176, 112, 22]
+            }
+        } else if shine {
+            [255, 246, 196]
+        } else if emblem {
+            [170, 104, 20]
+        } else {
+            face
+        };
+        [c[0], c[1], c[2], 255]
+    });
+    t.mips = Mips::None;
+    t
+}
+
+/// The vault's coin flipbook as a nearest-filtered texture array.
+fn coin_flipbook(scene: &mut RenderScene) -> og_render::TextureArrayHandle {
+    use og_render::{TextureArrayData, TextureFilter, TextureSource};
+    let coins = scene
+        .add_texture_array(TextureArrayData {
+            layers: (0..8).map(|k| TextureSource::Rgba(coin_frame(k))).collect(),
+        })
+        .expect("eight frames of one size");
+    scene.set_texture_array_filter(coins, TextureFilter::Nearest);
+    coins
+}
+
+/// A painted sprite `name` standing on `foot` (its base's middle),
+/// `height` tall, on `layer`.
+fn stand_painted(scene: &mut RenderScene, name: &str, foot: Vec2, height: f32, layer: i32) {
+    let (texture, aspect) = painted(scene, name);
+    scene.add_sprite(Sprite {
+        texture: Some(texture),
+        position: foot.extend(0.0),
+        size: Vec2::new(height * aspect, height),
+        anchor: Vec2::new(0.5, 0.0),
+        layer,
+        ..Default::default()
+    });
+}
+
 /// The `sprites-array-fx` scene (see [`build`]): the `sprites-array`
-/// flipbook and smooth arrays through the paths that scene leaves out.
-/// Top: four flipbook sprites glowing (PostEffects glow) over a dim plain
-/// strip. Bottom left: a fountain of round, glowing, added particles whose
-/// layers of the smooth array are picked at random; bottom right: a
-/// sprite-mode emitter stepping each particle through the flipbook's eight
-/// layers over its life. Top left of the screen: four overlay sprites of
-/// the flipbook's layers 0, 2, 4 and 6 (one draw) beside a plain one.
+/// vault at night, its coin flipbook and glow array through the paths
+/// that scene leaves out. Up on a stone shelf four flipbook coins glow
+/// (PostEffects glow), each brighter than the last. Bottom left a
+/// cauldron's brew throws round, glowing, added sparks whose layers of the
+/// smooth array are picked at random; bottom right an open chest bursts
+/// coins, a sprite-mode emitter stepping each through the flipbook's eight
+/// layers over its life. The HUD, top left: four overlay coins of the
+/// flipbook's layers 0, 2, 4 and 6 (one draw) beside a plain chest icon.
 pub fn sprite_array_fx_scene() -> RenderScene {
     use og_render::{
         Burst, EmitterShape, Glow, Overlay, ParticleBlend, ParticleEmitter, ParticleRender,
         ParticleSystem, SheetMode, SpriteArray, SpriteFx, SpriteSheet, TextureArrayData,
-        TextureFilter, TextureSource,
     };
     let mut scene = RenderScene::new();
-    let flipbook = scene
-        .add_texture_array(TextureArrayData {
-            layers: (0..8)
-                .map(|k| TextureSource::Rgba(flipbook_frame(k)))
-                .collect(),
-        })
-        .expect("eight frames of one size");
-    scene.set_texture_array_filter(flipbook, TextureFilter::Nearest);
+    let center = Vec2::new(0.0, -1.0);
+    crate::atmo_scenes::backdrop(
+        &mut scene,
+        "sprites2d/vault.jpg",
+        center,
+        12.0,
+        [0.42, 0.44, 0.56, 1.0],
+    );
+    let flipbook = coin_flipbook(&mut scene);
     let glows = scene
         .add_texture_array(TextureArrayData {
             layers: (0..3).map(glow_layer).collect(),
         })
         .expect("three layers of one size");
-    let plain = scene.add_texture(texture(32, ColorSpace::Srgb, |u, v| {
-        let on = ((u * 4.0) as u32 + (v * 4.0) as u32).is_multiple_of(2);
-        if on {
-            [120, 120, 130, 255]
-        } else {
-            [40, 40, 50, 255]
-        }
-    }));
-    // The strip under the glowing row.
-    scene.add_sprite(Sprite {
-        texture: Some(plain),
-        position: Vec3::new(0.0, 2.5, 0.0),
-        size: Vec2::new(14.0, 1.2),
-        layer: 0,
-        ..Default::default()
-    });
-    // Four glowing flipbook sprites: one draw, and one glow draw.
+    // The shelf under the glowing coins: a plain run on layer 0.
+    let stone = crate::kit::picture(&mut scene, "sprites2d/vault-block.png", true);
+    crate::atmo_scenes::blocks(
+        &mut scene,
+        stone,
+        Vec2::new(-6.6, 0.7),
+        Vec2::new(6.6, 1.7),
+        1.0,
+        [0.55, 0.56, 0.66, 1.0],
+        0,
+    );
+    // Four glowing flipbook coins: one draw, and one glow draw.
     for (n, k) in [1u32, 3, 5, 7].into_iter().enumerate() {
         let i = scene.sprite.sprites.len() as u32;
         scene.add_sprite(Sprite {
             position: Vec3::new(-4.5 + n as f32 * 3.0, 2.5, 0.0),
-            size: Vec2::splat(2.0),
+            size: Vec2::splat(1.6),
             layer: 1,
             ..Default::default()
         });
@@ -589,7 +670,11 @@ pub fn sprite_array_fx_scene() -> RenderScene {
             ..Default::default()
         });
     }
-    // Round, glowing, added particles from the smooth array, a random layer each.
+    // The cauldron and the chest the emitters stand in, drawn over their
+    // particles so the sparks and coins rise out of them.
+    stand_painted(&mut scene, "cauldron", Vec2::new(-4.0, -6.9), 2.5, 3);
+    stand_painted(&mut scene, "chest", Vec2::new(4.0, -6.9), 2.3, 3);
+    // Round, glowing, added sparks from the smooth array, a random layer each.
     let motes = scene.add_emitter(ParticleEmitter {
         max_particles: 96,
         shape: EmitterShape::Cone {
@@ -616,11 +701,11 @@ pub fn sprite_array_fx_scene() -> RenderScene {
     scene.effects.particles.push(ParticleSystem::new(
         1,
         motes,
-        Mat4::from_translation(Vec3::new(-4.0, -4.5, 0.0)),
+        Mat4::from_translation(Vec3::new(-4.0, -4.7, 0.0)),
         5,
         0,
     ));
-    // The flipbook's eight layers over each particle's life, alpha blended.
+    // The flipbook's eight layers over each coin's life, alpha blended.
     let wheels = scene.add_emitter(ParticleEmitter {
         max_particles: 64,
         shape: EmitterShape::Cone {
@@ -631,7 +716,7 @@ pub fn sprite_array_fx_scene() -> RenderScene {
         bursts: vec![Burst::once(0.0, 6)],
         lifetime: [2.0, 2.0],
         speed: [3.0, 4.0],
-        size: [1.0, 1.0],
+        size: [0.8, 0.8],
         gravity: Vec3::new(0.0, -2.5, 0.0),
         array: Some(flipbook),
         sheet: SpriteSheet {
@@ -645,17 +730,18 @@ pub fn sprite_array_fx_scene() -> RenderScene {
     scene.effects.particles.push(ParticleSystem::new(
         2,
         wheels,
-        Mat4::from_translation(Vec3::new(4.0, -4.5, 0.0)),
+        Mat4::from_translation(Vec3::new(4.0, -5.4, 0.0)),
         6,
         0,
     ));
-    // The overlay: four flipbook layers (one draw) and a plain sprite.
+    // The HUD: four flipbook coins (one draw) and a plain chest icon.
+    let (chest, aspect) = painted(&mut scene, "chest");
     let mut overlay = Overlay::new(1280.0, 720.0, 0.0);
     for (n, k) in [0u32, 2, 4, 6].into_iter().enumerate() {
         let i = overlay.sprites.len() as u32;
         overlay.sprites.push(Sprite {
-            position: Vec3::new(24.0 + n as f32 * 72.0, 24.0, 0.0),
-            size: Vec2::splat(64.0),
+            position: Vec3::new(24.0 + n as f32 * 56.0, 24.0, 0.0),
+            size: Vec2::splat(48.0),
             anchor: Vec2::ZERO,
             ..Default::default()
         });
@@ -666,47 +752,43 @@ pub fn sprite_array_fx_scene() -> RenderScene {
         });
     }
     overlay.sprites.push(Sprite {
-        texture: Some(plain),
-        position: Vec3::new(24.0 + 4.0 * 72.0, 24.0, 0.0),
-        size: Vec2::splat(64.0),
+        texture: Some(chest),
+        position: Vec3::new(24.0 + 4.0 * 56.0 + 8.0, 20.0, 0.0),
+        size: Vec2::new(56.0 * aspect, 56.0),
         anchor: Vec2::ZERO,
         ..Default::default()
     });
     scene.ui.overlay = Some(overlay);
     scene.look.post.glow = Some(Glow { intensity: 0.8 });
-    scene.frame.camera = Camera::orthographic_2d(Vec2::new(0.0, -1.0), 12.0);
+    scene.frame.camera = Camera::orthographic_2d(center, 12.0);
     scene.lighting.environment.background = Background::Color(Vec3::new(0.02, 0.02, 0.03));
     scene.look.post.tonemap = Tonemap::None;
     scene
 }
 
-/// The `sprites-array` scene (see [`build`]).
+/// The `sprites-array` scene (see [`build`]): a dwarven treasure vault in
+/// a 2D platformer. Two rows of spinning coins hang before the back wall,
+/// every frame of the coin flipbook in order; the lower row flipped left
+/// to right and tipped a little, its crescents opening the other way.
+/// Will-o'-wisps from the smooth array, added, hover over a stone dais
+/// (a plain run on layer 0), its three layers in turn.
 pub fn sprite_array_scene() -> RenderScene {
-    use og_render::{
-        SpriteArray, SpriteBlend, SpriteFx, TextureArrayData, TextureFilter, TextureSource,
-    };
+    use og_render::{SpriteArray, SpriteBlend, SpriteFx, TextureArrayData};
     let mut scene = RenderScene::new();
-    let flipbook = scene
-        .add_texture_array(TextureArrayData {
-            layers: (0..8)
-                .map(|k| TextureSource::Rgba(flipbook_frame(k)))
-                .collect(),
-        })
-        .expect("eight frames of one size");
-    scene.set_texture_array_filter(flipbook, TextureFilter::Nearest);
+    let center = Vec2::new(0.0, -1.0);
+    crate::atmo_scenes::backdrop(
+        &mut scene,
+        "sprites2d/vault.jpg",
+        center,
+        12.0,
+        [0.78, 0.8, 0.86, 1.0],
+    );
+    let flipbook = coin_flipbook(&mut scene);
     let glows = scene
         .add_texture_array(TextureArrayData {
             layers: (0..3).map(glow_layer).collect(),
         })
         .expect("three layers of one size");
-    let plain = scene.add_texture(texture(32, ColorSpace::Srgb, |u, v| {
-        let on = ((u * 4.0) as u32 + (v * 4.0) as u32).is_multiple_of(2);
-        if on {
-            [230, 230, 230, 255]
-        } else {
-            [60, 60, 70, 255]
-        }
-    }));
     let push = |scene: &mut RenderScene,
                 sprite: Sprite,
                 array: Option<(og_render::TextureArrayHandle, u32)>| {
@@ -736,7 +818,7 @@ pub fn sprite_array_scene() -> RenderScene {
                 &mut scene,
                 Sprite {
                     position: Vec3::new(x, y, 0.0),
-                    size: Vec2::splat(1.8),
+                    size: Vec2::splat(1.6),
                     rotation: row as f32 * 0.3,
                     uv_rect,
                     layer: 1,
@@ -746,25 +828,24 @@ pub fn sprite_array_scene() -> RenderScene {
             );
         }
     }
-    // The plain texture under them, in its own run on layer 0.
-    push(
+    // The dais under the wisps: a plain run on layer 0.
+    let stone = crate::kit::picture(&mut scene, "sprites2d/vault-block.png", true);
+    crate::atmo_scenes::blocks(
         &mut scene,
-        Sprite {
-            texture: Some(plain),
-            position: Vec3::new(0.0, -5.0, 0.0),
-            size: Vec2::new(16.0, 2.0),
-            layer: 0,
-            ..Default::default()
-        },
-        None,
+        stone,
+        Vec2::new(-8.4, -6.4),
+        Vec2::new(8.4, -4.6),
+        1.8,
+        [0.86, 0.86, 0.9, 1.0],
+        0,
     );
-    // The smooth array added over the plain strip, its three layers in turn.
+    // The smooth array added over the dais, its three layers in turn.
     for k in 0..6u32 {
         let i = push(
             &mut scene,
             Sprite {
-                position: Vec3::new(-6.25 + k as f32 * 2.5, -5.0, 0.0),
-                size: Vec2::splat(2.6),
+                position: Vec3::new(-6.25 + k as f32 * 2.5, -4.6, 0.0),
+                size: Vec2::splat(2.4),
                 color: [1.0, 1.0, 1.0, 0.9],
                 layer: 2,
                 ..Default::default()
@@ -777,7 +858,7 @@ pub fn sprite_array_scene() -> RenderScene {
             ..Default::default()
         });
     }
-    scene.frame.camera = Camera::orthographic_2d(Vec2::new(0.0, -1.0), 12.0);
+    scene.frame.camera = Camera::orthographic_2d(center, 12.0);
     scene.lighting.environment.background = Background::Color(Vec3::new(0.02, 0.02, 0.03));
     scene.look.post.tonemap = Tonemap::None;
     scene
