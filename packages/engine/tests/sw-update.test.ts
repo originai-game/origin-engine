@@ -99,7 +99,7 @@ test("a package from an asset base is fetched file by file against its integrity
     expect(result.integrity).toEqual(sri);
     // A pack the engine asks for later: against its integrity too.
     let fetcher: ((path: string) => void) | undefined;
-    installFetcher({ ...glue, og_web_set_fetcher: (f: (path: string) => void) => void (fetcher = f) } as never, "", undefined, () => null, result.integrity);
+    installFetcher({ ...glue, og_web_set_fetcher: (f: (path: string) => void) => void (fetcher = f) } as never, undefined, () => null, result.integrity);
     asked.length = 0;
     fetcher!(`${base}/cooked/stream/vale.ogb`);
     await new Promise((ok) => setTimeout(ok, 0));

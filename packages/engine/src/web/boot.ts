@@ -474,7 +474,7 @@ function concat(parts: readonly Uint8Array[]): Uint8Array {
  * first, so that every texture in it is ready when the engine reads the
  * pack; any other file is handed over as fetched.
  */
-export function installFetcher(glue: WebExtras, manifest: string, basis: { js: string; wasm: string } | undefined, engine: () => number | null, integrity: Readonly<Record<string, string>> | null = null): void {
+export function installFetcher(glue: WebExtras, basis: { js: string; wasm: string } | undefined, engine: () => number | null, integrity: Readonly<Record<string, string>> | null = null): void {
   let transcoder: Promise<BasisTranscoder> | null = null;
   const loaded = (): Promise<BasisTranscoder> => {
     let loading = transcoder;
@@ -498,7 +498,7 @@ export function installFetcher(glue: WebExtras, manifest: string, basis: { js: s
     }
   };
   const put = async (path: string, bytes: Uint8Array) => {
-    const triples = /\/stream\/[^/]+\.ogb$/.test(path) && glue.og_web_pack_ktx2 ? glue.og_web_pack_ktx2(engine() ?? undefined, manifest, bytes) : [];
+    const triples = /\/stream\/[^/]+\.ogb$/.test(path) && glue.og_web_pack_ktx2 ? glue.og_web_pack_ktx2(engine() ?? undefined, path, bytes) : [];
     for (let i = 0; i + 2 < triples.length; i += 3) {
       await transcode(triples[i] as string, triples[i + 1] as Uint8Array, triples[i + 2] as string);
     }

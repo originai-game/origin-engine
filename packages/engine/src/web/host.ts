@@ -217,7 +217,8 @@ export interface WebExtras {
   /** Each cooked file's integrity, `{ "<file>": "sha384-…" }` (or `{ error }`), for a package from an asset base. */
   og_web_bundle_integrity(manifest: string): string;
   og_web_texture_ktx2(manifest: string, id: string, bytes: Uint8Array): Uint8Array;
-  og_web_pack_ktx2?(engine: number | undefined, manifest: string, pack: Uint8Array): Array<string | Uint8Array>;
+  /** A streaming group's pack (`<bundle>/stream/<group>.ogb`): its Basis textures as `[id, ktx2, target, ...]`, listed by its own bundle's manifest. */
+  og_web_pack_ktx2?(engine: number | undefined, path: string, pack: Uint8Array): Array<string | Uint8Array>;
   og_web_attach_canvas(engine: number, canvas: OffscreenCanvas, lowPower: boolean): Promise<string>;
   /** The page went fullscreen or left it (og.render.display's `fullscreen`; the setting follows). */
   og_web_fullscreen?(engine: number, on: boolean): void;
