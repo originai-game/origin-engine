@@ -15,6 +15,19 @@ impl Ui {
         let old = &previous.values;
         let node = &e.document.nodes[e.index];
         let target = |name: &str| matches!(name, "scale" | "opacity");
+        // A recipe-only commit records before-change inputs even for
+        // channel motion. Only computed-value effects require rebuilding.
+        let computed_motion = |style: &Option<Arc<animate::StyleCommit>>| {
+            style.as_ref().is_some_and(|commit| {
+                commit.running
+                    || commit.state.as_ref().is_some_and(|state| {
+                        state.running
+                            || !state.after.is_empty()
+                            || !state.runs.is_empty()
+                            || !state.animations.is_empty()
+                    })
+            })
+        };
         if node.kind != NodeKind::Element(Kind::Button)
             || e.control.is_some()
             || e.volatile
@@ -37,8 +50,8 @@ impl Ui {
                 })
             || old.part.is_some()
             || next.part.is_some()
-            || old.style.is_some()
-            || next.style.is_some()
+            || computed_motion(&old.style)
+            || computed_motion(&next.style)
             || old.smil
             || next.smil
             || !old.animations.is_empty()
@@ -136,6 +149,10 @@ impl Ui {
             .collect();
         if !self.part_styles_unchanged_for_class_change(old_host, new_host, &parts) {
             return false;
+        }
+        if let Some(commit) = &next.style {
+            self.style
+                .commit_styles(commit, &mut self.interaction, &mut self.tree);
         }
         let props = self.resolved_props(node, next);
         self.tree.stage(i);

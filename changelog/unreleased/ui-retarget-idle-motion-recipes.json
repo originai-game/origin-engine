@@ -1,0 +1,8 @@
+{
+  "fixed": [
+    {
+      "member": "UI motion",
+      "summary": "Warmed scalar class retargets keep their built-in button when CSS motion retains only idle before-change bookkeeping. The retained path commits the new recipe without rebuilding; computed-value transitions and animations still use the full path."
+    }
+  ]
+}
