@@ -568,6 +568,416 @@ fn conformed_output_is_deterministic() {
     assert!(cooked_files(&a) == cooked_files(&b));
 }
 
+#[test]
+fn sparse_atlas_repacking_relocates_geometry_and_every_map_together() {
+    let colour = |col: u32, row: u32| [30 + col as u8 * 60, 40 + row as u8 * 50, 90, 255];
+    let mut source = image::RgbaImage::from_pixel(1024, 1024, image::Rgba([255, 0, 255, 255]));
+    let mut mesh: Mesh = (Vec::new(), Vec::new(), Vec::new(), Vec::new());
+    for row in 0..4 {
+        for col in 0..4 {
+            for y in 0..6 {
+                for x in 0..4 {
+                    source.put_pixel(
+                        col * 256 + 9 + x,
+                        row * 256 + 9 + y,
+                        image::Rgba(colour(col, row)),
+                    );
+                }
+            }
+            let base = mesh.0.len() as u32;
+            for (x, y) in [(0.0, 0.0), (1.0, 0.0), (1.0, 1.0), (0.0, 1.0)] {
+                mesh.0.push([col as f32 + x, row as f32 + y, 0.0]);
+                mesh.1.push([0.0, 0.0, 1.0]);
+                mesh.2.push([
+                    (col as f32 * 256.0 + 9.0 + x * 4.0) / 1024.0,
+                    (row as f32 * 256.0 + 9.0 + y * 6.0) / 1024.0,
+                ]);
+            }
+            mesh.3
+                .extend([base, base + 1, base + 2, base, base + 2, base + 3]);
+        }
+    }
+    let mut png = std::io::Cursor::new(Vec::new());
+    source.write_to(&mut png, image::ImageFormat::Png).unwrap();
+    let glb = glb(&mesh, 1, [1.0; 4], Some(png.get_ref()));
+    let len = u32::from_le_bytes(glb[12..16].try_into().unwrap()) as usize;
+    let mut json: serde_json::Value = serde_json::from_slice(&glb[20..20 + len]).unwrap();
+    let mut bin = glb[28 + len..].to_vec();
+    // A second map with a deliberately different colour per island catches
+    // relocating the geometry/albedo but forgetting the material data map.
+    for pixel in source.pixels_mut() {
+        pixel.0.swap(0, 1);
+    }
+    let mut png = std::io::Cursor::new(Vec::new());
+    source.write_to(&mut png, image::ImageFormat::Png).unwrap();
+    while !bin.len().is_multiple_of(4) {
+        bin.push(0);
+    }
+    let view = json["bufferViews"].as_array().unwrap().len();
+    json["bufferViews"].as_array_mut().unwrap().push(
+        serde_json::json!({"buffer":0,"byteOffset":bin.len(),"byteLength":png.get_ref().len()}),
+    );
+    bin.extend(png.get_ref());
+    json["buffers"][0]["byteLength"] = serde_json::json!(bin.len());
+    json["images"]
+        .as_array_mut()
+        .unwrap()
+        .push(serde_json::json!({"bufferView":view,"mimeType":"image/png"}));
+    json["textures"]
+        .as_array_mut()
+        .unwrap()
+        .push(serde_json::json!({"source":1}));
+    json["materials"][0]["pbrMetallicRoughness"]["metallicRoughnessTexture"] =
+        serde_json::json!({"index":1});
+    // A valid geometric triangle with point UVs still needs a destination
+    // chart. Leaving its old UVs behind samples an unrelated relocated island.
+    let mut point_uv = mesh.clone();
+    let base = point_uv.0.len() as u32;
+    for p in [[5.0, 0.0, 0.0], [6.0, 0.0, 0.0], [5.0, 1.0, 0.0]] {
+        point_uv.0.push(p);
+        point_uv.1.push([0.0, 0.0, 1.0]);
+        point_uv.2.push([11.0 / 1024.0, 12.0 / 1024.0]);
+    }
+    point_uv.3.extend([base, base + 1, base + 2]);
+    let point_uv = glb_nodes(
+        &point_uv,
+        vec![serde_json::json!({"mesh":0})],
+        [1.0; 4],
+        Some(png.get_ref()),
+    );
+    let root = project(
+        "repacked-sparse-atlas",
+        &[
+            ("project.ogt", PROJECT.as_bytes().to_vec()),
+            (
+                "assets/looks/main.ogt",
+                look("ArtTexels {\n  density 8\n  maxSize 64\n  filter nearest\n  mips none\n}\n")
+                    .into_bytes(),
+            ),
+            ("assets/models/atlas.glb", glb_bytes(&json, bin)),
+            ("assets/models/point-uv.glb", point_uv),
+        ],
+    );
+    cook(&root);
+    let bundle = Bundle::open(&root.join("cooked")).unwrap();
+    let model = bundle.load_model("models/atlas.glb").unwrap();
+    let geometry = model.primitives[0].mesh(0);
+    let mut bounds = BTreeMap::new();
+    for tri in geometry.indices.as_chunks::<3>().0 {
+        let vertices = tri.map(|i| &geometry.vertices[i as usize]);
+        let p = vertices
+            .iter()
+            .map(|v| glam::Vec3::from(v.position))
+            .sum::<glam::Vec3>()
+            / 3.0;
+        let b = bounds
+            .entry((p.x.floor() as u32, p.y.floor() as u32))
+            .or_insert((glam::Vec2::splat(f32::MAX), glam::Vec2::splat(f32::MIN)));
+        for v in vertices {
+            let uv = glam::Vec2::from(v.uv) * 64.0;
+            b.0 = b.0.min(uv);
+            b.1 = b.1.max(uv);
+        }
+    }
+    for &(lo, hi) in bounds.values() {
+        assert!((hi - lo).min_element() >= 3.99);
+    }
+    let material = &model.materials[model.primitives[0].material];
+    for (map, slot) in [
+        material.base_color_texture,
+        material.metallic_roughness_texture,
+    ]
+    .into_iter()
+    .enumerate()
+    {
+        let texture = bundle
+            .load_texture(&model.textures[slot.unwrap()].id)
+            .unwrap();
+        assert_eq!((texture.meta.width, texture.meta.height), (64, 64));
+        let texture = texture.to_texture_data().unwrap();
+        for tri in geometry.indices.as_chunks::<3>().0 {
+            let vertices = tri.map(|i| &geometry.vertices[i as usize]);
+            let p = vertices
+                .iter()
+                .map(|v| glam::Vec3::from(v.position))
+                .sum::<glam::Vec3>()
+                / 3.0;
+            let uv = vertices
+                .iter()
+                .map(|v| glam::Vec2::from(v.uv))
+                .sum::<glam::Vec2>()
+                / 3.0;
+            let (col, row) = (p.x.floor() as u32, p.y.floor() as u32);
+            let mut expected = colour(col, row);
+            if map == 1 {
+                expected.swap(0, 1);
+            }
+            let at = ((uv.y * 64.0) as usize * 64 + (uv.x * 64.0) as usize) * 4;
+            assert_eq!(
+                &texture.rgba[at..at + 4],
+                &expected,
+                "map {map}, island {col},{row}"
+            );
+        }
+        for (&(col, row), &(lo, hi)) in &bounds {
+            let mut expected = colour(col, row);
+            if map == 1 {
+                expected.swap(0, 1);
+            }
+            for p in [
+                lo - glam::Vec2::splat(1.5),
+                glam::Vec2::new(lo.x - 1.5, (lo.y + hi.y) * 0.5),
+            ] {
+                let at = (p.y.floor() as usize * 64 + p.x.floor() as usize) * 4;
+                assert_eq!(
+                    &texture.rgba[at..at + 4],
+                    &expected,
+                    "map {map}, island gutter {col},{row}"
+                );
+            }
+        }
+    }
+    let point_uv = bundle.load_model("models/point-uv.glb").unwrap();
+    let geometry = point_uv.primitives[0].mesh(0);
+    let material = &point_uv.materials[point_uv.primitives[0].material];
+    let texture = bundle
+        .load_texture(&point_uv.textures[material.base_color_texture.unwrap()].id)
+        .unwrap();
+    assert_eq!((texture.meta.width, texture.meta.height), (64, 64));
+    let texture = texture.to_texture_data().unwrap();
+    let triangle = geometry
+        .indices
+        .as_chunks::<3>()
+        .0
+        .iter()
+        .find(|tri| {
+            tri.iter()
+                .all(|&i| geometry.vertices[i as usize].position[0] >= 5.0)
+        })
+        .unwrap();
+    let uv = triangle.map(|i| glam::Vec2::from(geometry.vertices[i as usize].uv));
+    assert!((uv[1] - uv[0]).perp_dot(uv[2] - uv[0]).abs() > 0.0);
+    let uv = (uv[0] + uv[1] + uv[2]) / 3.0;
+    let at = ((uv.y * 64.0) as usize * 64 + (uv.x * 64.0) as usize) * 4;
+    let mut expected = colour(0, 0);
+    expected.swap(0, 1);
+    assert_eq!(&texture.rgba[at..at + 4], &expected);
+}
+
+#[test]
+fn point_contact_atlas_splits_preserve_skin_and_morph_playback() {
+    use glam::Vec3;
+    use serde_json::json;
+    let positions = vec![
+        [0.0, 0.0, 0.0],
+        [1.0, 0.0, 0.0],
+        [1.0, 1.0, 0.0],
+        [0.0, 1.0, 0.0],
+        [2.0, 1.0, 0.0],
+        [2.0, 2.0, 0.0],
+        [1.0, 2.0, 0.0],
+    ];
+    // These quads share one vertex, not an edge. Each needs its own chart.
+    let mesh = (
+        positions.clone(),
+        vec![[0.0, 0.0, 1.0]; 7],
+        [
+            [9.0, 9.0],
+            [15.0, 9.0],
+            [15.0, 15.0],
+            [9.0, 15.0],
+            [21.0, 15.0],
+            [21.0, 21.0],
+            [15.0, 21.0],
+        ]
+        .map(|v| [v[0] / 1024.0, v[1] / 1024.0])
+        .to_vec(),
+        vec![0, 1, 2, 0, 2, 3, 2, 4, 5, 2, 5, 6],
+    );
+    let image = image::RgbaImage::from_fn(1024, 1024, |x, y| {
+        image::Rgba(if (9..15).contains(&x) && (9..15).contains(&y) {
+            [220, 60, 20, 255]
+        } else if (15..21).contains(&x) && (15..21).contains(&y) {
+            [20, 160, 220, 255]
+        } else {
+            [255, 0, 255, 255]
+        })
+    });
+    let mut png = std::io::Cursor::new(Vec::new());
+    image.write_to(&mut png, image::ImageFormat::Png).unwrap();
+    let glb = glb(&mesh, 1, [1.0; 4], Some(png.get_ref()));
+    let len = u32::from_le_bytes(glb[12..16].try_into().unwrap()) as usize;
+    let mut json: serde_json::Value = serde_json::from_slice(&glb[20..20 + len]).unwrap();
+    let mut bin = glb[28 + len..].to_vec();
+    let mut add = |data: Vec<u8>, kind: &str, component: u32, count: usize| {
+        while !bin.len().is_multiple_of(4) {
+            bin.push(0);
+        }
+        let view = json["bufferViews"].as_array().unwrap().len();
+        json["bufferViews"]
+            .as_array_mut()
+            .unwrap()
+            .push(json!({"buffer":0,"byteOffset":bin.len(),"byteLength":data.len()}));
+        bin.extend(data);
+        let id = json["accessors"].as_array().unwrap().len();
+        json["accessors"]
+            .as_array_mut()
+            .unwrap()
+            .push(json!({"bufferView":view,"componentType":component,"count":count,"type":kind}));
+        id
+    };
+    let floats = |v: Vec<f32>| v.into_iter().flat_map(f32::to_le_bytes).collect();
+    let weight = |p: [f32; 3]| (p[0] + 2.0 * p[1] + 1.0) / 10.0;
+    let delta = |p: [f32; 3]| Vec3::new(p[0] * 0.03, p[1] * 0.07, (p[0] + p[1] + 1.0) * 0.02);
+    let normal_delta = |p: [f32; 3]| Vec3::new(p[0] * 0.01, 0.0, p[1] * 0.02);
+    let tangent = add(floats([1.0, 0.0, 0.0, 1.0].repeat(7)), "VEC4", 5126, 7);
+    let joints = add([0, 1, 0, 0].repeat(7), "VEC4", 5121, 7);
+    let weights = add(
+        floats(
+            positions
+                .iter()
+                .flat_map(|&p| [1.0 - weight(p), weight(p), 0.0, 0.0])
+                .collect(),
+        ),
+        "VEC4",
+        5126,
+        7,
+    );
+    let morph = add(
+        floats(
+            positions
+                .iter()
+                .flat_map(|&p| delta(p).to_array())
+                .collect(),
+        ),
+        "VEC3",
+        5126,
+        7,
+    );
+    let normals = add(
+        floats(
+            positions
+                .iter()
+                .flat_map(|&p| normal_delta(p).to_array())
+                .collect(),
+        ),
+        "VEC3",
+        5126,
+        7,
+    );
+    let sparse_index = add(vec![2], "SCALAR", 5121, 1);
+    let sparse_value = add(floats(vec![0.0, 0.0, 0.25]), "VEC3", 5126, 1);
+    let zero_normals = add(floats(vec![0.0; 21]), "VEC3", 5126, 7);
+    // A normal map makes tangents observable in the cooked vertex stream.
+    let normal = image::RgbaImage::from_pixel(1024, 1024, image::Rgba([128, 128, 255, 255]));
+    let mut normal_png = std::io::Cursor::new(Vec::new());
+    normal
+        .write_to(&mut normal_png, image::ImageFormat::Png)
+        .unwrap();
+    while !bin.len().is_multiple_of(4) {
+        bin.push(0);
+    }
+    let normal_view = json["bufferViews"].as_array().unwrap().len();
+    json["bufferViews"]
+        .as_array_mut()
+        .unwrap()
+        .push(json!({"buffer":0,"byteOffset":bin.len(),"byteLength":normal_png.get_ref().len()}));
+    bin.extend(normal_png.into_inner());
+    json["images"]
+        .as_array_mut()
+        .unwrap()
+        .push(json!({"bufferView":normal_view,"mimeType":"image/png"}));
+    json["textures"]
+        .as_array_mut()
+        .unwrap()
+        .push(json!({"source":1}));
+    json["materials"][0]["normalTexture"] = json!({"index":1});
+    let sparse = json["accessors"].as_array().unwrap().len();
+    let description = json!({"componentType":5126,"count":7,"type":"VEC3","sparse":{"count":1,"indices":{"bufferView":json["accessors"][sparse_index]["bufferView"],"componentType":5121},"values":{"bufferView":json["accessors"][sparse_value]["bufferView"]}}});
+    json["accessors"].as_array_mut().unwrap().push(description);
+    json["meshes"][0]["primitives"][0]["attributes"]["TANGENT"] = json!(tangent);
+    json["meshes"][0]["primitives"][0]["attributes"]["JOINTS_0"] = json!(joints);
+    json["meshes"][0]["primitives"][0]["attributes"]["WEIGHTS_0"] = json!(weights);
+    json["meshes"][0]["primitives"][0]["targets"] =
+        json!([{"POSITION":morph,"NORMAL":normals},{"POSITION":sparse,"NORMAL":zero_normals}]);
+    json["meshes"][0]["weights"] = json!([0.0, 0.0]);
+    json["nodes"] = json!([{"mesh":0,"skin":0},{},{}]);
+    json["scenes"][0]["nodes"] = json!([0, 1, 2]);
+    json["skins"] = json!([{"joints":[1,2]}]);
+    json["buffers"][0]["byteLength"] = json!(bin.len());
+    let root = project(
+        "atlas-skin-morph-split",
+        &[
+            ("project.ogt", PROJECT.as_bytes().to_vec()),
+            (
+                "assets/looks/main.ogt",
+                look("ArtTexels {\n density 8\n maxSize 64\n filter nearest\n mips none\n}\n")
+                    .into_bytes(),
+            ),
+            ("assets/models/atlas.glb", glb_bytes(&json, bin)),
+        ],
+    );
+    cook(&root);
+    let bundle = Bundle::open(&root.join("cooked")).unwrap();
+    let model = bundle.load_model("models/atlas.glb").unwrap();
+    let anim = bundle.load_animation("models/atlas.glb").unwrap();
+    let texture = bundle.load_texture(&model.textures[0].id).unwrap();
+    assert_eq!((texture.meta.width, texture.meta.height), (64, 64));
+    let geometry = &model.primitives[0];
+    assert_eq!(
+        geometry.vertices.len(),
+        8,
+        "one shared point splits into two UVs"
+    );
+    let stream = &anim.skin_streams[0];
+    let targets = &anim.morphs[0];
+    let mut pose = anim.skeleton.rest_pose();
+    pose[2].translation = Vec3::new(0.0, 0.7, 0.0);
+    let mut palette = Vec::new();
+    anim.skeleton.palette(0, &pose, &mut palette);
+    let mut seam = Vec::new();
+    for (i, v) in geometry.vertices.iter().enumerate() {
+        let p = Vec3::from(v.position);
+        let source = *positions
+            .iter()
+            .find(|&&s| (Vec3::from(s) - p).length() < 1e-4)
+            .unwrap();
+        assert!((Vec3::from(v.normal) - Vec3::Z).length() < 1e-4);
+        assert_eq!(v.tangent, [1.0, 0.0, 0.0, 1.0]);
+        assert_eq!(stream.joints[i][..2], [0, 1]);
+        assert!((stream.weights[i][1] - weight(source)).abs() < 2.0 / 65535.0);
+        assert!((targets.positions[0][i] - delta(source)).length() < 1e-6);
+        assert!((targets.normals.as_ref().unwrap()[0][i] - normal_delta(source)).length() < 1e-6);
+        let second = if source == [1.0, 1.0, 0.0] {
+            Vec3::new(0.0, 0.0, 0.25)
+        } else {
+            Vec3::ZERO
+        };
+        assert!((targets.positions[1][i] - second).length() < 1e-6);
+        let morphed = p + targets.positions[0][i] * 0.35 + targets.positions[1][i] * 0.6;
+        let posed = (0..4)
+            .map(|j| {
+                palette[stream.joints[i][j] as usize].transform_point3(morphed)
+                    * stream.weights[i][j]
+            })
+            .sum::<Vec3>();
+        let expected = Vec3::from(source)
+            + delta(source) * 0.35
+            + second * 0.6
+            + Vec3::Y * 0.7 * weight(source);
+        assert!((posed - expected).length() < 1e-4, "posed vertex {i}");
+        if source == [1.0, 1.0, 0.0] {
+            seam.push((v.uv, posed));
+        }
+    }
+    assert_eq!(seam.len(), 2);
+    assert!(
+        (seam[0].1 - seam[1].1).length() < 1e-6,
+        "skin and both morphs leave the seam closed"
+    );
+    assert!((glam::Vec2::from(seam[0].0) - glam::Vec2::from(seam[1].0)).length() > 0.01);
+}
+
 /// project.ogt with the look and `conform` lines.
 fn project_with(conform: &str) -> Vec<u8> {
     format!("{PROJECT}conform {{\n{conform}}}\n").into_bytes()

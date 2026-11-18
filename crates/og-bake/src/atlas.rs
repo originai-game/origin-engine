@@ -129,6 +129,18 @@ struct XMeshDecl {
 }
 
 #[repr(C)]
+struct XUvMeshDecl {
+    vertex_uv_data: *const c_void,
+    index_data: *const c_void,
+    face_material_data: *const u32,
+    vertex_count: u32,
+    vertex_stride: u32,
+    index_count: u32,
+    index_offset: i32,
+    index_format: u32,
+}
+
+#[repr(C)]
 struct XChartOptions {
     param_func: *const c_void,
     max_chart_area: f32,
@@ -169,6 +181,87 @@ unsafe extern "C" {
     fn xatlasMeshDeclInit(decl: *mut XMeshDecl);
     fn xatlasChartOptionsInit(options: *mut XChartOptions);
     fn xatlasPackOptionsInit(options: *mut XPackOptions);
+    fn xatlasAddUvMesh(atlas: *mut XAtlas, decl: *const XUvMeshDecl) -> u32;
+    fn xatlasUvMeshDeclInit(decl: *mut XUvMeshDecl);
+}
+
+/// Repack existing charts without reparameterizing or rotating them. Input
+/// coordinates are in texels; shared vertex indices define chart connectivity.
+/// A single page is returned at its fitted size, not stretched to a fixed page.
+pub fn repack(
+    uvs: &[[f32; 2]],
+    indices: &[u32],
+    charts: &[u32],
+    padding: u32,
+) -> Result<Atlas, String> {
+    if indices.is_empty()
+        || !indices.len().is_multiple_of(3)
+        || charts.len() != indices.len() / 3
+        || indices.iter().any(|&i| i as usize >= uvs.len())
+        || uvs.iter().flatten().any(|v| !v.is_finite())
+    {
+        return Err("xatlas: invalid UV triangle mesh".into());
+    }
+    // SAFETY: inputs remain alive through AddUvMesh, which copies them;
+    // output is copied before destroying the atlas. The ABI is xatlas_c.h.
+    unsafe {
+        let atlas = xatlasCreate();
+        if atlas.is_null() {
+            return Err("xatlas: out of memory".into());
+        }
+        let mut decl = std::mem::zeroed::<XUvMeshDecl>();
+        xatlasUvMeshDeclInit(&mut decl);
+        decl.vertex_uv_data = uvs.as_ptr().cast();
+        decl.vertex_stride = 8;
+        decl.vertex_count = uvs.len() as u32;
+        decl.index_data = indices.as_ptr().cast();
+        decl.index_count = indices.len() as u32;
+        decl.index_format = INDEX_FORMAT_UINT32;
+        decl.face_material_data = charts.as_ptr();
+        let err = xatlasAddUvMesh(atlas, &decl);
+        if err != 0 {
+            let why = std::ffi::CStr::from_ptr(xatlasAddMeshErrorString(err))
+                .to_string_lossy()
+                .into_owned();
+            xatlasDestroy(atlas);
+            return Err(format!("xatlas: {why}"));
+        }
+        let mut pack = std::mem::zeroed::<XPackOptions>();
+        xatlasPackOptionsInit(&mut pack);
+        pack.padding = padding;
+        pack.texels_per_unit = 1.0;
+        pack.rotate_charts_to_axis = false;
+        pack.rotate_charts = false;
+        let mut chart = std::mem::zeroed::<XChartOptions>();
+        xatlasChartOptionsInit(&mut chart);
+        xatlasGenerate(atlas, &chart, &pack);
+        let a = &*atlas;
+        let mut out = Atlas {
+            width: a.width,
+            height: a.height,
+            pages: a.atlas_count,
+            meshes: Vec::new(),
+        };
+        for i in 0..a.mesh_count as usize {
+            let m = &*a.meshes.add(i);
+            out.meshes.push(AtlasMesh {
+                vertices: std::slice::from_raw_parts(m.vertex_array, m.vertex_count as usize)
+                    .iter()
+                    .map(|v| AtlasVertex {
+                        xref: v.xref,
+                        page: v.atlas_index as u32,
+                        uv: v.uv,
+                    })
+                    .collect(),
+                indices: std::slice::from_raw_parts(m.index_array, m.index_count as usize).to_vec(),
+            });
+        }
+        xatlasDestroy(atlas);
+        if out.width == 0 || out.height == 0 || out.meshes.len() != 1 {
+            return Err("xatlas: UV charts did not pack".into());
+        }
+        Ok(out)
+    }
 }
 
 /// Charts `meshes` and packs them at `settings`' density: one page sized to

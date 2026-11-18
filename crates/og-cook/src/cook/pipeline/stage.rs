@@ -530,6 +530,18 @@ pub(crate) fn contract(
                 Err(e) => s.error = Some(e),
             }
         }
+        // Atlas relocation precedes both model and animation jobs, so their
+        // vertices and every material map see the same authored-chart mapping.
+        for s in sources
+            .iter_mut()
+            .filter(|s| s.error.is_none() && !c.off.contains_key(&s.rel))
+        {
+            if let Some(g) = s.gltf.as_mut()
+                && let Err(e) = conform::mesh::repack(c, g)
+            {
+                s.error = Some(e);
+            }
+        }
     }
     Ok(Contracted {
         contract,

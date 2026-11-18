@@ -1,0 +1,8 @@
+{
+  "fixed": [
+    {
+      "member": "ArtTexels",
+      "summary": "Repack sparse authored model UV charts when their smallest islands prevent texture reduction, preserving chart orientation, material maps, skinning and morphs while retaining texel density and gutters."
+    }
+  ]
+}

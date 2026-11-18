@@ -4,6 +4,10 @@ use super::{GltfSource, Image, scene_primitives, uv_set};
 use glam::Vec2;
 use std::collections::{BTreeMap, VecDeque};
 
+mod repack;
+pub(in crate::cook) use repack::repack;
+
+#[derive(Clone)]
 pub(super) struct Atlas {
     triangles: Vec<([Vec2; 3], usize)>,
     widths: Vec<Vec2>,

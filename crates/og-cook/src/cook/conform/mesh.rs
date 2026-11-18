@@ -97,6 +97,8 @@ mod atlas;
 mod flat;
 mod geometry;
 
+pub(in crate::cook) use atlas::repack;
+
 pub use geometry::*;
 
 /// How the contract shades models (`ArtShape.normals`).
@@ -364,11 +366,19 @@ impl Conform {
     /// What a model's blob (and its `#anim`'s vertex streams) depends on;
     /// empty when models do not change.
     pub fn model_desc(&self) -> String {
+        let atlas = if self.density > 0.0 || self.max_size > 0 {
+            format!(
+                " atlas-repack-v1 density {} maxSize {}",
+                self.density, self.max_size
+            )
+        } else {
+            String::new()
+        };
         if !self.geometry() {
-            return String::new();
+            return atlas;
         }
         format!(
-            "conform-mesh-v9 faces {} {} silhouette {} normals {:?} facets {} bevel {} voxel {} bakes {} {} line {:?}",
+            "conform-mesh-v9 faces {} {} silhouette {} normals {:?} facets {} bevel {} voxel {} bakes {} {} line {:?}{atlas}",
             self.prop_faces,
             self.character_faces,
             self.silhouette,
@@ -425,7 +435,7 @@ impl Conform {
             }
         });
         format!(
-            "conform-texture-v4 density {} maxSize {} filter {:?} mips {:?} maxColors {} rampSteps {} flat {} strict {} {}{paint}",
+            "conform-texture-v5 density {} maxSize {} filter {:?} mips {:?} maxColors {} rampSteps {} flat {} strict {} {}{paint}",
             self.density,
             self.max_size,
             self.filter,

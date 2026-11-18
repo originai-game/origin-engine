@@ -700,7 +700,7 @@ fn plan_model<'a>(
         .filter(|_| !conform_off(s, options));
     let model_desc = contract
         .map(|c| {
-            let mut d = if c.applies(g) {
+            let mut d = if c.applies(g) || c.density > 0.0 || c.max_size > 0 {
                 c.model_desc()
             } else {
                 String::new()
