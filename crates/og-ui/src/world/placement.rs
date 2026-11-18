@@ -524,6 +524,18 @@ impl CoverageTree {
     }
 }
 
+/// Reused working storage, never cached placement answers. Each query
+/// resets its coordinates, edges and collision bits before using them.
+#[derive(Clone, Debug, Default)]
+pub(super) struct DeclutterScratch {
+    ys: Vec<f32>,
+    xs: Vec<f32>,
+    edges: Vec<(f32, f32)>,
+    x_edges: Vec<(f32, f32)>,
+    blocked: Vec<u64>,
+    mask: Vec<u64>,
+}
+
 /// The spot nearest `b`'s own that is clear of `placed`, as the move
 /// there, or `None`: nothing fits and it is hidden. As map labels are
 /// placed (MapLibre's collision index): by rank, each in the first of its
@@ -534,6 +546,7 @@ impl CoverageTree {
 /// then straight below (nameplates over a crowd); `Shift` and a stack with
 /// no room either way take the nearest of all. A moved box stays inside
 /// `inside` (the screen) and within `reach` of its spot.
+#[allow(clippy::too_many_arguments)]
 fn declutter(
     mode: Declutter,
     b: Rect,
@@ -542,6 +555,7 @@ fn declutter(
     reach: f32,
     inside: Rect,
     available: Option<&[[f32; 4]]>,
+    scratch: &mut DeclutterScratch,
 ) -> Option<Vec2> {
     // Clear: a gap from every placed box (touching is not clear).
     let clear = |r: &Rect| {
@@ -555,7 +569,15 @@ fn declutter(
         return None;
     }
     let moved = |d: Vec2| Rect::new(b.x + d.x, b.y + d.y, b.width, b.height);
-    let mut ys = Vec::with_capacity(placed.len() * 2 + 1);
+    let DeclutterScratch {
+        ys,
+        xs,
+        edges,
+        x_edges,
+        blocked,
+        mask,
+    } = scratch;
+    ys.clear();
     ys.push(0.0);
     let nearby = b.outset(reach);
     for p in placed.iter().filter(|p| p.overlaps(&nearby)) {
@@ -618,7 +640,7 @@ fn declutter(
     // A successful vertical stack needs no horizontal candidates. Keep every
     // original ordinate above: even a non-crossing obstacle can supply the
     // winning f32 coordinate.
-    let mut xs = Vec::with_capacity(placed.len() * 2 + 1);
+    xs.clear();
     xs.push(0.0);
     for p in placed.iter().filter(|p| p.overlaps(&nearby)) {
         xs.extend([p.x - gap - b.right(), p.right() + gap - b.x]);
@@ -639,28 +661,25 @@ fn declutter(
     let rightmost = moved(Vec2::new(xs[xs.len() - 1], 0.0))
         .outset(gap - 0.01)
         .right();
-    let edges: Vec<_> = ys
-        .iter()
-        .map(|&y| {
-            let r = moved(Vec2::new(0.0, y)).outset(gap - 0.01);
-            (r.y, r.bottom())
-        })
-        .collect();
+    edges.clear();
+    edges.extend(ys.iter().map(|&y| {
+        let r = moved(Vec2::new(0.0, y)).outset(gap - 0.01);
+        (r.y, r.bottom())
+    }));
     let topmost = edges[0].0;
     let bottommost = edges[edges.len() - 1].1;
-    let x_edges: Vec<_> = xs
-        .iter()
-        .map(|&x| {
-            let r = moved(Vec2::new(x, 0.0)).outset(gap - 0.01);
-            (r.x, r.right())
-        })
-        .collect();
+    x_edges.clear();
+    x_edges.extend(xs.iter().map(|&x| {
+        let r = moved(Vec2::new(x, 0.0)).outset(gap - 0.01);
+        (r.x, r.right())
+    }));
     // Horizontal bit runs make wide, shallow labels cheap to mark. Prepare
     // each obstacle's mask once; the row union is a contiguous bitwise loop.
     let words = xs.len().div_ceil(64);
     if ys.len().saturating_mul(words) <= 4096 {
-        let mut blocked = vec![0u64; ys.len() * words];
-        let mut mask = vec![0u64; words];
+        blocked.clear();
+        blocked.resize(ys.len() * words, 0);
+        mask.resize(words, 0);
         for p in placed {
             if p.x >= rightmost
                 || p.right() <= leftmost
@@ -689,7 +708,7 @@ fn declutter(
                 mask[last] = tail;
             }
             for row in blocked[top * words..bottom * words].chunks_exact_mut(words) {
-                for (cell, bits) in row.iter_mut().zip(&mask) {
+                for (cell, bits) in row.iter_mut().zip(mask.iter()) {
                     *cell |= bits;
                 }
             }
@@ -755,7 +774,7 @@ fn declutter(
     let mut coverage = Coverage::new(ys.len());
     let order = |d: Vec2| (d.length(), d.x.abs(), d.y, d.x);
     let mut best: Option<Vec2> = None;
-    for (column, x) in xs.into_iter().enumerate() {
+    for (column, x) in xs.iter().copied().enumerate() {
         for &(top, bottom, delta) in &events[column] {
             coverage.add((top, bottom), delta);
         }
@@ -1120,6 +1139,7 @@ impl crate::world::WorldUi {
                     reach,
                     inside,
                     available.as_deref(),
+                    &mut self.placement.declutter_scratch,
                 ) {
                     Some(d) => {
                         i.aux[0] += d.x * unit;
@@ -1242,6 +1262,7 @@ struct Obstacles {
     danger: Vec<Rect>,
 }
 
+#[allow(clippy::too_many_arguments)]
 fn solve_anchor(
     a: &WorldAnchorDesc,
     b: Rect,
@@ -1250,6 +1271,7 @@ fn solve_anchor(
     taken: &[Rect],
     obstacles: &Obstacles,
     gap: f32,
+    scratch: &mut DeclutterScratch,
 ) -> AnchorMove {
     let mut hard = obstacles.hud.clone();
     if a.avoid_player {
@@ -1279,7 +1301,7 @@ fn solve_anchor(
     } else {
         0.0
     };
-    if let Some(shift) = declutter(a.declutter, b, &all, gap, reach, inside, None) {
+    if let Some(shift) = declutter(a.declutter, b, &all, gap, reach, inside, None, scratch) {
         return AnchorMove {
             shift,
             ..Default::default()
@@ -1329,7 +1351,7 @@ fn solve_anchor(
     let offset = |base: Rect| Vec2::new(base.x - b.x, base.y - b.y);
     let mut best_edge: Option<AnchorMove> = None;
     for &(edge, base, room) in &edges {
-        if let Some(local) = declutter(Declutter::Shift, base, &all, gap, f32::MAX, room, None) {
+        if let Some(local) = declutter(Declutter::Shift, base, &all, gap, f32::MAX, room, None, scratch) {
             let shift = offset(base) + local;
             if best_edge.is_none_or(|best| shift.length_squared() < best.shift.length_squared()) {
                 best_edge = Some(AnchorMove {
@@ -1867,6 +1889,7 @@ impl crate::ui::Layout {
                     &taken,
                     &obstacles,
                     gap,
+                    &mut world.placement.declutter_scratch,
                 );
                 if movement.keep {
                     taken.push(Rect::new(
@@ -2420,6 +2443,7 @@ mod tests {
         .unwrap();
         let mut bytes = decoded.as_slice();
         let mut queries = Vec::new();
+        let mut scratch = DeclutterScratch::default();
         while !bytes.is_empty() {
             let tag = bytes[0];
             bytes = &bytes[1..];
@@ -2437,7 +2461,7 @@ mod tests {
             let present = bytes[0];
             bytes = &bytes[1..];
             let expected = (present != 0).then(|| [word(&mut bytes), word(&mut bytes)]);
-            let actual = declutter(mode, b, &placed, gap, reach, inside, None)
+            let actual = declutter(mode, b, &placed, gap, reach, inside, None, &mut scratch)
                 .map(|v| [v.x.to_bits(), v.y.to_bits()]);
             assert_eq!(actual, expected, "captured query {}", queries.len() + 6000);
             queries.push(Query {
@@ -2484,6 +2508,7 @@ mod tests {
                         q.reach,
                         q.inside,
                         available.as_deref(),
+                        &mut scratch,
                     )
                     .map(|v| [v.x.to_bits(), v.y.to_bits()])
                 };
@@ -2512,7 +2537,16 @@ mod tests {
             vacancies.block(p, 0.0);
         }
         assert_eq!(
-            declutter(Declutter::Stack, b, &blockers, 0.0, 3.0, b, None),
+            declutter(
+                Declutter::Stack,
+                b,
+                &blockers,
+                0.0,
+                3.0,
+                b,
+                None,
+                &mut DeclutterScratch::default()
+            ),
             Some(Vec2::ZERO)
         );
         assert!(!vacancies.reachable(b, 3.0, b).unwrap().is_empty());
@@ -2542,33 +2576,79 @@ mod tests {
 
     #[test]
     fn declutter_shifts_the_short_way_and_stacks_when_boxed_in() {
+        let mut scratch = DeclutterScratch::default();
         let a = Rect::new(0.0, 0.0, 100.0, 20.0);
         // Overlapping a by 4 px at its bottom: down by 4 + gap is shortest.
         let b = Rect::new(0.0, 16.0, 100.0, 20.0);
         assert_eq!(
-            declutter(Declutter::Shift, b, &[a], 2.0, 100.0, ANY, None),
+            declutter(
+                Declutter::Shift,
+                b,
+                &[a],
+                2.0,
+                100.0,
+                ANY,
+                None,
+                &mut scratch
+            ),
             Some(Vec2::new(0.0, 6.0))
         );
         // Stack: always above.
         assert_eq!(
-            declutter(Declutter::Stack, b, &[a], 2.0, 100.0, ANY, None),
+            declutter(
+                Declutter::Stack,
+                b,
+                &[a],
+                2.0,
+                100.0,
+                ANY,
+                None,
+                &mut scratch
+            ),
             Some(Vec2::new(0.0, -38.0))
         );
         assert_eq!(
-            declutter(Declutter::Hide, b, &[a], 2.0, 100.0, ANY, None),
+            declutter(
+                Declutter::Hide,
+                b,
+                &[a],
+                2.0,
+                100.0,
+                ANY,
+                None,
+                &mut scratch
+            ),
             None
         );
         // Touching a's bottom is not clear: it keeps a gap (a bubble's
         // tail on a cast bar).
         let t = Rect::new(0.0, 20.0, 100.0, 20.0);
         assert_eq!(
-            declutter(Declutter::Shift, t, &[a], 2.0, 100.0, ANY, None),
+            declutter(
+                Declutter::Shift,
+                t,
+                &[a],
+                2.0,
+                100.0,
+                ANY,
+                None,
+                &mut scratch
+            ),
             Some(Vec2::new(0.0, 2.0))
         );
         // Clear: no move.
         let c = Rect::new(0.0, 40.0, 100.0, 20.0);
         assert_eq!(
-            declutter(Declutter::Hide, c, &[a], 2.0, 100.0, ANY, None),
+            declutter(
+                Declutter::Hide,
+                c,
+                &[a],
+                2.0,
+                100.0,
+                ANY,
+                None,
+                &mut scratch
+            ),
             Some(Vec2::ZERO)
         );
         // Stacking up would leave the area: it stacks down under instead,
@@ -2584,18 +2664,37 @@ mod tests {
                 2.0,
                 100.0,
                 Rect::new(0.0, 0.0, 100.0, 100.0),
-                None
+                None,
+                &mut scratch,
             ),
             Some(Vec2::new(0.0, 16.0))
         );
         assert_eq!(
-            declutter(Declutter::Stack, b, &[a], 2.0, 100.0, top, None),
+            declutter(
+                Declutter::Stack,
+                b,
+                &[a],
+                2.0,
+                100.0,
+                top,
+                None,
+                &mut scratch
+            ),
             None
         );
         // With no room above or below but room beside, it goes beside.
         let wide = Rect::new(0.0, 0.0, 300.0, 40.0);
         assert_eq!(
-            declutter(Declutter::Stack, b, &[a], 2.0, 120.0, wide, None),
+            declutter(
+                Declutter::Stack,
+                b,
+                &[a],
+                2.0,
+                120.0,
+                wide,
+                None,
+                &mut scratch
+            ),
             Some(Vec2::new(102.0, 0.0))
         );
     }

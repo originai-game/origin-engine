@@ -678,6 +678,7 @@ pub struct WorldDeclared {
 pub struct WorldPlacement {
     last_panels: Vec<PanelHit>,
     anchor_cache: placement::AnchorCache,
+    declutter_scratch: placement::DeclutterScratch,
     /// Em widths of the current and previous frame's visible mass values.
     /// Template replacement or changed font inputs invalidate these widths.
     mass_widths: std::collections::HashMap<(u32, u32), f32>,
