@@ -470,7 +470,7 @@ fn warn_once(eng: &Engine, cell: Option<Entity>, tick: u64, text: String) {
 }
 
 /// The scene a handle names, when it is a loaded one.
-fn scene_of(eng: &Engine, scene: u64) -> Option<Box<og_bundle::runtime::SceneDesc>> {
+fn scene_of(eng: &Engine, scene: u64) -> Option<Box<assets::LoadedScene>> {
     let a = eng.assets.borrow();
     assets::index_of(scene as f64)
         .and_then(|i| a.entries.get(i))

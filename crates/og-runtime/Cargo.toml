@@ -127,3 +127,8 @@ pollster = { workspace = true }
 [[test]]
 name = "tests"
 path = "tests/it/main.rs"
+
+# Heap measurement's counting allocator belongs only to this binary.
+[[test]]
+name = "stream_bundles"
+path = "tests/stream_bundles.rs"

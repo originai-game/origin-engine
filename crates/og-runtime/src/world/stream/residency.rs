@@ -105,6 +105,11 @@ pub(super) fn upgrade(eng: &Engine, group: &str) -> Result<bool, String> {
     let link = og_audio::link(eng.id);
     let mut a = eng.assets.borrow_mut();
     let mut rs = eng.render.borrow_mut();
+    let owner = a
+        .stream
+        .find(group)
+        .map(|i| a.stream.groups[i].bundle)
+        .expect("registered group");
     // Sounds cooked in chunks put in place: their stand-in's entry learns
     // its chunks (the playheads ask for them from now on), after the loop.
     let mut chunked: Vec<CookedSound> = Vec::new();
@@ -137,6 +142,7 @@ pub(super) fn upgrade(eng: &Engine, group: &str) -> Result<bool, String> {
                 }
                 for (h, t) in textures.iter().zip(&model.textures) {
                     rs.decoded.ids.insert(*h, t.id.clone());
+                    rs.decoded.bundles.insert(*h, owner);
                 }
                 for (((h, _), m), prim) in meshes.iter().zip(full).zip(&model.primitives) {
                     rs.scene.set_mesh(*h, m);
@@ -156,6 +162,7 @@ pub(super) fn upgrade(eng: &Engine, group: &str) -> Result<bool, String> {
                 replace_texture(&mut rs.scene, *handle, d);
                 rs.scene.set_texture_orientation(*handle, orientation);
                 rs.decoded.ids.insert(*handle, id.clone());
+                rs.decoded.bundles.insert(*handle, owner);
                 if pixel {
                     rs.scene
                         .set_texture_filter(*handle, og_render::TextureFilter::Nearest);

@@ -106,19 +106,38 @@ pub(crate) fn spawn_lights(eng: &Engine, index: usize, root: Entity) -> Result<(
 /// `og.load.gltf`: the model's meshes, materials and textures join the
 /// renderer once per asset id; the answer is the asset index.
 pub(crate) fn load_gltf(eng: &Engine, path: &str) -> Result<usize, String> {
+    load_gltf_from(eng, path, None)
+}
+
+pub(crate) fn load_gltf_from(
+    eng: &Engine,
+    path: &str,
+    owner: Option<usize>,
+) -> Result<usize, String> {
     let id = og_bundle::runtime::asset_id(path).to_string();
-    if let Some(&i) = eng.assets.borrow().by_path.get(&format!("gltf:{id}")) {
+    let bundle = eng.assets.borrow().source(&id, owner)?;
+    if let Some(&i) = eng
+        .assets
+        .borrow()
+        .by_path
+        .get(&format!("gltf:{bundle}:{id}"))
+    {
         return Ok(i);
     }
-    add_gltf(eng, &id, None)
+    add_gltf(eng, &id, bundle, None)
 }
 
 /// Adds glTF `id` to the renderer as a new asset, or `into` an existing
 /// asset index (a refresh: its handle then names the new meshes).
-pub(super) fn add_gltf(eng: &Engine, id: &str, into: Option<usize>) -> Result<usize, String> {
+pub(super) fn add_gltf(
+    eng: &Engine,
+    id: &str,
+    owner: usize,
+    into: Option<usize>,
+) -> Result<usize, String> {
     let id = id.to_string();
     // A streamed model draws its proxy until its group is resident.
-    let group = eng.assets.borrow().group_of(&id);
+    let group = eng.assets.borrow().group_from(&id, Some(owner));
     let source = match &group {
         Some(_) => format!("{id}#proxy"),
         None => id.clone(),
@@ -126,12 +145,12 @@ pub(super) fn add_gltf(eng: &Engine, id: &str, into: Option<usize>) -> Result<us
     let formats = texture_formats(eng);
     let (model, textures, impostor) = {
         let assets = eng.assets.borrow();
-        let (bytes, bundle) = assets.blob(&source)?;
+        let (bytes, bundle) = assets.blob_from(&source, Some(owner))?;
         let model = bundle
             .model(&source, bytes.bytes())
             .map_err(|e| e.to_string())?;
         let texture = |id: &str| {
-            let (tb, bundle) = assets.blob(id)?;
+            let (tb, bundle) = assets.blob_from(id, Some(owner))?;
             let tex = bundle.texture(id, tb.bytes()).map_err(|e| e.to_string())?;
             match hooks().map(|h| h.texture(&tex, formats.as_ref())) {
                 Some(Fetch::Ready(d)) => Ok(d),
@@ -144,7 +163,14 @@ pub(super) fn add_gltf(eng: &Engine, id: &str, into: Option<usize>) -> Result<us
         for t in &model.textures {
             // A texture another unstreamed model loaded (the cook writes one
             // per image and use, under one id) is shared, not decoded again.
-            if group.is_none() && eng.render.borrow().shared.has_texture(&t.id) {
+            if group.is_none()
+                && eng
+                    .render
+                    .borrow()
+                    .shared
+                    .get(&owner)
+                    .is_some_and(|s| s.has_texture(&t.id))
+            {
                 textures.push(og_render::TextureSource::Rgba(
                     crate::world::stream::placeholder(),
                 ));
@@ -165,7 +191,16 @@ pub(super) fn add_gltf(eng: &Engine, id: &str, into: Option<usize>) -> Result<us
         };
         (model, textures, impostor)
     };
-    let (index, _) = insert_model(eng, &id, group, model, &textures, impostor, into, true)?;
+    let (index, _) = insert_model(
+        eng,
+        &id,
+        group,
+        model,
+        &textures,
+        impostor,
+        into,
+        Some(owner),
+    )?;
     // A prefractured model's chunks (`fracture { }`): og.destruction's.
     crate::bind::destruction::load_asset(eng, &id, index)?;
     Ok(index)
@@ -250,9 +285,9 @@ fn placed_mesh(
 
 /// Adds a decoded model and its textures (in [`CookedModel::textures`]
 /// order) to the renderer as asset `id`: a new asset, or `into` an existing
-/// index. A cooked model is `registered` under its path (og.load.gltf of it
-/// answers this asset, a hot reload refreshes it); an uncooked one
-/// (og.load.gltfData) is not. A streamed model (`group`) is its proxy.
+/// index. A cooked model (`bundle` is present) is registered under its
+/// bundle and path (og.load.gltf answers it, a hot reload refreshes it);
+/// an uncooked one (og.load.gltfData) is not. A streamed model is its proxy.
 /// `impostor` holds its impostor's atlases (albedo, normal, and the
 /// material atlas when it was baked), when it
 /// has one. Answers the asset index and the model's textures in the scene.
@@ -271,7 +306,7 @@ pub(crate) fn insert_model(
         Option<og_render::TextureSource>,
     )>,
     into: Option<usize>,
-    registered: bool,
+    bundle: Option<usize>,
 ) -> Result<(usize, Vec<og_render::TextureHandle>), String> {
     let id = id.to_string();
     let source = match &group {
@@ -294,11 +329,16 @@ pub(crate) fn insert_model(
     // loaded before (a streamed one swaps its own stand-ins in place).
     let (parts, prim_meshes) = {
         let rs = &mut *rs;
-        let shared = (registered && group.is_none()).then_some(&mut rs.shared);
+        let shared = bundle
+            .filter(|_| group.is_none())
+            .map(|b| rs.shared.entry(b).or_default());
         model.add_to_shared(&mut rs.scene, textures, shared)
     };
     for (h, t) in parts.textures.iter().zip(&model.textures) {
         rs.decoded.ids.insert(*h, t.id.clone());
+        if let Some(bundle) = bundle {
+            rs.decoded.bundles.insert(*h, bundle);
+        }
     }
     let texture_handles = parts.textures.clone();
     #[cfg(not(feature = "profile2d"))]
@@ -321,12 +361,16 @@ pub(crate) fn insert_model(
     let lods = match group {
         Some(_) => None,
         None => {
-            let levels = match registered {
-                true => {
+            let levels = match bundle {
+                Some(bundle) => {
                     let rs = &mut *rs;
-                    model.add_lod_levels_shared(&mut rs.scene, &prim_meshes, &mut rs.shared)
+                    model.add_lod_levels_shared(
+                        &mut rs.scene,
+                        &prim_meshes,
+                        rs.shared.entry(bundle).or_default(),
+                    )
                 }
-                false => model.add_lod_levels(&mut rs.scene),
+                None => model.add_lod_levels(&mut rs.scene),
             };
             // A skinned model's levels keep which vertex each of theirs
             // is, for their skinned copies (og.CrowdAnimation's far levels).
@@ -503,8 +547,9 @@ pub(crate) fn insert_model(
         },
     );
     rs.fx.model_materials.insert(handle(index), parts.materials);
-    if registered {
-        assets.by_path.insert(format!("gltf:{id}"), index);
+    assets.entries[index].bundle = bundle;
+    if let Some(bundle) = bundle {
+        assets.by_path.insert(format!("gltf:{bundle}:{id}"), index);
     }
     // Its geometries are physics meshes under their Geometry handles, for
     // convex and triangle-mesh colliders: built when a collider first names

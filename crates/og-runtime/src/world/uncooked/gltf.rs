@@ -93,7 +93,7 @@ pub(super) fn put_gltf(eng: &Engine, name: &str, entry: usize, g: Gltf) -> Resul
         &textures,
         None,
         Some(entry),
-        false,
+        None,
     )?;
     if let Some(owned) = eng.assets.borrow_mut().uncooked.owned.get_mut(&entry) {
         *owned = handles;

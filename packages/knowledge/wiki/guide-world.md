@@ -177,6 +177,12 @@ looks and colour LUTs (`.cube`).
   directory again keeps its groups. Ungrouped assets stay resident; unloading
   a cell alone does not evict them. Group unloads keep model proxies and
   bundle manifests, not the full meshes, textures or cell-scene blobs.
+- A scene, sub-scene or model resolves its dependencies from its own bundle
+  first. Loads are cached by bundle as well as asset path, so v1 and v2 can
+  use the same paths without drawing each other's models or textures.
+  Only an id absent from the requesting bundle falls back to the boot
+  bundle, then other ready bundles in open order. Direct `og.load` calls
+  have no requesting bundle and use that fallback order.
 - At every tick boundary the engine picks the wanted groups, admits them by
   priority (then name) within the memory budget (256 MiB by default: GPU
   textures and meshes and decoded audio, as the cook measured them),
@@ -235,7 +241,7 @@ from og.load.scene) is a cell.
   a rollback and after a restore. Which cells are loaded, and their
   entities, are in snapshots, saves and the hash; an unloaded cell's
   entities come back from its sub-scene as authored (unless `persist`).
-- A sub-scene's blob is in the boot bundle unless the sub-scene declares a
+- A sub-scene's blob is in its declaring bundle unless the sub-scene declares a
   cell group (`stream "<name>" { cell; asset ... }`): then it is in that
   group's pack with the assets it names, fetched ahead of the anchors, and
   its models and textures draw their stand-ins until the group is

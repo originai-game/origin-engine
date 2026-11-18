@@ -68,6 +68,7 @@ impl State {
 
 struct Entry {
     id: String,
+    bundle: Option<usize>,
     handle: TextureHandle,
     chain: MipChain,
     /// The tail's level 0.
@@ -183,11 +184,12 @@ fn register(a: &super::assets::Assets, m: &mut Mips, rs: &mut extract::RenderSta
     let mut added = false;
     for (h, id) in fresh {
         m.seen.insert(h);
-        if a.bundle_for(&mips_id(&id)).is_err() {
+        let bundle = rs.decoded.bundles.get(&h).copied();
+        if a.bundle_from(&mips_id(&id), bundle).is_err() {
             continue;
         }
         let Ok(tex) = a
-            .blob(&id)
+            .blob_from(&id, bundle)
             .and_then(|(b, bundle)| bundle.texture(&id, b.bytes()).map_err(|e| e.to_string()))
         else {
             continue;
@@ -199,6 +201,7 @@ fn register(a: &super::assets::Assets, m: &mut Mips, rs: &mut extract::RenderSta
             .set_texture_size(h, Some((chain.width, chain.height)));
         m.entries.push(Entry {
             id,
+            bundle,
             handle: h,
             chain,
             tail: (tex.meta.width, tex.meta.height),
@@ -301,7 +304,7 @@ fn land(
 ) {
     let id = mips_id(&m.entries[i].id);
     let tex = bytes.and_then(|b| {
-        let (bundle, _) = a.bundle_for(&id)?;
+        let (bundle, _) = a.bundle_from(&id, m.entries[i].bundle)?;
         bundle
             .texture(&id, super::assets::aligned(&b).bytes())
             .map_err(|e| e.to_string())
@@ -341,7 +344,7 @@ fn show_tail(
     let formats = formats(rs);
     let e = &m.entries[i];
     let tex = a
-        .blob(&e.id)
+        .blob_from(&e.id, e.bundle)
         .and_then(|(b, bundle)| bundle.texture(&e.id, b.bytes()).map_err(|x| x.to_string()));
     let source = match tex.map(|t| transcode(&t, formats.as_ref())) {
         Ok(super::assets::Fetch::Ready(s)) => s,
@@ -361,9 +364,9 @@ fn placeholder_source() -> TextureSource {
 }
 
 /// The path under the bundle of `id`'s whole chain.
-fn path_of(a: &super::assets::Assets, id: &str) -> Option<String> {
+fn path_of(a: &super::assets::Assets, id: &str, owner: Option<usize>) -> Option<String> {
     let mips = mips_id(id);
-    let (bundle, dir) = a.bundle_for(&mips).ok()?;
+    let (bundle, dir) = a.bundle_from(&mips, owner).ok()?;
     let o = bundle.output(&mips).ok()?;
     Some(format!("{dir}/{}", o.file))
 }
@@ -436,7 +439,7 @@ fn decide(a: &super::assets::Assets, m: &mut Mips, rs: &mut extract::RenderState
             if !matches!(m.entries[i].state, State::Wanted | State::Reading) {
                 continue;
             }
-            let Some(path) = path_of(a, &m.entries[i].id) else {
+            let Some(path) = path_of(a, &m.entries[i].id, m.entries[i].bundle) else {
                 continue;
             };
             match hooks().map(|h| h.read_asset(&path)) {
@@ -500,7 +503,7 @@ pub(super) fn wanted(a: &super::assets::Assets) -> Vec<Wanted> {
             Some((
                 e.footprint / e.tail_side(),
                 Wanted {
-                    path: path_of(a, &e.id)?,
+                    path: path_of(a, &e.id, e.bundle)?,
                     need: Need::Mips {
                         id: e.id.clone(),
                         handle: e.handle.slot(),
@@ -617,6 +620,7 @@ mod tests {
     fn entry(id: &str, handle: TextureHandle, tail: u32, footprint: f32, bytes: u64) -> Entry {
         Entry {
             id: id.into(),
+            bundle: None,
             handle,
             chain: MipChain {
                 width: tail * 4,

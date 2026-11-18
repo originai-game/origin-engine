@@ -139,7 +139,7 @@ fn bakeable(scene: &SceneDesc) -> bool {
 /// scene entity, in order).
 pub(crate) fn scene_spawned(
     eng: &crate::engine::Engine,
-    scene: &SceneDesc,
+    scene: &crate::world::assets::LoadedScene,
     spawned: &[og_ecs::Entity],
 ) {
     let lightmap_id = og_bundle::lightmap::lightmap_id(&scene.id);
@@ -149,13 +149,13 @@ pub(crate) fn scene_spawned(
     };
     let loaded = (|| -> Result<Option<og_bundle::runtime::CookedLightmap>, String> {
         let assets = eng.assets.borrow();
-        let Ok((bundle, _)) = assets.bundle_for(&lightmap_id) else {
+        let Ok((bundle, _)) = assets.bundle_from(&lightmap_id, Some(scene.bundle)) else {
             return Ok(None);
         };
         if bundle.output(&lightmap_id).is_err() {
             return Ok(None);
         }
-        let (bytes, bundle) = assets.blob(&lightmap_id)?;
+        let (bytes, bundle) = assets.blob_from(&lightmap_id, Some(scene.bundle))?;
         let lm = bundle
             .lightmap(&lightmap_id, bytes.bytes())
             .map_err(|e| e.to_string())?;

@@ -637,9 +637,9 @@ fn with_group<T>(
     let i = s.find(group).ok_or_else(|| {
         let names: Vec<&str> = s.groups.iter().map(|g| g.desc.name.as_str()).collect();
         if names.is_empty() {
-            format!("no streaming group '{group}': the game's scenes declare none (or its bundle is not open yet)")
+            format!("no streaming group '{group}': no ready open bundle declares one (or its bundle is not open yet)")
         } else {
-            format!("no streaming group '{group}'; the scenes declare {}", names.join(", "))
+            format!("no streaming group '{group}'; the open bundles declare {}", names.join(", "))
         }
     })?;
     Ok(f(&eng, s, i))

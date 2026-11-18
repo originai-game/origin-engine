@@ -1,0 +1,6 @@
+{
+  "fixed": [{
+    "member": "load.bundle",
+    "summary": "Scenes, cell scenes, prefabs and models resolve dependencies from their declaring bundle first and cache each bundle's loads separately. Missing ids fall back to the boot bundle and then ready bundles in open order, so simultaneously open versions can reuse asset paths without drawing each other's assets."
+  }]
+}
