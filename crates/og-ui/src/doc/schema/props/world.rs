@@ -4,6 +4,48 @@ use super::super::{Kind, On, PropSpec, Ty};
 
 pub const PROPS: &[PropSpec] = &[
     PropSpec {
+        name: "reserve",
+        ty: Ty::Word(&["none", "hud", "player"]),
+        on: On::All,
+        two_way: false,
+        doc: "`reserve=\"hud\"` reserves a screen element's border box for world placement. An empty `<anchor reserve=\"player\" entity={player}>` instead reserves an upright world volume; only `avoid=\"player\"` tags yield to it.",
+    },
+    PropSpec {
+        name: "reserveRadius",
+        ty: Ty::Num,
+        on: On::Kinds(&[Kind::Anchor]),
+        two_way: false,
+        doc: "Player reserve radius in world units (default 0.6).",
+    },
+    PropSpec {
+        name: "reserveHeight",
+        ty: Ty::Num,
+        on: On::Kinds(&[Kind::Anchor]),
+        two_way: false,
+        doc: "Player reserve height above its world point, in world units (default 1.9).",
+    },
+    PropSpec {
+        name: "avoid",
+        ty: Ty::Text,
+        on: On::Kinds(&[Kind::Anchor]),
+        two_way: false,
+        doc: "Space-separated `player` and/or `danger` opts into player reserves or danger grounds. Danger-avoiding tags stay visible at the least-overlap reachable position when no clear spot fits; read `[data-blocked]`. HUD reserves always apply.",
+    },
+    PropSpec {
+        name: "keepVisible",
+        ty: Ty::Bool,
+        on: On::Kinds(&[Kind::Anchor]),
+        two_way: false,
+        doc: "`keep-visible` keeps an unplaceable tag at its own point instead of declutter fading. Independent of lod-lock, distance and occlusion; intended for targeted or casting plates.",
+    },
+    PropSpec {
+        name: "danger",
+        ty: Ty::Bool,
+        on: On::Kinds(&[Kind::Ground]),
+        two_way: false,
+        doc: "Its whole projected ground bounds, rim included, obstruct anchors with `avoid=\"danger\"` (but not other tags).",
+    },
+    PropSpec {
         name: "emitter",
         ty: Ty::Text,
         on: On::Kinds(&[Kind::Box]),

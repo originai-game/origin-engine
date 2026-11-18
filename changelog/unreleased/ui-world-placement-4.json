@@ -1,0 +1,8 @@
+{
+  "added": [
+    {
+      "member": "og.ui.documentSchema",
+      "summary": "World placement respects reserved HUD boxes, opt-in projected player volumes and danger grounds together with tag priority. Edge tags slide along their edge, timed prompts can report a visible least-overlap fallback with data-blocked, and keep-visible preserves unplaceable targeted plates independently of LOD lock."
+    }
+  ]
+}

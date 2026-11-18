@@ -1135,6 +1135,28 @@ None of these has a web standard; each is named for what it does.
   of the grounds' text, on the screen and within its reach (`stack`
   straight above, then below, then any way; `shift` any way), and fades
   out while none is.
+  Mark a screen element `reserve="hud"` to reserve its current border box;
+  placement follows layout and transforms each tick. All tags respect HUD
+  reserves. `keep-visible` changes only the no-fit declutter fallback: the
+  tag stays at its own point rather than fading (targeted or casting plates).
+  It does not change LOD, distance or occlusion; `lod-lock` remains independent.
+  An empty `<anchor reserve="player" entity={player} reserve-radius="0.6"
+  reserve-height="1.9" />` reserves an upright world volume based at the
+  entity or `at` point. Its projected screen bounds are reported as the
+  inert anchor box. Opt into it with `avoid="player"`: prompts, bubbles,
+  loot, or a boss plate can yield while an enemy plate stays on its unit.
+  `<ground danger>` reserves its whole projected bounds, including the rim,
+  only for anchors with `avoid="danger"`; combine as `avoid="player danger"`.
+  HUD/player reserves take precedence over danger, then other tags in
+  descending priority. Boss/casting plates at 400 therefore precede a
+  prompt at 300; no extra obstacle class is needed. A danger-avoiding tag
+  with no clear reachable candidate stays visible at the candidate with
+  least danger overlap, then least tag overlap; its root gets `[data-blocked]`
+  on the next tick. Hard reserves still win when no candidate clears them.
+  Normal moves stay within reach. An edge-clamped tag slides only along
+  its edge to clear reserves. A player-avoiding tag with `clamp="edge"`
+  may fall back to the nearest clear safe edge, reporting the normal
+  clamp/angle facts for its tail. Fades still use `fade_ticks`.
   `scale-at="12" scale-min="0.72" scale-max="1"` scales the whole box by
   distance, never above its designed size; omitted bounds remain 0.5–2.
   Opt into `text-floor="11"` to keep text legible: its drawn size is the

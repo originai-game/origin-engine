@@ -706,6 +706,7 @@ impl RetainedHost {
                 info.edge,
                 info.lod,
                 if info.clamped { info.angle } else { 0.0 },
+                info.blocked,
             );
             if element.anchor_feedback == Some(feedback) {
                 continue;
@@ -720,6 +721,11 @@ impl RetainedHost {
                 .set_attribute(node, "data-edge", info.edge.map(|edge| json!(edge)))?;
             self.topology
                 .set_attribute(node, "data-lod", Some(json!(info.lod.to_string())))?;
+            self.topology.set_attribute(
+                node,
+                "data-blocked",
+                info.blocked.then_some(json!(true)),
+            )?;
             if previous.is_none_or(|p| (p.0, p.2) != (feedback.0, feedback.2)) {
                 self.dirty.insert(node.clone());
             }
@@ -862,7 +868,7 @@ impl RetainedHost {
         // box around it set them: its own rules and `style:` win. Null (or
         // a list) leaves the property as inherited.
         let mut inherited = inherited;
-        if let Some((Some(_), _, angle)) = e.anchor_feedback {
+        if let Some((Some(_), _, angle, _)) = e.anchor_feedback {
             Arc::make_mut(&mut inherited).insert(
                 "--anchor-angle".to_owned(),
                 Some(format!("{}deg", angle.to_degrees())),
