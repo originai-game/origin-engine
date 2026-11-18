@@ -830,6 +830,52 @@ fn a_text_shadow_is_inherited_in_each_texts_own_colour() {
     assert!(own.len() == 1 && own[0].blur == 2.0, "{own:?}");
 }
 
+/// A HUD's sharp text halos must not consume the offscreen captures a
+/// following CSS mask needs: otherwise its black alpha mask paints on
+/// screen instead of cutting its subtree (the compass beneath vitals).
+#[test]
+fn sharp_text_halos_leave_following_masks_intact() {
+    let labels = "<p>HP</p>".repeat(20);
+    let d = Doc::with_font(
+        &format!(
+            r#"<meta name="component" content="t">
+<div>{labels}<div id="Window">N NE E</div></div>
+<style>
+p {{ height: 20px; margin: 0; text-shadow: 1.5px 0 black, -1.5px 0 black, 0 1.5px black, 0 -1.5px black, 1px 1px black, -1px 1px black, 1px -1px black, -1px -1px black; }}
+#Window {{ width: 300px; height: 40px; background: red; mask-image: linear-gradient(90deg, transparent, black 14%, black 86%, transparent); }}
+</style>"#
+        ),
+        &[],
+        test_font(),
+    );
+    assert!(
+        d.ui.frame().warnings.is_empty(),
+        "{:?}",
+        d.ui.frame().warnings
+    );
+    let mut overlay = og_draw::Overlay::new(800.0, 900.0, 1.0);
+    d.ui.frame().emit(&EmitDesc::default(), &mut overlay);
+    assert_eq!(
+        overlay
+            .ui
+            .text_effects
+            .iter()
+            .filter(|fx| fx.shadows.len() == 8)
+            .count(),
+        20,
+        "keep every label's halo while leaving captures for the mask"
+    );
+    assert!(
+        overlay
+            .ui
+            .shapes
+            .iter()
+            .any(|s| matches!(s.paint, og_draw::UiPaint::Layer(_))
+                && s.blend == og_draw::UiBlend::DestinationIn),
+        "the alpha mask must composite into its capture, not paint black on screen"
+    );
+}
+
 /// The colour `id` fills itself with: its one solid fill, as sRGB.
 fn fill_of(d: &Doc, id: &str) -> Srgba {
     let e = d.get(id);

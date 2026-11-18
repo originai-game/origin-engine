@@ -873,12 +873,16 @@ pub(crate) fn emit(
                         fx.fill_box = [b.x, b.y, b.width, b.height];
                         map_text(overlay, at, m);
                     }
-                    // CSS shadows blur the whole glyph mask, not the
-                    // atlas's finite distance field. In particular a wide
-                    // halo must survive past every glyph quad's edge.
+                    // Sharp shadows use the glyph passes directly: a HUD's
+                    // repeated halos must not exhaust the captures its masks
+                    // need. Blurred shadows need the whole glyph silhouette,
+                    // beyond the atlas's finite distance field. Keep a mixed
+                    // list together so its shadows retain their CSS order.
+                    let layered_shadows = effects.shadows.iter().any(|s| s.blur > 0.0);
                     if let DrawCmd::Text {
                         bounds, size, clip, ..
                     } = &**text
+                        && layered_shadows
                     {
                         for shadow in effects.shadows.iter().rev() {
                             if shadow.color[3] <= 0.0 {
@@ -991,7 +995,13 @@ pub(crate) fn emit(
                             overlay.ui.shapes.push(placed(composite, layer, c));
                         }
                     }
-                    fx.shadows.clear();
+                    if layered_shadows {
+                        fx.shadows.clear();
+                    } else {
+                        // CSS lists the frontmost shadow first; glyph passes
+                        // paint back to front, like the captures above.
+                        fx.shadows.reverse();
+                    }
                     overlay.ui.text_effects.push(fx);
                 }
             }
