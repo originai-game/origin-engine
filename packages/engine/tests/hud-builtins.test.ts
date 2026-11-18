@@ -12,7 +12,7 @@ import { createEngine, type Engine, type GameToken } from "../src/runtime.ts";
 import { cookProject } from "./support/og-bin.ts";
 
 const ENGINE = dirname(dirname(fileURLToPath(import.meta.url)));
-const PATHS = ["base/pips", "hud/boss-bar", "hud/combo", "hud/pickup-feed", "hud/perf-readout", "hud/qte-prompt", "hud/status-grid"];
+const PATHS = ["base/pips", "hud/boss-bar", "hud/combo", "hud/hero-button", "hud/pickup-feed", "hud/perf-readout", "hud/qte-prompt", "hud/status-grid"];
 const members = PATHS.map((path) => {
   const text = readFileSync(join(ENGINE, `src/ui/components/${path}.svelte`), "utf8");
   const name = /name="component" content="([^"]+)"/.exec(text)![1]!;
@@ -148,6 +148,14 @@ test("resource displays distinguish fractional/empty units, phases and game-supp
     expect(words(e)).toContain("Loading");
     expect(words(e)).not.toContain("+12");
     expect(elements(e).filter((x) => x.role === "meter")).toHaveLength(0);
+  });
+});
+
+test("HeroButton: its name is its words; the key cap beside them is not read with them", () => {
+  check("HeroButton", "default", (e) => {
+    const named = elements(e).filter((x) => x.role === "button").map((x) => x.name);
+    expect(named).toEqual(["End turn"]);
+    expect(words(e)).toContain("E");
   });
 });
 
