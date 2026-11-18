@@ -407,3 +407,26 @@ pub fn hills(scene: &mut RenderScene, open: Option<Vec2>) {
         land.cast_shadows = false;
     }
 }
+
+#[cfg(test)]
+mod tests {
+    /// Every kit normal map leans, on average, within a few degrees of
+    /// straight out of its surface. A map stored with the wrong encoding
+    /// (the stone's, sRGB-encoded upstream) tilts every surface that uses
+    /// it towards the sky, and only a frame shows it.
+    #[test]
+    fn every_kit_normal_map_faces_out_of_its_surface() {
+        for name in super::SURFACES.iter().chain(&["rock"]) {
+            let rel = format!("kit/ground/{name}.normal.jpg");
+            let img = image::load_from_memory(&super::bytes(&rel))
+                .unwrap_or_else(|e| panic!("{rel}: {e}"))
+                .to_rgb8();
+            let mut sum = glam::DVec3::ZERO;
+            for p in img.pixels() {
+                sum += glam::DVec3::new(p[0] as f64, p[1] as f64, p[2] as f64) / 127.5 - 1.0;
+            }
+            let lean = sum.normalize().dot(glam::DVec3::Z).acos().to_degrees();
+            assert!(lean < 4.0, "{rel} leans {lean:.1}° from +Z on average");
+        }
+    }
+}

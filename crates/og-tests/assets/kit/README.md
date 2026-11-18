@@ -112,7 +112,15 @@ required.
 | `ground/stone.{color,normal,orm}.jpg` | `grp_65c1eae191c77733e1` | Broken Wall | `35615ed619b14ab8991205e887a24cadcf8edffdf15b36b153421604b9ba29ce` |
 
 `color` is the diffuse map, `normal` the OpenGL normal map, `orm` the
-occlusion (red), roughness (green) and metal (blue) map. The rock is a
+occlusion (red), roughness (green) and metal (blue) map.
+
+The stone's normal map is not Poly Haven's file as published: Broken Wall's
+`nor_gl` is sRGB-encoded in every format (its 1k EXR, sha256
+`1108d10ca3cdd4392020c679df6b880a68a740fa8d4a8ec65cc92b262c583a48`,
+averages 0.71, 0.72, 0.95, a lean of about 35°). The kit's map is that EXR
+decoded from sRGB to linear, each texel renormalised to unit length, then
+written as an 8-bit JPEG (quality 86, 1024²). `kit::tests` holds every
+kit normal map to within 4° of +Z on average. The rock is a
 terrain layer only (`kit::layer_maps`), which takes no `orm`.
 
 ## Environment maps
