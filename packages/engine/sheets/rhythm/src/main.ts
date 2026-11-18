@@ -19,6 +19,9 @@ const JUDGEMENTS = ["perfect", "great", "good", "bad", "miss"] as const;
 /** The play page's sample stage and jacket art (sheet only, never installed). */
 let stage = 0;
 let jacket = 0;
+/** The songs page's sample stage and eight jackets (sheet only). */
+let selectStage = 0;
+let jackets: number[] = [];
 
 const DOCUMENTS = ["ui/songs.svelte", "ui/play.svelte", "ui/states.svelte", "ui/sheet.svelte"];
 
@@ -65,6 +68,11 @@ function stores(world: World): Record<string, UiReadable<unknown>> {
       }
     }
   }
+  // The songs page: the overflow fixture's twelve songs with sample jackets
+  // (the long title among them), over the select stage.
+  const songs = (FIXTURES.songSelect!.overflow!.songs as Record<string, unknown>[]).map((s, i) => ({ ...s, jacket: jackets[i % jackets.length] ?? 0 }));
+  out.pageSongs = scope.collection("pageSongs", songs as { id: string }[], { key: "id" });
+  out.selectStage = scope.writable("selectStage", selectStage);
   out.captions = scope.writable("captions", captions);
   return out;
 }
@@ -84,6 +92,8 @@ export default og.game({
     if (camera.ok) camera.value.background = { r: 0.05, g: 0.05, b: 0.06 };
     stage = must(og.load.texture(world, "art/stage.jpg"), "stage") as number;
     jacket = must(og.load.texture(world, "art/jacket.jpg"), "jacket") as number;
+    selectStage = must(og.load.texture(world, "art/select-stage.jpg"), "select stage") as number;
+    jackets = [1, 2, 3, 4, 5, 6, 7, 8].map((n) => must(og.load.texture(world, `art/jacket-${n}.jpg`), `jacket ${n}`) as number);
     setStyle(world, "fantasy");
     for (const path of DOCUMENTS) must(og.load.document(world, path), path);
   },
