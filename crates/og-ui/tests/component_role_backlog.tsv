@@ -66,12 +66,7 @@ puzzle/summary.svelte	PuzzleSummary.frame PuzzleSummary.card	1
 puzzle/summary.svelte	PuzzleSummary.level PuzzleSummary.label PuzzleSummary.caption	1
 puzzle/summary.svelte	PuzzleSummary.record PuzzleSummary.label PuzzleSummary.badge	1
 puzzle/summary.svelte	PuzzleSummary.total PuzzleSummary.label PuzzleSummary.row	1
-racing/banner.svelte	RacingBanner.plate RacingBanner.frame	1
-racing/lap-hud.svelte	RacingLapHud.title RacingLapHud.caption	2
 racing/results.svelte	RacingResults.place RacingResults.label RacingResults.figure	1
-racing/standings.svelte	RacingStandings.gap RacingStandings.label RacingStandings.figure	1
-racing/standings.svelte	RacingStandings.place RacingStandings.label RacingStandings.figure	1
-racing/telemetry.svelte	RacingTelemetry.gear RacingTelemetry.plate RacingTelemetry.frame	2
 rhythm/difficulty.svelte	RhythmDifficulty.name RhythmDifficulty.headline	1
 rhythm/song-select.svelte	RhythmSongSelect.name RhythmSongSelect.headline	1
 rpg/enemy-info.svelte	RpgEnemyInfo.name RpgEnemyInfo.headline	1

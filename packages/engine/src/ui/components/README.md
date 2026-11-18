@@ -113,7 +113,7 @@ and their pending L4 review are recorded explicitly in the world sheet.
 | Shooter HUD: squad, objectives, radar, round, pickups, damage dealt, prompt, effects, vitals, abilities | `shooter/squad`, `shooter/objectives`, `shooter/radar`, `shooter/round`, `shooter/pickups`, `shooter/damage`, `shooter/prompt`, `shooter/effects`, `shooter/vitals`, `shooter/abilities` |
 | Shooter loadout | `shooter/loadout` |
 | Strategy selection, commands, production queue, waves, tower upgrades (`strategy/README.md`) | `strategy/selection`, `strategy/queue`, `strategy/wave`, `strategy/tower` |
-| Racing telemetry, laps, standings, banner, garage, results (`racing/README.md`) | `racing/telemetry`, `racing/lap-hud`, `racing/standings`, `racing/banner`, `racing/garage`, `racing/results` |
+| Racing telemetry, laps, standings, banner, track map, boost, pedals, car, bonus, garage, results (`racing/README.md`) | `racing/telemetry`, `racing/lap-hud`, `racing/standings`, `racing/banner`, `racing/track-map`, `racing/boost`, `racing/pedals`, `racing/car`, `racing/bonus`, `racing/garage`, `racing/results` |
 | Card hand, piles, collection, deck, rewards, run map (`card/README.md`) | `card/face`, `card/hand`, `card/piles`, `card/collection`, `card/deck-list`, `card/reward`, `card/run-map` |
 | Puzzle goals, boosters, level path, summary (`puzzle/README.md`) | `puzzle/goals`, `puzzle/boosters`, `puzzle/level-path`, `puzzle/summary` |
 | Idle resources, generators, purchases, prestige, offline summary (`idle/README.md`) | `idle/resources`, `idle/generators`, `idle/purchases`, `idle/prestige`, `idle/offline` |

@@ -954,6 +954,39 @@
     ],
     "imports": []
   },
+  "RacingBonus": {
+    "id": "@ui/components/racing/bonus.svelte",
+    "screen": false,
+    "control": null,
+    "uses": [],
+    "files": [
+      "@ui/components/racing/bonus.svelte",
+      "@ui/components/racing/racing.en.ogt"
+    ],
+    "imports": []
+  },
+  "RacingBoost": {
+    "id": "@ui/components/racing/boost.svelte",
+    "screen": false,
+    "control": null,
+    "uses": [],
+    "files": [
+      "@ui/components/racing/boost.svelte",
+      "@ui/components/racing/racing.en.ogt"
+    ],
+    "imports": []
+  },
+  "RacingCar": {
+    "id": "@ui/components/racing/car.svelte",
+    "screen": false,
+    "control": null,
+    "uses": [],
+    "files": [
+      "@ui/components/racing/car.svelte",
+      "@ui/components/racing/racing.en.ogt"
+    ],
+    "imports": []
+  },
   "RacingGarage": {
     "id": "@ui/components/racing/garage.svelte",
     "screen": false,
@@ -976,6 +1009,17 @@
     ],
     "files": [
       "@ui/components/racing/lap-hud.svelte",
+      "@ui/components/racing/racing.en.ogt"
+    ],
+    "imports": []
+  },
+  "RacingPedals": {
+    "id": "@ui/components/racing/pedals.svelte",
+    "screen": false,
+    "control": null,
+    "uses": [],
+    "files": [
+      "@ui/components/racing/pedals.svelte",
       "@ui/components/racing/racing.en.ogt"
     ],
     "imports": []
@@ -1006,12 +1050,21 @@
     "id": "@ui/components/racing/telemetry.svelte",
     "screen": false,
     "control": null,
-    "uses": [
-      "StatBar"
-    ],
+    "uses": [],
     "files": [
       "@ui/components/racing/racing.en.ogt",
       "@ui/components/racing/telemetry.svelte"
+    ],
+    "imports": []
+  },
+  "RacingTrackMap": {
+    "id": "@ui/components/racing/track-map.svelte",
+    "screen": false,
+    "control": null,
+    "uses": [],
+    "files": [
+      "@ui/components/racing/racing.en.ogt",
+      "@ui/components/racing/track-map.svelte"
     ],
     "imports": []
   },

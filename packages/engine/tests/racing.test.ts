@@ -9,7 +9,8 @@
 // driven or a Retry the game refused; the
 // garage's action following the tile index instead of the shown car's key;
 // a fixture state that no longer mounts or spills past a phone's width;
-// the player's row not marked in the standings; the banner not replaying
+// the player's row not marked in the standings, or a phone's tower showing
+// more or other rows than the three round the player; the banner not replaying
 // its entrance for a new call; a state shown by its dress alone.
 import { afterAll, beforeAll, expect, setDefaultTimeout, test } from "bun:test";
 
@@ -82,7 +83,7 @@ type View = { width: number; height: number; dpr: number; safeArea: { left: numb
 const DESKTOP: View = { width: 1280, height: 720, dpr: 1.5, safeArea: { left: 0, top: 0, right: 0, bottom: 0 }, coarsePointer: false, breakpoint: "desktopHd" };
 const PHONE: View = { width: 390, height: 844, dpr: 2, safeArea: { left: 0, top: 47, right: 0, bottom: 34 }, coarsePointer: true, breakpoint: "phonePortrait" };
 
-function engine(component: string, stores: Record<string, unknown>, o: { events?: Event[]; view?: View; reduced?: boolean; pack?: Pack } = {}): Engine {
+function engine(component: string, stores: Record<string, unknown>, o: { events?: Event[]; view?: View; reduced?: boolean; pack?: Pack | false } = {}): Engine {
   const events = o.events ?? [];
   const Collect = defineSystem("RacingKitEvents", {}, (_q, _t, world) => {
     for (const e of og.ui.docEvents(world)) events.push(e as unknown as Event);
@@ -90,9 +91,10 @@ function engine(component: string, stores: Record<string, unknown>, o: { events?
   const r = createEngine(og.game({
     systems: [Collect],
     start(world) {
-      const style = og.load.style(world, `@styles/${o.pack ?? PACKS[0]}`);
-      if (!style.ok) throw new Error(style.reason);
-      og.ui.configure(world, { style: style.value, reducedMotion: o.reduced ?? false });
+      // pack false: the default style, the one the race HUD is drawn for.
+      const style = o.pack === false ? null : og.load.style(world, `@styles/${o.pack ?? PACKS[0]}`);
+      if (style && !style.ok) throw new Error(style.reason);
+      og.ui.configure(world, { style: style ? style.value : null, reducedMotion: o.reduced ?? false });
       for (const path of DOCUMENTS(component)) {
         const loaded = og.load.document(world, path);
         if (!loaded.ok) throw new Error(`${path}: ${loaded.reason}`);
@@ -146,7 +148,7 @@ const texts = (e: Engine): string[] => elements(e).filter((x) => x.width > 0).ma
 
 // One test per pack, member and view: each fixture boots its own engine.
 for (const pack of PACKS) for (const [view, viewport] of [["desktop", DESKTOP], ["phone", PHONE]] as const) {
-  for (const name of ["telemetry", "lap-hud", "standings", "banner", "garage", "results"]) {
+  for (const name of ["telemetry", "lap-hud", "standings", "banner", "track-map", "boost", "pedals", "car", "bonus", "garage", "results"]) {
     test(`${name} mounts from every fixture on a ${view} in ${pack} without errors, inside the screen's width`, () => {
       for (const fixture of Object.keys(MEMBERS[name]!.fixtures)) {
         run(member(name, fixture, {}, { view: viewport, pack }), (e) => {
@@ -157,6 +159,22 @@ for (const pack of PACKS) for (const [view, viewport] of [["desktop", DESKTOP], 
           // The frame is drawn and sits on the screen.
           const frame = find(e, /^t:page\/Root\/node1$/)!;
           expect(`${name}/${fixture} ${frame.x >= -0.5 && frame.x + frame.width <= viewport.width + 0.5}`).toBe(`${name}/${fixture} true`);
+        });
+      }
+    }, 180_000);
+  }
+}
+
+// The race HUD's members in the default style the race page is drawn in.
+for (const [view, viewport] of [["desktop", DESKTOP], ["phone", PHONE]] as const) {
+  for (const name of ["telemetry", "lap-hud", "standings", "banner", "track-map", "boost", "pedals", "car", "bonus"]) {
+    test(`${name} mounts from every fixture on a ${view} in the default style without errors, inside the screen's width`, () => {
+      for (const fixture of Object.keys(MEMBERS[name]!.fixtures)) {
+        run(member(name, fixture, {}, { view: viewport, pack: false }), (e) => {
+          expect(`${name}/${fixture}: ${errors(e).join("; ")}`).toBe(`${name}/${fixture}: `);
+          expect(`${name}/${fixture}: ${unresolved(e).join("; ")}`).toBe(`${name}/${fixture}: `);
+          const spill = elements(e).filter((x) => x.width > 0 && (x.x < -0.5 || x.x + x.width > viewport.width + 0.5)).map((x) => `${x.path} [${x.x}, ${x.x + x.width}]`);
+          expect(`${name}/${fixture}: ${spill.join(", ")}`).toBe(`${name}/${fixture}: `);
         });
       }
     }, 180_000);
@@ -285,48 +303,58 @@ test("RacingResults: keyboard and pad reach Continue and confirm it", () => {
   }
 });
 
-test("RacingStandings: rows keep the game's order, the player's row is current and named You, and states carry words", () => {
+test("RacingStandings: rows keep the game's order, the player's row is current, the leader and states carry words, and a phone keeps the rows round the player", () => {
   run(member("standings"), (e) => {
     const rows = elements(e).filter((x) => x.role === "listitem" && /#[a-z]+$/.test(x.path));
-    expect(rows.map((x) => x.path.split("#").pop())).toEqual(["marlow", "okafor", "you", "lindqvist", "sato", "brandt"]);
+    expect(rows.map((x) => x.path.split("#").pop())).toEqual(["okafor", "lindqvist", "you", "castellanos", "nakamura"]);
     expect([...rows.map((x) => x.y)].sort((a, b) => a - b)).toEqual(rows.map((x) => x.y));
     expect(find(e, /#you$/)!.states).toContain("current");
-    expect(texts(e)).toContain("you");
-    expect(texts(e)).toContain("pit");
-    expect(texts(e)).toContain("out");
+    for (const want of ["you", "leader", "pit", "+1.861"]) expect(texts(e)).toContain(want);
   });
+  run(member("standings", "last"), (e) => expect(texts(e)).toContain("dnf"));
   run(member("standings", "empty"), (e) => expect(texts(e)).toContain("no racers yet"));
+  // On a phone the tower collapses to the player's row and the rows either side of it.
+  const shown = (e: Engine) => elements(e).filter((x) => x.role === "listitem" && x.width > 0 && x.height > 0).map((x) => x.path.split("#").pop());
+  run(member("standings", "last", {}, { view: PHONE }), (e) => expect(shown(e)).toEqual(["sato", "you", "marlow"]));
+  run(member("standings", "default", {}, { view: PHONE }), (e) => expect(shown(e)).toEqual(["lindqvist", "you", "castellanos"]));
 });
 
-test("RacingLapHud: lap and place over their totals, blank times before the start, and the split's sense in words", () => {
+test("RacingLapHud: the place over the field, the lap and the places gained, blank times before the start, and the split's delta", () => {
   run(member("lap-hud"), (e) => {
     const all = texts(e);
-    for (const want of ["2", "/3", "3", "/8", "0:48.207", "1:21.904", "1:23.116", "-0.412", "ahead"]) expect(all).toContain(want);
+    for (const want of ["3", "/8", "lap", "2", "/ 3", "up 2 places", "1:24.618", "1:57.790", "1:58.204", "sector 2", "−0.412"]) expect(all).toContain(want);
   });
+  run(member("lap-hud", "last"), (e) => expect(texts(e)).toContain("down 3 places"));
   run(member("lap-hud", "grid"), (e) => {
     expect(texts(e).filter((x) => x === "–:––.–––").length).toBe(3);
-    expect(texts(e)).not.toContain("ahead");
+    expect(texts(e).some((x) => /places?$/.test(x))).toBeFalse();
   });
-  run(member("lap-hud", "finalLap"), (e) => {
-    for (const want of ["behind", "final lap", "best lap"]) expect(texts(e)).toContain(want);
+  run(member("lap-hud", "leading"), (e) => {
+    for (const want of ["final lap", "best lap"]) expect(texts(e)).toContain(want);
   });
   run(member("lap-hud", "checkpoint"), (e) => expect(elements(e).some((x) => x.role === "timer" && x.width > 0)).toBeTrue());
 });
 
-test("RacingTelemetry: the game's units and gear, the shift cue as a word, and the bar form", () => {
+test("RacingTelemetry: the game's units, gear and mode, the dial's figures, the shift lights, and the shift cue as a word", () => {
   run(member("telemetry"), (e) => {
-    for (const want of ["187", "km/h", "4"]) expect(texts(e)).toContain(want);
+    for (const want of ["247", "km/h", "5", "auto", "8", "10"]) expect(texts(e)).toContain(want);
     expect(texts(e)).not.toContain("shift");
+    // The rev dial and the shift lights.
+    expect(elements(e).filter((x) => x.role === "meter" && x.width > 0).length).toBe(2);
   });
-  run(member("telemetry", "redline"), (e) => expect(texts(e)).toContain("shift"));
-  run(member("telemetry", "bar"), (e) => {
-    expect(texts(e)).toContain("mph");
-    expect(elements(e).filter((x) => x.role === "meter" && x.width > 0).length).toBeGreaterThanOrEqual(2);
+  run(member("telemetry", "redline"), (e) => {
+    expect(texts(e)).toContain("shift");
+    expect(texts(e)).not.toContain("manual");
+  });
+  run(member("telemetry", "reverse"), (e) => {
+    for (const want of ["mph", "r"]) expect(texts(e)).toContain(want);
+    expect(elements(e).filter((x) => x.role === "meter" && x.width > 0).length).toBe(1);
   });
 });
 
 test("RacingBanner: each call shows its word, a new call id remakes the plate, and reduced motion shows it at once", () => {
-  run(member("banner"), (e) => {
+  run(member("banner"), (e) => expect(texts(e)).toContain("final lap next"));
+  run(member("banner", "countdown"), (e) => {
     expect(texts(e)).toContain("3");
     const plate = () => elements(e).find((x) => /^t:page\/Root\/node1\/[^/]+$/.test(x.path) && x.width > 0)!.path;
     const before = plate();
@@ -334,7 +362,7 @@ test("RacingBanner: each call shows its word, a new call id remakes the plate, a
     scope.writable("figure", 3).set(2);
     e.advance(2);
     expect(plate()).toBe(before);
-    scope.writable("at", 1).set(2);
+    scope.writable("at", 2).set(3);
     e.advance(2);
     expect(plate()).not.toBe(before);
     expect(texts(e)).toContain("2");
@@ -351,3 +379,21 @@ test("RacingBanner: each call shows its word, a new call id remakes the plate, a
   run(member("banner", "go", {}, { reduced: true }), (e) => expect(texts(e)).toContain("go!"));
 });
 
+test("The race HUD's new members show what the game told them, in words as well as colour", () => {
+  const check = (name: string, fixture: string, want: string[], not: string[] = [], view: View = DESKTOP) => {
+    run(member(name, fixture, {}, { view }), (e) => {
+      for (const w of want) expect(`${name}.${fixture} ${texts(e).includes(w)} ${w}`).toBe(`${name}.${fixture} true ${w}`);
+      for (const w of not) expect(`${name}.${fixture} ${texts(e).includes(w)} ${w}`).toBe(`${name}.${fixture} false ${w}`);
+    });
+  };
+  check("track-map", "default", ["costa serpente", "4.8 km"]);
+  check("track-map", "default", [], ["costa serpente", "4.8 km"], PHONE);
+  check("boost", "default", ["nitro", "shift"]);
+  check("boost", "default", ["nitro"], ["shift"], PHONE);
+  check("boost", "empty", ["ers"]);
+  check("pedals", "default", ["thr", "brk"]);
+  check("car", "default", ["tyres", "fl 92", "rr 48"], ["fuel", "box this lap"]);
+  check("car", "fuelLow", ["fuel low", "4 l · 1 lap", "box this lap"]);
+  check("bonus", "default", ["slipstream", "+2,450", "drift · near miss ×3"]);
+  check("bonus", "meter", ["slipstream"], ["+2,450"]);
+});
