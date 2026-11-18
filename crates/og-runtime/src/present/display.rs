@@ -368,6 +368,8 @@ pub(crate) fn max_fps(rs: &RenderState) -> u32 {
 /// display: a scripted run's frame time is its machine's load, so letting
 /// automatic quality read it made the same script draw at another render
 /// scale from run to run (the web tiers' looks and Meridian, 2026-11-06).
+/// A scripted frame also waits for og.motion's results due by its tick
+/// (natively), so the characters it draws are the world's.
 /// Host-only, beside [`set_display_interval`]; the game API is unchanged.
 pub fn set_scripted_frames(id: u32, on: bool) {
     if let Ok(eng) = engine(id) {
