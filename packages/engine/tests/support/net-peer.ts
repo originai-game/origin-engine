@@ -40,6 +40,19 @@ const must = (r: { ok: boolean; reason?: string }, what: string) => {
 must(engine.advance(0), "start");
 if (rollback) must(engine.command("rollback", [rollback]), "rollback");
 
+// A free lobby advances while another host loads. Wait for both hosts,
+// not a wall-clock sleep, so startTick measures the room handshake alone.
+const parent = process as typeof process & {
+  send?: (message: string) => void;
+  once(event: "message", listener: (message: string) => void): void;
+};
+if (parent.send) {
+  await new Promise<void>((resolve) => {
+    parent.once("message", () => resolve());
+    parent.send!("ready");
+  });
+}
+
 const socket = new WebSocket(`ws://127.0.0.1:${opt("--port")}/`);
 await new Promise<void>((r, f) => {
   socket.addEventListener("open", () => r());

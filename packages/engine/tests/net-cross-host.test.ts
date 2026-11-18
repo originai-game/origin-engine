@@ -26,7 +26,7 @@ import { SYMBOLS } from "../src/generated/abi.ts";
 import { ogBin } from "./support/og-bin.ts";
 
 declare const Bun: {
-  spawn(cmd: string[], o: { cwd: string; stdout: "pipe"; stderr: "pipe" }): {
+  spawn(cmd: string[], o: { cwd: string; stdout: "pipe"; stderr: "pipe"; ipc?: (message: unknown, peer: { send(message: string): void }) => void }): {
     exited: Promise<number>;
     stdout: ReadableStream<Uint8Array>;
     stderr: ReadableStream<Uint8Array>;
@@ -68,12 +68,18 @@ async function session(hosts: [string, string], room: string, extra: string[] = 
       text += new TextDecoder().decode(value);
     }
     const port = /:(\d+)\//.exec(text)![1]!;
+    const ready: { send(message: string): void }[] = [];
     return await Promise.all(
       hosts.map(async (host) => {
         const p = Bun.spawn(["bun", "tests/support/net-peer.ts", "--host", host, "--port", port, "--room", room, "--ticks", "600", ...extra], {
           cwd: pkg,
           stdout: "pipe",
           stderr: "pipe",
+          ipc(message, peer) {
+            if (message !== "ready") return;
+            ready.push(peer);
+            if (ready.length === hosts.length) for (const p of ready) p.send("start");
+          },
         });
         const [code, out, err] = await Promise.all([p.exited, new Response(p.stdout).text(), new Response(p.stderr).text()]);
         if (code !== 0) throw new Error(`${host} peer exited ${code}: ${err}${out}`);
