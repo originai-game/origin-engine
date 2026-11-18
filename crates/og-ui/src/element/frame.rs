@@ -727,7 +727,7 @@ impl crate::ui::Layout {
         // Children before parents: the reverse of a preorder of every tree.
         let mut order = Vec::new();
         for &r in &roots {
-            order.extend(k.walk(nodes, r));
+            k.walk(nodes, r, &mut order);
         }
         for &i in order.iter().rev() {
             let a = &nodes[i];

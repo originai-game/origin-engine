@@ -943,6 +943,8 @@ pub struct LayoutBox {
     pub css_cache: taffy::Cache,
     pub css: taffy::Layout,
     pub css_input: Option<taffy::LayoutInput>,
+    /// The room of the last root layout, if no parent has laid it out since.
+    pub css_root_room: Option<[f32; 2]>,
     pub grid_tracks: [Vec<[f32; 2]>; 2],
     pub grid_items: Vec<[u16; 4]>,
 }
@@ -1010,6 +1012,7 @@ impl Default for LayoutBox {
             css_cache: taffy::Cache::new(),
             css: taffy::Layout::new(),
             css_input: None,
+            css_root_room: None,
             grid_tracks: [Vec::new(), Vec::new()],
             grid_items: Vec::new(),
         }
@@ -1561,6 +1564,7 @@ impl Node {
             return;
         }
         // Clean, it keeps what Taffy measured it at and its grid.
+        self.layout.css_root_room = previous.layout.css_root_room;
         self.layout.css_cache.clone_from(&previous.layout.css_cache);
         self.layout
             .grid_tracks

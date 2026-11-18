@@ -1,0 +1,6 @@
+{
+  "fixed": [{
+    "member": "UI layout",
+    "summary": "Clean UI roots reuse sizing in an unchanged available area while still updating placement, scrolling, clipping and container measurements."
+  }]
+}

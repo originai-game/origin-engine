@@ -164,6 +164,7 @@ impl<'a, 'm> Tree<'a, 'm> {
         ctx: Option<&mut tf::BlockContext<'_>>,
     ) -> tf::LayoutOutput {
         if input.run_mode == tf::RunMode::PerformHiddenLayout {
+            self.nodes[usize::from(node)].layout.css_root_room = None;
             return tf::compute_hidden_layout(self, node);
         }
         let i = usize::from(node);
@@ -235,6 +236,9 @@ impl<'a, 'm> Tree<'a, 'm> {
         ctx: Option<&mut tf::BlockContext<'_>>,
     ) -> tf::LayoutOutput {
         let i = usize::from(node);
+        if input.run_mode == tf::RunMode::PerformLayout {
+            self.nodes[i].layout.css_root_room = None;
+        }
         let input = self.contained(i, input);
         let input = self.through_ratio(i, input);
         let input = self.calc_size(i, input);
@@ -1217,6 +1221,7 @@ impl LayoutPartialTree for Tree<'_, '_> {
         // Its scrollable overflow is its own, in its own frame, as it last
         // laid out ([`Tree::uncached`]): a parent answered from its cache
         // passes on what it saw then.
+        self.nodes[usize::from(node)].layout.css_root_room = None;
         let css = &mut self.nodes[usize::from(node)].layout.css;
         let own = css.scrollable_overflow_rect;
         *css = *layout;
