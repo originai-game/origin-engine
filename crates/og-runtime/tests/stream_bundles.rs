@@ -120,6 +120,8 @@ struct Held {
     radius: f32,
     /// The least of any instance drawn (og.render.reveal); 1 with none.
     reveal: f32,
+    /// The most intense light.
+    light: f32,
 }
 struct Recorder(Rc<Cell<Held>>);
 impl RenderBackend for Recorder {
@@ -170,6 +172,12 @@ impl RenderBackend for Recorder {
                 .iter()
                 .map(|i| i.fx.reveal)
                 .fold(1.0, f32::min),
+            light: scene
+                .lighting
+                .lights
+                .iter()
+                .map(|l| l.intensity)
+                .fold(0.0, f32::max),
         });
         Ok(())
     }
@@ -1736,6 +1744,72 @@ fn a_loaded_cells_proxy_shows_its_models_until_their_textures_are_prepared() {
         "near, the prepared houses draw themselves: {render}"
     );
     assert!(og_engine_destroy(engine));
+}
+
+/// A light a cell spawns shines up with the cell's models, unless
+/// og.render.reveal on the cell turns its fade off.
+#[test]
+fn a_cells_light_shines_up_with_its_models() {
+    let _lock = TEST_LOCK.lock().unwrap();
+    let base = PathBuf::from(env!("CARGO_TARGET_TMPDIR"))
+        .join(format!("reveal-light-{}", std::process::id()));
+    let root = base.join("game");
+    cook(&root, &[("world.ogt", b"type scene\nversion 1\n---\nentity \"player\" {\n Transform {\n  position 0 0 0\n }\n StreamAnchor {\n  reach 0\n }\n}\n".to_vec())]);
+    let path = base.join("parcel");
+    parcel(&path, "parcel", "parcel", 100, false);
+    cook(&path, &[(
+        "parcel/content.ogt",
+        b"type scene\nversion 1\n---\nentity \"house-parcel\" {\n model \"parcel/model.ogt\"\n}\nentity \"lamp\" {\n Transform {\n  position 0 4 0\n }\n PointLight {\n  intensity 60\n  distance 18\n }\n}\n".to_vec(),
+    )]);
+    for whole in [false, true] {
+        set_hooks(Rc::new(Disk {
+            delayed: false,
+            reads: RefCell::default(),
+        }));
+        og_host_begin_bundle();
+        let game = og_game_game(Some(r#"{"seed":1}"#.into()));
+        let engine = value(og_engine_create(game, json!({"root": root}).to_string()))
+            .as_u64()
+            .unwrap() as u32;
+        let held = Rc::new(Cell::new(Held::default()));
+        answer(set_render_backend(
+            engine,
+            Some(Box::new(Recorder(held.clone()))),
+        ));
+        let g = Game { engine, held };
+        g.place("world.ogt");
+        g.open(&path);
+        g.place("parcel/place.ogt");
+        if whole {
+            answer(og_render_reveal(engine, g.find("cell-parcel"), 0.0));
+        }
+        g.frame();
+        assert_eq!(g.held.get().light, 0.0, "no light before the cell loads");
+        g.walk(100);
+        // The light's intensity on each frame until the cell is idle.
+        let mut shone = Vec::new();
+        for _ in 0..120 {
+            g.frame();
+            assert!(g.loaded("parcel"));
+            shone.push(g.held.get().light);
+            if og_loading_idle(engine) {
+                break;
+            }
+        }
+        assert!(og_loading_idle(engine), "the fade ends: {shone:?}");
+        assert!(
+            shone.windows(2).all(|w| w[0] <= w[1]) && shone.last() == Some(&60.0),
+            "it only rises, to its own intensity: {shone:?}"
+        );
+        match whole {
+            false => assert!(
+                shone[0] < 10.0 && shone.len() > 10,
+                "it fades in: {shone:?}"
+            ),
+            true => assert_eq!(shone[0], 60.0, "the cell's setting turns the fade off"),
+        }
+        assert!(og_engine_destroy(engine));
+    }
 }
 
 /// Release-mode CPU profile of an independently cooked cell with four
