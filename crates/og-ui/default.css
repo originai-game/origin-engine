@@ -813,6 +813,14 @@
     --link-done-stroke: var(--success);
     --link-stroke: var(--line-strong);
     --link-width: 3px;
+    --loading-continue-fill: var(--hud-key-lit-fill);
+    --loading-continue-glow: 0 0 calc(24 * var(--font-step-px)) rgb(from var(--hud-accent) r g b / 0.6);
+    --loading-fill: var(--bar-gloss), linear-gradient(90deg, rgb(from var(--hud-accent) r g b / 0.55), var(--hud-accent));
+    --loading-fill-glow: 0 0 calc(14 * var(--font-step-px)) rgb(from var(--hud-accent) r g b / 0.6);
+    --loading-lead: rgb(255 255 255);
+    --loading-placeholder: radial-gradient(60% 70% at 70% 30%, rgb(from var(--hud-accent) r g b / 0.16), transparent 70%), linear-gradient(180deg, rgb(13 20 38), rgb(5 7 13));
+    --loading-shade: linear-gradient(180deg, transparent, rgb(4 6 12 / 0.62) calc(120 * var(--font-step-px)), rgb(4 6 12 / 0.92));
+    --loading-side-shade: linear-gradient(90deg, rgb(4 6 12 / 0.45), transparent 55%);
     --mark-arrow: none;
     --mark-box: none;
     --mark-check: none;
