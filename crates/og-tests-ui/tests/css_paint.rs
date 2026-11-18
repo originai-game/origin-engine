@@ -6,6 +6,62 @@ use crate::support;
 use og_ui::*;
 use support::*;
 
+/// A text-clipped background must clear the rest of a wide block, not
+/// just the rectangle occupied by its glyphs.
+#[test]
+#[ignore = "requires GPU"]
+fn text_clipped_backgrounds_leave_no_ink_outside_the_glyphs() {
+    use og_render::*;
+    let mut scene = RenderScene::new();
+    let font = add_test_font(&mut scene);
+    scene.lighting.environment.background = Background::Color(og_core::glam::Vec3::ZERO);
+    scene.look.post.tonemap = Tonemap::None;
+    let draw = |scene: &mut RenderScene, css: &str| {
+        let text = format!(
+            r#"<meta name="component" content="clip"><div><p>1-1</p></div>
+<style>
+div {{ width: 320px; height: 120px; padding: 20px; box-sizing: border-box; }}
+p {{ margin: 0; width: 280px; font-size: 52px; line-height: 1; {css} }}
+</style>"#
+        );
+        let d = Doc::with_font(&text, &[], font.clone());
+        let mut overlay = Overlay::new(320.0, 120.0, 1.0);
+        d.ui.frame().emit(&EmitDesc::default(), &mut overlay);
+        scene.ui.overlay = Some(overlay);
+        render_frame(scene, &sized(320, 120)).image
+    };
+    for transform in ["", "transform: translate(7px, 3px) rotate(4deg);"] {
+        let mask = draw(&mut scene, &format!("color: white; {transform}"));
+        let clipped = draw(
+            &mut scene,
+            &format!(
+                "color: transparent; background: linear-gradient(90deg, red, blue); background-clip: text; {transform}",
+            ),
+        );
+        let mut visible = 0;
+        for (i, (mask, ink)) in mask
+            .pixels
+            .as_chunks::<4>()
+            .0
+            .iter()
+            .zip(clipped.pixels.as_chunks::<4>().0)
+            .enumerate()
+        {
+            if mask[..3].iter().all(|&v| v == 0) {
+                assert!(
+                    ink[..3].iter().all(|&v| v <= 2),
+                    "background escaped the glyphs at {},{} ({transform}): {ink:?}",
+                    i % 320,
+                    i / 320,
+                );
+            } else if ink[..3].iter().any(|&v| v > 30) {
+                visible += 1;
+            }
+        }
+        assert!(visible > 100, "the gradient still paints the glyphs");
+    }
+}
+
 /// A CSS shadow is the Gaussian convolution of the ink, including pixels
 /// outside the atlas quads. Wide shadows must not become solid glyph boxes.
 #[test]

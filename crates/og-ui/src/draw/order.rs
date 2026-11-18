@@ -84,17 +84,28 @@ fn collect(
                     ..
                 } = &mut begin
                 {
-                    let r = match filter {
+                    let r = match (filter, &end.0) {
                         // The filter region, under the element's map.
-                        Some(f) => {
+                        (Some(f), _) => {
                             crate::svg::filter::map(&mut f.1, &m);
                             f.0 = m.map_rect(&f.0);
                             f.0
                         }
                         // The box its mask is fitted to: what the mask
                         // leaves of the rest is cut.
-                        None if mask.is_some() => m.map_rect(rect),
-                        None => bounds.outset(*expand),
+                        (None, _) if mask.is_some() => m.map_rect(rect),
+                        // Destination-in must clear the rest of its
+                        // composite's box too. Cropping to the mask's ink
+                        // would leave the destination outside it intact.
+                        (
+                            None,
+                            DrawCmd::EndLayer {
+                                rect,
+                                blend: UiBlend::DestinationIn,
+                                ..
+                            },
+                        ) => union(&bounds, &end.1.map_rect(rect)).outset(*expand),
+                        (None, _) => bounds.outset(*expand),
                     };
                     *rect = r;
                     bounds = r;
