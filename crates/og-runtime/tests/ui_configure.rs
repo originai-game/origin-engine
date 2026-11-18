@@ -477,7 +477,16 @@ fn a_built_in_screen_mounts_without_a_copy() {
         .iter()
         .find(|el| el.id == "Resume")
         .unwrap_or_else(|| panic!("{:?}", elements.iter().map(|el| &el.id).collect::<Vec<_>>()));
-    assert_eq!(resume.text, "Resume");
+    // The entry's words are a label inside the button, which the player
+    // reads; a missing string would show its key there.
+    let inside = format!("{}/", resume.path);
+    let words: Vec<_> = elements
+        .iter()
+        .filter(|el| el.path.starts_with(&inside) && !el.text.is_empty())
+        .map(|el| el.text.as_str())
+        .collect();
+    assert!(words.contains(&"Resume"), "{words:?}");
+    assert!(words.iter().all(|w| !w.starts_with("screen.")), "{words:?}");
     drop(ui);
     assert!(og_runtime::og_engine_destroy(e));
 }
