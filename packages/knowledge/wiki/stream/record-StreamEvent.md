@@ -6,7 +6,7 @@ Module [`stream`](../stream.md) · [index](../index.md)
 
 ### `og.StreamEvent` (event)
 
-A group changed state: sent by og.stream at the start of the tick after the change.
+A group changed state: sent by og.stream at the start of the tick after the change. When a pack lands is host input (StreamState resident): natively the same on every run, on the web not.
 
 Token `og.StreamEvent`, registered under the schema name `og.StreamEvent`; its value type is `StreamEvent`.
 
@@ -17,7 +17,7 @@ Token `og.StreamEvent`, registered under the schema name `og.StreamEvent`; its v
 
 ```ogt
 event StreamEvent {
-  doc "A group changed state: sent by og.stream at the start of the tick after the change."
+  doc "A group changed state: sent by og.stream at the start of the tick after the change. When a pack lands is host input (StreamState resident): natively the same on every run, on the web not."
   field group String "The group's name (at most 63 bytes)."
   field state u32 "Its new state: STREAM_UNLOADED, STREAM_QUEUED, STREAM_LOADING, STREAM_RESIDENT or STREAM_FAILED (StreamState's order)."
 }

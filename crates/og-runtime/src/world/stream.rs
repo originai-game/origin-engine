@@ -312,6 +312,9 @@ pub(crate) struct Streams {
     holds: cell_groups::Holds,
     /// The textures streamed by their mips.
     mips: mips::Mips,
+    /// The world tick whose boundary last put a group in place: one per
+    /// tick, however many boundaries the host runs before it.
+    placed: Option<u64>,
 }
 
 /// An asset kept for the frame after its group unloaded.

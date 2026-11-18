@@ -323,3 +323,72 @@ fn chunks_nearest_the_playhead_go_first_then_packs_by_priority_four_at_a_time() 
     assert_eq!(fetch["queued"], json!([]), "{fetch}");
     assert_eq!(fetch["started"], fetch["finished"], "{fetch}");
 }
+
+/// Reads every file at once, as a native host does.
+struct Disk;
+
+impl Hooks for Disk {
+    fn dispatch(&self, _call: &Dispatch) -> Result<String, String> {
+        Ok(String::new())
+    }
+    fn read_asset(&self, path: &str) -> Fetch<Vec<u8>> {
+        match std::fs::read(path) {
+            Ok(bytes) => Fetch::Ready(bytes),
+            Err(e) => Fetch::Failed(format!("{path}: {e}")),
+        }
+    }
+}
+
+/// Each group's tick of becoming resident (StreamStatus.since), with the
+/// three groups requested before the first tick and `between` called after
+/// every frame of `ticks` (a frame of `ticks` fixed steps).
+fn resident_ticks(ticks: u32, between: impl Fn(u32)) -> Vec<(String, Value)> {
+    set_hooks(Rc::new(Disk));
+    og_host_begin_bundle();
+    let game = og_game_game(Some(r#"{"seed":1}"#.into()));
+    let options = json!({ "root": project().to_str().unwrap() }).to_string();
+    let engine = value(og_engine_create(game, options)).as_u64().unwrap() as u32;
+    for group in ["low", "high", "mid"] {
+        value(og_runtime::host_impl::answer(og_stream_request(
+            engine,
+            group.into(),
+        )));
+    }
+    for _ in 0..12 / ticks {
+        value(og_engine_frame(engine, f64::from(ticks) * 1000.0 / 60.0));
+        between(engine);
+    }
+    ["low", "high", "mid"]
+        .iter()
+        .map(|group| {
+            let s = value(og_runtime::host_impl::answer(og_stream_status(
+                engine,
+                group.to_string(),
+            )));
+            assert_eq!(s["state"], json!("resident"), "{group}: {s}");
+            (group.to_string(), s["since"].clone())
+        })
+        .collect()
+}
+
+/// When a group becomes resident is decided by the ticks alone: a probe
+/// call between frames (og run --json reads the assertion events after
+/// every frame, og test calls the probe every frame), a frame that takes no
+/// tick, and a frame that catches up two ticks leave it where one frame per
+/// tick puts it, natively. Broken before by every probe call and every
+/// frame running a tick boundary that put one more group in place, so
+/// og run --json made groups resident ticks earlier than og run.
+#[test]
+fn a_group_becomes_resident_at_the_same_tick_whatever_the_host_does_between_ticks() {
+    let plain = resident_ticks(1, |_| {});
+    let probed = resident_ticks(1, |e| {
+        og_runtime::og_engine_probe_assertion_events(e);
+    });
+    let idle = resident_ticks(1, |e| {
+        value(og_engine_frame(e, 0.0));
+    });
+    let catch_up = resident_ticks(2, |_| {});
+    assert_eq!(probed, plain, "a probe call between frames");
+    assert_eq!(idle, plain, "a frame without a tick");
+    assert_eq!(catch_up, plain, "a frame of two ticks");
+}

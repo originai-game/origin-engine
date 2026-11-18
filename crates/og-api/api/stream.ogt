@@ -59,7 +59,7 @@ module stream {
     variant unloaded "Not wanted; models stay hidden, textures use stand-ins and sounds play silence."
     variant queued "Wanted, waiting for room in the memory budget."
     variant loading "Admitted: its pack is being read (its memory already counts)."
-    variant resident "Its pack is available. Textures may still be preparing; StreamStatus.ready is presentation readiness."
+    variant resident "Its pack is available. Textures may still be preparing; StreamStatus.ready is presentation readiness. Its tick is host input: the same on every native run, not on the web; simulation that must match across hosts waits on a cell group (world §4)."
     variant failed "Its pack could not be read, or it alone needs more than the budget (StreamStatus.reason says which)."
   }
 
@@ -70,7 +70,7 @@ module stream {
   const STREAM_FAILED u32 4 "`StreamEvent.state`: the group failed (StreamState failed; og.stream.status says why)."
 
   event StreamEvent {
-    doc "A group changed state: sent by og.stream at the start of the tick after the change."
+    doc "A group changed state: sent by og.stream at the start of the tick after the change. When a pack lands is host input (StreamState resident): natively the same on every run, on the web not."
     field group String "The group's name (at most 63 bytes)."
     field state u32 "Its new state: STREAM_UNLOADED, STREAM_QUEUED, STREAM_LOADING, STREAM_RESIDENT or STREAM_FAILED (StreamState's order)."
   }

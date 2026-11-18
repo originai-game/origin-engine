@@ -181,8 +181,20 @@ looks and colour LUTs (`.cube`).
   priority (then name) within the memory budget (256 MiB by default: GPU
   textures and meshes and decoded audio, as the cook measured them),
   evicting lower-priority groups for a higher one, and puts at most one
-  group's assets in place per boundary. A group that cannot fit waits; one
-  larger than the whole budget fails.
+  group's assets in place per tick. A probe call and a frame that takes no
+  tick run a boundary too, and a frame that catches up runs one per tick,
+  so natively the tick a group becomes resident follows from ticks alone:
+  `og run`, `og run --json`, `og test` and a published build agree. A
+  group that cannot fit waits; one larger than the whole budget fails.
+- When a pack lands is host input that no replay journals. Natively a read
+  completes at once; on the web a fetch lands when the browser delivers
+  it, so a group's resident tick and its StreamEvent can differ between
+  browser runs and from native. Gameplay that must hash the same on every
+  host does not wait on `StreamStatus.state` or StreamEvent: it puts what
+  it waits for in a cell group (§5; a pinned og.StreamCell for content
+  needed from the start), whose loading tick the engine holds until the
+  pack lands on every host, and reads CellEvent or StreamCell.loaded. A
+  wait that only hides the world (a loading screen) may read either.
 - Until its group's model textures are decoded, models stay hidden rather
   than exposing an untextured proxy. Texture decode and transcode run away
   from the tick. Resident and StreamEvent describe pack readiness; the

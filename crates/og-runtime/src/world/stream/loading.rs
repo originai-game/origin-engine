@@ -207,15 +207,21 @@ pub(crate) fn update(eng: &Engine) {
         downgrade(eng, &name);
     }
     // Loading groups read their packs (after the sound chunks a playhead
-    // needs); one group is put in place per update.
+    // needs); one group is put in place per tick. A probe call or a frame
+    // that takes no tick runs a boundary too: counted per boundary, they
+    // would move the tick a group becomes resident.
     fetch(eng);
     let ready: Option<String> = {
         let a = eng.assets.borrow();
-        a.stream
-            .groups
-            .iter()
-            .find(|g| g.state == State::Loading && !g.files.is_empty())
-            .map(|g| g.desc.name.clone())
+        (a.stream.placed != Some(tick))
+            .then(|| {
+                a.stream
+                    .groups
+                    .iter()
+                    .find(|g| g.state == State::Loading && !g.files.is_empty())
+                    .map(|g| g.desc.name.clone())
+            })
+            .flatten()
     };
     if let Some(name) = ready {
         // Pack/scene readiness drives simulation events. Texture worker
@@ -223,6 +229,7 @@ pub(crate) fn update(eng: &Engine) {
         let mut a = eng.assets.borrow_mut();
         let s = &mut a.stream;
         if let Some(i) = s.find(&name) {
+            s.placed = Some(tick);
             s.groups[i].loads += 1;
             s.groups[i].ready = false;
             set_state(s, &eng.modules.stream, i, State::Resident, tick, "");

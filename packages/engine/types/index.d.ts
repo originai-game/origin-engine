@@ -30525,7 +30525,7 @@ export interface CellEvent {
  * - `"unloaded"`: Not wanted; models stay hidden, textures use stand-ins and sounds play silence.
  * - `"queued"`: Wanted, waiting for room in the memory budget.
  * - `"loading"`: Admitted: its pack is being read (its memory already counts).
- * - `"resident"`: Its pack is available. Textures may still be preparing; StreamStatus.ready is presentation readiness.
+ * - `"resident"`: Its pack is available. Textures may still be preparing; StreamStatus.ready is presentation readiness. Its tick is host input: the same on every native run, not on the web; simulation that must match across hosts waits on a cell group (world §4).
  * - `"failed"`: Its pack could not be read, or it alone needs more than the budget (StreamStatus.reason says which).
  */
 export type StreamState = "unloaded" | "queued" | "loading" | "resident" | "failed";
@@ -30548,7 +30548,7 @@ export declare const STREAM_RESIDENT: 3;
 export declare const STREAM_FAILED: 4;
 
 /**
- * A group changed state: sent by og.stream at the start of the tick after the change.
+ * A group changed state: sent by og.stream at the start of the tick after the change. When a pack lands is host input (StreamState resident): natively the same on every run, on the web not.
  *
  * The payload of the `StreamEvent` event (token `og.StreamEvent`).
  */
@@ -38486,7 +38486,9 @@ export declare namespace og {
    * A cell loaded or unloaded: sent in the tick it happened, before any system runs, so the tick's systems read it with the cell's entities already spawned (or despawned).
    */
   const CellEvent: EventType<CellEvent>;
-  /** A group changed state: sent by og.stream at the start of the tick after the change. */
+  /**
+   * A group changed state: sent by og.stream at the start of the tick after the change. When a pack lands is host input (StreamState resident): natively the same on every run, on the web not.
+   */
   const StreamEvent: EventType<StreamEvent>;
   /**
    * Named groups load one pack each, by priority within a memory budget (256 MiB by default). Resident means pack readiness. Models stay hidden until textures are prepared; StreamStatus.ready is presentation-only and nondeterministic. Physics keeps proxy meshes, independent of texture progress.

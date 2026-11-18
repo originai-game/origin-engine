@@ -117,7 +117,24 @@ pub fn frame(id: u32, elapsed_ms: f64) -> String {
         rs.capture_ms = 0.0;
     }
     crate::bind::net::frame_clock(id, Some(t0 as u64));
-    let stepped = rprobe::with_probe(&eng, false, |p, w| p.frame(w, due));
+    // Each tick of a frame that catches up has its own boundary, as an
+    // advance's batch does: what a boundary puts in place (a streaming
+    // group) lands at the same tick however the host's frames fall.
+    let stepped = (|| -> Result<og_core::Result<u32>, String> {
+        let mut taken = 0;
+        loop {
+            let n = match rprobe::with_probe(&eng, false, |p, w| p.frame(w, u32::from(due > 0)))? {
+                Ok(n) => n,
+                Err(e) => return Ok(Err(e)),
+            };
+            taken += n;
+            if n == 0 || taken >= due {
+                return Ok(Ok(taken));
+            }
+            super::modules::end_of_ticks();
+            tick_boundary(&eng)?;
+        }
+    })();
     crate::bind::net::frame_clock(id, None);
     let frame_t0 = t0;
     super::modules::end_of_ticks();
