@@ -27,6 +27,18 @@ const WEATHER_RUNS_OFF: f32 = 0.0;
 const WEATHER_STANDS: f32 = 1.0;
 const WEATHER_GROUND: f32 = 2.0;
 
+// How high standing water fills a ground's relief (0 its hollows' floor,
+// 1 its crests; the layers' heights, 0.5 their middle) with the weather's
+// `puddles`: the joints between setts and the cracks fill first, up to the
+// relief's middle by half the puddles, and the stones stand out of the
+// water (Lagarde's crack flood level, filling before the broad puddles'
+// own, "Water drop 2b", 2013). It stays just under the middle, so a crown
+// is never drowned and a layer without a height map (0.5) stays as it was. The
+// terrain's drawn surface rises to it (terrain.rs `flood`, the same level).
+fn weather_flood(puddles: f32) -> f32 {
+  return 0.48 * smoothstep(0.0, 0.5, puddles);
+}
+
 struct Weathered {
   s: Surface,
   n: vec3<f32>,
@@ -203,13 +215,30 @@ fn weather_surface_at(s_in: Surface, n_in: vec3<f32>, geo: vec3<f32>, p_frame: v
   // on level ground; the ground round their shore is soaked.
   var puddle = 0.0;
   var shore = 0.0;
+  // How much of the puddle is deep enough to hide the surface under it (a
+  // broad puddle's); the water in a relief's joints is millimetres deep
+  // and clear over the wet stone or mortar.
+  var deep = 0.0;
   if (w.y > 0.0 && standing > 0.0) {
     let hollow = 1.0 - weather_fbm(p.xz / max(frame.weather_look.w, 0.05) + 41.0) + low * 0.8;
     let level = smoothstep(0.93, 0.985, up);
     let edge = 1.0 - w.y * 0.65;
     let flat_enough = 1.0 - smoothstep(0.08, 0.35, bend);
-    puddle = smoothstep(edge, edge + 0.1, hollow) * level * flat_enough * (1.0 - snow) * min(standing, 1.0);
-    shore = smoothstep(edge - 0.12, edge, hollow) * level * flat_enough * (1.0 - snow) * min(standing, 1.0);
+    let broad = smoothstep(edge, edge + 0.1, hollow);
+    var pooled = broad;
+    var lapped = smoothstep(edge - 0.12, edge, hollow);
+    // On the ground the water also fills the relief up to the flood level
+    // (its drawn surface raised to it): the joints and cracks hold water
+    // between the stones, wherever the broad puddles lie.
+    if (standing > 1.5) {
+      let height = (cavity - 0.15) / 0.7;
+      let flood = weather_flood(w.y) * level;
+      pooled = max(pooled, 1.0 - smoothstep(flood - 0.03, flood, height));
+      lapped = max(lapped, 1.0 - smoothstep(flood, flood + 0.02, height));
+    }
+    puddle = pooled * level * flat_enough * (1.0 - snow) * min(standing, 1.0);
+    deep = broad * level * flat_enough * (1.0 - snow) * min(standing, 1.0);
+    shore = lapped * level * flat_enough * (1.0 - snow) * min(standing, 1.0);
     wet = max(wet, shore * w.x);
   }
 
@@ -266,7 +295,7 @@ fn weather_surface_at(s_in: Surface, n_in: vec3<f32>, geo: vec3<f32>, p_frame: v
   // Standing water: mirror-smooth dark water over the surface, rippled by
   // the rain.
   if (puddle > 0.0) {
-    o.s.albedo *= mix(1.0, 0.25, puddle);
+    o.s.albedo *= mix(1.0, 0.25, deep);
     o.s.f0 = mix(o.s.f0, vec3<f32>(0.02), puddle);
     o.s.metallic = mix(o.s.metallic, 0.0, puddle);
     // The water's own mirror and flat face take over only where it covers

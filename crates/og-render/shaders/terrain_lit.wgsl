@@ -295,7 +295,9 @@ fn layers_height(pick: LayerPick, w: vec4<f32>, heights_of: vec4<f32>) -> f32 {
 }
 
 // The weather's cavity for a layers' height: the relief's crests and
-// hollows, kept off the extremes (as pbr_fs.wgsl weather_cavity).
+// hollows, kept off the extremes (as pbr_fs.wgsl weather_cavity). The
+// weather reads the height back from it on the ground (weather_surface_at,
+// its flood level).
 fn terrain_cavity(height: f32) -> f32 {
   return 0.15 + 0.7 * height;
 }

@@ -48,6 +48,7 @@ struct TerrainUniform {
   pyramid: array<vec4<f32>, 16>,  // per level: x its first tile, y tiles along x, z along z
   layers: array<TerrainLayerGpu, 16>,
   grass: TerrainGrass,  // the far grass (terrain_lit.wgsl grass_far)
+  water: vec4<f32>,     // x: the standing water's level in the layers' relief (0..1, weather_surface.wgsl weather_flood; 0: none)
 };
 
 // The colour an og.Grass field gives the ground past and between its

@@ -361,6 +361,11 @@ depth-normal prepass: the first one pays for it.
 - Weather on surfaces: porous surfaces darken when wet and smooth ones
   gloss, drying in patches from high spots; rain streaks down walls;
   puddles fill level hollows (a terrain's layer heights first) and ripple;
+  on a terrain the joints and cracks of its layers' relief fill first, to
+  just under the relief's middle (a layer's height 0.5) by half `puddles`,
+  the drawn ground rising flat to the water so it mirrors the sky between
+  the stones, which stand out of it (a height map should put its joints
+  well under 0.5 and its crowns over it);
   snow settles on what faces up, deeper snow reaching steeper faces,
   lifting the drawn terrain; dust settles up and low; a strike flashes the
   scene with a bolt. An og.GrassPusher walking through snow or sand lying

@@ -250,6 +250,17 @@ impl TerrainRenderer {
                 pyramid,
                 layers,
                 grass: far_cover(ti),
+                water: {
+                    let weather = !self
+                        .off
+                        .contains(crate::pipeline_features::Features::WEATHER);
+                    let level = if weather {
+                        crate::terrain::flood(scene)
+                    } else {
+                        0.0
+                    };
+                    [level, 0.0, 0.0, 0.0]
+                },
             };
             let slot = &mut self.slots[ti];
             queue.write_buffer(&slot.uniform, 0, bytemuck::bytes_of(&gpu));

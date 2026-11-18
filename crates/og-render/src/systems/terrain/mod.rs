@@ -149,6 +149,8 @@ struct TerrainGpu {
     layers: [LayerGpu; MAX_TERRAIN_LAYERS],
     /// The far colour of the og.Grass field on it (`grass.rs`).
     grass: FarGpu,
+    /// x: the standing water's level in the layers' relief ([`flood`]).
+    water: [f32; 4],
 }
 
 /// `TerrainLevel` in terrain.wgsl.

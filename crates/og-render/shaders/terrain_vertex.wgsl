@@ -208,6 +208,13 @@ fn terrain_relief(c: vec2<f32>, h: f32, step: f32, fade: f32, maps: TerrainMaps)
   // A displacing layer with a normal map of its relief's slope also its
   // height a spacing along x, then z (`along`): all in one loop (one copy
   // of the layer's sampling code: DXC inlines every call).
+  // Standing water fills each layer's relief up to its level
+  // (`terrain.water.x`): the drawn surface is the water's there, flat, so
+  // the joints' water lies where the lit pass shades it and is seen.
+  // Only on level ground, as the lit pass lays standing water
+  // (weather_surface.wgsl weather_surface_at's `level`): on a steep way
+  // the water runs off and the joints stay as they are.
+  let flood = terrain.water.x * smoothstep(0.93, 0.985, n.y);
   var heights = vec4<f32>(1.0);
   var relief = vec4<f32>(0.0);
   var along_x = vec4<f32>(0.0);
@@ -221,11 +228,11 @@ fn terrain_relief(c: vec2<f32>, h: f32, step: f32, fade: f32, maps: TerrainMaps)
         let lh = layer_height(pick.ids[k], at, n, dpx, dpy);
         if (j == 0u) {
           heights[k] = select(1.0, lh, lh >= 0.0);
-          relief[k] = select(0.0, lh - 0.5, lh >= 0.0);
+          relief[k] = select(0.0, max(lh, flood) - 0.5, lh >= 0.0);
         } else if (j == 1u) {
-          along_x[k] = lh;
+          along_x[k] = max(lh, flood);
         } else {
-          along_z[k] = lh;
+          along_z[k] = max(lh, flood);
         }
       }
     }

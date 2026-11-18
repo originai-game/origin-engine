@@ -79,6 +79,20 @@ pub(crate) fn snow_lift(scene: &crate::RenderScene) -> f32 {
     })
 }
 
+/// How high the weather's standing water fills the layers' relief, 0 (its
+/// hollows' floor) to 1 (its crests), 0.5 their middle: the joints and
+/// cracks fill first, to just under the middle by half the `puddles`, so
+/// the stones always stand out of it (weather_surface.wgsl `weather_flood`, the same
+/// level). The drawn ground rises to it (terrain_vertex.wgsl
+/// terrain_relief), flat, so the water in the joints is seen and mirrors the
+/// sky; 0 without puddles.
+pub(crate) fn flood(scene: &crate::RenderScene) -> f32 {
+    scene.atmosphere.surface_weather.as_ref().map_or(0.0, |w| {
+        let t = (w.puddles / 0.5).clamp(0.0, 1.0);
+        0.48 * t * t * (3.0 - 2.0 * t)
+    })
+}
+
 /// The layers' sampling (after [`TERRAIN_WGSL`]): the lit pass's shading
 /// and the displacement's heights.
 const TERRAIN_LAYERS_WGSL: &str = wgsl3d!("terrain_layers.wgsl");

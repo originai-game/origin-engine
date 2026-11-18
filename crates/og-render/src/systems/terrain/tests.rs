@@ -178,7 +178,7 @@ fn the_terrain_uniform_matches_the_shader() {
     assert_eq!(
         list,
         fields!(TerrainGpu: model, normal, origin, extent, params, tiles, displace, view_proj,
-                prev_view_proj, pyramid, layers, grass)
+                prev_view_proj, pyramid, layers, grass, water)
     );
 }
 
