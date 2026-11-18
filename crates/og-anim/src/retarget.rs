@@ -355,8 +355,9 @@ fn classify(scheme: &str, name: &str) -> Option<usize> {
             let part = match rest {
                 "hips" => Part::Hips,
                 "spine" => Part::Spine,
-                "spine1" => Part::Chest,
-                "spine2" => Part::UpperChest,
+                // Meshy's rigs write Mixamo's names with two digits.
+                "spine1" | "spine01" => Part::Chest,
+                "spine2" | "spine02" => Part::UpperChest,
                 "neck" => Part::Neck,
                 "head" => Part::Head,
                 "shoulder" => Part::Shoulder,
@@ -794,6 +795,8 @@ mod tests {
         let cases: &[(&str, &str, &str)] = &[
             ("mixamo", "mixamorig:LeftUpLeg", "leftUpperLeg"),
             ("mixamo", "mixamorig1:Spine1", "chest"),
+            ("mixamo", "Spine01", "chest"),
+            ("mixamo", "Spine02", "upperChest"),
             ("mixamo", "mixamorig_RightToeBase", "rightToes"),
             ("vrm", "J_Bip_L_LowerArm", "leftLowerArm"),
             ("vrm", "J_Bip_C_UpperChest", "upperChest"),
