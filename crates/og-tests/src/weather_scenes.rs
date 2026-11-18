@@ -647,8 +647,8 @@ pub fn cotton() -> StandardMaterial {
     }
 }
 
-/// Velvet and cotton under the afternoon sky: a crimson velvet drape and a
-/// blue cotton one hung side by side, a ball of each on the ground in
+/// Velvet and cotton under the afternoon sky in the materials showroom: a
+/// crimson velvet drape and a blue cotton one hung side by side, a ball of each on the ground in
 /// front, the set turned so the sun comes from behind the camera and to
 /// its side. Velvet's tight sheen lights the folds' turned-away faces in a
 /// bright rim over a dark face; cotton's rough sheen is a faint fuzz at
@@ -662,20 +662,12 @@ pub fn cloth_with(left: StandardMaterial, right: StandardMaterial) -> RenderScen
     let mut scene = RenderScene::new();
     physical_light(&mut scene, 15.5, PhysicalAtmosphere::EARTH);
     scene.atmosphere.fog = None;
-    ground(
-        &mut scene,
-        40.0,
-        1.0,
-        StandardMaterial {
-            color: Vec3::splat(0.35),
-            roughness: 0.8,
-            ..Default::default()
-        },
-    );
     // The set's +z (towards the camera) turned 40 degrees off the sun's
     // bearing: lit from over the viewer's shoulder.
     let sun = scene.lighting.light.direction_to_light;
-    let turn = Quat::from_rotation_y(sun.x.atan2(sun.z) + 0.7);
+    let yaw = sun.x.atan2(sun.z) + 0.7;
+    let turn = Quat::from_rotation_y(yaw);
+    crate::physical_scenes::showroom(&mut scene, yaw);
     let sheet = scene.add_mesh(drape(2.2, 2.6));
     let ball = scene.add_mesh(shapes::sphere(64, 48));
     for (x, m) in [(-1.3f32, left), (1.3, right)] {
@@ -700,6 +692,7 @@ pub fn cloth_with(left: StandardMaterial, right: StandardMaterial) -> RenderScen
     scene.frame.camera = Camera {
         position: turn * Vec3::new(0.0, 1.4, 4.2),
         target: turn * Vec3::new(0.0, 1.0, -1.0),
+        far: 2500.0,
         exposure: Exposure::Manual { ev: 0.0 },
         ..Default::default()
     };

@@ -213,17 +213,9 @@ pub fn split_scene() -> RenderScene {
 /// through the shader's vertex and fragment entries).
 pub fn full_dissolve_scene(amount: f32) -> RenderScene {
     let mut scene = RenderScene::new();
-    let sun = Vec3::new(-0.7, 0.55, 0.3);
-    scene.lighting.light = DirectionalLight {
-        direction_to_light: sun,
-        intensity: 3.5,
-        ..Default::default()
-    };
-    scene.lighting.environment.sky.sun_direction = sun;
-    scene.lighting.environment.intensity = 0.5;
-    let ground = scene.add_mesh(shapes::plane(16.0, 4.0));
-    let grey = scene.add_standard_material(colour(0.6, 0.6, 0.6));
-    scene.add_instance(ground, grey, Mat4::IDENTITY);
+    crate::physical_scenes::showroom(&mut scene, 0.0);
+    crate::sky_scenes::physical_light_under(&mut scene, Vec3::new(-0.7, 0.55, 0.3));
+    scene.lighting.light.cast_shadows = true;
     let shader = scene.add_shader(og_render::example_full_shader());
     let dissolve = scene.add_standard_material(StandardMaterial {
         color: Vec3::new(0.2, 0.45, 0.9),
@@ -254,7 +246,8 @@ pub fn full_dissolve_scene(amount: f32) -> RenderScene {
     scene.frame.camera = Camera {
         position: Vec3::new(1.0, 3.5, 7.5),
         target: Vec3::new(0.5, 0.8, 0.0),
-        exposure: Exposure::linear(0.8),
+        far: 2500.0,
+        exposure: Exposure::Manual { ev: 0.0 },
         ..Default::default()
     };
     scene

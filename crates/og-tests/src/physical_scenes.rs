@@ -86,25 +86,60 @@ pub fn sheen_map(size: u32) -> TextureData {
     })
 }
 
-/// Bold coloured bars behind the glass: what refraction shows (sRGB).
-pub fn bars(size: u32) -> TextureData {
-    let colors = [
-        [0.85, 0.12, 0.1],
-        [0.95, 0.8, 0.15],
-        [0.1, 0.55, 0.85],
-        [0.95, 0.95, 0.92],
-        [0.15, 0.6, 0.25],
-        [0.1, 0.1, 0.12],
-    ];
-    texture(size, ColorSpace::Srgb, |u, v| {
-        let c = colors[((u * 12.0) as usize + (v * 2.0) as usize * 3) % colors.len()];
-        [c[0], c[1], c[2], 1.0]
-    })
+/// The showroom the materials scenes stand in, turned `yaw` about +y: a
+/// museum's sculpture court open to the sky, a polished stone floor 24 m
+/// by 20 m from z -6, a cream plaster back wall 5 m tall under a stone
+/// cornice behind it, four columns before the wall either side of the
+/// middle, and the lawn and hills beyond.
+pub(crate) fn showroom(scene: &mut RenderScene, yaw: f32) {
+    use crate::kit;
+    let turn = Mat4::from_rotation_y(yaw);
+    let grass = kit::surface_tinted(scene, "grass", [0.82, 0.95, 0.66]);
+    let lawn = scene.add_mesh(kit::slab(
+        Vec2::splat(-260.0),
+        Vec2::splat(260.0),
+        -0.02,
+        7.0,
+    ));
+    scene.add_instance(lawn, grass, Mat4::IDENTITY);
+    kit::hills(scene, None);
+    let floor = kit::surface_finish(scene, "stone", [0.95, 0.92, 0.86], 0.45);
+    let slab = scene.add_mesh(kit::slab(
+        Vec2::new(-12.0, -6.0),
+        Vec2::new(12.0, 14.0),
+        0.0,
+        2.0,
+    ));
+    scene.add_instance(slab, floor, turn);
+    let plaster = kit::plaster(scene, [0.78, 0.7, 0.58]);
+    let wall = scene.add_mesh(kit::block(
+        Vec3::new(-12.0, 0.0, -6.6),
+        Vec3::new(12.0, 5.0, -6.0),
+        2.0,
+    ));
+    scene.add_instance(wall, plaster, turn);
+    let stone = kit::surface_tinted(scene, "stone", [0.92, 0.88, 0.8]);
+    for (min, max) in [
+        (Vec3::new(-12.3, 5.0, -6.8), Vec3::new(12.3, 5.4, -5.8)),
+        (Vec3::new(-12.3, 0.0, -6.1), Vec3::new(12.3, 0.35, -5.8)),
+    ] {
+        let block = scene.add_mesh(kit::block(min, max, 1.5));
+        scene.add_instance(block, stone, turn);
+    }
+    let column = kit::prop(scene, "column");
+    for x in [-10.5f32, -6.5, 6.5, 10.5] {
+        column.place(
+            scene,
+            turn.transform_point3(Vec3::new(x, 0.0, -5.2)),
+            yaw,
+            4.6,
+        );
+    }
 }
 
-/// Seven feature spheres on a plinth of coloured bars, five transmissive
-/// objects in front of it on the checker ground, under a low sun and the
-/// sky. Back, left to right: clearcoat with its three maps (banded
+/// Seven feature spheres on a walnut plinth in the [`showroom`], five
+/// transmissive objects in front of it on the polished floor, under the
+/// physical sky. Back, left to right: clearcoat with its three maps (banded
 /// coat, its roughness, bumps in the coat only) over a rough red base;
 /// pink sheen on dark blue velvet; mapped sheen (diamonds, roughness
 /// down the sphere) on dark green; iridescence on black with the film's
@@ -115,7 +150,7 @@ pub fn bars(size: u32) -> TextureData {
 /// high-`ior` sphere.
 pub fn physical_scene() -> RenderScene {
     let mut scene = RenderScene::new();
-    crate::scenes::ground(&mut scene, 40.0, 0.5, 0.8);
+    showroom(&mut scene, 0.0);
     let sphere = scene.add_mesh(shapes::sphere(64, 48));
     let cube = scene.add_mesh(shapes::cuboid(Vec3::splat(0.85)));
     let plinth = scene.add_mesh(shapes::cuboid(Vec3::new(9.0, 0.7, 0.8)));
@@ -125,7 +160,7 @@ pub fn physical_scene() -> RenderScene {
     let ramp = scene.add_texture(ramp(64));
     let swirl = scene.add_texture(swirl(256));
     let sheen = scene.add_texture(sheen_map(256));
-    let bars = scene.add_texture(bars(512));
+    let walnut = crate::kit::surface_textures(&mut scene, "planks")[0];
     let put = |scene: &mut RenderScene, mesh, m: StandardMaterial, t: Mat4| {
         let h = scene.add_standard_material(m);
         scene.add_instance(mesh, h, t);
@@ -134,8 +169,9 @@ pub fn physical_scene() -> RenderScene {
         &mut scene,
         plinth,
         StandardMaterial {
-            map: bars.slot(),
-            roughness: 0.7,
+            color: Vec3::new(0.55, 0.4, 0.3),
+            map: walnut.slot(),
+            roughness: 0.55,
             ..Default::default()
         },
         Mat4::from_translation(Vec3::new(0.0, 0.35, -1.8)),
@@ -265,18 +301,13 @@ pub fn physical_scene() -> RenderScene {
         },
         Mat4::from_translation(front(4.0)),
     );
-    let sun = Vec3::new(-0.5, 0.75, 0.45);
-    scene.lighting.light = DirectionalLight {
-        direction_to_light: sun,
-        intensity: 3.0,
-        ..Default::default()
-    };
-    scene.lighting.environment.sky.sun_direction = sun;
-    scene.lighting.environment.intensity = 0.9;
+    crate::sky_scenes::physical_light_under(&mut scene, Vec3::new(-0.5, 0.75, 0.45));
+    scene.lighting.light.cast_shadows = true;
     scene.frame.camera = Camera {
         position: Vec3::new(0.0, 2.3, 6.8),
         target: Vec3::new(0.0, 0.8, -0.6),
-        exposure: Exposure::linear(0.7),
+        far: 2500.0,
+        exposure: Exposure::Manual { ev: 0.0 },
         ..Default::default()
     };
     scene

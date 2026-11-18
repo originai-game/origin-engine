@@ -702,7 +702,7 @@ pub fn vase() -> og_geom::Mesh {
 /// spheres.
 pub fn shapes_scene() -> RenderScene {
     let mut scene = RenderScene::new();
-    crate::scenes::ground(&mut scene, 40.0, 0.5, 0.85);
+    crate::physical_scenes::showroom(&mut scene, 0.0);
     let gear = og_geom::extrude(
         &[gear_shape(14)],
         &og_geom::Extrude {
@@ -749,10 +749,15 @@ pub fn shapes_scene() -> RenderScene {
         },
         Mat4::from_translation(Vec3::new(3.1, 0.5, 0.0)) * Mat4::from_rotation_y(0.6),
     );
-    lit(
-        &mut scene,
-        Vec3::new(0.0, 3.4, 6.4),
-        Vec3::new(0.0, 0.75, 0.0),
-    );
+    crate::sky_scenes::physical_light_under(&mut scene, Vec3::new(-0.5, 0.75, 0.45));
+    scene.lighting.light.cast_shadows = true;
+    scene.frame.camera = Camera {
+        position: Vec3::new(0.0, 3.4, 6.4),
+        target: Vec3::new(0.0, 0.75, 0.0),
+        far: 2500.0,
+        exposure: Exposure::Manual { ev: 0.0 },
+        ..Default::default()
+    };
+    scene.frame.css_height = 720.0;
     scene
 }
