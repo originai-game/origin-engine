@@ -1,0 +1,5 @@
+{
+  "fixed": [
+    "World-label placement encodes floating-point candidate order in place before sorting, preserving every coordinate bit without a second key buffer."
+  ]
+}
