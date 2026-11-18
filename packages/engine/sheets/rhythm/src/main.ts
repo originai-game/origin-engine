@@ -70,8 +70,8 @@ function stores(world: World): Record<string, UiReadable<unknown>> {
   }
   // The songs page: the overflow fixture's twelve songs with sample jackets
   // (the long title among them), over the select stage.
-  const songs = (FIXTURES.songSelect!.overflow!.songs as Record<string, unknown>[]).map((s, i) => ({ ...s, jacket: jackets[i % jackets.length] ?? 0 }));
-  out.pageSongs = scope.collection("pageSongs", songs as { id: string }[], { key: "id" });
+  const songs = (FIXTURES.songSelect!.overflow!.songs as { id: string }[]).map((s, i) => ({ ...s, jacket: jackets[i % jackets.length] ?? 0 }));
+  out.pageSongs = scope.collection("pageSongs", songs, { key: "id" });
   out.selectStage = scope.writable("selectStage", selectStage);
   out.captions = scope.writable("captions", captions);
   return out;
