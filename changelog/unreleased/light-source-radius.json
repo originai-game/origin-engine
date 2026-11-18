@@ -1,4 +1,4 @@
 {
   "added": ["PointLight.radius and SpotLight.radius set a spherical source size in metres. Near-source illumination uses distance² + radius², and specular highlights use Karis's energy-normalized representative point. The default zero preserves punctual lights; shadow softness is unchanged."],
-  "breaking": ["The reflected PointLight and SpotLight records add a radius field (default 0). Re-cook scenes against the updated schema."]
+  "breaking": [{ "member": "render.PointLight, render.SpotLight", "change": "The reflected records add radius, default 0.", "fix": "Re-cook scenes against the updated schema; leave radius zero to preserve punctual lights." }]
 }
