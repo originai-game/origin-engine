@@ -237,7 +237,7 @@ impl Ui {
                 before,
                 after,
             );
-            if custom {
+            if custom && commit.is_some() {
                 let samples = cascade
                     .values
                     .iter()
@@ -314,9 +314,17 @@ impl Ui {
                 })
             })
         });
-        let transitioned = transitions
-            .iter()
-            .any(|t| part || t.channels == 0 || t.property == "all");
+        let transitioned = transitions.iter().any(|t| {
+            t.property.starts_with("--") == custom
+                && (custom || part || t.channels == 0 || t.property == "all")
+        });
+        // An idle retained recipe is not a computed-value effect. In
+        // particular, scalar channels and `all` cannot animate the root's
+        // custom tokens. A removed effect is canceled by the new commit;
+        // the before-change pass still uses its old declarations.
+        if !has_styles && !transitioned {
+            return None;
+        }
         // The before-change style: last build's after-change values, or on
         // the first, `@starting-style`'s.
         let first =
@@ -329,9 +337,6 @@ impl Ui {
                 ..Default::default()
             });
         let previous = previous.or(first.as_ref());
-        if previous.is_none() && !has_styles && !transitioned {
-            return None;
-        }
         let now = self.interaction.state.tick;
         let tps = self.env.ticks_per_second;
         let reduced = self.env.theme.reduced_motion;

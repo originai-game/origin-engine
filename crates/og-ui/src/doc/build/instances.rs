@@ -180,7 +180,7 @@ pub struct RetainedHost {
     /// borrowed keys.
     pub inherited: BTreeMap<MountedNode, BTreeMap<String, BTreeSet<MountedNode>>>,
     /// Evaluated reads published by native parts after the preceding build.
-    pub part_reads: BTreeMap<u64, BTreeSet<String>>,
+    pub part_reads: Arc<BTreeMap<u64, BTreeSet<String>>>,
     pub by_key: BTreeMap<u64, MountedNode>,
     /// The elements matching `:hover`, `:active`, `:focus` and
     /// `:focus-visible` last frame: the pointer's, the focus's and any the
