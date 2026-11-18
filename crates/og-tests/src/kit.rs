@@ -83,6 +83,17 @@ fn image(rel: &str, color_space: ColorSpace) -> Arc<TextureData> {
     })
 }
 
+/// A painted 2D picture from the assets (`rel`, such as
+/// `sprites2d/cistern.jpg`, sRGB) as a scene texture; `nearest` for pixel
+/// art, whose texels stay square when scaled up.
+pub fn picture(scene: &mut RenderScene, rel: &str, nearest: bool) -> TextureHandle {
+    let t = scene.add_texture((*image(rel, ColorSpace::Srgb)).clone());
+    if nearest {
+        scene.set_texture_filter(t, og_render::TextureFilter::Nearest);
+    }
+    t
+}
+
 /// A kit model in a scene: its parts and its bounds.
 #[derive(Clone, Debug)]
 pub struct Prop {
