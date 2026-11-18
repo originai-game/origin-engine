@@ -6,7 +6,7 @@ Module [`load`](../load.md) · [index](../index.md)
 
 ### `og.load.completions`
 
-The world's journal of uncooked loads put in place, oldest first: what a replay hands og.load.replayCompletions to put each in place at the same tick. og replay --record keeps it in the trace.
+The world's journal of host-timed loads, oldest first: uncooked loads put in place and runtime bundles opened, each with its tick. What a replay hands og.load.replayCompletions to finish each at the same tick. og replay --record keeps it in the trace.
 
 ```ts
 og.load.completions(world: World): readonly LoadCompletion[]
@@ -22,10 +22,10 @@ Binding symbol `og_load_completions` · publish builds: kept
 
 ```ogt
 fn completions {
-  doc "The world's journal of uncooked loads put in place, oldest first: what a replay hands og.load.replayCompletions to put each in place at the same tick. og replay --record keeps it in the trace."
+  doc "The world's journal of host-timed loads, oldest first: uncooked loads put in place and runtime bundles opened, each with its tick. What a replay hands og.load.replayCompletions to finish each at the same tick. og replay --record keeps it in the trace."
   param world World "The world."
   returns List.LoadCompletion
 }
 ```
 
-<sub>Module `load` line 655</sub>
+<sub>Module `load` line 656</sub>

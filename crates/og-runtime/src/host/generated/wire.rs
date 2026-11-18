@@ -8885,6 +8885,7 @@ impl ToJson for ImageInfo {
 /// `LoadCompletion`: packages/knowledge/wiki/load.md.
 #[derive(Clone, Debug, PartialEq)]
 pub struct LoadCompletion {
+    pub kind: String,
     pub request: u32,
     pub tick: f64,
     pub ok: bool,
@@ -8893,6 +8894,7 @@ pub struct LoadCompletion {
 impl Default for LoadCompletion {
     fn default() -> Self {
         Self {
+            kind: Default::default(),
             request: Default::default(),
             tick: Default::default(),
             ok: Default::default(),
@@ -8907,6 +8909,7 @@ impl FromJson for LoadCompletion {
     fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
         let o = object(v)?;
         Ok(Self {
+            kind: field(o, "kind", d.kind)?,
             request: field(o, "request", d.request)?,
             tick: field(o, "tick", d.tick)?,
             ok: field(o, "ok", d.ok)?,
@@ -8917,6 +8920,7 @@ impl FromJson for LoadCompletion {
 impl ToJson for LoadCompletion {
     fn to_json(&self) -> Value {
         let mut o = Map::new();
+        o.insert("kind".into(), self.kind.to_json());
         o.insert("request".into(), self.request.to_json());
         o.insert("tick".into(), self.tick.to_json());
         o.insert("ok".into(), self.ok.to_json());

@@ -86,14 +86,14 @@ test("natively an image is in place at the boundary after its call, the same eve
   // start runs when the engine is made; the load is in place at the next boundary, before the
   // first tick (world.tick 0), which the journal names.
   expect(a.probe).toEqual({ readyAt: 1, failedAt: 0, width: 3 });
-  expect(og.load.completions(a.engine.world as unknown as World)).toEqual([{ request: 0, tick: 0, ok: true }]);
+  expect(og.load.completions(a.engine.world as unknown as World)).toEqual([{ kind: "uncooked", request: 0, tick: 0, ok: true }]);
   const b = run(6);
   expect(b.hashes).toEqual(a.hashes);
 });
 
 test("a web-timed completion replays at its recorded tick: the game branching on og.load.status steps the same", () => {
   // As a web run journals it when the browser took 6 ticks longer to decode.
-  const web = [{ request: 0, tick: 7, ok: true }];
+  const web = [{ kind: "uncooked", request: 0, tick: 7, ok: true }];
   const recorded = run(12, web);
   expect(recorded.probe).toEqual({ readyAt: 8, failedAt: 0, width: 3 });
   expect(og.load.completions(recorded.engine.world as unknown as World)).toEqual(web);
@@ -123,7 +123,7 @@ test("og replay keeps the loads journal: a trace recorded with a web session's j
   const rec = replay("--record", trace, "--commands", "10:quit", "--ticks", "10", "--loads", join(dir, "web.json"));
   expect([rec.exit, rec.err]).toEqual([0, rec.err]);
   const t = JSON.parse(readFileSync(trace, "utf8"));
-  expect(t.loads).toEqual([{ request: 0, tick: 5, ok: true }]);
+  expect(t.loads).toEqual([{ kind: "uncooked", request: 0, tick: 5, ok: true }]);
   const same = replay("--compare", trace);
   expect([same.exit, JSON.parse(same.out.trim().split("\n").at(-1)!).same]).toEqual([0, true]);
   // The same trace without its journal: this host puts the load in place at tick 0, so the world differs from there.
@@ -169,7 +169,7 @@ test("natively a glTF is in place at the boundary after its call, drawn as og.lo
   const { engine, world, asset } = go();
   expect([og.load.status(world, asset), og.load.error(world, asset)]).toEqual(["ready", null]);
   // The image was request 0 (the game's start), the model request 1.
-  expect(og.load.completions(world)).toEqual([{ request: 0, tick: 0, ok: true }, { request: 1, tick: 0, ok: true }]);
+  expect(og.load.completions(world)).toEqual([{ kind: "uncooked", request: 0, tick: 0, ok: true }, { kind: "uncooked", request: 1, tick: 0, ok: true }]);
   const info = og.load.gltfInfo(world, asset);
   if (!info.ok) throw new Error(info.reason);
   // One primitive drawn by two nodes: one geometry, one material.
@@ -198,7 +198,7 @@ test("a web-timed glTF completion replays at its recorded tick: pending until it
   const made = createEngine(game);
   if (!made.ok) throw new Error(made.reason);
   const world = made.value.world as unknown as World;
-  const journal = [{ request: 0, tick: 0, ok: true }, { request: 1, tick: 4, ok: true }];
+  const journal = [{ kind: "uncooked", request: 0, tick: 0, ok: true }, { kind: "uncooked", request: 1, tick: 4, ok: true }];
   expect<unknown>(og.load.replayCompletions(world, journal as never)).toEqual({ ok: true });
   const r = og.load.gltfData(world, "creations/kite.glb", quadGlb(image), {});
   if (!r.ok) throw new Error(r.reason);
@@ -301,5 +301,5 @@ test("an uncooked HDR environment is in place at the boundary after its call, li
   expect(og.load.status(world, r.value)).toBe("failed");
   expect(og.load.environmentInfo(world, r.value).ok).toBe(false);
   // The game's image (request 0) and the environment (request 1), both at the first boundary.
-  expect(og.load.completions(world)).toEqual([{ request: 0, tick: 0, ok: true }, { request: 1, tick: 0, ok: true }]);
+  expect(og.load.completions(world)).toEqual([{ kind: "uncooked", request: 0, tick: 0, ok: true }, { kind: "uncooked", request: 1, tick: 0, ok: true }]);
 });

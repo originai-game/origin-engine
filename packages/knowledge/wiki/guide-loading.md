@@ -17,6 +17,11 @@ Asset queries, publish pruning and the cook cache are in assets.
   og.load.scene answers a stable pending handle once its bundle is open;
   keep that handle and query og.load.status before instantiating. Pending
   loads complete at tick boundaries; og.load.error gives a failed load's reason.
+- og.load.bundle of another bundle opens at the call when the host has its
+  manifest (natively always), else at a tick boundary once the web host has
+  fetched it. Either way the open is host input: og.load.completions
+  journals its tick (`kind` `bundle`), and a replay opens it at the same
+  tick, so a system may act on its og.load.status.
 - Every cooked loader answers the same handle for the same path. Load
   once in GameDesc.start and keep the handle.
 - An asset in a streaming group's pack loads once its group is

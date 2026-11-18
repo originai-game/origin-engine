@@ -6530,7 +6530,7 @@
             }
           ],
           "returns": "Result<Asset>",
-          "returnsDoc": "The bundle's handle: pending until its manifest is read, then ready or failed.",
+          "returnsDoc": "The bundle's handle: ready or failed at the call when the host has its manifest (natively always), else pending until a tick boundary. og.load.completions journals the tick, so a replay opens it at the same one.",
           "publish": true
         },
         {
@@ -7491,7 +7491,7 @@
         },
         {
           "name": "completions",
-          "doc": "The world's journal of uncooked loads put in place, oldest first: what a replay hands og.load.replayCompletions to put each in place at the same tick. og replay --record keeps it in the trace.",
+          "doc": "The world's journal of host-timed loads, oldest first: uncooked loads put in place and runtime bundles opened, each with its tick. What a replay hands og.load.replayCompletions to finish each at the same tick. og replay --record keeps it in the trace.",
           "params": [
             {
               "name": "world",
@@ -7505,7 +7505,7 @@
         },
         {
           "name": "replayCompletions",
-          "doc": "Put this world's uncooked loads in place at the ticks a recorded run did (its og.load.completions), not when this host finishes them: a load is held back until its tick, and at its tick the engine waits for it. Call it before the first tick; og replay --compare does. A load the journal names as failed fails at its tick whatever this host made of it.",
+          "doc": "Finish this world's host-timed loads at the ticks a recorded run did (its og.load.completions), not when this host finishes them: a load is held back until its tick, and at its tick the engine waits for it; a bundle the run opened at the call opens at the call. Call it before the first tick; og replay --compare does. A load the journal names as failed fails at its tick whatever this host made of it; one it never finished never finishes.",
           "params": [
             {
               "name": "world",
@@ -31721,14 +31721,18 @@
     "LoadCompletion": {
       "x-og-kind": "struct",
       "x-og-module": "load",
-      "description": "When an uncooked load was put in place: the journal a replay applies again (og.load.completions).",
+      "description": "When a host-timed load finished: an uncooked load put in place or a runtime bundle opened. The journal a replay applies again (og.load.completions).",
       "type": "object",
       "properties": {
+        "kind": {
+          "type": "string",
+          "description": "`uncooked` (og.load.imageData, gltfData, environmentData) or `bundle` (og.load.bundle of another bundle). A journal without kinds holds uncooked loads."
+        },
         "request": {
           "type": "integer",
           "minimum": 0,
           "maximum": 4294967295,
-          "description": "The load's number: 0 for the world's first uncooked load, then one more for each."
+          "description": "The load's number within its kind: 0 for the world's first, then one more for each."
         },
         "tick": {
           "type": "number",
@@ -31741,6 +31745,7 @@
         }
       },
       "required": [
+        "kind",
         "request",
         "tick",
         "ok"

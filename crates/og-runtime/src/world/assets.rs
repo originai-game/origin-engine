@@ -158,8 +158,11 @@ pub(crate) struct Assets {
     /// Per glTF asset index, the GltfDesc shadow flags of its last
     /// og.load.gltf ([`Assets::model_shadows`]).
     pub model_shadows: IdMap<usize, ModelShadows>,
-    /// Uncooked loads (og.load.imageData) and their journal.
+    /// Uncooked loads (og.load.imageData) and the journal of host-timed
+    /// loads (og.load.completions), runtime bundle opens included.
     pub uncooked: crate::world::uncooked::Uncooked,
+    /// Runtime bundle opens not finished yet: entry and request number.
+    pub opening: BTreeMap<usize, u32>,
     /// The http(s) images documents name, by request key.
     pub remote: crate::world::remote::Remote,
 }
@@ -288,13 +291,19 @@ impl Assets {
         }
     }
 
-    /// Opens a bundle directory (relative to the root).
-    pub fn open_bundle(&mut self, path: &str) -> usize {
+    /// The entry of bundle directory `path` when it is open or opening:
+    /// opening it again answers that entry.
+    fn opened(&self, path: &str) -> Option<usize> {
         let dir = join(&self.root, path);
-        if let Some(i) = self.entries.iter().position(|e| {
+        self.entries.iter().position(|e| {
             matches!(&e.payload, Payload::Bundle { dir: opened, .. } if opened == &dir)
                 || (e.path == path && e.status == Status::Pending)
-        }) {
+        })
+    }
+
+    /// Opens a bundle directory (relative to the root).
+    pub fn open_bundle(&mut self, path: &str) -> usize {
+        if let Some(i) = self.opened(path) {
             return i;
         }
         let i = self.push(path, Status::Pending, Payload::None);
@@ -302,10 +311,66 @@ impl Assets {
         i
     }
 
-    /// Retries pending bundles; called at every tick boundary.
-    pub fn poll(&mut self) {
+    /// og.load.bundle at world tick `tick`: a bundle opened at run time,
+    /// whose completion is host input. It completes at the call when the
+    /// host has its manifest, else at a later tick boundary, and either
+    /// tick is journaled (og.load.completions), so a replay completes it at
+    /// the same tick: at the call when the recorded tick is the call's, held
+    /// back to its recorded tick otherwise. Opening one that is open or
+    /// opening answers its entry and is no new open.
+    pub fn open_runtime_bundle(&mut self, path: &str, tick: u64) -> usize {
+        if let Some(i) = self.opened(path) {
+            return i;
+        }
+        let i = self.push(path, Status::Pending, Payload::None);
+        let request = self.uncooked.next_bundle;
+        self.uncooked.next_bundle += 1;
+        self.opening.insert(i, request);
+        self.settle_open(i, tick);
+        i
+    }
+
+    /// Reads runtime open `i` unless a replay holds it back; journals it
+    /// once it is ready or failed. One released while it was opening
+    /// (og.load.release) never finished, and is not journaled.
+    fn settle_open(&mut self, i: usize, tick: u64) {
+        use crate::world::uncooked::{Completion, Due, Kind};
+        let request = self.opening[&i];
+        if self.entries[i].status != Status::Pending {
+            self.opening.remove(&i);
+            return;
+        }
+        match self.uncooked.bundle_due(request) {
+            Due::Never => return,
+            Due::At(at, _) if at > tick => return,
+            Due::Free | Due::At(_, true) => self.poll_bundle(i),
+            Due::At(_, false) => {
+                let path = &self.entries[i].path;
+                self.entries[i].status =
+                    Status::Failed(format!("{path}: failed in the recorded run"));
+            }
+        }
+        let ok = match self.entries[i].status {
+            Status::Pending => return,
+            Status::Ready => true,
+            Status::Failed(_) => false,
+        };
+        self.opening.remove(&i);
+        self.uncooked.journal.push(Completion {
+            kind: Kind::Bundle,
+            request,
+            tick,
+            ok,
+        });
+    }
+
+    /// Retries pending bundles; called at every tick boundary, the world at
+    /// tick `tick`.
+    pub fn poll(&mut self, tick: u64) {
         for i in 0..self.entries.len() {
-            if self.entries[i].status == Status::Pending
+            if self.opening.contains_key(&i) {
+                self.settle_open(i, tick);
+            } else if self.entries[i].status == Status::Pending
                 && matches!(self.entries[i].payload, Payload::None)
             {
                 self.poll_bundle(i);
