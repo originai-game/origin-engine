@@ -34,8 +34,8 @@ pub(crate) fn words(value: &str) -> Vec<&str> {
     out
 }
 
-/// One inset's value, checked: `auto`, a length, `<n>%`, `anchor()` or a
-/// `calc()` of one plus px.
+/// One inset's value, checked: `auto`, a length, `<n>%`,
+/// length-percentage math or `anchor()` plus px.
 fn inset(v: &str) -> Result<Vec<Value>, String> {
     if v != "auto" && !v.starts_with("var(") {
         anchor::parse_inset(v)?;

@@ -1,0 +1,8 @@
+{
+  "fixed": [
+    {
+      "member": "ui",
+      "summary": "Positioning insets accept CSS length-percentage math such as max(0px, calc(50% - 130px)), min() and clamp(), resolving percentages against the containing block's corresponding axis."
+    }
+  ]
+}

@@ -382,6 +382,57 @@ svg { display: block; flex: none; }
 }
 
 #[test]
+fn inset_math_resolves_against_the_containing_block_axis() {
+    for (height, positions) in [
+        (
+            200,
+            [
+                (0.0, 0.0),
+                (40.0, 70.0),
+                (230.0, 0.0),
+                (80.0, 150.0),
+                (80.0, 23.0),
+            ],
+        ),
+        (
+            400,
+            [
+                (0.0, 70.0),
+                (40.0, 170.0),
+                (230.0, 0.0),
+                (80.0, 320.0),
+                (80.0, 43.0),
+            ],
+        ),
+    ] {
+        let source = format!(
+            r#"<meta name="component" content="t">
+<div><div id="Box"><div id="A"></div><div id="B"></div><div id="C"></div><div id="D"></div><div id="E"></div></div></div>
+<style>
+#Box {{ position: relative; width: 300px; height: {height}px; }}
+#Box > div {{ position: absolute; width: 30px; height: 20px; }}
+#A {{ left: 0; top: max(0px, calc(50% - 130px)); }}
+#B {{ left: 40px; top: max(0px, calc(50% - 30px)); }}
+#C {{ right: min(40px, calc(20% - 10px)); top: 0; }}
+#D {{ left: 80px; bottom: clamp(10px, calc(25% - 20px), 60px); }}
+#E {{ left: calc(25% + 5px); top: calc(10% + 3px); }}
+</style>"#
+        );
+        with_doc(&source, &[], |d| {
+            let parent = d.get("Box");
+            for (id, (x, y)) in ["A", "B", "C", "D", "E"].into_iter().zip(positions) {
+                let e = d.get(id);
+                assert_eq!(
+                    (e.x - parent.x, e.y - parent.y),
+                    (x, y),
+                    "{id}, height {height}"
+                );
+            }
+        });
+    }
+}
+
+#[test]
 fn flex_resolves_an_auto_cross_size_from_the_final_aspect_ratio() {
     let text = r#"<meta name="component" content="t">
 <div id="Root"><div id="Column"><div id="First"><div id="Child"></div></div><div id="Second"></div></div></div>

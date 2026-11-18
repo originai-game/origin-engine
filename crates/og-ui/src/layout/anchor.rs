@@ -46,6 +46,8 @@ pub enum Inset {
     Px(f32),
     /// A fraction (0–1) of the containing block's size along the axis, plus px.
     Percent(f32, f32),
+    /// CSS length-percentage math, resolved against the containing block axis.
+    Calc(crate::Calc),
     /// `anchor(<name>? <side>, <fallback>?)`, plus px (`calc(anchor(…) + 4px)`).
     Anchor {
         name: String,
@@ -321,8 +323,8 @@ fn mix_terms(body: &str) -> Option<Vec<(f32, &str)>> {
     (terms.len() >= 2).then_some(terms)
 }
 
-/// An inset's value: `<n>px`, `<n>%`, `anchor(…)`, `calc()` of one of
-/// those plus or minus px, or `calc()` of weighted insets added.
+/// An inset's value: `<n>px`, `<n>%`, length-percentage math,
+/// `anchor(…)` plus or minus px, or `calc()` of weighted insets added.
 pub fn parse_inset(v: &str) -> Result<Inset, String> {
     let v = v.trim();
     let inner = call(v, "calc")
@@ -355,8 +357,20 @@ pub fn parse_inset(v: &str) -> Result<Inset, String> {
             .collect::<Result<_, String>>()
             .map(Inset::Mix);
     }
+    // Use the same reduced length-percentage math as CSS sizes. Keep
+    // its percentages until placement knows the containing block's axis.
+    let reduced = og_css::calc::reduce(v)?;
+    if reduced != v {
+        return parse_inset(&reduced);
+    }
+    if let [og_css::Tok::Func(name, args)] = og_css::tokens(&reduced)?.as_slice() {
+        let values = crate::css::values::size_calc("inset", name, args)?;
+        if let Some(calc) = crate::css::values::calc(&values) {
+            return Ok(Inset::Calc(calc));
+        }
+    }
     Err(format!(
-        "'{v}' is no inset: <n>px, <n>%, anchor([--name] <side>[, <fallback>]) or calc() of one plus px"
+        "'{v}' is no inset: <n>px, <n>%, length-percentage math or anchor([--name] <side>[, <fallback>])"
     ))
 }
 
@@ -657,6 +671,7 @@ fn place(p: &Placement, f: &Frame<'_>) -> (Rect, Rect) {
                 .sum::<Option<f32>>()?,
             Inset::Px(v) => *v,
             Inset::Percent(q, plus) => q * len[axis] + plus,
+            Inset::Calc(calc) => calc.of(len[axis]),
             Inset::Anchor {
                 name,
                 side,
