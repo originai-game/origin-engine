@@ -18,7 +18,7 @@ struct FluidUniform {
   right: vec4<f32>,    // xyz: the camera's right, w: pixels per metre at view depth 1 (perspective) or per metre (orthographic)
   up: vec4<f32>,       // xyz: the camera's up, w: reflectivity
   screen: vec4<f32>,   // w, h, 1/w, 1/h
-  look: vec4<f32>,     // x: refraction, y: 1 orthographic, z: optical density per metre of fluid, w: unused
+  look: vec4<f32>,     // x: refraction, y: 1 orthographic, z: optical density per metre of fluid, w: particle radius
 };
 
 @group(1) @binding(0) var<uniform> fluid: FluidUniform;
@@ -220,9 +220,14 @@ fn fs_composite(in: FullOut) -> CompositeOut {
 
   // What the surface reflects of the light around it (the split sum at
   // water's reflectance) in place of what it lets through (Schlick).
+  // Smoothing bends the silhouette towards the sky even where the
+  // accumulated fluid column tends to zero. Over one particle diameter,
+  // fade both reflected energy and its extinction of the background;
+  // a vanishing column must not leave a fully reflective shell.
+  let coverage = smoothstep(0.0, 2.0 * fluid.look.w, path);
   let n_dot_v = saturate(dot(n, v));
-  let fresnel = clamp((0.02 + 0.98 * pow(1.0 - n_dot_v, 5.0)) * fluid.up.w, 0.0, 1.0);
-  out = out * (1.0 - fresnel) + lit.specular * fluid.up.w;
+  let fresnel = clamp((0.02 + 0.98 * pow(1.0 - n_dot_v, 5.0)) * fluid.up.w, 0.0, 1.0) * coverage;
+  out = out * (1.0 - fresnel) + lit.specular * fluid.up.w * coverage;
   let h = normalize(l + v);
   out += frame.light_color.rgb * pow(max(dot(n, h), 0.0), 200.0) * 2.0 * fresnel * fluid.up.w * shadow;
 

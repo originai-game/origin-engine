@@ -807,7 +807,7 @@ fn camera_uniforms(
             first.refraction.max(0.0),
             ortho,
             -(1.0 - first.opacity.clamp(0.0, 0.999)).ln(),
-            0.0,
+            first.radius.max(1e-4),
         ],
     };
     let radius = first.radius.max(1e-4) * first.smoothing.max(0.0);

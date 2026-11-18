@@ -110,3 +110,32 @@ fn the_drop_is_drawn_in_its_particles_colours() {
         "orange above red: {top:?} over {bottom:?}"
     );
 }
+
+/// Depth smoothing rounds an empty rim away from the eye. That normal
+/// must not turn a vanishing column of fluid into an opaque sky reflector.
+#[test]
+#[ignore = "requires GPU"]
+fn vanishing_thickness_does_not_leave_a_reflective_shell() {
+    let make = |volume: f32, reflectivity: f32| {
+        frame(|s| {
+            for fluid in &mut s.world.fluids_3d {
+                fluid.volume *= volume;
+                fluid.refraction = 0.0;
+            }
+            // The fluids merge into one surface, with the first's look.
+            s.world.fluids_3d[0].reflectivity = reflectivity;
+        })
+    };
+    let rim = (590, 110, 820, 340);
+    let thin = diff(&make(1e-4, 1.0), &make(1e-4, 0.0), rim);
+    let deep = diff(&make(1.0, 1.0), &make(1.0, 0.0), rim);
+    println!("reflection at negligible thickness {thin}, full drop {deep}");
+    assert!(
+        thin < 1.0,
+        "an empty fluid rim cannot reflect an opaque shell: {thin}"
+    );
+    assert!(
+        deep > 2.0,
+        "the covered body still reflects its environment: {deep}"
+    );
+}

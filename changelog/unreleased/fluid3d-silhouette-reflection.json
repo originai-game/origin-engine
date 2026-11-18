@@ -1,0 +1,8 @@
+{
+  "fixed": [
+    {
+      "member": "og.Fluid3D",
+      "summary": "Screen-space fluids fade Fresnel reflection with their reconstructed thickness at particle silhouettes, removing the opaque sky-reflecting halo without suppressing the covered body's reflection."
+    }
+  ]
+}
