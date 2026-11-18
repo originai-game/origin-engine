@@ -551,6 +551,16 @@ impl Ui {
         if kind == Kind::Svg {
             el.width = Size::px(vb[2]);
             el.height = Size::px(vb[3]);
+            if r.str("svgViewBox").and_then(view_box).is_some() {
+                el.aspect = vb[2] / vb[3];
+                // A definite axis sizes the other, auto axis through the
+                // SVG's intrinsic ratio, not its view-box coordinate extent.
+                match (r.size("width"), r.size("height")) {
+                    (Some(_), None) => el.height = Size::fit(),
+                    (None, Some(_)) => el.width = Size::fit(),
+                    _ => {}
+                }
+            }
         }
         let mut el = Self::box_of(r, el, self.style.em_of(r, &self.env));
         if kind != Kind::Svg {

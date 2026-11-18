@@ -346,6 +346,42 @@ fn centering_and_asymmetric_anchors_preserve_transforms() {
 }
 
 #[test]
+fn svg_auto_size_follows_its_intrinsic_aspect_ratio() {
+    with_doc(
+        r##"<meta name="component" content="t" />
+<div id="Root">
+<svg id="Wide" viewBox="0 0 200 100"></svg>
+<svg id="Tall" viewBox="0 0 200 100"></svg>
+<svg id="Fixed" viewBox="0 0 200 100"></svg>
+<svg id="Override" viewBox="0 0 200 100"></svg>
+<svg id="Percent" viewBox="0 0 200 100"></svg>
+</div>
+<style>
+#Root { width: 240px; display: flex; flex-direction: column; align-items: start; }
+svg { display: block; flex: none; }
+#Wide { inline-size: 80px; block-size: auto; }
+#Tall { inline-size: auto; block-size: 60px; }
+#Fixed { inline-size: 160px; block-size: 100px; }
+#Override { inline-size: 80px; block-size: auto; aspect-ratio: 1; }
+#Percent { inline-size: 50%; block-size: auto; }
+</style>"##,
+        &[],
+        |d| {
+            for (id, expected) in [
+                ("Wide", (80.0, 40.0)),
+                ("Tall", (120.0, 60.0)),
+                ("Fixed", (160.0, 100.0)),
+                ("Override", (80.0, 80.0)),
+                ("Percent", (120.0, 60.0)),
+            ] {
+                let e = d.get(id);
+                assert_eq!((e.width, e.height), expected, "{id}");
+            }
+        },
+    );
+}
+
+#[test]
 fn flex_resolves_an_auto_cross_size_from_the_final_aspect_ratio() {
     let text = r#"<meta name="component" content="t">
 <div id="Root"><div id="Column"><div id="First"><div id="Child"></div></div><div id="Second"></div></div></div>
