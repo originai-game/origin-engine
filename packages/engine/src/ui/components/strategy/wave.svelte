@@ -73,7 +73,9 @@
 .icon { flex: none; inline-size: calc(var(--size-md) * 0.75); block-size: calc(var(--size-md) * 0.75); object-fit: cover; clip-path: polygon(var(--hud-tag-cut) 0, 100% 0, 100% calc(100% - var(--hud-tag-cut)), calc(100% - var(--hud-tag-cut)) 100%, 0 100%, 0 var(--hud-tag-cut)); }
 .main { display: flex; flex-direction: column; row-gap: calc(1 * var(--font-step-px)); flex: 1 1 auto; min-inline-size: 0; }
 .head { display: flex; align-items: center; column-gap: calc(6 * var(--font-step-px)); min-inline-size: 0; }
-.label { flex: 0 1 auto; min-inline-size: 0; font-size: var(--hud-label-size); font-weight: var(--hud-label-weight); letter-spacing: var(--hud-label-tracking); text-transform: var(--hud-label-transform); color: var(--hud-harm); white-space: nowrap; text-overflow: -og-scroll var(--motion-duration-orbit) var(--motion-duration-turn); overflow: hidden; }
+/* The wave's title is short: it fits, or wraps onto a second line; it is
+   never cut. */
+.label { flex: 0 1 auto; min-inline-size: 0; font-size: var(--hud-label-size); font-weight: var(--hud-label-weight); letter-spacing: var(--hud-label-tracking); text-transform: var(--hud-label-transform); color: var(--hud-harm); }
 [data-phase=done] .label { color: var(--hud-label-ink); }
 .final { flex: none; padding: 0 calc(5 * var(--font-step-px)); font-size: var(--hud-tag-size); line-height: 1.4; font-weight: var(--hud-figure-weight); white-space: nowrap; color: var(--hud-gold); background: var(--hud-tag-fill); box-shadow: var(--hud-tag-rim); clip-path: polygon(var(--hud-tag-cut) 0, 100% 0, 100% calc(100% - var(--hud-tag-cut)), calc(100% - var(--hud-tag-cut)) 100%, 0 100%, 0 var(--hud-tag-cut)); }
 .clock { display: flex; align-items: center; column-gap: calc(8 * var(--font-step-px)); min-inline-size: 0; }
