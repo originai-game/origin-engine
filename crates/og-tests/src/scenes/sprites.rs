@@ -115,36 +115,6 @@ pub fn flipbook_frame(frame: u32) -> TextureData {
     t
 }
 
-/// A 16 x 16 pixel-art figure (head, tunic of `tunic`, legs), feet on
-/// the bottom row; transparent round it.
-fn pixel_figure(tunic: [u8; 3]) -> TextureData {
-    let mut t = texture(16, ColorSpace::Srgb, |u, v| {
-        let (x, y) = ((u * 16.0) as i32, (v * 16.0) as i32);
-        let skin = [236, 188, 150, 255];
-        let dark = [40, 32, 48, 255];
-        match (x, y) {
-            // Hair and head.
-            (6..=9, 1) => dark,
-            (5..=10, 2..=5) if (x - 7).abs() + (y - 3).abs() <= 4 => {
-                if y == 2 {
-                    dark
-                } else {
-                    skin
-                }
-            }
-            // Arms and tunic.
-            (4 | 11, 7..=10) => skin,
-            (5..=10, 6..=11) => [tunic[0], tunic[1], tunic[2], 255],
-            // Legs and boots.
-            (6 | 9, 12..=13) => [70, 60, 90, 255],
-            (5..=6 | 9..=10, 14..=15) => dark,
-            _ => [0, 0, 0, 0],
-        }
-    });
-    t.mips = Mips::None;
-    t
-}
-
 /// The painted pixel-art sprite `sprites2d/{name}.png` (nearest
 /// filtered) and its width over its height.
 fn painted(scene: &mut RenderScene, name: &str) -> (og_render::TextureHandle, f32) {
@@ -431,12 +401,10 @@ fn shadow_hills(x: f32, z: f32) -> f32 {
 
 /// The `sprites-shadow-terrain` scene (see [`build`]).
 pub fn sprites_shadow_terrain_scene() -> RenderScene {
-    use og_render::{
-        ShadowGround, SpriteShadow, Terrain, TerrainData, TerrainLayer, TextureFilter,
-    };
+    use og_render::{ShadowGround, SpriteShadow, Terrain, TerrainData, TerrainLayer};
     let mut scene = RenderScene::new();
-    // 48 m of hills sampled every half metre (the clipmap's finest level),
-    // checkered so the slopes read.
+    // 48 m of grassy hills sampled every half metre (the clipmap's finest
+    // level), the kit's hills beyond them.
     let (columns, rows, size) = (97u32, 97u32, Vec2::splat(48.0));
     let cell = size / Vec2::new(columns as f32 - 1.0, rows as f32 - 1.0);
     let heights: Vec<f32> = (0..rows)
@@ -455,44 +423,42 @@ pub fn sprites_shadow_terrain_scene() -> RenderScene {
         control: None,
         holes: None,
     };
-    let checker = scene.add_texture(shapes::checker(512, 16));
+    let (grass, grass_normal) = crate::kit::layer_maps(&mut scene, "grass");
     let handle = scene.add_terrain(data.clone());
     scene.world.terrains.push(Terrain {
         layers: vec![TerrainLayer {
-            albedo: Some(checker),
-            color: Vec3::new(0.85, 0.95, 0.75),
-            tile: 4.0,
+            albedo: Some(grass),
+            normal: Some(grass_normal),
+            color: Vec3::new(0.72, 1.05, 0.5),
+            tile: 3.5,
+            anti_tiling: 0.5,
             ..Default::default()
         }],
         ..Terrain::new(handle)
     });
-    let stone = scene.add_material(Material {
-        base_color: [0.72, 0.7, 0.66, 1.0],
-        roughness: 0.8,
-        ..Default::default()
-    });
-    // A deck whose top is 1.9 m up, and a wall casting the sun's shadow.
+    crate::kit::hills(&mut scene, None);
+    // A plank watch platform whose top is 1.9 m up, and a rubble wall
+    // casting the sun's shadow.
     let deck_top = 1.9;
-    let deck = scene.add_mesh(shapes::cuboid(Vec3::new(2.4, 2.0, 1.8)));
-    scene.add_instance(
-        deck,
-        stone,
-        Mat4::from_translation(Vec3::new(2.7, deck_top - 1.0, 0.2)),
-    );
-    let wall = scene.add_mesh(shapes::cuboid(Vec3::new(2.6, 4.0, 0.4)));
-    scene.add_instance(
-        wall,
-        stone,
-        Mat4::from_translation(Vec3::new(-2.2, 1.6, -2.2)),
-    );
-    let figures: Vec<_> = [[200, 60, 60], [60, 120, 210], [80, 170, 90]]
-        .into_iter()
-        .map(|tunic| {
-            let t = scene.add_texture(pixel_figure(tunic));
-            scene.set_texture_filter(t, TextureFilter::Nearest);
-            t
-        })
-        .collect();
+    let planks = crate::kit::surface_tinted(&mut scene, "planks", [0.62, 0.5, 0.4]);
+    let deck = scene.add_mesh(crate::kit::block(
+        Vec3::new(1.5, -0.6, -0.7),
+        Vec3::new(3.9, deck_top, 1.1),
+        1.2,
+    ));
+    scene.add_instance(deck, planks, Mat4::IDENTITY);
+    let rubble = crate::kit::surface_tinted(&mut scene, "stone", [0.75, 0.7, 0.62]);
+    let wall = scene.add_mesh(crate::kit::block(
+        Vec3::new(-3.5, -0.4, -2.4),
+        Vec3::new(-0.9, 3.6, -2.0),
+        1.5,
+    ));
+    scene.add_instance(wall, rubble, Mat4::IDENTITY);
+    let figures = [
+        painted(&mut scene, "hero-knight"),
+        painted(&mut scene, "hero-mage"),
+        painted(&mut scene, "hero-ranger"),
+    ];
     // Each figure stands on the ground under it; its shadow falls on the
     // plane fitted to the terrain under it (ShadowGround::fit, as
     // og-runtime fits it), bent where the plane misses the ground (the
@@ -504,10 +470,11 @@ pub fn sprites_shadow_terrain_scene() -> RenderScene {
         } else {
             data.height(Vec2::new(x, z))
         };
+        let (texture, aspect) = figures[figure % figures.len()];
         let sprite = Sprite {
-            texture: Some(figures[figure % figures.len()]),
+            texture: Some(texture),
             position: Vec3::new(x, height, z),
-            size: Vec2::splat(1.4),
+            size: Vec2::new(1.6 * aspect, 1.6),
             anchor: Vec2::new(0.5, 0.0),
             ..Default::default()
         };
@@ -534,15 +501,14 @@ pub fn sprites_shadow_terrain_scene() -> RenderScene {
     stand(&mut scene, 3.5, -0.4, 2, true);
     // Beside the wall: its drop shadow runs into the wall's shadow.
     stand(&mut scene, -2.8, 0.1, 0, false);
-    scene.lighting.light = DirectionalLight {
-        direction_to_light: sun,
-        intensity: 3.0,
-        ..Default::default()
-    };
+    // Afternoon: the sun 49° up behind the hills to the right.
+    crate::sky_scenes::physical_light_under(&mut scene, sun);
+    scene.lighting.light.cast_shadows = true;
     scene.frame.camera = Camera {
         position: Vec3::new(0.0, 5.6, 8.5),
         target: Vec3::new(0.0, 0.8, -0.2),
-        exposure: Exposure::linear(0.9),
+        far: 2500.0,
+        exposure: Exposure::Manual { ev: 0.0 },
         ..Default::default()
     };
     scene
