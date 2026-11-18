@@ -561,6 +561,35 @@ fn unity_legacy_thumbs(skeleton: &SkeletonAsset, nodes: &mut [u32; HUMAN_BONE_CO
     }
 }
 
+/// The spine's bones (spine, chest, upper chest) in the order they hang
+/// from the hips, whatever their names number: Meshy's auto-rig names
+/// Mixamo's spine from the top down (Hips, Spine02, Spine01, Spine, neck),
+/// so read by name its upper chest sat under its chest and the torso was
+/// drawn folded.
+fn spine_by_hierarchy(skeleton: &SkeletonAsset, nodes: &mut [u32; HUMAN_BONE_COUNT]) {
+    let depth = |mut n: u32| {
+        let mut d = 0;
+        while let Some(node) = skeleton.nodes.get(n as usize) {
+            n = node.parent;
+            d += 1;
+        }
+        d
+    };
+    let mut spine: Vec<u32> = [SPINE, CHEST, UPPER_CHEST]
+        .iter()
+        .map(|&b| nodes[b])
+        .filter(|&n| n != NONE)
+        .collect();
+    spine.sort_by_key(|&n| depth(n));
+    let slots: Vec<usize> = [SPINE, CHEST, UPPER_CHEST]
+        .into_iter()
+        .filter(|&b| nodes[b] != NONE)
+        .collect();
+    for (b, n) in slots.into_iter().zip(spine) {
+        nodes[b] = n;
+    }
+}
+
 impl HumanoidMap {
     /// The map `scheme` reads from the node names (the first node of each
     /// bone, in node order); an unknown scheme is refused.
@@ -582,6 +611,7 @@ impl HumanoidMap {
         if scheme == "unity" {
             unity_legacy_thumbs(skeleton, &mut nodes);
         }
+        spine_by_hierarchy(skeleton, &mut nodes);
         Ok(HumanoidMap {
             scheme: scheme.to_string(),
             nodes,
@@ -819,6 +849,40 @@ mod tests {
                 "{scheme} {name}"
             );
         }
+        // Meshy numbers the spine from the top down: by hierarchy, the
+        // joint over the hips is the spine and the one under the neck the
+        // upper chest.
+        let chain = |names: &[&str]| SkeletonAsset {
+            nodes: names
+                .iter()
+                .enumerate()
+                .map(|(i, n)| crate::asset::SkeletonNode {
+                    name: (*n).into(),
+                    parent: if i == 0 { NONE } else { i as u32 - 1 },
+                    rest: Trs::IDENTITY,
+                    mesh: NONE,
+                })
+                .collect(),
+            ..Default::default()
+        };
+        let map = HumanoidMap::detect(&chain(&[
+            "Hips", "Spine02", "Spine01", "Spine", "neck", "Head",
+        ]));
+        assert_eq!(
+            (map.node("spine"), map.node("chest"), map.node("upperChest")),
+            (Some(1), Some(2), Some(3))
+        );
+        let map = HumanoidMap::detect(&chain(&[
+            "mixamorig:Hips",
+            "mixamorig:Spine",
+            "mixamorig:Spine1",
+            "mixamorig:Spine2",
+            "mixamorig:Neck",
+        ]));
+        assert_eq!(
+            (map.node("spine"), map.node("chest"), map.node("upperChest")),
+            (Some(1), Some(2), Some(3))
+        );
         // Not bones: a twist bone, Rigify's control bones, a centre name with a side.
         for (scheme, name) in [
             ("rigify", "DEF-thigh.L.001"),
