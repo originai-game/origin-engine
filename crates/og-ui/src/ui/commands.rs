@@ -2059,7 +2059,7 @@ pub(crate) fn fade_cmd(c: &mut DrawCmd, k: f32) {
         DrawCmd::Vector { tint, .. } => tint[3] *= k,
         DrawCmd::EndLayer { opacity, .. } => *opacity *= k,
         DrawCmd::World(w) => {
-            if let crate::world::WorldCmd::Mass { batch, .. } = &mut **w {
+            if let crate::world::WorldCmd::Mass { batch, .. } = w {
                 for i in &mut batch.instances {
                     i.color[3] *= k;
                 }

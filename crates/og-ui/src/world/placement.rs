@@ -2091,7 +2091,7 @@ impl crate::ui::Layout {
             let mut marks = Marks::default();
             marks
                 .enter
-                .push(DrawCmd::World(Box::new(WorldCmd::Anchor { key: pl.key })));
+                .push(DrawCmd::World(WorldCmd::Anchor { key: pl.key }));
             world.placement.placed.push(super::AnchorPoint {
                 key: pl.key,
                 target: d.target,
@@ -2108,14 +2108,12 @@ impl crate::ui::Layout {
                     WorldOcclusion::Fade { alpha } => alpha,
                     _ => 0.0,
                 };
-                marks.enter.push(DrawCmd::World(Box::new(WorldCmd::Occlude {
+                marks.enter.push(DrawCmd::World(WorldCmd::Occlude {
                     at: (pl.at.x, pl.at.y),
                     depth: pl.depth,
                     alpha,
-                })));
-                marks
-                    .leave
-                    .push(DrawCmd::World(Box::new(WorldCmd::EndOcclude)));
+                }));
+                marks.leave.push(DrawCmd::World(WorldCmd::EndOcclude));
             }
             if let Some((angle, color, size)) = arrow
                 && s.alpha > 0.0
@@ -2151,9 +2149,7 @@ impl crate::ui::Layout {
                     clip: screen,
                 });
             }
-            marks
-                .leave
-                .push(DrawCmd::World(Box::new(WorldCmd::EndAnchor)));
+            marks.leave.push(DrawCmd::World(WorldCmd::EndAnchor));
             world.placement.marks.insert(pl.key, marks);
         }
         world.state.smooth.retain(|k, _| seen.contains(k));
@@ -2282,11 +2278,11 @@ impl crate::ui::Layout {
                 ui_world.placement.marks.insert(
                     key,
                     Marks {
-                        enter: vec![DrawCmd::World(Box::new(WorldCmd::BeginPanel {
+                        enter: vec![DrawCmd::World(WorldCmd::BeginPanel {
                             target,
                             rect: tree.nodes[p.node].placed.rect,
-                        }))],
-                        leave: vec![DrawCmd::World(Box::new(WorldCmd::EndPanel))],
+                        })],
+                        leave: vec![DrawCmd::World(WorldCmd::EndPanel)],
                     },
                 );
             }
