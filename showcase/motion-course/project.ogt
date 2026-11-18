@@ -1,0 +1,30 @@
+type project
+version 1
+---
+# A showcase of og.motion (README.md): two characters run a course through a
+# temple's ruins, their motion generated between the game's goals.
+name "Motion Course"
+id "motion-course"
+engine "0.8.0"
+entry "src/main.ts"
+tick 60
+seed 1
+publish {
+  probe player
+  out "dist"
+}
+
+look "looks/motion-course.ogt"
+
+create {
+  genre "action-adventure"
+  view "third-person-3d"
+  look "cinematic-realism"
+  mood "warm"
+  ui "default"
+  platform "desktop"
+  input "keyboard-mouse"
+  players "single"
+  lang "en"
+  music "ambient"
+}
