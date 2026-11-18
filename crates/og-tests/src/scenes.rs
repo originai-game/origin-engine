@@ -1057,18 +1057,18 @@ pub fn build(name: &str) -> Result<GfxScene, String> {
             Ok(())
         },
         "crowd-culling" => |g, _| {
-            g.scene = fx::crowd_culling_scene();
+            g.scene = crate::characters_scenes::wall_queue();
             g.frames = 3;
             Ok(())
         },
         "skinning" => |g, _| {
-            g.scene = fx::skinning_scene();
+            g.scene = crate::characters_scenes::kraken_road();
             Ok(())
         },
         // kestrel-stair #11: per-instance flash and tint, a glTF model's
         // instances sharing its materials (`InstanceFx`).
         "model-flash" => |g, _| {
-            g.scene = fx::model_flash_scene()?;
+            g.scene = crate::characters_scenes::kraken_duel()?;
             Ok(())
         },
         // E5: fog over the colonnade by day, the day-night look at dusk
@@ -1379,7 +1379,7 @@ pub fn build(name: &str) -> Result<GfxScene, String> {
         // Phase 2: skinned meshes drawn with a material shader that ripples,
         // bands and lifts them, their shadows and prepass displaced too.
         "skinned-hooks" => |g, _| {
-            g.scene = crate::p2_scenes::skinned_hooks_scene();
+            g.scene = crate::characters_scenes::kraken_hooks();
             Ok(())
         },
         // Weather presets over the colonnade: particles, fog, dimmed light.
