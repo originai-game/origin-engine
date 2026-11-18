@@ -1310,18 +1310,19 @@ impl Ui {
             .chain(&p.awaiting)
             .copied()
             .collect();
-        let keyed = ghosts
-            .iter()
-            .map(|g| g.frozen.parent)
-            .chain(self.world.placement.marks.keys().copied())
-            .chain(self.interaction.state.motion.part_styles.iter().filter_map(
-                |(&key, styles)| {
+        let keyed = ghosts.iter().map(|g| g.frozen.parent).chain(
+            self.interaction
+                .state
+                .motion
+                .part_styles
+                .iter()
+                .filter_map(|(&key, styles)| {
                     styles
                         .values()
                         .any(|s| s.running || !s.runs.is_empty())
                         .then_some(key)
-                },
-            ));
+                }),
+        );
         for key in keyed {
             if let Some(&i) = self.tree.index.by_key.get(&key) {
                 volatile.insert(i);
@@ -1508,6 +1509,9 @@ impl Ui {
     /// a focus ring or outline is drawn over it.
     fn paints_alone(&self, i: usize) -> (bool, bool) {
         let node = &self.tree.nodes[i];
+        // World wrappers are regenerated around the cached local commands.
+        // They prevent whole-subtree copying, not reuse of local paint:
+        // projection, occlusion and arrows do not change its paint inputs.
         let volatile = self.world.placement.marks.contains_key(&node.key)
             || node.props.exit.is_some()
             || !node.props.match_key.is_empty()
