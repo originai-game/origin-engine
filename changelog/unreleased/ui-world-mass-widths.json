@@ -1,0 +1,6 @@
+{
+  "fixed": [{
+    "member": "UI world mass elements",
+    "summary": "World labels and damage numbers reuse unchanged measured widths across frames, invalidating them when fonts or their mass template change."
+  }]
+}

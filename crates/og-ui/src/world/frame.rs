@@ -255,6 +255,10 @@ impl Ui {
             .position(|(n, ..)| n == name)
         {
             self.world.declared.templates[k] = (name.to_owned(), t, space);
+            self.world
+                .placement
+                .mass_widths
+                .retain(|&(template, _), _| template != k as u32);
             return MassHandle(k as u32);
         }
         self.world
@@ -337,6 +341,9 @@ impl Ui {
     /// targets, meta layers over the screen. Called by `end` before
     /// transforms are applied.
     pub(crate) fn world_place(&mut self) {
+        if self.tree.invalidation.fresh {
+            self.world.placement.mass_widths.clear();
+        }
         let taken = self
             .layout
             .world_anchors(&mut self.world, &self.env, &mut self.tree);
