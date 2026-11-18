@@ -173,6 +173,11 @@ fn engine_on(root: &Path, host: Rc<dyn Hooks>) -> u32 {
 
 fn placed(root: &Path) -> u32 {
     let e = engine(root);
+    place(e);
+    e
+}
+
+fn place(e: u32) {
     let scene = value(og_runtime::host_impl::answer(og_load_scene(
         e,
         "scenes/world.ogt".into(),
@@ -182,7 +187,6 @@ fn placed(root: &Path) -> u32 {
         scene.as_f64().unwrap(),
         None,
     )));
-    e
 }
 
 fn hash(e: u32) -> Value {
@@ -245,6 +249,71 @@ fn value_of(text: &str) -> Value {
 
 fn loaded(e: u32, cell: &str) -> bool {
     get(e, cell, "og.StreamCell")["loaded"] == json!(true)
+}
+
+#[test]
+fn despawning_a_cell_removes_its_members_and_descendants_between_and_inside_ticks() {
+    struct Retire(std::cell::Cell<bool>);
+    impl Hooks for Retire {
+        fn dispatch(&self, call: &Dispatch) -> Result<String, String> {
+            if self.0.replace(false) {
+                og_runtime::og_world_despawn(call.engine, find(call.engine, "village").unwrap())?;
+            }
+            Ok(String::new())
+        }
+        fn read_asset(&self, path: &str) -> Fetch<Vec<u8>> {
+            Disk.read_asset(path)
+        }
+    }
+    for in_tick in [false, true] {
+        for budget in [0, 1] {
+            let world = WORLD
+                .replace("load 10", &format!("load 10\n    budget {budget}"))
+                .replace("load 5", "load 5\n    budget 0");
+            let root = project(&format!("retire-{in_tick}-{budget}"), &world);
+            let host = Rc::new(Retire(std::cell::Cell::new(false)));
+            set_hooks(host.clone());
+            og_host_begin_bundle();
+            value(og_runtime::host_impl::answer(og_reflect_define_component(
+                "Health".into(),
+                json!([{ "name": "hp", "kind": "f32", "default": 0 }]).to_string(),
+            )));
+            let system = og_runtime::og_system_define_system("Retire".into(), "{}".into(), 1);
+            let game = og_game_game(Some(json!({ "systems": [system] }).to_string()));
+            let e = value(og_engine_create(game, json!({ "root": root }).to_string()))
+                .as_u64()
+                .unwrap() as u32;
+            place(e);
+            walk(e, 100.0);
+            step(e, 1);
+            let well = find(e, "well").expect("the cell has spawned at least one member");
+            value(og_runtime::host_impl::answer(og_runtime::og_world_spawn(
+                e,
+                Some(json!({ "name": "extra", "parent": well }).to_string()),
+            )));
+            if in_tick {
+                host.0.set(true);
+                step(e, 1);
+            } else {
+                og_runtime::og_world_despawn(e, find(e, "village").unwrap()).unwrap();
+            }
+            assert!(!og_runtime::og_world_alive(e, well), "orphaned cell member");
+            for name in ["village", "well", "rope", "hut", "extra"] {
+                assert_eq!(
+                    find(e, name),
+                    None,
+                    "{name}, in_tick={in_tick}, budget={budget}"
+                );
+            }
+            // A later load must not resume the dead cell; unrelated cells still work.
+            walk(e, 130.0);
+            step(e, 4);
+            assert!(loaded(e, "farm"));
+            assert!(find(e, "barn").is_some());
+            assert_eq!(find(e, "well"), None);
+            og_runtime::og_engine_destroy(e);
+        }
+    }
 }
 
 /// One scripted walk past both cells: the hash after every tick, and the
