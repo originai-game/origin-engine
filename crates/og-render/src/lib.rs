@@ -708,6 +708,8 @@ pub struct Renderer {
     /// its view and the chain's views and bind groups (made with it, not
     /// every frame).
     transmission: Option<(wgpu::Texture, wgpu::TextureView, mips::MipChain)>,
+    /// Geometric exits and opaque depth, only allocated for visible transmission.
+    transmission_volume: Option<physical::volume::Volume>,
     default_white: wgpu::TextureView,
     /// The conformed colours' hash table the stylise quantiser reads
     /// (`stylise::conformed_table`) and the scene revision it was made at.

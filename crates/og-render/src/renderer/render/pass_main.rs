@@ -13,6 +13,7 @@ pub(super) struct MainPlan<'f> {
     pub(super) main_list: &'f DrawList,
     pub(super) batches: &'f [Batch],
     pub(super) physical_fx: Option<(&'f wgpu::BindGroup, &'f wgpu::BindGroup)>,
+    pub(super) backface_fx: Option<&'f wgpu::BindGroup>,
     pub(super) probe_binding: Option<probe_select::ProbeGroups<'f>>,
     pub(super) skinned_visible: &'f [Batch],
     pub(super) lit_skinned: &'f [&'f wgpu::RenderPipeline],
@@ -80,6 +81,7 @@ impl Renderer {
             main_list,
             batches,
             physical_fx,
+            backface_fx: _,
             probe_binding,
             skinned_visible,
             lit_skinned,
@@ -308,6 +310,9 @@ impl Renderer {
         }
         if split {
             drop(pass);
+            if transmission_view.is_some() {
+                self.encode_transmission_surfaces(plan, ctx, encoder, stats);
+            }
             let size = wgpu::Extent3d {
                 width: self.width,
                 height: self.height,

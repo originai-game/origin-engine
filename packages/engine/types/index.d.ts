@@ -6560,14 +6560,14 @@ export interface StandardMaterialDesc {
    */
   readonly transmissionMap?: Texture | null;
   /**
-   * The volume's thickness under the surface in the mesh's own units, scaled with it (glTF KHR_materials_volume): how far refraction bends the view and how much attenuationColor absorbs; 0 is a thin wall.
+   * Fallback volume thickness in mesh units, scaled with it (KHR_materials_volume). 0 is a thin wall; positive marks a volume. Closed volumes use real entry-to-exit depth for refraction and absorption; open, off-screen or occluded exits use thickness times thicknessMap for both.
    *
    * @default 0
    * @range 0..
    */
   readonly thickness?: number;
   /**
-   * Thickness from the texture's green channel.
+   * Multiplies thickness by the texture's green channel where the engine cannot measure the volume's exit. Closed volumes use their real depth for both refraction and absorption instead.
    *
    * @default null
    */

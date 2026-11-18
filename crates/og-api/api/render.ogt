@@ -345,10 +345,10 @@ module render {
       unit ratio
     }
     field transmissionMap Option.Texture "Transmission from the texture's red channel."
-    field thickness f32 "The volume's thickness under the surface in the mesh's own units, scaled with it (glTF KHR_materials_volume): how far refraction bends the view and how much attenuationColor absorbs; 0 is a thin wall." {
+    field thickness f32 "Fallback volume thickness in mesh units, scaled with it (KHR_materials_volume). 0 is a thin wall; positive marks a volume. Closed volumes use real entry-to-exit depth for refraction and absorption; open, off-screen or occluded exits use thickness times thicknessMap for both." {
       min 0
     }
-    field thicknessMap Option.Texture "Thickness from the texture's green channel."
+    field thicknessMap Option.Texture "Multiplies thickness by the texture's green channel where the engine cannot measure the volume's exit. Closed volumes use their real depth for both refraction and absorption instead."
     field attenuationDistance f32 "The distance light travels in the volume before it is tinted to attenuationColor (world units); 0 is no absorption, three.js's Infinity." {
       min 0
     }

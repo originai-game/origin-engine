@@ -445,7 +445,8 @@ pub(crate) const SKIN_VERTEX_LAYOUT: wgpu::VertexBufferLayout<'static> = wgpu::V
 /// [`crate::instances::GpuTransform::columns`]), (first joint, joint count,
 /// the mesh's first morph header, its morph targets), `morph0.x` its first
 /// weight slot plus one (0: no weights; the module's layout), `morph0.y`
-/// its first deformed vertex slot plus one (0: none), `morph1` a baked
+/// its first deformed vertex slot plus one (0: none), `morph0.w` the
+/// frame's instance slot plus one (preserved by GPU culling for volume exits), `morph1` a baked
 /// clip's previous frame (the module's layout; 0 otherwise), and the instance's look ([`crate::instances::layer_bits`] of no layer, then
 /// [`crate::instances::fx_bits`]).
 #[repr(C)]

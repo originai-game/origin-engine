@@ -31,6 +31,7 @@ pub(super) struct BindFrameOutputs<'a> {
     pub sprite_fx_group: &'a wgpu::BindGroup,
     pub glow_fx_group: &'a wgpu::BindGroup,
     pub physical_fx_group: Option<wgpu::BindGroup>,
+    pub backface_fx_group: Option<wgpu::BindGroup>,
     pub scene_depth: &'a wgpu::TextureView,
     pub particle_group: Option<wgpu::BindGroup>,
     pub metaball_groups: Vec<wgpu::BindGroup>,
@@ -153,25 +154,23 @@ impl Renderer {
         let (fx_group, sprite_fx_group, glow_fx_group) = (&groups.fx, &groups.sprite, &groups.glow);
         // The physical pipelines' effect group: the same plus the scene copy
         // (a placeholder in a frame without transmission).
-        let physical_fx_group = self.lit.physical.as_ref().and_then(|p| {
-            batches
-                .iter()
-                .chain(skinned_visible)
-                .any(|b| b.physical)
-                .then(|| {
-                    let atlas_view = scene.effects.decal_atlas.map_or(&self.default_white, |t| {
-                        &self.cache.textures[t.index()].view
-                    });
-                    let ao_view = if ao_target || contact {
-                        self.graph.view("ao")
-                    } else {
-                        &self.post.white
-                    };
-                    fx::fx_group(
-                        &self.device,
-                        "physical fx",
-                        &p.fx_layout,
-                        &[
+        let physical_group = |exits: Option<&wgpu::TextureView>| {
+            self.lit.physical.as_ref().and_then(|p| {
+                batches
+                    .iter()
+                    .chain(skinned_visible)
+                    .any(|b| b.physical)
+                    .then(|| {
+                        let atlas_view =
+                            scene.effects.decal_atlas.map_or(&self.default_white, |t| {
+                                &self.cache.textures[t.index()].view
+                            });
+                        let ao_view = if ao_target || contact {
+                            self.graph.view("ao")
+                        } else {
+                            &self.post.white
+                        };
+                        let resources = [
                             self.lights.fx_buffer.as_entire_binding(),
                             wgpu::BindingResource::TextureView(ao_view),
                             wgpu::BindingResource::TextureView(atlas_view),
@@ -179,11 +178,35 @@ impl Renderer {
                             wgpu::BindingResource::TextureView(
                                 transmission_view.map_or(&self.post.white, |(v, _)| v),
                             ),
-                        ],
-                        &self.lights.decal_buffers,
-                    )
-                })
-        });
+                        ];
+                        let mut entries: Vec<_> = resources
+                            .iter()
+                            .enumerate()
+                            .map(|(i, resource)| wgpu::BindGroupEntry {
+                                binding: i as u32,
+                                resource: resource.clone(),
+                            })
+                            .collect();
+                        entries.extend(self.lights.decal_buffers.entries());
+                        entries.push(wgpu::BindGroupEntry {
+                            binding: 7,
+                            resource: wgpu::BindingResource::TextureView(
+                                exits.unwrap_or(&p.empty_exits),
+                            ),
+                        });
+                        self.device.create_bind_group(&wgpu::BindGroupDescriptor {
+                            label: Some("physical fx"),
+                            layout: &p.fx_layout,
+                            entries: &entries,
+                        })
+                    })
+            })
+        };
+        let exits = transmission_view
+            .and(self.transmission_volume.as_ref())
+            .map(|v| &v.exits);
+        let physical_fx_group = physical_group(exits);
+        let backface_fx_group = exits.and_then(|_| physical_group(None));
         let scene_depth = self
             .graph
             .try_view("lindepth")
@@ -214,6 +237,7 @@ impl Renderer {
             sprite_fx_group,
             glow_fx_group,
             physical_fx_group,
+            backface_fx_group,
             scene_depth,
             particle_group,
             metaball_groups,

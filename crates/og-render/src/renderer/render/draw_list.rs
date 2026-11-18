@@ -168,9 +168,16 @@ impl Renderer {
                 (Some(_), Some(gc)) => &gc.instances,
                 _ => &self.instances.instance_buffer,
             };
+            // Transmission identifies an exit by the absolute instance
+            // slot, shared with the backface pass (not a transform hash).
+            let volume = lit && batch.transmissive && list.indirect.is_none();
             pass.set_vertex_buffer(
                 1,
-                instances.slice(start..start + count as u64 * INSTANCE_STRIDE),
+                if volume {
+                    instances.slice(..)
+                } else {
+                    instances.slice(start..start + count as u64 * INSTANCE_STRIDE)
+                },
             );
             if lightmapped && let Some(uvs) = self.lights.lightmaps.uvs(batch.mesh) {
                 pass.set_vertex_buffer(2, uvs.slice(..));
@@ -187,7 +194,15 @@ impl Renderer {
                     let (args, at) = gc.draw_args(g, b);
                     pass.draw_indexed_indirect(args, at)
                 }
-                _ => pass.draw_indexed(0..mesh.index_count, 0, 0..count),
+                _ => pass.draw_indexed(
+                    0..mesh.index_count,
+                    0,
+                    if volume {
+                        first..first + count
+                    } else {
+                        0..count
+                    },
+                ),
             }
         }
         if let Some((fx, _)) = physical_fx

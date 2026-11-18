@@ -119,10 +119,10 @@ fn transmission_refracts_the_scene_behind() {
     let (cu, cl) = (mean(&clear, upper()), mean(&clear, lower()));
     println!("clear glass: upper {cu:?}, lower {cl:?}");
     assert!(
-        cu[0] > cu[1] + 40.0,
-        "the upper half shows the red behind it"
+        cu[1] > cu[0] + 40.0,
+        "both interfaces invert the backdrop: upper shows green"
     );
-    assert!(cl[1] > cl[0] + 40.0, "the lower half shows the green");
+    assert!(cl[0] > cl[1] + 40.0, "the lower half shows red");
     let (ou, ol) = (mean(&opaque, upper()), mean(&opaque, lower()));
     assert!(
         (ou[1] - ou[0]).abs() < 30.0 && (ol[0] - ol[1]).abs() < 30.0,
@@ -148,7 +148,7 @@ fn transmission_refracts_the_scene_behind() {
     assert!(swapped > 5000, "thickness refracts");
     // Roughness blurs: the contrast between the halves drops.
     let (ru, rl) = (mean(&rough, upper()), mean(&rough, lower()));
-    let contrast = |u: [f32; 3], l: [f32; 3]| (u[0] - u[1]) + (l[1] - l[0]);
+    let contrast = |u: [f32; 3], l: [f32; 3]| ((u[0] - u[1]) + (l[1] - l[0])).abs();
     println!("rough glass: upper {ru:?}, lower {rl:?}");
     assert!(
         contrast(ru, rl) < 0.7 * contrast(cu, cl),
@@ -158,6 +158,141 @@ fn transmission_refracts_the_scene_behind() {
     let (a, c) = (mean(&amber, upper()), mean(&clear, upper()));
     println!("upper: clear {c:?}, amber {a:?}");
     assert!(a[1] < 0.7 * c[1] && a[2] < 0.7 * c[2], "the volume absorbs");
+}
+
+/// A closed volume measures its entry-to-exit path; an open sheet keeps
+/// the authored thickness approximation (KHR_materials_volume). At the
+/// centre of this radius-two sphere the path is four metres, not the
+/// two metres supplied by thickness one-half under its scale of four.
+#[test]
+#[ignore = "requires GPU"]
+fn transmission_absorbs_over_the_geometric_path_or_authored_fallback() {
+    let make = |closed: bool, thickness: f32, skinned: bool| {
+        let mut scene = studio();
+        scene.look.post.tonemap = og_render::Tonemap::None;
+        let wall = scene.add_mesh(shapes::plane_xy(20.0, 20.0));
+        let white = scene.add_standard_material(StandardMaterial::basic(Vec3::ONE));
+        scene.add_instance(
+            wall,
+            white,
+            Mat4::from_translation(Vec3::new(0.0, 0.0, -3.0)),
+        );
+        let data = if closed {
+            shapes::sphere(64, 48)
+        } else {
+            shapes::plane_xy(2.0, 2.0)
+        };
+        let glass = scene.add_standard_material(StandardMaterial {
+            transmission: 1.0,
+            thickness,
+            ior: 1.0, // No reflection: the measured colour is absorption alone.
+            roughness: 0.0,
+            attenuationColor: Vec3::splat(0.25),
+            attenuationDistance: 4.0,
+            ..Default::default()
+        });
+        // shapes::sphere has radius one-half: scale four makes radius two.
+        if skinned {
+            let count = data.vertices.len();
+            let mesh = scene.add_skinned_mesh(
+                data,
+                og_render::SkinData {
+                    joints: vec![[0; 4]; count],
+                    weights: vec![[1.0, 0.0, 0.0, 0.0]; count],
+                },
+            );
+            scene.objects.joint_palettes.push(og_render::JointPalette {
+                matrices: vec![Mat4::IDENTITY],
+            });
+            // Culling removes the first record. Exit identity must survive
+            // that compaction, not restart from zero in the visible batch.
+            for x in [100.0, 0.0] {
+                scene
+                    .objects
+                    .skinned_instances
+                    .push(og_render::SkinnedInstance::new(
+                        mesh,
+                        glass,
+                        Mat4::from_translation(Vec3::X * x) * Mat4::from_scale(Vec3::splat(4.0)),
+                        0,
+                    ));
+            }
+            let mut desc = scenes::base_desc();
+            desc.culling = og_render::Culling::Gpu;
+            let mut renderer = Renderer::new_blocking(&desc).expect("GPU cull renderer");
+            renderer
+                .render(&scene, &RenderTarget::Offscreen)
+                .expect("skinned volume");
+            renderer.read_offscreen().expect("skinned capture")
+        } else {
+            let mesh = scene.add_mesh(data);
+            scene.add_instance(mesh, glass, Mat4::from_scale(Vec3::splat(4.0)));
+            frame(&scene)
+        }
+    };
+    let closed = make(true, 0.5, false);
+    let open = make(false, 0.5, false);
+    let thin = make(true, 0.0, false);
+    let skinned = make(true, 0.5, true);
+    // Linear 0.25^(4/4) and 0.25^(2/4), encoded as sRGB. The central
+    // pixels are essentially a diameter; no expectation comes from the
+    // renderer's refraction or depth buffers.
+    for (name, image, expected) in [
+        ("closed", &closed, 137.0),
+        ("open", &open, 188.0),
+        ("thin", &thin, 255.0),
+        ("GPU skinned", &skinned, 137.0),
+    ] {
+        let actual = mean(image, area(638, 642, 358, 362));
+        println!("{name} transmission: {actual:?}, expected {expected}");
+        assert!(
+            actual.into_iter().all(|v| (v - expected).abs() < 3.0),
+            "{name}: {actual:?}"
+        );
+    }
+}
+
+/// An off-camera glass object must not add any auxiliary draws or change
+/// the image. Test on the same renderer so cached volume resources do not
+/// accidentally keep the passes enabled after a visible frame.
+#[test]
+#[ignore = "requires GPU"]
+fn transmission_only_runs_for_visible_materials() {
+    let mut scene = studio();
+    let mesh = scene.add_mesh(shapes::sphere(32, 24));
+    let glass = scene.add_standard_material(StandardMaterial {
+        transmission: 1.0,
+        thickness: 1.0,
+        ..Default::default()
+    });
+    let mut renderer = Renderer::new_blocking(&scenes::base_desc()).expect("renderer");
+    let bare = renderer
+        .render(&scene, &RenderTarget::Offscreen)
+        .expect("bare");
+    let image = renderer.read_offscreen().expect("bare frame");
+    scene.add_instance(mesh, glass, Mat4::IDENTITY);
+    let visible = renderer
+        .render(&scene, &RenderTarget::Offscreen)
+        .expect("visible");
+    assert!(
+        visible.draw_calls > bare.draw_calls,
+        "visible glass draws its volume"
+    );
+    // Moving the camera leaves the glass behind it without changing the
+    // solid black background or any other geometry in this empty studio.
+    scene.frame.camera.position.x = 100.0;
+    scene.frame.camera.target.x = 100.0;
+    let hidden = renderer
+        .render(&scene, &RenderTarget::Offscreen)
+        .expect("hidden");
+    assert_eq!(
+        hidden.draw_calls, bare.draw_calls,
+        "no off-camera volume passes"
+    );
+    assert_eq!(
+        renderer.read_offscreen().expect("hidden frame").pixels,
+        image.pixels
+    );
 }
 
 /// The transmission map: where it is black the glass is opaque.

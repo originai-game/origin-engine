@@ -42,6 +42,7 @@ mod pass_oit;
 use pass_oit::BlendedPart;
 mod pass_main;
 use pass_main::{MainPass, MainPlan};
+mod pass_transmission;
 
 mod view_culling;
 

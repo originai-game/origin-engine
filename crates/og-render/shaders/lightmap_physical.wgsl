@@ -17,10 +17,11 @@ struct PhysicalLightmappedOut {
   @location(8) @interpolate(flat) look: vec4<f32>,
   @location(9) lightmap: vec3<f32>,
   @location(10) @interpolate(flat) oit_key: vec2<u32>,
+  @location(11) @interpolate(flat) volume_id: u32,
 };
 
 @vertex
-fn vs_physical_lightmap(v: VertexIn, i: InstanceIn, k: InstanceFxIn, m: LightmapIn) -> PhysicalLightmappedOut {
+fn vs_physical_lightmap(@builtin(instance_index) instance: u32, v: VertexIn, i: InstanceIn, k: InstanceFxIn, m: LightmapIn) -> PhysicalLightmappedOut {
   let p = physical_vertex(instance_matrix(i.m0, i.m1, i.m2, i.m3), v);
   var l: PhysicalLightmappedOut;
   l.clip = p.clip;
@@ -35,6 +36,7 @@ fn vs_physical_lightmap(v: VertexIn, i: InstanceIn, k: InstanceFxIn, m: Lightmap
   l.look = k.look;
   l.lightmap = m.lightmap;
   l.oit_key = p.oit_key;
+  l.volume_id = instance * 2u + 1u;
   return l;
 }
 
@@ -90,5 +92,6 @@ fn physical_lightmapped_fragment(in: PhysicalLightmappedOut) -> vec4<f32> {
   p.scale = in.scale;
   p.affine = in.affine;
   p.look = in.look;
+  p.volume_id = in.volume_id;
   return physical_fragment(p);
 }

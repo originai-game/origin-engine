@@ -1,0 +1,9 @@
+{
+  "breaking": [
+    {
+      "member": "StandardMaterialDesc.thickness, StandardMaterialDesc.thicknessMap",
+      "change": "Closed transmissive volumes refract at both interfaces and use their measured entry-to-exit distance for absorption. Authored thickness and its map now approximate both only where no geometric exit is captured; zero thickness remains a thin wall.",
+      "fix": "Review closed glass volumes for the corrected bending and tint. Use attenuationDistance to set absorption in world units; keep thickness and thicknessMap as the fallback for open, off-screen or occluded exits."
+    }
+  ]
+}

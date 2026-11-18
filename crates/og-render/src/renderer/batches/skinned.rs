@@ -279,7 +279,7 @@ impl Renderer {
                 data.push(skin::SkinnedInstanceGpu {
                     transform: instances::gpu_columns(&s.transform),
                     palette: [now as f32, clip.joints as f32, morph_first as f32, -1.0 - t],
-                    morph0: [0.0; 4],
+                    morph0: [0.0, 0.0, 0.0, (data.len() + 1) as f32],
                     morph1: [transform_at as f32, then as f32, pt, 0.0],
                     look: {
                         let [flash, color, tint] = instances::fx_bits(&s.fx);
@@ -358,7 +358,7 @@ impl Renderer {
                     morph_first as f32,
                     targets as f32,
                 ],
-                morph0: [weights_at, deformed_at, 0.0, 0.0],
+                morph0: [weights_at, deformed_at, 0.0, (data.len() + 1) as f32],
                 morph1: [0.0; 4],
                 look: {
                     let [flash, color, tint] = instances::fx_bits(&s.fx);

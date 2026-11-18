@@ -88,8 +88,8 @@ MeshPhysicalMaterial's fields under three.js's names and glTF's KHR_materials_* 
 | `sheenRoughnessMap` | `Texture \| null` | `null` | — | — | — | The sheen's roughness from the texture's alpha channel. |
 | `transmission` | `number` | `0` | 0 … 1 | `ratio` | — | How much light passes through, as MeshPhysicalMaterial.transmission (glass, water): drawn after the opaque scene, back to front with the transparent ones, it refracts what was drawn before it (not other transmissive or transparent objects), blurred by roughness; 0 is none. It keeps its reflections. |
 | `transmissionMap` | `Texture \| null` | `null` | — | — | — | Transmission from the texture's red channel. |
-| `thickness` | `number` | `0` | ≥ 0 | — | — | The volume's thickness under the surface in the mesh's own units, scaled with it (glTF KHR_materials_volume): how far refraction bends the view and how much attenuationColor absorbs; 0 is a thin wall. |
-| `thicknessMap` | `Texture \| null` | `null` | — | — | — | Thickness from the texture's green channel. |
+| `thickness` | `number` | `0` | ≥ 0 | — | — | Fallback volume thickness in mesh units, scaled with it (KHR_materials_volume). 0 is a thin wall; positive marks a volume. Closed volumes use real entry-to-exit depth for refraction and absorption; open, off-screen or occluded exits use thickness times thicknessMap for both. |
+| `thicknessMap` | `Texture \| null` | `null` | — | — | — | Multiplies thickness by the texture's green channel where the engine cannot measure the volume's exit. Closed volumes use their real depth for both refraction and absorption instead. |
 | `attenuationDistance` | `number` | `0` | ≥ 0 | — | — | The distance light travels in the volume before it is tinted to attenuationColor (world units); 0 is no absorption, three.js's Infinity. |
 | `attenuationColor` | `Color` | `{ r: 1, g: 1, b: 1 }` | — | — | — | The colour white light becomes after attenuationDistance in the volume (linear). |
 | `ior` | `number` | `1.5` | 1 … 2.333 | — | — | The index of refraction (glTF KHR_materials_ior): the reflectance of a dielectric, ((ior - 1) / (ior + 1))^2 (4 % at 1.5), and how far transmission refracts. |
@@ -299,10 +299,10 @@ struct StandardMaterialDesc {
     unit ratio
   }
   field transmissionMap Option.Texture "Transmission from the texture's red channel."
-  field thickness f32 "The volume's thickness under the surface in the mesh's own units, scaled with it (glTF KHR_materials_volume): how far refraction bends the view and how much attenuationColor absorbs; 0 is a thin wall." {
+  field thickness f32 "Fallback volume thickness in mesh units, scaled with it (KHR_materials_volume). 0 is a thin wall; positive marks a volume. Closed volumes use real entry-to-exit depth for refraction and absorption; open, off-screen or occluded exits use thickness times thicknessMap for both." {
     min 0
   }
-  field thicknessMap Option.Texture "Thickness from the texture's green channel."
+  field thicknessMap Option.Texture "Multiplies thickness by the texture's green channel where the engine cannot measure the volume's exit. Closed volumes use their real depth for both refraction and absorption instead."
   field attenuationDistance f32 "The distance light travels in the volume before it is tinted to attenuationColor (world units); 0 is no absorption, three.js's Infinity." {
     min 0
   }

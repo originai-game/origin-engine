@@ -35,6 +35,8 @@ use crate::material::StandardMaterial;
 use crate::scene::TextureHandle;
 use crate::{PbrKey, sampler_entry, tex2d, texture_entry, uniform_entry};
 
+pub(crate) mod volume;
+
 /// The pack's format: linear 8-bit, as the maps it holds.
 pub(crate) const PACK_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba8Unorm;
 
@@ -277,6 +279,8 @@ pub(crate) struct PhysicalPipelines {
     pub pipelines: HashMap<PbrKey, crate::deferred::Deferred<wgpu::RenderPipeline>>,
     /// A pack for a material without packed maps (one layer).
     pub empty_pack: wgpu::TextureView,
+    /// No captured exit (also bound while the real exit buffer is written).
+    pub empty_exits: wgpu::TextureView,
     pack_layout: wgpu::BindGroupLayout,
     pack_pipeline: wgpu::RenderPipeline,
 }
@@ -312,6 +316,16 @@ impl PhysicalPipelines {
                 tex2d(4),
                 decals[0],
                 decals[1],
+                wgpu::BindGroupLayoutEntry {
+                    binding: 7,
+                    visibility: wgpu::ShaderStages::FRAGMENT,
+                    ty: wgpu::BindingType::Texture {
+                        sample_type: wgpu::TextureSampleType::Uint,
+                        view_dimension: wgpu::TextureViewDimension::D2,
+                        multisampled: false,
+                    },
+                    count: None,
+                },
             ],
         });
         let layout = |label, groups: &[&wgpu::BindGroupLayout]| {
@@ -386,6 +400,22 @@ impl PhysicalPipelines {
                 dimension: Some(wgpu::TextureViewDimension::D2Array),
                 ..Default::default()
             });
+        let empty_exits = device
+            .create_texture(&wgpu::TextureDescriptor {
+                label: Some("no transmission exit"),
+                size: wgpu::Extent3d {
+                    width: 1,
+                    height: 1,
+                    depth_or_array_layers: 1,
+                },
+                mip_level_count: 1,
+                sample_count: 1,
+                dimension: wgpu::TextureDimension::D2,
+                format: volume::FORMAT,
+                usage: wgpu::TextureUsages::TEXTURE_BINDING,
+                view_formats: &[],
+            })
+            .create_view(&Default::default());
         PhysicalPipelines {
             material_layout,
             fx_layout,
@@ -393,6 +423,7 @@ impl PhysicalPipelines {
             module,
             pipelines: HashMap::new(),
             empty_pack,
+            empty_exits,
             pack_layout,
             pack_pipeline,
         }

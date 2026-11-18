@@ -703,6 +703,7 @@ impl Renderer {
             history: history::FrameHistory::new(),
             mips,
             transmission: None,
+            transmission_volume: None,
             conformed,
             canvas_stats: (None, [0.0; 2]),
             default_white,

@@ -12,6 +12,9 @@
 // mip chain for rough refraction (the effects group of the physical
 // pipelines: binding 4 after fx, the AO, the decal atlas and fx_sampler).
 @group(2) @binding(4) var transmission_tex: texture_2d<f32>;
+// RGB: packed exit normal, f32 linear depth bits, exact instance slot.
+// A: opaque linear depth bits, retained by the exit capture's RGB mask.
+@group(2) @binding(7) var volume_tex: texture_2d<u32>;
 
 struct PhysicalOut {
   @builtin(position) clip: vec4<f32>,
@@ -28,6 +31,7 @@ struct PhysicalOut {
   @location(8) @interpolate(flat) look: vec4<f32>,
   // pbr.wgsl VertexOut's.
   @location(9) @interpolate(flat) oit_key: vec2<u32>,
+  @location(10) @interpolate(flat) volume_id: u32,
 };
 
 fn physical_vertex(model: mat4x4<f32>, v: VertexIn) -> PhysicalOut {
@@ -48,9 +52,10 @@ fn physical_vertex(model: mat4x4<f32>, v: VertexIn) -> PhysicalOut {
 }
 
 @vertex
-fn vs_physical(v: VertexIn, i: InstanceIn, k: InstanceFxIn) -> PhysicalOut {
+fn vs_physical(@builtin(instance_index) instance: u32, v: VertexIn, i: InstanceIn, k: InstanceFxIn) -> PhysicalOut {
   var p = physical_vertex(instance_matrix(i.m0, i.m1, i.m2, i.m3), v);
   p.look = k.look;
+  p.volume_id = instance * 2u + 1u;
   return p;
 }
 
@@ -59,6 +64,7 @@ fn vs_physical_skinned(@builtin(vertex_index) vi: u32, v: VertexIn, i: SkinnedIn
   let model = instance_matrix(i.m0, i.m1, i.m2, i.m3) * skin_matrix(s.joints, s.weights, i.palette);
   var p = physical_vertex(model, morph_vertex(v, vi, i));
   p.look = i.look;
+  p.volume_id = u32(i.morph0.w) * 2u;
   return p;
 }
 
@@ -362,6 +368,148 @@ fn scene_behind(uv: vec2<f32>, lod: f32) -> vec3<f32> {
   return mix(bicubic_level(uv, lo), bicubic_level(uv, hi), fract(lod));
 }
 
+// The geometric back surface, through the same vertex hooks, morphs and
+// skinning as the visible face. Identity makes another volume's nearer
+// backface a missing exit, not a spurious thickness measurement.
+@fragment
+fn fs_volume_exit(in: PhysicalOut) -> @location(0) vec4<u32> {
+  let uv = stylised_uv(in.uv, in.affine);
+  var hook: Hook;
+  hook.world = in.world_pos;
+  hook.local = in.local_pos;
+  hook.normal = in.normal;
+  hook.uv = uv;
+  hook.color = in.color;
+  hook.time = frame.time.x;
+  hook.origin = frame.origin.xyz;
+  hook.eye = frame.view_pos.xyz;
+  hook.front = -1.0;
+  hook.wind = frame.foliage_wind[0][0];
+  let base = surface_color(hook, shader_params(), look_tint(material.base_color * textureSample(base_color_tex, material_sampler, material_uv(UV_MAP, uv)) * in.color, in.look));
+  if ((material.emissive.w >= 0.0 && base.a < material.emissive.w) || (EFFECTS && dissolve_at(uv, in.local_pos).w > 0.5)) { discard; }
+  var n = normalize(in.normal);
+  if ((u32(material.flags.w) & 1u) != 0u) { n = -normalize(cross(dpdxFine(in.world_pos), dpdyFine(in.world_pos))); }
+  let depth = dot(in.world_pos - frame.view_pos.xyz, frame.view_forward.xyz);
+  return vec4<u32>(pack2x16snorm(oct_encode(n)), bitcast<u32>(depth), in.volume_id, 0u);
+}
+
+fn transmission_uv(p: vec3<f32>) -> vec3<f32> {
+  let c = frame.view_proj * vec4<f32>(p, 1.0);
+  return vec3<f32>(c.xy / c.w * vec2<f32>(0.5, -0.5) + 0.5, c.w);
+}
+
+fn transmission_on_screen(p: vec3<f32>) -> bool {
+  return p.z > 0.0 && all(p.xy >= vec2<f32>(0.0)) && all(p.xy < vec2<f32>(1.0));
+}
+
+fn transmission_data(uv: vec2<f32>) -> vec4<u32> {
+  let size = vec2<i32>(textureDimensions(volume_tex));
+  return textureLoad(volume_tex, clamp(vec2<i32>(uv * vec2<f32>(size)), vec2<i32>(0), size - 1), 0);
+}
+
+// Reconstruct a world point from the prepass's forward-axis depth, for
+// either camera projection (not distance from the eye).
+fn transmission_point(uv: vec2<f32>, depth: f32) -> vec3<f32> {
+  let xy = (uv * 2.0 - 1.0) * vec2<f32>(1.0, -1.0);
+  let a = frame.inv_view_proj * vec4<f32>(xy, 0.0, 1.0);
+  let b = frame.inv_view_proj * vec4<f32>(xy, 1.0, 1.0);
+  let p = a.xyz / a.w;
+  let delta = b.xyz / b.w - p;
+  return p + delta * ((depth - dot(p - frame.view_pos.xyz, frame.view_forward.xyz)) / dot(delta, frame.view_forward.xyz));
+}
+
+struct TransmissionHit {
+  point: vec3<f32>,
+  normal: vec3<f32>,
+  uv: vec2<f32>,
+  confidence: f32,
+};
+
+// Interpolate only samples of this instance. Nearest-neighbour exits
+// quantize the bent ray between adjacent tangent planes, producing
+// isolated fallback pixels on smooth volumes.
+fn transmission_surface(uv: vec2<f32>, volume: u32) -> TransmissionHit {
+  var hit: TransmissionHit;
+  let size = vec2<f32>(textureDimensions(volume_tex));
+  let pixel = uv * size - 0.5;
+  let base = floor(pixel);
+  let fraction = fract(pixel);
+  var weight = 0.0;
+  var dx = vec3<f32>(0.0);
+  var dy = vec3<f32>(0.0);
+  for (var y = 0u; y < 2u; y++) {
+    for (var x = 0u; x < 2u; x++) {
+      let sample_uv = (base + vec2<f32>(f32(x), f32(y)) + 0.5) / size;
+      let data = transmission_data(sample_uv);
+      if (volume != 0u && data.z != volume) { continue; }
+      let depth = bitcast<f32>(select(data.y, data.w, volume == 0u));
+      if (depth <= 0.0 || depth >= 1e8) { continue; }
+      let wx = select(1.0 - fraction.x, fraction.x, x == 1u);
+      let wy = select(1.0 - fraction.y, fraction.y, y == 1u);
+      let w = wx * wy;
+      let point = transmission_point(sample_uv, depth);
+      hit.point += point * w;
+      if (volume != 0u) {
+        hit.normal += oct_decode(unpack2x16snorm(data.x)) * w;
+      }
+      dx += point * select(-1.0, 1.0, x == 1u) * wy;
+      dy += point * select(-1.0, 1.0, y == 1u) * wx;
+      weight += w;
+    }
+  }
+  if (weight > 0.0) {
+    hit.point /= weight;
+    if (volume == 0u) { hit.normal = cross(dx, dy); }
+    hit.normal = normalize(hit.normal);
+    hit.confidence = smoothstep(0.0, 1.0, weight);
+  }
+  return hit;
+}
+
+// Tangent-plane Newton iterations: Mayer, Assarsson & Sintorn,
+// JCGT 15(1), 2026; based on Chase Mayer's MIT reference implementation.
+// See third_party/newton-refraction-LICENSE. The exit uses captured
+// geometric normals; the opaque plane's normal comes from depth so the
+// physical/lightmapped shader stays inside its sixteen texture slots.
+fn transmission_hit(origin: vec3<f32>, direction: vec3<f32>, seed: vec3<f32>, volume: u32) -> TransmissionHit {
+  var hit: TransmissionHit;
+  var point = seed;
+  let texel = 1.0 / vec2<f32>(textureDimensions(volume_tex));
+  for (var i = 0u; i < 6u; i++) {
+    let projected = transmission_uv(point);
+    if (!transmission_on_screen(projected)) { return hit; }
+    let surface = transmission_surface(projected.xy, volume);
+    if (surface.confidence == 0.0) { return hit; }
+    let normal = surface.normal;
+    let denominator = dot(normal, direction);
+    if (abs(denominator) < 1e-6) { return hit; }
+    let distance = dot(normal, surface.point - origin) / denominator;
+    if (distance <= 0.0) { return hit; }
+    point = origin + direction * distance;
+    let next = transmission_uv(point);
+    if (!transmission_on_screen(next)) { return hit; }
+    // Validate the predicted intersection itself, not how far Newton's
+    // last step travelled. A large accurate step is still a good hit.
+    let measured = transmission_surface(next.xy, volume);
+    if (measured.confidence == 0.0) { return hit; }
+    let measured_depth = dot(measured.point - frame.view_pos.xyz, frame.view_forward.xyz);
+    let ray_depth = dot(point - frame.view_pos.xyz, frame.view_forward.xyz);
+    let residual = abs(ray_depth - measured_depth) / max(abs(measured_depth) * texel.y, 1e-4);
+    let edge = min(next.xy, vec2<f32>(1.0) - next.xy) / texel;
+    let confidence = measured.confidence * smoothstep(0.0, 2.0, min(edge.x, edge.y))
+                   * (1.0 - smoothstep(0.25, 2.0, residual))
+                   * smoothstep(0.0, 0.05, abs(denominator));
+    if (confidence > hit.confidence) {
+      hit.point = point;
+      hit.normal = measured.normal;
+      hit.uv = next.xy;
+      hit.confidence = confidence;
+    }
+    if (residual < 0.25) { return hit; }
+  }
+  return hit;
+}
+
 @fragment
 fn fs(in: PhysicalOut, @builtin(front_facing) front_facing: bool) -> @location(0) vec4<f32> {
   hook_front = select(-1.0, 1.0, front_facing);
@@ -662,18 +810,52 @@ fn physical_fragment(in: PhysicalOut) -> vec4<f32> {
   if (physical.transmission.x > 0.0) {
     let amount = physical.transmission.x * coat_maps.b;
     let thickness = physical.transmission.y * coat_maps.a;
-    let ray = normalize(refract(-v, n, 1.0 / ior)) * thickness * in.scale;
+    let direction = normalize(refract(-v, n, 1.0 / ior));
+    let ray = direction * thickness * in.scale;
     let exit = frame.view_proj * vec4<f32>(in.world_pos + ray, 1.0);
     let uv = clamp(vec2<f32>(exit.x, -exit.y) / exit.w * 0.5 + 0.5, vec2<f32>(0.0), vec2<f32>(1.0));
     let width = f32(textureDimensions(transmission_tex).x);
     let lod = log2(width) * s.roughness * clamp(ior * 2.0 - 2.0, 0.0, 1.0);
+    var path = length(ray);
+    var behind = scene_behind(uv, lod);
+    var fallback = behind;
+    let absorption = max(physical.attenuation.rgb, vec3<f32>(1e-4));
+    if (physical.transmission.w > 0.0) {
+      fallback *= pow(absorption, vec3<f32>(path / physical.transmission.w));
+    }
+    var confidence = 0.0;
+    var opaque_uv = uv;
+    var opaque_confidence = 0.0;
+    // thicknessFactor decides thin-wall versus volume even when a map is
+    // black. A captured exit replaces both baked bending and absorption.
+    if (physical.transmission.y > 0.0) {
+      let back = transmission_hit(in.world_pos, direction, in.world_pos + ray, in.volume_id);
+      if (back.confidence > 0.0) {
+        confidence = back.confidence;
+        path = length(back.point - in.world_pos);
+        let outgoing = refract(direction, -back.normal, ior);
+        behind = vec3<f32>(0.0);
+        if (dot(outgoing, outgoing) > 0.0) {
+          let opaque_hit = transmission_hit(back.point, outgoing, back.point, 0u);
+          behind = reflected_light(outgoing, back.point, s.roughness * frame.params.y) * ibl_scale;
+          confidence *= opaque_hit.confidence;
+          if (opaque_hit.confidence > 0.0) {
+            opaque_uv = opaque_hit.uv;
+            opaque_confidence = opaque_hit.confidence;
+          }
+        }
+      }
+    }
+    if (opaque_confidence > 0.0) { behind = scene_behind(opaque_uv, lod); }
     var absorbed = vec3<f32>(1.0);
     if (physical.transmission.w > 0.0) {
-      let c = max(physical.attenuation.rgb, vec3<f32>(1e-4));
-      absorbed = pow(c, vec3<f32>(length(ray) / physical.transmission.w));
+      absorbed = pow(absorption, vec3<f32>(path / physical.transmission.w));
     }
-    let behind = scene_behind(uv, lod);
-    let transmitted = (vec3<f32>(1.0) - env_brdf) * s.albedo * (1.0 - s.metallic) * absorbed * behind;
+    // Unreliable exits use the complete authored approximation, including
+    // its absorption path, rather than retaining a frayed geometric sliver.
+    confidence = smoothstep(0.5, 0.9, confidence);
+    let transmitted = (vec3<f32>(1.0) - env_brdf) * s.albedo * (1.0 - s.metallic)
+                    * mix(fallback, absorbed * behind, confidence);
     diffuse = mix(diffuse, transmitted * sheen_keep * coat_keep, amount);
   }
   var color = diffuse + specular;
