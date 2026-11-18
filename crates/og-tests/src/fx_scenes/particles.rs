@@ -149,7 +149,7 @@ pub fn light_campfire(scene: &mut RenderScene, fire: &Campfire, at: Vec3, id: u6
     }
 }
 
-pub(super) fn logs(scene: &mut RenderScene, at: Vec3) {
+pub(crate) fn logs(scene: &mut RenderScene, at: Vec3) {
     let log = scene.add_mesh(shapes::cuboid(Vec3::new(0.9, 0.12, 0.12)));
     let wood = scene.add_material(Material {
         base_color: [0.16, 0.09, 0.05, 1.0],
@@ -226,7 +226,22 @@ pub fn particles_scene() -> RenderScene {
         stone,
         Mat4::from_translation(Vec3::new(-2.6, 0.7, -1.4)),
     );
-    let spark = spark_texture(&mut scene);
+    camp_magic(&mut scene);
+    scene.frame.camera = Camera {
+        position: Vec3::new(0.4, 2.6, 6.5),
+        target: Vec3::new(0.0, 0.9, -0.5),
+        exposure: Exposure::linear(1.4),
+        ..Default::default()
+    };
+    scene
+}
+
+/// The night camp's magic about a fire at the origin: a fountain of blue
+/// sparks over (-2.6, 1.4, -1.4) in local space, sparkles over a glowing
+/// orb at (2.4, 0.9, -1.0) (a mesh emitter), a spark burst every second at
+/// (0.9, 0.6, 1.6), the fire's and the fountain's lights, and bloom.
+pub fn camp_magic(scene: &mut RenderScene) {
+    let spark = spark_texture(scene);
     let magic = scene.add_emitter(ParticleEmitter {
         max_particles: 300,
         shape: EmitterShape::Cone {
@@ -346,13 +361,6 @@ pub fn particles_scene() -> RenderScene {
         knee: 0.6,
         intensity: 0.7,
     });
-    scene.frame.camera = Camera {
-        position: Vec3::new(0.4, 2.6, 6.5),
-        target: Vec3::new(0.0, 0.9, -0.5),
-        exposure: Exposure::linear(1.4),
-        ..Default::default()
-    };
-    scene
 }
 
 /// Twenty campfires on a 5 × 4 grid at night, 60 particle systems in all
@@ -389,7 +397,6 @@ pub fn effects_busy_scene() -> RenderScene {
 pub fn particles_lit_scene() -> RenderScene {
     let mut scene = RenderScene::new();
     terrain(&mut scene, 40.0);
-    let smoke_tex = smoke_texture(&mut scene);
     // The checker wall the haze bends.
     let checker = scene.add_texture(shapes::checker(512, 16));
     let wall = scene.add_mesh(shapes::cuboid(Vec3::new(9.0, 3.5, 0.3)));
@@ -403,6 +410,33 @@ pub fn particles_lit_scene() -> RenderScene {
         tiles,
         Mat4::from_translation(Vec3::new(0.0, 1.75, -2.6)),
     );
+    lit_effects(&mut scene);
+    let sun = Vec3::new(0.85, 0.4, 0.3);
+    scene.lighting.light = DirectionalLight {
+        direction_to_light: sun,
+        intensity: 3.0,
+        cast_shadows: true,
+        ..Default::default()
+    };
+    scene.lighting.environment.sky.sun_direction = sun;
+    // A low, clear sun over a dimmer sky, so the lit particles' sun side
+    // reads against the sky's fill.
+    scene.lighting.environment.intensity = 0.5;
+    scene.frame.camera = Camera {
+        position: Vec3::new(0.0, 2.4, 6.4),
+        target: Vec3::new(0.0, 1.0, -0.8),
+        exposure: Exposure::linear(0.9),
+        ..Default::default()
+    };
+    scene
+}
+
+/// R7's lit particle looks: a lit smoke column at (-2.8, 0, -0.6), lit
+/// mesh debris thrown out of (0, 0.1, 0.4) that bounces on the ground
+/// plane (a collider at y 0) and kicks dust at each bounce, and a brazier
+/// of coals at (2.8, 0.25, -1.2) with a heat haze over it.
+pub fn lit_effects(scene: &mut RenderScene) {
+    let smoke_tex = smoke_texture(scene);
     // Lit smoke: an alpha puff column the sun shades from the right.
     let smoke = scene.add_emitter(ParticleEmitter {
         max_particles: 200,
@@ -542,24 +576,6 @@ pub fn particles_lit_scene() -> RenderScene {
         31,
         0,
     ));
-    let sun = Vec3::new(0.85, 0.4, 0.3);
-    scene.lighting.light = DirectionalLight {
-        direction_to_light: sun,
-        intensity: 3.0,
-        cast_shadows: true,
-        ..Default::default()
-    };
-    scene.lighting.environment.sky.sun_direction = sun;
-    // A low, clear sun over a dimmer sky, so the lit particles' sun side
-    // reads against the sky's fill.
-    scene.lighting.environment.intensity = 0.5;
-    scene.frame.camera = Camera {
-        position: Vec3::new(0.0, 2.4, 6.4),
-        target: Vec3::new(0.0, 1.0, -0.8),
-        exposure: Exposure::linear(0.9),
-        ..Default::default()
-    };
-    scene
 }
 
 /// Ticks the scene's clocks to the frame (60 ticks per second).
@@ -589,7 +605,21 @@ pub fn trails_scene() -> RenderScene {
     let mut scene = RenderScene::new();
     terrain(&mut scene, 40.0);
     night(&mut scene);
-    let beam_tex = beam_texture(&mut scene);
+    add_wisps(&mut scene);
+    spiral_and_beams(&mut scene, true);
+    scene.look.post.bloom = Some(Bloom::default());
+    scene.frame.camera = Camera {
+        position: Vec3::new(0.5, 3.0, 7.0),
+        target: Vec3::new(0.3, 1.0, -0.8),
+        exposure: Exposure::linear(1.6),
+        ..Default::default()
+    };
+    scene
+}
+
+/// Three wisps orbiting the origin with trails, their glowing orbs the
+/// next three instances ([`move_wisps_from`]).
+pub fn add_wisps(scene: &mut RenderScene) {
     let orb = scene.add_mesh(shapes::sphere(16, 12));
     let colors = [[1.0, 0.4, 0.15], [0.2, 0.8, 1.0], [0.6, 1.0, 0.3]];
     for (i, c) in colors.iter().enumerate() {
@@ -616,6 +646,13 @@ pub fn trails_scene() -> RenderScene {
         });
         scene.add_instance(orb, m, Mat4::from_scale(Vec3::splat(0.18)));
     }
+}
+
+/// A spiral ribbon widening up about (-3.6, -2), a scrolling laser from
+/// (2.2, 2.0, -2.5) to (4.6, 2.0, -2.5) and a jittering lightning arc
+/// 1.1 m below it; with `pylons`, the two metal pylons they run between.
+pub fn spiral_and_beams(scene: &mut RenderScene, pylons: bool) {
+    let beam_tex = beam_texture(scene);
     // A spiral ribbon, widening.
     let points = (0..60)
         .map(|k| {
@@ -644,11 +681,13 @@ pub fn trails_scene() -> RenderScene {
         ..Default::default()
     });
     for x in [2.2f32, 4.6] {
-        scene.add_instance(
-            pylon,
-            metal,
-            Mat4::from_translation(Vec3::new(x, 1.2, -2.5)),
-        );
+        if pylons {
+            scene.add_instance(
+                pylon,
+                metal,
+                Mat4::from_translation(Vec3::new(x, 1.2, -2.5)),
+            );
+        }
     }
     scene.effects.beams.push(Beam {
         start: Vec3::new(2.2, 2.0, -2.5),
@@ -670,27 +709,23 @@ pub fn trails_scene() -> RenderScene {
         seed: 9,
         ..Default::default()
     });
-    scene.look.post.bloom = Some(Bloom::default());
-    scene.frame.camera = Camera {
-        position: Vec3::new(0.5, 3.0, 7.0),
-        target: Vec3::new(0.3, 1.0, -0.8),
-        exposure: Exposure::linear(1.6),
-        ..Default::default()
-    };
-    scene
 }
 
 /// Moves the wisps (and their orbs) to the frame's tick.
 pub fn move_wisps(scene: &mut RenderScene, frame: u32) {
+    // The orbs follow the terrain, the first instance.
+    move_wisps_from(scene, frame, 1);
+}
+
+/// [`move_wisps`] for a scene whose orbs are instances `first` on.
+pub fn move_wisps_from(scene: &mut RenderScene, frame: u32, first: usize) {
     let tick = frame as u64;
     tick_all(scene, tick);
     let n = scene.effects.trails.len();
     for i in 0..n {
         let p = wisp_at(i, tick);
         scene.effects.trails[i].position = p;
-        // The orbs are the last three instances before the ribbon's pylons.
-        let k = 1 + i;
-        scene.objects.instances[k].transform =
+        scene.objects.instances[first + i].transform =
             Mat4::from_translation(p) * Mat4::from_scale(Vec3::splat(0.18));
     }
 }

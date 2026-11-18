@@ -299,6 +299,27 @@ pub fn decals_many_scene() -> RenderScene {
         plaster,
         Mat4::from_translation(Vec3::new(0.0, 1.5, -2.2)),
     );
+    scene.effects.decals = bullet_holes();
+    let sun = Vec3::new(-0.8, 0.45, 0.4);
+    scene.lighting.light = DirectionalLight {
+        direction_to_light: sun,
+        intensity: 3.0,
+        ..Default::default()
+    };
+    scene.lighting.environment.sky.sun_direction = sun;
+    scene.frame.camera = Camera {
+        position: Vec3::new(0.0, 3.0, 5.6),
+        target: Vec3::new(0.0, 0.6, -0.8),
+        exposure: Exposure::linear(0.9),
+        ..Default::default()
+    };
+    scene
+}
+
+/// The 640 bullet holes (400 on a wall face at z -2.0 from x -3.8 and y
+/// 0.2, 240 on the ground before it) and two large ones on the ground at
+/// x ∓1.5, z 1.0, the second with its normal map doubled.
+pub fn bullet_holes() -> Vec<Decal> {
     let hole = |p: Vec3, n: Vec3, size: f32, rot: f32| Decal {
         uv_rect: [0.0, 0.0, 0.5, 1.0],
         normal_rect: [0.5, 0.0, 1.0, 1.0],
@@ -336,21 +357,7 @@ pub fn decals_many_scene() -> RenderScene {
         normal_scale: 2.0,
         ..hole(Vec3::new(1.5, 0.0, 1.0), Vec3::Y, 1.6, 0.0)
     });
-    scene.effects.decals = decals;
-    let sun = Vec3::new(-0.8, 0.45, 0.4);
-    scene.lighting.light = DirectionalLight {
-        direction_to_light: sun,
-        intensity: 3.0,
-        ..Default::default()
-    };
-    scene.lighting.environment.sky.sun_direction = sun;
-    scene.frame.camera = Camera {
-        position: Vec3::new(0.0, 3.0, 5.6),
-        target: Vec3::new(0.0, 0.6, -0.8),
-        exposure: Exposure::linear(0.9),
-        ..Default::default()
-    };
-    scene
+    decals
 }
 
 /// A courtyard with scorch marks, a glowing rune circle, cracks up a wall

@@ -118,12 +118,28 @@ pub fn effect_materials_scene() -> RenderScene {
     let mut scene = RenderScene::new();
     terrain(&mut scene, 40.0);
     night_sky(&mut scene);
-    let noise = noise_texture(&mut scene, 4, 3);
-    let fine = noise_texture(&mut scene, 8, 11);
-    let flow = swirl_flow(&mut scene);
-    let bar = bar_mask(&mut scene);
-    let rim = ring_mask(&mut scene);
-    let round = round_mask(&mut scene);
+    effect_row(&mut scene);
+    scene.look.post.bloom = Some(Bloom::default());
+    scene.frame.camera = Camera {
+        position: Vec3::new(0.6, 2.4, 9.5),
+        target: Vec3::new(0.6, 1.1, 0.0),
+        exposure: Exposure::linear(1.0),
+        ..Default::default()
+    };
+    scene
+}
+
+/// The seven effect surfaces along x at z 0 (puffs at x -5.4, the portal
+/// at -3.2, 1.3 m up, the shield dome over -0.9, the slash at 1.4, the
+/// trail about 3.0 ([`effect_materials_update`]), the beam rising at 4.6
+/// from 0.3 to 2.8 m and the banded puffs at 6.6).
+pub fn effect_row(scene: &mut RenderScene) {
+    let noise = noise_texture(scene, 4, 3);
+    let fine = noise_texture(scene, 8, 11);
+    let flow = swirl_flow(scene);
+    let bar = bar_mask(scene);
+    let rim = ring_mask(scene);
+    let round = round_mask(scene);
     let noise_tex = |texture, tile: f32, scroll: Vec2| EffectTexture {
         texture: Some(texture),
         uv: EffectUv {
@@ -330,7 +346,7 @@ pub fn effect_materials_scene() -> RenderScene {
     });
     // 6. A beam: scrolling noise through a ramp, a mask across it for a
     // hot core in a dim glow; the beam fades its ends itself.
-    let core = core_mask(&mut scene);
+    let core = core_mask(scene);
     let core = scene.add_effect_material(EffectMaterial {
         main: noise_tex(fine, 1.0, Vec2::new(-3.0, 0.0)),
         ramp: Some(ColorCurve::new(&[
@@ -394,14 +410,6 @@ pub fn effect_materials_scene() -> RenderScene {
         7,
         0,
     ));
-    scene.look.post.bloom = Some(Bloom::default());
-    scene.frame.camera = Camera {
-        position: Vec3::new(0.6, 2.4, 9.5),
-        target: Vec3::new(0.6, 1.1, 0.0),
-        exposure: Exposure::linear(1.0),
-        ..Default::default()
-    };
-    scene
 }
 
 fn night_sky(scene: &mut RenderScene) {
