@@ -497,6 +497,58 @@
      text scale. */
   --role-hud-size-reason: min(calc(12 * var(--font-step-px)), 26cqi);
 
+  /* A racing HUD. Ink on a fill in the HUD's accent (the player's row in
+     the tower, the gear); the player's row lit in the accent fading to the
+     right; a place's box on a row and on the player's row; a car's mark
+     when the game gives it no colour. */
+  --role-hud-accent-ink: rgb(20 26 2);
+  --role-hud-player-fill: linear-gradient(90deg, var(--hud-accent), rgb(from var(--hud-accent) r g b / 0.55));
+  --role-hud-place-fill: rgb(255 255 255 / 0.14);
+  --role-hud-place-player-fill: rgb(0 0 0 / 0.2);
+  --role-hud-car: rgb(255 255 255 / 0.55);
+  /* A personal best in violet (its label and its time); ink on a delta's
+     green or red tag. */
+  --role-hud-best-label-ink: rgb(201 139 255);
+  --role-hud-best-ink: rgb(220 184 255);
+  --role-hud-delta-ink: rgb(4 14 8);
+  /* The tachometer: the revs as a white arc with a soft glow over a faint
+     well, the red zone faint until the revs reach it, then lit; the dial's
+     dark glass face with a lit top edge and a drop. */
+  --role-hud-rev-fill: rgb(255 255 255);
+  --role-hud-rev-glow: drop-shadow(0 0 calc(10 * var(--font-step-px)) rgb(255 255 255 / 0.55));
+  --role-hud-rev-well: rgb(255 255 255 / 0.16);
+  --role-hud-redline: rgb(255 77 94 / 0.35);
+  --role-hud-redline-lit: rgb(255 77 94);
+  --role-hud-dial-face: radial-gradient(circle at 50% 30%, rgb(30 38 58 / 0.82), rgb(6 9 16 / 0.88));
+  --role-hud-dial-rim: inset 0 var(--stroke-hairline) 0 rgb(255 255 255 / 0.3), 0 calc(10 * var(--font-step-px)) calc(30 * var(--font-step-px)) rgb(0 0 0 / 0.6);
+  /* Shift lights: a run of leaning cells lit green, then amber, then red
+     across the run, with a soft glow; a cell not lit is faint. */
+  --role-hud-shift-low: rgb(85 227 154);
+  --role-hud-shift-mid: rgb(255 207 90);
+  --role-hud-shift-high: rgb(255 77 94);
+  --role-hud-shift-ramp: linear-gradient(90deg, var(--hud-shift-low) 0 43%, var(--hud-shift-mid) 43% 72%, var(--hud-shift-high) 72%);
+  --role-hud-shift-glow: drop-shadow(0 0 calc(5 * var(--font-step-px)) rgb(255 255 255 / 0.45));
+  /* A pedal's well's keyline (throttle, brake). */
+  --role-hud-pedal-rim: 0 0 0 var(--stroke-hairline) rgb(255 255 255 / 0.22);
+  /* The track map: the road as a dark band under a light line. */
+  --role-hud-track-well: rgb(6 9 16 / 0.9);
+  --role-hud-track-line: rgb(255 255 255 / 0.85);
+  /* A call across the screen (Final lap) and a meter's word, widely set. */
+  --role-hud-banner-tracking: 0.22em;
+  /* The racing HUD's type steps: the place, its total, the lap time
+     running and the speed; `-compact` is the same on a phone. */
+  --role-hud-size-place: calc(84 * var(--font-step-px));
+  --role-hud-size-place-compact: calc(44 * var(--font-step-px));
+  --role-hud-size-place-of: calc(30 * var(--font-step-px));
+  --role-hud-size-time: calc(24 * var(--font-step-px));
+  --role-hud-size-speed: calc(64 * var(--font-step-px));
+  --role-hud-size-speed-compact: calc(36 * var(--font-step-px));
+  /* On a phone the tachometer's and the track map's sides, held to a
+     share of the screen's width, so at a large text scale they leave the
+     tower, the call and the road their room. */
+  --role-hud-dial-compact: min(calc(148 * var(--font-step-px)), 38vw);
+  --role-hud-map-compact: min(calc(120 * var(--font-step-px)), 24vw);
+
   /* Label: a caption or column heading, opened a little so it sits back
      from the values it names. */
   --role-label-font: var(--type-label-font);
