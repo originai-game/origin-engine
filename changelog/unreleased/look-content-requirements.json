@@ -1,0 +1,8 @@
+{
+  "changed": [
+    {
+      "member": "ArtShape",
+      "summary": "The looks guide clarifies that voxel cells use model-space units and scale with each placed instance, and that pixel-3d-hybrid needs authored sprites rather than converting models. Rendering and conformance are unchanged."
+    }
+  ]
+}

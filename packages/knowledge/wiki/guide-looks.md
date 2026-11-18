@@ -65,6 +65,10 @@ PostEffects {
   (pixelation, posterize, dither, outlines) and the art contract.
 - The scene: lights, their shadows, reflection probes, light volumes,
   baked lightmaps, particles and decals.
+- `ArtShape.voxel` sets cell size in model space, so placement scale scales
+  the cells; cook models at world scale for a uniform grid.
+- `pixel-3d-hybrid` needs authored pixel sprites in its 3D set; the preset
+  does not turn models into sprites.
 - Never imitate a look's effect with geometry or textures (a painted-on
   outline, a pre-dithered texture): the stylise pass does it once,
   consistently, at every resolution.
