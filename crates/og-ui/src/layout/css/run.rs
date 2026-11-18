@@ -701,8 +701,24 @@ pub(crate) fn layout(
             return;
         }
     }
+    // A clean subtree in the same room keeps its sizing work, including
+    // intrinsic measurements and Taffy's root setup. Placement still runs:
+    // the room's origin, inherited clip and scroll offsets may have moved.
+    // Roots are always reached for placement; a reached descendant, not
+    // the root's own visit bit, indicates work below a clean root.
+    if !kept.full
+        && kept.is_clean(root)
+        && !nodes[root].ordered_children.iter().any(|&i| kept.visits(i))
+        && nodes[root].layout.css_root_room == Some([area.width, area.height])
+    {
+        nodes[root].layout.x = area.x;
+        nodes[root].layout.y = area.y;
+        place(nodes, root, scroll, dpr, clip, kept, queries, &[]);
+        return;
+    }
     // What changed lays out again: its kept sizes go.
-    let order = kept.walk(nodes, root);
+    let mut order = Vec::new();
+    kept.walk(nodes, root, &mut order);
     let dirty: Vec<usize> = order
         .iter()
         .copied()
@@ -784,6 +800,7 @@ pub(crate) fn layout(
     let nodes = tree.nodes;
     nodes[root].layout.x = area.x;
     nodes[root].layout.y = area.y;
+    nodes[root].layout.css_root_room = Some([area.width, area.height]);
     place(nodes, root, scroll, dpr, clip, kept, queries, &performed);
 }
 

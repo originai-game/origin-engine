@@ -229,6 +229,8 @@ impl<V> Sweep for std::collections::HashMap<String, Vec<Kept<V>>> {
 /// out even when the parent reuses its own layout.
 #[derive(Clone, Debug, Default)]
 pub struct LayoutCache {
+    /// Reused traversal storage; each walk appends to its caller's order.
+    walk_stack: Vec<usize>,
     /// Per node: its own layout inputs and child size contributions are unchanged.
     pub clean: Vec<bool>,
     /// Nodes laid out this frame (the rest kept their layout).
@@ -601,20 +603,20 @@ impl LayoutCache {
         }
     }
 
-    /// The preorder of `root`'s tree that layout starts from: every node
-    /// it reaches, with its children.
-    pub(crate) fn walk(&self, nodes: &[Node], root: usize) -> Vec<usize> {
-        let mut order = Vec::new();
-        let mut stack = vec![root];
-        while let Some(i) = stack.pop() {
+    /// Appends the preorder of `root`'s tree that layout starts from:
+    /// every node it reaches, with its children.
+    pub(crate) fn walk(&mut self, nodes: &[Node], root: usize, order: &mut Vec<usize>) {
+        self.walk_stack.clear();
+        self.walk_stack.push(root);
+        while let Some(i) = self.walk_stack.pop() {
             order.push(i);
             // An element skipping its contents (`content-visibility`)
             // never lays them out.
             if self.visits(i) && !nodes[i].layout.cv_skip {
-                stack.extend(nodes[i].ordered_children.iter().rev());
+                self.walk_stack
+                    .extend(nodes[i].ordered_children.iter().rev());
             }
         }
-        order
     }
 
     /// Records the signature slot `i` was painted with.
