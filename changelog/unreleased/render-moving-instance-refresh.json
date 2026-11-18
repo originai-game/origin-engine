@@ -1,0 +1,8 @@
+{
+  "fixed": [
+    {
+      "member": "og.Scene",
+      "summary": "Moving large instance fields no longer pay for scattered per-instance run searches and repeated unchanged look packing. Refresh visits dirty slots in run order and reuses freshly computed bounds for wholly moving runs; still scenes keep their cached records and detect motion with a branchless numeric comparison. Frames and performance baselines are unchanged."
+    }
+  ]
+}
