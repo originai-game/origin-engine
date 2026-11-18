@@ -305,6 +305,17 @@ gpuTest("three groups load and unload along the path by trigger and priority, wi
     writeFileSync(join(evidence, `${name}.png`), Uint8Array.from(atob(frame.png), (c) => c.charCodeAt(0)));
     return hue(decodeCapture(frame));
   };
+  // Before a pack is read, memory is the cook's conservative RGBA
+  // estimate. Price every group on this device without admitting any of
+  // them, then size the eviction boundary from those exact reservations.
+  must(og.stream.setBudget(w, 0));
+  for (const g of budget(engine).groups) must(og.stream.request(w, g.name));
+  expect(engine.advance(1).ok).toBeTrue();
+  expect(states(engine)).toEqual({ cave: "failed", meadow: "failed", tower: "failed" });
+  expect(budget(engine).used).toBe(0);
+  for (const g of budget(engine).groups) must(og.stream.release(w, g.name));
+  expect(engine.advance(2).ok).toBeTrue();
+  events.length = 0;
   expect(states(engine)).toEqual({ cave: "unloaded", meadow: "unloaded", tower: "unloaded" });
   const groups = budget(engine).groups;
   expect(groups.map((g) => [g.name, g.trigger, g.priority])).toEqual([
@@ -313,8 +324,8 @@ gpuTest("three groups load and unload along the path by trigger and priority, wi
     ["tower", "distance", 0],
   ]);
   for (const g of groups) expect(g.memory).toBeGreaterThan(0);
-  // meadow holds a 256 x 256 sign: it takes more than tower's lone hut.
-  expect(memory(engine, "meadow")).toBeGreaterThan(memory(engine, "tower") + 256 * 256 * 4);
+  // Meadow's extra sign takes resident space even on compressed devices.
+  expect(memory(engine, "meadow")).toBeGreaterThan(memory(engine, "tower"));
   // Room for meadow or cave, never both.
   const limit = memory(engine, "meadow") + memory(engine, "cave") - 1;
   must(og.stream.setBudget(w, limit));

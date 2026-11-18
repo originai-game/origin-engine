@@ -137,12 +137,17 @@ function cook(dir: string, id: string, files: Record<string, Uint8Array | string
   if (r.exitCode !== 0) throw new Error(`cooking ${dir}: ${new TextDecoder().decode(r.stderr)}`);
 }
 
-/** The memory the cook measured for group `name` of the bundle at `dir` (its manifest's `memory`). */
+/** The manifest's non-texture cost plus this fixture's exact RGBA8 mip chain.
+ * Neither helper host attaches a GPU, so no compressed target is selected.
+ * Each group holds one 256² texture: the cook's 4/3 estimate includes a
+ * fractional last mip, whereas the runtime charges the nine real levels. */
 function memoryOf(dir: string, name: string): number {
   const manifest = readFileSync(join(dir, "cooked", ".cook.ogt"), "utf8");
   const m = new RegExp(`\\nstream "${name}" \\{[^}]*?\\n  memory (\\d+)`).exec(manifest);
   if (!m) throw new Error(`no group ${name} with a memory in ${dir}`);
-  return Number(m[1]);
+  let textureBytes = 0;
+  for (let side = 256; side >= 1; side /= 2) textureBytes += side * side * 4;
+  return Number(m[1]) - Math.floor(256 * 256 * 4 * 4 / 3) + textureBytes;
 }
 
 beforeAll(() => {
