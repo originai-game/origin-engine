@@ -28,6 +28,8 @@ struct RasterParams {
   wind: array<FoliageWind, 2>,
   // The leaves' year (meshlet_foliage.wgsl `LeafYear`).
   leaf_year: LeafYear,
+  // xyz: towards the sun (meshlet_sway.wgsl `meshlet_crown`).
+  sun: vec4<f32>,
 };
 
 @group(0) @binding(0) var<uniform> raster: RasterParams;
@@ -293,7 +295,8 @@ fn raster_bary(clip: array<vec4<f32>, 3>, l: vec3<f32>) -> vec3<f32> {
 // affine v), (d(lit uv)/dx, d(lit uv)/dy), the lit uv being pbr.wgsl
 // `stylised_uv`'s mix of the two, and (the canopy dome's oct, 1 with
 // one, a seasonal leaf's autumn colour packed 8:8:8:8, its rgb square
-// roots and how far it replaces the leaf's own, 0). A foliage mesh's corners are swayed (`raster_position`):
+// roots and how far it replaces the leaf's own, and what its crown
+// hides of the light around it and of the sun, unorm16). A foliage mesh's corners are swayed (`raster_position`):
 // now for the pixel, at the last drawn frame for last frame's world. The gradients are the differences to
 // the next pixel right and down on the same triangle's plane, which the
 // hardware's quads take and the resolve's full-screen quads cannot
@@ -356,6 +359,10 @@ fn setup(@builtin(global_invocation_id) gid: vec3<u32>) {
   // A seasonal leaf's autumn colour (meshlet_sway.wgsl
   // `meshlet_leaf_color`), which the resolve puts in place of its own.
   var season = vec4<f32>(0.0);
+  // How much of the light around it and of the sun its crown hides
+  // (meshlet_sway.wgsl `meshlet_crown`).
+  var crown = vec2<f32>(0.0);
+  let sun = meshlet_model_dir(model, raster.sun.xyz);
   for (var j = 0u; j < 3u; j++) {
     let a = vertices[vi[j] * 4u];
     let v = vertices[vi[j] * 4u + 1u];
@@ -366,6 +373,8 @@ fn setup(@builtin(global_invocation_id) gid: vec3<u32>) {
       let k = meshlet_sway_row(c.w, vi[j] - f.y);
       dome += foliage_normal(vec3<f32>(a.w, v.xy), vertices[k + 1u].xyz, vertices[c.w - 1u].xyz, 1.0) * b[j];
       season += meshlet_leaf_color(vertices[c.w + 1u], vertices[c.w + 2u], raster_leaf(vi[j] - f.y, c.w, model)) * b[j];
+      let axis = meshlet_crown_axis(vec3<f32>(a.w, v.xy), vertices[k + 1u], vertices[c.w - 1u], vertices[c.w]);
+      crown += meshlet_crown(at[j], axis, sun, vertices[c.w - 1u], vertices[c.w + 3u]) * b[j];
     }
     duv_x += v.zw * (bx[j] - b[j]);
     duv_y += v.zw * (by[j] - b[j]);
@@ -435,7 +444,7 @@ fn setup(@builtin(global_invocation_id) gid: vec3<u32>) {
       bitcast<vec4<u32>>(vec4<f32>(dpos_x, affine.x)),
       bitcast<vec4<u32>>(vec4<f32>(dpos_y, affine.y)),
       bitcast<vec4<u32>>(vec4<f32>(mix(duv_x, daff_x, k), mix(duv_y, daff_y, k))),
-      vec4<u32>(dome_world, u32(c.w != 0u), pack4x8unorm(vec4<f32>(sqrt(max(season.rgb, vec3<f32>(0.0))), season.a)), 0u),
+      vec4<u32>(dome_world, u32(c.w != 0u), pack4x8unorm(vec4<f32>(sqrt(max(season.rgb, vec3<f32>(0.0))), season.a)), pack2x16unorm(crown)),
     );
     for (var i = 0u; i < 4u; i++) {
       for (var j = 0u; j < 4u; j++) { attrs[r + (8u + i) * 4u + j] = more[i][j]; }

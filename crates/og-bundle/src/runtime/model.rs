@@ -970,8 +970,9 @@ impl CookedModel {
     /// the model's foliage shares, so its bark and leaves bend as one tree
     /// (every foliage primitive in one space, the model's: its top is the
     /// highest their full meshes reach, its canopy centre the centre of the box
-    /// of the leaf cards' anchors, of every anchor without leaf cards), and
-    /// the year its material's leaves follow.
+    /// of the leaf cards' anchors, of every anchor without leaf cards), the
+    /// crown its leaf cards fill, and the year its material's leaves
+    /// follow.
     pub fn mesh_foliage(&self, i: usize) -> Option<og_render_data::meshlet::MeshFoliage> {
         let (vertices, leaves) = self.primitives.get(i)?.foliage.as_ref()?;
         let foliage = || {
@@ -998,11 +999,31 @@ impl CookedModel {
                 (Vec3::splat(f32::MAX), Vec3::splat(f32::MIN)),
                 |(lo, hi), a| (lo.min(a), hi.max(a)),
             );
+        let center = (lo + hi) * 0.5;
+        // The crown: the box of the leaf cards' full meshes about the
+        // canopy centre, as an ellipsoid, and their one-sided area in it.
+        let mut crown = Vec3::ZERO;
+        let mut area = 0.0f32;
+        for (p, _) in foliage().filter(|(_, f)| f.1) {
+            let full = p.lods[0];
+            let at = |i: u32| Vec3::from_array(p.vertices[i as usize].position);
+            for [i, j, k] in p.indices[full.first..full.first + full.count].as_chunks::<3>().0 {
+                let (a, b, c) = (at(*i), at(*j), at(*k));
+                area += 0.5 * (b - a).cross(c - a).length();
+                for v in [a, b, c] {
+                    crown = crown.max((v - center).abs());
+                }
+            }
+        }
+        let volume = 4.0 / 3.0 * std::f32::consts::PI * crown.x * crown.y * crown.z;
+        let extinction = if volume > 0.0 { 0.5 * area / volume } else { 0.0 };
         Some(og_render_data::meshlet::MeshFoliage {
             vertices: vertices.clone(),
             top,
-            canopy_center: (lo + hi) * 0.5,
+            canopy_center: center,
             leaves: *leaves,
+            crown: if volume > 0.0 { crown } else { Vec3::ZERO },
+            extinction,
             season: self
                 .materials
                 .get(self.primitives[i].material)

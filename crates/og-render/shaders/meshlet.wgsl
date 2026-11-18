@@ -121,8 +121,13 @@ fn vs_meshlet(@builtin(vertex_index) vi: u32, @builtin(instance_index) ii: u32) 
   var o = lit_vertex(p.model, v);
   o.look = p.look;
   if (p.region != 0u) {
-    // Its autumn colour, which the fragment puts in place of its own.
+    // Its autumn colour, which the fragment puts in place of its own, and
+    // the light its crown hides.
     o.season = meshlet_leaf_color(meshlet_foliage[p.region + 1u], meshlet_foliage[p.region + 2u], p.leaf);
+    let f = meshlet_rows(p.region, p.index);
+    let axis = meshlet_crown_axis(p.v.normal, f[2], f[0], meshlet_foliage[p.region]);
+    let sun = meshlet_model_dir(p.model, frame.light_dir.xyz);
+    o.crown = meshlet_crown(p.rest, axis, sun, f[0], meshlet_foliage[p.region + 3u]);
   }
   return o;
 }
@@ -241,6 +246,8 @@ fn meshlet_record(pos: vec4<f32>, row: u32) -> MeshletRecord {
     // roots, then how far it replaces the leaf's own).
     let season = unpack4x8unorm(d.z);
     r.v.season = vec4<f32>(season.rgb * season.rgb, season.a);
+    // And what its crown hides of the light around it and of the sun.
+    r.v.crown = unpack2x16unorm(d.w);
   }
   r.object = c.w;
   return r;

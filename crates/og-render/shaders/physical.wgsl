@@ -589,7 +589,7 @@ fn physical_fragment(in: PhysicalOut) -> vec4<f32> {
     bent = normalize(mix(across, n, w * w * w * w));
   }
   let at = ShadeAt(in.world_pos, n, v, in.clip.xy, EFFECTS, !oit_pass && (u32(material.flags.w) & 4u) == 0u, false);
-  let around = surface_gather(at, bent, s.roughness);
+  let around = surface_gather(at, bent, n, s.roughness);
   let irradiance = around.irradiance;
   let prefiltered = around.prefiltered;
   let env_brdf = f0_ibl * around.lut.x + around.lut.y;  // Karis split sum

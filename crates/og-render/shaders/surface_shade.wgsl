@@ -63,8 +63,9 @@ fn surface_reflected(prefiltered: vec3<f32>, at: ShadeAt, r: vec3<f32>, roughnes
 }
 
 // The gather for a surface of `roughness` that reflects around `around`
-// (its normal; an anisotropic surface's bent normal).
-fn surface_gather(at: ShadeAt, around: vec3<f32>, roughness: f32) -> Gathered {
+// (its normal; an anisotropic surface's bent normal; a leaf's own face),
+// its Fresnel taken at `facet` (its normal; a leaf's own face).
+fn surface_gather(at: ShadeAt, around: vec3<f32>, facet: vec3<f32>, roughness: f32) -> Gathered {
   var o: Gathered;
   o.occlusion = ScreenOcclusion(1.0, 1.0, vec3<f32>(0.0));
   var ambient_n = at.n;
@@ -84,7 +85,7 @@ fn surface_gather(at: ShadeAt, around: vec3<f32>, roughness: f32) -> Gathered {
   o.prefiltered = surface_reflected(reflected_light(r, at.p, roughness * frame.params.y), at, r, roughness, gi) * frame.params.x;
   // The screen-space reflections over it, for the surface they were traced for.
   if (at.opaque) { o.prefiltered = ssr_reflected(o.prefiltered, at.p, at.frag); }
-  o.lut = textureSampleLevel(brdf_lut, ibl_sampler, vec2<f32>(clamp(dot(at.n, at.v), 1e-4, 1.0), roughness), 0.0).rg;
+  o.lut = textureSampleLevel(brdf_lut, ibl_sampler, vec2<f32>(clamp(dot(facet, at.v), 1e-4, 1.0), roughness), 0.0).rg;
   return o;
 }
 
@@ -102,10 +103,14 @@ struct Ambient {
   occlusion: ScreenOcclusion,
 };
 
-fn surface_ambient(s: Surface, at: ShadeAt) -> Ambient {
-  let g = surface_gather(at, at.n, s.roughness);
+// `facet`: the face that reflects, its normal for every surface but a
+// leaf's, whose light around it arrives along its canopy's normal
+// (meshlet_foliage.wgsl `foliage_normal`) while its own face mirrors the
+// sky.
+fn surface_ambient(s: Surface, at: ShadeAt, facet: vec3<f32>) -> Ambient {
+  let g = surface_gather(at, facet, facet, s.roughness);
   var o: Ambient;
-  o.kd = (vec3<f32>(1.0) - f_schlick_roughness(clamp(dot(at.n, at.v), 1e-4, 1.0), s.f0, s.roughness)) * (1.0 - s.metallic);
+  o.kd = (vec3<f32>(1.0) - f_schlick_roughness(clamp(dot(facet, at.v), 1e-4, 1.0), s.f0, s.roughness)) * (1.0 - s.metallic);
   o.diffuse = g.irradiance * s.albedo;
   // Split sum as Karis (and three.js): F0 scales the LUT, whose bias term
   // already holds the Fresnel rise at grazing angles.
@@ -160,7 +165,7 @@ fn surface_direct(s: Surface, at: ShadeAt, sun: vec3<f32>, sunlit: f32) -> vec3<
 // darkness takes its share of the light around the surface as of the sun's.
 fn surface_shade(s: Surface, at: ShadeAt, sun: StyleSun, sunlit: f32, emissive: vec3<f32>, intensity: f32, keep: f32) -> Shaded {
   let direct = surface_direct(s, at, sun.direct, sunlit);
-  return surface_sum(s, direct, surface_ambient(s, at), emissive, intensity, keep * sun.keep);
+  return surface_sum(s, direct, surface_ambient(s, at, at.n), emissive, intensity, keep * sun.keep);
 }
 
 // A matte body at `at` under `sun` (a lit particle, a puff of smoke): the

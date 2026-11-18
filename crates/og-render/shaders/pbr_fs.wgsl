@@ -141,6 +141,43 @@ fn fs_oit_mark(in: VertexOut, @builtin(front_facing) front_facing: bool) {
 }
 
 // The lit shading of a fragment (`fs`, and `fs_lean`).
+// What a crown's leaves pass on, forwards, of the light they take: half
+// their single scattering (their colour reflected and let through), and
+// none for a surface that is not a translucent leaf (its neighbours'
+// colour is not its own).
+fn crown_forward(s: Surface) -> vec3<f32> {
+  if (s.translucency <= 0.0) { return vec3<f32>(0.0); }
+  return 0.5 * min(s.albedo * (1.0 + s.translucency), vec3<f32>(1.0));
+}
+
+// What reaches a point behind `hidden` of a beam through a crown whose
+// leaves pass on `forward` of it: the light scattered forwards keeps
+// going, its extinction cut by `forward` (the delta scaling of Joseph,
+// Wiscombe and Weinman 1976), so it falls off as `forward` to the power
+// of the leaves crossed (a canopy's recollision, Smolander and Stenberg
+// 2005), and what is passed is what crosses the hidden share.
+fn crown_passed(hidden: f32, forward: vec3<f32>) -> vec3<f32> {
+  return pow(vec3<f32>(max(1.0 - hidden, 1e-4)), vec3<f32>(1.0) - forward);
+}
+
+// The light around a surface inside its tree's crown, which hides
+// `crown` of the sky (meshlet_sway.wgsl `meshlet_crown`, Hegeman et al.
+// 2006): the diffuse light is what comes through the gaps and what the
+// leaves pass on (`crown_passed`), in their colour, darker and greener
+// each leaf deeper; its reflection of the sky is occluded as Lagarde and
+// de Rousiers derive it from that visibility ("Moving Frostbite to PBR",
+// 2014), so a leaf deep in the crown keeps its hue instead of mirroring
+// the sky.
+fn crown_ambient(a: Ambient, s: Surface, n_dot_v: f32, crown: f32) -> Ambient {
+  if (crown <= 0.0) { return a; }
+  let seen = 1.0 - clamp(crown, 0.0, 1.0);
+  var o = a;
+  o.diffuse *= crown_passed(crown, crown_forward(s));
+  let specular = clamp(pow(n_dot_v + seen, exp2(-16.0 * s.roughness - 1.0)) - 1.0 + seen, 0.0, 1.0);
+  o.specular *= specular;
+  return o;
+}
+
 fn lit_fragment(in: VertexOut) -> vec4<f32> {
   let uv = stylised_uv(in.uv, in.affine);
   let base_uv = material_uv(UV_MAP, uv);
@@ -346,6 +383,14 @@ fn lit_fragment(in: VertexOut) -> vec4<f32> {
   if (frame.light_dir.w > 0.5 && (n_dot_l > 0.0 || s.translucency > 0.0) && receives) {
     shadow = cascade_shadow(in.world_pos, leaf_shadow_normal(s, normalize(in.normal), l), abs(dot(n, l)));
   }
+  // Inside a tree's crown, the sun is at most what the crown's leaves
+  // let through on its path (meshlet_sway.wgsl `meshlet_crown`): the
+  // shadow map holds the leaves as cards at its texel size, filtered
+  // and biased, and lets through the sun a crown of them hides from its
+  // depths (Hegeman et al. 2006), so a crown's inside is lit like its
+  // outside. The map's own where it is darker (another tree, a wall).
+  let map_shadow = shadow;
+  if (in.crown.y > 0.0) { shadow = min(shadow, 1.0 - in.crown.y); }
   if (EFFECTS && OG_TOON && material.toon.x > 0.5) {
     toon_edges(dot(n, l));
     if (s.metallic > 0.0) {
@@ -371,6 +416,19 @@ fn lit_fragment(in: VertexOut) -> vec4<f32> {
   }
   // Caustics where the surface lies under the frame's water (0 without).
   color += s.albedo * frame.light_color.rgb * n_dot_l * shadow * caustics(in.world_pos);
+  // The sun its crown's leaves took from a leaf in their shadow is not
+  // all lost: they pass some on (`crown_passed`; Boulanger, Pattanaik and
+  // Bouatouch, "Rendering trees with indirect lighting in real time",
+  // EGSR 2009), in their colour, less the deeper the leaf, so a leaf in
+  // its crown's shade keeps its hue and the crown its depth. Only of the
+  // sun that reaches the crown: where the map is darker than the crown
+  // alone, something else (another tree, a wall) took the rest.
+  if (s.translucency > 0.0 && in.crown.y > 0.0 && frame.light_dir.w > 0.5) {
+    let through = 1.0 - in.crown.y;
+    let reach = clamp(map_shadow / max(through, 1e-3), 0.0, 1.0);
+    let passed = crown_passed(in.crown.y, crown_forward(s)) - vec3<f32>(through);
+    color += frame.light_color.rgb * reach * max(passed, vec3<f32>(0.0)) * s.albedo * (1.0 - s.metallic) / PI;
+  }
   // The material style's shadow darkness: where the sun does not reach, the
   // surface loses that share of the sun's ramp and of the ambient light.
   let keep = shadow_keep(n_dot_l * shadow, mode);
@@ -405,7 +463,26 @@ fn lit_fragment(in: VertexOut) -> vec4<f32> {
   // blended surface lies over the one they were traced for).
   let n_dot_v = clamp(dot(n, v), 1e-4, 1.0);
   let at = ShadeAt(in.world_pos, n, v, in.clip.xy, EFFECTS, !oit_pass && (u32(material.flags.w) & 4u) == 0u, false);
-  var around = surface_ambient(s, at);
+  // A leaf takes the light around it along its canopy's normal (its
+  // material's foliage, coat.w), but its own face mirrors the sky: a
+  // crown of leaves, each at its own angle, has no grazing rim, and an
+  // inner leaf whose canopy normal lies across the view would otherwise
+  // take the rim's Fresnel sheen of the sky.
+  var facet = n;
+  if (material.coat.w > 0.0) {
+    let face = normalize(cross(dpx, dpy));
+    facet = normalize(mix(n, face * select(-1.0, 1.0, dot(face, v) >= 0.0), clamp(material.coat.w, 0.0, 1.0)));
+  }
+  var around = surface_ambient(s, at, facet);
+  // A leaf lets the light around it through from behind, as it does the
+  // sun's (lighting.wgsl leaf_transmission): the sky and ground behind it,
+  // tinted by its colour.
+  if (material.coat.z > 0.0) {
+    let back = -n;
+    let behind = ambient_irradiance(ambient_light_level(back, in.world_pos), in.world_pos, back) * frame.params.x + hemi_irradiance(back);
+    around.diffuse += behind * s.albedo * s.translucency;
+  }
+  around = crown_ambient(around, s, clamp(dot(facet, v), 1e-4, 1.0), in.crown.x);
   if (EFFECTS && OG_TOON && material.toon.x > 0.5 && frame.toon.y < 1.0) {
     // Toon ambient (frame.toon.y 0): one flat colour, the light from above
     // and below averaged (MToon's equalised ambient), and the environment's

@@ -154,6 +154,8 @@ struct RasterParams {
     wind: [crate::foliage::FoliageWind; 2],
     /// The leaves' year (`foliage::LeafCalendar::gpu`).
     leaf_year: [[f32; 4]; 2],
+    /// xyz: towards the sun (meshlet_sway.wgsl `meshlet_crown`), w unused.
+    sun: [f32; 4],
 }
 
 /// `struct MeshletDraw` in meshlet_sway.wgsl.

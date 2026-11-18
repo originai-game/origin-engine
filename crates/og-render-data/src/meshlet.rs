@@ -178,13 +178,22 @@ pub struct MeshFoliage {
     /// it here, the ones that bind no material too, so a leaf's shadow
     /// grows and falls with it.
     pub season: crate::foliage::LeafSeason,
+    /// The crown its leaves fill, for the sky they hide from each other
+    /// (meshlet_sway.wgsl `meshlet_crown`): the half-extents of an
+    /// ellipsoid about [`Self::canopy_center`] (zero: no crown), and its
+    /// leaves' extinction, half their one-sided area per unit of the
+    /// ellipsoid's volume (randomly oriented leaves, Ross's G of 1/2), both
+    /// in the model's units.
+    pub crown: Vec3,
+    pub extinction: f32,
 }
 
 /// vec4 rows of a foliage mesh's header in the vertex pool (meshlet_gpu.rs
 /// `pool_foliage`), before its two rows per vertex: (canopy centre, top),
 /// (flags: 1 leaves, its season, its season shift, 0), (autumn colour, 0),
-/// (the second autumn colour, 0).
-pub const FOLIAGE_HEADER_ROWS: u32 = 4;
+/// (the second autumn colour, 0), (the crown's half-extents, its
+/// extinction).
+pub const FOLIAGE_HEADER_ROWS: u32 = 5;
 
 impl MeshFoliage {
     /// Whether it describes a mesh of `vertex_count` vertices: one entry a
@@ -207,6 +216,11 @@ impl MeshFoliage {
             && colours.into_iter().all(|x| x.is_finite()))
         {
             return Err(format!("its season must be finite: {s:?}"));
+        }
+        if !(self.crown.is_finite() && self.crown.min_element() >= 0.0)
+            || !(self.extinction.is_finite() && self.extinction >= 0.0)
+        {
+            return Err("its crown must be finite and not negative".into());
         }
         for (i, v) in self.vertices.iter().enumerate() {
             let finite = v.branch.iter().chain(&v.leaf).all(|x| x.is_finite());
@@ -234,6 +248,8 @@ impl MeshFoliage {
         rows.push([r, g, b, 0.0]);
         let [r, g, b] = s.autumn_color2;
         rows.push([r, g, b, 0.0]);
+        let k = self.crown;
+        rows.push([k.x, k.y, k.z, self.extinction]);
         for v in &self.vertices {
             rows.push(v.branch);
             rows.push(v.leaf);
