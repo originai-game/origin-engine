@@ -1,0 +1,8 @@
+{
+  "added": [
+    {
+      "member": "Default style data tokens",
+      "summary": "--data-* roles for the data and tool panels: the heading ink, the rule between rows, a row's hover, pressed and selected fills and its lit leading edge, the recess a day, node or well sits in, the indent guide, a chart bar's fill, gloss, rim and lean, a marked day's diamond and glow, and a divider's fill and lit grip, which a style pack sets to restyle DataGrid, Chart, NodeGraph, SplitView, Carousel and the table, data-list, tree, pagination, calendar, card and creator-tools screens."
+    }
+  ]
+}
