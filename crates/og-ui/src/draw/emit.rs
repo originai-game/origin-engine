@@ -343,6 +343,12 @@ pub(crate) fn zoom_item(item: &mut DrawItem, unit: f32) {
 /// it travels.
 pub(crate) fn zoom_mass(b: &mut og_draw::UiMassBatch, unit: f32) {
     let screen = b.space == og_draw::UiMassSpace::Screen;
+    if unit != 1.0
+        && b.template.bar.is_some()
+        && let Some(bar) = &mut std::sync::Arc::make_mut(&mut b.template).bar
+    {
+        bar.min_size *= unit;
+    }
     for i in &mut b.instances {
         i.scale *= unit;
         if screen {
@@ -350,7 +356,9 @@ pub(crate) fn zoom_mass(b: &mut og_draw::UiMassBatch, unit: f32) {
             i.position[1] *= unit;
             i.aux[0] *= unit;
             i.aux[1] *= unit;
-            i.aux[3] *= unit;
+            if b.template.bar.is_none() {
+                i.aux[3] *= unit;
+            }
             i.velocity[0] *= unit;
             i.velocity[1] *= unit;
         }

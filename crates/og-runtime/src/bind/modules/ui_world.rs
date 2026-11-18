@@ -184,6 +184,7 @@ fn template(
             .as_ref()
             .and_then(|p| paint(theme, p))
             .map(|c| (d.outline_width.max(0.0), c.linear())),
+        ..UiMassTemplate::default()
     };
     let space = match d.space {
         wire::MassSpace::Screen => UiMassSpace::Screen,

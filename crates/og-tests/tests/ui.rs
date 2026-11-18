@@ -476,6 +476,7 @@ fn mass_timing_luts_draw_at_the_shared_curves_positions() {
                     }],
                     layer,
                     clip: None,
+                    depth_sort: None,
                 });
             }
             overlay.ui.mass.push(UiMassBatch {
@@ -505,6 +506,7 @@ fn mass_timing_luts_draw_at_the_shared_curves_positions() {
                 }],
                 layer: 2,
                 clip: None,
+                depth_sort: None,
             });
         }
         scene.ui.overlay = Some(overlay);

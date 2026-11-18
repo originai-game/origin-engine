@@ -427,6 +427,7 @@ impl crate::ui::Paint {
                 instances: st.instances.clone(),
                 layer: 0,
                 clip: None,
+                depth_sort: None,
             };
             let vp = env.viewport;
             let clip = if d.clip {
@@ -465,6 +466,7 @@ impl crate::ui::Paint {
                     instances: st.instances.clone(),
                     layer: 0,
                     clip: None,
+                    depth_sort: None,
                 });
             }
             true

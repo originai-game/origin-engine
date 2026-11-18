@@ -116,6 +116,34 @@ pub const PROPS: &[PropSpec] = &[
         doc: "A mass element's bar: drawn as a bar filled to value/max (an overhead health bar).",
     },
     PropSpec {
+        name: "shield",
+        ty: Ty::Num,
+        on: On::Kinds(&[Kind::Anchor]),
+        two_way: false,
+        doc: "Mass bars: shield/max fills a thin track above health. Zero draws neither the track nor its gap; health stays at its own point. Ink is --bar-shield.",
+    },
+    PropSpec {
+        name: "segments",
+        ty: Ty::Num,
+        on: On::Kinds(&[Kind::Anchor]),
+        two_way: false,
+        doc: "Mass health-track segments, with 1px cuts in --bar-back ink (0/1: none). Cuts disappear when a segment's remaining width would be under 3px.",
+    },
+    PropSpec {
+        name: "resource",
+        ty: Ty::Num,
+        on: On::Kinds(&[Kind::Anchor]),
+        two_way: false,
+        doc: "Mass bars: resource/resource-max fills a thin line below health, 80% of its width, in --bar-resource ink.",
+    },
+    PropSpec {
+        name: "resourceMax",
+        ty: Ty::Num,
+        on: On::Kinds(&[Kind::Anchor]),
+        two_way: false,
+        doc: "Mass bars: resource maximum; zero or omitted draws no resource line or gap.",
+    },
+    PropSpec {
         name: "world",
         ty: Ty::Bool,
         on: On::Kinds(&[Kind::Panel]),
@@ -243,10 +271,10 @@ pub const PROPS: &[PropSpec] = &[
     },
     PropSpec {
         name: "barGhost",
-        ty: Ty::Paint,
+        ty: Ty::Text,
         on: On::Kinds(&[Kind::Anchor]),
         two_way: false,
-        doc: "`bar-ghost`: mass bar ghost ink (default pale white).",
+        doc: "Mass bars: bar-ghost enables the automatic hit trail (400ms hold, then 300ms drain). false/none disables; a colour also supplies its ink. --bar-ghost overrides the ink. Keyed rebuilds and snapshots preserve the trail.",
     },
     PropSpec {
         name: "priority",

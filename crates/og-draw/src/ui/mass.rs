@@ -102,6 +102,19 @@ pub enum UiOcclusion {
     Hide,
 }
 
+/// Optional tracks and treatment of a health bar. The instance's aux.w is
+/// shield/max, velocity.w resource/resource-max and velocity.z segment count.
+#[derive(Clone, Debug, Default, PartialEq)]
+pub struct UiMassBarStyle {
+    pub rim: [f32; 4],
+    pub shield: [f32; 4],
+    pub resource: [f32; 4],
+    pub low: [f32; 4],
+    pub low_at: f32,
+    /// Minimum health-track size in CSS px, independent of distance.
+    pub min_size: Vec2,
+}
+
 /// A mass element's template. See the module documentation.
 #[derive(Clone, Debug, PartialEq)]
 pub struct UiMassTemplate {
@@ -132,6 +145,9 @@ pub struct UiMassTemplate {
     /// `distance.x` 0: a constant screen size.
     pub distance: glam::Vec3,
     pub occlusion: UiOcclusion,
+    /// Last-tenth distance fade; zero keeps unlimited range.
+    pub max_distance: f32,
+    pub bar: Option<UiMassBarStyle>,
     /// Text: an outline from the distance field, CSS px and linear RGBA.
     pub outline: Option<(f32, [f32; 4])>,
 }
@@ -155,6 +171,8 @@ impl Default for UiMassTemplate {
             drag: false,
             distance: glam::Vec3::new(0.0, 0.25, 4.0),
             occlusion: UiOcclusion::None,
+            max_distance: 0.0,
+            bar: None,
             outline: None,
         }
     }
@@ -188,7 +206,13 @@ impl UiMassTemplate {
                 .max()
                 .unwrap_or(1)
                 .clamp(1, UI_MASS_QUADS),
-            UiMassKind::Bar { .. } => 3,
+            UiMassKind::Bar { .. } => {
+                if self.bar.is_some() {
+                    6
+                } else {
+                    3
+                }
+            }
             UiMassKind::Icon { .. } | UiMassKind::Particle { .. } => 1,
         }
     }
@@ -288,6 +312,9 @@ pub struct UiMassBatch {
     /// A clip rectangle of [`crate::Overlay::clips`] (with its shape and
     /// occluder, if any).
     pub clip: Option<u32>,
+    /// World bars: camera-forward axis for far-to-near painter ordering,
+    /// including bars from different templates on the same overlay layer.
+    pub depth_sort: Option<glam::Vec3>,
 }
 
 /// A depth test against the scene for what uses clip rectangle `rect` of

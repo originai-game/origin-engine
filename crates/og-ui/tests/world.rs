@@ -1723,3 +1723,115 @@ fn keyed_loot_columns_bound_rank_reflow_and_write_hidden_keys() {
         "other group is independent"
     );
 }
+
+/// Standing document bars retain hit history without rebuilding every tick.
+#[test]
+fn document_mass_bars_expose_tracks_ink_occlusion_and_replay_hit_ghosts() {
+    use serde_json::json;
+    let mut ui = ui();
+    ui.define_document(UiDocument::parse("tracks.svelte", r##"
+<meta name="component" content="tracks">
+<div>
+<anchor mass="hp" at="0 0 -35" value={$hp} max="100" shield="30" segments="5" resource="70" resource-max="100" scale-at="12" scale-min="0.7" scale-max="1" max-distance="80" bar-ghost occlusion={$mode} class="bar" />
+<anchor mass="noGhost" at="1 0 0" value={$hp} max="100" bar-ghost={false} />
+<anchor at="0 0 -35"><text>Above bars</text></anchor>
+</div>
+<style>.bar { width:46px; height:5px; color:#00ff00; --shield:#7fe0ff;
+--bar-back:rgb(8 12 20 / 0.72); --bar-rim:rgb(255 255 255 / 0.28);
+--bar-shield:var(--shield); --bar-resource:#6ea8ff; --bar-ghost:#ffecc8;
+--bar-low:#ff4d5e; --bar-low-at:0.25; border-radius:1px; }</style>
+"##).unwrap());
+    mount_stores(
+        &mut ui,
+        source("tracks"),
+        "tracks",
+        &[("hp", json!(100)), ("mode", json!("fade"))],
+    );
+    let batch = |ui: &Ui| {
+        ui.world_frame()
+            .batches
+            .iter()
+            .find(|b| b.template.size.x == 46.0)
+            .unwrap()
+            .clone()
+    };
+    let ghost = |ui: &Ui| batch(ui).instances[0].aux[2];
+    run(&mut ui, 2, |_| {});
+    assert!(ui.frame().warnings.is_empty(), "{:?}", ui.frame().warnings);
+    let b = batch(&ui);
+    assert_eq!(b.template.size, Vec2::new(46.0, 5.0));
+    assert_eq!(b.template.distance, Vec3::new(12.0, 0.7, 1.0));
+    assert_eq!(b.template.max_distance, 80.0);
+    assert_eq!(
+        b.template.occlusion,
+        og_draw::UiOcclusion::Fade { alpha: 0.35 }
+    );
+    assert_eq!(b.template.quads(), 6);
+    assert_eq!(b.depth_sort, Some(view().forward));
+    let style = b.template.bar.as_ref().unwrap();
+    assert_eq!(style.min_size, Vec2::new(30.0, 3.0));
+    assert_eq!(style.shield, Srgba::rgb(127, 224, 255).linear());
+    assert_eq!(style.resource, Srgba::rgb(110, 168, 255).linear());
+    assert_eq!(style.low, Srgba::rgb(255, 77, 94).linear());
+    assert_eq!(style.low_at, 0.25);
+    assert!((style.rim[3] - 0.28).abs() < 0.005);
+    assert_eq!(b.instances[0].aux[3], 0.3);
+    assert_eq!(b.instances[0].velocity[2..], [5.0, 0.7]);
+    ui.set_theme(Theme {
+        text_scale: 1.5,
+        ..*ui.theme()
+    });
+    run(&mut ui, 1, |_| {});
+    assert_eq!(
+        batch(&ui).template.size,
+        b.template.size,
+        "bars ignore text scale"
+    );
+    assert_eq!(batch(&ui).instances[0].scale, b.instances[0].scale);
+
+    set_store(&mut ui, "hp", json!(60));
+    run(&mut ui, 1, |_| {});
+    assert_eq!(batch(&ui).instances[0].value, 0.6);
+    assert_eq!(ghost(&ui), 1.0);
+    run(&mut ui, 24, |_| {});
+    assert_eq!(ghost(&ui), 1.0, "400ms hold at 60Hz");
+    run(&mut ui, 9, |_| {});
+    assert!(
+        (ghost(&ui) - 0.8).abs() < 0.001,
+        "halfway through 300ms drain"
+    );
+    let saved = (ui.save_state(), ui.save_world_state());
+    run(&mut ui, 9, |_| {});
+    let replay = ui.save_world_state();
+    assert_eq!(ghost(&ui), 0.6);
+    ui.restore_state(&saved.0).unwrap();
+    ui.restore_world_state(&saved.1).unwrap();
+    run(&mut ui, 9, |_| {});
+    assert_eq!(ui.save_world_state(), replay);
+
+    set_store(&mut ui, "mode", json!("hide"));
+    set_store(&mut ui, "hp", json!(25));
+    run(&mut ui, 1, |_| {});
+    assert_eq!(batch(&ui).template.occlusion, og_draw::UiOcclusion::Hide);
+    assert_eq!(ghost(&ui), 0.6, "a second hit starts from previous health");
+    let other = ui
+        .world_frame()
+        .batches
+        .iter()
+        .find(|b| b.template.size.x != 46.0)
+        .unwrap();
+    assert_eq!(
+        other.instances[0].aux[2], 0.25,
+        "disabled ghost follows health directly"
+    );
+    let mut overlay = Overlay::new(W, H, 1.0);
+    ui.frame().emit(&EmitDesc::default(), &mut overlay);
+    assert!(
+        overlay
+            .ui
+            .mass
+            .iter()
+            .all(|b| b.layer < overlay.texts[0].layer),
+        "text tags paint above mass bars"
+    );
+}
