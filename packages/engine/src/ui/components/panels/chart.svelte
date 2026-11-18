@@ -36,15 +36,18 @@
       </svg>{/if}
     </div>
   </div>
-  <div id="Categories" data-layout="row">
-    <!-- More bars than names fit under: every other name, each over its own
-         bar and the next, so none is cut. -->
-    {#each bars as bar, i (bar.id)}{#if bars.length <= 8 || i % 2 == 0}<span part="Chart.label Chart.caption" class="category" class:pair={bars.length > 8 && i < bars.length - 1}>{bar.label}</span>{/if}{/each}
+  <div id="Categories">
+    <!-- Each name stands on one line under the middle of its bar. With more
+         bars than names fit under, every other bar is named, and every
+         third in a narrow chart. -->
+    <div id="Ticks" class:dense={bars.length > 8} style:--n={bars.length}>
+      {#each bars as bar, i (bar.id)}<span part="Chart.label Chart.caption" class="category" style:--i={i}>{bar.label}</span>{/each}
+    </div>
   </div>
 </div>
 
 <style>
-:host { inline-size: var(--measure-lg); max-inline-size: 100%; --series-color: var(--hud-gold); --gridline-ink: var(--data-rule); }
+:host { inline-size: var(--measure-lg); max-inline-size: 100%; container-type: inline-size; --series-color: var(--hud-gold); --gridline-ink: var(--data-rule); }
 #Chart { padding: var(--space-md) var(--space-lg) var(--space-md); background: var(--hud-plate-fill); box-shadow: var(--hud-plate-rim); clip-path: polygon(calc(2 * var(--hud-plate-cut)) 0, 100% 0, 100% calc(100% - 2 * var(--hud-plate-cut)), calc(100% - 2 * var(--hud-plate-cut)) 100%, 0 100%, 0 calc(2 * var(--hud-plate-cut))); color: var(--hud-ink); }
 #Title { font-size: var(--hud-size-sm); font-weight: var(--data-title-weight); color: var(--hud-ink); overflow-wrap: anywhere; }
 .subtitle { order: -1; font-size: var(--hud-label-size); font-weight: var(--hud-label-weight); letter-spacing: var(--hud-label-tracking); text-transform: var(--hud-label-transform); color: var(--hud-accent); overflow-wrap: anywhere; }
@@ -59,8 +62,12 @@
 .bar { width: stretch; height: calc(var(--v) * var(--size-5xl)); transform: skewX(var(--data-bar-skew)); transform-origin: 50% 100%; background: var(--data-bar-fill); box-shadow: var(--data-bar-rim); }
 .bar.tinted { --data-bar-fill: var(--data-bar-gloss), var(--c); }
 #Line { position: absolute; inset: 0; inline-size: 100%; block-size: 100%; }
-#Categories { padding: 0 var(--space-md) 0 calc(var(--size-md) + var(--space-xs) + var(--space-sm)); column-gap: var(--space-xs); }
-/* A category's name wraps at its words under its bar rather than being cut. */
-.category { flex: 1 1 0; min-width: 0; text-align: center; font-size: var(--hud-label-size); font-weight: var(--hud-label-weight); font-stretch: var(--hud-figure-stretch); color: var(--data-head-ink); }
-.category.pair { flex-grow: 2; text-align: start; }
+#Categories { padding: 0 var(--space-md) 0 calc(var(--size-md) + var(--space-xs) + var(--space-sm)); }
+.category { position: absolute; top: 0; inset-inline-start: calc((var(--i) + 0.5) * (100% + var(--space-xs)) / var(--n) - var(--space-xs) / 2); translate: -50% 0; white-space: nowrap; font-size: var(--hud-label-size); font-weight: var(--hud-label-weight); font-stretch: var(--hud-figure-stretch); color: var(--data-head-ink); }
+#Ticks { position: relative; inline-size: 100%; block-size: calc(var(--hud-label-size) * 1.5); }
+.dense .category:nth-child(even) { display: none; }
+@container (width < 520px) {
+  .dense .category:nth-child(even) { display: block; }
+  .dense .category:not(:nth-child(3n + 1)) { display: none; }
+}
 </style>
