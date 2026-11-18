@@ -19,6 +19,7 @@ use og_render::{
 };
 
 mod crowds;
+mod decal_stage;
 mod effect_materials;
 mod fire;
 mod models;
@@ -26,8 +27,10 @@ mod particles;
 mod post;
 mod showcase;
 mod sprites;
+mod trails_stage;
 
 pub use crowds::*;
+pub use decal_stage::*;
 pub use effect_materials::*;
 pub use fire::*;
 pub use models::*;
@@ -35,6 +38,7 @@ pub use particles::*;
 pub use post::*;
 pub use showcase::*;
 pub use sprites::*;
+pub use trails_stage::*;
 
 /// Advances every clock of the scene to `tick`: the scene's, each particle
 /// system's and each trail's.

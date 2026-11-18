@@ -874,13 +874,15 @@ pub fn build(name: &str) -> Result<GfxScene, String> {
             Ok(())
         },
         "trails-beams" => |g, _| {
-            g.scene = fx::trails_scene();
+            g.scene = fx::trails_stage_scene();
             g.frames = 50;
-            g.update = Some(fx::move_wisps);
+            g.update = Some(fx::move_ward_wisps);
             Ok(())
         },
+        // A struck corner of the shrine court at dusk: crater, scorch,
+        // rune and moss, every mark a decal.
         "decals" => |g, _| {
-            g.scene = fx::decals_scene();
+            g.scene = fx::decals_stage_scene();
             Ok(())
         },
         // 642 normal-mapped bullet holes on a wall and the ground (R7).
