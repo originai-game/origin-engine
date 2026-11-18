@@ -65,6 +65,37 @@ fn font(path: &str) -> Vec<u8> {
     .expect("a font")
 }
 
+/// Instrument Sans bold E is four overlapping rectangles: the stem runs
+/// x=50..204, and the top bar x=122..574, y=602..720 (1000 units/em).
+/// Neither x=122 nor x=204 is an edge inside their overlap. A field of
+/// the raw contours leaves a near-zero-distance seam there, which becomes
+/// a translucent ghost stroke when the glyph is enlarged.
+#[test]
+fn overlapping_font_strokes_have_no_internal_distance_edges() {
+    let ttf = font("styles/shared/InstrumentSans[wdth,wght].ttf");
+    let g = render_glyph_on(
+        &ttf,
+        &[(*b"wght", 700.0), (*b"wdth", 100.0)],
+        'E',
+        48.0,
+        16.0,
+        0,
+    )
+    .unwrap();
+    let sample = |x: f32, y: f32| {
+        let col = ((x - g.plane[0]) * 48.0) as u32;
+        let row = ((g.plane[3] - y) * 48.0) as u32;
+        g.rgba[((row * g.width + col) * 4) as usize]
+    };
+    for (x, minimum) in [(0.122, 170), (0.204, 160)] {
+        // Both sampled texel centres are over two atlas pixels inside
+        // the union; the first is further from its concave corner.
+        assert!(sample(x, 0.65) > minimum, "internal overlap at x={x}");
+    }
+    assert!(sample(0.3, 0.52) < 110, "the gap between bars stays empty");
+    assert!(sample(0.04, 0.5) < 128, "outside the stem stays outside");
+}
+
 /// The nonzero winding at (x, y) of closed polygons.
 fn winding(contours: &[Vec<(i32, i32)>], x: f32, y: f32) -> i32 {
     let mut w = 0;

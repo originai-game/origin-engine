@@ -55,6 +55,66 @@ impl Flatten {
     }
 }
 
+/// Only edges of the nonzero fill contribute to its distance. Split at
+/// crossings before testing each piece's two sides: an overlapping font
+/// stroke's edge can be partly on the boundary and partly inside the ink.
+fn boundary(segments: &[[f32; 4]]) -> Vec<[f32; 4]> {
+    let inside = |x: f32, y: f32| {
+        let mut winding = 0;
+        for &[ax, ay, bx, by] in segments {
+            if (ay <= y) != (by <= y) && ax + (y - ay) / (by - ay) * (bx - ax) > x {
+                winding += if by > ay { 1 } else { -1 };
+            }
+        }
+        winding != 0
+    };
+    let cross = |ax: f32, ay: f32, bx: f32, by: f32| ax * by - ay * bx;
+    let mut out = Vec::new();
+    for &[ax, ay, bx, by] in segments {
+        let (dx, dy) = (bx - ax, by - ay);
+        let len2 = dx * dx + dy * dy;
+        if len2 == 0.0 {
+            continue;
+        }
+        let mut cuts = vec![0.0, 1.0];
+        for &[cx, cy, ex, ey] in segments {
+            let (vx, vy) = (ex - cx, ey - cy);
+            let den = cross(dx, dy, vx, vy);
+            if den != 0.0 {
+                let t = cross(cx - ax, cy - ay, vx, vy) / den;
+                let u = cross(cx - ax, cy - ay, dx, dy) / den;
+                if t > 0.0 && t < 1.0 && (0.0..=1.0).contains(&u) {
+                    cuts.push(t);
+                }
+            } else if cross(cx - ax, cy - ay, dx, dy) == 0.0 {
+                // Collinear strokes can share only part of an edge.
+                for (x, y) in [(cx, cy), (ex, ey)] {
+                    let t = ((x - ax) * dx + (y - ay) * dy) / len2;
+                    if t > 0.0 && t < 1.0 {
+                        cuts.push(t);
+                    }
+                }
+            }
+        }
+        cuts.sort_by(f32::total_cmp);
+        cuts.dedup();
+        let len = len2.sqrt();
+        for pair in cuts.windows(2) {
+            let (a, b) = (pair[0], pair[1]);
+            let mid = (a + b) * 0.5;
+            let (x, y) = (ax + mid * dx, ay + mid * dy);
+            // In atlas pixels, well below a texel. Bound it by the
+            // piece's length so tiny features do not sample past a corner.
+            let side = (len * (b - a) * 0.01).min(0.0001) / len;
+            let (nx, ny) = (-dy * side, dx * side);
+            if inside(x + nx, y + ny) != inside(x - nx, y - ny) {
+                out.push([ax + a * dx, ay + a * dy, ax + b * dx, ay + b * dy]);
+            }
+        }
+    }
+    out
+}
+
 impl ttf_parser::OutlineBuilder for Flatten {
     fn move_to(&mut self, x: f32, y: f32) {
         let p = self.point(x, y);
@@ -198,6 +258,7 @@ pub fn render_glyph_on(
         return Some(blank);
     }
     let segments = outline.segments;
+    let edges = boundary(&segments);
     let mut rgba = vec![0u8; (width * height * 4) as usize];
     for row in 0..height {
         // Atlas rows go top to bottom; the outline is y up.
@@ -206,7 +267,7 @@ pub fn render_glyph_on(
             let px = col as f32 + 0.5;
             let mut best = f32::MAX;
             let mut winding = 0i32;
-            for s in &segments {
+            for s in &edges {
                 let [x0, y0, x1, y1] = *s;
                 // Distance to the segment, squared.
                 let (dx, dy) = (x1 - x0, y1 - y0);
@@ -221,9 +282,11 @@ pub fn render_glyph_on(
                 if d < best {
                     best = d;
                 }
+            }
+            for &[x0, y0, x1, y1] in &segments {
                 // The nonzero rule along a ray to +x.
                 if (y0 <= py) != (y1 <= py) {
-                    let x = x0 + (py - y0) / (y1 - y0) * dx;
+                    let x = x0 + (py - y0) / (y1 - y0) * (x1 - x0);
                     if x > px {
                         winding += if y1 > y0 { 1 } else { -1 };
                     }
