@@ -193,6 +193,11 @@ and the dither cells.
 - hatchingDepth finds its edges within one stroke spacing, with the
   same thresholds that inkDepth uses. Strokes then gather on the lines
   that inkDepth inks.
+- For an engraved landscape, hatchingDistance separates near shade from
+  distant hills even when they share a tone. Choose it beyond the main
+  subjects so their strokes stay strong while the distance goes bare.
+  This is stroke aerial perspective, not fog: the wash, lighting and
+  ink contours keep their own settings.
 - hatchingKeepColor's wash is as light as one-ink hatching's paper. It
   keeps more of a strong colour's chroma than of a weak tint's, so props
   keep their colour while a greyish floor goes to paper. Conformed art

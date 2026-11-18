@@ -84,6 +84,7 @@ fn scene(offset: Vec3, space: StyliseSpace) -> RenderScene {
         paper: [1.0; 3],
         space,
         depth: 0.0,
+        distance: 0.0,
         keep_color: false,
     });
     scene

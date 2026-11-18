@@ -132,6 +132,7 @@ pub fn print_scene() -> RenderScene {
         paper: [1.0; 3],
         space: StyliseSpace::Screen,
         depth: 0.0,
+        distance: 60.0,
         keep_color: false,
     });
     scene.look.stylise.ink = Some(Ink {
@@ -366,6 +367,7 @@ pub fn surface_scene() -> RenderScene {
         paper: [1.0; 3],
         space: StyliseSpace::Surface,
         depth: 0.0,
+        distance: 0.0,
         keep_color: false,
     });
     scene.look.stylise.paint = Some(Paint {

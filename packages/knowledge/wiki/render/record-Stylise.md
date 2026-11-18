@@ -53,6 +53,7 @@ Token `og.Stylise`, registered under the schema name `og.Stylise`; its value typ
 | `hatchingPaper` | `Color` | `{ r: 1, g: 1, b: 1 }` | — | — | — | The paper the strokes lie on (linear): one-ink hatching lifts the ground's light tones towards it, and under hatchingKeepColor the wash lies on the paper's colour at the wash's own lightness (a cream sketchbook, a grey card, a blue print); white keeps the frame's own. |
 | `hatchingSpace` | `StyliseSpace` | `"screen"` | — | — | — | Where the strokes lie: screen, stripes over the frame that follow the tone alone; surface, strokes on the surfaces that follow the tone and the form and stay on them as the camera moves (hatchingScale is then about the spacing in pixels where they lie); object, the same in each instance's own space. |
 | `hatchingDepth` | `number` | `0` | 0 … 1 | `ratio` | tunable | Hatching from depth as well as luminance: the depth-normal prepass's silhouettes and creases (inkDepthThreshold's and inkNormalThreshold's edges) darken the tone the strokes follow at this strength, so strokes gather along contours and folds. 0 is the tone alone; above 0 the frame runs the prepass. See `looks §9`. |
+| `hatchingDistance` | `number` | `0` | ≥ 0 | `m` | tunable | Aerial perspective: view depth in metres at which stroke width and ink strength halve, thinning exponentially into bare paper. 0 is off. Above 0 runs the prepass in every pattern space and leaves the sky bare. The wash and contour weighting stay unchanged. See `looks §9`. |
 
 #### Paint
 
@@ -229,6 +230,12 @@ resource Stylise {
     min 0
     max 1
     unit ratio
+    tunable true
+    guide "looks §9"
+  }
+  field hatchingDistance f32 "Aerial perspective: view depth in metres at which stroke width and ink strength halve, thinning exponentially into bare paper. 0 is off. Above 0 runs the prepass in every pattern space and leaves the sky bare. The wash and contour weighting stay unchanged." {
+    min 0
+    unit m
     tunable true
     guide "looks §9"
   }

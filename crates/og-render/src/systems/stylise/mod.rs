@@ -22,8 +22,9 @@ pub(crate) mod stylise_object;
 /// (laid in each instance's own space, [`StyliseSpace::Object`]),
 /// `ditherSpace` (the dither's cells on the surfaces, [`Quantize::space`]),
 /// `halftoneCmyk` ([`HalftoneMode::Cmyk`], misregistration and
-/// [`HalftoneRegion`]), `hatchingColor` ([`Hatching::keep_color`]) and
-/// `hatchingPaper` ([`Hatching::paper`])
+/// [`HalftoneRegion`]), `hatchingColor` ([`Hatching::keep_color`]),
+/// `hatchingPaper` ([`Hatching::paper`]) and
+/// `hatchingDistance` ([`Hatching::distance`])
 /// ([`Stylise`]);
 /// `toon`, `shadowTint`, `shadowDarkness`, `rim`, `outline`, `outlineDistance`,
 /// `flatShading`, `surface`, `toonAmbient` (with the anti-aliased bands and
@@ -49,6 +50,7 @@ pub const STYLISE_DRAWN: &[&str] = &[
     "halftoneCmyk",
     "hatchingColor",
     "hatchingPaper",
+    "hatchingDistance",
     "toon",
     "shadowTint",
     "shadowDarkness",
@@ -330,6 +332,10 @@ pub struct Hatching {
     /// within one stroke spacing. 0 is the tone alone; above 0 the frame
     /// runs the prepass.
     pub depth: f32,
+    /// View depth in metres at which stroke width and ink strength
+    /// halve. 0 disables aerial perspective; above 0 reads the prepass
+    /// and leaves the sky bare, without changing the wash or tone.
+    pub distance: f32,
     /// Colour hatching: the ground keeps its colour and each stroke is
     /// that colour darkened towards [`Hatching::color`], instead of
     /// strokes of one ink over a paper-light ground.
@@ -844,13 +850,13 @@ impl Stylise {
         ]
     }
 
-    /// Whether a pass reads the depth-normal prepass's edges: ink or
-    /// hatching with `depth` above 0.
+    /// Whether the lines pass reads the depth-normal prepass: ink or
+    /// hatching on depth edges, or hatching with aerial perspective.
     pub fn depth_edges(&self) -> bool {
         self.ink.is_some_and(|i| i.depth > 0.0)
             || self
                 .hatching
-                .is_some_and(|h| h.depth > 0.0 && h.strength > 0.0)
+                .is_some_and(|h| (h.depth > 0.0 || h.distance > 0.0) && h.strength > 0.0)
     }
 
     /// Whether any primitive is on.

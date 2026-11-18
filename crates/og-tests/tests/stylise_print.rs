@@ -85,6 +85,85 @@ fn frame(renderer: &mut Renderer, scene: &RenderScene) -> Vec<u8> {
     renderer.read_offscreen().expect("capture").pixels
 }
 
+/// Equal-tone near and far panels must not receive equal ink when aerial
+/// perspective is enabled. No fog or lighting can explain the reduction.
+#[test]
+#[ignore = "requires GPU"]
+fn hatching_leaves_distant_equal_tones_bare_in_every_pattern_space() {
+    use glam::Mat4;
+    use og_render::{Hatching, Projection, StandardMaterial, shapes};
+    let mut renderer = Renderer::new_blocking(&desc()).expect("renderer");
+    let mut scene = field([160; 3]);
+    scene.frame.camera = Camera {
+        position: Vec3::ZERO,
+        target: Vec3::NEG_Z,
+        projection: Projection::Orthographic { height: 4.0 },
+        exposure: Exposure::linear(1.0),
+        far: 200.0,
+        ..Default::default()
+    };
+    let mesh = scene.add_mesh(shapes::cuboid(Vec3::ONE));
+    let material = scene.add_standard_material(StandardMaterial {
+        color: Vec3::splat(0.15),
+        unlit: 1,
+        ..Default::default()
+    });
+    for (x, z) in [(-1.5, -2.0), (1.5, -82.0)] {
+        scene.add_instance(
+            mesh,
+            material,
+            Mat4::from_translation(Vec3::new(x, 0.0, z))
+                * Mat4::from_scale(Vec3::new(1.5, 2.5, 0.1)),
+        );
+    }
+    let ink = |px: &[u8], x: usize| {
+        (60..120)
+            .flat_map(|y| (x..x + 36).map(move |x| (y * W + x) * 4))
+            .map(|i| 1.0 - px[i] as f32 / 255.0)
+            .sum::<f32>()
+            / (60.0 * 36.0)
+    };
+    for (space, keep_color) in [
+        StyliseSpace::Screen,
+        StyliseSpace::Surface,
+        StyliseSpace::Object,
+    ]
+    .into_iter()
+    .flat_map(|space| [false, true].map(|keep| (space, keep)))
+    {
+        scene.look.stylise.hatching = Some(Hatching {
+            strength: 1.0,
+            scale: 6.0,
+            levels: 4,
+            angle_degrees: 0.0,
+            color: [0.0; 3],
+            paper: [1.0; 3],
+            space,
+            depth: 0.0,
+            distance: 0.0,
+            keep_color,
+        });
+        let plain = frame(&mut renderer, &scene);
+        let (near, far) = (ink(&plain, 75), ink(&plain, 210));
+        assert!(
+            (near - far).abs() < 0.03 && near > 0.1,
+            "{space:?}: equal-tone control {near}/{far}"
+        );
+        scene.look.stylise.hatching.as_mut().unwrap().distance = 20.0;
+        let aerial = frame(&mut renderer, &scene);
+        let (near, far) = (ink(&aerial, 75), ink(&aerial, 210));
+        assert!(
+            far < near * 0.5 && near > 0.1,
+            "{space:?}: aerial perspective {near}/{far}"
+        );
+        let sky: Vec<_> = (0..W).map(|x| aerial[(10 * W + x) * 4]).collect();
+        assert!(
+            sky.iter().max().unwrap() - sky.iter().min().unwrap() <= 1,
+            "the sky keeps its wash without strokes"
+        );
+    }
+}
+
 /// The distinct colours of a frame (colours within 2 of 255 on every
 /// channel count as one).
 fn colours(px: &[u8]) -> Vec<[u8; 3]> {

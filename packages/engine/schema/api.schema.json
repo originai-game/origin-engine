@@ -25832,6 +25832,14 @@
           "x-og-unit": "ratio",
           "x-og-tunable": true
         },
+        "hatchingDistance": {
+          "type": "number",
+          "description": "Aerial perspective: view depth in metres at which stroke width and ink strength halve, thinning exponentially into bare paper. 0 is off. Above 0 runs the prepass in every pattern space and leaves the sky bare. The wash and contour weighting stay unchanged.\nSee `looks §9`.",
+          "default": 0,
+          "minimum": 0,
+          "x-og-unit": "m",
+          "x-og-tunable": true
+        },
         "paintRadius": {
           "type": "number",
           "description": "Painterly smoothing (an anisotropic Kuwahara filter): flat regions and incoherent texture become strokes of one colour this many logical pixels across; edges and thin lines keep their shape; 0 is off. Under a profile 2d art contract the cook paints each texture and the frame draws neither pass.\nSee `looks §10`.",

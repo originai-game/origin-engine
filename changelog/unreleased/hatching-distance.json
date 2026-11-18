@@ -1,0 +1,8 @@
+{
+  "added": [
+    {
+      "member": "Stylise.hatchingDistance",
+      "summary": "Opt-in aerial perspective thins hatch stroke width and ink strength with view depth in screen, surface and object space, leaving the sky bare without changing the wash or contour weighting. Zero retains the existing look."
+    }
+  ]
+}

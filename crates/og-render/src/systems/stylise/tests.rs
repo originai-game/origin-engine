@@ -114,10 +114,20 @@ fn surface_space_asks_for_the_prepass_only_where_it_draws() {
         paper: [1.0; 3],
         space: StyliseSpace::Screen,
         depth: 0.0,
+        distance: 0.0,
         keep_color: false,
     });
     assert!(!s.on_surfaces(), "screen hatching");
     assert!(!s.depth_edges(), "hatching on the tone alone");
+    s.hatching.as_mut().unwrap().distance = 30.0;
+    assert!(
+        s.depth_edges(),
+        "aerial perspective needs depth in screen space"
+    );
+    s.hatching.as_mut().unwrap().strength = 0.0;
+    assert!(!s.depth_edges(), "disabled hatching needs no prepass");
+    s.hatching.as_mut().unwrap().strength = 0.8;
+    s.hatching.as_mut().unwrap().distance = 0.0;
     s.hatching.as_mut().unwrap().depth = 0.5;
     assert!(
         s.depth_edges(),

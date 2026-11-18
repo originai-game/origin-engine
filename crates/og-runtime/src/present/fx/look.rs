@@ -428,6 +428,7 @@ pub(super) fn stylise(
                 paper: rgb(&s.hatching_paper),
                 space: space(s.hatching_space),
                 depth: s.hatching_depth,
+                distance: s.hatching_distance,
                 keep_color: s.hatching_keep_color,
             });
         }

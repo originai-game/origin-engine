@@ -54,7 +54,7 @@ struct Stylise {
   wash: vec4<f32>,            // the watercolour wash: x edge darkening, y granulation, z turbulence, w dry brush
   wash_paper: vec4<f32>,      // xyz: the wash's paper colour (linear), w: wobble (logical pixels)
   print: vec4<f32>,           // x: halftone mode (0 one ink, 1 cmyk), y: misregistration (logical pixels), z: halftone region (0 every tone, 1 shade, 2 highlight), w: 1 hatching keeps the colour under its strokes
-  hatching_paper: vec4<f32>,  // rgb: the paper the hatching lies on (linear; white without hatching)
+  hatching_paper: vec4<f32>,  // rgb: paper (linear); w: aerial-perspective half-distance in metres (0 off)
   wash2: vec4<f32>,           // x: the wash's dilution (0 as painted, towards 1 thinned to the paper)
   strokes: vec4<f32>,         // x: the brush strokes (Paint::strokes; 0 none)
 };
@@ -1032,14 +1032,14 @@ fn fade_in(threshold: f32, t: f32, levels: f32) -> f32 {
 // The most stroke sets (Hatching::levels).
 const HATCH_LEVELS: f32 = 6.0;
 
-fn hatch_screen(p: vec2<f32>, t: f32) -> f32 {
+fn hatch_screen(p: vec2<f32>, t: f32, aerial: f32) -> f32 {
   let levels = clamp(st.hatching.z, 1.0, HATCH_LEVELS);
   var ink = 0.0;
   for (var k = 0.0; k < levels; k += 1.0) {
     let threshold = 1.0 - (k + 1.0) / (levels + 1.0);
     if (t < threshold) {
       let turn = st.hatching.w + k * (0.5 * PI / max(levels - 1.0, 1.0)) + select(0.0, 0.5 * PI, (i32(k) & 1) == 1);
-      let f = fade_in(threshold, t, levels);
+      let f = fade_in(threshold, t, levels) * aerial;
       ink = max(ink, stroke(p, turn, st.hatching.y, f) * f);
     }
   }
@@ -1058,7 +1058,7 @@ fn stroke_on(q: vec2<f32>, angle: f32, spacing: f32, width: f32, aa: f32) -> f32
 // The tonal art map on one plane at one octave: the screen hatching's
 // stroke sets and thresholds, laid in metres, each stroke one screen pixel
 // wide across itself (`j`: the plane's steps per pixel, plane_steps).
-fn hatch_plane(q: vec2<f32>, t: f32, spacing: f32, j: vec4<f32>) -> f32 {
+fn hatch_plane(q: vec2<f32>, t: f32, spacing: f32, j: vec4<f32>, aerial: f32) -> f32 {
   let levels = clamp(st.hatching.z, 1.0, HATCH_LEVELS);
   var ink = 0.0;
   for (var k = 0.0; k < levels; k += 1.0) {
@@ -1066,7 +1066,7 @@ fn hatch_plane(q: vec2<f32>, t: f32, spacing: f32, j: vec4<f32>) -> f32 {
     if (t < threshold) {
       let turn = st.hatching.w + k * (0.5 * PI / max(levels - 1.0, 1.0)) + select(0.0, 0.5 * PI, (i32(k) & 1) == 1);
       let width = screen_width(vec2<f32>(cos(turn), sin(turn)), j);
-      let f = fade_in(threshold, t, levels);
+      let f = fade_in(threshold, t, levels) * aerial;
       ink = max(ink, stroke_on(q, turn, spacing, width * f, 0.75 * width) * f);
     }
   }
@@ -1077,7 +1077,7 @@ fn hatch_plane(q: vec2<f32>, t: f32, spacing: f32, j: vec4<f32>) -> f32 {
 // space, so they wrap round forms and stay on them as the camera moves;
 // the spacing keeps about st.hatching.y pixels by fading every other line
 // out between two octaves.
-fn hatch_surface(s: Surf, t: f32) -> f32 {
+fn hatch_surface(s: Surf, t: f32, aerial: f32) -> f32 {
   let o = octave(st.hatching.y, s.pixel);
   let w = tri_weights(s.n);
   var ink = 0.0;
@@ -1085,8 +1085,8 @@ fn hatch_surface(s: Surf, t: f32) -> f32 {
     if (w[a] < 0.002) { continue; }
     let q = plane_uv(s.p, a);
     let j = plane_steps(s, a);
-    let fine = hatch_plane(q, t, o.x, j);
-    let coarse = hatch_plane(q, t, o.x * 2.0, j);
+    let fine = hatch_plane(q, t, o.x, j, aerial);
+    let coarse = hatch_plane(q, t, o.x * 2.0, j, aerial);
     ink += w[a] * mix(fine, coarse, o.y);
   }
   return ink;
@@ -1266,18 +1266,29 @@ fn lines(in: VsOut) -> vec3<f32> {
     if (st.ink_depth.w > 0.0) {
       th = max(t - st.ink_depth.w * depth_band(px), 0.0);
     }
+    // Aerial perspective is independent of TAM tone and pattern space:
+    // thin each stroke and its ink smoothly, never brighten the wash or
+    // slide the pattern. Sky has no surface to hatch at a finite depth.
+    var aerial = 1.0;
+    if (st.hatching_paper.w > 0.0) {
+      let d = view_depth(px);
+      aerial = 0.0;
+      if (d > 0.0 && d < st.ink_depth.x * 0.999) {
+        aerial = exp2(-d / st.hatching_paper.w);
+      }
+    }
     var ink = 0.0;
     if (clump) {
       // A crown's leaves and a meadow's blades each face their own way:
       // strokes laid on them would be one mark per leaf. They are hatched
       // as one mass, on the screen.
-      ink = hatch_screen(p, th);
+      ink = hatch_screen(p, th, aerial);
     } else if (st.surface.z > 1.5 && osurf.ok) {
-      ink = hatch_surface(osurf, th);
+      ink = hatch_surface(osurf, th, aerial);
     } else if (st.surface.z > 0.5 && surf.ok) {
-      ink = hatch_surface(surf, th);
+      ink = hatch_surface(surf, th, aerial);
     } else {
-      ink = hatch_screen(p, th);
+      ink = hatch_screen(p, th, aerial);
     }
     if (st.print.w > 0.5) {
       // Colour hatching (Stylise.hatchingKeepColor): the ground is a wash,

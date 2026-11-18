@@ -210,6 +210,12 @@
       tunable true
       guide "looks §9"
     }
+    field hatchingDistance f32 "Aerial perspective: view depth in metres at which stroke width and ink strength halve, thinning exponentially into bare paper. 0 is off. Above 0 runs the prepass in every pattern space and leaves the sky bare. The wash and contour weighting stay unchanged." {
+      min 0
+      unit m
+      tunable true
+      guide "looks §9"
+    }
     group "Paint"
     field paintRadius f32 "Painterly smoothing (an anisotropic Kuwahara filter): flat regions and incoherent texture become strokes of one colour this many logical pixels across; edges and thin lines keep their shape; 0 is off. Under a profile 2d art contract the cook paints each texture and the frame draws neither pass." {
       min 0
