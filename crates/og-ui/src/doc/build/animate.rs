@@ -31,6 +31,16 @@ pub enum StyleTarget {
     Part(u64, &'static str),
 }
 
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum Effects {
+    /// Old declarations and existing runs, sampled without creating motion.
+    Before,
+    /// New keyframes, excluding transitions from after-change inheritance.
+    After,
+    /// Presented values; only this pass commits transition/animation state.
+    Current,
+}
+
 /// What a resolve leaves the motion state, applied as the element builds.
 #[derive(Clone, Debug, PartialEq)]
 pub struct StyleCommit {
@@ -91,12 +101,97 @@ impl Ui {
         animations: &[CssAnimation],
         basis: crate::doc::calc::Basis,
         sheet: Option<&crate::doc::at_rules::Sheet>,
+        attr: &dyn Fn(&str) -> Option<String>,
+        attributes: &BTreeMap<String, String>,
+        scope: &str,
     ) -> Option<Arc<StyleCommit>> {
-        let (key, part) = match target {
-            StyleTarget::Element(key) => (key, false),
-            StyleTarget::Part(key, _) => (key, true),
-        };
-        let previous = match target {
+        // Static elements need neither effect samples nor retained motion
+        // state. An inherited effect still crosses an otherwise idle bridge.
+        if transitions.is_empty()
+            && animations.is_empty()
+            && self.previous_style(target).is_none()
+            && cascade.computed.before.is_none()
+            && cascade.computed.after.is_none()
+        {
+            return None;
+        }
+        let recipe = cascade.recipe_with_attributes(attributes);
+        let inherited = recipe.inherited();
+        let mut before_animations = Vec::new();
+        // CSS Transitions §3: advance the OLD style's declarative effects
+        // to now, rather than starting from the last frame's strings.
+        let before = self.previous_style(target).and_then(|previous| {
+            let old = previous.recipe.as_ref()?;
+            let mut values = old.cascade(inherited.before.as_deref().unwrap_or(inherited), sheet);
+            let motion = values
+                .values
+                .iter()
+                .filter(|(name, ..)| super::super::motion::longhand(name))
+                .map(|(name, value, _)| (name.clone(), value.clone()))
+                .collect::<Vec<_>>();
+            let (old_transitions, mut old_animations) =
+                super::super::motion::resolve(&motion, &previous.scope, &mut values.diagnostics);
+            for (animation, name) in old_animations.iter_mut().zip(&previous.names) {
+                animation.name.clone_from(name);
+            }
+            before_animations.clone_from(&old_animations);
+            self.settle_effects(
+                target,
+                &mut values,
+                &[],
+                &old_transitions,
+                &old_animations,
+                old.basis().unwrap_or(basis),
+                sheet,
+                &|name| old.attribute(name),
+                Effects::Before,
+                None,
+                None,
+            );
+            Some(values)
+        });
+        // After-change style uses the OLD animation-* settings (Transitions
+        // §3). Starting or canceling an animation must not start a transition.
+        // Inheritance includes those animations but never parent transitions.
+        let mut after = recipe.cascade(inherited.after.as_deref().unwrap_or(inherited), sheet);
+        self.settle_effects(
+            target,
+            &mut after,
+            &[],
+            transitions,
+            &before_animations,
+            basis,
+            sheet,
+            attr,
+            Effects::After,
+            None,
+            None,
+        );
+        let mut commit = self.settle_effects(
+            target,
+            cascade,
+            starting,
+            transitions,
+            animations,
+            basis,
+            sheet,
+            attr,
+            Effects::Current,
+            before.as_ref(),
+            Some(&after),
+        );
+        let state = commit.state.get_or_insert_with(Default::default);
+        state.recipe = Some(recipe);
+        state.scope = scope.into();
+        state.names = animations.iter().map(|a| a.name.clone()).collect();
+        let computed = Arc::make_mut(&mut cascade.computed);
+        computed.before = before.map(|c| Arc::new(c.computed.snapshot_values()));
+        computed.after = Some(Arc::new(after.computed.snapshot_values()));
+        Some(Arc::new(commit))
+    }
+
+    fn previous_style(&self, target: StyleTarget) -> Option<&StyleState> {
+        match target {
             StyleTarget::Part(key, name) => self
                 .interaction
                 .state
@@ -104,15 +199,105 @@ impl Ui {
                 .part_styles
                 .get(&key)
                 .and_then(|s| s.get(name)),
-            _ => self.interaction.state.motion.styles.get(&key),
+            StyleTarget::Element(key) => self.interaction.state.motion.styles.get(&key),
+        }
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    fn settle_effects(
+        &self,
+        target: StyleTarget,
+        cascade: &mut cascade::Cascade,
+        starting: &[(String, String, usize)],
+        transitions: &[CssTransition],
+        animations: &[CssAnimation],
+        basis: crate::doc::calc::Basis,
+        sheet: Option<&crate::doc::at_rules::Sheet>,
+        attr: &dyn Fn(&str) -> Option<String>,
+        effects: Effects,
+        before: Option<&cascade::Cascade>,
+        after: Option<&cascade::Cascade>,
+    ) -> StyleCommit {
+        let mut out = StyleCommit {
+            target,
+            state: None,
+            running: false,
         };
+        for custom in [true, false] {
+            let commit = self.animate_phase(
+                target,
+                cascade,
+                starting,
+                transitions,
+                animations,
+                basis,
+                sheet,
+                custom,
+                effects,
+                before,
+                after,
+            );
+            if custom {
+                let samples = cascade
+                    .values
+                    .iter()
+                    .filter(|(name, ..)| name.starts_with("--"))
+                    .map(|(name, value, _)| (name.clone(), value.clone()))
+                    .collect::<BTreeMap<_, _>>();
+                if !samples.is_empty() {
+                    *cascade = cascade.with_custom_effects(&samples, attr, sheet);
+                }
+            }
+            if let Some(commit) = commit {
+                if let Some(state) = &commit.state {
+                    let merged = out.state.get_or_insert_with(Default::default);
+                    merged.after.extend(state.after.clone());
+                    merged.runs.extend(state.runs.clone());
+                    // Both phases sample the same part clock; keep it once.
+                    merged.animations.clone_from(&state.animations);
+                    merged.running |= state.running;
+                }
+                out.running |= commit.running;
+            }
+        }
+        out
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    fn animate_phase(
+        &self,
+        target: StyleTarget,
+        cascade: &mut cascade::Cascade,
+        starting: &[(String, String, usize)],
+        transitions: &[CssTransition],
+        animations: &[CssAnimation],
+        basis: crate::doc::calc::Basis,
+        sheet: Option<&crate::doc::at_rules::Sheet>,
+        custom: bool,
+        effects: Effects,
+        before_change: Option<&cascade::Cascade>,
+        after_change: Option<&cascade::Cascade>,
+    ) -> Option<Arc<StyleCommit>> {
+        let (key, part) = match target {
+            StyleTarget::Element(key) => (key, false),
+            StyleTarget::Part(key, _) => (key, true),
+        };
+        let previous = self.previous_style(target);
         let styled = |name: &str| {
             (part || crate::doc::motion::channels(name).is_none())
                 && interpolate::animatable(name)
-                && !name.starts_with("--")
+                && name.starts_with("--") == custom
         };
         let covered = |name: &str| transitions.iter().rev().find(|t| t.covers(name));
-        let keyframes = |name: &str| match sheet {
+        let properties = sheet.map_or(&[][..], |s| s.properties.as_slice());
+        let registration = |name: &str| {
+            properties
+                .iter()
+                .rev()
+                .find(|(n, _)| n == name)
+                .map(|(_, p)| p)
+        };
+        let keyframes = |name: &str| match sheet.filter(|_| part) {
             Some(sheet) => sheet
                 .keyframes
                 .iter()
@@ -124,7 +309,7 @@ impl Ui {
             keyframes(&a.name).is_some_and(|k| {
                 k.styles.iter().any(|t| {
                     interpolate::animatable(&t.property)
-                        && !t.property.starts_with("--")
+                        && t.property.starts_with("--") == custom
                         && (part || !scalar_track(k, &t.property))
                 })
             })
@@ -141,9 +326,7 @@ impl Ui {
                     .filter(|(n, ..)| styled(n))
                     .map(|(n, v, _)| (n.clone(), v.clone()))
                     .collect(),
-                runs: Vec::new(),
-                animations: Vec::new(),
-                running: false,
+                ..Default::default()
             });
         let previous = previous.or(first.as_ref());
         if previous.is_none() && !has_styles && !transitioned {
@@ -199,9 +382,29 @@ impl Ui {
         // CSS Values 5 §8.2: under `interpolate-size: allow-keywords` (an
         // inherited value) a size moves to or from an intrinsic keyword
         // through calc-size().
+        let mut phase_values = cascade.values.clone();
+        if custom {
+            phase_values.extend(
+                cascade
+                    .computed
+                    .iter()
+                    .filter_map(|(n, v)| v.as_ref().map(|v| (n.clone(), v.clone(), 0))),
+            );
+        }
         let keywords = value_of(&cascade.values, "interpolate-size")
             .is_some_and(|v| v.trim() == "allow-keywords");
         let mix = |name: &str, a: &str, b: &str, p: f32| {
+            if custom {
+                return registration(name)
+                    .and_then(|r| r.interpolate(a, b, p))
+                    .unwrap_or_else(|| {
+                        if p < 0.5 {
+                            a.to_string()
+                        } else {
+                            b.to_string()
+                        }
+                    });
+            }
             keywords
                 .then(|| interpolate::mix_sizes(name, a, b, p))
                 .flatten()
@@ -209,7 +412,7 @@ impl Ui {
         };
         let mut running = false;
         let mut animated_values = Vec::new();
-        let mut animation_cascade = cascade.values.clone();
+        let mut animation_cascade = phase_values.clone();
 
         // CSS animations, in list order over the cascade (later win).
         let theme = self.theme();
@@ -227,11 +430,18 @@ impl Ui {
             } else {
                 v
             };
-            if crate::doc::calc::has_math(&v) {
+            let v = if crate::doc::calc::has_math(&v) {
                 crate::doc::calc::reduce(&v).ok()
             } else {
                 Some(v)
+            }?;
+            if custom
+                && registration(name)
+                    .is_some_and(|r| !crate::css::at_rules::matches_syntax(&r.syntax, &v))
+            {
+                return None;
             }
+            Some(v)
         };
         let mut animation_runs = Vec::new();
         for (index, a) in animations.iter().enumerate() {
@@ -286,6 +496,8 @@ impl Ui {
                     reduced,
                     &|name| value_of(values, name),
                     &compute,
+                    custom,
+                    properties,
                 )
             } else {
                 // Its timeline's progress as the motion step last read it
@@ -306,10 +518,14 @@ impl Ui {
                     false,
                     &|name| value_of(values, name),
                     &compute,
+                    custom,
+                    properties,
                 )
             };
             for (name, value) in sampled {
-                if part || !scalar_track(frames, &name) {
+                if (part || !scalar_track(frames, &name))
+                    && (!custom || !cascade.important_custom.contains(&name))
+                {
                     set(&mut animation_cascade, &name, value.clone());
                     animated_values.push((name, value));
                 }
@@ -321,8 +537,7 @@ impl Ui {
             animations: animation_runs,
             ..Default::default()
         };
-        let mut names: BTreeSet<String> = cascade
-            .values
+        let mut names: BTreeSet<String> = phase_values
             .iter()
             .map(|(n, ..)| n.clone())
             .filter(|n| styled(n) && covered(n).is_some())
@@ -337,6 +552,9 @@ impl Ui {
         }
         let written = cascade.reduced_motion_authored;
         for name in names {
+            if effects == Effects::After {
+                continue;
+            }
             let Some(t) = covered(&name) else { continue };
             // Display must keep the box alive for the opacity channels'
             // reduced-motion fade, rather than removing it immediately.
@@ -355,14 +573,22 @@ impl Ui {
             } else {
                 t.transition
             };
-            let after = value_of(&cascade.values, &name);
+            let computed_value = |c: &cascade::Cascade| {
+                if custom {
+                    c.computed.get(&name).cloned().flatten()
+                } else {
+                    value_of(&c.values, &name)
+                }
+            };
+            let after = after_change
+                .and_then(computed_value)
+                .or_else(|| value_of(&animation_cascade, &name));
             let Some(after) = after else { continue };
             state.after.insert(name.clone(), after.clone());
             let Some(previous) = previous else { continue };
-            let before = previous
-                .after
-                .get(&name)
-                .cloned()
+            let before = before_change
+                .and_then(computed_value)
+                .or_else(|| previous.after.get(&name).cloned())
                 .or_else(|| interpolate::initial(&name).map(str::to_string));
             let old = previous.runs.iter().find(|r| r.property == name);
             let sample = |r: &StyleRun| {
@@ -371,14 +597,16 @@ impl Ui {
                 if ms < 0.0 {
                     return (r.from.clone(), false);
                 }
-                let (p, done) = progress(&transition, ms, r, tps, &theme.motion);
+                let (p, done) = progress(&r.timing, ms, r, tps, &theme.motion);
                 (mix(&name, &r.from, &r.to, p), done)
             };
             let run = match old {
+                Some(r) if effects == Effects::Before => Some(r.clone()),
+                None if effects == Effects::Before => None,
                 // Still heading where it was.
                 Some(r) if r.to == after => Some(r.clone()),
                 _ => {
-                    let current = old.map(|r| sample(r).0).or(before);
+                    let current = before.or_else(|| old.map(|r| sample(r).0));
                     let duration_ms = match transition {
                         Transition::Tween { duration_ms, .. } => duration_ms.max(0.0),
                         Transition::Instant => 0.0,
@@ -390,8 +618,13 @@ impl Ui {
                                 && (!reduced || written || reduced_display)
                                 && duration_ms + t.delay_ms > 0.0
                                 && (t.discrete
-                                    || interpolate::interpolate(&name, &from, &after, 0.5)
-                                        .is_some()
+                                    || (if custom {
+                                        registration(&name)
+                                            .and_then(|r| r.interpolate(&from, &after, 0.5))
+                                    } else {
+                                        interpolate::interpolate(&name, &from, &after, 0.5)
+                                    })
+                                    .is_some()
                                     || (keywords
                                         && interpolate::mix_sizes(&name, &from, &after, 0.5)
                                             .is_some())) =>
@@ -407,7 +640,7 @@ impl Ui {
                                     let p = if ms <= 0.0 {
                                         0.0
                                     } else {
-                                        progress(&transition, ms, r, tps, &theme.motion).0
+                                        progress(&r.timing, ms, r, tps, &theme.motion).0
                                     };
                                     (
                                         r.to.clone(),
@@ -427,6 +660,7 @@ impl Ui {
                                     t.delay_ms
                                 },
                                 duration_ms: duration_ms * factor,
+                                timing: transition.resolve(&theme.motion),
                                 reversing_from,
                                 factor,
                             })

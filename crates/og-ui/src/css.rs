@@ -42,7 +42,7 @@ use og_core::ogt::Value;
 
 /// One authored CSS declaration. Values remain token streams until the
 /// winning declaration's variables are resolved against its mounted parent.
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, serde::Serialize)]
 pub struct StyleDeclaration {
     pub name: String,
     pub value: variables::Value,
@@ -50,6 +50,39 @@ pub struct StyleDeclaration {
     pub important: bool,
     /// This longhand's value must be extracted after var() substitution.
     pub pending_shorthand: Option<&'static str>,
+}
+
+/// Only these two shorthands defer extraction in `motion::expand`.
+/// Restore an interned identity, never leak a snapshot's string.
+impl<'de> serde::Deserialize<'de> for StyleDeclaration {
+    fn deserialize<D: serde::Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        #[derive(serde::Deserialize)]
+        struct Saved {
+            name: String,
+            value: variables::Value,
+            source: String,
+            important: bool,
+            pending_shorthand: Option<String>,
+        }
+        let saved = Saved::deserialize(deserializer)?;
+        let pending_shorthand = match saved.pending_shorthand.as_deref() {
+            None => None,
+            Some("transition") => Some("transition"),
+            Some("animation") => Some("animation"),
+            Some(name) => {
+                return Err(serde::de::Error::custom(format!(
+                    "unknown pending shorthand {name}"
+                )));
+            }
+        };
+        Ok(Self {
+            name: saved.name,
+            value: saved.value,
+            source: saved.source,
+            important: saved.important,
+            pending_shorthand,
+        })
+    }
 }
 
 /// The enclosing stylesheet query conditions, intersected when nested.

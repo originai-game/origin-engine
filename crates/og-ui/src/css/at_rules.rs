@@ -172,6 +172,25 @@ pub struct Property {
     pub initial: Option<String>,
 }
 
+impl Property {
+    /// Interpolate computed values by the type they parsed as (Properties
+    /// and Values API §2.5). `None` means the entire pair is discrete.
+    pub fn interpolate(&self, from: &str, to: &str, progress: f32) -> Option<String> {
+        crate::motion::interpolate::registered_interpolate(&self.syntax, from, to, progress)
+    }
+
+    /// Combine computed values by their registered type; unsupported or
+    /// discrete pairs replace the underlying value.
+    pub fn compose(
+        &self,
+        underlying: &str,
+        value: &str,
+        op: crate::motion::interpolate::Composite,
+    ) -> String {
+        crate::motion::interpolate::registered_compose(&self.syntax, underlying, value, op)
+    }
+}
+
 /// One `@counter-style` (CSS Counter Styles 3).
 #[derive(Clone, Debug, PartialEq)]
 pub struct CounterStyle {
@@ -1030,12 +1049,23 @@ pub fn matches_syntax(syntax: &str, value: &str) -> bool {
             },
         };
         match multiplier {
-            Some(sep) => value
-                .split(sep)
-                .map(str::trim)
-                .filter(|v| !v.is_empty())
-                .all(|v| component_matches(component, v)),
+            Some(' ') => {
+                let items = super::text_css::split_top(value);
+                !items.is_empty() && items.iter().all(|v| component_matches(component, v))
+            }
+            Some(',') => cssparser::Parser::new(value)
+                .parse_comma_separated(|p| {
+                    let start = p.position();
+                    while p.next_including_whitespace_and_comments().is_ok() {}
+                    if component_matches(component, p.slice_from(start).trim()) {
+                        Ok(())
+                    } else {
+                        Err(cssparser::ParseError::<()>::custom(()))
+                    }
+                })
+                .is_ok(),
             None => component_matches(component, value),
+            _ => unreachable!(),
         }
     })
 }

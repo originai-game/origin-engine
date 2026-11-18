@@ -1,0 +1,6 @@
+{
+  "fixed": [{
+    "member": "UI registered custom-property motion",
+    "summary": "Transitions and keyframes now animate registered custom properties by their CSS types before resolving dependent variables, inherited values, layout and native-part paint. Interrupted and reversed transitions and saved motion resume from their current computed values; unregistered properties remain discrete."
+  }]
+}

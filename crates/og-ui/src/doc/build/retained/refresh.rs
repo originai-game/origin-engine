@@ -190,6 +190,14 @@ impl RetainedHost {
         self.restore_instances(ui, env)?;
         self.refresh_collections(ui, env)?;
         self.sync_interaction(ui)?;
+        self.part_reads = ui.style.part_styles.borrow().inherited_reads();
+        for (key, names) in self.part_reads.clone() {
+            if let Some(node) = self.by_key.get(&key).cloned() {
+                for name in names {
+                    self.read_through(node.clone(), &name);
+                }
+            }
+        }
         for key in std::mem::take(&mut ui.docs.state_mut().edited) {
             let Some(node) = self.by_key.get(&key).cloned() else {
                 continue;
@@ -901,6 +909,9 @@ impl RetainedHost {
             None,
         );
         e.cascades = kept;
+        if let Some(reads) = self.part_reads.get(&identity.key) {
+            values.cascade.inherited_reads.extend(reads.iter().cloned());
+        }
         values.ordinal = ui.docs.ordinal_of(
             &e.document.nodes[e.index],
             &values,

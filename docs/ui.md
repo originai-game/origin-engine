@@ -1873,6 +1873,14 @@ value. Typed custom properties compute math before syntax validation and
 `var()` substitution; for example, a registered `<percentage>` can set
 `--sweep: calc(var(--value) * 100%)` from a 0..1 value and feed a conic
 gradient stop. Universal (`*`) properties keep their token sequence.
+Registered custom properties can be named in `transition-property` and
+`@keyframes`. Their typed samples are computed before dependent `var()`
+aliases, inherited values and ordinary declarations are resolved, so a
+moving percentage can drive a gradient, layout or a native control's part.
+`transition: all` still selects ordinary properties only. Unregistered or
+universal custom properties animate discretely; their transitions require
+`allow-discrete`. Interruption, reversal and snapshot restore use the same
+motion clock as ordinary properties.
 `@counter-style` and `@position-try` feed counters and anchor positioning.
 
 **Cascade order.** A declaration ranks by its importance, then its origin

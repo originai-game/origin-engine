@@ -306,7 +306,18 @@ pub struct PropSet {
 /// ones of an earlier. The default style's and a pack's sheets are adopted
 /// into every tree, so theirs are the element's own tree's rules and rank
 /// there by layer.
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(
+    Clone,
+    Copy,
+    Debug,
+    Default,
+    PartialEq,
+    Eq,
+    PartialOrd,
+    Ord,
+    serde::Serialize,
+    serde::Deserialize,
+)]
 pub enum TreeContext {
     /// A rule of the element's own tree, or of a sheet adopted into it.
     #[default]

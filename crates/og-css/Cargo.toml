@@ -9,6 +9,7 @@ description = "Origin Engine CSS values: the value lexer and calc(), shared by o
 [dependencies]
 # Tokens quote their strings as .ogt text.
 og-core = { path = "../og-core" }
+serde = { version = "1", features = ["derive"] }
 # CSS Color 4 and 5: absolute colours, every space and conversion, named
 # colours and interpolation (linebender, as Servo uses it); libm, never
 # host floating-point math.

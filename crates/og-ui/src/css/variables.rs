@@ -24,15 +24,52 @@ pub struct Value(Vec<Piece>);
 /// it between that base and this element, so an element that sets one
 /// copies the layer, never the base: a style's thousand tokens cost an
 /// element nothing to inherit or to set one over.
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Debug, Default, serde::Serialize, serde::Deserialize)]
+#[serde(from = "ComputedSnapshot", into = "ComputedSnapshot")]
 pub struct Computed {
     base: Arc<Map>,
     /// The names set over `base`: `Some` a value, `None` a name removed.
     layer: Arc<BTreeMap<String, Option<Option<String>>>>,
     pub(crate) properties: BTreeMap<String, String>,
+    /// Current-tick before-change inheritance; derived, never snapshotted.
+    /// Equality and dependency invalidation compare effective values only.
+    pub(crate) before: Option<Arc<Computed>>,
+    /// Current-tick target inheritance, with keyframes but no transitions.
+    /// Like `before`, this is derived and excluded from snapshots/equality.
+    pub(crate) after: Option<Arc<Computed>>,
+    pub(crate) animation_tainted: BTreeSet<String>,
 }
 
 type Map = BTreeMap<String, Option<String>>;
+
+/// Effective values only: Arc layering and motion contexts are runtime details.
+#[derive(Clone, Debug, PartialEq, serde::Serialize, serde::Deserialize)]
+struct ComputedSnapshot {
+    custom: Map,
+    properties: BTreeMap<String, String>,
+    animation_tainted: BTreeSet<String>,
+}
+
+impl From<Computed> for ComputedSnapshot {
+    fn from(value: Computed) -> Self {
+        Self {
+            custom: value.iter().map(|(n, v)| (n.clone(), v.clone())).collect(),
+            properties: value.properties,
+            animation_tainted: value.animation_tainted,
+        }
+    }
+}
+
+impl From<ComputedSnapshot> for Computed {
+    fn from(value: ComputedSnapshot) -> Self {
+        Self {
+            base: Arc::new(value.custom),
+            properties: value.properties,
+            animation_tainted: value.animation_tainted,
+            ..Default::default()
+        }
+    }
+}
 
 /// The layer folds into a new base once it holds more names than this and
 /// a quarter of the base: a layer stays small next to what it shares.
@@ -41,6 +78,7 @@ const LAYER: usize = 32;
 impl PartialEq for Computed {
     fn eq(&self, other: &Self) -> bool {
         self.properties == other.properties
+            && self.animation_tainted == other.animation_tainted
             && (self.shares(other)
                 || if Arc::ptr_eq(&self.base, &other.base) {
                     self.layer == other.layer
@@ -88,6 +126,15 @@ impl Computed {
         Self::default()
     }
 
+    /// A self-contained copy suitable for a retained cascade recipe.
+    pub(crate) fn snapshot_values(&self) -> Self {
+        Self {
+            before: None,
+            after: None,
+            ..self.clone()
+        }
+    }
+
     /// Whether both hold the same maps (one was cloned from the other and
     /// neither set a name since).
     fn shares(&self, other: &Computed) -> bool {
@@ -98,6 +145,9 @@ impl Computed {
     /// cheap: they share their base. `false` may still be equal maps.
     pub(crate) fn same(&self, other: &Computed) -> bool {
         self.properties == other.properties
+            && self.before == other.before
+            && self.after == other.after
+            && self.animation_tainted == other.animation_tainted
             && (self.shares(other)
                 || (Arc::ptr_eq(&self.base, &other.base) && self.layer == other.layer))
     }
@@ -187,6 +237,9 @@ impl Computed {
             base: over.base.clone(),
             layer: over.layer.clone(),
             properties: std::mem::take(&mut self.properties),
+            before: over.before.clone(),
+            after: over.after.clone(),
+            animation_tainted: over.animation_tainted.clone(),
         };
         out.properties
             .extend(over.properties.iter().map(|(k, v)| (k.clone(), v.clone())));
@@ -226,7 +279,7 @@ impl Computed {
     /// carried from its parent unchanged) are not walked.
     pub fn changed<'a>(&'a self, other: &'a Computed) -> Vec<&'a String> {
         let properties = self.properties.keys().chain(other.properties.keys());
-        let names: BTreeSet<&String> = if self.shares(other) {
+        let mut names: BTreeSet<&String> = if self.shares(other) {
             properties.collect()
         } else if Arc::ptr_eq(&self.base, &other.base) {
             self.layer
@@ -239,9 +292,29 @@ impl Computed {
                 .chain(other.dependency_names())
                 .collect()
         };
+        let contexts = [
+            (
+                self.before.as_deref().unwrap_or(self),
+                other.before.as_deref().unwrap_or(other),
+            ),
+            (
+                self.after.as_deref().unwrap_or(self),
+                other.after.as_deref().unwrap_or(other),
+            ),
+        ];
+        for (a, b) in contexts {
+            names.extend(a.dependency_names().chain(b.dependency_names()));
+        }
         names
             .into_iter()
-            .filter(|name| self.dependency(name) != other.dependency(name))
+            .filter(|name| {
+                self.dependency(name) != other.dependency(name)
+                    || contexts
+                        .iter()
+                        .any(|(a, b)| a.dependency(name) != b.dependency(name))
+                    || self.animation_tainted.contains(*name)
+                        != other.animation_tainted.contains(*name)
+            })
             .collect()
     }
 
@@ -290,6 +363,33 @@ impl Value {
 
     pub fn parse(text: &str) -> Result<Self, String> {
         parse(&mut Parser::new(text)).map_err(|e| format!("invalid CSS value: {e:?}"))
+    }
+
+    /// The evaluated token stream without substituting any custom properties.
+    /// A bound expression must have been evaluated before retaining a recipe.
+    fn unresolved(&self) -> Result<String, String> {
+        let mut out = String::new();
+        for piece in &self.0 {
+            match piece {
+                Piece::Text(text) => out.push_str(text),
+                Piece::Block(open, value, close) => {
+                    out.push_str(open);
+                    out.push_str(&value.unresolved()?);
+                    out.push(*close);
+                }
+                Piece::Var(name, fallback) => {
+                    out.push_str("var(");
+                    cssparser::serialize_identifier(name, &mut out).expect("writing to a string");
+                    if let Some(fallback) = fallback {
+                        out.push(',');
+                        out.push_str(&fallback.unresolved()?);
+                    }
+                    out.push(')');
+                }
+                Piece::Bound(_) => return Err("unevaluated inline style binding".into()),
+            }
+        }
+        Ok(out)
     }
 
     pub fn dependencies(&self, out: &mut BTreeSet<String>) {
@@ -375,6 +475,20 @@ impl Value {
             }
         }
         Ok(out)
+    }
+}
+
+impl serde::Serialize for Value {
+    fn serialize<S: serde::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        let text = self.unresolved().map_err(serde::ser::Error::custom)?;
+        serializer.serialize_str(&text)
+    }
+}
+
+impl<'de> serde::Deserialize<'de> for Value {
+    fn deserialize<D: serde::Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        let text = <String as serde::Deserialize>::deserialize(deserializer)?;
+        Self::parse(&text).map_err(serde::de::Error::custom)
     }
 }
 

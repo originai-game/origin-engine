@@ -176,6 +176,11 @@ pub(crate) fn discrete<'a>(property: &str, a: &'a str, b: &'a str, p: f32) -> &'
 /// pair is discrete.
 pub(crate) fn interpolate(property: &str, a: &str, b: &str, p: f32) -> Option<String> {
     let (a, b) = (a.trim(), b.trim());
+    // Custom properties require their registration, never a guess from
+    // numeric-looking token text. Registered callers use Property's hooks.
+    if property.starts_with("--") {
+        return None;
+    }
     if a == b {
         return Some(a.to_string());
     }
@@ -227,7 +232,11 @@ pub(crate) fn interpolate(property: &str, a: &str, b: &str, p: f32) -> Option<St
 
 /// `value` combined onto `underlying` (Web Animations 1 §5.4.4).
 pub(crate) fn compose(property: &str, underlying: &str, value: &str, op: Composite) -> String {
-    if op == Composite::Replace || !animatable(property) || hidden(property).is_some() {
+    if op == Composite::Replace
+        || property.starts_with("--")
+        || !animatable(property)
+        || hidden(property).is_some()
+    {
         return value.to_string();
     }
     let add = op == Composite::Add;
@@ -254,6 +263,162 @@ pub(crate) fn compose(property: &str, underlying: &str, value: &str, op: Composi
             .map(|t| write(&t)),
     };
     combined.unwrap_or_else(|| value.to_string())
+}
+
+/// A parsed registration alternative. This is local dispatch information,
+/// not another registry; lists use the mixer's existing component tokens.
+struct Registered<'a> {
+    component: &'a str,
+    separator: Option<char>,
+    items: Vec<Vec<T>>,
+}
+
+fn registered<'a>(syntax: &'a str, value: &str) -> Option<Registered<'a>> {
+    if syntax.trim() == "*" {
+        return None;
+    }
+    // Computed math normally arrives reduced; reduction also lets a
+    // scalar calc() participate without treating arbitrary functions as numbers.
+    let reduced = og_css::calc::reduce(value).ok()?;
+    let ts = tokens(&reduced)?;
+    for alt in syntax.split('|').map(str::trim) {
+        let (component, separator) = if let Some(c) = alt.strip_suffix('+') {
+            (c, Some(' '))
+        } else if let Some(c) = alt.strip_suffix('#') {
+            (c, Some(','))
+        } else {
+            (alt, None)
+        };
+        let items: Vec<Vec<T>> = match separator {
+            Some(',') => ts.split(|t| *t == T::Comma).map(<[T]>::to_vec).collect(),
+            Some(' ') => ts.iter().cloned().map(|t| vec![t]).collect(),
+            _ => vec![ts.clone()],
+        };
+        if !items.is_empty() && items.iter().all(|item| registered_matches(component, item)) {
+            return Some(Registered {
+                component,
+                separator,
+                items,
+            });
+        }
+    }
+    None
+}
+
+fn registered_matches(component: &str, ts: &[T]) -> bool {
+    if matches!(component, "<transform-function>" | "<transform-list>") {
+        return (component == "<transform-list>" || ts.len() == 1)
+            && !ts.is_empty()
+            && ts.iter().all(|t| matches!(t, T::Func(..)))
+            && t3::parse_transform(&write(ts)).is_ok();
+    }
+    let [t] = ts else { return false };
+    match component {
+        "<number>" | "<integer>" => matches!(t, T::Num(n, u)
+            if u.is_empty() && (component == "<number>" || n.fract() == 0.0)),
+        "<length>" | "<percentage>" | "<length-percentage>" => match t {
+            T::Num(n, u) => match component {
+                "<percentage>" => u == "%",
+                "<length>" => (is_length(u) && u != "%") || (u.is_empty() && *n == 0.0),
+                _ => is_length(u) || (u.is_empty() && *n == 0.0),
+            },
+            T::Func(f, args) if matches!(f.as_str(), "calc" | "min" | "max" | "clamp") => {
+                // Retain length/percentage sums for the existing calc mixer.
+                args.iter().all(|a| {
+                    matches!(a, T::Word(w) if matches!(w.as_str(), "+" | "-" | "*" | "/"))
+                        || matches!(a, T::Comma | T::Slash)
+                        || matches!(a, T::Num(_, u) if u.is_empty())
+                        || registered_matches(component, std::slice::from_ref(a))
+                })
+            }
+            _ => false,
+        },
+        "<angle>" => {
+            matches!(t, T::Num(_, u) if matches!(u.as_str(), "deg" | "rad" | "grad" | "turn"))
+        }
+        "<time>" => matches!(t, T::Num(_, u) if matches!(u.as_str(), "ms" | "s")),
+        "<resolution>" => {
+            matches!(t, T::Num(_, u) if matches!(u.as_str(), "dpi" | "dpcm" | "dppx" | "x"))
+        }
+        "<color>" => matches!(t, T::Color(_)),
+        // Keep non-animated alternatives in source order, including a
+        // literal colour name before <color>. Do not let the permissive
+        // syntax validator classify every function/identifier as a colour.
+        _ => crate::css::at_rules::matches_syntax(component, &write(ts)),
+    }
+}
+
+fn registered_combine(
+    syntax: &str,
+    a: &str,
+    b: &str,
+    progress: Option<f32>,
+    op: Composite,
+) -> Option<String> {
+    let (x, y) = (registered(syntax, a)?, registered(syntax, b)?);
+    if x.component != y.component || x.separator != y.separator {
+        return None;
+    }
+    let transform_type = matches!(x.component, "<transform-function>" | "<transform-list>");
+    // A single transform function adds by accumulation (including one-based
+    // scales); transform lists concatenate. The same distinction applies
+    // independently to each comma-separated item.
+    let concatenate =
+        op == Composite::Add && (x.component == "<transform-list>" || x.separator == Some(' '));
+    // The transform-function+ exception applies to the complete list,
+    // whereas transform-function# pairs its comma-separated items.
+    if transform_type && x.separator != Some(',') {
+        return match progress {
+            Some(p) => transform(a, b, p),
+            None => compose_transform(a, b, concatenate),
+        };
+    }
+    if x.items.len() != y.items.len() {
+        return None;
+    }
+    let property = match x.component {
+        "<integer>" => "z-index",
+        "<number>"
+        | "<length>"
+        | "<percentage>"
+        | "<length-percentage>"
+        | "<angle>"
+        | "<time>"
+        | "<resolution>"
+        | "<color>" => "",
+        _ if transform_type => "transform",
+        _ => return None,
+    };
+    let items: Option<Vec<String>> = x
+        .items
+        .iter()
+        .zip(&y.items)
+        .map(|(a, b)| {
+            if transform_type {
+                return match progress {
+                    Some(p) => transform(&write(a), &write(b), p),
+                    None => compose_transform(&write(a), &write(b), concatenate),
+                };
+            }
+            let out = match progress {
+                Some(p) => lerp_list(property, a, b, p)?,
+                None => sum_list(property, a, b)?,
+            };
+            Some(write(&out))
+        })
+        .collect();
+    Some(items?.join(if x.separator == Some(',') { ", " } else { " " }))
+}
+
+pub(crate) fn registered_interpolate(syntax: &str, a: &str, b: &str, p: f32) -> Option<String> {
+    registered_combine(syntax, a, b, Some(p), Composite::Replace)
+}
+
+pub(crate) fn registered_compose(syntax: &str, a: &str, b: &str, op: Composite) -> String {
+    if op == Composite::Replace {
+        return b.to_string();
+    }
+    registered_combine(syntax, a, b, None, op).unwrap_or_else(|| b.to_string())
 }
 
 // ---------------------------------------------------------------- tokens
@@ -437,7 +602,7 @@ fn is_length(unit: &str) -> bool {
         || unit.ends_with("vw")
 }
 
-/// Angles in degrees and times in ms, so mixed units meet.
+/// Numeric dimensions in their canonical units, so mixed units meet.
 fn canonical(v: f32, unit: &str) -> Option<(f32, &'static str)> {
     Some(match unit {
         "deg" => (v, "deg"),
@@ -446,6 +611,9 @@ fn canonical(v: f32, unit: &str) -> Option<(f32, &'static str)> {
         "turn" => (v * 360.0, "deg"),
         "s" => (v * 1000.0, "ms"),
         "ms" => (v, "ms"),
+        "x" | "dppx" => (v, "dppx"),
+        "dpi" => (v / 96.0, "dppx"),
+        "dpcm" => (v * 2.54 / 96.0, "dppx"),
         _ => return None,
     })
 }
@@ -495,7 +663,15 @@ fn lerp_one(property: &str, a: &T, b: &T, p: f32) -> Option<T> {
     Some(match (a, b) {
         (T::Num(x, u), T::Num(y, v)) if u == v => {
             let r = lerp(*x, *y, p);
-            T::Num(if integer(property) { r.round() } else { r }, u.clone())
+            // CSS integers resolve half-way ties toward positive infinity.
+            T::Num(
+                if integer(property) {
+                    (r + 0.5).floor()
+                } else {
+                    r
+                },
+                u.clone(),
+            )
         }
         // A unitless zero is a zero of the other side's unit.
         (T::Num(x, u), T::Num(y, v)) if u.is_empty() && *x == 0.0 => {

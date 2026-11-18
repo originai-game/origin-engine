@@ -2,12 +2,13 @@
 //! Unsupported features fail cooking instead of behaving like a false query.
 use cssparser::{ParseError, Parser, Token};
 
-#[derive(Clone, Copy, Debug, PartialEq)]
+#[derive(Clone, Copy, Debug, PartialEq, serde::Serialize, serde::Deserialize)]
 pub struct Context {
     pub width: f32,
     pub height: f32,
     pub reduced_motion: bool,
     /// The player's colour vision setting (`-og-color-vision`).
+    #[serde(with = "color_vision")]
     pub color_vision: og_draw::ColorVision,
     /// The primary pointer is coarse (a touch screen): `pointer: coarse`
     /// and `hover: none`, else `pointer: fine` and `hover: hover`.
@@ -30,10 +31,27 @@ pub struct Context {
 }
 
 /// The surface's gamut and range, as the renderer configured it.
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub struct Display {
     pub wide_gamut: bool,
     pub high_range: bool,
+}
+
+mod color_vision {
+    pub fn serialize<S: serde::Serializer>(
+        value: &og_draw::ColorVision,
+        serializer: S,
+    ) -> Result<S::Ok, S::Error> {
+        serializer.serialize_str(value.name())
+    }
+
+    pub fn deserialize<'de, D: serde::Deserializer<'de>>(
+        deserializer: D,
+    ) -> Result<og_draw::ColorVision, D::Error> {
+        let name = <String as serde::Deserialize>::deserialize(deserializer)?;
+        og_draw::ColorVision::from_name(&name)
+            .ok_or_else(|| serde::de::Error::custom(format!("unknown color vision {name}")))
+    }
 }
 
 impl Default for Context {
