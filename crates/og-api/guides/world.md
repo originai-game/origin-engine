@@ -162,6 +162,15 @@ looks and colour LUTs (`.cube`).
   `og build --publish` ships the packs beside the boot bundle, which the
   shell and the service worker fetch first, and fetches a pack only when
   its group loads.
+- Bundles opened at runtime register their groups, including cell groups,
+  when ready. Each group reads and releases through the bundle that declared
+  it, under the same shared budget as the boot bundle. Names must be unique
+  across open bundles: prefix a parcel's group with its identity and version
+  when versions overlap. A collision fails the new bundle's open and names
+  both bundles; the existing groups remain usable. Opening the same cooked
+  directory again keeps its groups. Ungrouped assets stay resident; unloading
+  a cell alone does not evict them. Group unloads keep model proxies and
+  bundle manifests, not the full meshes, textures or cell-scene blobs.
 - At every tick boundary the engine picks the wanted groups, admits them by
   priority (then name) within the memory budget (256 MiB by default: GPU
   textures and meshes and decoded audio, as the cook measured them),

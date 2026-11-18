@@ -6487,7 +6487,7 @@
       "functions": [
         {
           "name": "bundle",
-          "doc": "Open another cooked bundle (the game's own `cooked` is open before the first tick). Its loads read through it once it is ready.",
+          "doc": "Open another cooked bundle and register its streaming groups, including cell groups. Loads and group residency use that bundle once ready. A group name already declared by another open bundle fails the open, naming both bundles.",
           "params": [
             {
               "name": "world",

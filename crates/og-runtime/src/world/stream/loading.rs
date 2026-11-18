@@ -5,7 +5,6 @@ use super::*;
 /// At every tick boundary: what is wanted, what is admitted, what loads and
 /// unloads.
 pub(crate) fn update(eng: &Engine) {
-    open(eng);
     if eng.assets.borrow().stream.groups.is_empty() {
         return;
     }

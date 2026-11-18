@@ -6,7 +6,7 @@ Module [`load`](../load.md) · [index](../index.md)
 
 ### `og.load.bundle`
 
-Open another cooked bundle (the game's own `cooked` is open before the first tick). Its loads read through it once it is ready.
+Open another cooked bundle and register its streaming groups, including cell groups. Loads and group residency use that bundle once ready. A group name already declared by another open bundle fails the open, naming both bundles.
 
 ```ts
 og.load.bundle(world: World, path: string): Result<Asset>
@@ -23,7 +23,7 @@ Binding symbol `og_load_bundle` · publish builds: kept
 
 ```ogt
 fn bundle {
-  doc "Open another cooked bundle (the game's own `cooked` is open before the first tick). Its loads read through it once it is ready."
+  doc "Open another cooked bundle and register its streaming groups, including cell groups. Loads and group residency use that bundle once ready. A group name already declared by another open bundle fails the open, naming both bundles."
   param world World "The world that owns the asset."
   param path String "The cooked directory, relative to the project (or the page), such as `dlc/cooked`."
   returns Result.Asset "The bundle's handle: pending until its manifest is read, then ready or failed."

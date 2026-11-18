@@ -56,7 +56,7 @@ pub(super) fn upgrade(eng: &Engine, group: &str) -> Result<bool, String> {
     let formats = super::assets::texture_formats(eng);
     let fulls: Vec<(usize, Full)> = {
         let a = eng.assets.borrow();
-        let Some(i) = a.default_bundle else {
+        let Some(i) = a.stream.find(group).map(|i| a.stream.groups[i].bundle) else {
             return Ok(true);
         };
         let super::assets::Payload::Bundle { bundle, .. } = &a.entries[i].payload else {
@@ -228,20 +228,18 @@ pub(super) fn release(eng: &Engine, group: &str) {
             return;
         };
         let g = &a.stream.groups[i];
-        let textures = a
-            .default_bundle
-            .and_then(|b| match &a.entries[b].payload {
-                super::assets::Payload::Bundle { bundle, .. } => Some(
-                    bundle
-                        .manifest()
-                        .outputs()
-                        .filter(|o| o.group.as_deref() == Some(group) && o.ty == "og.Texture")
-                        .map(|o| o.id.clone())
-                        .collect::<Vec<_>>(),
-                ),
-                _ => None,
-            })
-            .unwrap_or_default();
+        let textures = match &a.entries[g.bundle].payload {
+            super::assets::Payload::Bundle { bundle, .. } => Some(
+                bundle
+                    .manifest()
+                    .outputs()
+                    .filter(|o| o.group.as_deref() == Some(group) && o.ty == "og.Texture")
+                    .map(|o| o.id.clone())
+                    .collect::<Vec<_>>(),
+            ),
+            _ => None,
+        }
+        .unwrap_or_default();
         (format!("{}/{}", g.dir, g.desc.file), textures)
     };
     // The host drops it when it lands; its slot is free now.

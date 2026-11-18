@@ -144,6 +144,8 @@ mod sky_off;
 mod sprite_arrays;
 #[path = "../sprite_sway.rs"]
 mod sprite_sway;
+#[path = "../stream_bundles.rs"]
+mod stream_bundles;
 #[path = "../stream_chunked.rs"]
 mod stream_chunked;
 #[path = "../stream_fetch.rs"]

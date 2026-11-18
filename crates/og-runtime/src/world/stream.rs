@@ -3,7 +3,7 @@
 //! A scene's `stream` blocks name assets that load and unload together; the
 //! cook packs each group's files into `cooked/stream/<name>.ogb` and lists
 //! the group in the manifest. Here, at every tick boundary, each group of
-//! the game's bundle is wanted or not (the camera within its distance, kept
+//! every open bundle is wanted or not (the camera within its distance, kept
 //! until past its unload distance; the camera inside its volume entity's
 //! box; or og.stream.request), wanted groups are admitted by priority
 //! within the memory budget (a lower-priority resident group is evicted for
@@ -137,6 +137,8 @@ pub struct StreamEvent {
 
 pub(crate) struct Group {
     desc: ManifestStream,
+    /// The asset entry of the bundle that declared this group.
+    bundle: usize,
     /// The bundle directory its pack is under.
     dir: String,
     state: State,
@@ -288,7 +290,6 @@ struct Fetches {
 /// An engine's streaming groups (in its assets).
 #[derive(Default)]
 pub(crate) struct Streams {
-    opened: bool,
     budget: Option<u64>,
     groups: Vec<Group>,
     /// Per group name, its loaded assets and whether each is upgraded.
@@ -329,6 +330,44 @@ fn lock<T>(m: &Mutex<T>) -> std::sync::MutexGuard<'_, T> {
 pub(crate) struct ModuleState(Arc<Mutex<Vec<StreamEvent>>>);
 
 impl Streams {
+    /// Register a ready bundle atomically: a name belongs to one open bundle.
+    pub(crate) fn add_bundle(
+        &mut self,
+        index: usize,
+        bundle: &og_bundle::runtime::Bundle,
+        dir: &str,
+    ) -> Result<(), String> {
+        let mut added = Vec::new();
+        for desc in bundle.streams() {
+            if let Some(i) = self.find(&desc.name) {
+                let owner = &self.groups[i];
+                if owner.dir == dir {
+                    continue;
+                }
+                return Err(format!(
+                    "streaming group '{}' is declared by both '{}' and '{}'; group names must be unique among open bundles",
+                    desc.name, owner.dir, dir
+                ));
+            }
+            added.push(Group {
+                desc: desc.clone(),
+                bundle: index,
+                dir: dir.to_string(),
+                state: State::Unloaded,
+                requested: false,
+                near: false,
+                wanted: false,
+                files: BTreeMap::new(),
+                reason: String::new(),
+                since: 0,
+                loads: 0,
+            });
+        }
+        self.groups.extend(added);
+        og_core::sort::sort_by(&mut self.groups, |a, b| a.desc.name.cmp(&b.desc.name));
+        Ok(())
+    }
+
     fn budget(&self) -> u64 {
         self.budget.unwrap_or(DEFAULT_BUDGET)
     }
@@ -391,37 +430,6 @@ impl Streams {
     }
 }
 
-/// Reads the game bundle's groups once it is open.
-fn open(eng: &Engine) {
-    let mut a = eng.assets.borrow_mut();
-    if a.stream.opened {
-        return;
-    }
-    let Some(i) = a.default_bundle else { return };
-    let crate::world::assets::Payload::Bundle { bundle, dir } = &a.entries[i].payload else {
-        return;
-    };
-    let mut groups: Vec<Group> = bundle
-        .streams()
-        .iter()
-        .map(|d| Group {
-            desc: d.clone(),
-            dir: dir.clone(),
-            state: State::Unloaded,
-            requested: false,
-            near: false,
-            wanted: false,
-            files: BTreeMap::new(),
-            reason: String::new(),
-            since: 0,
-            loads: 0,
-        })
-        .collect();
-    og_core::sort::sort_by(&mut groups, |a, b| a.desc.name.cmp(&b.desc.name));
-    a.stream.groups = groups;
-    a.stream.opened = true;
-}
-
 fn tick_of(eng: &Engine) -> u64 {
     eng.world().map(|w| w.time().tick).unwrap_or(0)
 }
@@ -466,7 +474,6 @@ fn set_state(
 }
 
 fn push(eng: &Engine, group: &str, slot: Slot) {
-    open(eng);
     eng.assets
         .borrow_mut()
         .stream
@@ -583,7 +590,6 @@ pub(crate) fn dump(engine_id: u32) -> Value {
     let Ok(eng) = engine(engine_id) else {
         return json!({ "error": "no engine" });
     };
-    open(&eng);
     let a = eng.assets.borrow();
     let s = &a.stream;
     let mut v = stream_budget(s).to_json();
@@ -626,7 +632,6 @@ fn with_group<T>(
     f: impl FnOnce(&Engine, &mut Streams, usize) -> T,
 ) -> Result<T, String> {
     let eng = engine(world)?;
-    open(&eng);
     let mut a = eng.assets.borrow_mut();
     let s = &mut a.stream;
     let i = s.find(group).ok_or_else(|| {
@@ -642,7 +647,6 @@ fn with_group<T>(
 
 /// The status of every group scene `scene` (an asset id) declares, by name.
 pub(crate) fn scene_groups(eng: &Engine, scene: &str) -> Vec<StreamStatus> {
-    open(eng);
     let a = eng.assets.borrow();
     let s = &a.stream;
     s.groups
@@ -680,10 +684,7 @@ pub fn og_stream_release(world: u32, group: String) -> Result<(), String> {
 /// `og.stream.budget`.
 pub fn og_stream_budget(world: u32) -> Result<crate::host::wire::StreamBudget, String> {
     match engine(world) {
-        Ok(eng) => {
-            open(&eng);
-            Ok(stream_budget(&eng.assets.borrow().stream))
-        }
+        Ok(eng) => Ok(stream_budget(&eng.assets.borrow().stream)),
         Err(e) => Err(e),
     }
 }

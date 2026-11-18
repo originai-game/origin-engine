@@ -48,7 +48,7 @@ module load {
 | [`SoundInfo`](load/type-SoundInfo.md) | struct |  | A loaded sound. |
 | [`TextureArrayInfo`](load/type-TextureArrayInfo.md) | struct |  | What og.load.textureArray uploaded. |
 | [`og.Model`](load/record-Model.md) | component |  | Draws a loaded glTF's default scene at the entity's world transform: every mesh node with its glTF material. |
-| [`og.load.bundle`](load/fn-bundle.md) | function | `(world: World, path: string): Result<Asset>` | Open another cooked bundle (the game's own `cooked` is open before the first tick). |
+| [`og.load.bundle`](load/fn-bundle.md) | function | `(world: World, path: string): Result<Asset>` | Open another cooked bundle and register its streaming groups, including cell groups. |
 | [`og.load.bundleInfo`](load/fn-bundleInfo.md) | function | `(world: World, asset: Asset): Result<BundleInfo>` | What an open bundle holds. |
 | [`LoadProgress`](load/type-LoadProgress.md) | struct |  | How far a load has arrived (og.load.progress). |
 | [`og.load.progress`](load/fn-progress.md) | function | `(world: World, asset: Asset): Result<LoadProgress>` | How far a load has arrived: a bundle og.load.bundle opened, or any handle (a cooked load answers ready at once). |

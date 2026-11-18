@@ -247,6 +247,10 @@ impl Assets {
                 .and_then(|t| Bundle::from_manifest(&t).map_err(|e| e.to_string()))
             {
                 Ok(bundle) => {
+                    if let Err(e) = self.stream.add_bundle(i, &bundle, &dir) {
+                        entry.status = Status::Failed(format!("{manifest}: {e}"));
+                        return;
+                    }
                     entry.status = Status::Ready;
                     entry.payload = Payload::Bundle {
                         bundle: Box::new(bundle),

@@ -35504,7 +35504,7 @@ export declare namespace og {
    */
   namespace load {
     /**
-     * Open another cooked bundle (the game's own `cooked` is open before the first tick). Its loads read through it once it is ready.
+     * Open another cooked bundle and register its streaming groups, including cell groups. Loads and group residency use that bundle once ready. A group name already declared by another open bundle fails the open, naming both bundles.
      *
      * @param world The world that owns the asset.
      * @param path The cooked directory, relative to the project (or the page), such as `dlc/cooked`.
