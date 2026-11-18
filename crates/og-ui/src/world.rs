@@ -650,6 +650,19 @@ pub struct WorldUi {
 }
 
 impl WorldUi {
+    /// The current placement scale, also used before layout to measure an
+    /// opted-in document anchor's legible text.
+    pub(crate) fn anchor_scale(&self, desc: &WorldAnchorDesc) -> f32 {
+        match (self.declared.view, self.pose_of(desc.target)) {
+            (Some(view), Some((point, _))) => placement::scale_of(
+                desc.scale,
+                (point + desc.offset - view.eye).length(),
+                view.orthographic,
+            ),
+            _ => 1.0,
+        }
+    }
+
     /// A world point of a target, with the pose's rotation.
     fn pose_of(&self, t: WorldTarget) -> Option<(Vec3, Quat)> {
         match t {

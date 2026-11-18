@@ -131,6 +131,38 @@ pub(crate) fn key(name: &str) -> String {
     format!(" text {name}")
 }
 
+// Engine-owned inherited facts, not stylesheet custom properties. The
+// authored size is kept separately so an em child does not inherit its
+// parent's legibility compensation as its designed size.
+pub(crate) const WORLD_FLOOR: &str = " world text floor";
+pub(crate) const WORLD_SCALE: &str = " world distance scale";
+pub(crate) const DESIGNED_SIZE: &str = " world designed font size";
+
+pub(crate) fn world_floor(computed: &variables::Computed) -> Option<(f32, f32)> {
+    let read = |key: &str| computed.get(key)?.as_deref()?.parse::<f32>().ok();
+    let floor = read(WORLD_FLOOR)?;
+    (floor > 0.0).then(|| (read(WORLD_SCALE).unwrap_or(1.0).max(1e-4), floor))
+}
+
+pub(crate) fn floored_size(designed: f32, scale: f32, floor: f32) -> f32 {
+    (designed * scale).max(floor).min(designed) / scale
+}
+
+fn apply_world_floor(computed: &mut variables::Computed, fallback: f32, floor: Option<(f32, f32)>) {
+    if let Some((scale, floor)) = floor {
+        let size = computed
+            .get(&key("font-size"))
+            .and_then(|v| v.as_deref())
+            .and_then(|v| v.parse().ok())
+            .unwrap_or(fallback);
+        computed.insert(DESIGNED_SIZE.into(), Some(size.to_string()));
+        computed.insert(
+            key("font-size"),
+            Some(floored_size(size, scale, floor).to_string()),
+        );
+    }
+}
+
 fn declaration(name: &str, value: &str, important: bool) -> Result<StyleDeclaration, String> {
     Ok(StyleDeclaration {
         name: name.into(),
@@ -1467,12 +1499,26 @@ pub(crate) fn inherit(inp: Inputs<'_>) -> TextCss {
             .flatten()
             .and_then(|v| v.parse::<f32>().ok())
     };
-    let parent_size = parent_num("font-size");
+    let floor = world_floor(computed);
+    let parent_size = floor
+        .and_then(|_| computed.get(DESIGNED_SIZE)?.as_deref()?.parse().ok())
+        .or_else(|| parent_num("font-size"));
     let parent_weight = parent_num("font-weight").unwrap_or(f32::from(step.weight.max(400)));
+    if floor.is_some() {
+        reads.extend([WORLD_FLOOR.into(), WORLD_SCALE.into(), DESIGNED_SIZE.into()]);
+        if let Some(size) = parent_size {
+            computed.insert(key("font-size"), Some(size.to_string()));
+        }
+    }
     // The element's own font size first: every other length's `em` and
     // `%` is against it, wherever its rule declares it.
     let sized = local.iter().filter(|(n, _)| n == "font-size");
+    let mut floored = false;
     for (name, value) in sized.chain(local.iter().filter(|(n, _)| n != "font-size")) {
+        if name != "font-size" && !floored {
+            apply_world_floor(computed, step.size, floor);
+            floored = true;
+        }
         let value = value.trim();
         let computed_value = match value {
             "inherit" | "unset" if INHERITED.contains(&name.as_str()) => continue,
@@ -1503,6 +1549,9 @@ pub(crate) fn inherit(inp: Inputs<'_>) -> TextCss {
             }
             Err(e) => diagnostics.push(format!("{name}: {e}")),
         }
+    }
+    if !floored {
+        apply_world_floor(computed, step.size, floor);
     }
     let own_size = computed
         .get(&key("font-size"))

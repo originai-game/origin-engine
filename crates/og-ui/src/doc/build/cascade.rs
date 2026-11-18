@@ -960,11 +960,20 @@ fn values_effects(
     let parent_basis = basis.map(|mut b| {
         let key = crate::doc::text_css::key("font-size");
         out.inherited_reads.insert(key.clone());
-        b.em = inherited
-            .get(&key)
-            .and_then(|v| v.as_deref())
-            .and_then(|v| v.parse().ok())
-            .unwrap_or(b.rem);
+        let designed = crate::doc::text_css::world_floor(inherited).is_some();
+        if designed {
+            out.inherited_reads
+                .insert(crate::doc::text_css::DESIGNED_SIZE.into());
+        }
+        b.em = (if designed {
+            inherited.get(crate::doc::text_css::DESIGNED_SIZE)
+        } else {
+            None
+        })
+        .or_else(|| inherited.get(&key))
+        .and_then(|v| v.as_deref())
+        .and_then(|v| v.parse().ok())
+        .unwrap_or(b.rem);
         let key = crate::doc::text_css::key("line-height");
         out.inherited_reads.insert(key.clone());
         b.lh = inherited
@@ -1027,6 +1036,13 @@ fn values_effects(
                     v => crate::doc::text_css::font_size(v, parent.em, b.rem).unwrap_or(parent.em),
                 };
             }
+        }
+        if let Some((scale, floor)) = crate::doc::text_css::world_floor(inherited) {
+            out.inherited_reads.extend([
+                crate::doc::text_css::WORLD_FLOOR.into(),
+                crate::doc::text_css::WORLD_SCALE.into(),
+            ]);
+            b.em = crate::doc::text_css::floored_size(b.em, scale, floor);
         }
         b.lh = b.em * b.rlh / b.rem.max(1e-3);
         if let Some(value) = line {

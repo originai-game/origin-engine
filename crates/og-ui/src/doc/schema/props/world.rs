@@ -158,6 +158,13 @@ pub const PROPS: &[PropSpec] = &[
         doc: "`scale-max`: largest distance scale; default 2, or 4 for mass anchors.",
     },
     PropSpec {
+        name: "textFloor",
+        ty: Ty::Num,
+        on: On::Kinds(&[Kind::Anchor]),
+        two_way: false,
+        doc: "`text-floor=\"11\"`: minimum drawn text size in CSS px times user text scale, capped at each run's designed size. Only text and its em/ch measures grow; px boxes, bars and icons keep distance scaling. Omit or zero to disable.",
+    },
+    PropSpec {
         name: "barGhost",
         ty: Ty::Paint,
         on: On::Kinds(&[Kind::Anchor]),

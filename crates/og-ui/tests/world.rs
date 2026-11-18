@@ -224,6 +224,154 @@ fn document_anchor_feedback_styles_clamped_edges_angle_and_locked_lod() {
     assert!(ui.frame().warnings.is_empty(), "{:?}", ui.frame().warnings);
 }
 
+/// Each run keeps its own designed-size cap, including an em child; box
+/// lengths in px keep shrinking while ch measures follow the floored font.
+#[test]
+fn world_text_floor_preserves_small_runs_relative_measures_and_scaled_bars() {
+    let mut ui = ui_with_font(test_font());
+    ui.define_document(UiDocument::parse("floor.svelte", r#"
+<meta name="component" content="floor">
+<div style="--type-name-size:15px;--type-title-size:10.5px;--type-unit-size:13px;--type-boss-size:17px;--type-cast-size:11.5px">
+<anchor id="Plate" at="0 0 0" scale-at="12" scale-min="0.72" scale-max="1" text-floor="11">
+  <div id="Name" style="font-size:var(--type-name-size)">Ashbound Thrall</div>
+  <div style="font-size:var(--type-boss-size)">ASHEN COLOSSUS</div>
+  <div style="font-size:var(--type-cast-size);letter-spacing:0.08em">SHADOW VOLLEY</div>
+  <div style="font-size:var(--type-title-size)">WARDEN</div>
+  <p style="margin:0;font-size:var(--type-unit-size)">412<span style="font-size:0.78em">m</span></p>
+  <div id="Speech" style="font-size:var(--type-name-size);width:27ch">Break its shield then strike the runes before it rises.</div>
+  <div id="Bar" style="width:116px;height:5px;background:red" />
+  <p id="Scroll" style="margin:0;font-size:var(--type-name-size);width:150px;white-space:nowrap;text-overflow:-og-scroll 2s 400ms">Crown of the Ninefold King</p>
+</anchor>
+<anchor id="Unfloored" at="3 0 0" scale-at="12" scale-min="0.72" scale-max="1"><div style="font-size:var(--type-title-size)">CONTROL</div></anchor>
+</div>"#).unwrap());
+    ui.mount_document(
+        source("floor"),
+        "floor",
+        Default::default(),
+        Default::default(),
+        &bind::NoEnv,
+    )
+    .unwrap();
+    for text_scale in [1.0, 1.5] {
+        ui.set_theme(Theme {
+            text_scale,
+            ..*ui.theme()
+        });
+        let mut near_speech: Option<(f32, f32)> = None;
+        for distance in [6.0, 40.0, 6.0, 40.0] {
+            for _ in 0..4 {
+                ui.begin(InputFrame::default(), vp());
+                ui.set_world_view(Some(WorldView::look_at(
+                    Vec3::new(0.0, 0.0, distance),
+                    Vec3::ZERO,
+                    Vec3::Y,
+                    50.0,
+                    W / H,
+                    0.1,
+                    100.0,
+                )));
+                ui.end();
+            }
+            assert!(ui.frame().warnings.is_empty(), "{:?}", ui.frame().warnings);
+            let mut overlay = Overlay::new(W, H, 1.0);
+            ui.frame().emit(&EmitDesc::default(), &mut overlay);
+            for (text, near, far) in [
+                ("Ashbound Thrall", 15.0, 11.0),
+                ("WARDEN", 10.5, 10.5),
+                ("412", 13.0, 11.0),
+                ("m", 10.14, 10.14),
+                ("ASHEN COLOSSUS", 17.0, 12.24),
+                ("SHADOW VOLLEY", 11.5, 11.0),
+            ] {
+                let run = overlay
+                    .texts
+                    .iter()
+                    .find(|t| t.text == text)
+                    .unwrap_or_else(|| panic!("missing {text}"));
+                let expected = if distance < 12.0 { near } else { far } * text_scale;
+                assert!(
+                    (run.size - expected).abs() < 0.02,
+                    "{text}: {} expected {expected}",
+                    run.size
+                );
+            }
+            let scale = if distance < 12.0 { 1.0 } else { 0.72 };
+            assert!((rect(&ui, "test:floor/Plate/Bar").2 - 116.0 * scale).abs() < 0.1);
+            assert!((rect(&ui, "test:floor/Plate/Scroll").2 - 150.0 * scale).abs() < 0.1);
+            let control = overlay.texts.iter().find(|t| t.text == "CONTROL").unwrap();
+            assert!((control.size - 10.5 * text_scale * scale).abs() < 0.02);
+            let cast = overlay
+                .texts
+                .iter()
+                .find(|t| t.text == "SHADOW VOLLEY")
+                .unwrap();
+            assert!((cast.tracking - 0.08).abs() < 0.001);
+            let speech = rect(&ui, "test:floor/Plate/Speech");
+            let name = overlay
+                .texts
+                .iter()
+                .find(|t| t.text == "Ashbound Thrall")
+                .unwrap();
+            // Both the ch measure and line height follow the compensated font,
+            // so distance cannot squeeze this paragraph onto extra lines.
+            let normalized = (speech.2 / name.size, speech.3 / name.size);
+            if let Some((width, height)) = near_speech {
+                assert!((normalized.0 - width).abs() < 0.05);
+                // Layout snaps line boxes to pixels; one extra line is much
+                // larger than this subpixel rounding allowance.
+                assert!((speech.3 - height * name.size).abs() < 1.0);
+            } else {
+                near_speech = Some(normalized);
+            }
+        }
+        let scroll_x = |ui: &Ui| {
+            let mut overlay = Overlay::new(W, H, 1.0);
+            ui.frame().emit(&EmitDesc::default(), &mut overlay);
+            overlay
+                .texts
+                .iter()
+                .find(|t| t.text == "Crown of the Ninefold King")
+                .unwrap()
+                .position
+                .x
+        };
+        let initial = scroll_x(&ui);
+        let bounds = rect(&ui, "test:floor/Plate/Scroll");
+        for _ in 0..60 {
+            ui.begin(InputFrame::default(), vp());
+            ui.set_world_view(Some(WorldView::look_at(
+                Vec3::new(0.0, 0.0, 40.0),
+                Vec3::ZERO,
+                Vec3::Y,
+                50.0,
+                W / H,
+                0.1,
+                100.0,
+            )));
+            ui.end();
+        }
+        assert!(
+            (scroll_x(&ui) - initial).abs() > 1.0,
+            "floored overflow keeps scrolling"
+        );
+        assert_eq!(
+            rect(&ui, "test:floor/Plate/Scroll"),
+            bounds,
+            "only text moves"
+        );
+        assert!(
+            ui.frame().items.iter().any(|it| matches!(
+                it.cmd,
+                DrawCmd::BeginLayer {
+                    mask: Some(og_draw::UiMask::Gradient(_)),
+                    ..
+                }
+            )),
+            "scrolling text retains its edge fade"
+        );
+    }
+}
+
 #[test]
 fn document_containment_can_keep_an_offscreen_boss_readable() {
     let mut ui = ui();

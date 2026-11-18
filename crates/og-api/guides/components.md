@@ -967,6 +967,7 @@ Its own props, beside every element's:
 | `arrow-color` | `paint` | `arrow-color`: edge arrow ink (default white). |
 | `world-scale-min` | `number` | `scale-min`: smallest distance scale; default 0.5, or 0.25 for mass anchors. |
 | `world-scale-max` | `number` | `scale-max`: largest distance scale; default 2, or 4 for mass anchors. |
+| `text-floor` | `number` | `text-floor="11"`: minimum drawn text size in CSS px times user text scale, capped at each run's designed size. Only text and its em/ch measures grow; px boxes, bars and icons keep distance scaling. Omit or zero to disable. |
 | `bar-ghost` | `paint` | `bar-ghost`: mass bar ghost ink (default pale white). |
 | `priority` | `number` | Higher keeps its place when anchors overlap. |
 | `max-distance` | `number` | `max-distance`: hidden past this many world units, fading over its last tenth. |
