@@ -22,7 +22,7 @@ module stream {
     field budget u32 "The most of its entities spawned per tick while it loads (0: all in one tick). `loaded` turns true, and CellEvent is sent, in the tick its last entity spawns; a cell unwanted before then despawns what it spawned and sends nothing." {
       guide "world §5"
     }
-    field loaded bool "Written by the engine: true while the sub-scene's entities are in the world (from the tick it loaded until the tick it unloaded)." {
+    field loaded bool "Written by the engine: true while the sub-scene's entities are in the world and its asset group is resident. A queued or failed group leaves the cell unloaded, logs the reason once and never holds the world's tick." {
       readonly true
     }
   }

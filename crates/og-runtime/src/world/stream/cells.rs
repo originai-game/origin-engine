@@ -344,6 +344,31 @@ pub(crate) fn before_tick(eng: &Engine, world: &mut World) {
     };
     for c in list {
         let loaded = c.v.loaded;
+        let blocked = {
+            let a = eng.assets.borrow();
+            assets::index_of(c.v.scene as f64)
+                .and_then(|i| a.stream.group_of_scene(i))
+                .and_then(|name| a.stream.find(&name))
+                .map(|i| &a.stream.groups[i])
+                .filter(|g| g.state != super::State::Resident)
+                .map(|g| (g.desc.name.clone(), g.state, g.reason.clone()))
+        };
+        if let Some((group, state, reason)) = blocked {
+            if loaded {
+                unload_cell(eng, world, &store, c.cell, &c.v, tick);
+            } else if c.loading {
+                abandon(eng, world, &store, c.cell);
+            }
+            if c.want && matches!(state, super::State::Queued | super::State::Failed) {
+                warn_once(
+                    eng,
+                    Some(c.cell),
+                    tick,
+                    format!("cell {} cannot load group '{group}': {reason}", c.cell),
+                );
+            }
+            continue;
+        }
         if c.want && !loaded {
             step_load(eng, world, &store, c.cell, &c.v, c.pose, tick);
         } else if !c.want && c.loading {
@@ -365,23 +390,21 @@ pub(crate) fn waiting(eng: &Engine, world: &World) -> Option<(Entity, String)> {
         if !c.want || c.v.loaded {
             continue;
         }
-        // A load from kept rows needs no blob.
-        let bits = c.cell.to_bits();
-        let from_kept = {
-            let s = lock(&store);
-            match s.loading.get(&bits) {
-                Some(l) => l.source == Source::Kept,
-                None => c.v.persist && s.kept.contains_key(&bits),
-            }
-        };
-        if from_kept {
-            continue;
-        }
-        if let Some(Payload::SceneWaiting { group }) = assets::index_of(c.v.scene as f64)
-            .and_then(|i| a.entries.get(i))
-            .map(|e| &e.payload)
+        // Kept rows still need their group's assets. A budget refusal is
+        // not I/O: run the tick, leave the cell unloaded and report why.
+        if let Some(group) = assets::index_of(c.v.scene as f64)
+            .and_then(|i| match &a.entries.get(i)?.payload {
+                Payload::SceneWaiting { group } => Some(group.clone()),
+                _ => a.stream.group_of_scene(i),
+            })
+            .and_then(|name| a.stream.find(&name))
+            .map(|i| &a.stream.groups[i])
+            && !matches!(
+                group.state,
+                super::State::Resident | super::State::Queued | super::State::Failed
+            )
         {
-            return Some((c.cell, group.clone()));
+            return Some((c.cell, group.desc.name.clone()));
         }
     }
     None

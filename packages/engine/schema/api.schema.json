@@ -54158,7 +54158,7 @@
         },
         "loaded": {
           "type": "boolean",
-          "description": "Written by the engine: true while the sub-scene's entities are in the world (from the tick it loaded until the tick it unloaded).",
+          "description": "Written by the engine: true while the sub-scene's entities are in the world and its asset group is resident. A queued or failed group leaves the cell unloaded, logs the reason once and never holds the world's tick.",
           "default": false,
           "readOnly": true
         }
