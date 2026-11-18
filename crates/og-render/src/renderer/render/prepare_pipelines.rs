@@ -7,6 +7,8 @@ pub(super) struct PrepareFramePipelinesInputs<'a> {
     /// The AO texture is bound (screen-space AO or GI).
     pub(super) ao: bool,
     pub(super) batches: &'a mut [Batch],
+    /// The batches of instances not drawn yet (`Renderer::ahead_batches`).
+    pub(super) ahead: &'a mut [Batch],
     pub(super) skinned_batches: &'a mut [Batch],
     pub(super) skinned_visible: &'a mut [Batch],
     pub(super) view_skinned: &'a mut [Vec<Batch>],
@@ -26,6 +28,7 @@ impl Renderer {
             scene,
             ao,
             batches,
+            ahead,
             skinned_batches,
             skinned_visible,
             view_skinned,
@@ -45,7 +48,10 @@ impl Renderer {
             !scene.effects.decals.is_empty() && !self.info.without.contains(LitFeatures::DECALS);
         self.lit.plain_effects = ao || decals;
         if self.lit.plain_effects {
-            for b in batches.iter_mut().chain(skinned_batches.iter_mut()) {
+            for b in (batches.iter_mut())
+                .chain(ahead.iter_mut())
+                .chain(skinned_batches.iter_mut())
+            {
                 b.effects = true;
                 b.derivatives |= decals;
             }
@@ -102,6 +108,8 @@ impl Renderer {
             prepass || view_depth || face_depth,
             local_shadows,
         );
+        // The instances fading in whose first frame is still to come.
+        self.ensure_ahead(ahead, prepass || view_depth || face_depth, local_shadows);
         // A view may draw a skinned batch the main camera culled or hides.
         for v in &*view_skinned {
             self.ensure_pipelines(&[], v, view_depth, local_shadows);

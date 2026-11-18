@@ -406,3 +406,75 @@ fn a_model_fading_in_draws_its_share_of_pixels_and_of_its_shadow() {
         save(&format!("reveal-{name}-1"), &whole);
     }
 }
+
+/// A model held at reveal 0 stops no frame to compile: nothing of it is
+/// drawn while its pipelines are made on the compile workers, and neither
+/// the frame that starts its fade nor the one that ends it waits for one.
+#[test]
+#[ignore = "requires GPU"]
+fn a_hidden_model_compiles_ahead_and_its_fade_waits_for_no_pipeline() {
+    let mut scene = RenderScene::new();
+    let ground = scene.add_mesh(shapes::plane(14.0, 1.0));
+    let white = scene.add_material(Material::default());
+    scene.add_instance(ground, white, Mat4::IDENTITY);
+    // The model's resources are the scene's from the start: only its
+    // pipelines are new when it is first drawn.
+    let texture = scene.add_texture(shapes::checker(64, 4));
+    let red = scene.add_material(Material {
+        base_color: [0.9, 0.04, 0.04, 1.0],
+        base_color_texture: Some(texture),
+        ..Default::default()
+    });
+    let mesh = scene.add_mesh(shapes::cuboid(Vec3::splat(1.6)));
+    scene.lighting.light.direction_to_light = Vec3::new(0.7, 0.6, 0.25).normalize();
+    scene.lighting.light.cast_shadows = true;
+    scene.frame.camera = Camera {
+        position: Vec3::new(0.0, 3.2, 6.5),
+        target: Vec3::new(-0.6, 0.5, 0.0),
+        ..Default::default()
+    };
+    let mut renderer = Renderer::new_blocking(&small()).expect("renderer");
+    let frame = |renderer: &mut Renderer, scene: &mut RenderScene| {
+        scene.frame.tick += 1;
+        renderer
+            .render(scene, &RenderTarget::Offscreen)
+            .expect("render")
+    };
+    for _ in 0..3 {
+        frame(&mut renderer, &mut scene);
+    }
+    scene.add_instance(mesh, red, Mat4::from_translation(Vec3::new(0.0, 0.8, 0.0)));
+    let model = scene.objects.instances.len() - 1;
+    let red_pixels = |renderer: &mut Renderer| {
+        let img = renderer.read_offscreen().expect("capture");
+        (0..img.width * img.height)
+            .filter(|i| {
+                let p = px(&img, i % img.width, i / img.width);
+                p[0] as i32 > p[1] as i32 + 60
+            })
+            .count()
+    };
+    // Each stage of its fade: no frame waits, and the pipelines the next
+    // stage draws with are made before it starts.
+    for (reveal, least) in [(0.0, 0), (0.5, 500), (1.0, 1500)] {
+        scene.objects.instances[model].fx.reveal = reveal;
+        let stats = frame(&mut renderer, &mut scene);
+        assert_eq!(stats.compile_wait_us, 0, "reveal {reveal} waited");
+        let drawn = red_pixels(&mut renderer);
+        assert!(
+            drawn >= least && (reveal > 0.0 || drawn == 0),
+            "reveal {reveal} drew {drawn} pixels"
+        );
+        let mut compiling = stats.compiling_ahead;
+        for _ in 0..6000 {
+            if !compiling {
+                break;
+            }
+            std::thread::sleep(std::time::Duration::from_millis(5));
+            let stats = frame(&mut renderer, &mut scene);
+            assert_eq!(stats.compile_wait_us, 0, "reveal {reveal} waited");
+            compiling = stats.compiling_ahead;
+        }
+        assert!(!compiling, "reveal {reveal}: still compiling ahead");
+    }
+}

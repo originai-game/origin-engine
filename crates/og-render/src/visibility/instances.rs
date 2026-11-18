@@ -234,6 +234,9 @@ pub(crate) struct SortedInstances {
     /// The materials whose shader parameters moved this frame, ascending
     /// ([`SortedInstances::set_params_moved`]).
     params_moved: Vec<u32>,
+    /// What the still hidden instances the last rebuild left out will
+    /// draw with, once each ([`Sorted::ahead`]).
+    ahead: Vec<Ahead>,
 }
 
 /// The material `m`'s instances batch under: the one it is an alias of
@@ -254,6 +257,9 @@ fn drawn(scene: &RenderScene, params_moved: &[u32], m: usize) -> usize {
 /// What [`SortedInstances::update`] lends a frame.
 pub(crate) struct Sorted {
     pub runs: Vec<Run>,
+    /// What the instances still hidden (fading in, nothing of them drawn
+    /// yet) will draw with: in no run, their pipelines made ahead.
+    pub ahead: Vec<Ahead>,
     /// Per sorted instance (only those of non-empty meshes).
     pub transforms: Vec<GpuTransform>,
     pub spheres: Vec<(Vec3, f32)>,
@@ -351,10 +357,29 @@ fn revealing(inst: &Instance) -> bool {
     inst.fx.hidden_steps() != 0
 }
 
+/// Whether an instance fading in is still wholly hidden
+/// ([`crate::InstanceFx::reveal`] 0): every pass would cut all of it, so
+/// it is in no run, and the frame makes its pipelines ahead ([`Ahead`]).
+fn hidden(inst: &Instance) -> bool {
+    inst.fx.hidden_steps() >= 255
+}
+
 /// What an instance's key holds of its flags: bit 0 that it casts
-/// shadows, bit 1 that it is fading in.
+/// shadows, bit 1 that it is fading in, bit 2 that it is still hidden.
 fn run_flags(inst: &Instance) -> u8 {
-    u8::from(inst.cast_shadows) | (u8::from(revealing(inst)) << 1)
+    u8::from(inst.cast_shadows) | (u8::from(revealing(inst)) << 1) | (u8::from(hidden(inst)) << 2)
+}
+
+/// What a still hidden instance will draw with once its fade starts: the
+/// frame starts the pipelines of its run, fading in and whole, without
+/// waiting for them or drawing it (`Renderer::ahead_batches`), so the
+/// frame that first shows it compiles nothing.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(crate) struct Ahead {
+    pub mesh: usize,
+    pub material: usize,
+    pub cast: bool,
+    pub mirrored: bool,
 }
 
 /// An instance's own material and its sway (as bits): what the static
@@ -575,6 +600,7 @@ impl SortedInstances {
         self.keyed = (table, layers.clone(), meshes, materials);
         Ok(Sorted {
             runs: self.runs.clone(),
+            ahead: self.ahead.clone(),
             transforms: std::mem::take(&mut self.transforms),
             spheres: std::mem::take(&mut self.spheres),
             submission: self.order.clone(),
@@ -642,6 +668,7 @@ impl SortedInstances {
         self.transforms.clear();
         self.looks.clear();
         self.runs.clear();
+        self.ahead.clear();
         self.meshes.clear();
         self.seen.clear();
         self.seen.extend_from_slice(instances);
@@ -664,6 +691,18 @@ impl SortedInstances {
                 self.meshes.push((mesh, (bounds, empty)));
             }
             if empty || self.skipped.binary_search(&(material as u32)).is_ok() {
+                continue;
+            }
+            if hidden(inst) {
+                let ahead = Ahead {
+                    mesh,
+                    material,
+                    cast,
+                    mirrored,
+                };
+                if !self.ahead.contains(&ahead) {
+                    self.ahead.push(ahead);
+                }
                 continue;
             }
             match self.runs.last_mut() {
@@ -1354,6 +1393,54 @@ mod tests {
             .update(&scene, 3, info, 2, |_, _| None, |_| false, |_| false)
             .unwrap();
         assert_same(&again, &fresh(&scene));
+    }
+
+    /// An instance fading in of which nothing is drawn yet is in no run:
+    /// what it will draw with is listed once, for its pipelines to be made
+    /// ahead. It joins a fading run as its fade starts, and the whole
+    /// instances' run as it ends.
+    #[test]
+    fn a_hidden_instance_is_in_no_run_and_names_what_it_will_draw_with() {
+        let mut scene = RenderScene::new();
+        let mesh = scene.add_mesh(MeshData::default());
+        let material = scene.add_material(Material::default());
+        for x in 0..4 {
+            scene.add_instance(mesh, material, Mat4::from_translation(Vec3::X * x as f32));
+        }
+        let reveal = |scene: &mut RenderScene, i: usize, reveal: f32| {
+            scene.objects.instances[i].fx.reveal = reveal;
+        };
+        reveal(&mut scene, 1, 0.0);
+        reveal(&mut scene, 3, 0.0);
+        let mut kept = SortedInstances::default();
+        let update = |k: &mut SortedInstances, s: &RenderScene| {
+            let sorted = k
+                .update(s, 3, info, 2, |_, _| None, |_| false, |_| false)
+                .unwrap();
+            assert_same(&sorted, &fresh(s));
+            k.restore(sorted.transforms.clone(), sorted.spheres.clone());
+            sorted
+        };
+        let sorted = update(&mut kept, &scene);
+        assert_eq!(sorted.submission, [0, 2]);
+        assert_eq!(sorted.runs.len(), 1);
+        let ahead = Ahead {
+            mesh: mesh.index(),
+            material: material.index(),
+            cast: true,
+            mirrored: false,
+        };
+        assert_eq!(sorted.ahead, [ahead], "once for both");
+        // Its fade starts: a run of its own, and one is still hidden.
+        reveal(&mut scene, 1, 0.25);
+        let sorted = update(&mut kept, &scene);
+        let runs: Vec<_> = sorted.runs.iter().map(|r| (r.reveal, r.count)).collect();
+        assert_eq!((runs, sorted.ahead.len()), (vec![(false, 2), (true, 1)], 1));
+        reveal(&mut scene, 1, 1.0);
+        reveal(&mut scene, 3, 1.0);
+        let sorted = update(&mut kept, &scene);
+        assert_eq!((sorted.runs.len(), sorted.runs[0].count), (1, 4));
+        assert!(sorted.ahead.is_empty());
     }
 
     /// Whether an instance receives shadows rides in its record's layer

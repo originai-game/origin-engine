@@ -62,6 +62,7 @@ impl Renderer {
         let (upscale, grid_offset) = self.prepare_frame_resources(scene);
         let (probe_frame, active_probes, probe_boxes) = self.prepare_frame_probes(scene);
         let (mut batches, sorted_instances) = self.build_batches(scene)?;
+        let mut ahead = self.ahead_batches(scene, &batches, &sorted_instances.ahead);
         let instances::Sorted {
             mut transforms,
             mut spheres,
@@ -251,6 +252,7 @@ impl Renderer {
                 scene,
                 ao: effects.ao_target || effects.contact,
                 batches: &mut batches,
+                ahead: &mut ahead,
                 skinned_batches: &mut skinned_batches,
                 skinned_visible: &mut skinned_visible,
                 view_skinned: &mut view_skinned,

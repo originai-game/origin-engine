@@ -111,14 +111,67 @@ impl Renderer {
         local_shadows: bool,
     ) {
         frame_pipelines(|| {
-            self.ensure_pipelines_now(batches, skinned, prepass);
+            self.ensure_pipelines_now(batches, skinned, prepass, false);
             if local_shadows {
                 self.ensure_local_shadow_pipelines();
             }
         });
     }
 
-    /// The local layers' pipelines of every caster's shadow set made so far.
+    /// Starts the pipelines of `ahead` (the batches of instances not drawn
+    /// yet, [`Renderer::ahead_batches`]) as a frame's own are started, and
+    /// waits for none: natively they compile on the compile workers while
+    /// the frames go on, and [`Renderer::pipelines_compiling`] says when
+    /// they are made. On the web they are made here, inside the host's
+    /// frame span, as a drawn batch's are.
+    /// With `local_shadows` a caster's shadow set is made with its local
+    /// layers' pipelines, where it compiles.
+    pub(crate) fn ensure_ahead(&mut self, ahead: &[Batch], prepass: bool, local_shadows: bool) {
+        self.instances.ahead = !ahead.is_empty();
+        if !ahead.is_empty() {
+            frame_pipelines(|| self.ensure_pipelines_now(ahead, &[], prepass, local_shadows));
+        }
+    }
+
+    /// Whether a batch pipeline started for this frame's features is not
+    /// made yet, without waiting for any. A pass waits for the pipeline of
+    /// a batch it draws, so at the end of a frame only those made ahead
+    /// ([`Renderer::ensure_ahead`]) can still compile. Never on the web,
+    /// where the browser compiles them.
+    pub(crate) fn pipelines_compiling(&self) -> bool {
+        let f = self.frame_features;
+        let varying = self
+            .lit
+            .lean_pipelines
+            .values()
+            .chain(self.lit.pbr_pipelines.values())
+            .chain(self.prepass.lean_prepass_pipelines.values())
+            .chain(self.prepass.prepass_pipelines.values())
+            .any(|v| !v.ready(f));
+        let array = self.lit.array_maps.iter();
+        let physical = self.lit.physical.iter();
+        let once = (self.cache.surface_prepass_pipelines.values())
+            .chain(self.cache.hook_pipelines.values())
+            .chain(self.cache.hook_prepass_pipelines.values())
+            .chain(self.cache.physical_hook_pipelines.values())
+            .chain(
+                array
+                    .clone()
+                    .flat_map(|a| a.lit.values().chain(a.prepass.values())),
+            )
+            .chain(physical.flat_map(|p| p.pipelines.values()))
+            .any(|p| p.ready().is_none());
+        let shadows = (self.shadows.shadow_pipelines.values())
+            .chain(self.shadows.compact_shadow_pipelines.values())
+            .chain(self.cache.hook_shadow_pipelines.values())
+            .chain(array.flat_map(|a| a.shadow.values()))
+            .any(|s| s.ready().is_none());
+        varying || once || shadows
+    }
+
+    /// The local layers' pipelines of every caster's shadow set made so far
+    /// (one still compiling ahead makes its own, [`Renderer::ensure_ahead`];
+    /// a pass that draws with a set makes them if they are not).
     fn ensure_local_shadow_pipelines(&self) {
         let array = self.lit.array_maps.iter().flat_map(|a| a.shadow.values());
         for set in self
@@ -129,11 +182,20 @@ impl Renderer {
             .chain(self.shadows.compact_shadow_pipelines.values())
             .chain(array)
         {
-            set.local();
+            if let Some(set) = set.ready() {
+                set.local();
+            }
         }
     }
 
-    fn ensure_pipelines_now(&mut self, batches: &[Batch], skinned: &[Batch], prepass: bool) {
+    /// `local`: a shadow set is made with its local layers' pipelines.
+    fn ensure_pipelines_now(
+        &mut self,
+        batches: &[Batch],
+        skinned: &[Batch],
+        prepass: bool,
+        local: bool,
+    ) {
         let (features, declared) = (self.frame_features, self.lit.pbr_shader.declared);
         for (slot, work) in self.pipeline_jobs(batches, skinned, prepass) {
             use Made::{Pipeline as P, Shadows as S};
@@ -160,7 +222,12 @@ impl Renderer {
             | Slot::Shadow(_) = slot
             {
                 let set = deferred(move || match job() {
-                    S(set) => set,
+                    S(set) => {
+                        if local {
+                            set.local();
+                        }
+                        set
+                    }
                     P(_) => unreachable!("a shadow slot's job makes shadows"),
                 });
                 match slot {
