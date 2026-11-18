@@ -678,6 +678,10 @@ pub struct WorldDeclared {
 pub struct WorldPlacement {
     last_panels: Vec<PanelHit>,
     anchor_cache: placement::AnchorCache,
+    /// Em widths of the current and previous frame's visible mass values.
+    /// Template replacement or changed font inputs invalidate these widths.
+    mass_widths: std::collections::HashMap<(u32, u32), f32>,
+    next_mass_widths: std::collections::HashMap<(u32, u32), f32>,
     /// The panel the pointer is on this tick.
     pub pointed: Option<(u64, PanelInfo)>,
     pub marks: BTreeMap<u64, Marks>,

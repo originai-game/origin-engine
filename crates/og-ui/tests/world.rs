@@ -515,6 +515,63 @@ fn mass_elements_pool_age_out_and_replay() {
     assert!(ui.world_frame().batches.is_empty());
 }
 
+#[test]
+fn mass_placement_keeps_fresh_results_after_font_and_template_changes() {
+    let mut cached = ui();
+    let handle = cached.define_mass("damage", numbers(), UiMassSpace::World);
+    let mut fresh = cached.clone();
+    for tick in 0..32 {
+        for ui in [&mut cached, &mut fresh] {
+            if tick == 8 {
+                let mut fonts = ui.fonts().clone();
+                fonts.body.metrics = FontMetrics::fixed(1.25);
+                ui.set_fonts(fonts);
+            }
+            if tick == 16 || tick == 24 {
+                let mut template = numbers();
+                template.kind = UiMassKind::Text {
+                    strings: vec![
+                        "Short".into(),
+                        if tick == 16 {
+                            "Long name"
+                        } else {
+                            "A much longer label"
+                        }
+                        .into(),
+                    ],
+                };
+                assert_eq!(
+                    ui.define_mass("damage", template, UiMassSpace::World),
+                    handle
+                );
+            }
+        }
+        fresh.reset_part_css();
+        for ui in [&mut cached, &mut fresh] {
+            run(ui, 1, |ui| {
+                for value in [0.0, 1.0, 0.0] {
+                    ui.spawn_mass(
+                        handle,
+                        UiMassInstance {
+                            position: [0.0, 1.0, 0.0],
+                            value,
+                            color: [1.0; 4],
+                            scale: 1.0,
+                            ..Default::default()
+                        },
+                    );
+                }
+            });
+        }
+        assert_eq!(
+            cached.save_world_state(),
+            fresh.save_world_state(),
+            "tick {tick}"
+        );
+        assert_eq!(cached.frame().items, fresh.frame().items, "tick {tick}");
+    }
+}
+
 /// A world panel takes a press through the pointer ray: the ray meets its
 /// quad where its button is drawn, so the button is pressed, and a
 /// pointer handler on the panel reads the point in its own box; a press
