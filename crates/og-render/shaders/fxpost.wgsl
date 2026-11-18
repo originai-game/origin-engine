@@ -899,9 +899,7 @@ fn zoom_stage(in: VsOut, stride: f32, coarse: bool) -> vec4<f32> {
     total += weight;
     factor *= ratio;
   }
-  var alpha = 1.0;
-  if (coarse) { alpha = textureLoad(tex_b, vec2<i32>(in.pos.xy), 0).a; }
-  return vec4<f32>(sum / max(total, 1e-6), alpha);
+  return vec4<f32>(sum / max(total, 1e-6), 1.0);
 }
 
 @fragment
@@ -910,6 +908,11 @@ fn fs_zoom_fine(in: VsOut) -> @location(0) vec4<f32> { return zoom_stage(in, 1.0
 fn fs_zoom_middle(in: VsOut) -> @location(0) vec4<f32> { return zoom_stage(in, 8.0, false); }
 @fragment
 fn fs_zoom_coarse(in: VsOut) -> @location(0) vec4<f32> { return zoom_stage(in, 64.0, true); }
+@fragment
+fn fs_zoom_resolve(in: VsOut) -> @location(0) vec4<f32> {
+  return vec4<f32>(textureSampleLevel(tex_a, fx_linear, in.uv, 0.0).rgb,
+                   textureLoad(tex_b, vec2<i32>(in.pos.xy), 0).a);
+}
 // Spin and directional keep their original single-pass sampling. A zoom
 // of strength >= 1 crosses the centre (negative radius); retain direct
 // stratified integration there, which cannot be factored in log radius.

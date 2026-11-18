@@ -90,7 +90,7 @@ pub(super) fn declare(g: &mut RenderGraph, cx: &PlanCx, p: FramePass) {
         FramePass::ScreenBlur => {
             let after_mb = names.after_mb.unwrap_or("history-write");
             let outputs: &[&str] = if cfg.zoom_blur {
-                &["zoom.0", "zoom.1", "hdr.blur"]
+                &["zoom.0", "zoom.1", "zoom.2", "hdr.blur"]
             } else {
                 &["hdr.blur"]
             };

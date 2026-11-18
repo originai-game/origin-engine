@@ -612,6 +612,7 @@ const FX_PASSES: &[(&str, wgpu::TextureFormat)] = &[
     ("fs_zoom_fine", HDR_FORMAT),
     ("fs_zoom_middle", HDR_FORMAT),
     ("fs_zoom_coarse", HDR_FORMAT),
+    ("fs_zoom_resolve", HDR_FORMAT),
     ("fs_godrays_mask", HDR_FORMAT),
     ("fs_godrays_blur", HDR_FORMAT),
     ("fs_godrays_resolve", HDR_FORMAT),
