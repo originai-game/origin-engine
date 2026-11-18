@@ -1,0 +1,8 @@
+{
+  "added": [
+    {
+      "member": "og.ui.documentSchema",
+      "summary": "World and mass anchors expose scale-min/scale-max distance bounds. Documents can contain labels within safe edges or configure edge-clamp margin, arrow size and ink; mass bars expose bar-ghost ink."
+    }
+  ]
+}

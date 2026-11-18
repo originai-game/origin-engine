@@ -81,6 +81,63 @@ fn numbers() -> UiMassTemplate {
     }
 }
 
+/// Documents configure the existing native placement and mass templates,
+/// including on retained ticks; omitted settings keep their old defaults.
+#[test]
+fn document_world_distance_bounds_edge_controls_and_mass_settings() {
+    let mut ui = ui();
+    let doc = r##"<meta name="component" content="bounds">
+<div>
+<anchor id="Near" at="0 0 4" scale-at="5" scale-min="0.72" scale-max="1"><div class="tag">Near</div></anchor>
+<anchor id="Far" at="0 0 -15" scale-at="5" scale-min="0.72" scale-max="1"><div class="tag">Far</div></anchor>
+<anchor id="Edge" at="30 0 0" clamp="edge" clamp-margin="40" arrow-size="9" arrow-color="#00ff00"><div class="tag">Edge</div></anchor>
+<anchor id="Contained" at="4 0 0" clamp="contain" clamp-margin="12"><div class="tag">Contained</div></anchor>
+<anchor at="0 0 0" mass="hp" value="60" max="100" scale-at="8" scale-min="0.72" scale-max="1" bar-ghost="#ff0000" />
+</div>
+<style>.tag { width: 100px; height: 30px; background: #202020; }</style>"##;
+    ui.define_document(UiDocument::parse("bounds.svelte", doc).unwrap());
+    ui.mount_document(
+        reactive::SourceId::new("test", "bounds"),
+        "bounds",
+        Default::default(),
+        Default::default(),
+        &bind::NoEnv,
+    )
+    .unwrap();
+    run(&mut ui, 40, |_| {});
+    assert!(ui.frame().warnings.is_empty(), "{:?}", ui.frame().warnings);
+    let near = ui.element("test:bounds/Near").unwrap();
+    let far = ui.element("test:bounds/Far").unwrap();
+    assert!((near.width - 100.0).abs() < 0.01, "{near:?}");
+    assert!((far.width - 72.0).abs() < 0.01, "{far:?}");
+    let edge = ui.element("test:bounds/Edge").unwrap();
+    assert!((edge.x + edge.width - (W - 49.0)).abs() < 0.1, "{edge:?}");
+    assert!(ui.frame().items.iter().any(|item| matches!(
+        &item.cmd,
+        DrawCmd::Shape { shape, .. }
+            if matches!(shape.geometry, og_draw::UiGeometry::Polygon { sides: 3, .. })
+            && shape.half == Vec2::splat(4.5)
+            && shape.paint == og_draw::UiPaint::Solid([0.0, 1.0, 0.0, 1.0])
+    )));
+    let contained = ui.element("test:bounds/Contained").unwrap();
+    assert!((contained.x + contained.width - (W - 12.0)).abs() < 0.1);
+    let batch = &ui.world_frame().batches[0];
+    assert_eq!(batch.template.distance, Vec3::new(8.0, 0.72, 1.0));
+    let UiMassKind::Bar { ghost, .. } = batch.template.kind else {
+        panic!("expected a bar");
+    };
+    assert_eq!(ghost, [1.0, 0.0, 0.0, 1.0]);
+    ui.set_theme(Theme {
+        text_scale: 1.5,
+        ..*ui.theme()
+    });
+    run(&mut ui, 40, |_| {});
+    let edge = ui.element("test:bounds/Edge").unwrap();
+    assert!((edge.x + edge.width - (W - 73.5)).abs() < 0.1, "{edge:?}");
+    let contained = ui.element("test:bounds/Contained").unwrap();
+    assert!((contained.x + contained.width - (W - 18.0)).abs() < 0.1);
+}
+
 #[test]
 fn mass_elements_pool_age_out_and_replay() {
     let mut ui = ui();

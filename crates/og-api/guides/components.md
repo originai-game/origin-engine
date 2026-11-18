@@ -958,10 +958,16 @@ Its own props, beside every element's:
 | `world-offset` | `text` | `offset="0 2 0"`: added to the point, world units (over a head). |
 | `occlusion` | `none \| fade \| hide` | What the scene in front of its point does to it: faded or hidden. |
 | `declutter` | `none \| shift \| stack \| hide` | How it resolves overlapping an anchor of higher priority. |
-| `world-clamp` | `none \| edge` | `clamp="edge"`: held on the screen's edge with an arrow while its point is off screen (a waypoint). |
+| `world-clamp` | `none \| edge \| contain` | `clamp="edge"`: held on the safe edge with an arrow; `contain`: push the whole box inside, fading as its point leaves the safe area. |
+| `clamp-margin` | `number` | `clamp-margin`: safe-edge inset in CSS px times user text scale; default 24 for edge, theme small spacing for contain. |
+| `arrow-size` | `number` | `arrow-size`: edge arrow length in CSS px times user text scale (default 14); zero draws no arrow. |
+| `arrow-color` | `paint` | `arrow-color`: edge arrow ink (default white). |
+| `world-scale-min` | `number` | `scale-min`: smallest distance scale; default 0.5, or 0.25 for mass anchors. |
+| `world-scale-max` | `number` | `scale-max`: largest distance scale; default 2, or 4 for mass anchors. |
+| `bar-ghost` | `paint` | `bar-ghost`: mass bar ghost ink (default pale white). |
 | `priority` | `number` | Higher keeps its place when anchors overlap. |
 | `max-distance` | `number` | `max-distance`: hidden past this many world units, fading over its last tenth. |
-| `world-scale-at` | `number` | `scale-at="10"`: scaled 1 at this distance, larger nearer and smaller farther (0.5 to 2). |
+| `world-scale-at` | `number` | `scale-at="10"`: scaled 1 at this distance, larger nearer and smaller farther, bounded by scale-min and scale-max. Also applies to mass anchors; absent or zero keeps screen size. |
 
 ## 36. `<ground>` (`ground`): A box laid flat in the world (`<ground entity={u.entity} size="3 3">…</ground>`): laid out at its CSS size and drawn by the UI onto the horizontal plane `size` world units across at the entity's (or `at`'s) height and draped over the terrain under it as a decal, seen in perspective under the screen's elements (a selection ring, a range marker, a decal); `rotation="0 45 0"` turns it. Inert
 

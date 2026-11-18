@@ -52,15 +52,24 @@ pub(super) fn anchor_desc(r: &Resolved, el: Element) -> Result<WorldAnchorDesc, 
         Some(o) => return Err(format!("declutter=\"{o}\" is none, shift, stack or hide")),
     };
     let clamp = match r.str("worldClamp") {
-        None | Some("none") => None,
-        Some("edge") => Some(EdgeClamp::default()),
-        Some(o) => return Err(format!("clamp=\"{o}\" is none or edge")),
+        None | Some("none" | "contain") => None,
+        Some("edge") => {
+            let defaults = EdgeClamp::default();
+            let arrow_size = r.num("arrowSize").unwrap_or(defaults.arrow_size).max(0.0);
+            Some(EdgeClamp {
+                margin: r.num("clampMargin").unwrap_or(defaults.margin).max(0.0),
+                arrow_size,
+                arrow: (arrow_size > 0.0)
+                    .then(|| r.color("arrowColor").unwrap_or(crate::Srgba::WHITE)),
+            })
+        }
+        Some(o) => return Err(format!("clamp=\"{o}\" is none, edge or contain")),
     };
     let scale = match r.num("worldScaleAt") {
         Some(d) if d > 0.0 => AnchorScale::Distance {
             reference: d,
-            min: 0.5,
-            max: 2.0,
+            min: r.num("worldScaleMin").unwrap_or(0.5).max(0.0),
+            max: r.num("worldScaleMax").unwrap_or(2.0).max(0.0),
         },
         _ => AnchorScale::Constant,
     };
@@ -71,6 +80,8 @@ pub(super) fn anchor_desc(r: &Resolved, el: Element) -> Result<WorldAnchorDesc, 
         occlusion,
         declutter,
         clamp,
+        contain: r.str("worldClamp") == Some("contain"),
+        contain_margin: r.num("clampMargin").map(|v| v.max(0.0)),
         scale,
         priority: r.num("priority").unwrap_or(0.0) as i32,
         max_distance: r.num("maxDistance").unwrap_or(0.0).max(0.0),
@@ -630,7 +641,9 @@ impl Ui {
             Some(m) => (
                 UiMassKind::Bar {
                     back: [0.0, 0.0, 0.0, 0.6],
-                    ghost: [1.0, 1.0, 1.0, 0.7],
+                    ghost: r
+                        .color("barGhost")
+                        .map_or([1.0, 1.0, 1.0, 0.7], |c| c.linear()),
                     radius: 2.0,
                 },
                 og_core::glam::Vec2::new(px(r.size("width"), 60.0), px(r.size("height"), 6.0)),
@@ -771,6 +784,11 @@ impl Ui {
                 pivot: og_core::glam::Vec2::new(0.5, 1.0),
                 lifetime,
                 keys,
+                distance: Vec3::new(
+                    r.num("worldScaleAt").unwrap_or(0.0).max(0.0),
+                    r.num("worldScaleMin").unwrap_or(0.25).max(0.0),
+                    r.num("worldScaleMax").unwrap_or(4.0).max(0.0),
+                ),
                 ..UiMassTemplate::default()
             },
             UiMassSpace::World,
@@ -837,7 +855,7 @@ impl Ui {
             },
             self.style.em_of(r, &self.env),
         );
-        let desc = match anchor_desc(r, el) {
+        let mut desc = match anchor_desc(r, el) {
             Ok(d) => d,
             Err(e) => {
                 self.out
@@ -846,6 +864,12 @@ impl Ui {
                 return None;
             }
         };
+        let text_scale = self.css_text_scale();
+        if let Some(clamp) = &mut desc.clamp {
+            clamp.margin *= text_scale;
+            clamp.arrow_size *= text_scale;
+        }
+        desc.contain_margin = desc.contain_margin.map(|m| m * text_scale);
         self.open_world_anchor_keyed(path.as_str().into(), Some(key), desc.clone());
         let i = self.tree.parent();
         let mut p = self.resolved_props(n, r);

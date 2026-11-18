@@ -259,6 +259,8 @@ pub struct WorldAnchorDesc {
     /// inside it (a tag near the edge slides in rather than being cut), and
     /// it fades out as the point leaves the safe area.
     pub contain: bool,
+    /// Safe-edge inset for containment, CSS px; `None` uses theme small spacing.
+    pub contain_margin: Option<f32>,
 }
 
 impl Default for WorldAnchorDesc {
@@ -278,6 +280,7 @@ impl Default for WorldAnchorDesc {
             clamp: None,
             fade_ticks: 0,
             contain: false,
+            contain_margin: None,
         }
     }
 }
