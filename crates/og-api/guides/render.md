@@ -142,6 +142,18 @@ feeds back into the simulation.
 - Reflections, best first: SSR, then reflection probes and probe GI, then
   the environment or sky. A grounded environment (`groundHeight`) shows
   the same ground in mirrors, water and clear coats.
+- A grounded environment's ground takes the shadows of what stands on
+  it (`groundShadows`, 1 by default): the map's light the props hide from
+  it, within 32 m of `groundCenter`, and the sun's shadow from a
+  DirectionalLight that casts shadows, as a real floor would (three.js's
+  ShadowMaterial, Unity's HDRI backplate and Unreal's HDRI Backdrop do
+  the same). For a hard sun shadow on an
+  outdoor photograph, cook the map with `sun extract` and let the
+  DirectionalLight cast the sun the cook took out. Its limits: mirrors
+  show the ground without these shadows, point and spot lights cast none
+  on it, and the map's light is occluded as by a height field, so what
+  overhangs the ground (a sphere's lower half, a table top) occludes it
+  as if solid down to the ground, which widens the dark contact a little.
 
 ## 5. Post effects
 

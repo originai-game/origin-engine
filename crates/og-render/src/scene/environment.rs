@@ -494,6 +494,13 @@ pub struct GroundProjection {
     /// The ground point under where the map was taken (the dome's centre
     /// is `height` above it).
     pub center: Vec3,
+    /// How dark the ground takes the shadows of what stands on it, 0 to 1:
+    /// the sun's (the cascades) and the share of the map's light they hide
+    /// (the ground's height map, `ground_heights.rs`), the ground drawn times the
+    /// light it gets with them over the light it would get without them
+    /// (Debevec's differential rendering, as Blender's shadow catcher).
+    /// 0 draws the ground as photographed.
+    pub shadows: f32,
 }
 
 impl Default for GroundProjection {
@@ -502,6 +509,7 @@ impl Default for GroundProjection {
             height: 15.0,
             radius: 100.0,
             center: Vec3::ZERO,
+            shadows: 1.0,
         }
     }
 }
@@ -819,6 +827,7 @@ mod sky_params_tests {
             height: 2.0,
             radius: 30.0,
             center: Vec3::new(1.0, -1.0, 3.0),
+            shadows: 1.0,
         };
         assert_eq!(
             GroundProjection::gpu(Some(g)),

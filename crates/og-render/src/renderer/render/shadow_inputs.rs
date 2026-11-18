@@ -1,7 +1,7 @@
 //! What the shadow passes draw from: the static shadow cache's split (the
 //! batches that stood still long enough to stay in the cached layers) and
-//! the weather occlusion map's view, drawn again only when what it was
-//! drawn from changes.
+//! the weather occlusion map's and the grounded ground's height map's
+//! views, each drawn again only when what it was drawn from changes.
 
 use super::*;
 
@@ -22,6 +22,10 @@ pub(super) struct PrepareShadowInputsOutputs {
     pub shadow_split: shadow_cache::Split,
     pub shelter: Option<(Mat4, Frustum, u64, bool)>,
     pub shelter_redraw: bool,
+    /// The grounded ground's height map (ground_heights.rs): its view, frustum and
+    /// key, and whether it is drawn again.
+    pub ground: Option<(Mat4, Frustum, u64, bool)>,
+    pub ground_redraw: bool,
 }
 
 impl Renderer {
@@ -128,10 +132,41 @@ impl Renderer {
                 ))
             });
         let shelter_redraw = shelter.as_ref().is_some_and(|s| s.3);
+        // The grounded ground's height map (ground_heights.rs
+        // `ground_view`), while the sky pass reads it: drawn again only
+        // when what it was drawn from changes.
+        let ground = scene
+            .lighting
+            .environment
+            .ground
+            .filter(|_| ground_heights::wanted(scene))
+            .zip(self.sky.ground.maps.as_ref())
+            .map(|(g, maps)| {
+                let view_proj = ground_heights::ground_view(&g);
+                let frustum = Frustum::from_view_proj(view_proj);
+                let mut inside = vec![false; spheres.len()];
+                for b in batches.iter().filter(|b| b.cast) {
+                    inside[b.first as usize..(b.first + b.count) as usize].fill(true);
+                }
+                frustum.test_spheres(&mut inside, spheres);
+                let key = ground_heights::ground_key(
+                    &g,
+                    spheres
+                        .iter()
+                        .zip(&inside)
+                        .filter(|(_, i)| **i)
+                        .map(|(s, _)| *s),
+                    scene.world.terrains.len(),
+                );
+                (view_proj, frustum, key, maps.key != Some(key))
+            });
+        let ground_redraw = ground.as_ref().is_some_and(|s| s.3);
         PrepareShadowInputsOutputs {
             shadow_split,
             shelter,
             shelter_redraw,
+            ground,
+            ground_redraw,
         }
     }
 }

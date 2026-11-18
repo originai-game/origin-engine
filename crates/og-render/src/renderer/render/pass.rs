@@ -182,6 +182,7 @@ passes! {
     gi_probes: pass_gi_probes::GiProbesPass => FramePass::GiProbes,
     cascade: pass_shadows::CascadePass => FramePass::Cascade(_),
     shelter: pass_shadows::ShelterPass => FramePass::Shelter,
+    ground_heights: pass_shadows::GroundHeightsPass => FramePass::GroundHeights,
     local_face: pass_shadows::LocalFacePass => FramePass::LocalFace(_),
     particles: pass_particles::ParticlesPass => FramePass::Particles,
     light_2d: pass_light_2d::Light2dPass => FramePass::Light2d,

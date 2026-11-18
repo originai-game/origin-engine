@@ -392,7 +392,7 @@ column ParticleEmitter {
 }
 ```
 
-<sub>Module `render` line 972</sub>
+<sub>Module `render` line 977</sub>
 
 ```ogt
 column EffectMaterial {
@@ -403,7 +403,7 @@ column EffectMaterial {
 }
 ```
 
-<sub>Module `render` line 979</sub>
+<sub>Module `render` line 984</sub>
 
 ```ogt
 column AoMethod {
@@ -414,7 +414,7 @@ column AoMethod {
 }
 ```
 
-<sub>Module `render` line 995</sub>
+<sub>Module `render` line 1000</sub>
 
 ```ogt
 column AoResolution {
@@ -425,7 +425,7 @@ column AoResolution {
 }
 ```
 
-<sub>Module `render` line 1008</sub>
+<sub>Module `render` line 1013</sub>
 
 ```ogt
 column DofQuality {
@@ -436,7 +436,7 @@ column DofQuality {
 }
 ```
 
-<sub>Module `render` line 1021</sub>
+<sub>Module `render` line 1026</sub>
 
 ```ogt
 column ScreenBlur {
@@ -447,7 +447,7 @@ column ScreenBlur {
 }
 ```
 
-<sub>Module `render` line 1036</sub>
+<sub>Module `render` line 1041</sub>
 
 ```ogt
 column Blend {
@@ -458,7 +458,7 @@ column Blend {
 }
 ```
 
-<sub>Module `render` line 1049</sub>
+<sub>Module `render` line 1054</sub>
 
 ```ogt
 column SpriteFacing {
@@ -469,7 +469,7 @@ column SpriteFacing {
 }
 ```
 
-<sub>Module `render` line 1064</sub>
+<sub>Module `render` line 1069</sub>
 
 ```ogt
 column GiMethod {
@@ -480,7 +480,7 @@ column GiMethod {
 }
 ```
 
-<sub>Module `render` line 1499</sub>
+<sub>Module `render` line 1504</sub>
 
 ```ogt
 column Palette {
@@ -491,7 +491,7 @@ column Palette {
 }
 ```
 
-<sub>Module `render` line 1571</sub>
+<sub>Module `render` line 1576</sub>
 
 ```ogt
 column Look {
@@ -502,7 +502,7 @@ column Look {
 }
 ```
 
-<sub>Module `render` line 1578</sub>
+<sub>Module `render` line 1583</sub>
 
 ```ogt
 column DitherPattern {
@@ -513,7 +513,7 @@ column DitherPattern {
 }
 ```
 
-<sub>Module `render` line 1595</sub>
+<sub>Module `render` line 1600</sub>
 
 ```ogt
 column MaterialSurface {
@@ -524,7 +524,7 @@ column MaterialSurface {
 }
 ```
 
-<sub>Module `render` line 1610</sub>
+<sub>Module `render` line 1615</sub>
 
 ```ogt
 column OutlinePlace {
@@ -535,7 +535,7 @@ column OutlinePlace {
 }
 ```
 
-<sub>Module `render` line 1624</sub>
+<sub>Module `render` line 1629</sub>
 
 ```ogt
 column StyliseSpace {
@@ -546,7 +546,7 @@ column StyliseSpace {
 }
 ```
 
-<sub>Module `render` line 1639</sub>
+<sub>Module `render` line 1644</sub>
 
 ```ogt
 column PosterizeMode {
@@ -557,7 +557,7 @@ column PosterizeMode {
 }
 ```
 
-<sub>Module `render` line 1652</sub>
+<sub>Module `render` line 1657</sub>
 
 ```ogt
 column HalftoneMode {
@@ -568,7 +568,7 @@ column HalftoneMode {
 }
 ```
 
-<sub>Module `render` line 1666</sub>
+<sub>Module `render` line 1671</sub>
 
 ```ogt
 column HalftoneRegion {
@@ -579,7 +579,7 @@ column HalftoneRegion {
 }
 ```
 
-<sub>Module `render` line 1680</sub>
+<sub>Module `render` line 1685</sub>
 
 ```ogt
 column Light2DKind {
@@ -590,7 +590,7 @@ column Light2DKind {
 }
 ```
 
-<sub>Module `render` line 2131</sub>
+<sub>Module `render` line 2136</sub>
 
 ```ogt
 column ReflectionProbeMode {
@@ -601,7 +601,7 @@ column ReflectionProbeMode {
 }
 ```
 
-<sub>Module `render` line 3008</sub>
+<sub>Module `render` line 3013</sub>
 
 ```ogt
 column Shader {
@@ -612,7 +612,7 @@ column Shader {
 }
 ```
 
-<sub>Module `render` line 3058</sub>
+<sub>Module `render` line 3063</sub>
 
 ```ogt
 column LineMode {
@@ -623,7 +623,7 @@ column LineMode {
 }
 ```
 
-<sub>Module `render` line 3864</sub>
+<sub>Module `render` line 3869</sub>
 
 ```ogt
 column RenderTargetFormat {
@@ -634,7 +634,7 @@ column RenderTargetFormat {
 }
 ```
 
-<sub>Module `render` line 4075</sub>
+<sub>Module `render` line 4080</sub>
 
 ```ogt
 column RenderTarget {
@@ -645,7 +645,7 @@ column RenderTarget {
 }
 ```
 
-<sub>Module `render` line 4084</sub>
+<sub>Module `render` line 4089</sub>
 
 ```ogt
 column Post {
@@ -656,7 +656,7 @@ column Post {
 }
 ```
 
-<sub>Module `render` line 4224</sub>
+<sub>Module `render` line 4229</sub>
 
 ## Constants
 
@@ -672,28 +672,28 @@ column Post {
 const PARTICLES_ARMED u32 4294967295 "ParticleSystem.startTick's default: never written. A looping emitter emits as if started at tick 0; a one-shot (`looping false`) emits nothing until its startTick is written, so a burst spawned in `start` waits for its first use. Write it back to re-arm a one-shot without firing it."
 ```
 
-<sub>Module `render` line 2261</sub>
+<sub>Module `render` line 2266</sub>
 
 ```ogt
 const MAX_LIGHTS u32 256 "The most point and spot lights one frame draws, among those in view; past it the ones brightest at the camera are kept."
 ```
 
-<sub>Module `render` line 2925</sub>
+<sub>Module `render` line 2930</sub>
 
 ```ogt
 const MAX_CLUSTER_LIGHTS u32 64 "The most point and spot lights that shade one screen cluster (a 1/16 by 1/9 tile of the view and one of 24 depth slices); past it the ones brightest at the camera are kept there."
 ```
 
-<sub>Module `render` line 2926</sub>
+<sub>Module `render` line 2931</sub>
 
 ```ogt
 const UI_LAYER i32 1000 "The UI's layer among screen sprites and screen text (SpriteDesc and TextDesc with screen): those at or below it draw under every og.ui element, those above it over every one, modals, toasts and the screen transition included, in their layers' order either way."
 ```
 
-<sub>Module `render` line 2927</sub>
+<sub>Module `render` line 2932</sub>
 
 ```ogt
 const MAX_REFLECTION_PROBES u32 8 "The most og.ReflectionProbe components one frame samples, nearest the camera first; the rest are skipped."
 ```
 
-<sub>Module `render` line 3000</sub>
+<sub>Module `render` line 3005</sub>

@@ -113,7 +113,8 @@ struct Frame {
   hemi_ground: vec4<f32>,     // rgb: its ground colour
   material_surface: vec4<f32>,  // the material style's surface: x 0 none, 1 clay, 2 paper, 3 plastic; y strength; z scale (m)
   origin: vec4<f32>,          // xyz: where the zero of the frame's coordinates is in the world (origin.rs)
-  // The grounded dome (GroundProjection::gpu): [0] xyz its centre, w its height above the ground (0: none); [1].x its radius.
+  // The grounded dome (GroundProjection::gpu): [0] xyz its centre, w its height above the ground (0: none); [1].x its
+  // radius, y how dark its ground takes shadows, w its height map's half side (ground_heights.rs; 0: no map).
   env_dome: array<vec4<f32>, 2>,
   foliage_wind: array<array<vec4f, 9>, 2>, // current, previous drawn; FoliageWind
   // The material style's toon model (stylise.rs MaterialStyle): x the band

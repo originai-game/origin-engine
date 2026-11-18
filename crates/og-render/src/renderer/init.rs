@@ -149,6 +149,7 @@ impl Renderer {
             fresh.sky.sky_pipeline = self.sky.sky_pipeline;
             fresh.sky.sky_look_pipeline = self.sky.sky_look_pipeline;
             fresh.sky.clouds_low = self.sky.clouds_low;
+            fresh.sky.ground = self.sky.ground;
             fresh.sprite.sprite_pipeline = self.sprite.sprite_pipeline;
             fresh.sprite.sprite_additive_pipeline = self.sprite.sprite_additive_pipeline;
             fresh.sprite.sprite_untonemapped_pipeline = self.sprite.sprite_untonemapped_pipeline;
@@ -421,6 +422,7 @@ impl Renderer {
             sky_pipeline,
             sky_look_pipeline,
             clouds_low,
+            ground: ground_catcher,
             ibl,
             cloud_noise,
             cloud_shadow,
@@ -660,7 +662,7 @@ impl Renderer {
             sky: SkyState::new(
                 sky_layout,
                 (sky_pipeline, sky_look_pipeline),
-                clouds_low,
+                (clouds_low, ground_catcher),
                 (cloud_noise, cloud_shadow),
                 sky_params,
                 aurora_map,

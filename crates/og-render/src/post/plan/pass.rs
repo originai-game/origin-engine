@@ -33,6 +33,10 @@ pub(crate) enum FramePass {
     /// The weather occlusion map, the cascade array's last layer (weather.rs
     /// `shelter_view`): in the frames it is drawn again, not every frame.
     Shelter,
+    /// The grounded ground's height map, a layer of the cascade array
+    /// (environment/ground_heights.rs `ground_view`): in the frames it is drawn
+    /// again, not every frame.
+    GroundHeights,
     /// The depth-normal prepass (normal, velocity, view depth, outline ids).
     Prepass,
     /// Ambient occlusion (GTAO or SSAO), then its blur.
@@ -250,6 +254,7 @@ impl FramePass {
                 | FramePass::Cascade(_)
                 | FramePass::LocalFace(_)
                 | FramePass::Shelter
+                | FramePass::GroundHeights
                 | FramePass::LiveSky
                 | FramePass::GiProbes
                 | FramePass::Probes
@@ -316,6 +321,7 @@ impl FramePass {
             FramePass::Cascade(i) => format!("cascade.{i}"),
             FramePass::LocalFace(i) => format!("local-shadow.{i}"),
             FramePass::Shelter => "shelter".into(),
+            FramePass::GroundHeights => "ground-heights".into(),
             FramePass::Prepass => "prepass".into(),
             FramePass::Ao => "ao".into(),
             FramePass::AoBlur => "ao-blur".into(),

@@ -45,6 +45,7 @@ pub(crate) fn build_graph(passes: &[FramePass], cfg: &GraphConfig) -> RenderGrap
             | FramePass::Cascade(_)
             | FramePass::LocalFace(_)
             | FramePass::Shelter
+            | FramePass::GroundHeights
             | FramePass::Prepass
             | FramePass::Particles
             | FramePass::Light2d

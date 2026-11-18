@@ -76,6 +76,7 @@ sprite array                             | -            | -       | -      | -  
 sprite mesh                              | -            | -       | -      | full | -                 | -         | -        | -
 sprite skin                              | -            | -       | -      | full | -                 | -         | -        | -
 tiles                                    | -            | -       | -      | full | -                 | -         | -        | -
+sky ground                               | -            | -       | -      | -    | -                 | -         | -        | -
 fluid 3d                                 | full         | -       | -      | -    | -                 | stub      | -        | full
 stylise object                           | full         | full    | full   | full | stub              | full      | full     | full
 terrain                                  | full         | full    | full   | -    | stub              | full      | -        | full

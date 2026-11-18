@@ -23,6 +23,8 @@ pub(super) struct WriteFrameUniformsInputs<'a> {
     pub cascade_anchor: Vec3,
     pub local_shadows: &'a [frame::LocalShadow],
     pub shelter: &'a Option<(Mat4, Frustum, u64, bool)>,
+    /// The grounded ground's height map (ground_heights.rs).
+    pub ground: &'a Option<(Mat4, Frustum, u64, bool)>,
     pub probe_frame: &'a probes::ProbeFrame,
     pub active_probes: &'a [probes::ReflectionProbe],
     pub probe_faces: &'a [[frame::CameraFrame; 6]],
@@ -57,6 +59,7 @@ impl Renderer {
             cascade_anchor,
             local_shadows,
             shelter,
+            ground,
             probe_frame,
             active_probes,
             probe_faces,
@@ -277,6 +280,21 @@ impl Renderer {
                 ],
             ];
             shadow_slots[SHELTER_SLOT] = ShadowPassUniform {
+                view_proj: view_proj.to_cols_array_2d(),
+                light: [0.0; 4],
+                time: shadow_time,
+                paraboloid: [0.0; 4],
+                foliage_wind: uniform.foliage_wind[0],
+            };
+        }
+        // The grounded ground's maps: how dark the ground takes the shadows
+        // and the maps' half side (frame.wgsl `env_dome`, sky_ground.wgsl),
+        // and the heights' view.
+        if let Some(((view_proj, ..), g)) = ground.as_ref().zip(scene.lighting.environment.ground) {
+            uniform.env_dome[1][1] = g.shadows.clamp(0.0, 1.0);
+            uniform.env_dome[1][3] = ground_heights::ground_half(&g);
+            self.sky.ground.write(&self.queue, &g);
+            shadow_slots[GROUND_SLOT] = ShadowPassUniform {
                 view_proj: view_proj.to_cols_array_2d(),
                 light: [0.0; 4],
                 time: shadow_time,

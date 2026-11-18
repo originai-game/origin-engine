@@ -19,6 +19,7 @@ pub(super) struct PassListInputs<'a> {
     pub froxels: bool,
     pub cascades: u32,
     pub shelter_redraw: bool,
+    pub ground_redraw: bool,
     pub local_shadows: &'a [frame::LocalShadow],
     pub probes: bool,
     pub reflections: u8,
@@ -50,6 +51,7 @@ impl Renderer {
             froxels,
             cascades,
             shelter_redraw,
+            ground_redraw,
             local_shadows,
             probes,
             reflections,
@@ -74,6 +76,7 @@ impl Renderer {
                 gi_probes,
                 cascades,
                 shelter: shelter_redraw,
+                ground_heights: ground_redraw,
                 local_shadows,
                 prepass: effects.prepass,
                 ao: effects

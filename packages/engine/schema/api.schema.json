@@ -24940,6 +24940,13 @@
           "x-og-unit": "m",
           "x-og-worldspace": "world"
         },
+        "groundShadows": {
+          "type": "number",
+          "description": "How dark the grounded ground (groundHeight above 0) takes the shadows of what stands on it, the sun's (a DirectionalLight with castShadow) and the map's light they hide, so props sit on it: 1 as dark as a real floor, 0 none (the ground as photographed).",
+          "default": 1,
+          "minimum": 0,
+          "maximum": 1
+        },
         "blendTo": {
           "$ref": "#/$defs/EnvironmentMap",
           "description": "A second map from og.load.environment that the light and the background blend towards (indoor to outdoor); 0 is none. Both maps turn by rotation and the background is scaled by backgroundIntensity.",

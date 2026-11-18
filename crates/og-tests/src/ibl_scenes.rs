@@ -237,6 +237,7 @@ pub fn grounded_scene(grounded: bool) -> Result<RenderScene, String> {
         height: 1.5,
         radius: 40.0,
         center: Vec3::ZERO,
+        ..Default::default()
     });
     scene.lighting.environment_map = Some(EnvironmentMap {
         rotation: GROUNDED_TURN,

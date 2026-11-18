@@ -289,7 +289,17 @@ impl Renderer {
                 &[wgpu::BindingResource::TextureView(clouds)],
             )
         });
+        // A grounded ground that takes shadows (ground_heights.rs): its own
+        // pipeline, its openness as group 2.
+        let ground = self
+            .sky
+            .ground
+            .maps
+            .as_ref()
+            .filter(|_| ground_heights::wanted(scene))
+            .map(|m| &m.group);
         let sky = match scene.lighting.environment.background {
+            Background::Sky if ground.is_some() => Some(&self.sky.ground.pipeline),
             Background::Sky => Some(&self.sky.sky_pipeline),
             Background::Procedural { .. } if clouds_low.is_some() => Some(&self.sky.clouds_low.sky),
             Background::Procedural { .. } => Some(&self.sky.sky_look_pipeline),
@@ -300,9 +310,11 @@ impl Renderer {
             pass.set_bind_group(1, sky_group, &[]);
             if let Some(clouds_low) = &clouds_low {
                 pass.set_bind_group(2, clouds_low, &[]);
+            } else if let Some(ground) = ground {
+                pass.set_bind_group(2, ground, &[]);
             }
             pass.draw(0..3, 0..1);
-            if clouds_low.is_some() {
+            if clouds_low.is_some() || ground.is_some() {
                 // The effects' back for what follows.
                 pass.set_bind_group(2, fx_group, &[]);
             }

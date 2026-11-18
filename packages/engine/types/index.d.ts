@@ -7581,6 +7581,13 @@ export interface Environment {
    */
   groundCenter: Vector3;
   /**
+   * How dark the grounded ground (groundHeight above 0) takes the shadows of what stands on it, the sun's (a DirectionalLight with castShadow) and the map's light they hide, so props sit on it: 1 as dark as a real floor, 0 none (the ground as photographed).
+   *
+   * @default 1
+   * @range 0..1
+   */
+  groundShadows: number;
+  /**
    * A second map from og.load.environment that the light and the background blend towards (indoor to outdoor); 0 is none. Both maps turn by rotation and the background is scaled by backgroundIntensity.
    */
   blendTo: EnvironmentMap;
@@ -35402,7 +35409,7 @@ export declare namespace og {
   /**
    * Image-based light from a cooked HDR environment map instead of the sky, as three.js scene.environment, and the map behind the scene, as scene.background = the environment. Load the map with og.load.environment: the cook has already prefiltered it (GGX levels for reflections from mirror to rough, harmonics for the diffuse light), so setting it costs a few copy passes. Without a map the sky lights the scene as before (og.Sky, a DayNight, or the built-in one). Read after each tick; it never feeds back into the simulation.
    */
-  const Environment: ResourceType<{ readonly map: FieldSpec<"EnvironmentMap">; readonly intensity: FieldSpec<"f32">; readonly rotation: FieldSpec<"f32">; readonly background: FieldSpec<"bool">; readonly backgroundIntensity: FieldSpec<"f32">; readonly backgroundBlurriness: FieldSpec<"f32">; readonly groundHeight: FieldSpec<"f32">; readonly groundRadius: FieldSpec<"f32">; readonly groundCenter: FieldSpec<"Vector3">; readonly blendTo: FieldSpec<"EnvironmentMap">; readonly blendWeight: FieldSpec<"f32">; readonly hemiSky: FieldSpec<"Color">; readonly hemiGround: FieldSpec<"Color">; readonly hemiIntensity: FieldSpec<"f32"> }, Environment>;
+  const Environment: ResourceType<{ readonly map: FieldSpec<"EnvironmentMap">; readonly intensity: FieldSpec<"f32">; readonly rotation: FieldSpec<"f32">; readonly background: FieldSpec<"bool">; readonly backgroundIntensity: FieldSpec<"f32">; readonly backgroundBlurriness: FieldSpec<"f32">; readonly groundHeight: FieldSpec<"f32">; readonly groundRadius: FieldSpec<"f32">; readonly groundCenter: FieldSpec<"Vector3">; readonly groundShadows: FieldSpec<"f32">; readonly blendTo: FieldSpec<"EnvironmentMap">; readonly blendWeight: FieldSpec<"f32">; readonly hemiSky: FieldSpec<"Color">; readonly hemiGround: FieldSpec<"Color">; readonly hemiIntensity: FieldSpec<"f32"> }, Environment>;
   /**
    * The post stack beyond RenderSettings' bloom, exposure and tone mapping, and camera shake. Every effect is off by default (its switch false or its amount 0) and then records no pass. Read after each tick; it never feeds back into the simulation.
    * AO, outlines, depth of field, motion blur and god rays turn on the depth-normal prepass. Grading, the colour adjustments, vignette, aberration, grain and the flash apply to the display colour after tone mapping, lens distortion bends the result, and the overlay comes after all of it.

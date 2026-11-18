@@ -12,3 +12,14 @@ pub(crate) fn sky_source() -> String {
         sky_scatter_wgsl("frame.sky_scatter")
     )
 }
+
+/// The sky pass's module for a grounded ground that takes shadows
+/// (sky_ground.wgsl, ground_heights.rs): the sky's, with the shadow lookups.
+pub(crate) fn sky_ground_source() -> String {
+    format!(
+        "{FRAME_WGSL}{}{}{SKY_WGSL}{}",
+        og_render_data::shader_source::LIGHTING_WGSL,
+        sky_scatter_wgsl("frame.sky_scatter"),
+        wgsl!("sky_ground.wgsl")
+    )
+}

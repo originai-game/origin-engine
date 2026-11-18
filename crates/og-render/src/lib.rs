@@ -170,6 +170,7 @@ pub use probes::{
 use shader::pipeline_features;
 use shading::gi_probes;
 use shading::gi_scene;
+use shading::ground_heights;
 use shading::ibl;
 use shading::lightmap;
 use shading::material;
@@ -346,7 +347,7 @@ use gpu::targets;
 use gpu::texture;
 use gpu::texture_array;
 use gpu::video;
-use media::sky::sky_source;
+use media::sky::{sky_ground_source, sky_source};
 use media::sky_physical;
 use media::volumetric;
 use media::weather;

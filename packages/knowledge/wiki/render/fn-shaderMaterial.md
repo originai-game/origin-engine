@@ -32,4 +32,4 @@ fn shaderMaterial {
 }
 ```
 
-<sub>Module `render` line 3065</sub>
+<sub>Module `render` line 3070</sub>

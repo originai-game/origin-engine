@@ -19,6 +19,7 @@ pub(super) struct SkyResourcesOutputs {
     pub sky_pipeline: Sampled<wgpu::RenderPipeline>,
     pub sky_look_pipeline: Sampled<wgpu::RenderPipeline>,
     pub clouds_low: clouds::CloudsLow,
+    pub ground: ground_heights::GroundCatcher,
     pub ibl: ibl::IblGenerator,
     pub cloud_noise: clouds::CloudNoise,
     pub cloud_shadow: clouds::CloudShadow,
@@ -150,6 +151,9 @@ impl Renderer {
                 layout,
             }
         };
+        // The grounded ground's catcher (ground_heights.rs): made when first drawn.
+        let ground =
+            ground_heights::GroundCatcher::new(device, [frame_layout, sky_layout], samples);
         let ibl = ibl::IblGenerator::new(device);
         let cloud_noise = clouds::CloudNoise::placeholder(device, queue);
         let cloud_shadow = clouds::CloudShadow::placeholder(device);
@@ -164,6 +168,7 @@ impl Renderer {
             sky_pipeline,
             sky_look_pipeline,
             clouds_low,
+            ground,
             ibl,
             cloud_noise,
             cloud_shadow,

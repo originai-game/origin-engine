@@ -320,3 +320,82 @@ fn fog_in_a_region_lies_where_its_volume_puts_it() {
         "the ball's fog does not fade over its fade ({inside:.2}, {half:.2}, {past:.2})"
     );
 }
+
+/// A grounded environment's ground takes the shadows of what stands on it
+/// (`GroundProjection::shadows`, ground_heights.rs), read at points on the
+/// ground (`project`), so a recomposed scene moves them with its props:
+/// the ground at the foot of the broken column the mirror ball rests on
+/// loses at least a quarter of its light to the sky the column hides; with
+/// a low sun from +x, the column's sun shadow on the ground beside it to
+/// -x is darker again, at least a fifth under the frame without the
+/// catcher and darker than open sunlit ground nearer the camera; the bottom
+/// of the frame, 3 m and more from the props, keeps its light within 3/255,
+/// and the sky is untouched. At `shadows` 0 the ground is drawn as
+/// photographed: the catcher off, as a frame without it.
+#[test]
+#[ignore = "requires GPU"]
+fn a_grounded_ground_catches_what_stands_on_it() {
+    use glam::Vec3;
+    let camera = og_tests::scenes::build("environment-grounded")
+        .expect("scene")
+        .scene
+        .frame
+        .camera;
+    let frame = |shadows: f32, sun: bool| {
+        let mut built = og_tests::scenes::build("environment-grounded").expect("scene");
+        built
+            .scene
+            .lighting
+            .environment
+            .ground
+            .as_mut()
+            .unwrap()
+            .shadows = shadows;
+        if sun {
+            let l = &mut built.scene.lighting.light;
+            l.direction_to_light = Vec3::new(1.0, 0.27, 0.35).normalize();
+            l.intensity = 3.0;
+            l.cast_shadows = true;
+        }
+        gfx::render_built(&mut built).expect("render").image
+    };
+    // The mean light of the ground about a world point, `w` by `h` pixels.
+    let ground = |img: &og_render::RgbaImage, p: Vec3, w: u32, h: u32| {
+        let (x, y) = project(&camera, p);
+        let c = mean(img, x - w / 2, y - h / 2, x + w / 2, y + h / 2);
+        0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2]
+    };
+    let luma = |c: [f32; 3]| 0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2];
+    let (off, on) = (frame(0.0, false), frame(1.0, false));
+    // In front of the column's plinth, which stands 0.3 m out from its foot.
+    let foot = Vec3::new(0.25, 0.0, 0.4);
+    let contact = |img| ground(img, foot, 50, 6);
+    assert!(
+        contact(&on) < 0.75 * contact(&off),
+        "the ground at the column's foot keeps {} of {}",
+        contact(&on),
+        contact(&off)
+    );
+    let bottom = |img| luma(mean(img, 560, 650, 720, 720));
+    assert!(
+        (bottom(&on) - bottom(&off)).abs() < 3.0,
+        "the far ground moved"
+    );
+    assert_eq!(mean(&on, 0, 0, 1280, 150), mean(&off, 0, 0, 1280, 150));
+    let (sun_off, sun_on) = (frame(0.0, true), frame(1.0, true));
+    // Between the column and the barrel, in the column's sun shadow; open
+    // ground 1.15 m nearer the camera, out of every prop's.
+    let (beside, open) = (Vec3::new(-0.85, 0.0, -0.25), Vec3::new(-0.85, 0.0, 0.9));
+    let shade = |img| ground(img, beside, 80, 10);
+    assert!(
+        shade(&sun_on) < 0.8 * shade(&sun_off)
+            && shade(&sun_on) / shade(&sun_off) < shade(&on) / shade(&off)
+            && shade(&sun_on) < ground(&sun_on, open, 80, 10),
+        "the sun's shadow: {} against {} without the catcher ({} of {} without the sun), {} on open sunlit ground",
+        shade(&sun_on),
+        shade(&sun_off),
+        shade(&on),
+        shade(&off),
+        ground(&sun_on, open, 80, 10)
+    );
+}

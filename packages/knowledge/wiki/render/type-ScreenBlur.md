@@ -27,4 +27,4 @@ enum ScreenBlur {
 }
 ```
 
-<sub>Module `render` line 1028</sub>
+<sub>Module `render` line 1033</sub>

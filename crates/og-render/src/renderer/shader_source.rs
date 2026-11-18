@@ -39,9 +39,12 @@ pub fn shader_sources() -> Vec<ShaderSource> {
 /// The shadow pass slot of the weather occlusion map (weather.rs
 /// `shelter_view`), after the cascades' and the local faces'.
 pub(crate) const SHELTER_SLOT: usize = CASCADES + LOCAL_SHADOW_LAYERS;
+/// The shadow pass slot of the grounded ground's height map (ground_heights.rs
+/// `ground_view`), after the shelter map's.
+pub(crate) const GROUND_SLOT: usize = SHELTER_SLOT + 1;
 /// Uniform slots of the shadow passes (dynamic offsets): the cascades, the
-/// local faces, then the weather occlusion map.
-pub(crate) const SHADOW_SLOTS: usize = SHELTER_SLOT + 1;
+/// local faces, the weather occlusion map, then the ground's height map.
+pub(crate) const SHADOW_SLOTS: usize = GROUND_SLOT + 1;
 pub(crate) const SHADOW_SLOT_STRIDE: u64 = 256;
 
 #[cfg(test)]
