@@ -49,6 +49,8 @@ export const FIXTURES: Record<string, Record<string, Record<string, unknown>>> =
   },
   calibration: {
     default: calibration_default,
+    brightness: { ...calibration_default, "step": "brightness" },
+    controller: { ...calibration_default, "step": "controller" },
   },
   card: {
     default: card_default,
