@@ -41,7 +41,7 @@
 :host { --map: calc(220 * var(--font-step-px)); inline-size: var(--map); max-inline-size: stretch; row-gap: calc(4 * var(--font-step-px)); color: var(--hud-ink); }
 /* The map's box is sized from its width in the viewBox's proportion (og
    reads an auto height as the viewBox's height, not its proportion). */
-.map { inline-size: var(--map); max-inline-size: 100%; block-size: calc(var(--map) * 220 / 260); filter: var(--hud-lift); }
+.map { inline-size: 100%; block-size: auto; filter: var(--hud-lift); }
 .road { stroke: var(--hud-track-well); }
 .line { stroke: var(--hud-track-line); }
 .driven { stroke: var(--hud-accent); }
