@@ -38,9 +38,11 @@
 #Art { inline-size: 100%; block-size: 100%; object-fit: cover; }
 [part="title.shade"] { background: var(--front-vignette); }
 p, h1 { margin: 0; }
-#Foot { position: relative; display: grid; grid-template-columns: minmax(0, 1fr); grid-template-rows: 1fr auto 1fr auto auto auto; justify-items: center; row-gap: var(--space-md); block-size: 100%; padding: var(--space-3xl) var(--space-3xl) var(--space-xl); }
+#Foot { position: relative; display: grid; grid-template-columns: minmax(0, 1fr); grid-template-rows: 1fr auto 1fr auto auto auto; justify-items: center; row-gap: var(--space-md); block-size: 100%; padding: var(--space-3xl) var(--space-3xl) var(--space-xl); container-type: inline-size; }
 [part="title.logo"] { grid-row: 2; inline-size: min(100%, calc(860 * var(--font-step-px))); aspect-ratio: 2.4; block-size: auto; object-fit: contain; filter: var(--front-logo-lift); }
-[part="title.name"] { grid-row: 2; max-inline-size: 100%; font-size: calc(76 * var(--font-step-px)); line-height: var(--font-leading-tight); font-weight: var(--font-weight-bold); font-stretch: var(--front-stretch); letter-spacing: var(--font-tracking-sm); text-transform: uppercase; text-align: center; overflow-wrap: anywhere; text-shadow: var(--front-shadow); }
+/* The wordmark keeps whole words: it takes a share of the column's width,
+   so the longest word of a long name fits on its line at any text scale. */
+[part="title.name"] { grid-row: 2; max-inline-size: 100%; font-size: min(calc(76 * var(--font-step-px)), 8cqi); line-height: var(--font-leading-tight); font-weight: var(--font-weight-bold); font-stretch: var(--front-stretch); letter-spacing: var(--font-tracking-sm); text-transform: uppercase; text-align: center; overflow-wrap: normal; hyphens: none; text-shadow: var(--front-shadow); }
 /* The call is a band of one measure: a lit rule each side, the words in
    the room between them. */
 #Call { grid-row: 4; display: flex; align-items: center; column-gap: var(--space-lg); inline-size: min(100%, calc(560 * var(--font-step-px))); }
@@ -63,7 +65,7 @@ p, h1 { margin: 0; }
 @media (width < 600px), (height < 600px) {
   #Foot { padding: var(--space-xxl) var(--space-lg) var(--space-lg); row-gap: var(--space-sm); }
   [part="title.logo"] { inline-size: 86%; }
-  [part="title.name"] { font-size: calc(44 * var(--font-step-px)); }
+  [part="title.name"] { font-size: min(calc(44 * var(--font-step-px)), 11cqi); }
   #Call { column-gap: var(--space-sm); inline-size: min(100%, calc(220 * var(--font-step-px))); }
   [part="title.rule"] { flex-basis: calc(32 * var(--font-step-px)); }
   [part="title.prompt"] { font-size: calc(14 * var(--font-step-px)); letter-spacing: var(--font-tracking-wide); }
