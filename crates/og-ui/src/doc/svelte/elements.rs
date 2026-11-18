@@ -1230,13 +1230,11 @@ impl Parser {
             self.doc.nodes[i].level = level;
         }
         let translated = attrs.iter().any(|a| a.name == "i18n");
-        // A button holding elements lays them out in a row inside it, its
-        // text between them an anonymous text as a block's is.
+        // A button holding elements or structural blocks lays them out
+        // inside it, with anonymous text for the words between them.
         let content_button = internal == Some(Kind::Button)
             && !component
-            && children
-                .iter()
-                .any(|c| matches!(c, Node::Element { .. }) && !inline(c, false));
+            && children.iter().any(|c| !inline(c, false));
         if internal == Some(Kind::Box) || content_button {
             // Text between a block's elements is an anonymous text
             // element, its inline markup kept (HTML's anonymous block box).

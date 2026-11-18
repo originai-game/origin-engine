@@ -1662,6 +1662,84 @@ fn a_button_grows_to_hold_tall_content() {
 }
 
 #[test]
+fn a_button_keeps_text_beside_structural_children() {
+    for (body, labels) in [
+        (
+            "{#if $ready}<span>Ready</span>{:else}<span>Waiting</span>{/if}",
+            vec!["Ready"],
+        ),
+        (
+            "{#each $items as item (item.id)}<span>{item.label}</span>{/each}",
+            vec!["One", "Two"],
+        ),
+        ("{#key $ready}<span>Keyed</span>{/key}", vec!["Keyed"]),
+        (
+            "{#snippet mark()}<span>Rendered</span>{/snippet}{@render mark()}",
+            vec!["Rendered"],
+        ),
+        (
+            "{#await $load}<span>Pending</span>{:then value}<span>{value}</span>{/await}",
+            vec!["Loaded"],
+        ),
+    ] {
+        let source = format!(
+            r#"<meta name="component" content="t">
+<div><button id="Action">Prefix {body} Suffix</button></div>
+<style>button {{ width: 300px; }} span {{ font-size: 18px; }}</style>"#
+        );
+        let mut d = Doc::with_font(
+            &source,
+            &[
+                ("ready", json!(true)),
+                (
+                    "items",
+                    json!([{"id":"a","label":"One"},{"id":"b","label":"Two"}]),
+                ),
+                ("load", json!({"status":"fulfilled","value":"Loaded"})),
+            ],
+            crate::support::test_font(),
+        );
+        let check = |d: &Doc, labels: &[&str]| {
+            let button = d.get("Action");
+            for label in ["Prefix", "Suffix"]
+                .into_iter()
+                .chain(labels.iter().copied())
+            {
+                let bounds: Vec<_> =
+                    d.ui.frame()
+                        .items
+                        .iter()
+                        .filter_map(|item| {
+                            let command = match &item.cmd {
+                                DrawCmd::StyledText { text, .. } => text,
+                                command => command,
+                            };
+                            match command {
+                                DrawCmd::Text { text, bounds, .. } if text.trim() == label => {
+                                    Some(*bounds)
+                                }
+                                _ => None,
+                            }
+                        })
+                        .collect();
+                assert!(!bounds.is_empty(), "{body}: {label} draws");
+                assert!(
+                    bounds
+                        .iter()
+                        .all(|r| r.x >= button.x && r.right() <= button.x + button.width + 0.5),
+                    "{body}: {label} is inside its button"
+                );
+            }
+        };
+        check(&d, &labels);
+        if labels == ["Ready"] {
+            d.set("ready", json!(false));
+            check(&d, &["Waiting"]);
+        }
+    }
+}
+
+#[test]
 fn a_text_button_wraps_and_grows_when_white_space_is_normal() {
     let source = r#"<meta name="component" content="t">
 <div>

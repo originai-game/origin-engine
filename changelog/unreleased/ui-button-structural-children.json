@@ -1,0 +1,8 @@
+{
+  "fixed": [
+    {
+      "member": "ui",
+      "summary": "Buttons keep text beside conditional, repeated, keyed, rendered and await children inside the button content instead of dropping the surrounding label."
+    }
+  ]
+}
