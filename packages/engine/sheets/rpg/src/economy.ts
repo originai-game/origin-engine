@@ -52,3 +52,20 @@ export const ECONOMY = {
   ],
   historyOverflow: Array.from({ length: 16 }, (_, i) => ({ id: `line-${i}`, speaker: i % 2 ? "Brenna" : "Lady Marissa", text: "The road through the marsh has many turns. Keep the lantern close, and remember the promise we made at the gate.", canReplay: i % 2 == 0 })),
 };
+
+/** Item card states the scenario command swaps in: a refused downgrade and a plain consumable. */
+export const CARDS: Record<string, Record<string, unknown>> = {
+  refused: {
+    cardName: "Staff of the Drowned Choir and the Last Hymn", cardIcon: "item-staff", cardArt: 0, cardRarity: "epic", cardKind: "Epic · Staff", cardLine: "Two-handed",
+    cardLead: [{ id: "sp", icon: "star", label: "Spell power", value: "38", delta: "−6", trend: "down", current: "44" }],
+    cardStats: [
+      { id: "mana", icon: "bolt", label: "Mana regeneration", value: "4 / s", delta: "−1 / s", trend: "down", current: "5 / s" },
+      { id: "int", icon: "star", label: "Intellect", value: "+18", delta: "+2", trend: "up", current: "+16" },
+    ],
+    cardLore: "", cardPrimary: "Equip", cardSecondary: "Drop", cardCanPrimary: false, cardReason: "Requires level 40",
+  },
+  plain: {
+    cardName: "Bread", cardIcon: "item-bread", cardArt: 0, cardRarity: "common", cardKind: "Common · Food", cardLine: "Restores 40 health over 10 s",
+    cardLead: [], cardStats: [], cardLore: "", cardPrimary: "Use", cardSecondary: "", cardCanPrimary: true, cardReason: "",
+  },
+};

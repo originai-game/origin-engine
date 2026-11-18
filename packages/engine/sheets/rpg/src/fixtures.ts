@@ -83,6 +83,7 @@ export const INVENTORY = (p: Pictures) => ({
   cardArt: p.blade,
   cardRarity: "legendary",
   cardKind: "Legendary · Longsword",
+  cardLine: "One-handed · Item level 60",
   cardLead: [{ id: "dmg", icon: "sword", label: "Damage", value: "12–20", delta: "+4", trend: "up", current: "8–16" }],
   cardStats: [
     { id: "atk", icon: "star", label: "Attack bonus", value: "+7", delta: "+2", trend: "up", current: "+5" },
@@ -93,6 +94,8 @@ export const INVENTORY = (p: Pictures) => ({
   cardLore: "“Quenched in the last ember of a dying hearth, it still remembers the warmth it was made to guard.”",
   cardPrimary: "Equip",
   cardSecondary: "Drop",
+  cardCanPrimary: true,
+  cardReason: "",
   cardSecondaryEquip: "Details",
   cardUnequip: "Unequip",
 
