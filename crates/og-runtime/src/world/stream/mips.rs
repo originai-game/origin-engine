@@ -161,13 +161,15 @@ fn chain_bytes(
 
 /// Decodes `tex` through the host's texture hook.
 fn transcode(
+    rs: &mut extract::RenderState,
     tex: &CookedTexture,
     formats: Option<&og_render::TextureFormats>,
 ) -> super::assets::Fetch<TextureSource> {
-    match hooks().map(|h| h.texture(tex, formats)) {
-        Some(f) => f,
-        None => super::assets::Fetch::Failed("no host is installed to decode textures".into()),
+    let answer = super::assets::prepare_texture_with(&mut rs.decoded, tex, formats);
+    if !matches!(answer, super::assets::Fetch::Pending) {
+        rs.decoded.forget_prepared(std::slice::from_ref(&tex.id));
     }
+    answer
 }
 
 /// The streamed textures among the cooked ones the renderer holds that
@@ -319,7 +321,7 @@ fn land(
         }
     };
     let formats = formats(rs);
-    match transcode(&tex, formats.as_ref()) {
+    match transcode(rs, &tex, formats.as_ref()) {
         super::assets::Fetch::Ready(s) => show_whole(m, i, rs, s),
         super::assets::Fetch::Pending => {
             let e = &mut m.entries[i];
@@ -346,10 +348,12 @@ fn show_tail(
     let tex = a
         .blob_from(&e.id, e.bundle)
         .and_then(|(b, bundle)| bundle.texture(&e.id, b.bytes()).map_err(|x| x.to_string()));
-    let source = match tex.map(|t| transcode(&t, formats.as_ref())) {
+    let source = match tex.map(|t| transcode(rs, &t, formats.as_ref())) {
         Ok(super::assets::Fetch::Ready(s)) => s,
         Ok(super::assets::Fetch::Pending) => return false,
-        Ok(super::assets::Fetch::Failed(_)) | Err(_) => placeholder_source(),
+        // A swap never discards the chain that is already bound while
+        // its replacement is unavailable, even if the decode failed.
+        Ok(super::assets::Fetch::Failed(_)) | Err(_) => return false,
     };
     super::replace_texture(&mut rs.scene, e.handle, source);
     let e = &mut m.entries[i];
@@ -357,10 +361,6 @@ fn show_tail(
     e.pending = None;
     m.evictions += 1;
     true
-}
-
-fn placeholder_source() -> TextureSource {
-    TextureSource::Rgba(super::placeholder())
 }
 
 /// The path under the bundle of `id`'s whole chain.
@@ -403,7 +403,7 @@ fn decide(a: &super::assets::Assets, m: &mut Mips, rs: &mut extract::RenderState
             m.entries[i].state = State::Tail;
             continue;
         };
-        match transcode(&tex, formats.as_ref()) {
+        match transcode(rs, &tex, formats.as_ref()) {
             super::assets::Fetch::Ready(s) => show_whole(m, i, rs, s),
             super::assets::Fetch::Pending => m.entries[i].pending = Some(tex),
             super::assets::Fetch::Failed(err) => {

@@ -34,6 +34,7 @@ const ENGINE: u32 = 1;
 const RENDER: u32 = 2;
 const LOAD: u32 = 3;
 const GPU: u32 = 5;
+const TEXTURES: u32 = 6;
 
 #[derive(Default)]
 struct Trace {
@@ -234,6 +235,41 @@ pub(crate) fn load(id: &str, start: f64, bytes: usize) {
     });
 }
 
+/// CPU work outside the ECS schedule, including polling/committing loads.
+pub(crate) fn preparation(name: &str, start: f64) {
+    if !on() || start == 0.0 {
+        return;
+    }
+    LOADS.with(|l| {
+        l.borrow_mut().push(span(
+            name,
+            "asset preparation",
+            ENGINE,
+            start,
+            now() - start,
+            json!({}),
+        ))
+    });
+}
+
+/// A completed native texture job, timed on its worker, then moved onto
+/// the engine clock using the enqueue instant (no host call off-thread).
+pub(crate) fn texture_work(id: &str, start: f64, offset: f64, ms: f64) {
+    if !on() || start == 0.0 {
+        return;
+    }
+    LOADS.with(|l| {
+        l.borrow_mut().push(span(
+            id,
+            "texture transcode",
+            TEXTURES,
+            start + offset,
+            ms,
+            json!({}),
+        ))
+    });
+}
+
 /// The start of a span when tracing (0 otherwise, never read).
 pub(crate) fn start() -> f64 {
     if on() { now() } else { 0.0 }
@@ -294,6 +330,9 @@ pub fn take(engine: u32, last: bool) -> String {
             return Vec::new();
         };
         let mut events = std::mem::take(&mut tr.events);
+        if tr.named.insert(TEXTURES) {
+            events.extend(thread_named(TEXTURES, "texture worker"));
+        }
         events.extend(lanes(tr));
         events
     });

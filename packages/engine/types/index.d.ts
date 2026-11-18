@@ -30417,7 +30417,7 @@ export interface TerrainLayerDesc {
 
 
 // ── stream ──────────────────────────────────────────────────────
-// Asset streaming groups (phase 3): a scene's `stream "<name>" { asset ...; distance ... | volume ...; priority n }` blocks name assets that load and unload together, one pack each, admitted by priority within a memory budget (256 MiB by default). Until resident, models draw proxies, textures a placeholder and sounds silence of their own length, so nothing a tick reads depends on what is resident.
+// Named groups load one pack each, by priority within a memory budget (256 MiB by default). Resident means pack readiness. Models stay hidden until textures are prepared; StreamStatus.ready is presentation-only and nondeterministic. Physics keeps proxy meshes, independent of texture progress.
 // World cells (og.StreamCell) stream entities: a cell's sub-scene spawns while an og.StreamAnchor is near and despawns when none is, decided from world state as each tick starts; its state is world state.
 // See `world §4`.
 
@@ -30522,10 +30522,10 @@ export interface CellEvent {
 
 /**
  * Where a streaming group is.
- * - `"unloaded"`: Not wanted; its assets draw and play their stand-ins.
+ * - `"unloaded"`: Not wanted; models stay hidden, textures use stand-ins and sounds play silence.
  * - `"queued"`: Wanted, waiting for room in the memory budget.
  * - `"loading"`: Admitted: its pack is being read (its memory already counts).
- * - `"resident"`: Its assets are in place of their stand-ins.
+ * - `"resident"`: Its pack is available. Textures may still be preparing; StreamStatus.ready is presentation readiness.
  * - `"failed"`: Its pack could not be read, or it alone needs more than the budget (StreamStatus.reason says which).
  */
 export type StreamState = "unloaded" | "queued" | "loading" | "resident" | "failed";
@@ -30539,7 +30539,9 @@ export declare const STREAM_QUEUED: 1;
 /** `StreamEvent.state`: the group's pack is being read (StreamState loading). */
 export declare const STREAM_LOADING: 2;
 
-/** `StreamEvent.state`: the group's assets are in place (StreamState resident). */
+/**
+ * `StreamEvent.state`: the group's pack is available (StreamState resident), independently of texture worker progress.
+ */
 export declare const STREAM_RESIDENT: 3;
 
 /** `StreamEvent.state`: the group failed (StreamState failed; og.stream.status says why). */
@@ -30567,6 +30569,10 @@ export interface StreamStatus {
   readonly scene: string;
   /** Where it is. */
   readonly state: StreamState;
+  /**
+   * Presentation only, nondeterministic: its model textures have finished preparing. False until resident and decoded. Not saved or hashed; never use this worker-progress value to drive gameplay, ticks or simulation state. Read it only for presentation/loading screens.
+   */
+  readonly ready: boolean;
   /** Whether its trigger or a request wants it now. */
   readonly wanted: boolean;
   /** Whether og.stream.request asked for it (until og.stream.release). */
@@ -38483,13 +38489,13 @@ export declare namespace og {
   /** A group changed state: sent by og.stream at the start of the tick after the change. */
   const StreamEvent: EventType<StreamEvent>;
   /**
-   * Asset streaming groups (phase 3): a scene's `stream "<name>" { asset ...; distance ... | volume ...; priority n }` blocks name assets that load and unload together, one pack each, admitted by priority within a memory budget (256 MiB by default). Until resident, models draw proxies, textures a placeholder and sounds silence of their own length, so nothing a tick reads depends on what is resident.
+   * Named groups load one pack each, by priority within a memory budget (256 MiB by default). Resident means pack readiness. Models stay hidden until textures are prepared; StreamStatus.ready is presentation-only and nondeterministic. Physics keeps proxy meshes, independent of texture progress.
    * World cells (og.StreamCell) stream entities: a cell's sub-scene spawns while an og.StreamAnchor is near and despawns when none is, decided from world state as each tick starts; its state is world state.
    * See `world §4`.
    */
   namespace stream {
     /**
-     * One streaming group's state.
+     * One streaming group's state. Its ready field is a nondeterministic presentation query: worker progress, not simulation state. Never drive gameplay from ready; Resident and StreamEvent describe pack readiness, not texture completion.
      *
      * @param world The world.
      * @param group The group's name, as its scene declares it.

@@ -24254,6 +24254,7 @@ pub struct StreamStatus {
     pub name: String,
     pub scene: String,
     pub state: StreamState,
+    pub ready: bool,
     pub wanted: bool,
     pub requested: bool,
     pub priority: i32,
@@ -24275,6 +24276,7 @@ impl Default for StreamStatus {
             name: Default::default(),
             scene: Default::default(),
             state: Default::default(),
+            ready: Default::default(),
             wanted: Default::default(),
             requested: Default::default(),
             priority: Default::default(),
@@ -24302,6 +24304,7 @@ impl FromJson for StreamStatus {
             name: field(o, "name", d.name)?,
             scene: field(o, "scene", d.scene)?,
             state: field(o, "state", d.state)?,
+            ready: field(o, "ready", d.ready)?,
             wanted: field(o, "wanted", d.wanted)?,
             requested: field(o, "requested", d.requested)?,
             priority: field(o, "priority", d.priority)?,
@@ -24325,6 +24328,7 @@ impl ToJson for StreamStatus {
         o.insert("name".into(), self.name.to_json());
         o.insert("scene".into(), self.scene.to_json());
         o.insert("state".into(), self.state.to_json());
+        o.insert("ready".into(), self.ready.to_json());
         o.insert("wanted".into(), self.wanted.to_json());
         o.insert("requested".into(), self.requested.to_json());
         o.insert("priority".into(), self.priority.to_json());

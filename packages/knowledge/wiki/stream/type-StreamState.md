@@ -12,19 +12,19 @@ A string: one of the variants below. The zero value is `"unloaded"`.
 
 | Variant | Doc |
 |---|---|
-| `"unloaded"` | Not wanted; its assets draw and play their stand-ins. |
+| `"unloaded"` | Not wanted; models stay hidden, textures use stand-ins and sounds play silence. |
 | `"queued"` | Wanted, waiting for room in the memory budget. |
 | `"loading"` | Admitted: its pack is being read (its memory already counts). |
-| `"resident"` | Its assets are in place of their stand-ins. |
+| `"resident"` | Its pack is available. Textures may still be preparing; StreamStatus.ready is presentation readiness. |
 | `"failed"` | Its pack could not be read, or it alone needs more than the budget (StreamStatus.reason says which). |
 
 ```ogt
 enum StreamState {
   doc "Where a streaming group is."
-  variant unloaded "Not wanted; its assets draw and play their stand-ins."
+  variant unloaded "Not wanted; models stay hidden, textures use stand-ins and sounds play silence."
   variant queued "Wanted, waiting for room in the memory budget."
   variant loading "Admitted: its pack is being read (its memory already counts)."
-  variant resident "Its assets are in place of their stand-ins."
+  variant resident "Its pack is available. Textures may still be preparing; StreamStatus.ready is presentation readiness."
   variant failed "Its pack could not be read, or it alone needs more than the budget (StreamStatus.reason says which)."
 }
 ```

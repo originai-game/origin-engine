@@ -28,6 +28,22 @@ unsafe fn js_string(env: sys::napi_env, value: sys::napi_value) -> String {
 }
 
 impl Hooks for NodeHooks {
+    fn texture_work(
+        &self,
+        texture: &og_bundle::runtime::CookedTexture,
+        formats: Option<&og_render::TextureFormats>,
+    ) -> Option<og_runtime::TextureWork> {
+        let texture = texture.clone();
+        let formats = formats.cloned();
+        Some(Box::new(move || {
+            // basis-universal initializes its process-wide tables through
+            // a once guard; that first initialization runs on this worker too.
+            texture
+                .to_texture_source(formats.as_ref())
+                .map_err(|e| e.to_string())
+        }))
+    }
+
     fn pump_platform(&self, engine: u32) -> Result<(), String> {
         self.dispatch(&Dispatch::platform_pump(engine)).map(|_| ())
     }

@@ -6,11 +6,13 @@ use super::*;
 /// GameDesc.start. `Err` once GameDesc.start has thrown, at this boundary
 /// or an earlier one: no tick runs on the half-built world.
 fn tick_boundary(eng: &Engine) -> Result<(), String> {
+    let start = trace::start();
     eng.assets.borrow_mut().poll();
     let tick = eng.world().map(|w| w.time().tick).unwrap_or(0);
     crate::world::uncooked::poll(eng, tick);
     crate::world::scenes::before_boundary(eng);
     super::stream::update(eng);
+    super::assets::retranscode(eng);
     super::stream::sound_chunks(eng);
     super::stream::resolve(eng);
     if eng.state.borrow().boot_scene.is_some() {
@@ -19,7 +21,9 @@ fn tick_boundary(eng: &Engine) -> Result<(), String> {
     if let Some(e) = &eng.state.borrow().start_failed {
         return Err(e.clone());
     }
-    run_start(eng)
+    let result = run_start(eng);
+    trace::preparation("tick boundary", start);
+    result
 }
 
 /// The wall time since `t0` the ticks took, less the probe's screenshots
@@ -104,6 +108,7 @@ pub fn frame(id: u32, elapsed_ms: f64) -> String {
             (n, before, tick_ms)
         }
     };
+    let t0 = rprobe::now_ms();
     if let Err(e) = tick_boundary(&eng) {
         return refuse(e);
     }
@@ -111,7 +116,6 @@ pub fn frame(id: u32, elapsed_ms: f64) -> String {
         let mut rs = eng.render.borrow_mut();
         rs.capture_ms = 0.0;
     }
-    let t0 = rprobe::now_ms();
     crate::bind::net::frame_clock(id, Some(t0 as u64));
     let stepped = rprobe::with_probe(&eng, false, |p, w| p.frame(w, due));
     crate::bind::net::frame_clock(id, None);

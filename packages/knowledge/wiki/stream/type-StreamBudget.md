@@ -35,4 +35,4 @@ struct StreamBudget {
 }
 ```
 
-<sub>Module `stream` line 110</sub>
+<sub>Module `stream` line 111</sub>

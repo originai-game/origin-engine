@@ -2,7 +2,7 @@
 
 # The `stream` module
 
-Asset streaming groups (phase 3): a scene's `stream "<name>" { asset ...; distance ... | volume ...; priority n }` blocks name assets that load and unload together, one pack each, admitted by priority within a memory budget (256 MiB by default). Until resident, models draw proxies, textures a placeholder and sounds silence of their own length, so nothing a tick reads depends on what is resident.
+Named groups load one pack each, by priority within a memory budget (256 MiB by default). Resident means pack readiness. Models stay hidden until textures are prepared; StreamStatus.ready is presentation-only and nondeterministic. Physics keeps proxy meshes, independent of texture progress.
 
 World cells (og.StreamCell) stream entities: a cell's sub-scene spawns while an og.StreamAnchor is near and despawns when none is, decided from world state as each tick starts; its state is world state.
 
@@ -14,7 +14,7 @@ See `world §4`.
 
 ```ogt
 module stream {
-  doc "Asset streaming groups (phase 3): a scene's `stream \"<name>\" { asset ...; distance ... | volume ...; priority n }` blocks name assets that load and unload together, one pack each, admitted by priority within a memory budget (256 MiB by default). Until resident, models draw proxies, textures a placeholder and sounds silence of their own length, so nothing a tick reads depends on what is resident."
+  doc "Named groups load one pack each, by priority within a memory budget (256 MiB by default). Resident means pack readiness. Models stay hidden until textures are prepared; StreamStatus.ready is presentation-only and nondeterministic. Physics keeps proxy meshes, independent of texture progress."
   doc "World cells (og.StreamCell) stream entities: a cell's sub-scene spawns while an og.StreamAnchor is near and despawns when none is, decided from world state as each tick starts; its state is world state."
   # declarations follow, each on its own page
 ```
@@ -33,7 +33,7 @@ module stream {
 | [`STREAM_UNLOADED`](#const-STREAM_UNLOADED) | constant |  | `StreamEvent.state`: the group is unloaded (StreamState unloaded). |
 | [`STREAM_QUEUED`](#const-STREAM_QUEUED) | constant |  | `StreamEvent.state`: the group waits for room in the budget (StreamState queued). |
 | [`STREAM_LOADING`](#const-STREAM_LOADING) | constant |  | `StreamEvent.state`: the group's pack is being read (StreamState loading). |
-| [`STREAM_RESIDENT`](#const-STREAM_RESIDENT) | constant |  | `StreamEvent.state`: the group's assets are in place (StreamState resident). |
+| [`STREAM_RESIDENT`](#const-STREAM_RESIDENT) | constant |  | `StreamEvent.state`: the group's pack is available (StreamState resident), independently of texture worker progress. |
 | [`STREAM_FAILED`](#const-STREAM_FAILED) | constant |  | `StreamEvent.state`: the group failed (StreamState failed; og.stream.status says why). |
 | [`og.StreamEvent`](stream/record-StreamEvent.md) | event |  | A group changed state: sent by og.stream at the start of the tick after the change. |
 | [`StreamStatus`](stream/type-StreamStatus.md) | struct |  | One streaming group. |
@@ -51,7 +51,7 @@ module stream {
 | <a id="const-STREAM_UNLOADED"></a>`STREAM_UNLOADED` | `number` | `0` | `StreamEvent.state`: the group is unloaded (StreamState unloaded). |
 | <a id="const-STREAM_QUEUED"></a>`STREAM_QUEUED` | `number` | `1` | `StreamEvent.state`: the group waits for room in the budget (StreamState queued). |
 | <a id="const-STREAM_LOADING"></a>`STREAM_LOADING` | `number` | `2` | `StreamEvent.state`: the group's pack is being read (StreamState loading). |
-| <a id="const-STREAM_RESIDENT"></a>`STREAM_RESIDENT` | `number` | `3` | `StreamEvent.state`: the group's assets are in place (StreamState resident). |
+| <a id="const-STREAM_RESIDENT"></a>`STREAM_RESIDENT` | `number` | `3` | `StreamEvent.state`: the group's pack is available (StreamState resident), independently of texture worker progress. |
 | <a id="const-STREAM_FAILED"></a>`STREAM_FAILED` | `number` | `4` | `StreamEvent.state`: the group failed (StreamState failed; og.stream.status says why). |
 
 ```ogt
@@ -73,7 +73,7 @@ const STREAM_LOADING u32 2 "`StreamEvent.state`: the group's pack is being read 
 <sub>Module `stream` line 68</sub>
 
 ```ogt
-const STREAM_RESIDENT u32 3 "`StreamEvent.state`: the group's assets are in place (StreamState resident)."
+const STREAM_RESIDENT u32 3 "`StreamEvent.state`: the group's pack is available (StreamState resident), independently of texture worker progress."
 ```
 
 <sub>Module `stream` line 69</sub>

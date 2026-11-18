@@ -13,6 +13,7 @@ One streaming group.
 | `name` | `string` | `""` | — | — | — | Its name. |
 | `scene` | `string` | `""` | — | — | — | The scene that declares it. |
 | `state` | `StreamState` | `"unloaded"` | — | — | — | Where it is. |
+| `ready` | `boolean` | `false` | — | — | — | Presentation only, nondeterministic: its model textures have finished preparing. False until resident and decoded. Not saved or hashed; never use this worker-progress value to drive gameplay, ticks or simulation state. Read it only for presentation/loading screens. |
 | `wanted` | `boolean` | `false` | — | — | — | Whether its trigger or a request wants it now. |
 | `requested` | `boolean` | `false` | — | — | — | Whether og.stream.request asked for it (until og.stream.release). |
 | `priority` | `number` | `0` | — | — | — | Higher loads first and is evicted last. |
@@ -33,6 +34,7 @@ struct StreamStatus {
   field name String "Its name."
   field scene String "The scene that declares it."
   field state StreamState "Where it is."
+  field ready bool "Presentation only, nondeterministic: its model textures have finished preparing. False until resident and decoded. Not saved or hashed; never use this worker-progress value to drive gameplay, ticks or simulation state. Read it only for presentation/loading screens."
   field wanted bool "Whether its trigger or a request wants it now."
   field requested bool "Whether og.stream.request asked for it (until og.stream.release)."
   field priority i32 "Higher loads first and is evicted last."
