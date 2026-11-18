@@ -302,8 +302,12 @@ test("ArenaVersus: both sides with names and ranks, the local player named You, 
 
 test("ArenaScoreboard: each team's rows under its own heading in the game's order, the local row current, disconnected in words", () => {
   run(member("scoreboard"), (e) => {
-    const ys = ["kai", "you", "ana", "rook", "wren", "quill"].map((k) => row(e, k).y);
-    expect([...ys].sort((a, b) => a - b)).toEqual(ys);
+    // Each team's rows run down in the game's order; the second team sits
+    // beside the first (a wide board) or under it (a narrow one), never mixed in.
+    const [a, b] = [["kai", "you", "ana"], ["rook", "wren", "quill"]].map((ks) => ks.map((k) => row(e, k)));
+    for (const team of [a!, b!]) expect(team.map((r) => r.y)).toEqual(team.map((r) => r.y).sort((x, y) => x - y));
+    const aEnd = Math.max(...a!.map((r) => r.x + r.width)), aBottom = Math.max(...a!.map((r) => r.y + r.height));
+    for (const r of b!) expect(r.x >= aEnd - 0.5 || r.y >= aBottom - 0.5).toBeTrue();
     expect(row(e, "you").states ?? []).toContain("current");
     const all = texts(e);
     for (const want of ["blue team", "red team", "7", "5", "k", "d", "a", "2,840", "disconnected", "you"]) expect(all).toContain(want);

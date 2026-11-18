@@ -35,7 +35,7 @@
     <div id="List" focus-group="stop">
       <div id="Board">{@render board?.()}</div>
       {#each rows as r (r.id)}
-        <div id="Row" part="leaderboard.row" interactive="true" focusable="true" onclick={row} class:mine-other={!r.you} class:mine-you={r.you}>
+        <div id="Row" part="leaderboard.row" interactive="true" focusable="true" onclick={row} class:mine-other={!r.you} class:mine-you={r.you} data-place={r.rank <= 3 ? r.rank : 0} data-promote={tab == "league" && r.rank <= league.promote}>
           <p id="RowRank" part="leaderboard.rank">{t("screen.leaderboard.RowRank", { value: formatOrdinal(r.rank) })}</p>
           <art id="Avatar" kind="emblem" src={r.texture}></art>
           <p id="RowName" class="name">{r.name}</p>
@@ -52,36 +52,73 @@
 </div>
 
 <style>
-:root { display: flex; flex-direction: column; gap: var(--space-md); block-size: stretch; padding: var(--space-xxl); }
+/* The board over the dimmed scene: a condensed title, a segmented switch,
+   the league's plate with its promote and demote lines, rows on cut dark
+   glass (the top three on gold, silver and bronze, the promotion zone
+   edged green) and the player's own row pinned lit at the foot. */
+:root { display: flex; block-size: stretch; background: var(--result-scrim); }
 h1, h2, p { margin: 0; }
-[part="leaderboard.band"] { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-md); }
-[part="leaderboard.title"] { flex: 1; font-size: var(--type-xl2-size); letter-spacing: var(--type-xl2-tracking); }
+[part="leaderboard.frame"] { flex: 1; min-inline-size: 0; display: flex; flex-direction: column; gap: var(--space-md); padding: var(--space-xxl); }
+#Screen > * { inline-size: 100%; max-inline-size: calc(var(--measure-3xl) * 1.1); margin-inline: auto; }
+[part="leaderboard.band"] { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-sm) var(--space-md); border: 0; min-block-size: 0; padding: 0; }
+[part="leaderboard.title"] { flex: 1 1 auto; min-inline-size: 0; font-size: var(--result-size-title); line-height: 1; font-weight: var(--font-weight-bold); font-stretch: var(--hud-figure-stretch); letter-spacing: var(--result-title-tracking); text-transform: uppercase; color: var(--hud-ink); }
 #Period, #Period::part(base) { block-size: var(--control-sm); }
 #Period::part(base) { padding: 0 var(--space-md); }
-/* The tabs wrap onto a second line where the row is too narrow for them. */
-#Tabs { gap: var(--space-sm); }
-/* An unselected tab keeps its words' ink; only its rim goes. */
-button.selection-off::part(base) { border-color: transparent; }
-/* The league bar and the player's own row: raised plates. */
-[part="leaderboard.league"], [part="leaderboard.me"] { display: flex; align-items: center; gap: var(--space-md); padding: var(--space-md); background: var(--panel-raised); border-radius: var(--radius-card); outline: var(--stroke-hairline) solid var(--line); outline-offset: calc(var(--stroke-hairline) * -1); }
-[part="leaderboard.league"] { flex-wrap: wrap; }
-#LeagueBarName { font: var(--text-lg); letter-spacing: var(--type-lg-tracking); }
-#Lines { flex: 1; font: var(--text-caption); letter-spacing: var(--type-caption-tracking); color: var(--ink-muted); }
-#Ends { font: var(--text-caption); letter-spacing: var(--type-caption-tracking); }
-#Body { flex: 1; min-block-size: 0; overflow-y: auto; }
-#List { display: flex; flex-direction: column; gap: var(--space-xs); }
-[part="leaderboard.row"] { display: flex; align-items: center; gap: var(--space-md); padding: var(--space-sm); }
-[part="leaderboard.row"]:hover, [part="leaderboard.row"]:focus-visible { scale: 1.01; }
+/* The switch: one well, the chosen tab a lit face in it. */
+#Tabs { gap: 0; inline-size: fit-content; padding: var(--stroke-thick); background: var(--hud-tag-fill); box-shadow: var(--hud-tag-rim); clip-path: polygon(var(--hud-tag-cut) 0, 100% 0, 100% calc(100% - var(--hud-tag-cut)), calc(100% - var(--hud-tag-cut)) 100%, 0 100%, 0 var(--hud-tag-cut)); }
+#Tabs button::part(base) { border-color: transparent; border-radius: 0; text-transform: var(--hud-label-transform); letter-spacing: var(--result-tab-tracking); }
+button.selection-off::part(base) { color: var(--hud-ink-dim); }
+button.selection-on::part(base) { color: var(--result-row-lit-ink); background: var(--result-row-lit); }
+[part="leaderboard.league"], [part="leaderboard.me"] { display: flex; align-items: center; gap: var(--space-md); padding: var(--space-sm) var(--space-md); clip-path: polygon(var(--hud-plate-cut) 0, 100% 0, 100% calc(100% - var(--hud-plate-cut)), calc(100% - var(--hud-plate-cut)) 100%, 0 100%, 0 var(--hud-plate-cut)); }
+[part="leaderboard.league"] { flex-wrap: wrap; background: var(--hud-plate-fill); box-shadow: var(--hud-plate-rim); }
+#LeagueBarName { font-size: var(--hud-size-md); font-weight: var(--font-weight-bold); font-stretch: var(--hud-figure-stretch); letter-spacing: var(--result-title-tracking); text-transform: uppercase; color: var(--result-gold); }
+#Lines { flex: 1 1 auto; min-inline-size: 0; font: var(--text-caption); color: var(--hud-ink-dim); }
+#Ends { padding: 0 var(--space-xs); font-size: var(--hud-tag-size); font-weight: var(--hud-figure-weight); letter-spacing: var(--hud-label-tracking); text-transform: var(--hud-label-transform); color: var(--hud-ink); background: var(--hud-tag-fill); box-shadow: var(--hud-tag-rim); white-space: nowrap; }
+#Body { flex: 1; min-block-size: 0; overflow-y: auto; -og-scroll-fade: var(--space-xl); }
+#List { display: flex; flex-direction: column; gap: var(--space-xxs); }
+/* A row: rank box, emblem, name, score; the name keeps the room. */
+[part="leaderboard.row"] { display: grid; grid-template-columns: auto auto minmax(0, 1fr) auto; grid-template-areas: "rank art name score"; align-items: center; column-gap: var(--space-md); padding: var(--space-xs) var(--space-md) var(--space-xs) var(--space-xs); background: var(--result-row-fill); clip-path: polygon(var(--hud-tag-cut) 0, 100% 0, 100% calc(100% - var(--hud-tag-cut)), calc(100% - var(--hud-tag-cut)) 100%, 0 100%, 0 var(--hud-tag-cut)); color: var(--hud-ink); }
+[part="leaderboard.row"]:hover, [part="leaderboard.row"]:focus-visible { background: var(--result-row-hover); box-shadow: var(--result-row-hover-rim); }
 [part="leaderboard.row"]:active { scale: 0.99; }
-.mine-you { background: var(--primary-soft); }
-[part="leaderboard.rank"] { min-inline-size: var(--size-xl); white-space: nowrap; font: var(--text-lg); letter-spacing: var(--type-lg-tracking); }
-#Avatar { inline-size: var(--size-md); block-size: var(--size-md); }
-.name { flex: 1; min-inline-size: 0; line-clamp: 1; text-overflow: ellipsis; }
-#MeScore { font: var(--text-lg); letter-spacing: var(--type-lg-tracking); }
+[part="leaderboard.row"][data-promote=true] { box-shadow: inset calc(3 * var(--stroke-hairline)) 0 0 var(--result-promote); }
+.mine-you { background: var(--result-row-lit); color: var(--result-row-lit-ink); }
+#RowRank { grid-area: rank; }
+#Avatar { grid-area: art; inline-size: var(--size-md); block-size: var(--size-md); clip-path: var(--hud-octagon); }
+#RowName { grid-area: name; }
+#RowScore { grid-area: score; }
+[part="leaderboard.rank"] { display: block; text-align: center; min-inline-size: calc(52 * var(--font-step-px)); line-height: calc(38 * var(--font-step-px)); padding: 0 var(--space-xs); white-space: nowrap; font-size: var(--hud-size-sm); font-weight: var(--hud-figure-weight); font-stretch: var(--hud-figure-stretch); font-variant-numeric: var(--hud-figure-numeric); background: var(--hud-place-fill); clip-path: polygon(var(--hud-tag-cut) 0, 100% 0, 100% calc(100% - var(--hud-tag-cut)), calc(100% - var(--hud-tag-cut)) 100%, 0 100%, 0 var(--hud-tag-cut)); }
+[data-place="1"] [part="leaderboard.rank"] { color: var(--result-medal-ink); background: var(--result-gold); }
+[data-place="2"] [part="leaderboard.rank"] { color: var(--result-medal-ink); background: var(--result-silver); }
+[data-place="3"] [part="leaderboard.rank"] { color: var(--result-medal-ink); background: var(--result-bronze); }
+[data-place="1"] #RowScore { color: var(--result-gold); }
+.name { min-inline-size: 0; font-size: var(--hud-size-sm); font-weight: var(--hud-label-weight); white-space: nowrap; text-overflow: -og-scroll var(--motion-duration-orbit) var(--motion-duration-turn); overflow: hidden; }
+[part="leaderboard.figure"] { font-size: var(--hud-size-md); font-weight: var(--hud-figure-weight); font-stretch: var(--hud-figure-stretch); font-variant-numeric: var(--hud-figure-numeric); white-space: nowrap; text-align: end; }
+/* The player's own row: lit white, pinned under the list. */
+[part="leaderboard.me"] { padding-inline-start: var(--space-xs); background: var(--result-row-lit); color: var(--result-row-lit-ink); }
+[part="leaderboard.me"] [part="leaderboard.rank"] { background: var(--result-me-rank-fill); }
+#MeName { flex: 1; }
+#MeScore { font-size: var(--hud-size-lg); }
+/* The lit rows' figures take the lit ink, not the figure role's white. */
+.mine-you [part="leaderboard.figure"], [part="leaderboard.me"] [part="leaderboard.figure"] { color: var(--result-row-lit-ink); }
 @media (width < 600px), (height < 600px) {
-  :root { padding: var(--space-lg); }
-  [part="leaderboard.title"] { font-size: var(--type-xl-size); letter-spacing: var(--type-xl-tracking); }
+  [part="leaderboard.frame"] { padding: var(--space-md); gap: var(--space-sm); }
+  [part="leaderboard.title"] { font-size: var(--result-size-title-compact); }
   #Period, #Period::part(base) { block-size: var(--control-md); }
-  #Period::part(base) { padding: 0 var(--space-lg); }
+  #Tabs { inline-size: 100%; }
+  /* Three segments share the width whole: tighter tracking and side padding, so no label overruns the well. */
+  #Tabs button { flex: 1 1 0; min-inline-size: 0; }
+  #Tabs button::part(base) { min-inline-size: 0; padding-inline: var(--space-xs); letter-spacing: var(--result-tab-tracking-compact); }
+  [part="leaderboard.row"] { column-gap: var(--space-sm); }
+  [part="leaderboard.rank"] { min-inline-size: calc(38 * var(--font-step-px)); line-height: calc(32 * var(--font-step-px)); }
+  #Avatar { inline-size: var(--size-sm); block-size: var(--size-sm); }
+  [part="leaderboard.figure"] { font-size: var(--hud-size-sm); }
+  #MeScore { font-size: var(--hud-size-md); }
 }
+/* A narrow row at a large text scale: the score drops under the name, so
+   the name keeps the row's width and is never cut to a few letters. */
+@container (width < 26rem) {
+  [part="leaderboard.row"] { grid-template-columns: auto auto minmax(0, 1fr); grid-template-areas: "rank art name" "rank art score"; row-gap: 0; }
+  #RowScore { text-align: start; }
+}
+#List { container-type: inline-size; }
 </style>

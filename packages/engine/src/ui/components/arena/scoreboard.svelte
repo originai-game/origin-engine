@@ -22,12 +22,12 @@
   counts every figure; the board only shows them. Read only; it scrolls
   inside the height it is given.
 -->
-<section id="ArenaScoreboard" part="ArenaScoreboard.frame" data-layout="shell" data-gap="loose" aria-label={title != '' ? title : t("arena.score.title")}>
+<section id="ArenaScoreboard" part="ArenaScoreboard.frame" class="bare" data-layout="shell" data-gap="loose" aria-label={title != '' ? title : t("arena.score.title")}>
   <header part="ArenaScoreboard.band" data-layout="row"><h2 part="ArenaScoreboard.title" data-fill>{title != '' ? title : t("arena.score.title")}</h2></header>
   {#if rows.length}
     <div class="list" data-layout="scroll" data-fill>
       <div class="teams" data-layout="stack" data-gap="loose">
-        <table part="ArenaScoreboard.team ArenaScoreboard.plate" class="team" aria-label={(nameA != '' ? nameA : t("arena.team.a"))}>
+        <table part="ArenaScoreboard.team ArenaScoreboard.plate" class="team" data-team="a" aria-label={(nameA != '' ? nameA : t("arena.team.a"))}>
           <thead>
             <tr part="ArenaScoreboard.heading" class="heading" data-team="a">
               <th class="team-head" scope="col"><div class="head" data-layout="row"><span class="team-name">{(nameA != '' ? nameA : t("arena.team.a"))}</span>{#if scoreA != ''}<span part="ArenaScoreboard.score ArenaScoreboard.figure" class="team-score" data-team="a" aria-description={t("arena.score.teamScore")}>{scoreA}</span>{/if}</div></th>
@@ -55,7 +55,7 @@
             {/each}
           </tbody>
         </table>
-        <table part="ArenaScoreboard.team ArenaScoreboard.plate" class="team" aria-label={(nameB != '' ? nameB : t("arena.team.b"))}>
+        <table part="ArenaScoreboard.team ArenaScoreboard.plate" class="team" data-team="b" aria-label={(nameB != '' ? nameB : t("arena.team.b"))}>
           <thead>
             <tr part="ArenaScoreboard.heading" class="heading" data-team="b">
               <th class="team-head" scope="col"><div class="head" data-layout="row"><span class="team-name">{(nameB != '' ? nameB : t("arena.team.b"))}</span>{#if scoreB != ''}<span part="ArenaScoreboard.score ArenaScoreboard.figure" class="team-score" data-team="b" aria-description={t("arena.score.teamScore")}>{scoreB}</span>{/if}</div></th>
@@ -91,24 +91,49 @@
 </section>
 
 <style>
-:host { inline-size: stretch; min-inline-size: 0; max-block-size: stretch; }
-[part="ArenaScoreboard.band"] { width: stretch; flex: none; }
-[part="ArenaScoreboard.title"] { margin: 0; flex: 1; min-width: 0; white-space: normal; overflow-wrap: anywhere; }
-.list { flex: 1; min-height: 0; overflow-y: auto; }
-.teams { width: stretch; }
-[part="ArenaScoreboard.team ArenaScoreboard.plate"] { width: stretch; }
-[part="ArenaScoreboard.team ArenaScoreboard.plate"] :is(th, td) { padding: var(--space-sm); font-weight: inherit; }
-[part="ArenaScoreboard.row"] { min-height: var(--size-md); }
-.team-score { --figure-size: var(--type-xl2-size); --figure-weight: var(--font-weight-bold); }
-.total { --figure-weight: var(--font-weight-semibold); }
-.off { --badge-ink: var(--caption-ink); }
+/* The team scoreboard over the match, bare: the title small and centred,
+   each team a table headed by its name in its colour and its score set
+   large, its rows on dark glass washed in the team's colour from an edge
+   of it, the local player's row lit white, a disconnected player's row
+   dimmed with its name kept and the tag beside it. Side by side where the
+   board is wide, stacked where it is not. */
+:host { inline-size: stretch; min-inline-size: 0; max-block-size: stretch; color: var(--hud-ink); }
+[part="ArenaScoreboard.band"] { width: stretch; flex: none; justify-content: center; border: 0; padding: 0; min-height: 0; background: none; }
+[part="ArenaScoreboard.title"] { margin: 0; flex: 1; min-width: 0; text-align: center; white-space: normal; overflow-wrap: anywhere; font-size: var(--hud-size-sm); font-weight: var(--hud-label-weight); letter-spacing: var(--hud-label-tracking); text-transform: var(--hud-label-transform); color: var(--hud-label-ink); }
+.list { flex: 1; min-height: 0; overflow-y: auto; container-type: inline-size; -og-scroll-fade: var(--space-xl); }
+.teams { width: stretch; display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--space-lg); align-items: start; }
+@container (width >= 900px) { .teams { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); } }
+[part="ArenaScoreboard.team ArenaScoreboard.plate"] { width: stretch; border-collapse: separate; border-spacing: 0 var(--space-xxs); background: none; box-shadow: none; border: 0; padding: 0; }
+/* The second team's colour: its name, score, rule, row wash and edge. */
+.team[data-team=b] [part="ArenaScoreboard.heading"] { box-shadow: var(--result-team-b-rule); }
+.team[data-team=b] .team-name, .team[data-team=b] .team-score { color: var(--result-team-b-ink); }
+.team[data-team=b] .team-score { filter: var(--result-team-b-glow); }
+.team[data-team=b] [part="ArenaScoreboard.row"], .team[data-team=b] [part="ArenaScoreboard.row"]:hover { background: var(--result-team-b-row); box-shadow: var(--result-team-b-edge); }
+.team[data-team=b] [part="ArenaScoreboard.row"][data-local=true] { background: var(--result-row-lit); }
+[part="ArenaScoreboard.team ArenaScoreboard.plate"] :is(th, td) { padding: var(--space-xs) var(--space-sm); font-weight: inherit; }
+/* The head: the team's name in its colour, its score large, a rule of it under the captions. */
+[part="ArenaScoreboard.heading"] { box-shadow: var(--result-team-a-rule); }
+[part="ArenaScoreboard.heading"] :is(th) { vertical-align: bottom; }
+.team-name { font-size: var(--hud-size-md); font-weight: var(--hud-figure-weight); font-stretch: var(--hud-figure-stretch); letter-spacing: var(--result-title-tracking); text-transform: var(--hud-label-transform); color: var(--result-team-a-ink); }
+.team-score { font-size: var(--hud-size-lg); font-weight: var(--hud-figure-weight); font-stretch: var(--hud-figure-stretch); font-variant-numeric: var(--hud-figure-numeric); color: var(--result-team-a-ink); filter: var(--result-team-a-glow); }
+[part="ArenaScoreboard.caption"] { font-size: var(--hud-label-size); font-weight: var(--hud-label-weight); letter-spacing: var(--hud-label-tracking); text-transform: var(--hud-label-transform); color: var(--hud-label-ink); }
+/* A row: dark glass washed in the team's colour from its edge. */
+[part="ArenaScoreboard.row"] { min-height: var(--size-md); background: var(--result-team-a-row); box-shadow: var(--result-team-a-edge); color: var(--hud-ink); }
+[part="ArenaScoreboard.row"]:hover { background: var(--result-team-a-row); }
+[part="ArenaScoreboard.row"][data-local=true] { background: var(--result-row-lit); color: var(--result-row-lit-ink); box-shadow: var(--result-team-a-edge); }
+[part="ArenaScoreboard.row"][data-disconnected=true] { opacity: var(--down-opacity); }
+.name { min-width: 0; text-align: start; overflow-wrap: anywhere; font-size: var(--hud-size-name); font-weight: var(--hud-label-weight); color: inherit; }
+[part="ArenaScoreboard.stat ArenaScoreboard.figure"] { font-size: var(--hud-size-sm); font-weight: var(--hud-figure-weight); font-stretch: var(--hud-figure-stretch); font-variant-numeric: var(--hud-figure-numeric); color: inherit; }
+td.total { font-size: var(--hud-size-md); }
 /* The name column takes what the figures leave; the figures size to their widest value. */
 .team-head, .who-cell { width: 100%; text-align: start; }
-.head, .who { min-width: 0; }
-/* A long team name wraps beside its score; a player's badges wrap under the name. */
-.team-name, .name { min-width: 0; text-align: start; overflow-wrap: anywhere; }
+.head, .who { min-width: 0; align-items: baseline; column-gap: var(--space-md); }
+.who { align-items: center; column-gap: var(--space-xs); row-gap: var(--space-xxs); }
+/* A long team name wraps beside its score; a player's tags sit beside the name and wrap under it. */
+.team-name { min-width: 0; text-align: start; overflow-wrap: anywhere; }
 .team-score { flex: none; min-width: var(--size-md); text-align: center; white-space: nowrap; }
-.you, .off { flex: none; white-space: nowrap; padding: 0 var(--space-xs); }
+.you, .off { flex: none; white-space: nowrap; padding: 0 var(--space-xs); font-size: var(--hud-tag-size); font-weight: var(--hud-figure-weight); letter-spacing: var(--hud-label-tracking); text-transform: var(--hud-label-transform); color: var(--hud-ink); background: var(--hud-tag-fill); box-shadow: var(--hud-tag-rim); clip-path: polygon(var(--hud-tag-cut) 0, 100% 0, 100% calc(100% - var(--hud-tag-cut)), calc(100% - var(--hud-tag-cut)) 100%, 0 100%, 0 var(--hud-tag-cut)); }
+.off { color: var(--hud-ink-dim); }
 .num, .total { text-align: end; white-space: nowrap; }
 .num { min-width: var(--size-md); }
 .empty-text { margin: 0; padding: var(--space-lg); text-align: center; }
@@ -118,7 +143,7 @@
      text: the name takes its own line and the figures share the line under
      it in even columns, the same in every row, so they still line up. */
   [part="ArenaScoreboard.team ArenaScoreboard.plate"], [part="ArenaScoreboard.team ArenaScoreboard.plate"] :is(thead, tbody) { display: block; }
-  [part="ArenaScoreboard.team ArenaScoreboard.plate"] tr { display: flex; flex-wrap: wrap; align-items: center; width: stretch; }
+  [part="ArenaScoreboard.team ArenaScoreboard.plate"] tr { display: flex; flex-wrap: wrap; align-items: center; width: stretch; margin-block-end: var(--space-xxs); }
   .team-head, .who-cell { flex: 1 1 100%; width: auto; min-width: 0; max-width: stretch; }
   .num { flex: 1 1 0; min-width: 0; }
   .total { flex: 2 1 0; min-width: 0; }

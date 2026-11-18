@@ -28,8 +28,8 @@
   Next (next; also Escape, pad B) report once. The game computes every
   figure, grade and verdict.
 -->
-<section id="RhythmResults" part="RhythmResults.frame" data-layout="shell" data-gap="loose" aria-label={song != '' ? song : t("rhythm.results.title")} data-cleared={cleared} data-mark={mark}>
-  <header part="RhythmResults.band" data-layout="row"><h2 part="RhythmResults.title">{song != '' ? song : t("rhythm.results.title")}</h2></header>
+<section id="RhythmResults" part="RhythmResults.frame" class="bare" data-layout="shell" data-gap="loose" aria-label={song != '' ? song : t("rhythm.results.title")} data-cleared={cleared} data-mark={mark}>
+  <header part="RhythmResults.band" class="plate" data-layout="row"><h2 part="RhythmResults.title">{song != '' ? song : t("rhythm.results.title")}</h2></header>
   <div class="body" data-layout="scroll" data-fill>
     <div class="content" data-layout="stack" data-gap="loose">
       <div class="top" data-layout="cluster" data-gap="wide">
@@ -51,8 +51,8 @@
       </div>
       <div class="lower" data-layout="grid" data-gap="wide">
       <div class="stats" part="RhythmResults.well" data-layout="stack">
-        <div part="RhythmResults.readout RhythmResults.figure" class="stat" data-layout="row" role="group" aria-label={t("rhythm.results.maxCombo")}><span class="caption" part="RhythmResults.caption">{t("rhythm.results.maxCombo")}</span><span part="RhythmResults.figure" class="value">{formatNumber(maxCombo)}</span></div>
-        {#if accuracy != ''}<div part="RhythmResults.readout RhythmResults.figure" class="stat" data-layout="row" role="group" aria-label={t("rhythm.results.accuracy")}><span class="caption" part="RhythmResults.caption">{t("rhythm.results.accuracy")}</span><span part="RhythmResults.figure" class="value">{accuracy}</span></div>{/if}
+        <div part="RhythmResults.readout RhythmResults.figure" class="stat" data-layout="stack" role="group" aria-label={t("rhythm.results.maxCombo")}><span class="caption" part="RhythmResults.caption">{t("rhythm.results.maxCombo")}</span><span part="RhythmResults.figure" class="value">{formatNumber(maxCombo)}</span></div>
+        {#if accuracy != ''}<div part="RhythmResults.readout RhythmResults.figure" class="stat" data-layout="stack" role="group" aria-label={t("rhythm.results.accuracy")}><span class="caption" part="RhythmResults.caption">{t("rhythm.results.accuracy")}</span><span part="RhythmResults.figure" class="value">{accuracy}</span></div>{/if}
       </div>
       {#if counts.length}
         <div class="counts" data-layout="stack" data-gap="hair" role="list" aria-label={t("rhythm.results.counts")}>
@@ -68,44 +68,71 @@
   </div>
   <footer class="actions" data-layout="row">
     <button id="Retry" variant="ghost" disabled={!canRetry} onclick={retry}><span>{t("rhythm.results.retry")}</span></button>
-    <button id="Next" variant="primary" onclick={next} onback={next}><kbd class="key" data-action="back"></kbd><span>{t("rhythm.results.next")}</span></button>
+    <button id="Next" variant="primary" aria-label={t("rhythm.results.next")} onclick={next} onback={next}><kbd class="key" data-action="back"></kbd><span>{t("rhythm.results.next")}</span></button>
   </footer>
 </section>
 
 <style>
-:host { inline-size: stretch; min-inline-size: 0; block-size: stretch; }
-[part="RhythmResults.band"] { width: stretch; flex: none; }
-[part="RhythmResults.title"] { margin: 0; white-space: nowrap; text-overflow: ellipsis; overflow: hidden; }
-.body { overflow-y: auto; flex: 1; min-height: 0; }
+/* After the song, over the blurred stage: the song's name, the grade set
+   huge and slanted in the result's lit fill beside its marks, the score on
+   a cut HUD plate, the max combo and accuracy on plates, and the tally,
+   each judgement in its own ink with its count. Bare: no panel, the plates
+   hold the figures over any stage. */
+:host { inline-size: stretch; min-inline-size: 0; block-size: stretch; color: var(--hud-ink); }
+[part="RhythmResults.band"] { width: stretch; flex: none; border: 0; padding: 0; min-height: 0; background: none; box-shadow: none; }
+[part="RhythmResults.title"] { margin: 0; font-size: var(--result-size-title); line-height: 1.05; font-weight: var(--hud-figure-weight); font-stretch: var(--hud-figure-stretch); color: var(--hud-ink); white-space: nowrap; text-overflow: -og-scroll var(--motion-duration-orbit) var(--motion-duration-turn); overflow: hidden; }
+.body { overflow-y: auto; flex: 1; min-height: 0; -og-scroll-fade: var(--space-xl); }
 .content { width: stretch; padding: var(--space-xs); }
-/* The verdict and the score share a row and wrap rather than cut a figure. */
-.top { width: stretch; justify-content: space-between; }
+.top { width: stretch; justify-content: space-between; align-items: flex-end; }
 .lower { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); width: stretch; align-items: start; }
-.verdict { flex: none; }
-[part="RhythmResults.grade RhythmResults.figure"] { flex: none; min-width: var(--size-xl); --figure-size: var(--font-step-5xl); --figure-weight: var(--font-weight-bold); text-align: center; white-space: nowrap; }
+.verdict { flex: none; align-items: center; }
+/* The grade: condensed, slanted, in the win's gold or the loss's red. */
+.grade { flex: none; min-width: var(--size-xl); padding-inline-end: var(--space-sm); font-size: var(--result-size-grade); line-height: 0.9; font-weight: var(--hud-figure-weight); font-stretch: var(--hud-figure-stretch); font-style: var(--judge-slant); text-align: center; white-space: nowrap; color: transparent; background: var(--result-won-fill); background-clip: var(--hud-text-clip); filter: var(--result-won-glow); }
+.grade[data-cleared=false] { background: var(--result-lost-fill); background-clip: var(--hud-text-clip); filter: var(--result-lost-glow); }
 .words { align-items: flex-start; min-width: 0; }
-[part="RhythmResults.badge"] { white-space: nowrap; padding: 0 var(--space-xs); }
-.score-cell { flex: none; max-width: stretch; align-items: flex-end; margin-inline-start: auto; }
-.score { --figure-size: var(--font-step-3xl); --figure-weight: var(--font-weight-semibold); white-space: nowrap; }
-.best { justify-content: flex-end; }
-.previous { white-space: nowrap; }
-.stats { min-width: 0; padding: var(--space-sm); }
-.stat { align-items: baseline; justify-content: space-between; }
-.value, .count { flex: none; white-space: nowrap; }
-.counts { min-width: 0; }
-[part="RhythmResults.row"] { width: stretch; padding: var(--space-xxs) var(--space-sm); }
-.label { flex: 1; min-width: 0; text-align: start; white-space: nowrap; text-overflow: ellipsis; overflow: hidden; }
+/* The marks: cut tags, Cleared in the accent, Failed in danger, a full
+   combo and all perfect in the chart's special ramp, a new best in gold. */
+[part="RhythmResults.badge"] { white-space: nowrap; padding: 0 var(--space-sm); font-size: var(--hud-size-sm); font-weight: var(--hud-figure-weight); font-stretch: var(--hud-figure-stretch); letter-spacing: var(--hud-label-tracking); text-transform: var(--hud-label-transform); color: var(--hud-accent-ink); background: var(--hud-key-lit-fill); box-shadow: none; border-radius: 0; clip-path: polygon(var(--hud-tag-cut) 0, 100% 0, 100% calc(100% - var(--hud-tag-cut)), calc(100% - var(--hud-tag-cut)) 100%, 0 100%, 0 var(--hud-tag-cut)); }
+[part="RhythmResults.badge"][data-tag=failed] { color: var(--hud-ink); background: var(--bar-danger); }
+[part="RhythmResults.badge"][data-tag=fullCombo], [part="RhythmResults.badge"][data-tag=allPerfect] { color: var(--chart-ink); background: var(--chart-special); }
+[part="RhythmResults.badge"][data-tag=newBest] { font-size: var(--hud-tag-size); color: var(--result-medal-ink); background: var(--hud-key-gold-fill); }
+/* Plates: the score, the max combo, the accuracy and the tally. */
+.score-cell, .stat, .counts { background: var(--hud-plate-fill); box-shadow: var(--hud-plate-rim); clip-path: polygon(var(--hud-plate-cut) 0, 100% 0, 100% calc(100% - var(--hud-plate-cut)), calc(100% - var(--hud-plate-cut)) 100%, 0 100%, 0 var(--hud-plate-cut)); }
+.score-cell { flex: 1 1 auto; max-width: stretch; min-width: 0; align-items: flex-start; padding: var(--space-md) var(--space-lg); }
+.score { font-size: var(--result-size-score); line-height: 1; font-weight: var(--hud-figure-weight); font-stretch: var(--hud-figure-stretch); font-variant-numeric: var(--hud-figure-numeric); white-space: nowrap; }
+[part="RhythmResults.caption"] { font-size: var(--hud-label-size); font-weight: var(--hud-label-weight); letter-spacing: var(--hud-label-tracking); text-transform: var(--hud-label-transform); color: var(--hud-label-ink); }
+.best { justify-content: flex-start; align-items: center; }
+.previous { white-space: nowrap; letter-spacing: 0; text-transform: none; }
+.stats { min-width: 0; padding: 0; background: none; box-shadow: none; border-radius: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(calc(150 * var(--font-step-px)), 1fr)); gap: var(--space-sm); }
+/* A stat: its name small above its figure, the same in every plate at
+   any width and text scale, so the name never runs into the figure. */
+.stat { flex-direction: column; align-items: flex-start; justify-content: space-between; row-gap: var(--space-xxs); min-width: 0; padding: var(--space-sm) var(--space-md); }
+.value { flex: none; white-space: nowrap; font-size: var(--hud-size-lg); font-weight: var(--hud-figure-weight); font-stretch: var(--hud-figure-stretch); font-variant-numeric: var(--hud-figure-numeric); }
+.counts { min-width: 0; padding: var(--space-sm) var(--space-md); }
+[part="RhythmResults.row"] { width: stretch; column-gap: var(--space-md); padding: var(--space-xxs) 0; align-items: baseline; background: none; border-radius: 0; }
+[part="RhythmResults.row"]:hover { background: none; }
+.label { flex: 1; min-width: 0; text-align: start; overflow-wrap: anywhere; font-size: var(--hud-size-sm); font-weight: var(--hud-figure-weight); font-stretch: var(--hud-figure-stretch); font-style: var(--judge-slant); letter-spacing: var(--judge-tracking); text-transform: var(--hud-label-transform); }
+[data-judgement=perfect] .label { color: var(--judge-perfect-ink); }
+[data-judgement=great] .label { color: var(--judge-great-ink); }
+[data-judgement=good] .label { color: var(--judge-good-ink); }
+[data-judgement=bad] .label { color: var(--judge-bad-ink); }
+[data-judgement=miss] .label { color: var(--judge-miss-ink); }
+.count { flex: none; white-space: nowrap; font-size: var(--hud-size-md); font-weight: var(--hud-figure-weight); font-stretch: var(--hud-figure-stretch); font-variant-numeric: var(--hud-figure-numeric); }
 .empty-text { margin: 0; padding: var(--space-md); text-align: center; }
 .actions { width: stretch; flex: none; justify-content: flex-end; }
 .actions button { min-height: var(--size-touch); min-width: calc(var(--size-xxl) * 1.25); gap: var(--space-xs); }
+/* A phone has no Escape: its key caps go. */
 @media (pointer: coarse) { .key { display: none; } }
 /* A narrow panel (a phone, or a side column on a wide screen) stacks the
    verdict, score, figures and tally in one column; the actions share the width. */
 @container (width < 560px) {
   .content { --layout-gap-loose: var(--layout-gap); }
   .lower { grid-template-columns: minmax(0, 1fr); --layout-gap-wide: var(--layout-gap); }
-  .score-cell { align-items: flex-start; margin-inline-start: 0; }
-  .best { justify-content: flex-start; }
+  [part="RhythmResults.title"] { font-size: var(--hud-size-md); }
+  .grade { font-size: var(--result-size-grade-compact); }
+  [part="RhythmResults.badge"] { font-size: var(--hud-tag-size); }
+  .score { font-size: var(--result-size-score-compact); }
+  .value { font-size: var(--hud-size-md); }
   .actions button { flex: 1; min-width: 0; }
 }
 </style>

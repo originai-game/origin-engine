@@ -1,0 +1,40 @@
+{
+  "added": [
+    {
+      "member": "Default style results tokens",
+      "summary": "--result-* roles for the screens after a match or a level: the dimmed scene under them, a win's gold and a loss's red verdict fills and glows, the rule and its lit diamond, the grade's hexagon face, a best stat's gold rim, the tabs' rule and accent mark, the top three places' gold, silver and bronze, the player's own lit row, a league's promote and demote edges, a team's ink, rule and row wash on a scoreboard, the revive's and Next's faces, and the verdict, grade, score, title and star type steps with their phone steps, which a style pack sets to restyle the results family."
+    }
+  ],
+  "fixed": [
+    {
+      "member": "results, leaderboard, game-over",
+      "summary": "Redrawn to the approved results mockup in smoked glass and lit edges over the dimmed scene: the results verdict set large in a gold or red lit fill over a rule, the level in an octagon beside a leaning XP bar, the grade on a hexagon, Summary, Graphs and Scoreboard as fit tabs that show whole on a 390 px phone at 150 % text, stats on cut plates (a best in gold) and rewards as octagon art with the amount on a tag and the name under it; the leaderboard's segmented switch, the league's plate, the top three on gold, silver and bronze, the promotion zone edged green and the player's row pinned lit, with the score under the name on a narrow row; game over's red verdict, score against the best and the revive offer's gold ring and Revive button."
+    },
+    {
+      "member": "RhythmResults, RacingResults, PuzzleSummary, ArenaScoreboard",
+      "summary": "Redrawn bare over the stage in the results family's look: RhythmResults' slanted grade in the result's fill, its marks on cut tags and every figure on a cut plate under its name, its tally in each judgement's ink; RacingResults' player's place set large in the HUD's accent beside their time and points, over the classification as the racing HUD's tower; PuzzleSummary on a cut card with the earned stars drawn large in the star rating's glyph, popping in turn; ArenaScoreboard's teams side by side where the board is wide, each in its colour, the local row lit and a disconnected player's name kept, dimmed, beside its tag. Key caps hide under touch. Parts and props are unchanged."
+    },
+    {
+      "member": "RacingResults, RhythmResults",
+      "summary": "A button with a key cap is named by its words alone: RacingResults' Retry reads Retry and RhythmResults' Next reads Next, not \"X Retry\" or \"Esc Next\"."
+    }
+  ],
+  "breaking": [
+    {
+      "member": "screen.results.Amount",
+      "change": "The results screen's reward amount string is \"×{r_amount}\" and no longer takes r_name: the reward's name is its own line under the art (#RewardName). Two new strings: screen.results.grade (Grade) and screen.results.rewards (Rewards); game over adds screen.game-over.score (Score).",
+      "fix": "In a translation of screen.results.Amount, drop {r_name}; translate screen.results.grade, screen.results.rewards and screen.game-over.score.",
+      "find": [
+        "screen.results.Amount"
+      ]
+    },
+    {
+      "member": "PuzzleSummary.fade",
+      "change": "PuzzleSummary no longer draws a fade bar over the foot of its breakdown, so its part PuzzleSummary.fade is gone: the breakdown's own scroll edge fades into the recess, only while more rows lie below.",
+      "fix": "Drop any style pack rule for PuzzleSummary.fade; restyle the breakdown's edge through PuzzleSummary.breakdown.",
+      "find": [
+        "PuzzleSummary.fade"
+      ]
+    }
+  ]
+}
