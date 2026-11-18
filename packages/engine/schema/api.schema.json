@@ -4894,7 +4894,7 @@
         },
         {
           "name": "reveal",
-          "doc": "Set the fade-in of entity's og.Model when streaming brings it into view. By default an entity a cell spawned, and a model or HLOD proxy hidden while its textures were prepared, is dithered in over 0.4 s. seconds is the fade's length; 0 draws it whole at once. On a cell (og.StreamCell) it sets everything the cell spawns that has no setting of its own, and the cell's proxies. Presentation only, as og.render.snap: never in the world, world_hash or a snapshot; it lasts while the entity lives.\nSee `world §5`.",
+          "doc": "Set the fade-in of entity's og.Model or light when streaming brings it into view. By default an entity a cell spawned, and a model or HLOD proxy hidden while its textures were prepared, is dithered in over 0.4 s; a light ramps its intensity instead. seconds is the fade's length; 0 draws it whole at once. On a cell (og.StreamCell) it sets everything the cell spawns that has no setting of its own, and the cell's proxies. Presentation only, as og.render.snap: never in the world, world_hash or a snapshot; it lasts while the entity lives.\nSee `world §5`.",
           "params": [
             {
               "name": "world",
@@ -4906,7 +4906,7 @@
               "name": "entity",
               "type": "Entity",
               "optional": false,
-              "doc": "The entity with the og.Model, or the cell."
+              "doc": "The entity with the og.Model or the light, or the cell."
             },
             {
               "name": "seconds",

@@ -102,6 +102,10 @@ pub(super) fn lights(world: &World, rs: &mut RenderState, h: &mut Hierarchy) {
             locals.push((e, light, None));
         }
     }
+    // A light a cell spawned shines up with its fade (`crate::present::reveal`).
+    for (e, light, _) in &mut locals {
+        light.intensity *= rs.reveal.light(*e);
+    }
     og_core::sort::sort_by_key(&mut locals, |(e, ..)| Entity::from_bits(*e).index());
     scene.lighting.light_cookies = locals
         .iter()

@@ -12,7 +12,10 @@
 //! carries an og.CellMember), and a model or proxy that stops being
 //! hidden. og.render.reveal on the entity, else on its cell, gives the
 //! fade's length; 0 draws it whole at once. Nothing fades where an HLOD
-//! proxy was already showing it.
+//! proxy was already showing it. A light a cell spawned (og.PointLight,
+//! og.SpotLight, og.RectLight) has nothing to dither: its intensity
+//! ramps with the same fade, held and started with the cell's models, as
+//! no proxy shows a light.
 //!
 //! Presentation only (docs/design.md §2.4). Nothing here is world state:
 //! the settings are kept here, beside the renderer, as og.render.snap's
@@ -139,6 +142,8 @@ pub(crate) struct Reveal {
     entities: IdMap<u64, Fade>,
     /// The HLOD proxies fading in, by their model's handle.
     proxies: IdMap<u64, Fade>,
+    /// The lights fading in, by entity (their fades' model is 0).
+    lights: IdMap<u64, Fade>,
     /// og.render.reveal's lengths in seconds, by entity (0: no fade).
     settings: IdMap<u64, f32>,
     /// The time of the frame being read, in ticks, and whether it is a
@@ -165,7 +170,7 @@ pub(crate) fn step(rs: &mut RenderState, world: &World) {
         // A fade from a tick the world went back before never happened,
         // and one the frames have finished is over.
         let (at, drawn, compiling) = (now as f64, r.drawn, r.compiling);
-        for fades in [&mut r.entities, &mut r.proxies] {
+        for fades in [&mut r.entities, &mut r.proxies, &mut r.lights] {
             fades.retain(|_, f| {
                 f.release(at, drawn, compiling);
                 at >= f.start && f.busy(at, drawn)
@@ -201,8 +206,10 @@ pub(crate) fn step(rs: &mut RenderState, world: &World) {
         let bytes = world.get_bytes(Entity::from_bits(e), member?).ok()?;
         Some(u64::from_le_bytes(bytes.get(..8)?.try_into().ok()?))
     };
-    // Every (entity, model, cell) that started being drawn.
+    // Every (entity, model, cell) that started being drawn, and every
+    // (entity, cell) that started shining.
     let mut appeared: Vec<(u64, u64, Option<u64>)> = Vec::new();
+    let mut lit: Vec<(u64, Option<u64>)> = Vec::new();
     if structural != r.structural {
         r.settings
             .retain(|&e, _| world.is_alive(Entity::from_bits(e)));
@@ -223,6 +230,19 @@ pub(crate) fn step(rs: &mut RenderState, world: &World) {
             }
         }
         r.members = members;
+        let lights: Vec<_> = [&rs.draw.point, &rs.draw.spot, &rs.draw.rect]
+            .into_iter()
+            .flatten()
+            .filter_map(|layout| world.id_by_name(&layout.schema).ok())
+            .collect();
+        for &e in &spawned {
+            if lights
+                .iter()
+                .any(|&id| world.get_bytes(Entity::from_bits(e), id).is_ok())
+            {
+                lit.push((e, cell_of(e)));
+            }
+        }
         // Those with a model that draws now; one still hidden fades when
         // it is shown.
         let model = rs
@@ -276,6 +296,13 @@ pub(crate) fn step(rs: &mut RenderState, world: &World) {
             }
         }
     }
+    for (e, cell) in lit {
+        if let Some(seconds) = r.seconds(Some(e), cell)
+            && !r.lights.contains_key(&e)
+        {
+            r.lights.insert(e, fade(seconds, 0));
+        }
+    }
     // The proxies shown with nothing drawn in their place.
     let was_hidden = |h: u64| r.hidden.binary_search(&h).is_ok();
     for (proxy, cell) in rs.hlod.fresh(world, &shown, was_hidden) {
@@ -306,6 +333,7 @@ impl Reveal {
         self.settings.insert(entity, seconds);
         if seconds == 0.0 {
             self.entities.remove(&entity);
+            self.lights.remove(&entity);
         }
     }
 
@@ -354,6 +382,12 @@ impl Reveal {
         self.entities.get(&entity).map_or(1.0, |f| self.part(f))
     }
 
+    /// How much of the light `entity`'s intensity shines on this frame,
+    /// 0 to 1.
+    pub(crate) fn light(&self, entity: u64) -> f32 {
+        self.lights.get(&entity).map_or(1.0, |f| self.part(f))
+    }
+
     /// How much of the proxy `handle` is drawn on this frame, 0 to 1.
     pub(crate) fn proxy(&self, handle: u64) -> f32 {
         self.proxies.get(&handle).map_or(1.0, |f| self.part(f))
@@ -387,7 +421,9 @@ impl Reveal {
     /// for it).
     pub(crate) fn active(&self, now: f64) -> bool {
         let busy = |f: &Fade| f.busy(now, self.drawn);
-        self.entities.values().any(busy) || self.proxies.values().any(busy)
+        [&self.entities, &self.proxies, &self.lights]
+            .into_iter()
+            .any(|fades| fades.values().any(busy))
     }
 
     /// After a restore without this state's checkpoint: nothing fades, and
@@ -402,7 +438,7 @@ impl Reveal {
 
     /// The fades into the presentation hash, in id order.
     pub(crate) fn hash(&self, mut put: impl FnMut(&[u8])) {
-        for fades in [&self.entities, &self.proxies] {
+        for fades in [&self.entities, &self.proxies, &self.lights] {
             let mut list: Vec<(&u64, &Fade)> = fades.iter().collect();
             list.sort_unstable_by_key(|(id, _)| **id);
             for (id, f) in list {

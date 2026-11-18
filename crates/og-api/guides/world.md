@@ -330,7 +330,8 @@ from og.load.scene) is a cell.
   proxy that was hidden while its textures were prepared. A model taking
   over from its proxy does not fade; the proxy was already showing it,
   and goes on showing it, near or far, until the model's textures are
-  prepared.
+  prepared. A light a cell spawned (`og.PointLight`, `og.SpotLight`,
+  `og.RectLight`) ramps its intensity over the same fade.
   `og.render.reveal(world, entity, seconds)` sets the length for one
   entity, or on the cell's entity for everything the cell spawns and its
   proxies; 0 draws them whole at once (a cell loaded behind a loading

@@ -1,0 +1,8 @@
+{
+  "added": [
+    {
+      "member": "render.reveal",
+      "summary": "A light a cell spawns (og.PointLight, og.SpotLight, og.RectLight) no longer switches on whole on the cell's load tick: its intensity ramps over the same fade as the cell's models (0.4 s by default, held and started with them). og.render.reveal on the light or its cell sets the length; 0 lights it at once. Presentation only: world state and hashes are unchanged; og.loading.idle waits for the ramp."
+    }
+  ]
+}
