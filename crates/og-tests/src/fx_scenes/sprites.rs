@@ -345,13 +345,10 @@ pub fn tilemap_lit_scene() -> RenderScene {
             || ((15..17).contains(&x) && y < 11)
             || ((22..27).contains(&x) && y == 7)
     };
-    // The sky, behind the wall's window: unlit.
-    scene
-        .sprite
-        .tile_layers
-        .push(cave_layer(tiles, -21, false, |x, y| {
-            window(x, y).then_some(3)
-        }));
+    // The sky, behind the wall's window: unlit, its night dimmed.
+    let mut sky = cave_layer(tiles, -21, false, |x, y| window(x, y).then_some(3));
+    sky.color = [0.26, 0.28, 0.4, 1.0];
+    scene.sprite.tile_layers.push(sky);
     // The back wall, with the window cut out.
     scene
         .sprite
@@ -366,6 +363,25 @@ pub fn tilemap_lit_scene() -> RenderScene {
         .push(cave_layer(tiles, -19, true, |x, y| {
             rock(x, y).then(|| if rock(x, y + 1) || y >= 15 { 0 } else { 1 })
         }));
+    // The window's dressed-stone frame and sill (tiles x 5..9, y 10..13:
+    // world x -11..-7, y 1..4), lit as the wall is.
+    let stone = crate::kit::picture(&mut scene, "sprites2d/vault-block.png", true);
+    for (center, size) in [
+        (Vec2::new(-9.0, 4.15), Vec2::new(4.6, 0.3)),
+        (Vec2::new(-11.15, 2.5), Vec2::new(0.3, 3.6)),
+        (Vec2::new(-6.85, 2.5), Vec2::new(0.3, 3.6)),
+        (Vec2::new(-9.0, 0.78), Vec2::new(5.0, 0.45)),
+        (Vec2::new(-9.0, 2.5), Vec2::new(0.14, 3.0)),
+    ] {
+        scene.add_sprite(Sprite {
+            texture: Some(stone),
+            position: center.extend(0.0),
+            size,
+            color: [0.62, 0.6, 0.58, 1.0],
+            layer: -19,
+            ..Default::default()
+        });
+    }
     // The ranger on the floor, the torch on the wall by its light and the
     // crystal on the ledge under its own: lit sprites of the same range.
     for (name, foot, height) in [
