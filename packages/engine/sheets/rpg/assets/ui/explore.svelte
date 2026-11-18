@@ -88,7 +88,7 @@
    leaves the box, so no figure reaches another plate at any text scale. */
 #Fight { position: relative; flex: 1 1 0; align-self: stretch; min-height: 0; }
 #Lock { position: absolute; left: calc(50% - var(--size-xxl) * 0.45); top: calc(var(--space-lg) + 60 * var(--font-step-px)); }
-#Dealt { position: absolute; display: flex; left: calc(50% - 120 * var(--font-step-px)); right: 0; top: var(--space-lg); }
+#Dealt { position: absolute; display: flex; left: calc(50% - 120 * var(--font-step-px)); right: 0; top: max(var(--space-lg), calc(50% - 130 * var(--font-step-px))); }
 #Heal { position: absolute; display: flex; left: 20%; bottom: var(--space-xl); }
 /* On a phone the columns dissolve into full-width rows: the boss's bar
    across the top, the leader and its effects beside the minimap, the
