@@ -215,6 +215,22 @@ fn sd_css_corner(p: vec2<f32>, half: vec2<f32>, radii: vec4<f32>, ext: vec4<f32>
     let u = half - a;
     return max(outside, min(r.x - u.x, r.y - u.y));
   }
+  if (code == 32u) {
+    // Distance to the finite bevel and its adjoining straight sides.
+    // A quadrant-only plane jumps at its endpoints; max(box, plane)
+    // keeps a crease outside them. The closest point moves continuously
+    // from each side around the endpoint to the bevel instead.
+    let start = half - vec2<f32>(r.x, 0.0);
+    let edge = vec2<f32>(r.x, -r.y);
+    let q = a - start;
+    let t = clamp(dot(q, edge) / dot(edge, edge), 0.0, 1.0);
+    let cut = length(q - t * edge);
+    let top = length(vec2<f32>(max(q.x, 0.0), a.y - half.y));
+    let side = length(vec2<f32>(a.x - half.x, max(a.y - half.y + r.y, 0.0)));
+    let distance = min(cut, min(top, side));
+    let inside = box <= 0.0 && dot(q, 1.0 / r) <= 0.0;
+    return select(distance, -distance, inside);
+  }
   let k = (f32(code) - 32.0) / 4.0;
   let n = exp2(abs(k));
   if (k >= 0.0) {

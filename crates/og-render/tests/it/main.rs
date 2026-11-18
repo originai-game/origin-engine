@@ -33,6 +33,8 @@ mod surface;
 mod tier;
 #[path = "../ui_image.rs"]
 mod ui_image;
+#[path = "../ui_shape.rs"]
+mod ui_shape;
 #[path = "../ui_text.rs"]
 mod ui_text;
 #[path = "../volumetric.rs"]

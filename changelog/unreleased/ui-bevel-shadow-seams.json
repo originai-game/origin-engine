@@ -1,0 +1,8 @@
+{
+  "fixed": [
+    {
+      "member": "ui",
+      "summary": "Blurred shadows on CSS bevel corners no longer show straight seams extending from the corner endpoints, including unequal horizontal and vertical corner radii."
+    }
+  ]
+}
