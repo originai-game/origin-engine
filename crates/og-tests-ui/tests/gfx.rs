@@ -34,60 +34,82 @@ fn retained_property_animation_matches_fresh_pixels() {
 .Ink { width: 80px; height: 80px; border-radius: 50%; background: linear-gradient(135deg, #fff5d1, #cf984b); opacity: 0.8; }
 @media (max-width: 600px) { #Cards { flex-direction: column; } }
 </style>"#;
-    for (width, height) in [(1920, 1080), (390, 844)] {
-        let mut retained = Doc::new(text, &[("pose", serde_json::json!("rest"))]);
-        let mut fresh = Doc::new(text, &[("pose", serde_json::json!("rest"))]);
-        retained.viewport = Viewport::new(width as f32, height as f32);
-        fresh.viewport = retained.viewport;
-        let desc = RenderDesc {
-            width,
-            height,
-            ..Default::default()
+    for class_targets in [false, true] {
+        let text = if class_targets {
+            text.replace("data-state={$pose}", "")
+                .replace("<button id=", "<button class:on={$pose == 'on'} id=")
+                .replace("#Cards[data-state=on]", "button.on")
+                .replace(
+                    "</style>",
+                    "button { transition: scale 300ms linear, opacity 300ms linear; }</style>",
+                )
+        } else {
+            text.to_owned()
         };
-        let mut renderer = Renderer::new_blocking(&desc).expect("retained renderer");
-        let mut emission = RetainedEmission::default();
-        let mut scene = RenderScene::new();
-        scene.lighting.environment.background = Background::Color(Vec3::ZERO);
-        scene.look.post.tonemap = Tonemap::None;
-        for tick in 0..25 {
-            if tick == 2 || tick == 12 {
-                let pose = serde_json::json!(if tick == 2 { "on" } else { "rest" });
-                retained.put("pose", pose.clone());
-                fresh.put("pose", pose);
-            }
-            fresh.ui.reset_part_css();
-            retained.step(InputFrame::default());
-            fresh.step(InputFrame::default());
-            let mut overlay = og_render::Overlay::new(width as f32, height as f32, 1.0);
-            retained
-                .ui
-                .frame()
-                .emit_retained(&EmitDesc::default(), &mut overlay, &mut emission);
-            overlay.key = Some(retained.ui.frame().generation);
-            if ![0, 7, 23].contains(&tick) {
-                continue;
-            }
-            scene.ui.overlay = Some(overlay);
-            renderer.render(&scene, &RenderTarget::Offscreen).unwrap();
-            let actual = renderer.read_offscreen().unwrap().pixels;
-            let mut overlay = og_render::Overlay::new(width as f32, height as f32, 1.0);
-            fresh.ui.frame().emit(&EmitDesc::default(), &mut overlay);
-            scene.ui.overlay = Some(overlay);
-            let mut control = Renderer::new_blocking(&desc).expect("fresh renderer");
-            control.render(&scene, &RenderTarget::Offscreen).unwrap();
-            assert_eq!(
-                actual,
-                control.read_offscreen().unwrap().pixels,
-                "{width}x{height}, tick {tick}"
-            );
-            image::save_buffer(
-                out_dir().join(format!("retained-properties-{width}-{tick}.png")),
-                &actual,
+        let name = if class_targets {
+            "retarget"
+        } else {
+            "retained-properties"
+        };
+        for (width, height) in [(1920, 1080), (390, 844)] {
+            let mut retained = Doc::new(&text, &[("pose", serde_json::json!("rest"))]);
+            let mut fresh = Doc::new(&text, &[("pose", serde_json::json!("rest"))]);
+            retained.viewport = Viewport::new(width as f32, height as f32);
+            fresh.viewport = retained.viewport;
+            let desc = RenderDesc {
                 width,
                 height,
-                image::ColorType::Rgba8,
-            )
-            .unwrap();
+                ..Default::default()
+            };
+            let mut renderer = Renderer::new_blocking(&desc).expect("retained renderer");
+            let mut emission = RetainedEmission::default();
+            let mut scene = RenderScene::new();
+            scene.lighting.environment.background = Background::Color(Vec3::ZERO);
+            scene.look.post.tonemap = Tonemap::None;
+            for tick in 0..37 {
+                if [2, 12, 24].contains(&tick) {
+                    let pose = serde_json::json!(if tick == 12 { "rest" } else { "on" });
+                    retained.put("pose", pose.clone());
+                    fresh.put("pose", pose);
+                }
+                fresh.ui.reset_part_css();
+                retained.step(InputFrame::default());
+                fresh.step(InputFrame::default());
+                if class_targets && tick == 24 {
+                    assert_eq!(retained.ui.frame().stats.rebuilt, 0, "cached class targets");
+                }
+                let mut overlay = og_render::Overlay::new(width as f32, height as f32, 1.0);
+                retained.ui.frame().emit_retained(
+                    &EmitDesc::default(),
+                    &mut overlay,
+                    &mut emission,
+                );
+                overlay.key = Some(retained.ui.frame().generation);
+                if ![0, 7, 23, 35].contains(&tick) {
+                    continue;
+                }
+                scene.ui.overlay = Some(overlay);
+                renderer.render(&scene, &RenderTarget::Offscreen).unwrap();
+                let actual = renderer.read_offscreen().unwrap().pixels;
+                let mut overlay = og_render::Overlay::new(width as f32, height as f32, 1.0);
+                fresh.ui.frame().emit(&EmitDesc::default(), &mut overlay);
+                scene.ui.overlay = Some(overlay);
+                let mut control = Renderer::new_blocking(&desc).expect("fresh renderer");
+                control.render(&scene, &RenderTarget::Offscreen).unwrap();
+                assert_eq!(
+                    actual,
+                    control.read_offscreen().unwrap().pixels,
+                    "{width}x{height}, tick {tick}"
+                );
+                image::save_buffer(
+                    out_dir().join(format!("{name}-{width}-{tick}.png")),
+                    &actual,
+                    width,
+                    height,
+                    image::ColorType::Rgba8,
+                )
+                .unwrap();
+            }
         }
     }
 }

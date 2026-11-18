@@ -253,6 +253,8 @@ impl Cascade {
 #[derive(Clone, Default)]
 pub(crate) struct Kept {
     cascades: Vec<(Inputs, Cascade)>,
+    /// The latest lookup reused a cascade in the previous lookup's context.
+    pub(crate) hit: bool,
     /// Its text styles ([`crate::doc::text_css::inherit`]), by the text
     /// declarations and computed map they read and [`TextInputs`].
     texts: Vec<(TextRead, TextGave)>,
@@ -325,11 +327,21 @@ impl Inputs {
 impl Kept {
     /// The cascade of `inputs`: a kept one, or `cascade`'s, then kept.
     pub(crate) fn cascade(&mut self, inputs: Inputs, cascade: impl FnOnce() -> Cascade) -> Cascade {
+        let same_context = self.cascades.last().is_some_and(|(old, _)| {
+            Arc::ptr_eq(&old.doc, &inputs.doc)
+                && old.node == inputs.node
+                && old.carry == inputs.carry
+                && old.basis == inputs.basis
+                && old.media == inputs.media
+                && old.inherited.same(&inputs.inherited)
+        });
+        self.hit = false;
         if let Some(at) = self
             .cascades
             .iter()
             .position(|(kept, _)| kept.same(&inputs))
         {
+            self.hit = same_context;
             let kept = self.cascades.remove(at);
             let out = kept.1.clone();
             self.cascades.push(kept);

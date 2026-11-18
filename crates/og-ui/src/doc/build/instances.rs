@@ -58,6 +58,8 @@ pub struct ElementInstance {
     pub cached: Arc<CachedInputs>,
     /// Its resolution, shared: a build reads it without copying it.
     pub resolved: Option<Arc<ResolvedNode>>,
+    /// The evaluated inputs that produced that resolution.
+    pub resolved_inputs: Arc<CachedInputs>,
     /// Its last cascades ([`super::cascade::Kept`]), from its second
     /// style on; shared, as an emit copies the element.
     pub(crate) cascades: Option<Arc<super::cascade::Kept>>,

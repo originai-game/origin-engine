@@ -134,6 +134,7 @@ impl RetainedHost {
             scope,
             cached: Default::default(),
             resolved: None,
+            resolved_inputs: Default::default(),
             cascades: Default::default(),
             style_dirty: true,
             theme_epoch: self.theme_epoch,

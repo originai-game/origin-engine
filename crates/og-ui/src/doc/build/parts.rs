@@ -210,6 +210,17 @@ pub(crate) struct PartStyles {
     /// whose transition runs is moved from its kept cascade each tick
     /// instead of cascaded again.
     cascades: std::collections::HashMap<(Option<u64>, &'static str), Vec<KeptCascade>>,
+    /// Sibling controls with identical inputs share their class-change
+    /// proof within a tick, not one scan of the root tokens per control.
+    retargets: Vec<PartRetarget>,
+}
+
+#[derive(Clone)]
+struct PartRetarget {
+    document: Arc<UiDocument>,
+    before: PartHost,
+    after: PartHost,
+    parts: Vec<(crate::dress::PartRef, crate::dress::PartRef)>,
 }
 
 /// A part's cascade before its transitions and animations move it, and
@@ -347,6 +358,7 @@ impl PartStyles {
         } else if self.tick != tick {
             self.styles.retain(|(key, _), _| key.is_none_or(&alive));
             self.cascades.retain(|(key, _), _| key.is_none_or(&alive));
+            self.retargets.clear();
             self.tick = tick;
         }
     }
@@ -859,6 +871,197 @@ impl Ui {
         size: [f32; 2],
     ) -> Result<crate::paint::ElementDraw, Vec<String>> {
         self.part_draw_values(&self.part_values(part, None), size, None, None)
+    }
+
+    /// A sufficient, not necessary, proof that a built-in button's parts
+    /// survive a class-only retarget unchanged. The caller supplies every
+    /// actual part pair (including the focus ring and named-part aliases),
+    /// keeps theme, viewport and motion inputs fixed, and separately proves
+    /// the scale/opacity targets and outgoing document dependencies safe.
+    /// This never resolves parts or changes the tree; identical siblings
+    /// share a successful proof within the current presentation tick.
+    pub(crate) fn part_styles_unchanged_for_class_change(
+        &self,
+        old: &PartHost,
+        new: &PartHost,
+        parts: &[(crate::dress::PartRef, crate::dress::PartRef)],
+    ) -> bool {
+        let Some(document) = self.docs.library.documents.get(&old.document) else {
+            return false;
+        };
+        {
+            let mut styles = self.style.part_styles.borrow_mut();
+            styles.turn(
+                self.tick(),
+                (self.tree.invalidation.epoch, self.env.direction),
+                || PartContext {
+                    epoch: self.tree.invalidation.epoch,
+                    root: RootIdentity(self.css_root_cascade()),
+                    direction: self.env.direction,
+                    theme: self.env.theme,
+                },
+                |key| self.tree.index.find(key).is_some(),
+            );
+            if styles.retargets.iter().any(|proof| {
+                Arc::ptr_eq(&proof.document, document)
+                    && proof.before == *old
+                    && proof.after == *new
+                    && proof.parts == parts
+            }) {
+                return true;
+            }
+        }
+        let target = |name: &str| matches!(name, "scale" | "opacity");
+        let non_class =
+            |(name, _): &(&String, &Value)| name.as_str() != "class" && !name.starts_with("class:");
+        if parts.is_empty()
+            || old.document != new.document
+            || old.tag != "button"
+            || old.tag != new.tag
+            || !old
+                .attributes
+                .iter()
+                .filter(non_class)
+                .eq(new.attributes.iter().filter(non_class))
+            || !old
+                .own
+                .iter()
+                .filter(|n| !target(n))
+                .eq(new.own.iter().filter(|n| !target(n)))
+            || old.plate != new.plate
+        {
+            return false;
+        }
+        let mut before = (*old.computed).clone();
+        let mut after = (*new.computed).clone();
+        before.properties.retain(|n, _| !target(n));
+        after.properties.retain(|n, _| !target(n));
+        if before != after {
+            return false;
+        }
+        if document.control.is_some() {
+            return false;
+        }
+        // Only borrow already-built rule indexes: a cold answer is unproven.
+        let merged = self.style.document_part_rules.borrow();
+        let global = self.style.part_index.borrow();
+        let (rules, sheet, index) = if document.part_rules.is_empty() {
+            let Some(index) = global.as_ref() else {
+                return false;
+            };
+            (&*self.style.part_rules, &*self.style.part_sheet, &**index)
+        } else {
+            let Some((cached, rules)) = merged.get(&old.document) else {
+                return false;
+            };
+            if !Arc::ptr_eq(cached, document) {
+                return false;
+            }
+            (&rules.0, &rules.1, &rules.2)
+        };
+        // No second substitution engine here. Reject attribute reads,
+        // explicit inheritance, escapes/comments and custom functions or
+        // registrations that could hide one of those inputs. Substring
+        // checks deliberately reject harmless strings too.
+        let safe = |text: &str| {
+            let text = text.to_ascii_lowercase();
+            !["attr(", "inherit", "unset", "\\", "/*"]
+                .iter()
+                .any(|s| text.contains(*s))
+        };
+        if !sheet.functions.is_empty()
+            || !sheet.properties.is_empty()
+            || !before.iter().all(|(_, v)| v.as_deref().is_none_or(safe))
+            || !before.properties.values().all(|v| safe(v))
+        {
+            return false;
+        }
+        let safe_rule = |rule: &crate::doc::StyleRule| {
+            rule.declarations.iter().all(|d| {
+                d.value.binding().is_none() && !d.name.starts_with("animation") && safe(&d.source)
+            })
+        };
+        if !old.plate.iter().all(&safe_rule) {
+            return false;
+        }
+        let signature = |part: &crate::dress::PartRef, host: &PartHost| {
+            part.with_facts(|facts| {
+                let mut attributes = facts.attributes.clone();
+                let classes = format!(
+                    "{} {}",
+                    attributes
+                        .get("class")
+                        .map(crate::bind::text)
+                        .unwrap_or_default(),
+                    host.attributes
+                        .get("class")
+                        .map(crate::bind::text)
+                        .unwrap_or_default()
+                );
+                attributes.extend(host.attributes.clone());
+                attributes.insert("class".into(), classes.into());
+                let facts = Facts {
+                    tag: &host.tag,
+                    attributes: &attributes,
+                    ..facts
+                };
+                let mut signature = Vec::new();
+                for facts in [
+                    Facts {
+                        part: None,
+                        own_part: None,
+                        ..facts
+                    },
+                    facts,
+                ] {
+                    let mut matched = Vec::new();
+                    for rule in index.candidates(rules, &facts) {
+                        if !rule.starting && self.part_matches(rule, &facts, Some(host)) {
+                            if !safe_rule(rule) {
+                                return None;
+                            }
+                            matched.push(std::ptr::from_ref(rule));
+                        }
+                    }
+                    signature.push(matched);
+                }
+                Some(signature)
+            })
+        };
+        let unchanged = parts.iter().all(|(a, b)| {
+            // Only class facts may differ; in particular class flags that
+            // also encode widget states must not silently change state.
+            a.component == b.component
+                && a.part == b.part
+                && a.own == b.own
+                && a.class == b.class
+                && a.level == b.level
+                && a.hover == b.hover
+                && a.press == b.press
+                && a.with_facts(|a| {
+                    b.with_facts(|b| {
+                        a.states == b.states
+                            && a.attributes
+                                .iter()
+                                .filter(non_class)
+                                .eq(b.attributes.iter().filter(non_class))
+                    })
+                })
+                && signature(a, old).is_some_and(|before| signature(b, new) == Some(before))
+        });
+        if unchanged {
+            let mut styles = self.style.part_styles.borrow_mut();
+            if styles.retargets.len() == PART_VARIANTS {
+                styles.retargets.remove(0);
+            }
+            styles.retargets.push(PartRetarget {
+                document: document.clone(),
+                before: old.clone(),
+                after: new.clone(),
+                parts: parts.to_vec(),
+            });
+        }
+        unchanged
     }
 
     /// Whether `rule` matches a part (or its host, when `facts` name no

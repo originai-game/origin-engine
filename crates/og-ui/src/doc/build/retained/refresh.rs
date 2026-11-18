@@ -919,6 +919,10 @@ impl RetainedHost {
                 crate::doc::lists::ordinal(topology, identity, filter, item_values)
             },
         );
+        let retargeted = e.theme_epoch == self.theme_epoch
+            && !self.emit.contains(identity)
+            && e.cascades.as_ref().is_some_and(|kept| kept.hit)
+            && ui.retarget_document(e, &values);
         self.css.selectors += work.selectors;
         self.css.candidates += work.candidates;
         let bursts = ui.burst_errors(&values);
@@ -1002,21 +1006,24 @@ impl RetainedHost {
                 self.dirty.extend(readers.iter().cloned());
             }
         }
-        // Whether it declares what it declared: then a value it hands down
-        // starts to pass through it only as the value changes.
-        let declares_as_before = previous.is_some_and(|p| {
-            let c = &values.cascade;
-            fn names(d: &[(String, String)]) -> impl Iterator<Item = &String> {
-                d.iter().map(|(name, _)| name)
-            }
-            p.local_names == c.local_names
-                && p.values
+        // A declaration appearing or disappearing can start passing a read
+        // through even when its computed value did not change. Revisit that
+        // name, not every inherited read (e.g. adding scale to a button must
+        // not revisit its descendants' font and custom-property reads).
+        let ownership_changed = previous.map(|p| {
+            fn names(c: &cascade::Cascade) -> BTreeSet<&String> {
+                c.local_names
                     .iter()
-                    .map(|v| &v.0)
-                    .eq(c.values.iter().map(|v| &v.0))
-                && names(&p.text).eq(names(&c.text))
-                && names(&p.svg).eq(names(&c.svg))
-                && names(&p.container).eq(names(&c.container))
+                    .chain(c.values.iter().map(|v| &v.0))
+                    .chain(c.text.iter().map(|v| &v.0))
+                    .chain(c.svg.iter().map(|v| &v.0))
+                    .chain(c.container.iter().map(|v| &v.0))
+                    .collect()
+            }
+            names(p)
+                .symmetric_difference(&names(&values.cascade))
+                .map(|name| (*name).clone())
+                .collect::<BTreeSet<_>>()
         });
         let resolved = ResolvedNode {
             id: e.id.clone(),
@@ -1025,7 +1032,16 @@ impl RetainedHost {
             values,
             probe,
         };
-        self.elements.get_mut(identity).unwrap().resolved = Some(Arc::new(resolved));
+        let e = self.elements.get_mut(identity).unwrap();
+        if retargeted {
+            for built in &mut Arc::make_mut(&mut e.record).built {
+                if built.path == resolved.path {
+                    *built = resolved.probe.clone();
+                }
+            }
+        }
+        e.resolved = Some(Arc::new(resolved));
+        e.resolved_inputs = e.cached.clone();
         if let Some(parent) = &parent {
             for name in &added {
                 self.read_through(parent.clone(), name);
@@ -1035,10 +1051,14 @@ impl RetainedHost {
         // what it declared before.
         let read: Vec<String> = self.inherited.get(identity).map_or_else(Vec::new, |names| {
             let reads = |name: &String| names.get(name).is_some_and(|r| !r.is_empty());
-            match changed {
-                Some(changed) if declares_as_before => {
-                    changed.into_iter().filter(|name| reads(name)).collect()
-                }
+            match (changed, ownership_changed) {
+                (Some(changed), Some(ownership)) => changed
+                    .into_iter()
+                    .chain(ownership)
+                    .filter(|name| reads(name))
+                    .collect::<BTreeSet<_>>()
+                    .into_iter()
+                    .collect(),
                 _ => names
                     .iter()
                     .filter(|(_, readers)| !readers.is_empty())
@@ -1056,7 +1076,9 @@ impl RetainedHost {
         {
             built = parent.clone();
         }
-        self.emit.insert(built);
+        if !retargeted {
+            self.emit.insert(built);
+        }
         self.elements.get_mut(identity).unwrap().style_dirty = false;
         self.elements.get_mut(identity).unwrap().theme_epoch = self.theme_epoch;
         self.topology.set_text(identity, text)?;

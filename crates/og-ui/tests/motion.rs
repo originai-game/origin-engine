@@ -155,6 +155,87 @@ fn property_animation_keeps_fresh_paint_after_retargeting_and_invalidation() {
     }
 }
 
+/// Repeated class-driven scalar targets keep the control, but a class
+/// changing real styles or its shadow parts still rebuilds. The reference
+/// invalidates styles each tick and must agree in paint and hit geometry.
+#[test]
+fn cached_class_retargets_keep_controls_and_match_fresh_styles() {
+    let text = r#"<meta name="component" content="Test">
+<div id="Root">{#each $rows as row (row.id)}<button id="A" class={$pose}><span id="Label">Buy</span></button>{/each}</div>
+<style>
+#Root { width: 300px; height: 300px; padding: 17px; }
+#A { width: 113px; height: 61px; opacity: 0.9; transition: scale 300ms linear, opacity 300ms linear; }
+#A.lifted { scale: 1.17; opacity: 0.3; }
+#A.paint { background: #b92743; }
+#A.part::part(base) { background: #2ca47f; }
+#A.descendant { color: #da6e23; }
+#Label { display: block; width: 31px; height: 19px; background: currentColor; }
+</style>"#;
+    for directives in [false, true] {
+        let text = if directives {
+            text.replace("class={$pose}", "class:lifted={$pose == 'lifted'} class:paint={$pose == 'paint'} class:part={$pose == 'part'} class:descendant={$pose == 'descendant'}")
+        } else {
+            text.to_owned()
+        };
+        let stores = [
+            ("pose", serde_json::json!("rest")),
+            (
+                "rows",
+                serde_json::json!([{"id":"a"}, {"id":"b"}, {"id":"c"}]),
+            ),
+        ];
+        let mut kept = Doc::new(&text, &stores);
+        let mut fresh = Doc::new(&text, &stores);
+        for tick in 0..180 {
+            if tick == 66 || tick == 105 {
+                for d in [&mut kept, &mut fresh] {
+                    d.focus = Some(
+                        d.ui.probe_elements()
+                            .into_iter()
+                            .filter(|e| e.kind == "button")
+                            .nth(usize::from(tick == 105))
+                            .expect("three buttons")
+                            .path,
+                    );
+                }
+            }
+            let pose = match tick / 12 {
+                0 | 2 | 4 | 6 | 8 | 10 | 12 | 14 => "rest",
+                1 | 3 | 5 | 13 => "lifted",
+                7 => "paint",
+                9 => "part",
+                11 => "descendant",
+                _ => unreachable!(),
+            };
+            for d in [&mut kept, &mut fresh] {
+                d.put("pose", serde_json::json!(pose));
+            }
+            fresh.ui.reset_part_css();
+            kept.step(InputFrame::default());
+            fresh.step(InputFrame::default());
+            if matches!(tick, 36 | 48 | 60) {
+                assert_eq!(kept.ui.frame().stats.animated, 3, "three moving buttons");
+                assert_eq!(
+                    kept.ui.frame().stats.rebuilt,
+                    0,
+                    "tick {tick}: cached targets"
+                );
+            }
+            assert_eq!(
+                kept.ui.probe_elements(),
+                fresh.ui.probe_elements(),
+                "tick {tick}: hit geometry"
+            );
+            let overlay = |d: &Doc| {
+                let mut o = og_draw::Overlay::new(d.viewport.width, d.viewport.height, 1.0);
+                d.ui.frame().emit(&EmitDesc::default(), &mut o);
+                o
+            };
+            assert_eq!(overlay(&kept), overlay(&fresh), "tick {tick}: fresh paint");
+        }
+    }
+}
+
 /// A directive keeps the style's motion token until playback, not the
 /// default token's duration baked in at parse time.
 #[test]

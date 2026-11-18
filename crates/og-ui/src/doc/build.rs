@@ -1717,6 +1717,7 @@ mod parts;
 pub(crate) use parts::{PartIndex, PartStyles, RootContext, RootIdentity};
 pub(crate) mod popover;
 pub(crate) mod retained;
+mod retarget;
 pub(crate) mod scroll_markers;
 pub(crate) mod state;
 #[doc(hidden)]

@@ -797,6 +797,17 @@ pipeline changes return to ordinary painting; they do not reuse the old
 placed command list. Text, images, offscreen layers, backdrops and world
 placement are outside this property-only path.
 
+Warmed class changes that only change a built-in button's scalar scale and
+opacity targets can keep its control and bindings. The retained builder
+validates the cached cascade context, unchanged non-target values, and the
+ordered rules matching every shadow part before updating motion targets.
+Sibling controls with identical host and part inputs share that proof
+within a presentation tick.
+Real style or part changes, custom control documents, computed-value
+animations and positioned descendants use the ordinary path. Selector and
+inherited-value invalidation still runs; declaration ownership changes
+revisit only their own names, not every name descendants read.
+
 The shared runtime on both hosts keeps a caller-owned `RetainedEmission`
 for an otherwise empty, unshifted UI overlay without strict-palette
 processing. It shares emitted shapes and patches properties only against
