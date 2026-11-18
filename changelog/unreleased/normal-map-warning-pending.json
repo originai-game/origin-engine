@@ -1,0 +1,8 @@
+{
+  "fixed": [
+    {
+      "member": "StandardMaterialDesc.normalMap",
+      "summary": "The warning for a colour texture given as a normal map judges the texture by how it was cooked. A `kind normal` texture that the native texture worker or the web Worker was still transcoding was drawn as the sRGB placeholder meanwhile and was named as a colour texture at tick 0, telling a game to add the import settings it already had."
+    }
+  ]
+}

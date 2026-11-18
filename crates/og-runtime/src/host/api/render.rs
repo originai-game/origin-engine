@@ -261,9 +261,16 @@ fn warn_color_normal_maps(
         let Some(id) = rs.decoded.ids.get(&handle) else {
             continue;
         };
-        if rs.scene.texture_color_space(handle) != Some(og_render::ColorSpace::Srgb)
-            || !rs.decoded.color_normals.insert(handle)
-        {
+        // Judged by what the cook wrote, not by the scene texture: one the
+        // host is still transcoding is drawn as the sRGB placeholder.
+        let srgb = match eng.assets.borrow().blob(id) {
+            Ok((bytes, bundle)) => bundle
+                .texture(id, bytes.bytes())
+                .map(|t| t.meta.color_space == 0)
+                .unwrap_or(false),
+            Err(_) => rs.scene.texture_color_space(handle) == Some(og_render::ColorSpace::Srgb),
+        };
+        if !srgb || !rs.decoded.color_normals.insert(handle) {
             continue;
         }
         let text = format!(
