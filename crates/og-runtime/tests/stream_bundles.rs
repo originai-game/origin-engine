@@ -663,6 +663,107 @@ fn runtime_bundles_stream_without_freezing_or_changing_the_world() {
     std::fs::remove_dir_all(base).unwrap();
 }
 
+/// A cell's models start fading in only once the renderer has made their
+/// pipelines on display frames, and at once on a script's frames, which
+/// reproduce run to run whatever a compile took. The world is the same.
+#[test]
+fn a_fade_waits_for_its_pipelines_on_display_frames_and_never_on_a_scripts() {
+    let _lock = TEST_LOCK.lock().unwrap();
+    /// A renderer whose pipelines made ahead compile for the first
+    /// `left` frames that hold an instance at nothing.
+    struct Slow {
+        inner: Recorder,
+        left: u32,
+        compiling: bool,
+    }
+    impl RenderBackend for Slow {
+        fn tier(&self) -> String {
+            self.inner.tier()
+        }
+        fn size(&self) -> (u32, u32) {
+            self.inner.size()
+        }
+        fn render(&mut self, scene: &RenderScene) -> Result<(), String> {
+            let hidden = scene.objects.instances.iter().any(|i| i.fx.reveal == 0.0);
+            self.compiling = hidden && self.left > 0;
+            self.left -= u32::from(self.compiling);
+            self.inner.render(scene)
+        }
+        fn capture(&mut self, _: &RenderScene, _: u32, _: u32) -> Option<og_render::RgbaImage> {
+            None
+        }
+        fn frame_stats(&self) -> og_render::FrameStats {
+            og_render::FrameStats {
+                compiling_ahead: self.compiling,
+                ..Default::default()
+            }
+        }
+    }
+    let base = PathBuf::from(env!("CARGO_TARGET_TMPDIR"))
+        .join(format!("fade-pipelines-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&base);
+    let root = base.join("game");
+    cook(&root, &[("world.ogt", b"type scene\nversion 1\n---\nentity \"player\" {\n Transform {\n  position 0 0 0\n }\n StreamAnchor {\n  reach 0\n }\n}\n".to_vec())]);
+    let path = base.join("parcel");
+    parcel(&path, "parcel", "parcel", 100, false);
+    let mut runs = Vec::new();
+    for scripted in [false, true] {
+        set_hooks(Rc::new(Disk {
+            delayed: false,
+            reads: RefCell::default(),
+        }));
+        og_host_begin_bundle();
+        let game = og_game_game(Some(r#"{"seed":1}"#.into()));
+        let engine = value(og_engine_create(game, json!({"root": root}).to_string()))
+            .as_u64()
+            .unwrap() as u32;
+        let held = Rc::new(Cell::new(Held::default()));
+        answer(set_render_backend(
+            engine,
+            Some(Box::new(Slow {
+                inner: Recorder(held.clone()),
+                left: 6,
+                compiling: false,
+            })),
+        ));
+        set_scripted_frames(engine, scripted);
+        let g = Game { engine, held };
+        g.place("world.ogt");
+        g.open(&path);
+        g.place("parcel/place.ogt");
+        g.walk(100);
+        // How much of the model each frame drew, from its first.
+        let mut drawn = Vec::new();
+        let mut hashes = Vec::new();
+        for _ in 0..64 {
+            g.frame();
+            hashes.push(g.dump()["hash"].clone());
+            if g.held.get().instances > 0 {
+                drawn.push(g.held.get().reveal);
+            }
+        }
+        let nothing = drawn.iter().take_while(|&&r| r == 0.0).count();
+        assert!(
+            drawn.len() > 30,
+            "the model drew for {} frames",
+            drawn.len()
+        );
+        assert_eq!(drawn.last(), Some(&1.0), "the fade ended: {drawn:?}");
+        assert!(
+            drawn[nothing..].windows(2).all(|w| w[0] <= w[1]),
+            "it only comes in: {drawn:?}"
+        );
+        assert!(og_loading_idle(engine));
+        assert!(og_engine_destroy(engine));
+        runs.push((nothing, hashes));
+    }
+    let (display, script) = (&runs[0], &runs[1]);
+    assert!(display.0 >= 6, "held for {} frames of 6", display.0);
+    assert!(script.0 <= 2, "a script's frames held it for {}", script.0);
+    assert_eq!(display.1, script.1, "the hold changed world hashes");
+    std::fs::remove_dir_all(base).unwrap();
+}
+
 /// Full meshes must not leave their cooked raycast BVHs behind. HLOD's
 /// baked atlases and proxies live as long as their placements, not forever
 /// in the model cache. Keep all bundles open throughout this route.
