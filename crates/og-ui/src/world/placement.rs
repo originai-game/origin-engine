@@ -2247,6 +2247,13 @@ impl crate::ui::Layout {
             let n = &tree.nodes[i];
             n.float == Float::World && !world.is_panel_node(i)
         };
+        if !order.iter().any(|&i| under(i)) {
+            return;
+        }
+        // Each subtree's end depends on the order, not on which world root
+        // is being moved. Build the index once instead of scanning every
+        // remaining suffix for every root.
+        let ends = crate::layout::subtree_ends(&tree.nodes, order);
         // Subtrees of world layers below the root (each a run of the order).
         let mut moved = Vec::new();
         let mut rest = Vec::with_capacity(order.len());
@@ -2254,7 +2261,7 @@ impl crate::ui::Layout {
         while k < order.len() {
             let i = order[k];
             if under(i) {
-                let end = crate::layout::subtree_ends(&tree.nodes, &order[k..])[0] + k;
+                let end = ends[k];
                 moved.extend_from_slice(&order[k..end]);
                 k = end;
             } else {
