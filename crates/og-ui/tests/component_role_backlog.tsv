@@ -47,8 +47,6 @@ panels/chart.svelte	Chart.grid Chart.plate Chart.gridline	1
 panels/chart.svelte	Chart.label Chart.caption	2
 panels/conversation.svelte	RpgConversation.name RpgConversation.headline	1
 panels/data-grid.svelte	DataGrid.heading DataGrid.caption	1
-panels/item-card.svelte	RpgItemCard.name RpgItemCard.title	1
-panels/item-card.svelte	RpgItemCard.well RpgItemCard.caption	1
 panels/node-graph.svelte	NodeGraph.label NodeGraph.badge	1
 puzzle/boosters.svelte	PuzzleBoosters.count PuzzleBoosters.figure PuzzleBoosters.badge	1
 puzzle/boosters.svelte	PuzzleBoosters.name PuzzleBoosters.headline	1

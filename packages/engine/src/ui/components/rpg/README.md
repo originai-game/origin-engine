@@ -54,8 +54,8 @@ on skills; `data-done`, `data-tracked` and `data-fresh` on quests.
 
 | Document | Inputs (props) | Intents |
 | --- | --- | --- |
-| `RpgItemCard` | `name`, `icon`, `art` (texture), `rarity`, `kind`, `lead` and `stats` keyed `{ id, icon, label, value, delta, trend, current }`, `lore`, `primary`, `secondary`, `canPrimary`, `canSecondary` | `equip`, `discard` |
 | `RpgBackpack` | `title`, `kicker`, `capacity`, `tabs` keyed `{ id, label, count }`, `tab`, `items` keyed `{ id, name, icon, count, rarity, equipped, fresh, locked, broken }`, `selected`, `weight`, `load` 0–1 (above 1 is overburdened), `gold` | `choose` (cell), `move` with `{ dragged, target }` (a cell dropped on another; a locked one does not drag), `choosetab` (tab), `tabNext`/`tabPrev` (E/Q, bumpers) |
+| `RpgItemCard` | `name`, `icon`, `art` (texture), `rarity`, `kind`, `line`, `lead` and `stats` keyed `{ id, icon, label, value, delta, trend, current }`, `lore`, `primary`, `secondary`, `canPrimary`, `canSecondary`, `reason` | `equip`, `discard` |
 | `RpgCharacter` | `title` (a heading band; empty shows the name header), `name`, `line`, `portrait`, `figure`, `slots` keyed `{ id, side (start, end), label, icon, rarity }`, `selected`, `attributes` keyed `{ id, group (a, b), icon, label, value }` | `choose` (slot), `unequip` (details: X, pad Y) |
 | `RpgStats` | `title`, `groups` keyed `{ id, column (a, b) }`, `rows` keyed `{ id, group, icon, label, value }` | none |
 | `RpgMenuBar` | `tabs` keyed `{ id, label }`, `tab` | `choosetab`, `tabNext`/`tabPrev`, `close` (button, Escape, B) |
@@ -99,7 +99,7 @@ pressed, focus-visible and disabled states (docs/ui.md §3.2).
 | `RpgCommands` (`commands.svelte`) | `frame`, `band`, `title`, `cell` (a button: `.primary` `[aria-selected]` `:disabled`) |
 | `RpgConversation` (`../panels/conversation.svelte`) | `frame`, `name`, `row` (a button: `[aria-selected]` `[data-used]`), `controls`, `backlog`, `skip`, `auto` (`[aria-pressed]`) |
 | `RpgEnemyInfo` (`enemy-info.svelte`) | `frame`, `band`, `title`, `name`, `row` (`[data-tone]`) |
-| `RpgItemCard` (`../panels/item-card.svelte`) | `frame` (`[data-rarity]`), `name`, `lead`, `row` |
+| `RpgItemCard` (`../panels/item-card.svelte`) | `frame` (`[data-rarity]`), `hero`, `band`, `kicker`, `name`, `line`, `lead`, `delta` (`[data-trend]`), `current`, `stats`, `row`, `lore`, `actions`, `reason` |
 | `RpgMenuBar` (`menu-bar.svelte`) | `frame`, `tab` (a button: `[aria-selected]`) |
 | `RpgParty` (`party.svelte`) | `frame`, `cell` (a button: `[aria-selected]` `[data-down]`) |
 | `RpgPlaceCard` (`place-card.svelte`) | `frame`, `name` |
