@@ -380,13 +380,69 @@ pub fn storm(strike: bool) -> RenderScene {
         // 600 m reach) falls on the colonnade's faces towards the camera,
         // so the stone reads in the flash, and the bolt stands in the
         // vista between the rows.
-        let at = Vec3::new(-20.0, 0.0, -300.0);
         // The bolt is a ribbon in the scene: past the default 1 km far
         // plane it would be clipped.
         scene.frame.camera.far = 4000.0;
-        og_render::add_lightning(&mut scene, at, 900.0, 3, 0.03);
+        let _ = UNSTRUCK.set(Unstruck {
+            environment: scene.lighting.environment.intensity,
+            light: scene.lighting.light,
+            clouds: scene.atmosphere.clouds.as_ref().map(|c| c.flash),
+            lights: scene.lighting.lights.len(),
+            ribbons: scene.effects.ribbons.len(),
+        });
+        og_render::add_lightning(&mut scene, STRIKE_AT, STRIKE_TOP, 3, STRIKE_SECONDS);
     }
     scene
+}
+
+/// The storm's strike: 300 m down the way, over the arch at its end, from
+/// a cloud base 900 m up, drawn `STRIKE_SECONDS` after it struck.
+const STRIKE_AT: Vec3 = Vec3::new(-20.0, 0.0, -300.0);
+const STRIKE_TOP: f32 = 900.0;
+const STRIKE_SECONDS: f32 = 0.03;
+/// Seconds between the storm's strikes after its frame: a flash lasts
+/// 0.6 s and the storm's night without one is unlit, so they come close,
+/// three in two seconds (a two-second clip loops on the same strike's age).
+const STRIKE_EVERY: f32 = 2.0 / 3.0;
+
+/// What a strike changes in the storm, as it stood before its strike.
+struct Unstruck {
+    environment: f32,
+    light: og_render::DirectionalLight,
+    clouds: Option<glam::Vec4>,
+    lights: usize,
+    ribbons: usize,
+}
+
+/// The storm before its strike (the same for every build of it).
+static UNSTRUCK: std::sync::OnceLock<Unstruck> = std::sync::OnceLock::new();
+
+/// `weather-lightning`'s frames: the rain's ticks, and after the scene's
+/// own frames (its strike as drawn, `STRIKE_SECONDS` in) the strike going
+/// on a 60th of a second a frame, the double flash and the bolt dying,
+/// another strike (the next bolt) every `STRIKE_EVERY` seconds.
+pub fn storm_update(scene: &mut RenderScene, frame: u32) {
+    crate::fx_scenes::tick_update(scene, frame);
+    let settled = crate::atmo_scenes::WEATHER_FRAMES - 1;
+    let Some(base) = UNSTRUCK.get().filter(|_| frame > settled) else {
+        return;
+    };
+    scene.lighting.environment.intensity = base.environment;
+    scene.lighting.light = base.light;
+    if let (Some(c), Some(flash)) = (scene.atmosphere.clouds.as_mut(), base.clouds) {
+        c.flash = flash;
+    }
+    scene.lighting.lights.truncate(base.lights);
+    scene.effects.ribbons.truncate(base.ribbons);
+    let t = STRIKE_SECONDS + (frame - settled) as f32 / scene.frame.tick_rate.max(1.0);
+    let n = (t / STRIKE_EVERY).floor();
+    og_render::add_lightning(
+        scene,
+        STRIKE_AT,
+        STRIKE_TOP,
+        3 + n as u32,
+        t - n * STRIKE_EVERY,
+    );
 }
 
 /// The colonnade on a clear moonless night under `aurora` (its arcs out

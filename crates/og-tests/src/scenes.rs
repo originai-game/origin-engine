@@ -1457,6 +1457,10 @@ pub fn build(name: &str) -> Result<GfxScene, String> {
                 g.frames = crate::atmo_scenes::WEATHER_FRAMES;
                 g.update = Some(fx::tick_update);
             }
+            // The strike goes on after the frame (og-gfx --sequence).
+            if name == "weather-lightning" {
+                g.update = Some(crate::sky_scenes::storm_update);
+            }
             // As a game draws them: the set's thin edges (capitals, pine
             // needles, the cobbles' joints) alias without it.
             g.desc.antialias = Antialias::Tier;
