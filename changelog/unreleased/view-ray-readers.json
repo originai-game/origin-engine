@@ -1,0 +1,8 @@
+{
+  "fixed": [
+    {
+      "member": "rendering: og.VolumetricFog, og.Fluid3D, og.Water, transmission",
+      "summary": "The lit fog's shafts, what a 3D fluid and a transmissive material refract, and the water under a waterline no longer shift with the camera's distance from the render origin. Each rebuilt its view ray, and transmission its opaque depth, from points unprojected at the camera's place, rounded at its distance from the origin: 5 km out the shafts moved and glass drew rings in what it refracted. They read the view ray built from the camera's rotation and projection alone, as the sky does."
+    }
+  ]
+}

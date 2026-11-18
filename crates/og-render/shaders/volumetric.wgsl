@@ -100,10 +100,7 @@ fn slice_depth(f: f32) -> f32 {
 
 // The world direction of the view ray through uv (0..1, y down).
 fn view_ray(uv: vec2<f32>) -> vec3<f32> {
-  let ndc = vec2<f32>(uv.x * 2.0 - 1.0, 1.0 - uv.y * 2.0);
-  let a = frame.inv_view_proj * vec4<f32>(ndc, 0.0, 1.0);
-  let b = frame.inv_view_proj * vec4<f32>(ndc, 1.0, 1.0);
-  return normalize(b.xyz / b.w - a.xyz / a.w);
+  return pixel_ray(vec2<f32>(uv.x * 2.0 - 1.0, 1.0 - uv.y * 2.0));
 }
 
 // The sun's light scattered towards the eye at p (dir: the view ray).

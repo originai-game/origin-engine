@@ -43,8 +43,7 @@ fn fs_waterline(in: LineOut) -> @location(0) vec4<f32> {
   let px = s / max(fwidthFine(s), 1e-7);
   let under = 1.0 - smoothstep(-0.5, 0.5, px);
   // What lies under it: fogged by the water over its distance (the depth prepass's view depth along the view's ray).
-  let f4 = frame.inv_view_proj * vec4<f32>(in.ndc, 1.0, 1.0);
-  let dir = normalize(f4.xyz / f4.w - near);
+  let dir = pixel_ray(in.ndc);
   let depth = textureLoad(scene_depth, depth_texel(in.clip.xy), 0).r;
   let dist = min(depth / max(dot(dir, frame.view_forward.xyz), 1e-3), 1e5);
   let fog = (1.0 - exp(-water.waterline.y * dist)) * under;

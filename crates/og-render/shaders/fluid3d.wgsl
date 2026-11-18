@@ -109,9 +109,8 @@ fn world_at(px: vec2<f32>, d: f32) -> vec3<f32> {
   let uv = px * fluid.screen.zw;
   let ndc = vec2<f32>(uv.x * 2.0 - 1.0, 1.0 - uv.y * 2.0);
   let a4 = frame.inv_view_proj * vec4<f32>(ndc, 0.0, 1.0);
-  let b4 = frame.inv_view_proj * vec4<f32>(ndc, 1.0, 1.0);
   let a = a4.xyz / a4.w;
-  let dir = normalize(b4.xyz / b4.w - a);
+  let dir = pixel_ray(ndc);
   return a + dir * ((d - view_depth(a)) / max(dot(dir, frame.view_forward.xyz), 1e-6));
 }
 
