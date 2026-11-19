@@ -15,7 +15,7 @@ import { join } from "node:path";
 import { posix } from "node:path";
 
 declare const Bun: {
-  serve(o: { port: number; hostname?: string; fetch(req: Request): Response | Promise<Response> }): { port: number; stop(): void };
+  serve(o: { port: number; hostname?: string; fetch(req: Request): Response | Promise<Response> }): { port: number; stop(closeActive?: boolean): void };
   file(path: string): Blob & { exists(): Promise<boolean> };
 };
 
@@ -64,10 +64,20 @@ export function readHeaders(dist: string): Array<{ pattern: string; headers: Rec
   return rules;
 }
 
+/**
+ * Scripts each server's HTML pages run first, by the server's port: what a
+ * browser without CDP's Page.addScriptToEvaluateOnNewDocument (Safari over
+ * WebDriver, webdriver.ts) is given instead. Served as a same-origin file,
+ * `/__og_preload.js`, so a strict Content-Security-Policy admits it.
+ */
+export const preloads = new Map<number, string[]>();
+const PRELOAD = "/__og_preload.js";
+
 const matches = (pattern: string, path: string) =>
   pattern === path || (pattern.endsWith("*") && path.startsWith(pattern.slice(0, -1))) || (pattern.startsWith("/*.") && path.endsWith(pattern.slice(2)));
 
-export function serve(o: ServeOptions): { port: number; stop(): void } {
+/** `stop(true)` also closes the connections a browser keeps open. */
+export function serve(o: ServeOptions): { port: number; stop(closeActive?: boolean): void } {
   const rules = readHeaders(o.dist);
   return Bun.serve({
     port: 0,
@@ -83,8 +93,11 @@ export function serve(o: ServeOptions): { port: number; stop(): void } {
         o.onResult?.(await req.json());
         return new Response("ok", { headers });
       }
+      const preload = preloads.get(Number(url.port));
+      if (url.pathname === PRELOAD) return new Response((preload ?? []).join(";\n"), { headers: { ...headers, ...isolation, "content-type": TYPES[".js"]! } });
+      const first = (html: string) => (preload?.length ? html.replace(/<head[^>]*>/i, (h) => `${h}<script src="${PRELOAD}"></script>`) : html);
       const page = o.extra?.[url.pathname];
-      if (page !== undefined) return new Response(page, { headers: { ...headers, ...isolation, ...o.headers, "content-type": TYPES[".html"]! } });
+      if (page !== undefined) return new Response(first(page), { headers: { ...headers, ...isolation, ...o.headers, "content-type": TYPES[".html"]! } });
       if (!url.pathname.startsWith("/game/")) return new Response("not found", { status: 404, headers });
       let rel = posix.normalize(decodeURIComponent(url.pathname.slice("/game".length)));
       if (rel.endsWith("/")) rel += "index.html";
@@ -104,8 +117,9 @@ export function serve(o: ServeOptions): { port: number; stop(): void } {
         const told = o.told();
         let html = readFileSync(path, "utf8");
         if (told !== null) html = html.replace("<head>", `<head><script>window.__OG_STAGE_HOST__=${JSON.stringify(told)}</script>`);
-        return new Response(html, { headers });
+        return new Response(first(html), { headers });
       }
+      if (ext === ".html" && preload?.length) return new Response(first(readFileSync(path, "utf8")), { headers });
       const slow = o.throttle && (ext === ".wasm" || rel.startsWith("/cooked/"));
       if (!slow) return new Response(Bun.file(path), { headers });
       const bytes = new Uint8Array(readFileSync(path));

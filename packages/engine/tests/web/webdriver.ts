@@ -18,6 +18,7 @@
 // offers a WebDriver host.
 
 import { existsSync } from "node:fs";
+import { preloads } from "./serve.ts";
 
 declare const Bun: {
   spawn(cmd: string[], o?: { stdout?: string; stderr?: string }): { kill(): void; exited: Promise<number> };
@@ -168,6 +169,8 @@ export class SafariPage {
   readonly #browser: Safari;
   readonly handle: string;
   readonly log: string[];
+  /** Scripts for the next navigation's document start (Page.addScriptToEvaluateOnNewDocument). */
+  readonly #init: string[] = [];
 
   constructor(browser: Safari, handle: string, log: string[]) {
     this.#browser = browser;
@@ -195,7 +198,15 @@ export class SafariPage {
         if (inner.w === want.w && inner.h === want.h) return;
         await this.#cmd("POST", "/window/rect", { width: rect.width + want.w - inner.w, height: rect.height + want.h - inner.h });
       }
+    } else if (method === "Page.addScriptToEvaluateOnNewDocument") {
+      // No WebDriver command runs a script before the page's own: the test
+      // server (serve.ts `preloads`) puts it first in the HTML it serves.
+      this.#init.push(String(params["source"]));
+    } else if (method === "Emulation.setTouchEmulationEnabled") {
+      // Safari on a Mac has no touch emulation; the runners read what the page reports.
     } else if (method === "Page.navigate") {
+      const port = Number(new URL(String(params["url"])).port);
+      if (this.#init.length && port) preloads.set(port, [...(preloads.get(port) ?? []), ...this.#init.splice(0)]);
       await this.#cmd("POST", "/url", { url: params["url"] });
       await this.#hook();
     } else if (method === "Page.reload") {
@@ -250,6 +261,21 @@ export class SafariPage {
   /** Resolve once the page has run `n` animation frames. */
   async afterFrames(n: number): Promise<void> {
     await this.eval(`new Promise((r) => { let k = 0; const f = () => (++k >= ${n} ? r(true) : requestAnimationFrame(f)); requestAnimationFrame(f); })`);
+  }
+
+  /** cdp.ts Page.held: `expression`'s value once it is the same before and after `frames` animation frames. */
+  async held<T>(expression: string, what: string, o: { frames?: number; timeoutMs?: number } = {}): Promise<T> {
+    const t0 = performance.now();
+    const timeoutMs = o.timeoutMs ?? 30_000;
+    let seen: unknown[] = [];
+    for (;;) {
+      const a = await this.eval<T>(expression);
+      await this.afterFrames(o.frames ?? 30);
+      const b = await this.eval<T>(expression);
+      if (JSON.stringify(a) === JSON.stringify(b)) return b;
+      seen = [a, b];
+      if (performance.now() - t0 > timeoutMs) throw new Error(`timed out after ${timeoutMs} ms waiting for ${what} to hold (last ${JSON.stringify(seen)})`);
+    }
   }
 
   /** Evaluate in the frame whose URL contains `part` (a frame of the page's top document). */

@@ -523,6 +523,44 @@ web_vehicle_terrain() {
 # (docs/web-export.md §Errors), and the same fault single-threaded.
 web_lane_panic() { bun tests/web/lane-panic.ts; }
 
+# Safari on this Mac over WebDriver (docs/ci.md §Safari): the browser tests'
+# lanes with --safari, then `og run --device safari` on a publish build of a
+# 3D showcase and a 2D game. Safari admits one
+# WebDriver session at a time, so the runs are serial; each one's output is
+# in $GATE_LOGS/safari/<name>.log and the step fails when any run does.
+# Runs on macOS with safaridriver enabled (`sudo safaridriver --enable`
+# once); anywhere else it fails, never passes.
+SAFARI_LANES="wire player export device motion-ticks"
+SAFARI_PROJECTS="showcase/first-light tests/fixtures/side-scroller"
+step_safari() {
+  local dir="$GATE_LOGS/safari" failed="" name rc p
+  if [ "$(uname -s)" != Darwin ] || [ ! -x /usr/bin/safaridriver ]; then
+    og_err "safari: needs macOS with /usr/bin/safaridriver (macrunner)"
+    return 1
+  fi
+  og_need bun || return 1
+  OG_GATE=1 sh packages/engine/scripts/build.sh || return 1
+  # shellcheck disable=SC2086
+  bun scripts/assets.ts ensure $SAFARI_PROJECTS tests/fixtures/motion-feet || return 1
+  rm -rf "$dir"; mkdir -p "$dir"
+  for name in $SAFARI_LANES; do
+    (cd packages/engine && bun "tests/web/$name.ts" --safari) < /dev/null > "$dir/$name.log" 2>&1; rc=$?
+    og_say "safari: $([ "$rc" = 0 ] && echo PASS || echo "FAIL (exit $rc)") $name"
+    [ "$rc" = 0 ] || failed="$failed $name"
+  done
+  for p in $SAFARI_PROJECTS; do
+    name="publish-$(basename "$p")"
+    (cd packages/engine && bun tests/web/device.ts --safari --project "$p" --out "dist/test-safari/$name") < /dev/null > "$dir/$name.log" 2>&1; rc=$?
+    og_say "safari: $([ "$rc" = 0 ] && echo PASS || echo "FAIL (exit $rc)") $name"
+    [ "$rc" = 0 ] || failed="$failed $name"
+  done
+  for name in $failed; do
+    og_say "---- safari $name"
+    tail -n 40 "$dir/$name.log"
+  done
+  [ -z "$failed" ] || { og_err "safari: failed:$failed (logs in ${dir#"$OG_ROOT"/}/)"; return 1; }
+}
+
 # web_launch GROUP DIR: runs web_<GROUP> in the background, its output in
 # DIR/GROUP.log; DIR/GROUP.rc appears last, when it has ended.
 web_launch() {

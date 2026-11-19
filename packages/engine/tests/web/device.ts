@@ -9,7 +9,10 @@
 // the wasm. The run lands on WebGPU. A Chrome path that does not exist is refused in one
 // line, exit 1.
 //
-//   bun tests/web/device.ts [--project <dir>] [--out <dir>] [--chrome <path>] [--seconds N]
+// --safari runs `og run --device safari` (this Mac's Safari over
+// safaridriver) instead, with the same checks.
+//
+//   bun tests/web/device.ts [--project <dir>] [--out <dir>] [--chrome <path> | --safari] [--seconds N]
 //
 // --project (relative to the repository) runs another project's publish
 // build instead of the former test sample's (tests/fixtures/vehicle-terrain, say),
@@ -36,7 +39,9 @@ const repo = join(pkg, "..", "..");
 const projectRel = opt("--project");
 const out = resolve(opt("--out") ?? join(pkg, "dist", "test-device", ...(projectRel ? [projectRel.split("/").pop()!] : [])));
 const seconds = opt("--seconds") ?? "3";
-const chrome = chromePath(args);
+const safari = args.includes("--safari");
+const target = safari ? "safari" : "chrome";
+const chrome = safari ? "" : chromePath(args);
 const og = ogBin();
 const project = join(repo, projectRel ?? join("tests", "fixtures", "vehicle-terrain"));
 
@@ -49,7 +54,7 @@ function check(ok: boolean, what: string, detail?: unknown) {
 }
 
 const run = (extra: string[]) => {
-  const r = Bun.spawnSync([og, "run", "--device", "chrome", project, "--chrome", chrome, "--seconds", seconds, ...extra], {
+  const r = Bun.spawnSync([og, "run", "--device", target, project, ...(safari ? [] : ["--chrome", chrome]), "--seconds", seconds, ...extra], {
     cwd: repo,
     env: { ...process.env, OG_ENGINE_PACKAGE: pkg },
     stdout: "pipe",
@@ -93,8 +98,8 @@ for (const [name, extra, tiers] of [
   const dir = join(out, name);
   rmSync(dir, { recursive: true, force: true });
   const r = run(["--out", dir, ...extra]);
-  check(r.code === 0, `${name}: og run --device chrome exits 0`, r.stderr.trim().split("\n").slice(-4));
-  check(/^og run --device chrome: .*first frame \d+ ms, frame p50 [\d.]+ \/ p95 [\d.]+ \/ p99 [\d.]+ ms/m.test(r.stdout), `${name}: prints the summary line`, r.stdout);
+  check(r.code === 0, `${name}: og run --device ${target} exits 0`, r.stderr.trim().split("\n").slice(-4));
+  check(new RegExp(`^og run --device ${target}: .*first frame \\d+ ms, frame p50 [\\d.]+ / p95 [\\d.]+ / p99 [\\d.]+ ms`, "m").test(r.stdout), `${name}: prints the summary line`, r.stdout);
   check(/serving .* at http:\/\/127\.0\.0\.1:\d+\/.*\(COOP\/COEP\)/.test(r.stderr), `${name}: prints the URLs it serves`, r.stderr.split("\n")[0]);
   const json = join(dir, "device.json");
   check(existsSync(join(dir, "report.md")) && existsSync(json), `${name}: report.md and device.json written`);
@@ -108,7 +113,7 @@ for (const [name, extra, tiers] of [
   check(ordered(m.work), `${name}: engine work p50 ≤ p95 ≤ p99 ≤ max, all > 0`, m.work);
   check(m.ticks > 0 && d.fps > 0, `${name}: the game ticked while timed`, { ticks: m.ticks, fps: d.fps });
   const dev = m.device;
-  check(/Chrome\//.test(dev.userAgent) && dev.dpr > 0 && dev.viewport.width > 0 && dev.viewport.height > 0 && (dev.hardwareConcurrency ?? 0) > 0, `${name}: device info (user agent, DPR, viewport, cores)`, dev);
+  check((safari ? /Version\/[\d.]+ Safari\//.test(dev.userAgent) && !/Chrome\//.test(dev.userAgent) : /Chrome\//.test(dev.userAgent)) && dev.dpr > 0 && dev.viewport.width > 0 && dev.viewport.height > 0 && (dev.hardwareConcurrency ?? 0) > 0, `${name}: device info (user agent, DPR, viewport, cores)`, dev);
   check(dev.crossOriginIsolated && dev.isSecureContext, `${name}: the page is cross-origin isolated in a secure context`, dev);
   const page = d.served["/"] ?? {};
   // The engine module the page loaded, by its content-hashed name: the lanes module where it was cross-origin isolated, the single-threaded one elsewhere.
@@ -121,14 +126,14 @@ for (const [name, extra, tiers] of [
   check(d.findings.every((f) => f.fix.length > 0), `${name}: a fix per finding`, d.findings);
 }
 
-// A missing prerequisite: one line naming the fix, exit 1.
-{
+// A missing prerequisite: one line naming the fix, exit 1 (Chrome's; the Chrome lane checks it).
+if (!safari) {
   const r = run(["--out", join(out, "refused"), "--chrome", join(out, "no-such-chrome")]);
   const lines = r.stderr.trim().split("\n").filter((l) => l.startsWith("og run --device: ") && !l.includes("serving"));
   check(r.code === 1 && lines.length === 1 && /no Chrome at .*: point --chrome/.test(lines[0]!), "a missing Chrome: exit 1 and one line naming the fix", r.stderr);
 }
 
 mkdirSync(out, { recursive: true });
-writeFileSync(join(out, "device-result.json"), JSON.stringify({ project: project.slice(repo.length + 1), chrome, seconds: Number(seconds), results, checks, failures }, null, 1) + "\n");
+writeFileSync(join(out, "device-result.json"), JSON.stringify({ project: project.slice(repo.length + 1), device: target, chrome, seconds: Number(seconds), results, checks, failures }, null, 1) + "\n");
 console.log(`${failures === 0 ? "ok" : "FAIL"}: ${checks.length - failures}/${checks.length} checks; ${join(out, "device-result.json")}`);
 process.exit(failures === 0 ? 0 : 1);
