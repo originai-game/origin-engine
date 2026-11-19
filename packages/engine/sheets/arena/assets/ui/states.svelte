@@ -45,6 +45,6 @@
 .cell { display: flex; flex-direction: column; gap: var(--space-xs); width: calc(var(--size-xxl) * 6.4); max-width: stretch; }
 .cell[data-member=round-hud], .cell[data-member=versus] { width: calc(var(--size-xxl) * 9); }
 .caption { font: var(--text-caption); color: var(--ink-muted); }
-.stage { display: flex; width: stretch; max-height: calc(var(--size-xxl) * 5); }
+.stage { display: flex; width: stretch; }
 @media (width < 600px) { #Cells { padding: var(--space-xs); gap: var(--space-md); } .cell, .cell[data-member=round-hud], .cell[data-member=versus] { width: stretch; } }
 </style>

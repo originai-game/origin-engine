@@ -157,7 +157,7 @@
 #Cells { display: flex; flex-wrap: wrap; align-items: flex-start; gap: var(--space-lg); padding: var(--space-lg); width: stretch; }
 .cell { display: flex; flex-direction: column; gap: var(--space-xs); width: calc(var(--size-xxl) * 5.2); max-width: stretch; }
 .caption { font: var(--text-caption); color: var(--ink-muted); }
-.stage { position: relative; display: flex; width: stretch; min-height: var(--size-xl); max-height: calc(var(--size-xxl) * 5); }
+.stage { position: relative; display: flex; width: stretch; min-height: var(--size-xl); }
 /* A ribbon is shown where a game puts it: in the corner it names of a
    card that clips, whose own corner cuts the strip's ends. */
 .host { position: relative; overflow: hidden; display: flex; flex-direction: column; justify-content: end; gap: var(--space-xxs); inline-size: calc(var(--size-xxl) * 2.75); max-inline-size: 100%; block-size: calc(var(--size-xxl) * 1.75); flex: none; }
