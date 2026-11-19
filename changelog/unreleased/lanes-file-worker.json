@@ -1,0 +1,9 @@
+{
+  "simulation": "unchanged",
+  "fixed": [
+    {
+      "member": "web lanes",
+      "summary": "File-backed hosts without a browser location start their pool Workers from the helper URL instead of failing while reading the page origin."
+    }
+  ]
+}

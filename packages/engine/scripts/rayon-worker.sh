@@ -17,6 +17,7 @@
 #   built page serves it, now starts its Workers from its own URL; the
 #   `blob:` copy stays for one on another origin, where no Worker can start
 #   from the URL itself (docs/web-export.md §Hosting).
+#   File-backed hosts also use the helper URL directly: Bun has no location.
 #
 #   sh scripts/rayon-worker.sh <dir>     <dir>: dist/web-publish or dist/web-publish-2d
 #
@@ -43,9 +44,14 @@ for f in "$dir"/snippets/wasm-bindgen-rayon-*/src/workerHelpers.no-bundler.js; d
   fi
   # wasm-bindgen-rayon 1.3's two lines: `let scriptBlob = await fetch(import.meta.url)…;`
   # then `let url = URL.createObjectURL(scriptBlob);`, which become one.
-  own='let url = new URL(import.meta.url).origin === self.location.origin ? import.meta.url : URL.createObjectURL(await fetch(import.meta.url).then(r => r.blob()));'
-  if grep -qF 'let scriptBlob = await fetch(import.meta.url).then(r => r.blob());' "$f"; then
+  prior='let url = new URL(import.meta.url).origin === self.location.origin ? import.meta.url : URL.createObjectURL(await fetch(import.meta.url).then(r => r.blob()));'
+  own='let url = ((!self.location && new URL(import.meta.url).protocol === "file:") || new URL(import.meta.url).origin === self.location?.origin) ? import.meta.url : URL.createObjectURL(await fetch(import.meta.url).then(r => r.blob()));'
+  if grep -qF 'let scriptBlob = await fetch(import.meta.url).then(r => r.blob());' "$f" || grep -qF "$prior" "$f"; then
     awk -v own="$own" '
+      index($0, "let url = new URL(import.meta.url).origin === self.location.origin") {
+        indent = $0; sub(/let url.*/, "", indent)
+        print indent own; next
+      }
       index($0, "let scriptBlob = await fetch(import.meta.url).then(r => r.blob());") {
         indent = $0; sub(/let scriptBlob.*/, "", indent)
         print indent "// origin-engine (scripts/rayon-worker.sh): on the page'"'"'s origin, from this file itself, which"

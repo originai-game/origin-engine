@@ -94,10 +94,10 @@ test.skipIf(HELPER === null)("the lanes pool's helper starts its Workers from it
     expect(run.exitCode, new TextDecoder().decode(run.stderr)).toBe(0);
     const helper = join(snippets, "workerHelpers.no-bundler.js");
     // Each run's own copy, so the module is evaluated with that run's page origin.
-    const started = async (origin: string) => {
+    const started = async (origin: string | undefined) => {
       const urls: string[] = [];
       const fetched: string[] = [];
-      (globalThis as { location?: unknown }).location = { origin };
+      (globalThis as { location?: unknown }).location = origin === undefined ? undefined : { origin };
       globalThis.fetch = (async (url: string) => {
         fetched.push(String(url));
         return new Response("self.onmessage = null;");
@@ -115,7 +115,7 @@ test.skipIf(HELPER === null)("the lanes pool's helper starts its Workers from it
           queueMicrotask(() => this.#listeners.forEach((fn) => fn({ data: { type: "wasm_bindgen_worker_ready" } })));
         }
       } as unknown as typeof Worker;
-      const copy = join(snippets, `run-${urls.length}-${origin.replace(/\W/g, "")}.js`);
+      const copy = join(snippets, `run-${urls.length}-${origin?.replace(/\W/g, "") ?? "no-location"}.js`);
       cpSync(helper, copy);
       const m = (await import(pathToFileURL(copy).href)) as { startWorkers(module: unknown, memory: unknown, builder: unknown): Promise<void> };
       await m.startWorkers({}, {}, { numThreads: () => 2, receiver: () => 0, mainJS: () => "", build: () => {} });
@@ -125,6 +125,9 @@ test.skipIf(HELPER === null)("the lanes pool's helper starts its Workers from it
     const own = await started(new URL(pathToFileURL(helper).href).origin);
     expect(own.urls).toEqual([own.self, own.self]);
     expect(own.fetched).toEqual([]);
+    const file = await started(undefined);
+    expect(file.urls).toEqual([file.self, file.self]);
+    expect(file.fetched).toEqual([]);
     const cdn = await started("https://page.example");
     expect(cdn.urls.every((u) => u.startsWith("blob:"))).toBe(true);
     expect(cdn.fetched).toEqual([cdn.self, cdn.self]);
