@@ -469,7 +469,11 @@ async function launchChrome(width: number, height: number): Promise<Driver> {
     await sleep(50);
   }
   const [port, path] = readFileSync(portFile, "utf8").trim().split("\n");
-  return Cdp.connect(`chrome (${basename(chrome)}${flag("--headed") ? ", headed" : ", headless"})`, `ws://127.0.0.1:${port}${path}`, false, quit);
+  const driver = await Cdp.connect(`chrome (${basename(chrome)}${flag("--headed") ? ", headed" : ", headless"})`, `ws://127.0.0.1:${port}${path}`, false, quit);
+  // DevTools may be ready before Linux Chrome finishes initializing its GPU.
+  // Collect GPU info before the game requests its WebGPU adapter.
+  if (process.platform === "linux") await driver.send("SystemInfo.getInfo");
+  return driver;
 }
 
 const NO_ADB = "no adb on PATH: install Android platform-tools (`brew install android-platform-tools`, or the SDK's platform-tools)";

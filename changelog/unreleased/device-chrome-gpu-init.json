@@ -1,0 +1,9 @@
+{
+  "simulation": "unchanged",
+  "fixed": [
+    {
+      "member": "og run --device chrome",
+      "summary": "Linux Chrome initializes its GPU before the device measurement opens the game, avoiding a null WebGPU adapter during startup."
+    }
+  ]
+}
