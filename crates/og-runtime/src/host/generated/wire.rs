@@ -25946,7 +25946,7 @@ pub struct SharedRemote {
     pub player: String,
     pub name: String,
     pub kind: u32,
-    pub since: f64,
+    pub since_tick: f64,
 }
 
 impl Default for SharedRemote {
@@ -25955,7 +25955,7 @@ impl Default for SharedRemote {
             player: Default::default(),
             name: Default::default(),
             kind: Default::default(),
-            since: Default::default(),
+            since_tick: Default::default(),
         }
     }
 }
@@ -25970,7 +25970,7 @@ impl FromJson for SharedRemote {
             player: field(o, "player", d.player)?,
             name: field(o, "name", d.name)?,
             kind: field(o, "kind", d.kind)?,
-            since: field(o, "since", d.since)?,
+            since_tick: field(o, "sinceTick", d.since_tick)?,
         })
     }
 }
@@ -25981,7 +25981,7 @@ impl ToJson for SharedRemote {
         o.insert("player".into(), self.player.to_json());
         o.insert("name".into(), self.name.to_json());
         o.insert("kind".into(), self.kind.to_json());
-        o.insert("since".into(), self.since.to_json());
+        o.insert("sinceTick".into(), self.since_tick.to_json());
         Value::Object(o)
     }
 }
@@ -38438,8 +38438,8 @@ pub mod record {
     pub struct RemoteAvatar {
         pub id: u32,
         pub kind: u32,
-        pub since: f64,
-        pub jumped: f64,
+        pub since_tick: f64,
+        pub jumped_tick: f64,
     }
 
     impl Default for RemoteAvatar {
@@ -38447,8 +38447,8 @@ pub mod record {
             Self {
                 id: Default::default(),
                 kind: Default::default(),
-                since: Default::default(),
-                jumped: Default::default(),
+                since_tick: Default::default(),
+                jumped_tick: Default::default(),
             }
         }
     }
@@ -38462,8 +38462,8 @@ pub mod record {
             Ok(Self {
                 id: field(o, "id", d.id)?,
                 kind: field(o, "kind", d.kind)?,
-                since: field(o, "since", d.since)?,
-                jumped: field(o, "jumped", d.jumped)?,
+                since_tick: field(o, "sinceTick", d.since_tick)?,
+                jumped_tick: field(o, "jumpedTick", d.jumped_tick)?,
             })
         }
     }

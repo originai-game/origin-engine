@@ -33033,7 +33033,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 list: 0,
             },
             FieldDecl {
-                name: "since",
+                name: "sinceTick",
                 column: "f64",
                 default: "0",
                 readonly: true,
@@ -33050,7 +33050,7 @@ pub const RECORDS: &[RecordDecl] = &[
                 list: 0,
             },
             FieldDecl {
-                name: "jumped",
+                name: "jumpedTick",
                 column: "f64",
                 default: "0",
                 readonly: true,

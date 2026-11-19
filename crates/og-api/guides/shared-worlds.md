@@ -55,7 +55,7 @@ and, after og.shared.shape, the game's avatar component.
   smooth over one lost update. Lower it for faster reactions at the cost
   of visible stalls on a poor connection; 50 ms is the least that hides one
   lost update at 20 Hz.
-- A teleported avatar (og.RemoteAvatar.jumped) appears at once; play an
+- A teleported avatar (og.RemoteAvatar.jumpedTick) appears at once; play an
   effect there rather than moving it across.
 - The server sends the 64 nearest within two 128 m cells, nearer ones more
   often. Draw names and full detail for the nearest 16 or so; a crowd

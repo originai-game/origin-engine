@@ -13,7 +13,7 @@ Who an og.RemoteAvatar is.
 | `player` | `string` | `""` | — | — | — | Its opaque player id. |
 | `name` | `string` | `""` | — | — | — | Its display name. |
 | `kind` | `number` | `0` | — | — | — | Its kind. |
-| `since` | `number` | `0` | — | `ticks` | — | The tick it came into sight. |
+| `sinceTick` | `number` | `0` | — | `ticks` | — | The tick it came into sight. |
 
 ```ogt
 struct SharedRemote {
@@ -21,7 +21,7 @@ struct SharedRemote {
   field player String "Its opaque player id."
   field name String "Its display name."
   field kind u32 "Its kind."
-  field since f64 "The tick it came into sight." {
+  field sinceTick f64 "The tick it came into sight." {
     unit ticks
   }
 }
