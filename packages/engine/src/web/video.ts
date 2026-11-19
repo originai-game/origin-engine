@@ -19,9 +19,10 @@
 //   stream instead, with its codec string and its avcC or hvcC record, and
 //   WebCodecs plays it the same way.
 // - Otherwise rav1d built for wasm32-wasip1 (crates/og-video-wasm,
-//   dist/av1/og-av1.wasm), fetched only then, in a Worker of its own made
-//   from `av1WorkerSource()`; it answers packed I420 planes, which become a
-//   VideoFrame the browser converts on the GPU.
+//   dist/av1/og-av1.wasm), fetched only then, in a Worker of its own running
+//   `av1WorkerSource()` (av1/av1-worker.js beside a built page, else a
+//   `blob:` copy); it answers packed I420 planes, which become a VideoFrame
+//   the browser converts on the GPU.
 //
 // Each decodes ahead of its player by up to AHEAD frames and, for a frame
 // behind it or past the next key frame, starts again at the key frame at
@@ -551,9 +552,13 @@ export class VideoStreams {
   /** The fallback module's URL (dist/av1/og-av1.wasm, or av1/og-av1.wasm beside a built page). */
   readonly fallbackUrl: string;
 
-  constructor(choice: VideoDecoderChoice, fallbackUrl: string) {
+  /** The fallback Worker's script (av1/av1-worker.js beside a built page); null: a `blob:` copy of `av1WorkerSource()`. */
+  readonly workerUrl: string | null;
+
+  constructor(choice: VideoDecoderChoice, fallbackUrl: string, workerUrl: string | null = null) {
     this.choice = choice;
     this.fallbackUrl = fallbackUrl;
+    this.workerUrl = workerUrl;
   }
 
   /** A stream's index, handed over once by the runtime: AV1, or an H.264 or HEVC rendition (`codec`, `config`) WebCodecs decodes. */
@@ -591,8 +596,8 @@ export class VideoStreams {
     if (this.#workerReady) return;
     let url: string | null = null;
     try {
-      url = URL.createObjectURL(new Blob([av1WorkerSource()], { type: "text/javascript" }));
-      const w = new Worker(url);
+      if (!this.workerUrl) url = URL.createObjectURL(new Blob([av1WorkerSource()], { type: "text/javascript" }));
+      const w = new Worker(this.workerUrl ?? url!);
       this.#worker = w;
       this.#workerReady = new Promise((resolve) => {
         w.onmessage = (e: MessageEvent) => {
@@ -608,6 +613,12 @@ export class VideoStreams {
           } else if (m.type === "error") {
             console.warn(`og.video: player ${m.player}: ${m.reason}`);
           }
+        };
+        // Its script refused (a CSP) or missing: streams cannot play here, and nothing waits on it.
+        w.onerror = () => {
+          this.failure ??= "the AV1 decoder Worker's script did not load";
+          console.warn(`og.video: ${this.failure}`);
+          resolve(false);
         };
       });
       w.postMessage({ type: "load", url: new URL(this.fallbackUrl, location.href).href });

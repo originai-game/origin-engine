@@ -8,11 +8,12 @@
 // first is decoded by the engine itself, to the same samples, so the mix
 // never depends on this Worker's timing: only where the work ran does.
 //
-// The Worker is started from a `blob:` URL of `decodeQoa`'s own source (as
-// the lanes pool's Workers are, docs/web-export.md §Hosting), so the build
-// needs no second bundle. Where a Worker cannot start (a CSP without
-// `worker-src blob:`, whether the constructor throws or the Worker fails
-// to load) no decoder runs and the engine decodes as it mixes.
+// A built page starts the Worker from its own file, audio-decoder.js (the
+// build writes `decoderSource()` there), so a Content-Security-Policy of
+// `worker-src 'self'` serves it (docs/web-export.md §Hosting); a host that
+// names no file gets it from a `blob:` URL of the same source. Where a
+// Worker cannot start (the constructor throws or the Worker fails to load)
+// no decoder runs and the engine decodes as it mixes.
 
 /**
  * Decodes a QOA file (https://qoaformat.org; og-cook's `src/qoa.rs`, which
@@ -154,8 +155,8 @@ export class AudioDecoder {
   /** Frames answered and taken by the bank. */
   decoded = 0;
   /**
-   * False once the Worker failed (a browser that refuses the `blob:` script
-   * after constructing the Worker reports it as an error event): nothing is
+   * False once the Worker failed (a browser that refuses its script after
+   * constructing the Worker reports it as an error event): nothing is
    * fed to it again, and the engine decodes as it mixes.
    */
   alive = true;
@@ -173,7 +174,7 @@ export class AudioDecoder {
 
   /**
    * The decoder for `engine`, or null where none can run (the module has no
-   * decode members, or the Worker constructor refuses a `blob:` URL): then
+   * decode members, or the Worker constructor refuses its script): then
    * the engine decodes each frame as it mixes it.
    */
   static start(glue: DecoderGlue, engine: number, spawn?: () => Worker): AudioDecoder | null {

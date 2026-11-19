@@ -120,6 +120,7 @@ const cleanUp = () =>
 const TYPES: Record<string, string> = {
   ".html": "text/html; charset=utf-8",
   ".js": "text/javascript",
+  ".css": "text/css; charset=utf-8",
   ".wasm": "application/wasm",
   ".json": "application/json",
   ".webmanifest": "application/manifest+json",

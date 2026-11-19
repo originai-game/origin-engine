@@ -171,6 +171,7 @@ export async function bootWorker(options: ShellOptions): Promise<Booted> {
       ...(options.contentLater ? { contentLater: true } : {}),
       basis: options.basis,
       ...(options.av1 ? { av1: options.av1 } : {}),
+      ...(options.decoders ? { decoders: options.decoders } : {}),
       profile: options.profile,
       ...(options.project === undefined ? {} : { project: options.project }),
       locale: options.locale ?? globalThis.navigator?.language,

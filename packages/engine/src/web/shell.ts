@@ -120,6 +120,8 @@ export interface ShellOptions {
   readonly basis?: { readonly js: string; readonly wasm: string };
   /** The rav1d AV1 fallback's module URL (as the Worker resolves it), fetched only where WebCodecs cannot decode AV1. */
   readonly av1?: string;
+  /** The decoder Workers' scripts on the page's origin (StartMessage `decoders`); each absent starts from a `blob:` copy. */
+  readonly decoders?: { readonly audio?: string; readonly av1?: string };
   /** The project's physics profile (project.ogt `profile`); omitted is 3d. */
   readonly profile?: "2d" | "3d";
   /** project.ogt's text: its tick, seed, scenes and scene fill what GameDesc leaves unset (CreateOptions.project). */

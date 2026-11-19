@@ -66,8 +66,9 @@ with COOP `same-origin` and COEP `require-corp` on its entry document and
 every file under it, CORP `cross-origin` on each file, and `allow="…
 cross-origin-isolated"` on the Player's iframe while a release is framed;
 at the top level the 307 must land on a response carrying COOP and COEP.
-Send no `worker-src` or `script-src` on the play origin that excludes
-`blob:`. Without isolation the shell plays the single-threaded module with
+A Content-Security-Policy on the play origin needs no `blob:` and no
+inline script or style: `script-src 'self' 'wasm-unsafe-eval'` serves every
+Worker, lanes included (`docs/web-export.md` §Hosting). Without isolation the shell plays the single-threaded module with
 the same results and no lanes (`docs/web-export.md` §Lanes). Nothing should
 need to change; verify by publishing one lanes build and checking
 `__runtime_probe__.lanes.on` on Play, framed and at the top level, on

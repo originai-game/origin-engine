@@ -1,0 +1,8 @@
+{
+  "fixed": [
+    {
+      "member": "og build (web)",
+      "summary": "A built page runs whole under a strict Content-Security-Policy, `default-src 'self'; script-src 'self' 'wasm-unsafe-eval'`, lanes included. index.html has no inline script or style: the shell's CSS is shell.css and a publish build's install hook is install.js, both content-hashed. Every Worker starts from a file on the page's origin, never a `blob:` URL. The lanes pool's helper starts its Workers from its own URL, and the audio decoder (audio-decoder.js) and the AV1 fallback (av1/av1-worker.js) are files of the build. Before, such a policy left the shell unstyled with its play gate off screen, and the engine single-threaded. SVG images in UI documents still need `img-src blob:` (docs/web-export.md §Hosting)."
+    }
+  ]
+}
