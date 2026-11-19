@@ -3,8 +3,8 @@
 # addon and og by cargo zigbuild, the engine package with its knowledge/,
 # create-game), and the macOS and Windows jobs build only their native addon
 # and og (`build.sh --native`, `pack.sh --native`). The assemble job puts the
-# tarballs together and archives them unsigned (scripts/release.sh archive)
-# for the install test's host half. Nothing is published or signed here:
+# tarballs together and archives them, signed with a throwaway key made in
+# the job (scripts/release.sh archive), for the install test's host half. Nothing is published or signed here:
 # the tarballs come back to the Mac with `scripts/release.sh fetch <run-id>`
 # (or `scripts/release.sh dev <run-id>` for a dev build), which archives and
 # signs them with the project secret OG_ENGINE_MINISIGN_KEY, and `verify`
@@ -149,10 +149,22 @@ jobs:
       - name: Dev version
         if: inputs.dev
         run: bun scripts/release-bump.ts --dev "${{ github.run_number }}"
-      - name: Archive (unsigned)
-        run: scripts/release.sh archive "${{ needs.web.outputs.version }}"
+      # The launcher installs only a signed SHA256SUMS, so the smoke test's
+      # archive is signed with a key made for this job and gone after it. Only
+      # the *.tgz tarballs are uploaded; `release.sh dev` or `fetch` archives
+      # and signs them again with the release key.
+      - name: Throwaway signing key
+        run: |
+          sudo apt-get update -qq && sudo apt-get install -y -qq --no-install-recommends minisign >/dev/null
+          minisign -G -W -p "$RUNNER_TEMP/throwaway.pub" -s "$RUNNER_TEMP/throwaway.key"
+          echo "THROWAWAY_PUBKEY=$(sed -n 2p "$RUNNER_TEMP/throwaway.pub")" >> "$GITHUB_ENV"
+      - name: Archive (signed with the throwaway key)
+        run: |
+          OG_ENGINE_MINISIGN_KEY="$(cat "$RUNNER_TEMP/throwaway.key")" OG_ENGINE_MINISIGN_PUBKEY="$THROWAWAY_PUBKEY" \
+            scripts/release.sh archive "${{ needs.web.outputs.version }}"
+          rm -f "$RUNNER_TEMP/throwaway.key"
       - name: Install test (host, from the archive)
-        run: bun tests/install/run.ts --from "dist/release/${{ needs.web.outputs.version }}" --version "${{ needs.web.outputs.version }}" --host-only
+        run: bun tests/install/run.ts --from "dist/release/${{ needs.web.outputs.version }}" --version "${{ needs.web.outputs.version }}" --host-only --pubkey "$THROWAWAY_PUBKEY"
       - uses: actions/upload-artifact@v4
         with:
           name: release-${{ needs.web.outputs.version }}
