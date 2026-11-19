@@ -297,3 +297,19 @@ fn engine_documents_match_their_reference_frames() {
     }
     assert!(failures.is_empty(), "{}", failures.join("\n"));
 }
+
+#[test]
+#[ignore = "requires GPU"]
+fn racing_bonus_fixture_draws_all_its_glyphs() {
+    let (docs, messages) = engine_documents(&["src/ui/components", "src/ui/screens"]);
+    let doc = docs
+        .iter()
+        .find(|doc| doc.path == "src/ui/components/racing/bonus.svelte")
+        .expect("the Bonus fixture");
+    let mut scene = RenderScene::new();
+    let mut ui = ui_with_font(add_test_font(&mut scene));
+    let picture = populated_preview(&mut ui, &mut scene, &docs, doc, &messages, 1280.0, 720.0);
+    let rendered = render_document(&ui, doc, &mut scene, 1280, 720, picture);
+    save_actual("racing-bonus-font.png", &rendered.image);
+    assert_eq!(rendered.stats.missing_glyphs, 0, "{:?}", rendered.info);
+}
