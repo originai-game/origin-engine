@@ -65,6 +65,7 @@ import { copyFileSync, existsSync, mkdirSync, readFileSync, renameSync, rmSync, 
 import { dirname, isAbsolute, join, relative, resolve, sep } from "node:path";
 import { createHash } from "node:crypto";
 import { pathToFileURL } from "node:url";
+import { setImmediate } from "node:timers/promises";
 import { attachRenderer, loadNativeHost, native } from "./index.ts";
 import { openAudio, type AudioSink } from "./audio.ts";
 import { decodePng } from "./png.ts";
@@ -610,13 +611,16 @@ export async function run(argv: string[], output: RunOutput = hostProcess, contr
       // hashes are the same.
       let early = 2;
       const paceTo = async (deadline: number) => {
-        const sleepFor = deadline - early - performance.now();
-        if (sleepFor > 0) {
-          const due = performance.now() + sleepFor;
-          await sleep(sleepFor);
-          const late = performance.now() - due;
-          early = Math.min(tickMs, Math.max(2, late + 1, early * 0.95));
-        }
+        // Even an overdue frame must yield to I/O. An already-fulfilled
+        // async return only runs microtasks, starving watchers and sockets;
+        // a late timer can also leave `early` at tickMs until we yield again.
+        const sleepFor = Math.max(0, deadline - early - performance.now());
+        const due = performance.now() + sleepFor;
+        if (sleepFor > 0) await sleep(sleepFor);
+        // Poll I/O without adding the minimum timer delay to an overdue frame.
+        else await setImmediate();
+        const late = performance.now() - due;
+        early = Math.min(tickMs, Math.max(2, late + 1, early * 0.95));
         while (performance.now() < deadline) {
           // spin
         }

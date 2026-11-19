@@ -1,0 +1,8 @@
+{
+  "fixed": [
+    {
+      "member": "og dev",
+      "summary": "Native hot reload and probe I/O keep running when frames exceed their pacing deadline or a timer wakes late. Frame pacing always yields to the event loop; fixed simulation ticks and reload timeouts are unchanged."
+    }
+  ]
+}

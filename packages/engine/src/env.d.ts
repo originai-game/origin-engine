@@ -11,6 +11,10 @@ declare module "node:url" {
   export function fileURLToPath(url: string | URL): string;
 }
 
+declare module "node:timers/promises" {
+  export function setImmediate(): Promise<void>;
+}
+
 declare module "node:path" {
   export function resolve(...parts: string[]): string;
   export function dirname(path: string): string;

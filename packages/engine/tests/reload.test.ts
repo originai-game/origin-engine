@@ -72,6 +72,50 @@ test.skipIf(SLOW)("a watched bundle's metadata change is not a reload", async ()
 }, 60_000);
 
 for (const render of [false, true]) {
+  test.skipIf(SLOW || (render && gpuUnavailable))(`a watched bundle reloads while frames overrun their deadline (render=${render})`, async () => {
+    const dir = join(pkg, "tests", `.reload-load-${process.pid}-${render}`);
+    mkdirSync(dir, { recursive: true });
+    const entry = join(dir, "game.ts");
+    const runner = join(dir, "run.ts");
+    writeFileSync(entry, game("a: f32(1)"));
+    // Delay the host, not the deterministic game tick. Every real native
+    // frame exceeds its 60 Hz deadline, even on an otherwise idle machine.
+    // Edit synchronously at readiness so no scheduler delay in this test
+    // can move the edit outside the bounded run's lifetime.
+    writeFileSync(runner, `
+import { writeFileSync } from "node:fs";
+import { Engine } from "../../src/runtime.ts";
+import { run } from "../../src/node/run.ts";
+const frame = Engine.prototype.frame;
+const wait = new Int32Array(new SharedArrayBuffer(4));
+Engine.prototype.frame = function(ms) {
+  Atomics.wait(wait, 0, 0, 25);
+  return frame.call(this, ms);
+};
+process.exitCode = await run(${JSON.stringify(["--entry", entry, "--watch", entry, "--port", "0", "--realtime", "--ticks", "30", ...(render ? ["--size", "160x90"] : ["--no-render"]), "--json"])}, {
+  stdout: { write(text) {
+    process.stdout.write(text);
+    if (text.startsWith("probe: ")) writeFileSync(${JSON.stringify(entry)}, ${JSON.stringify(game("a: f32(1), b: f32(2)"))});
+  } },
+  stderr: process.stderr,
+});
+`);
+    const child = Bun.spawn(["bun", runner], { cwd: pkg, stdout: "pipe", stderr: "pipe" });
+    const stdout = new Response(child.stdout).text();
+    const stderr = new Response(child.stderr).text();
+    try {
+      expect(await child.exited).toBe(0);
+      expect(await stderr).not.toContain("WARN reload:");
+      const reloads = (await stdout).split("\n").filter((l) => l.startsWith('{"event":"reload"')).map((l) => JSON.parse(l));
+      expect(reloads.length).toBeGreaterThan(0);
+      expect(reloads.at(-1)).toMatchObject({ ok: true, rendered: render });
+    } finally {
+      child.kill();
+      await child.exited;
+      rmSync(dir, { recursive: true, force: true });
+    }
+  }, 60_000);
+
   test.skipIf(SLOW || (render && gpuUnavailable))(`a watched bundle reloads and migrates a changed layout (render=${render})`, async () => {
     const dir = join(pkg, "tests", `.reload-${process.pid}-${render}`);
     mkdirSync(dir, { recursive: true });
