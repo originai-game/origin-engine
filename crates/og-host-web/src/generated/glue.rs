@@ -1429,6 +1429,21 @@ pub fn og_load_environment_data(world: u32, name: String, bytes: Vec<u8>, desc: 
 }
 
 #[wasm_bindgen]
+pub fn og_load_data(world: u32, desc: Option<String>) -> String {
+    <Host as LoadApi>::og_load_data(&Host, world, desc)
+}
+
+#[wasm_bindgen]
+pub fn og_load_data_json(world: u32, asset: f64) -> String {
+    <Host as LoadApi>::og_load_data_json(&Host, world, asset)
+}
+
+#[wasm_bindgen]
+pub fn og_load_data_bytes(world: u32, asset: f64) -> String {
+    <Host as LoadApi>::og_load_data_bytes(&Host, world, asset)
+}
+
+#[wasm_bindgen]
 pub fn og_load_environment_info(world: u32, asset: f64) -> String {
     <Host as LoadApi>::og_load_environment_info(&Host, world, asset)
 }

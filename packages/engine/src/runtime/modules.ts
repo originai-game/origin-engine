@@ -1,7 +1,7 @@
 import type * as Api from "@origingame/engine";
 import { registerCommand } from "./declare.ts";
 import { abi } from "./host.ts";
-import { json, parse } from "./result.ts";
+import { fromBase64, json, parse } from "./result.ts";
 import { checkAccess } from "./views.ts";
 import { WorldImpl, uiReactor } from "./world.ts";
 
@@ -70,6 +70,13 @@ export const load = Object.freeze({
   gltfData: (world: WorldImpl, name: string, bytes: Uint8Array, desc?: unknown) => parse(abi().og_load_gltf_data(world.id, name, bytes, json(desc))),
   environmentData: (world: WorldImpl, name: string, bytes: Uint8Array, desc?: unknown) => parse(abi().og_load_environment_data(world.id, name, bytes, json(desc))),
   environmentInfo: (world: WorldImpl, asset: number) => parse(abi().og_load_environment_info(world.id, asset)),
+  data: (world: WorldImpl, desc?: unknown) => parse(abi().og_load_data(world.id, json(desc))),
+  dataJson: (world: WorldImpl, asset: number) => parse(abi().og_load_data_json(world.id, asset)),
+  // Bytes cross as base64, as a room message's do.
+  dataBytes: (world: WorldImpl, asset: number) => {
+    const r = parse<{ ok: true; value: string } | { ok: false; reason: string }>(abi().og_load_data_bytes(world.id, asset));
+    return r.ok ? { ok: true, value: fromBase64(r.value) } : r;
+  },
   release: (world: WorldImpl, asset: number) => parse(abi().og_load_release(world.id, asset)),
   imageInfo: (world: WorldImpl, asset: number) => parse(abi().og_load_image_info(world.id, asset)),
   completions: (world: WorldImpl) => parse(abi().og_load_completions(world.id)),

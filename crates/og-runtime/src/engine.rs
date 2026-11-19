@@ -149,6 +149,13 @@ pub trait Hooks {
     fn read_asset(&self, path: &str) -> Fetch<Vec<u8>> {
         Fetch::Failed(format!("{path}: this host reads no files"))
     }
+    /// A content catalog's file (og.load.data): its manifest (`integrity`
+    /// empty) or a file under its integrity (`sha384-<base64>`), read once.
+    /// A host that checks the integrity as it fetches (the web Worker's
+    /// `fetch()`) refuses other bytes; the runtime checks them natively.
+    fn read_content(&self, path: &str, _integrity: &str) -> Fetch<Vec<u8>> {
+        self.read_asset(path)
+    }
     /// How much of `path` has arrived while the host fetches it: the bytes
     /// received and the total once the response names it (0 before).
     /// `None` when it is not being fetched: a native read completes at once.

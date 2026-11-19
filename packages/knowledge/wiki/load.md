@@ -12,7 +12,7 @@ See `loading §1`.
 
 - **TypeScript**: functions are the namespace `og.load`; components, resources and events are tokens on `og`.
 - **Publish builds**: kept (members may override).
-- **Core** (what most games use): `og.load.gltf`, `og.load.font`, `og.load.emitter`, `og.load.texture`, `og.load.document`, `og.load.animation`, `og.load.rig`, `og.load.flipbook`, `og.load.tilemap`, `og.load.vfx`; 69 more are advanced (`og api show load --all`).
+- **Core** (what most games use): `og.load.gltf`, `og.load.font`, `og.load.emitter`, `og.load.texture`, `og.load.document`, `og.load.animation`, `og.load.rig`, `og.load.flipbook`, `og.load.tilemap`, `og.load.vfx`; 75 more are advanced (`og api show load --all`).
 - **Index**: [every module and guide](index.md).
 
 ```ogt
@@ -94,6 +94,9 @@ module load {
 | [`ImageKind`](load/type-ImageKind.md) | enum |  | How an uncooked image's texels are read, as a cooked texture's `kind`. |
 | [`GltfDataDesc`](load/type-GltfDataDesc.md) | desc struct |  | How og.load.gltfData reads a model. |
 | [`ImageDataDesc`](load/type-ImageDataDesc.md) | desc struct |  | How og.load.imageData reads an image. |
+| [`CatalogEntry`](load/type-CatalogEntry.md) | desc struct |  | A file of a content catalog's version: what og.load.data reads. |
+| [`DataFormat`](load/type-DataFormat.md) | enum |  | How og.load.data reads a file. |
+| [`DataDesc`](load/type-DataDesc.md) | desc struct |  | Which catalog file og.load.data reads, and how. |
 | [`EnvironmentDataDesc`](load/type-EnvironmentDataDesc.md) | desc struct |  | How og.load.environmentData reads an HDR environment. |
 | [`EnvironmentInfo`](load/type-EnvironmentInfo.md) | struct |  | What a ready uncooked environment holds. |
 | [`ImageInfo`](load/type-ImageInfo.md) | struct |  | What a ready uncooked image holds. |
@@ -101,6 +104,9 @@ module load {
 | [`og.load.imageData`](load/fn-imageData.md) | function | `(world: World, name: string, bytes: Uint8Array, desc?: ImageDataDesc): Result<Asset>` | Load an image from bytes, uncooked, at run time: a PNG or JPEG a player drew, uploaded or a generator made. |
 | [`og.load.gltfData`](load/fn-gltfData.md) | function | `(world: World, name: string, bytes: Uint8Array, desc?: GltfDataDesc): Result<Asset>` | Load a glTF 2.0 model from bytes, uncooked, at run time: a .glb, or a .gltf whose buffers and images are data: URIs. |
 | [`og.load.environmentData`](load/fn-environmentData.md) | function | `(world: World, name: string, bytes: Uint8Array, desc?: EnvironmentDataDesc): Result<Asset>` | Load an HDR environment from bytes, uncooked, at run time, for Environment.map: an equirectangular Radiance .hdr (or .exr where RenderCapabilities.exrDecode is true), twice as wide as tall. |
+| [`og.load.data`](load/fn-data.md) | function | `(world: World, desc?: DataDesc): Result<Asset>` | Read a file of a content catalog at run time: static, versioned content the game's host publishes (a world's index pages, a shared level), well past a store value's 64 KiB. |
+| [`og.load.dataJson`](load/fn-dataJson.md) | function | `(world: World, asset: Asset): Result<unknown>` | The value of a ready og.load.data file read as `json`. |
+| [`og.load.dataBytes`](load/fn-dataBytes.md) | function | `(world: World, asset: Asset): Result<Uint8Array>` | The bytes of a ready og.load.data file read as `bytes`. |
 | [`og.load.environmentInfo`](load/fn-environmentInfo.md) | function | `(world: World, asset: Asset): Result<EnvironmentInfo>` | A ready uncooked environment's map and sizes. |
 | [`og.load.release`](load/fn-release.md) | function | `(world: World, asset: Asset): Result<void>` | Free an uncooked load's memory, cancelling it if pending; its handle then answers failed, naming the release. |
 | [`og.load.imageInfo`](load/fn-imageInfo.md) | function | `(world: World, asset: Asset): Result<ImageInfo>` | A ready uncooked image's texture and size. |

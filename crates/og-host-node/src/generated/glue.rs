@@ -1713,6 +1713,24 @@ pub fn og_load_environment_data(env: Env, world: u32, name: String, bytes: crate
     <Host as LoadApi>::og_load_environment_data(&Host, world, name, bytes, desc)
 }
 
+#[napi(js_name = "og_load_data")]
+pub fn og_load_data(env: Env, world: u32, desc: Option<String>) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as LoadApi>::og_load_data(&Host, world, desc)
+}
+
+#[napi(js_name = "og_load_data_json")]
+pub fn og_load_data_json(env: Env, world: u32, asset: f64) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as LoadApi>::og_load_data_json(&Host, world, asset)
+}
+
+#[napi(js_name = "og_load_data_bytes")]
+pub fn og_load_data_bytes(env: Env, world: u32, asset: f64) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as LoadApi>::og_load_data_bytes(&Host, world, asset)
+}
+
 #[napi(js_name = "og_load_environment_info")]
 pub fn og_load_environment_info(env: Env, world: u32, asset: f64) -> String {
     let _env = crate::EnvScope::enter(&env);

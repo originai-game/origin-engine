@@ -1,0 +1,20 @@
+{
+  "added": [
+    {
+      "member": "og.load.data",
+      "summary": "Read one file of a content catalog by catalog, version and path (CatalogEntry, DataDesc), as JSON or bytes, up to LoadBudget.bytes (32 MiB by default). Files come from the host's content base, never a URL in game code: `og run --content <dir>`, `og replay --content <dir>` and PlaytestDesc.content natively, `og build --content <url>` or project.ogt `publish { content }` on the web. Each file is checked against its version manifest's sha384 integrity. A failed load says why first: not_found, unavailable, failed, timeout, integrity, too_large or invalid (guide loading §14)."
+    },
+    {
+      "member": "og.load.dataJson",
+      "summary": "The value of a ready og.load.data file read as JSON."
+    },
+    {
+      "member": "og.load.dataBytes",
+      "summary": "The bytes of a ready og.load.data file read as bytes."
+    },
+    {
+      "member": "LoadCompletion.integrity",
+      "summary": "og.load.completions journals data loads (`kind` `data`) with the tick they were put in place and the integrity of the bytes read; og.load.replayCompletions puts each in place at that tick and fails it when the bytes differ. Absent for other kinds, so existing journals stay valid."
+    }
+  ]
+}

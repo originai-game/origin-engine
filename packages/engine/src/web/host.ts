@@ -180,7 +180,7 @@ export interface WebExtras {
   og_web_put_texture(id: string, width: number, height: number, rgba: Uint8Array, srgb: boolean): void;
   og_web_put_texture_encoded(id: string, format: string, width: number, height: number, srgb: boolean, levels: Uint8Array): string;
   og_web_texture_target(engine: number, manifest: string, id: string, bytes: Uint8Array): string;
-  og_web_set_fetcher(fetch: (path: string) => void): void;
+  og_web_set_fetcher(fetch: (path: string, integrity?: string) => void): void;
   /** Bytes received of a file the fetcher is fetching, for og.stream's and og.load's progress; absent in an older engine module. */
   og_web_file_progress?(path: string, received: number, total: number): void;
   /** The loading screen (og.loading): `report` for its stages and `done`, `idle` while the renderer has nothing waiting; absent in an older engine module. */
