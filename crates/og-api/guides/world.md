@@ -19,6 +19,14 @@ cave mouth, a pit, a tunnel through a hill). `og cook` cooks it into tiles.
   `albedoLayer` and `normalLayer`. Arrays sample two textures instead of up
   to eight and are the only way past four layers; the control map is then
   one image per four layers.
+- Many terrain packs can share one material pack: in each terrain
+  project's project.ogt, `cook { uses "../materials/cooked" }` names
+  another cooked bundle (its `cooked/` directory, or a project cooked
+  first). Its textures and texture arrays may then be named as layer maps
+  by asset id. The cook checks that the bundle has them with the right type
+  and packs none of them. og.terrain.load finds them in the boot bundle or
+  a ready pack, in open order, so open the material pack first; before it,
+  the load answers an error naming the missing array.
 - It draws as a geometry clipmap around the camera (nested levels by
   distance, no cracks) that casts and receives shadows under the fog,
   collides as a height field, and bakes into navmeshes by a navmesh file's

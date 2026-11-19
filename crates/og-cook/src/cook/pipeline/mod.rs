@@ -13,6 +13,7 @@ pub(super) mod kinds;
 pub(super) mod options;
 pub(super) mod output;
 pub(super) mod plan;
+pub(super) mod provided;
 pub(super) mod report;
 pub(super) mod scan;
 pub(super) mod stage;

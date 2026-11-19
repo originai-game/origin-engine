@@ -273,7 +273,11 @@ pub(crate) fn layer_files(rel: &str, root: &Path, text: &str) -> Vec<String> {
 
 /// The stamp's dependencies: each file the terrain reads, with its hash,
 /// and whether each layer texture is an asset.
-pub(crate) fn terrain_dependencies(s: &Source, known: &dyn Fn(&str) -> bool) -> String {
+pub(crate) fn terrain_dependencies(
+    s: &Source,
+    known: &dyn Fn(&str) -> bool,
+    provided: &crate::cook::provided::Provided,
+) -> String {
     let root = assets_root(s);
     let text = String::from_utf8_lossy(&s.bytes);
     let mut out: Vec<String> = terrain_files(&s.rel, &root, &text)
@@ -291,20 +295,35 @@ pub(crate) fn terrain_dependencies(s: &Source, known: &dyn Fn(&str) -> bool) -> 
         for k in ["layers", "layerNormals"] {
             if let Some(t) = string_of(&doc.body, k) {
                 let t = resolve(&s.rel, &root, &t);
-                out.push(format!("{t}={}", known(crate::runtime::asset_id(&t))));
+                out.push(format!("{t}={}", named(known, provided, &t)));
             }
         }
         for l in doc.body.get_all("layer") {
             if let Some(b) = &l.block {
                 for k in ["albedo", "normal"] {
                     if let Some(t) = string_of(b, k) {
-                        out.push(format!("{t}={}", known(crate::runtime::asset_id(&t))));
+                        out.push(format!("{t}={}", named(known, provided, &t)));
                     }
                 }
             }
         }
     }
     out.join("\n")
+}
+
+/// What a terrain's stamp records of a layer asset: the project's own
+/// (`true`), a used bundle's with its type, or neither (`false`).
+fn named(
+    known: &dyn Fn(&str) -> bool,
+    provided: &crate::cook::provided::Provided,
+    t: &str,
+) -> String {
+    let id = crate::runtime::asset_id(t);
+    match (known(id), provided.ty(id)) {
+        (true, _) => "true".into(),
+        (false, Some(ty)) => format!("uses {ty}"),
+        (false, None) => "false".into(),
+    }
 }
 
 /// A decoded heightmap: samples in 0..1 (PNG) or as stored (EXR), row-major.
@@ -742,6 +761,7 @@ pub(crate) fn field(doc: &TerrainDoc, root: &Path) -> Result<Field, String> {
 pub(crate) fn cook_terrain(
     s: &Source,
     known: &dyn Fn(&str) -> bool,
+    provided: &crate::cook::provided::Provided,
     stamp: u64,
 ) -> Result<(Vec<u8>, Vec<String>), CookError> {
     let text =
@@ -761,23 +781,36 @@ pub(crate) fn cook_terrain(
             doc.height[0].max(doc.height[1]),
         )
     });
+    // A layer's texture or array is the project's own, or one a bundle of
+    // project.ogt's `cook { uses }` provides with the right type (packed
+    // there, not here: the game opens that bundle before og.terrain.load).
     let mut missing = Vec::new();
-    for (a, n, _) in &doc.layers {
-        for t in [a, n].into_iter().flatten() {
-            if !known(crate::runtime::asset_id(t)) {
-                missing.push(t.clone());
-            }
+    let mut wrong = Vec::new();
+    let textures = doc.layers.iter().flat_map(|(a, n, _)| [a, n]).flatten();
+    let arrays = [&doc.albedo_array, &doc.normal_array].into_iter().flatten();
+    for (t, want) in textures
+        .map(|t| (t, format::Texture::NAME))
+        .chain(arrays.map(|t| (t, format::TextureArray::NAME)))
+    {
+        if known(crate::runtime::asset_id(t)) {
+            continue;
         }
-    }
-    for t in [&doc.albedo_array, &doc.normal_array].into_iter().flatten() {
-        if !known(crate::runtime::asset_id(t)) {
-            missing.push(t.clone());
+        match (provided.ty(t), provided.wrong_type(t, want)) {
+            (None, _) => missing.push(t.clone()),
+            (Some(_), Some(why)) => wrong.push(why),
+            (Some(_), None) => {}
         }
     }
     if !missing.is_empty() {
         return Err(CookError(format!(
-            "the terrain names texture(s) not under assets/: {}",
+            "the terrain names texture(s) not under assets/ nor in a bundle of project.ogt's cook {{ uses }}: {}",
             missing.join(", ")
+        )));
+    }
+    if !wrong.is_empty() {
+        return Err(CookError(format!(
+            "the terrain names asset(s) of the wrong type: {}",
+            wrong.join("; ")
         )));
     }
 
@@ -1018,24 +1051,26 @@ fn plan_terrain<'a>(
     hash: [u8; 8],
     outs: &mut Vec<Out<'a>>,
 ) {
-    let Cx { known, .. } = *cx;
+    let Cx {
+        known, provided, ..
+    } = *cx;
     let PlanState { parsed_refs, .. } = state;
-    let deps = terrain_dependencies(s, &|id| known.contains(id));
+    let deps = terrain_dependencies(s, &|id| known.contains(id), provided);
     assets::record_dependencies(parsed_refs, &s.rel, &deps);
     let st = stamp(&[b"terrain 2", &hash, deps.as_bytes()]);
     outs.push((
         s.rel.clone(),
         format::Terrain::NAME,
         st,
-        Box::new(TerrainJob(s)),
+        Box::new(TerrainJob(s, provided)),
     ));
 }
 
-/// A terrain's one output.
-struct TerrainJob<'a>(&'a Source);
+/// A terrain's one output, with what the used bundles provide.
+struct TerrainJob<'a>(&'a Source, &'a crate::cook::provided::Provided);
 
 impl Job for TerrainJob<'_> {
     fn cook(&self, p: &Planned, ex: &Exec) -> Result<(Vec<u8>, Vec<String>), CookError> {
-        cook_terrain(self.0, &|id| ex.known.contains(id), p.stamp)
+        cook_terrain(self.0, &|id| ex.known.contains(id), self.1, p.stamp)
     }
 }

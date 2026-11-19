@@ -28,6 +28,8 @@ pub(crate) struct Cx<'a> {
     pub(crate) components: &'a BTreeMap<String, String>,
     /// project.ogt's `frames`: the origins remote `<iframe>`s may load from.
     pub(crate) frames: &'a [String],
+    /// project.ogt's `cook { uses }`: the assets other cooked bundles provide.
+    pub(crate) provided: &'a provided::Provided,
 }
 
 /// What planning writes as it goes: the errors it finds, the references it

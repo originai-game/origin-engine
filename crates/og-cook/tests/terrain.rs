@@ -621,3 +621,81 @@ fn holes_keep_every_height_step() {
         }
     }
 }
+
+/// A terrain may name layer arrays another cooked bundle provides
+/// (project.ogt's `cook { uses }`): one material pack for many terrain
+/// packs. The terrain cooks naming them by id and packs none of them; a
+/// name no bundle provides, or one of the wrong type, is still refused.
+#[test]
+fn layer_arrays_from_a_used_bundle() {
+    let tile = rgba(8, 8, |_, _| [90, 140, 60, 255]);
+    let materials = project(
+        "uses-materials",
+        &[
+            ("tex/a.png", &tile),
+            ("tex/b.png", &tile),
+            (
+                "tex/tiles.ogt",
+                b"type texture-array\nversion 1\n---\nlayer \"a.png\"\nlayer \"b.png\"\n",
+            ),
+            (
+                "tex/tiles-n.ogt",
+                b"type texture-array\nversion 1\n---\nkind normal\nlayer \"a.png\"\nlayer \"b.png\"\n",
+            ),
+        ],
+    );
+    cook(&materials);
+    let height = png16(65, 65, |x, y| (x * 300 + y * 200) as u16);
+    let terrain = |layers: &str| {
+        format!(
+            "type terrain\nversion 1\n---\nheightmap \"land.png\"\nheight 0 20\nsize 64 64\ntile 64\n{layers}layer {{\n  albedoLayer 1\n  normalLayer 1\n}}\n"
+        )
+    };
+    let arrays = terrain("layers \"tex/tiles.ogt\"\nlayerNormals \"tex/tiles-n.ogt\"\n");
+    let parcel = |name: &str, ogt: &str, project_ogt: &str| {
+        let root = project(
+            name,
+            &[
+                ("land/land.png", &height),
+                ("land/land.ogt", ogt.as_bytes()),
+            ],
+        );
+        std::fs::write(root.join("project.ogt"), project_ogt).unwrap();
+        root
+    };
+    let uses = "type project\nversion 1\n---\ncook {\n  uses \"../uses-materials\"\n}\n";
+
+    let root = parcel("uses-parcel", &arrays, uses);
+    cook(&root);
+    let bundle = Bundle::open(&root.join("cooked")).unwrap();
+    let t = bundle.load_terrain("land/land.ogt").unwrap();
+    assert_eq!(t.albedo_array.as_deref(), Some("tex/tiles.ogt"));
+    assert_eq!(t.normal_array.as_deref(), Some("tex/tiles-n.ogt"));
+    let ids: Vec<_> = bundle.manifest().outputs().map(|o| o.id.clone()).collect();
+    assert!(
+        !ids.iter().any(|id| id.starts_with("tex/")),
+        "the used bundle's assets were packed: {ids:?}"
+    );
+
+    // Without `uses` the arrays are not the project's: refused.
+    let alone = parcel("uses-none", &arrays, "type project\nversion 1\n---\n");
+    let report = cook_project(&alone, &CookOptions::default()).unwrap();
+    let errors = format!("{:?}", report.errors());
+    assert!(
+        errors.contains("tex/tiles.ogt") && errors.contains("cook { uses }"),
+        "{errors}"
+    );
+
+    // An array named where a texture goes: the type is checked.
+    let wrong = parcel(
+        "uses-wrong",
+        "type terrain\nversion 1\n---\nheightmap \"land.png\"\nheight 0 20\nsize 64 64\ntile 64\nlayer {\n  albedo \"tex/tiles.ogt\"\n}\n",
+        uses,
+    );
+    let report = cook_project(&wrong, &CookOptions::default()).unwrap();
+    let errors = format!("{:?}", report.errors());
+    assert!(
+        errors.contains("is og.TextureArray, not og.Texture"),
+        "{errors}"
+    );
+}

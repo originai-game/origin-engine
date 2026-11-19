@@ -18,7 +18,8 @@
 mod pipeline;
 pub use pipeline::{asset_move, assets, cache, stats, ts_refs};
 use pipeline::{
-    execute, import_defaults, index, kinds, options, output, plan, report, scan, stage, stream,
+    execute, import_defaults, index, kinds, options, output, plan, provided, report, scan, stage,
+    stream,
 };
 mod systems;
 pub use systems::{animated, efk, look, probes, strings_extract, tilemap, vfx2d};
@@ -400,6 +401,7 @@ pub fn cook_project_with_texture_cache(
         document_themes: &document_themes,
         components: &components,
         frames: &project.frames,
+        provided: &project.provided,
     };
     let (
         plan,

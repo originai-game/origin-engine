@@ -199,14 +199,15 @@ pub fn texture_options(root: &Path, web: bool) -> Result<TextureOptions, String>
                         }
                     };
                 }
-                // The models' (`mesh_options`).
-                "clusters" => {}
+                // The models' (`mesh_options`), and the bundles the
+                // project's assets may name (og-cook's `cook { uses }`).
+                "clusters" | "uses" => {}
                 // The publish block's other settings are the export's
                 // (`publish.rs`).
                 _ if *name == "publish" => {}
                 other => {
                     return Err(format!(
-                        "project.ogt:{}: cook has no `{other}`; it takes color_textures and clusters",
+                        "project.ogt:{}: cook has no `{other}`; it takes color_textures, clusters and uses",
                         e.line
                     ));
                 }

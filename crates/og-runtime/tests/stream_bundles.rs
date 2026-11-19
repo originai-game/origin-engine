@@ -2707,3 +2707,81 @@ fn released_packs_free_their_terrains() {
     assert!(og_engine_destroy(engine));
     std::fs::remove_dir_all(base).unwrap();
 }
+
+/// A terrain pack whose layer arrays are in another pack (project.ogt's
+/// `cook { uses }`: one material pack for every terrain pack) loads once
+/// that pack is open, its arrays found by id; before, og.terrain.load
+/// names the missing array.
+#[test]
+fn a_terrain_takes_its_layer_arrays_from_an_open_material_pack() {
+    let _lock = TEST_LOCK.lock().unwrap();
+    let base = PathBuf::from(env!("CARGO_TARGET_TMPDIR"))
+        .join(format!("og-runtime-terrain-uses-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&base);
+    let tile = png(&og_render::RgbaImage {
+        width: 8,
+        height: 8,
+        pixels: [90, 140, 60, 255].repeat(64),
+    });
+    let materials = base.join("materials");
+    cook(
+        &materials,
+        &[
+            ("tex/a.png", tile.clone()),
+            ("tex/b.png", tile),
+            (
+                "tex/tiles.ogt",
+                b"type texture-array\nversion 1\n---\nlayer \"a.png\"\nlayer \"b.png\"\n".to_vec(),
+            ),
+        ],
+    );
+    let parcel = base.join("parcel");
+    std::fs::create_dir_all(&parcel).unwrap();
+    std::fs::write(
+        parcel.join("project.ogt"),
+        "type project\nversion 1\n---\ncook {\n  uses \"../materials\"\n}\n",
+    )
+    .unwrap();
+    let height = png(&og_render::RgbaImage {
+        width: 65,
+        height: 65,
+        pixels: (0..65 * 65u32)
+            .flat_map(|i| {
+                let v = (i % 200) as u8;
+                [v, v, v, 255]
+            })
+            .collect(),
+    });
+    cook(
+        &parcel,
+        &[
+            ("land/land.png", height),
+            (
+                "land/land.ogt",
+                b"type terrain\nversion 1\n---\nheightmap \"land.png\"\nheight 0 20\nsize 64 64\ntile 64\nlayers \"tex/tiles.ogt\"\nlayer {\n  albedoLayer 1\n}\n".to_vec(),
+            ),
+        ],
+    );
+    set_hooks(Rc::new(Disk {
+        delayed: false,
+        reads: RefCell::default(),
+    }));
+    og_host_begin_bundle();
+    let game = og_game_game(Some(r#"{"seed":1}"#.into()));
+    let engine = value(og_engine_create(game, "{}".into())).as_u64().unwrap() as u32;
+    value(og_engine_frame(engine, 1000.0 / 60.0));
+    let open = |root: &Path| {
+        value(host_impl::answer(og_load_bundle(
+            engine,
+            root.join("cooked").to_string_lossy().into(),
+        )))
+    };
+    open(&parcel);
+    let early = og_terrain_load(engine, "land/land.ogt".into()).unwrap_err();
+    assert!(early.contains("tex/tiles.ogt"), "{early}");
+    open(&materials);
+    let info = og_terrain_load(engine, "land/land.ogt".into());
+    assert!(info.is_ok(), "{:?}", info.err());
+    assert!(og_engine_destroy(engine));
+    std::fs::remove_dir_all(base).unwrap();
+}

@@ -14,6 +14,8 @@ pub(crate) struct Project {
     pub(crate) story_functions_stamp: Vec<u8>,
     /// `frames`: the origins remote `<iframe>`s may load from.
     pub(crate) frames: Vec<String>,
+    /// `cook { uses }`: the assets other cooked bundles provide.
+    pub(crate) provided: provided::Provided,
 }
 
 impl Project {
@@ -36,6 +38,8 @@ impl Project {
             .transpose()
             .map_err(|e| CookError(format!("project.ogt:{e}")))?
             .unwrap_or_default();
+        let provided =
+            provided::Provided::read(root, doc.as_ref().map(|d| &d.body)).map_err(CookError)?;
         let budget_desc = format!(
             "budgets triangles {} vertices {}",
             budgets.triangles, budgets.vertices
@@ -50,6 +54,7 @@ impl Project {
             story_functions,
             story_functions_stamp,
             frames,
+            provided,
         })
     }
 }
