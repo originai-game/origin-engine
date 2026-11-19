@@ -37,6 +37,8 @@ export interface Start {
   rootIntegrity?: string;
   /** The content base og.load.data reads catalogs from (shell.ts `content`). */
   content?: string;
+  /** The page names the content base later (a `content` message, once its Player answered). */
+  contentLater?: boolean;
   /** The Basis transcoder's script and module. */
   basis?: { js: string; wasm: string };
   /** The rav1d fallback decoder's module URL (dist/av1/og-av1.wasm by default). */
@@ -85,6 +87,8 @@ export type Message =
   | { type: "platform-notice"; notice: PlatformNotice }
   | { type: "platform-host"; host: string; capabilities: string[]; time?: number }
   | { type: "room-events"; events: unknown[] }
+  /** og.load.data's content base, named once the page's platform settled (Shell.setContent); empty: none. */
+  | { type: "content"; base: string }
   | { type: "room-host"; host: string; join?: string }
   | { type: "fullscreen"; on: boolean }
   | { type: "mouse-report"; active: boolean; unsupported: boolean }

@@ -389,6 +389,12 @@ const LIFECYCLE: &[LifecycleMember] = &[
         "Say what carries this engine's rooms: JSON `{ host, join? }` (`relay`, `player` or `none`), as og.platform.roomInfo reports; with `none` roomCreate and roomJoin are refused. `join` is the room a Play link named (`?room=<id>`): the engine joins it once, itself, and og.RoomJoined answers.",
     ),
     (
+        "og_engine_set_content",
+        &[("engine", "u32", "number"), ("base", "String", "string")],
+        "()",
+        "Name the content base og.load.data reads catalogs from (guide loading §14), for an engine created with `contentLater`: a page that learns it from its Player's hello. Empty for none: waiting data loads then fail `unavailable`. Until it is named they stay pending (30 s at most on the web).",
+    ),
+    (
         "og_engine_trace",
         &[("engine", "u32", "number"), ("on", "bool", "boolean")],
         "()",

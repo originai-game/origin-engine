@@ -163,6 +163,9 @@ pub(crate) struct Assets {
     /// The content base og.load.data reads catalogs from: a directory
     /// (native) or an https URL (web); empty: none.
     pub content: String,
+    /// The host names the content base later (og_engine_set_content: a
+    /// page that waits for its Player's hello); data loads wait until then.
+    pub content_later: bool,
     /// og.load.data's loads and the manifests they read.
     pub data: crate::world::data::Data,
     /// The http(s) images documents name, by request key.
