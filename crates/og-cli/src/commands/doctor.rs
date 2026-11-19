@@ -162,7 +162,7 @@ pub fn run(args: &[&str]) -> ExitCode {
     let bindgen = root.as_deref().and_then(wasm_bindgen_lock);
     let tsrs = root.as_deref().and_then(tsrs_version);
 
-    out.say(&format!("og doctor (og {})", crate::VERSION));
+    out.say(&format!("og doctor (og {})", crate::project::own_version()));
     match &root {
         Some(r) => {
             out.say(&format!("repository  {}", r.display()));
@@ -294,7 +294,7 @@ pub fn run(args: &[&str]) -> ExitCode {
     let ok = out.problems == 0 && (!require_checked || unchecked_count == 0);
     if out.json {
         let report = serde_json::json!({
-            "og": crate::VERSION,
+            "og": crate::project::own_version(),
             "repository": root.as_ref().map(|r| r.display().to_string()),
             "checks": out.checks,
             "engine": engine.version.as_ref().map(|v| serde_json::json!({ "version": v, "path": engine.path })),

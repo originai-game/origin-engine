@@ -23,16 +23,20 @@ installed into E2B, production's provider, last.
 |---|---|---|
 | `<version>/origin-engine-<version>-<target>.tar.gz` | one target's dist, its root directory `origin-engine-<version>-<target>/` | immutable |
 | `<version>/vfx/<pack>.tar.gz` | one downloadable effect pack, its root directory `<pack>/` (below) | immutable |
-| `<version>/manifest.json` | `{version, releasedAt, revision, channel: "release"\|"dev", checksums: "SHA256SUMS", signature: "SHA256SUMS.minisig", targets: {<target>: {url, sha256, size}}, vfx, ui, fonts, looks}`; the four pack sections are the pack catalogue (below) | immutable |
+| `<version>/manifest.json` | `{version, base?, releasedAt, revision, channel: "release"\|"dev", checksums: "SHA256SUMS", signature: "SHA256SUMS.minisig", targets: {<target>: {url, sha256, size}}, vfx, ui, fonts, looks}`; the four pack sections are the pack catalogue (below) | immutable |
 | `<version>/previews/<kind>/<name>.webp` | one preview per catalogued pack, `<kind>` one of `vfx`, `ui`, `fonts`, `looks`, at most 960×540 | immutable |
 | `<version>/SHA256SUMS`, `<version>/SHA256SUMS.minisig` | every archive's sha256 (the targets', the vfx packs' as `vfx/<pack>.tar.gz`), every preview's, manifest.json's and a release's installers', signed with the engine's key (below) | immutable |
 | `latest/manifest.json` | the newest release (never a dev build) | no-cache |
 | `install.sh`, `install.ps1` | install the `og` launcher (`packages/launcher`) | no-cache |
 
-`<version>` is `x.y.z` or a dev build `x.y.z-dev.n` (`channel: "dev"`).
-The targets are `x86_64-unknown-linux-gnu`, `aarch64-apple-darwin` and
-`x86_64-pc-windows-msvc`, each a `.tar.gz`. `revision` is the commit the
-version was built from.
+`<version>` is a release `x.y.z` or a dev build `dev.<YYYYMMDD>.<n>`
+(`channel: "dev"`, §1a); the dev builds before 0.9.0, `x.y.z-dev.n` (the
+last 0.8.1-dev.100), stay installable as they are. The targets are
+`x86_64-unknown-linux-gnu`, `aarch64-apple-darwin` and
+`x86_64-pc-windows-msvc`, each a `.tar.gz`. `revision` is the full commit
+id the version was built from; a dev build `dev.<date>.<n>` also names
+`base`, the release it is based on, in manifest.json and in each archive's
+`origin-engine.json` `build` record.
 
 Shipping wasm is bindgen output with only the optional `name` custom
 section removed. Instructions, imports, exports and other custom sections
@@ -181,15 +185,35 @@ status and prose on stderr.
 ### 1a. Dev builds while a pin is being tested
 
 A fix the platform needs to try does not wait for a release. It is pushed
-to `main`, built by `gh workflow run release.yml --ref main -f dev=true`
-(version `<next patch>-dev.<run number>`, nothing of it committed), and
-archived, signed and published on the `dev` channel at the run's commit by
-`scripts/release.sh dev <run-id>` (or `dev <dir> --revision <sha>` for
+to `main`, built by `gh workflow run release.yml --ref main -f dev=true`,
+and archived, signed and published on the `dev` channel at the run's commit
+by `scripts/release.sh dev <run-id>` (or `dev <dir> --revision <sha>` for
 tarballs packed on our own hosts at <sha>). The platform then pins that exact
 version. A dev build runs no install test and no browser tier, and writes
 no receipt, tag or changelog entry; `latest` never points at one. A
 release (§3) is cut at a milestone, from whatever dev build the testing
 settled on, with every gate.
+
+**Its name** is `dev.<YYYYMMDD>.<n>`, `n` counting that UTC day's dev
+builds from 1, a number of its own, unrelated to the release numbers
+(`scripts/release-bump.ts --next-dev` picks the next one the downloads have
+not published; `--dev <name>` writes it in the checkout, nothing of it
+committed). The checkout must be at a release, the newest in
+`changelog.json`: that is the build's `base`, recorded in its manifest
+beside its exact `revision`, and its own changes are the changelog's
+`unreleased`. The crates carry it as build metadata of the base
+(`0.9.0+dev.20261119.1`, Cargo takes only semver); `og --version` prints
+`og dev.20261119.1 (origin-engine dev.20261119.1, based on 0.9.0)`.
+
+**How it orders.** A dev build stands after its base release and before
+the next one, by date then `n`; its numbers never compare with a
+release's, so it is never newer than a release by number. The launcher
+(`og engine list`, `prune`) reads a cached build's `base` from its
+`origin-engine.json`. `og new` and `og upgrade` without `--engine`/`--to`
+take `latest`, a release; `og upgrade` (the engine's) moves a release pin
+onto a dev build only when `--to` names it, and never from a release newer
+than its base. A dev pin is compatible (§3) as its base release would be,
+with the installed build's `unreleased` counting as its own.
 
 ## 2. What the packages carry
 
@@ -223,7 +247,7 @@ entry with its `fix`, the `find` identifiers and, when the rewrite is
 mechanical, a `codemod`, so that `og upgrade` rewrites what it can and
 lists the rest. A patch's `kind` stays `"patch"` and its `breaking` list
 says what breaks; a version is compatible exactly when that list is empty.
-Dev builds are `<next patch>-dev.<n>`. `scripts/release.sh bump` writes
+Dev builds are `dev.<YYYYMMDD>.<n>` (§1a). `scripts/release.sh bump` writes
 every occurrence of the version and `scripts/release.sh check` holds them
 equal.
 

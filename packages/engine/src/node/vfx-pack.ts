@@ -288,7 +288,7 @@ async function get(base: string, path: string, cap: number): Promise<Uint8Array>
 export async function fetchPack(o: { name: string; version: string; into: string; downloads?: string; pubkey?: string }): Promise<VfxEntry> {
   const { name, version, into } = o;
   if (!NAME_RE.test(name)) fail(`\`${name}\` is not a pack name (lowercase letters, digits and -)`);
-  if (!/^\d+\.\d+\.\d+(-dev\.\d+)?$/.test(version)) fail(`${version} is not an engine version`);
+  if (!/^(?:\d+\.\d+\.\d+(?:-dev\.\d+)?|dev\.\d{8}\.[1-9]\d*)$/.test(version)) fail(`${version} is not an engine version`);
   const base = `${(o.downloads || process.env.ORIGIN_ENGINE_DOWNLOADS || DOWNLOADS).replace(/\/+$/, "")}/${version}`;
   const sums = await get(base, "SHA256SUMS", 1 << 20);
   const sig = text8.decode(await get(base, "SHA256SUMS.minisig", 1 << 16));

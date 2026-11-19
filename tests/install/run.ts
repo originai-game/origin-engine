@@ -10,6 +10,7 @@
 //                            [--installer <install.sh|install.ps1>] [--core] [--host-only | --container-only]
 //                            [--keep] [--image <name>]
 //
+// <v> is a release x.y.z or a dev build dev.<YYYYMMDD>.<n> (or x.y.z-dev.n before 0.9.0).
 // --core runs steps 1 to 5 and 7's validate only: what every version from
 // 0.5.0 has (a backfilled archive of an older version, docs/release.md §3);
 // 4b, 6, 7's mount, 8, 9 and 10 probe features of later versions.
@@ -148,8 +149,10 @@ function install(step: Step, work: string): string {
   const installed = run(step, [...ogCmd, "engine", "install", VERSION!], work);
   if (!installed.stderr.includes(`downloading engine ${VERSION}`)) step.fail(`og engine install downloaded nothing:\n${installed.stderr}`);
   const dist = join(work, "cache", "engines", VERSION!, TRIPLE!);
-  const build = (JSON.parse(readFileSync(join(dist, "origin-engine.json"), "utf8")) as { build: { version: string; target: string; triple: string; og: string } }).build;
+  const build = (JSON.parse(readFileSync(join(dist, "origin-engine.json"), "utf8")) as { build: { version: string; base?: string; revision: string; target: string; triple: string; og: string } }).build;
   if (build.version !== VERSION || build.target !== PLATFORM || build.triple !== TRIPLE) step.fail(`origin-engine.json's build record: ${JSON.stringify(build)}`);
+  // A dev build dev.<date>.<n> names the release it is based on and its exact commit (docs/release.md §1a).
+  if (VERSION!.startsWith("dev.") && !(/^\d+\.\d+\.\d+$/.test(build.base ?? "") && /^[0-9a-f]{40}$/.test(build.revision))) step.fail(`a dev build's record names no base release or full revision: ${JSON.stringify(build)}`);
   if (sha256(join(dist, "bin", windows ? "og.exe" : "og")) !== build.og) step.fail("bin/og is not the build record's og");
   for (const f of ["overlay/project.ogt", "create/template/project.ogt", "create/bin/create.ts", "engine/dist/web-publish/origin-engine_bg.wasm", "engine/dist/web-publish-2d/origin-engine_bg.wasm", "engine/dist/web-publish/origin-engine-lanes_bg.wasm", "engine/dist/frame-hosts.json", "engine/shell", "engine/types/index.d.ts", "engine/schema/api.schema.json", `engine/native/origin-engine.${PLATFORM}.node`]) {
     if (!existsSync(join(dist, f))) step.fail(`the dist has no ${f}`);

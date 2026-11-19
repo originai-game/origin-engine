@@ -2,8 +2,14 @@
 // checked equal everywhere (docs/release.md §3).
 //
 //   bun scripts/release-bump.ts <version>   write it
-//   bun scripts/release-bump.ts --dev <n>   write the dev build <next patch>-dev.<n> (0.7.8-dev.3 after 0.7.7), the fragments
-//                                           folded into unreleased; the release workflow's dev run does this in its checkout, never committed
+//   bun scripts/release-bump.ts --dev dev.<YYYYMMDD>.<n>
+//                                           write the dev build dev.<YYYYMMDD>.<n> (the n-th of that UTC day; docs/release.md §1a)
+//                                           over the release the checkout is at, the fragments folded into unreleased; the
+//                                           release workflow's dev run does this in its checkout, never committed
+//   bun scripts/release-bump.ts --next-dev  print the next dev build of today (UTC): dev.<YYYYMMDD>.<n>, n one past the
+//                                           last of that day the downloads publish ($ORIGIN_ENGINE_DOWNLOADS, default
+//                                           https://origingame.ai/downloads/engine); two runs before a publish get the same name,
+//                                           and the platform publishes only the first
 //   bun scripts/release-bump.ts --check     exit 1 naming every occurrence that differs from packages/engine's
 //   bun scripts/release-bump.ts --print     print the current version
 //
@@ -15,6 +21,10 @@
 // the inline project.ogt texts of the tests and scripts, and the workspace
 // crates' Cargo.toml (og --version prints og-cli's). Cargo.lock
 // follows through `cargo update --workspace --offline`, run by release.sh.
+// Cargo takes only semver, so a dev build's crates carry it as build
+// metadata of the release it is based on (`0.9.0+dev.20261119.1`); that
+// base is the newest version in changelog.json, which a dev build never
+// adds to.
 //
 // packages/engine/changelog.json (the one changelog, which the platform
 // reads): a bump first folds changelog/unreleased/'s fragments into
@@ -74,7 +84,7 @@ function sites(): Site[] {
   }
   // Inline project.ogt texts in tests, benches and scripts.
   for (const p of [...walk("packages/engine/tests", (n) => n.endsWith(".ts")), ...walk("packages/engine/bench", (n) => n.endsWith(".ts")), "scripts/sound-presets.sh"]) {
-    if (read(p).includes('engine "')) s.push({ path: p, re: /(engine \\?")(\d+\.\d+\.\d+[^"\\]*)(\\?")/g });
+    if (read(p).includes('engine "')) s.push({ path: p, re: /(engine \\?")((?:\d+\.\d+\.\d+|dev\.\d{8}\.\d+)[^"\\]*)(\\?")/g });
   }
   // The workspace crates.
   for (const p of walk("crates", (n) => n === "Cargo.toml")) {
@@ -86,19 +96,26 @@ function sites(): Site[] {
 import { type Changelog, type Entry as ChangeEntry, CHANGELOG, check as checkFragments, fold, readLog, writeLog } from "./changelog.ts";
 
 const minorOf = (v: string) => v.split(".").slice(0, 2).join(".");
-const DEV = /-dev\.\d+$/;
+/** A dev build `dev.<YYYYMMDD>.<n>`, or one of the scheme before 0.9.0, `x.y.z-dev.n`. */
+const isDev = (v: string) => v.startsWith("dev.") || /-dev\.\d+$/.test(v);
+const DATED = /^dev\.(\d{4})(\d{2})(\d{2})\.[1-9]\d*$/;
 
-/** The dev build `n` after `now`: the next patch's pre-release, `0.7.8-dev.<n>` after 0.7.7. */
-function devVersion(now: string, n: string): string {
-  const [major, minor, patch] = now.split("-")[0]!.split(".").map(Number);
-  return `${major}.${minor}.${patch! + 1}-dev.${n}`;
+/** Whether `v` is dev.<YYYYMMDD>.<n> with a real date. */
+function datedDev(v: string): boolean {
+  const m = DATED.exec(v);
+  if (!m) return false;
+  const d = new Date(Date.UTC(Number(m[1]), Number(m[2]) - 1, Number(m[3])));
+  return d.getUTCFullYear() === Number(m[1]) && d.getUTCMonth() === Number(m[2]) - 1 && d.getUTCDate() === Number(m[3]);
 }
+
+/** What the crates' Cargo.toml carry for `v`: a dated dev build as build metadata of the release it is based on. */
+const cargoVersion = (v: string, base: string) => (v.startsWith("dev.") ? `${base}+${v}` : v);
 
 /** Problems with the changelog for `version` (an entry, well formed, its fragments too); empty when fine. */
 function changelogProblems(log: Changelog, version: string): string[] {
   const out: string[] = [];
   // A dev build (`--dev`) carries unreleased: it has no entry of its own.
-  if (!log.versions.some((e) => e.version === version) && !DEV.test(version)) out.push(`${CHANGELOG}: no entry for ${version}`);
+  if (!log.versions.some((e) => e.version === version) && !isDev(version)) out.push(`${CHANGELOG}: no entry for ${version}`);
   out.push(...checkFragments());
   return out;
 }
@@ -118,6 +135,17 @@ function releaseChangelog(now: string, target: string): string | null {
   return null;
 }
 
+/** The next dev build of today (UTC) the downloads have not published. */
+async function nextDev(): Promise<string> {
+  const base = (process.env.ORIGIN_ENGINE_DOWNLOADS || "https://origingame.ai/downloads/engine").replace(/\/+$/, "");
+  const day = new Date().toISOString().slice(0, 10).replaceAll("-", "");
+  for (let n = 1; ; n++) {
+    const r = await fetch(`${base}/dev.${day}.${n}/manifest.json`, { method: "HEAD" });
+    if (r.status === 404) return `dev.${day}.${n}`;
+    if (!r.ok) throw new Error(`${base}/dev.${day}.${n}/manifest.json answered ${r.status}`);
+  }
+}
+
 function main(args: string[]): number {
   const dev = args.includes("--dev");
   const want = args.find((a) => !a.startsWith("--"));
@@ -127,11 +155,17 @@ function main(args: string[]): number {
     process.stdout.write(`${now}\n`);
     return 0;
   }
-  if (dev ? !/^\d+$/.test(want ?? "") : !check && (!want || !SEMVER.test(want))) {
-    process.stderr.write("usage: bun scripts/release-bump.ts <version> | --dev <n> | --check | --print\n");
+  if (dev ? !datedDev(want ?? "") : !check && (!want || !SEMVER.test(want))) {
+    process.stderr.write("usage: bun scripts/release-bump.ts <version> | --dev dev.<YYYYMMDD>.<n> | --check | --print\n");
     return 2;
   }
-  const target = check ? now : dev ? devVersion(now, want!) : want!;
+  const target = check ? now : want!;
+  // The release a dated dev build is based on: the newest in the changelog, where the checkout is.
+  const base = readLog().versions[0]?.version ?? "";
+  if (dev && (isDev(now) || now !== base)) {
+    process.stderr.write(`release-bump: a dev build is made over a release; the checkout is at ${now}, the changelog's newest release is ${base}\n`);
+    return 1;
+  }
   if (dev) {
     // The dev package ships changelog.json with what the merges recorded since the release.
     const folded = fold();
@@ -151,11 +185,12 @@ function main(args: string[]): number {
   let changed = 0;
   for (const site of sites()) {
     const before = read(site.path);
+    const want = site.path.endsWith("Cargo.toml") ? cargoVersion(target, base) : target;
     let hit = 0;
     const after = before.replace(site.re, (_m, a: string, v: string, c: string) => {
       hit++;
-      if (v !== target) wrong.push(`${site.path}: ${v}`);
-      return `${a}${target}${c}`;
+      if (v !== want) wrong.push(`${site.path}: ${v}`);
+      return `${a}${want}${c}`;
     });
     if (hit === 0) wrong.push(`${site.path}: no version found by ${site.re}`);
     if (!check && after !== before) {
@@ -176,4 +211,5 @@ function main(args: string[]): number {
   return 0;
 }
 
-process.exit(main(process.argv.slice(2)));
+if (process.argv.includes("--next-dev")) process.stdout.write(`${await nextDev()}\n`);
+else process.exit(main(process.argv.slice(2)));

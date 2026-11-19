@@ -165,12 +165,14 @@ fn upgrade_rewrites_the_pin_applies_codemods_and_lists_hand_edits() {
         "versions": [entry("0.9.3", serde_json::json!([])), entry("0.9.2", cut), entry("0.9.1", serde_json::json!([])), entry("0.9.0", serde_json::json!([]))],
     });
     std::fs::write(fake.join("changelog.json"), log.to_string()).unwrap();
+    let cache = dir.join("engine-cache");
     let doctor = |engine: &str, json: bool| {
         std::fs::write(dir.join("project.ogt"), manifest(engine)).unwrap();
         og().arg("doctor")
             .args(json.then_some("--json"))
             .current_dir(&dir)
             .env("OG_ENGINE_PACKAGE", &fake)
+            .env("ORIGIN_ENGINE_CACHE", &cache)
             .output()
             .unwrap()
     };
@@ -184,6 +186,20 @@ fn upgrade_rewrites_the_pin_applies_codemods_and_lists_hand_edits() {
             && line.contains("og upgrade --to 0.9.3"),
         "{line}"
     );
+    // A dev pin compares as the release it is based on (its installed
+    // dist's build record): dev.20261119.1 over 0.9.1 crosses 0.9.2, over
+    // 0.9.2 it does not; its own numbers never make it newer than 0.9.3.
+    let based_on = |base: &str| {
+        let d = cache.join("engines/dev.20261119.1/x86_64-unknown-linux-gnu");
+        std::fs::create_dir_all(&d).unwrap();
+        let build = serde_json::json!({ "build": { "version": "dev.20261119.1", "base": base } });
+        std::fs::write(d.join("origin-engine.json"), build.to_string()).unwrap();
+    };
+    based_on("0.9.1");
+    assert_eq!(compatible("dev.20261119.1"), false);
+    based_on("0.9.2");
+    assert_eq!(compatible("dev.20261119.1"), true);
+    std::fs::remove_dir_all(&cache).unwrap();
     std::fs::remove_dir_all(&fake).unwrap();
     std::fs::write(dir.join("project.ogt"), manifest("0.6.1")).unwrap();
 
@@ -235,6 +251,82 @@ fn upgrade_rewrites_the_pin_applies_codemods_and_lists_hand_edits() {
         manifest("0.6.1")
     );
     let _ = std::fs::remove_dir_all(&dir);
+}
+
+/// `og upgrade` with a dev build `dev.<date>.<n>` installed: a release pin
+/// moves onto it only when --to names it, crossing its base release's
+/// versions and its own unreleased entry, and never from a release newer
+/// than its base (its numbers never make it newer than a release).
+#[test]
+fn upgrade_moves_a_release_pin_onto_a_dev_build_only_when_named() {
+    let dir = TempDir::new("og-cli-upgrade-dev");
+    std::fs::create_dir_all(dir.join("src")).unwrap();
+    std::fs::write(dir.join("src/main.ts"), "og.x;\n").unwrap();
+    let manifest = |engine: &str| {
+        format!(
+            "type project\nversion 1\n---\nname \"u\"\nid \"u\"\nengine \"{engine}\"\nentry \"src/main.ts\"\n"
+        )
+    };
+    let report = |out: &Output| -> serde_json::Value {
+        serde_json::from_slice(&out.stdout).unwrap_or_else(|e| panic!("{e}: {}", text(out)))
+    };
+    let fake = dir.join("fake-engine");
+    std::fs::create_dir_all(fake.join("src/node")).unwrap();
+    std::fs::write(fake.join("src/node/run.ts"), "").unwrap();
+    std::fs::write(
+        fake.join("package.json"),
+        r#"{ "version": "dev.20261119.1" }"#,
+    )
+    .unwrap();
+    let entry = |v: &str| serde_json::json!({ "version": v, "kind": "patch", "simulation": "unchanged", "breaking": [], "added": [], "fixed": ["x"] });
+    let dev_log = serde_json::json!({
+        "schema": 1,
+        "unreleased": { "simulation": "unchanged", "breaking": [], "added": [{ "member": "og.y", "summary": "s" }], "fixed": [] },
+        "versions": [entry("0.9.3"), entry("0.9.2")],
+    });
+    std::fs::write(fake.join("changelog.json"), dev_log.to_string()).unwrap();
+    let upgrade_dev = |engine: &str, args: &[&str]| {
+        std::fs::write(dir.join("project.ogt"), manifest(engine)).unwrap();
+        let out = og()
+            .args(["upgrade", "--json"])
+            .args(args)
+            .current_dir(&dir)
+            .env("OG_ENGINE_PACKAGE", &fake)
+            .output()
+            .unwrap();
+        (
+            report(&out),
+            std::fs::read_to_string(dir.join("project.ogt")).unwrap(),
+        )
+    };
+    let (r, pinned) = upgrade_dev("0.9.2", &[]);
+    assert_eq!(r["status"], "failed", "{r}");
+    assert!(
+        r["reason"]
+            .as_str()
+            .unwrap()
+            .contains("--to dev.20261119.1"),
+        "{r}"
+    );
+    assert_eq!(pinned, manifest("0.9.2"));
+    let (r, pinned) = upgrade_dev("0.9.2", &["--to", "dev.20261119.1"]);
+    assert_eq!(
+        (r["status"].as_str(), r["kind"].as_str()),
+        (Some("done"), Some("patch")),
+        "{r}"
+    );
+    assert_eq!(
+        r["versions"],
+        serde_json::json!(["0.9.3", "dev.20261119.1"])
+    );
+    assert_eq!(pinned, manifest("dev.20261119.1"));
+    // dev.20261119.1 is based on 0.9.3: moving a 0.9.4 pin onto it is a downgrade.
+    let (r, pinned) = upgrade_dev("0.9.4", &["--to", "dev.20261119.1"]);
+    assert!(
+        r["reason"].as_str().unwrap().contains("never downgrades"),
+        "{r}"
+    );
+    assert_eq!(pinned, manifest("0.9.4"));
 }
 
 #[test]

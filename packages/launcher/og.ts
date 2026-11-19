@@ -57,7 +57,14 @@ export const LAUNCHER_VERSION = "2";
 /** The engine's release key (docs/release.md §1; the owner, 2026-11-05). */
 export const ENGINE_PUBKEY = "RWSJfZkSrBHM9kOnWQNC0WoGXEFI+9NMCj8+Wy6WJDkYl9pgPGkoCoxt";
 export const DOWNLOADS = "https://origingame.ai/downloads/engine";
-export const VERSION_RE = /^\d+\.\d+\.\d+(-dev\.\d+)?$/;
+/**
+ * An engine version: a release `x.y.z`, a dev build `dev.<YYYYMMDD>.<n>`
+ * (the n-th of that UTC day, its own number unrelated to the release it is
+ * based on), or a dev build of the scheme before 0.9.0, `x.y.z-dev.n`.
+ */
+export const VERSION_RE = /^(?:\d+\.\d+\.\d+(?:-dev\.\d+)?|dev\.\d{8}\.[1-9]\d*)$/;
+/** Whether `v` is a dev build (either scheme), never what latest/ or a release pin moves to by itself. */
+export const isDev = (v: string) => v.startsWith("dev.") || v.includes("-dev.");
 const TARGETS: Record<string, string> = {
   "linux-x64": "x86_64-unknown-linux-gnu",
   "darwin-arm64": "aarch64-apple-darwin",
@@ -349,7 +356,7 @@ function sha256File(file: string): string {
 /** The newest published release (latest/manifest.json). */
 export async function latest(c: Config, report: Report = silent): Promise<string> {
   const m = JSON.parse(new TextDecoder().decode(await fetchBytes(c, "latest/manifest.json", report))) as { version?: string };
-  if (!m.version || !VERSION_RE.test(m.version)) fail(`${c.downloads}/latest/manifest.json names no version`, "not_found");
+  if (!m.version || !VERSION_RE.test(m.version) || isDev(m.version)) fail(`${c.downloads}/latest/manifest.json names no release`, "not_found");
   return m.version;
 }
 
@@ -392,7 +399,7 @@ async function locked<T>(lock: string, f: () => Promise<T>): Promise<T> {
 
 /** Installs version `v` unless it is installed, reporting its progress; returns its dist directory. */
 export async function install(c: Config, v: string, report: Report = silent): Promise<string> {
-  if (!VERSION_RE.test(v)) fail(`${v} is not an engine version (x.y.z or x.y.z-dev.n)`);
+  if (!VERSION_RE.test(v)) fail(`${v} is not an engine version (x.y.z, or a dev build dev.YYYYMMDD.n)`);
   const dist = distDir(c, v);
   report({ event: "resolve", version: v, target: c.target });
   if (isInstalled(c, v)) {
@@ -453,22 +460,46 @@ export async function install(c: Config, v: string, report: Report = silent): Pr
   return dist;
 }
 
+/** The release an installed dev build `dev.<date>.<n>` is based on (its build record's `base`). */
+export function baseOf(c: Config, v: string): string | undefined {
+  try {
+    return (JSON.parse(readFileSync(join(distDir(c, v), "origin-engine.json"), "utf8")) as { build?: { base?: string } }).build?.base;
+  } catch {
+    return undefined;
+  }
+}
+
 /** The installed versions, newest first. */
 export function installed(c: Config): string[] {
   const dir = join(c.cache, "engines");
   if (!existsSync(dir)) return [];
-  return readdirSync(dir).filter((v) => VERSION_RE.test(v) && isInstalled(c, v)).sort(compareVersions).reverse();
+  return readdirSync(dir)
+    .filter((v) => VERSION_RE.test(v) && isInstalled(c, v))
+    .sort((a, b) => compareVersions(a, b, (v) => baseOf(c, v)))
+    .reverse();
 }
 
-/** Orders versions; a dev build sorts before the release of its numbers. */
-export function compareVersions(a: string, b: string): number {
-  const parse = (v: string) => {
+/**
+ * Orders versions. A dev build `dev.<date>.<n>` sorts after the release it
+ * is based on (`base`) and before the next one, by date then n; its own
+ * numbers never compare with a release's, and one whose base is unknown
+ * sorts before every release. A dev build `x.y.z-dev.n` sorts before the
+ * release of its numbers.
+ */
+export function compareVersions(a: string, b: string, base: (v: string) => string | undefined = () => undefined): number {
+  const key = (v: string): number[] => {
+    const dated = /^dev\.(\d{8})\.(\d+)$/.exec(v);
+    if (dated) {
+      const on = base(v);
+      const release = on && /^\d+\.\d+\.\d+$/.test(on) ? on.split(".").map(Number) : [-1, -1, -1];
+      return [...release, 2, Number(dated[1]), Number(dated[2])];
+    }
     const [core, dev] = v.split("-dev.");
-    return [...core!.split(".").map(Number), dev === undefined ? Number.POSITIVE_INFINITY : Number(dev)];
+    return [...core!.split(".").map(Number), dev === undefined ? 1 : 0, dev === undefined ? 0 : Number(dev), 0];
   };
-  const x = parse(a);
-  const y = parse(b);
-  for (let i = 0; i < 4; i++) if (x[i] !== y[i]) return x[i]! < y[i]! ? -1 : 1;
+  const x = key(a);
+  const y = key(b);
+  for (let i = 0; i < x.length; i++) if (x[i] !== y[i]) return x[i]! < y[i]! ? -1 : 1;
   return 0;
 }
 
@@ -550,10 +581,10 @@ async function versionFor(c: Config, root: string | undefined, report: Report = 
   if (root) {
     const pin = pinOf(root);
     if (!pin) fail(`${join(root, "project.ogt")} pins no engine (an \`engine "<version>"\` line)`, "no_pin");
-    if (!VERSION_RE.test(pin)) fail(`${join(root, "project.ogt")} pins engine "${pin}", which is not a version (x.y.z)`, "no_pin");
+    if (!VERSION_RE.test(pin)) fail(`${join(root, "project.ogt")} pins engine "${pin}", which is not a version (x.y.z, or a dev build dev.YYYYMMDD.n)`, "no_pin");
     return pin;
   }
-  const releases = installed(c).filter((v) => !v.includes("-dev."));
+  const releases = installed(c).filter((v) => !isDev(v));
   return releases[0] ?? (await latest(c, report));
 }
 
@@ -588,7 +619,7 @@ async function engineCommand(c: Config, args: string[], out: { report: Report; s
       for (let i = 0; i < rest.length; i++) if (rest[i] === "--keep" && rest[i + 1]) keep.add(rest[++i]!);
       const dry = rest.includes("--dry-run");
       const all = installed(c);
-      const newest = all.find((v) => !v.includes("-dev."));
+      const newest = all.find((v) => !isDev(v));
       if (newest) keep.add(newest);
       const root = projectOf([]);
       const pin = root ? pinOf(root) : undefined;

@@ -233,7 +233,7 @@ pub fn settings(manifest: &Path) -> Result<Value, String> {
         "frames": frames,
         "name": s("name").unwrap_or_else(|| "Origin Engine game".into()),
         "id": s("id").unwrap_or_else(|| "game".into()),
-        "engine": s("engine").unwrap_or_else(|| crate::VERSION.into()),
+        "engine": s("engine").unwrap_or_else(|| crate::project::own_version().into()),
         "profile": profile,
         "publish": publish,
     }))

@@ -68,12 +68,12 @@ function channel() {
     const global = sign(null, Buffer.concat([sig, Buffer.from(comment)]), privateKey);
     writeFileSync(`${file}.minisig`, `untrusted comment: test\n${Buffer.concat([Buffer.from("ED"), id, sig]).toString("base64")}\ntrusted comment: ${comment}\n${global.toString("base64")}\n`);
   };
-  const publish = (v: string, opts: { holds?: string; corrupt?: boolean } = {}) => {
+  const publish = (v: string, opts: { holds?: string; corrupt?: boolean; base?: string } = {}) => {
     const name = `origin-engine-${v}-${target}`;
     const stage = scratch("og-stage-");
     mkdirSync(join(stage, name, "bin"), { recursive: true });
     mkdirSync(join(stage, name, "engine"), { recursive: true });
-    writeFileSync(join(stage, name, "origin-engine.json"), JSON.stringify({ build: { version: opts.holds ?? v } }));
+    writeFileSync(join(stage, name, "origin-engine.json"), JSON.stringify({ build: { version: opts.holds ?? v, base: opts.base } }));
     writeFileSync(join(stage, name, "bin/og"), `#!/bin/sh\necho "engine ${v} $OG_ENGINE_PACKAGE $*"\n`);
     chmodSync(join(stage, name, "bin/og"), 0o755);
     mkdirSync(join(dir, v), { recursive: true });
@@ -130,8 +130,20 @@ describe("install", () => {
 });
 
 describe("versions and projects", () => {
-  test("orders a dev build before its release and after the release before it", () => {
-    expect(["0.7.8", "0.7.8-dev.17", "0.7.7", "0.7.8-dev.2", "0.10.0"].sort(compareVersions)).toEqual(["0.7.7", "0.7.8-dev.2", "0.7.8-dev.17", "0.7.8", "0.10.0"]);
+  test("orders a dated dev build after its base release by date and number, never by its numbers against a release's", () => {
+    const base = (v: string) => (v.startsWith("dev.20261") ? "0.9.0" : undefined);
+    const order = (vs: string[]) => vs.sort((a, b) => compareVersions(a, b, base));
+    expect(order(["0.9.1", "dev.20261119.10", "0.8.1-dev.100", "dev.20261119.2", "0.10.0", "0.9.0", "dev.20261118.3", "0.8.1", "dev.20250101.1"])).toEqual([
+      "dev.20250101.1",
+      "0.8.1-dev.100",
+      "0.8.1",
+      "0.9.0",
+      "dev.20261118.3",
+      "dev.20261119.2",
+      "dev.20261119.10",
+      "0.9.1",
+      "0.10.0",
+    ]);
   });
 
   test("finds the project from an argument inside it, else from the working directory", () => {
@@ -150,18 +162,18 @@ describe.if(unix)("og", () => {
   const run = (ch: ReturnType<typeof channel>, args: string[], cwd: string) =>
     spawnSync("bun", [og, ...args], { cwd, encoding: "utf8", env: { ...process.env, ORIGIN_ENGINE_CACHE: ch.cache, ORIGIN_ENGINE_DOWNLOADS: ch.dir, ORIGIN_ENGINE_PUBKEY: ch.pubkey, OG_ENGINE_VERSION: "" } });
 
-  test("runs the pinned version's og with OG_ENGINE_PACKAGE and keeps .og/engine on it; outside a project the latest release", () => {
+  test("installs and runs a pinned dev build's og with OG_ENGINE_PACKAGE and keeps .og/engine on it; outside a project the latest release", () => {
     const ch = channel();
-    ch.publish("0.7.8-dev.17");
+    ch.publish("dev.20261119.1", { base: "0.7.8" });
     ch.publish("0.7.8");
     ch.latest("0.7.8");
     const game = scratch("og-game-");
-    writeFileSync(join(game, "project.ogt"), 'type project\nversion 1\n---\nengine "0.7.8-dev.17"\n');
-    const dist = join(ch.cache, "engines/0.7.8-dev.17", ch.c.target);
+    writeFileSync(join(game, "project.ogt"), 'type project\nversion 1\n---\nengine "dev.20261119.1"\n');
+    const dist = join(ch.cache, "engines/dev.20261119.1", ch.c.target);
     const r = run(ch, ["test", "."], game);
     // Not a terminal: the install's events are JSON Lines on stderr.
     expect(r.stderr.split("\n").filter((l) => l.startsWith("{")).map((l) => JSON.parse(l).event)).toEqual(["resolve", "download", "verify", "unpack", "installed"]);
-    expect(r.stdout.trim()).toBe(`engine 0.7.8-dev.17 ${join(dist, "engine")} test .`);
+    expect(r.stdout.trim()).toBe(`engine dev.20261119.1 ${join(dist, "engine")} test .`);
     expect(lstatSync(join(game, ".og/engine")).isSymbolicLink()).toBe(true);
     expect(readlinkSync(join(game, ".og/engine"))).toBe(join(dist, "engine"));
     expect(run(ch, ["--version"], tmpdir()).stdout).toStartWith("engine 0.7.8 ");
@@ -169,8 +181,8 @@ describe.if(unix)("og", () => {
 
   test("engine list, path and prune keep the newest release and the project's pin", () => {
     const ch = channel();
-    for (const v of ["0.6.0", "0.7.0", "0.7.8-dev.17", "0.7.8"]) {
-      ch.publish(v);
+    for (const v of ["0.6.0", "0.7.0", "0.7.8-dev.17", "0.7.8", "dev.20261119.1"]) {
+      ch.publish(v, { base: "0.7.8" });
       expect(run(ch, ["engine", "install", v], tmpdir()).status).toBe(0);
     }
     const game = scratch("og-game-");
@@ -180,6 +192,7 @@ describe.if(unix)("og", () => {
     const pruned = run(ch, ["engine", "prune"], game);
     expect(pruned.stdout).toContain("removing engine 0.6.0");
     expect(pruned.stdout).toContain("removing engine 0.7.8-dev.17");
+    expect(pruned.stdout).toContain("removing engine dev.20261119.1");
     expect(installed(ch.c)).toEqual(["0.7.8", "0.7.0"]);
   });
 });

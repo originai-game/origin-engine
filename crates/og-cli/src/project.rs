@@ -269,7 +269,7 @@ pub fn package_version(package: &Path) -> Option<String> {
 }
 
 /// A version's numbers (major, minor, patch); a pre-release suffix is
-/// left out. `None` for anything else.
+/// left out. `None` for anything else, a dev build `dev.<date>.<n>` too.
 pub fn semver(v: &str) -> Option<(u64, u64, u64)> {
     let core = v.trim().trim_start_matches('v').split(['-', '+']).next()?;
     let mut it = core.split('.').map(|p| p.parse::<u64>().ok());
@@ -277,17 +277,122 @@ pub fn semver(v: &str) -> Option<(u64, u64, u64)> {
     it.next().is_none().then_some(r)
 }
 
+/// A dev build `dev.<YYYYMMDD>.<n>` (docs/release.md §1a): its date and n.
+pub fn dated_dev(v: &str) -> Option<(u64, u64)> {
+    let mut it = v.strip_prefix("dev.")?.split('.');
+    let (date, n) = (it.next()?, it.next()?);
+    (it.next().is_none()
+        && date.len() == 8
+        && date.bytes().all(|c| c.is_ascii_digit())
+        && !n.is_empty()
+        && n.bytes().all(|c| c.is_ascii_digit()))
+    .then(|| Some((date.parse().ok()?, n.parse().ok()?)))?
+}
+
+/// Whether `v` is a dev build: `dev.<date>.<n>`, or `x.y.z-dev.n` of the
+/// scheme before 0.9.0.
+pub fn is_dev(v: &str) -> bool {
+    v.starts_with("dev.") || v.contains("-dev.")
+}
+
+/// Where an engine version stands among the others. A dev build
+/// `dev.<date>.<n>` stands after the release it is based on (`release`)
+/// and before the next, by date then n: its own numbers never compare
+/// with a release's. `x.y.z-dev.n` stands before the release x.y.z.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
+pub struct Order {
+    /// The release's numbers, a dated dev build's base release's.
+    pub release: (u64, u64, u64),
+    rank: u8,
+    date: u64,
+    n: u64,
+}
+
+/// `v`'s order, `base` the release a dated dev build is based on (see
+/// [`base_of`]); `None` when `v` is no version or a dated dev build's base
+/// is unknown.
+pub fn order(v: &str, base: Option<&str>) -> Option<Order> {
+    if let Some((date, n)) = dated_dev(v) {
+        let b = base?;
+        let release = semver(b).filter(|_| !b.contains(['-', '+']))?;
+        return Some(Order {
+            release,
+            rank: 2,
+            date,
+            n,
+        });
+    }
+    let release = semver(v)?;
+    let (rank, n) = match v.trim().split_once('-') {
+        None => (1, 0),
+        Some((_, pre)) => (
+            0,
+            pre.strip_prefix("dev.")
+                .and_then(|n| n.parse().ok())
+                .unwrap_or(0),
+        ),
+    };
+    Some(Order {
+        release,
+        rank,
+        date: 0,
+        n,
+    })
+}
+
+/// The release a dated dev build `v` is based on: the newest version in
+/// the changelog.json of the engine package at `package` when that is `v`,
+/// else the `build.base` of `v`'s installed dist in the engine cache
+/// (`$ORIGIN_ENGINE_CACHE`, default `~/.cache/origin-engine`, where the og
+/// launcher installs every version). `None` for any other version.
+pub fn base_of(v: &str, package: &Path) -> Option<String> {
+    dated_dev(v)?;
+    let json = |p: PathBuf| -> Option<serde_json::Value> {
+        serde_json::from_str(&std::fs::read_to_string(p).ok()?).ok()
+    };
+    if package_version(package).as_deref() == Some(v) {
+        return json(package.join("changelog.json"))?["versions"][0]["version"]
+            .as_str()
+            .map(str::to_string);
+    }
+    let cache = std::env::var_os("ORIGIN_ENGINE_CACHE")
+        .map(PathBuf::from)
+        .or_else(|| {
+            std::env::var_os("HOME")
+                .or_else(|| std::env::var_os("USERPROFILE"))
+                .map(|h| PathBuf::from(h).join(".cache/origin-engine"))
+        })?;
+    std::fs::read_dir(cache.join("engines").join(v))
+        .ok()?
+        .flatten()
+        .find_map(|t| {
+            json(t.path().join("origin-engine.json"))?["build"]["base"]
+                .as_str()
+                .map(str::to_string)
+        })
+}
+
 /// Whether a game pinned at `pinned` runs as written on `installed`, the
 /// version of the engine package at `package` (docs/release.md §3): the same
 /// minor (major too), not older, and no version after the pin up to the
 /// installed one carries a breaking entry in the package's changelog.json
-/// (a patch may carry breaks). A dev build counts its `unreleased` entry as
-/// its own. `Err` says why not, naming the breaking versions crossed.
+/// (a patch may carry breaks). A dev build `dev.<date>.<n>` compares as
+/// the release it is based on, its own changes after it; a dev build
+/// counts its `unreleased` entry as its own. `Err` says why not, naming
+/// the breaking versions crossed.
 pub fn compatible(pinned: &str, installed: &str, package: &Path) -> Result<(), String> {
-    let (Some(p), Some(i)) = (semver(pinned), semver(installed)) else {
-        return Err("not a version".into());
-    };
-    if (p.0, p.1) != (i.0, i.1) {
+    if pinned == installed {
+        return Ok(());
+    }
+    let p = order(pinned, base_of(pinned, package).as_deref()).ok_or_else(|| {
+        if dated_dev(pinned).is_some() {
+            format!("the release {pinned} is based on is unknown: it is not installed")
+        } else {
+            "not a version".into()
+        }
+    })?;
+    let i = order(installed, base_of(installed, package).as_deref()).ok_or("not a version")?;
+    if (p.release.0, p.release.1) != (i.release.0, i.release.1) {
         return Err("another minor".into());
     }
     if i < p {
@@ -306,13 +411,13 @@ pub fn compatible(pinned: &str, installed: &str, package: &Path) -> Result<(), S
             breaks(e)
                 && e["version"]
                     .as_str()
-                    .and_then(semver)
+                    .and_then(|v| order(v, None))
                     .is_some_and(|v| v > p && v <= i)
         })
         .filter_map(|e| e["version"].as_str())
         .collect();
     crossed.reverse();
-    if installed.contains('-') && breaks(&log["unreleased"]) {
+    if is_dev(installed) && breaks(&log["unreleased"]) {
         crossed.push(installed);
     }
     match crossed.as_slice() {
@@ -320,6 +425,25 @@ pub fn compatible(pinned: &str, installed: &str, package: &Path) -> Result<(), S
         [v] => Err(format!("{v} carries breaking changes")),
         vs => Err(format!("{} carry breaking changes", vs.join(", "))),
     }
+}
+
+/// This og's engine version: a dev build's crates carry it as build
+/// metadata of the release it is based on (`0.9.0+dev.20261119.1`,
+/// scripts/release-bump.ts), a release's is the crate version.
+pub fn own_version() -> &'static str {
+    let v = env!("CARGO_PKG_VERSION");
+    match v.split_once('+') {
+        Some((_, dev)) if dev.starts_with("dev.") => dev,
+        _ => v,
+    }
+}
+
+/// The release this og is or is based on.
+pub fn own_release() -> &'static str {
+    env!("CARGO_PKG_VERSION")
+        .split('+')
+        .next()
+        .unwrap_or_default()
 }
 
 /// What `og run`, `og test`, `og build` and `og dev` print to

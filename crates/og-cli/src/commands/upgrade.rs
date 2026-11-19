@@ -12,7 +12,10 @@
 //! fix, as `og migrate three` lists what it cannot rewrite. A breaking entry
 //! without identifiers is listed under `review`. It never downgrades; the og
 //! launcher's `og upgrade` installs the target version and runs this with
-//! it.
+//! it. A dev build `dev.<date>.<n>` stands after the release it is based on
+//! (never above a release by its numbers), and a release pin moves onto a
+//! dev build only when `--to` names it; then the build's `unreleased` entry
+//! is crossed as its own.
 //!
 //! Exit status: 0 done (nothing left to edit by hand), 3 done with places
 //! to edit by hand (`manual`), 1 failed (nothing written), 2 usage.
@@ -107,13 +110,31 @@ fn upgrade(dir: &Path, to: Option<&str>, dry: bool) -> Value {
             );
         }
     };
+    if to.is_none() && project::is_dev(&installed) && !project::is_dev(&from) {
+        return failed(
+            format!(
+                "the installed engine is the dev build {installed}: og upgrade moves a release pin onto a dev build only when --to names it (og upgrade --to {installed}); og upgrade --to <release> moves it to a release"
+            ),
+            base,
+        );
+    }
     let to = to.map(str::to_string).unwrap_or_else(|| installed.clone());
-    let (Some(f), Some(t)) = (project::semver(&from), project::semver(&to)) else {
-        return failed(format!("not a version: {from} or {to}"), base);
+    let at = |v: &str| project::order(v, project::base_of(v, &package).as_deref());
+    let (Some(f), Some(t)) = (at(&from), at(&to)) else {
+        return failed(
+            format!("not a version, or a dev build whose base release is unknown: {from} or {to}"),
+            base,
+        );
     };
     let versions = log["versions"].as_array().cloned().unwrap_or_default();
     let known = |v: &str| versions.iter().any(|e| e["version"] == v);
-    if !known(&to) {
+    // The installed dev build: its own changes are the changelog's unreleased.
+    let own = (to == installed && project::is_dev(&to)).then(|| {
+        let mut e = log["unreleased"].clone();
+        e["version"] = json!(to);
+        e
+    });
+    if !known(&to) && own.is_none() {
         return failed(
             format!(
                 "{to} is not in the installed engine's changelog (the installed engine is {installed}): run og upgrade --to {to} through the og launcher, which installs {to} and runs its og upgrade"
@@ -135,14 +156,17 @@ fn upgrade(dir: &Path, to: Option<&str>, dry: bool) -> Value {
         .filter(|e| {
             e["version"]
                 .as_str()
-                .and_then(project::semver)
+                .and_then(|v| project::order(v, None))
                 .is_some_and(|v| v > f && v <= t)
         })
         .collect();
     crossed.reverse();
+    if f < t {
+        crossed.extend(own.as_ref());
+    }
     let kind = if f == t {
         "none"
-    } else if f.0 == t.0 && f.1 == t.1 {
+    } else if f.release.0 == t.release.0 && f.release.1 == t.release.1 {
         "patch"
     } else {
         "minor"

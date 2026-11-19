@@ -393,7 +393,7 @@ fn fetch_vfx(name: &str, project: &Path) -> Result<PathBuf, String> {
         std::env::temp_dir().join(format!("og-vfx-{name}-{}-{nanos}", std::process::id()));
     std::fs::create_dir(&download).map_err(|e| format!("{}: {e}", download.display()))?;
     let out = crate::project::bun(&package, "src/node/vfx-pack.ts")
-        .args(["fetch", name, env!("CARGO_PKG_VERSION")])
+        .args(["fetch", name, crate::project::own_version()])
         .arg(&download)
         .stdin(std::process::Stdio::null())
         .output();
@@ -408,7 +408,7 @@ fn fetch_vfx(name: &str, project: &Path) -> Result<PathBuf, String> {
     let _ = std::fs::remove_dir_all(&download);
     Err(format!(
         "`{name}` is no bundled or installed vfx pack, and downloading it from engine {}'s release failed: {failed}; nothing written",
-        env!("CARGO_PKG_VERSION")
+        crate::project::own_version()
     ))
 }
 
@@ -424,12 +424,12 @@ fn add_extension(
     }
     if let Some(min) = extension.manifest.min_engine.as_deref()
         && !any_engine
-        && newer(min, env!("CARGO_PKG_VERSION"))
+        && newer(min, crate::project::own_release())
     {
         return Err(format!(
             "`{}` needs engine {min} or newer; this is {} (--any-engine installs it anyway)",
             extension.manifest.name,
-            env!("CARGO_PKG_VERSION")
+            crate::project::own_version()
         ));
     }
     let target = install(extension, project)?;

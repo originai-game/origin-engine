@@ -39,7 +39,7 @@ function die(why: string): never {
   process.exit(1);
 }
 const say = (s: string) => process.stdout.write(`release-publish: ${s}\n`);
-if (!version || !/^\d+\.\d+\.\d+(-dev\.\d+)?$/.test(version)) die("usage: bun scripts/release-publish.ts <dir> --version <v> [--dry-run]");
+if (!version || !/^(?:\d+\.\d+\.\d+(?:-dev\.\d+)?|dev\.\d{8}\.[1-9]\d*)$/.test(version)) die("usage: bun scripts/release-publish.ts <dir> --version <v> [--dry-run]");
 const base = `${(process.env.OG_ENGINE_UPLOAD_URL ?? "https://origingame.ai/downloads/engine").replace(/\/+$/, "")}/${version}`;
 const token = process.env.OG_PLATFORM_ENGINE_UPLOAD_TOKEN;
 if (!dry && !token) die("no OG_PLATFORM_ENGINE_UPLOAD_TOKEN (the project secret of origingame/origin-engine)");

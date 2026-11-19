@@ -32,8 +32,6 @@ mod vfx_catalogue;
 use std::path::{Path, PathBuf};
 use std::process::ExitCode;
 
-const VERSION: &str = env!("CARGO_PKG_VERSION");
-
 const USAGE: &str = "\
 og: the Origin Engine tool
 
@@ -387,7 +385,15 @@ fn main() -> ExitCode {
     }
     match args.as_slice() {
         ["--version"] | ["-V"] | ["version"] => {
-            println!("og {VERSION} (origin-engine {VERSION})");
+            let v = project::own_version();
+            if project::is_dev(v) {
+                println!(
+                    "og {v} (origin-engine {v}, based on {})",
+                    project::own_release()
+                );
+            } else {
+                println!("og {v} (origin-engine {v})");
+            }
             ExitCode::SUCCESS
         }
         ["--help"] | ["-h"] | ["help"] => {

@@ -40,9 +40,10 @@
 #                                               packaged inputs differ from the revision packed. A version already published with the
 #                                               same SHA256SUMS is reported and left; any other bytes are refused
 #   scripts/release.sh dev <run-id> | <dir> --revision <sha>
-#                                               a dev build (docs/release.md §1a): the tarballs of a `release.yml -f dev=true` run
-#                                               (fetched), or a directory holding tarballs packed elsewhere at <sha> (the full commit
-#                                               id the hosts built), archived, signed and published (channel dev) at that commit; no verify
+#                                               a dev build dev.<YYYYMMDD>.<n> (docs/release.md §1a): the tarballs of a
+#                                               `release.yml -f dev=true` run (fetched), or a directory holding tarballs packed elsewhere
+#                                               at <sha> (the full commit id the hosts built), archived, signed and published (channel
+#                                               dev) at that commit, its manifest naming the release it is based on; no verify
 #
 # pack holds the gate lock through pack.sh (a release build compiles beside
 # nothing) and refuses a dev native/ as pack.sh does. publish is an outward
@@ -61,7 +62,7 @@ checkout_version() { bun scripts/release-bump.ts --print; }
 out_dir() { echo "$OG_ROOT/dist/release/$1"; }
 # The version a verb names: its first argument when that is a version, else the checkout's.
 pick_version() {
-  case "${1:-}" in [0-9]*.[0-9]*.[0-9]*) printf '%s\n' "$1" ;; *) checkout_version ;; esac
+  case "${1:-}" in [0-9]*.[0-9]*.[0-9]* | dev.[0-9]*.[0-9]*) printf '%s\n' "$1" ;; *) checkout_version ;; esac
 }
 # The release public key docs/release.md states (packages/launcher/build.ts's pinnedKey);
 # OG_ENGINE_MINISIGN_PUBKEY replaces it for a test key (the platform checks with its own pin).
@@ -91,7 +92,7 @@ cmd_pack() {
   rm -rf "$out"; mkdir -p "$out"
   # A dev build has no versions entry (release-bump.ts --dev): its notes are unreleased's.
   local notes_of=("$v")
-  case "$v" in *-dev.*) notes_of=() ;; esac
+  case "$v" in dev.* | *-dev.*) notes_of=() ;; esac
   bun scripts/changelog.ts notes "${notes_of[@]}" > "$out/NOTES.md" || { og_err "release: changelog.json has no $v entry for the release notes; run scripts/release.sh bump $v"; return 1; }
   og_say "release: packing $v into ${out#"$OG_ROOT"/}/"
   (cd packages/engine && sh scripts/pack.sh --linux-x64) || { og_err "release: packages/engine/scripts/pack.sh failed"; return 1; }
@@ -123,7 +124,7 @@ cmd_fetch() {
 cmd_verify() {
   local v out
   v="$(pick_version "${1:-}")"; out="$(out_dir "$v")"
-  case "${1:-}" in [0-9]*) shift ;; esac
+  case "${1:-}" in [0-9]* | dev.*) shift ;; esac
   [ -f "$out/release.json" ] || { og_err "release: no ${out#"$OG_ROOT"/}/release.json; run scripts/release.sh pack first"; return 1; }
   local instabox=0 rest=() key
   for a in "$@"; do
@@ -144,7 +145,7 @@ cmd_publish() {
   for a in "$@"; do
     case "$a" in
       --dry-run) dry=(--dry-run) ;;
-      [0-9]*) arg="$a" ;;
+      [0-9]* | dev.*) arg="$a" ;;
       *) og_err "release: publish takes [<version>] and --dry-run"; return 2 ;;
     esac
   done
@@ -160,6 +161,11 @@ cmd_publish() {
     const [file, triples, dev] = process.argv.slice(1);
     const m = JSON.parse(fs.readFileSync(file, "utf8"));
     const problems = [];
+    // A dev build names the release it is based on and its exact commit (docs/release.md §1a).
+    if (m.version.startsWith("dev.")) {
+      const man = JSON.parse(fs.readFileSync(require("node:path").join(require("node:path").dirname(file), "manifest.json"), "utf8"));
+      if (man.channel !== "dev" || !/^\d+\.\d+\.\d+$/.test(man.base ?? "") || !/^[0-9a-f]{40}$/.test(man.revision ?? "")) problems.push(`manifest.json must name channel dev, the base release and the full revision (it names ${man.channel}, ${man.base}, ${man.revision})`);
+    }
     if (m.dirty) problems.push("packed from a dirty tree");
     const missing = triples.split(" ").filter((t) => !m.targets.includes(t));
     if (missing.length) problems.push(`no archive for ${missing.join(", ")} (scripts/release.sh archive once the win32-x64 tarball is in)`);
@@ -168,7 +174,7 @@ cmd_publish() {
       if (!m.verified?.host) problems.push("not verified on this machine (scripts/release.sh verify)");
       if (!m.verified?.container) problems.push("not verified in the linux-x64 container (scripts/release.sh verify)");
     }
-    if (m.source === "build" && !m.version.includes("-dev.")) {
+    if (m.source === "build" && !m.version.includes("-dev.") && !m.version.startsWith("dev.")) {
       // The archives are a function of these paths: a later commit outside them (docs, the former test sample) keeps the pack valid.
       const git = (...a) => require("node:child_process").execFileSync("git", a, { encoding: "utf8" }).trim();
       const head = git("rev-parse", "HEAD");
@@ -222,11 +228,11 @@ cmd_dev() {
     og_need gh || return 1
     tmp="$(mktemp -d)" || return 1
     gh run download "$src" -R "$REPO" -p 'release-*' -D "$tmp" || { og_err "release: gh run download $src failed (a finished release.yml run with -f dev=true?)"; return 1; }
-    tmp="$(dirname "$(find "$tmp" -name 'origingame-engine-[0-9]*.tgz' | head -1)")"
+    tmp="$(dirname "$(find "$tmp" -name 'origingame-engine-dev.*.tgz' | head -1)")"
   fi
   local v
-  v="$(basename "$(find "$tmp" -maxdepth 1 -name 'origingame-engine-[0-9]*.tgz' | head -1)" .tgz)"; v="${v#origingame-engine-}"
-  case "$v" in *-dev.*) ;; *) og_err "release: '$v' in $tmp is not a dev build; a release goes through pack, verify and publish"; return 1 ;; esac
+  v="$(basename "$(find "$tmp" -maxdepth 1 -name 'origingame-engine-dev.*.tgz' | head -1)" .tgz)"; v="${v#origingame-engine-}"
+  [[ "$v" =~ ^dev\.[0-9]{8}\.[1-9][0-9]*$ ]] || { og_err "release: no dev build dev.<YYYYMMDD>.<n> in $tmp ('$v'); a release goes through pack, verify and publish"; return 1; }
   local out; out="$(out_dir "$v")"
   rm -rf "$out"; mkdir -p "$out"
   cp "$tmp"/origingame-*-"$v".tgz "$out/" || return 1

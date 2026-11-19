@@ -26,9 +26,11 @@
 // `origin-engine-<v>-<target>/` is the layout the runner, `og` and
 // origin-agent's engine_scaffold read, usable unpacked with no npm:
 //
-//   origin-engine.json   the scaffold overlay's origin-engine.json + build {package, version, revision, target, triple,
+//   origin-engine.json   the scaffold overlay's origin-engine.json + build {package, version, base?, revision, target, triple,
 //                        og, addon, wasm, wasmPublish, wasmPublish2d, wasmLanes}; `target` is the node platform
-//                        (linux-x64, darwin-arm64, win32-x64), `triple` the archive's target
+//                        (linux-x64, darwin-arm64, win32-x64), `triple` the archive's target; `base` (a dev build
+//                        dev.<date>.<n> only, as in manifest.json) the release it is based on: the newest version
+//                        of the engine package's changelog.json
 //   overlay/             the engine knowledge's game-scaffold/origin-engine-ts
 //   files/<path>         the overlay's distribution.json binaries, from create-game's template/, sha256-verified
 //   bin/og, bin/og.exe   the og tool
@@ -71,7 +73,9 @@ export const TARGETS = {
   "x86_64-pc-windows-msvc": { platform: "win32-x64", tsrs: null, exe: "og.exe" },
 } as const;
 export type Target = keyof typeof TARGETS;
-export const VERSION_RE = /^\d+\.\d+\.\d+(-dev\.\d+)?$/;
+/** A release `x.y.z`, a dev build `dev.<YYYYMMDD>.<n>` (docs/release.md §1a), or a dev build of the scheme before 0.9.0, `x.y.z-dev.n`. */
+export const VERSION_RE = /^(?:\d+\.\d+\.\d+(?:-dev\.\d+)?|dev\.\d{8}\.[1-9]\d*)$/;
+export const isDev = (v: string) => v.startsWith("dev.") || v.includes("-dev.");
 export const DOWNLOADS = "https://origingame.ai/downloads/engine";
 const OVERLAY = "game-scaffold/origin-engine-ts";
 const ROOT = resolve(import.meta.dir, "..");
@@ -131,8 +135,9 @@ function git(...a: string[]): string {
   return execFileSync("git", a, { cwd: ROOT, encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] }).trim();
 }
 
-/** The commit a version was built from: a release's tag, a dev build's release.yml run (gh). */
+/** The commit a version was built from: a release's tag, a dev build `x.y.z-dev.<run number>`'s release.yml run (gh). */
 function revisionOf(version: string): string {
+  if (version.startsWith("dev.")) die(`a dev build names its exact commit: pass --revision <sha> for ${version}`);
   try {
     return git("rev-parse", `v${version}^{commit}`);
   } catch {}
@@ -148,6 +153,8 @@ function revisionOf(version: string): string {
 interface Layout {
   package: string;
   version: string;
+  /** A dev build `dev.<date>.<n>`: the release it is based on. */
+  base?: string;
   revision: string;
   target: string;
   triple: Target;
@@ -317,7 +324,7 @@ function vfxSource(revision: string, here: boolean, work: string): string {
 }
 
 /** Assembles one target's layout under `work` and packs it into `<dir>/<archive>`. */
-async function assemble(o: { dir: string; work: string; version: string; revision: string; t: Target; common: string; tsrsTgz: string | null; downloadable: string[] }): Promise<Layout> {
+async function assemble(o: { dir: string; work: string; version: string; base?: string; revision: string; t: Target; common: string; tsrsTgz: string | null; downloadable: string[] }): Promise<Layout> {
   const { platform, tsrs, exe } = TARGETS[o.t];
   const name = `origin-engine-${o.version}-${o.t}`;
   const root = join(o.work, name);
@@ -343,6 +350,7 @@ async function assemble(o: { dir: string; work: string; version: string; revisio
   const build: Layout = {
     package: "@origingame/engine",
     version: o.version,
+    ...(o.base ? { base: o.base } : {}),
     revision: o.revision,
     target: platform,
     triple: o.t,
@@ -404,13 +412,17 @@ function sign(dir: string, version: string, revision: string): boolean {
  * What the platform's upload takes beside the archives (docs/release.md §3):
  * manifest.json; for a release (never a dev build) the launcher's install.sh
  * and install.ps1, which move on the site only with a newer release; and
- * SHA256SUMS over all of them, signed. Returns the archives' targets.
+ * SHA256SUMS over all of them, signed. A dev build `dev.<date>.<n>` records
+ * the release it is based on (`base`) beside its exact `revision`. Returns
+ * the archives' targets.
  */
-export function finish(dir: string, version: string, revision: string, releasedAt: string, vfx: Record<string, VfxEntry>): { archives: Target[]; signed: boolean } {
+export function finish(dir: string, version: string, revision: string, releasedAt: string, vfx: Record<string, VfxEntry>, base?: string): { archives: Target[]; signed: boolean } {
   const archives = (Object.keys(TARGETS) as Target[]).filter((t) => existsSync(join(dir, archiveName(version, t))));
-  const channel = version.includes("-dev.") ? "dev" : "release";
+  const channel = isDev(version) ? "dev" : "release";
+  if (version.startsWith("dev.") && !(base && /^\d+\.\d+\.\d+$/.test(base) && /^[0-9a-f]{40}$/.test(revision))) die(`${version} must record its base release and its full commit id (base ${base}, revision ${revision})`);
   const manifest = {
     version,
+    ...(version.startsWith("dev.") ? { base } : {}),
     releasedAt,
     revision,
     channel,
@@ -449,7 +461,7 @@ const UPLOAD_LIMIT = 210 * 1024 * 1024;
 function signAgain(dir: string, version: string) {
   const recordFile = join(dir, "release.json");
   if (!existsSync(recordFile)) die(`no ${recordFile}: archive the version first (scripts/release.sh pack)`);
-  const record = JSON.parse(readFileSync(recordFile, "utf8")) as { version: string; revision: string; releasedAt?: string; signed?: boolean };
+  const record = JSON.parse(readFileSync(recordFile, "utf8")) as { version: string; base?: string; revision: string; releasedAt?: string; signed?: boolean };
   if (record.version !== version) die(`${recordFile} is version ${record.version}`);
   const releasedAt = record.releasedAt ?? (JSON.parse(readFileSync(join(dir, "manifest.json"), "utf8")) as { releasedAt: string }).releasedAt;
   // The archives must be the ones the install test passed: the sums of the last run name them.
@@ -464,9 +476,9 @@ function signAgain(dir: string, version: string) {
     const f = archivePath(name);
     if (!existsSync(join(dir, f)) || before.get(f) !== sha256(join(dir, f)) || vfx[name]!.sha256 !== before.get(f)) die(`${f} is not the archive SHA256SUMS and manifest.json named; archive again (and verify) instead`);
   }
-  const { archives, signed } = finish(dir, version, record.revision, releasedAt, vfx);
+  const { archives, signed } = finish(dir, version, record.revision, releasedAt, vfx, record.base);
   writeFileSync(recordFile, `${JSON.stringify({ ...record, releasedAt, targets: archives, signed }, null, 2)}\n`);
-  say(`${version}: SHA256SUMS over ${archives.length} archive(s), manifest.json${version.includes("-dev.") ? "" : ", install.sh, install.ps1"}${signed ? "; signed" : "; unsigned"}`);
+  say(`${version}: SHA256SUMS over ${archives.length} archive(s), manifest.json${isDev(version) ? "" : ", install.sh, install.ps1"}${signed ? "; signed" : "; unsigned"}`);
 }
 
 async function main() {
@@ -478,7 +490,7 @@ async function main() {
   const dirArg = argv.find((a, i) => !a.startsWith("--") && !["--version", "--revision", "--targets"].includes(argv[i - 1] ?? ""));
   const version = opt("--version");
   if (!dirArg || !version) die("usage: bun scripts/release-dist.ts <dir> --version <v> [--registry] [--revision <sha>] [--targets <t,...>] | --sign");
-  if (!VERSION_RE.test(version)) die(`${version} is not a release (x.y.z) or a dev build (x.y.z-dev.n)`);
+  if (!VERSION_RE.test(version)) die(`${version} is not a release (x.y.z) or a dev build (dev.YYYYMMDD.n)`);
   const dir = resolve(dirArg);
   if (argv.includes("--sign")) return signAgain(dir, version);
   mkdirSync(dir, { recursive: true });
@@ -518,6 +530,8 @@ async function main() {
     unpackTgz(tgz("engine"), join(common, "engine"));
     const engineJson = JSON.parse(readFileSync(join(common, "engine/package.json"), "utf8")) as { version: string; optionalDependencies?: Record<string, string> };
     if (engineJson.version !== version) die(`${tgz("engine")} is version ${engineJson.version}`);
+    // A dev build carries the changelog up to the release it is based on, its own changes in unreleased.
+    const base = version.startsWith("dev.") ? (JSON.parse(readFileSync(join(common, "engine/changelog.json"), "utf8")) as { versions: { version: string }[] }).versions[0]?.version : undefined;
     unpackTgz(tgz("create-game"), join(common, "create"));
     if (existsSync(tgz("design"))) unpackTgz(tgz("design"), join(common, "design"));
     await writeOverlay(join(common, "engine"), join(common, "overlay"));
@@ -543,12 +557,12 @@ async function main() {
         tsrsTgz = join(dir, ".tsrs", `tsrs-${tsrs}-${tsrsVersion}.tgz`);
         await fetchTarball(`@tsrs/${tsrs}`, tsrsVersion, tsrsTgz);
       } else if (tsrs) say(`@origingame/engine@${version} names no @tsrs/${tsrs}: the ${t} archive has no tsrs`);
-      builds[t] = await assemble({ dir, work, version, revision, t, common, tsrsTgz, downloadable });
+      builds[t] = await assemble({ dir, work, version, base, revision, t, common, tsrsTgz, downloadable });
     }
 
-    const { archives, signed } = finish(dir, version, revision, releasedAt, vfx);
+    const { archives, signed } = finish(dir, version, revision, releasedAt, vfx, base);
     // The local record publish reads; the install test adds its passes (new archives clear them).
-    writeFileSync(recordFile, `${JSON.stringify({ version, revision, releasedAt, dirty, source: registry ? "registry" : "build", builtAt: new Date().toISOString(), targets: archives, signed, verified: {} }, null, 2)}\n`);
+    writeFileSync(recordFile, `${JSON.stringify({ version, ...(base ? { base } : {}), revision, releasedAt, dirty, source: registry ? "registry" : "build", builtAt: new Date().toISOString(), targets: archives, signed, verified: {} }, null, 2)}\n`);
     if (dirty) say("note: the working tree is dirty; publish refuses these until a clean tree is packed");
     say(`${version}: ${archives.length} archive(s) (${archives.join(", ")}), manifest.json, SHA256SUMS${signed ? ", SHA256SUMS.minisig" : ""}`);
   } finally {

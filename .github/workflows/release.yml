@@ -11,14 +11,16 @@
 # then `publish` run there by hand (docs/release.md §3). Run it from the
 # Actions tab or `gh workflow run release.yml --ref main`; its logic stays in
 # the scripts so a local pack is the same. `-f dev=true` is a dev build
-# (docs/release.md §1a): the checkouts carry <next patch>-dev.<run number>.
+# (docs/release.md §1a): the checkouts carry dev.<YYYYMMDD>.<n>, the next
+# number of that UTC day (scripts/release-bump.ts --next-dev, once, in the
+# `name` job), over the release main is at.
 name: release
 
 on:
   workflow_dispatch:
     inputs:
       dev:
-        description: "A dev build: <next patch>-dev.<run number>, for a pin to test (docs/release.md §1a)"
+        description: "A dev build: dev.<YYYYMMDD>.<n>, for a pin to test (docs/release.md §1a)"
         type: boolean
         default: false
 
@@ -34,8 +36,29 @@ env:
   OG_GATE_MACHINE_LOCK: "0"
 
 jobs:
+  # The dev build's name, chosen once for every job (empty for a release).
+  name:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.4.4
+      - name: Dev name
+        id: name
+        env:
+          DEV: ${{ inputs.dev }}
+        run: |
+          name=""
+          if [ "$DEV" = true ]; then name="$(bun scripts/release-bump.ts --next-dev)" || exit 1; fi
+          echo "dev=$name" >> "$GITHUB_OUTPUT"
+    outputs:
+      dev: ${{ steps.name.outputs.dev }}
+
   # The native addon and og of the platforms the Linux job cannot cross-build.
   native:
+    needs: [name]
     strategy:
       fail-fast: false
       matrix:
@@ -64,7 +87,7 @@ jobs:
           bun-version: 1.4.4
       - name: Dev version
         if: inputs.dev
-        run: bun scripts/release-bump.ts --dev "${{ github.run_number }}" && cargo update --workspace -q
+        run: bun scripts/release-bump.ts --dev "${{ needs.name.outputs.dev }}" && cargo update --workspace -q
       - name: Build the ${{ matrix.platform }} addon and og (release)
         run: OG_RELEASE=1 sh packages/engine/scripts/build.sh --native
       - name: Pack @origingame/engine-${{ matrix.platform }}
@@ -80,6 +103,7 @@ jobs:
   # engine package and create-game, in the gate's container (the same Debian
   # as ci.yml, provisioned the same way) plus zig for the cross-build.
   web:
+    needs: [name]
     runs-on: ubuntu-latest
     timeout-minutes: 120
     container:
@@ -105,7 +129,7 @@ jobs:
           version: 0.17.0
       - name: Dev version
         if: inputs.dev
-        run: bun scripts/release-bump.ts --dev "${{ github.run_number }}" && cargo update --workspace -q
+        run: bun scripts/release-bump.ts --dev "${{ needs.name.outputs.dev }}" && cargo update --workspace -q
       - uses: taiki-e/install-action@v2
         with:
           tool: cargo-zigbuild@0.23.4
@@ -131,7 +155,7 @@ jobs:
   # archive (no renderer here: frames unchecked; the Mac runs `verify`, host
   # and container, on what it archives and signs from the fetched tarballs).
   assemble:
-    needs: [native, web]
+    needs: [name, native, web]
     runs-on: ubuntu-latest
     timeout-minutes: 30
     defaults:
@@ -148,7 +172,7 @@ jobs:
           merge-multiple: true
       - name: Dev version
         if: inputs.dev
-        run: bun scripts/release-bump.ts --dev "${{ github.run_number }}"
+        run: bun scripts/release-bump.ts --dev "${{ needs.name.outputs.dev }}"
       # The launcher installs only a signed SHA256SUMS, so the smoke test's
       # archive is signed with a key made for this job and gone after it. Only
       # the *.tgz tarballs are uploaded; `release.sh dev` or `fetch` archives
