@@ -20,9 +20,9 @@
 // reports any frames whose tick the gate held, on --backend gpu (default)
 // or cpu.
 //
-//   bun tests/web/motion-ticks.ts [--ticks N] [--delay ms] [--every N] [--realtime s [--backend gpu|cpu]] [--chrome <path>]
+//   bun tests/web/motion-ticks.ts [--ticks N] [--delay ms] [--every N] [--realtime s [--backend gpu|cpu]] [--chrome <path> | --safari [<safaridriver>]]
 //
-// Needs Chrome (cdp.ts), a GPU and the motion model
+// Needs Chrome (cdp.ts) or, with --safari, this Mac's Safari (webdriver.ts), a GPU and the motion model
 // (bun ../../scripts/assets.ts ensure .). Writes dist/test-motion-ticks/motion-ticks.json;
 // exits 1 on a mismatch.
 
@@ -32,6 +32,7 @@ import { dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import { settingsOf, webBuild } from "../../src/node/web-build.ts";
 import { Browser, chromePath } from "./cdp.ts";
+import { Safari, safariDriverPath } from "./webdriver.ts";
 import { serve } from "./serve.ts";
 import { cookProject } from "../support/og-bin.ts";
 
@@ -70,7 +71,8 @@ const html = `<!doctype html><html><head><meta charset="utf-8"><title>motion tic
 <style>html,body{margin:0;background:#14161b}canvas{display:block;width:${WIDTH}px;height:${HEIGHT}px}</style></head>
 <body><canvas></canvas><script type="module" src="/game/reference-page.js"></script></body></html>`;
 const server = serve({ dist, isolate: true, extra: { "/motion.html": html } });
-const browser = await Browser.from(args, { chrome: chromePath(args), width: WIDTH, height: HEIGHT, reverse: [server.port] });
+const safari = args.includes("--safari") ? safariDriverPath(args) : undefined;
+const browser = safari ? await Safari.launch({ driver: safari, width: WIDTH, height: HEIGHT }) : await Browser.from(args, { chrome: chromePath(args), width: WIDTH, height: HEIGHT, reverse: [server.port] });
 
 /**
  * The engine Worker with og.motion's readbacks landing `ms` later: a module

@@ -26,7 +26,13 @@
 // imported, never evaluated from text, so no 'unsafe-eval'.
 // Both archetypes are 2D games, so their lanes pages run the 2D lanes module.
 //
-//   bun tests/web/export.ts [--out <dir>] [--chrome <path>]
+// With --safari (webdriver.ts) the same checks run in this Mac's Safari:
+// its document-start scripts come from the test server (serve.ts
+// `preloads`), offline is the server stopped (WebDriver cannot take the
+// network away), and the phone page is Safari's window at 390×844 at the
+// display's own DPR, with a mouse (no touch emulation on a Mac).
+//
+//   bun tests/web/export.ts [--out <dir>] [--chrome <path> | --safari [<safaridriver>]]
 //
 // Writes <out>/export-result.json and PNGs (default dist/test-export/out).
 // Exits 1 when a check fails.
@@ -35,7 +41,8 @@ import { cpSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs"
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { settingsOf, sizesOf, webBuild, type BuildManifest } from "../../src/node/web-build.ts";
-import { Browser, chromePath, type Page } from "./cdp.ts";
+import { Browser, chromePath, type Page as CdpPage } from "./cdp.ts";
+import { Safari, safariDriverPath, type SafariPage } from "./webdriver.ts";
 import { serve } from "./serve.ts";
 import { LANES_POOL_DEADLINE_MS } from "../../src/web/host.ts";
 import { cookProject } from "../support/og-bin.ts";
@@ -53,7 +60,9 @@ const repo = join(pkg, "..", "..");
 const work = join(pkg, "dist", "test-export");
 const out = resolve(opt("--out") ?? join(work, "out"));
 mkdirSync(out, { recursive: true });
-const chrome = chromePath(args);
+const safari = args.includes("--safari") ? safariDriverPath(args) : undefined;
+const chrome = safari ? "" : chromePath(args);
+type Page = CdpPage | SafariPage;
 
 let failures = 0;
 const checks: Array<{ check: string; ok: boolean; detail?: unknown }> = [];
@@ -155,7 +164,8 @@ const STRICT_CSP = "default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; co
 // The page's own CSP violations, from the document's start (a Worker's are seen by what it starts).
 const VIOLATIONS = "window.__ogViolations = []; addEventListener('securitypolicyviolation', (e) => __ogViolations.push(`${e.effectiveDirective} ${e.blockedURI}`));";
 const results: Record<string, unknown> = {};
-const browser = await Browser.launch({ chrome });
+const browser = safari ? await Safari.launch({ driver: safari }) : await Browser.launch({ chrome });
+const browserName = safari ? `Safari ${(browser as Safari).capabilities["browserVersion"]}` : chrome;
 
 type Lanes = { on: boolean; threads: number; why: string };
 async function load(page: Page): Promise<{ firstFrame: number; ready: number; tier: string; lanes: Lanes }> {
@@ -255,8 +265,12 @@ try {
       await page.until<boolean>("caches.keys().then((k) => k.some((n) => n.startsWith('og-')))", 30_000);
       const cached = await page.eval<number>("caches.keys().then((k) => caches.open(k.find((n) => n.startsWith('og-')))).then((c) => c.keys()).then((k) => k.length)");
       check(!!sw && cached > 10, "the service worker precached the build", { sw, cached });
-      await page.send("Network.enable");
-      await page.send("Network.emulateNetworkConditions", { offline: true, latency: 0, downloadThroughput: -1, uploadThroughput: -1 });
+      // Offline: Chrome takes the network away; Safari's WebDriver cannot, so its server stops.
+      if (safari) server.stop(true);
+      else {
+        await page.send("Network.enable");
+        await page.send("Network.emulateNetworkConditions", { offline: true, latency: 0, downloadThroughput: -1, uploadThroughput: -1 });
+      }
       // The reloaded document is the one without the mark.
       await page.eval("window.__ogBeforeReload = true");
       await page.send("Page.reload", { ignoreCache: false });
@@ -265,7 +279,7 @@ try {
       check(offline.firstFrame > 0, "offline: the game starts from the service worker's cache", offline);
       check(offline.lanes.on, "offline: the lanes variant boots from the service worker's precache", offline.lanes);
       boot.offline = { ...offline, shot: save("runner-offline.png", await page.screenshot()) };
-      await page.send("Network.emulateNetworkConditions", { offline: false, latency: 0, downloadThroughput: -1, uploadThroughput: -1 });
+      if (!safari) await page.send("Network.emulateNetworkConditions", { offline: false, latency: 0, downloadThroughput: -1, uploadThroughput: -1 });
     } catch (e) {
       check(false, "runner boot, PWA and offline", { error: String(e), log: log.slice(-20) });
     } finally {
@@ -367,12 +381,14 @@ try {
       await page.send("Page.navigate", { url: `http://127.0.0.1:${server.port}/game/index.html` });
       const phone = await load(page);
       check(!phone.lanes.on && /not cross-origin isolated/.test(phone.lanes.why), "phone: without isolation, the single-threaded engine says why", phone.lanes);
-      const size = await page.eval<{ cssW: number; cssH: number; w: number; h: number; iso: boolean; button: string }>(
-        "({ cssW: document.getElementById('og-canvas').getBoundingClientRect().width, cssH: document.getElementById('og-canvas').getBoundingClientRect().height, w: document.getElementById('og-canvas').width, h: document.getElementById('og-canvas').height, iso: crossOriginIsolated, button: document.querySelector('#og-gate button').textContent })",
+      const size = await page.eval<{ cssW: number; cssH: number; w: number; h: number; iso: boolean; button: string; dpr: number; coarse: boolean }>(
+        "({ cssW: document.getElementById('og-canvas').getBoundingClientRect().width, cssH: document.getElementById('og-canvas').getBoundingClientRect().height, w: document.getElementById('og-canvas').width, h: document.getElementById('og-canvas').height, iso: crossOriginIsolated, button: document.querySelector('#og-gate button').textContent, dpr: devicePixelRatio, coarse: matchMedia('(pointer: coarse)').matches })",
       );
       check(size.cssW === 390 && size.cssH === 844, "phone: the canvas fills 390×844", size);
-      check(size.w === 780 && size.h === 1688, "phone: drawn at the DPR cap of 2 (780×1688), not 3", size);
-      check(!size.iso && size.button === "Tap to play", "phone: without isolation, a touch gate", size);
+      // Chrome emulates DPR 3; Safari keeps the display's.
+      const scale = Math.min(size.dpr, 2);
+      check(size.w === 390 * scale && size.h === 844 * scale, `phone: drawn at DPR ${size.dpr} capped at 2 (${390 * scale}×${844 * scale})`, size);
+      check(!size.iso && size.button === (size.coarse ? "Tap to play" : "Play"), `phone: without isolation, a ${size.coarse ? "touch" : "pointer"} gate`, size);
       // A phone is no different (docs/web-export.md §The shell): where Chrome prompts, the hint
       // offers Install over the gate; where it does not, no hint (and this is not iOS Safari).
       const install = await page.until<Hint>(`${HINT}.then((h) => h.hidden !== h.prompted && h)`, 30_000).catch(() => page.eval<Hint>(HINT));
@@ -395,6 +411,6 @@ try {
 }
 
 const sizes = Object.fromEntries(Object.entries(builds).map(([g, b]) => [g, { total: b.total, files: b.files.map((f) => ({ path: f.path, bytes: f.bytes, brotli: f.compressed })) }]));
-writeFileSync(join(out, "export-result.json"), JSON.stringify({ chrome, failures, checks, results, sizes }, null, 1) + "\n");
+writeFileSync(join(out, "export-result.json"), JSON.stringify({ browser: browserName, failures, checks, results, sizes }, null, 1) + "\n");
 console.log(`${failures === 0 ? "PASS" : "FAIL"} web export: ${checks.length} checks, ${failures} failed; ${join(out, "export-result.json")}`);
 process.exit(failures === 0 ? 0 : 1);

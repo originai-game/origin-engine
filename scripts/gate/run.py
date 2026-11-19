@@ -23,6 +23,8 @@ NEEDS = {
     'fixtures': ('native-ready',), 'doc-tests': ('rust-build',),
     'browser': ('web-ready', 'api-surface', 'drift', 'engine-typecheck'),
     'web-reference': ('web-ready',),
+    # Safari (macOS): the browser tests' lanes and publish builds over WebDriver.
+    'safari': ('wasm-bindgen', 'rust-build'),
     'check-conformance': (),
 }
 
@@ -147,9 +149,9 @@ def main():
                FORCE_ALL=str(int(force)), OG_GATE_ALL='1' if lane == 'full' or force else '',
                OG_WASM_PROFILE='wasm-test', PYTHONUNBUFFERED='1')
     # The wasm beside the development module (commands.sh step_wasm_build):
-    # the browser tests load every publish and lanes variant, web-reference's
+    # the browser tests (Chrome's or Safari's) load every publish and lanes variant, web-reference's
     # panic check the 3D publish pair, and bun-test (a landing) none of them.
-    env['OG_WASM_VARIANTS'] = 'all' if 'browser' in wanted else 'reference' if 'web-reference' in wanted else 'dev'
+    env['OG_WASM_VARIANTS'] = 'all' if 'browser' in wanted or 'safari' in wanted else 'reference' if 'web-reference' in wanted else 'dev'
     env['OG_GATE_STEPS'] = ' '.join(sorted(wanted - set(skipped)))
     env.pop('OG_WASM_STALE', None)
     env['OG_GATE_RESUME'] = resume or ''
