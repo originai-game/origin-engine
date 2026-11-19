@@ -74,22 +74,18 @@ impl Hooks for WebHooks {
         match known {
             Some(Ok(bytes)) => Fetch::Ready(bytes),
             Some(Err(e)) => Fetch::Failed(e),
-            None => FETCHER.with(|f| match &*f.borrow() {
-                Some(fetch) => {
-                    // A pack let go of in flight is wanted again: kept when it lands.
-                    ORPHANED.with(|o| o.borrow_mut().remove(path));
-                    if REQUESTED.with(|r| r.borrow_mut().insert(path.to_string()))
-                        && let Err(e) = fetch.call1(&JsValue::NULL, &JsValue::from_str(path))
-                    {
-                        REQUESTED.with(|r| r.borrow_mut().remove(path));
-                        return Fetch::Failed(format!("{path}: the fetcher threw {e:?}"));
-                    }
-                    Fetch::Pending
-                }
-                None => Fetch::Failed(format!(
-                    "{path} was not fetched: the Worker fetches the game's cooked bundle before the engine starts"
-                )),
-            }),
+            None => request(path, None),
+        }
+    }
+
+    fn read_content(&self, path: &str, integrity: &str) -> Fetch<Vec<u8>> {
+        // Read once by the engine, which keeps what it needs: taken, never
+        // kept in the wasm heap beside its copy, and fetched again (a
+        // failure too) the next time it is asked for.
+        match FILES.with(|f| f.borrow_mut().remove(path)) {
+            Some(Ok(bytes)) => Fetch::Ready(bytes),
+            Some(Err(e)) => Fetch::Failed(e),
+            None => request(path, Some(integrity).filter(|i| !i.is_empty())),
         }
     }
 
@@ -353,5 +349,30 @@ pub(crate) fn epoch_ms() -> f64 {
                     .unwrap_or(0.0)
         }
         None => js_sys::Date::now(),
+    })
+}
+
+/// Asks the Worker's fetcher for `path` once (against `integrity`, which
+/// its `fetch()` checks), `Pending` until it lands.
+fn request(path: &str, integrity: Option<&str>) -> Fetch<Vec<u8>> {
+    FETCHER.with(|f| match &*f.borrow() {
+        Some(fetch) => {
+            // A pack let go of in flight is wanted again: kept when it lands.
+            ORPHANED.with(|o| o.borrow_mut().remove(path));
+            if REQUESTED.with(|r| r.borrow_mut().insert(path.to_string()))
+                && let Err(e) = fetch.call2(
+                    &JsValue::NULL,
+                    &JsValue::from_str(path),
+                    &integrity.map_or(JsValue::UNDEFINED, JsValue::from_str),
+                )
+            {
+                REQUESTED.with(|r| r.borrow_mut().remove(path));
+                return Fetch::Failed(format!("{path}: the fetcher threw {e:?}"));
+            }
+            Fetch::Pending
+        }
+        None => Fetch::Failed(format!(
+            "{path} was not fetched: the Worker fetches the game's cooked bundle before the engine starts"
+        )),
     })
 }

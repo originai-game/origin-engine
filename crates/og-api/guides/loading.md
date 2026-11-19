@@ -613,3 +613,51 @@ publish {
 - Any web page that frames or hosts the game hears the same loading:
   window events on the game's page and messages to a framing page
   (docs/web-export.md §Loading events).
+
+## 14. Content catalogs
+
+A catalog is content this game's host publishes beside the game: a
+world's index pages, shared levels, anything static and versioned that
+outgrows a store value (64 KiB) and that every player reads alike.
+og.load.data reads one file of one version of it.
+
+- A version never changes once published. Its manifest lists each file
+  with its size and integrity; a file is read against that integrity,
+  and bytes that differ fail the load. Game code names a catalog, a
+  version and a path, never a URL: the content base is the host's.
+- Where the content base comes from:
+
+| Host | Content base |
+|---|---|
+| `og run`, `og replay`, a playtest | `--content <dir>` (PlaytestDesc.content, relative to the project), a directory |
+| a page `og build` wrote | `og build --content <url>`, else project.ogt `publish { content "<url>" }` |
+
+- Its layout, the same on disk and over https:
+
+```text
+<base>/<catalog>/<version>/manifest.json
+<base>/<catalog>/blobs/<sha384 as hex>
+```
+
+```json
+{ "format": 1, "catalog": "world", "version": "v12",
+  "files": { "index/small/3/-2.json": { "size": 184320, "integrity": "sha384-…" } } }
+```
+
+  A file's bytes are under its integrity's digest, so a file a new
+  version did not change keeps its address, and a browser keeps it.
+- Completion is host input. Natively a file is in place at the first
+  boundary after the call; on the web, at the first boundary after it
+  arrives. og.load.completions journals the tick and the integrity read
+  (`kind` `data`), so `og replay` reads the same bytes in at the same
+  tick, and a system may act on the load's og.load.status.
+- A failed load is not retried: call og.load.data again. Its error
+  starts with the reason: `not_found` (no such catalog, version or
+  path), `unavailable` (no content base), `failed` (the read failed, or
+  failed in the recorded run), `timeout` (nothing for 30 seconds), `integrity`,
+  `too_large` (over LoadBudget.bytes, 32 MiB by default) or `invalid`
+  (not JSON, or not a manifest).
+- og.load.release frees a file once it is read. A version's manifest
+  is read once a session.
+- Which version is current is the host's answer, not a file: a catalog
+  version never moves, so read it from the host and poll it.

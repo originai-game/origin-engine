@@ -79,6 +79,8 @@ pub(crate) enum Kind {
     Uncooked,
     /// og.load.bundle of a bundle other than the game's own.
     Bundle,
+    /// og.load.data: a content catalog's file.
+    Data,
 }
 
 impl Kind {
@@ -86,28 +88,31 @@ impl Kind {
         match self {
             Kind::Uncooked => "uncooked",
             Kind::Bundle => "bundle",
+            Kind::Data => "data",
         }
     }
 }
 
 /// One load put in place (`LoadCompletion`).
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub(crate) struct Completion {
     pub kind: Kind,
     pub request: u32,
     pub tick: u64,
     pub ok: bool,
+    /// For a data load, the integrity of the bytes it read; empty otherwise.
+    pub integrity: String,
 }
 
-/// When a replay lets a runtime bundle open complete.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+/// When a replay lets a runtime bundle open or a data load complete.
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub(crate) enum Due {
-    /// No replay, or a journal with no bundle opens (recorded before they
-    /// were journaled): as this host reads it.
+    /// No replay, or a journal with no loads of this kind (recorded before
+    /// they were journaled): as this host reads it.
     Free,
     /// At the first moment the world is at this tick, ready or failed as
-    /// recorded.
-    At(u64, bool),
+    /// recorded, with the integrity it read (empty when none was kept).
+    At(u64, bool, String),
     /// Never: the recorded run never finished it.
     Never,
 }
@@ -261,6 +266,7 @@ pub(crate) fn poll(eng: &Engine, tick: u64) {
             request,
             tick,
             ok,
+            integrity: String::new(),
         });
         clock.worked = true;
     }
@@ -336,6 +342,10 @@ fn apply(eng: &Engine, job: Job, recorded_failure: bool) -> bool {
 /// world state and stay. Releasing again is a no-op.
 pub(crate) fn release(eng: &Engine, index: Option<usize>) -> Result<(), String> {
     let i = index.ok_or("not an asset handle")?;
+    if crate::world::data::is_data(eng, i) {
+        crate::world::data::release(eng, i);
+        return Ok(());
+    }
     let mut a = eng.assets.borrow_mut();
     let path = a.entries.get(i).ok_or("not an asset handle")?.path.clone();
     let released = format!("{path} was released (og.load.release)");
@@ -424,23 +434,28 @@ pub(crate) fn completions(eng: &Engine) -> Value {
             .journal
             .iter()
             .map(|c| {
-                json!({ "kind": c.kind.name(), "request": c.request, "tick": c.tick as f64, "ok": c.ok })
+                let mut v = json!({ "kind": c.kind.name(), "request": c.request, "tick": c.tick as f64, "ok": c.ok });
+                if !c.integrity.is_empty() {
+                    v["integrity"] = json!(c.integrity);
+                }
+                v
             })
             .collect(),
     )
 }
 
 impl Uncooked {
-    /// When a replay lets runtime bundle open `request` complete.
-    pub(crate) fn bundle_due(&self, request: u32) -> Due {
+    /// When a replay lets load `request` of `kind` (a bundle open, a data
+    /// load) complete.
+    pub(crate) fn due(&self, kind: Kind, request: u32) -> Due {
         let Some(s) = &self.schedule else {
             return Due::Free;
         };
-        if !s.keys().any(|(kind, _)| *kind == Kind::Bundle) {
+        if !s.keys().any(|(k, _)| *k == kind) {
             return Due::Free;
         }
-        match s.get(&(Kind::Bundle, request)) {
-            Some(c) => Due::At(c.tick, c.ok),
+        match s.get(&(kind, request)) {
+            Some(c) => Due::At(c.tick, c.ok, c.integrity.clone()),
             None => Due::Never,
         }
     }
@@ -455,7 +470,7 @@ pub(crate) fn replay(eng: &Engine, tick: u64, list: &Value) -> Result<(), String
     }
     let items = list
         .as_array()
-        .ok_or("completions is a list of { kind, request, tick, ok }")?;
+        .ok_or("completions is a list of { kind, request, tick, ok, integrity }")?;
     let mut schedule = BTreeMap::new();
     for (i, c) in items.iter().enumerate() {
         let num = |k: &str| {
@@ -472,11 +487,19 @@ pub(crate) fn replay(eng: &Engine, tick: u64, list: &Value) -> Result<(), String
         let kind = match c.get("kind").and_then(Value::as_str) {
             None | Some("uncooked") => Kind::Uncooked,
             Some("bundle") => Kind::Bundle,
+            Some("data") => Kind::Data,
             Some(k) => {
                 return Err(format!(
-                    "completions[{i}].kind is `uncooked` or `bundle`, not `{k}`"
+                    "completions[{i}].kind is `uncooked`, `bundle` or `data`, not `{k}`"
                 ));
             }
+        };
+        let integrity = match c.get("integrity") {
+            None | Some(Value::Null) => String::new(),
+            Some(v) => v
+                .as_str()
+                .ok_or_else(|| format!("completions[{i}].integrity is a string"))?
+                .to_string(),
         };
         schedule.insert(
             (kind, request),
@@ -485,6 +508,7 @@ pub(crate) fn replay(eng: &Engine, tick: u64, list: &Value) -> Result<(), String
                 request,
                 tick,
                 ok,
+                integrity,
             },
         );
     }

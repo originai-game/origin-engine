@@ -426,6 +426,36 @@ pub fn og_load_image_info(world: u32, asset: f64) -> Result<serde_json::Value, S
     engine(world).and_then(|eng| crate::world::uncooked::image_info(&eng, index_of(asset)))
 }
 
+pub fn og_load_data(world: u32, desc: Option<String>) -> Result<serde_json::Value, String> {
+    (|| {
+        let eng = engine(world)?;
+        crate::world::data::load(&eng, &parse(desc.as_deref())?).map(asset_value)
+    })()
+}
+
+pub fn og_load_data_json(world: u32, asset: f64) -> Result<serde_json::Value, String> {
+    engine(world).and_then(|eng| {
+        crate::world::data::with(&eng, asset, |path, d| match d {
+            crate::world::data::Loaded::Json(v) => Ok(v.clone()),
+            crate::world::data::Loaded::Bytes(_) => Err(format!(
+                "{path} was read as bytes: og.load.dataBytes gives them"
+            )),
+        })
+    })
+}
+
+/// The bytes as base64 (bytes cross the wire so, as a room message's do).
+pub fn og_load_data_bytes(world: u32, asset: f64) -> Result<serde_json::Value, String> {
+    engine(world).and_then(|eng| {
+        crate::world::data::with(&eng, asset, |path, d| match d {
+            crate::world::data::Loaded::Bytes(b) => Ok(json!(og_core::base64::encode(b))),
+            crate::world::data::Loaded::Json(_) => Err(format!(
+                "{path} was read as json: og.load.dataJson gives its value"
+            )),
+        })
+    })
+}
+
 pub fn og_load_release(world: u32, asset: f64) -> Result<(), String> {
     engine(world).and_then(|eng| crate::world::uncooked::release(&eng, index_of(asset)))
 }

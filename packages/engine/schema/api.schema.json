@@ -6476,6 +6476,9 @@
         "ImageKind",
         "GltfDataDesc",
         "ImageDataDesc",
+        "CatalogEntry",
+        "DataFormat",
+        "DataDesc",
         "EnvironmentDataDesc",
         "EnvironmentInfo",
         "ImageInfo",
@@ -7397,6 +7400,69 @@
           ],
           "returns": "Result<Asset>",
           "returnsDoc": "The handle (pending), or why it was refused now: over the budget's bytes or textureSize, not twice as wide as tall, a size that is not a power of two from 16 to 2048, not a .hdr or .exr file, or an .exr where RenderCapabilities.exrDecode is false (the reason names it).",
+          "publish": true
+        },
+        {
+          "name": "data",
+          "doc": "Read a file of a content catalog at run time: static, versioned content the game's host publishes (a world's index pages, a shared level), well past a store value's 64 KiB. The file is read from the host's content base against its version manifest's integrity; game code names no URL. The handle is pending, then ready (og.load.dataJson, og.load.dataBytes) or failed, og.load.error starting with its reason.\nCompletion is host input, journaled with its tick and integrity, so a replay reads the same bytes in at the same tick. og.load.release frees it.\nSee `loading §14`.",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world that owns the asset."
+            },
+            {
+              "name": "desc",
+              "type": "DataDesc",
+              "optional": true,
+              "doc": "The file and how to read it."
+            }
+          ],
+          "returns": "Result<Asset>",
+          "returnsDoc": "The handle (pending), or why it was refused now: a malformed catalog, version or path.",
+          "publish": true
+        },
+        {
+          "name": "dataJson",
+          "doc": "The value of a ready og.load.data file read as `json`.\nSee `loading §14`.",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world that owns the asset."
+            },
+            {
+              "name": "asset",
+              "type": "Asset",
+              "optional": false,
+              "doc": "A handle og.load.data answered."
+            }
+          ],
+          "returns": "Result<Json>",
+          "returnsDoc": "Refused while it is pending, when it failed (with its reason), when read as `bytes`, or for another kind of asset.",
+          "publish": true
+        },
+        {
+          "name": "dataBytes",
+          "doc": "The bytes of a ready og.load.data file read as `bytes`.\nSee `loading §14`.",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world that owns the asset."
+            },
+            {
+              "name": "asset",
+              "type": "Asset",
+              "optional": false,
+              "doc": "A handle og.load.data answered."
+            }
+          ],
+          "returns": "Result<Bytes>",
+          "returnsDoc": "Refused while it is pending, when it failed (with its reason), when read as `json`, or for another kind of asset.",
           "publish": true
         },
         {
@@ -31398,6 +31464,68 @@
       },
       "additionalProperties": false
     },
+    "CatalogEntry": {
+      "x-og-kind": "desc",
+      "x-og-module": "load",
+      "description": "A file of a content catalog's version: what og.load.data reads. A catalog is this game's content, published by its host in immutable versions; its content base is the host's (og run --content, the page's), never game code's.\nSee `loading §14`.",
+      "type": "object",
+      "properties": {
+        "catalog": {
+          "type": "string",
+          "description": "The catalog, as the game names it (`world`): 1 to 64 of letters, digits, `.`, `_` and `-`.",
+          "default": ""
+        },
+        "version": {
+          "type": "string",
+          "description": "The version, as the host named it: 1 to 128 of letters, digits, `.`, `_` and `-`.",
+          "default": ""
+        },
+        "path": {
+          "type": "string",
+          "description": "The file within the version, as its manifest lists it (`index/small/3/-2.json`): `/`-separated, no empty, `.` or `..` part.",
+          "default": ""
+        }
+      },
+      "additionalProperties": false
+    },
+    "DataFormat": {
+      "x-og-kind": "enum",
+      "x-og-module": "load",
+      "description": "How og.load.data reads a file.",
+      "type": "string",
+      "enum": [
+        "json",
+        "bytes"
+      ],
+      "x-og-variants": {
+        "json": "JSON: og.load.dataJson gives the value.",
+        "bytes": "Bytes as stored: og.load.dataBytes gives them."
+      }
+    },
+    "DataDesc": {
+      "x-og-kind": "desc",
+      "x-og-module": "load",
+      "description": "Which catalog file og.load.data reads, and how.\nSee `loading §14`.",
+      "type": "object",
+      "properties": {
+        "entry": {
+          "$ref": "#/$defs/CatalogEntry",
+          "description": "The file.",
+          "default": {}
+        },
+        "format": {
+          "$ref": "#/$defs/DataFormat",
+          "description": "How to read it.",
+          "default": "json"
+        },
+        "budget": {
+          "$ref": "#/$defs/LoadBudget",
+          "description": "The limits it is held to: bytes alone.",
+          "default": {}
+        }
+      },
+      "additionalProperties": false
+    },
     "EnvironmentDataDesc": {
       "x-og-kind": "desc",
       "x-og-module": "load",
@@ -31500,7 +31628,7 @@
       "properties": {
         "kind": {
           "type": "string",
-          "description": "`uncooked` (og.load.imageData, gltfData, environmentData) or `bundle` (og.load.bundle of another bundle). A journal without kinds holds uncooked loads."
+          "description": "`uncooked` (og.load.imageData, gltfData, environmentData), `bundle` (og.load.bundle of another bundle) or `data` (og.load.data). A journal without kinds holds uncooked loads."
         },
         "request": {
           "type": "integer",
@@ -31516,6 +31644,10 @@
         "ok": {
           "type": "boolean",
           "description": "Whether it was ready (else failed)."
+        },
+        "integrity": {
+          "type": "string",
+          "description": "For `data`: the integrity of the bytes it read (`sha384-<base64>`), which a replay requires again; absent otherwise."
         }
       },
       "required": [

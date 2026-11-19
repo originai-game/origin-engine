@@ -56,6 +56,10 @@ pub(crate) enum Payload {
     Scene(Box<LoadedScene>),
     /// A cooked scene whose ungrouped blob is being fetched by the host.
     ScenePending,
+    /// An og.load.data file put in place.
+    Data(Box<crate::world::data::Loaded>),
+    /// An og.load.data file on its way (`Assets::data` has its job).
+    DataWaiting,
     /// A sub-scene whose blob is in a cell group's pack (G3-3), not yet
     /// landed: its handle exists (a cell names it), its scene once the
     /// pack's bytes are in ([`crate::world::stream::resolve_scenes`]).
@@ -156,6 +160,11 @@ pub(crate) struct Assets {
     pub uncooked: crate::world::uncooked::Uncooked,
     /// Runtime bundle opens not finished yet: entry and request number.
     pub opening: BTreeMap<usize, u32>,
+    /// The content base og.load.data reads catalogs from: a directory
+    /// (native) or an https URL (web); empty: none.
+    pub content: String,
+    /// og.load.data's loads and the manifests they read.
+    pub data: crate::world::data::Data,
     /// The http(s) images documents name, by request key.
     pub remote: crate::world::remote::Remote,
 }
@@ -311,11 +320,11 @@ impl Assets {
     fn settle_open(&mut self, i: usize, tick: u64) {
         use crate::world::uncooked::{Completion, Due, Kind};
         let request = self.opening[&i];
-        match self.uncooked.bundle_due(request) {
+        match self.uncooked.due(Kind::Bundle, request) {
             Due::Never => return,
-            Due::At(at, _) if at > tick => return,
-            Due::Free | Due::At(_, true) => self.poll_bundle(i),
-            Due::At(_, false) => {
+            Due::At(at, ..) if at > tick => return,
+            Due::Free | Due::At(_, true, _) => self.poll_bundle(i),
+            Due::At(_, false, _) => {
                 let path = &self.entries[i].path;
                 self.entries[i].status =
                     Status::Failed(format!("{path}: failed in the recorded run"));
@@ -332,6 +341,7 @@ impl Assets {
             request,
             tick,
             ok,
+            integrity: String::new(),
         });
     }
 

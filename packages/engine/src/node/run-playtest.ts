@@ -137,6 +137,7 @@ export async function runPlaytest(desc: PlaytestDesc): Promise<PlaytestRun> {
     const store = storeOf(room?.place ?? 0);
     if (store) c.push("--platform-store", store);
     if (fakeFile) c.push("--platform-fake", fakeFile);
+    if (desc.content !== undefined) c.push("--content", resolve(root ?? ".", desc.content));
     return c;
   };
   const summarise = (exitCode: number, stdout: string, stderr: string, what: string): Summary | null => {

@@ -13594,6 +13594,67 @@ export interface ImageDataDesc {
 }
 
 /**
+ * A file of a content catalog's version: what og.load.data reads. A catalog is this game's content, published by its host in immutable versions; its content base is the host's (og run --content, the page's), never game code's.
+ * See `loading §14`.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface CatalogEntry {
+  /**
+   * The catalog, as the game names it (`world`): 1 to 64 of letters, digits, `.`, `_` and `-`.
+   *
+   * @default ""
+   */
+  readonly catalog?: string;
+  /**
+   * The version, as the host named it: 1 to 128 of letters, digits, `.`, `_` and `-`.
+   *
+   * @default ""
+   */
+  readonly version?: string;
+  /**
+   * The file within the version, as its manifest lists it (`index/small/3/-2.json`): `/`-separated, no empty, `.` or `..` part.
+   *
+   * @default ""
+   */
+  readonly path?: string;
+}
+
+/**
+ * How og.load.data reads a file.
+ * - `"json"`: JSON: og.load.dataJson gives the value.
+ * - `"bytes"`: Bytes as stored: og.load.dataBytes gives them.
+ */
+export type DataFormat = "json" | "bytes";
+
+/**
+ * Which catalog file og.load.data reads, and how.
+ * See `loading §14`.
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface DataDesc {
+  /**
+   * The file.
+   *
+   * @default {}
+   */
+  readonly entry?: CatalogEntry;
+  /**
+   * How to read it.
+   *
+   * @default "json"
+   */
+  readonly format?: DataFormat;
+  /**
+   * The limits it is held to: bytes alone.
+   *
+   * @default {}
+   */
+  readonly budget?: LoadBudget;
+}
+
+/**
  * How og.load.environmentData reads an HDR environment.
  *
  * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
@@ -13649,7 +13710,7 @@ export interface ImageInfo {
  */
 export interface LoadCompletion {
   /**
-   * `uncooked` (og.load.imageData, gltfData, environmentData) or `bundle` (og.load.bundle of another bundle). A journal without kinds holds uncooked loads.
+   * `uncooked` (og.load.imageData, gltfData, environmentData), `bundle` (og.load.bundle of another bundle) or `data` (og.load.data). A journal without kinds holds uncooked loads.
    */
   readonly kind: string;
   /** The load's number within its kind: 0 for the world's first, then one more for each. */
@@ -13662,7 +13723,14 @@ export interface LoadCompletion {
   readonly tick: number;
   /** Whether it was ready (else failed). */
   readonly ok: boolean;
+  /**
+   * For `data`: the integrity of the bytes it read (`sha384-<base64>`), which a replay requires again; absent otherwise.
+   */
+  readonly integrity?: string;
 }
+
+
+
 
 
 
@@ -35953,6 +36021,34 @@ export declare namespace og {
      * @returns The handle (pending), or why it was refused now: over the budget's bytes or textureSize, not twice as wide as tall, a size that is not a power of two from 16 to 2048, not a .hdr or .exr file, or an .exr where RenderCapabilities.exrDecode is false (the reason names it).
      */
     function environmentData(world: World, name: string, bytes: Uint8Array, desc?: EnvironmentDataDesc): Result<Asset>;
+    /**
+     * Read a file of a content catalog at run time: static, versioned content the game's host publishes (a world's index pages, a shared level), well past a store value's 64 KiB. The file is read from the host's content base against its version manifest's integrity; game code names no URL. The handle is pending, then ready (og.load.dataJson, og.load.dataBytes) or failed, og.load.error starting with its reason.
+     * Completion is host input, journaled with its tick and integrity, so a replay reads the same bytes in at the same tick. og.load.release frees it.
+     * See `loading §14`.
+     *
+     * @param world The world that owns the asset.
+     * @param desc The file and how to read it.
+     * @returns The handle (pending), or why it was refused now: a malformed catalog, version or path.
+     */
+    function data(world: World, desc?: DataDesc): Result<Asset>;
+    /**
+     * The value of a ready og.load.data file read as `json`.
+     * See `loading §14`.
+     *
+     * @param world The world that owns the asset.
+     * @param asset A handle og.load.data answered.
+     * @returns Refused while it is pending, when it failed (with its reason), when read as `bytes`, or for another kind of asset.
+     */
+    function dataJson(world: World, asset: Asset): Result<unknown>;
+    /**
+     * The bytes of a ready og.load.data file read as `bytes`.
+     * See `loading §14`.
+     *
+     * @param world The world that owns the asset.
+     * @param asset A handle og.load.data answered.
+     * @returns Refused while it is pending, when it failed (with its reason), when read as `json`, or for another kind of asset.
+     */
+    function dataBytes(world: World, asset: Asset): Result<Uint8Array>;
     /**
      * A ready uncooked environment's map and sizes.
      *

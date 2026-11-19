@@ -10,6 +10,7 @@ fn tick_boundary(eng: &Engine) -> Result<(), String> {
     let tick = eng.world().map(|w| w.time().tick).unwrap_or(0);
     eng.assets.borrow_mut().poll(tick);
     crate::world::uncooked::poll(eng, tick);
+    crate::world::data::poll(eng, tick);
     crate::world::scenes::before_boundary(eng);
     super::stream::update(eng);
     super::assets::retranscode(eng);
