@@ -566,3 +566,58 @@ fn adjacent_terrains_with_equal_edge_samples_meet_exactly() {
         assert_eq!(t.range, (lo, hi));
     }
 }
+
+/// A terrain with holes keeps every 16-bit step of its heightmap: the hole
+/// flags travel beside the heights, not in their lowest bit. Every sample
+/// is odd (a lowest bit a flag would take), one cell far from the probe is
+/// cut out, and the same heights cook with and without it.
+#[test]
+fn holes_keep_every_height_step() {
+    let at = |x: u32, y: u32| (2 * ((x * 131 + y * 71) % 30_000) + 1) as u16;
+    let heights = png16(65, 65, at);
+    let holes = rgba(64, 64, |x, y| {
+        if (x, y) == (60, 60) {
+            [0, 0, 0, 255]
+        } else {
+            [255; 4]
+        }
+    });
+    let ogt = |holes: bool| {
+        format!(
+            "type terrain\nversion 1\n---\nheightmap \"h.png\"\n{}height 0 1024\nsize 64 64\ntile 64\n",
+            if holes { "holes \"holes.png\"\n" } else { "" }
+        )
+    };
+    let (with, without) = (ogt(true), ogt(false));
+    let root = project(
+        "holes-steps",
+        &[
+            ("terrain/h.png", &heights),
+            ("terrain/holes.png", &holes),
+            ("terrain/with.ogt", with.as_bytes()),
+            ("terrain/without.ogt", without.as_bytes()),
+        ],
+    );
+    cook(&root);
+    let bundle = Bundle::open(&root.join("cooked")).unwrap();
+    let field = |id: &str| bundle.load_terrain(id).unwrap().field().unwrap();
+    let (a, b) = (field("terrain/with.ogt"), field("terrain/without.ogt"));
+    let cut = a.holes.as_deref().expect("holes");
+    assert_eq!(cut.iter().filter(|h| **h != 0).count(), 1);
+    assert_ne!(cut[60 * 64 + 60], 0);
+    for y in 0..65u32 {
+        for x in 0..65u32 {
+            let i = (y * 65 + x) as usize;
+            let want = at(x, y) as f32 / 65535.0 * 1024.0;
+            assert!(
+                (a.heights[i] - want).abs() < 1e-3,
+                "({x}, {y}): {} vs the source's {want}",
+                a.heights[i]
+            );
+            // Off the cut cell's corners, the same bits with or without holes.
+            if !(60..=61).contains(&x) || !(60..=61).contains(&y) {
+                assert_eq!(a.heights[i].to_bits(), b.heights[i].to_bits(), "({x}, {y})");
+            }
+        }
+    }
+}

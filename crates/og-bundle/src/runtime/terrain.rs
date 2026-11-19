@@ -82,36 +82,39 @@ impl CookedTerrain {
     }
 
     /// The bytes of a tile's inflated heights stream: its 16-bit heights,
-    /// then its horizon's words.
+    /// then its horizon's words and, with holes, its samples' hole flags
+    /// (one bit each, the first sample's the first byte's lowest).
     fn stream_bytes(&self) -> usize {
-        let side = self.layout.heights_side() as usize;
-        side * side * 2 + self.layout.horizon_words() as usize * 4
+        let samples = (self.layout.heights_side() as usize).pow(2);
+        let mask = if self.layout.holes {
+            samples.div_ceil(8)
+        } else {
+            0
+        };
+        samples * 2 + self.layout.horizon_words() as usize * 4 + mask
     }
 
-    /// A tile's heights in metres from its inflated 16-bit values (with
-    /// holes, each one's lowest bit its cell's hole flag:
-    /// `og_render_data::hole_bit`).
+    /// A tile's heights in metres from its inflated 16-bit values, each
+    /// one's f32 lowest bit its cell's hole flag (`og_render_data::hole_bit`;
+    /// clear without holes, so a sample decodes to the same bits whether or
+    /// not its terrain has holes elsewhere).
     pub fn heights_from(&self, index: u32, raw: &[u8]) -> Result<Vec<f32>, LoadError> {
-        let side = self.layout.heights_side() as usize;
+        let samples = (self.layout.heights_side() as usize).pow(2);
         if raw.len() != self.stream_bytes() {
             return Err(self.bad(format!("tile {index} holds the wrong number of heights")));
         }
-        let raw = &raw[..side * side * 2];
+        let mask = &raw[samples * 2 + self.layout.horizon_words() as usize * 4..];
         let (lo, hi) = self.steps;
         let span = hi - lo;
-        let holes = self.layout.holes;
-        Ok(raw
+        Ok(raw[..samples * 2]
             .as_chunks::<2>()
             .0
             .iter()
-            .map(|v| {
-                let q = u16::from_le_bytes(*v);
-                let h = lo + q as f32 / 65535.0 * span;
-                if holes {
-                    og_render_data::with_hole_bit(h, q & 1 != 0)
-                } else {
-                    h
-                }
+            .enumerate()
+            .map(|(i, v)| {
+                let h = lo + u16::from_le_bytes(*v) as f32 / 65535.0 * span;
+                let hole = mask.get(i / 8).is_some_and(|m| m >> (i % 8) & 1 != 0);
+                og_render_data::with_hole_bit(h, hole)
             })
             .collect())
     }
@@ -139,7 +142,7 @@ impl CookedTerrain {
             (_, None) => return Err(self.bad(format!("tile {index} has no control texels"))),
         };
         let side = self.layout.heights_side() as usize;
-        let horizon = heights[side * side * 2..]
+        let horizon = heights[side * side * 2..][..self.layout.horizon_words() as usize * 4]
             .as_chunks::<4>()
             .0
             .iter()

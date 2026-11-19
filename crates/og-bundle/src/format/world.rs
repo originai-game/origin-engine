@@ -626,9 +626,9 @@ row!(
         sea_level: f32,
         /// A generated terrain's rivers, in metres along their samples.
         river_length: f32,
-        /// Cells cut out as holes (0: none). With holes, each tile
-        /// height's lowest bit is its sample's cell's hole flag on the
-        /// tile's level (og-render's `mark_holes`).
+        /// Cells cut out as holes (0: none). With holes, each tile's
+        /// heights stream ends with its samples' cells' hole flags on the
+        /// tile's level (og-render's `mark_holes`), one bit per sample.
         holes: u32,
         /// The control map's pages of four channels (one per four
         /// layers; each tile's control texels hold them one after the
@@ -645,7 +645,10 @@ row!(
     /// tent filter (og-render's `HeightPyramid`), no longer decimated.
     /// v4: the heights' stream goes on with the tile's horizon
     /// (`HeightPyramid::horizon`: `horizon_words()` little-endian u32s).
-    TerrainTileRow, "og.Terrain.tile", 4 {
+    /// v5: with holes, the stream ends with each sample's hole flag, one
+    /// bit per sample (the first sample's the first byte's lowest bit),
+    /// no longer the heights' lowest bit, which is a height step again.
+    TerrainTileRow, "og.Terrain.tile", 5 {
         index: u32,
         level: u32,
         x: u32,

@@ -1,0 +1,8 @@
+{
+  "fixed": [
+    {
+      "member": "og.terrain.sample",
+      "summary": "A terrain with `holes` keeps every 16-bit step of its heightmap. The hole flags were stored in the heights' lowest bit, so since the cook kept a heightmap's samples as steps of `height`, every odd sample read one step low (1/65535 of the range) and a sector with a hole met a neighbour without one a step apart. The flags now travel beside the heights, one bit per sample; terrains are re-cooked (og.Terrain.tile v5)."
+    }
+  ]
+}
