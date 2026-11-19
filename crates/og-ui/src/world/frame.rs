@@ -496,6 +496,7 @@ impl crate::world::WorldUi {
         w.declared.emitters.clear();
         w.declared.metas.clear();
         w.declared.immediate.clear();
+        std::mem::swap(&mut w.placement.marks, &mut w.placement.previous_marks);
         w.placement.marks.clear();
         w.placement.grounds.clear();
         w.declared.mass_built.clear();

@@ -1255,8 +1255,8 @@ impl Ui {
     /// Which nodes paint as last frame (`same`: their own commands and
     /// their ancestors' fills are unchanged) and which subtrees do whole
     /// (`clean`: every node in them is `same`, and none draws what the
-    /// frame makes again on its own: a focus ring, a ghost, world marks, a
-    /// frozen or glitching drawing, a scroll's fade and bars). `changed`
+    /// frame makes again on its own: a focus ring, a ghost, changed world
+    /// marks, a frozen or glitching drawing, a scroll's fade and bars). `changed`
     /// holds the nodes whose drawing may differ from last frame's (`None`:
     /// any); every other node, and the subtree it heads, paints as it did
     /// unless one below it changed.
@@ -1313,7 +1313,15 @@ impl Ui {
         let keyed = ghosts
             .iter()
             .map(|g| g.frozen.parent)
-            .chain(self.world.placement.marks.keys().copied())
+            .chain(
+                self.world
+                    .placement
+                    .marks
+                    .keys()
+                    .chain(self.world.placement.previous_marks.keys())
+                    .copied()
+                    .filter(|&key| self.world.world_marks_changed(key)),
+            )
             .chain(self.interaction.state.motion.part_styles.iter().filter_map(
                 |(&key, styles)| {
                     styles
@@ -1502,13 +1510,13 @@ impl Ui {
         r
     }
 
-    /// Whether node `i` draws again on its own every frame (an exit, a
-    /// match key, links, a glitch, moving rich text; a scroll's fade and
-    /// bars follow its signature), and whether
-    /// a focus ring or outline is drawn over it.
+    /// Whether node `i` draws again on its own this frame (changed world
+    /// marks, an exit, a match key, links, a glitch, moving rich text; a
+    /// scroll's fade and bars follow its signature), and whether a focus
+    /// ring or outline is drawn over it.
     fn paints_alone(&self, i: usize) -> (bool, bool) {
         let node = &self.tree.nodes[i];
-        let volatile = self.world.placement.marks.contains_key(&node.key)
+        let volatile = self.world.world_marks_changed(node.key)
             || node.props.exit.is_some()
             || !node.props.match_key.is_empty()
             || !node.props.view_transition_name.is_empty()

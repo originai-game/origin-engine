@@ -2315,6 +2315,12 @@ impl crate::world::WorldUi {
     pub(crate) fn world_marks(&self, key: u64) -> Option<&Marks> {
         self.placement.marks.get(&key)
     }
+
+    /// Wrappers are frame-owned, but identical commands do not invalidate
+    /// the node's kept paint. Absence on either frame is a change too.
+    pub(crate) fn world_marks_changed(&self, key: u64) -> bool {
+        self.placement.marks.get(&key) != self.placement.previous_marks.get(&key)
+    }
 }
 
 /// A meta layer's commands over `screen` at `alpha`.

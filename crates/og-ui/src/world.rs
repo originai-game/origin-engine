@@ -604,7 +604,7 @@ struct PanelHit {
 }
 
 /// What a node's commands are wrapped in.
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Debug, Default, PartialEq)]
 pub struct Marks {
     pub enter: Vec<DrawCmd>,
     pub leave: Vec<DrawCmd>,
@@ -686,6 +686,8 @@ pub struct WorldPlacement {
     /// The panel the pointer is on this tick.
     pub pointed: Option<(u64, PanelInfo)>,
     pub marks: BTreeMap<u64, Marks>,
+    /// Last frame's wrappers, for paint reuse; not replay state.
+    pub(crate) previous_marks: BTreeMap<u64, Marks>,
     pub(crate) last: BTreeMap<u64, AnchorInfo>,
     /// Hidden item keys for each bounded stack's overflow row.
     pub(crate) stack_hidden: BTreeMap<u64, Vec<String>>,

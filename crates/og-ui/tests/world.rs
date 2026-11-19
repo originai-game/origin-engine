@@ -87,6 +87,47 @@ fn clipped_anchor_decoration_does_not_push_the_visible_box() {
 }
 
 #[test]
+fn stable_world_wrappers_keep_paint_and_changed_depth_matches_fresh_paint() {
+    let source = r#"<meta name="component" content="StableAnchor" />
+<div><anchor id="Tag" at="0 0 0" occlusion="fade"><p>Brenna</p></anchor></div>"#;
+    let mut kept = Doc::new(source, &[]);
+    let mut fresh = Doc::new(source, &[]);
+    kept.viewport = vp();
+    fresh.viewport = vp();
+    for tick in 0..40 {
+        let camera = match tick {
+            // A depth-only change keeps the label's screen position and
+            // size but must replace the renderer's occlusion command.
+            12..20 => Some(WorldView::look_at(
+                Vec3::new(0.0, 0.0, 7.0),
+                Vec3::ZERO,
+                Vec3::Y,
+                50.0,
+                W / H,
+                0.1,
+                100.0,
+            )),
+            20..28 => None,
+            _ => Some(view()),
+        };
+        fresh.ui.reset_part_css();
+        for doc in [&mut kept, &mut fresh] {
+            doc.ui.set_world_view(camera);
+            doc.step(InputFrame::default());
+        }
+        assert_eq!(kept.ui.frame().items, fresh.ui.frame().items, "tick {tick}");
+        assert_eq!(
+            kept.ui.probe_elements(),
+            fresh.ui.probe_elements(),
+            "tick {tick}"
+        );
+        if matches!(tick, 10 | 18 | 38) {
+            assert_eq!(kept.ui.frame().stats.painted, 0, "idle tick {tick}");
+        }
+    }
+}
+
+#[test]
 fn document_max_shift_caps_retained_danger_fallbacks() {
     use serde_json::json;
     let mut ui = ui();
