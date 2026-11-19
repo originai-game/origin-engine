@@ -28,7 +28,7 @@
       <li part="RpgQuestTracker.step" class="step" data-layout="row" data-gap="tight" data-done={s.done} data-current={!s.done && (i == 0 || steps[i - 1]['done'])}>
         <div part="RpgQuestTracker.marker" class="marker"></div>
         <span part="RpgQuestTracker.text" class="text">{s.text}</span>
-        {#if s.tag != ''}<span part="RpgQuestTracker.progress" class="tag">{s.tag}</span>{/if}
+        {#if s.tag}<span part="RpgQuestTracker.progress" class="tag">{s.tag}</span>{/if}
       </li>
     {/each}
   </ul>

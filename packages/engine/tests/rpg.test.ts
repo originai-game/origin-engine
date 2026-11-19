@@ -410,6 +410,17 @@ test("RpgQuestTracker shows its distance only when the game gives one", () => {
   run(member("quest-tracker", { distance: "" }), (e) => expect(elements(e).some((x) => /\bm$/.test(x.text))).toBeFalse());
 });
 
+test("RpgQuestTracker draws a step's tag only when the game gives one", () => {
+  // A step row is its marker and its text, and a tag only when it has one: a
+  // game's row without the field draws no empty tag box.
+  const children = (e: Engine, key: string) => elements(e).filter((x) => new RegExp(`#${key}/[^/]+$`).test(x.path)).length;
+  const steps = [{ id: "a", text: "Reach the ruins", done: true }, { id: "b", text: "Break the guard", done: false, tag: "" }, { id: "c", text: "Light the pillars", done: false, tag: "1 / 3" }];
+  run(member("quest-tracker", { steps }), (e) => {
+    expect([children(e, "a"), children(e, "b"), children(e, "c")]).toEqual([2, 2, 3]);
+    expect(elements(e).some((x) => x.text === "1 / 3")).toBeTrue();
+  });
+});
+
 test("RpgTurnOrder plates the round", () => {
   run(member("turn-order", { round: 7 }), (e) => expect(elements(e).some((x) => /\b7\b/.test(x.text))).toBeTrue());
 });
