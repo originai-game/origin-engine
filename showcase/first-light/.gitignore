@@ -3,6 +3,25 @@ dist/
 og-out/
 .og/
 node_modules/
-# Pinned in assets.json and fetched by `bun ../../scripts/showcase-assets.ts ensure .` (docs/ci.md, The model bucket).
-assets/models/*.glb
-assets/terrain/*.png
+
+# og-assets: the files og-assets.json pins, installed by `bun scripts/assets.ts ensure` (written by the tool)
+/assets/fonts/latin/NotoSans-Latin.ttf
+/assets/models/boat.glb
+/assets/models/boulder.glb
+/assets/models/dog.glb
+/assets/models/gate.glb
+/assets/models/house-a.glb
+/assets/models/house-b.glb
+/assets/models/house-c.glb
+/assets/models/jetty.glb
+/assets/models/mushrooms.glb
+/assets/models/sheep-graze.glb
+/assets/models/sheep-stand.glb
+/assets/models/shepherd.glb
+/assets/models/wall.glb
+/assets/models/windmill-sails.glb
+/assets/models/windmill-tower.glb
+/assets/terrain/valley-control-a.png
+/assets/terrain/valley-control-b.png
+/assets/terrain/valley-height.png
+# og-assets end

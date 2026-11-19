@@ -53,16 +53,16 @@ narrow a run (the script's header lists them).
 
 ## Assets
 
-The binary assets are not in git. `assets.json` pins each one (file,
-sha256, bytes, key, url) in the model bucket (`docs/ci.md` §The model
-bucket), and one command installs them, each checked against its sha256:
+The binary assets are not in git. `og-assets.json` pins each one (path,
+sha256, size, visibility) in the platform's asset store (`docs/ci.md`
+§The asset store), and one command installs them, each checked against its sha256:
 
 ```sh
-bun ../../scripts/showcase-assets.ts ensure .
+bun ../../scripts/assets.ts ensure .
 ```
 
 `tools/capture.sh` runs it first. After changing a pinned file, `pin` it
-and `upload` with the same script, and commit `assets.json`.
+and `push` with the same script, and commit `og-assets.json`.
 
 Generated assets were made for this project through the Origin gateway
 (concept images: `gpt-image-2.6-sunburst`; meshes, rigs and clips: Meshy
@@ -82,7 +82,7 @@ keep 2048 maps and every triangle; the rest have 1024 maps. The Poly Haven
 sets were fetched through the gateway's catalog at 2k and replaced by
 Poly Haven's own 1k files of the same sets (`dl.polyhaven.org`).
 
-### Pinned (`assets.json`)
+### Pinned (`og-assets.json`)
 
 | File under `assets/` | Source and gateway ids | Shipped as | Bytes | sha256 |
 |---|---|---|---|---|

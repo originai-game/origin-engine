@@ -3,13 +3,26 @@ dist/
 og-out/
 .og/
 node_modules/
-# Binary assets: pinned in assets.json and installed by
-# `bun scripts/showcase-assets.ts ensure showcase/the-last-light`
-# (docs/ci.md §The model bucket).
-assets/models/*.glb
-assets/terrain/textures/*.jpg
-assets/terrain/coast-height.png
-assets/terrain/coast-control.png
 # The generated models' reference images: archived with their sources
 # (README.md); their prompts stay beside them.
 tools/refs/*.png
+
+# og-assets: the files og-assets.json pins, installed by `bun scripts/assets.ts ensure` (written by the tool)
+/assets/fonts/latin/NotoSans-Latin.ttf
+/assets/models/boulder.glb
+/assets/models/cottage.glb
+/assets/models/lantern.glb
+/assets/models/lighthouse.glb
+/assets/models/rock-cliff.glb
+/assets/models/ruin.glb
+/assets/models/sea-stack.glb
+/assets/models/wanderer.glb
+/assets/terrain/coast-control.png
+/assets/terrain/coast-height.png
+/assets/terrain/textures/aerial_grass_rock_diff_1k.jpg
+/assets/terrain/textures/aerial_grass_rock_nor_gl_1k.jpg
+/assets/terrain/textures/forest_ground_04_diff_1k.jpg
+/assets/terrain/textures/forest_ground_04_nor_gl_1k.jpg
+/assets/terrain/textures/rock_face_03_grey_1k.jpg
+/assets/terrain/textures/rock_face_03_nor_gl_1k.jpg
+# og-assets end

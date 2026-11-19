@@ -1,0 +1,13 @@
+{
+  "version": 1,
+  "files": [
+    {
+      "path": "motion/model.safetensors",
+      "sha256": "ee488c6d72e6e1b547ed583847c24cb4b81ea5563f1359699a3536331216e6fe",
+      "size": 35353890,
+      "visibility": "public",
+      "source": "og-motion-train 29e4538, weights/geo8 (the retrain from run3: geo run epoch 8, dec1) through scripts/export_engine.py; upright Idle_02 frames 22–25 and the jump at Regular_Jump frame 24 from library_full.npz, idle raw and FK lean checked below 5 degrees",
+      "licence": "Licensed by NVIDIA Corporation under the NVIDIA Open Model Agreement."
+    }
+  ]
+}

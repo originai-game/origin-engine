@@ -77,7 +77,7 @@ fi
 # Development fixtures use the pin locally; release installs fetch it only
 # when a project's cook uses motion, without writing into the engine install.
 if [ "${OG_GATE:-}" = 1 ]; then
-  bun "$here/scripts/motion-model.ts" ensure
+  bun "$here/../../scripts/assets.ts" ensure "$here"
 fi
 platform="$(node -p 'process.platform + "-" + process.arch' 2>/dev/null || bun -e 'console.log(process.platform + "-" + process.arch)')"
 # --linux-x64 on a Linux x86_64 host: the zigbuild below (glibc 2.31) is the

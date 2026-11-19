@@ -38,13 +38,14 @@ switches are commands, for captures and playtests: `weather:<name>`,
 
 ## Assets
 
-No binary asset is in git. The models, the terrain's maps and its textures
-are listed in `.gitignore` and pinned in `assets.json` (file, sha256,
-bytes, key, url; docs/ci.md §The model bucket): 16 files, 50.8 MB.
+No binary asset is in git. The models, the terrain's maps and textures and
+the HUD font are pinned in `og-assets.json` (path, sha256, size,
+visibility; docs/ci.md §The asset store), which also lists them in
+`.gitignore`: 17 files, 50.9 MB.
 Install them before the first cook:
 
 ```sh
-bun scripts/showcase-assets.ts ensure showcase/the-last-light   # from the repository root
+bun scripts/assets.ts ensure showcase/the-last-light   # from the repository root
 ```
 
 Everything came through the OriginGame asset gateway

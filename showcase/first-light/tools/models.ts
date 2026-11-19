@@ -3,8 +3,8 @@
 // triangles) becomes a game-ready GLB at its true size standing on its
 // origin, facing +z: its mesh simplified to the triangles its place in the
 // frame needs and meshopt-compressed, its maps WebP at the size that place
-// needs. The results are not in git: assets.json pins them
-// (scripts/showcase-assets.ts) and README.md lists each one's source.
+// needs. The results are not in git: og-assets.json pins them
+// (scripts/assets.ts) and README.md lists each one's source.
 //
 //   bun tools/models.ts <directory of raw .glb files> [name...]
 //

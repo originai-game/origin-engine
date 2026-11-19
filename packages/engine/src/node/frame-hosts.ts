@@ -11,21 +11,29 @@ declare module "node:os" { export function homedir(): string; }
 export const FRAME_HOSTS = ["web-publish-frames", "web-publish-2d-frames"] as const;
 type Host = typeof FRAME_HOSTS[number];
 const sha256 = (bytes: Uint8Array) => createHash("sha256").update(bytes).digest("hex");
-const PUBLIC = "https://pub-6dc5404e2ae14e8497e4cee219da67b6.r2.dev/engine/frames";
+/** The platform's engine asset store, by content address (docs/ci.md §The asset store). */
+const PUBLIC = "https://origingame.ai/api/engine-assets/sha256";
 
-/** Pack both profiles (single-threaded and lanes), leaving sources intact. */
+/**
+ * Pack both profiles (single-threaded and lanes), leaving sources intact. `out`
+ * gets the archives and an og-assets.json pinning them, which the release
+ * pushes to the store (`bun scripts/assets.ts push <out>`).
+ */
 export function packFrameHosts(dist: string, out: string, base = PUBLIC): void {
   mkdirSync(out, { recursive: true });
+  const archives: { path: string; sha256: string; size: number; visibility: "public" }[] = [];
   const hosts = Object.fromEntries(FRAME_HOSTS.map((name) => {
     const dir = join(dist, name);
     const bytes = packArchive(dir, name);
     if (bytes.length > MAX_ARCHIVE) throw new Error(`${name}: frame archive exceeds ${MAX_ARCHIVE} bytes`);
     const hash = sha256(bytes);
     writeFileSync(join(out, `${hash}.tar.gz`), bytes);
+    archives.push({ path: `${hash}.tar.gz`, sha256: hash, size: bytes.length, visibility: "public" });
     const files = Object.fromEntries(packFiles(dir).map((file) => [file, sha256(readFileSync(join(dir, file)))]));
-    return [name, { url: `${base}/${hash}.tar.gz`, sha256: hash, bytes: bytes.length, files }];
+    return [name, { url: `${base}/${hash}`, sha256: hash, bytes: bytes.length, files }];
   }));
   writeFileSync(join(dist, "frame-hosts.json"), `${JSON.stringify(hosts, null, 2)}\n`);
+  writeFileSync(join(out, "og-assets.json"), `${JSON.stringify({ version: 1, files: archives }, null, 2)}\n`);
 }
 
 function record(value: unknown): value is Record<string, unknown> {

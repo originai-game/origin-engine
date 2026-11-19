@@ -20,10 +20,10 @@ work is listed at the end.
 ## Running it
 
 The binary assets are not in git. Install them first, from the repository
-root (docs/ci.md, The model bucket):
+root (docs/ci.md §The asset store):
 
 ```sh
-bun scripts/showcase-assets.ts ensure showcase/first-light
+bun scripts/assets.ts ensure showcase/first-light
 og run showcase/first-light
 ```
 
@@ -79,7 +79,7 @@ asset is included. The image prompts were not kept; the concept images are.
 The raw GLBs, their concept images and a `task.json` receipt each are in
 the private bucket `origin-generated-assets` under
 `meshy/model/<operation>/`, so a model can be packed again or regenerated.
-The shipped files are pinned in `assets.json` and stored under
+The shipped files are pinned in `og-assets.json` and stored under
 `showcase/first-light/<sha256>.<ext>`.
 
 | Shipped file | What | Meshy input | Operation (archive directory) | Gateway task | Size | sha256 (shipped) | sha256 (raw `model.glb`) |

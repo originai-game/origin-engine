@@ -1,7 +1,7 @@
 #!/bin/bash
 # The generated models (raw/models/, never committed: each asset's last
 # gateway output repacked with 2048 JPEG maps, README §Assets) -> the
-# game-ready files in assets/models/ that assets.json pins: maps capped and
+# game-ready files in assets/models/ that og-assets.json pins: maps capped and
 # stored as JPEG (tools/pack-model.py),
 # meshes simplified by screen size, quantized and meshopt-compressed
 # (gltfpack; the cook reads EXT_meshopt_compression and KHR_mesh_quantization).

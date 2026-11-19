@@ -78,7 +78,7 @@ for (const [name, task] of Object.entries(ledger.tasks)) {
     meshy: { operation: task.operation, input: task.input ? ledger.tasks[task.input]!.operation_id : undefined, action_ids: task.action_ids },
     model: { key: "model.glb", bytes: model.length, sha256: sha256(model) },
     concepts: concepts.map(({ body: _body, ...concept }) => concept),
-    shipped: "showcase/the-last-light/tools/pack.ts packs the models for the game (pinned in showcase/the-last-light/assets.json)",
+    shipped: "showcase/the-last-light/tools/pack.ts packs the models for the game (pinned in showcase/the-last-light/og-assets.json)",
   };
   for (const concept of concepts) await keep(`${prefix}/${concept.key}`, concept.body, "image/png");
   await keep(`${prefix}/model.glb`, model, "model/gltf-binary");

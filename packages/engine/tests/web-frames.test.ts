@@ -37,7 +37,8 @@ test.skipIf(NO_FRAMES_WASM)("a frames project fetches its pinned host automatica
   let corrupt = false;
   const server = Bun.serve({ port: 0, fetch(request) {
     requests++;
-    const file = join(root, "packs", new URL(request.url).pathname.slice(1));
+    // The pin names the archive by its store address, <base>/<sha256>.
+    const file = join(root, "packs", `${new URL(request.url).pathname.slice(1)}.tar.gz`);
     const bytes = new Uint8Array(readFileSync(file));
     if (corrupt) bytes[bytes.length - 1] ^= 1;
     return new Response(bytes);

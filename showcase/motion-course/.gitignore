@@ -4,8 +4,22 @@ og-out/
 .og/
 node_modules/
 raw/
-# Binary assets: pinned in assets.json and installed by
-# `bun scripts/showcase-assets.ts ensure showcase/motion-course`
-# (docs/ci.md §The model bucket).
-assets/models/*.glb
-assets/textures/*.jpg
+
+# og-assets: the files og-assets.json pins, installed by `bun scripts/assets.ts ensure` (written by the tool)
+/assets/models/arch.glb
+/assets/models/boulder.glb
+/assets/models/column.glb
+/assets/models/column_broken.glb
+/assets/models/pine.glb
+/assets/models/porter.glb
+/assets/models/runner.glb
+/assets/textures/cobbles.color.jpg
+/assets/textures/cobbles.normal.jpg
+/assets/textures/cobbles.orm.jpg
+/assets/textures/grass.color.jpg
+/assets/textures/grass.normal.jpg
+/assets/textures/grass.orm.jpg
+/assets/textures/stone.color.jpg
+/assets/textures/stone.normal.jpg
+/assets/textures/stone.orm.jpg
+# og-assets end

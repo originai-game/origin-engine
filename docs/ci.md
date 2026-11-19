@@ -506,8 +506,12 @@ The repository's binary assets are moving out of Git and out of the two
 buckets below into one store the platform hosts, addressed by SHA-256
 (`GET /api/engine-assets/sha256/<hex>` on origingame.ai; public objects are
 read anonymously, private ones and uploads need a platform key the store
-lets write). Until the migration lands, the model bucket below still serves
-the existing pins.
+lets write). og.motion's weights (`packages/engine/og-assets.json`, read by
+cooks through `motion.json`'s `url`), the remote-frame archives
+(`frame-hosts.json`, pushed by `scripts/release.sh publish`) and every
+showcase project's assets live there. Engines up to 0.9.0 read the frozen
+public R2 bucket `origin-engine-models` instead, which stays until no
+supported release names it.
 
 A directory that owns pinned files keeps an `og-assets.json` beside them:
 `{"version": 1, "files": [{path, sha256, size, visibility, source?, licence?}]}`,
@@ -531,53 +535,14 @@ pin and names each one it cannot have; a verified cache works offline.
 `OG_PLATFORM_DEVELOPMENT_KEY`; `push` refuses a file that is not its pin.
 `OG_ASSETS_URL` overrides the store's origin.
 
-## The model bucket
+## Generated sources
 
-og.motion's weights, which `packages/engine` ships, are not in git.
-`packages/engine/motion.json` pins the file (`file`, `sha256`, `bytes`,
-`key`, `url`). Every machine reads it anonymously from `url`, the public
-Cloudflare R2 bucket `origin-engine-models`, so no credentials are needed
-to fetch. The private S3 bucket `origin-engine-showcase` on OVHcloud
-Object Storage (endpoint `https://s3.bhs.io.cloud.ovh.net`, region `bhs`)
-keeps the same file under `motion/<sha256>.safetensors` as the fallback
-and the upload target; its credentials are `OG_SHOWCASE_S3_ACCESS_KEY` and
-`OG_SHOWCASE_S3_SECRET_KEY`. A new pin is put in both: `upload` for OVH,
-then `wrangler r2 object put origin-engine-models/<key> --file <file>
---remote`. `bun packages/engine/scripts/motion-model.ts ensure` installs
-the pin; development builds and `pack.sh` run it and stop when it fails,
-while a bare `cargo build` does not.
-
-A showcase project (`showcase/<project>/`) keeps its binary assets out of
-git the same way: models, terrain maps and textures are listed in the
-project's `.gitignore` and pinned in its `assets.json`, one entry per file
-with the same fields. Their key is `showcase/<project>/<sha256>.<ext>` in
-both buckets, so a changed file is a new object and an old commit still
-fetches what it pinned. `scripts/showcase-assets.ts` serves every project:
-
-```sh
-bun scripts/showcase-assets.ts ensure showcase/<project>   # install the pins, each checked against its sha256
-bun scripts/showcase-assets.ts verify showcase/<project>   # read every remote pin, even with local copies
-bun scripts/showcase-assets.ts pin showcase/<project> assets/models/a.glb ...   # pin files as they are now
-bun scripts/showcase-assets.ts upload showcase/<project>   # put the pinned files in both buckets
-```
-
-`ensure` runs before the project is cooked (a fresh checkout, the L4, a
-capture script) and stops on the first file it cannot fetch or whose bytes
-are not its pin, naming it. It needs no credentials: the private bucket is
-read only when the public one fails. After changing a pinned file, `pin`
-it, `upload`, and commit `assets.json`; `ensure` otherwise puts the pinned
-bytes back over the change. `upload` writes OVH with the showcase
-credentials and R2 through Cloudflare's API with `CLOUDFLARE_ACCOUNT_ID`
-and `CLOUDFLARE_API_TOKEN` (the token wrangler takes), skips what is
-already there, and refuses a file that is not its pin. Ship game-ready
+The raw generated sources behind the shipped assets (Meshy models, gateway
+images, training runs, recordings) are private objects in the same store,
+pinned with `bun scripts/assets.ts pin <dir> --private <path...>` and pushed
+with `push`; reading them needs a key the store lets write. Ship game-ready
 files (meshes simplified and compressed, maps sized for their place in the
-frame): players download them. The raw generated sources go to
-`origin-generated-assets`, below.
-
-A second private bucket in the same project, `origin-generated-assets`
-(versioned, encrypted; puts send `x-amz-server-side-encryption: AES256`),
-keeps generated source assets for later model runs; its layout is in its
-`README.md`.
+frame) as public pins: players download them.
 
 ## Re-capturing gfx references
 

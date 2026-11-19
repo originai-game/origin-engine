@@ -1,7 +1,7 @@
 #!/bin/bash
 # The generated characters (raw/models/, never committed: each one's Meshy
 # animate output, README §Assets) -> the game-ready files in assets/models/
-# that assets.json pins: maps capped at 1024 and stored as JPEG
+# that og-assets.json pins: maps capped at 1024 and stored as JPEG
 # (tools/pack-model.py), meshes simplified to half, quantized and
 # meshopt-compressed (gltfpack; the cook reads EXT_meshopt_compression and
 # KHR_mesh_quantization). Each stands about a fifth of the frame high.

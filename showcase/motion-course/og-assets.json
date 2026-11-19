@@ -1,0 +1,101 @@
+{
+  "version": 1,
+  "files": [
+    {
+      "path": "assets/models/arch.glb",
+      "sha256": "ffab31484bcec847cb6be791727b59a060cfaef9098dd7b89c24d360e0d2ea72",
+      "size": 1477640,
+      "visibility": "public"
+    },
+    {
+      "path": "assets/models/boulder.glb",
+      "sha256": "284d6bd4915e5f63730c0c37245e30b1cdc181e06da4586a8c0a0f7442226c9f",
+      "size": 832480,
+      "visibility": "public"
+    },
+    {
+      "path": "assets/models/column.glb",
+      "sha256": "a325c65d2410ca148393b5ff9b6ab19b47c41f59866776b318a237a746f0997e",
+      "size": 1074452,
+      "visibility": "public"
+    },
+    {
+      "path": "assets/models/column_broken.glb",
+      "sha256": "9ee45e7c04cd53a2bdce088fa336ff25a350db1ee557d34c2857113ecfc49619",
+      "size": 1066832,
+      "visibility": "public"
+    },
+    {
+      "path": "assets/models/pine.glb",
+      "sha256": "6b372ea40d33b5a8d01aa6057188e3c51a2ce400afcd375c0e1a201ad325253f",
+      "size": 1717736,
+      "visibility": "public"
+    },
+    {
+      "path": "assets/models/porter.glb",
+      "sha256": "ad6cc5596d550c00671979bebe8b30534ad8f106ca3f4fa73e3f92d61a722066",
+      "size": 1429728,
+      "visibility": "public"
+    },
+    {
+      "path": "assets/models/runner.glb",
+      "sha256": "d8bbb08ed0bc9dd7b9591af9699b6c7cb47a8ae01f7ac5ad37ed1d660e7e65bb",
+      "size": 1375092,
+      "visibility": "public"
+    },
+    {
+      "path": "assets/textures/cobbles.color.jpg",
+      "sha256": "1121855262d2741be2fd29bb4010543743b3cf0dc41ea3f9aa68464e7959dc8b",
+      "size": 254188,
+      "visibility": "public"
+    },
+    {
+      "path": "assets/textures/cobbles.normal.jpg",
+      "sha256": "6db7b939c730033f737c1ce8f1d92539c209bb54839ed82e9a395033abbab2e7",
+      "size": 276087,
+      "visibility": "public"
+    },
+    {
+      "path": "assets/textures/cobbles.orm.jpg",
+      "sha256": "c9bd5284f5ce21e827a4861e458278a95224451f0e22da366702ff8a4ba40786",
+      "size": 57846,
+      "visibility": "public"
+    },
+    {
+      "path": "assets/textures/grass.color.jpg",
+      "sha256": "4737c74606228e3eb612118df0ef0fcbd0cf75126937554a85d5bbe897c1cf2b",
+      "size": 330792,
+      "visibility": "public"
+    },
+    {
+      "path": "assets/textures/grass.normal.jpg",
+      "sha256": "4cf7b5024530c966f070681137e226475d47d01a1e2cdeb4abc6dca50d7af7f7",
+      "size": 425620,
+      "visibility": "public"
+    },
+    {
+      "path": "assets/textures/grass.orm.jpg",
+      "sha256": "a75fd4b85c6676a7980a3367b7491ea5c560002f846bc49ce5c487597c67defa",
+      "size": 48239,
+      "visibility": "public"
+    },
+    {
+      "path": "assets/textures/stone.color.jpg",
+      "sha256": "8ad58fc58eefec07b68ed16ccc4d4b22abfc907d10c887adc1bd506b392a9028",
+      "size": 338162,
+      "visibility": "public"
+    },
+    {
+      "path": "assets/textures/stone.normal.jpg",
+      "sha256": "761d406349c8c23c68dfc4d13a258362b01e8d4bef1ed9d07892c64c8a670dbd",
+      "size": 448179,
+      "visibility": "public"
+    },
+    {
+      "path": "assets/textures/stone.orm.jpg",
+      "sha256": "67a2ae0939a6fa9b86780e86f8c75b8b9603ee5e2450248b4926433077871b42",
+      "size": 58528,
+      "visibility": "public"
+    }
+  ]
+}
