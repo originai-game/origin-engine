@@ -2,7 +2,7 @@
 
 <!-- A combat turn: the draw pile bottom left, the discard and exhaust piles
      bottom right and the hand between them, a card picked up with Play on
-     it. A phone: the piles in a row over a full-width hand. -->
+     it. A phone: the piles across the top, the hand filling the rest. -->
 <div id="Page">
   <div id="Field"></div>
   <div id="Foot">
@@ -21,7 +21,8 @@
 #Spent { flex: none; }
 @media (width < 600px) {
   #Page { padding: var(--space-sm); }
-  #Foot { display: grid; grid-template-columns: auto 1fr; grid-template-rows: auto 1fr; grid-template-areas: "draw spent" "hand hand"; height: calc(var(--size-xxl) * 3.2); gap: var(--space-xs); }
+  #Field { display: none; }
+  #Foot { display: grid; grid-template-columns: auto 1fr; grid-template-rows: auto 1fr; grid-template-areas: "draw spent" "hand hand"; flex: 1; height: auto; min-height: 0; align-items: start; gap: var(--space-xs); }
   #Draw { grid-area: draw; }
   #Spent { grid-area: spent; justify-self: end; }
   #Hand { grid-area: hand; width: stretch; }

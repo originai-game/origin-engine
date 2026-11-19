@@ -8,7 +8,7 @@
 // Commands: style:<fantasy>, page:<table|builder|run>, reduced:<on|off>.
 
 import { og, type World } from "@origingame/engine";
-import { BUILDER, INK_NAMES, RUN, TABLE } from "./fixtures.ts";
+import { ART_NAMES, BUILDER, INK_NAMES, RUN, TABLE, localized } from "./fixtures.ts";
 
 const PAGES = ["table", "builder", "run"] as const;
 const STYLES = ["fantasy", "scifi", "cartoon", "default"] as const;
@@ -27,19 +27,24 @@ function must<T>(r: { ok: true; value: T } | { ok: false; reason: string }, what
   return r.value;
 }
 
-/** The style and the icon set in one configure, so neither resets the other. */
+/** The style and both icon sets in one configure, so neither resets the other:
+ * the sheet's painted card art (`art-<name>`, sheet only) and the ink icons. */
 function setStyle(world: World, name: string): void {
+  const art = must(og.load.texture(world, "art/card-art.png"), "card art");
   const ink = must(og.load.texture(world, "icons/ink-icons.png"), "ink icons");
+  const icons = { texture: art, columns: 4, rows: 3, pictures: true, names: ART_NAMES.map((n) => `art-${n}`) };
   const fallbackIcons = { texture: ink, columns: 8, rows: 4, names: INK_NAMES };
-  if (name === "default") {
-    og.ui.configure(world, { style: null, font: null, fallbackIcons });
-  } else og.ui.configure(world, { style: must(og.load.style(world, `@styles/${name}`), name), font: null, fallbackIcons });
+  const style = name === "default" ? null : must(og.load.style(world, `@styles/${name}`), name);
+  og.ui.configure(world, { style, font: null, icons, fallbackIcons });
 }
+
+/** The fixture text in the active locale, read in start (ui may not call og.i18n). */
+let text: Record<string, unknown> = {};
 
 /** Mounts the sheet, its stores the fixtures and the page shown. */
 function show(world: World): void {
   const scope = og.ui.scope(world, "sheet");
-  const stores = Object.fromEntries(Object.entries({ ...TABLE, ...BUILDER, ...RUN, runArt, page: "table" }).map(([k, v]) =>
+  const stores = Object.fromEntries(Object.entries({ ...text, runArt, page: "table" }).map(([k, v]) =>
     [k, Array.isArray(v) ? scope.collection(k, v as { id: string }[], { key: "id" }) : scope.writable(k, v)]));
   must(scope.mount("sheet", "CardSheet", stores), "mount");
   const errors = scope.takeErrors();
@@ -55,8 +60,10 @@ export default og.game({
     runArt = must(og.load.texture(world, "art/runmap.jpg"), "run art") as number;
     setStyle(world, "fantasy");
     // The kit's strings in the review's CJK and right-to-left locales, as a
-    // game ships them (English comes with the kit).
-    for (const locale of ["ja", "ar"]) must(og.i18n.load(world, `strings/${locale}.ogt`), locale);
+    // game ships them (the kit's English comes with the kit), and the
+    // sheet's own fixture text in English and Chinese.
+    for (const locale of ["en", "zh-CN", "ja", "ar"]) must(og.i18n.load(world, `strings/${locale}.ogt`), locale);
+    text = localized({ ...TABLE, ...BUILDER, ...RUN }, (key) => og.i18n.t(world, key));
     for (const path of DOCUMENTS) must(og.load.document(world, path), path);
   },
   ui: show,

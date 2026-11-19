@@ -1,9 +1,9 @@
 // The sheet's fixture data (docs/ui.md §3.1: fixture values are data, not
-// visual tuning). TABLE is a mid-combat turn: seven cards in hand, two the
-// game says cannot be played, one picked up. BUILDER is a deck in progress
-// over a collection with owned, capped and locked cards, the deck one card
-// over its limit. RUN is the run map with every room state and a reward of
-// three cards, one refused.
+// visual tuning). TABLE is a mid-combat turn: six cards in hand, two the
+// game says cannot be played (with its reason), one picked up. BUILDER is a
+// deck of 13 of 15 over a collection with owned, capped, refused and
+// unowned cards, the two agreeing card by card. RUN is the run map with
+// every room state and a reward of two cards and a relic.
 
 export const INK_NAMES = [
   "heart", "star", "coin", "lock", "pause", "gear", "sword", "shield",
@@ -12,29 +12,40 @@ export const INK_NAMES = [
   "flag", "apple", "leaf", "fire", "drop", "skull", "music", "person",
 ];
 
-const card = (id: string, name: string, cost: string, icon: string, type: string, typeLabel: string, rarity: string, text: string) =>
-  ({ id, name, cost, icon, art: 0, type, typeLabel, rarity, text });
-
-const HAND = [
-  card("strike", "Ember Strike", "1", "fire", "attack", "Attack", "common", "Deal 6 damage. Apply 1 Burn."),
-  card("guard", "Iron Guard", "1", "shield", "skill", "Skill", "common", "Gain 5 Block."),
-  card("cleave", "Cleave", "1", "sword", "attack", "Attack", "uncommon", "Deal 8 damage to all enemies."),
-  card("lament", "Lament of the Drowned Cathedral", "4", "skull", "power", "Power", "legendary", "Each turn, every enemy loses 2 Strength."),
-  card("mend", "Mend", "2", "heart", "skill", "Skill", "uncommon", "Heal 6. Exhaust."),
-  card("surge", "Arcane Surge", "3", "bolt", "power", "Power", "rare", "Draw 2 more cards each turn."),
-  card("wound", "Wound", "", "drop", "status", "Status", "common", "Unplayable."),
+/** The sheet's painted card art (art/card-art.png, 4 × 3, sample art only). */
+export const ART_NAMES = [
+  "fire", "shield", "axe", "moonstone", "potion", "ember",
+  "feather", "bow", "torch", "staff", "lantern", "gem",
 ];
-// Arcane Surge costs more energy than the player has; Wound is unplayable.
-const PLAYABLE = new Set(["strike", "guard", "cleave", "lament", "mend"]);
+
+const card = (id: string, name: string, cost: string, icon: string, type: string, typeLabel: string, rarity: string, text: string) =>
+  ({ id, name, cost, icon: `art-${icon}`, art: 0, type, typeLabel, rarity, text });
+
+// The cards of the mockup (one deck, one collection, one reward): the hand,
+// the collection and the deck list agree about every card.
+const STRIKE = card("strike", "Ember Strike", "1", "fire", "attack", "Attack", "common", "Deal 6 damage. Apply 1 Burn.");
+const GUARD = card("guard", "Iron Guard", "1", "shield", "skill", "Skill", "common", "Gain 8 Block.");
+const CLEAVE = card("cleave", "Cleave", "1", "axe", "attack", "Attack · Uncommon", "uncommon", "Deal 8 damage to ALL enemies.");
+const FOCUS = card("focus", "Moon Focus", "2", "moonstone", "power", "Power · Rare", "rare", "At the start of your turn, draw 1 extra card.");
+const WIND = card("wind", "Second Wind", "0", "potion", "skill", "Skill · Uncommon", "uncommon", "Gain 1 energy. Exhaust.");
+const FLAME = card("flame", "Phoenix Flame", "3", "ember", "attack", "Attack · Legendary", "legendary", "Deal 24 damage. If this kills, return it to your hand.");
+const DOUBT = card("doubt", "Doubt", "", "feather", "curse", "Curse", "common", "Unplayable. At the end of your turn, gain 1 Weak.");
+const QUICK = card("quick", "Quickdraw", "0", "bow", "attack", "Attack", "common", "Deal 3 damage. Draw 1 card.");
+const TORCH = card("torch", "Torchlight", "1", "torch", "skill", "Skill · Uncommon", "uncommon", "Look at the top 3 cards of your draw pile.");
+const STAR = card("star", "Starfall", "2", "staff", "power", "Power · Epic", "epic", "Whenever you play a Power, deal 5 damage to ALL enemies.");
+
+// Three energy left: Moon Focus costs more than that; Doubt is unplayable.
+const HAND = [STRIKE, GUARD, CLEAVE, FOCUS, WIND, DOUBT];
+const REASON: Record<string, string> = { focus: "No energy", doubt: "Unplayable" };
 
 export const TABLE = {
   // The game spreads the fan: each card's place from -1 to 1 in hand order.
-  handCards: HAND.map((c, i) => ({ ...c, playable: PLAYABLE.has(c.id), at: HAND.length > 1 ? (i / (HAND.length - 1)) * 2 - 1 : 0 })),
+  handCards: HAND.map((c, i) => ({ ...c, playable: !REASON[c.id], reason: REASON[c.id] ?? "", at: (i / (HAND.length - 1)) * 2 - 1 })),
   handSelected: "cleave",
   handFan: 8,
-  drawPiles: [{ id: "draw", kind: "draw", label: "Draw", icon: "bag", count: 17, enabled: true }],
+  drawPiles: [{ id: "draw", kind: "draw", label: "Draw", icon: "bag", count: 14, enabled: true }],
   spentPiles: [
-    { id: "discard", kind: "discard", label: "Discard", icon: "back", count: 4, enabled: true },
+    { id: "discard", kind: "discard", label: "Discard", icon: "back", count: 6, enabled: true },
     { id: "exhaust", kind: "exhaust", label: "Exhaust", icon: "fire", count: 0, enabled: false },
   ],
 };
@@ -46,36 +57,36 @@ export const BUILDER = {
   colTitle: "Collection",
   colFilter: "all",
   colFilters: [
-    { id: "all", label: "All" }, { id: "attack", label: "Attacks" }, { id: "skill", label: "Skills" },
-    { id: "power", label: "Powers" }, { id: "cost0", label: "Cost 0–1" }, { id: "cost2", label: "Cost 2+" },
+    { id: "all", label: "All", count: 42 }, { id: "attack", label: "Attack", count: 18 }, { id: "skill", label: "Skill", count: 15 },
+    { id: "power", label: "Power", count: 6 }, { id: "curse", label: "Curse", count: 3 },
   ],
-  colSelected: "cleave",
+  colSelected: "strike",
+  // Owned and in-deck counts match the deck list: 13 cards of 15.
   colCards: [
-    owned(HAND[0]!, 4, 3, false, false, "Three copies at most"),
-    owned(HAND[1]!, 3, 2, true),
-    owned(HAND[2]!, 2, 1, true),
-    owned(card("quick", "Quickstep", "0", "leaf", "skill", "Skill", "uncommon", "Draw 1 card."), 2, 2, false),
-    owned(HAND[4]!, 1, 0, true),
-    owned(HAND[5]!, 1, 1, false),
-    owned(card("bash", "Bash", "2", "sword", "attack", "Attack", "common", "Deal 8 damage. Apply 2 Vulnerable."), 3, 0, true),
-    owned(card("ward", "Ward", "1", "shield", "skill", "Skill", "common", "Gain 8 Block."), 2, 0, true),
-    owned(HAND[3]!, 0, 0, false, true),
-    owned(card("crown", "Hollow Crown", "2", "crown", "power", "Power", "mythic", "Your attacks deal double damage."), 0, 0, false, true),
-    owned(card("ember", "Ember Rain", "2", "fire", "attack", "Attack", "rare", "Deal 3 damage to a random enemy 4 times."), 1, 0, true),
-    owned(card("flask", "Bottled Light", "1", "potion", "skill", "Skill", "epic", "Retain. Gain 2 energy next turn."), 1, 0, true),
+    owned(STRIKE, 4, 3, true),
+    owned(GUARD, 4, 4, false, false, "All copies in the deck"),
+    owned(CLEAVE, 2, 1, true),
+    owned(FOCUS, 2, 2, false, false, "All copies in the deck"),
+    owned(WIND, 2, 1, false, false, "Deck holds 1 at most"),
+    owned(FLAME, 1, 1, false, false, "All copies in the deck"),
+    owned(DOUBT, 1, 1, false, false, "All copies in the deck"),
+    owned(QUICK, 2, 0, true),
+    owned(TORCH, 1, 0, true),
+    owned(STAR, 0, 0, false, true),
   ],
-  deckTitle: "Ember Deck",
-  deckCount: 31,
-  deckLimit: 30,
-  deckSelected: "cleave",
+  deckTitle: "Ashen Vanguard",
+  deckCount: 13,
+  deckLimit: 15,
+  deckSelected: "strike",
   deckConfirm: "Save deck",
   deckEntries: [
-    { id: "quick", name: "Quickstep", cost: "0", type: "skill", rarity: "uncommon", copies: 2, canAdd: false, canRemove: true },
-    { id: "strike", name: "Ember Strike", cost: "1", type: "attack", rarity: "common", copies: 3, canAdd: false, canRemove: true },
-    { id: "guard", name: "Iron Guard", cost: "1", type: "skill", rarity: "common", copies: 2, canAdd: false, canRemove: true },
-    { id: "cleave", name: "Cleave", cost: "1", type: "attack", rarity: "uncommon", copies: 1, canAdd: false, canRemove: true },
-    { id: "surge", name: "Arcane Surge", cost: "3", type: "power", rarity: "rare", copies: 1, canAdd: false, canRemove: true },
-    { id: "rest", name: "Twenty-two cards of the starter set, kept together", cost: "1", type: "skill", rarity: "common", copies: 22, canAdd: false, canRemove: false },
+    { id: "wind", name: "Second Wind", cost: "0", type: "skill", rarity: "uncommon", copies: 1, canAdd: false, canRemove: true },
+    { id: "strike", name: "Ember Strike", cost: "1", type: "attack", rarity: "common", copies: 3, canAdd: true, canRemove: true },
+    { id: "guard", name: "Iron Guard", cost: "1", type: "skill", rarity: "common", copies: 4, canAdd: false, canRemove: true },
+    { id: "cleave", name: "Cleave", cost: "1", type: "attack", rarity: "uncommon", copies: 1, canAdd: true, canRemove: true },
+    { id: "focus", name: "Moon Focus", cost: "2", type: "power", rarity: "rare", copies: 2, canAdd: false, canRemove: true },
+    { id: "flame", name: "Phoenix Flame", cost: "3", type: "attack", rarity: "legendary", copies: 1, canAdd: false, canRemove: true },
+    { id: "doubt", name: "Doubt", cost: "", type: "curse", rarity: "common", copies: 1, canAdd: false, canRemove: false },
   ],
 };
 
@@ -109,13 +120,33 @@ export const RUN = {
     { id: "event", icon: "flag", label: "Event", shape: "circle" }, { id: "treasure", icon: "gem", label: "Treasure", shape: "circle" },
     { id: "boss", icon: "crown", label: "Boss", shape: "diamond" },
   ],
-  rewardTitle: "Choose a card",
-  rewardSelected: "ember",
+  rewardTitle: "Choose a reward",
+  rewardKicker: "Victory · Floor 7",
+  rewardSelected: "cleave",
   rewardSkip: "Skip",
   rewardChoices: [
-    { ...card("ember", "Ember Rain", "2", "fire", "attack", "Attack", "rare", "Deal 3 damage to a random enemy 4 times."), relic: false, enabled: true },
-    { ...card("ward", "Ward", "1", "shield", "skill", "Skill", "common", "Gain 8 Block."), relic: false, enabled: true },
-    { ...card("crown", "Hollow Crown", "2", "crown", "power", "Power", "mythic", "Your attacks deal double damage."), relic: false, enabled: false },
-    { id: "lantern", relic: true, name: "Lantern of Dusk", cost: "", icon: "star", art: 0, type: "relic", typeLabel: "", rarity: "rare", text: "At the start of each combat, gain 1 energy.", enabled: true },
+    { ...CLEAVE, relic: false, enabled: true },
+    { ...FOCUS, relic: false, enabled: true },
+    { id: "lantern", relic: true, name: "Lantern of Dusk", cost: "", icon: "art-lantern", art: 0, type: "relic", typeLabel: "Relic · Rare", rarity: "rare", text: "At the start of each combat, gain 1 energy.", enabled: true },
   ],
 };
+
+// The sheet's fixture text goes through the string tables as a game's own
+// data would: a top-level text store is the key `sheet.<store>`, a row's
+// text field `sheet.<store>.<id>.<field>`. The English here is the source of
+// assets/strings/en.ogt; `tr` answers each key in the active locale. Ids,
+// icons, types, rarities, states and figures stay.
+const ROW_TEXT = new Set(["label", "name", "typeLabel", "text", "reason"]);
+const NOT_TEXT = /(Selected|Filter|View|Icon)$/;
+const WORDS = /\p{L}{2}/u;
+
+export function localized<T extends Record<string, unknown>>(data: T, tr: (key: string) => string): T {
+  const out: Record<string, unknown> = {};
+  for (const [store, v] of Object.entries(data)) {
+    if (typeof v === "string") out[store] = WORDS.test(v) && !NOT_TEXT.test(store) ? tr(`sheet.${store}`) : v;
+    else if (Array.isArray(v)) out[store] = v.map((row: Record<string, unknown>) => Object.fromEntries(Object.entries(row).map(([f, x]) =>
+      [f, typeof x === "string" && WORDS.test(x) && ROW_TEXT.has(f) ? tr(`sheet.${store}.${row.id}.${f}`) : x])));
+    else out[store] = v;
+  }
+  return out as T;
+}
