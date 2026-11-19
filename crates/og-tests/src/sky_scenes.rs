@@ -374,6 +374,12 @@ pub fn storm(strike: bool) -> RenderScene {
         Vec3::ZERO,
     );
     scene.frame.camera.target = Vec3::new(-1.0, 8.0, -30.0);
+    // The storm's own night: a dim blue glow from its deck, so the
+    // colonnade reads between two strikes (under the deck alone the night
+    // is unlit, and the frames between them were black). A hemisphere
+    // light: it adds no reflection, and a strike's flash, which multiplies
+    // the sky's light, leaves it as it is.
+    scene.lighting.hemisphere = ([0.16, 0.26, 0.55], [0.04, 0.06, 0.10], 4.0);
     if strike {
         // 300 m down the way, over the arch at its end: near enough that
         // the flash's light (its point light hangs over the root with a
