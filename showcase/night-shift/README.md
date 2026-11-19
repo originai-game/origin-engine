@@ -68,8 +68,8 @@ Generated assets were made for this project through the Origin gateway
 (concept images: `gpt-image-2.6-sunburst`; meshes, rigs and clips: Meshy
 image-to-3D, rigging and animation); they carry no third-party licence.
 Every gateway call is in `tools/gateway-journal.md` with its ids. The raw
-Meshy outputs and their concept images are kept in the
-`origin-generated-assets` bucket under `meshy/model/<operation>/`
+Meshy outputs and their concept images are kept in the generated-sources
+archive (docs/ci.md §Generated sources) under `meshy/model/<operation>/`
 (`model.glb`, `concept.png`, `task.json`), and the sign and window images
 under `scenes/night-shift/textures/`.
 

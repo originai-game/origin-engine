@@ -11,8 +11,8 @@ with no alpha: opaque sprites are keyed by distance from the key colour
 (a narrow soft edge, magenta spill pulled off the rim), the glass flask by
 un-mixing the key into straight alpha, its outside cleared by a flood fill
 from the border and its clear body set to a faint even glass tint. The
-sources (the gateway's PNGs) are in the `origin-generated-assets` bucket
-(`docs/ci.md` §The model bucket) under `gateway/image/showcase-2d/`.
+sources (the gateway's PNGs) are in the generated-sources archive
+(`docs/ci.md` §Generated sources) under `gateway/image/showcase-2d/`.
 
 | File | Gateway media id | Source sha256 | Made from it by |
 |---|---|---|---|

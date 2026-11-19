@@ -4,8 +4,8 @@ Meshy text-to-3D through the OriginGame gateway (`generate_3d`
 `text_preview`, meshy-6, triangles, remeshed, then `text_refine` with PBR;
 2026-11-18), textures at 512 px and the emissive map dropped. The sources
 (the model as Meshy made it and the receipt with prompts, operation and task
-IDs) are in the `origin-generated-assets` bucket (`docs/ci.md` §The model
-bucket) under the key below. Licence: generated for origin-engine, owned by
+IDs) are in the generated-sources archive (`docs/ci.md` §Generated
+sources) under the key below. Licence: generated for origin-engine, owned by
 the project (Meshy's terms for paid output).
 
 | File | Source key | Source sha256 (`model.glb`) |

@@ -82,10 +82,12 @@ its cloak: a second mesh skinned to the spine, its cloth drawn by
 ImageMagick, which og.Garment simulates. The shipped checksum is the
 cloaked file's.
 
-The sources as generated are kept in the private bucket
-`origin-generated-assets` by `tools/archive.ts`, write-once, under
-`meshy/model/<operation>/`: `model.glb`, the reference images and a
-`task.json` receipt (prompt, ids, sizes, checksums). The reference images
+The sources as generated are kept as private objects in the asset store
+by `tools/archive.ts` (docs/ci.md §Generated sources): `model.glb`, the
+reference images and a `task.json` receipt (prompt, ids, sizes,
+checksums), whose sha256 `tools/assets.json` records on each task as
+`archive`. Those archived before 2026-11-19 keep their old key,
+`meshy/model/<operation>/`, in the generated-sources index. The reference images
 are not in git either (`tools/refs/*.png`); their prompts are.
 
 ### From the catalogue

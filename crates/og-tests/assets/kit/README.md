@@ -11,8 +11,8 @@ a concept image by `generate_image` (gpt-image-2.6-sunburst), then Meshy
 image-to-3D by `generate_3d` (meshy-6, triangles, PBR). The gateway returned
 no price for any call; each Meshy task reports 30 credits. The sources (the
 concept, the 2048 px model as Meshy made it, and the task receipt with its
-prompt, IDs and checksums) are in the `origin-generated-assets` bucket
-(`docs/ci.md` §The model bucket) under the key below.
+prompt, IDs and checksums) are in the generated-sources archive
+(`docs/ci.md` §Generated sources) under the key below.
 
 | File | Triangles | Source key | Source sha256 (`model.glb`) |
 |---|---|---|---|
