@@ -20,6 +20,12 @@ og-ecs = { path = "../og-ecs" }
 # by path (`og_audio::opus`), over this codec (pure Rust, no dependencies).
 opus-pure = { workspace = true }
 
+# The default output device through cpal (src/device.rs), for native hosts.
+cpal = { version = "0.17.1", optional = true }
+
+[features]
+device = ["dep:cpal"]
+
 [dev-dependencies]
 image = { workspace = true }
 

@@ -3002,6 +3002,7 @@ dependencies = [
 name = "og-audio"
 version = "0.9.0"
 dependencies = [
+ "cpal",
  "image",
  "og-core",
  "og-ecs",
@@ -3229,7 +3230,6 @@ dependencies = [
 name = "og-host-node"
 version = "0.9.0"
 dependencies = [
- "cpal",
  "napi",
  "napi-build",
  "napi-derive",

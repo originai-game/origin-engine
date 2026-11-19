@@ -45,6 +45,8 @@
 
 pub mod command;
 pub mod decode;
+#[cfg(feature = "device")]
+pub mod device;
 pub mod dsp;
 pub mod events;
 pub mod listen;

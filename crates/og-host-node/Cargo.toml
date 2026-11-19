@@ -19,7 +19,7 @@ default = ["story", "video", "film", "destruction", "motion", "nav", "ai", "fram
 # A published game: the commands module and the probe's non-player members are not exported.
 publish = ["og-runtime/publish"]
 # Audio on the default output device through cpal (og-audio); without it the sinks are null and capture.
-native-audio = ["dep:cpal"]
+native-audio = ["og-audio/device"]
 # og-runtime's optional modules (its Cargo.toml), each on by default; a
 # build without one answers that module's calls with the refusal naming
 # the feature. og-runtime's other defaults (shaping, both physics
@@ -58,7 +58,6 @@ serde_json = "1"
 og-audio = { path = "../og-audio" }
 og-net = { path = "../og-net", features = ["ws"] }
 og-shared = { path = "../og-shared", features = ["client"] }
-cpal = { version = "0.17.1", optional = true }
 
 [build-dependencies]
 napi-build = "2"
