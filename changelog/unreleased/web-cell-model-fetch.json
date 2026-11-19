@@ -3,7 +3,7 @@
   "fixed": [
     {
       "member": "og.StreamCell",
-      "summary": "On the web, a streaming cell whose sub-scene places several models from a runtime bundle (og.load.bundle, og.load.pack) loads, and its cell group becomes ready. The tick that would load it now waits once for every file of those models still being fetched, as it already waits for the group's pack, instead of refusing the spawn at the first missing file and running out of retries. Natively nothing changes: those files read at once."
+      "summary": "On the web, a streaming cell whose sub-scene places several models from a runtime bundle (og.load.bundle, og.load.pack) loads, and its cell group becomes ready. The tick that would load it now waits once for every file of those models still being fetched (and for scenes nested in it and prefabs, then their models), as it already waits for the group's pack, instead of refusing the spawn at the first missing file and running out of retries. Natively nothing changes: those files read at once."
     }
   ]
 }

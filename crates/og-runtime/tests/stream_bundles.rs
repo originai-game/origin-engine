@@ -99,7 +99,10 @@ impl Hooks for Disk {
         Ok(String::new())
     }
     fn read_asset(&self, path: &str) -> Fetch<Vec<u8>> {
-        if self.delayed && path.contains("/stream/") && self.reads.borrow_mut().insert(path.into())
+        // A pack, and a model's stand-in, which the web also reads on demand.
+        if self.delayed
+            && (path.contains("/stream/") || path.ends_with(".proxy.ogb"))
+            && self.reads.borrow_mut().insert(path.into())
         {
             return Fetch::Pending;
         }
@@ -696,16 +699,18 @@ impl Hooks for Network {
     }
 }
 
-/// A cell group's sub-scene placing six models from a runtime bundle,
-/// whose files the host fetches on demand, loads and its group becomes
-/// ready: the tick waits once for every model's files. Broken while each
-/// refused spawn started only the next missing file: the cell ran out of
-/// retries before the last arrived and stayed unloaded with its group
-/// resident (Infinity World's far cells on the web).
+/// A cell group's sub-scene placing six models from a runtime bundle, and
+/// a scene nested in it placing six more, whose files the host fetches on
+/// demand, loads and its group becomes ready: the tick waits once for every
+/// model's files, and for the nested scene's and then its models'. Broken
+/// while each refused spawn started only the next missing file: the cell
+/// ran out of retries before the last arrived and stayed unloaded with its
+/// group resident (Infinity World's far cells on the web); and again while
+/// the nested scene's files were not asked for.
 #[test]
 fn a_cell_waits_for_all_its_models_files_at_once() {
     let _lock = TEST_LOCK.lock().unwrap();
-    const MODELS: usize = 6;
+    const MODELS: usize = 12;
     let base = PathBuf::from(env!("CARGO_TARGET_TMPDIR"))
         .join(format!("og-runtime-many-models-{}", std::process::id()));
     let _ = std::fs::remove_dir_all(&base);
@@ -713,8 +718,9 @@ fn a_cell_waits_for_all_its_models_files_at_once() {
     cook(&root, &[("world.ogt", b"type scene\nversion 1\n---\nentity \"player\" {\n  Transform {\n    position 0 0 0\n  }\n  StreamAnchor {\n    reach 0\n  }\n}\n".to_vec())]);
     let mut files = Vec::new();
     let mut content = "type scene\nversion 1\n---\nstream \"many\" {\n  cell\n}\n".to_string();
+    let mut inner = "type scene\nversion 1\n---\n".to_string();
     for i in 0..MODELS {
-        let shade = 40 * i as u8;
+        let shade = 20 * i as u8;
         let image = image::RgbaImage::from_pixel(16, 16, image::Rgba([shade, 90, 200, 255]));
         let mut png = std::io::Cursor::new(Vec::new());
         image.write_to(&mut png, image::ImageFormat::Png).unwrap();
@@ -727,9 +733,17 @@ fn a_cell_waits_for_all_its_models_files_at_once() {
             )
             .into_bytes(),
         ));
-        content += &format!("entity \"box-{i}\" {{\n  model \"m{i}/model.ogt\"\n}}\n");
+        let line = format!("entity \"box-{i}\" {{\n  model \"m{i}/model.ogt\"\n}}\n");
+        // The second half in a scene nested in the cell's.
+        if i < MODELS / 2 {
+            content += &line;
+        } else {
+            inner += &line;
+        }
     }
+    content += "entity \"inner\" {\n  scene \"m-inner.ogt\"\n}\n";
     files.push(("content.ogt".into(), content.into_bytes()));
+    files.push(("m-inner.ogt".into(), inner.into_bytes()));
     files.push(("place.ogt".into(), b"type scene\nversion 1\n---\nentity \"cell-many\" {\n  scene \"content.ogt\"\n  Transform {\n    position 100 0 0\n  }\n  Volume {\n    size 20 10 20\n  }\n  StreamCell {\n    load 10\n  }\n}\n".to_vec()));
     let pack = base.join("many");
     cook(
