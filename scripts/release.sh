@@ -39,9 +39,10 @@
 #                                               key, an archive not verified on both platforms, and (the checkout's version) a HEAD whose
 #                                               packaged inputs differ from the revision packed. A version already published with the
 #                                               same SHA256SUMS is reported and left; any other bytes are refused
-#   scripts/release.sh dev <run-id|dir>         a dev build (docs/release.md §1a): the tarballs of a `release.yml -f dev=true` run
-#                                               (fetched, or a directory holding them), archived, signed and published (channel dev)
-#                                               at the run's commit; no verify
+#   scripts/release.sh dev <run-id> | <dir> --revision <sha>
+#                                               a dev build (docs/release.md §1a): the tarballs of a `release.yml -f dev=true` run
+#                                               (fetched), or a directory holding tarballs packed elsewhere at <sha> (the full commit
+#                                               id the hosts built), archived, signed and published (channel dev) at that commit; no verify
 #
 # pack holds the gate lock through pack.sh (a release build compiles beside
 # nothing) and refuses a dev native/ as pack.sh does. publish is an outward
@@ -203,8 +204,15 @@ cmd_sign() {
 # §1a). The version comes from the tarballs (the workflow wrote it in its
 # checkout), not from this tree.
 cmd_dev() {
-  local src="${1:?scripts/release.sh dev <run-id|dir>}" tmp
-  if [ -d "$src" ]; then tmp="$(cd "$src" && pwd)"
+  local src="${1:?scripts/release.sh dev <run-id> | <dir> --revision <sha>}" tmp rev=()
+  shift
+  if [ -d "$src" ]; then
+    # A directory carries no commit of its own: a tag or a run that happens
+    # to share the dev number would name the wrong one.
+    [ "${1:-}" = --revision ] && [[ "${2:-}" =~ ^[0-9a-f]{40}$ ]] || { og_err "release: dev <dir> needs --revision <full sha>, the commit the tarballs were packed at"; return 1; }
+    git cat-file -e "$2^{commit}" 2>/dev/null || { og_err "release: the commit $2 is not in this clone; git fetch it"; return 1; }
+    rev=(--revision "$2")
+    tmp="$(cd "$src" && pwd)"
   else
     og_need gh || return 1
     tmp="$(mktemp -d)" || return 1
@@ -217,7 +225,6 @@ cmd_dev() {
   local out; out="$(out_dir "$v")"
   rm -rf "$out"; mkdir -p "$out"
   cp "$tmp"/origingame-*-"$v".tgz "$out/" || return 1
-  local rev=()
   [ -d "$src" ] || rev=(--revision "$(gh run view "$src" -R "$REPO" --json headSha -q .headSha)")
   bun scripts/release-dist.ts "$out" --version "$v" "${rev[@]}" || return 1
   OG_RELEASE_DEV=1 cmd_publish "$v"

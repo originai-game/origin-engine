@@ -148,7 +148,8 @@ A fix the platform needs to try does not wait for a release. It is pushed
 to `main`, built by `gh workflow run release.yml --ref main -f dev=true`
 (version `<next patch>-dev.<run number>`, nothing of it committed), and
 archived, signed and published on the `dev` channel at the run's commit by
-`scripts/release.sh dev <run-id|dir>`. The platform then pins that exact
+`scripts/release.sh dev <run-id>` (or `dev <dir> --revision <sha>` for
+tarballs packed on our own hosts at <sha>). The platform then pins that exact
 version. A dev build runs no install test and no browser tier, and writes
 no receipt, tag or changelog entry; `latest` never points at one. A
 release (§3) is cut at a milestone, from whatever dev build the testing
