@@ -3,7 +3,7 @@
   "fixed": [
     {
       "member": "og.shared.join",
-      "summary": "A joined session that hears nothing from its world server for 2 s (a snapshot comes every tick) counts as lost and reconnects at once, resuming its avatar: a WebTransport client whose NAT rebinds is back in about 2 s as the same og.RemoteAvatar on the others, instead of waiting for the transport's idle timeout and returning as a new visitor."
+      "summary": "A joined session that hears nothing from its world server for 2 s (a snapshot comes every tick) counts as lost and reconnects at once, resuming its avatar: a WebTransport client whose NAT rebinds is back in about 2 s as the same og.RemoteAvatar on the others, instead of waiting for the transport's idle timeout and returning as a new visitor. The 2 s are real time measured by the connection, so a load hitch or a background tab is not taken for a loss. A reconnect keeps the og.RemoteAvatar entities it held: those the server enters again carry on with no og.PresenceLeft or og.PresenceEntered."
     }
   ]
 }

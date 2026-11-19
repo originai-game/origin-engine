@@ -49,7 +49,7 @@ if (transport.startsWith("wt")) {
         write: (b) => {
           wt.datagramsOut++;
           if (b[0] !== PROPOSE) wt.misrouted++;
-          this.#ws?.send(b);
+          this.#ws?.send(b as Uint8Array<ArrayBuffer>);
         },
       });
       this.datagrams = { readable, writable, maxDatagramSize: 1200 };
@@ -99,7 +99,7 @@ if (transport.startsWith("wt")) {
               if (buf.length < 4 + len) break;
               const m = buf.slice(4, 4 + len);
               if (m[0] === PROPOSE) wt.misrouted++;
-              this.#ws?.send(m);
+              this.#ws?.send(m as Uint8Array<ArrayBuffer>);
               buf = buf.subarray(4 + len);
             }
           },
