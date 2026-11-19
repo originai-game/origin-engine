@@ -85,6 +85,10 @@ pub trait Lifecycle: Wire {
     fn og_room_deliver(&self, engine: u32, event: String) -> bool;
     /// Say what carries this engine's rooms: JSON `{ host, join? }` (`relay`, `player` or `none`), as og.platform.roomInfo reports; with `none` roomCreate and roomJoin are refused. `join` is the room a Play link named (`?room=<id>`): the engine joins it once, itself, and og.RoomJoined answers.
     fn og_room_set_host(&self, engine: u32, info: String);
+    /// The shared-world ops (IDL `shared`) made since the last call, oldest first, as JSON `[op]`: `{ op: "connect", world, reconnect }` (ask the session provider for a connection and open it; `reconnect` after a lost one), `{ op: "send", bytes }` (one binary message, base64, on the open connection) or `{ op: "close" }`. The host carries each in order (docs/design.md §2.12).
+    fn og_shared_take(&self, engine: u32) -> String;
+    /// One shared-world event from the host, JSON: `{ type: "host", host }` (what carries sessions here: the provider's name, or `none`), `{ type: "open", transport, token }` (connected; the token is the provider's, sent in hello as it is), `{ type: "message", bytes }` (base64), `{ type: "closed", reason }` or `{ type: "refused", code, message }` (the provider refused). Applied at the start of the next tick and journaled (og.platform.journal) without the token. False for a malformed event.
+    fn og_shared_deliver(&self, engine: u32, event: String) -> bool;
     /// Turn an engine's trace on or off (`og run --trace`, the shell's `trace()`). Engine 0xffffffff is the loads made before an engine exists: its boot scene's.
     fn og_engine_trace(&self, engine: u32, on: bool);
     /// The trace's spans since the last take, as JSON `{ now, events }`: Chrome trace events on the engine's clock. `last` waits for the GPU's frames in flight where the host can (natively; the web's arrive in a later take).
@@ -1427,6 +1431,26 @@ pub trait NetApi: Wire {
     fn og_net_hash(&self, world: u32) -> String;
 }
 
+/// `shared`: packages/knowledge/wiki/shared.md.
+pub trait SharedApi: Wire {
+    /// `og.shared.shape`
+    fn og_shared_shape(&self, world: u32, desc: Option<String>) -> String;
+    /// `og.shared.join`
+    fn og_shared_join(&self, world: u32, desc: Option<String>) -> String;
+    /// `og.shared.leave`
+    fn og_shared_leave(&self, world: u32) -> String;
+    /// `og.shared.teleport`
+    fn og_shared_teleport(&self, world: u32, position: String) -> String;
+    /// `og.shared.send`
+    fn og_shared_send(&self, world: u32, component: String, value: String) -> String;
+    /// `og.shared.events`
+    fn og_shared_events(&self, world: u32, component: String) -> String;
+    /// `og.shared.remote`
+    fn og_shared_remote(&self, world: u32, entity: f64) -> String;
+    /// `og.shared.status`
+    fn og_shared_status(&self, world: u32) -> String;
+}
+
 /// `motion`: packages/knowledge/wiki/motion.md.
 pub trait MotionApi: Wire {
     /// `og.motion.pose`
@@ -1552,9 +1576,9 @@ pub trait LoadingApi: Wire {
 }
 
 /// Every trait: a host is a type that implements all of them.
-pub trait Host: Lifecycle + ReflectApi + WorldApi + SystemApi + GameApi + TransformApi + TimeApi + RngApi + ProcgenApi + InputApi + CameraApi + RenderApi + LoadApi + PhysicsApi + AtmosphereApi + AnimApi + TweenApi + TilemapApi + AudioApi + NavApi + AiApi + StoryApi + PlatformApi + I18nApi + UiApi + CommandsApi + ProbeApi + TerrainApi + StreamApi + VideoApi + DebugApi + AssertApi + PathApi + TimelineApi + NetApi + MotionApi + DestructionApi + VfxApi + SightApi + FilmApi + SceneApi + LoadingApi {}
+pub trait Host: Lifecycle + ReflectApi + WorldApi + SystemApi + GameApi + TransformApi + TimeApi + RngApi + ProcgenApi + InputApi + CameraApi + RenderApi + LoadApi + PhysicsApi + AtmosphereApi + AnimApi + TweenApi + TilemapApi + AudioApi + NavApi + AiApi + StoryApi + PlatformApi + I18nApi + UiApi + CommandsApi + ProbeApi + TerrainApi + StreamApi + VideoApi + DebugApi + AssertApi + PathApi + TimelineApi + NetApi + SharedApi + MotionApi + DestructionApi + VfxApi + SightApi + FilmApi + SceneApi + LoadingApi {}
 
-impl<T: Lifecycle + ReflectApi + WorldApi + SystemApi + GameApi + TransformApi + TimeApi + RngApi + ProcgenApi + InputApi + CameraApi + RenderApi + LoadApi + PhysicsApi + AtmosphereApi + AnimApi + TweenApi + TilemapApi + AudioApi + NavApi + AiApi + StoryApi + PlatformApi + I18nApi + UiApi + CommandsApi + ProbeApi + TerrainApi + StreamApi + VideoApi + DebugApi + AssertApi + PathApi + TimelineApi + NetApi + MotionApi + DestructionApi + VfxApi + SightApi + FilmApi + SceneApi + LoadingApi> Host for T {}
+impl<T: Lifecycle + ReflectApi + WorldApi + SystemApi + GameApi + TransformApi + TimeApi + RngApi + ProcgenApi + InputApi + CameraApi + RenderApi + LoadApi + PhysicsApi + AtmosphereApi + AnimApi + TweenApi + TilemapApi + AudioApi + NavApi + AiApi + StoryApi + PlatformApi + I18nApi + UiApi + CommandsApi + ProbeApi + TerrainApi + StreamApi + VideoApi + DebugApi + AssertApi + PathApi + TimelineApi + NetApi + SharedApi + MotionApi + DestructionApi + VfxApi + SightApi + FilmApi + SceneApi + LoadingApi> Host for T {}
 
 /// Every binding symbol, in binding-table order (`bindings.json` ids).
 pub const SYMBOLS: &[&str] = &[
@@ -2158,6 +2182,14 @@ pub const SYMBOLS: &[&str] = &[
     "og_net_resimulating",
     "og_net_final_hash",
     "og_net_hash",
+    "og_shared_shape",
+    "og_shared_join",
+    "og_shared_leave",
+    "og_shared_teleport",
+    "og_shared_send",
+    "og_shared_events",
+    "og_shared_remote",
+    "og_shared_status",
     "og_motion_pose",
     "og_motion_place",
     "og_motion_face",

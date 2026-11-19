@@ -66,6 +66,10 @@ export interface HostAbi<A, V> {
   og_room_deliver(engine: number, event: string): boolean;
   /** Say what carries this engine's rooms: JSON `{ host, join? }` (`relay`, `player` or `none`), as og.platform.roomInfo reports; with `none` roomCreate and roomJoin are refused. `join` is the room a Play link named (`?room=<id>`): the engine joins it once, itself, and og.RoomJoined answers. */
   og_room_set_host(engine: number, info: string): void;
+  /** The shared-world ops (IDL `shared`) made since the last call, oldest first, as JSON `[op]`: `{ op: "connect", world, reconnect }` (ask the session provider for a connection and open it; `reconnect` after a lost one), `{ op: "send", bytes }` (one binary message, base64, on the open connection) or `{ op: "close" }`. The host carries each in order (docs/design.md §2.12). */
+  og_shared_take(engine: number): string;
+  /** One shared-world event from the host, JSON: `{ type: "host", host }` (what carries sessions here: the provider's name, or `none`), `{ type: "open", transport, token }` (connected; the token is the provider's, sent in hello as it is), `{ type: "message", bytes }` (base64), `{ type: "closed", reason }` or `{ type: "refused", code, message }` (the provider refused). Applied at the start of the next tick and journaled (og.platform.journal) without the token. False for a malformed event. */
+  og_shared_deliver(engine: number, event: string): boolean;
   /** Turn an engine's trace on or off (`og run --trace`, the shell's `trace()`). Engine 0xffffffff is the loads made before an engine exists: its boot scene's. */
   og_engine_trace(engine: number, on: boolean): void;
   /** The trace's spans since the last take, as JSON `{ now, events }`: Chrome trace events on the engine's clock. `last` waits for the GPU's frames in flight where the host can (natively; the web's arrive in a later take). */
@@ -1270,6 +1274,22 @@ export interface HostAbi<A, V> {
   og_net_final_hash(world: number, tick: number): string;
   /** `og.net.hash` */
   og_net_hash(world: number): string;
+  /** `og.shared.shape` */
+  og_shared_shape(world: number, desc: string | undefined): string;
+  /** `og.shared.join` */
+  og_shared_join(world: number, desc: string | undefined): string;
+  /** `og.shared.leave` */
+  og_shared_leave(world: number): string;
+  /** `og.shared.teleport` */
+  og_shared_teleport(world: number, position: string): string;
+  /** `og.shared.send` */
+  og_shared_send(world: number, component: string, value: string): string;
+  /** `og.shared.events` */
+  og_shared_events(world: number, component: string): string;
+  /** `og.shared.remote` */
+  og_shared_remote(world: number, entity: number): string;
+  /** `og.shared.status` */
+  og_shared_status(world: number): string;
   /** `og.motion.pose` */
   og_motion_pose(world: number, entity: number, desc: string | undefined): string;
   /** `og.motion.place` */
@@ -1970,6 +1990,14 @@ export const SYMBOLS: readonly string[] = [
   "og_net_resimulating",
   "og_net_final_hash",
   "og_net_hash",
+  "og_shared_shape",
+  "og_shared_join",
+  "og_shared_leave",
+  "og_shared_teleport",
+  "og_shared_send",
+  "og_shared_events",
+  "og_shared_remote",
+  "og_shared_status",
   "og_motion_pose",
   "og_motion_place",
   "og_motion_face",
@@ -2047,6 +2075,8 @@ export const SYMBOLS: readonly string[] = [
   "og_room_take",
   "og_room_deliver",
   "og_room_set_host",
+  "og_shared_take",
+  "og_shared_deliver",
   "og_engine_trace",
   "og_engine_trace_take",
 ];
@@ -2233,6 +2263,10 @@ export function checkEntities<A, V>(abi: HostAbi<A, V>): HostAbi<A, V> {
     og_timeline_stop(world: number, entity: number) {
       if (typeof entity !== "number") notEntity("og.timeline.stop", "entity", entity);
       return abi.og_timeline_stop(world, entity);
+    },
+    og_shared_remote(world: number, entity: number) {
+      if (typeof entity !== "number") notEntity("og.shared.remote", "entity", entity);
+      return abi.og_shared_remote(world, entity);
     },
     og_motion_pose(world: number, entity: number, desc: string | undefined) {
       if (typeof entity !== "number") notEntity("og.motion.pose", "entity", entity);

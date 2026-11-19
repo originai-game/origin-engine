@@ -142,6 +142,33 @@ macro_rules! __og_host_bindings_platform {
             }
         }
 
+        impl $crate::host_impl::api::SharedApi for $host {
+            fn og_shared_shape(&self, world: u32, desc: Option<String>) -> String {
+                $crate::host_impl::answer($crate::og_shared_shape(world, desc))
+            }
+            fn og_shared_join(&self, world: u32, desc: Option<String>) -> String {
+                $crate::host_impl::answer($crate::og_shared_join(world, desc))
+            }
+            fn og_shared_leave(&self, world: u32) -> String {
+                $crate::host_impl::answer($crate::og_shared_leave(world))
+            }
+            fn og_shared_teleport(&self, world: u32, position: String) -> String {
+                $crate::host_impl::answer($crate::og_shared_teleport(world, position))
+            }
+            fn og_shared_send(&self, world: u32, component: String, value: String) -> String {
+                $crate::host_impl::answer($crate::og_shared_send(world, component, value))
+            }
+            fn og_shared_events(&self, world: u32, component: String) -> String {
+                $crate::host_impl::answer($crate::og_shared_events(world, component))
+            }
+            fn og_shared_remote(&self, world: u32, entity: f64) -> String {
+                $crate::host_impl::json($crate::og_shared_remote(world, entity))
+            }
+            fn og_shared_status(&self, world: u32) -> String {
+                $crate::host_impl::json($crate::og_shared_status(world))
+            }
+        }
+
         impl $crate::host_impl::api::NetApi for $host {
             fn og_net_submit(&self, world: u32, input: Option<String>) -> String {
                 $crate::host_impl::answer($crate::og_net_submit(world, input))

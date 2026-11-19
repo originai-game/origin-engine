@@ -114,6 +114,12 @@ macro_rules! __og_host_bindings_engine {
             fn og_room_set_host(&self, engine: u32, info: String) {
                 $crate::og_room_set_host(engine, info)
             }
+            fn og_shared_take(&self, engine: u32) -> String {
+                $crate::og_shared_take(engine)
+            }
+            fn og_shared_deliver(&self, engine: u32, event: String) -> bool {
+                $crate::og_shared_deliver(engine, event)
+            }
             fn og_engine_take_log(&self, engine: u32) -> String {
                 $crate::og_engine_take_log(engine)
             }

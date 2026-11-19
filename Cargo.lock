@@ -3320,6 +3320,7 @@ dependencies = [
  "og-physics",
  "og-probe",
  "og-render",
+ "og-shared",
  "og-story",
  "og-tests",
  "og-tilemap",

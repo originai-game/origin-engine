@@ -136,6 +136,8 @@ mod season;
 mod shadow_flags;
 #[path = "../shared_models.rs"]
 mod shared_models;
+#[path = "../shared_world.rs"]
+mod shared_world;
 #[path = "../sky_directions.rs"]
 mod sky_directions;
 #[path = "../sky_off.rs"]

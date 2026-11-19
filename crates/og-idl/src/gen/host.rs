@@ -389,6 +389,18 @@ const LIFECYCLE: &[LifecycleMember] = &[
         "Say what carries this engine's rooms: JSON `{ host, join? }` (`relay`, `player` or `none`), as og.platform.roomInfo reports; with `none` roomCreate and roomJoin are refused. `join` is the room a Play link named (`?room=<id>`): the engine joins it once, itself, and og.RoomJoined answers.",
     ),
     (
+        "og_shared_take",
+        &[("engine", "u32", "number")],
+        "String",
+        "The shared-world ops (IDL `shared`) made since the last call, oldest first, as JSON `[op]`: `{ op: \"connect\", world, reconnect }` (ask the session provider for a connection and open it; `reconnect` after a lost one), `{ op: \"send\", bytes }` (one binary message, base64, on the open connection) or `{ op: \"close\" }`. The host carries each in order (docs/design.md §2.12).",
+    ),
+    (
+        "og_shared_deliver",
+        &[("engine", "u32", "number"), ("event", "String", "string")],
+        "bool",
+        "One shared-world event from the host, JSON: `{ type: \"host\", host }` (what carries sessions here: the provider's name, or `none`), `{ type: \"open\", transport, token }` (connected; the token is the provider's, sent in hello as it is), `{ type: \"message\", bytes }` (base64), `{ type: \"closed\", reason }` or `{ type: \"refused\", code, message }` (the provider refused). Applied at the start of the next tick and journaled (og.platform.journal) without the token. False for a malformed event.",
+    ),
+    (
         "og_engine_trace",
         &[("engine", "u32", "number"), ("on", "bool", "boolean")],
         "()",

@@ -154,6 +154,16 @@ pub fn og_room_set_host(engine: u32, info: String) {
 }
 
 #[wasm_bindgen]
+pub fn og_shared_take(engine: u32) -> String {
+    <Host as Lifecycle>::og_shared_take(&Host, engine)
+}
+
+#[wasm_bindgen]
+pub fn og_shared_deliver(engine: u32, event: String) -> bool {
+    <Host as Lifecycle>::og_shared_deliver(&Host, engine, event)
+}
+
+#[wasm_bindgen]
 pub fn og_engine_trace(engine: u32, on: bool) {
     <Host as Lifecycle>::og_engine_trace(&Host, engine, on)
 }
@@ -3202,6 +3212,46 @@ pub fn og_net_final_hash(world: u32, tick: f64) -> String {
 #[wasm_bindgen]
 pub fn og_net_hash(world: u32) -> String {
     <Host as NetApi>::og_net_hash(&Host, world)
+}
+
+#[wasm_bindgen]
+pub fn og_shared_shape(world: u32, desc: Option<String>) -> String {
+    <Host as SharedApi>::og_shared_shape(&Host, world, desc)
+}
+
+#[wasm_bindgen]
+pub fn og_shared_join(world: u32, desc: Option<String>) -> String {
+    <Host as SharedApi>::og_shared_join(&Host, world, desc)
+}
+
+#[wasm_bindgen]
+pub fn og_shared_leave(world: u32) -> String {
+    <Host as SharedApi>::og_shared_leave(&Host, world)
+}
+
+#[wasm_bindgen]
+pub fn og_shared_teleport(world: u32, position: String) -> String {
+    <Host as SharedApi>::og_shared_teleport(&Host, world, position)
+}
+
+#[wasm_bindgen]
+pub fn og_shared_send(world: u32, component: String, value: String) -> String {
+    <Host as SharedApi>::og_shared_send(&Host, world, component, value)
+}
+
+#[wasm_bindgen]
+pub fn og_shared_events(world: u32, component: String) -> String {
+    <Host as SharedApi>::og_shared_events(&Host, world, component)
+}
+
+#[wasm_bindgen]
+pub fn og_shared_remote(world: u32, entity: f64) -> String {
+    <Host as SharedApi>::og_shared_remote(&Host, world, entity)
+}
+
+#[wasm_bindgen]
+pub fn og_shared_status(world: u32) -> String {
+    <Host as SharedApi>::og_shared_status(&Host, world)
 }
 
 #[wasm_bindgen]

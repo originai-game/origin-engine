@@ -25827,6 +25827,255 @@ impl ToJson for LockstepStatus {
     }
 }
 
+/// `SharedState`: packages/knowledge/wiki/shared.md.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash, PartialOrd, Ord)]
+pub enum SharedState {
+    #[default]
+    Off,
+    Connecting,
+    Joined,
+    Reconnecting,
+    Refused,
+}
+
+impl SharedState {
+    /// The variants' IDL names, in index order.
+    pub const NAMES: &'static [&'static str] = &["off", "connecting", "joined", "reconnecting", "refused"];
+    /// Every variant, in index order.
+    pub const ALL: &'static [Self] = &[Self::Off, Self::Connecting, Self::Joined, Self::Reconnecting, Self::Refused];
+    /// The IDL name.
+    pub fn as_str(self) -> &'static str {
+        Self::NAMES[self as usize]
+    }
+    /// The variant named `s`, or a refusal naming them all.
+    pub fn parse(s: &str) -> Result<Self, String> {
+        match Self::NAMES.iter().position(|n| *n == s) {
+            Some(i) => Ok(Self::ALL[i]),
+            None => Err(unknown_variant("SharedState", s, Self::NAMES)),
+        }
+    }
+}
+
+impl FromJson for SharedState {
+    fn from_json(v: &Value) -> Result<Self, String> {
+        Self::parse(variant(v, "SharedState", Self::NAMES)?)
+    }
+}
+
+impl ToJson for SharedState {
+    fn to_json(&self) -> Value {
+        Value::String(self.as_str().into())
+    }
+}
+
+/// `SharedShapeDesc`: packages/knowledge/wiki/shared.md.
+#[derive(Clone, Debug, PartialEq)]
+pub struct SharedShapeDesc {
+    pub avatar: Option<Value>,
+    pub event: Option<Value>,
+}
+
+impl Default for SharedShapeDesc {
+    fn default() -> Self {
+        Self {
+            avatar: Default::default(),
+            event: Default::default(),
+        }
+    }
+}
+
+impl FromJson for SharedShapeDesc {
+    fn from_json(v: &Value) -> Result<Self, String> {
+        Self::from_json_over(v, Self::default())
+    }
+    fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
+        let o = object(v)?;
+        Ok(Self {
+            avatar: field(o, "avatar", d.avatar)?,
+            event: field(o, "event", d.event)?,
+        })
+    }
+}
+
+impl ToJson for SharedShapeDesc {
+    fn to_json(&self) -> Value {
+        let mut o = Map::new();
+        o.insert("avatar".into(), self.avatar.to_json());
+        o.insert("event".into(), self.event.to_json());
+        Value::Object(o)
+    }
+}
+
+/// `SharedJoinDesc`: packages/knowledge/wiki/shared.md.
+#[derive(Clone, Debug, PartialEq)]
+pub struct SharedJoinDesc {
+    pub world: String,
+}
+
+impl Default for SharedJoinDesc {
+    fn default() -> Self {
+        Self {
+            world: String::from("main"),
+        }
+    }
+}
+
+impl FromJson for SharedJoinDesc {
+    fn from_json(v: &Value) -> Result<Self, String> {
+        Self::from_json_over(v, Self::default())
+    }
+    fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
+        let o = object(v)?;
+        Ok(Self {
+            world: field(o, "world", d.world)?,
+        })
+    }
+}
+
+impl ToJson for SharedJoinDesc {
+    fn to_json(&self) -> Value {
+        let mut o = Map::new();
+        o.insert("world".into(), self.world.to_json());
+        Value::Object(o)
+    }
+}
+
+/// `SharedRemote`: packages/knowledge/wiki/shared.md.
+#[derive(Clone, Debug, PartialEq)]
+pub struct SharedRemote {
+    pub player: String,
+    pub name: String,
+    pub kind: u32,
+    pub since: f64,
+}
+
+impl Default for SharedRemote {
+    fn default() -> Self {
+        Self {
+            player: Default::default(),
+            name: Default::default(),
+            kind: Default::default(),
+            since: Default::default(),
+        }
+    }
+}
+
+impl FromJson for SharedRemote {
+    fn from_json(v: &Value) -> Result<Self, String> {
+        Self::from_json_over(v, Self::default())
+    }
+    fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
+        let o = object(v)?;
+        Ok(Self {
+            player: field(o, "player", d.player)?,
+            name: field(o, "name", d.name)?,
+            kind: field(o, "kind", d.kind)?,
+            since: field(o, "since", d.since)?,
+        })
+    }
+}
+
+impl ToJson for SharedRemote {
+    fn to_json(&self) -> Value {
+        let mut o = Map::new();
+        o.insert("player".into(), self.player.to_json());
+        o.insert("name".into(), self.name.to_json());
+        o.insert("kind".into(), self.kind.to_json());
+        o.insert("since".into(), self.since.to_json());
+        Value::Object(o)
+    }
+}
+
+/// `SharedStatus`: packages/knowledge/wiki/shared.md.
+#[derive(Clone, Debug, PartialEq)]
+pub struct SharedStatus {
+    pub state: String,
+    pub host: String,
+    pub transport: String,
+    pub world: String,
+    pub player: String,
+    pub name: String,
+    pub in_sight: u32,
+    pub others: u32,
+    pub server_tick: f64,
+    pub server_hz: u32,
+    pub proposals: f64,
+    pub corrections: u32,
+    pub bytes_in: f64,
+    pub bytes_out: f64,
+    pub reason: String,
+}
+
+impl Default for SharedStatus {
+    fn default() -> Self {
+        Self {
+            state: Default::default(),
+            host: Default::default(),
+            transport: Default::default(),
+            world: Default::default(),
+            player: Default::default(),
+            name: Default::default(),
+            in_sight: Default::default(),
+            others: Default::default(),
+            server_tick: Default::default(),
+            server_hz: Default::default(),
+            proposals: Default::default(),
+            corrections: Default::default(),
+            bytes_in: Default::default(),
+            bytes_out: Default::default(),
+            reason: Default::default(),
+        }
+    }
+}
+
+impl FromJson for SharedStatus {
+    fn from_json(v: &Value) -> Result<Self, String> {
+        Self::from_json_over(v, Self::default())
+    }
+    fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
+        let o = object(v)?;
+        Ok(Self {
+            state: field(o, "state", d.state)?,
+            host: field(o, "host", d.host)?,
+            transport: field(o, "transport", d.transport)?,
+            world: field(o, "world", d.world)?,
+            player: field(o, "player", d.player)?,
+            name: field(o, "name", d.name)?,
+            in_sight: field(o, "inSight", d.in_sight)?,
+            others: field(o, "others", d.others)?,
+            server_tick: field(o, "serverTick", d.server_tick)?,
+            server_hz: field(o, "serverHz", d.server_hz)?,
+            proposals: field(o, "proposals", d.proposals)?,
+            corrections: field(o, "corrections", d.corrections)?,
+            bytes_in: field(o, "bytesIn", d.bytes_in)?,
+            bytes_out: field(o, "bytesOut", d.bytes_out)?,
+            reason: field(o, "reason", d.reason)?,
+        })
+    }
+}
+
+impl ToJson for SharedStatus {
+    fn to_json(&self) -> Value {
+        let mut o = Map::new();
+        o.insert("state".into(), self.state.to_json());
+        o.insert("host".into(), self.host.to_json());
+        o.insert("transport".into(), self.transport.to_json());
+        o.insert("world".into(), self.world.to_json());
+        o.insert("player".into(), self.player.to_json());
+        o.insert("name".into(), self.name.to_json());
+        o.insert("inSight".into(), self.in_sight.to_json());
+        o.insert("others".into(), self.others.to_json());
+        o.insert("serverTick".into(), self.server_tick.to_json());
+        o.insert("serverHz".into(), self.server_hz.to_json());
+        o.insert("proposals".into(), self.proposals.to_json());
+        o.insert("corrections".into(), self.corrections.to_json());
+        o.insert("bytesIn".into(), self.bytes_in.to_json());
+        o.insert("bytesOut".into(), self.bytes_out.to_json());
+        o.insert("reason".into(), self.reason.to_json());
+        Value::Object(o)
+    }
+}
+
 /// `ArtRotation`: packages/knowledge/wiki/art.md.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub enum ArtRotation {
@@ -38116,6 +38365,253 @@ pub mod record {
                 peer: field(o, "peer", d.peer)?,
                 seat: field(o, "seat", d.seat)?,
                 silent_ms: field(o, "silentMs", d.silent_ms)?,
+            })
+        }
+    }
+
+    /// `SharedWorld`: packages/knowledge/wiki/shared.md.
+    #[derive(Clone, Debug, PartialEq)]
+    pub struct SharedWorld {
+        pub send_rate_hz: u32,
+        pub interp_delay_ms: u32,
+        pub extrapolate_ms: u32,
+        pub state: SharedState,
+        pub in_sight: u32,
+    }
+
+    impl Default for SharedWorld {
+        fn default() -> Self {
+            Self {
+                send_rate_hz: 20,
+                interp_delay_ms: 100,
+                extrapolate_ms: 250,
+                state: Default::default(),
+                in_sight: Default::default(),
+            }
+        }
+    }
+
+    impl FromJson for SharedWorld {
+        fn from_json(v: &Value) -> Result<Self, String> {
+            Self::from_json_over(v, Self::default())
+        }
+        fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
+            let o = object(v)?;
+            Ok(Self {
+                send_rate_hz: field(o, "sendRateHz", d.send_rate_hz)?,
+                interp_delay_ms: field(o, "interpDelayMs", d.interp_delay_ms)?,
+                extrapolate_ms: field(o, "extrapolateMs", d.extrapolate_ms)?,
+                state: field(o, "state", d.state)?,
+                in_sight: field(o, "inSight", d.in_sight)?,
+            })
+        }
+    }
+
+    /// `SharedAvatar`: packages/knowledge/wiki/shared.md.
+    #[derive(Clone, Debug, PartialEq)]
+    pub struct SharedAvatar {
+        pub kind: u32,
+    }
+
+    impl Default for SharedAvatar {
+        fn default() -> Self {
+            Self {
+                kind: Default::default(),
+            }
+        }
+    }
+
+    impl FromJson for SharedAvatar {
+        fn from_json(v: &Value) -> Result<Self, String> {
+            Self::from_json_over(v, Self::default())
+        }
+        fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
+            let o = object(v)?;
+            Ok(Self {
+                kind: field(o, "kind", d.kind)?,
+            })
+        }
+    }
+
+    /// `RemoteAvatar`: packages/knowledge/wiki/shared.md.
+    #[derive(Clone, Debug, PartialEq)]
+    pub struct RemoteAvatar {
+        pub id: u32,
+        pub kind: u32,
+        pub since: f64,
+        pub jumped: f64,
+    }
+
+    impl Default for RemoteAvatar {
+        fn default() -> Self {
+            Self {
+                id: Default::default(),
+                kind: Default::default(),
+                since: Default::default(),
+                jumped: Default::default(),
+            }
+        }
+    }
+
+    impl FromJson for RemoteAvatar {
+        fn from_json(v: &Value) -> Result<Self, String> {
+            Self::from_json_over(v, Self::default())
+        }
+        fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
+            let o = object(v)?;
+            Ok(Self {
+                id: field(o, "id", d.id)?,
+                kind: field(o, "kind", d.kind)?,
+                since: field(o, "since", d.since)?,
+                jumped: field(o, "jumped", d.jumped)?,
+            })
+        }
+    }
+
+    /// `SharedJoined`: packages/knowledge/wiki/shared.md.
+    #[derive(Clone, Debug, PartialEq)]
+    pub struct SharedJoined {
+        pub player: String,
+        pub name: String,
+        pub resumed: bool,
+    }
+
+    impl Default for SharedJoined {
+        fn default() -> Self {
+            Self {
+                player: Default::default(),
+                name: Default::default(),
+                resumed: Default::default(),
+            }
+        }
+    }
+
+    impl FromJson for SharedJoined {
+        fn from_json(v: &Value) -> Result<Self, String> {
+            Self::from_json_over(v, Self::default())
+        }
+        fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
+            let o = object(v)?;
+            Ok(Self {
+                player: field(o, "player", d.player)?,
+                name: field(o, "name", d.name)?,
+                resumed: field(o, "resumed", d.resumed)?,
+            })
+        }
+    }
+
+    /// `SharedLeft`: packages/knowledge/wiki/shared.md.
+    #[derive(Clone, Debug, PartialEq)]
+    pub struct SharedLeft {
+        pub reason: String,
+    }
+
+    impl Default for SharedLeft {
+        fn default() -> Self {
+            Self {
+                reason: Default::default(),
+            }
+        }
+    }
+
+    impl FromJson for SharedLeft {
+        fn from_json(v: &Value) -> Result<Self, String> {
+            Self::from_json_over(v, Self::default())
+        }
+        fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
+            let o = object(v)?;
+            Ok(Self {
+                reason: field(o, "reason", d.reason)?,
+            })
+        }
+    }
+
+    /// `PresenceEntered`: packages/knowledge/wiki/shared.md.
+    #[derive(Clone, Debug, PartialEq)]
+    pub struct PresenceEntered {
+        pub entity: u64,
+        pub player: String,
+        pub name: String,
+        pub kind: u32,
+    }
+
+    impl Default for PresenceEntered {
+        fn default() -> Self {
+            Self {
+                entity: Default::default(),
+                player: Default::default(),
+                name: Default::default(),
+                kind: Default::default(),
+            }
+        }
+    }
+
+    impl FromJson for PresenceEntered {
+        fn from_json(v: &Value) -> Result<Self, String> {
+            Self::from_json_over(v, Self::default())
+        }
+        fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
+            let o = object(v)?;
+            Ok(Self {
+                entity: field(o, "entity", d.entity)?,
+                player: field(o, "player", d.player)?,
+                name: field(o, "name", d.name)?,
+                kind: field(o, "kind", d.kind)?,
+            })
+        }
+    }
+
+    /// `PresenceLeft`: packages/knowledge/wiki/shared.md.
+    #[derive(Clone, Debug, PartialEq)]
+    pub struct PresenceLeft {
+        pub entity: u64,
+        pub player: String,
+    }
+
+    impl Default for PresenceLeft {
+        fn default() -> Self {
+            Self {
+                entity: Default::default(),
+                player: Default::default(),
+            }
+        }
+    }
+
+    impl FromJson for PresenceLeft {
+        fn from_json(v: &Value) -> Result<Self, String> {
+            Self::from_json_over(v, Self::default())
+        }
+        fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
+            let o = object(v)?;
+            Ok(Self {
+                entity: field(o, "entity", d.entity)?,
+                player: field(o, "player", d.player)?,
+            })
+        }
+    }
+
+    /// `SharedCorrected`: packages/knowledge/wiki/shared.md.
+    #[derive(Clone, Debug, PartialEq)]
+    pub struct SharedCorrected {
+        pub sequence: u32,
+    }
+
+    impl Default for SharedCorrected {
+        fn default() -> Self {
+            Self {
+                sequence: Default::default(),
+            }
+        }
+    }
+
+    impl FromJson for SharedCorrected {
+        fn from_json(v: &Value) -> Result<Self, String> {
+            Self::from_json_over(v, Self::default())
+        }
+        fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
+            let o = object(v)?;
+            Ok(Self {
+                sequence: field(o, "sequence", d.sequence)?,
             })
         }
     }

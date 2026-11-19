@@ -347,6 +347,8 @@ export interface ColumnKinds {
   TimelineAsset: { readonly array: Uint32Array; readonly stride: 2; readonly value: TimelineAsset };
   /** A NetMode field: the variant's index. */
   NetMode: { readonly array: Uint32Array; readonly stride: 1; readonly value: NetMode };
+  /** A SharedState field: the variant's index. */
+  SharedState: { readonly array: Uint32Array; readonly stride: 1; readonly value: SharedState };
   /** An ArtRotation field: the variant's index. */
   ArtRotation: { readonly array: Uint32Array; readonly stride: 1; readonly value: ArtRotation };
   /** An ArtFilter field: the variant's index. */
@@ -24922,7 +24924,9 @@ export interface PlatformHanded {
    * @unit ticks (fixed simulation steps)
    */
   readonly tick: number;
-  /** `host` (what answers was attached, or its clock told), `answer` or `notice`. */
+  /**
+   * `host` (what answers was attached, or its clock told), `answer`, `notice`, or `shared` (a shared-world event, og_shared_deliver's, without its token).
+   */
   readonly kind: string;
   /** The call an answer answers; 0 for the others. */
   readonly request: number;
@@ -31833,6 +31837,296 @@ export interface LockstepStatus {
   readonly snapshotBytes: number;
 }
 
+
+
+
+
+
+
+
+
+
+// ── shared ──────────────────────────────────────────────────────
+// Shared worlds: visitors of one large world see each other's avatars in real time, near them only. Each client runs its own world; a world server (`og world-server`) holds the avatars, checks each move and sends each client those near it. The game marks its avatar with og.SharedAvatar and moves it as always; every other visitor in sight is an og.RemoteAvatar entity the engine spawns, moves and despawns.
+// The host supplies the connection; game code names no URL or token. What the session delivers is host input, journaled with og.platform.journal.
+// See `shared-worlds`.
+
+/**
+ * Where this client's session stands (og.SharedWorld.state).
+ * - `"off"`: No session: og.shared.join was never called, or og.shared.leave ended it.
+ * - `"connecting"`: Joining: the host asked its session provider for a connection and the server has not welcomed this client yet.
+ * - `"joined"`: In the world: the server took this client in; remote avatars arrive.
+ * - `"reconnecting"`: The connection was lost (or the server moved this client): the engine asks the provider for a new connection, backing off from 250 ms to 4 s for 30 s, and the server keeps this avatar 10 s for it to resume.
+ * - `"refused"`: The provider or the server refused this client, or reconnecting gave up: og.SharedLeft says why.
+ */
+export type SharedState = "off" | "connecting" | "joined" | "reconnecting" | "refused";
+
+/**
+ * A SharedState field: the variant's index.
+ *
+ * A `SharedState` field: stored in a `Uint32Array` with stride 1.
+ * @param value The field's default; omitted, the column's zero value.
+ * @param options Range, unit, label, docs and the tunable flag.
+ */
+export declare function SharedState(value?: SharedState, options?: FieldOptions): FieldSpec<"SharedState">;
+
+/**
+ * This client's shared-world session: its settings, which the game sets, and where it stands, which the engine writes. Remote avatars are drawn `interpDelayMs` behind the newest server time this client has, between the two states around it.
+ * See `shared-worlds §2`.
+ *
+ * The `SharedWorld` resource (token `og.SharedWorld`).
+ */
+export interface SharedWorld {
+  /**
+   * How often this client proposes its avatar's state, per second (at most the tick rate).
+   *
+   * @default 20
+   * @range 1..60
+   */
+  sendRateHz: number;
+  /**
+   * How far behind the newest server time remote avatars are drawn: two snapshots at the server's 20 Hz by default, so a lost one is covered.
+   * See `shared-worlds §3`.
+   *
+   * @default 100
+   * @range 0..1000
+   * @unit ms (milliseconds)
+   */
+  interpDelayMs: number;
+  /**
+   * How long a remote avatar whose updates stopped keeps moving along its last velocity before it holds.
+   *
+   * @default 250
+   * @range 0..2000
+   * @unit ms (milliseconds)
+   */
+  extrapolateMs: number;
+  /**
+   * Where the session stands.
+   *
+   * @readonly written by the engine
+   */
+  readonly state: SharedState;
+  /**
+   * The remote avatars this client holds now (og.RemoteAvatar entities).
+   *
+   * @readonly written by the engine
+   */
+  readonly inSight: number;
+}
+
+/**
+ * Marks the one entity whose state this client shares: its og.Transform's position and its yaw (the rotation about y), the velocity its moves imply, and the fields of the game's avatar component (og.shared.shape) on the same entity. The first in entity order is the one shared.
+ * See `shared-worlds §2`.
+ *
+ * The value of the `SharedAvatar` component (token `og.SharedAvatar`).
+ */
+export interface SharedAvatar {
+  /**
+   * The avatar's kind: which of the server's movement rules it moves by (its top speed). A token that names a kind wins.
+   */
+  kind: number;
+}
+
+/**
+ * Another visitor in sight, written by the engine: it spawns the entity with an og.Transform (and the game's avatar component, og.shared.shape) when the visitor comes into sight, moves it every tick, and despawns it when the visitor leaves. The game adds its own visuals to it. Who it is: og.shared.remote.
+ * See `shared-worlds §3`.
+ *
+ * The value of the `RemoteAvatar` component (token `og.RemoteAvatar`).
+ */
+export interface RemoteAvatar {
+  /**
+   * This client's number for it, while it is in sight.
+   *
+   * @readonly written by the engine
+   */
+  readonly id: number;
+  /**
+   * Its kind (og.SharedAvatar.kind).
+   *
+   * @readonly written by the engine
+   */
+  readonly kind: number;
+  /**
+   * The tick it came into sight.
+   *
+   * @unit ticks (fixed simulation steps)
+   * @readonly written by the engine
+   */
+  readonly since: number;
+  /**
+   * The tick it last jumped (a teleport: drawn there at once, not moved across); 0 never.
+   *
+   * @unit ticks (fixed simulation steps)
+   * @readonly written by the engine
+   */
+  readonly jumped: number;
+}
+
+/**
+ * The server took this client in: sent at the start of the tick after its welcome arrived, and again after a reconnect.
+ *
+ * The payload of the `SharedJoined` event (token `og.SharedJoined`).
+ */
+export interface SharedJoined {
+  /** This player's opaque id, the provider's (at most 63 bytes). */
+  readonly player: string;
+  /** This player's display name (at most 63 bytes). */
+  readonly name: string;
+  /**
+   * Whether the server resumed this avatar from before a lost connection (it stayed where it was for the others).
+   */
+  readonly resumed: boolean;
+}
+
+/**
+ * The session ended: og.shared.leave, a refusal, or reconnecting gave up. Every og.RemoteAvatar despawns the same tick.
+ *
+ * The payload of the `SharedLeft` event (token `og.SharedLeft`).
+ */
+export interface SharedLeft {
+  /**
+   * Why: `left` (og.shared.leave), or a code and the provider's or the server's words: `unauthorized`, `full`, `version`, `shape`, `draining`, `unavailable` (no session provider here), `offline` (reconnecting gave up).
+   */
+  readonly reason: string;
+}
+
+/**
+ * A visitor came into sight: its og.RemoteAvatar entity exists from this tick.
+ *
+ * The payload of the `PresenceEntered` event (token `og.PresenceEntered`).
+ */
+export interface PresenceEntered {
+  /** Its og.RemoteAvatar entity. */
+  readonly entity: Entity;
+  /** Its opaque player id (at most 63 bytes). */
+  readonly player: string;
+  /** Its display name (at most 63 bytes). */
+  readonly name: string;
+  /** Its kind. */
+  readonly kind: number;
+}
+
+/**
+ * A visitor left sight (or the world): its og.RemoteAvatar entity was despawned this tick.
+ *
+ * The payload of the `PresenceLeft` event (token `og.PresenceLeft`).
+ */
+export interface PresenceLeft {
+  /** The entity it had. */
+  readonly entity: Entity;
+  /** Its opaque player id (at most 63 bytes). */
+  readonly player: string;
+}
+
+/**
+ * The server refused a move of this avatar (faster than its kind allows, or outside the world's bounds) and the engine put it back: at the state the server holds, plus what it moved here since. A game may snap its camera or tell the player.
+ * See `shared-worlds §4`.
+ *
+ * The payload of the `SharedCorrected` event (token `og.SharedCorrected`).
+ */
+export interface SharedCorrected {
+  /** The proposal the correction answers. */
+  readonly sequence: number;
+}
+
+/**
+ * What the game shares besides the transform (og.shared.shape).
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface SharedShapeDesc {
+  /**
+   * The game's component whose fields every state carries (a locomotion mode, an appearance id): on the og.SharedAvatar entity, and written on each og.RemoteAvatar. Its packed bytes are at most 32. Null: none.
+   *
+   * @default null
+   */
+  readonly avatar?: AnyComponent | null;
+  /**
+   * The game's component used as an event record (og.shared.send, og.shared.events): its packed bytes are at most 1024, and an Entity field named `from` is set to the sender's og.RemoteAvatar. Used as a shape only. Null: no events.
+   *
+   * @default null
+   */
+  readonly event?: AnyComponent | null;
+}
+
+/**
+ * Which world to join (og.shared.join).
+ *
+ * A desc: every field may be omitted and then takes its documented default; `{}` is valid.
+ */
+export interface SharedJoinDesc {
+  /**
+   * The world's name on the server (at most 64 of letters, digits, `.`, `_` and `-`).
+   *
+   * @default "main"
+   */
+  readonly world?: string;
+}
+
+/** Who an og.RemoteAvatar is. */
+export interface SharedRemote {
+  /** Its opaque player id. */
+  readonly player: string;
+  /** Its display name. */
+  readonly name: string;
+  /** Its kind. */
+  readonly kind: number;
+  /**
+   * The tick it came into sight.
+   *
+   * @unit ticks (fixed simulation steps)
+   */
+  readonly since: number;
+}
+
+/** The session, as a HUD or the probe reads it. */
+export interface SharedStatus {
+  /** `off`, `connecting`, `joined`, `reconnecting` or `refused`. */
+  readonly state: string;
+  /**
+   * What carries the session here: the session provider's name (`static` for a fixed endpoint, `player` for the platform's), or `none`.
+   */
+  readonly host: string;
+  /** The connection's transport, `ws`; empty without one. */
+  readonly transport: string;
+  /** The world joined. */
+  readonly world: string;
+  /** This player's opaque id; empty before the welcome. */
+  readonly player: string;
+  /** This player's display name. */
+  readonly name: string;
+  /** The remote avatars held. */
+  readonly inSight: number;
+  /** Visitors near this one the server does not send (past its 64 nearest). */
+  readonly others: number;
+  /**
+   * The newest server tick received.
+   *
+   * @unit ticks (fixed simulation steps)
+   */
+  readonly serverTick: number;
+  /** The server's tick rate. */
+  readonly serverHz: number;
+  /** Proposals sent. */
+  readonly proposals: number;
+  /** Corrections received (og.SharedCorrected). */
+  readonly corrections: number;
+  /**
+   * Bytes received in this session.
+   *
+   * @unit bytes (bytes)
+   */
+  readonly bytesIn: number;
+  /**
+   * Bytes sent in this session.
+   *
+   * @unit bytes (bytes)
+   */
+  readonly bytesOut: number;
+  /** Why the last session ended or was refused; empty while none did. */
+  readonly reason: string;
+}
 
 
 
@@ -38951,6 +39245,111 @@ export declare namespace og {
      * @param world The world.
      */
     function hash(world: World): string;
+  }
+  /**
+   * This client's shared-world session: its settings, which the game sets, and where it stands, which the engine writes. Remote avatars are drawn `interpDelayMs` behind the newest server time this client has, between the two states around it.
+   * See `shared-worlds §2`.
+   */
+  const SharedWorld: ResourceType<{ readonly sendRateHz: FieldSpec<"u32">; readonly interpDelayMs: FieldSpec<"u32">; readonly extrapolateMs: FieldSpec<"u32">; readonly state: FieldSpec<"SharedState">; readonly inSight: FieldSpec<"u32"> }, SharedWorld>;
+  /**
+   * Marks the one entity whose state this client shares: its og.Transform's position and its yaw (the rotation about y), the velocity its moves imply, and the fields of the game's avatar component (og.shared.shape) on the same entity. The first in entity order is the one shared.
+   * See `shared-worlds §2`.
+   */
+  const SharedAvatar: ComponentType<{ readonly kind: FieldSpec<"u32"> }, SharedAvatar>;
+  /**
+   * Another visitor in sight, written by the engine: it spawns the entity with an og.Transform (and the game's avatar component, og.shared.shape) when the visitor comes into sight, moves it every tick, and despawns it when the visitor leaves. The game adds its own visuals to it. Who it is: og.shared.remote.
+   * See `shared-worlds §3`.
+   */
+  const RemoteAvatar: ComponentType<{ readonly id: FieldSpec<"u32">; readonly kind: FieldSpec<"u32">; readonly since: FieldSpec<"f64">; readonly jumped: FieldSpec<"f64"> }, RemoteAvatar>;
+  /**
+   * The server took this client in: sent at the start of the tick after its welcome arrived, and again after a reconnect.
+   */
+  const SharedJoined: EventType<SharedJoined>;
+  /**
+   * The session ended: og.shared.leave, a refusal, or reconnecting gave up. Every og.RemoteAvatar despawns the same tick.
+   */
+  const SharedLeft: EventType<SharedLeft>;
+  /** A visitor came into sight: its og.RemoteAvatar entity exists from this tick. */
+  const PresenceEntered: EventType<PresenceEntered>;
+  /**
+   * A visitor left sight (or the world): its og.RemoteAvatar entity was despawned this tick.
+   */
+  const PresenceLeft: EventType<PresenceLeft>;
+  /**
+   * The server refused a move of this avatar (faster than its kind allows, or outside the world's bounds) and the engine put it back: at the state the server holds, plus what it moved here since. A game may snap its camera or tell the player.
+   * See `shared-worlds §4`.
+   */
+  const SharedCorrected: EventType<SharedCorrected>;
+  /**
+   * Shared worlds: visitors of one large world see each other's avatars in real time, near them only. Each client runs its own world; a world server (`og world-server`) holds the avatars, checks each move and sends each client those near it. The game marks its avatar with og.SharedAvatar and moves it as always; every other visitor in sight is an og.RemoteAvatar entity the engine spawns, moves and despawns.
+   * The host supplies the connection; game code names no URL or token. What the session delivers is host input, journaled with og.platform.journal.
+   * See `shared-worlds`.
+   */
+  namespace shared {
+    /**
+     * Set what the game shares besides the transform: its avatar component and its event component. Call it outside a system before og.shared.join; its fingerprint is checked when joining, so every client of a world needs the same shape. Without a call, the transform alone and no events.
+     * See `shared-worlds §2`.
+     *
+     * @param world The world.
+     * @param desc The avatar component and the event component.
+     * @returns Refused inside a system, during a session, or for a component whose packed bytes are too many.
+     */
+    function shape(world: World, desc?: SharedShapeDesc): Result<void>;
+    /**
+     * Join a shared world: the host asks its session provider for a connection (an endpoint and a token the engine never reads), the engine says hello, and og.SharedJoined arrives once the server takes this client in. The og.SharedAvatar entity is what it shares. A lost connection reconnects by itself.
+     * See `shared-worlds §2`.
+     *
+     * @param world The world.
+     * @param desc The world to join.
+     * @returns Refused during a session, with lockstep running (og.Lockstep), or for a world name that is not one. Without a session provider the join is refused when the host answers: og.SharedLeft says `unavailable`.
+     */
+    function join(world: World, desc?: SharedJoinDesc): Result<void>;
+    /**
+     * Leave the shared world: the server is told, and every og.RemoteAvatar despawns at the next tick (og.SharedLeft says `left`).
+     *
+     * @param world The world.
+     * @returns Refused without a session.
+     */
+    function leave(world: World): Result<void>;
+    /**
+     * Move this avatar anywhere at once (a map click, a portal): its og.Transform is set and the next proposal is a teleport, which the server takes past the speed rule when its policy allows, and remote clients draw at once instead of moving it across.
+     * See `shared-worlds §4`.
+     *
+     * @param world The world.
+     * @param position Where, in world space.
+     * @returns Refused without an og.SharedAvatar entity or for a position that is not finite.
+     */
+    function teleport(world: World, position: Vector3): Result<void>;
+    /**
+     * Send an event to the visitors near this one (those whose sight holds this avatar): reliable, at most 1 KiB, rate-limited by the server. They read it with og.shared.events at the start of the tick after it arrives.
+     *
+     * @param world The world.
+     * @param component The event component og.shared.shape named.
+     * @param value Its fields; omitted ones take their defaults (`from` is the engine's).
+     * @returns Refused without a joined session, without an event shape, or for another component.
+     */
+    function send<C extends AnyComponent>(world: World, component: C, value: Partial<Value<C>>): Result<void>;
+    /**
+     * The events delivered this tick, in the order they arrived, each with `from` set to its sender's og.RemoteAvatar when the component has that field. Callable from a system.
+     *
+     * @param world The world.
+     * @param component The event component og.shared.shape named.
+     * @returns Refused for another component than the shape's.
+     */
+    function events<C extends AnyComponent>(world: World, component: C): Result<readonly Value<C>[]>;
+    /**
+     * Who an og.RemoteAvatar is: its player id, name and kind. Null for an entity that is not one.
+     *
+     * @param world The world.
+     * @param entity The og.RemoteAvatar entity.
+     */
+    function remote(world: World, entity: Entity): SharedRemote | null;
+    /**
+     * The session now: its state, what carries it, the avatars held, the server's tick, and the bytes and corrections so far.
+     *
+     * @param world The world.
+     */
+    function status(world: World): SharedStatus;
   }
   /**
    * The style's colours: the palette the assets' texels sit on, how many a single asset may use, how many shades a hue ramps through, which colours are kept for signals, and how two colours mix where a tone falls between them. The frame's own quantise is Stylise.palette; this is what the assets are made of, 2D and 3D alike. Every field is no constraint at its zero value.

@@ -1,0 +1,9 @@
+{
+  "simulation": "unchanged",
+  "added": [
+    {
+      "member": "og.shared",
+      "summary": "Shared worlds (guide shared-worlds): visitors of one large world see each other in real time through an `og world-server`, near them only. The game marks its avatar with og.SharedAvatar and moves it as always; og.shared.join asks the host's session provider for a connection (the game names no URL or token), and every other visitor in sight is an og.RemoteAvatar entity the engine spawns, draws 100 ms behind the newest server time between the states around it, and despawns. og.shared.shape adds the game's own avatar fields and an event component (og.shared.send, og.shared.events); og.shared.teleport jumps past the server's speed rule; a refused move comes back as og.SharedCorrected with the avatar put back. og.SharedJoined, og.SharedLeft, og.PresenceEntered and og.PresenceLeft tell the session's life, og.shared.status and og.shared.remote describe it. What the session delivers is host input, applied at a tick's start and kept in og.platform.journal (kind `shared`, without the token), so a session replays without the server. A world that names none of the records keeps its type table and hash."
+    }
+  ]
+}
