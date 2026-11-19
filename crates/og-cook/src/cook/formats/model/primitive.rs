@@ -168,12 +168,17 @@ const THIN_LEAVES_MIN: usize = 8;
 
 /// Leaf cards' coarser levels: level `k` keeps every `1 / fractions[k]`th
 /// leaf (the triangles of one anchor, in the order the mesh draws them, so
-/// a coarser level's leaves are among the finer one's) and makes each as
+/// a coarser level's leaves are among the finer one's) and draws each as
 /// much larger in area about its anchor, so the crown covers as much.
-/// The kept leaves' vertices are appended (`sources` to the vertex each
-/// came from); returns each level's range of `indices` and its error, the
-/// farthest any kept vertex moved. `foliage` is per source vertex and
-/// `full` the full mesh's range of `indices`.
+/// Returns each level's range of `indices`, its error (the farthest any
+/// kept vertex moves) and its leaf scale. A level indexes the full mesh's
+/// own vertices and the runtime draws them `scale` times as far from their
+/// anchors (`LodRow::leaf_scale`), so the levels cost no vertices; with
+/// `copy` (a streaming proxy, which keeps one level and draws it as its
+/// full mesh) the kept leaves' vertices are appended where the level draws
+/// them (`sources` to the vertex each came from) and its scale is 1.
+/// `foliage` is per source vertex and `full` the full mesh's range of
+/// `indices`.
 fn thin_leaves(
     verts: &mut Vec<FVertex>,
     indices: &mut Vec<u32>,
@@ -181,7 +186,8 @@ fn thin_leaves(
     foliage: &[[f32; 8]],
     full: std::ops::Range<usize>,
     fractions: &[f32],
-) -> Vec<(std::ops::Range<usize>, f32)> {
+    copy: bool,
+) -> Vec<(std::ops::Range<usize>, f32, f32)> {
     // Each triangle's leaf: the anchor (and pivot) of its first corner.
     let mut leaf_of: std::collections::HashMap<[u32; 8], usize> = Default::default();
     let triangles: Vec<([u32; 3], usize)> = indices[full]
@@ -221,6 +227,9 @@ fn thin_leaves(
                     let anchor = Vec3::new(f[4], f[5], f[6]);
                     let arm = Vec3::from(v.p) - anchor;
                     moved = moved.max(arm.length() * (scale - 1.0));
+                    if !copy {
+                        return i;
+                    }
                     v.p = (anchor + arm * scale).to_array();
                     verts.push(v);
                     sources.push(sources[i as usize]);
@@ -229,7 +238,7 @@ fn thin_leaves(
                 indices.push(at);
             }
         }
-        out.push((start..indices.len(), moved));
+        out.push((start..indices.len(), moved, if copy { 1.0 } else { scale }));
     }
     out
 }
@@ -817,23 +826,24 @@ pub(crate) fn cook_primitive(
         _ => None,
     };
     // Leaf cards without levels of their own: thinned ones, each with the
-    // error `thin_leaves` measured.
-    let mut thinned: Vec<f32> = Vec::new();
+    // error `thin_leaves` measured and its leaf scale.
+    let mut thinned: Vec<(f32, f32)> = Vec::new();
     if leaves
         && given.len() == 1
         && let Some(f) = &foliage
     {
         let full = given[0].clone();
-        for (range, error) in thin_leaves(
+        for (range, error, scale) in thin_leaves(
             &mut verts,
             &mut indices,
             &mut sources,
             f,
             full,
             &opts.fractions(),
+            coarsest,
         ) {
             given.push(range);
-            thinned.push(error);
+            thinned.push((error, scale));
         }
     }
     let want_tangents = opts.tangents && normal_mapped && uvs.is_some();
@@ -1175,15 +1185,42 @@ pub(crate) fn cook_primitive(
     // are covered by the larger ones beside them, not by a nearby surface.
     for (k, l) in levels.iter_mut().enumerate().skip(1) {
         l.1 = match thinned.get(k - 1) {
-            Some(&moved) => moved,
+            Some(&(moved, _)) => moved,
             None => level_error(&pos_all, &lod0, &l.0),
         }
         .max(texture_errors.get(&k).copied().unwrap_or(0.0));
     }
-    // A streaming proxy keeps only the coarsest level (and the vertices it uses).
+    // Each level's leaf scale (a thinned one's, `thin_leaves`) and where
+    // it draws the vertices: the cluster bounds and the selection sphere
+    // are of what is drawn.
+    let mut leaf_scales: Vec<f32> = (0..levels.len())
+        .map(|k| {
+            k.checked_sub(1)
+                .and_then(|k| thinned.get(k))
+                .map_or(1.0, |t| t.1)
+        })
+        .collect();
+    // A streaming proxy keeps only the coarsest level (and the vertices it
+    // uses; `thin_leaves` copied a thinned one's where it draws them).
     if coarsest && let Some((last, _)) = levels.pop() {
         levels = vec![(last, 0.0)];
+        leaf_scales = vec![1.0];
     }
+    let drawn_at = |k: usize| -> std::borrow::Cow<'_, [[f32; 3]]> {
+        let s = leaf_scales[k];
+        match &foliage {
+            Some(f) if s != 1.0 => pos_all
+                .iter()
+                .zip(&sources)
+                .map(|(p, &src)| {
+                    let a = Vec3::new(f[src as usize][4], f[src as usize][5], f[src as usize][6]);
+                    (a + (Vec3::from(*p) - a) * s).to_array()
+                })
+                .collect(),
+            _ => std::borrow::Cow::Borrowed(&pos_all[..]),
+        }
+    };
+    let drawn: Vec<_> = (0..levels.len()).map(drawn_at).collect();
     // Keep the simulation mesh's triangle and vertex order independent of
     // meshlets: changing the order changes physics contacts and ray hits.
     // Only the draw stream is reordered into contiguous clusters.
@@ -1201,23 +1238,21 @@ pub(crate) fn cook_primitive(
             Some(*e)
         })
         .collect();
-    let used = levels.iter().flat_map(|l| l.0.iter());
+    let used = levels
+        .iter()
+        .zip(&drawn)
+        .flat_map(|(l, at)| l.0.iter().map(move |&i| Vec3::from(at[i as usize])));
     let (blo, bhi) = used.clone().fold(
         (Vec3::splat(f32::MAX), Vec3::splat(f32::MIN)),
-        |(lo, hi), &i| {
-            (
-                lo.min(pos_all[i as usize].into()),
-                hi.max(pos_all[i as usize].into()),
-            )
-        },
+        |(lo, hi), p| (lo.min(p), hi.max(p)),
     );
     let sphere_center = (blo + bhi) * 0.5;
     let sphere_radius = used
-        .map(|&i| Vec3::from(pos_all[i as usize]).distance(sphere_center))
+        .map(|p| p.distance(sphere_center))
         .fold(0.0f32, f32::max);
     for (k, (l, error)) in levels.iter().enumerate() {
         let (ordered, mut cut) = if opts.clusters {
-            clusterize(&pos_all, l)
+            clusterize(&drawn[k], l)
         } else {
             (Vec::new(), Vec::new())
         };
@@ -1238,6 +1273,7 @@ pub(crate) fn cook_primitive(
             cluster_first: clusters.len() as u32,
             cluster_count: cut.len() as u32,
             material: NONE,
+            leaf_scale: leaf_scales[k],
         });
         clusters.extend(cut);
         all.extend_from_slice(l);

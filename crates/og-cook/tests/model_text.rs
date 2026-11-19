@@ -304,10 +304,15 @@ fn a_plant_cooks_to_wood_and_leaves_that_sway_and_let_light_through() {
     }
 
     // With distance they are thinned, not simplified: a level keeps every
-    // second leaf of the one before, whole, and makes each as much larger
+    // second leaf of the one before, whole, and draws each as much larger
     // about its anchor, so the crown covers as much with half the
-    // triangles; its error is how far that moved the farthest corner.
+    // triangles; its error is how far that moved the farthest corner. It
+    // draws the full mesh's own vertices larger (its leaf scale): the
+    // levels add none.
     assert_eq!(leaves.lods.len(), 3, "the mesh, a half and a quarter");
+    let full: std::collections::BTreeSet<u32> = level(0).iter().copied().collect();
+    assert_eq!(full.len(), leaves.vertices.len(), "a level added vertices");
+    let drawn = |l: usize, i: u32| anchor(i) + (at(i) - anchor(i)) * leaves.lods[l].leaf_scale;
     let leaves_of = |l: usize| -> std::collections::BTreeSet<[u32; 8]> {
         let key = |&i: &u32| {
             let f = &lf[i as usize];
@@ -316,16 +321,22 @@ fn a_plant_cooks_to_wood_and_leaves_that_sway_and_let_light_through() {
         level(l).iter().map(key).collect()
     };
     let area = |l: usize| -> f32 {
-        let tri = |t: &[u32]| 0.5 * (at(t[1]) - at(t[0])).cross(at(t[2]) - at(t[0])).length();
+        let p = |i: u32| drawn(l, i);
+        let tri = |t: &[u32]| 0.5 * (p(t[1]) - p(t[0])).cross(p(t[2]) - p(t[0])).length();
         level(l).chunks(3).map(tri).sum()
     };
     for (l, stride) in [(1, 2usize), (2, 4)] {
         let (kept, before) = (leaves_of(l), leaves_of(l - 1));
         assert!(kept.is_subset(&before), "level {l} grew a leaf");
         assert_eq!(kept.len(), leaves_of(0).len().div_ceil(stride), "level {l}");
+        let scale = leaves.lods[l].leaf_scale;
+        assert!(
+            (scale - (stride as f32).sqrt()).abs() < 1e-6,
+            "level {l}: {scale}"
+        );
         let cover = area(l) / area(0);
         assert!((cover - 1.0).abs() < 0.15, "level {l} covers {cover}");
-        let reach = level(l).iter().map(|&i| (at(i) - anchor(i)).length());
+        let reach = level(l).iter().map(|&i| (drawn(l, i) - anchor(i)).length());
         let moved = reach.fold(0.0, f32::max) * (1.0 - 1.0 / (stride as f32).sqrt());
         let error = leaves.lods[l].error;
         assert!(
@@ -359,13 +370,28 @@ fn a_plant_cooks_to_wood_and_leaves_that_sway_and_let_light_through() {
     let reach = |i: &u32| at(*i).y;
     let top = level(0).iter().map(reach).fold(wood.max.y, f32::max);
     assert!((mw.top - top).abs() < 1e-3 && top > 1.0, "{} {top}", mw.top);
-    assert!(level(2).iter().map(reach).fold(top, f32::max) > top + 1e-3);
+    let far = level(2).iter().map(|&i| drawn(2, i).y).fold(top, f32::max);
+    assert!(far > top + 1e-3);
+    // og-render draws each level's leaves at its scale, and a level made a
+    // mesh of its own (a scattered copy's) has them where it draws them.
+    assert_eq!(
+        ml.level_scales,
+        leaves.lods.iter().map(|l| l.leaf_scale).collect::<Vec<_>>()
+    );
+    let compact = leaves.mesh_compact(2);
+    let compact_top = compact
+        .vertices
+        .iter()
+        .map(|v| v.position[1])
+        .fold(f32::MIN, f32::max);
+    assert!((compact_top - far).abs() < 1e-4, "{compact_top} {far}");
     assert!(mw.canopy_center.y > 0.4 && mw.canopy_center.y < top);
     assert!(mw.validate(wood.vertices.len()).is_ok());
     assert!(ml.validate(leaves.vertices.len()).is_ok());
 }
 
-/// Ways this could fail: a kind that does not cook or grows nothing; a
+/// Ways this could fail: a kind that does not cook, grows nothing or is
+/// past the default budgets (a game's own plants are held to them); a
 /// block's own keys lost to its kind's (or the kind's lost to the
 /// defaults'); a colour named that moves the plant's shape; an evergreen
 /// kind that drops its leaves, or a deciduous one whose season (or its
@@ -413,7 +439,15 @@ fn a_kind_is_a_plant_s_defaults_and_its_own_keys_change_only_what_they_name() {
         .iter()
         .map(|(n, t)| (n.as_str(), t.as_bytes()))
         .collect();
-    let root = cooked("og-cook-model-text-plant-kinds", &files);
+    let root = project("og-cook-model-text-plant-kinds", &files);
+    let report = cook_project(&root, &CookOptions::default()).unwrap();
+    assert!(report.ok(), "{:?}", report.errors());
+    let over: Vec<_> = report
+        .warnings
+        .iter()
+        .filter(|w| w.contains("over budget"))
+        .collect();
+    assert!(over.is_empty(), "{over:?}");
     let bundle = Bundle::open(&root.join("cooked")).unwrap();
     let load = |name: &str| bundle.load_model(&format!("plants/{name}.ogt")).unwrap();
     // Each kind is a plant of its own size: from a tulip to a pine.

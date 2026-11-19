@@ -10,7 +10,7 @@
 // pool plus one, 0 for none). The region is (canopy centre, top), (flags:
 // 1 leaves, its season, its season shift, 0), (autumn colour, 0), (the
 // second autumn colour, 0), (the crown's half-extents, its extinction),
-// then per vertex of the mesh (its own index) the branch pivot and
+// the leaf scales of levels 0 to 3 and of 4 to 7, then per vertex of the mesh (its own index) the branch pivot and
 // stiffness, the leaf anchor and flutter. So the region's second row is
 // at the cluster row's w itself.
 
@@ -24,7 +24,7 @@ struct MeshletDraw {
 };
 
 // meshlet.rs FOLIAGE_HEADER_ROWS.
-const SWAY_HEADER_ROWS: u32 = 5u;
+const SWAY_HEADER_ROWS: u32 = 7u;
 
 // A vertex's leaf in its year (meshlet_foliage.wgsl `season_leaf`) and
 // its colour lot: `h1` the region's second row (its season and shift),
@@ -45,11 +45,25 @@ fn meshlet_leaf(h1: vec4<f32>, f1: vec4<f32>, model: mat4x4<f32>, origin: vec3<f
   return l;
 }
 
-// Where the leaf's year puts a vertex resting at `p`: drawn in to its
-// anchor as the leaf is less than whole (a bud, a dropped leaf).
-fn meshlet_grown(p: vec3<f32>, f1: vec4<f32>, kept: f32) -> vec3<f32> {
-  if (kept >= 1.0) { return p; }
-  return f1.xyz + (p - f1.xyz) * kept;
+// The header row of the region `region` (the cluster row's w) that holds
+// level `level`'s leaf scale (meshlet.rs `MeshFoliage::level_scales`).
+fn meshlet_scale_row(region: u32, level: u32) -> u32 {
+  return region - 1u + 5u + min(level, 7u) / 4u;
+}
+
+// Level `level`'s leaf scale from its header row (`meshlet_scale_row`):
+// how much larger a thinned level of leaf cards draws each leaf.
+fn meshlet_level_scale(row: vec4<f32>, level: u32) -> f32 {
+  return row[min(level, 7u) % 4u];
+}
+
+// Where the leaf's year and its level put a vertex resting at `p`: drawn
+// in to its anchor as the leaf is less than whole (a bud, a dropped leaf),
+// out from it on a thinned level (`grow`: the year's kept share times the
+// level's scale).
+fn meshlet_grown(p: vec3<f32>, f1: vec4<f32>, grow: f32) -> vec3<f32> {
+  if (grow == 1.0) { return p; }
+  return f1.xyz + (p - f1.xyz) * grow;
 }
 
 // The vertex's turned colour (meshlet_foliage.wgsl `season_leaf_color`),

@@ -268,7 +268,7 @@ row!(
 
 row!(
     /// One level of detail: a range of a primitive's decoded indices.
-    LodRow, "og.ModelLod", 4 {
+    LodRow, "og.ModelLod", 5 {
         index_first: u32,
         index_count: u32,
         /// The level's largest distance from the full mesh, both ways, in
@@ -282,6 +282,11 @@ row!(
         /// The reparameterised level's material; NONE keeps the
         /// primitive's material and source UVs.
         material: u32,
+        /// How much larger a thinned level of leaf cards draws each leaf
+        /// about its anchor (the foliage stream's): 1 draws the vertices
+        /// where they are. A thinned level indexes the full mesh's own
+        /// vertices and keeps fewer leaves, each this much larger.
+        leaf_scale: f32,
     }
 );
 

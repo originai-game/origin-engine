@@ -3,7 +3,7 @@
 use super::*;
 
 /// One level of detail of a [`CookedPrimitive`].
-#[derive(Clone, Copy, Debug, Default, PartialEq)]
+#[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Lod {
     pub first: usize,
     pub count: usize,
@@ -15,6 +15,24 @@ pub struct Lod {
     pub cluster_count: usize,
     /// A reparameterised level's own material, otherwise the primitive's.
     pub material: Option<usize>,
+    /// How much larger a thinned level of leaf cards draws each leaf about
+    /// its anchor ([`CookedPrimitive::foliage`]'s): 1 where the vertices
+    /// are. [`CookedPrimitive::mesh_compact`] places them so.
+    pub leaf_scale: f32,
+}
+
+impl Default for Lod {
+    fn default() -> Self {
+        Self {
+            first: 0,
+            count: 0,
+            error: 0.0,
+            cluster_first: 0,
+            cluster_count: 0,
+            material: None,
+            leaf_scale: 1.0,
+        }
+    }
 }
 
 /// A decoded mesh primitive: every LOD shares the vertices.
@@ -62,7 +80,10 @@ impl CookedPrimitive {
         ))
     }
 
-    /// The geometry of one LOD (0 is the full mesh) for [`SceneResources::add_mesh`].
+    /// The geometry of one LOD (0 is the full mesh) for [`SceneResources::add_mesh`],
+    /// over the shared vertices as stored: a thinned level's leaves at the
+    /// full mesh's size ([`Lod::leaf_scale`]; [`Self::mesh_compact`] draws
+    /// them as the level does).
     pub fn mesh(&self, lod: usize) -> MeshData {
         let l = self.lods[lod.min(self.lods.len() - 1)];
         MeshData {
@@ -104,12 +125,25 @@ impl CookedPrimitive {
         let l = self.lods[lod.min(self.lods.len() - 1)];
         let mut at = vec![u32::MAX; self.vertices.len()];
         let mut vertices = Vec::new();
+        // A thinned level's leaves as it draws them: larger about their
+        // anchors (a mesh of its own carries no foliage to grow them by).
+        let anchors = self
+            .foliage
+            .as_ref()
+            .filter(|_| l.leaf_scale != 1.0)
+            .map(|(f, _)| f);
         let indices = self.indices[l.first..l.first + l.count]
             .iter()
             .map(|&i| {
                 if at[i as usize] == u32::MAX {
                     at[i as usize] = vertices.len() as u32;
-                    vertices.push(self.vertices[i as usize]);
+                    let mut v = self.vertices[i as usize];
+                    if let Some(f) = anchors {
+                        let a = Vec3::from_slice(&f[i as usize].leaf[..3]);
+                        let p = a + (Vec3::from(v.position) - a) * l.leaf_scale;
+                        v.position = p.to_array();
+                    }
+                    vertices.push(v);
                 }
                 at[i as usize]
             })
@@ -514,6 +548,12 @@ impl CookedModel {
                 if l.material != NONE && l.material as usize >= materials.len() {
                     return Err(bad(format!("primitive {i}: LOD material out of range")));
                 }
+                if !(l.leaf_scale.is_finite() && l.leaf_scale >= 1.0) {
+                    return Err(bad(format!(
+                        "primitive {i}: LOD leaf scale {}",
+                        l.leaf_scale
+                    )));
+                }
                 prim_lods.push(Lod {
                     first: l.index_first as usize,
                     count: l.index_count as usize,
@@ -521,6 +561,7 @@ impl CookedModel {
                     cluster_first: prim_clusters.len(),
                     cluster_count: l.cluster_count as usize,
                     material: opt(l.material),
+                    leaf_scale: l.leaf_scale,
                 });
                 prim_clusters.extend(
                     cluster_rows
@@ -1070,6 +1111,11 @@ impl CookedModel {
             leaves: *leaves,
             crown: if volume > 0.0 { crown } else { Vec3::ZERO },
             extinction,
+            level_scales: self.primitives[i]
+                .lods
+                .iter()
+                .map(|l| l.leaf_scale)
+                .collect(),
             season: self
                 .materials
                 .get(self.primitives[i].material)

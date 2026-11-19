@@ -92,7 +92,8 @@ fn meshlet_vertex(vi: u32, ii: u32) -> MeshletVertex {
   if (c.w != 0u) {
     let f = meshlet_rows(c.w, index);
     r.leaf = meshlet_leaf(meshlet_foliage[c.w], f[2], r.model, meshlet_draw.wind[0].origin.xyz, meshlet_draw.leaf_year);
-    r.rest = meshlet_grown(r.rest, f[2], r.leaf.leaf.kept);
+    let scale = meshlet_level_scale(meshlet_foliage[meshlet_scale_row(c.w, c.z)], c.z);
+    r.rest = meshlet_grown(r.rest, f[2], r.leaf.leaf.kept * scale);
     r.v.position = r.rest + meshlet_sway(r.rest, f[0], f[1], f[2], r.model, meshlet_draw.wind[0], foliage_sway(r.look.x), false);
   }
   // The scene's tint, or the view's own (frame.drawn.y, View::lod_debug).

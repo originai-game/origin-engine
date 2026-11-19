@@ -186,14 +186,24 @@ pub struct MeshFoliage {
     /// in the model's units.
     pub crown: Vec3,
     pub extinction: f32,
+    /// Per level of the mesh (its [`MeshClusters`] levels, in order), how
+    /// much larger that level draws each leaf about its anchor: a thinned
+    /// level of leaf cards keeps fewer leaves, each larger, over the full
+    /// mesh's own vertices. At most [`FOLIAGE_LEVEL_SCALES`], each 1 or
+    /// more; a level past the list draws at 1.
+    pub level_scales: Vec<f32>,
 }
+
+/// The levels whose leaf scale a foliage mesh's header holds
+/// ([`MeshFoliage::level_scales`]): two rows of four.
+pub const FOLIAGE_LEVEL_SCALES: usize = 8;
 
 /// vec4 rows of a foliage mesh's header in the vertex pool (meshlet_gpu.rs
 /// `pool_foliage`), before its two rows per vertex: (canopy centre, top),
 /// (flags: 1 leaves, its season, its season shift, 0), (autumn colour, 0),
 /// (the second autumn colour, 0), (the crown's half-extents, its
-/// extinction).
-pub const FOLIAGE_HEADER_ROWS: u32 = 5;
+/// extinction), then the leaf scales of levels 0 to 3 and of 4 to 7.
+pub const FOLIAGE_HEADER_ROWS: u32 = 7;
 
 impl MeshFoliage {
     /// Whether it describes a mesh of `vertex_count` vertices: one entry a
@@ -221,6 +231,14 @@ impl MeshFoliage {
             || !(self.extinction.is_finite() && self.extinction >= 0.0)
         {
             return Err("its crown must be finite and not negative".into());
+        }
+        if self.level_scales.len() > FOLIAGE_LEVEL_SCALES
+            || !self.level_scales.iter().all(|s| s.is_finite() && *s >= 1.0)
+        {
+            return Err(format!(
+                "its level scales must be at most {FOLIAGE_LEVEL_SCALES}, each finite and 1 or more: {:?}",
+                self.level_scales
+            ));
         }
         for (i, v) in self.vertices.iter().enumerate() {
             let finite = v.branch.iter().chain(&v.leaf).all(|x| x.is_finite());
@@ -250,6 +268,9 @@ impl MeshFoliage {
         rows.push([r, g, b, 0.0]);
         let k = self.crown;
         rows.push([k.x, k.y, k.z, self.extinction]);
+        let scale = |l: usize| self.level_scales.get(l).copied().unwrap_or(1.0);
+        rows.push(std::array::from_fn(scale));
+        rows.push(std::array::from_fn(|l| scale(l + 4)));
         for v in &self.vertices {
             rows.push(v.branch);
             rows.push(v.leaf);
@@ -257,11 +278,33 @@ impl MeshFoliage {
         rows
     }
 
-    /// The bounds of its deformation over `positions` (the mesh's).
+    /// The box (min and max corner) of where its levels draw `positions`
+    /// (the mesh's) at rest: each vertex where it is and as far from its
+    /// anchor as its largest level draws it. `None` for no vertex.
+    pub fn rest_box(&self, positions: impl Iterator<Item = Vec3>) -> Option<(Vec3, Vec3)> {
+        let largest = self.level_scales.iter().fold(1.0f32, |a, &s| a.max(s));
+        let mut out: Option<(Vec3, Vec3)> = None;
+        for (p, v) in positions.zip(&self.vertices) {
+            let anchor = Vec3::new(v.leaf[0], v.leaf[1], v.leaf[2]);
+            for q in [p, anchor + (p - anchor) * largest] {
+                out = Some(out.map_or((q, q), |(lo, hi)| (lo.min(q), hi.max(q))));
+            }
+        }
+        out
+    }
+
+    /// The bounds of its deformation over `positions` (the mesh's), each
+    /// leaf also as large as its largest level draws it (a radius about a
+    /// point is largest at one end of the way a vertex grows).
     pub fn bounds(&self, positions: impl Iterator<Item = Vec3>) -> crate::foliage::FoliageBounds {
         let mut b = crate::foliage::FoliageBounds::default();
+        let largest = self.level_scales.iter().fold(1.0f32, |a, &s| a.max(s));
         for (p, v) in positions.zip(&self.vertices) {
             b.include(p, *v);
+            if largest > 1.0 {
+                let anchor = Vec3::new(v.leaf[0], v.leaf[1], v.leaf[2]);
+                b.include(anchor + (p - anchor) * largest, *v);
+            }
         }
         b
     }

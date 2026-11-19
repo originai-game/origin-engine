@@ -188,8 +188,9 @@ impl Renderer {
                 let data = &scene.meshes()[i];
                 mesh.foliage = Some(FoliageMesh {
                     source: source.clone(),
-                    rest: data
-                        .bounds()
+                    // As its levels draw it: a thinned one's leaves larger.
+                    rest: source
+                        .rest_box(data.vertices.iter().map(|v| Vec3::from_array(v.position)))
                         .map(|(lo, hi)| ((lo + hi) * 0.5, (hi - lo) * 0.5)),
                     deformation: source
                         .bounds(data.vertices.iter().map(|v| Vec3::from_array(v.position))),

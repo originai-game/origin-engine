@@ -82,17 +82,18 @@ fn raster_leaf(local: u32, region: u32, now: mat4x4<f32>) -> MeshletLeaf {
   return meshlet_leaf(vertices[region], vertices[at + 1u], now, raster.wind[0].origin.xyz, raster.leaf_year);
 }
 
-// Vertex `local` (the mesh's own index) of a cluster whose first row's w
-// is `region` (meshlet_sway.wgsl; 0: no foliage), in a mesh at `base` of
-// the pool: where instance slot `inst` puts it in the mesh's own space,
-// its leaf grown as on the instance `now`, swayed by this frame's wind,
-// or the last drawn frame's at `model` (the previous transform) with
-// `from_previous`.
-fn raster_position(base: u32, local: u32, region: u32, inst: u32, now: mat4x4<f32>, model: mat4x4<f32>, from_previous: bool) -> vec3<f32> {
+// Vertex `local` (the mesh's own index) of a cluster of level `level`
+// whose first row's w is `region` (meshlet_sway.wgsl; 0: no foliage), in
+// a mesh at `base` of the pool: where instance slot `inst` puts it in the
+// mesh's own space, its leaf grown as on the instance `now` and as large
+// as its level draws it, swayed by this frame's wind, or the last drawn
+// frame's at `model` (the previous transform) with `from_previous`.
+fn raster_position(base: u32, local: u32, region: u32, level: u32, inst: u32, now: mat4x4<f32>, model: mat4x4<f32>, from_previous: bool) -> vec3<f32> {
   var p = vertices[(base + local) * 4u].xyz;
   if (region == 0u) { return p; }
   let at = meshlet_sway_row(region, local);
-  p = meshlet_grown(p, vertices[at + 1u], raster_leaf(local, region, now).leaf.kept);
+  let scale = meshlet_level_scale(vertices[meshlet_scale_row(region, level)], level);
+  p = meshlet_grown(p, vertices[at + 1u], raster_leaf(local, region, now).leaf.kept * scale);
   var layer = instances[inst * 4u + 3u].x;
   var wind = raster.wind[0];
   if (from_previous) {
@@ -143,7 +144,7 @@ fn triangle(k: u32, tri: u32) -> Tri {
   let size = vec2<f32>(raster.size.xy);
   for (var j = 0u; j < 3u; j++) {
     let local = indices[c.x + tri * 3u + j];
-    let world = model * vec4<f32>(raster_position(f.y, local, c.w, e.x, model, model, false), 1.0);
+    let world = model * vec4<f32>(raster_position(f.y, local, c.w, c.z, e.x, model, model, false), 1.0);
     let clip = raster_retro(mul_point(raster.view_proj, world));
     // Never for a soft cluster (it lies past the near plane): skipped.
     if (clip.w <= 1e-6 || clip.z < 0.0) { return t; }
@@ -329,8 +330,8 @@ fn setup(@builtin(global_invocation_id) gid: vec3<u32>) {
   for (var j = 0u; j < 3u; j++) {
     let local = indices[c.x + tri * 3u + j];
     vi[j] = f.y + local;
-    at[j] = raster_position(f.y, local, c.w, e.x, model, model, false);
-    was[j] = raster_position(f.y, local, c.w, e.x, model, prev, true);
+    at[j] = raster_position(f.y, local, c.w, c.z, e.x, model, model, false);
+    was[j] = raster_position(f.y, local, c.w, c.z, e.x, model, prev, true);
     clip[j] = raster_retro(mul_point(raster.view_proj, model * vec4<f32>(at[j], 1.0)));
   }
   let l = raster_screen(clip, ndc);
