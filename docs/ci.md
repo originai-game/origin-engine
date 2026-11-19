@@ -497,6 +497,37 @@ the number in its own commit, with the measured value from
 `target/evidence/size-gate.json` and the reason in the message; a raise
 above a design §7 target changes design §7 in the same commit.
 
+## The asset store
+
+The repository's binary assets are moving out of Git and out of the two
+buckets below into one store the platform hosts, addressed by SHA-256
+(`GET /api/engine-assets/sha256/<hex>` on origingame.ai; public objects are
+read anonymously, private ones and uploads need a platform key the store
+lets write). Until the migration lands, the model bucket below still serves
+the existing pins.
+
+A directory that owns pinned files keeps an `og-assets.json` beside them:
+`{"version": 1, "files": [{path, sha256, size, visibility, source?, licence?}]}`,
+`path` relative to that directory. It names no URL. The tool keeps a marked
+block in the same directory's `.gitignore` listing the pinned paths, so a
+checkout after `ensure` is clean.
+
+```sh
+bun scripts/assets.ts ensure [dir...]                    # install every pin under dir (default: the repository)
+bun scripts/assets.ts verify [dir...]                    # ask the store that every pin is present at its size
+bun scripts/assets.ts pin <dir> [--private] <path...>    # pin files as they are now
+bun scripts/assets.ts push [dir...]                      # upload what the store lacks
+bun scripts/assets.ts status [dir...]                    # list pinned files that are missing or modified
+```
+
+`ensure` reads the shared cache `$ORIGIN_ENGINE_CACHE/blobs/sha256/<ab>/<hex>`
+(default `~/.cache/origin-engine`), then `OG_ASSETS_MIRROR` (a directory or
+URL with the same layout), then the store, checks every file against its
+pin and names each one it cannot have; a verified cache works offline.
+`push` and private reads use `OG_ASSETS_KEY`, else
+`OG_PLATFORM_DEVELOPMENT_KEY`; `push` refuses a file that is not its pin.
+`OG_ASSETS_URL` overrides the store's origin.
+
 ## The model bucket
 
 og.motion's weights, which `packages/engine` ships, are not in git.
