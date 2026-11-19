@@ -166,16 +166,88 @@ export interface RoomProvider {
   attach?(deliver: (events: unknown[]) => void): void;
 }
 
+// ── shared-world sessions ──────────────────────────────────────────────
+
+/** What og.shared.join (or a reconnect) asks the session provider for: a connection to this world. */
+export interface SessionRequest {
+  /** og.SharedJoinDesc.world. */
+  readonly world: string;
+  /** Whether this is a lost session's reconnect (a token endpoint signs a new token for it). */
+  readonly reconnect: boolean;
+}
+
+/**
+ * A provider's answer: where the world server is (`ws://` or `wss://`) and the token the engine
+ * sends it as it is and never reads (none for a server started `--auth none --dev`), or why
+ * not. A failure with a retryable code (`offline`, `unavailable`, `rate_limited`, `timeout`)
+ * is tried again on the reconnect schedule; any other ends the session (og.SharedLeft).
+ */
+export type SessionAnswer =
+  | { readonly ok: true; readonly url: string; readonly token?: string }
+  | { readonly ok: false; readonly error: { readonly code: string; readonly message: string } };
+
+/**
+ * What hosts og.shared's sessions (docs/design.md §2.12): asked once per connection, it names
+ * the world server and a token for it. The engine opens the connection itself (a WebSocket from
+ * its Worker) and speaks the world server's protocol over it; the provider owns every URL and
+ * credential, so game code is the same under a self-hosted server and a platform's.
+ */
+export interface SessionProvider {
+  /** og.shared.status's `host`: `static` for a fixed endpoint, `endpoint` for a token endpoint's, a platform's own name. */
+  readonly host: string;
+  connect(request: SessionRequest): Promise<SessionAnswer>;
+}
+
+/** A fixed world server and token (a self-hosted `og world-server`, a test): what `og run --shared` is natively. */
+export function staticSession(grant: { readonly url: string; readonly token?: string }): SessionProvider {
+  if (!/^wss?:\/\//.test(grant.url)) throw new Error(`staticSession: ${grant.url} is not a ws:// or wss:// URL`);
+  return { host: "static", connect: () => Promise.resolve({ ok: true, url: grant.url, ...(grant.token !== undefined ? { token: grant.token } : {}) }) };
+}
+
+/** The page's fetch, written out (as relayRooms' SocketFactory): a game's type check has no DOM. */
+const pageFetch = (url: string, init: { method: string; credentials: string; headers: Record<string, string>; body: string }) =>
+  (globalThis as unknown as { fetch: (u: string, i: typeof init) => Promise<{ readonly status: number; readonly ok: boolean; json(): Promise<unknown> }> }).fetch(url, init);
+
+/**
+ * A game's own token endpoint (self-hosting, docs/web-export.md §Providers): each connection
+ * POSTs the request as JSON to `url` with the page's cookies and takes `{ url, token }` back. The
+ * endpoint signs a short-lived token for its own player with the world server's secret
+ * (`og world-server --auth hs256`); a 401 or 403 ends the session as `unauthorized`, a network
+ * failure or a 5xx is tried again.
+ */
+export function tokenEndpoint(url: string, init: { readonly headers?: Readonly<Record<string, string>> } = {}): SessionProvider {
+  return {
+    host: "endpoint",
+    async connect(request) {
+      let res: { readonly status: number; readonly ok: boolean; json(): Promise<unknown> };
+      try {
+        res = await pageFetch(url, { method: "POST", credentials: "include", headers: { "content-type": "application/json", ...init.headers }, body: JSON.stringify(request) });
+      } catch (e) {
+        return { ok: false, error: { code: "offline", message: `the token endpoint did not answer: ${e instanceof Error ? e.message : String(e)}` } };
+      }
+      const code = res.status === 401 || res.status === 403 ? "unauthorized" : res.status === 429 ? "rate_limited" : res.status >= 500 ? "unavailable" : res.ok ? "" : "failed";
+      if (code !== "") return { ok: false, error: { code, message: `the token endpoint answered ${res.status}` } };
+      const body = (await res.json().catch(() => null)) as { url?: unknown; token?: unknown } | null;
+      if (!body || typeof body.url !== "string" || !/^wss?:\/\//.test(body.url) || (body.token !== undefined && typeof body.token !== "string")) {
+        return { ok: false, error: { code: "invalid", message: "the token endpoint's answer is not { url: \"wss://…\", token }" } };
+      }
+      return { ok: true, url: body.url, ...(typeof body.token === "string" ? { token: body.token } : {}) };
+    },
+  };
+}
+
 // ── the page's choice ──────────────────────────────────────────────────
 
 /**
  * The page's providers (`play({ provider })`, or `window.__OG_PROVIDER` before play.js loads):
  * each one named replaces the default for its part. `rooms` may be an `og relay` URL
- * (`wss://relay.example/`), carried by relayRooms.
+ * (`wss://relay.example/`), carried by relayRooms; `sessions` may be a world server's URL,
+ * a staticSession without a token.
  */
 export interface Providers {
   readonly platform?: PlatformProvider;
   readonly rooms?: RoomProvider | string;
+  readonly sessions?: SessionProvider | string;
 }
 
 export { relayRooms } from "./web/relay-rooms.ts";

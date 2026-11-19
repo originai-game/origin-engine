@@ -47,7 +47,7 @@ import { answerLocally, fail, localPlatform, SERVICE_METHODS, type LocalDocument
 export { storagePersistence } from "../src/platform-local.ts";
 import type { PlayerResult } from "./player.ts";
 import type { RoomHost } from "../src/web/shell.ts";
-import { unavailable, type PlatformProvider, type Providers, type RoomProvider } from "../src/provider.ts";
+import { staticSession, unavailable, type PlatformProvider, type Providers, type RoomProvider, type SessionProvider } from "../src/provider.ts";
 import { relayRooms } from "../src/web/relay-rooms.ts";
 
 /** The part of the Player link this needs (connectPlayer's answer). */
@@ -277,14 +277,14 @@ export function playerRooms(player: PlayerLink): (RoomHost & { push(event: Recor
  * never fakes a purchase). Each part named takes the place of the browser's storage (the
  * platform) or of no rooms; a Player that frames the page still answers what it answers.
  */
-export function pageProviders(given: unknown, build: "publish" | "dev", warn: (line: string) => void = () => {}): { platform?: PlatformProvider; rooms?: RoomProvider } {
+export function pageProviders(given: unknown, build: "publish" | "dev", warn: (line: string) => void = () => {}): { platform?: PlatformProvider; rooms?: RoomProvider; sessions?: SessionProvider } {
   if (given === undefined || given === null) return {};
   if (typeof given !== "object") {
-    warn("warn: the page's provider is not an object { platform?, rooms? }: ignored");
+    warn("warn: the page's provider is not an object { platform?, rooms?, sessions? }: ignored");
     return {};
   }
   const p = given as Providers;
-  const out: { platform?: PlatformProvider; rooms?: RoomProvider } = {};
+  const out: { platform?: PlatformProvider; rooms?: RoomProvider; sessions?: SessionProvider } = {};
   const platform = p.platform as Partial<PlatformProvider> | undefined;
   if (platform !== undefined) {
     if (platform && typeof platform.host === "string" && platform.host !== "" && Array.isArray(platform.capabilities) && typeof platform.handle === "function") {
@@ -301,6 +301,17 @@ export function pageProviders(given: unknown, build: "publish" | "dev", warn: (l
   } else if (rooms !== undefined) {
     if (rooms && typeof rooms.host === "string" && rooms.host !== "" && typeof rooms.handle === "function") out.rooms = rooms as RoomProvider;
     else warn("warn: the page's provider.rooms is not a RoomProvider { host, handle } or an og relay URL: this page carries no rooms");
+  }
+  const sessions = p.sessions as Partial<SessionProvider> | string | undefined;
+  if (typeof sessions === "string") {
+    try {
+      out.sessions = staticSession({ url: sessions });
+    } catch (e) {
+      warn(`warn: the page's provider.sessions: ${e instanceof Error ? e.message : String(e)}`);
+    }
+  } else if (sessions !== undefined) {
+    if (sessions && typeof sessions.host === "string" && sessions.host !== "" && typeof sessions.connect === "function") out.sessions = sessions as SessionProvider;
+    else warn("warn: the page's provider.sessions is not a SessionProvider { host, connect } or a world server URL: this page hosts no shared worlds");
   }
   return out;
 }

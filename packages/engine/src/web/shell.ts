@@ -72,6 +72,7 @@ import { bootWorker, type HostError, type Ready } from "./shell/boot.ts";
 import { FrameDeadline } from "./shell/deadline.ts";
 import { wireInput } from "./shell/input.ts";
 import { PlatformBridge, type RoomHost } from "./shell/platform.ts";
+import type { SessionProvider } from "../provider.ts";
 import { Presentation } from "./shell/presentation.ts";
 import { Requests } from "./shell/requests.ts";
 import { pagePreferences, pixelSize, viewportExtremes } from "./shell/viewport.ts";
@@ -325,6 +326,11 @@ export class Shell {
         this.#platform.rooms((m as unknown as { ops: Record<string, unknown>[] }).ops ?? []);
         return;
       }
+      if (m.type === "shared") {
+        const ask = m as unknown as { request: number; world: string; reconnect: boolean };
+        this.#platform.session(ask.request, ask.world, ask.reconnect);
+        return;
+      }
       if (m.type === "platform") {
         this.#platform.calls((m as unknown as { calls: PlatformCall[] }).calls ?? []);
         return;
@@ -425,6 +431,15 @@ export class Shell {
    */
   setRooms(host: RoomHost | null, link?: string): void {
     this.#platform.setRooms(host, link);
+  }
+
+  /**
+   * What hosts og.shared's sessions from now on (og.shared.status's `host`): asked for a world
+   * server and a token each time the engine connects. Null for none, where og.shared.join ends
+   * with og.SharedLeft `unavailable`.
+   */
+  setSessions(provider: SessionProvider | null): void {
+    this.#platform.setSessions(provider);
   }
 
   /** How the page pauses the game for its platform host (ticks and audio, as its own pause does); default: the clock alone. */

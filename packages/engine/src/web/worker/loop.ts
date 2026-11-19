@@ -9,6 +9,7 @@ import { waitForFrames } from "../rpc-ring.ts";
 import type { Gate } from "./gate.ts";
 import type { WorkerScope } from "./messages.ts";
 import { pumpRoom } from "./platform.ts";
+import { pumpShared } from "./shared.ts";
 import { post, type Run } from "./run.ts";
 
 declare const self: WorkerScope;
@@ -74,6 +75,7 @@ export class FrameLoop {
         if (typeof answered.maxFps === "number") this.#maxFps = answered.maxFps;
         run.relay(answered);
         pumpRoom(engine);
+        pumpShared(engine);
         if (typeof answered.tick === "number") run.lastTick = answered.tick;
         this.#gate.warmCovered();
         if (!run.firstFrame && answered.rendered !== false) {

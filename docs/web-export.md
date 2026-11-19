@@ -645,10 +645,12 @@ never) and anything it does not list `unavailable`;
 tests.
 
 The page that hosts the game names its providers, never the game:
-`play({ provider: { platform?, rooms? } })` (`shell/page.ts`), or, for the
-page `og build` writes, `window.__OG_PROVIDER = { platform?, rooms? }` set
-by a script before `play.js` loads. `rooms` is a RoomProvider or an `og
-relay` URL. Each part takes the place of the default only where no Player
+`play({ provider: { platform?, rooms?, sessions? } })` (`shell/page.ts`),
+or, for the page `og build` writes, `window.__OG_PROVIDER = { platform?,
+rooms?, sessions? }` set by a script before `play.js` loads. `rooms` is a
+RoomProvider or an `og relay` URL; `sessions` is a SessionProvider (`host`,
+`connect({ world, reconnect })` answering `{ ok, url, token? }`) or an `og
+world-server` URL. Each part takes the place of the default only where no Player
 answers: `platform` that of the browser's storage, `rooms` that of no
 rooms. A part that is not a provider is left out with a line in the log.
 In a publish build a provider whose `host` is `local` answers the platform
@@ -659,6 +661,18 @@ room provider for a self-hosted page: og-net's protocol to an `og relay`
 over the browser's WebSocket, mended after a lost connection as the native
 client mends it (docs/design.md §2.8). A page on https reaches only a
 `wss://` relay, so `og relay` needs a TLS proxy in front of it.
+
+og.shared's session providers (docs/design.md §2.12) name a world server
+and a token for each connection; the engine Worker opens the WebSocket
+itself. `staticSession({ url, token? })` is a fixed endpoint;
+`tokenEndpoint(url)` POSTs `{ world, reconnect }` with the page's cookies
+to the game's own endpoint, which signs a short-lived token for its player
+with the secret of an `og world-server --auth hs256` (or any issuer the
+server's `--auth jwks` trusts) and answers `{ url, token }`; a 401 or 403
+ends the session `unauthorized`, a network failure or a 5xx is tried
+again. A platform's provider is one more implementation: game code is the
+same under each. `showcase/shared-walk/tools/serve.ts` is a self-hosted
+page and token endpoint.
 
 ### The og-probe wire (`origin/packages/contracts/src/probe-wire.ts`)
 

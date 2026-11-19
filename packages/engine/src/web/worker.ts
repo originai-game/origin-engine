@@ -57,6 +57,7 @@ import { Gate } from "./worker/gate.ts";
 import { FrameLoop } from "./worker/loop.ts";
 import type { WorkerScope } from "./worker/messages.ts";
 import { pumpRoom, toPage } from "./worker/platform.ts";
+import { pumpShared, sharedHost, sharedSession } from "./worker/shared.ts";
 import { Run } from "./worker/run.ts";
 import { start } from "./worker/start.ts";
 export type { BootPhases } from "./worker/state.ts";
@@ -158,6 +159,8 @@ export function startWorker(game: GameToken): void {
       for (const event of data.events) abi?.og_room_deliver(engine.id, JSON.stringify(event));
       pumpRoom(engine);
     }
+    if (data.type === "shared-host") sharedHost(engine, data.host);
+    if (data.type === "shared-session") sharedSession(engine, data.request, data.grant);
     if (data.type === "play") loop.play(data.on);
     if (data.type === "call") {
       try {

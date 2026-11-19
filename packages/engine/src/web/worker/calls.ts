@@ -5,6 +5,7 @@
 import { boundHost, type Engine } from "../../runtime.ts";
 import * as pipelines from "../pipelines.ts";
 import { pumpRoom } from "./platform.ts";
+import { pumpShared } from "./shared.ts";
 import type { Run } from "./run.ts";
 
 export type Calls = Record<string, (e: Engine, args: unknown[]) => unknown>;
@@ -12,10 +13,11 @@ export type Calls = Record<string, (e: Engine, args: unknown[]) => unknown>;
 /** The calls `run` answers. */
 export function callsOf(run: Run): Calls {
   return {
-    // A harness's ticks carry the room as the page's own frames do: lockstep's inputs leave with them.
+    // A harness's ticks carry the room and the shared world as the page's own frames do: lockstep's inputs and the proposals leave with them.
     advance: (e, [n]) => {
       const answered = e.advance(Number(n));
       pumpRoom(e);
+      pumpShared(e);
       return answered;
     },
     command: (e, [action, args]) => e.command(String(action), (args as string[]) ?? []),
@@ -55,8 +57,11 @@ export function callsOf(run: Run): Calls {
       });
       run.relay(answered);
       pumpRoom(e);
+      pumpShared(e);
       return answered;
     },
+    /** og.shared.status on this page, as `og run --json` reports it natively (`shared`). */
+    shared: (e) => JSON.parse(boundHost()!.abi.og_shared_status(e.id)),
     /** og.net on this page: og.net.status (lockstep running, its start tick, the seats, the first divergent tick) and the shared hash, as `og run --json` reports them natively (`lockstep`, `netHash`). */
     net: (e) => {
       const abi = boundHost()!.abi;
