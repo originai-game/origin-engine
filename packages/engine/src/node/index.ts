@@ -53,6 +53,8 @@ export interface NativeExtras {
   og_node_wait_gpu(engine: number): string;
   /** `og run` without --realtime: every frame is the script's, drawn at the configured quality and no sample of automatic quality. */
   og_node_scripted_frames(engine: number, on: boolean): void;
+  /** `og render`: every frame is written out, so each waits for og.motion's due results and the textures being prepared. */
+  og_node_recorded_frames(engine: number, on: boolean): void;
   og_node_capture_only(engine: number, on: boolean): void;
   og_node_probe_listen(engine: number, port: number): string;
   og_node_probe_serve(engine: number): number;

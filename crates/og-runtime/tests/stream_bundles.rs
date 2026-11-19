@@ -2102,11 +2102,12 @@ fn a_cells_light_shines_up_with_its_models() {
     }
 }
 
-/// A script's frame (`og render`, `og run --commands`) waits for a loaded
-/// model's maps, so a slow decode never changes what it draws; a display
-/// frame never waits and hides the model meanwhile.
+/// A recorded frame (`og render`) waits for a loaded model's maps, so a
+/// slow decode never changes what it draws; a display frame, and a
+/// scripted one (`og run --commands`), never waits and hides the model
+/// meanwhile.
 #[test]
-fn a_scripted_frame_waits_for_model_textures_and_a_display_frame_does_not() {
+fn a_recorded_frame_waits_for_model_textures_and_a_display_frame_does_not() {
     let _lock = TEST_LOCK.lock().unwrap();
     struct Slow;
     impl Hooks for Slow {
@@ -2137,7 +2138,7 @@ fn a_scripted_frame_waits_for_model_textures_and_a_display_frame_does_not() {
     cook(&root, &[("world.ogt", b"type scene\nversion 1\n---\nentity \"player\" {\n Transform {\n  position 0 0 0\n }\n StreamAnchor {\n  reach 0\n }\n}\n".to_vec())]);
     let path = base.join("plain");
     parcel(&path, "parcel", "parcel", 100, false);
-    for scripted in [true, false] {
+    for (scripted, recorded) in [(true, true), (true, false), (false, false)] {
         set_hooks(Rc::new(Slow));
         og_host_begin_bundle();
         let game = og_game_game(Some(r#"{"seed":1}"#.into()));
@@ -2150,6 +2151,7 @@ fn a_scripted_frame_waits_for_model_textures_and_a_display_frame_does_not() {
             Some(Box::new(Recorder(held.clone()))),
         ));
         set_scripted_frames(engine, scripted);
+        set_recorded_frames(engine, recorded);
         let g = Game { engine, held };
         g.place("world.ogt");
         g.open(&path);
@@ -2163,10 +2165,10 @@ fn a_scripted_frame_waits_for_model_textures_and_a_display_frame_does_not() {
         }
         // The frame after the cell loaded draws its model.
         g.frame();
-        if scripted {
+        if recorded {
             assert!(
                 g.held.get().instances > 0,
-                "a script's frame waits for the maps"
+                "a recorded frame waits for the maps"
             );
             // Loading then reaches idle: at once where the model draws
             // whole, and where it fades in, once its 0.4 s fade is over.
@@ -2181,7 +2183,11 @@ fn a_scripted_frame_waits_for_model_textures_and_a_display_frame_does_not() {
                 "loading never reached idle after the model drew"
             );
         } else {
-            assert_eq!(g.held.get().instances, 0, "a display frame never waits");
+            assert_eq!(
+                g.held.get().instances,
+                0,
+                "a display or scripted frame never waits (scripted {scripted})"
+            );
         }
         assert!(og_engine_destroy(engine));
     }

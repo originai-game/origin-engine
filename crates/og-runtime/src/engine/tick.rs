@@ -380,12 +380,13 @@ fn text_entry(eng: &Engine) -> (Value, Option<String>) {
     (text, copy)
 }
 
-/// A script's frame waits until the textures being prepared are, so it
+/// A recorded frame waits until the textures being prepared are, so it
 /// draws the models and maps the world holds instead of hiding a model or
 /// drawing the placeholder for as long as the worker happened to take: two
-/// runs of one script then draw the same frames. Natively only; the web
-/// cannot wait for its Worker, and a display frame never waits. A model of
-/// a stream group still waits for its group's upgrade, as on display.
+/// recordings of one script then draw the same frames. Natively only; the
+/// web cannot wait for its Worker, and a display or scripted frame never
+/// waits. A model of a stream group still waits for its group's upgrade,
+/// as on display.
 fn settle_textures(eng: &Engine) {
     #[cfg(not(target_arch = "wasm32"))]
     while eng.render.borrow().decoded.preparing() {
@@ -411,12 +412,13 @@ fn render(eng: &Engine, alpha: Option<f32>) -> Result<bool, String> {
     super::assets::retranscode(eng);
     // The tick this frame shows: its notes (and a missing glyph) are this tick's.
     let tick = eng.world().map(|w| w.time().tick).unwrap_or(0);
-    // A script's frame (`og run --commands`, `og render`) waits for the
-    // textures being prepared and for og.motion's results due by its tick,
-    // as a probe capture does, so the models and characters drawn are the
-    // world's and its frames reproduce run to run; a display frame never
-    // waits for either.
-    if eng.render.borrow().display.scripted {
+    // A recorded frame (`og render`, which writes every frame out) waits
+    // for the textures being prepared and for og.motion's results due by
+    // its tick, so the models and characters drawn are the world's and its
+    // frames reproduce run to run. A display frame, or a scripted one
+    // (`og run --commands`, whose captures settle og.motion themselves),
+    // never waits: the world goes on while results are late.
+    if eng.render.borrow().display.recorded {
         settle_textures(eng);
         crate::bind::motion::present::settle(eng);
     } else {
