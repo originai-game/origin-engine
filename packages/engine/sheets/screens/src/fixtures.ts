@@ -59,6 +59,7 @@ export const FIXTURES: Record<string, Record<string, Record<string, unknown>>> =
   },
   confirm: {
     default: confirm_default,
+    story: {"open":true,"danger":true,"title":"t:sheet.confirm.title|Delete the save of the Ninefold Gate campaign for good?","body":"t:sheet.confirm.body|Chapter 7, 61 hours played, every companion and every item in the vault. This cannot be undone, and the cloud copy is deleted with it.","confirm":"t:sheet.confirm.ok|Delete everything","cancel":"t:sheet.confirm.cancel|Keep the save"},
     safe: { ...confirm_default, "danger": false, "title": "Leave the lobby?", "body": "", "confirm": "Leave", "cancel": "Stay" },
     overflow: { ...confirm_default, "title": "Delete the save of the Ninefold Gate campaign for good?", "body": "Chapter 7, 61 hours played, every companion and every item in the vault. This cannot be undone, and the cloud copy is deleted with it.", "confirm": "Delete everything", "cancel": "Keep the save" },
   },
@@ -78,20 +79,24 @@ export const FIXTURES: Record<string, Record<string, Record<string, unknown>>> =
   },
   filmChapters: {
     default: filmChapters_default,
+    story: {"selected":"c2","chapters":[{"id":"c1","title":"t:sheet.chapters.c1|1 · The kitchen","thumb":"art:film-kitchen","locked":false},{"id":"c2","title":"t:sheet.chapters.c2|2 · The long night beneath the lighthouse","thumb":"art:film-hall","locked":false},{"id":"c3","title":"t:sheet.chapters.c3|3 · The cellar","thumb":"art:film-cellar","locked":false},{"id":"c4","title":"4","thumb":0,"locked":true},{"id":"c5","title":"5","thumb":0,"locked":true},{"id":"c6","title":"6","thumb":0,"locked":true}]},
     locked: { ...filmChapters_default, "selected": "c1", "chapters": [{"id":"c1","title":"1 · The kitchen","thumb":0,"locked":false},{"id":"c2","title":"2 · The hall","thumb":0,"locked":true},{"id":"c3","title":"3 · The stairs","thumb":0,"locked":true},{"id":"c4","title":"4 · Dawn","thumb":0,"locked":true}] },
     overflow: { ...filmChapters_default, "chapters": [{"id":"c0","title":"1 · The long night beneath the lighthouse of the northern reach","thumb":0,"locked":false},{"id":"c1","title":"2 · The hall","thumb":0,"locked":false},{"id":"c2","title":"3 · The stairs","thumb":0,"locked":false},{"id":"c3","title":"4 · The long night beneath the lighthouse of the northern reach","thumb":0,"locked":false},{"id":"c4","title":"5 · The kitchen","thumb":0,"locked":false},{"id":"c5","title":"6 · The hall","thumb":0,"locked":false},{"id":"c6","title":"7 · The long night beneath the lighthouse of the northern reach","thumb":0,"locked":false},{"id":"c7","title":"8 · Dawn","thumb":0,"locked":true},{"id":"c8","title":"9 · The kitchen","thumb":0,"locked":true},{"id":"c9","title":"10 · The long night beneath the lighthouse of the northern reach","thumb":0,"locked":true}], "selected": "c4" },
   },
   filmChoices: {
     default: filmChoices_default,
+    story: {"open":true,"left":0.6,"locked":false,"hotspots":[{"id":"0","x":0.6,"y":0.36,"width":0.18,"height":0.12,"label":"t:sheet.choices.c0|Take the knife from the table"}],"choices":[{"id":"0","text":"t:sheet.choices.c0|Take the knife from the table","enabled":true,"chosen":false,"progress":-1},{"id":"1","text":"t:sheet.choices.c1|Open the door and call out","enabled":true,"chosen":true,"progress":-1},{"id":"2","text":"t:sheet.choices.c2|Hold to dodge","enabled":true,"chosen":false,"progress":0.45},{"id":"3","text":"t:sheet.choices.c3|Wait in the dark","enabled":false,"chosen":false,"progress":-1}]},
     locked: { ...filmChoices_default, "locked": true },
     timeout: { ...filmChoices_default, "left": 0.04 },
     overflow: { ...filmChoices_default, "choices": [{"id":"c0","text":"Take the knife from the table and hide it in your sleeve","enabled":true,"chosen":false,"progress":-1},{"id":"c1","text":"Open the door to the hall and call out for the keeper","enabled":true,"chosen":true,"progress":-1},{"id":"c2","text":"Hold to dodge","enabled":true,"chosen":false,"progress":0.45},{"id":"c3","text":"Wait in the dark until the footsteps pass","enabled":false,"chosen":false,"progress":-1}] },
   },
   filmFlowchart: {
     default: filmFlowchart_default,
+    story: {"view":"0 0 720 360","zoom":1,"panX":0,"panY":0,"selected":"hall","detail":"t:sheet.flow.detail|Chapter 2 · The long night beneath the lighthouse","canPlay":true,"links":[{"id":"a","d":"M60 60 C 160 60, 160 60, 260 60","active":true},{"id":"b","d":"M60 60 C 160 60, 160 180, 260 180","active":false},{"id":"c","d":"M260 60 C 360 60, 360 60, 460 60","active":true},{"id":"d","d":"M260 60 C 360 60, 360 180, 460 180","active":false},{"id":"e","d":"M460 60 C 560 60, 560 60, 660 60","active":false}],"nodes":[{"id":"start","x":60,"y":60,"label":"t:sheet.flow.start|Kitchen","icon":"flag","state":"done","shape":"square","team":""},{"id":"hall","x":260,"y":60,"label":"t:sheet.flow.hall|Hall","icon":"play","state":"done","shape":"square","team":""},{"id":"wait","x":260,"y":180,"label":"t:sheet.flow.wait|Wait","icon":"clock","state":"locked","shape":"circle","team":""},{"id":"brave","x":460,"y":60,"label":"t:sheet.flow.brave|Stairs","icon":"play","state":"current","shape":"circle","team":""},{"id":"shy","x":460,"y":180,"label":"t:sheet.flow.shy|Cellar","icon":"lock","state":"locked","shape":"circle","team":""},{"id":"end","x":660,"y":60,"label":"t:sheet.flow.end|Dawn","icon":"crown","state":"locked","shape":"diamond","team":""}]},
   },
   filmGallery: {
     default: filmGallery_default,
+    story: {"selected":"e2","endings":[{"id":"e1","title":"t:sheet.endings.e1|Dawn","thumb":"art:film-dawn","locked":false},{"id":"e2","title":"t:sheet.endings.e2|The cellar door stays shut","thumb":"art:film-cellar","locked":false},{"id":"e3","title":"3","thumb":0,"locked":true},{"id":"e4","title":"4","thumb":0,"locked":true}]},
     locked: { ...filmGallery_default, "selected": "", "endings": [{"id":"c1","title":"Dawn","thumb":0,"locked":true},{"id":"c2","title":"The cellar","thumb":0,"locked":true},{"id":"c3","title":"Alone","thumb":0,"locked":true},{"id":"c4","title":"The fire","thumb":0,"locked":true}] },
   },
   gameOver: {
@@ -195,6 +200,7 @@ export const FIXTURES: Record<string, Record<string, Record<string, unknown>>> =
   },
   tutorial: {
     default: tutorial_default,
+    story: {"step":2,"steps":5,"target":"","texture":0,"waits":false,"x":64,"y":120,"title":"t:sheet.tutorial.title|Dodge through the attacks of the warden","text":"t:sheet.tutorial.text|Press the dodge button just before an attack lands to slip past it. Time slows for a breath: step behind the attacker and strike before it turns."},
     last: { ...tutorial_default, "step": 5 },
     overflow: { ...tutorial_default, "title": "Dodge through the attacks of the warden", "text": "Press the dodge button just before an attack lands to slip past it. Time slows for a breath: step behind the attacker and strike before it turns. It works on every enemy but the largest bosses, whose attacks you must block." },
   },

@@ -96,28 +96,38 @@ let shown = { screen: "", state: "default" };
  * The front end's sample art under assets/art (front-<name>; sheet only,
  * never installed), loaded in start. A fixture names one as "art:<name>".
  */
-const FRONT_ART = ["key.jpg", "logo.png", "studio.png", "mode-story.jpg", "mode-arena.jpg", "mode-trials.jpg"] as const;
+const FRONT_ART = ["key.jpg", "logo.png", "studio.png", "mode-story.jpg", "mode-arena.jpg", "mode-trials.jpg", "film-kitchen.jpg", "film-hall.jpg", "film-cellar.jpg", "film-dawn.jpg"] as const;
 let frontArt: Record<string, number> = {};
 
-/** A fixture with each "art:<name>" replaced by that art's texture handle. */
-function withArt(value: unknown): unknown {
+/**
+ * A fixture as the page shows it: each "art:<name>" replaced by that art's
+ * texture handle, and each "t:<key>|<English>" by the sheet's own string of
+ * that key in the review's locale (assets/strings), the English where the
+ * active table has none.
+ */
+function resolved(world: World, value: unknown): unknown {
   if (typeof value === "string" && value.startsWith("art:")) return frontArt[value.slice(4)] ?? 0;
-  if (Array.isArray(value)) return value.map(withArt);
-  if (value && typeof value === "object") return Object.fromEntries(Object.entries(value).map(([k, v]) => [k, withArt(v)]));
+  if (typeof value === "string" && value.startsWith("t:")) {
+    const bar = value.indexOf("|");
+    const key = value.slice(2, bar);
+    return og.i18n.has(world, key) ? og.i18n.t(world, key) : value.slice(bar + 1);
+  }
+  if (Array.isArray(value)) return value.map((v) => resolved(world, v));
+  if (value && typeof value === "object") return Object.fromEntries(Object.entries(value).map(([k, v]) => [k, resolved(world, v)]));
   return value;
 }
 
 /** The fixture of a screen's state (its default where it declares no such state). */
-const fixture = (screen: string, state: string) => {
+const fixture = (world: World, screen: string, state: string) => {
   const states = FIXTURES[MEMBERS.get(screen)!]!;
-  return withArt(states[state] ?? states.default!) as Record<string, unknown>;
+  return resolved(world, states[state] ?? states.default!) as Record<string, unknown>;
 };
 
 /** A component screen's state as its stores: a writable per scalar prop, a keyed collection per list. */
 function stores(world: World, screen: string, state: string): Record<string, UiReadable<unknown>> {
   const scope = og.ui.scope(world, "sheet");
   const out: Record<string, UiReadable<unknown>> = {};
-  for (const [prop, value] of Object.entries(fixture(screen, state))) {
+  for (const [prop, value] of Object.entries(fixture(world, screen, state))) {
     const id = `${screen}_${state}_${prop}`;
     out[prop] = Array.isArray(value) ? scope.collection(id, value as { id: string }[], { key: "id" }) : scope.writable(id, value);
   }
@@ -130,7 +140,7 @@ function show(world: World, screen: string, state: string): void {
   og.ui.clear(world);
   must(scope.unmount("page"), "unmount");
   shown = { screen, state };
-  if (LAYERS.has(screen)) must(og.ui.push(world, screen as never, fixture(screen, state) as never), screen);
+  if (LAYERS.has(screen)) must(og.ui.push(world, screen as never, fixture(world, screen, state) as never), screen);
   else must(scope.mount("page", screen, stores(world, screen, state)), screen);
   const errors = scope.takeErrors();
   if (errors.length) throw new Error(errors.join("; "));
@@ -146,6 +156,9 @@ export default og.game({
     // The screens' strings in the review's right-to-left locale, as a game
     // ships them (English comes with the engine).
     must(og.i18n.load(world, "strings/ar.ogt"), "ar");
+    // The dialog and film screens' strings and their story fixtures' text in
+    // the review's CJK locale.
+    must(og.i18n.load(world, "strings/zh-CN.ogt"), "zh-CN");
     frontArt = Object.fromEntries(FRONT_ART.map((f) => [f.replace(/\.\w+$/, ""), must(og.load.texture(world, `art/front-${f}`), f) as number]));
     for (const path of DOCUMENTS) must(og.load.document(world, path), path);
   },
