@@ -205,6 +205,9 @@ struct Viewer {
     out: Vec<Vec<u8>>,
     /// Avatars within the radius not in the set, as of the last tick.
     others: u32,
+    /// The most bytes one snapshot may take: its transport's datagram
+    /// (WebTransport), else unbounded but for the byte budget.
+    cap: usize,
 }
 
 struct WorldShape {
@@ -577,6 +580,14 @@ impl Shard {
     }
 
     /// The sessions connected now.
+    /// Hold each snapshot to `bytes` (a datagram's size): what does not fit
+    /// waits, highest priority first, as the byte budget makes it wait.
+    pub fn cap_snapshots(&mut self, session: u64, bytes: usize) {
+        if let Some(v) = self.viewers.get_mut(&session) {
+            v.cap = bytes;
+        }
+    }
+
     pub fn sessions(&self) -> impl Iterator<Item = u64> + '_ {
         self.viewers
             .iter()
@@ -902,7 +913,7 @@ impl TickCtx<'_> {
     fn viewer_tick(&self, sid: u64, v: &mut Viewer, scratch: &mut Scratch) -> [u64; 3] {
         let (tick, cs) = (self.tick, self.config.cell_size);
         let (r, max_visible) = (self.config.radius, self.config.max_visible);
-        let budget = self.config.bytes_per_second / self.config.tick_hz as usize;
+        let budget = (self.config.bytes_per_second / self.config.tick_hz as usize).min(v.cap);
         let me = &self.avatars[&sid];
         let (mut enters, mut leaves, mut updates) = (0, 0, 0);
         // Who is in sight: chosen again every REFRESH_TICKS ticks, staggered
@@ -1133,6 +1144,7 @@ impl Viewer {
             next_id: 0,
             out: Vec::new(),
             others: 0,
+            cap: usize::MAX,
         }
     }
 }

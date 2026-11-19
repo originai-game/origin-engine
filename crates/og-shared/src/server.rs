@@ -1,5 +1,13 @@
-//! `og world-server`: a [`Shard`] behind WebSocket connections (docs/design.md
+//! `og world-server`: a [`Shard`] behind WebSocket connections and, with
+//! [`Server::serve_webtransport`], WebTransport sessions (docs/design.md
 //! §2.12). Standalone: it knows no platform, only its verifier.
+//!
+//! - WebTransport: the client opens one bidirectional stream, on which
+//!   every message but two crosses as a frame (its length, u32 LE, then
+//!   its bytes), in order. `propose` (client) and `snapshot` (server) cross
+//!   as datagrams, which may be lost or reordered: the protocol's
+//!   acknowledgements already make that safe, and each snapshot is held to
+//!   the session's datagram size ([`Shard::cap_snapshots`]).
 //!
 //! - One thread owns the shard (never a tokio worker). Connections hand it what they read, in order,
 //!   and it ticks `tickHz` a second; after each tick and each join it gives
@@ -16,6 +24,7 @@ use crate::auth::{AuthError, Verifier, parse_jwks};
 use crate::config::Config;
 use crate::protocol::{ClientMsg, Hello, MAX_MESSAGE, Refusal, ServerMsg};
 use crate::shard::{Claims, Shard, Stats};
+use crate::wt::{frame, read_frame};
 use futures_util::{SinkExt, StreamExt};
 use std::collections::{HashMap, VecDeque};
 use std::net::SocketAddr;
@@ -39,6 +48,10 @@ pub const WARM_MS: u64 = 1;
 pub const READ_BUFFER: usize = 4096;
 /// How far behind a connection may fall before it is closed, in messages.
 pub const OUT_QUEUE: usize = 512;
+/// The largest snapshot a WebTransport datagram carries, bytes: QUIC's
+/// payload at the 1280-byte minimum IPv6 path, so a datagram is never
+/// refused for its size on any path (quinn's own figure can be smaller).
+pub const MAX_DATAGRAM: usize = 1150;
 
 /// Where the verifier's keys come from, so an unknown `kid` can refetch them.
 pub enum KeySource {
@@ -189,6 +202,8 @@ enum Inbound {
     Join {
         hello: Hello,
         claims: Claims,
+        /// The most bytes one snapshot may take (a datagram's), else usize::MAX.
+        cap: usize,
         out: mpsc::Sender<Vec<u8>>,
         reply: oneshot::Sender<Result<u64, (Refusal, String)>>,
     },
@@ -240,6 +255,7 @@ async fn dispatch(
 pub struct Server {
     pub addr: SocketAddr,
     pub metrics: Arc<Metrics>,
+    shared: Arc<Shared>,
     draining: Arc<AtomicBool>,
     inbound: std::sync::mpsc::Sender<Inbound>,
     done: tokio::sync::watch::Receiver<bool>,
@@ -296,7 +312,9 @@ impl Server {
             inbound: inbound.clone(),
             log,
         });
+        let accepting = shared.clone();
         tokio::spawn(async move {
+            let shared = accepting;
             loop {
                 let Ok((stream, peer)) = listener.accept().await else {
                     continue;
@@ -315,10 +333,49 @@ impl Server {
         Ok(Server {
             addr,
             metrics,
+            shared,
             draining,
             inbound,
             done,
         })
+    }
+
+    /// Also serve WebTransport on UDP `addr` with this certificate chain
+    /// and key (PEM). Returns the address it listens on.
+    pub fn serve_webtransport(
+        &self,
+        addr: SocketAddr,
+        chain_pem: &str,
+        key_pem: &str,
+    ) -> Result<SocketAddr, String> {
+        use web_transport_quinn::quinn::rustls::pki_types::pem::PemObject;
+        use web_transport_quinn::quinn::rustls::pki_types::{CertificateDer, PrivateKeyDer};
+        let chain: Vec<CertificateDer<'static>> =
+            CertificateDer::pem_slice_iter(chain_pem.as_bytes())
+                .collect::<Result<_, _>>()
+                .map_err(|e| format!("the certificate: {e}"))?;
+        if chain.is_empty() {
+            return Err("the certificate file holds no certificate".into());
+        }
+        let key = PrivateKeyDer::from_pem_slice(key_pem.as_bytes())
+            .map_err(|e| format!("the key: {e}"))?;
+        let mut server = web_transport_quinn::Server::new(wt_endpoint(addr, chain, key)?);
+        let local = server.local_addr().map_err(|e| e.to_string())?;
+        let shared = self.shared.clone();
+        tokio::spawn(async move {
+            while let Some(request) = server.accept().await {
+                let shared = shared.clone();
+                let peer = request.conn().remote_address();
+                tokio::spawn(async move {
+                    if let Err(e) = wt_connection(request, shared.clone()).await
+                        && shared.log
+                    {
+                        eprintln!("world-server: {peer} (wt): {e}");
+                    }
+                });
+            }
+        });
+        Ok(local)
     }
 
     /// Stop taking joins and move every client away.
@@ -436,6 +493,7 @@ fn run_shard(
             Inbound::Join {
                 hello,
                 claims,
+                cap,
                 out,
                 reply,
             } => {
@@ -447,6 +505,7 @@ fn run_shard(
                     outs.remove(&s);
                 }
                 if let Ok(s) = r {
+                    shard.cap_snapshots(s, cap);
                     outs.insert(s, out);
                     if log {
                         eprintln!(
@@ -540,44 +599,11 @@ async fn connection(mut stream: TcpStream, shared: Arc<Shared>) -> Result<(), St
         .metrics
         .bytes_in
         .fetch_add(first.len() as u64, Ordering::Relaxed);
-    let refuse = |code: Refusal, message: String| {
-        Message::binary(ServerMsg::Refused { code, message }.to_bytes())
-    };
-    let hello = match ClientMsg::decode(&first, |_| None) {
-        Ok(ClientMsg::Hello(h)) => h,
-        _ => {
-            let _ = sink
-                .send(refuse(
-                    Refusal::Invalid,
-                    "the first message is a hello".into(),
-                ))
-                .await;
-            return Err("not a hello".into());
-        }
-    };
-    let claims = match verify(&shared, &hello.token).await {
-        Ok(c) => c,
-        Err(e) => {
-            let _ = sink.send(refuse(Refusal::Unauthorized, e.clone())).await;
-            return Err(format!("refused: {e}"));
-        }
-    };
-    let (out_tx, mut out_rx) = mpsc::channel::<Vec<u8>>(OUT_QUEUE);
-    let (reply_tx, reply_rx) = oneshot::channel();
-    shared
-        .inbound
-        .send(Inbound::Join {
-            hello,
-            claims,
-            out: out_tx,
-            reply: reply_tx,
-        })
-        .map_err(|_| "the server stopped")?;
-    let session = match reply_rx.await.map_err(|_| "the server stopped")? {
-        Ok(s) => s,
-        Err((code, message)) => {
-            let _ = sink.send(refuse(code, message.clone())).await;
-            return Err(format!("refused: {message}"));
+    let (session, mut out_rx) = match admit(&shared, &first, usize::MAX).await {
+        Ok(a) => a,
+        Err((refusal, why)) => {
+            let _ = sink.send(Message::binary(refusal)).await;
+            return Err(why);
         }
     };
     let metrics = shared.metrics.clone();
@@ -646,6 +672,203 @@ async fn connection(mut stream: TcpStream, shared: Arc<Shared>) -> Result<(), St
     writer.abort();
     let _ = writer.await;
     let _ = shared.inbound.send(Inbound::Closed { session });
+    result
+}
+
+/// A hello's way in, on any transport: decoded, its token verified, and
+/// handed to the shard. The session and the queue of its messages, or the
+/// refusal to send and why.
+async fn admit(
+    shared: &Arc<Shared>,
+    first: &[u8],
+    cap: usize,
+) -> Result<(u64, mpsc::Receiver<Vec<u8>>), (Vec<u8>, String)> {
+    let refuse = |code: Refusal, message: String| {
+        (
+            ServerMsg::Refused {
+                code,
+                message: message.clone(),
+            }
+            .to_bytes(),
+            format!("refused: {message}"),
+        )
+    };
+    let hello = match ClientMsg::decode(first, |_| None) {
+        Ok(ClientMsg::Hello(h)) => h,
+        _ => {
+            return Err(refuse(
+                Refusal::Invalid,
+                "the first message is a hello".into(),
+            ));
+        }
+    };
+    let claims = verify(shared, &hello.token)
+        .await
+        .map_err(|e| refuse(Refusal::Unauthorized, e))?;
+    let (out_tx, out_rx) = mpsc::channel::<Vec<u8>>(OUT_QUEUE);
+    let (reply_tx, reply_rx) = oneshot::channel();
+    let stopped = || (Vec::new(), "the server stopped".to_string());
+    shared
+        .inbound
+        .send(Inbound::Join {
+            hello,
+            claims,
+            cap,
+            out: out_tx,
+            reply: reply_tx,
+        })
+        .map_err(|_| stopped())?;
+    match reply_rx.await.map_err(|_| stopped())? {
+        Ok(s) => Ok((s, out_rx)),
+        Err((code, message)) => Err(refuse(code, message)),
+    }
+}
+
+/// The QUIC endpoint WebTransport is served on: web-transport-quinn's
+/// setup (TLS 1.3, its ALPN) with two changes for a client's upload,
+/// where a 20 Hz proposal is a few dozen bytes and QUIC's framing is as
+/// large again. Clients that support ACK frequency (RFC draft
+/// ietf-quic-ack-frequency) are asked to hold their ACKs for the next
+/// proposal instead of sending each in a packet of its own, and the
+/// server's connection ids, which every client packet carries, are
+/// 4 bytes instead of 8.
+fn wt_endpoint(
+    addr: SocketAddr,
+    chain: Vec<web_transport_quinn::quinn::rustls::pki_types::CertificateDer<'static>>,
+    key: web_transport_quinn::quinn::rustls::pki_types::PrivateKeyDer<'static>,
+) -> Result<web_transport_quinn::quinn::Endpoint, String> {
+    use web_transport_quinn::quinn::{self, rustls};
+    let mut tls = rustls::ServerConfig::builder_with_provider(Arc::new(
+        rustls::crypto::ring::default_provider(),
+    ))
+    .with_protocol_versions(&[&rustls::version::TLS13])
+    .map_err(|e| e.to_string())?
+    .with_no_client_auth()
+    .with_single_cert(chain, key)
+    .map_err(|e| format!("the certificate: {e}"))?;
+    tls.alpn_protocols = vec![web_transport_quinn::ALPN.as_bytes().to_vec()];
+    let tls = quinn::crypto::rustls::QuicServerConfig::try_from(tls).map_err(|e| e.to_string())?;
+    let mut acks = quinn::AckFrequencyConfig::default();
+    acks.ack_eliciting_threshold(quinn::VarInt::from_u32(9))
+        .max_ack_delay(Some(Duration::from_millis(100)));
+    let mut transport = quinn::TransportConfig::default();
+    transport.ack_frequency_config(Some(acks));
+    let mut config = quinn::ServerConfig::with_crypto(Arc::new(tls));
+    config.transport_config(Arc::new(transport));
+    let mut endpoint = quinn::EndpointConfig::default();
+    endpoint.cid_generator(|| Box::new(quinn_proto::RandomConnectionIdGenerator::new(4)));
+    let socket = std::net::UdpSocket::bind(addr).map_err(|e| format!("{addr}: {e}"))?;
+    quinn::Endpoint::new(endpoint, Some(config), socket, Arc::new(quinn::TokioRuntime))
+        .map_err(|e| format!("{addr}: {e}"))
+}
+
+async fn wt_connection(
+    request: web_transport_quinn::Request,
+    shared: Arc<Shared>,
+) -> Result<(), String> {
+    let session = request.ok().await.map_err(|e| e.to_string())?;
+    let silent = Duration::from_millis(SILENT_MS);
+    let (mut send, mut recv) = tokio::time::timeout(silent, session.accept_bi())
+        .await
+        .map_err(|_| "no stream")?
+        .map_err(|e| e.to_string())?;
+    let first = tokio::time::timeout(silent, read_frame(&mut recv))
+        .await
+        .map_err(|_| "no hello")??;
+    shared
+        .metrics
+        .bytes_in
+        .fetch_add(first.len() as u64 + 4, Ordering::Relaxed);
+    let cap = session.max_datagram_size().min(MAX_DATAGRAM);
+    let (id, mut out_rx) = match admit(&shared, &first, cap).await {
+        Ok(a) => a,
+        Err((refusal, why)) => {
+            if !refusal.is_empty() {
+                let _ = send.write_all(&frame(&refusal)).await;
+                let _ = send.finish();
+            }
+            // Let the refusal reach the client before the session closes.
+            tokio::time::sleep(Duration::from_millis(100)).await;
+            session.close(1, b"refused");
+            return Err(why);
+        }
+    };
+    let metrics = shared.metrics.clone();
+    let out = session.clone();
+    let writer = tokio::spawn(async move {
+        while let Some(m) = out_rx.recv().await {
+            metrics.frames_out.fetch_add(1, Ordering::Relaxed);
+            if crate::protocol::server_datagram(&m) && m.len() <= out.max_datagram_size() {
+                metrics
+                    .bytes_out
+                    .fetch_add(m.len() as u64, Ordering::Relaxed);
+                // A full send buffer drops it, as the network might: the next one follows.
+                if let Err(web_transport_quinn::SessionError::ConnectionError(_)) =
+                    out.send_datagram(m.into())
+                {
+                    return;
+                }
+                continue;
+            }
+            let mut f = frame(&m);
+            metrics
+                .bytes_out
+                .fetch_add(f.len() as u64, Ordering::Relaxed);
+            // Send what is queued on the stream as one write.
+            while let Ok(m) = out_rx.try_recv() {
+                metrics.frames_out.fetch_add(1, Ordering::Relaxed);
+                if crate::protocol::server_datagram(&m) && m.len() <= out.max_datagram_size() {
+                    metrics
+                        .bytes_out
+                        .fetch_add(m.len() as u64, Ordering::Relaxed);
+                    let _ = out.send_datagram(m.into());
+                } else {
+                    let g = frame(&m);
+                    metrics
+                        .bytes_out
+                        .fetch_add(g.len() as u64, Ordering::Relaxed);
+                    f.extend_from_slice(&g);
+                }
+            }
+            if send.write_all(&f).await.is_err() {
+                return;
+            }
+        }
+        let _ = send.finish();
+    });
+    let inbound = shared.inbound.clone();
+    let hand = |bytes: Vec<u8>| {
+        shared
+            .metrics
+            .bytes_in
+            .fetch_add(bytes.len() as u64, Ordering::Relaxed);
+        inbound.send(Inbound::Msg { session: id, bytes }).is_ok()
+    };
+    let result = loop {
+        let next = tokio::time::timeout(silent, async {
+            tokio::select! {
+                f = read_frame(&mut recv) => f.map(|b| (b, 4)),
+                d = session.read_datagram() => d.map(|b| (b.to_vec(), 0)).map_err(|e| e.to_string()),
+            }
+        });
+        match next.await {
+            Ok(Ok((b, framing))) => {
+                shared
+                    .metrics
+                    .bytes_in
+                    .fetch_add(framing, Ordering::Relaxed);
+                if !hand(b) {
+                    break Ok(());
+                }
+            }
+            Ok(Err(e)) => break Err(e),
+            Err(_) => break Err("silent for 10 s".into()),
+        }
+    };
+    writer.abort();
+    let _ = writer.await;
+    session.close(0, b"");
+    let _ = shared.inbound.send(Inbound::Closed { session: id });
     result
 }
 

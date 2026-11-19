@@ -11,8 +11,8 @@ description = "Origin Engine shared worlds (docs/design.md §2.12): the protocol
 # load bots. Without it the crate is the protocol and a client's view, all an
 # engine needs (the runtime builds for wasm and in the native addon).
 # A native client's connection (og-host-node's `og run --shared`).
-client = ["dep:tungstenite", "dep:rustls", "dep:webpki-roots"]
-server = ["dep:og-core", "dep:serde_json", "dep:ring", "dep:rayon", "dep:tokio", "dep:tokio-tungstenite", "dep:futures-util", "dep:ureq"]
+client = ["dep:web-transport-quinn", "dep:url", "dep:tokio", "dep:tungstenite", "dep:rustls", "dep:webpki-roots"]
+server = ["dep:web-transport-quinn", "dep:quinn-proto", "dep:rcgen", "dep:url", "dep:og-core", "dep:serde_json", "dep:ring", "dep:rayon", "dep:tokio", "dep:tokio-tungstenite", "dep:futures-util", "dep:ureq"]
 
 [dependencies]
 og-core = { path = "../og-core", optional = true }
@@ -30,5 +30,12 @@ futures-util = { version = "0.3", default-features = false, features = ["sink", 
 tungstenite = { version = "=0.30.0", default-features = false, features = ["handshake", "rustls-tls-webpki-roots"], optional = true }
 rustls = { version = "0.23", default-features = false, features = ["std", "ring"], optional = true }
 webpki-roots = { version = "1", optional = true }
+# WebTransport (docs/design.md §2.12): datagrams for state, a stream for the rest.
+web-transport-quinn = { version = "0.13", default-features = false, features = ["ring"], optional = true }
+# The server's 4-byte connection ids (quinn does not re-export the generator).
+quinn-proto = { version = "0.11", default-features = false, optional = true }
+url = { version = "2", optional = true }
+# `og world-server cert`: a short-lived self-signed certificate a browser takes by its hash.
+rcgen = { version = "0.14", default-features = false, features = ["ring", "pem"], optional = true }
 # A JWKS document named by URL (`--jwks https://...`), on rustls as og-net's HTTP client.
 ureq = { version = "3.5", default-features = false, features = ["rustls"], optional = true }

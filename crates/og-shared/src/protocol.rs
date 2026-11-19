@@ -335,7 +335,7 @@ pub enum ClientMsg {
 }
 
 const C_HELLO: u8 = 1;
-const C_PROPOSE: u8 = 2;
+pub const C_PROPOSE: u8 = 2;
 const C_EVENT: u8 = 3;
 const C_PING: u8 = 4;
 const C_LEAVE: u8 = 5;
@@ -578,6 +578,17 @@ pub const S_CORRECT: u8 = 6;
 pub const S_EVENT: u8 = 7;
 pub const S_MOVING: u8 = 8;
 pub const S_PONG: u8 = 9;
+
+/// Whether a client's message crosses WebTransport as a datagram (may be
+/// lost or reordered): a proposal. Every other one goes on the stream.
+pub fn client_datagram(bytes: &[u8]) -> bool {
+    bytes.first() == Some(&C_PROPOSE)
+}
+
+/// Whether a server's message crosses WebTransport as a datagram: a snapshot.
+pub fn server_datagram(bytes: &[u8]) -> bool {
+    bytes.first() == Some(&S_SNAPSHOT)
+}
 
 impl ServerMsg {
     pub fn encode(&self, w: &mut Writer) {
