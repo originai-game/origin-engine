@@ -134,6 +134,16 @@ async function bytesOf(url: string, received?: Received, onChunk?: () => void, i
   }
 }
 
+/** `bytes` when their SHA-384 is `sri`'s (`sha384-<base64>`); otherwise an `integrity` error naming both. */
+async function checkIntegrity(bytes: Uint8Array, sri: string): Promise<Uint8Array> {
+  const digest = new Uint8Array(await crypto.subtle.digest("SHA-384", bytes as Uint8Array<ArrayBuffer>));
+  let bin = "";
+  for (const b of digest) bin += String.fromCharCode(b);
+  const got = `sha384-${btoa(bin)}`;
+  if (got !== sri) throw new Error(`integrity: the bytes are ${got}, expected ${sri}`);
+  return bytes;
+}
+
 async function bytesOnce(url: string, received?: Received, onChunk?: () => void, integrity?: string): Promise<Uint8Array> {
   // A cooked file's name may hold a `#` (`m.gltf.tex0#mips.ogb`, a flipbook's
   // `#array#layer<n>`): sent as is, the browser takes the rest as a fragment.
@@ -524,8 +534,15 @@ export function installFetcher(glue: WebExtras, basis: { js: string; wasm: strin
   glue.og_web_set_fetcher((path: string, given?: string) => {
     // Its bytes as they arrive, for og.stream.status's and og.load.progress's `received`.
     const got = glue.og_web_file_progress ? new Received(0, true) : undefined;
-    // A content catalog's file comes with its integrity (og.load.data).
-    bytesOf(path, got, got ? () => glue.og_web_file_progress!(path, got.loaded, got.total) : undefined, given ?? sriOf(path))
+    const progress = got ? () => glue.og_web_file_progress!(path, got.loaded, got.total) : undefined;
+    // A content catalog's file comes with its integrity (og.load.data), checked here so a
+    // network or CORS failure stays one (the browser's `integrity` refuses both alike); a
+    // bundle's file is checked by the browser against its bundle's manifest (sriOf).
+    const fetched =
+      given !== undefined
+        ? bytesOf(path, got, progress).then(async (bytes) => (given ? checkIntegrity(bytes, given) : bytes))
+        : bytesOf(path, got, progress, sriOf(path));
+    fetched
       .then((bytes) => {
         if (path.endsWith("/.cook.ogt")) {
           const listed = JSON.parse(glue.og_web_bundle_integrity(new TextDecoder().decode(bytes))) as Record<string, string>;
