@@ -230,3 +230,53 @@ fn a_server_running_a_compiler_is_left_alone() {
     assert_eq!(log.trim_end(), "run rustc --crate-name x IGNORE=1");
     assert_eq!(code, 7);
 }
+
+/// The release wasm's units (`OG_WASM_REPRODUCIBLE`, scripts/release-wasm.sh)
+/// get a crate id of their own identity, whatever cargo's host-dependent
+/// `-C metadata` was, and the remaps; a host unit keeps cargo's. Fails if
+/// the rewrite stops, keeps cargo's value, or reaches a host build.
+#[test]
+fn a_release_wasm_unit_gets_a_host_free_crate_id_and_the_remaps() {
+    let dir = scratch("reproducible");
+    let (p, _listener) = port(true);
+    let log = dir.join("log");
+    let fake = fake_sccache(&dir, &log);
+    let compile = |package: &str, metadata: &str, target: &[&str]| {
+        let _ = std::fs::remove_file(&log);
+        Command::new(WRAP)
+            .args(["rustc", "--crate-name", "x", "--cfg", "feature=\"a\""])
+            .args(target)
+            .args(["-C", &format!("metadata={metadata}"), "-C", "opt-level=s"])
+            .env("OG_SCCACHE", &fake)
+            .env("OG_SCCACHE_STATE", dir.join("state"))
+            .env("SCCACHE_SERVER_PORT", p.to_string())
+            .env(
+                "OG_WASM_REPRODUCIBLE",
+                "/home/a/.cargo=/cargo\n/home/a/repo=/origin-engine",
+            )
+            .env("CARGO_PKG_NAME", package)
+            .env("CARGO_PKG_VERSION", "1.0.0")
+            .status()
+            .unwrap();
+        std::fs::read_to_string(&log).unwrap().trim_end().to_owned()
+    };
+    let wasm = ["--target", "wasm32-unknown-unknown"];
+    let linux = compile("x", "1111", &wasm);
+    let mac = compile("x", "2222", &wasm);
+    assert_eq!(linux, mac, "cargo's metadata must not reach the crate id");
+    assert!(!linux.contains("metadata=1111"), "{linux}");
+    assert!(
+        linux.contains("--remap-path-prefix=/home/a/.cargo=/cargo --remap-path-prefix=/home/a/repo=/origin-engine"),
+        "{linux}"
+    );
+    assert_ne!(
+        compile("y", "1111", &wasm),
+        linux,
+        "another package gets another crate id"
+    );
+    let host = compile("x", "1111", &[]);
+    assert!(
+        host.contains("-C metadata=1111") && !host.contains("remap"),
+        "a host unit is left alone: {host}"
+    );
+}
