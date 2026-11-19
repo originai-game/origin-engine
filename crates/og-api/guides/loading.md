@@ -640,7 +640,7 @@ og.load.data reads one file of one version of it.
 | Host | Content base |
 |---|---|
 | `og run`, `og replay`, a playtest | `--content <dir>` (PlaytestDesc.content, relative to the project), a directory |
-| a page `og build` wrote | `og build --content <url>`, else project.ogt `publish { content "<url>" }` |
+| a page `og build` wrote | the Player's or the page's provider's, else `og build --content <url>`, else project.ogt `publish { content "<url>" }` |
 
 - Its layout, the same on disk and over https:
 

@@ -42,6 +42,9 @@
 //                        after the resume; its pushed `platform` notices (a purchase
 //                        settled, entitlements changed, an invite) reach the engine
 //                        as og.PlatformNotice.
+//   content base         the hello's `content` (an https directory holding the game's
+//                        catalogs), else the build's (og build --content): og.load.data
+//                        loads wait for it until the hello, or the wait for one, ends.
 //   catalog.head         passed through as it is where the hello lists it, else
 //                        `unavailable`; a pushed `catalog` message ({ kind: "catalog",
 //                        data: { catalog, version, manifest }, time? }) is a `catalog`
@@ -60,6 +63,8 @@ export interface PlayerLink {
   readonly hosted: boolean;
   readonly capabilities: readonly string[];
   readonly time?: number | undefined;
+  /** og.load.data's content base the hello named (`content`), or undefined: the page's own then. */
+  readonly content?: string | undefined;
   request(method: string, args?: Record<string, unknown>): Promise<PlayerResult>;
   event(name: string, attrs?: Record<string, string | number | boolean | null>): void;
 }
@@ -188,10 +193,13 @@ export function playerPlatform(player: PlayerLink, local: LocalPersistence): Pla
     }
   };
 
+  // The content base the hello named: a Player hands its game's catalogs' base (one for all of them).
+  const base = player.content;
   return {
     host: "player",
     capabilities,
     time: player.time,
+    ...(base ? { content: { base: () => base } } : {}),
     handle(calls, answer) {
       // In order: a store write through the save reads it first, so calls never interleave.
       for (const call of calls) {

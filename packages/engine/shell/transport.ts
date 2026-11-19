@@ -145,6 +145,8 @@ export interface PageConnection {
   readonly paused: boolean;
   readonly capabilities: readonly string[];
   readonly time: number | undefined;
+  /** The content base the hello named (`content`), or undefined. */
+  readonly content: string | undefined;
   readonly page: PageInfo | null;
   /** Resolves once the hello is answered (true) or failed (false). */
   readonly hello: Promise<boolean>;
@@ -256,6 +258,7 @@ export function connectPage(game: PageGame, env: TransportEnv, events: PlayerEve
   let hosted = false;
   let capabilities: readonly string[] = [];
   let time: number | undefined;
+  let content: string | undefined;
   let page: PageInfo | null = null;
   const str = (v: unknown) => (typeof v === "string" && v ? v : null);
   const hello = serial(async () => {
@@ -265,6 +268,7 @@ export function connectPage(game: PageGame, env: TransportEnv, events: PlayerEve
     hosted = true;
     time = timeOf(m).time;
     capabilities = Array.isArray(m["capabilities"]) ? (m["capabilities"] as unknown[]).filter((c): c is string => typeof c === "string") : [];
+    content = str(m["content"]) ?? undefined;
     const p = (m["page"] ?? null) as Record<string, unknown> | null;
     page = p && typeof p === "object" ? { title: str(p["title"]), cover: str(p["cover"]), backdrop: str(p["backdrop"]), back: str(p["back"]), portal: str(p["portal"]) } : null;
     events.hello?.({ started: false, paused: false, capabilities });
@@ -456,6 +460,9 @@ export function connectPage(game: PageGame, env: TransportEnv, events: PlayerEve
     },
     get time() {
       return time;
+    },
+    get content() {
+      return content;
     },
     get page() {
       return page;

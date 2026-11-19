@@ -183,6 +183,12 @@ pub fn og_room_set_host(env: Env, engine: u32, info: String) {
     <Host as Lifecycle>::og_room_set_host(&Host, engine, info)
 }
 
+#[napi(js_name = "og_engine_set_content")]
+pub fn og_engine_set_content(env: Env, engine: u32, base: String) {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as Lifecycle>::og_engine_set_content(&Host, engine, base)
+}
+
 #[napi(js_name = "og_engine_trace")]
 pub fn og_engine_trace(env: Env, engine: u32, on: bool) {
     let _env = crate::EnvScope::enter(&env);

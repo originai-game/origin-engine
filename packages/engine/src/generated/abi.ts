@@ -66,6 +66,8 @@ export interface HostAbi<A, V> {
   og_room_deliver(engine: number, event: string): boolean;
   /** Say what carries this engine's rooms: JSON `{ host, join? }` (`relay`, `player` or `none`), as og.platform.roomInfo reports; with `none` roomCreate and roomJoin are refused. `join` is the room a Play link named (`?room=<id>`): the engine joins it once, itself, and og.RoomJoined answers. */
   og_room_set_host(engine: number, info: string): void;
+  /** Name the content base og.load.data reads catalogs from (guide loading §14), for an engine created with `contentLater`: a page that learns it from its Player's hello. Empty for none: waiting data loads then fail `unavailable`. Until it is named they stay pending (30 s at most on the web). */
+  og_engine_set_content(engine: number, base: string): void;
   /** Turn an engine's trace on or off (`og run --trace`, the shell's `trace()`). Engine 0xffffffff is the loads made before an engine exists: its boot scene's. */
   og_engine_trace(engine: number, on: boolean): void;
   /** The trace's spans since the last take, as JSON `{ now, events }`: Chrome trace events on the engine's clock. `last` waits for the GPU's frames in flight where the host can (natively; the web's arrive in a later take). */
@@ -2062,6 +2064,7 @@ export const SYMBOLS: readonly string[] = [
   "og_room_take",
   "og_room_deliver",
   "og_room_set_host",
+  "og_engine_set_content",
   "og_engine_trace",
   "og_engine_trace_take",
 ];

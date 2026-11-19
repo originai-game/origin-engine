@@ -686,7 +686,12 @@ hands every other call to `inner`. The page `og build --content` wrote
 answers `catalog.head` the same way where no Player and no provider do. A
 Player answers `catalog.head` where its hello lists it and may push `{
 kind: "catalog", data: { catalog, version, manifest } }`; a notice is a
-hint, never relied on: games poll the head.
+hint, never relied on: games poll the head. A Player's hello may name the
+content base, `content: "https://…/"` (the game's catalogs' directory),
+which takes the place of the build's: a framed or top-level page starts
+the engine with its base to come, and og.load.data loads wait (30 s at
+most) until the hello, or the wait for one, settles the platform
+(`og_engine_set_content`).
 
 `relayRooms(url, { reconnectMs })` (`src/web/relay-rooms.ts`) is the web
 room provider for a self-hosted page: og-net's protocol to an `og relay`

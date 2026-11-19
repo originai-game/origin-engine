@@ -13,6 +13,7 @@ import { fileURLToPath } from "node:url";
 import { catalogHeadAnswer, checkPlatformProvider, CORE_METHODS, staticCatalog, ERROR_CODES, HOST_EXTENSIONS, PROVIDER_VERSION, RETRYABLE_CODES, SERVICE_METHODS, unavailable, type PlatformProvider } from "../src/provider.ts";
 import { fail, LOCAL_CAPABILITIES, localPlatform, memoryPersistence, noPlatform } from "../src/platform-local.ts";
 import { pageProviders, playerPlatform, type PlayerLink } from "../shell/platform.ts";
+import { contentBase } from "../shell/page.ts";
 import type { PlayerResult } from "../shell/player.ts";
 
 const repo = join(dirname(fileURLToPath(import.meta.url)), "..", "..", "..");
@@ -104,6 +105,23 @@ test("catalog heads: staticCatalog reads <base>/<catalog>/head.json and passes t
   const wrong: PlatformProvider = { host: "wrong", capabilities: ["catalog.head"], handle: (calls, answer) => calls.forEach((c) => c.method !== "telemetry" && answer(c.request, c.method === "catalog.head" ? { ok: true, data: { catalog: "conformance", version: "v1" } } : unavailable(c.method))) };
   expect((await checkPlatformProvider(wrong)).problems.join("\n")).toContain("catalog.head's answer: the head's manifest is not an integrity");
   expect(catalogHeadAnswer("world", "{")).toMatchObject({ ok: false, error: { code: "failed" } });
+});
+
+test("the content base: a Player's hello names it over the build's; a provider's that is not an https directory falls back with a line", () => {
+  const named = playerPlatform({ ...player([]), content: "https://api.example/world/v1/content/iw-dev/" }, memoryPersistence());
+  const lines: string[] = [];
+  const warn = (l: string) => void lines.push(l);
+  expect(contentBase(named, "https://build.example/c", warn)).toBe("https://api.example/world/v1/content/iw-dev");
+  // A Player whose hello names none: the build's.
+  expect(playerPlatform(player([]), memoryPersistence()).content).toBeUndefined();
+  expect(contentBase(playerPlatform(player([]), memoryPersistence()), "https://build.example/c", warn)).toBe("https://build.example/c");
+  expect(contentBase(undefined, undefined, warn)).toBeUndefined();
+  expect(lines).toEqual([]);
+  for (const bad of ["http://evil.example/c", "https://u:p@cdn.example/c", "https://cdn.example/c?x=1", "/relative"]) {
+    expect(contentBase(staticCatalog(bad), "https://build.example/c", warn)).toBe("https://build.example/c");
+  }
+  expect(lines.length).toBe(4);
+  expect(contentBase(staticCatalog("http://localhost:8731/"), undefined, warn)).toBe("http://localhost:8731");
 });
 
 /** A stand-in Player: every method it lists answers ok with protocol 2's shapes, any other `unavailable`. */
