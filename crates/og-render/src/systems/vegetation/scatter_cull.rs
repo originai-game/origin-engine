@@ -46,6 +46,40 @@ pub(crate) const COPY_BYTES: u64 = std::mem::size_of::<crate::instances::GpuTran
 /// A chunk's uniform slot (the dynamic offset's alignment).
 const ITEM_SLOT: u64 = 256;
 
+/// The most copies one page of the list holds on a device: what one
+/// storage binding and one buffer may be, whichever is less. A frame's
+/// chunks fill pages in order, none split across two, so a scatter of any
+/// size culls within the device's limits.
+fn page_copies(limits: &wgpu::Limits) -> u64 {
+    limits
+        .max_storage_buffer_binding_size
+        .min(limits.max_buffer_size)
+        / COPY_BYTES
+}
+
+/// Each chunk's page and its first place there, its `spans` filling pages
+/// of `limit` places in order (a chunk that would cross a page's end
+/// starts the next), and each page's places used.
+fn paginate(spans: impl Iterator<Item = u64>, limit: u64) -> (Vec<(u32, u32)>, Vec<u64>) {
+    let mut used = vec![0u64];
+    let at = spans
+        .map(|span| {
+            debug_assert!(
+                span <= limit,
+                "a chunk's {span} places past a page's {limit}"
+            );
+            if used.last().is_some_and(|&u| u > 0 && u + span > limit) {
+                used.push(0);
+            }
+            let page = used.len() - 1;
+            let first = used[page];
+            used[page] += span;
+            (page as u32, first as u32)
+        })
+        .collect();
+    (at, used)
+}
+
 pub(crate) fn source() -> String {
     format!(
         "{}{}{}{}",
@@ -204,6 +238,9 @@ pub(crate) enum CullSet {
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(crate) struct Culled {
     pub item: u32,
+    /// The page of the list it is in ([`ScatterCull::list`]) and its first
+    /// place there.
+    pub page: u32,
     pub first: u32,
     /// The places each region holds.
     places: u32,
@@ -275,8 +312,9 @@ pub(crate) struct ScatterCull {
     view: wgpu::Buffer,
     items: wgpu::Buffer,
     item_cap: u64,
-    pub list: wgpu::Buffer,
-    list_cap: u64,
+    /// The copy list in pages, each within the device's binding limit
+    /// ([`page_copies`]), with its capacity in copies.
+    pages: Vec<(wgpu::Buffer, u64)>,
     /// This frame's level distances ([`lod_distances`]), as planned with.
     lod: [f32; 2],
     pub draws: wgpu::Buffer,
@@ -427,8 +465,7 @@ impl ScatterCull {
             ),
             items: make("scatter cull items", ITEM_SLOT * 64, uniform),
             item_cap: 64,
-            list: make("scatter cull list", 0, Self::list_usage()),
-            list_cap: 0,
+            pages: Vec::new(),
             lod: [0.0; 2],
             draws: make(
                 "scatter cull draws",
@@ -449,6 +486,11 @@ impl ScatterCull {
             frame: Vec::new(),
             per_draw: per_draw.then(Default::default),
         }
+    }
+
+    /// The list page `at` draws from.
+    pub fn list(&self, at: &Culled) -> &wgpu::Buffer {
+        &self.pages[at.page as usize].0
     }
 
     fn list_usage() -> wgpu::BufferUsages {
@@ -522,19 +564,24 @@ impl ScatterCull {
         self.lod = lod_distances(view_proj, height, bias);
         let bands: Vec<[Band; 2]> = items.iter().map(|i| i.bands(self.lod)).collect();
         let span = |k: usize| items[k].places() * (bands[k][0].regions() + bands[k][1].regions());
-        let total: u64 = (0..items.len()).map(|k| u64::from(span(k))).sum();
-        if self.list_cap < total.max(1) {
-            self.list_cap = total.max(1).next_power_of_two();
-            self.list = make(
-                "scatter cull list",
-                self.list_cap * COPY_BYTES,
-                Self::list_usage(),
-            );
+        let limit = page_copies(&device.limits());
+        let (placed, used) = paginate((0..items.len()).map(|k| u64::from(span(k))), limit);
+        for (p, &need) in used.iter().enumerate() {
+            let need = need.max(1);
+            if self.pages.get(p).is_some_and(|&(_, cap)| cap >= need) {
+                continue;
+            }
+            let cap = need.next_power_of_two().min(limit);
+            let page = make("scatter cull list", cap * COPY_BYTES, Self::list_usage());
+            match self.pages.get_mut(p) {
+                Some(slot) => *slot = (page, cap),
+                None => self.pages.push((page, cap)),
+            }
         }
         let mut rows = vec![0u8; (ITEM_SLOT * n) as usize];
         let mut out = Vec::with_capacity(items.len());
-        let mut first = 0u32;
         for (k, i) in items.iter().enumerate() {
+            let (page, first) = placed[k];
             let gpu = ItemGpu {
                 to_terrain: i.to_terrain.to_cols_array_2d(),
                 item: [
@@ -573,6 +620,7 @@ impl ScatterCull {
             rows[at..at + std::mem::size_of::<ItemGpu>()].copy_from_slice(bytemuck::bytes_of(&gpu));
             let culled = Culled {
                 item: k as u32,
+                page,
                 first,
                 places: i.places(),
                 bands: bands[k],
@@ -580,7 +628,6 @@ impl ScatterCull {
             };
             out.push(culled);
             self.frame.push((i.density_map, culled));
-            first += span(k);
         }
         queue.write_buffer(&self.items, 0, &rows);
         out
@@ -615,38 +662,51 @@ impl ScatterCull {
             lod: [self.lod[0], self.lod[1], 0.0, 0.0],
         };
         queue.write_buffer(&self.view, 0, bytemuck::bytes_of(&gpu));
-        let shared = device.create_bind_group(&wgpu::BindGroupDescriptor {
-            label: Some("scatter cull"),
-            layout: &self.shared_layout,
-            entries: &[
-                wgpu::BindGroupEntry {
-                    binding: 0,
-                    resource: self.view.as_entire_binding(),
-                },
-                wgpu::BindGroupEntry {
-                    binding: 1,
-                    resource: wgpu::BindingResource::Buffer(wgpu::BufferBinding {
-                        buffer: &self.items,
-                        offset: 0,
-                        size: wgpu::BufferSize::new(std::mem::size_of::<ItemGpu>() as u64),
-                    }),
-                },
-                wgpu::BindGroupEntry {
-                    binding: 2,
-                    resource: self.list.as_entire_binding(),
-                },
-                wgpu::BindGroupEntry {
-                    binding: 3,
-                    resource: self.draws.as_entire_binding(),
-                },
-                wgpu::BindGroupEntry {
-                    binding: 4,
-                    resource: wgpu::BindingResource::TextureView(
-                        view.pyramid.map_or(&self.no_pyramid, |p| p.0),
-                    ),
-                },
-            ],
-        });
+        // One group per page of the list the frame's chunks fill.
+        let pages = self
+            .frame
+            .iter()
+            .map(|(_, at)| at.page + 1)
+            .max()
+            .unwrap_or(0);
+        let shared = |list: &wgpu::Buffer| {
+            device.create_bind_group(&wgpu::BindGroupDescriptor {
+                label: Some("scatter cull"),
+                layout: &self.shared_layout,
+                entries: &[
+                    wgpu::BindGroupEntry {
+                        binding: 0,
+                        resource: self.view.as_entire_binding(),
+                    },
+                    wgpu::BindGroupEntry {
+                        binding: 1,
+                        resource: wgpu::BindingResource::Buffer(wgpu::BufferBinding {
+                            buffer: &self.items,
+                            offset: 0,
+                            size: wgpu::BufferSize::new(std::mem::size_of::<ItemGpu>() as u64),
+                        }),
+                    },
+                    wgpu::BindGroupEntry {
+                        binding: 2,
+                        resource: list.as_entire_binding(),
+                    },
+                    wgpu::BindGroupEntry {
+                        binding: 3,
+                        resource: self.draws.as_entire_binding(),
+                    },
+                    wgpu::BindGroupEntry {
+                        binding: 4,
+                        resource: wgpu::BindingResource::TextureView(
+                            view.pyramid.map_or(&self.no_pyramid, |p| p.0),
+                        ),
+                    },
+                ],
+            })
+        };
+        let shared: Vec<wgpu::BindGroup> = self.pages[..pages as usize]
+            .iter()
+            .map(|(list, _)| shared(list))
+            .collect();
         let map_group = |m: Option<crate::TextureHandle>| {
             device.create_bind_group(&wgpu::BindGroupDescriptor {
                 label: Some("scatter cull map"),
@@ -677,9 +737,10 @@ impl ScatterCull {
             timestamp_writes: None,
         });
         pass.set_pipeline(&self.pipeline);
-        for (k, (group, (m, _))) in groups.iter().zip(&self.frame).enumerate() {
+        for (k, (group, (m, at))) in groups.iter().zip(&self.frame).enumerate() {
             let map = &maps.iter().find(|(h, _)| h == m).expect("made above").1;
-            pass.set_bind_group(0, &shared, &[(k as u64 * ITEM_SLOT) as u32]);
+            let shared = &shared[at.page as usize];
+            pass.set_bind_group(0, shared, &[(k as u64 * ITEM_SLOT) as u32]);
             pass.set_bind_group(1, *group, &[]);
             pass.set_bind_group(2, map, &[]);
             pass.dispatch_workgroups(1, 1, 1);
@@ -796,6 +857,7 @@ mod tests {
         };
         let at = Culled {
             item: 3,
+            page: 0,
             first: 100,
             places: 10,
             bands: [band(0), band(1)],
@@ -861,6 +923,71 @@ mod tests {
             ..item((30.0, 60.0), 0.0)
         };
         assert_eq!(one.bands([100.0, 25.0])[1], Band::default());
+    }
+
+    /// Chunks fill a page in order and the one that would cross its end
+    /// starts the next, whole; a chunk of a whole page takes one alone.
+    #[test]
+    fn chunks_fill_pages_in_order_and_never_straddle_one() {
+        let (at, used) = paginate([6, 4, 1, 9, 10, 3].into_iter(), 10);
+        assert_eq!(at, [(0, 0), (0, 6), (1, 0), (1, 1), (2, 0), (3, 0)]);
+        assert_eq!(used, [10, 10, 10, 3]);
+        // No chunks: one empty page, as the list always has one.
+        assert_eq!(paginate(std::iter::empty(), 10), (vec![], vec![0]));
+    }
+
+    /// A frame whose copies outgrow what one storage binding may be culls
+    /// into pages the device can bind (First Light's woods on WebGPU's
+    /// 128 MiB drew no frame), each chunk wholly in one.
+    #[test]
+    fn a_list_past_the_binding_limit_is_paged_within_it() {
+        let instance = crate::RenderDesc::default().backend.instance();
+        let adapter = pollster::block_on(instance.request_adapter(&Default::default()))
+            .expect("a GPU adapter");
+        // A page of 16384 copies: the frame below needs about 2.4.
+        let binding = 1u64 << 20;
+        let (device, queue) = pollster::block_on(adapter.request_device(&wgpu::DeviceDescriptor {
+            required_limits: wgpu::Limits {
+                max_storage_buffer_binding_size: binding,
+                ..adapter.limits()
+            },
+            ..Default::default()
+        }))
+        .expect("a device");
+        let mut cull = ScatterCull::new(&device, &queue, false);
+        let items: Vec<CullItem> = (0..40u32)
+            .map(|k| CullItem {
+                to_terrain: Mat4::IDENTITY,
+                extent: glam::Vec2::splat(64.0),
+                copies: 600 + 37 * (k % 11),
+                placed: false,
+                index_count: 36,
+                radius: 1.0,
+                moves: 0.0,
+                distance: 100.0,
+                density_map: None,
+                levels: [None; SCATTER_LEVELS - 1],
+                card_from: 0.0,
+                card: false,
+                off_camera: k % 3 == 0,
+                reach: (10.0, 20.0),
+                scale: (1.0, 1.0),
+            })
+            .collect();
+        let placed = cull.prepare(&device, &queue, &items, (Mat4::IDENTITY, 720, 1.0));
+        assert!(cull.pages.len() > 1, "{} page(s)", cull.pages.len());
+        for (list, cap) in &cull.pages {
+            assert!(list.size() <= binding, "a page of {}", list.size());
+            assert_eq!(list.size(), cap * COPY_BYTES);
+        }
+        for at in &placed {
+            let regions: u32 = at.bands.iter().map(Band::regions).sum();
+            let end = u64::from(at.first) + u64::from(at.places * regions);
+            assert!(
+                end <= cull.pages[at.page as usize].1,
+                "{at:?} past its page"
+            );
+        }
     }
 
     /// A perspective view's level distance is its pixels per metre at a

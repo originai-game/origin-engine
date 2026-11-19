@@ -156,7 +156,7 @@ impl ScatterRenderer {
                     match culled {
                         Some((cull, at)) => {
                             let from = at.level_offset(set, l as u32);
-                            pass.set_vertex_buffer(1, cull.list.slice(from..));
+                            pass.set_vertex_buffer(1, cull.list(&at).slice(from..));
                             let (args, offset) = cull.level_args(&at, set, l as u32);
                             pass.draw_indexed_indirect(args, offset);
                         }
@@ -209,7 +209,7 @@ impl ScatterRenderer {
                 }
                 match culled {
                     Some((cull, at)) => {
-                        pass.set_vertex_buffer(0, cull.list.slice(at.card_offset(set)..));
+                        pass.set_vertex_buffer(0, cull.list(&at).slice(at.card_offset(set)..));
                         let (args, offset) = cull.card_args(&at, set);
                         pass.draw_indirect(args, offset);
                     }
