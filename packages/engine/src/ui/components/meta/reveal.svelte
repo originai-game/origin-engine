@@ -1,10 +1,12 @@
 <meta name="component" content="Reveal">
 <meta name="strings" content="./meta.en.ogt">
-<meta name="parts" content="Reveal.frame Reveal.title Reveal.body Reveal.seal Reveal.status Reveal.rewards Reveal.reward Reveal.well Reveal.icon Reveal.name Reveal.amount Reveal.rarity Reveal.badge Reveal.actions Reveal.open Reveal.skip Reveal.continue Reveal.cell Reveal.headline Reveal.caption Reveal.figure">
+<meta name="parts" content="Reveal.frame Reveal.band Reveal.kicker Reveal.title Reveal.body Reveal.seal Reveal.status Reveal.rewards Reveal.reward Reveal.socket Reveal.amount Reveal.dot Reveal.rarity Reveal.name Reveal.actions Reveal.open Reveal.skip Reveal.continue Reveal.caption">
 <meta name="prop:title" content="string" data-default="" data-doc="Heading; empty uses Rewards.">
-<meta name="prop:body" content="string" data-default="" data-doc="Optional explanation before the rewards.">
+<meta name="prop:kicker" content="string" data-default="" data-doc="A small line over the title naming where the rewards come from (Expedition rewards); empty hides it.">
+<meta name="prop:body" content="string" data-default="" data-doc="Optional explanation under the sealed prize.">
+<meta name="prop:icon" content="string" data-default="" data-doc="The sealed prize's icon or picture (a chest, a pouch); empty uses the bag.">
 <meta name="prop:state" content="string" data-default="sealed" data-doc="Game-owned sealed/loading/revealing/revealed. No roll, timer or reward mutation runs here.">
-<meta name="prop:rewards" content="list" data-default="[]" data-doc="Keyed { id, name, icon, amount, rarity, fresh } rewards, shown only once revealed. rarity is common/uncommon/rare/epic/legendary/mythic, in words and as a part state.">
+<meta name="prop:rewards" content="list" data-default="[]" data-doc="Keyed { id, name, icon, amount, rarity, fresh } rewards, shown only once revealed. rarity is common/uncommon/rare/epic/legendary/mythic, in words and as the socket's colour; amount (×3) sits in the socket's corner; fresh marks a new one with a dot.">
 <meta name="prop:canSkip" content="bool" data-default="true" data-doc="Offer skip while revealing; the game decides what skipping does.">
 <meta name="prop:continueLabel" content="string" data-default="" data-doc="Continue wording; empty uses Continue.">
 <meta name="prop:disabled" content="bool" data-default="false" data-doc="Prevent opening, skipping, inspecting and continuing.">
@@ -14,43 +16,93 @@
 <meta name="action:inspect" content="Inspect a revealed reward by its key">
 <meta name="action:continue" content="Continue after the reveal">
 <meta name="action:retry" content="Retry the reveal">
-<meta name="fixture:default" content='{"title":"Expedition rewards","body":"Open the chest to see what your party recovered.","state":"sealed"}'>
+<meta name="fixture:default" content='{"title":"Abbey chest","kicker":"Expedition rewards","body":"Open the chest to see what your party recovered.","icon":"bag","state":"sealed"}'>
 <meta name="fixture:loading" content='{"state":"loading"}'>
-<meta name="fixture:revealing" content='{"state":"revealing","canSkip":true}'>
-<meta name="fixture:revealed" content='{"title":"Expedition complete","state":"revealed","rewards":[{"id":"blade","name":"Ember Blade of the Ninefold Gate","icon":"sword","amount":"1","rarity":"legendary","fresh":true},{"id":"gold","name":"Gold","icon":"coin","amount":"1,250","rarity":"common","fresh":false}]}'>
+<meta name="fixture:revealing" content='{"title":"Abbey chest","kicker":"Expedition rewards","state":"revealing","canSkip":true}'>
+<meta name="fixture:revealed" content='{"title":"Abbey chest","kicker":"Expedition rewards · 4 found","state":"revealed","rewards":[{"id":"blade","name":"Ember Blade of the Ninefold Gate","icon":"sword","amount":"","rarity":"legendary","fresh":true},{"id":"band","name":"Moonlit Band","icon":"gem","amount":"","rarity":"rare","fresh":true},{"id":"draught","name":"Healing draught","icon":"potion","amount":"×3","rarity":"uncommon","fresh":false},{"id":"gold","name":"Gold","icon":"coin","amount":"×1,250","rarity":"common","fresh":false}]}'>
 <meta name="fixture:empty" content='{"state":"revealed","rewards":[]}'>
 <meta name="fixture:error" content='{"error":"Your rewards are saved. Reconnect to view them."}'>
 
-<section id="Reveal" part="Reveal.frame" data-layout="stack" data-gap="loose" data-state={state} aria-label={title || t("meta.reveal.title")} aria-busy={state == 'loading' || state == 'revealing'}>
-  <h2 part="Reveal.title">{title || t("meta.reveal.title")}</h2>{#if body}<p part="Reveal.body Reveal.caption" class="body">{body}</p>{/if}
+<!--
+  A reward reveal: a kicker naming the source over the title; sealed, the
+  prize large over a gold glow with the game's words under it and Open;
+  revealing, a spinner and Skip; revealed, each reward in a socket of its
+  rarity (its count in a corner, a dot when it is new) with the rarity in
+  words over its name, and Continue. Rewards stay hidden until the game
+  says they are revealed; a reward is a button that reports inspect with
+  its key. The game owns the roll, the timing and the rewards; the panel
+  reports open, skip, inspect, continue and retry.
+-->
+<section id="Reveal" part="Reveal.frame" data-layout="shell" data-gap="loose" data-state={state} aria-label={title || t("meta.reveal.title")} aria-busy={state == 'loading' || state == 'revealing'}>
+  <div class="lit"></div>
+  <header part="Reveal.band" class="band" data-layout="stack" data-gap="hair">
+    {#if kicker}<span part="Reveal.kicker" class="kicker">{kicker}</span>{/if}
+    <h2 part="Reveal.title">{title || t("meta.reveal.title")}</h2>
+  </header>
   {#if error}<ErrorState body={error} />
-  {:else if state == 'loading' || state == 'revealing'}<div part="Reveal.status" class="status" data-layout="stack" data-gap="loose" role="status"><Spinner name={state == 'loading' ? t("meta.loading") : t("meta.reveal.revealing")} /><span>{state == 'loading' ? t("meta.loading") : t("meta.reveal.revealing")}</span></div>
+  {:else if state == 'loading' || state == 'revealing'}<div part="Reveal.status" class="status" data-layout="stack" data-gap="loose" data-fill role="status"><Spinner name={state == 'loading' ? t("meta.loading") : t("meta.reveal.revealing")} /><span>{state == 'loading' ? t("meta.loading") : t("meta.reveal.revealing")}</span></div>
   {:else if state == 'revealed'}
-    <ul part="Reveal.rewards" class="rewards" data-layout="cluster">
-      {#each rewards as reward (reward.id)}<li class="reward"><button part="Reveal.reward Reveal.cell" data-rarity={reward.rarity} disabled={disabled} aria-label={reward.name} onclick={inspect}><div class="face" data-layout="stack">
-        <div part="Reveal.well" class="well" data-layout="row" data-gap="none"><og-icon part="Reveal.icon" class="icon" icon={reward.icon}></og-icon></div><span part="Reveal.name Reveal.headline" class="name">{reward.name}</span>{#if reward.amount}<span part="Reveal.amount Reveal.figure" class="amount">{reward.amount}</span>{/if}<span part="Reveal.rarity Reveal.caption" class="rarity">{reward.rarity == 'mythic' ? t("meta.rarity.mythic") : reward.rarity == 'legendary' ? t("meta.rarity.legendary") : reward.rarity == 'epic' ? t("meta.rarity.epic") : reward.rarity == 'rare' ? t("meta.rarity.rare") : reward.rarity == 'uncommon' ? t("meta.rarity.uncommon") : t("meta.rarity.common")}</span>{#if reward.fresh}<span part="Reveal.badge" class="badge">{t("meta.new")}</span>{/if}
-      </div></button></li>{:else}<li><EmptyState title={t("meta.reveal.empty")} icon="bag" /></li>{/each}
-    </ul>
-  {:else}<div part="Reveal.seal" class="seal" data-layout="stack" data-gap="loose"><og-icon class="icon" icon="bag"></og-icon><span>{t("meta.reveal.sealed")}</span></div>{/if}
-  {#if !error}<footer part="Reveal.actions" class="actions" data-layout="cluster">
-    {#if state == 'sealed'}<button id="Open" part="Reveal.open" variant="primary" disabled={disabled} onclick={open}>{t("meta.reveal.open")}</button>
-    {:else if state == 'revealing' && canSkip}<button id="Skip" part="Reveal.skip" disabled={disabled} onclick={skip}>{t("meta.reveal.skip")}</button>
-    {:else if state == 'revealed'}<button id="Continue" part="Reveal.continue" variant="primary" disabled={disabled} onclick={continue}>{continueLabel || t("meta.continue")}</button>{/if}
+    <div class="rewards-scroll" data-layout="scroll" data-fill>
+      <ul part="Reveal.rewards" class="rewards" aria-label={title || t("meta.reveal.title")}>
+        {#each rewards as reward (reward.id)}<li class="slot"><button part="Reveal.reward" class="reward" data-rarity={reward.rarity || 'common'} disabled={disabled} aria-label={t("meta.reveal.reward", { name: reward.name, rarity: reward.rarity == 'mythic' ? t("meta.rarity.mythic") : reward.rarity == 'legendary' ? t("meta.rarity.legendary") : reward.rarity == 'epic' ? t("meta.rarity.epic") : reward.rarity == 'rare' ? t("meta.rarity.rare") : reward.rarity == 'uncommon' ? t("meta.rarity.uncommon") : t("meta.rarity.common") })} onclick={inspect}><div class="face" data-layout="stack" data-gap="tight">
+          <div part="Reveal.socket" class="socket" data-layout="cover"><og-icon class="art" icon={reward.icon}></og-icon><div class="bar"></div>{#if reward.amount}<span part="Reveal.amount" class="amount">{reward.amount}</span>{/if}{#if reward.fresh}<div part="Reveal.dot" class="fresh" aria-label={t("meta.new")}></div>{/if}</div>
+          <span part="Reveal.rarity" class="rarity">{reward.rarity == 'mythic' ? t("meta.rarity.mythic") : reward.rarity == 'legendary' ? t("meta.rarity.legendary") : reward.rarity == 'epic' ? t("meta.rarity.epic") : reward.rarity == 'rare' ? t("meta.rarity.rare") : reward.rarity == 'uncommon' ? t("meta.rarity.uncommon") : t("meta.rarity.common")}</span>
+          <span part="Reveal.name" class="name">{reward.name}</span>
+        </div></button></li>{:else}<li class="none"><EmptyState title={t("meta.reveal.empty")} icon="bag" /></li>{/each}
+      </ul>
+    </div>
+  {:else}
+    <div part="Reveal.seal" class="seal" data-layout="cover" data-fill><og-icon class="prize" icon={icon || 'bag'}></og-icon></div>
+    {#if body}<p part="Reveal.body Reveal.caption" class="body">{body}</p>{/if}
+  {/if}
+  {#if !error}<footer part="Reveal.actions" class="actions" data-layout="row" data-gap="tight">
+    {#if state == 'sealed'}<button id="Open" part="Reveal.open" class="act" variant="primary" disabled={disabled} aria-label={t("meta.reveal.open")} onclick={open}><kbd class="cap" data-action="details"></kbd><span>{t("meta.reveal.open")}</span></button>
+    {:else if state == 'revealing' && canSkip}<button id="Skip" part="Reveal.skip" class="act" disabled={disabled} aria-label={t("meta.reveal.skip")} onclick={skip}><kbd class="cap" data-action="back"></kbd><span>{t("meta.reveal.skip")}</span></button>
+    {:else if state == 'revealed'}<button id="Continue" part="Reveal.continue" class="act" variant="primary" disabled={disabled} aria-label={continueLabel || t("meta.continue")} onclick={continue}><kbd class="cap" data-action="details"></kbd><span>{continueLabel || t("meta.continue")}</span></button>{/if}
   </footer>{/if}
 </section>
 
 <style>
-:host { inline-size: stretch; align-items: center; text-align: center; }
-h2, .body { margin: 0; overflow-wrap: anywhere; }
-.body { align-self: center; max-inline-size: var(--measure-lg); text-align: center; }
-.status, .seal { align-items: center; padding: var(--space-xl); }
-.rewards { justify-content: center; inline-size: stretch; margin: 0; padding: 0; list-style: none; }
-.reward { flex: 1 1 var(--measure-xs); max-inline-size: var(--measure-md); }
-[part~="Reveal.reward"] { display: block; inline-size: stretch; block-size: 100%; padding: var(--space-md); }
-.face { align-items: center; }
-.well { justify-content: center; inline-size: var(--size-xl); block-size: var(--size-xl); }
-.icon { inline-size: var(--size-lg); block-size: var(--size-lg); }
-.name { overflow-wrap: anywhere; }
-.actions { justify-content: center; }
-.actions button { min-block-size: var(--touch-target); white-space: normal; }
+:host { inline-size: stretch; }
+/* The frame: two corners cut, a lit top edge. */
+[part="Reveal.frame"] { position: relative; min-block-size: 0; clip-path: polygon(var(--inv-frame-cut) 0, 100% 0, 100% calc(100% - var(--inv-frame-cut)), calc(100% - var(--inv-frame-cut)) 100%, 0 100%, 0 var(--inv-frame-cut)); }
+.lit { position: absolute; inset-inline: var(--inv-frame-cut) 30%; top: 0; block-size: var(--stroke-hairline); background: var(--inv-lit-edge); pointer-events: none; }
+h2, p { margin: 0; overflow-wrap: anywhere; }
+.band { flex: none; width: stretch; align-items: center; justify-content: flex-start; text-align: center; }
+.kicker { font-size: var(--inv-kicker-size); font-weight: var(--inv-name-weight); letter-spacing: var(--inv-kicker-tracking); text-transform: var(--inv-kicker-transform); color: var(--inv-kicker-ink); overflow-wrap: anywhere; }
+/* Sealed: the prize large over a gold glow. */
+.seal { width: stretch; min-block-size: var(--shop-seal-height); background: var(--shop-seal-glow); }
+.prize { inline-size: var(--shop-seal-size); block-size: var(--shop-seal-size); filter: var(--shop-seal-shadow); }
+.body { flex: none; align-self: center; max-inline-size: var(--measure-lg); text-align: center; color: var(--ink-label); }
+.status { align-items: center; justify-content: center; padding: var(--space-xl); }
+/* Revealed: a socket of each reward's rarity, the rarity in words over its name. */
+.rewards { display: flex; flex-wrap: wrap; justify-content: center; gap: var(--space-md); width: stretch; margin: 0; padding: var(--space-xs); list-style: none; }
+.slot { flex: 0 1 var(--shop-reward-size); min-width: 0; }
+.none { flex: 1; }
+.reward { --inv-rarity: var(--common); --inv-socket-fill: var(--cell-common-fill); --inv-socket-rim: var(--cell-common-shadow); width: stretch; padding: 0; border: none; border-radius: 0; background: var(--inv-bare-fill); box-shadow: none; }
+.reward:hover, .reward:active { background: var(--inv-bare-fill); box-shadow: none; }
+.reward[data-rarity=uncommon] { --inv-rarity: var(--uncommon); --inv-socket-fill: var(--cell-uncommon-fill); --inv-socket-rim: var(--cell-uncommon-shadow); }
+.reward[data-rarity=rare] { --inv-rarity: var(--rare); --inv-socket-fill: var(--cell-rare-fill); --inv-socket-rim: var(--cell-rare-shadow); }
+.reward[data-rarity=epic] { --inv-rarity: var(--epic); --inv-socket-fill: var(--cell-epic-fill); --inv-socket-rim: var(--cell-epic-shadow); }
+.reward[data-rarity=legendary] { --inv-rarity: var(--legendary); --inv-socket-fill: var(--cell-legendary-fill); --inv-socket-rim: var(--cell-legendary-shadow); }
+.reward[data-rarity=mythic] { --inv-rarity: var(--mythic); --inv-socket-fill: var(--cell-mythic-fill); --inv-socket-rim: var(--cell-mythic-shadow); }
+.face { width: stretch; align-items: center; text-align: center; }
+.socket { position: relative; inline-size: var(--shop-reward-size); max-inline-size: stretch; aspect-ratio: 1; background: var(--inv-socket-fill); box-shadow: var(--inv-socket-rim); clip-path: polygon(var(--inv-slot-cut) 0, 100% 0, 100% calc(100% - var(--inv-slot-cut)), calc(100% - var(--inv-slot-cut)) 100%, 0 100%, 0 var(--inv-slot-cut)); }
+.reward { --inv-base-rim: var(--inv-socket-rim); }
+.reward:hover .socket { --inv-socket-rim: var(--inv-slot-hover-rim), var(--inv-base-rim); }
+.art { inline-size: 70%; block-size: 70%; filter: var(--inv-slot-art-shadow); }
+.bar { position: absolute; inset-inline: var(--inv-slot-cut); bottom: 0; block-size: var(--stroke-thick); color: var(--inv-rarity); background: currentColor; box-shadow: var(--inv-slot-bar-glow); }
+.amount { position: absolute; inset-inline-end: var(--space-xs); bottom: var(--space-sm); padding: 0 var(--space-xxs); font-size: var(--inv-tag-size); font-weight: var(--inv-figure-weight); font-stretch: var(--inv-figure-stretch); line-height: 1.35; white-space: nowrap; color: var(--ink-bright); background: var(--inv-tag-fill); box-shadow: var(--inv-tag-rim); clip-path: polygon(var(--inv-tag-cut) 0, 100% 0, 100% calc(100% - var(--inv-tag-cut)), calc(100% - var(--inv-tag-cut)) 100%, 0 100%, 0 var(--inv-tag-cut)); }
+.fresh { position: absolute; inset-inline-end: var(--space-sm); top: var(--space-sm); inline-size: var(--space-xs); block-size: var(--space-xs); border-radius: var(--inv-chip-radius); background: var(--inv-accent); box-shadow: var(--inv-fresh-glow); }
+.rarity { font-size: var(--inv-tag-size); font-weight: var(--inv-figure-weight); letter-spacing: var(--inv-kicker-tracking); text-transform: var(--inv-kicker-transform); color: var(--inv-rarity); }
+.name { max-width: stretch; font-weight: var(--inv-name-weight); color: var(--ink-bright); overflow-wrap: anywhere; }
+/* The action at the foot. */
+.actions { flex: none; width: stretch; justify-content: center; }
+.act { flex: 0 1 calc(260 * var(--font-step-px)); min-width: 0; min-block-size: calc(var(--size-touch) * 1.15); gap: var(--space-xs); white-space: normal; }
+.cap { flex: none; }
+@container (width < 480px) {
+  .rewards { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .socket { inline-size: var(--shop-reward-compact-size); }
+  .act { flex: 1 1 auto; }
+}
 </style>

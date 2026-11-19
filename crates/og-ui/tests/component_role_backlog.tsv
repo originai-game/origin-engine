@@ -28,18 +28,13 @@ hud/status-grid.svelte	StatusGrid.badge StatusGrid.tag	2
 idle/generators.svelte	IdleGenerators.name IdleGenerators.headline	1
 idle/generators.svelte	IdleGenerators.rate IdleGenerators.label IdleGenerators.caption	1
 idle/offline.svelte	IdleOffline.summary IdleOffline.label IdleOffline.caption	1
-idle/purchases.svelte	IdlePurchases.name IdlePurchases.headline	1
 idle/resources.svelte	IdleResources.name IdleResources.caption	1
 meta/chat.svelte	Chat.time Chat.figure Chat.caption	2
 meta/friends.svelte	Friends.avatar Friends.picture Friends.well	2
 meta/friends.svelte	Friends.name Friends.headline	2
 meta/friends.svelte	Friends.presence Friends.well Friends.dot	1
-meta/pass-track.svelte	PassTrack.name PassTrack.headline	1
 meta/profile.svelte	Profile.label Profile.caption	1
 meta/profile.svelte	Profile.name Profile.title	1
-meta/reveal.svelte	Reveal.name Reveal.headline	1
-meta/shop-confirm.svelte	ShopConfirm.name ShopConfirm.headline	1
-meta/shop.svelte	Shop.name Shop.headline	2
 panels/breadcrumbs.svelte	Breadcrumbs.link Breadcrumbs.caption	1
 panels/chart.svelte	Chart.grid Chart.plate Chart.gridline	1
 panels/chart.svelte	Chart.label Chart.caption	2

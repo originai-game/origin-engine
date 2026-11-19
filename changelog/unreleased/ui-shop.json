@@ -1,0 +1,56 @@
+{
+  "added": [
+    {
+      "member": "Default style shop tokens",
+      "summary": "--shop-* roles for the shop family (Shop, ShopConfirm, PassTrack, Reveal, IdlePurchases): the offer tile's cut, fill and rims, its art well and the rarity's glow behind the art, the ruled foot and price sizes, corner tags (a discount on gold) and refusal tags (owned, short, sold out), the confirmation's ledger and socket, the pass's level hexagon, premium gold (button, lane rule, tile wash and rim) and ready ring, the reveal's sealed glow and reward sockets, an upgrade's refused Buy. The family otherwise wears the inventory's --inv-* roles."
+    },
+    {
+      "member": "Shop",
+      "summary": "New props kicker (a small line over the title) and, on rows, tabs.count, offers.rarity (the light behind the art) and offers.badgeTone (success puts a badge such as New on green). New parts Shop.kicker, .count, .art, .detail, .featured, .foot, .bracket."
+    },
+    {
+      "member": "ShopConfirm",
+      "summary": "New props rarity (the socket the icon sits in), reason (why the purchase is refused when no price says it) and, on prices rows, missing (how much more a short currency takes, shown as Not enough Gems · 1,600 more). New parts ShopConfirm.art, .detail, .ledger, .after, .missing, .reason, .actions."
+    },
+    {
+      "member": "PassTrack",
+      "summary": "New prop level (on a hexagon beside the bar to the next tier). New parts PassTrack.kicker, .level, .track, .fill, .art."
+    },
+    {
+      "member": "Reveal",
+      "summary": "New props kicker and icon (the sealed prize). New parts Reveal.band, .kicker, .socket, .dot."
+    }
+  ],
+  "breaking": [
+    {
+      "member": "Shop",
+      "change": "The shop is redrawn as the shop family: a cut frame with a lit edge, a kicker over the title, the balances as chips, tabs with counts between the bumper caps that scroll sideways, and offer tiles with the art over a glow of the offer's rarity, corner tags and one ruled foot holding the price and, when refused, the reason. A struck price is named \"700 Gems, was 1,000\" (string general.shop.was is gone; general.shop.amountWas replaces it). Shop.cell, .label, .headline, .caption on the name, .well and .figure on the price row are gone.",
+      "fix": "A style that dressed Shop.cell dresses Shop.offer; Shop.well dresses Shop.art; Shop.label (the refusal) dresses Shop.status.",
+      "find": ["Shop.cell", "Shop.well", "Shop.label", "Shop.headline", "general.shop.was"]
+    },
+    {
+      "member": "ShopConfirm",
+      "change": "The confirmation is redrawn: a kicker over the offer's name, its art in a socket of its rarity, and a ledger with one group per currency: the price, then the balance before and after or, for a short currency, Not enough and how much more. The key caps sit in the buttons, out of their names. On a phone it is a sheet, square at its foot. String general.confirm.after is gone (general.confirm.balance, afterSaid, shortOf, missing and missingSaid replace it). ShopConfirm.headline, .well and .caption on the detail are gone.",
+      "fix": "A style that dressed ShopConfirm.well dresses ShopConfirm.art. A game passing after as \"Left after: …\" passes the balance before and after (3,200 → 2,500) and, for a short currency, missing.",
+      "find": ["ShopConfirm.well", "ShopConfirm.headline", "general.confirm.after"]
+    },
+    {
+      "member": "PassTrack",
+      "change": "The track is two lanes, premium over free, each scrolling sideways on its own; a tile ends in Claim, Claimed or Locked, and without premium every premium tile reads Locked (string meta.pass.requiresPremium is gone). The progress is a leaning bar to the next tier (string meta.pass.progress reads Next tier) instead of a ProgressBar. PassTrack.season, .refresh (now one kicker), .well, .icon, .card, .headline and .caption on the tier are gone.",
+      "fix": "A style that dressed PassTrack.card dresses PassTrack.reward; .well and .icon dress PassTrack.art; .season and .refresh dress PassTrack.kicker.",
+      "find": ["PassTrack.card", "PassTrack.well", "PassTrack.icon", "PassTrack.season", "PassTrack.refresh", "meta.pass.requiresPremium"]
+    },
+    {
+      "member": "Reveal",
+      "change": "The sealed prize stands large over a gold glow (string meta.reveal.sealed is gone); revealed rewards sit in sockets of their rarity with the rarity in words over the name, the count in a corner and a dot when new; Open and Continue carry the details key cap. Reveal.well, .icon, .amount as a figure, .badge, .cell, .headline and .figure are gone.",
+      "fix": "A style that dressed Reveal.well dresses Reveal.socket; Reveal.badge (new) dresses Reveal.dot.",
+      "find": ["Reveal.well", "Reveal.icon", "Reveal.badge", "Reveal.cell", "meta.reveal.sealed"]
+    },
+    {
+      "member": "IdlePurchases",
+      "change": "The list wears the shop family: a cut frame, the amounts as segments in a well, each row cut with its icon in a socket, refusals as tags in their tone and a refused Buy washed in the danger colour. IdlePurchases.headline is gone; the icon's well is IdlePurchases.socket.",
+      "fix": "A style that dressed IdlePurchases.headline dresses IdlePurchases.name.",
+      "find": ["IdlePurchases.headline"]
+    }
+  ]
+}

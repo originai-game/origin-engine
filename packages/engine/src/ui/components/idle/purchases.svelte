@@ -1,6 +1,6 @@
 <meta name="component" content="IdlePurchases">
 <meta name="strings" content="./idle.en.ogt">
-<meta name="parts" content="IdlePurchases.frame IdlePurchases.band IdlePurchases.title IdlePurchases.amount IdlePurchases.row IdlePurchases.name IdlePurchases.effect IdlePurchases.cost IdlePurchases.badge IdlePurchases.figure IdlePurchases.headline IdlePurchases.caption IdlePurchases.fade">
+<meta name="parts" content="IdlePurchases.frame IdlePurchases.band IdlePurchases.socket IdlePurchases.title IdlePurchases.amount IdlePurchases.row IdlePurchases.name IdlePurchases.effect IdlePurchases.cost IdlePurchases.badge IdlePurchases.figure IdlePurchases.caption IdlePurchases.fade">
 <meta name="prop:title" content="string" data-doc="The list's heading; empty takes the group's (Upgrades).">
 <meta name="prop:amounts" content="list" data-doc="The buy amounts offered, keyed rows of { id, label }: label the amount as the game words it (it wins; empty reads the key max as Max and any other key as ×key: ×1, ×10, ×100). An empty list hides the choice.">
 <meta name="prop:amount" content="string" data-doc="The buy amount chosen, one of the amounts' keys.">
@@ -22,6 +22,7 @@
   word (Not enough, Maxed, Locked). It fills its height and scrolls.
 -->
 <section id="IdlePurchases" part="IdlePurchases.frame" data-layout="shell" data-gap="loose" aria-label={title != '' ? title : t("idle.purchases.name")}>
+  <div class="lit"></div>
   <header part="IdlePurchases.band" data-layout="cluster" data-gap="loose">
     <h2 part="IdlePurchases.title" data-fill>{title != '' ? title : t("idle.purchases.name")}</h2>
     {#if amounts.length}
@@ -38,10 +39,10 @@
       <ul class="rows" data-layout="stack" data-gap="tight" aria-label={title != '' ? title : t("idle.purchases.name")}>
         {#each upgrades as u (u.id)}
           <li part="IdlePurchases.row" data-layout="row" data-gap="loose" aria-label={u.name} data-affordable={u.affordable} data-maxed={u.maxed} data-locked={u.locked}>
-            <div class="art" data-layout="ratio"><og-icon class="icon" icon={u.locked ? 'lock' : u.icon}></og-icon></div>
+            <div part="IdlePurchases.socket" class="art" data-layout="cover"><og-icon class="icon" icon={u.locked ? 'lock' : u.icon}></og-icon></div>
             <div class="body" data-layout="stack" data-gap="hair" data-fill>
               <div class="line" data-layout="row">
-                <span part="IdlePurchases.name IdlePurchases.headline" class="name">{u.name}</span>
+                <span part="IdlePurchases.name" class="name">{u.name}</span>
                 {#if u.level > 0}<span part="IdlePurchases.badge" data-tag="level">{t("idle.purchases.level", { level: formatNumber(u.level) })}</span>{/if}
               </div>
               <p part="IdlePurchases.effect IdlePurchases.caption">{u.effect}</p>
@@ -70,26 +71,38 @@
 
 <style>
 :host { inline-size: stretch; block-size: stretch; min-block-size: 0; }
-[part="IdlePurchases.band"] { width: stretch; flex: none; }
+/* The frame: two corners cut, a lit top edge (the shop family's look). */
+[part="IdlePurchases.frame"] { position: relative; clip-path: polygon(var(--inv-frame-cut) 0, 100% 0, 100% calc(100% - var(--inv-frame-cut)), calc(100% - var(--inv-frame-cut)) 100%, 0 100%, 0 var(--inv-frame-cut)); }
+.lit { position: absolute; inset-inline: var(--inv-frame-cut) 30%; top: 0; block-size: var(--stroke-hairline); background: var(--inv-lit-edge); pointer-events: none; }
+[part="IdlePurchases.band"] { width: stretch; flex: none; align-items: flex-end; }
 [part="IdlePurchases.title"] { margin: 0; flex: 1; min-width: 0; white-space: nowrap; text-overflow: ellipsis; overflow: hidden; }
-.amounts { flex: none; }
-[part="IdlePurchases.amount"] { min-height: var(--size-touch); min-width: var(--size-touch); padding: 0 var(--space-sm); }
+/* The amounts: segments in a well, the chosen one lit. */
+.amounts { flex: none; padding: var(--space-xxs); border-radius: var(--inv-seg-radius); background: var(--inv-chip-fill); box-shadow: var(--inv-chip-rim); }
+[part="IdlePurchases.amount"] { min-height: var(--size-touch); min-width: var(--size-touch); padding: 0 var(--space-sm); border-radius: var(--inv-seg-radius); background: var(--inv-bare-fill); box-shadow: none; color: var(--inv-tab-ink); }
+[part="IdlePurchases.amount"][aria-checked=true] { color: var(--inv-tab-on-ink); background: var(--inv-tab-count-fill); box-shadow: var(--inv-tag-rim); }
 .rows-shell { position: relative; min-block-size: 0; }
 .rows-scroll { overflow-y: auto; flex: 1; min-height: 0; }
 .rows { width: stretch; margin: 0; padding: 0; padding-block-end: var(--space-lg); list-style: none; }
-[part="IdlePurchases.row"] { padding: var(--space-sm); }
-.art { --layout-ratio: 1; flex: none; width: var(--size-lg); height: var(--size-lg); }
-.icon { width: var(--size-md); height: var(--size-md); }
+/* A row: cut at two corners, its socket, words, then its state and Buy. */
+[part="IdlePurchases.row"] { padding: var(--space-xs) var(--space-sm); align-items: center; background: var(--inv-row-fill); box-shadow: var(--inv-row-rim); border-inline-start: var(--inv-edge); border-inline-start-color: var(--inv-accent); clip-path: polygon(var(--inv-tag-cut) 0, 100% 0, 100% calc(100% - var(--inv-tag-cut)), calc(100% - var(--inv-tag-cut)) 100%, 0 100%, 0 var(--inv-tag-cut)); }
+[part="IdlePurchases.row"][data-locked=true] .art, [part="IdlePurchases.row"][data-locked=true] .body { opacity: var(--disabled-content-opacity); }
+.art { flex: none; inline-size: calc(48 * var(--font-step-px)); block-size: calc(48 * var(--font-step-px)); background: var(--cell-common-fill); box-shadow: var(--cell-common-shadow); clip-path: polygon(var(--inv-tag-cut) 0, 100% 0, 100% calc(100% - var(--inv-tag-cut)), calc(100% - var(--inv-tag-cut)) 100%, 0 100%, 0 var(--inv-tag-cut)); }
+.icon { width: 64%; height: 64%; filter: var(--inv-slot-art-shadow); }
 .body { min-width: 0; }
-.line { width: stretch; min-width: 0; }
-.name { --headline-text: var(--text-lg); flex: 0 1 auto; min-width: 0; text-align: start; white-space: nowrap; text-overflow: ellipsis; overflow: hidden; }
+.line { width: stretch; min-width: 0; align-items: center; }
+.name { flex: 0 1 auto; min-width: 0; text-align: start; white-space: nowrap; text-overflow: ellipsis; overflow: hidden; font-size: var(--shop-tile-name-size); font-weight: var(--inv-name-weight); color: var(--ink-bright); }
 [part~="IdlePurchases.effect"] { margin: 0; text-align: start; overflow-wrap: anywhere; }
-[part="IdlePurchases.badge"] { flex: none; white-space: nowrap; padding: 0 var(--space-xs); }
+/* Small words: the level as a chip; a refusal in its tone on a wash of it. */
+[part="IdlePurchases.badge"] { flex: none; white-space: nowrap; padding: 0 var(--space-xs); border-radius: var(--inv-chip-radius); font-size: var(--inv-tag-size); font-weight: var(--inv-figure-weight); color: var(--ink-label); background: var(--inv-tab-count-fill); box-shadow: none; }
+[part="IdlePurchases.badge"]:not([data-tag=level]) { border-radius: 0; letter-spacing: var(--hud-label-tracking); text-transform: var(--inv-kicker-transform); color: var(--shop-sold-ink); background: var(--shop-sold-fill); clip-path: polygon(var(--inv-tag-cut) 0, 100% 0, 100% calc(100% - var(--inv-tag-cut)), calc(100% - var(--inv-tag-cut)) 100%, 0 100%, 0 var(--inv-tag-cut)); }
+[part="IdlePurchases.badge"][data-tag=short] { color: var(--shop-short-ink); background: var(--shop-short-fill); }
 .end { flex: none; align-items: flex-end; max-width: 50%; }
-#Buy { min-height: var(--size-touch); min-width: calc(var(--size-xxl) * 1.1); max-width: stretch; padding: var(--space-xxs) var(--space-sm); }
+/* Buy: how many over what they cost; refused, a wash of the danger. */
+#Buy { min-height: var(--size-touch); min-width: var(--shop-buy-width); max-width: stretch; padding: var(--space-xxs) var(--space-sm); }
+#Buy[data-affordable=false] { --button-primary-fill: var(--shop-buy-refused-fill); --button-primary-shadow: var(--shop-buy-refused-rim); color: var(--shop-short-ink); }
 .buy { align-items: center; min-width: 0; max-width: stretch; --figure-ink: currentColor; }
-.count { white-space: nowrap; }
-[part="IdlePurchases.cost IdlePurchases.figure"] { min-width: 0; max-width: stretch; }
+.count { white-space: nowrap; font-size: var(--inv-tag-size); font-weight: var(--inv-figure-weight); opacity: 0.8; }
+[part="IdlePurchases.cost IdlePurchases.figure"] { min-width: 0; max-width: stretch; align-items: center; font-weight: var(--inv-figure-weight); font-stretch: var(--inv-figure-stretch); }
 .cost-icon { width: var(--size-xs); height: var(--size-xs); flex: none; }
 .cost-figure { min-width: 0; white-space: nowrap; text-overflow: ellipsis; overflow: hidden; }
 .empty-text { margin: 0; flex: 1; padding: var(--space-lg); text-align: center; }
@@ -98,10 +111,9 @@
 @container (width < 560px) {
   [part="IdlePurchases.band"] .amounts { flex: 1 0 100%; }
   [part="IdlePurchases.amount"] { flex: 1; min-width: 0; }
-  [part="IdlePurchases.row"] { flex-wrap: wrap; padding: var(--space-xs); }
-  .art { width: var(--size-md); height: var(--size-md); }
-  .icon { width: var(--size-sm); height: var(--size-sm); }
+  [part="IdlePurchases.row"] { flex-wrap: wrap; }
+  .art { inline-size: calc(40 * var(--font-step-px)); block-size: calc(40 * var(--font-step-px)); }
   .body { flex: 1 1 0; }
-  .end { flex: 1 0 100%; max-width: stretch; justify-content: flex-end; }
+  .end { flex: 1 0 100%; max-width: stretch; flex-direction: row; justify-content: flex-end; align-items: center; }
 }
 </style>
