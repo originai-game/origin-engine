@@ -796,7 +796,11 @@ opaque token, and no part names a platform.
   own (RFC 9000 §13.2.1), so the server's connection ids are zero-length,
   4 to 8 bytes off every client packet: connections are told apart by
   address, and a client whose NAT rebinds reconnects and resumes instead
-  of migrating. That keeps the upload under the 1 KiB/s budget at 5% loss
+  of migrating: the server drops its packets from the new address
+  without a word, so og.shared counts a joined connection that hears
+  nothing for 2 s (a snapshot comes every tick) as lost and reconnects
+  with its session id at once, well inside the 10 s linger (measured:
+  resumed 2.1 s after the rebind, the same entity on the other clients). That keeps the upload under the 1 KiB/s budget at 5% loss
   without ACK frequency (draft ietf-quic-ack-frequency), which browsers
   need not support and quinn 0.11 does not resend once its one frame is
   lost. A snapshot can overtake the Enter it

@@ -731,7 +731,9 @@ async fn admit(
 /// a client's upload stays under 1 KiB/s even at 5% loss, where each lost
 /// server packet draws an ACK in a packet of its own (RFC 9000 §13.2.1).
 /// Connections are then told apart by address, so a client whose NAT
-/// rebinds reconnects (resuming within 10 s) instead of migrating.
+/// rebinds reconnects instead of migrating: og.shared drops a joined
+/// connection silent for 2 s and resumes its session (og-runtime
+/// tests/shared_world.rs, a NAT rebind).
 /// A client's other ACKs ride in its proposals because it proposes on a
 /// snapshot's arrival (og-runtime `propose`), on any QUIC stack; the
 /// server does not ask for ACK frequency (draft ietf-quic-ack-frequency),

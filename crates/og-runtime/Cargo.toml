@@ -125,8 +125,10 @@ image = { workspace = true }
 # The adapter-aware test runner (tests/gpu.rs) that makes its GPU tests
 # gate-selectable probes the adapter with it.
 pollster = { workspace = true }
-# tests/shared_world.rs carries two engines through a shard in the test.
-og-shared = { path = "../og-shared", features = ["server"] }
+# tests/shared_world.rs carries two engines through a shard in the test,
+# and through a real world server over WebTransport (a NAT rebind).
+og-shared = { path = "../og-shared", features = ["server", "client"] }
+tokio = { version = "1.53", features = ["rt-multi-thread"] }
 
 [[test]]
 name = "tests"

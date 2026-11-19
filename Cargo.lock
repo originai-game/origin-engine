@@ -3466,6 +3466,7 @@ dependencies = [
  "ring",
  "serde",
  "serde_json",
+ "tokio",
  "ttf-parser",
  "zmij",
 ]
