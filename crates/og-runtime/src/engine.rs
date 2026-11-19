@@ -149,6 +149,13 @@ pub trait Hooks {
     fn read_asset(&self, path: &str) -> Fetch<Vec<u8>> {
         Fetch::Failed(format!("{path}: this host reads no files"))
     }
+    /// Whether `path` is still on its way: asking starts its fetch, and an
+    /// answer of false leaves it for [`Hooks::read_asset`] (a host that
+    /// hands a file over once must not take it here). A host whose reads
+    /// complete at once answers false.
+    fn fetching(&self, path: &str) -> bool {
+        matches!(self.read_asset(path), Fetch::Pending)
+    }
     /// A content catalog's file (og.load.data): its manifest (`integrity`
     /// empty) or a file under its integrity (`sha384-<base64>`), read once.
     /// A host that checks the integrity as it fetches (the web Worker's

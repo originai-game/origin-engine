@@ -380,8 +380,9 @@ pub(crate) fn before_tick(eng: &Engine, world: &mut World) {
 }
 
 /// The first cell (by entity) this tick would load from its sub-scene
-/// while the blob is still on its way in its cell group's pack: the cell
-/// and the group (the hold gate's question, [`super::cell_groups::gate`]).
+/// while the blob is still on its way in its cell group's pack, or a file
+/// of a model the sub-scene places: the cell and the group (the scene's id
+/// without one; the hold gate's question, [`super::cell_groups::gate`]).
 pub(crate) fn waiting(eng: &Engine, world: &World) -> Option<(Entity, String)> {
     let store = store(eng)?;
     let list = seen(eng, world, &store, 0.0)?.ok()?;
@@ -405,6 +406,20 @@ pub(crate) fn waiting(eng: &Engine, world: &World) -> Option<(Entity, String)> {
             )
         {
             return Some((c.cell, group.desc.name.clone()));
+        }
+        // Its pack is in: the models it places may still have files on
+        // their way (a runtime bundle's proxies, read on demand on the web).
+        // Natively they read at once, so the tick waits for them too:
+        // otherwise the first one missing refuses the cell's spawn.
+        if let Some(i) = assets::index_of(c.v.scene as f64)
+            && let Some(Payload::Scene(scene)) = a.entries.get(i).map(|e| &e.payload)
+            && a.scene_fetching(scene)
+        {
+            let name = a
+                .stream
+                .group_of_scene(i)
+                .unwrap_or_else(|| scene.id.clone());
+            return Some((c.cell, name));
         }
     }
     None
