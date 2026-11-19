@@ -422,8 +422,9 @@ A runtime bundle's terrains (og.terrain.load) go with it. An og.Terrain
 does not keep the bundle open: the close goes ahead, and each of its
 terrains is freed at the first tick boundary where nothing names it any
 more: no og.Terrain, og.TerrainScatter, og.Grass or other TerrainData
-field (on a live entity, a resource or a persisted cell's kept entity),
-and no collider on its height field (TerrainInfo.geometry). Freed means
+field, the game's records' included, and no Geometry field holding its
+height field (TerrainInfo.geometry: a collider's, or a game's), on a live
+entity, a resource or a persisted cell's kept entity. Freed means
 whole: the cooked tiles, the field the CPU holds for collision and
 sampling, the physics height field, the tiles on the GPU, and the layer
 textures and arrays that came from that bundle and no other terrain

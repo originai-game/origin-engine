@@ -71,6 +71,7 @@ impl Layout {
             out.push(FieldLayout {
                 name,
                 kind: k,
+                column: kind_name.to_string(),
                 ty,
                 default: f.get("default").cloned().unwrap_or(Value::Null),
                 readonly: false,
@@ -129,6 +130,7 @@ impl Layout {
             fields.push(FieldLayout {
                 name: f.name.to_string(),
                 kind: k,
+                column: f.column.to_string(),
                 ty,
                 default: serde_json::from_str(f.default).unwrap_or(Value::Null),
                 readonly: f.readonly,
@@ -165,6 +167,7 @@ impl Layout {
                 .map(|f| FieldLayout {
                     name: f.name.clone(),
                     kind: Kind::of(f.ty),
+                    column: String::new(),
                     ty: f.ty,
                     default: Value::Null,
                     readonly: true,

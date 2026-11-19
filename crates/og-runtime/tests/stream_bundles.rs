@@ -2914,8 +2914,8 @@ fn terrains_loaded(engine: u32) -> u64 {
 /// each opened, its terrain loaded and drawn, then despawned and the pack
 /// released, holds no more after the last than after the first (heap, the
 /// scene's terrain tiles and textures, the terrains loaded). A terrain still
-/// drawn outlives its pack's release and goes when its og.Terrain despawns.
-/// Broken before: nothing ever freed a terrain (its field, physics height
+/// drawn outlives its pack's release, as does one a game's TerrainData
+/// field still names, and goes once nothing names it. Broken before: nothing ever freed a terrain (its field, physics height
 /// field, tiles and layer texture stayed for good).
 #[test]
 fn released_packs_free_their_terrains() {
@@ -2932,6 +2932,12 @@ fn released_packs_free_their_terrains() {
         reads: RefCell::default(),
     }));
     og_host_begin_bundle();
+    // A game's record that keeps a terrain by its handle alone.
+    value(host_impl::answer(og_reflect_define_component(
+        "Parcel".into(),
+        json!([{ "name": "ground", "kind": "TerrainData", "default": 0, "options": {} }])
+            .to_string(),
+    )));
     let game = og_game_game(Some(r#"{"seed":1}"#.into()));
     let engine = value(og_engine_create(game, "{}".into())).as_u64().unwrap() as u32;
     let held = Rc::new(Cell::new((0, 0)));
@@ -3022,7 +3028,25 @@ fn released_packs_free_their_terrains() {
     );
     assert!(held.get().0 > 0 && held.get().1 > textures);
     assert_eq!(terrains_loaded(engine), 1);
+    // A game's TerrainData field names it too: drawn no more, it stays
+    // while that field holds it, and goes once nothing does.
+    let parcel = value(host_impl::answer(og_world_spawn(engine, None)))
+        .as_f64()
+        .unwrap();
+    value(host_impl::answer(og_world_insert(
+        engine,
+        parcel,
+        "Parcel".into(),
+        Some(json!({ "ground": data }).to_string()),
+    )));
     value(host_impl::answer(og_world_despawn(engine, entity)));
+    frames(2);
+    assert!(
+        sample(data).is_ok(),
+        "a terrain a game's record names was freed"
+    );
+    assert_eq!(terrains_loaded(engine), 1);
+    value(host_impl::answer(og_world_despawn(engine, parcel)));
     frames(2);
     assert!(sample(data).is_err());
     assert_eq!(Some(held.get()), after);

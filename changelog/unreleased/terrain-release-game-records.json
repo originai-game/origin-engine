@@ -1,0 +1,9 @@
+{
+  "simulation": "unchanged",
+  "fixed": [
+    {
+      "member": "og.load.release",
+      "summary": "A released pack's terrain now stays while a game's own record holds its handle in a TerrainData field, as the docs said; before, only the engine's records (og.Terrain, og.TerrainScatter, og.Grass) kept it, so a game's field could be left naming a freed terrain. A Geometry field holding the terrain's height field (TerrainInfo.geometry) keeps it too, a collider's or a game's: the loading guide now says so."
+    }
+  ]
+}

@@ -9,9 +9,10 @@ use crate::host::codec::Kind;
 use crate::world::assets::{Payload, naming};
 
 /// Frees each terrain whose bundle was released and that nothing names: no
-/// built-in record's TerrainData field (og.Terrain, og.TerrainScatter,
-/// og.Grass, ...) and no Geometry field (a collider on its height field),
-/// live or kept by a persisted cell. Runs at each tick boundary, after the
+/// TerrainData field of any record, the engine's (og.Terrain,
+/// og.TerrainScatter, og.Grass, ...) or the game's, and no Geometry field
+/// holding its height field (a collider's, or a game's), live or kept by a
+/// persisted cell. Runs at each tick boundary, after the
 /// bundles released by then closed; a terrain still named stays and is
 /// looked at again at the next boundary.
 pub(crate) fn free_released(eng: &Engine) {
@@ -51,7 +52,7 @@ pub(crate) fn free_released(eng: &Engine) {
             layout.fields.iter().any(|f| {
                 let wanted = match f.kind {
                     Kind::Geometry if collision => geometry,
-                    Kind::Asset if is_terrain_data(&layout.schema, &f.name) => data,
+                    Kind::Asset if f.column == "TerrainData" => data,
                     _ => return false,
                 };
                 let value = &row[&f.name];
@@ -70,15 +71,6 @@ pub(crate) fn free_released(eng: &Engine) {
 /// Whether an asset entry is a bundle still open (not released).
 fn open(payload: &Payload) -> bool {
     matches!(payload, Payload::Bundle { .. })
-}
-
-/// Whether a built-in record's field holds a terrain (IDL type TerrainData).
-fn is_terrain_data(schema: &str, field: &str) -> bool {
-    og_api::host::RECORDS
-        .iter()
-        .find(|r| r.schema == schema)
-        .and_then(|r| r.fields.iter().find(|f| f.name == field))
-        .is_some_and(|f| f.column == "TerrainData")
 }
 
 /// Frees terrain `i`: everything it holds goes, and its handle answers

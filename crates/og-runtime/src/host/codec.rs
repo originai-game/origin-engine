@@ -207,6 +207,11 @@ impl Kind {
 pub struct FieldLayout {
     pub name: String,
     pub kind: Kind,
+    /// The column it was declared with (`TerrainData`, `Texture`, `f32`):
+    /// handles of different columns share [`Kind::Asset`] and a value
+    /// space, so only the column tells a terrain from a texture. Empty for
+    /// a type another module registered ([`Layout::from_schema`]).
+    pub column: String,
     pub ty: FieldType,
     pub default: Value,
     pub readonly: bool,
