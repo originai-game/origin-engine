@@ -35,7 +35,9 @@
 //! `OG_GFX_PIPELINE_CACHE=DIR` keeps compiled pipelines in DIR across runs
 //! where the backend can (Vulkan; `RenderInfo::pipeline_cache`).
 //! `OG_GFX_PASSES=1` adds, with `--frames`, each render-graph pass's GPU
-//! milliseconds a frame, largest first.
+//! milliseconds a frame, largest first; at a limited tier (`mini-game-`
+//! scenes) the device's timestamps are kept for it
+//! (`RenderDesc::emulation_timestamps`).
 //! `OG_GFX_SERIAL=1` waits for the GPU after every timed frame and reports
 //! the mean wait as `gpu=`: the GPU's time per frame (its work starts at
 //! the frame's submit), which a frame time overlapped with the next
@@ -304,6 +306,10 @@ fn run(
         Ok("auto") => built.desc.culling = og_render::Culling::Auto,
         Err(_) => {}
         Ok(other) => return Err(format!("OG_GFX_CULLING={other}: cpu, gpu or auto")),
+    }
+    // A limited tier keeps the device's timestamps for the pass timing.
+    if std::env::var_os("OG_GFX_PASSES").is_some() {
+        built.desc.emulation_timestamps = true;
     }
     if std::env::var_os("OG_GFX_DEBUG_CASCADES").is_some() {
         built.scene.frame.debug = og_render::DebugView::Cascades;

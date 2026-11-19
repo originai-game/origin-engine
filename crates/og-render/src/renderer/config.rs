@@ -360,6 +360,12 @@ pub struct RenderDesc {
     /// ([`Caps`], `caps.rs`), so a limited tier runs on a full device.
     /// [`Tier::Full`] by default: whatever the device can do.
     pub tier: Tier,
+    /// Keep the device's timestamps under a [`Self::tier`] that lacks
+    /// them, so a tool that emulates the tier on a full device measures
+    /// its passes as the full tier's are measured (og-gfx's
+    /// `OG_GFX_PASSES`). Never set for a player: the tier's devices have
+    /// none.
+    pub emulation_timestamps: bool,
 }
 
 pub use og_render_data::MAX_PLANAR_REFLECTIONS;
@@ -424,6 +430,7 @@ impl Default for RenderDesc {
             timestamps: false,
             without: LitFeatures::NONE,
             tier: Tier::Full,
+            emulation_timestamps: false,
         }
     }
 }

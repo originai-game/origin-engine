@@ -43,8 +43,12 @@ impl Renderer {
         // the device reads these.
         let adapter_features = adapter.features() - desc.without_features;
         let adapter_flags = adapter.get_downlevel_capabilities().flags;
-        let caps =
-            Caps::of(adapter_features, adapter_flags, &adapter.limits()) & desc.tier.ceiling();
+        let of_adapter = Caps::of(adapter_features, adapter_flags, &adapter.limits());
+        let mut ceiling = desc.tier.ceiling();
+        if desc.emulation_timestamps {
+            ceiling |= Caps::TIMESTAMPS;
+        }
+        let caps = of_adapter & ceiling;
         let adapter_features = caps.features(adapter_features);
         let flags = caps.downlevel(adapter_flags);
         // GPU culling and the meshlet path: compute dispatches and indirect draws.
