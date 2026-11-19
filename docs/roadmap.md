@@ -5,57 +5,59 @@ the changelog; rules are in `AGENTS.md`, the UI contract in `docs/ui.md`.
 
 ## Order
 
-1. **The UI rebuild (now).** Genre kits are dropped: components and screens
-   are built into the engine (`@ui/`), and style packs restyle them through
-   tokens and parts.
-2. **0.8.0** ships when the UI rebuild is accepted and every Below target
-   item is met. Release and its platform asks follow `docs/release.md`.
-3. **The engine's showcase page**, rebuilt from scratch as a page of the
-   platform (origingame), after 0.8.0.
-4. **Compatibility and real devices last:** Safari, phones (Pixel 10,
-   PowerVR, Adreno, Mali) and HDR on a real display. `og mcp` comes after
-   0.8.0.
-5. **Native store packages and mini-game platforms** (§Direction), after
-   0.8.0 unless the owner moves them.
+1. **The UI art direction (now).** One design language across the style
+   packs: the built-in components and screens (`@ui/`), dressed by the
+   fantasy, scifi and cartoon packs through tokens and parts.
+2. **Native desktop packages (now)** (§Direction).
+3. **The performance pass** (§Below target), then the real-device run.
+4. **The engine's showcase page**, rebuilt from scratch as a page of the
+   platform (origingame).
+5. **Compatibility:** Safari, phones (Pixel 10, PowerVR, Adreno, Mali) and
+   HDR on a real display.
+6. **Mini-game platforms** (§Direction).
+
+Releases are 0.9.x patches cut at a milestone (`docs/release.md` §3);
+between them the platform pins dev builds (§1a).
 
 ## Running
 
 Streams report to the coordinator thread
-[T-01a1c3df](https://ampcode.com/threads/T-01a1c3df-23c6-73be-9bb8-0da680008e82).
+[T-01a1dd0e](https://ampcode.com/threads/T-01a1dd0e-e1c3-747f-9de3-40733ec93490).
+These are on branches, not on main.
 
-- **The UI rebuild, the packs:** the ten component groups are built into
-  `@ui/`, and the fantasy, scifi and cartoon packs ship with the engine
-  and dress all of them. The frame review of the built-in screens under
-  each pack is running on the L4.
+- **The UI art direction** (`ui-art-*`): the families' colours derived
+  from the look's seeds, one selection and one primary action across the
+  packs, and the frame review of the built-in screens under each pack on
+  the L4.
+- **Native desktop** (`native-*`): a C ABI host generated from the IDL
+  (`og-host-c`) running the game as Hermes bytecode in a desktop window,
+  with the engine's audio, gamepads, and a Windows package.
+- **Safari on a real Mac:** the web suites (wire, export, player, device,
+  motion ticks) in Safari on macrunner, an M4 Pro.
+- **Gate throughput on the L4** (`gate-l4-throughput`): opt-in
+  measurements of wasm product reuse, GPU document shards and Cargo unit
+  graphs.
 - **The structure work** (§Structure).
-- **Screenshots and recordings for agents:** numbered marks on captures
-  mapped to source lines, key frames by event with a timeline, and
-  perceptual diff heat maps with the worst regions cropped.
 
 ## Next
 
-1. The re-record of every reference set on the GPU host (the L4), with art
-   review, which moves `RECORDING_TIER` off `metal`.
-2. The web-tier re-records.
-3. The performance pass (below).
-4. The real-device run.
-5. 0.8.0.
+1. The web-tier re-records.
+2. The performance pass (below).
+3. The real-device run.
 
 ## Below target
 
-Each must be met before 0.8.0. The performance pass re-measures each
-baseline on the L4 and restates its target there at the same ratio.
+Targets not met yet. The performance pass re-measures each baseline on
+the L4 and restates its target there at the same ratio.
 
 | Item | Target | L4, 2026-11-14 (b089eb332, release, Vulkan) |
 |---|---|---|
 | FSR 3.1 | at most TAAU + 0.5 ms on thin geometry at every scale, within 0.05 dB of the reference, grass not regressed | miss: the resolve is TAAU + 0.37, + 0.46 and + 0.54 ms at scales 0.5, 0.67 and 0.77 (1080p, `fsr::cost`); against the reference (`fsr::compare`) FSR is 0.84–1.71 dB under TAAU on thin static geometry, 3.6–3.8 dB over it while panning, and 0.18–0.29 dB under it on grass |
 | GI probes | screen GI at 0.72–0.80 of the path-traced reference, cheaper than now | met in G, 0.01 over in R and B: screen GI (horizon gather over visibility bitmasks, 2 rays × 16 steps) gathers 0.810 / 0.781 / 0.812 of a path-traced reference's indirect light in gi-room (`gi::reference`; the frame's ceiling is 0.812 / 0.752 / 0.737, exceeded in G and B by the half run assumed past the screen edge); at 1080p under TAA a frame is 0.44 ms without GI, 1.99 ms with the probes, 5.09 ms with screen GI (its pass 4.03, was 4.27; 3.18 at 12 steps) and 5.74 ms with both (`gi::cost`, L4, 4452711b0) |
-| First frame | terrain-near setup and first frame at most 2.0 s on a cold driver cache | met: terrain-near 1.75 s on the L4 (0d4f6aafe, NVIDIA's shader cache emptied), materials 2.08 s, gltf-reference 0.28–1.02 s. Per pipeline (one compile worker, `OG_GFX_COMPILES=1`) the first frame's slowest are the terrain's 1.20 s, the water's 0.77 s and pbr lean 0.48 s; the full variants compile after it in the background (1.5–2.6 s). A 0.5 s bound per pipeline was dropped: on the L4 the terrain's lean fragment is about half its layers' look (513 ms alone) and half the shared lighting, and no single part folded away saves more than 23% (the ambient gather) or the water's more than 9%, so it would take baking the layers' look into a texture or deferred lighting |
-| Crowds at 50k | at most 12 ms a frame median (perf_crowd_50k), reference frames unmoved | met: 9.22 ms a frame; the GPU's passes are 5.48 ms (main 2.4, prepass 1.9, cascades 0.8, cull 0.3), so the frame waits on the CPU |
 | UI per-frame cost | follows the change, not the tree | miss: the retained tree follows the change (1,022 elements idle 0.23 ms, one label 0.65 ms) but scrolling 1,000 rows costs 59 ms a tick; mounted screens cost their tree when idle (0.5–8.6 ms, leaderboard 8.6 ms for 44 elements) and a dense menu of 356 elements 70 ms, mostly allocation in style resolution (`perf_every_library_and_kit_screen`, `perf_dense_menu_300_elements_40_animating`) |
 | Watercolour look | a watercolour primitive (Bousseau, MNPR) in place of today's oil-like result, with the art review | — |
 | Distant impostors | their own shadow, the view from below and sway, with the art review | — |
-| Latest features on wasm, determinism and browser tiers | measured before the release | — |
+| Latest features on wasm, determinism and browser tiers | measured before a release | — |
 
 Deferred by the owner: UI text scale at 200 %, accessibility beyond
 AccessKit, the overlay's GPU cost, SSSR and FSR follow-ups, W7 (CPU FFT
@@ -66,8 +68,8 @@ band for buoyancy) and wgpu 31 (unpublished). Ray tracing is a non-goal.
 `docs/design.md` §1 states the goals; this is the open work.
 
 - **Native store packages:** TypeScript as Hermes bytecode under a C ABI
-  host in a thin native shell. Open: which platforms come first, which
-  sets the JS engine and the gate machines.
+  host in a thin native shell; desktop first (§Running). Open: the store
+  platforms after it and their gate machines.
 - **Game-code speed without a JIT:** measure a typical game's frame in
   interpreted Hermes against Chrome's JIT, then move hot paths into batched
   engine primitives.
@@ -92,10 +94,6 @@ band for buoyancy) and wgpu 31 (unpublished). Ray tracing is a non-goal.
   to 404 draws left its frame at 24 ms, and merging the proxies would save
   about 110 more. It would need the tree's textures packed into shared
   atlases and the cluster path's mesh table to hold a level per node.
-- **Agent observability:** a `visible` reason code in the probe and
-  `dump_entity`, a record of what was drawn after culling, borrow-conflict
-  errors naming component, entity and source line, and captures from
-  several viewpoints.
 - **Features to compare APIs against** (from the review of expo/exact):
   model LOD, dithered fades, a view-model layer, water, glow, multi-light
   shadows, `render_scale` with a native HUD and camera turning between
@@ -110,7 +108,7 @@ and is verified once on the GPU host. Open work is collected on PR #40.
 - **og-ui:** paint's reuse reads change bits instead of comparing each node
   with the one it replaced; a control becomes an element kind; the tree
   takes explicit insert, update and remove; the immediate API becomes an
-  engine-internal front end; og-ui's tests stop linking `og-render`.
+  engine-internal front end.
 - **og-render:** batches, the frame uniform and group 0 become stages
   shared by the passes, as culling is. The sources are grouped by owner
   (its README, Layout); `tests/structure.rs` refuses a mechanism that
@@ -145,29 +143,31 @@ and is verified once on the GPU host. Open work is collected on PR #40.
   painter's two ordering issues.
 - The `-og` migration's revision-3 extras and the final reflection audit.
 - The `docs/css-coverage.md` inventory's named gaps on PR #40.
-- PR #9 waits for its author; #23 stays a draft until the performance pass.
+- PR #23 stays a draft until the performance pass.
 - The GPU host's open portability failures: ui-debug's missing DX12
   reference fallback, core documents compared as bytes, a 2-unit CSS tint,
   and the wasm build's Windows command-line limit under sccache.
-- The performance pass also finishes the paused `gi-screen` and
-  `gate-presentation` branches.
 - Crowds at 50k are bound by the CPU on the L4, not by a pass: the frame
   is 9.2 ms, its GPU passes 5.5 ms, and the render call takes 11.4 ms of
   CPU in profile mode, 5.4 ms of it the scene's update.
 - og-audio's busy mix renders one second of audio in 98 ms on the L4's
   Xeon, against perf.sh's 50 ms bound.
-- Mobile: before 0.8.0 the UI runs on at least one real iPhone and one
-  real Android phone.
+- Mobile: run the UI on at least one real iPhone and one real Android
+  phone (the real-device run).
 - The asset store's cook stat index: sessions still run the incremental
   cook scan.
-- Paused archives, rebased only if still wanted: `archive/ui-catalogue`,
+- Paused archives (tags), rebased only if still wanted: `archive/ui-catalogue`,
   `archive/ui-text-source`, `archive/platform-scaffold-contract`.
-- Platform asks for 0.8.0, collected by the coordinator: creation schema
+- Platform asks, collected by the coordinator: creation schema
   and labels, retired kit and pack recommendations removed, the engine pin
   and mounted knowledge refreshed together, and the Svelte and store APIs
   once final.
-- The 0.8.0 release publishes the pack catalogue (`docs/release.md` §The
-  pack catalogue) for origin-agent's Engine page.
+- The pack catalogue for origin-agent's Engine page: `manifest.json`
+  lists only the downloadable vfx packs (`docs/release.md` §1). Open:
+  `ui`, `fonts` and `looks` sections beside `vfx`, every pack bundled or
+  downloadable as `{ version, minEngine, title, description, tags, size,
+  bundled, url?, sha256?, preview }` from its own manifest, with a preview
+  at `<version>/previews/<kind>/<name>.webp`.
 - Water look, after the structure refactor: the light shafts under water
   are faint, and the lake still shows bands from the wave sum
   (water-underwater-shafts, water-planar).

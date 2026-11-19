@@ -52,18 +52,19 @@ Normative detail is in `docs/design.md` (and `docs/ui.md` for the UI).
 
 What is running, next and open: `docs/roadmap.md`.
 
-- **Now:** the UI catalogue's phase 1 (the rpg kit and the fantasy pack
-  art-approved; the remaining parts as retained nodes, the move from `-og`
-  properties to standard CSS, the CSS inventory in `docs/css-coverage.md`), then a
-  docs pass, phase 2 (the other kits and packs), one performance pass, a
-  real-device run and 0.8.0.
+- **Versions:** 0.9.0 is the latest release; later releases are 0.9.x
+  patches. Between releases the platform pins dev builds,
+  `dev.<YYYYMMDD>.<n>` (`docs/release.md` §1a). A publish build loads its
+  optional engine modules (physics, story, nav, motion, destruction,
+  video) on demand from `https://origingame.ai/downloads/engine/<version>/wasm/`
+  (`docs/web-export.md` §Modules).
 - **Delivery:** the web first, on WebGPU. Native store packages (TypeScript
   as Hermes bytecode under a thin native shell) and mini-game platforms
   (WeChat on Android over WebGPU first, then a capability-limited GL tier)
-  are goals after 0.8.0 (`docs/roadmap.md` §Direction).
+  are the next targets (`docs/roadmap.md` §Direction).
 - **Pixels:** the gate's GPU host is an NVIDIA L4 on Vulkan (a `gcp-l4`
-  orb), where the reference frames are being re-recorded; Metal, DX12 and
-  the browsers are compatibility checks under the cross-platform tolerance.
+  orb), which records every reference frame; Metal, DX12 and the browsers
+  are compatibility checks under the cross-platform tolerance.
 
 ## Features
 
@@ -134,16 +135,16 @@ What is on main, grouped by area, with the API module (`og.<module>`, from
   retained tree, drawn through og-render and addressable by the probe;
   rich text, RTL, vertical text and CJK shaping. `docs/css-coverage.md` lists
   what each property is proved to do.
-- UI styles: each game ships its own (`type style`); built-in style packs
-  under `templates/styles` (fantasy accepted, the others being rebuilt),
-  `og style eject`; the default style is generated from `packages/design`'s
-  tokens.
-- The kit: controls, containers, data views (virtualised lists, tables,
-  charts), feedback, HUD and world components, and genre patterns
-  (inventory, cards, shop, gacha, lobby, draft, dialogue, quest log, maps,
-  garage, chat, RTS commands, photo mode, settings tree and more).
-- Screen documents for every screen type of `docs/ui.md` Appendix B, copied
-  into a game with `og ui eject`.
+- UI styles: each game ships its own (`type style`); the built-in style
+  packs fantasy, scifi and cartoon (`templates/styles`) restyle every
+  built-in component through tokens; the default style is
+  generated from `packages/design`'s tokens.
+- Built-in components (`packages/engine/src/ui`, `docs/ui.md` §4):
+  controls, containers, data views (virtualised lists, tables, charts),
+  feedback, HUD and world components, and ten component groups (rpg,
+  shooter, strategy, racing, card, puzzle, idle, rhythm, arena, general).
+- Screen documents for every screen type of `docs/ui.md` §2; `og ui eject`
+  copies a screen or component into a game to edit as its own.
 - Pad virtual cursor, focus groups, tap, double-tap and long-press
   recognisers, cursor shapes, a player-customisable HUD layout.
 
@@ -200,7 +201,7 @@ The remaining API modules: `og.game` (the game entry), `og.system` and
 
 ```sh
 curl -fsSL https://origingame.ai/downloads/engine/install.sh | sh   # Windows: irm https://origingame.ai/downloads/engine/install.ps1 | iex
-og new my-game                            # the latest release; --archetype runner, --premise "one line", --engine <version>
+og new my-game                            # the latest release; --look <look>, --premise "one line", --engine <version>
 cd my-game && og doctor && og test . && og dev .
 ```
 
@@ -240,7 +241,9 @@ crates/            Rust workspace
   og-physics-data  collider meshes, the baked triangle mesh format and its bake, the fracture asset, the save codec
   og-ai            navigation (grids, flow fields, navmesh), steering, behaviour trees, state machines, perception
   og-audio         command stream and mixer
-  og-ui            UI documents: CSS cascade, layout, interaction, retained mounting
+  og-ui            UI documents: CSS cascade, layout, interaction, retained mounting; below it og-css (CSS values),
+                   og-text (text layout and shaping), og-reactive (bindings), og-rive (Rive artboards),
+                   og-ui-model (UI geometry), og-draw (the draw commands og-render draws); og-ui-fuzz: fuzz targets
   og-input         the Input resource, events, the shell's input ring
   og-i18n          string tables, MessageFormat, plural rules
   og-story         dialogue and quests
@@ -256,18 +259,21 @@ crates/            Rust workspace
   og-bake          lightmaps and light volumes (CPU)
   og-probe         command channel and probe over JSON-RPC
   og-cli           the `og` tool
+  og-sccache-wrap  the rustc wrapper that starts the shared sccache server (docs/ci.md §The compiler cache)
   og-tests         gfx reference harness; og-tests-cooked, og-tests-web: cooked and in-browser variants;
                    og-tests-ui: the frames of og-ui (og-ui's own tests build no renderer)
 packages/
-  engine           @origingame/engine: TypeScript API and runtime, web hosts, shell, the UI kit (src/ui); a dist's engine/
+  engine           @origingame/engine: TypeScript API and runtime, web hosts, shell, the built-in UI components and screens (src/ui); a dist's engine/
   create           @origingame/create-game: the templates `og new` writes; a dist's create/
   design           @origingame/design: the design language and tokens shared with origin-agent; a dist's design/
   knowledge        the generated wiki (API and guides), looks, scaffold (shipped inside the engine package)
   launcher         og, the launcher: install.sh, install.ps1 and the version a game pins (docs/release.md §1)
-templates/         looks/, styles/, locales/, tools/
-tests/             evidence/, install/ (the install test), replay/ (replay goldens)
-scripts/           check.sh (the gate), land.sh, release.sh, ...
-third_party/       vendored sources (basis-universal, xatlas, ltc, cleanedge, pixelorama)
+  vfx-packs        the downloadable effect packs (docs/vfx-packs.md §5)
+templates/         looks/, styles/, fonts/, locales/, tools/
+tests/             fixtures/ (feature fixture projects), install/ (the install test)
+showcase/          showcase games
+scripts/           check.sh (the gate), land.sh, release.sh, assets.ts (the asset store), ...
+third_party/       vendored sources and the licences of ported work
 docs/              design.md (normative), ui.md, roadmap.md, release.md, ci.md, art.md, ...
 ```
 
@@ -284,11 +290,12 @@ og cook             assets/ into cooked/, incrementally; --report, --watch
 og check            type-check the game code (tsrs, tsgo as a fallback)
 og test             the project's bun tests, then each tests/*.og.ts playtest headless
 og probe <method>   one probe call to a running og run or og dev
+og mcp              the og tool as an MCP server over stdio (probe, run, test, render, compare, api)
 og replay           record a run's per-tick world hash, or compare a trace and report the first divergent tick
 og render           render a script or a timeline to frames, a video and a contact sheet
 og compare          a captured frame against a reference image (silhouette IoU, ΔE00)
-og ui               check, preview or eject screens (per style, breakpoint and locale)
-og style            list, eject, upgrade, pack and check UI styles and the art contract
+og ui               check, preview, review or eject screens and components (per style, breakpoint and locale)
+og style            list, add and write CSS styles; check a project against its look's art contract
 og prefab           check, show and extract prefabs
 og i18n extract     the keys dialogues and quests use, against each string table
 og sfx              procedural sound presets
@@ -302,11 +309,14 @@ og doctor           check bun, the engine package, the addon, the wasm, the rend
 
 ## Development
 
-`scripts/check.sh quick` (fmt, clippy, CPU tests, GPU tests outside
-og-tests, drift, package tests) is the loop while working and what a landing
-runs; `scripts/check.sh` is the `full` lane (adding og-tests, fixtures, the
-wasm variants and the browser tests; `docs/ci.md` §Lanes). Heads land
-through `scripts/land.sh`, a merge queue; main is never pushed directly.
+`scripts/check.sh quick` (preflight, fmt, clippy, CPU tests, GPU tests
+outside og-tests, API drift and surface, TypeScript and package tests, the
+wasm compile checks, the CSS checklist) is the loop while working and what a
+landing runs; `scripts/check.sh` is the `full` lane (adding og-tests,
+doctests, the engine's Bun tests, the bindgen wasm variants, fixtures and
+the browser tests; `docs/ci.md` §Lanes). Heads land through
+`scripts/land.sh`, a merge queue; main is never pushed directly, except for
+docs-only commits.
 
 Read `AGENTS.md` before changing anything: ownership, contracts and the gate
 discipline. Toolchain versions are in `docs/ci.md` §Toolchain.
