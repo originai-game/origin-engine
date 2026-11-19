@@ -84,6 +84,83 @@ test("a system writes engine memory through its views, every tick", () => {
   expect(got.value.p.z).toBe(z);
 });
 
+// addScaled: a field after another (index 1), velocities f32 cannot hold exactly.
+const Body = defineComponent("RtBody", { spin: f32(), p: Vector3() });
+const Drift = defineComponent("RtDrift", { v: Vector3() });
+const Scaled = defineSystem("RtScaled", { reads: [Drift], writes: [Body] }, (q, time) => {
+  for (const a of q.archetypes()) {
+    const r = a.addScaled(Body, "p", Drift, "v", time.dt);
+    if (!r.ok) throw new Error(r.reason);
+  }
+});
+const ScaledAdded = defineSystem("RtScaledAdded", { reads: [Drift], writes: [Body], added: [Drift] }, (q) => {
+  for (const a of q.archetypes()) {
+    const r = a.addScaled(Body, "p", Drift, "v", 1);
+    if (!r.ok) throw new Error(r.reason);
+  }
+});
+let scaledRefusals: string[] = [];
+const ScaledWrong = defineSystem("RtScaledWrong", { reads: [Drift], writes: [Body] }, (q) => {
+  for (const a of q.archetypes()) {
+    for (const r of [a.addScaled(Drift, "v", Body, "p", 1), a.addScaled(Body, "spin", Drift, "v", 1), a.addScaled(Body, "q", Drift, "v", 1)]) {
+      if (!r.ok) scaledRefusals.push(r.reason);
+    }
+  }
+});
+const drift = (i: number) => ({ x: 0.1 * i + 1 / 3, y: -7.77, z: 1e-3 * (i + 1) });
+const spawnDrifters = (world: World, args: readonly string[]) => {
+  for (let i = Number(args[0]); i < Number(args[1]); i++) {
+    const e = world.spawn({ name: `drifter-${i}` });
+    if (!e.ok) throw new Error(e.reason);
+    world.insert(e.value, Body, { spin: 5, p: { x: i, y: 0.5, z: -i } });
+    world.insert(e.value, Drift, { v: drift(i) });
+  }
+};
+const bodyOf = (engine: Engine, i: number) => {
+  const got = engine.world.get(engine.world.find(`drifter-${i}`) as Entity, Body);
+  if (!got.ok) throw new Error(got.reason);
+  return got.value as { spin: number; p: { x: number; y: number; z: number } };
+};
+
+test("ArchetypeView.addScaled integrates in the engine to the bits the JavaScript loop gives, over the rows the filters pass", () => {
+  const engine = start(og.game({ systems: [Scaled], commands: { spawn: spawnDrifters } }) as unknown as GameToken);
+  expect(engine.command("spawn", ["0", "4"]).ok).toBeTrue();
+  expect(engine.advance(90)).toEqual({ ok: true, value: 90 });
+  for (let i = 0; i < 4; i++) {
+    // What `p[k] += v[k] * time.dt` over Float32Arrays leaves (time.dt is the f32 tick).
+    const v = drift(i);
+    const dt = Math.fround(1 / 60);
+    const want = { x: Math.fround(i), y: 0.5, z: Math.fround(-i) };
+    for (let t = 0; t < 90; t++) {
+      want.x = Math.fround(want.x + Math.fround(v.x) * dt);
+      want.y = Math.fround(want.y + Math.fround(v.y) * dt);
+      want.z = Math.fround(want.z + Math.fround(v.z) * dt);
+    }
+    const got = bodyOf(engine, i);
+    expect(got.p).toEqual(want);
+    expect(got.spin).toBe(5);
+  }
+
+  // `added` passes only the rows whose Drift is new since the system last ran.
+  const filtered = start(og.game({ systems: [ScaledAdded], commands: { spawn: spawnDrifters } }) as unknown as GameToken);
+  filtered.command("spawn", ["0", "3"]);
+  filtered.advance(1);
+  filtered.command("spawn", ["3", "5"]);
+  filtered.advance(2);
+  for (let i = 0; i < 5; i++) expect(bodyOf(filtered, i).p.x).toBe(Math.fround(i + Math.fround(drift(i).x)));
+
+  scaledRefusals = [];
+  const wrong = start(og.game({ systems: [ScaledWrong], commands: { spawn: spawnDrifters } }) as unknown as GameToken);
+  wrong.command("spawn", ["0", "1"]);
+  expect(wrong.advance(1).ok).toBeTrue();
+  expect(scaledRefusals).toEqual([
+    "system 'RtScaledWrong' did not declare 'RtDrift' in its writes",
+    "'RtBody.spin' and 'RtDrift.v' are of different widths (1 and 3)",
+    "'RtBody' has no field 'q'",
+  ]);
+  expect(bodyOf(wrong, 0).p).toEqual({ x: 0, y: 0.5, z: 0 });
+});
+
 test("a stale view throws with the tick and the system it belonged to", () => {
   const engine = start(og.game({ systems: [Keep], commands: { spawn: spawnMovers } }) as unknown as GameToken);
   engine.command("spawn", ["2"]);

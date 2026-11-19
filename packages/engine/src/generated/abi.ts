@@ -50,6 +50,8 @@ export interface HostAbi<A, V> {
   og_engine_query_archetypes(query: number, from: number): number;
   /** ArchetypeView.column: the columns of a component (og_engine_component_id's number) in a view, one per field in field order. A running system's view borrows them when first asked and holds them until the system returns. Empty when refused (a stale view, a component the system did not declare or the archetype lacks, a column borrowed otherwise). */
   og_engine_view_column(view: number, component: number): V;
+  /** ArchetypeView.addScaled: target += source * scale over the view's rows (every row, or those its change filters pass), in place in the columns og_engine_view_column hands out, the fields given by their place in that call's answer. Each f32 element is computed in f64 and rounded once. A Result; refused, with nothing changed, as og_engine_view_column is, for a read-only target or for columns of different sizes. */
+  og_engine_view_add_scaled(view: number, target: number, target_field: number, source: number, source_field: number, scale: number): string;
   /** Apply a binary UI source/computation patch batch. Replies are binary results in request order. Source values and the dependency graph belong to this engine; the TypeScript runtime executes requested computation IDs outside the engine lock. */
   og_engine_ui_patch(world: number, bytes: Uint8Array): Uint8Array;
   /** The platform calls (IDL `platform`) made since the last call, oldest first, as JSON `[{ request, method, args, tick }]`. The host answers each but `telemetry` (one-way) with og_platform_answer. */
@@ -2102,6 +2104,7 @@ export const SYMBOLS: readonly string[] = [
   "og_engine_write_component",
   "og_engine_query_archetypes",
   "og_engine_view_column",
+  "og_engine_view_add_scaled",
   "og_engine_ui_patch",
   "og_platform_take",
   "og_platform_answer",

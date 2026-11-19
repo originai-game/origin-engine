@@ -135,6 +135,12 @@ pub fn og_engine_view_column(env: Env, view: u32, component: u32) -> crate::Node
     <Host as Lifecycle>::og_engine_view_column(&Host, view, component)
 }
 
+#[napi(js_name = "og_engine_view_add_scaled")]
+pub fn og_engine_view_add_scaled(env: Env, view: u32, target: u32, target_field: u32, source: u32, source_field: u32, scale: f64) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as Lifecycle>::og_engine_view_add_scaled(&Host, view, target, target_field, source, source_field, scale)
+}
+
 #[napi(js_name = "og_engine_ui_patch")]
 pub fn og_engine_ui_patch(env: Env, world: u32, bytes: crate::NodeBytes) -> crate::NodeBytes {
     let _env = crate::EnvScope::enter(&env);

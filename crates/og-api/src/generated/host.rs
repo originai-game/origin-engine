@@ -69,6 +69,8 @@ pub trait Lifecycle: Wire {
     fn og_engine_query_archetypes(&self, query: u32, from: u32) -> u32;
     /// ArchetypeView.column: the columns of a component (og_engine_component_id's number) in a view, one per field in field order. A running system's view borrows them when first asked and holds them until the system returns. Empty when refused (a stale view, a component the system did not declare or the archetype lacks, a column borrowed otherwise).
     fn og_engine_view_column(&self, view: u32, component: u32) -> Self::Views;
+    /// ArchetypeView.addScaled: target += source * scale over the view's rows (every row, or those its change filters pass), in place in the columns og_engine_view_column hands out, the fields given by their place in that call's answer. Each f32 element is computed in f64 and rounded once. A Result; refused, with nothing changed, as og_engine_view_column is, for a read-only target or for columns of different sizes.
+    fn og_engine_view_add_scaled(&self, view: u32, target: u32, target_field: u32, source: u32, source_field: u32, scale: f64) -> String;
     /// Apply a binary UI source/computation patch batch. Replies are binary results in request order. Source values and the dependency graph belong to this engine; the TypeScript runtime executes requested computation IDs outside the engine lock.
     fn og_engine_ui_patch(&self, world: u32, bytes: Self::Bytes) -> Self::Bytes;
     /// The platform calls (IDL `platform`) made since the last call, oldest first, as JSON `[{ request, method, args, tick }]`. The host answers each but `telemetry` (one-way) with og_platform_answer.

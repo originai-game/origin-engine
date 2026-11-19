@@ -178,3 +178,45 @@ fn column {
 ```
 
 <sub>Module `world` line 458</sub>
+
+<a id="member-ArchetypeView-addScaled"></a>
+
+#### `ArchetypeView.addScaled`
+
+target += source * scale, row by row, in the engine: the integrate step (position += velocity * dt) as one call per archetype instead of a loop over its entities in JavaScript. It covers the rows the query's change filters pass (rows), every row without them.
+
+Both fields are f32 or f32 vectors of the same width (Vector2, Vector3, Vector4). The target's component must be among the system's writes, the source's among its reads or writes. Each element is computed in double precision and rounded once, so the result is the same bits as `t[i] += s[i] * scale` over the columns in JavaScript.
+
+```ts
+ArchetypeView.addScaled<C extends AnyComponent, S extends AnyComponent>(target: C, targetField: string, source: S, sourceField: string, scale: number): Result<void>
+```
+
+| Parameter | Type | Optional | Doc |
+|---|---|---|---|
+| `target` | `C` | no | The component written. |
+| `targetField` | `string` | no | The target's field, such as `position`. |
+| `source` | `S` | no | The component read (it may be the target). |
+| `sourceField` | `string` | no | The source's field, such as `v`. |
+| `scale` | `number` | no | The factor, such as time.dt. |
+
+**Returns** `Result<void>`: Refused, with nothing changed, for a field that is missing or not f32, fields of different widths, a component the system did not declare or the archetype lacks, or a stale view.
+
+Implemented by the TypeScript runtime over the members of this module: no binding symbol.
+
+```ogt
+fn addScaled {
+  doc "target += source * scale, row by row, in the engine: the integrate step (position += velocity * dt) as one call per archetype instead of a loop over its entities in JavaScript. It covers the rows the query's change filters pass (rows), every row without them."
+  doc "Both fields are f32 or f32 vectors of the same width (Vector2, Vector3, Vector4). The target's component must be among the system's writes, the source's among its reads or writes. Each element is computed in double precision and rounded once, so the result is the same bits as `t[i] += s[i] * scale` over the columns in JavaScript."
+  host false
+  generic C AnyComponent
+  generic S AnyComponent
+  param target C "The component written."
+  param targetField String "The target's field, such as `position`."
+  param source S "The component read (it may be the target)."
+  param sourceField String "The source's field, such as `v`."
+  param scale f64 "The factor, such as time.dt."
+  returns Result.Void "Refused, with nothing changed, for a field that is missing or not f32, fields of different widths, a component the system did not declare or the archetype lacks, or a stale view."
+}
+```
+
+<sub>Module `world` line 466</sub>

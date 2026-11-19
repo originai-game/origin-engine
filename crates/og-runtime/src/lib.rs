@@ -176,7 +176,7 @@ pub use engine::{
     ColumnPtr, Dispatch, Hooks, RenderBackend, TextureWork, VideoDecoder, advance, answer_call,
     antialias_name, begin_bundle, call_rpc, command, create, destroy, frame, point_shadows_name,
     render_desc, render_options, set_render_backend, take_log, take_outputs, transparency_name,
-    view_columns, view_entities, warm_renderer, write_resource,
+    view_add_scaled, view_columns, view_entities, warm_renderer, write_resource,
 };
 pub use host::api::*;
 pub use host::codec::{Kind, Layout, RecordKind};

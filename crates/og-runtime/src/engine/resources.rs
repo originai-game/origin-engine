@@ -402,6 +402,75 @@ pub fn view_columns(view: u32, component: u32) -> Result<Vec<ColumnPtr>, String>
     })
 }
 
+/// `og_engine_view_add_scaled`: `target += source * scale` over the rows of
+/// view `view` (those its change filters pass, else every row), in the
+/// columns [`view_columns`] hands out, the fields by their place in its
+/// answer. Each f32 element is computed in f64 and rounded once, as
+/// JavaScript computes `t[i] += s[i] * scale` over a Float32Array, so the
+/// two give the same bits.
+pub fn view_add_scaled(
+    view: u32,
+    target: u32,
+    target_field: u32,
+    source: u32,
+    source_field: u32,
+    scale: f64,
+) -> Result<(), String> {
+    let column = |component, field: u32| -> Result<ColumnPtr, String> {
+        view_columns(view, component)?
+            .get(field as usize)
+            .copied()
+            .ok_or_else(|| format!("the component has no field {field}"))
+    };
+    let t = column(target, target_field)?;
+    let s = column(source, source_field)?;
+    if !t.writable {
+        return Err(
+            "the target is read-only: declare its component among the system's writes".into(),
+        );
+    }
+    if t.len != s.len {
+        return Err("the target and source fields are of different widths".into());
+    }
+    let (count, rows) = HANDLES
+        .with(|h| {
+            h.borrow()
+                .views
+                .get(view)
+                .map(|(_, r)| (r.count as usize, r.rows.clone()))
+        })
+        .ok_or("stale view")?;
+    if count == 0 {
+        return Ok(());
+    }
+    let width = t.len / 4 / count;
+    if width == 0 || width * 4 * count != t.len {
+        return Err("the fields are not f32 columns of this view".into());
+    }
+    // A host that copies views writes their copies back first, so this
+    // sees what the system wrote through them.
+    if let Some(h) = hooks() {
+        h.invalidate_views(false);
+    }
+    let (tp, sp) = (t.ptr.cast::<f32>(), s.ptr.cast::<f32>().cast_const());
+    let step = |row: usize| {
+        for k in row * width..(row + 1) * width {
+            // SAFETY: `k` is below count * width, both columns' length in
+            // f32s; raw reads and writes, since target and source may be
+            // one column.
+            unsafe {
+                let v = f64::from(*tp.add(k)) + f64::from(*sp.add(k)) * scale;
+                *tp.add(k) = v as f32;
+            }
+        }
+    };
+    match rows {
+        Some(rows) => rows.iter().for_each(|&r| step(r as usize)),
+        None => (0..count).for_each(step),
+    }
+    Ok(())
+}
+
 /// A view's column the running code already borrows otherwise (an engine
 /// call in progress holds it): the reason, with what to do.
 fn taken(e: Error, component: &str) -> String {

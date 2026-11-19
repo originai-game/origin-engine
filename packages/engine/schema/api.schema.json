@@ -2778,6 +2778,56 @@
               "returns": "View<C>",
               "publish": true,
               "host": false
+            },
+            {
+              "name": "addScaled",
+              "doc": "target += source * scale, row by row, in the engine: the integrate step (position += velocity * dt) as one call per archetype instead of a loop over its entities in JavaScript. It covers the rows the query's change filters pass (rows), every row without them.\nBoth fields are f32 or f32 vectors of the same width (Vector2, Vector3, Vector4). The target's component must be among the system's writes, the source's among its reads or writes. Each element is computed in double precision and rounded once, so the result is the same bits as `t[i] += s[i] * scale` over the columns in JavaScript.",
+              "generics": [
+                {
+                  "name": "C",
+                  "bound": "AnyComponent"
+                },
+                {
+                  "name": "S",
+                  "bound": "AnyComponent"
+                }
+              ],
+              "params": [
+                {
+                  "name": "target",
+                  "type": "C",
+                  "optional": false,
+                  "doc": "The component written."
+                },
+                {
+                  "name": "targetField",
+                  "type": "String",
+                  "optional": false,
+                  "doc": "The target's field, such as `position`."
+                },
+                {
+                  "name": "source",
+                  "type": "S",
+                  "optional": false,
+                  "doc": "The component read (it may be the target)."
+                },
+                {
+                  "name": "sourceField",
+                  "type": "String",
+                  "optional": false,
+                  "doc": "The source's field, such as `v`."
+                },
+                {
+                  "name": "scale",
+                  "type": "f64",
+                  "optional": false,
+                  "doc": "The factor, such as time.dt."
+                }
+              ],
+              "returns": "Result<Void>",
+              "returnsDoc": "Refused, with nothing changed, for a field that is missing or not f32, fields of different widths, a component the system did not declare or the archetype lacks, or a stale view.",
+              "publish": true,
+              "host": false
             }
           ]
         }

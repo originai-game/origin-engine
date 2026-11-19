@@ -334,6 +334,19 @@ const LIFECYCLE: &[LifecycleMember] = &[
         "ArchetypeView.column: the columns of a component (og_engine_component_id's number) in a view, one per field in field order. A running system's view borrows them when first asked and holds them until the system returns. Empty when refused (a stale view, a component the system did not declare or the archetype lacks, a column borrowed otherwise).",
     ),
     (
+        "og_engine_view_add_scaled",
+        &[
+            ("view", "u32", "number"),
+            ("target", "u32", "number"),
+            ("target_field", "u32", "number"),
+            ("source", "u32", "number"),
+            ("source_field", "u32", "number"),
+            ("scale", "f64", "number"),
+        ],
+        "String",
+        "ArchetypeView.addScaled: target += source * scale over the view's rows (every row, or those its change filters pass), in place in the columns og_engine_view_column hands out, the fields given by their place in that call's answer. Each f32 element is computed in f64 and rounded once. A Result; refused, with nothing changed, as og_engine_view_column is, for a read-only target or for columns of different sizes.",
+    ),
+    (
         "og_engine_ui_patch",
         &[
             ("world", "u32", "number"),

@@ -79,6 +79,24 @@ macro_rules! __og_host_bindings_engine {
             fn og_engine_view_column(&self, view: u32, component: u32) -> Self::Views {
                 <Self as $crate::host_impl::HostWire>::views($crate::view_columns(view, component))
             }
+            fn og_engine_view_add_scaled(
+                &self,
+                view: u32,
+                target: u32,
+                target_field: u32,
+                source: u32,
+                source_field: u32,
+                scale: f64,
+            ) -> String {
+                $crate::host_impl::answer($crate::view_add_scaled(
+                    view,
+                    target,
+                    target_field,
+                    source,
+                    source_field,
+                    scale,
+                ))
+            }
             fn og_engine_ui_patch(&self, world: u32, bytes: Self::Bytes) -> Self::Bytes {
                 <Self as $crate::host_impl::HostWire>::bytes_out($crate::og_engine_ui_patch(
                     world, &bytes,

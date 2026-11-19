@@ -1,7 +1,7 @@
 import { componentId, forgetComponents } from "./components.ts";
 import type { SystemEntry, Token } from "./declare.ts";
 import { COLUMNS, type ColumnArray, type ColumnSpec, FRAME_QUERY_WORD, abi, words } from "./host.ts";
-import { parse } from "./result.ts";
+import { type Result, parse, refused } from "./result.ts";
 import { rt } from "./state.ts";
 
 // ── views ─────────────────────────────────────────────────────────────────
@@ -126,14 +126,8 @@ class ArchetypeViewImpl {
     const cached = this.#columns?.get(component.name) as Record<string, ColumnArray> | undefined;
     // A grown wasm memory detached the arrays: make them again.
     if (cached && !(rt.host!.fresh && Object.values(cached).some((a) => !rt.host!.fresh!(a)))) return cached;
-    const s = this.#system;
-    if (s && !s.reads.has(component.name) && !s.writes.has(component.name)) {
-      throw new Error(`system '${s.name}' did not declare '${component.name}' in its reads or writes; declare it to get its columns`);
-    }
-    const id = componentId(this.#engine, component.name);
-    if (!this.#types.includes(id)) {
-      throw new Error(`this archetype has no '${component.name}'; check a.has(${component.name}) first`);
-    }
+    const id = this.#columnsOf(component);
+    if (typeof id === "string") throw new Error(id);
     const { names, kinds } = layoutOf(component);
     const b = rt.host!;
     const arrays = b.columns(abi().og_engine_view_column(this.#view, id), kinds, this.count);
@@ -143,6 +137,43 @@ class ArchetypeViewImpl {
     const view = viewOf(component, names, arrays);
     (this.#columns ??= new Map()).set(component.name, view);
     return view;
+  }
+
+  /** A component's number in its engine, or why its columns are not this view's to hand out. */
+  #columnsOf(component: Token): number | string {
+    const s = this.#system;
+    if (s && !s.reads.has(component.name) && !s.writes.has(component.name)) {
+      return `system '${s.name}' did not declare '${component.name}' in its reads or writes; declare it to get its columns`;
+    }
+    const id = componentId(this.#engine, component.name);
+    if (!this.#types.includes(id)) return `this archetype has no '${component.name}'; check a.has(${component.name}) first`;
+    return id;
+  }
+
+  addScaled(target: Token, targetField: string, source: Token, sourceField: string, scale: number): Result<void> {
+    this.#check();
+    const field = (component: Token, name: string): { id: number; index: number; stride: number } | string => {
+      const id = this.#columnsOf(component);
+      if (typeof id === "string") return id;
+      const { names, kinds } = layoutOf(component);
+      const index = names.indexOf(name);
+      if (index < 0) return `'${component.name}' has no field '${name}'`;
+      const kind = kinds[index]!;
+      if (kind.array !== "Float32Array" || kind.list) return `'${component.name}.${name}' is not an f32 field or vector`;
+      return { id, index, stride: kind.stride };
+    };
+    const t = field(target, targetField);
+    if (typeof t === "string") return refused(t);
+    const s = field(source, sourceField);
+    if (typeof s === "string") return refused(s);
+    if (t.stride !== s.stride) return refused(`'${target.name}.${targetField}' and '${source.name}.${sourceField}' are of different widths (${t.stride} and ${s.stride})`);
+    if (this.#system && !this.#system.writes.has(target.name)) {
+      return refused(`system '${this.#system.name}' did not declare '${target.name}' in its writes`);
+    }
+    const answer = parse<Result<void>>(abi().og_engine_view_add_scaled(this.#view, t.id, t.index, s.id, s.index, scale));
+    // A host that copies views refreshes the target's copy when it is asked for again.
+    if (answer.ok) this.#columns?.delete(target.name);
+    return answer;
   }
 }
 

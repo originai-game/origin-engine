@@ -114,6 +114,11 @@ pub fn og_engine_view_column(view: u32, component: u32) -> Vec<u32> {
 }
 
 #[wasm_bindgen]
+pub fn og_engine_view_add_scaled(view: u32, target: u32, target_field: u32, source: u32, source_field: u32, scale: f64) -> String {
+    <Host as Lifecycle>::og_engine_view_add_scaled(&Host, view, target, target_field, source, source_field, scale)
+}
+
+#[wasm_bindgen]
 pub fn og_engine_ui_patch(world: u32, bytes: Vec<u8>) -> Vec<u8> {
     <Host as Lifecycle>::og_engine_ui_patch(&Host, world, bytes)
 }

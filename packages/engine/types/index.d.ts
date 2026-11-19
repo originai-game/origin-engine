@@ -2013,6 +2013,18 @@ export interface ArchetypeView {
    * @param component The component token.
    */
   column<C extends AnyComponent>(component: C): View<C>;
+  /**
+   * target += source * scale, row by row, in the engine: the integrate step (position += velocity * dt) as one call per archetype instead of a loop over its entities in JavaScript. It covers the rows the query's change filters pass (rows), every row without them.
+   * Both fields are f32 or f32 vectors of the same width (Vector2, Vector3, Vector4). The target's component must be among the system's writes, the source's among its reads or writes. Each element is computed in double precision and rounded once, so the result is the same bits as `t[i] += s[i] * scale` over the columns in JavaScript.
+   *
+   * @param target The component written.
+   * @param targetField The target's field, such as `position`.
+   * @param source The component read (it may be the target).
+   * @param sourceField The source's field, such as `v`.
+   * @param scale The factor, such as time.dt.
+   * @returns Refused, with nothing changed, for a field that is missing or not f32, fields of different widths, a component the system did not declare or the archetype lacks, or a stale view.
+   */
+  addScaled<C extends AnyComponent, S extends AnyComponent>(target: C, targetField: string, source: S, sourceField: string, scale: number): Result<void>;
 }
 
 // ── system ──────────────────────────────────────────────────────
