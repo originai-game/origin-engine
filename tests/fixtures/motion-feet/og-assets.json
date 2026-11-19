@@ -1,0 +1,17 @@
+{
+  "version": 1,
+  "files": [
+    {
+      "path": "assets/models/stout.glb",
+      "sha256": "b36798a8f0bfc9c258c5722f77ae666b647f976dd840a83c411dbec5f5738714",
+      "size": 31876,
+      "visibility": "public"
+    },
+    {
+      "path": "assets/models/strider.glb",
+      "sha256": "d4edb74d6add464415572d955b8e641efedcd02b51c3009f14be3a8bbaf757d3",
+      "size": 32032,
+      "visibility": "public"
+    }
+  ]
+}

@@ -1,0 +1,6 @@
+# og-assets: the files og-assets.json pins, installed by `bun scripts/assets.ts ensure` (written by the tool)
+/tests/fixtures/axes-test.ttf
+/tests/fixtures/emoji-text-test.ttf
+/tests/fixtures/palette-test.ttf
+/tests/text-fonts/assets/fonts/NotoSansJP-brackets.ttf
+# og-assets end

@@ -1,0 +1,41 @@
+{
+  "version": 1,
+  "files": [
+    {
+      "path": "assets/audio/blip.wav",
+      "sha256": "4fe30d6e883337c7d3c99f2cf0e3f2b1ca80c742587479fd878cb719580acaea",
+      "size": 44144,
+      "visibility": "public"
+    },
+    {
+      "path": "assets/fonts/NotoSansSC-Regular-subset.ttf",
+      "sha256": "c89bbf776c088b6a85759a59f9bbeb1ca3114e121a8f00c45cc6b03b1a9bc969",
+      "size": 2514328,
+      "visibility": "public"
+    },
+    {
+      "path": "assets/models/dropship.glb",
+      "sha256": "c7bf4c177bf360bc65b66d8636c1d8cf063cb65209505cf9f8e0e21461ec9c54",
+      "size": 562864,
+      "visibility": "public"
+    },
+    {
+      "path": "assets/models/walker.glb",
+      "sha256": "e068aeca18b491e54b48ae8c264d208a414f9de455a571340bf55ef0c3d2face",
+      "size": 34296,
+      "visibility": "public"
+    },
+    {
+      "path": "assets/textures/stone.png",
+      "sha256": "8622957415b5174f09a2564256d319c14692998b3f7fd1ac6ae9d3709ed71a9c",
+      "size": 112774,
+      "visibility": "public"
+    },
+    {
+      "path": "assets/textures/stone_n.png",
+      "sha256": "c3bfb1778ace9010f8da8f3ea8664e68cddf446776a2dff7bdcf11f31bb22dcb",
+      "size": 212633,
+      "visibility": "public"
+    }
+  ]
+}

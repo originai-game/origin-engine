@@ -1,0 +1,17 @@
+{
+  "version": 1,
+  "files": [
+    {
+      "path": "assets/fonts/InstrumentSans-Regular.ttf",
+      "sha256": "a22cb26e48fd79bcb01bf2fc92d36785474dce36d9c544ab0a8868c2657c4a87",
+      "size": 68028,
+      "visibility": "public"
+    },
+    {
+      "path": "assets/fonts/PTMono-Regular.ttf",
+      "sha256": "db7134f3be63a56f9648aa775cc8980dfd2a28d4eed38cfbf46b118b098eb270",
+      "size": 157120,
+      "visibility": "public"
+    }
+  ]
+}

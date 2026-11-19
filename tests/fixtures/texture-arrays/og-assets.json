@@ -1,0 +1,11 @@
+{
+  "version": 1,
+  "files": [
+    {
+      "path": "assets/textures/toon.png",
+      "sha256": "c4283c8fc73ac25efcb3398493584502d9bd43b968d693867030a55415693d43",
+      "size": 83,
+      "visibility": "public"
+    }
+  ]
+}

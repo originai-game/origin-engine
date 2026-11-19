@@ -3,3 +3,7 @@ dist/
 og-out/
 .og/
 node_modules/
+
+# og-assets: the files og-assets.json pins, installed by `bun scripts/assets.ts ensure` (written by the tool)
+/assets/sprites/slime.png
+# og-assets end

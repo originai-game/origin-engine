@@ -1,0 +1,11 @@
+{
+  "version": 1,
+  "files": [
+    {
+      "path": "assets/sprites/slime.png",
+      "sha256": "1906ce78bc5caa7262f0d59a3bf3e9ce56480892d00f912a5abb257d1fcb78ef",
+      "size": 252,
+      "visibility": "public"
+    }
+  ]
+}

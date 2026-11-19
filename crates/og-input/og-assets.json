@@ -1,0 +1,11 @@
+{
+  "version": 1,
+  "files": [
+    {
+      "path": "tests/fixtures/ring.bin",
+      "sha256": "e90518ce6236cee952131df161babea52945953c2ec840f2d1b2a366699c3283",
+      "size": 16392,
+      "visibility": "public"
+    }
+  ]
+}

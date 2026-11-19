@@ -1,0 +1,191 @@
+{
+  "version": 1,
+  "files": [
+    {
+      "path": "assets/farmer/farmer_walk.gif",
+      "sha256": "021bd79c10ac4e296475a85df99d97f62dfaa672851acefca86a22f29340520e",
+      "size": 237024,
+      "visibility": "public"
+    },
+    {
+      "path": "assets/props/barrel.png",
+      "sha256": "1e3fa556622fdd9c3a0bff05f11e9f1f8d73870a4945dfc03a51851e7faae907",
+      "size": 189,
+      "visibility": "public"
+    },
+    {
+      "path": "assets/props/bush_a.png",
+      "sha256": "6e006e78d596f4ec6cce6c3f48c2cc41f0d7cfb82c2e3a63416496eaf11b3ef1",
+      "size": 296,
+      "visibility": "public"
+    },
+    {
+      "path": "assets/props/bush_b.png",
+      "sha256": "d35f3226c51cf8e86771bc5a94c0480a5e99bbdfd42ff13198158fd2ad25e324",
+      "size": 295,
+      "visibility": "public"
+    },
+    {
+      "path": "assets/props/cauliflower.png",
+      "sha256": "20769ce328c4789bbfe0931d29087c7983ca9341b4b822f07319f8b920209f59",
+      "size": 287,
+      "visibility": "public"
+    },
+    {
+      "path": "assets/props/chest.png",
+      "sha256": "5d880fff9b89502302381d0851c1b3de9e14c46477235e3c267e4f173f92d57d",
+      "size": 158,
+      "visibility": "public"
+    },
+    {
+      "path": "assets/props/crate.png",
+      "sha256": "fd02b94d1db2f37c5a41fab68a38585f78c626d8f51a8901bb47b39010276c7d",
+      "size": 178,
+      "visibility": "public"
+    },
+    {
+      "path": "assets/props/fence_h.png",
+      "sha256": "46642e49362abb6b531a4b93c83ddf75c0f318c01531567bd2938a4ffa37c588",
+      "size": 163,
+      "visibility": "public"
+    },
+    {
+      "path": "assets/props/fence_post.png",
+      "sha256": "814c6f4dfeecf457bf3e0cab73ca24a80970b65ddd27e37b80dd9f6482a14ae6",
+      "size": 110,
+      "visibility": "public"
+    },
+    {
+      "path": "assets/props/flowers_a.png",
+      "sha256": "996f4ae0082b7aba481a8aa5ff4ed8b76e273da37d9dee45345b28fa9af54f4a",
+      "size": 186,
+      "visibility": "public"
+    },
+    {
+      "path": "assets/props/flowers_b.png",
+      "sha256": "123e81c1699f145d80e45c7a9fb8f0d981eba19c0a9fccd34f11ebd76ddedb50",
+      "size": 230,
+      "visibility": "public"
+    },
+    {
+      "path": "assets/props/flowers_c.png",
+      "sha256": "026d5a8d2ff396baa5dcbe9bdd8b0482e6ce937b3afb93717edda4dff8c0ecb0",
+      "size": 189,
+      "visibility": "public"
+    },
+    {
+      "path": "assets/props/hay.png",
+      "sha256": "7d9cb75f18ad89bc7fc541bbea8b681a460adbdc7ee56f885bbd5f504d7330bb",
+      "size": 243,
+      "visibility": "public"
+    },
+    {
+      "path": "assets/props/lamp.png",
+      "sha256": "c226d0d8d336f58b2b408ec45fff09584d4e59db0974ee77372a4ed75b182095",
+      "size": 219,
+      "visibility": "public"
+    },
+    {
+      "path": "assets/props/mailbox.png",
+      "sha256": "968a94e264cb457edfe627bc1e9350c9877f9a07d4506ec0c349be4919a7ce6c",
+      "size": 165,
+      "visibility": "public"
+    },
+    {
+      "path": "assets/props/parsnip_0.png",
+      "sha256": "de2d8245d27ceceb5afe92640d567b58895984b53e04d6d25288efa5e7e1b77d",
+      "size": 114,
+      "visibility": "public"
+    },
+    {
+      "path": "assets/props/parsnip_1.png",
+      "sha256": "1f2b887a607ff68ab3a628d75d70ba8965a99ece624151d07aa62a241d24acbd",
+      "size": 197,
+      "visibility": "public"
+    },
+    {
+      "path": "assets/props/parsnip_2.png",
+      "sha256": "a83a5b764686bd4be3b50b15a791c87e76e4e19a4f485ee358306bbef5de9ee3",
+      "size": 229,
+      "visibility": "public"
+    },
+    {
+      "path": "assets/props/pumpkin.png",
+      "sha256": "e214dbbf05804df3e3c6c871bb8e2fad13f3828d8643e847079f472a92def4aa",
+      "size": 276,
+      "visibility": "public"
+    },
+    {
+      "path": "assets/props/rock.png",
+      "sha256": "edc6bc7a7efab94bda0bdde03b9ead929ae8b44baabbcc860e9592066960c448",
+      "size": 205,
+      "visibility": "public"
+    },
+    {
+      "path": "assets/props/scarecrow.png",
+      "sha256": "33fc9f595a300b2c79fb1dad42487e4da6595a0bd562735800878d83e97764eb",
+      "size": 334,
+      "visibility": "public"
+    },
+    {
+      "path": "assets/props/sign.png",
+      "sha256": "d6def4dbc1dcda9c6a3fa41d0f91c5ca65d96940d6a71fb7fed868af8afec582",
+      "size": 159,
+      "visibility": "public"
+    },
+    {
+      "path": "assets/props/stump.png",
+      "sha256": "4641c42db42eb9a2017d0bd6b392c42d8409bca1f0af93b303bb7d4f13cca05a",
+      "size": 168,
+      "visibility": "public"
+    },
+    {
+      "path": "assets/props/sunflower.png",
+      "sha256": "15017503ac9175feb4aa0e744aa12227c0827e1db1d84507f85a8da412ed43d8",
+      "size": 333,
+      "visibility": "public"
+    },
+    {
+      "path": "assets/props/tomato.png",
+      "sha256": "47d85f7a6c263587626ca1e1b3943fab5f8262e9fb4eda095544d563ff977958",
+      "size": 282,
+      "visibility": "public"
+    },
+    {
+      "path": "assets/props/well.png",
+      "sha256": "4fde89f5a146e6fa2ef368b36f26df3c954ba53a86f5ea7a1d5a0cf538e9e8cd",
+      "size": 291,
+      "visibility": "public"
+    },
+    {
+      "path": "assets/props/wheat_a.png",
+      "sha256": "7e97e7eb11efd157b5cde67496c0e44bf7bec73cc2b6f978190b31485ceffad2",
+      "size": 211,
+      "visibility": "public"
+    },
+    {
+      "path": "assets/props/wheat_b.png",
+      "sha256": "534ca0cfcaada2c3a6634a60aa686a8f62c81c99bf6317fe29e26b42802919df",
+      "size": 228,
+      "visibility": "public"
+    },
+    {
+      "path": "assets/tiles/farm.png",
+      "sha256": "daa8c76c563df5013f668d3c2f909222ff9431c480b5f02fc06c875adbd1bbd9",
+      "size": 1505,
+      "visibility": "public"
+    },
+    {
+      "path": "assets/trees/pine.png",
+      "sha256": "24ac7980ba816ee60635406ee72d0a600c3337abd97bcaafe808c0f5ad16c295",
+      "size": 429,
+      "visibility": "public"
+    },
+    {
+      "path": "assets/trees/tree.png",
+      "sha256": "3fd29ffc860195a34f44db51da6b595d208f1e5be58d52b8bc300db948085d3d",
+      "size": 849,
+      "visibility": "public"
+    }
+  ]
+}

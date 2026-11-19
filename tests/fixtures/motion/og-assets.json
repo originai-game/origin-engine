@@ -1,0 +1,41 @@
+{
+  "version": 1,
+  "files": [
+    {
+      "path": "assets/anims/humanoid-clips.glb",
+      "sha256": "3e8c56d0e45e244f031a5d858c175f7382369b4e1bb4650ca4cd9b762e3b7352",
+      "size": 26564,
+      "visibility": "public"
+    },
+    {
+      "path": "assets/models/puppet2d.glb",
+      "sha256": "89b0f2931c4cec6d7723950a322b58bebf020764f1dfb39569b88f06dd64c461",
+      "size": 33404,
+      "visibility": "public"
+    },
+    {
+      "path": "assets/models/stout.glb",
+      "sha256": "b36798a8f0bfc9c258c5722f77ae666b647f976dd840a83c411dbec5f5738714",
+      "size": 31876,
+      "visibility": "public"
+    },
+    {
+      "path": "assets/models/strider.glb",
+      "sha256": "d4edb74d6add464415572d955b8e641efedcd02b51c3009f14be3a8bbaf757d3",
+      "size": 32032,
+      "visibility": "public"
+    },
+    {
+      "path": "assets/models/trickster.glb",
+      "sha256": "7c40f67f386c609a56e85d8a6c26d261fbd31660031d1cae5aa5f2ce0ad796cf",
+      "size": 1419580,
+      "visibility": "public"
+    },
+    {
+      "path": "assets/models/walker.glb",
+      "sha256": "e068aeca18b491e54b48ae8c264d208a414f9de455a571340bf55ef0c3d2face",
+      "size": 34296,
+      "visibility": "public"
+    }
+  ]
+}

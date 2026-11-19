@@ -1,0 +1,59 @@
+{
+  "version": 1,
+  "files": [
+    {
+      "path": "assets/cubic_value_test.riv",
+      "sha256": "7e45ccafca023189ace6bb218669b1057d0944a58825041c41a11062577ad60c",
+      "size": 366,
+      "visibility": "public"
+    },
+    {
+      "path": "assets/custom_image_name.riv",
+      "sha256": "1f19f90e0abe6a5ddaa03d24abf1fe92809fc783332a7cfcfa6c80718a792c02",
+      "size": 336,
+      "visibility": "public"
+    },
+    {
+      "path": "assets/hello_world.riv",
+      "sha256": "e0c04c5eb0cc2b9fba453ff943a150e4b321d3e12de562d4df4589c43f3a78e0",
+      "size": 33413,
+      "visibility": "public"
+    },
+    {
+      "path": "assets/hosted_image_file.riv",
+      "sha256": "83d49331ba47368e8688a737dc6d2c15ccb5ee9e4e00c5dd92c7cce79eb18e14",
+      "size": 251,
+      "visibility": "public"
+    },
+    {
+      "path": "assets/light_switch.riv",
+      "sha256": "d1e4227b1c9817d07466bf52255d4aec22cf73654d0d875e48a7e2a0826a62c2",
+      "size": 319,
+      "visibility": "public"
+    },
+    {
+      "path": "assets/nested_artboard_opacity.riv",
+      "sha256": "f25dacc37c30351ee4d7c35e732ac85f5daecbc5b5497ab6b16d676014d2b410",
+      "size": 155,
+      "visibility": "public"
+    },
+    {
+      "path": "assets/shapetest.riv",
+      "sha256": "0e7904bb815f989120161712458d6725814804e1a21d0eb107a0968a1066d311",
+      "size": 291,
+      "visibility": "public"
+    },
+    {
+      "path": "assets/text_style_keyed_font.riv",
+      "sha256": "35bcbd12ac2457eb6a1743b65c550b3f41a53b6dc161f555547ce0bca7b493f5",
+      "size": 109535,
+      "visibility": "public"
+    },
+    {
+      "path": "assets/two_artboards.riv",
+      "sha256": "480472d9942711492ce37cdba9aea6266f254633f5a2ac4a9e30f9d0eca70e8c",
+      "size": 400,
+      "visibility": "public"
+    }
+  ]
+}

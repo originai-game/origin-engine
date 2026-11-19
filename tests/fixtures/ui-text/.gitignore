@@ -3,3 +3,14 @@ dist/
 og-out/
 .og/
 node_modules/
+
+# og-assets: the files og-assets.json pins, installed by `bun scripts/assets.ts ensure` (written by the tool)
+/assets/fonts/EBGaramond-Medium.ttf
+/assets/fonts/NotoSansHebrew-subset.ttf
+/assets/fonts/NotoSansJP-subset.otf
+/assets/fonts/NotoSansKR-subset.otf
+/assets/fonts/NotoSansSC-Regular-subset.ttf
+/assets/fonts/Nunito-Rounded.ttf
+/assets/fonts/test_glyphs-glyf_colr_1.ttf
+/assets/textures/backdrop.png
+# og-assets end

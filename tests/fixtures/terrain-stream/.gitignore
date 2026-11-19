@@ -3,3 +3,12 @@ dist/
 og-out/
 .og/
 node_modules/
+
+# og-assets: the files og-assets.json pins, installed by `bun scripts/assets.ts ensure` (written by the tool)
+/assets/terrain/valley-control.png
+/assets/terrain/valley.png
+/assets/textures/terrain-grass.png
+/assets/textures/terrain-path.png
+/assets/textures/terrain-rock.png
+/assets/textures/terrain-sand.png
+# og-assets end

@@ -1,0 +1,41 @@
+{
+  "version": 1,
+  "files": [
+    {
+      "path": "assets/terrain/valley-control.png",
+      "sha256": "0e3e147eee5677cf595372a17e08a68430706c92615ff3100437abf568d462d8",
+      "size": 1477,
+      "visibility": "public"
+    },
+    {
+      "path": "assets/terrain/valley.png",
+      "sha256": "40af86696e4402b3a7c56de939b630b016f7083224dd73c99badb5e2c235b955",
+      "size": 88912,
+      "visibility": "public"
+    },
+    {
+      "path": "assets/textures/terrain-grass.png",
+      "sha256": "9fbe37e1856b1f85209f422ef7f8e5d595c694837e19393b035079218da39872",
+      "size": 35934,
+      "visibility": "public"
+    },
+    {
+      "path": "assets/textures/terrain-path.png",
+      "sha256": "7550b0245288dd34e435c6ca52a61ddffd4ffc16773cacb61932f452744f3300",
+      "size": 32278,
+      "visibility": "public"
+    },
+    {
+      "path": "assets/textures/terrain-rock.png",
+      "sha256": "561e1fcf73f54ba15d47cd1f2f2738c7e6b87782b139e6e55e407b56741efcb2",
+      "size": 36203,
+      "visibility": "public"
+    },
+    {
+      "path": "assets/textures/terrain-sand.png",
+      "sha256": "bb7e879e1730d4a3fb913b8563bc14b6eb12780ee5e3c9e58b313e983548b0a9",
+      "size": 32745,
+      "visibility": "public"
+    }
+  ]
+}

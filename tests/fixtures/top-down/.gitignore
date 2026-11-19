@@ -1,3 +1,37 @@
 cooked/
 .og/
 og-out/
+
+# og-assets: the files og-assets.json pins, installed by `bun scripts/assets.ts ensure` (written by the tool)
+/assets/farmer/farmer_walk.gif
+/assets/props/barrel.png
+/assets/props/bush_a.png
+/assets/props/bush_b.png
+/assets/props/cauliflower.png
+/assets/props/chest.png
+/assets/props/crate.png
+/assets/props/fence_h.png
+/assets/props/fence_post.png
+/assets/props/flowers_a.png
+/assets/props/flowers_b.png
+/assets/props/flowers_c.png
+/assets/props/hay.png
+/assets/props/lamp.png
+/assets/props/mailbox.png
+/assets/props/parsnip_0.png
+/assets/props/parsnip_1.png
+/assets/props/parsnip_2.png
+/assets/props/pumpkin.png
+/assets/props/rock.png
+/assets/props/scarecrow.png
+/assets/props/sign.png
+/assets/props/stump.png
+/assets/props/sunflower.png
+/assets/props/tomato.png
+/assets/props/well.png
+/assets/props/wheat_a.png
+/assets/props/wheat_b.png
+/assets/tiles/farm.png
+/assets/trees/pine.png
+/assets/trees/tree.png
+# og-assets end

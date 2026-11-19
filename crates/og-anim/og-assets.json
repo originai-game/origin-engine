@@ -1,0 +1,17 @@
+{
+  "version": 1,
+  "files": [
+    {
+      "path": "tests/motion/fixtures/case.safetensors",
+      "sha256": "9be9b1ad3238b5ae76069ebd333fa627b1cebd77c4be8b1e361a975478a20ac0",
+      "size": 349436,
+      "visibility": "public"
+    },
+    {
+      "path": "tests/motion/fixtures/tiny.safetensors",
+      "sha256": "3eab1455f00efa7a85ee63f93fedec06496248b4920af14a71e7b1cedcc98a2b",
+      "size": 518896,
+      "visibility": "public"
+    }
+  ]
+}
