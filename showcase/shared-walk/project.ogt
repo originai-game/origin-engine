@@ -1,0 +1,28 @@
+type project
+version 1
+---
+name "Shared Walk"
+id "shared-walk"
+engine "0.8.0"
+entry "src/main.ts"
+tick 60
+seed 1
+publish {
+  probe player
+  out "dist"
+}
+
+look "looks/shared-walk.ogt"
+
+create {
+  genre "action-platformer"
+  view "third-person-3d"
+  look "faceted-low-poly"
+  mood "soft"
+  ui "default"
+  platform "desktop"
+  input "keyboard-mouse"
+  players "single"
+  lang "en"
+  music "ambient"
+}
