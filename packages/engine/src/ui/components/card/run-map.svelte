@@ -54,7 +54,7 @@
 .floor { padding: calc(3 * var(--font-step-px)) var(--space-sm); font-size: var(--hud-label-size); font-weight: var(--hud-label-weight); letter-spacing: var(--hud-label-tracking); text-transform: var(--hud-label-transform); color: var(--hud-ink); background: var(--hud-plate-fill); box-shadow: var(--hud-plate-rim); white-space: nowrap; clip-path: polygon(var(--hud-plate-cut) 0, 100% 0, 100% calc(100% - var(--hud-plate-cut)), calc(100% - var(--hud-plate-cut)) 100%, 0 100%, 0 var(--hud-plate-cut)); }
 .board { width: stretch; justify-content: center; overflow: hidden;
   --data-graph-fill: none; --hud-plate-rim: none; --data-well: var(--map-room-fill); --data-guide: var(--map-room-rim); --success: var(--map-check); --hud-accent: var(--map-path-taken); --data-grip-glow: var(--map-room-current-glow);
-  --size-lg: var(--map-run-room); --size-sm: var(--map-run-room-icon); --hud-tag-size: var(--map-run-caption-size); }
+  --graph-node: var(--map-run-room); --graph-icon: var(--map-run-room-icon); --graph-caption: var(--map-run-caption-size); }
 .legend { flex: none; align-self: center; justify-content: center; margin-block-end: var(--space-sm); padding: var(--space-xs) var(--space-md); font-size: var(--hud-size-xs); color: var(--hud-ink); background: var(--hud-plate-fill); box-shadow: var(--hud-plate-rim); clip-path: polygon(var(--hud-plate-cut) 0, 100% 0, 100% calc(100% - var(--hud-plate-cut)), calc(100% - var(--hud-plate-cut)) 100%, 0 100%, 0 var(--hud-plate-cut)); }
 .key { flex: none; align-items: center; white-space: nowrap; }
 /* Each legend mark is a small room: the same shape, the same icon. */
