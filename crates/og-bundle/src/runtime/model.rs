@@ -1374,23 +1374,12 @@ impl SharedParts {
     }
 }
 
-fn oct_decode(x: f32, y: f32) -> Vec3 {
-    let mut v = Vec3::new(x, y, 1.0 - x.abs() - y.abs());
-    if v.z < 0.0 {
-        let (ox, oy) = (v.x, v.y);
-        v.x = (1.0 - oy.abs()) * ox.signum();
-        v.y = (1.0 - ox.abs()) * oy.signum();
-    }
-    v.normalize_or_zero()
-}
-
 fn dequantize(p: &PrimitiveRow, raw: &[u8]) -> (Vec<Vertex>, Vec<[f32; 4]>) {
     let stride = p.vertex_stride as usize;
     let off = [p.pos_offset_x, p.pos_offset_y, p.pos_offset_z];
     let scale = [p.pos_scale_x, p.pos_scale_y, p.pos_scale_z];
     let u16_at = |v: &[u8], at: usize| u16::from_le_bytes([v[at], v[at + 1]]);
     let i16_at = |v: &[u8], at: usize| i16::from_le_bytes([v[at], v[at + 1]]);
-    let snorm = |q: i16| (q as f32 / 32767.0).max(-1.0);
     let mut verts = Vec::with_capacity(p.vertex_count as usize);
     let mut tangents = Vec::new();
     for v in raw.chunks_exact(stride) {
@@ -1398,7 +1387,8 @@ fn dequantize(p: &PrimitiveRow, raw: &[u8]) -> (Vec<Vertex>, Vec<[f32; 4]>) {
         for a in 0..3 {
             position[a] = off[a] + u16_at(v, a * 2) as f32 / 65535.0 * scale[a];
         }
-        let normal = oct_decode(snorm(i16_at(v, 8)), snorm(i16_at(v, 10))).to_array();
+        let n = format::oct_decode([i16_at(v, 8), i16_at(v, 10)]);
+        let normal = n.to_array();
         let mut at = 12;
         let mut uv = [0.0f32; 2];
         if p.attributes & attr::UV != 0 {
@@ -1413,14 +1403,12 @@ fn dequantize(p: &PrimitiveRow, raw: &[u8]) -> (Vec<Vertex>, Vec<[f32; 4]>) {
             for (c, out) in color.iter_mut().enumerate() {
                 *out = v[at + c] as f32 / 255.0;
             }
-            at += 4;
         }
-        // The cook's MikkTSpace tangent, or none (the renderer generates one).
+        // The cook's MikkTSpace tangent, packed in the position's w, or
+        // none (the renderer generates one).
         let mut tangent = [0.0f32; 4];
         if p.attributes & attr::TANGENT != 0 {
-            let t = oct_decode(snorm(i16_at(v, at)), snorm(i16_at(v, at + 2)));
-            let w = if i16_at(v, at + 4) < 0 { -1.0 } else { 1.0 };
-            tangent = [t.x, t.y, t.z, w];
+            tangent = format::tangent_unpack(n, u16_at(v, 6));
             tangents.push(tangent);
         }
         verts.push(Vertex {

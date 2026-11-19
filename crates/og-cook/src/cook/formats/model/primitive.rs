@@ -1330,23 +1330,28 @@ pub(crate) fn cook_primitive(
         *i = partition[remap[*i as usize] as usize];
     }
     let mut stride = 12;
-    for (bit, size) in [(attr::UV, 4), (attr::COLOR, 4), (attr::TANGENT, 8)] {
+    for (bit, size) in [(attr::UV, 4), (attr::COLOR, 4)] {
         if attributes & bit != 0 {
             stride += size;
         }
     }
     let mut packed = Vec::with_capacity(vertex_count * stride);
     for v in &ordered {
-        let b = bytemuck::bytes_of(v);
+        let mut v = *v;
+        // The tangent as its angle across the normal the runtime decodes
+        // (`format::tangent_pack`), in the position's spare w.
+        if attributes & attr::TANGENT != 0 {
+            let t = format::oct_decode([v.t[0], v.t[1]]);
+            let w = if v.t[2] < 0 { -1.0 } else { 1.0 };
+            v.p[3] = format::tangent_pack(format::oct_decode(v.n), [t.x, t.y, t.z, w]);
+        }
+        let b = bytemuck::bytes_of(&v);
         packed.extend_from_slice(&b[0..12]);
         if attributes & attr::UV != 0 {
             packed.extend_from_slice(&b[12..16]);
         }
         if attributes & attr::COLOR != 0 {
             packed.extend_from_slice(&b[16..20]);
-        }
-        if attributes & attr::TANGENT != 0 {
-            packed.extend_from_slice(&b[20..28]);
         }
     }
     let (bvh_nodes, bvh_tris) = if opts.raycast {

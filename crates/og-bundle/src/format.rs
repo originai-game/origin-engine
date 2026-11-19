@@ -59,7 +59,7 @@ use og_core::{Reflect, Schema};
 
 /// Changes whenever the bytes the cook writes for the same input change.
 /// Part of every cook stamp, so a new cooker re-cooks everything.
-pub const COOKER_VERSION: &str = concat!("og-cook ", env!("CARGO_PKG_VERSION"), " r25");
+pub const COOKER_VERSION: &str = concat!("og-cook ", env!("CARGO_PKG_VERSION"), " r26");
 
 /// "None" in a u32 index field.
 pub const NONE: u32 = u32::MAX;
@@ -198,6 +198,7 @@ pub mod attr {
     pub const NORMAL: u32 = 1;
     pub const UV: u32 = 2;
     pub const COLOR: u32 = 4;
+    /// The tangent, in the position's fourth `u16` ([`tangent_pack`]).
     pub const TANGENT: u32 = 8;
     /// Vertex stream: u32 base count, u32 base byte length, the encoded
     /// base vertices, then encoded [source vertex u32, atlas UV u16 x 2]
@@ -205,14 +206,97 @@ pub mod attr {
     pub const LOD_UV_REFS: u32 = 16;
 }
 
+/// The unit normal of an octahedral snorm pair as the vertex stream holds it.
+pub fn oct_decode(q: [i16; 2]) -> glam::Vec3 {
+    let snorm = |q: i16| (q as f32 / 32767.0).max(-1.0);
+    let (x, y) = (snorm(q[0]), snorm(q[1]));
+    let mut v = glam::Vec3::new(x, y, 1.0 - x.abs() - y.abs());
+    if v.z < 0.0 {
+        let (ox, oy) = (v.x, v.y);
+        v.x = (1.0 - oy.abs()) * ox.signum();
+        v.y = (1.0 - ox.abs()) * oy.signum();
+    }
+    v.normalize_or_zero()
+}
+
+/// The two axes a vertex's tangent angle is measured from: an orthonormal
+/// pair across `n` (Duff et al. 2017, "Building an Orthonormal Basis,
+/// Revisited"; branchless, continuous except at the sign flip).
+fn tangent_axes(n: glam::Vec3) -> (glam::Vec3, glam::Vec3) {
+    let sign = 1.0f32.copysign(n.z);
+    let a = -1.0 / (sign + n.z);
+    let b = n.x * n.y * a;
+    (
+        glam::Vec3::new(1.0 + sign * n.x * n.x * a, sign * b, -sign * n.x),
+        glam::Vec3::new(b, sign + n.y * n.y * a, -n.y),
+    )
+}
+
+/// A tangent `t` (its bitangent sign in `w`) packed against its vertex's
+/// decoded normal `n` into 16 bits: the angle of `t` projected across `n`
+/// from [`tangent_axes`], 15 bits, and the sign in the top bit. The
+/// renderer projects the tangent across the normal anyway, so only the
+/// projection is kept (about 0.011° a step, finer than any 8-bit normal
+/// map resolves).
+pub fn tangent_pack(n: glam::Vec3, t: [f32; 4]) -> u16 {
+    let (a, b) = tangent_axes(n);
+    let v = glam::Vec3::new(t[0], t[1], t[2]);
+    let angle = v.dot(b).atan2(v.dot(a));
+    let step = (angle / std::f32::consts::TAU * 32768.0).round() as i32;
+    step.rem_euclid(32768) as u16 | if t[3] < 0.0 { 0x8000 } else { 0 }
+}
+
+/// The unit tangent and bitangent sign [`tangent_pack`] packed.
+pub fn tangent_unpack(n: glam::Vec3, q: u16) -> [f32; 4] {
+    let (a, b) = tangent_axes(n);
+    let angle = (q & 0x7fff) as f32 / 32768.0 * std::f32::consts::TAU;
+    let (s, c) = angle.sin_cos();
+    let t = (a * c + b * s).normalize_or_zero();
+    [t.x, t.y, t.z, if q & 0x8000 != 0 { -1.0 } else { 1.0 }]
+}
+
+#[cfg(test)]
+mod tangent_tests {
+    use super::*;
+
+    /// A tangent comes back across its normal within a twentieth of a
+    /// degree, its sign kept, for normals all over the sphere (both
+    /// sides of the basis' sign flip at z = 0, and the poles).
+    #[test]
+    fn a_tangent_packs_to_its_angle_across_the_normal() {
+        let mut worst = 0.0f32;
+        for i in 0..2000 {
+            let y = 1.0 - 2.0 * (i as f32 + 0.5) / 2000.0;
+            let r = (1.0 - y * y).sqrt();
+            let a = i as f32 * 2.399_963;
+            let n = glam::Vec3::new(r * a.cos(), r * a.sin(), y).normalize();
+            let t = n.any_orthonormal_vector();
+            let t = (glam::Quat::from_axis_angle(n, i as f32 * 0.37) * t).normalize();
+            let w = if i % 3 == 0 { -1.0 } else { 1.0 };
+            let back = tangent_unpack(n, tangent_pack(n, [t.x, t.y, t.z, w]));
+            assert_eq!(back[3], w);
+            let b = glam::Vec3::new(back[0], back[1], back[2]);
+            assert!(b.dot(n).abs() < 1e-5, "{n}: {b} is not across it");
+            worst = worst.max(b.dot(t).clamp(-1.0, 1.0).acos().to_degrees());
+        }
+        assert!(worst < 0.05, "worst {worst} degrees");
+        for n in [glam::Vec3::Z, -glam::Vec3::Z, glam::Vec3::X] {
+            let back = tangent_unpack(n, tangent_pack(n, [0.0, 1.0, 0.0, 1.0]));
+            let b = glam::Vec3::new(back[0], back[1], back[2]);
+            let want = (glam::Vec3::Y - n * n.y).normalize();
+            assert!(b.dot(want) > 0.99999, "{n}: {b}");
+        }
+    }
+}
+
 row!(
     /// One glTF mesh primitive: a meshopt-encoded vertex stream and index
     /// buffer holding every LOD. The vertex stream is, per vertex and in this
-    /// order: position `u16 x 4` (unorm over the bounds, `w` zero), normal
-    /// `i16 x 2` (snorm octahedral), then when present uv `u16 x 2` (unorm over
-    /// the uv range), colour `u8 x 4` (unorm), tangent `i16 x 4` (snorm
-    /// octahedral `xy`, `z` the bitangent sign as +-32767, `w` zero).
-    PrimitiveRow, "og.ModelPrimitive", 4 {
+    /// order: position `u16 x 3` (unorm over the bounds) and the tangent
+    /// `u16` ([`tangent_pack`] against the decoded normal; zero without
+    /// one), normal `i16 x 2` (snorm octahedral), then when present uv `u16
+    /// x 2` (unorm over the uv range) and colour `u8 x 4` (unorm).
+    PrimitiveRow, "og.ModelPrimitive", 5 {
         material: u32,
         attributes: u32,
         vertex_count: u32,
