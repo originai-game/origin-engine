@@ -110,7 +110,14 @@ fn render_document(
             }
         }
         let overlay = scene.ui.overlay.as_mut().unwrap();
-        if let Some(marker) = world_guides(ui, doc, overlay) {
+        let marker = world_guides(ui, doc, overlay);
+        // These floating labels frame their own paint, not a post reaching
+        // down to the ground. Keep the other approved world crops as-is.
+        if !matches!(
+            doc.doc.name.as_str(),
+            "Nameplate" | "SpeechBubble" | "Waypoint"
+        ) && let Some(marker) = marker
+        {
             bounds = Some(bounds.map_or(marker, |b| union(b, marker)));
         }
         rendered = render_frame(scene, &sized(width, height));
@@ -215,6 +222,34 @@ fn world_guides(ui: &Ui, doc: &EngineDocument, overlay: &mut og_render::Overlay)
         }
     }
     line(base, base + Vec3::Y * 1.8, 0.12)
+}
+
+#[test]
+#[ignore = "requires GPU"]
+fn floating_label_previews_frame_the_label_not_its_ground_marker() {
+    let (docs, messages) = engine_documents(&["src/ui/components/world"]);
+    for name in ["Nameplate", "SpeechBubble", "Waypoint"] {
+        let doc = docs.iter().find(|d| d.doc.name == name).unwrap();
+        let mut scene = RenderScene::new();
+        let mut ui = ui_with_font(add_test_font(&mut scene));
+        let picture = populated_preview(&mut ui, &mut scene, &docs, doc, &messages, 1280.0, 720.0);
+        let anchor = ui
+            .probe_elements()
+            .into_iter()
+            .find(|e| e.kind == "world")
+            .unwrap();
+        let rendered = render_document(&ui, doc, &mut scene, 1280, 720, picture);
+        let pad = 24.0 * ui.theme().text_scale;
+        // Leave room for ink and shadows outside layout, but not a whole
+        // post down to the ground far below these floating labels.
+        let height = rendered.image.height as f32;
+        assert!(height >= anchor.height - 1.0, "{name}: clipped label");
+        assert!(
+            height <= anchor.height + 2.0 * pad + 32.0,
+            "{name}: label {} px high in a {height} px frame",
+            anchor.height
+        );
+    }
 }
 
 #[test]

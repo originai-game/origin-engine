@@ -2870,6 +2870,8 @@ authored subject: labels use a level camera 6 m behind their anchor pivot;
 ground marks use a 35° downward view fitted to their world extent. Their
 reference frame crops actual paint plus the subject post with 24 px padding
 (36 at 150%). Edge-clamped fixtures keep their original camera and full frame.
+Nameplate, SpeechBubble and Waypoint crop to their own paint plus that padding;
+their ground-level subject post does not enlarge the frame into empty grid.
 A faint metre grid, stronger every fifth line and fading by 30 m, and a 1.8 m
 subject post are renderer-only context below the component, not findings.
 World frames use the dark HUD ground `rgb(5 7 12)`. Missing art paints a neutral mark, never a slot path;

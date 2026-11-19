@@ -1,0 +1,8 @@
+{
+  "fixed": [
+    {
+      "member": "og.ui",
+      "summary": "Nameplate, SpeechBubble and Waypoint previews frame the label's paint rather than extending to its ground marker. Other world crops and full-frame edge-clamped fixtures retain their framing."
+    }
+  ]
+}
