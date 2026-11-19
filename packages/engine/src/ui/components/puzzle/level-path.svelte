@@ -23,7 +23,8 @@
   one is ringed and says Selected, an open one says Open. Reports choose
   (a level's key; a locked level is disabled and sends nothing) and, with
   X or pad Y on the focused disc, details. The game decides what is open
-  and counts the stars. The path opens scrolled to the level to play.
+  and counts the stars. The path opens scrolled to the level to play,
+  each chapter's header held at the top while its levels scroll under it.
 -->
 <section id="PuzzleLevelPath" part="PuzzleLevelPath.frame" class="hud bare" data-layout="shell" aria-label={t("puzzle.path.name")}>
   <!-- The scroller is built once its lanes can be: a level to play that
@@ -82,8 +83,10 @@
 :host { inline-size: stretch; min-inline-size: 0; block-size: stretch; min-block-size: 0; color: var(--hud-ink); --node: var(--select-node-size); --node-on: var(--select-node-current-size); --road: var(--select-road-width); --stop: calc(var(--node-on) * 1.5); --pad-top: var(--space-xs); --pad-end: calc(var(--hud-size-xs) * 1.8 + var(--space-sm)); --mid: calc(var(--pad-top) + var(--node-on) / 2); }
 .path { overflow-y: auto; padding: var(--space-sm) var(--space-sm) var(--space-xl); }
 .chapter { flex: none; margin-block-end: var(--space-lg); }
-/* The chapter's header: the only glass the path draws. */
-.head { flex: none; width: stretch; padding: var(--space-sm) var(--space-md) var(--space-md); background: var(--hud-plate-fill); box-shadow: var(--hud-plate-rim); clip-path: polygon(var(--select-row-cut) 0, 100% 0, 100% calc(100% - var(--select-row-cut)), calc(100% - var(--select-row-cut)) 100%, 0 100%, 0 var(--select-row-cut)); }
+/* The chapter's header: the only glass the path draws. It holds to the
+   scroller's top while its chapter scrolls under it, so a path opened at
+   the level to play never shows its title half cut. */
+.head { position: sticky; top: 0; z-index: 1; flex: none; width: stretch; padding: var(--space-sm) var(--space-md) var(--space-md); background: var(--hud-plate-fill); box-shadow: var(--hud-plate-rim); clip-path: polygon(var(--select-row-cut) 0, 100% 0, 100% calc(100% - var(--select-row-cut)), calc(100% - var(--select-row-cut)) 100%, 0 100%, 0 var(--select-row-cut)); }
 .head-row { width: stretch; align-items: center; }
 .title { margin: 0; min-inline-size: 0; text-align: start; font-size: var(--select-size-name-on); line-height: 1.15; font-weight: var(--hud-figure-weight); font-stretch: var(--hud-figure-stretch); color: var(--hud-ink); white-space: nowrap; text-overflow: -og-scroll var(--motion-duration-orbit) var(--motion-duration-turn); overflow: hidden; }
 .total { flex: none; align-items: center; padding: calc(2 * var(--font-step-px)) var(--space-sm); background: var(--hud-tag-fill); box-shadow: var(--hud-tag-rim); white-space: nowrap; }

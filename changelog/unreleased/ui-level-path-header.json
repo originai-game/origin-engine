@@ -1,0 +1,8 @@
+{
+  "fixed": [
+    {
+      "member": "PuzzleLevelPath",
+      "summary": "A chapter's header (its name, stars and star meter) holds to the top of the path while its levels scroll under it, so a path that opens scrolled to the level to play no longer shows the header half cut."
+    }
+  ]
+}
