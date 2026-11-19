@@ -797,6 +797,28 @@ opaque token, and no part names a platform.
 - **Operation.** `og world-server` serves `GET /healthz`, Prometheus text on
   `--metrics`, and drains on SIGTERM (`moving` to every client). A lost
   client's avatar lingers 10 s and is resumed by its session id.
+- **The client** is og.shared (IDL `shared.ogt`, og-runtime `bind/shared.rs`),
+  one system before og.story. It proposes the og.SharedAvatar entity's
+  state at `sendRateHz`, applies a correction as the held state plus what
+  the avatar moved since the refused proposal, spawns each visitor in sight
+  as an og.RemoteAvatar entity and draws it on a playout clock the tick
+  moves and the snapshots' ticks pull (`interpDelayMs` behind, snapped past
+  10 server ticks off), so a client slower than real time still draws the
+  others. A lost connection reconnects, backing off 250 ms to 4 s, for 30 s.
+- **Hosts.** The engine's ops (`connect`, `send`, `close`; og_shared_take)
+  go to the host and the host's events (`host`, `open` with the token,
+  `message`, `closed`, `refused`; og_shared_deliver) come back. Natively
+  `og run --shared URL --shared-token-file F` is a static provider over
+  og-shared's `client` (tungstenite). On the web the page's
+  `SessionProvider` (`@origingame/engine/provider`: `staticSession`,
+  `tokenEndpoint`, a platform's) names the endpoint and token for each
+  `connect`, and the engine Worker opens the WebSocket itself, so
+  snapshots never cross the page. A host with no provider answers `host
+  none`, and the join ends `unavailable`.
+- **Replay.** Every delivered event is host input, applied at the next
+  tick's start and kept in og.platform.journal (kind `shared`, the token
+  stripped); a replay delivers the same events on the same ticks with no
+  server, and recomputes what the client would send.
 
 ## 3. API surface
 

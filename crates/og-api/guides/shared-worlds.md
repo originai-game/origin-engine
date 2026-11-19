@@ -22,7 +22,7 @@ The API: `og api show shared`.
 ## 2. Joining
 
 ```ts
-// GameDesc.setup: the avatar's extra fields, before joining.
+// GameDesc.start: the avatar's extra fields, before joining.
 og.shared.shape(world, { avatar: Look });
 // The player's entity: its og.Transform is what is shared.
 const me = world.spawn({ name: "me" }).value!;
