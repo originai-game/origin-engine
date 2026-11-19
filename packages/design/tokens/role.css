@@ -947,6 +947,97 @@
   --role-inv-alert-fill: rgb(from var(--danger) r g b / 0.12);
   --role-inv-alert-rim: inset var(--stroke-thick) 0 0 var(--danger);
 
+  /* Card game (family 21): a card's face, the hand, the piles, the
+     collection, the deck list and the reward. A face is smoked glass cut at
+     two corners, rimmed and washed from its head in its type's colour (the
+     component sets the type's colour as currentColor), its cost a cyan
+     hexagon gem, its art over its rarity's glow, its name on a plate, its
+     type line tracked small in a light tint of the type and its rules text
+     in a recess. An unplayable or unowned card dims its art and frame,
+     never its words. Sizes are in font steps, so they follow the text
+     scale. */
+  --role-tcg-attack: rgb(255 106 77);
+  --role-tcg-skill: rgb(79 168 255);
+  --role-tcg-power: rgb(182 120 255);
+  --role-tcg-curse: rgb(150 140 172);
+  --role-tcg-relic: rgb(255 207 90);
+  --role-tcg-neutral: var(--color-rim-strong);
+  /* The type line's ink: each type lightened to reach the contrast floor
+     on the face's glass. */
+  --role-tcg-attack-ink: rgb(255 168 150);
+  --role-tcg-skill-ink: rgb(160 206 255);
+  --role-tcg-power-ink: rgb(214 180 255);
+  --role-tcg-curse-ink: rgb(206 198 222);
+  --role-tcg-neutral-ink: var(--ink-muted);
+  --role-tcg-face-cut: calc(12 * var(--font-step-px));
+  --role-tcg-face-fill: linear-gradient(180deg, rgb(28 35 53), rgb(11 15 26));
+  --role-tcg-face-wash: linear-gradient(180deg, currentColor, transparent 32%);
+  --role-tcg-face-rim: inset 0 0 0 calc(1.5 * var(--stroke-hairline)) currentColor, inset 0 var(--stroke-hairline) 0 rgb(255 255 255 / 0.35);
+  --role-tcg-face-selected-rim: inset 0 0 0 var(--stroke-thin) var(--ink), inset 0 var(--stroke-hairline) 0 var(--ink);
+  --role-tcg-window-cut: calc(8 * var(--font-step-px));
+  --role-tcg-window-fill: rgb(3 5 10 / 0.7);
+  --role-tcg-window-glow: radial-gradient(60% 70% at 50% 62%, currentColor, transparent 72%);
+  --role-tcg-art-shadow: drop-shadow(0 calc(6 * var(--font-step-px)) calc(8 * var(--font-step-px)) rgb(0 0 0 / 0.7));
+  --role-tcg-dim: saturate(0.35) brightness(0.6);
+  --role-tcg-dim-rim: var(--color-rim);
+  --role-tcg-text-ink: var(--ink);
+  /* Small tracked labels (a pile's name, a kicker) and quiet counts keep
+     the muted ink, which meets the contrast floor; never the faint one. */
+  --role-tcg-label-ink: var(--ink-muted);
+  --role-tcg-unowned: grayscale(1) brightness(0.4);
+  --role-tcg-hatch: repeating-linear-gradient(135deg, rgb(255 255 255 / 0.06) 0 calc(6 * var(--font-step-px)), transparent calc(6 * var(--font-step-px)) calc(12 * var(--font-step-px)));
+  --role-tcg-gem-fill: linear-gradient(180deg, rgb(214 253 255), var(--hud-accent));
+  --role-tcg-gem-ink: rgb(4 16 22);
+  --role-tcg-gem-size: calc(30 * var(--font-step-px));
+  --role-tcg-gem-figure-size: calc(18 * var(--font-step-px));
+  --role-tcg-plate-fill: rgb(255 255 255 / 0.07);
+  --role-tcg-name-size: calc(14 * var(--font-step-px));
+  --role-tcg-name-weight: var(--font-weight-bold);
+  --role-tcg-type-size: calc(11 * var(--font-step-px));
+  --role-tcg-type-tracking: 0.14em;
+  --role-tcg-type-transform: uppercase;
+  --role-tcg-type-weight: var(--font-weight-bold);
+  --role-tcg-text-fill: rgb(3 5 10 / 0.55);
+  --role-tcg-text-size: calc(12.5 * var(--font-step-px));
+  /* The reason an unplayable card or an unaddable one is refused: a cut
+     dark-red tag with light-red words. */
+  --role-tcg-reason-fill: rgb(40 8 14 / 0.94);
+  --role-tcg-reason-rim: inset 0 0 0 var(--stroke-hairline) rgb(from var(--danger) r g b / 0.6);
+  --role-tcg-reason-ink: rgb(255 208 212);
+  --role-tcg-reason-size: calc(11 * var(--font-step-px));
+  /* In the game's own case and tracked less than the type line, so the
+     reason fits a narrow card and wraps between words to a second line at
+     large text instead of ending in an ellipsis. */
+  --role-tcg-reason-tracking: 0.02em;
+  /* A pile: a stack of card backs and its count on a cut tag (the
+     discard's in the attack red, an empty one's quiet glass). */
+  --role-tcg-back-fill: linear-gradient(160deg, rgb(42 51 80), rgb(15 20 36));
+  --role-tcg-back-rim: inset 0 0 0 calc(1.5 * var(--stroke-hairline)) rgb(255 255 255 / 0.22);
+  --role-tcg-back-empty-rim: inset 0 0 0 calc(1.5 * var(--stroke-hairline)) rgb(255 255 255 / 0.28);
+  --role-tcg-count-fill: var(--ink);
+  --role-tcg-count-ink: rgb(4 8 16);
+  --role-tcg-count-discard-fill: var(--tcg-attack);
+  --role-tcg-count-empty-fill: rgb(255 255 255 / 0.16);
+  --role-tcg-count-empty-ink: var(--ink-muted);
+  --role-tcg-count-size: calc(16 * var(--font-step-px));
+  /* The deck list's rows: the card's type as a rail on the leading edge
+     (currentColor), the shown row in the accent; the steps quiet glass. */
+  --role-tcg-row-fill: rgb(255 255 255 / 0.035);
+  --role-tcg-row-rail: inset var(--stroke-thick) 0 0 currentColor;
+  --role-tcg-row-on-fill: rgb(from var(--hud-accent) r g b / 0.1);
+  --role-tcg-row-on-rim: inset var(--stroke-thick) 0 0 currentColor, inset 0 0 0 var(--stroke-hairline) rgb(from var(--hud-accent) r g b / 0.5);
+  --role-tcg-step-fill: rgb(255 255 255 / 0.06);
+  --role-tcg-step-rim: inset 0 0 0 var(--stroke-hairline) var(--color-rim);
+  --role-tcg-size-fill: var(--bar-gloss), var(--hud-accent);
+  --role-tcg-size-over-fill: var(--bar-gloss), var(--danger);
+  --role-tcg-over-ink: var(--danger);
+  /* A relic offer: gold-rimmed glass with a gold glow behind its mark. */
+  --role-tcg-relic-fill: radial-gradient(70% 45% at 50% 30%, rgb(255 207 90 / 0.25), transparent 70%), linear-gradient(180deg, rgb(28 35 53), rgb(11 15 26));
+  --role-tcg-relic-rim: inset 0 0 0 calc(1.5 * var(--stroke-hairline)) rgb(255 207 90 / 0.7);
+  --role-tcg-relic-mark-fill: rgb(3 5 10 / 0.6);
+  /* A strip that scrolls sideways fades out at its end. */
+  --role-tcg-fade: linear-gradient(90deg, rgb(0 0 0) calc(100% - var(--size-lg)), transparent);
+
   /* Results and leaderboard (family 16): the screens after a match or a
      level. A verdict set large in a lit fill (gold for a win, red for a
      loss) over a dimmed scene, a rule with a lit diamond under it, figures
