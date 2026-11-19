@@ -44,14 +44,15 @@ pub use command::{
 };
 pub use expect::{ExpectResult, Status};
 pub use hooks::{
-    Capture, Frame, Pick, PrefabEdit, RawFrame, Rebuilt, Reloader, SavedFile, SavedScene,
-    SceneView, SceneWriter, Seen, SeenView, Shown, StaticUi, UiElement, UiTree, pick_ui,
+    Capture, DrawReason, Drawn, Frame, Pick, PrefabEdit, RawFrame, Rebuilt, Reloader, SavedFile,
+    SavedScene, SceneView, SceneWriter, Seen, SeenView, Shown, StaticUi, UiElement, UiTree,
+    Viewpoint, pick_ui,
 };
 pub use input::{InjectedInput, Input, InputSink, WorldInput};
 pub use names::Names;
 pub use probe::{
     AfterTickFn, BUILD, DeriveFn, DumpKind, ENGINE_VERSION, FRAME_UNCHECKED, GateFn, Heard,
-    InputFilterFn, ListenFn, MAX_CAPTURE_EDGE, MAX_SNAPSHOTS, MAX_SWEEP_VALUES, MEMBERS,
-    PLAYTEST_MAX_TICKS, PROBE_PROGRAM_MAX_OPERATIONS, PROBE_VERSION, PROBE_WIRE_VERSION,
+    InputFilterFn, ListenFn, MAX_CAPTURE_EDGE, MAX_CAPTURE_VIEWS, MAX_SNAPSHOTS, MAX_SWEEP_VALUES,
+    MEMBERS, PLAYTEST_MAX_TICKS, PROBE_PROGRAM_MAX_OPERATIONS, PROBE_VERSION, PROBE_WIRE_VERSION,
     PUBLISH_MEMBERS, Probe, ReaderFn, SweepDesc, resource_json, served_members, time_json,
 };

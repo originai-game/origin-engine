@@ -16,6 +16,7 @@ A string: one of the variants below. The zero value is `"world"`.
 | `"entity"` | One entity's components and transform. |
 | `"ui"` | The UI tree with bounds. |
 | `"desync"` | The first desync of a lockstep session (og.net): its tick, both hashes and the component-level diff of the two peers' snapshots. |
+| `"drawn"` | What the main camera's cull keeps of the frame: every entity with something to draw, whether it is drawn and why. |
 
 ```ogt
 enum DumpKind {
@@ -24,7 +25,8 @@ enum DumpKind {
   variant entity "One entity's components and transform."
   variant ui "The UI tree with bounds."
   variant desync "The first desync of a lockstep session (og.net): its tick, both hashes and the component-level diff of the two peers' snapshots."
+  variant drawn "What the main camera's cull keeps of the frame: every entity with something to draw, whether it is drawn and why."
 }
 ```
 
-<sub>Module `probe` line 372</sub>
+<sub>Module `probe` line 409</sub>

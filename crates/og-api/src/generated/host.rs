@@ -1285,6 +1285,10 @@ pub trait ProbeApi: Wire {
     fn og_engine_probe_hello(&self, engine_probe: u32) -> String;
     /// `EngineProbe.capture`
     fn og_engine_probe_capture(&self, engine_probe: u32, width: Option<u32>, height: Option<u32>, fit: Option<u32>, region: Option<String>) -> String;
+    /// `EngineProbe.captureViews`
+    fn og_engine_probe_capture_views(&self, engine_probe: u32, views: String, width: Option<u32>, height: Option<u32>, fit: Option<u32>) -> String;
+    /// `EngineProbe.visible`
+    fn og_engine_probe_visible(&self, engine_probe: u32, id: String) -> String;
     /// `EngineProbe.marks`
     fn og_engine_probe_marks(&self, engine_probe: u32, desc: Option<String>) -> String;
     /// `EngineProbe.timeline`
@@ -2145,6 +2149,8 @@ pub const SYMBOLS: &[&str] = &[
     "og_runtime_probe_run",
     "og_engine_probe_hello",
     "og_engine_probe_capture",
+    "og_engine_probe_capture_views",
+    "og_engine_probe_visible",
     "og_engine_probe_marks",
     "og_engine_probe_timeline",
     "og_engine_probe_sweep",

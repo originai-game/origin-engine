@@ -421,6 +421,9 @@ function makeProbe(id: number) {
     listen: (seconds?: number) => parse(a().og_engine_probe_listen(id, seconds)),
     memory: () => parse(a().og_engine_probe_memory(id)),
     describe: () => parse(a().og_engine_probe_describe(id)),
+    captureViews: (views: unknown[], width?: number, height?: number, fit?: number) =>
+      parse(a().og_engine_probe_capture_views(id, JSON.stringify(views), width, height, fit)),
+    visible: (entity: string) => parse(a().og_engine_probe_visible(id, entity)),
     expect: (what: string) => parse(a().og_engine_probe_expect(id, what)),
     expectations: () => parse(a().og_engine_probe_expectations(id)),
     assertions: (take?: boolean) => parse(a().og_engine_probe_assertions(id, take)),

@@ -18,7 +18,7 @@ interface EngineProbe {
   # members follow, each quoted below
 ```
 
-<sub>Module `probe` line 734</sub>
+<sub>Module `probe` line 821</sub>
 
 <a id="member-EngineProbe-hello"></a>
 
@@ -42,7 +42,7 @@ fn hello {
 }
 ```
 
-<sub>Module `probe` line 739</sub>
+<sub>Module `probe` line 826</sub>
 
 <a id="member-EngineProbe-capture"></a>
 
@@ -97,7 +97,87 @@ fn capture {
 }
 ```
 
-<sub>Module `probe` line 744</sub>
+<sub>Module `probe` line 831</sub>
+
+<a id="member-EngineProbe-captureViews"></a>
+
+#### `EngineProbe.captureViews`
+
+The frame of the current tick from each of several viewpoints (1 to 16), all of the same tick, in one call; og.Camera is never written. What each frame extracts (levels of detail, streaming) is the main camera's. Size and fit as capture's; on the web it waits for each readback as capture does.
+
+See `captures §1`.
+
+Also known as: multiple viewpoints, several cameras, views, angles, front side top, multi-view capture
+
+```ts
+EngineProbe.captureViews(views: readonly Viewpoint[], width?: number, height?: number, fit?: number): ViewFrames | null
+```
+
+| Parameter | Type | Optional | Doc |
+|---|---|---|---|
+| `views` | `readonly Viewpoint[]` | no | The cameras. |
+| `width` | `number` | yes | Width in pixels; 0 is the render target's. Default `0`. |
+| `height` | `number` | yes | Height in pixels; 0 is the render target's. Default `0`. |
+| `fit` | `number` | yes | The longest side a PNG may have; 0 keeps the rendered size. Default `1280`. |
+
+**Returns** `ViewFrames | null`: Null without a renderer.
+
+Binding symbol `og_engine_probe_capture_views` · publish builds: dropped
+
+```ogt
+fn captureViews {
+  doc "The frame of the current tick from each of several viewpoints (1 to 16), all of the same tick, in one call; og.Camera is never written. What each frame extracts (levels of detail, streaming) is the main camera's. Size and fit as capture's; on the web it waits for each readback as capture does."
+  guide "captures §1"
+  aliases "multiple viewpoints, several cameras, views, angles, front side top, multi-view capture"
+  param views List.Viewpoint "The cameras."
+  param width u32 "Width in pixels; 0 is the render target's." {
+    default 0
+  }
+  param height u32 "Height in pixels; 0 is the render target's." {
+    default 0
+  }
+  param fit u32 "The longest side a PNG may have; 0 keeps the rendered size." {
+    default 1280
+  }
+  returns Option.ViewFrames "Null without a renderer."
+}
+```
+
+<sub>Module `probe` line 852</sub>
+
+<a id="member-EngineProbe-visible"></a>
+
+#### `EngineProbe.visible`
+
+Whether the main camera draws an entity at the current tick and why: a reason code (DrawReason) with what it names, and its drawables drawn and culled. Answers without a renderer too (the cull runs on the CPU over the extracted frame).
+
+See `testing §4`.
+
+Also known as: why is it not drawn, invisible, not showing, culled, frustum, hidden
+
+```ts
+EngineProbe.visible(id: string): Visibility | null
+```
+
+| Parameter | Type | Optional | Doc |
+|---|---|---|---|
+| `id` | `string` | no | The probe id. |
+
+**Returns** `Visibility | null`: Null for an unknown entity, or a host without a scene view.
+
+Binding symbol `og_engine_probe_visible` · publish builds: dropped
+
+```ogt
+fn visible {
+  doc "Whether the main camera draws an entity at the current tick and why: a reason code (DrawReason) with what it names, and its drawables drawn and culled. Answers without a renderer too (the cull runs on the CPU over the extracted frame)."
+  guide "testing §4"
+  aliases "why is it not drawn, invisible, not showing, culled, frustum, hidden"
+  param id String "The probe id."
+  returns Option.Visibility "Null for an unknown entity, or a host without a scene view."
+}
+```
+
+<sub>Module `probe` line 868</sub>
 
 <a id="member-EngineProbe-marks"></a>
 
@@ -136,7 +216,7 @@ fn marks {
 }
 ```
 
-<sub>Module `probe` line 765</sub>
+<sub>Module `probe` line 875</sub>
 
 <a id="member-EngineProbe-timeline"></a>
 
@@ -159,7 +239,7 @@ fn timeline {
 }
 ```
 
-<sub>Module `probe` line 775</sub>
+<sub>Module `probe` line 885</sub>
 
 <a id="member-EngineProbe-sweep"></a>
 
@@ -189,7 +269,7 @@ fn sweep {
 }
 ```
 
-<sub>Module `probe` line 779</sub>
+<sub>Module `probe` line 889</sub>
 
 <a id="member-EngineProbe-reload"></a>
 
@@ -212,7 +292,7 @@ fn reload {
 }
 ```
 
-<sub>Module `probe` line 786</sub>
+<sub>Module `probe` line 896</sub>
 
 <a id="member-EngineProbe-snapshot"></a>
 
@@ -235,7 +315,7 @@ fn snapshot {
 }
 ```
 
-<sub>Module `probe` line 790</sub>
+<sub>Module `probe` line 900</sub>
 
 <a id="member-EngineProbe-restore"></a>
 
@@ -263,7 +343,7 @@ fn restore {
 }
 ```
 
-<sub>Module `probe` line 794</sub>
+<sub>Module `probe` line 904</sub>
 
 <a id="member-EngineProbe-dump"></a>
 
@@ -293,7 +373,7 @@ fn dump {
 }
 ```
 
-<sub>Module `probe` line 799</sub>
+<sub>Module `probe` line 909</sub>
 
 <a id="member-EngineProbe-commands"></a>
 
@@ -321,7 +401,7 @@ fn commands {
 }
 ```
 
-<sub>Module `probe` line 806</sub>
+<sub>Module `probe` line 916</sub>
 
 <a id="member-EngineProbe-listen"></a>
 
@@ -351,7 +431,7 @@ fn listen {
 }
 ```
 
-<sub>Module `probe` line 811</sub>
+<sub>Module `probe` line 921</sub>
 
 <a id="member-EngineProbe-memory"></a>
 
@@ -374,7 +454,7 @@ fn memory {
 }
 ```
 
-<sub>Module `probe` line 818</sub>
+<sub>Module `probe` line 928</sub>
 
 <a id="member-EngineProbe-describe"></a>
 
@@ -397,7 +477,7 @@ fn describe {
 }
 ```
 
-<sub>Module `probe` line 822</sub>
+<sub>Module `probe` line 932</sub>
 
 <a id="member-EngineProbe-expect"></a>
 
@@ -425,7 +505,7 @@ fn expect {
 }
 ```
 
-<sub>Module `probe` line 826</sub>
+<sub>Module `probe` line 936</sub>
 
 <a id="member-EngineProbe-expectations"></a>
 
@@ -448,7 +528,7 @@ fn expectations {
 }
 ```
 
-<sub>Module `probe` line 831</sub>
+<sub>Module `probe` line 941</sub>
 
 <a id="member-EngineProbe-assertions"></a>
 
@@ -478,7 +558,7 @@ fn assertions {
 }
 ```
 
-<sub>Module `probe` line 835</sub>
+<sub>Module `probe` line 945</sub>
 
 <a id="member-EngineProbe-assertionEvents"></a>
 
@@ -501,7 +581,7 @@ fn assertionEvents {
 }
 ```
 
-<sub>Module `probe` line 842</sub>
+<sub>Module `probe` line 952</sub>
 
 <a id="member-EngineProbe-observe"></a>
 
@@ -535,7 +615,7 @@ fn observe {
 }
 ```
 
-<sub>Module `probe` line 846</sub>
+<sub>Module `probe` line 956</sub>
 
 <a id="member-EngineProbe-saveScene"></a>
 
@@ -569,7 +649,7 @@ fn saveScene {
 }
 ```
 
-<sub>Module `probe` line 856</sub>
+<sub>Module `probe` line 966</sub>
 
 <a id="member-EngineProbe-pickUi"></a>
 
@@ -599,4 +679,4 @@ fn pickUi {
 }
 ```
 
-<sub>Module `probe` line 866</sub>
+<sub>Module `probe` line 976</sub>

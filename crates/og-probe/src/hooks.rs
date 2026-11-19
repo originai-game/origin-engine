@@ -79,6 +79,21 @@ pub trait Capture {
     fn presentation_hash(&self) -> Option<u64> {
         None
     }
+    /// [`Capture::capture`] from another camera (`capture_views`): the
+    /// world as of its tick drawn from `view` in place of og.Camera, which
+    /// is never written. Levels of detail and what is extracted stay the
+    /// main camera's. `None` when no frame can be produced (or, a deferred
+    /// host, until its readback lands: asked again with the same view).
+    fn capture_from(
+        &mut self,
+        world: &World,
+        view: &Viewpoint,
+        width: u32,
+        height: u32,
+    ) -> Option<Frame> {
+        let _ = (world, view, width, height);
+        None
+    }
     /// How the renderer last drew an entity, for `dump_entity`'s `render`
     /// (an og.Model's level of detail: `{ "lod": 1 }`); `None` leaves it
     /// out (an entity not drawn, or no renderer).
@@ -107,6 +122,23 @@ pub trait Capture {
     fn teleported(&mut self, world: &World, entity: Entity) {
         let _ = (world, entity);
     }
+}
+
+/// A camera to capture from (`capture_views`; IDL `probe.Viewpoint`), in
+/// world units.
+#[derive(Clone, Debug, PartialEq)]
+pub struct Viewpoint {
+    pub position: [f32; 3],
+    pub target: [f32; 3],
+    /// Default `[0, 1, 0]`.
+    pub up: [f32; 3],
+    /// Vertical field of view in degrees (perspective); ignored with `height`.
+    pub fov: f32,
+    /// An orthographic view's height in world units; `None` is perspective.
+    pub height: Option<f32>,
+    /// Near and far planes; `None` keeps og.Camera's.
+    pub near: Option<f32>,
+    pub far: Option<f32>,
 }
 
 /// A frame as RGBA8 rows, top row first ([`Capture::frame`]).
@@ -171,6 +203,91 @@ pub struct SeenView {
     pub entities: Vec<Shown>,
 }
 
+/// Why an entity is or is not drawn by the main camera (IDL
+/// `probe.DrawReason`), in the order the host decides it: the first that
+/// holds is the reason.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum DrawReason {
+    /// A drawable of it survives the camera's cull.
+    Drawn,
+    /// Its model is drawn by an HLOD proxy in its place.
+    Hlod,
+    /// A component of it that draws has `visible` false (the detail names
+    /// the field, `og.Model.visible`).
+    Hidden,
+    /// Its model has not loaded yet (the detail names the asset).
+    Loading,
+    /// Every drawable of it is off the camera's layers.
+    Layer,
+    /// Every drawable of it lies outside the camera's view, past near or
+    /// far included.
+    OutsideView,
+    /// It draws through a path the cull record does not follow (particles,
+    /// lines, text, a tilemap; the detail names the component): whether
+    /// it shows is not known.
+    Untracked,
+    /// It has nothing to draw: no component that draws.
+    NothingToDraw,
+}
+
+impl DrawReason {
+    /// The reason code: `drawn`, `hlod`, `hidden`, `loading`, `layer`,
+    /// `outside_view`, `untracked`, `nothing_to_draw`.
+    pub fn code(self) -> &'static str {
+        match self {
+            DrawReason::Drawn => "drawn",
+            DrawReason::Hlod => "hlod",
+            DrawReason::Hidden => "hidden",
+            DrawReason::Loading => "loading",
+            DrawReason::Layer => "layer",
+            DrawReason::OutsideView => "outside_view",
+            DrawReason::Untracked => "untracked",
+            DrawReason::NothingToDraw => "nothing_to_draw",
+        }
+    }
+
+    /// Whether the camera draws it: `Some(true)` for drawn and hlod, `None`
+    /// when not known (untracked).
+    pub fn visible(self) -> Option<bool> {
+        match self {
+            DrawReason::Drawn | DrawReason::Hlod => Some(true),
+            DrawReason::Untracked => None,
+            _ => Some(false),
+        }
+    }
+}
+
+/// One entity in the main camera's cull of the frame at the current tick
+/// (the `visible` member, `dump_entity`'s `visible`, `dump_drawn`).
+#[derive(Clone, Debug, PartialEq)]
+pub struct Drawn {
+    pub entity: Entity,
+    pub reason: DrawReason,
+    /// What the reason names, empty for none: the field that hides it, the
+    /// asset loading, the component not tracked.
+    pub detail: String,
+    /// Its drawables (instances, skinned instances, sprites, terrains) that
+    /// survived the cull, and those culled.
+    pub drawn: u32,
+    pub culled: u32,
+}
+
+impl Drawn {
+    /// `{visible, reason, detail?, drawn, culled}` (IDL `probe.Visibility`).
+    pub fn to_json(&self) -> Value {
+        let mut v = json!({
+            "visible": self.reason.visible(),
+            "reason": self.reason.code(),
+            "drawn": self.drawn,
+            "culled": self.culled,
+        });
+        if !self.detail.is_empty() {
+            v["detail"] = json!(self.detail);
+        }
+        v
+    }
+}
+
 /// The frame described as data and points resolved to entities, over the
 /// renderer's scene at the current tick: the host implements it with
 /// og-render's entity-id pass (`render_ids`), which needs no GPU, so it
@@ -183,6 +300,15 @@ pub trait SceneView {
     fn seen(&mut self, world: &World, cover: &[[f32; 4]]) -> Option<Seen>;
     /// What is under a point of the play surface, in CSS pixels.
     fn pick(&mut self, world: &World, x: f32, y: f32) -> Option<Pick>;
+    /// What the main camera's cull made of the frame at the current tick:
+    /// every entity the renderer drew, culled or held back (`drawn`,
+    /// `hlod`, `loading`, `layer`, `outside_view`), any order. The probe
+    /// answers every other entity from its components (`hidden`,
+    /// `untracked`, `nothing_to_draw`). `None` when the host has no scene.
+    fn drawn(&self, world: &World) -> Option<Vec<Drawn>> {
+        let _ = world;
+        None
+    }
 }
 
 /// One scene file written back (`save_scene`).

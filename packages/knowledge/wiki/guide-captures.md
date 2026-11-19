@@ -16,8 +16,11 @@ The API of everything here: `og api show probe` (`capture`, `marks`, `timeline`,
 | The whole frame, model-sized | `og probe capture` |
 | The rendered size (a reference, a pixel count) | `og probe capture '{"fit": 0}'` |
 | A detail at full resolution, as its own image | `og probe capture '{"region": {"x": 600, "y": 20, "width": 200, "height": 120}}'` |
+| One tick from several cameras | `og probe capture_views '{"views": [{"position": [0, 8, 6], "target": [0, 0, 0]}, {"position": [6, 1, 0], "target": [0, 1, 0], "height": 4}]}'` |
 
 A requested size renders with the same camera, its aspect following the size. On the web the readback is asynchronous: a capture requested on tick N is answered on N + 1, and a synchronous in-page call answers null on the first tick and the frame from then on.
+
+`capture_views` draws the same tick from each viewpoint (perspective with `fov`, orthographic with `height`) without writing og.Camera; what is extracted, levels of detail included, stays the main camera's.
 
 `region` is a box of the play surface in CSS px (the units of `pickUi`, `describe` and `touch_move_to`). The answer's `scale` is the PNG's pixels per CSS pixel and `region` the box it shows: a PNG pixel (px, py) is the surface point (region.x + px / scale, region.y + py / scale). Look at the whole frame first, then cut the region you need instead of asking for a larger whole frame.
 

@@ -2906,6 +2906,18 @@ pub fn og_engine_probe_capture(engine_probe: u32, width: Option<u32>, height: Op
 
 #[cfg(not(feature = "publish"))]
 #[wasm_bindgen]
+pub fn og_engine_probe_capture_views(engine_probe: u32, views: String, width: Option<u32>, height: Option<u32>, fit: Option<u32>) -> String {
+    <Host as ProbeApi>::og_engine_probe_capture_views(&Host, engine_probe, views, width, height, fit)
+}
+
+#[cfg(not(feature = "publish"))]
+#[wasm_bindgen]
+pub fn og_engine_probe_visible(engine_probe: u32, id: String) -> String {
+    <Host as ProbeApi>::og_engine_probe_visible(&Host, engine_probe, id)
+}
+
+#[cfg(not(feature = "publish"))]
+#[wasm_bindgen]
 pub fn og_engine_probe_marks(engine_probe: u32, desc: Option<String>) -> String {
     <Host as ProbeApi>::og_engine_probe_marks(&Host, engine_probe, desc)
 }

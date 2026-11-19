@@ -54,6 +54,9 @@ module probe {
 | [`BuildProfile`](probe/type-BuildProfile.md) | enum |  | The build configuration; publish builds keep only the player-facing probe members. |
 | [`CAPTURE_FIT`](#const-CAPTURE_FIT) | constant |  | The long side capture, marks and key frames fit an image to unless asked otherwise: a whole frame a model reads in few tokens; a detail is cut at full resolution as its own image (capture's region). |
 | [`Capture`](probe/type-Capture.md) | struct |  | A captured frame. |
+| [`Viewpoint`](probe/type-Viewpoint.md) | struct |  | A camera to capture from (captureViews), in world units. |
+| [`ViewFrame`](probe/type-ViewFrame.md) | struct |  | One viewpoint's frame of captureViews. |
+| [`ViewFrames`](probe/type-ViewFrames.md) | struct |  | The frames of one tick from several viewpoints. |
 | [`MarkRect`](probe/type-MarkRect.md) | struct |  | A mark's box in the PNG's pixels. |
 | [`Mark`](probe/type-Mark.md) | struct |  | One numbered box of a marked capture (Set-of-Mark): what it is and where a person would change it. |
 | [`MarksDesc`](probe/type-MarksDesc.md) | desc struct |  | What marks draws: the capture's size and fit, which kinds it marks and how many. |
@@ -76,6 +79,10 @@ module probe {
 | [`SystemDump`](probe/type-SystemDump.md) | struct |  | One system. The engine fills reads, writes and matched for every system the game declared; ms is null because the probe reads no clock (state().timings has the tick's time). |
 | [`WorldDump`](probe/type-WorldDump.md) | struct |  | The world: tables, systems, resources. |
 | [`EntityDump`](probe/type-EntityDump.md) | struct |  | One entity. |
+| [`DrawReason`](probe/type-DrawReason.md) | enum |  | Why the main camera draws an entity or not, the first that holds. |
+| [`Visibility`](probe/type-Visibility.md) | struct |  | One entity's verdict in the main camera's cull of the frame at the current tick (the frame is extracted as the renderer draws it; no GPU needed). |
+| [`DrawnEntity`](probe/type-DrawnEntity.md) | struct |  | One entity of dump_drawn. |
+| [`DrawnDump`](probe/type-DrawnDump.md) | struct |  | What the main camera's cull keeps of the frame at the current tick (dump_drawn): every entity with something to draw, in entity order. |
 | [`EntityPrefab`](probe/type-EntityPrefab.md) | struct |  | Where an entity placed from a prefab came from (its og.PrefabLink, resolved) and what its instance overrides. |
 | [`DescribedPrefab`](probe/type-DescribedPrefab.md) | struct |  | The instances of one prefab in the world. |
 | [`UiElement`](probe/type-UiElement.md) | struct |  | One UI element with its bounds. |

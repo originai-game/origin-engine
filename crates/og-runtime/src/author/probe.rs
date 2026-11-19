@@ -134,6 +134,58 @@ impl Capture for RuntimeCapture {
         (!out.is_empty()).then_some(Value::Object(out))
     }
 
+    fn capture_from(
+        &mut self,
+        world: &World,
+        view: &og_probe::Viewpoint,
+        width: u32,
+        height: u32,
+    ) -> Option<Frame> {
+        if !engine(self.engine).is_ok_and(|eng| crate::bind::motion::present::settle(&eng)) {
+            return None;
+        }
+        let mut rs = self.render.try_borrow_mut().ok()?;
+        rs.terrain.settle = true;
+        rs.glyphs_settle = true;
+        extract(world, &mut rs);
+        crate::present::probes::apply_bakes(&mut rs);
+        let rs = &mut *rs;
+        rs.backend.as_ref()?;
+        // The frame is drawn from its render origin: the view moves with it.
+        let back = rs.scene.frame.origin - rs.zero;
+        let main = rs.scene.frame.camera;
+        let v = |p: [f32; 3]| glam::Vec3::from(p) - back;
+        rs.scene.frame.camera = og_render::Camera {
+            position: v(view.position),
+            target: v(view.target),
+            up: glam::Vec3::from(view.up),
+            projection: match view.height {
+                Some(height) => og_render::Projection::Orthographic { height },
+                None => og_render::Projection::Perspective {
+                    fov_y_degrees: view.fov,
+                },
+            },
+            near: view.near.unwrap_or(main.near),
+            far: view.far.unwrap_or(main.far),
+            ..main
+        };
+        let t0 = now_ms();
+        let image = rs
+            .backend
+            .as_mut()
+            .and_then(|b| b.capture(&rs.scene, width, height));
+        rs.scene.frame.camera = main;
+        if let Ok(eng) = engine(self.engine) {
+            crate::world::assets::release_uploaded_textures(&eng, rs);
+        }
+        rs.capture_ms += now_ms() - t0;
+        image.map(|image| Frame {
+            width: image.width,
+            height: image.height,
+            png: og_render::png(&image),
+        })
+    }
+
     fn capture_error(&self) -> Option<String> {
         let rs = self.render.try_borrow().ok()?;
         rs.backend.as_ref()?.capture_error()

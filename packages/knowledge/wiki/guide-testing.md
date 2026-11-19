@@ -150,6 +150,13 @@ it once. Read state before guessing at it:
 - `dump_world`, `dump_entity:<name>`, `dump_ui`: what the world, an entity
   and the UI hold right now. Name entities: a dump of anonymous ids is
   hard to read and impossible to query by name.
+- Something not on screen: `og probe visible '{"id": "door"}'` (or
+  `dump_entity`'s `visible`) says whether the main camera draws it and
+  why, as a reason code: `drawn`, `hlod`, `hidden` (with the `visible`
+  field that hides it), `loading` (with the asset), `layer`,
+  `outside_view`, `untracked` (it draws through particles, lines or text,
+  which the cull record does not follow) or `nothing_to_draw`.
+  `dump_drawn` lists that verdict for every entity with something to draw.
 - `get:<Resource>.<field>` and `set:<Resource>.<field>=<value>` read and
   set reflected state in a script.
 - `replay record` and `replay compare`: the first tick at which a run

@@ -91,6 +91,9 @@ mod nav_profiles;
 mod nav_tilemap_rows;
 #[path = "../no_renderer.rs"]
 mod no_renderer;
+#[cfg(not(feature = "publish"))]
+#[path = "../observability.rs"]
+mod observability;
 #[path = "../painted_2d.rs"]
 mod painted_2d;
 #[cfg(feature = "destruction")]

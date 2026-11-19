@@ -434,8 +434,8 @@ pub use hooks::{
     lit_module_source, physical_module_source, shadow_module_source, sprite_module_source,
 };
 pub use id_pass::{
-    IdCamera, IdFrame, IdObject, IdSources, id_pass_size, projection_name, render_ids,
-    render_ids_from, view_id_cameras,
+    CullRecord, Culled, IdCamera, IdFrame, IdObject, IdSources, cull_record, id_pass_size,
+    projection_name, render_ids, render_ids_from, view_id_cameras,
 };
 pub use impostor::{Impostor, ImpostorDraw, MAX_IMPOSTOR_GRID};
 pub use lightmap::{

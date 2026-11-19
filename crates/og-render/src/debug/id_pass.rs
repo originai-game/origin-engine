@@ -168,6 +168,95 @@ impl IdFrame {
     }
 }
 
+/// What the main camera's cull made of one drawable ([`cull_record`]).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Culled {
+    /// It survives the cull: drawn.
+    Drawn,
+    /// Off the camera's layers ([`RenderScene::camera_layers`]).
+    Layer,
+    /// Its bounds lie outside the camera's view (past near or far too).
+    OutsideView,
+    /// Nothing to draw: a mesh not loaded or empty, a sprite of no size.
+    Empty,
+}
+
+/// The main camera's cull of a frame, parallel to the scene's lists.
+#[derive(Clone, Debug, Default, PartialEq)]
+pub struct CullRecord {
+    /// Per [`RenderScene::instances`].
+    pub instances: Vec<Culled>,
+    /// Per [`RenderScene::skinned_instances`].
+    pub skinned: Vec<Culled>,
+    /// Per [`RenderScene::sprites`].
+    pub sprites: Vec<Culled>,
+}
+
+/// What survives the main camera's cull in a frame of `aspect` (width over
+/// height): each drawable's layer against the camera's layers, then its
+/// world bounding sphere against the camera's frustum, as the CPU cull
+/// tests an instance (`Frustum::test_spheres`). A skinned instance is
+/// tested by its mesh's bind-pose bounds through its transform; a sprite
+/// by its quad's circle, as a faced sprite is culled (a flat one outside
+/// the view is clipped whole). Drawables of no entity are recorded too.
+pub fn cull_record(scene: &RenderScene, aspect: f32) -> CullRecord {
+    let (vp, _) = view_proj(scene, aspect);
+    let planes = frustum(vp);
+    let layers = scene.frame.camera_layers;
+    let test = |mask: u32, sphere: Option<(Vec3, f32)>| {
+        if mask & layers == 0 {
+            return Culled::Layer;
+        }
+        let Some((c, r)) = sphere else {
+            return Culled::Empty;
+        };
+        if planes.iter().all(|p| p.truncate().dot(c) + p.w >= -r) {
+            Culled::Drawn
+        } else {
+            Culled::OutsideView
+        }
+    };
+    let mesh_sphere = |mesh: MeshHandle, m: &Mat4| {
+        let data = scene.mesh(mesh)?;
+        if data.indices.is_empty() {
+            return None;
+        }
+        let (lo, hi) = data.bounds()?;
+        let scale = m.to_scale_rotation_translation().0.abs().max_element();
+        Some((
+            m.transform_point3((lo + hi) * 0.5),
+            (hi - lo).length() * 0.5 * scale,
+        ))
+    };
+    let instances = scene.objects.instances.iter().enumerate();
+    let skinned = scene.objects.skinned_instances.iter().enumerate();
+    let sprites = scene.sprite.sprites.iter().enumerate();
+    CullRecord {
+        instances: instances
+            .map(|(i, inst)| {
+                let mask = crate::views::layer_of(&scene.objects.instance_layers, i);
+                test(mask, mesh_sphere(inst.mesh, &inst.transform))
+            })
+            .collect(),
+        skinned: skinned
+            .map(|(i, inst)| {
+                let mask = crate::views::layer_of(&scene.objects.skinned_layers, i);
+                test(mask, mesh_sphere(inst.mesh, &inst.transform))
+            })
+            .collect(),
+        sprites: sprites
+            .map(|(i, s)| {
+                let mask = crate::views::layer_of(&scene.sprite.sprite_layers, i);
+                let sized = s.size.x != 0.0 && s.size.y != 0.0;
+                test(
+                    mask,
+                    sized.then(|| (s.position, crate::sprites::sprite_radius(s))),
+                )
+            })
+            .collect(),
+    }
+}
+
 /// The camera a frame of `aspect` uses (with the scene's shake), as the
 /// renderer builds it.
 fn view_proj(scene: &RenderScene, aspect: f32) -> (Mat4, Mat4) {

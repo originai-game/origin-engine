@@ -27984,7 +27984,8 @@ export interface UiActionHint {
  * - `"teleport"`: `teleport:<entity>:x,y,z`: set an entity's position.
  * - `"frame_entity"`: `frame_entity:<entity>`: point the camera at an entity.
  * - `"dump_world"`: `dump_world[:path]`: tables, systems and their matched counts.
- * - `"dump_entity"`: `dump_entity:<name>[:path]`: one entity's components and transform.
+ * - `"dump_entity"`: `dump_entity:<name>[:path]`: one entity's components and transform, and `visible`: whether the main camera draws it and why (probe.Visibility).
+ * - `"dump_drawn"`: `dump_drawn[:path]`: what the main camera's cull keeps of the frame (probe.DrawnDump): every entity with something to draw, whether it is drawn and its reason code.
  * - `"dump_ui"`: `dump_ui[:path]`: the UI tree with bounds, and `style`, the configured UI style's name (empty for the engine's default style).
  * - `"set"`: `set:<entity>.<component>.<field>=<value>` or `set:<Resource>.<field>=<value>`: a Tune write through the schema: a number, `true` or `false` for a bool, `x,y,z` for a vector, an enum's variant name or its index; refused outside the field's FieldOptions min/max, never clamped.
  * - `"get"`: `get:<Resource>[.<field>]` or `get:<entity>[.<component>[.<field>]][:path]`: read through the schema as game code sees it (enums by variant name, og.Time whole, lights as drawn), logged and written as JSON to `get-<tick>.json` (more unnamed ones on one tick: `get-<tick>-2.json`, ...).
@@ -28003,7 +28004,7 @@ export interface UiActionHint {
  * - `"apply_prefab"`: `apply_prefab:<entity>[:<Component>[.<field>]][:base]`: move an entity's prefab overrides (all, a component's or a field's; run-time too) to its node in the prefab's `.ogt`, out of the scene's instance block: the scene cooks the same world and every instance takes them; `base`: to a variant's base.
  * - `"revert_prefab"`: `revert_prefab:<entity>[:<Component>[.<field>]]`: drop an entity's prefab overrides (all, a component's or one field) from its scene's instance block, and set the live values back to the prefab's.
  */
-export type CoreAction = "screenshot" | "listen" | "touch_move_to" | "touch_move" | "touch_start" | "touch_end" | "scroll" | "touch" | "gamepad" | "intent" | "key_down" | "key_up" | "type" | "compose" | "commit" | "move_to_text" | "teleport" | "frame_entity" | "dump_world" | "dump_entity" | "dump_ui" | "set" | "get" | "seed" | "pause" | "resume" | "advance" | "quit" | "describe" | "expect" | "invariant" | "save_scene" | "help" | "mouse_move" | "pointer_lock" | "apply_prefab" | "revert_prefab";
+export type CoreAction = "screenshot" | "listen" | "touch_move_to" | "touch_move" | "touch_start" | "touch_end" | "scroll" | "touch" | "gamepad" | "intent" | "key_down" | "key_up" | "type" | "compose" | "commit" | "move_to_text" | "teleport" | "frame_entity" | "dump_world" | "dump_entity" | "dump_drawn" | "dump_ui" | "set" | "get" | "seed" | "pause" | "resume" | "advance" | "quit" | "describe" | "expect" | "invariant" | "save_scene" | "help" | "mouse_move" | "pointer_lock" | "apply_prefab" | "revert_prefab";
 
 /**
  * A registered action. It runs at the start of the tick it was scheduled for.
@@ -28367,6 +28368,51 @@ export interface Capture {
   readonly region: ScreenBox | null;
   /** The PNG, base64. */
   readonly png: string;
+}
+
+/** A camera to capture from (captureViews), in world units. */
+export interface Viewpoint {
+  /** Where the eye is. */
+  readonly position: Vector3;
+  /** The point it looks at. */
+  readonly target: Vector3;
+  /** Up; `[0, 1, 0]` when absent. */
+  readonly up?: Vector3;
+  /**
+   * Vertical field of view in degrees, for a perspective view.
+   *
+   * @default 50
+   * @unit deg (degrees: a field of view (the full angle), a slope, the sky's angles (the sun's path, disc sizes, the aurora), camera roll, and the angles of post effects, styles and the art contract)
+   */
+  readonly fov: number;
+  /** An orthographic view's height in world units; null is perspective. */
+  readonly height?: number | null;
+  /** The near plane; null keeps og.Camera's. */
+  readonly near?: number | null;
+  /** The far plane; null keeps og.Camera's. */
+  readonly far?: number | null;
+}
+
+/** One viewpoint's frame of captureViews. */
+export interface ViewFrame {
+  /** Its index in the views asked. */
+  readonly view: number;
+  /** Width in pixels. */
+  readonly width: number;
+  /** Height in pixels. */
+  readonly height: number;
+  /** As Capture.scale. */
+  readonly scale: number;
+  /** The PNG, base64. */
+  readonly png: string;
+}
+
+/** The frames of one tick from several viewpoints. */
+export interface ViewFrames {
+  /** The tick every frame shows. */
+  readonly tick: number;
+  /** One per viewpoint, in order. */
+  readonly frames: readonly ViewFrame[];
 }
 
 /** A mark's box in the PNG's pixels. */
@@ -28749,8 +28795,9 @@ export interface SnapshotInfo {
  * - `"entity"`: One entity's components and transform.
  * - `"ui"`: The UI tree with bounds.
  * - `"desync"`: The first desync of a lockstep session (og.net): its tick, both hashes and the component-level diff of the two peers' snapshots.
+ * - `"drawn"`: What the main camera's cull keeps of the frame: every entity with something to draw, whether it is drawn and why.
  */
-export type DumpKind = "world" | "entity" | "ui" | "desync";
+export type DumpKind = "world" | "entity" | "ui" | "desync" | "drawn";
 
 /**
  * What to dump.
@@ -28828,6 +28875,74 @@ export interface EntityDump {
   readonly components: Readonly<Record<string, unknown>>;
   /** Where it came from, for an entity placed from a prefab; absent otherwise. */
   readonly prefab?: EntityPrefab;
+  /**
+   * Whether the main camera draws it at this tick, and why; absent from a host without a scene view.
+   */
+  readonly visible?: Visibility;
+}
+
+/**
+ * Why the main camera draws an entity or not, the first that holds.
+ * See `testing §4`.
+ * - `"drawn"`: A drawable of it survives the camera's cull.
+ * - `"hlod"`: Its model is drawn by an HLOD proxy in its place.
+ * - `"hidden"`: A component of it that draws has `visible` false; detail names the field.
+ * - `"loading"`: Its model has not loaded yet, or is held back until its textures arrive; detail names the asset.
+ * - `"layer"`: Every drawable of it is off the camera's layers (og.Camera.layers).
+ * - `"outside_view"`: Every drawable of it lies outside the camera's view, past near or far included.
+ * - `"untracked"`: It draws through a path the cull record does not follow (particles, lines, text, a tilemap); detail names the component. Whether it shows is not known.
+ * - `"nothing_to_draw"`: It has no component that draws.
+ */
+export type DrawReason = "drawn" | "hlod" | "hidden" | "loading" | "layer" | "outside_view" | "untracked" | "nothing_to_draw";
+
+/**
+ * One entity's verdict in the main camera's cull of the frame at the current tick (the frame is extracted as the renderer draws it; no GPU needed).
+ */
+export interface Visibility {
+  /** Whether the camera draws it: true for drawn and hlod, null for untracked. */
+  readonly visible: boolean | null;
+  /** Why. */
+  readonly reason: DrawReason;
+  /**
+   * What the reason names: the hiding field, the loading asset, the untracked component; absent for none.
+   */
+  readonly detail?: string;
+  /** Its drawables (instances, skinned instances, sprites, terrains) that survived the cull. */
+  readonly drawn: number;
+  /** Its drawables culled by the layers or the view. */
+  readonly culled: number;
+}
+
+/** One entity of dump_drawn. */
+export interface DrawnEntity {
+  /** Its probe id. */
+  readonly id: string;
+  /** Its name. */
+  readonly name: string | null;
+  /** As Visibility.visible. */
+  readonly visible: boolean | null;
+  /** As Visibility.reason. */
+  readonly reason: DrawReason;
+  /** As Visibility.detail. */
+  readonly detail?: string;
+  /** As Visibility.drawn. */
+  readonly drawn: number;
+  /** As Visibility.culled. */
+  readonly culled: number;
+}
+
+/**
+ * What the main camera's cull keeps of the frame at the current tick (dump_drawn): every entity with something to draw, in entity order.
+ */
+export interface DrawnDump {
+  /** The tick. */
+  readonly tick: number;
+  /** Entities drawn (drawn or hlod). */
+  readonly drawn: number;
+  /** Entities not drawn (untracked ones are neither). */
+  readonly notDrawn: number;
+  /** The entities. */
+  readonly entities: readonly DrawnEntity[];
 }
 
 /**
@@ -28977,7 +29092,9 @@ export type DumpResult =
   /** The UI dump. */
   | ({ readonly kind: "ui" } & UiDump)
   /** The desync dump. */
-  | ({ readonly kind: "desync" } & DesyncDump);
+  | ({ readonly kind: "desync" } & DesyncDump)
+  /** The cull record. */
+  | ({ readonly kind: "drawn" } & DrawnDump);
 
 /** A box on the play surface. */
 export interface ScreenBox {
@@ -29347,6 +29464,25 @@ export interface EngineProbe extends RuntimeProbe {
    * @returns Null without a renderer, or for a region outside the surface.
    */
   capture(width?: number, height?: number, fit?: number, region?: ScreenBox | null): Capture | null;
+  /**
+   * The frame of the current tick from each of several viewpoints (1 to 16), all of the same tick, in one call; og.Camera is never written. What each frame extracts (levels of detail, streaming) is the main camera's. Size and fit as capture's; on the web it waits for each readback as capture does.
+   * See `captures §1`.
+   *
+   * @param views The cameras.
+   * @param width Width in pixels; 0 is the render target's. Default `0`.
+   * @param height Height in pixels; 0 is the render target's. Default `0`.
+   * @param fit The longest side a PNG may have; 0 keeps the rendered size. Default `1280`.
+   * @returns Null without a renderer.
+   */
+  captureViews(views: readonly Viewpoint[], width?: number, height?: number, fit?: number): ViewFrames | null;
+  /**
+   * Whether the main camera draws an entity at the current tick and why: a reason code (DrawReason) with what it names, and its drawables drawn and culled. Answers without a renderer too (the cull runs on the CPU over the extracted frame).
+   * See `testing §4`.
+   *
+   * @param id The probe id.
+   * @returns Null for an unknown entity, or a host without a scene view.
+   */
+  visible(id: string): Visibility | null;
   /**
    * The frame of the current tick with a numbered box over each UI element and each scene entity it shows (Set-of-Mark), and what each number is: its path, kind, text, box, a point to pick it at, and the document or scene line that made it.
    * The elements are those pickUi answers inside the surface, an element and a same-box ancestor marked once (the one that takes input, else the topmost); the entities are describe's, nearest first. Size and fit as capture's, the marks drawn at the fitted size; on the web it waits for its readback as capture does.

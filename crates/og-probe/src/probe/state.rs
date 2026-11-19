@@ -117,6 +117,9 @@ pub(crate) struct Saves {
     pub(super) snapshots: VecDeque<(String, Saved)>,
     pub(super) next_snapshot: u64,
     pub(super) sweeping: Option<SweepJob>,
+    /// A `capture_views` whose frames land on later calls (the web): its
+    /// views' key, its tick, the frames it has and the polls so far.
+    pub(super) viewing: Option<(String, u64, Vec<Value>, u32)>,
 }
 
 impl Clock {
@@ -499,6 +502,17 @@ impl Host {
         region: Option<[f32; 4]>,
     ) -> Option<Value> {
         let frame = self.capture.as_mut()?.capture(world, width, height)?;
+        self.frame_json(world, frame, fit, region)
+    }
+
+    /// A frame as `capture` answers it: cut to `region`, fitted to `fit`.
+    pub(super) fn frame_json(
+        &self,
+        world: &World,
+        frame: crate::Frame,
+        fit: u32,
+        region: Option<[f32; 4]>,
+    ) -> Option<Value> {
         // The rendered size answers as is: no decode, no encode.
         if region.is_none() && crate::frame::Rgba::fit_scale(frame.width, frame.height, fit) >= 1.0
         {

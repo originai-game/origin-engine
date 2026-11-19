@@ -310,6 +310,121 @@ impl SceneView for RuntimeView {
         })
     }
 
+    /// The main camera's cull (og-render's `cull_record`) of the frame at
+    /// the current tick, per entity: its instances, skinned instances,
+    /// sprites and terrains drawn and culled; a model drawn only as an
+    /// impostor or a crowd counts drawn; one in an HLOD proxy's place
+    /// `hlod`; a shown model whose asset has not loaded `loading`.
+    #[cfg(not(feature = "publish"))]
+    fn drawn(&self, world: &World) -> Option<Vec<og_probe::Drawn>> {
+        use og_probe::DrawReason;
+        use og_render::Culled;
+        let mut rs = self.render.try_borrow_mut().ok()?;
+        rs.terrain.settle = true;
+        extract(world, &mut rs);
+        let (css_w, css_h) = crate::present::fx::viewport(&rs);
+        let aspect = match rs.backend.as_ref().map(|b| b.size()) {
+            Some((w, h)) if w > 0 && h > 0 => w as f32 / h as f32,
+            _ => css_w / css_h.max(1.0),
+        };
+        let cull = og_render::cull_record(&rs.scene, aspect);
+        // Per entity: drawn, off the layers, outside the view, nothing to draw.
+        let mut tally: std::collections::BTreeMap<u64, [u32; 4]> = Default::default();
+        let mut add = |e: u64, c: Culled| {
+            if e != 0 {
+                tally.entry(e).or_default()[c as usize] += 1;
+            }
+        };
+        for (k, &c) in cull.instances.iter().enumerate() {
+            add(rs.ids.instances.get(k).copied().unwrap_or(0), c);
+        }
+        let by_palette: IdMap<u32, u64> =
+            IdMap::from_iter(rs.atmo.palettes.iter().map(|(&e, &p)| (p, e)));
+        let skinned = &rs.scene.objects.skinned_instances;
+        for (s, &c) in skinned.iter().zip(&cull.skinned) {
+            add(by_palette.get(&s.palette).copied().unwrap_or(0), c);
+        }
+        for &(i, e) in &rs.ids.sprites {
+            if let Some(&c) = cull.sprites.get(i as usize) {
+                add(e, c);
+            }
+        }
+        // A terrain lays itself out around the camera: drawn when extracted.
+        #[cfg(not(feature = "profile2d"))]
+        for &e in rs
+            .ids
+            .terrains
+            .iter()
+            .chain(&rs.ids.stamps)
+            .chain(&rs.ids.grass)
+        {
+            add(e, Culled::Drawn);
+        }
+        // Models drawn as an impostor card or a crowd: no instance of their own.
+        for &e in rs.lod_drawn.keys() {
+            tally.entry(e).or_insert([1, 0, 0, 0]);
+        }
+        let verdict = |e: u64, reason: DrawReason, detail: String, t: [u32; 4]| og_probe::Drawn {
+            entity: Entity::from_bits(e),
+            reason,
+            detail,
+            drawn: t[Culled::Drawn as usize],
+            culled: t[Culled::Layer as usize] + t[Culled::OutsideView as usize],
+        };
+        let mut out: Vec<og_probe::Drawn> = Vec::with_capacity(tally.len());
+        for (&e, &t) in &tally {
+            let reason = if t[Culled::Drawn as usize] > 0 {
+                DrawReason::Drawn
+            } else if t[Culled::OutsideView as usize] > 0 {
+                DrawReason::OutsideView
+            } else if t[Culled::Layer as usize] > 0 {
+                DrawReason::Layer
+            } else {
+                // Only meshes not loaded or empty.
+                DrawReason::Loading
+            };
+            out.push(verdict(e, reason, String::new(), t));
+        }
+        for &e in rs.hlod.replaced.keys() {
+            if !tally.contains_key(&e) {
+                out.push(verdict(e, DrawReason::Hlod, String::new(), [0; 4]));
+            }
+        }
+        // A shown model whose parts have not loaded, or whose textures are
+        // still on their way (it is held back rather than drawn bare).
+        if let Some(layout) = rs.draw.model.clone()
+            && let Ok(id) = world.id_by_name(&layout.schema)
+            && let Ok(eng) = crate::engine::engine(self.engine)
+        {
+            for e in world.entities() {
+                let bits = e.to_bits();
+                if tally.contains_key(&bits) || rs.hlod.replaced.contains_key(&bits) {
+                    continue;
+                }
+                let Some(model) = world
+                    .get_bytes(e, id)
+                    .ok()
+                    .and_then(|b| layout.read::<crate::host::wire::record::Model>(&b).ok())
+                else {
+                    continue;
+                };
+                let asset = model.asset;
+                if !model.visible
+                    || asset == 0
+                    || (rs.models.contains_key(&asset)
+                        && !rs.decoded.hidden_models.contains_key(&asset))
+                {
+                    continue;
+                }
+                let path = crate::world::assets::index_of(model.asset as f64)
+                    .and_then(|i| eng.assets.borrow().entries.get(i).map(|a| a.path.clone()))
+                    .unwrap_or_default();
+                out.push(verdict(bits, DrawReason::Loading, path, [0; 4]));
+            }
+        }
+        Some(out)
+    }
+
     fn pick(&mut self, world: &World, x: f32, y: f32) -> Option<Pick> {
         let pass = self.pass(world, false)?;
         let (id, at) = pass.frame.at(x / pass.scale.0, y / pass.scale.1)?;

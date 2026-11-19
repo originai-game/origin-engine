@@ -735,7 +735,12 @@ impl Probe {
             r.reason = format!("no renderer, {path} unchecked");
             return;
         }
-        let mut dump = self.dump_entity(world, e);
+        // `visible.reason` extracts the frame; a field's path does not.
+        let mut dump = if path.split('.').next() == Some("visible") {
+            self.dump_entity(world, e)
+        } else {
+            self.entity_dump(world, e)
+        };
         // `og.Transform.position` as well as `components.og.Transform...`.
         let found = at_path(&dump, path).is_some();
         if !found && let Some(components) = dump["components"].as_object().cloned() {

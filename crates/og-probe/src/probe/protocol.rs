@@ -486,6 +486,52 @@ impl Probe {
         self.host.capture(world, width, height, fit, region)
     }
 
+    /// `capture_views`: the frame of the current tick from each viewpoint,
+    /// in order, every one at the same tick (`{tick, frames: [{view,
+    /// width, height, scale, png}]}`); og.Camera is never written. `None`
+    /// without a renderer, or when a view produces no frame. Where frames
+    /// land on a later call (the web), `None` also means "ask again": the
+    /// same views on the same tick go on from the frames they have.
+    pub fn capture_views(
+        &mut self,
+        world: &World,
+        views: &[crate::Viewpoint],
+        (width, height): (u32, u32),
+        fit: u32,
+    ) -> Option<Value> {
+        if !self.host.has_renderer() {
+            return None;
+        }
+        let tick = world.time().tick;
+        let key = format!("{views:?}{width}x{height}/{fit}");
+        let (mut frames, mut polls) = match self.saves.viewing.take() {
+            Some((k, t, frames, polls)) if k == key && t == tick => (frames, polls),
+            _ => (Vec::new(), 0),
+        };
+        while let Some(view) = views.get(frames.len()) {
+            let capture = self.host.capture.as_mut()?;
+            let deferred = capture.deferred();
+            match capture.capture_from(world, view, width, height) {
+                Some(frame) => {
+                    let mut v = self.host.frame_json(world, frame, fit, None)?;
+                    if let Value::Object(o) = &mut v {
+                        o.remove("tick");
+                        o.remove("region");
+                    }
+                    v["view"] = json!(frames.len());
+                    frames.push(v);
+                }
+                None if deferred && polls < MAX_CAPTURE_POLLS => {
+                    polls += 1;
+                    self.saves.viewing = Some((key, tick, frames, polls));
+                    return None;
+                }
+                None => return None,
+            }
+        }
+        Some(json!({ "tick": tick, "frames": frames }))
+    }
+
     /// `sweep`: per value, restore the snapshot taken at the call, patch,
     /// advance (no command steps run) and capture; the world is restored
     /// afterwards. `None` for an unknown entity or parameter, a refused
@@ -804,7 +850,105 @@ impl Probe {
                 let e = self.names.resolve(world, id)?;
                 Some(self.dump_entity(world, e))
             }
+            DumpKind::Drawn => Some(self.dump_drawn(world)),
         }
+    }
+
+    /// `visible`: why the main camera draws an entity or not, at the
+    /// current tick (IDL `probe.Visibility`, with its probe id); `None`
+    /// for an unknown entity or a host without a scene view.
+    pub fn visible(&self, world: &World, id: &str) -> Option<Value> {
+        let e = self.names.resolve(world, id)?;
+        let mut v = self.visibility(world, e)?;
+        v["id"] = json!(self.names.id_of(world, e));
+        Some(v)
+    }
+
+    /// One entity's verdict in the main camera's cull, as JSON.
+    fn visibility(&self, world: &World, e: Entity) -> Option<Value> {
+        let culled = self.host.scene_view.as_ref()?.drawn(world)?;
+        let found = culled.into_iter().find(|d| d.entity == e);
+        Some(found.unwrap_or_else(|| Self::undrawn(world, e)).to_json())
+    }
+
+    /// The verdict on an entity the renderer did not account for, from its
+    /// components: a `visible` field false is `hidden`; a component with
+    /// a `visible` field (one that draws) is `untracked`; else
+    /// `nothing_to_draw`.
+    fn undrawn(world: &World, e: Entity) -> crate::Drawn {
+        let mut verdict = (crate::DrawReason::NothingToDraw, String::new());
+        for (schema, bytes) in Self::components(world, e) {
+            if !schema.fields.iter().any(|f| f.name == "visible") {
+                continue;
+            }
+            match value::component_json(&schema, &bytes).get("visible") {
+                Some(Value::Bool(false)) => {
+                    verdict = (
+                        crate::DrawReason::Hidden,
+                        format!("{}.visible", schema.name),
+                    );
+                    break;
+                }
+                Some(Value::Bool(true)) if verdict.0 == crate::DrawReason::NothingToDraw => {
+                    verdict = (crate::DrawReason::Untracked, schema.name.clone());
+                }
+                _ => {}
+            }
+        }
+        crate::Drawn {
+            entity: e,
+            reason: verdict.0,
+            detail: verdict.1,
+            drawn: 0,
+            culled: 0,
+        }
+    }
+
+    /// `dump_drawn`: what the main camera's cull keeps of the frame at the
+    /// current tick, every entity with something to draw in entity order
+    /// (IDL `probe.DrawnDump`); empty without a scene view.
+    pub fn dump_drawn(&self, world: &World) -> Value {
+        let mut drawn = self
+            .host
+            .scene_view
+            .as_ref()
+            .and_then(|v| v.drawn(world))
+            .unwrap_or_default();
+        // The entities the renderer did not account for, with a component
+        // that draws.
+        let known: std::collections::BTreeSet<u64> =
+            drawn.iter().map(|d| d.entity.to_bits()).collect();
+        for e in world.entities() {
+            if !known.contains(&e.to_bits()) {
+                let d = Self::undrawn(world, e);
+                if d.reason != crate::DrawReason::NothingToDraw {
+                    drawn.push(d);
+                }
+            }
+        }
+        drawn.sort_by_key(|d| (d.entity.index(), d.entity.generation()));
+        let count = |visible: bool| {
+            drawn
+                .iter()
+                .filter(|d| d.reason.visible() == Some(visible))
+                .count()
+        };
+        let entities: Vec<Value> = drawn
+            .iter()
+            .map(|d| {
+                let mut v = d.to_json();
+                v["id"] = json!(self.names.id_of(world, d.entity));
+                v["name"] = json!(self.names.name_of(world, d.entity));
+                v
+            })
+            .collect();
+        json!({
+            "kind": "drawn",
+            "tick": world.time().tick,
+            "drawn": count(true),
+            "notDrawn": count(false),
+            "entities": entities,
+        })
     }
 
     /// `commands`: schedule a script; `None` for a malformed one (the parse
@@ -921,6 +1065,16 @@ impl Probe {
     /// One entity: every component with every field, by component name
     /// (its transform is `components["og.Transform"]`).
     pub fn dump_entity(&self, world: &World, e: Entity) -> Value {
+        let mut out = self.entity_dump(world, e);
+        if let Some(v) = self.visibility(world, e) {
+            out["visible"] = v;
+        }
+        out
+    }
+
+    /// [`Probe::dump_entity`] without its `visible`, which extracts the
+    /// frame: what an expectation reads of an entity's fields.
+    pub(crate) fn entity_dump(&self, world: &World, e: Entity) -> Value {
         let components: Map<String, Value> = Self::components(world, e)
             .into_iter()
             .map(|(schema, bytes)| {

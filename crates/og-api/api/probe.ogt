@@ -184,6 +184,43 @@ module probe {
     field png String "The PNG, base64."
   }
 
+  struct Viewpoint {
+    doc "A camera to capture from (captureViews), in world units."
+    field position Vector3 "Where the eye is."
+    field target Vector3 "The point it looks at."
+    field up Vector3 "Up; `[0, 1, 0]` when absent." {
+      optional true
+    }
+    field fov f32 "Vertical field of view in degrees, for a perspective view." {
+      default 50
+      unit deg
+    }
+    field height Option.f32 "An orthographic view's height in world units; null is perspective." {
+      optional true
+    }
+    field near Option.f32 "The near plane; null keeps og.Camera's." {
+      optional true
+    }
+    field far Option.f32 "The far plane; null keeps og.Camera's." {
+      optional true
+    }
+  }
+
+  struct ViewFrame {
+    doc "One viewpoint's frame of captureViews."
+    field view u32 "Its index in the views asked."
+    field width u32 "Width in pixels."
+    field height u32 "Height in pixels."
+    field scale f32 "As Capture.scale."
+    field png String "The PNG, base64."
+  }
+
+  struct ViewFrames {
+    doc "The frames of one tick from several viewpoints."
+    field tick u32 "The tick every frame shows."
+    field frames List.ViewFrame "One per viewpoint, in order."
+  }
+
   struct MarkRect {
     doc "A mark's box in the PNG's pixels."
     field x u32 "Left edge." {
@@ -375,6 +412,7 @@ module probe {
     variant entity "One entity's components and transform."
     variant ui "The UI tree with bounds."
     variant desync "The first desync of a lockstep session (og.net): its tick, both hashes and the component-level diff of the two peers' snapshots."
+    variant drawn "What the main camera's cull keeps of the frame: every entity with something to draw, whether it is drawn and why."
   }
 
   struct DumpDesc {
@@ -419,6 +457,54 @@ module probe {
     field prefab EntityPrefab "Where it came from, for an entity placed from a prefab; absent otherwise." {
       optional true
     }
+    field visible Visibility "Whether the main camera draws it at this tick, and why; absent from a host without a scene view." {
+      optional true
+    }
+  }
+
+  enum DrawReason {
+    doc "Why the main camera draws an entity or not, the first that holds."
+    guide "testing §4"
+    variant drawn "A drawable of it survives the camera's cull."
+    variant hlod "Its model is drawn by an HLOD proxy in its place."
+    variant hidden "A component of it that draws has `visible` false; detail names the field."
+    variant loading "Its model has not loaded yet, or is held back until its textures arrive; detail names the asset."
+    variant layer "Every drawable of it is off the camera's layers (og.Camera.layers)."
+    variant outside_view "Every drawable of it lies outside the camera's view, past near or far included."
+    variant untracked "It draws through a path the cull record does not follow (particles, lines, text, a tilemap); detail names the component. Whether it shows is not known."
+    variant nothing_to_draw "It has no component that draws."
+  }
+
+  struct Visibility {
+    doc "One entity's verdict in the main camera's cull of the frame at the current tick (the frame is extracted as the renderer draws it; no GPU needed)."
+    field visible Option.bool "Whether the camera draws it: true for drawn and hlod, null for untracked."
+    field reason DrawReason "Why."
+    field detail String "What the reason names: the hiding field, the loading asset, the untracked component; absent for none." {
+      optional true
+    }
+    field drawn u32 "Its drawables (instances, skinned instances, sprites, terrains) that survived the cull."
+    field culled u32 "Its drawables culled by the layers or the view."
+  }
+
+  struct DrawnEntity {
+    doc "One entity of dump_drawn."
+    field id String "Its probe id."
+    field name Option.String "Its name."
+    field visible Option.bool "As Visibility.visible."
+    field reason DrawReason "As Visibility.reason."
+    field detail String "As Visibility.detail." {
+      optional true
+    }
+    field drawn u32 "As Visibility.drawn."
+    field culled u32 "As Visibility.culled."
+  }
+
+  struct DrawnDump {
+    doc "What the main camera's cull keeps of the frame at the current tick (dump_drawn): every entity with something to draw, in entity order."
+    field tick u32 "The tick."
+    field drawn u32 "Entities drawn (drawn or hlod)."
+    field notDrawn u32 "Entities not drawn (untracked ones are neither)."
+    field entities List.DrawnEntity "The entities."
   }
 
   struct EntityPrefab {
@@ -498,6 +584,7 @@ module probe {
     case entity EntityDump "An entity dump."
     case ui UiDump "The UI dump."
     case desync DesyncDump "The desync dump."
+    case drawn DrawnDump "The cull record."
   }
 
   struct ScreenBox {
@@ -761,6 +848,29 @@ module probe {
         optional true
       }
       returns Option.Capture "Null without a renderer, or for a region outside the surface."
+    }
+    fn captureViews {
+      doc "The frame of the current tick from each of several viewpoints (1 to 16), all of the same tick, in one call; og.Camera is never written. What each frame extracts (levels of detail, streaming) is the main camera's. Size and fit as capture's; on the web it waits for each readback as capture does."
+      guide "captures §1"
+      aliases "multiple viewpoints, several cameras, views, angles, front side top, multi-view capture"
+      param views List.Viewpoint "The cameras."
+      param width u32 "Width in pixels; 0 is the render target's." {
+        default 0
+      }
+      param height u32 "Height in pixels; 0 is the render target's." {
+        default 0
+      }
+      param fit u32 "The longest side a PNG may have; 0 keeps the rendered size." {
+        default 1280
+      }
+      returns Option.ViewFrames "Null without a renderer."
+    }
+    fn visible {
+      doc "Whether the main camera draws an entity at the current tick and why: a reason code (DrawReason) with what it names, and its drawables drawn and culled. Answers without a renderer too (the cull runs on the CPU over the extracted frame)."
+      guide "testing §4"
+      aliases "why is it not drawn, invisible, not showing, culled, frustum, hidden"
+      param id String "The probe id."
+      returns Option.Visibility "Null for an unknown entity, or a host without a scene view."
     }
     fn marks {
       doc "The frame of the current tick with a numbered box over each UI element and each scene entity it shows (Set-of-Mark), and what each number is: its path, kind, text, box, a point to pick it at, and the document or scene line that made it."

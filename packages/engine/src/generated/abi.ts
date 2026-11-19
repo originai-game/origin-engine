@@ -1162,6 +1162,10 @@ export interface HostAbi<A, V> {
   og_engine_probe_hello(engine_probe: number): string;
   /** `EngineProbe.capture` */
   og_engine_probe_capture(engine_probe: number, width: number | undefined, height: number | undefined, fit: number | undefined, region: string | undefined): string;
+  /** `EngineProbe.captureViews` */
+  og_engine_probe_capture_views(engine_probe: number, views: string, width: number | undefined, height: number | undefined, fit: number | undefined): string;
+  /** `EngineProbe.visible` */
+  og_engine_probe_visible(engine_probe: number, id: string): string;
   /** `EngineProbe.marks` */
   og_engine_probe_marks(engine_probe: number, desc: string | undefined): string;
   /** `EngineProbe.timeline` */
@@ -1953,6 +1957,8 @@ export const SYMBOLS: readonly string[] = [
   "og_runtime_probe_run",
   "og_engine_probe_hello",
   "og_engine_probe_capture",
+  "og_engine_probe_capture_views",
+  "og_engine_probe_visible",
   "og_engine_probe_marks",
   "og_engine_probe_timeline",
   "og_engine_probe_sweep",

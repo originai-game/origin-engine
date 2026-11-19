@@ -14,6 +14,7 @@ One entity.
 | `name` | `string \| null` | `null` | — | — | — | Its name. |
 | `components` | `Readonly<Record<string, unknown>>` | `{}` | — | — | — | Each component's field values, by component name. |
 | `prefab` | `EntityPrefab` | `{ prefab: "", node: "", root: "", overrides: [] }` | — | — | optional | Where it came from, for an entity placed from a prefab; absent otherwise. |
+| `visible` | `Visibility` | `{ visible: null, reason: "drawn", drawn: 0, culled: 0 }` | — | — | optional | Whether the main camera draws it at this tick, and why; absent from a host without a scene view. |
 
 ```ogt
 struct EntityDump {
@@ -24,7 +25,10 @@ struct EntityDump {
   field prefab EntityPrefab "Where it came from, for an entity placed from a prefab; absent otherwise." {
     optional true
   }
+  field visible Visibility "Whether the main camera draws it at this tick, and why; absent from a host without a scene view." {
+    optional true
+  }
 }
 ```
 
-<sub>Module `probe` line 414</sub>
+<sub>Module `probe` line 452</sub>

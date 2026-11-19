@@ -231,6 +231,28 @@ pub fn og_engine_probe_marks(probe: u32, desc: Option<String>) -> String {
     member(probe, "marks", parse(desc.as_deref()).unwrap_or(json!({}))).to_string()
 }
 
+pub fn og_engine_probe_capture_views(
+    probe: u32,
+    views: String,
+    width: Option<u32>,
+    height: Option<u32>,
+    fit: Option<u32>,
+) -> String {
+    let mut params = json!({
+        "views": parse(Some(&views)).unwrap_or(json!(null)),
+        "width": width.unwrap_or(0),
+        "height": height.unwrap_or(0),
+    });
+    if let Some(fit) = fit {
+        params["fit"] = json!(fit);
+    }
+    member(probe, "capture_views", params).to_string()
+}
+
+pub fn og_engine_probe_visible(probe: u32, id: String) -> String {
+    member(probe, "visible", json!({ "id": id })).to_string()
+}
+
 pub fn og_engine_probe_timeline(probe: u32) -> String {
     member(probe, "timeline", json!({})).to_string()
 }

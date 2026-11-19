@@ -22,9 +22,8 @@ impl Probe {
                 .key_step(&mut self.host, &mut self.schedule, world, step),
             "teleport" | "frame_entity" | "set" | "seed" => self.world_step(world, step),
             #[cfg(not(feature = "publish"))]
-            "describe" | "dump_world" | "dump_ui" | "dump_entity" | "get" | "help" => {
-                self.dump_step(world, step)
-            }
+            "describe" | "dump_world" | "dump_ui" | "dump_entity" | "dump_drawn" | "get"
+            | "help" => self.dump_step(world, step),
             #[cfg(not(feature = "publish"))]
             "apply_prefab" | "revert_prefab" | "save_scene" => self.scene_step(world, step),
             #[cfg(not(feature = "publish"))]
@@ -36,9 +35,11 @@ impl Probe {
             // observe it for a tool are not built in.
             #[cfg(feature = "publish")]
             "screenshot" | "listen" | "describe" | "expect" | "save_scene" | "apply_prefab"
-            | "revert_prefab" | "dump_world" | "dump_ui" | "dump_entity" | "get" | "help" => Err(
-                format!("`{}` is not built into a publish build", step.action),
-            ),
+            | "revert_prefab" | "dump_world" | "dump_ui" | "dump_entity" | "dump_drawn" | "get"
+            | "help" => Err(format!(
+                "`{}` is not built into a publish build",
+                step.action
+            )),
             _ => self.commands.registered_step(&mut self.out, world, step),
         }
     }
@@ -153,6 +154,20 @@ impl Probe {
                         action: step.action.clone(),
                         path: output_path(args.first())?,
                         payload: Payload::Json(value),
+                    },
+                );
+                Ok(())
+            }
+            #[cfg(not(feature = "publish"))]
+            "dump_drawn" => {
+                let dump = self.dump_drawn(world);
+                self.out.emit(
+                    step.at,
+                    Output {
+                        tick,
+                        action: step.action.clone(),
+                        path: output_path(args.first())?,
+                        payload: Payload::Json(dump),
                     },
                 );
                 Ok(())

@@ -250,6 +250,21 @@ macro_rules! __og_host_bindings_engine {
                 $crate::og_engine_probe_describe(engine_probe)
             }
 
+            fn og_engine_probe_capture_views(
+                &self,
+                engine_probe: u32,
+                views: String,
+                width: Option<u32>,
+                height: Option<u32>,
+                fit: Option<u32>,
+            ) -> String {
+                $crate::og_engine_probe_capture_views(engine_probe, views, width, height, fit)
+            }
+
+            fn og_engine_probe_visible(&self, engine_probe: u32, id: String) -> String {
+                $crate::og_engine_probe_visible(engine_probe, id)
+            }
+
             fn og_engine_probe_expect(&self, engine_probe: u32, what: String) -> String {
                 $crate::og_engine_probe_expect(engine_probe, what)
             }

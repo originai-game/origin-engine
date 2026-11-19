@@ -187,6 +187,68 @@ fn coordinate(params: &Value, key: &str) -> Option<f32> {
         .map(|v| v as f32)
 }
 
+/// `capture_views`' viewpoints: 1 to MAX_CAPTURE_VIEWS of `{position,
+/// target, up?, fov?, height?, near?, far?}`, vectors as `[x, y, z]` or
+/// `{x, y, z}`.
+#[cfg(not(feature = "publish"))]
+fn viewpoints(p: &Value) -> Result<Vec<crate::Viewpoint>, RpcError> {
+    let bad = || {
+        RpcError::invalid(format!(
+            "views must be 1 to {} of {{ position, target, up?, fov?, height?, near?, far? }}, vectors [x, y, z]",
+            crate::MAX_CAPTURE_VIEWS
+        ))
+    };
+    let views = p
+        .get("views")
+        .and_then(Value::as_array)
+        .filter(|v| !v.is_empty() && v.len() <= crate::MAX_CAPTURE_VIEWS)
+        .ok_or_else(bad)?;
+    let num = |v: Option<&Value>| {
+        v.and_then(Value::as_f64)
+            .filter(|n| n.is_finite())
+            .map(|n| n as f32)
+    };
+    let vec3 = |v: Option<&Value>| -> Option<[f32; 3]> {
+        match v? {
+            Value::Array(a) if a.len() == 3 => {
+                Some([num(a.first())?, num(a.get(1))?, num(a.get(2))?])
+            }
+            o @ Value::Object(_) => Some([num(o.get("x"))?, num(o.get("y"))?, num(o.get("z"))?]),
+            _ => None,
+        }
+    };
+    let optional = |v: &Value, k: &str| -> Result<Option<f32>, RpcError> {
+        match v.get(k) {
+            None | Some(Value::Null) => Ok(None),
+            some => num(some).filter(|n| *n > 0.0).map(Some).ok_or_else(bad),
+        }
+    };
+    views
+        .iter()
+        .map(|v| {
+            let position = vec3(v.get("position")).ok_or_else(bad)?;
+            let target = vec3(v.get("target")).ok_or_else(bad)?;
+            let up = match v.get("up") {
+                None | Some(Value::Null) => [0.0, 1.0, 0.0],
+                some => vec3(some).ok_or_else(bad)?,
+            };
+            let fov = optional(v, "fov")?.unwrap_or(50.0);
+            if position == target || fov >= 180.0 {
+                return Err(bad());
+            }
+            Ok(crate::Viewpoint {
+                position,
+                target,
+                up,
+                fov,
+                height: optional(v, "height")?,
+                near: optional(v, "near")?,
+                far: optional(v, "far")?,
+            })
+        })
+        .collect()
+}
+
 /// `sweep`'s parameters.
 #[cfg(not(feature = "publish"))]
 fn sweep_desc(p: &Value) -> Result<SweepDesc, RpcError> {
@@ -241,9 +303,10 @@ fn dump_target(p: &Value) -> Result<(DumpKind, &str), RpcError> {
         "entity" => DumpKind::Entity,
         "ui" => DumpKind::Ui,
         "desync" => DumpKind::Desync,
+        "drawn" => DumpKind::Drawn,
         _ => {
             return Err(RpcError::invalid(
-                "what must be world, entity, ui or desync",
+                "what must be world, entity, ui, desync or drawn",
             ));
         }
     };
@@ -398,6 +461,11 @@ impl Probe {
                 or_null(self.capture(world, width, height, fit(p)?, region))
             }
             #[cfg(not(feature = "publish"))]
+            "capture_views" => {
+                let views = viewpoints(p)?;
+                or_null(self.capture_views(world, &views, size(p)?, fit(p)?))
+            }
+            #[cfg(not(feature = "publish"))]
             "marks" => or_null(self.marks(world, marks_desc(p)?)),
             #[cfg(not(feature = "publish"))]
             "timeline" => self.timeline(world),
@@ -414,6 +482,8 @@ impl Probe {
                 let (kind, id) = dump_target(p)?;
                 or_null(self.dump(world, kind, id))
             }
+            #[cfg(not(feature = "publish"))]
+            "visible" => or_null(self.visible(world, string(p, "id")?)),
             #[cfg(not(feature = "publish"))]
             "commands" => or_null(self.commands(world, string(p, "script")?)),
             #[cfg(not(feature = "publish"))]

@@ -35,4 +35,4 @@ fn register {
 }
 ```
 
-<sub>Module `commands` line 87</sub>
+<sub>Module `commands` line 88</sub>

@@ -138,7 +138,7 @@ impl SpriteEye<'_> {
 
 /// A sprite's bounds: the sphere round its anchor through its farthest
 /// corner, whatever way it is turned.
-fn sprite_radius(s: &Sprite) -> f32 {
+pub(crate) fn sprite_radius(s: &Sprite) -> f32 {
     let far = glam::Vec2::new(
         s.anchor.x.max(1.0 - s.anchor.x),
         s.anchor.y.max(1.0 - s.anchor.y),

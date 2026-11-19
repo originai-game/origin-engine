@@ -3483,6 +3483,20 @@ pub fn og_engine_probe_capture(env: Env, engine_probe: u32, width: Option<u32>, 
 }
 
 #[cfg(not(feature = "publish"))]
+#[napi(js_name = "og_engine_probe_capture_views")]
+pub fn og_engine_probe_capture_views(env: Env, engine_probe: u32, views: String, width: Option<u32>, height: Option<u32>, fit: Option<u32>) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as ProbeApi>::og_engine_probe_capture_views(&Host, engine_probe, views, width, height, fit)
+}
+
+#[cfg(not(feature = "publish"))]
+#[napi(js_name = "og_engine_probe_visible")]
+pub fn og_engine_probe_visible(env: Env, engine_probe: u32, id: String) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as ProbeApi>::og_engine_probe_visible(&Host, engine_probe, id)
+}
+
+#[cfg(not(feature = "publish"))]
 #[napi(js_name = "og_engine_probe_marks")]
 pub fn og_engine_probe_marks(env: Env, engine_probe: u32, desc: Option<String>) -> String {
     let _env = crate::EnvScope::enter(&env);

@@ -324,6 +324,11 @@ pub const CORE_ACTIONS: &[(&str, &str, &str)] = &[
         "Write one entity's dump: its components with every field, and its transform.",
     ),
     (
+        "dump_drawn",
+        "dump_drawn[:path]",
+        "Write what the main camera's cull keeps of the frame: every entity with something to draw, whether it is drawn and its reason code (`drawn`, `hlod`, `hidden`, `loading`, `layer`, `outside_view`, `untracked`), with its drawables drawn and culled.",
+    ),
+    (
         "dump_ui",
         "dump_ui[:layers|motion][:path]",
         "Write the UI tree with bounds; `layers` writes the layer stack alone, `motion` the elements in visual states or animating alone.",

@@ -16,6 +16,7 @@ Tagged by `kind`.
 | `kind: "entity"` | [`EntityDump`](../probe/type-EntityDump.md#type-EntityDump) | An entity dump. |
 | `kind: "ui"` | [`UiDump`](../probe/type-UiDump.md#type-UiDump) | The UI dump. |
 | `kind: "desync"` | [`DesyncDump`](../probe/type-DesyncDump.md#type-DesyncDump) | The desync dump. |
+| `kind: "drawn"` | [`DrawnDump`](../probe/type-DrawnDump.md#type-DrawnDump) | The cull record. |
 
 ```ogt
 union DumpResult {
@@ -25,7 +26,8 @@ union DumpResult {
   case entity EntityDump "An entity dump."
   case ui UiDump "The UI dump."
   case desync DesyncDump "The desync dump."
+  case drawn DrawnDump "The cull record."
 }
 ```
 
-<sub>Module `probe` line 494</sub>
+<sub>Module `probe` line 580</sub>

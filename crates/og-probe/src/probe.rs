@@ -45,6 +45,8 @@ pub const PLAYTEST_MAX_TICKS: u64 = 3600;
 pub const PROBE_PROGRAM_MAX_OPERATIONS: usize = 256;
 /// The most values one sweep may try.
 pub const MAX_SWEEP_VALUES: usize = 64;
+/// The most viewpoints one `capture_views` takes.
+pub const MAX_CAPTURE_VIEWS: usize = 16;
 /// The longest capture edge, in pixels.
 pub const MAX_CAPTURE_EDGE: u32 = 4096;
 /// Snapshots kept by `snapshot`; the oldest is dropped beyond this.
@@ -96,6 +98,8 @@ pub const MEMBERS: &[&str] = &[
     "pick_ui",
     "marks",
     "timeline",
+    "visible",
+    "capture_views",
 ];
 
 /// The player-facing members a `publish` build keeps.
@@ -130,6 +134,8 @@ pub enum DumpKind {
     Ui,
     /// The host's `dump_desync` (og.net's lockstep), when it registered one.
     Desync,
+    /// What the main camera's cull keeps (`dump_drawn`).
+    Drawn,
 }
 
 /// A parameter sweep (IDL `SweepDesc`): for each value, restore the snapshot
@@ -489,6 +495,7 @@ impl Probe {
                 snapshots: VecDeque::new(),
                 next_snapshot: 1,
                 sweeping: None,
+                viewing: None,
             },
             clock: state::Clock {
                 paused: false,

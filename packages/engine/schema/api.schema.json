@@ -14097,6 +14097,9 @@
         "Hello",
         "BuildProfile",
         "Capture",
+        "Viewpoint",
+        "ViewFrame",
+        "ViewFrames",
         "MarkRect",
         "Mark",
         "MarksDesc",
@@ -14119,6 +14122,10 @@
         "SystemDump",
         "WorldDump",
         "EntityDump",
+        "DrawReason",
+        "Visibility",
+        "DrawnEntity",
+        "DrawnDump",
         "EntityPrefab",
         "DescribedPrefab",
         "UiElement",
@@ -14402,6 +14409,57 @@
               "returns": "Option<Capture>",
               "returnsDoc": "Null without a renderer, or for a region outside the surface.",
               "publish": true
+            },
+            {
+              "name": "captureViews",
+              "doc": "The frame of the current tick from each of several viewpoints (1 to 16), all of the same tick, in one call; og.Camera is never written. What each frame extracts (levels of detail, streaming) is the main camera's. Size and fit as capture's; on the web it waits for each readback as capture does.\nSee `captures §1`.",
+              "params": [
+                {
+                  "name": "views",
+                  "type": "List<Viewpoint>",
+                  "optional": false,
+                  "doc": "The cameras."
+                },
+                {
+                  "name": "width",
+                  "type": "u32",
+                  "optional": true,
+                  "default": 0,
+                  "doc": "Width in pixels; 0 is the render target's."
+                },
+                {
+                  "name": "height",
+                  "type": "u32",
+                  "optional": true,
+                  "default": 0,
+                  "doc": "Height in pixels; 0 is the render target's."
+                },
+                {
+                  "name": "fit",
+                  "type": "u32",
+                  "optional": true,
+                  "default": 1280,
+                  "doc": "The longest side a PNG may have; 0 keeps the rendered size."
+                }
+              ],
+              "returns": "Option<ViewFrames>",
+              "returnsDoc": "Null without a renderer.",
+              "publish": false
+            },
+            {
+              "name": "visible",
+              "doc": "Whether the main camera draws an entity at the current tick and why: a reason code (DrawReason) with what it names, and its drawables drawn and culled. Answers without a renderer too (the cull runs on the CPU over the extracted frame).\nSee `testing §4`.",
+              "params": [
+                {
+                  "name": "id",
+                  "type": "String",
+                  "optional": false,
+                  "doc": "The probe id."
+                }
+              ],
+              "returns": "Option<Visibility>",
+              "returnsDoc": "Null for an unknown entity, or a host without a scene view.",
+              "publish": false
             },
             {
               "name": "marks",
@@ -50370,6 +50428,7 @@
         "frame_entity",
         "dump_world",
         "dump_entity",
+        "dump_drawn",
         "dump_ui",
         "set",
         "get",
@@ -50408,7 +50467,8 @@
         "teleport": "`teleport:<entity>:x,y,z`: set an entity's position.",
         "frame_entity": "`frame_entity:<entity>`: point the camera at an entity.",
         "dump_world": "`dump_world[:path]`: tables, systems and their matched counts.",
-        "dump_entity": "`dump_entity:<name>[:path]`: one entity's components and transform.",
+        "dump_entity": "`dump_entity:<name>[:path]`: one entity's components and transform, and `visible`: whether the main camera draws it and why (probe.Visibility).",
+        "dump_drawn": "`dump_drawn[:path]`: what the main camera's cull keeps of the frame (probe.DrawnDump): every entity with something to draw, whether it is drawn and its reason code.",
         "dump_ui": "`dump_ui[:path]`: the UI tree with bounds, and `style`, the configured UI style's name (empty for the engine's default style).",
         "set": "`set:<entity>.<component>.<field>=<value>` or `set:<Resource>.<field>=<value>`: a Tune write through the schema: a number, `true` or `false` for a bool, `x,y,z` for a vector, an enum's variant name or its index; refused outside the field's FieldOptions min/max, never clamped.",
         "get": "`get:<Resource>[.<field>]` or `get:<entity>[.<component>[.<field>]][:path]`: read through the schema as game code sees it (enums by variant name, og.Time whole, lights as drawn), logged and written as JSON to `get-<tick>.json` (more unnamed ones on one tick: `get-<tick>-2.json`, ...).",
@@ -51316,6 +51376,139 @@
       ],
       "additionalProperties": false
     },
+    "Viewpoint": {
+      "x-og-kind": "struct",
+      "x-og-module": "probe",
+      "description": "A camera to capture from (captureViews), in world units.",
+      "type": "object",
+      "properties": {
+        "position": {
+          "$ref": "#/$defs/Vector3",
+          "description": "Where the eye is."
+        },
+        "target": {
+          "$ref": "#/$defs/Vector3",
+          "description": "The point it looks at."
+        },
+        "up": {
+          "$ref": "#/$defs/Vector3",
+          "description": "Up; `[0, 1, 0]` when absent."
+        },
+        "fov": {
+          "type": "number",
+          "description": "Vertical field of view in degrees, for a perspective view.",
+          "default": 50,
+          "x-og-unit": "deg"
+        },
+        "height": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "An orthographic view's height in world units; null is perspective."
+        },
+        "near": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The near plane; null keeps og.Camera's."
+        },
+        "far": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The far plane; null keeps og.Camera's."
+        }
+      },
+      "required": [
+        "position",
+        "target",
+        "fov"
+      ],
+      "additionalProperties": false
+    },
+    "ViewFrame": {
+      "x-og-kind": "struct",
+      "x-og-module": "probe",
+      "description": "One viewpoint's frame of captureViews.",
+      "type": "object",
+      "properties": {
+        "view": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Its index in the views asked."
+        },
+        "width": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Width in pixels."
+        },
+        "height": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Height in pixels."
+        },
+        "scale": {
+          "type": "number",
+          "description": "As Capture.scale."
+        },
+        "png": {
+          "type": "string",
+          "description": "The PNG, base64."
+        }
+      },
+      "required": [
+        "view",
+        "width",
+        "height",
+        "scale",
+        "png"
+      ],
+      "additionalProperties": false
+    },
+    "ViewFrames": {
+      "x-og-kind": "struct",
+      "x-og-module": "probe",
+      "description": "The frames of one tick from several viewpoints.",
+      "type": "object",
+      "properties": {
+        "tick": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "The tick every frame shows."
+        },
+        "frames": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/ViewFrame"
+          },
+          "description": "One per viewpoint, in order."
+        }
+      },
+      "required": [
+        "tick",
+        "frames"
+      ],
+      "additionalProperties": false
+    },
     "MarkRect": {
       "x-og-kind": "struct",
       "x-og-module": "probe",
@@ -52061,13 +52254,15 @@
         "world",
         "entity",
         "ui",
-        "desync"
+        "desync",
+        "drawn"
       ],
       "x-og-variants": {
         "world": "Archetype tables, systems and their matched counts.",
         "entity": "One entity's components and transform.",
         "ui": "The UI tree with bounds.",
-        "desync": "The first desync of a lockstep session (og.net): its tick, both hashes and the component-level diff of the two peers' snapshots."
+        "desync": "The first desync of a lockstep session (og.net): its tick, both hashes and the component-level diff of the two peers' snapshots.",
+        "drawn": "What the main camera's cull keeps of the frame: every entity with something to draw, whether it is drawn and why."
       }
     },
     "DumpDesc": {
@@ -52271,12 +52466,191 @@
         "prefab": {
           "$ref": "#/$defs/EntityPrefab",
           "description": "Where it came from, for an entity placed from a prefab; absent otherwise."
+        },
+        "visible": {
+          "$ref": "#/$defs/Visibility",
+          "description": "Whether the main camera draws it at this tick, and why; absent from a host without a scene view."
         }
       },
       "required": [
         "id",
         "name",
         "components"
+      ],
+      "additionalProperties": false
+    },
+    "DrawReason": {
+      "x-og-kind": "enum",
+      "x-og-module": "probe",
+      "description": "Why the main camera draws an entity or not, the first that holds.\nSee `testing §4`.",
+      "type": "string",
+      "enum": [
+        "drawn",
+        "hlod",
+        "hidden",
+        "loading",
+        "layer",
+        "outside_view",
+        "untracked",
+        "nothing_to_draw"
+      ],
+      "x-og-variants": {
+        "drawn": "A drawable of it survives the camera's cull.",
+        "hlod": "Its model is drawn by an HLOD proxy in its place.",
+        "hidden": "A component of it that draws has `visible` false; detail names the field.",
+        "loading": "Its model has not loaded yet, or is held back until its textures arrive; detail names the asset.",
+        "layer": "Every drawable of it is off the camera's layers (og.Camera.layers).",
+        "outside_view": "Every drawable of it lies outside the camera's view, past near or far included.",
+        "untracked": "It draws through a path the cull record does not follow (particles, lines, text, a tilemap); detail names the component. Whether it shows is not known.",
+        "nothing_to_draw": "It has no component that draws."
+      }
+    },
+    "Visibility": {
+      "x-og-kind": "struct",
+      "x-og-module": "probe",
+      "description": "One entity's verdict in the main camera's cull of the frame at the current tick (the frame is extracted as the renderer draws it; no GPU needed).",
+      "type": "object",
+      "properties": {
+        "visible": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Whether the camera draws it: true for drawn and hlod, null for untracked."
+        },
+        "reason": {
+          "$ref": "#/$defs/DrawReason",
+          "description": "Why."
+        },
+        "detail": {
+          "type": "string",
+          "description": "What the reason names: the hiding field, the loading asset, the untracked component; absent for none."
+        },
+        "drawn": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Its drawables (instances, skinned instances, sprites, terrains) that survived the cull."
+        },
+        "culled": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Its drawables culled by the layers or the view."
+        }
+      },
+      "required": [
+        "visible",
+        "reason",
+        "drawn",
+        "culled"
+      ],
+      "additionalProperties": false
+    },
+    "DrawnEntity": {
+      "x-og-kind": "struct",
+      "x-og-module": "probe",
+      "description": "One entity of dump_drawn.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Its probe id."
+        },
+        "name": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Its name."
+        },
+        "visible": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "As Visibility.visible."
+        },
+        "reason": {
+          "$ref": "#/$defs/DrawReason",
+          "description": "As Visibility.reason."
+        },
+        "detail": {
+          "type": "string",
+          "description": "As Visibility.detail."
+        },
+        "drawn": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "As Visibility.drawn."
+        },
+        "culled": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "As Visibility.culled."
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "visible",
+        "reason",
+        "drawn",
+        "culled"
+      ],
+      "additionalProperties": false
+    },
+    "DrawnDump": {
+      "x-og-kind": "struct",
+      "x-og-module": "probe",
+      "description": "What the main camera's cull keeps of the frame at the current tick (dump_drawn): every entity with something to draw, in entity order.",
+      "type": "object",
+      "properties": {
+        "tick": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "The tick."
+        },
+        "drawn": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Entities drawn (drawn or hlod)."
+        },
+        "notDrawn": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Entities not drawn (untracked ones are neither)."
+        },
+        "entities": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/DrawnEntity"
+          },
+          "description": "The entities."
+        }
+      },
+      "required": [
+        "tick",
+        "drawn",
+        "notDrawn",
+        "entities"
       ],
       "additionalProperties": false
     },
@@ -52633,6 +53007,10 @@
             "prefab": {
               "$ref": "#/$defs/EntityPrefab",
               "description": "Where it came from, for an entity placed from a prefab; absent otherwise."
+            },
+            "visible": {
+              "$ref": "#/$defs/Visibility",
+              "description": "Whether the main camera draws it at this tick, and why; absent from a host without a scene view."
             }
           },
           "required": [
@@ -52729,6 +53107,49 @@
           ],
           "additionalProperties": false,
           "x-og-payload": "DesyncDump"
+        },
+        {
+          "description": "The cull record.",
+          "type": "object",
+          "properties": {
+            "kind": {
+              "const": "drawn"
+            },
+            "tick": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 4294967295,
+              "description": "The tick."
+            },
+            "drawn": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 4294967295,
+              "description": "Entities drawn (drawn or hlod)."
+            },
+            "notDrawn": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 4294967295,
+              "description": "Entities not drawn (untracked ones are neither)."
+            },
+            "entities": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/DrawnEntity"
+              },
+              "description": "The entities."
+            }
+          },
+          "required": [
+            "kind",
+            "tick",
+            "drawn",
+            "notDrawn",
+            "entities"
+          ],
+          "additionalProperties": false,
+          "x-og-payload": "DrawnDump"
         }
       ]
     },

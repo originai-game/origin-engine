@@ -21674,6 +21674,154 @@ impl ToJson for Capture {
     }
 }
 
+/// `Viewpoint`: packages/knowledge/wiki/probe.md.
+#[derive(Clone, Debug, PartialEq)]
+pub struct Viewpoint {
+    pub position: Vec3,
+    pub target: Vec3,
+    pub up: Option<Vec3>,
+    pub fov: f32,
+    pub height: Option<f32>,
+    pub near: Option<f32>,
+    pub far: Option<f32>,
+}
+
+impl Default for Viewpoint {
+    fn default() -> Self {
+        Self {
+            position: Default::default(),
+            target: Default::default(),
+            up: Default::default(),
+            fov: 50.0_f32,
+            height: Default::default(),
+            near: Default::default(),
+            far: Default::default(),
+        }
+    }
+}
+
+impl FromJson for Viewpoint {
+    fn from_json(v: &Value) -> Result<Self, String> {
+        Self::from_json_over(v, Self::default())
+    }
+    fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
+        let o = object(v)?;
+        Ok(Self {
+            position: field(o, "position", d.position)?,
+            target: field(o, "target", d.target)?,
+            up: field(o, "up", d.up)?,
+            fov: field(o, "fov", d.fov)?,
+            height: field(o, "height", d.height)?,
+            near: field(o, "near", d.near)?,
+            far: field(o, "far", d.far)?,
+        })
+    }
+}
+
+impl ToJson for Viewpoint {
+    fn to_json(&self) -> Value {
+        let mut o = Map::new();
+        o.insert("position".into(), self.position.to_json());
+        o.insert("target".into(), self.target.to_json());
+        if let Some(x) = &self.up {
+            o.insert("up".into(), x.to_json());
+        }
+        o.insert("fov".into(), self.fov.to_json());
+        o.insert("height".into(), self.height.to_json());
+        o.insert("near".into(), self.near.to_json());
+        o.insert("far".into(), self.far.to_json());
+        Value::Object(o)
+    }
+}
+
+/// `ViewFrame`: packages/knowledge/wiki/probe.md.
+#[derive(Clone, Debug, PartialEq)]
+pub struct ViewFrame {
+    pub view: u32,
+    pub width: u32,
+    pub height: u32,
+    pub scale: f32,
+    pub png: String,
+}
+
+impl Default for ViewFrame {
+    fn default() -> Self {
+        Self {
+            view: Default::default(),
+            width: Default::default(),
+            height: Default::default(),
+            scale: Default::default(),
+            png: Default::default(),
+        }
+    }
+}
+
+impl FromJson for ViewFrame {
+    fn from_json(v: &Value) -> Result<Self, String> {
+        Self::from_json_over(v, Self::default())
+    }
+    fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
+        let o = object(v)?;
+        Ok(Self {
+            view: field(o, "view", d.view)?,
+            width: field(o, "width", d.width)?,
+            height: field(o, "height", d.height)?,
+            scale: field(o, "scale", d.scale)?,
+            png: field(o, "png", d.png)?,
+        })
+    }
+}
+
+impl ToJson for ViewFrame {
+    fn to_json(&self) -> Value {
+        let mut o = Map::new();
+        o.insert("view".into(), self.view.to_json());
+        o.insert("width".into(), self.width.to_json());
+        o.insert("height".into(), self.height.to_json());
+        o.insert("scale".into(), self.scale.to_json());
+        o.insert("png".into(), self.png.to_json());
+        Value::Object(o)
+    }
+}
+
+/// `ViewFrames`: packages/knowledge/wiki/probe.md.
+#[derive(Clone, Debug, PartialEq)]
+pub struct ViewFrames {
+    pub tick: u32,
+    pub frames: Vec<ViewFrame>,
+}
+
+impl Default for ViewFrames {
+    fn default() -> Self {
+        Self {
+            tick: Default::default(),
+            frames: Default::default(),
+        }
+    }
+}
+
+impl FromJson for ViewFrames {
+    fn from_json(v: &Value) -> Result<Self, String> {
+        Self::from_json_over(v, Self::default())
+    }
+    fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
+        let o = object(v)?;
+        Ok(Self {
+            tick: field(o, "tick", d.tick)?,
+            frames: field(o, "frames", d.frames)?,
+        })
+    }
+}
+
+impl ToJson for ViewFrames {
+    fn to_json(&self) -> Value {
+        let mut o = Map::new();
+        o.insert("tick".into(), self.tick.to_json());
+        o.insert("frames".into(), self.frames.to_json());
+        Value::Object(o)
+    }
+}
+
 /// `MarkRect`: packages/knowledge/wiki/probe.md.
 #[derive(Clone, Debug, PartialEq)]
 pub struct MarkRect {
@@ -22478,13 +22626,14 @@ pub enum DumpKind {
     Entity,
     Ui,
     Desync,
+    Drawn,
 }
 
 impl DumpKind {
     /// The variants' IDL names, in index order.
-    pub const NAMES: &'static [&'static str] = &["world", "entity", "ui", "desync"];
+    pub const NAMES: &'static [&'static str] = &["world", "entity", "ui", "desync", "drawn"];
     /// Every variant, in index order.
-    pub const ALL: &'static [Self] = &[Self::World, Self::Entity, Self::Ui, Self::Desync];
+    pub const ALL: &'static [Self] = &[Self::World, Self::Entity, Self::Ui, Self::Desync, Self::Drawn];
     /// The IDL name.
     pub fn as_str(self) -> &'static str {
         Self::NAMES[self as usize]
@@ -22697,6 +22846,7 @@ pub struct EntityDump {
     pub name: Option<String>,
     pub components: BTreeMap<String, Value>,
     pub prefab: Option<EntityPrefab>,
+    pub visible: Option<Visibility>,
 }
 
 impl Default for EntityDump {
@@ -22706,6 +22856,7 @@ impl Default for EntityDump {
             name: Default::default(),
             components: Default::default(),
             prefab: Default::default(),
+            visible: Default::default(),
         }
     }
 }
@@ -22721,6 +22872,7 @@ impl FromJson for EntityDump {
             name: field(o, "name", d.name)?,
             components: field(o, "components", d.components)?,
             prefab: field(o, "prefab", d.prefab)?,
+            visible: field(o, "visible", d.visible)?,
         })
     }
 }
@@ -22734,6 +22886,211 @@ impl ToJson for EntityDump {
         if let Some(x) = &self.prefab {
             o.insert("prefab".into(), x.to_json());
         }
+        if let Some(x) = &self.visible {
+            o.insert("visible".into(), x.to_json());
+        }
+        Value::Object(o)
+    }
+}
+
+/// `DrawReason`: packages/knowledge/wiki/probe.md.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash, PartialOrd, Ord)]
+pub enum DrawReason {
+    #[default]
+    Drawn,
+    Hlod,
+    Hidden,
+    Loading,
+    Layer,
+    OutsideView,
+    Untracked,
+    NothingToDraw,
+}
+
+impl DrawReason {
+    /// The variants' IDL names, in index order.
+    pub const NAMES: &'static [&'static str] = &["drawn", "hlod", "hidden", "loading", "layer", "outside_view", "untracked", "nothing_to_draw"];
+    /// Every variant, in index order.
+    pub const ALL: &'static [Self] = &[Self::Drawn, Self::Hlod, Self::Hidden, Self::Loading, Self::Layer, Self::OutsideView, Self::Untracked, Self::NothingToDraw];
+    /// The IDL name.
+    pub fn as_str(self) -> &'static str {
+        Self::NAMES[self as usize]
+    }
+    /// The variant named `s`, or a refusal naming them all.
+    pub fn parse(s: &str) -> Result<Self, String> {
+        match Self::NAMES.iter().position(|n| *n == s) {
+            Some(i) => Ok(Self::ALL[i]),
+            None => Err(unknown_variant("DrawReason", s, Self::NAMES)),
+        }
+    }
+}
+
+impl FromJson for DrawReason {
+    fn from_json(v: &Value) -> Result<Self, String> {
+        Self::parse(variant(v, "DrawReason", Self::NAMES)?)
+    }
+}
+
+impl ToJson for DrawReason {
+    fn to_json(&self) -> Value {
+        Value::String(self.as_str().into())
+    }
+}
+
+/// `Visibility`: packages/knowledge/wiki/probe.md.
+#[derive(Clone, Debug, PartialEq)]
+pub struct Visibility {
+    pub visible: Option<bool>,
+    pub reason: DrawReason,
+    pub detail: Option<String>,
+    pub drawn: u32,
+    pub culled: u32,
+}
+
+impl Default for Visibility {
+    fn default() -> Self {
+        Self {
+            visible: Default::default(),
+            reason: Default::default(),
+            detail: Default::default(),
+            drawn: Default::default(),
+            culled: Default::default(),
+        }
+    }
+}
+
+impl FromJson for Visibility {
+    fn from_json(v: &Value) -> Result<Self, String> {
+        Self::from_json_over(v, Self::default())
+    }
+    fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
+        let o = object(v)?;
+        Ok(Self {
+            visible: field(o, "visible", d.visible)?,
+            reason: field(o, "reason", d.reason)?,
+            detail: field(o, "detail", d.detail)?,
+            drawn: field(o, "drawn", d.drawn)?,
+            culled: field(o, "culled", d.culled)?,
+        })
+    }
+}
+
+impl ToJson for Visibility {
+    fn to_json(&self) -> Value {
+        let mut o = Map::new();
+        o.insert("visible".into(), self.visible.to_json());
+        o.insert("reason".into(), self.reason.to_json());
+        if let Some(x) = &self.detail {
+            o.insert("detail".into(), x.to_json());
+        }
+        o.insert("drawn".into(), self.drawn.to_json());
+        o.insert("culled".into(), self.culled.to_json());
+        Value::Object(o)
+    }
+}
+
+/// `DrawnEntity`: packages/knowledge/wiki/probe.md.
+#[derive(Clone, Debug, PartialEq)]
+pub struct DrawnEntity {
+    pub id: String,
+    pub name: Option<String>,
+    pub visible: Option<bool>,
+    pub reason: DrawReason,
+    pub detail: Option<String>,
+    pub drawn: u32,
+    pub culled: u32,
+}
+
+impl Default for DrawnEntity {
+    fn default() -> Self {
+        Self {
+            id: Default::default(),
+            name: Default::default(),
+            visible: Default::default(),
+            reason: Default::default(),
+            detail: Default::default(),
+            drawn: Default::default(),
+            culled: Default::default(),
+        }
+    }
+}
+
+impl FromJson for DrawnEntity {
+    fn from_json(v: &Value) -> Result<Self, String> {
+        Self::from_json_over(v, Self::default())
+    }
+    fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
+        let o = object(v)?;
+        Ok(Self {
+            id: field(o, "id", d.id)?,
+            name: field(o, "name", d.name)?,
+            visible: field(o, "visible", d.visible)?,
+            reason: field(o, "reason", d.reason)?,
+            detail: field(o, "detail", d.detail)?,
+            drawn: field(o, "drawn", d.drawn)?,
+            culled: field(o, "culled", d.culled)?,
+        })
+    }
+}
+
+impl ToJson for DrawnEntity {
+    fn to_json(&self) -> Value {
+        let mut o = Map::new();
+        o.insert("id".into(), self.id.to_json());
+        o.insert("name".into(), self.name.to_json());
+        o.insert("visible".into(), self.visible.to_json());
+        o.insert("reason".into(), self.reason.to_json());
+        if let Some(x) = &self.detail {
+            o.insert("detail".into(), x.to_json());
+        }
+        o.insert("drawn".into(), self.drawn.to_json());
+        o.insert("culled".into(), self.culled.to_json());
+        Value::Object(o)
+    }
+}
+
+/// `DrawnDump`: packages/knowledge/wiki/probe.md.
+#[derive(Clone, Debug, PartialEq)]
+pub struct DrawnDump {
+    pub tick: u32,
+    pub drawn: u32,
+    pub not_drawn: u32,
+    pub entities: Vec<DrawnEntity>,
+}
+
+impl Default for DrawnDump {
+    fn default() -> Self {
+        Self {
+            tick: Default::default(),
+            drawn: Default::default(),
+            not_drawn: Default::default(),
+            entities: Default::default(),
+        }
+    }
+}
+
+impl FromJson for DrawnDump {
+    fn from_json(v: &Value) -> Result<Self, String> {
+        Self::from_json_over(v, Self::default())
+    }
+    fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
+        let o = object(v)?;
+        Ok(Self {
+            tick: field(o, "tick", d.tick)?,
+            drawn: field(o, "drawn", d.drawn)?,
+            not_drawn: field(o, "notDrawn", d.not_drawn)?,
+            entities: field(o, "entities", d.entities)?,
+        })
+    }
+}
+
+impl ToJson for DrawnDump {
+    fn to_json(&self) -> Value {
+        let mut o = Map::new();
+        o.insert("tick".into(), self.tick.to_json());
+        o.insert("drawn".into(), self.drawn.to_json());
+        o.insert("notDrawn".into(), self.not_drawn.to_json());
+        o.insert("entities".into(), self.entities.to_json());
         Value::Object(o)
     }
 }
@@ -23053,6 +23410,7 @@ pub enum DumpResult {
     Entity(EntityDump),
     Ui(UiDump),
     Desync(DesyncDump),
+    Drawn(DrawnDump),
 }
 
 impl Default for DumpResult {
@@ -23064,7 +23422,7 @@ impl Default for DumpResult {
 impl DumpResult {
     /// The tag key and the cases' tags, in order.
     pub const TAG: &'static str = "kind";
-    pub const TAGS: &'static [&'static str] = &["world", "entity", "ui", "desync"];
+    pub const TAGS: &'static [&'static str] = &["world", "entity", "ui", "desync", "drawn"];
     /// This case's tag.
     pub fn tag(&self) -> &'static str {
         match self {
@@ -23072,6 +23430,7 @@ impl DumpResult {
             Self::Entity(_) => "entity",
             Self::Ui(_) => "ui",
             Self::Desync(_) => "desync",
+            Self::Drawn(_) => "drawn",
         }
     }
 }
@@ -23088,6 +23447,7 @@ impl FromJson for DumpResult {
             "entity" => Self::Entity(EntityDump::from_json(v)?),
             "ui" => Self::Ui(UiDump::from_json(v)?),
             "desync" => Self::Desync(DesyncDump::from_json(v)?),
+            "drawn" => Self::Drawn(DrawnDump::from_json(v)?),
             t => return Err(at(Self::TAG, unknown_variant("DumpResult", t, Self::TAGS))),
         })
     }
@@ -23100,6 +23460,7 @@ impl ToJson for DumpResult {
             Self::Entity(p) => p.to_json(),
             Self::Ui(p) => p.to_json(),
             Self::Desync(p) => p.to_json(),
+            Self::Drawn(p) => p.to_json(),
         };
         if let Value::Object(o) = &mut v {
             o.insert(Self::TAG.into(), Value::String(self.tag().into()));
