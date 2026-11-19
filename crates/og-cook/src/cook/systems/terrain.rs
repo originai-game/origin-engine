@@ -755,8 +755,12 @@ pub(crate) fn cook_terrain(
     // `height`: its tiles keep those steps, so terrains declared over one
     // range with equal edge samples meet exactly. An EXR's or a generated
     // field's heights are not steps of anything: they take the field's own.
-    let declared = (doc.heightmap.is_some() && !source.exr)
-        .then(|| (doc.height[0].min(doc.height[1]), doc.height[0].max(doc.height[1])));
+    let declared = (doc.heightmap.is_some() && !source.exr).then(|| {
+        (
+            doc.height[0].min(doc.height[1]),
+            doc.height[0].max(doc.height[1]),
+        )
+    });
     let mut missing = Vec::new();
     for (a, n, _) in &doc.layers {
         for t in [a, n].into_iter().flatten() {

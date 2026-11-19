@@ -532,13 +532,20 @@ fn adjacent_terrains_with_equal_edge_samples_meet_exactly() {
     let load = |id: &str| bundle.load_terrain(id).unwrap();
     let (tw, te) = (load("terrain/west.ogt"), load("terrain/east.ogt"));
     let tn = load("terrain/north.ogt");
-    let (fw, fe, fn_) = (tw.field().unwrap(), te.field().unwrap(), tn.field().unwrap());
+    let (fw, fe, fn_) = (
+        tw.field().unwrap(),
+        te.field().unwrap(),
+        tn.field().unwrap(),
+    );
     for y in 0..65u32 {
         let a = fw.heights[(y * 65 + 64) as usize];
         let b = fe.heights[(y * 65) as usize];
         assert_eq!(a.to_bits(), b.to_bits(), "row {y}: {a} vs {b}");
         let want = -256.0 + edge(y) as f32 / 65535.0 * 1024.0;
-        assert!((a - want).abs() < 1e-4, "row {y}: {a} vs the source's {want}");
+        assert!(
+            (a - want).abs() < 1e-4,
+            "row {y}: {a} vs the source's {want}"
+        );
     }
     // og.terrain.sample's surface along the seam, between samples too:
     // west's +x edge is east's -x edge.
