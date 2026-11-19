@@ -446,10 +446,12 @@ pub fn storm_update(scene: &mut RenderScene, frame: u32) {
 }
 
 /// The colonnade on a clear moonless night under `aurora` (its arcs out
-/// along -z, where the camera looks), the camera tilted up and opened up
-/// three stops for the night. No moon stands in the sky and none lights
-/// the land: it lies in the light of the sky as drawn, the aurora's with it.
-fn auroral(aurora: Aurora) -> RenderScene {
+/// along -z, where the camera looks down the road), the camera's target
+/// 44 m out raised by `lift` metres (9: 13° up, so the road, the arch at
+/// its end and the hills keep the frame's lower third) and opened up three
+/// stops for the night. No moon stands in the sky and none lights the
+/// land: it lies in the light of the sky as drawn, the aurora's with it.
+fn auroral(aurora: Aurora, lift: f32) -> RenderScene {
     let mut scene = exposed(
         physical_sky_scene(23.5, PhysicalAtmosphere::EARTH, false),
         3.0,
@@ -459,7 +461,7 @@ fn auroral(aurora: Aurora) -> RenderScene {
     }
     scene.lighting.light.intensity = 0.0;
     scene.atmosphere.aurora = Some(aurora);
-    scene.frame.camera.target += Vec3::Y * 22.0;
+    scene.frame.camera.target += Vec3::Y * lift;
     scene
 }
 
@@ -610,32 +612,43 @@ pub fn sky_scene(name: &str) -> RenderScene {
             crate::atmo_scenes::day_night_scene(10.5, false),
             Clouds::default(),
         ),
-        // Quiet folded arcs; and their night without them (no reference;
-        // the check compares against it).
-        "aurora-arcs" => auroral(Aurora {
-            activity: 0.3,
-            ..Aurora::default()
-        }),
+        // Two quiet, faintly rayed arcs, 280 and 480 km out: far enough
+        // that a nearly level camera holds the nearer over the colonnade
+        // and the farther low over the hills. Opened half a stop more, for
+        // a quiet display's light on the land. And their night without
+        // them (no reference; the check compares against it).
+        "aurora-arcs" => exposed(
+            auroral(
+                Aurora {
+                    activity: 0.3,
+                    intensity: 1.6,
+                    curtains: 2,
+                    distance: 280_000.0,
+                    spread: 200_000.0,
+                    ..Aurora::default()
+                },
+                9.0,
+            ),
+            0.5,
+        ),
         "aurora-arcs-clear" => {
-            let mut scene = auroral(Aurora::default());
+            let mut scene = exposed(auroral(Aurora::default(), 9.0), 0.5);
             scene.atmosphere.aurora = None;
             scene
         }
-        // A substorm's breakup of soft electrons (red tops), behind broken
-        // cloud that hides it where it passes.
-        "aurora-breakup" => clouded(
-            auroral(Aurora {
+        // A substorm's breakup of soft electrons (red tops), 200 km out:
+        // seen from the side its curtains stand as rays over the hills,
+        // fold over each other and fill the sky above the colonnade, and
+        // their light is on the land.
+        "aurora-breakup" => auroral(
+            Aurora {
                 activity: 0.95,
                 energy: 0.9,
                 intensity: 1.5,
-                distance: 60_000.0,
+                distance: 200_000.0,
                 ..Aurora::default()
-            }),
-            Clouds {
-                coverage: 0.35,
-                layer: 0.0,
-                ..Clouds::default()
             },
+            14.0,
         ),
         "sky-physical-noon" => physical_sky_scene(12.5, earth, false),
         "sky-physical-moon-full" => moon_sky_scene(1.6, 0.5),
