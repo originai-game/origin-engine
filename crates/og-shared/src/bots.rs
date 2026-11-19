@@ -121,6 +121,8 @@ pub struct BotReport {
     pub updates: u64,
     pub corrections: u64,
     pub errors: u64,
+    /// Snapshots ahead of an enter (crate::view::NOT_ENTERED).
+    pub early: u64,
     pub stale: u64,
     pub moved: bool,
     /// Each measured snapshot's delay past the bot's fastest, ms.
@@ -618,6 +620,7 @@ async fn bot(d: &LoadDesc, i: usize, start: Instant) -> BotReport {
                             }
                         }
                         Ok(None) => rep.stale += 1,
+                        Err(crate::view::NOT_ENTERED) => rep.early += 1,
                         Err(_) => rep.errors += 1,
                         }
                     }
@@ -672,7 +675,11 @@ pub struct Summary {
     /// Updates a client got a second, mean.
     pub updates_per_s: f64,
     pub corrections: u64,
+    /// Messages that did not decode: a fault.
     pub errors: u64,
+    /// Snapshots that overtook an enter and waited for the next
+    /// (crate::view::NOT_ENTERED): expected under loss over WebTransport.
+    pub early: u64,
     pub stale: u64,
     pub moved: usize,
     /// Over every bot's snapshots: the delay past each bot's fastest (p50,
@@ -735,6 +742,7 @@ pub fn summarize(reps: &[BotReport]) -> Summary {
             / joined.len().max(1) as f64,
         corrections: reps.iter().map(|r| r.corrections).sum(),
         errors: reps.iter().map(|r| r.errors).sum(),
+        early: reps.iter().map(|r| r.early).sum(),
         stale: reps.iter().map(|r| r.stale).sum(),
         moved: reps.iter().filter(|r| r.moved).count(),
         added_ms: {

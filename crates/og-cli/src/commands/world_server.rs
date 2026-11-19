@@ -469,7 +469,7 @@ fn load(args: &[&str]) -> ExitCode {
             "downBytesPerSecond": { "mean": s.down[0], "p95": s.down[1], "max": s.down[2] },
             "upBytesPerSecond": { "mean": s.up[0], "p95": s.up[1], "max": s.up[2] },
             "inSight": { "mean": s.in_sight_mean, "max": s.in_sight_max }, "othersMax": s.others_max,
-            "updatesPerSecond": s.updates_per_s, "corrections": s.corrections, "errors": s.errors, "stale": s.stale, "moved": s.moved,
+            "updatesPerSecond": s.updates_per_s, "corrections": s.corrections, "errors": s.errors, "early": s.early, "stale": s.stale, "moved": s.moved,
             "server": window.as_ref().map(Window::json),
             "gate": if get("--gate").is_some() { serde_json::json!({ "pass": failures.is_empty(), "failures": failures }) } else { serde_json::Value::Null },
         });
@@ -492,8 +492,8 @@ fn load(args: &[&str]) -> ExitCode {
             s.in_sight_mean, s.in_sight_max, s.others_max
         );
         println!(
-            "updates     {:.0} a second per client; {} corrections, {} decode errors, {} stale",
-            s.updates_per_s, s.corrections, s.errors, s.stale
+            "updates     {:.0} a second per client; {} corrections, {} decode errors, {} stale, {} ahead of their enters",
+            s.updates_per_s, s.corrections, s.errors, s.stale, s.early
         );
         println!(
             "delivery    {} over {} ms added RTT, {}% loss: {:.1}% of snapshots arrived; delay past the fastest p50 {:.1} ms p99 {:.1} ms; gaps p50 {:.1} ms p99 {:.1} ms max {:.1} ms",
