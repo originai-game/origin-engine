@@ -115,6 +115,9 @@ describe("vfx archives", () => {
     finish(dir, "1.2.3-dev.4", "0".repeat(40), "2026-11-07T00:00:00.000Z", vfx);
     const manifest = JSON.parse(readFileSync(join(dir, "manifest.json"), "utf8"));
     expect(manifest.vfx).toEqual(vfx);
+    // The shape a platform reads (AGENTS.md §Ownership, docs/release.md §1): changing it is a break.
+    expect(Object.keys(manifest).sort()).toEqual(["channel", "checksums", "releasedAt", "revision", "signature", "targets", "version", "vfx"]);
+    expect(manifest).toMatchObject({ version: "1.2.3-dev.4", channel: "dev", checksums: "SHA256SUMS", signature: "SHA256SUMS.minisig" });
     expect(manifest).not.toHaveProperty("symbols");
     const sums = readFileSync(join(dir, "SHA256SUMS"), "utf8");
     expect(sums).not.toContain(symbols);
