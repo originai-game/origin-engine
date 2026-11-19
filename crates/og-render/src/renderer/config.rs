@@ -259,6 +259,12 @@ pub struct RenderDesc {
     /// What a surface presents: by default the widest gamut and range the
     /// surface and display offer ([`DisplayOutput`]).
     pub output: DisplayOutput,
+    /// Whether the display presents high dynamic range, where the host knows
+    /// and the surface cannot tell: a Worker's OffscreenCanvas has no
+    /// `(dynamic-range: high)` to ask, the page that made it has. `Some(false)`
+    /// keeps [`DisplayOutput::Best`] at standard range; `None`: the surface's
+    /// report alone.
+    pub display_high_dynamic_range: Option<bool>,
     /// HDR paper white in nits; zero means 203. Relative on EDR/web.
     pub paper_white_nits: f32,
     /// HDR peak in nits, at least paper white; zero means the display's
@@ -396,6 +402,7 @@ impl Default for RenderDesc {
             backend: Backend::Auto,
             output_format: None,
             output: DisplayOutput::Best,
+            display_high_dynamic_range: None,
             paper_white_nits: 0.0,
             peak_nits: 0.0,
             antialias: Antialias::Off,

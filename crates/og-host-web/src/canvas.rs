@@ -314,7 +314,9 @@ impl RenderBackend for CanvasBackend {
 /// Put the renderer on an OffscreenCanvas transferred to this Worker,
 /// on WebGPU (the engine has no other web backend), its adapter asked
 /// for the low-power GPU with `low_power` (the player's power
-/// preference, kept by the shell from the last load). Resolves to the
+/// preference, kept by the shell from the last load) and its display
+/// at standard range where `high_dynamic_range` (the page's
+/// `(dynamic-range: high)`) is false. Resolves to the
 /// tier (`webgpu`), or rejects with the reason: no WebGPU adapter in
 /// this browser, or the canvas or device refused.
 #[wasm_bindgen]
@@ -322,6 +324,7 @@ pub async fn og_web_attach_canvas(
     engine: u32,
     canvas: web_sys::OffscreenCanvas,
     low_power: bool,
+    high_dynamic_range: Option<bool>,
 ) -> Result<String, JsValue> {
     if !wgpu::util::is_browser_webgpu_supported().await {
         return Err(JsValue::from_str(
@@ -336,6 +339,8 @@ pub async fn og_web_attach_canvas(
             height: canvas.height().max(1),
             backend,
             low_power,
+            // The page's `(dynamic-range: high)`: the Worker's canvas cannot ask.
+            display_high_dynamic_range: high_dynamic_range,
             ..RenderDesc::default()
         },
     );

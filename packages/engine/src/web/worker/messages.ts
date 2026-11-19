@@ -71,6 +71,11 @@ export interface Start {
   telemetry?: boolean;
   /** Ask for the low-power GPU adapter: the player's power preference from the last load (og.render.setDisplay). */
   lowPower?: boolean;
+  /**
+   * The page's `(dynamic-range: high)`: the Worker has no matchMedia, and without it the renderer takes an SDR
+   * display for HDR and its sky clips white. Omitted where the page cannot ask either.
+   */
+  highDynamicRange?: boolean;
 }
 
 export type Viewport = { width: number; height: number; dpr: number; safeArea?: Record<string, number>; smallWidth?: number; smallHeight?: number; largeWidth?: number; largeHeight?: number; covered?: Record<string, number>; coarsePointer?: boolean; reducedMotion?: boolean; highContrast?: boolean; reducedTransparency?: boolean; macKeys?: boolean };

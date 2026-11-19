@@ -133,6 +133,20 @@ fn paper_white(desc: &RenderDesc) -> f32 {
     }
 }
 
+/// The display as the renderer reads it: the surface's report, with the
+/// host's word on its dynamic range ([`RenderDesc::display_high_dynamic_range`])
+/// where the surface reports none (the web's Worker canvas).
+pub(crate) fn display_info(
+    mut info: wgpu::DisplayHdrInfo,
+    high: Option<bool>,
+) -> wgpu::DisplayHdrInfo {
+    if let Some(high) = high {
+        let coarse = info.coarse.get_or_insert_default();
+        coarse.high_dynamic_range.get_or_insert(high);
+    }
+    info
+}
+
 /// The display's headroom as the platform reports it: Apple's potential
 /// EDR headroom (its current one stays 1 until EDR content is shown), else
 /// Windows' peak over SDR white; `None` where unknown (the web).
@@ -356,6 +370,42 @@ mod tests {
                 "{output:?} {headroom:?}"
             );
         }
+    }
+
+    /// A WebGPU canvas in a Worker reports nothing of its display: told by
+    /// the page that it is SDR, Best stays at standard range (an extended
+    /// canvas on an SDR display clips everything over SDR white: a white
+    /// sky); told nothing, it presents extended range as before.
+    #[test]
+    fn the_pages_dynamic_range_keeps_an_sdr_display_at_standard_range() {
+        let web = caps(&[
+            (Format::Bgra8Unorm, F::SRGB | F::DISPLAY_P3),
+            (
+                Format::Rgba16Float,
+                F::SRGB | F::DISPLAY_P3 | F::EXTENDED_SRGB | F::EXTENDED_DISPLAY_P3,
+            ),
+        ]);
+        let worker = wgpu::DisplayHdrInfo::default();
+        let pick = |high| {
+            choose(
+                &web,
+                DisplayOutput::Best,
+                display_headroom(&display_info(worker.clone(), high)),
+            )
+        };
+        let f16 = Format::Rgba16Float;
+        assert_eq!(pick(Some(false)), Some((f16, Space::DisplayP3)));
+        assert_eq!(pick(Some(true)), Some((f16, Space::ExtendedDisplayP3)));
+        assert_eq!(pick(None), Some((f16, Space::ExtendedDisplayP3)));
+        // The surface's own report wins over the host's.
+        let sdr = wgpu::DisplayHdrInfo {
+            coarse: Some(wgpu::DisplayCoarseRange {
+                high_dynamic_range: Some(false),
+                gamut: None,
+            }),
+            ..Default::default()
+        };
+        assert_eq!(display_headroom(&display_info(sdr, Some(true))), Some(1.0));
     }
 
     #[test]

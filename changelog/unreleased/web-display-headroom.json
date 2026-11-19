@@ -1,0 +1,8 @@
+{
+  "fixed": [
+    {
+      "member": "RenderOptions.output",
+      "summary": "On the web host an SDR display no longer gets an extended-range (HDR) canvas, which clipped everything above SDR white: og.Sky drew white by day where the native host draws it blue. The engine's Worker cannot ask `(dynamic-range: high)`, so the renderer took every display for HDR; the page now asks and tells it, and `best` stays at standard range (Display P3 where offered) on an SDR display. RenderCapabilities.hdr is false there."
+    }
+  ]
+}

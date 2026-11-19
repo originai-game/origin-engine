@@ -188,7 +188,11 @@ impl Renderer {
             .output_format
             .is_none()
             .then(|| {
-                let headroom = display::display_headroom(&surface.display_hdr_info(&adapter));
+                let info = display::display_info(
+                    surface.display_hdr_info(&adapter),
+                    desc.display_high_dynamic_range,
+                );
+                let headroom = display::display_headroom(&info);
                 display::choose(&caps, desc.output, headroom)
             })
             .flatten();

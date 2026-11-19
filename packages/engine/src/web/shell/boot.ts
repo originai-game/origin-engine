@@ -157,6 +157,7 @@ export async function bootWorker(options: ShellOptions): Promise<Booted> {
     {
       type: "start",
       lowPower,
+      ...(globalThis.matchMedia ? { highDynamicRange: globalThis.matchMedia("(dynamic-range: high)").matches } : {}),
       glue: options.glue,
       wasm: options.wasm,
       ...("threads" in choice ? { lanes: { ...options.lanes!, threads: choice.threads } } : { lanesWhy: choice.why }),
