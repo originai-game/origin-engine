@@ -1,0 +1,1451 @@
+{
+  "version": 1,
+  "files": [
+    {
+      "path": "fonts/arabic/NotoSansArabic-Regular.ttf",
+      "sha256": "7c6accbb8df37e870e1bdf98648163e069a98f7bbbbe020b3be9b52ce31b6dd9",
+      "size": 176436,
+      "visibility": "public"
+    },
+    {
+      "path": "fonts/chinese-simplified/NotoSansSC-Regular.ttf",
+      "sha256": "2691c17e3cccb1b50877b59c6dd5ecf065f935360b53e3f5ef3adc409c7e6d78",
+      "size": 1419424,
+      "visibility": "public"
+    },
+    {
+      "path": "fonts/chinese-traditional/NotoSansTC-Regular.ttf",
+      "sha256": "d93a592741e6ba78fb21c4114b9e9891f8e7308a4d17d9f1c0819dc9d64c0733",
+      "size": 2038800,
+      "visibility": "public"
+    },
+    {
+      "path": "fonts/cyrillic-greek/NotoSans-CyrillicGreek.ttf",
+      "sha256": "1b9417cba35f0b01ae1870ede42933e40d7116ca2bc009ed45de2a9e7d35cc7b",
+      "size": 91692,
+      "visibility": "public"
+    },
+    {
+      "path": "fonts/cyrillic-greek/be.hyph",
+      "sha256": "125802ff7668f6a1cbe26867810403cabc11e12a409cf423f1c66c460561c4db",
+      "size": 3984,
+      "visibility": "public"
+    },
+    {
+      "path": "fonts/cyrillic-greek/bg.hyph",
+      "sha256": "329d32fb929a5510e57697f0cdb55babf643539c6e1520445db2aa1581f461fd",
+      "size": 12328,
+      "visibility": "public"
+    },
+    {
+      "path": "fonts/cyrillic-greek/el.hyph",
+      "sha256": "a3138a9bc257b374bcd918fb193592af8a02a841025f68c919f0d1138683a48c",
+      "size": 2032,
+      "visibility": "public"
+    },
+    {
+      "path": "fonts/cyrillic-greek/mn.hyph",
+      "sha256": "83e3fa15ac3475469c98616b3a50fe5abbe48c1c7e395fdf29b22ced4f04f089",
+      "size": 4974,
+      "visibility": "public"
+    },
+    {
+      "path": "fonts/cyrillic-greek/ru.hyph",
+      "sha256": "0961ecad3a031ab9bd3f3d3e88fbda330dcaab7c3d2bbc0213d742c95b201818",
+      "size": 33344,
+      "visibility": "public"
+    },
+    {
+      "path": "fonts/cyrillic-greek/sr.hyph",
+      "sha256": "a76af6cded4c3a256f1cf1ed8484e9656588b8facd2cb8a7cc3d3b7a548bb9bc",
+      "size": 12313,
+      "visibility": "public"
+    },
+    {
+      "path": "fonts/cyrillic-greek/uk.hyph",
+      "sha256": "606c09f88c8bb713e18feaa53c231666b20e55c8f2032c780ce282c5d0a8cb6f",
+      "size": 21312,
+      "visibility": "public"
+    },
+    {
+      "path": "fonts/devanagari/NotoSansDevanagari-Regular.ttf",
+      "sha256": "067a71a378f5ad06f7cde814660ad527e355e5301f132f4962d240633d437afb",
+      "size": 201236,
+      "visibility": "public"
+    },
+    {
+      "path": "fonts/emoji/Noto-COLRv1.ttf",
+      "sha256": "a9cf93959840816788f8af9e47283a662d83b05fd40659ead47afbcdcd054cdc",
+      "size": 5052748,
+      "visibility": "public"
+    },
+    {
+      "path": "fonts/hebrew/NotoSansHebrew-Regular.ttf",
+      "sha256": "28196f3220558bf37af94ad4c0bd04d1aef1054554f59fc721f4b286f35cc651",
+      "size": 44344,
+      "visibility": "public"
+    },
+    {
+      "path": "fonts/japanese/NotoSansJP-Regular.ttf",
+      "sha256": "0c49addf26ba186b6a310842d70b4771a4242a23aa160133108c541e04bed74e",
+      "size": 1347888,
+      "visibility": "public"
+    },
+    {
+      "path": "fonts/korean/NotoSansKR-Regular.ttf",
+      "sha256": "70ac16beaad802e9d613723b9e7da357b09aec30f02f4d5f8157aea3172087ec",
+      "size": 742336,
+      "visibility": "public"
+    },
+    {
+      "path": "fonts/latin/NotoSans-Latin.ttf",
+      "sha256": "91bd512f081c1f8fdd094cc5d3ce5379d6588d663cd93056f5c209adbc3d2f41",
+      "size": 125928,
+      "visibility": "public"
+    },
+    {
+      "path": "fonts/latin/af.hyph",
+      "sha256": "b97f20e0edf51c7d67992afb804bc0ae36a83c8c459cfc95952601a73dfa9975",
+      "size": 61243,
+      "visibility": "public"
+    },
+    {
+      "path": "fonts/latin/ca.hyph",
+      "sha256": "27a70e94fb14d5c2df252a6df211f69e7df9f4d0de9a014e0466a2ca731ddf5a",
+      "size": 1727,
+      "visibility": "public"
+    },
+    {
+      "path": "fonts/latin/cs.hyph",
+      "sha256": "1f7cb32555583658b8bc6daa35d213e856f28b69d47f44322eae2e11c2037557",
+      "size": 40726,
+      "visibility": "public"
+    },
+    {
+      "path": "fonts/latin/da.hyph",
+      "sha256": "c69e3d5d43abe2697b2220848a95225a14b292cc4611bf86864a031150084f42",
+      "size": 5759,
+      "visibility": "public"
+    },
+    {
+      "path": "fonts/latin/de.hyph",
+      "sha256": "dc057dc24e655a602c6a26ba0bd1532fd143d5d5057c4aec58ce4fe7b30bf96e",
+      "size": 206263,
+      "visibility": "public"
+    },
+    {
+      "path": "fonts/latin/en.hyph",
+      "sha256": "be2bcb386cb777a191813f68b995d0c22fbf30783ac52a0ad2489c8ebd7fd354",
+      "size": 26947,
+      "visibility": "public"
+    },
+    {
+      "path": "fonts/latin/es.hyph",
+      "sha256": "fdca79005c290d9de18d753df630e5accd78333a3c73f418b9eff4a78499fbff",
+      "size": 13649,
+      "visibility": "public"
+    },
+    {
+      "path": "fonts/latin/et.hyph",
+      "sha256": "a1f09425ddead58160e88ae5f55971ee01e51ff3471d35eaad226a4935c4b83c",
+      "size": 18774,
+      "visibility": "public"
+    },
+    {
+      "path": "fonts/latin/fi.hyph",
+      "sha256": "365d87c66398e2cdae80eee5114d9fcbf589131cea1b5701c63acb7306011f14",
+      "size": 636,
+      "visibility": "public"
+    },
+    {
+      "path": "fonts/latin/fr.hyph",
+      "sha256": "64359f17aeb80371018144eaa1afb638da546dfeb594e17a7e819eb8a39c06c5",
+      "size": 6988,
+      "visibility": "public"
+    },
+    {
+      "path": "fonts/latin/gl.hyph",
+      "sha256": "d5d81437dc1d2c91c8999738c6a5836bffc3a7beac4daa65606740e34f842b9d",
+      "size": 7344,
+      "visibility": "public"
+    },
+    {
+      "path": "fonts/latin/hr.hyph",
+      "sha256": "813c099f16948243b6159e128cd804ae338d3fe1cab48ff3429fbc4efa20a738",
+      "size": 1990,
+      "visibility": "public"
+    },
+    {
+      "path": "fonts/latin/hu.hyph",
+      "sha256": "764dd370cd4fef49a39211ff663adfc185c882ed7dea9bbdfcdf6b08432af372",
+      "size": 353883,
+      "visibility": "public"
+    },
+    {
+      "path": "fonts/latin/is.hyph",
+      "sha256": "518be600272fa747b74ea2864644fb88fc95f6690a3816e4bf9420895fc63cca",
+      "size": 21074,
+      "visibility": "public"
+    },
+    {
+      "path": "fonts/latin/it.hyph",
+      "sha256": "a9dc16dbaa585c43b6db52e345c8d49bedf3c71df234a487e5d318adea0c24e7",
+      "size": 1555,
+      "visibility": "public"
+    },
+    {
+      "path": "fonts/latin/la.hyph",
+      "sha256": "2bdf1055591eaf17fbe9ab10eb7124cbbaf0f1077f911f061aeb6774972c2984",
+      "size": 1003,
+      "visibility": "public"
+    },
+    {
+      "path": "fonts/latin/lt.hyph",
+      "sha256": "ec9248f34ce15a0c5e8489c883588880150010f4e2029211fccacadd58b7061e",
+      "size": 6565,
+      "visibility": "public"
+    },
+    {
+      "path": "fonts/latin/nl.hyph",
+      "sha256": "1177ef126b31bbb30f080633680fc14cc4cd6f56d1597981c975389b861d978b",
+      "size": 64293,
+      "visibility": "public"
+    },
+    {
+      "path": "fonts/latin/no.hyph",
+      "sha256": "5fbd731178eea686a75f4e2febb317bfc91de9a8f100c7696ae7017575f74c18",
+      "size": 156375,
+      "visibility": "public"
+    },
+    {
+      "path": "fonts/latin/pl.hyph",
+      "sha256": "cf4e14e2cc9b030b8ef8a1cff037c82bc06ac104d30a3f5f5c58809b3cf30cbd",
+      "size": 15530,
+      "visibility": "public"
+    },
+    {
+      "path": "fonts/latin/pt.hyph",
+      "sha256": "4d55b1babb909cd40dd6f359442ddc77350bbca705246b8b020ce81be6e043a3",
+      "size": 1065,
+      "visibility": "public"
+    },
+    {
+      "path": "fonts/latin/sk.hyph",
+      "sha256": "312e0c7b01dd0b505c9bcbae436d2874ecad3b7ec7b4f2f635f758f39ca38478",
+      "size": 13069,
+      "visibility": "public"
+    },
+    {
+      "path": "fonts/latin/sl.hyph",
+      "sha256": "150615c0734cf7f6366eda2145fee4eaddb8f0a709e4ae70e077e9dde9048b79",
+      "size": 5598,
+      "visibility": "public"
+    },
+    {
+      "path": "fonts/latin/sq.hyph",
+      "sha256": "fbeb999c0bef17c1db1e5df0084ff1a0b8344909148e8d43668b2f0bfa051735",
+      "size": 1407,
+      "visibility": "public"
+    },
+    {
+      "path": "fonts/latin/sv.hyph",
+      "sha256": "eb9a3be6acbcba9df573a3b1065b0cf8ea2b08da7c2897a965f7280cd1639419",
+      "size": 23595,
+      "visibility": "public"
+    },
+    {
+      "path": "fonts/latin/tk.hyph",
+      "sha256": "058eeee13d23d0dd2eacd41fa088b066253a817fea8f0975d03f33883c21a384",
+      "size": 1386,
+      "visibility": "public"
+    },
+    {
+      "path": "fonts/latin/tr.hyph",
+      "sha256": "1661448a091060bdee0d923c5489f6b717dc3dd11f00e2eaed364c8e07889c13",
+      "size": 526,
+      "visibility": "public"
+    },
+    {
+      "path": "fonts/thai/NotoSansThai-Regular.ttf",
+      "sha256": "0c29c5075eba6b162b93f8288d4fc3fc2d2fac2c47171701b5fbb07c117b496b",
+      "size": 43836,
+      "visibility": "public"
+    },
+    {
+      "path": "looks/cartoon-2d/art/backdrop.jpg",
+      "sha256": "21d024cf4b78f3143fd0bb692dc0ff4244253ad78b1f315c7307afdf0508c967",
+      "size": 162295,
+      "visibility": "public"
+    },
+    {
+      "path": "looks/cartoon-2d/art/bush.png",
+      "sha256": "2e7c02fa7906aa3fc88ee409cc4dd00b78d863f3dcee1dde8b5f202d6a69cc41",
+      "size": 12088,
+      "visibility": "public"
+    },
+    {
+      "path": "looks/cartoon-2d/art/crate.png",
+      "sha256": "6aefd3c03f9e8d0a7aecd411459de12d8c7832419a8434d3166380a17dd975ba",
+      "size": 7662,
+      "visibility": "public"
+    },
+    {
+      "path": "looks/cartoon-2d/art/gem.png",
+      "sha256": "a1cc9279ae4daae7fc6ea1705e049309eaa0eef98f1b38b3ba93022d9dd9bdb3",
+      "size": 3395,
+      "visibility": "public"
+    },
+    {
+      "path": "looks/cartoon-2d/art/heart.png",
+      "sha256": "6a987929829a96e3544c06d97b40642dd25136e2d4266af77cb80a12ba68c452",
+      "size": 2951,
+      "visibility": "public"
+    },
+    {
+      "path": "looks/cartoon-2d/art/hero.png",
+      "sha256": "cff0f132acd46e0742ba31e7b82f0e61d359feeb97f036ff76bf46126822ef49",
+      "size": 15040,
+      "visibility": "public"
+    },
+    {
+      "path": "looks/cartoon-2d/art/lantern.png",
+      "sha256": "7898b4fe10e669cd3ebe97fcc121874da2ac9173b90b786043b3fadeaf6a7b3a",
+      "size": 10758,
+      "visibility": "public"
+    },
+    {
+      "path": "looks/cartoon-2d/art/mid.png",
+      "sha256": "cb0ccb7998f7e75493109253c962a68e4202827581932d90b591c98f82d6e06b",
+      "size": 66929,
+      "visibility": "public"
+    },
+    {
+      "path": "looks/cartoon-2d/art/platform.png",
+      "sha256": "a3072a5f2409db18ca77985c0ca270c8149769a1031ce20b68af91adb2baf650",
+      "size": 15035,
+      "visibility": "public"
+    },
+    {
+      "path": "looks/cartoon-2d/art/slime.png",
+      "sha256": "1d078bd2e4b5c3fb0fc4e101b4afd23c6a84beec784569eea6a75934e314ffc6",
+      "size": 6849,
+      "visibility": "public"
+    },
+    {
+      "path": "looks/cartoon-2d/art/tiles.jpg",
+      "sha256": "e402ce3b0e6312b7b5ca75d09f78babf5bc39a334550f24944ece227cf7fbebf",
+      "size": 68651,
+      "visibility": "public"
+    },
+    {
+      "path": "looks/cartoon-2d/art/tree.png",
+      "sha256": "1eeb7062b98e4f25923c99f4dbbce65ed62c36c23562687e27ad5d1b4880d35e",
+      "size": 26987,
+      "visibility": "public"
+    },
+    {
+      "path": "looks/cartoon-2d/rubber-hose/art/backdrop.jpg",
+      "sha256": "9628bd64d43fad4c2b91e6950182629354a388c864173c4ae1262d3806d2046a",
+      "size": 90652,
+      "visibility": "public"
+    },
+    {
+      "path": "looks/cartoon-2d/rubber-hose/art/bush.png",
+      "sha256": "2c69bfa719eed46b288afb208725246f00a137a2c1f80ffd04c5be00a58c8c2e",
+      "size": 12421,
+      "visibility": "public"
+    },
+    {
+      "path": "looks/cartoon-2d/rubber-hose/art/crate.png",
+      "sha256": "79f565c88fe1ce1f3a936b5de0a98f4329c975de12af50893b7704c388ac256b",
+      "size": 16727,
+      "visibility": "public"
+    },
+    {
+      "path": "looks/cartoon-2d/rubber-hose/art/gem.png",
+      "sha256": "16249b93b8181e26f669f56c783a6542eb3ed53e78684b6cb7824a0a75d9c4be",
+      "size": 3835,
+      "visibility": "public"
+    },
+    {
+      "path": "looks/cartoon-2d/rubber-hose/art/heart.png",
+      "sha256": "2b993b88523c590ef13dc546a215695853316062068c0da3eec4d20db69ef820",
+      "size": 5367,
+      "visibility": "public"
+    },
+    {
+      "path": "looks/cartoon-2d/rubber-hose/art/hero.png",
+      "sha256": "bcda640ef8917b54c7da9b181116394df2a355b651fec1bede2fb0e1b2be97e2",
+      "size": 16949,
+      "visibility": "public"
+    },
+    {
+      "path": "looks/cartoon-2d/rubber-hose/art/lantern.png",
+      "sha256": "61147eb43dcc14cedd3d64dad0c0cee4f46ab3d018857752ad06a573bcdcaa52",
+      "size": 16840,
+      "visibility": "public"
+    },
+    {
+      "path": "looks/cartoon-2d/rubber-hose/art/mid.png",
+      "sha256": "f1a5ef29873360fcac1eac79155c7a4d3223d7c4406cb90abf53645712f763bc",
+      "size": 52591,
+      "visibility": "public"
+    },
+    {
+      "path": "looks/cartoon-2d/rubber-hose/art/platform.png",
+      "sha256": "a537bf6fe3a4ec03e3a2f6017b31b71388ba8ede6d8fbd121e058a832e23cbf1",
+      "size": 20907,
+      "visibility": "public"
+    },
+    {
+      "path": "looks/cartoon-2d/rubber-hose/art/slime.png",
+      "sha256": "a550b6a834429cea221f1bf30253dcbe69b1fe2cc1731f9380a2f544e09c8d88",
+      "size": 10805,
+      "visibility": "public"
+    },
+    {
+      "path": "looks/cartoon-2d/rubber-hose/art/tiles.jpg",
+      "sha256": "5f5c9401b3caf7117fa116ae4ae58672ba957aac6f991c75f74c8196298cba9e",
+      "size": 118070,
+      "visibility": "public"
+    },
+    {
+      "path": "looks/cartoon-2d/rubber-hose/art/tree.png",
+      "sha256": "ca8b8795bdf804709b6219eac212ea05691d11be6c5bcb9dbf21b4c367c68b36",
+      "size": 10703,
+      "visibility": "public"
+    },
+    {
+      "path": "looks/cartoon-2d/storybook/art/backdrop.jpg",
+      "sha256": "8ab3ca906c42ac4de75fde0caa221fa95ced5f64f26d9e9962eefcfc50638527",
+      "size": 109155,
+      "visibility": "public"
+    },
+    {
+      "path": "looks/cartoon-2d/storybook/art/bush.png",
+      "sha256": "b86f880cde7cddf062adf9ae83fe4d6ba4e5fca52f42fad3b398c9a62066879e",
+      "size": 13685,
+      "visibility": "public"
+    },
+    {
+      "path": "looks/cartoon-2d/storybook/art/crate.png",
+      "sha256": "4f8d7cf4068de6d605df129a2955a2a080c01411ca56b5702705f5f0688098df",
+      "size": 27757,
+      "visibility": "public"
+    },
+    {
+      "path": "looks/cartoon-2d/storybook/art/gem.png",
+      "sha256": "37bb3eb44071877d495230f5478b2b9e4972665a87459678e63967620ee553ac",
+      "size": 4531,
+      "visibility": "public"
+    },
+    {
+      "path": "looks/cartoon-2d/storybook/art/heart.png",
+      "sha256": "005eac01733c1ff91b2df1db19ea13c21c818a0cbbb5f31bb98760f03ebe9b2e",
+      "size": 6535,
+      "visibility": "public"
+    },
+    {
+      "path": "looks/cartoon-2d/storybook/art/hero.png",
+      "sha256": "4ba0479ca530223a12af814703b774bd06f71e32f51d56dfccb50449e3b58430",
+      "size": 18382,
+      "visibility": "public"
+    },
+    {
+      "path": "looks/cartoon-2d/storybook/art/lantern.png",
+      "sha256": "e1fadd1bd92b56266e1fe493e19a33e6c4ab866ad0fd6c33ae09d5e92fdb0e4e",
+      "size": 18132,
+      "visibility": "public"
+    },
+    {
+      "path": "looks/cartoon-2d/storybook/art/mid.png",
+      "sha256": "2b8a933f8a10aa3bd0a80890147b3d2939f8a0a0019f845067aa295d04d5af52",
+      "size": 126139,
+      "visibility": "public"
+    },
+    {
+      "path": "looks/cartoon-2d/storybook/art/platform.png",
+      "sha256": "454db1b887045142c5ce93826cc0768bbd401655672d74a2bb782ef3a6b49c21",
+      "size": 20657,
+      "visibility": "public"
+    },
+    {
+      "path": "looks/cartoon-2d/storybook/art/slime.png",
+      "sha256": "372c6d3af0e6575faa888cd111993f28b62c2fd480e1fe80982408a89caeb5f9",
+      "size": 11364,
+      "visibility": "public"
+    },
+    {
+      "path": "looks/cartoon-2d/storybook/art/tiles.jpg",
+      "sha256": "a64de2a257c7bd5e0d4c9a1bdc48c6966980ab7570c1837f6b4d0d26b5bc9b84",
+      "size": 86173,
+      "visibility": "public"
+    },
+    {
+      "path": "looks/cartoon-2d/storybook/art/tree.png",
+      "sha256": "2107709dad7776a123b883ccdaa32ee2901d63e35d3ed0ff690564c34d20d3e8",
+      "size": 14883,
+      "visibility": "public"
+    },
+    {
+      "path": "looks/cartoon-2d/watercolor/art/backdrop.jpg",
+      "sha256": "1040ad117f71d37ab34b95ac72713fb2fd3533916c7fa3c4fb56cc230736c90e",
+      "size": 160411,
+      "visibility": "public"
+    },
+    {
+      "path": "looks/cartoon-2d/watercolor/art/bush.png",
+      "sha256": "7a9bd894a996166fc7866bbd89c91f605f2435e8296b96ea30a75c65d988e076",
+      "size": 11597,
+      "visibility": "public"
+    },
+    {
+      "path": "looks/cartoon-2d/watercolor/art/crate.png",
+      "sha256": "a61fe90f4f18f8ea4c1719a38fd2af487fad6480f4bd69ac8ea56ed68b86aa6c",
+      "size": 14297,
+      "visibility": "public"
+    },
+    {
+      "path": "looks/cartoon-2d/watercolor/art/gem.png",
+      "sha256": "9d5d0c8041deeb4164913ade1c99aaa4bbf9e92c6f71497468ca75775757f49c",
+      "size": 4422,
+      "visibility": "public"
+    },
+    {
+      "path": "looks/cartoon-2d/watercolor/art/heart.png",
+      "sha256": "4abcc092017acbee11634630d65f326279d1e41a929fede6064bf38f4d29144d",
+      "size": 6876,
+      "visibility": "public"
+    },
+    {
+      "path": "looks/cartoon-2d/watercolor/art/hero.png",
+      "sha256": "1d7cac68d7bf1b8d6f815d0d4ae837366448189677a31b003f57402bfe672a01",
+      "size": 15814,
+      "visibility": "public"
+    },
+    {
+      "path": "looks/cartoon-2d/watercolor/art/lantern.png",
+      "sha256": "08b3175dd32bba38d3cfee509f61ed32dbc9902e2c8599bffe521e7d08a3eec5",
+      "size": 13061,
+      "visibility": "public"
+    },
+    {
+      "path": "looks/cartoon-2d/watercolor/art/mid.png",
+      "sha256": "543d640235fcdbbcb09532ebd8ce1e42c45317ea0e219c75879d7822a660b79f",
+      "size": 129503,
+      "visibility": "public"
+    },
+    {
+      "path": "looks/cartoon-2d/watercolor/art/platform.png",
+      "sha256": "c0c547345cf20c3a27ffe5784e00297858fc80dc1317fd7e7d1c79c845c72e87",
+      "size": 26716,
+      "visibility": "public"
+    },
+    {
+      "path": "looks/cartoon-2d/watercolor/art/slime.png",
+      "sha256": "65a778c69d182dbd8abeea804c450d1cab25ed2bd2541d25cc3e58e648658807",
+      "size": 12240,
+      "visibility": "public"
+    },
+    {
+      "path": "looks/cartoon-2d/watercolor/art/tiles.jpg",
+      "sha256": "4766c6b719a7e07278eda8bf74708231b3e6a963f023b2b81b424b140ae0cee0",
+      "size": 84438,
+      "visibility": "public"
+    },
+    {
+      "path": "looks/cartoon-2d/watercolor/art/tree.png",
+      "sha256": "479010a0c6fb6cf8000ea1e144fb5ce20c90b84c46002890e061cc1051c1275e",
+      "size": 55999,
+      "visibility": "public"
+    },
+    {
+      "path": "looks/cinematic-realism/realistic-set/assets/models/crate.glb",
+      "sha256": "26fb0ea1c03e0b01bccdae3c6b6ff4a0bde183d07f6ad93ca7a4eaf349fc3b3f",
+      "size": 721568,
+      "visibility": "public"
+    },
+    {
+      "path": "looks/cinematic-realism/realistic-set/assets/models/ground.glb",
+      "sha256": "dbd597d37af05a8b27b05c6e72b82fde8d70b94d07a40c89b66626bdc888a345",
+      "size": 436064,
+      "visibility": "public"
+    },
+    {
+      "path": "looks/cinematic-realism/realistic-set/assets/models/hand-lantern.glb",
+      "sha256": "f21ca6dfdf6f1a8f3206d0bd2854bd646a456d9caa7c1c52625943cff98d52fa",
+      "size": 289244,
+      "visibility": "public"
+    },
+    {
+      "path": "looks/cinematic-realism/realistic-set/assets/models/hero.glb",
+      "sha256": "81e5aba010d3ba5db0ed132923930e71c180a1b22061c896c7e94bf09ee8ff19",
+      "size": 819240,
+      "visibility": "public"
+    },
+    {
+      "path": "looks/cinematic-realism/realistic-set/assets/models/pine.glb",
+      "sha256": "34ae60385b571810d5b0f76c47b80eea7aa27eaa03d18b685e95bd06dd6ecfdc",
+      "size": 1769112,
+      "visibility": "public"
+    },
+    {
+      "path": "looks/cinematic-realism/realistic-set/assets/models/ridge.glb",
+      "sha256": "35d3c352f837d938935b1464f09ca9917a758ccea81d2f83f856d1fee8b54df7",
+      "size": 177996,
+      "visibility": "public"
+    },
+    {
+      "path": "looks/cinematic-realism/realistic-set/assets/models/street-lamp.glb",
+      "sha256": "bc96bca0d7da7e717140501e0340db26561d1f5d210844f42263dc98e3c268f5",
+      "size": 392920,
+      "visibility": "public"
+    },
+    {
+      "path": "looks/cinematic-realism/realistic-set/assets/models/stump.glb",
+      "sha256": "01149f06ec8396eb83599b00e6d39c50ee8b41e9f388cf09fbde5ff0b2d65454",
+      "size": 560364,
+      "visibility": "public"
+    },
+    {
+      "path": "looks/neon-vector/models/crate.glb",
+      "sha256": "4a3347be8b1790f5f8655eb44c8479eef4a7df53eba6136f5e67de07e1dee9d4",
+      "size": 2716,
+      "visibility": "public"
+    },
+    {
+      "path": "looks/painterly-3d/expressionist/art/backdrop.jpg",
+      "sha256": "1bbbbff0d2b8bfecf2755b5abc6c51e2562d065ae2ebdf5029ad9d6639dfbd30",
+      "size": 111120,
+      "visibility": "public"
+    },
+    {
+      "path": "looks/painterly-3d/expressionist/art/crate.png",
+      "sha256": "acb9a24a779b99502704814f33f4a798b6d2868d402315575ac0104792bcf2ec",
+      "size": 26849,
+      "visibility": "public"
+    },
+    {
+      "path": "looks/painterly-3d/expressionist/art/ground.jpg",
+      "sha256": "ac81bb4d20c3c062c6903cca87929a58aaca55832bb1ccc2e2d8421e49f1dd91",
+      "size": 36740,
+      "visibility": "public"
+    },
+    {
+      "path": "looks/painterly-3d/expressionist/art/hero.png",
+      "sha256": "0b630edcd500beac66ee12c33630b410304b16380ee964fecfdba4e2cf7388b7",
+      "size": 22017,
+      "visibility": "public"
+    },
+    {
+      "path": "looks/painterly-3d/expressionist/art/lantern.png",
+      "sha256": "d4c1e2c2f767e9e910065bca2e2fb9d3ff3687c14abc0837ffe8cb744714ce9e",
+      "size": 10784,
+      "visibility": "public"
+    },
+    {
+      "path": "looks/painterly-3d/expressionist/art/tree.png",
+      "sha256": "fe18b0d0cf7b59341b108bed186c509a1931583db2108c053753b17e624ce6d8",
+      "size": 18725,
+      "visibility": "public"
+    },
+    {
+      "path": "looks/painterly-3d/luminous-layers/art/backdrop.jpg",
+      "sha256": "4d7000b085fc1a92426ce93c6010cadba1ea4a3ce4c131547162b77b329fc515",
+      "size": 77992,
+      "visibility": "public"
+    },
+    {
+      "path": "looks/painterly-3d/luminous-layers/art/crate.png",
+      "sha256": "687cc294df98b8442988c5f5b248ca93bc06c823a80e66779ad05629369ef8e0",
+      "size": 16863,
+      "visibility": "public"
+    },
+    {
+      "path": "looks/painterly-3d/luminous-layers/art/ground.jpg",
+      "sha256": "e4d0d8cdddf5c55c7e3cac916d71edb36d1637c1c0ef218578b11084de736260",
+      "size": 19287,
+      "visibility": "public"
+    },
+    {
+      "path": "looks/painterly-3d/luminous-layers/art/hero.png",
+      "sha256": "0ed5a8611a96cb312fede1ad2ca097ba1f39b6c00c8b6349b100e9347e708922",
+      "size": 17911,
+      "visibility": "public"
+    },
+    {
+      "path": "looks/painterly-3d/luminous-layers/art/lantern.png",
+      "sha256": "54e52bf9110d2feebbf789c14e677d5ab9bb214f1e09c6d69742f8d1ff26d6a5",
+      "size": 13657,
+      "visibility": "public"
+    },
+    {
+      "path": "looks/painterly-3d/luminous-layers/art/tree.png",
+      "sha256": "2e20eefa1a18904176e4f50a4725003e83e084b78c6f4afea6b08fa30c2b2dd3",
+      "size": 19089,
+      "visibility": "public"
+    },
+    {
+      "path": "looks/painterly-3d/lush/art/backdrop.jpg",
+      "sha256": "99bc4a2f40f8f9ec47172e2dcff20b1dd4fa93ef6a82d823b9bc919e11456438",
+      "size": 133144,
+      "visibility": "public"
+    },
+    {
+      "path": "looks/painterly-3d/lush/art/crate.png",
+      "sha256": "ee22e245d7e1f56116fead6e52684d9ec2eee04aa87d4dd06b5fcfc092ca0b7c",
+      "size": 32811,
+      "visibility": "public"
+    },
+    {
+      "path": "looks/painterly-3d/lush/art/ground.jpg",
+      "sha256": "5a62b2ac55b0fb958a23e82df52b2e62582e20fe67644a0810bab6cfe802b9ce",
+      "size": 36057,
+      "visibility": "public"
+    },
+    {
+      "path": "looks/painterly-3d/lush/art/hero.png",
+      "sha256": "35a548960d13b7cef95c5fb38fdc3db4a27243e5afd6fb948765d22524749313",
+      "size": 16880,
+      "visibility": "public"
+    },
+    {
+      "path": "looks/painterly-3d/lush/art/lantern.png",
+      "sha256": "14900d21c3916a78155d4160d09433c4cc4070d07c16d0ed406458d0589c0da0",
+      "size": 10118,
+      "visibility": "public"
+    },
+    {
+      "path": "looks/painterly-3d/lush/art/tree.png",
+      "sha256": "49c8939208b9156f61a66bcbff6aec9cb52de49326930fb9da9534dcde5e2958",
+      "size": 19904,
+      "visibility": "public"
+    },
+    {
+      "path": "looks/pixel-3d-hybrid/art/hero.png",
+      "sha256": "2424676aa97bbfd1b761df83987b967abac72bf3f91edcecc6be1363cf8d1954",
+      "size": 8724,
+      "visibility": "public"
+    },
+    {
+      "path": "looks/pixel-3d-hybrid/art/tree.png",
+      "sha256": "8652e474eaed2bae56265c7e98085b970b158438bad4c34df700dfaea0a92c52",
+      "size": 15862,
+      "visibility": "public"
+    },
+    {
+      "path": "looks/pixel/8bit/art/backdrop.png",
+      "sha256": "0e165236a584a7d8449e70e540af587eea7f1d8b6ce53e94627792ef6648dc54",
+      "size": 60049,
+      "visibility": "public"
+    },
+    {
+      "path": "looks/pixel/8bit/art/bush.png",
+      "sha256": "965e21aa1d34495697d92d4e4e48724cbb4ebfeddacd7b4305b4ed3bf7ccfbe2",
+      "size": 838,
+      "visibility": "public"
+    },
+    {
+      "path": "looks/pixel/8bit/art/crate.png",
+      "sha256": "17d60ccf812b0b5ef075d2c1b0e860078c4e02b3aa3536754424df0c998d19d0",
+      "size": 19247,
+      "visibility": "public"
+    },
+    {
+      "path": "looks/pixel/8bit/art/gem.png",
+      "sha256": "6279ec1f2bdf11b2f82bd026ebb2de4104446328c153fcce11a5a679c0e95908",
+      "size": 240,
+      "visibility": "public"
+    },
+    {
+      "path": "looks/pixel/8bit/art/heart.png",
+      "sha256": "3d67d4545fa07bdaeea37d76a8e8de98a6230ff201ce3e84fa5a6504e2364ca6",
+      "size": 220,
+      "visibility": "public"
+    },
+    {
+      "path": "looks/pixel/8bit/art/hero.png",
+      "sha256": "dc955a41ad604d24e7fe9fb2a176db27f30b6bd2368617cb5930bb0afd1cfcc2",
+      "size": 14285,
+      "visibility": "public"
+    },
+    {
+      "path": "looks/pixel/8bit/art/lantern.png",
+      "sha256": "35eace8b816d01e6d6bea3ba69385b566c08d0ba6f475a1c292944f2af6c0ddb",
+      "size": 6894,
+      "visibility": "public"
+    },
+    {
+      "path": "looks/pixel/8bit/art/mid.png",
+      "sha256": "e442ec35fbb24a61e17c8f9c945867eb7ee12435bb6fccc0bd58288bfc6f51f1",
+      "size": 28141,
+      "visibility": "public"
+    },
+    {
+      "path": "looks/pixel/8bit/art/platform.png",
+      "sha256": "a85fdff68d4bdc241df9620503babd770cdf3cc634a8fcb8bdcff50c2c1bb8f1",
+      "size": 1175,
+      "visibility": "public"
+    },
+    {
+      "path": "looks/pixel/8bit/art/slime.png",
+      "sha256": "eef3c555110d9864651449e30fd9b4d00935cc3196872e977efab0b9615dbf0b",
+      "size": 968,
+      "visibility": "public"
+    },
+    {
+      "path": "looks/pixel/8bit/art/tiles.png",
+      "sha256": "9cba51d6fe8dc29a9d2c05efdfc9f60d7533bb5fc3b1e937876faad85ac18449",
+      "size": 10375,
+      "visibility": "public"
+    },
+    {
+      "path": "looks/pixel/8bit/art/tree.png",
+      "sha256": "fc29088b02f14a9188f4a2847e1ec62557ad659af75303db1f35199579d5c20c",
+      "size": 11682,
+      "visibility": "public"
+    },
+    {
+      "path": "looks/pixel/art/backdrop.png",
+      "sha256": "0bc5dd3ea0d9cb1ee87b5c7aacd9ee8df4c253f6fa645919165e43a0313ff48e",
+      "size": 185091,
+      "visibility": "public"
+    },
+    {
+      "path": "looks/pixel/art/bush.png",
+      "sha256": "ee4d48e81ba36a55aa67dac668bc369b22279e24f3da81efdddb23199513497a",
+      "size": 1103,
+      "visibility": "public"
+    },
+    {
+      "path": "looks/pixel/art/crate.png",
+      "sha256": "522c5be19d9b08f33cd2511bec696a515f59293eb07b8a2ac443ed0bb6950b5d",
+      "size": 7842,
+      "visibility": "public"
+    },
+    {
+      "path": "looks/pixel/art/gem.png",
+      "sha256": "90f66625fbeed534cc70e81002d521f108f80988ed0262d6fda109623792c614",
+      "size": 494,
+      "visibility": "public"
+    },
+    {
+      "path": "looks/pixel/art/heart.png",
+      "sha256": "002cbd772ebbf9d83647d04744cdc6fc0958a1cc1b483bfc5c177112ecf9985a",
+      "size": 383,
+      "visibility": "public"
+    },
+    {
+      "path": "looks/pixel/art/hero.png",
+      "sha256": "a6ebfbd8478d0f74310d762cb8c1fa455781985a570e93f7b8091b320146d415",
+      "size": 1449,
+      "visibility": "public"
+    },
+    {
+      "path": "looks/pixel/art/lantern.png",
+      "sha256": "67433858b2395ee426127c4751d3e490169ed56fbfd7b5039884ff3f50336b5d",
+      "size": 3455,
+      "visibility": "public"
+    },
+    {
+      "path": "looks/pixel/art/mid.png",
+      "sha256": "7a2c9d57e7125283e55d58c1abfcd4df8c9b997d0f3bc4814c668a44328f148e",
+      "size": 44413,
+      "visibility": "public"
+    },
+    {
+      "path": "looks/pixel/art/platform.png",
+      "sha256": "1c7694ead5001c805c9a5e77b9a0e680a19d4a3eda1c2d307fea4d6afc65249b",
+      "size": 2102,
+      "visibility": "public"
+    },
+    {
+      "path": "looks/pixel/art/slime.png",
+      "sha256": "3f091b4799c9cf57238f3b4a094cdb691fff73b792c8257ab91735913d0419b5",
+      "size": 1012,
+      "visibility": "public"
+    },
+    {
+      "path": "looks/pixel/art/tiles.png",
+      "sha256": "87450b7bb9207c6dc454372c8e3411bdfc40a8022195b4c64afbf7eb77f50a1c",
+      "size": 11580,
+      "visibility": "public"
+    },
+    {
+      "path": "looks/pixel/art/tree.png",
+      "sha256": "8652e474eaed2bae56265c7e98085b970b158438bad4c34df700dfaea0a92c52",
+      "size": 15862,
+      "visibility": "public"
+    },
+    {
+      "path": "looks/pixel/coarse/art/backdrop.png",
+      "sha256": "95c7cdb4b69c92da6cf55498ff3b5ef9687a34055a510f0a7f3dfba184e4ba43",
+      "size": 12820,
+      "visibility": "public"
+    },
+    {
+      "path": "looks/pixel/coarse/art/bush.png",
+      "sha256": "c14deaba92c325a791c2976cf19f2ce4a924501b3217877b96a73d773c1159d7",
+      "size": 212,
+      "visibility": "public"
+    },
+    {
+      "path": "looks/pixel/coarse/art/crate.png",
+      "sha256": "2bf9162ef2a4815b7f261260d0dd91c6bd2f47f7ac61b3312112611db6af81d3",
+      "size": 12623,
+      "visibility": "public"
+    },
+    {
+      "path": "looks/pixel/coarse/art/gem.png",
+      "sha256": "285642f38180b24009cd757d0d6b020ef0c2a9dc4c4dec304c5df2bfde338f73",
+      "size": 233,
+      "visibility": "public"
+    },
+    {
+      "path": "looks/pixel/coarse/art/heart.png",
+      "sha256": "13467e5453a39e8c95edc6c103a19c7bbab2d851ab751908ea55a779cb3570d5",
+      "size": 188,
+      "visibility": "public"
+    },
+    {
+      "path": "looks/pixel/coarse/art/hero.png",
+      "sha256": "b3aa80d1019aba57c305592d70544ad4a6a0f7916e72c9911ff5b639af07b22a",
+      "size": 271,
+      "visibility": "public"
+    },
+    {
+      "path": "looks/pixel/coarse/art/lantern.png",
+      "sha256": "8fba01f6a519988653838e6ad0ffc3e65a5c24519cbf3ba26d1f17f306086dd9",
+      "size": 3694,
+      "visibility": "public"
+    },
+    {
+      "path": "looks/pixel/coarse/art/mid.png",
+      "sha256": "a6424b3b7174868f3b8ce9f355db1b347c1f2fabf050cafab985595281d930c8",
+      "size": 1957,
+      "visibility": "public"
+    },
+    {
+      "path": "looks/pixel/coarse/art/platform.png",
+      "sha256": "27241145219b0880a80e8220beb0174879016f4c50bc5f3d57eaa6a4b837add4",
+      "size": 394,
+      "visibility": "public"
+    },
+    {
+      "path": "looks/pixel/coarse/art/slime.png",
+      "sha256": "d6921c1d4279bb419b9510bf033f857f16bf6a8793c6a1ba5d8cf5097acf111e",
+      "size": 207,
+      "visibility": "public"
+    },
+    {
+      "path": "looks/pixel/coarse/art/tiles.png",
+      "sha256": "c282cdb32c7136f8b64e8a531b7eb89f555745e9bad178fda64d8d0532ce9afe",
+      "size": 1065,
+      "visibility": "public"
+    },
+    {
+      "path": "looks/pixel/coarse/art/tree.png",
+      "sha256": "6db2d899daf8c21f1adab4c6359088d535121b1042f659f2dc478447ec4b1b31",
+      "size": 6392,
+      "visibility": "public"
+    },
+    {
+      "path": "looks/pixel/detailed/art/backdrop.png",
+      "sha256": "97edf52df0ea151c124319889493cad0e110bd9ab5e00f0514469bcc94b09493",
+      "size": 234675,
+      "visibility": "public"
+    },
+    {
+      "path": "looks/pixel/detailed/art/bush.png",
+      "sha256": "948dba3a41561009994e7b62250ea028db7ed9891172bcf57eb97ea574666e67",
+      "size": 3493,
+      "visibility": "public"
+    },
+    {
+      "path": "looks/pixel/detailed/art/crate.png",
+      "sha256": "8cee10371563a9b584407de0236b92a399a40719fff35cf2abfa41bda2ea5002",
+      "size": 27553,
+      "visibility": "public"
+    },
+    {
+      "path": "looks/pixel/detailed/art/gem.png",
+      "sha256": "b6ea8e1a10cddd33f8eb68194621a2d31aa92befdb09cb75d76b9ed8ad08918e",
+      "size": 1855,
+      "visibility": "public"
+    },
+    {
+      "path": "looks/pixel/detailed/art/heart.png",
+      "sha256": "55ed5d65ca8b32c0f36835b180b7a5ff3fb268ebdf758611cdfd99291a8cf4ef",
+      "size": 2433,
+      "visibility": "public"
+    },
+    {
+      "path": "looks/pixel/detailed/art/hero.png",
+      "sha256": "8804124426f31cdc9137ca7be62f68f3a38e58d9b9cac74ef85c348b7ff35fbd",
+      "size": 18086,
+      "visibility": "public"
+    },
+    {
+      "path": "looks/pixel/detailed/art/lantern.png",
+      "sha256": "a7f0e680955c4a6c9673525aa5fb0ed6eb333ceabb9df3227540bf3523c20c5c",
+      "size": 7346,
+      "visibility": "public"
+    },
+    {
+      "path": "looks/pixel/detailed/art/mid.png",
+      "sha256": "25e73e65e2ade54131d9aafb8b4b6cd8b1c88ddf213cd30081d9be0be5558b8f",
+      "size": 75937,
+      "visibility": "public"
+    },
+    {
+      "path": "looks/pixel/detailed/art/platform.png",
+      "sha256": "27127299223fe4b9f0850bf00924b67d5d74f923950faaa29f007120bef2ba06",
+      "size": 8381,
+      "visibility": "public"
+    },
+    {
+      "path": "looks/pixel/detailed/art/slime.png",
+      "sha256": "78ea77295027236efd66f461ac4830c98c76efddd94bf0dfc5b5bf9908fb61bf",
+      "size": 4698,
+      "visibility": "public"
+    },
+    {
+      "path": "looks/pixel/detailed/art/tiles.png",
+      "sha256": "ac58ba50d6552e7b17cb1136fb68998a43780b180f4b9fe6d9c28edadf4e0568",
+      "size": 52503,
+      "visibility": "public"
+    },
+    {
+      "path": "looks/pixel/detailed/art/tree.png",
+      "sha256": "d9f1b89281a22d0166b00a8e76ab82df8ef34a06cf8a54c6de22449e87f3c18a",
+      "size": 14584,
+      "visibility": "public"
+    },
+    {
+      "path": "looks/pixel/luminous/art/backdrop.png",
+      "sha256": "64fafdbf05f7e6d259e26d8adff2b6179be7393b86f38a00b4e60248cc70d6f2",
+      "size": 112341,
+      "visibility": "public"
+    },
+    {
+      "path": "looks/pixel/luminous/art/bush.png",
+      "sha256": "9ea8bea6066c61f4d599832ea03acae19abe4378123398dcd5b0b848f5d68d2b",
+      "size": 921,
+      "visibility": "public"
+    },
+    {
+      "path": "looks/pixel/luminous/art/crate.png",
+      "sha256": "c0d59afbb826c0b740e9ba97b6a3da101a2fc2dfc12ad5ad8e26ec46005fcd69",
+      "size": 1269,
+      "visibility": "public"
+    },
+    {
+      "path": "looks/pixel/luminous/art/gem.png",
+      "sha256": "3798038b0f92f2564b12630bb06f2517c08987b1773eeadfa7a76a08b4b9139d",
+      "size": 423,
+      "visibility": "public"
+    },
+    {
+      "path": "looks/pixel/luminous/art/heart.png",
+      "sha256": "dc5796e68a69ba5139e546d26004f40e86f5487e76d862c573ae62194e837bbe",
+      "size": 593,
+      "visibility": "public"
+    },
+    {
+      "path": "looks/pixel/luminous/art/hero.png",
+      "sha256": "7a19abd9d898f674effc45138f8539d7f359013c22f101e826c337326cd19c25",
+      "size": 1506,
+      "visibility": "public"
+    },
+    {
+      "path": "looks/pixel/luminous/art/lantern.png",
+      "sha256": "fc6148839a3b75c6cae7bc3287cbc4389e6ac2fa1bbad21ad278a9827e241380",
+      "size": 5641,
+      "visibility": "public"
+    },
+    {
+      "path": "looks/pixel/luminous/art/mid.png",
+      "sha256": "ec436704de9a9fa7b7e7fe82470ad14d8aa3bba1d1976557260675b2ba1f3376",
+      "size": 35599,
+      "visibility": "public"
+    },
+    {
+      "path": "looks/pixel/luminous/art/platform.png",
+      "sha256": "185d82c98e74c1ed78d5b6ca9d0d093b3523e03d9f77e071453d8b4abf4906c7",
+      "size": 1517,
+      "visibility": "public"
+    },
+    {
+      "path": "looks/pixel/luminous/art/slime.png",
+      "sha256": "77fd8a1294777c13156db5771a6f9a4320c200c6235f7fe31db321269a1c0836",
+      "size": 1360,
+      "visibility": "public"
+    },
+    {
+      "path": "looks/pixel/luminous/art/tiles.png",
+      "sha256": "eb395935f9508221e14d7d74aebf4c7ff83c215a50adb3b78b84cbd5d9bbfcaf",
+      "size": 12261,
+      "visibility": "public"
+    },
+    {
+      "path": "looks/pixel/luminous/art/tree.png",
+      "sha256": "e1f93e63c05d13e6e538368fdf5fee187c1ca4e3056ca75470f37c1ae5f2d910",
+      "size": 15543,
+      "visibility": "public"
+    },
+    {
+      "path": "looks/pixel/monochrome/art/backdrop.png",
+      "sha256": "2c1e6f8c84687d42b2c4a1fa33fffc3652d8651eff9af5c7c343ce713b1386ea",
+      "size": 62362,
+      "visibility": "public"
+    },
+    {
+      "path": "looks/pixel/monochrome/art/bush.png",
+      "sha256": "28c6553c15b6926567fcbb79a4ff11ae1d13dc9ee78afaa9551f064cc2cd9e61",
+      "size": 336,
+      "visibility": "public"
+    },
+    {
+      "path": "looks/pixel/monochrome/art/crate.png",
+      "sha256": "832990386f3253dde0b78840cf6c3dd34e1f18d3949fc0919849513bb50098d8",
+      "size": 22278,
+      "visibility": "public"
+    },
+    {
+      "path": "looks/pixel/monochrome/art/gem.png",
+      "sha256": "9833d2695bad9a2b179c945c51b1ba51c00476205a25c7ac7534ec051d935a23",
+      "size": 237,
+      "visibility": "public"
+    },
+    {
+      "path": "looks/pixel/monochrome/art/heart.png",
+      "sha256": "462abf308ef19d4f036b2db7abc3dfa0a7795287dd7058f426f6563179af62e5",
+      "size": 225,
+      "visibility": "public"
+    },
+    {
+      "path": "looks/pixel/monochrome/art/hero.png",
+      "sha256": "c1c99682482ffae655dbe059b64b0143298289a611fbab1ccd5521d5b7bc7294",
+      "size": 11236,
+      "visibility": "public"
+    },
+    {
+      "path": "looks/pixel/monochrome/art/lantern.png",
+      "sha256": "537511abc8fbfc86f5b7a47b28c6ed8daf2b22a70d5bcf35604e3c3b228f7df8",
+      "size": 5049,
+      "visibility": "public"
+    },
+    {
+      "path": "looks/pixel/monochrome/art/mid.png",
+      "sha256": "8b75ce653d63bfd140c7ac71e9ff75005ddb6b656b068cd6a1dce49d492676be",
+      "size": 19917,
+      "visibility": "public"
+    },
+    {
+      "path": "looks/pixel/monochrome/art/platform.png",
+      "sha256": "d46eb470d084bb5b4e5eadaafd9dc13754c43165f71ddf3ddb23110d22e0c0c8",
+      "size": 760,
+      "visibility": "public"
+    },
+    {
+      "path": "looks/pixel/monochrome/art/slime.png",
+      "sha256": "b64df7db5b985aeac45128ce5f3d9e1fcfe4d12b70145da66db39818bdfa2ff6",
+      "size": 362,
+      "visibility": "public"
+    },
+    {
+      "path": "looks/pixel/monochrome/art/tiles.png",
+      "sha256": "a5f501fa9805b9ee7b737e8263109c181b4c2ce9af4b40627d07b4a27e8eae8f",
+      "size": 3383,
+      "visibility": "public"
+    },
+    {
+      "path": "looks/pixel/monochrome/art/tree.png",
+      "sha256": "7f01bf5357693dbba94767d47ce5fc4b4816cacf6ab67f5c852892fe450f89ff",
+      "size": 12086,
+      "visibility": "public"
+    },
+    {
+      "path": "looks/pixel/topdown/art/bush.png",
+      "sha256": "f80da22a4f7d225f000042530aac2396b9c30273cc67ba72cb8d8e51792fcf46",
+      "size": 1208,
+      "visibility": "public"
+    },
+    {
+      "path": "looks/pixel/topdown/art/crate.png",
+      "sha256": "c5e30bb61daca1be4efdcbad21bf9b6701e120cfecae39e20fedccae1f03f5d5",
+      "size": 736,
+      "visibility": "public"
+    },
+    {
+      "path": "looks/pixel/topdown/art/gem.png",
+      "sha256": "9da685af1c2f1349429b3354101722c70e0b84b994e64b9a25b31cc594d9136d",
+      "size": 367,
+      "visibility": "public"
+    },
+    {
+      "path": "looks/pixel/topdown/art/grass.png",
+      "sha256": "e72fa318718ee4bac2cd7637a1cd360f0d47faceb6636ff4497d8f8f98443223",
+      "size": 8800,
+      "visibility": "public"
+    },
+    {
+      "path": "looks/pixel/topdown/art/heart.png",
+      "sha256": "099eb3d67fc58c6421996391b1a9fdfd93454d2668b0502c4db4bdeb854ff602",
+      "size": 283,
+      "visibility": "public"
+    },
+    {
+      "path": "looks/pixel/topdown/art/hero.png",
+      "sha256": "157feda7ce4ac9dcbcc3c897fca8a2f31a0dcd543f04ac4b679d8ef0937fb1e9",
+      "size": 842,
+      "visibility": "public"
+    },
+    {
+      "path": "looks/pixel/topdown/art/lantern.png",
+      "sha256": "417f6377868de545b894cef969df8fc23e6c9ed2978d7855ba99192bacd0be96",
+      "size": 957,
+      "visibility": "public"
+    },
+    {
+      "path": "looks/pixel/topdown/art/path.png",
+      "sha256": "80db26d7d3f4861e4986eeb2d1a07b783c0813e3a16f9b4cf9acc26f2c89e0c8",
+      "size": 12579,
+      "visibility": "public"
+    },
+    {
+      "path": "looks/pixel/topdown/art/slime.png",
+      "sha256": "38933b2733265ab61edaa26d6d5c99f6b71cbc4d9700a920e21387e62f2f6540",
+      "size": 650,
+      "visibility": "public"
+    },
+    {
+      "path": "looks/pixel/topdown/art/tree.png",
+      "sha256": "7de4355c08a42a832e57bb4135cdab473961ad105f453b63133e46f456d1cbfa",
+      "size": 5676,
+      "visibility": "public"
+    },
+    {
+      "path": "looks/pixel/topdown/art/wall.png",
+      "sha256": "4459b886770fdee1444abc405dc0c43bb4620f9f4aa797f3dd0f45631ff4fcd9",
+      "size": 10892,
+      "visibility": "public"
+    },
+    {
+      "path": "looks/preview/3d/assets/models/crate.glb",
+      "sha256": "3a5a0cb72aa6f5e50d4fe353b728a29d493fd44bf8499120d369d3f4c476b5fb",
+      "size": 22256,
+      "visibility": "public"
+    },
+    {
+      "path": "looks/preview/3d/assets/models/ground.glb",
+      "sha256": "503914eccadc50c6a484fc88151c81008fd53bfcd1de01b35afbdc6e61e8f94e",
+      "size": 133368,
+      "visibility": "public"
+    },
+    {
+      "path": "looks/preview/sources/crate.jpg",
+      "sha256": "ed72d3c21d364c7c6b354b953ebf676c6a43cae391c1dd553bff7736975bf04b",
+      "size": 20109,
+      "visibility": "public"
+    },
+    {
+      "path": "looks/preview/sources/grass.jpg",
+      "sha256": "88c87b2115189a757c0d892ada98a313a2d5f342d29e4cffa0d012f64f97d3cd",
+      "size": 125830,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/cartoon/Fredoka-Medium.ttf",
+      "sha256": "38ef6d7402e01db6d97732ff2ab09da5e098e8f0486172efbab12ea2232a2624",
+      "size": 35328,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/cartoon/Fredoka-SemiBold.ttf",
+      "sha256": "dfe2a2800f3cf6d7bd6c2d2236f79d544a72e7e1a521a7d57d2c5668a5dfd6e3",
+      "size": 35316,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/cartoon/LilitaOne-Regular.ttf",
+      "sha256": "f5b641c45c69d772ee4eda687bc9fda411d5cad6b0b45371491da4580cbc8d59",
+      "size": 28092,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/cjk/FusionPixel12-zhHans.ttf",
+      "sha256": "b336514c53b5f83f60749d4226619414d334333562c4ded994b2e66a23006e8b",
+      "size": 1377892,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/cjk/NotoSansSC-Bold.ttf",
+      "sha256": "44544b20366015b6c0ebe8f332436c99b9657eaf02eeed7282c4733d12d15d19",
+      "size": 2244900,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/cjk/NotoSansSC-Regular.ttf",
+      "sha256": "0e2e7352f6ee0d33acf6f71a2e50de97f121f044ce59a400fec749ea2cbeaffd",
+      "size": 2245676,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/cjk/NotoSerifSC-SemiBold.ttf",
+      "sha256": "8b6b023704395fbe21784164caa19c015d10089b4cbb481d1271ce1aec189321",
+      "size": 3114696,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/cjk/ZCOOLKuaiLe-Regular.ttf",
+      "sha256": "1f93f60673494636225a1f736a147d40dd024a9a10a7a5f1891e2fde70682ef7",
+      "size": 759628,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/fantasy/art/filigree-bl.png",
+      "sha256": "e2500d47bac5177dc69c507406401fd0168127b864facca007608d7f8cde04ef",
+      "size": 26621,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/fantasy/art/filigree-br.png",
+      "sha256": "73f4f29564ee4a1e209026cab5aea271812d1b491fe52de0e69641d8ff84a3e7",
+      "size": 26502,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/fantasy/art/filigree-tl.png",
+      "sha256": "857cec4ab6062046344ea732c1f9b0776f0762dd58d72e7c57d5b4c02608a863",
+      "size": 26777,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/fantasy/art/filigree-tr.png",
+      "sha256": "aff1d75f8b7a6215ab6482b12ed8eea3b286003399d83dd57f4ad92e4f5e914c",
+      "size": 26709,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/fantasy/art/glow.png",
+      "sha256": "52e5bb01f956ac7daa032533181606e45855c9a65b287cf8b69601cd8ca38855",
+      "size": 99299,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/fantasy/art/ground.png",
+      "sha256": "e74804ee3cd61123648d17326011757d0982545ac44a1514a29c8a23bc00d607",
+      "size": 894479,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/BarlowCondensed-SemiBold.ttf",
+      "sha256": "a3f646bfd2913a538123236b3d9880f580711589186531a81fd34bd5fe219727",
+      "size": 36816,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/BarlowSemiCondensed-SemiBold.ttf",
+      "sha256": "f920a61630db2b19f90b407a7d7456aee146ba513faaf68a383eb0a20268c6ce",
+      "size": 32524,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/BigShouldersStencilDisplay-SemiBold.ttf",
+      "sha256": "135268a8cbe2183986e0a58dddd5f35b737b2fe3dadc0f6d42ce92bf02361333",
+      "size": 46348,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/ChakraPetch-BoldItalic.ttf",
+      "sha256": "978a2829338c066144200f2d27b449fd1b006a353b61a00b8b946049c4ad4d6b",
+      "size": 72476,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/ChakraPetch-SemiBold.ttf",
+      "sha256": "45264de3204ddbd5fb3e14a2402acd5c630d16650ae5fc221d2c52da46a6734b",
+      "size": 78604,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/Cinzel-Bold.ttf",
+      "sha256": "2c6b1ff0d368efb73636700b69dbef707fa5602a06d085a4e91e5125082651f0",
+      "size": 46124,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/InstrumentSans-Regular.ttf",
+      "sha256": "a22cb26e48fd79bcb01bf2fc92d36785474dce36d9c544ab0a8868c2657c4a87",
+      "size": 68028,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/InstrumentSans[wdth,wght].ttf",
+      "sha256": "b24f1812584816958afcf22e22d08e44318c5e51651e25d2438efdde389b33b1",
+      "size": 194336,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/Newsreader-Medium.ttf",
+      "sha256": "2c8669d3ddb6bed7b9ee7946d9222e246b4a7f85f6597651e55bb4d5dc96eba6",
+      "size": 42368,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/Newsreader-SemiBold.ttf",
+      "sha256": "b60183a7463fa2c2eaf94667ad28a8a882052c01ce1fde9512c7ae8ab4b19593",
+      "size": 42364,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/PTMono-Regular.ttf",
+      "sha256": "db7134f3be63a56f9648aa775cc8980dfd2a28d4eed38cfbf46b118b098eb270",
+      "size": 157120,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/Rajdhani-Bold.ttf",
+      "sha256": "785ba1402c97deffb8347f833d574347952775662e154f0ca40936a9fd413e53",
+      "size": 37980,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/Spectral-SemiBold.ttf",
+      "sha256": "fee6dfd8df76a48990028493cb43af7c31ddade5aac6b8573a88a91b50c6a4ef",
+      "size": 50296,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/SpectralSC-SemiBold.ttf",
+      "sha256": "15ae19acaa4ac6b5f06d9b3bf70b37479235165626133bbde4b4395d8c03d0b6",
+      "size": 30564,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/glow-icons.png",
+      "sha256": "f021a5dc502c24f6df3af298090db7a7af7c7b9174cae87cb81c8dd7bc476bd8",
+      "size": 47497,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/ink-icons.png",
+      "sha256": "8c851c59389e1100121e78663cb8d59a9a390744326193de08bb7263e1404dc9",
+      "size": 27720,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/plate-icons.png",
+      "sha256": "a02ec5bd2606454ba11ca0836d576ffe09641a463fd7f6eeba3d30b21b62d374",
+      "size": 19918,
+      "visibility": "public"
+    },
+    {
+      "path": "styles/shared/stencil-icons.png",
+      "sha256": "0fed30ffce5ce052a8de81188f9cb7060a9221d9acde85ada2e193479a491468",
+      "size": 29842,
+      "visibility": "public"
+    }
+  ]
+}
