@@ -785,10 +785,19 @@ opaque token, and no part names a platform.
   frame (u32 LE length) on one stream the client opens. A lost datagram
   holds nothing up, where a lost TCP segment holds every later snapshot:
   at 100 ms RTT and 2% loss the added delay p99 falls from about 200 ms
-  to under 10 ms. QUIC's framing roughly doubles a 20 Hz proposal, so the
-  server asks clients that support ACK frequency to hold their ACKs for
-  the next proposal and gives them 4-byte connection ids, which keeps the
-  upload under the 1 KiB/s budget. A snapshot can overtake the Enter it
+  to under 10 ms. QUIC's framing roughly doubles a 20 Hz proposal, and a
+  client acks each 20 Hz snapshot within 25 ms; an ACK in a packet of its
+  own costs as much as the proposal again. So a client proposes on the
+  tick after a snapshot arrives (two thirds of the period apart at
+  least), and every QUIC stack carries the pending ACK in the proposal's
+  packet. Under loss each lost server packet still draws an ACK of its
+  own (RFC 9000 §13.2.1), so the server's connection ids are zero-length,
+  4 to 8 bytes off every client packet: connections are told apart by
+  address, and a client whose NAT rebinds reconnects and resumes instead
+  of migrating. That keeps the upload under the 1 KiB/s budget at 5% loss
+  without ACK frequency (draft ietf-quic-ack-frequency), which browsers
+  need not support and quinn 0.11 does not resend once its one frame is
+  lost. A snapshot can overtake the Enter it
   needs on the stream after a loss; the client rejects it whole and does
   not acknowledge it, so the two sides never disagree. A self-signed
   certificate (`og world-server cert`, ECDSA, 14 days at most) is checked
