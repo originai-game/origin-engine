@@ -27,6 +27,16 @@ type Socket = tungstenite::WebSocket<MaybeTlsStream<TcpStream>>;
 /// How long reaching the server and its handshake may each take.
 const DIAL: Duration = Duration::from_secs(5);
 
+/// An open connection that hears nothing this long is closed (`Closed`):
+/// a world server sends a snapshot every tick, so silence means the path
+/// is gone. Over WebTransport a client whose NAT rebinds is never told
+/// (the server's connection ids are zero-length, so it drops the packets
+/// from the new address), and the engine reconnects and resumes well
+/// inside the server's 10 s linger instead of after QUIC's idle timeout.
+/// It is measured here, on the connection's own thread in real time, so
+/// the engine's frames stalling (a load hitch) never trips it.
+pub const SILENT: Duration = Duration::from_secs(2);
+
 /// What the connection says, in order.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum ClientEvent {
@@ -257,7 +267,11 @@ async fn serve_wt(
             }
         }
     });
+    let mut heard = std::time::Instant::now();
     let why = loop {
+        if heard.elapsed() > SILENT {
+            break format!("the server was silent for {} s", SILENT.as_secs());
+        }
         if stop.load(Ordering::Relaxed) {
             while let Ok(m) = out.try_recv() {
                 let _ = send.write_all(&frame(&m)).await;
@@ -281,6 +295,7 @@ async fn serve_wt(
         // Wait a millisecond for what the server sends, so queued sends go out promptly.
         match tokio::time::timeout(Duration::from_millis(1), rx.recv()).await {
             Ok(Some(Ok(m))) => {
+                heard = std::time::Instant::now();
                 let _ = events.send(ClientEvent::Message(m));
                 while let Ok(Ok(m)) = rx.try_recv() {
                     let _ = events.send(ClientEvent::Message(m));
@@ -309,6 +324,7 @@ fn serve(
             |e| !matches!(&e, tungstenite::Error::Io(e) if e.kind() == io::ErrorKind::Interrupted),
         )
     };
+    let mut heard = std::time::Instant::now();
     loop {
         if stop.load(Ordering::Relaxed) {
             while let Ok(m) = out.try_recv() {
@@ -317,6 +333,9 @@ fn serve(
             let _ = socket.close(None);
             let _ = socket.flush();
             return "closed".into();
+        }
+        if heard.elapsed() > SILENT {
+            return format!("the server was silent for {} s", SILENT.as_secs());
         }
         let mut wrote = false;
         while let Ok(m) = out.try_recv() {
@@ -330,6 +349,7 @@ fn serve(
         }
         match socket.read() {
             Ok(Message::Binary(b)) => {
+                heard = std::time::Instant::now();
                 let _ = events.send(ClientEvent::Message(b.to_vec()));
             }
             Ok(Message::Close(c)) => {

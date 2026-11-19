@@ -62,13 +62,6 @@ const ORIGIN: &str = "og.WorldOrigin";
 const BACKOFF_FIRST_MS: f64 = 250.0;
 const BACKOFF_MAX_MS: f64 = 4000.0;
 const RECONNECT_FOR_MS: f64 = 30_000.0;
-/// A joined connection that hears nothing this long is lost: the server
-/// sends a snapshot every tick, so silence means the path is gone. Over
-/// WebTransport a client whose NAT rebinds is not told (the server's
-/// connection ids are zero-length, so its packets from the new address
-/// are dropped, not migrated); reconnecting now resumes its avatar well
-/// inside the server's linger (10 s) instead of after QUIC's idle timeout.
-const SILENT_MS: f64 = 2_000.0;
 /// Ops kept for a host that never takes them (a replay): the newest.
 const KEEP_OPS: usize = 1024;
 /// A remote avatar's states kept for interpolation, in server ticks.
@@ -118,8 +111,13 @@ pub(crate) struct Session {
     retry_at: Option<u64>,
     backoff_ms: f64,
     lost_at: Option<u64>,
-    /// The tick a message last arrived on the open connection.
-    heard_at: Option<u64>,
+    /// After a welcome: the avatars held before, by player, until the
+    /// server enters them again (the same entity carries on) or a second
+    /// of server ticks passes without (`resumed_until`): they have left.
+    /// Not the first snapshot: over WebTransport it is a datagram and can
+    /// overtake the enters on the stream.
+    resumed: BTreeMap<String, Remote>,
+    resumed_until: u32,
     /// Asked for a connection and not answered yet.
     asking: bool,
     remotes: BTreeMap<u16, Remote>,
@@ -702,22 +700,22 @@ fn system(ctx: &mut SystemContext<'_>, engine_id: u32) -> og_core::Result<()> {
         apply(ctx, engine_id, &recs, &transform, local, origin, tick, &ev)?;
     }
 
-    // A joined connection gone silent: drop it and reconnect at once,
-    // resuming the session.
-    with(engine_id, |s| {
-        if s.open
-            && s.state == SharedState::Joined
-            && s.heard_at
-                .is_some_and(|h| (tick - h) as f64 * dt * 1000.0 > SILENT_MS)
-        {
-            s.push(json!({ "op": "close" }));
-            s.open = false;
-            s.heard_at = None;
-            s.state = SharedState::Reconnecting;
-            s.lost_at.get_or_insert(tick);
-            s.retry_at = Some(tick);
+    // Avatars held across a reconnect that the server did not enter again
+    // within a second of server ticks have left.
+    let gone: Vec<Remote> = with(engine_id, |s| {
+        if s.resumed.is_empty() || s.newest < s.resumed_until {
+            return Vec::new();
         }
+        std::mem::take(&mut s.resumed).into_values().collect()
     });
+    for r in gone {
+        let _ = ctx.despawn(r.entity);
+        recs.event(
+            ctx,
+            PRESENCE_LEFT,
+            &json!({ "entity": r.entity.to_bits(), "player": short(&r.player) }),
+        )?;
+    }
 
     // Reconnecting: ask again when the wait is over; give up after 30 s.
     with(engine_id, |s| {
@@ -783,7 +781,9 @@ fn system(ctx: &mut SystemContext<'_>, engine_id: u32) -> og_core::Result<()> {
 fn clear_remotes(ctx: &mut SystemContext<'_>, engine_id: u32, recs: &Recs) -> og_core::Result<()> {
     let gone: Vec<Remote> = with(engine_id, |s| {
         s.clock = None;
-        std::mem::take(&mut s.remotes).into_values().collect()
+        let mut gone: Vec<Remote> = std::mem::take(&mut s.remotes).into_values().collect();
+        gone.extend(std::mem::take(&mut s.resumed).into_values());
+        gone
     });
     for r in gone {
         let _ = ctx.despawn(r.entity);
@@ -866,7 +866,6 @@ fn apply(
                 }
                 s.asking = false;
                 s.open = true;
-                s.heard_at = Some(tick);
                 s.transport = transport;
                 s.view = View::new();
                 let hello = Hello {
@@ -917,10 +916,7 @@ fn apply(
         "message" => {
             let bytes =
                 og_core::base64::decode(ev["bytes"].as_str().unwrap_or("")).unwrap_or_default();
-            with(engine_id, |s| {
-                s.bytes_in += bytes.len() as u64;
-                s.heard_at = Some(tick);
-            });
+            with(engine_id, |s| s.bytes_in += bytes.len() as u64);
             let Ok(msg) = ServerMsg::decode(&bytes) else {
                 warn(
                     engine_id,
@@ -969,7 +965,17 @@ fn message(
 ) -> og_core::Result<()> {
     match msg {
         ServerMsg::Welcome(w) => {
-            clear_remotes(ctx, engine_id, recs)?;
+            // A reconnect keeps the avatars it held, resumed or not: the
+            // server enters those still in sight again, and each carries on
+            // as the same entity, with no og.PresenceLeft or
+            // og.PresenceEntered.
+            with(engine_id, |s| {
+                s.clock = None;
+                s.resumed_until = w.tick + u32::from(w.tick_hz).max(1);
+                let held = std::mem::take(&mut s.remotes);
+                s.resumed
+                    .extend(held.into_values().map(|r| (r.player.clone(), r)));
+            });
             with(engine_id, |s| {
                 s.state = SharedState::Joined;
                 s.session = Some(w.session);
@@ -1040,7 +1046,30 @@ fn message(
                 b.truncate(l.size());
                 parts.push((ctx.id_by_name(&avatar)?, b));
             }
-            let entity = ctx.spawn_bytes(parts)?;
+            let kept = with(engine_id, |s| s.resumed.remove(&e.player));
+            let (entity, since) = match &kept {
+                Some(r) => {
+                    let (id_remote, since) = (ctx.id_by_name(REMOTE)?, r.since);
+                    for (id, b) in &parts {
+                        if *id == id_remote {
+                            let b = recs
+                                .get(REMOTE)?
+                                .encode(
+                                    None,
+                                    Some(
+                                        &json!({ "id": e.id, "kind": e.kind, "sinceTick": since }),
+                                    ),
+                                )
+                                .map_err(invalid)?;
+                            ctx.set_bytes(r.entity, *id, &b)?;
+                        } else {
+                            ctx.set_bytes(r.entity, *id, b)?;
+                        }
+                    }
+                    (r.entity, since)
+                }
+                None => (ctx.spawn_bytes(parts)?, tick),
+            };
             with(engine_id, |s| {
                 let mut samples = VecDeque::new();
                 samples.push_back((e.tick, e.state, true));
@@ -1051,18 +1080,20 @@ fn message(
                         player: e.player.clone(),
                         name: e.name.clone(),
                         kind: e.kind,
-                        since: tick,
+                        since,
                         samples,
                         drawn_jump: Some(e.tick),
                     },
                 );
                 s.newest = s.newest.max(e.tick);
             });
-            recs.event(
-                ctx,
-                ENTERED,
-                &json!({ "entity": entity.to_bits(), "player": short(&e.player), "name": short(&e.name), "kind": e.kind }),
-            )?;
+            if kept.is_none() {
+                recs.event(
+                    ctx,
+                    ENTERED,
+                    &json!({ "entity": entity.to_bits(), "player": short(&e.player), "name": short(&e.name), "kind": e.kind }),
+                )?;
+            }
         }
         ServerMsg::Leave { id } => {
             if let Some(r) = with(engine_id, |s| {

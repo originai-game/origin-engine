@@ -424,7 +424,9 @@ impl Wire {
 /// after the server's 10 s linger as a new avatar (the others despawn it
 /// and spawn another); it reconnects without resuming (the same); the
 /// server keeps both (two avatars of one player); the resumed avatar loses
-/// where it was or is corrected.
+/// where it was or is corrected; the reconnecting client despawns and
+/// respawns the avatars it held; a 3 s load hitch, longer than the silence
+/// limit, is taken for a lost connection.
 #[test]
 fn a_client_whose_nat_rebinds_resumes_its_avatar() {
     use og_shared::auth::{Rules, Verifier, sign_hs256};
@@ -507,7 +509,22 @@ fn a_client_whose_nat_rebinds_resumes_its_avatar() {
         og_shared_status(a).state == "joined" && remotes(b).len() == 1 && remotes(a).len() == 1
     });
     let held = remotes(b)[0];
+    let held_by_a = remotes(a)[0];
     assert_eq!(og_shared_remote(b, held).unwrap().player, "a");
+
+    // A load hitch (or a tab in the background): no frame for 3 s, longer
+    // than the silence limit. The connection's own thread kept hearing the
+    // server, so nothing is lost and nothing reconnects.
+    std::thread::sleep(Duration::from_secs(3));
+    for _ in 0..60 {
+        frame(&mut wires, &mut ax);
+        assert_eq!(
+            og_shared_status(a).state,
+            "joined",
+            "a hitch was taken for a lost connection"
+        );
+        assert_eq!((remotes(a), remotes(b)), (vec![held_by_a], vec![held]));
+    }
 
     nat.rebind();
     let lost = until(&mut wires, &mut ax, &mut frame, 5.0, &|| {
@@ -542,6 +559,8 @@ fn a_client_whose_nat_rebinds_resumes_its_avatar() {
     );
     let st = og_shared_status(a);
     assert_eq!((st.player.as_str(), st.corrections), ("a", 0));
+    // a's own view of b carried on as the same entity across the reconnect.
+    assert_eq!(remotes(a), vec![held_by_a], "a respawned b");
     assert!(
         (ax - seen_b.last().unwrap()).abs() < 1.0,
         "b draws a at {} while it is at {ax}",

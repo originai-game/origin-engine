@@ -73,8 +73,35 @@ const PROPOSE = 2;
 /** The open connection: `send` once it is open, `close` drops it without a `closed`. */
 interface Link {
   open: boolean;
+  /** When a message last arrived (performance.now), and the silence watch's timer. */
+  heard: number;
+  watch?: ReturnType<typeof setInterval>;
   send(bytes: Uint8Array): void;
   close(): void;
+}
+
+/**
+ * An open connection that hears nothing for SILENT_MS is lost (og-shared client.rs SILENT): a
+ * world server sends a snapshot every tick, and a WebTransport client whose NAT rebinds is never
+ * told. Measured on the Worker's clock, in real time, never in engine ticks. A watch that itself
+ * ran late (the Worker busy with a long frame, a throttled background tab) restarts the count, so
+ * a stall on this side is never taken for the server's silence.
+ */
+const SILENT_MS = 2000;
+const WATCH_MS = 250;
+
+function watch(engine: Engine, l: Link): void {
+  let beat = performance.now();
+  l.heard = beat;
+  l.watch = setInterval(() => {
+    const now = performance.now();
+    if (now - beat > 4 * WATCH_MS) l.heard = now;
+    beat = now;
+    if (link !== l || now - l.heard <= SILENT_MS) return;
+    link = null;
+    l.close();
+    deliver(engine, { type: "closed", reason: `the server was silent for ${SILENT_MS / 1000} s` });
+  }, WATCH_MS);
 }
 
 let link: Link | null = null;
@@ -157,16 +184,27 @@ function openTransport(engine: Engine, grant: Granted, Ctor: TransportCtor): voi
     openSocket(engine, grant);
     return;
   }
-  const l: Link = { open: false, send: () => {}, close: () => t.close() };
+  const l: Link = {
+    open: false,
+    heard: 0,
+    send: () => {},
+    close: () => {
+      clearInterval(l.watch);
+      t.close();
+    },
+  };
   link = l;
   const lost = (reason: string) => {
     if (link !== l) return;
     link = null;
+    clearInterval(l.watch);
     if (l.open) deliver(engine, { type: "closed", reason });
     else openSocket(engine, grant);
   };
   const message = (bytes: Uint8Array) => {
-    if (link === l) deliver(engine, { type: "message", bytes: toBase64(bytes) });
+    if (link !== l) return;
+    l.heard = performance.now();
+    deliver(engine, { type: "message", bytes: toBase64(bytes) });
   };
   void t.closed.then(
     (c) => lost(c.reason || "the WebTransport session closed"),
@@ -184,6 +222,7 @@ function openTransport(engine: Engine, grant: Granted, Ctor: TransportCtor): voi
       w.catch(() => {});
     };
     l.open = true;
+    watch(engine, l);
     deliver(engine, { type: "open", transport: "wt", token: grant.token ?? "" });
     void readFrames(stream.readable.getReader(), message).catch(() => {});
     const dg = t.datagrams.readable.getReader();
@@ -246,8 +285,10 @@ function openSocket(engine: Engine, grant: Granted): void {
   ws.binaryType = "arraybuffer";
   const l: Link = {
     open: false,
+    heard: 0,
     send: (b) => ws.send(b),
     close: () => {
+      clearInterval(l.watch);
       ws.onopen = ws.onmessage = ws.onclose = ws.onerror = null;
       ws.close();
     },
@@ -255,14 +296,18 @@ function openSocket(engine: Engine, grant: Granted): void {
   link = l;
   ws.onopen = () => {
     l.open = true;
+    watch(engine, l);
     deliver(engine, { type: "open", transport: "ws", token: grant.token ?? "" });
   };
   ws.onmessage = (e) => {
-    if (e.data instanceof ArrayBuffer) deliver(engine, { type: "message", bytes: toBase64(new Uint8Array(e.data)) });
+    if (!(e.data instanceof ArrayBuffer)) return;
+    l.heard = performance.now();
+    deliver(engine, { type: "message", bytes: toBase64(new Uint8Array(e.data)) });
   };
   ws.onclose = (e) => {
     if (link !== l) return;
     link = null;
+    clearInterval(l.watch);
     deliver(engine, { type: "closed", reason: e.reason || `the connection closed (${e.code})` });
   };
   // A failed socket also closes, and onclose says so.
