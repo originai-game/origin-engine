@@ -78,7 +78,7 @@ struct Remote {
     since: u64,
     /// Its states by server tick, oldest first, and whether each jumped.
     samples: VecDeque<(u32, AvatarState, bool)>,
-    /// The server tick of the newest jump drawn (og.RemoteAvatar.jumped's).
+    /// The server tick of the newest jump drawn (og.RemoteAvatar.jumpedTick's).
     drawn_jump: Option<u32>,
 }
 
@@ -516,7 +516,7 @@ pub fn og_shared_remote(world: u32, entity: f64) -> Option<SharedRemote> {
                 player: r.player.clone(),
                 name: r.name.clone(),
                 kind: r.kind,
-                since: r.since as f64,
+                since_tick: r.since as f64,
             })
     })
 }
@@ -995,7 +995,7 @@ fn message(
                     recs.get(REMOTE)?
                         .encode(
                             None,
-                            Some(&json!({ "id": e.id, "kind": e.kind, "since": tick })),
+                            Some(&json!({ "id": e.id, "kind": e.kind, "sinceTick": tick })),
                         )
                         .map_err(invalid)?,
                 ),
@@ -1275,7 +1275,7 @@ fn draw_remotes(
             let old = ctx.get_bytes(e, remote_id)?;
             let b = recs
                 .get(REMOTE)?
-                .encode(Some(&old), Some(&json!({ "jumped": tick })))
+                .encode(Some(&old), Some(&json!({ "jumpedTick": tick })))
                 .map_err(invalid)?;
             ctx.set_bytes(e, remote_id, &b)?;
         }

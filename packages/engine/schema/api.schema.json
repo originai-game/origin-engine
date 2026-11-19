@@ -56861,14 +56861,14 @@
           "default": 0,
           "readOnly": true
         },
-        "since": {
+        "sinceTick": {
           "type": "number",
           "description": "The tick it came into sight.",
           "default": 0,
           "x-og-unit": "ticks",
           "readOnly": true
         },
-        "jumped": {
+        "jumpedTick": {
           "type": "number",
           "description": "The tick it last jumped (a teleport: drawn there at once, not moved across); 0 never.",
           "default": 0,
@@ -57059,7 +57059,7 @@
           "maximum": 4294967295,
           "description": "Its kind."
         },
-        "since": {
+        "sinceTick": {
           "type": "number",
           "description": "The tick it came into sight.",
           "x-og-unit": "ticks"
@@ -57069,7 +57069,7 @@
         "player",
         "name",
         "kind",
-        "since"
+        "sinceTick"
       ],
       "additionalProperties": false
     },

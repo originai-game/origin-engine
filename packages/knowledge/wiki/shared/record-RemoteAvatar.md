@@ -18,8 +18,8 @@ Token `og.RemoteAvatar`, registered under the schema name `og.RemoteAvatar`; its
 |---|---|---|---|---|---|---|
 | `id` | `number` | `0` | — | — | read only | This client's number for it, while it is in sight. |
 | `kind` | `number` | `0` | — | — | read only | Its kind (og.SharedAvatar.kind). |
-| `since` | `number` | `0` | — | `ticks` | read only | The tick it came into sight. |
-| `jumped` | `number` | `0` | — | `ticks` | read only | The tick it last jumped (a teleport: drawn there at once, not moved across); 0 never. |
+| `sinceTick` | `number` | `0` | — | `ticks` | read only | The tick it came into sight. |
+| `jumpedTick` | `number` | `0` | — | `ticks` | read only | The tick it last jumped (a teleport: drawn there at once, not moved across); 0 never. |
 
 ```ogt
 component RemoteAvatar {
@@ -32,11 +32,11 @@ component RemoteAvatar {
   field kind u32 "Its kind (og.SharedAvatar.kind)." {
     readonly true
   }
-  field since f64 "The tick it came into sight." {
+  field sinceTick f64 "The tick it came into sight." {
     readonly true
     unit ticks
   }
-  field jumped f64 "The tick it last jumped (a teleport: drawn there at once, not moved across); 0 never." {
+  field jumpedTick f64 "The tick it last jumped (a teleport: drawn there at once, not moved across); 0 never." {
     readonly true
     unit ticks
   }

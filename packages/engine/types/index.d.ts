@@ -32036,14 +32036,14 @@ export interface RemoteAvatar {
    * @unit ticks (fixed simulation steps)
    * @readonly written by the engine
    */
-  readonly since: number;
+  readonly sinceTick: number;
   /**
    * The tick it last jumped (a teleport: drawn there at once, not moved across); 0 never.
    *
    * @unit ticks (fixed simulation steps)
    * @readonly written by the engine
    */
-  readonly jumped: number;
+  readonly jumpedTick: number;
 }
 
 /**
@@ -32160,7 +32160,7 @@ export interface SharedRemote {
    *
    * @unit ticks (fixed simulation steps)
    */
-  readonly since: number;
+  readonly sinceTick: number;
 }
 
 /** The session, as a HUD or the probe reads it. */
@@ -39400,7 +39400,7 @@ export declare namespace og {
    * Another visitor in sight, written by the engine: it spawns the entity with an og.Transform (and the game's avatar component, og.shared.shape) when the visitor comes into sight, moves it every tick, and despawns it when the visitor leaves. The game adds its own visuals to it. Who it is: og.shared.remote.
    * See `shared-worlds §3`.
    */
-  const RemoteAvatar: ComponentType<{ readonly id: FieldSpec<"u32">; readonly kind: FieldSpec<"u32">; readonly since: FieldSpec<"f64">; readonly jumped: FieldSpec<"f64"> }, RemoteAvatar>;
+  const RemoteAvatar: ComponentType<{ readonly id: FieldSpec<"u32">; readonly kind: FieldSpec<"u32">; readonly sinceTick: FieldSpec<"f64">; readonly jumpedTick: FieldSpec<"f64"> }, RemoteAvatar>;
   /**
    * The server took this client in: sent at the start of the tick after its welcome arrived, and again after a reconnect.
    */

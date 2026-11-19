@@ -67,11 +67,11 @@ module shared {
     field kind u32 "Its kind (og.SharedAvatar.kind)." {
       readonly true
     }
-    field since f64 "The tick it came into sight." {
+    field sinceTick f64 "The tick it came into sight." {
       readonly true
       unit ticks
     }
-    field jumped f64 "The tick it last jumped (a teleport: drawn there at once, not moved across); 0 never." {
+    field jumpedTick f64 "The tick it last jumped (a teleport: drawn there at once, not moved across); 0 never." {
       readonly true
       unit ticks
     }
@@ -129,7 +129,7 @@ module shared {
     field player String "Its opaque player id."
     field name String "Its display name."
     field kind u32 "Its kind."
-    field since f64 "The tick it came into sight." {
+    field sinceTick f64 "The tick it came into sight." {
       unit ticks
     }
   }
