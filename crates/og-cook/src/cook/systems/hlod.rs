@@ -60,8 +60,12 @@
 //! proxy draws while its members are away: `<scene>#hlod` (`og.Hlod`, the
 //! tree and the members), and per node `<scene>#hlod-<n>` (an `og.Model`
 //! of one level: the tree is its levels of detail) with its
-//! textures `<scene>#hlod-<n>-base`, `-surface` and, when a member emits
-//! light, `-emissive`. A node's stamp is its members' models and where
+//! textures `<scene>#hlod-<n>-base`, `-surface`, `-normal` and, when a
+//! member emits light, `-emissive`. When `texels` passes the mip tail
+//! (`og_bundle::runtime::MIP_TAIL`) each is streamed by level, as a model's
+//! `stream_textures` are: the output holds its tail, which loads with the
+//! scene, and `#mips` its whole chain, read only while its proxy is drawn
+//! large enough to want it (og-runtime's `stream::mips`). A node's stamp is its members' models and where
 //! they stand, so an edit elsewhere in the scene cooks no proxy again.
 //!
 //! One thread per node, each in a fixed order: the same scene gives the
@@ -74,6 +78,7 @@ use super::{
     CookError, CookOptions, Cx, Exec, Job, MeshOptions, Out, PlanState, Planned, Source, mesh_for,
     prefab, stamp,
 };
+use crate::cook::Split;
 use crate::format::{self, BlobKind, HlodMemberRow, HlodMeta, HlodNodeRow, NONE, kind, row_hash};
 use crate::hlod::{hlod_id, node_id};
 use glam::{Mat3, Mat4, Quat, Vec2, Vec3, Vec4};
@@ -835,6 +840,8 @@ type ImageKey<'a> = (&'a str, usize, bool);
 /// once by the first job that needs it.
 struct Shared<'a> {
     scene: String,
+    /// The scene: its streamed pages' whole chains are cached on it.
+    source: &'a Source,
     settings: Settings,
     members: Vec<Member<'a>>,
     nodes: Vec<NodePlan>,
@@ -1623,6 +1630,7 @@ pub(crate) fn plan<'a>(
     ]);
     let shared = Arc::new(Shared {
         scene: s.rel.clone(),
+        source: s,
         settings,
         proxies: nodes.iter().map(|_| OnceLock::new()).collect(),
         members,
@@ -1645,12 +1653,31 @@ pub(crate) fn plan<'a>(
     }
     for (n, node) in shared.nodes.iter().enumerate() {
         for page in 0..if node.emissive { 4 } else { 3 } {
-            outs.push((
-                page_id(&s.rel, n, page),
-                format::Texture::NAME,
-                stamp(&[b"hlod-page", &[page as u8], &node.stamp.to_le_bytes()]),
-                Box::new(PageJob(shared.clone(), n, page)),
-            ));
+            let st = |word: &[u8]| {
+                stamp(&[b"hlod-page", &[page as u8], &node.stamp.to_le_bytes(), word])
+            };
+            let id = page_id(&s.rel, n, page);
+            let job = |split| Box::new(PageJob(shared.clone(), n, page, split));
+            // Streamed by level when a page may pass the mip tail: the
+            // tail loads with the scene, the whole chain only when its
+            // proxy is drawn large enough to want it.
+            if settings.texels > crate::runtime::MIP_TAIL {
+                let mips = st(b"mips");
+                outs.push((
+                    id.clone(),
+                    format::Texture::NAME,
+                    st(b"tail"),
+                    job(Split::Tail(mips)),
+                ));
+                outs.push((
+                    crate::runtime::mips_id(&id),
+                    format::Texture::NAME,
+                    mips,
+                    job(Split::Mips),
+                ));
+            } else {
+                outs.push((id, format::Texture::NAME, st(b""), job(Split::Whole(None))));
+            }
         }
     }
     outs.push((
@@ -1824,11 +1851,23 @@ impl Job for ProxyJob<'_> {
 }
 
 /// One of a proxy's textures: base colour, surface, normals or emission.
-struct PageJob<'a>(Arc<Shared<'a>>, usize, usize);
+/// Whole, or its mip tail and its whole chain (`#mips`): one encode of
+/// the chain serves both (`Source::whole_texture` on the scene).
+struct PageJob<'a>(Arc<Shared<'a>>, usize, usize, Split);
 
 impl Job for PageJob<'_> {
     fn cook(&self, p: &Planned, ex: &Exec) -> Result<(Vec<u8>, Vec<String>), CookError> {
-        let PageJob(shared, n, page) = self;
+        let PageJob(shared, n, page, split) = self;
+        let image = n * PAGES.len() + page;
+        texture::split_texture(shared.source, image, split, p, |stamp| {
+            self.whole(ex, stamp)
+        })
+    }
+}
+
+impl PageJob<'_> {
+    fn whole(&self, ex: &Exec, stamp: u64) -> Result<(Vec<u8>, Vec<String>), CookError> {
+        let PageJob(shared, n, page, _) = self;
         let proxy = shared.proxy(*n).map_err(CookError)?;
         let (rgba, k) = match page {
             0 => (&proxy.base, kind::COLOR),
@@ -1841,7 +1880,7 @@ impl Job for PageJob<'_> {
             height: proxy.height,
             rgba: rgba.clone(),
         };
-        texture::cook(&img, k, &ex.options.texture, p.stamp).map(|t| (t, Vec::new()))
+        texture::cook(&img, k, &ex.options.texture, stamp).map(|t| (t, Vec::new()))
     }
 }
 

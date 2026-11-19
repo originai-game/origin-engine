@@ -86,8 +86,7 @@ band for buoyancy) and wgpu 31 (unpublished). Ray tracing is a non-goal.
   hosts disable floating-point contraction, and pin tick and save proofs in
   the fixtures.
 - **HLOD follow-ups** (`docs/design.md` §10.6): a node over several
-  cells, proxies lit by their models' bake, and proxy textures streamed (a scene's proxies all load
-  with it). Not planned: one draw for a tree's proxies. Each proxy is a
+  cells and proxies lit by their models' bake. Not planned: one draw for a tree's proxies. Each proxy is a
   batch of its own in every pass that sees it (404 draws against 244
   looking across the bench town), but on the L4 cutting that view from 699
   to 404 draws left its frame at 24 ms, and merging the proxies would save
