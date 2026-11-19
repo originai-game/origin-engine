@@ -77,7 +77,8 @@ import { Presentation } from "./shell/presentation.ts";
 import { Requests } from "./shell/requests.ts";
 import { pagePreferences, pixelSize, viewportExtremes } from "./shell/viewport.ts";
 
-export { BOOT_DEADLINE_MS, webGpuMissing, type HostError, type Ready } from "./shell/boot.ts";
+export { BOOT_DEADLINE_MS, type HostError, type Ready } from "./shell/boot.ts";
+export { webGpuMissing } from "./webgpu.ts";
 export { FRAME_DEADLINE_MS } from "./shell/deadline.ts";
 export { releaseHeld } from "./shell/input.ts";
 export type { RoomHost } from "./shell/platform.ts";
