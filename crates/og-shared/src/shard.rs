@@ -832,6 +832,37 @@ impl Shard {
     }
 }
 
+impl Shard {
+    /// Touch what the next step reads, on the pool that runs it: a step
+    /// after a tick's idle gap otherwise starts on parked pool threads and
+    /// cold caches, and took about three times one run back to back (p99
+    /// 20 ms against 3.5 ms at 2000 clients on 4 vCPU). Changes nothing.
+    pub fn warm(&self) {
+        let touch = |v: &Viewer| {
+            let mut n = 0u64;
+            for seen in &v.set {
+                n = n.wrapping_add(u64::from(
+                    self.slot_gens.get(seen.slot as usize).copied().unwrap_or(0),
+                ));
+                if let Some(at) = seen.sent.ticks(self.tick + 1).last()
+                    && let Some(m) = self.ring[at as usize % RING].get(seen.slot as usize)
+                {
+                    n = n.wrapping_add(u64::from(m.yaw));
+                }
+            }
+            n
+        };
+        let viewers: Vec<&Viewer> = self.viewers.values().filter(|v| v.connected).collect();
+        let n: u64 = if viewers.len() >= 128 {
+            use rayon::prelude::*;
+            viewers.par_iter().with_min_len(16).map(|v| touch(v)).sum()
+        } else {
+            viewers.iter().map(|v| touch(v)).sum()
+        };
+        std::hint::black_box(n);
+    }
+}
+
 /// A thread's reused buffers for client ticks.
 #[derive(Default)]
 struct Scratch {
@@ -1649,11 +1680,24 @@ mod bench {
                     let b = p.propose(s, false, (shard.tick.saturating_sub(lag), u32::MAX), seq);
                     shard.receive(*sid, &b).unwrap();
                 }
-                // BENCH_GAP=1 idles a live tick's gap first: a step after
-                // idling is the one a live server runs (caches and the vCPU
-                // go cold), about three times the back-to-back one here.
+                // BENCH_GAP=1 idles a live tick's gap first, as the server
+                // does: warmed WARM_MS before the step (Shard::warm). A step
+                // after idling is the one a live server runs; BENCH_COLD=1
+                // leaves the warm-up out.
                 if std::env::var_os("BENCH_GAP").is_some() {
-                    std::thread::sleep(std::time::Duration::from_millis(45));
+                    let warm = crate::server::WARM_MS;
+                    std::thread::sleep(std::time::Duration::from_millis(45 - warm));
+                    let until = std::time::Instant::now() + std::time::Duration::from_millis(warm);
+                    if std::env::var_os("BENCH_COLD").is_some() {
+                        std::thread::sleep(std::time::Duration::from_millis(warm));
+                    } else if std::env::var_os("BENCH_SPIN").is_some() {
+                        while std::time::Instant::now() < until {
+                            shard.warm();
+                        }
+                    } else {
+                        shard.warm();
+                        std::thread::sleep(until - std::time::Instant::now());
+                    }
                 }
                 let t0 = std::time::Instant::now();
                 shard.step();

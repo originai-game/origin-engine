@@ -33,6 +33,8 @@ pub const SILENT_MS: u64 = 10_000;
 pub const PING_MS: u64 = 3_000;
 /// How often the shard thread looks for what the connections handed it, ms.
 pub const POLL_MS: u64 = 2;
+/// How long before a tick the shard warms what it reads (Shard::warm), ms.
+pub const WARM_MS: u64 = 1;
 /// A connection's read buffer, bytes (see `connection`).
 pub const READ_BUFFER: usize = 4096;
 /// How far behind a connection may fall before it is closed, in messages.
@@ -345,6 +347,8 @@ fn run_shard(
     let mut outs: HashMap<u64, mpsc::Sender<Vec<u8>>> = HashMap::new();
     let period = Duration::from_secs_f64(1.0 / f64::from(shard.config.tick_hz));
     let mut next = Instant::now() + period;
+    let warm_ahead = Duration::from_millis(WARM_MS);
+    let mut warmed = false;
     let flush =
         |shard: &mut Shard, outs: &mut HashMap<u64, mpsc::Sender<Vec<u8>>>, sessions: &[u64]| {
             for s in shard.take_closed() {
@@ -389,11 +393,17 @@ fn run_shard(
             if shard.draining() && shard.connected() == 0 {
                 let _ = done.send(true);
             }
+            warmed = false;
             // A late tick moves the next one, never runs two at once.
             next += period;
             if next <= Instant::now() {
                 next = Instant::now() + period;
             }
+            continue;
+        }
+        if !warmed && now + warm_ahead >= next {
+            shard.warm();
+            warmed = true;
             continue;
         }
         // Poll rather than park: a parked receiver makes every send a wake-up
@@ -402,7 +412,17 @@ fn run_shard(
         let msg = match rx.try_recv() {
             Ok(m) => m,
             Err(std::sync::mpsc::TryRecvError::Empty) => {
-                std::thread::sleep((next - now).min(Duration::from_millis(POLL_MS)));
+                // Until the warm-up, then until the tick, polling meanwhile.
+                let until = if warmed {
+                    next
+                } else {
+                    next.checked_sub(warm_ahead).unwrap_or(now)
+                };
+                std::thread::sleep(
+                    until
+                        .saturating_duration_since(now)
+                        .min(Duration::from_millis(POLL_MS)),
+                );
                 continue;
             }
             Err(std::sync::mpsc::TryRecvError::Disconnected) => return,
