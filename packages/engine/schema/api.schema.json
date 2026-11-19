@@ -12843,7 +12843,7 @@
         },
         {
           "name": "feedback",
-          "doc": "Play a UI event's feedback from the style (docs/ui.md §3.1): one sound of its set, at random and never the one it played last, at a volume and pitch from the set's ranges, and its haptic pattern at the player's strength (setHaptics). Widgets play their own events (press, focus, select, confirm, back, open, close, tab, toggleOn, toggleOff, sliderTick); game code plays the rest: scrollTick, typewriter, counterTick, notification, warning, error, success, reward and the reveals revealCommon to revealMythic. The choices come from the UI state, so a replay plays the same. An unknown event or one the style leaves silent plays nothing.",
+          "doc": "Play a UI event's style feedback (docs/ui.md §3.1): a random sound from its set, never repeating the last, with volume and pitch from the set's ranges, and its haptic pattern at the player's strength (setHaptics). Widgets play press, focus, select, confirm, back, open, close, tab, toggleOn, toggleOff and sliderTick; game code plays scrollTick, typewriter, counterTick, notification, warning, error, success, reward and revealCommon to revealMythic. Choices use UI state and replay deterministically. An unknown event or one the style leaves silent plays nothing.",
           "params": [
             {
               "name": "event",
