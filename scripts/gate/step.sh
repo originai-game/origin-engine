@@ -33,7 +33,7 @@ case "$1" in
   rust-gpu)
     og_gpu_acquire "gate Rust rendering ($PWD)" || exit 1
     python3 scripts/gate/native.py gpu; exit $? ;;
-  bun-test|fixtures|browser|web-reference)
+  bun-test|fixtures|browser|web-reference|safari)
     og_gpu_acquire "gate $1 ($PWD)" || exit 1 ;;
 esac
 case "$1" in

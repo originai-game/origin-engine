@@ -38,17 +38,23 @@
 // that never answers, the shell repeats its hello, draws its own gate and
 // still keeps og.platform out of localStorage.
 //
-//   bun tests/web/player.ts [--out <result.json>] [--chrome <path>] [--evidence <dir>]
+// With --safari the same in this Mac's Safari over WebDriver (webdriver.ts):
+// its phone page is Safari's window at 390×844, with a mouse.
+//
+//   bun tests/web/player.ts [--out <result.json>] [--chrome <path> | --safari [<safaridriver>]] [--evidence <dir>]
 
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { settingsOf, webBuild } from "../../src/node/web-build.ts";
 import { Browser, chromePath, waitFor } from "./cdp.ts";
+import { Safari, safariDriverPath } from "./webdriver.ts";
 import { readHeaders, serve, TYPES } from "./serve.ts";
 
 const args = process.argv.slice(2);
 const opt = (name: string) => (args.includes(name) ? args[args.indexOf(name) + 1] : undefined);
+const safari = args.includes("--safari") ? safariDriverPath(args) : undefined;
+const launch = (o: { width?: number; height?: number } = {}) => (safari ? Safari.launch({ driver: safari, ...o }) : Browser.launch({ chrome: chromePath(args), ...o }));
 const here = dirname(fileURLToPath(import.meta.url));
 const pkg = join(here, "..", "..");
 const repo = join(pkg, "..", "..");
@@ -83,7 +89,7 @@ const check = (ok: boolean, what: string, detail?: unknown) => {
   console.log(`${ok ? "ok  " : "FAIL"} ${what}${ok ? "" : `: ${String(JSON.stringify(detail)).slice(0, 400)}`}`);
 };
 const server = serve({ dist: join(work, "publish"), isolate: true, extra: { "/g/runner": player } });
-const browser = await Browser.launch({ chrome: chromePath(args) });
+const browser = await launch();
 let got: Array<{ kind: string; value?: number; substrate?: string; at: number }> = [];
 try {
   const page = await browser.open(`http://127.0.0.1:${server.port}/g/runner`);
@@ -193,7 +199,7 @@ const save = (name: string, png: Uint8Array) => {
 for (const view of [{ name: "desktop", width: 1280, height: 720, mobile: false }, { name: "phone", width: 390, height: 844, mobile: true }]) {
   requests.length = 0;
   wasmHeld = new Promise((r) => (releaseWasm = r));
-  const browser2 = await Browser.launch({ chrome: chromePath(args), width: view.width, height: view.height });
+  const browser2 = await launch({ width: view.width, height: view.height });
   try {
     const page = await browser2.open("about:blank");
     if (view.mobile) {
@@ -342,7 +348,7 @@ const stage = Bun.serve({
 const inStage: Record<string, unknown> = {};
 for (const view of [{ name: "desktop", width: 1280, height: 720, mobile: false }, { name: "phone", width: 390, height: 844, mobile: true }]) {
   const v = `stage ${view.name}`;
-  const browser3 = await Browser.launch({ chrome: chromePath(args), width: view.width, height: view.height });
+  const browser3 = await launch({ width: view.width, height: view.height });
   try {
     const page = await browser3.open("about:blank");
     if (view.mobile) {
@@ -386,7 +392,7 @@ for (const view of [{ name: "desktop", width: 1280, height: 720, mobile: false }
   // An overlay that never answers: the shell repeats its hello, then plays alone on this load's
   // memory with its own gate, and still writes nothing of og.platform's to the Stage origin.
   const v = "stage silent";
-  const browser4 = await Browser.launch({ chrome: chromePath(args), width: 1280, height: 720 });
+  const browser4 = await launch({ width: 1280, height: 720 });
   try {
     const page = await browser4.open(`http://127.0.0.1:${stage.port}${STAGE_ROOT}?silent=1`);
     await page.until("document.querySelector('#og-gate') && !document.getElementById('og-gate').hidden", 60_000);
