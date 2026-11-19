@@ -48,7 +48,7 @@
 // without the brotli CLI), then what a player downloads (downloadsOf: each
 // page's boot, the lanes and the single-threaded page, and what comes
 // later); with --json one JSON line:
-//   { ok, out, publish, files: [{ path, bytes, compressed, codec }], total, downloads, probe: { build, members }, manifest }
+//   { event: "build", ok, out, publish, files: [{ path, bytes, compressed, codec }], total, downloads, probe: { build, members }, manifest }
 
 import { cpSync, existsSync, mkdirSync, readdirSync, readFileSync, realpathSync, renameSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { dirname, isAbsolute, join, relative, resolve, sep } from "node:path";
@@ -1238,12 +1238,12 @@ if (import.meta.main) {
   }
   const b = await webBuild(resolve(project!), resolve(entry!), resolve(out!), argv.includes("--publish"), settings);
   if (!b.ok) {
-    if (argv.includes("--json")) process.stdout.write(JSON.stringify({ ...b, files: [], total: { bytes: 0, compressed: 0 } }) + "\n");
+    if (argv.includes("--json")) process.stdout.write(JSON.stringify({ event: "build", ...b, files: [], total: { bytes: 0, compressed: 0 } }) + "\n");
     process.stderr.write(`og build: ${b.reason}\n`);
     process.exit(1);
   }
   const sizes = await sizesOf(b.out);
-  if (argv.includes("--json")) process.stdout.write(JSON.stringify({ ok: b.ok, out: b.out, publish: b.publish, ...sizes, probe: b.probe, manifest: b.manifest }) + "\n");
+  if (argv.includes("--json")) process.stdout.write(JSON.stringify({ event: "build", ok: b.ok, out: b.out, publish: b.publish, ...sizes, probe: b.probe, manifest: b.manifest }) + "\n");
   else {
     process.stdout.write(table(sizes));
     process.stdout.write(downloadLines(sizes.downloads, sizes.files[0]?.codec ?? "brotli-11"));

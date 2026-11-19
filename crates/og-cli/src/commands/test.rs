@@ -6,8 +6,11 @@
 //! A test that made no assertion fails. Fails when anything fails, and when
 //! there was nothing to run. A type error fails the run and the
 //! playtests do not run (there is no bundle); the bun tests still do.
-//! `--json` prints the `check` event first and a `test` event last, with
-//! the check's `{ok, ms, errors}`.
+//! `--json` makes stdout JSON Lines and nothing else (the prose, the bun
+//! tests' report and the summary go to stderr): the `check` event first
+//! (unless `--no-check`), one `playtest` event per playtest file that ran,
+//! in the files' order, and a `test` event last, with the check's
+//! `{ok, ms, errors}`. The fields are in the testing guide §8.
 //! `--filter` selects suite files by a case-sensitive substring of their
 //! project-relative path (with `/` separators), before any tests execute;
 //! `--skip` (repeatable) leaves out the suites whose path contains its
@@ -245,12 +248,25 @@ pub fn run(args: &[&str]) -> ExitCode {
         Some(Err(_)) => true,
         None => false,
     };
+    // With --json stdout is the events alone; the prose goes to stderr.
+    let say = |line: String| {
+        if json {
+            eprintln!("{line}");
+        } else {
+            println!("{line}");
+        }
+    };
     if !unit.is_empty() {
-        println!("og test: bun test ({} file(s))", unit.len());
+        say(format!("og test: bun test ({} file(s))", unit.len()));
         match Command::new("bun")
             .arg("test")
             .args(&unit)
             .current_dir(&p.root)
+            .stdout(if json {
+                std::process::Stdio::from(std::io::stderr())
+            } else {
+                std::process::Stdio::inherit()
+            })
             .status()
         {
             Ok(s) if s.success() => {}
@@ -262,10 +278,10 @@ pub fn run(args: &[&str]) -> ExitCode {
         }
     }
     if !playtests.is_empty() && check_failed {
-        println!(
+        say(format!(
             "og test: the {} playtest(s) did not run: the type check failed",
             playtests.len()
-        );
+        ));
     } else if !playtests.is_empty() {
         let bundle = match crate::run::prepare(&p, &package, false, json) {
             Ok(b) => b,
@@ -363,9 +379,9 @@ pub fn run(args: &[&str]) -> ExitCode {
             })
         );
     }
-    println!(
+    say(format!(
         "og test: {passed} suite(s) passed, {failed} failed, {unchecked_suites} unchecked, {skipped} skipped; {unchecked} GPU frame/expectation checks unchecked"
-    );
+    ));
     if ok {
         ExitCode::SUCCESS
     } else {

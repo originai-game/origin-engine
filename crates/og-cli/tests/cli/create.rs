@@ -48,3 +48,70 @@ fn create_and_new_scaffold_from_an_installed_distribution() {
         );
     }
 }
+
+/// The creation a tool runs: no terminal and no --no-prompt, the chosen
+/// look and premise, --force over a nonempty directory (the start guide
+/// §1). An unknown look is refused, naming the ones
+/// there are, and writes nothing.
+#[test]
+fn create_without_a_terminal_writes_the_chosen_look() {
+    let dir = TempDir::new("og-create-look");
+    let engine = dir.join("dist/engine");
+    std::fs::create_dir_all(&engine).unwrap();
+    #[cfg(unix)]
+    std::os::unix::fs::symlink(repo().join("packages/create"), dir.join("dist/create")).unwrap();
+    #[cfg(windows)]
+    std::os::windows::fs::symlink_dir(repo().join("packages/create"), dir.join("dist/create"))
+        .unwrap();
+    let new = |args: &[&str]| {
+        og().current_dir(&dir)
+            .env("OG_ENGINE_PACKAGE", &engine)
+            .stdin(std::process::Stdio::null())
+            .arg("new")
+            .args(args)
+            .output()
+            .unwrap()
+    };
+    std::fs::create_dir_all(dir.join("Game Dir")).unwrap();
+    std::fs::write(dir.join("Game Dir/notes.txt"), "kept").unwrap();
+    let out = new(&[
+        "Game Dir",
+        "--id",
+        "neon-run",
+        "--look",
+        "neon-vector",
+        "--premise",
+        "a cozy fishing village",
+        "--force",
+    ]);
+    assert!(out.status.success(), "{}", text(&out));
+    let game = dir.join("Game Dir");
+    let manifest = std::fs::read_to_string(game.join("project.ogt")).unwrap();
+    let package: serde_json::Value = serde_json::from_str(
+        &std::fs::read_to_string(repo().join("packages/engine/package.json")).unwrap(),
+    )
+    .unwrap();
+    for line in [
+        format!("engine \"{}\"", package["version"].as_str().unwrap()),
+        "id \"neon-run\"".into(),
+        "look \"looks/neon-run.ogt\"".into(),
+        "look \"neon-vector\"".into(),
+    ] {
+        assert!(manifest.contains(&line), "{line}: {manifest}");
+    }
+    let look = std::fs::read_to_string(game.join("assets/looks/neon-run.ogt")).unwrap();
+    assert!(look.contains("extends \"neon-vector\""), "{look}");
+    assert_eq!(
+        std::fs::read_to_string(game.join("notes.txt")).unwrap(),
+        "kept"
+    );
+
+    let refused = new(&["other", "--look", "no-such-look", "--no-prompt"]);
+    assert_eq!(refused.status.code(), Some(1), "{}", text(&refused));
+    let t = text(&refused);
+    assert!(
+        t.contains("no look preset 'no-such-look'") && t.contains("neon-vector"),
+        "{t}"
+    );
+    assert!(!dir.join("other/project.ogt").exists(), "{t}");
+}

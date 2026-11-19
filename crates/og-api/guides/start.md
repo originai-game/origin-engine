@@ -10,6 +10,16 @@ project for every genre and view: `project.ogt`, `src/main.ts` exporting
 empty `assets/`. There is no sample scene, gameplay or art to adapt: the
 game is written from zero with the API.
 
+A tool creates a game without questions: `og new <dir> --look <slug>
+--premise "<one line>" --no-prompt` (it never prompts without a terminal
+either), with `--force` to write into a nonempty directory and `--id` when
+the directory's name is not a game id. `--look` takes one of the
+catalogue's styles with a preset (an unknown slug exits 1 and lists them);
+the other choices are inferred from the premise unless given. It exits 0
+having written project.ogt with `engine "<this version>"`, `look
+"looks/<id>.ogt"` and the `create` block, and `assets/looks/<id>.ogt`
+extending the chosen look.
+
 The choices made at creation sit in project.ogt's `create` block: `genre`,
 `view`, `look`, `mood`, `ui`, `platform`, `input`, `players`, `lang`,
 `music`. They are constraints and hints, not settings:
