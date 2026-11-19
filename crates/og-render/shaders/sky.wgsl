@@ -320,7 +320,9 @@ fn cloud_fog(d: vec3<f32>, distance: f32) -> vec4<f32> {
 // `transmittance` what the cloud adds and lets through, `at` metres the
 // depth its light comes from. The cloud adds its light through the air,
 // and the air's light it hides behind it is replaced by the same air's in
-// front (no distance heuristic). The clouds shade that air (as UE's cloud
+// front (no distance heuristic): lit as the sky behind is, by the sun, the
+// moon and the night's floor (by the sun alone, a far cloud cut a black
+// band out of a moonlit sky). The clouds shade that air (as UE's cloud
 // shadow does its aerial perspective): the sun reaches it as it reaches
 // the ground (Clouds::light, [4].y), and under a closed deck its sky is
 // the deck, lighting it from the upper half of its directions only, so it
@@ -333,7 +335,9 @@ fn cloud_air(color: vec4<f32>, scattered: vec3<f32>, transmittance: f32, at: f32
   // sample count for the sky's rays): a cloud some kilometres off has as
   // little air to integrate in front of it as it varies over.
   let steps = u32(round(mix(4.0, 12.0, clamp(at * 1e-5, 0.0, 1.0))));
-  let air = air_path(d, to_light, sky_viewer_km(), at * 0.001, steps);
+  let moon_light = sky_moon_light();
+  let moon_dir = select(to_light, normalize(frame.sky_moon.xyz), frame.sky_moon.w > 0.0);
+  let air = air_path(d, to_light, moon_dir, moon_light, sky_viewer_km(), at * 0.001, steps);
   // The deck's base as cloud_deck lights it (the clear sky's low light,
   // a fiftieth of the sun), its sun the one above the air that lights the
   // clouds (cloud_sun), not the scene's light: that is the clouds' own
@@ -351,7 +355,12 @@ fn cloud_air(color: vec4<f32>, scattered: vec3<f32>, transmittance: f32, at: f32
   let cover = cloud_deck(vec3<f32>(0.0, 1.0, 0.0)).a;
   let scale = frame.sky_glow.yzw * frame.sky_horizon.w;
   let under = 0.5 * base * (vec3<f32>(1.0) - air.through);
-  let air_light = air.sun * scale * min(c[4].y, 1.0) + mix(air.sky * scale, under, cover);
+  // The moonlit air and the night's floor (sky_physical_look's
+  // sky_scatter[5], in the share this path holds of it) as its sky light:
+  // the clouds hide the moon as they hide that sky, and a closed deck
+  // replaces both with its own.
+  let night = (air.moon + frame.sky_scatter[5].rgb * (vec3<f32>(1.0) - air.through)) * frame.sky_horizon.w;
+  let air_light = air.sun * scale * min(c[4].y, 1.0) + mix(air.sky * scale + night, under, cover);
   return vec4<f32>(color.rgb * transmittance + scattered * air.through + air_light * (1.0 - transmittance) * (1.0 - frame.view_up.w), color.a * transmittance);
 }
 

@@ -600,3 +600,87 @@ fn a_night_cloud_takes_the_auroras_light() {
         "the overcast under the aurora rises {clouded:?}, the open sky {open:?}"
     );
 }
+
+/// Far cumulus at night under og.DayNight's moon (Infinity World's sea at
+/// 23:24) is lit by the air in front of it as the sky behind it is: by
+/// the moon and the night's floor, not by the set sun alone. Seen level
+/// over a night sea under a high full moon, the band of far cloud over
+/// the horizon keeps over a third of the clear sky's light there, and the
+/// moonlit air's blue (it was a near-black, brown band, cut out of the
+/// sky down to the horizon: the air the cloud hides was replaced by air
+/// lit by the sun under the horizon).
+#[test]
+#[ignore = "requires GPU"]
+fn far_night_clouds_take_the_moonlit_air() {
+    use og_render::{Background, Environment, Exposure, ProceduralSky};
+    let frame = |cover: Option<f32>| {
+        let mut built = scenes::build("water-ocean-night").expect("night sea");
+        let look = og_render::day_night(23.4, 25.0, 90.0)
+            .with_moon(1.6, 0.5)
+            .with_atmosphere(&og_render::PhysicalAtmosphere::EARTH);
+        let scene = &mut built.scene;
+        scene.lighting.light.direction_to_light = look.light_direction;
+        scene.lighting.light.color = look.light_color;
+        scene.lighting.light.intensity = look.light_intensity;
+        scene.lighting.environment = Environment {
+            sky: ProceduralSky {
+                sun_direction: look.sun_direction,
+                sun_color: look.sun_color,
+                look: Some(look.sky),
+            },
+            intensity: look.ambient,
+            background: Background::Procedural {
+                sun_direction: look.sun_direction,
+                sun_color: look.sun_color,
+            },
+            ..Environment::default()
+        };
+        scene.atmosphere.adaptation = look.adaptation;
+        scene.atmosphere.fog = None;
+        scene.atmosphere.clouds = cover.map(|coverage| og_render::Clouds {
+            coverage,
+            ..og_render::Clouds::default()
+        });
+        // Level, 10 m over the sea, looking north with the moon high in
+        // the south-east behind.
+        scene.frame.camera = Camera {
+            position: Vec3::new(0.0, 10.0, 0.0),
+            target: Vec3::new(0.0, 10.0, -100.0),
+            far: 5000.0,
+            exposure: Exposure::linear(1.5),
+            ..Default::default()
+        };
+        og_tests::gfx::render_built(&mut built)
+            .expect("render")
+            .image
+    };
+    let linear = |v: f32| {
+        let c = v / 255.0;
+        if c <= 0.04045 {
+            c / 12.92
+        } else {
+            ((c + 0.055) / 1.055).powf(2.4)
+        }
+    };
+    // The mean linear light over rows `y0..y1`.
+    let rows = |img: &RgbaImage, y0: u32, y1: u32| {
+        let mut s = [0.0f32; 3];
+        for y in y0..y1 {
+            for x in 0..img.width {
+                let p = px(img, x, y);
+                (0..3).for_each(|k| s[k] += linear(p[k]));
+            }
+        }
+        s.map(|v| v / (img.width * (y1 - y0)) as f32)
+    };
+    let (clear, clouded) = (frame(None), frame(Some(0.34)));
+    let h = clear.height;
+    // The 20 rows over the horizon, where the far cloud stands.
+    let band = |img: &RgbaImage| rows(img, h / 2 - 20, h / 2);
+    let (open, banked) = (band(&clear), band(&clouded));
+    println!("over the horizon: clear {open:?}, under far cumulus {banked:?}");
+    assert!(
+        luma(banked) > luma(open) / 3.0 && banked[2] > banked[0],
+        "the far cloud over the horizon is {banked:?}, the clear sky there {open:?}"
+    );
+}

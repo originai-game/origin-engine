@@ -126,27 +126,38 @@ fn scatter_at(p: vec3<f32>, sun: vec3<f32>, phases: vec2<f32>) -> ScatterSample 
 // (Hillaire 2020 §5.5, aerial perspective): the light it scatters towards
 // the eye (the sun along unit `sun` with illuminance 1, in the engine's
 // units, as physical_sky_lit), of the sun and of the sky apart (clouds shade
-// them differently), and what it lets through from behind.
-struct AirPath { sun: vec3<f32>, sky: vec3<f32>, through: vec3<f32> };
+// them differently), the moon's along unit `moon` with `moon_light` (zero:
+// none) as physical_sky_lit scatters it, single and multiple together, and
+// what it lets through from behind.
+struct AirPath { sun: vec3<f32>, sky: vec3<f32>, moon: vec3<f32>, through: vec3<f32> };
 
-fn air_path(d: vec3<f32>, sun: vec3<f32>, h0: f32, t: f32, steps: u32) -> AirPath {
+fn air_path(d: vec3<f32>, sun: vec3<f32>, moon: vec3<f32>, moon_light: vec3<f32>, h0: f32, t: f32, steps: u32) -> AirPath {
   let o = vec3<f32>(0.0, SCATTER[3].x + max(h0, 0.001), 0.0);
   let phases = scatter_phases(dot(d, sun));
+  let moonlit = max(moon_light.r, max(moon_light.g, moon_light.b)) > 0.0;
+  let moon_phases = scatter_phases(dot(d, moon));
   let dt = max(t, 0.0) / f32(steps);
   var out: AirPath;
   out.sun = vec3<f32>(0.0);
   out.sky = vec3<f32>(0.0);
+  out.moon = vec3<f32>(0.0);
   out.through = vec3<f32>(1.0);
   for (var i = 0u; i < steps; i++) {
-    let x = scatter_at(o + d * (dt * (f32(i) + 0.5)), sun, phases);
+    let p = o + d * (dt * (f32(i) + 0.5));
+    let x = scatter_at(p, sun, phases);
     let seg = exp(-x.ext * dt);
     let k = out.through * (1.0 - seg) / x.ext;
     out.sun += k * x.sun;
     out.sky += k * x.sky;
+    if (moonlit) {
+      let y = scatter_at(p, moon, moon_phases);
+      out.moon += k * (y.sun + y.sky);
+    }
     out.through *= seg;
   }
   out.sun *= SCATTER[3].w;
   out.sky *= SCATTER[3].w;
+  out.moon *= moon_light * SCATTER[3].w;
   return out;
 }
 
