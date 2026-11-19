@@ -187,6 +187,11 @@ cmd_publish() {
   if [ -n "$status" ]; then og_err "release: publish refused:"; printf '%s\n' "$status" | sed 's/^/  /' >&2; return 1; fi
   minisign -V -q -P "$key" -m "$out/SHA256SUMS" -x "$out/SHA256SUMS.minisig" || { og_err "release: SHA256SUMS.minisig does not verify with docs/release.md's key $key"; return 1; }
   (cd "$out" && shasum -a 256 -c SHA256SUMS >/dev/null) || { og_err "release: a file does not match SHA256SUMS"; return 1; }
+  # The remote-frame archives the dist pins (frame-hosts.json) are store objects: upload what the store lacks.
+  frames=packages/engine/dist/pack/frames
+  if [ -f "$frames/og-assets.json" ] && [ "${#dry[@]}" = 0 ]; then
+    bun scripts/assets.ts push "$frames" && bun scripts/assets.ts verify "$frames" || { og_err "release: the frame archives are not in the asset store"; return 1; }
+  fi
   bun scripts/release-publish.ts "$out" --version "$v" "${dry[@]}"
 }
 

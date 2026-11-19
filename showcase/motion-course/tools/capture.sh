@@ -25,8 +25,8 @@ if [[ -z ${OG:-} ]]; then if [[ -x $packaged ]]; then OG="$packaged"; else OG=og
 SIZE="${SIZE:-1280x720}"; FPS="${FPS:-60}"; FRAME="${FRAME:-12.5}"; TO="${TO:-13.5}"
 out="$here/og-out/captures"
 mkdir -p "$out"
-# The pinned models and maps, checked against assets.json.
-bun "$here/../../scripts/showcase-assets.ts" ensure "$here"
+# The pinned models and maps, checked against og-assets.json.
+bun "$here/../../scripts/assets.ts" ensure "$here"
 what="${1:-all}"
 
 frame() {

@@ -1,0 +1,107 @@
+{
+  "version": 1,
+  "files": [
+    {
+      "path": "assets/fonts/latin/NotoSans-Latin.ttf",
+      "sha256": "91bd512f081c1f8fdd094cc5d3ce5379d6588d663cd93056f5c209adbc3d2f41",
+      "size": 125928,
+      "visibility": "public"
+    },
+    {
+      "path": "assets/models/boulder.glb",
+      "sha256": "e85e399df8f5c7c67bc0b845337a0bf61efd75705c1ca6465f9b8298f4276e67",
+      "size": 3673920,
+      "visibility": "public"
+    },
+    {
+      "path": "assets/models/cottage.glb",
+      "sha256": "8d0a10cd94989e5c4a9f53c0b724a2a9b7c19f0d4ae3eb887ac276f39365598f",
+      "size": 7399160,
+      "visibility": "public"
+    },
+    {
+      "path": "assets/models/lantern.glb",
+      "sha256": "0ac02152f06eb1640fb344448ca1f54290036eefbe113359d1b74c2fe38c8b97",
+      "size": 304412,
+      "visibility": "public"
+    },
+    {
+      "path": "assets/models/lighthouse.glb",
+      "sha256": "0bbd1aa6d12bb61af1757c3f31f41fdf34d77b81c73a6bc4aef4cf23493c75c1",
+      "size": 11565876,
+      "visibility": "public"
+    },
+    {
+      "path": "assets/models/rock-cliff.glb",
+      "sha256": "717a9200f8539b4307b9b34223ec6023c840681cb1a8296963c70c02b3461a7a",
+      "size": 9545480,
+      "visibility": "public"
+    },
+    {
+      "path": "assets/models/ruin.glb",
+      "sha256": "9595e8ddfd99b64588f4a8a6a7f733493168dd3982cf43f03c290addd0fa3ffe",
+      "size": 6057808,
+      "visibility": "public"
+    },
+    {
+      "path": "assets/models/sea-stack.glb",
+      "sha256": "40d7a199399e54e5253ba6ac716c0eb47709048b6b47a2a3bf7d6a7383101e60",
+      "size": 2640308,
+      "visibility": "public"
+    },
+    {
+      "path": "assets/models/wanderer.glb",
+      "sha256": "5b9261b2d45e00366670d1a0978e4df69f76021425f82c4a94f25dc626a22c83",
+      "size": 5371648,
+      "visibility": "public"
+    },
+    {
+      "path": "assets/terrain/coast-control.png",
+      "sha256": "b3327b7b1bfcbefc597306b04fb19c882dfbb01d056027d1f65d800bfc95b6b1",
+      "size": 55480,
+      "visibility": "public"
+    },
+    {
+      "path": "assets/terrain/coast-height.png",
+      "sha256": "d994d1589164b1344f2c73093113f5041d1396a2ea2345332a9c22b747a35689",
+      "size": 803972,
+      "visibility": "public"
+    },
+    {
+      "path": "assets/terrain/textures/aerial_grass_rock_diff_1k.jpg",
+      "sha256": "802c867fa3ece0dc73b37c8fc053f492a2c43d405846d652edcc2663c03b3f32",
+      "size": 443932,
+      "visibility": "public"
+    },
+    {
+      "path": "assets/terrain/textures/aerial_grass_rock_nor_gl_1k.jpg",
+      "sha256": "9b4061ab6b4351737efdab2910200b4c6d1723c7dcc0d66a3897931f6177b3fa",
+      "size": 681034,
+      "visibility": "public"
+    },
+    {
+      "path": "assets/terrain/textures/forest_ground_04_diff_1k.jpg",
+      "sha256": "81bf21bf7d4075e08196580f1b4d3a72740b34a8992a2726b677297a6588cc3a",
+      "size": 435984,
+      "visibility": "public"
+    },
+    {
+      "path": "assets/terrain/textures/forest_ground_04_nor_gl_1k.jpg",
+      "sha256": "571b3625ae4b8607b92bda08e708c3db5f9186cf5341fdb84b5ac084783f3d6e",
+      "size": 866527,
+      "visibility": "public"
+    },
+    {
+      "path": "assets/terrain/textures/rock_face_03_grey_1k.jpg",
+      "sha256": "f8d1789bb735784817cfef8f70b9278cd667a395664847cbb6f133e5ca6087a8",
+      "size": 268076,
+      "visibility": "public"
+    },
+    {
+      "path": "assets/terrain/textures/rock_face_03_nor_gl_1k.jpg",
+      "sha256": "077fba3895cf8cc656b5a7c956f1a67a62116a69e897c1a92ca7dcab6967de24",
+      "size": 657054,
+      "visibility": "public"
+    }
+  ]
+}

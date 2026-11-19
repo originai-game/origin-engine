@@ -57,10 +57,13 @@ Both caches live under `ORIGIN_ENGINE_CACHE` (default
 install, and report missing data offline as an error. A verified cache
 works offline. A game with neither feature downloads neither payload.
 
-Pack writes remote-frame archives under `dist/pack/frames/<sha256>.tar.gz`;
-publish them to the existing public model bucket at
-`engine/frames/<sha256>.tar.gz` and verify their hashes before releasing
-the engine that pins them. They are content-addressed, not target install
+Pack writes remote-frame archives under `dist/pack/frames/<sha256>.tar.gz`
+with an `og-assets.json` pinning them; `scripts/release.sh publish` pushes
+them to the platform's engine asset store (docs/ci.md §The asset store) and
+verifies them there before releasing the engine that pins them, whose
+`frame-hosts.json` and `motion.json` name the store's
+`/api/engine-assets/sha256/<hex>` URLs. Engines up to 0.9.0 name the frozen
+R2 bucket `origin-engine-models` instead. They are content-addressed, not target install
 manifest entries. Retain the matching named wasm modules in private symbols
 storage even for hosts omitted from default installs.
 

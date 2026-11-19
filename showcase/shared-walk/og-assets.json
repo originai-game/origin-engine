@@ -1,0 +1,11 @@
+{
+  "version": 1,
+  "files": [
+    {
+      "path": "assets/fonts/latin/NotoSans-Latin.ttf",
+      "sha256": "91bd512f081c1f8fdd094cc5d3ce5379d6588d663cd93056f5c209adbc3d2f41",
+      "size": 125928,
+      "visibility": "public"
+    }
+  ]
+}

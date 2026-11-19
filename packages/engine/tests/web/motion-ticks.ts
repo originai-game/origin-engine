@@ -23,7 +23,7 @@
 //   bun tests/web/motion-ticks.ts [--ticks N] [--delay ms] [--every N] [--realtime s [--backend gpu|cpu]] [--chrome <path>]
 //
 // Needs Chrome (cdp.ts), a GPU and the motion model
-// (bun scripts/motion-model.ts ensure). Writes dist/test-motion-ticks/motion-ticks.json;
+// (bun ../../scripts/assets.ts ensure .). Writes dist/test-motion-ticks/motion-ticks.json;
 // exits 1 on a mismatch.
 
 import { mkdirSync, writeFileSync } from "node:fs";

@@ -12,7 +12,7 @@ What it checks:
   `footing`, which measures the feet from where they are drawn, holds the
   thresholds of `og api show animation` §2.1 for both agents. It needs a
   renderer and the motion model (`packages/engine/motion/model.safetensors`,
-  `bun packages/engine/scripts/motion-model.ts ensure`); without a renderer
+  `bun scripts/assets.ts ensure packages/engine`); without a renderer
   the check is unchecked.
 - `packages/engine/tests/web/motion-ticks.ts` (the `browser` lane): the
   course in headless Chrome on WebGPU on the GPU backend, once as the GPU

@@ -27,8 +27,8 @@ TIMES="${TIMES:-night dawn}"; SEASONS="${SEASONS:-spring summer autumn winter}"
 WEATHERS="rain storm fog clear snow"
 out="$here/og-out/captures"
 mkdir -p "$out"
-# The pinned models and maps, checked against assets.json.
-bun "$here/../../scripts/showcase-assets.ts" ensure "$here"
+# The pinned models and maps, checked against og-assets.json.
+bun "$here/../../scripts/assets.ts" ensure "$here"
 what="${1:-all}"
 
 # The run's script for one season at one time of day: the HUD off, the

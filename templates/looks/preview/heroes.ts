@@ -94,7 +94,7 @@ function swapped(own: string, slug: string, variant: string | undefined): string
     .join("\n");
 }
 
-const ensure = spawnSync("bun", [join(repo, "scripts/showcase-assets.ts"), "ensure", project], { encoding: "utf8" });
+const ensure = spawnSync("bun", [join(repo, "scripts/assets.ts"), "ensure", project], { encoding: "utf8" });
 if (ensure.status !== 0) {
   console.error((ensure.stderr || ensure.stdout).trim());
   process.exit(1);

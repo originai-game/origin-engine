@@ -10,3 +10,7 @@ knowledge/
 ui-sheet/
 # og.motion's weights (motion.json pins them), copied in at pack (scripts/pack.sh).
 motion/
+
+# og-assets: the files og-assets.json pins, installed by `bun scripts/assets.ts ensure` (written by the tool)
+/motion/model.safetensors
+# og-assets end

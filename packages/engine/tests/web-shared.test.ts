@@ -61,6 +61,8 @@ test("two Worker-hosted pages see each other through a self-hosted world server 
   let endpoint: { port: number; stop(): void } | undefined;
   try {
     const walk = join(repo, "showcase/shared-walk");
+    // Its font is pinned in og-assets.json, not in git (docs/ci.md §The asset store).
+    expect(Bun.spawnSync(["bun", join(repo, "scripts/assets.ts"), "ensure", walk], { cwd: repo }).exitCode).toBe(0);
     expect(Bun.spawnSync([ogBin(), "cook", walk], { cwd: repo }).exitCode).toBe(0);
     const game = join(dir, "walk.js");
     expect((await bundleGame(join(walk, "src/main.ts"), game, "native")).ok).toBe(true);
