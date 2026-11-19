@@ -65,7 +65,13 @@ test("shipping wasm keeps its exports and other custom sections, with matching n
   ]);
   const path = join(dist, "web-publish/origin-engine_bg.wasm");
   writeFileSync(path, code);
+  // A split module (scripts/wasm-split.ts) keeps its names until pack, too.
+  const module_ = join(dist, "web-publish/modules/physics.0123456789ab.wasm");
+  mkdirSync(join(dist, "web-publish/modules"));
+  writeFileSync(module_, code);
   splitSymbols(dist, symbols);
+  expect(readFileSync(module_)).toEqual(readFileSync(path));
+  expect(readFileSync(join(symbols, "web-publish/modules/physics.0123456789ab.wasm"))).toEqual(code);
   const shipped = readFileSync(path);
   const module = new WebAssembly.Module(shipped);
   expect(WebAssembly.Module.customSections(module, "name")).toHaveLength(0);

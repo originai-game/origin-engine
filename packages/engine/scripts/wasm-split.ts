@@ -216,12 +216,15 @@ export function splitEngine(bound: string, out: string, profile: "2d" | "3d" = "
     writeFileSync(join(out, `${stem}_bg.wasm`), readFileSync(join(split, "primary.wasm")));
     const listed: Record<string, { file: string; bytes: number; sha256: string }> = {};
     for (const m of [...groups.keys()].sort()) {
-      const bytes = withoutNames(new Uint8Array(readFileSync(join(split, `${m}.wasm`))));
-      // Named by content: the release serves it as
+      // Written with its name section, like the primary: pack.sh's
+      // wasm-symbols.ts moves it to the symbols archive. Named and listed by
+      // the bytes that ship, without it; the release serves it as
       // /downloads/engine/<version>/wasm/<variant>/<module>.<hash12>.wasm.
+      const named = new Uint8Array(readFileSync(join(split, `${m}.wasm`)));
+      const bytes = withoutNames(named);
       const sha256 = createHash("sha256").update(bytes).digest("hex");
       const file = `${dir}/${m}.${sha256.slice(0, 12)}.wasm`;
-      writeFileSync(join(out, file), bytes);
+      writeFileSync(join(out, file), named);
       listed[m] = { file, bytes: bytes.length, sha256 };
     }
     writeFileSync(join(out, dir, "modules.json"), `${JSON.stringify(listed, null, 2)}\n`);

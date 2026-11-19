@@ -39,17 +39,23 @@ export function withoutNames(wasm: Uint8Array): Uint8Array {
   return result;
 }
 
+/** Each web host directory of dist, and its split modules' directories (`modules*`, scripts/wasm-split.ts). */
+function wasmDirs(dist: string): string[] {
+  return readdirSync(dist, { withFileTypes: true })
+    .filter((d) => d.isDirectory() && d.name.startsWith("web"))
+    .flatMap((d) => [d.name, ...readdirSync(join(dist, d.name), { withFileTypes: true }).filter((m) => m.isDirectory() && m.name.startsWith("modules")).map((m) => join(d.name, m.name))]);
+}
+
 export function splitSymbols(dist: string, symbols: string): void {
-  for (const directory of readdirSync(dist, { withFileTypes: true })) {
-    if (!directory.isDirectory() || !directory.name.startsWith("web")) continue;
-    for (const file of readdirSync(join(dist, directory.name))) {
+  for (const dir of wasmDirs(dist)) {
+    for (const file of readdirSync(join(dist, dir))) {
       if (!file.endsWith(".wasm")) continue;
-      const path = join(dist, directory.name, file);
+      const path = join(dist, dir, file);
       const named = readFileSync(path);
       const stripped = withoutNames(named);
       if (stripped.length === named.length) continue;
-      mkdirSync(join(symbols, directory.name), { recursive: true });
-      writeFileSync(join(symbols, directory.name, file), named);
+      mkdirSync(join(symbols, dir), { recursive: true });
+      writeFileSync(join(symbols, dir, file), named);
       writeFileSync(path, stripped);
     }
   }
