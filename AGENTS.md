@@ -27,6 +27,16 @@ status `docs/roadmap.md`. Platform contracts implemented here:
     `PROVIDER_VERSION` (`docs/design.md` §2.8 Providers).
   - `packages/knowledge/scripts/brief.ts`: `artBrief`, `readLook`,
     `presetLook` (`docs/art.md` §2.2).
+  - A version's `manifest.json` at `/downloads/engine/<version>/` and
+    `latest/` (`docs/release.md` §1).
+  - The engine package's `knowledge/looks/catalogue.json`,
+    `knowledge/presets/`, `knowledge/scaffold/` (`origin-engine.json`,
+    `distribution.json`, `template/`) and `knowledge/wiki/` paths
+    (`docs/release.md` §2, `packages/knowledge/knowledge.json`).
+  - `og test --json`, `og probe`, `og build --json` and where outputs land
+    (`dist/` and `og-out/`) (testing guide §9); `og new --look --premise
+    --no-prompt` (start guide §1); the launcher's install events
+    (`docs/release.md` §1 The launcher's events).
 - The engine ships no skills. What a game author needs beyond a signature is
   a guide in `crates/og-api/guides/` (read through `og api find` and
   `og api show`) or `og` command help. A guide never restates the API and
