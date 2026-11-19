@@ -18,10 +18,12 @@ pub fn node_id(scene: &str, n: usize) -> String {
     format!("{scene}#hlod-{n}")
 }
 
-/// Whether a cooked output is part of a scene's HLOD (the tree, a proxy or
-/// one of a proxy's textures): they stay in the first group, since a
-/// proxy draws while what it stands in for is away.
+/// Whether a cooked output is part of a scene's HLOD (the tree, a proxy,
+/// one of a proxy's textures or a streamed texture's `#mips`): they stay
+/// in the first group, since a proxy draws while what it stands in for is
+/// away.
 pub fn is_hlod_output(id: &str) -> bool {
+    let id = id.strip_suffix("#mips").unwrap_or(id);
     id.rsplit_once('#')
         .is_some_and(|(_, sub)| sub == "hlod" || sub.starts_with("hlod-"))
 }

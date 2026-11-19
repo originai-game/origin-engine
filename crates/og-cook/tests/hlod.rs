@@ -213,7 +213,7 @@ fn a_town_cooks_to_a_tree_whose_proxies_stand_within_their_error_of_the_houses()
             node.error
         );
         let pid = og_cook::hlod::node_id("scenes/town.ogt", n);
-        let (model, textures) = bundle.load_model_with_textures(&pid).expect("decodes");
+        let model = bundle.load_model(&pid).expect("decodes");
         assert_eq!(model.primitives.len(), 1);
         assert!(
             bundle.output(&pid).unwrap().group.is_none(),
@@ -236,6 +236,26 @@ fn a_town_cooks_to_a_tree_whose_proxies_stand_within_their_error_of_the_houses()
             members.len()
         );
         assert_eq!(prim.lods.len(), 1, "the tree is its levels of detail");
+        // Each page streams by level: the scene loads its mip tail, and its
+        // whole chain is a first-group output of its own.
+        for page in ["base", "surface", "normal"] {
+            let tail = format!("{pid}-{page}");
+            let mips = og_cook::runtime::mips_id(&tail);
+            assert!(og_cook::hlod::is_hlod_output(&mips), "{mips}");
+            assert!(bundle.output(&mips).unwrap().group.is_none(), "{mips}");
+            let t = bundle.texture(&tail, &bundle.read(&tail).unwrap()).unwrap();
+            let whole = bundle.texture(&mips, &bundle.read(&mips).unwrap()).unwrap();
+            let chain = t.mips.expect("the tail names its chain");
+            assert_eq!(
+                (chain.width, chain.height),
+                (whole.meta.width, whole.meta.height),
+                "{tail}"
+            );
+            assert!(
+                t.meta.width.max(t.meta.height) <= og_cook::runtime::MIP_TAIL,
+                "{tail}"
+            );
+        }
 
         // Nothing of a house stands farther from the proxy than its error
         // says: the walls' corners, the roof's corners and tip, the ball's
@@ -274,7 +294,13 @@ fn a_town_cooks_to_a_tree_whose_proxies_stand_within_their_error_of_the_houses()
         // the roofs are: read at the middle of each proxy triangle that is
         // plainly one or the other.
         let material = &model.materials[prim.material];
-        let base = &textures[material.base_color_texture.expect("a base colour page")];
+        // Read whole, as a proxy drawn large shows it (the tail is its
+        // levels from 256 texels down).
+        let page = &model.textures[material.base_color_texture.expect("a base colour page")].id;
+        let base = &bundle
+            .load_texture(&og_cook::runtime::mips_id(page))
+            .and_then(|t| t.to_texture_data())
+            .unwrap();
         assert!(material.metallic_roughness_texture.is_some());
         assert!(material.emissive_texture.is_none(), "nothing emits");
         let (mut walls, mut roofs) = (0, 0);
@@ -377,10 +403,14 @@ fn a_proxy_shows_its_houses_normal_maps_in_its_own_tangent_frame() {
     assert!(!shown.is_empty(), "the walls are normal-mapped");
     for (n, node) in tree.nodes.iter().enumerate() {
         let pid = og_cook::hlod::node_id("scenes/town.ogt", n);
-        let (model, textures) = bundle.load_model_with_textures(&pid).unwrap();
+        let model = bundle.load_model(&pid).unwrap();
         let prim = &model.primitives[0];
         let material = &model.materials[prim.material];
-        let page = &textures[material.normal_texture.expect("a normal page")];
+        let page = &model.textures[material.normal_texture.expect("a normal page")].id;
+        let page = &bundle
+            .load_texture(&og_cook::runtime::mips_id(page))
+            .and_then(|t| t.to_texture_data())
+            .unwrap();
         let mesh = prim.mesh(0);
         let mut walls = 0;
         for t in mesh.indices.chunks(3) {
@@ -444,8 +474,8 @@ fn only_the_nodes_whose_houses_moved_cook_again() {
     assert!(first.ok(), "{:?}", first.errors());
     assert_eq!(
         cooked(&first).len(),
-        1 + 5 * 4,
-        "the tree, 5 models, 15 pages"
+        1 + 5 + 15 * 2,
+        "the tree, 5 models, 15 pages each a tail and its chain"
     );
     assert_eq!(cooked(&cook(&root)), Vec::<String>::new());
     // A light added to the scene moves no house.
@@ -471,12 +501,18 @@ fn only_the_nodes_whose_houses_moved_cook_again() {
             "hlod",
             "hlod-0",
             "hlod-0-base",
+            "hlod-0-base#mips",
             "hlod-0-normal",
+            "hlod-0-normal#mips",
             "hlod-0-surface",
+            "hlod-0-surface#mips",
             "hlod-1",
             "hlod-1-base",
+            "hlod-1-base#mips",
             "hlod-1-normal",
-            "hlod-1-surface"
+            "hlod-1-normal#mips",
+            "hlod-1-surface",
+            "hlod-1-surface#mips"
         ]
     );
     // The same scene cooked elsewhere is the same bytes.

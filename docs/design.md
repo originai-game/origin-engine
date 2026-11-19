@@ -1217,7 +1217,9 @@ lockstep §2.8 and §2.10, the semantic frame and diagnostics §3.4.
   meshoptimizer, charted by xatlas, its base colour, roughness, metalness,
   emission and tangent-space normals (its models' surfaces and normal maps,
   in the MikkTSpace frame of its own page) painted from what it stands in
-  for by og-bake's `transfer`). A proxy's error is measured, as a model
+  for by og-bake's `transfer`; each page streamed by level past the mip
+  tail, as `stream_textures` are, so a scene loads its proxies' tails and
+  reads a whole chain only while its proxy is drawn large). A proxy's error is measured, as a model
   level's is, and it is drawn by the same one-pixel rule in place of every
   model under its node, so the renderer knows nothing of it: a proxy is
   instances like any other. Where a node's choice turns, the proxy and what

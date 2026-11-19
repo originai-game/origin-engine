@@ -111,6 +111,33 @@ entity \"district\" {
 }
 ";
 
+/// Two houses under one leaf whose pages, at 5 cm a texel, pass the mip
+/// tail's 256 texels.
+const PAIR: &str = "type scene
+version 1
+---
+name \"Pair\"
+hlod {
+  size 32
+  error 0.05
+  texels 1024
+}
+entity \"a\" {
+  model \"models/house.ogt\"
+  static true
+  Transform {
+    position 3 0 3
+  }
+}
+entity \"b\" {
+  model \"models/house.ogt\"
+  static true
+  Transform {
+    position 15 0 3
+  }
+}
+";
+
 /// og.Model's fields these scenes set, as `og cook` packs them.
 fn model_schema() -> og_core::Schema {
     use og_core::reflect::{FieldSchema, FieldType};
@@ -137,6 +164,7 @@ fn project() -> &'static Path {
             ("models/house.ogt", HOUSE.to_string()),
             ("scenes/town.ogt", town()),
             ("scenes/world.ogt", WORLD.to_string()),
+            ("scenes/pair.ogt", PAIR.to_string()),
         ] {
             let p = root.join("assets").join(id);
             std::fs::create_dir_all(p.parent().unwrap()).unwrap();
@@ -174,6 +202,9 @@ struct Frame {
     max: Vec3,
     /// Each instance drawn in part: how much, and whether fading out.
     fades: Vec<(f32, bool)>,
+    /// Of the textures the instances draw, the widest one's width as held
+    /// and as its whole chain (a streamed texture holds its tail).
+    widest: (u32, u32),
 }
 
 struct Recorder(Rc<RefCell<Frame>>);
@@ -191,7 +222,19 @@ impl RenderBackend for Recorder {
             min: Vec3::MAX,
             max: Vec3::MIN,
             fades: Vec::new(),
+            widest: (0, 0),
         };
+        for t in scene
+            .objects
+            .instances
+            .iter()
+            .flat_map(|i| scene.material_textures(i.material))
+        {
+            let size = scene.texture_size(t).map_or(0, |s| s.0);
+            if size > f.widest.1 {
+                f.widest = (scene.texture(t).map_or(0, |d| d.width), size);
+            }
+        }
         for i in &scene.objects.instances {
             let Some((a, b)) = scene.mesh(i.mesh).and_then(|m| m.bounds()) else {
                 continue;
@@ -216,6 +259,9 @@ impl RenderBackend for Recorder {
             .collect();
         *self.0.borrow_mut() = f;
         Ok(())
+    }
+    fn texture_uploaded(&self, _: &RenderScene, _: og_render::TextureHandle) -> bool {
+        true
     }
     fn capture(&mut self, _: &RenderScene, _: u32, _: u32) -> Option<og_render::RgbaImage> {
         None
@@ -491,4 +537,23 @@ fn a_cell_not_loaded_draws_its_proxies_at_the_cell() {
     assert!(!loaded(e));
     assert_eq!(h, [1, 1, 1, 0], "left: {h:?}");
     assert!(same_box(&left, &far, 0.01), "{left:?} against {far:?}");
+}
+
+#[test]
+fn a_proxy_loads_its_pages_tails_and_streams_their_chains() {
+    let (e, frame) = engine("scenes/pair.ogt");
+    // Far, small on screen: the proxy draws its pages' tails, each sized
+    // as its whole chain.
+    look(e, Vec3::new(9.0, 0.0, 3.0), 3000.0);
+    let (far, h) = drawn(e, &frame);
+    assert_eq!(h, [1, 1, 0, 2], "{h:?}");
+    let (held, whole) = far.widest;
+    assert!(whole > 256 && held <= 256, "{:?}", far.widest);
+    // Every streamed texture whole (the probe's resident mode): the
+    // proxy's pages are among them.
+    let r: Value =
+        serde_json::from_str(&og_engine_probe_commands(e, "0:mip_stream:resident".into())).unwrap();
+    assert_eq!(r["scheduled"], json!(1), "{r}");
+    let (resident, _) = drawn(e, &frame);
+    assert_eq!(resident.widest, (whole, whole), "{resident:?}");
 }
