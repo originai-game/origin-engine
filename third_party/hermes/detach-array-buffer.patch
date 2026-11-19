@@ -1,0 +1,71 @@
+diff --git a/API/hermes/hermes.cpp b/API/hermes/hermes.cpp
+index 6e0ccdd..a6c1c00 100644
+--- a/API/hermes/hermes.cpp
++++ b/API/hermes/hermes.cpp
+@@ -281,6 +281,7 @@ using ScheduleCallbackFunc = std::function<void(EventLoopCallback)>;
+ 
+ class HermesRuntimeImpl final : public HermesRuntime,
+                                 private IHermesTestHelpers,
++                                private IHermesArrayBufferDetach,
+                                 private InstallHermesFatalErrorHandler,
+                                 private jsi::Instrumentation,
+                                 public ISetEventLoopControl
+@@ -1366,6 +1367,7 @@ class HermesRuntimeImpl final : public HermesRuntime,
+   SHRuntime *getSHRuntime() noexcept override;
+   void *getVMRuntimeUnsafe() const override;
+   size_t rootsListLengthForTests() const override;
++  void detachArrayBuffer(const jsi::ArrayBuffer &buffer) override;
+ 
+   ManagedValues<vm::PinnedHermesValue> hermesValues_;
+   ManagedValues<vm::WeakRoot<vm::JSObject>> weakHermesValues_;
+@@ -1616,6 +1618,8 @@ jsi::ICast *HermesRuntimeImpl::getHermesRootAPI() {
+ jsi::ICast *HermesRuntimeImpl::castInterface(const jsi::UUID &interfaceUUID) {
+   if (interfaceUUID == IHermesTestHelpers::uuid) {
+     return static_cast<IHermesTestHelpers *>(this);
++  } else if (interfaceUUID == IHermesArrayBufferDetach::uuid) {
++    return static_cast<IHermesArrayBufferDetach *>(this);
+   } else if (interfaceUUID == IHermes::uuid) {
+     return static_cast<IHermes *>(this);
+   } else if (interfaceUUID == IHermesSHUnit::uuid) {
+@@ -3021,6 +3025,11 @@ uint8_t *HermesRuntimeImpl::data(const jsi::ArrayBuffer &arr) {
+   return ab->getDataBlock();
+ }
+ 
++void HermesRuntimeImpl::detachArrayBuffer(const jsi::ArrayBuffer &arr) {
++  vm::GCScope gcScope(runtime_);
++  vm::JSArrayBuffer::detach(runtime_, arrayBufferHandle(arr));
++}
++
+ bool HermesRuntimeImpl::detached(const jsi::ArrayBuffer &arr) {
+   return !arrayBufferHandle(arr)->attached();
+ }
+diff --git a/API/hermes/hermes.h b/API/hermes/hermes.h
+index 1a66be9..ae33993 100644
+--- a/API/hermes/hermes.h
++++ b/API/hermes/hermes.h
+@@ -156,6 +156,25 @@ class HERMES_EXPORT ISetFatalHandler : public jsi::ICast {
+   ~ISetFatalHandler() = default;
+ };
+ 
++/// Detaching an ArrayBuffer from native code: an embedder that hands
++/// JavaScript buffers over memory it owns (jsi::MutableBuffer) detaches them
++/// before that memory moves or is freed, so a kept typed array reads as
++/// empty instead of reaching it. The ECMAScript DetachArrayBuffer operation.
++class HERMES_EXPORT IHermesArrayBufferDetach : public jsi::ICast {
++ public:
++  static constexpr jsi::UUID uuid{
++      0x3b0d6c2e,
++      0x8f41,
++      0x4a6b,
++      0x9c1e,
++      0x5d2f7a90c413};
++  /// Detaches \p buffer; a detached one is left as it is.
++  virtual void detachArrayBuffer(const jsi::ArrayBuffer &buffer) = 0;
++
++ protected:
++  ~IHermesArrayBufferDetach() = default;
++};
++
+ /// Interface for methods that are exposed for test purposes.
+ class HERMES_EXPORT IHermesTestHelpers : public jsi::ICast {
+  public:

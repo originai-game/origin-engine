@@ -14,8 +14,7 @@ game's bundle (`packages/engine/src/hermes/shell.ts`) opens it; the shell
 runs the display loop. The engine's audio plays on the default output
 device, and gamepads (gilrs) arrive as the web shell's `gamepad` events;
 each is logged when it connects. On Linux the build needs libudev's
-headers (`libudev-dev`). Not yet: platform services, and the Hermes API
-that detaches a buffer without its test methods.
+headers (`libudev-dev`). Not yet: platform services.
 
 ## A desktop package
 
@@ -40,7 +39,10 @@ on PATH. A showcase's own pinned assets come from
 ## Running a game under Hermes
 
 ```sh
-# Hermes (tag hermes-v260318099.0.8): hermesc, libhermesvm, libjsi
+# Hermes (tag hermes-v260318099.0.8) with third_party/hermes's patch, which
+# adds IHermesArrayBufferDetach (the shell detaches column buffers before they
+# move; Hermes has no public way to): hermesc, libhermesvm, libjsi
+git -C hermes apply $PWD/third_party/hermes/detach-array-buffer.patch
 cmake -S hermes -B hermes/build -G Ninja -DCMAKE_BUILD_TYPE=Release \
   -DHERMES_ENABLE_TEST_SUITE=OFF
 ninja -C hermes/build hermesc hermesvm jsi

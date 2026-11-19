@@ -111,11 +111,11 @@ void dispatchCall(
 void invalidate(void *, bool moving) {
   if (!moving) return;
   jsi::Runtime &rt = *shell.rt;
-  // A kept typed array reads as empty instead of reaching moved memory.
-  auto detach = rt.global()
-                    .getPropertyAsObject(rt, "HermesInternal")
-                    .getPropertyAsFunction(rt, "detachArrayBuffer");
-  for (auto &v : shell.views) detach.call(rt, v);
+  // A kept typed array reads as empty instead of reaching moved memory:
+  // the ArrayBuffers over columns are detached (third_party/hermes's
+  // IHermesArrayBufferDetach; the runtime's test methods stay off).
+  auto *detach = jsi::castInterface<facebook::hermes::IHermesArrayBufferDetach>(&rt);
+  for (auto &v : shell.views) detach->detachArrayBuffer(v.getObject(rt).getArrayBuffer(rt));
   shell.views.clear();
 }
 
@@ -249,11 +249,16 @@ int main(int argc, char **argv) {
 
   auto runtime = facebook::hermes::makeHermesRuntime(
       ::hermes::vm::RuntimeConfig::Builder()
-          .withEnableHermesInternalTestMethods(true)
           .withMicrotaskQueue(true)
           .withEnableSampleProfiling(std::getenv("OG_HERMES_PROFILE") != nullptr)
           .build());
   jsi::Runtime &rt = *runtime;
+  if (!jsi::castInterface<facebook::hermes::IHermesArrayBufferDetach>(&rt)) {
+    std::fprintf(stderr,
+                 "og-hermes: this Hermes cannot detach an ArrayBuffer; build it with "
+                 "third_party/hermes/detach-array-buffer.patch\n");
+    return 1;
+  }
   shell.rt = &rt;
 
   jsi::Object host(rt);

@@ -15,7 +15,7 @@
 //
 // The shell finds game.hbc beside it (or in ../Resources) and runs it.
 
-import { cpSync, existsSync, mkdirSync, mkdtempSync, readdirSync, rmSync, statSync, writeFileSync } from "node:fs";
+import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { basename, dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -106,6 +106,9 @@ export async function packageGame(o: PackageOptions): Promise<string> {
   const jsi = find(build, ["libjsi.a", "jsi.lib"]);
   for (const [what, p] of [["og-host-c", host], ["hermesvm", vm], ["hermesc", hermesc], ["jsi", jsi]] as const)
     if (!p || !existsSync(p)) throw new Error(`no ${what} (${p ?? `under ${build}`})`);
+  // The shell detaches column buffers through an interface the checkout gains from our patch.
+  if (!readFileSync(join(hermes, "API/hermes/hermes.h"), "utf8").includes("IHermesArrayBufferDetach"))
+    throw new Error(`${hermes} lacks IHermesArrayBufferDetach: apply third_party/hermes/detach-array-buffer.patch and rebuild Hermes`);
 
   // The layout: where the shell and its libraries go, and where the game.
   const out = resolve(o.out);
