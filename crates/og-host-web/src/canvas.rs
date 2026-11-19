@@ -8,6 +8,7 @@ struct CanvasBackend {
     engine: u32,
     renderer: Renderer,
     tier: String,
+    cpu_pass_timing_only: bool,
     /// Captures in flight: one per size, at most [`MAX_CAPTURES`],
     /// oldest first.
     pending: Vec<Pending>,
@@ -191,7 +192,8 @@ impl RenderBackend for CanvasBackend {
         Some(image)
     }
     fn set_clock(&mut self, clock: Option<fn() -> f64>) {
-        self.renderer.set_clock(clock);
+        self.renderer
+            .set_pass_clock(clock, !self.cpu_pass_timing_only);
     }
     fn pass_timings(&self) -> Vec<og_render::PassTiming> {
         self.renderer.pass_timings().to_vec()
@@ -200,7 +202,9 @@ impl RenderBackend for CanvasBackend {
         self.renderer.gpu_timings(wait)
     }
     fn gpu_timing_absent(&self) -> Option<&'static str> {
-        self.renderer.gpu_timing_absent()
+        self.renderer.gpu_timing_absent().or(self
+            .cpu_pass_timing_only
+            .then_some("WebKit's GPU pass timestamp readbacks block the engine Worker"))
     }
     fn visibility_buffer_refused(&self) -> Option<String> {
         self.renderer.visibility_buffer_refused().map(str::to_owned)
@@ -319,7 +323,8 @@ impl RenderBackend for CanvasBackend {
 /// for the low-power GPU with `low_power` (the player's power
 /// preference, kept by the shell from the last load) and its display
 /// at standard range where `high_dynamic_range` (the page's
-/// `(dynamic-range: high)`) is false. Resolves to the
+/// `(dynamic-range: high)`) is false. `cpu_pass_timing_only` disables
+/// GPU pass profiling without changing the device's features. Resolves to the
 /// tier (`webgpu`), or rejects with the reason: no WebGPU adapter in
 /// this browser, or the canvas or device refused.
 #[wasm_bindgen]
@@ -328,6 +333,7 @@ pub async fn og_web_attach_canvas(
     canvas: web_sys::OffscreenCanvas,
     low_power: bool,
     high_dynamic_range: Option<bool>,
+    cpu_pass_timing_only: Option<bool>,
 ) -> Result<String, JsValue> {
     if !wgpu::util::is_browser_webgpu_supported().await {
         return Err(JsValue::from_str(
@@ -371,6 +377,7 @@ pub async fn og_web_attach_canvas(
             engine,
             renderer,
             tier: tier.clone(),
+            cpu_pass_timing_only: cpu_pass_timing_only.unwrap_or(false),
             pending: Vec::new(),
             drawn: 0,
             kept: None,
