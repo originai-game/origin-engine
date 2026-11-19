@@ -538,6 +538,7 @@ step_safari() {
     og_err "safari: needs macOS with /usr/bin/safaridriver (macrunner)"
     return 1
   fi
+  og_lock_acquire "$og_gpu_root/safari" "gate Safari ($OG_ROOT)" || return 1
   og_need bun || return 1
   OG_GATE=1 sh packages/engine/scripts/build.sh || return 1
   # shellcheck disable=SC2086
