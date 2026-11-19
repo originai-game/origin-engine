@@ -122,8 +122,11 @@ dates, no absolute paths, files in sorted order
 The Worker fetches the first group (the cook's manifest and every output no
 group holds) before the engine starts, and a group's pack only when the
 runtime admits the group (IDL module `stream`), transcoding its textures
-first so the whole group goes in place at once. A chunked sound's later
-chunks are fetched ahead of its playheads.
+first so the whole group goes in place at once. The transcoding is done by
+other Workers (copies of the engine's, started with the first Basis texture
+and kept: one more while all are busy, up to four), so that no frame waits
+on it; where none starts, the engine's Worker transcodes them itself. A
+chunked sound's later chunks are fetched ahead of its playheads.
 
 ## Hosting
 

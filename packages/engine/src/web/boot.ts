@@ -396,10 +396,18 @@ function poolSize(): number {
   return Math.max(0, Math.min(4, cores - 2));
 }
 
-/** One job on a transcoding Worker: its answer, or null when the Worker did not load or broke. */
+/**
+ * One job on a transcoding Worker: its answer, or null when the Worker did not load or broke. The
+ * Worker is a copy of the engine's, which also posts its console's lines (`log`) and what stops it
+ * outside a job (`error`, `crash`): only the answer to this job is one.
+ */
 function askWorker(w: Worker, id: number, job: Pick<BasisJob, "ktx2" | "target">, basis: { js: string; wasm: string } | undefined): Promise<BasisAnswer | null> {
   return new Promise((resolve) => {
-    w.onmessage = (e: MessageEvent) => resolve(e.data as BasisAnswer);
+    w.onmessage = (e: MessageEvent) => {
+      const m = e.data as BasisAnswer | { type: "error" | "crash" | "log" };
+      if (m.type === "og-basis" && m.id === id) resolve(m);
+      else if (m.type === "error" || m.type === "crash") resolve(null);
+    };
     w.onerror = () => resolve(null);
     const ktx2 = job.ktx2.slice();
     w.postMessage({ type: "og-basis", id, ktx2, target: job.target, basis }, [ktx2.buffer]);
@@ -468,6 +476,46 @@ export async function basisJob(data: { id: number; ktx2: Uint8Array; target: str
   }
 }
 
+/**
+ * The Workers that transcode what the engine fetches after the boot: copies of this one, as the
+ * boot's pool, started when the first Basis texture arrives (another while every one is busy, up
+ * to the pool's size and at least one) and kept, since a streaming game goes on fetching. Done on
+ * this Worker a texture holds the engine's frames for as long as it takes, a pack's textures all
+ * in the one frame, and the first of them the transcoder's own start besides. Answers null for a
+ * job no Worker did, for this Worker to do: where none starts, and after one broke.
+ */
+function transcodeHelpers(basis: { js: string; wasm: string } | undefined): (ktx2: Uint8Array, target: string) => Promise<BasisAnswer | null> {
+  const url = (globalThis as { location?: { href: string } }).location?.href;
+  const most = Math.max(1, poolSize());
+  const lanes: { worker: Worker; last: Promise<BasisAnswer | null>; jobs: number }[] = [];
+  let off = !url || typeof Worker !== "function";
+  let asked = 0;
+  return (ktx2, target) => {
+    if (off) return Promise.resolve(null);
+    let lane = lanes.reduce<(typeof lanes)[number] | undefined>((least, l) => (least && least.jobs <= l.jobs ? least : l), undefined);
+    if (!lane || (lane.jobs > 0 && lanes.length < most)) {
+      try {
+        lane = { worker: new Worker(url!, { type: "module" }), last: Promise.resolve(null), jobs: 0 };
+      } catch {
+        off = true;
+        return Promise.resolve(null);
+      }
+      lanes.push(lane);
+    }
+    const mine = lane;
+    mine.jobs++;
+    mine.last = mine.last.then(async () => {
+      const answer = off ? null : await askWorker(mine.worker, asked++, { ktx2, target }, basis);
+      mine.jobs--;
+      // One that did not load or broke: no Worker is asked again, and each stops once its jobs are answered.
+      if (!answer) off = true;
+      if (off && (!answer || mine.jobs === 0)) mine.worker.terminate();
+      return answer && !answer.error ? answer : null;
+    });
+    return mine.last;
+  };
+}
+
 function isTextureFormat(name: string): name is TextureFormat {
   return (TEXTURE_FORMATS as readonly string[]).includes(name);
 }
@@ -487,7 +535,9 @@ function concat(parts: readonly Uint8Array[]): Uint8Array {
  * streaming group's pack has its Basis textures transcoded, to the encoding
  * `engine()`'s renderer takes for each (RGBA8 without one), and handed over
  * first, so that every texture in it is ready when the engine reads the
- * pack; any other file is handed over as fetched.
+ * pack; any other file is handed over as fetched. The transcoding is other
+ * Workers' (`transcodeHelpers`), so no frame waits on it; this Worker's own
+ * transcoder is only for a job none of them did.
  */
 export function installFetcher(glue: WebExtras, basis: { js: string; wasm: string } | undefined, engine: () => number | null, integrity: Readonly<Record<string, string>> | null = null): void {
   let transcoder: Promise<BasisTranscoder> | null = null;
@@ -503,20 +553,27 @@ export function installFetcher(glue: WebExtras, basis: { js: string; wasm: strin
     }
     return loading;
   };
+  const helped = transcodeHelpers(basis);
   const transcode = async (id: string, ktx2: Uint8Array, target: string) => {
-    const out = transcodeKtx2(await loaded(), ktx2, isTextureFormat(target) ? target : "rgba8");
+    let out: Pick<BasisAnswer, "format" | "width" | "height" | "srgb" | "levels"> | null = await helped(ktx2, target);
+    if (!out) {
+      const own = transcodeKtx2(await loaded(), ktx2, isTextureFormat(target) ? target : "rgba8");
+      out = { ...own, levels: own.format === "rgba8" ? own.levels[0]! : concat(own.levels) };
+    }
     if (out.format === "rgba8") {
-      glue.og_web_put_texture(id, out.width, out.height, out.levels[0]!, out.srgb);
+      glue.og_web_put_texture(id, out.width, out.height, out.levels, out.srgb);
     } else {
-      const refused = glue.og_web_put_texture_encoded(id, out.format, out.width, out.height, out.srgb, concat(out.levels));
+      const refused = glue.og_web_put_texture_encoded(id, out.format, out.width, out.height, out.srgb, out.levels);
       if (refused) throw new Error(refused);
     }
   };
   const put = async (path: string, bytes: Uint8Array) => {
     const triples = /\/stream\/[^/]+\.ogb$/.test(path) && glue.og_web_pack_ktx2 ? glue.og_web_pack_ktx2(engine() ?? undefined, path, bytes) : [];
+    const textures: Promise<void>[] = [];
     for (let i = 0; i + 2 < triples.length; i += 3) {
-      await transcode(triples[i] as string, triples[i + 1] as Uint8Array, triples[i + 2] as string);
+      textures.push(transcode(triples[i] as string, triples[i + 1] as Uint8Array, triples[i + 2] as string));
     }
+    await Promise.all(textures);
     glue.og_web_put_file(path, bytes);
   };
   // A device made again after a loss may take other encodings (og-host-web's

@@ -109,6 +109,88 @@ test("a package from an asset base is fetched file by file against its integrity
   }
 });
 
+test("a streamed pack's Basis textures are transcoded by other Workers, and by this one when they break", async () => {
+  const g = globalThis as { fetch: typeof fetch; Worker?: unknown; location?: unknown };
+  const before = { fetch: g.fetch, Worker: g.Worker, location: g.location };
+  const made: FakeWorker[] = [];
+  let broken = false;
+  let asks = 0;
+  // A transcoding Worker that answers each job a turn later with levels naming it, or never loads.
+  class FakeWorker {
+    onmessage: ((e: { data: unknown }) => void) | null = null;
+    onerror: (() => void) | null = null;
+    fails = broken;
+    stopped = false;
+    readonly url: string;
+    constructor(url: string) {
+      this.url = url;
+      made.push(this);
+    }
+    postMessage(job: { type: string; id: number; ktx2: Uint8Array; target: string }): void {
+      asks++;
+      // One that was stopped answers nothing, as a real one.
+      if (this.stopped) return;
+      setTimeout(() => {
+        if (this.fails) return this.onerror?.();
+        // A copy of the engine's Worker also posts its console's lines: not an answer.
+        this.onmessage?.({ data: { type: "log", lines: ["a line"] } });
+        this.onmessage?.({ data: { type: "og-basis", id: job.id, format: job.target, width: 4, height: 4, srgb: true, levels: Uint8Array.of(0xa5, job.ktx2[0]!) } });
+      }, 5);
+    }
+    terminate(): void {
+      this.stopped = true;
+    }
+  }
+  try {
+    g.fetch = (async () => new Response("pack")) as unknown as typeof fetch;
+    g.Worker = FakeWorker;
+    g.location = { href: "https://game.test/worker.js" };
+    const events: string[] = [];
+    let fetcher: ((path: string) => void) | undefined;
+    let settle = (): void => {};
+    const glue = {
+      og_web_set_fetcher: (f: (path: string) => void) => void (fetcher = f),
+      og_web_pack_ktx2: () => ["a", Uint8Array.of(1), "bc7", "b", Uint8Array.of(2), "bc7", "c", Uint8Array.of(3), "bc7"],
+      og_web_put_texture: () => {},
+      og_web_put_texture_encoded: (id: string, format: string, _w: number, _h: number, _srgb: boolean, levels: Uint8Array) => (events.push(`texture ${id} ${format} ${[...levels]}`), ""),
+      og_web_put_file: (path: string) => (events.push(`file ${path}`), settle()),
+      og_web_fail_file: (path: string, reason: string) => (events.push(`failed ${path}: ${reason}`), settle()),
+      og_web_bundle_integrity: () => "{}",
+    };
+    installFetcher(glue as never, undefined, () => null);
+    const fetched = (path: string) =>
+      new Promise<void>((ok) => {
+        settle = ok;
+        fetcher!(path);
+      });
+
+    await fetched("https://game.test/cooked/stream/vale.ogb");
+    expect(made.length).toBeGreaterThan(0);
+    expect(made.every((w) => w.url === "https://game.test/worker.js")).toBe(true);
+    // Every texture is the Workers' answer, and the pack comes after the last of them.
+    expect(events.slice(0, 3).sort()).toEqual(["texture a bc7 165,1", "texture b bc7 165,2", "texture c bc7 165,3"]);
+    expect(events.slice(3)).toEqual(["file https://game.test/cooked/stream/vale.ogb"]);
+
+    // A Worker that breaks hands its job to this Worker's own transcoder, which refuses these bytes
+    // (they are no KTX2): the pack fails with the transcoder's reason, and it does not wait for ever.
+    events.length = 0;
+    broken = true;
+    for (const w of made) w.fails = true;
+    await fetched("https://game.test/cooked/stream/moor.ogb");
+    expect(events).toHaveLength(1);
+    expect(events[0]).toContain("failed https://game.test/cooked/stream/moor.ogb");
+    expect(events[0]).toContain("KTX2");
+    // And no Worker is started or asked for the packs after it.
+    const [workers, asked] = [made.length, asks];
+    events.length = 0;
+    await fetched("https://game.test/cooked/stream/fen.ogb");
+    expect(events[0]).toContain("KTX2");
+    expect([made.length, asks]).toEqual([workers, asked]);
+  } finally {
+    Object.assign(g, before);
+  }
+});
+
 test("a font pack's faces are cached when fetched, never precached nor counted in the boot", () => {
   const face = "cooked/fonts/japanese/NotoSansJP-Regular.ttf.face.ogb";
   const index = "cooked/fonts/japanese/extension.json.ogb";
