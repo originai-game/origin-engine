@@ -396,6 +396,16 @@ function poolSize(): number {
   return Math.max(0, Math.min(4, cores - 2));
 }
 
+/** One job on a transcoding Worker: its answer, or null when the Worker did not load or broke. */
+function askWorker(w: Worker, id: number, job: Pick<BasisJob, "ktx2" | "target">, basis: { js: string; wasm: string } | undefined): Promise<BasisAnswer | null> {
+  return new Promise((resolve) => {
+    w.onmessage = (e: MessageEvent) => resolve(e.data as BasisAnswer);
+    w.onerror = () => resolve(null);
+    const ktx2 = job.ktx2.slice();
+    w.postMessage({ type: "og-basis", id, ktx2, target: job.target, basis }, [ktx2.buffer]);
+  });
+}
+
 /**
  * Fork s62: transcode `jobs` on a pool of Workers running this module (its `og-basis` message,
  * `basisJob`), each answer handed to `put` as it lands. Answers the jobs no Worker did (all of
@@ -423,12 +433,7 @@ async function transcodeInPool(
           if (failure !== null || next >= jobs.length) return;
           const k = next++;
           const job = jobs[k]!;
-          const answer = await new Promise<BasisAnswer | null>((resolve) => {
-            w.onmessage = (e: MessageEvent) => resolve(e.data as BasisAnswer);
-            w.onerror = () => resolve(null);
-            const ktx2 = job.ktx2.slice();
-            w.postMessage({ type: "og-basis", id: k, ktx2, target: job.target, basis }, [ktx2.buffer]);
-          });
+          const answer = await askWorker(w, k, job, basis);
           if (!answer || answer.error) {
             left.push(job);
             if (!answer) return; // this Worker did not load: the others go on
