@@ -4,40 +4,17 @@
 // `__og_env` (as node.ts reads its environment, with OG_BENCH_PROJECT=@<file>
 // for project.ogt's text). Built with the game by build.ts.
 
-import type { HostAbi } from "../../src/generated/abi.ts";
-import { ARRAYS, type ColumnArray, type GameToken, type HostBinding } from "../../src/runtime.ts";
+import type { GameToken } from "../../src/runtime.ts";
+import { hermesBinding } from "../../src/hermes/index.ts";
 import { commands, type Mode, run } from "./harness.ts";
 
-declare const __og_host: HostAbi<Uint32Array, unknown>;
 declare const __og_now: () => number;
 declare const __og_print: (line: string) => void;
 declare const __og_env: Record<string, string | undefined>;
 
-const g = globalThis as unknown as { performance?: { now(): number } };
-g.performance ??= { now: __og_now };
-
-const arrays = new WeakMap<ArrayBuffer, ColumnArray>();
-
 export function main(game: GameToken): void {
   const env = __og_env;
-  const abi = __og_host;
-  let shared: ArrayBuffer | null = null;
-  const binding: HostBinding = {
-    abi,
-    name: "hermes",
-    shared: () => ({ buffer: (shared ??= abi.og_host_shared() as ArrayBuffer), offset: 0 }),
-    columns(raw, kinds) {
-      if (!Array.isArray(raw) || raw.length === 0) return null;
-      return (raw as ArrayBuffer[]).map((buffer, i) => {
-        const kind = kinds[i]!.array;
-        const known = arrays.get(buffer);
-        if (known) return known;
-        const made = new ARRAYS[kind](buffer);
-        arrays.set(buffer, made);
-        return made;
-      });
-    },
-  };
+  const binding = hermesBinding();
   try {
     const report = run({
       binding,

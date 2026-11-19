@@ -6,10 +6,27 @@ native shell that embeds its own JavaScript engine. `src/generated/glue.rs`
 is `og api gen`'s; every binding is `og_runtime::host_impl`'s, as on the web
 and napi hosts.
 
-`hermes/shell.cpp` is a prototype shell: Hermes over JSI, headless, no
-window, audio or input. It runs a game's bytecode through the game-frame
-benchmark (`packages/engine/bench/game-frame/`) to ground the store-package
-shell's design.
+`hermes/shell.cpp` is the desktop shell: Hermes over JSI. With the
+`window` feature (default) the host opens one window (`src/window.rs`,
+winit): the engine's renderer presents to its surface, and its keys,
+pointer and wheel reach the engine as the web shell's `InjectedInput`. The
+game's bundle (`packages/engine/src/hermes/shell.ts`) opens it; the shell
+runs the display loop. Not yet: audio, gamepads, platform services, and
+the Hermes API that detaches a buffer without its test methods.
+
+## A desktop package
+
+```sh
+cargo build --release -p og-host-c
+(cd packages/engine && bun src/hermes/package.ts ../../showcase/night-shift /tmp/pkg \
+  --hermes hermes --hermes-build hermes/build)
+/tmp/pkg/night-shift/night-shift        # macOS: open /tmp/pkg/night-shift.app
+```
+
+The package is the shell, `libhermesvm` and `og_host_c` beside it, the
+game as `game.hbc`, `project.ogt`, `cooked/` and `shell.env` (title and
+size). `OG_SHELL_FRAMES=<n>` closes it after n frames and prints the frame
+times; `OG_SHELL_CAPTURE=<file.png>` writes the last frame.
 
 ## Running a game under Hermes
 
