@@ -369,6 +369,16 @@ wrapper and sccache. To restart a server, run `sccache --stop-server`; a
 server started by hand must go without the jobserver: `env -u
 CARGO_MAKEFLAGS -u MAKEFLAGS -u MFLAGS sccache --start-server`.
 
+The wrapper also makes the release wasm reproducible on any host, so the
+remote-frame archives pinned by hash rebuild to the same bytes on Linux and
+macOS. Cargo's `-C metadata` takes in the host triple through every
+proc-macro and build script a crate depends on, and rustc derives crate ids,
+mangled names and type ids from it; `scripts/release-wasm.sh` sets
+`OG_WASM_REPRODUCIBLE`, under which each wasm32 unit gets a crate id of its
+own identity (package, version, crate types, `--cfg`s) and the cargo and
+rustup homes, build-std's sources and the checkout are remapped. It refuses
+to run with the wrapper bypassed or older than that.
+
 ## When to run what
 
 While writing code run `cargo check -p <crate>` and that crate's tests;

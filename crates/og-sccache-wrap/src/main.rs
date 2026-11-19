@@ -61,7 +61,23 @@ use std::time::Duration;
 const JOBSERVER_VARS: [&str; 3] = ["CARGO_MAKEFLAGS", "MAKEFLAGS", "MFLAGS"];
 
 fn main() {
-    let args: Vec<OsString> = std::env::args_os().skip(1).collect();
+    let mut args: Vec<OsString> = std::env::args_os().skip(1).collect();
+    if let Some(remaps) = std::env::var_os("OG_WASM_REPRODUCIBLE") {
+        if args.len() == 2 && args[1] == "-vV" {
+            // Cargo fingerprints every unit with this answer (with
+            // CARGO_CACHE_RUSTC_INFO=0, never a cached one), so units built
+            // without the rewrite below are rebuilt; release-wasm.sh reads the
+            // line to know this wrapper does the rewrite.
+            let out = Command::new(&args[0]).arg("-vV").output();
+            let Ok(out) = out else { std::process::exit(1) };
+            use std::io::Write;
+            let mut stdout = std::io::stdout();
+            let _ = stdout.write_all(&out.stdout);
+            let _ = writeln!(stdout, "og-wasm-reproducible: 1");
+            std::process::exit(out.status.code().unwrap_or(1));
+        }
+        reproducible(&mut args, &remaps);
+    }
     let sccache = std::env::var_os("OG_SCCACHE").unwrap_or_else(|| "sccache".into());
     if !installed(&sccache) {
         rustc_alone(&args);
@@ -184,6 +200,85 @@ fn expanded_command_line_len(args: &[OsString]) -> usize {
         }
     }
     len
+}
+
+/// The release wasm (`scripts/release-wasm.sh` sets `OG_WASM_REPRODUCIBLE`)
+/// is a function of the source alone, so its frame archives, pinned by
+/// hash, rebuild to the same bytes on any host. For each wasm32 compile:
+///
+/// - cargo's `-C metadata` becomes a hash of the unit's own identity (its
+///   package, version, crate name and types, `--cfg`s and target). Cargo's
+///   hash takes in its dependencies' hashes, and on nightly a proc-macro's
+///   or build script's takes in the host triple, so every crate that
+///   depends on one (wasm-bindgen, serde) got a crate id, and so mangled
+///   names and type ids, that differ between a Linux and a Mac build. A
+///   package appears once per feature set in one build, and the variants
+///   that differ in their dependencies' features are separate builds, so
+///   the identity is unique wherever two crates meet.
+/// - each line of `OG_WASM_REPRODUCIBLE` (`from=to`) becomes a
+///   `--remap-path-prefix`, later lines winning, for the absolute paths
+///   panics carry: the cargo and rustup homes, build-std's sources and the
+///   checkout.
+///
+/// A host build (no `--target wasm32-unknown-unknown`) or a query is left
+/// as it is.
+fn reproducible(args: &mut Vec<OsString>, remaps: &std::ffi::OsStr) {
+    // args[0] is rustc; a compile names its crate.
+    let text: Vec<String> = args
+        .iter()
+        .map(|a| a.to_string_lossy().into_owned())
+        .collect();
+    // Every value of `flag`, given as `flag value` or `flag=value`.
+    let value = |flag: &str| -> Vec<String> {
+        let joined = format!("{flag}=");
+        (0..text.len())
+            .filter_map(|i| match text[i].strip_prefix(&joined) {
+                Some(v) => Some(v.to_owned()),
+                None => (text[i] == flag)
+                    .then(|| text.get(i + 1).cloned())
+                    .flatten(),
+            })
+            .collect()
+    };
+    let crate_name = value("--crate-name");
+    if value("--target").first().map(String::as_str) != Some("wasm32-unknown-unknown")
+        || crate_name.is_empty()
+    {
+        return;
+    }
+    let mut cfgs = value("--cfg");
+    cfgs.sort();
+    let mut types = value("--crate-type");
+    types.sort();
+    let identity = [
+        std::env::var("CARGO_PKG_NAME").unwrap_or_default(),
+        std::env::var("CARGO_PKG_VERSION").unwrap_or_default(),
+        crate_name[0].clone(),
+        types.join(","),
+        cfgs.join(","),
+        "wasm32-unknown-unknown".to_owned(),
+    ]
+    .join("\n");
+    // FNV-1a: stable across hosts and toolchains, unlike std's hashers.
+    let hash = identity.bytes().fold(0xcbf2_9ce4_8422_2325u64, |h, b| {
+        (h ^ u64::from(b)).wrapping_mul(0x0100_0000_01b3)
+    });
+    let metadata = format!("metadata={hash:016x}");
+    let mut i = 1;
+    while i < args.len() {
+        if text[i] == "-C" && text.get(i + 1).is_some_and(|v| v.starts_with("metadata=")) {
+            args[i + 1] = metadata.clone().into();
+            i += 2;
+        } else if text[i].starts_with("-Cmetadata=") {
+            args[i] = format!("-C{metadata}").into();
+            i += 1;
+        } else {
+            i += 1;
+        }
+    }
+    for remap in remaps.to_string_lossy().lines().filter(|l| !l.is_empty()) {
+        args.push(format!("--remap-path-prefix={remap}").into());
+    }
 }
 
 /// The port sccache's server listens on.

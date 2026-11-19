@@ -26,8 +26,9 @@
 #                                           the native addon and og only, no wasm:
 #                                           what a platform's job of the release
 #                                           workflow builds (.github/workflows/
-#                                           release.yml; the wasm is the same bytes
-#                                           on every platform and is built once)
+#                                           release.yml; the release wasm is the same
+#                                           bytes on every host, scripts/release-wasm.sh,
+#                                           and is built once)
 #
 # Three modes (AGENTS.md §Build and gate discipline, docs/ci.md):
 # - OG_GATE=1: dev addon and og; the wasm is what the gate's wasm-build and
