@@ -292,3 +292,263 @@ fn two_visitors_see_each_other_and_a_journal_replays_the_session() {
     );
     assert_eq!(remotes(c).len(), 1);
 }
+
+/// A UDP path whose source port the test can change, as a NAT that
+/// rebinds: the client sends to `front`; what it sends leaves through the
+/// current `back` socket, and only what the server sends to that socket
+/// reaches the client (the old mapping is gone).
+struct Nat {
+    front: std::net::SocketAddr,
+    back: std::sync::Arc<std::sync::Mutex<std::net::UdpSocket>>,
+    rebinds: std::sync::Arc<std::sync::atomic::AtomicU32>,
+}
+
+impl Nat {
+    fn new(server: std::net::SocketAddr) -> Nat {
+        use std::net::UdpSocket;
+        use std::sync::atomic::{AtomicU32, Ordering};
+        use std::sync::{Arc, Mutex};
+        use std::time::Duration;
+        let front = UdpSocket::bind("127.0.0.1:0").unwrap();
+        let addr = front.local_addr().unwrap();
+        let back = UdpSocket::bind("127.0.0.1:0").unwrap();
+        back.connect(server).unwrap();
+        let back = Arc::new(Mutex::new(back));
+        let rebinds = Arc::new(AtomicU32::new(0));
+        let client: Arc<Mutex<Option<std::net::SocketAddr>>> = Arc::default();
+        let (b, c, f) = (back.clone(), client.clone(), front.try_clone().unwrap());
+        std::thread::spawn(move || {
+            let mut buf = vec![0u8; 65536];
+            while let Ok((n, from)) = f.recv_from(&mut buf) {
+                *c.lock().unwrap() = Some(from);
+                let _ = b.lock().unwrap().send(&buf[..n]);
+            }
+        });
+        // Down: from whichever back socket is current; a superseded one's
+        // packets are dropped.
+        let (b, r) = (back.clone(), rebinds.clone());
+        std::thread::spawn(move || {
+            let mut buf = vec![0u8; 65536];
+            loop {
+                let (sock, generation) = {
+                    let s = b.lock().unwrap();
+                    (s.try_clone().unwrap(), r.load(Ordering::SeqCst))
+                };
+                sock.set_read_timeout(Some(Duration::from_millis(5)))
+                    .unwrap();
+                while r.load(Ordering::SeqCst) == generation {
+                    if let Ok(n) = sock.recv(&mut buf)
+                        && let Some(to) = *client.lock().unwrap()
+                    {
+                        let _ = front.send_to(&buf[..n], to);
+                    }
+                }
+            }
+        });
+        Nat {
+            front: addr,
+            back,
+            rebinds,
+        }
+    }
+
+    /// The client's packets now leave from a new port.
+    fn rebind(&self) {
+        let fresh = std::net::UdpSocket::bind("127.0.0.1:0").unwrap();
+        let mut b = self.back.lock().unwrap();
+        fresh.connect(b.peer_addr().unwrap()).unwrap();
+        *b = fresh;
+        self.rebinds
+            .fetch_add(1, std::sync::atomic::Ordering::SeqCst);
+    }
+}
+
+/// A host carrying one engine's ops over a real connection (as og-host-node).
+struct Wire {
+    engine: u32,
+    url: String,
+    hash: [u8; 32],
+    token: String,
+    client: Option<og_shared::client::Client>,
+}
+
+impl Wire {
+    fn carry(&mut self) {
+        let ops: Vec<Value> = serde_json::from_str(&og_shared_take(self.engine)).unwrap();
+        for op in ops {
+            match op["op"].as_str().unwrap() {
+                "connect" => {
+                    self.client = Some(og_shared::client::Client::connect_wt(
+                        &self.url,
+                        vec![self.hash],
+                    ))
+                }
+                "send" => {
+                    if let Some(c) = &self.client {
+                        c.send(og_core::base64::decode(op["bytes"].as_str().unwrap()).unwrap());
+                    }
+                }
+                "close" => self.client = None,
+                _ => {}
+            }
+        }
+    }
+
+    fn pump(&mut self) {
+        self.carry();
+        let events = self.client.as_ref().map(|c| c.poll()).unwrap_or_default();
+        for e in events {
+            use og_shared::client::ClientEvent;
+            let v = match e {
+                ClientEvent::Open => {
+                    json!({ "type": "open", "transport": "wt", "token": self.token })
+                }
+                ClientEvent::Message(b) => {
+                    json!({ "type": "message", "bytes": og_core::base64::encode(&b) })
+                }
+                ClientEvent::Closed(why) => {
+                    self.client = None;
+                    json!({ "type": "closed", "reason": why })
+                }
+            };
+            assert!(og_shared_deliver(self.engine, v.to_string()));
+        }
+        self.carry();
+    }
+}
+
+/// A WebTransport client whose NAT rebinds mid-session: the server's
+/// connection ids are zero-length, so it drops the packets from the new
+/// address instead of migrating, and the client is never told. Ways this
+/// could fail: the client waits for QUIC's idle timeout and comes back
+/// after the server's 10 s linger as a new avatar (the others despawn it
+/// and spawn another); it reconnects without resuming (the same); the
+/// server keeps both (two avatars of one player); the resumed avatar loses
+/// where it was or is corrected.
+#[test]
+fn a_client_whose_nat_rebinds_resumes_its_avatar() {
+    use og_shared::auth::{Rules, Verifier, sign_hs256};
+    use og_shared::server::{KeySource, Server};
+    use std::time::{Duration, Instant};
+    set_hooks(Rc::new(NoAssets));
+    og_host_begin_bundle();
+    let rt = tokio::runtime::Runtime::new().unwrap();
+    let cert = og_shared::cert::self_signed(&["localhost".into(), "127.0.0.1".into()], 1).unwrap();
+    let (server, wt) = rt.block_on(async {
+        let s = Server::start(
+            "127.0.0.1:0".parse().unwrap(),
+            Config::default(),
+            Verifier::hs256(b"s", Rules::audience("g")),
+            KeySource::None,
+            false,
+        )
+        .await
+        .unwrap();
+        let wt = s
+            .serve_webtransport(
+                "127.0.0.1:0".parse().unwrap(),
+                &cert.cert_pem,
+                &cert.key_pem,
+            )
+            .unwrap();
+        (s, wt)
+    });
+    let nat = Nat::new(wt);
+    let exp = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .unwrap()
+        .as_secs()
+        + 120;
+    let token = |p: &str| sign_hs256(b"s", &json!({ "aud": "g", "sub": p, "exp": exp }));
+    let (a, b) = (engine(), engine());
+    let me_a = visitor(a, 0.0);
+    let _me_b = visitor(b, 10.0);
+    let mut wires = [
+        Wire {
+            engine: a,
+            url: format!("https://{}/", nat.front),
+            hash: cert.sha256,
+            token: token("a"),
+            client: None,
+        },
+        Wire {
+            engine: b,
+            url: format!("https://{wt}/"),
+            hash: cert.sha256,
+            token: token("b"),
+            client: None,
+        },
+    ];
+    // Real time: the server ticks on its own clock.
+    let mut ax = 0.0;
+    let mut frame = |wires: &mut [Wire; 2], ax: &mut f64| {
+        let t = Instant::now();
+        *ax += 1.0 / 60.0;
+        place(a, me_a, *ax);
+        for w in wires.iter_mut() {
+            w.pump();
+            answer(og_engine_frame(w.engine, FRAME_MS));
+        }
+        std::thread::sleep(Duration::from_secs_f64(FRAME_MS / 1000.0).saturating_sub(t.elapsed()));
+    };
+    let until = |wires: &mut [Wire; 2],
+                 ax: &mut f64,
+                 frame: &mut dyn FnMut(&mut [Wire; 2], &mut f64),
+                 secs: f64,
+                 done: &dyn Fn() -> bool| {
+        let t = Instant::now();
+        while !done() {
+            assert!(t.elapsed().as_secs_f64() < secs, "not within {secs} s");
+            frame(wires, ax);
+        }
+        t.elapsed()
+    };
+    until(&mut wires, &mut ax, &mut frame, 10.0, &|| {
+        og_shared_status(a).state == "joined" && remotes(b).len() == 1 && remotes(a).len() == 1
+    });
+    let held = remotes(b)[0];
+    assert_eq!(og_shared_remote(b, held).unwrap().player, "a");
+
+    nat.rebind();
+    let lost = until(&mut wires, &mut ax, &mut frame, 5.0, &|| {
+        og_shared_status(a).state != "joined"
+    });
+    // Back, and b's avatar of a is the same entity all along.
+    let mut seen_b = Vec::new();
+    let back = until(&mut wires, &mut ax, &mut frame, 8.0, &|| {
+        let r = remotes(b);
+        assert!(
+            r.len() <= 1 && r.iter().all(|e| *e == held),
+            "b holds {r:?}"
+        );
+        og_shared_status(a).state == "joined" && remotes(a).len() == 1
+    });
+    // Walk on: what a proposes after the resume reaches b, uncorrected.
+    for _ in 0..60 {
+        frame(&mut wires, &mut ax);
+        let r = remotes(b);
+        assert!(r == [held], "b holds {r:?}, not the one avatar it held");
+        seen_b.push(x_of(b, held));
+    }
+    eprintln!(
+        "nat rebind: noticed after {:.0} ms, resumed {:.0} ms after the rebind",
+        lost.as_secs_f64() * 1000.0,
+        (lost + back).as_secs_f64() * 1000.0
+    );
+    assert!(
+        lost + back < Duration::from_secs(5),
+        "resumed after {:?}",
+        lost + back
+    );
+    let st = og_shared_status(a);
+    assert_eq!((st.player.as_str(), st.corrections), ("a", 0));
+    assert!(
+        (ax - seen_b.last().unwrap()).abs() < 1.0,
+        "b draws a at {} while it is at {ax}",
+        seen_b.last().unwrap()
+    );
+    assert_eq!(og_shared_status(b).in_sight, 1);
+    drop(wires);
+    drop(server);
+    drop(rt);
+}

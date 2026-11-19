@@ -62,6 +62,13 @@ const ORIGIN: &str = "og.WorldOrigin";
 const BACKOFF_FIRST_MS: f64 = 250.0;
 const BACKOFF_MAX_MS: f64 = 4000.0;
 const RECONNECT_FOR_MS: f64 = 30_000.0;
+/// A joined connection that hears nothing this long is lost: the server
+/// sends a snapshot every tick, so silence means the path is gone. Over
+/// WebTransport a client whose NAT rebinds is not told (the server's
+/// connection ids are zero-length, so its packets from the new address
+/// are dropped, not migrated); reconnecting now resumes its avatar well
+/// inside the server's linger (10 s) instead of after QUIC's idle timeout.
+const SILENT_MS: f64 = 2_000.0;
 /// Ops kept for a host that never takes them (a replay): the newest.
 const KEEP_OPS: usize = 1024;
 /// A remote avatar's states kept for interpolation, in server ticks.
@@ -111,6 +118,8 @@ pub(crate) struct Session {
     retry_at: Option<u64>,
     backoff_ms: f64,
     lost_at: Option<u64>,
+    /// The tick a message last arrived on the open connection.
+    heard_at: Option<u64>,
     /// Asked for a connection and not answered yet.
     asking: bool,
     remotes: BTreeMap<u16, Remote>,
@@ -693,6 +702,23 @@ fn system(ctx: &mut SystemContext<'_>, engine_id: u32) -> og_core::Result<()> {
         apply(ctx, engine_id, &recs, &transform, local, origin, tick, &ev)?;
     }
 
+    // A joined connection gone silent: drop it and reconnect at once,
+    // resuming the session.
+    with(engine_id, |s| {
+        if s.open
+            && s.state == SharedState::Joined
+            && s.heard_at
+                .is_some_and(|h| (tick - h) as f64 * dt * 1000.0 > SILENT_MS)
+        {
+            s.push(json!({ "op": "close" }));
+            s.open = false;
+            s.heard_at = None;
+            s.state = SharedState::Reconnecting;
+            s.lost_at.get_or_insert(tick);
+            s.retry_at = Some(tick);
+        }
+    });
+
     // Reconnecting: ask again when the wait is over; give up after 30 s.
     with(engine_id, |s| {
         if s.state != SharedState::Reconnecting {
@@ -840,6 +866,7 @@ fn apply(
                 }
                 s.asking = false;
                 s.open = true;
+                s.heard_at = Some(tick);
                 s.transport = transport;
                 s.view = View::new();
                 let hello = Hello {
@@ -890,7 +917,10 @@ fn apply(
         "message" => {
             let bytes =
                 og_core::base64::decode(ev["bytes"].as_str().unwrap_or("")).unwrap_or_default();
-            with(engine_id, |s| s.bytes_in += bytes.len() as u64);
+            with(engine_id, |s| {
+                s.bytes_in += bytes.len() as u64;
+                s.heard_at = Some(tick);
+            });
             let Ok(msg) = ServerMsg::decode(&bytes) else {
                 warn(
                     engine_id,
