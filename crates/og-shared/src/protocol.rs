@@ -44,6 +44,10 @@ pub const MAX_NAME: usize = 128;
 pub const MAX_TOKEN: usize = 8192;
 /// The most bytes of one section of a proposal.
 pub const MAX_SECTION: usize = 1024;
+/// The most bytes of one shared object's state.
+pub const MAX_OBJECT: usize = 256;
+/// The most bytes of a shared object's key.
+pub const MAX_KEY: usize = 64;
 /// How many snapshots back an acknowledgement reaches, and so a baseline.
 pub const ACK_WINDOW: u32 = 32;
 /// The largest message the server reads.
@@ -122,6 +126,118 @@ pub struct AvatarState {
     /// The game's own fields, `fields_len` bytes of them.
     pub fields: [u8; MAX_FIELDS],
     pub fields_len: u8,
+}
+
+/// Where a shared object is: its cell, its place in the cell and its yaw,
+/// quantized as an avatar's are.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub struct Place {
+    pub cell: [i32; 3],
+    pub pos: [u16; 3],
+    pub yaw: u16,
+}
+
+impl Place {
+    /// A place from world units: metres (any distance) and radians.
+    pub fn from_world(cell_size: f64, at: [f64; 3], yaw: f32) -> Place {
+        let s = AvatarState::from_world(cell_size, at, [0.0; 3], yaw);
+        Place {
+            cell: s.cell,
+            pos: s.pos,
+            yaw: s.yaw,
+        }
+    }
+
+    fn as_state(&self) -> AvatarState {
+        AvatarState {
+            cell: self.cell,
+            pos: self.pos,
+            yaw: self.yaw,
+            ..AvatarState::default()
+        }
+    }
+
+    pub fn position(&self, cell_size: f64) -> [f64; 3] {
+        self.as_state().position(cell_size)
+    }
+
+    pub fn yaw(&self) -> f32 {
+        self.as_state().yaw()
+    }
+
+    pub fn write(&self, w: &mut Writer) {
+        for c in self.cell {
+            w.zigzag(i64::from(c));
+        }
+        for p in self.pos {
+            w.u16(p);
+        }
+        w.u16(self.yaw);
+    }
+
+    pub fn read(r: &mut Reader) -> WireResult<Place> {
+        let mut cell = [0i32; 3];
+        for c in &mut cell {
+            *c = i32::try_from(r.zigzag()?).map_err(|_| WireError("a cell is out of range"))?;
+        }
+        Ok(Place {
+            cell,
+            pos: [r.u16()?, r.u16()?, r.u16()?],
+            yaw: r.u16()?,
+        })
+    }
+}
+
+/// Whether a key names a shared object: 1 to 64 of letters, digits, `.`,
+/// `_`, `-`, `:` and `/`.
+pub fn object_key(key: &str) -> bool {
+    !key.is_empty()
+        && key.len() <= MAX_KEY
+        && key
+            .bytes()
+            .all(|c| c.is_ascii_alphanumeric() || matches!(c, b'.' | b'_' | b'-' | b':' | b'/'))
+}
+
+/// A shared object as the server holds it: its key in its world, the
+/// version its last change made (from 1), its place and the game's bytes.
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub struct SharedObject {
+    pub key: String,
+    pub version: u32,
+    pub place: Place,
+    pub data: Vec<u8>,
+}
+
+impl SharedObject {
+    pub fn write(&self, w: &mut Writer) {
+        w.str(&self.key);
+        w.varint(u64::from(self.version));
+        self.place.write(w);
+        w.bytes(&self.data);
+    }
+
+    pub fn read(r: &mut Reader) -> WireResult<SharedObject> {
+        Ok(SharedObject {
+            key: r.str(MAX_KEY)?.to_string(),
+            version: r.varint_u32()?,
+            place: Place::read(r)?,
+            data: r.bytes(MAX_OBJECT)?.to_vec(),
+        })
+    }
+}
+
+/// A client's change to a shared object, which the server applies in the
+/// order it arrives.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct ObjectOp {
+    /// This op's number, echoed in its answer (`op`).
+    pub seq: u32,
+    pub key: String,
+    /// Apply only while the object's version is this (0: while it does
+    /// not exist); `None`: whatever it is.
+    pub expect: Option<u32>,
+    /// The object's new place and bytes; `None` removes it.
+    pub set: Option<(Place, Vec<u8>)>,
 }
 
 /// The parts of a state a delta carries.
@@ -332,6 +448,7 @@ pub enum ClientMsg {
     Event { channel: u8, data: Vec<u8> },
     Ping { time: u32 },
     Leave,
+    Object(ObjectOp),
 }
 
 const C_HELLO: u8 = 1;
@@ -339,6 +456,7 @@ pub const C_PROPOSE: u8 = 2;
 const C_EVENT: u8 = 3;
 const C_PING: u8 = 4;
 const C_LEAVE: u8 = 5;
+const C_OBJECT: u8 = 6;
 
 impl ClientMsg {
     /// Encode a proposal over `base` (the proposal numbered `p.base`).
@@ -403,6 +521,20 @@ impl ClientMsg {
                 w.u32(*time);
             }
             ClientMsg::Leave => w.u8(C_LEAVE),
+            ClientMsg::Object(op) => {
+                w.u8(C_OBJECT);
+                w.varint(u64::from(op.seq));
+                w.str(&op.key);
+                w.varint(op.expect.map_or(0, |v| u64::from(v) + 1));
+                match &op.set {
+                    Some((place, data)) => {
+                        w.u8(1);
+                        place.write(w);
+                        w.bytes(data);
+                    }
+                    None => w.u8(0),
+                }
+            }
         }
     }
 
@@ -492,6 +624,21 @@ impl ClientMsg {
             },
             C_PING => ClientMsg::Ping { time: r.u32()? },
             C_LEAVE => ClientMsg::Leave,
+            C_OBJECT => ClientMsg::Object(ObjectOp {
+                seq: r.varint_u32()?,
+                key: r.str(MAX_KEY)?.to_string(),
+                expect: match r.varint()? {
+                    0 => None,
+                    v => Some(
+                        u32::try_from(v - 1).map_err(|_| WireError("a version past 32 bits"))?,
+                    ),
+                },
+                set: match r.u8()? {
+                    0 => None,
+                    1 => Some((Place::read(&mut r)?, r.bytes(MAX_OBJECT)?.to_vec())),
+                    _ => return Err(WireError("an object op is a set or a remove")),
+                },
+            }),
             _ => return Err(WireError("an unknown client message")),
         };
         if !r.done() {
@@ -567,6 +714,20 @@ pub enum ServerMsg {
     },
     /// A snapshot's bytes, for the view to decode against its baselines.
     Snapshot(Vec<u8>),
+    /// A shared object near this client, whole: it came into sight or changed.
+    Object(SharedObject),
+    /// A shared object this client held left its sight or was removed.
+    ObjectGone {
+        key: String,
+    },
+    /// The answer to this client's op `seq`: taken (the object's version
+    /// is now `version`; 0 when removed) or refused (`version` is the one
+    /// it has, 0 for none).
+    Op {
+        seq: u32,
+        taken: bool,
+        version: u32,
+    },
 }
 
 pub const S_WELCOME: u8 = 1;
@@ -578,6 +739,9 @@ pub const S_CORRECT: u8 = 6;
 pub const S_EVENT: u8 = 7;
 pub const S_MOVING: u8 = 8;
 pub const S_PONG: u8 = 9;
+pub const S_OBJECT: u8 = 10;
+pub const S_OBJECT_GONE: u8 = 11;
+pub const S_OP: u8 = 12;
 
 /// Whether a client's message crosses WebTransport as a datagram (may be
 /// lost or reordered): a proposal. Every other one goes on the stream.
@@ -650,6 +814,24 @@ impl ServerMsg {
                 w.varint(u64::from(*tick));
             }
             ServerMsg::Snapshot(b) => w.buf.extend_from_slice(b),
+            ServerMsg::Object(o) => {
+                w.u8(S_OBJECT);
+                o.write(w);
+            }
+            ServerMsg::ObjectGone { key } => {
+                w.u8(S_OBJECT_GONE);
+                w.str(key);
+            }
+            ServerMsg::Op {
+                seq,
+                taken,
+                version,
+            } => {
+                w.u8(S_OP);
+                w.varint(u64::from(*seq));
+                w.u8(u8::from(*taken));
+                w.varint(u64::from(*version));
+            }
         }
     }
 
@@ -710,6 +892,15 @@ impl ServerMsg {
             S_PONG => ServerMsg::Pong {
                 time: r.u32()?,
                 tick: r.varint_u32()?,
+            },
+            S_OBJECT => ServerMsg::Object(SharedObject::read(&mut r)?),
+            S_OBJECT_GONE => ServerMsg::ObjectGone {
+                key: r.str(MAX_KEY)?.to_string(),
+            },
+            S_OP => ServerMsg::Op {
+                seq: r.varint_u32()?,
+                taken: r.u8()? != 0,
+                version: r.varint_u32()?,
             },
             _ => return Err(WireError("an unknown server message")),
         };
@@ -880,6 +1071,18 @@ mod tests {
             },
             ClientMsg::Ping { time: 7 },
             ClientMsg::Leave,
+            ClientMsg::Object(ObjectOp {
+                seq: 9,
+                key: "door-12".into(),
+                expect: Some(0),
+                set: Some((Place::from_world(128.0, [-300.5, 2.0, 1.0e6], 1.5), vec![1, 0, 7])),
+            }),
+            ClientMsg::Object(ObjectOp {
+                seq: 10,
+                key: "door-12".into(),
+                expect: None,
+                set: None,
+            }),
         ] {
             assert_eq!(ClientMsg::decode(&m.to_bytes(), |_| None).unwrap(), m);
         }
@@ -920,6 +1123,20 @@ mod tests {
                 reason: "drain".into(),
             },
             ServerMsg::Pong { time: 1, tick: 2 },
+            ServerMsg::Object(SharedObject {
+                key: "door-12".into(),
+                version: 3,
+                place: Place::from_world(128.0, [5.0, 0.0, -9.0], 0.0),
+                data: vec![1; MAX_OBJECT],
+            }),
+            ServerMsg::ObjectGone {
+                key: "door-12".into(),
+            },
+            ServerMsg::Op {
+                seq: 9,
+                taken: false,
+                version: 3,
+            },
         ] {
             assert_eq!(ServerMsg::decode(&m.to_bytes()).unwrap(), m);
         }

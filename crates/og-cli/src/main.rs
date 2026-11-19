@@ -279,9 +279,10 @@ commands:
                       processes join <room> and play together (og.net's lockstep); behind a TLS
                       proxy it is reached as `og run --room wss://<host>/<room>`
   world-server [--listen ADDR] [--wt-listen ADDR --cert F --key F] [--config F]
-      [--auth hs256|jwks|none --dev] [--secret-file F] [--jwks URL|FILE] [--audience GAME] [--metrics ADDR]
+      [--auth hs256|jwks|none --dev] [--secret-file F] [--jwks URL|FILE] [--audience GAME] [--metrics ADDR] [--store F]
                       the shared-world server (og.shared): presence and avatars near each client,
-                      standalone on any host; tokens checked offline (hs256, jwks; none only with
+                      and shared objects (kept across restarts with --store), standalone on any
+                      host; tokens checked offline (hs256, jwks; none only with
                       --dev); GET /healthz, Prometheus --metrics, SIGTERM drains. `world-server
                       load` runs a bot swarm against one and measures bytes, sight and tick time
                       (--gate holds it to the design's budgets; --latency and --loss shape it);

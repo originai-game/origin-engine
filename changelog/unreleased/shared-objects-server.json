@@ -1,0 +1,8 @@
+{
+  "added": [
+    {
+      "member": "og world-server --store",
+      "summary": "The world server keeps shared objects: it takes each put or remove in arrival order when the expected version matches and the object is within the sender's two cells, answers every op, and sends the whole object to the clients near it. --store FILE appends every change to a log the next start reads back, so objects outlive a restart."
+    }
+  ]
+}

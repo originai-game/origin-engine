@@ -813,6 +813,19 @@ opaque token, and no part names a platform.
   certificate (`og world-server cert`, ECDSA, 14 days at most) is checked
   by the hash a page passes as `serverCertificateHashes`. WebSocket stays
   the path every browser and the platform's ingress (TCP only) have.
+- **Shared objects.** A world's objects are the server's: a key, a version,
+  a place (cell, offset, yaw) and up to 256 bytes of the game's object
+  component. A client changes one with `object` ops (put or remove, with
+  the version it expects); the server takes an op in arrival order when
+  the version matches, the old and new places are within `radius` cells of
+  the sender and its event credit allows, answers every op (`op`), and
+  sends the whole object (`object`, `objectGone`) to each client that holds
+  it or has it within `radius`, on the stream. A client's set of objects
+  follows the same cells with the same hysteresis, refreshed on its
+  refresh ticks. With `--store FILE` every change is appended to a log the
+  next start reads (compacted, a torn last record dropped); a `Store`
+  trait lets a host keep them elsewhere. Objects are not simulated: their
+  mechanics stay each client's.
 - **Budgets**, held by `og world-server load --gate`: 8 KiB/s down and
   1 KiB/s up per client at p95, 64 in sight, 200 in one area, 2000 per
   server on 4 vCPU with a tick p99 of 10 ms. A shard is one server: more

@@ -7,6 +7,7 @@
 //! - [`view`]: a client's side: remote avatars, acknowledgements, proposals.
 //! - [`auth`]: token verifiers (`none`, `hs256`, `jwks`), offline.
 //! - [`config`]: the `world-server` `.ogt` file.
+//! - `store` (native): where the server keeps shared objects across restarts.
 //! - `server` and `bots` (native): `og world-server` over WebSocket and
 //!   WebTransport, and the load test; `cert` a self-signed WebTransport
 //!   certificate a browser takes by hash.
@@ -30,6 +31,8 @@ pub mod protocol;
 pub mod server;
 #[cfg(feature = "server")]
 pub mod shard;
+#[cfg(all(feature = "server", not(target_arch = "wasm32")))]
+pub mod store;
 pub mod view;
 pub mod wire;
 #[cfg(all(

@@ -15,7 +15,7 @@ use std::process::ExitCode;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 const USAGE: &str = "usage: og world-server [--listen ADDR] [--wt-listen ADDR --cert F --key F] [--config F] [--auth none|hs256|jwks] [--dev]
-         [--secret-file F] [--jwks URL|FILE] [--audience GAME] [--issuer ISS] [--max-lifetime S] [--max-players N] [--metrics ADDR] [--quiet]
+         [--secret-file F] [--jwks URL|FILE] [--audience GAME] [--issuer ISS] [--max-lifetime S] [--max-players N] [--metrics ADDR] [--store F] [--quiet]
        og world-server load [--url ws://HOST:PORT/ | https://HOST:PORT/ [--cert-hash HEX]] [--bots N] [--area M] [--centre X,Z]
          [--areas N --spacing M] [--speed MPS] [--warmup S] [--seconds S] [--secret-file F --audience GAME] [--world W] [--batch N]
          [--latency MS] [--loss PCT] [--metrics HOST:PORT] [--gate] [--json]
@@ -99,6 +99,8 @@ fn serve(args: &[&str]) -> ExitCode {
             _ => return fail("--max-players takes a whole number above 0"),
         }
     }
+    // Shared objects survive restarts in this file (an append log).
+    let store = get("--store").map(std::path::PathBuf::from);
     let listen: SocketAddr = match get("--listen").unwrap_or("127.0.0.1:47910").parse() {
         Ok(a) => a,
         Err(_) => return fail("--listen takes an address such as 0.0.0.0:47910"),
@@ -172,10 +174,15 @@ fn serve(args: &[&str]) -> ExitCode {
         .expect("a tokio runtime");
     rt.block_on(async move {
         let auth = verifier.name();
-        let mut server = match Server::start(listen, config.clone(), verifier, keys, !quiet).await {
+        let store = store.map(|p| {
+            Box::new(og_shared::store::FileStore::new(p)) as Box<dyn og_shared::store::Store>
+        });
+        let mut server = match Server::start(listen, config.clone(), verifier, keys, !quiet, store)
+            .await
+        {
             Ok(s) => s,
             Err(e) => {
-                eprintln!("og world-server: cannot listen on {listen}: {e}");
+                eprintln!("og world-server: cannot start on {listen}: {e}");
                 return ExitCode::FAILURE;
             }
         };

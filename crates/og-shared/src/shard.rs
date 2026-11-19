@@ -32,12 +32,12 @@
 
 use crate::config::{Config, TeleportPolicy};
 use crate::protocol::{
-    ACK_WINDOW, Authority, AvatarState, ClientMsg, Enter, Hello, MAX_EVENT, MAX_FIELDS, PROTOCOL,
-    Refusal, ServerMsg, SnapshotHead, Welcome, mask,
+    ACK_WINDOW, Authority, AvatarState, ClientMsg, Enter, Hello, MAX_EVENT, MAX_FIELDS, ObjectOp,
+    PROTOCOL, Refusal, ServerMsg, SharedObject, SnapshotHead, Welcome, mask,
 };
 use crate::view::{acked, baseline_index};
 use crate::wire::Writer;
-use std::collections::{HashMap, VecDeque};
+use std::collections::{BTreeMap, BTreeSet, HashMap, VecDeque};
 use std::hash::{BuildHasherDefault, Hasher};
 
 /// FxHash's mix (rustc's hasher): keys here are random session ids and small
@@ -92,10 +92,56 @@ pub struct Stats {
     pub enters: u64,
     pub leaves: u64,
     pub updates: u64,
+    pub ops: u64,
+    pub ops_refused: u64,
+}
+
+/// A change to the shared objects, for a store to keep ([`Shard::take_changes`]).
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum Change {
+    Put { world: String, object: SharedObject },
+    Remove { world: String, key: String },
+}
+
+/// One world's shared objects, by key, and the keys in each cell (x, z).
+#[derive(Default)]
+struct Objects {
+    by_key: BTreeMap<String, SharedObject>,
+    cells: HashMap<(i32, i32), BTreeSet<String>>,
+}
+
+impl Objects {
+    fn put(&mut self, o: SharedObject) {
+        if let Some(old) = self.by_key.get(&o.key) {
+            let c = (old.place.cell[0], old.place.cell[2]);
+            if let Some(set) = self.cells.get_mut(&c) {
+                set.remove(&o.key);
+            }
+        }
+        self.cells
+            .entry((o.place.cell[0], o.place.cell[2]))
+            .or_default()
+            .insert(o.key.clone());
+        self.by_key.insert(o.key.clone(), o);
+    }
+
+    fn remove(&mut self, key: &str) -> Option<SharedObject> {
+        let o = self.by_key.remove(key)?;
+        if let Some(set) = self.cells.get_mut(&(o.place.cell[0], o.place.cell[2])) {
+            set.remove(key);
+        }
+        Some(o)
+    }
+}
+
+fn near(a: [i32; 3], b: [i32; 3], r: i32) -> bool {
+    (a[0] - b[0]).abs() <= r && (a[2] - b[2]).abs() <= r
 }
 
 struct Avatar {
     world: u32,
+    /// The world's name (shared objects are kept by it, past its last member).
+    world_name: String,
     player: String,
     name: String,
     kind: u32,
@@ -208,6 +254,8 @@ struct Viewer {
     /// The most bytes one snapshot may take: its transport's datagram
     /// (WebTransport), else unbounded but for the byte budget.
     cap: usize,
+    /// The shared objects it holds, by key, and the version it was sent.
+    objects: HashMap<String, u32>,
 }
 
 struct WorldShape {
@@ -242,6 +290,10 @@ pub struct Shard {
     /// row per tick, so the baselines a tick reads (a few ticks back) are a
     /// few contiguous rows, not a cache miss each.
     ring: Vec<Vec<Motion>>,
+    /// Shared objects by world name; they outlive their world's members.
+    objects: HashMap<String, Objects>,
+    /// Changes to them since the last [`Shard::take_changes`].
+    changes: Vec<Change>,
 }
 
 /// What a baseline needs of a past state: its motion. Whether its fields
@@ -324,6 +376,8 @@ impl Shard {
             cur: Vec::new(),
             alive: Vec::new(),
             ring: vec![Vec::new(); RING],
+            objects: HashMap::new(),
+            changes: Vec::new(),
         }
     }
 
@@ -495,6 +549,7 @@ impl Shard {
         let a = Avatar {
             slot,
             world,
+            world_name: h.world.clone(),
             player: c.player,
             name,
             kind,
@@ -544,6 +599,7 @@ impl Shard {
             v.lost_at = self.tick;
             v.out.clear();
             v.set.clear();
+            v.objects.clear();
         }
     }
 
@@ -652,6 +708,7 @@ impl Shard {
                     .push(ServerMsg::Pong { time, tick }.to_bytes());
             }
             ClientMsg::Leave => self.remove(session),
+            ClientMsg::Object(op) => self.object_op(session, op),
         }
         Ok(())
     }
@@ -801,6 +858,7 @@ impl Shard {
                 row[a.slot as usize] = Motion::of(&st);
             }
         }
+        self.objects_tick();
         let ctx = TickCtx {
             ring: &self.ring,
             cur: &self.cur,
@@ -840,6 +898,182 @@ impl Shard {
         self.stats.enters += counts[0];
         self.stats.leaves += counts[1];
         self.stats.updates += counts[2];
+    }
+}
+
+/// Shared objects (docs/design.md §2.12): server-owned, changed by clients'
+/// ops in the order they arrive, and sent through the same interest area as
+/// avatars. A client may change an object only within its radius (where it
+/// was and where it goes), at most `eventsPerSecond` ops a second with its
+/// events, and only while the object has the version it expects, if it
+/// names one. Every client that holds the object, or now has it within its
+/// radius, hears the new state at once; one whose sight it left hears it
+/// gone. Each client's set of objects is chosen again on its refresh ticks:
+/// those within `radius` cells come in, those past `radius + 1` go.
+impl Shard {
+    /// The objects a store kept, before the first join.
+    pub fn load_objects(&mut self, objects: impl IntoIterator<Item = (String, SharedObject)>) {
+        for (world, o) in objects {
+            self.objects.entry(world).or_default().put(o);
+        }
+    }
+
+    /// The changes since the last call, in order, for a store.
+    pub fn take_changes(&mut self) -> Vec<Change> {
+        std::mem::take(&mut self.changes)
+    }
+
+    /// The object `key` of `world`, as the shard holds it.
+    pub fn object(&self, world: &str, key: &str) -> Option<&SharedObject> {
+        self.objects.get(world)?.by_key.get(key)
+    }
+
+    fn object_op(&mut self, session: u64, op: ObjectOp) {
+        let r = self.config.radius;
+        let (cs, bmin, bmax) = (
+            self.config.cell_size,
+            self.config.bounds_min,
+            self.config.bounds_max,
+        );
+        let a = self.avatars.get_mut(&session).expect("checked by receive");
+        let world = a.world_name.clone();
+        let current = self
+            .objects
+            .get(&world)
+            .and_then(|w| w.by_key.get(&op.key))
+            .cloned();
+        let have = current.as_ref().map_or(0, |o| o.version);
+        let me = a.state.map(|s| s.cell);
+        let fits = crate::protocol::object_key(&op.key)
+            && op.expect.is_none_or(|v| v == have)
+            && me.is_some_and(|me| {
+                current.as_ref().is_none_or(|o| near(me, o.place.cell, r))
+                    && op.set.as_ref().is_none_or(|(p, _)| {
+                        let at = p.position(cs);
+                        near(me, p.cell, r) && (0..3).all(|i| (bmin[i]..=bmax[i]).contains(&at[i]))
+                    })
+            })
+            && (op.set.is_some() || current.is_some())
+            && a.events >= 1.0;
+        let answer = |taken, version| {
+            ServerMsg::Op {
+                seq: op.seq,
+                taken,
+                version,
+            }
+            .to_bytes()
+        };
+        if !fits {
+            self.stats.ops_refused += 1;
+            let m = answer(false, have);
+            self.viewers.get_mut(&session).unwrap().out.push(m);
+            return;
+        }
+        a.events -= 1.0;
+        self.stats.ops += 1;
+        let objects = self.objects.entry(world.clone()).or_default();
+        let (version, now) = match op.set {
+            Some((place, data)) => {
+                let o = SharedObject {
+                    key: op.key.clone(),
+                    version: have + 1,
+                    place,
+                    data,
+                };
+                objects.put(o.clone());
+                self.changes.push(Change::Put {
+                    world: world.clone(),
+                    object: o.clone(),
+                });
+                (o.version, Some(o))
+            }
+            None => {
+                objects.remove(&op.key);
+                if objects.by_key.is_empty() {
+                    self.objects.remove(&world);
+                }
+                self.changes.push(Change::Remove {
+                    world: world.clone(),
+                    key: op.key.clone(),
+                });
+                (0, None)
+            }
+        };
+        let m = answer(true, version);
+        self.viewers.get_mut(&session).unwrap().out.push(m);
+        // Everyone who holds it, or now has it in its radius, hears at once.
+        let (whole, gone) = (
+            now.as_ref().map(|o| ServerMsg::Object(o.clone()).to_bytes()),
+            ServerMsg::ObjectGone {
+                key: op.key.clone(),
+            }
+            .to_bytes(),
+        );
+        for (sid, v) in self.viewers.iter_mut().filter(|(_, v)| v.connected) {
+            let a = &self.avatars[sid];
+            let Some(cell) = a.state.map(|s| s.cell) else {
+                continue;
+            };
+            if a.world_name != world {
+                continue;
+            }
+            match (&now, &whole) {
+                (Some(o), Some(m)) if near(cell, o.place.cell, r) => {
+                    v.objects.insert(op.key.clone(), o.version);
+                    v.out.push(m.clone());
+                }
+                _ => {
+                    if v.objects.remove(&op.key).is_some() {
+                        v.out.push(gone.clone());
+                    }
+                }
+            }
+        }
+    }
+
+    /// Each client on its refresh tick: the objects within its radius it
+    /// does not hold come in; those it holds past `radius + 1` go.
+    fn objects_tick(&mut self) {
+        // No objects: none is held either (a removal told its holders).
+        if self.objects.is_empty() {
+            return;
+        }
+        let (tick, r) = (self.tick, self.config.radius);
+        for (sid, v) in self.viewers.iter_mut().filter(|(_, v)| v.connected) {
+            if !(v.objects.is_empty() || sid.wrapping_add(u64::from(tick)) % REFRESH_TICKS == 0) {
+                continue;
+            }
+            let a = &self.avatars[sid];
+            let Some(cell) = a.state.map(|s| s.cell) else {
+                continue;
+            };
+            let objects = self.objects.get(&a.world_name);
+            v.objects.retain(|key, _| {
+                let keep = objects
+                    .and_then(|w| w.by_key.get(key))
+                    .is_some_and(|o| near(cell, o.place.cell, r + 1));
+                if !keep {
+                    v.out
+                        .push(ServerMsg::ObjectGone { key: key.clone() }.to_bytes());
+                }
+                keep
+            });
+            let Some(objects) = objects else { continue };
+            for dx in -r..=r {
+                for dz in -r..=r {
+                    let Some(keys) = objects.cells.get(&(cell[0] + dx, cell[2] + dz)) else {
+                        continue;
+                    };
+                    for key in keys {
+                        if !v.objects.contains_key(key) {
+                            let o = &objects.by_key[key];
+                            v.objects.insert(key.clone(), o.version);
+                            v.out.push(ServerMsg::Object(o.clone()).to_bytes());
+                        }
+                    }
+                }
+            }
+        }
     }
 }
 
@@ -1145,6 +1379,7 @@ impl Viewer {
             out: Vec::new(),
             others: 0,
             cap: usize::MAX,
+            objects: HashMap::new(),
         }
     }
 }
@@ -1182,6 +1417,8 @@ mod tests {
         view: View,
         prop: Proposer,
         corrected: Vec<u32>,
+        objects: BTreeMap<String, SharedObject>,
+        answers: Vec<(u32, bool, u32)>,
     }
 
     impl Client {
@@ -1192,6 +1429,8 @@ mod tests {
                 view: View::new(),
                 prop: Proposer::default(),
                 corrected: Vec::new(),
+                objects: BTreeMap::new(),
+                answers: Vec::new(),
             }
         }
 
@@ -1215,6 +1454,17 @@ mod tests {
                         self.view.snapshot(&b).unwrap();
                     }
                     ServerMsg::Correct { seq, .. } => self.corrected.push(seq),
+                    ServerMsg::Object(o) => {
+                        self.objects.insert(o.key.clone(), o);
+                    }
+                    ServerMsg::ObjectGone { key } => {
+                        assert!(self.objects.remove(&key).is_some(), "{key} gone, not held");
+                    }
+                    ServerMsg::Op {
+                        seq,
+                        taken,
+                        version,
+                    } => self.answers.push((seq, taken, version)),
                     _ => {}
                 }
             }
@@ -1227,6 +1477,83 @@ mod tests {
                 .find(|r| r.player == player)
                 .map(|r| r.state.position(128.0))
         }
+    }
+
+    fn op(seq: u32, key: &str, expect: Option<u32>, at: [f64; 3], data: &[u8]) -> Vec<u8> {
+        ClientMsg::Object(ObjectOp {
+            seq,
+            key: key.into(),
+            expect,
+            set: Some((crate::protocol::Place::from_world(128.0, at, 0.0), data.to_vec())),
+        })
+        .to_bytes()
+    }
+
+    /// A door one visitor opens opens for the others near it at once, in
+    /// the order the ops came; one far away hears of it as it comes near,
+    /// and loses it past the radius. Ways this could fail: an op is applied
+    /// out of order or twice, one that expects a stale version or reaches
+    /// past its sender's radius is taken, a viewer is sent an object
+    /// outside its sight, or one that walks off keeps it.
+    #[test]
+    fn a_door_one_visitor_opens_opens_for_those_near_it() {
+        let mut shard = Shard::new(Config::default(), 1);
+        let mut a = Client::join(&mut shard, "a");
+        let mut b = Client::join(&mut shard, "b");
+        let mut c = Client::join(&mut shard, "c");
+        let door = [10.0, 0.0, 10.0];
+        a.propose(&mut shard, [0.0, 0.0, 0.0], false);
+        b.propose(&mut shard, [100.0, 0.0, 0.0], false);
+        // Five cells away: outside radius 2.
+        c.propose(&mut shard, [5.0 * 128.0 + 10.0, 0.0, 0.0], false);
+        shard.step();
+        for x in [&mut a, &mut b, &mut c] {
+            x.read(&mut shard, false);
+        }
+        // Created (expect: none), then opened over version 1.
+        shard.receive(a.sid, &op(1, "door", Some(0), door, &[0])).unwrap();
+        shard.receive(a.sid, &op(2, "door", Some(1), door, &[1])).unwrap();
+        // b's op over the stale version 1 is refused; c's from afar too.
+        shard.receive(b.sid, &op(1, "door", Some(1), door, &[0])).unwrap();
+        shard.receive(c.sid, &op(1, "door", None, door, &[0])).unwrap();
+        for x in [&mut a, &mut b, &mut c] {
+            x.read(&mut shard, false);
+        }
+        assert_eq!(a.answers, [(1, true, 1), (2, true, 2)]);
+        assert_eq!(b.answers, [(1, false, 2)]);
+        assert_eq!(c.answers, [(1, false, 2)]);
+        for x in [&a, &b] {
+            let o = &x.objects["door"];
+            assert_eq!((o.version, o.data.as_slice()), (2, &[1u8][..]));
+        }
+        assert!(c.objects.is_empty(), "c is sent an object outside its sight");
+        assert_eq!(shard.stats.ops, 2);
+        // c walks near: the door comes in on its refresh; b walks off: it goes.
+        c.propose(&mut shard, [10.0, 0.0, 0.0], true);
+        b.propose(&mut shard, [8.0 * 128.0, 0.0, 0.0], true);
+        for _ in 0..REFRESH_TICKS {
+            shard.step();
+            for x in [&mut b, &mut c] {
+                x.read(&mut shard, false);
+            }
+        }
+        assert_eq!(c.objects["door"].version, 2);
+        assert!(b.objects.is_empty(), "b kept the door it walked off from");
+        // Removed: its holders hear it gone, and the store hears both.
+        let rm = ClientMsg::Object(ObjectOp {
+            seq: 3,
+            key: "door".into(),
+            expect: None,
+            set: None,
+        });
+        shard.receive(a.sid, &rm.to_bytes()).unwrap();
+        for x in [&mut a, &mut c] {
+            x.read(&mut shard, false);
+            assert!(x.objects.is_empty());
+        }
+        let changes = shard.take_changes();
+        assert_eq!(changes.len(), 3);
+        assert!(matches!(&changes[2], Change::Remove { key, .. } if key == "door"));
     }
 
     #[test]
