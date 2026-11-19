@@ -11,8 +11,11 @@ and napi hosts.
 winit): the engine's renderer presents to its surface, and its keys,
 pointer and wheel reach the engine as the web shell's `InjectedInput`. The
 game's bundle (`packages/engine/src/hermes/shell.ts`) opens it; the shell
-runs the display loop. Not yet: audio, gamepads, platform services, and
-the Hermes API that detaches a buffer without its test methods.
+runs the display loop. The engine's audio plays on the default output
+device, and gamepads (gilrs) arrive as the web shell's `gamepad` events;
+each is logged when it connects. On Linux the build needs libudev's
+headers (`libudev-dev`). Not yet: platform services, and the Hermes API
+that detaches a buffer without its test methods.
 
 ## A desktop package
 
