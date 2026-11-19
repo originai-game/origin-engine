@@ -1277,15 +1277,14 @@ fn inked_frame(
 /// glyph quads filled. Small text from a narrow distance range (the test
 /// font's 4 px at 32 px: at `text-xs` the field is too thin to thicken)
 /// still turns bold: bold also draws a second copy a device pixel to the
-/// right. A bold glyph advances one weight further than its plain self (a
-/// bold face's added stem), so each glyph is compared with its plain
-/// glyph moved by the weights of the glyphs before it.
+/// right. Synthetic bold grows ink without changing glyph advances, so
+/// each glyph is compared with its plain glyph at the same position.
 ///
 /// Ways it could fail: the weight runs past the field's reach and fills
 /// each glyph's quad (a box behind the digit, as the first cut drew at
 /// the reading size), bold draws nothing heavier at small sizes (no
-/// second copy), or it moves the glyphs further than their tracked
-/// advance (a letter-spaced bold word).
+/// second copy), or it moves the glyphs away from their unchanged
+/// advances (a letter-spaced bold word).
 #[test]
 #[ignore = "requires GPU"]
 fn bold_rich_text_is_heavier_ink_never_a_box() {
@@ -1306,20 +1305,19 @@ fn bold_rich_text_is_heavier_ink_never_a_box() {
         // its weight, or regular and <b> measure identical ink.
         let (plain, w, h, bg) = rich_frame(LINE, css);
         let (bold, ..) = rich_frame(&format!("<b style=\"font-weight:700\">{LINE}</b>"), css);
-        // Each glyph's advance in the plain line (from the card's padding, at
-        // 1 device pixel a CSS px) and how far bold moves it: a bold
-        // face's added stem (og-ui's 0.056 em) for each glyph before it.
+        // Each glyph's advance in the plain line (from the card's padding,
+        // at 1 device pixel a CSS px). Synthetic bold preserves these
+        // advances and authored tracking; only its ink grows.
         let s = step(&theme.type_ramp);
-        let weight = s.size * 0.056;
         let x0 = theme.space.md;
-        let glyphs: Vec<(f32, f32, f32)> = LINE
+        let glyphs: Vec<(f32, f32)> = LINE
             .char_indices()
             .filter(|(_, c)| !c.is_whitespace())
             .map(|(i, c)| {
                 let left = x0 + metrics.measure_tracked(&LINE[..i], s.size, s.tracking_em);
                 let end = i + c.len_utf8();
                 let right = x0 + metrics.measure_tracked(&LINE[..end], s.size, s.tracking_em);
-                (left, right, LINE[..i].chars().count() as f32 * weight)
+                (left, right)
             })
             .collect();
         let ink = |px: &[u8], x: usize, y: usize| {
@@ -1342,8 +1340,7 @@ fn bold_rich_text_is_heavier_ink_never_a_box() {
             "bold is heavier at the {name} size: {b} against {p} px"
         );
         // Every bold ink pixel lies within three pixels of its glyph's plain
-        // ink, moved by its tracked advance (the added stem, 0.056 em, and
-        // the one-pixel second copy).
+        // ink at the same advance, including the one-pixel second copy.
         let near_plain = |x: i64, y: usize| {
             (y.saturating_sub(3)..=(y + 3).min(h - 1)).any(|yy| {
                 (x - 3..=x + 3)
@@ -1355,11 +1352,9 @@ fn bold_rich_text_is_heavier_ink_never_a_box() {
             for x in 0..w {
                 if ink(&bold, x, y) {
                     let xf = x as f32;
-                    let near = glyphs.iter().any(|&(l, r, dx)| {
-                        xf >= l + dx - 4.0
-                            && xf <= r + dx + 4.0
-                            && near_plain((xf - dx).round() as i64, y)
-                    });
+                    let near = glyphs
+                        .iter()
+                        .any(|&(l, r)| xf >= l - 4.0 && xf <= r + 4.0 && near_plain(x as i64, y));
                     if !near {
                         stray += 1;
                     }
