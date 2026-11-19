@@ -351,30 +351,48 @@ function host(): void {
       if (rms < 0.2) step.fail(`the mixer's last 0.5 s is near silent (RMS ${rms.toFixed(3)})`);
       log(`   tone.mp3: cursor ${playback.cursor} of ${playback.loopEnd} frames at 0.5 s, mix RMS ${rms.toFixed(3)}`);
 
-      // 9. Core default is asset-free. A generated game-owned style still
-      // resolves its shared dependencies from the installed archive.
+      // 9. Core default is asset-free. A generated game-owned CSS style (og style new, named by a look's
+      // `ui`) cooks only the engine's shared style assets from the installed archive, and a screen drawn
+      // with it still draws its text (the empty skeleton draws no UI, so a fresh game shows @ui pause).
       step = new Step("9 core default and generated UI style dependencies");
-      if (!existsSync(join(enginePkg, "styles", "shared", "InstrumentSans-Regular.ttf"))) step.fail(`${enginePkg} carries no shared UI fonts`);
-      const packs = (): Set<string> => {
-        og(step, demo, "cook", ".");
-        const cooked = readFileSync(join(demo, "cooked", ".cook.ogt"), "utf8");
-        return new Set([...cooked.matchAll(/@styles\/([a-z0-9-]+)\//g)].map(m => m[1]!));
+      const stylePacks = (game: string): Set<string> => {
+        og(step, game, "cook", ".");
+        const cooked = readFileSync(join(game, "cooked", ".cook.ogt"), "utf8");
+        return new Set([...cooked.matchAll(/@styles\/([a-z0-9-]+)\//g)].map((m) => m[1]!));
       };
-      const before = packs();
+      const before = stylePacks(demo);
       if (before.size) step.fail(`core default cooked style assets: ${[...before].join(", ")}`);
-      mkdirSync(join(demo, "assets", "looks"), { recursive: true });
-      og(step, demo, "style", "new", "install-check", "--project", ".");
-      writeFileSync(join(demo, "assets", "looks", "generated-ui.ogt"), "type look\nversion 1\n---\nui \"styles/install-check/style.ogt\"\n");
-      const after = packs();
-      const cooked = readFileSync(join(demo, "cooked", ".cook.ogt"), "utf8");
-      for (const f of ["InstrumentSans-Regular.ttf", "PTMono-Regular.ttf", "ink-icons.png"]) {
-        if (!cooked.includes(`@styles/shared/${f}`)) step.fail(`the cook has no @styles/shared/${f}`);
-      }
-      const others = [...after].filter(p => p !== "shared" && p !== "cjk");
-      if (others.length) step.fail(`a generated style cooked unrelated packs: ${others.join(", ")}`);
-      log("   core default is asset-free; generated style resolved shared assets");
-      rmSync(join(demo, "assets", "looks", "generated-ui.ogt"));
-      rmSync(join(demo, "assets", "styles", "install-check"), { recursive: true });
+      const styledGame = scaffold(step, work, "demo-style", "--name", "Demo Style");
+      writeFileSync(
+        join(styledGame, "src", "main.ts"),
+        `import { og } from "@origingame/engine";
+
+export default og.game({
+  start(world) {
+    const doc = og.load.document(world, "@ui/screens/pause.svelte");
+    if (!doc.ok) throw new Error(doc.reason);
+    const shown = og.ui.push(world, "pause");
+    if (!shown.ok) throw new Error(shown.reason);
+  },
+});
+`,
+      );
+      og(step, styledGame, "style", "new", "install-check");
+      if (!existsSync(join(styledGame, "assets", "styles", "install-check", "main.css"))) step.fail("og style new install-check wrote no assets/styles/install-check/main.css");
+      mkdirSync(join(styledGame, "assets", "looks"), { recursive: true });
+      writeFileSync(join(styledGame, "assets", "looks", "generated-ui.ogt"), 'type look\nversion 1\n---\nui "install-check"\n');
+      const after = stylePacks(styledGame);
+      if (!after.has("shared")) step.fail("a generated style cooked no @styles/shared/ asset");
+      const others = [...after].filter((p) => p !== "shared");
+      if (others.length) step.fail(`a generated style cooked other packs: ${others.join(", ")}`);
+      const styledUi = run(step, [...ogCmd, "ui", "check", ".", "--styles", "install-check", "--breakpoints", "desktop", "--locales", "game", "--scales", "100", "--json"], styledGame, { allowFail: true });
+      if (styledUi.status !== 0) step.fail(`og ui check --styles install-check exited ${styledUi.status}\n${styledUi.stderr.slice(-2000)}`);
+      const styledReport = (JSON.parse(styledUi.stdout.trim().split("\n").at(-1)!) as { report: string }).report;
+      const styledCells = (JSON.parse(readFileSync(styledReport, "utf8")) as { cellList: Array<{ cell: string; uiFrame: string }> }).cellList;
+      if (styledCells.length !== 1) step.fail(`og ui check --styles install-check laid out ${styledCells.length} cells`);
+      const drawn = JSON.parse(readFileSync(join(dirname(styledReport), styledCells[0]!.uiFrame), "utf8")) as { draws: number; texts: unknown[] };
+      if (!(drawn.draws > 0) || drawn.texts.length === 0) step.fail(`the pause screen in the generated style draws ${drawn.draws} commands and ${drawn.texts.length} texts`);
+      log(`   core default is asset-free; the generated style cooks @styles/shared/ only; pause draws ${drawn.draws} commands, ${drawn.texts.length} text(s)`);
 
       // 10. Effect packs ship apart from games (docs/vfx-packs.md §5): a game with none installed cooks and
       // builds no file of a bundled vfx pack (the dist's engine/extensions/<pack> of kind vfx), of
