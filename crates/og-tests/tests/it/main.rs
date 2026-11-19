@@ -82,7 +82,5 @@ mod ui;
 mod upload;
 #[path = "../visual_bodies.rs"]
 mod visual_bodies;
-#[path = "../wasm.rs"]
-mod wasm;
 #[path = "../weather_surfaces.rs"]
 mod weather_surfaces;

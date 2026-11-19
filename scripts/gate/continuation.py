@@ -68,6 +68,11 @@ def fingerprint(scope):
     # Do not persist environment values. Drop only gate bookkeeping that
     # naturally differs between attempts; a user setting changing is a miss.
     volatile = {'GATE_LOGS', 'OG_GATE_RESUME', 'OG_GATE_RAN', 'OG_GPU_SLOT', 'OG_LOCK_IDENTITIES', '_', 'SHLVL'}
+    scratch = Path.cwd() / '.og' / 'tmp'
+    for name in ('TMPDIR', 'TMP', 'TEMP'):
+        value = Path(os.environ.get(name, ''))
+        if value.parent == scratch and value.name.startswith('run.'):
+            volatile.add(name)
     env = {k: v for k, v in os.environ.items() if k not in volatile}
     inputs = [1, scope, run, str(Path.cwd()), env, runtime, gpu, products,
               Path('/proc/sys/kernel/random/boot_id').read_text().strip()]

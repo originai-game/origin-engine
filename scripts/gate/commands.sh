@@ -129,6 +129,13 @@ require_wasm() {
 # step then never waits on the shared server. Cold it takes about 3
 # minutes, after an og-render change 20 to 50 s a variant.
 step_wasm_lanes_check() {
+  # An all-variant build uses the same profile, manifests, flags and feature
+  # sets below via wasm-lanes.sh; it type-checks them before linking. A skip
+  # or dev-only build cannot provide that evidence.
+  if [ "${OG_WASM_VARIANTS:-dev}" = all ] && [[ "${OG_GATE_RAN:- }" == *' wasm-build '* ]]; then
+    og_say 'wasm-lanes-check: covered by the all-variant wasm build in this run'
+    return 0
+  fi
   skip_unchanged wasm-lanes-check "wasm-lanes-check" "$(rule_wasm)" && return $SKIP
   local c v vname vfeat
   export RUSTC_WRAPPER=
@@ -181,9 +188,12 @@ modules_without() {
   printf '%s' "$out"
 }
 step_wasm_check() {
-  skip_unchanged wasm-check "wasm-check" "$(python3 scripts/gate/inputs.py crates og-tests-web og-host-web)" && return $SKIP
+  skip_unchanged wasm-check "wasm-check" "$(python3 scripts/gate/inputs.py crates og-tests-web og-host-web og-render)" && return $SKIP
   export RUSTC_WRAPPER=
   local profile="${OG_WASM_PROFILE:-$WASM_PROFILE_DEFAULT}" base3d=og-host-web/publish,og-host-web/physics3d,og-host-web/shaping m
+  # Preserve the removed nested test's standalone default-feature dev graph.
+  og_say "wasm check: standalone og-render ($WASM_TRIPLE)"
+  cargo check --locked --target "$WASM_TRIPLE" -p og-render --lib || return 1
   og_say "wasm check: og-tests-web ($WASM_TRIPLE)"
   cargo check --profile "$profile" --target "$WASM_TRIPLE" -p og-tests-web --lib || return 1
   og_say "wasm check: og-host-web without any optional module (3D, 2D)"
@@ -416,7 +426,9 @@ step_check_conformance() {
 }
 
 step_engine_typecheck() {
-  (cd packages/engine && OG_BIN="$OG_TARGET_DIR/debug/og" bun run typecheck)
+  # Preflight checks all three configs directly. This one representative
+  # check also executes the real CLI's checker selection and config handling.
+  (cd packages/engine && "$OG_TARGET_DIR/debug/og" check tsconfig.runtime.json)
 }
 
 step_preflight() {

@@ -115,8 +115,6 @@ def main():
     # is selection policy, not a build/runtime prerequisite for Bun.
     if 'bun-test' in wanted:
         wanted.update(('rust-cpu', 'rust-gpu'))
-    if lane == 'full':
-        NEEDS['rust-cpu'] += ('wasm-build',)
     while True:
         expanded = wanted | {d for s in wanted for d in NEEDS[s]}
         if expanded == wanted:
@@ -132,6 +130,8 @@ def main():
     if unknown:
         raise ValueError('OG_GATE_SKIP names unknown steps: ' + ', '.join(sorted(unknown)))
     skipped = [s for s in NEEDS if s in wanted and s in skip]
+    if {'browser', 'wasm-build', 'wasm-lanes-check'} <= wanted:
+        NEEDS['wasm-lanes-check'] += ('wasm-build',)
     if resume and skip:
         raise ValueError('--resume is incompatible with OG_GATE_SKIP')
     jobs = int(os.environ.get('OG_GATE_JOBS', '2'))

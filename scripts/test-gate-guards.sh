@@ -201,8 +201,8 @@ for bad in none tsconfig.runtime.json; do
   if { [ "$bad" = none ] && [ "$rc" -ne 0 ]; } || { [ "$bad" != none ] && [ "$rc" -eq 0 ]; }; then
     echo "FAIL engine-typecheck with $bad: $out"; exit 1
   fi
-  [ "$(cat "$calls")" = "$(printf 'check tsconfig.json\ncheck tsconfig.runtime.json\ncheck tsconfig.templates.json')" ] ||
-    { echo 'FAIL engine-typecheck did not check all configurations'; exit 1; }
+  [ "$(cat "$calls")" = 'check tsconfig.runtime.json' ] ||
+    { echo 'FAIL engine-typecheck did not exercise the real CLI config invocation'; exit 1; }
 done
 echo 'ok   engine typecheck covers quick/full and propagates runtime errors without wasm'
 
