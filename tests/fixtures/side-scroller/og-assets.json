@@ -1,0 +1,95 @@
+{
+  "version": 1,
+  "files": [
+    {
+      "path": "assets/bg/ground.png",
+      "sha256": "3aa41170f730690e230eafa3e09c51cd212aa84a8d03085b7066cc3f4a2924a2",
+      "size": 32774,
+      "visibility": "public"
+    },
+    {
+      "path": "assets/bg/walls.png",
+      "sha256": "ff17f604df5bcea809f79910bff298851743908669f600e7b75571ef13b916d8",
+      "size": 10785,
+      "visibility": "public"
+    },
+    {
+      "path": "assets/hero/hero_attack.gif",
+      "sha256": "a411442a975eea8c83180244fc2ed1e905fd1fa4170b651c448a71172d130618",
+      "size": 430626,
+      "visibility": "public"
+    },
+    {
+      "path": "assets/hero/hero_idle.gif",
+      "sha256": "7083896a35e46ed16805440281be4c80e37949e61b4b428691fdaa49edcd627e",
+      "size": 394522,
+      "visibility": "public"
+    },
+    {
+      "path": "assets/hero/hero_run.gif",
+      "sha256": "4f8c5c584789a2b4bf21b76218369112545bcc307d9249654fa8273e3ed1b6d2",
+      "size": 442349,
+      "visibility": "public"
+    },
+    {
+      "path": "assets/hero/slime.gif",
+      "sha256": "3ec8d11efca894801877c5c818c008bbbc1aab3fe31ffa2562b961914f4e7c08",
+      "size": 260376,
+      "visibility": "public"
+    },
+    {
+      "path": "assets/props/chain.png",
+      "sha256": "0a5afa5d89ffb81e21b6ddf80a34e02ce96ff74da674176580fc2f23b824afcd",
+      "size": 112,
+      "visibility": "public"
+    },
+    {
+      "path": "assets/props/flame.png",
+      "sha256": "e2d26e967094ae98228dc6ded5b91d8e2465e098258ed4042f6f4e455f081db7",
+      "size": 165,
+      "visibility": "public"
+    },
+    {
+      "path": "assets/props/moon.png",
+      "sha256": "a9cef63fac36c4cbbc8fc8374662bd0311f1784366c0e9571e6f3d9abf9f913c",
+      "size": 265,
+      "visibility": "public"
+    },
+    {
+      "path": "assets/props/mushroom.png",
+      "sha256": "9ed1d59f72d8e04df68cf08f5f46ab62eadc9a4e1f71e7797b386a20684460e5",
+      "size": 149,
+      "visibility": "public"
+    },
+    {
+      "path": "assets/props/pillar.png",
+      "sha256": "ab6d5f97fa1b7996261ffe33877f3b894384c0bc42d67239e1fc810b7b565040",
+      "size": 395,
+      "visibility": "public"
+    },
+    {
+      "path": "assets/props/sword.png",
+      "sha256": "47176e1ea688e9144e5a13b1e9479d8def9825045301c07897d977b0815025ed",
+      "size": 116,
+      "visibility": "public"
+    },
+    {
+      "path": "assets/props/torch.png",
+      "sha256": "e6e83f893d11efb5f31d9f955c1ec21501204fc41c91a1a8098c50243a27f5b7",
+      "size": 173,
+      "visibility": "public"
+    },
+    {
+      "path": "assets/props/tufts_a.png",
+      "sha256": "43f6c9429304d22ebbeac044c39296c38b64f01508ebb926700b4f6c7b5f7a71",
+      "size": 148,
+      "visibility": "public"
+    },
+    {
+      "path": "assets/props/tufts_b.png",
+      "sha256": "bc3722ff6c8ce1e0ef91f4f9405b5f0ebf116d2cb500238846b3fb85e8356a5a",
+      "size": 157,
+      "visibility": "public"
+    }
+  ]
+}

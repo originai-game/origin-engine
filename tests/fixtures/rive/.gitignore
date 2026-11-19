@@ -1,0 +1,11 @@
+# og-assets: the files og-assets.json pins, installed by `bun scripts/assets.ts ensure` (written by the tool)
+/assets/cubic_value_test.riv
+/assets/custom_image_name.riv
+/assets/hello_world.riv
+/assets/hosted_image_file.riv
+/assets/light_switch.riv
+/assets/nested_artboard_opacity.riv
+/assets/shapetest.riv
+/assets/text_style_keyed_font.riv
+/assets/two_artboards.riv
+# og-assets end

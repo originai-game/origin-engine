@@ -1,0 +1,17 @@
+{
+  "version": 1,
+  "files": [
+    {
+      "path": "src/frame/testdata/flip-reference.png",
+      "sha256": "34b2fdff9df47b1a65189c19256b9beda8e6c9b90e579b524efc2a55172eda4d",
+      "size": 808,
+      "visibility": "public"
+    },
+    {
+      "path": "src/frame/testdata/flip-test.png",
+      "sha256": "e1b91e6a701a91f08fdb3ca89e183ab8da977792368618415587aaeb5a36aeae",
+      "size": 856,
+      "visibility": "public"
+    }
+  ]
+}

@@ -1,0 +1,4 @@
+# og-assets: the files og-assets.json pins, installed by `bun scripts/assets.ts ensure` (written by the tool)
+/src/frame/testdata/flip-reference.png
+/src/frame/testdata/flip-test.png
+# og-assets end

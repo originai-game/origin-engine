@@ -1,0 +1,17 @@
+{
+  "version": 1,
+  "files": [
+    {
+      "path": "assets/models/cornell.glb",
+      "sha256": "3747974f3a7b6360f19bf69ce01f89692dc3f83773dc97403bd595483d8f9d55",
+      "size": 4536,
+      "visibility": "public"
+    },
+    {
+      "path": "assets/scenes/cornell.lightmap.ktx2",
+      "sha256": "4801095f1c72710a4c015ee3ff47efa1b4706d5179529f036cd750f1529ae486",
+      "size": 55139,
+      "visibility": "public"
+    }
+  ]
+}

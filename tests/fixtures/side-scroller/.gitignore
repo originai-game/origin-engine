@@ -1,3 +1,21 @@
 cooked/
 .og/
 og-out/
+
+# og-assets: the files og-assets.json pins, installed by `bun scripts/assets.ts ensure` (written by the tool)
+/assets/bg/ground.png
+/assets/bg/walls.png
+/assets/hero/hero_attack.gif
+/assets/hero/hero_idle.gif
+/assets/hero/hero_run.gif
+/assets/hero/slime.gif
+/assets/props/chain.png
+/assets/props/flame.png
+/assets/props/moon.png
+/assets/props/mushroom.png
+/assets/props/pillar.png
+/assets/props/sword.png
+/assets/props/torch.png
+/assets/props/tufts_a.png
+/assets/props/tufts_b.png
+# og-assets end

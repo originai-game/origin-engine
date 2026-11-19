@@ -1,0 +1,29 @@
+{
+  "version": 1,
+  "files": [
+    {
+      "path": "assets/textures/atlas.png",
+      "sha256": "5618c4daa45fc2071dacf76d302e4bf100fde7f68efc2be1c4e909625fc651dc",
+      "size": 46280,
+      "visibility": "public"
+    },
+    {
+      "path": "assets/textures/noise.png",
+      "sha256": "81bea79e962ee8451a04b0fc170e078533d89ad6ad1e038bb99b7b7362492691",
+      "size": 7558,
+      "visibility": "public"
+    },
+    {
+      "path": "assets/textures/puff.png",
+      "sha256": "35d745364de4ecf2915d2f514d463707e14a82b3b11285b5926d4891ee5d0a31",
+      "size": 1623,
+      "visibility": "public"
+    },
+    {
+      "path": "assets/textures/spark.png",
+      "sha256": "bbdb0455ec79bfe41bd15ae8df6fd9ad75867d3b2486e52f5053026e0029fa58",
+      "size": 1148,
+      "visibility": "public"
+    }
+  ]
+}

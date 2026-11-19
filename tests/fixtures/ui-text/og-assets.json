@@ -1,0 +1,53 @@
+{
+  "version": 1,
+  "files": [
+    {
+      "path": "assets/fonts/EBGaramond-Medium.ttf",
+      "sha256": "2f298fc1170f7154a7e439bef8e41108e392b70420e591e4b1422876345d40f0",
+      "size": 64276,
+      "visibility": "public"
+    },
+    {
+      "path": "assets/fonts/NotoSansHebrew-subset.ttf",
+      "sha256": "db1f77539b944816428e1e2c0101d285d40f6d36b54f39b53544f7198a7cd50e",
+      "size": 4128,
+      "visibility": "public"
+    },
+    {
+      "path": "assets/fonts/NotoSansJP-subset.otf",
+      "sha256": "e602ddee9b4b3991189abf55d673e537abb40162813cdd46776158282d592d90",
+      "size": 541632,
+      "visibility": "public"
+    },
+    {
+      "path": "assets/fonts/NotoSansKR-subset.otf",
+      "sha256": "501039d2164f025ac84d4b4109eac8d04f4c8c477b44a46f519dffa5d07973b5",
+      "size": 159736,
+      "visibility": "public"
+    },
+    {
+      "path": "assets/fonts/NotoSansSC-Regular-subset.ttf",
+      "sha256": "28ab878e06eb37315a375206ce0ecc620db87603e5af5239349036b0a690450f",
+      "size": 2514328,
+      "visibility": "public"
+    },
+    {
+      "path": "assets/fonts/Nunito-Rounded.ttf",
+      "sha256": "f9ce967cc112da9e6b474740e451a558212ecd1667a44cfda352db0a56c7f428",
+      "size": 31664,
+      "visibility": "public"
+    },
+    {
+      "path": "assets/fonts/test_glyphs-glyf_colr_1.ttf",
+      "sha256": "7a69dec6d8191cf7e3b9b59de362b1d76007c322be83b09b23e7c4b3940a5669",
+      "size": 21568,
+      "visibility": "public"
+    },
+    {
+      "path": "assets/textures/backdrop.png",
+      "sha256": "2e89c7a9d02d13c3b6ce1ed5c0f56102c439754a8309d3c0920e57c010b95245",
+      "size": 3315,
+      "visibility": "public"
+    }
+  ]
+}

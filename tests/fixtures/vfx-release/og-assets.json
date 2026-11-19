@@ -1,0 +1,11 @@
+{
+  "version": 1,
+  "files": [
+    {
+      "path": "spark-pack/spark.png",
+      "sha256": "bbdb0455ec79bfe41bd15ae8df6fd9ad75867d3b2486e52f5053026e0029fa58",
+      "size": 1148,
+      "visibility": "public"
+    }
+  ]
+}

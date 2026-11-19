@@ -1,3 +1,8 @@
 cooked/
 .og/
 og-out/
+
+# og-assets: the files og-assets.json pins, installed by `bun scripts/assets.ts ensure` (written by the tool)
+/assets/models/stout.glb
+/assets/models/strider.glb
+# og-assets end
