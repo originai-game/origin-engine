@@ -217,11 +217,12 @@ pub(crate) fn register_render_dump(probe: &mut Probe, engine: u32) {
                 "debugCoverage": crate::present::geometry::debug_coverage(crate::present::geometry::current_view(&rs)),
                 "lodLevels": &levels[..last],
                 // HLOD (present/hlod.rs): the trees walked, the proxies
-                // drawn (`unloaded`: of cells not loaded) and the models
-                // they drew in place of.
+                // drawn (`unloaded`: of cells not loaded; `lit`: with
+                // their models' bake) and the models they drew in place of.
                 "hlod": {
                     "scenes": rs.hlod.drawn.scenes,
                     "proxies": rs.hlod.drawn.proxies,
+                    "lit": rs.hlod.drawn.lit,
                     "unloaded": rs.hlod.drawn.unloaded,
                     "replaced": rs.hlod.drawn.replaced,
                 },

@@ -31,6 +31,14 @@
 //! own model and look. One destroyed, hidden, moved, tinted or flashing
 //! house returns its node, and every node above it, to their models.
 //!
+//! **Baked lighting.** `og bake lightmaps` lights a scene's proxies by
+//! its static models' bake and writes each into the scene's lightmap as an
+//! entry of its own asset. When a tree loads, every proxy whose entry
+//! matches its geometry gets its lightmapped parts ([`Lit`]), drawn while
+//! RenderSettings.bakedLighting is on, as the models' are; a stale bake
+//! leaves the proxies unbaked, as it leaves the models. A cell's proxies
+//! are lit while the cell is not loaded too.
+//!
 //! **World cells.** A cell's sub-scene has its own tree, kept in its declaring
 //! bundle. While the cell is unloaded its proxies draw at the cell's pose
 //! with nothing behind them, so the far world is there before it streams:
@@ -80,6 +88,13 @@ struct Place {
     serial: u64,
 }
 
+/// A proxy drawn with its bake: its parts re-indexed by the lightmap's
+/// vertices, and each new mesh's lightmap coordinates and pages.
+pub(crate) struct Lit {
+    pub parts: Parts,
+    pub meshes: Vec<(usize, og_render::BakedMesh)>,
+}
+
 /// What the last frame drew through HLOD (the probe's `dump_render`).
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
 pub(crate) struct Drawn {
@@ -88,6 +103,8 @@ pub(crate) struct Drawn {
     /// Proxies drawn, and how many of them for cells not loaded.
     pub proxies: u32,
     pub unloaded: u32,
+    /// Of them, drawn with their models' bake.
+    pub lit: u32,
     /// Models a proxy drew in place of.
     pub replaced: u32,
 }
@@ -98,6 +115,8 @@ pub(crate) struct HlodState {
     trees: BTreeMap<(usize, String), Option<Arc<Tree>>>,
     /// Unshared model resources owned by trees, also across a hot reload.
     pub proxies: IdMap<u64, Vec<og_render::TextureHandle>>,
+    /// The proxies lit by their models' bake, by handle.
+    pub lit: IdMap<u64, Lit>,
     places: Vec<Place>,
     serial: u64,
     pub drawn: Drawn,
@@ -209,6 +228,7 @@ fn tree(eng: &Engine, id: &str, owner: usize) -> Option<Arc<Tree>> {
                 }
             }
         }
+        light(eng, id, owner, &tree);
         Ok(Some(tree))
     })();
     let tree = match loaded {
@@ -224,6 +244,135 @@ fn tree(eng: &Engine, id: &str, owner: usize) -> Option<Arc<Tree>> {
     };
     eng.render.borrow_mut().hlod.trees.insert(key, tree.clone());
     tree
+}
+
+/// Gives the proxies of `tree` (scene `scene` of bundle `owner`) their
+/// lightmapped parts from the scene's bake, when it has one that matches
+/// the scene and the proxy (`og bake lightmaps` writes an entry per proxy,
+/// keyed by its asset).
+fn light(eng: &Engine, scene: &str, owner: usize, tree: &Tree) {
+    let lightmap_id = og_bundle::lightmap::lightmap_id(scene);
+    let lm = {
+        let assets = eng.assets.borrow();
+        let Ok((bundle, _)) = assets.bundle_from(&lightmap_id, Some(owner)) else {
+            return;
+        };
+        if bundle.output(&lightmap_id).is_err() {
+            return;
+        }
+        let Ok((bytes, bundle)) = assets.blob_from(&lightmap_id, Some(owner)) else {
+            return;
+        };
+        let Ok(lm) = bundle.lightmap(&lightmap_id, bytes.bytes()) else {
+            return;
+        };
+        let scene_hash = bundle.asset(scene).map(|a| a.source_hash).unwrap_or(0);
+        if lm.file.scene_hash != scene_hash {
+            return;
+        }
+        lm
+    };
+    let by_asset: BTreeMap<&str, &og_bundle::lightmap::BakedModel> = lm
+        .file
+        .models
+        .iter()
+        .map(|m| (m.asset.as_str(), m))
+        .collect();
+    let mut rs = eng.render.borrow_mut();
+    // Each proxy's entry, when its geometry is what the bake read.
+    let mut entries = Vec::new();
+    for (n, &h) in tree.proxies.iter().enumerate() {
+        let Some(&m) = by_asset.get(og_bundle::hlod::node_id(scene, n).as_str()) else {
+            continue;
+        };
+        let Some(parts) = rs.models.get(&h) else {
+            continue;
+        };
+        let geometry = og_bundle::lightmap::geometry_hash(
+            parts.iter().filter_map(|&(mesh, _, _)| rs.scene.mesh(mesh)),
+        );
+        if geometry == m.hash && parts.len() == m.parts.len() {
+            entries.push((h, parts.clone(), m));
+        }
+    }
+    // The pages they read, alone: the models' stay the scene's own.
+    let mut used: Vec<u32> = entries
+        .iter()
+        .flat_map(|(_, _, m)| {
+            m.parts
+                .iter()
+                .flat_map(|p| p.uv.iter().map(|uv| uv[2] as u32))
+        })
+        .collect();
+    used.sort_unstable();
+    used.dedup();
+    if used.is_empty() {
+        return;
+    }
+    let to_f32 = og_bundle::lightmap::f16_to_f32;
+    let pages = Arc::new(og_render::LightmapPages {
+        width: lm.width,
+        height: lm.height,
+        pages: used
+            .iter()
+            .filter_map(|&p| lm.pages.get(p as usize))
+            .map(|p| {
+                p.as_chunks::<4>()
+                    .0
+                    .iter()
+                    .map(|t| [to_f32(t[0]), to_f32(t[1]), to_f32(t[2]), to_f32(t[3])])
+                    .collect()
+            })
+            .collect(),
+    });
+    for (h, parts, m) in entries {
+        let mut lit = Lit {
+            parts: Vec::with_capacity(parts.len()),
+            meshes: Vec::new(),
+        };
+        for (&(mesh, material, local), bp) in parts.iter().zip(&m.parts) {
+            let Some(data) = rs.scene.mesh(mesh) else {
+                continue;
+            };
+            if data.vertices.len() != bp.vertices as usize
+                || bp.xref.iter().any(|&x| x as usize >= data.vertices.len())
+                || bp
+                    .uv
+                    .iter()
+                    .any(|uv| used.binary_search(&(uv[2] as u32)).is_err())
+            {
+                continue;
+            }
+            let baked = og_render::MeshData {
+                vertices: bp.xref.iter().map(|&x| data.vertices[x as usize]).collect(),
+                indices: bp.indices.clone(),
+            };
+            let uvs = bp
+                .uv
+                .iter()
+                .map(|uv| {
+                    let page = used.binary_search(&(uv[2] as u32)).unwrap_or(0);
+                    [uv[0], uv[1], page as f32]
+                })
+                .collect();
+            let handle = rs.scene.add_mesh(baked);
+            lit.meshes.push((
+                handle.index(),
+                og_render::BakedMesh {
+                    pages: pages.clone(),
+                    uvs: Arc::new(og_render::LightmapUvs { uvs }),
+                },
+            ));
+            lit.parts.push((handle, material, local));
+        }
+        if lit.parts.len() == parts.len() {
+            rs.hlod.lit.insert(h, lit);
+        } else {
+            for (mesh, _, _) in lit.parts {
+                rs.scene.remove_mesh(mesh);
+            }
+        }
+    }
 }
 
 /// A bundle's tree is still owned by a live placement, including an
@@ -288,6 +437,12 @@ fn release_tree(rs: &mut RenderState, tree: &Tree) {
 }
 
 pub(crate) fn release_proxy(rs: &mut RenderState, key: u64) {
+    if let Some(lit) = rs.hlod.lit.remove(&key) {
+        for (mesh, _, _) in lit.parts {
+            crate::present::geometry::forget_mesh(rs, mesh);
+            rs.scene.remove_mesh(mesh);
+        }
+    }
     if let Some(textures) = rs.hlod.proxies.remove(&key) {
         rs.decoded.hidden_models.remove(&key);
         rs.decoded.forget_textures(&textures);
@@ -511,6 +666,8 @@ pub(crate) struct View<'a> {
     pub view_height: f32,
     pub bias: f32,
     pub debug: bool,
+    /// RenderSettings.bakedLighting: lit proxies draw their [`Lit`] parts.
+    pub baked: bool,
 }
 
 /// A scene's proxy maps are presentation resources, just like its models'.
@@ -548,6 +705,7 @@ pub(crate) fn draw(
     let ticks = f64::from(crate::present::reveal::SECONDS) / f64::from(dt.max(1e-6));
     let progress = |at: f64| ((now - at) / ticks).clamp(0.0, 1.0) as f32;
     let mut places = std::mem::take(&mut rs.hlod.places);
+    let lit = std::mem::take(&mut rs.hlod.lit);
     let before = places.len();
     // A cell that is gone takes its place with it.
     places.retain(|p| !p.cell || p.root.is_some_and(|c| world.is_alive(Entity::from_bits(c))));
@@ -612,10 +770,12 @@ pub(crate) fn draw(
         stack.reverse();
         while let Some((n, crossing)) = stack.pop() {
             let node = &nodes[n];
-            let parts = view
-                .models
-                .get(&tree.proxies[n])
-                .filter(|_| !rs.decoded.hidden_models.contains_key(&tree.proxies[n]));
+            // With its bake when it has one and baked lighting is on.
+            let handle = tree.proxies[n];
+            let lit_parts = lit.get(&handle).filter(|_| view.baked).map(|l| &l.parts);
+            let parts = lit_parts
+                .or_else(|| view.models.get(&handle))
+                .filter(|_| !rs.decoded.hidden_models.contains_key(&handle));
             // Every member under it: its children's, then its own.
             let under = node.members.0..node.members.1;
             let children: Vec<usize> = tree.hlod.children(Some(n)).collect();
@@ -714,6 +874,7 @@ pub(crate) fn draw(
                 place.fades[n + 1..node.end].fill(None);
             }
             drawn.proxies += 1;
+            drawn.lit += u32::from(lit_parts.is_some());
             if !loaded {
                 drawn.unloaded += 1;
             } else if t.is_none() && crossing.is_none() {
@@ -757,6 +918,7 @@ pub(crate) fn draw(
     drawn.replaced = replaced.len() as u32;
     rs.hlod.crossing = crossed;
     rs.hlod.places = places;
+    rs.hlod.lit = lit;
     rs.hlod.drawn = drawn;
     rs.hlod.settled = settled;
     replaced

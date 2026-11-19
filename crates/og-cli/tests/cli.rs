@@ -66,6 +66,7 @@ fn fake_tsrs(dir: &Path, version: &str, out: &str, status: i32, lib: bool) -> Pa
 mod cli {
     use super::*;
 
+    mod bake;
     mod check;
     mod create;
     mod i18n;
