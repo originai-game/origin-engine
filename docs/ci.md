@@ -222,6 +222,15 @@ wait, command wall, log bytes and the logical bytes of known published
 products. Cargo's internal waits count as command wall; product bytes
 are not peak disk usage.
 
+On the Linux L4, `scripts/check.sh full --resume RUN_ID` replays a prior
+forced run with the same step selection (repeat `--only` if used). The run
+ID is the timestamp-pid directory name printed next to `logs`. Bun is
+reused only after a complete checked pass; browser receipts are per file.
+Reuse is printed with the source run. A missing receipt or different
+tree, environment, tools, device, browser or product bytes runs the test.
+Prerequisites still run, and neither `--all` nor the landing's full-lane
+stamp accepts reused results as a new whole-lane pass.
+
 Selection uses Cargo's resolved dependency graph, Bun's import graph and
 fixture input manifests; passing snapshots are git trees of the working
 copy under `target/og-gate/green`. A test binary's closure is its own

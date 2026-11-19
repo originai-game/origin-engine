@@ -148,6 +148,28 @@ esac
   { echo 'FAIL the gate summary does not record the skips'; exit 1; }
 echo 'ok   OG_GATE_SKIP refuses unknown steps and reports skips as not run'
 
+# A failed batch can leave receipts for completed browser files, but a
+# fresh force must never consume one and a failed file has no receipt.
+resume_guard() (
+  export GATE_LOGS="$scratch/resume/100-1" OG_GATE_RESUME=""
+  mkdir -p "$GATE_LOGS" "$scratch/resume/200-1" || exit 1
+  local key other helper
+  helper="$root/scripts/gate/continuation.py"
+  key="$(printf '%064d' 1)"; other="$(printf '%064d' 2)"
+  python3 "$helper" pass browser run "$key" || exit 1
+  GATE_LOGS="$scratch/resume/200-1" python3 "$helper" reuse browser run "$key" && exit 1
+  export OG_GATE_RESUME=100-1 GATE_LOGS="$scratch/resume/200-1"
+  python3 "$helper" reuse browser run "$other" && exit 1
+  python3 "$helper" reuse browser player "$key" && exit 1
+  python3 "$helper" reuse browser run "$key" || exit 1
+  cmp "$GATE_LOGS/browser-run.receipt" "$scratch/resume/100-1/browser-run.receipt" || exit 1
+  local out
+  out="$(cd "$root" && python3 scripts/gate/run.py --all --resume 100-1 2>&1)" && exit 1
+  [[ "$out" == *'incompatible with a fresh forced run'* ]]
+)
+resume_guard || { echo 'FAIL continuation receipt guards'; exit 1; }
+echo 'ok   continuation reuses only a completed matching receipt, never on a fresh force'
+
 # Engine type errors must block both lanes without needing wasm or a GPU.
 python3 - "$root/scripts/gate/run.py" <<'PY'
 import runpy

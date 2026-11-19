@@ -67,12 +67,21 @@ case "$1" in
     # each runs even when one before it failed.
     tests="$(bun -e 'console.log(require("./packages/engine/package.json").scripts["test:browser"])' | grep -o 'tests/web/[a-z0-9-]*\.ts')"
     [ -n "$tests" ] && rc=0 || { og_err "browser: packages/engine's test:browser names no tests/web file"; rc=1; }
+    key="$(continuation_key browser)" || key=""
     for test in $tests; do
-      (cd packages/engine && bun "$test") || rc=1
+      name="${test##*/}"; name="${name%.ts}"
+      if [ -n "$key" ] && python3 scripts/gate/continuation.py reuse browser "$name" "$key"; then continue; fi
+      if (cd packages/engine && bun "$test"); then
+        if [ -n "$key" ]; then
+          python3 scripts/gate/continuation.py pass browser "$name" "$key" || og_err "browser: could not write $name continuation receipt"
+        fi
+      else
+        rc=1
+      fi
     done ;;
   *) "step_$(gate_key "$1")"; rc=$? ;;
 esac
-if [ "$rc" = 0 ]; then og_green_set "$1"; elif [ "$rc" != 3 ]; then og_green_clear "$1"; fi
+if [ "$rc" = 0 ]; then og_green_set "$1"; elif [ "$rc" != 3 ] && [ "$rc" != 4 ]; then og_green_clear "$1"; fi
 [ -z "$SKIP_NOTE" ] || echo "$SKIP_NOTE"
 [ -z "$PASS_NOTE" ] || echo "$PASS_NOTE"
 exit "$rc"

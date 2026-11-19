@@ -469,9 +469,20 @@ require_web_ready() {
   require_wasm "$1" && require_ready "$1" web-ready
 }
 
+continuation_key() {
+  [ "${FORCE_ALL:-0}" = 1 ] && python3 scripts/gate/continuation.py key "$1"
+}
+
 step_bun_test() {
   require_web_ready bun-test || return 1
-  bun scripts/gate/bun.ts full
+  local key rc
+  key="$(continuation_key bun-test)" || key=""
+  if [ -n "$key" ] && python3 scripts/gate/continuation.py reuse bun-test suite "$key"; then return 4; fi
+  bun scripts/gate/bun.ts full; rc=$?
+  if [ "$rc" = 0 ] && [ -n "$key" ]; then
+    python3 scripts/gate/continuation.py pass bun-test suite "$key" || og_err 'bun-test: could not write continuation receipt'
+  fi
+  return "$rc"
 }
 
 # The test fixtures (tests/fixtures/*/, one per feature, each with its

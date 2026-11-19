@@ -3,6 +3,7 @@
 import json
 import os
 from pathlib import Path
+import re
 import signal
 import subprocess
 import sys
@@ -90,10 +91,19 @@ def record_timing(row, logs, step, duration, rc, env, cancelled=False):
 def main():
     args = sys.argv[1:]
     if any(a in args for a in ('--help', '-h', '--list')):
-        print('scripts/check.sh [quick|full] [--all]\nscripts/check.sh --only STEP...')
+        print('scripts/check.sh [quick|full] [--all | --resume RUN_ID]\nscripts/check.sh --only STEP...')
         print('Steps: ' + ' '.join(NEEDS))
         return 0
-    force = '--all' in args or bool(os.environ.get('CI'))
+    resume = None
+    if '--resume' in args:
+        i = args.index('--resume')
+        if i + 1 >= len(args) or not re.fullmatch(r'[0-9]+-[0-9]+', args[i + 1]):
+            raise ValueError('--resume requires a gate run directory name (timestamp-pid)')
+        if '--all' in args or os.environ.get('CI'):
+            raise ValueError('--resume is incompatible with a fresh forced run (--all or CI)')
+        resume = args[i + 1]
+        del args[i:i + 2]
+    force = bool(resume) or '--all' in args or bool(os.environ.get('CI'))
     only = '--only' in args
     args = [a for a in args if a not in ('--all', '--only')]
     lane = args.pop(0) if args and args[0] in ('quick', 'full') else 'full'
@@ -122,11 +132,16 @@ def main():
     if unknown:
         raise ValueError('OG_GATE_SKIP names unknown steps: ' + ', '.join(sorted(unknown)))
     skipped = [s for s in NEEDS if s in wanted and s in skip]
+    if resume and skip:
+        raise ValueError('--resume is incompatible with OG_GATE_SKIP')
     jobs = int(os.environ.get('OG_GATE_JOBS', '2'))
     threads = int(os.environ.get('OG_GATE_THREADS', '2'))
     if jobs < 1 or threads < 1:
         raise ValueError('OG_GATE_JOBS and OG_GATE_THREADS must be positive')
-    logs = Path(os.environ['OG_EVIDENCE_DIR']) / 'gate' / 'runs' / f'{time.time_ns()}-{os.getpid()}'
+    runs = Path(os.environ['OG_EVIDENCE_DIR']) / 'gate' / 'runs'
+    if resume and not (runs / resume / 'run.json').is_file():
+        raise ValueError(f'--resume: no run {resume} in {runs}')
+    logs = runs / f'{time.time_ns()}-{os.getpid()}'
     logs.mkdir(parents=True)
     env = dict(os.environ, GATE_LOGS=str(logs), OG_GATE_LANE=lane,
                FORCE_ALL=str(int(force)), OG_GATE_ALL='1' if lane == 'full' or force else '',
@@ -137,6 +152,7 @@ def main():
     env['OG_WASM_VARIANTS'] = 'all' if 'browser' in wanted else 'reference' if 'web-reference' in wanted else 'dev'
     env['OG_GATE_STEPS'] = ' '.join(sorted(wanted - set(skipped)))
     env.pop('OG_WASM_STALE', None)
+    env['OG_GATE_RESUME'] = resume or ''
     # Capture Cargo's authoritative graph once per run, before parallel readers.
     with (logs / 'cargo.json').open('w') as out:
         subprocess.run(['cargo', 'metadata', '--locked', '--format-version=1'], stdout=out, check=True)
@@ -184,10 +200,11 @@ def main():
                 duration = time.monotonic() - begin
                 record_timing(timings[step], logs, step, duration, rc, env)
                 print((logs / f'{step}.log').read_text(), end='', flush=True)
-                status = 'PASS' if rc == 0 else 'SKIPPED' if rc == 3 else 'FAIL'
+                reused = resume and rc == 4 and step == 'bun-test' and (logs / 'bun-test-suite.receipt').is_file()
+                status = 'REUSED' if reused else {0: 'PASS', 3: 'SKIPPED'}.get(rc, 'FAIL')
                 completed[step] = f'{status} {step} ({duration:.1f}s)'
                 print(completed[step], flush=True)
-                if rc not in (0, 3):
+                if status == 'FAIL':
                     return 1
             if not active and len(completed) < len(wanted) and not any(
                 s not in completed and all(d in completed for d in NEEDS[s]) for s in wanted
@@ -198,10 +215,12 @@ def main():
         # The whole full lane forced through (--all), every step run and
         # passed, none unchecked: scripts/land.sh lands this tree without its
         # opening quick (docs/ci.md §Lanes).
-        if whole and env.get('OG_GATE_TREE') and all(completed[s].startswith('PASS ') for s in wanted):
+        if whole and not resume and env.get('OG_GATE_TREE') and all(completed[s].startswith('PASS ') for s in wanted):
             lane_record.parent.mkdir(parents=True, exist_ok=True)
             lane_record.write_text(env['OG_GATE_TREE'] + '\n')
         note = f'; NOT RUN (OG_GATE_SKIP): {", ".join(skipped)}' if skipped else ''
+        if resume:
+            note += f'; continuation of {resume} (see per-suite reuse records)'
         print(f'gate PASSED ({ran}/{len(wanted)} steps, {time.monotonic() - started:.1f}s{note})', flush=True)
         return 0
     finally:
