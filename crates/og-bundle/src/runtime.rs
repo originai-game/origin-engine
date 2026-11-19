@@ -1528,7 +1528,8 @@ impl Bundle {
         let meta = one::<format::HlodMeta>(&blob)?;
         let nodes = table::<format::HlodNodeRow>(&blob, "nodes")?;
         let members = table::<format::HlodMemberRow>(&blob, "members")?;
-        crate::hlod::Hlod::from_rows(&meta, &nodes, &members).map_err(|e| invalid(&blob, e))
+        let cells = table::<format::HlodCellRow>(&blob, "cells")?;
+        crate::hlod::Hlod::from_rows(&meta, &nodes, &members, &cells).map_err(|e| invalid(&blob, e))
     }
 
     /// The asset bytes of a fracture blob (`og.Fracture`, a model's

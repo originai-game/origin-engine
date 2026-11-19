@@ -79,7 +79,9 @@ use super::{
     prefab, stamp,
 };
 use crate::cook::Split;
-use crate::format::{self, BlobKind, HlodMemberRow, HlodMeta, HlodNodeRow, NONE, kind, row_hash};
+use crate::format::{
+    self, BlobKind, HlodCellRow, HlodMemberRow, HlodMeta, HlodNodeRow, NONE, kind, row_hash,
+};
 use crate::hlod::{hlod_id, node_id};
 use glam::{Mat3, Mat4, Quat, Vec2, Vec3, Vec4};
 use og_bake::scene::{Image as Texels, Mesh};
@@ -290,14 +292,24 @@ fn transform(b: &Block) -> Mat4 {
     )
 }
 
+/// A cell entity of a scene: its index, its matrix in the scene's space
+/// and its sub-scene.
+type PlacedCell = (u32, Mat4, String);
+
 /// The scene's members, with how many static models draw themselves by
-/// reason. Entities are counted as the scene cook lays them: depth first,
-/// parents first.
+/// reason, and its cells (entities with a `scene` line and a StreamCell).
+/// Entities are counted as the scene cook lays them: depth first, parents
+/// first.
 fn collect<'a>(
     cx: &Cx<'a>,
     flat: &[prefab::Node],
     settings: &Settings,
-) -> (Vec<Member<'a>>, BTreeMap<&'static str, usize>) {
+) -> (
+    Vec<Member<'a>>,
+    BTreeMap<&'static str, usize>,
+    Vec<PlacedCell>,
+) {
+    let mut cells = Vec::new();
     let by_rel: BTreeMap<&str, &'a Source> =
         cx.sources.iter().map(|s| (s.rel.as_str(), s)).collect();
     let mut fits: BTreeMap<&str, Result<Fit, &'static str>> = BTreeMap::new();
@@ -313,9 +325,17 @@ fn collect<'a>(
         let mut model = None;
         let mut is_static = false;
         let mut own_look = None;
+        let (mut sub, mut is_cell) = (None, false);
         let truth = |e: &Entry| e.values.first().and_then(|v| v.as_bool());
         for e in &n.entries {
             match (e.key.as_str(), &e.block) {
+                ("scene", None) => {
+                    sub = e
+                        .string(0)
+                        .ok()
+                        .map(|s| crate::runtime::asset_id(s).to_string())
+                }
+                ("StreamCell" | "og.StreamCell", Some(_)) => is_cell = true,
                 ("Transform" | "og.Transform", Some(b)) => local = transform(b),
                 ("model", None) => {
                     model = e
@@ -341,6 +361,9 @@ fn collect<'a>(
         }
         let world = parent * local;
         stack.extend(n.children.iter().rev().map(|c| (c, world)));
+        if let (Some(sub), true) = (sub, is_cell) {
+            cells.push((entity, world, sub));
+        }
         let (Some(model), true) = (model, is_static) else {
             continue;
         };
@@ -382,7 +405,7 @@ fn collect<'a>(
             emissive: fit.emissive,
         });
     }
-    (members, left)
+    (members, left, cells)
 }
 
 /// A node as the tree is grown: its children, and the members of its own.
@@ -398,6 +421,7 @@ fn grow(
     level: u32,
     members: Vec<usize>,
     cell: &dyn Fn(usize, u32) -> (i32, i32),
+    wrap: bool,
 ) -> Result<Grown, Vec<usize>> {
     if level == 0 {
         return if members.len() >= 2 {
@@ -416,7 +440,7 @@ fn grow(
     }
     let (mut children, mut own) = (Vec::new(), Vec::new());
     for (_, m) in cells {
-        match grow(level - 1, m, cell) {
+        match grow(level - 1, m, cell, wrap) {
             Ok(g) => children.push(g),
             Err(m) => own.extend(m),
         }
@@ -430,7 +454,7 @@ fn grow(
     own.sort_unstable();
     // Beside children each is a leaf of its own, so every model is in a
     // node without children: the finest proxies of a tree show all of it.
-    if !children.is_empty() {
+    if wrap && !children.is_empty() {
         children.extend(own.drain(..).map(|m| Grown {
             level: 0,
             children: Vec::new(),
@@ -455,6 +479,8 @@ struct NodePlan {
     own: usize,
     level: u32,
     children: Vec<usize>,
+    /// Over cells: the cells' roots it stands for (of `Shared::cells`).
+    cells: Vec<usize>,
     center: Vec3,
     radius: f32,
     emissive: bool,
@@ -476,6 +502,7 @@ fn lay(
         own: g.own.len(),
         level: g.level,
         children: Vec::new(),
+        cells: Vec::new(),
         center: Vec3::ZERO,
         radius: 0.0,
         emissive: false,
@@ -492,6 +519,35 @@ fn lay(
     n.children = children;
     n.end = end;
     n.count = order.len() - n.first;
+    me
+}
+
+/// Lays a node over cells (`g.own` cell indices) and its children after
+/// the scene's own nodes; it holds no member (`first`: past them all).
+fn lay_cells(g: Grown, parent: Option<usize>, nodes: &mut Vec<NodePlan>, first: usize) -> usize {
+    let me = nodes.len();
+    nodes.push(NodePlan {
+        parent,
+        end: 0,
+        first,
+        count: 0,
+        own: 0,
+        level: g.level,
+        children: Vec::new(),
+        cells: g.own,
+        center: Vec3::ZERO,
+        radius: 0.0,
+        emissive: false,
+        stamp: 0,
+    });
+    let children: Vec<usize> = g
+        .children
+        .into_iter()
+        .map(|c| lay_cells(c, Some(me), nodes, first))
+        .collect();
+    let end = nodes.len();
+    nodes[me].children = children;
+    nodes[me].end = end;
     me
 }
 
@@ -831,6 +887,35 @@ impl Proxy {
     }
 }
 
+/// A node's proxy, built once by whichever job asks first.
+type Built = OnceLock<Result<Arc<Proxy>, String>>;
+type ProxyCell = Arc<Built>;
+
+/// The proxy of the node whose stamp is `stamp`, as every plan of this
+/// process shares it while one holds it.
+fn registered(stamp: u64) -> ProxyCell {
+    static BUILT: Mutex<BTreeMap<u64, std::sync::Weak<Built>>> = Mutex::new(BTreeMap::new());
+    let mut built = BUILT.lock().expect("no poisoning");
+    if let Some(cell) = built.get(&stamp).and_then(std::sync::Weak::upgrade) {
+        return cell;
+    }
+    built.retain(|_, w| w.strong_count() > 0);
+    let cell = ProxyCell::default();
+    built.insert(stamp, Arc::downgrade(&cell));
+    cell
+}
+
+/// A cell under a node over cells: the cell entity, its matrix in the
+/// scene's space, its sub-scene's tree (an index of `Shared::subs`) and
+/// the root of it the node stands in for.
+#[derive(Clone, Copy)]
+struct CellRef {
+    entity: u32,
+    matrix: Mat4,
+    sub: usize,
+    root: usize,
+}
+
 /// A model's flattened source, made once by whichever node asks first.
 type FlatCell = Arc<OnceLock<Result<Arc<Flat>, String>>>;
 /// A model's image by its asset, its index and whether it is sRGB.
@@ -846,7 +931,14 @@ struct Shared<'a> {
     members: Vec<Member<'a>>,
     nodes: Vec<NodePlan>,
     left: BTreeMap<&'static str, usize>,
-    proxies: Vec<OnceLock<Result<Arc<Proxy>, String>>>,
+    /// Per node, its proxy: shared by stamp with every other plan that
+    /// builds the same node ([`registered`]), so a cell's root is built
+    /// once for its own scene and the scene over its cells.
+    proxies: Vec<ProxyCell>,
+    /// The cells its nodes over cells stand for, and their sub-scenes'
+    /// trees (planned without outputs of their own).
+    cells: Vec<CellRef>,
+    subs: Vec<Arc<Shared<'a>>>,
     flats: Mutex<BTreeMap<&'a str, FlatCell>>,
     images: Mutex<BTreeMap<ImageKey<'a>, Arc<Mips>>>,
 }
@@ -910,8 +1002,18 @@ impl<'a> Shared<'a> {
         let mut images: Vec<Arc<Mips>> = Vec::new();
         let mut inherited = 0.0f32;
         let mut source_triangles = 0;
-        for &c in &node.children {
-            let p = self.proxy(c)?;
+        // The children's proxies, then the roots of the cells it is over,
+        // each at its cell.
+        let below: Vec<(Arc<Proxy>, Mat4)> = node
+            .children
+            .iter()
+            .map(|&c| Ok((self.proxy(c)?, Mat4::IDENTITY)))
+            .chain(node.cells.iter().map(|&c| {
+                let cell = &self.cells[c];
+                Ok((self.subs[cell.sub].proxy(cell.root)?, cell.matrix))
+            }))
+            .collect::<Result<_, String>>()?;
+        for (p, placement) in &below {
             inherited = inherited.max(p.geometry);
             source_triangles += p.source_triangles;
             let at = images.len();
@@ -942,7 +1044,7 @@ impl<'a> Shared<'a> {
                 emissive_map: emits.then_some(at + 3),
                 ..Default::default()
             });
-            meshes.push(Mesh {
+            let child = Mesh {
                 positions: p.positions.clone(),
                 normals: p.normals.clone(),
                 tangents: p.tangents.clone(),
@@ -950,6 +1052,11 @@ impl<'a> Shared<'a> {
                 indices: p.indices.clone(),
                 material: surfaces.len() - 1,
                 ..Default::default()
+            };
+            meshes.push(if *placement == Mat4::IDENTITY {
+                child
+            } else {
+                placed(&child, *placement)
             });
         }
         let own = node.first + node.count - node.own..node.first + node.count;
@@ -1521,40 +1628,22 @@ fn page_id(scene: &str, n: usize, page: usize) -> String {
     format!("{}-{}", node_id(scene, n), PAGES[page])
 }
 
-/// Plans a scene's HLOD outputs: nothing without an `hlod` block.
-pub(crate) fn plan<'a>(
+/// A scene's tree as planned: its nodes, their members and, `with_cells`,
+/// the nodes over its cells; with the tree's stamp. None when the scene
+/// does not flatten (its own cook reports why).
+fn planned<'a>(
     cx: &Cx<'a>,
-    state: &mut PlanState,
     s: &'a Source,
-    text: &str,
-    outs: &mut Vec<Out<'a>>,
-) {
-    let Ok(doc) = Document::parse(text) else {
-        return;
-    };
-    let mut blocks = doc.body.get_all("hlod");
-    let Some(entry) = blocks.next() else {
-        return;
-    };
-    let refused = |state: &mut PlanState, e: String| {
-        state.early_errors.push((s.rel.clone(), "scene", e));
-    };
-    if let Some(second) = blocks.next() {
-        return refused(
-            state,
-            format!("line {}: a scene has one hlod block", second.line),
-        );
-    }
-    let settings = match Settings::parse(entry) {
-        Ok(v) => v,
-        Err(e) => return refused(state, e),
-    };
+    body: &Block,
+    settings: Settings,
+    with_cells: bool,
+) -> Option<(Arc<Shared<'a>>, u64)> {
     // The scene's own cook reports what does not flatten.
     let texts = |id: &str| cx.prefab_texts.get(id).cloned();
-    let Ok(flat) = prefab::Flattener::new(&texts, cx.schemas).scene(&s.rel, &doc.body) else {
-        return;
-    };
-    let (found, left) = collect(cx, &flat, &settings);
+    let flat = prefab::Flattener::new(&texts, cx.schemas)
+        .scene(&s.rel, body)
+        .ok()?;
+    let (found, left, placed_cells) = collect(cx, &flat, &settings);
     let center = |m: usize| (found[m].lo + found[m].hi) * 0.5;
     let cell = |m: usize, level: u32| {
         let c = center(m);
@@ -1569,7 +1658,7 @@ pub(crate) fn plan<'a>(
     let mut order = Vec::new();
     let mut alone = 0;
     for (_, m) in roots {
-        match grow(MAX_LEVELS, m, &cell) {
+        match grow(MAX_LEVELS, m, &cell, true) {
             Ok(g) => {
                 lay(g, None, &mut nodes, &mut order);
             }
@@ -1614,6 +1703,110 @@ pub(crate) fn plan<'a>(
             &described,
         ]);
     }
+    // Over the cells: each cell's sub-scene's roots, at the cell, grouped
+    // as members are, after the scene's own nodes.
+    let (mut cells, mut subs) = (Vec::new(), Vec::new());
+    if with_cells {
+        let mut by_rel: BTreeMap<&str, usize> = BTreeMap::new();
+        for (entity, matrix, sub) in &placed_cells {
+            let at = match by_rel.get(sub.as_str()) {
+                Some(&at) => Some(at),
+                None => cx
+                    .sources
+                    .iter()
+                    .find(|x| x.rel == *sub)
+                    .and_then(|x| {
+                        let text = String::from_utf8_lossy(&x.bytes);
+                        let doc = Document::parse(&text).ok()?;
+                        let e = doc.body.get_all("hlod").next()?;
+                        let settings = Settings::parse(e).ok()?;
+                        planned(cx, x, &doc.body, settings, false)
+                    })
+                    .map(|(tree, _)| {
+                        subs.push(tree);
+                        by_rel.insert(sub.as_str(), subs.len() - 1);
+                        subs.len() - 1
+                    }),
+            };
+            let Some(at) = at else { continue };
+            let tree: &Shared = &subs[at];
+            for root in (0..tree.nodes.len()).filter(|&r| tree.nodes[r].parent.is_none()) {
+                cells.push(CellRef {
+                    entity: *entity,
+                    matrix: *matrix,
+                    sub: at,
+                    root,
+                });
+            }
+        }
+        let at = |c: usize| {
+            cells[c]
+                .matrix
+                .transform_point3(subs[cells[c].sub].nodes[cells[c].root].center)
+        };
+        let cell_of = |c: usize, level: u32| {
+            let p = at(c);
+            let side = |v: f32| ((v / settings.size).floor() as i32) >> level.min(30);
+            (side(p.x), side(p.z))
+        };
+        let mut groups: BTreeMap<(i32, i32), Vec<usize>> = BTreeMap::new();
+        for c in 0..cells.len() {
+            groups.entry(cell_of(c, MAX_LEVELS)).or_default().push(c);
+        }
+        for (_, c) in groups {
+            if let Ok(g) = grow(MAX_LEVELS, c, &cell_of, false) {
+                lay_cells(g, None, &mut nodes, members.len());
+            }
+        }
+        // Each over its cells' roots and its children: where they stand,
+        // a level above the highest, and a stamp of what they are.
+        let over: Vec<usize> = (0..nodes.len())
+            .rev()
+            .filter(|&n| !nodes[n].cells.is_empty() || nodes[n].count == 0)
+            .collect();
+        for n in over {
+            let (mut lo, mut hi) = (Vec3::splat(f32::MAX), Vec3::splat(f32::MIN));
+            let (mut level, mut emissive, mut described) = (0, false, Vec::new());
+            for &c in &nodes[n].cells {
+                let cell = &cells[c];
+                let root = &subs[cell.sub].nodes[cell.root];
+                let centre = cell.matrix.transform_point3(root.center);
+                let scale = cell
+                    .matrix
+                    .to_scale_rotation_translation()
+                    .0
+                    .abs()
+                    .max_element();
+                lo = lo.min(centre - root.radius * scale);
+                hi = hi.max(centre + root.radius * scale);
+                level = level.max(root.level + 1);
+                emissive |= root.emissive;
+                described.extend_from_slice(&root.stamp.to_le_bytes());
+                described.extend_from_slice(&cell.entity.to_le_bytes());
+                described.extend_from_slice(bytemuck::cast_slice(&cell.matrix.to_cols_array()));
+            }
+            for &c in &nodes[n].children.clone() {
+                let child = &nodes[c];
+                lo = lo.min(child.center - child.radius);
+                hi = hi.max(child.center + child.radius);
+                level = level.max(child.level + 1);
+                emissive |= child.emissive;
+                described.extend_from_slice(&child.stamp.to_le_bytes());
+            }
+            let node = &mut nodes[n];
+            node.center = (lo + hi) * 0.5;
+            node.radius = ((hi - lo) * 0.5).length().max(1e-3);
+            node.level = level;
+            node.emissive = emissive;
+            node.stamp = stamp(&[
+                b"hlod-cells",
+                &[VERSION],
+                &settings_bytes,
+                &level.to_le_bytes(),
+                &described,
+            ]);
+        }
+    }
     let node_stamps: Vec<u8> = nodes.iter().flat_map(|n| n.stamp.to_le_bytes()).collect();
     let entities: Vec<u8> = members
         .iter()
@@ -1628,17 +1821,55 @@ pub(crate) fn plan<'a>(
         &entities,
         left_desc.as_bytes(),
     ]);
-    let shared = Arc::new(Shared {
-        scene: s.rel.clone(),
-        source: s,
-        settings,
-        proxies: nodes.iter().map(|_| OnceLock::new()).collect(),
-        members,
-        nodes,
-        left,
-        flats: Mutex::default(),
-        images: Mutex::default(),
-    });
+    Some((
+        Arc::new(Shared {
+            scene: s.rel.clone(),
+            source: s,
+            settings,
+            proxies: nodes.iter().map(|n| registered(n.stamp)).collect(),
+            cells,
+            subs,
+            members,
+            nodes,
+            left,
+            flats: Mutex::default(),
+            images: Mutex::default(),
+        }),
+        tree_stamp,
+    ))
+}
+
+/// Plans a scene's HLOD outputs: nothing without an `hlod` block.
+pub(crate) fn plan<'a>(
+    cx: &Cx<'a>,
+    state: &mut PlanState,
+    s: &'a Source,
+    text: &str,
+    outs: &mut Vec<Out<'a>>,
+) {
+    let Ok(doc) = Document::parse(text) else {
+        return;
+    };
+    let mut blocks = doc.body.get_all("hlod");
+    let Some(entry) = blocks.next() else {
+        return;
+    };
+    let refused = |state: &mut PlanState, e: String| {
+        state.early_errors.push((s.rel.clone(), "scene", e));
+    };
+    if let Some(second) = blocks.next() {
+        return refused(
+            state,
+            format!("line {}: a scene has one hlod block", second.line),
+        );
+    }
+    let settings = match Settings::parse(entry) {
+        Ok(v) => v,
+        Err(e) => return refused(state, e),
+    };
+    let Some((shared, tree_stamp)) = planned(cx, s, &doc.body, settings, true) else {
+        return;
+    };
     // The cook's workers take outputs in this order, and a proxy waits
     // for its children's: the proxies first, each node after everything
     // under it (a later index, laid depth first), so the workers start on
@@ -1743,6 +1974,36 @@ impl Job for TreeJob<'_> {
                 }
             })
             .collect();
+        // Each node over cells' cells: the cell entity and its sub-scene's
+        // root, drawn at the cell.
+        let cells: Vec<HlodCellRow> = shared
+            .nodes
+            .iter()
+            .enumerate()
+            .flat_map(|(n, node)| {
+                node.cells.iter().map(move |&c| {
+                    let cell = &shared.cells[c];
+                    let m = cell.matrix.to_cols_array_2d();
+                    HlodCellRow {
+                        node: n as u32,
+                        entity: cell.entity,
+                        root: cell.root as u32,
+                        xx: m[0][0],
+                        xy: m[1][0],
+                        xz: m[2][0],
+                        xt: m[3][0],
+                        yx: m[0][1],
+                        yy: m[1][1],
+                        yz: m[2][1],
+                        yt: m[3][1],
+                        zx: m[0][2],
+                        zy: m[1][2],
+                        zz: m[2][2],
+                        zt: m[3][2],
+                    }
+                })
+            })
+            .collect();
         let mut w = BlobWriter::new(
             format::Hlod::type_hash(),
             format::Hlod::schema_version(),
@@ -1759,7 +2020,8 @@ impl Job for TreeJob<'_> {
             row_hash::<HlodMeta>(),
         )
         .table("nodes", &rows, row_hash::<HlodNodeRow>())
-        .table("members", &members, row_hash::<HlodMemberRow>());
+        .table("members", &members, row_hash::<HlodMemberRow>())
+        .table("cells", &cells, row_hash::<HlodCellRow>());
         let source: usize = shared
             .nodes
             .iter()
@@ -1928,7 +2190,7 @@ mod tests {
         // in (5, 5).
         let cells = [(0, 0), (0, 0), (1, 0), (5, 5), (5, 5), (5, 5)];
         let cell = |m: usize, level: u32| (cells[m].0 >> level, cells[m].1 >> level);
-        let g = grow(MAX_LEVELS, (0..cells.len()).collect(), &cell).expect("a root");
+        let g = grow(MAX_LEVELS, (0..cells.len()).collect(), &cell, true).expect("a root");
         let (mut nodes, mut order) = (Vec::new(), Vec::new());
         lay(g, None, &mut nodes, &mut order);
         // The root holds all six: (0, 0)'s leaf and its neighbour alone in
@@ -1955,7 +2217,7 @@ mod tests {
         // Every model is in a node without children.
         assert!(nodes.iter().all(|n| n.children.is_empty() || n.own == 0));
         // One member, or members each alone at every level, make no node.
-        assert!(grow(MAX_LEVELS, vec![0], &cell).is_err());
+        assert!(grow(MAX_LEVELS, vec![0], &cell, true).is_err());
     }
 
     #[test]

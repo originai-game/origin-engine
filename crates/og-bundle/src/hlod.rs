@@ -52,16 +52,38 @@ pub struct HlodMember {
     pub matrix: Mat4,
 }
 
-/// A decoded HLOD tree: its nodes depth first.
+/// A cell a node over cells stands in for (docs/design.md §10.6): the
+/// cell entity (its index in the scene's entities) and the root node of
+/// its sub-scene's own tree, drawn at the cell.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct HlodCell {
+    pub node: usize,
+    pub entity: usize,
+    pub root: usize,
+    /// The cell's matrix in the scene's space as the cook read it.
+    pub matrix: Mat4,
+}
+
+/// A decoded HLOD tree: its nodes depth first. A node over cells holds no
+/// member; its cells (and its children's) are in `cells`, by node.
 #[derive(Clone, Debug, PartialEq)]
 pub struct Hlod {
     pub size: f32,
     pub error: f32,
     pub nodes: Vec<HlodNode>,
     pub members: Vec<HlodMember>,
+    pub cells: Vec<HlodCell>,
 }
 
 impl Hlod {
+    /// The cells node `n` stands in for, its descendants' too.
+    pub fn cells_under(&self, n: usize) -> impl Iterator<Item = &HlodCell> + '_ {
+        let end = self.nodes[n].end;
+        self.cells
+            .iter()
+            .filter(move |c| (n..end).contains(&c.node))
+    }
+
     /// The children of node `n` (`None`: the roots), in order.
     pub fn children(&self, n: Option<usize>) -> impl Iterator<Item = usize> + '_ {
         let (mut at, end) = match n {
@@ -81,13 +103,31 @@ impl Hlod {
         meta: &crate::format::HlodMeta,
         nodes: &[crate::format::HlodNodeRow],
         members: &[crate::format::HlodMemberRow],
+        cells: &[crate::format::HlodCellRow],
     ) -> Result<Hlod, String> {
         let mut out = Hlod {
             size: meta.size,
             error: meta.error,
             nodes: Vec::with_capacity(nodes.len()),
             members: Vec::with_capacity(members.len()),
+            cells: Vec::with_capacity(cells.len()),
         };
+        for c in cells {
+            if c.node as usize >= nodes.len() {
+                return Err(format!("a cell is under node {}, out of the tree", c.node));
+            }
+            out.cells.push(HlodCell {
+                node: c.node as usize,
+                entity: c.entity as usize,
+                root: c.root as usize,
+                matrix: Mat4::from_cols(
+                    Vec4::new(c.xx, c.yx, c.zx, 0.0),
+                    Vec4::new(c.xy, c.yy, c.zy, 0.0),
+                    Vec4::new(c.xz, c.yz, c.zz, 0.0),
+                    Vec4::new(c.xt, c.yt, c.zt, 1.0),
+                ),
+            });
+        }
         for (i, n) in nodes.iter().enumerate() {
             let parent = (n.parent != crate::format::NONE).then_some(n.parent as usize);
             let end = n.end as usize;

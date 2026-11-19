@@ -39,6 +39,13 @@
 //! leaves the proxies unbaked, as it leaves the models. A cell's proxies
 //! are lit while the cell is not loaded too.
 //!
+//! **Nodes over cells.** A scene that places cells and has an `hlod`
+//! block of its own has nodes over its cells' trees: a proxy built from
+//! the cells' roots, where they stand. It stands in for every cell under
+//! it, loaded or not, while each cell is where the cook read it and a
+//! loaded one's models are as the cook read them; the cells' own places
+//! then draw nothing. It switches at once, without a cross-fade.
+//!
 //! **World cells.** A cell's sub-scene has its own tree, kept in its declaring
 //! bundle. While the cell is unloaded its proxies draw at the cell's pose
 //! with nothing behind them, so the far world is there before it streams:
@@ -78,6 +85,8 @@ struct Place {
     /// Per member of the tree, its entity and the model it was spawned
     /// with; empty for a cell that has not loaded.
     members: Vec<(u64, u64)>,
+    /// Per cell of the tree (`Hlod::cells`), its cell entity.
+    cells: Vec<u64>,
     /// Per node, whether its proxy drew last frame (the hysteresis); none
     /// for a node not asked.
     drew: Vec<Option<bool>>,
@@ -388,7 +397,9 @@ pub(crate) fn bundle_in_use(world: &World, rs: &RenderState, bundle: usize) -> b
                             None => p
                                 .members
                                 .iter()
-                                .any(|&(e, _)| world.is_alive(Entity::from_bits(e))),
+                                .map(|&(e, _)| e)
+                                .chain(p.cells.iter().copied())
+                                .any(|e| world.is_alive(Entity::from_bits(e))),
                         }
                 })
             })
@@ -411,7 +422,9 @@ pub(crate) fn collect(world: &World, rs: &mut RenderState) {
         None => p
             .members
             .iter()
-            .any(|&(e, _)| world.is_alive(Entity::from_bits(e))),
+            .map(|&(e, _)| e)
+            .chain(p.cells.iter().copied())
+            .any(|e| world.is_alive(Entity::from_bits(e))),
     });
     if rs.hlod.places.len() == before {
         return;
@@ -493,6 +506,7 @@ pub(crate) fn cell_placed(eng: &Engine, cell: Entity, index: usize) {
         root: Some(cell.to_bits()),
         cell: true,
         members: Vec::new(),
+        cells: Vec::new(),
         serial: state.serial,
     });
 }
@@ -521,6 +535,12 @@ pub(crate) fn scene_spawned(
             .map_or(0, handle);
         members.push((entity, asset));
     }
+    let cells: Vec<u64> = tree
+        .hlod
+        .cells
+        .iter()
+        .map(|c| spawned.get(c.entity).map_or(0, |e| e.to_bits()))
+        .collect();
     let (root, cell) = match placement {
         Placement::Under(root) => (root.map(Entity::to_bits), false),
         Placement::Cell { cell, .. } => (Some(cell.to_bits()), true),
@@ -543,7 +563,11 @@ pub(crate) fn scene_spawned(
     }
     // An earlier spawn of it here whose models are all gone draws nothing more.
     state.places.retain(|p| {
-        p.cell || p.root != root || p.scene != scene.id || p.members.iter().any(|&(e, _)| alive(e))
+        p.cell
+            || p.root != root
+            || p.scene != scene.id
+            || p.members.iter().any(|&(e, _)| alive(e))
+            || p.cells.iter().any(|&e| alive(e))
     });
     state.serial += 1;
     state.places.push(Place {
@@ -554,6 +578,7 @@ pub(crate) fn scene_spawned(
         root,
         cell,
         members,
+        cells,
         serial: state.serial,
     });
 }
@@ -658,6 +683,50 @@ enum Member {
     Changed,
 }
 
+/// How member `k` of a place (`members`, its tree `tree` at `root`)
+/// stands to what the cook read. `hidden`: whether a model's textures are
+/// being prepared.
+#[allow(clippy::too_many_arguments)]
+fn member_state(
+    world: &World,
+    rows: &IdMap<u64, Row>,
+    model: Option<(&crate::host::codec::Layout, og_ecs::SchemaId)>,
+    hidden: &dyn Fn(u64) -> bool,
+    h: &mut Hierarchy,
+    root: Mat4,
+    tree: &Tree,
+    members: &[(u64, u64)],
+    k: usize,
+) -> Member {
+    let (e, asset) = members[k];
+    let mut cooked = || same_place(&h.world_of(e), &(root * tree.hlod.members[k].matrix));
+    // The frame leaves out a row whose model's textures are being
+    // prepared: it is waiting when it is visible with its cooked model, at
+    // its cooked place.
+    let waiting = || {
+        hidden(asset)
+            && model.is_some_and(|(layout, id)| {
+                let row = world.get_bytes(Entity::from_bits(e), id).ok();
+                let row = row.and_then(|b| layout.read::<record::Model>(&b).ok());
+                row.is_some_and(|m| m.visible && m.asset == asset)
+            })
+    };
+    match rows.get(&e) {
+        Some(r) if r.plain && r.asset == asset && cooked() => Member::Intact,
+        None if waiting() && cooked() => Member::Waiting,
+        _ => Member::Changed,
+    }
+}
+
+/// A cell place as a node over cells reads it: whether a proxy over it
+/// may stand in for it (not loaded, or loaded with every model as the
+/// cook read it), whether it is loaded, and its models' entities.
+struct CellState {
+    ok: bool,
+    loaded: bool,
+    models: Vec<u64>,
+}
+
 /// What [`draw`] reads of the frame.
 pub(crate) struct View<'a> {
     pub models: &'a IdMap<u64, Parts>,
@@ -716,7 +785,33 @@ pub(crate) fn draw(
         .model
         .as_ref()
         .and_then(|layout| Some((layout, world.id_by_name(&layout.schema).ok()?)));
-    for place in &mut places {
+    // The cell places, as the nodes over cells read them.
+    let mut cell_states: IdMap<u64, CellState> = IdMap::new();
+    if let Some(rows) = &rows
+        && places.iter().any(|p| !p.cells.is_empty())
+    {
+        let hidden = |a: u64| rs.decoded.hidden_models.contains_key(&a);
+        for p in places.iter().filter(|p| p.cell) {
+            let Some(cell) = p.root else { continue };
+            let loaded = cell_loaded(world, cell).unwrap_or(false);
+            let root = h.world_of(cell);
+            let ok = !loaded
+                || (!p.members.is_empty()
+                    && (0..p.members.len()).all(|k| {
+                        member_state(world, rows, model, &hidden, h, root, &p.tree, &p.members, k)
+                            != Member::Changed
+                    }));
+            let models = p.members.iter().map(|&(e, _)| e).collect();
+            cell_states.insert(cell, CellState { ok, loaded, models });
+        }
+    }
+    // The cells a proxy over them stands in for this frame: their places
+    // draw nothing. Places over cells are walked first.
+    let mut covered: IdMap<u64, ()> = IdMap::new();
+    let mut order: Vec<usize> = (0..places.len()).collect();
+    order.sort_by_key(|&i| places[i].cells.is_empty());
+    for &i in &order {
+        let place = &mut places[i];
         let Some(rows) = &rows else { break };
         let loaded = match (place.cell, place.root) {
             (true, Some(cell)) => cell_loaded(world, cell).unwrap_or(false),
@@ -725,9 +820,16 @@ pub(crate) fn draw(
         if !loaded {
             place.members.clear();
         }
+        // A cell a proxy over cells stands in for draws nothing itself.
+        if place.cell && place.root.is_some_and(|c| covered.contains_key(&c)) {
+            settled &= place.drew.iter().all(Option::is_none);
+            place.drew.fill(None);
+            place.fades.fill(None);
+            continue;
+        }
         // A loaded cell whose models this place does not know (brought
         // back from what it kept) draws its models.
-        if loaded && place.members.is_empty() {
+        if loaded && place.members.is_empty() && place.cells.is_empty() {
             continue;
         }
         let root = match place.root {
@@ -741,27 +843,20 @@ pub(crate) fn draw(
         let nodes = &tree.hlod.nodes;
         // Per member, how it stands to the cook's; asked once.
         let mut members: Vec<Option<Member>> = vec![None; place.members.len()];
+        let hidden = |a: u64| rs.decoded.hidden_models.contains_key(&a);
         let mut member = |k: usize, h: &mut Hierarchy| -> Member {
             *members[k].get_or_insert_with(|| {
-                let (e, asset) = place.members[k];
-                let mut cooked =
-                    || same_place(&h.world_of(e), &(root * tree.hlod.members[k].matrix));
-                // The frame leaves out a row whose model's textures are
-                // being prepared: it is waiting when it is visible with its
-                // cooked model, at its cooked place.
-                let waiting = || {
-                    rs.decoded.hidden_models.contains_key(&asset)
-                        && model.is_some_and(|(layout, id)| {
-                            let row = world.get_bytes(Entity::from_bits(e), id).ok();
-                            let row = row.and_then(|b| layout.read::<record::Model>(&b).ok());
-                            row.is_some_and(|m| m.visible && m.asset == asset)
-                        })
-                };
-                match rows.get(&e) {
-                    Some(r) if r.plain && r.asset == asset && cooked() => Member::Intact,
-                    None if waiting() && cooked() => Member::Waiting,
-                    _ => Member::Changed,
-                }
+                member_state(
+                    world,
+                    rows,
+                    model,
+                    &hidden,
+                    h,
+                    root,
+                    &tree,
+                    &place.members,
+                    k,
+                )
             })
         };
         // Each node with the fade an ancestor draws it under, if any.
@@ -784,6 +879,22 @@ pub(crate) fn draw(
                 .map(|&c| nodes[c].members.1)
                 .max()
                 .unwrap_or(node.members.0);
+            // The cells it is over (with its children's): each where the
+            // cook read it, and as a proxy over it may stand for it.
+            let end = node.end;
+            let over: Vec<(u64, Mat4)> = tree
+                .hlod
+                .cells
+                .iter()
+                .enumerate()
+                .filter(|(_, c)| (n..end).contains(&c.node))
+                .map(|(i, c)| (place.cells.get(i).copied().unwrap_or(0), c.matrix))
+                .collect();
+            let cells_ok = over.iter().all(|&(cell, m)| {
+                cell_states.get(&cell).is_some_and(|c| c.ok)
+                    && world.is_alive(Entity::from_bits(cell))
+                    && same_place(&h.world_of(cell), &(root * m))
+            });
             let per_unit = og_render::lod::pixels_per_unit(
                 &rs.scene.frame.camera,
                 root.transform_point3(node.center),
@@ -802,7 +913,8 @@ pub(crate) fn draw(
                 // Near, it still stands in while a model it holds itself
                 // waits (its children's wait under their own proxies).
                 Some(_) if loaded => {
-                    under.clone().all(|k| member(k, h) != Member::Changed)
+                    cells_ok
+                        && under.clone().all(|k| member(k, h) != Member::Changed)
                         && (!near || (own..node.members.1).any(|k| member(k, h) == Member::Waiting))
                 }
                 // Nothing else shows the models a node holds itself (a
@@ -822,6 +934,7 @@ pub(crate) fn draw(
             // The cross-fade: started where the choice turned, reversed
             // from where it was when it turns back during one.
             let fades = crossing.is_none()
+                && over.is_empty()
                 && loaded
                 && parts.is_some()
                 && reveal == 1.0
@@ -875,6 +988,12 @@ pub(crate) fn draw(
             }
             drawn.proxies += 1;
             drawn.lit += u32::from(lit_parts.is_some());
+            for &(cell, _) in &over {
+                covered.insert(cell, ());
+                if let Some(c) = cell_states.get(&cell).filter(|c| c.loaded) {
+                    replaced.extend(c.models.iter().map(|&e| (e, ())));
+                }
+            }
             if !loaded {
                 drawn.unloaded += 1;
             } else if t.is_none() && crossing.is_none() {
