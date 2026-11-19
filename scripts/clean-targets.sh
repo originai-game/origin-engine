@@ -8,7 +8,8 @@
 #
 # For each worktree with a target/ that nothing is building in (no cargo,
 # rustc or gate process mentions it, and no gate lock is held there):
-#   1. target/*/incremental is removed (regenerable; never the whole target/);
+#   1. Cargo profile incremental dirs are removed, including under
+#      target/wasm-mt and target/wasm-gfx (never the whole target/);
 #   2. `cargo sweep --time $OG_SWEEP_DAYS` (default 1) removes artifacts no
 #      build used in that many days, so warm builds stay warm.
 # A busy worktree is skipped and named. A worktree whose rm or sweep fails
@@ -53,13 +54,17 @@ procs="$(ps -axo command= 2>/dev/null || true)"
 failed=()
 while read -r d; do
   t="$d/target"
-  [ -d "$t" ] || continue
+  [ -d "$t" ] && [ ! -L "$t" ] || continue
   if [ -d "$t/og-gate.lock" ] || printf '%s\n' "$procs" | grep -E 'cargo|rustc|check\.sh|build\.sh|nextest' | grep -qF "$d/"; then
     echo "  skip $d (building)"; continue
   fi
   ok=1
-  for inc in "$t"/*/incremental "$t"/*/*/incremental; do
+  for inc in "$t"/*/incremental "$t"/*/*/incremental "$t"/wasm-*/wasm32-unknown-unknown/*/incremental; do
     [ -d "$inc" ] || continue
+    # Globs can expand through a directory symlink, unlike a physical walk.
+    path="$inc"
+    while [ "$path" != "$t" ] && [ ! -L "$path" ]; do path="${path%/*}"; done
+    [ "$path" = "$t" ] || continue
     if ! err="$(rm -rf "$inc" 2>&1)"; then
       echo "  failed $d: could not remove ${inc#"$d/"}: $(printf '%s' "$err" | head -1)" >&2
       ok=0

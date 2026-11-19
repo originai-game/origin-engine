@@ -231,6 +231,12 @@ tree, environment, tools, device, browser or product bytes runs the test.
 Prerequisites still run, and neither `--all` nor the landing's full-lane
 stamp accepts reused results as a new whole-lane pass.
 
+`wasm-bindgen` logs the wall of each bindgen and split operation. For L4
+measurements, `OG_WASM_PRODUCT_CACHE=1` opts into one validated copy per
+operation and variant in `target/og-wasm-products/`. It is off by default
+and not used in release packing. Compare the uncached, fill and hit walls
+and disk totals on the same tree and target; don't clear the warm Cargo target.
+
 Selection uses Cargo's resolved dependency graph, Bun's import graph and
 fixture input manifests; passing snapshots are git trees of the working
 copy under `target/og-gate/green`. A test binary's closure is its own

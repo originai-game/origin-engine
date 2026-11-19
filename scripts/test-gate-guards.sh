@@ -170,6 +170,56 @@ resume_guard() (
 resume_guard || { echo 'FAIL continuation receipt guards'; exit 1; }
 echo 'ok   continuation reuses only a completed matching receipt, never on a fresh force'
 
+# The actual cleaner sees an idle target, a locked target and a symlink to
+# something outside the idle target. Only the idle Cargo caches are disposable.
+cleaner_guard() (
+  local here="$scratch/cleaner" t
+  mkdir -p "$here/bin" "$here/outside/wasm32-unknown-unknown/wasm-test/incremental" || exit 1
+  for t in "$here/idle/target" "$here/busy/target"; do
+    mkdir -p "$t/debug/incremental" "$t/wasm-mt/wasm32-unknown-unknown/wasm-test/incremental" \
+      "$t/wasm-gfx/wasm32-unknown-unknown/wasm-test/incremental" "$t/evidence" || exit 1
+  done
+  mkdir "$here/busy/target/og-gate.lock" || exit 1
+  ln -s "$here/outside" "$here/idle/target/wasm-linked" || exit 1
+  cat > "$here/bin/git" <<EOF
+#!/bin/sh
+printf '%s\n' 'worktree $here/idle' 'worktree $here/busy'
+EOF
+  printf '%s\n' '#!/bin/sh' 'exit 0' > "$here/bin/cargo"
+  chmod +x "$here/bin/"* || exit 1
+  PATH="$here/bin:$PATH" bash "$root/scripts/clean-targets.sh" || exit 1
+  [ ! -e "$here/idle/target/debug/incremental" ] &&
+    [ ! -e "$here/idle/target/wasm-mt/wasm32-unknown-unknown/wasm-test/incremental" ] &&
+    [ ! -e "$here/idle/target/wasm-gfx/wasm32-unknown-unknown/wasm-test/incremental" ] &&
+    [ -d "$here/busy/target/wasm-mt/wasm32-unknown-unknown/wasm-test/incremental" ] &&
+    [ -d "$here/idle/target/evidence" ] &&
+    [ -d "$here/outside/wasm32-unknown-unknown/wasm-test/incremental" ]
+)
+cleaner_guard || { echo 'FAIL nested Cargo cleanup guards'; exit 1; }
+echo 'ok   cleaner removes idle nested incrementals without crossing lock or symlink boundaries'
+
+product_guard() (
+  export OG_TARGET_DIR="$scratch/products"
+  local helper="$root/scripts/gate/wasm-products.py" out="$scratch/bound" raw="$scratch/raw.wasm"
+  printf 'input\n' > "$raw"
+  printf '#!/bin/sh\nexit 0\n' > "$scratch/bin/wasm-bindgen"
+  chmod +x "$scratch/bin/wasm-bindgen" || exit 1
+  export PATH="$scratch/bin:$PATH"
+  build_product() {
+    python3 "$helper" bindgen test "$raw" "$out" sh -c 'mkdir -p "$1"; cp "$2" "$1/glue.wasm"; echo built >> "$3"' \
+      sh "$out" "$raw" "$scratch/builds"
+  }
+  build_product && rm -rf "$out" && build_product && cmp "$raw" "$out/glue.wasm" || exit 1
+  [ "$(wc -l < "$scratch/builds" | tr -d ' ')" = 1 ] || exit 1
+  printf 'corruption\n' > "$OG_TARGET_DIR/og-wasm-products/bindgen/test/product/glue.wasm"
+  rm -rf "$out"; build_product && cmp "$raw" "$out/glue.wasm" || exit 1
+  printf 'new input\n' > "$raw"
+  rm -rf "$out"; build_product && cmp "$raw" "$out/glue.wasm" || exit 1
+  [ "$(wc -l < "$scratch/builds" | tr -d ' ')" = 3 ]
+)
+product_guard || { echo 'FAIL wasm product cache guards'; exit 1; }
+echo 'ok   wasm product reuse validates both input and every saved output'
+
 # Engine type errors must block both lanes without needing wasm or a GPU.
 python3 - "$root/scripts/gate/run.py" <<'PY'
 import runpy

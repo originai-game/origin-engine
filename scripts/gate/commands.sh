@@ -299,6 +299,18 @@ EOF_LANES
   fi
 }
 
+wasm_product() {
+  local kind="$1" variant="$2" source="$3" out="$4" start="$SECONDS" rc
+  shift 4
+  if [ "${OG_WASM_PRODUCT_CACHE:-0}" = 1 ] && [ -n "${GATE_LOGS:-}" ] && [ "${OG_GATE:-}" = 1 ]; then
+    python3 "$OG_ROOT/scripts/gate/wasm-products.py" "$kind" "$variant" "$source" "$out" "$@"; rc=$?
+  else
+    "$@"; rc=$?
+  fi
+  og_say "wasm-product: $kind $variant $((SECONDS - start))s exit=$rc"
+  return "$rc"
+}
+
 # Bind once per variant; the same bytes go to tests, packaging and size checks.
 wasm_bindgen_one() {
   local raw="$1" name="$2" out=origin-engine lock have
@@ -306,9 +318,11 @@ wasm_bindgen_one() {
   lock="$(og_lock_version wasm-bindgen)"
   have="$(wasm-bindgen --version | awk '{print $2}')"
   [ "$lock" = "$have" ] || { og_err "wasm-bindgen $have does not match Cargo.lock $lock"; return 1; }
-  rm -rf "$OG_WASM_OUT/bindgen/$name"
-  wasm-bindgen --target web --out-dir "$OG_WASM_OUT/bindgen/$name" --out-name "$out" "$raw" || return 1
-  cp "$OG_WASM_OUT/bindgen/$name/${out}_bg.wasm" "$OG_WASM_OUT/dev/$name.wasm"
+  local dir="$OG_WASM_OUT/bindgen/$name"
+  rm -rf "$dir"
+  wasm_product bindgen "$name" "$raw" "$dir" \
+    wasm-bindgen --target web --out-dir "$dir" --out-name "$out" "$raw" || return 1
+  cp "$dir/${out}_bg.wasm" "$OG_WASM_OUT/dev/$name.wasm"
 }
 
 # The single-threaded publish modules split (docs/web-export.md §Modules):
@@ -330,7 +344,8 @@ wasm_split() {
     mkdir -p "$OG_WASM_OUT/split/$name"
     profile=3d
     case "$name" in *2d) profile=2d ;; esac
-    bun "$OG_ROOT/packages/engine/scripts/wasm-split.ts" "$d" "$OG_WASM_OUT/split/$name" "$profile" > "$OG_WASM_OUT/split/$name.log" 2>&1 &
+    wasm_product split "$name" "$d" "$OG_WASM_OUT/split/$name" \
+      bun "$OG_ROOT/packages/engine/scripts/wasm-split.ts" "$d" "$OG_WASM_OUT/split/$name" "$profile" > "$OG_WASM_OUT/split/$name.log" 2>&1 &
     pids+=($!)
   done
   for d in "${pids[@]:-}"; do [ -z "$d" ] || wait "$d" || failed=1; done
