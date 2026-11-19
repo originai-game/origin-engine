@@ -194,11 +194,23 @@ cmd_publish() {
   if [ -n "$status" ]; then og_err "release: publish refused:"; printf '%s\n' "$status" | sed 's/^/  /' >&2; return 1; fi
   minisign -V -q -P "$key" -m "$out/SHA256SUMS" -x "$out/SHA256SUMS.minisig" || { og_err "release: SHA256SUMS.minisig does not verify with docs/release.md's key $key"; return 1; }
   (cd "$out" && shasum -a 256 -c SHA256SUMS >/dev/null) || { og_err "release: a file does not match SHA256SUMS"; return 1; }
-  # The remote-frame archives the dist pins (frame-hosts.json) are store objects: upload what the store lacks.
+  # The optional data the packed engine fetches (frame-hosts.json's archives, the motion weights) must be in
+  # the asset store before it ships: every archive frame-hosts.json names is one pack wrote and pinned, the
+  # store holds it, and a missing pin refuses the publish instead of skipping it.
   frames=packages/engine/dist/pack/frames
-  if [ -f "$frames/og-assets.json" ] && [ "${#dry[@]}" = 0 ]; then
-    bun scripts/assets.ts push "$frames" && bun scripts/assets.ts verify "$frames" || { og_err "release: the frame archives are not in the asset store"; return 1; }
+  # shellcheck disable=SC2016 # the bun script takes its arguments from argv
+  bun -e '
+    const fs = require("node:fs");
+    const [hostsFile, pinFile] = process.argv.slice(1);
+    const hosts = JSON.parse(fs.readFileSync(hostsFile, "utf8"));
+    const pinned = fs.existsSync(pinFile) ? new Set(JSON.parse(fs.readFileSync(pinFile, "utf8")).files.map((f) => f.sha256)) : new Set();
+    const loose = Object.entries(hosts).filter(([, h]) => !pinned.has(h.sha256) || !h.url.endsWith(h.sha256)).map(([name]) => name);
+    if (loose.length) { console.error(`${hostsFile}: ${loose.join(", ")} not pinned in ${pinFile} at a store URL (pack again)`); process.exit(1); }
+  ' packages/engine/dist/frame-hosts.json "$frames/og-assets.json" || { og_err "release: the frame archives the engine pins were not packed"; return 1; }
+  if [ "${#dry[@]}" = 0 ]; then
+    bun scripts/assets.ts push "$frames" || { og_err "release: could not push the frame archives to the asset store"; return 1; }
   fi
+  bun scripts/assets.ts verify packages/engine "$frames" || { og_err "release: the engine's optional data is not in the asset store"; return 1; }
   bun scripts/release-publish.ts "$out" --version "$v" "${dry[@]}"
 }
 
