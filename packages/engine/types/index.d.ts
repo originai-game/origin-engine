@@ -32088,7 +32088,9 @@ export interface SharedStatus {
    * What carries the session here: the session provider's name (`static` for a fixed endpoint, `player` for the platform's), or `none`.
    */
   readonly host: string;
-  /** The connection's transport, `ws`; empty without one. */
+  /**
+   * The connection's transport: `ws` (WebSocket) or `wt` (WebTransport, snapshots as datagrams); empty without one.
+   */
   readonly transport: string;
   /** The world joined. */
   readonly world: string;

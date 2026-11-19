@@ -91,7 +91,15 @@ og run --shared ws://127.0.0.1:47910 --shared-token-file t1
   size, the radius, the 64 in sight, the rates, the kinds' speeds and the
   bounds. Its defaults are the budgets below.
 - `og world-server load --bots N --gate` measures a server against them
-  before you rely on it.
+  before you rely on it; `--latency MS --loss PCT` measures it over a bad
+  network.
+- WebTransport, where the host's network carries UDP: `og world-server
+  cert` writes a self-signed certificate and prints its hash, `--wt-listen
+  ADDR --cert F --key F` serves it beside the WebSocket. A provider names
+  it as `webtransport` (its `https://` URL and that hash); natively `og run
+  --shared https://… --shared-cert-hash HEX`. Snapshots then cross as
+  datagrams, and a lost packet delays only itself. A browser without it
+  uses the WebSocket. Renew the certificate within 14 days.
 
 | Budget | Value |
 |---|---|

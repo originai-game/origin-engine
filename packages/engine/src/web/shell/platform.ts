@@ -65,7 +65,12 @@ export class PlatformBridge {
     const provider = this.#sessions;
     if (!provider) return answer({ ok: false, code: "none", message: "this page has no session provider" });
     provider.connect({ world, reconnect }).then(
-      (a) => answer(a.ok ? { ok: true, url: a.url, ...(a.token !== undefined ? { token: a.token } : {}) } : { ok: false, code: a.error.code, message: a.error.message }),
+      (a) =>
+        answer(
+          a.ok
+            ? { ok: true, url: a.url, ...(a.token !== undefined ? { token: a.token } : {}), ...(a.webtransport !== undefined ? { webtransport: a.webtransport } : {}) }
+            : { ok: false, code: a.error.code, message: a.error.message },
+        ),
       (e: unknown) => answer({ ok: false, code: "failed", message: `the session provider threw: ${e instanceof Error ? e.message : String(e)}` }),
     );
   }
