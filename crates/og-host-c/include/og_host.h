@@ -54,6 +54,16 @@ typedef struct OgSymbol {
 
 const OgSymbol *og_c_symbols(size_t *count);
 
+/* The desktop window (feature `window`, src/window.rs). `open` answers wire
+ * JSON, valid until the next call; `pump` is false once the window closed;
+ * `capture` writes the last presented frame as a PNG (opened with keep);
+ * `close` drops the renderer and the window, after the engine. */
+const char *og_c_window_open(uint32_t engine, uint32_t width, uint32_t height,
+                             const char *title, bool keep);
+bool og_c_window_pump(void);
+bool og_c_window_capture(const char *path);
+void og_c_window_close(void);
+
 #ifdef __cplusplus
 }
 #endif

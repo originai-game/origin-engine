@@ -1,13 +1,19 @@
-// The prototype native shell: Hermes running a game's bytecode on the C ABI
-// host (og-host-c). It registers every entry of og_c_symbols() as a function
-// of `globalThis.__og_host`, turns OgValues into JavaScript values and back,
-// and gives the game's dispatcher to the engine. No window and no renderer:
-// it grounds the shell's design (README.md) and runs the game-frame
-// benchmark (packages/engine/bench/game-frame/hermes.ts) under Hermes.
+// The desktop shell: Hermes running a game's bytecode on the C ABI host
+// (og-host-c). It registers every entry of og_c_symbols() as a function of
+// `globalThis.__og_host`, turns OgValues into JavaScript values and back,
+// and gives the game's dispatcher to the engine. A bundle that opens the
+// window (packages/engine/src/hermes/shell.ts) leaves `__og_frame`, and the
+// shell runs the display loop: pump the window, call the frame, until the
+// window closes; then it prints `__og_report()` and calls `__og_close()`. A bundle without one (the
+// game-frame benchmark, bench/game-frame/hermes.ts) runs once.
 //
 //   og-hermes <bundle.hbc> [key=value ...]
+//   og-hermes                  (a package: game.hbc beside it, or in ../Resources)
 //
-// Each key=value becomes `globalThis.__og_env[key]` (key=@file: the file's text).
+// Each key=value becomes `globalThis.__og_env[key]` (key=@file: the file's
+// text); a package's shell.env lines are read first, and OG_ROOT and
+// OG_PROJECT name its directory. OG_SHELL_FRAMES=<n> closes after n frames;
+// OG_SHELL_CAPTURE=<file.png> writes the last frame there.
 
 #include <hermes/hermes.h>
 #include <jsi/jsi.h>
@@ -16,6 +22,7 @@
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
+#include <filesystem>
 #include <fstream>
 #include <memory>
 #include <sstream>
@@ -23,6 +30,12 @@
 #include <vector>
 
 #include "og_host.h"
+
+#if defined(__APPLE__)
+#include <mach-o/dyld.h>
+#elif defined(_WIN32)
+#include <windows.h>
+#endif
 
 using namespace facebook;
 
@@ -177,13 +190,56 @@ std::string readFile(const char *path) {
   return s.str();
 }
 
+/// This executable's path.
+std::filesystem::path selfPath(const char *argv0) {
+#if defined(__APPLE__)
+  char buf[4096];
+  uint32_t size = sizeof buf;
+  if (_NSGetExecutablePath(buf, &size) == 0) return std::filesystem::canonical(buf);
+#elif defined(_WIN32)
+  wchar_t buf[4096];
+  if (GetModuleFileNameW(nullptr, buf, 4096) > 0) return std::filesystem::path(buf);
+#else
+  std::error_code e;
+  auto p = std::filesystem::canonical("/proc/self/exe", e);
+  if (!e) return p;
+#endif
+  return std::filesystem::absolute(argv0);
+}
+
+/// A package's directory: where game.hbc is, beside the executable or in
+/// a macOS bundle's Resources.
+std::filesystem::path packageDir(const char *argv0) {
+  auto dir = selfPath(argv0).parent_path();
+  for (auto d : {dir, dir.parent_path() / "Resources"})
+    if (std::filesystem::exists(d / "game.hbc")) return d;
+  return {};
+}
+
 }  // namespace
 
 int main(int argc, char **argv) {
-  if (argc < 2) {
-    std::fprintf(stderr, "usage: og-hermes <bundle.hbc> [key=value ...]\n");
-    return 2;
+  // The bundle and its environment: the arguments, or the package's.
+  std::string bundle;
+  std::vector<std::string> pairs;
+  if (argc >= 2) {
+    bundle = argv[1];
+    for (int i = 2; i < argc; i++) pairs.push_back(argv[i]);
+  } else {
+    auto dir = packageDir(argv[0]);
+    if (dir.empty()) {
+      std::fprintf(stderr, "usage: og-hermes <bundle.hbc> [key=value ...] (or beside a package's game.hbc)\n");
+      return 2;
+    }
+    bundle = (dir / "game.hbc").string();
+    std::ifstream env(dir / "shell.env");
+    for (std::string line; std::getline(env, line);)
+      if (!line.empty() && line[0] != '#') pairs.push_back(line);
+    pairs.push_back("OG_ROOT=" + dir.string());
+    pairs.push_back("OG_PROJECT=@" + (dir / "project.ogt").string());
   }
+  for (const char *key : {"OG_SHELL_CAPTURE", "OG_SIZE"})
+    if (const char *v = std::getenv(key)) pairs.push_back(std::string(key) + "=" + v);
   // OG_HERMES_PROFILE=<file>: Hermes's sampling profile of the run, in
   // Chrome's trace format.
   const char *profile = std::getenv("OG_HERMES_PROFILE");
@@ -244,22 +300,60 @@ int main(int argc, char **argv) {
             std::fflush(stdout);
             return jsi::Value::undefined();
           }));
+  rt.global().setProperty(
+      rt, "__og_window_open",
+      jsi::Function::createFromHostFunction(
+          rt, jsi::PropNameID::forAscii(rt, "__og_window_open"), 5,
+          [](jsi::Runtime &rt, const jsi::Value &, const jsi::Value *args,
+             size_t n) -> jsi::Value {
+            if (n < 5) return jsi::String::createFromAscii(rt, "{\"ok\":false,\"reason\":\"arguments\"}");
+            std::string title = args[3].toString(rt).utf8(rt);
+            const char *answer = og_c_window_open(
+                (uint32_t)args[0].asNumber(), (uint32_t)args[1].asNumber(),
+                (uint32_t)args[2].asNumber(), title.c_str(), args[4].getBool());
+            return jsi::String::createFromUtf8(rt, answer);
+          }));
   jsi::Object env(rt);
-  for (int i = 2; i < argc; i++) {
-    const char *eq = std::strchr(argv[i], '=');
-    if (!eq) continue;
+  for (const auto &pair : pairs) {
+    auto eq = pair.find('=');
+    if (eq == std::string::npos) continue;
     // `key=@file` passes the file's text.
-    std::string value = eq[1] == '@' ? readFile(eq + 2) : std::string(eq + 1);
-    env.setProperty(rt, std::string(argv[i], eq - argv[i]).c_str(),
-                    jsi::String::createFromUtf8(rt, value));
+    std::string value = pair[eq + 1] == '@' ? readFile(pair.c_str() + eq + 2) : pair.substr(eq + 1);
+    env.setProperty(rt, pair.substr(0, eq).c_str(), jsi::String::createFromUtf8(rt, value));
   }
   rt.global().setProperty(rt, "__og_env", env);
 
-  std::string code = readFile(argv[1]);
+  std::string code = readFile(bundle.c_str());
   int status = 0;
   try {
-    rt.evaluateJavaScript(std::make_shared<jsi::StringBuffer>(code), argv[1]);
+    rt.evaluateJavaScript(std::make_shared<jsi::StringBuffer>(code), bundle);
     rt.drainMicrotasks();
+    // The display loop, when the game opened the window.
+    jsi::Value frame = rt.global().getProperty(rt, "__og_frame");
+    if (frame.isObject() && frame.getObject(rt).isFunction(rt)) {
+      jsi::Function step = frame.getObject(rt).getFunction(rt);
+      const char *limitText = std::getenv("OG_SHELL_FRAMES");
+      long limit = limitText ? std::atol(limitText) : 0;
+      auto last = std::chrono::steady_clock::now();
+      for (long n = 0; og_c_window_pump() && (limit == 0 || n < limit); n++) {
+        auto t = std::chrono::steady_clock::now();
+        double elapsed = std::chrono::duration<double, std::milli>(t - last).count();
+        last = t;
+        step.call(rt, elapsed);
+        rt.drainMicrotasks();
+      }
+      if (const char *capture = std::getenv("OG_SHELL_CAPTURE"))
+        if (!og_c_window_capture(capture))
+          std::fprintf(stderr, "og-hermes: no frame to capture to %s\n", capture);
+      jsi::Value report = rt.global().getProperty(rt, "__og_report");
+      if (report.isObject() && report.getObject(rt).isFunction(rt))
+        std::printf("%s\n", report.getObject(rt).getFunction(rt).call(rt).toString(rt).utf8(rt).c_str());
+      // The engine, then the window its renderer presents to.
+      jsi::Value close = rt.global().getProperty(rt, "__og_close");
+      if (close.isObject() && close.getObject(rt).isFunction(rt))
+        close.getObject(rt).getFunction(rt).call(rt);
+      og_c_window_close();
+    }
   } catch (const jsi::JSIException &e) {
     std::fprintf(stderr, "og-hermes: %s\n", e.what());
     status = 1;
@@ -268,5 +362,9 @@ int main(int argc, char **argv) {
     root->dumpSampledTraceToFile(profile);
     root->disableSamplingProfiler();
   }
+  // The JavaScript values the shell holds go before the runtime does.
+  shell.views.clear();
+  shell.dispatcher.reset();
+  std::fflush(stdout);
   return status;
 }

@@ -11,7 +11,7 @@ crate-type = ["cdylib", "rlib"]
 doctest = false
 
 [features]
-default = ["story", "video", "film", "destruction", "motion", "nav", "ai"]
+default = ["story", "video", "film", "destruction", "motion", "nav", "ai", "window"]
 publish = ["og-runtime/publish"]
 # og-runtime's optional modules, as og-host-node passes them through.
 story = ["og-runtime/story"]
@@ -21,6 +21,8 @@ destruction = ["og-runtime/destruction"]
 motion = ["og-runtime/motion"]
 nav = ["og-runtime/nav"]
 ai = ["og-runtime/ai"]
+# The desktop window a store shell draws in (src/window.rs).
+window = ["dep:winit", "dep:og-render", "dep:pollster", "dep:serde_json"]
 
 [dependencies]
 og-api = { path = "../og-api" }
@@ -28,3 +30,7 @@ og-runtime = { path = "../og-runtime", default-features = false, features = ["sh
 og-physics = { path = "../og-physics" }
 # Basis textures transcoded natively, as og-host-node does (`Hooks::texture`).
 og-bundle = { path = "../og-bundle", features = ["transcode"] }
+og-render = { path = "../og-render", optional = true }
+pollster = { workspace = true, optional = true }
+serde_json = { version = "1", optional = true }
+winit = { version = "0.30.12", default-features = false, features = ["rwh_06", "x11"], optional = true }

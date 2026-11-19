@@ -21,6 +21,9 @@
 #[path = "generated/glue.rs"]
 pub mod glue;
 
+#[cfg(feature = "window")]
+mod window;
+
 use og_api::host::Wire;
 use og_runtime as rt;
 use og_runtime::host_impl::HostWire;
