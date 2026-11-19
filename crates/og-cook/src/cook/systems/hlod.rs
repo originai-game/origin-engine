@@ -76,7 +76,7 @@ use super::{
 };
 use crate::format::{self, BlobKind, HlodMemberRow, HlodMeta, HlodNodeRow, NONE, kind, row_hash};
 use crate::hlod::{hlod_id, node_id};
-use glam::{Mat4, Quat, Vec2, Vec3};
+use glam::{Mat3, Mat4, Quat, Vec2, Vec3, Vec4};
 use og_bake::scene::{Image as Texels, Mesh};
 use og_bake::transfer::{Mips, Source as Detailed, Surface, Target, TransferSettings, transfer};
 use og_blob::BlobWriter;
@@ -85,7 +85,7 @@ use std::collections::BTreeMap;
 use std::sync::{Arc, Mutex, OnceLock};
 
 /// In every HLOD stamp: a change to what a proxy is cooks them again.
-const VERSION: u8 = 2;
+const VERSION: u8 = 3;
 /// The levels above the leaves a tree may have (a root 1024 leaves wide).
 const MAX_LEVELS: u32 = 10;
 /// The most triangles a proxy keeps; past it the simplification stops
@@ -505,13 +505,51 @@ fn flatten(g: &GltfSource) -> Result<Flat, String> {
         .or_else(|| g.doc.scenes().next())
         .ok_or("the model has no scene")?;
     let image = |t: gltf::texture::Texture| t.source().index();
+    // `KHR_texture_transform` on one of a material's maps (`texture`, its
+    // JSON path under the material), as a matrix of uvs.
+    let uv_of = |material: usize, texture: &str| -> Mat3 {
+        let Some(t) = g.json.pointer(&format!(
+            "/materials/{material}/{texture}/extensions/KHR_texture_transform"
+        )) else {
+            return Mat3::IDENTITY;
+        };
+        let pair = |key: &str, d: f32| {
+            let lane = |i: usize| {
+                t.get(key)
+                    .and_then(|v| v.get(i))
+                    .and_then(|v| v.as_f64())
+                    .map_or(d, |x| x as f32)
+            };
+            Vec2::new(lane(0), lane(1))
+        };
+        let [r0, r1] = og_render_data::UvTransform {
+            offset: pair("offset", 0.0),
+            scale: pair("scale", 1.0),
+            rotation: t.get("rotation").and_then(|v| v.as_f64()).unwrap_or(0.0) as f32,
+        }
+        .matrix();
+        Mat3::from_cols(
+            Vec3::new(r0[0], r1[0], 0.0),
+            Vec3::new(r0[1], r1[1], 0.0),
+            Vec3::new(r0[2], r1[2], 1.0),
+        )
+    };
+    // The base colour's transform is applied to the uvs read through it;
+    // the normal map's is then its own after that one's inverse.
+    let base_uv = |material: usize| uv_of(material, "pbrMetallicRoughness/baseColorTexture");
     let mut surfaces: Vec<Surface> = g
         .doc
         .materials()
-        .map(|m| {
+        .enumerate()
+        .map(|(i, m)| {
             let pbr = m.pbr_metallic_roughness();
             let b = pbr.base_color_factor();
             let e = Vec3::from(m.emissive_factor()) * m.emissive_strength().unwrap_or(1.0);
+            let base = base_uv(i);
+            let mut uv_transforms = [Mat3::IDENTITY; 5];
+            if base.determinant().abs() > 1e-12 {
+                uv_transforms[2] = uv_of(i, "normalTexture") * base.inverse();
+            }
             Surface {
                 base_color: Vec3::new(b[0], b[1], b[2]),
                 base_map: pbr.base_color_texture().map(|t| image(t.texture())),
@@ -522,6 +560,9 @@ fn flatten(g: &GltfSource) -> Result<Flat, String> {
                     .map(|t| image(t.texture())),
                 emissive: e,
                 emissive_map: m.emissive_texture().map(|t| image(t.texture())),
+                normal_map: m.normal_texture().map(|t| image(t.texture())),
+                normal_scale: m.normal_texture().map_or(1.0, |t| t.scale()),
+                uv_transforms,
                 ..Default::default()
             }
         })
@@ -533,30 +574,6 @@ fn flatten(g: &GltfSource) -> Result<Flat, String> {
         roughness: 0.6,
         ..Default::default()
     });
-    // `KHR_texture_transform` on a material's base colour, applied to the
-    // uvs read through it.
-    let uv_of = |material: usize| -> Option<[[f32; 3]; 2]> {
-        let t = g.json.pointer(&format!(
-            "/materials/{material}/pbrMetallicRoughness/baseColorTexture/extensions/KHR_texture_transform"
-        ))?;
-        let pair = |key: &str, d: f32| {
-            let lane = |i: usize| {
-                t.get(key)
-                    .and_then(|v| v.get(i))
-                    .and_then(|v| v.as_f64())
-                    .map_or(d, |x| x as f32)
-            };
-            Vec2::new(lane(0), lane(1))
-        };
-        Some(
-            og_render_data::UvTransform {
-                offset: pair("offset", 0.0),
-                scale: pair("scale", 1.0),
-                rotation: t.get("rotation").and_then(|v| v.as_f64()).unwrap_or(0.0) as f32,
-            }
-            .matrix(),
-        )
-    };
     let mut out = Flat {
         meshes: Vec::new(),
         surfaces,
@@ -575,7 +592,6 @@ fn flatten(g: &GltfSource) -> Result<Flat, String> {
         let world = parent * Mat4::from_cols_array_2d(&node.transform().matrix());
         stack.extend(node.children().map(|c| (c, world)));
         let Some(mesh) = node.mesh() else { continue };
-        let mirrored = world.determinant() < 0.0;
         for prim in mesh.primitives() {
             if prim.mode() != gltf::mesh::Mode::Triangles {
                 continue;
@@ -584,21 +600,16 @@ fn flatten(g: &GltfSource) -> Result<Flat, String> {
             let Some(positions) = reader.read_positions() else {
                 continue;
             };
-            let positions: Vec<Vec3> = positions
-                .map(|p| world.transform_point3(Vec3::from(p)))
-                .collect();
+            let positions: Vec<Vec3> = positions.map(Vec3::from).collect();
             let surface = prim.material().index().unwrap_or(default);
-            let uv = prim.material().index().and_then(uv_of);
+            let uv = prim.material().index().map(base_uv);
             let uvs: Vec<Vec2> = reader
                 .read_tex_coords(0)
                 .map(|t| {
                     t.into_f32()
-                        .map(|[u, v]| match uv {
-                            Some(m) => Vec2::new(
-                                m[0][0] * u + m[0][1] * v + m[0][2],
-                                m[1][0] * u + m[1][1] * v + m[1][2],
-                            ),
-                            None => Vec2::new(u, v),
+                        .map(|t| {
+                            let t = Vec2::from(t);
+                            uv.map_or(t, |m| (m * t.extend(1.0)).truncate())
                         })
                         .collect()
                 })
@@ -606,6 +617,14 @@ fn flatten(g: &GltfSource) -> Result<Flat, String> {
             let colors: Vec<Vec3> = reader
                 .read_colors(0)
                 .map(|c| c.into_rgb_f32().map(Vec3::from).collect())
+                .unwrap_or_default();
+            let normals: Vec<Vec3> = reader
+                .read_normals()
+                .map(|n| n.map(Vec3::from).collect())
+                .unwrap_or_default();
+            let tangents: Vec<Vec4> = reader
+                .read_tangents()
+                .map(|t| t.map(Vec4::from).collect())
                 .unwrap_or_default();
             let read: Vec<u32> = reader
                 .read_indices()
@@ -619,26 +638,76 @@ fn flatten(g: &GltfSource) -> Result<Flat, String> {
                         mesh.name().unwrap_or("")
                     ));
                 }
-                indices.extend(if mirrored { [t[0], t[2], t[1]] } else { *t });
+                indices.push(*t);
             }
-            out.triangles += indices.len() / 3;
-            out.meshes.push(Mesh {
+            let count = positions.len();
+            let local = Mesh {
                 positions,
-                normals: Vec::new(),
-                uvs: if uvs.len() == colors.len() || colors.is_empty() {
-                    uvs
+                normals: if normals.len() == count {
+                    normals
                 } else {
                     Vec::new()
                 },
-                colors,
-                indices,
+                tangents: if tangents.len() == count {
+                    tangents
+                } else {
+                    Vec::new()
+                },
+                uvs: if uvs.len() == count { uvs } else { Vec::new() },
+                colors: if colors.len() == count {
+                    colors
+                } else {
+                    Vec::new()
+                },
+                indices: indices.into_iter().flatten().collect(),
                 material: surface,
                 lightmapped: false,
                 ..Default::default()
-            });
+            };
+            out.triangles += local.indices.len() / 3;
+            out.meshes.push(placed(&local, world));
         }
     }
     Ok(out)
+}
+
+/// `mesh` placed by `m`: its positions moved, its normals and tangents
+/// turned (a normal by the inverse transpose, as the renderer turns it),
+/// and under a mirroring `m` its triangles' winding and its tangents'
+/// handedness reversed, so it faces and is mapped as before.
+fn placed(mesh: &Mesh, m: Mat4) -> Mesh {
+    let mirrored = m.determinant() < 0.0;
+    let linear = Mat3::from_mat4(m);
+    let normal = linear.inverse().transpose();
+    let mut indices = mesh.indices.clone();
+    if mirrored {
+        for t in indices.as_chunks_mut::<3>().0 {
+            t.swap(1, 2);
+        }
+    }
+    Mesh {
+        positions: mesh
+            .positions
+            .iter()
+            .map(|&p| m.transform_point3(p))
+            .collect(),
+        normals: mesh
+            .normals
+            .iter()
+            .map(|&n| (normal * n).normalize_or_zero())
+            .collect(),
+        tangents: mesh
+            .tangents
+            .iter()
+            .map(|t| {
+                (linear * t.truncate())
+                    .normalize_or_zero()
+                    .extend(if mirrored { -t.w } else { t.w })
+            })
+            .collect(),
+        indices,
+        ..mesh.clone()
+    }
 }
 
 fn srgb_to_linear(v: f32) -> f32 {
@@ -725,6 +794,8 @@ fn bounded(img: Image) -> Image {
 struct Proxy {
     positions: Vec<Vec3>,
     normals: Vec<Vec3>,
+    /// MikkTSpace on the page, with the bitangent up the image.
+    tangents: Vec<Vec4>,
     /// On the page, 0 to 1, v down.
     uvs: Vec<Vec2>,
     indices: Vec<u32>,
@@ -735,6 +806,9 @@ struct Proxy {
     /// glTF's metallic-roughness layout: roughness in green, metalness in
     /// blue.
     surface: Vec<u8>,
+    /// Tangent-space normals: what its models' surfaces and normal maps
+    /// show that its simpler surface does not.
+    normal: Vec<u8>,
     /// sRGB emission over `emissive_scale`.
     emissive: Vec<u8>,
     emissive_scale: f32,
@@ -840,6 +914,9 @@ impl<'a> Shared<'a> {
             images.push(Arc::new(Mips::new(texels(
                 p.width, p.height, &p.surface, false,
             ))));
+            images.push(Arc::new(Mips::new(texels(
+                p.width, p.height, &p.normal, false,
+            ))));
             let emits = p.emissive_scale > 0.0;
             if emits {
                 images.push(Arc::new(Mips::new(texels(
@@ -853,12 +930,15 @@ impl<'a> Shared<'a> {
                 metallic: 1.0,
                 metallic_roughness_map: Some(at + 1),
                 base_map: Some(at),
+                normal_map: Some(at + 2),
                 emissive: Vec3::splat(p.emissive_scale),
-                emissive_map: emits.then_some(at + 2),
+                emissive_map: emits.then_some(at + 3),
                 ..Default::default()
             });
             meshes.push(Mesh {
                 positions: p.positions.clone(),
+                normals: p.normals.clone(),
+                tangents: p.tangents.clone(),
                 uvs: p.uvs.clone(),
                 indices: p.indices.clone(),
                 material: surfaces.len() - 1,
@@ -886,28 +966,14 @@ impl<'a> Shared<'a> {
                     base_map: map(s.base_map, true)?,
                     metallic_roughness_map: map(s.metallic_roughness_map, false)?,
                     emissive_map: map(s.emissive_map, true)?,
+                    normal_map: map(s.normal_map, false)?,
                     ..s.clone()
                 });
             }
-            let mirrored = m.matrix.determinant() < 0.0;
             for fm in &flat.meshes {
-                let mut indices = fm.indices.clone();
-                if mirrored {
-                    for t in indices.as_chunks_mut::<3>().0 {
-                        t.swap(1, 2);
-                    }
-                }
                 meshes.push(Mesh {
-                    positions: fm
-                        .positions
-                        .iter()
-                        .map(|&p| m.matrix.transform_point3(p))
-                        .collect(),
-                    uvs: fm.uvs.clone(),
-                    colors: fm.colors.clone(),
-                    indices,
                     material: base + fm.material,
-                    ..Default::default()
+                    ..placed(fm, m.matrix)
                 });
             }
         }
@@ -1045,18 +1111,35 @@ impl<'a> Shared<'a> {
             atlas.width.max(1).next_multiple_of(4),
             atlas.height.max(1).next_multiple_of(4),
         );
-        let positions: Vec<Vec3> = charted
-            .vertices
+        // Given MikkTSpace tangents on the page, the frame its normal page
+        // is drawn in and the renderer reads it in (the model cook keeps
+        // them).
+        let size = Vec2::new(width as f32, height as f32);
+        let mut corners: Vec<model::FVertex> = charted
+            .indices
             .iter()
-            .map(|v| positions[v.xref as usize])
+            .map(|&i| {
+                let v = &charted.vertices[i as usize];
+                model::FVertex {
+                    p: positions[v.xref as usize].to_array(),
+                    n: normals[v.xref as usize].to_array(),
+                    uv: (Vec2::from(v.uv) / size).to_array(),
+                    c: [1.0; 4],
+                    t: [0.0; 4],
+                    key: [0; 2],
+                }
+            })
             .collect();
-        let normals: Vec<Vec3> = charted
-            .vertices
-            .iter()
-            .map(|v| normals[v.xref as usize])
-            .collect();
-        let page_uvs: Vec<Vec2> = charted.vertices.iter().map(|v| Vec2::from(v.uv)).collect();
-        let indices = charted.indices.clone();
+        if !mikktspace::generate_tangents(&mut model::Tangents { v: &mut corners }) {
+            return Err("its page has no MikkTSpace tangent frame".into());
+        }
+        let flat: Vec<u32> = (0..corners.len() as u32).collect();
+        let (vertices, indices) = model::weld(&corners, &flat, &mut flat.clone());
+        let positions: Vec<Vec3> = vertices.iter().map(|v| Vec3::from(v.p)).collect();
+        let normals: Vec<Vec3> = vertices.iter().map(|v| Vec3::from(v.n)).collect();
+        let tangents: Vec<Vec4> = vertices.iter().map(|v| Vec4::from(v.t)).collect();
+        let uvs: Vec<Vec2> = vertices.iter().map(|v| Vec2::from(v.uv)).collect();
+        let page_uvs: Vec<Vec2> = uvs.iter().map(|&uv| uv * size).collect();
 
         // Painted from what it stands in for.
         let refs: Vec<&Mips> = images.iter().map(Arc::as_ref).collect();
@@ -1069,7 +1152,7 @@ impl<'a> Shared<'a> {
             Target {
                 positions: &positions,
                 normals: &normals,
-                tangents: &[],
+                tangents: &tangents,
                 uvs: &page_uvs,
                 indices: &indices,
             },
@@ -1091,11 +1174,11 @@ impl<'a> Shared<'a> {
             0.0
         };
         let scale = 1.0 / emissive_scale.max(1e-6);
-        let size = Vec2::new(width as f32, height as f32);
         Ok(Proxy {
-            uvs: page_uvs.iter().map(|&uv| uv / size).collect(),
+            uvs,
             positions,
             normals,
+            tangents,
             indices,
             width,
             height,
@@ -1115,6 +1198,11 @@ impl<'a> Shared<'a> {
                 .surface
                 .iter()
                 .flat_map(|t| [255, byte(t[0]), byte(t[1]), 255])
+                .collect(),
+            normal: pages
+                .normal
+                .iter()
+                .flat_map(|t| [byte(t[0]), byte(t[1]), byte(t[2]), 255])
                 .collect(),
             emissive: pages
                 .emissive
@@ -1150,6 +1238,7 @@ impl<'a> Shared<'a> {
             hi = hi.max(Vec3::from(*v));
         }
         let normals: Vec<[f32; 3]> = p.normals.iter().map(|n| n.to_array()).collect();
+        let tangents: Vec<[f32; 4]> = p.tangents.iter().map(|t| t.to_array()).collect();
         let uvs: Vec<[f32; 2]> = p.uvs.iter().map(|u| u.to_array()).collect();
         let mut bin = Bin::default();
         let count = local.len();
@@ -1165,6 +1254,11 @@ impl<'a> Shared<'a> {
             bytemuck::cast_slice(&normals),
             Some(34962),
             serde_json::json!({ "componentType": 5126, "count": count, "type": "VEC3" }),
+        );
+        let tangent = bin.add(
+            bytemuck::cast_slice(&tangents),
+            Some(34962),
+            serde_json::json!({ "componentType": 5126, "count": count, "type": "VEC4" }),
         );
         let uv = bin.add(
             bytemuck::cast_slice(&uvs),
@@ -1189,12 +1283,14 @@ impl<'a> Shared<'a> {
         };
         png(&p.base)?;
         png(&p.surface)?;
+        png(&p.normal)?;
         let mut material = serde_json::json!({
             "name": "hlod",
             "pbrMetallicRoughness": {
                 "baseColorTexture": { "index": 0 },
                 "metallicRoughnessTexture": { "index": 1 }
-            }
+            },
+            "normalTexture": { "index": 2 }
         });
         let mut json = serde_json::json!({
             "asset": { "version": "2.0", "generator": "og-cook hlod" },
@@ -1202,14 +1298,16 @@ impl<'a> Shared<'a> {
             "scenes": [{ "nodes": [0] }],
             "nodes": [{ "name": "hlod", "mesh": 0, "translation": center.to_array() }],
             "meshes": [{ "primitives": [{
-                "attributes": { "POSITION": position, "NORMAL": normal, "TEXCOORD_0": uv },
+                "attributes": {
+                    "POSITION": position, "NORMAL": normal, "TANGENT": tangent, "TEXCOORD_0": uv
+                },
                 "indices": index,
                 "material": 0
             }] }],
         });
         if self.nodes[n].emissive {
             png(&p.emissive)?;
-            material["emissiveTexture"] = serde_json::json!({ "index": 2 });
+            material["emissiveTexture"] = serde_json::json!({ "index": 3 });
             material["emissiveFactor"] = serde_json::json!([1.0, 1.0, 1.0]);
             material["extensions"] = serde_json::json!({
                 "KHR_materials_emissive_strength": { "emissiveStrength": p.emissive_scale }
@@ -1409,12 +1507,11 @@ fn creased(pos: &[[f32; 3]], indices: &[u32]) -> (Vec<Vec3>, Vec<Vec3>, Vec<u32>
     (positions, normals, out)
 }
 
+/// A proxy's textures, in the order of its glTF's images.
+const PAGES: [&str; 4] = ["base", "surface", "normal", "emissive"];
+
 fn page_id(scene: &str, n: usize, page: usize) -> String {
-    format!(
-        "{}-{}",
-        node_id(scene, n),
-        ["base", "surface", "emissive"][page]
-    )
+    format!("{}-{}", node_id(scene, n), PAGES[page])
 }
 
 /// Plans a scene's HLOD outputs: nothing without an `hlod` block.
@@ -1547,7 +1644,7 @@ pub(crate) fn plan<'a>(
         ));
     }
     for (n, node) in shared.nodes.iter().enumerate() {
-        for page in 0..if node.emissive { 3 } else { 2 } {
+        for page in 0..if node.emissive { 4 } else { 3 } {
             outs.push((
                 page_id(&s.rel, n, page),
                 format::Texture::NAME,
@@ -1691,7 +1788,7 @@ impl Job for ProxyJob<'_> {
         let ids: Vec<String> = src
             .textures
             .iter()
-            .map(|u| page_id(&shared.scene, *n, u.image.min(2)))
+            .map(|u| page_id(&shared.scene, *n, u.image.min(PAGES.len() - 1)))
             .collect();
         // A proxy is no ray's target and no collider, and is made to the
         // art contract's models already.
@@ -1700,7 +1797,8 @@ impl Job for ProxyJob<'_> {
             collider: false,
             conform: None,
             impostor: None,
-            tangents: false,
+            // Its own, which its normal page was drawn in.
+            tangents: true,
             // The tree is its levels of detail.
             lods: Some(vec![1.0]),
             ..ex.options.mesh.clone()
@@ -1725,7 +1823,7 @@ impl Job for ProxyJob<'_> {
     }
 }
 
-/// One of a proxy's textures: base colour, surface or emission.
+/// One of a proxy's textures: base colour, surface, normals or emission.
 struct PageJob<'a>(Arc<Shared<'a>>, usize, usize);
 
 impl Job for PageJob<'_> {
@@ -1735,6 +1833,7 @@ impl Job for PageJob<'_> {
         let (rgba, k) = match page {
             0 => (&proxy.base, kind::COLOR),
             1 => (&proxy.surface, kind::LINEAR),
+            2 => (&proxy.normal, kind::NORMAL),
             _ => (&proxy.emissive, kind::COLOR),
         };
         let img = Image {

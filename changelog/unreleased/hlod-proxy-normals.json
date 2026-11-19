@@ -1,0 +1,8 @@
+{
+  "added": [
+    {
+      "member": "scene hlod",
+      "summary": "An HLOD proxy carries a normal map: what its models' surfaces and normal maps show that its simplified surface does not (a wall's relief, a roof's ridges) is painted into a tangent-space page in the proxy's own MikkTSpace frame, so a distant town keeps its shading where it turns to proxies. Each proxy cooks one more texture, `<scene>#hlod-<n>-normal`; scenes with an `hlod` block cook their proxies again once."
+    }
+  ]
+}
