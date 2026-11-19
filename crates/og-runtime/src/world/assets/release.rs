@@ -27,6 +27,66 @@ pub(crate) fn resolve_releases(eng: &Engine) {
     }
 }
 
+/// A record that names what a release looks for.
+pub(crate) enum Naming {
+    /// A live component or resource, by its schema.
+    Live(String),
+    /// A persisted cell's kept component, by its schema.
+    Kept(String),
+}
+
+/// The first record `names` says names what a release looks for: a
+/// component on a live entity, a resource, or a component a live cell
+/// keeps for its next load. Decodes every row it reads, so only a release
+/// runs it.
+pub(crate) fn naming(
+    eng: &Engine,
+    world: &og_ecs::World,
+    names: &dyn Fn(&Layout, &Value) -> bool,
+) -> Option<Naming> {
+    for layout in eng.state.borrow().layouts.values() {
+        let used = match layout.kind {
+            RecordKind::Component => {
+                let rows = crate::present::extract::column_rows(world, layout);
+                rows.iter().any(|(e, _)| {
+                    let id = world.id_by_name(&layout.schema).expect("registered layout");
+                    world
+                        .get_bytes(Entity::from_bits(e), id)
+                        .ok()
+                        .is_some_and(|b| names(layout, &layout.decode_kept(b)))
+                })
+            }
+            RecordKind::Resource => world
+                .id_by_name(&layout.schema)
+                .ok()
+                .and_then(|id| world.resource_bytes(id).ok())
+                .is_some_and(|b| names(layout, &layout.decode_kept(b))),
+            RecordKind::Event => false,
+        };
+        if used {
+            return Some(Naming::Live(layout.schema.clone()));
+        }
+    }
+    let store = crate::world::stream::cells::store(eng)?;
+    let store = crate::world::stream::cell_store::lock(&store);
+    let state = eng.state.borrow();
+    for (&cell, rows) in &store.kept {
+        if !world.is_alive(Entity::from_bits(cell)) {
+            continue;
+        }
+        for row in rows {
+            for (name, _, bytes) in &row.components {
+                if let Some(layout) = state.layouts.get(name)
+                    && names(layout, &layout.decode_kept(bytes.clone()))
+                {
+                    return Some(Naming::Kept(name.clone()));
+                }
+            }
+        }
+    }
+    None
+}
+
 fn close_bundle(eng: &Engine, bundle: usize) -> Result<(), String> {
     let (indices, geometries, materials) = {
         let a = eng.assets.borrow();
@@ -95,52 +155,18 @@ fn close_bundle(eng: &Engine, bundle: usize) -> Result<(), String> {
                 .map_or_else(|| contains(value), |vs| vs.iter().any(contains))
         })
     };
-    for layout in eng.state.borrow().layouts.values() {
-        let used = match layout.kind {
-            RecordKind::Component => {
-                let rows = crate::present::extract::column_rows(world, layout);
-                // Decoding is confined to the explicit close operation.
-                rows.iter().any(|(e, _)| {
-                    let id = world.id_by_name(&layout.schema).expect("registered layout");
-                    world
-                        .get_bytes(Entity::from_bits(e), id)
-                        .ok()
-                        .is_some_and(|b| referenced(layout, &layout.decode_kept(b)))
-                })
-            }
-            RecordKind::Resource => world
-                .id_by_name(&layout.schema)
-                .ok()
-                .and_then(|id| world.resource_bytes(id).ok())
-                .is_some_and(|b| referenced(layout, &layout.decode_kept(b))),
-            RecordKind::Event => false,
-        };
-        if used {
+    match naming(eng, world, &referenced) {
+        Some(Naming::Live(schema)) => {
             return Err(format!(
-                "{} still references this bundle; despawn its placements and clear its handles before releasing it",
-                layout.schema
+                "{schema} still references this bundle; despawn its placements and clear its handles before releasing it"
             ));
         }
-    }
-    if let Some(store) = crate::world::stream::cells::store(eng) {
-        let store = crate::world::stream::cell_store::lock(&store);
-        let state = eng.state.borrow();
-        for (&cell, rows) in &store.kept {
-            if !world.is_alive(Entity::from_bits(cell)) {
-                continue;
-            }
-            for row in rows {
-                for (name, _, bytes) in &row.components {
-                    if let Some(layout) = state.layouts.get(name)
-                        && referenced(layout, &layout.decode_kept(bytes.clone()))
-                    {
-                        return Err(format!(
-                            "a persisted cell's {name} still references this bundle; discard its kept entities before releasing it"
-                        ));
-                    }
-                }
-            }
+        Some(Naming::Kept(name)) => {
+            return Err(format!(
+                "a persisted cell's {name} still references this bundle; discard its kept entities before releasing it"
+            ));
         }
+        None => {}
     }
     if crate::present::hlod::bundle_in_use(world, &eng.render.borrow(), bundle) {
         return Err("an HLOD placement still references this bundle; despawn it before releasing the bundle".into());
