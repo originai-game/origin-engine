@@ -481,7 +481,8 @@ fn the_terrain_cook_is_deterministic_and_incremental() {
 /// Terrains that share an edge (east and north of one): the same declared
 /// `height`, the same 16-bit samples on the edge, different heights inside.
 /// Each cooks its heights over the declared range, not over its own lowest
-/// and highest, so the edge decodes to the same metres in both, while each
+/// and highest, so the edge decodes to the same metres in both, and the
+/// surface along it samples the same bits from either side, while each
 /// terrain's range is still its own.
 #[test]
 fn adjacent_terrains_with_equal_edge_samples_meet_exactly() {
@@ -538,6 +539,18 @@ fn adjacent_terrains_with_equal_edge_samples_meet_exactly() {
         assert_eq!(a.to_bits(), b.to_bits(), "row {y}: {a} vs {b}");
         let want = -256.0 + edge(y) as f32 / 65535.0 * 1024.0;
         assert!((a - want).abs() < 1e-4, "row {y}: {a} vs the source's {want}");
+    }
+    // og.terrain.sample's surface along the seam, between samples too:
+    // west's +x edge is east's -x edge.
+    for k in 0..=200 {
+        let z = -32.0 + k as f32 * 0.32;
+        let a = fw.height(glam::Vec2::new(32.0, z));
+        let b = fe.height(glam::Vec2::new(-32.0, z));
+        assert_eq!(a.to_bits(), b.to_bits(), "z {z}: {a} vs {b}");
+        // West's +z edge is north's -z edge.
+        let a = fw.height(glam::Vec2::new(z, 32.0));
+        let b = fn_.height(glam::Vec2::new(z, -32.0));
+        assert_eq!(a.to_bits(), b.to_bits(), "x {z}: {a} vs {b}");
     }
     // Each terrain's range is its own heights', not the declared one.
     for (t, f) in [(&tw, &fw), (&te, &fe), (&tn, &fn_)] {

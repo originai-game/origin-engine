@@ -70,6 +70,17 @@ impl<F: Fn(u32, u32) -> f32> TerrainSampler<F> {
         let h10 = self.at(c + 1, r);
         let h01 = self.at(c, r + 1);
         let h11 = self.at(c + 1, r + 1);
+        // On the cell's border the surface is the line between that side's
+        // two samples, computed from them alone: a terrain that shares the
+        // side (its first column this one's last) gives the same bits.
+        let side = |a: f32, b: f32, t: f32| a * (1.0 - t) + b * t;
+        match (f.x, f.y) {
+            (0.0, _) => return side(h00, h01, f.y),
+            (1.0, _) => return side(h10, h11, f.y),
+            (_, 0.0) => return side(h00, h10, f.x),
+            (_, 1.0) => return side(h01, h11, f.x),
+            _ => {}
+        }
         if !og_core::math::heightfield_zigzag(h00, h10, h01, h11) {
             if f.x + f.y <= 1.0 {
                 h00 + (h10 - h00) * f.x + (h01 - h00) * f.y
