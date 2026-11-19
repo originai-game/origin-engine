@@ -5,6 +5,7 @@ import type { PlatformAnswer, PlatformNotice } from "../../platform-local.ts";
 import type { AudioLatencyMessage, AudioMessage } from "../audio.ts";
 import type { InjectedInput } from "../input.ts";
 import type { RpcRings } from "../rpc-ring.ts";
+import type { SessionGrant } from "./shared.ts";
 
 export interface Start {
   type: "start";
@@ -84,6 +85,9 @@ export type Message =
   | { type: "platform-host"; host: string; capabilities: string[]; time?: number }
   | { type: "room-events"; events: unknown[] }
   | { type: "room-host"; host: string; join?: string }
+  /** og.shared: the page's session provider's name, and its answer to the Worker's `shared` ask number `request`. */
+  | { type: "shared-host"; host: string }
+  | { type: "shared-session"; request: number; grant: SessionGrant }
   | { type: "fullscreen"; on: boolean }
   | { type: "mouse-report"; active: boolean; unsupported: boolean }
   | { type: "keyboard-layout"; labels: { code: string; label: string }[] }

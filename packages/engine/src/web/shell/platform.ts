@@ -3,7 +3,7 @@
 // bridge for instance) and what carries its rooms.
 
 import { localPlatform, storagePersistence, type PlatformAnswer, type PlatformCall, type PlatformHost, type PlatformLink, type PlatformNotice } from "../../platform-local.ts";
-import type { RoomProvider } from "../../provider.ts";
+import type { RoomProvider, SessionProvider } from "../../provider.ts";
 
 /**
  * What carries og.platform's rooms on the web (docs/design.md §2.8): the engine's room ops
@@ -17,6 +17,7 @@ export class PlatformBridge {
   /** A message to the engine Worker. */
   readonly #post: (message: Record<string, unknown>) => void;
   #rooms: RoomHost | null = null;
+  #sessions: SessionProvider | null = null;
   #platform: PlatformHost = localPlatform(storagePersistence(`og.platform:${globalThis.location?.pathname ?? "/"}`));
   #pause: (on: boolean) => void;
 
@@ -50,6 +51,23 @@ export class PlatformBridge {
     this.#post({ type: "room-host", host: host ? host.host : "none", ...(link ? { join: link } : {}) });
     // After the engine knows its host: what the provider heard already (a room joined at connect) follows.
     host?.attach?.(this.#deliverRooms);
+  }
+
+  /** Shell.setSessions. */
+  setSessions(provider: SessionProvider | null): void {
+    this.#sessions = provider;
+    this.#post({ type: "shared-host", host: provider ? provider.host : "none" });
+  }
+
+  /** The Worker's ask (a `shared` message) for a connection to a world, answered by the session provider. */
+  session(request: number, world: string, reconnect: boolean): void {
+    const answer = (grant: Record<string, unknown>) => this.#post({ type: "shared-session", request, grant });
+    const provider = this.#sessions;
+    if (!provider) return answer({ ok: false, code: "none", message: "this page has no session provider" });
+    provider.connect({ world, reconnect }).then(
+      (a) => answer(a.ok ? { ok: true, url: a.url, ...(a.token !== undefined ? { token: a.token } : {}) } : { ok: false, code: a.error.code, message: a.error.message }),
+      (e: unknown) => answer({ ok: false, code: "failed", message: `the session provider threw: ${e instanceof Error ? e.message : String(e)}` }),
+    );
   }
 
   /** Room events to the engine, in order (og_room_deliver). */

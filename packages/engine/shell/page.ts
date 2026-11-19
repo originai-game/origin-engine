@@ -270,7 +270,8 @@ export interface PlayOptions {
   /**
    * The page's providers (`@origingame/engine/provider`, docs/web-export.md §Providers): `platform`
    * answers og.platform where the browser's storage would, `rooms` (a RoomProvider, or an `og
-   * relay` URL) carries its rooms where none would. A Player framing the page still answers
+   * relay` URL) carries its rooms where none would, `sessions` (a SessionProvider, or an `og
+   * world-server` URL) hosts og.shared's sessions. A Player framing the page still answers
    * what it answers. Default: `window.__OG_PROVIDER`, which a page sets before play.js loads.
    */
   readonly provider?: Providers;
@@ -913,6 +914,8 @@ export async function play(options: PlayOptions = {}): Promise<PlayHandle> {
   // through it); without one, a Play link's game hears why it is in none (og.RoomJoined, ok
   // false). A Player's hello later carries them.
   if (!byPlayer && (provided.rooms || roomLink)) shell.setRooms(provided.rooms ?? null, roomLink);
+  // og.shared's sessions: the page's provider (a Player's own comes with its protocol), else none.
+  shell.setSessions(provided.sessions ?? null);
 
   /** The play gate: its button, and the tap, click, Enter or Space that passes it. */
   function openGate(): void {
