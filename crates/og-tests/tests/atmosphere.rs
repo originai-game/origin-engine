@@ -684,3 +684,95 @@ fn far_night_clouds_take_the_moonlit_air() {
         "the far cloud over the horizon is {banked:?}, the clear sky there {open:?}"
     );
 }
+
+/// Under a physical sky at night the clouds are lit by the moon, as by
+/// day by the sun: looking towards a high moon (23:24) and a rising one
+/// (18:33) over the night sea, the cumulus stand brighter than the
+/// night sky they hide (1.20 and 1.23 times its light). They were lit by
+/// the set sun alone, so only the sky's ambient reached them and they
+/// stood darker than it (0.83 and 0.87).
+#[test]
+#[ignore = "requires GPU"]
+fn the_moon_lights_the_clouds_at_night() {
+    use og_render::{Background, Environment, Exposure, ProceduralSky};
+    let linear = |v: f32| {
+        let c = v / 255.0;
+        if c <= 0.04045 {
+            c / 12.92
+        } else {
+            ((c + 0.055) / 1.055).powf(2.4)
+        }
+    };
+    let mut ratios = Vec::new();
+    for hours in [23.4, 18.55] {
+        let look = og_render::day_night(hours, 25.0, 90.0)
+            .with_moon(1.6, 0.5)
+            .with_atmosphere(&og_render::PhysicalAtmosphere::EARTH);
+        let moon = look.light_direction;
+        assert!(
+            moon.dot(look.sun_direction) < 0.0,
+            "the moon keys {hours} h"
+        );
+        let frame = |cover: Option<f32>| {
+            let mut built = scenes::build("water-ocean-night").expect("night sea");
+            let scene = &mut built.scene;
+            scene.lighting.light.direction_to_light = look.light_direction;
+            scene.lighting.light.color = look.light_color;
+            scene.lighting.light.intensity = look.light_intensity;
+            scene.lighting.environment = Environment {
+                sky: ProceduralSky {
+                    sun_direction: look.sun_direction,
+                    sun_color: look.sun_color,
+                    look: Some(look.sky),
+                },
+                intensity: look.ambient,
+                background: Background::Procedural {
+                    sun_direction: look.sun_direction,
+                    sun_color: look.sun_color,
+                },
+                ..Environment::default()
+            };
+            scene.atmosphere.adaptation = look.adaptation;
+            scene.atmosphere.fog = None;
+            scene.atmosphere.clouds = cover.map(|coverage| og_render::Clouds {
+                coverage,
+                ..og_render::Clouds::default()
+            });
+            // 10 m over the sea, looking 24° up towards the moon's bearing.
+            let bearing = Vec3::new(moon.x, 0.0, moon.z).normalize();
+            scene.frame.camera = Camera {
+                position: Vec3::new(0.0, 10.0, 0.0),
+                target: Vec3::new(0.0, 10.0, 0.0) + (bearing + Vec3::Y * 0.45) * 100.0,
+                far: 5000.0,
+                exposure: Exposure::linear(1.5),
+                ..Default::default()
+            };
+            og_tests::gfx::render_built(&mut built)
+                .expect("render")
+                .image
+        };
+        let (clear, clouded) = (frame(None), frame(Some(0.34)));
+        // The sky's pixels the clouds change, over the horizon.
+        let (mut sky, mut cloud, mut n) = (0.0, 0.0, 0u32);
+        for y in 0..clear.height / 2 {
+            for x in 0..clear.width {
+                let a = luma(px(&clear, x, y).map(linear));
+                let b = luma(px(&clouded, x, y).map(linear));
+                if (a - b).abs() > 0.1 * a.max(b) {
+                    (sky, cloud, n) = (sky + a, cloud + b, n + 1);
+                }
+            }
+        }
+        let ratio = cloud / sky.max(1e-6);
+        println!("{hours} h: the clouds {ratio:.3} of the sky they hide ({n} pixels)");
+        assert!(
+            n * 400 > clear.width * clear.height / 2,
+            "{hours} h: only {n} pixels of cloud"
+        );
+        ratios.push((hours, ratio));
+    }
+    assert!(
+        ratios.iter().all(|&(_, r)| r > 1.0),
+        "the moonlit clouds over the night sky they hide (hours, ratio): {ratios:?}"
+    );
+}

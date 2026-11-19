@@ -232,13 +232,41 @@ fn cloud_sphere(o: vec3<f32>, d: vec3<f32>, r: f32) -> vec2<f32> {
   return vec2<f32>(-b - s, -b + s);
 }
 
-// The sunlight reaching `p` (planet-centred metres, the planet of
-// `radius`): under the physical sky the sun above the air through its
-// transmittance at that height, else the scene's `light`.
+// The key light reaching `p` (planet-centred metres, the planet of
+// `radius`): under the physical sky the key above the air (cloud_key)
+// through its transmittance at that height, else the scene's `light`.
 fn cloud_sun(p: vec3<f32>, radius: f32, to_light: vec3<f32>, light: vec3<f32>, physical: bool) -> vec3<f32> {
   if (!physical) { return light; }
   let r_km = frame.sky_scatter[3].x + (length(p) - radius) * 0.001;
-  return 3.0 * frame.sky_glow.yzw * scatter_sun_transmittance(r_km, dot(normalize(p), to_light));
+  return light * scatter_sun_transmittance(r_km, dot(normalize(p), to_light));
+}
+
+// The light that keys the clouds under the physical sky: towards it, and
+// its light above the air.
+struct CloudKey {
+  dir: vec3<f32>,
+  light: vec3<f32>,
+}
+
+// The brighter of the sun and the moon as they reach the cloud base, the
+// other's handed over as og.DayNight hands over the scene's key light
+// (DayNightLook::keyed): the winner dimmed to nothing where the two are
+// equal, over a fifth of their sum either side, so the clouds' light
+// passes from the setting sun to the moon without a jump. Each above the
+// air at 3 times the look's colour (the day-night noon). The clouds keep
+// one light column: at night the sun's added nothing.
+fn cloud_key() -> CloudKey {
+  let sun = normalize(frame.sky_sun_dir.xyz);
+  let sun_light = 3.0 * frame.sky_glow.yzw;
+  let moon_light = 3.0 * sky_moon_light();
+  if (frame.sky_moon.w <= 0.0) { return CloudKey(sun, sun_light); }
+  let moon = normalize(frame.sky_moon.xyz);
+  let base = frame.sky_scatter[3].x + frame.clouds[0].z * 0.001;
+  let s = dot(sun_light * scatter_sun_transmittance(base, sun.y), LUMA);
+  let m = dot(moon_light * scatter_sun_transmittance(base, moon.y), LUMA);
+  let swap = smoothstep(0.0, 0.2, abs(s - m) / max(s + m, 1e-30));
+  if (m > s) { return CloudKey(moon, moon_light * swap); }
+  return CloudKey(sun, sun_light * swap);
 }
 
 // A cloud layer over a background it has not seen: rgb its light, a how much of the background it lets through
@@ -329,24 +357,24 @@ fn cloud_fog(d: vec3<f32>, distance: f32) -> vec4<f32> {
 // scatters half the deck's radiance as much as it hides what is behind
 // it, spectrally: a deck seen far off stays the deck's grey, darker than
 // overhead as an overcast's horizon is.
-fn cloud_air(color: vec4<f32>, scattered: vec3<f32>, transmittance: f32, at: f32, d: vec3<f32>, to_light: vec3<f32>) -> vec4<f32> {
+fn cloud_air(color: vec4<f32>, scattered: vec3<f32>, transmittance: f32, at: f32, d: vec3<f32>, to_light: vec3<f32>, light: vec3<f32>) -> vec4<f32> {
   let c = frame.clouds;
   // Its samples by the path's length, 4 to 12 over 100 km (Hillaire 2020's
   // sample count for the sky's rays): a cloud some kilometres off has as
   // little air to integrate in front of it as it varies over.
   let steps = u32(round(mix(4.0, 12.0, clamp(at * 1e-5, 0.0, 1.0))));
-  let moon_light = sky_moon_light();
-  let moon_dir = select(to_light, normalize(frame.sky_moon.xyz), frame.sky_moon.w > 0.0);
-  let air = air_path(d, to_light, moon_dir, moon_light, sky_viewer_km(), at * 0.001, steps);
-  // The deck's base as cloud_deck lights it (the clear sky's low light,
-  // a fiftieth of the sun), its sun the one above the air that lights the
-  // clouds (cloud_sun), not the scene's light: that is the clouds' own
-  // dimming of it only where the scene was lit by Clouds::light_scene,
-  // and a lightning flash turns it towards the bolt.
   let sun_dir = normalize(frame.sky_sun_dir.xyz);
-  let sun_side = clear_sky_light(normalize(vec3<f32>(sun_dir.x, 0.0, sun_dir.z) + vec3<f32>(0.0, 1e-3, 0.0)));
+  let moon_light = sky_moon_light();
+  let moon_dir = select(sun_dir, normalize(frame.sky_moon.xyz), frame.sky_moon.w > 0.0);
+  let air = air_path(d, sun_dir, moon_dir, moon_light, sky_viewer_km(), at * 0.001, steps);
+  // The deck's base as cloud_deck lights it (the clear sky's low light,
+  // a fiftieth of the key), its key the one above the air that lights the
+  // clouds (cloud_key, `to_light` and `light`), not the scene's light:
+  // that is the clouds' own dimming of it only where the scene was lit by
+  // Clouds::light_scene, and a lightning flash turns it towards the bolt.
+  let sun_side = clear_sky_light(normalize(vec3<f32>(to_light.x, 0.0, to_light.z) + vec3<f32>(0.0, 1e-3, 0.0)));
   let view_side = clear_sky_light(normalize(vec3<f32>(d.x, 0.0, d.z) + vec3<f32>(0.0, 1e-3, 0.0)));
-  let above = 3.0 * frame.sky_glow.yzw * scatter_sun_transmittance(frame.sky_scatter[3].x + c[0].z * 0.001, sun_dir.y);
+  let above = light * scatter_sun_transmittance(frame.sky_scatter[3].x + c[0].z * 0.001, to_light.y);
   // In the hue of the light falling on it (a dusk's lavender, warmer
   // towards the glow), greyed by the cover as the march greys a cloud's
   // ambient: a cloud scatters every wavelength alike.
@@ -400,7 +428,7 @@ fn far_clouds(color: vec4<f32>, d: vec3<f32>, a: f32, b: f32, o: vec3<f32>, to_l
   var ambient = mix(sky_side * 0.6, sky_top, 0.5) * 0.675;
   ambient = mix(ambient, vec3<f32>(luma(ambient)), c[0].x * 0.7);
   let lit = cloud_view_fog((sun + ambient) * c[2].rgb, d, at);
-  if (physical) { return cloud_air(color, lit * opacity, 1.0 - opacity, at, d, to_light); }
+  if (physical) { return cloud_air(color, lit * opacity, 1.0 - opacity, at, d, to_light, light); }
   // The gradient sky has no air to integrate: fade into it over 27 km.
   return cloud_layer_mix(color, lit, opacity * exp(-a / 27000.0));
 }
@@ -420,18 +448,23 @@ fn clouds_march(d: vec3<f32>, pixel: vec2<f32>) -> vec4<f32> {
   // mountain), and the march below stops at the base, before the ground.
   let ground = cloud_sphere(o, d, radius);
   if (ground.x > 0.0 && viewer <= c[0].z) { return vec4<f32>(0.0, 0.0, 0.0, 1.0); }
-  // Under the physical sky the clouds are lit by the sun at their own
-  // height: the sun above the air (3 times the look's sunlight colour,
-  // the day-night noon) through the sky's own transmittance down to the
-  // sample, so a sunset's low clouds glow orange to pink from below and
-  // they stay lit a while after the ground's sunset; never the scene's
-  // directional light, which a lightning flash turns towards the bolt.
+  // Under the physical sky the clouds are lit by their key, the sun or by
+  // night the moon (cloud_key), at their own height: the key above the
+  // air through the sky's own transmittance down to the sample, so a
+  // sunset's low clouds glow orange to pink from below, they stay lit a
+  // while after the ground's sunset and a moon lights their undersides
+  // facing it; never the scene's directional light, which a lightning
+  // flash turns towards the bolt.
   // Otherwise the scene's sun, whose dimming by the clouds' own cover
   // (Clouds::light, [4].y) is undone: they are lit from above it.
   let physical = scatter_on();
   var to_light = normalize(frame.light_dir.xyz);
-  if (physical) { to_light = normalize(frame.sky_sun_dir.xyz); }
-  let light = frame.light_color.rgb / max(c[4].y, 9.1e-4);
+  var light = frame.light_color.rgb / max(c[4].y, 9.1e-4);
+  if (physical) {
+    let key = cloud_key();
+    to_light = key.dir;
+    light = key.light;
+  }
   let cos_t = dot(d, to_light);
   let phase = mix(hg_phase(cos_t, 0.8), hg_phase(cos_t, -0.25), 0.4);
   // The clear sky's light from above and from the horizon (sky_look.wgsl clear_sky_light: never the image-based light,
@@ -699,7 +732,7 @@ fn clouds_march(d: vec3<f32>, pixel: vec2<f32>) -> vec4<f32> {
   if (physical) {
     // (A march that met no cloud lets its background through as it is.)
     if (transmittance < 1.0) {
-      marched = cloud_air(behind_far, scattered, transmittance, depth / max(1.0 - transmittance, 1e-4), d, to_light);
+      marched = cloud_air(behind_far, scattered, transmittance, depth / max(1.0 - transmittance, 1e-4), d, to_light, light);
     }
   } else {
     // The gradient sky has no air to integrate: fade into it over 27 km.
