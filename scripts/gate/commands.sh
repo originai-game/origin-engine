@@ -158,11 +158,42 @@ EOF_LANES
 # (og-tests-web once stopped compiling for weeks while quick passed). The
 # single-threaded wasm32 target directory wasm-build uses; without sccache,
 # as a check makes only metadata.
+#
+# With them, the web module without og-runtime's optional modules
+# (docs/design.md §2.1): none of them, and each one left out with what needs
+# it, in the 3D publish module, and none of them in the 2D one. No shipped
+# variant leaves one out, so nothing else compiles their absent stand-ins
+# (bind/vfx.rs once named a constant only the present destruction module
+# had, 2026-11-19). A variant after the first rechecks og-runtime and
+# og-host-web only, about 20 s each.
+WASM_MODULES="story video film destruction motion nav ai"
+# MODULE NEEDED: a module that needs another (og-runtime's Cargo.toml).
+WASM_MODULE_NEEDS="film:story film:video ai:nav"
+modules_without() {
+  local off="$1" m n out=""
+  for m in $WASM_MODULES; do
+    [ "$m" != "$off" ] || continue
+    for n in $WASM_MODULE_NEEDS; do
+      [ "$n" != "$m:$off" ] || continue 2
+    done
+    out="$out,og-host-web/$m"
+  done
+  printf '%s' "$out"
+}
 step_wasm_check() {
-  skip_unchanged wasm-check "wasm-check" "$(python3 scripts/gate/inputs.py crates og-tests-web)" && return $SKIP
+  skip_unchanged wasm-check "wasm-check" "$(python3 scripts/gate/inputs.py crates og-tests-web og-host-web)" && return $SKIP
   export RUSTC_WRAPPER=
+  local profile="${OG_WASM_PROFILE:-$WASM_PROFILE_DEFAULT}" base3d=og-host-web/publish,og-host-web/physics3d,og-host-web/shaping m
   og_say "wasm check: og-tests-web ($WASM_TRIPLE)"
-  cargo check --profile "${OG_WASM_PROFILE:-$WASM_PROFILE_DEFAULT}" --target "$WASM_TRIPLE" -p og-tests-web --lib
+  cargo check --profile "$profile" --target "$WASM_TRIPLE" -p og-tests-web --lib || return 1
+  og_say "wasm check: og-host-web without any optional module (3D, 2D)"
+  cargo check --profile "$profile" --target "$WASM_TRIPLE" -p og-host-web --lib --no-default-features --features "$base3d" || return 1
+  cargo check --profile "$profile" --target "$WASM_TRIPLE" -p og-host-web --lib --no-default-features \
+    --features og-host-web/publish,og-host-web/physics2d,og-host-web/profile2d,og-host-web/shaping || return 1
+  for m in $WASM_MODULES; do
+    og_say "wasm check: og-host-web without $m"
+    cargo check --profile "$profile" --target "$WASM_TRIPLE" -p og-host-web --lib --no-default-features --features "$base3d$(modules_without "$m")" || return 1
+  done
 }
 
 # OG_WASM_VARIANTS picks the modules beside the development one, which every
