@@ -1,0 +1,8 @@
+{
+  "fixed": [
+    {
+      "member": "rendering: og.Fluid3D",
+      "summary": "A 3D fluid's surface no longer draws faceted and noisy, its highlights lost, when the camera is kilometres from the render origin. The surface's slope was taken between world points a pixel apart, each rounded at the camera's distance from the origin (half a millimetre 5.8 km out, against a pixel's few millimetres of surface). It is taken between the same points measured from the eye."
+    }
+  ]
+}

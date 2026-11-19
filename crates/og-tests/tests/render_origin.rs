@@ -14,7 +14,8 @@
 //!
 //! The render origin lies on a grid, so a camera is up to 5.8 km from it.
 //! What a shader reads along the pixel's ray (the lit fog's march, what
-//! glass refracts) is there what it is at the render origin.
+//! glass refracts) and what it rebuilds from a depth (the 3D fluid's
+//! surface) is there what it is at the render origin.
 //!
 //! Ways this could fail: `rebase` misses a kind of position (the lights,
 //! the fog's height, the decals, the particle systems: the frame differs
@@ -25,12 +26,16 @@
 //! builds its ray or a depth from a point unprojected through
 //! `inv_view_proj`, rounded at the camera's distance from the render origin,
 //! instead of frame.wgsl's `pixel_ray` (the fog's shafts and what the glass
-//! refracts drift with the camera's place).
+//! refracts drift with the camera's place), or takes a slope from two world
+//! points a pixel apart, each rounded there (the fluid's surface draws
+//! faceted).
 
 use glam::Vec3;
 use og_render::{RenderDesc, RenderScene, RenderTarget, Renderer, RgbaImage};
 use og_tests::compare::{Comparison, Tolerance, compare};
-use og_tests::{atmo_scenes, fx_scenes, light_scenes, physical_scenes, scenes, shadow_scenes};
+use og_tests::{
+    atmo_scenes, fx_scenes, light_scenes, p2_scenes, physical_scenes, scenes, shadow_scenes,
+};
 
 /// A scene's builder, and what moves it to a frame.
 type Build = fn() -> RenderScene;
@@ -206,13 +211,27 @@ const EDGE_FOG: f64 = 0.0045;
 /// measured 0.00419, and 0.01968 with the refraction's ray and the opaque
 /// depth unprojected through `inv_view_proj`.
 const EDGE_GLASS: f64 = 0.009;
+/// The rmse the fluid's drop may differ by there: lavapipe measured 0.00103
+/// (0.00078 for the view without the fluid), and 0.01422 with the surface's
+/// tangents taken between world points.
+const EDGE_FLUID: f64 = 0.004;
+
+/// The 3D fluid's falling drop from a metre off, a pixel 3 mm of its
+/// surface: f32 positions 5.8 km out are half a millimetre apart.
+fn drop_close_up() -> RenderScene {
+    let mut scene = p2_scenes::fluid_3d_scene();
+    scene.frame.camera.position = Vec3::new(0.35, 1.45, 1.2);
+    scene.frame.camera.target = Vec3::new(0.35, 1.25, 0.1);
+    scene
+}
 
 #[test]
 #[ignore = "requires GPU"]
 fn a_view_at_the_grids_edge_draws_as_at_the_render_origin() {
-    let builds: [(&str, Build, f64); 2] = [
+    let builds: [(&str, Build, f64); 3] = [
         ("fog", light_scenes::volumetric_fog_scene, EDGE_FOG),
         ("glass", physical_scenes::physical_scene, EDGE_GLASS),
+        ("fluid", drop_close_up, EDGE_FLUID),
     ];
     for (name, build, rmse) in builds {
         // Placed at the edge and drawn as it is, the render origin 5.8 km

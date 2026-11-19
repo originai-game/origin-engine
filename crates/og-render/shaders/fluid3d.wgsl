@@ -104,14 +104,26 @@ fn vs_full(@builtin(vertex_index) i: u32) -> FullOut {
   return o;
 }
 
-// The world point at pixel `px` (its centre) and view depth `d`.
-fn world_at(px: vec2<f32>, d: f32) -> vec3<f32> {
+// The point at pixel `px` (its centre) and view depth `d`, from the eye: a
+// few metres long wherever the camera stands. As a world point it is
+// rounded at the camera's distance from the frame's zero (half a millimetre
+// 5.8 km out), and the surface's tangents, each the difference of two such
+// points a pixel apart, were that rounding: the surface drew faceted and
+// lost its highlights.
+fn from_eye(px: vec2<f32>, d: f32) -> vec3<f32> {
   let uv = px * fluid.screen.zw;
   let ndc = vec2<f32>(uv.x * 2.0 - 1.0, 1.0 - uv.y * 2.0);
-  let a4 = frame.inv_view_proj * vec4<f32>(ndc, 0.0, 1.0);
-  let a = a4.xyz / a4.w;
+  let forward = frame.view_forward.xyz;
+  if (fluid.look.y > 0.5) {
+    // Orthographic: the pixel's point on the near plane (the plane's middle
+    // taken from the eye before the pixel's place on it is added), moved
+    // along the view to the depth.
+    let near = frame.inv_view_proj[0].xyz * ndc.x + frame.inv_view_proj[1].xyz * ndc.y
+      + (frame.inv_view_proj[3].xyz - frame.view_pos.xyz);
+    return near + forward * (d - dot(near, forward));
+  }
   let dir = pixel_ray(ndc);
-  return a + dir * ((d - view_depth(a)) / max(dot(dir, frame.view_forward.xyz), 1e-6));
+  return dir * (d / max(dot(dir, forward), 1e-6));
 }
 
 fn depth_at(px: vec2<i32>) -> f32 {
@@ -119,14 +131,14 @@ fn depth_at(px: vec2<i32>) -> f32 {
   return textureLoad(fluid_depth, clamp(px, vec2<i32>(0), size - vec2<i32>(1)), 0).r;
 }
 
-// The surface's tangent along `step` (a pixel offset): the two one-sided
-// differences weighted towards the side whose depth differs less, so
-// silhouettes keep their own slope. The weight is continuous: where both
+// The surface's tangent along `step` (a pixel offset) at the pixel's point
+// `rel` from the eye: the two one-sided differences weighted towards the
+// side whose depth differs less, so silhouettes keep their own slope. The weight is continuous: where both
 // sides differ alike (anywhere the surface is smooth) they count half each,
 // and a last-bit difference in depth moves the normal by as little. Taking
 // the lesser side outright flipped there between GPUs, and the specular
 // drew the flips as stripes over the whole body.
-fn tangent(px: vec2<i32>, p: vec3<f32>, d: f32, step: vec2<i32>) -> vec3<f32> {
+fn tangent(px: vec2<i32>, rel: vec3<f32>, d: f32, step: vec2<i32>) -> vec3<f32> {
   let df = depth_at(px + step);
   let db = depth_at(px - step);
   let pc = vec2<f32>(px) + vec2<f32>(0.5);
@@ -134,17 +146,17 @@ fn tangent(px: vec2<i32>, p: vec3<f32>, d: f32, step: vec2<i32>) -> vec3<f32> {
     let ef = (df - d) * (df - d);
     let eb = (db - d) * (db - d);
     let w = select(0.5, eb / (ef + eb), ef + eb > 0.0);
-    let forward = world_at(pc + vec2<f32>(step), df) - p;
-    let back = p - world_at(pc - vec2<f32>(step), db);
+    let forward = from_eye(pc + vec2<f32>(step), df) - rel;
+    let back = rel - from_eye(pc - vec2<f32>(step), db);
     return mix(back, forward, w);
   }
   if (df < NONE) {
-    return world_at(pc + vec2<f32>(step), df) - p;
+    return from_eye(pc + vec2<f32>(step), df) - rel;
   }
   if (db < NONE) {
-    return p - world_at(pc - vec2<f32>(step), db);
+    return rel - from_eye(pc - vec2<f32>(step), db);
   }
-  return world_at(pc + vec2<f32>(step), d) - p;
+  return from_eye(pc + vec2<f32>(step), d) - rel;
 }
 
 struct CompositeOut {
@@ -157,9 +169,10 @@ fn fs_composite(in: FullOut) -> CompositeOut {
   let px = vec2<i32>(in.pos.xy);
   let d = depth_at(px);
   if (d >= NONE) { discard; }
-  let p = world_at(in.pos.xy, d);
-  let tx = tangent(px, p, d, vec2<i32>(1, 0));
-  let ty = tangent(px, p, d, vec2<i32>(0, 1));
+  let rel = from_eye(in.pos.xy, d);
+  let p = frame.view_pos.xyz + rel;
+  let tx = tangent(px, rel, d, vec2<i32>(1, 0));
+  let ty = tangent(px, rel, d, vec2<i32>(0, 1));
   let v = toward_eye(p);
   // A pixel whose neighbours are all at its own point (a lone sphere's
   // rim) has no tangent plane: it faces the eye.
