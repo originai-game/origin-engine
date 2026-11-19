@@ -10,9 +10,10 @@
 //! changes the type hash and old blobs are refused.
 //!
 //! Models keep a second meshopt index stream, `cluster_indices`, for
-//! drawing. It shares the vertices and LOD ranges of `indices` without
-//! changing the simulation mesh's triangle or vertex order. A project
-//! cooked with `cook { clusters false }` has neither it nor clusters.
+//! drawing LOD 0, the simulation mesh, without changing its triangle or
+//! vertex order; the coarser levels are stored once, in `indices`, in
+//! cluster order. A project cooked with `cook { clusters false }` has
+//! neither it nor clusters.
 //!
 //! | blob | root | sections |
 //! |---|---|---|
@@ -296,7 +297,7 @@ row!(
     /// `u16` ([`tangent_pack`] against the decoded normal; zero without
     /// one), normal `i16 x 2` (snorm octahedral), then when present uv `u16
     /// x 2` (unorm over the uv range) and colour `u8 x 4` (unorm).
-    PrimitiveRow, "og.ModelPrimitive", 5 {
+    PrimitiveRow, "og.ModelPrimitive", 6 {
         material: u32,
         attributes: u32,
         vertex_count: u32,
@@ -308,10 +309,11 @@ row!(
         index_offset: u32,
         index_size: u32,
         index_count: u32,
-        /// The same triangles in draw-cluster order, meshopt-encoded in
-        /// `cluster_indices`; decoded count and LOD ranges match `indices`.
-        /// Size 0, and no clusters, when cooked without them (`cook {
-        /// clusters false }`).
+        /// LOD 0's triangles in draw-cluster order, meshopt-encoded in
+        /// `cluster_indices` (decoded count LOD 0's). `indices` keeps LOD 0
+        /// in its simulation order and holds the coarser levels, which
+        /// nothing simulates, in cluster order already. Size 0, and no
+        /// clusters, when cooked without them (`cook { clusters false }`).
         cluster_index_offset: u32,
         cluster_index_size: u32,
         lod_first: u32,

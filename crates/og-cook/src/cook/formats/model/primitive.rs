@@ -1231,8 +1231,11 @@ pub(crate) fn cook_primitive(
     let drawn: Vec<_> = (0..levels.len()).map(drawn_at).collect();
     // Keep the simulation mesh's triangle and vertex order independent of
     // meshlets: changing the order changes physics contacts and ray hits.
-    // Only the draw stream is reordered into contiguous clusters.
+    // Only LOD 0 is simulated (its collider and its raycast BVH), so only
+    // its draw stream is kept apart; a coarser level is stored once, in
+    // cluster order. The vertices keep the order of the levels as made.
     let mut all: Vec<u32> = Vec::new();
+    let mut made: Vec<u32> = Vec::new();
     let mut cluster_indices = Vec::new();
     let mut lods = Vec::new();
     let mut clusters = Vec::new();
@@ -1284,16 +1287,21 @@ pub(crate) fn cook_primitive(
             leaf_scale: leaf_scales[k],
         });
         clusters.extend(cut);
-        all.extend_from_slice(l);
-        cluster_indices.extend_from_slice(&ordered);
+        made.extend_from_slice(l);
+        if k == 0 || ordered.is_empty() {
+            all.extend_from_slice(l);
+            cluster_indices.extend_from_slice(&ordered);
+        } else {
+            all.extend_from_slice(&ordered);
+        }
     }
     // Reorder vertices for fetch locality (LOD 0 first decides the order).
     let mut remap = vec![0u32; q.len()];
     let vertex_count = unsafe {
         meshopt::ffi::meshopt_optimizeVertexFetchRemap(
             remap.as_mut_ptr(),
-            all.as_ptr(),
-            all.len(),
+            made.as_ptr(),
+            made.len(),
             q.len(),
         )
     };

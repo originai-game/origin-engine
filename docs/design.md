@@ -443,10 +443,11 @@ the probe's CPU description of a frame.
   hosts; on the web it reads the OffscreenCanvas target.
 
 **Meshlets** (`meshlet.rs`). The cook cuts every model level into clusters of
-at most 64 triangles and keeps their draw order in its own stream
-(`cluster_indices`). The simulation mesh, its raycast BVH and its index order
-are never reordered, because a rendering optimisation must not change ray
-hits or contacts. Every cluster carries its own and its parents' error so
+at most 64 triangles. LOD 0 is the simulation mesh: it, its raycast BVH and
+its index order are never reordered, because a rendering optimisation must
+not change ray hits or contacts, so its draw order has its own stream
+(`cluster_indices`). Nothing simulates a coarser level, which is stored once,
+in draw order. Every cluster carries its own and its parents' error so
 exactly the level `lod::select` picks is drawn, and the GPU and CPU paths
 draw the same picture. Visible clusters are compacted in a stable order, so
 neither draw order nor equal-depth software triangle ids depend on workgroup

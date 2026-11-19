@@ -492,7 +492,9 @@ impl CookedModel {
                 .map_err(|e| bad(format!("primitive {i}: {e}")))?;
             let idx = meshopt_codec::decode_index_buffer(ib, p.index_count as usize)
                 .map_err(|e| bad(format!("primitive {i}: {e}")))?;
-            // None for a model cooked without clusters (`cook { clusters false }`).
+            // None for a model cooked without clusters (`cook { clusters
+            // false }`). The stream holds LOD 0's draw order; the coarser
+            // levels are in `indices` in draw order already.
             let cluster_idx = if p.cluster_index_size == 0 {
                 Vec::new()
             } else {
@@ -502,8 +504,15 @@ impl CookedModel {
                     p.cluster_index_size,
                     "cluster index stream",
                 )?];
-                meshopt_codec::decode_index_buffer(cb, p.index_count as usize)
-                    .map_err(|e| bad(format!("primitive {i}: {e}")))?
+                let lod0 = lods
+                    .get(p.lod_first as usize)
+                    .filter(|l| l.index_first == 0 && l.index_count as usize <= idx.len())
+                    .ok_or_else(|| bad(format!("primitive {i}: LOD 0 out of range")))?
+                    .index_count as usize;
+                let mut draw = meshopt_codec::decode_index_buffer(cb, lod0)
+                    .map_err(|e| bad(format!("primitive {i}: {e}")))?;
+                draw.extend_from_slice(&idx[lod0..]);
+                draw
             };
             if idx.iter().chain(&cluster_idx).any(|&v| v >= p.vertex_count) {
                 return Err(bad(format!("primitive {i}: index out of range")));

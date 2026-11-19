@@ -454,7 +454,32 @@ fn a_model_cooked_without_clusters_loads_with_none() {
     assert!(a.mesh_clusters().is_some());
     assert!(b.mesh_clusters().is_none());
     assert!(b.clusters.is_empty() && b.cluster_indices.is_empty());
-    assert_eq!(a.indices, b.indices, "the simulation mesh is the same");
+    // LOD 0, the simulation mesh, is the same; a coarser level, which
+    // nothing simulates, is stored in its draw order: the same triangles.
+    let l0 = a.lods[0].count;
+    assert_eq!(
+        a.indices[..l0],
+        b.indices[..l0],
+        "the simulation mesh is the same"
+    );
+    let triangles = |indices: &[u32]| {
+        let mut tris: Vec<_> = indices
+            .chunks_exact(3)
+            .map(|t| {
+                [t[0], t[1], t[2]]
+                    .min([t[1], t[2], t[0]])
+                    .min([t[2], t[0], t[1]])
+            })
+            .collect();
+        tris.sort_unstable();
+        tris
+    };
+    for (la, lb) in a.lods.iter().zip(&b.lods).skip(1) {
+        assert_eq!(
+            triangles(&a.indices[la.first..la.first + la.count]),
+            triangles(&b.indices[lb.first..lb.first + lb.count])
+        );
+    }
     assert!(b.lods.len() > 1 && b.lods.iter().all(|l| l.count > 0));
     let (la, lb): (Vec<_>, Vec<_>) = (
         a.lods.iter().map(|l| (l.first, l.count)).collect(),
