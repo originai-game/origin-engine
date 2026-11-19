@@ -192,6 +192,25 @@ export class UiReactor {
     return { ok: true, value: undefined };
   }
 
+  /** Several writes in one exchange, drained once: the first refusal is the answer, and the other writes still apply. */
+  writeAll(source: UiSource, commands: readonly object[]): Result<void> {
+    let answer: Result<void> = { ok: true, value: undefined };
+    if (commands.length === 0) return answer;
+    if (this.draining) {
+      for (const command of commands) {
+        const result = this.operation(source, command);
+        if (!result.ok && answer.ok) answer = result;
+      }
+      return answer;
+    }
+    const results = this.sendBatch([...commands, { op: "next" }]);
+    const next = results.pop()!;
+    const refused = results.find(result => !result.ok);
+    if (refused && !refused.ok) answer = this.error(source, refused.reason);
+    this.flush(next);
+    return answer;
+  }
+
   register(source: UiSource, run: () => unknown): void {
     let scope = this.callbacks.get(source.scope);
     if (!scope) this.callbacks.set(source.scope, scope = new Map());
@@ -457,6 +476,7 @@ class Scope implements UiScope {
       remove: key => reactor.write(source, { op: "remove", source, key }),
       move: (key, before) => reactor.write(source, { op: "move", source, key, before: before ?? null }),
       patch: (key, fields) => reactor.write(source, { op: "patch", source, key, fields }),
+      patchAll: rows => reactor.writeAll(source, rows.map(({ key, fields }) => ({ op: "patch", source, key, fields }))),
     };
     reactor.handles.set(handle, store);
     return handle;

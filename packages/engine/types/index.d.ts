@@ -39,6 +39,8 @@ export interface UiCollection<T> extends UiReadable<readonly T[]> {
   remove(key: string): Result<void>;
   move(key: string, before?: string): Result<void>;
   patch(key: string, fields: Partial<T>): Result<void>;
+  /** Patch many rows in one exchange with the engine, each as patch(key, fields) does, in order: a HUD's markers each tick. A refused row (an unknown key, a field of another type) is the answer's reason; the other rows are patched. */
+  patchAll(rows: readonly { readonly key: string; readonly fields: Partial<T> }[]): Result<void>;
 }
 /** A column kind: what one field of a component or resource stores. */
 export type ColumnKind = keyof ColumnKinds;

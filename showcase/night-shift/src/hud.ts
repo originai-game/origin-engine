@@ -97,5 +97,5 @@ export const Hud = defineSystem("Hud", { reads: [og.Transform, Pedestrian], afte
     must(scope.writable("distance", "").set(`${Math.round(Math.sqrt((p.x - DROP.x) ** 2 + (p.z - DROP.z) ** 2))} m`));
   }
   const rows = scope.collection<Marker>("markers", [], { key: "id" });
-  for (const m of markers(world)) must(rows.patch(m.id, { x: m.x, y: m.y }));
+  must(rows.patchAll(markers(world).map((m) => ({ key: m.id, fields: { x: m.x, y: m.y } }))));
 });

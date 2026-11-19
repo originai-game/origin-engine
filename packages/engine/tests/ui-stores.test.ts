@@ -371,6 +371,27 @@ test("collections preserve keyed edits through restore and refuse duplicate keys
   } finally { e.destroy(); }
 });
 
+test("patchAll patches many rows in one exchange: subscribers settle once, and a refused row leaves the others patched", () => {
+  const e = engine();
+  try {
+    const scope = og.ui.scope(e.world, "map");
+    const rows = scope.collection("markers", [{ id: "p", x: 1, y: 2 }, { id: "q", x: 3, y: 4 }, { id: "r", x: 5, y: 6 }]);
+    const sums: number[] = [];
+    const sum = scope.derived("sum", rows, values => values.reduce((n, row) => n + row.x * 10 + row.y, 0));
+    const stop = sum.subscribe(value => sums.push(value));
+    expect(rows.patchAll([{ key: "r", fields: { x: 7 } }, { key: "p", fields: { y: 9, x: 0 } }]).ok).toBe(true);
+    expect(sums).toEqual([102, 119]);
+    const refused = rows.patchAll([{ key: "q", fields: { y: 1 } }, { key: "gone", fields: { x: 2 } }, { key: "r", fields: { y: 0 } }]);
+    expect(refused.ok).toBe(false);
+    if (!refused.ok) expect(refused.reason).toContain("gone");
+    expect(scope.get(rows)).toEqual([{ id: "p", x: 0, y: 9 }, { id: "q", x: 3, y: 1 }, { id: "r", x: 7, y: 0 }]);
+    expect(sums).toEqual([102, 119, 110]);
+    expect(rows.patchAll([]).ok).toBe(true);
+    stop();
+    scope.takeErrors();
+  } finally { e.destroy(); }
+});
+
 test("undeclared reads and reentrant writes report scope and store without committing derived results", () => {
   const e = engine();
   try {

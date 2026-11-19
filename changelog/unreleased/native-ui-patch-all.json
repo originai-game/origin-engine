@@ -1,0 +1,8 @@
+{
+  "added": [
+    {
+      "member": "UiCollection.patchAll",
+      "summary": "Patches many rows of a collection in one exchange with the engine, as patch does each, with subscribers settling once: a HUD's markers each tick. A refused row is the answer's reason; the other rows are patched."
+    }
+  ]
+}
