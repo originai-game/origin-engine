@@ -1757,7 +1757,7 @@ glass material without a CSS fill keeps its opaque material ground.
 
 | Token family | What it controls |
 |---|---|
-| `--seed-primary`, `--seed-accent`, `--seed-neutral`, `--seed-danger`, `--seed-warn`, `--seed-success`, `--seed-info`, `--seed-team` | The seed colours every colour below is derived from (below) |
+| `--seed-primary`, `--seed-accent`, `--seed-neutral`, `--seed-danger`, `--seed-warn`, `--seed-success`, `--seed-info`, `--seed-team`, `--seed-hud` | The seed colours every colour below is derived from (below); `--seed-hud` the game components' light, by default the accent or, when the accent has no hue, the instrument cyan |
 | `--color-*`, the role names (`--ink`, `--primary`…), `--team1` to `--team8` | Colours, per scheme, derived from the seeds; `--color-track`, `--color-minimap`, `--color-minimap-edge`, `--color-slot-selected-edge` for the engine's own parts |
 | `--common`, `--uncommon`, `--rare`, `--epic`, `--legendary`, `--mythic` | The rarity colours (by default each a status colour: `--line-strong`, `--success`, `--info`, `--xp`, `--warn`, `--danger`) |
 | `--space-*`, `--radius-*`, `--size-*`, `--stroke-*` | Spacing, corners, icon and art sizes (`--size-xs` to `--size-7xl`; a layout takes a step, never a multiple of one), line widths (`--stroke-edge` the material hairline) |
@@ -1829,6 +1829,14 @@ style's. Calling it again with new seeds (a faction, the time of day)
 restyles the whole UI from the next tick. A look's `uiSeeds { primary
 "#rrggbb" }` block gives them with its style. Seeds are read at the root: a
 seed set on an element below it does not re-derive that subtree's colours.
+The game components' families (front end, HUD, results, shop, selection,
+map, quests, cards, world) draw from the same seeds: their light is
+`--hud-accent`, from `--seed-hud`; their reward gold `--hud-gold`, from
+`--gold`; their grounds, rims and inks the neutral seed at fixed lightness.
+Each is held light or dark enough for the dark glass the families stand
+on, in either scheme. Only rarity, status, tier and team hues are written
+as literals in `role.css`, each once (`--hud-foe`, `--hud-boon`,
+`--hud-warn`, `--hud-ally`, `--chart-*`).
 
 **Role parts.** A built-in component names a part by its role
 (`Shop.frame`, `Friends.row`, `Chat.title`), and the default style

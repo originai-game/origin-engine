@@ -213,7 +213,7 @@
   --color-health: #30d158;
   --color-mana: #409cff;
   --color-xp: #c86ff5;
-  --color-gold: #ffd60a;
+  --color-gold: #ffcf5a;
   --color-hud: oklch(from var(--seed-neutral) 0.201 min(c, 0.04) h / 0.8);
   --color-knob: oklch(from var(--seed-neutral) 0.971 min(c, 0.04) h);
   --color-sheen: rgb(255 255 255 / 0.12);

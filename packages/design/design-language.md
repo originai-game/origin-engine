@@ -76,7 +76,9 @@ alike.
 
 **Seeds.** The palette is derived from a few seed colours (`tokens/seed.css`):
 `--seed-primary` (the brand), `--seed-accent` (a second accent, by default
-the primary), `--seed-neutral` (the tint of grounds, surfaces, lines and
+the primary), `--seed-hud` (the game components' light: the accent when it
+has a hue, otherwise the instrument cyan #38e8ff, so the chrome stays
+neutral while the game components keep their light), `--seed-neutral` (the tint of grounds, surfaces, lines and
 inks, by default the primary's hue at chroma up to 0.012), the status hues
 `--seed-danger`, `--seed-warn`, `--seed-success`, `--seed-info`, and
 `--seed-team`. `color.css` writes every ground, ink, accent, state, status and
@@ -548,6 +550,10 @@ Against origingame d25f1f15:
 - `accent-ink` (light) #8f5600 → #7a4800: "Undo" on a light toast over warm
   light read 4.26.
 - `material-regular` (dark) 52 % → 64 %.
+- `gold` (dark) #ffd60a → #ffcf5a: the game components' reward gold is
+  `gold` (role.css `--hud-gold`), and it was the warmer #ffcf5a.
+- Added `--seed-hud`, the game components' light (the owner, 2026-11-19:
+  the default keeps its cyan as a seed).
 - Added: the game roles, `density.pad`, `linear`, `glassContrast`, and the
   engine's stylesheet groups (`size`, `stroke`, `state`, `elevation`,
   `glass`, `derived`, `motion.named`, the `track`, `minimap`,

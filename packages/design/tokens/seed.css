@@ -16,11 +16,16 @@
    five following in Okabe-Ito order; teams 7 and 8 are fixed. The default seeds are the design
    language's neutral chrome: a near-black primary in light, a near-white one
    in dark, over grounds tinted a cool ink blue (the neutral: smoked glass
-   reads deeper than grey beside a coloured scene). A game's one
-   `--seed-primary` lights every edge, glow and fill the roles draw. */
+   reads deeper than grey beside a coloured scene). `hud` is the game
+   components' light (role.css `--hud-accent`): the accent when it has a hue,
+   otherwise the instrument cyan (#38e8ff), so the chrome stays neutral while
+   the game components keep their light; a pack may set it apart from the
+   accent. A game's one `--seed-primary` lights every edge, glow and fill the
+   roles draw. */
 :root {
   --seed-primary: #1c1c1e;
   --seed-accent: var(--seed-primary);
+  --seed-hud: oklch(from var(--seed-accent) calc(l * clamp(0, calc(calc(c - 0.02) * 1000000), 1) + 0.856 * calc(1 - clamp(0, calc(calc(c - 0.02) * 1000000), 1))) calc(c * clamp(0, calc(calc(c - 0.02) * 1000000), 1) + 0.1373 * calc(1 - clamp(0, calc(calc(c - 0.02) * 1000000), 1))) calc(h * clamp(0, calc(calc(c - 0.02) * 1000000), 1) + 208.45 * calc(1 - clamp(0, calc(calc(c - 0.02) * 1000000), 1))));
   --seed-neutral: oklch(from var(--seed-primary) l 0.034 calc(h * clamp(0, calc(calc(c - 0.02) * 1000000), 1) + 264 * calc(1 - clamp(0, calc(calc(c - 0.02) * 1000000), 1))));
   --seed-danger: #b20011;
   --seed-warn: #c2410c;
