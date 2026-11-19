@@ -19,7 +19,10 @@
 // style, no `blob:` Worker) the shell is styled, its gate works and the
 // lanes pool starts from its own file; under one that refuses the pool's
 // script it falls back to the single-threaded engine within the pool's
-// deadline and says the lanes variant did not start.
+// deadline and says the lanes variant did not start. A 3D build of cooked
+// Basis KTX2 textures (enough for the boot's transcoding pool) boots under
+// the strict policy with every texture transcoded: the transcoder is
+// imported, never evaluated from text, so no 'unsafe-eval'.
 // Both archetypes are 2D games, so their lanes pages run the 2D lanes module.
 //
 //   bun tests/web/export.ts [--out <dir>] [--chrome <path>]
@@ -27,7 +30,7 @@
 // Writes <out>/export-result.json and PNGs (default dist/test-export/out).
 // Exits 1 when a check fails.
 
-import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { cpSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { settingsOf, sizesOf, webBuild, type BuildManifest } from "../../src/node/web-build.ts";
@@ -91,6 +94,43 @@ for (const game of ["runner", "match3"]) {
     return x.length === y.length && x.every((v, i) => v === y[i]);
   };
   check(m.game.profile === "2d" && m.variant === "2d" && m.lanes !== null && same("origin-engine-lanes_bg.wasm") && same("origin-engine-lanes.js"), `${game}: a 2d game ships the 2D lanes module (dist/web-publish-2d)`, { profile: m.game.profile, variant: m.variant, lanes: m.lanes });
+}
+
+// A 3D game of cooked Basis textures (cook-assets' stone, ETC1S colour and UASTC normal): 24
+// colour copies, so the boot transcodes them on its pool of Workers (boot.ts POOL_MIN_JOBS).
+// Kept out of the size table: brotli at quality 11 over the 3D engine takes minutes.
+const TEXTURES = 25;
+const texturesDist = join(work, "textures");
+{
+  const project = join(work, "textures-project");
+  rmSync(project, { recursive: true, force: true });
+  mkdirSync(join(project, "assets", "textures"), { recursive: true });
+  mkdirSync(join(project, "src"), { recursive: true });
+  const stone = join(repo, "tests", "fixtures", "cook-assets", "assets", "textures");
+  const ids = ["textures/stone_n.png"];
+  for (const f of ["stone_n.png", "stone_n.png.ogt"]) cpSync(join(stone, f), join(project, "assets", "textures", f));
+  for (let i = 0; i < TEXTURES - 1; i++) {
+    cpSync(join(stone, "stone.png"), join(project, "assets", "textures", `stone${i}.png`));
+    ids.push(`textures/stone${i}.png`);
+  }
+  writeFileSync(join(project, "project.ogt"), 'type project\nversion 1\n---\nname "Basis textures"\nid "basis-textures"\nengine "0.8.0"\nentry "src/main.ts"\nprofile "3d"\n');
+  // The game loads them all at its start; its facts report the GPU bytes the renderer's
+  // textures hold. A texture whose transcode is missing would be a 1×1 placeholder.
+  writeFileSync(
+    join(project, "src", "main.ts"),
+    [
+      `import { og } from "@origingame/engine";`,
+      `const IDS = ${JSON.stringify(ids)};`,
+      `export default og.game({`,
+      `  start(world) { for (const id of IDS) { const t = og.load.texture(world, id); if (!t.ok) throw new Error(t.reason); } },`,
+      `  facts(world) { const d = og.render.display(world); return { textures: d && d.gpu ? d.gpu.textures : -1 }; },`,
+      `});`,
+      ``,
+    ].join("\n"),
+  );
+  cookProject(project, repo);
+  const b = await webBuild(project, join(project, "src", "main.ts"), texturesDist, true, settingsOf(project));
+  if (!b.ok) throw new Error(b.reason);
 }
 
 // The ticks behind the gate: the first (it builds the first screen), then one per round of
@@ -253,6 +293,34 @@ try {
       results["runner strict csp"] = { ...t, isolated, shot: save("runner-strict-csp.png", await page.screenshot()) };
     } catch (e) {
       check(false, "runner under a strict csp", { error: String(e), log: log.slice(-20) });
+    } finally {
+      await page.send("Page.close").catch(() => {});
+      server.stop();
+    }
+  }
+  // ── Basis textures under the strict CSP: the transcoder loads without 'unsafe-eval' ──
+  {
+    const server = serve({ dist: texturesDist, isolate: true, headers: { "content-security-policy": STRICT_CSP } });
+    const log: string[] = [];
+    const page = await browser.open("about:blank", log);
+    try {
+      await page.send("Page.addScriptToEvaluateOnNewDocument", { source: VIOLATIONS });
+      await page.send("Page.navigate", { url: `http://127.0.0.1:${server.port}/game/index.html` });
+      // The boot transcodes the bundle's textures before the game starts: a transcoder that
+      // cannot load fails the boot ("The game could not start"), so the first frame is the test.
+      const t = await load(page);
+      check(t.firstFrame > 0, `strict csp: a 3D page of ${TEXTURES} Basis textures boots to its first frame`, t);
+      // Each 512×512 texture with its mips takes at least 4/3 of a byte a pixel in any format it
+      // is transcoded to; the renderer's own textures without them take about 5.8 MB.
+      const want = Math.round((TEXTURES * 512 * 512 * 4) / 3);
+      const textures = await page.until<number>(`__runtime_probe__.state().then((s) => s.facts && s.facts.textures >= ${want} && s.facts.textures)`, 30_000).catch(() => page.eval<{ facts?: { textures?: number } }>("__runtime_probe__.state()").then((s) => s.facts?.textures ?? -1));
+      check(textures >= want, `strict csp: the GPU holds the ${TEXTURES} textures transcoded (${textures} ≥ ${want} bytes)`, { textures, log: log.filter((l) => /basis|transcod|eval/i.test(l)).slice(0, 5) });
+      const refused = await page.eval<string[]>("__ogViolations");
+      const csp = log.filter((l) => /Content Security Policy|Refused to|unsafe-eval/.test(l));
+      check(refused.length === 0 && csp.length === 0, "strict csp: Basis textures break no directive", { refused, csp: csp.slice(0, 5) });
+      results["textures strict csp"] = { ...t, textures, shot: save("textures-strict-csp.png", await page.screenshot()) };
+    } catch (e) {
+      check(false, "Basis textures under a strict csp", { error: String(e), log: log.slice(-20) });
     } finally {
       await page.send("Page.close").catch(() => {});
       server.stop();

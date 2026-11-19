@@ -150,7 +150,10 @@ chunked sound's later chunks are fetched ahead of its playheads.
   The page has no inline script or style, and every Worker (the engine's,
   the lanes pool's, the audio and AV1 decoders', and the Workers that
   transcode streamed Basis textures, which are copies of the engine's)
-  starts from a file on the page's origin, never a `blob:` URL. Add to it:
+  starts from a file on the page's origin, never a `blob:` URL. The Basis
+  transcoder is imported as
+  a module (`basis/basis_transcoder.js`), never evaluated from text, so the
+  policy needs no `'unsafe-eval'`. Add to it:
   - the content base (og.load.data) and an asset base (§Asset base) to
     `connect-src`, beside `'self'`;
   - `img-src blob:` for SVG images in UI documents, which the page decodes
