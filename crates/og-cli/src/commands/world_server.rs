@@ -1,7 +1,9 @@
 //! `og world-server`: the shared-world server (og-shared, docs/design.md
 //! §2.12), standalone on any host; `og world-server load`: the load test's
-//! bot swarm against one; `og world-server token`: an HS256 token for a
-//! self-hosted server, as a game's own token endpoint would sign it.
+//! bot swarm against one, over WebSocket or WebTransport, optionally
+//! shaped; `og world-server token`: an HS256 token for a self-hosted server,
+//! as a game's own token endpoint would sign it; `og world-server cert`: a
+//! self-signed WebTransport certificate a browser takes by its hash.
 
 use og_shared::auth::{Rules, Verifier, parse_jwks, sign_hs256};
 use og_shared::bots::{self, LoadDesc};
@@ -12,11 +14,12 @@ use std::net::SocketAddr;
 use std::process::ExitCode;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
-const USAGE: &str = "usage: og world-server [--listen ADDR] [--config F] [--auth none|hs256|jwks] [--dev]
+const USAGE: &str = "usage: og world-server [--listen ADDR] [--wt-listen ADDR --cert F --key F] [--config F] [--auth none|hs256|jwks] [--dev]
          [--secret-file F] [--jwks URL|FILE] [--audience GAME] [--issuer ISS] [--max-lifetime S] [--max-players N] [--metrics ADDR] [--quiet]
-       og world-server load [--url ws://HOST:PORT/] [--bots N] [--area M] [--centre X,Z] [--areas N --spacing M] [--speed MPS]
-         [--warmup S] [--seconds S] [--secret-file F --audience GAME] [--world W] [--batch N]
-         [--metrics HOST:PORT] [--gate] [--json]
+       og world-server load [--url ws://HOST:PORT/ | https://HOST:PORT/ [--cert-hash HEX]] [--bots N] [--area M] [--centre X,Z]
+         [--areas N --spacing M] [--speed MPS] [--warmup S] [--seconds S] [--secret-file F --audience GAME] [--world W] [--batch N]
+         [--latency MS] [--loss PCT] [--metrics HOST:PORT] [--gate] [--json]
+       og world-server cert --out-cert F --out-key F [--name HOST]... [--days N]
        og world-server token --secret-file F --audience GAME --sub PLAYER [--name N] [--world W] [--ttl S]";
 
 /// The design's budgets (docs/design.md §2.12): what `load --gate` holds a run to.
@@ -64,6 +67,7 @@ pub fn run(args: &[&str]) -> ExitCode {
     match args {
         ["load", rest @ ..] => load(rest),
         ["token", rest @ ..] => token(rest),
+        ["cert", rest @ ..] => cert(rest),
         ["--help" | "-h"] => {
             println!("{USAGE}");
             ExitCode::SUCCESS
@@ -146,6 +150,22 @@ fn serve(args: &[&str]) -> ExitCode {
         None => None,
     };
     let quiet = get("--quiet").is_some();
+    let wt = match (get("--wt-listen"), get("--cert"), get("--key")) {
+        (None, None, None) => None,
+        (Some(a), Some(c), Some(k)) => {
+            let addr: SocketAddr = match a.parse() {
+                Ok(a) => a,
+                Err(_) => return fail("--wt-listen takes an address such as 0.0.0.0:47911"),
+            };
+            let read =
+                |f: &str| std::fs::read_to_string(f).map_err(|e| format!("cannot read {f}: {e}"));
+            match (read(c), read(k)) {
+                (Ok(c), Ok(k)) => Some((addr, c, k)),
+                (Err(e), _) | (_, Err(e)) => return fail(e),
+            }
+        }
+        _ => return fail("WebTransport takes --wt-listen, --cert and --key together"),
+    };
     let rt = tokio::runtime::Builder::new_multi_thread()
         .enable_all()
         .build()
@@ -166,6 +186,15 @@ fn serve(args: &[&str]) -> ExitCode {
             "world-server: ws://{} (auth {auth}, {} m cells, radius {}, {} in sight, {} Hz, {} players)",
             server.addr, config.cell_size, config.radius, config.max_visible, config.tick_hz, config.max_players
         );
+        if let Some((addr, cert, key)) = &wt {
+            match server.serve_webtransport(*addr, cert, key) {
+                Ok(a) => println!("world-server: https://{a}/ (WebTransport)"),
+                Err(e) => {
+                    eprintln!("og world-server: cannot serve WebTransport on {addr}: {e}");
+                    return ExitCode::FAILURE;
+                }
+            }
+        }
         if let Some(a) = metrics_addr {
             match serve_metrics(a, server.metrics.clone()).await {
                 Ok(m) => println!("world-server: metrics http://{m}/metrics"),
@@ -332,6 +361,19 @@ fn load(args: &[&str]) -> ExitCode {
             secret,
             world: get("--world").unwrap_or("main").into(),
             batch: num(get("--batch"), 50, "--batch")?,
+            cert_hashes: get("--cert-hash")
+                .map(og_shared::wt::parse_hash)
+                .transpose()?
+                .into_iter()
+                .collect(),
+            latency_ms: match num(get("--latency"), 0.0, "--latency")? {
+                l if (0.0..=2000.0).contains(&l) => l,
+                _ => return Err("--latency takes milliseconds from 0 to 2000".into()),
+            },
+            loss: match num(get("--loss"), 0.0, "--loss")? {
+                l if (0.0..=50.0).contains(&l) => l / 100.0,
+                _ => return Err("--loss takes a percentage from 0 to 50".into()),
+            },
             seed: SystemTime::now()
                 .duration_since(UNIX_EPOCH)
                 .map_or(1, |d| d.as_nanos() as u64),
@@ -416,6 +458,13 @@ fn load(args: &[&str]) -> ExitCode {
     if get("--json").is_some() {
         let j = serde_json::json!({
             "bots": s.bots, "joined": s.joined, "refused": s.refused,
+            "transport": if desc.url.starts_with("https://") { "wt" } else { "ws" },
+            "shaping": { "latencyMs": desc.latency_ms, "lossPercent": desc.loss * 100.0 },
+            "delivery": {
+                "delivered": s.delivered,
+                "addedMs": { "p50": s.added_ms[0], "p99": s.added_ms[1] },
+                "gapMs": { "p50": s.gap_ms[0], "p99": s.gap_ms[1], "max": s.gap_ms[2] },
+            },
             "area": desc.area, "areas": desc.areas, "speed": desc.speed, "seconds": desc.seconds,
             "downBytesPerSecond": { "mean": s.down[0], "p95": s.down[1], "max": s.down[2] },
             "upBytesPerSecond": { "mean": s.up[0], "p95": s.up[1], "max": s.up[2] },
@@ -445,6 +494,22 @@ fn load(args: &[&str]) -> ExitCode {
         println!(
             "updates     {:.0} a second per client; {} corrections, {} decode errors, {} stale",
             s.updates_per_s, s.corrections, s.errors, s.stale
+        );
+        println!(
+            "delivery    {} over {} ms added RTT, {}% loss: {:.1}% of snapshots arrived; delay past the fastest p50 {:.1} ms p99 {:.1} ms; gaps p50 {:.1} ms p99 {:.1} ms max {:.1} ms",
+            if desc.url.starts_with("https://") {
+                "WebTransport"
+            } else {
+                "WebSocket"
+            },
+            desc.latency_ms,
+            desc.loss * 100.0,
+            s.delivered * 100.0,
+            s.added_ms[0],
+            s.added_ms[1],
+            s.gap_ms[0],
+            s.gap_ms[1],
+            s.gap_ms[2]
         );
         if let Some(w) = &window {
             let q = |n: &str, p: f64| {
@@ -480,6 +545,54 @@ fn load(args: &[&str]) -> ExitCode {
     } else {
         ExitCode::FAILURE
     }
+}
+
+fn cert(args: &[&str]) -> ExitCode {
+    let mut names = Vec::new();
+    let mut rest = Vec::new();
+    let mut i = 0;
+    while i < args.len() {
+        if args[i] == "--name" && i + 1 < args.len() {
+            names.push(args[i + 1].to_string());
+            i += 2;
+        } else {
+            rest.push(args[i]);
+            i += 1;
+        }
+    }
+    let f = match flags(&rest, &[]) {
+        Ok(f) => f,
+        Err(e) => return fail(e),
+    };
+    let get = |k: &str| f.iter().find(|(n, _)| *n == k).map(|(_, v)| *v);
+    let (Some(out_cert), Some(out_key)) = (get("--out-cert"), get("--out-key")) else {
+        return fail("cert takes --out-cert and --out-key");
+    };
+    if names.is_empty() {
+        names = vec!["localhost".into(), "127.0.0.1".into()];
+    }
+    let days = match get("--days").unwrap_or("10").parse() {
+        Ok(d) => d,
+        Err(_) => return fail("--days takes 1 to 14"),
+    };
+    let c = match og_shared::cert::self_signed(&names, days) {
+        Ok(c) => c,
+        Err(e) => return fail(e),
+    };
+    if let Err(e) =
+        std::fs::write(out_cert, &c.cert_pem).and_then(|_| std::fs::write(out_key, &c.key_pem))
+    {
+        return fail(e);
+    }
+    // The hash a page passes as serverCertificateHashes and `load --cert-hash` takes.
+    println!(
+        "{}",
+        c.sha256
+            .iter()
+            .map(|b| format!("{b:02x}"))
+            .collect::<String>()
+    );
+    ExitCode::SUCCESS
 }
 
 fn token(args: &[&str]) -> ExitCode {
