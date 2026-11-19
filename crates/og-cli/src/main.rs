@@ -105,7 +105,9 @@ commands:
                       one probe call to a running `og run --port P` / `og dev` (JSON-RPC over WebSocket):
                       the result as JSON on stdout, exit 0 (a refusal, false or null, is a result); an
                       error on stderr, exit 1; a capture's PNG written to --out (default capture.png)
-                      and its path in png; --raw prints the whole answer frame (the testing guide §9)
+                      and its path in png; capture_views writes each frame beside it as
+                      <stem>-<view>.png (capture-0.png, ...), each frame's png its path;
+                      --raw prints the whole answer frame (the testing guide §9)
   dev [project] [--port P] [--exit-after N] [--json]
                       watch src/ and assets/, rebuild and re-cook, hot-reload through the probe,
                       report each reload against the 300 ms budget and type-check each src/ change

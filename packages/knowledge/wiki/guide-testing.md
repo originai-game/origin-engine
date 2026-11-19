@@ -313,7 +313,11 @@ exit 0; a refusal (`false`, `null`) is a result. A JSON-RPC error prints
 `og probe: <method>: error <code>: <message>` on stderr and exits 1; so
 does a probe that cannot be reached. A `capture` result's `png` is the
 path the PNG was written to (`--out`, default `capture.png`) instead of
-base64. `--raw` prints the whole answer frame, `{jsonrpc, id, result}` or
+base64. A `capture_views` result's frames are written beside it as
+`<stem>-<view>.png` (`--out shots/a.png` writes `shots/a-0.png`,
+`shots/a-1.png`, ...; by default `capture-0.png`, ...), and each frame
+prints `{view, width, height, scale, png}` with `png` its path. `--raw`
+prints the whole answer frame, `{jsonrpc, id, result}` or
 `{jsonrpc, id, error}`, on one line.
 
 **`og build --json`.** Stdout is JSON Lines: the `check` event as above,

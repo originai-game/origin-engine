@@ -6,7 +6,7 @@
     },
     {
       "member": "probe.EngineProbe.captureViews",
-      "summary": "capture_views captures one tick from up to 16 cameras in one call (position, target, up, fov or an orthographic height, near, far), without writing og.Camera."
+      "summary": "capture_views captures one tick from up to 16 cameras in one call (position, target, up, fov or an orthographic height, near, far), without writing og.Camera. og probe writes its frames beside --out as <stem>-<view>.png (capture-0.png, ...) and prints each frame's path in png."
     }
   ]
 }

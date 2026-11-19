@@ -4,7 +4,9 @@
 //!
 //! Prints the result as JSON; `--raw` prints the whole answer frame. A
 //! `capture` result's PNG is written to `--out` (default `capture.png`) and
-//! the printed result carries its path instead of the base64. A refusal
+//! the printed result carries its path instead of the base64; each frame of a
+//! `capture_views` result is written beside it as `<stem>-<view>.png`
+//! (`capture-0.png`, ...) and carries its path the same way. A refusal
 //! (`false`, `null`) is a result and exits 0; a JSON-RPC error exits 1.
 
 use std::process::ExitCode;
@@ -153,6 +155,32 @@ pub fn run(args: &[&str]) -> ExitCode {
                     eprintln!("og probe: the capture's PNG is not base64");
                     return ExitCode::FAILURE;
                 }
+            }
+        }
+        // capture_views: each frame beside --out as <stem>-<view>.png.
+        if method == "capture_views"
+            && let Some(frames) = result.get_mut("frames").and_then(|f| f.as_array_mut())
+        {
+            let at = std::path::Path::new(&out);
+            let stem = at.file_stem().and_then(|s| s.to_str()).unwrap_or("capture");
+            for (i, frame) in frames.iter_mut().enumerate() {
+                let Some(png) = frame.get("png").and_then(|p| p.as_str()) else {
+                    continue;
+                };
+                let Some(bytes) = decode_base64(png) else {
+                    eprintln!("og probe: frame {i}'s PNG is not base64");
+                    return ExitCode::FAILURE;
+                };
+                let view = frame
+                    .get("view")
+                    .and_then(|v| v.as_u64())
+                    .unwrap_or(i as u64);
+                let file = at.with_file_name(format!("{stem}-{view}.png"));
+                if let Err(e) = std::fs::write(&file, &bytes) {
+                    eprintln!("og probe: cannot write {}: {e}", file.display());
+                    return ExitCode::FAILURE;
+                }
+                frame["png"] = serde_json::json!(file.to_string_lossy());
             }
         }
         println!(

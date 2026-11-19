@@ -70,6 +70,7 @@ mod cli {
     mod create;
     mod i18n;
     mod maintenance;
+    mod probe;
     mod project;
     mod sprite;
     mod ui;
