@@ -11,7 +11,7 @@
 <meta name="prop:markers" content="list" data-doc="The minimap's markers, keyed rows of { id, x, y, tone, player }.">
 <meta name="prop:district" content="string" data-doc="The district's name, under the minimap.">
 <meta name="prop:hints" content="list" data-doc="The switches, keyed rows of { action, hint, hold }.">
-<meta name="fixture:default" content='{"shown":true,"seconds":142,"total":180,"parcel":"Parcel 7C · Fragile","steps":[{"id":"collect","text":"Collect at Lantern Row","done":true},{"id":"deliver","text":"Deliver to Gate Nine","done":false}],"distance":"29 m","condition":96,"map":0,"markers":[{"id":"me","x":0.52,"y":0.89,"tone":"neutral","player":true},{"id":"drop","x":0.5,"y":0.32,"tone":"accent","player":false}],"district":"Lantern Row","hints":[{"action":"weather","hint":"Weather","hold":false},{"action":"season","hint":"Season","hold":false}]}'>
+<meta name="fixture:default" content='{"shown":true,"seconds":142,"total":180,"parcel":"Parcel 7C · Fragile","steps":[{"id":"collect","text":"Collect at Lantern Row","done":true,"tag":""},{"id":"deliver","text":"Deliver to Gate Nine","done":false,"tag":""}],"distance":"29 m","condition":96,"map":0,"markers":[{"id":"me","x":0.52,"y":0.89,"tone":"neutral","player":true},{"id":"drop","x":0.5,"y":0.32,"tone":"accent","player":false}],"district":"Lantern Row","hints":[{"action":"weather","hint":"Weather","hold":false},{"action":"season","hint":"Season","hold":false}]}'>
 
 <!-- The courier's HUD: the district's minimap top left, the time left to
      make the drop top centre, the parcel and its steps top right, and the
@@ -33,7 +33,7 @@
 
 <style>
 #Root { position: fixed; inset: 0; pointer-events: none; }
-#Hud { width: stretch; height: stretch; display: grid; grid-template-columns: auto minmax(0, 1fr) calc(var(--size-xxl) * 1.7); grid-template-rows: auto 1fr auto; grid-template-areas: "map clock parcel" ". . ." "keys keys keys"; padding: var(--space-lg); }
+#Hud { width: stretch; height: stretch; display: grid; grid-template-columns: auto minmax(0, 1fr) auto; grid-template-rows: auto 1fr auto; grid-template-areas: "map clock parcel" ". . ." "keys keys keys"; padding: var(--space-lg); }
 #Map { grid-area: map; align-self: start; }
 #Clock { grid-area: clock; justify-self: center; align-self: start; }
 #Parcel { grid-area: parcel; align-self: start; display: flex; flex-direction: column; gap: var(--space-sm); }

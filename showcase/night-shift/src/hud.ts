@@ -27,8 +27,8 @@ const HINTS = [
   { action: "hud", hint: "HUD", hold: false },
 ];
 const STEPS = [
-  { id: "collect", text: "Collect at Lantern Row", done: true },
-  { id: "deliver", text: "Deliver to Gate Nine", done: false },
+  { id: "collect", text: "Collect at Lantern Row", done: true, tag: "" },
+  { id: "deliver", text: "Deliver to Gate Nine", done: false, tag: "" },
 ];
 
 function markers(world: World): Marker[] {
