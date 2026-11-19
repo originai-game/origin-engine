@@ -300,9 +300,16 @@ export function checkPacksOutside(root: string, downloadable: string[]): void {
   if (found.length) throw new Error(`${basename(root)} carries downloadable vfx packs (they ship as vfx/<name>.tar.gz only): ${found.join(", ")}`);
 }
 
+/** Installs the pinned files under `dir` (its og-assets.json; docs/ci.md §The asset store), so a pack reads every file. */
+function ensurePins(dir: string): string {
+  const r = spawnSync("bun", [join(ROOT, "scripts/assets.ts"), "ensure", dir], { cwd: ROOT, stdio: ["ignore", "ignore", "inherit"] });
+  if (r.status !== 0) die(`the pinned files in ${dir} are not all available`);
+  return dir;
+}
+
 /** packages/vfx-packs/ as the version was built: the checkout's when packed here, else the revision's (none if it has none). */
 function vfxSource(revision: string, here: boolean, work: string): string {
-  if (here) return join(ROOT, "packages/vfx-packs");
+  if (here) return ensurePins(join(ROOT, "packages/vfx-packs"));
   const to = join(work, "vfx-packs-src");
   mkdirSync(to, { recursive: true });
   try {
@@ -313,7 +320,9 @@ function vfxSource(revision: string, here: boolean, work: string): string {
   if (!git("ls-tree", "-d", "--name-only", revision, "packages/vfx-packs")) return join(to, "packages/vfx-packs");
   const tar = spawnSync("sh", ["-c", 'git archive "$1" packages/vfx-packs | tar -xf - -C "$2"', "sh", revision, to], { cwd: ROOT, stdio: ["ignore", "ignore", "inherit"] });
   if (tar.status !== 0) die(`git archive ${revision} packages/vfx-packs failed`);
-  return join(to, "packages/vfx-packs");
+  // A revision whose packs are pinned archives only their og-assets.json; one from before keeps its files in Git.
+  const packs = join(to, "packages/vfx-packs");
+  return existsSync(join(packs, "og-assets.json")) ? ensurePins(packs) : packs;
 }
 
 /** Assembles one target's layout under `work` and packs it into `<dir>/<archive>`. */
