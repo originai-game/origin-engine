@@ -253,7 +253,19 @@ pub fn og_world_despawn(world: u32, entity_id: f64) -> Result<(), String> {
             })?;
             queued_structural();
             // SAFETY: as above.
-            return unsafe { f.ctx() }.despawn(e).map_err(err);
+            let ctx = unsafe { f.ctx() };
+            // Its descendants as they are when the despawn applies (a child
+            // this system spawned under it included), children first.
+            ctx.defer(move |w| {
+                let bad = |e: String| og_core::Error::new(og_core::ErrorKind::Invalid, e);
+                for d in with_descendants(w, e).map_err(bad)? {
+                    if d != e && w.is_alive(d) {
+                        w.despawn(d)?;
+                    }
+                }
+                Ok(())
+            });
+            return ctx.despawn(e).map_err(err);
         }
         let e = live(&eng, "world.despawn", entity_id, |e| {
             Ok(eng.world()?.is_alive(e))

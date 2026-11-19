@@ -1,0 +1,8 @@
+{
+  "fixed": [
+    {
+      "member": "world.despawn",
+      "summary": "Inside a system, world.despawn now takes the entity's descendants with it, as it does between ticks: every entity whose og.Parent chain reaches it when the despawn applies, including a child the same system spawned under it just before. Before, only the entity went, and its children stayed alive with og.Parent naming a dead entity."
+    }
+  ]
+}
