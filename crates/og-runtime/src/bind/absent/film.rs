@@ -21,7 +21,9 @@ pub(crate) const RECORDS: [&str; 6] = [
     "og.FilmEnded",
 ];
 
-/// A segment's first frame a cut may need (none here).
+/// A segment's first frame a cut may need (none here). Asked by og.video
+/// only, which a build without `video` leaves out with film.
+#[cfg_attr(not(feature = "video"), allow(dead_code))]
 #[derive(Clone, Copy, Debug, Default)]
 pub(crate) struct Ahead {
     pub video: u64,
@@ -30,6 +32,7 @@ pub(crate) struct Ahead {
 }
 
 /// No film prefetches here.
+#[cfg_attr(not(feature = "video"), allow(dead_code))]
 pub(crate) fn prefetch(_eng: &crate::engine::Engine) -> Vec<Ahead> {
     Vec::new()
 }

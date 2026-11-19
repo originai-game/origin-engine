@@ -431,7 +431,9 @@ pub(crate) fn enable(world: &mut World, mount: crate::engine::Mount<'_>) -> og_c
     Ok(())
 }
 
-/// og.Vfx's IDL layout, whose defaults fill a partial value.
+/// og.Vfx's IDL layout, whose defaults fill a partial value (og.destruction's
+/// breakVfx and hitVfx; unused in a build without `destruction`).
+#[cfg_attr(not(feature = "destruction"), allow(dead_code))]
 pub(crate) fn layout_decl() -> Option<&'static Layout> {
     static L: std::sync::OnceLock<Option<Layout>> = std::sync::OnceLock::new();
     L.get_or_init(|| {

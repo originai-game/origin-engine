@@ -18,6 +18,10 @@ use og_ecs::World;
 /// Why destruction answers nothing here.
 pub(crate) const ABSENT: &str = "og.destruction is not built into this engine: og-runtime was built without its `destruction` feature (a default feature; og-host-web and og-host-node pass it through as `destruction`)";
 
+/// The full module's system name: never registered here, so og.Vfx grants
+/// it nothing.
+pub(crate) const SYSTEM: &str = "og.destruction";
+
 pub(crate) const DESTRUCTIBLE: &str = "og.Destructible";
 pub(crate) const CHUNK: &str = "og.Chunk";
 pub(crate) const FRACTURED: &str = "og.Fractured";
