@@ -118,6 +118,8 @@ export interface CreateOptions {
   readonly seed?: number;
   /** The project directory (native) or URL base (web) whose `cooked/` bundle the engine opens before the first tick. */
   readonly root?: string;
+  /** The content base og.load.data reads catalogs from: a directory (`og run --content`) or an https URL (the page's `content`). */
+  readonly content?: string;
   /** The physics profile, project.ogt's `profile`: `3d` (the default) or `2d`. */
   readonly profile?: "2d" | "3d";
   /**

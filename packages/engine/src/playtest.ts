@@ -201,6 +201,12 @@ export interface PlaytestDesc {
    */
   readonly platform?: LocalFake;
   /**
+   * The content base og.load.data reads catalogs from in every process of the playtest
+   * (`og run --content`): a directory, relative to the project's root. Omitted: a data load
+   * fails `unavailable`.
+   */
+  readonly content?: string;
+  /**
    * Play the script in a room (docs/design.md §2.8, §2.10): the playtest starts a relay
    * (`og relay`, in its own process) and runs `players` processes at once, each `og run
    * --room ws://127.0.0.1:P/<name>` with its own script (`room.commands[i]`, else `commands`)

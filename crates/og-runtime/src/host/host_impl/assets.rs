@@ -178,6 +178,18 @@ macro_rules! __og_host_bindings_assets {
                 $crate::host_impl::answer($crate::og_load_image_info(world, asset))
             }
 
+            fn og_load_data(&self, world: u32, desc: Option<String>) -> String {
+                $crate::host_impl::answer($crate::og_load_data(world, desc))
+            }
+
+            fn og_load_data_json(&self, world: u32, asset: f64) -> String {
+                $crate::host_impl::answer($crate::og_load_data_json(world, asset))
+            }
+
+            fn og_load_data_bytes(&self, world: u32, asset: f64) -> String {
+                $crate::host_impl::answer($crate::og_load_data_bytes(world, asset))
+            }
+
             fn og_load_completions(&self, world: u32) -> String {
                 $crate::host_impl::json($crate::og_load_completions(world))
             }

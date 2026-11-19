@@ -580,6 +580,12 @@ export interface HostAbi<A, V> {
   og_load_gltf_data(world: number, name: string, bytes: Uint8Array, desc: string | undefined): string;
   /** `og.load.environmentData` */
   og_load_environment_data(world: number, name: string, bytes: Uint8Array, desc: string | undefined): string;
+  /** `og.load.data` */
+  og_load_data(world: number, desc: string | undefined): string;
+  /** `og.load.dataJson` */
+  og_load_data_json(world: number, asset: number): string;
+  /** `og.load.dataBytes` */
+  og_load_data_bytes(world: number, asset: number): string;
   /** `og.load.environmentInfo` */
   og_load_environment_info(world: number, asset: number): string;
   /** `og.load.release` */
@@ -1645,6 +1651,9 @@ export const SYMBOLS: readonly string[] = [
   "og_load_image_data",
   "og_load_gltf_data",
   "og_load_environment_data",
+  "og_load_data",
+  "og_load_data_json",
+  "og_load_data_bytes",
   "og_load_environment_info",
   "og_load_release",
   "og_load_image_info",

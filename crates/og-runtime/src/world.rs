@@ -5,6 +5,7 @@
 //! ([`region`]) and saves ([`save`], [`save_migrations`]).
 
 pub(crate) mod assets;
+pub(crate) mod data;
 pub(crate) mod origin;
 pub(crate) mod prefab;
 pub(crate) mod region;

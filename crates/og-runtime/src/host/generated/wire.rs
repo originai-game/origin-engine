@@ -8752,6 +8752,128 @@ impl ToJson for ImageDataDesc {
     }
 }
 
+/// `CatalogEntry`: packages/knowledge/wiki/load.md.
+#[derive(Clone, Debug, PartialEq)]
+pub struct CatalogEntry {
+    pub catalog: String,
+    pub version: String,
+    pub path: String,
+}
+
+impl Default for CatalogEntry {
+    fn default() -> Self {
+        Self {
+            catalog: Default::default(),
+            version: Default::default(),
+            path: Default::default(),
+        }
+    }
+}
+
+impl FromJson for CatalogEntry {
+    fn from_json(v: &Value) -> Result<Self, String> {
+        Self::from_json_over(v, Self::default())
+    }
+    fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
+        let o = object(v)?;
+        Ok(Self {
+            catalog: field(o, "catalog", d.catalog)?,
+            version: field(o, "version", d.version)?,
+            path: field(o, "path", d.path)?,
+        })
+    }
+}
+
+impl ToJson for CatalogEntry {
+    fn to_json(&self) -> Value {
+        let mut o = Map::new();
+        o.insert("catalog".into(), self.catalog.to_json());
+        o.insert("version".into(), self.version.to_json());
+        o.insert("path".into(), self.path.to_json());
+        Value::Object(o)
+    }
+}
+
+/// `DataFormat`: packages/knowledge/wiki/load.md.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash, PartialOrd, Ord)]
+pub enum DataFormat {
+    #[default]
+    Json,
+    Bytes,
+}
+
+impl DataFormat {
+    /// The variants' IDL names, in index order.
+    pub const NAMES: &'static [&'static str] = &["json", "bytes"];
+    /// Every variant, in index order.
+    pub const ALL: &'static [Self] = &[Self::Json, Self::Bytes];
+    /// The IDL name.
+    pub fn as_str(self) -> &'static str {
+        Self::NAMES[self as usize]
+    }
+    /// The variant named `s`, or a refusal naming them all.
+    pub fn parse(s: &str) -> Result<Self, String> {
+        match Self::NAMES.iter().position(|n| *n == s) {
+            Some(i) => Ok(Self::ALL[i]),
+            None => Err(unknown_variant("DataFormat", s, Self::NAMES)),
+        }
+    }
+}
+
+impl FromJson for DataFormat {
+    fn from_json(v: &Value) -> Result<Self, String> {
+        Self::parse(variant(v, "DataFormat", Self::NAMES)?)
+    }
+}
+
+impl ToJson for DataFormat {
+    fn to_json(&self) -> Value {
+        Value::String(self.as_str().into())
+    }
+}
+
+/// `DataDesc`: packages/knowledge/wiki/load.md.
+#[derive(Clone, Debug, PartialEq)]
+pub struct DataDesc {
+    pub entry: CatalogEntry,
+    pub format: DataFormat,
+    pub budget: LoadBudget,
+}
+
+impl Default for DataDesc {
+    fn default() -> Self {
+        Self {
+            entry: Default::default(),
+            format: Default::default(),
+            budget: Default::default(),
+        }
+    }
+}
+
+impl FromJson for DataDesc {
+    fn from_json(v: &Value) -> Result<Self, String> {
+        Self::from_json_over(v, Self::default())
+    }
+    fn from_json_over(v: &Value, d: Self) -> Result<Self, String> {
+        let o = object(v)?;
+        Ok(Self {
+            entry: field(o, "entry", d.entry)?,
+            format: field(o, "format", d.format)?,
+            budget: field(o, "budget", d.budget)?,
+        })
+    }
+}
+
+impl ToJson for DataDesc {
+    fn to_json(&self) -> Value {
+        let mut o = Map::new();
+        o.insert("entry".into(), self.entry.to_json());
+        o.insert("format".into(), self.format.to_json());
+        o.insert("budget".into(), self.budget.to_json());
+        Value::Object(o)
+    }
+}
+
 /// `EnvironmentDataDesc`: packages/knowledge/wiki/load.md.
 #[derive(Clone, Debug, PartialEq)]
 pub struct EnvironmentDataDesc {
@@ -8889,6 +9011,7 @@ pub struct LoadCompletion {
     pub request: u32,
     pub tick: f64,
     pub ok: bool,
+    pub integrity: Option<String>,
 }
 
 impl Default for LoadCompletion {
@@ -8898,6 +9021,7 @@ impl Default for LoadCompletion {
             request: Default::default(),
             tick: Default::default(),
             ok: Default::default(),
+            integrity: Default::default(),
         }
     }
 }
@@ -8913,6 +9037,7 @@ impl FromJson for LoadCompletion {
             request: field(o, "request", d.request)?,
             tick: field(o, "tick", d.tick)?,
             ok: field(o, "ok", d.ok)?,
+            integrity: field(o, "integrity", d.integrity)?,
         })
     }
 }
@@ -8924,6 +9049,9 @@ impl ToJson for LoadCompletion {
         o.insert("request".into(), self.request.to_json());
         o.insert("tick".into(), self.tick.to_json());
         o.insert("ok".into(), self.ok.to_json());
+        if let Some(x) = &self.integrity {
+            o.insert("integrity".into(), x.to_json());
+        }
         Value::Object(o)
     }
 }

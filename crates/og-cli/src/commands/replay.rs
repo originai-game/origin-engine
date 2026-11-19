@@ -1,16 +1,19 @@
 //! `og replay record [project] --commands "<script>" | --commands-file <f>
 //! [--ticks N] [--seed S] [--clock <UTC ms>] [--locale <tag>]
 //! [--platform-fake <file.json> | --platform-journal <journal.json>] [--keyframe-every K]
-//! [--loads <journal.json>] --out <trace.json> [--json]`
+//! [--loads <journal.json>] [--content <dir>] --out <trace.json> [--json]`
 //!
 //! `--loads` records with a journal of uncooked loads (og.load.completions,
 //! as a web session reported it) put in place at its ticks; the trace keeps
 //! the run's journal as `loads`, and compare replays it. `--platform-journal`
 //! records with a session's og.platform.journal (on the web, when the page's
 //! answers and notices arrived), each handed back at its tick; the trace
-//! keeps it, and compare hands it back the same way.
+//! keeps it, and compare hands it back the same way. `--content <dir>`
+//! is the content base og.load.data reads, as `og run`'s; a data load's
+//! journal entry carries its file's integrity, so a replay that reads other
+//! bytes fails that load instead of drifting.
 //!
-//! `og replay compare <trace.json> [project] [--json]`
+//! `og replay compare <trace.json> [project] [--content <dir>] [--json]`
 //!
 //! Cross-version deterministic replay: `record` runs the game as `og run
 //! --no-render --commands` does (cook, type-check, bundle; one tick per
@@ -31,7 +34,7 @@ use crate::project::{self, Project};
 use std::path::{Path, PathBuf};
 use std::process::ExitCode;
 
-const USAGE: &str = "usage: og replay record [project] --commands \"t:action[:args];...\" | --commands-file <f> [--ticks N] [--seed S] [--clock <UTC ms>] [--locale <tag>] [--platform-fake <file.json> | --platform-journal <journal.json>] [--keyframe-every K] [--loads <journal.json>] --out <trace.json> [--json]\n       og replay compare <trace.json> [project] [--json]";
+const USAGE: &str = "usage: og replay record [project] --commands \"t:action[:args];...\" | --commands-file <f> [--ticks N] [--seed S] [--clock <UTC ms>] [--locale <tag>] [--platform-fake <file.json> | --platform-journal <journal.json>] [--keyframe-every K] [--loads <journal.json>] [--content <dir>] --out <trace.json> [--json]\n       og replay compare <trace.json> [project] [--content <dir>] [--json]";
 
 /// What `og replay` was asked.
 struct Args {
@@ -61,6 +64,16 @@ fn parse(args: &[&str]) -> Result<Args, String> {
     while i < rest.len() {
         match rest[i] {
             "--json" => a.forward.push("--json".into()),
+            // Both sides read the same catalogs; a file whose bytes moved fails its integrity.
+            "--content" => {
+                let Some(v) = rest.get(i + 1) else {
+                    return Err(format!("--content needs a value. {USAGE}"));
+                };
+                let path = std::path::absolute(v).map_err(|e| format!("--content {v}: {e}"))?;
+                a.forward
+                    .extend(["--content".into(), path.display().to_string()]);
+                i += 1;
+            }
             flag @ ("--commands" | "--commands-file" | "--ticks" | "--seed" | "--clock"
             | "--locale" | "--keyframe-every" | "--loads" | "--out" | "--platform-fake"
             | "--platform-journal")

@@ -2,11 +2,11 @@
 // with this engine, or a recorded one replayed and compared, as the evidence
 // that an engine upgrade does not change it (crates/og-cli/src/replay.rs).
 //
-//   bun src/node/replay.ts --entry <game.native.js> [--root <project>] [--project-entry <rel>]
+//   bun src/node/replay.ts --entry <game.native.js> [--root <project>] [--content <dir>] [--project-entry <rel>]
 //       --record <trace.json> --commands "t:action[:args];..." [--ticks N] [--seed S]
 //       [--clock <UTC ms>] [--locale <tag>] [--platform-fake <file.json> | --platform-journal <journal.json>]
 //       [--keyframe-every K] [--loads <journal.json>] [--json]
-//   bun src/node/replay.ts --entry <game.native.js> [--root <project>] --compare <trace.json> [--json]
+//   bun src/node/replay.ts --entry <game.native.js> [--root <project>] [--content <dir>] --compare <trace.json> [--json]
 //
 // Both run the game as `og run --no-render --commands` does (headless, no
 // renderer: rendering never feeds back into the simulation), one tick per
@@ -105,6 +105,7 @@ export interface PlatformHanded {
 const argv = process.argv.slice(2);
 let entry = "";
 let root: string | undefined;
+let content: string | undefined;
 let projectEntry: string | undefined;
 let recordPath: string | undefined;
 let comparePath: string | undefined;
@@ -127,6 +128,7 @@ for (let i = 0; i < argv.length; i++) {
   };
   if (a === "--entry") entry = next();
   else if (a === "--root") root = resolve(next());
+  else if (a === "--content") content = resolve(next());
   else if (a === "--project-entry") projectEntry = next();
   else if (a === "--record") recordPath = resolve(next());
   else if (a === "--compare") comparePath = resolve(next());
@@ -205,6 +207,7 @@ const projectId = projectText === undefined ? null : (/^\s*id\s+"([^"]*)"/m.exec
 const created = createEngine(mod.default!, {
   ...(seed === undefined ? {} : { seed }),
   ...(root ? { root } : {}),
+  ...(content ? { content } : {}),
   ...(projectText === undefined ? {} : { project: projectText }),
   ...(profile ? { profile } : {}),
   ...(locale ? { locale } : {}),

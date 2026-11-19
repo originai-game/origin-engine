@@ -521,10 +521,11 @@ export function installFetcher(glue: WebExtras, basis: { js: string; wasm: strin
     // A package from an asset base: its file under cooked/ against the manifest's integrity.
     return integrity ? integrity[path.slice(path.lastIndexOf("/cooked/") + "/cooked/".length)] : undefined;
   };
-  glue.og_web_set_fetcher((path: string) => {
+  glue.og_web_set_fetcher((path: string, given?: string) => {
     // Its bytes as they arrive, for og.stream.status's and og.load.progress's `received`.
     const got = glue.og_web_file_progress ? new Received(0, true) : undefined;
-    bytesOf(path, got, got ? () => glue.og_web_file_progress!(path, got.loaded, got.total) : undefined, sriOf(path))
+    // A content catalog's file comes with its integrity (og.load.data).
+    bytesOf(path, got, got ? () => glue.og_web_file_progress!(path, got.loaded, got.total) : undefined, given ?? sriOf(path))
       .then((bytes) => {
         if (path.endsWith("/.cook.ogt")) {
           const listed = JSON.parse(glue.og_web_bundle_integrity(new TextDecoder().decode(bytes))) as Record<string, string>;

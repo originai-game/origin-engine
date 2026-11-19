@@ -62,6 +62,8 @@ mod inspector;
 mod instantiate_in_system;
 #[path = "../invariants.rs"]
 mod invariants;
+#[path = "../load_data.rs"]
+mod load_data;
 #[path = "../material_arrays.rs"]
 mod material_arrays;
 #[path = "../mesh_flash.rs"]

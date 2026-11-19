@@ -2,7 +2,7 @@
 // the napi addon, open the project's cooked bundle, mount the probe, and
 // drive the tick.
 //
-//   bun src/node/run.ts --entry <game.js|.ts> [--root <project>] [--ticks N] [--seed S]
+//   bun src/node/run.ts --entry <game.js|.ts> [--root <project>] [--content <dir>] [--ticks N] [--seed S]
 //       [--setup action[:arg...]]... [--commands "t:action[:args];..."] [--out <dir>]
 //       [--port P] [--size WxH] [--realtime] [--watch <bundle.js>] [--no-render] [--capture-only]
 //       [--audio null|device|<out.wav>] [--platform-store <file.json>] [--platform-fake <file.json>] [--clock <UTC ms>] [--locale <tag>]
@@ -103,6 +103,7 @@ export async function run(argv: string[], output: RunOutput = hostProcess, contr
     const hostEntered = unixMs();
     let entry = "";
     let root: string | undefined;
+    let content: string | undefined;
     let ticks: number | undefined;
     let seed: number | undefined;
     let commands: string | undefined;
@@ -139,6 +140,7 @@ export async function run(argv: string[], output: RunOutput = hostProcess, contr
       };
       if (a === "--entry") entry = next();
       else if (a === "--root") root = resolve(next());
+      else if (a === "--content") content = resolve(next());
       else if (a === "--ticks") ticks = Number(next());
       else if (a === "--seed") seed = Number(next());
       else if (a === "--setup") setup.push(next());
@@ -287,6 +289,7 @@ export async function run(argv: string[], output: RunOutput = hostProcess, contr
     const created = createEngine(game, {
       ...(seed === undefined ? {} : { seed }),
       ...(root ? { root } : {}),
+      ...(content ? { content } : {}),
       ...(project === undefined ? {} : { project }),
       ...(profile ? { profile } : {}),
       ...(locale ? { locale } : {}),

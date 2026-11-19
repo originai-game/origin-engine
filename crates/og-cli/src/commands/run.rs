@@ -1,6 +1,6 @@
 //! `og run [project|entry] [--headless] [--commands "t:action[:args];..."] [--seed S]
 //! [--port P] [--ticks N] [--out DIR] [--size WxH] [--setup action[:arg]]...
-//! [--audio null|device|<out.wav>] [--platform-store <file.json>] [--platform-fake <file.json>] [--clock <UTC ms>] [--locale <tag>] [--trace <out.json>] [--profile <out.cpuprofile|out.md>] [--capture-only] [--forks N] [--json] [--no-check]`
+//! [--audio null|device|<out.wav>] [--content <dir>] [--platform-store <file.json>] [--platform-fake <file.json>] [--clock <UTC ms>] [--locale <tag>] [--trace <out.json>] [--profile <out.cpuprofile|out.md>] [--capture-only] [--forks N] [--json] [--no-check]`
 //!
 //! Cooks the project, type-checks it (crate::check: a type error stops the
 //! run before anything is bundled, its diagnostics printed, or with
@@ -30,7 +30,9 @@
 //! ws://127.0.0.1:P/<room>` joins that room through `og relay` (og.platform's
 //! rooms, og.net's lockstep; a run in a room keeps going until `quit` or
 //! --ticks, waiting for the other players). `--locale ja` is the locale og.i18n is
-//! asked for (default: none, the base table). Native runs
+//! asked for (default: none, the base table). `--content <dir>` is the
+//! content base og.load.data reads catalogs from (guide loading §14);
+//! without it a data load fails `unavailable`. Native runs
 //! are always headless: `--headless` is accepted, and without it the run is
 //! paced by the wall clock instead of as fast as it can go.
 //! With `ORIGIN_FRAMES_SOCKET` set (Origin Runner sets it when Origin
@@ -48,7 +50,7 @@ use crate::project::{self, Project};
 use std::path::Path;
 use std::process::ExitCode;
 
-const USAGE: &str = "usage: og run [project|entry] [--headless] [--commands \"t:action[:args];...\"] [--seed S] [--port P] [--ticks N] [--out DIR] [--size WxH] [--setup action[:arg]]... [--audio null|device|<out.wav>] [--platform-store <file.json>] [--platform-fake <file.json>] [--clock <UTC ms>] [--locale <tag>] [--trace <out.json>] [--profile <out.cpuprofile|out.md>] [--room ws://127.0.0.1:P/<room>|wss://<host>/<room>] [--shared ws://127.0.0.1:P/|wss://<host>/ [--shared-token-file <f>]] [--capture-only] [--forks N] [--json] [--no-check]\n       og run --device chrome|safari|android[:serial]|iphone[:udid] [project] [--seconds N] [--port P] [--out DIR] [--size WxH] [--headed] [--chrome <path>] [--cert <pem> --key <pem>] [--host <ip>] [--json]";
+const USAGE: &str = "usage: og run [project|entry] [--headless] [--commands \"t:action[:args];...\"] [--seed S] [--port P] [--ticks N] [--out DIR] [--size WxH] [--setup action[:arg]]... [--audio null|device|<out.wav>] [--content <dir>] [--platform-store <file.json>] [--platform-fake <file.json>] [--clock <UTC ms>] [--locale <tag>] [--trace <out.json>] [--profile <out.cpuprofile|out.md>] [--room ws://127.0.0.1:P/<room>|wss://<host>/<room>] [--shared ws://127.0.0.1:P/|wss://<host>/ [--shared-token-file <f>]] [--capture-only] [--forks N] [--json] [--no-check]\n       og run --device chrome|safari|android[:serial]|iphone[:udid] [project] [--seconds N] [--port P] [--out DIR] [--size WxH] [--headed] [--chrome <path>] [--cert <pem> --key <pem>] [--host <ip>] [--json]";
 
 /// What `og run` was asked.
 pub struct RunArgs {
@@ -142,6 +144,7 @@ pub fn parse(args: &[&str]) -> Result<RunArgs, String> {
             | "--out"
             | "--port"
             | "--audio"
+            | "--content"
             | "--platform-store"
             | "--platform-fake"
             | "--clock"
@@ -176,7 +179,7 @@ pub fn parse(args: &[&str]) -> Result<RunArgs, String> {
                         r.forward.extend([flag.into(), v.to_string()]);
                         device_forward.extend([flag.to_string(), v.to_string()]);
                     }
-                    "--audio" | "--platform-store" | "--platform-fake" | "--shared-token-file" => {
+                    "--audio" | "--content" | "--platform-store" | "--platform-fake" | "--shared-token-file" => {
                         // A path is the caller's, not bun's working directory's.
                         let v = match *v {
                             "null" | "device" if flag == "--audio" => v.to_string(),

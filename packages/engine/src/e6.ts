@@ -3,6 +3,7 @@
 
 import type { HostAbi } from "./generated/abi.ts";
 import { boundHost } from "./runtime.ts";
+import { fromBase64 } from "./runtime/result.ts";
 
 type W = { readonly id: number };
 
@@ -161,13 +162,6 @@ function toBase64(bytes: Uint8Array): string {
   let bin = "";
   for (let i = 0; i < bytes.length; i++) bin += String.fromCharCode(bytes[i]!);
   return btoa(bin);
-}
-
-function fromBase64(text: string): Uint8Array {
-  const bin = atob(text);
-  const out = new Uint8Array(bin.length);
-  for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
-  return out;
 }
 
 export const i18n = Object.freeze({
