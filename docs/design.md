@@ -1152,8 +1152,10 @@ default); `og check` uses the tsgo fallback there.
   platform ink and tokens.
 - **Voice**: documentation, the wiki and `og` output use plain sentences, no
   exclamation marks, and every error names the fix.
-- **Versioning**: semver; a game pins its engine version in `project.ogt`;
-  upgrades are explicit.
+- **Versioning**: releases `x.y.z`, where a patch may carry breaks the
+  changelog lists, and dev builds `dev.<YYYYMMDD>.<n>` (`docs/release.md`
+  §1a, §3); a game pins its engine version in `project.ogt`; upgrades are
+  explicit.
 - **Licence**: MIT (`LICENSE`).
 
 ## 10. Depth features

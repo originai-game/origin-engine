@@ -112,9 +112,10 @@ status `docs/roadmap.md`. Platform contracts implemented here:
 - **One GPU host.** References are recorded on the L4 (Vulkan, `gcp-l4`
   orb; `docs/ci.md` §The GPU host, §Reference frames). Metal, DX12 and WebGPU
   are compatibility checks against that set; Metal keeps no set of its own
-  (a `references/metal/` frame exists only until the L4 records it). macrunner and studio-win are development hosts;
-  their failures are never a landing gate, and Windows-only gate failures
-  are not worth a stream's time.
+  (a `references/metal/` frame exists only until the L4 records it).
+  macrunner and studio-win are development and packing hosts
+  (`docs/release.md` §3); their failures are never a landing gate, and
+  Windows-only gate failures are not worth a stream's time.
 - A moved reference never blocks a landing: the engine's reference suites
   report it with its actual and diff PNGs (`docs/ci.md` §Landing); a crash,
   a black or blank frame or an unchecked frame fails. Never record a black
