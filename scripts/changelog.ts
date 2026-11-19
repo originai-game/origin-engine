@@ -107,7 +107,6 @@ export function changelogProblems(log: Changelog): string[] {
     const name = `${CHANGELOG} ${e.version ?? "unreleased"}`;
     if (e.simulation !== "unchanged" && e.simulation !== "changed") out.push(`${name}: simulation is "unchanged" or "changed"`);
     if (e.version !== undefined && e.kind !== "patch" && e.kind !== "minor") out.push(`${name}: kind is "patch" or "minor"`);
-    if (e.kind === "patch" && e.breaking.length > 0) out.push(`${name}: a patch has no breaking entries`);
     e.breaking.forEach((v, i) => out.push(...breakingProblems(`${name} breaking[${i}]`, v)));
     e.added.forEach((v, i) => out.push(...noteProblems(`${name} added[${i}]`, v)));
     e.fixed.forEach((v, i) => out.push(...noteProblems(`${name} fixed[${i}]`, v)));
@@ -185,7 +184,8 @@ const line = (n: Note) => (typeof n === "string" ? `- ${n}` : `- **${n.member}.*
 export function notes(e: Entry, title: string): string {
   const out = [`## ${title}`, ""];
   const tick = e.simulation === "changed" ? "may step differently from the version before" : "steps as the version before";
-  out.push(`${e.kind === "minor" ? "A minor release: a game may need edits to upgrade" : e.kind === "patch" ? "A patch release: compatible" : "Unreleased"}; a game's simulation ${tick}.`, "");
+  const what = e.breaking.length ? "Breaking: a game may need edits to upgrade (`og upgrade` applies the codemods and lists the rest)" : "Compatible: a game runs as written";
+  out.push(`${e.version === undefined ? `Unreleased. ${what}` : what}; a game's simulation ${tick}.`, "");
   if (e.breaking.length) {
     out.push("### Breaking", "");
     for (const b of e.breaking) out.push(`- **${b.member}.** ${b.change} *Fix:* ${b.fix}`);

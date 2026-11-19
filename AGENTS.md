@@ -18,8 +18,8 @@ status `docs/roadmap.md`. Platform contracts implemented here:
   `https://origingame.ai/downloads/engine/<version>/` (`docs/release.md` §1).
   A version is tested locally before a sandbox installs it. Development
   sandboxes are InstaBox (`tests/install/instabox.ts`); E2B is production.
-- Public contracts; changing one is a break (a minor version with a breaking
-  changelog fragment):
+- Public contracts; changing one is a break (a breaking changelog fragment
+  with its fix, find and codemod, released in the next 0.9.x patch):
   - `packages/knowledge/scripts/mount.ts`: `installed`, `mount`, `summary`.
   - `packages/knowledge/scripts/lib.ts`: `payload`, `defaultRoots`,
     `PayloadFile`, `Roots`.

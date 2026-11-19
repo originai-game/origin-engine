@@ -511,14 +511,15 @@ fn engine_checks(out: &mut Out, cwd: &Path) -> EngineReport {
         None,
     );
     // In a project: its pin against the installed package (docs/release.md
-    // §3): compatible when the installed version is in the pin's minor and
-    // not older (a patch is compatible by the version policy).
+    // §3): compatible when the installed version is in the pin's minor, not
+    // older, and no version crossed carries a breaking entry.
     if let Ok(p) = crate::project::Project::open(cwd)
         && p.manifest
     {
         match (p.engine.as_deref(), installed.as_deref()) {
             (Some(pinned), Some(inst)) => {
-                let compatible = crate::project::compatible(pinned, inst);
+                let why = crate::project::compatible(pinned, inst, &package).err();
+                let compatible = why.is_none();
                 found.pin = serde_json::json!({ "pinned": pinned, "installed": inst, "compatible": compatible });
                 if pinned == inst {
                     out.check(
@@ -531,15 +532,16 @@ fn engine_checks(out: &mut Out, cwd: &Path) -> EngineReport {
                     out.check(
                         "ok",
                         "pin",
-                        &format!("project.ogt pins engine \"{pinned}\", installed {inst}: compatible (same minor, newer); `og upgrade` moves the pin"),
+                        &format!("project.ogt pins engine \"{pinned}\", installed {inst}: compatible (same minor, newer, no breaking change between); `og upgrade` moves the pin"),
                         None,
                     );
                 } else {
+                    let why = why.unwrap_or_default();
                     out.check(
                         "differs",
                         "pin",
-                        &format!("project.ogt pins engine \"{pinned}\", installed {inst}: not compatible (another minor, or older)"),
-                        Some(format!("`og upgrade --to {inst}` moves the game to {inst} (and lists what to edit); otherwise run og through its launcher, which runs the pinned {pinned}")),
+                        &format!("project.ogt pins engine \"{pinned}\", installed {inst}: not compatible ({why})"),
+                        Some(format!("`og upgrade --to {inst}` moves the game to {inst}, applies the changelog's codemods and lists what to edit by hand; otherwise run og through its launcher, which runs the pinned {pinned}")),
                     );
                 }
             }

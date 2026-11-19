@@ -5,7 +5,7 @@ import { expect, test } from "bun:test";
 import { mkdirSync, mkdtempSync, readdirSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { CHANGELOG, type Changelog, check, FRAGMENTS, fold, readLog } from "./changelog.ts";
+import { CHANGELOG, type Changelog, check, FRAGMENTS, fold, notes, readLog } from "./changelog.ts";
 
 function scratch(log: Changelog, fragments: Record<string, unknown>): string {
   const root = mkdtempSync(join(tmpdir(), "og-changelog-"));
@@ -64,10 +64,12 @@ test("check names bad names, unknown keys, empty fragments and invalid JSON", ()
   expect(out).toContain("broken.json: not JSON");
 });
 
-test("a patch with a breaking entry in changelog.json is a problem", () => {
+test("a patch may carry a break, and its notes say so whatever its kind", () => {
   const log = base();
   log.versions[0]!.breaking.push({ member: "og.x", change: "c", fix: "f" });
-  expect(check(scratch(log, {})).join("\n")).toContain("0.7.7: a patch has no breaking entries");
+  expect(check(scratch(log, {}))).toEqual([]);
+  expect(notes(log.versions[0]!, "0.7.7")).toContain("Breaking: a game may need edits to upgrade");
+  expect(notes(base().versions[0]!, "0.7.7")).toContain("Compatible: a game runs as written");
 });
 
 test("the repository's changelog and fragments are well formed", () => {

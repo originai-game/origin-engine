@@ -20,8 +20,8 @@
 // reads): a bump first folds changelog/unreleased/'s fragments into
 // `unreleased` (scripts/changelog.ts), then moves `unreleased` into `versions` as
 // the new version, dated today (UTC), its kind from the numbers (patch in
-// the same minor, minor otherwise), and refuses a patch that carries a
-// break; --check requires an entry for the current version.
+// the same minor, minor otherwise). A patch may carry breaks: its breaking
+// list says what breaks; --check requires an entry for the current version.
 
 import { existsSync, readdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
@@ -83,7 +83,7 @@ function sites(): Site[] {
   return s;
 }
 
-import { type Changelog, type Entry as ChangeEntry, CHANGELOG, check as checkFragments, FRAGMENTS, type Fragment, fold, foldInto, fragmentNames, readLog, writeLog } from "./changelog.ts";
+import { type Changelog, type Entry as ChangeEntry, CHANGELOG, check as checkFragments, fold, readLog, writeLog } from "./changelog.ts";
 
 const minorOf = (v: string) => v.split(".").slice(0, 2).join(".");
 const DEV = /-dev\.\d+$/;
@@ -109,14 +109,9 @@ function releaseChangelog(now: string, target: string): string | null {
   if (problems.length) return `the changelog fragments do not fold:\n${problems.map((p) => `  ${p}`).join("\n")}`;
   if (readLog().versions.some((e) => e.version === target)) return null;
   const kind = minorOf(now) === minorOf(target) ? "patch" : "minor";
-  // Decided on what the fold will give, before it writes or deletes anything.
-  const u = foldInto(readLog().unreleased, fragmentNames().map((n) => JSON.parse(read(join(FRAGMENTS, n))) as Fragment));
-  if (kind === "patch" && u.breaking.length > 0) {
-    return `${CHANGELOG}: unreleased has ${u.breaking.length} breaking entr${u.breaking.length === 1 ? "y" : "ies"}; ${target} is a patch of ${now}: release a minor (0.x.0) instead (docs/release.md §3)`;
-  }
   fold();
   const log = readLog();
-  const entry: ChangeEntry = { version: target, date: new Date().toISOString().slice(0, 10), kind, ...u };
+  const entry: ChangeEntry = { version: target, date: new Date().toISOString().slice(0, 10), kind, ...log.unreleased };
   log.versions.unshift(entry);
   log.unreleased = { simulation: "unchanged", breaking: [], added: [], fixed: [] };
   writeLog(log);

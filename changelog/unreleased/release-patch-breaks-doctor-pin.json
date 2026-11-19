@@ -1,0 +1,8 @@
+{
+  "fixed": [
+    {
+      "member": "og doctor",
+      "summary": "A patch may now carry breaking changes, so a pin is compatible only when no version after it up to the installed engine has breaking entries in the engine's changelog.json (same minor, not older, as before). og doctor (its pin line and --json pin.compatible) and the pin warning of og run, test and build name the breaking versions crossed and point to og upgrade."
+    }
+  ]
+}

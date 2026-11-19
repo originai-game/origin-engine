@@ -146,6 +146,45 @@ fn upgrade_rewrites_the_pin_applies_codemods_and_lists_hand_edits() {
     );
     assert_eq!(pin("0.5.0")["compatible"], false);
     assert_eq!(pin("0.99.0")["compatible"], false);
+    // A patch may carry breaks: against an engine at 0.9.3 whose 0.9.2
+    // breaks, a pin of 0.9.1 crosses it and is not compatible, a pin of
+    // 0.9.2 (the pin itself is not crossed) is.
+    let fake = dir.join("fake-engine");
+    std::fs::create_dir_all(fake.join("src/node")).unwrap();
+    std::fs::write(fake.join("package.json"), r#"{ "version": "0.9.3" }"#).unwrap();
+    std::fs::write(
+        fake.join("src/node/doctor.ts"),
+        "console.log(JSON.stringify({ version: \"0.9.3\" }));\n",
+    )
+    .unwrap();
+    let entry = |v: &str, breaking: serde_json::Value| serde_json::json!({ "version": v, "kind": "patch", "simulation": "unchanged", "breaking": breaking, "added": [], "fixed": ["x"] });
+    let cut = serde_json::json!([{ "member": "og.x", "change": "c", "fix": "f" }]);
+    let log = serde_json::json!({
+        "schema": 1,
+        "unreleased": { "simulation": "unchanged", "breaking": [], "added": [], "fixed": [] },
+        "versions": [entry("0.9.3", serde_json::json!([])), entry("0.9.2", cut), entry("0.9.1", serde_json::json!([])), entry("0.9.0", serde_json::json!([]))],
+    });
+    std::fs::write(fake.join("changelog.json"), log.to_string()).unwrap();
+    let doctor = |engine: &str, json: bool| {
+        std::fs::write(dir.join("project.ogt"), manifest(engine)).unwrap();
+        og().arg("doctor")
+            .args(json.then_some("--json"))
+            .current_dir(&dir)
+            .env("OG_ENGINE_PACKAGE", &fake)
+            .output()
+            .unwrap()
+    };
+    let compatible = |engine: &str| report(&doctor(engine, true))["pin"]["compatible"].clone();
+    assert_eq!(compatible("0.9.1"), false);
+    assert_eq!(compatible("0.9.0"), false);
+    assert_eq!(compatible("0.9.2"), true);
+    let line = text(&doctor("0.9.1", false));
+    assert!(
+        line.contains("not compatible (0.9.2 carries breaking changes)")
+            && line.contains("og upgrade --to 0.9.3"),
+        "{line}"
+    );
+    std::fs::remove_dir_all(&fake).unwrap();
     std::fs::write(dir.join("project.ogt"), manifest("0.6.1")).unwrap();
 
     write("0.2.0");

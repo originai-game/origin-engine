@@ -277,13 +277,48 @@ pub fn semver(v: &str) -> Option<(u64, u64, u64)> {
     it.next().is_none().then_some(r)
 }
 
-/// Whether a game pinned at `pinned` runs as written on `installed`
-/// (docs/release.md §3): the same minor (major too) and not older. A patch
-/// is compatible by the version policy; another minor may carry breaks.
-pub fn compatible(pinned: &str, installed: &str) -> bool {
-    match (semver(pinned), semver(installed)) {
-        (Some(p), Some(i)) => p.0 == i.0 && p.1 == i.1 && i.2 >= p.2,
-        _ => false,
+/// Whether a game pinned at `pinned` runs as written on `installed`, the
+/// version of the engine package at `package` (docs/release.md §3): the same
+/// minor (major too), not older, and no version after the pin up to the
+/// installed one carries a breaking entry in the package's changelog.json
+/// (a patch may carry breaks). A dev build counts its `unreleased` entry as
+/// its own. `Err` says why not, naming the breaking versions crossed.
+pub fn compatible(pinned: &str, installed: &str, package: &Path) -> Result<(), String> {
+    let (Some(p), Some(i)) = (semver(pinned), semver(installed)) else {
+        return Err("not a version".into());
+    };
+    if (p.0, p.1) != (i.0, i.1) {
+        return Err("another minor".into());
+    }
+    if i < p {
+        return Err("older".into());
+    }
+    let log: serde_json::Value = std::fs::read_to_string(package.join("changelog.json"))
+        .ok()
+        .and_then(|t| serde_json::from_str(&t).ok())
+        .ok_or("the engine package has no readable changelog.json")?;
+    let breaks = |e: &serde_json::Value| e["breaking"].as_array().is_some_and(|b| !b.is_empty());
+    let mut crossed: Vec<&str> = log["versions"]
+        .as_array()
+        .into_iter()
+        .flatten()
+        .filter(|e| {
+            breaks(e)
+                && e["version"]
+                    .as_str()
+                    .and_then(semver)
+                    .is_some_and(|v| v > p && v <= i)
+        })
+        .filter_map(|e| e["version"].as_str())
+        .collect();
+    crossed.reverse();
+    if installed.contains('-') && breaks(&log["unreleased"]) {
+        crossed.push(installed);
+    }
+    match crossed.as_slice() {
+        [] => Ok(()),
+        [v] => Err(format!("{v} carries breaking changes")),
+        vs => Err(format!("{} carry breaking changes", vs.join(", "))),
     }
 }
 
@@ -292,15 +327,17 @@ pub fn compatible(pinned: &str, installed: &str) -> bool {
 /// package (docs/release.md §3): the installed package runs; the pin is the
 /// author's record of what the game was written against, and moving it is
 /// an explicit edit (`og upgrade`). `None` when they agree, when the
-/// installed one is a compatible patch, or either is unknown.
+/// installed one is compatible, or either is unknown.
 pub fn pin_notice(project: &Project, package: &Path) -> Option<String> {
     let pinned = project.engine.as_deref()?;
     let installed = package_version(package)?;
-    (pinned != installed && !compatible(pinned, &installed)).then(|| {
-        format!(
-            "project.ogt pins engine \"{pinned}\" and og runs engine {installed}, another minor (or older): {installed} runs; `og upgrade --to {installed}` moves the game to it and lists what to edit, or run the pinned version through the og launcher (docs/release.md §1)"
-        )
-    })
+    if pinned == installed {
+        return None;
+    }
+    let why = compatible(pinned, &installed, package).err()?;
+    Some(format!(
+        "project.ogt pins engine \"{pinned}\" and og runs engine {installed}, not compatible ({why}): {installed} runs; `og upgrade --to {installed}` moves the game to it, applies the changelog's codemods and lists what to edit, or run the pinned version through the og launcher (docs/release.md §1)"
+    ))
 }
 
 pub const NO_ENGINE: &str = "no engine package: run og through its launcher (curl -fsSL https://origingame.ai/downloads/engine/install.sh | sh), which runs the version project.ogt pins, set OG_ENGINE_PACKAGE to an engine (a dist's engine/, or packages/engine of an origin-engine checkout), or run inside a checkout";

@@ -292,7 +292,8 @@ commands:
   doctor [--json] [--require-checked]
                       check bun, the engine package, the native addon, the wasm, a headless
                       renderer, and (in the engine repository) the build toolchain, naming each fix;
-                      --json adds the pin: {pinned, installed, compatible} (same minor, installed >= pinned)
+                      --json adds the pin: {pinned, installed, compatible} (same minor, installed >= pinned, and
+                      no version after the pin up to the installed one has breaking entries)
   upgrade [project] [--to <version>] [--dry-run] [--json]
                       move project.ogt's engine pin and package.json's dependency to the installed
                       engine (or --to), apply the changelog's codemods for the versions crossed and

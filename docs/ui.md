@@ -2773,9 +2773,9 @@ resources and their shared dependencies, not every pack. Tests, reference
 frames and art sources are not runtime payload.
 
 Public helper signatures, built-in component names, inputs, intents and
-parts, and the creation schema are contracts: a break needs a minor
-release and a breaking entry with its fix in a new `changelog/unreleased/`
-fragment. There are no legacy aliases. Planned groups and packs may be
+parts, and the creation schema are contracts: a break needs a breaking
+entry with its fix in a new `changelog/unreleased/` fragment, released in
+the next patch (docs/release.md §3). There are no legacy aliases. Planned groups and packs may be
 absent on main; incomplete engine archives cannot ship. Release waits for
 the complete approved catalogue and platform schema and pin coordination
 ([release rules](release.md)).

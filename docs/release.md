@@ -177,22 +177,29 @@ The skeleton ships no starter art; test-only assets live under
 
 ## 3. Versions and the release procedure
 
-**Version.** Before `1.0.0` the minor number counts breaks and the patch
-number everything else. A minor bump (`0.x.0`) is a release with a break:
-an IDL member removed or renamed, a field's type or default changed, a
-saved value or enum index whose meaning changed, or behaviour a game
-relied on changed. A patch bump (`0.x.y`) is everything compatible: new
-members off by default (a game that does not set them draws and runs
-exactly as before), variants appended to an enum, fixes, frames and speed.
-A compatible but large release may still take a minor when the owner
-names it. `scripts/release.sh bump` writes every occurrence of the version
-and `scripts/release.sh check` holds them equal.
+**Version.** The minor number moves only when the owner names a new
+minor (`0.10.0`, `1.0.0`); `0.9` is meant to last, and every release after
+`0.9.0` is the next patch (`0.9.1`, `0.9.2`, ...). A patch may carry
+breaks: an IDL member removed or renamed, a field's type or default
+changed, a saved value or enum index whose meaning changed, or behaviour a
+game relied on changed. Each break goes into the next patch as a breaking
+entry with its `fix`, the `find` identifiers and, when the rewrite is
+mechanical, a `codemod`, so that `og upgrade` rewrites what it can and
+lists the rest. A patch's `kind` stays `"patch"` and its `breaking` list
+says what breaks; a version is compatible exactly when that list is empty.
+Dev builds are `<next patch>-dev.<n>`. `scripts/release.sh bump` writes
+every occurrence of the version and `scripts/release.sh check` holds them
+equal.
 
 A game's `project.ogt` pins its own version, and `og` reports a mismatch
 with the installed package (`og doctor` as a line and in `--json` as
 `pin`, `og run`/`test`/`build` as a warning); an upgrade is an explicit
 edit. A pin is **compatible**, and no mismatch is reported, when both are
-the same minor and the installed one is not older.
+the same minor, the installed one is not older, and no version after the
+pin up to the installed one (a dev build's `unreleased` counting as its
+own) has breaking entries in the installed package's `changelog.json`.
+Otherwise `og doctor` names the breaking versions crossed and points to
+`og upgrade`.
 
 **`changelog.json`** (in the engine package, schema 1) is the engine's one
 changelog: the machine contract the platform builds its "new engine
@@ -210,8 +217,9 @@ purpose (`scripts/changelog.ts` has the details; the quick gate
 shape-checks them). `scripts/release.sh fold` folds the fragments into
 `unreleased`, refusing a malformed one; the coordinator runs it between
 releases and commits the result. `release.sh bump` folds first, moves
-`unreleased` into `versions` as the new dated version, and refuses a patch
-whose `unreleased` has a breaking entry. Release notes are generated from
+`unreleased` into `versions` as the new dated version, its `kind` from the
+numbers (`patch` in the same minor, `minor` otherwise) and its breaking
+entries kept whatever the kind. Release notes are generated from
 the version's entry into `dist/release/<version>/NOTES.md` by `pack`,
 never written by hand.
 
