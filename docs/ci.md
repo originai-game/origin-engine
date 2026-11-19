@@ -306,6 +306,7 @@ split, and the lowest such crate is its cause.
 | `fixtures` | `og test` for each changed runnable feature fixture and the creation skeleton; needs only the native `og`, so `--only fixtures` builds no wasm. | full |
 | `browser` | Every file packages/engine's `test:browser` names, each run even when one before it failed. | full |
 | `web-reference` | Headless Chrome WebGPU groups with `OG_WEB_JOBS` concurrency (default 3), compared under unchanged tolerances. | explicit |
+| `safari` | Wire, player, export, device, and motion ticks in desktop Safari. Also plays publish builds of First Light and Side Scroller. | explicit, macOS |
 | `check-conformance` | `scripts/tsrs-diff.sh`: compare tsrs and pinned tsgo diagnostics over packages, templates, the test fixtures and the error corpus. | explicit |
 | perf | `scripts/perf.sh`: ignored `perf_*` assertions in og-tests, og-runtime and og-audio, release profile, serially under every GPU slot. An og-tests baseline holds the frame's milliseconds and, where the device has timestamp queries, each render-graph pass's GPU milliseconds (`passes_ms`): a pass over its own baseline by 15 % and 0.1 ms fails by name. | explicit |
 
@@ -349,6 +350,22 @@ Each run keeps its logs and reports under
 `<target>/evidence/gate/runs/<timestamp>-<pid>/` (`OG_EVIDENCE_DIR`
 defaults to `<target>/evidence`). Reports from a cancelled run are not
 evidence of a pass.
+
+### Safari
+
+On a physical Mac with Safari WebGPU, enable **Allow Remote Automation** in
+Safari's **Develop** menu or run `sudo safaridriver --enable` once. Run
+`scripts/check.sh --only safari` from the checkout. The gate builds the
+native tools and all browser wasm variants before it starts the tests.
+Safari allows one WebDriver session at a time, so the step runs its tests
+serially and holds a machine-wide Safari lock. A missing driver or WebGPU
+adapter does not count as a pass.
+
+Read the per-run logs in the gate's `safari/` log directory. The publish
+device reports are in `packages/engine/dist/test-safari/`. This lane does
+not cover touch input on an iPhone, Android GPU compatibility, or HDR
+output on a physical HDR display. A virtual Mac does not count for Apple
+GPU timings.
 
 ## Amp orbs
 
