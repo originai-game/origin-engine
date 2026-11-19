@@ -821,6 +821,10 @@ impl Ui {
             },
         );
         cascade.media.extend(&media);
+        // Finish the root's token batch before it is shared with every
+        // element; the incremental fold threshold can leave hundreds in
+        // the copy-on-write layer after the last token was inserted.
+        Arc::make_mut(&mut cascade.computed).share_base();
         cascade
     }
 

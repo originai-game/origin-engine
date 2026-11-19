@@ -1,0 +1,5 @@
+{
+  "fixed": [
+    "CSS root tokens finish in shared storage, avoiding repeated token-overlay copies and comparisons when controls change state."
+  ]
+}

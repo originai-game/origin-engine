@@ -213,6 +213,16 @@ impl Computed {
         if self.layer.len() <= LAYER.max(self.base.len() / 4) {
             return;
         }
+        self.share_base();
+    }
+
+    /// Finish a common ancestor's values before descendants inherit them.
+    /// Its last, below-threshold batch of tokens belongs in the shared
+    /// base too, not in every descendant's copy-on-write overlay.
+    pub(crate) fn share_base(&mut self) {
+        if self.layer.is_empty() {
+            return;
+        }
         let base: Map = self
             .iter()
             .map(|(name, value)| (name.clone(), value.clone()))
