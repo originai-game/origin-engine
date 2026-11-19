@@ -353,7 +353,7 @@ pub(crate) fn epoch_ms() -> f64 {
 }
 
 /// Asks the Worker's fetcher for `path` once (against `integrity`, which
-/// its `fetch()` checks), `Pending` until it lands.
+/// the fetcher checks: src/web/boot.ts), `Pending` until it lands.
 fn request(path: &str, integrity: Option<&str>) -> Fetch<Vec<u8>> {
     FETCHER.with(|f| match &*f.borrow() {
         Some(fetch) => {
