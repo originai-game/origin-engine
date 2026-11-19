@@ -57,6 +57,7 @@ dates, no absolute paths, files in sorted order
              "members": ["hello", "tick", "state", "pick", "entity", "input", "capture"] },
   "crossOriginIsolation": "preferred",
   "assets": null,
+  "content": null,
   "frames": [],
   "display": { "fit": "fill", "aspect": null, "aspectMin": null, "aspectMax": null,
                "orientation": "any", "dprCap": 2,
@@ -83,6 +84,8 @@ dates, no absolute paths, files in sorted order
 - `variant` is `3d`, `2d`, or `full` for a dev build (§Variants).
 - `assets` is `null`, or `{ "base", "origin" }` for a build whose package
   is served from an asset base (§Asset base).
+- `content` is `null`, or `{ "base", "origin" }` for a build whose
+  og.load.data reads catalogs from a content base (§Content base).
 - `frames` lists the origins the game's remote `<iframe>`s load documents
   from (project.ogt's `frames`, §Frames); empty when it embeds none.
 - `crossOriginIsolation`: `required`, `preferred` (the default) or `off`;
@@ -173,6 +176,21 @@ fragment (`crates/og-cli/src/publish.rs` `asset_base`).
 
 `tests/web/asset-base.ts` boots a fixture's package from another origin in
 Chrome, intact, with one byte changed and with its manifest changed.
+
+### Content base
+
+og.load.data reads a game's content catalogs (the og-api guide loading
+§14) from a content base, which is not the asset base: `og build
+--content <url>`, else project.ogt `publish { content "<url>" }`, under
+the asset base's rules for the URL. The build writes the page's
+configuration `content` and og-build.json's `content: { base, origin }`;
+the Worker reads `<base>/<catalog>/<version>/manifest.json` and then each
+file against the integrity the manifest lists. The host serves the base
+with CORS reads from the page's origin (and `Cross-Origin-Resource-Policy:
+cross-origin` under isolation) and lets the Content-Security-Policy reach
+`origin`. The service worker does not cache it: the browser's HTTP cache
+keeps blobs, whose URLs are their digests. Natively the base is `og run
+--content <dir>`.
 
 ### Frames
 
