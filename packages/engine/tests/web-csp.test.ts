@@ -5,7 +5,8 @@
 // the lanes pool's helper starts its Workers from its own URL on the page's
 // origin. Fails when the shell's CSS or install hook goes back inline, a
 // decoder's file is not written or not what the Worker runs, or
-// scripts/rayon-worker.sh stops rewriting wasm-bindgen-rayon's `blob:` start
+// scripts/rayon-worker.sh stops rewriting wasm-bindgen-rayon's `blob:` start,
+// or the Basis transcoder is evaluated from text again (no 'unsafe-eval')
 // (tests/web/export.ts loads such a page in Chrome under that policy).
 import { expect, test } from "bun:test";
 import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
@@ -15,6 +16,7 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 import { settingsOf, webBuild } from "../src/node/web-build.ts";
 import { decoderSource } from "../src/web/audio-decoder.ts";
 import { av1WorkerSource } from "../src/web/video.ts";
+import { loadBasisTranscoder, VENDORED } from "../src/web/basis.ts";
 import { cookProject } from "./support/og-bin.ts";
 import { slow } from "./support/slow.ts";
 
@@ -135,5 +137,27 @@ test.skipIf(HELPER === null)("the lanes pool's helper starts its Workers from it
     globalThis.fetch = saved.fetch;
     (globalThis as { location?: unknown }).location = saved.location;
     rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("the Basis transcoder loads without evaluating text, from the build's hashed file and the wasm bytes it is given", async () => {
+  // As a build serves it: under a hashed name, no basis_transcoder.wasm beside it.
+  const dir = mkdtempSync(join(tmpdir(), "og-basis-csp-"));
+  const js = join(dir, "basis_transcoder.0123456789ab.js");
+  cpSync(fileURLToPath(VENDORED.js), js);
+  // What a policy without 'unsafe-eval' refuses: the Function constructor and eval.
+  const real = { Function: globalThis.Function, eval: globalThis.eval };
+  const refuse = () => {
+    throw new EvalError("Evaluating a string as JavaScript violates the page's Content Security Policy (no 'unsafe-eval')");
+  };
+  globalThis.Function = new Proxy(real.Function, { construct: refuse, apply: refuse });
+  globalThis.eval = refuse as typeof eval;
+  try {
+    const basis = await loadBasisTranscoder(pathToFileURL(js), readFileSync(fileURLToPath(VENDORED.wasm)));
+    expect(typeof basis.KTX2File).toBe("function");
+  } finally {
+    globalThis.Function = real.Function;
+    globalThis.eval = real.eval;
+    rmSync(dir, { recursive: true, force: true });
   }
 });

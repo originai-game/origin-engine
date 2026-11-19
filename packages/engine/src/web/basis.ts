@@ -10,10 +10,10 @@
 //   const tex = transcodeKtx2(basis, ktx2Bytes, format);   // { width, height, format, levels, ... }
 //   device.createTexture({ format: wgpuFormatName(tex.format, srgb), ... })
 //
-// Works in a (module) Worker and under bun. The transcoder's script is a
-// classic Emscripten script, evaluated with the Function constructor as
-// three.js's KTX2Loader does, so a page whose CSP forbids 'unsafe-eval' must
-// allow it for the Worker or load the transcoder another way.
+// Works in a (module) Worker and under bun. The transcoder's script is
+// imported as an ES module (vendor/basis/README.md: Binomial's script,
+// wrapped), never evaluated from text, so it loads under a CSP without
+// 'unsafe-eval' (docs/web-export.md §Hosting).
 
 /**
  * The texture formats this module transcodes to, named as og-render's
@@ -98,24 +98,18 @@ async function bytesOf(source: string | URL | ArrayBuffer | Uint8Array): Promise
 }
 
 /**
- * Load and initialise the transcoder: `js` is the script (a URL, its text
- * as bytes, or omitted for the vendored copy), `wasm` the module (a URL or
+ * Load and initialise the transcoder: `js` is the script's URL (omitted for
+ * the vendored copy), imported as a module, and `wasm` the module (a URL or
  * its bytes, or omitted for the vendored copy).
  */
 export async function loadBasisTranscoder(
-  js: string | URL | ArrayBuffer | Uint8Array = VENDORED.js,
+  js: string | URL = VENDORED.js,
   wasm: string | URL | ArrayBuffer | Uint8Array = VENDORED.wasm,
 ): Promise<BasisTranscoder> {
-  const [script, binary] = await Promise.all([bytesOf(js), bytesOf(wasm)]);
-  const text = new TextDecoder().decode(script);
-  // The script defines `var BASIS` (a factory) and, under CommonJS, assigns
-  // module.exports: give it no `module`, so it stays a plain factory. Under
-  // bun or node it believes it is in node and asks for `fs` and `path`; it
-  // gets inert stand-ins, because the wasm bytes are handed over and it never
-  // reads a file.
-  const inert = (name: string) => new Proxy({}, { get: (_t, key) => () => { throw new Error(`the Basis transcoder tried ${name}.${String(key)}; it is given its wasm bytes and should not`); } });
-  const factory = new Function("module", "exports", "require", "__dirname", "__filename", `${text}\n;return BASIS;`)(undefined, undefined, inert, "", "") as Factory;
-  if (typeof factory !== "function") throw new Error("the Basis transcoder script did not define BASIS");
+  const url = new URL(js, import.meta.url).href;
+  const [module, binary] = await Promise.all([import(url) as Promise<{ default?: unknown }>, bytesOf(wasm)]);
+  const factory = module.default as Factory;
+  if (typeof factory !== "function") throw new Error(`the Basis transcoder ${url} exports no BASIS factory`);
   const basis = await factory({ wasmBinary: binary });
   basis.initializeBasis();
   return basis;
