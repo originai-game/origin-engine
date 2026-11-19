@@ -1869,6 +1869,85 @@
   --role-front-play-ink: rgb(7 16 24);
   --role-front-play-glow: drop-shadow(0 0 calc(16 * var(--font-step-px)) rgb(from var(--hud-accent) r g b / 0.5));
 
+  /* Dialogs and menus (family 10): confirm, tutorial, Menu, Breadcrumbs,
+     TooltipCard. A dialog is a dense smoked plate over a dark scrim, lit
+     along its top in the accent, or in red when its action destroys
+     something; its actions are cut plates, the confirming one the front
+     end's Play plate or a red one. A plate's label is tracked capitals;
+     a Chinese, Japanese or Korean label, which has neither capitals nor
+     tracking, is set a step larger instead (`label-cjk-size`). A menu
+     row is type, washed from a lit leading edge like a menu entry; a
+     shortcut sits on a dark key chip. A tooltip card is lit along its
+     top in its rarity's colour, which also tints its head and rings its
+     socket (the card mixes them: `tip-tint` of the colour over the fill). */
+  --role-dialog-scrim: radial-gradient(90% 80% at 50% 50%, rgb(3 6 14 / 0.62), rgb(3 6 14 / 0.86));
+  --role-dialog-fill: linear-gradient(180deg, rgb(24 31 48 / 0.96), rgb(9 12 22 / 0.97));
+  --role-dialog-edge: inset 0 0 0 var(--stroke-hairline) rgb(255 255 255 / 0.18), inset 0 calc(3 * var(--font-step-px)) 0 var(--hud-accent);
+  --role-dialog-lift: 0 calc(18 * var(--font-step-px)) calc(40 * var(--font-step-px)) rgb(0 0 0 / 0.6);
+  --role-dialog-danger: rgb(226 66 58);
+  --role-dialog-danger-edge: inset 0 0 0 var(--stroke-hairline) rgb(255 255 255 / 0.18), inset 0 calc(3 * var(--font-step-px)) 0 var(--dialog-danger);
+  --role-dialog-danger-fill: linear-gradient(180deg, rgb(255 255 255 / 0.28), transparent 48%), var(--dialog-danger);
+  --role-dialog-danger-hover-fill: linear-gradient(180deg, rgb(255 255 255 / 0.42), rgb(255 255 255 / 0.1) 60%), var(--dialog-danger);
+  --role-dialog-danger-pressed-fill: linear-gradient(180deg, rgb(0 0 0 / 0.16), transparent 60%), var(--dialog-danger);
+  --role-dialog-title-size: calc(26 * var(--font-step-px));
+  --role-dialog-title-size-compact: calc(22 * var(--font-step-px));
+  --role-dialog-body-size: calc(16 * var(--font-step-px));
+  --role-dialog-label-size: calc(15 * var(--font-step-px));
+  --role-dialog-label-cjk-size: calc(17 * var(--font-step-px));
+  --role-dialog-cut: calc(10 * var(--font-step-px));
+  --role-dialog-row-size: calc(16 * var(--font-step-px));
+  --role-dialog-rule: rgb(255 255 255 / 0.12);
+  --role-dialog-chip-rim: inset 0 0 0 var(--stroke-hairline) rgb(255 255 255 / 0.16);
+  --role-dialog-weight: var(--font-weight-semibold);
+  --role-dialog-strong-weight: var(--font-weight-bold);
+  --role-dialog-menu-edge: var(--hud-plate-rim), var(--dialog-lift);
+  --role-dialog-chip-tracking: var(--font-tracking-sm);
+  --role-dialog-heading-cjk-size: calc(13 * var(--font-step-px));
+  --role-dialog-rule-line: var(--stroke-hairline) solid var(--dialog-rule);
+  --role-dialog-crumb-size: calc(15 * var(--font-step-px));
+  --role-dialog-crumb-line: calc(2 * var(--font-step-px)) solid var(--hud-accent);
+  --role-dialog-tip-label-size: calc(14 * var(--font-step-px));
+  --role-dialog-tip-figure-size: calc(16 * var(--font-step-px));
+  --role-dialog-tip-note-size: calc(13 * var(--font-step-px));
+  --role-dialog-tip-chip-size: calc(10 * var(--font-step-px));
+  --role-dialog-tip-chip-rim: inset 0 0 0 var(--stroke-hairline) currentColor;
+  --role-dialog-tip-rim: inset 0 0 0 var(--stroke-hairline) rgb(255 255 255 / 0.16);
+  --role-dialog-tip-tint: 16%;
+  --role-dialog-tip-well: rgb(9 12 22);
+  --role-dialog-tip-plain-edge: inset 0 0 0 var(--stroke-hairline) rgb(255 255 255 / 0.12), inset 0 var(--stroke-hairline) 0 rgb(255 255 255 / 0.4);
+  --role-dialog-tip-title-size: calc(19 * var(--font-step-px));
+
+  /* Story and film (family 23): the film's choices, chapter select, the
+     ending gallery and the story-so-far chart. The choices dock at the
+     picture's foot over a shade, under a thin line that drains with the
+     time left; a choice is a cut smoked plate, the chosen one ringed and
+     washed in the accent, one that cannot be taken flat and dim (its
+     words still read: `choice-off-ink` holds 4.5:1 on `choice-off-fill`).
+     A hotspot is four lit brackets round a faint wash. A chapter or an
+     ending is a cut still with its name under it, a locked one a hatched
+     dark well under a lock. */
+  --role-film-shade: linear-gradient(180deg, transparent 45%, rgb(3 6 14 / 0.6) 70%, rgb(3 6 14 / 0.92));
+  --role-film-shade-compact: linear-gradient(180deg, transparent 25%, rgb(3 6 14 / 0.7) 48%, rgb(3 6 14 / 0.95));
+  --role-film-choice-size: calc(17 * var(--font-step-px));
+  --role-film-choice-on-fill: linear-gradient(180deg, rgb(from var(--hud-accent) r g b / 0.34), rgb(from var(--hud-accent) r g b / 0.12)), var(--dialog-fill);
+  --role-film-choice-off-fill: linear-gradient(180deg, rgb(16 20 32 / 0.9), rgb(9 12 22 / 0.92));
+  --role-film-choice-off-rim: inset 0 0 0 var(--stroke-hairline) rgb(255 255 255 / 0.08);
+  --role-film-choice-off-ink: rgb(255 255 255 / 0.52);
+  --role-film-qte-fill: linear-gradient(90deg, var(--hud-gold), rgb(255 255 255));
+  --role-film-qte-glow: 0 0 calc(8 * var(--font-step-px)) var(--hud-gold);
+  --role-film-spot-wash: rgb(from var(--hud-accent) r g b / 0.1);
+  --role-film-spot-edge: rgb(255 255 255);
+  --role-film-spot-glow: drop-shadow(0 0 calc(6 * var(--font-step-px)) var(--hud-accent)) drop-shadow(0 var(--stroke-hairline) calc(2 * var(--font-step-px)) rgb(0 0 0 / 0.8));
+  --role-film-spot-size: calc(18 * var(--font-step-px));
+  --role-film-locked-fill: repeating-linear-gradient(135deg, rgb(255 255 255 / 0.035) 0 calc(6 * var(--font-step-px)), transparent calc(6 * var(--font-step-px)) calc(14 * var(--font-step-px))), rgb(8 11 20 / 0.92);
+  --role-film-locked-rim: inset 0 0 0 var(--stroke-hairline) rgb(255 255 255 / 0.12);
+  --role-film-name-size: calc(17 * var(--font-step-px));
+  --role-film-name-size-compact: calc(15 * var(--font-step-px));
+  --role-film-card-width: calc(190 * var(--font-step-px));
+  --role-film-card-width-compact: calc(150 * var(--font-step-px));
+  --role-film-mark-glow: 0 0 calc(8 * var(--font-step-px)) var(--hud-gold);
+  --role-film-detail-size: calc(19 * var(--font-step-px));
+
   /* Sounds a pack supplies for a press (none by default). */
   --role-sfx-tap: none;
   --role-sfx-tap2: none;

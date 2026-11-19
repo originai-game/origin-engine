@@ -1,0 +1,8 @@
+{
+  "added": [
+    {
+      "member": "Default style dialog and film tokens",
+      "summary": "--dialog-* roles for confirm, tutorial, Menu, Breadcrumbs and TooltipCard (the scrim, the dense plate and its accent or red top edge, the red confirming plate, the title, body, label and row type steps with a larger label step for Chinese, Japanese and Korean, the key chip's rim, the tooltip card's rim, tint and socket well) and --film-* roles for the film screens (the shade behind the choices, a chosen and an unavailable choice, the quick-time bar, a hotspot's brackets and wash, a locked chapter's well, the card widths and name steps). A style pack restyles these documents by setting them."
+    }
+  ]
+}
