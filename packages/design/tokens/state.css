@@ -203,7 +203,7 @@
   --controls-badge-primary-ink: var(--on-primary);
   /* A HUD capsule and a tooltip stay real glass (the scene blurs through);
      the lit edge and the foot shadow are the other frames'. */
-  --controls-hud-shadow: inset 0 0 0 var(--stroke-hairline) var(--color-rim-soft), var(--shadow-plate);
+  --controls-hud-frame-shadow: inset 0 0 0 var(--stroke-hairline) var(--color-rim-soft), var(--shadow-plate);
   --controls-tooltip-shadow: inset 0 0 0 var(--stroke-hairline) var(--color-rim-soft), var(--shadow-panel);
   --controls-dropdown-list-fill: linear-gradient(180deg, var(--color-glass-hi), var(--color-glass) 96px, var(--color-glass-lo));
   --controls-dropdown-option-hover-fill: var(--control);

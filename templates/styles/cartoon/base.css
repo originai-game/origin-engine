@@ -179,7 +179,7 @@
   --tooltip-glass: none;
   --hud-fill: var(--hud);
   --hud-rim: var(--line-strong);
-  --hud-shadow: var(--cartoon-edge-small);
+  --hud-frame-shadow: var(--cartoon-edge-small);
   --hud-glass: none;
   --popover-arrow-fill: var(--panel-raised);
   --spotlight-edge: var(--accent);

@@ -542,7 +542,7 @@ const ROLE_RULES: &str = r#"  /* Roles: frame, plate, band, title, row, cell, ca
 // hooks under the effective on-state media condition.
 const GLASS_LIFT: &str = "background: var(--panel-fill, var(--color-glass)); border: none; box-shadow: var(--panel-shadow, none);";
 const GLASS_FLOAT: &str = "background: var(--tooltip-fill, var(--color-glass)); border-width: var(--tooltip-rim-width, 0px); border-style: solid; border-color: var(--tooltip-rim, var(--line)); border-radius: var(--tooltip-radius); corner-shape: var(--tooltip-corner-shape); box-shadow: var(--tooltip-shadow, none);";
-const GLASS_REGULAR: &str = "background: var(--hud-fill, var(--color-glass)); border-width: var(--hud-rim-width, 0px); border-style: solid; border-color: var(--hud-rim, var(--line-70)); box-shadow: var(--hud-shadow, none);";
+const GLASS_REGULAR: &str = "background: var(--hud-fill, var(--color-glass)); border-width: var(--hud-rim-width, 0px); border-style: solid; border-color: var(--hud-rim, var(--line-70)); box-shadow: var(--hud-frame-shadow, none);";
 const GLASS_BACKDROPS: &str = r#"
   @media (-og-glass-backdrop: auto) {
     panel.glass::part(frame) { backdrop-filter: var(--panel-glass, blur(var(--glass-blur-thick)) saturate(var(--glass-saturation))); -og-material: glass thick lift; }
