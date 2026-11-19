@@ -1204,6 +1204,128 @@
   --role-result-revive-fill: linear-gradient(180deg, rgb(255 242 196), rgb(255 207 90));
   --role-result-revive-glow: 0 0 calc(26 * var(--font-step-px)) rgb(255 196 70 / 0.45);
 
+  /* Character and party (family 17): the screens before and around a
+     match and a character's own pages (the roster, the draft, the lobby,
+     the ready check, the vote, the versus, the round HUD, the spectator's
+     plate; the character sheet, its stats and menu bar, the profile, the
+     loadout and the garage). Smoked cut cards with a lit top edge, tiles
+     and rows on dark glass, the chosen thing ringed in the HUD's accent,
+     a team in its colour (the results family's team tokens), a state as a
+     word on a cut tag. Sizes are in font steps, so they follow the
+     player's text scale. */
+  --role-party-cut: calc(10 * var(--font-step-px));
+  --role-party-card-fill: linear-gradient(180deg, rgb(16 21 34 / 0.93), rgb(9 12 22 / 0.95));
+  --role-party-card-rim: inset 0 0 0 var(--stroke-hairline) rgb(255 255 255 / 0.14), inset 0 var(--stroke-hairline) 0 rgb(255 255 255 / 0.5);
+  /* A rule under a head and over a foot, and the gold one under a group's
+     label. */
+  --role-party-rule: inset 0 calc(-1 * var(--stroke-hairline)) 0 rgb(255 255 255 / 0.14);
+  --role-party-rule-over: inset 0 var(--stroke-hairline) 0 rgb(255 255 255 / 0.14);
+  --role-party-rule-strong: inset 0 calc(-1 * var(--stroke-hairline)) 0 rgb(255 255 255 / 0.3);
+  --role-party-rule-gold: inset 0 calc(-1 * var(--stroke-hairline)) 0 rgb(255 207 90 / 0.4);
+  /* A tile or a row a player picks: dark glass with a hairline rim, lit
+     brighter under a pointer, ringed in the accent with a white lip and
+     washed in it from its foot when chosen, ringed white under the focus. */
+  --role-party-tile-fill: linear-gradient(180deg, rgb(30 38 58 / 0.9), rgb(10 13 24 / 0.94));
+  --role-party-tile-rim: inset 0 0 0 var(--stroke-hairline) rgb(255 255 255 / 0.16);
+  --role-party-tile-hover-rim: inset 0 0 0 var(--stroke-hairline) rgb(255 255 255 / 0.45);
+  --role-party-on-rim: inset 0 0 0 calc(2 * var(--font-step-px)) var(--hud-accent), inset 0 calc(3 * var(--font-step-px)) 0 rgb(255 255 255);
+  --role-party-on-wash: linear-gradient(0deg, rgb(from var(--hud-accent) r g b / 0.28), rgb(from var(--hud-accent) r g b / 0.04) 60%);
+  --role-party-tile-on-fill: var(--party-on-wash), var(--party-tile-fill);
+  --role-party-card-on-fill: var(--party-on-wash), var(--party-card-fill);
+  --role-party-focus-rim: inset 0 0 0 calc(2 * var(--font-step-px)) rgb(255 255 255), 0 0 0 calc(2 * var(--font-step-px)) rgb(6 9 16 / 0.9);
+  /* A portrait's foot shaded into its tile; what cannot be picked (locked,
+     taken) and what was banned drawn grey, a ban struck in red. */
+  --role-party-shade: linear-gradient(180deg, transparent 45%, rgb(4 6 12 / 0.9));
+  --role-party-out-art: grayscale(1) brightness(0.45);
+  --role-party-ban-art: grayscale(1) brightness(0.6);
+  --role-party-ban-strike: linear-gradient(135deg, transparent 46%, rgb(255 77 94) 46%, rgb(255 77 94) 54%, transparent 54%);
+  /* An open seat or slot: a hairline octagon over a dark ground, its row
+     a faint wash. */
+  --role-party-open-edge: rgb(255 255 255 / 0.28);
+  --role-party-open-fill: rgb(12 16 28);
+  --role-party-open-row: rgb(255 255 255 / 0.04);
+  --role-party-seat-rim: inset 0 0 0 var(--stroke-hairline) rgb(255 255 255 / 0.1);
+  /* Ready in green, refused in red (as ink, a glow and a row's edge); a
+     row waiting, and the row a spectator watches. */
+  --role-party-ready: rgb(85 227 154);
+  --role-party-ready-glow: drop-shadow(0 0 calc(8 * var(--font-step-px)) rgb(85 227 154 / 0.7));
+  --role-party-refused: rgb(255 138 148);
+  --role-party-ready-ink: rgb(2 30 14);
+  --role-party-ready-fill: linear-gradient(180deg, rgb(200 255 220), rgb(85 227 154));
+  --role-party-state-edge: inset calc(3 * var(--stroke-hairline)) 0 0 rgb(255 255 255 / 0.3);
+  --role-party-ready-edge: inset calc(3 * var(--stroke-hairline)) 0 0 rgb(85 227 154);
+  --role-party-refused-edge: inset calc(3 * var(--stroke-hairline)) 0 0 rgb(255 77 94);
+  --role-party-on-edge: inset calc(3 * var(--stroke-hairline)) 0 0 var(--hud-accent);
+  --role-party-on-row: var(--party-on-wash), var(--result-row-fill);
+  /* A button: a smoked plate lit along its top; the action that goes on
+     in the accent. */
+  --role-party-button-fill: linear-gradient(180deg, rgb(34 43 64 / 0.92), rgb(12 16 28 / 0.95));
+  --role-party-button-hover-fill: linear-gradient(180deg, rgb(48 60 88 / 0.95), rgb(18 24 40 / 0.96));
+  --role-party-button-rim: inset 0 0 0 var(--stroke-hairline) rgb(255 255 255 / 0.24), inset 0 var(--stroke-hairline) 0 rgb(255 255 255 / 0.6);
+  --role-party-go-hover-fill: linear-gradient(180deg, rgb(255 255 255 / 0.75), rgb(255 255 255 / 0.12) 60%), var(--hud-accent);
+  --role-party-go-ink: rgb(4 16 22);
+  /* The host's gold tag and a price: dark ink on gold. */
+  --role-party-gold-ink: rgb(30 22 4);
+  /* A team's plate on the round HUD (its colour along its foot) and the
+     second side's rows on the versus, mirrored. */
+  --role-party-team-a-plate: var(--hud-plate-rim), inset 0 calc(-3 * var(--stroke-hairline)) 0 var(--team1);
+  --role-party-team-b-plate: var(--hud-plate-rim), inset 0 calc(-3 * var(--stroke-hairline)) 0 var(--team2);
+  --role-party-team-b-row-end: linear-gradient(270deg, rgb(from var(--team2) r g b / 0.16), rgb(12 16 28 / 0.72) 40%);
+  --role-party-team-b-edge-end: inset calc(-3 * var(--stroke-hairline)) 0 0 var(--team2);
+  --role-party-lit-dim: rgb(11 15 24 / 0.78);
+  /* The versus seal: a gold hexagon with a glow. */
+  --role-party-seal-fill: radial-gradient(circle at 50% 30%, rgb(60 44 10), rgb(14 10 4));
+  --role-party-seal-glow: drop-shadow(0 0 calc(26 * var(--font-step-px)) rgb(255 196 70 / 0.5));
+  /* The shown car's picture under the garage: shaded at its head and
+     foot so the words over it hold; on a narrow page it closes on the
+     ground under it. The figure on a character sheet stands in a glow. */
+  --role-party-hero-shade: linear-gradient(180deg, rgb(4 6 12 / 0.7), transparent 22%, transparent 55%, rgb(4 6 12 / 0.92)), linear-gradient(90deg, rgb(4 6 12 / 0.55), transparent 40%);
+  --role-party-hero-shade-compact: linear-gradient(180deg, rgb(4 6 12 / 0.6), transparent 30%, transparent 62%, rgb(5 7 12));
+  --role-party-ground: rgb(5 7 12);
+  --role-party-figure-glow: radial-gradient(50% 50% at 50% 60%, rgb(from var(--hud-accent) r g b / 0.2), transparent 70%);
+  --role-party-figure-shadow: drop-shadow(0 calc(8 * var(--font-step-px)) calc(20 * var(--font-step-px)) rgb(0 0 0 / 0.7));
+  /* The family's type steps: a name set large, a page's or a side's
+     title, the versus seal, a round's verdict held to its line, a score
+     and the ready check's clock; then its sizes: a roster tile, a
+     portrait, a ban, an equipment slot, a rating's bar, a garage tile. */
+  --role-party-size-name: calc(26 * var(--font-step-px));
+  --role-party-size-name-compact: calc(20 * var(--font-step-px));
+  --role-party-size-hero: calc(46 * var(--font-step-px));
+  --role-party-size-hero-compact: calc(28 * var(--font-step-px));
+  /* A side's name on the versus, held to its side's width so a long
+     word stays whole. */
+  --role-party-size-side: min(calc(46 * var(--font-step-px)), 14cqi);
+  /* A player's name on the versus, held to its side's width. */
+  --role-party-size-fighter: min(calc(18 * var(--font-step-px)), 8cqi);
+  --role-party-size-seal: calc(44 * var(--font-step-px));
+  --role-party-size-seal-compact: calc(26 * var(--font-step-px));
+  --role-party-size-call: min(calc(84 * var(--font-step-px)), 13cqi);
+  --role-party-size-figure: calc(40 * var(--font-step-px));
+  --role-party-size-figure-compact: calc(26 * var(--font-step-px));
+  --role-party-size-stat: min(calc(40 * var(--font-step-px)), 13cqi);
+  /* The shown car's name on the garage, held to the garage's width so a
+     long name wraps on whole words. */
+  --role-party-size-car: min(calc(66 * var(--font-step-px)), 11cqi);
+  --role-party-size-clock: calc(54 * var(--font-step-px));
+  --role-party-tile: calc(132 * var(--font-step-px));
+  --role-party-tile-compact: calc(100 * var(--font-step-px));
+  --role-party-portrait: calc(52 * var(--font-step-px));
+  --role-party-portrait-compact: calc(40 * var(--font-step-px));
+  --role-party-ban: calc(44 * var(--font-step-px));
+  --role-party-slot: calc(76 * var(--font-step-px));
+  --role-party-slot-compact: calc(54 * var(--font-step-px));
+  --role-party-bar: calc(10 * var(--font-step-px));
+  --role-party-garage-tile: calc(170 * var(--font-step-px));
+  --role-party-garage-tile-compact: calc(124 * var(--font-step-px));
+  --role-party-garage-side: calc(360 * var(--font-step-px));
+  /* The results screen's head held to a share of the screen's height
+     (the verdict, the grade, a stat's plate and its figure), so at large
+     text on a short desktop the stats under it show whole. */
+  --role-party-hold-verdict: 14vh;
+  --role-party-hold-grade: 11vh;
+  --role-party-hold-plate: 15vh;
+  --role-party-hold-figure: 9vh;
+
   /* Item cards (family 12): one item in detail. The hero's art over its
      rarity's glow (`inv-hero-glow`) closes on a hairline, the name glows
      faintly in its rarity, the headline figure is large, a change is a
