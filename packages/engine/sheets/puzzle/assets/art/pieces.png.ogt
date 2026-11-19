@@ -1,0 +1,8 @@
+type import
+version 1
+---
+# Sample painted art for the review sheet only (painted for the puzzle and
+# idle families' mockup; never part of an install), 4 × 3 pictures. Colour
+# art: sRGB.
+texture {
+}
