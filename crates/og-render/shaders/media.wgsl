@@ -31,7 +31,11 @@ fn fog_amount(p: vec3<f32>) -> vec4<f32> {
   }
   let amount = min(1.0 - clear, fd.w);
   if (frame.fog_color.w > 1.5) { return vec4<f32>(underwater_light(origin, dir, d, amount), amount); }
-  let sun = pow(max(dot(dir, normalize(frame.light_dir.xyz)), 0.0), max(frame.fog_sun.w, 1e-3));
+  // Into the sun the sky draws (sky_sun_dir zero without one: the first light's): the colour is the sky's glow under
+  // the sun, so it stays there when the light is the moon's (og.DayNight hands it to the moon soon after sunset).
+  let drawn = dot(frame.sky_sun_dir.xyz, frame.sky_sun_dir.xyz) > 0.5;
+  let to_sun = normalize(select(frame.light_dir.xyz, frame.sky_sun_dir.xyz, drawn));
+  let sun = pow(max(dot(dir, to_sun), 0.0), max(frame.fog_sun.w, 1e-3));
   return vec4<f32>(mix(frame.fog_color.rgb, frame.fog_sun.rgb, sun), amount);
 }
 
