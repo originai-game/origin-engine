@@ -349,6 +349,16 @@ depth-normal prepass: the first one pays for it.
   moonlight on the land under og.DayNight with either sky. A moonlit
   night is a few stops under noon: open the camera's exposure for it as
   for twilight.
+- og.DayNight's light is the sun's or the moon's, whichever is brighter.
+  The moon stands opposite the sun, so it rises as the sun sets and takes
+  the light over soon after: under og.PhysicalSky within a few minutes,
+  low and orange through the air, nearly half its night light half an
+  hour after sunset at the default tilt and full once it stands high;
+  under the gradient sky once the sun's afterglow fades, about 4° under
+  the horizon. At dawn it hands back. Where the two are about equal the
+  light dims for a minute or two of game time, so shadows never jump
+  across at full strength. A new moon gives none: the twilight then has
+  only the sky's light.
 - Clouds: bright tops, dark bases, silver edges against the sun. A broken
   sky hides the sun a share of the time; an overcast deck leaves flat grey
   light on every surface. `steps` is their cost. Clouds are part of the

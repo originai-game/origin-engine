@@ -1,0 +1,8 @@
+{
+  "fixed": [
+    {
+      "member": "og.DayNight",
+      "summary": "The land no longer goes without a key light after sunset. The sun's light faded out about 7° under the horizon and the moon's only began there, reaching full at 13°, so for most of an hour after sunset (and before sunrise) the first DirectionalLight was all but dark while the rising moon was drawn: at the default tilt under og.PhysicalSky the light read 3e-4 from 18:03 and 9e-7 at 18:33. The moon's light now follows its own height, and under og.PhysicalSky crosses the air as the sun's does (low and orange as it rises, the night's blue overhead), and the light is whichever of the two is brighter: the moon takes over within minutes of sunset (0.21 at 18:33 under og.PhysicalSky), dimming briefly through the swap. Under og.PhysicalSky a moon low in the sky now lights the land less than a high one."
+    }
+  ]
+}
