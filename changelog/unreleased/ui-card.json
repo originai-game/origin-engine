@@ -24,39 +24,66 @@
   "breaking": [
     {
       "member": "CardFace",
-      "change": "The face is redrawn: a frame cut at two corners and rimmed in its type's colour, the art window over its rarity's glow, the name on a plate, a tinted type line, the rules text in a recess (up to four lines, fewer on a short face, each ending whole with an ellipsis) and a hexagon cost gem. CardFace.headline, .label and .caption are gone.",
-      "fix": "A style that dressed CardFace.headline dresses CardFace.name; CardFace.label and .caption dress CardFace.type.",
-      "find": ["CardFace.headline", "CardFace.label", "CardFace.caption"]
+      "change": "The face is redrawn: a frame cut at two corners and rimmed in its type's colour, the art window over its rarity's glow, the name on a plate, a tinted type line, the rules text in a recess (up to four lines, fewer on a short face, each ending whole with an ellipsis) and a hexagon cost gem. CardFace.headline, .label, .caption, .figure, .well and .picture are gone.",
+      "fix": "A style that dressed CardFace.headline dresses CardFace.name; .label and .caption dress CardFace.type; .figure dresses CardFace.cost; .well and .picture dress CardFace.art.",
+      "find": [
+        "CardFace.headline",
+        "CardFace.label",
+        "CardFace.caption",
+        "CardFace.figure",
+        "CardFace.well",
+        "CardFace.picture"
+      ]
     },
     {
       "member": "CardHand",
       "change": "An unplayable card dims its art and frame and says why on a tag at its head instead of a lock badge. CardHand.badge is gone.",
       "fix": "A style that dressed CardHand.badge dresses CardHand.reason; a game passes its reason on each row.",
-      "find": ["CardHand.badge"]
+      "find": [
+        "CardHand.badge"
+      ]
     },
     {
       "member": "CardPiles",
       "change": "A pile is a stack of card backs (one when empty) with its icon on top and the count on a cut tag at its corner. CardPiles.cell, .figure and .badge are gone; CardPiles.stack is new.",
       "fix": "A style that dressed CardPiles.cell dresses CardPiles.pile; .figure and .badge dress CardPiles.count.",
-      "find": ["CardPiles.cell", "CardPiles.figure", "CardPiles.badge"]
+      "find": [
+        "CardPiles.cell",
+        "CardPiles.figure",
+        "CardPiles.badge"
+      ]
     },
     {
       "member": "CardCollection",
       "change": "Each card shows its owned count on its corner, In deck ×N or Not in deck under it and, when the game will not add it, the reason under that; the selected card wears brackets; an unowned card is hatched and dimmed while its name keeps its ink. The filters are an underline strip that scrolls with a fade. CardCollection.badge is gone.",
       "fix": "A style that dressed CardCollection.badge dresses CardCollection.owned, .deck or .reason.",
-      "find": ["CardCollection.badge"]
+      "find": [
+        "CardCollection.badge"
+      ]
     },
     {
       "member": "CardDeckList",
-      "change": "A row carries its card type as a rail on the leading edge, the cost in a hexagon, ×copies and square steps; the size is a leaning bar. CardDeckList.figure, .label, .cell, .caption, .track and .fill are gone.",
+      "change": "A row carries its card type as a rail on the leading edge, the cost in a hexagon, ×copies and square steps; the size is a leaning bar. CardDeckList.figure, .label, .cell, .caption, .track, .fill and .caption are gone.",
       "fix": "A style that dressed CardDeckList.figure dresses CardDeckList.copies or .cost; .track and .fill dress CardDeckList.size.",
-      "find": ["CardDeckList.figure", "CardDeckList.label", "CardDeckList.cell", "CardDeckList.track", "CardDeckList.fill"]
+      "find": [
+        "CardDeckList.figure",
+        "CardDeckList.label",
+        "CardDeckList.cell",
+        "CardDeckList.track",
+        "CardDeckList.fill",
+        "CardDeckList.caption"
+      ]
     },
     {
       "member": "CardReward",
       "change": "Offers sit in one row with brackets on the one looked at; a relic is a gold plate with its mark in a diamond. On a phone one offer shows at nearly full width with its text whole and the next peeking at a faded edge, scrolling sideways. CardReward.cell, .well, .headline and .caption are gone.",
       "fix": "A style that dressed CardReward.cell dresses CardReward.choice or .relic; .well dresses CardReward.mark; .headline dresses CardReward.name; .caption dresses CardReward.kind or .text.",
-      "find": ["CardReward.cell", "CardReward.well", "CardReward.headline", "CardReward.caption"]
+      "find": [
+        "CardReward.cell",
+        "CardReward.well",
+        "CardReward.headline",
+        "CardReward.caption"
+      ]
     }
   ]
 }
