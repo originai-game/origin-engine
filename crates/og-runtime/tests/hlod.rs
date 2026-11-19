@@ -111,6 +111,51 @@ entity \"district\" {
 }
 ";
 
+/// A world of two town cells 100 m apart, its own `hlod` block making a
+/// node over both.
+const TWIN: &str = "type scene
+version 1
+---
+name \"Twin\"
+hlod {
+  size 256
+  error 0.5
+  texels 256
+}
+entity \"player\" {
+  Transform {
+    position 0 0 0
+  }
+  StreamAnchor {
+    reach 0
+  }
+}
+entity \"east\" {
+  scene \"scenes/town.ogt\"
+  Transform {
+    position 1000 0 0
+  }
+  Volume {
+    size 80 20 80
+  }
+  StreamCell {
+    load 50
+  }
+}
+entity \"west\" {
+  scene \"scenes/town.ogt\"
+  Transform {
+    position 1100 0 0
+  }
+  Volume {
+    size 80 20 80
+  }
+  StreamCell {
+    load 50
+  }
+}
+";
+
 /// Two houses under one leaf whose pages, at 5 cm a texel, pass the mip
 /// tail's 256 texels.
 const PAIR: &str = "type scene
@@ -165,6 +210,7 @@ fn project() -> &'static Path {
             ("scenes/town.ogt", town()),
             ("scenes/world.ogt", WORLD.to_string()),
             ("scenes/pair.ogt", PAIR.to_string()),
+            ("scenes/twin.ogt", TWIN.to_string()),
         ] {
             let p = root.join("assets").join(id);
             std::fs::create_dir_all(p.parent().unwrap()).unwrap();
@@ -623,4 +669,44 @@ fn a_proxy_draws_with_its_models_bake_while_baked_lighting_is_on() {
         ([1, 1, 0, 2], 1, 0),
         "{off:?}"
     );
+}
+
+#[test]
+fn a_node_over_two_cells_stands_in_for_both() {
+    let (e, frame) = engine("scenes/twin.ogt");
+    let middle = Vec3::new(1086.0, 0.0, 36.0);
+    // Far: one proxy for both towns, where both stand.
+    look(e, middle, 3000.0);
+    let (far, h) = drawn(e, &frame);
+    assert_eq!((h, far.instances), ([1, 1, 0, 0], 1), "far: {far:?}");
+    assert!(
+        far.min.abs_diff_eq(Vec3::new(1000.0, 0.0, 0.0), 1.5)
+            && far.max.abs_diff_eq(Vec3::new(1166.0, 7.0, 66.0), 1.5),
+        "{far:?}"
+    );
+    // Near, neither loaded: each cell draws its own leaves.
+    look(e, middle, 60.0);
+    let (near, h) = drawn(e, &frame);
+    assert_eq!(h, [3, 8, 8, 0], "near: {h:?}");
+    assert!(same_box(&near, &far, 0.5), "{near:?} against {far:?}");
+    // One town loaded with a house hidden: the node over both no longer
+    // stands in, and that town shows the change.
+    set(
+        e,
+        "player",
+        "og.Transform",
+        json!({ "position": { "x": 1036, "y": 0, "z": 36 } }),
+    );
+    step(e, 30);
+    set(e, "house-0-0", "og.Model", json!({ "visible": false }));
+    look(e, middle, 3000.0);
+    let (changed, h) = drawn(e, &frame);
+    // Its three other leaves' proxies and the hidden house's eight
+    // neighbours; the other town its root's proxy, unloaded.
+    assert_eq!(h, [3, 4, 1, 27], "changed: {h:?}");
+    assert_eq!(changed.instances, 4 + 8 * PARTS, "changed: {changed:?}");
+    // Shown again: the node over both is back.
+    set(e, "house-0-0", "og.Model", json!({ "visible": true }));
+    let (back, h) = drawn(e, &frame);
+    assert_eq!((h, back.instances), ([1, 1, 0, 36], 1), "back: {back:?}");
 }

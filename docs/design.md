@@ -1239,8 +1239,13 @@ lockstep §2.8 and §2.10, the semantic frame and diagnostics §3.4.
   (`packages/engine/bench/hlod-town.ts` measures both). Left to
   themselves, with the reason in the cook report:
   skinned, impostor, cut-out, fractured, GPU-instanced and tinted models,
-  and one larger than a leaf. Not yet: a node over cells (each sub-scene
-  has its own tree), and merged foliage (impostors draw it).
+  and one larger than a leaf. A scene that places cells and has an `hlod`
+  block of its own grows nodes over its cells: their sub-scenes' roots
+  grouped by where they stand and merged into one proxy, which stands in
+  for every cell under it, loaded or not, while each is where the cook read
+  it and a loaded one's models are unchanged (switching at once, without a
+  cross-fade; `og bake lightmaps` leaves it unbaked). Not yet: merged
+  foliage (impostors draw it).
   `og bake lightmaps` lights a scene's proxies by its static models' bake:
   per level each proxy is charted at four times its error a texel and takes
   the models' irradiance where it stands for them (`transfer` reading their

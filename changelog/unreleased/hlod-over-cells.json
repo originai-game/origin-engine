@@ -1,0 +1,8 @@
+{
+  "added": [
+    {
+      "member": "scene hlod",
+      "summary": "A scene that places cells (entities with a `scene` line and og.StreamCell) and has an `hlod` block of its own grows nodes over its cells: the cells' sub-scenes' HLOD roots, grouped by where they stand, merged into one proxy drawn in place of every cell under it, loaded or not, while each cell is where the cook read it and a loaded cell's models are unchanged. A distant streamed world is a few draws instead of one per cell. The tree blob gains a `cells` table; scenes with an `hlod` block cook their trees again once. A node over cells switches at once, without a cross-fade, and is not lit by `og bake lightmaps`. Presentation only."
+    }
+  ]
+}

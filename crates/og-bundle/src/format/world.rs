@@ -531,7 +531,23 @@ row!(
     }
 );
 
-/// The HLOD blob: `nodes` [`HlodNodeRow`] and `members` [`HlodMemberRow`].
+row!(
+    /// A cell under a node over cells: the node, the cell entity of the
+    /// scene (its index in the scene's `entities`) and the root of the
+    /// cell's sub-scene's tree the node stands in for, drawn at the cell;
+    /// with the cell's matrix in the scene's space as the cook read it.
+    HlodCellRow, "og.HlodCell", 1 {
+        node: u32,
+        entity: u32,
+        root: u32,
+        xx: f32, xy: f32, xz: f32, xt: f32,
+        yx: f32, yy: f32, yz: f32, yt: f32,
+        zx: f32, zy: f32, zz: f32, zt: f32,
+    }
+);
+
+/// The HLOD blob: `nodes` [`HlodNodeRow`], `members` [`HlodMemberRow`] and
+/// `cells` [`HlodCellRow`].
 pub struct Hlod;
 impl BlobKind for Hlod {
     const NAME: &'static str = "og.Hlod";
@@ -540,6 +556,7 @@ impl BlobKind for Hlod {
             HlodMeta::schema(),
             HlodNodeRow::schema(),
             HlodMemberRow::schema(),
+            HlodCellRow::schema(),
         ]
     }
 }

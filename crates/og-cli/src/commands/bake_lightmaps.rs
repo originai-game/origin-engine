@@ -706,9 +706,14 @@ fn light_proxies(
         .max()
         .map_or(0, |l| l + 1);
     for level in 0..levels {
+        // A node over cells stands for other scenes' models, which this
+        // bake did not light: it draws unbaked.
         let nodes: Vec<usize> = (0..tree.nodes.len())
-            .filter(|&n| tree.nodes[n].level == level)
+            .filter(|&n| tree.nodes[n].level == level && tree.cells_under(n).next().is_none())
             .collect();
+        if nodes.is_empty() {
+            continue;
+        }
         // Each node's proxy in the scene's space, and what its entry needs.
         let mut meshes: Vec<ProxyMesh> = Vec::new();
         for &n in &nodes {

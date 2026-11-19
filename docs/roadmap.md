@@ -85,8 +85,8 @@ band for buoyancy) and wgpu 31 (unpublished). Ray tracing is a non-goal.
   platform for a `connect-src` policy on the play origin, check that both
   hosts disable floating-point contraction, and pin tick and save proofs in
   the fixtures.
-- **HLOD follow-ups** (`docs/design.md` §10.6): a node over several
-  cells. Not planned: one draw for a tree's proxies. Each proxy is a
+- **HLOD** (`docs/design.md` §10.6): the follow-ups are done. Not
+  planned: one draw for a tree's proxies. Each proxy is a
   batch of its own in every pass that sees it (404 draws against 244
   looking across the bench town), but on the L4 cutting that view from 699
   to 404 draws left its frame at 24 ms, and merging the proxies would save
