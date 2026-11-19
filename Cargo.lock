@@ -3212,6 +3212,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "og-host-c"
+version = "0.9.0"
+dependencies = [
+ "og-api",
+ "og-bundle",
+ "og-physics",
+ "og-runtime",
+]
+
+[[package]]
 name = "og-host-node"
 version = "0.9.0"
 dependencies = [

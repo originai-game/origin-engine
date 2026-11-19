@@ -14,7 +14,8 @@ OUTPUTS = (
     'packages/engine/types', 'packages/engine/schema',
     'packages/engine/src/generated', 'crates/og-api/src/generated',
     'crates/og-records/src/generated', 'crates/og-host-web/src/generated',
-    'crates/og-host-node/src/generated', 'packages/knowledge/wiki',
+    'crates/og-host-node/src/generated', 'crates/og-host-c/src/generated',
+    'packages/knowledge/wiki',
 )
 THEME = 'crates/og-ui/src/theme.rs'
 # docs/css-coverage.md is wholly generated from scripts/css-coverage.py's

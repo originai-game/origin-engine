@@ -76,6 +76,7 @@ const LAYERS: &[(&str, &[&str])] = &[
     (
         "hosts",
         &[
+            "og-host-c",
             "og-host-node",
             "og-host-web",
             "og-tests",

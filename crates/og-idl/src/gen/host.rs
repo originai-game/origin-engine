@@ -678,6 +678,9 @@ pub fn records_rs(ix: &Index<'_>) -> String {
 pub enum Target {
     Web,
     Node,
+    /// `og-host-c`: one `extern "C"` entry per symbol over `OgValue`
+    /// arguments, and the table a C or C++ shell registers them from.
+    C,
 }
 
 fn glue_type(target: Target, w: &str) -> String {
@@ -692,6 +695,11 @@ fn glue_type(target: Target, w: &str) -> String {
         (Target::Node, "Self::Function") => "crate::NodeFunction".into(),
         (Target::Node, "Self::Bytes") => "crate::NodeBytes".into(),
         (Target::Node, "Self::Shared") => "crate::NodeShared".into(),
+        (Target::C, "Self::Array") => "crate::CArray".into(),
+        (Target::C, "Self::Views") => "crate::CViews".into(),
+        (Target::C, "Self::Function") => "crate::CFunction".into(),
+        (Target::C, "Self::Bytes") => "crate::CBytes".into(),
+        (Target::C, "Self::Shared") => "crate::CShared".into(),
         (_, other) => other.into(),
     }
 }
@@ -709,6 +717,20 @@ fn glue_fn(
     if !publish {
         out.push_str("#[cfg(not(feature = \"publish\"))]\n");
     }
+    if target == Target::C {
+        // Every argument converts from its `OgValue`, the answer into `out`.
+        out.push_str(&format!(
+            "unsafe extern \"C\" fn {symbol}(args: *const crate::OgValue, out: *mut crate::OgValue) {{\n"
+        ));
+        let call: Vec<String> = std::iter::once("&Host".to_string())
+            .chain((0..params.len()).map(|i| format!("unsafe {{ crate::arg(args, {i}) }}")))
+            .collect();
+        out.push_str(&format!(
+            "    let r = <Host as {trait_name}>::{symbol}({});\n    unsafe {{ crate::IntoC::into_c(r, out) }}\n}}\n\n",
+            call.join(", ")
+        ));
+        return;
+    }
     let mut ps: Vec<String> = params
         .iter()
         .map(|(n, t)| format!("{n}: {}", glue_type(target, t)))
@@ -725,6 +747,7 @@ fn glue_fn(
             out.push_str(&format!("#[napi(js_name = \"{symbol}\")]\n"));
             ps.insert(0, "env: Env".to_string());
         }
+        Target::C => unreachable!(),
     }
     out.push_str(&format!("pub fn {symbol}({}){r} {{\n", ps.join(", ")));
     if target == Target::Node {
@@ -759,8 +782,20 @@ pub fn glue(ix: &Index<'_>, target: Target) -> String {
              use napi_derive::napi;\n\
              use og_api::host::*;\n\n",
         ),
+        Target::C => out.push_str(
+            "//! The C ABI of every binding symbol: an `extern \"C\"` entry each,\n\
+             //! taking its arguments as `OgValue`s and writing its answer to one,\n\
+             //! that calls the host's implementation of its `og_api::host` trait;\n\
+             //! `SYMBOLS` lists them for the shell that registers them.\n\n\
+             #![allow(clippy::too_many_arguments, clippy::let_unit_value, unused_unsafe, unused_variables)]\n\n\
+             use crate::CHost as Host;\n\
+             use og_api::host::*;\n\n",
+        ),
     }
+    // (symbol, arity, publish) of each entry, for C's table.
+    let mut table: Vec<(String, usize, bool)> = Vec::new();
     for (name, params, ret, _) in LIFECYCLE {
+        table.push((name.to_string(), params.len(), true));
         let ps: Vec<(String, String)> = params
             .iter()
             .map(|(n, t, _)| (n.to_string(), t.to_string()))
@@ -781,6 +816,7 @@ pub fn glue(ix: &Index<'_>, target: Target) -> String {
                 (p.name.clone(), t)
             })
             .collect();
+        table.push((b.symbol.clone(), ps.len(), b.publish));
         glue_fn(
             target,
             &mut out,
@@ -790,6 +826,18 @@ pub fn glue(ix: &Index<'_>, target: Target) -> String {
             ret.rust(),
             b.publish,
         );
+    }
+    if target == Target::C {
+        out.push_str("/// Every entry, in the order of `packages/engine/src/generated/abi.ts`.\npub static SYMBOLS: &[crate::Symbol] = &[\n");
+        for (symbol, arity, publish) in &table {
+            if !publish {
+                out.push_str("    #[cfg(not(feature = \"publish\"))]\n");
+            }
+            out.push_str(&format!(
+                "    crate::Symbol {{ name: c\"{symbol}\", arity: {arity}, call: {symbol} }},\n"
+            ));
+        }
+        out.push_str("];\n");
     }
     while out.ends_with("\n\n") {
         out.pop();

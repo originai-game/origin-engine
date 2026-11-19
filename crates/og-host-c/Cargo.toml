@@ -1,0 +1,30 @@
+[package]
+name = "og-host-c"
+version = "0.9.0"
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+description = "Origin Engine C ABI host: every binding symbol as an extern \"C\" entry over tagged values, for a native shell that embeds its own JavaScript engine (hermes/ is the Hermes one)."
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+doctest = false
+
+[features]
+default = ["story", "video", "film", "destruction", "motion", "nav", "ai"]
+publish = ["og-runtime/publish"]
+# og-runtime's optional modules, as og-host-node passes them through.
+story = ["og-runtime/story"]
+video = ["og-runtime/video"]
+film = ["og-runtime/film"]
+destruction = ["og-runtime/destruction"]
+motion = ["og-runtime/motion"]
+nav = ["og-runtime/nav"]
+ai = ["og-runtime/ai"]
+
+[dependencies]
+og-api = { path = "../og-api" }
+og-runtime = { path = "../og-runtime", default-features = false, features = ["shaping", "physics2d", "physics3d", "fetch"] }
+og-physics = { path = "../og-physics" }
+# Basis textures transcoded natively, as og-host-node does (`Hooks::texture`).
+og-bundle = { path = "../og-bundle", features = ["transcode"] }
