@@ -392,6 +392,7 @@ mod tests {
                 Verifier::hs256(b"s", Rules::audience("g")),
                 KeySource::None,
                 false,
+                None,
             )
             .await
             .unwrap()
@@ -472,6 +473,7 @@ mod tests {
                 Verifier::hs256(b"s", Rules::audience("g")),
                 KeySource::None,
                 false,
+                None,
             )
             .await
             .unwrap();

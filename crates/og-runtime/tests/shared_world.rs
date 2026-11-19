@@ -443,6 +443,7 @@ fn a_client_whose_nat_rebinds_resumes_its_avatar() {
             Verifier::hs256(b"s", Rules::audience("g")),
             KeySource::None,
             false,
+            None,
         )
         .await
         .unwrap();

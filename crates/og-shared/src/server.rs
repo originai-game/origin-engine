@@ -285,6 +285,7 @@ impl Server {
         verifier: Verifier,
         keys: KeySource,
         log: bool,
+        mut store: Option<Box<dyn crate::store::Store>>,
     ) -> std::io::Result<Server> {
         let listener = TcpListener::bind(addr).await?;
         let addr = listener.local_addr()?;
@@ -296,13 +297,16 @@ impl Server {
             .duration_since(UNIX_EPOCH)
             .map_or(0, |d| d.as_nanos() as u64)
             ^ u64::from(std::process::id());
-        let shard = Shard::new(config, seed);
+        let mut shard = Shard::new(config, seed);
+        if let Some(s) = store.as_mut() {
+            shard.load_objects(s.load()?);
+        }
         let (batches, batch_rx) = mpsc::unbounded_channel();
         tokio::spawn(dispatch(batch_rx, inbound.clone(), metrics.clone()));
         let m = metrics.clone();
         std::thread::Builder::new()
             .name("og-shard".into())
-            .spawn(move || run_shard(shard, rx, batches, m, done_tx, log))?;
+            .spawn(move || run_shard(shard, rx, batches, m, done_tx, log, store))?;
         let shared = Arc::new(Shared {
             verifier: RwLock::new(verifier),
             keys,
@@ -400,7 +404,18 @@ fn run_shard(
     metrics: Arc<Metrics>,
     done: tokio::sync::watch::Sender<bool>,
     log: bool,
+    mut store: Option<Box<dyn crate::store::Store>>,
 ) {
+    // The objects' changes since the last tick, kept once a tick (and as
+    // the shard stops).
+    let mut keep = |shard: &mut Shard| {
+        let changes = shard.take_changes();
+        if let Some(s) = store.as_mut()
+            && let Err(e) = s.apply(&changes)
+        {
+            eprintln!("world-server: the store did not keep {} changes: {e}", changes.len());
+        }
+    };
     let mut outs: HashMap<u64, mpsc::Sender<Vec<u8>>> = HashMap::new();
     let period = Duration::from_secs_f64(1.0 / f64::from(shard.config.tick_hz));
     let mut next = Instant::now() + period;
@@ -431,6 +446,7 @@ fn run_shard(
             let step_us = t0.elapsed().as_micros().min(u128::from(u32::MAX)) as u32;
             let sessions: Vec<u64> = shard.sessions().collect();
             flush(&mut shard, &mut outs, &sessions);
+            keep(&mut shard);
             let us = t0.elapsed().as_micros().min(u128::from(u32::MAX)) as u32;
             observe(&metrics.tick_hist, us);
             observe(&metrics.step_hist, step_us);
@@ -482,7 +498,10 @@ fn run_shard(
                 );
                 continue;
             }
-            Err(std::sync::mpsc::TryRecvError::Disconnected) => return,
+            Err(std::sync::mpsc::TryRecvError::Disconnected) => {
+                keep(&mut shard);
+                return;
+            }
         };
         match msg {
             Inbound::Drain(reason) => {

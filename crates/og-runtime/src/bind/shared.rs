@@ -1191,6 +1191,8 @@ fn message(
             });
         }
         ServerMsg::Pong { .. } => {}
+        // Shared objects reach the API with og.shared.put.
+        ServerMsg::Object(_) | ServerMsg::ObjectGone { .. } | ServerMsg::Op { .. } => {}
     }
     Ok(())
 }
