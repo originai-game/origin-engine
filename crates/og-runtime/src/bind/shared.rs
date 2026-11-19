@@ -1129,6 +1129,8 @@ fn message(
                     }
                 }
                 Ok(None) => {}
+                // Ahead of an enter still on the stream: the next applies.
+                Err(og_shared::view::NOT_ENTERED) => {}
                 Err(e) => warn(engine_id, tick, &format!("a snapshot was dropped: {e}")),
             });
         }

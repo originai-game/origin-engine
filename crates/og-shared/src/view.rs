@@ -59,6 +59,15 @@ pub struct View {
     pub others: u32,
 }
 
+/// A snapshot that updates an avatar whose enter has not arrived yet. Over
+/// WebTransport the snapshot is a datagram and the enter is on the stream,
+/// so a stream packet lost and resent lets later snapshots overtake it.
+/// The snapshot is rejected whole and not acknowledged, as any that does
+/// not apply, so the server never builds on it; the next one after the
+/// enter applies. Expected under loss, not a fault: callers count it apart
+/// from messages that do not decode.
+pub const NOT_ENTERED: WireError = WireError("an update for an avatar not entered");
+
 impl View {
     pub fn new() -> View {
         View::default()
@@ -105,10 +114,7 @@ impl View {
             let id =
                 u16::try_from(r.varint()?).map_err(|_| WireError("an avatar id past 16 bits"))?;
             let m = r.u8()?;
-            let remote = self
-                .remotes
-                .get_mut(&id)
-                .ok_or(WireError("an update for an avatar not entered"))?;
+            let remote = self.remotes.get_mut(&id).ok_or(NOT_ENTERED)?;
             let base = match head.base {
                 _ if m & mask::WHOLE != 0 => None,
                 None => None,
