@@ -26,6 +26,12 @@ cave mouth, a pit, a tunnel through a hill). `og cook` cooks it into tiles.
   distance, no cracks) that casts and receives shadows under the fog,
   collides as a height field, and bakes into navmeshes by a navmesh file's
   `terrain` entry.
+- Neighbouring terrains' heights meet exactly. A 16-bit heightmap keeps
+  its samples as steps of its `height`, so two terrains with the same
+  `height` whose shared edge holds equal samples (one's last column the
+  next one's first) read the same og.terrain.sample heights along it, to
+  the bit. An EXR or `generate` field is stored over its own lowest to
+  highest height, within 1/65535 of that range.
 
 ```ts
 const t = og.terrain.load(world, "terrain/valley.ogt").value!;
