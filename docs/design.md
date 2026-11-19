@@ -747,6 +747,57 @@ into publish. `og compare <reference> <render>` prints silhouette IoU and
 CIEDE2000 differences and writes one comparison sheet, the same numbers and
 bytes on every run. Thresholds are the art-review guide's.
 
+### 2.12 Shared worlds
+
+Visitors of one large world see each other's avatars in real time, near them
+only (crate `og-shared`). Unlike lockstep (§2.10), each client runs its own
+world; a server holds the shared state. The engine owns the server, the
+protocol and the API; whoever hosts a session supplies an endpoint and an
+opaque token, and no part names a platform.
+
+- **Authority.** The client simulates its avatar and proposes its state; the
+  server checks it (inside the bounds, a velocity and a move within its
+  kind's `maxSpeed`, with half a second of credit for bunched proposals,
+  and the game's field bytes) and answers a refused one with `correct`, the
+  last state it took. A teleport skips the speed rule when the server's
+  policy allows. `hello` names the authority (`validate`), and a proposal
+  carries tagged sections a server skips, so a server that simulates from
+  inputs can come later without a new protocol.
+- **Interest.** A grid of `cellSize` cells (128 m) on x and z, built each
+  tick. A client's set is the avatars of its world within `radius` cells
+  (2) of its own, plus members up to `radius + 1` (hysteresis), nearest
+  first, at most `maxVisible` (64); the rest are counted in each snapshot.
+- **Rates.** Each member's priority grows each tick by its rank's weight
+  (the nearest 16 by 1, the next 24 by ½, the rest by ¼: 20, 10 and 5 Hz at
+  a 20 Hz tick), and those due are written highest first until the
+  client's share of `bytesPerSecond` is spent (Tribes 2's accumulator).
+- **Wire.** Protocol 1 is binary (`protocol.rs`), one message per WebSocket
+  binary frame. A state is its cell (i32 a axis), its place in the cell (u16:
+  2 mm at 128 m), its velocity (i16, cm/s), its yaw (u16) and up to 32 bytes
+  of the game's fields. Snapshots carry deltas over the newest snapshot the
+  client acknowledged (each proposal acknowledges the newest tick and the 32
+  before it as bits), so a loss never breaks a decode; an update with no
+  baseline is marked `WHOLE`. A walking avatar costs about 8 bytes an
+  update.
+- **Budgets**, held by `og world-server load --gate`: 8 KiB/s down and
+  1 KiB/s up per client at p95, 64 in sight, 200 in one area, 2000 per
+  server on 4 vCPU with a tick p99 of 10 ms. A shard is one server: more
+  players are more shards, assigned by whoever hosts.
+- **Tokens** are checked offline by the verifier the server starts with:
+  `hs256` (a shared secret), `jwks` (EdDSA or ES256 keys from an issuer's
+  JWKS, fetched again on an unknown `kid`), or `none` (only with `--dev`).
+  `aud`, `exp` and `nbf` are checked; `--issuer` also holds `iss`, and
+  `--max-lifetime` refuses a token whose `exp − iat` is longer (or that has
+  no `iat`). `sub` is the player's opaque id. No issuer, key URL or
+  algorithm is built in: a host names them in flags.
+- **Threads.** The shard ticks on its own thread, never a tokio worker,
+  and splits clients across a rayon pool. Its output goes to a dispatcher
+  task in one batch a tick, so the wakes of 2000 connections stay off the
+  tick.
+- **Operation.** `og world-server` serves `GET /healthz`, Prometheus text on
+  `--metrics`, and drains on SIGTERM (`moving` to every client). A lost
+  client's avatar lingers 10 s and is resumed by its session id.
+
 ## 3. API surface
 
 ### 3.1 One IDL, two hosts
