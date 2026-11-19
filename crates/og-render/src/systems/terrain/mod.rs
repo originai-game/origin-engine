@@ -375,6 +375,7 @@ pub(crate) struct TerrainRenderer {
     shadow_layout: wgpu::BindGroupLayout,
     lit_source: String,
     samples: u32,
+    prepass_form: crate::post::PrepassForm,
     layer_sampler: wgpu::Sampler,
     map_sampler: wgpu::Sampler,
     white: wgpu::TextureView,
@@ -431,6 +432,8 @@ pub(crate) struct TerrainPipelines<'a> {
     /// out of the lit source.
     pub off: crate::pipeline_features::Features,
     pub samples: u32,
+    /// The depth prepass's form on the device (prepass_form.rs).
+    pub prepass_form: crate::post::PrepassForm,
     pub white: wgpu::TextureView,
     pub flat_normal: wgpu::TextureView,
 }

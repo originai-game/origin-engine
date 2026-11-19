@@ -610,6 +610,7 @@ impl Renderer {
 
         let lost = LostFlag::watch(&device);
         let ssr = ssr::SsrRenderer::new(&device);
+        let prepass = PrepassState::new(&device, post::PrepassForm::of(info.caps));
         Ok(Renderer {
             adapter: adapter.clone(),
             device,
@@ -691,7 +692,7 @@ impl Renderer {
             shadow_bind_layout,
             frame_features: crate::pipeline_features::Features::ALL,
             capturing: false,
-            prepass: PrepassState::new(),
+            prepass,
             world: WorldRenderers::new(sims, ground, crowd_indirect),
             gi_probes: None,
             strips: StripState::new(

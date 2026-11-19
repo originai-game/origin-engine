@@ -80,6 +80,12 @@ impl Renderer {
             .max_storage_buffers_per_shader_stage
             .max(8)
             .min(adapter.limits().max_storage_buffers_per_shader_stage);
+        // A tier without MRT asks for one colour attachment, so a full
+        // device that emulates it refuses any pass that still writes more
+        // (where the device honours the limits it is asked for: natively).
+        if !caps.contains(Caps::MRT) {
+            limits.max_color_attachments = 1;
+        }
         let shadow_size = desc
             .shadow_map_size
             .clamp(64, limits.max_texture_dimension_2d.max(64));

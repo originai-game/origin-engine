@@ -208,6 +208,7 @@ impl GrassRenderer {
             trample: p.trample,
             samples: p.samples,
             off: p.off,
+            prepass_form: p.prepass_form,
             pipelines: None,
             generate: [None, None],
             tile: crate::buffer_init(
@@ -274,13 +275,6 @@ impl GrassRenderer {
             stencil: Default::default(),
             bias: Default::default(),
         });
-        let target = |format| {
-            Some(wgpu::ColorTargetState {
-                format,
-                blend: None,
-                write_mask: wgpu::ColorWrites::ALL,
-            })
-        };
         let raster = |label, layout, module, vs, fs, targets: &[Option<wgpu::ColorTargetState>]| {
             device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
                 label: Some(label),
@@ -304,17 +298,14 @@ impl GrassRenderer {
                 cache: crate::pipeline_cache::of(device).as_ref(),
             })
         };
+        let prepass_fs = self.prepass_form.entry("fs_prepass");
         let prepass = raster(
             "grass prepass",
             &self.prepass_layout,
             &lit_module,
             "vs_prepass",
-            "fs_prepass",
-            &[
-                target(crate::post::GBUFFER_FORMAT),
-                target(crate::post::LINDEPTH_FORMAT),
-                target(crate::post::OUTLINE_FORMAT),
-            ],
+            &prepass_fs,
+            self.prepass_form.targets(),
         );
         let shadow = raster(
             "grass shadow",

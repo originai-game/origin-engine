@@ -66,6 +66,15 @@ fn fs_prepass(in: PrepassOut, @builtin(front_facing) front_facing: bool) -> Prep
   return prepass_targets(in);
 }
 
+@fragment
+fn fs_prepass_packed(in: PrepassOut, @builtin(front_facing) front_facing: bool) -> @location(0) vec4<u32> {
+  hook_front = select(-1.0, 1.0, front_facing);
+  array_layers(in.layer);
+  let t = prepass_targets(in);
+  return prepass_pack(t.gbuffer, t.depth);
+}
+
+
 // A lightmapped static mesh with an array-map material (lightmap.wgsl's
 // `vs_lightmap` carries the instance's look, so its layer, to here).
 @fragment

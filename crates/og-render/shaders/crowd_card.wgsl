@@ -134,6 +134,22 @@ struct CardPrepass {
 
 @fragment
 fn fs_crowd_card_prepass(in: CardOut) -> CardPrepass {
+  return crowd_card_prepass(in);
+}
+
+// `fs_crowd_card_prepass` in the packed form (common.wgsl `prepass_pack`), its own depth
+// with it.
+@fragment
+fn fs_crowd_card_prepass_packed(in: CardOut) -> PackedPrepassDepth {
+  let t = crowd_card_prepass(in);
+  var o: PackedPrepassDepth;
+  o.packed = prepass_pack(t.gbuffer, t.depth);
+  o.frag_depth = t.frag_depth;
+  return o;
+}
+
+
+fn crowd_card_prepass(in: CardOut) -> CardPrepass {
   card_set_level(in.local);
   let s = card_sample(in.local, in.cols, in.blend.x, in.rows, in.blend.y);
   if (s.coverage < 0.5) {

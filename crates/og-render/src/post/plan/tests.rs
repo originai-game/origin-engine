@@ -26,6 +26,7 @@ fn cfg(taa: bool, gi: bool) -> GraphConfig {
         object_space: false,
         ui_depth: false,
         oit: None,
+        packed_prepass: false,
     }
 }
 
@@ -38,6 +39,7 @@ fn oit_revealage_lives_until_taa() {
     for list in [false, true] {
         let config = GraphConfig {
             oit: Some(list),
+            packed_prepass: false,
             ..cfg(true, false)
         };
         let plan = build_graph(&passes, &config).compile().unwrap();

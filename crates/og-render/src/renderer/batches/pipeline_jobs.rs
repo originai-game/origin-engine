@@ -28,6 +28,7 @@ impl Renderer {
     ) -> Vec<(Slot, Work)> {
         let device = &self.device;
         let samples = self.samples;
+        let form = crate::post::PrepassForm::of(self.info.caps);
         let pbr = &(
             self.lit.pbr_layout.clone(),
             self.lit.pbr_skinned_layout.clone(),
@@ -71,6 +72,7 @@ impl Renderer {
                                 &module,
                                 faces,
                                 array,
+                                form,
                             ))
                         }))
                     }
@@ -117,6 +119,7 @@ impl Renderer {
                                     None,
                                     None,
                                     &[],
+                                    form,
                                 ))
                             }))
                         }
@@ -261,6 +264,7 @@ impl Renderer {
                                     None,
                                     None,
                                     &[],
+                                    form,
                                 ))
                             }))
                         }
@@ -306,6 +310,7 @@ impl Renderer {
                                     Some(lean),
                                     None,
                                     off,
+                                    form,
                                 ))
                             }))
                         }
@@ -395,6 +400,7 @@ impl Renderer {
                                 None,
                                 None,
                                 off,
+                                form,
                             ))
                         }))
                     }

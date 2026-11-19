@@ -41,6 +41,9 @@ pub(super) fn declare(g: &mut RenderGraph, cx: &PlanCx, p: FramePass) {
         FramePass::LocalFace(_) => g.pass(name, &[], &["local-shadows"]),
         FramePass::Prepass => {
             let mut writes = vec!["pre-depth", "gbuffer", "lindepth", "outline-id"];
+            if cfg.packed_prepass {
+                writes.push("prepass-packed");
+            }
             if cfg.object_space {
                 writes.push("object-space");
             }

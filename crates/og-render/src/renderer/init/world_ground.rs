@@ -48,6 +48,7 @@ impl Renderer {
             trample,
         }: WorldGroundInputs<'_>,
     ) -> WorldGroundOutputs {
+        let prepass_form = crate::post::PrepassForm::of(info.caps);
         let terrain = terrain::TerrainRenderer::new(
             device,
             queue,
@@ -56,6 +57,7 @@ impl Renderer {
                 shadow_layout: shadow_bind_layout,
                 off,
                 samples,
+                prepass_form,
                 white: default_white.clone(),
                 flat_normal: default_normal.clone(),
             },
@@ -71,6 +73,7 @@ impl Renderer {
                 lit_wgsl: Box::new(move |hooks: &str| off.leave_out(scatter_lit_source(hooks))),
                 shadow_wgsl: scatter_shadow_source(),
                 samples,
+                prepass_form,
                 wind_field: wind_field.lean_view.clone(),
                 trample: trample.view.clone(),
                 compute: vegetation_compute,
@@ -88,6 +91,7 @@ impl Renderer {
                 wind_field: wind_field.lean_view.clone(),
                 trample: trample.view.clone(),
                 off,
+                prepass_form,
             },
         );
         WorldGroundOutputs {

@@ -34,6 +34,9 @@ pub(super) struct ProbesPlan<'f> {
     /// frame's batches it draws.
     pub(super) meshlet_views: &'f [u32],
     pub(super) batches: &'f [Batch],
+    /// Its depth prepasses draw the three targets at once
+    /// (prepass_form.rs): the device has MRT.
+    pub(super) mrt: bool,
 }
 
 impl Renderer {
@@ -63,6 +66,7 @@ impl Renderer {
             face_sprites,
             meshlet_views,
             batches,
+            ..
         } = plan;
         let (ctx, stats, encoder, sky_group) =
             (cx.ctx, &mut *cx.stats, &mut *cx.encoder, cx.sky_group);
@@ -407,13 +411,13 @@ pub(super) struct ProbesBindIn<'f> {
 }
 
 impl Pass for ProbesPass {
-    /// Each face's depth prepass: the three targets of the camera's; and
-    /// the light volumes' grid captures, projected in compute
-    /// (probe_grid.rs).
+    /// Each face's depth prepass, as the camera's (without MRT in the
+    /// packed form, prepass_form.rs); and the light volumes' grid
+    /// captures, projected in compute (probe_grid.rs).
     const DESC: PassDesc = PassDesc {
         pass: FramePass::Probes,
         name: "reflection-probes",
-        needs: Caps::MRT.union(Caps::COMPUTE),
+        needs: Caps::COMPUTE,
     };
     type State = probes::Probes;
     type Frame = ProbesFrame;
@@ -609,7 +613,13 @@ impl Pass for ProbesPass {
             line_frame,
             face_line_groups: &frame.line_groups,
             face_sprites,
+            mrt: r.prepass.unpack.is_none(),
         })
+    }
+
+    /// The depth prepasses' three targets at once where the device has MRT.
+    fn needs(plan: &Self::Plan<'_>) -> Caps {
+        if plan.mrt { Caps::MRT } else { Caps::NONE }
     }
 
     fn encode<'f>(_: &Self::State, plan: &ProbesPlan<'f>, _: FramePass, cx: &mut EncodeCx<'_, 'f>) {

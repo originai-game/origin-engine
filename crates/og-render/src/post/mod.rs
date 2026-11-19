@@ -15,12 +15,14 @@ mod graph;
 mod passes;
 mod plan;
 pub(crate) mod post_custom;
+mod prepass_form;
 pub(crate) mod sight;
 mod smaa;
 mod targets;
 pub(crate) use flare::*;
 pub(crate) use graph::*;
 pub(crate) use plan::*;
+pub(crate) use prepass_form::*;
 pub(crate) use targets::*;
 
 use crate::deferred::{AsModule, Deferred};

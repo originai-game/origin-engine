@@ -102,13 +102,6 @@ impl ScatterRenderer {
                 bias: Default::default(),
             })
         };
-        let target = |format| {
-            Some(wgpu::ColorTargetState {
-                format,
-                blend: None,
-                write_mask: wgpu::ColorWrites::ALL,
-            })
-        };
         let p = match pass {
             ScatterPass::Lit => crate::hdr_pipeline(
                 device,
@@ -146,13 +139,9 @@ impl ScatterRenderer {
                     multisample: Default::default(),
                     fragment: Some(wgpu::FragmentState {
                         module: lit_module,
-                        entry_point: Some("fs_prepass"),
+                        entry_point: Some(&self.prepass_form.entry("fs_prepass")),
                         compilation_options: Default::default(),
-                        targets: &[
-                            target(crate::post::GBUFFER_FORMAT),
-                            target(crate::post::LINDEPTH_FORMAT),
-                            target(crate::post::OUTLINE_FORMAT),
-                        ],
+                        targets: self.prepass_form.targets(),
                     }),
                     multiview_mask: None,
                     cache: crate::pipeline_cache::of(device).as_ref(),
@@ -223,13 +212,6 @@ impl ScatterRenderer {
                 bias: Default::default(),
             }
         });
-        let target = |format| {
-            Some(wgpu::ColorTargetState {
-                format,
-                blend: None,
-                write_mask: wgpu::ColorWrites::ALL,
-            })
-        };
         let (layout, module, vs, fs, targets): (_, _, _, _, Vec<_>) = match pass {
             ScatterPass::Lit => {
                 return crate::hdr_pipeline(
@@ -254,18 +236,14 @@ impl ScatterRenderer {
                 &self.lit_fx_layout,
                 &self.lit_module,
                 "vs_impostor",
-                "fs_impostor_prepass",
-                vec![
-                    target(crate::post::GBUFFER_FORMAT),
-                    target(crate::post::LINDEPTH_FORMAT),
-                    target(crate::post::OUTLINE_FORMAT),
-                ],
+                self.prepass_form.entry("fs_impostor_prepass"),
+                self.prepass_form.targets().to_vec(),
             ),
             ScatterPass::Shadow => (
                 &self.shadow_layout,
                 &self.shadow_module,
                 "vs_impostor_shadow",
-                "fs_impostor_shadow",
+                std::borrow::Cow::Borrowed("fs_impostor_shadow"),
                 vec![Some(shadow.color())],
             ),
         };
@@ -283,7 +261,7 @@ impl ScatterRenderer {
             multisample: Default::default(),
             fragment: Some(wgpu::FragmentState {
                 module,
-                entry_point: Some(fs),
+                entry_point: Some(&fs),
                 // Both faces cast (shadow_target.rs).
                 compilation_options: wgpu::PipelineCompilationOptions {
                     constants: if pass == ScatterPass::Shadow {
@@ -321,13 +299,6 @@ impl ScatterRenderer {
                 bias: Default::default(),
             }
         });
-        let target = |format| {
-            Some(wgpu::ColorTargetState {
-                format,
-                blend: None,
-                write_mask: wgpu::ColorWrites::ALL,
-            })
-        };
         let (layout, module, vs, fs, targets): (_, _, _, _, Vec<_>) = match pass {
             ScatterPass::Lit => {
                 return crate::hdr_pipeline(
@@ -352,18 +323,14 @@ impl ScatterRenderer {
                 &self.lit_fx_layout,
                 &self.lit_module,
                 "vs_crowd_card",
-                "fs_crowd_card_prepass",
-                vec![
-                    target(crate::post::GBUFFER_FORMAT),
-                    target(crate::post::LINDEPTH_FORMAT),
-                    target(crate::post::OUTLINE_FORMAT),
-                ],
+                self.prepass_form.entry("fs_crowd_card_prepass"),
+                self.prepass_form.targets().to_vec(),
             ),
             ScatterPass::Shadow => (
                 &self.shadow_layout,
                 &self.shadow_module,
                 "vs_crowd_card_shadow",
-                "fs_crowd_card_shadow",
+                std::borrow::Cow::Borrowed("fs_crowd_card_shadow"),
                 vec![Some(shadow.color())],
             ),
         };
@@ -381,7 +348,7 @@ impl ScatterRenderer {
             multisample: Default::default(),
             fragment: Some(wgpu::FragmentState {
                 module,
-                entry_point: Some(fs),
+                entry_point: Some(&fs),
                 // Both faces cast (shadow_target.rs).
                 compilation_options: wgpu::PipelineCompilationOptions {
                     constants: if pass == ScatterPass::Shadow {

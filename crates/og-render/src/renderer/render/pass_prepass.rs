@@ -20,6 +20,9 @@ pub(super) struct PrepassPlan<'f> {
     /// Where the crowds' cards come from in this pass.
     pub(super) cards: scatter::CardSource<'f>,
     pub(super) grass_frame: &'f grass::GrassFrame,
+    /// The device draws the three targets at once (prepass_form.rs); set
+    /// by `bind`.
+    pub(super) mrt: bool,
 }
 
 impl Renderer {
@@ -41,6 +44,7 @@ impl Renderer {
             scatter_batches,
             cards,
             grass_frame,
+            ..
         } = plan;
         let (ctx, encoder, stats) = (cx.ctx, &mut *cx.encoder, &mut *cx.stats);
         // The water's surfaces for the AO and the volumetric fog (water.rs `draw_ao_depth`), drawn after the
@@ -65,13 +69,24 @@ impl Renderer {
                 },
             })
         };
-        let mut p = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
-            label: Some("prepass"),
-            color_attachments: &[
+        // Without MRT the packed form: one target, unpacked below
+        // (prepass_form.rs).
+        let packed = self
+            .prepass
+            .unpack
+            .as_ref()
+            .map(|unpack| (unpack, self.graph.view("prepass-packed")));
+        let targets = match packed {
+            None => vec![
                 attachment(self.graph.view("gbuffer"), 0.0),
                 attachment(self.graph.view("lindepth"), post::FAR_DEPTH as f64),
                 attachment(self.graph.view("outline-id"), 0.0),
             ],
+            Some((_, view)) => vec![packed_attachment(view)],
+        };
+        let mut p = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+            label: Some("prepass"),
+            color_attachments: &targets,
             depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachment {
                 view: self.graph.view("pre-depth"),
                 depth_ops: Some(wgpu::Operations {
@@ -205,6 +220,22 @@ impl Renderer {
         );
         stats.draw_calls += stats.prepass_draws;
         drop(p);
+        if let Some((unpack, view)) = packed {
+            unpack.encode(
+                &self.device,
+                encoder,
+                view,
+                Some(self.graph.view("gbuffer")),
+                self.graph.view("lindepth"),
+            );
+            // No object ids in the packed form: what reads them is absent
+            // without MRT (schedule.rs), and the target holds none.
+            clear_target(
+                encoder,
+                "prepass outline ids",
+                self.graph.view("outline-id"),
+            );
+        }
         if let Some(object) = self
             .prepass
             .stylise_object
@@ -312,14 +343,51 @@ impl Renderer {
     }
 }
 
+/// The packed prepass target cleared to what unpacks into the targets'
+/// own clears (prepass_form.rs `packed_clear`).
+pub(super) fn packed_attachment(
+    view: &wgpu::TextureView,
+) -> Option<wgpu::RenderPassColorAttachment<'_>> {
+    Some(wgpu::RenderPassColorAttachment {
+        view,
+        depth_slice: None,
+        resolve_target: None,
+        ops: wgpu::Operations {
+            load: wgpu::LoadOp::Clear(post::packed_clear()),
+            store: wgpu::StoreOp::Store,
+        },
+    })
+}
+
+/// A pass that only clears `view` to zero.
+pub(super) fn clear_target(encoder: &mut crate::Encoder, label: &str, view: &wgpu::TextureView) {
+    encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+        label: Some(label),
+        color_attachments: &[Some(wgpu::RenderPassColorAttachment {
+            view,
+            depth_slice: None,
+            resolve_target: None,
+            ops: wgpu::Operations {
+                load: wgpu::LoadOp::Clear(wgpu::Color::TRANSPARENT),
+                store: wgpu::StoreOp::Store,
+            },
+        })],
+        depth_stencil_attachment: None,
+        timestamp_writes: None,
+        occlusion_query_set: None,
+        multiview_mask: None,
+    });
+}
+
 pub(super) struct PrepassPass;
 
 impl Pass for PrepassPass {
-    /// Three colour targets: normals and velocity, linear depth, outline ids.
+    /// Three colour targets (normals and velocity, linear depth, outline
+    /// ids), or without MRT the packed form (prepass_form.rs).
     const DESC: PassDesc = PassDesc {
         pass: FramePass::Prepass,
         name: "prepass",
-        needs: Caps::MRT,
+        needs: Caps::NONE,
     };
     type State = PrepassState;
     type Frame = ();
@@ -335,11 +403,19 @@ impl Pass for PrepassPass {
     }
 
     fn bind<'f>(
-        _: &'f Renderer,
+        r: &'f Renderer,
         _: &'f mut (),
         plan: Option<PrepassPlan<'f>>,
     ) -> Option<PrepassPlan<'f>> {
-        plan
+        plan.map(|p| PrepassPlan {
+            mrt: r.prepass.unpack.is_none(),
+            ..p
+        })
+    }
+
+    /// The three targets at once where the device has MRT.
+    fn needs(plan: &PrepassPlan<'_>) -> Caps {
+        if plan.mrt { Caps::MRT } else { Caps::NONE }
     }
 
     fn encode<'f>(

@@ -139,6 +139,9 @@ fn frame(g: &mut RenderGraph, cx: &PlanCx) {
             ),
         )
         .transient("outline-id", desc(w, h, OUTLINE_FORMAT, 1, ATTACH_BIND));
+        if cfg.packed_prepass {
+            g.transient("prepass-packed", desc(w, h, PACKED_FORMAT, 1, ATTACH_BIND));
+        }
         if cfg.object_space {
             g.transient("object-space", desc(w, h, OBJECT_FORMAT, 1, ATTACH_BIND));
         }

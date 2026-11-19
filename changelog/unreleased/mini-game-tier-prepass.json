@@ -1,0 +1,8 @@
+{
+  "fixed": [
+    {
+      "member": "og.render.capabilities",
+      "summary": "At the mini-game tier (tier miniGame: no multiple render targets) the depth prepass, secondary views (og.CameraView, og.Mirror) and reflection-probe faces now draw, and with them every effect that reads the prepass: ambient occlusion, contact shadows, screen-space reflections, soft particles, depth of field, motion blur, volumetric fog, water and custom post passes. Before, the tier dropped them all, and a scene that used one could not build its frame. Outlines are still absent at this tier and listed in the capabilities' absent passes."
+    }
+  ]
+}

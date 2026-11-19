@@ -16,6 +16,15 @@ fn fs_prepass(in: PrepassOut, @builtin(front_facing) front_facing: bool) -> Prep
   return prepass_targets(in);
 }
 
+// `fs_prepass` in the packed form (common.wgsl `prepass_pack`).
+@fragment
+fn fs_prepass_packed(in: PrepassOut, @builtin(front_facing) front_facing: bool) -> @location(0) vec4<u32> {
+  hook_front = select(-1.0, 1.0, front_facing);
+  let t = prepass_targets(in);
+  return prepass_pack(t.gbuffer, t.depth);
+}
+
+
 // What the prepass writes for a fragment (`fs_prepass`, and
 // `fs_prepass_lean`, which may drop the discard: DISCARD in pbr_fs.wgsl).
 fn prepass_targets(in: PrepassOut) -> PrepassTargets {

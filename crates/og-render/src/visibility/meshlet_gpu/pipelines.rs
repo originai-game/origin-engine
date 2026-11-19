@@ -14,7 +14,8 @@ impl MeshletGpu {
         planar: bool,
         off: crate::pipeline_features::Features,
         batches: &[Batch],
-        prepass: bool,
+        // Whether the frame draws a depth prepass, in which form.
+        prepass: Option<crate::post::PrepassForm>,
         samples: u32,
     ) {
         if self.lit_module.as_ref().is_none_or(|(p, _)| *p != planar) {
@@ -44,7 +45,7 @@ impl MeshletGpu {
         let missing = camera().any(|d| {
             let b = &batches[d.batch as usize];
             !self.lit.contains_key(&(b.faces, b.effects))
-                || (prepass && !self.prepass.contains_key(&b.faces))
+                || (prepass.is_some() && !self.prepass.contains_key(&b.faces))
         });
         if !missing {
             return;
@@ -82,7 +83,7 @@ impl MeshletGpu {
                     },
                 )
             });
-            if prepass {
+            if let Some(form) = prepass {
                 self.prepass.entry(b.faces).or_insert_with(|| {
                     crate::prepass_pipeline(
                         device,
@@ -93,6 +94,7 @@ impl MeshletGpu {
                         None,
                         Some(("vs_prepass_meshlet", "fs_prepass", false)),
                         &[],
+                        form,
                     )
                 });
             }

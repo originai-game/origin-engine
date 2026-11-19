@@ -444,13 +444,24 @@ impl<'f> DrawCtx<'f> {
                 },
             })
         };
-        let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
-            label: Some(label),
-            color_attachments: &[
+        // Without MRT the packed form, unpacked into its depth below
+        // (prepass_form.rs): what a view's resolve and a probe face read.
+        let packed = r
+            .prepass
+            .unpack
+            .as_ref()
+            .map(|unpack| (unpack, pre.packed(&r.device)));
+        let targets = match packed {
+            None => vec![
                 attachment(&pre.gbuffer, 0.0),
                 attachment(&pre.lindepth, post::FAR_DEPTH as f64),
                 attachment(&pre.outline, 0.0),
             ],
+            Some((_, view)) => vec![super::pass_prepass::packed_attachment(view)],
+        };
+        let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+            label: Some(label),
+            color_attachments: &targets,
             depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachment {
                 view: &pre.depth,
                 depth_ops: Some(wgpu::Operations {
@@ -538,6 +549,10 @@ impl<'f> DrawCtx<'f> {
                     ShadowTarget::Cascade,
                 )
                 .0;
+        }
+        drop(pass);
+        if let Some((unpack, view)) = packed {
+            unpack.encode(&r.device, encoder, view, None, &pre.lindepth);
         }
         draws
     }

@@ -680,6 +680,8 @@ pub(crate) struct ScatterPipelines<'a> {
     pub lit_wgsl: Box<dyn Fn(&str) -> String + Send + Sync>,
     pub shadow_wgsl: String,
     pub samples: u32,
+    /// The depth prepass's form on the device (prepass_form.rs).
+    pub prepass_form: crate::post::PrepassForm,
     /// The wind field's lean (`wind_field.rs`) the copies and cards sway by.
     pub wind_field: wgpu::TextureView,
     /// The trample map (`trample.rs`) they part by.
@@ -703,6 +705,7 @@ pub(crate) struct ScatterRenderer {
     hooked: HashMap<usize, wgpu::ShaderModule>,
     lit_wgsl: Box<dyn Fn(&str) -> String + Send + Sync>,
     samples: u32,
+    prepass_form: crate::post::PrepassForm,
     pipelines: HashMap<(Option<usize>, Side, u8), wgpu::RenderPipeline>,
     /// The shadow kinds' pipelines, one per target (shadow_target.rs).
     shadow_pipelines: HashMap<(Option<usize>, Side, u8), crate::ShadowSet>,

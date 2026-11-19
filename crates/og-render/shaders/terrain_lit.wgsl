@@ -710,6 +710,18 @@ fn terrain_prepass_out(frag: vec2<f32>, p: vec3<f32>, n: vec3<f32>, n_geo: vec3<
 
 @fragment
 fn fs_prepass(in: TerrainOut) -> TerrainPrepass {
+  return terrain_prepass(in);
+}
+
+// `fs_prepass` in the packed form (common.wgsl `prepass_pack`).
+@fragment
+fn fs_prepass_packed(in: TerrainOut) -> @location(0) vec4<u32> {
+  let t = terrain_prepass(in);
+  return prepass_pack(t.gbuffer, t.depth);
+}
+
+
+fn terrain_prepass(in: TerrainOut) -> TerrainPrepass {
   // One resident-tile lookup for the hole and the maps, as fs.
   let s = (in.local.xz - terrain_min()) / terrain_cell();
   let first = resident_from(0u, s);
@@ -823,6 +835,18 @@ fn fs_stamp(in: StampOut) -> @location(0) vec4<f32> {
 
 @fragment
 fn fs_stamp_prepass(in: StampOut) -> TerrainPrepass {
+  return stamp_prepass(in);
+}
+
+// `fs_stamp_prepass` in the packed form (common.wgsl `prepass_pack`).
+@fragment
+fn fs_stamp_prepass_packed(in: StampOut) -> @location(0) vec4<u32> {
+  let t = stamp_prepass(in);
+  return prepass_pack(t.gbuffer, t.depth);
+}
+
+
+fn stamp_prepass(in: StampOut) -> TerrainPrepass {
   let p = in.world;
   let g = stamp_ground(p, normalize(in.normal));
   let roughness = terrain_roughness(p, g.normal, stamp_lay(in.normal), g.control, dpdxFine(p), dpdyFine(p));

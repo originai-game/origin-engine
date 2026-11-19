@@ -68,4 +68,7 @@ pub(crate) struct GraphConfig {
     /// reactive mask; `Some(true)`: with the linked lists, whose resolve
     /// reads the depth.
     pub oit: Option<bool>,
+    /// The prepass draws its packed form (prepass_form.rs): into
+    /// `prepass-packed`, then unpacked into `gbuffer` and `lindepth`.
+    pub packed_prepass: bool,
 }

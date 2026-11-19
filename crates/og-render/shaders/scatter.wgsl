@@ -198,6 +198,18 @@ struct ScatterPrepass {
 
 @fragment
 fn fs_prepass(in: ScatterOut, @builtin(front_facing) front: bool) -> ScatterPrepass {
+  return scatter_prepass(in, front);
+}
+
+// `fs_prepass` in the packed form (common.wgsl `prepass_pack`).
+@fragment
+fn fs_prepass_packed(in: ScatterOut, @builtin(front_facing) front: bool) -> @location(0) vec4<u32> {
+  let t = scatter_prepass(in, front);
+  return prepass_pack(t.gbuffer, t.depth);
+}
+
+
+fn scatter_prepass(in: ScatterOut, front: bool) -> ScatterPrepass {
   let base = surface_color(scatter_hook(in, front), shader_params(), material.base_color * textureSample(base_color_tex, material_sampler, material_uv(UV_MAP, in.uv)) * in.color);
   let flat_n = normalize(cross(dpdxFine(in.world), dpdyFine(in.world)));
   if ((material.emissive.w >= 0.0 && base.a < material.emissive.w) || scatter_dropped(in.clip.xy, in.fade)) {

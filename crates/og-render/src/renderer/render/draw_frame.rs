@@ -1280,6 +1280,7 @@ impl Renderer {
                 scatter_batches: &world_frame.scatter_batches,
                 cards: camera_cards,
                 grass_frame: &world_frame.grass_frame,
+                mrt: true,
             }),
         );
         plans.main = MainPass::bind(

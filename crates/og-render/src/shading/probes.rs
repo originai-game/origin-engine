@@ -380,6 +380,7 @@ impl Probes {
                 let p = &t.prepass;
                 [&p.gbuffer, &p.lindepth, &p.outline, &p.depth]
                     .into_iter()
+                    .chain(p.packed_made())
                     .map(view_bytes)
                     .sum::<u64>()
                     + t.copy.as_ref().map_or(0, view_bytes)

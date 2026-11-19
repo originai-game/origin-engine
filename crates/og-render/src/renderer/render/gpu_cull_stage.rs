@@ -188,7 +188,7 @@ impl Renderer {
                     planar_slot(self.info.planar_reflections),
                     self.info.without.features(),
                     batches,
-                    prepass,
+                    prepass.then(|| crate::post::PrepassForm::of(self.info.caps)),
                     self.samples,
                 );
                 m.ensure_shadow_pipelines(

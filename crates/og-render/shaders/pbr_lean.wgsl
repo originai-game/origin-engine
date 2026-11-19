@@ -114,6 +114,18 @@ fn vs_prepass_lean_compact(@location(0) position: vec4<f32>, @location(1) normal
 
 @fragment
 fn fs_prepass_lean(in: LeanPrepassOut, @builtin(front_facing) front: bool) -> PrepassTargets {
+  return prepass_lean_targets(in, front);
+}
+
+// `fs_prepass_lean` in the packed form (common.wgsl `prepass_pack`).
+@fragment
+fn fs_prepass_lean_packed(in: LeanPrepassOut, @builtin(front_facing) front: bool) -> @location(0) vec4<u32> {
+  let t = prepass_lean_targets(in, front);
+  return prepass_pack(t.gbuffer, t.depth);
+}
+
+
+fn prepass_lean_targets(in: LeanPrepassOut, front: bool) -> PrepassTargets {
   hook_front = select(-1.0, 1.0, front);
   var full: PrepassOut;
   full.clip = in.clip;

@@ -27,6 +27,23 @@ fn oct_decode(e: vec2<f32>) -> vec3<f32> {
   return normalize(n);
 }
 
+// The depth prepass's packed form, on a device without multiple render
+// targets (prepass_form.rs): its normals and velocity (the `gbuffer`
+// target, four halves) and its linear depth (the `lindepth` target, two
+// floats) in one Rgba32Uint texel, the values the two targets store.
+// prepass_unpack.wgsl writes them back into their own targets.
+fn prepass_pack(gbuffer: vec4<f32>, depth: vec4<f32>) -> vec4<u32> {
+  let g = clamp(gbuffer, vec4<f32>(-65504.0), vec4<f32>(65504.0));
+  return vec4<u32>(pack2x16float(g.xy), pack2x16float(g.zw), bitcast<u32>(depth.x), bitcast<u32>(depth.y));
+}
+
+// A packed prepass entry that writes its own depth (the impostors, the
+// crowds' cards and the visibility buffer's resolve).
+struct PackedPrepassDepth {
+  @location(0) packed: vec4<u32>,
+  @builtin(frag_depth) frag_depth: f32,
+};
+
 // Vertex `i` (0 to 2) of the one triangle that covers the screen, in clip
 // space at depth 0: (-1, -1), (3, -1), (-1, 3).
 fn fullscreen_clip(i: u32) -> vec4<f32> {

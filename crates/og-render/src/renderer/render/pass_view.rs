@@ -34,6 +34,9 @@ pub(super) struct ViewPlan<'f> {
     /// frame's batches it draws.
     pub(super) meshlet_views: &'f [u32],
     pub(super) batches: &'f [Batch],
+    /// Its depth prepasses draw the three targets at once
+    /// (prepass_form.rs): the device has MRT.
+    pub(super) mrt: bool,
 }
 
 impl Renderer {
@@ -61,6 +64,7 @@ impl Renderer {
             post_fx,
             meshlet_views,
             batches,
+            ..
         } = plan;
         let (ctx, encoder, stats, sky_group) =
             (cx.ctx, &mut *cx.encoder, &mut *cx.stats, cx.sky_group);
@@ -344,11 +348,12 @@ pub(super) struct ViewBindIn<'f> {
 }
 
 impl Pass for ViewPass {
-    /// Its own depth prepass, as the probes' faces.
+    /// Its own depth prepass, as the probes' faces (without MRT in the
+    /// packed form, prepass_form.rs).
     const DESC: PassDesc = PassDesc {
         pass: FramePass::View(0),
         name: "view",
-        needs: Caps::MRT,
+        needs: Caps::NONE,
     };
     type State = views::Views;
     type Frame = ViewFrame;
@@ -578,7 +583,13 @@ impl Pass for ViewPass {
             view_fields: &frame.fields,
             view_glow_runs,
             post_fx,
+            mrt: r.prepass.unpack.is_none(),
         })
+    }
+
+    /// The depth prepasses' three targets at once where the device has MRT.
+    fn needs(plan: &Self::Plan<'_>) -> Caps {
+        if plan.mrt { Caps::MRT } else { Caps::NONE }
     }
 
     fn encode<'f>(

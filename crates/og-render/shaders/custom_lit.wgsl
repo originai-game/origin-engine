@@ -177,6 +177,18 @@ struct CustomPrepassTargets {
 
 @fragment
 fn fs_prepass(in: CustomPrepassOut, @builtin(front_facing) front: bool) -> CustomPrepassTargets {
+  return custom_prepass_targets(in, front);
+}
+
+// `fs_prepass` in the packed form (common.wgsl `prepass_pack`).
+@fragment
+fn fs_prepass_packed(in: CustomPrepassOut, @builtin(front_facing) front: bool) -> @location(0) vec4<u32> {
+  let t = custom_prepass_targets(in, front);
+  return prepass_pack(t.gbuffer, t.depth);
+}
+
+
+fn custom_prepass_targets(in: CustomPrepassOut, front: bool) -> CustomPrepassTargets {
   var o: CustomOut;
   o.clip = in.clip;
   o.world = in.world;

@@ -46,29 +46,18 @@ pub(crate) struct DepthPrepass {
     pub lindepth: wgpu::TextureView,
     pub outline: wgpu::TextureView,
     pub depth: wgpu::TextureView,
+    /// The packed target a device without MRT draws instead of the three
+    /// (prepass_form.rs), made when first drawn.
+    packed: std::cell::OnceCell<wgpu::TextureView>,
+    size: (u32, u32),
+    label: String,
 }
 
 impl DepthPrepass {
     /// The attachments of a camera of `size` (`label`: whose they are).
     pub fn new(device: &wgpu::Device, (w, h): (u32, u32), label: &str) -> DepthPrepass {
-        let make = |what: &str, format, usage| {
-            device
-                .create_texture(&wgpu::TextureDescriptor {
-                    label: Some(&format!("{label} prepass {what}")),
-                    size: wgpu::Extent3d {
-                        width: w,
-                        height: h,
-                        depth_or_array_layers: 1,
-                    },
-                    mip_level_count: 1,
-                    sample_count: 1,
-                    dimension: wgpu::TextureDimension::D2,
-                    format,
-                    usage,
-                    view_formats: &[],
-                })
-                .create_view(&Default::default())
-        };
+        let make =
+            |what: &str, format, usage| make_target(device, (w, h), label, what, format, usage);
         let attach = wgpu::TextureUsages::RENDER_ATTACHMENT;
         let bind = wgpu::TextureUsages::TEXTURE_BINDING;
         DepthPrepass {
@@ -76,8 +65,56 @@ impl DepthPrepass {
             lindepth: make("depth", crate::post::LINDEPTH_FORMAT, attach | bind),
             outline: make("outline", crate::post::OUTLINE_FORMAT, attach),
             depth: make("depth buffer", crate::DEPTH_FORMAT, attach),
+            packed: std::cell::OnceCell::new(),
+            size: (w, h),
+            label: label.to_string(),
         }
     }
+
+    /// The packed target (prepass_form.rs), made now if it was not yet.
+    pub fn packed(&self, device: &wgpu::Device) -> &wgpu::TextureView {
+        self.packed.get_or_init(|| {
+            make_target(
+                device,
+                self.size,
+                &self.label,
+                "packed",
+                crate::post::PACKED_FORMAT,
+                wgpu::TextureUsages::RENDER_ATTACHMENT | wgpu::TextureUsages::TEXTURE_BINDING,
+            )
+        })
+    }
+
+    /// Its packed target, when one was made.
+    pub fn packed_made(&self) -> Option<&wgpu::TextureView> {
+        self.packed.get()
+    }
+}
+
+fn make_target(
+    device: &wgpu::Device,
+    (w, h): (u32, u32),
+    label: &str,
+    what: &str,
+    format: wgpu::TextureFormat,
+    usage: wgpu::TextureUsages,
+) -> wgpu::TextureView {
+    device
+        .create_texture(&wgpu::TextureDescriptor {
+            label: Some(&format!("{label} prepass {what}")),
+            size: wgpu::Extent3d {
+                width: w,
+                height: h,
+                depth_or_array_layers: 1,
+            },
+            mip_level_count: 1,
+            sample_count: 1,
+            dimension: wgpu::TextureDimension::D2,
+            format,
+            usage,
+            view_formats: &[],
+        })
+        .create_view(&Default::default())
 }
 
 impl Views {

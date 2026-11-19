@@ -343,6 +343,10 @@ pub(crate) fn array_lit_source(standard: &str) -> String {
             "@fragment",
             "fs_prepass(in: PrepassOut, @builtin(front_facing) front_facing: bool) -> PrepassTargets {",
         ),
+        (
+            "@fragment",
+            "fs_prepass_packed(in: PrepassOut, @builtin(front_facing) front_facing: bool) -> @location(0) vec4<u32> {",
+        ),
     ] {
         let (name, rest) = signature.split_once('(').expect("a signature");
         s = replace_once(

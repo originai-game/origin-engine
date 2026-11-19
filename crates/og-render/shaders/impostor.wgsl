@@ -347,6 +347,22 @@ struct ImpostorPrepass {
 
 @fragment
 fn fs_impostor_prepass(in: ImpostorOut) -> ImpostorPrepass {
+  return impostor_prepass(in);
+}
+
+// `fs_impostor_prepass` in the packed form (common.wgsl `prepass_pack`), its own depth
+// with it.
+@fragment
+fn fs_impostor_prepass_packed(in: ImpostorOut) -> PackedPrepassDepth {
+  let t = impostor_prepass(in);
+  var o: PackedPrepassDepth;
+  o.packed = prepass_pack(t.gbuffer, t.depth);
+  o.frag_depth = t.frag_depth;
+  return o;
+}
+
+
+fn impostor_prepass(in: ImpostorOut) -> ImpostorPrepass {
   imp_set_level(in.uv01.xy);
   let surface = imp_surface(in);
   if (surface.coverage.alpha < imp_cutoff() || imp_dropped(in.clip.xy, in.fade.x, in.fade.y)) {

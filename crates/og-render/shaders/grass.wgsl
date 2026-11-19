@@ -249,6 +249,18 @@ struct GrassPrepass {
 
 @fragment
 fn fs_prepass(in: GrassPrepassIn, @builtin(front_facing) front: bool) -> GrassPrepass {
+  return grass_prepass(in, front);
+}
+
+// `fs_prepass` in the packed form (common.wgsl `prepass_pack`).
+@fragment
+fn fs_prepass_packed(in: GrassPrepassIn, @builtin(front_facing) front: bool) -> @location(0) vec4<u32> {
+  let t = grass_prepass(in, front);
+  return prepass_pack(t.gbuffer, t.depth);
+}
+
+
+fn grass_prepass(in: GrassPrepassIn, front: bool) -> GrassPrepass {
   let n = normalize(in.normal) * select(-1.0, 1.0, front);
   let cur = in.cur_clip.xy / in.cur_clip.w;
   let prev = in.prev_clip.xy / max(in.prev_clip.w, 1e-6);

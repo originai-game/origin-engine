@@ -4,10 +4,12 @@ use super::*;
 /// `holes`: with the hole test (terrain.wgsl `TERRAIN_HOLES`), whose
 /// discard a terrain without holes leaves out (early depth and Apple's
 /// hidden-surface removal keep working for it).
+#[allow(clippy::too_many_arguments)]
 pub(super) fn terrain_passes(
     device: &wgpu::Device,
     layouts: TerrainPassLayouts,
     samples: u32,
+    prepass_form: crate::post::PrepassForm,
     lit_source: String,
     shadow_source: String,
     corners_source: String,
@@ -110,13 +112,6 @@ pub(super) fn terrain_passes(
         constants,
         ..Default::default()
     };
-    let target = |format| {
-        Some(wgpu::ColorTargetState {
-            format,
-            blend: None,
-            write_mask: wgpu::ColorWrites::ALL,
-        })
-    };
     let depth = |write| {
         Some(wgpu::DepthStencilState {
             format: crate::DEPTH_FORMAT,
@@ -160,13 +155,9 @@ pub(super) fn terrain_passes(
                     multisample: Default::default(),
                     fragment: Some(wgpu::FragmentState {
                         module,
-                        entry_point: Some(fs),
+                        entry_point: Some(&prepass_form.entry(fs)),
                         compilation_options: options(),
-                        targets: &[
-                            target(crate::post::GBUFFER_FORMAT),
-                            target(crate::post::LINDEPTH_FORMAT),
-                            target(crate::post::OUTLINE_FORMAT),
-                        ],
+                        targets: prepass_form.targets(),
                     }),
                     multiview_mask: None,
                     cache: crate::pipeline_cache::of(&device).as_ref(),

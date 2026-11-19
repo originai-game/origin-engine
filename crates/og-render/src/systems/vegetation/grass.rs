@@ -331,6 +331,8 @@ pub(crate) struct GrassPipelines<'a> {
     pub trample: wgpu::TextureView,
     /// The lit features the renderer is made without (pipeline_features.rs).
     pub off: crate::pipeline_features::Features,
+    /// The depth prepass's form on the device (prepass_form.rs).
+    pub prepass_form: crate::post::PrepassForm,
 }
 
 /// What a frame's grass is prepared for: the main camera.
@@ -363,6 +365,7 @@ pub(crate) struct GrassRenderer {
     samples: u32,
     /// The lit features its lit module is made without (pipeline_features.rs).
     off: crate::pipeline_features::Features,
+    prepass_form: crate::post::PrepassForm,
     /// The lit, prepass and shadow pipelines, made when a field first draws.
     pipelines: Option<[wgpu::RenderPipeline; 3]>,
     /// The generation pipelines (evaluate, scan, compact) over each

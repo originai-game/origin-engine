@@ -52,6 +52,28 @@ pub(crate) const PASSES: &[PassDesc] = &[
         name: "contact",
         needs: Caps::COMPUTE,
     },
+    // The outlines read the prepass's object ids, which a device without
+    // MRT does not draw yet (prepass_form.rs): absent there.
+    PassDesc {
+        pass: FramePass::Outline,
+        name: "outline",
+        needs: Caps::MRT,
+    },
+    PassDesc {
+        pass: FramePass::OutlineSeed,
+        name: "outline-seed",
+        needs: Caps::MRT,
+    },
+    PassDesc {
+        pass: FramePass::OutlineJump(0),
+        name: "outline-jump",
+        needs: Caps::MRT,
+    },
+    PassDesc {
+        pass: FramePass::OutlineWide,
+        name: "outline-wide",
+        needs: Caps::MRT,
+    },
     ParticlesPass::DESC,
     ProbesPass::DESC,
     ReflectionPass::DESC,
@@ -583,9 +605,32 @@ mod tests {
         }
         // What needs nothing stays.
         assert!(gl.contains(&FramePass::Main) && gl.contains(&FramePass::Cascade(2)));
+        // Without MRT the prepass draws its packed form, so it, the views
+        // and every reader of its depth and normals stay; the outlines,
+        // which read its object ids, do not.
         let mini = frame_passes(&everything(&lights), Tier::MiniGame.ceiling());
-        assert!(mini.contains(&FramePass::Ssr) && !mini.contains(&FramePass::Prepass));
-        assert!(!mini.iter().any(|p| matches!(p, FramePass::View(_))));
+        for pass in [
+            FramePass::Prepass,
+            FramePass::View(1),
+            FramePass::Ao,
+            FramePass::Contact,
+            FramePass::Ssr,
+            FramePass::Particles,
+            FramePass::DofCoc,
+            FramePass::Probes,
+        ] {
+            assert!(
+                mini.contains(&pass),
+                "{pass:?} left out of the mini-game tier"
+            );
+        }
+        assert!(!mini.iter().any(|p| matches!(
+            p,
+            FramePass::Outline
+                | FramePass::OutlineSeed
+                | FramePass::OutlineJump(_)
+                | FramePass::OutlineWide
+        )));
     }
 
     /// The compute before the draws runs first and the passes over the
@@ -617,6 +662,7 @@ mod tests {
             object_space: false,
             ui_depth: true,
             oit: None,
+            packed_prepass: false,
         };
         let passes = frame_passes(&everything(&lights), Caps::FULL);
         let plan = post::build_graph(&passes, &cfg).compile().unwrap();
@@ -648,7 +694,8 @@ mod tests {
 
     #[test]
     fn instanced_kinds_share_their_needs() {
-        assert_eq!(FramePass::View(3).needs(), Caps::MRT);
+        assert_eq!(FramePass::View(3).needs(), Caps::NONE);
+        assert_eq!(FramePass::OutlineJump(2).needs(), Caps::MRT);
         assert_eq!(FramePass::Cascade(1).needs(), Caps::NONE);
         assert_eq!(FramePass::Main.needs(), Caps::NONE);
     }

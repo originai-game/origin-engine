@@ -121,6 +121,8 @@ impl Renderer {
                     object_space,
                     ui_depth: ui_depth && prepass,
                     oit: oit_mode.map(|m| m == oit::Oit::List),
+                    packed_prepass: post::PrepassForm::of(self.info.caps)
+                        == post::PrepassForm::Packed,
                 },
                 &self.post,
                 &self.persistent,

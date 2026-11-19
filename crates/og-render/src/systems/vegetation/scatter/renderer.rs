@@ -135,6 +135,7 @@ impl ScatterRenderer {
             hooked: HashMap::new(),
             lit_wgsl: p.lit_wgsl,
             samples: p.samples,
+            prepass_form: p.prepass_form,
             pipelines: HashMap::new(),
             shadow_pipelines: HashMap::new(),
             uniform_layout,

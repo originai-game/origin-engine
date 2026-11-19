@@ -329,7 +329,7 @@ impl VisBuffer {
         layouts: [&wgpu::BindGroupLayout; 3],
         module: &wgpu::ShaderModule,
         effects: impl IntoIterator<Item = bool>,
-        prepass: bool,
+        prepass: Option<crate::post::PrepassForm>,
         samples: u32,
     ) {
         if self.refused.is_some() {
@@ -370,7 +370,7 @@ impl VisBuffer {
                 )
             });
         }
-        if prepass && self.prepass.is_none() {
+        if let Some(form) = prepass.filter(|_| self.prepass.is_none()) {
             self.prepass = Some(crate::prepass_pipeline(
                 device,
                 (&layout, &layout),
@@ -380,6 +380,7 @@ impl VisBuffer {
                 None,
                 Some(("vs_meshlet_resolve", "fs_prepass_meshlet_resolve", true)),
                 &[],
+                form,
             ));
         }
         self.checks.push(Box::pin(validation.pop()));
@@ -442,7 +443,7 @@ mod tests {
             [&empty, &empty, &empty],
             &module,
             [false, true],
-            true,
+            Some(crate::post::PrepassForm::Targets),
             1,
         );
         // Native devices answer at once: no pipeline is left to draw with.
@@ -456,14 +457,7 @@ mod tests {
             vis.refused()
         );
         // Asked again (a later frame's soft list), it makes none.
-        vis.ensure_pipelines(
-            &device,
-            [&empty, &empty, &empty],
-            &module,
-            [false],
-            false,
-            1,
-        );
+        vis.ensure_pipelines(&device, [&empty, &empty, &empty], &module, [false], None, 1);
         assert!(vis.lit.is_empty() && !vis.usable());
     }
 }

@@ -279,6 +279,22 @@ struct MeshletResolvePrepass {
 
 @fragment
 fn fs_prepass_meshlet_resolve(in: MeshletResolveOut) -> MeshletResolvePrepass {
+  return meshlet_resolve_prepass(in);
+}
+
+// `fs_prepass_meshlet_resolve` in the packed form (common.wgsl `prepass_pack`), its own depth
+// with it.
+@fragment
+fn fs_prepass_meshlet_resolve_packed(in: MeshletResolveOut) -> PackedPrepassDepth {
+  let t = meshlet_resolve_prepass(in);
+  var o: PackedPrepassDepth;
+  o.packed = prepass_pack(t.gbuffer, t.depth);
+  o.frag_depth = t.frag_depth;
+  return o;
+}
+
+
+fn meshlet_resolve_prepass(in: MeshletResolveOut) -> MeshletResolvePrepass {
   let r = meshlet_record(in.clip, in.row);
   if (!r.ok) { discard; }
   var p: PrepassOut;

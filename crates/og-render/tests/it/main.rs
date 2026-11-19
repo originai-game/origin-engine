@@ -8,6 +8,8 @@ mod gpu_tests;
 mod material_alias;
 #[path = "../meshlet.rs"]
 mod meshlet;
+#[path = "../mini_game.rs"]
+mod mini_game;
 #[path = "../params_motion.rs"]
 mod params_motion;
 #[path = "../png.rs"]

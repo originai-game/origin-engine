@@ -426,9 +426,10 @@ pub(crate) fn prepass_pipeline(
     meshlet: Option<(&str, &str, bool)>,
     // The features left out (pipeline_features.rs).
     off: &[(&'static str, f64)],
+    form: post::PrepassForm,
 ) -> wgpu::RenderPipeline {
     prepass_variant(
-        device, layouts, module, faces, skinned, lean, meshlet, None, off,
+        device, layouts, module, faces, skinned, lean, meshlet, None, off, form,
     )
 }
 
@@ -438,6 +439,7 @@ pub(crate) fn surface_prepass_pipeline(
     module: &wgpu::ShaderModule,
     faces: Faces,
     array: bool,
+    form: post::PrepassForm,
 ) -> wgpu::RenderPipeline {
     prepass_variant(
         device,
@@ -453,6 +455,7 @@ pub(crate) fn surface_prepass_pipeline(
             "vs_prepass_surface"
         }),
         &[],
+        form,
     )
 }
 
@@ -467,6 +470,7 @@ fn prepass_variant(
     meshlet: Option<(&str, &str, bool)>,
     surface: Option<&str>,
     off: &[(&'static str, f64)],
+    form: post::PrepassForm,
 ) -> wgpu::RenderPipeline {
     let (derivatives, compact) = lean.unwrap_or_default();
     let lean = lean.is_some();
@@ -504,13 +508,6 @@ fn prepass_variant(
         Some(skin::SKINNED_INSTANCE_LAYOUT),
         Some(skin::SKIN_VERTEX_LAYOUT),
     ];
-    let target = |format| {
-        Some(wgpu::ColorTargetState {
-            format,
-            blend: None,
-            write_mask: wgpu::ColorWrites::ALL,
-        })
-    };
     crate::deferred::note(|| {
         let skin = if skinned { " skinned" } else { "" };
         let lean = if lean { " lean" } else { "" };
@@ -549,17 +546,13 @@ fn prepass_variant(
         multisample: Default::default(),
         fragment: Some(wgpu::FragmentState {
             module,
-            entry_point: Some(match meshlet {
+            entry_point: Some(&form.entry(match meshlet {
                 Some((_, fs, _)) => fs,
                 None if lean && !skinned => "fs_prepass_lean",
                 None => "fs_prepass",
-            }),
+            })),
             compilation_options: options,
-            targets: &[
-                target(post::GBUFFER_FORMAT),
-                target(post::LINDEPTH_FORMAT),
-                target(post::OUTLINE_FORMAT),
-            ],
+            targets: form.targets(),
         }),
         multiview_mask: None,
         cache: crate::pipeline_cache::of(device).as_ref(),
@@ -700,6 +693,9 @@ pub(crate) struct PrepassState {
     /// Stylise's object pass, made the first frame a pattern is laid in
     /// object space (`stylise_object.rs`).
     pub(crate) stylise_object: Option<stylise_object::ObjectPass>,
+    /// On a device that draws the packed prepass (prepass_form.rs): the
+    /// passes that write it back into its targets.
+    pub(crate) unpack: Option<post::PrepassUnpack>,
 }
 
 /// The lit passes' pipelines: the standard, lean and physical ones by key,

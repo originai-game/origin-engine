@@ -252,12 +252,14 @@ impl LitPipelines {
 }
 
 impl PrepassState {
-    /// No prepass pipeline yet: each is made at first use.
-    pub(super) fn new() -> PrepassState {
+    /// No prepass pipeline yet: each is made at first use; the unpack's
+    /// passes for a device that draws the packed `form`.
+    pub(super) fn new(device: &wgpu::Device, form: post::PrepassForm) -> PrepassState {
         PrepassState {
             prepass_pipelines: HashMap::new(),
             lean_prepass_pipelines: HashMap::new(),
             stylise_object: None,
+            unpack: (form == post::PrepassForm::Packed).then(|| post::PrepassUnpack::new(device)),
         }
     }
 }
