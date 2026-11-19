@@ -779,6 +779,21 @@ opaque token, and no part names a platform.
   before it as bits), so a loss never breaks a decode; an update with no
   baseline is marked `WHOLE`. A walking avatar costs about 8 bytes an
   update.
+- **WebTransport** (`--wt-listen`, `wt.rs`) carries the same messages:
+  snapshots and proposals as datagrams (a snapshot capped at 1150 bytes,
+  the payload of the 1280-byte minimum path), every other message as a
+  frame (u32 LE length) on one stream the client opens. A lost datagram
+  holds nothing up, where a lost TCP segment holds every later snapshot:
+  at 100 ms RTT and 2% loss the added delay p99 falls from about 200 ms
+  to under 10 ms. QUIC's framing roughly doubles a 20 Hz proposal, so the
+  server asks clients that support ACK frequency to hold their ACKs for
+  the next proposal and gives them 4-byte connection ids, which keeps the
+  upload under the 1 KiB/s budget. A snapshot can overtake the Enter it
+  needs on the stream after a loss; the client rejects it whole and does
+  not acknowledge it, so the two sides never disagree. A self-signed
+  certificate (`og world-server cert`, ECDSA, 14 days at most) is checked
+  by the hash a page passes as `serverCertificateHashes`. WebSocket stays
+  the path every browser and the platform's ingress (TCP only) have.
 - **Budgets**, held by `og world-server load --gate`: 8 KiB/s down and
   1 KiB/s up per client at p95, 64 in sight, 200 in one area, 2000 per
   server on 4 vCPU with a tick p99 of 10 ms. A shard is one server: more
@@ -812,8 +827,12 @@ opaque token, and no part names a platform.
   og-shared's `client` (tungstenite). On the web the page's
   `SessionProvider` (`@origingame/engine/provider`: `staticSession`,
   `tokenEndpoint`, a platform's) names the endpoint and token for each
-  `connect`, and the engine Worker opens the WebSocket itself, so
-  snapshots never cross the page. A host with no provider answers `host
+  `connect`, and the engine Worker opens the connection itself, so
+  snapshots never cross the page: WebTransport when the answer names one
+  (`webtransport`: an `https://` URL and certificate hashes) and the
+  browser has it, else the WebSocket, which also follows a WebTransport
+  that fails to open. Natively an `https://` URL dials WebTransport
+  (`--shared-cert-hash`). A host with no provider answers `host
   none`, and the join ends `unavailable`.
 - **Replay.** Every delivered event is host input, applied at the next
   tick's start and kept in og.platform.journal (kind `shared`, the token
