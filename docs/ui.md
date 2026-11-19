@@ -1923,6 +1923,7 @@ it shows (`RacingLapHud.readout`, `RacingStandings.place`,
 | `cell` | `--cell-fill/rim/rim-width/selected-rim/radius/shadow/hover-shadow/pressed-fill/empty-shadow`, `--cell-<rarity>-fill/shadow` | hover, pressed, selected, `data-rarity`, `data-empty`, disabled or `data-locked` |
 | `card` | `--card-fill/rim/rim-width/selected-rim/radius/shadow/pad` | selected or current (a step) |
 | `button.go` (the action) | `--action-fill/hover-fill/pressed-fill/ink/glow/cut`, `--action-reward-*`, `--action-confirm-*` | a built-in screen's or component's one main action, a cut plate in the families' light; `data-tone=reward` (a claim) in gold, `data-tone=confirm` (only beside a decline) in green; no other primary dress |
+| chosen (any family's selected row, tile, tab or card, and the player's own row) | `--chosen-fill/edge/ink`, `--chosen-tab-fill/tab-edge`, `--chosen-tile-rim/tile-glow` | the one selection: a row washed in the families' light from a leading bar, a tile ringed in it with a glow; the player's own row is the same wash with a YOU tag; gold marks only what can be claimed |
 | `badge`, `well`, `figure` | `--badge-fill/ink/radius/shadow/pad/text`, `--well-fill/radius/shadow`, `--figure-ink/font/shadow` | |
 | `headline`, `caption` | `--headline-text/weight/ink`, `--headline-card-text` (a headline in a card, its title), `--caption-text/ink` | |
 | `dot` | `--dot-fill/ink/rim/rim-width/radius` | `data-tone` fills it, and what it holds takes the fill's contrast |

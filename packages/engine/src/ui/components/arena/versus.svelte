@@ -78,11 +78,12 @@
 [part="ArenaVersus.heading"][data-team=b] { text-align: end; color: var(--result-team-b-ink); filter: var(--result-team-b-glow); box-shadow: var(--result-team-b-rule); }
 [part="ArenaVersus.card"] { padding: var(--space-xs) var(--space-md); border: 0; border-radius: 0; color: var(--hud-ink); background: var(--result-team-a-row); box-shadow: var(--result-team-a-edge); text-shadow: none; }
 .b [part="ArenaVersus.card"] { flex-direction: row-reverse; background: var(--party-team-b-row-end); box-shadow: var(--party-team-b-edge-end); }
-[part="ArenaVersus.card"][data-local=true] { background: var(--result-row-lit); color: var(--result-row-lit-ink); }
+[part="ArenaVersus.card"][data-local=true] { background: var(--result-team-a-you-row); color: var(--chosen-ink); }
+.b [part="ArenaVersus.card"][data-local=true] { background: var(--party-team-b-you-row); }
 [part="ArenaVersus.portrait ArenaVersus.picture"] { --layout-ratio: 1; flex: none; box-sizing: border-box; padding: var(--stroke-thick); border: 0; border-radius: 0; background: var(--hud-edge); box-shadow: none; clip-path: var(--hud-octagon); overflow: hidden; inline-size: var(--size-xl); block-size: var(--size-xl); background: var(--hud-edge); }
 .art { width: stretch; height: stretch; object-fit: cover; object-position: center top; clip-path: var(--hud-octagon); }
 .glyph { width: var(--size-md); height: var(--size-md); color: var(--hud-ink); }
-[data-local=true] .glyph { color: var(--result-row-lit-ink); }
+[data-local=true] .glyph { color: var(--chosen-ink); }
 .who { min-width: 0; }
 .name { max-inline-size: stretch; text-align: start; font-size: var(--party-size-fighter); line-height: 1.15; font-weight: var(--hud-figure-weight); color: inherit; overflow-wrap: break-word; }
 .character { max-inline-size: stretch; text-align: start; font-size: var(--hud-size-xs); line-height: 1.3; font-weight: var(--hud-label-weight); color: var(--hud-ink-dim); overflow-wrap: break-word; }

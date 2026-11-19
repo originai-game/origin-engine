@@ -731,8 +731,8 @@ fn an_ability_slot_grows_with_the_text_and_keeps_its_readouts_apart() {
 }
 
 /// The default style marks a table's current row: the arena scoreboard
-/// fills the local player's row (`aria-current`) with the row role's
-/// selected gradient, whatever corner shape a style gives rows. The teams
+/// fills the local player's row (`aria-current`) with the chosen wash
+/// (`--chosen-fill`), whatever corner shape a style gives rows. The teams
 /// may sit side by side and nonlocal rows have their own fills. Ways it could
 /// fail: a role's `corner-shape: round` beside its radius taken for a
 /// CSS-corner box, or a table's rows (which the table draws, not its row
@@ -778,17 +778,17 @@ fn the_scoreboard_marks_the_local_players_row() {
                         og_draw::UiPaint::GradientImage(g) => &g.gradient.stops,
                         _ => return false,
                     };
-                    // The default local-row role starts at 95% white; team
-                    // washes do not. Check its drawn fill, not a style flag.
+                    // The default local row wears the chosen wash: it starts
+                    // at the families' cyan light at 24 %; a team's row wash
+                    // starts at its team colour at 16 %. Check its drawn
+                    // fill, not a style flag.
                     shape.mode == og_draw::UiMode::Fill
                         && shape.opacity > 0.0
                         && shape.half.x > 0.0
                         && shape.half.y > 0.0
                         && stops.first().is_some_and(|s| {
-                            s.color
-                                .iter()
-                                .zip([1.0, 1.0, 1.0, 0.95])
-                                .all(|(a, b)| (a - b).abs() < 0.001)
+                            let [r, _, b, a] = s.color;
+                            (a - 0.24).abs() < 0.005 && b - r > 0.3
                         })
                 })
                 .count();

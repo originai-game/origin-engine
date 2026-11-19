@@ -38,7 +38,7 @@
         <div id="Row" part="leaderboard.row" interactive="true" focusable="true" onclick={row} class:mine-other={!r.you} class:mine-you={r.you} data-place={r.rank <= 3 ? r.rank : 0} data-promote={tab == "league" && r.rank <= league.promote}>
           <p id="RowRank" part="leaderboard.rank">{t("screen.leaderboard.RowRank", { value: formatOrdinal(r.rank) })}</p>
           <art id="Avatar" kind="emblem" src={r.texture}></art>
-          <p id="RowName" class="name">{r.name}</p>
+          <div id="Who" data-layout="row" data-gap="tight"><p id="RowName" class="name">{r.name}</p>{#if r.you}<span class="you">{t("screen.leaderboard.you")}</span>{/if}</div>
           <p id="RowScore" part="leaderboard.figure">{t("screen.leaderboard.RowScore", { value: r.score })}</p>
         </div>
       {/each}
@@ -46,7 +46,7 @@
   </div>
   <div id="Me" part="leaderboard.me">
     <p id="MeRank" part="leaderboard.rank">{t("screen.leaderboard.MeRank", { value: formatOrdinal(me.rank) })}</p>
-    <p id="MeName" class="name">{me.name}</p>
+    <p id="MeName" class="name">{me.name}</p><span class="you">{t("screen.leaderboard.you")}</span>
     <p id="MeScore" part="leaderboard.figure">{t("screen.leaderboard.MeScore", { value: me.score })}</p>
   </div>
 </div>
@@ -68,7 +68,7 @@ h1, h2, p { margin: 0; }
 #Tabs { gap: 0; inline-size: fit-content; padding: var(--stroke-thick); background: var(--hud-tag-fill); box-shadow: var(--hud-tag-rim); clip-path: polygon(var(--hud-tag-cut) 0, 100% 0, 100% calc(100% - var(--hud-tag-cut)), calc(100% - var(--hud-tag-cut)) 100%, 0 100%, 0 var(--hud-tag-cut)); }
 #Tabs button::part(base) { border-color: transparent; border-radius: 0; text-transform: var(--hud-label-transform); letter-spacing: var(--result-tab-tracking); }
 button.selection-off::part(base) { color: var(--hud-ink-dim); }
-button.selection-on::part(base) { color: var(--result-row-lit-ink); background: var(--result-row-lit); }
+button.selection-on::part(base) { color: var(--chosen-ink); background: var(--chosen-tab-fill); box-shadow: var(--chosen-tab-edge); }
 [part="leaderboard.league"], [part="leaderboard.me"] { display: flex; align-items: center; gap: var(--space-md); padding: var(--space-sm) var(--space-md); clip-path: polygon(var(--hud-plate-cut) 0, 100% 0, 100% calc(100% - var(--hud-plate-cut)), calc(100% - var(--hud-plate-cut)) 100%, 0 100%, 0 var(--hud-plate-cut)); }
 [part="leaderboard.league"] { flex-wrap: wrap; background: var(--hud-plate-fill); box-shadow: var(--hud-plate-rim); }
 #LeagueBarName { font-size: var(--hud-size-md); font-weight: var(--font-weight-bold); font-stretch: var(--hud-figure-stretch); letter-spacing: var(--result-title-tracking); text-transform: uppercase; color: var(--result-gold); }
@@ -81,10 +81,12 @@ button.selection-on::part(base) { color: var(--result-row-lit-ink); background: 
 [part="leaderboard.row"]:hover, [part="leaderboard.row"]:focus-visible { background: var(--result-row-hover); box-shadow: var(--result-row-hover-rim); }
 [part="leaderboard.row"]:active { scale: 0.99; }
 [part="leaderboard.row"][data-promote=true] { box-shadow: inset calc(3 * var(--stroke-hairline)) 0 0 var(--result-promote); }
-.mine-you { background: var(--result-row-lit); color: var(--result-row-lit-ink); }
+.mine-you { background: var(--chosen-fill); box-shadow: var(--chosen-edge); color: var(--chosen-ink); }
+.you { flex: none; padding: 0 var(--space-xs); font-size: var(--hud-tag-size); font-weight: var(--hud-figure-weight); letter-spacing: var(--hud-label-tracking); text-transform: var(--hud-label-transform); color: var(--hud-accent); background: var(--hud-tag-fill); box-shadow: var(--hud-plate-lit-rim); white-space: nowrap; }
+.you:lang(zh, ja, ko) { letter-spacing: 0; }
 #RowRank { grid-area: rank; }
 #Avatar { grid-area: art; inline-size: var(--size-md); block-size: var(--size-md); clip-path: var(--hud-octagon); }
-#RowName { grid-area: name; }
+#Who { grid-area: name; min-inline-size: 0; }
 #RowScore { grid-area: score; }
 [part="leaderboard.rank"] { display: block; text-align: center; min-inline-size: calc(52 * var(--font-step-px)); line-height: calc(38 * var(--font-step-px)); padding: 0 var(--space-xs); white-space: nowrap; font-size: var(--hud-size-sm); font-weight: var(--hud-figure-weight); font-stretch: var(--hud-figure-stretch); font-variant-numeric: var(--hud-figure-numeric); background: var(--hud-place-fill); clip-path: polygon(var(--hud-tag-cut) 0, 100% 0, 100% calc(100% - var(--hud-tag-cut)), calc(100% - var(--hud-tag-cut)) 100%, 0 100%, 0 var(--hud-tag-cut)); }
 [data-place="1"] [part="leaderboard.rank"] { color: var(--result-medal-ink); background: var(--result-gold); }
@@ -93,13 +95,15 @@ button.selection-on::part(base) { color: var(--result-row-lit-ink); background: 
 [data-place="1"] #RowScore { color: var(--result-gold); }
 .name { min-inline-size: 0; font-size: var(--hud-size-sm); font-weight: var(--hud-label-weight); white-space: nowrap; text-overflow: -og-scroll var(--motion-duration-orbit) var(--motion-duration-turn); overflow: hidden; }
 [part="leaderboard.figure"] { font-size: var(--hud-size-md); font-weight: var(--hud-figure-weight); font-stretch: var(--hud-figure-stretch); font-variant-numeric: var(--hud-figure-numeric); white-space: nowrap; text-align: end; }
-/* The player's own row: lit white, pinned under the list. */
-[part="leaderboard.me"] { padding-inline-start: var(--space-xs); background: var(--result-row-lit); color: var(--result-row-lit-ink); }
+/* The player's own row, pinned under the list: the chosen wash and edge
+   over the plate, with a YOU tag. */
+[part="leaderboard.me"] { padding-inline-start: var(--space-xs); background: var(--chosen-fill), var(--hud-plate-fill); box-shadow: var(--chosen-edge); color: var(--chosen-ink); }
 [part="leaderboard.me"] [part="leaderboard.rank"] { background: var(--result-me-rank-fill); }
-#MeName { flex: 1; }
+#MeName { flex: 0 1 auto; }
+#Me .you { margin-inline-end: auto; }
 #MeScore { font-size: var(--hud-size-lg); }
 /* The lit rows' figures take the lit ink, not the figure role's white. */
-.mine-you [part="leaderboard.figure"], [part="leaderboard.me"] [part="leaderboard.figure"] { color: var(--result-row-lit-ink); }
+.mine-you [part="leaderboard.figure"], [part="leaderboard.me"] [part="leaderboard.figure"] { color: var(--chosen-ink); }
 @media (width < 600px), (height < 600px) {
   [part="leaderboard.frame"] { padding: var(--space-md); gap: var(--space-sm); }
   [part="leaderboard.title"] { font-size: var(--result-size-title-compact); }

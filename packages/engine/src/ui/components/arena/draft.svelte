@@ -144,7 +144,7 @@
 [part~="ArenaDraft.slot"].ban { flex: 0 1 auto; align-items: center; min-width: var(--size-xl); max-width: stretch; }
 [part~="ArenaDraft.slot"].pick { padding: var(--space-xs) var(--space-sm); min-height: var(--size-touch); border-radius: 0; color: var(--hud-ink); background: var(--result-team-a-row); box-shadow: var(--result-team-a-edge); }
 .team[data-team=b] [part~="ArenaDraft.slot"].pick { background: var(--result-team-b-row); box-shadow: var(--result-team-b-edge); }
-[part~="ArenaDraft.slot"].pick[data-state=active] { background: var(--result-row-lit); color: var(--result-row-lit-ink); }
+[part~="ArenaDraft.slot"].pick[data-state=active] { box-shadow: var(--chosen-tile-rim); filter: var(--chosen-tile-glow); color: var(--chosen-ink); }
 [part="ArenaDraft.portrait ArenaDraft.picture"] { position: relative; flex: none; box-sizing: border-box; padding: var(--stroke-thick); border: 0; border-radius: 0; background: var(--hud-edge); box-shadow: none; clip-path: var(--hud-octagon); overflow: hidden; inline-size: var(--party-portrait); block-size: var(--party-portrait); }
 [part="ArenaDraft.portrait ArenaDraft.picture"].small { inline-size: var(--party-ban); block-size: var(--party-ban); }
 [part="ArenaDraft.portrait ArenaDraft.picture"][data-state=empty] { padding: var(--stroke-hairline); background: var(--party-open-edge); }

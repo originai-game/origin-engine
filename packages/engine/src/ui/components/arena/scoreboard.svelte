@@ -109,7 +109,7 @@
 .team[data-team=b] .team-name, .team[data-team=b] .team-score { color: var(--result-team-b-ink); }
 .team[data-team=b] .team-score { filter: var(--result-team-b-glow); }
 .team[data-team=b] [part="ArenaScoreboard.row"], .team[data-team=b] [part="ArenaScoreboard.row"]:hover { background: var(--result-team-b-row); box-shadow: var(--result-team-b-edge); }
-.team[data-team=b] [part="ArenaScoreboard.row"][data-local=true] { background: var(--result-row-lit); }
+.team[data-team=b] [part="ArenaScoreboard.row"][data-local=true] { background: var(--result-team-b-you-row); }
 [part="ArenaScoreboard.team ArenaScoreboard.plate"] :is(th, td) { padding: var(--space-xs) var(--space-sm); font-weight: inherit; }
 /* The head: the team's name in its colour, its score large, a rule of it under the captions. */
 [part="ArenaScoreboard.heading"] { box-shadow: var(--result-team-a-rule); }
@@ -120,7 +120,7 @@
 /* A row: dark glass washed in the team's colour from its edge. */
 [part="ArenaScoreboard.row"] { min-height: var(--size-md); background: var(--result-team-a-row); box-shadow: var(--result-team-a-edge); color: var(--hud-ink); }
 [part="ArenaScoreboard.row"]:hover { background: var(--result-team-a-row); }
-[part="ArenaScoreboard.row"][data-local=true] { background: var(--result-row-lit); color: var(--result-row-lit-ink); box-shadow: var(--result-team-a-edge); }
+[part="ArenaScoreboard.row"][data-local=true] { background: var(--result-team-a-you-row); color: var(--chosen-ink); box-shadow: var(--result-team-a-edge); }
 [part="ArenaScoreboard.row"][data-disconnected=true] { opacity: var(--down-opacity); }
 .name { min-width: 0; text-align: start; overflow-wrap: anywhere; font-size: var(--hud-size-name); font-weight: var(--hud-label-weight); color: inherit; }
 [part="ArenaScoreboard.stat ArenaScoreboard.figure"] { font-size: var(--hud-size-sm); font-weight: var(--hud-figure-weight); font-stretch: var(--hud-figure-stretch); font-variant-numeric: var(--hud-figure-numeric); color: inherit; }

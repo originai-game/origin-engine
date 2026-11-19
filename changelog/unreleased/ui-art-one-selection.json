@@ -1,0 +1,12 @@
+{
+  "added": [
+    {
+      "member": "Default style chosen tokens",
+      "summary": "--chosen-* roles: the one selection every built-in family draws. A chosen row is washed in the families' light from a leading bar (--chosen-fill, --chosen-edge), a chosen tab lit along its foot (--chosen-tab-*), a chosen tile ringed in it with a glow (--chosen-tile-*). The families' own selection tokens (front end, results, select, inventory, cards, party, data, system, quests, social) alias them, so a style pack restyles every selection by setting them."
+    }
+  ],
+  "fixed": [
+    "The player's own row is no longer a lit white slab: on the leaderboard (in the list and pinned under it), the arena scoreboard and the versus card it takes the chosen wash, keeps its team's edge, and the leaderboard adds a YOU tag (string screen.leaderboard.you). The draft's active pick is a ringed tile, not a white slab.",
+    "Gold no longer means selected: a chosen friend, quest or conversation row, a chat tab and your own chat line take the chosen wash in the families' light; gold is left for what can be claimed."
+  ]
+}
