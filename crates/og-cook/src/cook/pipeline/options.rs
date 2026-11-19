@@ -18,9 +18,11 @@ pub struct MeshOptions {
     /// levels `lod_levels` and `lod_ratio` give (1, 0.5, 0.25 by default).
     pub lods: Option<Vec<f32>>,
     /// Cook each primitive's raycast BVH (og.render.raycast) into the
-    /// model's blob, so a raycast never builds one at run time: a model's
-    /// import settings turn it off (`model { raycast false }`) for a model
-    /// no ray is cast at, saving its bytes (about 13 per triangle).
+    /// model's blob, so a raycast never builds one at run time. `og cook`
+    /// sets it only for a project whose sources name `raycast`; a model's
+    /// import settings set it either way (`model { raycast true|false }`).
+    /// Without one, the first og.render.raycast that reaches the model
+    /// builds it (about 13 bytes a triangle saved).
     pub raycast: bool,
     /// Cut each level into meshlet clusters (the blob's `clusters` and
     /// `cluster_indices`, og-render's `meshlet`), which the meshlet path

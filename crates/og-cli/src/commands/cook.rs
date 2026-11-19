@@ -240,7 +240,55 @@ pub fn mesh_options(root: &Path) -> Result<og_cook::cook::MeshOptions, String> {
             )
         })?;
     }
+    o.raycast = raycasts(root);
     Ok(o)
+}
+
+/// Whether the project at `root` names `raycast` in its sources, scenes or
+/// documents (og.render.raycast): only then do its models carry a cooked
+/// raycast BVH, which is about a quarter of a model blob. A model's
+/// `model { raycast true }` cooks one anyway, and a raycast at a model
+/// cooked without builds it then. Read as text, as `og build` finds the
+/// engine modules a game references, so it errs towards cooking one.
+fn raycasts(root: &Path) -> bool {
+    // A model's own `raycast true|false` import setting is not a raycast.
+    fn names(text: &str) -> bool {
+        let word = |c: Option<char>| c.is_some_and(|c| c.is_alphanumeric() || c == '_' || c == '$');
+        text.match_indices("raycast").any(|(at, m)| {
+            let rest = &text[at + m.len()..];
+            let setting = rest.trim_start_matches([' ', '\t']);
+            !word(text[..at].chars().next_back())
+                && !word(rest.chars().next())
+                && !(setting.starts_with("true") || setting.starts_with("false"))
+        })
+    }
+    fn walk(dir: &Path) -> bool {
+        let Ok(entries) = std::fs::read_dir(dir) else {
+            return false;
+        };
+        entries.flatten().any(|e| {
+            let name = e.file_name();
+            let name = name.to_string_lossy();
+            let Ok(kind) = e.file_type() else {
+                return false;
+            };
+            if kind.is_dir() {
+                !name.starts_with('.')
+                    && !matches!(&*name, "node_modules" | "cooked" | "dist" | "og-out")
+                    && walk(&e.path())
+            } else {
+                let source = [
+                    ".ts", ".tsx", ".mts", ".js", ".mjs", ".svelte", ".html", ".ogt",
+                ]
+                .iter()
+                .any(|x| name.ends_with(x));
+                kind.is_file()
+                    && source
+                    && std::fs::read_to_string(e.path()).is_ok_and(|t| names(&t))
+            }
+        })
+    }
+    walk(root)
 }
 
 /// Cooks a project for a native run, or for the web export (`web`, which

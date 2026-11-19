@@ -1,0 +1,8 @@
+{
+  "fixed": [
+    {
+      "member": "og cook: raycast BVH",
+      "summary": "A model blob carries its raycast BVH only when the project's sources, scenes or documents name `raycast` (og.render.raycast), or the model says `model { raycast true }`. Other games no longer download it, about a quarter of a model blob (Night Shift: 6.1 MB). A raycast at a model cooked without one builds it on first use, as `raycast false` already did; `raycast false` still leaves it out."
+    }
+  ]
+}
