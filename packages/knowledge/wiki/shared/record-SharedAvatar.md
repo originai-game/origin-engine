@@ -10,7 +10,7 @@ Marks the one entity whose state this client shares: its og.Transform's position
 
 See `shared-worlds §2`.
 
-Also known as: local player avatar, my character online, networked player, replicated player
+Also known as: local avatar, my character online, networked avatar, replicated avatar
 
 Token `og.SharedAvatar`, registered under the schema name `og.SharedAvatar`; its value type is `SharedAvatar`.
 
@@ -21,7 +21,7 @@ Token `og.SharedAvatar`, registered under the schema name `og.SharedAvatar`; its
 ```ogt
 component SharedAvatar {
   doc "Marks the one entity whose state this client shares: its og.Transform's position and its yaw (the rotation about y), the velocity its moves imply, and the fields of the game's avatar component (og.shared.shape) on the same entity. The first in entity order is the one shared."
-  aliases "local player avatar, my character online, networked player, replicated player"
+  aliases "local avatar, my character online, networked avatar, replicated avatar"
   guide "shared-worlds §2"
   field kind u32 "The avatar's kind: which of the server's movement rules it moves by (its top speed). A token that names a kind wins."
 }

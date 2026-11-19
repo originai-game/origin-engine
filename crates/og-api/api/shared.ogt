@@ -22,7 +22,7 @@ module shared {
 
   resource SharedWorld {
     doc "This client's shared-world session: its settings, which the game sets, and where it stands, which the engine writes. Remote avatars are drawn `interpDelayMs` behind the newest server time this client has, between the two states around it."
-    aliases "multiplayer, MMO, online presence, see other players, shared world, persistent world, massively multiplayer, visitors, avatars of others, server authoritative, interest management"
+    aliases "MMO, MMORPG, online presence, see other visitors, shared world, persistent world, open world online, visitors, avatars of others, server authoritative, interest management"
     guide "shared-worlds §2"
     field sendRateHz u32 "How often this client proposes its avatar's state, per second (at most the tick rate)." {
       default 20
@@ -52,14 +52,14 @@ module shared {
 
   component SharedAvatar {
     doc "Marks the one entity whose state this client shares: its og.Transform's position and its yaw (the rotation about y), the velocity its moves imply, and the fields of the game's avatar component (og.shared.shape) on the same entity. The first in entity order is the one shared."
-    aliases "local player avatar, my character online, networked player, replicated player"
+    aliases "local avatar, my character online, networked avatar, replicated avatar"
     guide "shared-worlds §2"
     field kind u32 "The avatar's kind: which of the server's movement rules it moves by (its top speed). A token that names a kind wins."
   }
 
   component RemoteAvatar {
     doc "Another visitor in sight, written by the engine: it spawns the entity with an og.Transform (and the game's avatar component, og.shared.shape) when the visitor comes into sight, moves it every tick, and despawns it when the visitor leaves. The game adds its own visuals to it. Who it is: og.shared.remote."
-    aliases "other player, remote player, networked avatar, replicated entity, ghost player, proxy"
+    aliases "other visitors online, remote avatar, networked avatar, replicated entity, ghost, proxy"
     guide "shared-worlds §3"
     field id u32 "This client's number for it, while it is in sight." {
       readonly true
@@ -169,7 +169,7 @@ module shared {
 
   fn join {
     doc "Join a shared world: the host asks its session provider for a connection (an endpoint and a token the engine never reads), the engine says hello, and og.SharedJoined arrives once the server takes this client in. The og.SharedAvatar entity is what it shares. A lost connection reconnects by itself."
-    aliases "connect to server, join online world, go online, enter MMO, start multiplayer session"
+    aliases "connect to server, join online world, go online, enter MMO, MMO login"
     guide "shared-worlds §2"
     param world World "The world."
     param desc SharedJoinDesc "The world to join."
