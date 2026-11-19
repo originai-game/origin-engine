@@ -108,8 +108,8 @@ const MOBILE_ARCHITECTURE = /powervr|rogue|mali|valhall|bifrost|adreno/;
  * The mode a page runs: `asked` (its build's `publish { pipelines }`, absent for auto) as is, or for
  * auto, async on a mobile GPU named by the adapter's `info`; when the browser names none (Firefox
  * reports empty strings), async when `mobile` (navigator.userAgentData.mobile) says so; otherwise
- * sync. Apple GPUs stay sync until a real iOS or macOS device is measured; a virtual machine's
- * numbers do not move the default (docs/web-export.md §Pipelines).
+ * sync. First Light on a physical M4 Pro showed no consistent first-frame advantage for async;
+ * Apple GPUs keep sync, with iOS still unmeasured (docs/web-export.md §Pipelines).
  */
 export function choose(asked: PipelineMode | undefined, info: { vendor?: string; architecture?: string } | null | undefined, mobile: boolean | undefined): PipelineChoice {
   if (asked) return { mode: asked, reason: `publish { pipelines ${asked} }` };
@@ -117,7 +117,7 @@ export function choose(asked: PipelineMode | undefined, info: { vendor?: string;
   const architecture = (info?.architecture ?? "").toLowerCase();
   const named = [vendor, architecture].filter(Boolean).join(" ");
   if (MOBILE_VENDORS.includes(vendor) || MOBILE_ARCHITECTURE.test(architecture)) return { mode: "async", reason: `auto: a mobile GPU (${named})` };
-  if (vendor === "apple") return { mode: "sync", reason: `auto: an Apple GPU (${named}), sync until iOS is measured` };
+  if (vendor === "apple") return { mode: "sync", reason: `auto: an Apple GPU (${named}), no consistent async advantage on M4 Pro` };
   if (named) return { mode: "sync", reason: `auto: not a mobile GPU (${named})` };
   if (mobile === true) return { mode: "async", reason: "auto: no adapter info; navigator.userAgentData.mobile" };
   if (mobile === false) return { mode: "sync", reason: "auto: no adapter info; navigator.userAgentData not mobile" };

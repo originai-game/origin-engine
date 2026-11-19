@@ -383,7 +383,7 @@ test("auto picks async on a mobile GPU only, and the page reports the pick and w
   expect(mode(undefined, { vendor: "arm", architecture: "" })).toBe("async");
   expect(mode(undefined, { vendor: "", architecture: "valhall" })).toBe("async");
   expect(mode(undefined, { vendor: "nvidia", architecture: "blackwell" }, true)).toBe("sync");
-  // Apple GPUs stay sync until iOS is measured, an iPhone's included.
+  // Apple GPUs stay sync, including when the user agent says mobile.
   expect(mode(undefined, { vendor: "apple", architecture: "metal-3" }, true)).toBe("sync");
   // Firefox's empty strings: navigator.userAgentData.mobile where it exists, else sync.
   expect(mode(undefined, { vendor: "", architecture: "" }, true)).toBe("async");
@@ -397,7 +397,7 @@ test("auto picks async on a mobile GPU only, and the page reports the pick and w
   // Auto's sync on a desktop: the renderer's hook stays installed, but its spans make nothing asynchronous and count nothing.
   p.use(p.choose(undefined, { vendor: "apple", architecture: "metal-3" }, false));
   const before = p.stats();
-  expect([before.mode, before.reason]).toEqual(["sync", "auto: an Apple GPU (apple metal-3), sync until iOS is measured"]);
+  expect([before.mode, before.reason]).toEqual(["sync", "auto: an Apple GPU (apple metal-3), no consistent async advantage on M4 Pro"]);
   calls.length = 0;
   p.frameSpan(true);
   device.createRenderPipeline(desc({ module: "m" }, "desktop"));
