@@ -1,0 +1,11 @@
+{
+  "version": 1,
+  "files": [
+    {
+      "path": "vulkan/drive.png",
+      "sha256": "c158b1d30f84f4970e17637c6732009375b2bfef4aa56bbedb0a728b8ee14cb4",
+      "size": 54400,
+      "visibility": "public"
+    }
+  ]
+}

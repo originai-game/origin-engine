@@ -1,0 +1,17 @@
+{
+  "version": 1,
+  "files": [
+    {
+      "path": "vulkan/heal.png",
+      "sha256": "89f46c09beff365b919423c1cac086f55a01c64daea51e5cb8e639ea4eaf6606",
+      "size": 85980,
+      "visibility": "public"
+    },
+    {
+      "path": "vulkan/hit.png",
+      "sha256": "1ff50d896243c31cec21ee6a924ce8f4f9df90027adb5d1ce5ebc9bd05fdaad1",
+      "size": 134191,
+      "visibility": "public"
+    }
+  ]
+}

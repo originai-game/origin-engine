@@ -1,0 +1,539 @@
+{
+  "version": 1,
+  "files": [
+    {
+      "path": "dx12/sprites-array.png",
+      "sha256": "02c9e54d3479d82ae31d77a64118b03ab60c1e08b092fe50a49ed6479e022b67",
+      "size": 56105,
+      "visibility": "public"
+    },
+    {
+      "path": "dx12/tilemap-lit.png",
+      "sha256": "02a5599e14b90b4e2af6c2806ad272d7b7352c14d0f4243ba004ca6f3cb13e2c",
+      "size": 360884,
+      "visibility": "public"
+    },
+    {
+      "path": "vulkan/ao-gtao.png",
+      "sha256": "4a72bdb995708d2ba057757b9734acb136436fa4f6eaae5f03c7629f01b225d0",
+      "size": 1373264,
+      "visibility": "public"
+    },
+    {
+      "path": "vulkan/atmosphere-dusk.png",
+      "sha256": "152921e714989a3c9c9e3491bb0ac0dbc0a47bf604a6b51d769b7e88a7324dcd",
+      "size": 431305,
+      "visibility": "public"
+    },
+    {
+      "path": "vulkan/atmosphere-fog.png",
+      "sha256": "f55eb745f165450d75c51861b3204c4cf06ad126644f450260e4cd9a602d592d",
+      "size": 690228,
+      "visibility": "public"
+    },
+    {
+      "path": "vulkan/atmosphere-moon.png",
+      "sha256": "468b245af90f399372c0ced1c923509e26676d5885c71306b6f09b5cff95c042",
+      "size": 793179,
+      "visibility": "public"
+    },
+    {
+      "path": "vulkan/atmosphere-night.png",
+      "sha256": "e5329cb47a2c9c4f0b50b1605d3354a92d51f3d947d29388b590819cd75ec772",
+      "size": 829536,
+      "visibility": "public"
+    },
+    {
+      "path": "vulkan/aurora-arcs.png",
+      "sha256": "e3c78e5ab999c48dbe0f88b5f7b52d12c9cfc8b772e4a87b0f13628b33f1335f",
+      "size": 744874,
+      "visibility": "public"
+    },
+    {
+      "path": "vulkan/aurora-breakup.png",
+      "sha256": "00c520e7e67bf24ecc7d5709acf3f12ead9882cae16446a4a3d52b138455e130",
+      "size": 826895,
+      "visibility": "public"
+    },
+    {
+      "path": "vulkan/bloom-unreal.png",
+      "sha256": "30f2361065d2c6b93ae2e24167ff69fb4964dbcb821fae652346edffd0629e27",
+      "size": 1044682,
+      "visibility": "public"
+    },
+    {
+      "path": "vulkan/clouds-fair.png",
+      "sha256": "63f0dfb484012d6ec20989d9d3d1551fc03d3af2081500354b6dc97a4684ba8b",
+      "size": 837767,
+      "visibility": "public"
+    },
+    {
+      "path": "vulkan/clouds-gradient.png",
+      "sha256": "ef0c218c30d517ba79298d30e69ab3a940b539162451e854cab76b26375b19d9",
+      "size": 783454,
+      "visibility": "public"
+    },
+    {
+      "path": "vulkan/clouds-overcast.png",
+      "sha256": "1972ab1d5457187ed54ed2ad2b9c7bb56db5bb4ec098b95b29cd05bd60bf04a1",
+      "size": 687424,
+      "visibility": "public"
+    },
+    {
+      "path": "vulkan/clouds-sunset.png",
+      "sha256": "4206b5f15ea0789566d21e65388f69cc4a88aa1a4743bc897d70b3b391f12b53",
+      "size": 673451,
+      "visibility": "public"
+    },
+    {
+      "path": "vulkan/crowd-lods.png",
+      "sha256": "becfbbc94ae12a874fe3b4475264a2e835dd0b686f5d44a02708187cc723f7f4",
+      "size": 1324095,
+      "visibility": "public"
+    },
+    {
+      "path": "vulkan/decals.png",
+      "sha256": "7a2d970393884f1a171e64a32110fb48384a7fac3f096b3c78d339a3e1afe2b4",
+      "size": 1297483,
+      "visibility": "public"
+    },
+    {
+      "path": "vulkan/dof-high.png",
+      "sha256": "c64afc616171d0c570098325a979dc68d52c90097491f7c13d6995e607b31c79",
+      "size": 634836,
+      "visibility": "public"
+    },
+    {
+      "path": "vulkan/effect-materials.png",
+      "sha256": "560a3f3e893b1fb52f60d32d5c5df6f1701b812c4cb5fa10d87d3c48a00acecc",
+      "size": 733653,
+      "visibility": "public"
+    },
+    {
+      "path": "vulkan/environment-map.png",
+      "sha256": "d024004858eab7bcc52f9201c93b9589a2f617b7edf09352a47821d392a8c33a",
+      "size": 1162142,
+      "visibility": "public"
+    },
+    {
+      "path": "vulkan/exposure.png",
+      "sha256": "893ec680b9d996d20d84d87b0903bf30838d7231bab76f697abb39f8299d0890",
+      "size": 1003009,
+      "visibility": "public"
+    },
+    {
+      "path": "vulkan/fluid-3d.png",
+      "sha256": "2f2759aad4690edb0903a8c62873f33154685a1f990ce1b9cedd86fbf5740979",
+      "size": 1613551,
+      "visibility": "public"
+    },
+    {
+      "path": "vulkan/geometry-shapes.png",
+      "sha256": "9e115e6c308fee1a4b7a5196c17e75c9d4a36cb306c56ef6c76164b2bddb18db",
+      "size": 1701071,
+      "visibility": "public"
+    },
+    {
+      "path": "vulkan/gi-room.png",
+      "sha256": "33232becef5de9a326f43f9d23a7711370677149d03972bb544f1acbf43d8bdb",
+      "size": 1362515,
+      "visibility": "public"
+    },
+    {
+      "path": "vulkan/gltf-reference.png",
+      "sha256": "aeeabc938f90a3e9f3d02b071250c54dc41ffb37a46df062438b145c2e4f19b2",
+      "size": 810703,
+      "visibility": "public"
+    },
+    {
+      "path": "vulkan/hooks-planar.png",
+      "sha256": "aa5c66b2bd95127d0511b75a0b3b962f233f0c8bfa6d3c5eea8afdd80a5cfb3d",
+      "size": 76170,
+      "visibility": "public"
+    },
+    {
+      "path": "vulkan/lights-256.png",
+      "sha256": "a05971958b9da300924edce708f7bec3f3770d27a92253d60d36fc373654bf58",
+      "size": 798700,
+      "visibility": "public"
+    },
+    {
+      "path": "vulkan/live-sky.png",
+      "sha256": "05c3be782162f72c7f1a4b0274d54f1dcbd20b6a133d4a63b20647b94f2b5d00",
+      "size": 1365604,
+      "visibility": "public"
+    },
+    {
+      "path": "vulkan/materials-physical.png",
+      "sha256": "5838db87833e227d192e98d8f5abd9b3751df18c9d2af756123ddd6731bc8216",
+      "size": 1652627,
+      "visibility": "public"
+    },
+    {
+      "path": "vulkan/meshlet-forest.png",
+      "sha256": "26ce247ae8086a85dff9b30351d9947931d4a2a0f343fa1f3e749a05aa0a3a60",
+      "size": 1520823,
+      "visibility": "public"
+    },
+    {
+      "path": "vulkan/mini-game-fx-2d.png",
+      "sha256": "0d69352090a39afe499de7364c5f94f1c6f1fab6e8d01eb8b117fa3893fe9853",
+      "size": 657349,
+      "visibility": "public"
+    },
+    {
+      "path": "vulkan/mini-game-gltf-reference.png",
+      "sha256": "aeeabc938f90a3e9f3d02b071250c54dc41ffb37a46df062438b145c2e4f19b2",
+      "size": 810703,
+      "visibility": "public"
+    },
+    {
+      "path": "vulkan/mini-game-materials.png",
+      "sha256": "a0eb4eb48affd432529cb12b61646f35e7c4826280b019ae5b7a459383699c6a",
+      "size": 292084,
+      "visibility": "public"
+    },
+    {
+      "path": "vulkan/mini-game-tilemap-lit.png",
+      "sha256": "c39522807a55f4f122bfe5d32edba557353c5166666498a31ad4eb0ebd2022ff",
+      "size": 869452,
+      "visibility": "public"
+    },
+    {
+      "path": "vulkan/mini-game-ui-shapes.png",
+      "sha256": "9ab08f489814d5cfc4ae58f5a5044a129b6b64c585909760c873c4bed280f7f5",
+      "size": 56718,
+      "visibility": "public"
+    },
+    {
+      "path": "vulkan/particles.png",
+      "sha256": "e2a88fe18513f0b8dfa2d8d769823e5c5f1698a4459c4d3fa5df957e0e59fb27",
+      "size": 679040,
+      "visibility": "public"
+    },
+    {
+      "path": "vulkan/point-spot-lights.png",
+      "sha256": "61308bcd25e7de45251e14e772d6f832b8d68a32f7c2f0a93b9ae06c3751277f",
+      "size": 382963,
+      "visibility": "public"
+    },
+    {
+      "path": "vulkan/post-agx.png",
+      "sha256": "c048ce3c266d028ef001c4fd008af21299573144891ca1995638a861d24362e9",
+      "size": 1026611,
+      "visibility": "public"
+    },
+    {
+      "path": "vulkan/shadows-soft.png",
+      "sha256": "73346acde0c41201702f118b2aa73687a861066d19ed2739b4945c3708c359fd",
+      "size": 799077,
+      "visibility": "public"
+    },
+    {
+      "path": "vulkan/skinning.png",
+      "sha256": "03dd4f5c5644b38cf0d1bc26612e8d0b22302eaf4c92c90877cfa285b1581a6f",
+      "size": 876025,
+      "visibility": "public"
+    },
+    {
+      "path": "vulkan/sky-physical-hazy.png",
+      "sha256": "a5a704255c39a6618d44c4c58e49407a10e18be259b77561336bf860e7043deb",
+      "size": 613082,
+      "visibility": "public"
+    },
+    {
+      "path": "vulkan/sky-physical-moon-full.png",
+      "sha256": "03a5b754f6250ba063aca88cd6e47ab14266805b4d9e1d9bcac547e71f3d8f66",
+      "size": 498606,
+      "visibility": "public"
+    },
+    {
+      "path": "vulkan/sky-physical-moon-half.png",
+      "sha256": "4733e4a6219ff249297e2870d478ba36ae27181e0fbdacda7acad0c258a04c40",
+      "size": 395143,
+      "visibility": "public"
+    },
+    {
+      "path": "vulkan/sky-physical-moon-none.png",
+      "sha256": "4aeb1a429add4d8f1c0d846d36ac4938d0859873fabca1692d634a03c47d41cd",
+      "size": 153667,
+      "visibility": "public"
+    },
+    {
+      "path": "vulkan/sky-physical-noon.png",
+      "sha256": "073fc49a1480a393ebdaec4ea0a84232e2e6a20228093cc87a08bd3dde782545",
+      "size": 1033658,
+      "visibility": "public"
+    },
+    {
+      "path": "vulkan/sky-physical-sunset.png",
+      "sha256": "f119bfafdc323451cb2b1995675de0a3a422b0130aa0e45369a5591be1c1b63d",
+      "size": 808846,
+      "visibility": "public"
+    },
+    {
+      "path": "vulkan/sky-physical-twilight.png",
+      "sha256": "4163ccbf81f4c412033d6832748d5d5703731e747355f565784c09ef89826eb3",
+      "size": 708542,
+      "visibility": "public"
+    },
+    {
+      "path": "vulkan/smaa-t2x-moving.png",
+      "sha256": "7a4aa523dadc4f80d10e110385f74bd348a859ea1c80662f3e75b235fb787c3a",
+      "size": 1262804,
+      "visibility": "public"
+    },
+    {
+      "path": "vulkan/sprites-array.png",
+      "sha256": "8d15d22f5c594941a8afc367696418183e8d8ebd66f7eec32497f9e47677b053",
+      "size": 1130553,
+      "visibility": "public"
+    },
+    {
+      "path": "vulkan/ssr-wet-floor.png",
+      "sha256": "1c23e5a2570b088c1bd087f23876fbd1068f6d58980b1ecb14ddf9d8e8902d40",
+      "size": 1164405,
+      "visibility": "public"
+    },
+    {
+      "path": "vulkan/stylise-print.png",
+      "sha256": "f2f15cc33d92e2b1f91f11f9765ddd8caa9c9df31dbb938e94ba40c733c58d26",
+      "size": 813926,
+      "visibility": "public"
+    },
+    {
+      "path": "vulkan/stylise-toon-physical.png",
+      "sha256": "3cb0cbfc44d07405f561145df01b0e9c9bdbbfffc01677ad19de29b90cdb6105",
+      "size": 1134145,
+      "visibility": "public"
+    },
+    {
+      "path": "vulkan/taa-motion.png",
+      "sha256": "643deeae80ea2c28b1885c9457a3c8c91873be19c7e5bfec1f96f660390909eb",
+      "size": 1121714,
+      "visibility": "public"
+    },
+    {
+      "path": "vulkan/taa-sharp.png",
+      "sha256": "b3b22bb6fb362c9472207250ff6f728795715f4585689c8a5b2415a0bcf9181e",
+      "size": 1249898,
+      "visibility": "public"
+    },
+    {
+      "path": "vulkan/taau-moving.png",
+      "sha256": "70ac0a563df3f1d7860e846dfc7f33035c3986f7cd86b6a9d6762ccce3454d7b",
+      "size": 1118407,
+      "visibility": "public"
+    },
+    {
+      "path": "vulkan/terrain-grass.png",
+      "sha256": "748a79c5ac51dbf5346b196a5967f7d73a19fcf32c9bd7067f5ef6fccd95893b",
+      "size": 1315323,
+      "visibility": "public"
+    },
+    {
+      "path": "vulkan/terrain-holes-four-tile-corner.png",
+      "sha256": "96ba4aa3a4d2742dae406dd010daa4766d6149ca045ba590571539328a1f164b",
+      "size": 50658,
+      "visibility": "public"
+    },
+    {
+      "path": "vulkan/terrain-holes-inside-tile.png",
+      "sha256": "7b420a3517e5524c818215995501a58251a98fe3455c08ec1b38e8f92a99d6db",
+      "size": 25333,
+      "visibility": "public"
+    },
+    {
+      "path": "vulkan/terrain-holes-low-wall.png",
+      "sha256": "65dc5f6f7f1a8281886b13bd122f6fb953d34733e6eb88df4a8326d60610e1d0",
+      "size": 44264,
+      "visibility": "public"
+    },
+    {
+      "path": "vulkan/terrain-holes-overview.png",
+      "sha256": "8f086918f048681bf9442a5b269bfc7933bc16ce23b95eeb5fab84a744f2aa75",
+      "size": 83691,
+      "visibility": "public"
+    },
+    {
+      "path": "vulkan/terrain-holes-tile-edge.png",
+      "sha256": "514b7b926282b8f4d06f6411974c52a3ae5bd0d59b435b4d9d07483fc3593497",
+      "size": 49731,
+      "visibility": "public"
+    },
+    {
+      "path": "vulkan/terrain-layers.png",
+      "sha256": "aff4c7331aa415b9e6b91bfeff6fe443b96c4cf560335234c18d76e09510ebb5",
+      "size": 1428817,
+      "visibility": "public"
+    },
+    {
+      "path": "vulkan/terrain-snow-track.png",
+      "sha256": "e4a35c7331dfc00e826d17f513a1430e01952bfce1a9e5686bd62c7b5da99fc7",
+      "size": 819588,
+      "visibility": "public"
+    },
+    {
+      "path": "vulkan/text-msdf.png",
+      "sha256": "81dcd572c4725958eb8ead395401846e264c7e75c3c478b96fc534836e82a64f",
+      "size": 105763,
+      "visibility": "public"
+    },
+    {
+      "path": "vulkan/tilemap-lit.png",
+      "sha256": "c39522807a55f4f122bfe5d32edba557353c5166666498a31ad4eb0ebd2022ff",
+      "size": 869452,
+      "visibility": "public"
+    },
+    {
+      "path": "vulkan/trails-beams.png",
+      "sha256": "29a3ec3950db5367c31cc1efe47bd8d39c9da94b4b5d280bd35eed51a42c9438",
+      "size": 719625,
+      "visibility": "public"
+    },
+    {
+      "path": "vulkan/ui-glass-bright.png",
+      "sha256": "6f74aeff4a694b1f7100a834b9fb92b8675041a5876544782e0b0472df3a2013",
+      "size": 240176,
+      "visibility": "public"
+    },
+    {
+      "path": "vulkan/ui-glass-busy.png",
+      "sha256": "463221f74857fe1b6356d8ca2a448a8aa79f4bfffa92e5ad7d687868b3fbea89",
+      "size": 150497,
+      "visibility": "public"
+    },
+    {
+      "path": "vulkan/ui-glass-dark.png",
+      "sha256": "79d1a52e1b54f9b2ff9ec9223e7ce5adb0ac049b0900ff321a0b111b643e6524",
+      "size": 336504,
+      "visibility": "public"
+    },
+    {
+      "path": "vulkan/ui-glass-dialog.png",
+      "sha256": "773303b1a35ba90dea2b2066a6dbe34785117ae89b046037d69b29358be4b278",
+      "size": 239315,
+      "visibility": "public"
+    },
+    {
+      "path": "vulkan/ui-glass-fallback.png",
+      "sha256": "e322b2a815c6c03b0a39345cf9f097859641a70c3a0bf23cc0d46604479bcfe1",
+      "size": 293223,
+      "visibility": "public"
+    },
+    {
+      "path": "vulkan/ui-ground.png",
+      "sha256": "a6ed246da0bb8db7a39a996c1bf516b81cc97d75dddf6df50fecaf8b5261ac00",
+      "size": 116345,
+      "visibility": "public"
+    },
+    {
+      "path": "vulkan/ui-paths.png",
+      "sha256": "7ad673600f5090e9038bc611879e06e6ab1fef97bc815dbf26fb16dcf2d29a6e",
+      "size": 58796,
+      "visibility": "public"
+    },
+    {
+      "path": "vulkan/ui-shapes.png",
+      "sha256": "9ab08f489814d5cfc4ae58f5a5044a129b6b64c585909760c873c4bed280f7f5",
+      "size": 56718,
+      "visibility": "public"
+    },
+    {
+      "path": "vulkan/views-split.png",
+      "sha256": "c99f9ff7d0a285be594b5b808251bf75f0e5aed8167dd6a67e2a27a720f274fe",
+      "size": 48293,
+      "visibility": "public"
+    },
+    {
+      "path": "vulkan/visual-garment.png",
+      "sha256": "ce6a90e708f365f7a8fff92967546dd07f378003eed718998a809851582708d3",
+      "size": 91798,
+      "visibility": "public"
+    },
+    {
+      "path": "vulkan/volumetric-fog.png",
+      "sha256": "e32edbc425ea5285d948bee318a93361d890229beb66ac91ae4e24c4bb66dd4e",
+      "size": 1014440,
+      "visibility": "public"
+    },
+    {
+      "path": "vulkan/water-ocean.png",
+      "sha256": "d392a149343b585f1e79190af6e03c3429e8e13f2a831b4d1d96a0536f7df8a1",
+      "size": 811914,
+      "visibility": "public"
+    },
+    {
+      "path": "vulkan/water-planar.png",
+      "sha256": "688b591adb287757b4c692ff036856bf4c4b178e8bec1896f016131d0c0f1c11",
+      "size": 432346,
+      "visibility": "public"
+    },
+    {
+      "path": "vulkan/water-shadows.png",
+      "sha256": "628adeb4c2c9f4c3265162ec7e3d900164375a71d482c1897d03c45c39295525",
+      "size": 640108,
+      "visibility": "public"
+    },
+    {
+      "path": "vulkan/water-underwater-shafts.png",
+      "sha256": "1dcb00de36b09a08cf483a7e88fe5a7a554f3d61952fb4ff5609101644531455",
+      "size": 389718,
+      "visibility": "public"
+    },
+    {
+      "path": "vulkan/water-underwater.png",
+      "sha256": "183864e986cc7f5e9c9e5909659f42123c058bfad7b6cba9a4c46ab5229dfc69",
+      "size": 471320,
+      "visibility": "public"
+    },
+    {
+      "path": "vulkan/weather-lightning.png",
+      "sha256": "00142f3b72c40f9124b968677786df9b92d5d2f6801d0c154e3d7c797f2ba508",
+      "size": 1138351,
+      "visibility": "public"
+    },
+    {
+      "path": "vulkan/weather-rain.png",
+      "sha256": "f43be5b15305d7f230e1f002d86a064ab8fb16bf86a37dbd726c792349e2b729",
+      "size": 749826,
+      "visibility": "public"
+    },
+    {
+      "path": "vulkan/weather-shelter-meshlet.png",
+      "sha256": "8e5b63ead0f6791e8c86e1ab0361b5e14565bc438dd367e271fe19ad2600549f",
+      "size": 640349,
+      "visibility": "public"
+    },
+    {
+      "path": "vulkan/weather-shelter-rain.png",
+      "sha256": "548659108679fac4e2e76eceb5860c0e4f46b737783194b5e701a33361e19f32",
+      "size": 989811,
+      "visibility": "public"
+    },
+    {
+      "path": "vulkan/weather-shelter-snow.png",
+      "sha256": "8e5b63ead0f6791e8c86e1ab0361b5e14565bc438dd367e271fe19ad2600549f",
+      "size": 640349,
+      "visibility": "public"
+    },
+    {
+      "path": "vulkan/weather-snow-cover.png",
+      "sha256": "5ce93e3f1e9b5c481e40edbf8e9b6f9208ab6260fab4da4815a1f393fe98be68",
+      "size": 669277,
+      "visibility": "public"
+    },
+    {
+      "path": "vulkan/weather-snow.png",
+      "sha256": "f087a801fd86be3ae9deac7ffcce0e413119b88a59fb192219407920508b1d4d",
+      "size": 791111,
+      "visibility": "public"
+    },
+    {
+      "path": "vulkan/weather-wet.png",
+      "sha256": "9df8f39604623b8d0e72d66a2c9ca1a833655b7a423646fcb662f607a4db1e61",
+      "size": 1046443,
+      "visibility": "public"
+    }
+  ]
+}
