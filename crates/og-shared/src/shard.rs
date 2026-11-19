@@ -137,11 +137,13 @@ const RING: usize = 2 * ACK_WINDOW as usize + 2;
 /// The ticks a client was last sent one avatar at, oldest first. The states
 /// they carried are the avatar's at those ticks, in the shard's ring: one
 /// copy per avatar instead of one per client (per-client copies were 32 MB
-/// walked every tick at 2000 clients).
+/// walked every tick at 2000 clients). A tick is kept as its low 16 bits:
+/// none is older than `2 * ACK_WINDOW` plus a refresh (dropped on the set's
+/// refresh), so the tick it names is the latest one with those bits.
 #[derive(Clone, Copy)]
 struct Sent {
     len: u8,
-    ticks: [u32; SENT],
+    ticks: [u16; SENT],
 }
 
 impl Sent {
@@ -152,8 +154,11 @@ impl Sent {
         }
     }
 
-    fn ticks(&self) -> &[u32] {
-        &self.ticks[..usize::from(self.len)]
+    /// The ticks, as of `now`.
+    fn ticks(&self, now: u32) -> impl DoubleEndedIterator<Item = u32> + ExactSizeIterator + '_ {
+        self.ticks[..usize::from(self.len)]
+            .iter()
+            .map(move |&t| now.wrapping_sub(u32::from((now as u16).wrapping_sub(t))))
     }
 
     /// Drop the first `n` entries.
@@ -167,7 +172,7 @@ impl Sent {
         if usize::from(self.len) == SENT {
             self.drop_front(1);
         }
-        self.ticks[usize::from(self.len)] = tick;
+        self.ticks[usize::from(self.len)] = tick as u16;
         self.len += 1;
     }
 }
@@ -180,8 +185,9 @@ struct Seen {
     rank: u16,
     enter_tick: u32,
     sent: Sent,
+    /// The avatar's jump count when last sent, low bits: compared for a change only.
+    jumps: u16,
     priority: f32,
-    jumps: u32,
     /// Its avatar's slot and the generation that held it when it entered.
     slot: u32,
     generation: u32,
@@ -977,7 +983,7 @@ impl TickCtx<'_> {
                     enter_tick: tick,
                     sent: Sent::new(),
                     priority: 0.0,
-                    jumps: a.jumps,
+                    jumps: a.jumps as u16,
                     slot,
                     generation: self.slot_gens[slot as usize],
                 });
@@ -1024,16 +1030,16 @@ impl TickCtx<'_> {
             let a = &self.cur[seen.slot as usize];
             let state = a.state.unwrap();
             let b = base.and_then(|(n, bits)| {
-                let ticks = seen.sent.ticks().iter().copied();
+                let ticks = seen.sent.ticks(tick);
                 let i = baseline_index(ticks, seen.enter_tick, n, |t| acked(n, bits, t))?;
                 seen.sent.drop_front(i);
                 // The row of a tick it was sent at holds its slot.
-                let at = seen.sent.ticks[0];
+                let at = seen.sent.ticks(tick).next()?;
                 Some((self.ring[at as usize % RING][seen.slot as usize], at))
             });
             let fields_moved = b.is_some_and(|(_, at)| a.fields_at > at);
             let b = b.map(|(motion, _)| motion.with_fields_of(&state));
-            let jump = a.jumps != seen.jumps;
+            let jump = a.jumps as u16 != seen.jumps;
             let mut m = state.diff(b.as_ref());
             if fields_moved {
                 m |= mask::FIELDS;
@@ -1056,7 +1062,7 @@ impl TickCtx<'_> {
                 body.buf.truncate(before);
                 break;
             }
-            seen.jumps = a.jumps;
+            seen.jumps = a.jumps as u16;
             seen.priority = 0.0;
             seen.sent.push(tick);
             count += 1;
@@ -1065,7 +1071,7 @@ impl TickCtx<'_> {
         // drops what is past the window, on the ticks the set is chosen.
         let floor = tick.saturating_sub(2 * ACK_WINDOW);
         for seen in v.set.iter_mut().filter(|_| refresh) {
-            let old = seen.sent.ticks().iter().take_while(|t| **t < floor).count();
+            let old = seen.sent.ticks(tick).take_while(|t| *t < floor).count();
             seen.sent.drop_front(old);
         }
         updates += count as u64;
@@ -1585,6 +1591,15 @@ mod tests {
         // (id, mask, 3 × u16 of place).
         assert!(sizes[1] > 14, "{sizes:?}");
         assert!(sizes[3..].iter().all(|&n| n == 14), "{sizes:?}");
+    }
+}
+
+#[cfg(test)]
+mod layout {
+    /// What every client walks of each member every tick: 64 of these a client.
+    #[test]
+    fn a_set_entry_is_32_bytes() {
+        assert_eq!(std::mem::size_of::<super::Seen>(), 32);
     }
 }
 
