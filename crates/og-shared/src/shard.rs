@@ -1003,7 +1003,8 @@ impl Shard {
         self.viewers.get_mut(&session).unwrap().out.push(m);
         // Everyone who holds it, or now has it in its radius, hears at once.
         let (whole, gone) = (
-            now.as_ref().map(|o| ServerMsg::Object(o.clone()).to_bytes()),
+            now.as_ref()
+                .map(|o| ServerMsg::Object(o.clone()).to_bytes()),
             ServerMsg::ObjectGone {
                 key: op.key.clone(),
             }
@@ -1484,7 +1485,10 @@ mod tests {
             seq,
             key: key.into(),
             expect,
-            set: Some((crate::protocol::Place::from_world(128.0, at, 0.0), data.to_vec())),
+            set: Some((
+                crate::protocol::Place::from_world(128.0, at, 0.0),
+                data.to_vec(),
+            )),
         })
         .to_bytes()
     }
@@ -1511,11 +1515,19 @@ mod tests {
             x.read(&mut shard, false);
         }
         // Created (expect: none), then opened over version 1.
-        shard.receive(a.sid, &op(1, "door", Some(0), door, &[0])).unwrap();
-        shard.receive(a.sid, &op(2, "door", Some(1), door, &[1])).unwrap();
+        shard
+            .receive(a.sid, &op(1, "door", Some(0), door, &[0]))
+            .unwrap();
+        shard
+            .receive(a.sid, &op(2, "door", Some(1), door, &[1]))
+            .unwrap();
         // b's op over the stale version 1 is refused; c's from afar too.
-        shard.receive(b.sid, &op(1, "door", Some(1), door, &[0])).unwrap();
-        shard.receive(c.sid, &op(1, "door", None, door, &[0])).unwrap();
+        shard
+            .receive(b.sid, &op(1, "door", Some(1), door, &[0]))
+            .unwrap();
+        shard
+            .receive(c.sid, &op(1, "door", None, door, &[0]))
+            .unwrap();
         for x in [&mut a, &mut b, &mut c] {
             x.read(&mut shard, false);
         }
@@ -1526,7 +1538,10 @@ mod tests {
             let o = &x.objects["door"];
             assert_eq!((o.version, o.data.as_slice()), (2, &[1u8][..]));
         }
-        assert!(c.objects.is_empty(), "c is sent an object outside its sight");
+        assert!(
+            c.objects.is_empty(),
+            "c is sent an object outside its sight"
+        );
         assert_eq!(shard.stats.ops, 2);
         // c walks near: the door comes in on its refresh; b walks off: it goes.
         c.propose(&mut shard, [10.0, 0.0, 0.0], true);

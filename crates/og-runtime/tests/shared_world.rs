@@ -689,14 +689,20 @@ fn a_shared_door_is_seen_by_others_and_outlives_a_server_restart() {
     let mut wires = [wire(a, wt, "a"), wire(b, wt, "b")];
     // Each sees the other: the server holds both places (an op is checked
     // against its sender's place, so one sent before it is refused).
-    until(&mut wires, 10.0, &|| remotes(a).len() == 1 && remotes(b).len() == 1);
+    until(&mut wires, 10.0, &|| {
+        remotes(a).len() == 1 && remotes(b).len() == 1
+    });
     put(a, 1.5, None);
     until(&mut wires, 5.0, &|| {
         objects(b).get("door:1").is_some_and(|o| o.1 == 1)
     });
     let (door, _) = objects(b)["door:1"];
     assert_eq!(angle(b, door), 1.5);
-    assert!((x_of(b, door) - 5.0).abs() < 0.01, "drawn at {}", x_of(b, door));
+    assert!(
+        (x_of(b, door) - 5.0).abs() < 0.01,
+        "drawn at {}",
+        x_of(b, door)
+    );
     // b closes it on version 1; a's open on version 1 comes after and is
     // refused: the door stays closed at version 2 for both.
     put(b, 0.0, Some(1));
@@ -728,7 +734,11 @@ fn a_shared_door_is_seen_by_others_and_outlives_a_server_restart() {
         og_shared_status(c).state == "joined" && objects(c).contains_key("door:1")
     });
     let (d, v) = objects(c)["door:1"];
-    assert_eq!((v, angle(c, d)), (2, 0.0), "the store did not keep the door");
+    assert_eq!(
+        (v, angle(c, d)),
+        (2, 0.0),
+        "the store did not keep the door"
+    );
     assert!((x_of(c, d) - 5.0).abs() < 0.01);
     drop(wires);
     drop(rt);

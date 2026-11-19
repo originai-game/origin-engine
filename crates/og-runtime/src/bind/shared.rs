@@ -967,7 +967,12 @@ fn clear_remotes(ctx: &mut SystemContext<'_>, engine_id: u32, recs: &Recs) -> og
     Ok(())
 }
 
-fn object_gone(ctx: &mut SystemContext<'_>, recs: &Recs, key: &str, e: Entity) -> og_core::Result<()> {
+fn object_gone(
+    ctx: &mut SystemContext<'_>,
+    recs: &Recs,
+    key: &str,
+    e: Entity,
+) -> og_core::Result<()> {
     let _ = ctx.despawn(e);
     recs.event(
         ctx,
@@ -989,7 +994,11 @@ fn object_in(
         if let Some(f) = s.objects_fresh.as_mut() {
             f.insert(o.key.clone());
         }
-        (s.cell_size, s.object.clone(), s.objects.get(&o.key).map(|(e, _)| *e))
+        (
+            s.cell_size,
+            s.object.clone(),
+            s.objects.get(&o.key).map(|(e, _)| *e),
+        )
     });
     let p = o.place.position(cs);
     let at = json!({
@@ -997,7 +1006,10 @@ fn object_in(
         "quaternion": quat_of(o.place.yaw()),
     });
     let mut parts = vec![
-        (transform.0, transform.1.encode(None, Some(&at)).map_err(invalid)?),
+        (
+            transform.0,
+            transform.1.encode(None, Some(&at)).map_err(invalid)?,
+        ),
         (
             ctx.id_by_name(OBJECT)?,
             recs.get(OBJECT)?
@@ -1021,7 +1033,9 @@ fn object_in(
         }
         None => ctx.spawn_bytes(parts)?,
     };
-    with(engine_id, |s| s.objects.insert(o.key.clone(), (entity, o.version)));
+    with(engine_id, |s| {
+        s.objects.insert(o.key.clone(), (entity, o.version))
+    });
     recs.event(
         ctx,
         OBJECT_CHANGED,

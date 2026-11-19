@@ -1075,7 +1075,10 @@ mod tests {
                 seq: 9,
                 key: "door-12".into(),
                 expect: Some(0),
-                set: Some((Place::from_world(128.0, [-300.5, 2.0, 1.0e6], 1.5), vec![1, 0, 7])),
+                set: Some((
+                    Place::from_world(128.0, [-300.5, 2.0, 1.0e6], 1.5),
+                    vec![1, 0, 7],
+                )),
             }),
             ClientMsg::Object(ObjectOp {
                 seq: 10,

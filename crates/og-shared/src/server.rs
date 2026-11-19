@@ -413,7 +413,10 @@ fn run_shard(
         if let Some(s) = store.as_mut()
             && let Err(e) = s.apply(&changes)
         {
-            eprintln!("world-server: the store did not keep {} changes: {e}", changes.len());
+            eprintln!(
+                "world-server: the store did not keep {} changes: {e}",
+                changes.len()
+            );
         }
     };
     let mut outs: HashMap<u64, mpsc::Sender<Vec<u8>>> = HashMap::new();
