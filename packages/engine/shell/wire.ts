@@ -223,7 +223,9 @@ export function createWire(options: WireOptions) {
         const height = typeof params["height"] === "number" ? params["height"] : undefined;
         if ((width !== undefined && !(width >= 0 && width <= 4096)) || (height !== undefined && !(height >= 0 && height <= 4096))) throw new WireError("refused", "width and height must be within 0–4096");
         const size = fitCapture(options.targetSize(), width, height);
-        const shot = plain(await member("capture", size));
+        // `fit: 0`: the size above is the answer's; the engine's own default fits a capture for a
+        // model (1280 px long side), which cut a full frame on a DPR 2 page.
+        const shot = plain(await member("capture", { ...size, fit: 0 }));
         if (!shot || typeof shot["png"] !== "string" || !shot["png"]) throw new WireError("unsupported", "this page has no renderer to capture");
         return { tick: finite(shot["tick"]) ? shot["tick"] : 0, width: Number(shot["width"]) || 0, height: Number(shot["height"]) || 0, png: shot["png"] };
       }

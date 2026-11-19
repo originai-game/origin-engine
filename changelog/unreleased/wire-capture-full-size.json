@@ -1,0 +1,9 @@
+{
+  "simulation": "unchanged",
+  "fixed": [
+    {
+      "member": "og-probe wire capture",
+      "summary": "The wire's capture answers the frame at the size asked, or the full render target in device pixels when none is asked. It was fitted again to 1280 px on its long side, so a page at device pixel ratio 2 (a Retina Mac, a phone) answered half its frame."
+    }
+  ]
+}
