@@ -72,7 +72,7 @@ installed by `scripts/install-tools.sh` (cargo-nextest when absent).
 | ShellCheck (CI lints `scripts/*.sh` with it; Ubuntu's 0.9 reports what 0.11 does not) | 0.11.0 | `SHELLCHECK_VERSION` in `scripts/install-tools.sh` (Homebrew's on macOS) |
 | node (`determinism`'s wasm32 runs) | 24 in CI | `.github/actions/provision` |
 | sccache (the compiler cache, run by og-sccache-wrap; not used in CI) | 0.19.0 | `SCCACHE_VERSION` in `scripts/install-tools.sh` |
-| og-sccache-wrap (the rustc wrapper `.cargo/config.toml` names) | this checkout's | `crates/og-sccache-wrap`, built and installed by `scripts/install-tools.sh` on every run |
+| og-sccache-wrap (the rustc wrapper, run by `scripts/rustc-wrapper`, which `.cargo/config.toml` names) | this checkout's | `crates/og-sccache-wrap`, built and installed by `scripts/install-tools.sh` on every run |
 | mold (Linux native linker) | distribution package | `.agents/setup`, `scripts/install-tools.sh`; `.cargo/config.toml` selects it |
 | cargo-zigbuild, zig (`build.sh --linux-x64`, release packing's Linux x86_64 addon and og against glibc 2.31) | 0.23.4, 0.17.0 | `CARGO_ZIGBUILD_VERSION`, `ZIG_VERSION` and their sha256 in `scripts/install-tools.sh` (Linux x86_64 only); outside the gate |
 | minisign (signs and checks a release's `SHA256SUMS`) | 0.11, the distribution's | `.agents/setup`; Homebrew's on macOS |
@@ -350,7 +350,14 @@ machine share it: `/Volumes/app/.sccache` on macrunner,
 `SCCACHE_DIR=E:\sccache` on studio-win, `~/.cache/sccache` on an orb.
 
 One sccache server per host serves every checkout. `.cargo/config.toml`'s
-rustc wrapper is `og-sccache-wrap` (`crates/og-sccache-wrap`), which starts
+rustc wrapper is `scripts/rustc-wrapper`, a path in the checkout, so a
+machine without `scripts/install-tools.sh` (a new orb, a plain Mac) builds
+uncached with no override: it runs `og-sccache-wrap` when that and sccache
+are on the PATH and rustc directly when not. On Windows, which runs only an
+`.exe` as the wrapper, cargo finds `scripts/rustc-wrapper.exe`, the copy of
+`og-sccache-wrap` that install-tools.sh writes there; `og-sccache-wrap`
+itself also runs rustc directly when sccache is missing.
+`og-sccache-wrap` (`crates/og-sccache-wrap`) starts
 that server without the jobserver of the cargo that happens to need it
 first, and on Unix stops a server that has stalled for `OG_SCCACHE_STALL`
 seconds (default 60, 0 turns the watch off). On Windows it runs rustc

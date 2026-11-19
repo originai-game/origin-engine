@@ -1,0 +1,13 @@
+#!/bin/sh
+# The rustc wrapper .cargo/config.toml names, as a path in the checkout so
+# a fresh one builds before scripts/install-tools.sh has run: cargo calls
+# it as `rustc-wrapper <rustc> <args...>`. With og-sccache-wrap and sccache
+# installed it hands the compile to og-sccache-wrap (docs/ci.md, The
+# compiler cache); without either it runs rustc itself, uncached.
+# Windows runs only an .exe as the wrapper: there cargo finds
+# scripts/rustc-wrapper.exe, the og-sccache-wrap that install-tools.sh puts
+# beside this file.
+if command -v og-sccache-wrap >/dev/null 2>&1 && command -v "${OG_SCCACHE:-sccache}" >/dev/null 2>&1; then
+  exec og-sccache-wrap "$@"
+fi
+exec "$@"

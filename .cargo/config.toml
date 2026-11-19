@@ -1,11 +1,15 @@
 # Share dependency compilation across the persistent lanes through
 # sccache, by og-sccache-wrap (crates/og-sccache-wrap, installed by
 # scripts/install-tools.sh): it starts sccache's shared server without the
-# jobserver of the build that needs it first. Set RUSTC_WRAPPER= for a
-# command that must bypass both.
+# jobserver of the build that needs it first. The wrapper named here is a
+# path in the checkout (relative to this directory's parent), which runs
+# og-sccache-wrap when it and sccache are installed and rustc directly when
+# not, so a fresh checkout builds as it is (scripts/rustc-wrapper; on
+# Windows the scripts/rustc-wrapper.exe install-tools.sh writes). Set
+# RUSTC_WRAPPER= for a command that must bypass both.
 # Every target and profile uses rustc's LLVM backend.
 [build]
-rustc-wrapper = "og-sccache-wrap"
+rustc-wrapper = "scripts/rustc-wrapper"
 rustflags = ["-Zthreads=4"]
 
 [target.'cfg(target_os = "linux")']

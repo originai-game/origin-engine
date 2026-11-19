@@ -9,3 +9,6 @@ __pycache__/
 /dist/
 templates/styles/*/art/sheet.png
 /tests/evidence/
+
+# install-tools.sh: og-sccache-wrap as cargo's wrapper on Windows (.cargo/config.toml)
+/scripts/rustc-wrapper.exe

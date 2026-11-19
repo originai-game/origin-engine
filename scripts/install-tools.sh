@@ -94,6 +94,14 @@ for exe in "$tmp/wrap/bin/og-sccache-wrap" "$tmp/wrap/bin/og-sccache-wrap.exe"; 
   mv -f "$BIN/.$name.new" "$BIN/$name"
 done
 command -v og-sccache-wrap >/dev/null || { og_err "og-sccache-wrap: $BIN is not on PATH"; exit 1; }
+# Windows runs only an .exe as cargo's wrapper: .cargo/config.toml's
+# scripts/rustc-wrapper is found there as scripts/rustc-wrapper.exe
+# (ignored by Git), this same wrapper, renamed into place like the above.
+if [ -f "$tmp/wrap/bin/og-sccache-wrap.exe" ]; then
+  wrapper="$(dirname "$0")/rustc-wrapper.exe"
+  cp "$tmp/wrap/bin/og-sccache-wrap.exe" "$wrapper.new"
+  mv -f "$wrapper.new" "$wrapper"
+fi
 
 # wasm-bindgen-cli
 wb="$(og_lock_version wasm-bindgen)"

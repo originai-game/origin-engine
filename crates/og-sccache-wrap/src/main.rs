@@ -37,8 +37,13 @@
 //! spawns such a command through a response file (mozilla/sccache 91d34f1,
 //! 2026-11-14); once `SCCACHE_VERSION` has it, this bypass can go.
 //!
+//! Without sccache (`OG_SCCACHE` or `sccache` on the PATH not found) the
+//! wrapper runs rustc itself, uncached, so a machine that has the wrapper
+//! but not the cache still builds.
+//!
 //! A real executable rather than a script: cargo on Windows runs only an
-//! `.exe` as the wrapper, and studio-win's gate uses this too.
+//! `.exe` as the wrapper (there `scripts/rustc-wrapper.exe`, this copied by
+//! `scripts/install-tools.sh`), and studio-win's gate uses this too.
 //! `RUSTC_WRAPPER=` (empty) still bypasses it, and sccache with it.
 //!
 //! Environment: `OG_SCCACHE` the sccache to run (default `sccache` on the
@@ -58,20 +63,12 @@ const JOBSERVER_VARS: [&str; 3] = ["CARGO_MAKEFLAGS", "MAKEFLAGS", "MFLAGS"];
 fn main() {
     let args: Vec<OsString> = std::env::args_os().skip(1).collect();
     let sccache = std::env::var_os("OG_SCCACHE").unwrap_or_else(|| "sccache".into());
+    if !installed(&sccache) {
+        rustc_alone(&args);
+    }
     #[cfg(windows)]
-    if let Some((rustc, rest)) = args.split_first()
-        && expanded_command_line_len(&args) > TOO_LONG_FOR_SCCACHE
-    {
-        match Command::new(rustc).args(rest).status() {
-            Ok(s) => std::process::exit(s.code().unwrap_or(1)),
-            Err(e) => {
-                eprintln!(
-                    "og-sccache-wrap: cannot run {}: {e}",
-                    rustc.to_string_lossy()
-                );
-                std::process::exit(127);
-            }
-        }
+    if expanded_command_line_len(&args) > TOO_LONG_FOR_SCCACHE {
+        rustc_alone(&args);
     }
     if !server_answers() {
         // A server that does not start is sccache's to report: the run
@@ -119,6 +116,41 @@ fn main() {
             std::process::exit(127);
         }
     }
+}
+
+/// Runs the compile without sccache: cargo's rustc with its arguments
+/// unchanged (an `@argfile` included), exiting with its status.
+fn rustc_alone(args: &[OsString]) -> ! {
+    let Some((rustc, rest)) = args.split_first() else {
+        eprintln!("og-sccache-wrap: usage: og-sccache-wrap <rustc> <args...>");
+        std::process::exit(2);
+    };
+    match Command::new(rustc).args(rest).status() {
+        Ok(s) => std::process::exit(s.code().unwrap_or(1)),
+        Err(e) => {
+            eprintln!(
+                "og-sccache-wrap: cannot run {}: {e}",
+                rustc.to_string_lossy()
+            );
+            std::process::exit(127);
+        }
+    }
+}
+
+/// Whether `program` names a file: as a path when it has a separator, else
+/// on the PATH (with `.exe` on Windows).
+fn installed(program: &std::ffi::OsStr) -> bool {
+    let path = std::path::Path::new(program);
+    if path.components().count() > 1 {
+        return path.is_file();
+    }
+    let exe = if cfg!(windows) && path.extension().is_none() {
+        path.with_extension("exe")
+    } else {
+        path.to_path_buf()
+    };
+    std::env::var_os("PATH")
+        .is_some_and(|dirs| std::env::split_paths(&dirs).any(|d| d.join(&exe).is_file()))
 }
 
 /// The expanded command line length past which a compile skips sccache:
