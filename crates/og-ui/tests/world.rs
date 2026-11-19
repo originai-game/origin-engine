@@ -135,7 +135,19 @@ fn document_world_distance_bounds_edge_controls_and_mass_settings() {
     let edge = ui.element("test:bounds/Edge").unwrap();
     assert!((edge.x + edge.width - (W - 73.5)).abs() < 0.1, "{edge:?}");
     let contained = ui.element("test:bounds/Contained").unwrap();
-    assert!((contained.x + contained.width - (W - 18.0)).abs() < 0.1);
+    // Enlarged text can outgrow the designed plate; the margin belongs
+    // to the drawn subtree, not just the anchor's nominal layout box.
+    let prefix = format!("{}/", contained.path);
+    let right = ui
+        .probe_elements()
+        .iter()
+        .filter(|e| e.path == contained.path || e.path.starts_with(&prefix))
+        .map(|e| e.x + e.width)
+        .fold(f32::NEG_INFINITY, f32::max);
+    assert!(
+        (right - (W - 18.0)).abs() < 0.1,
+        "{contained:?}, right={right}"
+    );
 }
 
 /// Last-tick placement feedback reaches the ordinary retained CSS cascade.

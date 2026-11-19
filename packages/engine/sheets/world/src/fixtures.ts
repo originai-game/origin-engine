@@ -1063,6 +1063,10 @@ export const STATES: Record<string, Record<string, Record<string, unknown>>> = {
  }
 };
 
+/** Painted player's silhouette, including cloak and sword, in the 1920 × 1080
+ * scene art. This is a fixture proxy, not an inferred engine entity. */
+export const PLAYER_SILHOUETTE = { left: 470, top: 350, right: 1180, bottom: 1080 };
+
 export type Placed = { kind: string; state: string; x: number; y: number; w?: number; id?: string; over?: Record<string, unknown> };
 
 /** Each page's layout by breakpoint: the frame's width and height and what stands where. A page without a phone layout shows the middle of its desktop layout, as its art covers the screen. */

@@ -27,7 +27,7 @@
   points the way. Read only; the game owns the distance and what counts
   as near and far.
 -->
-<anchor id="Waypoint" entity={entity || null} at={at} offset={"0 " + height + " 0"} clamp="edge" declutter="shift" priority="500">
+<anchor id="Waypoint" entity={entity || null} at={at} offset={"0 " + height + " 0"} clamp="edge" arrow-size="0" avoid="player" declutter="shift" priority="500">
   <div id="Mark" part="Waypoint.frame" class="bare" data-kind={kind == '' ? 'objective' : kind} data-range={range == '' ? 'mid' : range} data-way={edge == '' ? 'none' : edge} aria-label={label != '' ? label : distance}>
     {#if edge != ''}<span part="Waypoint.chevron" class="chevron"></span>{/if}
     <span part="Waypoint.pin" class="pin"><span class="core"></span></span>

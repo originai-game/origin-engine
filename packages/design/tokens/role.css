@@ -1380,6 +1380,8 @@
   --role-world-tail-width: 18px;
   --role-world-tail-height: 10px;
   --role-world-badge-lift: 10px;
+  /* A nameplate stays inside the screen with a text-scaled gutter. */
+  --role-world-nameplate-room: calc(100vw - 48 * var(--font-step-px));
   /* A bubble's widest line, inside the screen's edges; on a phone it
      leaves the player's centre column clear. */
   --role-world-speech-room: calc(100vw - 24px);

@@ -14,7 +14,7 @@
 // Commands: page:<scene|topdown|states|marks>, style:default, reduced:<on|off>.
 
 import { og, defineSystem, type World } from "@origingame/engine";
-import { LAYOUTS, STATES, type Placed } from "./fixtures.ts";
+import { LAYOUTS, PLAYER_SILHOUETTE, STATES, type Placed } from "./fixtures.ts";
 
 const PAGES = ["scene", "topdown", "states", "marks"] as const;
 const KINDS = ["Nameplate", "LootLabel", "InteractionPrompt", "SpeechBubble", "Telegraph", "SelectionRing", "PlacementGhost", "Waypoint", "PathLine"];
@@ -105,7 +105,18 @@ function layout(page: string, vw: number, vh: number): { items: Placed[]; map: (
 
 /** Every kind's rows for the page at this viewport. */
 function rows(page: string, vw: number, vh: number): Record<string, Record<string, unknown>[]> {
-  const out: Record<string, Record<string, unknown>[]> = Object.fromEntries([...KINDS, "bars"].map((k) => [k, []]));
+  const out: Record<string, Record<string, unknown>[]> = Object.fromEntries([...KINDS, "bars", "player"].map((k) => [k, []]));
+  if (page === "scene") {
+    // The art uses cover, independently of the labels' breakpoint layout.
+    // Project an explicit upright proxy over its silhouette. Its depth is
+    // deliberately synthetic, just like the labels on this painted sheet.
+    const s = Math.max(vw / 1920, vh / 1080);
+    const ox = (1920 * s - vw) / 2, oy = (1080 * s - vh) / 2;
+    const p = PLAYER_SILHOUETTE;
+    const foot = ray((p.left + p.right) * s / 2 - ox, p.bottom * s - oy, vw, vh);
+    const unit = 2 * LABEL * TAN / vh;
+    out.player!.push({ id: "painted-player", at: text(along(foot, LABEL)), radius: (p.right - p.left) * s * unit / 2, height: (p.bottom - p.top) * s * unit / UP.y });
+  }
   const { items, map, scale } = layout(page, vw, vh);
   items.forEach((p, i) => {
     const [px, py] = map(p.x, p.y);
@@ -163,7 +174,7 @@ const Layout = defineSystem("Layout", { reads: [og.Transform, og.Mesh, og.Camera
 
 function show(world: World): void {
   const scope = og.ui.scope(world, "sheet");
-  const inputs = Object.fromEntries([...KINDS, "bars"].map((k) => [k, scope.collection(k, [] as Array<{ id: string }>, { key: "id" })]));
+  const inputs = Object.fromEntries([...KINDS, "bars", "player"].map((k) => [k, scope.collection(k, [] as Array<{ id: string }>, { key: "id" })]));
   must(scope.mount("sheet", "WorldSheet", { page: scope.writable("page", "scene"), ...inputs }), "mount");
   const errors = scope.takeErrors();
   if (errors.length) throw new Error(errors.join("; "));
