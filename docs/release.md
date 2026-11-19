@@ -145,6 +145,39 @@ the cache. A game has no `node_modules`: `og` keeps `.og/engine` (ignored
 by Git) pointing at the engine it runs with, and the templates'
 `tsconfig.json` maps `@origingame/engine` there for editors.
 
+**The launcher's events.** An install reports its progress, and a tool
+(a sandbox that installs the pinned engine on first use) reads it:
+`og engine install [<v>|latest] --json` (no version in a project: its
+pin) prints JSON Lines on stdout and nothing else; any other command
+that has to install its engine first prints the same lines on stdout
+when given `--json` (before the command's own output), on stderr when
+stderr is not a terminal, and prose on a terminal. In order:
+
+| Event | Fields |
+|---|---|
+| `resolve` | `version` (the concrete one, `latest` resolved), `target` |
+| `download` | `bytes` so far, `total` (`null` when the server names none); every 1 % or 500 ms and at the end |
+| `retry` | `attempt` (the one about to start, from 2), `max`, `reason`, `delayMs` |
+| `verify` | the archive's sha256 against the signed SHA256SUMS |
+| `unpack` | |
+| `installed` | `version`, `path` (the dist), `cached` (true: it was installed already, nothing downloaded) |
+| `error` | `code`, `message`, `retryable`; the command exits 1 |
+
+`code` is one of `network` (no answer, or an HTTP error other than 404),
+`not_found` (no such version, or no archive for this target),
+`checksum`, `signature`, `disk_full`, `unpack`, `no_pin` (the project
+pins no version), `usage`, `unsupported_target` and `internal`;
+`retryable` is true for `network` and `checksum`. A network failure,
+an HTTP 408, 429 or 5xx, a connection idle for 30 s
+(`ORIGIN_ENGINE_IDLE_MS`) and a checksum mismatch are retried, 5 attempts
+in all (`ORIGIN_ENGINE_RETRIES`), waiting 1, 2, 4 and 8 s
+(`ORIGIN_ENGINE_RETRY_MS` the first). The archive downloads to
+`tmp/<archive>.part` under one lock per version and resumes from it with a
+Range request; a mismatching part is deleted, and nothing reaches
+`engines/` before its sha256 verifies. Launcher 2 (`og
+--launcher-version`) has the events; launcher 1 reports only an exit
+status and prose on stderr.
+
 ### 1a. Dev builds while a pin is being tested
 
 A fix the platform needs to try does not wait for a release. It is pushed

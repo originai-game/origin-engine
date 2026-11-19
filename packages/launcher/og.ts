@@ -34,17 +34,26 @@
 // directory; `$ORIGIN_ENGINE_PUBKEY` replaces the key for a test channel.
 // `$OG_ENGINE_VERSION` runs a version whatever the project pins.
 //
+// An install reports its progress as events (InstallEvent, docs/release.md
+// §1 The launcher's events): JSON Lines on stdout with --json (`og engine
+// install --json`, or any command given --json that has to install its
+// engine first), JSON Lines on stderr when stderr is not a terminal, and
+// prose on a terminal. Downloads retry network failures with backoff
+// (ORIGIN_ENGINE_RETRIES, default 5 attempts; ORIGIN_ENGINE_RETRY_MS, default
+// 1000, doubling) and resume an interrupted archive with a Range request
+// from cache/tmp/; nothing reaches engines/ before its sha256 verifies.
+//
 // It needs bun (the engine runs on it) and tar (Windows 10 and later carry
 // tar.exe). One file with no dependencies: install.sh and install.ps1 carry
 // it whole (packages/launcher/build.ts).
 
 import { spawnSync } from "node:child_process";
 import { createHash, createPublicKey, verify } from "node:crypto";
-import { existsSync, lstatSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, readlinkSync, renameSync, rmSync, statSync, symlinkSync, writeFileSync } from "node:fs";
+import { closeSync, existsSync, lstatSync, mkdirSync, mkdtempSync, openSync, readdirSync, readFileSync, readlinkSync, readSync, renameSync, rmSync, statSync, symlinkSync, writeFileSync, writeSync } from "node:fs";
 import { homedir } from "node:os";
 import { dirname, isAbsolute, join, resolve } from "node:path";
 
-export const LAUNCHER_VERSION = "1";
+export const LAUNCHER_VERSION = "2";
 /** The engine's release key (docs/release.md §1; the owner, 2026-11-05). */
 export const ENGINE_PUBKEY = "RWSJfZkSrBHM9kOnWQNC0WoGXEFI+9NMCj8+Wy6WJDkYl9pgPGkoCoxt";
 export const DOWNLOADS = "https://origingame.ai/downloads/engine";
@@ -64,7 +73,7 @@ export interface Config {
 
 export function config(env = process.env): Config {
   const target = TARGETS[`${process.platform}-${process.arch}`];
-  if (!target) fail(`the engine ships no build for ${process.platform}-${process.arch} (it ships ${Object.keys(TARGETS).join(", ")})`);
+  if (!target) fail(`the engine ships no build for ${process.platform}-${process.arch} (it ships ${Object.keys(TARGETS).join(", ")})`, "unsupported_target");
   return {
     cache: resolve(env.ORIGIN_ENGINE_CACHE || join(homedir(), ".cache", "origin-engine")),
     downloads: (env.ORIGIN_ENGINE_DOWNLOADS || DOWNLOADS).replace(/\/+$/, ""),
@@ -73,11 +82,74 @@ export function config(env = process.env): Config {
   };
 }
 
-export class LauncherError extends Error {}
-function fail(why: string): never {
-  throw new LauncherError(why);
+/**
+ * Why a launcher command failed: stable codes a tool branches on. `retryable`
+ * says whether running the same command again may succeed.
+ */
+export type ErrorCode =
+  | "network" // the channel did not answer, or answered an HTTP error other than 404
+  | "not_found" // no such version (or no archive for this target)
+  | "checksum" // the archive does not match the signed SHA256SUMS
+  | "signature" // SHA256SUMS is not signed by the engine's key
+  | "disk_full" // no space left (or a quota) in the cache
+  | "unpack" // the archive does not unpack into this version's dist
+  | "no_pin" // the project pins no engine version, or not a version
+  | "usage" // the command or a version string is wrong
+  | "unsupported_target" // the engine ships no build for this platform
+  | "internal"; // anything else: the launcher's own bug
+const RETRYABLE: ReadonlySet<ErrorCode> = new Set(["network", "checksum"]);
+
+export class LauncherError extends Error {
+  constructor(message: string, readonly code: ErrorCode = "usage", readonly retryable = RETRYABLE.has(code)) {
+    super(message);
+  }
+}
+function fail(why: string, code: ErrorCode = "usage", retryable?: boolean): never {
+  throw new LauncherError(why, code, retryable);
 }
 const note = (s: string) => process.stderr.write(`og: ${s}\n`);
+
+/** An install's progress, in order: resolve, download (repeated) with retries, verify, unpack, installed; or error. */
+export type InstallEvent =
+  | { event: "resolve"; version: string; target: string }
+  | { event: "download"; bytes: number; total: number | null }
+  | { event: "retry"; attempt: number; max: number; reason: string; delayMs: number }
+  | { event: "verify" }
+  | { event: "unpack" }
+  | { event: "installed"; version: string; path: string; cached: boolean }
+  | { event: "error"; code: ErrorCode; message: string; retryable: boolean };
+export type Report = (e: InstallEvent) => void;
+export const silent: Report = () => {};
+
+/** Events as JSON Lines on a descriptor (1 stdout, 2 stderr), written synchronously so none is lost at exit. */
+export const jsonLines = (fd: number): Report => (e) => {
+  writeSync(fd, `${JSON.stringify(e)}\n`);
+};
+
+/** Events as prose on stderr, the download as a percentage redrawn in place on a terminal. */
+function prose(): Report {
+  let version = "";
+  let started = false;
+  const tty = Boolean(process.stderr.isTTY);
+  const mb = (n: number) => (n / 1e6).toFixed(1);
+  return (e) => {
+    if (e.event === "resolve") version = e.version;
+    else if (e.event === "download") {
+      if (!started) note(`downloading engine ${version} for ${config().target}`);
+      started = true;
+      if (tty && e.total) process.stderr.write(`\rog: ${Math.floor((e.bytes / e.total) * 100)}% (${mb(e.bytes)} of ${mb(e.total)} MB)${e.bytes === e.total ? "\n" : ""}`);
+    } else if (e.event === "retry") note(`${e.reason}; retrying in ${Math.round(e.delayMs / 100) / 10} s (attempt ${e.attempt} of ${e.max})`);
+    else if (e.event === "installed" && !e.cached) note(`installed engine ${e.version} in ${e.path}`);
+    else if (e.event === "error") note(e.message);
+  };
+}
+
+/** Where a command's install events go (InstallEvent): stdout with --json, else prose on a terminal and JSON Lines on any other stderr. */
+export function reporterFor(argv: string[], stderrIsTTY = Boolean(process.stderr.isTTY)): { report: Report; stdout: boolean } {
+  if (argv.includes("--json")) return { report: jsonLines(1), stdout: true };
+  if (argv[0] === "engine" || stderrIsTTY) return { report: prose(), stdout: false };
+  return { report: jsonLines(2), stdout: false };
+}
 
 // ---------------------------------------------------------------- minisign
 
@@ -91,42 +163,193 @@ const ED25519_SPKI = Buffer.from("302a300506032b6570032100", "hex");
  */
 export function verifyMinisign(data: Uint8Array, signature: string, pubkey: string): string {
   const pk = Buffer.from(pubkey.trim(), "base64");
-  if (pk.length !== 42 || pk.toString("latin1", 0, 2) !== "Ed") fail("the engine's public key is not a minisign Ed25519 key");
+  if (pk.length !== 42 || pk.toString("latin1", 0, 2) !== "Ed") fail("the engine's public key is not a minisign Ed25519 key", "signature");
   const lines = signature.split(/\r?\n/);
   const sig = Buffer.from(lines[1] ?? "", "base64");
   const trusted = lines[2] ?? "";
   const global = Buffer.from(lines[3] ?? "", "base64");
-  if (sig.length !== 74 || !trusted.startsWith("trusted comment: ") || global.length !== 64) fail("SHA256SUMS.minisig is not a minisign signature");
+  if (sig.length !== 74 || !trusted.startsWith("trusted comment: ") || global.length !== 64) fail("SHA256SUMS.minisig is not a minisign signature", "signature");
   const alg = sig.toString("latin1", 0, 2);
-  if (alg !== "ED" && alg !== "Ed") fail(`SHA256SUMS.minisig uses the unknown algorithm ${alg}`);
-  if (!sig.subarray(2, 10).equals(pk.subarray(2, 10))) fail(`SHA256SUMS.minisig is signed by key ${keyId(sig.subarray(2, 10))}, not the engine's ${keyId(pk.subarray(2, 10))}`);
+  if (alg !== "ED" && alg !== "Ed") fail(`SHA256SUMS.minisig uses the unknown algorithm ${alg}`, "signature");
+  if (!sig.subarray(2, 10).equals(pk.subarray(2, 10))) fail(`SHA256SUMS.minisig is signed by key ${keyId(sig.subarray(2, 10))}, not the engine's ${keyId(pk.subarray(2, 10))}`, "signature");
   const key = createPublicKey({ key: Buffer.concat([ED25519_SPKI, pk.subarray(10)]), format: "der", type: "spki" });
   const message = alg === "ED" ? createHash("blake2b512").update(data).digest() : Buffer.from(data);
-  if (!verify(null, message, key, sig.subarray(10))) fail("SHA256SUMS.minisig does not verify: the file was changed or not signed by the engine's key");
+  if (!verify(null, message, key, sig.subarray(10))) fail("SHA256SUMS.minisig does not verify: the file was changed or not signed by the engine's key", "signature");
   const comment = trusted.slice("trusted comment: ".length);
-  if (!verify(null, Buffer.concat([sig.subarray(10), Buffer.from(comment, "utf8")]), key, global)) fail("SHA256SUMS.minisig's trusted comment does not verify");
+  if (!verify(null, Buffer.concat([sig.subarray(10), Buffer.from(comment, "utf8")]), key, global)) fail("SHA256SUMS.minisig's trusted comment does not verify", "signature");
   return comment;
 }
 const keyId = (b: Uint8Array) => Buffer.from(b).reverse().toString("hex").toUpperCase();
 
 // ---------------------------------------------------------------- downloads
 
-async function fetchBytes(c: Config, path: string): Promise<Uint8Array> {
-  const base = c.downloads;
-  if (/^https?:\/\//.test(base)) {
-    const r = await fetch(`${base}/${path}`);
-    if (!r.ok) fail(`${base}/${path}: ${r.status} ${r.statusText}`);
-    return new Uint8Array(await r.arrayBuffer());
+const env = (name: string, fallback: number) => {
+  const n = Number(process.env[name]);
+  return Number.isFinite(n) && process.env[name] !== "" && process.env[name] !== undefined ? n : fallback;
+};
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+const isUrl = (base: string) => /^https?:\/\//.test(base);
+
+/** An HTTP answer that is not a success, as its error: 404 not_found; 408, 429 and 5xx retryable network; the rest network. */
+function httpError(url: string, r: Response): LauncherError {
+  const why = `${url}: ${r.status} ${r.statusText}`;
+  if (r.status === 404) return new LauncherError(why, "not_found");
+  return new LauncherError(why, "network", r.status === 408 || r.status === 429 || r.status >= 500);
+}
+
+/** A thrown value as the launcher's error: a refused connection or a reset stream is a retryable network error, a full disk disk_full. */
+function asLauncherError(e: unknown): LauncherError {
+  if (e instanceof LauncherError) return e;
+  const err = e as { code?: string; name?: string; message?: string };
+  if (err?.code === "ENOSPC" || err?.code === "EDQUOT") return new LauncherError(`no space left in the engine cache: ${err.message}`, "disk_full");
+  if (err?.name === "AbortError" || err?.name === "TimeoutError" || err instanceof TypeError || /^(ECONN|ENOTFOUND|EAI_|ETIMEDOUT|EPIPE|ENETUNREACH|EHOSTUNREACH)/.test(err?.code ?? ""))
+    return new LauncherError(`network: ${err?.message ?? String(e)}`, "network", true);
+  return new LauncherError(err?.message ?? String(e), "internal");
+}
+
+/** Runs `f` until it succeeds, retrying a retryable error with doubling delays and reporting each retry. */
+async function withRetry<T>(report: Report, f: () => Promise<T>): Promise<T> {
+  const max = Math.max(1, env("ORIGIN_ENGINE_RETRIES", 5));
+  for (let attempt = 1; ; attempt++) {
+    try {
+      return await f();
+    } catch (e) {
+      const err = asLauncherError(e);
+      if (!err.retryable || attempt >= max) throw err;
+      const delayMs = Math.min(30_000, env("ORIGIN_ENGINE_RETRY_MS", 1000) * 2 ** (attempt - 1));
+      report({ event: "retry", attempt: attempt + 1, max, reason: err.message, delayMs });
+      await sleep(delayMs);
+    }
   }
-  const file = join(base.replace(/^file:\/\//, ""), path);
-  if (!existsSync(file)) fail(`${file}: no such file`);
-  return new Uint8Array(readFileSync(file));
+}
+
+/** A fetch that is aborted once no bytes arrive for ORIGIN_ENGINE_IDLE_MS (default 30 s): a stalled connection is retried, not waited on. */
+async function fetchIdle(url: string, init: RequestInit = {}): Promise<{ response: Response; body: AsyncIterable<Uint8Array>; done: () => void }> {
+  const idle = env("ORIGIN_ENGINE_IDLE_MS", 30_000);
+  const abort = new AbortController();
+  let timer = setTimeout(() => abort.abort(), idle);
+  const poke = () => {
+    clearTimeout(timer);
+    timer = setTimeout(() => abort.abort(), idle);
+  };
+  const response = await fetch(url, { ...init, signal: abort.signal });
+  poke();
+  const reader = response.body?.getReader();
+  const body = {
+    async *[Symbol.asyncIterator]() {
+      if (!reader) return;
+      for (;;) {
+        const { value, done } = await reader.read();
+        if (done) return;
+        poke();
+        yield value;
+      }
+    },
+  };
+  return { response, body, done: () => clearTimeout(timer) };
+}
+
+async function fetchBytes(c: Config, path: string, report: Report = silent): Promise<Uint8Array> {
+  const base = c.downloads;
+  if (!isUrl(base)) {
+    const file = join(base.replace(/^file:\/\//, ""), path);
+    if (!existsSync(file)) fail(`${file}: no such file`, "not_found");
+    return new Uint8Array(readFileSync(file));
+  }
+  return withRetry(report, async () => {
+    const url = `${base}/${path}`;
+    const { response, body, done } = await fetchIdle(url);
+    try {
+      if (!response.ok) throw httpError(url, response);
+      const parts: Uint8Array[] = [];
+      for await (const chunk of body) parts.push(chunk);
+      return new Uint8Array(Buffer.concat(parts));
+    } finally {
+      done();
+    }
+  });
+}
+
+/**
+ * Downloads `path` into `part`, resuming from what `part` already holds with
+ * a Range request (a server that ignores it sends the whole file, which
+ * replaces the part). Reports the bytes every 1 % or 500 ms, and once at
+ * the end. A failure leaves the part for the next attempt.
+ */
+async function download(c: Config, path: string, part: string, report: Report): Promise<void> {
+  const base = c.downloads;
+  if (!isUrl(base)) {
+    const file = join(base.replace(/^file:\/\//, ""), path);
+    if (!existsSync(file)) fail(`${file}: no such file`, "not_found");
+    const bytes = readFileSync(file);
+    writeFileSync(part, bytes);
+    report({ event: "download", bytes: bytes.length, total: bytes.length });
+    return;
+  }
+  const url = `${base}/${path}`;
+  let have = existsSync(part) ? statSync(part).size : 0;
+  const { response, body, done } = await fetchIdle(url, have > 0 ? { headers: { Range: `bytes=${have}-` } } : {});
+  let fd: number | undefined;
+  try {
+    if (response.status === 416) {
+      // The part is not a prefix of this file (larger, or of another upload): start over.
+      rmSync(part, { force: true });
+      fail(`${url}: the partial download does not fit the file; starting over`, "network", true);
+    }
+    if (!response.ok) throw httpError(url, response);
+    let total: number | null;
+    const range = /^bytes (\d+)-\d+\/(\d+|\*)$/.exec(response.headers.get("content-range") ?? "");
+    if (response.status === 206 && range && Number(range[1]) === have) {
+      total = range[2] === "*" ? null : Number(range[2]);
+      fd = openSync(part, "a");
+    } else {
+      have = 0;
+      const length = Number(response.headers.get("content-length"));
+      total = Number.isFinite(length) && length > 0 ? length : null;
+      fd = openSync(part, "w");
+    }
+    let shownBytes = -1;
+    let shownAt = 0;
+    const show = (final: boolean) => {
+      const now = Date.now();
+      const step = total ? total / 100 : Number.POSITIVE_INFINITY;
+      if (final || shownBytes < 0 || have - shownBytes >= step || now - shownAt >= 500) {
+        report({ event: "download", bytes: have, total });
+        shownBytes = have;
+        shownAt = now;
+      }
+    };
+    show(false);
+    for await (const chunk of body) {
+      writeSync(fd, chunk);
+      have += chunk.length;
+      show(false);
+    }
+    if (total !== null && have !== total) fail(`${url}: the connection ended at ${have} of ${total} bytes`, "network", true);
+    if (shownBytes !== have) show(true);
+  } finally {
+    done();
+    if (fd !== undefined) closeSync(fd);
+  }
+}
+
+/** A file's sha256, read in chunks. */
+function sha256File(file: string): string {
+  const hash = createHash("sha256");
+  const fd = openSync(file, "r");
+  try {
+    const buf = Buffer.alloc(1 << 20);
+    for (let n; (n = readSync(fd, buf, 0, buf.length, null)) > 0; ) hash.update(buf.subarray(0, n));
+  } finally {
+    closeSync(fd);
+  }
+  return hash.digest("hex");
 }
 
 /** The newest published release (latest/manifest.json). */
-export async function latest(c: Config): Promise<string> {
-  const m = JSON.parse(new TextDecoder().decode(await fetchBytes(c, "latest/manifest.json"))) as { version?: string };
-  if (!m.version || !VERSION_RE.test(m.version)) fail(`${c.downloads}/latest/manifest.json names no version`);
+export async function latest(c: Config, report: Report = silent): Promise<string> {
+  const m = JSON.parse(new TextDecoder().decode(await fetchBytes(c, "latest/manifest.json", report))) as { version?: string };
+  if (!m.version || !VERSION_RE.test(m.version)) fail(`${c.downloads}/latest/manifest.json names no version`, "not_found");
   return m.version;
 }
 
@@ -136,44 +359,97 @@ export const distDir = (c: Config, v: string) => join(c.cache, "engines", v, c.t
 const ogExe = (dist: string) => join(dist, "bin", process.platform === "win32" ? "og.exe" : "og");
 const isInstalled = (c: Config, v: string) => existsSync(join(distDir(c, v), "origin-engine.json"));
 
-/** Installs version `v` unless it is installed; returns its dist directory. */
-export async function install(c: Config, v: string, quiet = false): Promise<string> {
+/**
+ * Holds `lock` (a directory naming its owner's pid) while `f` runs: one
+ * download of a version at a time, so two launchers never write one part.
+ * A lock whose owner is gone is taken over.
+ */
+async function locked<T>(lock: string, f: () => Promise<T>): Promise<T> {
+  for (;;) {
+    try {
+      mkdirSync(lock);
+      writeFileSync(join(lock, "pid"), String(process.pid));
+      break;
+    } catch (e) {
+      if ((e as { code?: string }).code !== "EEXIST") throw e;
+      const owner = Number(existsSync(join(lock, "pid")) ? readFileSync(join(lock, "pid"), "utf8") : NaN);
+      let alive = true;
+      try {
+        if (owner > 0) process.kill(owner, 0);
+      } catch {
+        alive = false;
+      }
+      if (!alive) rmSync(lock, { recursive: true, force: true });
+      else await sleep(200);
+    }
+  }
+  try {
+    return await f();
+  } finally {
+    rmSync(lock, { recursive: true, force: true });
+  }
+}
+
+/** Installs version `v` unless it is installed, reporting its progress; returns its dist directory. */
+export async function install(c: Config, v: string, report: Report = silent): Promise<string> {
   if (!VERSION_RE.test(v)) fail(`${v} is not an engine version (x.y.z or x.y.z-dev.n)`);
   const dist = distDir(c, v);
-  if (isInstalled(c, v)) return dist;
-  const name = `origin-engine-${v}-${c.target}`;
-  const sums = await fetchBytes(c, `${v}/SHA256SUMS`);
-  const sig = new TextDecoder().decode(await fetchBytes(c, `${v}/SHA256SUMS.minisig`));
-  verifyMinisign(sums, sig, c.pubkey);
-  const line = new TextDecoder().decode(sums).split("\n").find((l) => l.trim().endsWith(`  ${name}.tar.gz`));
-  if (!line) fail(`engine ${v} has no ${c.target} archive (SHA256SUMS lists none)`);
-  const want = line.trim().split(/\s+/)[0]!;
-  if (!quiet) note(`downloading engine ${v} for ${c.target}`);
-  const archive = await fetchBytes(c, `${v}/${name}.tar.gz`);
-  const got = createHash("sha256").update(archive).digest("hex");
-  if (got !== want) fail(`${name}.tar.gz is ${got}; the signed SHA256SUMS says ${want}`);
-  const tmpRoot = join(c.cache, "tmp");
-  mkdirSync(tmpRoot, { recursive: true });
-  const tmp = mkdtempSync(join(tmpRoot, `${v}-`));
-  try {
-    writeFileSync(join(tmp, "archive.tar.gz"), archive);
-    const r = spawnSync("tar", ["-xzf", "archive.tar.gz"], { cwd: tmp, encoding: "utf8" });
-    if (r.error || r.status !== 0) fail(`unpacking ${name}.tar.gz failed: ${r.error?.message ?? r.stderr.trim()}`);
-    const root = join(tmp, name);
-    const build = (JSON.parse(readFileSync(join(root, "origin-engine.json"), "utf8")) as { build?: { version?: string } }).build;
-    if (build?.version !== v) fail(`${name}.tar.gz holds engine ${build?.version}, not ${v}`);
-    if (!existsSync(ogExe(root))) fail(`${name}.tar.gz has no ${ogExe(root).slice(root.length + 1)}`);
-    mkdirSync(dirname(dist), { recursive: true });
-    try {
-      renameSync(root, dist);
-    } catch (e) {
-      // Another launcher installed it meanwhile: keep that one.
-      if (!isInstalled(c, v)) throw e;
-    }
-  } finally {
-    rmSync(tmp, { recursive: true, force: true });
+  report({ event: "resolve", version: v, target: c.target });
+  if (isInstalled(c, v)) {
+    report({ event: "installed", version: v, path: dist, cached: true });
+    return dist;
   }
-  if (!quiet) note(`installed engine ${v} in ${dist}`);
+  const tmpRoot = join(c.cache, "tmp");
+  try {
+    mkdirSync(tmpRoot, { recursive: true });
+    const name = `origin-engine-${v}-${c.target}`;
+    await locked(join(tmpRoot, `${name}.lock`), async () => {
+      if (isInstalled(c, v)) return;
+      const sums = await fetchBytes(c, `${v}/SHA256SUMS`, report);
+      const sig = new TextDecoder().decode(await fetchBytes(c, `${v}/SHA256SUMS.minisig`, report));
+      verifyMinisign(sums, sig, c.pubkey);
+      const line = new TextDecoder().decode(sums).split("\n").find((l) => l.trim().endsWith(`  ${name}.tar.gz`));
+      if (!line) fail(`engine ${v} has no ${c.target} archive (SHA256SUMS lists none)`, "not_found");
+      const want = line.trim().split(/\s+/)[0]!;
+      const part = join(tmpRoot, `${name}.tar.gz.part`);
+      // A download and its check are one attempt: a part that does not match is deleted and fetched again.
+      await withRetry(report, async () => {
+        await download(c, `${v}/${name}.tar.gz`, part, report);
+        report({ event: "verify" });
+        const got = sha256File(part);
+        if (got !== want) {
+          rmSync(part, { force: true });
+          fail(`${name}.tar.gz is ${got}; the signed SHA256SUMS says ${want}`, "checksum");
+        }
+      });
+      report({ event: "unpack" });
+      const tmp = mkdtempSync(join(tmpRoot, `${v}-`));
+      try {
+        const r = spawnSync("tar", ["-xzf", part], { cwd: tmp, encoding: "utf8" });
+        if (r.error || r.status !== 0) {
+          const why = r.error?.message ?? r.stderr.trim();
+          fail(`unpacking ${name}.tar.gz failed: ${why}`, /no space left|disk quota/i.test(why) ? "disk_full" : "unpack");
+        }
+        const root = join(tmp, name);
+        const build = (JSON.parse(readFileSync(join(root, "origin-engine.json"), "utf8")) as { build?: { version?: string } }).build;
+        if (build?.version !== v) fail(`${name}.tar.gz holds engine ${build?.version}, not ${v}`, "unpack");
+        if (!existsSync(ogExe(root))) fail(`${name}.tar.gz has no ${ogExe(root).slice(root.length + 1)}`, "unpack");
+        mkdirSync(dirname(dist), { recursive: true });
+        try {
+          renameSync(root, dist);
+        } catch (e) {
+          // Another launcher installed it meanwhile: keep that one.
+          if (!isInstalled(c, v)) throw e;
+        }
+      } finally {
+        rmSync(tmp, { recursive: true, force: true });
+      }
+      rmSync(part, { force: true });
+    });
+  } catch (e) {
+    throw asLauncherError(e);
+  }
+  report({ event: "installed", version: v, path: dist, cached: false });
   return dist;
 }
 
@@ -250,7 +526,7 @@ export function linkEngine(root: string, dist: string) {
 
 function exec(dist: string, args: string[], cwd = process.cwd()): number {
   const r = spawnSync(ogExe(dist), args, { cwd, stdio: "inherit", env: { ...process.env, OG_ENGINE_PACKAGE: join(dist, "engine") } });
-  if (r.error) fail(`cannot start ${ogExe(dist)} (${r.error.message})`);
+  if (r.error) fail(`cannot start ${ogExe(dist)} (${r.error.message})`, "internal");
   return r.status ?? 1;
 }
 
@@ -263,33 +539,36 @@ const without = (args: string[], name: string): string[] => {
   return i < 0 ? args : [...args.slice(0, i), ...args.slice(i + 2)];
 };
 
-async function resolveVersion(c: Config, v: string): Promise<string> {
-  return v === "latest" ? latest(c) : v;
+async function resolveVersion(c: Config, v: string, report: Report = silent): Promise<string> {
+  return v === "latest" ? latest(c, report) : v;
 }
 
 /** The version a command runs: OG_ENGINE_VERSION, the project's pin, the newest installed release, the latest published. */
-async function versionFor(c: Config, root: string | undefined): Promise<string> {
+async function versionFor(c: Config, root: string | undefined, report: Report = silent): Promise<string> {
   const forced = process.env.OG_ENGINE_VERSION;
   if (forced) return forced;
   if (root) {
     const pin = pinOf(root);
-    if (!pin) fail(`${join(root, "project.ogt")} pins no engine (an \`engine "<version>"\` line)`);
-    if (!VERSION_RE.test(pin)) fail(`${join(root, "project.ogt")} pins engine "${pin}", which is not a version (x.y.z)`);
+    if (!pin) fail(`${join(root, "project.ogt")} pins no engine (an \`engine "<version>"\` line)`, "no_pin");
+    if (!VERSION_RE.test(pin)) fail(`${join(root, "project.ogt")} pins engine "${pin}", which is not a version (x.y.z)`, "no_pin");
     return pin;
   }
   const releases = installed(c).filter((v) => !v.includes("-dev."));
-  return releases[0] ?? (await latest(c));
+  return releases[0] ?? (await latest(c, report));
 }
 
-async function engineCommand(c: Config, args: string[]): Promise<number> {
+async function engineCommand(c: Config, args: string[], out: { report: Report; stdout: boolean }): Promise<number> {
   const [sub, ...rest] = args;
   switch (sub) {
     case "install": {
-      if (!rest[0]) fail("usage: og engine install <version|latest>");
-      const v = await resolveVersion(c, rest[0]);
+      // A version, else (in a project) the version it runs: its pin.
+      const given = rest.find((a) => !a.startsWith("-"));
+      const root = projectOf([]);
+      if (!given && !root) fail("usage: og engine install [<version>|latest] [--json] (the version, or run it in a project to install its pin)");
+      const v = given ? await resolveVersion(c, given, out.report) : await versionFor(c, root, out.report);
       const was = isInstalled(c, v);
-      const dist = await install(c, v);
-      if (was) process.stdout.write(`engine ${v} is installed: ${dist}\n`);
+      const dist = await install(c, v, out.report);
+      if (was && !out.stdout) process.stdout.write(`engine ${v} is installed: ${dist}\n`);
       return 0;
     }
     case "list": {
@@ -327,7 +606,7 @@ async function engineCommand(c: Config, args: string[]): Promise<number> {
       return 0;
     }
     default:
-      fail("usage: og engine install <version|latest> | list | path [<version>] | prune [--keep <version>]... [--dry-run]");
+      fail("usage: og engine install [<version>|latest] [--json] | list | path [<version>] | prune [--keep <version>]... [--dry-run]");
   }
 }
 
@@ -335,20 +614,34 @@ async function engineCommand(c: Config, args: string[]): Promise<number> {
 const CREATE_VALUES = new Set(["--name", "--id", "--profile", "--archetype", "--premise", "--look"]);
 
 export async function main(argv: string[]): Promise<number> {
+  const out = reporterFor(argv);
+  try {
+    return await command(argv, out);
+  } catch (e) {
+    const err = asLauncherError(e);
+    out.report({ event: "error", code: err.code, message: err.message, retryable: err.retryable });
+    // The prose too, for a reader of stderr when the events went to stdout.
+    if (out.stdout) note(err.message);
+    if (err.code === "internal" && e instanceof Error && e.stack) process.stderr.write(`${e.stack}\n`);
+    return 1;
+  }
+}
+
+async function command(argv: string[], out: { report: Report; stdout: boolean }): Promise<number> {
   const c = config();
   const [cmd, ...rest] = argv;
-  if (cmd === "engine") return engineCommand(c, rest);
+  if (cmd === "engine") return engineCommand(c, rest, out);
   if (cmd === "--launcher-version") {
     process.stdout.write(`og launcher ${LAUNCHER_VERSION}\n`);
     return 0;
   }
   if (cmd === "new") {
-    const v = await resolveVersion(c, optValue(rest, "--engine") ?? process.env.OG_ENGINE_VERSION ?? "latest");
-    const dist = await install(c, v);
+    const v = await resolveVersion(c, optValue(rest, "--engine") ?? process.env.OG_ENGINE_VERSION ?? "latest", out.report);
+    const dist = await install(c, v, out.report);
     const args = without(rest, "--engine");
     const create = join(dist, "create", "bin", "create.ts");
     const r = spawnSync("bun", [create, ...args], { stdio: "inherit" });
-    if (r.error) fail(`cannot start bun (${r.error.message}); the engine runs on bun: https://bun.sh`);
+    if (r.error) fail(`cannot start bun (${r.error.message}); the engine runs on bun: https://bun.sh`, "internal");
     if (r.status !== 0) return r.status ?? 1;
     const dir = args.find((a, i) => !a.startsWith("-") && !CREATE_VALUES.has(args[i - 1] ?? ""));
     const root = dir ? projectRoot(resolve(dir)) : undefined;
@@ -357,28 +650,18 @@ export async function main(argv: string[]): Promise<number> {
   }
   if (cmd === "upgrade") {
     // The target version's og does the upgrade: its changelog knows every version up to it.
-    const v = await resolveVersion(c, optValue(rest, "--to") ?? "latest");
-    const dist = await install(c, v);
+    const v = await resolveVersion(c, optValue(rest, "--to") ?? "latest", out.report);
+    const dist = await install(c, v, out.report);
     const status = exec(dist, ["upgrade", ...without(rest, "--to"), "--to", v]);
     const root = projectOf(rest);
     if ((status === 0 || status === 3) && root && pinOf(root) === v) linkEngine(root, dist);
     return status;
   }
   const root = projectOf(rest);
-  const v = await versionFor(c, root);
-  const dist = await install(c, v);
+  const v = await versionFor(c, root, out.report);
+  const dist = await install(c, v, out.report);
   if (root) linkEngine(root, dist);
   return exec(dist, argv);
 }
 
-if (import.meta.main) {
-  try {
-    process.exit(await main(process.argv.slice(2)));
-  } catch (e) {
-    if (e instanceof LauncherError) {
-      note(e.message);
-      process.exit(1);
-    }
-    throw e;
-  }
-}
+if (import.meta.main) process.exit(await main(process.argv.slice(2)));
