@@ -173,7 +173,7 @@ fi
 
 # wasm-split: Binaryen's release archive, checked against its sha256 (the
 # release's own .sha256 files); wasm-split and wasm-opt (whose call graph
-# wasm-split.ts reads) are installed, static binaries.
+# wasm-split.ts reads) are installed. The macOS binaries need the companion dylib.
 if command -v wasm-split >/dev/null && [ "$(wasm-split --version | awk '{print $3}')" = "$BINARYEN_VERSION" ] \
     && command -v wasm-opt >/dev/null && [ "$(wasm-opt --version | awk '{print $3}')" = "$BINARYEN_VERSION" ]; then
   og_say "wasm-split and wasm-opt $BINARYEN_VERSION: present"
@@ -193,6 +193,10 @@ else
     fetch "https://github.com/WebAssembly/binaryen/releases/download/version_$BINARYEN_VERSION/$a" "$tmp/$a"
     [ "$( (sha256sum "$tmp/$a" 2>/dev/null || shasum -a 256 "$tmp/$a") | awk '{print $1}')" = "$bsum" ] || { og_err "$a: sha256 is not the pinned $bsum"; exit 1; }
     tar -xzf "$tmp/$a" -C "$tmp"
+    if [ "$os" = Darwin ]; then
+      mkdir -p "$BIN/../lib"
+      cp "$tmp/binaryen-version_$BINARYEN_VERSION/lib/libbinaryen.dylib" "$BIN/../lib/"
+    fi
     cp "$tmp/binaryen-version_$BINARYEN_VERSION/bin/wasm-split" "$tmp/binaryen-version_$BINARYEN_VERSION/bin/wasm-opt" "$BIN/"
     wasm-split --version
   fi
