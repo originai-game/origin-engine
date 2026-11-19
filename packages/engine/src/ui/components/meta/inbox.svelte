@@ -67,7 +67,7 @@ h2, h3, h4, p { margin: 0; overflow-wrap: anywhere; }
 .row[data-unread=true] .badge { color: var(--quest-gold); }
 .icon { inline-size: var(--size-xs); block-size: var(--size-xs); flex: none; color: var(--quest-gold); }
 /* The open message in a sunken reader. */
-.reader { min-inline-size: 0; max-block-size: var(--measure-xl); overflow-y: auto; padding: var(--space-md) var(--space-lg); background: var(--quest-well-fill); box-shadow: var(--quest-well-rim); border-radius: var(--alert-reader-radius); }
+.reader { min-inline-size: 0; max-block-size: var(--measure-xl); overflow-y: auto; padding: var(--space-md) var(--space-lg); background: var(--quest-well-fill); box-shadow: var(--quest-well-rim); border-radius: var(--alert-reader-radius); corner-shape: var(--well-corner-shape); }
 .body { white-space: pre-wrap; overflow-wrap: anywhere; color: var(--quest-ink-quiet); }
 .attachments { inline-size: stretch; }
 h4 { font: var(--caption-text); font-weight: var(--quest-weight); letter-spacing: var(--hud-label-tracking); text-transform: var(--hud-label-transform); color: var(--quest-ink-quiet); }

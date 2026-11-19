@@ -29,13 +29,13 @@
      the number it drew with; og-ui's theme reads them back). A ratio is of the
      control's own size. `button-pressed-*` is a button held down;
      `button-selected-*` one that is on (`aria-pressed`: a toggle, a chip). */
-  --controls-button-radius: var(--radius-card);
+  --controls-button-radius: var(--radius-button);
   --controls-button-border-width: var(--stroke-hairline);
   --controls-button-shadow: var(--raise-shadow);
   --controls-button-pressed-shadow: var(--held-shadow);
   --controls-button-selected-fill: var(--selection);
   --controls-button-selected-ink: var(--on-selection);
-  --controls-field-radius: var(--radius-card);
+  --controls-field-radius: var(--radius-field);
   --controls-field-border-width: var(--stroke-thin);
   --controls-field-shadow: var(--sunk-shadow);
   --controls-panel-radius: var(--radius-panel);
@@ -43,12 +43,12 @@
   --controls-hud-radius: var(--radius-button);
   --controls-chip-radius: var(--radius-card);
   --controls-tabs-radius: var(--radius-block);
-  --controls-slot-radius: var(--radius-card);
+  --controls-slot-radius: var(--radius-field);
   --controls-slot-shadow: var(--sunk-shadow);
   --controls-meter-radius: var(--radius-capsule);
   --controls-meter-shadow: var(--shadow-sunk);
   --controls-meter-fill-shadow: var(--shadow-fill-sheen);
-  --controls-radio-card-radius: var(--radius-panel);
+  --controls-radio-card-radius: var(--radius-block);
   --controls-radio-card-shadow: var(--raise-shadow);
   --controls-dropdown-list-shadow: var(--elevation-floating);
   --controls-state-press-duration: 60ms;
@@ -117,7 +117,7 @@
   --controls-button-ghost-rim: var(--line-strong);
   --controls-button-ghost-hover-fill: var(--control);
   --controls-button-ghost-pressed-fill: var(--control);
-  --controls-button-corner-shape: round;
+  --controls-button-corner-shape: bevel;
   /* A button stands up from its surface: a lit rim, a face that falls
      away from the light, and a short shadow at its foot; held, it sinks.
      The primary action glows in the primary. Its fill stays one flat
@@ -131,15 +131,15 @@
   --controls-button-danger-shadow: inset 0 0 0 var(--stroke-hairline) var(--danger-45), var(--shadow-raise);
   --controls-button-selected-shadow: inset 0 0 0 var(--stroke-thin) var(--primary), var(--shadow-held);
   --controls-field-invalid-rim: var(--danger);
-  --controls-field-corner-shape: round;
+  --controls-field-corner-shape: bevel;
   --controls-checkbox-box-rim: var(--well-rim);
   --controls-checkbox-box-shadow: var(--field-shadow);
-  --controls-checkbox-corner-shape: round;
+  --controls-checkbox-corner-shape: bevel;
   --controls-radio-ring-rim: var(--well-rim);
   --controls-radio-ring-shadow: var(--field-shadow);
   --controls-radio-corner-shape: round;
   --controls-radio-card-checked-fill: var(--selection);
-  --controls-radio-card-corner-shape: round;
+  --controls-radio-card-corner-shape: bevel;
   --controls-radio-chosen-rim: var(--primary);
   --controls-switch-track-rim: var(--line);
   --controls-switch-knob-rim: var(--line);
@@ -157,13 +157,13 @@
   --controls-dropdown-list-rim-width: var(--panel-border-width);
   --controls-dropdown-list-radius: var(--panel-radius);
   --controls-panel-rim: var(--color-rim);
-  --controls-panel-corner-shape: round;
-  --controls-tooltip-radius: var(--panel-radius);
-  --controls-tooltip-corner-shape: round;
-  --controls-hud-corner-shape: round;
+  --controls-panel-corner-shape: bevel;
+  --controls-tooltip-radius: var(--radius-field);
+  --controls-tooltip-corner-shape: bevel;
+  --controls-hud-corner-shape: bevel;
   --controls-slot-selected-rim: var(--primary);
   --controls-slot-selected-shadow: var(--shadow-sunk), 0 0 var(--space-md) calc(var(--space-xxs) * -1) var(--color-glow);
-  --controls-slot-corner-shape: round;
+  --controls-slot-corner-shape: bevel;
   --controls-keyboard-key-rim: var(--color-rim);
   /* The rest of the controls in the same materials: a field, a track and
      a slot are recesses (`tile`, `sunk`); a knob, a tab that is on and a

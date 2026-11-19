@@ -1,0 +1,9 @@
+{
+  "simulation": "unchanged",
+  "fixed": [
+    {
+      "member": "Default style corners",
+      "summary": "One corner language in the default style: frames, plates, rows, cells, cards and wells, and the button, field, checkbox, radio card, panel, tooltip, HUD and slot controls are cut at 45° (corner-shape: bevel), the cut scaled to the part (frame 12 px, plate and card 8, cell, field and slot 6, button 6, row and well 4). Capsules, keys, avatars, dots and the round minimap stay round. The fantasy and cartoon packs keep their round corners by setting --<role>-corner-shape: round; a game's own pack that wants round corners does the same."
+    }
+  ]
+}

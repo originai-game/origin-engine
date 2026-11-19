@@ -598,6 +598,25 @@
   --plate-radius: var(--radius-lg);
   --plate-shadow: var(--cartoon-edge), var(--cartoon-drop);
   --plate-pad: var(--space-sm);
+  /* Corners stay this pack's own (round) while the default cuts them
+     (the art review, A5); the pack's own corner language is section D. */
+  --frame-corner-shape: round;
+  --plate-corner-shape: round;
+  --row-corner-shape: round;
+  --cell-corner-shape: round;
+  --card-corner-shape: round;
+  --well-corner-shape: round;
+  --field-corner-shape: round;
+  --checkbox-corner-shape: round;
+  --radio-card-corner-shape: round;
+  --panel-corner-shape: round;
+  --tooltip-corner-shape: round;
+  --hud-corner-shape: round;
+  --slot-corner-shape: round;
+  --card-radius: var(--radius-panel);
+  --button-corner-shape: round;
+  --button-radius: var(--radius-card);
+  --field-radius: var(--radius-card);
   --band-fill: var(--cartoon-band);
   --band-lead-fill: var(--cartoon-band);
   --band-small-fill: var(--cartoon-band);

@@ -218,7 +218,7 @@ fn border_radius_rounds_a_dressed_button() {
 </div></div>
 <style>
 #Root { width: 400px; gap: 20px; }
-#Round::part(base) { border-radius: 20px; }
+#Round::part(base) { border-radius: 12px; }
 </style>"#;
     with_doc(text, &[], |d| {
         let s = shapes(&d.ui);
@@ -246,7 +246,7 @@ fn border_radius_rounds_a_dressed_button() {
         };
         // The written corner replaces the dressing's (the renderer clamps
         // overlapping radii, as CSS does).
-        assert_eq!(radii("Round"), [20.0; 4]);
+        assert_eq!(radii("Round"), [12.0; 4]);
         assert_ne!(radii("Plain"), radii("Round"), "the style's corner differs");
     });
 }
@@ -442,7 +442,7 @@ fn a_buttons_own_box_styles_are_its_plate() {
 </div></div>
 <style>
 #Root { width: 400px; gap: 20px; }
-#Own { background: #ff7a2e; border: 3px solid #102030; border-radius: 30px; }
+#Own { background: #ff7a2e; border: 3px solid #102030; border-radius: 14px; }
 #Part { background: #ff0000; }
 #Part::part(base):hover { background: #0000ff; transition: none; }
 #Named { background: #ff00ff; }
@@ -496,7 +496,7 @@ fn a_buttons_own_box_styles_are_its_plate() {
         // box under it.
         let (fills, strokes) = paints(d, "Own");
         assert!(
-            fills.len() == 1 && is(&fills[0], 30.0, "#ff7a2e"),
+            fills.len() == 1 && is(&fills[0], 14.0, "#ff7a2e"),
             "{fills:?}"
         );
         assert!(
@@ -504,7 +504,7 @@ fn a_buttons_own_box_styles_are_its_plate() {
             "{strokes:?}"
         );
         let (plain, _) = paints(d, "Plain");
-        assert!(plain.len() == 1 && plain[0].0 != 30.0, "{plain:?}");
+        assert!(plain.len() == 1 && plain[0].0 != 14.0, "{plain:?}");
         assert!(!is(&plain[0], plain[0].0, "#ff7a2e"), "the style's plate");
         // A plate under another name (`part="item"`) is the same plate.
         let (named, _) = paints(d, "Named");
@@ -583,7 +583,7 @@ fn a_buttons_own_box_styles_are_its_plate() {
         d.step(InputFrame::default());
         let (fills, _) = paints(d, "Own");
         assert!(
-            fills.len() == 1 && is(&fills[0], 30.0, "#ff7a2e"),
+            fills.len() == 1 && is(&fills[0], 14.0, "#ff7a2e"),
             "{fills:?}"
         );
         let (plain, _) = paints(d, "Plain");

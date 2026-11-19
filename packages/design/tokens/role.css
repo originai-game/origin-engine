@@ -22,8 +22,11 @@
   --role-frame-fill: linear-gradient(180deg, var(--color-glass-hi), var(--color-glass) 96px, var(--color-glass-lo));
   --role-frame-rim: var(--color-rim);
   --role-frame-rim-width: var(--stroke-hairline);
-  --role-frame-radius: var(--radius-sheet);
-  --role-frame-corner-shape: round;
+  /* One corner language (the art review, A5): a frame, a plate, a row, a
+     cell, a card and a well are cut at 45°, the cut scaled to the part;
+     only a capsule, a key, an avatar and a dot stay round. */
+  --role-frame-radius: var(--radius-panel);
+  --role-frame-corner-shape: bevel;
   --role-frame-shadow: var(--shadow-panel);
   --role-frame-pad: var(--space-lg);
   --role-frame-corner-image: none;
@@ -31,8 +34,8 @@
   --role-plate-fill: linear-gradient(180deg, var(--color-plate-hi), var(--color-plate-lo));
   --role-plate-rim: var(--color-rim);
   --role-plate-rim-width: var(--stroke-hairline);
-  --role-plate-radius: var(--radius-card);
-  --role-plate-corner-shape: round;
+  --role-plate-radius: var(--radius-block);
+  --role-plate-corner-shape: bevel;
   --role-plate-shadow: var(--shadow-plate);
   --role-plate-pad: var(--space-sm);
 
@@ -69,8 +72,8 @@
   --role-row-pressed-fill: var(--control-strong);
   --role-row-selected-fill: var(--color-select-hi);
   --role-row-selected-edge: inset var(--stroke-thick) 0 0 var(--primary);
-  --role-row-radius: var(--radius-block);
-  --role-row-corner-shape: round;
+  --role-row-radius: var(--radius-control);
+  --role-row-corner-shape: bevel;
 
   /* Cell: a tile of a grid (an item, a card, a day): a recess in its
      frame, shaded at its top with the light on its lower lip. Under a
@@ -79,8 +82,8 @@
   --role-cell-rim: var(--color-rim-soft);
   --role-cell-rim-width: var(--stroke-hairline);
   --role-cell-selected-rim: var(--primary);
-  --role-cell-radius: var(--radius-card);
-  --role-cell-corner-shape: round;
+  --role-cell-radius: var(--radius-field);
+  --role-cell-corner-shape: bevel;
   --role-cell-shadow: var(--shadow-sunk);
   --role-cell-hover-shadow: inset 0 0 0 var(--stroke-hairline) var(--color-rim-strong), var(--shadow-raise-hover);
   --role-cell-pressed-fill: var(--color-tile-pressed);
@@ -131,8 +134,8 @@
   --role-card-rim: var(--color-rim-soft);
   --role-card-rim-width: var(--stroke-hairline);
   --role-card-selected-rim: var(--primary);
-  --role-card-radius: var(--radius-panel);
-  --role-card-corner-shape: round;
+  --role-card-radius: var(--radius-block);
+  --role-card-corner-shape: bevel;
   --role-card-shadow: inset 0 1px 0 0 var(--color-lit-soft);
   --role-card-pad: var(--space-md);
 
@@ -186,8 +189,8 @@
   --role-badge-pad: 0 var(--space-sm);
   --role-badge-text: var(--text-caption);
   --role-well-fill: var(--color-tile);
-  --role-well-radius: var(--radius-block);
-  --role-well-corner-shape: round;
+  --role-well-radius: var(--radius-control);
+  --role-well-corner-shape: bevel;
   --role-well-shadow: var(--shadow-sunk);
   /* A well whose holder cannot be used now (a cost the player cannot
      pay): danger rises from its foot. */

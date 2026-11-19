@@ -1757,9 +1757,13 @@ fn a_focus_ring_follows_its_buttons_corner_shape() {
         ring_strokes(&d.ui)
     };
     assert_eq!(
-        ring(""),
+        ring("--button-corner-shape: round;"),
         vec![(false, 10.0 + 2.0)],
         "a round button rings round"
+    );
+    assert!(
+        matches!(ring("").as_slice(), [(true, r)] if *r > 10.0),
+        "the default's bevelled button rings bevelled"
     );
     let bevelled = ring("--button-corner-shape: bevel;");
     assert!(
