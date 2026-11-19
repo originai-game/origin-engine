@@ -44,6 +44,29 @@ pub(crate) struct Scan {
     pub(crate) external: Vec<PathBuf>,
 }
 
+/// The built-in `@ui/` ids the game's code names as string literals
+/// (`og.load.document(world, "@ui/screens/pause.svelte")`): an input of the
+/// scan, so a cook after a change to code alone recooks when they change.
+pub(crate) fn code_ui_ids(root: &Path) -> BTreeSet<String> {
+    let mut ids = BTreeSet::new();
+    for path in super::assets::game_typescript(root).unwrap_or_default() {
+        let Ok(text) = std::fs::read_to_string(&path) else {
+            continue;
+        };
+        // Code that does not parse is the asset index's to report.
+        let Ok(refs) = super::ts_refs::parse(&path, &text) else {
+            continue;
+        };
+        ids.extend(
+            refs.literals
+                .into_iter()
+                .map(|l| l.value)
+                .filter(|v| v.starts_with(ui_components::PREFIX)),
+        );
+    }
+    ids
+}
+
 pub(crate) fn scan(assets_dir: &Path) -> Result<Scan, CookError> {
     scan_with(assets_dir, &|path| std::fs::read(path), 1)
 }
@@ -170,27 +193,12 @@ pub(crate) fn scan_with(
         game.entry(doc.name.clone()).or_insert_with(|| rel.clone());
         used.extend(ui_components::uses(&doc));
     }
-    // The built-in screens the game's code names by id
-    // (`og.load.document(world, "@ui/screens/pause.svelte")`).
+    // The built-in screens the game's code names by id.
     if let Some(root) = assets_dir
         .parent()
         .filter(|r| r.join("project.ogt").is_file())
     {
-        for path in super::assets::game_typescript(root).unwrap_or_default() {
-            let Ok(text) = std::fs::read_to_string(&path) else {
-                continue;
-            };
-            // Code that does not parse is the asset index's to report.
-            let Ok(refs) = super::ts_refs::parse(&path, &text) else {
-                continue;
-            };
-            used.extend(
-                refs.literals
-                    .into_iter()
-                    .map(|l| l.value)
-                    .filter(|v| v.starts_with(ui_components::PREFIX)),
-            );
-        }
+        used.extend(code_ui_ids(root));
     }
     let components = match ui_components::resolve(game.clone(), used) {
         Ok(r) => {

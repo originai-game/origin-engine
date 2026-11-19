@@ -1,0 +1,8 @@
+{
+  "fixed": [
+    {
+      "member": "og.load.document",
+      "summary": "A built-in screen (\"@ui/screens/<name>.svelte\") that the game's code starts to name after a cook is cooked into the bundle by the next og cook, instead of being left out until a full cook so og.load.document failed with \"not in the cooked bundle\"."
+    }
+  ]
+}

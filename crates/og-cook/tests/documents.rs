@@ -272,6 +272,42 @@ fn a_screen_cooks_in_the_built_in_components_it_uses() {
     );
 }
 
+/// A built-in screen the code starts to name after the last cook joins the
+/// bundle on the next one. Ways it could fail: the cook after a change to
+/// code alone rewrites only the asset index, so the screen stays out and
+/// og.load.document fails at run time with "not in the cooked bundle".
+#[test]
+fn a_built_in_screen_newly_named_in_code_cooks_in() {
+    let root = project("code-names-screen", &[]);
+    std::fs::create_dir_all(root.join("assets")).unwrap();
+    std::fs::create_dir_all(root.join("src")).unwrap();
+    std::fs::write(
+        root.join("project.ogt"),
+        "type project\nversion 1\n---\nname \"p\"\n",
+    )
+    .unwrap();
+    let cook = || {
+        let r =
+            og_cook::cook::cook_project_with_texture_cache(&root, &CookOptions::default(), None)
+                .unwrap();
+        assert!(r.ok(), "{}", r.errors().join("\n"));
+        Bundle::open(&root.join("cooked")).unwrap()
+    };
+    std::fs::write(root.join("src/main.ts"), "export default 1;\n").unwrap();
+    assert!(cook().output("@ui/screens/pause.svelte").is_err());
+    std::fs::write(
+        root.join("src/main.ts"),
+        "og.load.document(world, \"@ui/screens/pause.svelte\");\n",
+    )
+    .unwrap();
+    let bundle = cook();
+    assert_eq!(
+        bundle.output("@ui/screens/pause.svelte").unwrap().ty,
+        "og.UiDocument"
+    );
+    assert!(bundle.output("@ui/screens/pause.en.ogt").is_ok());
+}
+
 #[test]
 fn manifest_only_edits_update_a_cached_builtin_documents_dependencies() {
     let root = project(

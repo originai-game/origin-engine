@@ -438,6 +438,7 @@ pub(crate) fn finish(
     let mut index = assets::build(root, &manifest, sources, parsed_refs, threads)?;
     let before_code = BeforeCode {
         uses_motion,
+        ui_ids: scan::code_ui_ids(root),
         roots: index.roots.clone(),
         users: index.users.clone(),
         computed: index.computed.clone(),
@@ -494,6 +495,10 @@ pub(crate) fn finish(
 #[derive(Clone, serde::Serialize, serde::Deserialize)]
 pub(crate) struct BeforeCode {
     uses_motion: bool,
+    /// The built-in `@ui/` ids the code named ([`scan::code_ui_ids`]): the
+    /// scan bundles those screens, so another set needs the whole cook.
+    #[serde(default)]
+    ui_ids: BTreeSet<String>,
     roots: BTreeSet<String>,
     users: BTreeMap<String, BTreeSet<String>>,
     computed: Vec<assets::ComputedLoad>,
@@ -503,8 +508,9 @@ pub(crate) struct BeforeCode {
 /// plan are written again from the last cook's manifest and assets, which
 /// are as they were. `false` when it cannot answer and the whole cook must:
 /// the code uses og.motion, or did (its model is read from outside the
-/// project, and the manifest names it), or the last cook's files do not
-/// read back.
+/// project, and the manifest names it), the code names another set of
+/// built-in `@ui/` documents (the scan bundles them), or the last cook's
+/// files do not read back.
 pub(crate) fn cook_code(root: &Path, before: &BeforeCode) -> Result<bool, CookError> {
     let cooked_dir = root.join("cooked");
     let (Some(manifest), Ok(last)) = (
@@ -515,7 +521,7 @@ pub(crate) fn cook_code(root: &Path, before: &BeforeCode) -> Result<bool, CookEr
     ) else {
         return Ok(false);
     };
-    if before.uses_motion || motion::uses_motion(root) {
+    if before.uses_motion || motion::uses_motion(root) || scan::code_ui_ids(root) != before.ui_ids {
         return Ok(false);
     }
     let mut index = assets::Index {
