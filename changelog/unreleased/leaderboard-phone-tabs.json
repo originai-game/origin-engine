@@ -1,0 +1,9 @@
+{
+  "simulation": "unchanged",
+  "fixed": [
+    {
+      "member": "@ui/screens/leaderboard",
+      "summary": "On a phone at large text the Global, Friends and League tabs step their type down to fit their thirds, and past the caption step end in an ellipsis inside their own segment, instead of running together as one word."
+    }
+  ]
+}

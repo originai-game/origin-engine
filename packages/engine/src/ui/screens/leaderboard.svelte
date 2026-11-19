@@ -105,9 +105,12 @@ button.selection-on::part(base) { color: var(--result-row-lit-ink); background: 
   [part="leaderboard.title"] { font-size: var(--result-size-title-compact); }
   #Period, #Period::part(base) { block-size: var(--control-md); }
   #Tabs { inline-size: 100%; }
-  /* Three segments share the width whole: tighter tracking and side padding, so no label overruns the well. */
+  /* Three segments share the width whole: tighter tracking and side padding.
+     A label wider than its third (a wide face at large text) steps its type
+     down until it fits, and only past the caption step ends in an ellipsis,
+     inside its own segment, never running into its neighbours. */
   #Tabs button { flex: 1 1 0; min-inline-size: 0; }
-  #Tabs button::part(base) { min-inline-size: 0; padding-inline: var(--space-xs); letter-spacing: var(--result-tab-tracking-compact); }
+  #Tabs button::part(base) { min-inline-size: 0; padding-inline: var(--space-xs); letter-spacing: var(--result-tab-tracking-compact); -og-fit-min: caption; text-overflow: ellipsis; }
   [part="leaderboard.row"] { column-gap: var(--space-sm); }
   [part="leaderboard.rank"] { min-inline-size: calc(38 * var(--font-step-px)); line-height: calc(32 * var(--font-step-px)); }
   #Avatar { inline-size: var(--size-sm); block-size: var(--size-sm); }
