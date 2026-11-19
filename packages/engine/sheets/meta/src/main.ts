@@ -9,7 +9,7 @@
 // reduced:<on|off>.
 
 import { og, type World } from "@origingame/engine";
-import { INK_NAMES, ITEM_NAMES, PROGRESS, REWARDS, SEASON, SOCIAL, STATES, STORE } from "./fixtures.ts";
+import { INK_NAMES, ITEM_NAMES, PROGRESS, REWARDS, SEASON, SHOP_TEXT, SOCIAL, STATES, STORE, localized } from "./fixtures.ts";
 
 const PAGES = ["store", "purchase", "progress", "social", "states", "rewards", "season"] as const;
 const STYLES = ["fantasy", "scifi", "cartoon", "default"] as const;
@@ -41,10 +41,13 @@ function setStyle(world: World, name: string): void {
   og.ui.configure(world, { style, font: null, icons, fallbackIcons });
 }
 
+/** The shop family's fixture text in the active locale, read in start (ui may not call og.i18n). */
+let shopText: Record<string, unknown> = {};
+
 /** Mounts the sheet, its stores the fixtures and the page shown. */
 function show(world: World): void {
   const scope = og.ui.scope(world, "sheet");
-  const data = { ...STORE, ...PROGRESS, ...SOCIAL, ...STATES, ...REWARDS, ...SEASON, page: "store" };
+  const data = { ...STORE, ...PROGRESS, ...SOCIAL, ...STATES, ...REWARDS, ...SEASON, ...shopText, page: "store" };
   const stores = Object.fromEntries(Object.entries(data).map(([k, v]) =>
     [k, Array.isArray(v) ? scope.collection(k, v as { id: string }[], { key: "id" }) : scope.writable(k, v)]));
   must(scope.mount("sheet", "GeneralSheet", stores), "mount");
@@ -60,8 +63,10 @@ export default og.game({
     if (camera.ok) camera.value.background = { r: 0.04, g: 0.03, b: 0.02 };
     setStyle(world, "fantasy");
     // The shop family's strings in the review's CJK locale, as a game ships
-    // them (English comes with the kit).
-    must(og.i18n.load(world, "strings/zh-CN.ogt"), "zh-CN");
+    // them (the kit's English comes with the kit), and the sheet's own
+    // fixture text for the shop family's pages.
+    for (const locale of ["en", "zh-CN"]) must(og.i18n.load(world, `strings/${locale}.ogt`), locale);
+    shopText = localized(SHOP_TEXT(), (key) => og.i18n.t(world, key));
     for (const path of DOCUMENTS) must(og.load.document(world, path), path);
   },
   ui: show,

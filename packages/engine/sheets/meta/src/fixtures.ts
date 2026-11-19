@@ -240,3 +240,30 @@ export const SEASON = {
     { id: "gold", name: "Gold", icon: "item-purse", amount: "×120", rarity: "common", fresh: false },
   ],
 };
+
+// The shop family's fixture text goes through the string tables as a game's
+// own data would (as the rpg sheet does): a top-level text store is the key
+// `sheet.<store>`, a row's text field `sheet.<store>.<id>.<field>`. The
+// English here is the source of assets/strings/en.ogt; `tr` answers each key
+// in the active locale. Ids, icons, rarities, states and figures stay.
+const ROW_TEXT = new Set(["label", "name", "detail", "badge", "amount", "text"]);
+const NOT_TEXT = /(Icon|Rarity|Selected|Tab|Sealed|Revealed|Level)$/;
+const WORDS = /\p{L}{2}/u;
+
+/** The stores the shop family's pages show, the ones `localized` covers. */
+export const SHOP_TEXT = (): Record<string, unknown> => {
+  const { confirmError, failName, failPrices, shortName, shortDetail, shortPrices } = STATES;
+  const { rewardsRefresh, rewardsDays } = PROGRESS;
+  return { ...STORE, ...SEASON, confirmError, failName, failPrices, shortName, shortDetail, shortPrices, rewardsRefresh, rewardsDays };
+};
+
+export function localized<T extends Record<string, unknown>>(data: T, tr: (key: string) => string): T {
+  const out: Record<string, unknown> = {};
+  for (const [store, v] of Object.entries(data)) {
+    if (typeof v === "string") out[store] = WORDS.test(v) && !NOT_TEXT.test(store) ? tr(`sheet.${store}`) : v;
+    else if (Array.isArray(v)) out[store] = v.map((row: Record<string, unknown>) => Object.fromEntries(Object.entries(row).map(([f, x]) =>
+      [f, typeof x === "string" && WORDS.test(x) && ROW_TEXT.has(f) ? tr(`sheet.${store}.${row.id}.${f}`) : x])));
+    else out[store] = v;
+  }
+  return out as T;
+}
