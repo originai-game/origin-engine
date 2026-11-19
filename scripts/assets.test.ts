@@ -153,3 +153,26 @@ test("other bytes never install or upload, and every pin that cannot be had is n
   expect(verify.code).toBe(1);
   expect(verify.error).toContain(`assets/models/raft.glb: the store has no ${sha("a raft never pushed")}`);
 });
+
+// Binaries live in the asset store (docs/ci.md §The asset store). Git keeps only what a bare cargo build
+// compiles in, the knowledge package's previews (mounted by `git archive`), the install test's sample,
+// which runs in a sandbox without the store, and vendored third-party data.
+const IN_GIT = new Set([
+  "crates/og-api/search/words.bin",
+  "crates/og-render/data/blue-noise-64.r8",
+  "crates/og-ui/tests/fixtures/world-placement.zlib",
+  "templates/looks/assets/canvas/linen.png",
+  "templates/looks/assets/canvas/paper.png",
+  "templates/looks/assets/canvas/watercolor.png",
+  "tests/fixtures/ui-text/assets/fonts/Inter-Display.ttf",
+  "tests/fixtures/ui-text/assets/fonts/NotoSansArabic-subset.ttf",
+  "tests/fixtures/ui-text/assets/fonts/NotoSansDevanagari-subset.ttf",
+  "tests/install/fixtures/tone.mp3",
+]);
+test("Git holds no binary outside its list: every other one is pinned in the asset store", () => {
+  const listed = Bun.spawnSync(["git", "ls-files", "--eol", "-z"], { cwd: join(import.meta.dir, "..") }).stdout.toString().split("\0");
+  // `i/-text`: Git's own reading of the committed bytes as binary, whatever the file's name.
+  const binary = listed.filter((line) => line.startsWith("i/-text")).map((line) => line.slice(line.indexOf("\t") + 1));
+  const stray = binary.filter((path) => !IN_GIT.has(path) && !/^packages\/knowledge\/previews\/[^/]+\.webp$/.test(path) && !path.startsWith("third_party/"));
+  expect(stray).toEqual([]);
+});

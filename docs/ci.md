@@ -499,16 +499,25 @@ above a design §7 target changes design §7 in the same commit.
 
 ## The asset store
 
-The repository's binary assets are moving out of Git and out of the two
-buckets below into one store the platform hosts, addressed by SHA-256
-(`GET /api/engine-assets/sha256/<hex>` on origingame.ai; public objects are
-read anonymously, private ones and uploads need a platform key the store
-lets write). og.motion's weights (`packages/engine/og-assets.json`, read by
-cooks through `motion.json`'s `url`), the remote-frame archives
-(`frame-hosts.json`, pushed by `scripts/release.sh publish`) and every
-showcase project's assets live there. Engines up to 0.9.0 read the frozen
-public R2 bucket `origin-engine-models` instead, which stays until no
-supported release names it.
+The repository's binary assets live outside Git, in one store the platform
+hosts, addressed by SHA-256 (`GET /api/engine-assets/sha256/<hex>` on
+origingame.ai; public objects are read anonymously, private ones and uploads
+need a platform key the store lets write): the reference frames, the vfx
+packs, the engine package's extensions, sheets and vendor files, the
+templates' fonts, styles and look art, the test fixtures, og-tests' assets,
+og.motion's weights (read by cooks through `motion.json`'s `url`), the
+remote-frame archives (`frame-hosts.json`, pushed by `scripts/release.sh
+publish`) and every showcase project's assets. Git keeps only the binaries a
+bare cargo build compiles in, the knowledge package's previews, the install
+test's sample and vendored `third_party/` data; `scripts/assets.test.ts`
+fails on any other. Engines up to 0.9.0 read the frozen public R2 bucket
+`origin-engine-models` instead, which stays until no supported release
+names it.
+
+A manifest that owns files a package ships sits above every directory that
+is packed or copied (`packages/engine/`, `packages/vfx-packs/`,
+`templates/`): `bun pm pack` applies a nested `.gitignore` even inside a
+`files` entry, and a pack's archive would carry a nested `og-assets.json`.
 
 A directory that owns pinned files keeps an `og-assets.json` beside them:
 `{"version": 1, "files": [{path, sha256, size, visibility, source?, licence?}]}`,
