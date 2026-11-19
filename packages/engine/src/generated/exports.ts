@@ -202,6 +202,9 @@ export const TimelineAsset = ((value = 0 as Api.TimelineAsset, options) => spec(
 // net
 export const NetMode = ((value = "lockstep" as Api.NetMode, options) => spec("NetMode", value, options)) as typeof Api.NetMode;
 
+// shared
+export const SharedState = ((value = "off" as Api.SharedState, options) => spec("SharedState", value, options)) as typeof Api.SharedState;
+
 // art
 export const ArtRotation = ((value = "free" as Api.ArtRotation, options) => spec("ArtRotation", value, options)) as typeof Api.ArtRotation;
 export const ArtFilter = ((value = "any" as Api.ArtFilter, options) => spec("ArtFilter", value, options)) as typeof Api.ArtFilter;

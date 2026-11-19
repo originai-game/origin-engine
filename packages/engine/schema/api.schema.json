@@ -15922,6 +15922,205 @@
       "callbacks": []
     },
     {
+      "name": "shared",
+      "doc": "Shared worlds: visitors of one large world see each other's avatars in real time, near them only. Each client runs its own world; a world server (`og world-server`) holds the avatars, checks each move and sends each client those near it. The game marks its avatar with og.SharedAvatar and moves it as always; every other visitor in sight is an og.RemoteAvatar entity the engine spawns, moves and despawns.\nThe host supplies the connection; game code names no URL or token. What the session delivers is host input, journaled with og.platform.journal.\nSee `shared-worlds`.",
+      "place": "namespace",
+      "publish": true,
+      "types": [
+        "SharedState",
+        "SharedState",
+        "SharedWorld",
+        "SharedAvatar",
+        "RemoteAvatar",
+        "SharedJoined",
+        "SharedLeft",
+        "PresenceEntered",
+        "PresenceLeft",
+        "SharedCorrected",
+        "SharedShapeDesc",
+        "SharedJoinDesc",
+        "SharedRemote",
+        "SharedStatus"
+      ],
+      "consts": [],
+      "functions": [
+        {
+          "name": "shape",
+          "doc": "Set what the game shares besides the transform: its avatar component and its event component. Call it outside a system before og.shared.join; its fingerprint is checked when joining, so every client of a world needs the same shape. Without a call, the transform alone and no events.\nSee `shared-worlds §2`.",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world."
+            },
+            {
+              "name": "desc",
+              "type": "SharedShapeDesc",
+              "optional": true,
+              "doc": "The avatar component and the event component."
+            }
+          ],
+          "returns": "Result<Void>",
+          "returnsDoc": "Refused inside a system, during a session, or for a component whose packed bytes are too many.",
+          "publish": true
+        },
+        {
+          "name": "join",
+          "doc": "Join a shared world: the host asks its session provider for a connection (an endpoint and a token the engine never reads), the engine says hello, and og.SharedJoined arrives once the server takes this client in. The og.SharedAvatar entity is what it shares. A lost connection reconnects by itself.\nSee `shared-worlds §2`.",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world."
+            },
+            {
+              "name": "desc",
+              "type": "SharedJoinDesc",
+              "optional": true,
+              "doc": "The world to join."
+            }
+          ],
+          "returns": "Result<Void>",
+          "returnsDoc": "Refused during a session, with lockstep running (og.Lockstep), or for a world name that is not one. Without a session provider the join is refused when the host answers: og.SharedLeft says `unavailable`.",
+          "publish": true
+        },
+        {
+          "name": "leave",
+          "doc": "Leave the shared world: the server is told, and every og.RemoteAvatar despawns at the next tick (og.SharedLeft says `left`).",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world."
+            }
+          ],
+          "returns": "Result<Void>",
+          "returnsDoc": "Refused without a session.",
+          "publish": true
+        },
+        {
+          "name": "teleport",
+          "doc": "Move this avatar anywhere at once (a map click, a portal): its og.Transform is set and the next proposal is a teleport, which the server takes past the speed rule when its policy allows, and remote clients draw at once instead of moving it across.\nSee `shared-worlds §4`.",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world."
+            },
+            {
+              "name": "position",
+              "type": "Vector3",
+              "optional": false,
+              "doc": "Where, in world space."
+            }
+          ],
+          "returns": "Result<Void>",
+          "returnsDoc": "Refused without an og.SharedAvatar entity or for a position that is not finite.",
+          "publish": true
+        },
+        {
+          "name": "send",
+          "doc": "Send an event to the visitors near this one (those whose sight holds this avatar): reliable, at most 1 KiB, rate-limited by the server. They read it with og.shared.events at the start of the tick after it arrives.",
+          "generics": [
+            {
+              "name": "C",
+              "bound": "AnyComponent"
+            }
+          ],
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world."
+            },
+            {
+              "name": "component",
+              "type": "C",
+              "optional": false,
+              "doc": "The event component og.shared.shape named."
+            },
+            {
+              "name": "value",
+              "type": "Partial<Value<C>>",
+              "optional": false,
+              "doc": "Its fields; omitted ones take their defaults (`from` is the engine's)."
+            }
+          ],
+          "returns": "Result<Void>",
+          "returnsDoc": "Refused without a joined session, without an event shape, or for another component.",
+          "publish": true
+        },
+        {
+          "name": "events",
+          "doc": "The events delivered this tick, in the order they arrived, each with `from` set to its sender's og.RemoteAvatar when the component has that field. Callable from a system.",
+          "generics": [
+            {
+              "name": "C",
+              "bound": "AnyComponent"
+            }
+          ],
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world."
+            },
+            {
+              "name": "component",
+              "type": "C",
+              "optional": false,
+              "doc": "The event component og.shared.shape named."
+            }
+          ],
+          "returns": "Result<List<Value<C>>>",
+          "returnsDoc": "Refused for another component than the shape's.",
+          "publish": true
+        },
+        {
+          "name": "remote",
+          "doc": "Who an og.RemoteAvatar is: its player id, name and kind. Null for an entity that is not one.",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world."
+            },
+            {
+              "name": "entity",
+              "type": "Entity",
+              "optional": false,
+              "doc": "The og.RemoteAvatar entity."
+            }
+          ],
+          "returns": "Option<SharedRemote>",
+          "publish": true
+        },
+        {
+          "name": "status",
+          "doc": "The session now: its state, what carries it, the avatars held, the server's tick, and the bytes and corrections so far.",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world."
+            }
+          ],
+          "returns": "SharedStatus",
+          "publish": true
+        }
+      ],
+      "interfaces": [],
+      "callbacks": []
+    },
+    {
       "name": "art",
       "doc": "A game's art contract: what every asset of its style holds, as seven resources a look sets beside the render ones (docs/art.md §2.1): ArtPalette, ArtPixels, ArtTexels, ArtShape, ArtLine, ArtMotion and ArtCamera. A style is the assets, not a filter on the frame.\nEvery field is no constraint at its zero value, so a look without these blocks cooks and draws as before. Writing them changes neither the frame nor the simulation; the cook reads the contract of project.ogt's `look`.\nSee `art-review §6`.",
       "place": "namespace",
@@ -45045,7 +45244,7 @@
         },
         "kind": {
           "type": "string",
-          "description": "`host` (what answers was attached, or its clock told), `answer` or `notice`."
+          "description": "`host` (what answers was attached, or its clock told), `answer`, `notice`, or `shared` (a shared-world event, og_shared_deliver's, without its token)."
         },
         "request": {
           "type": "integer",
@@ -56361,6 +56560,425 @@
         "stalled",
         "drops",
         "snapshotBytes"
+      ],
+      "additionalProperties": false
+    },
+    "SharedState": {
+      "x-og-kind": "enum",
+      "x-og-module": "shared",
+      "description": "Where this client's session stands (og.SharedWorld.state).",
+      "type": "string",
+      "enum": [
+        "off",
+        "connecting",
+        "joined",
+        "reconnecting",
+        "refused"
+      ],
+      "x-og-variants": {
+        "off": "No session: og.shared.join was never called, or og.shared.leave ended it.",
+        "connecting": "Joining: the host asked its session provider for a connection and the server has not welcomed this client yet.",
+        "joined": "In the world: the server took this client in; remote avatars arrive.",
+        "reconnecting": "The connection was lost (or the server moved this client): the engine asks the provider for a new connection, backing off from 250 ms to 4 s for 30 s, and the server keeps this avatar 10 s for it to resume.",
+        "refused": "The provider or the server refused this client, or reconnecting gave up: og.SharedLeft says why."
+      }
+    },
+    "SharedWorld": {
+      "x-og-kind": "resource",
+      "x-og-module": "shared",
+      "description": "This client's shared-world session: its settings, which the game sets, and where it stands, which the engine writes. Remote avatars are drawn `interpDelayMs` behind the newest server time this client has, between the two states around it.\nSee `shared-worlds §2`.",
+      "type": "object",
+      "properties": {
+        "sendRateHz": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "How often this client proposes its avatar's state, per second (at most the tick rate).",
+          "default": 20,
+          "minimum": 1,
+          "maximum": 60
+        },
+        "interpDelayMs": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "How far behind the newest server time remote avatars are drawn: two snapshots at the server's 20 Hz by default, so a lost one is covered.\nSee `shared-worlds §3`.",
+          "default": 100,
+          "minimum": 0,
+          "maximum": 1000,
+          "x-og-unit": "ms"
+        },
+        "extrapolateMs": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "How long a remote avatar whose updates stopped keeps moving along its last velocity before it holds.",
+          "default": 250,
+          "minimum": 0,
+          "maximum": 2000,
+          "x-og-unit": "ms"
+        },
+        "state": {
+          "$ref": "#/$defs/SharedState",
+          "description": "Where the session stands.",
+          "default": "off",
+          "readOnly": true
+        },
+        "inSight": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "The remote avatars this client holds now (og.RemoteAvatar entities).",
+          "default": 0,
+          "readOnly": true
+        }
+      },
+      "additionalProperties": false
+    },
+    "SharedAvatar": {
+      "x-og-kind": "component",
+      "x-og-module": "shared",
+      "description": "Marks the one entity whose state this client shares: its og.Transform's position and its yaw (the rotation about y), the velocity its moves imply, and the fields of the game's avatar component (og.shared.shape) on the same entity. The first in entity order is the one shared.\nSee `shared-worlds §2`.",
+      "type": "object",
+      "properties": {
+        "kind": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "The avatar's kind: which of the server's movement rules it moves by (its top speed). A token that names a kind wins.",
+          "default": 0
+        }
+      },
+      "additionalProperties": false
+    },
+    "RemoteAvatar": {
+      "x-og-kind": "component",
+      "x-og-module": "shared",
+      "description": "Another visitor in sight, written by the engine: it spawns the entity with an og.Transform (and the game's avatar component, og.shared.shape) when the visitor comes into sight, moves it every tick, and despawns it when the visitor leaves. The game adds its own visuals to it. Who it is: og.shared.remote.\nSee `shared-worlds §3`.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "This client's number for it, while it is in sight.",
+          "default": 0,
+          "readOnly": true
+        },
+        "kind": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Its kind (og.SharedAvatar.kind).",
+          "default": 0,
+          "readOnly": true
+        },
+        "since": {
+          "type": "number",
+          "description": "The tick it came into sight.",
+          "default": 0,
+          "x-og-unit": "ticks",
+          "readOnly": true
+        },
+        "jumped": {
+          "type": "number",
+          "description": "The tick it last jumped (a teleport: drawn there at once, not moved across); 0 never.",
+          "default": 0,
+          "x-og-unit": "ticks",
+          "readOnly": true
+        }
+      },
+      "additionalProperties": false
+    },
+    "SharedJoined": {
+      "x-og-kind": "event",
+      "x-og-module": "shared",
+      "description": "The server took this client in: sent at the start of the tick after its welcome arrived, and again after a reconnect.",
+      "type": "object",
+      "properties": {
+        "player": {
+          "type": "string",
+          "description": "This player's opaque id, the provider's (at most 63 bytes)."
+        },
+        "name": {
+          "type": "string",
+          "description": "This player's display name (at most 63 bytes)."
+        },
+        "resumed": {
+          "type": "boolean",
+          "description": "Whether the server resumed this avatar from before a lost connection (it stayed where it was for the others)."
+        }
+      },
+      "required": [
+        "player",
+        "name",
+        "resumed"
+      ],
+      "additionalProperties": false
+    },
+    "SharedLeft": {
+      "x-og-kind": "event",
+      "x-og-module": "shared",
+      "description": "The session ended: og.shared.leave, a refusal, or reconnecting gave up. Every og.RemoteAvatar despawns the same tick.",
+      "type": "object",
+      "properties": {
+        "reason": {
+          "type": "string",
+          "description": "Why: `left` (og.shared.leave), or a code and the provider's or the server's words: `unauthorized`, `full`, `version`, `shape`, `draining`, `unavailable` (no session provider here), `offline` (reconnecting gave up)."
+        }
+      },
+      "required": [
+        "reason"
+      ],
+      "additionalProperties": false
+    },
+    "PresenceEntered": {
+      "x-og-kind": "event",
+      "x-og-module": "shared",
+      "description": "A visitor came into sight: its og.RemoteAvatar entity exists from this tick.",
+      "type": "object",
+      "properties": {
+        "entity": {
+          "$ref": "#/$defs/Entity",
+          "description": "Its og.RemoteAvatar entity."
+        },
+        "player": {
+          "type": "string",
+          "description": "Its opaque player id (at most 63 bytes)."
+        },
+        "name": {
+          "type": "string",
+          "description": "Its display name (at most 63 bytes)."
+        },
+        "kind": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Its kind."
+        }
+      },
+      "required": [
+        "entity",
+        "player",
+        "name",
+        "kind"
+      ],
+      "additionalProperties": false
+    },
+    "PresenceLeft": {
+      "x-og-kind": "event",
+      "x-og-module": "shared",
+      "description": "A visitor left sight (or the world): its og.RemoteAvatar entity was despawned this tick.",
+      "type": "object",
+      "properties": {
+        "entity": {
+          "$ref": "#/$defs/Entity",
+          "description": "The entity it had."
+        },
+        "player": {
+          "type": "string",
+          "description": "Its opaque player id (at most 63 bytes)."
+        }
+      },
+      "required": [
+        "entity",
+        "player"
+      ],
+      "additionalProperties": false
+    },
+    "SharedCorrected": {
+      "x-og-kind": "event",
+      "x-og-module": "shared",
+      "description": "The server refused a move of this avatar (faster than its kind allows, or outside the world's bounds) and the engine put it back: at the state the server holds, plus what it moved here since. A game may snap its camera or tell the player.\nSee `shared-worlds §4`.",
+      "type": "object",
+      "properties": {
+        "sequence": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "The proposal the correction answers."
+        }
+      },
+      "required": [
+        "sequence"
+      ],
+      "additionalProperties": false
+    },
+    "SharedShapeDesc": {
+      "x-og-kind": "desc",
+      "x-og-module": "shared",
+      "description": "What the game shares besides the transform (og.shared.shape).",
+      "type": "object",
+      "properties": {
+        "avatar": {
+          "anyOf": [
+            {
+              "x-og-type": "AnyComponent"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The game's component whose fields every state carries (a locomotion mode, an appearance id): on the og.SharedAvatar entity, and written on each og.RemoteAvatar. Its packed bytes are at most 32. Null: none.",
+          "default": null
+        },
+        "event": {
+          "anyOf": [
+            {
+              "x-og-type": "AnyComponent"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The game's component used as an event record (og.shared.send, og.shared.events): its packed bytes are at most 1024, and an Entity field named `from` is set to the sender's og.RemoteAvatar. Used as a shape only. Null: no events.",
+          "default": null
+        }
+      },
+      "additionalProperties": false
+    },
+    "SharedJoinDesc": {
+      "x-og-kind": "desc",
+      "x-og-module": "shared",
+      "description": "Which world to join (og.shared.join).",
+      "type": "object",
+      "properties": {
+        "world": {
+          "type": "string",
+          "description": "The world's name on the server (at most 64 of letters, digits, `.`, `_` and `-`).",
+          "default": "main"
+        }
+      },
+      "additionalProperties": false
+    },
+    "SharedRemote": {
+      "x-og-kind": "struct",
+      "x-og-module": "shared",
+      "description": "Who an og.RemoteAvatar is.",
+      "type": "object",
+      "properties": {
+        "player": {
+          "type": "string",
+          "description": "Its opaque player id."
+        },
+        "name": {
+          "type": "string",
+          "description": "Its display name."
+        },
+        "kind": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Its kind."
+        },
+        "since": {
+          "type": "number",
+          "description": "The tick it came into sight.",
+          "x-og-unit": "ticks"
+        }
+      },
+      "required": [
+        "player",
+        "name",
+        "kind",
+        "since"
+      ],
+      "additionalProperties": false
+    },
+    "SharedStatus": {
+      "x-og-kind": "struct",
+      "x-og-module": "shared",
+      "description": "The session, as a HUD or the probe reads it.",
+      "type": "object",
+      "properties": {
+        "state": {
+          "type": "string",
+          "description": "`off`, `connecting`, `joined`, `reconnecting` or `refused`."
+        },
+        "host": {
+          "type": "string",
+          "description": "What carries the session here: the session provider's name (`static` for a fixed endpoint, `player` for the platform's), or `none`."
+        },
+        "transport": {
+          "type": "string",
+          "description": "The connection's transport, `ws`; empty without one."
+        },
+        "world": {
+          "type": "string",
+          "description": "The world joined."
+        },
+        "player": {
+          "type": "string",
+          "description": "This player's opaque id; empty before the welcome."
+        },
+        "name": {
+          "type": "string",
+          "description": "This player's display name."
+        },
+        "inSight": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "The remote avatars held."
+        },
+        "others": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Visitors near this one the server does not send (past its 64 nearest)."
+        },
+        "serverTick": {
+          "type": "number",
+          "description": "The newest server tick received.",
+          "x-og-unit": "ticks"
+        },
+        "serverHz": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "The server's tick rate."
+        },
+        "proposals": {
+          "type": "number",
+          "description": "Proposals sent."
+        },
+        "corrections": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "description": "Corrections received (og.SharedCorrected)."
+        },
+        "bytesIn": {
+          "type": "number",
+          "description": "Bytes received in this session.",
+          "x-og-unit": "bytes"
+        },
+        "bytesOut": {
+          "type": "number",
+          "description": "Bytes sent in this session.",
+          "x-og-unit": "bytes"
+        },
+        "reason": {
+          "type": "string",
+          "description": "Why the last session ended or was refused; empty while none did."
+        }
+      },
+      "required": [
+        "state",
+        "host",
+        "transport",
+        "world",
+        "player",
+        "name",
+        "inSight",
+        "others",
+        "serverTick",
+        "serverHz",
+        "proposals",
+        "corrections",
+        "bytesIn",
+        "bytesOut",
+        "reason"
       ],
       "additionalProperties": false
     },

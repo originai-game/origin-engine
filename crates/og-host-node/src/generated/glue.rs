@@ -183,6 +183,18 @@ pub fn og_room_set_host(env: Env, engine: u32, info: String) {
     <Host as Lifecycle>::og_room_set_host(&Host, engine, info)
 }
 
+#[napi(js_name = "og_shared_take")]
+pub fn og_shared_take(env: Env, engine: u32) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as Lifecycle>::og_shared_take(&Host, engine)
+}
+
+#[napi(js_name = "og_shared_deliver")]
+pub fn og_shared_deliver(env: Env, engine: u32, event: String) -> bool {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as Lifecycle>::og_shared_deliver(&Host, engine, event)
+}
+
 #[napi(js_name = "og_engine_trace")]
 pub fn og_engine_trace(env: Env, engine: u32, on: bool) {
     let _env = crate::EnvScope::enter(&env);
@@ -3840,6 +3852,54 @@ pub fn og_net_final_hash(env: Env, world: u32, tick: f64) -> String {
 pub fn og_net_hash(env: Env, world: u32) -> String {
     let _env = crate::EnvScope::enter(&env);
     <Host as NetApi>::og_net_hash(&Host, world)
+}
+
+#[napi(js_name = "og_shared_shape")]
+pub fn og_shared_shape(env: Env, world: u32, desc: Option<String>) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as SharedApi>::og_shared_shape(&Host, world, desc)
+}
+
+#[napi(js_name = "og_shared_join")]
+pub fn og_shared_join(env: Env, world: u32, desc: Option<String>) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as SharedApi>::og_shared_join(&Host, world, desc)
+}
+
+#[napi(js_name = "og_shared_leave")]
+pub fn og_shared_leave(env: Env, world: u32) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as SharedApi>::og_shared_leave(&Host, world)
+}
+
+#[napi(js_name = "og_shared_teleport")]
+pub fn og_shared_teleport(env: Env, world: u32, position: String) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as SharedApi>::og_shared_teleport(&Host, world, position)
+}
+
+#[napi(js_name = "og_shared_send")]
+pub fn og_shared_send(env: Env, world: u32, component: String, value: String) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as SharedApi>::og_shared_send(&Host, world, component, value)
+}
+
+#[napi(js_name = "og_shared_events")]
+pub fn og_shared_events(env: Env, world: u32, component: String) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as SharedApi>::og_shared_events(&Host, world, component)
+}
+
+#[napi(js_name = "og_shared_remote")]
+pub fn og_shared_remote(env: Env, world: u32, entity: f64) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as SharedApi>::og_shared_remote(&Host, world, entity)
+}
+
+#[napi(js_name = "og_shared_status")]
+pub fn og_shared_status(env: Env, world: u32) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as SharedApi>::og_shared_status(&Host, world)
 }
 
 #[napi(js_name = "og_motion_pose")]

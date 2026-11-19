@@ -35,6 +35,8 @@ og-ai = { path = "../og-ai", optional = true }
 og-story = { path = "../og-story", optional = true }
 og-i18n = { path = "../og-i18n" }
 og-net = { path = "../og-net" }
+# Shared worlds' protocol and a client's view (no server: its `server` feature is og world-server's).
+og-shared = { path = "../og-shared" }
 # Streamed video's decode plan; natively its rav1d decoder too (below).
 og-video = { path = "../og-video", default-features = false, optional = true }
 bincode = "1.3.3"
@@ -123,6 +125,8 @@ image = { workspace = true }
 # The adapter-aware test runner (tests/gpu.rs) that makes its GPU tests
 # gate-selectable probes the adapter with it.
 pollster = { workspace = true }
+# tests/shared_world.rs carries two engines through a shard in the test.
+og-shared = { path = "../og-shared", features = ["server"] }
 
 [[test]]
 name = "tests"

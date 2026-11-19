@@ -187,6 +187,12 @@ impl Platform {
     }
 }
 
+/// Journals what another module's host handed at `tick` (og.platform.journal:
+/// one journal of host input; og.shared's kind is `shared`).
+pub(crate) fn journal_handed(engine: u32, tick: u64, kind: &str, value: &Value) {
+    with(engine, |p| p.handed(tick, kind, 0, value));
+}
+
 /// og.platform on one engine: its calls, answers and notices.
 pub(crate) type ModuleState = RefCell<Platform>;
 

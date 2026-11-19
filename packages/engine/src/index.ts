@@ -27,7 +27,7 @@ import {
   type FieldSpec,
 } from "./runtime.ts";
 import { cameras } from "./systems/cameras.ts";
-import { ai, i18n, nav, net, platform, story } from "./e6.ts";
+import { ai, i18n, nav, net, platform, shared, story } from "./e6.ts";
 import { input } from "./input.ts";
 import { destruction, film, loading, motion, path, procgen, scene, sight, stream, terrain, timeline, vfx, video } from "./p2.ts";
 import { debug, depthRender } from "./depth.ts";
@@ -87,6 +87,7 @@ export const og: typeof Api.og = Object.freeze({
   platform,
   i18n,
   net,
+  shared,
   input,
   terrain,
   stream,

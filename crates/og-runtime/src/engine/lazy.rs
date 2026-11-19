@@ -492,6 +492,39 @@ pub(crate) const LAZY: &[Lazy] = &[
         name: crate::bind::sight::RECORDS[2],
         enable: |_, _| Ok(()),
     },
+    // og.shared: its system once a game names a record or joins (TOGETHER).
+    Lazy {
+        name: crate::bind::shared::RECORDS[0],
+        enable: crate::bind::shared::enable,
+    },
+    Lazy {
+        name: crate::bind::shared::RECORDS[1],
+        enable: crate::bind::shared::enable,
+    },
+    Lazy {
+        name: crate::bind::shared::RECORDS[2],
+        enable: crate::bind::shared::enable,
+    },
+    Lazy {
+        name: crate::bind::shared::RECORDS[3],
+        enable: crate::bind::shared::enable,
+    },
+    Lazy {
+        name: crate::bind::shared::RECORDS[4],
+        enable: crate::bind::shared::enable,
+    },
+    Lazy {
+        name: crate::bind::shared::RECORDS[5],
+        enable: crate::bind::shared::enable,
+    },
+    Lazy {
+        name: crate::bind::shared::RECORDS[6],
+        enable: crate::bind::shared::enable,
+    },
+    Lazy {
+        name: crate::bind::shared::RECORDS[7],
+        enable: crate::bind::shared::enable,
+    },
     // og.scene: written and sent by the runtime's before-tick hook
     // (world::scenes) once a game first changes scene; no module to grant.
     Lazy {
@@ -516,6 +549,7 @@ const TOGETHER: &[&[&str]] = &[
     &crate::bind::destruction2d::RECORDS,
     &crate::bind::vfx::RECORDS,
     &crate::bind::film::RECORDS,
+    &crate::bind::shared::RECORDS,
     &crate::world::scenes::RECORDS,
     &[
         crate::world::stream::cells::CELL,

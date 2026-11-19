@@ -145,6 +145,10 @@ pub use bind::procgen::{
     og_procgen_wfc,
 };
 pub use bind::season::og_atmosphere_season;
+pub use bind::shared::{
+    og_shared_deliver, og_shared_events, og_shared_join, og_shared_leave, og_shared_remote,
+    og_shared_send, og_shared_shape, og_shared_status, og_shared_take, og_shared_teleport,
+};
 pub use bind::sight::{og_sight_explored, og_sight_forget, og_sight_reveal, og_sight_visible};
 pub use bind::skeleton2d::{og_anim_rig2d_info, og_anim_skeleton2d_boxes, og_load_rig2d};
 pub use bind::story::{

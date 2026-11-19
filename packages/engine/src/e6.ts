@@ -144,6 +144,19 @@ export const net = Object.freeze({
   finalHash: (world: W, tick: number) => parse<string | null>(abi().og_net_final_hash(world.id, tick)),
 });
 
+/** og.shared: shared worlds, each visitor's avatar seen by those near it (IDL `shared`). */
+export const shared = Object.freeze({
+  shape: (world: W, desc?: unknown) => parse(abi().og_shared_shape(world.id, json(desc))),
+  join: (world: W, desc?: unknown) => parse(abi().og_shared_join(world.id, json(desc))),
+  leave: (world: W) => parse(abi().og_shared_leave(world.id)),
+  teleport: (world: W, position: unknown) => parse(abi().og_shared_teleport(world.id, JSON.stringify(position))),
+  send: (world: W, component: { name: string }, value?: unknown) =>
+    parse(abi().og_shared_send(world.id, component.name, JSON.stringify(value ?? {}))),
+  events: (world: W, component: { name: string }) => parse(abi().og_shared_events(world.id, component.name)),
+  remote: (world: W, entity: number) => parse(abi().og_shared_remote(world.id, entity)),
+  status: (world: W) => parse(abi().og_shared_status(world.id)),
+});
+
 function toBase64(bytes: Uint8Array): string {
   let bin = "";
   for (let i = 0; i < bytes.length; i++) bin += String.fromCharCode(bytes[i]!);

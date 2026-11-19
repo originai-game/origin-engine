@@ -56,6 +56,7 @@ assert.ogt
 path.ogt
 timeline.ogt
 net.ogt
+shared.ogt
 art.ogt
 motion.ogt
 destruction.ogt

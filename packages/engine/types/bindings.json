@@ -555,6 +555,12 @@
       "value": "NetMode"
     },
     {
+      "name": "SharedState",
+      "array": "Uint32Array",
+      "stride": 1,
+      "value": "SharedState"
+    },
+    {
       "name": "ArtRotation",
       "array": "Uint32Array",
       "stride": 1,
@@ -7964,6 +7970,51 @@
     },
     {
       "id": 105,
+      "name": "SharedAvatar",
+      "schema": "og.SharedAvatar",
+      "module": "shared",
+      "fields": [
+        {
+          "name": "kind",
+          "column": "u32",
+          "default": 0
+        }
+      ]
+    },
+    {
+      "id": 106,
+      "name": "RemoteAvatar",
+      "schema": "og.RemoteAvatar",
+      "module": "shared",
+      "fields": [
+        {
+          "name": "id",
+          "column": "u32",
+          "default": 0,
+          "readonly": true
+        },
+        {
+          "name": "kind",
+          "column": "u32",
+          "default": 0,
+          "readonly": true
+        },
+        {
+          "name": "since",
+          "column": "f64",
+          "default": 0,
+          "readonly": true
+        },
+        {
+          "name": "jumped",
+          "column": "f64",
+          "default": 0,
+          "readonly": true
+        }
+      ]
+    },
+    {
+      "id": 107,
       "name": "MotionAgent",
       "schema": "og.MotionAgent",
       "module": "motion",
@@ -7993,7 +8044,7 @@
       ]
     },
     {
-      "id": 106,
+      "id": 108,
       "name": "Destructible",
       "schema": "og.Destructible",
       "module": "destruction",
@@ -8091,7 +8142,7 @@
       ]
     },
     {
-      "id": 107,
+      "id": 109,
       "name": "Chunk",
       "schema": "og.Chunk",
       "module": "destruction",
@@ -8129,7 +8180,7 @@
       ]
     },
     {
-      "id": 108,
+      "id": 110,
       "name": "PixelTerrain",
       "schema": "og.PixelTerrain",
       "module": "destruction",
@@ -8241,7 +8292,7 @@
       ]
     },
     {
-      "id": 109,
+      "id": 111,
       "name": "PixelPiece",
       "schema": "og.PixelPiece",
       "module": "destruction",
@@ -8279,7 +8330,7 @@
       ]
     },
     {
-      "id": 110,
+      "id": 112,
       "name": "Vfx",
       "schema": "og.Vfx",
       "module": "vfx",
@@ -8343,7 +8394,7 @@
       ]
     },
     {
-      "id": 111,
+      "id": 113,
       "name": "SightMap",
       "schema": "og.SightMap",
       "module": "sight",
@@ -8386,7 +8437,7 @@
       ]
     },
     {
-      "id": 112,
+      "id": 114,
       "name": "Sight",
       "schema": "og.Sight",
       "module": "sight",
@@ -8405,7 +8456,7 @@
       ]
     },
     {
-      "id": 113,
+      "id": 115,
       "name": "SightBlocker",
       "schema": "og.SightBlocker",
       "module": "sight",
@@ -8418,7 +8469,7 @@
       ]
     },
     {
-      "id": 114,
+      "id": 116,
       "name": "Film",
       "schema": "og.Film",
       "module": "film",
@@ -8505,7 +8556,7 @@
       ]
     },
     {
-      "id": 115,
+      "id": 117,
       "name": "FilmDeck",
       "schema": "og.FilmDeck",
       "module": "film",
@@ -12327,6 +12378,41 @@
     },
     {
       "id": 34,
+      "name": "SharedWorld",
+      "schema": "og.SharedWorld",
+      "module": "shared",
+      "fields": [
+        {
+          "name": "sendRateHz",
+          "column": "u32",
+          "default": 20
+        },
+        {
+          "name": "interpDelayMs",
+          "column": "u32",
+          "default": 100
+        },
+        {
+          "name": "extrapolateMs",
+          "column": "u32",
+          "default": 250
+        },
+        {
+          "name": "state",
+          "column": "SharedState",
+          "default": "off",
+          "readonly": true
+        },
+        {
+          "name": "inSight",
+          "column": "u32",
+          "default": 0,
+          "readonly": true
+        }
+      ]
+    },
+    {
+      "id": 35,
       "name": "ArtPalette",
       "schema": "og.ArtPalette",
       "module": "art",
@@ -12365,7 +12451,7 @@
       ]
     },
     {
-      "id": 35,
+      "id": 36,
       "name": "ArtPixels",
       "schema": "og.ArtPixels",
       "module": "art",
@@ -12404,7 +12490,7 @@
       ]
     },
     {
-      "id": 36,
+      "id": 37,
       "name": "ArtTexels",
       "schema": "og.ArtTexels",
       "module": "art",
@@ -12432,7 +12518,7 @@
       ]
     },
     {
-      "id": 37,
+      "id": 38,
       "name": "ArtShape",
       "schema": "og.ArtShape",
       "module": "art",
@@ -12480,7 +12566,7 @@
       ]
     },
     {
-      "id": 38,
+      "id": 39,
       "name": "ArtLine",
       "schema": "og.ArtLine",
       "module": "art",
@@ -12517,7 +12603,7 @@
       ]
     },
     {
-      "id": 39,
+      "id": 40,
       "name": "ArtMotion",
       "schema": "og.ArtMotion",
       "module": "art",
@@ -12540,7 +12626,7 @@
       ]
     },
     {
-      "id": 40,
+      "id": 41,
       "name": "ArtCamera",
       "schema": "og.ArtCamera",
       "module": "art",
@@ -12583,7 +12669,7 @@
       ]
     },
     {
-      "id": 41,
+      "id": 42,
       "name": "Destruction",
       "schema": "og.Destruction",
       "module": "destruction",
@@ -12625,7 +12711,7 @@
       ]
     },
     {
-      "id": 42,
+      "id": 43,
       "name": "SceneState",
       "schema": "og.SceneState",
       "module": "scene",
@@ -14152,6 +14238,101 @@
     },
     {
       "id": 60,
+      "name": "SharedJoined",
+      "schema": "og.SharedJoined",
+      "module": "shared",
+      "fields": [
+        {
+          "name": "player",
+          "type": "String",
+          "default": ""
+        },
+        {
+          "name": "name",
+          "type": "String",
+          "default": ""
+        },
+        {
+          "name": "resumed",
+          "type": "bool",
+          "default": false
+        }
+      ]
+    },
+    {
+      "id": 61,
+      "name": "SharedLeft",
+      "schema": "og.SharedLeft",
+      "module": "shared",
+      "fields": [
+        {
+          "name": "reason",
+          "type": "String",
+          "default": ""
+        }
+      ]
+    },
+    {
+      "id": 62,
+      "name": "PresenceEntered",
+      "schema": "og.PresenceEntered",
+      "module": "shared",
+      "fields": [
+        {
+          "name": "entity",
+          "type": "Entity",
+          "default": 0
+        },
+        {
+          "name": "player",
+          "type": "String",
+          "default": ""
+        },
+        {
+          "name": "name",
+          "type": "String",
+          "default": ""
+        },
+        {
+          "name": "kind",
+          "type": "u32",
+          "default": 0
+        }
+      ]
+    },
+    {
+      "id": 63,
+      "name": "PresenceLeft",
+      "schema": "og.PresenceLeft",
+      "module": "shared",
+      "fields": [
+        {
+          "name": "entity",
+          "type": "Entity",
+          "default": 0
+        },
+        {
+          "name": "player",
+          "type": "String",
+          "default": ""
+        }
+      ]
+    },
+    {
+      "id": 64,
+      "name": "SharedCorrected",
+      "schema": "og.SharedCorrected",
+      "module": "shared",
+      "fields": [
+        {
+          "name": "sequence",
+          "type": "u32",
+          "default": 0
+        }
+      ]
+    },
+    {
+      "id": 65,
       "name": "Fractured",
       "schema": "og.Fractured",
       "module": "destruction",
@@ -14198,7 +14379,7 @@
       ]
     },
     {
-      "id": 61,
+      "id": 66,
       "name": "PixelDetached",
       "schema": "og.PixelDetached",
       "module": "destruction",
@@ -14235,7 +14416,7 @@
       ]
     },
     {
-      "id": 62,
+      "id": 67,
       "name": "VfxEvent",
       "schema": "og.VfxEvent",
       "module": "vfx",
@@ -14263,7 +14444,7 @@
       ]
     },
     {
-      "id": 63,
+      "id": 68,
       "name": "FilmSegment",
       "schema": "og.FilmSegment",
       "module": "film",
@@ -14286,7 +14467,7 @@
       ]
     },
     {
-      "id": 64,
+      "id": 69,
       "name": "FilmChoice",
       "schema": "og.FilmChoice",
       "module": "film",
@@ -14314,7 +14495,7 @@
       ]
     },
     {
-      "id": 65,
+      "id": 70,
       "name": "FilmChapter",
       "schema": "og.FilmChapter",
       "module": "film",
@@ -14337,7 +14518,7 @@
       ]
     },
     {
-      "id": 66,
+      "id": 71,
       "name": "FilmEnded",
       "schema": "og.FilmEnded",
       "module": "film",
@@ -14360,7 +14541,7 @@
       ]
     },
     {
-      "id": 67,
+      "id": 72,
       "name": "SceneChanged",
       "schema": "og.SceneChanged",
       "module": "scene",
@@ -27111,6 +27292,189 @@
     {
       "id": 601,
       "kind": "fn",
+      "path": "og.shared.shape",
+      "symbol": "og_shared_shape",
+      "module": "shared",
+      "name": "shape",
+      "params": [
+        {
+          "name": "world",
+          "type": "World",
+          "optional": false
+        },
+        {
+          "name": "desc",
+          "type": "SharedShapeDesc",
+          "optional": true
+        }
+      ],
+      "returns": "Result<Void>",
+      "publish": true
+    },
+    {
+      "id": 602,
+      "kind": "fn",
+      "path": "og.shared.join",
+      "symbol": "og_shared_join",
+      "module": "shared",
+      "name": "join",
+      "params": [
+        {
+          "name": "world",
+          "type": "World",
+          "optional": false
+        },
+        {
+          "name": "desc",
+          "type": "SharedJoinDesc",
+          "optional": true
+        }
+      ],
+      "returns": "Result<Void>",
+      "publish": true
+    },
+    {
+      "id": 603,
+      "kind": "fn",
+      "path": "og.shared.leave",
+      "symbol": "og_shared_leave",
+      "module": "shared",
+      "name": "leave",
+      "params": [
+        {
+          "name": "world",
+          "type": "World",
+          "optional": false
+        }
+      ],
+      "returns": "Result<Void>",
+      "publish": true
+    },
+    {
+      "id": 604,
+      "kind": "fn",
+      "path": "og.shared.teleport",
+      "symbol": "og_shared_teleport",
+      "module": "shared",
+      "name": "teleport",
+      "params": [
+        {
+          "name": "world",
+          "type": "World",
+          "optional": false
+        },
+        {
+          "name": "position",
+          "type": "Vector3",
+          "optional": false
+        }
+      ],
+      "returns": "Result<Void>",
+      "publish": true
+    },
+    {
+      "id": 605,
+      "kind": "fn",
+      "path": "og.shared.send",
+      "symbol": "og_shared_send",
+      "module": "shared",
+      "name": "send",
+      "generics": [
+        {
+          "name": "C",
+          "bound": "AnyComponent"
+        }
+      ],
+      "params": [
+        {
+          "name": "world",
+          "type": "World",
+          "optional": false
+        },
+        {
+          "name": "component",
+          "type": "C",
+          "optional": false
+        },
+        {
+          "name": "value",
+          "type": "Partial<Value<C>>",
+          "optional": false
+        }
+      ],
+      "returns": "Result<Void>",
+      "publish": true
+    },
+    {
+      "id": 606,
+      "kind": "fn",
+      "path": "og.shared.events",
+      "symbol": "og_shared_events",
+      "module": "shared",
+      "name": "events",
+      "generics": [
+        {
+          "name": "C",
+          "bound": "AnyComponent"
+        }
+      ],
+      "params": [
+        {
+          "name": "world",
+          "type": "World",
+          "optional": false
+        },
+        {
+          "name": "component",
+          "type": "C",
+          "optional": false
+        }
+      ],
+      "returns": "Result<List<Value<C>>>",
+      "publish": true
+    },
+    {
+      "id": 607,
+      "kind": "fn",
+      "path": "og.shared.remote",
+      "symbol": "og_shared_remote",
+      "module": "shared",
+      "name": "remote",
+      "params": [
+        {
+          "name": "world",
+          "type": "World",
+          "optional": false
+        },
+        {
+          "name": "entity",
+          "type": "Entity",
+          "optional": false
+        }
+      ],
+      "returns": "Option<SharedRemote>",
+      "publish": true
+    },
+    {
+      "id": 608,
+      "kind": "fn",
+      "path": "og.shared.status",
+      "symbol": "og_shared_status",
+      "module": "shared",
+      "name": "status",
+      "params": [
+        {
+          "name": "world",
+          "type": "World",
+          "optional": false
+        }
+      ],
+      "returns": "SharedStatus",
+      "publish": true
+    },
+    {
+      "id": 609,
+      "kind": "fn",
       "path": "og.motion.pose",
       "symbol": "og_motion_pose",
       "module": "motion",
@@ -27136,7 +27500,7 @@
       "publish": true
     },
     {
-      "id": 602,
+      "id": 610,
       "kind": "fn",
       "path": "og.motion.place",
       "symbol": "og_motion_place",
@@ -27163,7 +27527,7 @@
       "publish": true
     },
     {
-      "id": 603,
+      "id": 611,
       "kind": "fn",
       "path": "og.motion.face",
       "symbol": "og_motion_face",
@@ -27190,7 +27554,7 @@
       "publish": true
     },
     {
-      "id": 604,
+      "id": 612,
       "kind": "fn",
       "path": "og.motion.walkTo",
       "symbol": "og_motion_walk_to",
@@ -27217,7 +27581,7 @@
       "publish": true
     },
     {
-      "id": 605,
+      "id": 613,
       "kind": "fn",
       "path": "og.motion.jump",
       "symbol": "og_motion_jump",
@@ -27244,7 +27608,7 @@
       "publish": true
     },
     {
-      "id": 606,
+      "id": 614,
       "kind": "fn",
       "path": "og.motion.clear",
       "symbol": "og_motion_clear",
@@ -27266,7 +27630,7 @@
       "publish": true
     },
     {
-      "id": 607,
+      "id": 615,
       "kind": "fn",
       "path": "og.motion.lookAt",
       "symbol": "og_motion_look_at",
@@ -27293,7 +27657,7 @@
       "publish": true
     },
     {
-      "id": 608,
+      "id": 616,
       "kind": "fn",
       "path": "og.motion.react",
       "symbol": "og_motion_react",
@@ -27320,7 +27684,7 @@
       "publish": true
     },
     {
-      "id": 609,
+      "id": 617,
       "kind": "fn",
       "path": "og.motion.status",
       "symbol": "og_motion_status",
@@ -27342,7 +27706,7 @@
       "publish": true
     },
     {
-      "id": 610,
+      "id": 618,
       "kind": "fn",
       "path": "og.motion.capabilities",
       "symbol": "og_motion_capabilities",
@@ -27359,7 +27723,7 @@
       "publish": true
     },
     {
-      "id": 611,
+      "id": 619,
       "kind": "fn",
       "path": "og.motion.setBackend",
       "symbol": "og_motion_set_backend",
@@ -27381,7 +27745,7 @@
       "publish": true
     },
     {
-      "id": 612,
+      "id": 620,
       "kind": "fn",
       "path": "og.motion.presentation",
       "symbol": "og_motion_presentation",
@@ -27403,7 +27767,7 @@
       "publish": true
     },
     {
-      "id": 613,
+      "id": 621,
       "kind": "fn",
       "path": "og.motion.poses",
       "symbol": "og_motion_poses",
@@ -27414,7 +27778,7 @@
       "publish": true
     },
     {
-      "id": 614,
+      "id": 622,
       "kind": "fn",
       "path": "og.destruction.damage",
       "symbol": "og_destruction_damage",
@@ -27441,7 +27805,7 @@
       "publish": true
     },
     {
-      "id": 615,
+      "id": 623,
       "kind": "fn",
       "path": "og.destruction.explode",
       "symbol": "og_destruction_explode",
@@ -27463,7 +27827,7 @@
       "publish": true
     },
     {
-      "id": 616,
+      "id": 624,
       "kind": "fn",
       "path": "og.destruction.fracture",
       "symbol": "og_destruction_fracture",
@@ -27485,7 +27849,7 @@
       "publish": true
     },
     {
-      "id": 617,
+      "id": 625,
       "kind": "fn",
       "path": "og.destruction.info",
       "symbol": "og_destruction_info",
@@ -27507,7 +27871,7 @@
       "publish": true
     },
     {
-      "id": 618,
+      "id": 626,
       "kind": "fn",
       "path": "og.destruction.material",
       "symbol": "og_destruction_material",
@@ -27529,7 +27893,7 @@
       "publish": true
     },
     {
-      "id": 619,
+      "id": 627,
       "kind": "fn",
       "path": "og.destruction.capabilities",
       "symbol": "og_destruction_capabilities",
@@ -27546,7 +27910,7 @@
       "publish": true
     },
     {
-      "id": 620,
+      "id": 628,
       "kind": "fn",
       "path": "og.destruction.carve2d",
       "symbol": "og_destruction_carve2d",
@@ -27573,7 +27937,7 @@
       "publish": true
     },
     {
-      "id": 621,
+      "id": 629,
       "kind": "fn",
       "path": "og.destruction.fill2d",
       "symbol": "og_destruction_fill2d",
@@ -27600,7 +27964,7 @@
       "publish": true
     },
     {
-      "id": 622,
+      "id": 630,
       "kind": "fn",
       "path": "og.destruction.explode2d",
       "symbol": "og_destruction_explode2d",
@@ -27622,7 +27986,7 @@
       "publish": true
     },
     {
-      "id": 623,
+      "id": 631,
       "kind": "fn",
       "path": "og.destruction.fracture2d",
       "symbol": "og_destruction_fracture2d",
@@ -27649,7 +28013,7 @@
       "publish": true
     },
     {
-      "id": 624,
+      "id": 632,
       "kind": "fn",
       "path": "og.destruction.cell2d",
       "symbol": "og_destruction_cell2d",
@@ -27676,7 +28040,7 @@
       "publish": true
     },
     {
-      "id": 625,
+      "id": 633,
       "kind": "fn",
       "path": "og.vfx.spawn",
       "symbol": "og_vfx_spawn",
@@ -27698,7 +28062,7 @@
       "publish": true
     },
     {
-      "id": 626,
+      "id": 634,
       "kind": "fn",
       "path": "og.vfx.info",
       "symbol": "og_vfx_info",
@@ -27720,7 +28084,7 @@
       "publish": true
     },
     {
-      "id": 627,
+      "id": 635,
       "kind": "fn",
       "path": "og.sight.visible",
       "symbol": "og_sight_visible",
@@ -27747,7 +28111,7 @@
       "publish": true
     },
     {
-      "id": 628,
+      "id": 636,
       "kind": "fn",
       "path": "og.sight.explored",
       "symbol": "og_sight_explored",
@@ -27774,7 +28138,7 @@
       "publish": true
     },
     {
-      "id": 629,
+      "id": 637,
       "kind": "fn",
       "path": "og.sight.reveal",
       "symbol": "og_sight_reveal",
@@ -27806,7 +28170,7 @@
       "publish": true
     },
     {
-      "id": 630,
+      "id": 638,
       "kind": "fn",
       "path": "og.sight.forget",
       "symbol": "og_sight_forget",
@@ -27828,7 +28192,7 @@
       "publish": true
     },
     {
-      "id": 631,
+      "id": 639,
       "kind": "fn",
       "path": "og.film.load",
       "symbol": "og_film_load",
@@ -27850,7 +28214,7 @@
       "publish": true
     },
     {
-      "id": 632,
+      "id": 640,
       "kind": "fn",
       "path": "og.film.start",
       "symbol": "og_film_start",
@@ -27872,7 +28236,7 @@
       "publish": true
     },
     {
-      "id": 633,
+      "id": 641,
       "kind": "fn",
       "path": "og.film.view",
       "symbol": "og_film_view",
@@ -27894,7 +28258,7 @@
       "publish": true
     },
     {
-      "id": 634,
+      "id": 642,
       "kind": "fn",
       "path": "og.film.choose",
       "symbol": "og_film_choose",
@@ -27921,7 +28285,7 @@
       "publish": true
     },
     {
-      "id": 635,
+      "id": 643,
       "kind": "fn",
       "path": "og.film.play",
       "symbol": "og_film_play",
@@ -27943,7 +28307,7 @@
       "publish": true
     },
     {
-      "id": 636,
+      "id": 644,
       "kind": "fn",
       "path": "og.film.pause",
       "symbol": "og_film_pause",
@@ -27965,7 +28329,7 @@
       "publish": true
     },
     {
-      "id": 637,
+      "id": 645,
       "kind": "fn",
       "path": "og.film.skip",
       "symbol": "og_film_skip",
@@ -27987,7 +28351,7 @@
       "publish": true
     },
     {
-      "id": 638,
+      "id": 646,
       "kind": "fn",
       "path": "og.film.chart",
       "symbol": "og_film_chart",
@@ -28009,7 +28373,7 @@
       "publish": true
     },
     {
-      "id": 639,
+      "id": 647,
       "kind": "fn",
       "path": "og.film.stop",
       "symbol": "og_film_stop",
@@ -28031,7 +28395,7 @@
       "publish": true
     },
     {
-      "id": 640,
+      "id": 648,
       "kind": "fn",
       "path": "og.scene.preload",
       "symbol": "og_scene_preload",
@@ -28053,7 +28417,7 @@
       "publish": true
     },
     {
-      "id": 641,
+      "id": 649,
       "kind": "fn",
       "path": "og.scene.progress",
       "symbol": "og_scene_progress",
@@ -28075,7 +28439,7 @@
       "publish": true
     },
     {
-      "id": 642,
+      "id": 650,
       "kind": "fn",
       "path": "og.scene.release",
       "symbol": "og_scene_release",
@@ -28097,7 +28461,7 @@
       "publish": true
     },
     {
-      "id": 643,
+      "id": 651,
       "kind": "fn",
       "path": "og.scene.change",
       "symbol": "og_scene_change",
@@ -28119,7 +28483,7 @@
       "publish": true
     },
     {
-      "id": 644,
+      "id": 652,
       "kind": "fn",
       "path": "og.scene.current",
       "symbol": "og_scene_current",
@@ -28136,7 +28500,7 @@
       "publish": true
     },
     {
-      "id": 645,
+      "id": 653,
       "kind": "fn",
       "path": "og.loading.stage",
       "symbol": "og_loading_stage",
@@ -28158,7 +28522,7 @@
       "publish": true
     },
     {
-      "id": 646,
+      "id": 654,
       "kind": "fn",
       "path": "og.loading.done",
       "symbol": "og_loading_done",
@@ -28175,7 +28539,7 @@
       "publish": true
     },
     {
-      "id": 647,
+      "id": 655,
       "kind": "fn",
       "path": "og.loading.idle",
       "symbol": "og_loading_idle",
@@ -28192,7 +28556,7 @@
       "publish": true
     },
     {
-      "id": 648,
+      "id": 656,
       "kind": "fn",
       "path": "og.loading.status",
       "symbol": "og_loading_status",
