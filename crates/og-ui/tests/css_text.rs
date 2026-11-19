@@ -1116,6 +1116,88 @@ fn rules(d: &Doc, id: &str) -> Vec<(Rect, [f32; 4])> {
         .collect()
 }
 
+#[test]
+fn html_links_draw_their_computed_ink_and_decoration() {
+    for (body, css, ink, decorations) in [
+        (
+            r#"<a id="Line" href="shop">Armory</a>"#,
+            "a { color: #c46132; text-decoration: none; }",
+            Srgba::rgb(196, 97, 50),
+            0,
+        ),
+        (
+            r#"<p id="Line"><a href="shop">Armory</a></p>"#,
+            "p { color: #c46132; } a { color: inherit; text-decoration: none; }",
+            Srgba::rgb(196, 97, 50),
+            0,
+        ),
+        (
+            r#"<p id="Line"><a href="shop"><span>Armory</span></a></p>"#,
+            "p { color: #c46132; } a { color: inherit; text-decoration: none; }",
+            Srgba::rgb(196, 97, 50),
+            0,
+        ),
+        (
+            r#"<p id="Line"><a href="shop">Armory</a></p>"#,
+            "a { color: #32a5c4; text-decoration: line-through; }",
+            Srgba::rgb(50, 165, 196),
+            1,
+        ),
+    ] {
+        let d = doc(body, css);
+        let colors: Vec<_> =
+            d.ui.frame()
+                .items
+                .iter()
+                .filter_map(|it| match text_of(&it.cmd) {
+                    DrawCmd::Text { text, color, .. } if text == "Armory" => Some(*color),
+                    _ => None,
+                })
+                .collect();
+        assert!(!colors.is_empty(), "{body}");
+        assert!(
+            colors.iter().all(|&color| near(color, ink)),
+            "{body}: {colors:?}"
+        );
+        assert_eq!(rules(&d, "Line").len(), decorations, "{body}: {css}");
+    }
+    for body in [
+        r#"<p id="Line"><a href="shop">Armory</a></p>"#,
+        r#"<a id="Line" href={'shop'}>Armory</a>"#,
+    ] {
+        let d = doc(body, "");
+        let highlight = d.ui.theme().palette.highlight;
+        assert!(
+            d.ui.frame()
+                .items
+                .iter()
+                .any(|it| matches!(text_of(&it.cmd),
+            DrawCmd::Text { text, color, .. } if text == "Armory" && near(*color, highlight)))
+        );
+        let underline = rules(&d, "Line");
+        assert!(!underline.is_empty(), "unstyled links keep their underline");
+        assert!(
+            underline
+                .iter()
+                .all(|(r, _)| r.y >= lines(&d, "Line")[0].baseline)
+        );
+    }
+
+    let vertical = doc(
+        r#"<p id="Line"><a href="shop">Armory</a></p>"#,
+        "p { writing-mode: vertical-rl; } a { text-decoration: none; }",
+    );
+    assert!(
+        vertical
+            .ui
+            .frame()
+            .items
+            .iter()
+            .all(|it| it.cmd.filled().is_none()),
+        "vertical links must not draw an undeclared underline"
+    );
+}
+
 /// CSS Text Decoration 3/4: an explicit `text-underline-offset` puts the
 /// underline's top that far below the alphabetic baseline, an explicit
 /// thickness is its height, `under` moves it to the font's descent (and

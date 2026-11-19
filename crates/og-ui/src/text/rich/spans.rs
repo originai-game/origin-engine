@@ -352,7 +352,7 @@ impl Ui {
                         s.color = t.palette.highlight;
                         s.inherits_color = false;
                     }
-                    s.underline |= style.underline.is_none();
+                    s.underline |= style.underline.is_none() && style.decoration.is_none();
                 }
             }
             // Weight and bold share a CSS property; the last explicit one wins.

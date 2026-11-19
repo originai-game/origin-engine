@@ -249,6 +249,25 @@ impl Ui {
             style.ruby_role = None;
             style.ruby_position = None;
             style.link = run.link.map(super::inline_link);
+            if style.link.is_some() {
+                // A document link takes computed CSS even where it equals
+                // its text's. Rich text's link defaults must not replace it.
+                let computed = run.path.last().and_then(|&e| element(e)).unwrap_or(r);
+                if style.color.is_none() {
+                    style.color = computed
+                        .text
+                        .as_deref()
+                        .and_then(|t| t.fill)
+                        .or_else(|| computed.color("color"))
+                        .map(crate::paint::ColorRef::Literal);
+                }
+                style.underline.get_or_insert_with(|| {
+                    computed
+                        .text
+                        .as_deref()
+                        .is_some_and(|t| t.decoration.underline)
+                });
+            }
             style.atom = match ruby {
                 Some(ruby) => Some(InlineAtom::Ruby(ruby)),
                 None => run.atom.clone(),

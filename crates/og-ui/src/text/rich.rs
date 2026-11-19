@@ -1665,10 +1665,8 @@ impl Ui {
             let tracking = span_tracking(s, &text);
             // The glyphs its decoration lines break around (CSS Text
             // Decoration 4 §2.10.3, §2.10.4), as the piece draws them.
-            let ruled = link_key.is_some()
-                || s.underline
-                || s.strike
-                || s.decoration.as_ref().is_some_and(|d| d.overline);
+            let ruled =
+                s.underline || s.strike || s.decoration.as_ref().is_some_and(|d| d.overline);
             let line_glyphs = ruled.then(|| {
                 piece
                     .glyphs
@@ -1908,7 +1906,7 @@ impl Ui {
                 let gaps: Vec<_> = gaps.iter().map(|(a, b)| (r.x + a, r.x + b)).collect();
                 cut_lines(cmds, from, &gaps);
             };
-            if link_key.is_some() || s.underline {
+            if s.underline {
                 rule(baseline + off, true);
             }
             if d.overline {
@@ -2561,7 +2559,7 @@ impl Ui {
                     clip,
                 })
             };
-            if link_key.is_some() || s.underline {
+            if s.underline {
                 rule(mid - size * 0.5 - off);
             }
             if d.overline {

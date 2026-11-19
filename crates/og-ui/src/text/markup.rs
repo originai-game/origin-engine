@@ -115,7 +115,10 @@ pub fn parse_markup(markup: &str) -> (Vec<MarkupSpan>, Vec<String>) {
                 Tag::Color(c) => s.color = Some(c.clone()),
                 Tag::Size(z) => s.size = Some(z.clone()),
                 Tag::Font(f) => s.font = Some(f.clone()),
-                Tag::Link(l) => s.link = Some(l.clone()),
+                Tag::Link(l) => {
+                    s.link = Some(l.clone());
+                    s.underline = true;
+                }
                 Tag::Fx(f) => s.fx = *f,
             }
         }

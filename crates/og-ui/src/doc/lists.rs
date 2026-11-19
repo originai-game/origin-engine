@@ -62,6 +62,7 @@ b, strong { font-weight: bold; }
 i, em { font-style: italic; }
 u { text-decoration-line: underline; }
 s, del { text-decoration-line: line-through; }
+a:any-link { color: var(--highlight); text-decoration-line: underline; }
 sub { vertical-align: sub; font-size: smaller; }
 sup { vertical-align: super; font-size: smaller; }
 ruby { display: ruby; }
