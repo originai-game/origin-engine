@@ -19,6 +19,7 @@ pub(super) mod explore;
 pub(super) mod fmt;
 pub(super) mod frame;
 pub(super) mod i18n;
+pub(super) mod mcp;
 pub(super) mod migrate;
 pub(super) mod prefab;
 pub(super) mod probe;

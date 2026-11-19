@@ -10,9 +10,9 @@
 mod commands;
 use commands::{
     api, assets, bake_lightmaps, bake_probes, bake_projection, bundle, cache, check, compare, cook,
-    create, dev, doctor, explore, fmt, frame, i18n, migrate, prefab, probe, render, replay, run,
-    serve_relay, session, sfx, sprite, style, test, ui, upgrade, vfx_import, vfx_preview, video,
-    world_server,
+    create, dev, doctor, explore, fmt, frame, i18n, mcp, migrate, prefab, probe, render, replay,
+    run, serve_relay, session, sfx, sprite, style, test, ui, upgrade, vfx_import, vfx_preview,
+    video, world_server,
 };
 mod api_lookup;
 mod bundle_cache;
@@ -108,6 +108,8 @@ commands:
                       and its path in png; capture_views writes each frame beside it as
                       <stem>-<view>.png (capture-0.png, ...), each frame's png its path;
                       --raw prints the whole answer frame (the testing guide §9)
+  mcp                 serve the og tool over MCP on stdio: the tools probe, run, test, render,
+                      compare, api_find and api_show, with the same JSON as the commands
   dev [project] [--port P] [--exit-after N] [--json]
                       watch src/ and assets/, rebuild and re-cook, hot-reload through the probe,
                       report each reload against the 300 ms budget and type-check each src/ change
@@ -415,6 +417,7 @@ fn main() -> ExitCode {
         ["relay", rest @ ..] => serve_relay::run(rest),
         ["world-server", rest @ ..] => world_server::run(rest),
         ["probe", rest @ ..] => probe::run(rest),
+        ["mcp", rest @ ..] => mcp::run(rest),
         ["dev", rest @ ..] => dev::run(rest),
         ["check", rest @ ..] => check::run(rest),
         ["test", rest @ ..] => test::run(rest),

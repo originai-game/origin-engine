@@ -1,0 +1,8 @@
+{
+  "added": [
+    {
+      "member": "og mcp",
+      "summary": "og mcp serves the og tool over MCP on stdio: the tools probe, run, test, render, compare, api_find and api_show answer with the same JSON the commands print (testing \u00a79). run with a port starts the game in the background and answers its probe's hello."
+    }
+  ]
+}
