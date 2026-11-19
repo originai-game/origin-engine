@@ -66,6 +66,17 @@ const char *og_c_window_audio(void);
 bool og_c_window_capture(const char *path);
 void og_c_window_close(void);
 
+/* Platform services (src/platform.rs). `data_load` answers the game's saved
+ * platform document (NULL for none), `data_save` writes it, both in the
+ * player's data directory (OG_DATA_DIR overrides it). `provider_open` loads a
+ * store's provider library, answering JSON {ok, reason}; `provider_call`
+ * calls its `og_provider_call(method, json)` (NULL without a library or an
+ * answer). Answers are valid until the next call. */
+const char *og_c_data_load(const char *game);
+bool og_c_data_save(const char *game, const char *document);
+const char *og_c_provider_open(const char *path);
+const char *og_c_provider_call(const char *method, const char *json);
+
 #ifdef __cplusplus
 }
 #endif

@@ -6,21 +6,30 @@
 //
 // The shell supplies `__og_env`: OG_ROOT (the package's directory: cooked/
 // and project.ogt), OG_PROJECT (project.ogt's text), OG_TITLE, OG_SIZE
-// (`1280x720`, CSS pixels) and OG_SHELL_CAPTURE (keep frames for a capture).
+// (`1280x720`, CSS pixels), OG_SHELL_CAPTURE (keep frames for a capture),
+// OG_BIN (the shell's directory) and a provider's OG_PROVIDER_LIB. og.platform
+// is platform.ts's.
 
 import { bindHost, createEngine, type GameToken } from "../runtime.ts";
 import type { Dispatcher, HostAbi } from "../generated/abi.ts";
 import { hermesBinding } from "./index.ts";
+import type { ShellProviderFactory } from "../provider.ts";
+import { shellPlatform } from "./platform.ts";
 
 declare const __og_env: Record<string, string | undefined>;
 declare const __og_now: () => number;
 declare const __og_audio: () => string;
+declare const __og_data: (game: string, document?: string) => string | boolean | null;
+declare const __og_provider: (path: string) => string;
+declare const __og_provider_call: (method: string, json: string) => string | null;
+declare const __og_print: (text: string) => void;
 declare const __og_window_open: (engine: number, width: number, height: number, title: string, keep: boolean) => string;
 
 /** Frames before the report's figures start: pipelines compile and assets land in the first ones. */
 const SETTLE = 60;
 
-export function main(game: GameToken): void {
+/** Runs `game`; `provider` is the store's, when the package bundled one (package.ts --provider). */
+export function main(game: GameToken, provider?: ShellProviderFactory): void {
   const env = __og_env;
   const now = __og_now;
   const binding = hermesBinding();
@@ -48,6 +57,19 @@ export function main(game: GameToken): void {
   });
   if (!created.ok) throw new Error(`the game: ${created.reason}`);
   const engine = created.value;
+  engine.attachPlatform(
+    shellPlatform(
+      env,
+      {
+        load: (name) => __og_data(name) as string | null,
+        save: (name, document) => __og_data(name, document) === true,
+        open: (path) => JSON.parse(__og_provider(path)) as { ok: boolean; reason?: string },
+        call: __og_provider_call,
+        warn: __og_print,
+      },
+      provider,
+    ),
+  );
   const [w, h] = (env.OG_SIZE ?? "1280x720").split("x").map(Number);
   const opened = JSON.parse(__og_window_open(engine.id, w || 1280, h || 720, env.OG_TITLE ?? "Origin", env.OG_SHELL_CAPTURE !== undefined)) as {
     ok: boolean;

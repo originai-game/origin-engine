@@ -3310,6 +3310,7 @@ name = "og-host-c"
 version = "0.9.0"
 dependencies = [
  "gilrs",
+ "libloading 0.8.9",
  "og-api",
  "og-audio",
  "og-bundle",

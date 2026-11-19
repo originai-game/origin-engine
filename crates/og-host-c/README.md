@@ -14,7 +14,16 @@ game's bundle (`packages/engine/src/hermes/shell.ts`) opens it; the shell
 runs the display loop. The engine's audio plays on the default output
 device, and gamepads (gilrs) arrive as the web shell's `gamepad` events;
 each is logged when it connects. On Linux the build needs libudev's
-headers (`libudev-dev`). Not yet: platform services.
+headers (`libudev-dev`).
+
+og.platform is the local document, saved as `<data>/<title>/platform.json`
+in the player's data directory (Application Support, %APPDATA%, the XDG
+data home; `OG_DATA_DIR` overrides it), unless the package bundles a
+store's provider: `package.ts --provider <module.ts>` (its default export a
+`ShellProviderFactory`, `@origingame/engine/provider`) and `--provider-lib
+<lib>`, a library beside the shell exporting `const char
+*og_provider_call(const char *method, const char *json)` (`src/platform.rs`).
+The store's SDK and credentials live there, never in the engine.
 
 ## A desktop package
 

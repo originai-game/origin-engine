@@ -128,6 +128,30 @@ export interface PlatformProvider {
   readonly content?: { base(): string };
 }
 
+// A store package's provider (packages/engine/src/hermes/platform.ts): a
+// module the package bundles with the game, over the store's native library.
+
+/** The provider library, as the factory calls it. */
+export interface ShellNative {
+  /** Calls `og_provider_call(method, JSON.stringify(args))`; its answer parsed, `null` for none. */
+  call(method: string, args?: unknown): unknown;
+}
+
+/** What the shell hands a bundled provider. */
+export interface ShellProviderContext {
+  /** The provider library, `null` when the package has none. */
+  readonly native: ShellNative | null;
+  /** The package's title (OG_TITLE). */
+  readonly game: string;
+  /** shell.env's pairs: a provider reads its own keys (a store's app id, say). */
+  readonly env: Readonly<Record<string, string | undefined>>;
+  /** The local document's provider, for what the store does not answer. */
+  readonly local: PlatformProvider;
+}
+
+/** A store provider module's default export. */
+export type ShellProviderFactory = (context: ShellProviderContext) => PlatformProvider;
+
 /** A successful answer. */
 export const ok = (data: unknown): PlatformAnswer => ({ ok: true, data });
 

@@ -236,6 +236,7 @@ int main(int argc, char **argv) {
     for (std::string line; std::getline(env, line);)
       if (!line.empty() && line[0] != '#') pairs.push_back(line);
     pairs.push_back("OG_ROOT=" + dir.string());
+    pairs.push_back("OG_BIN=" + selfPath(argv[0]).parent_path().string());
     pairs.push_back("OG_PROJECT=@" + (dir / "project.ogt").string());
   }
   for (const char *key : {"OG_SHELL_CAPTURE", "OG_SIZE"})
@@ -324,6 +325,44 @@ int main(int argc, char **argv) {
           rt, jsi::PropNameID::forAscii(rt, "__og_audio"), 0,
           [](jsi::Runtime &rt, const jsi::Value &, const jsi::Value *, size_t) {
             return jsi::String::createFromUtf8(rt, og_c_window_audio());
+          }));
+  // Platform services: `__og_data(game[, document])` loads (null for none) or
+  // saves the save document; `__og_provider(path)` opens a store's provider
+  // library; `__og_provider_call(method, json)` calls it (null for none).
+  auto nullable = [](jsi::Runtime &rt, const char *s) -> jsi::Value {
+    return s ? jsi::Value(jsi::String::createFromUtf8(rt, s)) : jsi::Value::null();
+  };
+  rt.global().setProperty(
+      rt, "__og_data",
+      jsi::Function::createFromHostFunction(
+          rt, jsi::PropNameID::forAscii(rt, "__og_data"), 2,
+          [nullable](jsi::Runtime &rt, const jsi::Value &, const jsi::Value *args,
+                     size_t n) -> jsi::Value {
+            if (n < 1) return jsi::Value::null();
+            std::string game = args[0].toString(rt).utf8(rt);
+            if (n < 2) return nullable(rt, og_c_data_load(game.c_str()));
+            std::string doc = args[1].toString(rt).utf8(rt);
+            return jsi::Value(og_c_data_save(game.c_str(), doc.c_str()));
+          }));
+  rt.global().setProperty(
+      rt, "__og_provider",
+      jsi::Function::createFromHostFunction(
+          rt, jsi::PropNameID::forAscii(rt, "__og_provider"), 1,
+          [](jsi::Runtime &rt, const jsi::Value &, const jsi::Value *args,
+             size_t n) -> jsi::Value {
+            std::string path = n > 0 ? args[0].toString(rt).utf8(rt) : "";
+            return jsi::String::createFromUtf8(rt, og_c_provider_open(path.c_str()));
+          }));
+  rt.global().setProperty(
+      rt, "__og_provider_call",
+      jsi::Function::createFromHostFunction(
+          rt, jsi::PropNameID::forAscii(rt, "__og_provider_call"), 2,
+          [nullable](jsi::Runtime &rt, const jsi::Value &, const jsi::Value *args,
+                     size_t n) -> jsi::Value {
+            if (n < 2) return jsi::Value::null();
+            std::string method = args[0].toString(rt).utf8(rt);
+            std::string json = args[1].toString(rt).utf8(rt);
+            return nullable(rt, og_c_provider_call(method.c_str(), json.c_str()));
           }));
   jsi::Object env(rt);
   for (const auto &pair : pairs) {

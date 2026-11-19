@@ -21,6 +21,7 @@
 #[path = "generated/glue.rs"]
 pub mod glue;
 
+mod platform;
 #[cfg(feature = "window")]
 mod window;
 

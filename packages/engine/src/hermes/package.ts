@@ -3,10 +3,13 @@
 // and the engine's C ABI host beside it, and the cooked project.
 //
 //   bun src/hermes/package.ts <project> <out-dir> --hermes <dir> [--hermes-build <dir>] [--host <lib>] [--name <name>] [--size WxH]
+//     [--provider <module.ts> [--provider-lib <lib>]]
 //
 // --hermes: a Hermes checkout; --hermes-build its build (hermesc, the
 // hermesvm library, jsi; default <checkout>/build). --host: og-host-c's library (default: the checkout's
-// target/release). The project must be cooked. Writes, by platform:
+// target/release). --provider: a store's provider module, bundled with the
+// game; --provider-lib its native library (platform.ts). Without them the
+// game's og.platform is the local document. The project must be cooked. Writes, by platform:
 //
 //   linux    <out>/<name>/<name>, its libraries, game.hbc, project.ogt, cooked/, shell.env
 //   windows  <out>/<name>/<name>.exe, its DLLs, and the same files
@@ -35,10 +38,12 @@ declare const Bun: {
 const here = dirname(fileURLToPath(import.meta.url));
 
 /** Bundles `game` (a project's src/main.ts or an entry) with `driver`, whose `main(game)` runs it: an ES module for node, one classic script for Hermes. */
-export async function bundle(game: string, driver: string, target: "node" | "hermes", out: string): Promise<void> {
+export async function bundle(game: string, driver: string, target: "node" | "hermes", out: string, provider?: string): Promise<void> {
   const dir = mkdtempSync(join(tmpdir(), "og-bundle-"));
   const entry = join(dir, "entry.ts");
-  writeFileSync(entry, `import game from ${JSON.stringify(resolve(game))};\nimport { main } from ${JSON.stringify(resolve(driver))};\nmain(game);\n`);
+  const imports = [`import game from ${JSON.stringify(resolve(game))};`, `import { main } from ${JSON.stringify(resolve(driver))};`];
+  if (provider) imports.push(`import provider from ${JSON.stringify(resolve(provider))};`);
+  writeFileSync(entry, `${imports.join("\n")}\nmain(game${provider ? ", provider" : ""});\n`);
   const r = await Bun.build({
     entrypoints: [entry],
     target: target === "node" ? "node" : "browser",
@@ -87,6 +92,10 @@ export interface PackageOptions {
   readonly host?: string;
   readonly name?: string;
   readonly size?: string;
+  /** A store's provider module (default export: hermes/platform.ts's ShellProviderFactory), bundled with the game. */
+  readonly provider?: string;
+  /** Its native library (exports `og_provider_call`), placed beside the shell. */
+  readonly providerLib?: string;
 }
 
 /** Builds the package; answers its path. */
@@ -123,12 +132,15 @@ export async function packageGame(o: PackageOptions): Promise<string> {
   // let and const one binding for the whole function).
   const work = mkdtempSync(join(tmpdir(), "og-package-"));
   const js = join(work, "game.js");
-  await bundle(join(project, "src/main.ts"), join(here, "shell.ts"), "hermes", js);
+  await bundle(join(project, "src/main.ts"), join(here, "shell.ts"), "hermes", js, o.provider);
   run([hermesc!, "-O", "-Xes6-block-scoping", "-emit-binary", "-out", join(data, "game.hbc"), js]);
   rmSync(work, { recursive: true, force: true });
   cpSync(join(project, "project.ogt"), join(data, "project.ogt"));
   cpSync(join(project, "cooked"), join(data, "cooked"), { recursive: true });
-  writeFileSync(join(data, "shell.env"), `OG_TITLE=${name}\nOG_SIZE=${o.size ?? "1280x720"}\n`);
+  const providerLib = o.providerLib ? resolve(o.providerLib) : undefined;
+  if (providerLib && !o.provider) throw new Error("--provider-lib needs --provider, the module that calls it");
+  if (providerLib) cpSync(providerLib, join(bin, basename(providerLib)));
+  writeFileSync(join(data, "shell.env"), `OG_TITLE=${name}\nOG_SIZE=${o.size ?? "1280x720"}\n${providerLib ? `OG_PROVIDER_LIB=${basename(providerLib)}\n` : ""}`);
 
   // The shell, linked to the libraries beside it.
   cpSync(vm!, join(bin, basename(vm!)));
@@ -179,11 +191,13 @@ if (import.meta.main) {
   const host = flag("--host");
   const name = flag("--name");
   const size = flag("--size");
+  const provider = flag("--provider");
+  const providerLib = flag("--provider-lib");
   const [project, out] = args;
   if (!project || !out || !hermes || !existsSync(project) || !statSync(project).isDirectory()) {
-    process.stderr.write("usage: bun src/hermes/package.ts <project> <out-dir> --hermes <dir> [--hermes-build <dir>] [--host <lib>] [--name <name>] [--size WxH]\n");
+    process.stderr.write("usage: bun src/hermes/package.ts <project> <out-dir> --hermes <dir> [--hermes-build <dir>] [--host <lib>] [--name <name>] [--size WxH] [--provider <module.ts> [--provider-lib <lib>]]\n");
     process.exit(2);
   }
-  const made = await packageGame({ project, out, hermes, ...(hermesBuild ? { hermesBuild } : {}), ...(host ? { host } : {}), ...(name ? { name } : {}), ...(size ? { size } : {}) });
+  const made = await packageGame({ project, out, hermes, ...(hermesBuild ? { hermesBuild } : {}), ...(host ? { host } : {}), ...(name ? { name } : {}), ...(size ? { size } : {}), ...(provider ? { provider } : {}), ...(providerLib ? { providerLib } : {}) });
   process.stdout.write(`${made}\n`);
 }
