@@ -1,12 +1,12 @@
 <meta name="component" content="CardHand">
 <meta name="strings" content="./card.en.ogt">
-<meta name="parts" content="CardHand.frame CardHand.slot CardHand.card CardHand.badge">
-<meta name="prop:cards" content="list" data-doc="The hand in the game's order, keyed rows of { id, name, cost, icon, art, type, typeLabel, rarity, text, playable, at }: playable is the game's answer (cost, targets, rules), never the hand's; at is the card's place across a fanned hand from -1 (first) to 1 (last), 0 the middle, which the game derives from the order.">
+<meta name="parts" content="CardHand.frame CardHand.slot CardHand.card CardHand.reason">
+<meta name="prop:cards" content="list" data-doc="The hand in the game's order, keyed rows of { id, name, cost, icon, art, type, typeLabel, rarity, text, playable, reason, at }: playable is the game's answer (cost, targets, rules), never the hand's; reason the game's words for an unplayable card (No energy), empty Cannot be played; at is the card's place across a fanned hand from -1 (first) to 1 (last), 0 the middle, which the game derives from the order.">
 <meta name="prop:selected" content="string" data-doc="The id of the card the player picked up (it rises and offers Play when playable); empty is none.">
 <meta name="prop:fan" content="number" data-doc="How far a fanned hand turns its end cards, in degrees (the game's choice, 0 a flat row).">
 <meta name="prop:label" content="string" data-doc="What a screen reader calls the hand; empty is Hand.">
 <meta name="action:details" content="Play">
-<meta name="fixture:default" content='{"label":"","selected":"strike","fan":6,"cards":[{"id":"strike","name":"Ember Strike","cost":"1","icon":"fire","art":0,"type":"attack","typeLabel":"Attack","rarity":"common","text":"Deal 6 damage. Apply 1 Burn.","playable":true,"at":-1},{"id":"guard","name":"Iron Guard","cost":"1","icon":"shield","art":0,"type":"skill","typeLabel":"Skill","rarity":"common","text":"Gain 5 Block.","playable":true,"at":-0.33},{"id":"surge","name":"Arcane Surge","cost":"3","icon":"bolt","art":0,"type":"power","typeLabel":"Power","rarity":"rare","text":"Draw 2 cards each turn.","playable":false,"at":0.33},{"id":"wound","name":"Wound","cost":"","icon":"skull","art":0,"type":"status","typeLabel":"Status","rarity":"common","text":"Unplayable.","playable":false,"at":1}]}'>
+<meta name="fixture:default" content='{"label":"","selected":"strike","fan":6,"cards":[{"id":"strike","name":"Ember Strike","cost":"1","icon":"fire","art":0,"type":"attack","typeLabel":"Attack","rarity":"common","text":"Deal 6 damage. Apply 1 Burn.","playable":true,"at":-1},{"id":"guard","name":"Iron Guard","cost":"1","icon":"shield","art":0,"type":"skill","typeLabel":"Skill","rarity":"common","text":"Gain 5 Block.","playable":true,"at":-0.33},{"id":"surge","name":"Arcane Surge","cost":"3","icon":"bolt","art":0,"type":"power","typeLabel":"Power","rarity":"rare","text":"Draw 2 cards each turn.","playable":false,"reason":"No energy","at":0.33},{"id":"wound","name":"Wound","cost":"","icon":"skull","art":0,"type":"status","typeLabel":"Status","rarity":"common","text":"Unplayable.","playable":false,"at":1}]}'>
 <meta name="fixture:empty" content='{"label":"","selected":"","fan":6,"cards":[]}'>
 <meta name="fixture:single" content='{"label":"","selected":"","fan":0,"cards":[{"id":"strike","name":"Ember Strike","cost":"1","icon":"fire","art":0,"type":"attack","typeLabel":"Attack","rarity":"common","text":"Deal 6 damage.","playable":true,"at":0}]}'>
 <meta name="fixture:disabled" content='{"label":"","selected":"surge","fan":0,"cards":[{"id":"strike","name":"Ember Strike","cost":"1","icon":"fire","art":0,"type":"attack","typeLabel":"Attack","rarity":"common","text":"Deal 6 damage.","playable":false,"at":-1},{"id":"surge","name":"Arcane Surge","cost":"3","icon":"bolt","art":0,"type":"power","typeLabel":"Power","rarity":"rare","text":"Draw 2 cards each turn.","playable":false,"at":1}]}'>
@@ -31,12 +31,12 @@
           <div class="stack">
             {#if c.playable}
               <button part="CardHand.card" role="option" data-type={c.type} data-rarity={c.rarity} data-playable={c.playable} aria-selected={c.id == selected} aria-label={c.name} aria-description={c.text} onclick={select} ondetails={play}>
-                <div class="face"><CardFace name={c.name} cost={c.cost} icon={c.icon} art={c.art} type={c.type} typeLabel={c.typeLabel} rarity={c.rarity} text={c.text} /></div>
+                <div class="face"><CardFace name={c.name} cost={c.cost} icon={c.icon} art={c.art} type={c.type} typeLabel={c.typeLabel} rarity={c.rarity} text={c.text} dim={false} /></div>
               </button>
             {:else}
-              <button part="CardHand.card" role="option" data-type={c.type} data-rarity={c.rarity} data-playable={c.playable} aria-selected={c.id == selected} aria-label={c.name} aria-description={t("card.hand.unplayable")} onclick={select}>
-                <div class="face"><CardFace name={c.name} cost={c.cost} icon={c.icon} art={c.art} type={c.type} typeLabel={c.typeLabel} rarity={c.rarity} text={c.text} /></div>
-                <div part="CardHand.badge" class="unplayable" data-layout="row" data-gap="none" aria-label={t("card.hand.unplayable")}><og-icon icon="lock"></og-icon></div>
+              <button part="CardHand.card" role="option" data-type={c.type} data-rarity={c.rarity} data-playable={c.playable} aria-selected={c.id == selected} aria-label={c.name} aria-description={c.reason || t("card.hand.unplayable")} onclick={select}>
+                <div class="face"><CardFace name={c.name} cost={c.cost} icon={c.icon} art={c.art} type={c.type} typeLabel={c.typeLabel} rarity={c.rarity} text={c.text} dim={true} /></div>
+                <div part="CardHand.reason" class="reason" data-layout="row" data-gap="hair" data-cost={c.cost != ""}><og-icon class="lock" icon="lock"></og-icon><p class="reason-text">{c.reason || t("card.hand.unplayable")}</p></div>
               </button>
             {/if}
             {#if c.id == selected && c.playable}<button class="play primary" onclick={play}>{t("card.hand.play")}</button>{/if}
@@ -67,9 +67,13 @@
 .stack { position: absolute; inset-inline-start: 0; top: 0; bottom: 0; width: var(--card-width); }
 [part="CardHand.card"] { position: relative; width: stretch; height: stretch; padding: 0; align-items: stretch; justify-content: stretch; }
 [part="CardHand.card"] .face { width: stretch; height: stretch; min-width: 0; }
-/* Under the cost seal, on the edge the next card leaves uncovered. */
-.unplayable { position: absolute; inset-inline-start: var(--space-xxs); top: calc(var(--size-md) + var(--space-xs)); width: var(--size-sm); height: var(--size-sm); justify-content: center; }
-.unplayable og-icon { width: 70%; height: 70%; }
+/* The reason at the card's head beside the cost gem, over the art: above
+   any Play plate and on the edge the next card leaves uncovered. A card
+   without a cost (a curse, a status) gives the reason the gem's room. */
+.reason { position: absolute; inset-inline-start: calc(var(--tcg-gem-size) + var(--space-xxs)); inset-inline-end: var(--space-xs); top: var(--space-sm); justify-content: flex-start; align-items: center; padding: var(--space-xxs) var(--space-xs); clip-path: polygon(var(--inv-tag-cut) 0, 100% 0, 100% calc(100% - var(--inv-tag-cut)), calc(100% - var(--inv-tag-cut)) 100%, 0 100%, 0 var(--inv-tag-cut)); background: var(--tcg-reason-fill); box-shadow: var(--tcg-reason-rim); color: var(--tcg-reason-ink); font-size: var(--tcg-reason-size); font-weight: var(--tcg-type-weight); letter-spacing: var(--tcg-reason-tracking); text-transform: none; }
+.reason[data-cost=false] { inset-inline-start: var(--space-xs); }
+.lock { flex: none; inline-size: var(--tcg-reason-size); block-size: var(--tcg-reason-size); }
+.reason-text { margin: 0; min-width: 0; text-align: start; line-clamp: 2; overflow: hidden; line-height: 1.15; }
 /* Below the card's foot, in the room the lift leaves, so it never covers the rules text. */
 .play { position: absolute; inset-inline-start: 10%; top: calc(100% + var(--space-xxs)); width: 80%; min-height: var(--size-touch); }
 .empty { width: stretch; height: stretch; }

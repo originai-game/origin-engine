@@ -1,6 +1,6 @@
 <meta name="component" content="CardDeckList">
 <meta name="strings" content="./card.en.ogt">
-<meta name="parts" content="CardDeckList.frame CardDeckList.band CardDeckList.title CardDeckList.size CardDeckList.row CardDeckList.cost CardDeckList.name CardDeckList.copies CardDeckList.step CardDeckList.figure CardDeckList.label CardDeckList.cell CardDeckList.track CardDeckList.fill CardDeckList.caption">
+<meta name="parts" content="CardDeckList.frame CardDeckList.band CardDeckList.title CardDeckList.size CardDeckList.row CardDeckList.cost CardDeckList.name CardDeckList.copies CardDeckList.step">
 <meta name="prop:title" content="string" data-doc="The deck's name as the player named it.">
 <meta name="prop:entries" content="list" data-doc="The deck's cards in the game's order (by cost, then name), keyed rows of { id, name, cost, type, rarity, copies, canAdd, canRemove }: copies the game's count; canAdd and canRemove the game's answers (its copy limit, its deck limit, a card the deck must keep).">
 <meta name="prop:total" content="number" data-doc="How many cards the deck holds (the game's count).">
@@ -27,9 +27,9 @@
 <section id="CardDeckList" part="CardDeckList.frame" data-layout="shell" aria-label={title}>
   <header part="CardDeckList.band" data-layout="row"><h2 part="CardDeckList.title">{title}</h2></header>
   {#if limit}<div part="CardDeckList.size" data-layout="grid" data-gap="tight" data-over={total > limit} data-under={total < limit}>
-    <span part="CardDeckList.caption" class="size-label">{t("card.deck.size")}</span>
-    <span part="CardDeckList.figure" class="size-figure">{t("card.deck.count", { count: total, limit })}</span>
-    <div part="CardDeckList.track" class="bar" role="meter" aria-label={t("card.deck.size")} aria-valuetext={t("card.deck.count", { count: total, limit })} style:--fill={limit ? (total > limit ? 1 : total / limit) : 0}><div part="CardDeckList.fill" class="bar-fill" data-tone={total > limit ? 'danger' : ''}></div></div>
+    <span class="size-label">{t("card.deck.size")}</span>
+    <span class="size-figure">{t("card.deck.count", { count: total, limit })}</span>
+    <div class="bar" role="meter" aria-label={t("card.deck.size")} aria-valuetext={t("card.deck.count", { count: total, limit })} style:--fill={limit ? (total > limit ? 1 : total / limit) : 0}><div class="bar-fill" data-tone={total > limit ? 'danger' : ''}></div></div>
   </div>{/if}
   {#if entries.length}
     <div class="rows" data-layout="scroll" data-fill>
@@ -37,12 +37,12 @@
         {#each entries as e (e.id)}
           <div part="CardDeckList.row" data-layout="row" data-gap="hair" role="listitem" data-type={e.type} data-rarity={e.rarity} data-selected={e.id == selected} aria-current={e.id == selected}>
             <button class="pick" data-fill variant="quiet" aria-label={e.name} onclick={choose}><div class="pick-face" data-layout="row">
-              <div part="CardDeckList.cost CardDeckList.figure" class="cost" data-layout="row" data-gap="none" aria-label={t("card.face.cost", { cost: e.cost })}><span class="cost-figure">{e.cost}</span></div>
+              <div part="CardDeckList.cost" class="cost" data-layout="row" data-gap="none" aria-label={t("card.face.cost", { cost: e.cost })}><span class="cost-figure">{e.cost}</span></div>
               <span part="CardDeckList.name" class="name" data-fill>{e.name}</span>
-              <span part="CardDeckList.copies CardDeckList.label" class="copies">{t("card.deck.copies", { count: e.copies })}</span>
+              <span part="CardDeckList.copies" class="copies">{t("card.deck.copies", { count: e.copies })}</span>
             </div></button>
-            <button part="CardDeckList.step CardDeckList.cell" class="minus" variant="quiet" disabled={!e.canRemove} aria-label={t("card.deck.remove", { name: e.name })} onclick={remove} ondetails={remove}><span class="step-mark">{t("card.deck.less")}</span></button>
-            <button part="CardDeckList.step CardDeckList.cell" class="plus" variant="quiet" disabled={!e.canAdd} aria-label={t("card.deck.add", { name: e.name })} onclick={add}><span class="step-mark">{t("card.deck.more")}</span></button>
+            <button part="CardDeckList.step" class="minus" variant="quiet" disabled={!e.canRemove} aria-label={t("card.deck.remove", { name: e.name })} onclick={remove} ondetails={remove}><span class="step-mark">{t("card.deck.less")}</span></button>
+            <button part="CardDeckList.step" class="plus" variant="quiet" disabled={!e.canAdd} aria-label={t("card.deck.add", { name: e.name })} onclick={add}><span class="step-mark">{t("card.deck.more")}</span></button>
           </div>
         {/each}
       </div>
@@ -56,19 +56,31 @@
 </section>
 
 <style>
-[part="CardDeckList.band"] { width: stretch; justify-content: center; flex: none; }
+:host { position: relative; clip-path: polygon(var(--inv-frame-cut) 0, 100% 0, 100% calc(100% - var(--inv-frame-cut)), calc(100% - var(--inv-frame-cut)) 100%, 0 100%, 0 var(--inv-frame-cut)); }
+[part="CardDeckList.band"] { width: stretch; justify-content: flex-start; flex: none; }
 [part="CardDeckList.title"] { margin: 0; white-space: nowrap; text-overflow: ellipsis; overflow: hidden; }
 [part="CardDeckList.size"] { grid-template-columns: 1fr auto; width: stretch; flex: none; align-items: baseline; padding: 0 var(--space-xs); }
-.size-figure { white-space: nowrap; }
-.bar { position: relative; grid-column: 1 / -1; height: var(--space-sm); overflow: hidden; }
-.bar-fill { position: absolute; top: 0; bottom: 0; inset-inline-start: 0; inline-size: calc(var(--fill, 0) * 100%); }
+.size-label { font-size: var(--inv-kicker-size); font-weight: var(--inv-name-weight); letter-spacing: var(--inv-kicker-tracking); text-transform: var(--inv-kicker-transform); color: var(--tcg-count-empty-ink); }
+.size-figure { white-space: nowrap; font-size: var(--inv-figure-lg-size); font-weight: var(--inv-figure-weight); font-stretch: var(--inv-figure-stretch); color: var(--ink-bright); }
+[data-over=true] .size-figure { color: var(--tcg-over-ink); }
+.bar { position: relative; grid-column: 1 / -1; height: var(--space-sm); overflow: hidden; transform: skewX(var(--bar-skew)); background: var(--bar-well); box-shadow: var(--bar-rim); }
+.bar-fill { position: absolute; top: 0; bottom: 0; inset-inline-start: 0; inline-size: calc(var(--fill, 0) * 100%); background: var(--tcg-size-fill); }
+.bar-fill[data-tone=danger] { background: var(--tcg-size-over-fill); }
 .list, [part="CardDeckList.row"] { width: stretch; }
-.pick { min-height: var(--size-touch); padding: 0 var(--space-sm); justify-content: flex-start; }
-.pick-face { width: stretch; }
-[part="CardDeckList.cost CardDeckList.figure"] { flex: none; width: var(--size-sm); height: var(--size-sm); justify-content: center; }
-[part="CardDeckList.name"] { min-width: 0; text-align: start; white-space: nowrap; text-overflow: ellipsis; overflow: hidden; }
-[part="CardDeckList.copies CardDeckList.label"] { flex: none; white-space: nowrap; }
-[part="CardDeckList.step CardDeckList.cell"] { flex: none; width: var(--size-touch); min-height: var(--size-touch); padding: 0; align-items: center; justify-content: center; }
+/* A row: its card type a rail on the leading edge, the shown row lit. */
+[part="CardDeckList.row"] { align-items: center; padding-inline-end: var(--space-xxs); background: var(--tcg-row-fill); box-shadow: var(--tcg-row-rail); color: var(--tcg-neutral); }
+[part="CardDeckList.row"][data-type=attack] { color: var(--tcg-attack); }
+[part="CardDeckList.row"][data-type=skill] { color: var(--tcg-skill); }
+[part="CardDeckList.row"][data-type=power] { color: var(--tcg-power); }
+[part="CardDeckList.row"][data-type=curse], [part="CardDeckList.row"][data-type=status] { color: var(--tcg-curse); }
+[part="CardDeckList.row"][data-selected=true] { background: var(--tcg-row-on-fill); box-shadow: var(--tcg-row-on-rim); }
+.pick { min-height: var(--size-touch); padding: 0 var(--space-sm); justify-content: flex-start; border: none; border-radius: 0; background: var(--inv-bare-fill); box-shadow: none; color: var(--ink-bright); }
+.pick-face { width: stretch; align-items: center; gap: var(--space-sm); }
+[part="CardDeckList.cost"] { flex: none; inline-size: calc(var(--tcg-gem-size) * 0.85); block-size: calc(var(--tcg-gem-size) * 0.95); justify-content: center; align-items: center; clip-path: polygon(50% 0, 100% 25%, 100% 75%, 50% 100%, 0 75%, 0 25%); background: var(--tcg-gem-fill); color: var(--tcg-gem-ink); font-weight: var(--inv-figure-weight); }
+[part="CardDeckList.name"] { min-width: 0; text-align: start; white-space: nowrap; text-overflow: ellipsis; overflow: hidden; font-weight: var(--inv-name-weight); }
+[part="CardDeckList.copies"] { flex: none; white-space: nowrap; font-weight: var(--inv-figure-weight); font-stretch: var(--inv-figure-stretch); color: var(--ink-bright); }
+[part="CardDeckList.step"] { flex: none; width: var(--size-touch); min-height: var(--size-touch); padding: 0; align-items: center; justify-content: center; border: none; border-radius: 0; background: var(--tcg-step-fill); box-shadow: var(--tcg-step-rim); color: var(--ink-bright); }
+[part="CardDeckList.step"]:disabled { color: var(--tcg-count-empty-ink); }
 .step-mark { text-align: center; }
 .empty { width: stretch; }
 .empty-text { margin: 0; }

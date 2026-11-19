@@ -190,8 +190,10 @@ test("CardHand: a tap selects by key, unplayable cards too; Play on the selected
   const picked: Event[] = [];
   run(member("hand", { selected: "" }, { events: picked }), (e) => {
     expect(button(e, "surge", "CardHand.card").name).toBe("Arcane Surge");
-    expect(within(e, "surge").some((x) => x.part?.includes("::part(CardHand.badge)"))).toBeTrue();
-    expect(within(e, "guard").some((x) => x.part?.includes("::part(CardHand.badge)"))).toBeFalse();
+    // An unplayable card says why in the game's words; a playable one carries no reason.
+    expect(within(e, "surge").some((x) => x.part?.includes("::part(CardHand.reason)")) && elements(e).some((x) => x.text.toLowerCase() === "no energy")).toBeTrue();
+    expect(within(e, "wound").some((x) => x.part?.includes("::part(CardHand.reason)")) && elements(e).some((x) => x.text.toLowerCase() === "cannot be played")).toBeTrue();
+    expect(within(e, "guard").some((x) => x.part?.includes("::part(CardHand.reason)"))).toBeFalse();
     tap(e, row(e, "guard"));
     tap(e, row(e, "surge"));
     expect(intents(picked, ["select", "play"])).toEqual(["select:guard", "select:surge"]);
@@ -272,7 +274,7 @@ test("CardCollection: a card adds by key; a capped or locked one stays in reach 
     key(e, "KeyE");
     pad(e, "leftBumper");
     expect(intents(events, ["add", "inspect", "choosefilter", "tabNext", "tabPrev"])).toEqual(["add:strike", "inspect:guard", "inspect:crown", "choosefilter:skill", "tabNext:", "tabPrev:"]);
-    expect(row(e, "guard").states).toContain("selected");
+    expect(button(e, "guard", "CardCollection.cell").states).toContain("selected");
   });
 });
 

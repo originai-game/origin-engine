@@ -42,22 +42,22 @@ description, an empty pile its 0, an over-full deck its figures.
 
 | Document | Inputs (props) | Intents |
 | --- | --- | --- |
-| `CardFace` | `name`, `cost` (text; empty hides the seal), `icon`, `art` (texture; 0 shows the icon), `type`, `typeLabel`, `rarity`, `text` | none |
-| `CardHand` | `cards` keyed `{ id, name, cost, icon, art, type, typeLabel, rarity, text, playable, at }` (`at` the card's place across the fan, -1 to 1), `selected`, `fan` (degrees at the ends, 0 a flat row), `label` | `select` (card), `play` (the Play plate on the selected playable card, or X / pad Y on a focused playable card; an unplayable card never sends it) |
+| `CardFace` | `name`, `cost` (text; empty hides the gem), `icon`, `art` (texture; 0 shows the icon), `type`, `typeLabel`, `rarity`, `text`, `dim` (dims the art and frame, never the words) | none |
+| `CardHand` | `cards` keyed `{ id, name, cost, icon, art, type, typeLabel, rarity, text, playable, reason, at }` (`reason` the game's words for an unplayable card, empty Cannot be played) (`at` the card's place across the fan, -1 to 1), `selected`, `fan` (degrees at the ends, 0 a flat row), `label` | `select` (card), `play` (the Play plate on the selected playable card, or X / pad Y on a focused playable card; an unplayable card never sends it) |
 | `CardPiles` | `piles` keyed `{ id, kind, label, icon, count, enabled }`, `label` | `open` (pile; a disabled pile sends nothing) |
-| `CardCollection` | `title`, `filters` keyed `{ id, label }`, `filter`, `cards` keyed `{ id, name, cost, icon, art, type, typeLabel, rarity, text, owned, inDeck, canAdd, locked, reason }` (`reason` the game's words for a card it will not add), `selected`, `empty` | `add` (card; one the game will not add never sends it), `inspect` (X / pad Y on the focused card, and a tap on one the game will not add), `choosefilter` (filter), `tabNext`/`tabPrev` (E/Q, bumpers) |
+| `CardCollection` | `title`, `filters` keyed `{ id, label, count }` (`count` above 0 shows beside the label), `filter`, `cards` keyed `{ id, name, cost, icon, art, type, typeLabel, rarity, text, owned, inDeck, canAdd, locked, reason }` (`reason` the game's words for a card it will not add), `selected`, `empty` | `add` (card; one the game will not add never sends it), `inspect` (X / pad Y on the focused card, and a tap on one the game will not add), `choosefilter` (filter), `tabNext`/`tabPrev` (E/Q, bumpers) |
 | `CardDeckList` | `title`, `entries` keyed `{ id, name, cost, type, rarity, copies, canAdd, canRemove }`, `total`, `limit` (0 hides the size), `selected`, `confirmLabel`, `canConfirm` | `choose` (row), `add` and `remove` (a row's plus and minus; X / pad Y in the focused row is its minus; a refused step is disabled and sends nothing), `confirm` |
-| `CardReward` | `title`, `choices` keyed `{ id, relic, name, cost, icon, art, type, typeLabel, rarity, text, enabled }`, `selected`, `skipLabel` | `pick` (offer; a refused one is disabled), `skip` (the button, Escape, pad B) |
+| `CardReward` | `title`, `kicker`, `choices` keyed `{ id, relic, name, cost, icon, art, type, typeLabel, rarity, text, enabled }`, `selected`, `skipLabel` | `pick` (offer; a refused one is disabled), `skip` (the button, Escape, pad B) |
 | `CardRunMap` | `title`, `floor`, `nodes` and `links` (NodeGraph's: a room's `state` is done, current, available or locked, its kind its `icon` and `shape`), `view`, `zoom`, `panX`, `panY`, `selected`, `legend` keyed `{ id, icon, label, shape }` (shape circle, or diamond for an elite or the boss, as its rooms) | NodeGraph's `pick` (room), `zoom`, `pinch`, `pan` |
 
 | Document | Parts |
 | --- | --- |
 | `CardFace` | `frame`, `cost`, `art`, `name`, `type`, `text` |
-| `CardHand` | `frame`, `slot`, `card`, `badge` (Play is a core primary button) |
-| `CardPiles` | `frame`, `pile`, `count`, `label` |
-| `CardCollection` | `frame`, `band`, `title`, `filter`, `cell`, `badge` |
+| `CardHand` | `frame`, `slot`, `card`, `reason` (Play is a core primary button) |
+| `CardPiles` | `frame`, `pile`, `stack`, `count`, `label` |
+| `CardCollection` | `frame`, `band`, `title`, `filter`, `count`, `cell`, `owned`, `deck`, `reason` |
 | `CardDeckList` | `frame`, `band`, `title`, `size`, `row`, `cost`, `name`, `copies`, `step` (Confirm is a core primary button) |
-| `CardReward` | `frame`, `band`, `title`, `choice`, `relic` (Skip is a core button) |
+| `CardReward` | `frame`, `band`, `kicker`, `title`, `choice`, `relic`, `mark`, `kind`, `name`, `text`, `bracket` (Skip is a core button) |
 | `CardRunMap` | `frame`, `band`, `title`, `floor`, `board`, `legend`, `row` |
 
 Every member carries a `fixture:default` and the state fixtures that apply
