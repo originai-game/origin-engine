@@ -106,8 +106,12 @@ impl Renderer {
                 texture_entry(4, true, wgpu::TextureViewDimension::Cube),
                 texture_entry(5, true, wgpu::TextureViewDimension::Cube),
                 // The aurora's footprint and table (aurora.rs), read with
-                // the frame group's IBL sampler.
-                texture_entry(6, true, wgpu::TextureViewDimension::D2),
+                // the frame group's IBL sampler; the vertex stage's march
+                // lights its clouds by the aurora's row (aurora_cloud_light).
+                wgpu::BindGroupLayoutEntry {
+                    visibility: wgpu::ShaderStages::VERTEX_FRAGMENT,
+                    ..texture_entry(6, true, wgpu::TextureViewDimension::D2)
+                },
             ],
         });
         let material_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {

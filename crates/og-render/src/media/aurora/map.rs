@@ -16,10 +16,15 @@ pub(crate) struct AuroraMap {
 
 struct FootprintPass {
     /// Compiling on a worker from the frame that makes it until its first
-    /// footprint is recorded ([`AuroraMap::encode`]).
-    pipeline: crate::deferred::Deferred<wgpu::ComputePipeline>,
+    /// footprint is recorded ([`AuroraMap::encode`]): the footprint, then
+    /// the pass that sums its light on the clouds into [`LIGHT_ROW`].
+    pipeline: crate::deferred::Deferred<(wgpu::ComputePipeline, wgpu::ComputePipeline)>,
     layout: wgpu::BindGroupLayout,
     uniform: wgpu::Buffer,
+    /// Each footprint workgroup's share of that light.
+    partials: wgpu::Buffer,
+    /// The table's columns ([`columns`]), into every frame's uniforms.
+    columns: [[f32; 4]; 2 * TABLE_ROWS as usize],
     sampler: wgpu::Sampler,
     strip: wgpu::TextureView,
     seed: u32,
@@ -151,19 +156,16 @@ impl AuroraMap {
                 &strip,
                 &pass.sampler,
                 &self.view,
+                &pass.partials,
             );
             pass.strip = strip;
             pass.seed = seed;
             return;
         }
-        let texture = map_texture(device, FOOTPRINT, FOOTPRINT + TABLE_ROWS, true);
-        write_rows(
-            queue,
-            &texture,
-            FOOTPRINT,
-            FOOTPRINT,
-            &table(FOOTPRINT as usize),
-        );
+        let texture = map_texture(device, FOOTPRINT, LIGHT_ROW + 1, true);
+        let table = table(FOOTPRINT as usize);
+        write_rows(queue, &texture, FOOTPRINT, FOOTPRINT, &table);
+        let columns = columns(&table, FOOTPRINT as usize);
         let view = texture.create_view(&Default::default());
         let entry = |binding, ty| wgpu::BindGroupLayoutEntry {
             binding,
@@ -202,6 +204,14 @@ impl AuroraMap {
                         view_dimension: wgpu::TextureViewDimension::D2,
                     },
                 ),
+                entry(
+                    4,
+                    wgpu::BindingType::Buffer {
+                        ty: wgpu::BufferBindingType::Storage { read_only: false },
+                        has_dynamic_offset: false,
+                        min_binding_size: None,
+                    },
+                ),
             ],
         });
         let pipeline_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
@@ -217,16 +227,26 @@ impl AuroraMap {
                     label: Some("aurora footprint"),
                     source: wgpu::ShaderSource::Wgsl(FOOTPRINT_WGSL.into()),
                 });
-                device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
-                    label: Some("aurora footprint"),
-                    layout: Some(&pipeline_layout),
-                    module: &module,
-                    entry_point: Some("main"),
-                    compilation_options: Default::default(),
-                    cache: crate::pipeline_cache::of(&device).as_ref(),
-                })
+                let compute = |entry| {
+                    device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
+                        label: Some("aurora footprint"),
+                        layout: Some(&pipeline_layout),
+                        module: &module,
+                        entry_point: Some(entry),
+                        compilation_options: Default::default(),
+                        cache: crate::pipeline_cache::of(&device).as_ref(),
+                    })
+                };
+                (compute("main"), compute("light"))
             })
         };
+        let groups = u64::from(FOOTPRINT / 8) * u64::from(FOOTPRINT / 8);
+        let partials = device.create_buffer(&wgpu::BufferDescriptor {
+            label: Some("aurora light"),
+            size: groups * 32,
+            usage: wgpu::BufferUsages::STORAGE,
+            mapped_at_creation: false,
+        });
         crate::deferred::Start::start(&pipeline);
         let uniform = device.create_buffer(&wgpu::BufferDescriptor {
             label: Some("aurora footprint"),
@@ -245,11 +265,15 @@ impl AuroraMap {
             anisotropy_clamp: 8,
             ..Default::default()
         });
-        let group = footprint_group(device, &layout, &uniform, &strip, &sampler, &view);
+        let group = footprint_group(
+            device, &layout, &uniform, &strip, &sampler, &view, &partials,
+        );
         self.pass = Some(FootprintPass {
             pipeline,
             layout,
             uniform,
+            partials,
+            columns,
             sampler,
             strip,
             seed,
@@ -260,20 +284,23 @@ impl AuroraMap {
     }
 
     /// Plans the footprint for `aurora` at `seconds` about the viewer at
-    /// `viewer` (world x and z, metres) and writes its uniforms, for
-    /// [`AuroraMap::encode`] to record before every pass of the frame that
-    /// reads it.
+    /// `viewer` (world metres) on a planet of `radius_km` and writes its
+    /// uniforms, for [`AuroraMap::encode`] to record before every pass of
+    /// the frame that reads it.
     pub(crate) fn update(
         &mut self,
         device: &wgpu::Device,
         queue: &wgpu::Queue,
         aurora: &Aurora,
         seconds: f64,
-        viewer: Vec2,
+        viewer: Vec3,
+        radius_km: f32,
     ) {
         self.ensure(device, queue, aurora.seed);
         let pass = self.pass.as_ref().expect("made above");
-        let params = aurora.footprint(seconds, viewer * 0.001);
+        let mut params = aurora.footprint(seconds, Vec2::new(viewer.x, viewer.z) * 0.001);
+        params.sky = [radius_km, viewer.y.max(0.0) * 0.001, LIGHT_ROW as f32, 0.0];
+        params.columns = pass.columns;
         queue.write_buffer(&pass.uniform, 0, bytemuck::bytes_of(&params));
         self.pending = true;
     }
@@ -288,9 +315,12 @@ impl AuroraMap {
             label: Some("aurora footprint"),
             timestamp_writes: None,
         });
-        compute.set_pipeline(pass.pipeline.get());
+        let (footprint, light) = pass.pipeline.get();
+        compute.set_pipeline(footprint);
         compute.set_bind_group(0, &pass.group, &[]);
         compute.dispatch_workgroups(FOOTPRINT / 8, FOOTPRINT / 8, 1);
+        compute.set_pipeline(light);
+        compute.dispatch_workgroups(1, 1, 1);
     }
 }
 
@@ -301,6 +331,7 @@ fn footprint_group(
     strip: &wgpu::TextureView,
     sampler: &wgpu::Sampler,
     out: &wgpu::TextureView,
+    partials: &wgpu::Buffer,
 ) -> wgpu::BindGroup {
     device.create_bind_group(&wgpu::BindGroupDescriptor {
         label: Some("aurora footprint"),
@@ -321,6 +352,10 @@ fn footprint_group(
             wgpu::BindGroupEntry {
                 binding: 3,
                 resource: wgpu::BindingResource::TextureView(out),
+            },
+            wgpu::BindGroupEntry {
+                binding: 4,
+                resource: partials.as_entire_binding(),
             },
         ],
     })

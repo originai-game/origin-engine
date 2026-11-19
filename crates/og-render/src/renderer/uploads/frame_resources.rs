@@ -216,12 +216,22 @@ impl Renderer {
             } else {
                 60.0
             };
+            // The planet the frame's aurora block stands on (AtmosphereGpu::new).
+            let radius_km = scene
+                .lighting
+                .environment
+                .sky
+                .look
+                .as_ref()
+                .and_then(|l| l.physical)
+                .map_or(6_360.0, |p| p.planet_radius.clamp(10.0, 1.0e5));
             self.sky.aurora_map.update(
                 &self.device,
                 &self.queue,
                 a,
                 scene.frame.tick as f64 / f64::from(rate),
-                glam::Vec2::new(viewer.x, viewer.z),
+                viewer,
+                radius_km,
             );
             if !made {
                 self.lights.environment = None;

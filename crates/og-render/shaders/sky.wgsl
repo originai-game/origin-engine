@@ -429,12 +429,19 @@ fn clouds_march(d: vec3<f32>, pixel: vec2<f32>) -> vec4<f32> {
   // which the live sky fills with these clouds). As bright as the sky is drawn: the clouds are part of it, so neither
   // the image-based light's strength (Environment::intensity, a light on surfaces, and a twilight's adaptation with
   // it) nor the cover's dimming of it lights them.
-  let sky_top = clear_sky_light(vec3<f32>(0.0, 1.0, 0.0));
+  let clear_top = clear_sky_light(vec3<f32>(0.0, 1.0, 0.0));
+  // An aurora over them lights them too, as it lights the night (aurora_cloud_light): the high layer and the far
+  // one take it with the sky's, the march through the cloud below.
+  let aurora_top = aurora_cloud_light(0);
+  let aurora_side = aurora_cloud_light(1);
+  let sky_top = clear_top + aurora_top;
   // The bases see the sky's low light, half of it from the horizon under
   // the sun (its glow: the orange of a sunset's cloud bases).
   let sun_side = clear_sky_light(normalize(vec3<f32>(to_light.x, 0.0, to_light.z) + vec3<f32>(0.0, 1e-3, 0.0)));
   let view_side = clear_sky_light(normalize(vec3<f32>(d.x, 0.0, d.z) + vec3<f32>(0.0, 1e-3, 0.0)));
   let sky_side = mix(view_side, sun_side, 0.5);
+  // The layer's mean density, a fraction of its peak (as far_clouds takes it).
+  let cover_mean = clamp(pow(c[0].x, 1.25) * 0.6, 0.0, 0.999);
   var color = vec4<f32>(0.0, 0.0, 0.0, 1.0);
   // Under an overcast the distance fades the deck into more deck, not into the clear sky behind it: a bright clear
   // band at the horizon under a storm. The deck's base far off: its grey ambient (as the march lights a base, below)
@@ -640,10 +647,15 @@ fn clouds_march(d: vec3<f32>, pixel: vec2<f32>) -> vec4<f32> {
       // the cloud round it: the body's own shade, which a flat ambient
       // term lacks.
       let open = 1.0 - 0.35 * clamp(sigma / max(c[0].y, 1e-6), 0.0, 1.0);
-      var ambient = mix(sky_side * 0.6, sky_top, hf) * (0.35 + 0.65 * hf) * open;
+      var ambient = mix(sky_side * 0.6, clear_top, hf) * (0.35 + 0.65 * hf) * open;
       // Under a cover of cloud the light between them is the clouds' own,
       // grey, not the clear sky's blue.
       ambient = mix(ambient, vec3<f32>(luma(ambient)), c[0].x * 0.7);
+      // The aurora's light from above reaches down into the cloud as diffuse light through a scattering slab
+      // (two-stream, g 0.85: 1 / (1 + 0.75 (1 - g) tau), tau the layer's depth over the sample), its colour kept, as
+      // a cloud scatters every wavelength alike; from the side through the cover's gaps.
+      let tau_up = c[0].y * cover_mean * (1.0 - hf) * c[0].w;
+      ambient += (aurora_top / (1.0 + 0.1125 * tau_up) + aurora_side * 0.6 * (1.0 - c[0].x)) * open;
       var fog = fog_far;
       if (t < 5000.0) { fog = cloud_fog(d, t); }
       let s = mix((sun + ambient) * c[2].rgb * (1.0 - frame.view_up.w), fog.rgb, fog.a) * sigma;
@@ -763,6 +775,18 @@ fn aurora_over(background: vec3<f32>, d: vec3<f32>, pixel: vec2<f32>) -> vec3<f3
   }
   if (max(max(light.r, light.g), light.b) <= 0.0) { return background; }
   return background + light * aurora_air(d, viewer);
+}
+
+// The aurora's light on the clouds, as clear_sky_light holds the sky's: k 0 on a surface facing up, 1 on one facing
+// the horizon (the mean round it). The footprint pass sums it from the whole display each frame (aurora_footprint.wgsl
+// `light`), per line into the texture's last row, so a cloud under a bright display is lit green from above and by
+// the red of its tops: a night cloud is the aurora's grey-green, never a black cut-out against it.
+fn aurora_cloud_light(k: i32) -> vec3<f32> {
+  let a = frame.aurora;
+  let row = i32(a[1].w) - 1;
+  if (a[0].y < 0.5 || i32(textureDimensions(aurora_map).y) <= row) { return vec3<f32>(0.0); }
+  let l = textureLoad(aurora_map, vec2<i32>(k, row), 0).xyz;
+  return max(l.x * a[2].rgb + l.y * a[3].rgb + l.z * a[4].rgb, vec3<f32>(0.0));
 }
 
 // How much of the aurora's light the lower air lets through along `d`

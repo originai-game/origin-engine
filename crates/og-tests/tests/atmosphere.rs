@@ -528,3 +528,75 @@ fn an_aurora_at_the_same_tick_has_identical_pixels() {
         }
     }
 }
+
+/// A night cloud takes the aurora's light (sky.wgsl aurora_cloud_light): a
+/// closed overcast under a breakup overhead, which hides the display
+/// itself, is lit by it through the cloud as diffuse light through a
+/// scattering slab, green the most as the display is. The test sets the
+/// display and the camera itself, so the aurora scene's composition can
+/// move: the breakup's curtains 60 km out, under the overcast's base, and
+/// the camera tilted 28° up into them over the colonnade. Over the frame's
+/// upper third its linear light rises by between a fortieth and half of
+/// what the display adds to the open sky there: the display's mean over
+/// the sky above the cloud, a fraction of it through the deck (it was not
+/// lit at all, a black cut-out against the aurora).
+#[test]
+#[ignore = "requires GPU"]
+fn a_night_cloud_takes_the_auroras_light() {
+    let frame = |cover: Option<f32>, aurora: bool| {
+        let mut built = scenes::build("aurora-breakup").expect("aurora scene");
+        built.scene.atmosphere.aurora = Some(og_render::Aurora {
+            activity: 0.95,
+            energy: 0.9,
+            intensity: 1.5,
+            distance: 60_000.0,
+            ..og_render::Aurora::default()
+        });
+        built.scene.frame.camera.position = Vec3::new(0.0, 2.2, 4.0);
+        built.scene.frame.camera.target = Vec3::new(0.0, 25.4, -40.0);
+        built.scene.atmosphere.clouds = cover.map(|coverage| og_render::Clouds {
+            coverage,
+            layer: 0.0,
+            ..og_render::Clouds::default()
+        });
+        if !aurora {
+            built.scene.atmosphere.aurora = None;
+        }
+        og_tests::gfx::render_built(&mut built)
+            .expect("render")
+            .image
+    };
+    // The linear light over the frame's upper third, per channel.
+    let sky = |img: &RgbaImage| {
+        let linear = |v: f32| {
+            let c = v / 255.0;
+            if c <= 0.04045 {
+                c / 12.92
+            } else {
+                ((c + 0.055) / 1.055).powf(2.4)
+            }
+        };
+        let mut s = [0.0f32; 3];
+        for y in 0..img.height / 3 {
+            for x in 0..img.width {
+                let p = px(img, x, y);
+                (0..3).for_each(|k| s[k] += linear(p[k]));
+            }
+        }
+        s.map(|v| v / (img.width * img.height / 3) as f32)
+    };
+    let rise = |a: [f32; 3], b: [f32; 3]| [a[0] - b[0], a[1] - b[1], a[2] - b[2]];
+    let open = rise(sky(&frame(None, true)), sky(&frame(None, false)));
+    let clouded = rise(
+        sky(&frame(Some(0.97), true)),
+        sky(&frame(Some(0.97), false)),
+    );
+    println!("the aurora adds {open:?} to the open sky, {clouded:?} to the overcast");
+    assert!(
+        luma(clouded) > luma(open) / 40.0
+            && luma(clouded) < luma(open) / 2.0
+            && clouded[1] > clouded[0]
+            && clouded[1] > clouded[2],
+        "the overcast under the aurora rises {clouded:?}, the open sky {open:?}"
+    );
+}

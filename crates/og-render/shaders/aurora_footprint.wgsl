@@ -13,11 +13,23 @@
 // distance to the nearest sheet (km, never more than the true one), b the
 // flux-weighted characteristic energy (keV), a the red line's flux, the
 // sheet's spread across tens of km (O(1D) lives 110 s and drifts).
+//
+// With it, the light the whole display sends the clouds under it (`light`,
+// into the texture's last row): per line, the cosine-weighted mean radiance
+// from above, and round the horizon from the side, as the clouds' clear
+// sky light holds the sky's (sky_look.wgsl clear_sky_light). A thin
+// emitting shell of column J (the line's emission summed up the column)
+// is seen at a radiance J / cos of its tilt to the ray, and a patch dA of
+// it subtends dA cos / r², so it sends J dA / r² along the ray, times the
+// ray's cosine to the normal. Summed over every texel in a fixed order:
+// the same light on every run.
 
 struct Params {
   head: vec4<f32>,  // x side, y radius (km), z curtains, w points per curtain
   look: vec4<f32>,  // x the strip's snapshot (0..3), y the sheet's half-width (km), z the red spread (km), w its scale
   curtain: array<vec4<f32>, 6>,  // x characteristic energy (keV), y the rays' seed, z their contrast
+  sky: vec4<f32>,  // x the planet's radius (km), y the viewer's height (km), z the light's row
+  columns: array<vec4<f32>, 16>,  // per table row: the lines' columns (km), then their heights (km)
   points: array<vec4<f32>, 768>,  // xy about the viewer (km), z the strip along (periods), w brightness
 };
 
@@ -25,12 +37,18 @@ struct Params {
 @group(0) @binding(1) var strip: texture_2d<f32>;
 @group(0) @binding(2) var strip_sampler: sampler;
 @group(0) @binding(3) var footprint: texture_storage_2d<rgba16float, write>;
+// Per workgroup of `main`: its texels' light from above (xyz, per line),
+// then from the side.
+@group(0) @binding(4) var<storage, read_write> partials: array<vec4<f32>>;
 
 const MAX_NEAR: u32 = 128u;
 
 var<workgroup> near: array<u32, 128>;
 var<workgroup> near_count: atomic<u32>;
 var<workgroup> tile_min: atomic<u32>;
+// The light's sums, one pair per invocation (`light_sum`).
+var<workgroup> light_up: array<vec4<f32>, 256>;
+var<workgroup> light_side: array<vec4<f32>, 256>;
 
 fn place(q: vec2<f32>) -> vec2<f32> {
   return q * length(q) * params.head.y;
@@ -125,7 +143,6 @@ fn main(
     }
   }
   workgroupBarrier();
-  if (gid.x >= n || gid.y >= n) { return; }
   let x = place((vec2<f32>(gid.xy) + 0.5) * to_q - 1.0);
   let count = atomicLoad(&near_count);
   // Every segment off the list is at least `reach` away (when the list
@@ -208,5 +225,90 @@ fn main(
   }
   // The energy of the curtains lighting the texel, the first's elsewhere.
   let e0 = select(params.curtain[0].x, energy / max(weight, 1e-9), weight > 1e-6);
-  textureStore(footprint, vec2<i32>(gid.xy), vec4<f32>(flux, max(nearest - hw, 0.0), e0, red));
+  let inside = gid.x < n && gid.y < n;
+  if (inside) {
+    textureStore(footprint, vec2<i32>(gid.xy), vec4<f32>(flux, max(nearest - hw, 0.0), e0, red));
+  }
+  // The texel's light on the clouds (the file's head), its area that of
+  // its extent in the world.
+  let shed = texel_light(flux, red, e0, length(x), length(e_r) * length(e_t));
+  light_up[li] = vec4<f32>(shed[0] * f32(inside), 0.0);
+  light_side[li] = vec4<f32>(shed[1] * f32(inside), 0.0);
+  light_sum(li, 64u);
+  if (li == 0u) {
+    let g = wid.y * (n / 8u) + wid.x;
+    partials[2u * g] = light_up[0];
+    partials[2u * g + 1u] = light_side[0];
+  }
+}
+
+// The light a texel `rho` km out on the ground sends the viewer, per line
+// (the file's head): [0] from above, [1] round the horizon from the side,
+// each over π. `area` its extent (km²) on the ground.
+fn texel_light(flux: f32, red: f32, e0: f32, rho: f32, area: f32) -> array<vec3<f32>, 2> {
+  var out = array<vec3<f32>, 2>(vec3<f32>(0.0), vec3<f32>(0.0));
+  if (flux + red <= 0.0) { return out; }
+  // The table's row by the characteristic energy, as the sky's march reads it.
+  let row = clamp(log2(max(e0, 0.01) / 0.5) / 0.67, 0.0, 7.0);
+  let r0 = u32(row);
+  let r1 = min(r0 + 1u, 7u);
+  let column = mix(params.columns[r0], params.columns[r1], row - f32(r0)).xyz;
+  let height = mix(params.columns[8u + r0], params.columns[8u + r1], row - f32(r0)).xyz;
+  let j = vec3<f32>(flux * column.x, flux * column.y, red * column.z);
+  let radius = params.sky.x;
+  let eye = radius + params.sky.y;
+  let angle = rho / radius;
+  for (var k = 0u; k < 3u; k++) {
+    let up = (radius + height[k]) * cos(angle) - eye;
+    // Under the viewer's horizon it lights nothing.
+    if (up <= 0.0) { continue; }
+    let across = (radius + height[k]) * sin(angle);
+    let r2 = up * up + across * across;
+    let r = sqrt(r2);
+    // The patch at its height, wider than on the ground.
+    let lift = (radius + height[k]) / radius;
+    let sent = j[k] * area * lift * lift / r2;
+    out[0][k] = sent * (up / r) / PI;
+    // Round the horizon a vertical surface's cosine averages 1/π of the
+    // ray's horizontal part.
+    out[1][k] = sent * (across / r) / (PI * PI);
+  }
+  return out;
+}
+
+// Sums light_up and light_side over the first `count` invocations into
+// their first, pairwise in a fixed order.
+fn light_sum(li: u32, count: u32) {
+  var stride = count / 2u;
+  loop {
+    workgroupBarrier();
+    if (li < stride) {
+      light_up[li] += light_up[li + stride];
+      light_side[li] += light_side[li + stride];
+    }
+    if (stride <= 1u) { break; }
+    stride /= 2u;
+  }
+  workgroupBarrier();
+}
+
+// The light of the whole footprint, from `main`'s workgroups' shares, into
+// the texture's light row: texel 0 from above, 1 from the side (per line).
+@compute @workgroup_size(256)
+fn light(@builtin(local_invocation_index) li: u32) {
+  let groups = arrayLength(&partials) / 2u;
+  var up = vec4<f32>(0.0);
+  var side = vec4<f32>(0.0);
+  for (var g = li; g < groups; g += 256u) {
+    up += partials[2u * g];
+    side += partials[2u * g + 1u];
+  }
+  light_up[li] = up;
+  light_side[li] = side;
+  light_sum(li, 256u);
+  if (li == 0u) {
+    let row = i32(params.sky.z);
+    textureStore(footprint, vec2<i32>(0, row), light_up[0]);
+    textureStore(footprint, vec2<i32>(1, row), light_side[0]);
+  }
 }

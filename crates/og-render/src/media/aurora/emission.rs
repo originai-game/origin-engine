@@ -192,6 +192,34 @@ pub(crate) fn table(n: usize) -> Vec<[f32; 4]> {
         .collect()
 }
 
+/// What a column of the aurora sends down, per row of [`table`] (`n`
+/// heights): rows 0 to `TABLE_ROWS` hold each line's column, its emission
+/// summed up the column per unit energy flux (km, as the sky's march sums
+/// it along a vertical ray); the rows after them the heights its light
+/// comes from (km, the column's mean). The footprint pass lights the
+/// clouds from them (`aurora_footprint.wgsl` `light`).
+pub(crate) fn columns(table: &[[f32; 4]], n: usize) -> [[f32; 4]; 2 * TABLE_ROWS as usize] {
+    let dz = (TABLE_TOP - TABLE_BOTTOM) / n as f64;
+    let mut out = [[0.0; 4]; 2 * TABLE_ROWS as usize];
+    for (row, texels) in table.chunks(n).enumerate() {
+        let mut column = [0.0f64; 3];
+        let mut moment = [0.0f64; 3];
+        for (x, t) in texels.iter().enumerate() {
+            let z = TABLE_BOTTOM + (x as f64 + 0.5) * dz;
+            for k in 0..3 {
+                column[k] += f64::from(t[k]) * dz;
+                moment[k] += f64::from(t[k]) * z * dz;
+            }
+        }
+        for k in 0..3 {
+            out[row][k] = column[k] as f32;
+            out[TABLE_ROWS as usize + row][k] =
+                (moment[k] / column[k].max(1e-12)).clamp(TABLE_BOTTOM, TABLE_TOP) as f32;
+        }
+    }
+    out
+}
+
 /// The lines' colours in linear sRGB per photon (radiant power falls as
 /// 1/λ), weighted by their efficiencies: the prompt nitrogen bands, the
 /// green line, the red line.

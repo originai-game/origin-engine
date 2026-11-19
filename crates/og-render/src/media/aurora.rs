@@ -48,7 +48,7 @@ mod strip;
 
 #[cfg(test)]
 use emission::emission_rows;
-use emission::{line_colors, table};
+use emission::{columns, line_colors, table};
 pub(crate) use map::{AuroraMap, FOOTPRINT_WGSL};
 use strip::{kh_strip, strip_mips};
 
@@ -59,6 +59,9 @@ pub(crate) const FOOTPRINT: u32 = 1024;
 /// The deposition table's rows (characteristic energies), below the
 /// footprint in the same texture.
 pub(crate) const TABLE_ROWS: u32 = 8;
+/// The texture's last row, under the table: the light the aurora sends the
+/// clouds, drawn with the footprint (`aurora_footprint.wgsl` `light`).
+pub(crate) const LIGHT_ROW: u32 = FOOTPRINT + TABLE_ROWS;
 /// The most curtains, and the points along each.
 pub(crate) const MAX_CURTAINS: usize = 6;
 pub(crate) const CURTAIN_POINTS: usize = 128;
@@ -168,7 +171,7 @@ impl Aurora {
     /// The frame uniform's block on a planet of `radius_km`: [0] the
     /// strength (1 when on), on, the radius, the footprint's radius; [1]
     /// the shell's bottom and top (km), the footprint's side, its rows
-    /// with the table; [2..5] the prompt nitrogen, green and red lines'
+    /// with the table and the clouds' light ([`LIGHT_ROW`]); [2..5] the prompt nitrogen, green and red lines'
     /// colours times the intensity, w: the march's least step (km), its
     /// largest, the conservative margin per texel.
     pub(crate) fn gpu(&self, radius_km: f32) -> [[f32; 4]; AURORA_VEC4S] {
@@ -187,7 +190,7 @@ impl Aurora {
                 TABLE_BOTTOM as f32,
                 TABLE_TOP as f32,
                 FOOTPRINT as f32,
-                (FOOTPRINT + TABLE_ROWS) as f32,
+                (LIGHT_ROW + 1) as f32,
             ],
             (n2 * k).extend(0.4).to_array(),
             (green * k).extend(60.0).to_array(),
@@ -356,6 +359,11 @@ pub(crate) struct FootprintParams {
     pub look: [f32; 4],
     /// Per curtain: x its characteristic energy (keV).
     pub curtain: [[f32; 4]; MAX_CURTAINS],
+    /// x: the planet's radius (km), y: the viewer's height (km), z: the
+    /// row of the texture the clouds' light is written to.
+    pub sky: [f32; 4],
+    /// The table's columns and their heights ([`emission::columns`]).
+    pub columns: [[f32; 4]; 2 * TABLE_ROWS as usize],
     /// Per point: xz about the viewer (km), the strip's coordinate along
     /// (periods), the brightness.
     pub points: [[f32; 4]; MAX_CURTAINS * CURTAIN_POINTS],
