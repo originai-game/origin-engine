@@ -330,6 +330,7 @@ const OneAtATime = defineSystem("RtOneAtATime", { reads: [Vel], writes: [Pos] },
   if (!set.ok) throw new Error(set.reason);
 });
 let heldAnswer = "";
+let heldLine = "";
 let seenBySet = 0;
 const ViewThenGet = defineSystem("RtViewThenGet", { reads: [Vel], writes: [Pos] }, (q, _time, world) => {
   const e = world.find("mover-0") as Entity;
@@ -342,6 +343,7 @@ const ViewThenGet = defineSystem("RtViewThenGet", { reads: [Vel], writes: [Pos] 
     p[0] = 200;
   }
   // After the view: the column is held; the refusal says why and the way through.
+  heldLine = new Error().stack!.split("\n")[1]!.match(/:(\d+):\d+\)?$/)![1]!;
   const got = world.get(e, Pos);
   heldAnswer = got.ok ? "answered" : got.reason;
 });
@@ -354,12 +356,16 @@ test("a system's declared components are borrowed only when it takes a view, so 
   expect(got.ok && got.value.p.x).toBe(30);
   engine.destroy();
 
-  const viewing = start(og.game({ systems: [ViewThenGet], commands: { spawn: spawnMovers } }) as unknown as GameToken);
+  const made = createEngine(og.game({ systems: [ViewThenGet], commands: { spawn: spawnMovers } }) as unknown as GameToken, { root: import.meta.dir });
+  if (!made.ok) throw new Error(made.reason);
+  const viewing = made.value;
   viewing.command("spawn", ["2"]);
   expect(viewing.advance(1)).toEqual({ ok: true, value: 1 });
   expect(seenBySet).toBe(100);
-  expect(heldAnswer).toContain("world.get of 'RtPos' is refused: this system took a column view of 'RtPos'");
+  // It names the component, the entity, the system and the game's line that called.
+  expect(heldAnswer).toContain("world.get of 'RtPos' on entity 'mover-0' is refused: system 'RtViewThenGet' took a column view of 'RtPos'");
   expect(heldAnswer).toContain("or call world.get before taking the view");
+  expect(heldAnswer).toEndWith(`(at runtime.test.ts:${Number(heldLine) + 1})`);
   // The view's write is the world's once the system returned.
   const after = viewing.world.get(viewing.world.find("mover-0") as Entity, Pos);
   expect(after.ok && after.value.p.x).toBe(200);

@@ -73,7 +73,14 @@ export class WorldImpl {
       }
     }
     // Refused, or a value only JSON reads: the engine says which, as it always has.
-    return parse(abi().og_world_get(this.id, entity, component.name));
+    return this.sited(parse(abi().og_world_get(this.id, entity, component.name)));
+  }
+
+  /** A borrow conflict's refusal with the game's line that made the call (spawn-site.ts), outside a publish build. */
+  private sited<T>(answer: Result<T>): Result<T> {
+    if (answer.ok || rt.publishBuild === true || !answer.reason.includes("took a column view")) return answer;
+    const site = spawnSite(engineRoots.get(this.id) ?? rt.creatingRoot);
+    return site === null ? answer : { ok: false, reason: `${answer.reason} (at ${site})` };
   }
 
   set(entity: number, component: Token, value: unknown): Result<void> {
@@ -88,7 +95,7 @@ export class WorldImpl {
         if (epoch !== 0) forgetComponents();
       }
     }
-    return structural(parse(abi().og_world_set(this.id, entity, component.name, JSON.stringify(value ?? {}))));
+    return structural(this.sited<void>(parse(abi().og_world_set(this.id, entity, component.name, JSON.stringify(value ?? {})))));
   }
 
   resource(resource: Token): Result<object> {

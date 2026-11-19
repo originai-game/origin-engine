@@ -1,0 +1,8 @@
+{
+  "fixed": [
+    {
+      "member": "og.World.get",
+      "summary": "A world.get or world.set refused because the system holds the column in a view now names the entity and the system, and outside a publish build ends with the game's line that made the call: world.get of 'Pos' on entity 'mover-0' is refused: system 'Move' took a column view of 'Pos' ... (at src/move.ts:42)."
+    }
+  ]
+}

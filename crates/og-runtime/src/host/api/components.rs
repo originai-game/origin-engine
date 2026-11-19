@@ -95,9 +95,10 @@ pub fn og_world_get(world: u32, entity_id: f64, comp: String) -> Result<serde_js
             })?;
             let (layout, id) = running_record(&eng, &comp, RecordKind::Component)?;
             // SAFETY: the frame is published while its system runs.
-            let bytes = unsafe { f.ctx() }
-                .get_bytes(e, id)
-                .map_err(|e| held_by_view(e, &comp, "world.get"))?;
+            let bytes = unsafe { f.ctx() }.get_bytes(e, id).map_err(|err| {
+                let (entity, system) = conflict_names(&eng, f, e);
+                held_by_view(err, &comp, "world.get", &entity, &system)
+            })?;
             Ok(layout.decode(&bytes))
         })();
     }
@@ -113,14 +114,44 @@ pub fn og_world_get(world: u32, entity_id: f64, comp: String) -> Result<serde_js
 }
 
 /// `world.get`/`world.set` inside a system on an entity whose column of
-/// `comp` a view of the system holds: the reason, with the way through.
-pub(super) fn held_by_view(e: og_core::Error, comp: &str, call: &str) -> String {
+/// `comp` a view of the system holds: the reason, naming the component, the
+/// entity (its name, else `#<index>.<generation>`) and the system, with the
+/// way through. The game's source line is added by the TypeScript side,
+/// which sees the call's stack.
+pub(super) fn held_by_view(
+    e: og_core::Error,
+    comp: &str,
+    call: &str,
+    entity: &str,
+    system: &str,
+) -> String {
     if e.kind() == og_core::ErrorKind::Access && e.reason().contains("is borrowed") {
         return format!(
-            "{call} of '{comp}' is refused: this system took a column view of '{comp}' (a.column) on this entity's archetype, and the view holds the column until the system returns; read and write the entity through that view's arrays (its row: a.entities), or call {call} before taking the view"
+            "{call} of '{comp}' on entity '{entity}' is refused: system '{system}' took a column view of '{comp}' (a.column) on this entity's archetype, and the view holds the column until the system returns; read and write the entity through that view's arrays (its row: a.entities), or call {call} before taking the view"
         );
     }
     err(e)
+}
+
+/// An entity as a borrow conflict names it, and the running system's name.
+fn conflict_names(
+    eng: &crate::engine::Engine,
+    f: &crate::engine::Frame,
+    e: og_ecs::Entity,
+) -> (String, String) {
+    // SAFETY: the frame is published while its system runs.
+    let entity = match unsafe { f.ctx() }.name_of(e) {
+        Some(name) => name.to_owned(),
+        None => format!("#{}.{}", e.index(), e.generation()),
+    };
+    let system = eng
+        .state
+        .borrow()
+        .systems
+        .get(f.system)
+        .map(|s| s.name.clone())
+        .unwrap_or_default();
+    (entity, system)
 }
 
 pub fn og_world_set(world: u32, entity_id: f64, comp: String, value: String) -> Result<(), String> {
@@ -135,7 +166,8 @@ pub fn og_world_set(world: u32, entity_id: f64, comp: String, value: String) -> 
             let value = parse(Some(&value))?;
             // SAFETY: the frame is published while its system runs.
             let ctx = unsafe { f.ctx() };
-            let held = |e| held_by_view(e, &comp, "world.set");
+            let (entity, system) = conflict_names(&eng, f, e);
+            let held = |err| held_by_view(err, &comp, "world.set", &entity, &system);
             let current = ctx.get_bytes(e, id).map_err(held)?;
             let bytes = layout.encode(Some(&current), Some(&value))?;
             ctx.set_bytes(e, id, &bytes).map_err(held)
