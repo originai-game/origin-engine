@@ -170,21 +170,21 @@ test("every part a member names in its markup is in its parts list, and every li
 test("Shop: a tile reports buy by key; sold out, owned and unaffordable tiles are marked disabled, silent and say why", () => {
   const events: Event[] = [];
   run(member("shop", "default", {}, { events }), (e) => {
-    for (const k of ["cape", "key", "dragon"]) expect(`${k} ${row(e, k).disabled}`).toBe(`${k} true`);
+    for (const k of ["cape", "key", "shield"]) expect(`${k} ${row(e, k).disabled}`).toBe(`${k} true`);
     expect(row(e, "potion").disabled).toBeFalsy();
     // A refused tile names its verdict; an open one is named by its offer alone.
-    expect(["cape", "key", "dragon", "potion"].map((k) => row(e, k).name)).toEqual(["Ember Cape, Owned", "Vault Key, Sold out", "Dragon Mount, Not enough", "Potion Pack"]);
+    expect(["cape", "key", "shield", "potion"].map((k) => row(e, k).name)).toEqual(["Ember Cape, Owned", "Vault Key, Sold out", "Dragonscale Shield, Not enough", "Potion Pack"]);
     tap(e, row(e, "cape"));
     tap(e, row(e, "key"));
-    tap(e, row(e, "dragon"));
+    tap(e, row(e, "shield"));
     tap(e, row(e, "potion"));
     tap(e, row(e, "items"));
     key(e, "KeyE");
     pad(e, "leftBumper");
     expect(intents(events, ["buy", "choosetab", "tabNext", "tabPrev"])).toEqual(["buy:potion", "choosetab:items", "tabNext:", "tabPrev:"]);
-    expect(said(e, ["Sold out", "Owned", "Not enough", "-30%", "12,450", "1,200", "40"])).toEqual([]);
-    // A struck price says what it was, for a screen reader.
-    expect(elements(e).some((x) => x.name === "Was 1,000")).toBeTrue();
+    expect(said(e, ["Store", "Sold out", "Owned", "Not enough", "−30%", "New", "12,450", "3,200", "1,200", "40"])).toEqual([]);
+    // A struck price is named with the price it replaces, for a screen reader.
+    expect(elements(e).some((x) => x.name === "700 Gems, was 1,000")).toBeTrue();
   });
 });
 
@@ -214,7 +214,11 @@ test("Shop: the failed catalogue offers Try again; loading and empty say so", ()
 test("ShopConfirm: Buy confirms; Cancel, Escape and B cancel; Enter presses the focused button, Cancel first; busy and refused purchases send nothing", () => {
   const events: Event[] = [];
   run(member("shop-confirm", "default", {}, { events }), (e) => {
-    expect(said(e, ["Left after: 320 → 0", "1,000", "700", "Founder Bundle"])).toEqual([]);
+    // The price in the offer's own currency and the balance after in that wallet.
+    expect(said(e, ["Balance", "3,200 → 2,500", "1,000", "700", "Founder Bundle"])).toEqual([]);
+    expect(elements(e).some((x) => x.name === "700 Gems, was 1,000")).toBeTrue();
+    // The key caps stay out of the buttons' names.
+    expect([byId(e, "Cancel").name, byId(e, "Buy").name]).toEqual(["Cancel", "Buy"]);
     tap(e, byId(e, "Buy"));
     tap(e, byId(e, "Cancel"));
     key(e, "Escape");
@@ -239,7 +243,21 @@ test("ShopConfirm: Buy confirms; Cancel, Escape and B cancel; Enter presses the 
     });
   }
   run(member("shop-confirm", "loading"), (e) => expect(has(e, "Purchasing")).toBeTrue());
-  run(member("shop-confirm", "disabled"), (e) => expect(has(e, "Not enough")).toBeTrue());
+  // Short and failed are separate states: short disables Buy and says how
+  // much more of which currency, with no error strip; failed keeps Buy and
+  // shows the game's error; a refusal without a short price says the game's reason.
+  run(member("shop-confirm", "disabled"), (e) => {
+    expect(said(e, ["Not enough Gems", "1,600 more", "12,450 → 2,450"])).toEqual([]);
+    expect(elements(e).some((x) => x.role === "alert")).toBeFalse();
+  });
+  run(member("shop-confirm", "error"), (e) => {
+    expect(has(e, "The purchase did not go through. Nothing was charged.")).toBeTrue();
+    expect(byId(e, "Buy").disabled).toBeFalsy();
+  });
+  run(member("shop-confirm", "refused"), (e) => {
+    expect(has(e, "Requires level 40")).toBeTrue();
+    expect(byId(e, "Buy").disabled).toBeTrue();
+  });
 });
 
 test("Achievements: Claim reports its key; a hidden one shows as hidden; states, dates and rarity are words", () => {

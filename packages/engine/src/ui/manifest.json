@@ -785,7 +785,6 @@
     "uses": [
       "EmptyState",
       "ErrorState",
-      "ProgressBar",
       "Spinner"
     ],
     "files": [

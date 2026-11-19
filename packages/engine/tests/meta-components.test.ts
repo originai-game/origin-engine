@@ -53,7 +53,7 @@ function click(engine: Engine, el: El) { engine.probe.commands(`0:touch_move:${e
 function buttons(engine: Engine) { return elements(engine).filter(e => e.role === "button"); }
 
 test("pass claims are keyed, entitlement-gated and silent during a pending operation", () => {
-  for (const [premiumUnlocked, disabled, expected] of [[false, false, ["keys"]], [true, false, ["keys", "blade"]], [true, true, []]] as const) {
+  for (const [premiumUnlocked, disabled, expected] of [[false, false, ["potions"]], [true, false, ["shard", "cloak", "flame", "potions"]], [true, true, []]] as const) {
     const { engine, events } = mount("PassTrack", { premiumUnlocked, disabled });
     try {
       for (const button of buttons(engine).filter(e => e.name === "Claim")) click(engine, button);
@@ -64,7 +64,8 @@ test("pass claims are keyed, entitlement-gated and silent during a pending opera
   try {
     og.ui.previewViewport(engine.world, { width: 390, height: 844, dpr: 2, coarsePointer: true, breakpoint: "phonePortrait", safeArea: { top: 0, bottom: 0, left: 0, right: 0 } });
     engine.advance(3);
-    const track = elements(engine).find(e => e.name === "Season rewards")!;
+    // Each lane scrolls sideways on its own; the free lane's last tier comes into view.
+    const track = elements(engine).find(e => e.name === "Free rewards")!;
     expect(elements(engine).some(e => e.text === "Gems")).toBe(false);
     engine.probe.commands(`0:touch_move:${track.x + track.width / 2},${track.y + track.height / 2};0.02:scroll:900,0`);
     engine.advance(12);
