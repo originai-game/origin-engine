@@ -49,8 +49,8 @@ fn unorm16(v: f32, lo: f32, scale: f32) -> u16 {
     }
 }
 
-pub(super) struct Tangents<'a> {
-    pub(super) v: &'a mut [FVertex],
+pub(crate) struct Tangents<'a> {
+    pub(crate) v: &'a mut [FVertex],
 }
 
 impl mikktspace::Geometry for Tangents<'_> {
@@ -80,7 +80,7 @@ impl mikktspace::Geometry for Tangents<'_> {
 
 /// Welds identical vertices; `sources` (the source vertex of each input
 /// vertex) follows the vertices.
-pub(super) fn weld<T: bytemuck::Pod>(
+pub(crate) fn weld<T: bytemuck::Pod>(
     vertices: &[T],
     indices: &[u32],
     sources: &mut Vec<u32>,

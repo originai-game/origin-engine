@@ -325,6 +325,105 @@ fn a_town_cooks_to_a_tree_whose_proxies_stand_within_their_error_of_the_houses()
     );
 }
 
+/// The tangent-space normal the walls' map gives in the normal-map test:
+/// tilted towards +u and up the image, so a frame with a flipped
+/// bitangent, or none, shows another direction.
+const TILT: [f32; 3] = [0.5, 0.5, std::f32::consts::FRAC_1_SQRT_2];
+
+#[test]
+fn a_proxy_shows_its_houses_normal_maps_in_its_own_tangent_frame() {
+    let root = project("og-cook-hlod-normals", &town(BLOCK, 0.0, ""));
+    let mapped = house().replacen(
+        "  roughness 0.9\n",
+        "  roughness 0.9\n  normalMap \"tilt.png\"\n",
+        1,
+    );
+    write(&root, "models/house.ogt", &mapped);
+    let px = TILT.map(|c| ((c * 0.5 + 0.5) * 255.0).round() as u8);
+    let rgba: Vec<u8> = (0..16).flat_map(|_| [px[0], px[1], px[2], 255]).collect();
+    image::save_buffer(
+        root.join("assets/models/tilt.png"),
+        &rgba,
+        4,
+        4,
+        image::ExtendedColorType::Rgba8,
+    )
+    .unwrap();
+    let report = cook(&root);
+    assert!(report.ok(), "{:?}", report.errors());
+    let bundle = Bundle::open(&root.join("cooked")).unwrap();
+    let id = og_cook::hlod::hlod_id("scenes/town.ogt");
+    let tree = bundle.hlod(&id, &bundle.read(&id).unwrap()).unwrap();
+    let mapped = |n: Vec3, t: [f32; 4], m: Vec3| {
+        let t3 = Vec3::new(t[0], t[1], t[2]).normalize();
+        let b = n.cross(t3) * t[3].signum();
+        (t3 * m.x + b * m.y + n * m.z).normalize()
+    };
+    // The direction a wall facing each way shows, as the house draws it
+    // (in its own tangent frame, which the model cook made).
+    let house = bundle.load_model("models/house.ogt").unwrap();
+    let mut shown: Vec<(Vec3, Vec3)> = Vec::new();
+    for prim in &house.primitives {
+        if house.materials[prim.material].normal_texture.is_none() {
+            continue;
+        }
+        for v in &prim.mesh(0).vertices {
+            let n = Vec3::from(v.normal);
+            if n.y.abs() < 0.1 && v.tangent[3] != 0.0 {
+                shown.push((n, mapped(n, v.tangent, Vec3::from(TILT))));
+            }
+        }
+    }
+    assert!(!shown.is_empty(), "the walls are normal-mapped");
+    for (n, node) in tree.nodes.iter().enumerate() {
+        let pid = og_cook::hlod::node_id("scenes/town.ogt", n);
+        let (model, textures) = bundle.load_model_with_textures(&pid).unwrap();
+        let prim = &model.primitives[0];
+        let material = &model.materials[prim.material];
+        let page = &textures[material.normal_texture.expect("a normal page")];
+        let mesh = prim.mesh(0);
+        let mut walls = 0;
+        for t in mesh.indices.chunks(3) {
+            let v = [0, 1, 2].map(|k| mesh.vertices[t[k] as usize]);
+            let p = v.map(|v| Vec3::from(v.position));
+            let face = (p[1] - p[0]).cross(p[2] - p[0]);
+            if face.length() < 2.0 {
+                continue;
+            }
+            let face = face.normalize();
+            let c = (p[0] + p[1] + p[2]) / 3.0 + model.node_world()[0].w_axis.truncate();
+            if face.y.abs() > 0.05 || !(1.0..3.0).contains(&c.y) {
+                continue;
+            }
+            let normal = (v.map(|v| Vec3::from(v.normal)).iter().sum::<Vec3>()).normalize();
+            let tangent =
+                std::array::from_fn(|k| v.iter().map(|v| v.tangent[k]).sum::<f32>() / 3.0);
+            let uv = v.iter().map(|v| glam::Vec2::from(v.uv)).sum::<glam::Vec2>() / 3.0;
+            let x = ((uv.x * page.width as f32) as u32).min(page.width - 1);
+            let y = ((uv.y * page.height as f32) as u32).min(page.height - 1);
+            let at = ((y * page.width + x) * 4) as usize;
+            let texel =
+                Vec3::from_slice(&[0, 1, 2].map(|k| page.rgba[at + k] as f32 / 127.5 - 1.0));
+            let got = mapped(normal, tangent, texel.normalize());
+            let want = shown
+                .iter()
+                .find(|(n, _)| n.dot(face) > 0.99)
+                .unwrap_or_else(|| panic!("node {n}: no house wall faces {face}"))
+                .1;
+            assert!(
+                got.dot(want) > 0.97,
+                "node {n}: the wall facing {face} at {c} shows {got}, the house {want}"
+            );
+            walls += 1;
+        }
+        let members = node.members.1 - node.members.0;
+        assert!(
+            walls >= members * 4,
+            "node {n}: {walls} wall triangles read"
+        );
+    }
+}
+
 /// The outputs of the scene's HLOD that cooked in `report`, sorted.
 fn cooked(report: &Report) -> Vec<String> {
     let mut out: Vec<String> = report
@@ -345,8 +444,8 @@ fn only_the_nodes_whose_houses_moved_cook_again() {
     assert!(first.ok(), "{:?}", first.errors());
     assert_eq!(
         cooked(&first).len(),
-        1 + 5 * 3,
-        "the tree, 5 models, 10 pages"
+        1 + 5 * 4,
+        "the tree, 5 models, 15 pages"
     );
     assert_eq!(cooked(&cook(&root)), Vec::<String>::new());
     // A light added to the scene moves no house.
@@ -372,9 +471,11 @@ fn only_the_nodes_whose_houses_moved_cook_again() {
             "hlod",
             "hlod-0",
             "hlod-0-base",
+            "hlod-0-normal",
             "hlod-0-surface",
             "hlod-1",
             "hlod-1-base",
+            "hlod-1-normal",
             "hlod-1-surface"
         ]
     );
