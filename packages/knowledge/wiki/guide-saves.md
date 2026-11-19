@@ -369,8 +369,8 @@ What moves is which version is current, and only the host knows it:
    version's manifest against the integrity the answer gave, so bytes
    another server put there fail the load (`integrity`).
 3. Poll catalogHead while the game cares: every 30 to 60 seconds, and
-   when a `catalog` notice (og.PlatformNoticeKind.catalog) says one may
-   have changed. A notice is a hint: a host may send it late, twice or
+   when a `catalog` notice says one may have changed. A notice is a
+   hint: a host may send it late, twice or
    never (a top-level page cannot push), and a game that waits for one
    never learns of a version. A new version may also be an older one
    again: a rollback.
