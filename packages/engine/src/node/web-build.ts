@@ -154,6 +154,12 @@ export interface PublishSettings {
    * project.ogt `publish { assets }`, as og checked it. Null: next to the page.
    */
   readonly assets: string | null;
+  /**
+   * The content base og.load.data reads catalogs from (guide loading §14),
+   * an https origin or http on localhost; `og build --content`, else
+   * project.ogt `publish { content }`. Null: a data load fails `unavailable`.
+   */
+  readonly content: string | null;
 }
 
 export interface ProjectSettings {
@@ -186,6 +192,7 @@ export const DEFAULT_PUBLISH: PublishSettings = {
   loading: "engine",
   loadingLabels: null,
   assets: null,
+  content: null,
 };
 
 /** The settings of a project read without og (tests): name, id, engine and profile; publish defaults. */
@@ -272,6 +279,12 @@ export interface BuildManifest {
    * package is next to the page.
    */
   readonly assets: { readonly base: string; readonly origin: string } | null;
+  /**
+   * Where og.load.data reads catalogs from (guide loading §14): `<base>/<catalog>/…`,
+   * answering CORS reads from the page's origin; `origin` is what the page's
+   * Content-Security-Policy must allow (`connect-src`). Null: no content base.
+   */
+  readonly content: { readonly base: string; readonly origin: string } | null;
   /**
    * The origins the game's remote `<iframe>`s load documents from
    * (project.ogt's `frames`, docs/web-export.md §Frames): what the page's
@@ -1046,6 +1059,7 @@ export async function webBuild(project: string, entry: string, out: string, publ
     // The package on its asset base: the boot fetches the manifest against
     // this integrity, and every other file against the manifest's.
     ...(p.assets ? { assets: { base: p.assets, manifest: integrityOf(new Uint8Array(readFileSync(join(out, "cooked", ".cook.ogt")))) } } : {}),
+    ...(p.content ? { content: p.content } : {}),
   };
   writeFileSync(join(out, "index.html"), pageHtml({ settings, publish, config, icon, pwa: publish, play: served("play.js") }));
   writeFileSync(join(out, "_headers"), headersFile(p.isolation, Object.values(names)));
@@ -1107,6 +1121,7 @@ export async function webBuild(project: string, entry: string, out: string, publ
     probe: { protocol: 5, wire: 1, build: probe?.build ?? (publish ? "publish" : "release"), members: probe?.members ?? [] },
     crossOriginIsolation: p.isolation,
     assets: p.assets ? { base: p.assets, origin: new URL(p.assets).origin } : null,
+    content: p.content ? { base: p.content, origin: new URL(p.content).origin } : null,
     frames: settings.frames ?? [],
     display: { fit: p.fit, aspect: p.aspect, orientation: p.orientation, dprCap: p.dprCap, fullscreen: p.fullscreen, gate: p.gate, madeWith: p.madeWith },
     icons,

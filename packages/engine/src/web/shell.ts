@@ -112,6 +112,8 @@ export interface ShellOptions {
    * the manifest's own integrity.
    */
   readonly rootIntegrity?: string;
+  /** The content base og.load.data reads catalogs from (guide loading §14), an https URL; omitted: a data load fails `unavailable`. */
+  readonly content?: string;
   /** The Basis transcoder's script and module URLs (as the Worker resolves them). */
   readonly basis?: { readonly js: string; readonly wasm: string };
   /** The rav1d AV1 fallback's module URL (as the Worker resolves it), fetched only where WebCodecs cannot decode AV1. */

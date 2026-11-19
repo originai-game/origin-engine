@@ -135,6 +135,7 @@ export async function start(game: GameToken, data: Start, run: Run, gate: Gate, 
     const created = createEngine(game, {
       ...(data.seed === undefined ? {} : { seed: data.seed }),
       ...(data.root === undefined ? {} : { root: data.root }),
+      ...(data.content ? { content: data.content } : {}),
       ...(data.profile === undefined ? {} : { profile: data.profile }),
       ...(data.project === undefined ? {} : { project: data.project }),
       ...(data.locale ? { locale: data.locale } : {}),
