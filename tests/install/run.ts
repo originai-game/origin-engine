@@ -236,8 +236,17 @@ function host(): void {
       step = new Step("4b og ui check, og style check-project --sizes, og frame measure");
       const ui = run(step, [...ogCmd, "ui", "check", ".", "--breakpoints", "desktop,phoneLandscape", "--locales", "game", "--scales", "100", "--json"], demo, { allowFail: true });
       if (ui.status !== 0) step.fail(`og ui check exited ${ui.status}\n${ui.stderr.slice(-2000)}`);
-      const checked = JSON.parse(ui.stdout.trim().split("\n").at(-1)!) as { cells: number; findings: Array<{ at?: unknown[] }>; measures: number; frames?: Array<{ viewport: number[] }> };
-      if (!(checked.cells > 0) || checked.frames?.length !== checked.cells || checked.measures !== 0) step.fail(`og ui check on the empty skeleton --json: ${ui.stdout.slice(0, 400)}`);
+      const checked = JSON.parse(ui.stdout.trim().split("\n").at(-1)!) as { cells: number; findings: Array<{ at?: unknown[] }>; measures: number; frames?: Array<{ viewport: number[] }>; report: string };
+      if (!(checked.cells > 0) || checked.frames?.length !== checked.cells) step.fail(`og ui check on the empty skeleton --json: ${ui.stdout.slice(0, 400)}`);
+      // Check mode measures what a frame draws and the frame itself ("(frame)"): each measure names a cell and a path in that cell's frame.
+      const report = JSON.parse(readFileSync(checked.report, "utf8")) as { measures: Array<{ measure: string; cell: string; paths: string[] }>; cellList: Array<{ cell: string; uiFrame: string }> };
+      if (report.measures.length !== checked.measures) step.fail(`og ui check: --json counts ${checked.measures} measures, check.json lists ${report.measures.length}`);
+      for (const m of report.measures) {
+        const cell = report.cellList.find((c) => c.cell === m.cell);
+        const frame = cell && (JSON.parse(readFileSync(join(dirname(checked.report), cell.uiFrame), "utf8")) as { elements: Array<{ path?: string }> });
+        const inFrame = new Set(["(frame)", ...(frame?.elements ?? []).flatMap((e) => (e.path === undefined ? [] : [e.path]))]);
+        if (!frame || m.paths.length === 0 || m.paths.some((p) => !inFrame.has(p))) step.fail(`og ui check: measure ${m.measure} of cell ${JSON.stringify(m.cell)} names ${JSON.stringify(m.paths)}, not paths in that cell's frame`);
+      }
       if (checked.findings.some((f) => !Array.isArray(f.at))) step.fail("og ui check --json: a finding without its places (at)");
       log(`   og ui check: ${checked.cells} cell(s), ${checked.findings.length} finding(s)`);
       // The reviewer's other two: og style check-project at desktop and phone size (labelled frames with their tier), and a region
