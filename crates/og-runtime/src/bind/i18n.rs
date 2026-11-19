@@ -369,6 +369,14 @@ pub(crate) fn resolve_missing(
 /// locale's text missing while its pack is fetched.
 pub fn fonts_pending() -> u32 {
     let engines = crate::engine::engine_ids();
+    // A face that landed since the last tick joins the chain now: behind the
+    // play gate no tick runs (the UI's end calls ensure_packs), so counting
+    // it as pending held the first frame, and with it the gate, for good.
+    for &id in &engines {
+        if let Ok(eng) = engine(id) {
+            ensure_packs(&eng);
+        }
+    }
     let faces: u32 = engines
         .iter()
         .map(|&id| with(id, |s| s.pending.len() as u32))
