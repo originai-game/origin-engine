@@ -10,6 +10,10 @@
 //!   `no_server_starts_one_without_the_jobserver_then_compiles`
 //! - a server started (and a running one disturbed) when one answers →
 //!   `an_answering_server_is_left_alone`
+//! - on Windows, a compile whose argfile expands past the command line
+//!   limit run through sccache (os error 206), or one that fits not →
+//!   `an_argfile_too_long_for_one_command_line_skips_sccache`,
+//!   `an_argfile_that_fits_goes_through_sccache`
 
 use std::path::{Path, PathBuf};
 use std::process::Command;
@@ -114,6 +118,72 @@ fn an_answering_server_is_left_alone() {
     assert!(!log.contains("start"), "{log}");
     assert!(log.starts_with("run rustc"), "{log}");
     assert_eq!(code, 7);
+}
+
+/// os error 206 (studio-win, 2026-11-19): cargo passes a long command line
+/// as `rustc @argfile`, and sccache spawns it expanded, past Windows'
+/// limit. Runs the wrapper with a fake rustc and an argfile of `lines`
+/// arguments of 100 characters; returns the exit status and the log.
+#[cfg(windows)]
+fn run_argfile(name: &str, lines: usize) -> (i32, String) {
+    let dir = scratch(name);
+    let log = dir.join("log");
+    let fake = fake_sccache(&dir, &log);
+    let rustc = dir.join("rustc.cmd");
+    std::fs::write(
+        &rustc,
+        format!(
+            "@echo off\r\necho rustc %*>> \"{}\"\r\nexit /b 5\r\n",
+            log.display()
+        ),
+    )
+    .unwrap();
+    let argfile = dir.join("cargo-argfile");
+    let arg = format!("-Ldependency={}", "x".repeat(87));
+    std::fs::write(&argfile, vec![arg; lines].join("\n")).unwrap();
+    let (p, _listener) = port(true);
+    let status = Command::new(WRAP)
+        .arg(&rustc)
+        .arg(format!("@{}", argfile.display()))
+        .env("OG_SCCACHE", &fake)
+        .env("OG_SCCACHE_STATE", dir.join("state"))
+        .env("SCCACHE_SERVER_PORT", p.to_string())
+        .status()
+        .unwrap();
+    (
+        status.code().unwrap_or(-1),
+        std::fs::read_to_string(&log).unwrap_or_default(),
+    )
+}
+
+/// An argfile that expands past the limit is passed to rustc unexpanded,
+/// not through sccache. Ways it could fail: sccache still runs it (206 in
+/// a real build), the argfile is dropped or expanded, or rustc's exit
+/// status is lost.
+#[cfg(windows)]
+#[test]
+fn an_argfile_too_long_for_one_command_line_skips_sccache() {
+    // 330 lines of 103 characters with quotes and a space: 33,990.
+    let (code, log) = run_argfile("argfile-long", 330);
+    assert!(!log.contains("run "), "sccache must not run it: {log}");
+    let line = log.lines().next().unwrap_or_default();
+    assert!(
+        line.starts_with("rustc @") && line.trim_end().ends_with("cargo-argfile"),
+        "rustc gets cargo's argfile as it is: {log}"
+    );
+    assert_eq!(code, 5, "rustc's exit status");
+}
+
+/// An argfile that fits still compiles through sccache. Way it could fail:
+/// every compile with an argfile loses the cache.
+#[cfg(windows)]
+#[test]
+fn an_argfile_that_fits_goes_through_sccache() {
+    // 250 lines: 25,750.
+    let (code, log) = run_argfile("argfile-short", 250);
+    assert!(log.starts_with("run "), "{log}");
+    assert!(log.contains("cargo-argfile"), "{log}");
+    assert_eq!(code, 7, "sccache's exit status");
 }
 
 /// A fake server: a process listening on a port of its own, running a

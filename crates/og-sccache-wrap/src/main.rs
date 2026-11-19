@@ -26,6 +26,17 @@
 //! starts a fresh server with a full pool. Each stop is logged in
 //! `watchdog.log` beside the lock.
 //!
+//! On Windows a command line holds at most 32,767 characters. Cargo passes
+//! a longer one as `rustc @argfile`, but sccache (0.19.0) reads the
+//! argfile and spawns rustc with every argument on the command line, which
+//! fails with os error 206 (studio-win, 2026-11-19: og-cook's release
+//! build, whose `-L dependency=` list alone passes the limit). So on
+//! Windows, when the expanded command line would come near the limit, the
+//! wrapper runs rustc itself with cargo's arguments unchanged, the argfile
+//! included, and that one compile is not cached. sccache's main branch
+//! spawns such a command through a response file (mozilla/sccache 91d34f1,
+//! 2026-11-14); once `SCCACHE_VERSION` has it, this bypass can go.
+//!
 //! A real executable rather than a script: cargo on Windows runs only an
 //! `.exe` as the wrapper, and studio-win's gate uses this too.
 //! `RUSTC_WRAPPER=` (empty) still bypasses it, and sccache with it.
@@ -47,6 +58,21 @@ const JOBSERVER_VARS: [&str; 3] = ["CARGO_MAKEFLAGS", "MAKEFLAGS", "MFLAGS"];
 fn main() {
     let args: Vec<OsString> = std::env::args_os().skip(1).collect();
     let sccache = std::env::var_os("OG_SCCACHE").unwrap_or_else(|| "sccache".into());
+    #[cfg(windows)]
+    if let Some((rustc, rest)) = args.split_first()
+        && expanded_command_line_len(&args) > TOO_LONG_FOR_SCCACHE
+    {
+        match Command::new(rustc).args(rest).status() {
+            Ok(s) => std::process::exit(s.code().unwrap_or(1)),
+            Err(e) => {
+                eprintln!(
+                    "og-sccache-wrap: cannot run {}: {e}",
+                    rustc.to_string_lossy()
+                );
+                std::process::exit(127);
+            }
+        }
+    }
     if !server_answers() {
         // A server that does not start is sccache's to report: the run
         // below starts one as it always did.
@@ -93,6 +119,39 @@ fn main() {
             std::process::exit(127);
         }
     }
+}
+
+/// The expanded command line length past which a compile skips sccache:
+/// Windows' 32,767 less room for what sccache itself adds to the command.
+#[cfg(windows)]
+const TOO_LONG_FOR_SCCACHE: usize = 30_000;
+
+/// The length, in UTF-16 units, of the command line sccache would spawn for
+/// `args` (rustc first): every `@file` replaced by its lines, as rustc and
+/// sccache read it, with each argument quoted, its quotes escaped and a
+/// space after it.
+#[cfg(windows)]
+fn expanded_command_line_len(args: &[OsString]) -> usize {
+    use std::os::windows::ffi::OsStrExt;
+    let quoted = |a: &std::ffi::OsStr| {
+        a.encode_wide()
+            .map(|c| if c == u16::from(b'"') { 2 } else { 1 })
+            .sum::<usize>()
+            + 3
+    };
+    let mut len = 0;
+    for arg in args {
+        let file = arg.to_str().and_then(|a| a.strip_prefix('@'));
+        match file.and_then(|f| std::fs::read_to_string(f).ok()) {
+            Some(contents) => {
+                for line in contents.lines().map(str::trim).filter(|l| !l.is_empty()) {
+                    len += quoted(line.as_ref());
+                }
+            }
+            None => len += quoted(arg),
+        }
+    }
+    len
 }
 
 /// The port sccache's server listens on.
