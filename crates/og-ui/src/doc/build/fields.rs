@@ -1533,8 +1533,13 @@ impl crate::ui::Tree {
             _ => return,
         };
         *overflow = policy;
-        if matches!(policy, Some(TextOverflow::Scroll { .. })) {
-            *ellipsis = still;
+        match policy {
+            Some(TextOverflow::Scroll { .. }) => *ellipsis = still,
+            // A widget part's text (a button's label) is cut as a label's
+            // is: layout cuts by the flag, which a label takes from its own
+            // desc and a part only from here.
+            Some(TextOverflow::Ellipsis) => *ellipsis = true,
+            _ => {}
         }
     }
 

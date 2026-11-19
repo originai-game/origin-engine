@@ -385,6 +385,65 @@ fn fit_min_measures_text_with_a_literal_or_authored_step() {
     );
 }
 
+/// `-og-fit-min` and `text-overflow: ellipsis` on a button's
+/// `::part(base)` fit its label as they fit a label: three buttons sharing a
+/// row too narrow for their labels each take a smaller step and keep their
+/// whole word inside their own plate, and in a row too narrow even at the
+/// floor step each label is cut with "…" inside its plate.
+///
+/// Ways it could fail: the part's `-og-fit-min` or `text-overflow` ignored,
+/// so a label keeps its step or its full text and runs past its plate over
+/// its neighbour's (the leaderboard's tabs on a phone at 150 % read
+/// GLOBALFRIENDSLEAGUE).
+#[test]
+fn a_button_part_fits_its_label_by_type_steps() {
+    let labels = ["Global", "Friends", "League"];
+    let frame = |width: f32, fit: &str| {
+        let source = format!(
+            r#"<meta name="component" content="t"><div id="Row"><button id="A">Global</button><button id="B">Friends</button><button id="C">League</button></div><style>#Row {{ display: flex; width: {width}px; }} button {{ flex: 1 1 0; min-inline-size: 0; }} button::part(base) {{ min-inline-size: 0; padding-inline: 0; font: 40px/1.2 sans-serif; {fit} }}</style>"#
+        );
+        let mut d = Doc::with_font(&source, &[], crate::support::test_font());
+        d.step(InputFrame::default());
+        d.step(InputFrame::default());
+        let texts: Vec<_> =
+            d.ui.frame()
+                .items
+                .iter()
+                .filter_map(|i| match &i.cmd {
+                    DrawCmd::Text { text, size, .. } => Some((text.clone(), *size)),
+                    _ => None,
+                })
+                .collect();
+        (texts, d.ui.overlaps().len())
+    };
+    // Without it the labels keep 40 px and run into each other: the case is real.
+    let fit = "-og-fit-min: caption; text-overflow: ellipsis;";
+    let (_, unfitted) = frame(240.0, "");
+    assert!(
+        unfitted > 0,
+        "the labels fit at 40 px, so this checks nothing"
+    );
+    let (texts, overlaps) = frame(240.0, fit);
+    assert_eq!(overlaps, 0, "{texts:?}");
+    for label in labels {
+        let (_, size) = texts
+            .iter()
+            .find(|(t, _)| t == label)
+            .unwrap_or_else(|| panic!("{label} not drawn whole: {texts:?}"));
+        assert!(*size < 40.0, "{label} kept its step: {texts:?}");
+    }
+    let (texts, overlaps) = frame(60.0, fit);
+    assert_eq!(overlaps, 0, "{texts:?}");
+    // The test face has no "…", so its cut ends in "...".
+    assert!(
+        texts.len() == 3
+            && texts
+                .iter()
+                .all(|(t, _)| t.ends_with('…') || t.ends_with("...")),
+        "{texts:?}"
+    );
+}
+
 fn key(d: &mut Doc, k: UiKey) {
     d.step(InputFrame {
         keys: vec![k],

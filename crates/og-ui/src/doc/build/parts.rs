@@ -552,6 +552,16 @@ impl Ui {
                 .as_deref()
                 .map_or(role, |names| self.env.fonts.family_list(names, role));
             text.step = style.step_for(text.step, &self.env.fonts, text.font);
+            // `-og-fit-min` reaches a control's label through its part as it
+            // reaches a label: a button squeezed under its label takes the
+            // largest smaller step its label fits at, down to that step.
+            let ramp = &self.env.theme.type_ramp;
+            if let Some(min) = r
+                .str("fitMin")
+                .and_then(|s| crate::style_file::ramp_step(&mut ramp.clone(), s).copied())
+            {
+                text.fit = crate::style_file::fit_steps(ramp, text.step, min);
+            }
             if let Some(ink) = r.color("color")
                 && !shows_placeholder
             {

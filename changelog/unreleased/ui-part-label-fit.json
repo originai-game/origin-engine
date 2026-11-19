@@ -1,0 +1,15 @@
+{
+  "simulation": "unchanged",
+  "added": [
+    {
+      "member": "CSS -og-fit-min on ::part",
+      "summary": "-og-fit-min on a widget part (button::part(base)) steps the part's label down through the type steps by measured fit, as it does on a label, so a squeezed button keeps its whole word."
+    }
+  ],
+  "fixed": [
+    {
+      "member": "CSS text-overflow on ::part",
+      "summary": "text-overflow: ellipsis on a widget part now cuts the part's label with an ellipsis inside the part instead of letting it run over its neighbours."
+    }
+  ]
+}
