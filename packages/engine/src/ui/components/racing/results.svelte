@@ -71,7 +71,9 @@
 :host { inline-size: stretch; min-inline-size: 0; block-size: stretch; color: var(--hud-ink); }
 [part="RacingResults.band"] { width: stretch; flex: none; border: 0; padding: 0; min-height: 0; background: none; box-shadow: none; }
 [part="RacingResults.title"] { margin: 0; font-size: var(--result-size-title); line-height: 1.05; font-weight: var(--hud-figure-weight); font-stretch: var(--hud-figure-stretch); letter-spacing: var(--result-title-tracking); text-transform: var(--hud-label-transform); color: var(--hud-ink); overflow-wrap: anywhere; }
-.board { display: grid; grid-template-columns: minmax(0, 0.8fr) minmax(0, 1.4fr); column-gap: var(--space-xxl); row-gap: var(--space-md); align-items: start; min-height: 0; width: stretch; }
+/* The board scrolls in its share of the frame: a short frame (a phone at a
+   large text scale) never pushes the hero or the order under the actions. */
+.board { display: grid; grid-template-columns: minmax(0, 0.8fr) minmax(0, 1.4fr); column-gap: var(--space-xxl); row-gap: var(--space-md); align-items: start; min-height: 0; width: stretch; overflow-y: auto; }
 .hero { display: flex; flex-direction: column; gap: var(--space-sm); min-width: 0; }
 .hero:empty { display: none; }
 .mine-place { margin: 0; font-size: var(--hud-size-place); line-height: 0.9; font-weight: var(--hud-figure-weight); font-stretch: var(--hud-figure-stretch); font-style: var(--judge-slant); color: var(--hud-accent); filter: var(--result-grade-glow); white-space: nowrap; }

@@ -1,0 +1,8 @@
+{
+  "fixed": [
+    {
+      "member": "RacingResults",
+      "summary": "When the frame is short, as on a phone at 150 % text under a long title, the player's place, time and points and the order scroll together in the space above Retry and Continue instead of being drawn under the buttons."
+    }
+  ]
+}
