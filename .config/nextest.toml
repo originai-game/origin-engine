@@ -65,5 +65,5 @@ path = "junit.xml"
 # aborting the loop early. Keep a finite 720 s limit for this complete sweep;
 # the other GPU tests retain the default 360 s limit.
 [[profile.gpu.overrides]]
-filter = 'binary_id(og-tests-ui::tests) & test(=document_frames::engine_documents_match_their_reference_frames)'
+filter = 'binary_id(og-tests-ui::tests) & test(/^document_frames::(engine_documents_match_their_reference_frames|document_frames_[0-3])$/)'
 slow-timeout = { period = "120s", terminate-after = 6 }

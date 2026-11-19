@@ -14,6 +14,10 @@ from inputs import LOGS, GREEN, crate_inputs, mark, unaffected
 
 def build():
     command = ['cargo', 'nextest', 'list', '--locked', '--workspace', '--list-type', 'binaries-only', '--message-format', 'json']
+    if os.environ.get('OG_GPU_DOCUMENT_SHARDS') == '1':
+        if os.environ.get('OG_UI_CAPTURE') is not None:
+            sys.exit('GPU document sharding is for comparing references, not recording')
+        command += ['--features', 'og-tests-ui/gate-document-shards']
     if os.environ['OG_GATE_LANE'] == 'quick':
         command += ['--exclude', 'og-tests']
     with (LOGS / 'binaries.json').open('w') as out:
@@ -95,6 +99,8 @@ def run(kind):
         if not tests:
             continue
         key = 'rust.' + kind + '.' + hashlib.sha256(binary_id.encode()).hexdigest()[:20]
+        if binary_id == 'og-tests-ui::tests' and os.environ.get('OG_GPU_DOCUMENT_SHARDS') == '1':
+            key += '.sharded'
         inputs = crate_inputs([packages[entry['binary']['package-id']]])
         if unaffected(key, inputs):
             print(f'SKIPPED {binary_id} {kind}: dependency inputs unchanged')

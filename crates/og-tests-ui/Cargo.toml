@@ -8,6 +8,9 @@ description = "Origin Engine tests that draw og-ui: the frames og-render makes o
 publish = false
 autotests = false
 
+[features]
+gate-document-shards = []
+
 [lib]
 doctest = false
 

@@ -71,11 +71,14 @@ case "$1" in
     for test in $tests; do
       name="${test##*/}"; name="${name%.ts}"
       if [ -n "$key" ] && python3 scripts/gate/continuation.py reuse browser "$name" "$key"; then continue; fi
+      started="$SECONDS"
       if (cd packages/engine && bun "$test"); then
+        echo "browser-file: $test $((SECONDS - started))s PASS"
         if [ -n "$key" ]; then
           python3 scripts/gate/continuation.py pass browser "$name" "$key" || og_err "browser: could not write $name continuation receipt"
         fi
       else
+        echo "browser-file: $test $((SECONDS - started))s FAIL"
         rc=1
       fi
     done ;;

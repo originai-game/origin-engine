@@ -254,7 +254,28 @@ fn floating_label_previews_frame_the_label_not_its_ground_marker() {
 
 #[test]
 #[ignore = "requires GPU"]
+#[cfg(not(feature = "gate-document-shards"))]
 fn engine_documents_match_their_reference_frames() {
+    check_document_frames(0, 1);
+}
+
+#[cfg(feature = "gate-document-shards")]
+macro_rules! document_shards {
+    ($($name:ident: $index:literal),+) => {
+        $(
+            #[test]
+            #[ignore = "requires GPU"]
+            fn $name() {
+                check_document_frames($index, 4);
+            }
+        )+
+    };
+}
+
+#[cfg(feature = "gate-document-shards")]
+document_shards!(document_frames_0: 0, document_frames_1: 1, document_frames_2: 2, document_frames_3: 3);
+
+fn check_document_frames(shard: usize, shards: usize) {
     let (docs, messages) = engine_documents(&["src/ui/components", "src/ui/screens"]);
     let (width, height) = (1280, 720);
     let mut failures = Vec::new();
@@ -273,7 +294,9 @@ fn engine_documents_match_their_reference_frames() {
             "{name} is a placeholder for a document that no longer exists"
         );
     }
-    for doc in &docs {
+    // engine_documents sorts source paths; every document has exactly one
+    // owner, while every preview still sees the complete document catalog.
+    for doc in docs.iter().skip(shard).step_by(shards) {
         let name = name_of(&doc.path);
         if let Some((_, why)) = PLACEHOLDERS.iter().find(|(n, _)| *n == name) {
             eprintln!("{name}: no reference yet: {why}");

@@ -237,6 +237,12 @@ operation and variant in `target/og-wasm-products/`. It is off by default
 and not used in release packing. Compare the uncached, fill and hit walls
 and disk totals on the same tree and target; don't clear the warm Cargo target.
 
+`OG_GPU_DOCUMENT_SHARDS=1` is an L4 comparison-only experiment: nextest
+runs four disjoint shares of the same sorted document list through the same
+reference checks, within the existing GPU group. Compare against the serial
+sweep on the same tree and jobs using `rust-gpu.junit.xml` and overall wall.
+The serial sweep is the default. `browser.log` reports each browser file's wall.
+
 Selection uses Cargo's resolved dependency graph, Bun's import graph and
 fixture input manifests; passing snapshots are git trees of the working
 copy under `target/og-gate/green`. A test binary's closure is its own
