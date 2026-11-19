@@ -490,12 +490,30 @@ How the frame's render pipelines compile on the web
   asynchronous. Opt-in.
 - `auto` (the default): `async` on a mobile GPU (`img-tec`, `arm`,
   `qualcomm`, or none named and `navigator.userAgentData.mobile`), `sync`
-  otherwise, Apple GPUs included, since a mobile GPU that compiles
-  synchronously holds the page for tens of seconds. Open: Apple GPUs move
-  to `async` only on a measurement from a real iOS or macOS device. A
-  virtual machine's numbers do not count (Chrome on a cloud Mac took 0.8 to
-  1.2 s for the first frame that drew a textured model with a cold shader
-  cache, 2026-11); until then a game sets `publish { pipelines async }`.
+  otherwise, Apple GPUs included. Synchronous compilation can hold the
+  page for tens of seconds on mobile GPUs. A game can override the default
+  with `publish { pipelines async }`.
+
+First Light's publish build on a physical Apple M4 Pro (Safari 27.2,
+2026-11) measured navigation to `og:first-frame` once per condition:
+
+| Mode | Fresh automation session | Same-tab reload |
+| --- | ---: | ---: |
+| `sync` | 9.08 s | 8.62 s |
+| `async` | 8.60 s | 8.71 s |
+
+Local HTTP with `Cache-Control: no-store`, 1280 × 768 CSS pixels at DPR 2.
+Fresh means a new browser automation session, not a verified cold Metal
+shader cache. The reload can reuse process state but does not measure a
+warm HTTP cache. Async did not win both measurements, so Apple stays on
+`sync`. These are single observations, not a general performance claim;
+VM timings do not set this default.
+
+Physical verification still needed: iPhone Safari (touch, first frame,
+pipelines and offline); Android Chrome on Pixel and representative
+PowerVR, Adreno and Mali GPUs (first frame and pipelines); and HDR output
+on an HDR display in HDR mode. A desktop browser at phone width and SDR
+screenshots do not cover those checks.
 
 The mode and why are on `__runtime_probe__.boot.pipelines`, in the
 Worker's console and in the boot telemetry sample.
