@@ -12,7 +12,7 @@ The session, as a HUD or the probe reads it.
 |---|---|---|---|---|---|---|
 | `state` | `string` | `""` | — | — | — | `off`, `connecting`, `joined`, `reconnecting` or `refused`. |
 | `host` | `string` | `""` | — | — | — | What carries the session here: the session provider's name (`static` for a fixed endpoint, `player` for the platform's), or `none`. |
-| `transport` | `string` | `""` | — | — | — | The connection's transport, `ws`; empty without one. |
+| `transport` | `string` | `""` | — | — | — | The connection's transport: `ws` (WebSocket) or `wt` (WebTransport, snapshots as datagrams); empty without one. |
 | `world` | `string` | `""` | — | — | — | The world joined. |
 | `player` | `string` | `""` | — | — | — | This player's opaque id; empty before the welcome. |
 | `name` | `string` | `""` | — | — | — | This player's display name. |
@@ -31,7 +31,7 @@ struct SharedStatus {
   doc "The session, as a HUD or the probe reads it."
   field state String "`off`, `connecting`, `joined`, `reconnecting` or `refused`."
   field host String "What carries the session here: the session provider's name (`static` for a fixed endpoint, `player` for the platform's), or `none`."
-  field transport String "The connection's transport, `ws`; empty without one."
+  field transport String "The connection's transport: `ws` (WebSocket) or `wt` (WebTransport, snapshots as datagrams); empty without one."
   field world String "The world joined."
   field player String "This player's opaque id; empty before the welcome."
   field name String "This player's display name."

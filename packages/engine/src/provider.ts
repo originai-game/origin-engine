@@ -284,14 +284,35 @@ export interface SessionRequest {
 }
 
 /**
+ * The same world server over WebTransport (`og world-server --wt-listen`): its `https://` URL and,
+ * for a self-signed certificate (`og world-server cert`), the SHA-256 hashes the browser checks it
+ * against (64 hex digits each; such a certificate lasts 14 days at most). Snapshots then cross as
+ * datagrams, which a lost packet does not hold up.
+ */
+export interface SessionWebTransport {
+  readonly url: string;
+  readonly certHashes?: readonly string[];
+}
+
+/**
  * A provider's answer: where the world server is (`ws://` or `wss://`) and the token the engine
  * sends it as it is and never reads (none for a server started `--auth none --dev`), or why
- * not. A failure with a retryable code (`offline`, `unavailable`, `rate_limited`, `timeout`)
- * is tried again on the reconnect schedule; any other ends the session (og.SharedLeft).
+ * not. With `webtransport`, a browser that has WebTransport tries it first and falls back to
+ * `url` when it fails to open. A failure with a retryable code (`offline`, `unavailable`,
+ * `rate_limited`, `timeout`) is tried again on the reconnect schedule; any other ends the
+ * session (og.SharedLeft).
  */
 export type SessionAnswer =
-  | { readonly ok: true; readonly url: string; readonly token?: string }
+  | { readonly ok: true; readonly url: string; readonly token?: string; readonly webtransport?: SessionWebTransport }
   | { readonly ok: false; readonly error: { readonly code: string; readonly message: string } };
+
+/** Whether `wt` is a SessionWebTransport the engine can dial (an https:// URL, hashes of 64 hex digits). */
+function validWebTransport(wt: unknown): wt is SessionWebTransport {
+  if (typeof wt !== "object" || wt === null) return false;
+  const { url, certHashes } = wt as { url?: unknown; certHashes?: unknown };
+  return typeof url === "string" && /^https:\/\//.test(url) &&
+    (certHashes === undefined || (Array.isArray(certHashes) && certHashes.every((h) => typeof h === "string" && /^[0-9a-fA-F]{64}$/.test(h))));
+}
 
 /**
  * What hosts og.shared's sessions (docs/design.md §2.12): asked once per connection, it names
@@ -306,9 +327,18 @@ export interface SessionProvider {
 }
 
 /** A fixed world server and token (a self-hosted `og world-server`, a test): what `og run --shared` is natively. */
-export function staticSession(grant: { readonly url: string; readonly token?: string }): SessionProvider {
+export function staticSession(grant: { readonly url: string; readonly token?: string; readonly webtransport?: SessionWebTransport }): SessionProvider {
   if (!/^wss?:\/\//.test(grant.url)) throw new Error(`staticSession: ${grant.url} is not a ws:// or wss:// URL`);
-  return { host: "static", connect: () => Promise.resolve({ ok: true, url: grant.url, ...(grant.token !== undefined ? { token: grant.token } : {}) }) };
+  if (grant.webtransport !== undefined && !validWebTransport(grant.webtransport)) {
+    throw new Error("staticSession: webtransport is not { url: \"https://…\", certHashes?: [64 hex digits] }");
+  }
+  const answer: SessionAnswer = {
+    ok: true,
+    url: grant.url,
+    ...(grant.token !== undefined ? { token: grant.token } : {}),
+    ...(grant.webtransport !== undefined ? { webtransport: grant.webtransport } : {}),
+  };
+  return { host: "static", connect: () => Promise.resolve(answer) };
 }
 
 /** The page's fetch, written out (as relayRooms' SocketFactory): a game's type check has no DOM. */
@@ -317,7 +347,8 @@ const pageFetch = (url: string, init: { method: string; credentials: string; hea
 
 /**
  * A game's own token endpoint (self-hosting, docs/web-export.md §Providers): each connection
- * POSTs the request as JSON to `url` with the page's cookies and takes `{ url, token }` back. The
+ * POSTs the request as JSON to `url` with the page's cookies and takes `{ url, token }` back
+ * (and `webtransport`, as SessionAnswer's, when the server serves it). The
  * endpoint signs a short-lived token for its own player with the world server's secret
  * (`og world-server --auth hs256`); a 401 or 403 ends the session as `unauthorized`, a network
  * failure or a 5xx is tried again.
@@ -334,11 +365,19 @@ export function tokenEndpoint(url: string, init: { readonly headers?: Readonly<R
       }
       const code = res.status === 401 || res.status === 403 ? "unauthorized" : res.status === 429 ? "rate_limited" : res.status >= 500 ? "unavailable" : res.ok ? "" : "failed";
       if (code !== "") return { ok: false, error: { code, message: `the token endpoint answered ${res.status}` } };
-      const body = (await res.json().catch(() => null)) as { url?: unknown; token?: unknown } | null;
-      if (!body || typeof body.url !== "string" || !/^wss?:\/\//.test(body.url) || (body.token !== undefined && typeof body.token !== "string")) {
-        return { ok: false, error: { code: "invalid", message: "the token endpoint's answer is not { url: \"wss://…\", token }" } };
+      const body = (await res.json().catch(() => null)) as { url?: unknown; token?: unknown; webtransport?: unknown } | null;
+      if (
+        !body || typeof body.url !== "string" || !/^wss?:\/\//.test(body.url) || (body.token !== undefined && typeof body.token !== "string") ||
+        (body.webtransport !== undefined && !validWebTransport(body.webtransport))
+      ) {
+        return { ok: false, error: { code: "invalid", message: "the token endpoint's answer is not { url: \"wss://…\", token, webtransport? }" } };
       }
-      return { ok: true, url: body.url, ...(typeof body.token === "string" ? { token: body.token } : {}) };
+      return {
+        ok: true,
+        url: body.url,
+        ...(typeof body.token === "string" ? { token: body.token } : {}),
+        ...(body.webtransport !== undefined ? { webtransport: body.webtransport as SessionWebTransport } : {}),
+      };
     },
   };
 }
