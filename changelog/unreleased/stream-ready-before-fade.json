@@ -1,0 +1,8 @@
+{
+  "fixed": [
+    {
+      "member": "og.stream.status",
+      "summary": "StreamStatus.ready no longer reads true for one tick when a cell loads with its group's pack and textures already in (read ahead of the anchor, or already resident): it stays false from the tick the cell loads until its models' fade-in is over, then true. og.loading.idle is busy through the same tick. The fade of a cell's models now starts in the tick that loads the cell instead of the frame or tick after it. Presentation only: ticks and hashes are the same."
+    }
+  ]
+}

@@ -533,6 +533,10 @@ pub(crate) fn install(eng: &Rc<Engine>, facts: Option<u32>) -> Result<(), String
             crate::world::stream::cells::before_tick(&eng, world);
             crate::present::geometry::before_tick(&eng, world);
             if let Ok(mut rs) = eng.render.try_borrow_mut() {
+                // The models those cells placed start fading in with this
+                // tick, before a system asks whether they have
+                // (StreamStatus.ready, og.loading.idle).
+                crate::present::presentation::cells_placed(&mut rs, world);
                 crate::present::interpolate::before_tick(&mut rs, world);
             }
             // og.motion steps once a tick with the world the tick left,
