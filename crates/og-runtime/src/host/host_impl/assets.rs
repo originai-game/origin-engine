@@ -190,6 +190,10 @@ macro_rules! __og_host_bindings_assets {
                 $crate::host_impl::answer($crate::og_load_data_bytes(world, asset))
             }
 
+            fn og_load_pack(&self, world: u32, entry: Option<String>) -> String {
+                $crate::host_impl::answer($crate::og_load_pack(world, entry))
+            }
+
             fn og_load_completions(&self, world: u32) -> String {
                 $crate::host_impl::json($crate::og_load_completions(world))
             }

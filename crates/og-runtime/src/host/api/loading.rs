@@ -433,6 +433,13 @@ pub fn og_load_data(world: u32, desc: Option<String>) -> Result<serde_json::Valu
     })()
 }
 
+pub fn og_load_pack(world: u32, entry: Option<String>) -> Result<serde_json::Value, String> {
+    (|| {
+        let eng = engine(world)?;
+        crate::world::data::load_pack(&eng, &parse(entry.as_deref())?).map(asset_value)
+    })()
+}
+
 /// Host lifecycle: the content base og.load.data reads, named after the
 /// engine started (CreateOptions.contentLater); empty for none.
 pub fn og_engine_set_content(engine_id: u32, base: String) {

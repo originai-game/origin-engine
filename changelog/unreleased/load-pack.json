@@ -1,0 +1,12 @@
+{
+  "added": [
+    {
+      "member": "og.load.pack",
+      "summary": "Open a cooked bundle a content catalog's version lists by name (its manifest's `packs`, `{ name: { integrity } }`), from `<base>/<catalog>/packs/<name>/cooked/` under the host's content base. Its `.cook.ogt` is read against the integrity the version lists; once ready it is a runtime bundle as og.load.bundle opens (bundleInfo, groups and cells, og.load.release). Journaled as a `bundle` completion with its manifest integrity, which a replay requires again. A failed open says why first, as og.load.data's (guide loading §14)."
+    },
+    {
+      "member": "LoadCompletion.integrity",
+      "summary": "Also set for an og.load.pack `bundle` completion: the integrity of the pack's cooked manifest."
+    }
+  ]
+}

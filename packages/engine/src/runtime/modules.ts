@@ -71,6 +71,7 @@ export const load = Object.freeze({
   environmentData: (world: WorldImpl, name: string, bytes: Uint8Array, desc?: unknown) => parse(abi().og_load_environment_data(world.id, name, bytes, json(desc))),
   environmentInfo: (world: WorldImpl, asset: number) => parse(abi().og_load_environment_info(world.id, asset)),
   data: (world: WorldImpl, desc?: unknown) => parse(abi().og_load_data(world.id, json(desc))),
+  pack: (world: WorldImpl, entry?: unknown) => parse(abi().og_load_pack(world.id, json(entry))),
   dataJson: (world: WorldImpl, asset: number) => parse(abi().og_load_data_json(world.id, asset)),
   // Bytes cross as base64, as a room message's do.
   dataBytes: (world: WorldImpl, asset: number) => {

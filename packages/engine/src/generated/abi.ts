@@ -588,6 +588,8 @@ export interface HostAbi<A, V> {
   og_load_data_json(world: number, asset: number): string;
   /** `og.load.dataBytes` */
   og_load_data_bytes(world: number, asset: number): string;
+  /** `og.load.pack` */
+  og_load_pack(world: number, entry: string | undefined): string;
   /** `og.load.environmentInfo` */
   og_load_environment_info(world: number, asset: number): string;
   /** `og.load.release` */
@@ -1658,6 +1660,7 @@ export const SYMBOLS: readonly string[] = [
   "og_load_data",
   "og_load_data_json",
   "og_load_data_bytes",
+  "og_load_pack",
   "og_load_environment_info",
   "og_load_release",
   "og_load_image_info",

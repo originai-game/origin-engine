@@ -8,14 +8,16 @@
 //! reason; a read the host holds back (the web) lands at a tick the replay
 //! does not reproduce; a replay reading other bytes passes; a released load
 //! is still put in place or journaled; a manifest the catalog's head did not
-//! name is read as if it were.
+//! name is read as if it were; a pack (og.load.pack) opens from bytes its
+//! version does not list, or a replay opens one of another integrity.
 
 use og_runtime::host_impl::answer;
 use og_runtime::{
     Dispatch, Fetch, Hooks, og_engine_create, og_engine_destroy, og_engine_frame,
-    og_engine_set_content, og_game_game, og_load_completions, og_load_data, og_load_data_bytes,
-    og_load_data_json, og_load_error, og_load_release, og_load_replay_completions, og_load_status,
-    og_platform_answer, og_platform_catalog_head, og_platform_notify, og_platform_take, set_hooks,
+    og_engine_set_content, og_game_game, og_load_bundle_info, og_load_completions, og_load_data,
+    og_load_data_bytes, og_load_data_json, og_load_error, og_load_pack, og_load_release,
+    og_load_replay_completions, og_load_status, og_platform_answer, og_platform_catalog_head,
+    og_platform_notify, og_platform_take, set_hooks,
 };
 use serde_json::{Value, json};
 use std::cell::{Cell, RefCell};
@@ -437,6 +439,138 @@ fn a_content_base_named_later_holds_data_loads_until_then() {
     og_engine_set_content(e, String::new());
     frame(e);
     assert!(failed(e, none).starts_with("unavailable:"));
+    assert!(og_engine_destroy(e));
+    std::fs::remove_dir_all(base).unwrap();
+}
+
+/// Cooks a one-model bundle at `<base>/world/packs/<name>/cooked` and
+/// answers its manifest's integrity.
+fn cooked_pack(base: &Path, name: &str) -> String {
+    let root = base.join("world/packs").join(name);
+    let model = root.join("assets/rock.ogt");
+    std::fs::create_dir_all(model.parent().unwrap()).unwrap();
+    std::fs::write(
+        &model,
+        "type model\nversion 1\n---\npart \"rock\" {\n  sphereGeometry {\n    radius 1\n  }\n}\n",
+    )
+    .unwrap();
+    let report = og_cook::cook_project(
+        &root,
+        &og_cook::CookOptions {
+            threads: 1,
+            ..Default::default()
+        },
+    )
+    .unwrap();
+    assert!(report.ok(), "{:?}", report.errors());
+    sri(&std::fs::read(root.join("cooked/.cook.ogt")).unwrap())
+}
+
+fn pack(e: u32, version: &str, name: &str) -> f64 {
+    let entry = json!({ "catalog": "world", "version": version, "path": name });
+    value(answer(og_load_pack(e, Some(entry.to_string()))))
+        .as_f64()
+        .unwrap()
+}
+
+#[test]
+fn a_pack_opens_as_a_bundle_against_its_versions_integrity() {
+    let base = base("packs");
+    let region = cooked_pack(&base, "region");
+    // `tampered` is a real bundle the version lists under other bytes.
+    let other = cooked_pack(&base, "tampered");
+    assert_eq!(other, region, "the two packs cook alike");
+    let dir = base.join("world/p1");
+    std::fs::create_dir_all(&dir).unwrap();
+    let m = json!({
+        "format": 1, "catalog": "world", "version": "p1", "files": {},
+        "packs": {
+            "region": { "integrity": region },
+            "tampered": { "integrity": sri(b"not its manifest") },
+        },
+    });
+    std::fs::write(dir.join("manifest.json"), m.to_string()).unwrap();
+
+    let opens = |h: &Rc<Content>, replay: Option<&Value>| {
+        let e = engine(h, Some(&base));
+        if let Some(journal) = replay {
+            value(answer(og_load_replay_completions(e, journal.to_string())));
+        }
+        let handles = [
+            pack(e, "p1", "region"),
+            pack(e, "p1", "tampered"),
+            pack(e, "p1", "none"),
+        ];
+        assert_eq!(og_load_status(e, handles[0]), "pending");
+        frame(e);
+        (e, handles)
+    };
+    let h = hooks();
+    let (e, [ready, tampered, none]) = opens(&h, None);
+    assert_eq!(
+        og_load_status(e, ready),
+        "ready",
+        "{:?}",
+        og_load_error(e, ready)
+    );
+    let info = og_load_bundle_info(e, ready).unwrap();
+    assert!(
+        info.path.ends_with("world/packs/region/cooked"),
+        "{}",
+        info.path
+    );
+    assert_eq!(info.assets, 1);
+    // Its manifest was read against the integrity the version lists.
+    assert!(
+        h.asked
+            .borrow()
+            .iter()
+            .any(|(p, i)| p.ends_with("region/cooked/.cook.ogt") && *i == region),
+        "{:?}",
+        h.asked.borrow()
+    );
+    let why = failed(e, tampered);
+    assert!(why.starts_with("integrity:"), "{why}");
+    let why = failed(e, none);
+    assert!(why.starts_with("not_found:"), "{why}");
+    // Asking again answers the same handle; a malformed name is refused.
+    assert_eq!(pack(e, "p1", "region"), ready);
+    let refused = og_load_pack(
+        e,
+        Some(json!({ "catalog": "world", "version": "p1", "path": "a/b" }).to_string()),
+    );
+    assert!(refused.is_err());
+
+    // Journaled as bundle opens, the ready one with its manifest integrity.
+    let journal = og_load_completions(e);
+    let list = journal.as_array().unwrap();
+    assert_eq!(list.len(), 3, "{journal}");
+    assert!(list.iter().all(|c| c["kind"] == "bundle"), "{journal}");
+    let first = list.iter().find(|c| c["request"] == 0).unwrap();
+    assert_eq!(
+        (first["ok"].clone(), first["integrity"].clone()),
+        (json!(true), json!(region))
+    );
+
+    // Released: closed like any runtime bundle.
+    og_load_release(e, ready).unwrap();
+    assert!(failed(e, ready).contains("released"));
+    assert!(og_engine_destroy(e));
+
+    // A replay opens it again at its tick; one recorded under another
+    // integrity is refused.
+    let (e, [again, ..]) = opens(&hooks(), Some(&journal));
+    assert_eq!(og_load_status(e, again), "ready");
+    assert!(og_engine_destroy(e));
+    let mut forged = journal.clone();
+    for c in forged.as_array_mut().unwrap() {
+        if c["request"] == 0 {
+            c["integrity"] = json!(sri(b"another pack"));
+        }
+    }
+    let (e, [again, ..]) = opens(&hooks(), Some(&forged));
+    let why = failed(e, again);
+    assert!(why.starts_with("integrity:"), "{why}");
     assert!(og_engine_destroy(e));
     std::fs::remove_dir_all(base).unwrap();
 }

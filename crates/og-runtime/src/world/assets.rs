@@ -65,6 +65,9 @@ pub(crate) enum Payload {
     Data(Box<crate::world::data::Loaded>),
     /// An og.load.data file on its way (`Assets::data` has its job).
     DataWaiting,
+    /// An og.load.pack waiting for its version's manifest (`Assets::data`
+    /// has its job); then a runtime bundle open whose manifest is pinned.
+    PackWaiting,
     /// A sub-scene whose blob is in a cell group's pack (G3-3), not yet
     /// landed: its handle exists (a cell names it), its scene once the
     /// pack's bytes are in ([`crate::world::stream::resolve_scenes`]).
@@ -167,6 +170,9 @@ pub(crate) struct Assets {
     pub uncooked: crate::world::uncooked::Uncooked,
     /// Runtime bundle opens not finished yet: entry and request number.
     pub opening: BTreeMap<usize, u32>,
+    /// The integrity each og.load.pack bundle's manifest is read against,
+    /// by entry: the one its catalog version lists.
+    pub pinned: BTreeMap<usize, String>,
     /// The content base og.load.data reads catalogs from: a directory
     /// (native) or an https URL (web); empty: none.
     pub content: String,
@@ -251,6 +257,26 @@ fn read(path: &str) -> Fetch<Vec<u8>> {
     }
 }
 
+/// A content file read against `integrity`, failing with og.load.data's
+/// reasons (`integrity`, `not_found`, `failed`).
+fn read_pinned(path: &str, integrity: &str) -> Fetch<Vec<u8>> {
+    use crate::world::data::{checked, failure};
+    let Some(h) = hooks() else {
+        return Fetch::Failed("unavailable: no host reads files".into());
+    };
+    match h.read_content(path, integrity) {
+        Fetch::Pending => Fetch::Pending,
+        Fetch::Failed(e) if e.contains("integrity") => {
+            Fetch::Failed(format!("integrity: {path}: {e}"))
+        }
+        Fetch::Failed(e) => Fetch::Failed(failure(path, &e)),
+        Fetch::Ready(bytes) => match checked(&bytes, integrity) {
+            Ok(()) => Fetch::Ready(bytes),
+            Err(e) => Fetch::Failed(format!("integrity: {path}: {e}")),
+        },
+    }
+}
+
 impl Assets {
     /// The shadow flags the models instantiated from glTF asset `index`
     /// take: its last og.load.gltf's, on when it never had a desc.
@@ -271,13 +297,28 @@ impl Assets {
         self.entries.len() - 1
     }
 
-    /// Opens (or retries) bundle entry `i`.
+    /// Opens (or retries) bundle entry `i`; a pack's (`pinned`) manifest
+    /// is read against its catalog's integrity, its failures coded as
+    /// og.load.data's.
     fn poll_bundle(&mut self, i: usize) {
         let dir = join(&self.root, &self.entries[i].path);
         let manifest = format!("{dir}/{MANIFEST}");
+        let pin = self.pinned.get(&i);
+        let code = |c: &str| {
+            if pin.is_some() {
+                format!("{c}: ")
+            } else {
+                String::new()
+            }
+        };
+        let got = match pin {
+            Some(integrity) => read_pinned(&manifest, integrity),
+            None => read(&manifest),
+        };
         let entry = &mut self.entries[i];
-        match read(&manifest) {
+        match got {
             Fetch::Pending => entry.status = Status::Pending,
+            Fetch::Failed(e) if pin.is_some() => entry.status = Status::Failed(e),
             Fetch::Failed(e) => {
                 entry.status = Status::Failed(format!(
                     "{manifest}: {e} (run `og cook` to write the cooked bundle)"
@@ -289,7 +330,7 @@ impl Assets {
             {
                 Ok(bundle) => {
                     if let Err(e) = self.stream.add_bundle(i, &bundle, &dir) {
-                        entry.status = Status::Failed(format!("{manifest}: {e}"));
+                        entry.status = Status::Failed(format!("{}{manifest}: {e}", code("failed")));
                         return;
                     }
                     entry.status = Status::Ready;
@@ -298,14 +339,16 @@ impl Assets {
                         dir,
                     };
                 }
-                Err(e) => entry.status = Status::Failed(format!("{manifest}: {e}")),
+                Err(e) => {
+                    entry.status = Status::Failed(format!("{}{manifest}: {e}", code("invalid")))
+                }
             },
         }
     }
 
     /// The entry of bundle directory `path` when it is open or opening:
     /// opening it again answers that entry.
-    fn opened(&self, path: &str) -> Option<usize> {
+    pub(crate) fn opened(&self, path: &str) -> Option<usize> {
         let dir = join(&self.root, path);
         self.entries.iter().position(|e| {
             matches!(&e.payload, Payload::Bundle { dir: opened, .. } if opened == &dir)
@@ -345,7 +388,7 @@ impl Assets {
     /// Reads runtime open `i` unless a replay holds it back; journals it
     /// once it is ready or failed. One released while it was opening
     /// (og.load.release) never finished, and is not journaled.
-    fn settle_open(&mut self, i: usize, tick: u64) {
+    pub(crate) fn settle_open(&mut self, i: usize, tick: u64) {
         use crate::world::uncooked::{Completion, Due, Kind};
         let request = self.opening[&i];
         if self.entries[i].status != Status::Pending {
@@ -368,12 +411,16 @@ impl Assets {
             Status::Failed(_) => false,
         };
         self.opening.remove(&i);
+        let integrity = match ok {
+            true => self.pinned.get(&i).cloned().unwrap_or_default(),
+            false => String::new(),
+        };
         self.uncooked.journal.push(Completion {
             kind: Kind::Bundle,
             request,
             tick,
             ok,
-            integrity: String::new(),
+            integrity,
         });
     }
 

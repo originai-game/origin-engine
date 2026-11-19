@@ -18,6 +18,13 @@
 //!
 //! A catalog.head answer or a `catalog` notice ([`pin`]) names a version's
 //! manifest integrity; a manifest read after it is checked against it.
+//!
+//! A pack (`og.load.pack`) is a cooked bundle the version's manifest lists
+//! by name, at `<base>/<catalog>/packs/<name>/cooked/` in every version that
+//! names it. Once the version's manifest is read, it opens as a runtime
+//! bundle (journal kind `bundle`, [`crate::world::assets::Assets::pinned`])
+//! whose own manifest is read against the integrity the version lists; the
+//! web Worker then checks each later file of the pack against that manifest.
 
 use crate::engine::{Engine, hooks};
 use crate::world::assets::{Entry, Fetch, Payload, Status, join};
@@ -46,15 +53,34 @@ struct Job {
     asked_ms: f64,
 }
 
-/// A version's manifest: each file's size and integrity, or why it could
-/// not be read.
-type Manifest = Result<BTreeMap<String, (u64, String)>, String>;
+/// A pack og.load.pack asked for, until its version's manifest is read.
+struct PackJob {
+    /// Its bundle open's request number (journal kind `bundle`).
+    request: u32,
+    entry: usize,
+    catalog: String,
+    version: String,
+    name: String,
+    asked_ms: f64,
+}
+
+/// A version's manifest: each file's size and integrity, and each pack's
+/// cooked manifest integrity.
+#[derive(Clone, Default)]
+struct Version {
+    files: BTreeMap<String, (u64, String)>,
+    packs: BTreeMap<String, String>,
+}
+
+/// A version's manifest, or why it could not be read.
+type Manifest = Result<Version, String>;
 
 /// Every data load of an engine.
 #[derive(Default)]
 pub(crate) struct Data {
     next: u32,
     jobs: Vec<Job>,
+    packs: Vec<PackJob>,
     manifests: BTreeMap<(String, String), Manifest>,
     /// Each version's manifest integrity, as a catalog.head answer or a
     /// `catalog` notice named it (journaled host input).
@@ -88,21 +114,74 @@ fn name_ok(s: &str, max: usize) -> bool {
             .all(|b| b.is_ascii_alphanumeric() || matches!(b, b'.' | b'_' | b'-'))
 }
 
-/// `og.load.data`: a pending entry, or why the desc is refused.
-pub(crate) fn load(eng: &Engine, desc: &Value) -> Result<usize, String> {
-    let entry = &desc["entry"];
+/// A CatalogEntry's catalog, version and path, the first two checked
+/// (`at` names the entry in a refusal).
+fn names(entry: &Value, at: &str) -> Result<(String, String, String), String> {
     let text = |k: &str| entry[k].as_str().unwrap_or_default().to_string();
     let (catalog, version, path) = (text("catalog"), text("version"), text("path"));
     if !name_ok(&catalog, 64) {
         return Err(format!(
-            "DataDesc.entry.catalog '{catalog}' is 1 to 64 of letters, digits, `.`, `_` and `-`"
+            "{at}.catalog '{catalog}' is 1 to 64 of letters, digits, `.`, `_` and `-`"
         ));
     }
     if !name_ok(&version, 128) {
         return Err(format!(
-            "DataDesc.entry.version '{version}' is 1 to 128 of letters, digits, `.`, `_` and `-`"
+            "{at}.version '{version}' is 1 to 128 of letters, digits, `.`, `_` and `-`"
         ));
     }
+    Ok((catalog, version, path))
+}
+
+/// `og.load.pack`: a pending entry, or why the entry is refused. A pack
+/// that is opening or open answers its entry and is no new open.
+pub(crate) fn load_pack(eng: &Engine, entry: &Value) -> Result<usize, String> {
+    let (catalog, version, name) = names(entry, "CatalogEntry")?;
+    if !name_ok(&name, 128) {
+        return Err(format!(
+            "CatalogEntry.path '{name}' is a pack's name in the version's manifest: 1 to 128 of letters, digits, `.`, `_` and `-`"
+        ));
+    }
+    let base = content_base(eng).ok().flatten();
+    let asked_ms = hooks().map_or(0.0, |h| h.now_ms());
+    let mut assets = eng.assets.borrow_mut();
+    let waiting = assets
+        .data
+        .packs
+        .iter()
+        .find(|j| j.catalog == catalog && j.name == name)
+        .map(|j| j.entry);
+    let open = base.and_then(|b| assets.opened(&pack_dir(&b, &catalog, &name)));
+    if let Some(i) = waiting.or(open) {
+        return Ok(i);
+    }
+    let index = assets.entries.len();
+    assets.entries.push(Entry {
+        path: format!("{catalog}/{version}/packs/{name}"),
+        bundle: None,
+        status: Status::Pending,
+        payload: Payload::PackWaiting,
+    });
+    let request = assets.uncooked.next_bundle;
+    assets.uncooked.next_bundle += 1;
+    assets.data.packs.push(PackJob {
+        request,
+        entry: index,
+        catalog,
+        version,
+        name,
+        asked_ms,
+    });
+    Ok(index)
+}
+
+/// Where pack `name` of `catalog` is cooked.
+fn pack_dir(base: &str, catalog: &str, name: &str) -> String {
+    join(base, &format!("{catalog}/packs/{name}/cooked"))
+}
+
+/// `og.load.data`: a pending entry, or why the desc is refused.
+pub(crate) fn load(eng: &Engine, desc: &Value) -> Result<usize, String> {
+    let (catalog, version, path) = names(&desc["entry"], "DataDesc.entry")?;
     if path.is_empty()
         || path.len() > 1024
         || path.contains('\\')
@@ -148,7 +227,7 @@ pub(crate) fn load(eng: &Engine, desc: &Value) -> Result<usize, String> {
 
 /// A host's read failure as a reason: `not_found` when the file is not
 /// there, `failed` otherwise.
-fn failure(what: &str, e: &str) -> String {
+pub(crate) fn failure(what: &str, e: &str) -> String {
     let lower = e.to_ascii_lowercase();
     let code =
         if lower.contains("404") || lower.contains("not found") || lower.contains("no such file") {
@@ -176,7 +255,18 @@ fn manifest(text: &[u8], catalog: &str, version: &str) -> Manifest {
     let files = v["files"]
         .as_object()
         .ok_or_else(|| invalid("no files object"))?;
-    let mut out = BTreeMap::new();
+    let mut out = Version::default();
+    for (name, p) in v["packs"].as_object().into_iter().flatten() {
+        let integrity = p["integrity"]
+            .as_str()
+            .filter(|s| name_ok(name, 128) && digest_hex(s).is_some())
+            .ok_or_else(|| {
+                invalid(&format!(
+                    "pack {name}: a pack is 1 to 128 of letters, digits, `.`, `_` and `-` with an integrity sha384-<base64>"
+                ))
+            })?;
+        out.packs.insert(name.clone(), integrity.to_string());
+    }
     for (path, f) in files {
         let size = f["size"]
             .as_u64()
@@ -185,7 +275,8 @@ fn manifest(text: &[u8], catalog: &str, version: &str) -> Manifest {
             .as_str()
             .filter(|s| digest_hex(s).is_some())
             .ok_or_else(|| invalid(&format!("{path}: integrity is not sha384-<base64>")))?;
-        out.insert(path.clone(), (size, integrity.to_string()));
+        out.files
+            .insert(path.clone(), (size, integrity.to_string()));
     }
     Ok(out)
 }
@@ -199,7 +290,7 @@ fn digest_hex(integrity: &str) -> Option<String> {
 
 /// Whether `bytes` match `integrity`: natively checked here; the web
 /// host's fetch refused other bytes already.
-fn checked(bytes: &[u8], integrity: &str) -> Result<(), String> {
+pub(crate) fn checked(bytes: &[u8], integrity: &str) -> Result<(), String> {
     #[cfg(all(feature = "fetch", not(target_arch = "wasm32")))]
     {
         og_net::http::integrity(bytes, integrity)
@@ -217,25 +308,33 @@ enum Step {
     Done(Result<(Loaded, String), String>),
 }
 
-/// Reads job `job` as far as the host has it.
-fn read(eng: &Engine, job: &Job, recorded: Option<&str>) -> Step {
-    let Some(h) = hooks() else {
-        return Step::Done(Err("unavailable: no host reads files".into()));
-    };
-    let (base, later) = {
-        let a = eng.assets.borrow();
-        (a.content.clone(), a.content_later)
-    };
-    // The host names its content base once its platform settled (the Player's hello).
-    if base.is_empty() && later {
-        return Step::Wait;
+/// The content base, `Ok(None)` while the host has yet to name it (the
+/// Player's hello), or why there is none.
+fn content_base(eng: &Engine) -> Result<Option<String>, String> {
+    let a = eng.assets.borrow();
+    if a.content.is_empty() && a.content_later {
+        return Ok(None);
     }
-    if base.is_empty() {
-        return Step::Done(Err(
+    if a.content.is_empty() {
+        return Err(
             "unavailable: no content base (og run --content <dir>, og build --content <url> or project.ogt publish { content })".into(),
-        ));
+        );
     }
-    let key = (job.catalog.clone(), job.version.clone());
+    Ok(Some(a.content.clone()))
+}
+
+/// Version `version` of `catalog`'s manifest, read once a session against
+/// its pin: `Ok(None)` while it is on its way.
+fn version(
+    eng: &Engine,
+    base: &str,
+    catalog: &str,
+    version: &str,
+) -> Result<Option<Version>, String> {
+    let Some(h) = hooks() else {
+        return Err("unavailable: no host reads files".into());
+    };
+    let key = (catalog.to_string(), version.to_string());
     let (known, pinned) = {
         let a = eng.assets.borrow();
         (
@@ -243,42 +342,48 @@ fn read(eng: &Engine, job: &Job, recorded: Option<&str>) -> Step {
             a.data.pins.get(&key).cloned().unwrap_or_default(),
         )
     };
-    let files = match known {
-        Some(m) => m,
-        None => {
-            let url = join(
-                &base,
-                &format!("{}/{}/manifest.json", job.catalog, job.version),
-            );
-            let what = format!("{}/{}/manifest.json", job.catalog, job.version);
-            let m = match h.read_content(&url, &pinned) {
-                Fetch::Pending => return Step::Wait,
-                Fetch::Failed(e) if e.contains("integrity") => {
-                    Err(format!("integrity: {what}: {e}"))
-                }
-                Fetch::Failed(e) => Err(failure(&format!("{}/{}", job.catalog, job.version), &e)),
-                Fetch::Ready(bytes) if !pinned.is_empty() => match checked(&bytes, &pinned) {
-                    Ok(()) => manifest(&bytes, &job.catalog, &job.version),
-                    Err(e) => Err(format!(
-                        "integrity: {what}: the catalog's head names {pinned}: {e}"
-                    )),
-                },
-                Fetch::Ready(bytes) => manifest(&bytes, &job.catalog, &job.version),
-            };
-            // A version never changes, so its manifest is kept; a failed read
-            // is not, and a later og.load.data asks again.
-            if m.is_ok() {
-                eng.assets
-                    .borrow_mut()
-                    .data
-                    .manifests
-                    .insert(key, m.clone());
-            }
-            m
-        }
+    if let Some(m) = known {
+        return m.map(Some);
+    }
+    let url = join(base, &format!("{catalog}/{version}/manifest.json"));
+    let what = format!("{catalog}/{version}/manifest.json");
+    let m = match h.read_content(&url, &pinned) {
+        Fetch::Pending => return Ok(None),
+        Fetch::Failed(e) if e.contains("integrity") => Err(format!("integrity: {what}: {e}")),
+        Fetch::Failed(e) => Err(failure(&format!("{catalog}/{version}"), &e)),
+        Fetch::Ready(bytes) if !pinned.is_empty() => match checked(&bytes, &pinned) {
+            Ok(()) => manifest(&bytes, catalog, version),
+            Err(e) => Err(format!(
+                "integrity: {what}: the catalog's head names {pinned}: {e}"
+            )),
+        },
+        Fetch::Ready(bytes) => manifest(&bytes, catalog, version),
     };
-    let files = match files {
-        Ok(f) => f,
+    // A version never changes, so its manifest is kept; a failed read is
+    // not, and a later load asks again.
+    if m.is_ok() {
+        eng.assets
+            .borrow_mut()
+            .data
+            .manifests
+            .insert(key, m.clone());
+    }
+    m.map(Some)
+}
+
+/// Reads job `job` as far as the host has it.
+fn read(eng: &Engine, job: &Job, recorded: Option<&str>) -> Step {
+    let Some(h) = hooks() else {
+        return Step::Done(Err("unavailable: no host reads files".into()));
+    };
+    let base = match content_base(eng) {
+        Ok(Some(b)) => b,
+        Ok(None) => return Step::Wait,
+        Err(e) => return Step::Done(Err(e)),
+    };
+    let files = match version(eng, &base, &job.catalog, &job.version) {
+        Ok(Some(v)) => v.files,
+        Ok(None) => return Step::Wait,
         Err(e) => return Step::Done(Err(e)),
     };
     let name = format!("{}/{}/{}", job.catalog, job.version, job.path);
@@ -332,6 +437,7 @@ fn read(eng: &Engine, job: &Job, recorded: Option<&str>) -> Step {
 /// has read is put in place and journaled, or with a replayed journal each
 /// at its recorded tick.
 pub(crate) fn poll(eng: &Engine, tick: u64) {
+    poll_packs(eng, tick);
     let jobs = std::mem::take(&mut eng.assets.borrow_mut().data.jobs);
     if jobs.is_empty() {
         return;
@@ -394,6 +500,87 @@ pub(crate) fn poll(eng: &Engine, tick: u64) {
     eng.assets.borrow_mut().data.jobs.extend(kept);
 }
 
+/// Pack `job`'s cooked directory and the integrity its version lists for
+/// it, as far as the host has read the version's manifest.
+fn resolve(eng: &Engine, job: &PackJob) -> Option<Result<(String, String), String>> {
+    let base = match content_base(eng) {
+        Ok(Some(b)) => b,
+        Ok(None) => return None,
+        Err(e) => return Some(Err(e)),
+    };
+    let packs = match version(eng, &base, &job.catalog, &job.version) {
+        Ok(Some(v)) => v.packs,
+        Ok(None) => return None,
+        Err(e) => return Some(Err(e)),
+    };
+    Some(match packs.get(&job.name) {
+        Some(integrity) => Ok((pack_dir(&base, &job.catalog, &job.name), integrity.clone())),
+        None => Err(format!(
+            "not_found: {}/{}: the version's manifest lists no pack {}",
+            job.catalog, job.version, job.name
+        )),
+    })
+}
+
+/// Each og.load.pack whose version's manifest the host has read opens as a
+/// runtime bundle (completing, natively, at this boundary); one that cannot
+/// fails and is journaled as a failed bundle open.
+fn poll_packs(eng: &Engine, tick: u64) {
+    let packs = std::mem::take(&mut eng.assets.borrow_mut().data.packs);
+    let now = hooks().map_or(0.0, |h| h.now_ms());
+    let mut kept = Vec::new();
+    for job in packs {
+        let what = format!("{}/{}/packs/{}", job.catalog, job.version, job.name);
+        let due = eng.assets.borrow().uncooked.due(Kind::Bundle, job.request);
+        let outcome = match due {
+            Due::Never => None,
+            Due::At(at, ..) if at > tick => None,
+            Due::At(_, false, _) => {
+                Some(Err(format!("failed: {what}: failed in the recorded run")))
+            }
+            Due::Free => match resolve(eng, &job) {
+                None if job.asked_ms > 0.0 && now - job.asked_ms > TIMEOUT_MS => Some(Err(
+                    format!("timeout: {what}: its version's manifest did not arrive in 30 seconds"),
+                )),
+                r => r,
+            },
+            Due::At(_, true, recorded) => match resolve(eng, &job) {
+                Some(Ok((_, integrity))) if !recorded.is_empty() && recorded != integrity => {
+                    Some(Err(format!(
+                        "integrity: {what}: the recorded run opened {recorded}, this version lists {integrity}"
+                    )))
+                }
+                r => r,
+            },
+        };
+        let mut a = eng.assets.borrow_mut();
+        match outcome {
+            None => kept.push(job),
+            Some(Ok((dir, integrity))) => {
+                let e = &mut a.entries[job.entry];
+                e.path = dir;
+                e.payload = Payload::None;
+                a.pinned.insert(job.entry, integrity);
+                a.opening.insert(job.entry, job.request);
+                a.settle_open(job.entry, tick);
+            }
+            Some(Err(reason)) => {
+                let e = &mut a.entries[job.entry];
+                e.payload = Payload::None;
+                e.status = Status::Failed(reason);
+                a.uncooked.journal.push(Completion {
+                    kind: Kind::Bundle,
+                    request: job.request,
+                    tick,
+                    ok: false,
+                    integrity: String::new(),
+                });
+            }
+        }
+    }
+    eng.assets.borrow_mut().data.packs.extend(kept);
+}
+
 /// og_engine_set_content: the content base the host names once it knows it
 /// (the Player's hello); empty for none. Loads waiting for it go on at the
 /// next tick boundary.
@@ -403,19 +590,22 @@ pub(crate) fn set_content(eng: &Engine, base: &str) {
     a.content_later = false;
 }
 
-/// Whether entry `index` is a data load (pending or put in place).
+/// Whether entry `index` is a data load (pending or put in place) or a
+/// pack waiting for its version's manifest.
 pub(crate) fn is_data(eng: &Engine, index: usize) -> bool {
     matches!(
         eng.assets.borrow().entries.get(index).map(|e| &e.payload),
-        Some(Payload::Data(_) | Payload::DataWaiting)
+        Some(Payload::Data(_) | Payload::DataWaiting | Payload::PackWaiting)
     )
 }
 
 /// og.load.release of a data load: its bytes freed, a pending one never
-/// put in place. Its handle then answers failed, naming the release.
+/// put in place (a waiting pack never opened). Its handle then answers
+/// failed, naming the release.
 pub(crate) fn release(eng: &Engine, index: usize) {
     let mut a = eng.assets.borrow_mut();
     a.data.jobs.retain(|j| j.entry != index);
+    a.data.packs.retain(|j| j.entry != index);
     let e = &mut a.entries[index];
     e.payload = Payload::None;
     e.status = Status::Failed(format!("{} was released (og.load.release)", e.path));

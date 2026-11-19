@@ -7493,6 +7493,27 @@
           "publish": true
         },
         {
+          "name": "pack",
+          "doc": "Open a cooked bundle a content catalog's version lists by name (its manifest's `packs`), read from the content base against the integrity the version lists. Once ready it is a runtime bundle as og.load.bundle opens: og.load.bundleInfo, its groups and cells, og.load.release to close it.\nCompletion is host input, journaled as a `bundle` with its tick and manifest integrity, so a replay opens the same pack at the same tick. og.load.error starts with its reason, as og.load.data's. A pack opening or open answers its handle.\nSee `loading §14`.",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world that owns the asset."
+            },
+            {
+              "name": "entry",
+              "type": "CatalogEntry",
+              "optional": true,
+              "doc": "The pack: its catalog, version, and its name as `path`."
+            }
+          ],
+          "returns": "Result<Asset>",
+          "returnsDoc": "The handle (pending), or why it was refused now: a malformed catalog, version or name.",
+          "publish": true
+        },
+        {
           "name": "environmentInfo",
           "doc": "A ready uncooked environment's map and sizes.",
           "params": [
@@ -31875,7 +31896,7 @@
       "properties": {
         "kind": {
           "type": "string",
-          "description": "`uncooked` (og.load.imageData, gltfData, environmentData), `bundle` (og.load.bundle of another bundle) or `data` (og.load.data). A journal without kinds holds uncooked loads."
+          "description": "`uncooked` (og.load.imageData, gltfData, environmentData), `bundle` (og.load.bundle of another bundle, og.load.pack) or `data` (og.load.data). A journal without kinds holds uncooked loads."
         },
         "request": {
           "type": "integer",
@@ -31894,7 +31915,7 @@
         },
         "integrity": {
           "type": "string",
-          "description": "For `data`: the integrity of the bytes it read (`sha384-<base64>`), which a replay requires again; absent otherwise."
+          "description": "For `data`: the integrity of the bytes it read (`sha384-<base64>`); for an og.load.pack `bundle`: its cooked manifest's. A replay requires it again; absent otherwise."
         }
       },
       "required": [
