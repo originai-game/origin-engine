@@ -31,7 +31,7 @@ class Landing(unittest.TestCase):
         self.run_git(self.a, 'config', 'commit.gpgsign', 'false')
         (self.a / '.gitignore').write_text('/.og/tmp/\n')
         (self.a / 'scripts').mkdir()
-        for name in ('land.sh', 'lock.sh'):
+        for name in ('land.sh', 'lock.sh', 'assets.ts'):
             shutil.copyfile(ROOT / name, self.a / 'scripts' / name)
         shutil.copyfile(ROOT / 'rebase-generated.py', self.a / 'scripts/landing_impl.py')
         (self.a / 'scripts/rebase-generated.py').write_text('''
