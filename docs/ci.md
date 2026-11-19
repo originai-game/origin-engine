@@ -243,6 +243,15 @@ reference checks, within the existing GPU group. Compare against the serial
 sweep on the same tree and jobs using `rust-gpu.junit.xml` and overall wall.
 The serial sweep is the default. `browser.log` reports each browser file's wall.
 
+`OG_GATE_CARGO_UNITS=1` captures the native test and addon/CLI Cargo unit
+graphs without compiling either graph an extra time. Compare features,
+effective profile flags and dependencies of common units before treating
+two artifacts as equivalent. For L4 profile A/B, compare the existing
+incremental setting with `CARGO_PROFILE_DEV_INCREMENTAL=false` on equivalent
+changed and replay inputs; collect Cargo walls, cache stats, target size and
+test walls. Keep the default profile until the full wall and disk results
+justify a change; do not clear the landing target merely for the experiment.
+
 Selection uses Cargo's resolved dependency graph, Bun's import graph and
 fixture input manifests; passing snapshots are git trees of the working
 copy under `target/og-gate/green`. A test binary's closure is its own

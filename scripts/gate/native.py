@@ -12,14 +12,27 @@ from xml.etree import ElementTree
 from inputs import LOGS, GREEN, crate_inputs, mark, unaffected
 
 
+def unit_graphs(selection, products):
+    for label, command in (
+        ('tests', ['cargo', 'test', '--locked', '--no-run', *selection]),
+        ('products', products),
+    ):
+        with (LOGS / f'cargo-units-{label}.json').open('w') as out:
+            subprocess.run([*command, '--unit-graph', '-Z', 'unstable-options'], stdout=out, check=True)
+
+
 def build():
-    command = ['cargo', 'nextest', 'list', '--locked', '--workspace', '--list-type', 'binaries-only', '--message-format', 'json']
+    selection = ['--workspace']
     if os.environ.get('OG_GPU_DOCUMENT_SHARDS') == '1':
         if os.environ.get('OG_UI_CAPTURE') is not None:
             sys.exit('GPU document sharding is for comparing references, not recording')
-        command += ['--features', 'og-tests-ui/gate-document-shards']
+        selection += ['--features', 'og-tests-ui/gate-document-shards']
     if os.environ['OG_GATE_LANE'] == 'quick':
-        command += ['--exclude', 'og-tests']
+        selection += ['--exclude', 'og-tests']
+    products = ['cargo', 'build', '--locked', '-q', '-p', 'og-host-node', '-p', 'og-cli']
+    if os.environ.get('OG_GATE_CARGO_UNITS') == '1':
+        unit_graphs(selection, products)
+    command = ['cargo', 'nextest', 'list', '--locked', '--list-type', 'binaries-only', '--message-format', 'json', *selection]
     with (LOGS / 'binaries.json').open('w') as out:
         subprocess.run(command, stdout=out, check=True)
     # The dev addon and og every later step uses (packages/engine/scripts/
@@ -27,7 +40,7 @@ def build():
     # here once: features match the test build (docs/ci.md §Tests), so only
     # the addon compiles. Each cargo build re-links target/debug/og, so no
     # step after this one runs cargo for them.
-    subprocess.run(['cargo', 'build', '--locked', '-q', '-p', 'og-host-node', '-p', 'og-cli'], check=True)
+    subprocess.run(products, check=True)
     listing = json.loads((LOGS / 'binaries.json').read_text())
     binaries = listing['rust-binaries']
     meta = listing['rust-build-meta']
