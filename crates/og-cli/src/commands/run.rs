@@ -179,7 +179,11 @@ pub fn parse(args: &[&str]) -> Result<RunArgs, String> {
                         r.forward.extend([flag.into(), v.to_string()]);
                         device_forward.extend([flag.to_string(), v.to_string()]);
                     }
-                    "--audio" | "--content" | "--platform-store" | "--platform-fake" | "--shared-token-file" => {
+                    "--audio"
+                    | "--content"
+                    | "--platform-store"
+                    | "--platform-fake"
+                    | "--shared-token-file" => {
                         // A path is the caller's, not bun's working directory's.
                         let v = match *v {
                             "null" | "device" if flag == "--audio" => v.to_string(),
