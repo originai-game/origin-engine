@@ -1,0 +1,7 @@
+type import
+version 1
+---
+# Sample car art for the review sheet's garage page only (generated for
+# the garage's art direction; never part of an install). Colour art: sRGB.
+texture {
+}

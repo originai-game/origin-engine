@@ -24,9 +24,12 @@ const NAMES: Record<string, string> = {
   car: "RacingCar", bonus: "RacingBonus", garage: "RacingGarage", results: "RacingResults",
 };
 
-/** The race page's sample art under assets/art (hud-<name>.jpg; sheet only, never installed), loaded in start. */
+/** The race page's sample art under assets/art (hud-<name>.jpg; sheet only, never installed), loaded in start;
+ *  the garage page's shown car takes garage-car.jpg, so the page shows the garage over a picture and the
+ *  states page shows it without one. */
 const HUD_ART = ["stage", "nitro"] as const;
 let hudArt: Record<string, number> = {};
+let garageArt = 0;
 
 function must<T>(r: { ok: true; value: T } | { ok: false; reason: string }, what: string): T {
   if (!r.ok) throw new Error(`${what}: ${r.reason}`);
@@ -63,7 +66,9 @@ function stores(world: World): Record<string, UiReadable<unknown>> {
       captions[name] = `${NAMES[member]} · ${state}`;
       out[name] = scope.writable(name, fixture);
       for (const [prop, value] of Object.entries(fixture)) {
-        if (Array.isArray(value)) out[`${name}_${prop}`] = scope.collection(`${name}_${prop}`, value as { id: string }[], { key: "id" });
+        if (!Array.isArray(value)) continue;
+        const rows = name == "garage_overflow" && prop == "vehicles" ? (value as { id: string }[]).map((v) => (v.id == fixture.shown ? { ...v, image: garageArt } : v)) : (value as { id: string }[]);
+        out[`${name}_${prop}`] = scope.collection(`${name}_${prop}`, rows, { key: "id" });
       }
     }
   }
@@ -86,6 +91,7 @@ export default og.game({
     if (camera.ok) camera.value.background = { r: 0.05, g: 0.05, b: 0.06 };
     setStyle(world, "fantasy");
     hudArt = Object.fromEntries(HUD_ART.map((p) => [p, must(og.load.texture(world, `art/hud-${p}.jpg`), p) as number]));
+    garageArt = must(og.load.texture(world, "art/garage-car.jpg"), "garage car") as number;
     for (const path of DOCUMENTS) must(og.load.document(world, path), path);
   },
   ui: show,
