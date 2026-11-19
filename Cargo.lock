@@ -2933,6 +2933,7 @@ dependencies = [
  "og-probe",
  "og-render",
  "og-render-data",
+ "og-shared",
  "og-ui",
  "oxc_allocator",
  "oxc_ast",
@@ -2941,6 +2942,7 @@ dependencies = [
  "oxc_span",
  "serde",
  "serde_json",
+ "tokio",
  "tungstenite",
 ]
 

@@ -36,3 +36,4 @@ pub(super) mod upgrade;
 pub(super) mod vfx_import;
 pub(super) mod vfx_preview;
 pub(super) mod video;
+pub(super) mod world_server;

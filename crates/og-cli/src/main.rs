@@ -12,6 +12,7 @@ use commands::{
     api, assets, bake_lightmaps, bake_probes, bake_projection, bundle, cache, check, compare, cook,
     create, dev, doctor, explore, fmt, frame, i18n, migrate, prefab, probe, render, replay, run,
     serve_relay, session, sfx, sprite, style, test, ui, upgrade, vfx_import, vfx_preview, video,
+    world_server,
 };
 mod api_lookup;
 mod bundle_cache;
@@ -277,6 +278,14 @@ commands:
                       a local WebSocket relay for rooms: `og run --room ws://127.0.0.1:P/<room>`
                       processes join <room> and play together (og.net's lockstep); behind a TLS
                       proxy it is reached as `og run --room wss://<host>/<room>`
+  world-server [--listen ADDR] [--config F] [--auth hs256|jwks|none --dev] [--secret-file F]
+      [--jwks URL|FILE] [--audience GAME] [--metrics ADDR]
+                      the shared-world server (og.shared): presence and avatars near each client,
+                      standalone on any host; tokens checked offline (hs256, jwks; none only with
+                      --dev); GET /healthz, Prometheus --metrics, SIGTERM drains. `world-server
+                      load` runs a bot swarm against one and measures bytes, sight and tick time
+                      (--gate holds it to the design's budgets); `world-server token` signs an
+                      HS256 token for a self-hosted server
   doctor [--json] [--require-checked]
                       check bun, the engine package, the native addon, the wasm, a headless
                       renderer, and (in the engine repository) the build toolchain, naming each fix;
@@ -384,6 +393,7 @@ fn main() -> ExitCode {
         ["compare", rest @ ..] => compare::run(rest),
         ["migrate", rest @ ..] => migrate::run(rest),
         ["relay", rest @ ..] => serve_relay::run(rest),
+        ["world-server", rest @ ..] => world_server::run(rest),
         ["probe", rest @ ..] => probe::run(rest),
         ["dev", rest @ ..] => dev::run(rest),
         ["check", rest @ ..] => check::run(rest),

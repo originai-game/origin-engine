@@ -25,6 +25,9 @@ og-render = { path = "../og-render" }
 og-render-data = { path = "../og-render-data", features = ["reach"] }
 glam = { workspace = true }
 og-net = { path = "../og-net", features = ["ws"] }
+# `og world-server` and its load test (docs/design.md §2.12).
+og-shared = { path = "../og-shared" }
+tokio = { version = "1.53", features = ["rt-multi-thread", "signal", "time"] }
 image = { workspace = true }
 gltf = { workspace = true }
 serde = { version = "1", features = ["derive"] }
