@@ -54,7 +54,7 @@
   <div part="PuzzleSummary.actions" data-layout="switcher" data-gap="tight">
     <button id="Menu" part="PuzzleSummary.menu" data-fill aria-label={t("puzzle.summary.menu")} onclick={menu}>{t("puzzle.summary.menu")}</button>
     <button id="Retry" part="PuzzleSummary.retry" data-fill class:primary={!canNext} aria-label={t("puzzle.summary.retry")} onclick={retry}>{t("puzzle.summary.retry")}</button>
-    {#if canNext}<button id="Next" part="PuzzleSummary.next" data-fill class="primary next" aria-label={t("puzzle.summary.next")} onclick={next}>{t("puzzle.summary.next")}</button>{/if}
+    {#if canNext}<button id="Next" part="PuzzleSummary.next" data-fill class="go" variant="primary" aria-label={t("puzzle.summary.next")} onclick={next}>{t("puzzle.summary.next")}</button>{/if}
   </div>
 </section>
 
@@ -92,7 +92,6 @@
 [part="PuzzleSummary.actions"] { flex: none; justify-content: center; }
 [part="PuzzleSummary.actions"] button { min-height: var(--size-touch); }
 /* Next: the way on, in green. */
-.next { --button-primary-fill: var(--result-next-fill); --button-primary-hover-fill: var(--result-next-fill); --button-primary-pressed-fill: var(--result-next-fill); --button-primary-ink: var(--result-next-ink); --button-primary-shadow: var(--result-next-glow); }
 @media (width < 600px) {
   :host { padding: var(--space-lg) var(--space-md) var(--space-md); --layout-gap-loose: var(--layout-gap-tight); }
   [part="PuzzleSummary.actions"] { --layout-gap-tight: var(--layout-gap-hair); }

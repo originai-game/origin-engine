@@ -61,7 +61,7 @@
           </div>
           <div class="make" data-layout="stack" data-gap="tight">
               <div class="batch" data-layout="row"><div part="RpgCrafting.quantity" class="quantity" data-layout="row" data-gap="none"><button part="RpgCrafting.less" class="step" aria-label={t("rpg.economy.less")} disabled={!canDecrease || loading || busy} onclick={decrease}>{t("rpg.economy.minus")}</button><div part="RpgCrafting.quantityLabel RpgCrafting.figure" class="qty" aria-label={t("rpg.economy.quantity", { quantity })}>{formatNumber(quantity)}</div><button part="RpgCrafting.more" class="step" aria-label={t("rpg.economy.more")} disabled={!canIncrease || loading || busy} onclick={increase}>{t("rpg.economy.plus")}</button></div>{#if cost}<p part="RpgCrafting.cost RpgCrafting.figure" class="cost">{cost}</p>{/if}</div>
-              <button part="RpgCrafting.craft" class="primary craft" disabled={!recipe.canCraft || loading || busy} aria-label={t("rpg.craft.make")} onclick={craft}><kbd class="cap" data-action="details"></kbd><span>{t("rpg.craft.make")}</span></button>
+              <button part="RpgCrafting.craft" class="go craft" variant="primary" disabled={!recipe.canCraft || loading || busy} aria-label={t("rpg.craft.make")} onclick={craft}><kbd class="cap" data-action="details"></kbd><span>{t("rpg.craft.make")}</span></button>
           </div>
         </section>{/if}
       {/each}

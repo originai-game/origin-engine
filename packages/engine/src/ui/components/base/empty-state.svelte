@@ -22,7 +22,7 @@
     {#if body}<p part="EmptyState.body" class="body">{body}</p>{/if}
     {#if hint}<p part="EmptyState.hint EmptyState.caption" class="hint">{hint}</p>{/if}
   </div>
-  {#if actionLabel}<button id="Action" part="EmptyState.action" variant="primary" disabled={disabled} onclick={activate}>{actionLabel}</button>{/if}
+  {#if actionLabel}<button id="Action" part="EmptyState.action" class="go" variant="primary" disabled={disabled} onclick={activate}>{actionLabel}</button>{/if}
 </section>
 
 <style>

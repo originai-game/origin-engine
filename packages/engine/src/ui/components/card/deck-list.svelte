@@ -51,7 +51,7 @@
     <div class="empty" data-layout="cover" data-fill role="status"><p class="empty-text">{t("card.deck.empty")}</p></div>
   {/if}
   {#if confirmLabel}<footer class="foot" data-layout="row">
-    <button id="Confirm" class="primary" disabled={!canConfirm} onclick={confirm}>{confirmLabel}</button>
+    <button id="Confirm" class="go" variant="primary" disabled={!canConfirm} onclick={confirm}>{confirmLabel}</button>
   </footer>{/if}
 </section>
 

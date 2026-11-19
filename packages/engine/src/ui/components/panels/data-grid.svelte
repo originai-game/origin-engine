@@ -31,7 +31,7 @@
     <div id="Error" part="DataGrid.error" data-layout="stack" role="alert" aria-label={error}>
       <div part="DataGrid.mark DataGrid.well" class="mark danger" data-layout="cover"><og-icon icon="close" data-tone="danger"></og-icon></div>
       <p part="DataGrid.message DataGrid.headline" class="title">{error}</p>
-      <button id="Retry" part="DataGrid.retry" variant="primary" onclick={retry}>{t("component.data-grid.retry")}</button>
+      <button id="Retry" part="DataGrid.retry" class="go" variant="primary" onclick={retry}>{t("component.data-grid.retry")}</button>
     </div>
   {:else if !rows.length}
     <div id="Empty" part="DataGrid.empty" data-layout="stack" role="status">

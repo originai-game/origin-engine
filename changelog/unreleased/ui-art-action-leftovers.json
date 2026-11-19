@@ -1,0 +1,5 @@
+{
+  "fixed": [
+    "Fourteen main actions the action plate had missed wear it now: the item card's primary action, the hand's Play, crafting's Craft, trade's Buy and Sell, loot's Take all, the deck list's confirm, the puzzle summary's Next, the garage's Locked, and the retry and action of ErrorState, EmptyState and DataGrid. The pass track's Claim and its upgrade button are the plate in gold (data-tone=reward), the upgrade without the glow; --shop-premium-fill, -hover-fill and -text now alias the reward action's tokens. They were the plain primary button or a gold button of their own, a bright slab beside every other screen's action."
+  ]
+}

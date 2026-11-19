@@ -39,7 +39,7 @@
                 <div part="CardHand.reason" class="reason" data-layout="row" data-gap="hair" data-cost={!!c.cost}><og-icon class="lock" icon="lock"></og-icon><p class="reason-text">{c.reason || t("card.hand.unplayable")}</p></div>
               </button>
             {/if}
-            {#if c.id == selected && c.playable}<button class="play primary" onclick={play}>{t("card.hand.play")}</button>{/if}
+            {#if c.id == selected && c.playable}<button class="play go" variant="primary" onclick={play}>{t("card.hand.play")}</button>{/if}
           </div>
         </div>
       {/each}

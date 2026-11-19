@@ -1769,15 +1769,16 @@
   --role-shop-socket-size: calc(84 * var(--font-step-px));
   --role-shop-socket-compact-size: calc(64 * var(--font-step-px));
   /* A season pass: the level on a hexagon in the family's light, premium in
-     gold (its lane's rule, its tiles' rim and wash, the upgrade button),
-     the free lane quiet, a tier ready to claim ringed in the light. */
+     gold (its lane's rule, its tiles' rim and wash; the upgrade button is
+     the action plate in gold), the free lane quiet, a tier ready to claim
+     ringed in the light. */
   --role-shop-level-size: calc(56 * var(--font-step-px));
   --role-shop-level-figure-size: calc(24 * var(--font-step-px));
   --role-shop-level-fill: linear-gradient(180deg, oklch(from var(--hud-accent) 0.945 calc(c * 0.49) calc(h - 8)), var(--inv-accent));
   --role-shop-premium-ink: var(--hud-gold);
-  --role-shop-premium-text: oklch(from var(--hud-gold) 0.218 calc(c * 0.35) calc(h - 24));
-  --role-shop-premium-fill: linear-gradient(180deg, oklch(from var(--hud-gold) 0.937 calc(c * 0.6) calc(h + 5)), var(--hud-gold));
-  --role-shop-premium-hover-fill: linear-gradient(180deg, oklch(from var(--hud-gold) 0.963 calc(c * 0.4) calc(h + 8)), oklch(from var(--hud-gold) 0.902 calc(c * 0.87) calc(h + 3)));
+  --role-shop-premium-text: var(--action-reward-ink);
+  --role-shop-premium-fill: var(--action-reward-fill);
+  --role-shop-premium-hover-fill: var(--action-reward-hover-fill);
   --role-shop-premium-glow: inset 0 var(--stroke-hairline) 0 rgb(255 255 255), 0 0 calc(20 * var(--font-step-px)) rgb(from var(--hud-gold) r g b / 0.35);
   --role-shop-premium-rule: calc(3 * var(--font-step-px)) solid var(--hud-gold);
   --role-shop-premium-tile: radial-gradient(80% 60% at 50% 40%, rgb(from var(--hud-gold) r g b / 0.14), transparent 70%), oklch(from var(--seed-neutral) 0.166 calc(min(c, 0.04) * 0.77) h / 0.6);

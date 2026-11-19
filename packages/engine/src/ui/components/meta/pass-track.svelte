@@ -41,7 +41,7 @@
       {#if season || refresh}<span part="PassTrack.kicker" class="kicker">{season && refresh ? t("meta.pass.kicker", { season, refresh }) : season || refresh}</span>{/if}
       <h2 part="PassTrack.title">{title || t("meta.pass.title")}</h2>
     </div>
-    {#if !premiumUnlocked && upgradeLabel}<button id="Upgrade" part="PassTrack.upgrade" class="upgrade" disabled={disabled || loading || !!error} onclick={upgrade}>{upgradeLabel}</button>{/if}
+    {#if !premiumUnlocked && upgradeLabel}<button id="Upgrade" part="PassTrack.upgrade" class="upgrade go" data-tone="reward" variant="primary" disabled={disabled || loading || !!error} onclick={upgrade}>{upgradeLabel}</button>{/if}
   </header>
   {#if loading}<div class="wait" data-layout="row" role="status"><Spinner name={t("meta.loading")} /><span>{t("meta.loading")}</span></div>
   {:else if error}<ErrorState body={error} />
@@ -65,7 +65,7 @@
           {#if r.amount}<span part="PassTrack.amount" class="amount">{r.amount}</span>{/if}
           {#if r.detail}<p part="PassTrack.detail" class="detail">{r.detail}</p>{/if}
           {#if r.state == 'claimed'}<div part="PassTrack.state" class="state" data-layout="row" data-gap="hair" data-kind="claimed"><og-icon class="mark" icon="check"></og-icon>{t("meta.claimed")}</div>
-          {:else if r.state == 'available' && premiumUnlocked}<button part="PassTrack.claim" class="claim" variant="primary" disabled={disabled} onclick={claim}>{t("meta.claim")}</button>
+          {:else if r.state == 'available' && premiumUnlocked}<button part="PassTrack.claim" class="claim go" data-tone="reward" variant="primary" disabled={disabled} onclick={claim}>{t("meta.claim")}</button>
           {:else}<div part="PassTrack.state" class="state" data-layout="row" data-gap="hair" data-kind="locked">{t("meta.locked")}</div>{/if}
         </li>{/if}{/each}
       </ol>
@@ -78,7 +78,7 @@
           {#if r.amount}<span part="PassTrack.amount" class="amount">{r.amount}</span>{/if}
           {#if r.detail}<p part="PassTrack.detail" class="detail">{r.detail}</p>{/if}
           {#if r.state == 'claimed'}<div part="PassTrack.state" class="state" data-layout="row" data-gap="hair" data-kind="claimed"><og-icon class="mark" icon="check"></og-icon>{t("meta.claimed")}</div>
-          {:else if r.state == 'available'}<button part="PassTrack.claim" class="claim" variant="primary" disabled={disabled} onclick={claim}>{t("meta.claim")}</button>
+          {:else if r.state == 'available'}<button part="PassTrack.claim" class="claim go" data-tone="reward" variant="primary" disabled={disabled} onclick={claim}>{t("meta.claim")}</button>
           {:else}<div part="PassTrack.state" class="state" data-layout="row" data-gap="hair" data-kind="locked">{t("meta.locked")}</div>{/if}
         </li>{/if}{/each}
       </ol>
@@ -97,7 +97,9 @@ h2 { margin: 0; overflow-wrap: anywhere; }
 .heading { min-width: 0; flex-basis: calc(160 * var(--font-step-px)); }
 .kicker { font-size: var(--inv-kicker-size); font-weight: var(--inv-name-weight); letter-spacing: var(--inv-kicker-tracking); text-transform: var(--inv-kicker-transform); color: var(--inv-kicker-ink); overflow-wrap: anywhere; }
 /* Get premium: a gold face. */
-.upgrade { flex: none; max-width: stretch; min-block-size: var(--size-touch); white-space: normal; --button-fill: var(--shop-premium-fill); --button-hover-fill: var(--shop-premium-hover-fill); --button-pressed-fill: var(--shop-premium-fill); --button-ink: var(--shop-premium-text); --button-shadow: var(--shop-premium-glow); }
+/* The upgrade is the action plate in gold without its glow: the claim on
+   the track is the one lit action. */
+.upgrade { flex: none; max-width: stretch; min-block-size: var(--size-touch); white-space: normal; filter: none; }
 /* The level on a hexagon, the bar to the next tier leaning beside it. */
 .body { min-block-size: 0; width: stretch; }
 .progress { flex: none; width: stretch; align-items: center; }

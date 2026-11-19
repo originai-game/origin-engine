@@ -73,7 +73,7 @@
   {#if primary || secondary}<footer part="RpgItemCard.actions" class="actions" data-layout="stack" data-gap="tight">
     {#if primary && !canPrimary && reason}<p part="RpgItemCard.reason" class="reason" role="status">{reason}</p>{/if}
     <div class="buttons" data-layout="row" data-gap="tight">
-      {#if primary}<button id="Primary" class="primary act main" disabled={!canPrimary} aria-label={primary} onclick={equip}><kbd class="cap" data-action="details"></kbd><span>{primary}</span></button>{/if}
+      {#if primary}<button id="Primary" class="go act main" variant="primary" disabled={!canPrimary} aria-label={primary} onclick={equip}><kbd class="cap" data-action="details"></kbd><span>{primary}</span></button>{/if}
       {#if secondary}<button id="Secondary" class="secondary act" disabled={!canSecondary} onclick={discard}>{secondary}</button>{/if}
     </div>
   </footer>{/if}

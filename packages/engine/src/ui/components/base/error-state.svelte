@@ -27,7 +27,7 @@
     {#if code}<p part="ErrorState.code ErrorState.badge" class="code">{code}</p>{/if}
   </div>
   {#if canRetry || dismissLabel}<div part="ErrorState.actions" class="actions" data-layout="cluster">
-    {#if canRetry}<button id="Retry" part="ErrorState.retry" variant="primary" disabled={busy} onclick={retry}>{#if busy}<Spinner size={16} name={t("base.error.busy")} />{/if}<span class="retry">{busy ? t("base.error.busy") : retryLabel || t("base.error.retry")}</span></button>{/if}
+    {#if canRetry}<button id="Retry" part="ErrorState.retry" class="go" variant="primary" disabled={busy} onclick={retry}>{#if busy}<Spinner size={16} name={t("base.error.busy")} />{/if}<span class="retry">{busy ? t("base.error.busy") : retryLabel || t("base.error.retry")}</span></button>{/if}
     {#if dismissLabel}<button id="Dismiss" part="ErrorState.dismiss" disabled={busy} onclick={dismiss}>{dismissLabel}</button>{/if}
   </div>{/if}
 </section>

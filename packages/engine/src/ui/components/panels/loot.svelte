@@ -41,7 +41,7 @@
       <button part="RpgLoot.take" class="take" disabled={!item.available || loading || busy} aria-label={t("rpg.loot.takeItem", { name: item.name })} onclick={take}>{t("rpg.loot.take")}</button>
     </li>{/each}
   </ul>{:else if !loading}<p part="RpgLoot.empty RpgLoot.caption" class="empty" role="status">{t("rpg.loot.empty")}</p>{/if}
-  <footer part="RpgLoot.actions" class="actions" data-layout="row"><button part="RpgLoot.close" class="act" aria-label={t("rpg.economy.close")} onclick={close}><kbd class="cap" data-action="back"></kbd><span>{t("rpg.economy.close")}</span></button><button part="RpgLoot.all" class="primary act all" disabled={!items.length || !canTakeAll || loading || busy} onclick={takeAll}>{t("rpg.loot.all")}</button></footer>
+  <footer part="RpgLoot.actions" class="actions" data-layout="row"><button part="RpgLoot.close" class="act" aria-label={t("rpg.economy.close")} onclick={close}><kbd class="cap" data-action="back"></kbd><span>{t("rpg.economy.close")}</span></button><button part="RpgLoot.all" class="go act all" variant="primary" disabled={!items.length || !canTakeAll || loading || busy} onclick={takeAll}>{t("rpg.loot.all")}</button></footer>
 </section>
 
 <style>
