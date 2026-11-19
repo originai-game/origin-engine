@@ -48,7 +48,7 @@ use crate::project::{self, Project};
 use std::path::Path;
 use std::process::ExitCode;
 
-const USAGE: &str = "usage: og run [project|entry] [--headless] [--commands \"t:action[:args];...\"] [--seed S] [--port P] [--ticks N] [--out DIR] [--size WxH] [--setup action[:arg]]... [--audio null|device|<out.wav>] [--platform-store <file.json>] [--platform-fake <file.json>] [--clock <UTC ms>] [--locale <tag>] [--trace <out.json>] [--profile <out.cpuprofile|out.md>] [--room ws://127.0.0.1:P/<room>|wss://<host>/<room>] [--shared ws://127.0.0.1:P/|wss://<host>/ [--shared-token-file <f>]] [--capture-only] [--forks N] [--json] [--no-check]\n       og run --device chrome|safari|android[:serial]|iphone[:udid] [project] [--seconds N] [--port P] [--out DIR] [--size WxH] [--headed] [--chrome <path>] [--cert <pem> --key <pem>] [--host <ip>] [--json]";
+const USAGE: &str = "usage: og run [project|entry] [--headless] [--commands \"t:action[:args];...\"] [--seed S] [--port P] [--ticks N] [--out DIR] [--size WxH] [--setup action[:arg]]... [--audio null|device|<out.wav>] [--platform-store <file.json>] [--platform-fake <file.json>] [--clock <UTC ms>] [--locale <tag>] [--trace <out.json>] [--profile <out.cpuprofile|out.md>] [--room ws://127.0.0.1:P/<room>|wss://<host>/<room>] [--shared ws://127.0.0.1:P/|wss://<host>/|https://<host>:P/ [--shared-token-file <f>] [--shared-cert-hash <hex>]] [--capture-only] [--forks N] [--json] [--no-check]\n       og run --device chrome|safari|android[:serial]|iphone[:udid] [project] [--seconds N] [--port P] [--out DIR] [--size WxH] [--headed] [--chrome <path>] [--cert <pem> --key <pem>] [--host <ip>] [--json]";
 
 /// What `og run` was asked.
 pub struct RunArgs {
@@ -151,7 +151,8 @@ pub fn parse(args: &[&str]) -> Result<RunArgs, String> {
             | "--room"
             | "--forks"
             | "--shared"
-            | "--shared-token-file") => {
+            | "--shared-token-file"
+            | "--shared-cert-hash") => {
                 let Some(v) = args.get(i + 1) else {
                     return Err(format!("{flag} needs a value. {USAGE}"));
                 };
