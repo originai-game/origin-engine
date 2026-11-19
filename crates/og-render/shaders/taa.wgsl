@@ -223,7 +223,18 @@ fn resolve(in: VsOut, catmull_rom: bool, smaa: bool) -> vec4<f32> {
   let hist = from_ycocg(mix(clamp(to_ycocg(hist4.rgb), lo, hi), to_ycocg(hist4.rgb), relax));
   let hist_a = mix(clamp(hist4.a, a_lo, a_hi), hist4.a, relax);
 
-  if (smaa) { return mix(cur4, vec4<f32>(hist, hist_a), 0.5); }
+  // A history over twice as bright as the brightest sample about it is no
+  // detail the jitter moves but something gone (a bolt's last frame, a
+  // light switched off), so it is dropped rather than clamped. The clamp
+  // kept it at the level of the brightest neighbour, and where that was a
+  // thin bright line (rain under a vanished bolt) the box's top was the
+  // line's, leaving a bright band round each line for several frames.
+  // Rejection by the history's distance from the box: Pedersen, "Temporal
+  // Reprojection Anti-Aliasing in INSIDE", GDC 2016.
+  let top = hi.x;
+  let gone = clamp((to_ycocg(hist4.rgb).x - top) / max(top, 1e-4) - 1.0, 0.0, 1.0);
+
+  if (smaa) { return mix(cur4, vec4<f32>(hist, hist_a), 0.5 * (1.0 - gone)); }
   // Without OIT the binding is a 1x1 white placeholder: the coordinate is
   // clamped to it, never loaded out of bounds (which may answer zero and
   // drop the history). With OIT `at` is the scene pixel, oit.reveal's size.
@@ -231,7 +242,7 @@ fn resolve(in: VsOut, catmull_rom: bool, smaa: bool) -> vec4<f32> {
   let reactive = textureLoad(reactive_tex, min(at, reactive_size - 1), 0);
   // The tail's transmittance times the front layer's (oit.rs REVEAL_FORMAT).
   let reveal = clamp(reactive.r * reactive.g, 0.0, 1.0);
-  let a = 1.0 - (1.0 - taa.params.x * near) * reveal;
+  let a = mix(1.0 - (1.0 - taa.params.x * near) * reveal, 1.0, gone);
   // Compute anti-flicker weights after neighbourhood clipping, using
   // compressed luminance. Raw HDR weights erase bright subpixel coverage
   // against dark history; compression bounds that bias to 2:1. Blend the

@@ -1,0 +1,8 @@
+{
+  "fixed": [
+    {
+      "member": "rendering: antialias TAA",
+      "summary": "A bright object that vanishes from one frame to the next (a lightning bolt, a light switched off) no longer leaves a ghost round thin bright detail. TAA clamped the history to the brightest sample beside each pixel, so a bolt over rain stayed at the streaks' brightness in a 3-pixel band round every streak it crossed, fading over several frames. A history over twice as bright as anything about it is now dropped rather than clamped. TAA and SMAA T2x frames are otherwise unchanged."
+    }
+  ]
+}

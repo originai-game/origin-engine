@@ -143,3 +143,85 @@ fn moving_object(culling: Culling) {
         "{culling:?}: motion vectors {d_with}, camera only {d_without}"
     );
 }
+
+/// A bright object that vanishes over thin bright detail leaves no ghost
+/// round the detail (taa.wgsl drops a history far brighter than its
+/// neighbourhood): a glowing panel stands
+/// behind thin glowing lines, a pixel wide, for 16 frames and is then taken
+/// away. In the frame after, the panel's area is within a twentieth of the
+/// panel's light of a history that never saw it. A min/max box of the 3x3
+/// neighbourhood took its top from the line beside each pixel, so the
+/// panel's history stayed at the line's brightness in a band round every
+/// line it had stood behind (a bolt gone over rain: weather-lightning's
+/// frame after its strike).
+#[test]
+#[ignore = "requires GPU"]
+fn a_vanished_bright_object_leaves_no_ghost_round_thin_detail() {
+    use og_render::{Background, Camera, Exposure, Material, shapes};
+    let mut scene = RenderScene::new();
+    scene.lighting.environment.background = Background::Color(Vec3::ZERO);
+    scene.lighting.environment.intensity = 0.0;
+    scene.lighting.light.intensity = 0.0;
+    let glow = |scene: &mut RenderScene, e: f32| {
+        scene.add_material(Material {
+            base_color: [0.0, 0.0, 0.0, 1.0],
+            emissive: [0.8 * e, 0.85 * e, e],
+            ..Default::default()
+        })
+    };
+    // Lines 2 cm wide 6 m out: about a pixel of the 180-pixel frame.
+    let line = scene.add_mesh(shapes::cuboid(Vec3::new(0.02, 3.0, 0.02)));
+    let lit = glow(&mut scene, 1.5);
+    for i in 0..9 {
+        let x = -2.0 + 0.5 * i as f32;
+        scene.add_instance(line, lit, Mat4::from_translation(Vec3::new(x, 1.5, 0.0)));
+    }
+    scene.frame.camera = Camera {
+        position: Vec3::new(0.0, 1.5, 6.0),
+        target: Vec3::new(0.0, 1.5, 0.0),
+        exposure: Exposure::linear(1.0),
+        ..Default::default()
+    };
+    let mut fresh = Renderer::new_blocking(&desc(Antialias::Taa)).expect("renderer");
+    assert_eq!(
+        fresh.info().antialias,
+        Antialias::Taa,
+        "GPU lacks TAA support"
+    );
+    let without = draw(&mut fresh, &scene, 16);
+    let panel = scene.add_mesh(shapes::plane_xy(5.0, 3.0));
+    let bright = glow(&mut scene, 20.0);
+    scene.add_instance(
+        panel,
+        bright,
+        Mat4::from_translation(Vec3::new(0.0, 1.5, -1.0)),
+    );
+    let mut taa = Renderer::new_blocking(&desc(Antialias::Taa)).expect("renderer");
+    let with = draw(&mut taa, &scene, 16);
+    scene.objects.instances.pop();
+    let after = draw(&mut taa, &scene, 1);
+    // The mean light over the panel's middle, which lies between the lines.
+    let luma = |img: &RgbaImage| {
+        let mut s = 0.0f64;
+        let (x0, x1, y0, y1) = (90u32, 230u32, 50u32, 130u32);
+        for y in y0..y1 {
+            for x in x0..x1 {
+                let p = &img.pixels[((y * img.width + x) * 4) as usize..][..3];
+                s += 0.2126 * f64::from(p[0]) + 0.7152 * f64::from(p[1]) + 0.0722 * f64::from(p[2]);
+            }
+        }
+        s / f64::from((x1 - x0) * (y1 - y0))
+    };
+    let (plain, lit_panel, ghost) = (luma(&without), luma(&with), luma(&after));
+    println!(
+        "the panel's area: {plain:.2} without it, {lit_panel:.2} with it, {ghost:.2} the frame after"
+    );
+    assert!(
+        lit_panel - plain > 100.0 && plain > 5.0,
+        "the scene shows no lines ({plain}) or no panel ({lit_panel})"
+    );
+    assert!(
+        ghost - plain < 0.05 * (lit_panel - plain),
+        "the frame after the panel keeps {ghost} where it was, {plain} without it and {lit_panel} with it"
+    );
+}
