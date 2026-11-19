@@ -48,7 +48,7 @@ use crate::project::{self, Project};
 use std::path::Path;
 use std::process::ExitCode;
 
-const USAGE: &str = "usage: og run [project|entry] [--headless] [--commands \"t:action[:args];...\"] [--seed S] [--port P] [--ticks N] [--out DIR] [--size WxH] [--setup action[:arg]]... [--audio null|device|<out.wav>] [--platform-store <file.json>] [--platform-fake <file.json>] [--clock <UTC ms>] [--locale <tag>] [--trace <out.json>] [--profile <out.cpuprofile|out.md>] [--room ws://127.0.0.1:P/<room>|wss://<host>/<room>] [--capture-only] [--forks N] [--json] [--no-check]\n       og run --device chrome|safari|android[:serial]|iphone[:udid] [project] [--seconds N] [--port P] [--out DIR] [--size WxH] [--headed] [--chrome <path>] [--cert <pem> --key <pem>] [--host <ip>] [--json]";
+const USAGE: &str = "usage: og run [project|entry] [--headless] [--commands \"t:action[:args];...\"] [--seed S] [--port P] [--ticks N] [--out DIR] [--size WxH] [--setup action[:arg]]... [--audio null|device|<out.wav>] [--platform-store <file.json>] [--platform-fake <file.json>] [--clock <UTC ms>] [--locale <tag>] [--trace <out.json>] [--profile <out.cpuprofile|out.md>] [--room ws://127.0.0.1:P/<room>|wss://<host>/<room>] [--shared ws://127.0.0.1:P/|wss://<host>/ [--shared-token-file <f>]] [--capture-only] [--forks N] [--json] [--no-check]\n       og run --device chrome|safari|android[:serial]|iphone[:udid] [project] [--seconds N] [--port P] [--out DIR] [--size WxH] [--headed] [--chrome <path>] [--cert <pem> --key <pem>] [--host <ip>] [--json]";
 
 /// What `og run` was asked.
 pub struct RunArgs {
@@ -134,9 +134,24 @@ pub fn parse(args: &[&str]) -> Result<RunArgs, String> {
                 }
                 i += 1;
             }
-            flag @ ("--ticks" | "--seed" | "--setup" | "--commands" | "--size" | "--out"
-            | "--port" | "--audio" | "--platform-store" | "--platform-fake" | "--clock"
-            | "--locale" | "--trace" | "--profile" | "--room" | "--forks") => {
+            flag @ ("--ticks"
+            | "--seed"
+            | "--setup"
+            | "--commands"
+            | "--size"
+            | "--out"
+            | "--port"
+            | "--audio"
+            | "--platform-store"
+            | "--platform-fake"
+            | "--clock"
+            | "--locale"
+            | "--trace"
+            | "--profile"
+            | "--room"
+            | "--forks"
+            | "--shared"
+            | "--shared-token-file") => {
                 let Some(v) = args.get(i + 1) else {
                     return Err(format!("{flag} needs a value. {USAGE}"));
                 };
@@ -161,7 +176,7 @@ pub fn parse(args: &[&str]) -> Result<RunArgs, String> {
                         r.forward.extend([flag.into(), v.to_string()]);
                         device_forward.extend([flag.to_string(), v.to_string()]);
                     }
-                    "--audio" | "--platform-store" | "--platform-fake" => {
+                    "--audio" | "--platform-store" | "--platform-fake" | "--shared-token-file" => {
                         // A path is the caller's, not bun's working directory's.
                         let v = match *v {
                             "null" | "device" if flag == "--audio" => v.to_string(),

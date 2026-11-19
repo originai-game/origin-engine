@@ -44,6 +44,7 @@ impl HostWire for NodeHost {
     fn destroyed(engine: u32) {
         crate::audio::og_node_audio_close(engine);
         crate::room::forget_engine(engine);
+        crate::shared::forget_engine(engine);
         crate::forget_engine(engine);
     }
 }

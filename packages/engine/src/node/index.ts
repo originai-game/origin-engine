@@ -62,6 +62,10 @@ export interface NativeExtras {
   /** Carry room ops to the relay and its events to the engine; the events delivered. */
   og_node_room_pump(engine: number): number;
   og_node_room_close(engine: number): boolean;
+  /** Give an engine a static session provider (`og run --shared`): a `ws://`/`wss://` world server and the token sent as it is. False for another URL. */
+  og_node_shared_attach(engine: number, url: string, token: string): boolean;
+  /** Carry the engine's shared-world ops to its connection and what it says back; the events delivered. */
+  og_node_shared_pump(engine: number): number;
   /** Start a relay in this process on 127.0.0.1 (0 a free port) for as long as it lives. A Result with the port. */
   og_node_relay_start(port: number): string;
   /** Last drawn RGBA8 rows (empty without a frame). `header` prefixes width and height as little-endian u32s. Development only. */

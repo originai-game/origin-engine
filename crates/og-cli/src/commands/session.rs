@@ -240,7 +240,15 @@ mod local {
             .map(|arg| arg.to_string_lossy().into_owned())
             .collect::<Vec<_>>();
         if argv.iter().any(|arg| {
-            ["--port", "--watch", "--room", "--handoff", "--realtime"].contains(&arg.as_str())
+            [
+                "--port",
+                "--watch",
+                "--room",
+                "--shared",
+                "--handoff",
+                "--realtime",
+            ]
+            .contains(&arg.as_str())
         }) {
             return Ok(None);
         }

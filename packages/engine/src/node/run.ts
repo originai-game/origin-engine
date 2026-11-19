@@ -6,7 +6,8 @@
 //       [--setup action[:arg...]]... [--commands "t:action[:args];..."] [--out <dir>]
 //       [--port P] [--size WxH] [--realtime] [--watch <bundle.js>] [--no-render] [--capture-only]
 //       [--audio null|device|<out.wav>] [--platform-store <file.json>] [--platform-fake <file.json>] [--clock <UTC ms>] [--locale <tag>]
-//       [--trace <out.json> [--trace-append]] [--room ws://127.0.0.1:P/<room>] [--json]
+//       [--trace <out.json> [--trace-append]] [--room ws://127.0.0.1:P/<room>]
+//       [--shared ws://127.0.0.1:P/ [--shared-token-file <f>]] [--json]
 //       [--restore <world.save>] [--handoff <world.save>] [--forks N]
 //
 // - With --forks N and --commands: after the script's run, N forks of it,
@@ -35,6 +36,11 @@
 //   rooms, og.net's lockstep), the link pumped around every frame, and the run
 //   takes frames (never one big advance), so a tick lockstep holds waits for
 //   the other players' inputs; it ends at `quit`, --ticks or the script's end.
+// - With --shared: the engine's shared-world sessions (og.shared.join) go to
+//   that `og world-server`, with the token in --shared-token-file sent as it
+//   is (a static session provider; none for a server started --auth none
+//   --dev). The link is pumped around every frame and the run keeps real
+//   time, as the server does; the summary carries og.shared.status.
 // - Without a renderer (OG_RENDERER=none, as the platform's engine and probe
 //   sandboxes set) the run is the same run: the play surface keeps --size, a
 //   `screenshot` writes no PNG and is listed in --json's `unchecked` ("no
@@ -118,6 +124,8 @@ export async function run(argv: string[], output: RunOutput = hostProcess, contr
     let tracePath: string | undefined;
     let traceAppend = false;
     let room: string | undefined;
+    let shared: string | undefined;
+    let sharedTokenFile: string | undefined;
     let restoreFile: string | undefined;
     let handoffFile: string | undefined;
     let failureCapture: string | undefined;
@@ -156,6 +164,8 @@ export async function run(argv: string[], output: RunOutput = hostProcess, contr
       else if (a === "--trace") tracePath = resolve(next());
       else if (a === "--trace-append") traceAppend = true;
       else if (a === "--room") room = next();
+      else if (a === "--shared") shared = next();
+      else if (a === "--shared-token-file") sharedTokenFile = resolve(next());
       else if (a === "--restore") restoreFile = resolve(next());
       else if (a === "--handoff") handoffFile = resolve(next());
       else if (a === "--failure-capture") failureCapture = resolve(next());
@@ -268,7 +278,8 @@ export async function run(argv: string[], output: RunOutput = hostProcess, contr
     }
     const project = projectText(control.inputRoot ?? root);
     const profile = projectProfile(project);
-    const probing = commands !== undefined || port !== undefined || watchFile !== undefined || room !== undefined || handoffFile !== undefined;
+    if (sharedTokenFile !== undefined && shared === undefined) fail("--shared-token-file goes with --shared <ws://host:port/>");
+    const probing = commands !== undefined || port !== undefined || watchFile !== undefined || room !== undefined || shared !== undefined || handoffFile !== undefined;
     // With a renderer, GameDesc.start runs once it is attached (as the web Worker
     // does), so og.render.capabilities reports the play surface's size there.
     const deferStart = probing && render;
@@ -432,6 +443,12 @@ export async function run(argv: string[], output: RunOutput = hostProcess, contr
       }
     }
 
+    // Before --setup, so a setup step may join (og.shared.join).
+    if (shared !== undefined) {
+      const token = sharedTokenFile === undefined ? "" : readFileSync(sharedTokenFile, "utf8").trim();
+      if (!extras.og_node_shared_attach(engine.id, shared, token)) fail(`--shared ${shared}: write ws://127.0.0.1:<port>/ (og world-server prints its address) or wss://<host>/`);
+    }
+
     for (const step of setup) {
       const [action, ...args] = step.split(":");
       const r = engine.command(action!, args);
@@ -538,6 +555,7 @@ export async function run(argv: string[], output: RunOutput = hostProcess, contr
         const count = control.signal ? Math.min(left, 16) : left;
         const advanced = engine.advance(count);
         if (!advanced.ok) fail(advanced.reason);
+        extras.og_node_shared_pump(engine.id);
         left -= count;
         if (left > 0) await new Promise((resolve) => setTimeout(resolve, 0));
       } while (left > 0);
@@ -651,8 +669,11 @@ export async function run(argv: string[], output: RunOutput = hostProcess, contr
         if (asJson && framesSeen > 5) intervals.push(started - last);
         last = started;
         if (room !== undefined) extras.og_node_room_pump(engine.id);
+        // Without --shared the pump answers a join `unavailable`.
+        extras.og_node_shared_pump(engine.id);
         const answer = engine.frame(elapsed);
         if (room !== undefined) extras.og_node_room_pump(engine.id);
+        extras.og_node_shared_pump(engine.id);
         if (!answer.ok) {
           frameFailed = answer.reason ?? "the frame failed";
           break;
@@ -691,6 +712,8 @@ export async function run(argv: string[], output: RunOutput = hostProcess, contr
         // spend the run's --ticks before they arrive.
         else if (room !== undefined && (answer.ticks ?? 0) === 0) await sleep(1);
         else if (room !== undefined && !netStatus().running) await paceTo(last + tickMs);
+        // A shared world's server keeps real time: so does its client.
+        else if (shared !== undefined) await paceTo(last + tickMs);
       }
     }
     const ms = performance.now() - t0;
@@ -813,6 +836,8 @@ export async function run(argv: string[], output: RunOutput = hostProcess, contr
       // With --room: lockstep's state at the end (the tick it started, the waits, the first divergent tick),
       // and the shared hash of the final world at --ticks (in rollback the world may run past it).
       ...(room !== undefined ? { room: JSON.parse(abiRoomInfo()) as unknown, lockstep: netStatus(), confirmedHash: finalHash(ticks ?? dump.tick) } : {}),
+      // With --shared: the session at the end (og.shared.status).
+      ...(shared !== undefined ? { shared: JSON.parse(boundHost()!.abi.og_shared_status(engine.id)) as unknown } : {}),
       entities: dump.entities,
       // The game's facts (og.game's `facts`), as the probe prints them.
       facts: (engine.probe.state() as { facts?: unknown }).facts ?? null,

@@ -10,6 +10,8 @@ description = "Origin Engine shared worlds (docs/design.md §2.12): the protocol
 # The server half: `og world-server`, its shard, verifiers, config and the
 # load bots. Without it the crate is the protocol and a client's view, all an
 # engine needs (the runtime builds for wasm and in the native addon).
+# A native client's connection (og-host-node's `og run --shared`).
+client = ["dep:tungstenite", "dep:rustls", "dep:webpki-roots"]
 server = ["dep:og-core", "dep:serde_json", "dep:ring", "dep:rayon", "dep:tokio", "dep:tokio-tungstenite", "dep:futures-util", "dep:ureq"]
 
 [dependencies]
@@ -24,5 +26,9 @@ rayon = { version = "1.12", optional = true }
 tokio = { version = "1.53", features = ["rt-multi-thread", "net", "time", "sync", "macros", "signal", "io-util"], optional = true }
 tokio-tungstenite = { version = "0.30", default-features = false, features = ["handshake"], optional = true }
 futures-util = { version = "0.3", default-features = false, features = ["sink", "std"], optional = true }
+# The client's WebSocket and its TLS: the versions og-net's relay client pins.
+tungstenite = { version = "=0.30.0", default-features = false, features = ["handshake", "rustls-tls-webpki-roots"], optional = true }
+rustls = { version = "0.23", default-features = false, features = ["std", "ring"], optional = true }
+webpki-roots = { version = "1", optional = true }
 # A JWKS document named by URL (`--jwks https://...`), on rustls as og-net's HTTP client.
 ureq = { version = "3.5", default-features = false, features = ["rustls"], optional = true }

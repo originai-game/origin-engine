@@ -1,0 +1,9 @@
+{
+  "simulation": "unchanged",
+  "added": [
+    {
+      "member": "og run --shared",
+      "summary": "`og run --shared ws://host:port/ [--shared-token-file f]` gives a native run a static session provider for og.shared: one world server endpoint and the token sent as it is (a self-hosted `og world-server`, or any host's). Without it og.shared.join ends with og.SharedLeft `unavailable`. The run paces itself in real time while a session is open, and its summary carries og.shared.status as `shared`."
+    }
+  ]
+}
