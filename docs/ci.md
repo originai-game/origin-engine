@@ -542,6 +542,14 @@ pin and names each one it cannot have; a verified cache works offline.
 `OG_PLATFORM_DEVELOPMENT_KEY`; `push` refuses a file that is not its pin.
 `OG_ASSETS_URL` overrides the store's origin.
 
+`.agents/setup` and `scripts/check.sh` run `ensure` before anything reads
+or compiles a pinned file. Pinned files are ignored by Git, so
+`scripts/land.sh` and the release pack also run `status`: a pinned file
+that is not its pin (a re-recorded reference, an edited texture) refuses a
+landing and marks a pack dirty until it is pinned again and pushed, in the
+same commit as its `og-assets.json`. Paths given to `pin` are relative to
+its directory (`cd <dir> && bun <repo>/scripts/assets.ts pin . *.png`).
+
 ## Generated sources
 
 The raw generated sources behind the shipped assets (Meshy models, gateway
