@@ -120,6 +120,8 @@ pub(crate) struct Session {
     others: u32,
     /// The local avatar when last proposed: the tick and where it was.
     last_sent: Option<(u64, [f64; 3])>,
+    /// A snapshot arrived since the last proposal (see `propose`).
+    snapshot_since: bool,
     /// og.shared.teleport's place, applied as the next tick starts.
     teleport: Option<[f64; 3]>,
     jump_next: bool,
@@ -1046,6 +1048,7 @@ fn message(
             }
         }
         ServerMsg::Snapshot(bytes) => {
+            with(engine_id, |s| s.snapshot_since = true);
             with(engine_id, |s| match s.view.snapshot(&bytes) {
                 Ok(Some(applied)) => {
                     let t = applied.head.tick;
@@ -1315,10 +1318,22 @@ fn propose(
     if !joined || cs <= 0.0 {
         return Ok(());
     }
+    // A proposal leaves on the tick after a snapshot arrives, so the
+    // transport's acknowledgement of that snapshot rides in the same packet
+    // instead of one of its own: over WebTransport a lone ACK costs as much
+    // as the proposal, and a client acks every snapshot (20 Hz) within
+    // 25 ms. The server sends a snapshot every tick, so proposals lock to
+    // them within one; the shortest gap (two thirds of the period) keeps
+    // the rate at sendRateHz and lets the phase move, and with no snapshot
+    // a proposal leaves after half a period more.
     let every = ((1.0 / dt) / f64::from(settings.send_rate_hz.max(1)))
         .round()
         .max(1.0) as u64;
-    if last.is_some_and(|(t, _)| tick < t + every) {
+    let snapshot = with(engine_id, |s| s.snapshot_since);
+    if last.is_some_and(|(t, _)| {
+        let gap = tick.saturating_sub(t);
+        !(snapshot && gap >= (2 * every).div_ceil(3) || gap >= every + every / 2)
+    }) {
         return Ok(());
     }
     let v = transform.1.decode(&ctx.get_bytes(e, transform.0)?);
@@ -1348,6 +1363,7 @@ fn propose(
         s.send(bytes);
         s.proposals += 1;
         s.last_sent = Some((tick, abs));
+        s.snapshot_since = false;
     });
     Ok(())
 }

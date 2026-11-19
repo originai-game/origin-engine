@@ -523,12 +523,17 @@ async fn bot(d: &LoadDesc, i: usize, start: Instant) -> BotReport {
     ];
     let mut heading = rng.next() * std::f64::consts::TAU;
     let mut turn_in = 2.0 + rng.next() * 4.0;
-    let dt = 0.05;
+    // Proposals at 20 Hz, each on a snapshot's arrival as og.shared sends
+    // them (og-runtime bind/shared.rs `propose`): once a snapshot has
+    // arrived and two thirds of the period have passed, else after one and
+    // a half periods. The walk moves by the time since the last proposal.
+    const PERIOD: Duration = Duration::from_millis(50);
+    let mut last_prop = Instant::now();
     let mut view = View::new();
     let mut prop = Proposer::default();
     let mut cell_size = 128.0;
     let mut tick_hz = 20.0;
-    let mut tick = tokio::time::interval(Duration::from_millis(50));
+    let mut tick = tokio::time::interval(PERIOD * 3 / 2);
     let measure_from = start + Duration::from_secs_f64(d.warmup);
     let end = start + Duration::from_secs_f64(d.warmup + d.seconds);
     let mut base: Option<(u64, u64, Instant)> = None;
@@ -545,6 +550,8 @@ async fn bot(d: &LoadDesc, i: usize, start: Instant) -> BotReport {
                 if !rep.joined {
                     continue;
                 }
+                let dt = now.duration_since(last_prop).as_secs_f64().min(0.25);
+                last_prop = now;
                 if now >= measure_from {
                     if base.is_none() {
                         base = Some((read.load(Ordering::Relaxed), written.load(Ordering::Relaxed), now));
@@ -599,7 +606,10 @@ async fn bot(d: &LoadDesc, i: usize, start: Instant) -> BotReport {
                     Ok(ServerMsg::Leave { id }) => {
                         view.leave(id);
                     }
-                    Ok(ServerMsg::Snapshot(s)) => match view.snapshot(&s) {
+                    Ok(ServerMsg::Snapshot(s)) => {
+                        let at = tokio::time::Instant::from_std((last_prop + PERIOD * 2 / 3).max(now));
+                        tick.reset_at(at);
+                        match view.snapshot(&s) {
                         Ok(Some(a)) => {
                             if measuring {
                                 rep.snapshots += 1;
@@ -609,7 +619,8 @@ async fn bot(d: &LoadDesc, i: usize, start: Instant) -> BotReport {
                         }
                         Ok(None) => rep.stale += 1,
                         Err(_) => rep.errors += 1,
-                    },
+                        }
+                    }
                     Ok(ServerMsg::Correct { .. }) => rep.corrections += 1,
                     Ok(_) => {}
                     Err(_) => rep.errors += 1,

@@ -725,13 +725,18 @@ async fn admit(
 }
 
 /// The QUIC endpoint WebTransport is served on: web-transport-quinn's
-/// setup (TLS 1.3, its ALPN) with two changes for a client's upload,
-/// where a 20 Hz proposal is a few dozen bytes and QUIC's framing is as
-/// large again. Clients that support ACK frequency (RFC draft
-/// ietf-quic-ack-frequency) are asked to hold their ACKs for the next
-/// proposal instead of sending each in a packet of its own, and the
-/// server's connection ids, which every client packet carries, are
-/// 4 bytes instead of 8.
+/// setup (TLS 1.3, its ALPN) with zero-length server connection ids. A
+/// 20 Hz proposal is 17 bytes and QUIC's framing is twice that, and every
+/// client packet carries the server's id (8 bytes by default): without it
+/// a client's upload stays under 1 KiB/s even at 5% loss, where each lost
+/// server packet draws an ACK in a packet of its own (RFC 9000 §13.2.1).
+/// Connections are then told apart by address, so a client whose NAT
+/// rebinds reconnects (resuming within 10 s) instead of migrating.
+/// A client's other ACKs ride in its proposals because it proposes on a
+/// snapshot's arrival (og-runtime `propose`), on any QUIC stack; the
+/// server does not ask for ACK frequency (draft ietf-quic-ack-frequency),
+/// which browsers need not support and quinn 0.11 does not resend when
+/// its one frame is lost.
 fn wt_endpoint(
     addr: SocketAddr,
     chain: Vec<web_transport_quinn::quinn::rustls::pki_types::CertificateDer<'static>>,
@@ -748,18 +753,17 @@ fn wt_endpoint(
     .map_err(|e| format!("the certificate: {e}"))?;
     tls.alpn_protocols = vec![web_transport_quinn::ALPN.as_bytes().to_vec()];
     let tls = quinn::crypto::rustls::QuicServerConfig::try_from(tls).map_err(|e| e.to_string())?;
-    let mut acks = quinn::AckFrequencyConfig::default();
-    acks.ack_eliciting_threshold(quinn::VarInt::from_u32(9))
-        .max_ack_delay(Some(Duration::from_millis(100)));
-    let mut transport = quinn::TransportConfig::default();
-    transport.ack_frequency_config(Some(acks));
-    let mut config = quinn::ServerConfig::with_crypto(Arc::new(tls));
-    config.transport_config(Arc::new(transport));
+    let config = quinn::ServerConfig::with_crypto(Arc::new(tls));
     let mut endpoint = quinn::EndpointConfig::default();
-    endpoint.cid_generator(|| Box::new(quinn_proto::RandomConnectionIdGenerator::new(4)));
+    endpoint.cid_generator(|| Box::new(quinn_proto::RandomConnectionIdGenerator::new(0)));
     let socket = std::net::UdpSocket::bind(addr).map_err(|e| format!("{addr}: {e}"))?;
-    quinn::Endpoint::new(endpoint, Some(config), socket, Arc::new(quinn::TokioRuntime))
-        .map_err(|e| format!("{addr}: {e}"))
+    quinn::Endpoint::new(
+        endpoint,
+        Some(config),
+        socket,
+        Arc::new(quinn::TokioRuntime),
+    )
+    .map_err(|e| format!("{addr}: {e}"))
 }
 
 async fn wt_connection(
