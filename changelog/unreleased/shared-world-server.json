@@ -1,0 +1,16 @@
+{
+  "added": [
+    {
+      "member": "og world-server",
+      "summary": "The shared-world server (docs/design.md §2.12), standalone on any host and tied to no platform: it holds every visitor's avatar, checks each proposed move against its kind's top speed and the world's bounds, and sends each client only the avatars within two 128 m cells of it, at most 64, nearest first, as deltas over what the client acknowledged (about 8 bytes for a walking avatar). Tokens are checked offline: --auth hs256 (a secret shared with the game's own token endpoint) or --auth jwks (EdDSA or ES256 keys of an issuer's JWKS, chosen by kid), with --issuer and --max-lifetime to hold iss and exp − iat; --auth none only with --dev. GET /healthz, Prometheus text on --metrics, and SIGTERM drains (clients are told to move). The game API (og.shared) follows in a later release."
+    },
+    {
+      "member": "og world-server load",
+      "summary": "A bot swarm of real WebSocket clients against a world server: it measures each client's bytes down and up at the socket, the avatars in sight and the server's tick time (--metrics), and with --gate holds the run to the design's budgets (8 KiB/s down and 1 KiB/s up at p95, tick p99 10 ms)."
+    },
+    {
+      "member": "og world-server token",
+      "summary": "Sign an HS256 token for a self-hosted world server, as a game's own token endpoint would."
+    }
+  ]
+}
