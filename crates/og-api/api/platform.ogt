@@ -108,7 +108,7 @@ module platform {
   struct PlatformInfo {
     doc "What answers platform calls here."
     field host String "`player` (a Player frames the game), `local` (the native host's JSON store or the browser's own storage) or `none`."
-    field capabilities List.String "The methods it answers: store.get, store.set, store.list, leaderboard.submit, leaderboard.top, leaderboard.around, telemetry, point, ai.mark, purchase.products, purchase.buy, purchase.entitlements, purchase.consume, ad.ready, ad.show, achievement.unlock, achievement.progress, achievement.list, player.get, friends.list, invite.send, invite.list, share (og.platform.supports asks for one)." {
+    field capabilities List.String "The methods it answers: store.get, store.set, store.list, leaderboard.submit, leaderboard.top, leaderboard.around, telemetry, point, ai.mark, purchase.products, purchase.buy, purchase.entitlements, purchase.consume, ad.ready, ad.show, achievement.unlock, achievement.progress, achievement.list, player.get, friends.list, invite.send, invite.list, share, catalog.head (og.platform.supports asks for one)." {
       guide "saves §7"
     }
     field pending u32 "Calls not answered yet."
@@ -131,6 +131,15 @@ module platform {
     param world World "The world."
     param desc StoreSetDesc "The key, the value and the revision it must be at."
     returns Result.u32 "Refused for a malformed key or a value over 64 KiB. The answer's data is `{ key, revision }` (the new revision); `conflict` when the key moved past desc.revision."
+  }
+
+  fn catalogHead {
+    doc "Which version of a content catalog is current: the one mutable thing about a catalog, whose versions never change once published (og.load.data reads a version's files). Poll it, every 30 to 60 seconds while the game cares: og.PlatformNoticeKind.catalog is a hint a host may never send."
+    guide "saves §11"
+    aliases "content version, world index version, published level version, catalog pointer"
+    param world World "The world."
+    param catalog String "The catalog's name, as og.load.data's CatalogEntry.catalog."
+    returns Result.u32 "Refused for a malformed name. The answer's data is `{ catalog, version, manifest, published }`: the version, its manifest's integrity (`sha384-<base64>`) and when it was published (UTC ms); `not_found` for a catalog never published."
   }
 
   fn storeList {
@@ -228,6 +237,7 @@ module platform {
     variant purchase "A purchase settled: a pending one completed or failed, or one was refunded. Data `{ purchase, product, quantity, state }`, state `completed`, `failed` or `refunded`."
     variant entitlements "The player's entitlements changed without a call (bought on another device, a subscription expired): data `{ entitlements }`, the entitlements answer's shape."
     variant invite "An invite to this game arrived: data `{ invite, from: { player, name }, payload, time }`."
+    variant catalog "A content catalog may have a new version: data `{ catalog, version, manifest }`, og.platform.catalogHead's answer without `published`. Best effort: a host may send it late, twice or never, so a game polls catalogHead and treats this as a reason to poll now."
     variant host "A message from the page that frames the game, outside any platform service (a site steering a showcase, a launcher handing over a choice): data `{ name, ... }`, its meaning agreed between game and page. The engine gives it none; a game ignores a name it does not know."
   }
 
@@ -246,7 +256,7 @@ module platform {
   struct PlatformNoticeData {
     doc "A notice og.PlatformNotice announced."
     field notice u32 "Its number."
-    field kind String "`purchase`, `entitlements` or `invite`."
+    field kind String "`purchase`, `entitlements`, `invite`, `catalog` or `host`."
     field data Json "What it carries (see og.PlatformNoticeKind)."
     field tick u32 "The tick it was applied at."
     field time f64 "The host's clock when it sent it, UTC milliseconds; 0 when it gave none." {

@@ -24728,7 +24728,7 @@ export interface PlatformInfo {
    */
   readonly host: string;
   /**
-   * The methods it answers: store.get, store.set, store.list, leaderboard.submit, leaderboard.top, leaderboard.around, telemetry, point, ai.mark, purchase.products, purchase.buy, purchase.entitlements, purchase.consume, ad.ready, ad.show, achievement.unlock, achievement.progress, achievement.list, player.get, friends.list, invite.send, invite.list, share (og.platform.supports asks for one).
+   * The methods it answers: store.get, store.set, store.list, leaderboard.submit, leaderboard.top, leaderboard.around, telemetry, point, ai.mark, purchase.products, purchase.buy, purchase.entitlements, purchase.consume, ad.ready, ad.show, achievement.unlock, achievement.progress, achievement.list, player.get, friends.list, invite.send, invite.list, share, catalog.head (og.platform.supports asks for one).
    * See `saves §7`.
    */
   readonly capabilities: readonly string[];
@@ -24740,6 +24740,7 @@ export interface PlatformInfo {
    */
   readonly clock: string;
 }
+
 
 
 
@@ -24766,9 +24767,10 @@ export type AdKind = "rewarded" | "interstitial";
  * - `"purchase"`: A purchase settled: a pending one completed or failed, or one was refunded. Data `{ purchase, product, quantity, state }`, state `completed`, `failed` or `refunded`.
  * - `"entitlements"`: The player's entitlements changed without a call (bought on another device, a subscription expired): data `{ entitlements }`, the entitlements answer's shape.
  * - `"invite"`: An invite to this game arrived: data `{ invite, from: { player, name }, payload, time }`.
+ * - `"catalog"`: A content catalog may have a new version: data `{ catalog, version, manifest }`, og.platform.catalogHead's answer without `published`. Best effort: a host may send it late, twice or never, so a game polls catalogHead and treats this as a reason to poll now.
  * - `"host"`: A message from the page that frames the game, outside any platform service (a site steering a showcase, a launcher handing over a choice): data `{ name, ... }`, its meaning agreed between game and page. The engine gives it none; a game ignores a name it does not know.
  */
-export type PlatformNoticeKind = "purchase" | "entitlements" | "invite" | "host";
+export type PlatformNoticeKind = "purchase" | "entitlements" | "invite" | "catalog" | "host";
 
 /**
  * Unasked host input arrived: sent by og.platform at the start of the tick it was applied, read by systems the tick after; read it with og.platform.notice. Registered when a game first names it (a system's reads); without it notices are still logged and readable.
@@ -24801,7 +24803,7 @@ export interface PlatformGrants {
 export interface PlatformNoticeData {
   /** Its number. */
   readonly notice: number;
-  /** `purchase`, `entitlements` or `invite`. */
+  /** `purchase`, `entitlements`, `invite`, `catalog` or `host`. */
   readonly kind: string;
   /** What it carries (see og.PlatformNoticeKind). */
   readonly data: unknown;
@@ -37528,6 +37530,15 @@ export declare namespace og {
      * @returns Refused for a malformed key or a value over 64 KiB. The answer's data is `{ key, revision }` (the new revision); `conflict` when the key moved past desc.revision.
      */
     function storeSet(world: World, desc?: StoreSetDesc): Result<number>;
+    /**
+     * Which version of a content catalog is current: the one mutable thing about a catalog, whose versions never change once published (og.load.data reads a version's files). Poll it, every 30 to 60 seconds while the game cares: og.PlatformNoticeKind.catalog is a hint a host may never send.
+     * See `saves §11`.
+     *
+     * @param world The world.
+     * @param catalog The catalog's name, as og.load.data's CatalogEntry.catalog.
+     * @returns Refused for a malformed name. The answer's data is `{ catalog, version, manifest, published }`: the version, its manifest's integrity (`sha384-<base64>`) and when it was published (UTC ms); `not_found` for a catalog never published.
+     */
+    function catalogHead(world: World, catalog: string): Result<number>;
     /**
      * The keys of the player's store and their revisions.
      *

@@ -587,7 +587,7 @@ under each.
 - The contract has a version (`PROVIDER_VERSION`). The method vocabulary has
   **core** methods any store or portal can answer (`store.*`,
   `leaderboard.*`, `telemetry`, `purchase.*`, `ad.*`, `achievement.*`,
-  `player.get`, `friends.list`, `invite.*`, `share`) and **host extensions**
+  `player.get`, `friends.list`, `invite.*`, `share`, `catalog.head`) and **host extensions**
   one host defines (`point` and `ai.mark` are OriginGame's). A provider
   answers any subset; the rest is `unavailable`, and `og.platform.supports`
   tells the game.
@@ -595,7 +595,9 @@ under each.
   local document (the native host's file, a dev page's storage, the
   deterministic fake), and for rooms the Player, the native relay client and
   the web relay client (`relayRooms`). A portal, a store or a mini-game
-  platform is one more provider, outside the engine.
+  platform is one more provider, outside the engine. `staticCatalog` answers
+  `catalog.head` from a static content base, and a provider may name the
+  game's content base (`content.base()`) for og.load.data.
 - For every provider: the provider owns every credential and URL, game code
   names neither, ids are opaque and game-scoped, and a published page never
   fakes money. The page that hosts the game chooses the provider

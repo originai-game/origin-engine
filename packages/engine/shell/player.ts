@@ -168,6 +168,11 @@ export function connectPlayer(events: PlayerEvents) {
         if (event && typeof event === "object" && !Array.isArray(event)) events.room?.(event as Record<string, unknown>);
         break;
       }
+      // A content catalog may have a new version (`{ kind: "catalog", data: { catalog, version, manifest }, time? }`):
+      // a hint, the game polls catalog.head.
+      case "catalog":
+        if (m["data"] && typeof m["data"] === "object") events.notice?.({ kind: "catalog", data: m["data"], ...(typeof m["time"] === "number" ? { time: m["time"] } : {}) });
+        break;
       case "platform": {
         const notice = m["notice"] as { kind?: unknown; data?: unknown; time?: unknown } | undefined;
         if (notice && typeof notice.kind === "string") events.notice?.({ kind: notice.kind, data: notice.data ?? null, ...(typeof notice.time === "number" ? { time: notice.time } : {}) });

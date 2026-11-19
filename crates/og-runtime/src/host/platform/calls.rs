@@ -27,6 +27,18 @@ pub fn og_platform_store_get(world: u32, key: String) -> Result<u32, String> {
     request(world, "store.get", json!({ "key": key }))
 }
 
+/// og.platform.catalogHead: the current version of one of the game's
+/// content catalogs (guide saves §11). Its answer pins that version's
+/// manifest for og.load.data ([`crate::world::data::pin`]).
+pub fn og_platform_catalog_head(world: u32, catalog: String) -> Result<u32, String> {
+    if !valid_key(&catalog) {
+        return Err(format!(
+            "'{catalog}' is not a catalog name: 1 to 64 of letters, digits, '.', '_' and '-'"
+        ));
+    }
+    request(world, "catalog.head", json!({ "catalog": catalog }))
+}
+
 pub fn og_platform_store_set(world: u32, desc: Option<String>) -> Result<u32, String> {
     let d: crate::host::wire::StoreSetDesc = crate::host::wire::arg(desc.as_deref(), "desc")?;
     let key = d.key;
