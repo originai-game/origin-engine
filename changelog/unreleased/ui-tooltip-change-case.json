@@ -1,0 +1,8 @@
+{
+  "fixed": [
+    {
+      "member": "TooltipCard",
+      "summary": "The added or removed presence tag shows its translated label in the label's own case (Added, Removed), instead of forcing it to upper case, so the tag reads as the string a game or locale supplies and a reader of the card sees that string. A game that wants the tag in upper case sets text-transform on ::part(TooltipCard.change)."
+    }
+  ]
+}

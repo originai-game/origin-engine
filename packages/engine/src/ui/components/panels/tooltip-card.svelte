@@ -119,7 +119,7 @@
 .mark { flex: none; width: calc(9 * var(--font-step-px)); height: calc(8 * var(--font-step-px)); fill: currentColor; }
 .down { rotate: 180deg; }
 .amount { color: inherit; white-space: nowrap; }
-[part~="TooltipCard.change"] { flex: none; padding: var(--space-xxs) var(--space-xs); font-size: var(--dialog-tip-chip-size); font-weight: var(--dialog-strong-weight); line-height: var(--font-leading-snug); letter-spacing: var(--hud-label-tracking); text-transform: var(--hud-label-transform); white-space: nowrap; color: var(--trend-up); background: var(--hud-tag-fill); box-shadow: var(--dialog-tip-chip-rim); }
+[part~="TooltipCard.change"] { flex: none; padding: var(--space-xxs) var(--space-xs); font-size: var(--dialog-tip-chip-size); font-weight: var(--dialog-strong-weight); line-height: var(--font-leading-snug); letter-spacing: var(--hud-label-tracking); white-space: nowrap; color: var(--trend-up); background: var(--hud-tag-fill); box-shadow: var(--dialog-tip-chip-rim); }
 [data-change="removed"] [part="TooltipCard.label"], [data-change="removed"] .value, [data-change="removed"] [part~="TooltipCard.change"] { color: var(--front-ink-faint); }
 #Body, #Footer { margin: 0; }
 #Body { font-size: var(--dialog-tip-label-size); line-height: var(--font-leading-normal); color: var(--front-ink-dim); }
