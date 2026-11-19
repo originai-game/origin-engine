@@ -1,0 +1,9 @@
+{
+  "simulation": "unchanged",
+  "fixed": [
+    {
+      "member": "og build --publish",
+      "summary": "The 2D publish engine's on-demand modules are split using a 2D profile game, keeping the functions a module-free 2D game runs in its primary wasm. Preparing all publish variants no longer refuses the 2D engine for lacking physics3d."
+    }
+  ]
+}

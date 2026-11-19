@@ -310,7 +310,7 @@ wasm_bindgen_one() {
 # gate measures the whole modules: the largest download is a game that uses
 # every module.
 wasm_split() {
-  local d name pids=() failed=0
+  local d name profile pids=() failed=0
   rm -rf "$OG_WASM_OUT/split"
   for d in "$OG_WASM_OUT"/bindgen/og_host_web-publish*; do
     [ -d "$d" ] || continue
@@ -318,7 +318,9 @@ wasm_split() {
     [ "${name%frames}" = "$name" ] || continue
     og_need wasm-split || return 1
     mkdir -p "$OG_WASM_OUT/split/$name"
-    bun "$OG_ROOT/packages/engine/scripts/wasm-split.ts" "$d" "$OG_WASM_OUT/split/$name" > "$OG_WASM_OUT/split/$name.log" 2>&1 &
+    profile=3d
+    case "$name" in *2d) profile=2d ;; esac
+    bun "$OG_ROOT/packages/engine/scripts/wasm-split.ts" "$d" "$OG_WASM_OUT/split/$name" "$profile" > "$OG_WASM_OUT/split/$name.log" 2>&1 &
     pids+=($!)
   done
   for d in "${pids[@]:-}"; do [ -z "$d" ] || wait "$d" || failed=1; done

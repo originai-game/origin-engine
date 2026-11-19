@@ -2,7 +2,7 @@
 // capability (docs/web-export.md §Modules), with Binaryen's wasm-split
 // (pinned by scripts/install-tools.sh):
 //
-//   bun scripts/wasm-split.ts <bound dir> <out dir>
+//   bun scripts/wasm-split.ts <bound dir> <out dir> [2d|3d]
 //
 // <bound dir> holds wasm-bindgen's output with its name section
 // (origin-engine.js and origin-engine_bg.wasm, or the -lanes pair). <out dir>
@@ -93,7 +93,7 @@ export function moduleOf(name: string, rules: Array<[string, RegExp[]]>): string
 /** Where a module's split modules sit beside it. */
 export const moduleDir = (lanes: boolean) => (lanes ? "modules-lanes" : "modules");
 
-export function splitEngine(bound: string, out: string): Record<string, { file: string; bytes: number; sha256: string }> {
+export function splitEngine(bound: string, out: string, profile: "2d" | "3d" = "3d"): Record<string, { file: string; bytes: number; sha256: string }> {
   const lanes = existsSync(join(bound, "origin-engine-lanes_bg.wasm"));
   const stem = lanes ? "origin-engine-lanes" : "origin-engine";
   const dir = moduleDir(lanes);
@@ -109,11 +109,11 @@ export function splitEngine(bound: string, out: string): Record<string, { file: 
     writeFileSync(join(work, `${stem}.js`), readFileSync(join(bound, `${stem}.js`)));
     // The lanes glue imports wasm-bindgen-rayon's Worker helper from beside it.
     if (existsSync(join(bound, "snippets"))) cpSync(join(bound, "snippets"), join(work, "snippets"), { recursive: true });
-    const profile = join(work, "core.prof");
-    run("bun", [join(here, "wasm-profile.ts"), join(work, `${stem}.js`), instrumented, profile]);
+    const coreProfile = join(work, "core.prof");
+    run("bun", [join(here, "wasm-profile.ts"), join(work, `${stem}.js`), instrumented, coreProfile, profile]);
     const keep = new Set<string>();
     let keeping = false;
-    for (const line of run("wasm-split", ["--print-profile=" + profile, wasmFile, ...FEATURES]).split("\n")) {
+    for (const line of run("wasm-split", ["--print-profile=" + coreProfile, wasmFile, ...FEATURES]).split("\n")) {
       if (line.startsWith("Keeping functions")) keeping = true;
       else if (line.startsWith("Splitting out")) keeping = false;
       else if (keeping && line.startsWith("+ ")) keep.add(line.slice(2));
@@ -150,8 +150,8 @@ export function splitEngine(bound: string, out: string): Record<string, { file: 
 }
 
 if (import.meta.main) {
-  const [bound, out] = process.argv.slice(2);
-  if (!bound || !out) throw new Error("usage: bun scripts/wasm-split.ts <bound dir> <out dir>");
-  const listed = splitEngine(bound, out);
+  const [bound, out, profile = "3d"] = process.argv.slice(2);
+  if (!bound || !out || (profile !== "2d" && profile !== "3d")) throw new Error("usage: bun scripts/wasm-split.ts <bound dir> <out dir> [2d|3d]");
+  const listed = splitEngine(bound, out, profile);
   for (const [m, f] of Object.entries(listed)) console.log(`${m} ${f.bytes} ${f.sha256.slice(0, 12)}`);
 }
