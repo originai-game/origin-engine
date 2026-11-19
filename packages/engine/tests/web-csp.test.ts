@@ -9,7 +9,7 @@
 // or the Basis transcoder is evaluated from text again (no 'unsafe-eval')
 // (tests/web/export.ts loads such a page in Chrome under that policy).
 import { expect, test } from "bun:test";
-import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
+import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, realpathSync, rmSync, writeFileSync } from "node:fs";
 import { homedir, tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
@@ -117,9 +117,10 @@ test.skipIf(HELPER === null)("the lanes pool's helper starts its Workers from it
       } as unknown as typeof Worker;
       const copy = join(snippets, `run-${urls.length}-${origin?.replace(/\W/g, "") ?? "no-location"}.js`);
       cpSync(helper, copy);
-      const m = (await import(pathToFileURL(copy).href)) as { startWorkers(module: unknown, memory: unknown, builder: unknown): Promise<void> };
+      const self = pathToFileURL(realpathSync(copy)).href;
+      const m = (await import(self)) as { startWorkers(module: unknown, memory: unknown, builder: unknown): Promise<void> };
       await m.startWorkers({}, {}, { numThreads: () => 2, receiver: () => 0, mainJS: () => "", build: () => {} });
-      return { urls, fetched, self: pathToFileURL(copy).href };
+      return { urls, fetched, self };
     };
     // A file: URL's origin is "null": the page's origin when the page is a file too.
     const own = await started(new URL(pathToFileURL(helper).href).origin);

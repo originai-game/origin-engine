@@ -18,6 +18,8 @@
 #   `blob:` copy stays for one on another origin, where no Worker can start
 #   from the URL itself (docs/web-export.md §Hosting).
 #   File-backed hosts also use the helper URL directly: Bun has no location.
+#   WebKit needs distinct request URLs for simultaneous workers served by
+#   the offline cache. The service worker strips their query for cache lookup.
 #
 #   sh scripts/rayon-worker.sh <dir>     <dir>: dist/web-publish or dist/web-publish-2d
 #
@@ -65,6 +67,30 @@ for f in "$dir"/snippets/wasm-bindgen-rayon-*/src/workerHelpers.no-bundler.js; d
   fi
   if ! grep -qF "$own" "$f" || grep -qF 'scriptBlob' "$f"; then
     echo "rayon-worker.sh: $f starts its pool Workers neither from a blob: copy as wasm-bindgen-rayon 1.3 writes it nor from its own URL; read the helper wasm-bindgen-rayon now writes before shipping it" >&2
+    exit 1
+  fi
+  pool='Array.from({ length: builder.numThreads() }, async () => {'
+  lane='Array.from({ length: builder.numThreads() }, async (_, lane) => {'
+  if grep -qF "$pool" "$f"; then
+    awk -v pool="$pool" -v lane="$lane" -v own="$own" '
+      index($0, pool) { sub(/Array.from.*/, lane); print; next }
+      index($0, own) {
+        print
+        indent = $0; sub(/let url.*/, "", indent)
+        print indent "const ua = globalThis.navigator?.userAgent ?? \"\";"
+        print indent "if (url === import.meta.url && /^https?:/.test(url) && ua.includes(\"AppleWebKit/\") && !ua.includes(\"Chrome/\") && !ua.includes(\"Chromium/\")) {"
+        print indent "  const workerUrl = new URL(url);"
+        print indent "  workerUrl.searchParams.set(\"og-lane\", String(lane));"
+        print indent "  url = workerUrl.href;"
+        print indent "}"
+        next
+      }
+      { print }
+    ' "$f" > "$f.tmp"
+    mv "$f.tmp" "$f"
+  fi
+  if ! grep -qF "$lane" "$f" || ! grep -qF 'workerUrl.searchParams.set("og-lane", String(lane));' "$f"; then
+    echo "rayon-worker.sh: $f has an unrecognized pool loop; read the helper wasm-bindgen-rayon now writes before shipping it" >&2
     exit 1
   fi
 done
