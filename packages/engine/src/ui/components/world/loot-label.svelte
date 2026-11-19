@@ -30,9 +30,9 @@
 -->
 <div id="LootLabel" part="LootLabel.frame" class="bare" data-rarity={more > 0 ? 'common' : (rarity == '' ? 'common' : rarity)}>
   {#if more == 0}<ground class="pool" entity={entity || null} at={at} size="1.4 0.5"><div part="LootLabel.glow" class="glow"></div></ground>{/if}
-  <anchor id="Label" entity={entity || null} at={at} offset={"0 " + height + " 0"} declutter="stack" occlusion="fade" priority="10" max-distance="30">
+  <anchor id="Label" entity={entity || null} at={at} offset={"0 " + height + " 0"} declutter="shift" avoid="danger" max-shift="128" occlusion="fade" priority={rarity == 'legendary' ? 50 : (rarity == 'epic' ? 40 : (rarity == 'rare' ? 30 : (rarity == 'uncommon' ? 20 : 10)))} max-distance="30">
     <div class="column">
-      <button part="LootLabel.chip" class="chip" data-hovered={hovered} data-more={more > 0} aria-label={more > 0 ? t("world.loot.moreName", { n: more }) : name} onclick={pick}><div class="face">
+      <button part="LootLabel.chip" class="chip" placement-box data-hovered={hovered} data-more={more > 0} aria-label={more > 0 ? t("world.loot.moreName", { n: more }) : name} onclick={pick}><div class="face">
         <span part="LootLabel.strip" class="strip"></span>
         {#if more > 0}
           <span part="LootLabel.count" class="more">{t("world.loot.more", { n: more })}</span>

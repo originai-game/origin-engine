@@ -258,6 +258,10 @@ pub struct WorldAnchorDesc {
     /// Hidden past this distance (0: never), fading over its last tenth.
     pub max_distance: f32,
     pub declutter: Declutter,
+    /// Cap declutter displacement in CSS px. None keeps ordinary reach.
+    /// A danger fallback within this cap first seeks the nearest slot clear
+    /// of reserves and tags, reporting blocked if danger cannot be cleared.
+    pub max_shift: Option<f32>,
     /// Higher keeps its place; equal priorities favour the nearer.
     pub priority: i32,
     /// A keyed loot column. Empty leaves ordinary independent placement.
@@ -304,6 +308,7 @@ impl Default for WorldAnchorDesc {
             lod: Vec::new(),
             max_distance: 0.0,
             declutter: Declutter::None,
+            max_shift: None,
             priority: 0,
             stack_group: String::new(),
             stack_max: 0,

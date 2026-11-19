@@ -1,0 +1,8 @@
+{
+  "fixed": [
+    {
+      "member": "og.ui",
+      "summary": "LootLabel chips avoid danger without leaving their pile: placement-box selects chip collision bounds, max-shift caps travel independently of text scale, and clipped decoration no longer reserves invisible space. Local danger fallbacks report data-blocked instead of moving into the boss zone; ground glows remain at the items."
+    }
+  ]
+}

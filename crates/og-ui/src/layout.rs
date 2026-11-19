@@ -763,6 +763,9 @@ pub struct Element {
     pub direction: Direction,
     /// Its screen-space border box reserves room during world placement.
     pub reserve: bool,
+    /// Its border box contributes the enclosing anchor's collision bounds.
+    /// With no marked descendants the anchor uses its whole drawn subtree.
+    pub placement_box: bool,
     pub width: Size,
     pub height: Size,
     pub padding: Insets,

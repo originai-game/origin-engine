@@ -5,6 +5,106 @@
 use crate::support::*;
 
 #[test]
+fn loot_label_yields_to_danger_within_ordinary_anchor_reach() {
+    use og_core::glam::{Vec2, Vec3};
+    use og_ui::*;
+    let (mut docs, messages) = engine_documents(&["src/ui/components/world"]);
+    docs.push(EngineDocument {
+        path: "loot-danger.svelte".into(),
+        doc: UiDocument::parse(
+            "loot-danger.svelte",
+            r#"<meta name="component" content="LootDanger" />
+<div>
+  <Telegraph at="0.6 -1 -3" radius={1.5} progress={0.4} />
+  <LootLabel id="Loot" at="0.6 -1 -3" height={0} name="Ember Blade" rarity="epic" hovered={true} />
+</div>"#,
+        )
+        .unwrap(),
+        props: serde_json::json!({}),
+    });
+    for (width, height) in [(1920.0, 1080.0), (390.0, 844.0)] {
+        for scale in [1.0, 1.5] {
+            let mut ui = ui_with_font(test_font());
+            ui.set_theme(Theme {
+                text_scale: scale,
+                ..*ui.theme()
+            });
+            for doc in &docs {
+                ui.define_document(doc.doc.clone());
+            }
+            ui.mount_with_values(
+                reactive::SourceId::new("test", "loot-danger"),
+                "LootDanger",
+                &serde_json::json!({}),
+            )
+            .unwrap();
+            let view = WorldView::look_at(
+                Vec3::new(0.0, 0.0, 6.0),
+                Vec3::ZERO,
+                Vec3::Y,
+                50.0,
+                width / height,
+                0.1,
+                100.0,
+            );
+            for _ in 0..90 {
+                ui.set_world_view(Some(view));
+                ui.begin(InputFrame::default(), Viewport::new(width, height));
+                ui.build_retained_documents(&messages).unwrap();
+                ui.end();
+            }
+            let elements = ui.probe_elements();
+            let chip = elements
+                .iter()
+                .find(|e| {
+                    e.detail
+                        .get("part")
+                        .and_then(|v| v.as_str())
+                        .is_some_and(|p| p.contains("::part(LootLabel.chip)"))
+                })
+                .unwrap();
+            let anchor = elements
+                .iter()
+                .find(|e| e.kind == "world" && e.path.ends_with("/Label"))
+                .unwrap();
+            // Project the full authored ground volume, not the solver's output.
+            let mut lo = Vec2::splat(f32::INFINITY);
+            let mut hi = Vec2::splat(f32::NEG_INFINITY);
+            for x in [-0.9, 2.1] {
+                for y in [-1.75, -0.25] {
+                    for z in [-4.5, -1.5] {
+                        let (x, y, _) = view.project(Vec3::new(x, y, z), width, height).unwrap();
+                        lo = lo.min(Vec2::new(x, y));
+                        hi = hi.max(Vec2::new(x, y));
+                    }
+                }
+            }
+            assert!(
+                chip.x + chip.width <= lo.x - 1.0
+                    || chip.x >= hi.x + 1.0
+                    || chip.y + chip.height <= lo.y - 1.0
+                    || chip.y >= hi.y + 1.0,
+                "{width} scale {scale}: loot covers danger: {chip:?}, {lo:?}..{hi:?}"
+            );
+            let (x, y, _) = view
+                .project(Vec3::new(0.6, -1.0, -3.0), width, height)
+                .unwrap();
+            let shift = Vec2::new(
+                anchor.x + anchor.width * 0.5 - x,
+                anchor.y + anchor.height - y,
+            )
+            .length();
+            let reach = 128.0 * ui.unit_for(&Viewport::new(width, height));
+            assert!(
+                shift <= reach + 1.0,
+                "loot leaves its local cap: {shift} > {reach}"
+            );
+            assert!(!chip.clipped && !chip.disabled);
+        }
+    }
+}
+
+#[test]
 fn world_components_clear_player_and_telegraph_without_duplicate_arrows() {
     use og_ui::*;
     let (docs, messages) = engine_documents(&["src/ui/components/world"]);

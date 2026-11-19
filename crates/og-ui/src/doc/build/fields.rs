@@ -852,6 +852,7 @@ impl Ui {
             },
         );
         self.apply_document_semantics(n, r, base);
+        self.tree.el_mut(i).placement_box = r.flag("placementBox");
     }
 
     pub(super) fn apply_box_fields(&mut self, i: usize, r: &Resolved, source: BoxSource<'_>) {

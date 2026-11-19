@@ -175,6 +175,7 @@ What every kind takes: its box, layout, paint, motion and input.
 | `vertical-align:` | `baseline \| top \| middle \| bottom \| text-top \| text-bottom \| sub \| super` | CSS `vertical-align`: where an inline-level element sits in its line, and a table cell's content in its row (`middle` by default). |
 | `caption-side:` | `top \| bottom` | CSS `caption-side`: a table caption above (default) or below its table. |
 | `list-style-image:` | `none \| url(<image>)` | CSS `list-style-image`: an inherited image URL replacing a list item's marker, or none. Only list items draw the image. |
+| `placement-box` | `bool` | `placement-box` marks a border box for its enclosing anchor's collisions. Marked boxes replace the whole-subtree collision bounds, leaving tails and beams decorative. Transforms apply; drawing, containment and hit testing are unchanged. With no marks the whole drawn subtree is used. |
 | `reserve` | `none \| hud \| player` | `reserve="hud"` reserves a screen element's border box for world placement. An empty `<anchor reserve="player" entity={player}>` instead reserves an upright world volume; only `avoid="player"` tags yield to it. |
 | `draggable` | `bool` | HTML `draggable`: a drag that starts on it moves it with the pointer and returns it home on release, firing `ondragstart`, `ondragend`, and `ondragover`/`ondrop` on the element it is over (any element with one of those handlers takes drops). |
 | `data-drag-type` | `text` | What a draggable element is to drop targets (`data-drag-type="weapon"`), as a drag's data type is in HTML. |
@@ -951,6 +952,7 @@ Its own props, beside every element's:
 
 | Write | Value | What |
 |---|---|---|
+| `max-shift` | `number` | `max-shift` caps declutter translation in CSS pixels, independent of user text scale; zero pins it. Omit for ordinary reach. With danger avoidance, when no fully clear slot fits, a capped fallback first seeks the nearest slot clear of HUD/player reserves and other tags, even if it overlaps danger, reporting data-blocked. It never escapes the cap to reach an edge. |
 | `stack-group` | `name` | A keyed loot column, ranked by priority, distance, then build order. The highest item supplies its world point, distance settings and avoidance; the whole column declutters as one stack. Empty keeps independent placement. |
 | `stack-max` | `number` | Maximum visible item rows in a stack-group (0: unlimited), from its highest-ranked item. Does not count the optional stack-more row. Overflow items fade and take no hits or obstacle space. |
 | `stack-more` | `bool` | The group's optional topmost overflow row, visible only while items exceed stack-max. bind:hidden reads those items' each keys in rank order, one tick after placement. |

@@ -37,6 +37,88 @@ fn ui() -> Ui {
     ui_with_font(test_font_metrics())
 }
 
+#[test]
+fn clipped_anchor_decoration_does_not_push_the_visible_box() {
+    for mode in ["hidden", "visible", "marked", "button"] {
+        let mut ui = ui();
+        let overflow = if mode == "hidden" {
+            "hidden"
+        } else {
+            "visible"
+        };
+        let marked = if matches!(mode, "marked" | "button") {
+            "placement-box"
+        } else {
+            ""
+        };
+        let tag = if mode == "button" { "button" } else { "div" };
+        let source = format!(
+            r#"<meta name="component" content="ClippedTag" />
+<div>
+<anchor id="Other" at="2.4 0 0" priority="100" declutter="shift"><div style="width: 40px; height: 30px" /></anchor>
+<anchor id="Tag" at="0 0 0" declutter="shift"><{tag} class="face" {marked}><div class="sheen" /></{tag}></anchor>
+</div>
+<style>
+.face {{ position: relative; width: 100px; height: 30px; overflow: {overflow}; }}
+.sheen {{ position: absolute; width: 50px; height: 30px; left: 400px; top: 0; }}
+</style>"#
+        );
+        ui.define_document(UiDocument::parse("clipped-tag.svelte", &source).unwrap());
+        ui.mount_with_values(
+            reactive::SourceId::new("test", "clip"),
+            "ClippedTag",
+            &serde_json::json!({}),
+        )
+        .unwrap();
+        run(&mut ui, 60, |_| {});
+        let tag = ui
+            .probe_elements()
+            .into_iter()
+            .find(|e| e.path.ends_with("/Tag"))
+            .unwrap();
+        let (x, y, _) = view().project(Vec3::ZERO, W, H).unwrap();
+        let shift = Vec2::new(tag.x + tag.width / 2.0 - x, tag.y + tag.height - y).length();
+        if mode != "visible" {
+            assert!(shift < 0.1, "clipped decoration moves the tag by {shift}px");
+        } else {
+            assert!(shift > 1.0, "visible overflow must still declutter");
+        }
+    }
+}
+
+#[test]
+fn document_max_shift_caps_retained_danger_fallbacks() {
+    use serde_json::json;
+    let mut ui = ui();
+    ui.define_document(UiDocument::parse("local.svelte", r#"<meta name="component" content="Local" />
+<div>
+<ground at="0 0 0" size="100 100" danger style="width:200px;height:200px;background:red" />
+<anchor id="Other" at="0 -0.4 0" priority="100" style="width:400px;height:120px" />
+<anchor id="Tag" at="0 0 0" declutter="shift" avoid="danger" max-shift={$limit} style="width:100px;height:30px;background:white" />
+</div>"#).unwrap());
+    mount_stores(&mut ui, source("local"), "Local", &[("limit", json!(40))]);
+    let displacement = |ui: &Ui| {
+        let e = ui
+            .probe_elements()
+            .into_iter()
+            .find(|e| e.path.ends_with("/Tag"))
+            .unwrap();
+        let (x, y, _) = view().project(Vec3::ZERO, W, H).unwrap();
+        Vec2::new(e.x + e.width * 0.5 - x, e.y + e.height - y).length()
+    };
+    run(&mut ui, 90, |_| {});
+    assert!(
+        displacement(&ui) <= 40.1,
+        "an unplaceable local tag must not escape its cap"
+    );
+    // A changed retained cap invalidates the placement certificate. With
+    // enough room it clears the other plate instead of staying underneath.
+    set_store(&mut ui, "limit", json!(200));
+    run(&mut ui, 90, |_| {});
+    let moved = displacement(&ui);
+    assert!(moved > 40.1 && moved <= 200.1, "{moved}");
+}
+
 fn vp() -> Viewport {
     Viewport::new(W, H)
 }

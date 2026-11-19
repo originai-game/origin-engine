@@ -42,18 +42,22 @@ fn clamp_to_edge(area: Rect, half: Vec2, dir: Vec2) -> Vec2 {
 /// its box and every shown box under it, out-of-flow ones included, each
 /// mapped by its own transform and those between it and `i` (a targeted
 /// nameplate's frame scaled up), as it is drawn.
-fn drawn_box(nodes: &[crate::layout::Node], i: usize) -> (Vec2, Vec2) {
+fn drawn_box(nodes: &[crate::layout::Node], i: usize) -> (Vec2, Vec2, Option<Rect>) {
     let r = nodes[i].placed.rect;
     let (mut lo, mut hi) = (Vec2::new(r.x, r.y), Vec2::new(r.right(), r.bottom()));
-    let kids = |n: &crate::layout::Node, m: Affine| {
+    let mut placement = nodes[i].el.placement_box.then_some(r);
+    let kids = |n: &crate::layout::Node, m: Affine, clip: Option<Rect>| {
         n.children
             .iter()
             .chain(&n.out)
-            .map(|&j| (j, m))
+            .map(|&j| (j, m, clip))
             .collect::<Vec<_>>()
     };
-    let mut stack = kids(&nodes[i], Affine::IDENTITY);
-    while let Some((j, m)) = stack.pop() {
+    let clips = |n: &crate::layout::Node| {
+        n.decor.as_ref().is_some_and(|d| d.clip) || n.layout.used.scroll || n.layout.used.scroll_x
+    };
+    let mut stack = kids(&nodes[i], Affine::IDENTITY, clips(&nodes[i]).then_some(r));
+    while let Some((j, m, clip)) = stack.pop() {
         let b = nodes[j].placed.rect;
         let t = nodes[j].style.sampled.transform;
         let m = if t.is_identity() {
@@ -61,14 +65,32 @@ fn drawn_box(nodes: &[crate::layout::Node], i: usize) -> (Vec2, Vec2) {
         } else {
             m.mul(&t.matrix(&b))
         };
-        if !b.is_empty() {
-            let b = m.map_rect(&b);
-            lo = lo.min(Vec2::new(b.x, b.y));
-            hi = hi.max(Vec2::new(b.right(), b.bottom()));
+        let b = m.map_rect(&b);
+        let visible = clip.map_or(b, |clip| b.intersect(&clip));
+        if !visible.is_empty() {
+            lo = lo.min(Vec2::new(visible.x, visible.y));
+            hi = hi.max(Vec2::new(visible.right(), visible.bottom()));
+            if nodes[j].el.placement_box {
+                placement = Some(placement.map_or(visible, |b| {
+                    let x = b.x.min(visible.x);
+                    let y = b.y.min(visible.y);
+                    Rect::new(
+                        x,
+                        y,
+                        b.right().max(visible.right()) - x,
+                        b.bottom().max(visible.bottom()) - y,
+                    )
+                }));
+            }
         }
-        stack.extend(kids(&nodes[j], m));
+        let clip = if clips(&nodes[j]) {
+            Some(clip.map_or(b, |clip| b.intersect(&clip)))
+        } else {
+            clip
+        };
+        stack.extend(kids(&nodes[j], m, clip));
     }
-    (lo, hi)
+    (lo, hi, placement)
 }
 
 /// The shown nodes under ground `i` that show text (a badge, a label), the
@@ -232,7 +254,7 @@ fn ground_bounds(
 ) -> Option<Rect> {
     let (center, rotation, size) = quad;
     let r = nodes[node].placed.rect;
-    let (lo, hi) = drawn_box(nodes, node);
+    let (lo, hi, _) = drawn_box(nodes, node);
     let reach = 0.25 * size.x.min(size.y);
     let mut points = [Vec3::ZERO; 8];
     for (i, (x, y)) in [(lo.x, lo.y), (hi.x, lo.y), (hi.x, hi.y), (lo.x, hi.y)]
@@ -1259,7 +1281,8 @@ fn solve_anchor(
         all.to_mut().extend_from_slice(danger);
     }
     let reach = if matches!(a.declutter, Declutter::Shift | Declutter::Stack) {
-        3.0 * b.height.max(b.width.min(160.0))
+        let ordinary = 3.0 * b.height.max(b.width.min(160.0));
+        a.max_shift.map_or(ordinary, |limit| ordinary.min(limit))
     } else {
         0.0
     };
@@ -1271,7 +1294,7 @@ fn solve_anchor(
     }
     // A bubble that cannot clear the player within reach may use its
     // explicitly enabled edge clamp. Search along edges, never through HUD.
-    let edge_allowed = a.avoid_player && a.clamp.is_some();
+    let edge_allowed = a.avoid_player && a.clamp.is_some() && a.max_shift.is_none();
     let mut edges = Vec::new();
     if let Some(clamp) = a.clamp.filter(|_| edge_allowed) {
         let margin = clamp.margin + clamp.arrow.map_or(0.0, |_| clamp.arrow_size);
@@ -1328,6 +1351,17 @@ fn solve_anchor(
         return best;
     }
     if a.avoid_danger {
+        if a.max_shift.is_some() {
+            let mut local = hard.clone();
+            local.extend_from_slice(taken);
+            if let Some(shift) = least_overlap(b, &local, &[], &[], gap, reach, inside) {
+                return AnchorMove {
+                    shift,
+                    blocked: true,
+                    ..Default::default()
+                };
+            }
+        }
         let mut best =
             least_overlap(b, &hard, danger, taken, gap, reach, inside).map(|shift| AnchorMove {
                 shift,
@@ -1535,7 +1569,7 @@ impl crate::ui::Layout {
             info.scale = scale;
             let projected = view.project(p, vp.width, vp.height);
             let half = Vec2::new(r.width, r.height) * scale / 2.0;
-            let (lo, hi) = drawn_box(&tree.nodes, a.node);
+            let (lo, hi, placement) = drawn_box(&tree.nodes, a.node);
             let mut pivot = d.pivot.fractions();
             let mut arrow = None;
             let (at, depth) = match projected {
@@ -1641,11 +1675,12 @@ impl crate::ui::Layout {
                 }
             }
             let (px, py) = (r.x + pivot.0 * r.width, r.y + pivot.1 * r.height);
+            let collision = placement.unwrap_or(Rect::new(lo.x, lo.y, hi.x - lo.x, hi.y - lo.y));
             let drawn = Rect::new(
-                at.x + (lo.x - px) * scale,
-                at.y + (lo.y - py) * scale,
-                (hi.x - lo.x) * scale,
-                (hi.y - lo.y) * scale,
+                at.x + (collision.x - px) * scale,
+                at.y + (collision.y - py) * scale,
+                collision.width * scale,
+                collision.height * scale,
             );
             placed.push(Placed {
                 entry: e,
@@ -1822,6 +1857,7 @@ impl crate::ui::Layout {
                 a.avoid_danger as u32,
                 a.keep_visible as u32,
                 a.clamp.is_some() as u32,
+                a.max_shift.map_or(u32::MAX, f32::to_bits),
             ]);
             if let Some(clamp) = a.clamp {
                 key.extend([

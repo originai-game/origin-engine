@@ -4,6 +4,20 @@ use super::super::{Kind, On, PropSpec, Ty};
 
 pub const PROPS: &[PropSpec] = &[
     PropSpec {
+        name: "maxShift",
+        ty: Ty::Num,
+        on: On::Kinds(&[Kind::Anchor]),
+        two_way: false,
+        doc: "`max-shift` caps declutter translation in CSS pixels, independent of user text scale; zero pins it. Omit for ordinary reach. With danger avoidance, when no fully clear slot fits, a capped fallback first seeks the nearest slot clear of HUD/player reserves and other tags, even if it overlaps danger, reporting data-blocked. It never escapes the cap to reach an edge.",
+    },
+    PropSpec {
+        name: "placementBox",
+        ty: Ty::Bool,
+        on: On::All,
+        two_way: false,
+        doc: "`placement-box` marks a border box for its enclosing anchor's collisions. Marked boxes replace the whole-subtree collision bounds, leaving tails and beams decorative. Transforms apply; drawing, containment and hit testing are unchanged. With no marks the whole drawn subtree is used.",
+    },
+    PropSpec {
         name: "stackGroup",
         ty: Ty::Name,
         on: On::Kinds(&[Kind::Anchor]),

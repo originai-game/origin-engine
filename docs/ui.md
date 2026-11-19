@@ -1165,6 +1165,23 @@ None of these has a web standard; each is named for what it does.
   loot, or a boss plate can yield while an enemy plate stays on its unit.
   `<ground danger>` reserves its whole projected bounds, including the rim,
   only for anchors with `avoid="danger"`; combine as `avoid="player danger"`.
+  `placement-box` on descendants replaces the whole-subtree collision
+  rectangle with the union of their transformed border boxes. Without a
+  mark the visible drawn subtree is used; overflow clips exclude clipped
+  decoration. Drawing, containment and hit testing do not change. Use it on
+  the chip of a label whose thin decorative beam must not reserve an empty
+  full-width column.
+  `max-shift` caps declutter translation in CSS px, independently of text
+  scale (zero pins it; omitted keeps ordinary reach). It also disables
+  an otherwise unbounded edge fallback. With `avoid="danger"`, if no
+  fully clear slot fits inside the cap, placement first takes the nearest
+  slot clear of reserves and other tags, even if it intersects the danger
+  bounds, and reports `[data-blocked]`. If even that is impossible the
+  ordinary least-overlap fallback still respects the cap and hard reserves.
+  The built-in LootLabel marks its chip, opts into danger avoidance and
+  caps displacement at 128 CSS px. Rarity ranks legendary 50, epic 40,
+  rare 30, uncommon 20 and common/overflow 10. Its ground glow stays at
+  the item; beam decoration does not consume chip collision space.
   HUD/player reserves take precedence over danger, then other tags in
   descending priority. Boss/casting plates at 400 therefore precede a
   prompt at 300; no extra obstacle class is needed. A danger-avoiding tag
