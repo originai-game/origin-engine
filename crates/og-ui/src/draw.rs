@@ -401,22 +401,22 @@ pub(crate) fn mapped_bounds(c: &DrawCmd, m: &Affine, pixel_width: Option<f32>) -
                 && px.is_finite()
                 && px > 0.0
                 && s.transform == [1.0, 0.0, 0.0, 1.0]
-                && matches!(
-                    s.geometry,
-                    UiGeometry::Rect {
-                        corner: og_draw::UiCorner::Round,
-                        ..
-                    }
-                )
+                && matches!(s.geometry, UiGeometry::Rect { .. })
                 && let UiMode::Shadow {
                     offset,
                     blur,
                     spread,
                 } = s.mode
             {
-                // rounded_box_shadow in ui_common.wgsl integrates only
-                // across ±3σ in Y. Its erf approximation has no matching
-                // compact X support, so retain the broad X bounds.
+                // A round corner's rounded_box_shadow in ui_common.wgsl
+                // integrates only across ±3σ in Y. Its erf approximation
+                // has no matching compact X support, so retain the broad
+                // X bounds. Any other corner (a bevel, a notch, a CSS
+                // superellipse) takes the erf of the distance to its
+                // shape, which lies inside the same box: 3σ past the
+                // spread box it is under 0.14 %, the reach the broad
+                // bounds give a shadow without spread. A shrunk shadow
+                // (a negative spread) so ends where a round one does.
                 let half = (s.half.y + spread).max(0.0);
                 let reach = 3.0 * (0.5 * blur.max(0.0)).max(0.5 * px);
                 // Outward device-pixel and arithmetic guards preserve

@@ -816,7 +816,15 @@ impl ElementDraw {
                 });
                 continue;
             }
-            out.push(self.shape(at, self.paint(f, theme, at), o, opacity, blend));
+            // A cleared fill (`background: none` on a state) draws nothing.
+            // A Porter-Duff blend still clears under a clear shape, so only
+            // a plain fill is left out.
+            let paint = self.paint(f, theme, at);
+            if blend == Blend::Normal && matches!(paint, og_draw::UiPaint::Solid(c) if c[3] <= 0.0)
+            {
+                continue;
+            }
+            out.push(self.shape(at, paint, o, opacity, blend));
         }
         if let Some(b) = &self.boxes {
             // The backgrounds, cut to the text drawn with it

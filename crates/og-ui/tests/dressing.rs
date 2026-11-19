@@ -23,7 +23,14 @@ fn the_default_sample_keeps_its_painter_budget_with_hover_and_tooltip() {
 
 #[test]
 fn shadow_order_keeps_real_overlap_and_matches_fresh_after_retained_changes() {
-    const BODY: &str = r#"
+    // A round box's shadow and a bevelled one's end at the same Y.
+    for corner in ["round", "bevel"] {
+        shadow_order(corner);
+    }
+}
+
+fn shadow_order(corner: &str) {
+    let body = r#"
 <div id="Stage"><text id="Before" class:near={$near}>before</text><div id="Shadow"/><text id="After">after</text></div>
 <style>
 #Stage { width: 400px; height: 400px; background: #112233; }
@@ -32,12 +39,14 @@ fn shadow_order_keeps_real_overlap_and_matches_fresh_after_retained_changes() {
 #Before.near { top: 180px; }
 #After { top: 190px; }
 #Shadow { position: absolute; left: 200px; top: 186px; width: 50px; height: 28px;
-  box-shadow: 0 6px 14px -4px #000000; }
-</style>"#;
+  box-shadow: 0 6px 14px -4px #000000; border-radius: 6px; corner-shape: CORNER; }
+</style>"#
+        .replace("CORNER", corner);
+    let body = body.as_str();
     let vp = Viewport::new(800.0, 600.0);
     let mut d = mounted(
         ui_with_font(test_font()),
-        BODY,
+        body,
         &[("near", json!(false))],
         vp,
     );
@@ -54,7 +63,7 @@ fn shadow_order_keeps_real_overlap_and_matches_fresh_after_retained_changes() {
         d.set("near", json!(near));
         let fresh = mounted(
             ui_with_font(test_font()),
-            BODY,
+            body,
             &[("near", json!(near))],
             d.viewport,
         );
@@ -66,13 +75,17 @@ fn shadow_order_keeps_real_overlap_and_matches_fresh_after_retained_changes() {
         assert_eq!(
             d.ui.frame().items,
             fresh.ui.frame().items,
-            "near={near}, dpr={dpr}"
+            "{corner}: near={near}, dpr={dpr}"
         );
         if dpr == 1.0 {
             // A preceding label ending at Y170 misses the shader's Y175
             // shadow support. At Y180 it really overlaps, so the later
             // label must advance. Font→shape itself needs no new level.
-            assert_eq!(d.ui.frame().levels(), if near { 3 } else { 2 });
+            assert_eq!(
+                d.ui.frame().levels(),
+                if near { 3 } else { 2 },
+                "{corner}: near={near}"
+            );
         }
     }
 }
@@ -1405,29 +1418,35 @@ fn heading_flourishes_only_draw_for_single_line_titles() {
 /// disabled secondary button the rule does not name keeps its fill.
 #[test]
 fn fill_none_clears_a_controls_own_fill() {
-    let ui = dressed("button.quiet::part(base):disabled { background: none; }\n");
-    let d = mounted(
-        ui,
-        r#"<column>
+    // Whatever the button's corner: a bevelled one drew a clear shape.
+    for corner in ["round", "bevel"] {
+        let ui = dressed(&format!(
+            "button.quiet::part(base):disabled {{ background: none; }}\n\
+             :root {{ --button-corner-shape: {corner}; }}\n"
+        ));
+        let d = mounted(
+            ui,
+            r#"<column>
   <button id="Quiet" variant="quiet" disabled>Equip</button>
   <button id="Plain" disabled>Equip</button>
 </column>"#,
-        &[],
-        Viewport::new(800.0, 600.0),
-    );
-    let fills = |ui: &Ui, id: &str| {
-        let e = at(ui, id);
-        fills_in(ui, Rect::new(e.x, e.y, e.width, e.height))
-    };
-    assert_eq!(
-        fills(&d.ui, "Quiet"),
-        Vec::<[f32; 4]>::new(),
-        "the cleared quiet button"
-    );
-    assert!(
-        !fills(&d.ui, "Plain").is_empty(),
-        "a disabled secondary keeps its fill"
-    );
+            &[],
+            Viewport::new(800.0, 600.0),
+        );
+        let fills = |ui: &Ui, id: &str| {
+            let e = at(ui, id);
+            fills_in(ui, Rect::new(e.x, e.y, e.width, e.height))
+        };
+        assert_eq!(
+            fills(&d.ui, "Quiet"),
+            Vec::<[f32; 4]>::new(),
+            "{corner}: the cleared quiet button"
+        );
+        assert!(
+            !fills(&d.ui, "Plain").is_empty(),
+            "{corner}: a disabled secondary keeps its fill"
+        );
+    }
 }
 
 /// A document element's `part` attribute is the part its style dresses
