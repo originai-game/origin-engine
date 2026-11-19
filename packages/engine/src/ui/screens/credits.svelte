@@ -22,7 +22,7 @@
         {#each s.names as n (n.id)}
           <div id="Person">
             <p id="Name" part="credits.name">{n.name}</p>
-            {#if n.role != ""}<p id="Role" part="credits.role">{n.role}</p>{/if}
+            {#if n.role}<p id="Role" part="credits.role">{n.role}</p>{/if}
           </div>
         {/each}
       </section>

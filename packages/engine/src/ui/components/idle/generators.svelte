@@ -31,7 +31,7 @@
     <div class="rows-scroll" data-layout="scroll" data-gap="none">
       <div class="rows" data-layout="stack" data-gap="tight" role="listbox" aria-label={title != '' ? title : t("idle.generators.name")}>
         {#each generators as g (g.id)}
-          <button part="IdleGenerators.row" role="option" aria-selected={g.id == selected} aria-label={g.locked ? t("idle.generators.lockedName", { name: g.name, what: g.rate }) : g.level > 0 ? t("idle.generators.levelName", { name: g.name, level: formatNumber(g.level) }) : g.name} aria-disabled={g.locked} disabled={g.locked} data-locked={g.locked} data-auto={g.auto} data-boosted={g.boost != ''} onclick={choose}><div class="face" data-layout="row" data-gap="loose">
+          <button part="IdleGenerators.row" role="option" aria-selected={g.id == selected} aria-label={g.locked ? t("idle.generators.lockedName", { name: g.name, what: g.rate }) : g.level > 0 ? t("idle.generators.levelName", { name: g.name, level: formatNumber(g.level) }) : g.name} aria-disabled={g.locked} disabled={g.locked} data-locked={g.locked} data-auto={g.auto} data-boosted={!!g.boost} onclick={choose}><div class="face" data-layout="row" data-gap="loose">
             <div class="art">
               <div part="IdleGenerators.socket" class="socket" data-layout="cover"><og-icon class="icon" icon={g.icon}></og-icon></div>
               {#if !g.locked && g.level > 0}<div part="IdleGenerators.level" class="level" data-layout="center"><span>{formatNumber(g.level)}</span></div>{/if}
@@ -45,10 +45,10 @@
               </div>
               <div class="line" data-layout="row" data-gap="tight">
                 {#if !g.locked && g.cycle >= 0}
-                  <div part="IdleGenerators.track" class="track" data-fill role="progressbar" aria-label={t("idle.generators.cycle")} aria-valuemin="0" aria-valuemax="100" aria-valuenow={g.cycle * 100} aria-valuetext={g.cycleText != '' ? g.cycleText : formatPercent(g.cycle)}><div part="IdleGenerators.fill" class="fill" style:--value={g.cycle > 1 ? 1 : g.cycle}></div></div>
-                  <span part="IdleGenerators.time" class="time">{g.cycleText != '' ? g.cycleText : formatPercent(g.cycle)}</span>
+                  <div part="IdleGenerators.track" class="track" data-fill role="progressbar" aria-label={t("idle.generators.cycle")} aria-valuemin="0" aria-valuemax="100" aria-valuenow={g.cycle * 100} aria-valuetext={g.cycleText ? g.cycleText : formatPercent(g.cycle)}><div part="IdleGenerators.fill" class="fill" style:--value={g.cycle > 1 ? 1 : g.cycle}></div></div>
+                  <span part="IdleGenerators.time" class="time">{g.cycleText ? g.cycleText : formatPercent(g.cycle)}</span>
                 {:else}<span class="spacer" data-fill></span>{/if}
-                {#if !g.locked && g.boost != ''}<span part="IdleGenerators.tag" class="tag" data-tag="boost">{g.boost}</span>{/if}
+                {#if !g.locked && g.boost}<span part="IdleGenerators.tag" class="tag" data-tag="boost">{g.boost}</span>{/if}
                 {#if !g.locked && g.auto}<span part="IdleGenerators.tag" class="tag" data-tag="auto">{t("idle.generators.auto")}</span>{/if}
                 {#if g.locked}<div part="IdleGenerators.tag" class="tag" data-tag="locked" data-layout="row" data-gap="hair"><span>{t("idle.generators.locked")}</span><span class="dot"></span><span class="unlock">{g.rate}</span></div>{/if}
               </div>

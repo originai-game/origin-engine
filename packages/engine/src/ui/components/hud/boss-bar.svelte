@@ -53,7 +53,7 @@
       </div>{/if}
       <div id="End" data-layout="row" data-gap="tight">
         {#if defeated || invulnerable}<span part="BossBar.state" class="state" role="status">{defeated ? t("hud.boss-bar.defeated") : t("hud.boss-bar.invulnerable")}</span>{/if}
-        {#each weaknesses as w (w.id)}<div part="BossBar.weakness" class="weakness" data-layout="overlay" role="image" aria-label={t("hud.boss-bar.weak", { name: w.name })}>{#if w.icon}<img class="art" data-anchor="fill" src={w.icon} alt="">{:else}<div class="blank" data-anchor="fill" data-layout="center">{#if w.glyph != ''}<og-icon class="glyph" icon={w.glyph}></og-icon>{/if}</div>{/if}</div>{/each}
+        {#each weaknesses as w (w.id)}<div part="BossBar.weakness" class="weakness" data-layout="overlay" role="image" aria-label={t("hud.boss-bar.weak", { name: w.name })}>{#if w.icon}<img class="art" data-anchor="fill" src={w.icon} alt="">{:else}<div class="blank" data-anchor="fill" data-layout="center">{#if w.glyph}<og-icon class="glyph" icon={w.glyph}></og-icon>{/if}</div>{/if}</div>{/each}
         <span part="BossBar.share" class="share">{formatPercent(max <= 0 || value <= 0 ? 0 : value >= max ? 1 : value / max)}</span>
       </div>
     </div>

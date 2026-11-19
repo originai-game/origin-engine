@@ -21,7 +21,7 @@
   <div part="ShooterObjectives.goal" class="goal" data-layout="row" data-gap="tight" class:current={g.current}>
     <div part="ShooterObjectives.marker" class="marker"></div>
     <span part="ShooterObjectives.text" class="text">{g.text}</span>
-    {#if g.tag != ''}<span part="ShooterObjectives.progress" class="tag">{g.tag}</span>{/if}
+    {#if g.tag}<span part="ShooterObjectives.progress" class="tag">{g.tag}</span>{/if}
   </div>
   {/each}
   {/if}

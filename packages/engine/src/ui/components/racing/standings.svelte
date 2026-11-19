@@ -24,12 +24,12 @@
     <div class="list" data-layout="scroll">
       <div class="rows" data-layout="stack" role="list" aria-label={title != '' ? title : t("racing.standings.name")}>
         {#each rows as r (r.id)}
-          <div part="RacingStandings.row" class="row" role="listitem" aria-current={r.player} aria-label={r.name} data-player={r.player} data-state={r.state} style:--hud-car={r.color != '' ? r.color : null}>
+          <div part="RacingStandings.row" class="row" role="listitem" aria-current={r.player} aria-label={r.name} data-player={r.player} data-state={r.state} style:--hud-car={r.color ? r.color : null}>
             <span part="RacingStandings.place" class="place">{formatNumber(r.position)}</span>
             <span part="RacingStandings.car" class="car"></span>
             <span part="RacingStandings.name" class="name">{r.name}</span>
             {#if r.state != 'racing'}<span part="RacingStandings.badge" class="state" data-state={r.state} aria-label={r.state == 'pitting' ? t("racing.standings.pittingName") : (r.state == 'retired' ? t("racing.standings.retiredName") : t("racing.standings.finishedName"))}>{r.state == 'pitting' ? t("racing.standings.pitting") : (r.state == 'retired' ? t("racing.standings.retired") : t("racing.standings.finished"))}</span>{/if}
-            {#if r.gap != '' || (r.position == 1 && r.state != 'retired')}<span part="RacingStandings.gap" class="gap" data-leader={r.gap == ''}>{r.gap != '' ? r.gap : t("racing.standings.leader")}</span>{/if}
+            {#if r.gap || (r.position == 1 && r.state != 'retired')}<span part="RacingStandings.gap" class="gap" data-leader={!r.gap}>{r.gap ? r.gap : t("racing.standings.leader")}</span>{/if}
           </div>
         {/each}
       </div>

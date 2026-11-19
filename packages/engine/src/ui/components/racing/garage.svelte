@@ -60,7 +60,7 @@
           {#each vehicles as v (v.id)}
             {#if v.id == shown}
               {#if v.locked}
-                <button id="Locked" variant="primary" disabled={true} aria-description={v.price}><span>{t("racing.garage.locked")}</span>{#if v.price != ''}<span class="reason">{v.price}</span>{/if}</button>
+                <button id="Locked" variant="primary" disabled={true} aria-description={v.price}><span>{t("racing.garage.locked")}</span>{#if v.price}<span class="reason">{v.price}</span>{/if}</button>
               {:else}
                 {#if v.owned}
                   <button id="Select" class="go" variant="primary" disabled={v.id == chosen} onclick={select}><span>{v.id == chosen ? t("racing.garage.driving") : t("racing.garage.select")}</span></button>

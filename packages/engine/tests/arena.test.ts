@@ -289,6 +289,24 @@ test("ArenaDraft: a finished draft names its teams and drops the timer; no slots
   run(member("draft", "empty"), (e) => expect(texts(e)).toContain("no draft yet"));
 });
 
+test("ArenaDraft: a slot row without its optional fields draws as one with them empty", () => {
+  // A game's row may leave out name, icon and player: missing means none, as
+  // an empty string does, so the open pick reads Open and draws no empty
+  // caption or glyph (a `!= ''` test passed a missing field and drew them).
+  const slots = (MEMBERS.draft!.fixtures.default!.slots as Record<string, unknown>[]).filter((s) => s.id !== "ap3");
+  const bare = { id: "ap3", team: "a", kind: "pick", portrait: 0, active: false };
+  const lay = (row: Record<string, unknown>) => {
+    let out: string[] = [];
+    run(member("draft", "default", { slots: [...slots, row] }), (e) => {
+      out = elements(e).filter((x) => /#ap3(\/|$)/.test(x.path)).map((x) => `${x.path.replace(/^.*#ap3/, "")}|${x.text}`);
+    });
+    return out;
+  };
+  const missing = lay(bare);
+  expect(missing.some((x) => /\|open$/i.test(x))).toBeTrue();
+  expect(missing).toEqual(lay({ ...bare, name: "", icon: "", player: "" }));
+});
+
 test("ArenaVersus: both sides with names and ranks, the local player named You, an empty side waiting", () => {
   run(member("versus", "teams"), (e) => {
     const all = texts(e);

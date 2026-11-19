@@ -8,7 +8,7 @@
     <li class="row" part="key-values.row">
       <p class="key" part="key-values.label">{r.key}</p>
       <p class="value" part="key-values.figure">{r.value}</p>
-      <p class="delta" part="key-values.delta" class:up={r.delta[0] == "+"} class:down={r.delta[0] == "-" || r.delta[0] == "−"} hidden={r.delta == ""}>{r.delta}</p>
+      <p class="delta" part="key-values.delta" class:up={r.delta[0] == "+"} class:down={r.delta[0] == "-" || r.delta[0] == "−"} hidden={!r.delta}>{r.delta}</p>
     </li>
   {/each}
 </ul>

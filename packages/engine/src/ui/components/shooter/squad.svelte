@@ -16,12 +16,12 @@
 -->
 <section id="ShooterSquad" part="ShooterSquad.frame" class="hud bare" data-layout="stack" role="group" aria-label={t("shooter.squad.name")}>
   {#each members as m (m.id)}
-  <div part="ShooterSquad.mate" class="mate" data-state={m.state} role="group" aria-label={m.status != '' ? t("shooter.squad.mate", { name: m.name, status: m.status }) : m.name}>
+  <div part="ShooterSquad.mate" class="mate" data-state={m.state} role="group" aria-label={m.status ? t("shooter.squad.mate", { name: m.name, status: m.status }) : m.name}>
     <div class="portrait" part="ShooterSquad.portrait" data-layout="overlay">
       {#if m.portrait}<img class="face" part="ShooterSquad.face" data-anchor="fill" src={m.portrait} alt="">{:else}<div class="blank" data-anchor="fill" data-layout="center"><og-icon class="glyph" icon="person"></og-icon></div>{/if}
     </div>
     <span part="ShooterSquad.callsign" class="callsign">{m.name}</span>
-    {#if m.status != ''}<span part="ShooterSquad.status" class="status">{m.status}</span>{/if}
+    {#if m.status}<span part="ShooterSquad.status" class="status">{m.status}</span>{/if}
       {#if m.shieldMax > 0}
       <div part="ShooterSquad.shield" class="bar shield" data-layout="overlay" style:--value={m.shield <= 0 ? 0 : m.shield >= m.shieldMax ? 1 : m.shield / m.shieldMax} style:--cells={segment > 0 ? m.shieldMax / segment : 1}>
         <div class="fill" data-anchor="top-start"></div>

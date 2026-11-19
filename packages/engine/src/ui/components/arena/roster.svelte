@@ -28,7 +28,7 @@
     <div class="grid-scroll" data-layout="scroll" data-fill>
       <div class="grid" data-layout="grid" role="listbox" aria-label={t("arena.roster.characters")}>
         {#each characters as c (c.id)}
-          <button part="ArenaRoster.cell" role="option" aria-selected={c.id == selected} aria-label={c.name} aria-description={c.locked ? t("arena.roster.locked") : (c.takenBy != '' ? t("arena.roster.taken", { name: c.takenBy }) : c.roleLabel)} data-role={c.role} data-locked={c.locked} data-taken={c.takenBy != ''} disabled={c.locked || c.takenBy != ''} onclick={choose}><div class="face" data-layout="stack" data-gap="hair">
+          <button part="ArenaRoster.cell" role="option" aria-selected={c.id == selected} aria-label={c.name} aria-description={c.locked ? t("arena.roster.locked") : (c.takenBy ? t("arena.roster.taken", { name: c.takenBy }) : c.roleLabel)} data-role={c.role} data-locked={c.locked} data-taken={!!c.takenBy} disabled={c.locked || !!c.takenBy} onclick={choose}><div class="face" data-layout="stack" data-gap="hair">
             <div part="ArenaRoster.portrait ArenaRoster.picture" class="portrait" data-layout="ratio">
               {#if c.portrait}<img class="art" src={c.portrait} alt="">{:else}<og-icon class="glyph" icon={c.icon}></og-icon>{/if}
               <div class="marks" data-layout="cluster" data-gap="hair">
@@ -41,7 +41,7 @@
             </div>
             <span part="ArenaRoster.name ArenaRoster.headline" class="name">{c.name}</span>
             <span part="ArenaRoster.role ArenaRoster.label ArenaRoster.caption" class="role" data-role={c.role}>{c.roleLabel}</span>
-            {#if c.locked || c.takenBy != ''}<span part="ArenaRoster.badge" class="tag" data-tag={c.locked ? 'locked' : 'taken'}>{c.locked ? t("arena.roster.locked") : t("arena.roster.taken", { name: c.takenBy })}</span>{/if}
+            {#if c.locked || c.takenBy}<span part="ArenaRoster.badge" class="tag" data-tag={c.locked ? 'locked' : 'taken'}>{c.locked ? t("arena.roster.locked") : t("arena.roster.taken", { name: c.takenBy })}</span>{/if}
           </div></button>
         {/each}
       </div>

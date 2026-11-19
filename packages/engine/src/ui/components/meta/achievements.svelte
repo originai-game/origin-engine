@@ -44,7 +44,7 @@
                   <div class="bar"><ProgressBar value={a.progress} buffer={0} label="" valueText={a.progressText} showValue={false} indeterminate={false} tone="" /></div>
                   <span class="count" aria-label={t("general.achievements.progress")}>{a.progressText}</span>
                 {:else}
-                  <div part="Achievements.state Achievements.label" class="state" data-layout="row" data-gap="hair" data-state={a.state}><og-icon class="state-mark" icon={a.state == 'unlocked' ? 'check' : 'lock'}></og-icon><span>{a.state == 'unlocked' ? (a.date != '' ? t("general.achievements.unlockedOn", { date: a.date }) : t("general.achievements.unlocked")) : t("general.achievements.locked")}</span></div>
+                  <div part="Achievements.state Achievements.label" class="state" data-layout="row" data-gap="hair" data-state={a.state}><og-icon class="state-mark" icon={a.state == 'unlocked' ? 'check' : 'lock'}></og-icon><span>{a.state == 'unlocked' ? (a.date ? t("general.achievements.unlockedOn", { date: a.date }) : t("general.achievements.unlocked")) : t("general.achievements.locked")}</span></div>
                 {/if}
                 {#if a.tier}<p part="Achievements.tier" class="tier" data-tier={a.tier}>{a.tier == 'legendary' ? t("general.achievements.tierLegendary") : a.tier == 'epic' ? t("general.achievements.tierEpic") : a.tier == 'rare' ? t("general.achievements.tierRare") : t("general.achievements.tierCommon")}</p>{/if}
               </div>

@@ -17,10 +17,10 @@
 <section id="RpgHits" part="RpgHits.frame" class="hud bare" data-layout="stack" data-gap="none" role="log" aria-label={t("rpg.hits.name")}>
   {#each hits as h (h.id)}
   <div part="RpgHits.hit" class="hit" data-layout="stack" data-gap="none" data-kind={h.kind} data-motion="pop" out:fade={{ duration: 200 }}>
-    {#if h.call != ''}<span part="RpgHits.call" class="call">{h.call}</span>{/if}
+    {#if h.call}<span part="RpgHits.call" class="call">{h.call}</span>{/if}
     <div class="line" data-layout="row" data-gap="tight">
       {#if h.kind != 'miss'}<span part="RpgHits.amount" class="amount">{h.kind == 'heal' ? t("rpg.hits.heal", { amount: formatNumber(h.amount) }) : formatNumber(h.amount)}</span>{/if}
-      {#if h.word != ''}<span part="RpgHits.kind" class="word">{h.word}</span>{/if}
+      {#if h.word}<span part="RpgHits.kind" class="word">{h.word}</span>{/if}
     </div>
   </div>
   {/each}

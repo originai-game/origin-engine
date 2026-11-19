@@ -27,7 +27,7 @@
       {#each rows as r (r.id)}{#if r.player}
         <p class="mine-place">{r.state == 'dnf' || r.state == 'dsq' ? (r.state == 'dsq' ? t("racing.results.dsq") : t("racing.results.dnf")) : formatOrdinal(r.position)}</p>
         <div class="mine" data-layout="row"><span class="mine-label">{t("racing.results.time")}</span><span class="mine-figure">{r.time}</span></div>
-        {#if r.points != ''}<div class="mine" data-layout="row"><span class="mine-label">{t("racing.results.points")}</span><span class="mine-figure gold">{r.points}</span></div>{/if}
+        {#if r.points}<div class="mine" data-layout="row"><span class="mine-label">{t("racing.results.points")}</span><span class="mine-figure gold">{r.points}</span></div>{/if}
       {/if}{/each}
     </div>
     <div class="tower" data-layout="shell">

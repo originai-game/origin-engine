@@ -52,8 +52,8 @@
       <div class="part-head" part="RpgQuestDetail.headline" data-layout="row" data-gap="tight" role="heading"><span>{t("rpg.quest.rewards")}</span><span class="rule" data-fill></span></div>
       <ul class="rewards" data-layout="cluster" data-gap="tight">
         {#each rewards as r (r.id)}
-          <li part="RpgQuestDetail.reward RpgQuestDetail.figure" class="reward" data-layout="row" data-gap="loose" data-unique={r.detail != ''}>
-            <div class="socket" data-layout="overlay" data-unique={r.detail != ''}><div class="socket-face" data-anchor="fill" data-layout="cover"><og-icon class="reward-mark" icon={r.icon} data-principal></og-icon></div></div>
+          <li part="RpgQuestDetail.reward RpgQuestDetail.figure" class="reward" data-layout="row" data-gap="loose" data-unique={!!r.detail}>
+            <div class="socket" data-layout="overlay" data-unique={!!r.detail}><div class="socket-face" data-anchor="fill" data-layout="cover"><og-icon class="reward-mark" icon={r.icon} data-principal></og-icon></div></div>
             <div class="reward-text" data-layout="stack" data-gap="none" data-fill><span class="reward-label">{r.label}</span>{#if r.detail}<span class="reward-detail" part="RpgQuestDetail.caption">{r.detail}</span>{/if}</div>
           </li>
         {/each}

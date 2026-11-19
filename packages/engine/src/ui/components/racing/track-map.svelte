@@ -28,7 +28,7 @@
     {#if driven != ''}<path part="RacingTrackMap.driven" class="driven" d={driven} fill="none" stroke-width="5" stroke-linecap="round"></path>{/if}
     {#if path != ''}<rect part="RacingTrackMap.start" class="start" x="-8" y="-2.5" width="16" height="5" transform={"translate(" + startX + " " + startY + ") rotate(" + startAngle + ")"}></rect>{/if}
     {#each cars as c (c.id)}
-      {#if c.player}<path part="RacingTrackMap.self" class="self" d="M0 -10 L8 8 L0 4 L-8 8 Z" stroke-width="2" stroke-linejoin="round" transform={"translate(" + c.x + " " + c.y + ") rotate(" + c.heading + ")"} aria-label={c.name}></path>{:else}<circle part="RacingTrackMap.car" class="car" cx={c.x} cy={c.y} r="7" stroke-width="2" style:--hud-car={c.color != '' ? c.color : null} aria-label={c.name}></circle>{/if}
+      {#if c.player}<path part="RacingTrackMap.self" class="self" d="M0 -10 L8 8 L0 4 L-8 8 Z" stroke-width="2" stroke-linejoin="round" transform={"translate(" + c.x + " " + c.y + ") rotate(" + c.heading + ")"} aria-label={c.name}></path>{:else}<circle part="RacingTrackMap.car" class="car" cx={c.x} cy={c.y} r="7" stroke-width="2" style:--hud-car={c.color ? c.color : null} aria-label={c.name}></circle>{/if}
     {/each}
   </svg>
   {#if name != '' || length != ''}<div id="Under" data-layout="row">

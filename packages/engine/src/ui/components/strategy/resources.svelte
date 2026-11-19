@@ -21,8 +21,8 @@
     <div part="StrategyResources.resource" class="resource" role="group" aria-label={t("strategy.resources.value", { name: r.name, amount: r.amount })} data-warn={r.warn}>
       {#if r.icon}<img part="StrategyResources.picture" class="picture" src={r.icon} alt="">{:else}<og-icon part="StrategyResources.picture" class="glyph" icon={r.glyph}></og-icon>{/if}
       <div class="figures">
-        <div class="line"><span part="StrategyResources.amount" class="amount">{r.amount}</span>{#if r.cap != ''}<span part="StrategyResources.cap" class="cap">{t("strategy.resources.cap", { cap: r.cap })}</span>{/if}</div>
-        {#if r.note != ''}<span part="StrategyResources.rate" class="rate" data-trend="note">{r.note}</span>{:else if r.rate != ''}<span part="StrategyResources.rate" class="rate" data-trend={r.trend}>{r.rate}</span>{/if}
+        <div class="line"><span part="StrategyResources.amount" class="amount">{r.amount}</span>{#if r.cap}<span part="StrategyResources.cap" class="cap">{t("strategy.resources.cap", { cap: r.cap })}</span>{/if}</div>
+        {#if r.note}<span part="StrategyResources.rate" class="rate" data-trend="note">{r.note}</span>{:else if r.rate}<span part="StrategyResources.rate" class="rate" data-trend={r.trend}>{r.rate}</span>{/if}
       </div>
     </div>
   {/each}

@@ -30,8 +30,8 @@
                 <div part="ArenaVersus.portrait ArenaVersus.picture" class="portrait" data-layout="ratio">{#if f.portrait}<img class="art" src={f.portrait} alt="">{:else}<og-icon class="glyph" icon={f.icon}></og-icon>{/if}</div>
                 <div class="who" data-layout="stack" data-gap="hair" data-fill>
                   <span part="ArenaVersus.name ArenaVersus.headline" class="name">{f.name}</span>
-                  {#if f.character != ''}<span class="character" part="ArenaVersus.caption">{f.character}</span>{/if}
-                  {#if f.rank != ''}<span part="ArenaVersus.rank ArenaVersus.label ArenaVersus.caption" class="rank">{f.rank}</span>{/if}
+                  {#if f.character}<span class="character" part="ArenaVersus.caption">{f.character}</span>{/if}
+                  {#if f.rank}<span part="ArenaVersus.rank ArenaVersus.label ArenaVersus.caption" class="rank">{f.rank}</span>{/if}
                   {#if f.local}<span class="you" part="ArenaVersus.badge">{t("arena.you")}</span>{/if}
                 </div>
               </div>
@@ -51,8 +51,8 @@
                 <div part="ArenaVersus.portrait ArenaVersus.picture" class="portrait" data-layout="ratio">{#if f.portrait}<img class="art" src={f.portrait} alt="">{:else}<og-icon class="glyph" icon={f.icon}></og-icon>{/if}</div>
                 <div class="who" data-layout="stack" data-gap="hair" data-fill>
                   <span part="ArenaVersus.name ArenaVersus.headline" class="name">{f.name}</span>
-                  {#if f.character != ''}<span class="character" part="ArenaVersus.caption">{f.character}</span>{/if}
-                  {#if f.rank != ''}<span part="ArenaVersus.rank ArenaVersus.label ArenaVersus.caption" class="rank">{f.rank}</span>{/if}
+                  {#if f.character}<span class="character" part="ArenaVersus.caption">{f.character}</span>{/if}
+                  {#if f.rank}<span part="ArenaVersus.rank ArenaVersus.label ArenaVersus.caption" class="rank">{f.rank}</span>{/if}
                   {#if f.local}<span class="you" part="ArenaVersus.badge">{t("arena.you")}</span>{/if}
                 </div>
               </div>

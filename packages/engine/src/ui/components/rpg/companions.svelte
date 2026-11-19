@@ -33,7 +33,7 @@
     {#if m.manaMax > 0 && !m.fallen}<div part="RpgCompanions.mana" class="bar mana" data-layout="overlay" role="meter" aria-label={t("rpg.party.mana")} aria-valuemin="0" aria-valuemax={m.manaMax} aria-valuenow={m.mana <= 0 ? 0 : m.mana} style:--value={m.mana <= 0 ? 0 : m.mana >= m.manaMax ? 1 : m.mana / m.manaMax}>
       <div class="fill" data-anchor="top-start"></div>
     </div>{/if}
-    {#if m.key != ''}<span part="RpgCompanions.key" class="key">{m.key}</span>{/if}
+    {#if m.key}<span part="RpgCompanions.key" class="key">{m.key}</span>{/if}
   </div>
   {/each}
 </section>

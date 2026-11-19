@@ -18,10 +18,10 @@
   <div part="RpgLootFeed.entry" class="entry" data-layout="row" data-gap="tight" data-rarity={p.rarity} data-fading={p.fading} aria-label={p.quantity > 0 ? t("rpg.lootfeed.row", { name: p.name, quantity: p.currency ? t("rpg.lootfeed.gain", { quantity: formatNumber(p.quantity) }) : t("rpg.lootfeed.count", { quantity: formatNumber(p.quantity) }) }) : p.name} in:fly={{ x: -24, duration: 200 }} out:fade={{ duration: 300 }} animate:flip={{ duration: 200 }}>
     <div class="edge"></div>
     <div part="RpgLootFeed.art" class="art" data-layout="overlay">
-      {#if p.icon}<img class="picture" data-anchor="fill" src={p.icon} alt="">{:else}{#if p.glyph != ''}<og-icon class="glyph" data-anchor="fill" icon={p.glyph}></og-icon>{/if}{/if}
+      {#if p.icon}<img class="picture" data-anchor="fill" src={p.icon} alt="">{:else}{#if p.glyph}<og-icon class="glyph" data-anchor="fill" icon={p.glyph}></og-icon>{/if}{/if}
     </div>
     <span part="RpgLootFeed.item" class="item">{p.name}</span>
-    {#if p.label != ''}<span part="RpgLootFeed.rarity" class="tag">{p.label}</span>{/if}
+    {#if p.label}<span part="RpgLootFeed.rarity" class="tag">{p.label}</span>{/if}
     {#if p.quantity > 0}<span part="RpgLootFeed.count" class="count">{p.currency ? t("rpg.lootfeed.gain", { quantity: formatNumber(p.quantity) }) : t("rpg.lootfeed.count", { quantity: formatNumber(p.quantity) })}</span>{/if}
   </div>
   {/each}

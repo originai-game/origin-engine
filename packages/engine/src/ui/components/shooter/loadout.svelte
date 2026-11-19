@@ -15,8 +15,8 @@
   <div id="Body" data-layout="grid" data-gap="wide" data-fill>
   <div id="Groups" data-layout="grid" data-gap="wide" data-fill>
     {#each categories as c (c.id)}
-      <section class="group" data-layout="stack" aria-label={c.label != '' ? c.label : t("shooter.loadout.category." + c.id)}>
-        <h3 class="category" part="Loadout.category Loadout.label">{c.label != '' ? c.label : t("shooter.loadout.category." + c.id)}</h3>
+      <section class="group" data-layout="stack" aria-label={c.label ? c.label : t("shooter.loadout.category." + c.id)}>
+        <h3 class="category" part="Loadout.category Loadout.label">{c.label ? c.label : t("shooter.loadout.category." + c.id)}</h3>
         <div class="items" data-layout="stack" data-gap="tight">
           {#each slots as s (s.id)}
             {#if s.category == c.id}
@@ -24,12 +24,12 @@
                 <og-icon class="icon" icon={s.locked ? 'lock' : s.icon}></og-icon>
                 <div class="text" data-layout="stack" data-gap="hair" data-fill>
                   <span class="name" part="Loadout.headline">{s.name}</span>
-                  {#if s.detail != '' || s.equipped}<div class="sub" data-layout="cluster" data-gap="hair">
-                    {#if s.detail != ''}<span class="detail" part="Loadout.detail Loadout.figure">{s.detail}</span>{/if}
+                  {#if s.detail || s.equipped}<div class="sub" data-layout="cluster" data-gap="hair">
+                    {#if s.detail}<span class="detail" part="Loadout.detail Loadout.figure">{s.detail}</span>{/if}
                     {#if s.equipped}<span class="badge" part="Loadout.badge" data-tone="success">{t("shooter.loadout.equipped")}</span>{/if}
                   </div>{/if}
                 </div>
-                {#if s.cost != ''}<div class="cost" data-layout="row" data-gap="hair"><og-icon class="coin" icon="coin"></og-icon><span class="price" part="Loadout.price Loadout.figure">{s.cost}</span></div>{/if}
+                {#if s.cost}<div class="cost" data-layout="row" data-gap="hair"><og-icon class="coin" icon="coin"></og-icon><span class="price" part="Loadout.price Loadout.figure">{s.cost}</span></div>{/if}
               </div></button>
             {/if}
           {/each}

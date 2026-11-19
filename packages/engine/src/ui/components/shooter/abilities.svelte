@@ -21,14 +21,14 @@
     <div class="holder" data-layout="overlay">
       {#if s.ultimate}<div part="ShooterAbilities.ring" class="ring" data-anchor="fill" role="meter" aria-label={t("shooter.abilities.charge")} aria-valuemin="0" aria-valuemax="100" aria-valuenow={s.charge <= 0 ? 0 : s.charge >= 1 ? 100 : s.charge * 100}><svg class="dial" viewBox="0 0 100 100"><path class="well" d="M 50 4 A 46 46 0 1 1 50 96 A 46 46 0 1 1 50 4" fill="none"></path><path class="lit" d="M 50 4 A 46 46 0 1 1 50 96 A 46 46 0 1 1 50 4" fill="none" pathLength="1" stroke-dasharray={(s.charge <= 0 ? 0 : s.charge >= 1 ? 1 : s.charge) + " 1"}></path></svg></div>{/if}
       <div part="ShooterAbilities.slot" class="slot" data-anchor="center" data-layout="overlay">
-        {#if s.icon}<img part="ShooterAbilities.art" class="art" data-anchor="fill" src={s.icon} alt="">{:else}<div class="blank" data-anchor="fill" data-layout="center">{#if s.glyph != ''}<og-icon class="glyph" icon={s.glyph}></og-icon>{/if}</div>{/if}
+        {#if s.icon}<img part="ShooterAbilities.art" class="art" data-anchor="fill" src={s.icon} alt="">{:else}<div class="blank" data-anchor="fill" data-layout="center">{#if s.glyph}<og-icon class="glyph" icon={s.glyph}></og-icon>{/if}</div>{/if}
         {#if s.cooldown > 0}<div part="ShooterAbilities.cooldown" class="cooldown" data-anchor="fill" style:--left={s.cooldown >= 1 ? 1 : s.cooldown}></div>{/if}
-        {#if s.cooldown > 0 && s.time != ''}<span part="ShooterAbilities.time" class="time" data-anchor="center">{s.time}</span>{/if}
+        {#if s.cooldown > 0 && s.time}<span part="ShooterAbilities.time" class="time" data-anchor="center">{s.time}</span>{/if}
         {#if s.ultimate && s.charge < 1}<span part="ShooterAbilities.charge" class="time" data-anchor="center">{formatPercent(s.charge <= 0 ? 0 : s.charge)}</span>{/if}
       </div>
       {#if s.count > 0}<span part="ShooterAbilities.count" class="tag" data-anchor="top-end">{t("shooter.abilities.count", { count: formatNumber(s.count) })}</span>{/if}
     </div>
-    {#if s.key != ''}<span part="ShooterAbilities.key" class="key">{s.key}</span>{/if}
+    {#if s.key}<span part="ShooterAbilities.key" class="key">{s.key}</span>{/if}
   </li>
   {/each}
 </ul>

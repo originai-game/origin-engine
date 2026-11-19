@@ -36,7 +36,7 @@
             {:else}
               <button part="CardHand.card" role="option" data-type={c.type} data-rarity={c.rarity} data-playable={c.playable} aria-selected={c.id == selected} aria-label={c.name} aria-description={c.reason || t("card.hand.unplayable")} onclick={select}>
                 <div class="face"><CardFace name={c.name} cost={c.cost} icon={c.icon} art={c.art} type={c.type} typeLabel={c.typeLabel} rarity={c.rarity} text={c.text} dim={true} /></div>
-                <div part="CardHand.reason" class="reason" data-layout="row" data-gap="hair" data-cost={c.cost != ""}><og-icon class="lock" icon="lock"></og-icon><p class="reason-text">{c.reason || t("card.hand.unplayable")}</p></div>
+                <div part="CardHand.reason" class="reason" data-layout="row" data-gap="hair" data-cost={!!c.cost}><og-icon class="lock" icon="lock"></og-icon><p class="reason-text">{c.reason || t("card.hand.unplayable")}</p></div>
               </button>
             {/if}
             {#if c.id == selected && c.playable}<button class="play primary" onclick={play}>{t("card.hand.play")}</button>{/if}

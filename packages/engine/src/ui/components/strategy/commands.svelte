@@ -22,28 +22,28 @@
 -->
 <section id="StrategyCommands" part="StrategyCommands.frame" class="hud bare" aria-label={t("strategy.commands.name")}>
   {#each commands as c (c.id)}
-    {#if c.id == focused && c.name != ''}
+    {#if c.id == focused && c.name}
     <div id="Info" part="StrategyCommands.info" role="tooltip">
-      <div class="info-head"><span part="StrategyCommands.title" class="info-title">{c.name}</span>{#if c.key != ''}<span part="StrategyCommands.key" class="info-key">{c.key}</span>{/if}</div>
-      {#if c.detail != ''}<span part="StrategyCommands.detail" class="info-detail">{c.detail}</span>{/if}
-      {#if c.cost != '' || c.cooldownText != '' || c.readyText != ''}<div class="info-tags">
-        {#if c.cost != ''}<div part="StrategyCommands.price" class="price" data-affordable={c.affordable}>{#if c.costIcon}<img class="price-art" src={c.costIcon} alt="">{/if}<span class="price-figure">{c.cost}</span></div>{/if}
-        {#if c.cooldownText != ''}<span part="StrategyCommands.tag" class="tag">{c.cooldownText}</span>{/if}
-        {#if c.readyText != ''}<span part="StrategyCommands.tag" class="tag" data-ready="true">{c.readyText}</span>{/if}
+      <div class="info-head"><span part="StrategyCommands.title" class="info-title">{c.name}</span>{#if c.key}<span part="StrategyCommands.key" class="info-key">{c.key}</span>{/if}</div>
+      {#if c.detail}<span part="StrategyCommands.detail" class="info-detail">{c.detail}</span>{/if}
+      {#if c.cost || c.cooldownText || c.readyText}<div class="info-tags">
+        {#if c.cost}<div part="StrategyCommands.price" class="price" data-affordable={c.affordable}>{#if c.costIcon}<img class="price-art" src={c.costIcon} alt="">{/if}<span class="price-figure">{c.cost}</span></div>{/if}
+        {#if c.cooldownText}<span part="StrategyCommands.tag" class="tag">{c.cooldownText}</span>{/if}
+        {#if c.readyText}<span part="StrategyCommands.tag" class="tag" data-ready="true">{c.readyText}</span>{/if}
       </div>{/if}
-      {#if c.reason != ''}<span part="StrategyCommands.detail" class="info-reason" role="status">{c.reason}</span>{/if}
+      {#if c.reason}<span part="StrategyCommands.detail" class="info-reason" role="status">{c.reason}</span>{/if}
     </div>
     {/if}
   {/each}
   <div id="Grid" part="StrategyCommands.grid" role="toolbar" aria-label={t("strategy.commands.name")}>
     {#each commands as c (c.id)}
-      {#if c.name == ''}<div part="StrategyCommands.blank" class="blank"></div>{:else}
-      <button part="StrategyCommands.command" class="command" aria-label={c.name} aria-description={c.reason != '' ? c.reason : (c.readyText != '' ? c.readyText : c.detail)} aria-pressed={c.active} disabled={!c.enabled || !c.affordable} data-active={c.active} data-cooling={c.cooldown > 0} data-affordable={c.affordable} data-enabled={c.enabled} onclick={command}><div class="face">
+      {#if !c.name}<div part="StrategyCommands.blank" class="blank"></div>{:else}
+      <button part="StrategyCommands.command" class="command" aria-label={c.name} aria-description={c.reason ? c.reason : (c.readyText ? c.readyText : c.detail)} aria-pressed={c.active} disabled={!c.enabled || !c.affordable} data-active={c.active} data-cooling={c.cooldown > 0} data-affordable={c.affordable} data-enabled={c.enabled} onclick={command}><div class="face">
         {#if c.icon}<img part="StrategyCommands.art" class="art" src={c.icon} alt="">{:else}<div part="StrategyCommands.art" class="blank-art"><og-icon class="glyph" icon={c.glyph}></og-icon></div>{/if}
         {#if c.cooldown > 0}<div part="StrategyCommands.sweep" class="sweep" style:--left={c.cooldown >= 1 ? 1 : c.cooldown}></div>{/if}
-        {#if c.cooldown > 0 && c.time != ''}<span part="StrategyCommands.time" class="time">{c.time}</span>{/if}
-        {#if c.action != '' || c.key != ''}<kbd part="StrategyCommands.key" class="key" data-action={c.action}>{c.key}</kbd>{/if}
-        {#if !c.affordable && c.cost != ''}<span part="StrategyCommands.cost" class="cost">{c.cost}</span>{/if}
+        {#if c.cooldown > 0 && c.time}<span part="StrategyCommands.time" class="time">{c.time}</span>{/if}
+        {#if c.action || c.key}<kbd part="StrategyCommands.key" class="key" data-action={c.action}>{c.key}</kbd>{/if}
+        {#if !c.affordable && c.cost}<span part="StrategyCommands.cost" class="cost">{c.cost}</span>{/if}
       </div></button>
       {/if}
     {/each}

@@ -20,7 +20,7 @@
       <span class="edge"></span>
       <span part="StrategyAlerts.mark" class="mark"></span>
       <span part="StrategyAlerts.text" class="text">{a.text}</span>
-      {#if a.key != ''}<span part="StrategyAlerts.key" class="key">{a.key}</span>{/if}
+      {#if a.key}<span part="StrategyAlerts.key" class="key">{a.key}</span>{/if}
     </li>
   {/each}
 </ul>

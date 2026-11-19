@@ -20,21 +20,21 @@
 -->
 <ul id="RpgSkills" part="RpgSkills.frame" class="hud bare" data-layout="row" aria-label={t("rpg.skills.name")}>
   {#each slots as s (s.id)}
-  <li part="RpgSkills.skill" class="skill" data-layout="stack" data-gap="none" data-kind={s.kind} data-ready={s.ready || (s.kind == 'ultimate' && s.charge >= 1)} data-unaffordable={s.unaffordable} aria-label={s.unaffordable && s.reason != '' ? t("rpg.skills.slot", { name: s.name, state: s.reason }) : s.name}>
+  <li part="RpgSkills.skill" class="skill" data-layout="stack" data-gap="none" data-kind={s.kind} data-ready={s.ready || (s.kind == 'ultimate' && s.charge >= 1)} data-unaffordable={s.unaffordable} aria-label={s.unaffordable && s.reason ? t("rpg.skills.slot", { name: s.name, state: s.reason }) : s.name}>
     {#if s.chargesMax > 0}<div part="RpgSkills.charges" class="charges" data-layout="overlay" role="meter" aria-label={t("rpg.skills.charges")} aria-valuemin="0" aria-valuemax={s.chargesMax} aria-valuenow={s.charges <= 0 ? 0 : s.charges} style:--n={s.chargesMax} style:--on={s.charges <= 0 ? 0 : s.charges >= s.chargesMax ? 1 : s.charges / s.chargesMax}><div part="RpgSkills.pip" class="pip" data-anchor="top-start"></div></div>{/if}
     <div class="holder" data-layout="overlay">
       {#if s.kind == 'ultimate'}<div part="RpgSkills.ring" class="ring" data-anchor="fill" role="meter" aria-label={t("rpg.skills.charge")} aria-valuemin="0" aria-valuemax="100" aria-valuenow={s.charge <= 0 ? 0 : s.charge >= 1 ? 100 : s.charge * 100}><svg class="dial" viewBox="0 0 100 100"><path class="well" d="M 50 4 A 46 46 0 1 1 50 96 A 46 46 0 1 1 50 4" fill="none"></path><path class="lit" d="M 50 4 A 46 46 0 1 1 50 96 A 46 46 0 1 1 50 4" fill="none" pathLength="1" stroke-dasharray={(s.charge <= 0 ? 0 : s.charge >= 1 ? 1 : s.charge) + " 1"}></path></svg></div>{/if}
       <div part="RpgSkills.slot" class="slot" data-anchor="center" data-layout="overlay">
-        {#if s.icon}<img part="RpgSkills.art" class="art" data-anchor="fill" src={s.icon} alt="">{:else}<div class="blank" data-anchor="fill" data-layout="center">{#if s.glyph != ''}<og-icon class="glyph" icon={s.glyph}></og-icon>{/if}</div>{/if}
+        {#if s.icon}<img part="RpgSkills.art" class="art" data-anchor="fill" src={s.icon} alt="">{:else}<div class="blank" data-anchor="fill" data-layout="center">{#if s.glyph}<og-icon class="glyph" icon={s.glyph}></og-icon>{/if}</div>{/if}
         {#if s.cooldown > 0}<div part="RpgSkills.cooldown" class="cooldown" data-anchor="fill" style:--left={s.cooldown >= 1 ? 1 : s.cooldown}></div><div part="RpgSkills.edge" class="edge" data-anchor="fill" style:--left={s.cooldown >= 1 ? 1 : s.cooldown}></div>{/if}
         {#if s.unaffordable}<div class="veil" data-anchor="fill"></div>{/if}
-        {#if s.cooldown > 0 && s.time != ''}<span part="RpgSkills.time" class="time" data-anchor="center">{s.time}</span>{/if}
-        {#if s.unaffordable && s.reason != '' && s.cooldown <= 0}<span part="RpgSkills.reason" class="reason" data-anchor="center">{s.reason}</span>{/if}
+        {#if s.cooldown > 0 && s.time}<span part="RpgSkills.time" class="time" data-anchor="center">{s.time}</span>{/if}
+        {#if s.unaffordable && s.reason && s.cooldown <= 0}<span part="RpgSkills.reason" class="reason" data-anchor="center">{s.reason}</span>{/if}
         {#if s.kind == 'ultimate' && s.charge < 1}<span part="RpgSkills.time" class="time" data-anchor="center">{formatPercent(s.charge <= 0 ? 0 : s.charge)}</span>{/if}
       </div>
       {#if s.count > 0}<span part="RpgSkills.count" class="count" data-anchor="top-end">{t("rpg.skills.count", { count: formatNumber(s.count) })}</span>{/if}
     </div>
-    {#if s.key != ''}<span part="RpgSkills.key" class="key">{s.key}</span>{/if}
+    {#if s.key}<span part="RpgSkills.key" class="key">{s.key}</span>{/if}
   </li>
   {/each}
 </ul>

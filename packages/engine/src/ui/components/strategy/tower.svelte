@@ -32,7 +32,7 @@
   {#if stats.length}
   <div class="stats" part="StrategyTower.well" data-layout="stack" data-gap="tight" role="list" aria-label={t("strategy.tower.stats")}>
     {#each stats as s (s.id)}
-      <div part="StrategyTower.row" data-layout="row" role="listitem" data-next={s.next != ''}><span class="label" part="StrategyTower.caption" data-fill>{s.label}</span><span class="value" part="StrategyTower.figure">{s.value}</span>{#if s.next != ''}<span class="next" part="StrategyTower.figure" aria-label={t("strategy.tower.nextName", { next: s.next })}>{t("strategy.tower.next", { next: s.next })}</span>{/if}</div>
+      <div part="StrategyTower.row" data-layout="row" role="listitem" data-next={!!s.next}><span class="label" part="StrategyTower.caption" data-fill>{s.label}</span><span class="value" part="StrategyTower.figure">{s.value}</span>{#if s.next}<span class="next" part="StrategyTower.figure" aria-label={t("strategy.tower.nextName", { next: s.next })}>{t("strategy.tower.next", { next: s.next })}</span>{/if}</div>
     {/each}
   </div>
   {/if}
@@ -43,13 +43,13 @@
           <og-icon class="path-mark" icon={p.icon}></og-icon>
           <div class="path-main" data-layout="stack" data-gap="hair" data-fill>
             <span part="StrategyTower.name StrategyTower.headline" class="path-name">{p.name}</span>
-            {#if p.detail != ''}<span class="detail" part="StrategyTower.caption">{p.detail}</span>{/if}
+            {#if p.detail}<span class="detail" part="StrategyTower.caption">{p.detail}</span>{/if}
             <div class="pips" data-layout="row" data-gap="tight" role="meter" aria-label={t("strategy.tower.tierName", { tier: p.tier, tiers: p.tiers })} aria-valuemin="0" aria-valuemax={p.tiers} aria-valuenow={p.tier}><span class="tier" part="StrategyTower.figure">{t("strategy.tower.tier", { tier: p.tier, tiers: p.tiers })}</span><div class="track" part="StrategyTower.track" data-fill style:--fill={p.tiers > 0 ? p.tier / p.tiers : 0}><div class="fill" part="StrategyTower.fill"></div></div></div>
-            {#if p.state == 'locked' && p.reason != ''}<span part="StrategyTower.reason StrategyTower.caption" class="reason">{p.reason}</span>{/if}
+            {#if p.state == 'locked' && p.reason}<span part="StrategyTower.reason StrategyTower.caption" class="reason">{p.reason}</span>{/if}
           </div>
           <button class="buy" variant={p.state == 'affordable' ? 'primary' : 'secondary'} disabled={p.state != 'affordable'} aria-label={t("strategy.tower.upgrade", { name: p.name })} aria-description={p.state == 'locked' ? p.reason : p.cost} data-state={p.state} onclick={upgrade}><div class="buy-face" data-layout="stack" data-gap="hair">
             {#if p.state != 'affordable'}<span part="StrategyTower.badge" class="state" data-state={p.state}>{p.state == 'maxed' ? t("strategy.tower.maxed") : (p.state == 'locked' ? t("strategy.tower.locked") : t("strategy.tower.short"))}</span>{/if}
-            {#if p.state != 'maxed' && p.cost != ''}<span part="StrategyTower.cost StrategyTower.figure" class="cost" data-state={p.state}>{p.cost}</span>{/if}
+            {#if p.state != 'maxed' && p.cost}<span part="StrategyTower.cost StrategyTower.figure" class="cost" data-state={p.state}>{p.cost}</span>{/if}
           </div></button>
         </div>
       {/each}

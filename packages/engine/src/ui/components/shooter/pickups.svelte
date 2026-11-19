@@ -16,7 +16,7 @@
   {#each items as p (p.id)}
   <div part="ShooterPickups.entry" class="entry" data-layout="row" data-gap="tight" data-rarity={p.rarity} aria-label={t("shooter.pickups.row", { name: p.name, quantity: p.quantity })} in:fly={{ x: 24, duration: 200 }} out:fade={{ duration: 300 }} animate:flip={{ duration: 200 }}>
     <div part="ShooterPickups.art" class="art" data-layout="overlay">
-      {#if p.icon}<img class="picture" data-anchor="fill" src={p.icon} alt="">{:else}{#if p.glyph != ''}<og-icon class="glyph" data-anchor="fill" icon={p.glyph}></og-icon>{/if}{/if}
+      {#if p.icon}<img class="picture" data-anchor="fill" src={p.icon} alt="">{:else}{#if p.glyph}<og-icon class="glyph" data-anchor="fill" icon={p.glyph}></og-icon>{/if}{/if}
     </div>
     <span part="ShooterPickups.item" class="item">{p.name}</span>
     <span part="ShooterPickups.count" class="count">{t("shooter.pickups.count", { quantity: formatNumber(p.quantity) })}</span>

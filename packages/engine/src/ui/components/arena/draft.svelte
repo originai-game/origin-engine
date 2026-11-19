@@ -43,13 +43,13 @@
         <div class="bans" data-layout="cluster" data-gap="tight" role="list" aria-label={t("arena.draft.bans")}>
           {#each slots as s (s.id)}
             {#if s.team == 'a' && s.kind == 'ban'}
-              <div part="ArenaDraft.slot" class="ban" data-layout="stack" data-gap="hair" role="listitem" aria-current={s.active} data-kind="ban" data-state={s.active ? 'active' : (s.name != '' ? 'banned' : 'empty')}>
-                <div part="ArenaDraft.portrait ArenaDraft.picture" class="portrait small" data-layout="ratio" data-state={s.name != '' ? 'banned' : 'empty'}>
-                  <div class="well" data-layout="ratio">{#if s.portrait}<img class="art" src={s.portrait} alt="">{:else if s.icon != ''}<og-icon class="glyph" icon={s.icon}></og-icon>{/if}</div>
-                  {#if s.name != ''}<og-icon class="strike" icon="close"></og-icon>{/if}
+              <div part="ArenaDraft.slot" class="ban" data-layout="stack" data-gap="hair" role="listitem" aria-current={s.active} data-kind="ban" data-state={s.active ? 'active' : (s.name ? 'banned' : 'empty')}>
+                <div part="ArenaDraft.portrait ArenaDraft.picture" class="portrait small" data-layout="ratio" data-state={s.name ? 'banned' : 'empty'}>
+                  <div class="well" data-layout="ratio">{#if s.portrait}<img class="art" src={s.portrait} alt="">{:else if s.icon}<og-icon class="glyph" icon={s.icon}></og-icon>{/if}</div>
+                  {#if s.name}<og-icon class="strike" icon="close"></og-icon>{/if}
                 </div>
-                <span part="ArenaDraft.badge" class="tag" data-tag={s.active ? 'banning' : (s.name != '' ? 'banned' : 'open')}>{s.active ? t("arena.draft.banning") : (s.name != '' ? t("arena.draft.banned") : t("arena.draft.open"))}</span>
-                {#if s.name != ''}<span part="ArenaDraft.name ArenaDraft.caption" class="ban-name">{s.name}</span>{/if}
+                <span part="ArenaDraft.badge" class="tag" data-tag={s.active ? 'banning' : (s.name ? 'banned' : 'open')}>{s.active ? t("arena.draft.banning") : (s.name ? t("arena.draft.banned") : t("arena.draft.open"))}</span>
+                {#if s.name}<span part="ArenaDraft.name ArenaDraft.caption" class="ban-name">{s.name}</span>{/if}
               </div>
             {/if}
           {/each}
@@ -58,14 +58,14 @@
         <div class="picks" data-layout="stack" data-gap="tight" role="list" aria-label={t("arena.draft.picks")}>
           {#each slots as s (s.id)}
             {#if s.team == 'a' && s.kind == 'pick'}
-              <div part="ArenaDraft.slot ArenaDraft.row" class="pick" data-layout="row" role="listitem" aria-current={s.active} data-kind="pick" data-state={s.active ? 'active' : (s.name != '' ? 'filled' : 'empty')}>
-                <div part="ArenaDraft.portrait ArenaDraft.picture" class="portrait" data-layout="ratio" data-state={s.name != '' ? 'filled' : 'empty'}>
-                  <div class="well" data-layout="ratio">{#if s.portrait}<img class="art" src={s.portrait} alt="">{:else if s.icon != ''}<og-icon class="glyph" icon={s.icon}></og-icon>{/if}</div>
+              <div part="ArenaDraft.slot ArenaDraft.row" class="pick" data-layout="row" role="listitem" aria-current={s.active} data-kind="pick" data-state={s.active ? 'active' : (s.name ? 'filled' : 'empty')}>
+                <div part="ArenaDraft.portrait ArenaDraft.picture" class="portrait" data-layout="ratio" data-state={s.name ? 'filled' : 'empty'}>
+                  <div class="well" data-layout="ratio">{#if s.portrait}<img class="art" src={s.portrait} alt="">{:else if s.icon}<og-icon class="glyph" icon={s.icon}></og-icon>{/if}</div>
                 </div>
                 <div class="who" data-layout="stack" data-gap="none" data-fill>
-                  <span part="ArenaDraft.name ArenaDraft.headline" class="pick-name">{s.name != '' ? s.name : t("arena.draft.open")}</span>
+                  <span part="ArenaDraft.name ArenaDraft.headline" class="pick-name">{s.name ? s.name : t("arena.draft.open")}</span>
                   <div class="line" data-layout="cluster" data-gap="tight">
-                    {#if s.player != ''}<span class="player" part="ArenaDraft.caption">{s.player}</span>{/if}
+                    {#if s.player}<span class="player" part="ArenaDraft.caption">{s.player}</span>{/if}
                     {#if s.active}<span part="ArenaDraft.badge" class="tag" data-tag="picking">{t("arena.draft.picking")}</span>{/if}
                   </div>
                 </div>
@@ -80,13 +80,13 @@
         <div class="bans" data-layout="cluster" data-gap="tight" role="list" aria-label={t("arena.draft.bans")}>
           {#each slots as s (s.id)}
             {#if s.team == 'b' && s.kind == 'ban'}
-              <div part="ArenaDraft.slot" class="ban" data-layout="stack" data-gap="hair" role="listitem" aria-current={s.active} data-kind="ban" data-state={s.active ? 'active' : (s.name != '' ? 'banned' : 'empty')}>
-                <div part="ArenaDraft.portrait ArenaDraft.picture" class="portrait small" data-layout="ratio" data-state={s.name != '' ? 'banned' : 'empty'}>
-                  <div class="well" data-layout="ratio">{#if s.portrait}<img class="art" src={s.portrait} alt="">{:else if s.icon != ''}<og-icon class="glyph" icon={s.icon}></og-icon>{/if}</div>
-                  {#if s.name != ''}<og-icon class="strike" icon="close"></og-icon>{/if}
+              <div part="ArenaDraft.slot" class="ban" data-layout="stack" data-gap="hair" role="listitem" aria-current={s.active} data-kind="ban" data-state={s.active ? 'active' : (s.name ? 'banned' : 'empty')}>
+                <div part="ArenaDraft.portrait ArenaDraft.picture" class="portrait small" data-layout="ratio" data-state={s.name ? 'banned' : 'empty'}>
+                  <div class="well" data-layout="ratio">{#if s.portrait}<img class="art" src={s.portrait} alt="">{:else if s.icon}<og-icon class="glyph" icon={s.icon}></og-icon>{/if}</div>
+                  {#if s.name}<og-icon class="strike" icon="close"></og-icon>{/if}
                 </div>
-                <span part="ArenaDraft.badge" class="tag" data-tag={s.active ? 'banning' : (s.name != '' ? 'banned' : 'open')}>{s.active ? t("arena.draft.banning") : (s.name != '' ? t("arena.draft.banned") : t("arena.draft.open"))}</span>
-                {#if s.name != ''}<span part="ArenaDraft.name ArenaDraft.caption" class="ban-name">{s.name}</span>{/if}
+                <span part="ArenaDraft.badge" class="tag" data-tag={s.active ? 'banning' : (s.name ? 'banned' : 'open')}>{s.active ? t("arena.draft.banning") : (s.name ? t("arena.draft.banned") : t("arena.draft.open"))}</span>
+                {#if s.name}<span part="ArenaDraft.name ArenaDraft.caption" class="ban-name">{s.name}</span>{/if}
               </div>
             {/if}
           {/each}
@@ -95,14 +95,14 @@
         <div class="picks" data-layout="stack" data-gap="tight" role="list" aria-label={t("arena.draft.picks")}>
           {#each slots as s (s.id)}
             {#if s.team == 'b' && s.kind == 'pick'}
-              <div part="ArenaDraft.slot ArenaDraft.row" class="pick" data-layout="row" role="listitem" aria-current={s.active} data-kind="pick" data-state={s.active ? 'active' : (s.name != '' ? 'filled' : 'empty')}>
-                <div part="ArenaDraft.portrait ArenaDraft.picture" class="portrait" data-layout="ratio" data-state={s.name != '' ? 'filled' : 'empty'}>
-                  <div class="well" data-layout="ratio">{#if s.portrait}<img class="art" src={s.portrait} alt="">{:else if s.icon != ''}<og-icon class="glyph" icon={s.icon}></og-icon>{/if}</div>
+              <div part="ArenaDraft.slot ArenaDraft.row" class="pick" data-layout="row" role="listitem" aria-current={s.active} data-kind="pick" data-state={s.active ? 'active' : (s.name ? 'filled' : 'empty')}>
+                <div part="ArenaDraft.portrait ArenaDraft.picture" class="portrait" data-layout="ratio" data-state={s.name ? 'filled' : 'empty'}>
+                  <div class="well" data-layout="ratio">{#if s.portrait}<img class="art" src={s.portrait} alt="">{:else if s.icon}<og-icon class="glyph" icon={s.icon}></og-icon>{/if}</div>
                 </div>
                 <div class="who" data-layout="stack" data-gap="none" data-fill>
-                  <span part="ArenaDraft.name ArenaDraft.headline" class="pick-name">{s.name != '' ? s.name : t("arena.draft.open")}</span>
+                  <span part="ArenaDraft.name ArenaDraft.headline" class="pick-name">{s.name ? s.name : t("arena.draft.open")}</span>
                   <div class="line" data-layout="cluster" data-gap="tight">
-                    {#if s.player != ''}<span class="player" part="ArenaDraft.caption">{s.player}</span>{/if}
+                    {#if s.player}<span class="player" part="ArenaDraft.caption">{s.player}</span>{/if}
                     {#if s.active}<span part="ArenaDraft.badge" class="tag" data-tag="picking">{t("arena.draft.picking")}</span>{/if}
                   </div>
                 </div>

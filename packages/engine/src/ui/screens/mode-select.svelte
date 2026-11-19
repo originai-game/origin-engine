@@ -23,7 +23,7 @@
           <div id="Plate" part="mode-select.plate">
           <art id="Art" kind="levelThumb" src={mode.texture}></art>
           <div id="Foot" part="mode-select.foot"></div>
-          {#if mode.tag != ""}<span id="Tag" part="mode-select.tag" class:fresh={mode.locked}>{mode.tag}</span>{/if}
+          {#if mode.tag}<span id="Tag" part="mode-select.tag" class:fresh={mode.locked}>{mode.tag}</span>{/if}
           <div id="Body">
             <h2 id="Name" part="mode-select.name">{mode.name}</h2>
             <p id="Line">{mode.line}</p>

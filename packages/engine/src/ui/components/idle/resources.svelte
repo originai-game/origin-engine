@@ -24,20 +24,20 @@
   {#if currencies.length}
     <ul class="chips" data-layout="cluster" data-gap="tight">
       {#each currencies as c (c.id)}
-        <li part="IdleResources.row" data-layout="row" data-gap="tight" data-full={c.full} data-loading={loading} data-trend={c.perSecond < 0 ? 'down' : c.perSecond > 0 ? 'up' : 'flat'} aria-label={loading ? t("idle.resources.loading", { name: c.name }) : t("idle.resources.row", { name: c.name, amount: c.value != '' ? c.value : formatCompact(c.amount) })}>
+        <li part="IdleResources.row" data-layout="row" data-gap="tight" data-full={c.full} data-loading={loading} data-trend={c.perSecond < 0 ? 'down' : c.perSecond > 0 ? 'up' : 'flat'} aria-label={loading ? t("idle.resources.loading", { name: c.name }) : t("idle.resources.row", { name: c.name, amount: c.value ? c.value : formatCompact(c.amount) })}>
           <div part="IdleResources.socket" class="socket" data-layout="cover"><og-icon class="icon" icon={c.icon}></og-icon></div>
           <div class="text" data-layout="stack" data-gap="none">
             <span part="IdleResources.name" class="name">{c.name}</span>
             {#if !loading}
             <div class="figures" data-layout="row" data-gap="tight">
-              {#if c.value != ''}
+              {#if c.value}
                 <span part="IdleResources.figure" class="figure">{c.value}</span>
               {:else}
                 <og-counter part="IdleResources.figure" class="figure" value={c.amount} format="compact" duration="300"></og-counter>
               {/if}
               {#if c.full}<span part="IdleResources.tag" class="full">{t("idle.resources.full")}</span>{/if}
             </div>
-            {#if c.rate != '' || c.perSecond != 0}<span part="IdleResources.rate" class="rate" data-trend={c.perSecond < 0 ? 'down' : c.perSecond > 0 ? 'up' : 'flat'}>{c.rate != '' ? c.rate : c.perSecond > 0 ? t("idle.resources.perSecond", { rate: formatCompact(c.perSecond) }) : t("idle.resources.perSecondDown", { rate: formatCompact(c.perSecond) })}</span>{/if}
+            {#if c.rate || c.perSecond != 0}<span part="IdleResources.rate" class="rate" data-trend={c.perSecond < 0 ? 'down' : c.perSecond > 0 ? 'up' : 'flat'}>{c.rate ? c.rate : c.perSecond > 0 ? t("idle.resources.perSecond", { rate: formatCompact(c.perSecond) }) : t("idle.resources.perSecondDown", { rate: formatCompact(c.perSecond) })}</span>{/if}
             {:else}
             <div id="Placeholder" part="IdleResources.placeholder"></div>
             {/if}

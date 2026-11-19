@@ -16,7 +16,7 @@
 <div id="StrategyGroups" part="StrategyGroups.frame" class="hud bare" role="toolbar" aria-label={t("strategy.groups.name")}>
   {#each groups as g (g.id)}
     <button part="StrategyGroups.group" class="group" aria-label={t("strategy.groups.value", { label: g.label, count: g.count })} aria-pressed={g.active} data-alert={g.alert} onclick={pick}><div class="face">
-      {#if g.key != ''}<span part="StrategyGroups.key" class="key">{g.key}</span>{/if}
+      {#if g.key}<span part="StrategyGroups.key" class="key">{g.key}</span>{/if}
       {#if g.icon}<img part="StrategyGroups.picture" class="picture" src={g.icon} alt="">{/if}
       <span part="StrategyGroups.count" class="count">{formatNumber(g.count)}</span>
     </div></button>

@@ -49,7 +49,7 @@
                 {#if e.kind == "binding"}
                   <div class="row"><p class="name">{e.name}</p><kbd id="Binding" data-action={e.action} data-og-rebind bind:value={e.value}></kbd></div>
                 {/if}
-                {#if e.description != ""}<p class="description" part="settings.description">{e.description}</p>{/if}
+                {#if e.description}<p class="description" part="settings.description">{e.description}</p>{/if}
               </li>
             {/if}
           {/each}

@@ -16,12 +16,12 @@
 -->
 <ul id="RpgEffects" part="RpgEffects.frame" class="hud bare" data-layout="cluster" data-gap="tight" aria-label={t("rpg.effects.name")}>
   {#each effects as e (e.id)}
-  <li part="RpgEffects.effect" class="effect" data-layout="stack" data-gap="none" data-harmful={e.harmful} aria-label={e.label != '' ? t("rpg.effects.effect", { name: e.name, label: e.label }) : e.name}>
+  <li part="RpgEffects.effect" class="effect" data-layout="stack" data-gap="none" data-harmful={e.harmful} aria-label={e.label ? t("rpg.effects.effect", { name: e.name, label: e.label }) : e.name}>
     <div part="RpgEffects.tile" class="tile" data-layout="overlay">
-      {#if e.icon}<img part="RpgEffects.art" class="art" data-anchor="fill" src={e.icon} alt="">{:else}<div class="blank" data-anchor="fill" data-layout="center">{#if e.glyph != ''}<og-icon class="glyph" icon={e.glyph}></og-icon>{/if}</div>{/if}
+      {#if e.icon}<img part="RpgEffects.art" class="art" data-anchor="fill" src={e.icon} alt="">{:else}<div class="blank" data-anchor="fill" data-layout="center">{#if e.glyph}<og-icon class="glyph" icon={e.glyph}></og-icon>{/if}</div>{/if}
       {#if e.remaining >= 0}<div part="RpgEffects.timer" class="timer" data-anchor="fill" style:--left={e.remaining >= 1 ? 1 : e.remaining}></div>{/if}
     </div>
-    {#if e.label != ''}<span part="RpgEffects.time" class="tag">{e.label}</span>{/if}
+    {#if e.label}<span part="RpgEffects.time" class="tag">{e.label}</span>{/if}
   </li>
   {/each}
 </ul>

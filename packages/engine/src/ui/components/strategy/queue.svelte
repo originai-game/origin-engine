@@ -26,10 +26,10 @@
   <span part="StrategyQueue.title" class="title">{title != '' ? title : t("strategy.queue.title")}</span>
   <div class="slots" role="group" aria-label={t("strategy.queue.items")}>
     {#each items as q (q.id)}
-      <button part="StrategyQueue.slot" class="slot" aria-label={t("strategy.queue.cancel", { name: q.name })} aria-description={q.reason != '' ? q.reason : q.timeText} data-state={q.state} onclick={cancel}><div class="face">
+      <button part="StrategyQueue.slot" class="slot" aria-label={t("strategy.queue.cancel", { name: q.name })} aria-description={q.reason ? q.reason : q.timeText} data-state={q.state} onclick={cancel}><div class="face">
         {#if q.picture}<img part="StrategyQueue.art" class="art" src={q.picture} alt="">{:else}<div part="StrategyQueue.art" class="blank-art"><og-icon class="mark" icon={q.icon}></og-icon></div>{/if}
         {#if q.state != 'waiting'}<div part="StrategyQueue.sweep" class="sweep" style:--done={q.progress <= 0 ? 0 : q.progress >= 1 ? 1 : q.progress}></div>{/if}
-        {#if q.state != 'waiting' && q.timeText != ''}<div class="run" style:--chars={q.timeText.length}><span part="StrategyQueue.time" class="time">{q.timeText}</span></div>{/if}
+        {#if q.state != 'waiting' && q.timeText}<div class="run" style:--chars={q.timeText.length}><span part="StrategyQueue.time" class="time">{q.timeText}</span></div>{/if}
         {#if q.count > 1}<span part="StrategyQueue.badge" class="stack">{t("strategy.queue.stack", { count: q.count })}</span>{/if}
       </div></button>
     {/each}
@@ -39,7 +39,7 @@
   {#each items as q (q.id)}
     {#if q.state == 'paused' || q.state == 'blocked'}
       <span part="StrategyQueue.state" class="state" data-state={q.state} role="status">{q.state == 'paused' ? t("strategy.queue.paused") : t("strategy.queue.blocked")}</span>
-      {#if q.reason != ''}<span part="StrategyQueue.reason" class="reason">{q.reason}</span>{/if}
+      {#if q.reason}<span part="StrategyQueue.reason" class="reason">{q.reason}</span>{/if}
     {/if}
   {/each}
   {#if !items.length}<span class="empty-text" role="status">{t("strategy.queue.empty")}</span>{/if}

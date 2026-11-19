@@ -25,7 +25,7 @@
       {:else}
         <button part="Menu.row" class="entry" class:danger={e.danger} data-tone={e.danger && !e.disabled ? 'danger' : ''} role={e.kind == "check" ? "menuitemcheckbox" : e.kind == "radio" ? "menuitemradio" : "menuitem"} aria-checked={e.kind == "check" || e.kind == "radio" ? e.checked : null} aria-label={e.label} disabled={e.disabled} onclick={choose}><div class="face" data-layout="row">
           <div class="slot" data-layout="cover" data-gap="none">
-            {#if e.icon != "" && e.kind != "check" && e.kind != "radio"}<og-icon class="glyph" part="Menu.icon" icon={e.icon}></og-icon>{/if}
+            {#if e.icon && e.kind != "check" && e.kind != "radio"}<og-icon class="glyph" part="Menu.icon" icon={e.icon}></og-icon>{/if}
             {#if e.kind == "check" && e.checked}<svg class="check" part="Menu.check" viewBox="0 0 12 12"><polyline part="Menu.glyph" points="2,6.5 5,9.5 10,3"></polyline></svg>{/if}
             {#if e.kind == "radio" && e.checked}<span class="dot" part="Menu.dot"></span>{/if}
           </div>

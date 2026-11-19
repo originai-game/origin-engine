@@ -30,8 +30,8 @@
               {#if l.id == selected}<div part="RhythmDifficulty.badge" class="tag" data-layout="row" data-gap="none" data-tag="selected"><span class="tag-text">{t("rhythm.difficulty.selected")}</span></div>{/if}</div>
             <span part="RhythmDifficulty.rating" class="rating"><span class="lv">{t("rhythm.difficulty.rating", { rating: l.rating })}</span></span>
             <div class="best" data-layout="row" data-gap="tight">
-              {#if l.grade != ''}<div part="RhythmDifficulty.badge" class="tag grade" data-layout="row" data-gap="none" data-tag="grade"><span class="tag-text">{l.grade}</span></div>{/if}
-              <span class="score" part="RhythmDifficulty.caption">{l.score != '' ? l.score : t("rhythm.difficulty.unplayed")}</span>
+              {#if l.grade}<div part="RhythmDifficulty.badge" class="tag grade" data-layout="row" data-gap="none" data-tag="grade"><span class="tag-text">{l.grade}</span></div>{/if}
+              <span class="score" part="RhythmDifficulty.caption">{l.score ? l.score : t("rhythm.difficulty.unplayed")}</span>
             </div>
           </div></button>
         {/each}

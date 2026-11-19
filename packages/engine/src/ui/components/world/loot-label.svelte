@@ -36,7 +36,7 @@
         <span part="LootLabel.strip" class="strip"></span>
         {#if more > 0}
           <span part="LootLabel.count" class="more">{t("world.loot.more", { n: more })}</span>
-          {#each tiers as d (d.id)}<span part="LootLabel.tier" class="dot" data-rarity={d.rarity == '' ? 'common' : d.rarity}></span>{/each}
+          {#each tiers as d (d.id)}<span part="LootLabel.tier" class="dot" data-rarity={!d.rarity ? 'common' : d.rarity}></span>{/each}
         {:else}
           <span part="LootLabel.name" class="name">{name}</span>
           {#if count > 1}<span part="LootLabel.count" class="count">{t("world.loot.count", { count: count })}</span>{/if}
