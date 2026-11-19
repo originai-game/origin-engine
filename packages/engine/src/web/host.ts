@@ -225,7 +225,7 @@ export interface WebExtras {
   /** A streaming group's pack (`<bundle>/stream/<group>.ogb`): its Basis textures as `[id, ktx2, target, ...]`, listed by its own bundle's manifest. */
   og_web_pack_ktx2?(engine: number | undefined, path: string, pack: Uint8Array): Array<string | Uint8Array>;
   /** `highDynamicRange`: the page's `(dynamic-range: high)`, which the Worker cannot ask (undefined: unknown). */
-  og_web_attach_canvas(engine: number, canvas: OffscreenCanvas, lowPower: boolean, highDynamicRange?: boolean): Promise<string>;
+  og_web_attach_canvas(engine: number, canvas: OffscreenCanvas, lowPower: boolean, highDynamicRange?: boolean, cpuPassTimingOnly?: boolean): Promise<string>;
   /** The page went fullscreen or left it (og.render.display's `fullscreen`; the setting follows). */
   og_web_fullscreen?(engine: number, on: boolean): void;
   /** What the browser granted the pointer lock: raw movement now, and whether it refused unadjustedMovement (og.input.mouse). */

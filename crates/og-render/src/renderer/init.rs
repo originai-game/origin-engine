@@ -30,10 +30,17 @@ impl Renderer {
     /// ([`Renderer::gpu_timings`]); `None` stops timing. Measurement only:
     /// nothing drawn depends on it.
     pub fn set_clock(&mut self, clock: Option<fn() -> f64>) {
+        self.set_pass_clock(clock, true);
+    }
+
+    /// Sets the CPU pass clock and whether to collect GPU pass timestamps.
+    pub fn set_pass_clock(&mut self, clock: Option<fn() -> f64>, gpu: bool) {
         self.clock = clock;
         if clock.is_none() {
             self.pass_ms.clear();
             self.stage_ms.clear();
+        }
+        if clock.is_none() || !gpu {
             self.gpu_timer = None;
         } else if self.gpu_timer.is_none() && self.info.caps.contains(Caps::TIMESTAMPS) {
             self.gpu_timer = timing::GpuTimer::new(&self.device, &self.queue);

@@ -179,8 +179,12 @@ export async function start(game: GameToken, data: Start, run: Run, gate: Gate, 
     let tier = "none";
     if (data.canvas) {
       run.canvas = data.canvas;
+      // WebKit's getMappedRange synchronously waits on its GPU process even
+      // after mapAsync resolves. Don't put pass profiling on the play clock.
+      const ua = navigator.userAgent;
+      const cpuPassTimingOnly = /AppleWebKit\//.test(ua) && !/Chrome\/|Chromium\//.test(ua);
       // WebGPU only: a rejection is the reason the renderer did not start (no fallback).
-      tier = await glue.og_web_attach_canvas(engine.id, data.canvas, data.lowPower === true, data.highDynamicRange).catch((e: unknown) => {
+      tier = await glue.og_web_attach_canvas(engine.id, data.canvas, data.lowPower === true, data.highDynamicRange, cpuPassTimingOnly).catch((e: unknown) => {
         throw new Error(`WebGPU did not start: ${e instanceof Error ? e.message : String(e)}`);
       });
       run.rendering = true;
