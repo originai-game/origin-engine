@@ -4,7 +4,10 @@
 //! carries bytes and says when it opened or closed; the protocol and
 //! reconnecting are the engine's (`og.shared`, which asks its provider for
 //! a new connection each time). `ws://` and `wss://` (rustls, trusting the
-//! roots webpki-roots carries, so nothing of the system it runs on).
+//! roots webpki-roots carries, so nothing of the system it runs on), and
+//! WebTransport at `https://host:port/` ([`Client::connect_wt`]): proposals
+//! as datagrams, the rest on one stream (crate::wt), on a small runtime of
+//! the client's own thread.
 
 use rustls::{ClientConfig, RootCertStore};
 use std::io;
@@ -37,6 +40,8 @@ pub enum ClientEvent {
 
 /// A connection to a world server. Dropping it closes the connection.
 pub struct Client {
+    /// Messages that arrived as datagrams (WebTransport); 0 on a WebSocket.
+    datagrams: Arc<std::sync::atomic::AtomicU64>,
     out: Sender<Vec<u8>>,
     events: Receiver<ClientEvent>,
     stop: Arc<AtomicBool>,
@@ -66,11 +71,57 @@ impl Client {
             })
             .ok();
         Client {
+            datagrams: Arc::default(),
             out,
             events,
             stop,
             thread,
         }
+    }
+
+    /// Starts a WebTransport session to `url` (`https://host:port/`),
+    /// checking the server's certificate against `cert_hashes` (SHA-256)
+    /// when any are given, else the system's roots. Events as [`connect`](Client::connect)'s.
+    pub fn connect_wt(url: &str, cert_hashes: Vec<[u8; 32]>) -> Client {
+        let (out, out_rx) = mpsc::channel::<Vec<u8>>();
+        let (events_tx, events) = mpsc::channel::<ClientEvent>();
+        let stop = Arc::new(AtomicBool::new(false));
+        let stopping = stop.clone();
+        let url = url.to_string();
+        let datagrams = Arc::new(std::sync::atomic::AtomicU64::new(0));
+        let counted = datagrams.clone();
+        let thread = thread::Builder::new()
+            .name("og-shared-client-wt".into())
+            .spawn(move || {
+                let why = match tokio::runtime::Builder::new_current_thread()
+                    .enable_all()
+                    .build()
+                {
+                    Ok(rt) => rt.block_on(serve_wt(
+                        &url,
+                        &cert_hashes,
+                        out_rx,
+                        &events_tx,
+                        &stopping,
+                        &counted,
+                    )),
+                    Err(e) => e.to_string(),
+                };
+                let _ = events_tx.send(ClientEvent::Closed(why));
+            })
+            .ok();
+        Client {
+            datagrams,
+            out,
+            events,
+            stop,
+            thread,
+        }
+    }
+
+    /// How many messages arrived as datagrams.
+    pub fn datagrams(&self) -> u64 {
+        self.datagrams.load(Ordering::Relaxed)
     }
 
     /// Queue one binary message.
@@ -160,6 +211,90 @@ fn dial(url: &str) -> Result<Socket, String> {
         }
     }
     Err(last)
+}
+
+/// A WebTransport session: dials, then carries messages until the client
+/// stops or the session is lost. Returns why it ended.
+async fn serve_wt(
+    url: &str,
+    cert_hashes: &[[u8; 32]],
+    out: Receiver<Vec<u8>>,
+    events: &Sender<ClientEvent>,
+    stop: &AtomicBool,
+    counted: &Arc<std::sync::atomic::AtomicU64>,
+) -> String {
+    use crate::protocol::client_datagram;
+    use crate::wt::{dial, frame, read_frame};
+    let session = match tokio::time::timeout(DIAL, dial(url, cert_hashes)).await {
+        Ok(Ok(s)) => s,
+        Ok(Err(e)) => return format!("cannot reach the world server at {url} ({e})"),
+        Err(_) => return format!("cannot reach the world server at {url} (no answer in 5 s)"),
+    };
+    let (mut send, mut recv) = match session.open_bi().await {
+        Ok(s) => s,
+        Err(e) => return format!("the session opened no stream: {e}"),
+    };
+    let _ = events.send(ClientEvent::Open);
+    // The stream's reader and the datagrams' feed one queue the loop drains.
+    let (tx, mut rx) = tokio::sync::mpsc::unbounded_channel::<Result<Vec<u8>, String>>();
+    let frames = tx.clone();
+    let reader = tokio::spawn(async move {
+        loop {
+            let f = read_frame(&mut recv).await;
+            let end = f.is_err();
+            if frames.send(f).is_err() || end {
+                return;
+            }
+        }
+    });
+    let grams = session.clone();
+    let counted = counted.clone();
+    let datagrams = tokio::spawn(async move {
+        while let Ok(d) = grams.read_datagram().await {
+            counted.fetch_add(1, Ordering::Relaxed);
+            if tx.send(Ok(d.to_vec())).is_err() {
+                return;
+            }
+        }
+    });
+    let why = loop {
+        if stop.load(Ordering::Relaxed) {
+            while let Ok(m) = out.try_recv() {
+                let _ = send.write_all(&frame(&m)).await;
+            }
+            let _ = send.finish();
+            break "closed".to_string();
+        }
+        let mut failed = false;
+        while let Ok(m) = out.try_recv() {
+            if client_datagram(&m) && m.len() <= session.max_datagram_size() {
+                // A full buffer drops it, as the network may: the next one carries the same.
+                let _ = session.send_datagram(m.into());
+            } else if send.write_all(&frame(&m)).await.is_err() {
+                failed = true;
+                break;
+            }
+        }
+        if failed {
+            break "the connection failed".to_string();
+        }
+        // Wait a millisecond for what the server sends, so queued sends go out promptly.
+        match tokio::time::timeout(Duration::from_millis(1), rx.recv()).await {
+            Ok(Some(Ok(m))) => {
+                let _ = events.send(ClientEvent::Message(m));
+                while let Ok(Ok(m)) = rx.try_recv() {
+                    let _ = events.send(ClientEvent::Message(m));
+                }
+            }
+            Ok(Some(Err(e))) => break format!("the server closed the connection: {e}"),
+            Ok(None) => break "the server closed the connection".to_string(),
+            Err(_) => {}
+        }
+    };
+    reader.abort();
+    datagrams.abort();
+    session.close(0, b"");
+    why
 }
 
 /// Carries messages until the client stops or the connection is lost.
@@ -298,5 +433,130 @@ mod tests {
             matches!(got.first(), Some(ClientEvent::Closed(_))),
             "{got:?}"
         );
+    }
+
+    /// Two clients over WebTransport (a self-signed certificate taken by
+    /// its hash, as a browser's serverCertificateHashes): each is welcomed,
+    /// proposes as datagrams, and decodes the other's state from snapshots
+    /// that came as datagrams.
+    #[test]
+    fn two_webtransport_clients_see_each_other_through_datagrams() {
+        use crate::protocol::{AvatarState, client_datagram, server_datagram};
+        use crate::view::{Proposer, View};
+        let rt = tokio::runtime::Runtime::new().unwrap();
+        let cert = crate::cert::self_signed(&["localhost".into(), "127.0.0.1".into()], 10).unwrap();
+        let (server, wt) = rt.block_on(async {
+            let server = Server::start(
+                "127.0.0.1:0".parse().unwrap(),
+                Config::default(),
+                Verifier::hs256(b"s", Rules::audience("g")),
+                KeySource::None,
+                false,
+            )
+            .await
+            .unwrap();
+            let wt = server
+                .serve_webtransport(
+                    "127.0.0.1:0".parse().unwrap(),
+                    &cert.cert_pem,
+                    &cert.key_pem,
+                )
+                .unwrap();
+            (server, wt)
+        });
+        let exp = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap()
+            .as_secs()
+            + 60;
+        let url = format!("https://{wt}/");
+        let clients: Vec<Client> = ["p1", "p2"]
+            .iter()
+            .map(|p| {
+                let c = Client::connect_wt(&url, vec![cert.sha256]);
+                let token = sign_hs256(
+                    b"s",
+                    &serde_json::json!({ "aud": "g", "sub": p, "exp": exp }),
+                );
+                c.send(
+                    ClientMsg::Hello(Hello {
+                        version: PROTOCOL,
+                        token,
+                        world: "main".into(),
+                        shape: 0,
+                        fields_len: 0,
+                        authority: Authority::Validate,
+                        send_hz: 20,
+                        kind: 0,
+                        resume: None,
+                    })
+                    .to_bytes(),
+                );
+                c
+            })
+            .collect();
+        let mut views = [View::new(), View::new()];
+        let mut props = [Proposer::default(), Proposer::default()];
+        let (mut welcomed, mut datagram_snapshots) = ([false; 2], [0u32; 2]);
+        for t in 0..400u32 {
+            for (i, c) in clients.iter().enumerate() {
+                for e in c.poll() {
+                    match e {
+                        ClientEvent::Message(m) => match ServerMsg::decode(&m) {
+                            Ok(ServerMsg::Welcome(_)) => welcomed[i] = true,
+                            Ok(ServerMsg::Enter(e)) => views[i].enter(&e),
+                            Ok(ServerMsg::Snapshot(b)) => {
+                                assert!(server_datagram(&m));
+                                if views[i].snapshot(&b).unwrap().is_some() {
+                                    datagram_snapshots[i] += 1;
+                                }
+                            }
+                            _ => {}
+                        },
+                        ClientEvent::Closed(why) => panic!("client {i} closed: {why}"),
+                        ClientEvent::Open => {}
+                    }
+                }
+                if welcomed[i] && t % 3 == 0 {
+                    let x = 10.0 * i as f64 + f64::from(t) * 0.01;
+                    let s = AvatarState::from_world(128.0, [x, 1.0, 0.0], [0.2, 0.0, 0.0], 0.0);
+                    let b = props[i].propose(s, false, views[i].ack(), views[i].ack_seq);
+                    assert!(client_datagram(&b));
+                    c.send(b);
+                }
+            }
+            if views.iter().all(|v| v.remotes.len() == 1)
+                && datagram_snapshots.iter().all(|n| *n > 10)
+            {
+                break;
+            }
+            thread::sleep(Duration::from_millis(5));
+        }
+        assert_eq!(welcomed, [true, true]);
+        for (i, v) in views.iter().enumerate() {
+            let other = v
+                .remotes
+                .values()
+                .next()
+                .unwrap_or_else(|| panic!("client {i} sees nobody"));
+            assert_eq!(other.player, if i == 0 { "p2" } else { "p1" });
+            // The other's newest state came by datagram, near where it was proposed.
+            let x = other.state.position(128.0)[0];
+            assert!(
+                (x - 10.0 * (1 - i) as f64).abs() < 5.0,
+                "client {i} has the other at x {x}"
+            );
+        }
+        assert!(
+            datagram_snapshots.iter().all(|n| *n > 10),
+            "{datagram_snapshots:?}"
+        );
+        // The snapshots crossed as datagrams, not on the stream.
+        for c in &clients {
+            assert!(c.datagrams() > 10, "{} datagrams", c.datagrams());
+        }
+        drop(clients);
+        drop(server);
+        drop(rt);
     }
 }

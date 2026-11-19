@@ -7,7 +7,9 @@
 //! - [`view`]: a client's side: remote avatars, acknowledgements, proposals.
 //! - [`auth`]: token verifiers (`none`, `hs256`, `jwks`), offline.
 //! - [`config`]: the `world-server` `.ogt` file.
-//! - `server` and `bots` (native): `og world-server` and the load test.
+//! - `server` and `bots` (native): `og world-server` over WebSocket and
+//!   WebTransport, and the load test; `cert` a self-signed WebTransport
+//!   certificate a browser takes by hash.
 //!
 //! - `client` (native, the `client` feature): one connection to a server.
 //!
@@ -17,6 +19,8 @@
 pub mod auth;
 #[cfg(all(feature = "server", not(target_arch = "wasm32")))]
 pub mod bots;
+#[cfg(all(feature = "server", not(target_arch = "wasm32")))]
+pub mod cert;
 #[cfg(all(feature = "client", not(target_arch = "wasm32")))]
 pub mod client;
 #[cfg(feature = "server")]
@@ -28,3 +32,8 @@ pub mod server;
 pub mod shard;
 pub mod view;
 pub mod wire;
+#[cfg(all(
+    any(feature = "server", feature = "client"),
+    not(target_arch = "wasm32")
+))]
+pub mod wt;
