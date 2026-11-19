@@ -28,6 +28,23 @@ export function encodeUiPatch(value: unknown): Result<Uint8Array> {
   const string = (s: string): void => {
     count(0);
     const lengthAt = at - 4;
+    // Keys, ids and ops are short ASCII: copied here, since on an
+    // interpreter (Hermes) a call to encodeInto per string costs more than
+    // the bytes. Anything else, from its first byte, is encodeInto's.
+    if (s.length <= 64) {
+      reserve(s.length);
+      let i = 0;
+      for (; i < s.length; i++) {
+        const c = s.charCodeAt(i);
+        if (c > 0x7f) break;
+        bytes[at + i] = c;
+      }
+      if (i === s.length) {
+        at += i;
+        view.setUint32(lengthAt, i, true);
+        return;
+      }
+    }
     // UTF-8 needs at most three bytes per UTF-16 unit. Clamp the reserve,
     // not the input: near-limit ASCII can still fit in the remaining bytes.
     reserve(Math.min(s.length * 3, LIMIT - at));

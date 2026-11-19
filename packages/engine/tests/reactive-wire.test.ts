@@ -10,7 +10,7 @@ test("UI wire preserves tags, little-endian numbers and sorted UTF-8 record keys
     1, 0, 0, 0, 97, 4, 6, 0, 0, 0, 195, 169, 240, 159, 152, 128,
     1, 0, 0, 0, 122, 5, 4, 0, 0, 0, 0, 1, 2, 3, 0, 0, 0, 0, 0, 0, 248, 63,
   ]);
-  const large = { label: "界😀\ud800".repeat(300), values: Array.from({ length: 300 }, (_, i) => i * 1.25 - 7) };
+  const large = { label: "界😀\ud800".repeat(300), values: Array.from({ length: 300 }, (_, i) => i * 1.25 - 7), ids: ["ped-7\u007f", "ped-7\u0080é", ""] };
   const grown = encodeUiPatch(large);
   expect(grown.ok).toBe(true);
   if (grown.ok) expect(decodeUiPatch(grown.value)).toEqual({ ok: true, value: { ...large, label: "界😀�".repeat(300) } });
