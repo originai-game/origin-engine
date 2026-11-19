@@ -502,7 +502,11 @@ Worker's console and in the boot telemetry sample.
 - **Marks**: `performance` marks `og:ready`, `og:first-frame` and
   `og:start`; `__runtime_probe__.boot` holds the Worker's boot phases.
 - **WebGPU only** (design §8): a browser without WebGPU gets the
-  unsupported-browser card; there is no WebGL2 fallback.
+  unsupported-browser card; there is no WebGL2 fallback. The page checks
+  only that `navigator.gpu` is there; the engine Worker asks for the
+  adapter before it fetches the wasm, since Chrome's first
+  `requestAdapter` blocks its thread while WebGPU starts (seconds on a
+  busy GPU process) and on the page that froze the splash.
 - **URL parameters**: `replay-seed=<u32>`, `autoplay=0` (a harness drives
   the clock through the probe: no gate, no first tick, no service worker),
   `trace` (§The og-probe wire).

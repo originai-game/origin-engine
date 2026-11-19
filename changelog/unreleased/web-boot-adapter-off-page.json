@@ -1,0 +1,8 @@
+{
+  "fixed": [
+    {
+      "member": "og build (web)",
+      "summary": "The page no longer asks for a WebGPU adapter on its main thread. Chrome's first requestAdapter blocks the thread that calls it while WebGPU starts, which froze the boot splash for seconds on a busy GPU process and skipped its genesis. The engine Worker now asks before it fetches the wasm; a browser without an adapter gets the same card, unsupported sample and fail as before."
+    }
+  ]
+}

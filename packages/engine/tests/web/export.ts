@@ -6,7 +6,8 @@
 // `og:first-frame` mark, ms since navigation), the tier the engine reports,
 // and a frame after a real tap on the play gate. On the runner over WebGPU
 // it also: streams the wasm and cooked/ slowly so the boot can be seen, and
-// screenshots the splash (genesis) and a progress frame with its real value;
+// screenshots the splash (genesis) and a progress frame with its real value
+// (the page's main thread asks for no adapter, which would hold genesis);
 // checks og-build.json against the files served; checks the web manifest and
 // its icons; registers the service worker and reloads offline (the game must
 // start from the cache); and lays the page out at phone width (390×844, DPR
@@ -141,6 +142,10 @@ const BEHIND_GATE: Record<string, number> = { runner: 2, match3: 1 };
 // What the test sees of Chrome's install prompt, from the document's start: whether Chrome
 // fired beforeinstallprompt, and the prompt() calls the page made on it.
 const INSTALL_PROBE = "window.__ogTest = { prompted: false, prompts: 0 }; addEventListener('beforeinstallprompt', () => { __ogTest.prompted = true; }); if (window.BeforeInstallPromptEvent) { const p = BeforeInstallPromptEvent.prototype.prompt; BeforeInstallPromptEvent.prototype.prompt = function () { __ogTest.prompts++; const r = p.call(this); r.catch(() => {}); return r; }; }";
+// The page's own requestAdapter calls (an init script reaches the page, not its Workers): Chrome's
+// first one blocks the main thread while WebGPU starts, seconds on a busy GPU process, which held
+// the splash past genesis (src/web/webgpu.ts). The engine Worker asks instead.
+const ADAPTERS = "window.__ogAdapters = 0; if (window.GPU) { const r = GPU.prototype.requestAdapter; GPU.prototype.requestAdapter = function (...a) { __ogAdapters++; return r.apply(this, a); }; }";
 const HINT = "fetch('./manifest.webmanifest').then((r) => r.json()).then((m) => ({ ...__ogTest, offer: `Install ${m.short_name} to play offline`, hidden: document.getElementById('og-install').hidden, text: document.querySelector('#og-install span').textContent, button: document.querySelector('#og-install button').hidden ? null : document.querySelector('#og-install button').textContent }))";
 type Hint = { prompted: boolean; prompts: number; hidden: boolean; text: string; offer: string; button: string | null };
 
@@ -206,6 +211,7 @@ try {
     const boot: Record<string, unknown> = {};
     try {
       await page.send("Page.addScriptToEvaluateOnNewDocument", { source: INSTALL_PROBE });
+      await page.send("Page.addScriptToEvaluateOnNewDocument", { source: ADAPTERS });
       await page.send("Page.navigate", { url: `http://127.0.0.1:${server.port}/game/index.html` });
       await page.until("document.querySelector('.og-boot-mark')", 10_000);
       const motion0 = await page.eval<string>("document.querySelector('.og-boot-mark').dataset.motion");
@@ -222,6 +228,8 @@ try {
       check(Number(p.offset) === 100 - Number(p.now) && p.label.includes(`${p.now}%`), "boot: progress shows the real value (wipe = 100 − percent)", p);
       boot.progressValue = p;
       await load(page);
+      const adapters = await page.eval<number>("__ogAdapters");
+      check(adapters === 0, "boot: the page's main thread asks for no WebGPU adapter (the engine Worker does)", adapters);
       const madeWith = await page.eval<{ hidden: boolean; text: string }>("({ hidden: document.getElementById('og-made-with').hidden, text: document.getElementById('og-made-with').textContent })");
       check(!madeWith.hidden && madeWith.text.includes("Made with Origin Engine"), "the shell shows Made with Origin Engine", madeWith);
       const meta = await page.eval<string>("document.querySelector('meta[name=og-engine]').content");

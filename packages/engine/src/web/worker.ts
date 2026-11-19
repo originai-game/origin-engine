@@ -21,8 +21,9 @@
 // Messages to the shell: { type: "progress", value: 0..1, stage, loaded,
 // total } (bytes of the wasm and the cooked bundle actually received, so the
 // value is real and never goes backwards), then { type: "ready", engine,
-// tier, transport, rpc, textureFormat, files, textures } or { type: "error",
-// message } before ready; { type: "frame", first, boot } after the first
+// tier, transport, rpc, textureFormat, files, textures }, or { type:
+// "unsupported", reason } (webgpu.ts webGpuMissing: no adapter, before the
+// wasm is fetched) or { type: "error", message } before ready; { type: "frame", first, boot } after the first
 // rendered frame (`boot`: BootPhases, where the Worker's boot went); { type: "crash", message, error } when the engine fails after
 // ready (a trap, a Rust panic on the engine's thread or in a lane, a failing
 // system, an uncaught error; `error` is the structured HostError of shell.ts:

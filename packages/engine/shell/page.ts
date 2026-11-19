@@ -31,7 +31,8 @@
 //   only when the install criteria hold;
 // - "Made with Origin Engine" in the corner unless the project turns it off.
 
-import { Shell, webGpuMissing } from "../src/web/shell.ts";
+import { Shell } from "../src/web/shell.ts";
+import { webGpuAbsent } from "../src/web/webgpu.ts";
 import { AudioShell } from "../src/web/audio.ts";
 import { pollGamepads } from "../src/web/gamepad.ts";
 import { mountWire, routeSavedScenes, SCENE_SAVED_CAPABILITY, type SavedScene } from "./wire.ts";
@@ -604,8 +605,9 @@ export async function play(options: PlayOptions = {}): Promise<PlayHandle> {
   // `autoplay=0`: a harness drives the clock through the probe (no gate, no play).
   const harness = autoplayParam === "0";
   // WebGPU only (docs/design.md §8): without it the page says so and the engine never starts.
-  const noWebGpu = await webGpuMissing();
-  if (noWebGpu) {
+  // The page checks only that navigator.gpu is there; the engine Worker asks for the adapter
+  // (webgpu.ts: Chrome's first requestAdapter blocks its thread) and answers `unsupported`.
+  const unsupported = async (noWebGpu: string): Promise<never> => {
     log.push([`webgpu: ${noWebGpu}`]);
     // How many players meet this page, and on what: the reason with the browser and the device
     // (no adapter to read), before the start failure that ends the session.
@@ -618,7 +620,9 @@ export async function play(options: PlayOptions = {}): Promise<PlayHandle> {
     await fail(missing ? T.noWebGpu : T.noWebGpuAdapterTitle, `${detail} (${technical})`, false, false);
     // play.ts catches it: the card is the page's answer.
     throw new Error(`this browser does not support WebGPU: ${noWebGpu}`);
-  }
+  };
+  const absent = webGpuAbsent();
+  if (absent) await unsupported(absent);
   if (config.isolation === "required" && !globalThis.crossOriginIsolated) {
     log.push(["warn: this game declares crossOriginIsolation required, but the page is not cross-origin isolated (serve it with COOP/COEP: see the headers file); it runs single-threaded"]);
   }
@@ -772,6 +776,8 @@ export async function play(options: PlayOptions = {}): Promise<PlayHandle> {
       },
     });
   } catch (e) {
+    const noAdapter = (e as { unsupported?: string }).unsupported;
+    if (noAdapter) await unsupported(noAdapter);
     await fail(T.startFailed, e instanceof Error ? e.message : String(e), false);
     throw e;
   }

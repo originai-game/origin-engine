@@ -87,10 +87,10 @@ export async function bootWorker(options: ShellOptions): Promise<Booted> {
       worker.removeEventListener("error", onError);
       worker.removeEventListener("messageerror", onMessageError);
     };
-    const failed = (message: string, error?: HostError) => {
+    const failed = (message: string, error?: HostError, unsupported?: string) => {
       settle();
       worker.terminate();
-      reject(Object.assign(new Error(message), { error: error ?? { kind: "error", message, tick: null, lane: null, location: null } }));
+      reject(Object.assign(new Error(message), { error: error ?? { kind: "error", message, tick: null, lane: null, location: null }, ...(unsupported ? { unsupported } : {}) }));
     };
     const arm = () => {
       clearTimeout(deadline);
@@ -122,6 +122,11 @@ export async function bootWorker(options: ShellOptions): Promise<Booted> {
           ...(m.gpu ? { gpu: m.gpu } : {}),
         });
       } else if (m.type === "error") failed(m.message ?? "the engine did not start", (m as { error?: HostError }).error);
+      // The Worker found no WebGPU adapter (webgpu.ts webGpuMissing): `unsupported` on the error is its reason.
+      else if (m.type === "unsupported") {
+        const reason = (m as { reason?: string }).reason ?? "the browser found no WebGPU adapter";
+        failed(`this browser does not support WebGPU: ${reason}`, undefined, reason);
+      }
     };
     worker.addEventListener("message", on);
     worker.addEventListener("error", onError);

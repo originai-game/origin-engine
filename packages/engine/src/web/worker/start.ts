@@ -13,6 +13,7 @@ import { loadWebHost } from "../host.ts";
 import * as pipelines from "../pipelines.ts";
 import { settle, SETTLE_FIRST_MS, SETTLE_MS } from "../settle.ts";
 import type { Gate } from "./gate.ts";
+import { webGpuMissing } from "../webgpu.ts";
 import { onDeviceAdapter } from "./gpu.ts";
 import type { FrameLoop } from "./loop.ts";
 import type { Start, WorkerScope } from "./messages.ts";
@@ -37,6 +38,11 @@ async function loadOwnSourceMap(): Promise<void> {
 /** Boots `game` as `data` asks; a failure is the run's crash (an `error` before ready). */
 export async function start(game: GameToken, data: Start, run: Run, gate: Gate, loop: FrameLoop): Promise<void> {
   try {
+    // The adapter is asked here, never on the page's main thread (webgpu.ts): without one the
+    // page shows why, and nothing is fetched. The page checked navigator.gpu itself; a Worker
+    // without it is a headless host (bun's), which draws nothing.
+    const unsupported = (self as { navigator?: { gpu?: unknown } }).navigator?.gpu ? await webGpuMissing() : null;
+    if (unsupported) return self.postMessage({ type: "unsupported", reason: unsupported });
     if (data.telemetry) run.frameCounter = new FrameCounter();
     gate.pageStages(data.stages === true);
     const received = new Received((data.expect?.wasm ?? 0) + (data.expect?.cooked ?? 0));

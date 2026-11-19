@@ -1,4 +1,16 @@
 // Whether this browser can run the engine at all: WebGPU (docs/design.md §8).
+//
+// The page asks only `webGpuAbsent`; the engine Worker asks for the adapter
+// (`webGpuMissing`) before it fetches the wasm. Chrome's first
+// requestAdapter blocks the thread that calls it while the GPU process
+// starts WebGPU (seconds on a cold or busy GPU process), and on the page's
+// main thread that froze the boot splash: its genesis, the progress, input.
+
+/** Why this page has no WebGPU at all (no `navigator.gpu`), or null: synchronous, it asks for no adapter. */
+export function webGpuAbsent(): string | null {
+  if ((globalThis.navigator as { gpu?: unknown } | undefined)?.gpu) return null;
+  return globalThis.isSecureContext === false ? "this page is not a secure context (WebGPU needs https or localhost), so navigator.gpu is missing" : "navigator.gpu is missing";
+}
 
 /**
  * Why this browser cannot run the engine, or null when it can. The engine
@@ -7,14 +19,12 @@
  * needs https or localhost) or no adapter is not supported, and the player
  * shell says so instead of starting the engine. A device the adapter then
  * refuses is the engine Worker's start failure (`og_web_attach_canvas`).
+ * It asks for an adapter: call it off the page's main thread.
  */
 export async function webGpuMissing(): Promise<string | null> {
-  const gpu = (globalThis.navigator as { gpu?: { requestAdapter(): Promise<unknown> } } | undefined)?.gpu;
-  if (!gpu) {
-    return globalThis.isSecureContext === false
-      ? "this page is not a secure context (WebGPU needs https or localhost), so navigator.gpu is missing"
-      : "navigator.gpu is missing";
-  }
+  const absent = webGpuAbsent();
+  if (absent) return absent;
+  const gpu = (globalThis.navigator as { gpu: { requestAdapter(): Promise<unknown> } }).gpu;
   try {
     return (await gpu.requestAdapter()) ? null : "the browser found no WebGPU adapter";
   } catch (e) {
