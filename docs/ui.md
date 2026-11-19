@@ -2643,7 +2643,7 @@ the usual edge fade; the subtitle and cast row share the plate's width limit.
 | `general` | Shop, achievements, daily quests and rewards, chat, friends |
 
 Every group is built token- and part-only (§3.1, §3.2), with state
-fixtures (§6.1) and a review sheet (§6.2), and both built packs dress it.
+fixtures (§6.1) and a review sheet (§6.2), and every built pack dresses it.
 Member inputs, intents and parts are documented in each group's README
 (`packages/engine/src/ui/components/<group>/README.md`) and each
 document's `<meta>` header; the `base/`, `hud/`, `world/` and `panels/`
@@ -2663,14 +2663,13 @@ rewards, legal card targets, or note timing.
 | `storybook` | Paper and illustrated edges, quiet ornament, readable text | Pentiment, Strange Horticulture | Not yet built |
 
 A built pack lives in `templates/styles/<name>/` and ships with the engine
-as `@styles/<name>`, with the art its CSS names: `base.css` holds every
-value as a `:root` token (with a `:root[data-scheme=light]` block),
-`controls.css` dresses the core controls, one file per component group
-(`rpg.css` … `general.css`) dresses that group's parts (scifi's and
-cartoon's `components.css` some ungrouped components), and `motion.css`
-and `sounds.css` hold its transitions and `-og-sound` sets; each pack's
-README lists its files and tokens. `templates/styles/shared/` holds the
-fonts, sounds and art packs share (`/@styles/shared/`) and
+as `@styles/<name>`, with the art its CSS names. A pack is a theme of CSS
+tokens: `base.css` holds every value as a `:root` token (with a
+`:root[data-scheme=light]` block), and `motion.css` and `sounds.css` hold
+its transitions and `-og-sound` sets. It selects no component part: every
+built-in component wears the default style's control and role rules, which
+read these tokens. Each pack's README lists its files and tokens.
+`templates/styles/shared/` holds the fonts, sounds and art packs share (`/@styles/shared/`) and
 `templates/styles/cjk/` the CJK faces; neither is a pack.
 `templates/styles/tests/fantasy-frost/` is a token-only variant of
 `fantasy` that proves the pack restyles by tokens alone; it is not

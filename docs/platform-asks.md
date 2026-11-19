@@ -11,9 +11,9 @@ Player is one provider of the engine's provider contract
 `ai.mark` are OriginGame's host extensions, not core methods.
 
 Asks are numbered once and never renumbered or reused. Only open asks are
-listed; landed ones (1–8, 12, 14, 15, 18, 27) are in git history. Nothing
-here carries a credential: every method is a name and arguments, and the
-Player owns the session.
+listed; landed or retired ones (1–8, 12, 13, 14, 15, 18, 27) are in git
+history. Nothing here carries a credential: every method is a name and
+arguments, and the Player owns the session.
 
 ## The Player's clock
 
@@ -73,17 +73,6 @@ the same results and no lanes (`docs/web-export.md` §Lanes). Nothing should
 need to change; verify by publishing one lanes build and checking
 `__runtime_probe__.lanes.on` on Play, framed and at the top level, on
 desktop Chrome and a phone.
-
-## The type checker in the sandbox
-
-**Ask 13, open.** The `engine` class sandbox image keeps
-`@origingame/engine`'s `optionalDependencies` when it pre-installs the
-engine (no `--omit=optional`), so `node_modules/@tsrs/<platform>/tsrs` and
-its `lib.*.d.ts` are in the image and `og check` never reaches the
-registry; count it in the image budget (about 33 MB, 56 MB if bun also
-installs the musl package on glibc). Until then `og check` falls back to
-tsgo through `bun x` (the network or bun's cache), and `og doctor` reports
-tsrs missing with the fix.
 
 ## Rooms
 

@@ -55,9 +55,10 @@ code runs, so `project.ogt` has `look "looks/<id>.ogt"` (the same id
 `GameDesc.look` takes, and its fallback). `create` writes both. A project
 without the line conforms nothing.
 
-**Creation choices precede the art contract.** `og new --choices` records
+**Creation choices precede the art contract.** `og new` records
 `genre`, `view`, `look`, `mood`, `ui`, `platform`, `input`, `players`,
-`lang` and `music` in a `create` block in `project.ogt`.
+`lang` and `music` (its flags of those names) in a `create` block in
+`project.ogt`.
 `packages/create/bin/choices.ts` owns the vocabulary and exports its JSON
 schema, premise inference and `resolveCreationChoices` through
 `@origingame/create-game`; these are additive public contracts beside the

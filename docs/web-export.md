@@ -831,8 +831,8 @@ Their options are in `og build --help`, `og run --help` and
 - `og run --device` serves the publish build cold with its `_headers` and
   COOP/COEP/CORP, passes the play gate with a real tap, times the page and
   writes the measures and findings (no score) to `report.md` and
-  `device.json`; the phone paths' prerequisites are in
-  tests/evidence/P3/device/NOTES.md.
+  `device.json`; a missing prerequisite (Chrome, safaridriver, adb) exits 1
+  naming its fix (`crates/og-cli/src/device.rs`).
 - `og doctor` reports no renderer as `none`, not as a problem (docs/ci.md
   §Switches in the environment).
 
@@ -848,8 +848,8 @@ bun ../../tests/install/instabox.ts --version <v> --from ../../dist/release/<v> 
   (`dist/web`, `dist/web-publish`, `dist/web-publish-2d`), the shell, the
   Basis transcoder, `bin/og.mjs`. No native code.
 - `@origingame/engine-<platform>-<arch>`: `origin-engine.node` and `og`,
-  as `optionalDependencies` of the main package with `os`/`cpu` (and
-  `libc: glibc` on Linux), so only the matching one installs; and
-  `@tsrs/<platform>`, `og check`'s type checker, the same way (pinned at
-  `TSRS_VERSION` of `scripts/install-tools.sh`).
+  one tarball per platform, which `scripts/release-dist.ts` puts into that
+  target's archive with `@tsrs/<platform>`, `og check`'s type checker
+  (pinned at `TSRS_VERSION` of `scripts/install-tools.sh`; none on
+  Windows).
 - How a version is released and distributed: `docs/release.md` §1–§3.

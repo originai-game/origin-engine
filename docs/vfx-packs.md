@@ -114,9 +114,10 @@ The engine's own effect packs ship two ways:
   materials pack. They are in every engine archive's
   `engine/extensions/`, `og ui list` names them, and `og vfx add <pack>`
   copies one without a network.
-- **Downloadable**: the rest, as plain Git files (no LFS) in
-  `packages/vfx-packs/<pack>/`, outside the engine package and every engine
-  archive. Each release carries one archive per pack,
+- **Downloadable**: the rest, in `packages/vfx-packs/<pack>/` (their text
+  in Git, their binaries pinned in the asset store, docs/ci.md §The asset
+  store), outside the engine package and every engine archive. Each
+  release carries one archive per pack,
   `<version>/vfx/<pack>.tar.gz` (docs/release.md §1), which `og vfx add`
   fetches as below.
 
@@ -125,8 +126,9 @@ Bundled: `pixel-scenario` (the Pixel VFX Forge library, `vfx2d`),
 `realistic-starter` (realistic 3D effects written for the engine on Kenney
 Particle Pack textures).
 Downloadable: `effekseer-<contributor>`, every sample of one contributor.
-A bundled pack's `preview/` stays in Git for the library and out of the
-engine package (`!extensions/*/preview` in its `files`). `og api gen`
+A bundled pack's `preview/` stays in the repository for the library (its
+images pinned in the asset store) and out of the engine package
+(`!extensions/*/preview` in its `files`). `og api gen`
 writes every pack's description, tags, keywords and effects, and each
 effect's measured size, anchor, GPU milliseconds and draws from its
 `preview/<effect>.cost.json` with the device they were measured on, into the
