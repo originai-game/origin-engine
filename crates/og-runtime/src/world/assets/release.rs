@@ -241,6 +241,7 @@ fn close_bundle(eng: &Engine, bundle: usize) -> Result<(), String> {
         let mut state = eng.state.borrow_mut();
         for geometry in geometries {
             state.physics_meshes.remove(&geometry);
+            #[cfg(feature = "physics3d")]
             state.physics_baked.remove(&geometry);
             if let Some(physics) = &state.physics {
                 physics.remove_mesh(geometry);
