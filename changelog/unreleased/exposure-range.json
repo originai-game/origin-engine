@@ -1,0 +1,12 @@
+{
+  "added": [
+    {
+      "member": "RenderSettings.autoExposureMin",
+      "summary": "The least exposure auto exposure applies, in EV (default -10, as before)."
+    },
+    {
+      "member": "RenderSettings.autoExposureMax",
+      "summary": "The most exposure auto exposure applies, in EV (default 10, as before): a lower maximum keeps a night dark instead of metering it to grey, without the game setting Camera.exposure each tick (render §5)."
+    }
+  ]
+}

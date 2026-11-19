@@ -34,4 +34,4 @@ event ParticleEvent {
 }
 ```
 
-<sub>Module `render` line 2292</sub>
+<sub>Module `render` line 2306</sub>

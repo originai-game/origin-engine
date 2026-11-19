@@ -177,7 +177,12 @@ depth-normal prepass: the first one pays for it.
   clock, so replays and hosts adapt alike whatever their frame rates. A
   frame drawn before the first tick (the web shell's frame behind the play
   gate) meters at once and is never adapted from. 3 EV/s down and 1 up is
-  a natural pair.
+  a natural pair. `autoExposureMin` and `autoExposureMax` bound the
+  exposure it applies (default -10 to 10 EV, which lets a moonlit night
+  meter up to a grey day). For a day-night cycle, set the maximum to about
+  the exposure a dusk view meters to (read it with the probe, then add a
+  stop or two): the night then draws darker than the day by what the light
+  lost past that point, with no per-tick Camera.exposure from the game.
 - AO: `gtao` looks better, `ssao` is cheaper, `screen` imitates three.js-era
   post SSAO (ground seen at a low angle darkens a little, as theirs did).
   Half resolution is a fraction of the GPU time at softer contacts.

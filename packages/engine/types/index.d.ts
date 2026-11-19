@@ -7256,6 +7256,24 @@ export interface RenderSettings {
    */
   autoExposure: boolean;
   /**
+   * The least exposure auto exposure applies, in stops (EV: the image times 2^EV, Camera.exposure's compensation included): a very bright view is darkened no further.
+   * See `render §5`.
+   *
+   * @default -10
+   * @range -20..20
+   * @tunable
+   */
+  autoExposureMin: number;
+  /**
+   * The most exposure auto exposure applies, in stops (EV, compensation included): a dark view is brightened no further, so a night stays dark instead of metering to grey. Below autoExposureMin it is taken as autoExposureMin.
+   * See `render §5`.
+   *
+   * @default 10
+   * @range -20..20
+   * @tunable
+   */
+  autoExposureMax: number;
+  /**
    * How fast auto exposure rises when the view gets darker, in EV per second of game time: each drawn frame moves it by at most the speed times the ticks since the last drawn frame, never by the wall clock; 0 is instant. Snapshots and probe sweeps carry the adapted exposure.
    *
    * @range 0..100
@@ -35403,7 +35421,7 @@ export declare namespace og {
    * The frame's look after lighting: environment light, sky, bloom, exposure metering and tone mapping, and what the frame may cost: the quality fields (rectShadows to upscaler) that og.render.applyQuality sets from a graphics preset. Read after each tick; it never feeds back into the simulation. Camera.exposure is the manual exposure.
    * See `render §5`.
    */
-  const RenderSettings: ResourceType<{ readonly environmentIntensity: FieldSpec<"f32">; readonly sky: FieldSpec<"bool">; readonly bloom: FieldSpec<"bool">; readonly bloomThreshold: FieldSpec<"f32">; readonly bloomKnee: FieldSpec<"f32">; readonly bloomIntensity: FieldSpec<"f32">; readonly bloomRadius: FieldSpec<"f32">; readonly bloomContrast: FieldSpec<"f32">; readonly autoExposure: FieldSpec<"bool">; readonly adaptSpeedUp: FieldSpec<"f32">; readonly adaptSpeedDown: FieldSpec<"f32">; readonly toneMapped: FieldSpec<"bool">; readonly toneMapping: FieldSpec<"ToneMapping">; readonly exposure: FieldSpec<"f32">; readonly decalAtlas: FieldSpec<"Texture">; readonly lodBias: FieldSpec<"f32">; readonly bakedLighting: FieldSpec<"bool">; readonly quality: FieldSpec<"QualityPreset">; readonly rectShadows: FieldSpec<"bool">; readonly shadowedLights: FieldSpec<"u32">; readonly shadowCascades: FieldSpec<"u32">; readonly shadowMapScale: FieldSpec<"f32">; readonly volumetricFog: FieldSpec<"bool">; readonly softParticles: FieldSpec<"bool">; readonly particleEmission: FieldSpec<"f32">; readonly maxVfx: FieldSpec<"u32">; readonly maxVfxParticles: FieldSpec<"u32">; readonly screenSpaceReflections: FieldSpec<"bool">; readonly ambientOcclusion: FieldSpec<"bool">; readonly aoResolution: FieldSpec<"AoResolutionSetting">; readonly ssrStepScale: FieldSpec<"f32">; readonly volumetricStepScale: FieldSpec<"f32">; readonly msaaSamples: FieldSpec<"u32">; readonly upscaler: FieldSpec<"Upscaler">; readonly interpolate: FieldSpec<"bool">; readonly snapDistance: FieldSpec<"f32"> }, RenderSettings>;
+  const RenderSettings: ResourceType<{ readonly environmentIntensity: FieldSpec<"f32">; readonly sky: FieldSpec<"bool">; readonly bloom: FieldSpec<"bool">; readonly bloomThreshold: FieldSpec<"f32">; readonly bloomKnee: FieldSpec<"f32">; readonly bloomIntensity: FieldSpec<"f32">; readonly bloomRadius: FieldSpec<"f32">; readonly bloomContrast: FieldSpec<"f32">; readonly autoExposure: FieldSpec<"bool">; readonly autoExposureMin: FieldSpec<"f32">; readonly autoExposureMax: FieldSpec<"f32">; readonly adaptSpeedUp: FieldSpec<"f32">; readonly adaptSpeedDown: FieldSpec<"f32">; readonly toneMapped: FieldSpec<"bool">; readonly toneMapping: FieldSpec<"ToneMapping">; readonly exposure: FieldSpec<"f32">; readonly decalAtlas: FieldSpec<"Texture">; readonly lodBias: FieldSpec<"f32">; readonly bakedLighting: FieldSpec<"bool">; readonly quality: FieldSpec<"QualityPreset">; readonly rectShadows: FieldSpec<"bool">; readonly shadowedLights: FieldSpec<"u32">; readonly shadowCascades: FieldSpec<"u32">; readonly shadowMapScale: FieldSpec<"f32">; readonly volumetricFog: FieldSpec<"bool">; readonly softParticles: FieldSpec<"bool">; readonly particleEmission: FieldSpec<"f32">; readonly maxVfx: FieldSpec<"u32">; readonly maxVfxParticles: FieldSpec<"u32">; readonly screenSpaceReflections: FieldSpec<"bool">; readonly ambientOcclusion: FieldSpec<"bool">; readonly aoResolution: FieldSpec<"AoResolutionSetting">; readonly ssrStepScale: FieldSpec<"f32">; readonly volumetricStepScale: FieldSpec<"f32">; readonly msaaSamples: FieldSpec<"u32">; readonly upscaler: FieldSpec<"Upscaler">; readonly interpolate: FieldSpec<"bool">; readonly snapDistance: FieldSpec<"f32"> }, RenderSettings>;
   /**
    * How the renderer draws this entity between ticks while RenderSettings.interpolate is on; an entity without it is blended. Presentation only: the renderer reads it, the simulation never does.
    * See `render §9`.

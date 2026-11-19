@@ -254,8 +254,8 @@ fn settings(world: &World, rs: &mut RenderState, b: &Begun, exposure: f32) {
         scene.frame.camera.exposure = if s.auto_exposure {
             og_render::Exposure::Auto {
                 compensation: exposure.max(1e-6).log2(),
-                min_ev: -10.0,
-                max_ev: 10.0,
+                min_ev: s.auto_exposure_min,
+                max_ev: s.auto_exposure_max.max(s.auto_exposure_min),
                 adapt_speed_up: s.adapt_speed_up.max(0.0),
                 adapt_speed_down: s.adapt_speed_down.max(0.0),
             }
