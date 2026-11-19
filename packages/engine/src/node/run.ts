@@ -909,7 +909,22 @@ export async function run(argv: string[], output: RunOutput = hostProcess, contr
   }
 }
 
-if (import.meta.main) hostProcess.exit(await run(hostProcess.argv.slice(2)));
+if (import.meta.main) {
+  // `og run` names itself in OG_RUN_PARENT: when it goes, however it went
+  // (SIGKILL included), this run and its probe go too. Linux and Windows
+  // also end it from og's side (crates/og-cli/src/commands/run.rs
+  // `tie_to_parent`); macOS has no such call, so a Unix child watches for
+  // being re-parented. The variable is not passed on.
+  const parent = Number(hostProcess.env.OG_RUN_PARENT);
+  delete hostProcess.env.OG_RUN_PARENT;
+  if (parent > 0 && hostProcess.platform !== "win32") {
+    // The run ends with hostProcess.exit below, so the timer never holds it open.
+    setInterval(() => {
+      if (hostProcess.ppid !== parent) hostProcess.exit(143);
+    }, 200);
+  }
+  hostProcess.exit(await run(hostProcess.argv.slice(2)));
+}
 
 /**
  * The last `pending` steps of a command script, each `shift` seconds sooner

@@ -99,6 +99,7 @@ declare const process: {
   readonly argv: string[];
   readonly version: string;
   readonly pid: number;
+  readonly ppid: number;
   exitCode?: number;
   exit(code?: number): never;
   cwd(): string;

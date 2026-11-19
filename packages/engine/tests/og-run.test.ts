@@ -12,7 +12,10 @@ import { ogBin } from "./support/og-bin.ts";
 // skip there and run in the full lane.
 const STALE_WASM = process.env.OG_WASM_STALE === "1";
 
-declare const Bun: { spawnSync(cmd: string[], o: { cwd: string }): { exitCode: number; stdout: Uint8Array; stderr: Uint8Array } };
+declare const Bun: {
+  spawnSync(cmd: string[], o: { cwd: string }): { exitCode: number; stdout: Uint8Array; stderr: Uint8Array };
+  spawn(cmd: string[], o: { cwd: string; env: Record<string, string | undefined>; stdout: "pipe"; stderr: "pipe" }): { stdout: ReadableStream<Uint8Array>; stderr: ReadableStream<Uint8Array>; exited: Promise<number>; kill(signal?: string): void };
+};
 
 const spawn = (cmd: string[], cwd: string) => {
   const r = Bun.spawnSync(cmd, { cwd });
@@ -107,3 +110,36 @@ test("og run --profile writes the CPU profile at the path named, its locations i
     rmSync(out, { recursive: true, force: true });
   }
 }, 120_000);
+
+test("the game process and its probe end with og run, whether og is terminated or killed", async () => {
+  const open = (port: number) => new Promise<boolean>((done) => {
+    const socket = new WebSocket(`ws://127.0.0.1:${port}/probe`);
+    socket.onopen = () => (socket.close(), done(true));
+    socket.onerror = () => done(false);
+  });
+  for (const [i, signal] of (["SIGTERM", "SIGKILL"] as const).entries()) {
+    const port = 41000 + (process.pid % 10000) + i;
+    const og = Bun.spawn([ogBin(), "run", "--headless", "packages/engine/tests/fixtures/project-defaults", "--no-render", "--no-check", "--port", String(port)], { cwd: repo, env: { ...process.env, OG_RENDERER: "none" }, stdout: "pipe", stderr: "pipe" });
+    try {
+      const reader = og.stdout.getReader();
+      let out = "";
+      while (!out.includes("probe: ws://")) {
+        const { value, done } = await reader.read();
+        if (done) throw new Error(`og run ended before its probe: ${out}${await new Response(og.stderr).text()}`);
+        out += new TextDecoder().decode(value);
+      }
+      expect(await open(port)).toBe(true);
+      // On SIGKILL og cleans nothing up: the game process must end without its help.
+      og.kill(signal);
+      let closed = false;
+      for (let t = 0; t < 50 && !closed; t++) {
+        closed = !(await open(port));
+        if (!closed) await new Promise((r) => setTimeout(r, 100));
+      }
+      expect(closed, `the probe on ${port} still answers 5 s after og run got ${signal}`).toBe(true);
+    } finally {
+      og.kill("SIGKILL");
+      await og.exited;
+    }
+  }
+}, 60_000);

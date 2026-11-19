@@ -1,0 +1,5 @@
+{
+  "fixed": [
+    { "member": "og run", "summary": "The game process ends with `og run` however it ends (SIGTERM, SIGINT, SIGKILL, or its parent dying), so a killed `og run --port P` no longer leaves its probe answering on P: on Linux through the parent-death signal, on Windows through a kill-on-close Job object, and on macOS by the game process noticing it was re-parented." }
+  ]
+}

@@ -417,6 +417,8 @@ fn supervise(mut cmd: std::process::Command, probing: bool) -> ExitCode {
     use std::io::{BufRead, BufReader, Write};
     use std::sync::{Arc, Mutex};
     cmd.stderr(std::process::Stdio::piped());
+    cmd.env("OG_RUN_PARENT", std::process::id().to_string());
+    tie_to_parent(&mut cmd);
     let mut child = match cmd.spawn() {
         Ok(c) => c,
         Err(e) => {
@@ -424,6 +426,8 @@ fn supervise(mut cmd: std::process::Command, probing: bool) -> ExitCode {
             return ExitCode::FAILURE;
         }
     };
+    #[cfg(windows)]
+    kill_with_parent(&child);
     let tail = Arc::new(Mutex::new(std::collections::VecDeque::<String>::new()));
     let reader = child.stderr.take().map(|stderr| {
         let tail = tail.clone();
@@ -474,6 +478,67 @@ fn supervise(mut cmd: std::process::Command, probing: bool) -> ExitCode {
         eprintln!("  | {line}");
     }
     ExitCode::from(code)
+}
+
+/// The game process ends with `og run`, however `og run` ends (SIGTERM,
+/// SIGINT, SIGKILL, its own parent killing it), so its probe never outlives
+/// it on the port. Linux: the kernel sends the child SIGTERM when og dies.
+/// Windows: [`kill_with_parent`]. macOS has neither; there the child
+/// watches for being re-parented (OG_RUN_PARENT, src/node/run.ts).
+fn tie_to_parent(cmd: &mut std::process::Command) {
+    #[cfg(target_os = "linux")]
+    {
+        use std::os::unix::process::CommandExt;
+        let parent = std::process::id() as libc::pid_t;
+        // SAFETY: prctl and getppid are async-signal-safe and touch only the
+        // child's own state between fork and exec.
+        unsafe {
+            cmd.pre_exec(move || {
+                if libc::prctl(libc::PR_SET_PDEATHSIG, libc::SIGTERM) != 0 {
+                    return Err(std::io::Error::last_os_error());
+                }
+                // og died before the call above: no signal will come.
+                if libc::getppid() != parent {
+                    libc::_exit(143);
+                }
+                Ok(())
+            });
+        }
+    }
+    #[cfg(not(target_os = "linux"))]
+    let _ = cmd;
+}
+
+/// Puts the game process in a Job object that kills it when the job's last
+/// handle closes: og never closes it, so the job ends with og.
+#[cfg(windows)]
+fn kill_with_parent(child: &std::process::Child) {
+    use std::os::windows::io::AsRawHandle;
+    use windows_sys::Win32::System::JobObjects::{
+        AssignProcessToJobObject, CreateJobObjectW, JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE,
+        JOBOBJECT_EXTENDED_LIMIT_INFORMATION, JobObjectExtendedLimitInformation,
+        SetInformationJobObject,
+    };
+    // SAFETY: the job handle is checked before use and deliberately kept
+    // open for og's lifetime; the limit struct is plain data, zero-valid.
+    unsafe {
+        let job = CreateJobObjectW(std::ptr::null(), std::ptr::null());
+        if job.is_null() {
+            eprintln!("og run: warning: no job object; the game may outlive og run");
+            return;
+        }
+        let mut limits: JOBOBJECT_EXTENDED_LIMIT_INFORMATION = std::mem::zeroed();
+        limits.BasicLimitInformation.LimitFlags = JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE;
+        let set = SetInformationJobObject(
+            job,
+            JobObjectExtendedLimitInformation,
+            (&raw const limits).cast(),
+            std::mem::size_of::<JOBOBJECT_EXTENDED_LIMIT_INFORMATION>() as u32,
+        );
+        if set == 0 || AssignProcessToJobObject(job, child.as_raw_handle() as _) == 0 {
+            eprintln!("og run: warning: no job object; the game may outlive og run");
+        }
+    }
 }
 
 /// How a process ended and the exit code `og run` reports for it.
