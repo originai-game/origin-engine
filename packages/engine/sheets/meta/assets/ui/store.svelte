@@ -1,11 +1,11 @@
 <meta name="component" content="GeneralStorePage">
 
 <!-- Desktop: the shop across two thirds, the purchase it asked for and the
-     login calendar beside it. A phone: the shop over the confirmation. -->
+     login calendar beside it. A phone: the shop, the confirmation a sheet at its foot. -->
 <div id="Page" class="general-ground">
-  <div id="Shop"><Shop title={$shopTitle} wallet={$shopWallet} tabs={$shopTabs} tab={$shopTab} offers={$shopOffers} prices={$shopPrices} selected={$shopSelected} loading={$no} error={$blank} /></div>
+  <div id="Shop"><Shop title={$shopTitle} kicker={$shopKicker} wallet={$shopWallet} tabs={$shopTabs} tab={$shopTab} offers={$shopOffers} prices={$shopPrices} selected={$shopSelected} loading={$no} error={$blank} /></div>
   <div id="Side">
-    <div id="Confirm"><ShopConfirm title={$blank} name={$confirmName} icon={$confirmIcon} detail={$confirmDetail} prices={$confirmPrices} canBuy={true} busy={false} error={$blank} /></div>
+    <div id="Confirm"><ShopConfirm title={$blank} name={$confirmName} icon={$confirmIcon} rarity={$confirmRarity} detail={$confirmDetail} prices={$confirmPrices} canBuy={true} reason={$blank} busy={false} error={$blank} /></div>
     <div id="Rewards"><DailyRewards title={$blank} refresh={$rewardsRefresh} days={$rewardsDays} canClaim={true} /></div>
   </div>
 </div>
@@ -18,9 +18,12 @@
 #Rewards { width: stretch; flex: 1; min-height: 0; }
 @media (width < 600px) {
   #Page { display: flex; flex-direction: column; gap: var(--space-md); padding: var(--space-sm); }
-  #Shop { width: stretch; flex: 1; min-height: 48%; }
-  #Side { width: stretch; height: auto; flex: 1; min-height: 0; }
-  #Confirm { flex: 1; min-height: 0; }
+  /* The confirmation is a sheet at the foot, its buttons pinned; the
+     shop takes what is left above it. */
+  #Page { padding-block-end: 0; }
+  #Shop { width: stretch; flex: 1; min-height: 0; }
+  #Side { width: stretch; height: auto; flex: none; min-height: 0; max-height: 60%; }
+  #Confirm { flex: none; min-height: 0; }
   #Rewards { display: none; }
 }
 </style>
