@@ -395,6 +395,14 @@ pub fn og_node_scripted_frames(engine: u32, on: bool) {
     og_runtime::set_scripted_frames(engine, on);
 }
 
+/// `og render` writes every frame it draws out: each waits for og.motion's
+/// due results and the textures being prepared (og-runtime's
+/// `set_recorded_frames`).
+#[napi(js_name = "og_node_recorded_frames")]
+pub fn og_node_recorded_frames(engine: u32, on: bool) {
+    og_runtime::set_recorded_frames(engine, on);
+}
+
 /// `og run --capture-only`: frames step the ticks and draw nothing; the
 /// script's screenshots and frame checks are probe captures, the PNGs a
 /// run drawing every frame takes (og-runtime's `set_capture_only`).
