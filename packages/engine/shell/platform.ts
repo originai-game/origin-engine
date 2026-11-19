@@ -42,6 +42,10 @@
 //                        after the resume; its pushed `platform` notices (a purchase
 //                        settled, entitlements changed, an invite) reach the engine
 //                        as og.PlatformNotice.
+//   catalog.head         passed through as it is where the hello lists it, else
+//                        `unavailable`; a pushed `catalog` message ({ kind: "catalog",
+//                        data: { catalog, version, manifest }, time? }) is a `catalog`
+//                        notice. Notices are hints: the game polls catalog.head.
 
 import { answerLocally, fail, localPlatform, SERVICE_METHODS, type LocalDocument, type LocalPersistence, type PlatformAnswer, type PlatformCall, type PlatformHost } from "../src/platform-local.ts";
 export { storagePersistence } from "../src/platform-local.ts";
@@ -100,6 +104,7 @@ export function playerPlatform(player: PlayerLink, local: LocalPersistence): Pla
     ...(has("leaderboard.around") || has("leaderboard.top") ? ["leaderboard.around"] : []),
     ...(has("point.award") ? ["point"] : []),
     ...(has("ai.mark") ? ["ai.mark"] : []),
+    ...(has("catalog.head") ? ["catalog.head"] : []),
     ...SERVICE_METHODS.filter(has),
   ];
   const services: ReadonlySet<string> = new Set(SERVICE_METHODS);
@@ -143,7 +148,7 @@ export function playerPlatform(player: PlayerLink, local: LocalPersistence): Pla
     const a = call.args;
     if (STORE.includes(call.method)) return keyed ? keyedStore(call) : saved ? savedStore(call) : viaLocal(call);
     // The platform's services pass through as they are: same name, same arguments, same answer.
-    if (services.has(call.method)) return has(call.method) ? fromPlayer(await player.request(call.method, a), (d) => d) : fail("unavailable", `this Player answers no ${call.method}`);
+    if (services.has(call.method) || call.method === "catalog.head") return has(call.method) ? fromPlayer(await player.request(call.method, a), (d) => d) : fail("unavailable", `this Player answers no ${call.method}`);
     const n = Math.max(1, Math.min(100, Number(a["count"] ?? 10)));
     switch (call.method) {
       case "telemetry":
@@ -331,5 +336,6 @@ function withoutServices(p: PlatformProvider): PlatformProvider {
       if (kept.length > 0) p.handle(kept, answer, link);
     },
     ...(p.poll ? { poll: (link: Parameters<NonNullable<PlatformProvider["poll"]>>[0]) => p.poll!(link) } : {}),
+    ...(p.content ? { content: p.content } : {}),
   };
 }

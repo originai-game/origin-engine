@@ -17,7 +17,7 @@
 
 // The contract's types and vocabulary live in ./provider.ts (`@origingame/engine/provider`);
 // these names stay here for what imports them from this module.
-import { ERROR_CODES, failure, SERVICE_METHODS, unavailable, type PlatformAnswer, type PlatformCall, type PlatformLink, type PlatformNotice, type PlatformProvider } from "./provider.ts";
+import { ERROR_CODES, failure, SERVICE_METHODS, staticCatalog, unavailable, type CatalogRead, type PlatformAnswer, type PlatformCall, type PlatformLink, type PlatformNotice, type PlatformProvider } from "./provider.ts";
 export { ERROR_CODES, SERVICE_METHODS };
 export type { PlatformAnswer, PlatformCall, PlatformLink, PlatformNotice };
 
@@ -354,8 +354,24 @@ function entitlementsOf(doc: LocalDocument) {
   return (doc.purchases ?? []).filter((p) => p.state === "completed" && !p.consumed).map((p) => ({ purchase: p.purchase, product: p.product, kind: p.kind, quantity: p.quantity, expires: null }));
 }
 
-/** The local platform over a persistence: every call answered at once (an ad after a paused frame), the document saved after each batch. With `fake`, it fakes the platform services; without, they are `unavailable`. */
-export function localPlatform(persistence: LocalPersistence = memoryPersistence(), fake?: LocalFake): PlatformHost & { document(): LocalDocument; checkpoint(): LocalCheckpoint; restore(c: LocalCheckpoint): void } {
+/**
+ * The local platform over a persistence: every call answered at once (an ad after a paused frame), the document
+ * saved after each batch. With `fake`, it fakes the platform services; without, they are `unavailable`. With
+ * `catalog`, it answers `catalog.head` from the content base's `<catalog>/head.json` (staticCatalog) and names
+ * that base as its content base; without, `catalog.head` is `unavailable`.
+ */
+export function localPlatform(
+  persistence: LocalPersistence = memoryPersistence(),
+  fake?: LocalFake,
+  catalog?: { readonly base: string; readonly read?: CatalogRead },
+): PlatformHost & { document(): LocalDocument; checkpoint(): LocalCheckpoint; restore(c: LocalCheckpoint): void } {
+  const local = localStore(persistence, fake);
+  if (!catalog || (fake?.unavailable ?? []).includes("catalog.head")) return local;
+  const head = staticCatalog(catalog.base, { inner: local, ...(catalog.read ? { read: catalog.read } : {}) });
+  return { ...local, capabilities: head.capabilities, content: head.content!, handle: head.handle };
+}
+
+function localStore(persistence: LocalPersistence, fake: LocalFake | undefined): PlatformHost & { document(): LocalDocument; checkpoint(): LocalCheckpoint; restore(c: LocalCheckpoint): void } {
   let doc = readDocument(persistence.load());
   const faked = fake ? new Fake(fake) : null;
   return {

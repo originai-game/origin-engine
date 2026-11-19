@@ -2547,6 +2547,12 @@ pub fn og_platform_store_set(env: Env, world: u32, desc: Option<String>) -> Stri
     <Host as PlatformApi>::og_platform_store_set(&Host, world, desc)
 }
 
+#[napi(js_name = "og_platform_catalog_head")]
+pub fn og_platform_catalog_head(env: Env, world: u32, catalog: String) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as PlatformApi>::og_platform_catalog_head(&Host, world, catalog)
+}
+
 #[napi(js_name = "og_platform_store_list")]
 pub fn og_platform_store_list(env: Env, world: u32) -> u32 {
     let _env = crate::EnvScope::enter(&env);

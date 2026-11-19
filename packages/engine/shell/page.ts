@@ -107,6 +107,23 @@ export interface ShellConfig {
   readonly content?: string;
 }
 
+/**
+ * og.load.data's content base on this page: the page's provider's `content.base()` when it gives an https
+ * directory (http on localhost), else the build's (og build --content); undefined for none.
+ */
+export function contentBase(provider: PlatformHost | undefined, built: string | undefined, warn: (line: string) => void): string | undefined {
+  let named: unknown;
+  try {
+    named = provider?.content?.base();
+  } catch (e) {
+    warn(`warn: the page's provider.platform.content.base() threw (${e instanceof Error ? e.message : String(e)}): the build's content base is used`);
+  }
+  if (named === undefined) return built;
+  if (typeof named === "string" && /^(https:\/\/[^/?#@]+|http:\/\/(localhost|127\.0\.0\.1|\[::1\])(:\d+)?)(\/[^?#]*)?$/.test(named)) return named.replace(/\/+$/, "");
+  warn(`warn: the page's provider.platform.content.base() is '${String(named)}', not an https directory without credentials, query or fragment: the build's content base is used`);
+  return built;
+}
+
 /** The URL of the build's file `name` (`game.js`), under the name the build serves it by. */
 export function fileUrl(config: Pick<ShellConfig, "files">, name: string, base: string): string {
   const served = config.files[name];
@@ -621,7 +638,10 @@ export async function play(options: PlayOptions = {}): Promise<PlayHandle> {
   // Without a Player the browser's storage answers; a dev page fakes the platform services
   // (every call succeeds), a publish page never does (they are `unavailable`).
   const fake = config.build === "dev" ? {} : undefined;
-  const alone = () => provided.platform ?? localPlatform(platformStore, fake);
+  // A content base (og build --content) also answers catalog heads from its <catalog>/head.json.
+  const alone = () => provided.platform ?? localPlatform(platformStore, fake, config.content ? { base: config.content } : undefined);
+  // og.load.data's content base: the page's provider names it, else the build's.
+  const content = contentBase(provided.platform, config.content, (line) => log.push([line]));
   if (!player.hosted && linked) setTimeout(() => platformReady(alone()), HELLO_WAIT_MS);
   // A top-level platform page's calls wait for its play origin's hello; without one, the browser's storage.
   if (page)
@@ -706,7 +726,7 @@ export async function play(options: PlayOptions = {}): Promise<PlayHandle> {
       ...(config.expect.lanes > 0 ? { lanes: { glue: at("origin-engine-lanes.js"), wasm: at("origin-engine-lanes_bg.wasm"), bytes: config.expect.lanes } } : {}),
       // The package: next to the page, or on its asset base, every file checked.
       ...(config.assets ? { root: config.assets.base.replace(/\/$/, ""), rootIntegrity: config.assets.manifest } : { root: new URL(".", location.href).href.replace(/\/$/, "") }),
-      ...(config.content ? { content: config.content } : {}),
+      ...(content ? { content } : {}),
       basis: { js: at("basis/basis_transcoder.js"), wasm: at("basis/basis_transcoder.wasm") },
       av1: at("av1/og-av1.wasm"),
       autoplay: false,

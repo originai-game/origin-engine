@@ -82,6 +82,7 @@ export const story = Object.freeze({
 
 export const platform = Object.freeze({
   storeGet: (world: W, key: string) => parse(abi().og_platform_store_get(world.id, key)),
+  catalogHead: (world: W, catalog: string) => parse(abi().og_platform_catalog_head(world.id, catalog)),
   storeSet: (world: W, desc?: unknown) => parse(abi().og_platform_store_set(world.id, json(desc))),
   storeList: (world: W) => abi().og_platform_store_list(world.id),
   leaderboardSubmit: (world: W, desc?: unknown) => parse(abi().og_platform_leaderboard_submit(world.id, json(desc))),

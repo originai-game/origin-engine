@@ -1,0 +1,16 @@
+{
+  "added": [
+    {
+      "member": "og.platform.catalogHead",
+      "summary": "Which version of a content catalog is current: `{ catalog, version, manifest, published }`, a platform answer journaled with its tick. The answer pins that version's manifest integrity, so og.load.data reads it against it. Natively `og run --content <dir>` (and playtests' PlaytestDesc.content) answer it from `<dir>/<catalog>/head.json`; on a page without a Player, from the content base's head.json; `unavailable` without a content base (guide saves \u00a711)."
+    },
+    {
+      "member": "PlatformNoticeKind.catalog",
+      "summary": "A hint that a catalog may have a new version (`{ catalog, version, manifest }`); it pins that version's manifest as an answer does. Best effort: a host may send it late, twice or never, so a game polls og.platform.catalogHead."
+    },
+    {
+      "member": "PlatformProvider.content",
+      "summary": "`@origingame/engine/provider`: a provider may name the game's content base (`content: { base() }`), over the build's `--content`. `catalog.head` joins CORE_METHODS and `catalog` the notice kinds; `staticCatalog(base, { inner, read })` answers catalog.head from the static layout; checkPlatformProvider checks a head's shape. PROVIDER_VERSION stays 1."
+    }
+  ]
+}

@@ -961,6 +961,8 @@ pub trait PlatformApi: Wire {
     fn og_platform_store_get(&self, world: u32, key: String) -> String;
     /// `og.platform.storeSet`
     fn og_platform_store_set(&self, world: u32, desc: Option<String>) -> String;
+    /// `og.platform.catalogHead`
+    fn og_platform_catalog_head(&self, world: u32, catalog: String) -> String;
     /// `og.platform.storeList`
     fn og_platform_store_list(&self, world: u32) -> u32;
     /// `og.platform.leaderboardSubmit`
@@ -1980,6 +1982,7 @@ pub const SYMBOLS: &[&str] = &[
     "og_story_mark",
     "og_platform_store_get",
     "og_platform_store_set",
+    "og_platform_catalog_head",
     "og_platform_store_list",
     "og_platform_leaderboard_submit",
     "og_platform_leaderboard_top",

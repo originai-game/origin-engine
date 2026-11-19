@@ -11,7 +11,7 @@ A notice og.PlatformNotice announced.
 | Field | Type | Default | Range | Unit | Notes | Doc |
 |---|---|---|---|---|---|---|
 | `notice` | `number` | `0` | — | — | — | Its number. |
-| `kind` | `string` | `""` | — | — | — | `purchase`, `entitlements` or `invite`. |
+| `kind` | `string` | `""` | — | — | — | `purchase`, `entitlements`, `invite`, `catalog` or `host`. |
 | `data` | `unknown` | `null` | — | — | — | What it carries (see og.PlatformNoticeKind). |
 | `tick` | `number` | `0` | — | — | — | The tick it was applied at. |
 | `time` | `number` | `0` | — | `ms` | — | The host's clock when it sent it, UTC milliseconds; 0 when it gave none. |
@@ -20,7 +20,7 @@ A notice og.PlatformNotice announced.
 struct PlatformNoticeData {
   doc "A notice og.PlatformNotice announced."
   field notice u32 "Its number."
-  field kind String "`purchase`, `entitlements` or `invite`."
+  field kind String "`purchase`, `entitlements`, `invite`, `catalog` or `host`."
   field data Json "What it carries (see og.PlatformNoticeKind)."
   field tick u32 "The tick it was applied at."
   field time f64 "The host's clock when it sent it, UTC milliseconds; 0 when it gave none." {
@@ -29,4 +29,4 @@ struct PlatformNoticeData {
 }
 ```
 
-<sub>Module `platform` line 246</sub>
+<sub>Module `platform` line 256</sub>

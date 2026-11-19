@@ -25,4 +25,4 @@ event RoomMessage {
 }
 ```
 
-<sub>Module `platform` line 568</sub>
+<sub>Module `platform` line 578</sub>

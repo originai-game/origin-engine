@@ -10,7 +10,7 @@ import { expect, test } from "bun:test";
 import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { checkPlatformProvider, CORE_METHODS, ERROR_CODES, HOST_EXTENSIONS, PROVIDER_VERSION, RETRYABLE_CODES, SERVICE_METHODS, unavailable, type PlatformProvider } from "../src/provider.ts";
+import { catalogHeadAnswer, checkPlatformProvider, CORE_METHODS, staticCatalog, ERROR_CODES, HOST_EXTENSIONS, PROVIDER_VERSION, RETRYABLE_CODES, SERVICE_METHODS, unavailable, type PlatformProvider } from "../src/provider.ts";
 import { fail, LOCAL_CAPABILITIES, localPlatform, memoryPersistence, noPlatform } from "../src/platform-local.ts";
 import { pageProviders, playerPlatform, type PlayerLink } from "../shell/platform.ts";
 import type { PlayerResult } from "../shell/player.ts";
@@ -60,6 +60,52 @@ test("the local platform keeps the contract, without its fake and with it (an ad
   expect((await checkPlatformProvider(noPlatform)).problems).toEqual([]);
 });
 
+const HEAD = { catalog: "world", version: "v12", manifest: `sha384-${"A".repeat(64)}`, published: 1_767_225_600_000 };
+
+test("catalog heads: staticCatalog reads <base>/<catalog>/head.json and passes the rest on; the local platform answers one only with a content base", async () => {
+  const files: Record<string, string> = { "https://cdn.example/g/world/head.json": JSON.stringify(HEAD), "https://cdn.example/g/bad/head.json": JSON.stringify({ ...HEAD, catalog: "bad", manifest: "sha256-x" }) };
+  const asked: string[] = [];
+  const read = async (url: string) => (asked.push(url), files[url] ?? null);
+  const local = localPlatform(memoryPersistence());
+  const p = staticCatalog("https://cdn.example/g/", { inner: local, read });
+  expect(p.content?.base()).toBe("https://cdn.example/g");
+  expect([...p.capabilities].sort()).toEqual([...LOCAL_CAPABILITIES, "catalog.head"].sort());
+  const got: Record<number, unknown> = {};
+  p.handle(
+    [
+      { request: 1, method: "catalog.head", args: { catalog: "world" }, tick: 0 },
+      { request: 2, method: "catalog.head", args: { catalog: "none" }, tick: 0 },
+      { request: 3, method: "catalog.head", args: { catalog: "bad" }, tick: 0 },
+      { request: 4, method: "store.get", args: { key: "k" }, tick: 0 },
+    ],
+    (r, a) => void (got[r] = a),
+  );
+  await new Promise((r) => setTimeout(r, 5));
+  expect(got[1]).toEqual({ ok: true, data: HEAD });
+  expect(got[2]).toMatchObject({ ok: false, error: { code: "not_found" } });
+  expect(got[3]).toMatchObject({ ok: false, error: { code: "failed" } });
+  expect(got[4]).toMatchObject({ ok: true, data: { key: "k", value: null } });
+  expect(asked).toEqual(["https://cdn.example/g/world/head.json", "https://cdn.example/g/none/head.json", "https://cdn.example/g/bad/head.json"]);
+  // A network failure is `offline`, never a hang.
+  const lost = staticCatalog("https://cdn.example/g", { read: () => Promise.reject(new TypeError("Failed to fetch")) });
+  const once: unknown[] = [];
+  lost.handle([{ request: 1, method: "catalog.head", args: { catalog: "world" }, tick: 0 }], (_r, a) => void once.push(a));
+  await new Promise((r) => setTimeout(r, 5));
+  expect(once).toMatchObject([{ ok: false, error: { code: "offline", retryable: true } }]);
+  // Both keep the contract; a provider whose head has the wrong shape does not.
+  expect((await checkPlatformProvider(p)).problems).toEqual([]);
+  const withHead = localPlatform(memoryPersistence(), undefined, { base: "/content", read: (url) => (url === "/content/conformance/head.json" ? JSON.stringify({ ...HEAD, catalog: "conformance" }) : null) });
+  const w = await checkPlatformProvider(withHead);
+  expect(w.problems).toEqual([]);
+  expect(w.answers["catalog.head"]).toMatchObject([{ ok: true, data: { catalog: "conformance", version: "v12" } }]);
+  expect(withHead.content?.base()).toBe("/content");
+  expect(local.capabilities).not.toContain("catalog.head");
+  expect((await checkPlatformProvider(local)).answers["catalog.head"]).toMatchObject([{ ok: false, error: { code: "unavailable" } }]);
+  const wrong: PlatformProvider = { host: "wrong", capabilities: ["catalog.head"], handle: (calls, answer) => calls.forEach((c) => c.method !== "telemetry" && answer(c.request, c.method === "catalog.head" ? { ok: true, data: { catalog: "conformance", version: "v1" } } : unavailable(c.method))) };
+  expect((await checkPlatformProvider(wrong)).problems.join("\n")).toContain("catalog.head's answer: the head's manifest is not an integrity");
+  expect(catalogHeadAnswer("world", "{")).toMatchObject({ ok: false, error: { code: "failed" } });
+});
+
 /** A stand-in Player: every method it lists answers ok with protocol 2's shapes, any other `unavailable`. */
 function player(capabilities: readonly string[]): PlayerLink {
   const err = (code: string, message: string): PlayerResult => ({ ok: false, error: { code, message, retryable: code === "unavailable" } });
@@ -79,6 +125,8 @@ function player(capabilities: readonly string[]): PlayerLink {
         return { board: a["board"], sort: "desc", entries: [], me: null };
       case "point.award":
         return { granted: 0, balance: null };
+      case "catalog.head":
+        return { catalog: a["catalog"], version: "v1", manifest: HEAD.manifest, published: 1 };
       default:
         return { method };
     }
@@ -97,7 +145,7 @@ function player(capabilities: readonly string[]): PlayerLink {
 }
 
 test("the Player bridge keeps the contract over a Player with every method and over one with few", async () => {
-  const every = playerPlatform(player(["store.get", "store.set", "store.list", "leaderboard.submit", "leaderboard.top", "leaderboard.around", "point.award", "ai.mark", ...SERVICE_METHODS]), memoryPersistence());
+  const every = playerPlatform(player(["store.get", "store.set", "store.list", "leaderboard.submit", "leaderboard.top", "leaderboard.around", "point.award", "ai.mark", "catalog.head", ...SERVICE_METHODS]), memoryPersistence());
   const r = await checkPlatformProvider(every);
   expect(r.problems).toEqual([]);
   expect([...every.capabilities].sort()).toEqual([...CORE_METHODS, ...HOST_EXTENSIONS].sort());

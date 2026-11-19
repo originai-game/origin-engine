@@ -7,13 +7,15 @@
 //! or a host without a content base hangs instead of failing with its
 //! reason; a read the host holds back (the web) lands at a tick the replay
 //! does not reproduce; a replay reading other bytes passes; a released load
-//! is still put in place or journaled.
+//! is still put in place or journaled; a manifest the catalog's head did not
+//! name is read as if it were.
 
 use og_runtime::host_impl::answer;
 use og_runtime::{
     Dispatch, Fetch, Hooks, og_engine_create, og_engine_destroy, og_engine_frame, og_game_game,
     og_load_completions, og_load_data, og_load_data_bytes, og_load_data_json, og_load_error,
-    og_load_release, og_load_replay_completions, og_load_status, set_hooks,
+    og_load_release, og_load_replay_completions, og_load_status, og_platform_answer,
+    og_platform_catalog_head, og_platform_notify, og_platform_take, set_hooks,
 };
 use serde_json::{Value, json};
 use std::cell::{Cell, RefCell};
@@ -323,6 +325,71 @@ fn a_late_file_replays_at_its_journaled_tick_with_its_bytes() {
     hk.clock.set(hk.clock.get() + 31_000.0);
     frame(e);
     assert!(failed(e, stuck).starts_with("timeout:"));
+    assert!(og_engine_destroy(e));
+    std::fs::remove_dir_all(base).unwrap();
+}
+
+/// The head (its answer, or a `catalog` notice) names the version
+/// manifest's integrity: a manifest read after it with other bytes fails
+/// `integrity`, the one it names loads, and a head for another version
+/// pins nothing here.
+#[test]
+fn the_catalog_head_pins_the_version_manifest() {
+    let base = base("pin");
+    catalog(&base);
+    let manifest =
+        |v: &str| std::fs::read(base.join("world").join(v).join("manifest.json")).unwrap();
+    let (v1, v2) = (sri(&manifest("v1")), sri(&manifest("v2")));
+    let h = hooks();
+
+    // Answered: v1's head names v2's manifest (a server that swapped them).
+    let e = engine(&h, Some(&base));
+    let request = og_platform_catalog_head(e, "world".into()).unwrap();
+    assert!(og_platform_catalog_head(e, "../x".into()).is_err());
+    frame(e);
+    let calls: Value = serde_json::from_str(&og_platform_take(e)).unwrap();
+    let call = calls
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|c| c["request"] == request)
+        .unwrap();
+    assert_eq!(call["method"], "catalog.head", "{calls}");
+    assert_eq!(call["args"], json!({ "catalog": "world" }));
+    let head = json!({ "ok": true, "data": { "catalog": "world", "version": "v1", "manifest": v2, "published": 1 } });
+    assert!(og_platform_answer(e, request, head.to_string()));
+    frame(e);
+    let swapped = data(e, "v1", "index/big.json", "json", None);
+    frame(e);
+    let why = failed(e, swapped);
+    assert!(
+        why.starts_with("integrity:") && why.contains("manifest.json"),
+        "{why}"
+    );
+    assert!(og_engine_destroy(e));
+
+    // Noticed: the manifest the head names loads.
+    let e = engine(&h, Some(&base));
+    let notice = json!({ "kind": "catalog", "data": { "catalog": "world", "version": "v1", "manifest": v1 } });
+    assert!(og_platform_notify(e, notice.to_string()));
+    frame(e);
+    let good = data(e, "v1", "index/big.json", "json", None);
+    frame(e);
+    assert_eq!(
+        og_load_status(e, good),
+        "ready",
+        "{:?}",
+        og_load_error(e, good)
+    );
+    // A head naming only v1 leaves v2 unpinned: read as it is.
+    let other = data(e, "v2", "index/big.json", "json", None);
+    frame(e);
+    assert_eq!(
+        og_load_status(e, other),
+        "ready",
+        "{:?}",
+        og_load_error(e, other)
+    );
     assert!(og_engine_destroy(e));
     std::fs::remove_dir_all(base).unwrap();
 }

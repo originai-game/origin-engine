@@ -8,7 +8,7 @@ See `saves §7`.
 
 - **TypeScript**: functions are the namespace `og.platform`; components, resources and events are tokens on `og`.
 - **Publish builds**: kept (members may override).
-- **Core** (what most games use): `PlatformResult`, `og.platform.storeGet`, `og.platform.result`, `QuickPlayDesc`, `og.platform.quickPlay`; 72 more are advanced (`og api show platform --all`).
+- **Core** (what most games use): `PlatformResult`, `og.platform.storeGet`, `og.platform.result`, `QuickPlayDesc`, `og.platform.quickPlay`; 73 more are advanced (`og api show platform --all`).
 - **Index**: [every module and guide](index.md).
 
 ```ogt
@@ -37,6 +37,7 @@ module platform {
 | [`PlatformInfo`](platform/type-PlatformInfo.md) | struct |  | What answers platform calls here. |
 | [`og.platform.storeGet`](platform/fn-storeGet.md) | function | `(world: World, key: string): Result<number>` | Read one key of the player's store for this game. |
 | [`og.platform.storeSet`](platform/fn-storeSet.md) | function | `(world: World, desc?: StoreSetDesc): Result<number>` | Write one key of the player's store for this game; with a revision, only if nobody wrote it since (another device, another tab). |
+| [`og.platform.catalogHead`](platform/fn-catalogHead.md) | function | `(world: World, catalog: string): Result<number>` | Which version of a content catalog is current: the one mutable thing about a catalog, whose versions never change once published (og.load.data reads a version's files). |
 | [`og.platform.storeList`](platform/fn-storeList.md) | function | `(world: World): number` | The keys of the player's store and their revisions. |
 | [`og.platform.leaderboardSubmit`](platform/fn-leaderboardSubmit.md) | function | `(world: World, desc?: LeaderboardSubmitDesc): Result<number>` | Submit a score; the board keeps the player's best. |
 | [`og.platform.leaderboardTop`](platform/fn-leaderboardTop.md) | function | `(world: World, desc?: LeaderboardQueryDesc): number` | The best entries of a board, and the player's own. |

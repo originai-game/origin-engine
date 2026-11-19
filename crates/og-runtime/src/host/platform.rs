@@ -85,7 +85,7 @@ const ANSWERED: &str = "og.PlatformAnswered";
 /// The notices kept for og.platform.notice.
 const KEEP_NOTICES: usize = 256;
 /// What a notice may be about.
-const NOTICE_KINDS: &[&str] = &["purchase", "entitlements", "invite", "host"];
+const NOTICE_KINDS: &[&str] = &["purchase", "entitlements", "invite", "catalog", "host"];
 
 /// Whether `event` is og.platform's own: an answer or a notice, which a
 /// system that writes shared state in a lockstep session never hears

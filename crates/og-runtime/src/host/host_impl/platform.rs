@@ -9,6 +9,9 @@ macro_rules! __og_host_bindings_platform {
             fn og_platform_store_get(&self, world: u32, key: String) -> String {
                 $crate::host_impl::answer($crate::og_platform_store_get(world, key))
             }
+            fn og_platform_catalog_head(&self, world: u32, catalog: String) -> String {
+                $crate::host_impl::answer($crate::og_platform_catalog_head(world, catalog))
+            }
             fn og_platform_store_set(&self, world: u32, desc: Option<String>) -> String {
                 $crate::host_impl::answer($crate::og_platform_store_set(world, desc))
             }

@@ -15329,14 +15329,15 @@ pub enum PlatformNoticeKind {
     Purchase,
     Entitlements,
     Invite,
+    Catalog,
     Host,
 }
 
 impl PlatformNoticeKind {
     /// The variants' IDL names, in index order.
-    pub const NAMES: &'static [&'static str] = &["purchase", "entitlements", "invite", "host"];
+    pub const NAMES: &'static [&'static str] = &["purchase", "entitlements", "invite", "catalog", "host"];
     /// Every variant, in index order.
-    pub const ALL: &'static [Self] = &[Self::Purchase, Self::Entitlements, Self::Invite, Self::Host];
+    pub const ALL: &'static [Self] = &[Self::Purchase, Self::Entitlements, Self::Invite, Self::Catalog, Self::Host];
     /// The IDL name.
     pub fn as_str(self) -> &'static str {
         Self::NAMES[self as usize]

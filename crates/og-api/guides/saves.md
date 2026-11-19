@@ -334,6 +334,46 @@ og.PlayerInput (og.net.submit).
 - Changing a saved type's fields without raising saveVersion and adding a
   step: old saves are refused.
 - Writing a large save with storeSet: anything over 64 KiB needs a slot.
+- Reading world content (pages shared by every player) through storeGet:
+  it is this player's store. Publish it as a content catalog (§11).
+- Waiting for a `catalog` notice to learn of a new version: notices are
+  best effort; poll og.platform.catalogHead.
 - Comparing a split migration's result by hash (§5).
 - Reading og.platform.result in a lockstep system that writes shared state:
   it reads null.
+
+## 11. Content catalogs: the current version
+
+A content catalog is content the game's host publishes for every player
+alike: a world's index pages, shared levels. Its versions never change
+once published, and og.load.data reads their files (guide loading §14).
+What moves is which version is current, and only the host knows it:
+
+1. og.platform.catalogHead(world, "world") asks. The answer's data is
+   `{ catalog, version, manifest, published }`; `manifest` is the
+   integrity of that version's manifest.
+2. Read the version's files with og.load.data. The engine reads the
+   version's manifest against the integrity the answer gave, so bytes
+   another server put there fail the load (`integrity`).
+3. Poll catalogHead while the game cares: every 30 to 60 seconds, and
+   when a `catalog` notice (og.PlatformNoticeKind.catalog) says one may
+   have changed. A notice is a hint: a host may send it late, twice or
+   never (a top-level page cannot push), and a game that waits for one
+   never learns of a version. A new version may also be an older one
+   again: a rollback.
+4. Swap content once the new version's files are in place, then release
+   the old ones (guide world §5).
+
+The answer and the notice are platform answers, journaled with their
+ticks (og.platform.journal), so a replay sees the same version at the same
+tick. Where they come from:
+
+| Host | catalogHead |
+| --- | --- |
+| `og run --content <dir>`, `og replay`, a playtest (PlaytestDesc.content) | `<dir>/<catalog>/head.json` |
+| A page `og build` wrote, with no Player | the content base's `<catalog>/head.json`, read with `no-store` |
+| A page that frames the game (PlatformInfo.host `player`) | that page |
+| A page's own provider | the provider; `staticCatalog(base)` from `@origingame/engine/provider` reads the same file |
+
+`head.json` has the answer's shape. Without a content base the call is
+answered `unavailable`.

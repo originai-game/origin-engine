@@ -11167,6 +11167,27 @@
           "publish": true
         },
         {
+          "name": "catalogHead",
+          "doc": "Which version of a content catalog is current: the one mutable thing about a catalog, whose versions never change once published (og.load.data reads a version's files). Poll it, every 30 to 60 seconds while the game cares: og.PlatformNoticeKind.catalog is a hint a host may never send.\nSee `saves §11`.",
+          "params": [
+            {
+              "name": "world",
+              "type": "World",
+              "optional": false,
+              "doc": "The world."
+            },
+            {
+              "name": "catalog",
+              "type": "String",
+              "optional": false,
+              "doc": "The catalog's name, as og.load.data's CatalogEntry.catalog."
+            }
+          ],
+          "returns": "Result<u32>",
+          "returnsDoc": "Refused for a malformed name. The answer's data is `{ catalog, version, manifest, published }`: the version, its manifest's integrity (`sha384-<base64>`) and when it was published (UTC ms); `not_found` for a catalog never published.",
+          "publish": true
+        },
+        {
           "name": "storeList",
           "doc": "The keys of the player's store and their revisions.",
           "params": [
@@ -45082,7 +45103,7 @@
           "items": {
             "type": "string"
           },
-          "description": "The methods it answers: store.get, store.set, store.list, leaderboard.submit, leaderboard.top, leaderboard.around, telemetry, point, ai.mark, purchase.products, purchase.buy, purchase.entitlements, purchase.consume, ad.ready, ad.show, achievement.unlock, achievement.progress, achievement.list, player.get, friends.list, invite.send, invite.list, share (og.platform.supports asks for one).\nSee `saves §7`."
+          "description": "The methods it answers: store.get, store.set, store.list, leaderboard.submit, leaderboard.top, leaderboard.around, telemetry, point, ai.mark, purchase.products, purchase.buy, purchase.entitlements, purchase.consume, ad.ready, ad.show, achievement.unlock, achievement.progress, achievement.list, player.get, friends.list, invite.send, invite.list, share, catalog.head (og.platform.supports asks for one).\nSee `saves §7`."
         },
         "pending": {
           "type": "integer",
@@ -45126,12 +45147,14 @@
         "purchase",
         "entitlements",
         "invite",
+        "catalog",
         "host"
       ],
       "x-og-variants": {
         "purchase": "A purchase settled: a pending one completed or failed, or one was refunded. Data `{ purchase, product, quantity, state }`, state `completed`, `failed` or `refunded`.",
         "entitlements": "The player's entitlements changed without a call (bought on another device, a subscription expired): data `{ entitlements }`, the entitlements answer's shape.",
         "invite": "An invite to this game arrived: data `{ invite, from: { player, name }, payload, time }`.",
+        "catalog": "A content catalog may have a new version: data `{ catalog, version, manifest }`, og.platform.catalogHead's answer without `published`. Best effort: a host may send it late, twice or never, so a game polls catalogHead and treats this as a reason to poll now.",
         "host": "A message from the page that frames the game, outside any platform service (a site steering a showcase, a launcher handing over a choice): data `{ name, ... }`, its meaning agreed between game and page. The engine gives it none; a game ignores a name it does not know."
       }
     },
@@ -45192,7 +45215,7 @@
         },
         "kind": {
           "type": "string",
-          "description": "`purchase`, `entitlements` or `invite`."
+          "description": "`purchase`, `entitlements`, `invite`, `catalog` or `host`."
         },
         "data": {
           "description": "What it carries (see og.PlatformNoticeKind)."

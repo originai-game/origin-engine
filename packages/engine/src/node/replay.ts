@@ -325,7 +325,7 @@ if (loadsJournal) {
   if (!r.ok) fail(`the loads journal: ${r.reason}`);
 }
 engine.attachPlatform(
-  handed ? handedHost(handed) : trace?.platform ? journalHost(trace.platform) : recording(nativePlatform(undefined, fakeOf())),
+  handed ? handedHost(handed) : trace?.platform ? journalHost(trace.platform) : recording(nativePlatform(undefined, fakeOf(), content)),
 );
 const opened = openAudio(engine.id, "null");
 if (!opened.ok) fail(`audio: ${opened.reason}`);

@@ -15,6 +15,9 @@
 //! first after it arrived) and journaled with its tick and the integrity it
 //! read ([`crate::world::uncooked::Kind::Data`]). A replay puts it in place
 //! at its recorded tick and requires the same integrity.
+//!
+//! A catalog.head answer or a `catalog` notice ([`pin`]) names a version's
+//! manifest integrity; a manifest read after it is checked against it.
 
 use crate::engine::{Engine, hooks};
 use crate::world::assets::{Entry, Fetch, Payload, Status, join};
@@ -53,6 +56,29 @@ pub(crate) struct Data {
     next: u32,
     jobs: Vec<Job>,
     manifests: BTreeMap<(String, String), Manifest>,
+    /// Each version's manifest integrity, as a catalog.head answer or a
+    /// `catalog` notice named it (journaled host input).
+    pins: BTreeMap<(String, String), String>,
+}
+
+/// A catalog.head answer's or `catalog` notice's data, `{ catalog, version,
+/// manifest }`: that version's manifest is read against `manifest` from
+/// now on. Anything else is ignored; a version already read keeps it.
+pub(crate) fn pin(eng: &Engine, data: &Value) {
+    let (Some(catalog), Some(version), Some(manifest)) = (
+        data["catalog"].as_str(),
+        data["version"].as_str(),
+        data["manifest"].as_str(),
+    ) else {
+        return;
+    };
+    if !name_ok(catalog, 64) || !name_ok(version, 128) || digest_hex(manifest).is_none() {
+        return;
+    }
+    eng.assets.borrow_mut().data.pins.insert(
+        (catalog.to_string(), version.to_string()),
+        manifest.to_string(),
+    );
 }
 
 fn name_ok(s: &str, max: usize) -> bool {
@@ -203,7 +229,13 @@ fn read(eng: &Engine, job: &Job, recorded: Option<&str>) -> Step {
         ));
     }
     let key = (job.catalog.clone(), job.version.clone());
-    let known = eng.assets.borrow().data.manifests.get(&key).cloned();
+    let (known, pinned) = {
+        let a = eng.assets.borrow();
+        (
+            a.data.manifests.get(&key).cloned(),
+            a.data.pins.get(&key).cloned().unwrap_or_default(),
+        )
+    };
     let files = match known {
         Some(m) => m,
         None => {
@@ -211,9 +243,19 @@ fn read(eng: &Engine, job: &Job, recorded: Option<&str>) -> Step {
                 &base,
                 &format!("{}/{}/manifest.json", job.catalog, job.version),
             );
-            let m = match h.read_content(&url, "") {
+            let what = format!("{}/{}/manifest.json", job.catalog, job.version);
+            let m = match h.read_content(&url, &pinned) {
                 Fetch::Pending => return Step::Wait,
+                Fetch::Failed(e) if e.contains("integrity") => {
+                    Err(format!("integrity: {what}: {e}"))
+                }
                 Fetch::Failed(e) => Err(failure(&format!("{}/{}", job.catalog, job.version), &e)),
+                Fetch::Ready(bytes) if !pinned.is_empty() => match checked(&bytes, &pinned) {
+                    Ok(()) => manifest(&bytes, &job.catalog, &job.version),
+                    Err(e) => Err(format!(
+                        "integrity: {what}: the catalog's head names {pinned}: {e}"
+                    )),
+                },
                 Fetch::Ready(bytes) => manifest(&bytes, &job.catalog, &job.version),
             };
             // A version never changes, so its manifest is kept; a failed read
