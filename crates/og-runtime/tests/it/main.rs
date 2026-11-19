@@ -12,6 +12,8 @@ mod ao_resolution;
 mod armed_emitters;
 #[path = "../art_contract.rs"]
 mod art_contract;
+#[path = "../exposure_range.rs"]
+mod exposure_range;
 #[path = "../particle_events.rs"]
 mod particle_events;
 // It reads the frame recorder, which a publish build has not.

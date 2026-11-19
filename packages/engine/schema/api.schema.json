@@ -24647,6 +24647,22 @@
           "description": "Meter every frame to middle grey, then apply Camera.exposure as compensation. With both adapt speeds 0 the exposure is the frame's own; otherwise it adapts from the exposure metered on the first frame after the first tick (earlier frames meter at once), so every host draws the same exposures.\nSee `render §5`.",
           "default": false
         },
+        "autoExposureMin": {
+          "type": "number",
+          "description": "The least exposure auto exposure applies, in stops (EV: the image times 2^EV, Camera.exposure's compensation included): a very bright view is darkened no further.\nSee `render §5`.",
+          "default": -10,
+          "minimum": -20,
+          "maximum": 20,
+          "x-og-tunable": true
+        },
+        "autoExposureMax": {
+          "type": "number",
+          "description": "The most exposure auto exposure applies, in stops (EV, compensation included): a dark view is brightened no further, so a night stays dark instead of metering to grey. Below autoExposureMin it is taken as autoExposureMin.\nSee `render §5`.",
+          "default": 10,
+          "minimum": -20,
+          "maximum": 20,
+          "x-og-tunable": true
+        },
         "adaptSpeedUp": {
           "type": "number",
           "description": "How fast auto exposure rises when the view gets darker, in EV per second of game time: each drawn frame moves it by at most the speed times the ticks since the last drawn frame, never by the wall clock; 0 is instant. Snapshots and probe sweeps carry the adapted exposure.",

@@ -30,4 +30,4 @@ fn measureText {
 }
 ```
 
-<sub>Module `render` line 2839</sub>
+<sub>Module `render` line 2853</sub>
