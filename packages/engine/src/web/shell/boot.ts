@@ -168,6 +168,7 @@ export async function bootWorker(options: ShellOptions): Promise<Booted> {
       root: options.root,
       ...(options.rootIntegrity ? { rootIntegrity: options.rootIntegrity } : {}),
       ...(options.content ? { content: options.content } : {}),
+      ...(options.contentLater ? { contentLater: true } : {}),
       basis: options.basis,
       ...(options.av1 ? { av1: options.av1 } : {}),
       profile: options.profile,

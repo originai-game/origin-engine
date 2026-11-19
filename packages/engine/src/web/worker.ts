@@ -154,6 +154,7 @@ export function startWorker(game: GameToken): void {
       // A Play link's join leaves now, not with the next frame (the page may be behind its gate).
       pumpRoom(engine);
     }
+    if (data.type === "content") boundHost()?.abi.og_engine_set_content(engine.id, data.base);
     if (data.type === "room-events") {
       const abi = boundHost()?.abi;
       for (const event of data.events) abi?.og_room_deliver(engine.id, JSON.stringify(event));

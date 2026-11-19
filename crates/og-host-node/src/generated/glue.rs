@@ -195,6 +195,12 @@ pub fn og_shared_deliver(env: Env, engine: u32, event: String) -> bool {
     <Host as Lifecycle>::og_shared_deliver(&Host, engine, event)
 }
 
+#[napi(js_name = "og_engine_set_content")]
+pub fn og_engine_set_content(env: Env, engine: u32, base: String) {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as Lifecycle>::og_engine_set_content(&Host, engine, base)
+}
+
 #[napi(js_name = "og_engine_trace")]
 pub fn og_engine_trace(env: Env, engine: u32, on: bool) {
     let _env = crate::EnvScope::enter(&env);

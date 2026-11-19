@@ -111,6 +111,9 @@ macro_rules! __og_host_bindings_engine {
             fn og_room_deliver(&self, engine: u32, event: String) -> bool {
                 $crate::og_room_deliver(engine, event)
             }
+            fn og_engine_set_content(&self, engine: u32, base: String) {
+                $crate::og_engine_set_content(engine, base)
+            }
             fn og_room_set_host(&self, engine: u32, info: String) {
                 $crate::og_room_set_host(engine, info)
             }

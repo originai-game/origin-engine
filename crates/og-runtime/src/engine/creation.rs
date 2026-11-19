@@ -176,6 +176,7 @@ fn create_inner(game: u32, options: &str) -> Result<u32, String> {
         assets: RefCell::new(Assets {
             root: options["root"].as_str().unwrap_or_default().to_string(),
             content: options["content"].as_str().unwrap_or_default().to_string(),
+            content_later: options["contentLater"].as_bool().unwrap_or(false),
             ..Assets::default()
         }),
         modules,

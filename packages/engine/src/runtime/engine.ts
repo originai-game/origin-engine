@@ -120,6 +120,8 @@ export interface CreateOptions {
   readonly root?: string;
   /** The content base og.load.data reads catalogs from: a directory (`og run --content`) or an https URL (the page's `content`). */
   readonly content?: string;
+  /** The host names the content base after the engine starts (og_engine_set_content: a page waiting for its Player's hello); og.load.data loads wait for it. */
+  readonly contentLater?: boolean;
   /** The physics profile, project.ogt's `profile`: `3d` (the default) or `2d`. */
   readonly profile?: "2d" | "3d";
   /**

@@ -114,6 +114,8 @@ export interface ShellOptions {
   readonly rootIntegrity?: string;
   /** The content base og.load.data reads catalogs from (guide loading §14), an https URL; omitted: a data load fails `unavailable`. */
   readonly content?: string;
+  /** The content base comes later (setContent, once a Player's hello named it or did not); og.load.data loads wait for it. */
+  readonly contentLater?: boolean;
   /** The Basis transcoder's script and module URLs (as the Worker resolves them). */
   readonly basis?: { readonly js: string; readonly wasm: string };
   /** The rav1d AV1 fallback's module URL (as the Worker resolves it), fetched only where WebCodecs cannot decode AV1. */
@@ -452,6 +454,11 @@ export class Shell {
   /** Unasked platform input (a Player's pushed notice): applied at the next tick's start as og.PlatformNotice. */
   notify(notice: PlatformNotice): void {
     this.#platform.notify(notice);
+  }
+
+  /** og.load.data's content base, for a shell started with `contentLater`: an https directory, or undefined for none. */
+  setContent(base: string | undefined): void {
+    this.worker.postMessage({ type: "content", base: base ?? "" });
   }
 
   /** What answers og.platform's calls from now on (og.platform.info reports its host and capabilities). */

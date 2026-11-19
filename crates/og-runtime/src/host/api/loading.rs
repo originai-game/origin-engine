@@ -433,6 +433,14 @@ pub fn og_load_data(world: u32, desc: Option<String>) -> Result<serde_json::Valu
     })()
 }
 
+/// Host lifecycle: the content base og.load.data reads, named after the
+/// engine started (CreateOptions.contentLater); empty for none.
+pub fn og_engine_set_content(engine_id: u32, base: String) {
+    if let Ok(eng) = engine(engine_id) {
+        crate::world::data::set_content(&eng, &base);
+    }
+}
+
 pub fn og_load_data_json(world: u32, asset: f64) -> Result<serde_json::Value, String> {
     engine(world).and_then(|eng| {
         crate::world::data::with(&eng, asset, |path, d| match d {

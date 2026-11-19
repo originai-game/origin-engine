@@ -164,6 +164,11 @@ pub fn og_shared_deliver(engine: u32, event: String) -> bool {
 }
 
 #[wasm_bindgen]
+pub fn og_engine_set_content(engine: u32, base: String) {
+    <Host as Lifecycle>::og_engine_set_content(&Host, engine, base)
+}
+
+#[wasm_bindgen]
 pub fn og_engine_trace(engine: u32, on: bool) {
     <Host as Lifecycle>::og_engine_trace(&Host, engine, on)
 }

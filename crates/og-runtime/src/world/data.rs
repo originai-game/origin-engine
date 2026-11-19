@@ -222,7 +222,14 @@ fn read(eng: &Engine, job: &Job, recorded: Option<&str>) -> Step {
     let Some(h) = hooks() else {
         return Step::Done(Err("unavailable: no host reads files".into()));
     };
-    let base = eng.assets.borrow().content.clone();
+    let (base, later) = {
+        let a = eng.assets.borrow();
+        (a.content.clone(), a.content_later)
+    };
+    // The host names its content base once its platform settled (the Player's hello).
+    if base.is_empty() && later {
+        return Step::Wait;
+    }
     if base.is_empty() {
         return Step::Done(Err(
             "unavailable: no content base (og run --content <dir>, og build --content <url> or project.ogt publish { content })".into(),
@@ -385,6 +392,15 @@ pub(crate) fn poll(eng: &Engine, tick: u64) {
         });
     }
     eng.assets.borrow_mut().data.jobs.extend(kept);
+}
+
+/// og_engine_set_content: the content base the host names once it knows it
+/// (the Player's hello); empty for none. Loads waiting for it go on at the
+/// next tick boundary.
+pub(crate) fn set_content(eng: &Engine, base: &str) {
+    let mut a = eng.assets.borrow_mut();
+    a.content = base.trim_end_matches('/').to_string();
+    a.content_later = false;
 }
 
 /// Whether entry `index` is a data load (pending or put in place).

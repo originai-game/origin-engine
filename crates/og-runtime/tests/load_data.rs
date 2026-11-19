@@ -12,10 +12,10 @@
 
 use og_runtime::host_impl::answer;
 use og_runtime::{
-    Dispatch, Fetch, Hooks, og_engine_create, og_engine_destroy, og_engine_frame, og_game_game,
-    og_load_completions, og_load_data, og_load_data_bytes, og_load_data_json, og_load_error,
-    og_load_release, og_load_replay_completions, og_load_status, og_platform_answer,
-    og_platform_catalog_head, og_platform_notify, og_platform_take, set_hooks,
+    Dispatch, Fetch, Hooks, og_engine_create, og_engine_destroy, og_engine_frame,
+    og_engine_set_content, og_game_game, og_load_completions, og_load_data, og_load_data_bytes,
+    og_load_data_json, og_load_error, og_load_release, og_load_replay_completions, og_load_status,
+    og_platform_answer, og_platform_catalog_head, og_platform_notify, og_platform_take, set_hooks,
 };
 use serde_json::{Value, json};
 use std::cell::{Cell, RefCell};
@@ -390,6 +390,53 @@ fn the_catalog_head_pins_the_version_manifest() {
         "{:?}",
         og_load_error(e, other)
     );
+    assert!(og_engine_destroy(e));
+    std::fs::remove_dir_all(base).unwrap();
+}
+
+/// A page that learns its content base from its Player's hello creates the
+/// engine with `contentLater`: a data load waits (it neither fails
+/// `unavailable` nor reads anything) until the host names the base, then
+/// loads; named empty, it fails `unavailable`.
+#[test]
+fn a_content_base_named_later_holds_data_loads_until_then() {
+    let base = base("later");
+    catalog(&base);
+    let h = hooks();
+    let later = || {
+        set_hooks(h.clone());
+        og_runtime::og_host_begin_bundle();
+        let game = og_game_game(Some(r#"{"seed":1}"#.into()));
+        value(og_engine_create(
+            game,
+            json!({ "contentLater": true }).to_string(),
+        ))
+        .as_u64()
+        .unwrap() as u32
+    };
+    let e = later();
+    let waiting = data(e, "v1", "raw.bin", "bytes", None);
+    for _ in 0..5 {
+        frame(e);
+    }
+    assert_eq!(og_load_status(e, waiting), "pending");
+    assert!(h.asked.borrow().is_empty(), "{:?}", h.asked.borrow());
+    og_engine_set_content(e, format!("{}/", base.display()));
+    frame(e);
+    assert_eq!(
+        og_load_status(e, waiting),
+        "ready",
+        "{:?}",
+        og_load_error(e, waiting)
+    );
+    assert!(og_engine_destroy(e));
+
+    let e = later();
+    let none = data(e, "v1", "raw.bin", "bytes", None);
+    frame(e);
+    og_engine_set_content(e, String::new());
+    frame(e);
+    assert!(failed(e, none).starts_with("unavailable:"));
     assert!(og_engine_destroy(e));
     std::fs::remove_dir_all(base).unwrap();
 }

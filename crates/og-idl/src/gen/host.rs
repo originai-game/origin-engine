@@ -401,6 +401,12 @@ const LIFECYCLE: &[LifecycleMember] = &[
         "One shared-world event from the host, JSON: `{ type: \"host\", host }` (what carries sessions here: the provider's name, or `none`), `{ type: \"open\", transport, token }` (connected; the token is the provider's, sent in hello as it is), `{ type: \"message\", bytes }` (base64), `{ type: \"closed\", reason }` or `{ type: \"refused\", code, message }` (the provider refused). Applied at the start of the next tick and journaled (og.platform.journal) without the token. False for a malformed event.",
     ),
     (
+        "og_engine_set_content",
+        &[("engine", "u32", "number"), ("base", "String", "string")],
+        "()",
+        "Name the content base og.load.data reads catalogs from (guide loading §14), for an engine created with `contentLater`: a page that learns it from its Player's hello. Empty for none: waiting data loads then fail `unavailable`. Until it is named they stay pending (30 s at most on the web).",
+    ),
+    (
         "og_engine_trace",
         &[("engine", "u32", "number"), ("on", "bool", "boolean")],
         "()",

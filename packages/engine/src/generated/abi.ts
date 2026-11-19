@@ -70,6 +70,8 @@ export interface HostAbi<A, V> {
   og_shared_take(engine: number): string;
   /** One shared-world event from the host, JSON: `{ type: "host", host }` (what carries sessions here: the provider's name, or `none`), `{ type: "open", transport, token }` (connected; the token is the provider's, sent in hello as it is), `{ type: "message", bytes }` (base64), `{ type: "closed", reason }` or `{ type: "refused", code, message }` (the provider refused). Applied at the start of the next tick and journaled (og.platform.journal) without the token. False for a malformed event. */
   og_shared_deliver(engine: number, event: string): boolean;
+  /** Name the content base og.load.data reads catalogs from (guide loading §14), for an engine created with `contentLater`: a page that learns it from its Player's hello. Empty for none: waiting data loads then fail `unavailable`. Until it is named they stay pending (30 s at most on the web). */
+  og_engine_set_content(engine: number, base: string): void;
   /** Turn an engine's trace on or off (`og run --trace`, the shell's `trace()`). Engine 0xffffffff is the loads made before an engine exists: its boot scene's. */
   og_engine_trace(engine: number, on: boolean): void;
   /** The trace's spans since the last take, as JSON `{ now, events }`: Chrome trace events on the engine's clock. `last` waits for the GPU's frames in flight where the host can (natively; the web's arrive in a later take). */
@@ -2092,6 +2094,7 @@ export const SYMBOLS: readonly string[] = [
   "og_room_set_host",
   "og_shared_take",
   "og_shared_deliver",
+  "og_engine_set_content",
   "og_engine_trace",
   "og_engine_trace_take",
 ];

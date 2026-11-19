@@ -640,8 +640,10 @@ export async function play(options: PlayOptions = {}): Promise<PlayHandle> {
   const fake = config.build === "dev" ? {} : undefined;
   // A content base (og build --content) also answers catalog heads from its <catalog>/head.json.
   const alone = () => provided.platform ?? localPlatform(platformStore, fake, config.content ? { base: config.content } : undefined);
-  // og.load.data's content base: the page's provider names it, else the build's.
-  const content = contentBase(provided.platform, config.content, (line) => log.push([line]));
+  // og.load.data's content base: the page's provider names it, else the build's. A page that
+  // waits for a Player learns it with the platform (the hello's `content`); its loads wait till then.
+  const deferred = linked || !!page;
+  const content = deferred ? undefined : contentBase(provided.platform, config.content, (line) => log.push([line]));
   if (!player.hosted && linked) setTimeout(() => platformReady(alone()), HELLO_WAIT_MS);
   // A top-level platform page's calls wait for its play origin's hello; without one, the browser's storage.
   if (page)
@@ -727,6 +729,7 @@ export async function play(options: PlayOptions = {}): Promise<PlayHandle> {
       // The package: next to the page, or on its asset base, every file checked.
       ...(config.assets ? { root: config.assets.base.replace(/\/$/, ""), rootIntegrity: config.assets.manifest } : { root: new URL(".", location.href).href.replace(/\/$/, "") }),
       ...(content ? { content } : {}),
+      ...(deferred ? { contentLater: true } : {}),
       basis: { js: at("basis/basis_transcoder.js"), wasm: at("basis/basis_transcoder.wasm") },
       av1: at("av1/og-av1.wasm"),
       autoplay: false,
@@ -771,6 +774,8 @@ export async function play(options: PlayOptions = {}): Promise<PlayHandle> {
     throw e;
   }
   shellRef = shell;
+  // The content base once the platform settled: the Player's (its hello's `content`), else the build's.
+  if (deferred) void hostReady.then((h) => shell.setContent(contentBase(h, config.content, (line) => log.push([line]))));
   // The device the engine renders with, as the Worker read it (never an adapter of the page's own).
   if (context) context = { ...context, gpu: shell.ready.gpu ? gpuOf(shell.ready.gpu) : null };
   performance.mark?.("og:ready");

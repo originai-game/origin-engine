@@ -97,6 +97,7 @@ export function connectPlayer(events: PlayerEvents) {
   let paused = false;
   let capabilities: readonly string[] = [];
   let time: number | undefined;
+  let content: string | undefined;
   let nextCall = 1;
   const calls = new Map<string, (r: PlayerResult) => void>();
 
@@ -122,6 +123,7 @@ export function connectPlayer(events: PlayerEvents) {
         paused = m["paused"] === true;
         time = timeOf(m).time;
         capabilities = Array.isArray(m["capabilities"]) ? (m["capabilities"] as unknown[]).filter((c): c is string => typeof c === "string") : [];
+        content = typeof m["content"] === "string" && m["content"] !== "" ? m["content"] : undefined;
         events.hello?.({ started: m["started"] === true, paused, capabilities });
         break;
       case "result": {
@@ -214,6 +216,10 @@ export function connectPlayer(events: PlayerEvents) {
     /** The most recent hello's clock, before any calls have been answered. */
     get time(): number | undefined {
       return time;
+    },
+    /** The content base the hello named (`content`: where og.load.data reads the game's catalogs), or undefined. */
+    get content(): string | undefined {
+      return content;
     },
     loading(value: number | null, label?: string) {
       if (readySent) return;
