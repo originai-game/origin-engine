@@ -78,6 +78,14 @@ impl Hooks for WebHooks {
         }
     }
 
+    fn fetching(&self, path: &str) -> bool {
+        // Landed (or failed) is for read_asset to take: never taken here.
+        if FILES.with(|f| f.borrow().contains_key(path)) {
+            return false;
+        }
+        matches!(request(path, None), Fetch::Pending)
+    }
+
     fn read_content(&self, path: &str, integrity: &str) -> Fetch<Vec<u8>> {
         // Read once by the engine, which keeps what it needs: taken, never
         // kept in the wasm heap beside its copy, and fetched again (a

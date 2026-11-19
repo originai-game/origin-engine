@@ -262,7 +262,7 @@ fn end_hold(eng: &Engine, tick: u64) {
     let Some(hold) = hold else { return };
     let ms = (crate::author::probe::now_ms() - hold.since_ms).max(0.0);
     let text = format!(
-        "tick {} was held {ms:.0} ms for cell {}'s group '{}' (its sub-scene's pack)",
+        "tick {} was held {ms:.0} ms for cell {}'s group '{}' (its sub-scene's pack or models)",
         hold.tick,
         og_ecs::Entity::from_bits(hold.cell),
         hold.group

@@ -146,6 +146,11 @@ impl Hooks for NodeHooks {
         }
     }
 
+    /// A read here completes at once: nothing is ever on its way.
+    fn fetching(&self, _path: &str) -> bool {
+        false
+    }
+
     fn asset_file(&self, path: &str) -> String {
         resident::asset_file(path)
     }

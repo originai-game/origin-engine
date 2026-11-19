@@ -671,6 +671,106 @@ fn runtime_bundles_stream_without_freezing_or_changing_the_world() {
     std::fs::remove_dir_all(base).unwrap();
 }
 
+/// Answers each `.ogb` of a bundle under `/many/` (its models and their
+/// textures, which are in no group) `Pending` until the next frame, as the
+/// web host does while it fetches what a runtime bundle reads on demand.
+#[derive(Default)]
+struct Network {
+    asked: RefCell<BTreeSet<String>>,
+    landed: RefCell<BTreeSet<String>>,
+}
+impl Hooks for Network {
+    fn dispatch(&self, _: &Dispatch) -> Result<String, String> {
+        Ok(String::new())
+    }
+    fn read_asset(&self, path: &str) -> Fetch<Vec<u8>> {
+        let model = path.contains("/many/cooked/m") && path.ends_with(".ogb");
+        if model && !self.landed.borrow().contains(path) {
+            self.asked.borrow_mut().insert(path.into());
+            return Fetch::Pending;
+        }
+        match std::fs::read(path) {
+            Ok(bytes) => Fetch::Ready(bytes),
+            Err(e) => Fetch::Failed(format!("{path}: {e}")),
+        }
+    }
+}
+
+/// A cell group's sub-scene placing six models from a runtime bundle,
+/// whose files the host fetches on demand, loads and its group becomes
+/// ready: the tick waits once for every model's files. Broken while each
+/// refused spawn started only the next missing file: the cell ran out of
+/// retries before the last arrived and stayed unloaded with its group
+/// resident (Infinity World's far cells on the web).
+#[test]
+fn a_cell_waits_for_all_its_models_files_at_once() {
+    let _lock = TEST_LOCK.lock().unwrap();
+    const MODELS: usize = 6;
+    let base = PathBuf::from(env!("CARGO_TARGET_TMPDIR"))
+        .join(format!("og-runtime-many-models-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&base);
+    let root = base.join("game");
+    cook(&root, &[("world.ogt", b"type scene\nversion 1\n---\nentity \"player\" {\n  Transform {\n    position 0 0 0\n  }\n  StreamAnchor {\n    reach 0\n  }\n}\n".to_vec())]);
+    let mut files = Vec::new();
+    let mut content = "type scene\nversion 1\n---\nstream \"many\" {\n  cell\n}\n".to_string();
+    for i in 0..MODELS {
+        let shade = 40 * i as u8;
+        let image = image::RgbaImage::from_pixel(16, 16, image::Rgba([shade, 90, 200, 255]));
+        let mut png = std::io::Cursor::new(Vec::new());
+        image.write_to(&mut png, image::ImageFormat::Png).unwrap();
+        files.push((format!("m{i}/tex.png"), png.into_inner()));
+        files.push((
+            format!("m{i}/model.ogt"),
+            format!(
+                "type model\nversion 1\n---\nmaterial \"paint\" {{\n  map \"tex.png\"\n}}\npart \"box\" {{\n  material \"paint\"\n  boxGeometry {{\n    width {}\n  }}\n}}\n",
+                1 + i
+            )
+            .into_bytes(),
+        ));
+        content += &format!("entity \"box-{i}\" {{\n  model \"m{i}/model.ogt\"\n}}\n");
+    }
+    files.push(("content.ogt".into(), content.into_bytes()));
+    files.push(("place.ogt".into(), b"type scene\nversion 1\n---\nentity \"cell-many\" {\n  scene \"content.ogt\"\n  Transform {\n    position 100 0 0\n  }\n  Volume {\n    size 20 10 20\n  }\n  StreamCell {\n    load 10\n  }\n}\n".to_vec()));
+    let pack = base.join("many");
+    cook(
+        &pack,
+        &files
+            .iter()
+            .map(|(n, d)| (n.as_str(), d.clone()))
+            .collect::<Vec<_>>(),
+    );
+    let net = Rc::new(Network::default());
+    set_hooks(net.clone());
+    og_host_begin_bundle();
+    let game = og_game_game(Some(r#"{"seed":1}"#.into()));
+    let engine = value(og_engine_create(game, json!({"root": root}).to_string()))
+        .as_u64()
+        .unwrap() as u32;
+    let g = Game {
+        engine,
+        held: Rc::default(),
+    };
+    g.place("world.ogt");
+    let h = g.open(&pack);
+    assert_eq!(og_load_status(engine, h), "ready");
+    g.place("place.ogt");
+    g.walk(100);
+    let mut asked = 0;
+    for _ in 0..40 {
+        g.frame();
+        // The network brings whatever was asked for by the next frame.
+        let mut a = net.asked.borrow_mut();
+        asked = asked.max(a.len());
+        net.landed.borrow_mut().extend(std::mem::take(&mut *a));
+    }
+    assert!(g.loaded("many"), "the cell never loaded");
+    let status = value(host_impl::answer(og_stream_status(engine, "many".into())));
+    assert_eq!(status["ready"], true, "{status}");
+    assert!(asked > 1, "the models' files were asked for one at a time");
+    assert!(og_engine_destroy(engine));
+    std::fs::remove_dir_all(base).unwrap();
+}
+
 /// A cell's models start fading in only once the renderer has made their
 /// pipelines on display frames, and at once on a script's frames, which
 /// reproduce run to run whatever a compile took. The world is the same.

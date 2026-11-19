@@ -561,6 +561,41 @@ impl Assets {
         }
     }
 
+    /// Whether a model a scene places still has a file on its way: every
+    /// model it names that is not loaded yet, its model or proxy blob and
+    /// its textures outside streaming groups (the web reads a runtime
+    /// bundle's on demand). Asking starts every such fetch at once, so a
+    /// cell holds its tick once for them all (stream::cells::waiting).
+    pub(crate) fn scene_fetching(&self, scene: &LoadedScene) -> bool {
+        let Some(h) = crate::engine::hooks() else {
+            return false;
+        };
+        let mut fetching = false;
+        let mut asked = std::collections::BTreeSet::new();
+        for id in scene.entities.iter().filter_map(|e| e.instance.as_deref()) {
+            if !asked.insert(id)
+                || self
+                    .by_path
+                    .contains_key(&format!("gltf:{}:{id}", scene.bundle))
+            {
+                continue;
+            }
+            let Ok((bundle, dir)) = self.bundle_from(id, Some(scene.bundle)) else {
+                continue;
+            };
+            let Ok(asset) = bundle.asset(id) else {
+                continue;
+            };
+            for out in asset.outputs.iter().filter(|o| {
+                o.group.is_none()
+                    && (o.ty == "og.Model" || (o.ty == "og.Texture" && !o.id.ends_with("#mips")))
+            }) {
+                fetching |= h.fetching(&format!("{dir}/{}", out.file));
+            }
+        }
+        fetching
+    }
+
     /// The streaming group of a cooked output (`None`: loaded at boot).
     pub(crate) fn group_of(&self, id: &str) -> Option<String> {
         self.group_from(id, None)
