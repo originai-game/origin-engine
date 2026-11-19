@@ -2041,6 +2041,7 @@
     "control": null,
     "uses": [],
     "files": [
+      "@ui/screens/confirm.en.ogt",
       "@ui/screens/confirm.svelte"
     ],
     "imports": []

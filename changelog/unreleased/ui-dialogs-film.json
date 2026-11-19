@@ -1,0 +1,86 @@
+{
+  "added": [
+    {
+      "member": "Confirm",
+      "summary": "A dense smoked plate over a dark scrim, lit along its top in the accent; when danger is set the edge is red and a \"Cannot be undone\" kicker stands over the question. Cancel is a glass plate and the confirming action the lit plate, red for a destructive one. New part confirm.kicker; new string table confirm.en.ogt with screen.confirm.undone."
+    },
+    {
+      "member": "Tutorial",
+      "summary": "The step card is an accent-lit plate: the step count as a kicker beside a thin progress line, the title, the text (never clamped: the card grows), Skip in type and Next as the lit plate. New parts tutorial.track and tutorial.fill."
+    },
+    {
+      "member": "Menu",
+      "summary": "Draws on its own smoked plate. A row is type, washed in the accent from a lit leading edge under the pointer or the focus; a shortcut sits on a dark key chip, a check is drawn in the accent, the chosen radio is a lit diamond, a disabled row is faint and a destructive one red. A long command wraps between its words; rows keep 44 px targets under a coarse pointer."
+    },
+    {
+      "member": "Breadcrumbs",
+      "summary": "Dim links, faint chevrons, the current page bold on a lit underline. The trail wraps between crumbs and a long name wraps between its words; crumbs keep 44 px targets under a coarse pointer."
+    },
+    {
+      "member": "TooltipCard",
+      "summary": "The item's card is a smoked plate lit along its top and tinted at its head in its rarity's colour, the icon in an octagon socket; figures are condensed and tabular, a change carries its triangle and sign in green or red, an added or removed stat a chip. What is equipped stands beside it on a plainer plate, and under it on a narrow screen. Long names and stats wrap between words."
+    },
+    {
+      "member": "FilmChoices",
+      "summary": "The choices dock at the foot over a shade, under a thin lit line that drains with the time left. A choice is a cut smoked plate whose words wrap whole; the chosen one is ringed and washed in the accent, an unavailable one flat and dim but readable (4.5:1), a quick-time one carries a gold bar. A hotspot is four lit brackets round a faint wash. New part film-choices.shade."
+    },
+    {
+      "member": "FilmChapters, FilmGallery",
+      "summary": "Over a veil: chapters and endings are cut stills with the name under the picture, where a long name wraps whole. The selected one is ringed and lit; one not reached is a hatched dark well under a lock. An ending found carries a gold diamond. The grid fills whole columns and scrolls. New parts shade, plate and lock on both, and film-gallery.mark."
+    },
+    {
+      "member": "FilmFlowchart",
+      "summary": "Over a veil; the picked node sits on an accent-lit plate under a \"Selected\" kicker, its words whole beside Play from here, which drops under them on a narrow screen. New parts film-flowchart.shade and film-flowchart.kicker; new string screen.film-flowchart.selected."
+    }
+  ],
+  "breaking": [
+    {
+      "member": "Confirm",
+      "change": "Cancel is no longer the quiet variant (it is a default button with class plate), and the dialog sets its own panel fill, edge and backdrop from the --dialog-* roles.",
+      "fix": "A style that dressed the quiet Cancel dresses #Cancel or ::part(confirm.actions) button; one that dressed the panel sets --dialog-fill, --dialog-edge and --dialog-scrim.",
+      "find": [
+        "Confirm"
+      ]
+    },
+    {
+      "member": "Menu",
+      "change": "The menu's frame is no longer bare: it draws its own plate, and its rows are type, not row-role strips.",
+      "fix": "A game that stood Menu in a panel of its own removes that panel's fill, or sets --dialog-fill to none on the menu.",
+      "find": [
+        "Menu"
+      ]
+    },
+    {
+      "member": "Tutorial",
+      "change": "screen.tutorial.Step now reads \"Tutorial · {step} / {steps}\" and stands at the card's head, not beside the actions.",
+      "fix": "A game that wants the bare count overrides screen.tutorial.Step in its string table.",
+      "find": [
+        "tutorial"
+      ]
+    },
+    {
+      "member": "TooltipCard",
+      "change": "A rarity no longer draws the frame's rim through --frame-rim and --frame-rim-width. The card sets --frame-fill and --frame-shadow (a lit top edge and a tinted head) and the socket's --well-fill and --well-shadow from --rarity; --title-ink is still the rarity's colour.",
+      "fix": "A style that recoloured a rarity sets --rarity on ::part(TooltipCard.frame), or the palette's rarity colours; one that drew its own rim on the card sets --frame-shadow there.",
+      "find": [
+        "TooltipCard"
+      ]
+    },
+    {
+      "member": "FilmChoices, FilmChapters, FilmGallery",
+      "change": "The choices' panel is bare (no HUD plate behind them). A chapter or ending card is no longer a raised panel, and one not reached draws part lock (a well and a lock icon) in place of its thumb art.",
+      "fix": "A style that dressed the choices' panel dresses ::part(film-choices.shade); one that dressed a locked card's thumb dresses ::part(film-chapters.lock) or ::part(film-gallery.lock).",
+      "find": [
+        "film-choices",
+        "film-chapters",
+        "film-gallery"
+      ]
+    }
+  ],
+  "fixed": [
+    {
+      "member": "KeyValues",
+      "summary": "A delta that starts with + is drawn in the better green (class up) and one that starts with - in the worse red (new class down); an unsigned delta is plain. Every delta used to draw red, because the test for the leading sign never matched."
+    }
+  ]
+}

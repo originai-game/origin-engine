@@ -20,9 +20,17 @@
 </nav>
 
 <style>
-:host { display: block; }
-ol { margin: 0; padding: 0; list-style-type: none; }
-.icon { width: var(--size-xs); height: var(--size-xs); }
-.sep { width: var(--space-sm); height: var(--space-md); }
+/* A trail in type: dim links, faint chevrons, the current page bold on a
+   lit underline. The trail wraps between crumbs, and a long current page
+   takes a line of its own and wraps between its words. */
+:host { display: block; color: var(--front-ink); }
+ol { margin: 0; padding: 0; list-style-type: none; align-items: center; row-gap: 0; }
+[part="Breadcrumbs.crumb"] { min-inline-size: 0; max-inline-size: 100%; min-block-size: calc(32 * var(--font-step-px)); align-items: center; }
+@media (pointer: coarse) { [part="Breadcrumbs.crumb"] { min-block-size: var(--touch-target); } }
+.icon { flex: none; width: calc(18 * var(--font-step-px)); height: calc(18 * var(--font-step-px)); color: var(--front-ink-dim); }
+[part~="Breadcrumbs.link"] { font-size: var(--dialog-crumb-size); font-weight: var(--dialog-weight); line-height: var(--font-leading-snug); color: var(--front-ink-dim); text-decoration: none; overflow-wrap: break-word; min-inline-size: 0; }
+[part~="Breadcrumbs.link"]:hover, [part~="Breadcrumbs.link"]:focus-visible { color: var(--front-ink); }
+[part~="Breadcrumbs.current"] { min-inline-size: 0; padding-block-end: var(--space-xxs); font-size: var(--dialog-crumb-size); font-weight: var(--dialog-strong-weight); line-height: var(--font-leading-snug); letter-spacing: 0; text-transform: none; color: var(--front-ink); border-block-end: var(--dialog-crumb-line); overflow-wrap: break-word; }
+.sep { flex: none; width: calc(8 * var(--font-step-px)); height: calc(12 * var(--font-step-px)); color: var(--system-ink-off); }
 .sep:dir(rtl) { scale: -1 1; }
 </style>

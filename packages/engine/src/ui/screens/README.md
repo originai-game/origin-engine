@@ -85,17 +85,17 @@ focus-visible and disabled states (docs/ui.md §3.2).
 | `calendar` (`calendar.svelte`) | `frame`, `band`, `title`, `heading`, `cell` (a button: `.marked` `.outside` `[aria-current]`) |
 | `calibration` (`calibration.svelte`) | `frame`, `label`, `step` (`.on` `.done`), `test` |
 | `card` (`card.svelte`) | `frame`, `image`, `title`, `body` |
-| `confirm` (`confirm.svelte`) | `title`, `body`, `actions` |
+| `confirm` (`confirm.svelte`) | `title`, `body`, `actions`, `kicker` |
 | `creator-tools` (`creator-tools.svelte`) | `frame` (`.chosen`), `label`, `title` |
 | `credits` (`credits.svelte`) | `frame`, `heading`, `name`, `shade`, `rule` (`.end`), `role` |
 | `data-list` (`data-list.svelte`) | `frame`, `row` (a button), `label`, `figure`, `note` |
-| `film-chapters` (`film-chapters.svelte`) | `frame`, `band`, `title`, `card` (`.locked` `.selected` `[aria-disabled]` `:disabled`), `thumb`, `name` |
-| `film-choices` (`film-choices.svelte`) | `frame`, `timer`, `choice` (a button: `.chosen` `[aria-current]` `:disabled`), `hotspot` (a button: `:disabled`), `qte` |
-| `film-flowchart` (`film-flowchart.svelte`) | `frame`, `band`, `title`, `detail` |
-| `film-gallery` (`film-gallery.svelte`) | `frame`, `band`, `title`, `card` (`.locked` `.selected` `[aria-disabled]` `:disabled`), `thumb`, `name` |
+| `film-chapters` (`film-chapters.svelte`) | `frame`, `band`, `title`, `card` (`.locked` `.selected` `[aria-disabled]` `:disabled`), `thumb`, `name`, `shade`, `plate`, `lock` |
+| `film-choices` (`film-choices.svelte`) | `frame`, `timer`, `choice` (a button: `.chosen` `[aria-current]` `:disabled`), `hotspot` (a button: `:disabled`), `qte`, `shade` |
+| `film-flowchart` (`film-flowchart.svelte`) | `frame`, `band`, `title`, `detail`, `shade`, `kicker` |
+| `film-gallery` (`film-gallery.svelte`) | `frame`, `band`, `title`, `card` (`.locked` `.selected` `[aria-disabled]` `:disabled`), `thumb`, `name`, `shade`, `plate`, `lock`, `mark` |
 | `game-over` (`game-over.svelte`) | `frame`, `title`, `figure`, `label`, `offer` |
 | `hud-editor` (`hud-editor.svelte`) | `hint`, `dock` |
-| `key-values` (`key-values.svelte`) | `frame`, `row`, `label`, `figure`, `delta` (`.up`) |
+| `key-values` (`key-values.svelte`) | `frame`, `row`, `label`, `figure`, `delta` (`.up` `.down`) |
 | `leaderboard` (`leaderboard.svelte`) | `frame`, `band`, `title`, `league`, `row` (`.mine-other` `.mine-you`), `rank`, `figure`, `me` |
 | `loading` (`loading.svelte`) | `scrim`, `frame` (the tip plate), `title`, `eyebrow`, `label`, `next` (a button), `bar` (`[data-ready]`), `fill`, `figure` (`[data-ready]`), `status` |
 | `main-menu` (`main-menu.svelte`) | `frame`, `logo`, `version`, `shade`, `entry` (a button: `.minor`), `news`, `name` |
@@ -113,4 +113,4 @@ focus-visible and disabled states (docs/ui.md §3.2).
 | `table` (`table.svelte`) | `frame`, `band`, `heading`, `entry` (a button) |
 | `title` (`title.svelte`) | `frame`, `logo`, `prompt`, `shade`, `rule` (`.end`), `name` |
 | `tree` (`tree.svelte`) | `row` (`[aria-expanded]` `[aria-selected]`) |
-| `tutorial` (`tutorial.svelte`) | `frame`, `title`, `text`, `step` |
+| `tutorial` (`tutorial.svelte`) | `frame`, `title`, `text`, `step`, `track`, `fill` |

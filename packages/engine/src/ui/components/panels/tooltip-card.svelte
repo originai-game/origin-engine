@@ -77,33 +77,59 @@
 </div>
 
 <style>
-:host { align-items: start; max-inline-size: 100%; --rarity: var(--line-strong); }
-[part="TooltipCard.frame"] { width: var(--measure-md); max-width: 100%; }
+/* The item's card is a dense smoked plate lit along its top in its
+   rarity's colour, its icon in an octagon socket of that colour; what is
+   equipped stands beside it on a plainer plate, and under it on a narrow
+   screen. Figures are condensed and tabular; a change carries a triangle
+   and its sign in the better green or the worse red, an added or removed
+   stat a chip. A long name or stat wraps between its words. */
+:host { align-items: start; max-inline-size: 100%; --rarity: var(--line-strong); color: var(--front-ink); }
 .common { --rarity: var(--common); }
 .uncommon { --rarity: var(--uncommon); }
 .rare { --rarity: var(--rare); }
 .epic { --rarity: var(--epic); }
 .legendary { --rarity: var(--legendary); }
 .mythic { --rarity: var(--mythic); }
-/* A rarity is the frame's rim and the title's ink, through their tokens, so a pack's frame still dresses it. */
-#Card.common, #Card.uncommon, #Card.rare, #Card.epic, #Card.legendary, #Card.mythic { --frame-rim: var(--rarity); --frame-rim-width: var(--stroke-thin); --title-ink: var(--rarity); }
-#Header { width: stretch; }
-[part="TooltipCard.well"] { width: var(--size-touch); height: var(--size-touch); justify-content: center; overflow: hidden; }
-#Art { width: var(--size-touch); height: var(--size-touch); }
-.glyph { width: var(--size-sm); height: var(--size-sm); }
-[part="TooltipCard.title"] { margin: 0; overflow-wrap: anywhere; }
-.pip { --dot-fill: var(--rarity); --dot-radius: 0px; width: var(--space-xs); height: var(--space-xs); rotate: 45deg; }
-#Subtitle { line-clamp: 2; }
-.rule { width: stretch; }
-.stats { width: stretch; margin: 0; padding: 0; list-style: none; }
-[part="TooltipCard.row"] { width: stretch; }
-[part="TooltipCard.label"] { overflow-wrap: anywhere; }
-[part="TooltipCard.figure"] { white-space: nowrap; }
-.mark { width: var(--space-sm); height: var(--space-sm); fill: currentColor; }
+/* The frame, the socket, the title and the pips are their roles' parts,
+   dressed through the roles' tokens, which the card sets from its rarity. */
+[part="TooltipCard.frame"] { width: calc(300 * var(--font-step-px)); max-width: 100%; row-gap: var(--space-sm); --frame-pad: var(--space-md) var(--space-lg); --frame-radius: 0; --frame-rim-width: 0; --frame-fill: linear-gradient(180deg, color-mix(in srgb, var(--rarity) var(--dialog-tip-tint), transparent), transparent calc(90 * var(--font-step-px))), var(--dialog-fill); --frame-shadow: var(--dialog-tip-rim), inset 0 calc(2 * var(--font-step-px)) 0 var(--rarity), var(--dialog-lift); --title-ink: var(--rarity); --title-size: var(--dialog-tip-title-size); --title-tracking: 0; --ink: var(--front-ink); }
+#Card:not(.common, .uncommon, .rare, .epic, .legendary, .mythic) { --title-ink: var(--front-ink); }
+#Compare { --frame-fill: var(--hud-plate-fill); --frame-shadow: var(--dialog-tip-plain-edge); }
+#Header { width: stretch; column-gap: var(--space-md); align-items: center; }
+/* The socket: an octagon in the rarity's colour round a dark well. */
+[part="TooltipCard.well"] { flex: none; width: calc(48 * var(--font-step-px)); height: calc(48 * var(--font-step-px)); justify-content: center; overflow: hidden; --well-radius: 0; --well-fill: linear-gradient(180deg, color-mix(in srgb, var(--rarity) 40%, transparent), transparent), var(--dialog-tip-well); --well-shadow: inset 0 0 0 calc(2 * var(--font-step-px)) var(--rarity); clip-path: var(--hud-octagon); }
+#Art { width: 100%; height: 100%; }
+.glyph { width: 60%; height: 60%; color: var(--front-ink); }
+[part="TooltipCard.title"] { margin: 0; line-height: var(--font-leading-snug); overflow-wrap: break-word; }
+.pip { flex: none; width: calc(6 * var(--font-step-px)); height: calc(6 * var(--font-step-px)); rotate: 45deg; --dot-fill: var(--rarity); --dot-radius: 0; --dot-rim-width: 0; }
+#Sub { align-items: center; gap: var(--space-xxs) var(--space-sm); margin-block-start: var(--space-xxs); }
+#Pips { gap: var(--space-xs); }
+#Subtitle, .eyebrow { font-size: var(--hud-label-size); font-weight: var(--dialog-weight); line-height: var(--font-leading-snug); letter-spacing: var(--hud-label-tracking); text-transform: var(--hud-label-transform); color: var(--front-ink-dim); }
+.eyebrow { color: var(--front-ink-faint); }
+#Subtitle:lang(zh, ja, ko), .eyebrow:lang(zh, ja, ko), .change:lang(zh, ja, ko) { font-size: var(--dialog-heading-cjk-size); letter-spacing: 0; }
+.rule { width: stretch; margin: 0; color: var(--dialog-rule); }
+.stats { width: stretch; margin: 0; padding: 0; list-style: none; row-gap: 0; }
+[part="TooltipCard.row"] { width: stretch; align-items: baseline; justify-content: end; gap: var(--space-xxs) var(--space-sm); padding: var(--space-xs) 0; border-radius: 0; background: none; border-block-end: var(--data-rule-line); }
+[part="TooltipCard.row"]:last-child { border-block-end: 0; }
+[part="TooltipCard.label"] { flex: 1 1 calc(110 * var(--font-step-px)); min-inline-size: 0; font-size: var(--dialog-tip-label-size); line-height: var(--font-leading-snug); letter-spacing: 0; text-transform: none; color: var(--front-ink-dim); overflow-wrap: break-word; }
+.value { font-size: var(--dialog-tip-figure-size); font-weight: var(--dialog-strong-weight); font-stretch: var(--front-stretch); white-space: nowrap; color: var(--front-ink); }
+[part="TooltipCard.delta"] { align-items: center; min-inline-size: calc(52 * var(--font-step-px)); justify-content: end; font-size: var(--dialog-tip-label-size); font-weight: var(--dialog-strong-weight); }
+.good { color: var(--trend-up); }
+.bad { color: var(--trend-down); }
+.mark { flex: none; width: calc(9 * var(--font-step-px)); height: calc(8 * var(--font-step-px)); fill: currentColor; }
 .down { rotate: 180deg; }
-.amount { --figure-ink: currentColor; white-space: nowrap; }
-[data-change="removed"] { --ink-label: var(--ink-muted); --figure-ink: var(--ink-muted); }
+.amount { color: inherit; white-space: nowrap; }
+[part~="TooltipCard.change"] { flex: none; padding: var(--space-xxs) var(--space-xs); font-size: var(--dialog-tip-chip-size); font-weight: var(--dialog-strong-weight); line-height: var(--font-leading-snug); letter-spacing: var(--hud-label-tracking); text-transform: var(--hud-label-transform); white-space: nowrap; color: var(--trend-up); background: var(--hud-tag-fill); box-shadow: var(--dialog-tip-chip-rim); }
+[data-change="removed"] [part="TooltipCard.label"], [data-change="removed"] .value, [data-change="removed"] [part~="TooltipCard.change"] { color: var(--front-ink-faint); }
 #Body, #Footer { margin: 0; }
-#Hints { margin: 0; padding: 0; list-style: none; }
-[part="TooltipCard.badge"] { white-space: nowrap; }
+#Body { font-size: var(--dialog-tip-label-size); line-height: var(--font-leading-normal); color: var(--front-ink-dim); }
+#Footer { font-size: var(--dialog-tip-note-size); line-height: var(--font-leading-snug); color: var(--front-ink-faint); }
+#Hints { width: stretch; margin: 0; padding: var(--space-sm) 0 0; list-style: none; border-block-start: var(--dialog-rule-line); gap: var(--space-xs) var(--space-md); }
+[part="TooltipCard.badge"] { align-items: center; padding: 0; border-radius: 0; background: none; box-shadow: none; font-size: var(--dialog-tip-note-size); font-weight: var(--dialog-weight); white-space: nowrap; color: var(--front-ink); }
+/* A narrow screen: the item's card first, what is equipped under it, each
+   as wide as the screen allows. */
+@media (width < 600px) {
+  :host { flex-direction: column-reverse; flex-wrap: nowrap; align-items: stretch; }
+  [part="TooltipCard.frame"] { width: auto; }
+}
 </style>

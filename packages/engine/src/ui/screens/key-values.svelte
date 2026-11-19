@@ -8,7 +8,7 @@
     <li class="row" part="key-values.row">
       <p class="key" part="key-values.label">{r.key}</p>
       <p class="value" part="key-values.figure">{r.value}</p>
-      <p class="delta" part="key-values.delta" class:up={r.delta != "" && r.delta.0 == "+"} hidden={r.delta == ""}>{r.delta}</p>
+      <p class="delta" part="key-values.delta" class:up={r.delta[0] == "+"} class:down={r.delta[0] == "-" || r.delta[0] == "−"} hidden={r.delta == ""}>{r.delta}</p>
     </li>
   {/each}
 </ul>
@@ -20,6 +20,8 @@
 .row { display: flex; align-items: center; gap: var(--space-sm); min-block-size: calc(36 * var(--font-step-px)); padding: var(--space-xs) 0; border-bottom: var(--stroke-hairline) solid var(--system-tabs-rule); }
 .key { flex: 1; min-width: 0; margin: 0; color: var(--front-ink-dim); }
 .value { margin: 0; font-weight: var(--font-weight-semibold); font-variant-numeric: tabular-nums; color: var(--front-ink); }
-.delta { margin: 0; width: var(--size-lg); text-align: end; color: var(--trend-down); }
+/* A change in the better green or the worse red by its sign; unsigned, plain. */
+.delta { margin: 0; min-width: var(--size-lg); text-align: end; font-variant-numeric: tabular-nums; color: var(--front-ink-dim); }
 .delta.up { color: var(--trend-up); }
+.delta.down { color: var(--trend-down); }
 </style>
