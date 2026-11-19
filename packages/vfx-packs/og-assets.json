@@ -1,0 +1,3479 @@
+{
+  "version": 1,
+  "files": [
+    {
+      "path": "effekseer-andrewfm01/preview/actionLines_halo.png",
+      "sha256": "6ede9798bf18d0d57d1b54b0f5e7fbc3db34a7d42842a2c2aa12c64bac594bd8",
+      "size": 197159,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-andrewfm01/preview/actionLines_halo2.png",
+      "sha256": "e661ab0b3352498fc6a69545b70e5bad5b1076b5749f3784b8c49b843311b7fc",
+      "size": 130314,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-andrewfm01/preview/actionLines_radial.png",
+      "sha256": "9261b4950ed1ddda923ee650217f216a4befb7329d3863bd10da70b524c793cc",
+      "size": 162116,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-andrewfm01/preview/actionLines_radial2.png",
+      "sha256": "9c06ed48bdcc0d2b57cce96791e4f3822d5d2c80c6f400eee8e32ed54ab83d13",
+      "size": 669118,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-andrewfm01/preview/actionLines_shockwave.png",
+      "sha256": "5f40b85de6a0debfe4f80e8132135f6e3948799b7d4ccc0f30f10e9ef868200b",
+      "size": 165025,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-andrewfm01/preview/actionLines_strip.png",
+      "sha256": "6f1d5f604bf3bc81c7a0cb0e6732b94dad598011412f3c6d7b7f1505ead0480e",
+      "size": 87333,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-andrewfm01/preview/blue_laser.png",
+      "sha256": "e4b25f3a2c9b6e8003db9b64cde2a7d6777e0256bb2917928f3ccdf148f00c65",
+      "size": 561755,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-andrewfm01/preview/boss_death.png",
+      "sha256": "69cda7ca4f949cc9b36cdab0be4f89b0a3dc47f445c8b205507d90a9efd9296b",
+      "size": 254924,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-andrewfm01/preview/cover.png",
+      "sha256": "b9024d1a0a6412ac5966fa6349b0a8bfa68454e56e7f807b68f6ccdf6323924a",
+      "size": 40727,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-andrewfm01/preview/drill.png",
+      "sha256": "836be643387488397a092a5fd3920d86cea0700f994f452613fd6896710c2214",
+      "size": 1420945,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-andrewfm01/preview/electric_dust.png",
+      "sha256": "831e98e71a8259c6bada790a2c6a3c0bcfec98a10c3c241836c9ce7c43a44c5f",
+      "size": 325825,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-andrewfm01/preview/fire.png",
+      "sha256": "a8178e86c5718626e24a2137013c396a79f0f019d313c9083ac562a8e5db5640",
+      "size": 603611,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-andrewfm01/preview/hit_eff.png",
+      "sha256": "81ba8da0e4729ba8a9200a77d4d84318dd1e1c489bf5ad9a264a7b8dc07a9c03",
+      "size": 298408,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-andrewfm01/preview/magic_circle.png",
+      "sha256": "4f4b9a5623844775f0f08735ebd0537101b67a2e9030de3b51065578e2d3d091",
+      "size": 236009,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-andrewfm01/preview/smallTexturesRibbon.png",
+      "sha256": "4ef5b92059442e25f4c466c743252cde3e7aae41eefb8baa23c56c804969a41d",
+      "size": 157151,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-andrewfm01/preview/smallTexturesSquareWave_orbital.png",
+      "sha256": "455fbf1ce84b23d07bbf244289d73ca84a84afbd2f6abfae98cb29cb92807910",
+      "size": 632746,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-andrewfm01/textures/LaserMain02.png",
+      "sha256": "77b7b9c9286d5c7ab1b37d3a29ca5012332384e7616b157ef7ec6e34893902bc",
+      "size": 653,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-andrewfm01/textures/Particle01.png",
+      "sha256": "3f7deb5b5be680af5cb2ae8c9092a2cd5f29b03dfb2f675d1c687e90e9232c53",
+      "size": 3644,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-andrewfm01/textures/Shock_wave004.png",
+      "sha256": "f0b5e490aa05bbfd53d504bbf163da9f991871f9cafc7b7d402298cd3bb0a586",
+      "size": 5066,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-andrewfm01/textures/Shock_wave_ring001.png",
+      "sha256": "2e2c9f53debf302dd5aabfb919a33547cd6b68da23331c81c383e5312e1f306f",
+      "size": 5204,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-andrewfm01/textures/Shock_wave_ring001_long.png",
+      "sha256": "90be95a3a91c649ceb8395dd862de912e80bed555692c270c748d32f0bd1ddb8",
+      "size": 5429,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-andrewfm01/textures/Shock_wave_ring002.png",
+      "sha256": "d4caa79ecd20257e70fede01ecf335661a57a15516e2e6b0cec00fbfc2d5ce88",
+      "size": 3819,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-andrewfm01/textures/Thunder01.png",
+      "sha256": "c16ecec1bd5dc9e18267b17ac70b6e0527851466d05d09e6b919a7887ce17f1d",
+      "size": 9101,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-andrewfm01/textures/Wind01.png",
+      "sha256": "f82cfd6d0470f366370da95bbba3dcba8e8cf2be867f2fcc95a0d702c64a84fe",
+      "size": 9369,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-andrewfm01/textures/actionlines.png",
+      "sha256": "d460c6aadb7f567837977f5d532a93b8bf100f349e534a24a25472e919df4b72",
+      "size": 8385,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-andrewfm01/textures/aurora01.png",
+      "sha256": "242eac030abc48aa321fe10643cbb8b63cc16371f03f40b876b31527c9f87795",
+      "size": 53163,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-andrewfm01/textures/burst02_red.png",
+      "sha256": "3de7bf00cd370150259b263bd6f0581dbaa9002e1735fbf333f4fb257747e5ae",
+      "size": 58243,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-andrewfm01/textures/clockHand.png",
+      "sha256": "8976d47129ccf2bb1b11115c36d94ead5d8364d5dfb62cb1cda4735a1892fc23",
+      "size": 1755,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-andrewfm01/textures/double-shockwave.png",
+      "sha256": "ed9e6699f107dd100db5b657502a36ef59fb145d0763f0918080f1e65c381026",
+      "size": 36631,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-andrewfm01/textures/drillshi.png",
+      "sha256": "54d43003e1f366aa4ebf51a24ed959b891ffb6ae0d7e521b0e969d00b5569248",
+      "size": 23727,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-andrewfm01/textures/eggzero.png",
+      "sha256": "5e0dd84e2eae54c1cd2be6191f9978755c0dd91a41a8cd2b5c8966c5e82f36e6",
+      "size": 654,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-andrewfm01/textures/fire_tex.png",
+      "sha256": "2ecd447d184682ac144ecf3230c538e844e118acd30e46e5da17677b94740aac",
+      "size": 749367,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-andrewfm01/textures/glow.png",
+      "sha256": "eb9ed25e68e3a2fcf101584fba3d94eaf5313537930878f2915d90a35401b8a8",
+      "size": 15237,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-andrewfm01/textures/orb_colored.png",
+      "sha256": "eab4f75181d96b22082f91b31fc8ab2e474c14598c1f11d1af2676a2d5a62a80",
+      "size": 14937,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-andrewfm01/textures/ribbon01_trans.png",
+      "sha256": "105aef42a940951b759ee308624783fe8c9cf48b3b3338a3b00b5aa79b6b8429",
+      "size": 213,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-andrewfm01/textures/smoke_tex.png",
+      "sha256": "dccff4aa2a5ca47128886c0813405ba4ad38eed6645c2bc34c3170509360f0e4",
+      "size": 144588,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-andrewfm01/textures/squareWave.png",
+      "sha256": "d917ad45f7705283ad637acf6ff5f444b6802f24d973985b5fdc759271f9a3f6",
+      "size": 502,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-andrewfm01/textures/squareWave03_192.png",
+      "sha256": "ee1f5b312ceee191722d124879c0cb605c781f83e64907652d25d8e6461679f9",
+      "size": 1014,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-andrewfm01/textures/squareWave03_384.png",
+      "sha256": "4b21d026f43f611508ad61fee71796312632ded60904824ae82189242f08b7f0",
+      "size": 1053,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-andrewfm01/textures/starpart_.png",
+      "sha256": "3755d50108f2f85947be344bdb03479225793010704d75dc3d2b98f6ee951309",
+      "size": 153,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-effekseer01/preview/Homing_Laser01.png",
+      "sha256": "3a8d12d0ddb6d3a7aee845d87ec90fbc26295e4ea848f3560bcc34a2b3d335f8",
+      "size": 102058,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-effekseer01/preview/Laser01.png",
+      "sha256": "da1bce4d146c3b384fce9e5a8d07538e612d2453f6a8fcbeedf7e0b7660db511",
+      "size": 574211,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-effekseer01/preview/Laser02.png",
+      "sha256": "df921a43dc875fa94fc2cbd4721463c3b74499b395614905e40c2556a8ab3dfd",
+      "size": 326627,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-effekseer01/preview/Laser03.png",
+      "sha256": "45ab46ff7e7f3db26cdaa816e9a3a6d6b25b257131bf4172a7a8f26cf145776a",
+      "size": 258140,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-effekseer01/preview/Simple_Distortion.png",
+      "sha256": "4023a1d88517c6a1abe96cbefbcdb1de6714785af5270a2e4c0337ddfffc5207",
+      "size": 513199,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-effekseer01/preview/Simple_GeneratingPosition1.png",
+      "sha256": "aae34d93f776edfa11f53902423b54809257f92e30b394ae6ae6ee41c1cf6fb2",
+      "size": 321456,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-effekseer01/preview/Simple_Model_UV.png",
+      "sha256": "5e171422fbc1ac791639a7619f60a75357eb37e60df721bf57405396edf92490",
+      "size": 60899,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-effekseer01/preview/Simple_Ribbon_Parent.png",
+      "sha256": "bb9c1c6b3cf29d631e217fe0917be0d59f7ef71037c5a4045c8d64f55f67391b",
+      "size": 87392,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-effekseer01/preview/Simple_Ribbon_Sword.png",
+      "sha256": "8f0b48a25abab0f8364efe38d58b8a69e8da500a1156ccddc24b3b38bc50e909",
+      "size": 36057,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-effekseer01/preview/Simple_Ring_Shape1.png",
+      "sha256": "e0e338a199d3066c4a64c4d6916a42a08758680f41416e0269389c978d48c0e9",
+      "size": 438490,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-effekseer01/preview/Simple_Ring_Shape2.png",
+      "sha256": "10e4f13620afe529b85eaf709dc8fea2b6896dc7925b477a67b47c8f10640316",
+      "size": 286456,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-effekseer01/preview/Simple_Sprite_BillBoard.png",
+      "sha256": "be956949c0e69b964be7c86d90bc6d663f8d9eeefde123a85f3685b3d1b2c7de",
+      "size": 691917,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-effekseer01/preview/Simple_Sprite_Fixed.png",
+      "sha256": "f5fec472a4b251d47735bf54c047866bc337e14afd06f8bc8fa4f764f4b9cbe3",
+      "size": 419000,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-effekseer01/preview/Simple_Sprite_FixedYAxis.png",
+      "sha256": "ebbab3b50e7673588ae3e57a43bf76d639cc3fed86678683f0644c65e06e394b",
+      "size": 543758,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-effekseer01/preview/Simple_Track1.png",
+      "sha256": "8f0b48a25abab0f8364efe38d58b8a69e8da500a1156ccddc24b3b38bc50e909",
+      "size": 36057,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-effekseer01/preview/cover.png",
+      "sha256": "cfdee3005d97befd3a1d885a14a83665143e04636f48cded29ee86e27f574dac",
+      "size": 128233,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-effekseer01/textures/Arrow.png",
+      "sha256": "61221d7c1a4f6e06fca5149a6b4a0150fdbf11ecf81861267b5a25fadfca59e8",
+      "size": 1402,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-effekseer01/textures/Burst01.png",
+      "sha256": "8ea1d671a9e17f6c0a73fe2378708c4ce1a11ff16c7f420caa6a8ccb0d44c2ae",
+      "size": 20936,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-effekseer01/textures/Cloud01.png",
+      "sha256": "4e9846ddefb9d33469402edd7fe4dc74cdd0c6b48972acfcdc06a916ffd66894",
+      "size": 12735,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-effekseer01/textures/Flame01.png",
+      "sha256": "57722899c04e41739b3d2b18dc8bb15083bcd2e3aebb633c16be72a1c92e94e7",
+      "size": 9973,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-effekseer01/textures/LaserMain01.png",
+      "sha256": "b4718b9c693529dcb0c089373a01120bd212a01a198f6affddf0508cbdc9ab94",
+      "size": 2645,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-effekseer01/textures/LaserMain02.png",
+      "sha256": "77b7b9c9286d5c7ab1b37d3a29ca5012332384e7616b157ef7ec6e34893902bc",
+      "size": 653,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-effekseer01/textures/Particle01.png",
+      "sha256": "3f7deb5b5be680af5cb2ae8c9092a2cd5f29b03dfb2f675d1c687e90e9232c53",
+      "size": 3644,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-effekseer01/textures/Particle02.png",
+      "sha256": "ed33df94e01469a258f24b5d6f117f2fc2b188b40b2504a7cff1fcad25d1baef",
+      "size": 3578,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-effekseer01/textures/Particle03.png",
+      "sha256": "a9a70acc3c42b86a73c99d6d9189d175f9e1155be65c4cdf24978ae2468c5c0d",
+      "size": 5830,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-effekseer01/textures/Particle04_clear_hard.png",
+      "sha256": "9a615498885a5368d211b8ac25ce4e74863ccdc356cfde2dabf845429b84d9c0",
+      "size": 7093,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-effekseer01/textures/Particle04_clear_soft.png",
+      "sha256": "bc8db95223de29e37987c12ab103c126251e10dbd01dbef21fb9151b2cea2404",
+      "size": 7512,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-effekseer01/textures/Splash01.png",
+      "sha256": "16fbe50a31d5abe07aa4aeff6ddf121613a74fa0523a53a1851e55e7198e298d",
+      "size": 45680,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-effekseer01/textures/SwordLine01.png",
+      "sha256": "ac7b1c2c1aa8f65236f94c5be4c29bd5c9d2a0aba99990c051a127011710b373",
+      "size": 4375,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-effekseer01/textures/Thunder01.png",
+      "sha256": "c16ecec1bd5dc9e18267b17ac70b6e0527851466d05d09e6b919a7887ce17f1d",
+      "size": 9101,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-hato01/preview/aoi-chou.png",
+      "sha256": "b6c6b64eab4ddf4c96dc4ee68c4a453af733c6ed576aee0c2416fe4d12c5a614",
+      "size": 363337,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-hato01/preview/cover.png",
+      "sha256": "88fcde2fa45641b720df0fa3e05a4e4e0fc23abe5db5e48e25d6490956ebeff5",
+      "size": 13828,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-hato01/preview/iwai-ume.png",
+      "sha256": "8f0b48a25abab0f8364efe38d58b8a69e8da500a1156ccddc24b3b38bc50e909",
+      "size": 36057,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-hato01/preview/kiroi-chou.png",
+      "sha256": "9785d4ef904073b36e456371968cadafd880bc199579a485b81c1091ecb79105",
+      "size": 287925,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-hato01/preview/sakura1.png",
+      "sha256": "cebdc97ae9cc51b0be3ce919ca2b5415e9753aefcae858ba57abc640dcd9fcec",
+      "size": 124061,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-hato01/textures/aoi-hane.png",
+      "sha256": "9f714d5d6732088fbad30317d1aadb22e49ce53dde4751075f849307d580b020",
+      "size": 74378,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-hato01/textures/hana-anime.png",
+      "sha256": "1e44caf78bb894881ded8e1014a19d987d8aee94b567d6b83af56f408d9590c8",
+      "size": 1628,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-hato01/textures/kiroi-hane.png",
+      "sha256": "9911f2c1472917c7f46de0c410e530322d484429a7ff7334a80dec4f0c890715",
+      "size": 37115,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-hato01/textures/particle2.png",
+      "sha256": "29325443ef31d6abe7bd3b01690fc14a044451d3bddf4553b969b617cdc183c4",
+      "size": 776,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-hato01/textures/sakura-1.png",
+      "sha256": "26349b87e8596b8ac34d8d4f38c64a8f9830f4754a55cbde54778ff3d9eb7341",
+      "size": 5648,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-magicalxspiral/A_Gohlem1/model-Hammer.glb",
+      "sha256": "ac5e65731a11b38ca6b2a9b4a67b353302d325860310cf0bd03d056cd9fc1373",
+      "size": 16384,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-magicalxspiral/A_Gohlem1/model-block2.glb",
+      "sha256": "66e6765efb32391520ff20aaa322bfde3f75a0d0e6175be40c2e0c85b742ea2b",
+      "size": 3340,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-magicalxspiral/A_Gohlem1/model-block3.glb",
+      "sha256": "6936cca0f0466c4c1dfcd2c14fd19375be0aa9c5ccb244509601d92219b5b424",
+      "size": 3388,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-magicalxspiral/Gohlem1/model-block2.glb",
+      "sha256": "66e6765efb32391520ff20aaa322bfde3f75a0d0e6175be40c2e0c85b742ea2b",
+      "size": 3340,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-magicalxspiral/Gohlem1/model-block3.glb",
+      "sha256": "6936cca0f0466c4c1dfcd2c14fd19375be0aa9c5ccb244509601d92219b5b424",
+      "size": 3388,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-magicalxspiral/Gohlem11/model-block1.glb",
+      "sha256": "cfa1d997243ca89cfe8df5613378ed16503a5e19091df4d8ecbe55b639cabf45",
+      "size": 3056,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-magicalxspiral/Gohlem11/model-block2.glb",
+      "sha256": "66e6765efb32391520ff20aaa322bfde3f75a0d0e6175be40c2e0c85b742ea2b",
+      "size": 3340,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-magicalxspiral/Gohlem5/model-Hammer.glb",
+      "sha256": "ac5e65731a11b38ca6b2a9b4a67b353302d325860310cf0bd03d056cd9fc1373",
+      "size": 16384,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-magicalxspiral/Gohlem5/model-block2.glb",
+      "sha256": "66e6765efb32391520ff20aaa322bfde3f75a0d0e6175be40c2e0c85b742ea2b",
+      "size": 3340,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-magicalxspiral/Gohlem5/model-block3.glb",
+      "sha256": "6936cca0f0466c4c1dfcd2c14fd19375be0aa9c5ccb244509601d92219b5b424",
+      "size": 3388,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-magicalxspiral/Gohlem7/model-block2.glb",
+      "sha256": "66e6765efb32391520ff20aaa322bfde3f75a0d0e6175be40c2e0c85b742ea2b",
+      "size": 3340,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-magicalxspiral/Gohlem7/model-block3.glb",
+      "sha256": "6936cca0f0466c4c1dfcd2c14fd19375be0aa9c5ccb244509601d92219b5b424",
+      "size": 3388,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-magicalxspiral/Gohlem7/model-rock1.glb",
+      "sha256": "c6ca9ed287b74b34b62709c376c9a9ec2d89f4973403ce62aaa315c07a0b56c4",
+      "size": 13284,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-magicalxspiral/Gohlem_Shield2/model-gohlem_shield.glb",
+      "sha256": "994255f9f3638f88e7bcb432695400ddcd90d6b73635e7ca044b517d02aa41aa",
+      "size": 101336,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-magicalxspiral/Icicle1/model-icicle3.glb",
+      "sha256": "ba63e15d9ce90b623f31f7d1c525bbfb06344316d6c7bc79a93e12c808248e97",
+      "size": 4968,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-magicalxspiral/Icicle2/model-icicle1.glb",
+      "sha256": "e8fe1931057298242e0dbfb0f28622298d25c6fb36f2e4fd9a4e4f5c17562218",
+      "size": 4972,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-magicalxspiral/Icicle2/model-icicle3.glb",
+      "sha256": "ba63e15d9ce90b623f31f7d1c525bbfb06344316d6c7bc79a93e12c808248e97",
+      "size": 4968,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-magicalxspiral/Icicle3/model-icicle1.glb",
+      "sha256": "e8fe1931057298242e0dbfb0f28622298d25c6fb36f2e4fd9a4e4f5c17562218",
+      "size": 4972,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-magicalxspiral/Icicle3/model-icicle3.glb",
+      "sha256": "ba63e15d9ce90b623f31f7d1c525bbfb06344316d6c7bc79a93e12c808248e97",
+      "size": 4968,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-magicalxspiral/IcicleBroken/model-block2.glb",
+      "sha256": "66e6765efb32391520ff20aaa322bfde3f75a0d0e6175be40c2e0c85b742ea2b",
+      "size": 3340,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-magicalxspiral/IcicleBroken/model-block3.glb",
+      "sha256": "6936cca0f0466c4c1dfcd2c14fd19375be0aa9c5ccb244509601d92219b5b424",
+      "size": 3388,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-magicalxspiral/Rock2/model-block1.glb",
+      "sha256": "cfa1d997243ca89cfe8df5613378ed16503a5e19091df4d8ecbe55b639cabf45",
+      "size": 3056,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-magicalxspiral/Rock2/model-block2.glb",
+      "sha256": "66e6765efb32391520ff20aaa322bfde3f75a0d0e6175be40c2e0c85b742ea2b",
+      "size": 3340,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-magicalxspiral/Rock2/model-block3.glb",
+      "sha256": "6936cca0f0466c4c1dfcd2c14fd19375be0aa9c5ccb244509601d92219b5b424",
+      "size": 3388,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-magicalxspiral/StairBroken/model-block2.glb",
+      "sha256": "66e6765efb32391520ff20aaa322bfde3f75a0d0e6175be40c2e0c85b742ea2b",
+      "size": 3340,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-magicalxspiral/StairBroken/model-block3.glb",
+      "sha256": "6936cca0f0466c4c1dfcd2c14fd19375be0aa9c5ccb244509601d92219b5b424",
+      "size": 3388,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-magicalxspiral/Undine13/model-sphere.glb",
+      "sha256": "c276e6d6ea3529ca006777abdef48b60289882138f12208ffad10df66d892ba1",
+      "size": 15932,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-magicalxspiral/meteo1/model-block1.glb",
+      "sha256": "cfa1d997243ca89cfe8df5613378ed16503a5e19091df4d8ecbe55b639cabf45",
+      "size": 3056,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-magicalxspiral/meteo1/model-block2.glb",
+      "sha256": "66e6765efb32391520ff20aaa322bfde3f75a0d0e6175be40c2e0c85b742ea2b",
+      "size": 3340,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-magicalxspiral/preview/A_Gohlem1.png",
+      "sha256": "da5a1d56e8beeb6093de0b0602be40d1f1e6612e7f54990450c539847457a36e",
+      "size": 478312,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-magicalxspiral/preview/A_Salamander1.png",
+      "sha256": "c729cc3fcab507c73f269e0c706b86157bb732b2a5ef81cb59728b0eaa8a1192",
+      "size": 121908,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-magicalxspiral/preview/A_Salamander2.png",
+      "sha256": "3f0e8e712173eda4e421523e44d224b8c0068984129f5835db568aa341e96a6f",
+      "size": 267156,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-magicalxspiral/preview/A_Salamander4.png",
+      "sha256": "480b0f4770285558774e5aca8748c75a3727ba9a9c3d97da8dab211eaeec2857",
+      "size": 754573,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-magicalxspiral/preview/A_Sylph1.png",
+      "sha256": "b836ff7b87ff72fdb45552d67da3887c33b1e9abc7b9cc2fbfec424102d0429b",
+      "size": 114147,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-magicalxspiral/preview/A_Sylph2.png",
+      "sha256": "03b34bde20ba5cb74f1e8cad8bef1067269733712b3739a507bf2556beba87af",
+      "size": 83960,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-magicalxspiral/preview/A_Undine1.png",
+      "sha256": "7af9774c4d065b9f9e817d40c76cfe069fe754e121f117ef10f166a936da1729",
+      "size": 117590,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-magicalxspiral/preview/A_Undine2.png",
+      "sha256": "329cd592d71ec41c98437c2dcf82d1ad5a5f8de0b0043b008675b021cc074ac2",
+      "size": 347318,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-magicalxspiral/preview/AquaPoint.png",
+      "sha256": "042d99349f3250fb5052aa23ffe90bff1383658d182ea8c45d0973d6ff5a5af6",
+      "size": 155928,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-magicalxspiral/preview/Attack1.png",
+      "sha256": "a2783a1ecbf0ea5a6a225f94c763e48963c892ce8bc2da546e431645c5104c3b",
+      "size": 91404,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-magicalxspiral/preview/Attack2.png",
+      "sha256": "f157c6090d4ef91074d2ae993c7008b5054b7020adad771331a01f291474a98a",
+      "size": 80537,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-magicalxspiral/preview/Attack5.png",
+      "sha256": "0d6bd70f473bc243b2c588aaa9d66f73770cedc10ab4c340e5872119d121a923",
+      "size": 80612,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-magicalxspiral/preview/Attack6.png",
+      "sha256": "37fee0979a11c776628c494f6ff0130fc31b85b336aa4a5a71c5072ab29a598a",
+      "size": 76554,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-magicalxspiral/preview/Attack_Impact.png",
+      "sha256": "d6ac4a0f8ea8a352918bae830147cc2d3aeab2ab14d95eda0fe52ff2551a64bc",
+      "size": 290172,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-magicalxspiral/preview/Breakdown.png",
+      "sha256": "c48ebc0280a8dbe74b4c513a0b94dbd9d334a47b42e6a966dbd8e6f722010e22",
+      "size": 419799,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-magicalxspiral/preview/FirePot1.png",
+      "sha256": "ed377a92613006f64895a3d432d1928ca484296018473a1fe7047134601b0946",
+      "size": 420917,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-magicalxspiral/preview/FirePot2.png",
+      "sha256": "0964ef9e862f2ce2d071849fa74b890a5fd72d59c45e52e384f7ae3e9583697c",
+      "size": 385172,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-magicalxspiral/preview/Gohlem1.png",
+      "sha256": "acb13bd5157eaac2ec48f5cb98e35672cf4e86b7dcc62c0603b9f856e940f9ea",
+      "size": 377595,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-magicalxspiral/preview/Gohlem11.png",
+      "sha256": "85338a10289b188aeabf7aca2d5bdac5856dcb6ce4b61a2ce2b3b6caf3f788c8",
+      "size": 305451,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-magicalxspiral/preview/Gohlem5.png",
+      "sha256": "39176b125ff8b62005910d6b9d6068ad80a9ba3798244eb35f065af3b01f2844",
+      "size": 791716,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-magicalxspiral/preview/Gohlem7.png",
+      "sha256": "ecb7945ac48060696c1e5d5637b38765f9d8ddd4b6be83f9deca20b0d96c85fa",
+      "size": 168837,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-magicalxspiral/preview/Gohlem_Shield1.png",
+      "sha256": "141f39861ea4cb41b0018224aa9b9989e413c98db0cdb5d1c74e73776909c5ab",
+      "size": 145478,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-magicalxspiral/preview/Gohlem_Shield2.png",
+      "sha256": "6a006e39f37d03cd886b013390402aaead7b5ae48fd4e3e72184c9a7ecf9459b",
+      "size": 102991,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-magicalxspiral/preview/Holy1.png",
+      "sha256": "ccdae645a551b220a3dcfd8413a1f36e3c4da73dc2c8390f409cc1906f786649",
+      "size": 115028,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-magicalxspiral/preview/Holy2.png",
+      "sha256": "69d61a760e3840b8bbbc7d121a91f8a352ae9bd65a736066aa44e37c71127fb2",
+      "size": 203019,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-magicalxspiral/preview/Icicle1.png",
+      "sha256": "5006287ec62df549e15cf3996dec29d7d5bab8411db3a74eaacce0cd7d6d8403",
+      "size": 111304,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-magicalxspiral/preview/Icicle2.png",
+      "sha256": "427375c73d4727ab54ab845e432f87b9d769ef10041c2cc25f9cd1f68b9322b8",
+      "size": 150723,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-magicalxspiral/preview/Icicle3.png",
+      "sha256": "38a7c955081caac8bf10fe554fa14f7e44ee802bb1516ee9e975d6cc85960327",
+      "size": 146414,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-magicalxspiral/preview/IcicleBroken.png",
+      "sha256": "824210cea1d07c63616ea647ae70c6d3afc50bebba9c29a62d5be12e02ff2e42",
+      "size": 214229,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-magicalxspiral/preview/IcicleLocus.png",
+      "sha256": "1090fc57e0d48d9294cbbd06208efa6f287ad1486fbea423ed43aa24cf49df8b",
+      "size": 71410,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-magicalxspiral/preview/Impact.png",
+      "sha256": "d4e4663bd33f445461c0fa8665ed19c796b88154f956139d4dcd4b58452bb06b",
+      "size": 251748,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-magicalxspiral/preview/Lance3.png",
+      "sha256": "3095929e7fe9585e26d2cf1c4e6bf42edb6884912f8f5ec9f58f7f1e24c46f85",
+      "size": 367101,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-magicalxspiral/preview/Lance4.png",
+      "sha256": "d87c0953b245deb6a1012a0f629efca84c88e2dc6c387b7ccf50975b1bb1bd1f",
+      "size": 247756,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-magicalxspiral/preview/Lance5.png",
+      "sha256": "50e8f8bee554fb0c61c770c9365df2261cbaa62d52e437c633c950fff4cc9bd2",
+      "size": 242241,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-magicalxspiral/preview/Magic1_earth.png",
+      "sha256": "42a917f0a2539059c1661b6bafb32c25820df6c27f72ac0e8e7eb9b31f2d8ed4",
+      "size": 64280,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-magicalxspiral/preview/Magic1_fire.png",
+      "sha256": "3ff9ca23066619e6464e2c239d35fab26f2fedcc1a48df65d6104e390035b945",
+      "size": 64370,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-magicalxspiral/preview/Magic1_holy.png",
+      "sha256": "b9915e590a1a508ff87a7afd41c28bec11b924c3afa9cf0ef09675e76918c390",
+      "size": 65249,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-magicalxspiral/preview/Magic1_water.png",
+      "sha256": "48abb9cade10e7ce34cd2c4c020729fc3f81f785d19a6b47c921faec8b35c8da",
+      "size": 64117,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-magicalxspiral/preview/Magic1_wind.png",
+      "sha256": "2dd75b2113924b2c43854cc06ba36814438dc4887fcd27480e7f3a89669fba62",
+      "size": 64366,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-magicalxspiral/preview/Magic2_earth.png",
+      "sha256": "57a29b0601bbee580885a7245a3110eb11d155b311eecd6590224dfb6bcc3443",
+      "size": 120228,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-magicalxspiral/preview/Magic2_fire.png",
+      "sha256": "a9fb06adcef63a0fd0371c9703b4e5cd307fe49c0274333dda7a1a7f587ee55d",
+      "size": 113633,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-magicalxspiral/preview/Magic2_holy.png",
+      "sha256": "da14553b91e669cc61b226a7a1d27e4e8af916b7030efeb30adec406b3b16c65",
+      "size": 440997,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-magicalxspiral/preview/Magic2_water.png",
+      "sha256": "a950365e4bbe86850cfbbe3383b5cd741a97480309ba1acd978b294db23fc0ef",
+      "size": 121988,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-magicalxspiral/preview/Magic2_wind.png",
+      "sha256": "0a3b03198b597989a7eab1f7cbcd83f10952d82c7f4492314d35958f5cd9dcfd",
+      "size": 119445,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-magicalxspiral/preview/MagicArea.png",
+      "sha256": "5eeff0ce81eab51dc4169923bdb8343a933c7f02185ffa7768e75b682e9a21bc",
+      "size": 221592,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-magicalxspiral/preview/Rock1.png",
+      "sha256": "c883fc5f210981b4215b97625913cf509920ca5b78d8e548d48fd68d5856637e",
+      "size": 331741,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-magicalxspiral/preview/Rock2.png",
+      "sha256": "97705936d0a81ce846b400deb72929262b6be771409febf2504f910c91f441be",
+      "size": 416710,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-magicalxspiral/preview/Salamander1.png",
+      "sha256": "cd3fb7b51d9404aefdd7f947fda90846683d636bf46db44afe4cf46d1e39ed52",
+      "size": 113458,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-magicalxspiral/preview/Salamander11.png",
+      "sha256": "a76e31f9d7814e8b5f08f7a417aabd854b9d34b023edba18f0eb229ffd9a52a4",
+      "size": 685028,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-magicalxspiral/preview/Salamander12.png",
+      "sha256": "98acb7465f3c7fad75c1272a6a687caa801638cecc40a58deea977b18065731c",
+      "size": 660344,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-magicalxspiral/preview/Salamander14.png",
+      "sha256": "a3793e464aed82a52dfeae2c561cb74e787623501e88df646632512ffc80ecac",
+      "size": 270665,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-magicalxspiral/preview/Salamander15.png",
+      "sha256": "186f4fc231c67d8374b80ff3c0f9e598fb4740bfc8704dcc9ee45cde04a3a2c4",
+      "size": 95085,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-magicalxspiral/preview/Salamander2.png",
+      "sha256": "3e115a7f37afaf0d1250459b27a09a7f220071f5c792041e34b725fa632ff01f",
+      "size": 200245,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-magicalxspiral/preview/Salamander3.png",
+      "sha256": "950e733f9b5faedc0c98b043eef316146b9ad62437a9cd7872d4d0f8a4c5f7d7",
+      "size": 609675,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-magicalxspiral/preview/Salamander4.png",
+      "sha256": "1fc7f3c0b7cc3180ab18d80ea65fbc1afaeef5423e8a85f06e034718630c29a9",
+      "size": 493907,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-magicalxspiral/preview/Salamander5.png",
+      "sha256": "16b4cf49e96951356ff044bbdffa57fd19bc643a9e822d29586f115e8e5cad2b",
+      "size": 531141,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-magicalxspiral/preview/Salamander6.png",
+      "sha256": "6726c9612ef987d0e8dcdf204df16166ccd789e2976f675371741ed1b0dd435e",
+      "size": 363300,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-magicalxspiral/preview/Salamander7.png",
+      "sha256": "d3ce81fe43ba1598eb4053ace1a1766111af6202f7f0f94c08aa9b9af13bfbe3",
+      "size": 229944,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-magicalxspiral/preview/Snowman1.png",
+      "sha256": "c5dd310f4b7b1ec026b2d3fe5e8f42b5fbb50b71ec9eaf7fab980f88c6c18a10",
+      "size": 144847,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-magicalxspiral/preview/StairBroken.png",
+      "sha256": "b6f830ec9f309289ff83e3476fdbe63ebdd0c7cbb84e426e3435b0fd960b390a",
+      "size": 240699,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-magicalxspiral/preview/StairBroken3.png",
+      "sha256": "f7bf7c1905fc3da3d2db4fdfa272e293299045d84c959226df0b0992b5888c15",
+      "size": 113686,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-magicalxspiral/preview/Sylph1.png",
+      "sha256": "5450bd5b60c0a2bba31def03d51258161af4b77834a65cc432e891f57dd92cd7",
+      "size": 71779,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-magicalxspiral/preview/Sylph10.png",
+      "sha256": "ee51e5afff91aa0856954d58eaf0985bf8e5c227181180a50e8a2aacb5a0af67",
+      "size": 78878,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-magicalxspiral/preview/Sylph11.png",
+      "sha256": "68211e77dc17077a613d07970f20e73a9ce9841c4de2a6cff93fc95130108fc7",
+      "size": 530826,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-magicalxspiral/preview/Sylph13.png",
+      "sha256": "b6be05766702b5861d6a84bb1623db058a4593b770e7284c268107aa899fd38d",
+      "size": 233681,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-magicalxspiral/preview/Sylph15.png",
+      "sha256": "8de78057eb5642961719ef2e9ee12180d8a532edff624519a62f2b65a336244a",
+      "size": 643218,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-magicalxspiral/preview/Sylph2.png",
+      "sha256": "03642674cbad5592c5010c6df99105f0e126e976bd45a9df389f7e179a422a95",
+      "size": 86933,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-magicalxspiral/preview/Sylph3.png",
+      "sha256": "cee22d045549bc65c92ba3505a462d72d83a64e4b02118a52f085e83a1e401fb",
+      "size": 115410,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-magicalxspiral/preview/Sylph4.png",
+      "sha256": "71a31bc33450dd6a396d5e30e1246f855ccc807ab88c211610d540e68d879cca",
+      "size": 189516,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-magicalxspiral/preview/Sylph5.png",
+      "sha256": "7e0caa5a3fa76d991a86485893906771651eae72c04f64c84883cae38c35517d",
+      "size": 87742,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-magicalxspiral/preview/Sylph6.png",
+      "sha256": "8f0b48a25abab0f8364efe38d58b8a69e8da500a1156ccddc24b3b38bc50e909",
+      "size": 36057,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-magicalxspiral/preview/Sylph7.png",
+      "sha256": "19f96eac3690c9c05bd7ead1f5df0ed7d3020ff2ca3a4860da6c3758e0985e00",
+      "size": 306962,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-magicalxspiral/preview/Sylph8.png",
+      "sha256": "69220d6904bda501e4a3fa843072ca2f51524fac3a8ed528e802084b05720d30",
+      "size": 314044,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-magicalxspiral/preview/Thunder1.png",
+      "sha256": "36334d0fd9f39cb4f58ad06ea6d5da4a0acb933c07094574f392477c8fad0c3b",
+      "size": 394465,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-magicalxspiral/preview/Thunder2.png",
+      "sha256": "28a7d58e1976c2b7e46f8b1f038d17b949ff4b9df8755663a8a6bbf2baa7c0a1",
+      "size": 658688,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-magicalxspiral/preview/Thunder3.png",
+      "sha256": "d9200ebcaa2d1b8e977dd0a20a96ee0d6d9e81ccfb71d4c667bb392427216e63",
+      "size": 135928,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-magicalxspiral/preview/Topwater1.png",
+      "sha256": "3d9919b9b147f7f511ced247877f47e513de55f802af9dfe270ccfdfdf1be671",
+      "size": 441354,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-magicalxspiral/preview/Undine1.png",
+      "sha256": "459f530447f7a132e17231f3d5f80973666308f9b875bbef8e4c279dfd325922",
+      "size": 572999,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-magicalxspiral/preview/Undine11.png",
+      "sha256": "324d0b0479556a234596e01b656ad498e67706445539cc2742c054ce09921075",
+      "size": 97549,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-magicalxspiral/preview/Undine13.png",
+      "sha256": "394252857cb667abbdcef847185aeb64bfb216efb290d83a5a8d4edf7a263e0f",
+      "size": 267707,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-magicalxspiral/preview/Undine2.png",
+      "sha256": "10290cc0efaf394dac4404da5236ba83b95798675a36b4fdb2fee898e3500001",
+      "size": 112909,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-magicalxspiral/preview/Undine3.png",
+      "sha256": "607cc5f7035493c2674caf91dce3ffb9ac7180a0ad3cd47ec4733ffd30d7a9f4",
+      "size": 195785,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-magicalxspiral/preview/Undine4.png",
+      "sha256": "b7a13c1bf1147317a242a836e75ae56fa04d7fd16cf3a72f7ec022f3f819f1f5",
+      "size": 453625,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-magicalxspiral/preview/Undine5.png",
+      "sha256": "36e6f4b385fdc256bfe66243b1a0512496202e9f079458103dcc409b47667ced",
+      "size": 1046782,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-magicalxspiral/preview/Undine6.png",
+      "sha256": "08402775f61a75d50676b054907c595254b6337b897f20caa641fb7221c84cfa",
+      "size": 520337,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-magicalxspiral/preview/Undine8.png",
+      "sha256": "9390054da2c2960a1f14cf13bb84615fab787ba41016dd9dc23033cd10897622",
+      "size": 316989,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-magicalxspiral/preview/WHead1.png",
+      "sha256": "4073ba7fb691c6adc2bfac3af753639467596ef4bf29623208ee6961ba05f9fc",
+      "size": 146267,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-magicalxspiral/preview/WHead2.png",
+      "sha256": "7fa5fd27021da407f50b98f666aeb4eb7e781ebae2f8ca052449cde3bb472880",
+      "size": 73667,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-magicalxspiral/preview/WHead3.png",
+      "sha256": "e7d2921c67c992640845574e8faebae35cdb3118801737cd20f2db755bceede2",
+      "size": 312468,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-magicalxspiral/preview/Water_Impact.png",
+      "sha256": "52025a0d25cb9afc6da4db42999cb95793d28c658d6c15f380b96ad369bf9a6f",
+      "size": 263479,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-magicalxspiral/preview/Wind_Impact.png",
+      "sha256": "fa03abb3b283a548eee897cc09e8f6f2180c9bd98706e77a6664b222f59a7892",
+      "size": 370122,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-magicalxspiral/preview/cover.png",
+      "sha256": "6d3fda665dab456a2b6c4587b59af25fd6307c17abd2dade6da967d245a7fcee",
+      "size": 67046,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-magicalxspiral/preview/foot_smoke1.png",
+      "sha256": "de417a7965e03a801fa226408775b8c8cb468eb4059459e686b6ce79c8a194f0",
+      "size": 334595,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-magicalxspiral/preview/foot_smoke2.png",
+      "sha256": "0a69fb5bcd8bbab419b8c60ebe4c5c5e9d55d69b926119bbe1c517793fc483af",
+      "size": 69205,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-magicalxspiral/preview/foot_smoke3.png",
+      "sha256": "1d4519e0e45d6216e847a62d0d9d935166852e4cc4209078cb56eda550df043b",
+      "size": 68594,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-magicalxspiral/preview/foot_smoke4.png",
+      "sha256": "521e4f440f6a2f3751914bbbe99d6bdaa7a03216322d772ad447089c0ffb642b",
+      "size": 63653,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-magicalxspiral/preview/foot_smoke5.png",
+      "sha256": "f0961ecda82d04197ccbd29b9408789ac771fbe0d33c457e613bcc36940f8b3e",
+      "size": 65402,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-magicalxspiral/preview/foot_smoke6.png",
+      "sha256": "c2cc991d799e4031526fe0dd64f8575d56e2f3dd8a62eac6377d3a00ffc8f74a",
+      "size": 65730,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-magicalxspiral/preview/foot_smoke7.png",
+      "sha256": "2edc97593a429baf52c8e7814953b3c54998f726d67d4ec5e14ec74108081bb0",
+      "size": 61779,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-magicalxspiral/preview/foot_smoke8.png",
+      "sha256": "3fbae180e2a25bf1bbf8838ba7fad770979332779bc9b9180253e48edd34f87f",
+      "size": 62574,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-magicalxspiral/preview/meteo1.png",
+      "sha256": "922e7cb66df0b612a2e5dd87eb78c254ed09021538cdeccb2ecbd6bd1cf7eb55",
+      "size": 391954,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-magicalxspiral/preview/salamander13.png",
+      "sha256": "a04a6eabeb2ccc1847200da9bdc492c5908bb1b1c0776c59669f8678dc1e77d1",
+      "size": 625986,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-magicalxspiral/textures/Fire1.png",
+      "sha256": "eff4be236f25419c9bc9dfb67956d1eb025d5ae35cc26f2e9e72ff4e7cbc4b8b",
+      "size": 29804,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-magicalxspiral/textures/Fire2.png",
+      "sha256": "01e754f3a90360d7f4cd4cd4b0d3af40b30d8a273f6d1deddda65c112cf5f114",
+      "size": 31021,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-magicalxspiral/textures/Fire3.png",
+      "sha256": "19fe7a6cea123a5d593a25aea56886717a223d4f95646109237d10ece9ff1a4e",
+      "size": 87675,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-magicalxspiral/textures/Fire4.png",
+      "sha256": "c29ee0d06beb113d865deb6428deb8c00d890e73c4720188ccc0c77fe9b7c977",
+      "size": 7581,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-magicalxspiral/textures/Hammer1.png",
+      "sha256": "bdf82b9c52db41298a050087c53fe415bf9b1f6f7759b367f1d7bd99738bbef8",
+      "size": 87976,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-magicalxspiral/textures/Line1.png",
+      "sha256": "3443fa6d3cda9abf473b7a8a04d42c075103ecaf4a9d641d3d59a9ede255609d",
+      "size": 328,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-magicalxspiral/textures/Line2.png",
+      "sha256": "165e92d96d63f958c08f2c2a2f9a0650ba62e42c1d97ed30d50017051e8d3673",
+      "size": 505,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-magicalxspiral/textures/Line3.png",
+      "sha256": "25e5d0badd87d22cc2fee22afa0dc75073e48d806be1ee98dbe9242087ad2b6c",
+      "size": 3076,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-magicalxspiral/textures/Line4.png",
+      "sha256": "c8773833dbbb72d69cb1a908203948fa84e112eafbb882f3c5195d9b0aff8d2a",
+      "size": 3221,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-magicalxspiral/textures/Line5.png",
+      "sha256": "63029e1b4e5e0f0505cba02e3c4f2145f47920a29a8ddb061cb1d9ebc958e9c2",
+      "size": 3196,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-magicalxspiral/textures/Line6.png",
+      "sha256": "0090daa2712e9b5fe9a93a1fb992a0a6724345d7c4722b759a1b62c59a8cf1f6",
+      "size": 1315,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-magicalxspiral/textures/ShockWave1.png",
+      "sha256": "f4c5dbc600b77ced1db1aade3dbada635b24eb4bfa96c35b0b07a09a62e54ebd",
+      "size": 1878,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-magicalxspiral/textures/ShockWave2.png",
+      "sha256": "6fdba05822ef8ea2a4c36fa9a2ae32d2219c471fab2e5913c815ab886d7e9168",
+      "size": 1146,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-magicalxspiral/textures/ShockWave3.png",
+      "sha256": "5b8eff6996259002d1e04a1b8b016b1150da27e1a89aafebbaa7692476d8954b",
+      "size": 224,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-magicalxspiral/textures/ShockWave4.png",
+      "sha256": "fc3658b2025d71d71656c7bba4abd264c04e0e63ef8ed711ed5692d294d06cef",
+      "size": 1789,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-magicalxspiral/textures/ShockWave5.png",
+      "sha256": "763493d7ba1e221e82fdb4b34cde4d4ad7b83ebea080c9f2732a03f8774f01e3",
+      "size": 3762,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-magicalxspiral/textures/ShockWave6.png",
+      "sha256": "9ce54823840b55bb4f4dd6b038062f5218ca43c7f51c2f552ea5a6367bf0ad83",
+      "size": 1546,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-magicalxspiral/textures/ShockWave7.png",
+      "sha256": "1d75d79508d26360d9cbc264b92bc7923777bb92f9390e147e138384c1e93254",
+      "size": 2005,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-magicalxspiral/textures/ShockWave8.png",
+      "sha256": "5c4eabcf2827f5ce5721dd468c760038a21f7031546848e33dd09d3a7a9c98c3",
+      "size": 4733,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-magicalxspiral/textures/Thunder2.png",
+      "sha256": "3e0e5fc1caecefb3547bfdfb7ac482483d635c93b8fd5e7e7b97a09442375f94",
+      "size": 21507,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-magicalxspiral/textures/Thunder3.png",
+      "sha256": "51b86733db752de8e703546aa7b007018b52634d01fdf7a9fd806f93cfb25d51",
+      "size": 2721,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-magicalxspiral/textures/Water.png",
+      "sha256": "8b639b53a2755f704890bcc6d5148f442128aa3b3f2e648ed25b7e7aff840512",
+      "size": 540360,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-magicalxspiral/textures/WaterForm1.png",
+      "sha256": "9ea511439184d72cd88d640272432f1c1c9e6a719f3d979c48bbf042eccc1dd0",
+      "size": 134848,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-magicalxspiral/textures/WaterForm2.png",
+      "sha256": "8a2814bd3c4310668f50df67811f3154a6efd2d7a3c5a59d668b41cecd9fa1e7",
+      "size": 80722,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-magicalxspiral/textures/White.png",
+      "sha256": "104140de333c4525852a432921d5bb15c420f3314351b59bd4de742bb56a4a56",
+      "size": 91,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-magicalxspiral/textures/circle1.png",
+      "sha256": "0ddb62a35d0dd995b5ac3765eab491e88823e79b3bd2f7e8e23130eaf7f8cb9b",
+      "size": 6312,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-magicalxspiral/textures/circle3.png",
+      "sha256": "1844373cf158edba61b70479be12061aba3597afd5d2906ec8665f418b270c49",
+      "size": 3052,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-magicalxspiral/textures/circle4.png",
+      "sha256": "db7680aca98e87b98d1970dc60caca04a41782eea5c869637f2e34ffbf18e2a8",
+      "size": 199155,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-magicalxspiral/textures/fireline2.png",
+      "sha256": "b47237de2e26fbb277bbfcd0e63eb14292146542f1906139828ec43a6690d493",
+      "size": 1452,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-magicalxspiral/textures/icicle.png",
+      "sha256": "3889f2af74fa627217f278d2ebeba16c09d8cebc865a164ca700c981ce646fa0",
+      "size": 72133,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-magicalxspiral/textures/icicle2.png",
+      "sha256": "b4d92270492804a7e5e23fb00523a2b3c2c1fdb49587d8bae9c2f63348f95314",
+      "size": 69294,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-magicalxspiral/textures/particle.png",
+      "sha256": "0ecd83e1378e52163f53d495c3bc52d0642b57be74c4279b90df604e02ceb2c6",
+      "size": 307,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-magicalxspiral/textures/particle2.png",
+      "sha256": "29325443ef31d6abe7bd3b01690fc14a044451d3bddf4553b969b617cdc183c4",
+      "size": 776,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-magicalxspiral/textures/particle3.png",
+      "sha256": "2b61e319cbb0b1c33e297897025f0cc0f51fa03db6fd10718bf7400a9f4f5528",
+      "size": 300,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-magicalxspiral/textures/particle4.png",
+      "sha256": "19860e8d23bab5a01979e5cfac67390b4d44f36801ff478f679f0730502fe497",
+      "size": 496,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-magicalxspiral/textures/shield_color.png",
+      "sha256": "2e40e6b515dc7ab9124f40be8ea3068cfe35c0005abb32699feab45f543687db",
+      "size": 37228,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-magicalxspiral/textures/smoke_01.png",
+      "sha256": "643a06c242bdb9423698329e4329580567fa3418e2892ac9adcc37d913cd9557",
+      "size": 4483,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-magicalxspiral/textures/star.png",
+      "sha256": "b749e163b7f4b6fd1831fa5d58be717484c12ebbae5ffabf0955688e41fcccea",
+      "size": 1498,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-nextsoft01/preview/HealPotion1.png",
+      "sha256": "85739dcd05474c626098e59ba639555c7f92a03084a722b68daf2cfd389ab494",
+      "size": 264080,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-nextsoft01/preview/HealPotion2.png",
+      "sha256": "42eb68761fe7a0f3cbdc2630a6236ebbff4f968d4c05c91da7d06df7dc6d763c",
+      "size": 243634,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-nextsoft01/preview/MagicCold.png",
+      "sha256": "e802765526b1cc379a6355e879bc3a4f73b7b4937d81631b6610b3f4a7d29f98",
+      "size": 447857,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-nextsoft01/preview/MagicDark.png",
+      "sha256": "51cb031de27aca41706c184eb6784fe2eda7580e7ddcf90cfd287518286e4e60",
+      "size": 776456,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-nextsoft01/preview/MagicFire1.png",
+      "sha256": "cda54f4baa36858d02f972211864cdf0275e79df99ebbe681607b3867fe72816",
+      "size": 514465,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-nextsoft01/preview/MagicFire2.png",
+      "sha256": "dabd9577527f874b428de800f355265bbd74faaaffccb1fd15938a6675dde20b",
+      "size": 642196,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-nextsoft01/preview/MagicHeal1.png",
+      "sha256": "42b08cc1d2817dd57ea128759795f9ff4347b903a5ae0d6eb2ab660a00985b66",
+      "size": 326504,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-nextsoft01/preview/MagicHeal2.png",
+      "sha256": "9f32904e7284155d1b5a3226ae7e1b7d8a1e9f217435714d4819c382bfd54d26",
+      "size": 973114,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-nextsoft01/preview/MagicLight.png",
+      "sha256": "4b12693eb5b4c22fcf3f0975dc219adc8ddf16e870d35db9395e406c243aa19c",
+      "size": 428729,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-nextsoft01/preview/MagicMeteo.png",
+      "sha256": "010c52e0c294a53bdb2d31bb38099f417f2935673269c91b2d0dce2e195c384f",
+      "size": 261412,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-nextsoft01/preview/MagicShield.png",
+      "sha256": "8f0b48a25abab0f8364efe38d58b8a69e8da500a1156ccddc24b3b38bc50e909",
+      "size": 36057,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-nextsoft01/preview/MagicSword.png",
+      "sha256": "343e3a5073189fd10849bec50194b314cd057fb974c3b56ea6865b15de90ab41",
+      "size": 62682,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-nextsoft01/preview/MagicThunder.png",
+      "sha256": "bba41f2f2d58b45b628b2c074e0f0c87207158dc58b20cd40e85b7396a09d813",
+      "size": 340842,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-nextsoft01/preview/MagicTornade.png",
+      "sha256": "fbb7705c5ab97cc9b801af5be1ca1552713b02494416faf9c16c45ae1b89ac5d",
+      "size": 138339,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-nextsoft01/preview/MagicWater.png",
+      "sha256": "aeeeeeba057f726299a4ce41e85feef39dc9671069b25eb21af014b19c98b060",
+      "size": 773668,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-nextsoft01/preview/PowerUp.png",
+      "sha256": "97c1ddc4e93a3632c7723a175e6d66aa46f849bc6296570f94aee8d5919d1e9d",
+      "size": 396472,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-nextsoft01/preview/Spear1.png",
+      "sha256": "a20ba8bc20a0e1909e44c9f87b149550ccb5feea2daf4d210d0cd2b45b7283d5",
+      "size": 200967,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-nextsoft01/preview/Spear2.png",
+      "sha256": "5c1c2ca6f69b58d3be35c0d251a95027c96984d9d77215850988dad887ad00d5",
+      "size": 263486,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-nextsoft01/preview/Sword1.png",
+      "sha256": "871646f319fa428e2bc63bc40e2b87313028406b19ae7cec4a8bb83f9e51bbd4",
+      "size": 130767,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-nextsoft01/preview/Sword2.png",
+      "sha256": "f049fe90b1377340b2d4f14aecfcc3d2dcd00806e530ba7e080594404519d757",
+      "size": 229214,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-nextsoft01/preview/cover.png",
+      "sha256": "aa8728ac35c0a39052914079fa72c3e255f78b80e2324dc906d0db9b7e3256f5",
+      "size": 12493,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-nextsoft01/textures/Aurora.png",
+      "sha256": "e756192afd2e7e8be11e798b07542fbfae399d5703803fec19ff5df5494354c0",
+      "size": 4486,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-nextsoft01/textures/AuroraRing.png",
+      "sha256": "e6c64b342b2730c93ff70049d392885c24be1685e90d2e8d2a398f04e0f4eea4",
+      "size": 5274,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-nextsoft01/textures/Burst01.png",
+      "sha256": "8ea1d671a9e17f6c0a73fe2378708c4ce1a11ff16c7f420caa6a8ccb0d44c2ae",
+      "size": 20936,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-nextsoft01/textures/Cloud01.png",
+      "sha256": "4e9846ddefb9d33469402edd7fe4dc74cdd0c6b48972acfcdc06a916ffd66894",
+      "size": 12735,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-nextsoft01/textures/Crystal001.png",
+      "sha256": "f268cda7ab629e27634ebd71612d13eb951dd60685eb1ec78d844b8ab9ef8e23",
+      "size": 12145,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-nextsoft01/textures/Crystal002.png",
+      "sha256": "3c1fa21de17fdeb0b9288d38f9523f7cce74d582b8d32dba0194a6fcd2a46b92",
+      "size": 15744,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-nextsoft01/textures/FlameRadiation.png",
+      "sha256": "e7351e4efd7d9530798ce66469a5368ecb357c282fc05eed87664c0bfb9b1ede",
+      "size": 13984,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-nextsoft01/textures/Foam001.png",
+      "sha256": "6c34d96f48009c8d66dd044f04d9539ae01606e3c2dc384b61d483d7a2eecb8c",
+      "size": 2056,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-nextsoft01/textures/Foam002.png",
+      "sha256": "8ef95c08b6c47a0d04ed4669b5744b59f22996c011f19c9a895a4f007c820570",
+      "size": 2130,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-nextsoft01/textures/Foam003.png",
+      "sha256": "c531c05797ea95321c2ebc10d4afcd2d7c3a8986a4063107272b476a263d9f1f",
+      "size": 1824,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-nextsoft01/textures/Fog001.png",
+      "sha256": "2f16da9bd7bd70a41079f9764b4467bd610341e8eb3c6ef32feba6f23c0c7c16",
+      "size": 10835,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-nextsoft01/textures/Fog3001.png",
+      "sha256": "31c1a7860e55fe082dd89d593439f3329522e111792bf88fedd91b72b1bb8003",
+      "size": 20891,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-nextsoft01/textures/Line01.png",
+      "sha256": "8a12d37ac233d3f7852257c3dc428d250f93a72ca049064284433de30ed942f0",
+      "size": 2925,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-nextsoft01/textures/MagicCircle1.png",
+      "sha256": "9b0dc41a117dcb2052a294f5a06532632bea6a836ca324c17076738acc0bc47f",
+      "size": 57839,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-nextsoft01/textures/MagicCircle4.png",
+      "sha256": "0086fd31af48e070f2a9d29d95faf25ee81c5fc9f1702cd880bc85f4e090f3e9",
+      "size": 29384,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-nextsoft01/textures/Particle01.png",
+      "sha256": "604e70bb41afe27afe001ff978969bc8e2e32dec590a8da3fcf1c0c7c6e27f10",
+      "size": 3705,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-nextsoft01/textures/Particle02.png",
+      "sha256": "ed33df94e01469a258f24b5d6f117f2fc2b188b40b2504a7cff1fcad25d1baef",
+      "size": 3578,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-nextsoft01/textures/Particle03.png",
+      "sha256": "a9a70acc3c42b86a73c99d6d9189d175f9e1155be65c4cdf24978ae2468c5c0d",
+      "size": 5830,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-nextsoft01/textures/Photon.png",
+      "sha256": "c136cea4a4d49f87cdd81dbe96a37d5e87c394c90903b819daecc5b17f0afbfe",
+      "size": 4982,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-nextsoft01/textures/PolkaDot.png",
+      "sha256": "8a0a9458367b69aed86bede596edd5a3e3fae9fe299343cb94631dcb2db44b30",
+      "size": 6797,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-nextsoft01/textures/SaintArrow.png",
+      "sha256": "292b018639b4e2b318d43e8147bb6c27801b2acc7134116f8a2e9339a632ea7b",
+      "size": 4945,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-nextsoft01/textures/ShadowEye.png",
+      "sha256": "f4c120ad60ac293fadac3e9b00e1c0149c2b7a0fe0078890d5e1de2a83e2c7df",
+      "size": 6645,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-nextsoft01/textures/Shock_wave001.png",
+      "sha256": "5bd5c3cf66a380c76c521f2eeef080152c6277e3245fcbe62a731c88fa90283e",
+      "size": 8319,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-nextsoft01/textures/Shock_wave_ring004.png",
+      "sha256": "a78723895894e4ec4406b35fed7109e2f4f6d74d2e4cd8efc323bbbd7f70dfc2",
+      "size": 4276,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-nextsoft01/textures/SnowCrystals_M.png",
+      "sha256": "9b908479d7fa168ba1c89d0daf59c1eae49c6e5904046cb4ff8f9983e0ea0b4a",
+      "size": 6772,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-nextsoft01/textures/SnowCrystals_S.png",
+      "sha256": "6cbda6aced22a6a9289e7770a869d208e210fe0ad9844a07ea3f8f552e3f37aa",
+      "size": 903,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-nextsoft01/textures/StanBlade.png",
+      "sha256": "91d618fd8e70e4a5228bee3feb3b885acde88c1ad0792536f3a3eaebd7999b77",
+      "size": 19332,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-nextsoft01/textures/Sword002.png",
+      "sha256": "97f43c2a063ba7f750265602687a28338f0be4f26cab37be6fa956db3c0c4b32",
+      "size": 3551,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-nextsoft01/textures/Thunder01.png",
+      "sha256": "c16ecec1bd5dc9e18267b17ac70b6e0527851466d05d09e6b919a7887ce17f1d",
+      "size": 9101,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-nextsoft01/textures/Thunder10.png",
+      "sha256": "017eb64666b1583fce6637cc98777f049775d8e56a9c9beeb2641a25de1898a4",
+      "size": 53790,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-nextsoft01/textures/kirakira.png",
+      "sha256": "94be4cddb74a96baccdeb57f6ce634039a38174ee55cfcea347f0057f1393817",
+      "size": 598,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-nextsoft01/textures/t0002.png",
+      "sha256": "e645cc9c76d3825659b3a11bd8bc0c84801855b5c6fce02ce7c546a4cfae99b1",
+      "size": 660,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-nextsoft01/textures/t0007.png",
+      "sha256": "822deeb55efc457faaf75da563cb8fe638ce9a9ef48607d90e3c14d28f6f09ef",
+      "size": 2600,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-pierre01/preview/Atmosphere.png",
+      "sha256": "89dbe29e821ecc864f403ea7187928f6ccc215e5974155c3b85d642500f52bcd",
+      "size": 36606,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-pierre01/preview/Background.png",
+      "sha256": "e627f8700ea92c24c8bb8fc0e3f2a4767a40a8abc9facf23d1ab4ff72fbe14d1",
+      "size": 136054,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-pierre01/preview/Flame.png",
+      "sha256": "0694a8b110741db9702e41b103f0dd1f882b27d6a69246d404d762f7918c776c",
+      "size": 660959,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-pierre01/preview/Herald.png",
+      "sha256": "37eba53b51531786a1a8cb0430f0a679579dc9dacc3060f82c73f67b08623d98",
+      "size": 309326,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-pierre01/preview/HolySandstorm.png",
+      "sha256": "d00ea77873fd638e0caca1a2225a304af06025b2f6d12240040780c93e998c25",
+      "size": 814292,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-pierre01/preview/LightningStrike.png",
+      "sha256": "8cb6e1d7c935aac4bf40ef295446745b6c630f4bcedcfbc887511ea22f5cdc1a",
+      "size": 208013,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-pierre01/preview/MissileBoost.png",
+      "sha256": "d8da1e0b0f8c8fd4a8b84ff837d8d08220f672c9c4aa6abedbf6517c7a968d64",
+      "size": 780047,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-pierre01/preview/MonsterRoar.png",
+      "sha256": "cc22f634dd6538121cb2a174f082eef94a37b8a3606f357acd6787004fcb1ce8",
+      "size": 538965,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-pierre01/preview/PhantasmMeteor.png",
+      "sha256": "381eebd068bb6069437c123e8075a386d9ccaa63b1382928d51d2fe765a0c47a",
+      "size": 262296,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-pierre01/preview/PhantasmMeteor_Single.png",
+      "sha256": "8fb93885cb23cab78e918561ef590ccb790b1e495af5a76a20f7ba59580f3450",
+      "size": 684290,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-pierre01/preview/SonicBoom.png",
+      "sha256": "a11a0ba2ed2a61de784d5c0d63bb2db9c0e7a9d49d734456daa6d5fe9356b707",
+      "size": 460616,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-pierre01/preview/cover.png",
+      "sha256": "71c6b75e27d0edefbf55e328ffe7732a85dcc69dbc3d7695cb7a29fb2d6556fb",
+      "size": 56529,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-pierre01/textures/Burst_1.png",
+      "sha256": "7bffb8e705ea98f01c76383b4f72ab6ae73823bed97beda403fdb4dd0e369f57",
+      "size": 19582,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-pierre01/textures/Burst_2.png",
+      "sha256": "71b16c0ef4401c9283931e00f9b10adad395e56794d03bce93e12c031c653b13",
+      "size": 44599,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-pierre01/textures/ExperimentalBlur.png",
+      "sha256": "9a52903ed847e6c1e31148c6a058b4ba4eef64ed601e2904bea1632fdd1ec497",
+      "size": 35038,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-pierre01/textures/ExperimentalNoise.png",
+      "sha256": "a7c07a307910d14d6afd895dd46250b5b52f4a7a54eba6f30fac28fccbd511c1",
+      "size": 69690,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-pierre01/textures/Fire.png",
+      "sha256": "d5d24d6065db8bfff23d86c7dd7a707c697556dcc8f8d9ca0ec37706bc18f9cf",
+      "size": 71754,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-pierre01/textures/Fire_Blur.png",
+      "sha256": "9a128965ce60eea2b2393a484f532e9aaa3303cb638ae972dc278e7b5ccb1516",
+      "size": 110542,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-pierre01/textures/Fire_Single.png",
+      "sha256": "5857c380ceeeb60fa561ed0d742b288005f1c1a5dba25c0676c4f2414953c346",
+      "size": 15720,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-pierre01/textures/Glass.png",
+      "sha256": "e0a744638b765eda376a6562e14e88d5368b93fe0dc47614c7b27f61084e735d",
+      "size": 6813,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-pierre01/textures/Halo.png",
+      "sha256": "e5427551e1de0047f6cd18e5ad1fff9cffbbbffe91e6820c0288e5d680e4ebcc",
+      "size": 6300,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-pierre01/textures/IntensiveLine.png",
+      "sha256": "51171adf613ca06c011e817ee1a5a695f55468f5bbc14dc8141e7d447fe0a064",
+      "size": 19394,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-pierre01/textures/NoiseAnimation.png",
+      "sha256": "55e57bcdddd49896dd3f47d2646c8df919a7c5f438bac66490ae4095e8f4f5be",
+      "size": 295997,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-pierre01/textures/Particle_Hard.png",
+      "sha256": "f221176840510167871663dad1a44ba7b031af4a7edbda5352ca91ca8b553d93",
+      "size": 4290,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-pierre01/textures/Particle_Soft.png",
+      "sha256": "b3e7d46229a22b58fa5df4883abc8e5ef8b3edd29cca2e4d8d05507331e7756a",
+      "size": 3973,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-pierre01/textures/Shockwave.png",
+      "sha256": "695bfcf06d2586b95cf0f2b38bcb1486f17ebfd55a9c325771dd8173a5145552",
+      "size": 26329,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-pierre01/textures/Smoke.png",
+      "sha256": "cc3cbe2fe873dc077264fa63c9fa40d378e150b571b7e1e5fbae051d3d7e496c",
+      "size": 90912,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-pierre01/textures/Splash.png",
+      "sha256": "7c8f07fdf2646526d0b0764a18db96faeb1d9ff8f43356b3ac2e460f6ea19db1",
+      "size": 53158,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-pierre01/textures/Star.png",
+      "sha256": "b8d08eddd036efb5760fcec9f1ba375452e4289036917480ed4380e443e1a04d",
+      "size": 8196,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-pierre01/textures/Tentacle.png",
+      "sha256": "f952edcbd9a26cb3984f59cb9b58efc02efb4ca2a7d2687083d92f2f8cbe1649",
+      "size": 90614,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-pierre01/textures/Thunder_Bold.png",
+      "sha256": "90127efd2edfd212ca56379a9c03e7b2188bab33e629c47bea065d53bc73b9c0",
+      "size": 6521,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-pierre01/textures/Thunder_Thin.png",
+      "sha256": "2552485643235b371969808fb25a59ef5d4ec302c04191ec730fd65af7a36ae4",
+      "size": 11960,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-pierre01/textures/Wind.png",
+      "sha256": "ab37c0b69e4a506816b5fe81e112476f2b4d918351ce608f244dad13a028408d",
+      "size": 25921,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-pierre02/BloodLance/model-ShortLance.glb",
+      "sha256": "46ca63a472a3de0b7a847127308c0c253e9720f50828b7fa0be0ec67ac509b05",
+      "size": 7088,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-pierre02/Sword_Ember/model-LongSword_Blade.glb",
+      "sha256": "1d0246b1def04cd94a96a29a0d7635a3d873ccaa34dc50d53c8f43ae8ce469e3",
+      "size": 6996,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-pierre02/Sword_Ember/model-LongSword_Handle.glb",
+      "sha256": "ee087049e83eb8efb79033dc069ceb86c6ffc2aea95962d77a70e02a207e0287",
+      "size": 17124,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-pierre02/Sword_Lightning/model-LongSword_Blade.glb",
+      "sha256": "1d0246b1def04cd94a96a29a0d7635a3d873ccaa34dc50d53c8f43ae8ce469e3",
+      "size": 6996,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-pierre02/Sword_Lightning/model-LongSword_Handle.glb",
+      "sha256": "ee087049e83eb8efb79033dc069ceb86c6ffc2aea95962d77a70e02a207e0287",
+      "size": 17124,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-pierre02/Sword_Moonlight/model-LongSword_Blade.glb",
+      "sha256": "1d0246b1def04cd94a96a29a0d7635a3d873ccaa34dc50d53c8f43ae8ce469e3",
+      "size": 6996,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-pierre02/Sword_Moonlight/model-LongSword_Handle.glb",
+      "sha256": "ee087049e83eb8efb79033dc069ceb86c6ffc2aea95962d77a70e02a207e0287",
+      "size": 17124,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-pierre02/Sword_Sacredlight/model-LongSword_Blade.glb",
+      "sha256": "1d0246b1def04cd94a96a29a0d7635a3d873ccaa34dc50d53c8f43ae8ce469e3",
+      "size": 6996,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-pierre02/Sword_Sacredlight/model-LongSword_Handle.glb",
+      "sha256": "ee087049e83eb8efb79033dc069ceb86c6ffc2aea95962d77a70e02a207e0287",
+      "size": 17124,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-pierre02/Sword_Storm/model-LongSword_Blade.glb",
+      "sha256": "1d0246b1def04cd94a96a29a0d7635a3d873ccaa34dc50d53c8f43ae8ce469e3",
+      "size": 6996,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-pierre02/Sword_Storm/model-LongSword_Handle.glb",
+      "sha256": "ee087049e83eb8efb79033dc069ceb86c6ffc2aea95962d77a70e02a207e0287",
+      "size": 17124,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-pierre02/preview/Benediction.png",
+      "sha256": "4a3ca292148890261b7ef4913067d360be844a4cf90ab992245ec3088f065ac2",
+      "size": 354433,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-pierre02/preview/BloodLance.png",
+      "sha256": "f725921a5df23b2adf9e1977fbf6f504243aabae8ca4ac93c7f4f53837273984",
+      "size": 579635,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-pierre02/preview/CosmicMist.png",
+      "sha256": "c505f169e178ca900469c9c13ddf80b32e6cd8fec664471c6227da5b3c712de7",
+      "size": 507676,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-pierre02/preview/FeatherBomb.png",
+      "sha256": "651bf0c1e7d01fbb2e185ff6adfc65e05470ac78d38951d1f4bae4d21d81fa93",
+      "size": 347828,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-pierre02/preview/FireBall.png",
+      "sha256": "f6375b8221ea061d6d6f2cbb6f713bda4a72f162e05a656f49ad3a90a5db940b",
+      "size": 424420,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-pierre02/preview/GateOfCalve.png",
+      "sha256": "609d58d9edc6c27bd6c98b0bdbf998429a060ff37143b34edd01c037092b8239",
+      "size": 326054,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-pierre02/preview/LossOfBlood.png",
+      "sha256": "cd061f16a1467d9fc03606a8e5bc098e0d42398018071164fde8f264559e8891",
+      "size": 462914,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-pierre02/preview/Sword_Ember.png",
+      "sha256": "7d64a97a24edf375bcfee81600c9f0b83cd1eafc0b9a3a4daa47710be0ad370b",
+      "size": 99528,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-pierre02/preview/Sword_Lightning.png",
+      "sha256": "22aee9788d953a7ca1a662c8c59c04e2fa91d720bcb248125a303f099a6e2f2e",
+      "size": 216937,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-pierre02/preview/Sword_Moonlight.png",
+      "sha256": "8ad01d53b254ae5cb2107a71db1b8c4b8ff2c787cd7e03b8b2dbc7c31d762db2",
+      "size": 95891,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-pierre02/preview/Sword_Sacredlight.png",
+      "sha256": "be14ad60febeabaebb7b2eeada75abe2490a02315e1cacf3c5a3453404ac05e6",
+      "size": 364162,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-pierre02/preview/Sword_Storm.png",
+      "sha256": "d8760aec719a3e19421a597ad340f3ad2c3e45bccb279be360e6a81e4df449a6",
+      "size": 417323,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-pierre02/preview/cover.png",
+      "sha256": "d081f329cdaaf076779798a6820a2c4e97dc122f68891b1ab8380d27cd68042f",
+      "size": 62894,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-pierre02/textures/Burst_1.png",
+      "sha256": "7bffb8e705ea98f01c76383b4f72ab6ae73823bed97beda403fdb4dd0e369f57",
+      "size": 19582,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-pierre02/textures/Burst_2.png",
+      "sha256": "71b16c0ef4401c9283931e00f9b10adad395e56794d03bce93e12c031c653b13",
+      "size": 44599,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-pierre02/textures/ExperimentalBlur.png",
+      "sha256": "80f2f7271b28f4333c190a08f9390ab87fe45e0a1f5d1410cdafad56a29728d0",
+      "size": 25784,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-pierre02/textures/ExperimentalNoise.png",
+      "sha256": "e68891efd767baf97b4adb3b13d120ef22429a71d5a17142cdc634f624f190df",
+      "size": 27284,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-pierre02/textures/Feather.png",
+      "sha256": "9fa902c068b0fd9bc53322ea50e27898f60d81001582e094039ef7141866bff0",
+      "size": 42080,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-pierre02/textures/Fire.png",
+      "sha256": "d5d24d6065db8bfff23d86c7dd7a707c697556dcc8f8d9ca0ec37706bc18f9cf",
+      "size": 71754,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-pierre02/textures/Fire_Blur.png",
+      "sha256": "9a128965ce60eea2b2393a484f532e9aaa3303cb638ae972dc278e7b5ccb1516",
+      "size": 110542,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-pierre02/textures/Fire_Single.png",
+      "sha256": "5857c380ceeeb60fa561ed0d742b288005f1c1a5dba25c0676c4f2414953c346",
+      "size": 15720,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-pierre02/textures/FractalNoise_1.png",
+      "sha256": "44b901ef9d849ee1a17ea186f7e01e81a1cb0ae1a0e2889f19818bbf4cf48c82",
+      "size": 114086,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-pierre02/textures/Glass.png",
+      "sha256": "e0a744638b765eda376a6562e14e88d5368b93fe0dc47614c7b27f61084e735d",
+      "size": 6813,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-pierre02/textures/Halo.png",
+      "sha256": "e7fd11f3b89e1ef0a3e730e7fb397b0779276998c62f619d646473453eae92c2",
+      "size": 6245,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-pierre02/textures/Line3.png",
+      "sha256": "83c1119d3100aa2719291becc6c6dd3c504f9d4bce82f715275de08f0c602954",
+      "size": 53336,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-pierre02/textures/Line5.png",
+      "sha256": "c23cf247deb50ac45a3048d5bb648c68677b75fb0a15d0b7c0ad10cb31568ee1",
+      "size": 57692,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-pierre02/textures/Line_2.png",
+      "sha256": "fe7cab081201ecc60f66dd631ef25b0c0a8b95084538e7da4b075b5ec7f91549",
+      "size": 12673,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-pierre02/textures/Particle_Hard.png",
+      "sha256": "f221176840510167871663dad1a44ba7b031af4a7edbda5352ca91ca8b553d93",
+      "size": 4290,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-pierre02/textures/Particle_Soft.png",
+      "sha256": "b3e7d46229a22b58fa5df4883abc8e5ef8b3edd29cca2e4d8d05507331e7756a",
+      "size": 3973,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-pierre02/textures/Shockwave.png",
+      "sha256": "695bfcf06d2586b95cf0f2b38bcb1486f17ebfd55a9c325771dd8173a5145552",
+      "size": 26329,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-pierre02/textures/Smoke.png",
+      "sha256": "cc3cbe2fe873dc077264fa63c9fa40d378e150b571b7e1e5fbae051d3d7e496c",
+      "size": 90912,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-pierre02/textures/Smoke_Lighting.png",
+      "sha256": "21103a57755c79f5ec6bc08e0b488cf9f7f6ce3202698587cd1d169ac7b47a41",
+      "size": 86791,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-pierre02/textures/Splash.png",
+      "sha256": "7c8f07fdf2646526d0b0764a18db96faeb1d9ff8f43356b3ac2e460f6ea19db1",
+      "size": 53158,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-pierre02/textures/Star.png",
+      "sha256": "b8d08eddd036efb5760fcec9f1ba375452e4289036917480ed4380e443e1a04d",
+      "size": 8196,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-pierre02/textures/Thunder_Thin.png",
+      "sha256": "8972acb772ad7903e24362c4be3335a5f508520ed51bb27b46106a4f9faf5492",
+      "size": 13394,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-pierre02/textures/Wind.png",
+      "sha256": "724ab367a8e2f5c6c7daaea1130af8ab62ea19b24f953d5e39a75bd24187a6ff",
+      "size": 14068,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-pierre02/textures/Yakiniku.png",
+      "sha256": "825385e220818394823cd9f157f244a0b6a85a02a74f76750c1c7d3f1e843ee5",
+      "size": 144900,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-suzuki01/aura/model-ball2.glb",
+      "sha256": "ea3c77dd75ec1c298437a54a984a3cc32097489141e0d0dd1d0bcfb3df70e005",
+      "size": 29676,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-suzuki01/preview/aura.png",
+      "sha256": "8ee9599c642f8c6e840c5c0d8910b09048145d83c35c34050accf527194103e2",
+      "size": 433721,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-suzuki01/preview/cover.png",
+      "sha256": "e6846d68c0f97824191043239c209427f3f637cca32807b20cf2cc32e2543665",
+      "size": 84935,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-suzuki01/preview/snowstorm11.png",
+      "sha256": "69f3020715ad8f171ab46eee68ea2f4551b8787283298ae7e9afe28d505b9bfd",
+      "size": 36863,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-suzuki01/preview/sword.png",
+      "sha256": "1d85bcc09c4ec0ec75632cfad10ce116c1463a05eaaf293d8f7f5e22eb237d49",
+      "size": 315788,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-suzuki01/textures/Burst01.png",
+      "sha256": "8ea1d671a9e17f6c0a73fe2378708c4ce1a11ff16c7f420caa6a8ccb0d44c2ae",
+      "size": 20936,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-suzuki01/textures/Burst01_2.png",
+      "sha256": "6b3450f0f932db2c70f1a2fecdc31c46a978c3aad2180ac4e51d8fdbacef1eff",
+      "size": 21124,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-suzuki01/textures/Particle01.png",
+      "sha256": "3f7deb5b5be680af5cb2ae8c9092a2cd5f29b03dfb2f675d1c687e90e9232c53",
+      "size": 3644,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-suzuki01/textures/Particle02.png",
+      "sha256": "ed33df94e01469a258f24b5d6f117f2fc2b188b40b2504a7cff1fcad25d1baef",
+      "size": 3578,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-suzuki01/textures/Splash01.png",
+      "sha256": "16fbe50a31d5abe07aa4aeff6ddf121613a74fa0523a53a1851e55e7198e298d",
+      "size": 45680,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-suzuki01/textures/Sword002.png",
+      "sha256": "97f43c2a063ba7f750265602687a28338f0be4f26cab37be6fa956db3c0c4b32",
+      "size": 3551,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-suzuki01/textures/aura3_type2.png",
+      "sha256": "4faac154f738915fa797cf004fad4e3f75c19ea42d4ce9d41bcc6d0fffa4d712",
+      "size": 618640,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-suzuki01/textures/blue_fire.png",
+      "sha256": "7467de5fa13806f507515effbfa9d20c1efda182e54cd915f627f45254a4ed19",
+      "size": 649478,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-suzuki01/textures/fire.png",
+      "sha256": "612b5717a501c58c8c56d37ae07c5eb2b7fec78518e800b6b0169ce817864b69",
+      "size": 623921,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-suzuki01/textures/glow.png",
+      "sha256": "85908ccda181ea206d914ff61a8266850bd0ce496862320c980b2c7054dfb5c5",
+      "size": 24631,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-suzuki01/textures/magma.png",
+      "sha256": "f8427172f9dc78483be27c265f2d88048c5cb81be612597a84086a2e04643246",
+      "size": 1056753,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-tktk01/preview/Arrow1.png",
+      "sha256": "4f25ee1771b4762e1a4a0e10e6e608a90bc5bdb2b85ad85bb57b8e6efdcf2475",
+      "size": 160114,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-tktk01/preview/Arrow2.png",
+      "sha256": "fb6d2508750040d7997020bb884f55b59d84e80ff77ab6df1649c33a0dbd1708",
+      "size": 281646,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-tktk01/preview/Blow1.png",
+      "sha256": "8127209ac96838d8eba9eebc7519be6df688f80ffc1912b8658a8963b3f8ab16",
+      "size": 612022,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-tktk01/preview/Blow10.png",
+      "sha256": "03befcb772b32f08537d52db42f62b2d5a9351cbfcc09caf942b69150dce33bd",
+      "size": 694363,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-tktk01/preview/Blow11.png",
+      "sha256": "16a4f91d6341823c35763648770b7de2dadad7bbebde37b481f647db3b43ca55",
+      "size": 537498,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-tktk01/preview/Blow12.png",
+      "sha256": "ea71ad334bac9638e80bf1e28186f7923f4e8f82af3517b6c85b16838242b3d5",
+      "size": 285162,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-tktk01/preview/Blow13.png",
+      "sha256": "1497e3398d2fa38d04a9dab37494628b34acea69316d28f7b5fbb8733731866c",
+      "size": 385013,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-tktk01/preview/Blow14.png",
+      "sha256": "67b2deb3d600407408bd6b287f7ea1a9ad3468bea9e6e4a61a2cd773ddcbc43d",
+      "size": 246775,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-tktk01/preview/Blow15.png",
+      "sha256": "e486a2591af63bf61459bf5070b94b1bda1c3138402d2579f81764cfcb88c108",
+      "size": 1098615,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-tktk01/preview/Blow2.png",
+      "sha256": "3e454a44f44e2b137c2c8646d833bd54ba463b6b965de502f32fc273fa4ce173",
+      "size": 634892,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-tktk01/preview/Blow3.png",
+      "sha256": "a3ee0efdf817830da539f91e928371670a0e85abee9e49a6a0dd65f306e27c62",
+      "size": 620929,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-tktk01/preview/Blow4.png",
+      "sha256": "2e84ea78672265adebd10f7580025a9492fbf4e26a139c787a88624bca92ceba",
+      "size": 542542,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-tktk01/preview/Blow5.png",
+      "sha256": "a2ebfdf9337630b01f7384ba29c83d51d53d5be0459aaccaeaf6b2502134a6f9",
+      "size": 373879,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-tktk01/preview/Blow6.png",
+      "sha256": "d0f596a6fd2c5e1fdf761bbc60850e19bef19fe9aff376faf8796a35ce3dd68c",
+      "size": 171851,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-tktk01/preview/Blow7.png",
+      "sha256": "84e0a62643f03d328f22e989c1f5ffc8554a490cf4bfd64b6406a4a641bd639a",
+      "size": 414040,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-tktk01/preview/Blow8.png",
+      "sha256": "e14a5faa27c563350230986b060fe7e645fb241a0966ac83a20d08fbbfc99e7b",
+      "size": 377047,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-tktk01/preview/Blow9.png",
+      "sha256": "720b4fb4e40ff17157a9d1dda7fd660186fc99ef16bbe8ee6f4a8cb19de725a8",
+      "size": 292682,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-tktk01/preview/Cure1.png",
+      "sha256": "d2d3b009878f949d4222b2abdbf695f7668a10fabf860122003044bc30c05e98",
+      "size": 595714,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-tktk01/preview/Cure2.png",
+      "sha256": "83dbf99fc92c77bfa066d19e30cb4ba28630d7c2b2e523c480399ffb30e2bb5d",
+      "size": 543637,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-tktk01/preview/Cure3.png",
+      "sha256": "c29627cc319f1908c7a7debef354f280120018ac5c32563ada933c445a5ad9f8",
+      "size": 692372,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-tktk01/preview/Cure4.png",
+      "sha256": "69298b09646105329540dd38f044c33ea83254c52101f458df5fadda0ba4d1d6",
+      "size": 362041,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-tktk01/preview/Cure5.png",
+      "sha256": "06e12a8aeb521a852bf2d3a661528e4cc76abb7138f357829bfeac5ab248292e",
+      "size": 600330,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-tktk01/preview/Cure6.png",
+      "sha256": "0a1845d8ce66cec0394551076d516e67f47f37f05ba5d41347dbcd7fcf1624c9",
+      "size": 805378,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-tktk01/preview/Cure7.png",
+      "sha256": "129be28f134cde68d499a59d7eebcdc44ce39b10dcac34bfdd6c6c677482bb9c",
+      "size": 297375,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-tktk01/preview/Dark1.png",
+      "sha256": "e61b2cdeca50225869d0cb7b20e69d7e36dd65b3bb9b75fefab289274aec4f77",
+      "size": 782243,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-tktk01/preview/Dark2.png",
+      "sha256": "1613aec26ca4a60d27fdce5280887402019640db19f07ac91c9d307498ee047c",
+      "size": 855207,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-tktk01/preview/Dark3.png",
+      "sha256": "702cc88e182767c09302365bedc475d68b42f45d8d58d47e2a770c9a1d9f9afe",
+      "size": 148805,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-tktk01/preview/Fire1.png",
+      "sha256": "1ff7c7d333d4eb02c23745772d154eee23b7dd390489987f2e81e4537e8d235c",
+      "size": 504892,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-tktk01/preview/Fire2.png",
+      "sha256": "f77dab16f698e25d15b90a934bd2189b7fc3e20e8636fe1ea3917624c9f4b53c",
+      "size": 667456,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-tktk01/preview/Fire3.png",
+      "sha256": "80159e82a74992853cc7e463b35020fe836a02cc404c1caab4d36427b4c667ac",
+      "size": 123506,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-tktk01/preview/Fire4.png",
+      "sha256": "bfc127e7d7d2ca206330ed293cd4d4e8b12e779ceaabeb46dd373f1bac958652",
+      "size": 357073,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-tktk01/preview/Fire5.png",
+      "sha256": "8f0b48a25abab0f8364efe38d58b8a69e8da500a1156ccddc24b3b38bc50e909",
+      "size": 36057,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-tktk01/preview/Fire6.png",
+      "sha256": "77f7df6b52872fe6884c0094d1ca4a243254e9f1e78134e2d9dca533ad51898f",
+      "size": 384133,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-tktk01/preview/Fire7.png",
+      "sha256": "47b7b4dcad596675f8f67f0c525146074c571a1bc357adc5547fa5714a52a0fd",
+      "size": 419651,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-tktk01/preview/Fire8.png",
+      "sha256": "a0f7aac69d87b1a0dc8d3d98e4fa48b5a18badeb0ec1f17dda62fea2f742183f",
+      "size": 637598,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-tktk01/preview/Light1.png",
+      "sha256": "5018991f76fd6149fe8b96a73c1629d599c446e0ea3bb25523fe57ca3e4ed974",
+      "size": 431037,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-tktk01/preview/Light2.png",
+      "sha256": "c667aafe0f8ea659a82efa281504c7c97c0f954b2cbe3de6719af21d8167a1b0",
+      "size": 335922,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-tktk01/preview/Light3.png",
+      "sha256": "cf9981b69609fd2fa77214c2434c504b1d6741989a8cdea5e527b340745c63cb",
+      "size": 626021,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-tktk01/preview/Light4.png",
+      "sha256": "fec26a7bead55b70338c0c70a9247b4118d9adcae8caf422be55a8c6d0641546",
+      "size": 513162,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-tktk01/preview/Magic1.png",
+      "sha256": "cda4d5334f4ec71ec8f0059032a1c682e105e6be5a59c20506e0b0018eed26eb",
+      "size": 404285,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-tktk01/preview/Magic2.png",
+      "sha256": "d2db877fced67b6aa9e2d64ed0b5ce59ebe05912644dc1cbd293253c90bfa742",
+      "size": 457070,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-tktk01/preview/Soil1.png",
+      "sha256": "dd6fd9e4193799d681f356d9511369585c3e96d5001cb2f774c3bbc7c42bed47",
+      "size": 588016,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-tktk01/preview/Sword1.png",
+      "sha256": "8f0b48a25abab0f8364efe38d58b8a69e8da500a1156ccddc24b3b38bc50e909",
+      "size": 36057,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-tktk01/preview/Sword10.png",
+      "sha256": "498b39a68b73168ceaf0face6742414347f89749d466eadbfebb48ec40b902bc",
+      "size": 156889,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-tktk01/preview/Sword11.png",
+      "sha256": "aa62ff250e707fdbb9cd5cd25f85202312d1b0957458a5324ddffec5bb724eef",
+      "size": 528430,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-tktk01/preview/Sword12.png",
+      "sha256": "c8557bf25e3e667cf0b6439cdcd9e4525fa9c914e5744684c6a22c1c9abbd97a",
+      "size": 443996,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-tktk01/preview/Sword13.png",
+      "sha256": "0de15f920cfa8452f2c67984b341f28dc3f98034a5842cdb8bac1fab0a9bd363",
+      "size": 190222,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-tktk01/preview/Sword14.png",
+      "sha256": "59cb6786f837c6f748f72a148fb2beec729ff86a1fa067af4e4cb81c983c5650",
+      "size": 96783,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-tktk01/preview/Sword15.png",
+      "sha256": "5adca7e9adb0bf82ae6f363e7fe2abbede7456ed43fca46258c41fb652e2313f",
+      "size": 276325,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-tktk01/preview/Sword16.png",
+      "sha256": "41abdad419bc1e993eaa4f467c4341c2d3aaccea533752995abc4946c113b630",
+      "size": 671695,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-tktk01/preview/Sword17.png",
+      "sha256": "e83f38f77b741ccfca46cbdcb1c098e6ea303d3591658340386b6448abfc985a",
+      "size": 205863,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-tktk01/preview/Sword18.png",
+      "sha256": "8fac22ccf2e48ff79c498ef153babcd987dda27b562d336d83bbde3a2a794967",
+      "size": 411941,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-tktk01/preview/Sword19.png",
+      "sha256": "71686178cd6bc6c92a8f402dde1d0fa468663ca533189e728a90a3657dfccf29",
+      "size": 540625,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-tktk01/preview/Sword2.png",
+      "sha256": "3854779e18b0e2981a5f0c1fe87999ca5f3dc2036b576287d95233fd2f059a71",
+      "size": 682818,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-tktk01/preview/Sword20.png",
+      "sha256": "a252aad85c52ef639171b5a916056a48d2d98ce4eb20277b04d951c2478d61f4",
+      "size": 192010,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-tktk01/preview/Sword21.png",
+      "sha256": "43bd8d4df970358c999657fbb02af920dc990a1691f04905e002f9d0a2c32fc9",
+      "size": 213120,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-tktk01/preview/Sword22.png",
+      "sha256": "427f4395d326a4aae3e3b4803b3cac9ceaac3174b1405eaaf847022f0bfdbc12",
+      "size": 344996,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-tktk01/preview/Sword3.png",
+      "sha256": "9a271733ed688522ef66ad60faf7449e7bc33b3d345cde191e78e3aac6aea6cb",
+      "size": 291915,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-tktk01/preview/Sword4.png",
+      "sha256": "3a2088367504844dec6e665c041daa0e17fad0711d835cfa4109991d83e79735",
+      "size": 500516,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-tktk01/preview/Sword5.png",
+      "sha256": "50211e308c3aac76a33baa471eb396445d62da41f5874f4c37d6697cc854ad66",
+      "size": 414676,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-tktk01/preview/Sword6.png",
+      "sha256": "d25c1f45b9274709d9870e5cf6eae25324ebd9fee808b8184ec34e45fd74458e",
+      "size": 491914,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-tktk01/preview/Sword7.png",
+      "sha256": "0a881b5d63aa6e548fa7eef5a15285215bb8a6cddbc1423868185bb2a9dadb1c",
+      "size": 320686,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-tktk01/preview/Sword8.png",
+      "sha256": "0dea9603fc8c9c82e281c118fb0eac82d3b8aa316972b7aacbae5c1fe55ef69a",
+      "size": 541396,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-tktk01/preview/Sword9.png",
+      "sha256": "fe1f0c10ac8fd9862523366aa1931b57f8f9b9adc66483515ae4f18ba3a07212",
+      "size": 390731,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-tktk01/preview/Wind1.png",
+      "sha256": "3eb64b5a234d230e6c71bf1ffdc9227387546ed5eb0a468a9d65c2b3a00ba7ef",
+      "size": 682335,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-tktk01/preview/Wind2.png",
+      "sha256": "65e09a93e2e03b7a9fa4bfbb4aa73a84516756b43609bd85840b1868dc568017",
+      "size": 263491,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-tktk01/preview/cover.png",
+      "sha256": "6df853e739d5b422507a6a1faea895fe257a84e882f1ec003a7acfbbe2dfb068",
+      "size": 161120,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-tktk01/preview/hozyo1.png",
+      "sha256": "8405727395a74841ab15f79464989e05fedfd67c8aacbbcf91c0a1b4ea08b39e",
+      "size": 405848,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-tktk01/preview/hozyo2.png",
+      "sha256": "9dc5415cc7f63d077208274b958fcbcdea34ad8a3c2f70a0535cc7c37ca7accb",
+      "size": 597083,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-tktk01/preview/hozyo3.png",
+      "sha256": "c9d56216af7e6fcc577e41d8af2094df211166fa6f73d7e70ea10020c0f8aa36",
+      "size": 607451,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-tktk01/preview/hozyo4.png",
+      "sha256": "73187f751c8a6e07f518b086b7a49acd3154bef1d8857861f1b3a97e015cd839",
+      "size": 409612,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-tktk01/preview/hozyo5.png",
+      "sha256": "3bb31e8e550e210300ac5ecfac89e13911b62cb3ee3298fb0f4a5a24081e9f93",
+      "size": 418473,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-tktk01/textures/7irohannten.png",
+      "sha256": "c90e60189f726efc456fc87ce3bef4944d909c1d45f8a3b20324999fa671336e",
+      "size": 32348,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-tktk01/textures/Aurora.png",
+      "sha256": "e756192afd2e7e8be11e798b07542fbfae399d5703803fec19ff5df5494354c0",
+      "size": 4486,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-tktk01/textures/AuroraRing.png",
+      "sha256": "e6c64b342b2730c93ff70049d392885c24be1685e90d2e8d2a398f04e0f4eea4",
+      "size": 5274,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-tktk01/textures/Aurora_B.png",
+      "sha256": "9ccbcfecb7341edc28f085c4c48620db108f4aa30e24ec64d37f74f1b53de1e6",
+      "size": 5693,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-tktk01/textures/Flame01.png",
+      "sha256": "57722899c04e41739b3d2b18dc8bb15083bcd2e3aebb633c16be72a1c92e94e7",
+      "size": 9973,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-tktk01/textures/Fog3001.png",
+      "sha256": "31c1a7860e55fe082dd89d593439f3329522e111792bf88fedd91b72b1bb8003",
+      "size": 20891,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-tktk01/textures/Fog3002.png",
+      "sha256": "a928335471c617727302ac6ff8f6c8cc35278b40e63b2ef3cf67d9eaedf90250",
+      "size": 31779,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-tktk01/textures/FractalNoise_2.png",
+      "sha256": "9200b90717a0d8936a735da1367bde3de852d072c5ff56644875cbb209fd4a12",
+      "size": 135192,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-tktk01/textures/Hammer1.png",
+      "sha256": "bdf82b9c52db41298a050087c53fe415bf9b1f6f7759b367f1d7bd99738bbef8",
+      "size": 87976,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-tktk01/textures/Line01.png",
+      "sha256": "8a12d37ac233d3f7852257c3dc428d250f93a72ca049064284433de30ed942f0",
+      "size": 2925,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-tktk01/textures/Line2.png",
+      "sha256": "165e92d96d63f958c08f2c2a2f9a0650ba62e42c1d97ed30d50017051e8d3673",
+      "size": 505,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-tktk01/textures/Line6.png",
+      "sha256": "0090daa2712e9b5fe9a93a1fb992a0a6724345d7c4722b759a1b62c59a8cf1f6",
+      "size": 1315,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-tktk01/textures/Particle01.png",
+      "sha256": "604e70bb41afe27afe001ff978969bc8e2e32dec590a8da3fcf1c0c7c6e27f10",
+      "size": 3705,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-tktk01/textures/Particle02.png",
+      "sha256": "ed33df94e01469a258f24b5d6f117f2fc2b188b40b2504a7cff1fcad25d1baef",
+      "size": 3578,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-tktk01/textures/Shock_wave001.png",
+      "sha256": "5bd5c3cf66a380c76c521f2eeef080152c6277e3245fcbe62a731c88fa90283e",
+      "size": 8319,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-tktk01/textures/Shock_wave004.png",
+      "sha256": "f0b5e490aa05bbfd53d504bbf163da9f991871f9cafc7b7d402298cd3bb0a586",
+      "size": 5066,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-tktk01/textures/Shock_wave_ring001.png",
+      "sha256": "2e2c9f53debf302dd5aabfb919a33547cd6b68da23331c81c383e5312e1f306f",
+      "size": 5204,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-tktk01/textures/Shock_wave_ring0011.png",
+      "sha256": "778c1d1ea5a33690c3d9e55e4c4f00bd5f74ec28869fa3df44776e1d0514a505",
+      "size": 5113,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-tktk01/textures/Shock_wave_ring002.png",
+      "sha256": "d4caa79ecd20257e70fede01ecf335661a57a15516e2e6b0cec00fbfc2d5ce88",
+      "size": 3819,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-tktk01/textures/StanBlade.png",
+      "sha256": "91d618fd8e70e4a5228bee3feb3b885acde88c1ad0792536f3a3eaebd7999b77",
+      "size": 19332,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-tktk01/textures/Thunder1.png",
+      "sha256": "d4ae314f75675f672171785c9eac1c037cdc2be9c901bd5d02d11ee99a5ddaf9",
+      "size": 757,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-tktk01/textures/WaterForm1.png",
+      "sha256": "9ea511439184d72cd88d640272432f1c1c9e6a719f3d979c48bbf042eccc1dd0",
+      "size": 134848,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-tktk01/textures/Wind.png",
+      "sha256": "724ab367a8e2f5c6c7daaea1130af8ab62ea19b24f953d5e39a75bd24187a6ff",
+      "size": 14068,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-tktk01/textures/Wind01.png",
+      "sha256": "f82cfd6d0470f366370da95bbba3dcba8e8cf2be867f2fcc95a0d702c64a84fe",
+      "size": 9369,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-tktk01/textures/actionlines.png",
+      "sha256": "d460c6aadb7f567837977f5d532a93b8bf100f349e534a24a25472e919df4b72",
+      "size": 8385,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-tktk01/textures/aura3_type2.png",
+      "sha256": "4faac154f738915fa797cf004fad4e3f75c19ea42d4ce9d41bcc6d0fffa4d712",
+      "size": 618640,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-tktk01/textures/burst02_red.png",
+      "sha256": "3de7bf00cd370150259b263bd6f0581dbaa9002e1735fbf333f4fb257747e5ae",
+      "size": 58243,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-tktk01/textures/circle4.png",
+      "sha256": "db7680aca98e87b98d1970dc60caca04a41782eea5c869637f2e34ffbf18e2a8",
+      "size": 199155,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-tktk01/textures/ezzi.png",
+      "sha256": "dd023461b0bac62f070a9226028faf9eb89682be694c1a397b59bfbc0961eb61",
+      "size": 6692,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-tktk01/textures/ezziglow.png",
+      "sha256": "414b565ef26fd8aa0cef21c4ae044bb14ac7888d38e758a594a35df926dc301f",
+      "size": 13588,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-tktk01/textures/hisigata0.png",
+      "sha256": "885c27010d6d4389c4aa1b95b8928cf32a75b6d6742ee635da9d389ff302ffa3",
+      "size": 3056,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-tktk01/textures/hisigata1.png",
+      "sha256": "326189240bb7d2f45dca5377637324da43b146b72b168005175d37e2c9c93e95",
+      "size": 2237,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-tktk01/textures/icicle2.png",
+      "sha256": "b4d92270492804a7e5e23fb00523a2b3c2c1fdb49587d8bae9c2f63348f95314",
+      "size": 69294,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-tktk01/textures/magma.png",
+      "sha256": "f8427172f9dc78483be27c265f2d88048c5cb81be612597a84086a2e04643246",
+      "size": 1056753,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-tktk01/textures/naihu.png",
+      "sha256": "9e1d64e8a254f03dd1feb31b36ef911ef52cf23a3dbe91aebc4d5aae08717a81",
+      "size": 2192,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-tktk01/textures/rainnaka.png",
+      "sha256": "887f12bf3adf015d80ed1f3874939b741183709f189bdbcfd3490bc7b13a6eb1",
+      "size": 3464,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-tktk01/textures/rainnmidori.png",
+      "sha256": "006247c80f2df9161476a09fef95e681feb14a3d661a46b0c6e29ae8dcd86b6a",
+      "size": 4541,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-tktk01/textures/rainnmizu.png",
+      "sha256": "4b978af8a733b71c8117698c03ca75cbd06d51fb73a9cbb6e8dc5d28572cebdf",
+      "size": 3315,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-tktk01/textures/rainntya.png",
+      "sha256": "0eac1c47bd11b339bd3ce1014f700a8f85613bda77c7043aca384a5fdd19ead4",
+      "size": 3645,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-tktk01/textures/smoke_tex.png",
+      "sha256": "dccff4aa2a5ca47128886c0813405ba4ad38eed6645c2bc34c3170509360f0e4",
+      "size": 144588,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-tktk01/textures/star.png",
+      "sha256": "b8d08eddd036efb5760fcec9f1ba375452e4289036917480ed4380e443e1a04d",
+      "size": 8196,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-tktk01/textures/wind02.png",
+      "sha256": "08667252a1599fff16a7cf2d0c4b83bac094e8bcd1bc874792e6c4f49ff5ade3",
+      "size": 27520,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-tktk02/preview/Blow1.png",
+      "sha256": "038419d38d50e76c1802c8cf09ed9ffe3238e3578e694cbcf6e8f5275908774f",
+      "size": 340990,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-tktk02/preview/Blow2.png",
+      "sha256": "3c841363ff0c3608626c3847ba749a2f9eaf199f16939661bfd595ead530aea4",
+      "size": 466636,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-tktk02/preview/Blow3.png",
+      "sha256": "52e6d13ea666e6da61bccdf4d4a1429c6f6449353cb7ca0e16bce7cb2ae6f3b6",
+      "size": 302470,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-tktk02/preview/Blow4.png",
+      "sha256": "096c2b5b7341be4765603dba1a8e5279290d90255e8ca191733221fb94ec19f9",
+      "size": 318512,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-tktk02/preview/Blow5.png",
+      "sha256": "c57ef8630a004713a8620f027e0e7d9c5b06fc8e7021e7c8976e6b47dfa6f3b3",
+      "size": 542516,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-tktk02/preview/Blow6.png",
+      "sha256": "f52be2ccd23ac210b2292d101b5b5ff5847a01bc17ff9b66c581671bb28c3162",
+      "size": 630708,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-tktk02/preview/Claw1.png",
+      "sha256": "67d061fbd4db4e57b7e4b90ccfeaed036e6f2814abdb51787362a14bcd29f068",
+      "size": 331838,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-tktk02/preview/Claw2.png",
+      "sha256": "96d3ebe189073cc988ab3a65f16a400eac4ff90baf4fe065ae9cfaeb2447c543",
+      "size": 246034,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-tktk02/preview/Claw3.png",
+      "sha256": "238cecafdbfea35599ea6260ad03b35701fb83fd8bd409a8386ff1571eb39795",
+      "size": 394200,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-tktk02/preview/Claw4.png",
+      "sha256": "b6ce5af2cdbc4ab3e865a3dadbdd550635a0e279d3d438a377516e9394fa3b8d",
+      "size": 482754,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-tktk02/preview/Dark1.png",
+      "sha256": "a6f24caf57e010b4acba23a9e06df0df2d181e0fcbfebcd29b9f458546c0b4d5",
+      "size": 471567,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-tktk02/preview/Dark2.png",
+      "sha256": "70fa29d64b60311d40a67c959391b049bcd70e4a3545a17dff0912269ef2ac48",
+      "size": 351949,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-tktk02/preview/Fire1.png",
+      "sha256": "e612535851b7dec1bb343623d1b37b6f8f9196d6cf91892d23924d9325e2c6e6",
+      "size": 1005293,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-tktk02/preview/Fire2.png",
+      "sha256": "fe55535d402e19d9797bf402ec6df3482f01427c2323cba606ca6a3e2164d3c1",
+      "size": 266391,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-tktk02/preview/Fire3.png",
+      "sha256": "c8a7cc7015455eee95ef44648df77c197d48f4c85b276ce430617821c9cafe5d",
+      "size": 557737,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-tktk02/preview/Fire4.png",
+      "sha256": "5f1cf69486189d581f092b6cb37f8b1010205b5e041f1f0d8da8af1b66747d7b",
+      "size": 235648,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-tktk02/preview/Fire5.png",
+      "sha256": "02d624eeddae14f6da6f28e4fc32fb962e63a5b2653413f53f9c1a1f6a5e8160",
+      "size": 520956,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-tktk02/preview/Fire6.png",
+      "sha256": "9f96a52b813747e9af1d1d51feee33aa3ac2a3d1c9082e3d9a9cc1aa4aa06d53",
+      "size": 432465,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-tktk02/preview/Fire7.png",
+      "sha256": "2408ee2e6a199bdaa9ce4a1907c6b7977b2701c6aeca6e769a031439f52265d4",
+      "size": 390798,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-tktk02/preview/Fire8.png",
+      "sha256": "4073272eb5582e0285239c058977f52821d9c31aa14e6bca92f9931fafabfb62",
+      "size": 823785,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-tktk02/preview/Gun1.png",
+      "sha256": "206736542f728e6a5094e9b86ceb695b7096df2a2752353fe1c4aa96d50e3ad1",
+      "size": 371191,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-tktk02/preview/Gun2.png",
+      "sha256": "e8f7ec77a16ec7602c87624ab1d4ee348fc8076ac7226a589e111733b656c575",
+      "size": 240017,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-tktk02/preview/Gun3.png",
+      "sha256": "913f76b3b0b1ba5e45257d3616316ae2afdac74bfecefdaa6ee77a63833f7724",
+      "size": 343665,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-tktk02/preview/Gun4.png",
+      "sha256": "31511b4dfbd4645ee2a1fb8e24732e48a07efc3bc1c5959d599b86a770de0221",
+      "size": 81359,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-tktk02/preview/Gun5.png",
+      "sha256": "10af7cc15d84c0122bdbf7fc943b2b0e9eb0ca6c1c31475a4799676538d2875a",
+      "size": 307528,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-tktk02/preview/Gun6.png",
+      "sha256": "ddcea29852743845d58067625fdb54d4eb1a971d80b5fb79eb91d7959b342e26",
+      "size": 244213,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-tktk02/preview/Gun7.png",
+      "sha256": "1ec389a813e7bc157161519b05617caad05c9f6662b55b26282b6ad3b70e5c48",
+      "size": 427036,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-tktk02/preview/Gun8.png",
+      "sha256": "36be680d1cf95d1e431ad8e1917f0bd8c618e7953b722204f9f6fbfea9aa98c1",
+      "size": 571890,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-tktk02/preview/Gun9.png",
+      "sha256": "722857b38e32cab29b458a5aa816e86e5d0df7a7ac075eb02d5e0545ad933d3f",
+      "size": 273369,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-tktk02/preview/Light1.png",
+      "sha256": "f6342f5761e4ff00cc8aecd7cf661933e202d7ffebffc6ef962b9c6fe4a5e852",
+      "size": 327659,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-tktk02/preview/Light2.png",
+      "sha256": "68fc3450bf6e78aa4b28aee7e4b09c0526d1ad787b8081e7a3139b205c06dcc8",
+      "size": 343193,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-tktk02/preview/Light3.png",
+      "sha256": "929bc0d9e186da7f7aad76b75e3ee5b98101258dea86e69e0d136991f14ab51d",
+      "size": 544271,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-tktk02/preview/Light4.png",
+      "sha256": "74d58abcf83463e61eb8a002e80a095688359df9faecbf19b4dbad61571034b6",
+      "size": 282013,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-tktk02/preview/cover.png",
+      "sha256": "1768a6d1766dd88a5c4238c6b7b7ad9afc5f71f6d14ee6200d391413e61bdd17",
+      "size": 110593,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-tktk02/textures/6Ice.png",
+      "sha256": "b9672e05ffa80f6fdde628de1d8a44786a54c82ded76ea5a2a9884de6c05290c",
+      "size": 86316,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-tktk02/textures/Aura.png",
+      "sha256": "ae4e1b2f1e00fe72a3a4f0bd472b55b129d9f6f717e6990541d76039cfcc057f",
+      "size": 11666,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-tktk02/textures/Blur5.png",
+      "sha256": "071a6e0efc090dab68ebea8d4200873ca691dff7ba2da0069d76013952287b68",
+      "size": 19629,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-tktk02/textures/Distortion.png",
+      "sha256": "22d6563bf3c8040873aa83ca8c7f961c383356ff915e7a8ecc7110b191348dee",
+      "size": 60688,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-tktk02/textures/Distortion10.png",
+      "sha256": "d201bd0bd274b22263c188d593e7042e41c72de57465335b65ec9848a39296ac",
+      "size": 67823,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-tktk02/textures/Distortion11.png",
+      "sha256": "726e72206a18e9faffc554f90c832ec9bd9dc1e0d80be44ceb6a26dc51243f4a",
+      "size": 42508,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-tktk02/textures/Distortion2.png",
+      "sha256": "18c3574f2090a69be1d0f1f3d40f32a654bb4bb0a228cf249f08a9e487e6e270",
+      "size": 53934,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-tktk02/textures/Distortion4.png",
+      "sha256": "767377f1f8338ab18b6ab05d9f7e78868f33c78037d70414efdc5d9dedd79fc0",
+      "size": 65792,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-tktk02/textures/Distortion5.png",
+      "sha256": "8526a45546bfc502c08e491bab509625e918a7f397d76bf1524aeebbda6c0714",
+      "size": 85626,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-tktk02/textures/Distortion6.png",
+      "sha256": "926922911980c121100ed8620a4ae08ccd9410cf468721d426e3204a5e7bde06",
+      "size": 69753,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-tktk02/textures/Distortion9.png",
+      "sha256": "7aa2c7f3deddb5eec0fd89aff2643cdd81acf5f7471a7576a4123f0f6dd91c8f",
+      "size": 34866,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-tktk02/textures/Fire.png",
+      "sha256": "95063d2b9286fb366a671a13b5b794ec40f180ce50afda4c94ef27e52aa7877d",
+      "size": 45997,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-tktk02/textures/Fire5.png",
+      "sha256": "616b22de349c5162ecba506f4b5cbe84ef22e67161261e71d5a62684439c68a4",
+      "size": 146181,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-tktk02/textures/Fire6.png",
+      "sha256": "aae4702e37e8f5a4d8ad4eb98acdb99a1067d031250e1c12dc305b448dbde6f7",
+      "size": 158244,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-tktk02/textures/FireFog.png",
+      "sha256": "a8c31c7f26a195e56d1621f669fcd08fafdf0efbd1953787ea897b16c3832fe5",
+      "size": 31418,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-tktk02/textures/FireNoise.png",
+      "sha256": "54450415105986d3007aab5cd0f93ac270a30e707a164f32e7df78bd2d2ec41f",
+      "size": 76964,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-tktk02/textures/Fire_Blur.png",
+      "sha256": "06d8a98b94d604a103ecccf88ba177ff7ec1c24535802e46010981d62fe4c846",
+      "size": 45241,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-tktk02/textures/Foam001.png",
+      "sha256": "65cfb22673b0c52256aada8aad47d5f16204dc325f06221f8f01fd737628c32e",
+      "size": 1421,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-tktk02/textures/GlowRGB2.png",
+      "sha256": "fba44876467ca843a378ffc11b9de2cf2cf9e0a8613064d78c328f66b2459565",
+      "size": 43681,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-tktk02/textures/Line01.png",
+      "sha256": "4ff473504dc111a9ab2174a57619b3423862bc7f4edb7cdc14157a9fbed392df",
+      "size": 1020,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-tktk02/textures/Line6.png",
+      "sha256": "33e3104048408f5f8d1bc727a4eac56b1145f07db2efe4d7c8d3b8594f41e541",
+      "size": 785,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-tktk02/textures/Particle01.png",
+      "sha256": "193bf2ea4097cae95af93cff7b16d39e04aa1e8e4e87f1d5a6a2d2b6fecbab3b",
+      "size": 2567,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-tktk02/textures/Particle02.png",
+      "sha256": "9d2057a8d908e82ba42be77b16df55908b5602e03bc581e8ebaf6a8965e089ba",
+      "size": 2367,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-tktk02/textures/Particle_Soft.png",
+      "sha256": "3c084cbeaff4e1e8ef6580a358d41746f573d58acd07e62322d7351be6b0b4a3",
+      "size": 2420,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-tktk02/textures/Shock_wave_ring0011.png",
+      "sha256": "5445c0c3ca589663b8ba756c872679e18c152f8eadfc03d5f8c6b529edd9f9f7",
+      "size": 2661,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-tktk02/textures/Sonic_wave_ring005.png",
+      "sha256": "8a5473b975b28650fc46a43df3ba1b0f536b67ec57c5e8ae926aa8f48465d215",
+      "size": 720,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-tktk02/textures/fog1.png",
+      "sha256": "4a64e3b73742718e76d079716d90559859940406eeeb97025c165fb0b1484c2b",
+      "size": 37414,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-tktk02/textures/fog2.png",
+      "sha256": "e6875db905f2c866e2a0ed340440b49a42cccca9e06120bbfda65dd8e7978b3f",
+      "size": 37465,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-tktk02/textures/glowRGB.png",
+      "sha256": "1a33a1a91709dcf02ad11a1ee1acfd0a966150012d181631208262afc9c648e3",
+      "size": 45765,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-tktk02/textures/shield1.png",
+      "sha256": "ada4ba14efdf1c0072e4c52cc6f001e107600879471c5a64a1b6f839e078a545",
+      "size": 74555,
+      "visibility": "public"
+    },
+    {
+      "path": "effekseer-tktk02/textures/star.png",
+      "sha256": "93d900656b0926daedd844ebffe967fed09c676b126846b142ab11de835b05d6",
+      "size": 4331,
+      "visibility": "public"
+    }
+  ]
+}
