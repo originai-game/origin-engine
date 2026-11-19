@@ -751,6 +751,12 @@ pub(crate) fn cook_terrain(
     let source = field(&doc, &root).map_err(CookError)?;
     let (columns, rows, size) = (source.columns, source.rows, source.size);
     let (sea, river_length) = source.generated.unwrap_or((None, 0.0));
+    // A 16-bit heightmap's samples are already steps of the declared
+    // `height`: its tiles keep those steps, so terrains declared over one
+    // range with equal edge samples meet exactly. An EXR's or a generated
+    // field's heights are not steps of anything: they take the field's own.
+    let declared = (doc.heightmap.is_some() && !source.exr)
+        .then(|| (doc.height[0].min(doc.height[1]), doc.height[0].max(doc.height[1])));
     let mut missing = Vec::new();
     for (a, n, _) in &doc.layers {
         for t in [a, n].into_iter().flatten() {
@@ -788,14 +794,15 @@ pub(crate) fn cook_terrain(
     field.check().map_err(CookError)?;
     let layout = field.layout(doc.tile).map_err(CookError)?;
     let (lo_all, hi_all) = field.range();
-    let span = (hi_all - lo_all).max(f32::MIN_POSITIVE);
+    let (step_lo, step_hi) = declared.unwrap_or((lo_all, hi_all));
+    let span = (step_hi - step_lo).max(f32::MIN_POSITIVE);
     let pyramid = field
         .control
         .as_ref()
         .and_then(|c| og_render_data::ControlPyramid::new(&layout, c));
     let holes = field.hole_counts();
     let heights = field.height_pyramid(&layout);
-    // Every tile of every level: its heights quantised over the terrain's
+    // Every tile of every level: its heights quantised over the steps'
     // range (with holes, the lowest bit its sample's cell's hole flag),
     // its control texels, each zlib'd on its own.
     let mut tiles = Vec::new();
@@ -812,7 +819,7 @@ pub(crate) fn cook_terrain(
         for v in &tile {
             lo = lo.min(*v);
             hi = hi.max(*v);
-            let mut n = (((v - lo_all) / span) * 65535.0)
+            let mut n = (((v - step_lo) / span) * 65535.0)
                 .round()
                 .clamp(0.0, 65535.0) as u16;
             if holes.is_some() {
@@ -907,6 +914,8 @@ pub(crate) fn cook_terrain(
         levels: layout.levels,
         height_min: lo_all,
         height_max: hi_all,
+        steps_min: step_lo,
+        steps_max: step_hi,
         layers: layers.len() as u32,
         control_width: control_w,
         control_height: control_h,

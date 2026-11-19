@@ -41,6 +41,8 @@ pub struct CookedTerrain {
     /// A generated terrain's sea level (`generate { sea <m> }`), metres
     /// above its origin.
     pub sea_level: Option<f32>,
+    /// The range the tiles' 16-bit heights span (TerrainMeta's `steps_*`).
+    steps: (f32, f32),
     tiles: std::sync::Arc<TerrainTiles>,
 }
 
@@ -95,7 +97,7 @@ impl CookedTerrain {
             return Err(self.bad(format!("tile {index} holds the wrong number of heights")));
         }
         let raw = &raw[..side * side * 2];
-        let (lo, hi) = self.range;
+        let (lo, hi) = self.steps;
         let span = hi - lo;
         let holes = self.layout.holes;
         Ok(raw
@@ -375,6 +377,7 @@ impl Bundle {
             cast_shadows: m.cast_shadows != 0,
             collision: m.collision != 0,
             sea_level: (m.sea != 0).then_some(m.sea_level),
+            steps: (m.steps_min, m.steps_max),
             tiles: std::sync::Arc::new(TerrainTiles {
                 rows: tiles,
                 heights,

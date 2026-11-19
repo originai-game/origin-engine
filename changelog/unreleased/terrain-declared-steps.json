@@ -1,0 +1,8 @@
+{
+  "fixed": [
+    {
+      "member": "og.terrain.sample",
+      "summary": "Adjacent terrains with the same declared `height` and equal 16-bit samples on their shared edge now load identical heights there. The cook keeps a 16-bit heightmap's samples as steps of `height` instead of re-quantising each terrain over its own lowest and highest height, which put up to a millimetre between neighbours. TerrainInfo's lowest and highest height are unchanged; terrains are re-cooked (og.Terrain v7)."
+    }
+  ]
+}
