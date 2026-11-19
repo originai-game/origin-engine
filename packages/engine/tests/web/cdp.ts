@@ -173,7 +173,12 @@ export class Browser {
         ws.addEventListener("open", () => resolve());
         ws.addEventListener("error", () => reject(new Error("cannot connect to Chrome's DevTools socket")));
       });
-      return new Browser(ws, proc, profile);
+      const browser = new Browser(ws, proc, profile);
+      // Linux Chrome can expose DevTools before its GPU initialization finishes:
+      // an immediate requestAdapter then loses its native instance. Ask Chrome
+      // to finish collecting GPU info before any test opens a WebGPU page.
+      if (process.platform === "linux" && o.webgpu !== false) await browser.send("SystemInfo.getInfo");
+      return browser;
     } catch (error) {
       if (proc) { proc.kill(); await proc.exited; }
       rmSync(profile, { recursive: true, force: true });

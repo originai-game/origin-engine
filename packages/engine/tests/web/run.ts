@@ -6,15 +6,14 @@
 //   bun tests/web/run.ts [--no-isolation] [--chrome <path>]
 
 import { fileURLToPath } from "node:url";
-import { existsSync, rmSync } from "node:fs";
+import { existsSync } from "node:fs";
 import { dirname, join } from "node:path";
-import { chromePath } from "./cdp.ts";
+import { Browser, chromePath } from "./cdp.ts";
 
 declare const Bun: {
   build(o: { entrypoints: string[]; outdir: string; target: string; format: string }): Promise<{ success: boolean; logs: unknown[] }>;
   serve(o: { port: number; fetch(req: Request): Response | Promise<Response> }): { port: number; stop(): void };
   file(path: string): Blob & { exists(): Promise<boolean> };
-  spawn(cmd: string[], o?: { stdout?: string; stderr?: string }): { kill(): void; exited: Promise<number> };
 };
 
 const args = process.argv.slice(2);
@@ -58,22 +57,11 @@ const server = Bun.serve({
     return new Response(file, { headers: { ...headers, "content-type": types[ext] ?? "application/octet-stream" } });
   },
 });
-const profile = join(out, `profile-${Date.now()}`);
-const browser = Bun.spawn(
-  [
-    chrome, "--headless=new", "--no-first-run", "--no-default-browser-check", `--user-data-dir=${profile}`,
-    "--disable-features=MacAppCodeSignClone",
-    "--window-size=1280,720", "--use-angle=metal", "--enable-unsafe-webgpu", "--enable-features=WebGPU",
-    "--ignore-gpu-blocklist", "--disable-gpu-vsync", "--remote-debugging-port=0",
-    `http://127.0.0.1:${server.port}/`,
-  ],
-  { stdout: "ignore", stderr: "ignore" },
-);
+const browser = await Browser.launch({ chrome });
+await browser.open(`http://127.0.0.1:${server.port}/`);
 const timeout = new Promise((r) => setTimeout(() => r({ error: "timed out after 60 s" }), 60_000));
 const answer = await Promise.race([result, timeout]);
-browser.kill();
-await browser.exited;
+await browser.close();
 server.stop();
-rmSync(profile, { recursive: true, force: true });
 console.log(JSON.stringify(answer, null, 2));
 process.exit((answer as { error?: string }).error ? 1 : 0);
