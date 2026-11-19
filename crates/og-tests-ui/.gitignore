@@ -1,0 +1,5 @@
+# og-assets: the files og-assets.json pins, installed by `bun scripts/assets.ts ensure` (written by the tool)
+/tests/fixtures/core-screens/coast.png
+/tests/fixtures/core-screens/logo.png
+/tests/fixtures/core-screens/thumbnail.png
+# og-assets end

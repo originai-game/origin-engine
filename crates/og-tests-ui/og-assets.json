@@ -1,0 +1,23 @@
+{
+  "version": 1,
+  "files": [
+    {
+      "path": "tests/fixtures/core-screens/coast.png",
+      "sha256": "b3431293aca4be2189555a4a0ebc5246e76d7bb998cc357f0a48d5b756aa4695",
+      "size": 582397,
+      "visibility": "public"
+    },
+    {
+      "path": "tests/fixtures/core-screens/logo.png",
+      "sha256": "2768684cf73384a89fa9d3bd801de41aee28bade58e14878309944bc99d0053a",
+      "size": 59282,
+      "visibility": "public"
+    },
+    {
+      "path": "tests/fixtures/core-screens/thumbnail.png",
+      "sha256": "e1c4353679d5003a4b4969553590a3393bea435ffb2704aa7669a9cec96c77c2",
+      "size": 79509,
+      "visibility": "public"
+    }
+  ]
+}

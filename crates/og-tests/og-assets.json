@@ -1,0 +1,377 @@
+{
+  "version": 1,
+  "files": [
+    {
+      "path": "assets/cast/camp_logs.glb",
+      "sha256": "19f5f1b98d8133dac7987a1bcce22f4b2ec186739e848c8e39560c43d445bc94",
+      "size": 691564,
+      "visibility": "public"
+    },
+    {
+      "path": "assets/cast/camp_stone.glb",
+      "sha256": "12ed5c93b4a63bbec2774a91d68c957af929a5f168615406fd0b0868dfcabf1b",
+      "size": 586276,
+      "visibility": "public"
+    },
+    {
+      "path": "assets/dropship.glb",
+      "sha256": "c7bf4c177bf360bc65b66d8636c1d8cf063cb65209505cf9f8e0e21461ec9c54",
+      "size": 562864,
+      "visibility": "public"
+    },
+    {
+      "path": "assets/env/kloofendal.hdr",
+      "sha256": "5a36c9ffafbf22beaeb738f55a035e00f428857e977c5a2046ab389ff2989da5",
+      "size": 1461169,
+      "visibility": "public"
+    },
+    {
+      "path": "assets/env/spruit.hdr",
+      "sha256": "7a287c6684bee62d4efdbe13b617048ecb076007ab787eb088290ee6ee6659b9",
+      "size": 1557577,
+      "visibility": "public"
+    },
+    {
+      "path": "assets/env/studio.hdr",
+      "sha256": "f8265d3ee26ef57b85bcad132fe1f184f374482ae181151f79dcd69bd13d8055",
+      "size": 8269,
+      "visibility": "public"
+    },
+    {
+      "path": "assets/fonts/noto-sans-sc-msdf.png",
+      "sha256": "d4fcd3234c925664bfc8a1cc6dad666963bfa57694817ad81cbf610d9a7e147d",
+      "size": 103460,
+      "visibility": "public"
+    },
+    {
+      "path": "assets/kit/adobe.glb",
+      "sha256": "0658e9e2ac32956c99cbbf4853fdbfbfcf57593d1c9d4edbf298b4f3346e5a16",
+      "size": 893176,
+      "visibility": "public"
+    },
+    {
+      "path": "assets/kit/arch.glb",
+      "sha256": "ffab31484bcec847cb6be791727b59a060cfaef9098dd7b89c24d360e0d2ea72",
+      "size": 1477640,
+      "visibility": "public"
+    },
+    {
+      "path": "assets/kit/barrel.glb",
+      "sha256": "1ed759e2abf96bfc21a027d805289256c1835d2f8b8c997cec6f18ccfc9513ee",
+      "size": 609468,
+      "visibility": "public"
+    },
+    {
+      "path": "assets/kit/boulder.glb",
+      "sha256": "284d6bd4915e5f63730c0c37245e30b1cdc181e06da4586a8c0a0f7442226c9f",
+      "size": 832480,
+      "visibility": "public"
+    },
+    {
+      "path": "assets/kit/car.glb",
+      "sha256": "a078a870e45ee41af2f0dd017953fb1a6c8375a6d1deb3a507cd33706ddcc40d",
+      "size": 1577428,
+      "visibility": "public"
+    },
+    {
+      "path": "assets/kit/column.glb",
+      "sha256": "a325c65d2410ca148393b5ff9b6ab19b47c41f59866776b318a237a746f0997e",
+      "size": 1074452,
+      "visibility": "public"
+    },
+    {
+      "path": "assets/kit/column_broken.glb",
+      "sha256": "9ee45e7c04cd53a2bdce088fa336ff25a350db1ee557d34c2857113ecfc49619",
+      "size": 1066832,
+      "visibility": "public"
+    },
+    {
+      "path": "assets/kit/counter.glb",
+      "sha256": "ca25cd5717655f61dfdde816967358ef5d9312e94e428cdb04197bf02d1a445a",
+      "size": 1438072,
+      "visibility": "public"
+    },
+    {
+      "path": "assets/kit/crate.glb",
+      "sha256": "d2a35b60d27b3686cf81608a8b265f6bdf4deffbdececb6809e6b951e849e0a0",
+      "size": 722376,
+      "visibility": "public"
+    },
+    {
+      "path": "assets/kit/ground/cobbles.color.jpg",
+      "sha256": "1121855262d2741be2fd29bb4010543743b3cf0dc41ea3f9aa68464e7959dc8b",
+      "size": 254188,
+      "visibility": "public"
+    },
+    {
+      "path": "assets/kit/ground/cobbles.normal.jpg",
+      "sha256": "6db7b939c730033f737c1ce8f1d92539c209bb54839ed82e9a395033abbab2e7",
+      "size": 276087,
+      "visibility": "public"
+    },
+    {
+      "path": "assets/kit/ground/cobbles.orm.jpg",
+      "sha256": "c9bd5284f5ce21e827a4861e458278a95224451f0e22da366702ff8a4ba40786",
+      "size": 57846,
+      "visibility": "public"
+    },
+    {
+      "path": "assets/kit/ground/grass.color.jpg",
+      "sha256": "4737c74606228e3eb612118df0ef0fcbd0cf75126937554a85d5bbe897c1cf2b",
+      "size": 330792,
+      "visibility": "public"
+    },
+    {
+      "path": "assets/kit/ground/grass.normal.jpg",
+      "sha256": "4cf7b5024530c966f070681137e226475d47d01a1e2cdeb4abc6dca50d7af7f7",
+      "size": 425620,
+      "visibility": "public"
+    },
+    {
+      "path": "assets/kit/ground/grass.orm.jpg",
+      "sha256": "a75fd4b85c6676a7980a3367b7491ea5c560002f846bc49ce5c487597c67defa",
+      "size": 48239,
+      "visibility": "public"
+    },
+    {
+      "path": "assets/kit/ground/planks.color.jpg",
+      "sha256": "cda21deda7c1a6ba6cc037c79b021051954d5f8668a84156ad55e59a48607188",
+      "size": 295083,
+      "visibility": "public"
+    },
+    {
+      "path": "assets/kit/ground/planks.normal.jpg",
+      "sha256": "780ab62f98a63b0732c9c7234cf4595ff035d182b3b115ee1d460b65db1cc257",
+      "size": 211817,
+      "visibility": "public"
+    },
+    {
+      "path": "assets/kit/ground/planks.orm.jpg",
+      "sha256": "83118467b9dcd221d097bcbd5beab575a0184d3c316631a75d4a649b4f952541",
+      "size": 29806,
+      "visibility": "public"
+    },
+    {
+      "path": "assets/kit/ground/rock.color.jpg",
+      "sha256": "e490a80ac94c194c35a283418d2751a7d76d82ead2603fcaa253e251bfb33b86",
+      "size": 251596,
+      "visibility": "public"
+    },
+    {
+      "path": "assets/kit/ground/rock.normal.jpg",
+      "sha256": "176eca4af5a3c74542676ce9828199183273caa906d242bc747e2c1d0d1962c5",
+      "size": 360745,
+      "visibility": "public"
+    },
+    {
+      "path": "assets/kit/ground/stone.color.jpg",
+      "sha256": "8ad58fc58eefec07b68ed16ccc4d4b22abfc907d10c887adc1bd506b392a9028",
+      "size": 338162,
+      "visibility": "public"
+    },
+    {
+      "path": "assets/kit/ground/stone.normal.jpg",
+      "sha256": "761d406349c8c23c68dfc4d13a258362b01e8d4bef1ed9d07892c64c8a670dbd",
+      "size": 448179,
+      "visibility": "public"
+    },
+    {
+      "path": "assets/kit/ground/stone.orm.jpg",
+      "sha256": "67a2ae0939a6fa9b86780e86f8c75b8b9603ee5e2450248b4926433077871b42",
+      "size": 58528,
+      "visibility": "public"
+    },
+    {
+      "path": "assets/kit/ladder.glb",
+      "sha256": "34ac3225a920b864863cc57ed47ef4bb3836aa046aa1e39689986da9e10320ae",
+      "size": 23024,
+      "visibility": "public"
+    },
+    {
+      "path": "assets/kit/palm.glb",
+      "sha256": "965e150b4349ec6a4e812b1e3b332d659f194335b56ea37b942282610164779a",
+      "size": 45880,
+      "visibility": "public"
+    },
+    {
+      "path": "assets/kit/pine.glb",
+      "sha256": "6b372ea40d33b5a8d01aa6057188e3c51a2ce400afcd375c0e1a201ad325253f",
+      "size": 1717736,
+      "visibility": "public"
+    },
+    {
+      "path": "assets/kit/stone_bench.glb",
+      "sha256": "d002d0630c891a14215bf85f5a3fbc4cf7ca086c2a3c64b80f634e957f2b357b",
+      "size": 548200,
+      "visibility": "public"
+    },
+    {
+      "path": "assets/kit/streetlamp.glb",
+      "sha256": "9b61d411c5d5eeb7cae83c71fa9ab45860ce6bac8bd542b5369fb30cefd28c76",
+      "size": 282484,
+      "visibility": "public"
+    },
+    {
+      "path": "assets/kit/torii.glb",
+      "sha256": "57ed8b46d0ada101d89acd12ee93859174d854c992f371b6affe0fdd590a6570",
+      "size": 489584,
+      "visibility": "public"
+    },
+    {
+      "path": "assets/kit/toro.glb",
+      "sha256": "a9abfa1239d4d7e27df58bb95f5057717fdabc06f367667ebaa5acd5cc921780",
+      "size": 554256,
+      "visibility": "public"
+    },
+    {
+      "path": "assets/kit/townhouse.glb",
+      "sha256": "82a7dc42531f5720fdcf9af16b647ec342294ff1d9c2107f09045b2d0cb241c1",
+      "size": 1630204,
+      "visibility": "public"
+    },
+    {
+      "path": "assets/kit/watchtower.glb",
+      "sha256": "fa5f96f2fd82d37e8a10d987f9bfdde2b9f368afa9859904e75855253ec0fe54",
+      "size": 1782544,
+      "visibility": "public"
+    },
+    {
+      "path": "assets/kit/winebarrel.glb",
+      "sha256": "37060bf9bbb7fe346237380adc1fd51f81a59cc619832c80869f9c2e183e99b9",
+      "size": 366140,
+      "visibility": "public"
+    },
+    {
+      "path": "assets/rig2d/keeper.png",
+      "sha256": "c87333b1b1f6055960aee80bfece9ca013249c7769cba034918b72e9a81703f4",
+      "size": 910,
+      "visibility": "public"
+    },
+    {
+      "path": "assets/sprites2d/cauldron.png",
+      "sha256": "e5396a138c152ec40c2ab37f17edd7f1169b7e7c927758a209cf0d3be2925422",
+      "size": 67451,
+      "visibility": "public"
+    },
+    {
+      "path": "assets/sprites2d/cave-tiles.png",
+      "sha256": "bdb41688bcddd91ec3b2bdb1221e22f17a17726119ea9ef34226b9f1ff2a532f",
+      "size": 12179,
+      "visibility": "public"
+    },
+    {
+      "path": "assets/sprites2d/chest.png",
+      "sha256": "e107266ab61ab7ed15acb0ac17ccac6dccd16c899aa219ee237c184e297c7626",
+      "size": 68012,
+      "visibility": "public"
+    },
+    {
+      "path": "assets/sprites2d/cistern.jpg",
+      "sha256": "7c3b813a28d158ab87ded658b5c7b3be9e2d59119c1e929f86fd136eeedc0697",
+      "size": 212017,
+      "visibility": "public"
+    },
+    {
+      "path": "assets/sprites2d/crystal.png",
+      "sha256": "6f29f1d8793353a3cc2090b9b18f6d3ca87e4637f750280380dab7eee967a574",
+      "size": 26315,
+      "visibility": "public"
+    },
+    {
+      "path": "assets/sprites2d/flask.png",
+      "sha256": "1349d50b2a760efc82389bb338ceedb0e6b0b5d43391033da4e64ea6bd83b14c",
+      "size": 36791,
+      "visibility": "public"
+    },
+    {
+      "path": "assets/sprites2d/hero-knight.png",
+      "sha256": "5fc926c6e4899188a75e00e9ad97f829c428fc6e4d01fafc541e1c57f1048f70",
+      "size": 48859,
+      "visibility": "public"
+    },
+    {
+      "path": "assets/sprites2d/hero-mage.png",
+      "sha256": "7a93f576b80f9ce89182f5ede2e74486dbe571105a2047653de8c580d30ed284",
+      "size": 75456,
+      "visibility": "public"
+    },
+    {
+      "path": "assets/sprites2d/hero-ranger.png",
+      "sha256": "7281362f3207ebd21f65a1b20d021dcde55d5498c9d8de70ad42aba8fb544400",
+      "size": 63560,
+      "visibility": "public"
+    },
+    {
+      "path": "assets/sprites2d/pipe.png",
+      "sha256": "2ea88a5a0a0e4a146292311195562e3aa8a1013726fff3c4403d461a3a88c167",
+      "size": 111921,
+      "visibility": "public"
+    },
+    {
+      "path": "assets/sprites2d/rooftops.jpg",
+      "sha256": "2732384c01ef4e04cb833b41ac4488b736ac14676c622c6c3d306b57a2c5c18d",
+      "size": 87441,
+      "visibility": "public"
+    },
+    {
+      "path": "assets/sprites2d/sign-shield.png",
+      "sha256": "c0f50090fd38d01a454285e0cb754dc588fdb72e8ce254a2d7ff293d86f898d5",
+      "size": 32429,
+      "visibility": "public"
+    },
+    {
+      "path": "assets/sprites2d/stone-block.png",
+      "sha256": "ecb0faca7442abc73564269c8b43a6c5ecbe844e93e493a5674b37818f2260e5",
+      "size": 31048,
+      "visibility": "public"
+    },
+    {
+      "path": "assets/sprites2d/torch.png",
+      "sha256": "f5d339eae819dd59c3abd9c15b51545e51428ab7dd5840aed9c039d528e340db",
+      "size": 10507,
+      "visibility": "public"
+    },
+    {
+      "path": "assets/sprites2d/tree-oak.png",
+      "sha256": "c5955cb5bc97dc870dadb245179cd9202a0c0d79fedc16c674836a64003365e8",
+      "size": 106832,
+      "visibility": "public"
+    },
+    {
+      "path": "assets/sprites2d/vault-block.png",
+      "sha256": "ec76a0b84806c047d042bfb6f0e9f378af46a4e533ebd1daf1011df080329066",
+      "size": 36604,
+      "visibility": "public"
+    },
+    {
+      "path": "assets/sprites2d/vault.jpg",
+      "sha256": "04055271042b18eef4370ece5257cf18f6ce0b2105f3b9fb089ca44bcedc142e",
+      "size": 174217,
+      "visibility": "public"
+    },
+    {
+      "path": "assets/sprites2d/workshop.jpg",
+      "sha256": "bc2001e5700faa68307f3544969e0927bfb99c3cd0f526d396337781dda7b8d4",
+      "size": 213532,
+      "visibility": "public"
+    },
+    {
+      "path": "assets/tree.glb",
+      "sha256": "61969a313b80dc51754e93884a269bf12e2b3a96f3c75548c1b68a390c24511b",
+      "size": 81268,
+      "visibility": "public"
+    },
+    {
+      "path": "assets/trickster.glb",
+      "sha256": "7c40f67f386c609a56e85d8a6c26d261fbd31660031d1cae5aa5f2ce0ad796cf",
+      "size": 1419580,
+      "visibility": "public"
+    },
+    {
+      "path": "reference-scene/assets/models/walker.glb",
+      "sha256": "e068aeca18b491e54b48ae8c264d208a414f9de455a571340bf55ef0c3d2face",
+      "size": 34296,
+      "visibility": "public"
+    }
+  ]
+}
