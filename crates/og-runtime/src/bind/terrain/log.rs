@@ -69,7 +69,14 @@ pub(crate) fn stream_json(engine_id: u32) -> Value {
     json!({
         "mode": if t.resident { "resident" } else { "stream" },
         "budget": t.budget as f64,
-        "terrains": t.loaded.len(),
+        "terrains": t.loaded.iter().count(),
+        // The whole fields held on the CPU (collision and edits), in bytes.
+        "fieldBytes": t
+            .loaded
+            .iter()
+            .filter_map(|(_, l)| l.field.as_ref())
+            .map(|f| (f.heights.len() * 4 + f.holes.as_ref().map_or(0, |h| h.len())) as f64)
+            .sum::<f64>(),
         "resident": s.resident,
         "waiting": s.waiting,
         "inFlight": s.in_flight,
@@ -181,7 +188,9 @@ pub(crate) fn replay_if_restored(eng: &Engine) -> Result<(), String> {
     for i in 0..count {
         let (render, layout, range, collision, field) = {
             let mut rs = eng.render.borrow_mut();
-            let t = &mut rs.terrain.loaded[i];
+            let Some(t) = rs.terrain.loaded.get_mut(i) else {
+                continue;
+            };
             if !t.edited {
                 continue;
             }
@@ -253,7 +262,7 @@ pub(crate) fn checkpoint(rs: &RenderState) -> TerrainCheckpoint {
             .terrain
             .loaded
             .iter()
-            .filter_map(|t| Some((t.render, rs.scene.terrain_tiles(t.render)?.clone())))
+            .filter_map(|(_, t)| Some((t.render, rs.scene.terrain_tiles(t.render)?.clone())))
             .collect(),
     }
 }

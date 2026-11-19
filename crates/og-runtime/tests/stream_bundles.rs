@@ -2490,3 +2490,220 @@ fn a_runtime_bundle_opens_at_its_journaled_tick_in_a_replay() {
     assert!(og_engine_destroy(engine));
     std::fs::remove_dir_all(base).unwrap();
 }
+
+/// A cooked runtime pack holding one terrain (with collision) whose layer
+/// samples a texture of the pack's own.
+fn terrain_pack(root: &Path, id: &str, seed: u32) {
+    let side = 257u32;
+    let pixels = (0..side * side)
+        .flat_map(|i| {
+            let v = ((i * 7 + seed * 31) % 251) as u8;
+            [v, v, v, 255]
+        })
+        .collect();
+    let height = png(&og_render::RgbaImage {
+        width: side,
+        height: side,
+        pixels,
+    });
+    let grass = png(&og_render::RgbaImage {
+        width: 64,
+        height: 64,
+        pixels: [40, 140 + seed as u8, 30, 255].repeat(64 * 64),
+    });
+    let terrain = format!(
+        "type terrain\nversion 1\n---\nheightmap \"land.png\"\nheight 0 40\nsize 256 256\ntile 64\nlayer {{\n  albedo \"{id}/grass.png\"\n}}\n"
+    );
+    cook(
+        root,
+        &[
+            (&format!("{id}/land.png"), height),
+            (&format!("{id}/grass.png"), grass),
+            (&format!("{id}/land.ogt"), terrain.into_bytes()),
+        ],
+    );
+}
+
+/// What the scene still holds for terrains: the bytes of the tiles handed
+/// to the renderer (every terrain's), and of its textures.
+struct TerrainHeld(Rc<Cell<(u64, u64)>>);
+impl RenderBackend for TerrainHeld {
+    fn tier(&self) -> String {
+        "none".into()
+    }
+    fn size(&self) -> (u32, u32) {
+        (320, 180)
+    }
+    fn render(&mut self, scene: &RenderScene) -> Result<(), String> {
+        let tiles = (0..256)
+            .filter_map(|i| scene.terrain_tiles(og_render::TerrainHandle::from_index(i)))
+            .flat_map(|tiles| tiles.iter().map(|(_, t)| t))
+            .map(|t| {
+                (size_of_val(&t.heights[..])
+                    + size_of_val(&t.normals[..])
+                    + t.control.as_ref().map_or(0, |c| c.len())) as u64
+            })
+            .sum();
+        let textures = (0..scene.texture_count())
+            .map(TextureHandle::from_index)
+            .filter_map(|h| scene.texture(h))
+            .map(|t| t.rgba.len() as u64)
+            .sum();
+        self.0.set((tiles, textures));
+        Ok(())
+    }
+    fn capture(&mut self, _: &RenderScene, _: u32, _: u32) -> Option<og_render::RgbaImage> {
+        None
+    }
+}
+
+/// The probe's dump_stream: its `terrain` block counts the terrains loaded
+/// (checked against the bytes of the fields they hold on the CPU).
+fn terrains_loaded(engine: u32) -> u64 {
+    let _ = og_engine_take_outputs(engine);
+    let _: Value =
+        serde_json::from_str(&og_engine_probe_commands(engine, "0:dump_stream".into())).unwrap();
+    value(og_engine_frame(engine, 1000.0 / 60.0));
+    let outputs: Value = serde_json::from_str(&og_engine_take_outputs(engine)).unwrap();
+    let output = outputs
+        .as_array()
+        .unwrap()
+        .iter()
+        .rev()
+        .find(|o| o["kind"] == "json")
+        .expect("dump_stream answered");
+    let dump: Value = serde_json::from_str(output["data"].as_str().unwrap()).unwrap();
+    let (count, bytes) = (
+        dump["terrain"]["terrains"].as_u64().unwrap(),
+        dump["terrain"]["fieldBytes"].as_f64().unwrap(),
+    );
+    // Each pack's terrain holds its 257² field for collision.
+    assert_eq!(
+        bytes,
+        count as f64 * 257.0 * 257.0 * 4.0,
+        "{}",
+        dump["terrain"]
+    );
+    count
+}
+
+/// A parcel's terrain goes with its pack: a visitor walking through packs,
+/// each opened, its terrain loaded and drawn, then despawned and the pack
+/// released, holds no more after the last than after the first (heap, the
+/// scene's terrain tiles and textures, the terrains loaded). A terrain still
+/// drawn outlives its pack's release and goes when its og.Terrain despawns.
+/// Broken before: nothing ever freed a terrain (its field, physics height
+/// field, tiles and layer texture stayed for good).
+#[test]
+fn released_packs_free_their_terrains() {
+    let _lock = TEST_LOCK.lock().unwrap();
+    const PACKS: usize = 8;
+    let base = PathBuf::from(env!("CARGO_TARGET_TMPDIR"))
+        .join(format!("og-runtime-terrain-release-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&base);
+    for i in 0..=PACKS {
+        terrain_pack(&base.join(format!("pack{i}")), &format!("p{i}"), i as u32);
+    }
+    set_hooks(Rc::new(Disk {
+        delayed: false,
+        reads: RefCell::default(),
+    }));
+    og_host_begin_bundle();
+    let game = og_game_game(Some(r#"{"seed":1}"#.into()));
+    let engine = value(og_engine_create(game, "{}".into())).as_u64().unwrap() as u32;
+    let held = Rc::new(Cell::new((0, 0)));
+    set_render_backend(engine, Some(Box::new(TerrainHeld(held.clone())))).unwrap();
+    let frames = |n: usize| {
+        for _ in 0..n {
+            value(og_engine_frame(engine, 1000.0 / 60.0));
+        }
+    };
+    frames(2);
+    let (_, textures) = held.get();
+    let open = |i: usize| {
+        let root = base.join(format!("pack{i}")).join("cooked");
+        let bundle = value(host_impl::answer(og_load_bundle(
+            engine,
+            root.to_string_lossy().into(),
+        )))
+        .as_f64()
+        .unwrap();
+        let info = value(host_impl::answer(og_terrain_load(
+            engine,
+            format!("p{i}/land.ogt"),
+        )));
+        let entity = value(host_impl::answer(og_world_spawn(engine, None)))
+            .as_f64()
+            .unwrap();
+        value(host_impl::answer(og_world_insert(
+            engine,
+            entity,
+            "og.Terrain".into(),
+            Some(json!({ "data": info["data"] }).to_string()),
+        )));
+        (bundle, info["data"].as_f64().unwrap(), entity)
+    };
+    let sample = |data: f64| og_terrain_sample(engine, Some(json!({ "data": data }).to_string()));
+    let mut heaps = Vec::new();
+    let mut after = None;
+    for i in 0..PACKS {
+        let (bundle, data, entity) = open(i);
+        frames(4);
+        assert!(held.get().0 > 0, "pack {i}: no terrain tiles drawn");
+        assert!(held.get().1 > textures, "pack {i}: no layer texture");
+        assert_eq!(terrains_loaded(engine), 1);
+        value(host_impl::answer(og_world_despawn(engine, entity)));
+        value(host_impl::answer(og_load_release(engine, bundle)));
+        frames(2);
+        assert!(
+            og_load_error(engine, bundle)
+                .unwrap()
+                .contains("was released")
+        );
+        let refused = sample(data).unwrap_err();
+        assert!(refused.contains("freed"), "{refused}");
+        assert_eq!(terrains_loaded(engine), 0);
+        // After the first, what the scene holds is what it held before it:
+        // the first frame with a terrain makes the engine's own stand-ins.
+        let rest = *after.get_or_insert(held.get());
+        assert_eq!(rest.0, 0, "pack {i}: tiles kept");
+        assert!(
+            rest.1 < textures + 64 * 64 * 4,
+            "pack 0's layer texture kept"
+        );
+        assert_eq!(held.get(), rest, "pack {i}: tiles or texture kept");
+        heaps.push(og_core::alloc::heap().unwrap().live);
+    }
+    let grown = heaps[PACKS - 1] as i64 - heaps[1] as i64;
+    println!("TERRAIN_RELEASE heaps={heaps:?} grown={grown}");
+    // One pack's field and physics height field alone are 2 × 257² × 4 bytes.
+    assert!(
+        grown < 128 * 1024,
+        "the heap grew {grown} bytes over {} packs: {heaps:?}",
+        PACKS - 2
+    );
+
+    // Still drawn: released, it stays; despawned, it goes.
+    let (bundle, data, entity) = open(PACKS);
+    frames(4);
+    value(host_impl::answer(og_load_release(engine, bundle)));
+    frames(4);
+    assert!(
+        og_load_error(engine, bundle)
+            .unwrap()
+            .contains("was released")
+    );
+    assert!(
+        sample(data).is_ok(),
+        "a drawn terrain was freed with its pack"
+    );
+    assert!(held.get().0 > 0 && held.get().1 > textures);
+    assert_eq!(terrains_loaded(engine), 1);
+    value(host_impl::answer(og_world_despawn(engine, entity)));
+    frames(2);
+    assert!(sample(data).is_err());
+    assert_eq!(Some(held.get()), after);
+    assert_eq!(terrains_loaded(engine), 0);
+    assert!(og_engine_destroy(engine));
+    std::fs::remove_dir_all(base).unwrap();
+}

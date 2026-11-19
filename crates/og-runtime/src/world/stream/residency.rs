@@ -519,7 +519,7 @@ fn in_use(rs: &super::extract::RenderState, held: Held, tick: u64) -> Option<&'s
                 .terrain
                 .loaded
                 .iter()
-                .any(|t| t.layer_arrays.contains(&Some(i)));
+                .any(|(_, t)| t.layer_arrays.contains(&Some(i)));
             layered.then_some("a terrain's layers sample it (layers, layerNormals)")
         }
         Held::Palette(i) => {

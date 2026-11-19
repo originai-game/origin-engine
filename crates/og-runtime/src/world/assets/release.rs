@@ -25,6 +25,8 @@ pub(crate) fn resolve_releases(eng: &Engine) {
                 Status::Failed(format!("bundle release refused: {reason}"));
         }
     }
+    // The released bundles' terrains nothing names any more.
+    crate::bind::terrain::free_released(eng);
 }
 
 /// A record that names what a release looks for.

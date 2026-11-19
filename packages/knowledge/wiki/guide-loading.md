@@ -430,6 +430,23 @@ closed. Both outcomes use status `failed`, without events or hash changes.
 The boot bundle and individual cooked assets cannot be released this way.
 See **world §4** for parcel lifetime and streaming.
 
+A runtime bundle's terrains (og.terrain.load) go with it. An og.Terrain
+does not keep the bundle open: the close goes ahead, and each of its
+terrains is freed at the first tick boundary where nothing names it any
+more: no og.Terrain, og.TerrainScatter, og.Grass or other TerrainData
+field (on a live entity, a resource or a persisted cell's kept entity),
+and no collider on its height field (TerrainInfo.geometry). Freed means
+whole: the cooked tiles, the field the CPU holds for collision and
+sampling, the physics height field, the tiles on the GPU, and the layer
+textures and arrays that came from that bundle and no other terrain
+uses. A layer array from a bundle still open (a shared material pack)
+stays with that bundle. So a parcel's terrain is released by despawning
+its og.Terrain and releasing its pack, in either order; a terrain still
+drawn outlives the release until its last og.Terrain despawns. A freed
+terrain's handle is refused from then on, and loading its path again
+from the bundle opened anew loads it again. The boot bundle's terrains
+stay loaded.
+
 <a id="guide-loading-11"></a>
 ### `loading §11` Composed effects
 

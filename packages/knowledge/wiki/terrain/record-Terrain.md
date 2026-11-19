@@ -8,6 +8,8 @@ Module [`terrain`](../terrain.md) · [index](../index.md)
 
 Draws a loaded terrain placed by the entity's world transform (centred on its position, turned and scaled with it), with its layers (as cooked, or as og.terrain.setLayer left them), casting shadows unless told not to.
 
+A terrain loaded from a runtime bundle is freed once that bundle is released (og.load.release) and its last og.Terrain has despawned (with every other record naming it); the boot bundle's terrains stay loaded.
+
 Token `og.Terrain`, registered under the schema name `og.Terrain`; its value type is `Terrain`.
 
 | Field | Type | Default | Range | Unit | Notes | Doc |
@@ -24,6 +26,7 @@ Token `og.Terrain`, registered under the schema name `og.Terrain`; its value typ
 ```ogt
 component Terrain {
   doc "Draws a loaded terrain placed by the entity's world transform (centred on its position, turned and scaled with it), with its layers (as cooked, or as og.terrain.setLayer left them), casting shadows unless told not to."
+  doc "A terrain loaded from a runtime bundle is freed once that bundle is released (og.load.release) and its last og.Terrain has despawned (with every other record naming it); the boot bundle's terrains stay loaded."
   field data TerrainData "The terrain (og.terrain.load's TerrainInfo.data)."
   field visible bool "Draw it; false keeps it only as the ground its og.TerrainScatter copies stand on (nothing else sees it)." {
     default true

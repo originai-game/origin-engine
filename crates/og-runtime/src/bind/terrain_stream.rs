@@ -145,6 +145,20 @@ impl Streamer {
         self.in_flight.retain(|k| k.0 != index);
     }
 
+    /// Forgets a freed terrain whole: its tiles, its requests, and the
+    /// decodes in flight, thrown away when they land.
+    pub(crate) fn remove(&mut self, index: usize) {
+        let native: Vec<Key> = self
+            .in_flight
+            .iter()
+            .filter(|k| k.0 == index && !self.inflating.contains_key(k))
+            .copied()
+            .collect();
+        self.dropped.extend(native);
+        self.requested.retain(|k, _| k.0 != index);
+        self.forget(index);
+    }
+
     fn submit(
         &mut self,
         key: Key,

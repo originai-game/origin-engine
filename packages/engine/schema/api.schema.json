@@ -7536,7 +7536,7 @@
         },
         {
           "name": "release",
-          "doc": "Free an uncooked load's memory, cancelling it if pending; its handle then answers failed, naming the release. Releasing again does nothing. Close an unused runtime bundle after its groups unload and live references are gone. In a system the close is pending until the next tick boundary; between ticks it can finish immediately. Refusal leaves it open with status failed and error starting 'bundle release refused:'; remove the references and retry. Success answers failed, naming the release. Closing changes no world hash, events or completion journal. The boot bundle cannot close.\nSee `loading §10`.",
+          "doc": "Free an uncooked load's memory, cancelling it if pending; its handle then answers failed, naming the release. Releasing again does nothing. Close an idle runtime bundle after its groups unload and live references are gone. In a system the close waits for the next tick boundary; between ticks it can finish at once. Refusal leaves it open with status failed and error starting 'bundle release refused:'; remove them and retry. Success answers failed, naming the release. Closing changes no world hash, events or completion journal, and frees its terrains (loading §10). The boot bundle cannot close.\nSee `loading §10`.",
           "params": [
             {
               "name": "world",
@@ -14678,7 +14678,7 @@
       "functions": [
         {
           "name": "load",
-          "doc": "Load a cooked terrain (a `type terrain` .ogt under assets/) and its layers' textures (or texture arrays, kept resident while it is loaded), and register its height field with physics under TerrainInfo.geometry. Loading the same path again answers the same terrain.",
+          "doc": "Load a cooked terrain (a `type terrain` .ogt under assets/) and its layers' textures (or texture arrays, kept resident while it is loaded), and register its height field with physics under TerrainInfo.geometry. Loading the same path again answers the same terrain. A runtime bundle's terrain is freed with the bundle (og.load.release).",
           "params": [
             {
               "name": "world",
@@ -53332,7 +53332,7 @@
     "Terrain": {
       "x-og-kind": "component",
       "x-og-module": "terrain",
-      "description": "Draws a loaded terrain placed by the entity's world transform (centred on its position, turned and scaled with it), with its layers (as cooked, or as og.terrain.setLayer left them), casting shadows unless told not to.",
+      "description": "Draws a loaded terrain placed by the entity's world transform (centred on its position, turned and scaled with it), with its layers (as cooked, or as og.terrain.setLayer left them), casting shadows unless told not to.\nA terrain loaded from a runtime bundle is freed once that bundle is released (og.load.release) and its last og.Terrain has despawned (with every other record naming it); the boot bundle's terrains stay loaded.",
       "type": "object",
       "properties": {
         "data": {

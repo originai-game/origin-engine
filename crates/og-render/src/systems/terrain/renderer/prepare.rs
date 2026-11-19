@@ -22,6 +22,7 @@ impl TerrainRenderer {
         arrays: impl Fn(TextureArrayHandle) -> Option<&'t wgpu::Texture>,
         far_cover: &dyn Fn(usize) -> FarGpu,
     ) -> Result<Vec<TerrainDraw>, crate::RenderError> {
+        self.forget_undrawn(scene);
         if scene.world.terrains.is_empty() {
             self.uploads = 0;
             self.resident = 0;

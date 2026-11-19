@@ -109,6 +109,58 @@ fn decals_project_on_terrain_and_reject_back_faces() {
 
 /// Writes a frame a test reads to `<target tmp>/og-terrain/<name>.png`
 /// (for looking at a failure).
+/// A removed terrain's tiles leave the GPU: drawn, a terrain's tile arrays
+/// count in GpuMemory.textures; removed and no longer drawn, they are gone,
+/// and a terrain added after it draws (its handle is not reused). Broken
+/// before: the renderer kept every terrain's arrays it had ever drawn.
+#[test]
+#[ignore = "requires GPU"]
+fn a_removed_terrain_frees_its_tiles_on_the_gpu() {
+    let mut renderer = Renderer::new_blocking(&scenes::base_desc()).expect("renderer");
+    let mut scene = RenderScene::new();
+    scene.frame.camera = Camera {
+        position: Vec3::new(0.0, 30.0, 40.0),
+        target: Vec3::ZERO,
+        ..Default::default()
+    };
+    let field = |lift: f32| TerrainData {
+        size: Vec2::splat(64.0),
+        columns: 65,
+        rows: 65,
+        heights: (0..65 * 65).map(|i| (i % 13) as f32 * 0.1 + lift).collect(),
+        control: None,
+        holes: None,
+    };
+    renderer
+        .render(&scene, &RenderTarget::Offscreen)
+        .expect("frame");
+    let empty = renderer.gpu_memory().textures;
+    let first = scene.add_terrain(field(0.0));
+    scene.world.terrains.push(Terrain::new(first));
+    renderer
+        .render(&scene, &RenderTarget::Offscreen)
+        .expect("frame");
+    let drawn = renderer.gpu_memory().textures;
+    assert!(drawn > empty, "a drawn terrain holds nothing on the GPU");
+    assert!(scene.remove_terrain(first));
+    scene.world.terrains.clear();
+    renderer
+        .render(&scene, &RenderTarget::Offscreen)
+        .expect("frame");
+    assert_eq!(
+        renderer.gpu_memory().textures,
+        empty,
+        "the removed terrain's tiles stayed"
+    );
+    let second = scene.add_terrain(field(1.0));
+    assert_ne!(second, first);
+    scene.world.terrains.push(Terrain::new(second));
+    renderer
+        .render(&scene, &RenderTarget::Offscreen)
+        .expect("frame");
+    assert_eq!(renderer.gpu_memory().textures, drawn);
+}
+
 fn keep(name: &str, img: &RgbaImage) {
     let path = PathBuf::from(env!("CARGO_TARGET_TMPDIR"))
         .join("og-terrain")

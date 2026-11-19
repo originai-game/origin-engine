@@ -30,6 +30,9 @@ mod textures;
 pub(crate) use models::*;
 pub(crate) use recovery::release_uploaded_textures;
 pub(crate) use release::release_bundle;
+// The terrain frees itself with its bundle by the same search.
+#[cfg(not(feature = "profile2d"))]
+pub(crate) use release::naming;
 pub(crate) use release::resolve_releases;
 pub(crate) use sound::*;
 pub(crate) use spawn::*;

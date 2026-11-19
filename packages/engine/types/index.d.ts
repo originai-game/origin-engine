@@ -29483,6 +29483,7 @@ export type TerrainStampMode = "carve" | "hole";
 
 /**
  * Draws a loaded terrain placed by the entity's world transform (centred on its position, turned and scaled with it), with its layers (as cooked, or as og.terrain.setLayer left them), casting shadows unless told not to.
+ * A terrain loaded from a runtime bundle is freed once that bundle is released (og.load.release) and its last og.Terrain has despawned (with every other record naming it); the boot bundle's terrains stay loaded.
  *
  * The value of the `Terrain` component (token `og.Terrain`).
  */
@@ -36383,7 +36384,7 @@ export declare namespace og {
      */
     function environmentInfo(world: World, asset: Asset): Result<EnvironmentInfo>;
     /**
-     * Free an uncooked load's memory, cancelling it if pending; its handle then answers failed, naming the release. Releasing again does nothing. Close an unused runtime bundle after its groups unload and live references are gone. In a system the close is pending until the next tick boundary; between ticks it can finish immediately. Refusal leaves it open with status failed and error starting 'bundle release refused:'; remove the references and retry. Success answers failed, naming the release. Closing changes no world hash, events or completion journal. The boot bundle cannot close.
+     * Free an uncooked load's memory, cancelling it if pending; its handle then answers failed, naming the release. Releasing again does nothing. Close an idle runtime bundle after its groups unload and live references are gone. In a system the close waits for the next tick boundary; between ticks it can finish at once. Refusal leaves it open with status failed and error starting 'bundle release refused:'; remove them and retry. Success answers failed, naming the release. Closing changes no world hash, events or completion journal, and frees its terrains (loading §10). The boot bundle cannot close.
      * See `loading §10`.
      *
      * @param world The world that owns the asset.
@@ -38826,6 +38827,7 @@ export declare namespace og {
   }
   /**
    * Draws a loaded terrain placed by the entity's world transform (centred on its position, turned and scaled with it), with its layers (as cooked, or as og.terrain.setLayer left them), casting shadows unless told not to.
+   * A terrain loaded from a runtime bundle is freed once that bundle is released (og.load.release) and its last og.Terrain has despawned (with every other record naming it); the boot bundle's terrains stay loaded.
    */
   const Terrain: ComponentType<{ readonly data: FieldSpec<"TerrainData">; readonly visible: FieldSpec<"bool">; readonly castShadows: FieldSpec<"bool">; readonly horizonShadows: FieldSpec<"bool">; readonly lodSpacing: FieldSpec<"f32">; readonly lodRing: FieldSpec<"u32">; readonly lodError: FieldSpec<"f32">; readonly displacementDistance: FieldSpec<"f32"> }, Terrain>;
   /**
@@ -38861,7 +38863,7 @@ export declare namespace og {
    */
   namespace terrain {
     /**
-     * Load a cooked terrain (a `type terrain` .ogt under assets/) and its layers' textures (or texture arrays, kept resident while it is loaded), and register its height field with physics under TerrainInfo.geometry. Loading the same path again answers the same terrain.
+     * Load a cooked terrain (a `type terrain` .ogt under assets/) and its layers' textures (or texture arrays, kept resident while it is loaded), and register its height field with physics under TerrainInfo.geometry. Loading the same path again answers the same terrain. A runtime bundle's terrain is freed with the bundle (og.load.release).
      *
      * @param world The world.
      * @param path The terrain file, such as `terrain/island.ogt`.

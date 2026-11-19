@@ -90,8 +90,11 @@ world.insert(ground, og.Collider, { shape: "heightfield", mesh: t.geometry });
   the hash is the same streamed or not.
 - The probe's `terrain_stream:resident` decodes every wanted tile before
   each frame (for captures); `terrain_stream:stream[:<MiB>]` streams again
-  within that budget; `dump_stream`'s `terrain` gives the tiles resident,
-  waiting, decoding and cached.
+  within that budget; `dump_stream`'s `terrain` gives the terrains loaded,
+  the bytes of the whole fields they hold on the CPU (`fieldBytes`: a
+  collider's or an edited terrain's), and the tiles resident, waiting,
+  decoding and cached. A runtime bundle's terrains are freed with it
+  (**loading §10**).
 
 <a id="guide-world-3"></a>
 ### `world §3` Scatter and grass

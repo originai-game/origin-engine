@@ -79,7 +79,8 @@ impl LostFlag {
 pub struct GpuMemory {
     /// The scene's textures (every level, as uploaded: RGBA8 with its
     /// generated chain, or the encoded levels), texture arrays,
-    /// environment maps, palettes, colour LUTs and the image-based light.
+    /// environment maps, palettes, colour LUTs, the image-based light and
+    /// the terrains' resident tiles (heights, normals, control maps).
     pub textures: u64,
     /// Vertex and index buffers of the scene's meshes (both encodings
     /// where a compact mesh keeps its f32 vertices too) and their skins.
@@ -303,7 +304,8 @@ impl Renderer {
         GpuMemory {
             textures: textures.iter().map(|t| t.bytes).sum::<u64>()
                 + self.asset_bytes()
-                + self.lights.ibl.bytes(),
+                + self.lights.ibl.bytes()
+                + self.world.terrain.bytes(),
             meshes,
             render_targets,
             buffers,

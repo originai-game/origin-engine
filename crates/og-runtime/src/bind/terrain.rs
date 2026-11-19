@@ -38,10 +38,12 @@ mod stamp;
 mod draw;
 mod edit;
 mod log;
+mod release;
 
 pub(crate) use draw::*;
 pub use edit::*;
 pub(crate) use log::*;
+pub(crate) use release::free_released;
 
 /// The Geometry handles of terrains' height fields: a range of their own,
 /// beside glTF geometries' (`assets::handle`).
@@ -73,6 +75,69 @@ pub(crate) struct LoadedTerrain {
     /// reset, unique across engines: what a seabed made from it is keyed by
     /// ([`seabed_grid`]).
     pub generation: u64,
+    /// The runtime bundle it was loaded from (an asset entry index); `None`
+    /// for the boot bundle's, which never closes.
+    pub bundle: Option<usize>,
+    /// Its layer textures and arrays with the bundle each came from
+    /// (`None`: the boot bundle): what goes with it when it is freed.
+    pub owned: Vec<(LayerAsset, Option<usize>)>,
+}
+
+/// A texture or texture array a terrain's layers load, by its id.
+#[derive(Clone, PartialEq, Eq, PartialOrd, Ord)]
+pub(crate) enum LayerAsset {
+    Texture(String),
+    Array(String),
+}
+
+/// The loaded terrains by load index. A freed terrain's slot stays empty,
+/// so a handle never comes to name another terrain.
+#[derive(Default)]
+pub(crate) struct Loaded(Vec<Option<Box<LoadedTerrain>>>);
+
+impl Loaded {
+    pub fn get(&self, i: usize) -> Option<&LoadedTerrain> {
+        self.0.get(i)?.as_deref()
+    }
+
+    pub fn get_mut(&mut self, i: usize) -> Option<&mut LoadedTerrain> {
+        self.0.get_mut(i)?.as_deref_mut()
+    }
+
+    /// The slots, freed ones included: the next load's index.
+    pub fn len(&self) -> usize {
+        self.0.len()
+    }
+
+    /// The terrains loaded now, with their load indices.
+    pub fn iter(&self) -> impl Iterator<Item = (usize, &LoadedTerrain)> {
+        self.0
+            .iter()
+            .enumerate()
+            .filter_map(|(i, t)| Some((i, t.as_deref()?)))
+    }
+
+    fn push(&mut self, t: LoadedTerrain) {
+        self.0.push(Some(Box::new(t)));
+    }
+
+    fn take(&mut self, i: usize) -> Option<Box<LoadedTerrain>> {
+        self.0.get_mut(i)?.take()
+    }
+}
+
+impl std::ops::Index<usize> for Loaded {
+    type Output = LoadedTerrain;
+    fn index(&self, i: usize) -> &LoadedTerrain {
+        self.get(i).expect("a loaded terrain (index_of checks it)")
+    }
+}
+
+impl std::ops::IndexMut<usize> for Loaded {
+    fn index_mut(&mut self, i: usize) -> &mut LoadedTerrain {
+        self.get_mut(i)
+            .expect("a loaded terrain (index_of checks it)")
+    }
 }
 
 /// A terrain heights' version no other has had ([`LoadedTerrain::generation`]).
@@ -85,7 +150,7 @@ fn next_generation() -> u64 {
 /// layout extraction reads.
 #[derive(Default)]
 pub(crate) struct TerrainState {
-    pub loaded: Vec<LoadedTerrain>,
+    pub loaded: Loaded,
     pub by_id: BTreeMap<String, usize>,
     pub scatter_issues: BTreeMap<u64, String>,
     pub streamer: crate::bind::terrain_stream::Streamer,
@@ -192,8 +257,10 @@ fn handle(index: usize) -> u64 {
 
 fn index_of(eng: &Engine, data: f64) -> Result<usize, String> {
     crate::world::assets::index_of(data)
-        .filter(|&i| i < eng.render.borrow().terrain.loaded.len())
-        .ok_or_else(|| format!("{data} is not a terrain loaded with og.terrain.load"))
+        .filter(|&i| eng.render.borrow().terrain.loaded.get(i).is_some())
+        .ok_or_else(|| {
+            format!("{data} is not a terrain loaded with og.terrain.load (or it was freed with its released bundle)")
+        })
 }
 
 fn v3(v: &Value) -> Vec3 {
@@ -314,9 +381,25 @@ fn info(index: usize, t: &LoadedTerrain) -> TerrainInfo {
 /// `og.terrain.load`.
 pub(crate) fn load(eng: &Engine, path: &str) -> Result<TerrainInfo, String> {
     let id = og_bundle::runtime::asset_id(path).to_string();
-    if let Some(&i) = eng.render.borrow().terrain.by_id.get(&id) {
-        return Ok(info(i, &eng.render.borrow().terrain.loaded[i]));
+    // The runtime bundle an asset comes from; None for the boot bundle's.
+    let bundle_of = |asset: &str| {
+        let a = eng.assets.borrow();
+        a.source(asset, None)
+            .ok()
+            .filter(|&b| a.default_bundle != Some(b))
+    };
+    let known = eng.render.borrow().terrain.by_id.get(&id).copied();
+    if let Some(i) = known {
+        // Its bundle released and opened again: the open one owns it now.
+        let bundle = bundle_of(&id);
+        let mut rs = eng.render.borrow_mut();
+        let t = &mut rs.terrain.loaded[i];
+        if bundle.is_some() {
+            t.bundle = bundle;
+        }
+        return Ok(info(i, t));
     }
+    let mut owned = Vec::new();
     let cooked = {
         let assets = eng.assets.borrow();
         let (bytes, bundle) = assets.blob(&id)?;
@@ -336,6 +419,8 @@ pub(crate) fn load(eng: &Engine, path: &str) -> Result<TerrainInfo, String> {
                 let i = crate::world::assets::load_texture(eng, n)
                     .map_err(|e| format!("{id}: layer texture {e}"))?;
                 *slot = eng.render.borrow().textures.get(i).copied();
+                let asset = og_bundle::runtime::asset_id(n).to_string();
+                owned.push((LayerAsset::Texture(asset.clone()), bundle_of(&asset)));
             }
         }
         layers.push(layer);
@@ -351,8 +436,12 @@ pub(crate) fn load(eng: &Engine, path: &str) -> Result<TerrainInfo, String> {
                 crate::world::assets::load_texture_array_index(eng, n)
                     .map_err(|e| format!("{id}: layer array {e}"))?,
             );
+            let asset = og_bundle::runtime::asset_id(n).to_string();
+            owned.push((LayerAsset::Array(asset.clone()), bundle_of(&asset)));
         }
     }
+    owned.sort();
+    owned.dedup();
     let index = eng.render.borrow().terrain.loaded.len();
     // Physics needs the whole field (one height field); nothing else does.
     let field = if cooked.collision {
@@ -377,6 +466,8 @@ pub(crate) fn load(eng: &Engine, path: &str) -> Result<TerrainInfo, String> {
         cast_shadows: cooked.cast_shadows,
         collision: cooked.collision,
         generation: next_generation(),
+        bundle: bundle_of(&id),
+        owned,
     };
     let value = info(index, &t);
     rs.terrain.loaded.push(t);
@@ -415,7 +506,7 @@ pub(crate) fn ground_drop_shadows(rs: &mut RenderState) {
         .terrains
         .iter()
         .filter_map(|t| {
-            let i = loaded.iter().position(|l| l.render == t.terrain)?;
+            let (i, _) = loaded.iter().find(|(_, l)| l.render == t.terrain)?;
             Some((i, t.transform))
         })
         .collect();

@@ -1,0 +1,11 @@
+{
+  "fixed": [
+    {
+      "member": "og.load.release",
+      "summary": "A runtime bundle's terrains are freed with it: once the bundle is released and nothing names a terrain any more (no og.Terrain, og.TerrainScatter, og.Grass or other TerrainData field, no collider on its height field), the terrain goes whole at the next tick boundary: its cooked tiles, its field, its physics height field, its tiles on the GPU, and the bundle's layer textures and arrays no other terrain uses. A terrain still drawn outlives the release until its last og.Terrain despawns. Before, a loaded terrain was never freed, so a visitor walking through per-parcel packs grew without bound. A freed terrain's handle is refused (loading §10)."
+    }
+  ],
+  "added": [
+    "The probe's dump_stream `terrain` block counts only the terrains loaded now and adds `fieldBytes`, the whole fields they hold on the CPU (world §2)."
+  ]
+}

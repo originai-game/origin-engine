@@ -25,7 +25,8 @@ pub(crate) struct LoadedTerrain {
 /// The render state's terrains: always none.
 #[derive(Default)]
 pub(crate) struct TerrainState {
-    pub loaded: Vec<LoadedTerrain>,
+    /// By load index, as the full module's `Loaded` iterates them.
+    pub loaded: Vec<(usize, LoadedTerrain)>,
     /// Read by captures as the full module's (nothing to settle).
     pub settle: bool,
     /// Read by the probe's dump_entity as the full module's: no scatter,
@@ -108,6 +109,9 @@ pub(crate) fn field_of_geometry(
 }
 
 pub(crate) fn ground_drop_shadows(_rs: &mut RenderState) {}
+
+/// No terrain is loaded, so none is freed with its bundle.
+pub(crate) fn free_released(_eng: &crate::engine::Engine) {}
 
 pub(crate) fn extract(
     _world: &World,

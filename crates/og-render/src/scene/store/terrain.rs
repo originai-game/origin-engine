@@ -56,6 +56,29 @@ impl RenderScene {
         }
     }
 
+    /// Removes a terrain: its tiles or field and its edits go, a frame
+    /// draws nothing for it, and the renderer frees its GPU tiles once no
+    /// frame draws it. Its handle is not reused. `false` for a handle of
+    /// another scene or data that never was valid.
+    pub fn remove_terrain(&mut self, handle: TerrainHandle) -> bool {
+        let Some(d) = self.terrain_data.get_mut(handle.index()) else {
+            return false;
+        };
+        let Ok(layout) = d.layout() else {
+            return false;
+        };
+        // Only its layout stays: a few bytes, so a handle drawn by mistake
+        // still lays out (and finds no tiles).
+        *d = crate::ground::TerrainSource::Stream {
+            layout,
+            range: (0.0, 0.0),
+            tiles: Default::default(),
+        };
+        self.terrain_revisions[handle.index()] += 1;
+        self.terrain_edits[handle.index()] = Vec::new();
+        true
+    }
+
     /// Hands a streamed terrain one of its tiles (`None`: drops it). The
     /// renderer draws what it holds of the tiles it wants. `false` for a
     /// handle of another scene, a terrain in memory, a tile index beyond

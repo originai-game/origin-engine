@@ -17,7 +17,11 @@ pub(crate) fn id_heights(rs: &RenderState) -> impl Fn(usize, u32, u32) -> Option
         .terrains
         .iter()
         .map(|d| {
-            let t = rs.terrain.loaded.iter().find(|t| t.render == d.terrain)?;
+            let (_, t) = rs
+                .terrain
+                .loaded
+                .iter()
+                .find(|(_, t)| t.render == d.terrain)?;
             Some(Box::new(t.tile_sampler().sample) as Sample)
         })
         .collect();

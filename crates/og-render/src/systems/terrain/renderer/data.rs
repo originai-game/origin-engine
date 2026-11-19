@@ -209,6 +209,50 @@ impl TerrainRenderer {
         self.restored = Some(saved.clone());
     }
 
+    /// The GPU memory the terrains' tile arrays hold: each data's heights,
+    /// normals, control maps and tile table.
+    pub(crate) fn bytes(&self) -> u64 {
+        self.datas
+            .iter()
+            .flatten()
+            .map(|g| {
+                g.heights.size()
+                    + crate::gpu::texture::texture_bytes(&g.normals)
+                    + g.control
+                        .as_ref()
+                        .map_or(0, |(t, _)| crate::gpu::texture::texture_bytes(t))
+                    + g.table.size()
+            })
+            .sum()
+    }
+
+    /// Frees what no terrain this frame draws needs: a data whose source
+    /// changed since it was uploaded (removed, or set again; it would be
+    /// built again before it draws) and the bind groups of draw slots past
+    /// the frame's terrains, which hold the last data they drew.
+    pub(super) fn forget_undrawn(&mut self, scene: &crate::RenderScene) {
+        if self.scene == scene.id() {
+            let (_, revisions) = scene.terrain_sources();
+            let drawn: std::collections::BTreeSet<usize> = scene
+                .world
+                .terrains
+                .iter()
+                .map(|t| t.terrain.index())
+                .collect();
+            for (i, d) in self.datas.iter_mut().enumerate() {
+                let stale = d
+                    .as_ref()
+                    .is_some_and(|g| revisions.get(i).is_none_or(|&r| r != g.revision));
+                if stale && !drawn.contains(&i) {
+                    *d = None;
+                }
+            }
+        }
+        for slot in self.slots.iter_mut().skip(scene.world.terrains.len()) {
+            slot.group = None;
+        }
+    }
+
     /// Brings every drawn data's slots to this frame's tiles: the tiles
     /// each terrain wants around the camera (made from a field in memory,
     /// or taken from those handed over), uploaded into free slots, the

@@ -6,7 +6,7 @@ Module [`terrain`](../terrain.md) · [index](../index.md)
 
 ### `og.terrain.load`
 
-Load a cooked terrain (a `type terrain` .ogt under assets/) and its layers' textures (or texture arrays, kept resident while it is loaded), and register its height field with physics under TerrainInfo.geometry. Loading the same path again answers the same terrain.
+Load a cooked terrain (a `type terrain` .ogt under assets/) and its layers' textures (or texture arrays, kept resident while it is loaded), and register its height field with physics under TerrainInfo.geometry. Loading the same path again answers the same terrain. A runtime bundle's terrain is freed with the bundle (og.load.release).
 
 ```ts
 og.terrain.load(world: World, path: string): Result<TerrainInfo>
@@ -23,11 +23,11 @@ Binding symbol `og_terrain_load` · publish builds: kept
 
 ```ogt
 fn load {
-  doc "Load a cooked terrain (a `type terrain` .ogt under assets/) and its layers' textures (or texture arrays, kept resident while it is loaded), and register its height field with physics under TerrainInfo.geometry. Loading the same path again answers the same terrain."
+  doc "Load a cooked terrain (a `type terrain` .ogt under assets/) and its layers' textures (or texture arrays, kept resident while it is loaded), and register its height field with physics under TerrainInfo.geometry. Loading the same path again answers the same terrain. A runtime bundle's terrain is freed with the bundle (og.load.release)."
   param world World "The world."
   param path String "The terrain file, such as `terrain/island.ogt`."
   returns Result.TerrainInfo "Refused for a path that is not a cooked terrain, or a layer texture that does not load."
 }
 ```
 
-<sub>Module `terrain` line 654</sub>
+<sub>Module `terrain` line 655</sub>
