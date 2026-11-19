@@ -1,0 +1,8 @@
+{
+  "fixed": [
+    {
+      "member": "og build (web)",
+      "summary": "Published games can start their parallel simulation workers from Safari’s offline cache."
+    }
+  ]
+}
