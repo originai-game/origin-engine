@@ -356,7 +356,7 @@ test("a system's declared components are borrowed only when it takes a view, so 
   expect(got.ok && got.value.p.x).toBe(30);
   engine.destroy();
 
-  const made = createEngine(og.game({ systems: [ViewThenGet], commands: { spawn: spawnMovers } }) as unknown as GameToken, { root: import.meta.dir });
+  const made = createEngine(og.game({ systems: [ViewThenGet], commands: { spawn: spawnMovers } }) as unknown as GameToken, { root: import.meta.dir! });
   if (!made.ok) throw new Error(made.reason);
   const viewing = made.value;
   viewing.command("spawn", ["2"]);
