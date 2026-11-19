@@ -463,17 +463,24 @@ fn bake_scene(
             });
         eprintln!();
         file.samples = lightmap.samples;
-        width = lightmap.width;
-        height = lightmap.height;
-        pages_out = lightmap
-            .pages
+        // The scene's HLOD proxies, lit by what was just baked.
+        let mut groups = vec![(atlas.width, atlas.height, lightmap.pages.clone())];
+        let proxies = light_proxies(bundle, id, &scene, &lit, &atlas, &lightmap.pages)?;
+        groups.extend(proxies.iter().map(|g| (g.width, g.height, g.pages.clone())));
+        // Every page at one size: the largest group's, each padded.
+        width = groups.iter().map(|g| g.0).max().unwrap_or(1);
+        height = groups.iter().map(|g| g.1).max().unwrap_or(1);
+        let scale = |w: u32, h: u32| [w as f32 / width as f32, h as f32 / height as f32];
+        pages_out = groups
             .iter()
+            .flat_map(|(w, h, pages)| pages.iter().map(|p| padded(p, *w, *h, width, height)))
             .map(|p| {
                 p.iter()
                     .flat_map(|t| [t[0], t[1], t[2], 1.0].map(og_cook::lightmap::f32_to_f16))
                     .collect()
             })
             .collect();
+        let model_scale = scale(atlas.width, atlas.height);
         let mut k = 0;
         for (e, asset, geometry, parts) in &baked_models {
             let mut m = BakedModel {
@@ -499,8 +506,8 @@ fn bake_scene(
                         .iter()
                         .map(|v| {
                             [
-                                v.uv[0] / atlas.width as f32,
-                                v.uv[1] / atlas.height as f32,
+                                v.uv[0] / atlas.width as f32 * model_scale[0],
+                                v.uv[1] / atlas.height as f32 * model_scale[1],
                                 v.page as f32,
                             ]
                         })
@@ -508,6 +515,19 @@ fn bake_scene(
                 });
             }
             file.models.push(m);
+        }
+        let mut first = lightmap.pages.len() as f32;
+        for g in proxies {
+            let [su, sv] = scale(g.width, g.height);
+            for mut m in g.models {
+                for part in &mut m.parts {
+                    for uv in &mut part.uv {
+                        *uv = [uv[0] * su, uv[1] * sv, uv[2] + first];
+                    }
+                }
+                file.models.push(m);
+            }
+            first += g.pages.len() as f32;
         }
     }
     if let Some(t) = table(s, "LightVolume") {
@@ -574,4 +594,259 @@ fn bake_scene(
         text_path.display()
     );
     Ok(())
+}
+
+/// A lightmap's texel on a proxy covers this many times its node's error:
+/// indirect light changes slowly, and a proxy is drawn where its error is
+/// under a pixel, so a texel is a few pixels across.
+const PROXY_TEXEL_ERRORS: f32 = 4.0;
+
+/// A proxy in the scene's space, with what its entry names.
+struct ProxyMesh {
+    id: String,
+    hash: u64,
+    vertices: usize,
+    positions: Vec<Vec3>,
+    normals: Vec<Vec3>,
+    indices: Vec<u32>,
+}
+
+/// One level's proxies lit: their pages and their entries (uvs on their
+/// own pages, 0..1 of `width` × `height`, page from 0).
+struct LitProxies {
+    width: u32,
+    height: u32,
+    pages: Vec<Vec<[f32; 4]>>,
+    models: Vec<BakedModel>,
+}
+
+/// Scene `id`'s HLOD proxies (docs/design.md §10.6) lit by its static
+/// models' bake: per level of the tree its proxies are charted at
+/// [`PROXY_TEXEL_ERRORS`] of the level's error a texel, and each texel
+/// takes the irradiance the models' lightmap holds where the proxy stands
+/// for them (og-bake's `transfer`, reading the pages as a base colour map
+/// through the models' lightmap uvs). Each proxy is an entry keyed by its
+/// asset (`<scene>#hlod-<n>`, no entity), with its geometry hash, which
+/// og-runtime's HLOD reads.
+fn light_proxies(
+    bundle: &Bundle,
+    id: &str,
+    scene: &Scene,
+    lit: &[usize],
+    atlas: &og_bake::Atlas,
+    pages: &[Vec<[f32; 4]>],
+) -> Result<Vec<LitProxies>, String> {
+    use og_bake::transfer::{Mips, Source, Surface, Target, TransferSettings, transfer};
+    let tree_id = og_cook::hlod::hlod_id(id);
+    let Ok(bytes) = bundle.read(&tree_id) else {
+        return Ok(Vec::new());
+    };
+    let tree = bundle
+        .hlod(&tree_id, &bytes)
+        .map_err(|e| format!("{tree_id}: {e}"))?;
+    // The models as the transfer reads them: per lit mesh and page, its
+    // triangles with their lightmap uvs, a surface per page.
+    let images: Vec<Mips> = pages
+        .iter()
+        .map(|p| {
+            Mips::new(og_bake::Image {
+                width: atlas.width,
+                height: atlas.height,
+                texels: p.iter().map(|t| [t[0], t[1], t[2], 1.0]).collect(),
+            })
+        })
+        .collect();
+    let surfaces: Vec<Surface> = (0..pages.len())
+        .map(|p| Surface {
+            base_map: Some(p),
+            ..Default::default()
+        })
+        .collect();
+    let mut sources: Vec<Mesh> = Vec::new();
+    for (k, &m) in lit.iter().enumerate() {
+        let (mesh, charted) = (&scene.meshes[m], &atlas.meshes[k]);
+        for page in 0..pages.len() as u32 {
+            let indices: Vec<u32> = charted
+                .indices
+                .as_chunks::<3>()
+                .0
+                .iter()
+                .filter(|t| charted.vertices[t[0] as usize].page == page)
+                .flatten()
+                .copied()
+                .collect();
+            if indices.is_empty() {
+                continue;
+            }
+            let v = &charted.vertices;
+            sources.push(Mesh {
+                positions: v.iter().map(|v| mesh.positions[v.xref as usize]).collect(),
+                normals: v.iter().map(|v| mesh.normals[v.xref as usize]).collect(),
+                uvs: v
+                    .iter()
+                    .map(|v| Vec2::new(v.uv[0] / atlas.width as f32, v.uv[1] / atlas.height as f32))
+                    .collect(),
+                indices,
+                material: page as usize,
+                ..Default::default()
+            });
+        }
+    }
+    let refs: Vec<&Mips> = images.iter().collect();
+    let source = Source {
+        meshes: &sources,
+        surfaces: &surfaces,
+        images: &refs,
+    };
+    let mut out = Vec::new();
+    let levels = tree
+        .nodes
+        .iter()
+        .map(|n| n.level)
+        .max()
+        .map_or(0, |l| l + 1);
+    for level in 0..levels {
+        let nodes: Vec<usize> = (0..tree.nodes.len())
+            .filter(|&n| tree.nodes[n].level == level)
+            .collect();
+        // Each node's proxy in the scene's space, and what its entry needs.
+        let mut meshes: Vec<ProxyMesh> = Vec::new();
+        for &n in &nodes {
+            let pid = og_cook::hlod::node_id(id, n);
+            let (rscene, parts) = model_parts(bundle, &pid)?;
+            let hash = og_cook::lightmap::geometry_hash(
+                parts.parts.iter().filter_map(|&(m, _, _)| rscene.mesh(m)),
+            );
+            let &[(mesh, _, local)] = parts.parts.as_slice() else {
+                return Err(format!("{pid}: a proxy has one part"));
+            };
+            let data = rscene.mesh(mesh).ok_or("a proxy without its mesh")?;
+            let normal = local.inverse().transpose();
+            meshes.push(ProxyMesh {
+                id: pid,
+                hash,
+                vertices: data.vertices.len(),
+                positions: data
+                    .vertices
+                    .iter()
+                    .map(|v| local.transform_point3(Vec3::from(v.position)))
+                    .collect(),
+                normals: data
+                    .vertices
+                    .iter()
+                    .map(|v| {
+                        normal
+                            .transform_vector3(Vec3::from(v.normal))
+                            .normalize_or(Vec3::Y)
+                    })
+                    .collect(),
+                indices: data.indices.clone(),
+            });
+        }
+        let error = nodes
+            .iter()
+            .map(|&n| tree.nodes[n].error)
+            .fold(0.0f32, f32::max)
+            .max(tree.error * (1u32 << level.min(20)) as f32);
+        let texel = error * PROXY_TEXEL_ERRORS;
+        let charted = og_bake::unwrap(
+            &meshes
+                .iter()
+                .map(|m| UnwrapMesh {
+                    positions: m.positions.iter().map(|p| p.to_array()).collect(),
+                    normals: m.normals.iter().map(|n| n.to_array()).collect(),
+                    indices: m.indices.clone(),
+                })
+                .collect::<Vec<_>>(),
+            &PackSettings {
+                texels_per_unit: 1.0 / texel,
+                max_size: 1024,
+                ..Default::default()
+            },
+        )?;
+        let mut lit_pages = Vec::new();
+        for page in 0..charted.pages {
+            // Every proxy's triangles on this page, as one target.
+            let (mut positions, mut normals, mut uvs, mut indices) =
+                (Vec::new(), Vec::new(), Vec::new(), Vec::new());
+            for (m, a) in meshes.iter().zip(&charted.meshes) {
+                let base = positions.len() as u32;
+                for v in &a.vertices {
+                    positions.push(m.positions[v.xref as usize]);
+                    normals.push(m.normals[v.xref as usize]);
+                    uvs.push(Vec2::from(v.uv));
+                }
+                indices.extend(
+                    a.indices
+                        .as_chunks::<3>()
+                        .0
+                        .iter()
+                        .filter(|t| a.vertices[t[0] as usize].page == page)
+                        .flatten()
+                        .map(|&i| i + base),
+                );
+            }
+            let drawn = transfer(
+                source,
+                Target {
+                    positions: &positions,
+                    normals: &normals,
+                    tangents: &[],
+                    uvs: &uvs,
+                    indices: &indices,
+                },
+                &TransferSettings {
+                    width: charted.width,
+                    height: charted.height,
+                    reach: error * 1.25 + texel * 0.5,
+                    samples: 2,
+                    texel,
+                },
+            );
+            lit_pages.push(drawn.base);
+        }
+        let models = meshes
+            .iter()
+            .zip(&charted.meshes)
+            .map(|(m, a)| BakedModel {
+                entity: String::new(),
+                asset: m.id.clone(),
+                hash: m.hash,
+                parts: vec![BakedPart {
+                    vertices: m.vertices as u32,
+                    xref: a.vertices.iter().map(|v| v.xref).collect(),
+                    indices: a.indices.clone(),
+                    uv: a
+                        .vertices
+                        .iter()
+                        .map(|v| {
+                            [
+                                v.uv[0] / charted.width as f32,
+                                v.uv[1] / charted.height as f32,
+                                v.page as f32,
+                            ]
+                        })
+                        .collect(),
+                }],
+            })
+            .collect();
+        out.push(LitProxies {
+            width: charted.width,
+            height: charted.height,
+            pages: lit_pages,
+            models,
+        });
+    }
+    Ok(out)
+}
+
+/// `page`, `w` × `h` texels, at the top left of a `width` × `height` page
+/// (the rest black).
+fn padded(page: &[[f32; 4]], w: u32, h: u32, width: u32, height: u32) -> Vec<[f32; 4]> {
+    let mut out = vec![[0.0; 4]; (width * height) as usize];
+    for y in 0..h as usize {
+        let row = &page[y * w as usize..(y + 1) * w as usize];
+        out[y * width as usize..y * width as usize + w as usize].copy_from_slice(row);
+    }
+    out
 }

@@ -195,7 +195,13 @@ pub(crate) fn scene_spawned(
     );
     // The models' parts, loaded by the spawn.
     let mut models: Vec<(og_ecs::Entity, Parts, &og_bundle::lightmap::BakedModel)> = Vec::new();
-    for m in &lm.file.models {
+    // An HLOD proxy's entry is the tree's (`crate::present::hlod`).
+    for m in lm
+        .file
+        .models
+        .iter()
+        .filter(|m| !og_bundle::hlod::is_hlod_output(&m.asset))
+    {
         let Some(&entity) = by_name.get(m.entity.as_str()) else {
             report.reason = format!(
                 "its bake is stale: the static model entity '{}' is no longer in the scene",

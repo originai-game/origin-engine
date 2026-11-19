@@ -176,6 +176,42 @@ fn project() -> &'static Path {
         };
         let report = og_cook::cook_project(&root, &options).unwrap();
         assert!(report.ok(), "{:?}", report.errors());
+        // The pair's bake, as `og bake lightmaps` writes a proxy's entry:
+        // keyed by its asset, one page of one light.
+        let bundle = og_bundle::runtime::Bundle::open(&root.join("cooked")).unwrap();
+        let id = "scenes/pair.ogt";
+        let pid = og_bundle::hlod::node_id(id, 0);
+        let mesh = bundle.load_model(&pid).unwrap().primitives[0].mesh(0);
+        let count = mesh.vertices.len() as u32;
+        let file = og_bundle::lightmap::LightmapFile {
+            scene: id.into(),
+            scene_hash: bundle.asset(id).unwrap().source_hash,
+            pages: og_bundle::lightmap::pages_name(id),
+            models: vec![og_bundle::lightmap::BakedModel {
+                entity: String::new(),
+                asset: pid.clone(),
+                hash: bundle.model_geometry_hash(&pid).unwrap(),
+                parts: vec![og_bundle::lightmap::BakedPart {
+                    vertices: count,
+                    xref: (0..count).collect(),
+                    indices: mesh.indices.clone(),
+                    uv: vec![[0.5, 0.5, 0.0]; count as usize],
+                }],
+            }],
+            ..Default::default()
+        };
+        let lightmap = root
+            .join("assets")
+            .join(og_bundle::lightmap::lightmap_id(id));
+        std::fs::write(&lightmap, file.to_text()).unwrap();
+        let one = og_bundle::lightmap::f32_to_f16(1.0);
+        std::fs::write(
+            lightmap.with_file_name(&file.pages),
+            og_bundle::lightmap::pages_to_ktx2(1, 1, &[vec![one; 4]]),
+        )
+        .unwrap();
+        let report = og_cook::cook_project(&root, &options).unwrap();
+        assert!(report.ok(), "{:?}", report.errors());
         root
     })
 }
@@ -202,6 +238,8 @@ struct Frame {
     max: Vec3,
     /// Each instance drawn in part: how much, and whether fading out.
     fades: Vec<(f32, bool)>,
+    /// The instances drawn with a lightmap.
+    baked: usize,
     /// Of the textures the instances draw, the widest one's width as held
     /// and as its whole chain (a streamed texture holds its tail).
     widest: (u32, u32),
@@ -223,7 +261,14 @@ impl RenderBackend for Recorder {
             max: Vec3::MIN,
             fades: Vec::new(),
             widest: (0, 0),
+            baked: 0,
         };
+        f.baked = scene
+            .objects
+            .instances
+            .iter()
+            .filter(|i| scene.lighting.baked.meshes.contains_key(&i.mesh.index()))
+            .count();
         for t in scene
             .objects
             .instances
@@ -556,4 +601,26 @@ fn a_proxy_loads_its_pages_tails_and_streams_their_chains() {
     assert_eq!(r["scheduled"], json!(1), "{r}");
     let (resident, _) = drawn(e, &frame);
     assert_eq!(resident.widest, (whole, whole), "{resident:?}");
+}
+
+#[test]
+fn a_proxy_draws_with_its_models_bake_while_baked_lighting_is_on() {
+    let (e, frame) = engine("scenes/pair.ogt");
+    // Far: the proxy alone, lightmapped.
+    look(e, Vec3::new(9.0, 0.0, 3.0), 3000.0);
+    let (far, h) = drawn(e, &frame);
+    assert_eq!(h, [1, 1, 0, 2], "{h:?}");
+    assert_eq!((far.instances, far.baked), (1, 1), "{far:?}");
+    // Off: the same proxy, unbaked.
+    value(og_engine_write_resource(
+        e,
+        "og.RenderSettings".into(),
+        json!({ "bakedLighting": false }).to_string(),
+    ));
+    let (off, h) = drawn(e, &frame);
+    assert_eq!(
+        (h, off.instances, off.baked),
+        ([1, 1, 0, 2], 1, 0),
+        "{off:?}"
+    );
 }

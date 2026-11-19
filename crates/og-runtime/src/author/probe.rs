@@ -304,11 +304,12 @@ pub(crate) fn register_render_dump(probe: &mut Probe, engine: u32) {
                 // on the GPU `countsLag` frames before this one.
                 "scatter": scatter_dump(&st.frame, rs.backend.as_ref().and_then(|b| b.scatter_counts())),
                 // HLOD (present/hlod.rs): the trees walked, the proxies
-                // drawn (`unloaded`: of cells not loaded) and the models
-                // they drew in place of.
+                // drawn (`unloaded`: of cells not loaded; `lit`: with
+                // their models' bake) and the models they drew in place of.
                 "hlod": {
                     "scenes": rs.hlod.drawn.scenes,
                     "proxies": rs.hlod.drawn.proxies,
+                    "lit": rs.hlod.drawn.lit,
                     "unloaded": rs.hlod.drawn.unloaded,
                     "replaced": rs.hlod.drawn.replaced,
                 },

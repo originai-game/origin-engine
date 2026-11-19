@@ -27,6 +27,11 @@ pub(super) fn models(
     // Baked lighting (RenderSettings.bakedLighting, on by default).
     let baked = settings.is_none_or(|s| s.baked_lighting);
     super::baked::apply(world, &mut rs.scene, &mut rs.baked, baked);
+    // The HLOD proxies lit by their models' bake draw with its pages too.
+    if baked {
+        let lit = rs.hlod.lit.values().flat_map(|l| l.meshes.iter().cloned());
+        rs.scene.lighting.baked.meshes.extend(lit);
+    }
     // The models' parts and their lightmapped ones, lent to the rows until
     // the end of this read: a row borrows its model's parts and copies them
     // only to change them (a variant's materials, wind copies), where every
@@ -331,6 +336,7 @@ pub(super) fn models(
             view_height,
             bias: settings_bias,
             debug: debug_lod,
+            baked,
         };
         crate::present::hlod::draw(world, rs, h, &view, keys)
     };

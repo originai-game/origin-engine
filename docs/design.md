@@ -1240,8 +1240,13 @@ lockstep §2.8 and §2.10, the semantic frame and diagnostics §3.4.
   themselves, with the reason in the cook report:
   skinned, impostor, cut-out, fractured, GPU-instanced and tinted models,
   and one larger than a leaf. Not yet: a node over cells (each sub-scene
-  has its own tree), merged foliage (impostors draw it), and a
-  proxy lit by its models' bake.
+  has its own tree), and merged foliage (impostors draw it).
+  `og bake lightmaps` lights a scene's proxies by its static models' bake:
+  per level each proxy is charted at four times its error a texel and takes
+  the models' irradiance where it stands for them (`transfer` reading their
+  pages), written into the scene's lightmap as an entry keyed by its asset
+  and geometry hash; a matching entry draws while
+  `RenderSettings.bakedLighting` is on, a stale one leaves it unbaked.
 - **Reflection probes** (`og.ReflectionProbe`): box-projected cubes (the
   box and fade of the `og.Volume` on the entity, as every region) captured
   with the lit pipelines and prefiltered like the environment, chosen per
