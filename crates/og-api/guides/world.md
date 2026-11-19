@@ -69,7 +69,7 @@ world.insert(ground, og.Collider, { shape: "heightfield", mesh: t.geometry });
 | Setting | Default | Cost |
 |---|---|---|
 | `lodRing` | the file's, else 64 quads a side (256 for a displacing terrain) | 256 on every level costs about 3 ms more GPU on an M4 Pro; levels grow to 128 on their own where `lodError` needs it |
-| `lodError` | 1 px | larger draws fewer vertices |
+| `lodError` | 1 px | larger draws fewer vertices; held only as far as 128-quad levels reach (or `lodRing`'s): a level's quads are about its distance / (0.37 × ring), so about 64 m a quad at 2–4 km at 128, 32 m at 256 |
 | `displacementDistance` | 40 m | displaced levels grow finer (down to a 128th of the finest displacing layer's `tile`, a 128th of a sample at most, unless `lodSpacing` is above 0) and denser (256 quads unless `lodRing` says); a cobbled crest took 6.5 ms of GPU a frame on an M4 Pro against 3.8 with 64-quad levels |
 | tile budget | 16 MiB per terrain | resident height tiles |
 

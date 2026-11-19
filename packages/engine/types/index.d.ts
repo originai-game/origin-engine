@@ -29542,7 +29542,7 @@ export interface Terrain {
    */
   lodRing: number;
   /**
-   * Pixels of height error a coarser clipmap level may show before the finer one reaches further out (0: 1): a peak that is large on screen keeps its shape at any distance. Larger draws fewer vertices.
+   * Pixels of height error a coarser clipmap level may show before the finer one reaches further out (0: 1), as far as levels of 128 quads reach: past that the error may exceed it (a lodRing of 256 halves every level's spacing at a distance). Larger draws fewer vertices.
    *
    * @range 0..64
    * @tunable

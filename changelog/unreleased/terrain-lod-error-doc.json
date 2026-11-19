@@ -1,0 +1,8 @@
+{
+  "fixed": [
+    {
+      "member": "og.Terrain.lodError",
+      "summary": "Its description no longer promises that a peak keeps its shape at any distance. The error is held only as far as clipmap levels of 128 quads reach (or lodRing's); past that a level's quads are about its distance / (0.37 × ring), so lodRing 256 is the way to draw distant terrain finer. World guide §2 gives the numbers."
+    }
+  ]
+}
