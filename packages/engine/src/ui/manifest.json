@@ -537,9 +537,7 @@
     "id": "@ui/components/idle/generators.svelte",
     "screen": false,
     "control": null,
-    "uses": [
-      "ProgressBar"
-    ],
+    "uses": [],
     "files": [
       "@ui/components/idle/generators.svelte",
       "@ui/components/idle/idle.en.ogt"
@@ -561,9 +559,7 @@
     "id": "@ui/components/idle/prestige.svelte",
     "screen": false,
     "control": null,
-    "uses": [
-      "ProgressBar"
-    ],
+    "uses": [],
     "files": [
       "@ui/components/idle/idle.en.ogt",
       "@ui/components/idle/prestige.svelte"

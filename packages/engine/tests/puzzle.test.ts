@@ -294,7 +294,7 @@ test("PuzzleBoosters: a booster reports its key; an unavailable one is disabled,
     expect(texts(e)).toContain("unavailable");
     tap(e, burst);
     expect(intents(events, ["choose"])).toEqual(["choose:shuffle"]);
-    expect(texts(e)).toContain("3");
+    expect(texts(e)).toContain("×3");
     expect(texts(e)).not.toContain("armed");
   });
   run(member("boosters", "selected"), (e) => {

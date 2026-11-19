@@ -17,39 +17,38 @@ to change it; the game's copy of the same name wins.
 Each member is HTML with component CSS in the `og-components` layer.
 `:host` owns the root dimensions; shared `data-layout` and `data-gap`
 primitives arrange the interior. Component CSS keeps sizes and placement.
-Optional pieces use `{#if}`. Semantic parts remain and end in shared roles
-such as `card`, `band`, `cell`, `badge`, `figure`, `headline` and `caption`.
-Role tokens and `data-tone` dress figures, captions, earned stars, the
-current-level badge and armed booster selection. A style pack
+Optional pieces use `{#if}`. Each part wears at most one shared role; the goals bar and the booster tray
+are dressed by the `--play-*` role tokens (the counter's well, a goal's
+socket and check, the star bar, the booster socket, its armed ring and an
+out booster's gold tag), the path and summary by the `--select-*` ones. A style pack
 (`og-pack`, above it) can override the named parts (docs/ui.md §3.2),
 qualified by states such as `PuzzleLevelPath::node[data-state=current]`.
 
 Hooks for a pack: `data-state` (locked, open, current, done) on level-path
 lanes, trails, nodes and stars, `aria-selected` on the node the player
-picked, `.star.lit` on earned stars; `data-low` on the goals frame, counter
+picked, `.star.lit` on earned stars and `data-lit` on the goals' star marks; `data-low` on the goals frame, counter
 and figure, `data-kind` (moves, time) on the counter, `data-done` on goals;
-`data-available` and `data-armed` on boosters (also `aria-pressed` and
-`:disabled`), `data-available` on their counts and `data-armed` on their
-state word (true only on an available, armed booster; an unavailable one
+`data-available`, `data-armed` and `data-out` on boosters (also
+`aria-pressed` and `:disabled`), `data-out` on their counts and
+`data-armed` on their state word (true only on an available, armed booster; an unavailable one
 reads Unavailable); `data-result` (win, lose) on the summary's frame, band and stars,
 `.primary` on its main action.
 
 Every state also has a mark or a word, not a colour alone: a lock and
 "locked" in the name of a locked level, the stars and "complete" on a done
 one, a Play badge on the current one; a check on a met goal, "Running low"
-under a low counter; a lock and "Unavailable" on a booster the game refuses,
+on a tag under a low counter; "Unavailable" on a tag over a booster the game
+refuses and a gold + where the count was when none are left,
 "Armed" on the armed one; "New best" and the stars in words on the summary.
-The documents animate nothing. The low counter's pulse is the pack's
-(`puzzle.css`, on `--motion-duration-slow`), with a reduced-motion rule
-that drops it and keeps the ink and the word.
+The documents animate nothing; a low counter's pulse is a pack's.
 
 ## Members
 
 | Document | Inputs (props) | Intents | Parts |
 | --- | --- | --- | --- |
 | `PuzzleLevelPath` (`level-path`) | `chapters` keyed `{ id, label, earned, total }`, `levels` keyed `{ id, chapter, number, state (locked, open, current, done), stars, maxStars, x 0–1 }`, `selected` | `choose` (a level's key; a locked level is disabled), `details` (X, pad Y on the focused level) | `frame`, `chapter`, `title`, `badge`, `meter`, `lane`, `trail`, `node`, `number`, `stars`, `here`, `empty` |
-| `PuzzleGoals` (`goals`) | `counter` (moves, time), `moves`, `seconds`, `low`, `score`, `goals` keyed `{ id, icon, label, left, done }` | none | `frame`, `counter`, `label`, `figure`, `warning`, `goals`, `goal`, `count`, `done`, `score` |
-| `PuzzleBoosters` (`boosters`) | `boosters` keyed `{ id, icon, name, count, available }`, `armed` | `choose` (a booster's key; an unavailable one is disabled and sends nothing) | `frame`, `booster`, `count`, `name`, `state`, `empty` |
+| `PuzzleGoals` (`goals`) | `counter` (moves, time), `moves`, `seconds`, `low`, `score`, `progress` (toward the top star, 0–1; negative hides the bar), `stars` keyed `{ id, at 0–1 }`, `goals` keyed `{ id, icon, label, left, done }` | none | `frame`, `counter`, `label`, `figure`, `warning`, `goals`, `goal`, `socket`, `count`, `name`, `done`, `glyph`, `score`, `track`, `fill`, `star` |
+| `PuzzleBoosters` (`boosters`) | `boosters` keyed `{ id, icon, name, count, available }`, `armed` | `choose` (a booster's key; an unavailable one is disabled and sends nothing) | `frame`, `booster`, `socket`, `count`, `name`, `state`, `empty` |
 | `PuzzleSummary` (`summary`) | `result` (win, lose), `level`, `score`, `scoreMax`, `thresholds` keyed `{ id, at 0–1 }`, `stars`, `maxStars`, `record`, `rows` keyed `{ id, label, value }`, `total`, `canNext` | `next` (only when `canNext`), `retry`, `menu` (the Map button, Escape, pad B) | `frame`, `band`, `title`, `level`, `stars`, `earned`, `record`, `breakdown`, `row`, `rowLabel`, `rowValue`, `total`, `actions`, `next`, `retry`, `menu` |
 
 Parts are qualified by the member (`PuzzleLevelPath.node`). A level's place
