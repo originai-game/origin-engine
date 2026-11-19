@@ -7,7 +7,9 @@
 //! exists and before its first tick, then `og_c_window_pump` before every
 //! frame (winit's `pump_app_events`, so the loop is the shell's on macOS,
 //! Windows and Linux alike). The surface presents with vsync: the frame
-//! call waits for the display.
+//! call waits for the display. The engine's audio plays on the default
+//! output device (og_audio::device, the napi host's `device` sink); a
+//! machine without one runs silent.
 
 use og_render::{RenderDesc, RenderError, RenderScene, RenderTarget, Renderer};
 use og_runtime::RenderBackend;
@@ -28,6 +30,8 @@ use winit::window::{CursorIcon, Window, WindowId};
 struct Shell {
     events: EventLoop<()>,
     app: App,
+    /// The default output device playing the engine's audio, if there is one.
+    audio: Option<og_audio::device::DeviceSink>,
 }
 
 /// The window's side of winit: what happened since the last pump.
@@ -445,8 +449,16 @@ fn open(engine: u32, width: u32, height: u32, title: String, keep: bool) -> Resu
     )?;
     og_runtime::set_viewport(engine, viewport(size, app.scale))?;
     app.resized = None;
+    let audio = match og_audio::link(engine).map(|l| og_audio::device::DeviceSink::open(&l)) {
+        Some(Ok(sink)) => Some(sink),
+        Some(Err(e)) => {
+            eprintln!("og-host-c: no audio: {e}");
+            None
+        }
+        None => None,
+    };
     ENGINE.set(engine);
-    SHELL.with(|s| *s.borrow_mut() = Some(Shell { events, app }));
+    SHELL.with(|s| *s.borrow_mut() = Some(Shell { events, app, audio }));
     Ok(tier)
 }
 
@@ -495,14 +507,24 @@ pub extern "C" fn og_c_window_pump() -> bool {
         let status = shell
             .events
             .pump_app_events(Some(Duration::ZERO), &mut shell.app);
+        let latency = shell.audio.as_ref().map(|a| a.latency());
         let app = &mut shell.app;
         let closed = app.closed || matches!(status, PumpStatus::Exit(_));
-        Some((std::mem::take(&mut app.input), app.resized.take(), closed))
+        Some((
+            std::mem::take(&mut app.input),
+            app.resized.take(),
+            closed,
+            latency,
+        ))
     });
-    let Some((input, resized, closed)) = pumped else {
+    let Some((input, resized, closed, latency)) = pumped else {
         return false;
     };
     let engine = ENGINE.get();
+    // The device's latency reaches og.Audio.outputLatency between ticks, as host input.
+    if let Some(seconds) = latency {
+        let _ = og_runtime::set_audio_latency(engine, seconds);
+    }
     if let Some((size, scale)) = resized
         && size.width > 0
         && size.height > 0
@@ -516,6 +538,31 @@ pub extern "C" fn og_c_window_pump() -> bool {
         og_runtime::og_runtime_probe_input(engine, event.to_string());
     }
     !closed
+}
+
+/// What the audio device played, as JSON (`{device, sampleRate, frames,
+/// voicesPeak, late, dropped}`), or `null` without one; valid until the
+/// next call.
+#[unsafe(no_mangle)]
+pub extern "C" fn og_c_window_audio() -> *const c_char {
+    let answer = SHELL.with(|s| {
+        s.borrow().as_ref().and_then(|s| s.audio.as_ref()).map(|a| {
+            let m = a.stats();
+            json!({
+                "device": a.name(),
+                "sampleRate": a.sample_rate(),
+                "frames": m.frames,
+                "voicesPeak": m.voices_peak,
+                "late": m.late,
+                "dropped": a.link().dropped(),
+            })
+        })
+    });
+    ANSWER.with(|a| {
+        *a.borrow_mut() =
+            CString::new(answer.unwrap_or(Value::Null).to_string()).unwrap_or_default();
+        a.borrow().as_ptr()
+    })
 }
 
 /// Writes the last presented frame to `path` as a PNG (the window was

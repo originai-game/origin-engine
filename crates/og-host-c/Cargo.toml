@@ -22,7 +22,7 @@ motion = ["og-runtime/motion"]
 nav = ["og-runtime/nav"]
 ai = ["og-runtime/ai"]
 # The desktop window a store shell draws in (src/window.rs).
-window = ["dep:winit", "dep:og-render", "dep:pollster", "dep:serde_json"]
+window = ["dep:winit", "dep:og-render", "dep:pollster", "dep:serde_json", "dep:og-audio", "og-audio/device"]
 
 [dependencies]
 og-api = { path = "../og-api" }
@@ -34,3 +34,4 @@ og-render = { path = "../og-render", optional = true }
 pollster = { workspace = true, optional = true }
 serde_json = { version = "1", optional = true }
 winit = { version = "0.30.12", default-features = false, features = ["rwh_06", "x11"], optional = true }
+og-audio = { path = "../og-audio", optional = true }

@@ -14,6 +14,7 @@ import { hermesBinding } from "./index.ts";
 
 declare const __og_env: Record<string, string | undefined>;
 declare const __og_now: () => number;
+declare const __og_audio: () => string;
 declare const __og_window_open: (engine: number, width: number, height: number, title: string, keep: boolean) => string;
 
 /** Frames before the report's figures start: pipelines compile and assets land in the first ones. */
@@ -97,6 +98,8 @@ export function main(game: GameToken): void {
       // A slow display frame runs several fixed ticks: the game's time per tick.
       ticksPerFrame: per(ticks),
       gameMsPerTick: +(ticks === 0 ? 0 : gameTotal / ticks).toFixed(4),
+      // What the output device played (null on a machine without one).
+      audio: JSON.parse(__og_audio()) as unknown,
     });
   };
 }

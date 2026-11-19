@@ -3217,6 +3217,7 @@ name = "og-host-c"
 version = "0.9.0"
 dependencies = [
  "og-api",
+ "og-audio",
  "og-bundle",
  "og-physics",
  "og-render",

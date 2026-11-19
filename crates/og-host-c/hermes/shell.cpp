@@ -313,6 +313,13 @@ int main(int argc, char **argv) {
                 (uint32_t)args[2].asNumber(), title.c_str(), args[4].getBool());
             return jsi::String::createFromUtf8(rt, answer);
           }));
+  rt.global().setProperty(
+      rt, "__og_audio",
+      jsi::Function::createFromHostFunction(
+          rt, jsi::PropNameID::forAscii(rt, "__og_audio"), 0,
+          [](jsi::Runtime &rt, const jsi::Value &, const jsi::Value *, size_t) {
+            return jsi::String::createFromUtf8(rt, og_c_window_audio());
+          }));
   jsi::Object env(rt);
   for (const auto &pair : pairs) {
     auto eq = pair.find('=');
