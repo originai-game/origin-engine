@@ -580,6 +580,11 @@ fn cook_bvh(
 /// triangle (a moved vertex) and every corner of the full mesh against the
 /// level's (a feature simplified away). The runtime draws the level while
 /// this error projects to less than a pixel (og-render's `lod`).
+///
+/// Exact, measured as a Hausdorff distance is (Taha and Hanbury 2015): a
+/// corner at a corner of the other mesh lies on it (the simplifier keeps
+/// the full mesh's positions, so most do), and a corner's search stops at
+/// the first triangle no farther than the largest distance so far.
 pub(crate) fn level_error(pos: &[[f32; 3]], full: &[u32], level: &[u32]) -> f32 {
     let mesh = |indices: &[u32]| og_render_data::MeshData {
         vertices: pos
@@ -591,12 +596,15 @@ pub(crate) fn level_error(pos: &[[f32; 3]], full: &[u32], level: &[u32]) -> f32 
             .collect(),
         indices: indices.to_vec(),
     };
-    let farthest = |corners: &[u32], bvh: &og_render_data::geometry::Bvh| {
+    let bits = |i: u32| pos[i as usize].map(f32::to_bits);
+    let farthest = |corners: &[u32], other: &[u32], bvh: &og_render_data::geometry::Bvh| {
+        let on: std::collections::HashSet<[u32; 3]> = other.iter().map(|&i| bits(i)).collect();
         let mut seen = vec![false; pos.len()];
         let mut worst = 0.0f32;
         for &i in corners {
             if !std::mem::replace(&mut seen[i as usize], true)
-                && let Some(d) = bvh.distance(Vec3::from(pos[i as usize]))
+                && !on.contains(&bits(i))
+                && let Some(d) = bvh.distance_above(Vec3::from(pos[i as usize]), worst)
             {
                 worst = worst.max(d);
             }
@@ -607,7 +615,7 @@ pub(crate) fn level_error(pos: &[[f32; 3]], full: &[u32], level: &[u32]) -> f32 
         og_render_data::geometry::Bvh::build(&mesh(full)),
         og_render_data::geometry::Bvh::build(&mesh(level)),
     );
-    farthest(level, &full_bvh).max(farthest(full, &level_bvh))
+    farthest(level, full, &full_bvh).max(farthest(full, level, &level_bvh))
 }
 
 /// One level's triangles cut into clusters of at most

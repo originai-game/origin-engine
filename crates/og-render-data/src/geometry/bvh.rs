@@ -199,6 +199,15 @@ impl Bvh {
     /// it holds no triangle. Boxes farther than the best triangle found
     /// are not opened, the nearer child first.
     pub fn distance(&self, p: Vec3) -> Option<f32> {
+        self.distance_above(p, f32::NEG_INFINITY)
+    }
+
+    /// [`Bvh::distance`] when it is more than `floor`; otherwise a distance
+    /// of some triangle within `floor`, the search stopping at the first
+    /// one found. The early break of an exact Hausdorff distance (Taha and
+    /// Hanbury 2015): a point nearer than the largest distance so far
+    /// cannot raise it, so it need not find its nearest triangle.
+    pub fn distance_above(&self, p: Vec3, floor: f32) -> Option<f32> {
         if self.nodes.is_empty() || !p.is_finite() {
             return None;
         }
@@ -213,6 +222,9 @@ impl Bvh {
                 for &tri in &self.tris[node.first as usize..(node.first + node.count) as usize] {
                     let d = (closest_on_triangle(&self.corners[tri as usize], p) - p).length();
                     best = best.min(d);
+                }
+                if best <= floor {
+                    break;
                 }
                 continue;
             }
@@ -398,6 +410,10 @@ mod tests {
         ] {
             let (fast, slow) = (at(p), brute_distance(&mesh, p));
             assert!((fast - slow).abs() < 1e-6, "{p}: {fast} against {slow}");
+            // Above the floor it is exact; at or under it, it stays there.
+            let below = bvh.distance_above(p, slow - 0.01).unwrap();
+            assert!((below - slow).abs() < 1e-6, "{p}: {below} against {slow}");
+            assert!(bvh.distance_above(p, slow + 0.5).unwrap() <= slow + 0.5);
         }
         assert_eq!(
             Bvh::build(&MeshData {
