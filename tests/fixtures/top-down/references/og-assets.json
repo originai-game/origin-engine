@@ -1,0 +1,17 @@
+{
+  "version": 1,
+  "files": [
+    {
+      "path": "vulkan/farm-wind.png",
+      "sha256": "ae262a9dfd7adaa24ddc65158dbe5e6d7e77aa86434fbf6b497b34698a5b4ea6",
+      "size": 92480,
+      "visibility": "public"
+    },
+    {
+      "path": "vulkan/farm.png",
+      "sha256": "c309c68154d58845ad811ea81db906d24365ba31d5da722263699b52614b84d0",
+      "size": 205029,
+      "visibility": "public"
+    }
+  ]
+}

@@ -583,8 +583,14 @@ on mismatch write `<scene>.actual.png` and `<scene>.diff.png` under
 ```
 # on the GPU host, after `scripts/gate/step.sh rust-build` in the full lane
 OG_GFX_CAPTURE=1 OG_UI_CAPTURE=1 scripts/gate/step.sh rust-gpu   # rewrite the references
-git diff --stat -- '*/references/vulkan/*'                         # see which frames moved
+bun scripts/assets.ts status crates/og-tests crates/og-tests-ui    # see which frames moved
+git status --short -- '*/references/*'                             # and which are new
 ```
+
+Reference frames are pinned files (§The asset store): each `references/`
+directory's `og-assets.json` pins its frames. Pin the moved and new frames
+(`cd crates/og-tests/references && bun ../../../scripts/assets.ts pin . vulkan/<scene>.png …`),
+push them, and commit the `og-assets.json` with the batch.
 
 `OG_GFX_CAPTURE` takes `1` or a comma list of og-tests scenes;
 `OG_UI_CAPTURE=1` rewrites og-ui's frames in

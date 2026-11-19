@@ -1,0 +1,11 @@
+{
+  "version": 1,
+  "files": [
+    {
+      "path": "vulkan/yard.png",
+      "sha256": "91c6d1c9e85bbccc050c56257d15cf0abf9bd95655a8e4d2653305678d6b357f",
+      "size": 73362,
+      "visibility": "public"
+    }
+  ]
+}

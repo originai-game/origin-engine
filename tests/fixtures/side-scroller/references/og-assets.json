@@ -1,0 +1,11 @@
+{
+  "version": 1,
+  "files": [
+    {
+      "path": "vulkan/slash.png",
+      "sha256": "d6964c0de28bd46fe6f4545e5d34f42ddb6a0e3d7df74a265761997353089d6c",
+      "size": 183468,
+      "visibility": "public"
+    }
+  ]
+}

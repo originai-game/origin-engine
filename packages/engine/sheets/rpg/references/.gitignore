@@ -1,0 +1,17 @@
+# og-assets: the files og-assets.json pins, installed by `bun scripts/assets.ts ensure` (written by the tool)
+/vulkan/cells/combat-desktopHd.png
+/vulkan/cells/combat-phoneLandscape.png
+/vulkan/cells/combat-phonePortrait.png
+/vulkan/cells/equipment-desktopHd.png
+/vulkan/cells/equipment-phoneLandscape.png
+/vulkan/cells/equipment-phonePortrait.png
+/vulkan/cells/explore-desktopHd.png
+/vulkan/cells/explore-phoneLandscape.png
+/vulkan/cells/explore-phonePortrait.png
+/vulkan/cells/inventory-desktopHd.png
+/vulkan/cells/inventory-phoneLandscape.png
+/vulkan/cells/inventory-phonePortrait.png
+/vulkan/cells/journal-desktopHd.png
+/vulkan/cells/journal-phoneLandscape.png
+/vulkan/cells/journal-phonePortrait.png
+# og-assets end

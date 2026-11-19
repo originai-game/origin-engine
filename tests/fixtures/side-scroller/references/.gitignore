@@ -1,0 +1,3 @@
+# og-assets: the files og-assets.json pins, installed by `bun scripts/assets.ts ensure` (written by the tool)
+/vulkan/slash.png
+# og-assets end
