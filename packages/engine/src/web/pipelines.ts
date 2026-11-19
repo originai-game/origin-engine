@@ -108,7 +108,8 @@ const MOBILE_ARCHITECTURE = /powervr|rogue|mali|valhall|bifrost|adreno/;
  * The mode a page runs: `asked` (its build's `publish { pipelines }`, absent for auto) as is, or for
  * auto, async on a mobile GPU named by the adapter's `info`; when the browser names none (Firefox
  * reports empty strings), async when `mobile` (navigator.userAgentData.mobile) says so; otherwise
- * sync. Apple GPUs stay sync until iOS is measured (docs/web-export.md §Pipelines).
+ * sync. Apple GPUs stay sync until a real iOS or macOS device is measured; a virtual machine's
+ * numbers do not move the default (docs/web-export.md §Pipelines).
  */
 export function choose(asked: PipelineMode | undefined, info: { vendor?: string; architecture?: string } | null | undefined, mobile: boolean | undefined): PipelineChoice {
   if (asked) return { mode: asked, reason: `publish { pipelines ${asked} }` };

@@ -439,7 +439,11 @@ How the frame's render pipelines compile on the web
 - `auto` (the default): `async` on a mobile GPU (`img-tec`, `arm`,
   `qualcomm`, or none named and `navigator.userAgentData.mobile`), `sync`
   otherwise, Apple GPUs included, since a mobile GPU that compiles
-  synchronously holds the page for tens of seconds.
+  synchronously holds the page for tens of seconds. Open: Apple GPUs move
+  to `async` only on a measurement from a real iOS or macOS device. A
+  virtual machine's numbers do not count (Chrome on a cloud Mac took 0.8 to
+  1.2 s for the first frame that drew a textured model with a cold shader
+  cache, 2026-11); until then a game sets `publish { pipelines async }`.
 
 The mode and why are on `__runtime_probe__.boot.pipelines`, in the
 Worker's console and in the boot telemetry sample.
