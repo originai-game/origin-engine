@@ -35,6 +35,8 @@ export interface Start {
   root?: string;
   /** `<root>/cooked/.cook.ogt`'s integrity: a package from an asset base, every file checked (shell.ts `rootIntegrity`). */
   rootIntegrity?: string;
+  /** The content base og.load.data reads catalogs from (shell.ts `content`). */
+  content?: string;
   /** The Basis transcoder's script and module. */
   basis?: { js: string; wasm: string };
   /** The rav1d fallback decoder's module URL (dist/av1/og-av1.wasm by default). */
