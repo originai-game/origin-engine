@@ -28,6 +28,12 @@ game as `game.hbc`, `project.ogt`, `cooked/` and `shell.env` (title and
 size). `OG_SHELL_FRAMES=<n>` closes it after n frames and prints the frame
 times; `OG_SHELL_CAPTURE=<file.png>` writes the last frame.
 
+On Windows, build Hermes inside vcvars64 with
+`-DCMAKE_C_FLAGS=/utf-8 -DCMAKE_CXX_FLAGS="/utf-8 /EHsc"` (its sources are
+UTF-8, which MSVC misreads on other code pages), and have LLVM's `clang++`
+on PATH. A showcase's own pinned assets come from
+`bun scripts/assets.ts ensure showcase/<name>`, beside `ensure templates`.
+
 ## Running a game under Hermes
 
 ```sh

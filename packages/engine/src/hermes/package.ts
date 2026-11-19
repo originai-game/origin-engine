@@ -137,8 +137,9 @@ export async function packageGame(o: PackageOptions): Promise<string> {
   const target = join(bin, `${name}${exe}`);
   if (os === "win32") {
     // MSVC's ABI: link the import libraries; the DLLs sit beside the .exe.
+    // clang++ defaults to the static CRT (/MT); jsi.lib, hermesvm and Rust use the DLL one (/MD).
     const vmLib = find(build, ["hermesvm.lib"]);
-    run(["clang++", "-std=c++17", "-O2", ...includes, join(shell, "hermes/shell.cpp"), "-o", target, vmLib!, jsi!, `${host}.lib`]);
+    run(["clang++", "-std=c++17", "-O2", "-fms-runtime-lib=dll", "-D_CRT_SECURE_NO_WARNINGS", ...includes, join(shell, "hermes/shell.cpp"), "-o", target, vmLib!, jsi!, `${host}.lib`]);
   } else {
     const rpath = os === "darwin" ? "@executable_path" : "$ORIGIN";
     run(["clang++", "-std=c++17", "-O2", ...includes, join(shell, "hermes/shell.cpp"), "-o", target, `-L${bin}`, "-lhermesvm", jsi!, "-log_host_c", `-Wl,-rpath,${rpath}`]);
