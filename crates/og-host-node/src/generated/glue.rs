@@ -1737,6 +1737,12 @@ pub fn og_load_data_bytes(env: Env, world: u32, asset: f64) -> String {
     <Host as LoadApi>::og_load_data_bytes(&Host, world, asset)
 }
 
+#[napi(js_name = "og_load_pack")]
+pub fn og_load_pack(env: Env, world: u32, entry: Option<String>) -> String {
+    let _env = crate::EnvScope::enter(&env);
+    <Host as LoadApi>::og_load_pack(&Host, world, entry)
+}
+
 #[napi(js_name = "og_load_environment_info")]
 pub fn og_load_environment_info(env: Env, world: u32, asset: f64) -> String {
     let _env = crate::EnvScope::enter(&env);

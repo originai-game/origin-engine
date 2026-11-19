@@ -613,13 +613,13 @@ module load {
 
   struct LoadCompletion {
     doc "When a host-timed load finished: an uncooked load put in place or a runtime bundle opened. The journal a replay applies again (og.load.completions)."
-    field kind String "`uncooked` (og.load.imageData, gltfData, environmentData), `bundle` (og.load.bundle of another bundle) or `data` (og.load.data). A journal without kinds holds uncooked loads."
+    field kind String "`uncooked` (og.load.imageData, gltfData, environmentData), `bundle` (og.load.bundle of another bundle, og.load.pack) or `data` (og.load.data). A journal without kinds holds uncooked loads."
     field request u32 "The load's number within its kind: 0 for the world's first, then one more for each."
     field tick f64 "The world's tick (world.tick) at the boundary it was put in place: the systems of that tick and every later one see og.load.status ready or failed." {
       unit ticks
     }
     field ok bool "Whether it was ready (else failed)."
-    field integrity String "For `data`: the integrity of the bytes it read (`sha384-<base64>`), which a replay requires again; absent otherwise." {
+    field integrity String "For `data`: the integrity of the bytes it read (`sha384-<base64>`); for an og.load.pack `bundle`: its cooked manifest's. A replay requires it again; absent otherwise." {
       optional true
     }
   }
@@ -681,6 +681,15 @@ module load {
     param world World "The world that owns the asset."
     param asset Asset "A handle og.load.data answered."
     returns Result.Bytes "Refused while it is pending, when it failed (with its reason), when read as `json`, or for another kind of asset."
+  }
+
+  fn pack {
+    doc "Open a cooked bundle a content catalog's version lists by name (its manifest's `packs`), read from the content base against the integrity the version lists. Once ready it is a runtime bundle as og.load.bundle opens: og.load.bundleInfo, its groups and cells, og.load.release to close it."
+    guide "loading §14"
+    doc "Completion is host input, journaled as a `bundle` with its tick and manifest integrity, so a replay opens the same pack at the same tick. og.load.error starts with its reason, as og.load.data's. A pack opening or open answers its handle."
+    param world World "The world that owns the asset."
+    param entry CatalogEntry "The pack: its catalog, version, and its name as `path`."
+    returns Result.Asset "The handle (pending), or why it was refused now: a malformed catalog, version or name."
   }
 
   fn environmentInfo {

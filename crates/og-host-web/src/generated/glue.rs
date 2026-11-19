@@ -1449,6 +1449,11 @@ pub fn og_load_data_bytes(world: u32, asset: f64) -> String {
 }
 
 #[wasm_bindgen]
+pub fn og_load_pack(world: u32, entry: Option<String>) -> String {
+    <Host as LoadApi>::og_load_pack(&Host, world, entry)
+}
+
+#[wasm_bindgen]
 pub fn og_load_environment_info(world: u32, asset: f64) -> String {
     <Host as LoadApi>::og_load_environment_info(&Host, world, asset)
 }

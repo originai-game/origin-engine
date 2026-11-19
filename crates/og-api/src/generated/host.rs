@@ -651,6 +651,8 @@ pub trait LoadApi: Wire {
     fn og_load_data_json(&self, world: u32, asset: f64) -> String;
     /// `og.load.dataBytes`
     fn og_load_data_bytes(&self, world: u32, asset: f64) -> String;
+    /// `og.load.pack`
+    fn og_load_pack(&self, world: u32, entry: Option<String>) -> String;
     /// `og.load.environmentInfo`
     fn og_load_environment_info(&self, world: u32, asset: f64) -> String;
     /// `og.load.release`
@@ -1826,6 +1828,7 @@ pub const SYMBOLS: &[&str] = &[
     "og_load_data",
     "og_load_data_json",
     "og_load_data_bytes",
+    "og_load_pack",
     "og_load_environment_info",
     "og_load_release",
     "og_load_image_info",

@@ -12,7 +12,7 @@ See `loading §1`.
 
 - **TypeScript**: functions are the namespace `og.load`; components, resources and events are tokens on `og`.
 - **Publish builds**: kept (members may override).
-- **Core** (what most games use): `og.load.gltf`, `og.load.font`, `og.load.emitter`, `og.load.texture`, `og.load.document`, `og.load.animation`, `og.load.rig`, `og.load.flipbook`, `og.load.tilemap`, `og.load.vfx`; 75 more are advanced (`og api show load --all`).
+- **Core** (what most games use): `og.load.gltf`, `og.load.font`, `og.load.emitter`, `og.load.texture`, `og.load.document`, `og.load.animation`, `og.load.rig`, `og.load.flipbook`, `og.load.tilemap`, `og.load.vfx`; 76 more are advanced (`og api show load --all`).
 - **Index**: [every module and guide](index.md).
 
 ```ogt
@@ -107,6 +107,7 @@ module load {
 | [`og.load.data`](load/fn-data.md) | function | `(world: World, desc?: DataDesc): Result<Asset>` | Read a file of a content catalog at run time: static, versioned content the game's host publishes (a world's index pages, a shared level), well past a store value's 64 KiB. |
 | [`og.load.dataJson`](load/fn-dataJson.md) | function | `(world: World, asset: Asset): Result<unknown>` | The value of a ready og.load.data file read as `json`. |
 | [`og.load.dataBytes`](load/fn-dataBytes.md) | function | `(world: World, asset: Asset): Result<Uint8Array>` | The bytes of a ready og.load.data file read as `bytes`. |
+| [`og.load.pack`](load/fn-pack.md) | function | `(world: World, entry?: CatalogEntry): Result<Asset>` | Open a cooked bundle a content catalog's version lists by name (its manifest's `packs`), read from the content base against the integrity the version lists. |
 | [`og.load.environmentInfo`](load/fn-environmentInfo.md) | function | `(world: World, asset: Asset): Result<EnvironmentInfo>` | A ready uncooked environment's map and sizes. |
 | [`og.load.release`](load/fn-release.md) | function | `(world: World, asset: Asset): Result<void>` | Free an uncooked load's memory, cancelling it if pending; its handle then answers failed, naming the release. |
 | [`og.load.imageInfo`](load/fn-imageInfo.md) | function | `(world: World, asset: Asset): Result<ImageInfo>` | A ready uncooked image's texture and size. |

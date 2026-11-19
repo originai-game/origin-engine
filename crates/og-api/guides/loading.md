@@ -674,3 +674,32 @@ og.load.data reads one file of one version of it.
   notice, pins that version's manifest to the integrity it names, and a
   manifest read later is checked against it; one read before any answer
   named the version is read as it is.
+
+### Packs
+
+A pack is a cooked bundle a version lists by name: a region's models,
+scenes and cell groups that the host publishes with the catalog instead
+of with the game. og.load.pack opens one; once ready it is a runtime
+bundle as og.load.bundle opens (§10 Release, guide world §4).
+
+```text
+<base>/<catalog>/packs/<name>/cooked/.cook.ogt   (and the rest of cooked/)
+```
+
+```json
+{ "format": 1, "catalog": "world", "version": "v12", "files": { … },
+  "packs": { "region-3-2": { "integrity": "sha384-…" } } }
+```
+
+- A pack's directory is the same in every version that lists it: a
+  version that changes a pack lists it under a new name. Its `integrity`
+  is that of its `cooked/.cook.ogt`, which is read against it; on the web
+  the browser then checks every other file of the pack against that
+  manifest.
+- To make one, `og cook` a project holding the pack's assets and publish
+  its `cooked/` directory there.
+- Completion is journaled as a `bundle` open with its tick and manifest
+  integrity, so a replay opens the same pack at the same tick. Its error
+  starts with a data load's reasons; `not_found` when the version lists
+  no such pack.
+- Asking for a pack that is opening or open answers its handle.

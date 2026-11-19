@@ -13711,7 +13711,7 @@ export interface ImageInfo {
  */
 export interface LoadCompletion {
   /**
-   * `uncooked` (og.load.imageData, gltfData, environmentData), `bundle` (og.load.bundle of another bundle) or `data` (og.load.data). A journal without kinds holds uncooked loads.
+   * `uncooked` (og.load.imageData, gltfData, environmentData), `bundle` (og.load.bundle of another bundle, og.load.pack) or `data` (og.load.data). A journal without kinds holds uncooked loads.
    */
   readonly kind: string;
   /** The load's number within its kind: 0 for the world's first, then one more for each. */
@@ -13725,10 +13725,11 @@ export interface LoadCompletion {
   /** Whether it was ready (else failed). */
   readonly ok: boolean;
   /**
-   * For `data`: the integrity of the bytes it read (`sha384-<base64>`), which a replay requires again; absent otherwise.
+   * For `data`: the integrity of the bytes it read (`sha384-<base64>`); for an og.load.pack `bundle`: its cooked manifest's. A replay requires it again; absent otherwise.
    */
   readonly integrity?: string;
 }
+
 
 
 
@@ -36062,6 +36063,16 @@ export declare namespace og {
      * @returns Refused while it is pending, when it failed (with its reason), when read as `json`, or for another kind of asset.
      */
     function dataBytes(world: World, asset: Asset): Result<Uint8Array>;
+    /**
+     * Open a cooked bundle a content catalog's version lists by name (its manifest's `packs`), read from the content base against the integrity the version lists. Once ready it is a runtime bundle as og.load.bundle opens: og.load.bundleInfo, its groups and cells, og.load.release to close it.
+     * Completion is host input, journaled as a `bundle` with its tick and manifest integrity, so a replay opens the same pack at the same tick. og.load.error starts with its reason, as og.load.data's. A pack opening or open answers its handle.
+     * See `loading §14`.
+     *
+     * @param world The world that owns the asset.
+     * @param entry The pack: its catalog, version, and its name as `path`.
+     * @returns The handle (pending), or why it was refused now: a malformed catalog, version or name.
+     */
+    function pack(world: World, entry?: CatalogEntry): Result<Asset>;
     /**
      * A ready uncooked environment's map and sizes.
      *
