@@ -332,6 +332,7 @@ use post::post_custom;
 pub use post::sight::{FogOfWar, SightPlane};
 use systems::vegetation::scatter;
 use systems::vegetation::scatter_cull;
+pub use systems::vegetation::scatter_cull::{ScatterCounts, ScatterDrawn};
 use systems::vegetation::scatter_place;
 mod scene;
 pub use caps::{Caps, Tier};

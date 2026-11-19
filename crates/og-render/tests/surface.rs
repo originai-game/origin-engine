@@ -188,6 +188,7 @@ fn generated_surfaces_take_the_made_material_and_keep_the_zero_strength_frame() 
                     ..Default::default()
                 });
                 scene.world.scatters.push(ScatterDraw {
+                    id: 0,
                     terrain: 0,
                     mesh,
                     material,

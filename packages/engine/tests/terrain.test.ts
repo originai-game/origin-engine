@@ -331,7 +331,7 @@ gpuTest("og.Terrain draws the terrain, and a layer reads back and retunes", () =
   expect(Math.abs(gone[0]! - red[0]!) + Math.abs(gone[1]! - red[1]!)).toBeGreaterThan(20);
 });
 
-gpuTest("og.TerrainScatter grows copies of a mesh over the terrain near the camera", () => {
+gpuTest("og.TerrainScatter grows copies of a mesh over the terrain near the camera, and dump_render counts them", () => {
   const { engine, info, terrain } = start({ x: 0, y: 0, z: 0 }, [160, 90]);
   const w = engine.world;
   view(w, { x: 0, y: 30, z: 36 }, { x: 0, y: 0, z: 0 });
@@ -353,10 +353,26 @@ gpuTest("og.TerrainScatter grows copies of a mesh over the terrain near the came
   must(w.insert(terrain, og.TerrainScatter, { data: info.data as never, geometry: box, material: red, density: 0.05, distance: 80, fade: 0 }));
   const many = reds();
   expect(many).toBeGreaterThan(300);
+  // dump_render counts them, as the GPU cull did a frame or two before: the box's 12 triangles a copy drawn.
+  type Drawn = { entity: number; chunks: number; copies: number; levels: number[]; cards: number; triangles: number };
+  const drawn = (): Drawn | undefined => {
+    expect(engine.advance(2).ok).toBeTrue();
+    engine.probe.commands("0:dump_render:render.json");
+    expect(engine.advance(1).ok).toBeTrue();
+    const out = engine.takeOutputs().find((o) => o.file === "render.json")!;
+    const dump = JSON.parse(out.data) as { scatter: { scatters: Drawn[] | null } };
+    return dump.scatter.scatters?.find((s) => s.entity === (terrain as unknown as number));
+  };
+  const counted = drawn();
+  expect(counted).toBeDefined();
+  expect(counted!.levels[0]).toBeGreaterThan(20);
+  expect(counted!.copies).toBeGreaterThanOrEqual(counted!.levels[0]!);
+  expect(counted!.triangles).toBe(counted!.levels[0]! * 12);
   // Within 6 m of the camera's xz (36 m south of the hill, past the
   // terrain's edge): nothing in view.
   w.set(terrain, og.TerrainScatter, { distance: 6 });
   expect(reds()).toBe(0);
+  expect(drawn()?.levels[0] ?? 0).toBe(0);
   // Half the density, about half the copies.
   w.set(terrain, og.TerrainScatter, { distance: 80, density: 0.025 });
   const half = reds();

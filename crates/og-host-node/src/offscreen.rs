@@ -210,6 +210,9 @@ impl RenderBackend for OffscreenBackend {
     fn sprite_shader_errors(&self) -> Vec<(usize, String)> {
         self.renderer.sprite_shader_errors()
     }
+    fn scatter_counts(&self) -> Option<og_render::ScatterCounts> {
+        self.renderer.scatter_counts().cloned()
+    }
     fn capture(
         &mut self,
         scene: &og_render::RenderScene,

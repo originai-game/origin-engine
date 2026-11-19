@@ -334,6 +334,10 @@ impl TerrainScatter {
 /// drawn by the renderer.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct ScatterDraw {
+    /// The game's name for it (og.TerrainScatter's entity): the main
+    /// camera's counts of its copies carry it ([`crate::ScatterCounts`]);
+    /// the parts of one copy share it.
+    pub id: u64,
     /// The terrain: an index into [`crate::RenderScene::terrains`] (its
     /// data, transform and layers place the copies).
     pub terrain: usize,

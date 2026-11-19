@@ -1134,6 +1134,7 @@ pub fn viaduct_scene(visible: bool) -> RenderScene {
         ),
     ] {
         scene.world.scatters.push(ScatterDraw {
+            id: 0,
             terrain: 0,
             mesh,
             material,

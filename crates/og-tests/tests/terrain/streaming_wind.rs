@@ -41,6 +41,7 @@ fn scattered_copies_are_drawn_from_chunks_and_shrink_over_the_fade() {
         ..TerrainScatter::default()
     };
     scene.world.scatters.push(og_render::ScatterDraw {
+        id: 0,
         terrain: 0,
         mesh: cube,
         material: red,
@@ -227,6 +228,7 @@ fn scatter_chunks_are_built_again_only_when_what_placed_them_changes() {
     let cube = scene.add_mesh(shapes::cuboid(Vec3::ONE));
     let material = scene.add_material(Material::default());
     scene.world.scatters.push(og_render::ScatterDraw {
+        id: 0,
         terrain: 0,
         mesh: cube,
         material,
@@ -317,6 +319,7 @@ fn wind_sways_scattered_copies_downwind() {
         ..TerrainScatter::default()
     };
     scene.world.scatters.push(og_render::ScatterDraw {
+        id: 0,
         terrain: 0,
         mesh: plate,
         material: red,
@@ -499,4 +502,105 @@ fn wind_sways_scattered_copies_downwind() {
         blurred > 400,
         "the sway left the motion vectors still ({blurred} pixels)"
     );
+}
+
+/// The GPU cull's counts of what the main camera drew reach the renderer
+/// under the scatter's id (`Renderer::scatter_counts`, dump_render's
+/// `scatter`): the copies placed in its chunks as the main pass counts
+/// them on the CPU, those within its distance drawn at the mesh's level,
+/// and the triangles of every part of a copy, its second part's copies
+/// not counted twice.
+#[test]
+#[ignore = "requires GPU"]
+fn the_cull_counts_what_the_camera_drew_by_scatter() {
+    let n = 257u32;
+    let size = 1024.0f32;
+    let mut scene = RenderScene::new();
+    let data = TerrainData::flat(Vec2::splat(size), n, n);
+    let h = scene.add_terrain(data.clone());
+    scene.world.terrains.push(Terrain {
+        cast_shadows: false,
+        ..Terrain::new(h)
+    });
+    // A cube of 12 triangles, and as its second part a square of 2.
+    let cube = scene.add_mesh(shapes::cuboid(Vec3::ONE));
+    let square = scene.add_mesh(shapes::plane(1.0, 1.0));
+    let material = scene.add_material(Material::default());
+    let s = TerrainScatter {
+        density: 0.03,
+        distance: 90.0,
+        scale: [3.0, 3.0],
+        seed: 5,
+        // Placed on the CPU, which counts the chunks' copies too.
+        gpu: false,
+        ..TerrainScatter::default()
+    };
+    let part = |mesh, with| og_render::ScatterDraw {
+        id: 7,
+        terrain: 0,
+        mesh,
+        material,
+        scatter: s,
+        cast_shadows: false,
+        impostor: None,
+        impostor_distance: 0.0,
+        with,
+        lods: [None; 2],
+        lod_materials: [None; 2],
+    };
+    scene.world.scatters.push(part(cube, None));
+    scene.world.scatters.push(part(square, Some(0)));
+    scene.lighting.light.cast_shadows = false;
+    // From above, every copy in reach in view.
+    scene.frame.camera = Camera {
+        position: Vec3::new(0.0, 100.0, 0.001),
+        target: Vec3::ZERO,
+        near: 1.0,
+        far: 500.0,
+        projection: Projection::Orthographic { height: 200.0 },
+        ..Default::default()
+    };
+    let mut r = Renderer::new_blocking(&scenes::base_desc()).expect("renderer");
+    let mut stats = r.render(&scene, &RenderTarget::Offscreen).expect("render");
+    for _ in 0..8 {
+        if r.scatter_counts().is_some_and(|c| !c.scatters.is_empty()) {
+            break;
+        }
+        stats = r.render(&scene, &RenderTarget::Offscreen).expect("render");
+    }
+    let counts = r.scatter_counts().expect("the GPU cull's counts").clone();
+    assert_eq!(
+        counts.scatters.len(),
+        1,
+        "both parts under one id: {counts:?}"
+    );
+    let (id, drawn) = counts.scatters[0];
+    assert_eq!(id, 7);
+    // The copies whose place is within the distance (along x and z) of
+    // the camera, as the cull measures it: from a wider placement, as the
+    // chunks hold copies past it.
+    let eye = scene.frame.camera.position;
+    let wide = TerrainScatter {
+        distance: 2.0 * s.distance,
+        ..s
+    };
+    let within = scene.world.terrains[0]
+        .scatter(&data, &wide, eye)
+        .iter()
+        .filter(|(_, m)| Vec2::new(m.w_axis.x - eye.x, m.w_axis.z - eye.z).length() <= s.distance)
+        .count() as u32;
+    assert!(within > 20, "{within} copies in reach");
+    // The pass counts its chunks' copies for each part: the first part's.
+    assert_eq!(
+        drawn.copies * 2,
+        stats.scatter_copies,
+        "{drawn:?} {stats:?}"
+    );
+    assert!(
+        drawn.copies > within,
+        "the chunks hold copies past the distance"
+    );
+    assert_eq!(drawn.levels, [within, 0, 0], "{drawn:?}");
+    assert_eq!(drawn.cards, 0);
+    assert_eq!(drawn.triangles, u64::from(within) * (12 + 2));
 }

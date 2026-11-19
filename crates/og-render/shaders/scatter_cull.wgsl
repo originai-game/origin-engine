@@ -51,7 +51,7 @@ struct CullItem {
 // Per chunk two sets of 20 words (CULL_SET_WORDS): three indexed indirect
 // draws, one per level (index count, instances, first index, base vertex,
 // first instance), then a plain one, the card's (vertices, instances,
-// first vertex, first instance), then a pad.
+// first vertex, first instance), then a pad holding the chunk's copies.
 @group(0) @binding(3) var<storage, read_write> draws: array<u32>;
 @group(0) @binding(4) var pyramid: texture_2d<f32>;
 // The chunk's copies (instances.rs GpuTransform, four vectors each).
@@ -193,7 +193,9 @@ fn cull(@builtin(local_invocation_index) lane: u32) {
       draws[row + 16u] = select(0u, total[count], item.bins.z == 1u && s < item.bins.w);
       draws[row + 17u] = 0u;
       draws[row + 18u] = 0u;
-      draws[row + 19u] = 0u;
+      // The pad: the chunk's copies, before any was culled (scatter_cull.rs
+      // ScatterCounts reads them back; no draw reads it).
+      draws[row + 19u] = n;
     }
   }
 }

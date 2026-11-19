@@ -191,6 +191,14 @@ impl Renderer {
         Some(arena.read_counts(&self.device, &self.queue))
     }
 
+    /// The main camera's scattered copies, by the scene's scatter, as the
+    /// GPU cull counted them a frame or two ago ([`crate::ScatterCounts`]):
+    /// `None` without the GPU cull (no compute), or before its first
+    /// counts land.
+    pub fn scatter_counts(&self) -> Option<&crate::ScatterCounts> {
+        self.world.scatter.counts()
+    }
+
     /// Forgets the TAA history: the next frame starts from its own samples
     /// (call it on a camera cut).
     pub fn reset_history(&mut self) {

@@ -823,6 +823,7 @@ pub fn grass_scene() -> RenderScene {
         ..Default::default()
     });
     scene.world.scatters.push(ScatterDraw {
+        id: 0,
         terrain: 0,
         mesh: tuft,
         material: grass,
@@ -1278,6 +1279,7 @@ pub fn layers_scene(painted: bool) -> RenderScene {
     ] {
         let mesh = scene.add_mesh(flower_clump(petal, spike));
         scene.world.scatters.push(ScatterDraw {
+            id: 0,
             terrain: 0,
             mesh,
             material: bloom,
@@ -1498,6 +1500,7 @@ pub fn tiling_scene(anti_tiling: f32) -> RenderScene {
         ..Default::default()
     });
     scene.world.scatters.push(ScatterDraw {
+        id: 0,
         terrain: 0,
         mesh: tuft,
         material: dry,
@@ -1752,6 +1755,7 @@ pub fn steep_scene(project_slope: f32) -> RenderScene {
     }
     // The scree's stones.
     scene.world.scatters.push(ScatterDraw {
+        id: 0,
         terrain: 0,
         mesh: rock_mesh,
         material: rock_material,
@@ -2873,6 +2877,7 @@ pub fn evening_meadow_scene(cast_shadows: bool) -> RenderScene {
         (gold, plant, 0.9, [0.9, 1.4], 43),
     ] {
         scene.world.scatters.push(ScatterDraw {
+            id: 0,
             terrain: 0,
             mesh,
             material,

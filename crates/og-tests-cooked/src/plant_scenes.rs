@@ -585,6 +585,7 @@ pub fn scatter_scene() -> Result<RenderScene, String> {
                 return Err(format!("{name}: a part is moved by its node"));
             }
             scene.world.scatters.push(ScatterDraw {
+                id: 0,
                 terrain: 0,
                 mesh,
                 material,
@@ -735,6 +736,7 @@ pub fn switch_scene() -> Result<RenderScene, String> {
         let first = scene.world.scatters.len();
         for (k, (mesh, material, _)) in p.parts.into_iter().enumerate() {
             scene.world.scatters.push(ScatterDraw {
+                id: 0,
                 terrain: 0,
                 mesh,
                 material,

@@ -697,6 +697,8 @@ impl ScatterRenderer {
                     }
                     self.culled_chunks.push(k.clone());
                     cull_items.push(crate::scatter_cull::CullItem {
+                        id: d.id,
+                        first_part: d.with.is_none(),
                         to_terrain: t.transform.inverse(),
                         extent: layout.size,
                         copies: c.count,

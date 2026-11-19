@@ -157,6 +157,7 @@ pub fn generated_scene() -> Result<RenderScene, String> {
     let pine = og_tests::kit::prop(&mut scene, "pine");
     let (mesh, material) = pine.rooted(&mut scene, 1.0);
     scene.world.scatters.push(og_render::ScatterDraw {
+        id: 0,
         terrain: 0,
         mesh,
         material,

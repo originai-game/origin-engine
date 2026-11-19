@@ -222,6 +222,36 @@ impl Capture for RuntimeCapture {
     }
 }
 
+/// dump_render's `scatter`: the frame's chunk draws and chunks built, and
+/// per og.TerrainScatter entity (in entity order) what the GPU cull counted
+/// for the main camera: its chunks taken, the copies placed in them, the
+/// copies drawn at each level and as the impostor's card, and their
+/// triangles (every part of a model's copies).
+fn scatter_dump(frame: &og_render::FrameStats, counts: Option<og_render::ScatterCounts>) -> Value {
+    let scatters = counts.as_ref().map(|c| {
+        let mut rows: Vec<_> = c.scatters.iter().collect();
+        rows.sort_by_key(|(id, _)| *id);
+        rows.into_iter()
+            .map(|(id, s)| {
+                json!({
+                    "entity": id,
+                    "chunks": s.chunks,
+                    "copies": s.copies,
+                    "levels": s.levels,
+                    "cards": s.cards,
+                    "triangles": s.triangles,
+                })
+            })
+            .collect::<Vec<_>>()
+    });
+    json!({
+        "chunkDraws": frame.scatter_draws,
+        "built": frame.scatter_built,
+        "countsLag": counts.as_ref().map(|c| frame.frame.saturating_sub(c.frame)),
+        "scatters": scatters,
+    })
+}
+
 /// Registers `dump_render[:path]`: the last frame's triangles and how many
 /// og.Model entities drew each level of detail.
 pub(crate) fn register_render_dump(probe: &mut Probe, engine: u32) {
@@ -229,7 +259,7 @@ pub(crate) fn register_render_dump(probe: &mut Probe, engine: u32) {
         "dump_render",
         og_probe::CommandDesc {
             usage: "dump_render[:path]".into(),
-            doc: "the last frame drawn: its main-pass triangles (ProbeTimings.triangles), its draw calls (`draws`, every pass), blended instances and draws (`transparent`, `transparentDraws`), sprite draws, particle systems with their slots and CPU-simulated live particles (`particles`: systems, capacity, cpu), the og.Vfx drawn and left out past RenderSettings.maxVfx or maxVfxParticles (`vfx`: drawn, dropped) and trail strips and segments, render time, its order-independent transparency (`transparency`: whether the blended surfaces went through it, the nodes a pixel kept in the linked lists, 0 when weighted, and the pixels that fell back to weighted with how many frames old that count is), how many og.Model entities drew each level of detail, its HLOD (`hlod`: the scenes' trees walked, the proxies drawn, those of them for cells not loaded, and the models they drew in place of), and the fraction between the last two ticks it was drawn at (interpolation, null at the tick), the antialiasing resolved, the frames drawn and the frames TAA's history holds (antialias, frameIndex, taaHistoryFrames), and the material shaders whose sprite pipelines the device refused (spriteShaderErrors: shader and message; their sprites draw plain)".into(),
+            doc: "the last frame drawn: its main-pass triangles (ProbeTimings.triangles), its draw calls (`draws`, every pass), blended instances and draws (`transparent`, `transparentDraws`), sprite draws, particle systems with their slots and CPU-simulated live particles (`particles`: systems, capacity, cpu), the og.Vfx drawn and left out past RenderSettings.maxVfx or maxVfxParticles (`vfx`: drawn, dropped) and trail strips and segments, render time, its order-independent transparency (`transparency`: whether the blended surfaces went through it, the nodes a pixel kept in the linked lists, 0 when weighted, and the pixels that fell back to weighted with how many frames old that count is), how many og.Model entities drew each level of detail, its og.TerrainScatter copies (`scatter`: the main pass's chunk draws and the chunks built for the frame; with the GPU cull, per scatter entity the chunks it took, the copies placed in them, the copies the main camera drew at each level of detail and as the impostor's card, and their triangles, counted on the GPU `countsLag` frames earlier; scatters null without it), its HLOD (`hlod`: the scenes' trees walked, the proxies drawn, those of them for cells not loaded, and the models they drew in place of), and the fraction between the last two ticks it was drawn at (interpolation, null at the tick), the antialiasing resolved, the frames drawn and the frames TAA's history holds (antialias, frameIndex, taaHistoryFrames), and the material shaders whose sprite pipelines the device refused (spriteShaderErrors: shader and message; their sprites draw plain)".into(),
         },
         0,
         move |_world, _args| {
@@ -268,6 +298,11 @@ pub(crate) fn register_render_dump(probe: &mut Probe, engine: u32) {
                 "debugView": crate::present::geometry::current_view(&rs),
                 "debugCoverage": crate::present::geometry::debug_coverage(crate::present::geometry::current_view(&rs)),
                 "lodLevels": &levels[..last],
+                // og.TerrainScatter: the main pass's chunk draws and the
+                // chunks placed for the frame, and with the GPU cull each
+                // scatter's copies as the main camera drew them, counted
+                // on the GPU `countsLag` frames before this one.
+                "scatter": scatter_dump(&st.frame, rs.backend.as_ref().and_then(|b| b.scatter_counts())),
                 // HLOD (present/hlod.rs): the trees walked, the proxies
                 // drawn (`unloaded`: of cells not loaded) and the models
                 // they drew in place of.

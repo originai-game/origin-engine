@@ -343,6 +343,7 @@ fn scattered_copies_take_the_decals_and_the_weather() {
         ..Default::default()
     });
     scene.world.scatters.push(og_render::ScatterDraw {
+        id: 0,
         terrain: 0,
         mesh: cube,
         material: dark,
@@ -467,6 +468,7 @@ fn a_turned_clearing_keeps_copies_and_grass_off_a_slab() {
                     ..Default::default()
                 });
                 scene.world.scatters.push(ScatterDraw {
+                    id: 0,
                     terrain: 0,
                     mesh: cube,
                     material: white,

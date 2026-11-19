@@ -116,6 +116,12 @@ pub(crate) struct ItemGpu {
 
 /// One chunk to cull this frame, as the scatter renderer plans it.
 pub(crate) struct CullItem {
+    /// Its scatter's id ([`crate::ScatterDraw::id`]), which its counts are
+    /// added to ([`ScatterCounts`]), and whether its copies are counted
+    /// there: a copy's first part's are, its further parts add their
+    /// triangles alone.
+    pub id: u64,
+    pub first_part: bool,
     /// The terrain's space from the frame's, and its size there.
     pub to_terrain: Mat4,
     pub extent: glam::Vec2,
@@ -301,6 +307,8 @@ pub(crate) struct CullView<'a> {
     /// The frame's pixels.
     pub size: (u32, u32),
     pub pyramid: Option<(&'a wgpu::TextureView, u32)>,
+    /// The renderer's frame, which its counts are read back as.
+    pub frame: u64,
 }
 
 pub(crate) struct ScatterCull {
@@ -328,6 +336,181 @@ pub(crate) struct ScatterCull {
     /// which draws read instead of `draws` on WebKit (`indirect_own.rs`);
     /// `None` elsewhere.
     per_draw: Option<crate::indirect_own::OwnArgs>,
+    /// This frame's chunks' scatters ([`CullItem::id`], `first_part`), in order.
+    owners: Vec<(u64, bool)>,
+    /// The main camera's counts, read back a frame or two after the cull.
+    pub(crate) counts: CountReadbacks,
+}
+
+/// One scene scatter's copies as the main camera's pass drew them: what
+/// the GPU cull counted into its chunks' draws (`scatter_cull.wgsl`).
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub struct ScatterDrawn {
+    /// Its chunks the cull took (in reach; for a scatter drawn only by the
+    /// camera, also in its view).
+    pub chunks: u32,
+    /// The copies placed in them, on the CPU or the GPU.
+    pub copies: u32,
+    /// The copies drawn at each level of detail, finest first, and as the
+    /// impostor's card; a copy in the crossfade before the card is in both.
+    pub levels: [u32; SCATTER_LEVELS],
+    pub cards: u32,
+    /// Their triangles: each level's copies times its triangles, and two
+    /// a strip of each card.
+    pub triangles: u64,
+}
+
+/// The main camera's scattered copies in one frame, counted on the GPU
+/// ([`crate::Renderer::scatter_counts`]): by scatter id
+/// ([`crate::ScatterDraw::id`]; those the cull took a chunk of, in the
+/// order first met), with the frame they were counted in.
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub struct ScatterCounts {
+    pub frame: u64,
+    pub scatters: Vec<(u64, ScatterDrawn)>,
+}
+
+impl ScatterCounts {
+    /// The counts in `words`, the draws of chunks owned by `owners`
+    /// ([`CullItem::id`], `first_part`): the main camera's set of each (its
+    /// three levels' indexed draws, the card's plain one, and the copies
+    /// the shader put in its pad).
+    fn read(frame: u64, owners: &[(u64, bool)], words: &[u32]) -> ScatterCounts {
+        let mut scatters: Vec<(u64, ScatterDrawn)> = Vec::new();
+        let card_triangles = crate::scatter::IMPOSTOR_CARD_VERTICES / 3;
+        for (k, &(id, first_part)) in owners.iter().enumerate() {
+            let set = &words[k * DRAW_WORDS as usize..][..SET_WORDS as usize];
+            let at = match scatters.iter().position(|(i, _)| *i == id) {
+                Some(at) => at,
+                None => {
+                    scatters.push((id, ScatterDrawn::default()));
+                    scatters.len() - 1
+                }
+            };
+            let s = &mut scatters[at].1;
+            for l in 0..SCATTER_LEVELS {
+                let (indices, copies) = (set[l * 5], set[l * 5 + 1]);
+                s.triangles += u64::from(indices / 3) * u64::from(copies);
+                if first_part {
+                    s.levels[l] += copies;
+                }
+            }
+            s.triangles += u64::from(set[16]) * u64::from(card_triangles);
+            if first_part {
+                s.chunks += 1;
+                s.copies += set[19];
+                s.cards += set[16];
+            }
+        }
+        ScatterCounts { frame, scatters }
+    }
+}
+
+/// The readbacks of the draws' counts ([`ScatterCounts`]), as `oit.rs`'s
+/// of its overflow: copied after the cull, mapped after the frame's
+/// submit, read when they land; the newest kept.
+#[derive(Default)]
+pub(crate) struct CountReadbacks {
+    slots: Vec<CountReadback>,
+    pub latest: Option<ScatterCounts>,
+}
+
+struct CountReadback {
+    buffer: wgpu::Buffer,
+    mapped: std::sync::Arc<std::sync::Mutex<Option<bool>>>,
+    /// The frame copied into it and its chunks' scatters, until it is read.
+    copied: Option<(u64, Vec<(u64, bool)>)>,
+    /// Copied into this frame, not yet mapped.
+    unmapped: bool,
+}
+
+/// Readbacks in flight at most: a frame's that finds none free is not read.
+const COUNT_READBACKS: usize = 3;
+
+impl CountReadbacks {
+    /// Copies the first `owners.len()` chunks' draws into a free readback.
+    fn copy(
+        &mut self,
+        device: &wgpu::Device,
+        encoder: &mut crate::Encoder,
+        draws: &wgpu::Buffer,
+        frame: u64,
+        owners: &[(u64, bool)],
+    ) {
+        let bytes = owners.len() as u64 * DRAW_WORDS * 4;
+        let free = self.slots.iter().position(|r| r.copied.is_none());
+        let slot = match free {
+            Some(i) if self.slots[i].buffer.size() >= bytes => i,
+            Some(i) => {
+                self.slots[i].buffer = Self::buffer(device, bytes);
+                i
+            }
+            None if self.slots.len() < COUNT_READBACKS => {
+                self.slots.push(CountReadback {
+                    buffer: Self::buffer(device, bytes),
+                    mapped: Default::default(),
+                    copied: None,
+                    unmapped: false,
+                });
+                self.slots.len() - 1
+            }
+            None => return,
+        };
+        let r = &mut self.slots[slot];
+        encoder.copy_buffer_to_buffer(draws, 0, &r.buffer, 0, bytes);
+        r.copied = Some((frame, owners.to_vec()));
+        r.unmapped = true;
+    }
+
+    fn buffer(device: &wgpu::Device, bytes: u64) -> wgpu::Buffer {
+        device.create_buffer(&wgpu::BufferDescriptor {
+            label: Some("scatter cull counts"),
+            size: bytes.next_power_of_two(),
+            usage: wgpu::BufferUsages::COPY_DST | wgpu::BufferUsages::MAP_READ,
+            mapped_at_creation: false,
+        })
+    }
+
+    fn after_submit(&mut self) {
+        for r in &mut self.slots {
+            if std::mem::take(&mut r.unmapped) {
+                let mapped = r.mapped.clone();
+                r.buffer
+                    .slice(..)
+                    .map_async(wgpu::MapMode::Read, move |result| {
+                        *mapped.lock().unwrap_or_else(|e| e.into_inner()) = Some(result.is_ok());
+                    });
+            }
+        }
+    }
+
+    fn poll(&mut self) {
+        for r in &mut self.slots {
+            if r.unmapped {
+                continue;
+            }
+            let Some((frame, owners)) = &r.copied else {
+                continue;
+            };
+            match r.mapped.lock().unwrap_or_else(|e| e.into_inner()).take() {
+                None => continue,
+                Some(true) => {
+                    let bytes = owners.len() as u64 * DRAW_WORDS * 4;
+                    let counts = r.buffer.slice(..bytes).get_mapped_range().ok().map(|data| {
+                        ScatterCounts::read(*frame, owners, bytemuck::cast_slice(&data))
+                    });
+                    r.buffer.unmap();
+                    if let Some(c) = counts
+                        && self.latest.as_ref().is_none_or(|l| l.frame < c.frame)
+                    {
+                        self.latest = Some(c);
+                    }
+                }
+                Some(false) => {}
+            }
+            r.copied = None;
+        }
+    }
 }
 
 fn texture_1x1(
@@ -485,6 +668,8 @@ impl ScatterCull {
             }),
             frame: Vec::new(),
             per_draw: per_draw.then(Default::default),
+            owners: Vec::new(),
+            counts: CountReadbacks::default(),
         }
     }
 
@@ -528,6 +713,7 @@ impl ScatterCull {
         (view_proj, height, bias): (Mat4, u32, f32),
     ) -> Vec<Culled> {
         self.frame.clear();
+        self.owners = items.iter().map(|i| (i.id, i.first_part)).collect();
         let n = items.len() as u64;
         if n == 0 {
             return Vec::new();
@@ -636,7 +822,7 @@ impl ScatterCull {
     /// Culls this frame's chunks (`groups`: each one's copies, in the order
     /// [`Self::prepare`] was given them) into the list and the draws.
     pub(crate) fn encode<'t>(
-        &self,
+        &mut self,
         device: &wgpu::Device,
         queue: &wgpu::Queue,
         encoder: &mut crate::Encoder,
@@ -645,6 +831,11 @@ impl ScatterCull {
         textures: &dyn Fn(crate::TextureHandle) -> Option<&'t wgpu::TextureView>,
     ) {
         if self.frame.is_empty() {
+            // Nothing culled: nothing drawn, without a readback.
+            self.counts.latest = Some(ScatterCounts {
+                frame: view.frame,
+                scatters: Vec::new(),
+            });
             return;
         }
         let gpu = ViewGpu {
@@ -763,6 +954,19 @@ impl ScatterCull {
                 }
             }
         }
+        self.counts
+            .copy(device, encoder, &self.draws, view.frame, &self.owners);
+    }
+
+    /// After the frame's submit: maps the counts the cull copied.
+    pub(crate) fn after_submit(&mut self) {
+        self.counts.after_submit();
+    }
+
+    /// Reads the counts that have landed: the newest is kept
+    /// ([`crate::Renderer::scatter_counts`]).
+    pub(crate) fn poll_counts(&mut self) {
+        self.counts.poll();
     }
 
     /// The buffer and byte offset the indexed draw of `at`'s `level` in
@@ -885,6 +1089,8 @@ mod tests {
     #[test]
     fn a_chunk_has_places_for_the_levels_its_copies_can_draw() {
         let item = |reach, card_from| CullItem {
+            id: 0,
+            first_part: true,
             to_terrain: Mat4::IDENTITY,
             extent: glam::Vec2::ONE,
             copies: 8,
@@ -919,6 +1125,8 @@ mod tests {
         let both = item((20.0, 60.0), 0.0).bands([100.0, 25.0]);
         assert_eq!(both, [band(0, 3, false), band(1, 2, false)]);
         let one = CullItem {
+            id: 0,
+            first_part: true,
             off_camera: false,
             ..item((30.0, 60.0), 0.0)
         };
@@ -957,6 +1165,8 @@ mod tests {
         let mut cull = ScatterCull::new(&device, &queue, false);
         let items: Vec<CullItem> = (0..40u32)
             .map(|k| CullItem {
+                id: 0,
+                first_part: true,
                 to_terrain: Mat4::IDENTITY,
                 extent: glam::Vec2::splat(64.0),
                 copies: 600 + 37 * (k % 11),

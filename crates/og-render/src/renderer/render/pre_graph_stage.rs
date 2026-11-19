@@ -203,6 +203,7 @@ impl Renderer {
                                 .as_ref()
                                 .filter(|_| gpu_cull)
                                 .and_then(|gc| gc.pyramid()),
+                            frame: self.frame_index,
                         },
                         &|h| textures.get(h.index()).map(|t| &t.view),
                         terrain_draws,

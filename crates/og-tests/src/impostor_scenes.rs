@@ -339,6 +339,7 @@ pub fn impostor_scatter_scene(impostor_distance: f32) -> RenderScene {
     });
     let impostor = ball_impostor(&mut scene);
     scene.world.scatters.push(ScatterDraw {
+        id: 0,
         terrain: 0,
         mesh: ball,
         material: white,
@@ -602,6 +603,7 @@ pub fn heath_scene(impostor_distance: f32) -> RenderScene {
     });
     let (bush, material, impostor) = shrub(&mut scene, Some([226, 200, 120]), 0.22);
     scene.world.scatters.push(ScatterDraw {
+        id: 0,
         terrain: 0,
         mesh: bush,
         material,

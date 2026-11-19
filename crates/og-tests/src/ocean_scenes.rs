@@ -379,6 +379,7 @@ fn river(scene: &mut RenderScene) {
         ..Default::default()
     });
     scene.world.scatters.push(og_render::ScatterDraw {
+        id: 0,
         terrain: 0,
         mesh: tuft,
         material: blades,

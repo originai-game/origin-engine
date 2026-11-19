@@ -85,6 +85,7 @@ fn meadow() -> RenderScene {
         ..Default::default()
     });
     scene.world.scatters.push(ScatterDraw {
+        id: 0,
         terrain: 0,
         mesh: tuft,
         material: grass,

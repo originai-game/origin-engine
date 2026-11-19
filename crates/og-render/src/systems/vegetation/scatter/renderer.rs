@@ -1,6 +1,26 @@
 use super::*;
 
 impl ScatterRenderer {
+    /// After the frame's submit: maps the counts the cull copied.
+    pub(crate) fn after_submit(&mut self) {
+        if let Some(cull) = &mut self.cull {
+            cull.after_submit();
+        }
+    }
+
+    /// Reads the cull's counts that have landed (each frame, before its
+    /// stats).
+    pub(crate) fn poll_counts(&mut self) {
+        if let Some(cull) = &mut self.cull {
+            cull.poll_counts();
+        }
+    }
+
+    /// The GPU cull's newest counts ([`crate::ScatterCounts`]).
+    pub(crate) fn counts(&self) -> Option<&crate::ScatterCounts> {
+        self.cull.as_ref()?.counts.latest.as_ref()
+    }
+
     /// Draw the lit pass into a target of `samples` per pixel from now on:
     /// its pipelines are made again as they are next used.
     pub(crate) fn set_samples(&mut self, samples: u32) {

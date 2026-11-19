@@ -105,6 +105,7 @@ fn a_models_further_part_is_placed_as_its_first() {
         ..Default::default()
     };
     let draw = |scatter, with| ScatterDraw {
+        id: 0,
         terrain: 0,
         mesh,
         material,

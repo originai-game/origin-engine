@@ -98,6 +98,12 @@ pub trait RenderBackend {
     fn sprite_shader_errors(&self) -> Vec<(usize, String)> {
         Vec::new()
     }
+    /// The main camera's scattered copies by og.TerrainScatter entity, as
+    /// the GPU cull counted them a frame or two ago (og-render's
+    /// `Renderer::scatter_counts`); `None` without the GPU cull.
+    fn scatter_counts(&self) -> Option<og_render::ScatterCounts> {
+        None
+    }
     /// Draw the scene offscreen at `width`×`height` (0×0: the target's size)
     /// and read it back. Native hosts block on the readback; the web host
     /// answers a frame it requested earlier (request on tick N, answer on

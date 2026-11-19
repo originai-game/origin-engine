@@ -33,7 +33,7 @@ impl ScatterRenderer {
             place.encode(device, encoder, terrain_draws, &groups);
             timed("scatter: place", q0, encoder);
         }
-        let Some(cull) = &self.cull else {
+        let Some(cull) = &mut self.cull else {
             return queries;
         };
         let groups: Vec<&wgpu::BindGroup> = self

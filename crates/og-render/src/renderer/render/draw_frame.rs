@@ -1050,6 +1050,8 @@ impl Renderer {
             RenderTarget::View(_) => None,
         };
 
+        // The scattered copies' counts landed since the last frame.
+        self.world.scatter.poll_counts();
         // The frame's statistics so far (frame_stats.rs).
         let FrameStatsOutputs { mut stats } = self.frame_stats(FrameStatsInputs {
             scene,

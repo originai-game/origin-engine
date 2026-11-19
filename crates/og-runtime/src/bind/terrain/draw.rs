@@ -314,6 +314,7 @@ pub(crate) fn extract(world: &World, rs: &mut RenderState, h: &mut Hierarchy) ->
         let first = rs.scene.world.scatters.len();
         for (k, (mesh, material, lods, lod_materials)) in parts.into_iter().enumerate() {
             rs.scene.world.scatters.push(og_render::ScatterDraw {
+                id: e,
                 terrain,
                 mesh,
                 material,

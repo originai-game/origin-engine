@@ -105,6 +105,7 @@ impl Renderer {
         if let Some(gc) = self.visibility.gpu_cull.as_mut().filter(|_| gpu_cull) {
             gc.after_submit();
         }
+        self.world.scatter.after_submit();
         if let (Some(t), Some(c)) = (self.gpu_timer.as_mut(), self.clock) {
             t.after_submit(
                 &self.queue,
